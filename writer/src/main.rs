@@ -3517,6 +3517,24 @@ impl Writer {
         }
     }
 
+    /// 文字飾りの割り当て(本家 Ctrl+B / I / U / 5)。リボンのボタンと同じ道。
+    /// **calc と writer の両方に置く** — 片方だけだと「キーの嘘」になる
+    fn do_bold(&mut self, _: &ui::Bold, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("bold", cx);
+        cx.notify();
+    }
+    fn do_italic(&mut self, _: &ui::Italic, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("italic", cx);
+        cx.notify();
+    }
+    fn do_underline(&mut self, _: &ui::Underline, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("underline", cx);
+        cx.notify();
+    }
+    fn do_strikeout(&mut self, _: &ui::Strikeout, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("strikeout", cx);
+        cx.notify();
+    }
     fn do_find(&mut self, _: &ui::Find, _: &mut Window, cx: &mut Context<Self>) {
         if !self.find_open {
             self.run_cmd("replace", cx); // 検索と置換のパネルを開く

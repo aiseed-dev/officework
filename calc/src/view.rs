@@ -243,6 +243,10 @@ impl gpui::Element for InputSink {
 
 impl Render for Calc {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // **ボタンの場所の控えを毎回捨てる。** 貯めたままにすると段を移った
+        // あとも前の段のボタンが残り、一覧をそこへ出したり、点検の道具が
+        // 見当違いの所を押したりする(2026-08-08 一巡点検で踏んだ)
+        self.btn_box.borrow_mut().clear();
         // 窓の大きさを控える(見える行数・列数がこれに追従する)
         self.view_w_px = f32::from(window.viewport_size().width);
         self.view_h_px = f32::from(window.viewport_size().height);
@@ -357,6 +361,19 @@ impl Render for Calc {
                 self.prev_tab
             };
         }
+        // 段の見出しの場所を「@tab<番号>」という名前で控える。点検の道具が
+        // 目分量でなく本当の座標を押せるようにする
+        let tab_boxes = self.btn_box.clone();
+        let mark_tab = move |i: usize| {
+            let rec = tab_boxes.clone();
+            let key: &'static str = Box::leak(format!("@tab{i}").into_boxed_str());
+            gpui::canvas(move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                rec.borrow_mut().insert(key, (
+                    f32::from(b.origin.x), f32::from(b.origin.y),
+                    f32::from(b.size.width), f32::from(b.size.height),
+                ));
+            }, |_, _: (), _, _| {}).absolute().size_full()
+        };
         let mut tabs = div().flex().flex_row().items_end().gap_1()
             .px_2().bg(th_band);
         for (i, tb) in ribbon::calc_tabs().iter().enumerate() {
@@ -370,6 +387,8 @@ impl Render for Calc {
                 .any(|c| c.id == "pivot-layout" || c.id == "td-header");
             tabs = tabs.child(div()
                 .id(SharedString::from(format!("tab{i}")))
+                // 段の見出しも場所を控える(点検の道具が正確に押せるように)
+                .relative().child(mark_tab(i))
                 .px_2p5().pt_1p5()
                 .when(is_ctx, |d| d.bg(rgb(0xF3EDFB)).rounded_t_md())
                 .text_size(px(us * 12.0))
@@ -472,19 +491,10 @@ impl Render for Calc {
             ("show-zeros", "0表示"),
         ];
         // 一覧・パネル・小窓が開くボタン(本家は ▼ を添える)。id で見分ける
-        const DROP_IDS: &[&str] = &[
-            "fontname", "fontsize", "changecase", "format", "cell-format",
-            "borders", "fontcolor", "fillparag", "freeze", "clear",
-            "data-validation", "custom-sort", "condformat", "numfmt",
-            "theme", "colorschemas", "pagesize", "pageorient", "pagemargins",
-            "insshape", "inssmartart", "instable", "table-tpl", "inssymbol",
-            "inschart", "pivot-insert", "pivot-fields", "pivot-style",
-            "text-orient", "insert-function", "fn-math", "fn-text",
-            "fn-logical", "fn-datetime", "fn-lookup", "fn-financial", "fn-more",
-            "fn-recent", "sheet-view", "cell-styles",
-        ];
-        // 一覧が開くボタンは、描くときに**自分の場所を控える**。
-        // 一覧をそのボタンの真下に出すのに要る(pop_under)
+        let drop_ids = Calc::DROP_IDS;
+        // 押せるボタンは、描くときに**自分の場所を控える**。一覧をその
+        // ボタンの真下に出すのに要る(pop_under)。リボンの一巡点検
+        // (tools/ribbon_sweep.py)もここを rpc 経由で読む
         let boxes = self.btn_box.clone();
         let mark = move |id: &'static str| {
             let rec = boxes.clone();
@@ -526,8 +536,8 @@ impl Render for Calc {
                     .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
                     .cursor_pointer().hover(move |st| st.bg(th_btn_hover))
                     .child(val)
-                    .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, window, cx| {
-                        this.run_from_ribbon(cid, f32::from(ev.position().x), window, cx);
+                    .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _, cx| {
+                        this.run_from_ribbon(cid, f32::from(ev.position().x), cx);
                         cx.notify()
                     }))
                     .into_any_element();
@@ -552,7 +562,7 @@ impl Render for Calc {
             // 押しても run_cmd 側で断るが、見た目でも先に伝える)
             let locked = on_pivot && Calc::PIVOT_LOCKED.contains(&cmd.id);
             let fg = if cmd.ready && !locked { th_fg } else { th_gray };
-            let drops = DROP_IDS.contains(&cmd.id);
+            let drops = drop_ids.contains(&cmd.id);
             if let Some(short) = big {
                 // 名札つきの大ボタン(絵の下に短い名前 — 本家の言い方)。
                 // 一覧の開くボタンは名札の横に小さな ▾
@@ -574,12 +584,10 @@ impl Render for Calc {
                             .child("▾"))));
                 if cmd.ready {
                     let cid = cmd.id;
-                    if drops {
-                        b = b.relative().child(mark(cid));
-                    }
+                    b = b.relative().child(mark(cid));
                     b = b.cursor_pointer().hover(move |st| st.bg(th_btn_hover))
-                        .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, window, cx| {
-                            this.run_from_ribbon(cid, f32::from(ev.position().x), window, cx);
+                        .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _, cx| {
+                            this.run_from_ribbon(cid, f32::from(ev.position().x), cx);
                             cx.notify()
                         }));
                 }
@@ -626,12 +634,10 @@ impl Render for Calc {
                 }));
             if cmd.ready {
                 let cid = cmd.id;
-                if drops {
-                    b = b.relative().child(mark(cid));
-                }
+                b = b.relative().child(mark(cid));
                 b = b.cursor_pointer().hover(move |st| st.bg(th_btn_hover))
-                    .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, window, cx| {
-                        this.run_from_ribbon(cid, f32::from(ev.position().x), window, cx);
+                    .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _, cx| {
+                        this.run_from_ribbon(cid, f32::from(ev.position().x), cx);
                         cx.notify()
                     }));
             }
@@ -1928,6 +1934,7 @@ impl Render for Calc {
                         .on_mouse_move(cx.listener(move |this, _, _, cx| {
                             if this.menu_sub != Some(id) {
                                 this.menu_sub = Some(id);
+                                this.menu_direct = false;
                                 cx.notify();
                             }
                         }))
@@ -1935,6 +1942,7 @@ impl Render for Calc {
                             move |this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.menu_sub = Some(id);
+                                this.menu_direct = false;
                                 cx.notify();
                             })));
                     if open {
@@ -4274,6 +4282,11 @@ impl Render for Calc {
             .on_action(cx.listener(Calc::a_context_menu))
             .on_action(cx.listener(Calc::a_cancel))
             .on_action(cx.listener(Calc::a_edit_cell))
+            .on_action(cx.listener(Calc::a_find))
+            .on_action(cx.listener(Calc::a_bold))
+            .on_action(cx.listener(Calc::a_italic))
+            .on_action(cx.listener(Calc::a_underline))
+            .on_action(cx.listener(Calc::a_strikeout))
             .on_action(cx.listener(Calc::a_recalc))
             .on_action(cx.listener(Calc::a_recalc_sheet))
             .on_action(cx.listener(Calc::a_newline))

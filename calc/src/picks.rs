@@ -57,8 +57,11 @@ impl Calc {
                     self.sa_cat = ci;
                     let names: Vec<String> =
                         SMARTART[ci].1.iter().map(|(n, _)| n.to_string()).collect();
+                    // 2段目は1段目と同じ場所に重ねる(目が飛ばない)
+                    let at = self.pick.as_ref().map(|(_, at)| *at)
+                        .unwrap_or_else(|| self.pop_anchor());
                     self.pick_kind = "sa-item";
-                    self.pick = Some((names, (HEAD_W + 120.0, ROW_H + 20.0)));
+                    self.pick = Some((names, at));
                     self.status = ui::tf!("SmartArt > {}: 形を選ぶと図形の集まりとして入ります", v)
                     .into();
                     return; // pick_kind を "value" に戻さない(2段目へ)
@@ -2236,6 +2239,14 @@ impl Calc {
             self.status = ui::t!("書式のコピーをやめました").into();
         }
         self.menu_head = None; // 見出しメニューの印も畳む
+        // 親を通らずに開いた子の品書きは、子と親をまとめて閉じる。
+        // 片方ずつ閉じると押した覚えのない親が出てくる
+        if self.menu_direct && self.menu_sub.take().is_some() {
+            self.menu_at = None;
+            self.menu_direct = false;
+            cx.notify();
+            return;
+        }
         self.dedup_pend = None;
         self.cond_pend = None;
         self.import_pend = None;

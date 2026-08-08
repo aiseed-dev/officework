@@ -33,6 +33,35 @@
   `conda create -p .venv python polars python-docx` + `pip install docxtpl`
   (docxtpl は conda-forge に無いことがあるので pip で)
 
+## 画面まわりの直しは実機で見る(2026-08-08 発注者指摘)
+
+**「テストが通った」で報告しない。** 一覧の位置を直したと報告して
+「きちんとやれ」と言われた。実機で動かしたら位置は直っていたが、位置の
+直書きが別に6箇所あり、Esc の短絡もあり、`deferred` で試した手は一覧を
+全部消していた。**どれも机上では出ない。**
+
+    cargo build --release -p calc
+    python3 tools/ribbon_sweep.py           # リボンの全ボタンを押して回る
+
+一巡は「落ちない/押して何か起きる/一覧がボタンの真下に出る/Esc で閉じる」
+の4点を、画素比べでなく `calc.sock` の rpc(`ribbon`・`ui_state`)で見る。
+しくじった時だけ撮る。**しくじりが出たら、まず道具の側を疑うこと** —
+最初の版は 48 件報告して大半が道具の欠陥だった(詳しくは
+[台帳の第4便](docs/guide-tsukiawase-2.ja.md)の「誤報を生む型」)。
+
+一巡で見つけた欠陥の**型**は画面なしの試験にも落としてある
+(`一覧が開くボタンは押した所に一覧を出す`)。位置を直書きすると
+`cargo test` で落ちる。
+
+手で見るときの起動(この機械は GNOME Wayland。XWayland 経由で X11 に出す):
+
+    env -u WAYLAND_DISPLAY XDG_RUNTIME_DIR=$(mktemp -d) DISPLAY=:2 ./target/release/calc &
+
+**実行時ディレクトリを分けないと、動いている本人の calc に相乗りする。**
+撮るのは `import -window <id>`(窓は `_NET_WM_PID` で引く。ID も位置も
+起動ごとに変わる)。Xephyr は DRI3 が無く GPUI が真っ黒。GNOME の
+スクリーンショット D-Bus は拒否される。
+
 ## GPUI の踏み跡(再発させない)
 
 - div の既定レイアウトは **Block(縦積み)**。入力とマウスの受け皿

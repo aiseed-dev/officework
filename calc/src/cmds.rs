@@ -49,6 +49,22 @@ impl Calc {
         "pen", "highlighter", "eraser", "draw-select",
     ];
 
+    /// **一覧・パレット・小窓が開くボタン。** リボンは ▾ を添え、押すと
+    /// [`Calc::pop_anchor`] の場所に開く。試験もこの一覧を使って
+    /// 「どのボタンから開いても押した所に出るか」を確かめる
+    /// (位置の直書きが6箇所残っていた。2026-08-08 実機の一巡点検で発見)
+    pub(crate) const DROP_IDS: &'static [&'static str] = &[
+        "fontname", "fontsize", "changecase", "format", "cell-format",
+        "borders", "fontcolor", "fillparag", "freeze", "clear",
+        "data-validation", "custom-sort", "condformat", "numfmt",
+        "theme", "colorschemas", "pagesize", "pageorient", "pagemargins",
+        "insshape", "inssmartart", "instable", "table-tpl", "inssymbol",
+        "inschart", "pivot-insert", "pivot-fields", "pivot-style",
+        "text-orient", "insert-function", "fn-math", "fn-text",
+        "fn-logical", "fn-datetime", "fn-lookup", "fn-financial", "fn-more",
+        "fn-recent", "sheet-view", "cell-styles",
+    ];
+
     /// シートの保護中でも通す操作(見るだけ・保存・保護の操作そのもの)
     pub(crate) const PROTECTED_OK: &'static [&'static str] = &[
         "open", "save", "pdf", "selectall", "undo", "redo",
@@ -671,7 +687,8 @@ impl Calc {
                         let names: Vec<String> = v.iter().map(|(n, _)| n.clone()).collect();
                         self.pick_paths = v;
                         self.pick_kind = "history";
-                        self.pick = Some((names, (HEAD_W + 60.0, ROW_H + 20.0)));
+                        let at = self.pop_anchor();
+                self.pick = Some((names, at));
                         self.status =
                             ui::t!("バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)").into();
                     }
@@ -744,7 +761,8 @@ impl Calc {
                     let names: Vec<String> = v.iter().map(|(n, _)| n.clone()).collect();
                     self.pick_paths = v;
                     self.pick_kind = "plugin";
-                    self.pick = Some((names, (HEAD_W + 60.0, ROW_H + 20.0)));
+                    let at = self.pop_anchor();
+                self.pick = Some((names, at));
                     self.status =
                         ui::t!("プラグイン: 選ぶとサンドボックスの中の Python で実行します(b=ブック s=シート)").into();
                 }
@@ -837,7 +855,8 @@ impl Calc {
                 let names: Vec<String> =
                     SMARTART.iter().map(|(n, _)| n.to_string()).collect();
                 self.pick_kind = "sa-cat";
-                self.pick = Some((names, (HEAD_W + 60.0, ROW_H + 20.0)));
+                let at = self.pop_anchor();
+                self.pick = Some((names, at));
                 self.status =
                     ui::t!("SmartArt: 分類 → 形の順に選ぶ(図形の集まりとして入ります)").into();
             }
@@ -945,10 +964,11 @@ impl Calc {
             }
             // セルのスタイル(既定の書式の組。押すと一覧から選ぶ)
             "cell-styles" => {
+                let at = self.pop_anchor();
                 self.pick_kind = "cell-style";
                 self.pick = Some((
                     CELL_STYLES.iter().map(|(n, _)| n.to_string()).collect(),
-                    (HEAD_W + 60.0, ROW_H + 20.0),
+                    at,
                 ));
                 self.status = ui::t!("セルのスタイル: 選ぶと選択に掛かります(Ctrl+Z で戻せます)").into();
             }
@@ -986,9 +1006,10 @@ impl Calc {
                         .iter()
                         .map(|(i, n)| (n.clone(), PathBuf::from(i.to_string())))
                         .collect();
+                    let at = self.pop_anchor();
                     self.pick = Some((
                         hidden.into_iter().map(|(_, n)| n).collect(),
-                        (HEAD_W + 60.0, ROW_H + 20.0),
+                        at,
                     ));
                     self.status = ui::t!("隠したシート: 選ぶと表示に戻します").into();
                 }
@@ -1110,10 +1131,11 @@ impl Calc {
             // 配色の変更(テーマ色の組を入れ替える)。テーマ由来の色を
             // 使っているセルは、色がそのまま追従する
             "colorschemas" => {
+                let at = self.pop_anchor();
                 self.pick_kind = "scheme";
                 self.pick = Some((
                     sheet::theme::SCHEMES.iter().map(|(n, _)| n.to_string()).collect(),
-                    (HEAD_W + 60.0, ROW_H + 20.0),
+                    at,
                 ));
                 self.status = ui::t!("配色の変更: 選ぶとテーマ色が入れ替わります").into();
             }
@@ -2048,12 +2070,10 @@ impl Calc {
             }
             // 条件付き書式。右クリックメニューと同じ一覧を開く(道は1本)
             "condformat" => {
-                let (x, y) = self
-                    .cell_origin_px(self.cursor)
-                    .map(|(x, y)| (x + 16.0, y + 16.0))
-                    .unwrap_or((HEAD_W + 16.0, ROW_H + 16.0));
-                self.menu_at = Some((x, y));
+                self.menu_at = Some(self.pop_anchor());
                 self.menu_sub = Some("cond");
+                // 親を通らずに子を開いた。Esc はまとめて閉じる
+                self.menu_direct = true;
             }
             // 名前の管理。右クリックの「名前の定義」と同じパネル
             // 名前マネージャー(本家の一覧+新規/編集/削除に相当)

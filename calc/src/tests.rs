@@ -1089,6 +1089,39 @@ mod pivot_tests {
     }
 
     #[gpui::test]
+    fn 一覧が開くボタンは押した所に一覧を出す(cx: &mut gpui::TestAppContext) {
+        // **位置の直書きの見張り。** 一覧を出す命令が pop_anchor を通さず
+        // 座標を直に書いていると、どのボタンから開いても画面の左端に出る。
+        // 実機の一巡点検(tools/ribbon_sweep.py)がこれを6箇所見つけたので、
+        // 画面なしでも捕まえられるようここに固定する
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("1"));
+            this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("2"));
+            let mark = (777.0, 55.0);
+            let mut seen = 0;
+            for id in Calc::DROP_IDS {
+                this.pick = None;
+                this.cursor = Pos::new(0, 0);
+                this.anchor = None;
+                this.pop_at = Some(mark);
+                this.run_cmd(id, cx);
+                this.pop_at = None;
+                if let Some((_, at)) = this.pick.clone() {
+                    assert_eq!(at, mark, "{id} の一覧が押した所でなく {at:?} に出た");
+                    seen += 1;
+                }
+                this.pick = None;
+                this.menu_at = None;
+                this.fmt_panel = None;
+                this.border_pal = None;
+                this.prompt = None;
+            }
+            assert!(seen >= 10, "一覧が開いた命令が {seen} 件しかない — 見張りになっていない");
+        });
+    }
+
+    #[gpui::test]
     fn ホームの全ボタンを一巡り点検(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {

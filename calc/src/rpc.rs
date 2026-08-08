@@ -324,6 +324,69 @@ pub(crate) fn handle(calc: &mut Calc, line: &str, cx: &mut Context<Calc>) -> Str
     };
     match cmd.as_str() {
         "ping" => "{\"ok\":true,\"app\":\"calc\"}".into(),
+        // --- 画面の点検用(tools/ribbon_sweep.py が使う)---
+        // いまのリボンの段と、押せるボタンの窓の中での場所。
+        // **画素を見比べずに位置を検算する**ためにここから読む
+        "ribbon" => {
+            let boxes: Vec<String> = calc
+                .btn_box
+                .borrow()
+                .iter()
+                .map(|(id, (x, y, w, h))| {
+                    format!(
+                        "{{\"id\":{},\"x\":{x},\"y\":{y},\"w\":{w},\"h\":{h}}}",
+                        J::S((*id).to_string()).to_json()
+                    )
+                })
+                .collect();
+            let (px, py, pw, ph) = calc.pane_box.get();
+            format!(
+                "{{\"ok\":true,\"tab\":{},\"pane\":[{px},{py},{pw},{ph}],\"boxes\":[{}]}}",
+                calc.tab,
+                boxes.join(",")
+            )
+        }
+        // いま何が開いているか。押した結果を**中身で**確かめる
+        "ui_state" => {
+            let pick_at = match calc.pick.as_ref() {
+                Some((v, (x, y))) => format!("{{\"n\":{},\"x\":{x},\"y\":{y}}}", v.len()),
+                None => "null".into(),
+            };
+            let open: Vec<&str> = [
+                ("menu", calc.menu_at.is_some()),
+                ("fmt_panel", calc.fmt_panel.is_some()),
+                ("border_pal", calc.border_pal.is_some()),
+                ("prompt", calc.prompt.is_some()),
+                ("dv_dlg", calc.dv_dlg.is_some()),
+                ("fn_dlg", calc.fn_dlg.is_some()),
+                ("filter_panel", calc.filter_panel.is_some()),
+                ("solver", calc.solver.is_some()),
+                ("slicer", calc.slicer.is_some()),
+                ("name_edit", calc.name_edit.is_some()),
+                ("quit_ask", calc.quit_ask),
+                ("shape_sel", calc.shape_sel.is_some()),
+            ]
+            .iter()
+            .filter(|(_, on)| *on)
+            .map(|(k, _)| *k)
+            .collect();
+            // 切り替えの類は **open と分ける** — 混ぜると点検の道具が
+            // 「開いたから Esc で閉じろ」と誤判定する
+            let toggles = format!(
+                "[{},{},{},{},{},{},{},{}]",
+                calc.show_formulas, calc.show_formula_bar, calc.show_zeros,
+                calc.gridlines, calc.show_headers, calc.dark, calc.zoom, calc.ui_scale
+            );
+            format!(
+                "{{\"ok\":true,\"tab\":{},\"pick\":{},\"open\":{},\"toggles\":{toggles},\"status\":{},\"dirty\":{},\"edits\":{}}}",
+                calc.tab,
+                pick_at,
+                J::A(open.iter().map(|s| J::S(s.to_string())).collect()).to_json(),
+                J::S(calc.status.to_string()).to_json(),
+                calc.dirty,
+                calc.edits
+            )
+        }
         // ブックの情報(名前・道・シートの一覧・いまのシート)
         "book_info" => {
             let sheets = J::A(

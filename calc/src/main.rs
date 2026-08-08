@@ -88,6 +88,13 @@ struct Calc {
     /// **いま開こうとしている一覧を出す場所。** リボンのボタンを押した
     /// ときだけ入り、run_cmd を抜けたら消える。None ならセルの下に出す
     pub(crate) pop_at: Option<(f32, f32)>,
+    /// この品書きは**子から直に開いた**(リボンの「条件付き書式」など)。
+    /// 親を通っていないので、Esc は子と親をまとめて閉じる — でないと
+    /// 押した覚えのない親の品書きが出てくる(2026-08-08 一巡点検で発見)
+    pub(crate) menu_direct: bool,
+    /// 中身を変えた回数(控えを取るたびに1つ増える)。**画面の一巡点検が
+    /// 「押して何か起きたか」を見るのに使う**(tools/ribbon_sweep.py)
+    pub(crate) edits: u64,
     /// リボンのボタンの場所(命令の名前 → 窓の中の x, y, 幅, 高さ)。
     /// 描くたびに書く。一覧を**押したボタンの真下**に出すのに要る
     pub(crate) btn_box: Rc<std::cell::RefCell<HashMap<&'static str, (f32, f32, f32, f32)>>>,
@@ -365,6 +372,8 @@ impl Calc {
             border_pal: None,
             pane_box: std::cell::Cell::new((0.0, 0.0, 0.0, 0.0)),
             pop_at: None,
+            menu_direct: false,
+            edits: 0,
             btn_box: Rc::new(std::cell::RefCell::new(HashMap::new())),
             pop_btn_w: std::cell::Cell::new(0.0),
             font_name: kumihan::font::for_document(None)
@@ -521,6 +530,7 @@ impl Calc {
     /// 数式バーの内容をセルに入れて再計算する。
     /// いまの表を控える(次の操作を戻せるように)。やり直しの控えは捨てる。
     fn checkpoint(&mut self) {
+        self.edits += 1;
         self.undo_stack
             .push(vec![(self.active, self.book.sheets[self.active].clone())]);
         if self.undo_stack.len() > 100 {
@@ -532,6 +542,7 @@ impl Calc {
     /// 全シートを1手として控える(Python の実行など、どこを変えるか
     /// 分からない操作の前に)。
     fn checkpoint_book(&mut self) {
+        self.edits += 1;
         self.undo_stack.push(
             self.book
                 .sheets
@@ -853,6 +864,7 @@ impl Calc {
     /// メニューが出ていたら閉じる(項目の上の押下は stop_propagation でここに来ない)。
     fn mouse_down_at(&mut self, x: f32, y: f32, shift: bool, ctrl: bool, clicks: usize) {
         self.menu_at = None;
+        self.menu_direct = false;
         self.pick = None;
         self.pick_note = None;
         self.border_pal = None;
@@ -1403,13 +1415,7 @@ impl Calc {
     /// リボンのボタンから命令を出す。**押したボタンの場所を控えてから**
     /// run_cmd に渡すので、開いた一覧はそのボタンの真下に出る
     /// ([`Self::pop_anchor`] / [`pop_under`])。
-    pub(crate) fn run_from_ribbon(
-        &mut self, id: &'static str, at_x: f32, window: &mut Window, cx: &mut Context<Self>,
-    ) {
-        // **格子に焦点を戻す。** リボンを押すと焦点がそちらへ移り、開いた
-        // 一覧を Esc で閉じられず、キーも一切効かなくなっていた
-        // (2026-08-08 実機で見つけた)
-        window.focus(&self.focus, cx);
+    pub(crate) fn run_from_ribbon(&mut self, id: &'static str, at_x: f32, cx: &mut Context<Self>) {
         let pane = self.pane_box.get();
         let btn = self.btn_box.borrow().get(id).copied();
         // 描く前に鍵から呼ばれた等でボタンの場所が無ければ押した点を使う
@@ -2729,6 +2735,29 @@ impl Calc {
         cx.notify();
     }
     /// F9 = ブック全体の再計算(計算方法が手動のときの手回し。自動でも害はない)
+    /// Ctrl+F / Ctrl+H = 検索と置換のパネル。**受け口が無く、割り当てだけが
+    /// あった** — 押しても何も起きない「キーの嘘」だった(2026-08-09)
+    fn a_find(&mut self, _: &ui::Find, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("replace", cx);
+        cx.notify();
+    }
+    /// 文字飾りの割り当て(本家 Ctrl+B / I / U / 5)。リボンのボタンと同じ道
+    fn a_bold(&mut self, _: &ui::Bold, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("bold", cx);
+        cx.notify();
+    }
+    fn a_italic(&mut self, _: &ui::Italic, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("italic", cx);
+        cx.notify();
+    }
+    fn a_underline(&mut self, _: &ui::Underline, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("underline", cx);
+        cx.notify();
+    }
+    fn a_strikeout(&mut self, _: &ui::Strikeout, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("strikeout", cx);
+        cx.notify();
+    }
     fn a_recalc(&mut self, _: &ui::Recalc, _: &mut Window, cx: &mut Context<Self>) {
         self.commit();
         recalc_book(&mut self.book, self.active);

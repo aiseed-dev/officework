@@ -177,6 +177,9 @@ actions!(
         EdgeUp, EdgeDown, SelectEdgeUp, SelectEdgeDown,
         Find, DocHome, DocEnd, EditCell, Recalc, RecalcSheet, NewLine,
         UiBigger, UiSmaller, InsLink,
+        // 文字飾りの割り当て(本家 Ctrl+B/I/U/5)。**calc と writer の
+        // 両方に受け口がある** — 片方だけだと「キーの嘘」になる
+        Bold, Italic, Underline, Strikeout,
     ]
 );
 
@@ -201,7 +204,14 @@ pub fn bindings(context: &'static str) -> Vec<KeyBinding> {
         KeyBinding::new("pagedown", PageDown, Some(context)),
         KeyBinding::new("f2", EditCell, Some(context)),
         KeyBinding::new("ctrl-f", Find, Some(context)),
+        // Ctrl+H(本家の「検索と置換」)も同じ口へ。**ここのパネルは
+        // 探す言葉 → 置き換える言葉 の2段で、空なら検索だけ** — 本家の
+        // 2つのタブを1つで兼ねているので、鍵も同じ所に着く
         KeyBinding::new("ctrl-h", Find, Some(context)),
+        KeyBinding::new("ctrl-b", Bold, Some(context)),
+        KeyBinding::new("ctrl-i", Italic, Some(context)),
+        KeyBinding::new("ctrl-u", Underline, Some(context)),
+        KeyBinding::new("ctrl-5", Strikeout, Some(context)),
         KeyBinding::new("ctrl-home", DocHome, Some(context)),
         KeyBinding::new("ctrl-end", DocEnd, Some(context)),
         KeyBinding::new("shift-up", SelectUp, Some(context)),
