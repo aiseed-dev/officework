@@ -304,6 +304,8 @@ pub const CALC: &[Tab] = &[
         c("editheader", "ヘッダー/フッター", "editheader"),
         c("scale", "拡大縮小印刷", "scale"),
         c("fit-pages", "紙に収める", "fit-pages"),
+        c("printarea-add", "範囲を足す", "printarea-add"),
+        c("show-breaks", "紙の切れ目", "show-breaks"),
         c("printtitles", "タイトルを印刷する", "printtitles"),
         c("rtl-sheet", "最初の列が右側に来るようにシートの方向を切り替える", "rtl-sheet"),
         c("print-gridlines", "枠線も印刷", "print-gridlines"),

@@ -258,6 +258,8 @@ pub const CALC: &[Tab] = &[
         c("editheader", "Header & Footer", "editheader"),
         c("scale", "Skala ke Fit", "scale"),
         c("fit-pages", "Paskan ke halaman", "fit-pages"),
+        c("printarea-add", "Tambahkan ke area cetak", "printarea-add"),
+        c("show-breaks", "Pemisah halaman", "show-breaks"),
         c("printtitles", "Print judul", "printtitles"),
         c("rtl-sheet", "Ubah arah lembar agar kolom pertama di kanan", "rtl-sheet"),
         c("print-gridlines", "Cetak garis kisi", "print-gridlines"),

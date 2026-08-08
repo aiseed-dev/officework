@@ -258,6 +258,8 @@ pub const CALC: &[Tab] = &[
         c("editheader", "页眉和页脚", "editheader"),
         c("scale", "缩放以适合", "scale"),
         c("fit-pages", "调整为页数", "fit-pages"),
+        c("printarea-add", "添加到打印区域", "printarea-add"),
+        c("show-breaks", "分页符", "show-breaks"),
         c("printtitles", "打印标题", "printtitles"),
         c("rtl-sheet", "切换工作表方向，使第一列在右侧", "rtl-sheet"),
         c("print-gridlines", "打印网格线", "print-gridlines"),

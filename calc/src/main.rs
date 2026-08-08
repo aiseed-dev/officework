@@ -253,6 +253,9 @@ struct Calc {
     show_formula_bar: bool,
     /// 行番号・列名の見出しを見せるか(表示タブ)
     show_headers: bool,
+    /// **紙の切れ目を画面に見せる**(本家の改ページプレビューの破線)。
+    /// 既定は消す — いつも出ていると帳票の罫線と紛れる
+    pub(crate) show_breaks: bool,
     /// 0 の値を見せるか(表示タブ。消しても値は 0 のまま)
     show_zeros: bool,
     /// 画面を暗くする(インターフェイステーマ)。**セルは白のまま** —
@@ -454,6 +457,7 @@ impl Calc {
             show_formula_bar: true,
             show_headers: true,
             show_zeros: true,
+            show_breaks: false,
             dark: ui::settings::get("theme").as_deref() == Some("dark"),
             auto_calc: true,
             watch: Vec::new(),

@@ -152,7 +152,7 @@ READY = {
         "prot-doc": "prot-doc", "prot-encrypt": "prot-encrypt",
         "prot-sign": "prot-sign",
         "cell-lock": "cell-lock", "prot-allow": "prot-allow",
-        "fit-pages": "fit-pages",
+        "fit-pages": "fit-pages", "printarea-add": "printarea-add", "show-breaks": "show-breaks",
         "td-remdup": "rem-duplicates",
         "td-header": "td-header", "td-total": "td-total",
         "td-band-row": "td-band-row", "td-band-col": "td-band-col",
@@ -537,7 +537,9 @@ EXTRA_CMDS = {
                  ("prot-allow", "許可する操作", "prot-allow")],
         # 本家では「拡大縮小印刷」の中の選択肢。うちは小窓を持たないので
         # レイアウトタブに独立したボタンで出す
-        "レイアウト": [("fit-pages", "紙に収める", "fit-pages")],
+        "レイアウト": [("fit-pages", "紙に収める", "fit-pages"),
+                       ("printarea-add", "範囲を足す", "printarea-add"),
+                       ("show-breaks", "紙の切れ目", "show-breaks")],
     },
 }
 

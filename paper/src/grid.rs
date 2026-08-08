@@ -34,8 +34,9 @@ fn hex_rgb(s: &str) -> Option<(f32, f32, f32)> {
 /// こちらは「どこを・どんな余白で」。
 #[derive(Debug, Clone, Default)]
 pub struct PrintSetup {
-    /// 印刷範囲(左上, 右下)。None なら使われている全域
-    pub area: Option<(sheet::Pos, sheet::Pos)>,
+    /// 印刷範囲(左上, 右下)。空なら使われている全域。
+    /// **複数持てる。各域は新しい紙から刷る**(Excel と同じ)
+    pub areas: Vec<(sheet::Pos, sheet::Pos)>,
     /// 余白 mm(左, 右, 上, 下)。None なら paper.margin_mm を四辺に
     pub margins_mm: Option<(f32, f32, f32, f32)>,
 }
@@ -89,6 +90,62 @@ fn fit_scale(
     Some(k.clamp(0.1, 1.0))
 }
 
+/// **紙の切れ目**(この行/この列から新しい紙になる、の一覧)。
+///
+/// 画面に破線で見せるために外へ出す。刷る側([`sheet_to_pdf`])と
+/// **同じ規則で数える** — 別々に書くと画面と紙がずれる。試験
+/// 「画面の切れ目と紙の枚数が合う」で縛ってある。
+///
+/// 返すのは (行の切れ目, 列の切れ目)。どちらも「その手前で紙が変わる」
+/// 位置で、先頭(範囲の頭)は入れない。
+pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, Vec<u32>) {
+    let (ext_rows, ext_cols) = grid.extent();
+    let (r0, r1, c0, c1) = match setup.areas.first() {
+        Some((a, b)) if setup.areas.len() == 1 => (a.row, b.row + 1, a.col, b.col + 1),
+        // 域が複数あるときは域ごとに紙が変わる — 画面の線は引かない
+        // (どの域の切れ目か画面では言い分けられないため。嘘の線より無い方がよい)
+        Some(_) => return (Vec::new(), Vec::new()),
+        None => (0, ext_rows, 0, ext_cols),
+    };
+    let (ml, mr, mt, mb) = setup
+        .margins_mm
+        .unwrap_or((paper.margin_mm, paper.margin_mm, paper.margin_mm, paper.margin_mm));
+    let scale = fit_scale(grid, paper, setup, (r0, r1, c0, c1), (ml, mr, mt, mb))
+        .unwrap_or_else(|| grid.print_scale.unwrap_or(100).clamp(10, 400) as f32 / 100.0);
+
+    let usable_w = (paper.width_mm - ml - mr).max(1.0);
+    let mut cols = Vec::new();
+    let mut w = 0.0f32;
+    for c in c0..c1 {
+        if grid.col_hidden.contains(&c) {
+            continue;
+        }
+        let cw = grid.col_width.get(&c).copied().or(grid.default_col_width)
+            .map(|x| x * MM_PER_CHW).unwrap_or(COL_MM) * scale;
+        if w > 0.0 && (grid.col_breaks.contains(&c) || w + cw > usable_w + 0.1) {
+            cols.push(c);
+            w = 0.0;
+        }
+        w += cw;
+    }
+
+    let usable_h = (paper.height_mm - mt - mb).max(1.0);
+    let mut rows = Vec::new();
+    let mut h = 0.0f32;
+    for r in r0..r1 {
+        if grid.row_hidden.contains(&r) {
+            continue;
+        }
+        let rh = grid.row_height.get(&r).map(|pt| pt * 25.4 / 72.0).unwrap_or(ROW_MM) * scale;
+        if h > 0.0 && (grid.row_breaks.contains(&r) || h + rh > usable_h) {
+            rows.push(r);
+            h = 0.0;
+        }
+        h += rh;
+    }
+    (rows, cols)
+}
+
 /// 1つの表を PDF にする。行が紙に収まらなければ次のページへ。
 /// 返すのは**右にはみ出して切れた列の数**(0 なら全部紙に入っている)。
 pub fn sheet_to_pdf<W: Write>(
@@ -99,11 +156,20 @@ pub fn sheet_to_pdf<W: Write>(
     out: W,
 ) -> Result<u32, String> {
     let (ext_rows, ext_cols) = grid.extent();
-    // 印刷範囲があればそこだけ(行も列も)
-    let (r0, r1, c0, c1) = match setup.area {
-        Some((a, b)) => (a.row, b.row + 1, a.col, b.col + 1),
-        None => (0, ext_rows, 0, ext_cols),
+    // 印刷範囲があればそこだけ(行も列も)。**複数あれば域ごとに刷る**
+    let areas: Vec<(u32, u32, u32, u32)> = if setup.areas.is_empty() {
+        vec![(0, ext_rows, 0, ext_cols)]
+    } else {
+        setup.areas.iter().map(|(a, b)| (a.row, b.row + 1, a.col, b.col + 1)).collect()
     };
+    // 縮尺は**シートに1つ**(Excel も同じ)。域ごとに変えると同じ表が
+    // 域によって違う大きさで刷られて帳票にならない。全部の域を覆う枠で測る
+    let (r0, r1, c0, c1) = (
+        areas.iter().map(|a| a.0).min().unwrap_or(0),
+        areas.iter().map(|a| a.1).max().unwrap_or(ext_rows),
+        areas.iter().map(|a| a.2).min().unwrap_or(0),
+        areas.iter().map(|a| a.3).max().unwrap_or(ext_cols),
+    );
     let (ml, mr, mt, mb) = setup
         .margins_mm
         .unwrap_or((paper.margin_mm, paper.margin_mm, paper.margin_mm, paper.margin_mm));
@@ -144,21 +210,23 @@ pub fn sheet_to_pdf<W: Write>(
     // 「縦 → 横」の順で刷る = 束ごとに全行を出してから次の束へ)。
     // 1列が紙より広いときは、その1列だけで束にする(割りようが無い)
     let usable_w = paper.width_mm - ml - mr;
-    let mut bands: Vec<(u32, u32)> = Vec::new(); // (束の左端の列, 本数)
-    {
-        let mut start = c0;
+    // **刷る単位の一覧**: (行の始まり, 行の終わり, 束の左端の列, 本数)。
+    // 域ごとに列を束へ割る = 域が変わっても束が変わっても新しい紙になる
+    let mut bands: Vec<(u32, u32, u32, u32)> = Vec::new();
+    for &(ar0, ar1, ac0, ac1) in &areas {
+        let mut start = ac0;
         let mut w = 0.0f32;
-        for c in c0..c0 + ncols {
+        for c in ac0..ac1 {
             let cw = col_mm[(c - c0) as usize];
             // 縦の改ページ(colBreaks: この列から新しい紙)でも束を割る
             if w > 0.0 && (grid.col_breaks.contains(&c) || w + cw > usable_w + 0.1) {
-                bands.push((start, c - start));
+                bands.push((ar0, ar1, start, c - start));
                 start = c;
                 w = 0.0;
             }
             w += cw;
         }
-        bands.push((start, (c0 + ncols) - start));
+        bands.push((ar0, ar1, start, ac1 - start));
     }
     // **1列だけで紙をはみ出す列**は割れないので、そこだけは切れる。
     // 呼ぶ側へはその本数を返す(0 なら全部が紙に載った)
@@ -396,7 +464,7 @@ pub fn sheet_to_pdf<W: Write>(
     let mut y_used = 0.0f32; // このページで使った高さ
     let mut page_no = 1u32;
     // 束(横のページ)ごとに全行を出す。束が変わるたび新しい紙へ
-    for (bi, &(bc0, bn)) in bands.iter().enumerate() {
+    for (bi, &(r0, r1, bc0, bn)) in bands.iter().enumerate() {
     let col_mm: Vec<f32> = (0..bn).map(|k| col_mm[(bc0 - c0 + k) as usize]).collect();
     let mut col_x = vec![0.0f32];
     for w in &col_mm {
@@ -757,6 +825,69 @@ mod tests {
     }
 
     #[test]
+    fn 画面の切れ目と紙の枚数が合う() {
+        // **画面の破線と紙の割りつけを別々に書かない**ための縛り。
+        // 切れ目の数から出した枚数が、実際に刷った枚数と一致すること
+        let (fam, _) = kumihan::font::for_document(None).unwrap();
+        let data = kumihan::font::load(fam).unwrap();
+        let mut s = Grid { name: "枚数".into(), ..Default::default() };
+        for r in 0..120u32 {
+            for c in 0..8u32 {
+                s.set(Pos::new(r, c), Cell {
+                    formula: None, value: Value::Number((r * 10 + c) as f64),
+                    fmt: Default::default() });
+            }
+            s.col_width.insert(r.min(7), 18.0);
+        }
+        s.row_breaks = vec![50];
+        s.col_breaks = vec![4];
+        let setup = PrintSetup::default();
+        let (rows, cols) = page_starts(&s, Paper::default(), &setup);
+        let want = (rows.len() + 1) * (cols.len() + 1);
+        let mut buf = Vec::new();
+        sheet_to_pdf(&s, &data, Paper::default(), &setup, &mut buf).unwrap();
+        let hay = String::from_utf8_lossy(&buf).to_string();
+        let i = hay.find("/Count ").unwrap() + 7;
+        let got: usize = hay[i..].chars().take_while(|c| c.is_ascii_digit())
+            .collect::<String>().parse().unwrap();
+        assert_eq!(got, want, "画面の切れ目({}行×{}列)から出した {want} 枚と、実際の {got} 枚が違う",
+            rows.len(), cols.len());
+    }
+
+    #[test]
+    fn 印刷範囲が複数ならそれぞれ別の紙に刷る() {
+        let (fam, _) = kumihan::font::for_document(None).unwrap();
+        let data = kumihan::font::load(fam).unwrap();
+        let mut s = Grid { name: "2域".into(), ..Default::default() };
+        for r in 0..10 {
+            s.set(Pos::new(r, 0), Cell {
+                formula: None, value: Value::Number(r as f64), fmt: Default::default() });
+        }
+        let pages = |setup: &PrintSetup| {
+            let mut buf = Vec::new();
+            sheet_to_pdf(&s, &data, Paper::default(), setup, &mut buf).unwrap();
+            let hay = String::from_utf8_lossy(&buf).to_string();
+            let i = hay.find("/Count ").unwrap() + 7;
+            hay[i..].chars().take_while(|c| c.is_ascii_digit())
+                .collect::<String>().parse::<usize>().unwrap()
+        };
+        let one = pages(&PrintSetup {
+            areas: vec![(Pos::new(0, 0), Pos::new(2, 0))],
+            margins_mm: None,
+        });
+        // 同じ大きさの域を2つ = 紙も2枚(**繋げて1枚に詰めない**)
+        let two = pages(&PrintSetup {
+            areas: vec![
+                (Pos::new(0, 0), Pos::new(2, 0)),
+                (Pos::new(5, 0), Pos::new(7, 0)),
+            ],
+            margins_mm: None,
+        });
+        assert_eq!(one, 1, "1域なのに {one} 枚になった");
+        assert_eq!(two, 2, "2域が {two} 枚 — 域ごとに紙を変えていない");
+    }
+
+    #[test]
     fn 紙に収める指定は切れる列をゼロにする() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
@@ -884,7 +1015,7 @@ mod print_setup_tests {
         sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut all).unwrap();
         assert!(pages(&all) >= 2);
         let setup = PrintSetup {
-            area: Some((Pos::new(0, 0), Pos::new(4, 0))),
+            areas: vec![(Pos::new(0, 0), Pos::new(4, 0))],
             margins_mm: None,
         };
         let mut part = Vec::new();
@@ -899,11 +1030,11 @@ mod print_setup_tests {
         let s = long_sheet();
         let mut narrow = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { area: None, margins_mm: Some((10.0, 10.0, 10.0, 10.0)) },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) },
             &mut narrow).unwrap();
         let mut wide = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { area: None, margins_mm: Some((10.0, 10.0, 100.0, 100.0)) },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) },
             &mut wide).unwrap();
         assert!(pages(&wide) > pages(&narrow), "余白が紙の枚数に効いていない");
     }

@@ -258,6 +258,8 @@ pub const CALC: &[Tab] = &[
         c("editheader", "Колонтитулы", "editheader"),
         c("scale", "Вписать", "scale"),
         c("fit-pages", "Вместить на страницы", "fit-pages"),
+        c("printarea-add", "Добавить в область печати", "printarea-add"),
+        c("show-breaks", "Разрывы страниц", "show-breaks"),
         c("printtitles", "Печатать заголовки", "printtitles"),
         c("rtl-sheet", "Переключить направление листа, чтобы первый столбец был справа", "rtl-sheet"),
         c("print-gridlines", "Печатать сетку", "print-gridlines"),

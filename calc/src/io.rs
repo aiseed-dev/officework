@@ -632,6 +632,42 @@ impl Calc {
         .detach();
     }
 
+    /// **いまのシートの紙**(大きさ・向き)と、効かせたものの言い分。
+    /// PDF と画面の紙の切れ目が**同じ紙で数える**ように一か所に置く
+    pub(crate) fn paper_of_sheet(&self) -> (paper::Paper, Vec<String>) {
+        let sh = &self.book.sheets[self.active];
+        let mut paper = paper::Paper::default();
+        let mut desc: Vec<String> = Vec::new();
+        if let Some(code) = sh.paper_size {
+            match paper_mm(code) {
+                Some((w, h, name)) => {
+                    paper.width_mm = w;
+                    paper.height_mm = h;
+                    if code != 9 {
+                        desc.push(name.into());
+                    }
+                }
+                None => desc.push(format!("用紙コード{code}は未対応・A4で出します")),
+            }
+        }
+        if sh.landscape {
+            std::mem::swap(&mut paper.width_mm, &mut paper.height_mm);
+            desc.push(ui::t!("横向き").into());
+        }
+        (paper, desc)
+    }
+
+    /// 画面に見せる**紙の切れ目**(行, 列)。刷る側と同じ規則で数える
+    pub(crate) fn page_breaks_now(&self) -> (Vec<u32>, Vec<u32>) {
+        let (paper, _) = self.paper_of_sheet();
+        let sh = &self.book.sheets[self.active];
+        let setup = paper::grid::PrintSetup {
+            areas: sh.print_areas.clone(),
+            margins_mm: sh.margins_mm,
+        };
+        paper::grid::page_starts(sh, paper, &setup)
+    }
+
     pub(crate) fn write_pdf(&mut self, p: &std::path::Path) {
         let (fam, exact) = match kumihan::font::for_document(None) {
             Ok(x) => x,
@@ -670,14 +706,21 @@ impl Calc {
         }
         let areas = sh.print_areas.clone();
         let setup = paper::grid::PrintSetup {
-            area: areas.first().copied(),
+            areas: areas.clone(),
             margins_mm: sh.margins_mm,
         };
-        if let Some((a, b)) = setup.area {
-            desc.push(format!("印刷範囲 {}:{}", a.a1(), b.a1()));
-        }
-        if areas.len() > 1 {
-            desc.push(format!("残り {} 域の印刷範囲はまだ出せません", areas.len() - 1));
+        match areas.len() {
+            0 => {}
+            1 => desc.push(format!("印刷範囲 {}:{}", areas[0].0.a1(), areas[0].1.a1())),
+            n => desc.push(format!(
+                "印刷範囲 {} 域(それぞれ別の紙に刷ります): {}",
+                n,
+                areas
+                    .iter()
+                    .map(|(a, b)| format!("{}:{}", a.a1(), b.a1()))
+                    .collect::<Vec<_>>()
+                    .join("、")
+            )),
         }
         let mut clipped = 0u32;
         let r = kumihan::atomic::save(p, |f| {

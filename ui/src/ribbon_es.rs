@@ -258,6 +258,8 @@ pub const CALC: &[Tab] = &[
         c("editheader", "Encabezado/Pie de página", "editheader"),
         c("scale", "Ajustar área de impresión", "scale"),
         c("fit-pages", "Ajustar a páginas", "fit-pages"),
+        c("printarea-add", "Agregar al área de impresión", "printarea-add"),
+        c("show-breaks", "Saltos de página", "show-breaks"),
         c("printtitles", "Imprimir títulos", "printtitles"),
         c("rtl-sheet", "Cambiar la dirección de la hoja para que la primera columna esté a la derecha", "rtl-sheet"),
         c("print-gridlines", "Imprimir líneas de cuadrícula", "print-gridlines"),

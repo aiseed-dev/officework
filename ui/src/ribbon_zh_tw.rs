@@ -258,6 +258,8 @@ pub const CALC: &[Tab] = &[
         c("editheader", "頁首及頁尾", "editheader"),
         c("scale", "縮放以適合", "scale"),
         c("fit-pages", "調整為頁數", "fit-pages"),
+        c("printarea-add", "新增至列印範圍", "printarea-add"),
+        c("show-breaks", "分頁符號", "show-breaks"),
         c("printtitles", "列印標題", "printtitles"),
         c("rtl-sheet", "切換工作表方向，使第一列位於右側", "rtl-sheet"),
         c("print-gridlines", "列印格線", "print-gridlines"),

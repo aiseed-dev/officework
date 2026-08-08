@@ -258,6 +258,8 @@ pub const CALC: &[Tab] = &[
         c("editheader", "Header/Footer", "editheader"),
         c("scale", "Co giãn khi in", "scale"),
         c("fit-pages", "Vừa với số trang", "fit-pages"),
+        c("printarea-add", "Thêm vào vùng in", "printarea-add"),
+        c("show-breaks", "Ngắt trang", "show-breaks"),
         c("printtitles", "In tiêu đề", "printtitles"),
         c("rtl-sheet", "Đổi hướng trang tính để cột đầu ở bên phải", "rtl-sheet"),
         c("print-gridlines", "In cả đường lưới", "print-gridlines"),

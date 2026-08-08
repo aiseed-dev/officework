@@ -258,6 +258,8 @@ pub const CALC: &[Tab] = &[
         c("editheader", "Üst/Alt Bilgi", "editheader"),
         c("scale", "Sığdırmak için Ölçekle", "scale"),
         c("fit-pages", "Sayfalara sığdır", "fit-pages"),
+        c("printarea-add", "Yazdırma alanına ekle", "printarea-add"),
+        c("show-breaks", "Sayfa sonları", "show-breaks"),
         c("printtitles", "Başlıkları yazdır", "printtitles"),
         c("rtl-sheet", "Sayfa yönünü ilk sütun sağda olacak şekilde değiştir", "rtl-sheet"),
         c("print-gridlines", "Kılavuz çizgileri de yazdır", "print-gridlines"),

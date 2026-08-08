@@ -24,7 +24,7 @@ impl Calc {
         "inschart", "insimage", "inshyperlink", "replace",
         "changecase", "format", "cell-format", "fontname", "fontsize",
         "fn-datetime", "fn-lookup", "fn-financial", "fn-more",
-        "scale", "pagebreak", "fit-pages", "printtitles", "print-gridlines", "print-headings",
+        "scale", "pagebreak", "fit-pages", "printarea-add", "show-breaks", "printtitles", "print-gridlines", "print-headings",
         "data-from-text", "text-column", "goal-seek", "data-external-links",
         "insshape", "instext", "inssparkline", "python", "addcomment",
         "trace-prec", "trace-dep", "remove-arrows", "insrecommend",
@@ -342,13 +342,23 @@ impl Calc {
                 if self.anchor.is_some() {
                     self.checkpoint();
                     let range = self.sel_rect();
+                    let had = self.sheet().print_areas.clone();
                     self.sheet_mut().print_areas = vec![range];
                     self.dirty = true;
-                    self.status = format!(
-                        "印刷範囲: {}:{}(もう一度押すと解除)",
-                        range.0.a1(),
-                        range.1.a1()
-                    )
+                    self.status = if had.is_empty() {
+                        format!(
+                            "印刷範囲: {}:{}(もう一度押すと解除。足すなら「範囲を足す」)",
+                            range.0.a1(),
+                            range.1.a1()
+                        )
+                    } else {
+                        format!(
+                            "印刷範囲を {}:{} に置き換えました(前の {} 域は外しました)",
+                            range.0.a1(),
+                            range.1.a1(),
+                            had.len()
+                        )
+                    }
                     .into();
                 } else if !self.sheet().print_areas.is_empty() {
                     self.checkpoint();
@@ -2024,6 +2034,53 @@ impl Calc {
                     self.pick_note = Some(ui::t!("改ページ(紙の切れ目)").into());
                     self.pick = Some((items, at));
                 }
+            }
+            // 印刷範囲を**足す**(本家の「印刷範囲に追加」)。
+            // 域はそれぞれ別の紙に刷る
+            "printarea-add" => {
+                self.commit();
+                if self.anchor.is_none() {
+                    self.status =
+                        ui::t!("足す範囲を Shift+矢印かドラッグで選んでください").into();
+                } else {
+                    self.checkpoint();
+                    let range = self.sel_rect();
+                    let sh = self.sheet_mut();
+                    if sh.print_areas.contains(&range) {
+                        self.undo_stack.pop();
+                        self.status = ui::t!("その範囲はもう印刷範囲に入っています").into();
+                    } else {
+                        sh.print_areas.push(range);
+                        let n = sh.print_areas.len();
+                        self.dirty = true;
+                        self.status = format!(
+                            "印刷範囲に {}:{} を足しました(全 {} 域。域ごとに別の紙に刷ります)",
+                            range.0.a1(),
+                            range.1.a1(),
+                            n
+                        )
+                        .into();
+                    }
+                }
+            }
+            // 紙の切れ目を画面に見せる(本家の改ページプレビューの破線)
+            "show-breaks" => {
+                self.show_breaks = !self.show_breaks;
+                let (r, c) = self.page_breaks_now();
+                self.status = if self.show_breaks {
+                    if r.is_empty() && c.is_empty() {
+                        ui::t!("紙の切れ目を出します(いまは1枚に収まっています)").into()
+                    } else {
+                        format!(
+                            "紙の切れ目を出します(横 {} 本・縦 {} 本。手で入れた区切りは濃い線)",
+                            r.len(),
+                            c.len()
+                        )
+                        .into()
+                    }
+                } else {
+                    ui::t!("紙の切れ目を消しました").into()
+                };
             }
             // 紙 N 枚に収める。本家の「拡大縮小印刷」の選択肢と同じ顔ぶれ
             "fit-pages" => {

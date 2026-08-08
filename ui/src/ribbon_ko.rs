@@ -258,6 +258,8 @@ pub const CALC: &[Tab] = &[
         c("editheader", "머리말/꼬리말", "editheader"),
         c("scale", "크기에 맞게 확대/축소", "scale"),
         c("fit-pages", "페이지에 맞춤", "fit-pages"),
+        c("printarea-add", "인쇄 영역에 추가", "printarea-add"),
+        c("show-breaks", "페이지 나누기", "show-breaks"),
         c("printtitles", "제목 인쇄", "printtitles"),
         c("rtl-sheet", "첫 번째 열이 오른쪽에 오도록 시트 방향을 전환합니다", "rtl-sheet"),
         c("print-gridlines", "눈금선 인쇄", "print-gridlines"),

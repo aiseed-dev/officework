@@ -2621,6 +2621,49 @@ impl Render for Calc {
             })
         });
 
+        // ---- 紙の切れ目(改ページプレビューの破線) ----
+        // 刷る側と**同じ数え方**(paper::grid::page_starts)。手で入れた
+        // 区切りは濃い実線、紙が尽きて自然に切れる所は薄い破線 —
+        // 「自分で決めた線」と「勝手に決まった線」を見分けられるように
+                let break_lines: Vec<gpui::AnyElement> = if self.show_breaks {
+            let (rows, cols) = self.page_breaks_now();
+            let sh = self.sheet();
+            let (manual_r, manual_c) = (sh.row_breaks.clone(), sh.col_breaks.clone());
+            let first_col = self.visible_cols().first().copied().unwrap_or(0);
+            let first_row = self.visible_rows().first().copied().unwrap_or(0);
+            let mut out: Vec<gpui::AnyElement> = Vec::new();
+            for r in rows {
+                let Some((_, y)) = self.cell_origin_px(Pos::new(r, first_col)) else { continue };
+                let man = manual_r.contains(&r);
+                // **幅は明示する。** left+right だけだと幅が 0 に潰れて
+                // 何も描かれない(踏んで直した)
+                // **1px だと破線が潰れて実線に見える**(実機で見て 2px に)
+                let mut d = div().absolute().left(px(self.head_w())).top(px(y))
+                    .w(px((self.view_w_px - self.head_w()).max(0.0)))
+                    .h(px(2.0)).border_t_2()
+                    .border_color(if man { rgb(0x1B6E3C) } else { rgb(0x8FA3AE) });
+                if !man {
+                    d = d.border_dashed();
+                }
+                out.push(d.into_any_element());
+            }
+            for c in cols {
+                let Some((x, _)) = self.cell_origin_px(Pos::new(first_row, c)) else { continue };
+                let man = manual_c.contains(&c);
+                let mut d = div().absolute().top(px(self.head_h())).left(px(x))
+                    .h(px((self.view_h_px - self.head_h()).max(0.0)))
+                    .w(px(2.0)).border_l_2()
+                    .border_color(if man { rgb(0x1B6E3C) } else { rgb(0x8FA3AE) });
+                if !man {
+                    d = d.border_dashed();
+                }
+                out.push(d.into_any_element());
+            }
+            out
+        } else {
+            Vec::new()
+        };
+
         // ---- カーソルのセルの付記(コメント・リンク) ----
         let mut tip_lines: Vec<String> = Vec::new();
         if self.show_comments {
@@ -4436,6 +4479,7 @@ impl Render for Calc {
                    .children(shape_frame)
                    .children(shape_frames_more)
                    .children(img_frame)
+                   .children(break_lines)
                    .children(ants)
                    .children(tip)
                    .children(fmt_panel)
