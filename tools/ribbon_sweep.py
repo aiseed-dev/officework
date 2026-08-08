@@ -46,6 +46,8 @@ from Xlib.ext import xtest
 # した。数で見る「位置」の検査だけは当てになる — 実際に6箇所見つけた
 STRICT = False
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 点検で立てた calc の pid を書き留める場所(後始末はここの分だけ殺す)
+PIDFILE = os.path.join(tempfile.gettempdir(), "jo-sweep-pids")
 # **押さないボタン。** 機械の「ファイルを選ぶ小窓」が出て点検が止まる。
 # 黙って飛ばさず、終わりに何を飛ばしたか必ず並べる
 SKIP = {
@@ -77,6 +79,11 @@ class App:
         self.env = env
         self.log = open(os.path.join(self.run_dir, "calc.log"), "w+")
         self.proc = subprocess.Popen([CALC], env=env, stdout=self.log, stderr=self.log)
+        # **自分が立てた calc の pid だけを控える。** 後始末に
+        # `pkill -f release/calc` を使うと、発注者が開いている窓まで
+        # 巻き添えにする(2026-08-09 に気づいた。実際に何度もやっていた)
+        with open(PIDFILE, "a") as f:
+            f.write(f"{self.proc.pid}\n")
         # **必ず自分の実行時ディレクトリの socket を使う。** 共有の
         # /tmp/officework-<uid>/ に落とすと、発注者が動かしている calc に
         # 話しかけてしまう(一度やった)。まだ無い間は待つ
@@ -280,6 +287,25 @@ class App:
             self.proc.wait(5)
         except Exception:
             self.proc.kill()
+
+    @staticmethod
+    def kill_strays():
+        """**点検で立てた分だけ**を落とす。発注者の窓には触らない"""
+        try:
+            pids = [int(x) for x in open(PIDFILE).read().split()]
+        except Exception:
+            return 0
+        n = 0
+        for pid in pids:
+            try:
+                os.kill(pid, 15)
+                n += 1
+            except ProcessLookupError:
+                pass
+            except Exception:
+                pass
+        open(PIDFILE, "w").close()
+        return n
 
 
 def back_to_tab(app, tab):

@@ -42,6 +42,11 @@
 
     cargo build --release -p calc
     python3 tools/ribbon_sweep.py           # リボンの全ボタンを押して回る
+    python3 tools/kill_sweep.py             # 点検で立てた分だけ落とす
+
+**`pkill -f release/calc` を使わないこと。** 発注者が開いている窓まで
+巻き添えにする(2026-08-09 まで実際にやっていた)。点検の道具は立てた
+pid を控えているので、後始末は `tools/kill_sweep.py` で。
 
 一巡は「落ちない/押して何か起きる/一覧がボタンの真下に出る/Esc で閉じる」
 の4点を、画素比べでなく `calc.sock` の rpc(`ribbon`・`ui_state`)で見る。
