@@ -155,6 +155,36 @@ impl Calc {
                 };
                 return; // pick_kind を "value" に戻さない(続けて入切する)
             }
+            // 自動復旧: 控えを開く。**原本ではなく控えを開く** — 中身を見て、
+            // よければ名前を付けて保存する(黙って原本へ戻さない)
+            "recover" => {
+                let Some((name, path)) = self.pick_paths.iter().find(|(n, _)| n == v).cloned()
+                else {
+                    return;
+                };
+                self.open(path.clone());
+                // 控えを原本と取り違えないよう、道は持たせない
+                self.path = None;
+                self.dirty = true;
+                self.status = ui::tf!(
+                    "控えを開きました(元は {})。中身を確かめて「名前を付けて保存」してください — このまま上書きはしません",
+                    name
+                )
+                .into();
+            }
+            "recover-every" => {
+                self.recover_secs = match v {
+                    "1分ごと" => 60,
+                    "5分ごと" => 300,
+                    "10分ごと" => 600,
+                    _ => 0,
+                };
+                self.status = if self.recover_secs == 0 {
+                    ui::t!("自動復旧の控えを取りません(落ちたら打った分は失います)").into()
+                } else {
+                    ui::tf!("{} に控えます(原本は上書きしません)", v).into()
+                };
+            }
             // 改ページの3択(横 / 縦 / すべて外す)
             "pagebreak" => {
                 self.commit();

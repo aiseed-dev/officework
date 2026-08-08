@@ -400,6 +400,8 @@ pub const CALC: &[Tab] = &[
         c("prot-sign", "デジタル署名を追加", "prot-sign"),
         c("cell-lock", "セルのロック", "cell-lock"),
         c("prot-allow", "許可する操作", "prot-allow"),
+        c("recover", "復旧", "recover"),
+        c("recover-every", "控えの間隔", "recover-every"),
     ]},
     Tab { name: "表示", cmds: &[
         c("sheet-view", "シートの表示", "sheet-view"),

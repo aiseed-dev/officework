@@ -367,6 +367,101 @@ impl Calc {
         })
     }
 
+    /// **自動復旧の控えの置き場。** `~/.config/office/recover/`。
+    ///
+    /// 本家(ローカルの Excel)と同じ考え方で、**開いているファイルを
+    /// 勝手に上書きしない**。落ちたとき・電源が切れたときに失う分を
+    /// 減らすための別の控えで、無事に保存できたら消す。
+    /// 上書きしてしまうと「保存していないつもりの変更」が原本に入り、
+    /// Ctrl+Z でも戻せない — 帳票では取り返しがつかない。
+    pub(crate) fn recover_dir() -> PathBuf {
+        std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_default()
+            .join(".config/office/recover")
+    }
+
+    /// いまのブックの控えの道。名前は**元の道から作る**ので、同じ
+    /// ファイルを開き直したときに同じ控えを指す
+    pub(crate) fn recover_path_for(orig: Option<&std::path::Path>) -> PathBuf {
+        let key = match orig {
+            Some(p) => {
+                // 道をそのまま名前にはできないので、道の hash と見える名前
+                let mut h: u64 = 1469598103934665603;
+                for b in p.to_string_lossy().as_bytes() {
+                    h ^= *b as u64;
+                    h = h.wrapping_mul(1099511628211);
+                }
+                let stem = p.file_stem().map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "book".into());
+                format!("{stem}-{h:016x}")
+            }
+            None => "未保存のブック".into(),
+        };
+        Self::recover_dir().join(format!("{key}.xlsx"))
+    }
+
+    /// 自動復旧の控えを書く。**中身を写してから別スレッドで書く** —
+    /// 大きな帳票で画面が止まらないように。成否は状態行に出さない
+    /// (数分ごとに出ては邪魔なので、しくじったときだけ言う)
+    pub(crate) fn write_recover(&mut self, cx: &mut Context<Self>) {
+        let dst = Self::recover_path_for(self.path.as_deref());
+        let book = self.book.clone();
+        let orig = self.path.clone();
+        let task = cx.background_executor().spawn(async move {
+            if let Some(d) = dst.parent() {
+                std::fs::create_dir_all(d).ok()?;
+            }
+            let mut buf = std::io::Cursor::new(Vec::new());
+            sheet::xlsx::write(&book, &mut buf).ok()?;
+            std::fs::write(&dst, buf.into_inner()).ok()?;
+            // 元の道を添える(復旧のときに「どのファイルの控えか」を言う)
+            if let Some(o) = &orig {
+                std::fs::write(dst.with_extension("path"), o.to_string_lossy().as_bytes()).ok()?;
+            }
+            Some(())
+        });
+        cx.spawn(async move |this, cx| {
+            let ok = task.await.is_some();
+            let _ = this.update(cx, |c, _| {
+                c.recover_at = std::time::Instant::now();
+                if !ok {
+                    // **黙って諦めない。** 控えが取れていないことは言う
+                    c.status = ui::t!("自動復旧の控えが書けません(保存先の権限を確かめてください)")
+                        .into();
+                }
+            });
+        })
+        .detach();
+    }
+
+    /// 無事に保存できたら控えは要らない(消し忘れると次の起動で
+    /// 「落ちた後です」と嘘を言う)
+    pub(crate) fn drop_recover(&self) {
+        let p = Self::recover_path_for(self.path.as_deref());
+        let _ = std::fs::remove_file(&p);
+        let _ = std::fs::remove_file(p.with_extension("path"));
+    }
+
+    /// 起動のときに残っている控え(前回落ちた跡)。(見える名前, 控えの道)
+    pub(crate) fn stale_recovers() -> Vec<(String, PathBuf)> {
+        let Ok(rd) = std::fs::read_dir(Self::recover_dir()) else { return Vec::new() };
+        let mut out = Vec::new();
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.extension().and_then(|x| x.to_str()) != Some("xlsx") {
+                continue;
+            }
+            let orig = std::fs::read_to_string(p.with_extension("path")).ok();
+            let name = orig.unwrap_or_else(|| {
+                p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default()
+            });
+            out.push((name, p));
+        }
+        out.sort();
+        out
+    }
+
     /// 最近開いた・保存したブックの控え(writer と同じ作法)
     pub(crate) fn recent_file() -> PathBuf {
         std::env::var_os("HOME")
@@ -832,7 +927,12 @@ impl Calc {
                 .into();
                 self.acquire_lock(&p);
                 Self::note_recent(&p);
+                // **無事に保存できたら自動復旧の控えは捨てる。** 残すと
+                // 次の起動で「前回落ちました」と嘘を言う。道が変わる
+                // (名前を付けて保存)ときは古い道の分も捨てる
+                self.drop_recover();
                 self.path = Some(p);
+                self.drop_recover();
                 self.dirty = false;
                 // 挿した絵はもう原本(いま書いたファイル)にある。次の保存で
                 // 二重に書かないよう「読んだ側」へ持ち場を移す

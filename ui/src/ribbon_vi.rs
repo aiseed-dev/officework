@@ -352,6 +352,8 @@ pub const CALC: &[Tab] = &[
         c("prot-sign", "Thêm chữ ký số", "prot-sign"),
         c("cell-lock", "Khóa ô", "cell-lock"),
         c("prot-allow", "Thao tác được phép", "prot-allow"),
+        c("recover", "Khôi phục", "recover"),
+        c("recover-every", "Khoảng lưu dự phòng", "recover-every"),
     ]},
     Tab { name: "Hiển thị", cmds: &[
         c("sheet-view", "Hiện trang tính", "sheet-view"),

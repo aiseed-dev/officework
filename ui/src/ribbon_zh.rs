@@ -352,6 +352,8 @@ pub const CALC: &[Tab] = &[
         c("prot-sign", "添加数字签名", "prot-sign"),
         c("cell-lock", "锁定单元格", "cell-lock"),
         c("prot-allow", "允许的操作", "prot-allow"),
+        c("recover", "恢复", "recover"),
+        c("recover-every", "备份间隔", "recover-every"),
     ]},
     Tab { name: "显示", cmds: &[
         c("sheet-view", "工作表视图", "sheet-view"),

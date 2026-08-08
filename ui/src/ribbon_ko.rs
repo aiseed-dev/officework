@@ -352,6 +352,8 @@ pub const CALC: &[Tab] = &[
         c("prot-sign", "디지털 서명 추가", "prot-sign"),
         c("cell-lock", "셀 잠금", "cell-lock"),
         c("prot-allow", "허용할 작업", "prot-allow"),
+        c("recover", "복구", "recover"),
+        c("recover-every", "백업 간격", "recover-every"),
     ]},
     Tab { name: "보기", cmds: &[
         c("sheet-view", "시트보기", "sheet-view"),

@@ -352,6 +352,8 @@ pub const CALC: &[Tab] = &[
         c("prot-sign", "Dijital imza ekle", "prot-sign"),
         c("cell-lock", "Hücreyi kilitle", "cell-lock"),
         c("prot-allow", "İzin verilen işlemler", "prot-allow"),
+        c("recover", "Kurtar", "recover"),
+        c("recover-every", "Yedek aralığı", "recover-every"),
     ]},
     Tab { name: "Görüntüle", cmds: &[
         c("sheet-view", "Sayfa Görünümü", "sheet-view"),

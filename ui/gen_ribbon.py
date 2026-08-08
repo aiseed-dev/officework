@@ -153,6 +153,7 @@ READY = {
         "prot-sign": "prot-sign",
         "cell-lock": "cell-lock", "prot-allow": "prot-allow",
         "fit-pages": "fit-pages", "printarea-add": "printarea-add", "show-breaks": "show-breaks",
+        "recover": "recover", "recover-every": "recover-every",
         "td-remdup": "rem-duplicates",
         "td-header": "td-header", "td-total": "td-total",
         "td-band-row": "td-band-row", "td-band-col": "td-band-col",
@@ -534,7 +535,10 @@ EXTRA_CMDS = {
         # 本家では「セルの書式設定 > 保護」タブと「シートの保護」小窓の中。
         # うちは小窓を持たない作りなので、保護タブに独立したボタンで出す
         "保護": [("cell-lock", "セルのロック", "cell-lock"),
-                 ("prot-allow", "許可する操作", "prot-allow")],
+                 ("prot-allow", "許可する操作", "prot-allow"),
+                 # 自動復旧。本家は詳細設定の中だが、うちは小窓を持たない
+                 ("recover", "復旧", "recover"),
+                 ("recover-every", "控えの間隔", "recover-every")],
         # 本家では「拡大縮小印刷」の中の選択肢。うちは小窓を持たないので
         # レイアウトタブに独立したボタンで出す
         "レイアウト": [("fit-pages", "紙に収める", "fit-pages"),

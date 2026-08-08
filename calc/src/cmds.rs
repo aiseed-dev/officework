@@ -46,7 +46,7 @@ impl Calc {
         "ai-where", "ai-summary", "ai-rewrite", "ai-polite", "ai-plain",
         "ai-translate", "ai-furigana", "ai-continue", "ai-table", "ai-ask",
         "insert-function", "cell-styles", "sheet-view", "watch", "editheader",
-        "cell-lock", "prot-allow",
+        "cell-lock", "prot-allow", "recover", "recover-every",
         "pen", "highlighter", "eraser", "draw-select",
     ];
 
@@ -71,7 +71,7 @@ impl Calc {
         "theme", "colorschemas", "pagesize", "pageorient", "pagemargins",
         "insshape", "inssmartart", "instable", "table-tpl", "inssymbol",
         "inschart", "pivot-insert", "pivot-fields", "pivot-style",
-        "pagebreak", "fit-pages",
+        "pagebreak", "fit-pages", "recover", "recover-every",
         "text-orient", "insert-function", "fn-math", "fn-text",
         "fn-logical", "fn-datetime", "fn-lookup", "fn-financial", "fn-more",
         "fn-recent", "sheet-view", "cell-styles",
@@ -85,6 +85,7 @@ impl Calc {
         "trace-prec", "trace-dep", "remove-arrows", "pivot-select",
         "coauth-mode", "co-showcomment", "co-chat", "co-history", "plug-manage",
         "prot-doc", "prot-encrypt", "prot-sign", "ai-where",
+        "recover", "recover-every",
         // 「許可する操作」は保護中にこそ触る。**鍵を掛けていないので
         // 隠す意味も無い** — 保護は事故止めであって錠前ではない(SEKKEI)
         "prot-allow",
@@ -2062,6 +2063,36 @@ impl Calc {
                         .into();
                     }
                 }
+            }
+            // 自動復旧: 残っている控えの一覧。選ぶとその中身を開く
+            "recover" => {
+                let at = self.pop_anchor();
+                let list = Self::stale_recovers();
+                if list.is_empty() {
+                    self.status = ui::tf!(
+                        "復旧する控えはありません(いまは {} 秒ごとに控えています)",
+                        self.recover_secs
+                    )
+                    .into();
+                } else {
+                    self.pick_paths = list.clone();
+                    self.pick_kind = "recover";
+                    self.pick_note = Some(
+                        ui::t!("保存できずに終わったブックの控え(選ぶと開きます)").into(),
+                    );
+                    self.pick = Some((list.into_iter().map(|(n, _)| n).collect(), at));
+                }
+            }
+            // 自動復旧の間隔
+            "recover-every" => {
+                let at = self.pop_anchor();
+                self.pick_kind = "recover-every";
+                self.pick_note =
+                    Some(ui::t!("自動復旧の控えを取る間隔(原本は上書きしません)").into());
+                self.pick = Some((
+                    vec!["取らない".into(), "1分ごと".into(), "5分ごと".into(), "10分ごと".into()],
+                    at,
+                ));
             }
             // 紙の切れ目を画面に見せる(本家の改ページプレビューの破線)
             "show-breaks" => {

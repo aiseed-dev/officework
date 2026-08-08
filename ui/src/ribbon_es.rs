@@ -352,6 +352,8 @@ pub const CALC: &[Tab] = &[
         c("prot-sign", "Agregar firma digital", "prot-sign"),
         c("cell-lock", "Bloquear celda", "cell-lock"),
         c("prot-allow", "Acciones permitidas", "prot-allow"),
+        c("recover", "Recuperar", "recover"),
+        c("recover-every", "Intervalo de copia", "recover-every"),
     ]},
     Tab { name: "Mostrar", cmds: &[
         c("sheet-view", "Vista de hoja", "sheet-view"),

@@ -256,6 +256,11 @@ struct Calc {
     /// **紙の切れ目を画面に見せる**(本家の改ページプレビューの破線)。
     /// 既定は消す — いつも出ていると帳票の罫線と紛れる
     pub(crate) show_breaks: bool,
+    /// 自動復旧の控えを取る間隔(秒)。0 なら取らない。
+    /// **原本は上書きしない** — 別の場所に控えるだけ(io::write_recover)
+    pub(crate) recover_secs: u64,
+    /// 最後に控えを取った時刻
+    pub(crate) recover_at: std::time::Instant,
     /// 0 の値を見せるか(表示タブ。消しても値は 0 のまま)
     show_zeros: bool,
     /// 画面を暗くする(インターフェイステーマ)。**セルは白のまま** —
@@ -458,6 +463,13 @@ impl Calc {
             show_headers: true,
             show_zeros: true,
             show_breaks: false,
+            // 既定は5分。JO_RECOVER_SECS で縮められる(点検と、
+            // 落ちやすい環境での駆け込み用)
+            recover_secs: std::env::var("JO_RECOVER_SECS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(300),
+            recover_at: std::time::Instant::now(),
             dark: ui::settings::get("theme").as_deref() == Some("dark"),
             auto_calc: true,
             watch: Vec::new(),
@@ -473,6 +485,16 @@ impl Calc {
             c.status = ui::t!("セルを選んで打つ。Enter で確定して下へ、Ctrl+S で保存").into();
         }
         c.sync_input();
+        // **前回落ちた跡があれば黙っていない。** 自動復旧の控えが
+        // 残っているのは、前回きちんと保存せずに終わったということ
+        let stale = Self::stale_recovers();
+        if !stale.is_empty() {
+            c.status = ui::tf!(
+                "前に保存できずに終わったブックが {} 件あります(保護タブの隣の「復旧」で開けます)",
+                stale.len()
+            )
+            .into();
+        }
         c
     }
 
@@ -3656,6 +3678,31 @@ fn main() {
                     }
                     quit_now
                 });
+                // **自動復旧の控え。** 30秒ごとに見て、変更があって
+                // 間隔を過ぎていれば控える。原本は上書きしない
+                {
+                    let v = view.clone();
+                    cx.spawn(async move |cx| {
+                        loop {
+                            // 見に行く間隔は控えの間隔より細かく(短い設定を
+                            // 待たせない)。ただし毎秒は回さない
+                            let poll = v
+                                .update(cx, |c: &mut Calc, _| c.recover_secs.clamp(5, 30));
+                            cx.background_executor()
+                                .timer(std::time::Duration::from_secs(poll))
+                                .await;
+                            let due = v.update(cx, |c: &mut Calc, _| {
+                                c.recover_secs > 0
+                                    && c.dirty
+                                    && c.recover_at.elapsed().as_secs() >= c.recover_secs
+                            });
+                            if due {
+                                v.update(cx, |c: &mut Calc, cx| c.write_recover(cx));
+                            }
+                        }
+                    })
+                    .detach();
+                }
                 if std::env::var_os("JO_SELFTEST").is_some() {
                     // 画面が実際に動くかの自己診断: B列の幅を1秒ごとに広げ狭めし、
                     // 15秒で自動終了する。**操作は要らない** — 見ているだけで、

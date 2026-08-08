@@ -3427,6 +3427,85 @@ mod track_changes_tests {
 }
 
 #[cfg(test)]
+mod recover_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn 自動復旧の控えは原本を上書きしない(cx: &mut gpui::TestAppContext) {
+        // **これがこの機能の肝。** 控えを取るたびに原本を書き換えていたら、
+        // 「保存していないつもりの変更」が原本に入り Ctrl+Z でも戻せない
+        let dir = std::env::temp_dir().join(format!("jo-recover-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let orig = dir.join("原本.xlsx");
+        {
+            let mut b = sheet::Book::new();
+            b.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("保存した値"));
+            let mut f = std::fs::File::create(&orig).unwrap();
+            sheet::xlsx::write(&b, &mut f).unwrap();
+        }
+        let before = std::fs::read(&orig).unwrap();
+
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(Some(orig.clone()), cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("打ちかけ"));
+            this.dirty = true;
+            this.write_recover(cx);
+        });
+        cx.run_until_parked();
+
+        // 原本は1バイトも変わっていない
+        assert_eq!(std::fs::read(&orig).unwrap(), before, "自動復旧が原本を書き換えた");
+        // 控えは別の場所にできている
+        let rp = Calc::recover_path_for(Some(&orig));
+        assert!(rp.exists(), "控えができていない: {}", rp.display());
+        // 控えの中身は打ちかけの方
+        let (back, _) = sheet::xlsx::read(std::io::Cursor::new(std::fs::read(&rp).unwrap()))
+            .expect("控えが読めない");
+        assert_eq!(
+            back.sheets[0].get(Pos::parse("A1").unwrap()).unwrap().value.display(),
+            "打ちかけ",
+            "控えに打ちかけが入っていない"
+        );
+        // 元の道が添えてある(どのファイルの控えかを言えるように)
+        let side = std::fs::read_to_string(rp.with_extension("path")).unwrap();
+        assert_eq!(side, orig.to_string_lossy(), "元の道が添えられていない");
+
+        // 無事に保存できたら控えは消える(残すと次の起動で嘘を言う)
+        c.update(cx, |this, _| this.drop_recover());
+        assert!(!rp.exists(), "保存しても控えが残っている");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[gpui::test]
+    fn 控えから開いても原本の道は持たない(cx: &mut gpui::TestAppContext) {
+        // 控えを開いて Ctrl+S を押したら原本が上書きされる、では意味がない
+        let dir = std::env::temp_dir().join(format!("jo-recover2-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let stale = dir.join("控え.xlsx");
+        {
+            let mut b = sheet::Book::new();
+            b.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("控えの値"));
+            let mut f = std::fs::File::create(&stale).unwrap();
+            sheet::xlsx::write(&b, &mut f).unwrap();
+        }
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.pick_paths = vec![("/どこか/原本.xlsx".into(), stale.clone())];
+            this.pick_kind = "recover";
+            this.apply_pick("/どこか/原本.xlsx", cx);
+            assert_eq!(
+                this.book.sheets[0].get(Pos::parse("A1").unwrap()).unwrap().value.display(),
+                "控えの値",
+                "控えの中身が開けていない"
+            );
+            assert!(this.path.is_none(), "控えを開いたのに道を持っている(Ctrl+S で原本を潰す)");
+            assert!(this.dirty, "保存を促していない");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(test)]
 mod protect_tests {
     use crate::*;
 

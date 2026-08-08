@@ -352,6 +352,8 @@ pub const CALC: &[Tab] = &[
         c("prot-sign", "Tambahkan tanda tangan digital", "prot-sign"),
         c("cell-lock", "Kunci sel", "cell-lock"),
         c("prot-allow", "Tindakan yang diizinkan", "prot-allow"),
+        c("recover", "Pulihkan", "recover"),
+        c("recover-every", "Interval cadangan", "recover-every"),
     ]},
     Tab { name: "Lihat", cmds: &[
         c("sheet-view", "Tampilan sheet", "sheet-view"),
