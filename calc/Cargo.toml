@@ -6,6 +6,9 @@ license.workspace = true
 
 [dependencies]
 sheet = { path = "../sheet" }
+# CSV を Shift_JIS でも書けるように(日本の会計ソフトはまだ CP932)
+encoding_rs = "0.8"
+
 paper = { path = "../paper" }
 # 暗号化(ECMA-376 Standard)は writer と同じ ooxml::crypt を使う
 ooxml = { path = "../ooxml" }

@@ -526,6 +526,8 @@ impl Calc {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
                 .add_filter("Excelブック", &["xlsx"])
+                // 型紙(XLTX)。中身は xlsx と同じで、開くと「新規」になる
+                .add_filter("Excel の型紙", &["xltx"])
                 .add_filter("CSV(いまのシートの値だけ)", &["csv"])
                 .save_file()
         });
@@ -572,10 +574,29 @@ impl Calc {
         .detach();
     }
 
+    /// CSV の形の並び(見せる名前 → 文字コード, 区切り)。
+    /// **Shift_JIS を出せることが要**(日本の会計ソフトはまだ CP932)
+    pub(crate) const CSV_KINDS: &'static [(&'static str, &'static str, char)] = &[
+        ("UTF-8(BOM付き)・カンマ", "utf8bom", ','),
+        ("Shift_JIS(CP932)・カンマ", "sjis", ','),
+        ("UTF-8(BOMなし)・カンマ", "utf8", ','),
+        ("UTF-8(BOM付き)・タブ", "utf8bom", '\t'),
+        ("Shift_JIS(CP932)・タブ", "sjis", '\t'),
+        ("UTF-8(BOM付き)・セミコロン", "utf8bom", ';'),
+    ];
+
     pub(crate) fn write_csv(&mut self, p: &std::path::Path) {
+        let (enc, delim) = Self::CSV_KINDS
+            .iter()
+            .find(|(n, _, _)| *n == self.csv_kind)
+            .map(|(_, e, d)| (*e, *d))
+            .unwrap_or(("utf8bom", ','));
         let s = &self.book.sheets[self.active];
         let (rows, cols) = s.extent();
-        let mut out = String::from("\u{feff}"); // BOM — Excel の既定の読みに合わせる
+        let mut out = String::new();
+        if enc == "utf8bom" {
+            out.push('\u{feff}'); // BOM — Excel の既定の読みに合わせる
+        }
         for r in 0..rows {
             let mut line: Vec<String> = Vec::new();
             for c in 0..cols.max(1) {
@@ -583,21 +604,44 @@ impl Calc {
                     .get(sheet::Pos::new(r, c))
                     .map(|x| x.value.display())
                     .unwrap_or_default();
-                if v.contains(',') || v.contains('"') || v.contains('\n') || v.contains('\r') {
+                if v.contains(delim) || v.contains('"') || v.contains('\n') || v.contains('\r') {
                     line.push(format!("\"{}\"", v.replace('"', "\"\"")));
                 } else {
                     line.push(v);
                 }
             }
-            out.push_str(&line.join(","));
+            out.push_str(&line.join(&delim.to_string()));
             out.push_str("\r\n");
         }
-        match std::fs::write(p, out) {
+        // Shift_JIS に無い字は「?」に化ける。**黙って化けさせない** —
+        // 何文字落ちたかを数えて言う(帳票の名前が化けるのは事故)
+        let (bytes, lost) = if enc == "sjis" {
+            let (cow, _, had_err) = encoding_rs::SHIFT_JIS.encode(&out);
+            let n = if had_err {
+                out.chars().filter(|ch| {
+                    let mut b = [0u8; 4];
+                    let one = ch.encode_utf8(&mut b);
+                    encoding_rs::SHIFT_JIS.encode(one).2
+                }).count()
+            } else {
+                0
+            };
+            (cow.into_owned(), n)
+        } else {
+            (out.into_bytes(), 0)
+        };
+        match std::fs::write(p, bytes) {
             Ok(()) => {
                 // 何が入らないかを黙らない(CSV は値だけの形式)
                 self.status = ui::tf!(
-                    "CSV に書き出しました: {}(いまのシートの値だけ — 式・書式・他のシートは入りません)",
-                    p.display()
+                    "CSV に書き出しました: {}({} — いまのシートの値だけ。式・書式・他のシートは入りません){}",
+                    p.display(),
+                    self.csv_kind,
+                    if lost > 0 {
+                        format!("。**{lost} 文字が Shift_JIS に無く「?」になりました**")
+                    } else {
+                        String::new()
+                    }
                 )
                 .into();
             }
@@ -915,6 +959,18 @@ impl Calc {
                         f.write_all(&enc).map_err(|e| e.to_string())
                     })
                 })
+        } else if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("xltx")) {
+            // 型紙(XLTX)。中身は xlsx と同じで宣言だけ違う — 一度memory へ
+            // 書いてから仕立て直す。**仕立てに失敗したら xlsx のまま出さない**
+            let mut plain = Vec::new();
+            sheet::xlsx::write_with(&self.book, original, std::io::Cursor::new(&mut plain))
+                .and_then(|_| sheet::xlsx::to_template(&plain))
+                .and_then(|t| {
+                    kumihan::atomic::save(&p, |mut f| {
+                        use std::io::Write as _;
+                        f.write_all(&t).map_err(|e| e.to_string())
+                    })
+                })
         } else {
             kumihan::atomic::save(&p, |f| {
                 sheet::xlsx::write_with(&self.book, original, std::io::BufWriter::new(f))
@@ -922,7 +978,13 @@ impl Calc {
         };
         match saved {
             Ok(_) => {
-                let enc_note = if self.encrypt_pw.is_some() { "(暗号化)" } else { "" };
+                let enc_note = if self.encrypt_pw.is_some() {
+                    "(暗号化)"
+                } else if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("xltx")) {
+                    "(型紙 — 開くと新しいブックになります)"
+                } else {
+                    ""
+                };
                 self.status = ui::tf!("保存しました — {}{}", p.file_name().unwrap_or_default().to_string_lossy(), enc_note)
                 .into();
                 self.acquire_lock(&p);

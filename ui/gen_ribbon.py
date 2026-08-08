@@ -154,6 +154,7 @@ READY = {
         "cell-lock": "cell-lock", "prot-allow": "prot-allow",
         "fit-pages": "fit-pages", "printarea-add": "printarea-add", "show-breaks": "show-breaks",
         "recover": "recover", "recover-every": "recover-every",
+        "csv-kind": "csv-kind",
         "td-remdup": "rem-duplicates",
         "td-header": "td-header", "td-total": "td-total",
         "td-band-row": "td-band-row", "td-band-col": "td-band-col",
@@ -526,9 +527,6 @@ EXTRA_CMDS = {
     "calc": {
         # 小計は本家のデータタブに無いが、グループ化を「畳むと合計が残る」
         # 形で使うために置く(Excel の データ > 小計 に相当。発注者指摘)
-        "データ": [("subtotal", "小計", "subtotal"),
-                   ("datatable", "データテーブル", "datatable"),
-                   ("python", "Python", "python")],
         # 本家は値フィールドの設定の中にある「計算の種類」。うちは指図が
         # 集計の名前ひとつなので、タブに独立したボタンとして置く
         "ピボットテーブル": [("pivot-showas", "計算の種類", "pivot-showas")],
@@ -539,6 +537,10 @@ EXTRA_CMDS = {
                  # 自動復旧。本家は詳細設定の中だが、うちは小窓を持たない
                  ("recover", "復旧", "recover"),
                  ("recover-every", "控えの間隔", "recover-every")],
+        "データ": [("subtotal", "小計", "subtotal"),
+                   ("datatable", "データテーブル", "datatable"),
+                   ("python", "Python", "python"),
+                   ("csv-kind", "CSV の形", "csv-kind")],
         # 本家では「拡大縮小印刷」の中の選択肢。うちは小窓を持たないので
         # レイアウトタブに独立したボタンで出す
         "レイアウト": [("fit-pages", "紙に収める", "fit-pages"),

@@ -310,6 +310,7 @@ pub const CALC: &[Tab] = &[
         c("subtotal", "小計", "subtotal"),
         c("datatable", "模擬運算表", "datatable"),
         c("python", "Python", "python"),
+        c("csv-kind", "CSV 格式", "csv-kind"),
     ]},
     Tab { name: "樞紐分析表", cmds: &[
         c("pivot-insert", "插入樞紐分析表", "pivot-insert"),

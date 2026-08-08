@@ -46,7 +46,7 @@ impl Calc {
         "ai-where", "ai-summary", "ai-rewrite", "ai-polite", "ai-plain",
         "ai-translate", "ai-furigana", "ai-continue", "ai-table", "ai-ask",
         "insert-function", "cell-styles", "sheet-view", "watch", "editheader",
-        "cell-lock", "prot-allow", "recover", "recover-every",
+        "cell-lock", "prot-allow", "recover", "recover-every", "csv-kind",
         "pen", "highlighter", "eraser", "draw-select",
     ];
 
@@ -85,7 +85,7 @@ impl Calc {
         "trace-prec", "trace-dep", "remove-arrows", "pivot-select",
         "coauth-mode", "co-showcomment", "co-chat", "co-history", "plug-manage",
         "prot-doc", "prot-encrypt", "prot-sign", "ai-where",
-        "recover", "recover-every",
+        "recover", "recover-every", "csv-kind",
         // 「許可する操作」は保護中にこそ触る。**鍵を掛けていないので
         // 隠す意味も無い** — 保護は事故止めであって錠前ではない(SEKKEI)
         "prot-allow",
@@ -2063,6 +2063,27 @@ impl Calc {
                         .into();
                     }
                 }
+            }
+            // CSV の形(文字コードと区切り)。**日本の会計ソフトは
+            // まだ CP932 のものがある** — UTF-8 固定では渡せない
+            "csv-kind" => {
+                let at = self.pop_anchor();
+                self.pick_kind = "csv-kind";
+                self.pick_note =
+                    Some(ui::t!("CSV に書き出すときの文字コードと区切り").into());
+                self.pick = Some((
+                    Self::CSV_KINDS
+                        .iter()
+                        .map(|(n, _, _)| {
+                            if *n == self.csv_kind {
+                                format!("✓ {n}")
+                            } else {
+                                (*n).to_string()
+                            }
+                        })
+                        .collect(),
+                    at,
+                ));
             }
             // 自動復旧: 残っている控えの一覧。選ぶとその中身を開く
             "recover" => {

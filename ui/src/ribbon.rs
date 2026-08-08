@@ -356,6 +356,7 @@ pub const CALC: &[Tab] = &[
         c("subtotal", "小計", "subtotal"),
         c("datatable", "データテーブル", "datatable"),
         c("python", "Python", "python"),
+        c("csv-kind", "CSV の形", "csv-kind"),
     ]},
     Tab { name: "ピボットテーブル", cmds: &[
         c("pivot-insert", "ピボットテーブルを挿入", "pivot-insert"),

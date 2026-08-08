@@ -310,6 +310,7 @@ pub const CALC: &[Tab] = &[
         c("subtotal", "부분합", "subtotal"),
         c("datatable", "데이터 표", "datatable"),
         c("python", "Python", "python"),
+        c("csv-kind", "CSV 형식", "csv-kind"),
     ]},
     Tab { name: "피벗 테이블", cmds: &[
         c("pivot-insert", "피벗 테이블 삽입", "pivot-insert"),

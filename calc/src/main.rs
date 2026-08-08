@@ -259,6 +259,9 @@ struct Calc {
     /// 自動復旧の控えを取る間隔(秒)。0 なら取らない。
     /// **原本は上書きしない** — 別の場所に控えるだけ(io::write_recover)
     pub(crate) recover_secs: u64,
+    /// CSV に書き出すときの文字コードと区切り。**日本の会計ソフトは
+    /// まだ CP932 のものがある** — UTF-8 固定だと渡せない
+    pub(crate) csv_kind: &'static str,
     /// 最後に控えを取った時刻
     pub(crate) recover_at: std::time::Instant,
     /// 0 の値を見せるか(表示タブ。消しても値は 0 のまま)
@@ -470,6 +473,7 @@ impl Calc {
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(300),
             recover_at: std::time::Instant::now(),
+            csv_kind: "UTF-8(BOM付き)・カンマ",
             dark: ui::settings::get("theme").as_deref() == Some("dark"),
             auto_calc: true,
             watch: Vec::new(),

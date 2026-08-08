@@ -3427,6 +3427,49 @@ mod track_changes_tests {
 }
 
 #[cfg(test)]
+mod csv_out_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn CSVはShift_JISでも書けて落ちた字を数える(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        let dir = std::env::temp_dir().join(format!("jo-csv-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        c.update(cx, |this, _| {
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("売上"));
+            this.book.sheets[0].set(Pos::parse("B1").unwrap(), sheet::Cell::input("𠮟る"));
+
+            // 既定は UTF-8 BOM 付き・カンマ
+            let p = dir.join("u8.csv");
+            this.write_csv(&p);
+            let b = std::fs::read(&p).unwrap();
+            assert_eq!(&b[..3], &[0xEF, 0xBB, 0xBF], "BOM が付いていない");
+            assert!(String::from_utf8_lossy(&b).contains("売上,"), "カンマ区切りでない");
+
+            // Shift_JIS。**CP932 に無い字(𠮟)は落ちるので数えて言う**
+            this.csv_kind = "Shift_JIS(CP932)・カンマ";
+            let p2 = dir.join("sjis.csv");
+            this.write_csv(&p2);
+            let b2 = std::fs::read(&p2).unwrap();
+            assert!(b2.starts_with(&[0x94, 0x84]), "Shift_JIS になっていない(売=0x9484)");
+            assert!(
+                this.status.contains("Shift_JIS に無く"),
+                "落ちた字を黙っている: {}",
+                this.status
+            );
+
+            // タブ区切り
+            this.csv_kind = "UTF-8(BOM付き)・タブ";
+            let p3 = dir.join("tab.csv");
+            this.write_csv(&p3);
+            let t = std::fs::read_to_string(&p3).unwrap();
+            assert!(t.contains("売上\t"), "タブ区切りになっていない");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(test)]
 mod recover_tests {
     use crate::*;
 

@@ -310,6 +310,7 @@ pub const CALC: &[Tab] = &[
         c("subtotal", "Subtotale", "subtotal"),
         c("datatable", "Tabella dati", "datatable"),
         c("python", "Python", "python"),
+        c("csv-kind", "Formato CSV", "csv-kind"),
     ]},
     Tab { name: "Tabella pivot", cmds: &[
         c("pivot-insert", "Inserisci tabella pivot", "pivot-insert"),

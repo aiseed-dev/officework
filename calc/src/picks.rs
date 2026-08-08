@@ -155,6 +155,14 @@ impl Calc {
                 };
                 return; // pick_kind を "value" に戻さない(続けて入切する)
             }
+            "csv-kind" => {
+                let name = v.trim_start_matches('✓').trim();
+                if let Some((n, _, _)) = Calc::CSV_KINDS.iter().find(|(n, _, _)| *n == name) {
+                    self.csv_kind = n;
+                    self.status =
+                        ui::tf!("CSV は「{}」で書き出します(いまから)", n).into();
+                }
+            }
             // 自動復旧: 控えを開く。**原本ではなく控えを開く** — 中身を見て、
             // よければ名前を付けて保存する(黙って原本へ戻さない)
             "recover" => {

@@ -2346,6 +2346,48 @@ fn patch_core_props(orig: &str, p: &crate::model::BookProps) -> String {
     s
 }
 
+/// **書いた xlsx を型紙(XLTX)に仕立て直す。**
+///
+/// 中身は xlsx と同じで、違うのは `[Content_Types].xml` の宣言ひとつだけ
+/// (`...spreadsheetml.sheet.main+xml` → `...template.main+xml`)。
+/// 開くと「この型紙から新しいブック」になる。
+///
+/// 書き手を二重に持たないよう、**出来上がった zip を作り直す**形にした。
+pub fn to_template(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    const FROM: &str = "spreadsheetml.sheet.main+xml";
+    const TO: &str = "spreadsheetml.template.main+xml";
+    let mut zin = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| e.to_string())?;
+    let mut out = std::io::Cursor::new(Vec::new());
+    {
+        let mut zout = zip::ZipWriter::new(&mut out);
+        let opts: zip::write::FileOptions<'_, ()> =
+            zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        let mut swapped = false;
+        for i in 0..zin.len() {
+            let mut f = zin.by_index(i).map_err(|e| e.to_string())?;
+            let name = f.name().to_string();
+            let mut buf = Vec::new();
+            std::io::copy(&mut f, &mut buf).map_err(|e| e.to_string())?;
+            if name == "[Content_Types].xml" {
+                let t = String::from_utf8_lossy(&buf).to_string();
+                if t.contains(FROM) {
+                    swapped = true;
+                }
+                buf = t.replace(FROM, TO).into_bytes();
+            }
+            zout.start_file(name, opts).map_err(|e| e.to_string())?;
+            zout.write_all(&buf).map_err(|e| e.to_string())?;
+        }
+        if !swapped {
+            // **黙って xlsx のまま出さない。** 宣言を書き換えられなければ
+            // 型紙ではないので、そう言って止める
+            return Err("型紙の宣言が見つかりません(xlsx の作りが変わった?)".into());
+        }
+        zout.finish().map_err(|e| e.to_string())?;
+    }
+    Ok(out.into_inner())
+}
+
 pub fn write<W: Write + Seek>(book: &Book, dst: W) -> Result<(), String> {
     write_with(book, None::<std::io::Cursor<Vec<u8>>>, dst)
 }
@@ -4527,6 +4569,32 @@ mod print_extras_roundtrip_tests {
         assert_eq!(sh.row_breaks, vec![10, 30], "改ページが往復しない");
         assert!(sh.print_gridlines && sh.print_headings, "printOptions が往復しない");
         assert_eq!(sh.print_title_rows, Some((0, 1)), "タイトル行が往復しない");
+    }
+
+    #[test]
+    fn 型紙は宣言だけが違い中身は読める() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("見積書"));
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let x = buf.into_inner();
+        let t = to_template(&x).expect("型紙にできない");
+        // 宣言が型紙になっている
+        let ct = {
+            let mut z = zip::ZipArchive::new(Cursor::new(t.clone())).unwrap();
+            let mut f = z.by_name("[Content_Types].xml").unwrap();
+            let mut out = String::new();
+            std::io::Read::read_to_string(&mut f, &mut out).unwrap();
+            out
+        };
+        assert!(ct.contains("spreadsheetml.template.main+xml"), "型紙の宣言が無い");
+        assert!(!ct.contains("spreadsheetml.sheet.main+xml"), "ブックの宣言が残っている");
+        // **中身は同じ** — 型紙もこちらで開けること
+        let (back, _) = read(Cursor::new(t)).expect("型紙が読めない");
+        assert_eq!(
+            back.sheets[0].get(Pos::parse("A1").unwrap()).unwrap().value.display(),
+            "見積書"
+        );
     }
 
     #[test]
