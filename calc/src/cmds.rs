@@ -46,7 +46,18 @@ impl Calc {
         "ai-where", "ai-summary", "ai-rewrite", "ai-polite", "ai-plain",
         "ai-translate", "ai-furigana", "ai-continue", "ai-table", "ai-ask",
         "insert-function", "cell-styles", "sheet-view", "watch", "editheader",
+        "cell-lock", "prot-allow",
         "pen", "highlighter", "eraser", "draw-select",
+    ];
+
+    /// 見た目だけを変える操作(保護の「セルの書式設定」を許すと通る)
+    pub(crate) const FORMAT_CMDS: &'static [&'static str] = &[
+        "bold", "italic", "underline", "strikeout", "subscript",
+        "fontname", "fontsize", "incfont", "decfont", "fontcolor", "fillparag",
+        "borders", "align-left", "align-center", "align-right", "align-just",
+        "top", "middle", "bottom", "wrap", "text-orient",
+        "comma", "currency", "percents", "digit-inc", "digit-dec",
+        "numfmt", "format", "cell-format", "cell-styles", "copystyle",
     ];
 
     /// **一覧・パレット・小窓が開くボタン。** リボンは ▾ を添え、押すと
@@ -73,6 +84,9 @@ impl Calc {
         "trace-prec", "trace-dep", "remove-arrows", "pivot-select",
         "coauth-mode", "co-showcomment", "co-chat", "co-history", "plug-manage",
         "prot-doc", "prot-encrypt", "prot-sign", "ai-where",
+        // 「許可する操作」は保護中にこそ触る。**鍵を掛けていないので
+        // 隠す意味も無い** — 保護は事故止めであって錠前ではない(SEKKEI)
+        "prot-allow",
     ];
 
     /// ピボットの上では締める操作(本家 Toolbar.js の editPivot ロックと同じ顔ぶれ:
@@ -88,10 +102,32 @@ impl Calc {
         // 「ピボット 1/4 …」が出た。2026-08-08 実機で見つけた)
         self.pick_note = None;
         if self.sheet().protected && !Self::PROTECTED_OK.contains(&id) {
-            self.status =
-                ui::t!("シートが保護されています(保護タブの「シートを保護する」で解除)").into();
-            cx.notify();
-            return;
+            // **一律に断らない。** 保護のときに何を許すかはシートごとに
+            // 決められる(Excel の「許可する操作」)。許した分は通す
+            let a = self.sheet().protect_allow.clone();
+            let allowed = match id {
+                // ロックの掛け外しは**保護を解いてから**。保護中に許すと
+                // 「保護されたシートで自分のロックを外して書く」ができる
+                "cell-lock" => false,
+                _ if Self::FORMAT_CMDS.contains(&id) => a.format_cells,
+                "colw" | "hide-col" | "show-col" | "autofit-col" => a.format_cols,
+                "rowh" | "hide-row" | "show-row" | "autofit-row" => a.format_rows,
+                "inscol" => a.insert_cols,
+                "insrow" => a.insert_rows,
+                "inshyperlink" | "ins-link" => a.insert_links,
+                "delcol" => a.delete_cols,
+                "delrow" => a.delete_rows,
+                "custom-sort" | "sort-asc" | "sort-desc" => a.sort,
+                "setfilter" | "clear-filter" => a.autofilter,
+                _ if id.starts_with("pivot-") => a.pivot,
+                // 中身を書き換えるものは、選んだ範囲のロックを見る
+                _ => !self.sel_locked(),
+            };
+            if !allowed {
+                self.status = Self::protected_msg().into();
+                cx.notify();
+                return;
+            }
         }
         if Self::PIVOT_LOCKED.contains(&id) && self.pivot_at(self.cursor).is_some() {
             self.status =
@@ -538,10 +574,44 @@ impl Calc {
                     self.sheet_mut().protected = true;
                     self.dirty = true;
                     self.status = format!(
-                        "シート「{name}」を保護しました(編集を堰き止めます。同じボタンで解除。パスワードは掛けません — 掛けた振りもしません)"
+                        "シート「{name}」を保護しました(ロックを外したセルだけ書けます。「許可する操作」で緩められます。同じボタンで解除。パスワードは掛けません — 掛けた振りもしません)"
                     )
                     .into();
                 }
+            }
+            // セルのロック。**保護の効き目はここで決まる** — 保護中は
+            // ロックの掛かったセルだけが堰き止められる。帳票は
+            // 「記入欄のロックを外して、シートを保護する」が定石
+            "cell-lock" => {
+                // いま選んでいる所が全部ロック済みなら外す、でなければ掛ける
+                let (a, b) = self.sel_rect();
+                let all_locked = (a.row..=b.row).all(|r| {
+                    (a.col..=b.col).all(|c| {
+                        !self.sheet().get(Pos::new(r, c)).map(|x| x.fmt.unlocked).unwrap_or(false)
+                    })
+                });
+                self.fmt(|f| f.unlocked = all_locked);
+                self.status = if all_locked {
+                    ui::t!("ロックを外しました(保護中でもここは書けます)").into()
+                } else {
+                    ui::t!("ロックを掛けました(保護中は書けません)").into()
+                };
+            }
+            // 保護中に何を許すか(本家の「このシートのすべてのユーザーに
+            // 許可する操作」)。✓ の一覧を押して入切する
+            "prot-allow" => {
+                let at = self.pop_anchor();
+                let a = self.sheet().protect_allow.clone();
+                let items: Vec<String> = a
+                    .items()
+                    .iter()
+                    .map(|(n, on)| format!("{} {}", if *on { "☑" } else { "☐" }, n))
+                    .collect();
+                self.pick_kind = "prot-allow";
+                self.pick_note = Some(
+                    ui::t!("保護中に許す操作(押して入切。保護していないときは効きません)").into(),
+                );
+                self.pick = Some((items, at));
             }
             // 暗号化。パスワードを決めると、保存で ECMA-376 Standard
             // (AES-128)の複合ファイルに包む。空 Enter で解除

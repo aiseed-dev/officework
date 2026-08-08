@@ -330,11 +330,111 @@ pub struct CellFormat {
     pub shrink: bool,
     /// 表示形式(`#,##0` `0.00%` など)。xlsx の numFmt
     pub number_format: Option<String>,
+    /// **保護中でも書き換えられる**セル(xlsx の `<protection locked="0"/>`)。
+    ///
+    /// xlsx は「ロックされている」を既定にして `locked="1"` を省く。こちらも
+    /// **裏返して「ロックを外した」で持つ** — そうすれば `Default` が
+    /// 素直に derive でき、`is_plain()`(=書式なし)の判定も狂わない。
+    /// 手書きの `Default` は取りこぼす(図形の line_w で踏んだ)。
+    ///
+    /// シートを保護していないときは意味を持たない。保護すると、ここが
+    /// false のセルだけが堰き止められる — 帳票の「記入欄だけ開ける」作法
+    pub unlocked: bool,
 }
 
 impl CellFormat {
     pub fn is_plain(&self) -> bool {
         *self == CellFormat::default()
+    }
+}
+
+/// 保護中でも許す操作。**`Default` は Excel が保護をかけたときの初期値**
+/// (選択だけ許し、他は禁じる)。`derive` だと全部 false になり
+/// 「選択すらできない」になってしまうので手で書く。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProtectAllow {
+    /// ロックされたセルを選べる
+    pub select_locked: bool,
+    /// ロックを外したセルを選べる
+    pub select_unlocked: bool,
+    /// セルの書式を変えられる
+    pub format_cells: bool,
+    /// 列の幅・非表示を変えられる
+    pub format_cols: bool,
+    /// 行の高さ・非表示を変えられる
+    pub format_rows: bool,
+    pub insert_cols: bool,
+    pub insert_rows: bool,
+    /// ハイパーリンクを入れられる
+    pub insert_links: bool,
+    pub delete_cols: bool,
+    pub delete_rows: bool,
+    pub sort: bool,
+    /// オートフィルターを操作できる
+    pub autofilter: bool,
+    /// ピボットテーブルを操作できる
+    pub pivot: bool,
+}
+
+impl Default for ProtectAllow {
+    fn default() -> Self {
+        Self {
+            select_locked: true,
+            select_unlocked: true,
+            format_cells: false,
+            format_cols: false,
+            format_rows: false,
+            insert_cols: false,
+            insert_rows: false,
+            insert_links: false,
+            delete_cols: false,
+            delete_rows: false,
+            sort: false,
+            autofilter: false,
+            pivot: false,
+        }
+    }
+}
+
+impl ProtectAllow {
+    /// 画面に出す並び(名前, 読む, 書く)。チェックの一覧と往復で使う
+    pub fn items(&self) -> [(&'static str, bool); 13] {
+        [
+            ("ロックされたセルの選択", self.select_locked),
+            ("ロックされていないセルの選択", self.select_unlocked),
+            ("セルの書式設定", self.format_cells),
+            ("列の書式設定", self.format_cols),
+            ("行の書式設定", self.format_rows),
+            ("列の挿入", self.insert_cols),
+            ("行の挿入", self.insert_rows),
+            ("ハイパーリンクの挿入", self.insert_links),
+            ("列の削除", self.delete_cols),
+            ("行の削除", self.delete_rows),
+            ("並べ替え", self.sort),
+            ("オートフィルターの使用", self.autofilter),
+            ("ピボットテーブルの使用", self.pivot),
+        ]
+    }
+
+    /// 名前で入切する(一覧を押したときの受け)
+    pub fn toggle(&mut self, name: &str) {
+        let f = match name {
+            "ロックされたセルの選択" => &mut self.select_locked,
+            "ロックされていないセルの選択" => &mut self.select_unlocked,
+            "セルの書式設定" => &mut self.format_cells,
+            "列の書式設定" => &mut self.format_cols,
+            "行の書式設定" => &mut self.format_rows,
+            "列の挿入" => &mut self.insert_cols,
+            "行の挿入" => &mut self.insert_rows,
+            "ハイパーリンクの挿入" => &mut self.insert_links,
+            "列の削除" => &mut self.delete_cols,
+            "行の削除" => &mut self.delete_rows,
+            "並べ替え" => &mut self.sort,
+            "オートフィルターの使用" => &mut self.autofilter,
+            "ピボットテーブルの使用" => &mut self.pivot,
+            _ => return,
+        };
+        *f = !*f;
     }
 }
 
@@ -429,6 +529,11 @@ pub struct Sheet {
     /// 掛けた振りもしない(writer の保護と同じ正直な作法)。
     /// 効き目はアプリが守る: 保護中は編集を堰き止める
     pub protected: bool,
+    /// **保護中でも許す操作。** xlsx の sheetProtection は「禁じる」向きで
+    /// 書くが(`formatCells="1"` = 書式を禁じる)、こちらは画面の
+    /// チェックボックスと同じ**「許す」向き**で持ち、読み書きの所だけで
+    /// 裏返す。向きを混ぜると必ずどこかで逆になる
+    pub protect_allow: ProtectAllow,
     /// 名前の定義(名前, 参照 "A1" か "A1:B2")。式の中で名前が使える。
     /// workbook.xml の definedNames と往復する
     pub names: Vec<(String, String)>,

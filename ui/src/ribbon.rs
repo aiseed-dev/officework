@@ -395,6 +395,8 @@ pub const CALC: &[Tab] = &[
         c("prot-doc", "シートを保護する", "protect-sheet"),
         x("範囲を保護する", "protect-range"),
         c("prot-sign", "デジタル署名を追加", "prot-sign"),
+        c("cell-lock", "セルのロック", "cell-lock"),
+        c("prot-allow", "許可する操作", "prot-allow"),
     ]},
     Tab { name: "表示", cmds: &[
         c("sheet-view", "シートの表示", "sheet-view"),

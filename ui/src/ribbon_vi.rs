@@ -347,6 +347,8 @@ pub const CALC: &[Tab] = &[
         c("prot-doc", "Bảo vệ trang tính", "protect-sheet"),
         x("Bảo vệ phạm vi", "protect-range"),
         c("prot-sign", "Thêm chữ ký số", "prot-sign"),
+        c("cell-lock", "Khóa ô", "cell-lock"),
+        c("prot-allow", "Thao tác được phép", "prot-allow"),
     ]},
     Tab { name: "Hiển thị", cmds: &[
         c("sheet-view", "Hiện trang tính", "sheet-view"),

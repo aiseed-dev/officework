@@ -3427,6 +3427,94 @@ mod track_changes_tests {
 }
 
 #[cfg(test)]
+mod protect_tests {
+    use crate::*;
+
+    #[test]
+    fn セルのロックと許可する操作がxlsxを往復する() {
+        let mut b = sheet::Book::new();
+        // A1 はロックのまま、B2 はロックを外す(帳票の記入欄)
+        b.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("見出し"));
+        let mut c = sheet::Cell::input("");
+        c.fmt.unlocked = true;
+        b.sheets[0].set(Pos::parse("B2").unwrap(), c);
+        b.sheets[0].protected = true;
+        b.sheets[0].protect_allow.format_cells = true;
+        b.sheets[0].protect_allow.sort = true;
+        b.sheets[0].protect_allow.select_locked = false;
+
+        let mut buf = std::io::Cursor::new(Vec::new());
+        sheet::xlsx::write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let (back, _) = sheet::xlsx::read(buf).expect("読めない");
+        let sh = &back.sheets[0];
+        assert!(sh.protected, "保護が往復しない");
+        assert!(
+            !sh.get(Pos::parse("A1").unwrap()).unwrap().fmt.unlocked,
+            "ロックしたセルが往復で外れた"
+        );
+        assert!(
+            sh.get(Pos::parse("B2").unwrap()).unwrap().fmt.unlocked,
+            "ロックを外したセルが往復で掛かった"
+        );
+        // **向きが裏返らないこと。** xlsx は「禁じる」で書き、こちらは
+        // 「許す」で持つので、往復のどこかで逆になりやすい
+        assert!(sh.protect_allow.format_cells, "許した書式が禁止に化けた");
+        assert!(sh.protect_allow.sort, "許した並べ替えが禁止に化けた");
+        assert!(!sh.protect_allow.select_locked, "禁じた選択が許可に化けた");
+        assert!(!sh.protect_allow.insert_rows, "禁じたままのはずの行挿入が許可に化けた");
+        assert!(sh.protect_allow.select_unlocked, "既定で許すはずの選択が禁止になった");
+    }
+
+    #[gpui::test]
+    fn 保護中もロックを外したセルには書ける(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let head = Pos::parse("A1").unwrap();
+            let entry = Pos::parse("B2").unwrap();
+            this.book.sheets[0].set(head, sheet::Cell::input("見出し"));
+            // B2 のロックを外す(選んでから「セルのロック」)
+            this.cursor = entry;
+            this.anchor = None;
+            this.run_cmd("cell-lock", cx);
+            assert!(
+                this.book.sheets[0].get(entry).map(|c| c.fmt.unlocked).unwrap_or(false),
+                "ロックが外れていない"
+            );
+            this.book.sheets[0].protected = true;
+
+            // 見出しは書けない
+            this.cursor = head;
+            this.sync_input();
+            assert!(this.cell_locked(head), "ロックしたセルが素通りする");
+            // 記入欄は書ける
+            this.cursor = entry;
+            assert!(!this.cell_locked(entry), "ロックを外したセルまで堰き止めた");
+        });
+    }
+
+    #[gpui::test]
+    fn 許した操作だけが保護中に通る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let p = Pos::parse("A1").unwrap();
+            this.book.sheets[0].set(p, sheet::Cell::input("あ"));
+            this.cursor = p;
+            this.book.sheets[0].protected = true;
+
+            // 既定では書式も禁じる
+            this.run_cmd("bold", cx);
+            assert!(!this.book.sheets[0].get(p).unwrap().fmt.bold, "禁じた書式が通った");
+
+            // 「セルの書式設定」を許すと通る
+            this.book.sheets[0].protect_allow.format_cells = true;
+            this.run_cmd("bold", cx);
+            assert!(this.book.sheets[0].get(p).unwrap().fmt.bold, "許した書式が通らない");
+        });
+    }
+}
+
+#[cfg(test)]
 mod stale_string_tests {
     use crate::*;
 

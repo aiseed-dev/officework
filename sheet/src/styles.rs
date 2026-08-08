@@ -58,6 +58,11 @@ pub fn parse(xml: &str, theme: &[String]) -> Vec<CellFormat> {
     let mut bd = Borders::default();
     let mut side: Option<Vec<u8>> = None;
     let mut xf: Option<(usize, usize, usize, u32)> = None;
+    // **xf を閉じるときに1回だけ積む。** 中身は <alignment> のあとに
+    // <protection> が来る決まりなので、alignment で積んでしまうと保護の
+    // 印を取りこぼす(セルのロックが往復しなくなる)
+    let mut xf_fmt: Option<CellFormat> = None;
+    let mut xf_unlocked = false;
 
     let mut r = Reader::from_str(xml);
     let mut buf = Vec::new();
@@ -79,9 +84,18 @@ pub fn parse(xml: &str, theme: &[String]) -> Vec<CellFormat> {
                     }
                     b"border" if in_borders => borders.push(std::mem::take(&mut bd)),
                     b"xf" if in_cellxfs => {
-                        if let Some(x) = xf.take() {
-                            xfs.push(resolve(x, &fonts, &fills, &fill_themes, &borders, &numfmts, None, None));
+                        let done = xf_fmt.take().or_else(|| {
+                            xf.map(|x| {
+                                resolve(x, &fonts, &fills, &fill_themes, &borders,
+                                        &numfmts, None, None)
+                            })
+                        });
+                        if let Some(mut f) = done {
+                            f.unlocked = xf_unlocked;
+                            xfs.push(f);
                         }
+                        xf = None;
+                        xf_unlocked = false;
                     }
                     _ => {}
                 }
@@ -204,10 +218,12 @@ pub fn parse(xml: &str, theme: &[String]) -> Vec<CellFormat> {
                     xfs.push(resolve(x, &fonts, &fills, &fill_themes, &borders, &numfmts, None, None));
                 } else {
                     xf = Some(x);
+                    xf_fmt = None;
+                    xf_unlocked = false;
                 }
             }
             b"alignment" if in_cellxfs => {
-                if let Some(x) = xf.take() {
+                if let Some(x) = xf {
                     let a = attr(&e, "horizontal").map(|v| HAlign::from_xlsx(&v));
                     let va = attr(&e, "vertical").map(|v| VAlign::from_xlsx(&v));
                     let wrap = attr(&e, "wrapText").as_deref() == Some("1");
@@ -218,7 +234,14 @@ pub fn parse(xml: &str, theme: &[String]) -> Vec<CellFormat> {
                     f.valign = va.unwrap_or_default();
                     f.wrap = wrap;
                     f.shrink = attr(&e, "shrinkToFit").as_deref() == Some("1");
-                    xfs.push(f);
+                    xf_fmt = Some(f);
+                }
+            }
+            // セルのロック。xlsx は「ロック済み」を既定にして locked="1" を
+            // 省くので、**locked="0" のときだけ**ロックを外した印を立てる
+            b"protection" if in_cellxfs => {
+                if matches!(attr(&e, "locked").as_deref(), Some("0") | Some("false")) {
+                    xf_unlocked = true;
                 }
             }
             _ => {}
@@ -295,6 +318,7 @@ fn resolve(
         borders: borders.get(bid).copied().unwrap_or_default(),
         align: align.unwrap_or_default(),
         number_format: numfmts.get(&nfid).cloned().or_else(|| builtin(nfid)),
+        unlocked: false,
     }
 }
 
@@ -583,10 +607,23 @@ fn xf_xml(fi: usize, fl: usize, bi: usize, ni: usize, f: &CellFormat) -> String 
     if f.rtl_text {
         attrs.push_str(" readingOrder=\"2\"");
     }
-    if attrs.is_empty() {
+    // ロックを外したセルだけ <protection locked="0"/> を書く(既定はロック)
+    let prot = if f.unlocked { "<protection locked=\"0\"/>" } else { "" };
+    if attrs.is_empty() && prot.is_empty() {
         s.push_str("/>");
     } else {
-        s.push_str(&format!(" applyAlignment=\"1\"><alignment{attrs}/></xf>"));
+        if !attrs.is_empty() {
+            s.push_str(" applyAlignment=\"1\"");
+        }
+        if !prot.is_empty() {
+            s.push_str(" applyProtection=\"1\"");
+        }
+        s.push('>');
+        if !attrs.is_empty() {
+            s.push_str(&format!("<alignment{attrs}/>"));
+        }
+        s.push_str(prot);
+        s.push_str("</xf>");
     }
     s
 }

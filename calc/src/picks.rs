@@ -132,6 +132,29 @@ impl Calc {
                 };
                 self.run_cmd(id, cx);
             }
+            // 保護中に許す操作。押すたびに入切して、一覧をその場で描き直す
+            // (閉じない — 何個も入切したいので)
+            "prot-allow" => {
+                let name = v.trim_start_matches(['☑', '☐']).trim().to_string();
+                self.commit();
+                self.dirty = true;
+                self.sheet_mut().protect_allow.toggle(&name);
+                let a = self.sheet().protect_allow.clone();
+                let items: Vec<String> = a
+                    .items()
+                    .iter()
+                    .map(|(n, on)| format!("{} {}", if *on { "☑" } else { "☐" }, n))
+                    .collect();
+                let at = self.pick.as_ref().map(|(_, at)| *at).unwrap_or_else(|| self.pop_anchor());
+                self.pick_kind = "prot-allow";
+                self.pick = Some((items, at));
+                let on = a.items().iter().find(|(n, _)| *n == name).map(|(_, o)| *o);
+                self.status = match on {
+                    Some(true) => ui::tf!("「{}」を許しました", name).into(),
+                    _ => ui::tf!("「{}」を禁じました", name).into(),
+                };
+                return; // pick_kind を "value" に戻さない(続けて入切する)
+            }
             "cell-style" => {
                 if let Some((_, f)) = CELL_STYLES.iter().find(|(n, _)| *n == v) {
                     let f = *f;

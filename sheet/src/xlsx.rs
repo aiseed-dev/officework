@@ -866,6 +866,31 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
                 b"sheetProtection" => {
                     sh.protected =
                         !matches!(attr(&e, "sheet").as_deref(), Some("0") | Some("false"));
+                    // **xlsx は「禁じる」向きで書く**(formatCells="1" = 禁じる)。
+                    // こちらは「許す」向きで持つので裏返す。属性が無いときの
+                    // 既定も向きが違う: 選択は許す(false=禁じない)、
+                    // 他は禁じる(true)— Excel が保護を掛けたときの初期値
+                    let deny = |k: &str, when_absent: bool| -> bool {
+                        match attr(&e, k).as_deref() {
+                            Some("0") | Some("false") => false,
+                            Some(_) => true,
+                            None => when_absent,
+                        }
+                    };
+                    let a = &mut sh.protect_allow;
+                    a.select_locked = !deny("selectLockedCells", false);
+                    a.select_unlocked = !deny("selectUnlockedCells", false);
+                    a.format_cells = !deny("formatCells", true);
+                    a.format_cols = !deny("formatColumns", true);
+                    a.format_rows = !deny("formatRows", true);
+                    a.insert_cols = !deny("insertColumns", true);
+                    a.insert_rows = !deny("insertRows", true);
+                    a.insert_links = !deny("insertHyperlinks", true);
+                    a.delete_cols = !deny("deleteColumns", true);
+                    a.delete_rows = !deny("deleteRows", true);
+                    a.sort = !deny("sort", true);
+                    a.autofilter = !deny("autoFilter", true);
+                    a.pivot = !deny("pivotTables", true);
                 }
                 b"brk" => {
                     if let Some(id) = attr(&e, "id").and_then(|v| v.parse().ok()) {
@@ -3062,6 +3087,27 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             pr.push_attribute(("sheet", "1"));
             pr.push_attribute(("objects", "1"));
             pr.push_attribute(("scenarios", "1"));
+            // **既定に頼らず全部書く。** 属性ごとに既定の向きが違うので、
+            // 省くと読み手によって解釈が割れる
+            let a = &sh.protect_allow;
+            let d = |allow: bool| if allow { "0" } else { "1" };
+            for (k, v) in [
+                ("selectLockedCells", a.select_locked),
+                ("selectUnlockedCells", a.select_unlocked),
+                ("formatCells", a.format_cells),
+                ("formatColumns", a.format_cols),
+                ("formatRows", a.format_rows),
+                ("insertColumns", a.insert_cols),
+                ("insertRows", a.insert_rows),
+                ("insertHyperlinks", a.insert_links),
+                ("deleteColumns", a.delete_cols),
+                ("deleteRows", a.delete_rows),
+                ("sort", a.sort),
+                ("autoFilter", a.autofilter),
+                ("pivotTables", a.pivot),
+            ] {
+                pr.push_attribute((k, d(v)));
+            }
             w.write_event(Event::Empty(pr)).unwrap();
         }
         // 結合を返す。読めたのに書かないと、開いて保存しただけで帳票が壊れる

@@ -1428,6 +1428,28 @@ impl Calc {
         self.pop_at = None;
     }
 
+    /// **このセルは保護で堰き止められるか。** 保護していないなら誰でも書ける。
+    /// 保護中は、`unlocked` を立てたセル(=書式で「ロックを外した」セル)
+    /// だけが書ける — 帳票の「記入欄だけ開ける」作法(Excel と同じ)。
+    pub(crate) fn cell_locked(&self, p: Pos) -> bool {
+        self.sheet().protected
+            && !self.sheet().get(p).map(|c| c.fmt.unlocked).unwrap_or(false)
+    }
+
+    /// 選んでいる範囲に、保護で書けないセルが1つでもあるか
+    pub(crate) fn sel_locked(&self) -> bool {
+        if !self.sheet().protected {
+            return false;
+        }
+        let (a, b) = self.sel_rect();
+        (a.row..=b.row).any(|r| (a.col..=b.col).any(|c| self.cell_locked(Pos::new(r, c))))
+    }
+
+    /// 保護中に断ったときの言い分。**何をすれば通るかまで言う**
+    pub(crate) fn protected_msg() -> String {
+        ui::t!("シートが保護されています(このセルのロックを外すか、保護タブで解除)").into()
+    }
+
     /// いま表示されているセルの左上(格子領域の px)。画面の外なら None。
     fn cell_origin_px(&self, p: Pos) -> Option<(f32, f32)> {
         let mut x = self.head_w();
@@ -2014,11 +2036,11 @@ impl Calc {
         if now == text {
             return true;
         }
-        // シートの保護。打ちかけは捨てて元に戻す(黙って通さない)
-        if self.sheet().protected {
+        // シートの保護。打ちかけは捨てて元に戻す(黙って通さない)。
+        // **セル単位のロックを見る** — ロックを外したセルは保護中でも書ける
+        if self.cell_locked(self.cursor) {
             self.sync_input();
-            self.status =
-                ui::t!("シートが保護されています(保護タブの「シートを保護する」で解除)").into();
+            self.status = Self::protected_msg().into();
             return false;
         }
         // 空白は「空白を無視」(allowBlank)が付いていれば許す(既定)。
@@ -2794,9 +2816,12 @@ impl Calc {
     ///
     /// **値の無いセルにも掛ける** — 罫線だけを引くのは帳票では普通の操作。
     fn fmt(&mut self, f: impl Fn(&mut CellFormat)) {
-        if self.sheet().protected {
-            self.status =
-                ui::t!("シートが保護されています(保護タブの「シートを保護する」で解除)").into();
+        // 保護中でも「セルの書式設定」を許していれば通す。
+        // **ロックそのものの掛け外しは書式ではない** — これを禁じると
+        // 保護を解かないと記入欄を作れなくなる(卵と鶏)ので、保護中の
+        // ロック操作は run_cmd 側で断る
+        if self.sheet().protected && !self.sheet().protect_allow.format_cells {
+            self.status = Self::protected_msg().into();
             return;
         }
         self.commit();

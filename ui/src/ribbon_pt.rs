@@ -347,6 +347,8 @@ pub const CALC: &[Tab] = &[
         c("prot-doc", "Proteger folha", "protect-sheet"),
         x("Faixa de proteção", "protect-range"),
         c("prot-sign", "Adicionar assinatura digital", "prot-sign"),
+        c("cell-lock", "Bloquear célula", "cell-lock"),
+        c("prot-allow", "Ações permitidas", "prot-allow"),
     ]},
     Tab { name: "Exibir", cmds: &[
         c("sheet-view", "Visualização de folha", "sheet-view"),

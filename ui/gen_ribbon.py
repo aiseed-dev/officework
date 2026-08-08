@@ -151,6 +151,7 @@ READY = {
         "plug-macros": "plug-macros", "plug-manage": "plug-manage",
         "prot-doc": "prot-doc", "prot-encrypt": "prot-encrypt",
         "prot-sign": "prot-sign",
+        "cell-lock": "cell-lock", "prot-allow": "prot-allow",
         "td-remdup": "rem-duplicates",
         "td-header": "td-header", "td-total": "td-total",
         "td-band-row": "td-band-row", "td-band-col": "td-band-col",
@@ -529,6 +530,10 @@ EXTRA_CMDS = {
         # 本家は値フィールドの設定の中にある「計算の種類」。うちは指図が
         # 集計の名前ひとつなので、タブに独立したボタンとして置く
         "ピボットテーブル": [("pivot-showas", "計算の種類", "pivot-showas")],
+        # 本家では「セルの書式設定 > 保護」タブと「シートの保護」小窓の中。
+        # うちは小窓を持たない作りなので、保護タブに独立したボタンで出す
+        "保護": [("cell-lock", "セルのロック", "cell-lock"),
+                 ("prot-allow", "許可する操作", "prot-allow")],
     },
 }
 

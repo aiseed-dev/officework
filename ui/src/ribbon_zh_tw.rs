@@ -347,6 +347,8 @@ pub const CALC: &[Tab] = &[
         c("prot-doc", "保護工作表", "protect-sheet"),
         x("保護範圍", "protect-range"),
         c("prot-sign", "新增數位簽章", "prot-sign"),
+        c("cell-lock", "鎖定儲存格", "cell-lock"),
+        c("prot-allow", "允許的操作", "prot-allow"),
     ]},
     Tab { name: "檢視", cmds: &[
         c("sheet-view", "工作表檢視", "sheet-view"),
