@@ -24,7 +24,7 @@ impl Calc {
         "inschart", "insimage", "inshyperlink", "replace",
         "changecase", "format", "cell-format", "fontname", "fontsize",
         "fn-datetime", "fn-lookup", "fn-financial", "fn-more",
-        "scale", "pagebreak", "printtitles", "print-gridlines", "print-headings",
+        "scale", "pagebreak", "fit-pages", "printtitles", "print-gridlines", "print-headings",
         "data-from-text", "text-column", "goal-seek", "data-external-links",
         "insshape", "instext", "inssparkline", "python", "addcomment",
         "trace-prec", "trace-dep", "remove-arrows", "insrecommend",
@@ -71,6 +71,7 @@ impl Calc {
         "theme", "colorschemas", "pagesize", "pageorient", "pagemargins",
         "insshape", "inssmartart", "instable", "table-tpl", "inssymbol",
         "inschart", "pivot-insert", "pivot-fields", "pivot-style",
+        "pagebreak", "fit-pages",
         "text-orient", "insert-function", "fn-math", "fn-text",
         "fn-logical", "fn-datetime", "fn-lookup", "fn-financial", "fn-more",
         "fn-recent", "sheet-view", "cell-styles",
@@ -1987,24 +1988,60 @@ impl Calc {
                 self.status = format!("拡大縮小印刷: {next}%(PDF と保存に効きます)").into();
             }
             // 改ページ: いまの行から新しい紙を始める(もう一度で解除)
+            // 改ページ。本家は「挿入 / 解除 / すべてリセット」の3択なので
+            // 一覧で選ばせる。**縦(列の区切り)も入れられる**
             "pagebreak" => {
-                self.commit();
-                self.checkpoint();
-                let r = self.cursor.row;
-                let sh = self.sheet_mut();
-                if let Some(i) = sh.row_breaks.iter().position(|b| *b == r) {
-                    sh.row_breaks.remove(i);
-                    self.dirty = true;
-                    self.status = format!("{} 行の改ページを外しました", r + 1).into();
-                } else if r == 0 {
-                    self.undo_stack.pop();
-                    self.status = ui::t!("1行目の前では改ページできません").into();
-                } else {
-                    sh.row_breaks.push(r);
-                    self.dirty = true;
-                    self.status =
-                        format!("{} 行から新しい紙にします(もう一度で解除)", r + 1).into();
+                let at = self.pop_anchor();
+                let sh = self.sheet();
+                let (r, c) = (self.cursor.row, self.cursor.col);
+                let has_row = sh.row_breaks.contains(&r);
+                let has_col = sh.col_breaks.contains(&c);
+                // **できないことは並べない。** 1行目・A列の「前」には紙の
+                // 切れ目を置けない(そこが既に紙の頭)ので項目ごと出さない
+                let mut items: Vec<String> = Vec::new();
+                if has_row {
+                    items.push(format!("この行({})の改ページを外す", r + 1));
+                } else if r > 0 {
+                    items.push(format!("{} 行から新しい紙にする(横の区切り)", r + 1));
                 }
+                if has_col {
+                    items.push(format!("この列({})の改ページを外す", col_name(c)));
+                } else if c > 0 {
+                    items.push(format!("{} 列から新しい紙にする(縦の区切り)", col_name(c)));
+                }
+                let n = sh.row_breaks.len() + sh.col_breaks.len();
+                if n > 0 {
+                    items.push(format!("すべての改ページを外す({n} 個)"));
+                }
+                if items.is_empty() {
+                    // A1 の上で、まだ1つも改ページが無いとき
+                    self.status = ui::t!(
+                        "改ページは紙の切れ目です。切りたい行(または列)にカーソルを置いてから押してください"
+                    )
+                    .into();
+                } else {
+                    self.pick_kind = "pagebreak";
+                    self.pick_note = Some(ui::t!("改ページ(紙の切れ目)").into());
+                    self.pick = Some((items, at));
+                }
+            }
+            // 紙 N 枚に収める。本家の「拡大縮小印刷」の選択肢と同じ顔ぶれ
+            "fit-pages" => {
+                let at = self.pop_anchor();
+                self.pick_kind = "fit-pages";
+                self.pick_note = Some(
+                    ui::t!("紙に収める(選ぶと拡大縮小印刷の % より優先します)").into(),
+                );
+                self.pick = Some((
+                    vec![
+                        "拡大縮小しない".into(),
+                        "すべての列を1ページに".into(),
+                        "すべての行を1ページに".into(),
+                        "シートを1ページに".into(),
+                        "横2ページ×縦1ページ".into(),
+                    ],
+                    at,
+                ));
             }
             // タイトルを印刷: 選んだ行を各ページの頭で繰り返す。選択なしで解除
             "printtitles" => {

@@ -257,6 +257,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "在打印副本中你希望下一页开始的位置添加一个分隔符", "pagebreak"),
         c("editheader", "页眉和页脚", "editheader"),
         c("scale", "缩放以适合", "scale"),
+        c("fit-pages", "调整为页数", "fit-pages"),
         c("printtitles", "打印标题", "printtitles"),
         c("rtl-sheet", "切换工作表方向，使第一列在右侧", "rtl-sheet"),
         c("print-gridlines", "打印网格线", "print-gridlines"),

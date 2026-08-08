@@ -303,6 +303,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "印刷物で次のページを開始する位置に改行を追加する", "pagebreak"),
         c("editheader", "ヘッダー/フッター", "editheader"),
         c("scale", "拡大縮小印刷", "scale"),
+        c("fit-pages", "紙に収める", "fit-pages"),
         c("printtitles", "タイトルを印刷する", "printtitles"),
         c("rtl-sheet", "最初の列が右側に来るようにシートの方向を切り替える", "rtl-sheet"),
         c("print-gridlines", "枠線も印刷", "print-gridlines"),

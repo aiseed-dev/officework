@@ -257,6 +257,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "Chèn ngắt trang tại vị trí bắt đầu trang mới", "pagebreak"),
         c("editheader", "Header/Footer", "editheader"),
         c("scale", "Co giãn khi in", "scale"),
+        c("fit-pages", "Vừa với số trang", "fit-pages"),
         c("printtitles", "In tiêu đề", "printtitles"),
         c("rtl-sheet", "Đổi hướng trang tính để cột đầu ở bên phải", "rtl-sheet"),
         c("print-gridlines", "In cả đường lưới", "print-gridlines"),

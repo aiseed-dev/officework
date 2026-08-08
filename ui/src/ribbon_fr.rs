@@ -257,6 +257,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "Ajoutez un saut de page où vous voulez que le prochain page commence dans la copie imprimée.", "pagebreak"),
         c("editheader", "En-tête/Pied de page", "editheader"),
         c("scale", "Mettre à l’échelle", "scale"),
+        c("fit-pages", "Ajuster aux pages", "fit-pages"),
         c("printtitles", "Titres à imprimer", "printtitles"),
         c("rtl-sheet", "Inverser le sens de la feuille de manière à ce que la première colonne se trouve sur le côté droit", "rtl-sheet"),
         c("print-gridlines", "Imprimer le quadrillage", "print-gridlines"),

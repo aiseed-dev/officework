@@ -257,6 +257,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "인쇄물에서 다음 페이지가 시작되길 원하는 위치에 페이지 나누기를 추가하세요.", "pagebreak"),
         c("editheader", "머리말/꼬리말", "editheader"),
         c("scale", "크기에 맞게 확대/축소", "scale"),
+        c("fit-pages", "페이지에 맞춤", "fit-pages"),
         c("printtitles", "제목 인쇄", "printtitles"),
         c("rtl-sheet", "첫 번째 열이 오른쪽에 오도록 시트 방향을 전환합니다", "rtl-sheet"),
         c("print-gridlines", "눈금선 인쇄", "print-gridlines"),

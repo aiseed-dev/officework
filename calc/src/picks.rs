@@ -155,6 +155,64 @@ impl Calc {
                 };
                 return; // pick_kind を "value" に戻さない(続けて入切する)
             }
+            // 改ページの3択(横 / 縦 / すべて外す)
+            "pagebreak" => {
+                self.commit();
+                self.checkpoint();
+                let (r, c) = (self.cursor.row, self.cursor.col);
+                let cn = col_name(c);
+                let sh = self.sheet_mut();
+                if v.starts_with("すべて") {
+                    let n = sh.row_breaks.len() + sh.col_breaks.len();
+                    sh.row_breaks.clear();
+                    sh.col_breaks.clear();
+                    self.status = ui::tf!("改ページを {} 個ぜんぶ外しました", n).into();
+                } else if v.contains("縦の区切り") || v.contains(&format!("この列({cn})")) {
+                    if let Some(i) = sh.col_breaks.iter().position(|b| *b == c) {
+                        sh.col_breaks.remove(i);
+                        self.status = ui::tf!("{} 列の改ページを外しました", cn).into();
+                    } else if c == 0 {
+                        self.undo_stack.pop();
+                        self.status = ui::t!("A 列の前では改ページできません").into();
+                        return;
+                    } else {
+                        sh.col_breaks.push(c);
+                        self.status = ui::tf!("{} 列から新しい紙にします", cn).into();
+                    }
+                } else if let Some(i) = sh.row_breaks.iter().position(|b| *b == r) {
+                    sh.row_breaks.remove(i);
+                    self.status = ui::tf!("{} 行の改ページを外しました", r + 1).into();
+                } else if r == 0 {
+                    self.undo_stack.pop();
+                    self.status = ui::t!("1行目の前では改ページできません").into();
+                    return;
+                } else {
+                    sh.row_breaks.push(r);
+                    self.status = ui::tf!("{} 行から新しい紙にします", r + 1).into();
+                }
+                self.dirty = true;
+            }
+            // 紙 N 枚に収める
+            "fit-pages" => {
+                self.commit();
+                self.checkpoint();
+                let sh = self.sheet_mut();
+                let (w, h) = match v {
+                    "すべての列を1ページに" => (Some(1), None),
+                    "すべての行を1ページに" => (None, Some(1)),
+                    "シートを1ページに" => (Some(1), Some(1)),
+                    "横2ページ×縦1ページ" => (Some(2), Some(1)),
+                    _ => (None, None),
+                };
+                sh.fit_to_w = w;
+                sh.fit_to_h = h;
+                self.dirty = true;
+                self.status = if w.is_none() && h.is_none() {
+                    ui::t!("紙に合わせるのをやめました(拡大縮小印刷の % に戻ります)").into()
+                } else {
+                    ui::tf!("{} にします(PDF と保存に効きます)", v).into()
+                };
+            }
             "cell-style" => {
                 if let Some((_, f)) = CELL_STYLES.iter().find(|(n, _)| *n == v) {
                     let f = *f;

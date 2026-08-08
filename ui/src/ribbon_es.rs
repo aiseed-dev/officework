@@ -257,6 +257,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "Agregue un salto de línea donde quiera que empiece la próxima página en la versión impresa", "pagebreak"),
         c("editheader", "Encabezado/Pie de página", "editheader"),
         c("scale", "Ajustar área de impresión", "scale"),
+        c("fit-pages", "Ajustar a páginas", "fit-pages"),
         c("printtitles", "Imprimir títulos", "printtitles"),
         c("rtl-sheet", "Cambiar la dirección de la hoja para que la primera columna esté a la derecha", "rtl-sheet"),
         c("print-gridlines", "Imprimir líneas de cuadrícula", "print-gridlines"),

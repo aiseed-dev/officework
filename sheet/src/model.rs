@@ -557,9 +557,18 @@ pub struct Sheet {
     pub print_areas: Vec<(Pos, Pos)>,
     /// 拡大縮小印刷(pageSetup scale、%)。無ければ 100
     pub print_scale: Option<u32>,
+    /// **紙 N 枚に収める**(pageSetup の fitToWidth / fitToHeight)。
+    /// 0 は「その向きは合わせない」。どちらかが立っていれば `print_scale` は
+    /// 使わず、**中身が収まるまで縮める**(Excel と同じく縮めるだけ、
+    /// 拡大はしない)。両方 None なら今までどおり print_scale
+    pub fit_to_w: Option<u32>,
+    pub fit_to_h: Option<u32>,
     /// 改ページ(このモデルでは「新しい紙をここから始める行」0起点。
     /// xlsx の rowBreaks/brk@id と同じ数え方)
     pub row_breaks: Vec<u32>,
+    /// **縦の改ページ**(この列から新しい紙。xlsx の colBreaks)。
+    /// 読み書きしていなかったので、Excel で入れた区切りが消えていた
+    pub col_breaks: Vec<u32>,
     /// 枠線・見出し(行番号と列名)も印刷する(printOptions)
     pub print_gridlines: bool,
     pub print_headings: bool,

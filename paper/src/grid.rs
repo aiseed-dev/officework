@@ -40,6 +40,55 @@ pub struct PrintSetup {
     pub margins_mm: Option<(f32, f32, f32, f32)>,
 }
 
+/// **紙 N 枚に収めるための縮尺。** `fit_to_w`/`fit_to_h` のどちらかが
+/// 立っているときだけ Some。
+///
+/// 中身の総幅・総高を等倍で測り、指定した枚数に入る倍率を出す。両方
+/// 指定なら小さい方(=きつい方)を採る。**縮めるだけで拡大はしない** —
+/// Excel と同じ。小さな表が紙いっぱいに膨らむと帳票が別物になる。
+///
+/// 行の高さは改ページを跨ぐぶんの端数を無視した概算。厳密に詰めるには
+/// 縮尺を変えて行送りをやり直す繰り返しが要るが、**紙に収める**という
+/// 目的にはこれで足りる(足りない分は下限 10% で頭打ち)。
+fn fit_scale(
+    grid: &Grid,
+    paper: Paper,
+    setup: &PrintSetup,
+    (r0, r1, c0, c1): (u32, u32, u32, u32),
+    (ml, mr, mt, mb): (f32, f32, f32, f32),
+) -> Option<f32> {
+    let (nw, nh) = (grid.fit_to_w, grid.fit_to_h);
+    if nw.is_none() && nh.is_none() {
+        return None;
+    }
+    let _ = setup;
+    let total_w: f32 = (c0..c1)
+        .filter(|c| !grid.col_hidden.contains(c))
+        .map(|c| {
+            grid.col_width.get(&c).copied().or(grid.default_col_width)
+                .map(|w| w * MM_PER_CHW).unwrap_or(COL_MM)
+        })
+        .sum();
+    let total_h: f32 = (r0..r1)
+        .filter(|r| !grid.row_hidden.contains(r))
+        .map(|r| grid.row_height.get(&r).map(|pt| pt * 25.4 / 72.0).unwrap_or(ROW_MM))
+        .sum();
+    let usable_w = (paper.width_mm - ml - mr).max(1.0);
+    let usable_h = (paper.height_mm - mt - mb).max(1.0);
+    let mut k = 1.0f32;
+    if let Some(n) = nw.filter(|n| *n > 0) {
+        if total_w > 0.0 {
+            k = k.min(usable_w * n as f32 / total_w);
+        }
+    }
+    if let Some(n) = nh.filter(|n| *n > 0) {
+        if total_h > 0.0 {
+            k = k.min(usable_h * n as f32 / total_h);
+        }
+    }
+    Some(k.clamp(0.1, 1.0))
+}
+
 /// 1つの表を PDF にする。行が紙に収まらなければ次のページへ。
 /// 返すのは**右にはみ出して切れた列の数**(0 なら全部紙に入っている)。
 pub fn sheet_to_pdf<W: Write>(
@@ -58,8 +107,10 @@ pub fn sheet_to_pdf<W: Write>(
     let (ml, mr, mt, mb) = setup
         .margins_mm
         .unwrap_or((paper.margin_mm, paper.margin_mm, paper.margin_mm, paper.margin_mm));
-    // 拡大縮小印刷(pageSetup scale)。列幅・行高・文字を同じ倍で
-    let scale = grid.print_scale.unwrap_or(100).clamp(10, 400) as f32 / 100.0;
+    // 拡大縮小印刷(pageSetup scale)。列幅・行高・文字を同じ倍で。
+    // **紙 N 枚に収める指定があれば、そちらが勝つ**(Excel と同じ)
+    let scale = fit_scale(grid, paper, setup, (r0, r1, c0, c1), (ml, mr, mt, mb))
+        .unwrap_or_else(|| grid.print_scale.unwrap_or(100).clamp(10, 400) as f32 / 100.0);
     let (doc, page, layer) = PdfDocument::new(
         &grid.name,
         Mm(paper.width_mm),
@@ -99,7 +150,8 @@ pub fn sheet_to_pdf<W: Write>(
         let mut w = 0.0f32;
         for c in c0..c0 + ncols {
             let cw = col_mm[(c - c0) as usize];
-            if w > 0.0 && w + cw > usable_w + 0.1 {
+            // 縦の改ページ(colBreaks: この列から新しい紙)でも束を割る
+            if w > 0.0 && (grid.col_breaks.contains(&c) || w + cw > usable_w + 0.1) {
                 bands.push((start, c - start));
                 start = c;
                 w = 0.0;
@@ -702,6 +754,74 @@ mod tests {
         let pages: usize =
             hay[i..].chars().take_while(|c| c.is_ascii_digit()).collect::<String>().parse().unwrap();
         assert!(pages >= 3, "横のページ送りが起きていない(頁数 {pages})");
+    }
+
+    #[test]
+    fn 紙に収める指定は切れる列をゼロにする() {
+        let (fam, _) = kumihan::font::for_document(None).unwrap();
+        let data = kumihan::font::load(fam).unwrap();
+        let mut s = Grid { name: "広い".into(), ..Default::default() };
+        // 1列 200mm × 3列 — A4 縦(使える幅 170mm)には割っても入らない
+        for c in 0..3 {
+            s.set(Pos::new(0, c), Cell {
+                formula: None, value: Value::Number(c as f64), fmt: Default::default() });
+            s.col_width.insert(c, 100.0);
+        }
+        let mut buf = Vec::new();
+        let before =
+            sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut buf).unwrap();
+        assert!(before > 0, "そもそも切れていない — 試験の前提が崩れている");
+        // 「すべての列を1ページに」= 収まるまで縮める
+        s.fit_to_w = Some(1);
+        let mut buf2 = Vec::new();
+        let after =
+            sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut buf2).unwrap();
+        assert_eq!(after, 0, "1ページに収めても {after} 列が切れた");
+    }
+
+    #[test]
+    fn 紙に収める指定は縮めるだけで拡大しない() {
+        let (fam, _) = kumihan::font::for_document(None).unwrap();
+        let data = kumihan::font::load(fam).unwrap();
+        let mk = |fit: bool| {
+            let mut s = Grid { name: "小さい".into(), ..Default::default() };
+            s.set(Pos::new(0, 0), Cell {
+                formula: None, value: Value::Text("あ".into()), fmt: Default::default() });
+            if fit {
+                s.fit_to_w = Some(1);
+                s.fit_to_h = Some(1);
+            }
+            let mut buf = Vec::new();
+            sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut buf).unwrap();
+            buf.len()
+        };
+        // 紙いっぱいに膨らませない = 出来上がりが変わらない
+        assert_eq!(mk(true), mk(false), "小さな表が紙いっぱいに膨らんだ");
+    }
+
+    #[test]
+    fn 縦の改ページで束が割れる() {
+        let (fam, _) = kumihan::font::for_document(None).unwrap();
+        let data = kumihan::font::load(fam).unwrap();
+        let mut s = Grid { name: "区切り".into(), ..Default::default() };
+        // 3列。ぜんぶ紙に入る幅なので、放っておけば1枚
+        for c in 0..3 {
+            s.set(Pos::new(0, c), Cell {
+                formula: None, value: Value::Number(c as f64), fmt: Default::default() });
+            s.col_width.insert(c, 10.0);
+        }
+        let pages = |s: &Grid| {
+            let mut buf = Vec::new();
+            sheet_to_pdf(s, &data, Paper::default(), &PrintSetup::default(), &mut buf).unwrap();
+            let hay = String::from_utf8_lossy(&buf).to_string();
+            let i = hay.find("/Count ").unwrap() + 7;
+            hay[i..].chars().take_while(|c| c.is_ascii_digit())
+                .collect::<String>().parse::<usize>().unwrap()
+        };
+        let one = pages(&s);
+        s.col_breaks = vec![1]; // B 列から新しい紙
+        let two = pages(&s);
+        assert!(two > one, "縦の改ページが効いていない({one} → {two} 頁)");
     }
 
     #[test]

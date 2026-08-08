@@ -152,6 +152,7 @@ READY = {
         "prot-doc": "prot-doc", "prot-encrypt": "prot-encrypt",
         "prot-sign": "prot-sign",
         "cell-lock": "cell-lock", "prot-allow": "prot-allow",
+        "fit-pages": "fit-pages",
         "td-remdup": "rem-duplicates",
         "td-header": "td-header", "td-total": "td-total",
         "td-band-row": "td-band-row", "td-band-col": "td-band-col",
@@ -534,6 +535,9 @@ EXTRA_CMDS = {
         # うちは小窓を持たない作りなので、保護タブに独立したボタンで出す
         "保護": [("cell-lock", "セルのロック", "cell-lock"),
                  ("prot-allow", "許可する操作", "prot-allow")],
+        # 本家では「拡大縮小印刷」の中の選択肢。うちは小窓を持たないので
+        # レイアウトタブに独立したボタンで出す
+        "レイアウト": [("fit-pages", "紙に収める", "fit-pages")],
     },
 }
 

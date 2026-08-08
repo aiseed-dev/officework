@@ -257,6 +257,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "在您希望下一頁開始列印的位置新增分頁符號", "pagebreak"),
         c("editheader", "頁首及頁尾", "editheader"),
         c("scale", "縮放以適合", "scale"),
+        c("fit-pages", "調整為頁數", "fit-pages"),
         c("printtitles", "列印標題", "printtitles"),
         c("rtl-sheet", "切換工作表方向，使第一列位於右側", "rtl-sheet"),
         c("print-gridlines", "列印格線", "print-gridlines"),

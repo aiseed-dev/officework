@@ -257,6 +257,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "Adicione uma quebra onde deseja que a próxima página comece na cópia impressa", "pagebreak"),
         c("editheader", "Cabeçalho/rodapé", "editheader"),
         c("scale", "Dimensionar", "scale"),
+        c("fit-pages", "Ajustar às páginas", "fit-pages"),
         c("printtitles", "Imprimir títulos", "printtitles"),
         c("rtl-sheet", "Altere a direção da folha de modo que a primeira coluna fique no lado direito", "rtl-sheet"),
         c("print-gridlines", "Imprimir linhas de grade", "print-gridlines"),

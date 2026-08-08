@@ -793,6 +793,8 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
     r.config_mut().trim_text(false);
     let mut sh = Sheet::new(name);
     let (mut pos, mut ty) = (None::<Pos>, String::new());
+    // いま <colBreaks> の中か(<rowBreaks> と <brk> の形が同じため)
+    let mut in_col_breaks = false;
     let (mut in_v, mut in_f, mut in_is) = (false, false, false);
     let (mut v, mut f) = (String::new(), String::new());
     // 印刷のヘッダー/フッター(Some(true)=oddHeader の中)
@@ -820,6 +822,10 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
                 b"is" => in_is = true,
                 b"mergeCell" => merge(&e, &mut sh),
                 b"col" => col_width(&e, &mut sh),
+                // 改ページの束。**中の <brk> は縦横で形が同じ**なので、
+                // どちらの中にいるかをここで覚える(Start でしか来ない)
+                b"rowBreaks" => in_col_breaks = false,
+                b"colBreaks" => in_col_breaks = true,
                 _ => {}
             },
             Ok(Event::Empty(e)) => match local(e.name().as_ref()) {
@@ -846,6 +852,12 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
                     sh.landscape = attr(&e, "orientation").as_deref() == Some("landscape");
                     sh.paper_size = attr(&e, "paperSize").and_then(|v| v.parse().ok());
                     sh.print_scale = attr(&e, "scale").and_then(|v| v.parse().ok());
+                    // 紙 N 枚に収める。0 は「合わせない」なので None に倒す
+                    let n = |k: &str| {
+                        attr(&e, k).and_then(|v| v.parse::<u32>().ok()).filter(|v| *v > 0)
+                    };
+                    sh.fit_to_w = n("fitToWidth");
+                    sh.fit_to_h = n("fitToHeight");
                 }
                 b"printOptions" => {
                     let on = |k: &str| {
@@ -892,9 +904,18 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
                     a.autofilter = !deny("autoFilter", true);
                     a.pivot = !deny("pivotTables", true);
                 }
+                // 改ページ。**縦(colBreaks)と横(rowBreaks)を取り違えない** —
+                // どちらの中にいるかを見る。縦は読んでいなかったので、Excel で
+                // 入れた列の区切りが開いて保存するだけで消えていた
+                b"rowBreaks" => in_col_breaks = false,
+                b"colBreaks" => in_col_breaks = true,
                 b"brk" => {
                     if let Some(id) = attr(&e, "id").and_then(|v| v.parse().ok()) {
-                        sh.row_breaks.push(id);
+                        if in_col_breaks {
+                            sh.col_breaks.push(id);
+                        } else {
+                            sh.row_breaks.push(id);
+                        }
                     }
                 }
                 b"pageMargins" => {
@@ -2190,6 +2211,7 @@ fn print_extra_xml(orig: &str, sh: &Sheet) -> String {
     let setup = {
         let orig_el = take("<pageSetup");
         if !sh.landscape && sh.paper_size.is_none() && sh.print_scale.is_none()
+            && sh.fit_to_w.is_none() && sh.fit_to_h.is_none()
             && orig_el.is_none()
         {
             None
@@ -2204,10 +2226,19 @@ fn print_extra_xml(orig: &str, sh: &Sheet) -> String {
                 Some(c) => set_attr(&el, "paperSize", &c.to_string()),
                 None => el,
             };
-            Some(match sh.print_scale {
+            let el = match sh.print_scale {
                 Some(sc) => set_attr(&el, "scale", &sc.to_string()),
                 None => el,
-            })
+            };
+            // 紙 N 枚に収める。**片方だけ指定でも両方書く**(0 = 合わせない)
+            // — 書かないと読み手の既定(1)が効いて意図しない縮小になる
+            let el = if sh.fit_to_w.is_some() || sh.fit_to_h.is_some() {
+                let el = set_attr(&el, "fitToWidth", &sh.fit_to_w.unwrap_or(0).to_string());
+                set_attr(&el, "fitToHeight", &sh.fit_to_h.unwrap_or(0).to_string())
+            } else {
+                el
+            };
+            Some(el)
         }
     };
     let mut out = String::new();
@@ -2246,6 +2277,21 @@ fn print_extra_xml(orig: &str, sh: &Sheet) -> String {
             out.push_str(&format!(r#"<brk id="{r}" max="16383" man="1"/>"#));
         }
         out.push_str("</rowBreaks>");
+    }
+    // 縦の改ページ(schema では rowBreaks の後)
+    if !sh.col_breaks.is_empty() {
+        let mut sorted = sh.col_breaks.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        out.push_str(&format!(
+            r#"<colBreaks count="{}" manualBreakCount="{}">"#,
+            sorted.len(),
+            sorted.len()
+        ));
+        for c in sorted {
+            out.push_str(&format!(r#"<brk id="{c}" max="1048575" man="1"/>"#));
+        }
+        out.push_str("</colBreaks>");
     }
     if let Some(d) = take("<drawing") {
         out.push_str(&d);
@@ -4481,6 +4527,26 @@ mod print_extras_roundtrip_tests {
         assert_eq!(sh.row_breaks, vec![10, 30], "改ページが往復しない");
         assert!(sh.print_gridlines && sh.print_headings, "printOptions が往復しない");
         assert_eq!(sh.print_title_rows, Some((0, 1)), "タイトル行が往復しない");
+    }
+
+    #[test]
+    fn 紙に収める指定と縦の改ページが往復する() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
+        b.sheets[0].fit_to_w = Some(1);
+        b.sheets[0].fit_to_h = None; // 横だけ合わせる(縦は何枚でもよい)
+        b.sheets[0].col_breaks = vec![3, 7];
+        b.sheets[0].row_breaks = vec![20];
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let (back, _) = read(buf).expect("読めない");
+        let sh = &back.sheets[0];
+        assert_eq!(sh.fit_to_w, Some(1), "横の枚数が往復しない");
+        assert_eq!(sh.fit_to_h, None, "「合わせない」(0)が枚数に化けた");
+        // **縦と横を取り違えない。** どちらも <brk> なので混ざりやすい
+        assert_eq!(sh.col_breaks, vec![3, 7], "縦の改ページが往復しない");
+        assert_eq!(sh.row_breaks, vec![20], "横の改ページに縦が混ざった");
     }
 }
 

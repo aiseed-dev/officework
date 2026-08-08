@@ -257,6 +257,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "Добавьте разрыв там, где должна начинаться следующая страница в печатной копии.", "pagebreak"),
         c("editheader", "Колонтитулы", "editheader"),
         c("scale", "Вписать", "scale"),
+        c("fit-pages", "Вместить на страницы", "fit-pages"),
         c("printtitles", "Печатать заголовки", "printtitles"),
         c("rtl-sheet", "Переключить направление листа, чтобы первый столбец был справа", "rtl-sheet"),
         c("print-gridlines", "Печатать сетку", "print-gridlines"),

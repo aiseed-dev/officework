@@ -257,6 +257,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "Tambahkan jeda pada tempat yang ingin dijadikan awal halaman selanjutnya pada cetakan", "pagebreak"),
         c("editheader", "Header & Footer", "editheader"),
         c("scale", "Skala ke Fit", "scale"),
+        c("fit-pages", "Paskan ke halaman", "fit-pages"),
         c("printtitles", "Print judul", "printtitles"),
         c("rtl-sheet", "Ubah arah lembar agar kolom pertama di kanan", "rtl-sheet"),
         c("print-gridlines", "Cetak garis kisi", "print-gridlines"),

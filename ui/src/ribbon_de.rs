@@ -257,6 +257,7 @@ pub const CALC: &[Tab] = &[
         c("pagebreak", "Fügen Sie einen Umbruch an der Stelle ein, an der im gedruckten Exemplar die nächste Seite beginnen soll.", "pagebreak"),
         c("editheader", "Kopf- und Fußzeile", "editheader"),
         c("scale", "An Format anpassen", "scale"),
+        c("fit-pages", "An Seiten anpassen", "fit-pages"),
         c("printtitles", "Drucke Titel", "printtitles"),
         c("rtl-sheet", "Ändern Sie die Blattausrichtung, sodass die erste Spalte auf der rechten Seite liegt", "rtl-sheet"),
         c("print-gridlines", "Gitternetzlinien drucken", "print-gridlines"),
