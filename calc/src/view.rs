@@ -4325,6 +4325,7 @@ impl Render for Calc {
             .on_action(cx.listener(Calc::a_context_menu))
             .on_action(cx.listener(Calc::a_cancel))
             .on_action(cx.listener(Calc::a_edit_cell))
+            .on_action(cx.listener(Calc::a_array_enter))
             .on_action(cx.listener(Calc::a_find))
             .on_action(cx.listener(Calc::a_bold))
             .on_action(cx.listener(Calc::a_italic))

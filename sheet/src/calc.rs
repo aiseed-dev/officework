@@ -2989,10 +2989,18 @@ fn recalc_pass_iter(
     // 式を集める。あふれる関数の入った式は「配列数式」として別扱い
     let mut formulas: Vec<(Pos, String)> = Vec::new();
     let mut arrays: Vec<(Pos, String)> = Vec::new();
+    let mut cse_list: Vec<(Pos, String, (u32, u32))> = Vec::new();
     for (p, c) in &sheet.cells {
         let Some(f) = c.formula.as_ref().filter(|f| !is_py_formula(f)) else { continue };
         let f = expand_names(f, &sheet.names);
-        if is_array_formula(&f) {
+        // **昔ながらの配列数式(CSE)は、中身に関わらず配列として計算する。**
+        // =SUM(A1:A3*B1:B3) は普通に計算すると #VALUE! か1組だけの合計に
+        // なってしまう — 古い帳票が静かに違う値になる。
+        // ただし**覆う範囲は人が決めた大きさで固定**なので、あふれる
+        // スピルとは別の列に積む
+        if let Some(size) = sheet.cse.get(p) {
+            cse_list.push((*p, f, *size));
+        } else if is_array_formula(&f) {
             arrays.push((*p, f));
         } else {
             formulas.push((*p, f));
@@ -3173,6 +3181,50 @@ fn recalc_pass_iter(
             }
         }
         new_spills.insert(*origin, (h, w));
+    }
+
+    // **昔ながらの配列数式(CSE)。** 覆う範囲は人が決めた大きさで固定
+    // なので、あふれ先を探さない・#SPILL! にもしない。答えがその範囲より
+    // 小さければ足りない席は #N/A(Excel と同じ)、大きければ切る。
+    // 1つの値しか返らない式は範囲いっぱいに配る(これも Excel と同じ)
+    for (origin, f, (h, w)) in &cse_list {
+        let rows = match eval_array(sheet, others, at, f, *origin) {
+            Err(e) => {
+                if let Some(c) = sheet.cells.get_mut(origin) {
+                    if c.value != e && !volatile.contains(origin) {
+                        changed = true;
+                    }
+                    c.value = e;
+                }
+                continue;
+            }
+            Ok(r) => r,
+        };
+        let one = if rows.len() == 1 && rows[0].len() == 1 { rows[0].first().cloned() } else { None };
+        for r in 0..*h {
+            for c in 0..*w {
+                let p = Pos::new(origin.row + r, origin.col + c);
+                let v = match &one {
+                    Some(v) => v.clone(),
+                    None => rows
+                        .get(r as usize)
+                        .and_then(|row| row.get(c as usize))
+                        .cloned()
+                        .unwrap_or_else(|| Value::Error("#N/A".into())),
+                };
+                if p == *origin {
+                    if let Some(cell) = sheet.cells.get_mut(origin) {
+                        if cell.value != v && !volatile.contains(origin) {
+                            changed = true;
+                        }
+                        cell.value = v;
+                    }
+                } else {
+                    written.insert(p);
+                    writes.push((p, v));
+                }
+            }
+        }
     }
     // 掃除: 前回の影のうち、今回書かない席だけ空にする(書式は残す)
     for p in &freed {

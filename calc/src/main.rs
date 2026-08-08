@@ -527,6 +527,11 @@ impl Calc {
                 s = format!("={}", sheet::model::formula_to_r1c1(body, self.cursor));
             }
         }
+        // **昔ながらの配列数式は { } で囲んで見せる。** 普通の式と
+        // 見分けがつかないと、直そうとして Enter で潰してしまう
+        if self.sheet().cse.contains_key(&self.cursor) && s.starts_with('=') {
+            s = format!("{{{s}}}");
+        }
         self.input = Editor::new(&s);
         self.edit_armed = false; // セルを移った=編集は仕切り直し
         if self.pick_kind == "fn-complete" {
@@ -2061,10 +2066,25 @@ impl Calc {
                 text = format!("={}", sheet::model::formula_from_r1c1(body, cur));
             }
         }
+        // { } は見せるための飾り(配列数式の印)。中身は = から始まる式
+        if text.starts_with("{=") && text.ends_with('}') {
+            text = text[1..text.len() - 1].to_string();
+        }
         // 変わっていなければ何もしない(移動のたびに履歴が積まれるのを防ぐ)
         let now = self.sheet().get(cur).map(|c| c.editable()).unwrap_or_default();
         if now == text {
             return true;
+        }
+        // **配列数式の一部は書き換えさせない**(Excel と同じ)。
+        // 黙って普通の式に落とすと、範囲の残りが古い値のまま取り残される
+        if let Some(o) = self.sheet().cse_anchor(cur) {
+            self.sync_input();
+            self.status = ui::tf!(
+                "{} からの配列数式の一部です。変えるには範囲を選び直して Ctrl+Shift+Enter(消すなら範囲を選んで Delete)",
+                o.a1()
+            )
+            .into();
+            return false;
         }
         // シートの保護。打ちかけは捨てて元に戻す(黙って通さない)。
         // **セル単位のロックを見る** — ロックを外したセルは保護中でも書ける
@@ -2346,11 +2366,60 @@ impl Calc {
             cx.notify();
             return;
         }
-        if self.sheet().protected {
-            self.status =
-                ui::t!("シートが保護されています(保護タブの「シートを保護する」で解除)").into();
+        if self.cell_locked(self.cursor) || self.sel_locked() {
+            self.status = Self::protected_msg().into();
             cx.notify();
             return;
+        }
+        // **配列数式は範囲ごと消す**(Excel と同じ)。一部だけ消すと、
+        // 残りが古い値のまま取り残されて帳票が静かに嘘をつく
+        {
+            let (a, b) = self.sel_rect();
+            let hit: Vec<Pos> = self
+                .sheet()
+                .cse
+                .iter()
+                .filter(|(o, (h, w))| {
+                    // 選んだ範囲と配列の範囲が重なっているか
+                    !(o.row + h - 1 < a.row || o.row > b.row
+                        || o.col + w - 1 < a.col || o.col > b.col)
+                })
+                .map(|(o, _)| *o)
+                .collect();
+            if !hit.is_empty() {
+                let covered = hit.iter().all(|o| {
+                    let (h, w) = self.sheet().cse[o];
+                    o.row >= a.row && o.col >= a.col
+                        && o.row + h - 1 <= b.row && o.col + w - 1 <= b.col
+                });
+                if !covered {
+                    self.status = ui::t!(
+                        "配列数式の一部だけは消せません(範囲ぜんぶを選んでから Delete)"
+                    )
+                    .into();
+                    cx.notify();
+                    return;
+                }
+                self.checkpoint();
+                for o in hit {
+                    let (h, w) = self.sheet_mut().cse.remove(&o).unwrap_or((1, 1));
+                    for r in o.row..o.row + h {
+                        for c in o.col..o.col + w {
+                            let p = Pos::new(r, c);
+                            if let Some(cell) = self.sheet_mut().cells.get_mut(&p) {
+                                cell.formula = None;
+                                cell.value = sheet::Value::Empty;
+                            }
+                        }
+                    }
+                }
+                self.dirty = true;
+                recalc_book(&mut self.book, self.active);
+                self.sync_input();
+                self.status = ui::t!("配列数式を消しました(Ctrl+Z で戻せます)").into();
+                cx.notify();
+                return;
+            }
         }
         if let Some(i) = self.shape_sel.take() {
             // 束ねた選択(Ctrl+クリック)があればまとめて消す。
@@ -2685,6 +2754,54 @@ impl Calc {
         }
         cx.notify();
     }
+    /// Ctrl+Shift+Enter = **昔ながらの配列数式**。選んだ範囲に同じ式を
+    /// 入れ、範囲いっぱいに答えを配る。範囲を選んでいなければ今のセル1つ。
+    ///
+    /// 動的配列(FILTER などのスピル)がある今でもこれが要るのは、
+    /// **古い帳票がこの形で書かれている**から。読めて書けて、同じ手で
+    /// 直せないと乗り換えられない。
+    fn a_array_enter(&mut self, _: &ui::ArrayEnter, _: &mut Window, cx: &mut Context<Self>) {
+        let text = self.input.text().to_string();
+        self.set_array_formula(&text, cx);
+    }
+
+    /// 選んでいる範囲に配列数式を入れる(Ctrl+Shift+Enter の中身)。
+    /// 窓を要らない形にして、画面なしの試験からも呼べるようにしてある
+    pub(crate) fn set_array_formula(&mut self, text: &str, cx: &mut Context<Self>) {
+        let text = text.to_string();
+        if !text.starts_with('=') {
+            self.status =
+                ui::t!("配列数式は「=」で始まる式にだけ使えます(Ctrl+Shift+Enter)").into();
+            cx.notify();
+            return;
+        }
+        if self.cell_locked(self.cursor) {
+            self.status = Self::protected_msg().into();
+            cx.notify();
+            return;
+        }
+        let (a, b) = self.sel_rect();
+        let (h, w) = (b.row - a.row + 1, b.col - a.col + 1);
+        self.checkpoint();
+        // 起点に式、覆う範囲を控える。範囲の残りは計算が埋める
+        let mut c = self.sheet().get(a).cloned().unwrap_or_default();
+        c.formula = Some(text[1..].to_string());
+        self.book.sheets[self.active].set(a, c);
+        self.book.sheets[self.active].cse.insert(a, (h, w));
+        self.cursor = a;
+        self.anchor = None;
+        self.dirty = true;
+        recalc_book(&mut self.book, self.active);
+        self.sync_input();
+        self.status = ui::tf!(
+            "{}:{} に配列数式を入れました(数式バーでは {{ }} で囲んで見せます)",
+            a.a1(),
+            b.a1()
+        )
+        .into();
+        cx.notify();
+    }
+
     fn a_enter(&mut self, _: &ui::Enter, _: &mut Window, cx: &mut Context<Self>) {
         if self.quit_ask {
             // Enter = 保存して終了(いちばん安全な既定)

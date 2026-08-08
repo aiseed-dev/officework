@@ -3427,6 +3427,70 @@ mod track_changes_tests {
 }
 
 #[cfg(test)]
+mod cse_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn 範囲を選んで配列数式を入れると範囲いっぱいに答えが入る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for i in 0..3u32 {
+                this.book.sheets[0]
+                    .set(Pos::new(i, 0), sheet::Cell::input(&((i + 1) * 2).to_string()));
+            }
+            // C1:C3 を選んで =A1:A3*10 を配列で入れる
+            this.cursor = Pos::parse("C1").unwrap();
+            this.anchor = Some(Pos::parse("C3").unwrap());
+            this.set_array_formula("=A1:A3*10", cx);
+
+            let at = Pos::parse("C1").unwrap();
+            assert_eq!(this.book.sheets[0].cse.get(&at), Some(&(3, 1)), "配列の印が付かない");
+            for (a1, want) in [("C1", "20"), ("C2", "40"), ("C3", "60")] {
+                let p = Pos::parse(a1).unwrap();
+                assert_eq!(
+                    this.book.sheets[0].get(p).unwrap().value.display(),
+                    want,
+                    "{a1} が違う"
+                );
+            }
+            // 数式バーでは { } で囲んで見せる(普通の式と見分けられるように)
+            this.cursor = at;
+            this.sync_input();
+            assert_eq!(this.input.text(), "{=A1:A3*10}", "配列数式の印が見えない");
+        });
+    }
+
+    #[gpui::test]
+    fn 配列数式の一部は書き換えられない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for i in 0..3u32 {
+                this.book.sheets[0].set(Pos::new(i, 0), sheet::Cell::input("2"));
+            }
+            this.cursor = Pos::parse("C1").unwrap();
+            this.anchor = Some(Pos::parse("C3").unwrap());
+            this.set_array_formula("=A1:A3*10", cx);
+
+            // 真ん中のセルを普通に書き換えようとする → 断られる
+            this.cursor = Pos::parse("C2").unwrap();
+            this.input = Editor::new("999");
+            assert!(!this.commit(), "配列の一部が書き換えられてしまった");
+            assert_eq!(
+                this.book.sheets[0].get(Pos::parse("C2").unwrap()).unwrap().value.display(),
+                "20",
+                "値が変わってしまった"
+            );
+            assert!(this.status.contains("配列数式の一部"), "理由を言っていない: {}", this.status);
+
+            // **範囲ぜんぶを選べば消せる**
+            this.cursor = Pos::parse("C1").unwrap();
+            this.anchor = Some(Pos::parse("C3").unwrap());
+            this.sync_input();
+        });
+    }
+}
+
+#[cfg(test)]
 mod csv_out_tests {
     use crate::*;
 

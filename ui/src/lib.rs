@@ -180,6 +180,9 @@ actions!(
         // 文字飾りの割り当て(本家 Ctrl+B/I/U/5)。**calc と writer の
         // 両方に受け口がある** — 片方だけだと「キーの嘘」になる
         Bold, Italic, Underline, Strikeout,
+        /// 昔ながらの配列数式を入れる(Ctrl+Shift+Enter)。**calc だけ**が
+        /// 受け口を持つ — writer には表の配列という考えが無い
+        ArrayEnter,
     ]
 );
 
@@ -220,6 +223,8 @@ pub fn bindings(context: &'static str) -> Vec<KeyBinding> {
         KeyBinding::new("home", Home, Some(context)),
         KeyBinding::new("end", End, Some(context)),
         KeyBinding::new("enter", Enter, Some(context)),
+        // 昔ながらの配列数式(CSE)。選んだ範囲に同じ式を配列として入れる
+        KeyBinding::new("ctrl-shift-enter", ArrayEnter, Some(context)),
         KeyBinding::new("up", Up, Some(context)),
         KeyBinding::new("down", Down, Some(context)),
         KeyBinding::new("tab", Tab, Some(context)),

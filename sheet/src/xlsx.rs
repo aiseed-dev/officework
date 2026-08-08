@@ -818,7 +818,23 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
                     v.clear(); f.clear();
                 }
                 b"v" => in_v = true,
-                b"f" => in_f = true,
+                b"f" => {
+                    in_f = true;
+                    // 昔ながらの配列数式(CSE)。**覆う範囲は式でなく人が
+                    // 決める**ので、その範囲をここで覚える
+                    if attr(&e, "t").as_deref() == Some("array") {
+                        if let (Some(p), Some(r)) = (pos, attr(&e, "ref")) {
+                            let mut it = r.split(':');
+                            let a = it.next().and_then(Pos::parse);
+                            let b = it.next().and_then(Pos::parse).or(a);
+                            if let (Some(a), Some(b)) = (a, b) {
+                                let h = b.row.saturating_sub(a.row) + 1;
+                                let w = b.col.saturating_sub(a.col) + 1;
+                                sh.cse.insert(p, (h, w));
+                            }
+                        }
+                    }
+                }
                 b"is" => in_is = true,
                 b"mergeCell" => merge(&e, &mut sh),
                 b"col" => col_width(&e, &mut sh),
@@ -3154,7 +3170,18 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 }
                 w.write_event(Event::Start(ce)).unwrap();
                 if let Some(f) = &c.formula {
-                    w.write_event(Event::Start(BytesStart::new("f"))).unwrap();
+                    let mut fe = BytesStart::new("f");
+                    // 昔ながらの配列数式は t="array" と覆う範囲を添えて返す。
+                    // **返さないと、開いて保存しただけで普通の式に落ちる**
+                    if let Some((h, wd)) = sh.cse.get(p) {
+                        let end = Pos::new(p.row + h - 1, p.col + wd - 1);
+                        fe.push_attribute(("t", "array"));
+                        fe.push_attribute((
+                            "ref",
+                            format!("{}:{}", p.a1(), end.a1()).as_str(),
+                        ));
+                    }
+                    w.write_event(Event::Start(fe)).unwrap();
                     w.write_event(Event::Text(BytesText::new(f))).unwrap();
                     w.write_event(Event::End(BytesEnd::new("f"))).unwrap();
                 }
@@ -4569,6 +4596,64 @@ mod print_extras_roundtrip_tests {
         assert_eq!(sh.row_breaks, vec![10, 30], "改ページが往復しない");
         assert!(sh.print_gridlines && sh.print_headings, "printOptions が往復しない");
         assert_eq!(sh.print_title_rows, Some((0, 1)), "タイトル行が往復しない");
+    }
+
+    #[test]
+    fn 昔ながらの配列数式が往復して正しく計算される() {
+        // **これが読めないと古い帳票が静かに違う値になる。**
+        // =SUM(A1:A3*B1:B3) は普通に計算すると配列にならない
+        let mut b = Book::new();
+        for (i, (x, y)) in [(1.0, 10.0), (2.0, 20.0), (3.0, 30.0)].iter().enumerate() {
+            b.sheets[0].set(Pos::new(i as u32, 0), Cell::input(&x.to_string()));
+            b.sheets[0].set(Pos::new(i as u32, 1), Cell::input(&y.to_string()));
+        }
+        let at = Pos::parse("D1").unwrap();
+        b.sheets[0].set(at, Cell::input("=SUM(A1:A3*B1:B3)"));
+        b.sheets[0].cse.insert(at, (1, 1));
+        crate::recalc(&mut b.sheets[0]);
+        // 1*10 + 2*20 + 3*30 = 140
+        assert_eq!(b.sheets[0].get(at).unwrap().value.display(), "140",
+                   "配列として計算されていない");
+
+        // xlsx を往復しても配列数式のままか(落ちると次の計算で値が変わる)
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let bytes = buf.into_inner();
+        let x = {
+            let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+            let mut f = z.by_name("xl/worksheets/sheet1.xml").unwrap();
+            let mut out = String::new();
+            std::io::Read::read_to_string(&mut f, &mut out).unwrap();
+            out
+        };
+        assert!(x.contains(r#"t="array""#), "t=\"array\" が書かれていない");
+        assert!(x.contains(r#"ref="D1:D1""#), "覆う範囲が書かれていない");
+        let (back, _) = read(Cursor::new(bytes)).expect("読めない");
+        assert_eq!(back.sheets[0].cse.get(&at), Some(&(1, 1)), "配列数式の印が往復しない");
+        let mut b2 = back;
+        crate::recalc(&mut b2.sheets[0]);
+        assert_eq!(b2.sheets[0].get(at).unwrap().value.display(), "140",
+                   "往復したら値が変わった");
+    }
+
+    #[test]
+    fn 配列数式は決められた範囲に収まり足りない席はNAになる() {
+        let mut b = Book::new();
+        for i in 0..3u32 {
+            b.sheets[0].set(Pos::new(i, 0), Cell::input(&((i + 1) * 2).to_string()));
+        }
+        // 3つしか返らない式を5つぶんの範囲に入れた(Excel は #N/A で埋める)
+        let at = Pos::parse("C1").unwrap();
+        b.sheets[0].set(at, Cell::input("=A1:A3*10"));
+        b.sheets[0].cse.insert(at, (5, 1));
+        crate::recalc(&mut b.sheets[0]);
+        assert_eq!(b.sheets[0].get(at).unwrap().value.display(), "20");
+        assert_eq!(b.sheets[0].get(Pos::parse("C3").unwrap()).unwrap().value.display(), "60");
+        assert_eq!(
+            b.sheets[0].get(Pos::parse("C4").unwrap()).unwrap().value.display(),
+            "#N/A",
+            "足りない席が埋まっていない"
+        );
     }
 
     #[test]

@@ -337,7 +337,15 @@ calc と突き合わせた結果の**全量**。要約と消し込みの順番�
 
 ### 関数B(2件)
 
-- **[中] レガシー配列数式(範囲選択→数式入力→Ctrl+Shift+Enterで確定、セル範囲全体に同じ式が入り数式バーに{}表示される旧来型CSE配列数式)**(InsertArrayFormulas.aspx)
+- ✔(2026-08-09 実装。**読めないことの方が重かった** — `<f t="array" ref=>`
+  を無視していたので、古い帳票の `=SUM(A1:A3*B1:B3)` が普通の式として
+  計算され、**黙って違う値になっていた**。
+  読み・計算・書き戻しを通し、Ctrl+Shift+Enter で入れられるようにした。
+  数式バーは `{ }` で囲んで見せる。**配列の一部は書き換えも一部削除も
+  断る**(Excel と同じ。黙って普通の式に落とすと残りが古い値のまま残る)。
+  答えが範囲より小さければ #N/A で埋め、1つしか返らなければ範囲いっぱいに
+  配る。試験5本)
+  **[中] レガシー配列数式(範囲選択→数式入力→Ctrl+Shift+Enterで確定、セル範囲全体に同じ式が入り数式バーに{}表示される旧来型CSE配列数式)**(InsertArrayFormulas.aspx)
   - 本家: セル範囲を選択し数式バーに数式を入力後、Ctrl+Shift+Enterを押すと選択範囲全体に配列数式として入り、数式が{}で囲まれる。編集時も再度Ctrl+Shift+Enterで確定。全消去時はセル全選択でDelete。
   - calc: calc/src/main.rs:1976 a_enter は quit_ask/name_edit/fn_args/fn_dlg/solver/prompt/shape_sel の分岐のみで、Shift+EnterやCtrl+Shift+Enterの特別処理は無い。Enterキーは常に move_cursor(1,0) に落ちる。sheet/src/calc.rs:2479 ARRAY_FNS は FILTER/SORT/UNIQUE/SEQUENCE/TRANSPOSE の5つの動的配列(スピル)関数のみを「配列数式」として自動判定する独自方式(sheet/src/calc.rs:2777 is_array_formula)であり、本家のCSE型配列数式とは仕組みが異なる。
 - **[小] パーセント書式のショートカットキー Ctrl+Shift+%**(Calculate-percentages.aspx)

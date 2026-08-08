@@ -599,6 +599,27 @@ pub struct Sheet {
     /// これが無いと、開き直したとき自分のスピル跡を他人のデータと
     /// 見分けられず、偽の #SPILL! になる
     pub spills: std::collections::BTreeMap<Pos, (u32, u32)>,
+    /// **昔ながらの配列数式(CSE)。** 起点 → 覆う大きさ(行, 列)。
+    ///
+    /// Excel で範囲を選んで Ctrl+Shift+Enter で入れたもの。xlsx では
+    /// `<f t="array" ref="A1:C3">` と書かれ、**範囲の大きさは式が決めるの
+    /// ではなく人が決める**(スピルとはそこが違う)。
+    ///
+    /// 読めないと `=SUM(A1:A3*B1:B3)` のような式が普通の式として計算され、
+    /// **黙って違う値になる**(#VALUE! か、掛け算の1組だけの合計)。
+    /// 古い帳票にはよく入っているので、読めることが乗り換えの条件になる。
+    pub cse: std::collections::BTreeMap<Pos, (u32, u32)>,
+}
+
+impl Sheet {
+    /// この席が昔ながらの配列数式の中なら、その起点を返す。
+    /// **配列の一部だけを書き換えさせない**ための見張りに使う
+    pub fn cse_anchor(&self, p: Pos) -> Option<Pos> {
+        self.cse.iter().find_map(|(o, (h, w))| {
+            (p.row >= o.row && p.row < o.row + h && p.col >= o.col && p.col < o.col + w)
+                .then_some(*o)
+        })
+    }
 }
 
 /// シートに浮かぶ図形。**中身はベクタ**(発注者案 2026-08-04: SVG で作る —
