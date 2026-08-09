@@ -6,7 +6,8 @@ machine and without Excel.
 
 Written in Rust (15,000+ lines, 240+ tests), exposed to Python through PyO3.
 
-日本語は下にあります (Japanese below).
+日本語の説明は GitHub にあります (Japanese documentation on GitHub):
+[README.ja.md](https://github.com/aiseed-dev/officework/blob/main/README.ja.md)
 
 ## Install
 
@@ -74,19 +75,13 @@ network service.
 
 ## 日本語
 
-**帳票を壊さない xlsx エンジン**と、**動いているオフィスソフトを Python から
-操る橋**です。`xlwings` の使い勝手を、Excel なしで、手元だけで。
+**帳票を壊さない xlsx エンジン**です。`openpyxl` と違い、罫線・結合・列幅・
+図形を保ったまま値を差し込めます。読めなかった物は `b.unsupported` に出るので、
+黙って落ちることはありません。
 
 ```console
 $ pip install officework
 ```
-
-**エンジンにアプリは要りません**(橋のほうだけ要ります)。
-
-`openpyxl` は理解できない部品を書き直すので、罫線・結合・列幅・図形が戻って
-きません。日本の事務の表計算は「印刷する様式」なので、そこが壊れると使えない。
-このエンジンは**原本を正として、変えた所だけ書き戻します**。読めなかった物は
-`b.unsupported` に出るので、黙って落ちることはありません。
 
 ```python
 from officework import sheet
@@ -94,6 +89,12 @@ b = sheet.Book.open("様式7.xlsx")
 b["提案見積書"]["A30"] = "日本フネン株式会社"   # 書式は据え置き
 b.save("out.xlsx")
 ```
+
+詳しい説明は GitHub にあります。
+
+- [README.ja.md](https://github.com/aiseed-dev/officework/blob/main/README.ja.md) — 全体
+- [Python の手引き](https://github.com/aiseed-dev/officework/blob/main/docs/python-manual.ja.md) — 範囲⇄配列・=PY・サンドボックス
+- [Excel からの乗り換え](https://github.com/aiseed-dev/officework/blob/main/docs/from-excel.ja.md)
 
 ライセンスは **AGPL-3.0-or-later**。**社内で使う分に義務はありません**
 (帳票を作る・台帳を回す・スクリプトを書く・社内に配る、いずれも自由)。
