@@ -838,18 +838,33 @@ pub(crate) fn refresh_udfs() -> Vec<String> {
     clash
 }
 
-/// plugins の置き場が最後に変わった時刻。ここが動いたら登録簿を作り直す。
-static PLUGINS_MTIME: std::sync::Mutex<Option<std::time::SystemTime>> =
+/// plugins を最後に見たときの姿。**置き場の時刻だけでは足りない** —
+/// 中の .py を書き換えても置き場の時刻は動かないので(項目の出入りでしか
+/// 動かない)、**1つ1つの名前・大きさ・時刻**を見る。
+static PLUGINS_SEEN: std::sync::Mutex<Option<Vec<(String, u64, std::time::SystemTime)>>> =
     std::sync::Mutex::new(None);
+
+/// いまの plugins の姿(名前, 大きさ, 最終更新)。
+fn plugins_shape() -> Vec<(String, u64, std::time::SystemTime)> {
+    let mut v: Vec<_> = plugin_modules()
+        .into_iter()
+        .filter_map(|m| {
+            let md = std::fs::metadata(plugins_dir().join(format!("{m}.py"))).ok()?;
+            Some((m, md.len(), md.modified().ok()?))
+        })
+        .collect();
+    v.sort();
+    v
+}
 
 /// plugins が変わっていれば登録簿を作り直す。返りは作り直したか。
 pub(crate) fn refresh_udfs_if_changed() -> bool {
-    let now = std::fs::metadata(plugins_dir()).and_then(|m| m.modified()).ok();
-    let Ok(mut last) = PLUGINS_MTIME.lock() else { return false };
-    if *last == now && last.is_some() {
+    let now = plugins_shape();
+    let Ok(mut last) = PLUGINS_SEEN.lock() else { return false };
+    if last.as_ref() == Some(&now) {
         return false;
     }
-    *last = now;
+    *last = Some(now);
     drop(last);
     refresh_udfs();
     true
@@ -864,9 +879,12 @@ pub(crate) fn start_udf_watch(view: gpui::Entity<Calc>, cx: &mut gpui::App) {
                 .timer(std::time::Duration::from_millis(200))
                 .await;
             view.update(cx, |calc, cx| {
-                // plugins に .py が増えれば、式の見え方(どれが UDF か)が変わる
+                // plugins が変われば、式の見え方(どれが UDF か)も、関数の
+                // 中身も変わる。**指紋を捨てて計算し直させる** — 引数が同じ
+                // ままでも、関数の中身が変わっていれば答えは変わるため
                 if refresh_udfs_if_changed() {
                     sheet::recalc_all(&mut calc.book);
+                    calc.udf_stamp.clear();
                     cx.notify();
                 }
                 calc.udf_tick(cx);

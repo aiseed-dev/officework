@@ -30,6 +30,7 @@ mod funcs;
 mod util;
 pub(crate) use util::*;
 mod py;
+mod pyedit;
 pub(crate) use py::*;
 mod io;
 pub(crate) use io::*;
@@ -136,6 +137,10 @@ struct Calc {
     udf_stamp: Vec<u64>,
     /// UDF の計算が走っている最中(二重に走らせない)
     udf_busy: bool,
+    /// plugins の .py を編集している面(zed 側の半分。pyedit.rs)
+    py_edit: Option<pyedit::PyEdit>,
+    /// 書きかけのまま閉じようとした = 一度断った(もう一度 Esc で捨てる)
+    py_edit_ask: bool,
     /// plugins の手続きが走っている最中。この間 rpc の書き込みは undo の節目を
     /// 作らない — 手続きが何回セルを書いても **Ctrl+Z 一回で戻る**
     rpc_batch: bool,
@@ -293,6 +298,10 @@ impl HasEditor for Calc {
     // 小さな入力のパネル(名前の定義など)・ソルバーの小窓が開いている間は、
     // 打鍵(IME含む)はそこへ
     fn editor(&mut self) -> &mut Editor {
+        // .py の編集面が開いている間は、打鍵は全部そこへ
+        if let Some(p) = &mut self.py_edit {
+            return &mut p.ed;
+        }
         if let Some(ed) = &mut self.name_edit {
             return ed;
         }
@@ -320,6 +329,9 @@ impl HasEditor for Calc {
         }
     }
     fn editor_ref(&self) -> &Editor {
+        if let Some(p) = &self.py_edit {
+            return &p.ed;
+        }
         if let Some(ed) = &self.name_edit {
             return ed;
         }
@@ -415,6 +427,8 @@ impl Calc {
             py_spills: Default::default(),
             udf_stamp: Vec::new(),
             udf_busy: false,
+            py_edit: None,
+            py_edit_ask: false,
             rpc_batch: false,
             trace: Vec::new(),
             my_lock: None,
@@ -2514,6 +2528,17 @@ impl Calc {
         self.copy_now(cx)
     }
     fn copy_now(&mut self, cx: &mut Context<Self>) {
+        // .py の編集面が開いている間は、表のセルには一切触らない
+        if let Some(p) = &self.py_edit {
+            let sel = p.ed.selection();
+            if sel.start != sel.end {
+                let t = p.ed.text()[sel].to_string();
+                cx.write_to_clipboard(gpui::ClipboardItem::new_string(t));
+                self.status = ui::t!("コードをコピーしました").into();
+            }
+            cx.notify();
+            return;
+        }
         if self.input.has_selection() {
             // 数式バーの文字を選んでいるなら、その文字のコピー
             let sel = self.input.selection();
@@ -2548,6 +2573,17 @@ impl Calc {
         self.cut_now(cx)
     }
     fn cut_now(&mut self, cx: &mut Context<Self>) {
+        if let Some(p) = &mut self.py_edit {
+            let sel = p.ed.selection();
+            if sel.start != sel.end {
+                let t = p.ed.text()[sel].to_string();
+                cx.write_to_clipboard(gpui::ClipboardItem::new_string(t));
+                p.ed.insert("");
+                p.follow();
+            }
+            cx.notify();
+            return;
+        }
         if self.input.has_selection() {
             let sel = self.input.selection();
             if let Some(s) = self.input.text().get(sel) {
@@ -2578,6 +2614,20 @@ impl Calc {
         self.paste_now(cx)
     }
     fn paste_now(&mut self, cx: &mut Context<Self>) {
+        if self.py_edit.is_some() {
+            let t = cx
+                .read_from_clipboard()
+                .and_then(|c| c.text())
+                .unwrap_or_default();
+            if let Some(p) = &mut self.py_edit {
+                if !t.is_empty() {
+                    p.ed.insert(&t);
+                    p.follow();
+                }
+            }
+            cx.notify();
+            return;
+        }
         if self.sheet().protected {
             self.status =
                 ui::t!("シートが保護されています(保護タブの「シートを保護する」で解除)").into();
@@ -2773,7 +2823,9 @@ impl Calc {
         cx.notify();
     }
     fn a_up(&mut self, _: &ui::Up, _: &mut Window, cx: &mut Context<Self>) {
-        if let Some(a) = &mut self.fn_args {
+        if let Some(p) = &mut self.py_edit {
+            p.move_line(false, false);
+        } else if let Some(a) = &mut self.fn_args {
             a.focus = a.focus.saturating_sub(1);
         } else if let Some(d) = &mut self.fn_dlg {
             d.sel = d.sel.saturating_sub(1);
@@ -2783,7 +2835,9 @@ impl Calc {
         cx.notify();
     }
     fn a_down(&mut self, _: &ui::Down, _: &mut Window, cx: &mut Context<Self>) {
-        if let Some(a) = &mut self.fn_args {
+        if let Some(p) = &mut self.py_edit {
+            p.move_line(true, false);
+        } else if let Some(a) = &mut self.fn_args {
             a.focus = (a.focus + 1).min(a.eds.len().saturating_sub(1));
         } else if let Some(d) = &mut self.fn_dlg {
             let n = fn_filtered(d.search.text(), d.group).len();
@@ -2793,7 +2847,29 @@ impl Calc {
         }
         cx.notify();
     }
+    /// 行頭へ(字の始まり ⇄ 行頭)。**.py の編集面のときだけ働く** —
+    /// 表では Home に持ち場が無いので、今までどおり何もしない
+    fn a_home(&mut self, _: &ui::Home, _: &mut Window, cx: &mut Context<Self>) {
+        if let Some(p) = &mut self.py_edit {
+            p.home(false);
+            cx.notify();
+        }
+    }
+    fn a_end(&mut self, _: &ui::End, _: &mut Window, cx: &mut Context<Self>) {
+        if let Some(p) = &mut self.py_edit {
+            p.end(false);
+            cx.notify();
+        }
+    }
     fn a_tab(&mut self, _: &ui::Tab, _: &mut Window, cx: &mut Context<Self>) {
+        // .py では字下げ(空白4つ)。Python は字下げが構文なので、
+        // タブ文字ではなく空白で入れる
+        if let Some(p) = &mut self.py_edit {
+            p.ed.insert("    ");
+            p.follow();
+            cx.notify();
+            return;
+        }
         if let Some(a) = &mut self.fn_args {
             if !a.eds.is_empty() {
                 a.focus = (a.focus + 1) % a.eds.len();
@@ -2852,6 +2928,12 @@ impl Calc {
     }
 
     fn a_enter(&mut self, _: &ui::Enter, _: &mut Window, cx: &mut Context<Self>) {
+        if let Some(p) = &mut self.py_edit {
+            p.newline();
+            self.py_edit_ask = false;
+            cx.notify();
+            return;
+        }
         if self.quit_ask {
             // Enter = 保存して終了(いちばん安全な既定)
             self.quit_ask = false;
@@ -2923,6 +3005,11 @@ impl Calc {
     /// 全選択の実体。Ctrl+A ともリボンの「すべて選択」とも同じ道を通す
     /// (リボンだけバーの文字選択、という別物にしない)
     fn select_all_now(&mut self) {
+        // .py の編集面が開いていれば、選ぶのは**コードの文字**(表ではない)
+        if let Some(p) = &mut self.py_edit {
+            p.ed.select_all();
+            return;
+        }
         if self.editing() {
             // 打ちかけの間は、バーの文字の全選択
             self.input.select_all();
@@ -2941,12 +3028,24 @@ impl Calc {
         }
     }
     fn a_undo(&mut self, _: &ui::Undo, _: &mut Window, cx: &mut Context<Self>) {
+        if let Some(p) = &mut self.py_edit {
+            p.ed.undo();
+            p.follow();
+            cx.notify();
+            return;
+        }
         if !self.input.undo() {
             self.undo_sheet();
         }
         cx.notify();
     }
     fn a_redo(&mut self, _: &ui::Redo, _: &mut Window, cx: &mut Context<Self>) {
+        if let Some(p) = &mut self.py_edit {
+            p.ed.redo();
+            p.follow();
+            cx.notify();
+            return;
+        }
         if !self.input.redo() {
             self.redo_sheet();
         }

@@ -2332,6 +2332,12 @@ impl Calc {
     }
 
     pub(crate) fn a_cancel(&mut self, _: &ui::Cancel, _: &mut Window, cx: &mut Context<Self>) {
+        // .py の編集面。書きかけがあれば一度断る(黙って捨てない)
+        if self.py_edit.is_some() {
+            self.close_py_edit();
+            cx.notify();
+            return;
+        }
         if self.quit_ask {
             self.quit_ask = false;
             self.status = ui::t!("終了をやめました").into();
@@ -3015,7 +3021,7 @@ impl Calc {
                     let plugs = plugin_outline();
                     let mut msg = if plugs.is_empty() {
                         ui::tf!(
-                            "plugins に .py がありません({} に置くと =PY(\"関数名\", …) と @名前 が使えます)",
+                            "plugins に .py がありません(@edit 名前 で作れます。=PY(\"関数名\", …) と @名前 が使えるようになります)",
                             plugins_dir().display().to_string()
                         )
                         .to_string()
@@ -3052,6 +3058,9 @@ impl Calc {
                     } else {
                         self.status = ui::tf!("「{}」はありません", name).into();
                     }
+                } else if let Some(name) = t.strip_prefix("@edit") {
+                    // plugins の .py を calc の中で開く(zed 側の半分)
+                    self.open_py_edit(name.trim());
                 } else if let Some(name) = t.strip_prefix("@export ") {
                     // 古いブックに載っていたコードの取り出し口(実行はしない。
                     // 中身を見て、良ければ自分で plugins へ置く — それが取り込みの門)

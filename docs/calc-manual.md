@@ -412,6 +412,7 @@ s["A30"] = "Nihon Funen Co., Ltd."   # value only; formatting is left alone
 |---|---|
 | `@module` | run `~/.config/office/plugins/module.py` top to bottom |
 | `@module.func` | call just that function in that .py |
+| `@edit name` | **open that .py for editing inside calc** (creates a starter file if missing) |
 | `@list` (or `@`) | the .py files in plugins and the defs inside them |
 | `@計算` | compute cell functions by hand (normally automatic, so rarely needed) |
 | `@export name` | extract code embedded in an **old** workbook to a .py (never runs it) |
@@ -419,6 +420,22 @@ s["A30"] = "Nihon Funen Co., Ltd."   # value only; formatting is left alone
 
 `@name net` is gone (with no sandbox there is no network distinction). Typing
 it says so.
+
+### Editing a .py inside calc
+
+Type `@edit tools` and `~/.config/office/plugins/tools.py` opens over the sheet.
+If it does not exist yet you get a starter file with one function in it.
+
+- Line numbers, and colouring for `def` names, keywords, strings and comments
+- **Ctrl+S saves, and the cell functions recompute right away** — change a
+  function, save, and watch the sheet move
+- Enter carries the previous line's indent (one level deeper after `:`). Tab
+  inserts four spaces (indentation is syntax in Python, so never a tab character)
+- Home toggles between the first non-blank character and the start of the line
+- Esc closes. **If there are unsaved edits it refuses once** (press Esc again to
+  discard and close)
+- While it is open, Ctrl+A / Ctrl+Z / Ctrl+C / Ctrl+V act on the **code**, not
+  the sheet
 
 ### Opening an old workbook
 

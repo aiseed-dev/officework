@@ -1,0 +1,490 @@
+//! plugins の .py を calc の中で編集する面(2026-08-09 発注者
+//! 「zed と ONLYOFFICE の合体」)。
+//!
+//! **編集の芯は `engine::edit::Editor`**(セル入力・数式バーと同じ物) —
+//! カーソル・選択・undo・IME がそこにある。ここが足すのは
+//! **複数行の見せ方と行き来**(行番号・行の上下・Home/End・Tab)だけ。
+//!
+//! Zed の `editor` クレートは借りない。あれは 16 万行あって project / lsp /
+//! workspace / multi_buffer を引き連れてくる — Zed をほぼ丸ごと持ち込むことに
+//! なる。借りているのは **GPUI**(Zed の描画基盤)で、そこは既に土台。
+//!
+//! **保存すると、その場でシートが計算し直る。** plugins の置き場の時刻が
+//! 動くのを py.rs の見張りが見て、関数の登録簿を作り直し、UDF のセルを
+//! 計算し直す(この一巡が「合体」の実体)。
+
+use crate::*;
+
+/// 編集中の .py。
+pub(crate) struct PyEdit {
+    /// モジュール名(拡張子なし)
+    pub name: String,
+    pub ed: Editor,
+    /// 一番上に見えている行(0 起点)
+    pub top: usize,
+    /// 最後に保存した中身。これと違えば「書きかけ」
+    pub saved: String,
+}
+
+/// 画面に出す行数(パネルの高さに合わせた固定。窓の高さは見ていない)
+pub(crate) const VIEW_LINES: usize = 22;
+
+impl PyEdit {
+    /// 本文を行に割る。**空の末尾行も1行と数える**(打てる場所だから)。
+    pub fn lines(&self) -> Vec<&str> {
+        self.ed.text().split('\n').collect()
+    }
+
+    /// キャレットのある行と、その行頭からの桁(バイト)。
+    pub fn caret(&self) -> (usize, usize) {
+        let cur = self.ed.cursor();
+        let head = self.ed.text()[..cur].rfind('\n').map(|i| i + 1).unwrap_or(0);
+        let row = self.ed.text()[..cur].matches('\n').count();
+        (row, cur - head)
+    }
+
+    /// 行の先頭のバイト位置。
+    fn line_start(&self, row: usize) -> usize {
+        let t = self.ed.text();
+        let mut at = 0;
+        for _ in 0..row {
+            match t[at..].find('\n') {
+                Some(i) => at += i + 1,
+                None => return t.len(),
+            }
+        }
+        at
+    }
+
+    /// 行の長さ(バイト。改行を含まない)。
+    fn line_len(&self, row: usize) -> usize {
+        let st = self.line_start(row);
+        self.ed.text()[st..].find('\n').unwrap_or(self.ed.text().len() - st)
+    }
+
+    /// 上下の行へ。**桁はできるだけ保つ**(行が短ければ行末)。
+    pub fn move_line(&mut self, down: bool, extend: bool) {
+        let (row, col) = self.caret();
+        let n = self.lines().len();
+        let to = if down {
+            if row + 1 >= n {
+                return;
+            }
+            row + 1
+        } else {
+            if row == 0 {
+                return;
+            }
+            row - 1
+        };
+        let st = self.line_start(to);
+        let len = self.line_len(to);
+        // 桁はバイトなので、文字の途中に落ちないよう境界まで下げる
+        let mut c = col.min(len);
+        while c > 0 && !self.ed.text().is_char_boundary(st + c) {
+            c -= 1;
+        }
+        self.ed.move_to(st + c, extend);
+        self.follow();
+    }
+
+    pub fn home(&mut self, extend: bool) {
+        let (row, _) = self.caret();
+        let st = self.line_start(row);
+        // 1回目は字の始まり、もう1回で行頭(Zed / VS Code と同じ作法)
+        let line = &self.ed.text()[st..st + self.line_len(row)];
+        let indent = line.len() - line.trim_start().len();
+        let cur = self.ed.cursor();
+        let to = if cur == st + indent { st } else { st + indent };
+        self.ed.move_to(to, extend);
+    }
+
+    pub fn end(&mut self, extend: bool) {
+        let (row, _) = self.caret();
+        self.ed.move_to(self.line_start(row) + self.line_len(row), extend);
+    }
+
+    /// 改行を入れる。**前の行の字下げを引き継ぐ**(`:` で終わっていれば4つ足す)。
+    pub fn newline(&mut self) {
+        let (row, _) = self.caret();
+        let st = self.line_start(row);
+        let line = self.ed.text()[st..st + self.line_len(row)].to_string();
+        let indent: String = line.chars().take_while(|c| *c == ' ').collect();
+        let deeper = line.trim_end().ends_with(':');
+        let mut ins = String::from("\n");
+        ins.push_str(&indent);
+        if deeper {
+            ins.push_str("    ");
+        }
+        self.ed.insert(&ins);
+        self.follow();
+    }
+
+    /// キャレットが見えるように送る。
+    pub fn follow(&mut self) {
+        let (row, _) = self.caret();
+        if row < self.top {
+            self.top = row;
+        } else if row >= self.top + VIEW_LINES {
+            self.top = row + 1 - VIEW_LINES;
+        }
+    }
+
+    pub fn dirty(&self) -> bool {
+        self.ed.text() != self.saved
+    }
+}
+
+/// 新しい .py の下書き。**関数を1つ置いておく** — 空の画面より、
+/// 直せる例がある方が始めやすい。
+fn skeleton(name: &str) -> String {
+    format!(
+        "# {name}.py — plugins に置く Python\n\
+         # ここに書いた def は、そのままセルから呼べる(=倍(A1) のように)。\n\
+         # 保存すると、その場でシートが計算し直ります。\n\
+         \n\
+         def 倍(x):\n\
+         \x20   return x * 2\n"
+    )
+}
+
+impl Calc {
+    /// plugins の .py を開く(無ければ下書きを置く)。
+    pub(crate) fn open_py_edit(&mut self, name: &str) {
+        let name = name.trim();
+        if name.is_empty() {
+            self.status = ui::t!("@edit 名前 の形で(例: @edit 道具)").into();
+            return;
+        }
+        let path = crate::py::plugins_dir().join(format!("{name}.py"));
+        let text = match std::fs::read_to_string(&path) {
+            Ok(s) => s,
+            Err(_) => skeleton(name),
+        };
+        self.py_edit = Some(PyEdit {
+            name: name.to_string(),
+            ed: Editor::new(&text),
+            top: 0,
+            saved: text.clone(),
+        });
+        // 先頭に置く(開いた瞬間に全部選ばれていると、1打で消える)
+        if let Some(p) = &mut self.py_edit {
+            p.ed.move_to(0, false);
+        }
+        self.status =
+            ui::tf!("{} を開きました(Ctrl+S で保存・Esc で閉じる)", path.display().to_string())
+                .into();
+    }
+
+    /// 書き出す。**保存した時点で見張りが気づき、シートが計算し直る。**
+    pub(crate) fn save_py_edit(&mut self) {
+        let Some(p) = &mut self.py_edit else { return };
+        let dir = crate::py::plugins_dir();
+        if let Err(e) = std::fs::create_dir_all(&dir) {
+            self.status = ui::tf!("plugins の置き場が作れません: {}", e.to_string()).into();
+            return;
+        }
+        let path = dir.join(format!("{}.py", p.name));
+        match std::fs::write(&path, p.ed.text()) {
+            Ok(_) => {
+                p.saved = p.ed.text().to_string();
+                let n = p.name.clone();
+                self.status = ui::tf!("{}.py を保存しました(セルの関数は計算し直ります)", n).into();
+            }
+            Err(e) => self.status = ui::tf!("書けません: {}", e.to_string()).into(),
+        }
+    }
+
+    /// 閉じる。**書きかけがあれば一度断る**(黙って捨てない)。
+    /// もう一度 Esc を押すと捨てて閉じる。
+    pub(crate) fn close_py_edit(&mut self) {
+        let Some(p) = &self.py_edit else { return };
+        if p.dirty() && !self.py_edit_ask {
+            self.py_edit_ask = true;
+            self.status =
+                ui::t!("書きかけがあります。Ctrl+S で保存、もう一度 Esc で捨てて閉じる").into();
+            return;
+        }
+        self.py_edit = None;
+        self.py_edit_ask = false;
+        self.status = ui::t!("閉じました").into();
+    }
+}
+
+// ---------- 色分け ----------
+
+/// 一続きの文字と、その種類。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum Tok {
+    Plain,
+    Keyword,
+    Str,
+    Comment,
+    Num,
+    /// def / class の直後の名前(**セルから呼べる名前**なので目立たせる)
+    DefName,
+}
+
+const KEYWORDS: &[&str] = &[
+    "def", "class", "return", "if", "elif", "else", "for", "while", "in", "not",
+    "and", "or", "import", "from", "as", "with", "try", "except", "finally",
+    "raise", "lambda", "yield", "pass", "break", "continue", "global", "None",
+    "True", "False", "is", "del", "assert", "async", "await",
+];
+
+/// 1行を色分けする。**行をまたぐ文字列("""…""")は追わない** — 見せ方の
+/// 割り切り(間違って色が付いても中身は壊れない)。
+pub(crate) fn colorize(line: &str) -> Vec<(String, Tok)> {
+    let b: Vec<char> = line.chars().collect();
+    let mut out: Vec<(String, Tok)> = Vec::new();
+    let mut plain = String::new();
+    let mut i = 0;
+    let mut after_def = false;
+    let push = |out: &mut Vec<(String, Tok)>, plain: &mut String| {
+        if !plain.is_empty() {
+            out.push((std::mem::take(plain), Tok::Plain));
+        }
+    };
+    while i < b.len() {
+        let c = b[i];
+        if c == '#' {
+            push(&mut out, &mut plain);
+            out.push((b[i..].iter().collect(), Tok::Comment));
+            return out;
+        }
+        if c == '"' || c == '\'' {
+            push(&mut out, &mut plain);
+            let mut j = i + 1;
+            while j < b.len() && b[j] != c {
+                j += 1;
+            }
+            let end = (j + 1).min(b.len());
+            out.push((b[i..end].iter().collect(), Tok::Str));
+            i = end;
+            continue;
+        }
+        if c.is_alphanumeric() || c == '_' {
+            let st = i;
+            while i < b.len() && (b[i].is_alphanumeric() || b[i] == '_') {
+                i += 1;
+            }
+            let w: String = b[st..i].iter().collect();
+            push(&mut out, &mut plain);
+            let kind = if after_def {
+                after_def = false;
+                Tok::DefName
+            } else if KEYWORDS.contains(&w.as_str()) {
+                if w == "def" || w == "class" {
+                    after_def = true;
+                }
+                Tok::Keyword
+            } else if w.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+                Tok::Num
+            } else {
+                Tok::Plain
+            };
+            out.push((w, kind));
+            continue;
+        }
+        plain.push(c);
+        i += 1;
+    }
+    push(&mut out, &mut plain);
+    out
+}
+
+pub(crate) fn tok_color(t: Tok) -> gpui::Rgba {
+    match t {
+        Tok::Keyword => rgb(0x0F62A8),
+        Tok::Str => rgb(0xA3324A),
+        Tok::Comment => rgb(0x7A8590),
+        Tok::Num => rgb(0x1B6E3C),
+        Tok::DefName => rgb(0x6A3AB2),
+        Tok::Plain => rgb(0x1B1B1B),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn p(text: &str) -> PyEdit {
+        PyEdit { name: "試".into(), ed: Editor::new(text), top: 0, saved: text.into() }
+    }
+
+    #[test]
+    fn 行と桁を数える() {
+        let mut e = p("abc\ndef\n");
+        e.ed.move_to(5, false); // 2行目の 1 桁目
+        assert_eq!(e.caret(), (1, 1));
+        // 末尾の空行も1行と数える(打てる場所だから)
+        assert_eq!(e.lines().len(), 3);
+    }
+
+    #[test]
+    fn 上下の行で桁を保つ() {
+        let mut e = p("abcdef\nxy\nghijkl");
+        e.ed.move_to(5, false); // 1行目の 5 桁目
+        e.move_line(true, false);
+        assert_eq!(e.caret(), (1, 2), "短い行では行末に落ちる");
+        e.move_line(true, false);
+        assert_eq!(e.caret().0, 2);
+        // 一番上より上・一番下より下へは行かない
+        e.ed.move_to(0, false);
+        e.move_line(false, false);
+        assert_eq!(e.caret(), (0, 0));
+    }
+
+    #[test]
+    fn 日本語の行でも桁が壊れない() {
+        // バイトで持っているので、文字の途中に落ちると即座に化ける
+        let mut e = p("あいうえお\nか");
+        e.end(false);
+        e.move_line(true, false);
+        let (r, c) = e.caret();
+        assert_eq!(r, 1);
+        assert!(e.ed.text().is_char_boundary(e.ed.cursor()), "文字の途中に落ちた: 桁 {c}");
+    }
+
+    #[test]
+    fn 改行で字下げを引き継ぐ() {
+        let mut e = p("def f(x):");
+        e.end(false);
+        e.newline();
+        assert_eq!(e.ed.text(), "def f(x):\n    ", ": の後は4つ深くする");
+        e.ed.insert("return x");
+        e.newline();
+        assert_eq!(e.ed.text(), "def f(x):\n    return x\n    ", "字下げを引き継ぐ");
+    }
+
+    #[test]
+    fn homeは字の始まりと行頭を行き来する() {
+        let mut e = p("    return x");
+        e.end(false);
+        e.home(false);
+        assert_eq!(e.ed.cursor(), 4, "1回目は字の始まり");
+        e.home(false);
+        assert_eq!(e.ed.cursor(), 0, "2回目は行頭");
+    }
+
+    #[test]
+    fn 色分け() {
+        let v = colorize("def 倍(x):  # 二倍");
+        assert_eq!(v[0], ("def".into(), Tok::Keyword));
+        assert_eq!(v[1].1, Tok::Plain); // 空白
+        assert_eq!(v[2], ("倍".into(), Tok::DefName), "セルから呼べる名前を目立たせる");
+        assert!(v.iter().any(|(s, t)| *t == Tok::Comment && s.contains("二倍")));
+        // 文字列は閉じていなくても行末まで
+        let v = colorize("s = \"開いたまま");
+        assert!(v.iter().any(|(_, t)| *t == Tok::Str));
+    }
+
+    #[test]
+    fn 書きかけが分かる() {
+        let mut e = p("a");
+        assert!(!e.dirty());
+        e.ed.insert("b");
+        assert!(e.dirty(), "書きかけを見落とすと黙って捨てることになる");
+    }
+}
+
+/// .py の編集面を描く。**表の上に大きく重ねる**(パネルの作法は
+/// 他の小窓と同じ — 外側の受け皿は聞き手を持たない)。
+pub(crate) fn panel(
+    p: &PyEdit,
+    us: f32,
+    font: SharedString,
+    ask: bool,
+) -> gpui::AnyElement {
+    use gpui::prelude::*;
+    let lines = p.lines();
+    let (crow, ccol) = p.caret();
+    let last = (p.top + VIEW_LINES).min(lines.len());
+    let mut body = div().flex().flex_col();
+    for (i, line) in lines[p.top.min(lines.len())..last].iter().enumerate() {
+        let row = p.top + i;
+        let mut ln = div().flex().flex_row().items_start();
+        // 行番号(いまの行は濃く)
+        ln = ln.child(
+            div()
+                .w(px(us * 34.0))
+                .flex_none()
+                .pr_2()
+                .text_color(if row == crow { rgb(0x1B6E3C) } else { rgb(0xAAB2BA) })
+                .child(SharedString::from(format!("{:>3}", row + 1))),
+        );
+        // 中身。いまの行だけキャレットを差し込む(| で見せる — 数式バーと同じ割り切り)
+        let mut text = (*line).to_string();
+        if row == crow {
+            let at = ccol.min(text.len());
+            text.insert(at, '|');
+        }
+        let mut code = div().flex().flex_row().flex_wrap();
+        for (frag, tok) in colorize(&text) {
+            code = code.child(
+                div().flex_none().text_color(tok_color(tok)).child(SharedString::from(frag)),
+            );
+        }
+        ln = ln.child(code);
+        if row == crow {
+            ln = ln.bg(rgb(0xF2F7F4));
+        }
+        body = body.child(ln);
+    }
+    let title = format!("{}.py{}", p.name, if p.dirty() { " *" } else { "" });
+    let foot = if ask {
+        ui::t!("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる").to_string()
+    } else {
+        ui::t!("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ")
+            .to_string()
+    };
+    div()
+        .absolute()
+        .inset_0()
+        .flex()
+        .items_center()
+        .justify_center()
+        .child(
+            div()
+                .w(px(us * 620.0))
+                .p_3()
+                .rounded_md()
+                .bg(rgb(0xFBFCFD))
+                .border_1()
+                .border_color(rgb(0x1B6E3C))
+                .shadow_lg()
+                .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .justify_between()
+                        .text_size(px(us * 12.0))
+                        .font_weight(gpui::FontWeight::BOLD)
+                        .text_color(rgb(0x1B6E3C))
+                        .child(SharedString::from(title))
+                        .child(SharedString::from(format!("{}:{}", crow + 1, ccol + 1))),
+                )
+                .child(
+                    div()
+                        .mt_1p5()
+                        .px_2()
+                        .py_1()
+                        .bg(rgb(0xFFFFFF))
+                        .border_1()
+                        .border_color(rgb(0xC6CDD3))
+                        .rounded_sm()
+                        .font_family(font)
+                        .text_size(px(us * 12.5))
+                        .child(body),
+                )
+                .child(
+                    div()
+                        .mt_1()
+                        .text_size(px(us * 10.5))
+                        .text_color(if ask { rgb(0xB3261E) } else { rgb(0x66707A) })
+                        .child(SharedString::from(foot)),
+                ),
+        )
+        .into_any_element()
+}

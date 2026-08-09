@@ -652,6 +652,12 @@ impl Calc {
     }
 
     pub(crate) fn a_save(&mut self, _: &ui::Save, _: &mut Window, cx: &mut Context<Self>) {
+        // .py の編集面が開いていれば、Ctrl+S はそちらの保存(ブックではない)
+        if self.py_edit.is_some() {
+            self.save_py_edit();
+            cx.notify();
+            return;
+        }
         self.save(false, cx); cx.notify();
     }
     pub(crate) fn a_open(&mut self, _: &ui::Open, _: &mut Window, cx: &mut Context<Self>) {
