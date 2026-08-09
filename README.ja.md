@@ -120,14 +120,30 @@ b.save("out.xlsx")
 print(b.unsupported)   # 読めなかった物は黙って落とさず、ここに出る
 ```
 
+docx も同じです。python-docx は理解できない部品を書き直してしまいますが、
+こちらは原本を正として変えた所だけ書き戻すので、様式・ヘッダー・図形・
+変更履歴が壊れません。
+
+```python
+from officework import doc
+
+d = doc.Doc.open("報告書.docx")
+print(d.unsupported)               # 読めなかった物は黙って落とさず、ここに出る
+d.replace("旧社名", "新社名")       # 段落の中の書式はそのまま
+d[3].text = "差し替え"              # 見出しの段は見出しのまま、寄せも字下げも据え置き
+print(d.tables[0][1][2].text)      # 表・行・セル
+d.save("out.docx")
+```
+
+帳票に差し込むなら `replace()` を使ってください。run ごとの書式を残すので、
+太字の項目名の隣に素の値が入る形が崩れません。`.text` への代入は段落を丸ごと
+置き替える鈍器で、書式は先頭 run のものを継ぎます。
+
 動いている calc を外から操りたいときは橋のほうを。こちらはアプリが要ります。
 
 ```python
 from officework import calc as xw   # xlwings 流の Book / Range
 ```
-
-docx には作っていません — python-docx がそのまま使えます(その保存を
-writer が読めることは実物で確認済み)。
 
 コードを書く人向けの正本は [Python の手引き](docs/python-manual.ja.md) —
 **範囲⇄配列のやり取り**(values() と1セルずつの書き込み)、=PY の
@@ -144,7 +160,7 @@ paper/    紙面を PDF へ写す
 ui/       gpui との結線(入力・IME・リボン)
 writer/   docx のアプリ
 calc/     xlsx のアプリ
-pysheet/  sheet の Python 束縛(pip install officework → officework.sheet)
+pysheet/  Python 束縛(pip install officework → officework.sheet / officework.doc)
 ```
 
 **画面も紙も、同じ紙面を別の面に写すだけ**です。だから画面と印刷が食い違いません。

@@ -1,8 +1,8 @@
 # officework
 
-An **xlsx engine that does not destroy your forms**, plus a bridge that drives a
-running office app from Python — the way `xlwings` drives Excel, but on your own
-machine and without Excel.
+**xlsx and docx engines that do not destroy your forms**, plus a bridge that
+drives a running office app from Python — the way `xlwings` drives Excel, but on
+your own machine and without Excel.
 
 Written in Rust (15,000+ lines, 240+ tests), exposed to Python through PyO3.
 
@@ -20,7 +20,7 @@ version; Linux, macOS and Windows are published. **The engine needs no app
 installed** — only the bridge does. `pandas` is imported only if you ask for it
 (`pip install officework[pandas]`).
 
-## Two ways in
+## Three ways in
 
 ```python
 from officework import sheet             # the engine — no app needed
@@ -30,6 +30,16 @@ s["A30"] = "Nihon Funen Co., Ltd."       # borders, merges, widths stay intact
 s["C30"] = "=B30*100"                    # a formula; recalculated on the spot
 s.insert_row(30)                         # remaining formulas follow the move
 b.save("out.xlsx")                       # shapes and print setup carried over
+```
+
+```python
+from officework import doc               # the engine — docx, no app needed
+d = doc.Doc.open("report.docx")
+print(d.unsupported)                     # anything it could not read, never dropped in silence
+d.replace("Old Name Ltd.", "New Name Ltd.")   # per-run formatting is left alone
+d[3].text = "replaced"                   # the paragraph stays a heading, stays aligned
+print(d.tables[0][1][2].text)            # table, row, cell
+d.save("out.docx")                       # styles, headers, shapes, tracked changes carried over
 ```
 
 ```python
@@ -44,16 +54,22 @@ df2 = wb.sheets.active["A1"].options(pd.DataFrame, expand="table").value
 The bridge talks over a unix socket on **this machine only** — no TCP is opened.
 It needs [officework](https://github.com/aiseed-dev/officework) running.
 
-## Why the engine exists
+## Why the engines exist
 
-`openpyxl` rewrites the parts of the file it does not understand. For a
-spreadsheet used as a *printed form* — the way most Japanese offices use one —
-that means the borders, merged cells, column widths and shapes you spent an
-afternoon on come back wrong.
+`openpyxl` and `python-docx` rewrite the parts of the file they do not
+understand. For a document used as a *printed form* — the way most Japanese
+offices use one — that means the borders, merged cells, column widths, shapes,
+styles and headers you spent an afternoon on come back wrong.
 
-This engine keeps the original as the source of truth and writes back only what
-changed. `b.unsupported` lists anything it could not read, so nothing is dropped
-in silence.
+These engines keep the original as the source of truth and write back only what
+changed. `b.unsupported` / `d.unsupported` list anything they could not read, so
+nothing is dropped in silence.
+
+The docx side is checked against an independent reader (genoffice's TypeScript
+docx engine) over 51 real documents, 43 of which this project did not write:
+46 survive an open-and-save untouched, and no document loses a single part of
+its zip. The rest — footnote marks, second and later section breaks, equations —
+are listed in `d.unsupported` rather than dropped quietly.
 
 Measured on one machine, 1096 rows × 20 columns (21,920 cells):
 
@@ -75,9 +91,9 @@ network service.
 
 ## 日本語
 
-**帳票を壊さない xlsx エンジン**です。`openpyxl` と違い、罫線・結合・列幅・
-図形を保ったまま値を差し込めます。読めなかった物は `b.unsupported` に出るので、
-黙って落ちることはありません。
+**帳票を壊さない xlsx / docx エンジン**です。`openpyxl` や `python-docx` と違い、
+罫線・結合・列幅・図形・様式・ヘッダーを保ったまま値を差し込めます。
+読めなかった物は `unsupported` に出るので、黙って落ちることはありません。
 
 ```console
 $ pip install officework
@@ -88,6 +104,12 @@ from officework import sheet
 b = sheet.Book.open("様式7.xlsx")
 b["提案見積書"]["A30"] = "日本フネン株式会社"   # 書式は据え置き
 b.save("out.xlsx")
+
+from officework import doc
+d = doc.Doc.open("報告書.docx")
+print(d.unsupported)                   # 読めなかった物(黙って落とさない)
+d.replace("旧社名", "新社名")           # 段落の中の書式はそのまま
+d.save("out.docx")
 ```
 
 詳しい説明は GitHub にあります。

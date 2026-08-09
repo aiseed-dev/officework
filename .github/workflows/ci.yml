@@ -125,11 +125,55 @@ jobs:
           assert again[again.sheet_names[0]]["A30"] == "日本フネン株式会社"
           print("見本どおりに動いた:", b.sheet_names)
           PY
+      - name: docx の見本もそのまま動くか
+        # **README と手引きに載っている docx の書き方をそのまま打つ。**
+        # 2026-08-10 の 0.1.2 で、見本が動かないまま配っていたのを踏んだので、
+        # エンジンが増えるたびにここへ足す(sheet だけ緑でも足りない)
+        env:
+          DOC: ${{ github.workspace }}/sample/報告書.docx
+        run: |
+          cd /tmp
+          /tmp/v/bin/python - <<'PY'
+          import os
+          from officework import doc
+
+          d = doc.Doc.open(os.environ["DOC"])
+          assert len(d) > 0, "段落が読めていない"
+          assert d.unsupported == [], f"読めなかった部品がある: {d.unsupported}"
+          assert d.tables, "表が読めていない"
+          before = d.tables[0].values()
+
+          n = d.replace("業務", "作業")
+          assert n > 0, "置き換えが1件も起きない"
+          d[0].text = "差し替えた見出し"
+          d.save("/tmp/out.docx")
+
+          again = doc.Doc.open("/tmp/out.docx")
+          assert again[0].text == "差し替えた見出し", "差し込んだ字が保存されない"
+          assert again.tables[0].values() == before, "保存で表が変わった"
+          # **原本の部品が減っていないこと** — 売り文句の土台
+          import zipfile
+          with zipfile.ZipFile(os.environ["DOC"]) as z:
+              a = set(z.namelist())
+          with zipfile.ZipFile("/tmp/out.docx") as z:
+              b = set(z.namelist())
+          assert not (a - b), f"保存で原本の部品が消えた: {sorted(a - b)}"
+          print("docx の見本どおりに動いた: 段落", len(again), "表", len(again.tables))
+          PY
+
       - name: 存在しない名前が文書に残っていないか
         # office_sheet は 1cae2f0 で officework.sheet へ移した。**貼ると
         # ImportError になる名前が文書に残っていたら落とす**
+        # 2026-08-10 に officework.doc を足した。**存在しない名前を増やさない** —
+        # office_doc も officework.docx も import できない。
+        # 見張るのは「動きそうに見えて動かない名前」だけ。officework.writer は
+        # 設計文書が「今後こう増やす」と書いている先の話なので入れない
         run: |
-          if grep -rn "office_sheet" --include="*.md" . ; then
-            echo "::error::office_sheet は存在しない import 名です(officework.sheet へ)"
-            exit 1
-          fi
+          bad=0
+          for name in office_sheet office_doc "officework\.docx"; do
+            if grep -rn "$name" --include="*.md" . ; then
+              echo "::error::$name は存在しない import 名です(officework.sheet / officework.doc へ)"
+              bad=1
+            fi
+          done
+          exit $bad

@@ -115,6 +115,82 @@ for i, row in enumerate(df.rows()):
 集計・結合・絞り込みは polars 側でやるのが分業の流儀
 (シートは帳票の形、データの計算は Python)。
 
+## `officework.doc` の API
+
+同じ wheel、同じ約束を docx で。`doc` の副モジュールです。`Doc.open` が
+**元のバイトを抱えたまま**持ち、`save` は変えた所だけ書き戻すので、
+様式・ヘッダー・フッター・図形・変更履歴がそのまま通ります。
+python-docx が約束できないのはここです。
+
+```python
+from officework import doc
+
+d = doc.Doc.open("報告書.docx")
+d.unsupported          # [(何が, 何個)] — 読めなかった物。まずここを見る
+d.paragraphs           # 本文の段落(表の中の段落はここに入らない)
+d[3]                   # 本文の4つ目の段落。d[-1] も引ける
+len(d)                 # 本文の段落の数
+d.text                 # 本文を "\n" で繋いだ1本の字
+d.header, d.footer     # 読むだけ。ページ番号は "#"、総ページ数は "##" で出る
+d.tables               # 表(文書に出てくる順)
+d.add_paragraph("…")   # 本文の末尾に足す
+d.save("out.docx")
+```
+
+**何より先に `d.unsupported` を読んでください。** 空なら全部読めています。
+空でなければ何が読めなかったかが出ます — **そこに出た物も、保存では原本から
+持ち越されます**。「読めなかった」と「落とした」は別の話です。
+
+### 段落
+
+```python
+p = d[3]
+p.text = "差し替え"        # 字を替える。見出しの段は見出しのまま、寄せもそのまま
+p.text                    # run をつないだ字
+p.replace("旧", "新")      # → 置き換えた数。run の切れ目は全部残る
+p.runs                    # 読むだけの [Run]: .text .bold .italic .underline .font .size_pt .color
+p.style                   # "body" / "heading1"〜"heading9" / "toc1"… / "tof"
+p.align                   # "left" | "center" | "right" | "justify" | "distribute"
+p.in_table                # 表のセルの中の段落なら True
+```
+
+**字を替える口は2つあり、同じ道具ではありません。**
+
+`p.text = "…"` は段落を丸ごと置き替え、新しい字は**先頭 run の書式**を継ぎます。
+これは writer で表のセルを編集したときと同じ規則なので、Python とアプリの
+結果が食い違いません。ただし鈍器です — 「請求先: 」が素で「株式会社甲」が
+太字の段落に代入すると、**全部が素になります**。
+
+`p.replace(old, new)`(文書ぜんぶなら `d.replace(...)`)は run の中で編集するので、
+書式の分かれ目が全部残ります。run を跨いだ語も拾います — Word は見た目に
+理由もなく「旧社名」を 旧/社名 に割るので、これは効きます。
+**帳票の差し込みは `replace` を使ってください。**
+
+```python
+d.find("旧社名")                    # それを含む段落。本文も表のセルも同じに拾う
+d.replace("旧社名", "新社名")        # → 置き換えた数
+```
+
+### 表
+
+```python
+t = d.tables[0]
+t.shape                # (行数, いちばん長い行の列数)
+len(t), t.rows         # 行
+t[1][2]                # 表・行・セル
+t[1][2].text = "…"     # 改行を入れるとセルの中で段落が分かれる
+t.values()             # list[list[str]] — そのまま polars に渡せる
+t[1][2].paragraphs     # そのセルの段落(Paragraph として)
+```
+
+### やらないこと
+
+読めるのは段落と表だけです。脚注・2つ目以降の節の区切り・数式は
+**`d.unsupported` に出ます** — 帳簿から黙って消えることはありませんが、
+前の2つは保存で文書からも消え、数式は平文になります。
+文字書式は Python から**設定できません**(`p.runs` で読めるだけ) —
+体裁を整えるのは writer の仕事です。
+
 ## セルの関数(UDF)と配列
 
 `~/.config/office/plugins/道具.py` に普通に `def` を書けば、その名前で

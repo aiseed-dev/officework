@@ -46,15 +46,19 @@ fn python側から帳票を差し込める() {
     }
     let _cleanup = Cleanup(ext);
 
-    let out = Command::new("python3")
-        .arg(concat!(env!("CARGO_MANIFEST_DIR"), "/test.py"))
-        .env("PYTHONPATH", &dir)
-        .output()
-        .expect("python3 を回せない");
-    assert!(
-        out.status.success(),
-        "python の検査が失敗:\n--- stdout ---\n{}\n--- stderr ---\n{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
+    // xlsx(sheet)と docx(doc)。**同じ .so で両方**が動くことまで見る —
+    // 1つの wheel に同居させているので、片方だけ通っても足りない
+    for script in ["test.py", "test_doc.py"] {
+        let out = Command::new("python3")
+            .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(script))
+            .env("PYTHONPATH", &dir)
+            .output()
+            .expect("python3 を回せない");
+        assert!(
+            out.status.success(),
+            "{script} が失敗:\n--- stdout ---\n{}\n--- stderr ---\n{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
 }

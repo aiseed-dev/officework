@@ -119,6 +119,84 @@ for i, row in enumerate(df.rows()):
 Aggregation, joins, and filtering belong on the polars side — that's the
 division of labor (the sheet is the form; computation is Python's job).
 
+## The `officework.doc` API
+
+Same wheel, same promise, for docx: the `doc` submodule. `Doc.open` keeps the
+original bytes and `save` writes back only what changed, so styles, headers,
+footers, shapes and tracked changes come through untouched — the thing
+`python-docx` cannot promise.
+
+```python
+from officework import doc
+
+d = doc.Doc.open("report.docx")
+d.unsupported          # [(what, how many)] — anything it could not read. Look here first
+d.paragraphs           # body paragraphs (paragraphs inside tables are not in this list)
+d[3]                   # the 4th body paragraph; d[-1] works too
+len(d)                 # how many body paragraphs
+d.text                 # the body as one string, paragraphs joined with "\n"
+d.header, d.footer     # read-only. Page numbers read as "#", page counts as "##"
+d.tables               # tables, in document order
+d.add_paragraph("...") # append to the body
+d.save("out.docx")
+```
+
+**Read `d.unsupported` before you trust anything else.** An empty list means
+everything was read. A non-empty one names what was not — and those parts are
+still carried over from the original on save; "we could not read it" and "we
+dropped it" are different statements.
+
+### Paragraphs
+
+```python
+p = d[3]
+p.text = "replacement"    # replace the text; the paragraph keeps its style and alignment
+p.text                    # runs joined
+p.replace("old", "new")   # -> how many were replaced. Keeps every run boundary
+p.runs                    # read-only [Run]: .text .bold .italic .underline .font .size_pt .color
+p.style                   # "body", "heading1".."heading9", "toc1".., "tof"
+p.align                   # "left" | "center" | "right" | "justify" | "distribute"
+p.in_table                # True if this paragraph lives in a table cell
+```
+
+**Two ways to change text, and they are not the same tool.**
+
+`p.text = "..."` replaces the whole paragraph and gives the new text the *first
+run's* formatting. That is the same rule the writer app uses when you edit a
+table cell, so Python and the app agree. But it is a blunt instrument: in a
+paragraph reading `Bill to: ` in plain type and `ACME Ltd.` in bold, assigning
+`.text` makes all of it plain.
+
+`p.replace(old, new)` — or `d.replace(...)` for the whole document — edits inside
+the runs, so every formatting boundary survives. It also finds text split across
+runs, which matters because Word routinely splits a word into several runs for no
+visible reason. **For mail merge into a form, use `replace`.**
+
+```python
+d.find("Old Name Ltd.")            # paragraphs containing it, body and table cells alike
+d.replace("Old Name Ltd.", "New Name Ltd.")   # -> count
+```
+
+### Tables
+
+```python
+t = d.tables[0]
+t.shape                # (rows, widest row's columns)
+len(t), t.rows         # rows
+t[1][2]                # table, row, cell
+t[1][2].text = "..."   # newlines split the cell into paragraphs
+t.values()             # list[list[str]] — hand it straight to polars
+t[1][2].paragraphs     # the cell's paragraphs, as Paragraph objects
+```
+
+### What it does not do
+
+Reading is limited to paragraphs and tables. Footnotes, second and later section
+breaks, and equations are **listed in `d.unsupported`** — they are not silently
+lost from the report, but the first two do disappear from the document on save,
+and an equation becomes plain text. Character formatting cannot be *set* from
+Python (only read through `p.runs`); shaping a document is the writer app's job.
+
 ## Cell functions (UDFs) and arrays
 
 Write a plain `def` in `~/.config/office/plugins/tools.py` and it is callable
