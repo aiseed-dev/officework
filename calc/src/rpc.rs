@@ -509,6 +509,7 @@ pub(crate) fn handle(calc: &mut Calc, line: &str, cx: &mut Context<Calc>) -> Str
                 calc.checkpoint();
             }
             let mut n = 0usize;
+            let mut written: Vec<Pos> = Vec::new();
             for (dr, row) in grid.iter().enumerate() {
                 for (dc, v) in row.iter().enumerate() {
                     let p = Pos::new(origin.row + dr as u32, origin.col + dc as u32);
@@ -525,7 +526,15 @@ pub(crate) fn handle(calc: &mut Calc, line: &str, cx: &mut Context<Calc>) -> Str
                     };
                     cell.fmt = fmt; // 書式は据え置く(打ち直しと同じ作法)
                     sh.set(p, cell);
+                    written.push(p);
                     n += 1;
+                }
+            }
+            // 見出しを書いたら行を広げる(手で打ったときと同じ扱い)。
+            // いま出ているシートのときだけ — 他のシートの行は触らない
+            if si == calc.active {
+                for p in written {
+                    calc.fit_row_to_markdown(p);
                 }
             }
             recalc_book(&mut calc.book, si);

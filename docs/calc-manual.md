@@ -284,6 +284,39 @@ selected range** and what comes back is **a table (cells) or a formula**.
 If the destination can't be reached the app says so (it never silently returns
 nothing). **Keys are never stored in the workbook.**
 
+## Cell text is Markdown
+
+Text cells are **drawn as Markdown** (settled 2026-08-09). The cell holds plain
+text; the markup is interpreted only at draw time.
+
+```
+This is **bold**            → This is bold
+*italic* ~~strike~~ `mono`
+see [here](https://…)       → a blue underlined link
+# Heading   ## Sub   ### Small
+- bullet    1. numbered
+```
+
+- **No editor for formatting part of a cell is needed** — you get formatting by
+  typing, and the formula bar and Python always see the same plain text
+- **It is written to xlsx as plain text**. A round trip can never garble it
+  (Excel shows the markers literally — honest degradation)
+- **The selected cell shows the raw text** so you can retype it
+- To stack headings and bullets vertically, turn on **wrap** for the cell
+  (without wrap, newlines still collapse to spaces as before)
+- Japanese typefaces have no italic face, so `*italic*` does not slant in
+  Japanese (the markers are still removed). Latin text slants
+- **Heading sizes come from the template** — the workbook's named cell styles
+  "Heading 1 / 2 / 3". Define them in a .xltx and every workbook made from it
+  follows (editing them in Excel carries over too). Without them the defaults
+  are 1.6 / 1.35 / 1.15× and bold. **Typing a heading grows the row** (it never
+  shrinks one)
+
+**Where the line is drawn so tables survive**: if nothing reads as markup,
+nothing happens. `2*3*4` (multiplication), `-100`, `1.5`, `2026-08-09`, and
+`name*` (an unpaired marker) all render exactly as before. The rule is that a
+delimiter pair whose content is only digits is not treated as markup.
+
 ## Python — instead of macros
 
 The programmer's reference (ranges ⇄ arrays, the API, =PY arguments and return

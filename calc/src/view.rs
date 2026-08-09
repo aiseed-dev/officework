@@ -875,11 +875,21 @@ impl Render for Calc {
                         _ => continue, // 中央・両端揃えは流さない
                     };
                     let t1 = t.replace('\n', " ");
+                    // マークダウンとして描くセルは、印を外した後の長さで幅を測る
+                    // (`**太字**` の 4 文字ぶん広く見積もらない)。カーソルの
+                    // セルは打ち直せるように生の文字のまま
+                    let md = (p != self.cursor)
+                        .then(|| sheet::markdown::parse(&t1))
+                        .flatten();
+                    let measured = match &md {
+                        Some(l) => sheet::markdown::plain(l),
+                        None => t1.clone(),
+                    };
                     let size = self.zoom
                         * f.size_c
                             .map(|c| c as f32 / 100.0 * 24.0 / 15.0 * 0.8)
                             .unwrap_or(12.5);
-                    let units: f32 = t1
+                    let units: f32 = measured
                         .chars()
                         .map(|ch| if (ch as u32) < 0x2E80 { 1.0 } else { 2.0 })
                         .sum();
@@ -959,7 +969,10 @@ impl Render for Calc {
                             d = d.font_family(SharedString::from(fam.name.clone()));
                         }
                     }
-                    spill_texts.push(d.child(SharedString::from(t1)));
+                    spill_texts.push(match md {
+                        Some(l) => d.child(md_body(&l, self.zoom, false, &self.book.named_styles)),
+                        None => d.child(SharedString::from(t1)),
+                    });
                 }
                 y += rh;
             }
@@ -1441,6 +1454,14 @@ impl Render for Calc {
                         )
                         .child(SharedString::from(shown)),
                     );
+                } else if let Some(md) = (!sel && !is_num && !is_err)
+                    .then(|| sheet::markdown::parse(&shown))
+                    .flatten()
+                {
+                    // 文字列のセルはマークダウンとして描く(セルが持つのは平文の
+                    // まま — だからセルの中の一部だけを太字にする編集 UI が要らない)。
+                    // 選んでいる間は生の文字を見せる(打ち直せるように)
+                    row = row.child(d.child(md_body(&md, self.zoom, f.wrap, &self.book.named_styles)));
                 } else {
                     row = row.child(d.child(SharedString::from(shown)));
                 }
@@ -4502,4 +4523,68 @@ impl Render for Calc {
             // 窓の縁のつかみ(最後に描く = 最初にマウスを受ける)
             .children(ui::resize_edges(window))
     }
+}
+
+/// マークダウンとして読んだセルの中身を描く。
+/// **セルが持つのは平文のまま** — ここは見せ方だけ(sheet::markdown の口上を参照)。
+/// 一行なら横に並べ、複数行(見出し・箇条書き)なら縦に積む。
+pub(crate) fn md_body(
+    lines: &[sheet::markdown::Line],
+    zoom: f32,
+    wrap: bool,
+    named: &[(String, Option<u32>, sheet::model::CellFormat)],
+) -> gpui::AnyElement {
+    use gpui::prelude::*;
+    use sheet::markdown::Block;
+    let mut col = div().flex().flex_col().items_start();
+    for l in lines {
+        let mut line = div().flex().flex_row().items_baseline();
+        if wrap {
+            line = line.flex_wrap();
+        }
+        match l.block {
+            // 見出しの大きさは markdown::HEADINGS が正(行の高さも同じ表を見る)
+            Block::Heading(n) => {
+                if let Some(h) = sheet::markdown::heading_of(named, n) {
+                    line = line.text_size(px(zoom * 12.5 * h.scale));
+                    if h.bold {
+                        line = line.font_weight(gpui::FontWeight::BOLD);
+                    }
+                }
+            }
+            Block::Bullet(depth) => {
+                line = line.pl(px(zoom * 8.0 * depth as f32)).child(
+                    div().flex_none().pr_1().child(SharedString::from("・")),
+                );
+            }
+            Block::Ordered(n) => {
+                line = line.child(
+                    div().flex_none().pr_1().child(SharedString::from(format!("{n}."))),
+                );
+            }
+            Block::Para => {}
+        }
+        for sp in &l.spans {
+            let mut t = div().flex_none();
+            if sp.bold {
+                t = t.font_weight(gpui::FontWeight::BOLD);
+            }
+            if sp.italic {
+                t = t.italic();
+            }
+            if sp.strike {
+                t = t.line_through();
+            }
+            if sp.mono {
+                t = t.font_family(SharedString::from("monospace"));
+            }
+            if sp.link.is_some() {
+                // リンクは本家と同じ青の下線(Ctrl+クリックで開くのはセルの仕事)
+                t = t.text_color(rgb(0x1F4E79)).underline();
+            }
+            line = line.child(t.child(SharedString::from(sp.text.clone())));
+        }
+        col = col.child(line);
+    }
+    col.into_any_element()
 }

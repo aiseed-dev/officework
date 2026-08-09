@@ -6,6 +6,7 @@
 //! (aiseed-migration-kit DESIGN.md §5 と同じ思想)。
 
 pub mod calc;
+pub mod markdown;
 pub mod model;
 pub mod styles;
 pub mod theme;

@@ -42,6 +42,44 @@ fn attr(e: &quick_xml::events::BytesStart, k: &str) -> Option<String> {
 
 /// `styles.xml` を読んで、索引 → 書式 の表にする。
 pub fn parse(xml: &str, theme: &[String]) -> Vec<CellFormat> {
+    parse_section(xml, theme, b"cellXfs")
+}
+
+/// 型紙が持つ**名前付きセルスタイル**(「見出し 1」など)。
+/// 返りは (名前, builtinId, 書式)。書式の実体は `cellStyleXfs` の方にある。
+///
+/// マークダウンの見出しの大きさはここから引く(2026-08-09 発注者
+/// 「テンプレートに設定できませんか?」)— **書式は帳票の側にある**ので、
+/// 型紙(.xltx)に「見出し 1」を定義しておけば、そこから作ったブック全部に効く。
+/// Excel で「見出し 1」を編集しても追随する。
+pub fn parse_named(xml: &str, theme: &[String]) -> Vec<(String, Option<u32>, CellFormat)> {
+    let base = parse_section(xml, theme, b"cellStyleXfs");
+    let mut out = Vec::new();
+    let mut r = Reader::from_str(xml);
+    let mut buf = Vec::new();
+    loop {
+        let e = match r.read_event_into(&mut buf) {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) => e,
+            Ok(Event::Eof) | Err(_) => break,
+            _ => {
+                buf.clear();
+                continue;
+            }
+        };
+        if local(e.name().as_ref()) == b"cellStyle" {
+            let name = attr(&e, "name").unwrap_or_default();
+            let xf: usize = attr(&e, "xfId").and_then(|v| v.parse().ok()).unwrap_or(0);
+            let builtin = attr(&e, "builtinId").and_then(|v| v.parse().ok());
+            if let Some(f) = base.get(xf) {
+                out.push((name, builtin, f.clone()));
+            }
+        }
+        buf.clear();
+    }
+    out
+}
+
+fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
     let mut fonts: Vec<Fnt> = Vec::new();
     let mut fills: Vec<Option<String>> = Vec::new();
     let mut borders: Vec<Borders> = Vec::new();
@@ -76,7 +114,7 @@ pub fn parse(xml: &str, theme: &[String]) -> Vec<CellFormat> {
                     b"fonts" => in_fonts = false,
                     b"fills" => in_fills = false,
                     b"borders" => in_borders = false,
-                    b"cellXfs" => in_cellxfs = false,
+                    x if x == want => in_cellxfs = false,
                     b"font" if in_fonts => fonts.push(std::mem::take(&mut font)),
                     b"fill" if in_fills => {
                         fills.push(fill.take());
@@ -114,7 +152,7 @@ pub fn parse(xml: &str, theme: &[String]) -> Vec<CellFormat> {
             b"fonts" => in_fonts = true,
             b"fills" => in_fills = true,
             b"borders" => in_borders = true,
-            b"cellXfs" => in_cellxfs = true,
+            x if x == want => in_cellxfs = true,
             b"numFmt" => {
                 if let (Some(id), Some(code)) = (attr(&e, "numFmtId"), attr(&e, "formatCode")) {
                     if let Ok(i) = id.parse() {

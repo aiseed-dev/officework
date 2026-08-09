@@ -1032,11 +1032,15 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         }
         crate::theme::parse(&tx)
     };
+    let mut named_styles: Vec<(String, Option<u32>, crate::model::CellFormat)> = Vec::new();
     if let Ok(mut f) = zip.by_name("xl/styles.xml") {
         let mut s = String::new();
         let _ = f.read_to_string(&mut s);
         styles = crate::styles::parse(&s, &theme_colors);
         dxfs = parse_dxfs(&s);
+        // 名前付きセルスタイル(「見出し 1」など)。マークダウンの見出しの
+        // 書式はここから引く — 型紙に定義しておけば全ブックに効く
+        named_styles = crate::styles::parse_named(&s, &theme_colors);
     }
 
     let (shared, rubies) = {
@@ -1145,6 +1149,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         sheets: Vec::new(),
         names_raw: defined_raw,
         theme: theme_colors.clone(),
+        named_styles,
         calc_manual,
         calc_iter,
         r1c1,
