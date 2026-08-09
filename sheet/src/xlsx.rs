@@ -1764,7 +1764,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
             }
         }
         // 表オブジェクト(xlsx の table)。範囲に変換・サイズ変更のために持つ
-        for (_, ty, target, _) in rels.iter().filter(|(_, t, _, _)| t.ends_with("/table")) {
+        for (_, _ty, target, _) in rels.iter().filter(|(_, t, _, _)| t.ends_with("/table")) {
             let tpath = resolve_target(target);
             let mut tx = String::new();
             if let Ok(mut f) = zip.by_name(&tpath) {

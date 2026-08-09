@@ -1,0 +1,92 @@
+# push したら試験が回る。**緑を信じられる形にしておく**のが目的。
+#
+# GPUI(zed から git で取る)に依る `ui` / `writer` / `calc` は**ここでは回さない**。
+# 画面のいる crate を CI に載せると、取得と組み立てで何十分も掛かるうえ、
+# 落ちても原因が画面なのか中身なのか分からなくなる。回すのは**画面のいらない
+# 核**だけ — そこに 558 件の試験がある(sheet 263・kumihan 96・lang 89・
+# ooxml 79・paper 28・往復 3)。
+#
+# **Python の側も回す。** 2026-08-10 に、配っている import 名(officework.sheet)と
+# 文書の見本(office_sheet)が食い違っていたのを人手で見つけた。**素の環境で
+# wheel を入れて見本どおりに動かす**検査があれば、その日のうちに落ちていた。
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 同じ枝で走っているものは畳む(押し直したら前のは要らない)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # 核の試験。画面はいらない
+  test:
+    name: cargo test (画面のいらない核)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: 試験
+        run: cargo test -p sheet -p kumihan -p ooxml -p lang -p paper
+      - name: サイドカーが組めるか(pyoffice)
+        run: cargo build -p sidecar
+
+  # 配る形で確かめる。**手元の木ではなく wheel を入れた素の環境で**
+  python:
+    name: wheel を入れて見本どおりに動くか
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: wheel を組む
+        run: |
+          pip install maturin
+          maturin build -m pysheet/Cargo.toml --release --out dist
+      - name: 素の環境へ入れる
+        run: |
+          python -m venv /tmp/v
+          /tmp/v/bin/pip install dist/*.whl
+      - name: 文書の見本がそのまま動くか
+        # **README と手引きに載っている書き方をそのまま打つ。**
+        # ここを手元の木で試すと、ソースの officework/ を掴んでしまい
+        # 配った物を確かめたことにならない(2026-08-09 に踏んだ)
+        env:
+          BOOK: ${{ github.workspace }}/sample/見積書.xlsx
+        run: |
+          cd /tmp
+          /tmp/v/bin/python - <<'PY'
+          import os
+          from officework import sheet
+
+          b = sheet.Book.open(os.environ["BOOK"])
+          assert b.sheet_names, "シートが読めていない"
+          assert b.unsupported == [], f"読めなかった部品がある: {b.unsupported}"
+          s = b[b.sheet_names[0]]
+          s["A30"] = "日本フネン株式会社"
+          b.save("/tmp/out.xlsx")
+
+          again = sheet.Book.open("/tmp/out.xlsx")
+          assert again[again.sheet_names[0]]["A30"] == "日本フネン株式会社"
+          print("見本どおりに動いた:", b.sheet_names)
+          PY
+      - name: 存在しない名前が文書に残っていないか
+        # office_sheet は 1cae2f0 で officework.sheet へ移した。**貼ると
+        # ImportError になる名前が文書に残っていたら落とす**
+        run: |
+          if grep -rn "office_sheet" --include="*.md" . ; then
+            echo "::error::office_sheet は存在しない import 名です(officework.sheet へ)"
+            exit 1
+          fi
