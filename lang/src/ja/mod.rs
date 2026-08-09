@@ -9,7 +9,9 @@
 pub mod aozora;
 pub mod furigana;
 pub mod notation;
+pub mod okurigana;
 pub mod proof;
+pub mod wording;
 
 use crate::{Language, Target};
 

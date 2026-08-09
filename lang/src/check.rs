@@ -20,7 +20,7 @@
 use crate::ja::furigana::{self, Suggestion};
 use crate::Target;
 use crate::model::Endpoint;
-use crate::ja::{notation, proof};
+use crate::ja::{notation, okurigana, proof, wording};
 use crate::spell::{self, Dictionary};
 
 /// 指摘の種類。
@@ -189,6 +189,10 @@ impl Checker {
             // 表記ゆれは**文書の中だけで判る**ので、モデルが居なくても出す。
             // GPU の無い機械で日本語の校正が動き出すのはここ
             r.findings.extend(notation::findings(text));
+            // 重複表現も有限の一覧で閉じる。**誤りとは言わず、言い換えの案を出す**
+            r.findings.extend(wording::findings(text));
+            // 送り仮名は内閣告示による。**許容を誤りにしない**(決めごと4)
+            r.findings.extend(okurigana::findings(text));
 
             // 誤変換・重複表現はモデル。辞書では原理的に捕まらない。
             // **繋がらなければそう言う** — 表記ゆれが出たからといって
