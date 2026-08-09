@@ -238,7 +238,7 @@ pub const CALC: &[Tab] = &[
         c("top", "上揃え", "top"),
         c("middle", "中央揃え", "middle"),
         c("bottom", "下揃え", "bottom"),
-        c("wrap", "折り返して​​全体を表示する", "wrap"),
+        c("wrap", "折り返して全体を表示する", "wrap"),
         c("text-orient", "印刷の向き", "text-orient"),
         c("align-left", "左揃え", "align-left"),
         c("align-center", "中央揃え", "align-center"),
