@@ -49,7 +49,8 @@ impl Calc {
         "ai-translate", "ai-furigana", "ai-continue", "ai-table", "ai-ask",
         "insert-function", "cell-styles", "sheet-view", "watch", "editheader",
         "cell-lock", "prot-allow", "recover", "recover-every", "csv-kind",
-        "autofit-col", "autofit-row", "paste-name",
+        "autofit-col", "autofit-row", "paste-name", "flash-fill",
+        "read-only-rec",
         "pen", "highlighter", "eraser", "draw-select",
     ];
 
@@ -89,6 +90,7 @@ impl Calc {
         "coauth-mode", "co-showcomment", "co-chat", "co-history", "plug-manage",
         "prot-doc", "prot-encrypt", "prot-sign", "ai-where",
         "recover", "recover-every", "csv-kind", "autofit-col", "autofit-row",
+        "read-only-rec",
         // 「許可する操作」は保護中にこそ触る。**鍵を掛けていないので
         // 隠す意味も無い** — 保護は事故止めであって錠前ではない(SEKKEI)
         "prot-allow",
@@ -2153,6 +2155,99 @@ impl Calc {
                         )
                         .into();
                     }
+                }
+            }
+            // 読み取り専用を勧める / 最終版の札。**どちらも鍵ではない** —
+            // 掛けた振りをしないのがこちらの作法(SEKKEI)
+            "read-only-rec" => {
+                self.commit();
+                self.checkpoint();
+                self.book.read_only_rec = !self.book.read_only_rec;
+                self.dirty = true;
+                self.status = if self.book.read_only_rec {
+                    ui::t!("開いた人に「見るだけ」を勧めます(鍵ではありません — 直せます)").into()
+                } else {
+                    ui::t!("読み取り専用の勧めをやめました").into()
+                };
+            }
+            // フラッシュフィル(本家 Ctrl+E)。**見本から作り方を推し量って
+            // 下を埋める。** 推し量りを外したら黙って埋めず、そう言う
+            "flash-fill" => {
+                self.commit();
+                let (a, b) = self.sel_rect();
+                let col = a.col;
+                if col == 0 {
+                    self.status =
+                        ui::t!("左に元の列が要ります(A 列では推し量れません)").into();
+                    cx.notify();
+                    return;
+                }
+                let (rows, _) = self.sheet().extent();
+                let last = if b.row > a.row { b.row } else { rows.saturating_sub(1) };
+                // 見本 = この列に既に入っている行。元 = その左ぜんぶ
+                let src_of = |this: &Self, r: u32| -> Vec<String> {
+                    (0..col)
+                        .map(|c| {
+                            this.sheet().get(Pos::new(r, c)).map(|x| x.value.display())
+                                .unwrap_or_default()
+                        })
+                        .collect()
+                };
+                // **見本はカーソルの行から続いている分だけ。** 下の方に
+                // 関係のない値が入っていても、それを見本と取り違えない
+                let mut examples: Vec<(Vec<String>, String)> = Vec::new();
+                for r in a.row..=last {
+                    let v = self.sheet().get(Pos::new(r, col)).map(|x| x.value.display())
+                        .unwrap_or_default();
+                    if v.is_empty() {
+                        break;
+                    }
+                    examples.push((src_of(self, r), v));
+                }
+                if examples.is_empty() {
+                    self.status = ui::t!(
+                        "先に1つ書いてください(その書き方を見て下を埋めます)"
+                    )
+                    .into();
+                    cx.notify();
+                    return;
+                }
+                let Some(recipe) = flash_recipe(&examples) else {
+                    // **当てずっぽうで埋めない**
+                    self.status = ui::t!(
+                        "書き方が読み取れませんでした(もう1つ見本を書くと当たりやすくなります)"
+                    )
+                    .into();
+                    cx.notify();
+                    return;
+                };
+                self.checkpoint();
+                let mut n = 0usize;
+                for r in a.row..=last {
+                    let p = Pos::new(r, col);
+                    let now = self.sheet().get(p).map(|x| x.value.display()).unwrap_or_default();
+                    if !now.is_empty() {
+                        continue; // 既に書いてある所は触らない
+                    }
+                    let src = src_of(self, r);
+                    if src.iter().all(|s| s.is_empty()) {
+                        continue;
+                    }
+                    let Some(v) = flash_apply(&recipe, &src) else { continue };
+                    self.book.sheets[self.active].set(p, sheet::Cell::input(&v));
+                    n += 1;
+                }
+                if n == 0 {
+                    self.undo_stack.pop();
+                    self.status = ui::t!("埋める所がありませんでした").into();
+                } else {
+                    self.dirty = true;
+                    recalc_book(&mut self.book, self.active);
+                    self.status = ui::tf!(
+                        "{} 個を書き方に合わせて埋めました(Ctrl+Z で戻せます — 中身は必ず見てください)",
+                        n
+                    )
+                    .into();
                 }
             }
             // 名前の貼り付け(本家の「数式で使用」)。**式を書いている途中に

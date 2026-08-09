@@ -3561,6 +3561,87 @@ mod track_changes_tests {
 }
 
 #[cfg(test)]
+mod flash_fill_tests {
+    use crate::*;
+
+    #[test]
+    fn 見本から作り方を読み取る() {
+        // 姓 + 空白 + 名
+        let ex = vec![(vec!["山田".into(), "太郎".into()], "山田 太郎".into())];
+        let r = flash_recipe(&ex).expect("読み取れない");
+        assert_eq!(
+            flash_apply(&r, &["鈴木".into(), "花子".into()]).unwrap(),
+            "鈴木 花子"
+        );
+        // 一部だけ切り出す(頭文字)
+        let ex2 = vec![(vec!["2026-08-09".into()], "2026".into())];
+        let r2 = flash_recipe(&ex2).expect("読み取れない");
+        assert_eq!(flash_apply(&r2, &["1999-01-02".into()]).unwrap(), "1999");
+    }
+
+    #[test]
+    fn 見本を作り直せない作り方は採らない() {
+        // 2つの見本が食い違う(1つ目は姓+名、2つ目は名だけ)→ 諦める
+        let ex = vec![
+            (vec!["山田".into(), "太郎".into()], "山田 太郎".into()),
+            (vec!["鈴木".into(), "花子".into()], "花子".into()),
+        ];
+        assert!(flash_recipe(&ex).is_none(), "当てずっぽうで作り方を作った");
+    }
+
+    #[gpui::test]
+    fn 見本の下だけを埋めて既にある所は触らない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (i, (a, b)) in [("山田", "太郎"), ("鈴木", "花子"), ("佐藤", "一郎")]
+                .iter()
+                .enumerate()
+            {
+                this.book.sheets[0].set(Pos::new(i as u32, 0), sheet::Cell::input(a));
+                this.book.sheets[0].set(Pos::new(i as u32, 1), sheet::Cell::input(b));
+            }
+            // C1 に見本、C3 は先に埋まっている
+            this.book.sheets[0].set(Pos::parse("C1").unwrap(), sheet::Cell::input("山田 太郎"));
+            this.book.sheets[0].set(Pos::parse("C3").unwrap(), sheet::Cell::input("触るな"));
+            this.cursor = Pos::parse("C1").unwrap();
+            this.anchor = None;
+            this.sync_input();
+            this.run_cmd("flash-fill", cx);
+
+            let g = |a1: &str| {
+                this.book.sheets[0]
+                    .get(Pos::parse(a1).unwrap())
+                    .map(|x| x.value.display())
+                    .unwrap_or_default()
+            };
+            assert_eq!(g("C2"), "鈴木 花子", "書き方どおりに埋まっていない");
+            assert_eq!(g("C3"), "触るな", "既にある所を上書きした");
+        });
+    }
+
+    #[gpui::test]
+    fn 読み取れなければ黙って埋めない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("あ"));
+            this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("い"));
+            // 元と何の関係も無い見本
+            this.book.sheets[0].set(Pos::parse("B1").unwrap(), sheet::Cell::input("XYZ"));
+            this.book.sheets[0].set(Pos::parse("B2").unwrap(), sheet::Cell::input("123"));
+            this.cursor = Pos::parse("B1").unwrap();
+            this.anchor = None;
+            this.sync_input();
+            this.run_cmd("flash-fill", cx);
+            assert!(
+                this.status.contains("読み取れませんでした") || this.status.contains("埋める所"),
+                "当てずっぽうで埋めた: {}",
+                this.status
+            );
+        });
+    }
+}
+
+#[cfg(test)]
 mod symbol_watch_tests {
     use crate::*;
 

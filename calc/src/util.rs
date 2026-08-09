@@ -1175,3 +1175,88 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
     let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
     (if m <= 2 { y + 1 } else { y }, m, d)
 }
+
+/// フラッシュフィルの「作り方」の一片。
+/// 元のセルの一部を切り出すか、そのまま置く字か。
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum Piece {
+    /// 何本目の元の列の、何文字目から何文字
+    Cut { col: usize, at: usize, len: usize },
+    /// そのまま置く字(区切りの空白やハイフン)
+    Lit(String),
+}
+
+/// **見本から作り方を推し量る。**
+///
+/// 本家のフラッシュフィルは中身を見て「たぶんこうだろう」を当てる。
+/// こちらも同じ賭けをするが、**外したら黙って埋めない**ようにする:
+/// 作り方は**見本を全部そのまま作り直せる**ものだけを採る。
+///
+/// 見つけ方は素朴で、答えの頭から順に「元のどれかの中にある一番長い並び」を
+/// 取っていく。取れなければ1字ずつそのまま置く字にする。
+pub(crate) fn flash_recipe(examples: &[(Vec<String>, String)]) -> Option<Vec<Piece>> {
+    let (src, want) = examples.first()?;
+    if want.is_empty() {
+        return None;
+    }
+    let w: Vec<char> = want.chars().collect();
+    let srcs: Vec<Vec<char>> = src.iter().map(|s| s.chars().collect()).collect();
+    let mut out: Vec<Piece> = Vec::new();
+    let mut i = 0usize;
+    while i < w.len() {
+        let mut best: Option<(usize, usize, usize)> = None; // (col, at, len)
+        for (ci, s) in srcs.iter().enumerate() {
+            if s.is_empty() {
+                continue;
+            }
+            for at in 0..s.len() {
+                let mut len = 0usize;
+                while at + len < s.len() && i + len < w.len() && s[at + len] == w[i + len] {
+                    len += 1;
+                }
+                if len >= 1 && best.map(|(_, _, bl)| len > bl).unwrap_or(true) {
+                    best = Some((ci, at, len));
+                }
+            }
+        }
+        match best {
+            Some((col, at, len)) if len >= 1 => {
+                out.push(Piece::Cut { col, at, len });
+                i += len;
+            }
+            _ => {
+                // そのまま置く字。続くぶんはまとめる
+                match out.last_mut() {
+                    Some(Piece::Lit(s)) => s.push(w[i]),
+                    _ => out.push(Piece::Lit(w[i].to_string())),
+                }
+                i += 1;
+            }
+        }
+    }
+    // **見本を全部作り直せること。** 1つでも合わなければ諦める
+    for (s, want) in examples {
+        if flash_apply(&out, s)? != *want {
+            return None;
+        }
+    }
+    Some(out)
+}
+
+/// 作り方を元のセルに当てる。切り出しがはみ出したら諦める(None)
+pub(crate) fn flash_apply(recipe: &[Piece], src: &[String]) -> Option<String> {
+    let mut out = String::new();
+    for p in recipe {
+        match p {
+            Piece::Lit(s) => out.push_str(s),
+            Piece::Cut { col, at, len } => {
+                let s: Vec<char> = src.get(*col)?.chars().collect();
+                if at + len > s.len() {
+                    return None;
+                }
+                out.extend(&s[*at..at + len]);
+            }
+        }
+    }
+    Some(out)
+}

@@ -1474,6 +1474,10 @@ pub struct Book {
     /// R1C1 参照スタイル(calcPr refMode="R1C1")。式は内部では A1 のまま —
     /// 見せるとき・打つときに formula_to_r1c1 / formula_from_r1c1 で変換する
     pub r1c1: bool,
+    /// **読み取り専用を勧める**(xlsx の workbookProtection@readOnlyRecommended)。
+    /// 鍵ではなく**お願い** — 開いた人に「見るだけにしませんか」と聞く。
+    /// 鍵を掛けた振りをしないのがこちらの作法なので、そのまま「お願い」で持つ
+    pub read_only_rec: bool,
     /// 変更履歴(校閲の記録)。**記録中の差分を刻んだもの**で、
     /// xl/joChanges.xml で往復する独自部品 — Excel は読まない(正直な劣化)
     pub changes: Vec<ChangeRec>,

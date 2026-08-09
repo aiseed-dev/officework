@@ -1064,6 +1064,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut calc_manual = false;
     let mut calc_iter: Option<(u32, f64)> = None;
     let mut r1c1 = false;
+    let mut read_only_rec = false;
     if let Ok(mut f) = zip.by_name("xl/workbook.xml") {
         let mut s = String::new();
         let _ = f.read_to_string(&mut s);
@@ -1090,6 +1091,15 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 // 計算方法(calcPr)。manual を落とすと開き直しで勝手に自動へ戻る
                 // 1904年の日付系(古い Mac の Excel)。保存は原文持ち越しで
                 // 守られるが、表示は 1900 系のまま=4年ずれる。黙らない
+                // 読み取り専用のお願い(鍵ではない)
+                Ok(Event::Start(e)) | Ok(Event::Empty(e))
+                    if local(e.name().as_ref()) == b"workbookProtection" =>
+                {
+                    read_only_rec = matches!(
+                        attr(&e, "readOnlyRecommended").as_deref(),
+                        Some("1") | Some("true")
+                    );
+                }
                 Ok(Event::Start(e)) | Ok(Event::Empty(e))
                     if local(e.name().as_ref()) == b"workbookPr" =>
                 {
@@ -1159,6 +1169,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         calc_manual,
         calc_iter,
         r1c1,
+        read_only_rec,
         ..Default::default()
     };
     // ブックの情報(docProps/core.xml)。読んで見せる。保存は原文持ち越し
@@ -2111,6 +2122,32 @@ fn patch_sheet_states(workbook: &str, book: &Book) -> String {
     out
 }
 
+/// 読み取り専用のお願いを workbook.xml に織り込む(無ければ足し、
+/// 外したら消す)。**鍵ではないので password は書かない** — 掛けた振りをしない
+fn patch_read_only(workbook: &str, on: bool) -> String {
+    let mut s = workbook.to_string();
+    // 既存の workbookProtection は取り除いてから置き直す
+    if let Some(i) = s.find("<workbookProtection") {
+        if let Some(j) = s[i..].find("/>") {
+            s.replace_range(i..i + j + 2, "");
+        } else if let Some(j) = s[i..].find("</workbookProtection>") {
+            s.replace_range(i..i + j + "</workbookProtection>".len(), "");
+        }
+    }
+    if !on {
+        return s;
+    }
+    // 位置は fileVersion/workbookPr の後・bookViews の前(スキーマの並び)。
+    // 手近な目印として <sheets> の前に置く
+    match s.find("<bookViews").or_else(|| s.find("<sheets")) {
+        Some(i) => {
+            s.insert_str(i, r#"<workbookProtection readOnlyRecommended="1"/>"#);
+            s
+        }
+        None => s,
+    }
+}
+
 fn patch_defined_names(workbook: &str, block: &str) -> String {
     let mut s = workbook.to_string();
     if let Some(i) = s.find("<definedNames>") {
@@ -2508,6 +2545,8 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                     let patched = patch_sheet_states(&patched, book);
                     // 計算方法もこちらが正(F9 で手動にしたら残す)
                     let patched = patch_calc_pr(&patched, book.calc_manual);
+                    // 読み取り専用のお願い(鍵ではない)
+                    let patched = patch_read_only(&patched, book.read_only_rec);
                     // 反復計算も原本の calcPr に織り込む(無ければ足し、切っていれば外す)
                     let patched = if let Some(start) = patched.find("<calcPr") {
                         match patched[start..].find('>') {
@@ -3007,7 +3046,9 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     if !carry {
     put("xl/workbook.xml", &format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="{NS}" xmlns:r="{RNS}"><sheets>{sheets_xml}</sheets>{}{}</workbook>"#,
+<workbook xmlns="{NS}" xmlns:r="{RNS}">{}<sheets>{sheets_xml}</sheets>{}{}</workbook>"#,
+        // 読み取り専用のお願い(スキーマでは sheets の前)
+        if book.read_only_rec { r#"<workbookProtection readOnlyRecommended="1"/>"# } else { "" },
         defined_names_xml(book),
         // 手動計算をファイルに残す(自動は既定なので書かない)
         calc_pr_xml(book).as_str()))?;
@@ -4674,6 +4715,36 @@ mod print_extras_roundtrip_tests {
             "#N/A",
             "足りない席が埋まっていない"
         );
+    }
+
+    #[test]
+    fn 読み取り専用の勧めが往復する() {
+        // **鍵ではなくお願い。** password は書かない(掛けた振りをしない)
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
+        b.read_only_rec = true;
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let bytes = buf.into_inner();
+        let wb = {
+            let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+            let mut f = z.by_name("xl/workbook.xml").unwrap();
+            let mut out = String::new();
+            std::io::Read::read_to_string(&mut f, &mut out).unwrap();
+            out
+        };
+        assert!(wb.contains(r#"readOnlyRecommended="1""#), "勧めが書かれていない");
+        assert!(!wb.contains("workbookPassword"), "掛けてもいない鍵を書いた");
+        let (back, _) = read(Cursor::new(bytes)).expect("読めない");
+        assert!(back.read_only_rec, "勧めが往復しない");
+
+        // 外したら消える(残ると開くたびに言い続ける)
+        let mut b2 = back;
+        b2.read_only_rec = false;
+        let mut buf2 = Cursor::new(Vec::new());
+        write(&b2, &mut buf2).expect("書けない");
+        let (back2, _) = read(Cursor::new(buf2.into_inner())).expect("読めない");
+        assert!(!back2.read_only_rec, "外したのに残っている");
     }
 
     #[test]

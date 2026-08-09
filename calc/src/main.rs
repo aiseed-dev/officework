@@ -516,6 +516,13 @@ impl Calc {
             c.status = ui::t!("セルを選んで打つ。Enter で確定して下へ、Ctrl+S で保存").into();
         }
         c.sync_input();
+        // 読み取り専用の勧めは、開いたときに言わないと意味がない
+        if c.book.read_only_rec {
+            c.status = ui::t!(
+                "このブックは読み取り専用が勧められています(鍵ではありません — 直せます。保護タブで外せます)"
+            )
+            .into();
+        }
         // **前回落ちた跡があれば黙っていない。** 自動復旧の控えが
         // 残っているのは、前回きちんと保存せずに終わったということ
         let stale = Self::stale_recovers();
@@ -2934,6 +2941,12 @@ impl Calc {
     /// Ctrl+Shift+S = 名前を付けて保存
     fn a_save_as(&mut self, _: &ui::SaveAs, _: &mut Window, cx: &mut Context<Self>) {
         self.save_as(cx);
+        cx.notify();
+    }
+
+    /// Ctrl+E = フラッシュフィル
+    fn a_flash_fill(&mut self, _: &ui::FlashFill, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("flash-fill", cx);
         cx.notify();
     }
 

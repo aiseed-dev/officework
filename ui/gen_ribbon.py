@@ -160,7 +160,8 @@ READY = {
         "cell-lock": "cell-lock", "prot-allow": "prot-allow",
         "fit-pages": "fit-pages", "printarea-add": "printarea-add", "show-breaks": "show-breaks",
         "recover": "recover", "recover-every": "recover-every",
-        "csv-kind": "csv-kind", "paste-name": "paste-name",
+        "csv-kind": "csv-kind", "paste-name": "paste-name", "flash-fill": "flash-fill",
+        "read-only-rec": "read-only-rec",
         "td-remdup": "rem-duplicates",
         "td-header": "td-header", "td-total": "td-total",
         "td-band-row": "td-band-row", "td-band-col": "td-band-col",
@@ -554,11 +555,13 @@ EXTRA_CMDS = {
                  ("prot-allow", "許可する操作", "prot-allow"),
                  # 自動復旧。本家は詳細設定の中だが、うちは小窓を持たない
                  ("recover", "復旧", "recover"),
-                 ("recover-every", "控えの間隔", "recover-every")],
+                 ("recover-every", "控えの間隔", "recover-every"),
+                 ("read-only-rec", "読み取り専用を勧める", "read-only-rec")],
         "データ": [("subtotal", "小計", "subtotal"),
                    ("datatable", "データテーブル", "datatable"),
                    ("python", "Python", "python"),
-                   ("csv-kind", "CSV の形", "csv-kind")],
+                   ("csv-kind", "CSV の形", "csv-kind"),
+                   ("flash-fill", "フラッシュフィル", "flash-fill")],
         # 本家では「拡大縮小印刷」の中の選択肢。うちは小窓を持たないので
         # レイアウトタブに独立したボタンで出す
         "レイアウト": [("fit-pages", "紙に収める", "fit-pages"),

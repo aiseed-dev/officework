@@ -312,6 +312,7 @@ pub const CALC: &[Tab] = &[
         c("datatable", "Datentabelle", "datatable"),
         c("python", "Python", "python"),
         c("csv-kind", "CSV-Format", "csv-kind"),
+        c("flash-fill", "Blitzvorschau", "flash-fill"),
     ]},
     // Python タブ(2026-08-09)。**語だけが違う** — id と並びは ja と同じ
     Tab { name: "Python", cmds: &[
@@ -366,6 +367,7 @@ pub const CALC: &[Tab] = &[
         c("prot-allow", "Erlaubte Aktionen", "prot-allow"),
         c("recover", "Wiederherstellen", "recover"),
         c("recover-every", "Sicherungsintervall", "recover-every"),
+        c("read-only-rec", "Schreibschutz empfehlen", "read-only-rec"),
     ]},
     Tab { name: "Anzeigen", cmds: &[
         c("sheet-view", "Tabellenansicht", "sheet-view"),

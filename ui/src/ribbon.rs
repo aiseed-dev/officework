@@ -358,6 +358,7 @@ pub const CALC: &[Tab] = &[
         c("datatable", "データテーブル", "datatable"),
         c("python", "Python", "python"),
         c("csv-kind", "CSV の形", "csv-kind"),
+        c("flash-fill", "フラッシュフィル", "flash-fill"),
     ]},
         // Python は本家に無いタブ。**このソフトの芯なので独立させる**
     // (2026-08-09 発注者「python をメインのメニューに追加してきちんとやれ」)。
@@ -419,6 +420,7 @@ pub const CALC: &[Tab] = &[
         c("prot-allow", "許可する操作", "prot-allow"),
         c("recover", "復旧", "recover"),
         c("recover-every", "控えの間隔", "recover-every"),
+        c("read-only-rec", "読み取り専用を勧める", "read-only-rec"),
     ]},
     Tab { name: "表示", cmds: &[
         c("sheet-view", "シートの表示", "sheet-view"),

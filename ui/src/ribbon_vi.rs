@@ -312,6 +312,7 @@ pub const CALC: &[Tab] = &[
         c("datatable", "Bảng dữ liệu", "datatable"),
         c("python", "Python", "python"),
         c("csv-kind", "Định dạng CSV", "csv-kind"),
+        c("flash-fill", "Điền nhanh", "flash-fill"),
     ]},
     // Python タブ(2026-08-09)。**語だけが違う** — id と並びは ja と同じ
     Tab { name: "Python", cmds: &[
@@ -366,6 +367,7 @@ pub const CALC: &[Tab] = &[
         c("prot-allow", "Thao tác được phép", "prot-allow"),
         c("recover", "Khôi phục", "recover"),
         c("recover-every", "Khoảng lưu dự phòng", "recover-every"),
+        c("read-only-rec", "Đề nghị chỉ đọc", "read-only-rec"),
     ]},
     Tab { name: "Hiển thị", cmds: &[
         c("sheet-view", "Hiện trang tính", "sheet-view"),

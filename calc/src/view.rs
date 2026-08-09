@@ -4369,6 +4369,7 @@ impl Render for Calc {
             .on_action(cx.listener(Calc::a_cancel))
             .on_action(cx.listener(Calc::a_edit_cell))
             .on_action(cx.listener(Calc::a_array_enter))
+            .on_action(cx.listener(Calc::a_flash_fill))
             .on_action(cx.listener(Calc::a_insert_fn))
             .on_action(cx.listener(Calc::a_percent))
             .on_action(cx.listener(Calc::a_print))
