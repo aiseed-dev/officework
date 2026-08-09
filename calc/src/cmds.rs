@@ -47,7 +47,7 @@ impl Calc {
         "ai-translate", "ai-furigana", "ai-continue", "ai-table", "ai-ask",
         "insert-function", "cell-styles", "sheet-view", "watch", "editheader",
         "cell-lock", "prot-allow", "recover", "recover-every", "csv-kind",
-        "autofit-col", "autofit-row",
+        "autofit-col", "autofit-row", "paste-name",
         "pen", "highlighter", "eraser", "draw-select",
     ];
 
@@ -2063,6 +2063,27 @@ impl Calc {
                         )
                         .into();
                     }
+                }
+            }
+            // 名前の貼り付け(本家の「数式で使用」)。**式を書いている途中に
+            // 名前を差し込む** — 覚えていなくても使える
+            "paste-name" => {
+                let at = self.pop_anchor();
+                let mut items: Vec<String> =
+                    self.sheet().names.iter().map(|(n, r)| format!("{n} = {r}")).collect();
+                for t in &self.sheet().tables {
+                    items.push(format!("{} = {}:{}(テーブル)", t.name, t.a.a1(), t.b.a1()));
+                }
+                if items.is_empty() {
+                    self.status = ui::t!(
+                        "名前がまだありません(数式タブの「名前の管理」で、選んだ範囲に付けられます)"
+                    )
+                    .into();
+                } else {
+                    self.pick_kind = "paste-name";
+                    self.pick_note =
+                        Some(ui::t!("式に差し込む名前(いま打っている所に入ります)").into());
+                    self.pick = Some((items, at));
                 }
             }
             // **中身に合わせる**(本家の「列の幅の自動調整」「行の高さの

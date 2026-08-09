@@ -283,6 +283,7 @@ pub const CALC: &[Tab] = &[
         c("fn-math", "Toán & Lượng giác", "math"),
         c("fn-more", "Hàm khác", "more"),
         c("defname", "Quản lý tên", "named-range-huge"),
+        c("paste-name", "Dán tên", "paste-name"),
         c("trace-prec", "Truy vết ô ảnh hưởng", "trace-prec"),
         c("trace-dep", "Truy vết ô phụ thuộc", "trace-dep"),
         c("remove-arrows", "Xóa mũi tên truy vết", "remove-arrows"),

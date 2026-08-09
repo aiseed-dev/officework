@@ -154,7 +154,7 @@ READY = {
         "cell-lock": "cell-lock", "prot-allow": "prot-allow",
         "fit-pages": "fit-pages", "printarea-add": "printarea-add", "show-breaks": "show-breaks",
         "recover": "recover", "recover-every": "recover-every",
-        "csv-kind": "csv-kind",
+        "csv-kind": "csv-kind", "paste-name": "paste-name",
         "td-remdup": "rem-duplicates",
         "td-header": "td-header", "td-total": "td-total",
         "td-band-row": "td-band-row", "td-band-col": "td-band-col",
@@ -530,6 +530,7 @@ EXTRA_CMDS = {
         # 本家は値フィールドの設定の中にある「計算の種類」。うちは指図が
         # 集計の名前ひとつなので、タブに独立したボタンとして置く
         "ピボットテーブル": [("pivot-showas", "計算の種類", "pivot-showas")],
+        "数式": [("paste-name", "名前を貼り付け", "paste-name")],
         # 本家では「セルの書式設定 > 保護」タブと「シートの保護」小窓の中。
         # うちは小窓を持たない作りなので、保護タブに独立したボタンで出す
         "保護": [("cell-lock", "セルのロック", "cell-lock"),

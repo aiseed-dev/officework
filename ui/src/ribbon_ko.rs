@@ -283,6 +283,7 @@ pub const CALC: &[Tab] = &[
         c("fn-math", "수학/삼각", "math"),
         c("fn-more", "더 많은 기능", "more"),
         c("defname", "이름 관리자", "named-range-huge"),
+        c("paste-name", "이름 붙여넣기", "paste-name"),
         c("trace-prec", "선행 항목 추적", "trace-prec"),
         c("trace-dep", "종속 항목 추적", "trace-dep"),
         c("remove-arrows", "연결선 제거", "remove-arrows"),

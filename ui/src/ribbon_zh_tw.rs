@@ -283,6 +283,7 @@ pub const CALC: &[Tab] = &[
         c("fn-math", "數學與三角函數", "math"),
         c("fn-more", "更多函數", "more"),
         c("defname", "名稱管理員", "named-range-huge"),
+        c("paste-name", "貼上名稱", "paste-name"),
         c("trace-prec", "追蹤前導參照", "trace-prec"),
         c("trace-dep", "追蹤從屬參照", "trace-dep"),
         c("remove-arrows", "移除箭號", "remove-arrows"),

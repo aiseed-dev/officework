@@ -283,6 +283,7 @@ pub const CALC: &[Tab] = &[
         c("fn-math", "数学与三角函数", "math"),
         c("fn-more", "更多函数", "more"),
         c("defname", "名称管理", "named-range-huge"),
+        c("paste-name", "粘贴名称", "paste-name"),
         c("trace-prec", "追踪引用单元格", "trace-prec"),
         c("trace-dep", "追踪从属单元格", "trace-dep"),
         c("remove-arrows", "删除追踪箭头", "remove-arrows"),

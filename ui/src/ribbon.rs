@@ -329,6 +329,7 @@ pub const CALC: &[Tab] = &[
         c("fn-math", "数学/三角", "math"),
         c("fn-more", "その他の関数", "more"),
         c("defname", "名前の管理", "named-range-huge"),
+        c("paste-name", "名前を貼り付け", "paste-name"),
         c("trace-prec", "参照元のトレース", "trace-prec"),
         c("trace-dep", "参照先のトレース", "trace-dep"),
         c("remove-arrows", "トレース矢印の削除", "remove-arrows"),

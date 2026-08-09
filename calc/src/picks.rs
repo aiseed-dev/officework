@@ -155,6 +155,17 @@ impl Calc {
                 };
                 return; // pick_kind を "value" に戻さない(続けて入切する)
             }
+            // 名前を式へ差し込む。**打っている所に入れる**(末尾ではない)。
+            // まだ式を始めていなければ「=」から始めてあげる
+            "paste-name" => {
+                let name = v.split(" = ").next().unwrap_or(v).to_string();
+                if self.input.text().is_empty() {
+                    self.input = Editor::new("=");
+                }
+                self.input.insert(&name);
+                self.edit_armed = true;
+                self.status = ui::tf!("{} を式に入れました", name).into();
+            }
             "csv-kind" => {
                 let name = v.trim_start_matches('✓').trim();
                 if let Some((n, _, _)) = Calc::CSV_KINDS.iter().find(|(n, _, _)| *n == name) {

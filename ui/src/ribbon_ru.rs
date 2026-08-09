@@ -283,6 +283,7 @@ pub const CALC: &[Tab] = &[
         c("fn-math", "Математические", "math"),
         c("fn-more", "Другие функции", "more"),
         c("defname", "Диспетчер имен", "named-range-huge"),
+        c("paste-name", "Вставить имя", "paste-name"),
         c("trace-prec", "Влияющие ячейки", "trace-prec"),
         c("trace-dep", "Зависимые ячейки", "trace-dep"),
         c("remove-arrows", "Убрать стрелки", "remove-arrows"),

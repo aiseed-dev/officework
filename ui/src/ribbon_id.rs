@@ -283,6 +283,7 @@ pub const CALC: &[Tab] = &[
         c("fn-math", "Matematika & Trigonometri", "math"),
         c("fn-more", "Lebih banyak fungsi", "more"),
         c("defname", "Pengaturan Nama", "named-range-huge"),
+        c("paste-name", "Tempel nama", "paste-name"),
         c("trace-prec", "Preseden Jejak", "trace-prec"),
         c("trace-dep", "Dependen Jejak", "trace-dep"),
         c("remove-arrows", "Hapus panah", "remove-arrows"),

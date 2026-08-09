@@ -283,6 +283,7 @@ pub const CALC: &[Tab] = &[
         c("fn-math", "Matemáticas y trigonometría", "math"),
         c("fn-more", "Más funciones", "more"),
         c("defname", "Administrador de nombres", "named-range-huge"),
+        c("paste-name", "Pegar nombre", "paste-name"),
         c("trace-prec", "Rastrear precedentes", "trace-prec"),
         c("trace-dep", "Rastrear dependientes", "trace-dep"),
         c("remove-arrows", "Quitar flechas", "remove-arrows"),

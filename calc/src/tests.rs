@@ -3534,6 +3534,33 @@ mod track_changes_tests {
 }
 
 #[cfg(test)]
+mod names_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn 名前を式の打っている所へ差し込む(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].names.push(("売上".into(), "B2:B10".into()));
+            this.cursor = Pos::parse("D1").unwrap();
+            this.sync_input();
+
+            // 式がまだ空なら「=」から始めてくれる
+            this.pick_kind = "paste-name";
+            this.apply_pick("売上 = B2:B10", cx);
+            assert_eq!(this.input.text(), "=売上", "式に入っていない");
+
+            // 続きを打ってから、また差し込む(末尾でなく打っている所へ)
+            this.input.insert("+");
+            this.pick_kind = "paste-name";
+            this.apply_pick("売上 = B2:B10", cx);
+            assert_eq!(this.input.text(), "=売上+売上", "打っている所に入らない");
+        });
+    }
+
+}
+
+#[cfg(test)]
 mod autofit_tests {
     use crate::*;
 

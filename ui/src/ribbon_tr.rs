@@ -283,6 +283,7 @@ pub const CALC: &[Tab] = &[
         c("fn-math", "Matematik ve Trigonometri", "math"),
         c("fn-more", "Daha fazla fonksiyon", "more"),
         c("defname", "Manager", "named-range-huge"),
+        c("paste-name", "Adı yapıştır", "paste-name"),
         c("trace-prec", "Etkileyenleri izle", "trace-prec"),
         c("trace-dep", "Etkilenenleri izle", "trace-dep"),
         c("remove-arrows", "Okları kaldır", "remove-arrows"),

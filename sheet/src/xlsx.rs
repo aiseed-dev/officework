@@ -1057,7 +1057,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut names = Vec::new();
     let mut hiddens: Vec<bool> = Vec::new();
     // (名前, 中身) — 中身は 'Sheet1'!$A$1:$B$2 の形
-    let mut defined: Vec<(String, String)> = Vec::new();
+    // (名前, 中身, シート限定ならその番号)
+    let mut defined: Vec<(String, String, Option<usize>)> = Vec::new();
     // 理解できなかった definedName の原文(hidden 属性つき等)。捨てない
     let mut defined_raw: Vec<String> = Vec::new();
     let mut calc_manual = false;
@@ -1068,7 +1069,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         let _ = f.read_to_string(&mut s);
         let mut r = Reader::from_str(&s);
         let mut buf = Vec::new();
-        let mut in_defined: Option<(String, bool, usize)> = None; // (name, 属性が単純か, 原文の頭)
+        let mut in_defined: Option<(String, bool, usize, Option<usize>)> = None; // (name, 属性が単純か, 原文の頭)
         let mut text = String::new();
         let mut last = r.buffer_position() as usize;
         loop {
@@ -1112,22 +1113,27 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     }
                 }
                 Ok(Event::Start(e)) if local(e.name().as_ref()) == b"definedName" => {
-                    // name= 以外の属性(hidden 等)が付いていたら「単純ではない」
-                    let simple = e.attributes().flatten().count() == 1;
-                    in_defined = Some((
-                        attr(&e, "name").unwrap_or_default(),
-                        simple,
-                        start_pos,
-                    ));
+                    // **localSheetId は理解する。** Excel の「このシートだけ」の
+                    // 名前で、素通しにしていたので式から使えなかった。
+                    // それ以外の属性(hidden 等)が付いていたら「単純ではない」
+                    let sid = attr(&e, "localSheetId").and_then(|v| v.parse::<usize>().ok());
+                    let nm = attr(&e, "name").unwrap_or_default();
+                    let known = 1 + usize::from(sid.is_some());
+                    // **`_xlnm.` で始まる名前(印刷範囲・タイトル行)はここで
+                    // 拾わない。** 別の道でモデルへ入れているので、こちらでも
+                    // 拾うと二重になって印刷の設定が壊れる(踏んで直した)
+                    let simple = e.attributes().flatten().count() == known
+                        && !nm.starts_with("_xlnm.");
+                    in_defined = Some((nm, simple, start_pos, sid));
                     text.clear();
                 }
                 Ok(Event::Text(t)) if in_defined.is_some() => {
                     text.push_str(&t.unescape().unwrap_or_default());
                 }
                 Ok(Event::End(e)) if local(e.name().as_ref()) == b"definedName" => {
-                    if let Some((nm, simple, at)) = in_defined.take() {
+                    if let Some((nm, simple, at, sid)) = in_defined.take() {
                         if simple {
-                            defined.push((nm, std::mem::take(&mut text)));
+                            defined.push((nm, std::mem::take(&mut text), sid));
                         } else {
                             defined_raw.push(s[at..last].to_string());
                         }
@@ -1629,10 +1635,15 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     }
     // 名前の定義をシートへ配る。'Sheet1'!$A$1:$B$2 の形だけ理解し、
     // それ以外(複数範囲・行列全体・_xlnm 系)は原文のまま持ち越す
-    for (nm, target) in defined {
+    for (nm, target, sid) in defined {
         match split_defined(&target) {
             Some((sheet_name, r)) => {
-                match book.sheets.iter_mut().find(|s| s.name == sheet_name) {
+                // シート限定の印があればその番号を信じる(同じ名前が
+                // 何枚にもあるとき、名前だけでは行き先が決まらない)
+                let idx = sid
+                    .filter(|i| *i < book.sheets.len())
+                    .or_else(|| book.sheets.iter().position(|s| s.name == sheet_name));
+                match idx.map(|i| &mut book.sheets[i]) {
                     Some(sh) => sh.names.push((nm, r)),
                     None => book.names_raw.push(format!(
                         "<definedName name=\"{}\">{}</definedName>",
@@ -2162,11 +2173,29 @@ fn defined_names_xml(book: &Book) -> String {
             esc(&refs.join(","))
         ));
     }
+    // 人が付けた名前。**同じ名前が2枚以上のシートにあるときだけ
+    // localSheetId を付ける。**
+    //
+    // こちらのモデルは名前を「指す先のシート」に持たせていて、Excel の
+    // 「適用範囲」(ブック全体 / このシートだけ)は持っていない。全部に
+    // localSheetId を付けるとブック全体の名前がシート限定に落ちて、他の
+    // シートの式が壊れる。逆に一つも付けないと、同じ名前が2枚にあるとき
+    // **ブック全体の名前が2つ**になって開けないファイルになる。
+    // 重なったときだけシート限定にするのが、どちらも壊さない線。
+    let mut seen: std::collections::HashMap<&str, usize> = Default::default();
     for s in &book.sheets {
+        for (n, _) in &s.names {
+            *seen.entry(n.as_str()).or_insert(0) += 1;
+        }
+    }
+    for (i, s) in book.sheets.iter().enumerate() {
         for (n, r) in &s.names {
+            let scoped = seen.get(n.as_str()).copied().unwrap_or(0) > 1;
+            let sid = if scoped { format!(" localSheetId=\"{i}\"") } else { String::new() };
             inner.push_str(&format!(
-                "<definedName name=\"{}\">'{}'!{}</definedName>",
+                "<definedName name=\"{}\"{}>'{}'!{}</definedName>",
                 esc(n),
+                sid,
                 s.name.replace('\'', "''"),
                 dollars(r)
             ));
@@ -4645,6 +4674,44 @@ mod print_extras_roundtrip_tests {
             "#N/A",
             "足りない席が埋まっていない"
         );
+    }
+
+    #[test]
+    fn 同じ名前が二枚にあるときだけシート限定で書く() {
+        // **付けないと「ブック全体の名前が2つ」になって開けないファイルに
+        // なる。全部に付けるとブック全体の名前がシート限定に落ちる**
+        let mut b = Book::new();
+        b.sheets.push(crate::Sheet::new("Sheet2".into()));
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
+        b.sheets[1].set(Pos::parse("A1").unwrap(), Cell::input("y"));
+        b.sheets[0].names.push(("売上".into(), "A1:A3".into()));
+        b.sheets[1].names.push(("売上".into(), "A1:A5".into())); // 同じ名前
+        b.sheets[0].names.push(("税率".into(), "B1".into())); // こちらは1枚だけ
+
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let bytes = buf.into_inner();
+        let wb = {
+            let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+            let mut f = z.by_name("xl/workbook.xml").unwrap();
+            let mut out = String::new();
+            std::io::Read::read_to_string(&mut f, &mut out).unwrap();
+            out
+        };
+        assert_eq!(wb.matches(r#"name="売上""#).count(), 2, "重なった名前が両方書かれていない");
+        assert_eq!(
+            wb.matches(r#"name="売上" localSheetId="#).count(),
+            2,
+            "重なった名前にシート限定の印が付いていない"
+        );
+        assert!(
+            wb.contains(r#"name="税率">"#),
+            "1枚だけの名前にまで印が付いた(ブック全体の名前が壊れる)"
+        );
+        // 読み返しても両方が元のシートに戻る
+        let (back, _) = read(Cursor::new(bytes)).expect("読めない");
+        assert_eq!(back.sheets[0].names.iter().filter(|(n, _)| n == "売上").count(), 1);
+        assert_eq!(back.sheets[1].names.iter().filter(|(n, _)| n == "売上").count(), 1);
     }
 
     #[test]
