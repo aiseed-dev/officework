@@ -86,6 +86,18 @@ jobs:
         run: |
           pip install maturin
           maturin build -m pysheet/Cargo.toml --release --out dist
+      - name: 配ってはいけない物が入っていないか
+        # **`.gitignore` に書いてあるだけでは止まらない。** maturin は
+        # python-source の側を見ないので、組む機械に `.pyc` があれば同梱される。
+        # CI は checkout 直後で `.pyc` が無いから緑になる — つまり**この検査は
+        # 手元の事故を止めない**。止めるのは pyproject の exclude で、これは
+        # その exclude が外れたときに気付くための見張り(2026-08-10)
+        run: |
+          if python3 -m zipfile -l dist/*.whl | grep -q __pycache__; then
+            echo "::error::wheel に __pycache__ が入っています(pyproject の exclude を確かめてください)"
+            python3 -m zipfile -l dist/*.whl | grep __pycache__
+            exit 1
+          fi
       - name: 素の環境へ入れる
         run: |
           python -m venv /tmp/v

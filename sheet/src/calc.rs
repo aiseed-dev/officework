@@ -301,6 +301,33 @@ enum RefAns {
     Bad(Value),
 }
 
+/// **四則のための数。** `as_number` と違い、**文字を 0 にしない。**
+///
+/// 表計算には数の取り方が2つある。混ぜると黙って違う答えが出る:
+///
+/// - **集計**(`SUM`・`AVERAGE`)は文字を**飛ばす**。`nums()` の担当
+/// - **四則**(`+ - * / ^`)は文字が混じったら **`#VALUE!`**。ここの担当
+///
+/// `="あ"+1` が `1` になっていた(2026-08-10 に ironcalc と突き合わせて判明)。
+/// 文字の混じった列の合計が**それらしい数**として出るので、台帳でいちばん困る。
+///
+/// 数字だけの文字列(`"5"`)は読む — Excel も `="5"+1` は 6 にする。
+/// 真偽は 1/0(`=TRUE+1` は 2)。空欄は 0。
+fn arith(v: &Value) -> Result<f64, Value> {
+    match v {
+        Value::Number(n) => Ok(*n),
+        Value::Bool(b) => Ok(*b as i32 as f64),
+        Value::Empty => Ok(0.0),
+        Value::Text(t) => t.trim().parse().map_err(|_| Value::Error("#VALUE!".into())),
+        Value::Error(e) => Err(Value::Error(e.clone())),
+    }
+}
+
+/// 2つの値を四則の数にする。**どちらかが文字なら `#VALUE!`。**
+fn arith2(a: &Value, b: &Value) -> Result<(f64, f64), Value> {
+    Ok((arith(a)?, arith(b)?))
+}
+
 impl<'a> P<'a> {
     fn peek(&self) -> Option<&Tok> {
         self.t.get(self.i)
@@ -375,14 +402,17 @@ impl<'a> P<'a> {
             if let Value::Error(_) = v { continue }
             if let Value::Error(_) = r { v = r; continue }
             v = match o {
-                '+' => Value::Number(v.as_number() + r.as_number()),
-                '-' => Value::Number(v.as_number() - r.as_number()),
-                // & は文字列連結(表計算の作法)
-                _ => Value::Text(format!("{}{}", v.display(), r.display())),
+                // & は文字列連結なので数にしない(表計算の作法)
+                '&' => Value::Text(format!("{}{}", v.display(), r.display())),
+                _ => match arith2(&v, &r) {
+                    Err(e) => e,
+                    Ok((x, y)) => Value::Number(if o == '+' { x + y } else { x - y }),
+                },
             };
         }
         Ok(v)
     }
+
 
     fn mul(&mut self) -> Result<Value, String> {
         let mut v = self.pow()?;
@@ -391,13 +421,19 @@ impl<'a> P<'a> {
             let r = self.pow()?;
             if let Value::Error(_) = v { continue }
             if let Value::Error(_) = r { v = r; continue }
-            if o == '/' && r.as_number() == 0.0 {
+            // **型の誤りが零除算より先に立つ。** `="あ"/0` は Excel でも
+            // #VALUE!(#DIV/0! ではない)
+            let (x, y) = match arith2(&v, &r) {
+                Err(e) => {
+                    v = e;
+                    continue;
+                }
+                Ok(p) => p,
+            };
+            if o == '/' && y == 0.0 {
                 return Ok(Value::Error("#DIV/0!".into()));
             }
-            v = Value::Number(match o {
-                '*' => v.as_number() * r.as_number(),
-                _ => v.as_number() / r.as_number(),
-            });
+            v = Value::Number(if o == '*' { x * y } else { x / y });
         }
         Ok(v)
     }
@@ -407,7 +443,10 @@ impl<'a> P<'a> {
         if let Some(Tok::Op('^')) = self.peek() {
             self.next();
             let r = self.pow()?;
-            return Ok(Value::Number(v.as_number().powf(r.as_number())));
+            return Ok(match arith2(&v, &r) {
+                Err(e) => e,
+                Ok((x, y)) => Value::Number(x.powf(y)),
+            });
         }
         Ok(v)
     }
@@ -418,7 +457,10 @@ impl<'a> P<'a> {
                 self.next();
                 match self.unary()? {
                     e @ Value::Error(_) => Ok(e),
-                    v => Ok(Value::Number(-v.as_number())),
+                    v => Ok(match arith(&v) {
+                        Err(e) => e,
+                        Ok(x) => Value::Number(-x),
+                    }),
                 }
             }
             Some(Tok::Op('+')) => {
@@ -3919,6 +3961,42 @@ mod tests {
         let sh = s(&[("A1", "0"), ("B1", "=10/A1")]);
         assert_eq!(v(&sh, "B1"), "#DIV/0!", "黙って0を返さない");
     }
+
+    #[test]
+    fn 文字が計算に混じったらVALUEを返す() {
+        // **0 として続けない。** 文字の混じった列の合計が「それらしい数」に
+        // なるのが一番困る(2026-08-10 に ironcalc と突き合わせて判明 —
+        // ="あ"+1 が 1 になっていた)
+        for f in ["=\"あ\"+1", "=1+\"あ\"", "=\"あ\"*2", "=-\"あ\"", "=2^\"あ\""] {
+            let sh = s(&[("A1", f)]);
+            assert_eq!(v(&sh, "A1"), "#VALUE!", "{f}");
+        }
+    }
+
+    #[test]
+    fn 型の誤りは零除算より先に立つ() {
+        // Excel も ="あ"/0 は #VALUE!。#DIV/0! ではない
+        let sh = s(&[("A1", "=\"あ\"/0"), ("A2", "=5/0")]);
+        assert_eq!(v(&sh, "A1"), "#VALUE!");
+        assert_eq!(v(&sh, "A2"), "#DIV/0!");
+    }
+
+    #[test]
+    fn 数字だけの文字と真偽は数として読む() {
+        // ="5"+1 は 6(Excel も同じ)。真偽は 1/0。& は連結なので数にしない
+        let sh = s(&[("A1", "=\"5\"+1"), ("A2", "=TRUE+1"), ("A3", "=\"あ\"&1")]);
+        assert_eq!(v(&sh, "A1"), "6");
+        assert_eq!(v(&sh, "A2"), "2");
+        assert_eq!(v(&sh, "A3"), "あ1");
+    }
+
+    #[test]
+    fn 集計は文字を飛ばす_四則と取り方が違う() {
+        // **混ぜてはいけない2つの数の取り方。** SUM は飛ばし、四則は断る
+        let sh = s(&[("A1", "=SUM(1,\"あ\",2)")]);
+        assert_eq!(v(&sh, "A1"), "3");
+    }
+
 
     #[test]
     fn 反復計算は循環を収束させる() {

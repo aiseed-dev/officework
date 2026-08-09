@@ -35,6 +35,10 @@ struct Session {
     path: String,
     stamp: (u64, u64),
     book: Book,
+    /// 書式 → 番号。**`open` で一度だけ組み、`read_range` の `styleIndex` が指す**
+    /// (範囲ごとに組み直すと、同じ書式に違う番号が付く)。表そのものは
+    /// `open` の答えに載せて渡しきっているので、ここでは持たない
+    style_index: BTreeMap<String, usize>,
 }
 
 /// ファイルの印(更新時刻, 大きさ)。読めなければ 0 — 消えたことも変化と見る。
@@ -122,6 +126,8 @@ fn main() {
     let mut out = BufWriter::new(stdout.lock());
     let mut sessions: BTreeMap<String, Session> = BTreeMap::new();
     let mut plumbing = Plumbing::new();
+    // 計算のための居座り(径路 → 開いたブック)。向こうも Model を residents させる
+    let mut resident: BTreeMap<String, Resident> = BTreeMap::new();
     let mut seq: u64 = 0;
 
     for line in stdin.lock().lines() {
@@ -136,7 +142,7 @@ fn main() {
         if line.trim().is_empty() {
             continue;
         }
-        let res = handle(&line, &mut sessions, &mut plumbing, &mut seq);
+        let res = handle(&line, &mut sessions, &mut plumbing, &mut resident, &mut seq);
         let _ = writeln!(out, "{res}");
         let _ = out.flush();
     }
@@ -160,15 +166,17 @@ fn handle(
     line: &str,
     sessions: &mut BTreeMap<String, Session>,
     plumbing: &mut Plumbing,
+    resident: &mut BTreeMap<String, Resident>,
     seq: &mut u64,
 ) -> String {
-    dispatch(line, sessions, plumbing, seq)
+    dispatch(line, sessions, plumbing, resident, seq)
 }
 
 fn dispatch(
     line: &str,
     sessions: &mut BTreeMap<String, Session>,
     plumbing: &mut Plumbing,
+    resident: &mut BTreeMap<String, Resident>,
     seq: &mut u64,
 ) -> String {
     let req: Value = match serde_json::from_str(line) {
@@ -192,9 +200,20 @@ fn dispatch(
                 Ok((book, unsupported)) => {
                     *seq += 1;
                     let id = format!("ow-{seq}");
-                    let v = open_result(&id, &path, &book, &unsupported);
+                    let mut st = Styles::new();
+                    // **書式は全シートを通して1つの表にする**(向こうと同じ)
+                    for sh in &book.sheets {
+                        for c in sh.cells.values() {
+                            st.intern(&c.fmt);
+                        }
+                    }
+                    let v = open_result(&id, &path, &book, &unsupported, &st.order);
+                    // 表は答えに載せて渡しきる。手元に残すのは番号の引きだけ
                     let stamp = stamp_of(&path);
-                    sessions.insert(id, Session { path, stamp, book });
+                    sessions.insert(
+                        id,
+                        Session { path, stamp, book, style_index: st.index },
+                    );
                     ok(&rid, v)
                 }
                 Err(e) => fail(&rid, "workbook_error", &e),
@@ -221,13 +240,16 @@ fn dispatch(
             let r = req.get("range").cloned().unwrap_or(Value::Null);
             let g = |k: &str| r.get(k).and_then(Value::as_u64).unwrap_or(0) as u32;
             let (r0, r1, c0, c1) = (g("startRow"), g("endRow"), g("startColumn"), g("endColumn"));
-            let (rows, cols) = sh.extent();
+            // **見せる大きさは `size()`。** 申告(`<dimension>`)と実際の大きいほう
+            // (2026-08-10 発注者確定)。`extent()` だと末尾の空行の高さや
+            // 罫線だけの枠が範囲の外に落ちて、呼ぶ側に一度も届かない
+            let (rows, cols) = sh.size();
             // **向こうと同じく、シートの外は断る。** 黙って丸めると、
             // 呼ぶ側は「そこは空だった」と受け取る
             if r1 >= rows.max(1) || c1 >= cols.max(1) {
                 return fail(&rid, "invalid_request", "Range is outside the worksheet.").to_string();
             }
-            ok(&rid, range_result(sh, r0, r1, c0, c1))
+            ok(&rid, range_result(sh, r0, r1, c0, c1, &sess.style_index))
         }
         "close" => {
             sessions.remove(&s("sessionId"));
@@ -243,11 +265,41 @@ fn dispatch(
             Ok(answer) => return answer,
             Err(e) => fail(&rid, "io_error", &format!("配管の転送に失敗: {e}")),
         },
-        "read_formula_cells" | "read_media" | "recalc_cells" => fail(
+        "read_formula_cells" => {
+            let sid = s("sessionId");
+            let Some(sess) = sessions.get(&sid) else {
+                return fail(&rid, "invalid_request", "そのセッションはありません").to_string();
+            };
+            let sheet_id = s("sheetId");
+            let Some(i) = sheet_index(&sess.book, &sheet_id) else {
+                return fail(&rid, "invalid_request", &format!("シートがありません: {sheet_id}"))
+                    .to_string();
+            };
+            ok(&rid, formula_cells_result(&sess.book.sheets[i]))
+        }
+        // **visuals を返していないので、この命令は来ないはず。** 向こうの
+        // read_media は open で配った visualId を鍵に引く作りで、こちらは
+        // まだ図形を返していない。来たなら想定違いなので、そう言って断る
+        "read_media" => fail(
             &rid,
             "unsupported_command",
-            &format!("{cmd} はまだ。読み(open/read_range)の突き合わせが先(設計の「進め方」)"),
+            "read_media はまだ。open が visuals を返していないので、この命令は来ない想定",
         ),
+        // **計算**(設計の「進め方」の2)。ironcalc の代わりに sheet::calc が答える。
+        // セッションではなく**径路**で来る(向こうもそう作られている)ので、
+        // 開き直しを避けるために計算用の居座りを別に持つ
+        "recalc_cells" => {
+            let path = s("path");
+            if path.is_empty() {
+                return fail(&rid, "invalid_request", "path がありません").to_string();
+            }
+            let edits = req.get("edits").and_then(Value::as_array).cloned().unwrap_or_default();
+            let reads = req.get("reads").and_then(Value::as_array).cloned().unwrap_or_default();
+            match recalc(resident, &path, &edits, &reads) {
+                Ok(v) => ok(&rid, v),
+                Err(e) => fail(&rid, "workbook_error", &e),
+            }
+        }
         other => fail(&rid, "invalid_request", &format!("知らない命令: {other}")),
     }
     .to_string()
@@ -291,12 +343,18 @@ fn rng(a: Pos, b: Pos) -> Value {
     json!({"startRow": a.row, "startColumn": a.col, "endRow": b.row, "endColumn": b.col})
 }
 
-fn open_result(session_id: &str, path: &str, book: &Book, unsupported: &[String]) -> Value {
+fn open_result(
+    session_id: &str,
+    path: &str,
+    book: &Book,
+    unsupported: &[String],
+    styles: &[Value],
+) -> Value {
     let name = path.rsplit('/').next().unwrap_or(path);
     let mut sheets = Vec::new();
     let mut defined = Vec::new();
     for (i, sh) in book.sheets.iter().enumerate() {
-        let (rows, cols) = sh.extent();
+        let (rows, cols) = sh.size();
         let mut widths: Vec<Value> = Vec::new();
         for (c, w) in &sh.col_width {
             widths.push(json!({"startColumn": c, "endColumn": c, "width": w,
@@ -359,14 +417,14 @@ fn open_result(session_id: &str, path: &str, book: &Book, unsupported: &[String]
     // 部品の数は ZIP を開き直さないと分からない。**0 で誤魔化さず** null
     v.insert("entryCount".into(), Value::Null);
     v.insert("sheets".into(), json!(sheets));
-    v.insert("styles".into(), json!([]));
+    v.insert("styles".into(), json!(styles));
     v.insert("dxfStyles".into(), json!([]));
     v.insert("visuals".into(), json!([]));
     v.insert("definedNames".into(), json!(defined));
     v.insert(
         "xNotFilled".into(),
         json!([
-            "styles / dxfStyles(書式の索引表。CellFormat から組み直す — 次の便)",
+            "dxfStyles(条件付き書式の見た目。規則は返しているが見た目の表はまだ)",
             "visuals(図形・画像・グラフ)",
             "sparklines / pivotTables / pivotRanges",
             "entryCount",
@@ -424,7 +482,14 @@ fn cond_value(k: &CondKind) -> (String, Vec<String>, Option<String>) {
     }
 }
 
-fn range_result(sh: &Sheet, r0: u32, r1: u32, c0: u32, c1: u32) -> Value {
+fn range_result(
+    sh: &Sheet,
+    r0: u32,
+    r1: u32,
+    c0: u32,
+    c1: u32,
+    style_index: &BTreeMap<String, usize>,
+) -> Value {
     let inside = |p: Pos| p.row >= r0 && p.row <= r1 && p.col >= c0 && p.col <= c1;
 
     let mut cells = Vec::new();
@@ -443,6 +508,12 @@ fn range_result(sh: &Sheet, r0: u32, r1: u32, c0: u32, c1: u32) -> Value {
             o.insert("value".into(), v);
             if let Some(f) = f {
                 o.insert("formula".into(), json!(f));
+            }
+            // **書式は open で配った表の番号で指す。** 表に無い(素の書式)なら付けない
+            if let Some(v) = style_value(&cell.fmt) {
+                if let Some(i) = style_index.get(&v.to_string()) {
+                    o.insert("styleIndex".into(), json!(i));
+                }
             }
             if let Some((h, w)) = sh.cse.get(&p) {
                 o.insert(
@@ -518,10 +589,222 @@ fn range_result(sh: &Sheet, r0: u32, r1: u32, c0: u32, c1: u32) -> Value {
         "indexedThroughRow": r1,
         "indexingComplete": true,
         "xNotFilled": [
-            "cells.styleIndex(styles の索引表がまだ)",
             "cells.rich(セルの中で書式が変わる run をモデルが持たない)",
             "autoFilter(モデルが持たない)",
             "conditionalRules の cfvos / colors / dxfIndex / rank / priority",
         ],
     })
+}
+
+/// 式のあるセルだけを返す。向こうの `read_formula_cells`。
+///
+/// 呼ぶ側は依存の連鎖を辿るのに使う。**全部読んでから答える**ので
+/// `indexingComplete` は常に真、上限も設けていないので `truncated` は偽。
+fn formula_cells_result(sh: &Sheet) -> Value {
+    let cells: Vec<Value> = sh
+        .cells
+        .iter()
+        .filter_map(|(p, c)| {
+            let f = c.formula.as_ref()?;
+            let mut o = Map::new();
+            o.insert("row".into(), json!(p.row));
+            o.insert("column".into(), json!(p.col));
+            o.insert("value".into(), cell_value(sh, *p));
+            o.insert("formula".into(), json!(format!("={f}")));
+            Some(Value::Object(o))
+        })
+        .collect();
+    json!({"cells": cells, "indexingComplete": true, "truncated": false})
+}
+
+/// 書式の索引表。**向こうは `styles[]` の索引を返し、セルは番号で指す。**
+///
+/// officework は `CellFormat` をセルに直に持つので、**同じ書式をまとめて
+/// 番号を振り直す**。原本の `style_of`(読んだときの `<c s="…">`)は使わない —
+/// あれは保存で原本の styles.xml を据え置くための控えで、番号の意味が
+/// 向こうの索引と揃っている保証がない。
+///
+/// 返すのは**この範囲で実際に使われている書式だけ**。原本の styles.xml を
+/// 丸ごと写すと、使っていない何百もの書式が付いてくる。
+struct Styles {
+    order: Vec<Value>,
+    index: BTreeMap<String, usize>,
+}
+
+impl Styles {
+    fn new() -> Styles {
+        Styles { order: Vec::new(), index: BTreeMap::new() }
+    }
+
+    /// 書式を1つ入れて索引を返す。**素の書式(既定のまま)は番号を振らない** —
+    /// 呼ぶ側は `styleIndex` が無ければ既定で描く
+    fn intern(&mut self, f: &sheet::model::CellFormat) -> Option<usize> {
+        let v = style_value(f)?;
+        let key = v.to_string();
+        if let Some(i) = self.index.get(&key) {
+            return Some(*i);
+        }
+        let i = self.order.len();
+        self.order.push(v);
+        self.index.insert(key, i);
+        Some(i)
+    }
+}
+
+fn edge_value(e: &sheet::model::Edge) -> Option<Value> {
+    if !e.on {
+        return None;
+    }
+    let mut o = Map::new();
+    o.insert("style".into(), json!(e.style.xlsx()));
+    if let Some(c) = e.color {
+        o.insert("color".into(), json!(format!("{:06X}", c & 0xFF_FFFF)));
+    }
+    Some(Value::Object(o))
+}
+
+/// `CellFormat` を向こうの `CellStyle` の形へ。**既定のままなら `None`。**
+fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
+    use sheet::model::{HAlign, VAlign};
+    let mut o = Map::new();
+    if let Some(n) = &f.font {
+        o.insert("fontFamily".into(), json!(n));
+    }
+    if let Some(c) = f.size_c {
+        o.insert("fontSize".into(), json!(f64::from(c) / 100.0));
+    }
+    for (k, v) in [
+        ("bold", f.bold),
+        ("italic", f.italic),
+        ("underline", f.underline),
+        ("strikethrough", f.strike),
+        ("wrapText", f.wrap),
+    ] {
+        if v {
+            o.insert(k.into(), json!(true));
+        }
+    }
+    if let Some(c) = &f.color {
+        o.insert("fontColor".into(), json!(c));
+    }
+    if let Some(c) = &f.fill {
+        o.insert("fillColor".into(), json!(c));
+    }
+    let h = match f.align {
+        HAlign::General => None,
+        HAlign::Left => Some("left"),
+        HAlign::Center => Some("center"),
+        HAlign::Right => Some("right"),
+        HAlign::Justify => Some("justify"),
+    };
+    if let Some(h) = h {
+        o.insert("horizontalAlignment".into(), json!(h));
+    }
+    let v = match f.valign {
+        VAlign::Top => Some("top"),
+        VAlign::Middle => Some("center"),
+        VAlign::Bottom => None, // xlsx の既定
+    };
+    if let Some(v) = v {
+        o.insert("verticalAlignment".into(), json!(v));
+    }
+    if let Some(n) = &f.number_format {
+        o.insert("numberFormat".into(), json!(n));
+    }
+    for (k, e) in [
+        ("borderTop", &f.borders.top),
+        ("borderBottom", &f.borders.bottom),
+        ("borderLeft", &f.borders.left),
+        ("borderRight", &f.borders.right),
+    ] {
+        if let Some(v) = edge_value(e) {
+            o.insert(k.into(), v);
+        }
+    }
+    if o.is_empty() { None } else { Some(Value::Object(o)) }
+}
+
+/// 計算のために居座らせたブック。**径路で引く。**
+///
+/// 向こうは ironcalc の Model をセッションに残す。こちらも同じく、毎回
+/// ZIP を開き直さない。原本が変われば捨てる(`open` の居座りと同じ作法)。
+struct Resident {
+    stamp: (u64, u64),
+    book: Book,
+}
+
+/// `recalc_cells` — **打った字を入れて、計算して、頼まれた範囲を返す。**
+///
+/// 向こうの答えの形に揃える: `formatted`(表示形式を当てた文字列)・
+/// `number`(数なら生の値)・`isFormula`。`cached` は居座りが効いたか。
+fn recalc(
+    resident: &mut BTreeMap<String, Resident>,
+    path: &str,
+    edits: &[Value],
+    reads: &[Value],
+) -> Result<Value, String> {
+    let stamp = stamp_of(path);
+    let cached = match resident.get(path) {
+        Some(r) if r.stamp == stamp => true,
+        _ => {
+            // 原本が無い・変わったなら読み直す。**黙って古い答えを返さない**
+            let (book, _) = open_book(path)?;
+            resident.insert(path.to_string(), Resident { stamp, book });
+            false
+        }
+    };
+    let r = resident.get_mut(path).ok_or("居座りが作れません")?;
+
+    for e in edits {
+        let name = e.get("sheet").and_then(Value::as_str).unwrap_or_default();
+        let Some(sh) = r.book.sheets.iter_mut().find(|s| s.name == name) else {
+            // **知らないシートは黙って飛ばさない。** 呼ぶ側の思い違いが隠れる
+            return Err(format!("シートがありません: {name}"));
+        };
+        let row = e.get("row").and_then(Value::as_u64).unwrap_or(0) as u32;
+        let col = e.get("column").and_then(Value::as_u64).unwrap_or(0) as u32;
+        let input = e.get("input").and_then(Value::as_str).unwrap_or_default();
+        let p = Pos { row, col };
+        // **表示形式は据え置く。** 打ち直しで書式を落とすのは calc の掟に反する
+        let fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
+        let mut cell = if input.is_empty() {
+            sheet::model::Cell::default()
+        } else {
+            sheet::model::Cell::input(input)
+        };
+        cell.fmt = fmt;
+        sh.set(p, cell);
+    }
+    if !edits.is_empty() {
+        sheet::recalc_all(&mut r.book);
+    }
+
+    let mut cells = Vec::new();
+    for rd in reads {
+        let name = rd.get("sheet").and_then(Value::as_str).unwrap_or_default();
+        let Some(sh) = r.book.sheets.iter().find(|s| s.name == name) else {
+            return Err(format!("シートがありません: {name}"));
+        };
+        let g = |k: &str| rd.get("range").and_then(|x| x.get(k)).and_then(Value::as_u64).unwrap_or(0) as u32;
+        for row in g("startRow")..=g("endRow") {
+            for col in g("startColumn")..=g("endColumn") {
+                let p = Pos { row, col };
+                let Some(c) = sh.get(p) else { continue };
+                let v = sh.value(p);
+                let number = match v {
+                    sheet::Value::Number(n) => Some(n),
+                    _ => None,
+                };
+                cells.push(json!({
+                    "sheet": name,
+                    "row": row,
+                    "column": col,
+                    "formatted": sheet::model::format_value(&v, c.fmt.number_format.as_deref()),
+                    "number": number,
+                    "isFormula": c.formula.is_some(),
+                }));
+            }
+        }
+    }
+    Ok(json!({"cells": cells, "cached": cached}))
 }

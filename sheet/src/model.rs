@@ -629,6 +629,12 @@ pub struct Sheet {
     /// これが無いと、開き直したとき自分のスピル跡を他人のデータと
     /// 見分けられず、偽の #SPILL! になる
     pub spills: std::collections::BTreeMap<Pos, (u32, u32)>,
+    /// 原本の `<dimension ref="A1:CN46"/>` が言っていた大きさ(行数, 列数)。
+    /// **書き手の申告であって、実際に中身がある範囲とは限らない。**
+    /// 空でも罫線や高さを持つ行・列が末尾にあると、申告のほうが大きくなる。
+    /// 逆に申告が `A1` だけの手抜きな書き手もいるので、**単独では信じない** —
+    /// 使うときは [`Sheet::size`] で実際と大きいほうを採る(2026-08-10 発注者確定)
+    pub dim: Option<(u32, u32)>,
     /// **昔ながらの配列数式(CSE)。** 起点 → 覆う大きさ(行, 列)。
     ///
     /// Excel で範囲を選んで Ctrl+Shift+Enter で入れたもの。xlsx では
@@ -1419,6 +1425,43 @@ impl Sheet {
     /// 使われている範囲(行数, 列数)。空なら (0,0)。
     pub fn extent(&self) -> (u32, u32) {
         self.cells.keys().fold((0, 0), |(r, c), p| (r.max(p.row + 1), c.max(p.col + 1)))
+    }
+
+    /// **見せる大きさ。** `extent`(中身のあるセル)と、原本の `<dimension>` の
+    /// 申告と、**セルは無いが高さ・幅・隠し・畳みを持つ行や列**の、いちばん大きい所。
+    ///
+    /// `extent` と分けてあるのは、`extent` が「中身のある範囲」として
+    /// 38 箇所から使われているため。**あちらの意味は変えない。**
+    ///
+    /// なぜ大きいほうを採るか(2026-08-10 発注者確定): 申告だけを信じると、
+    /// `A1` としか書かない手抜きな書き手のときに**中身のあるセルが範囲の外に
+    /// 落ちる** — 値が消えるのは高さが消えるより重い。実際だけを見ると、
+    /// 末尾の空行の高さや罫線だけの枠が届かず、帳票の見た目が変わる。
+    /// 日銀の資金循環では 59 枚のシートで申告と実際が食い違っていた
+    /// (最大で 30 行ぶん)。
+    pub fn size(&self) -> (u32, u32) {
+        let (mut r, mut c) = self.extent();
+        if let Some((dr, dc)) = self.dim {
+            r = r.max(dr);
+            c = c.max(dc);
+        }
+        let rows = self
+            .row_height
+            .keys()
+            .chain(self.row_hidden.iter())
+            .chain(self.row_outline.keys());
+        for k in rows {
+            r = r.max(k + 1);
+        }
+        let cols = self
+            .col_width
+            .keys()
+            .chain(self.col_hidden.iter())
+            .chain(self.col_outline.keys());
+        for k in cols {
+            c = c.max(k + 1);
+        }
+        (r, c)
     }
 }
 

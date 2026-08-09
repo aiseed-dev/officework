@@ -105,6 +105,10 @@ def their_view(sc, path):
     meta = r["result"]
     sid = meta.get("sessionId") or meta.get("session_id")
     out = {"sheets": [], "names": len(meta.get("definedNames") or [])}
+    # **書式の索引表。** 両側とも styles[] の番号でセルを指すので、
+    # 比べるときは番号ではなく**中身に解いてから**見る(番号の振り方は
+    # 実装ごとに違ってよい — 揃える意味がない)
+    styles = meta.get("styles") or []
     # **サイドカーが「読めなかった」と言った物を落とさない。**
     # Python の窓では `Book.unsupported` に出ていた物で、
     # うちのサイドカーは答えに `xUnsupported` として載せる(向こうには無い欄)
@@ -166,7 +170,9 @@ def their_view(sc, path):
             # 見ているので、揃えないと毎回差が出る(2026-08-09 に踏んだ)
             if v in (None, "") and not f:
                 continue
-            view["cells"][a1(c["row"], c["column"])] = {"v": v, "f": f}
+            si = c.get("styleIndex")
+            st = styles[si] if isinstance(si, int) and si < len(styles) else None
+            view["cells"][a1(c["row"], c["column"])] = {"v": v, "f": f, "s": norm_style(st)}
         for m in res.get("merges") or []:
             view["merges"].append(
                 f"{a1(m['startRow'], m['startColumn'])}:{a1(m['endRow'], m['endColumn'])}"
@@ -222,7 +228,7 @@ for name in b.sheet_names:
             f = s.formula(ref)
             if v in (None, "") and not f:
                 continue
-            view["cells"][ref] = {"v": v, "f": f}
+            view["cells"][ref] = {"v": v, "f": f, "s": None}
     out["sheets"].append(view)
 print(json.dumps(out, ensure_ascii=False))
 """ % (MAX_ROWS, MAX_COLS)
@@ -249,6 +255,62 @@ def our_view(path):
         return json.loads(r.stdout)
     except json.JSONDecodeError:
         return {"error": f"答えが読めません: {r.stdout[:200]}"}
+
+
+# 書式のうち**比べる欄**。両側が持っていて意味の揃うものだけ。
+# 増やすのは、揃わない理由を1つずつ潰してから
+STYLE_KEYS = [
+    "bold", "italic", "underline", "strikethrough", "wrapText",
+    "fontFamily", "fontSize", "fontColor", "fillColor",
+    "horizontalAlignment", "verticalAlignment", "numberFormat",
+    "borderTop", "borderBottom", "borderLeft", "borderRight",
+]
+
+
+def norm_color(c):
+    """色を RRGGBB に揃える。向こうは FFRRGGBB(alpha 付き)で返すことがある。"""
+    if not isinstance(c, str):
+        return c
+    h = c.lstrip("#").upper()
+    if len(h) == 8 and h.startswith("FF"):
+        h = h[2:]
+    return h
+
+
+def norm_style(st):
+    """比べる形に揃える。**無い欄と偽は同じ**(既定)として扱う。"""
+    if not st:
+        return {}
+    o = {}
+    for k in STYLE_KEYS:
+        v = st.get(k)
+        if v in (None, False, ""):
+            continue
+        # **"General" は「表示形式なし」と同じ。** 向こうは既定を明示して返し、
+        # こちらは持たない。意味は同じなので、どちらも無しに寄せる
+        if k == "numberFormat" and v == "General":
+            continue
+        # **既定を明示するか省くかの違いは差ではない。** 向こうは既定も
+        # 書いて返し、こちらは省く。xlsx の既定は 横=general・縦=bottom
+        if k == "horizontalAlignment" and v == "general":
+            continue
+        if k == "verticalAlignment" and v == "bottom":
+            continue
+        if k.endswith("Color"):
+            v = norm_color(v)
+        elif k.startswith("border") and isinstance(v, dict):
+            v = {"style": v.get("style"), "color": norm_color(v.get("color"))}
+            # **罫線の色の「自動」。** 原本の <color indexed="64"/> は色ではなく
+            # 「自動(前景)」で、向こうは 000000 に解いて返し、こちらは色なしで
+            # 返す。画面ではどちらも黒。**黒の明示と自動を区別できないのは
+            # 承知の上** — 実物では自動が圧倒的に多く(5万件超)、混ぜたままだと
+            # 本物の色の差が埋もれる。実際、青い罫線 73 件がこれに埋もれていた
+            if v["color"] in (None, "000000"):
+                del v["color"]
+        elif k == "fontSize" and isinstance(v, (int, float)):
+            v = round(float(v), 2)
+        o[k] = v
+    return o
 
 
 def same_value(a, b):
@@ -335,7 +397,7 @@ def diff_sheet(name, t, o, show_n, rph=False):
             + ", ".join(f"{k}={show(oc[k]['v'])}" for k in only_o[:show_n])
         )
 
-    vbad, fbad, kana = [], [], []
+    vbad, fbad, kana, sbad = [], [], [], []
     for k in sorted(set(tc) & set(oc)):
         if not same_value(tc[k]["v"], oc[k]["v"]):
             line = f"{k}: 向こう {show(tc[k]['v'])} / うち {show(oc[k]['v'])}"
@@ -345,6 +407,13 @@ def diff_sheet(name, t, o, show_n, rph=False):
                 vbad.append(line)
         if (tc[k]["f"] or "") != (oc[k]["f"] or ""):
             fbad.append(f"{k}: 向こう {show(tc[k]['f'])} / うち {show(oc[k]['f'])}")
+        ts, os_ = tc[k].get("s") or {}, oc[k].get("s") or {}
+        if ts != os_:
+            # **違う欄だけ言う。** 書式まるごと並べると読めない
+            keys = sorted(set(ts) | set(os_))
+            d2 = [f"{x}: 向こう {ts.get(x)!r} / うち {os_.get(x)!r}" for x in keys
+                  if ts.get(x) != os_.get(x)]
+            sbad.append(f"{k}: " + " ".join(d2))
     if kana:
         theirs_bug.append(
             f"[{name}] ふりがなの連結 {len(kana)} 個(**向こうの欠陥**。うちが正しい): "
@@ -354,6 +423,8 @@ def diff_sheet(name, t, o, show_n, rph=False):
         d.append(f"[{name}] 値が違うセル {len(vbad)} 個: " + " / ".join(vbad[:show_n]))
     if fbad:
         d.append(f"[{name}] 式が違うセル {len(fbad)} 個: " + " / ".join(fbad[:show_n]))
+    if sbad:
+        d.append(f"[{name}] 書式が違うセル {len(sbad)} 個: " + " / ".join(sbad[:show_n]))
 
     tm, om = set(t.get("merges") or []), set(o.get("merges") or [])
     if tm != om:

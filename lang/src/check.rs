@@ -20,7 +20,7 @@
 use crate::ja::furigana::{self, Suggestion};
 use crate::Target;
 use crate::model::Endpoint;
-use crate::ja::proof;
+use crate::ja::{homophone, notation, okurigana, proof, wording};
 use crate::spell::{self, Dictionary};
 
 /// 指摘の種類。
@@ -84,7 +84,9 @@ pub struct Finding {
     pub found: String,
     /// 本文における文字位置(分からなければ None)
     pub at: Option<usize>,
-    /// 直し方・読み方の候補(高い順)
+    /// 直し方・読み方の候補(高い順)。
+    /// **表記ゆれだけは「直す先」ではなく「同じ文書の中の別の書き方」** —
+    /// どちらが正しいとは言わない(SEKKEI 決めごと6)
     pub candidates: Vec<String>,
 }
 
@@ -120,6 +122,12 @@ pub struct Checker {
     pub dict: Option<Dictionary>,
     pub dict_problem: Option<String>,
     pub endpoint: Endpoint,
+    /// 同音異義語を含む文だけをモデルへ送るか。**既定は false。**
+    ///
+    /// 落とせるのは「大丈夫と証明できた文」ではなく「表に載っていない文」
+    /// なので、既定にはしない([`crate::ja::homophone`])。
+    /// 明示で頼まれたときだけ濾過し、見ていない文の数を `skipped` に残す
+    pub filter_homophones: bool,
     /// 一度判定した語は覚える。**同じ語を二度モデルに訊かない**
     seen: std::cell::RefCell<std::collections::BTreeMap<String, Verdict>>,
 }
@@ -130,7 +138,13 @@ impl Default for Checker {
             Ok(d) => (Some(d), None),
             Err(e) => (None, Some(e)),
         };
-        Self { dict, dict_problem, endpoint: Endpoint::default(), seen: Default::default() }
+        Self {
+            dict,
+            dict_problem,
+            endpoint: Endpoint::default(),
+            filter_homophones: false,
+            seen: Default::default(),
+        }
     }
 }
 
@@ -182,19 +196,55 @@ impl Checker {
             (None, None) => {}
         }
 
-        // --- 日本語: モデル。辞書では原理的に捕まらない ---
+        // --- 日本語 ---
         if lang == spell::Lang::Japanese {
-            match proof::proofread(&self.endpoint, text) {
+            // 表記ゆれは**文書の中だけで判る**ので、モデルが居なくても出す。
+            // GPU の無い機械で日本語の校正が動き出すのはここ
+            r.findings.extend(notation::findings(text));
+            // 重複表現も有限の一覧で閉じる。**誤りとは言わず、言い換えの案を出す**
+            r.findings.extend(wording::findings(text));
+            // 送り仮名は内閣告示による。**許容を誤りにしない**(決めごと4)
+            r.findings.extend(okurigana::findings(text));
+
+            // 誤変換・重複表現はモデル。辞書では原理的に捕まらない。
+            // **繋がらなければそう言う** — 表記ゆれが出たからといって
+            // 「検査できなかった部分がある」(終了コード3)は消えない
+            // ここまでが辞書の指摘。モデルの分と突き合わせて重複を落とす
+            let by_dict = r.findings.len();
+
+            // 濾過を頼まれていれば、紛らわしい語のある文だけを渡す。
+            // **落とした文は「大丈夫」ではなく「見ていない」** — 必ずそう言う
+            let cut = self.filter_homophones.then(|| homophone::filter(text));
+            let to_model = match &cut {
+                Some(f) => f.send.as_str(),
+                None => text,
+            };
+            if let Some(f) = &cut {
+                if !f.is_whole() {
+                    r.skipped.push(format!(
+                        "同音異義語の無い {} 文(全 {} 文)はモデルに渡していない",
+                        f.dropped, f.total
+                    ));
+                }
+            }
+
+            match proof::proofread(&self.endpoint, to_model) {
                 Ok(notes) => {
                     for n in notes {
                         let at = char_index_of(text, &n.found);
-                        r.findings.push(Finding {
+                        let f = Finding {
                             kind: Kind::from_why(&n.why),
                             source: Source::Model,
                             found: n.found,
                             at,
                             candidates: vec![n.suggest],
-                        });
+                        };
+                        // **同じ語を2回言わない。**
+                        // モデルへの指示は狭めない — 辞書が取りこぼす形
+                        // (問合せ先/問い合わせ先)はモデルにしか見えないから
+                        if !already_said(&r.findings[..by_dict], &f) {
+                            r.findings.push(f);
+                        }
                     }
                 }
                 Err(e) => r.skipped.push(format!("日本語の校正({e})")),
@@ -291,6 +341,21 @@ impl Checker {
     }
 }
 
+/// モデルの指摘を、辞書が既に言っているか。
+///
+/// 1〜3 が入って辞書とモデルの守備範囲が重なった。利用者から見れば指摘は1つで、
+/// **どちらが言ったかは関係ない**(決めごと1)。残すのは**辞書の側** —
+/// GPU の有無で出る物が変わらないほうがよい。
+///
+/// 種別が同じで、文字列が一方に含まれていれば同じ指摘と見る
+/// (モデルは「お問合せ」と広く取ることがある)。
+fn already_said(by_dict: &[Finding], note: &Finding) -> bool {
+    by_dict.iter().any(|d| {
+        d.kind == note.kind
+            && (d.found.contains(&note.found) || note.found.contains(&d.found))
+    })
+}
+
 /// 長すぎる本文は頭を渡す(判定には全文は要らない)。
 fn snippet(text: &str, chars: usize) -> String {
     text.chars().take(chars).collect()
@@ -312,6 +377,7 @@ mod tests {
             dict_problem: None,
             // 繋がらない宛先。モデル側は必ず失敗する
             endpoint: Endpoint { port: 1, ..Default::default() },
+            filter_homophones: false,
             seen: Default::default(),
         }
     }
@@ -379,6 +445,102 @@ mod tests {
     }
 
     #[test]
+    fn 表記ゆれはモデルが無くても出る() {
+        // **これが辞書側を作った理由。** GPU の無い機械でも日本語の指摘が出る
+        let c = checker_with_dict();
+        let r = c.check("お問合せは下記まで。問い合わせを受け付けます。");
+        let n: Vec<&Finding> = r.findings.iter().filter(|f| f.kind == Kind::Notation).collect();
+        assert_eq!(n.len(), 2, "{:?}", r.findings);
+        assert!(n.iter().all(|f| f.source == Source::Dictionary), "{n:?}");
+        // どちらが正しいとは言わない。互いを指すだけ
+        assert_eq!(n[0].found, "問合せ");
+        assert_eq!(n[0].candidates, vec!["問い合わせ".to_string()]);
+    }
+
+    #[test]
+    fn 表記ゆれが出ても検査できなかったことは消えない() {
+        // 終了コード3(検査できなかった部分がある)は辞書が通っただけでは消えない。
+        // **黙って「指摘なし」にしない**の裏返し — 黙って「全部見た」にもしない
+        let c = checker_with_dict();
+        let r = c.check("お問合せは下記まで。問い合わせを受け付けます。");
+        assert!(!r.findings.is_empty(), "表記ゆれが出ていない");
+        assert!(
+            r.skipped.iter().any(|s| s.contains("日本語")),
+            "モデルに訊けなかったことを黙っている: {:?}",
+            r.skipped
+        );
+        assert!(!r.may_say_clean());
+        assert!(r.summary().contains("ただし"), "{}", r.summary());
+    }
+
+    #[test]
+    fn 表記が揃った日本語は指摘なしと言えない() {
+        // 表記ゆれが無くても、誤変換はモデルにしか見えない。
+        // 辞書が通ったからといって「綺麗です」と言ってはいけない
+        let c = checker_with_dict();
+        let r = c.check("問い合わせを受け付けます。");
+        assert!(r.findings.is_empty(), "{:?}", r.findings);
+        assert!(!r.may_say_clean(), "モデル抜きで「指摘なし」と言えてしまう");
+    }
+
+    #[test]
+    fn 辞書が言った指摘をモデルに二度言わせない() {
+        // 1〜3 で辞書とモデルの守備範囲が重なった。**同じ語を2回出さない**
+        let dict = vec![Finding {
+            kind: Kind::Notation,
+            source: Source::Dictionary,
+            found: "問合せ".into(),
+            at: Some(1),
+            candidates: vec!["問い合わせ".into()],
+        }];
+        let same = Finding {
+            kind: Kind::Notation,
+            source: Source::Model,
+            found: "問合せ".into(),
+            at: Some(1),
+            candidates: vec!["問い合わせ".into()],
+        };
+        assert!(already_said(&dict, &same), "同じ指摘を落とせていない");
+
+        // モデルが広く取った場合も同じ指摘
+        let wider = Finding { found: "お問合せ".into(), ..same.clone() };
+        assert!(already_said(&dict, &wider), "広く取った同じ指摘を落とせていない");
+
+        // 種別が違えば別の指摘。誤変換は辞書には見えない
+        let other = Finding { kind: Kind::Conversion, found: "以外".into(), ..same.clone() };
+        assert!(!already_said(&dict, &other), "別の指摘まで落とした");
+
+        // 辞書が触れていない語はモデルの指摘が残る
+        let elsewhere = Finding { found: "打合せ".into(), ..same.clone() };
+        assert!(!already_said(&dict, &elsewhere), "無関係な指摘まで落とした");
+    }
+
+    #[test]
+    fn 濾過は既定では効かない() {
+        // 落とせるのは「大丈夫と証明できた文」ではなく「表に載っていない文」。
+        // **既定にはしない**
+        let c = checker_with_dict();
+        assert!(!c.filter_homophones, "濾過が既定で効いている");
+        let r = c.check("犬が走る。猫が寝る。");
+        assert!(
+            !r.skipped.iter().any(|s| s.contains("渡していない")),
+            "既定なのに文を落とした: {:?}",
+            r.skipped
+        );
+    }
+
+    #[test]
+    fn 濾過したら落とした文を黙らない() {
+        // **黙って「指摘なし」にしない**の裏返し。見ていない範囲は必ず言う
+        let mut c = checker_with_dict();
+        c.filter_homophones = true;
+        let r = c.check("犬が走る。猫が寝る。それは以外な結果でした。");
+        let told = r.skipped.iter().any(|s| s.contains("渡していない") && s.contains("2 文"));
+        assert!(told, "落とした文を黙っている: {:?}", r.skipped);
+        assert!(!r.may_say_clean());
+    }
+
+    #[test]
     fn 混在文は両方を掛ける() {
         let c = checker_with_dict();
         let r = c.check("Radeon の documnt を確認する");
@@ -402,6 +564,7 @@ mod tests {
             dict: None,
             dict_problem: Some("辞書が見つかりません".into()),
             endpoint: Endpoint { port: 1, ..Default::default() },
+            filter_homophones: false,
             seen: Default::default(),
         };
         let r = c.check("the documnt");

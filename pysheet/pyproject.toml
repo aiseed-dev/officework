@@ -46,3 +46,14 @@ Source = "https://github.com/aiseed-dev/officework"
 module-name = "officework._sheet"
 python-source = "."
 features = ["pyo3/extension-module"]
+# **`__pycache__` を配らない。** `python-source` は officework/ を丸ごと取るので、
+# 組む前に手元で python を走らせていると、そのとき出来た `.pyc` がそのまま入る。
+# `.gitignore` には書いてあるが maturin は python-source の側では見ない。
+#
+# 正しさの害は小さい(pip が入れるときに焼き直して上書きする)が、2つ困る:
+#   - wheel の tag は cp310-abi3 で 3.10 以降を1枚で賄うのに、入る .pyc は
+#     特定の版専用。他の版では一切使われない
+#   - **同じコミットから組んでも同じ wheel にならない** — 直前にどの python が
+#     ソース木を触ったかで中身が変わる。実際 0.0.1 は 314 が2本、0.1.0 は
+#     312 と 314 が3本入っていた(2026-08-10 に手元の wheel で確認)
+exclude = ["**/__pycache__/**"]

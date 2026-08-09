@@ -180,8 +180,14 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
             }
             b"color" if in_borders => {
                 // 罫線の色(<left style="thin"><color rgb="FF00B050"/></left>)。
-                // rgb は FFRRGGBB — 先頭の透過は捨てて RRGGBB で持つ
-                if let (Some(sd), Some(c)) = (&side, rgb(&e)) {
+                // rgb は FFRRGGBB — 先頭の透過は捨てて RRGGBB で持つ。
+                //
+                // **indexed も読む。** 文字と塗りは最初から両方見ていたのに、
+                // 罫線だけ rgb しか見ていなかった(2026-08-10 に家計調査で発覚 —
+                // `<color indexed="12"/>` の**青い罫線が黒で描かれていた**)。
+                // 64(自動)は色ではないので indexed() が None を返し、そのときは
+                // 色なし = 既定の色で描く
+                if let (Some(sd), Some(c)) = (&side, rgb(&e).or_else(|| indexed(&e))) {
                     if let Ok(v) = u32::from_str_radix(&c, 16) {
                         let edge = match sd.as_slice() {
                             b"left" => &mut bd.left,
