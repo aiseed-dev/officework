@@ -6,7 +6,7 @@
 
 | 帳簿 | 問い | 場所 |
 |---|---|---|
-| **設計** | なぜそう作るか(決定と経緯) | [SEKKEI.md](../SEKKEI.md)(憲法)+ [sekkei/](sekkei/)(6部屋) |
+| **設計** | なぜそう作るか(決定と経緯) | [SEKKEI.md](../SEKKEI.md)(憲法)+ [sekkei/](sekkei/)(7部屋) |
 | **在庫** | どこまでできているか | [guide-tsukiawase-2.ja.md](guide-tsukiawase-2.ja.md)(台帳 — 直したら ✔) |
 | **使い方** | どうやるか | このフォルダの *-manual(下の一覧) |
 
