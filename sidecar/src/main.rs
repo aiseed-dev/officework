@@ -35,6 +35,11 @@ struct Session {
     path: String,
     stamp: (u64, u64),
     book: Book,
+    /// `open` で組んだ書式の索引表。`read_range` の `styleIndex` はこれを指す。
+    /// **開いたときに一度だけ組む** — 範囲ごとに組み直すと同じ書式に違う番号が付く
+    styles: Vec<Value>,
+    /// 書式 → 番号。`read_range` が引く
+    style_index: BTreeMap<String, usize>,
 }
 
 /// ファイルの印(更新時刻, 大きさ)。読めなければ 0 — 消えたことも変化と見る。
@@ -192,9 +197,20 @@ fn dispatch(
                 Ok((book, unsupported)) => {
                     *seq += 1;
                     let id = format!("ow-{seq}");
-                    let v = open_result(&id, &path, &book, &unsupported);
+                    let mut st = Styles::new();
+                    // **書式は全シートを通して1つの表にする**(向こうと同じ)
+                    for sh in &book.sheets {
+                        for c in sh.cells.values() {
+                            st.intern(&c.fmt);
+                        }
+                    }
+                    let v = open_result(&id, &path, &book, &unsupported, &st.order);
                     let stamp = stamp_of(&path);
-                    sessions.insert(id, Session { path, stamp, book });
+                    let Styles { order, index } = st;
+                    sessions.insert(
+                        id,
+                        Session { path, stamp, book, styles: order, style_index: index },
+                    );
                     ok(&rid, v)
                 }
                 Err(e) => fail(&rid, "workbook_error", &e),
@@ -227,7 +243,7 @@ fn dispatch(
             if r1 >= rows.max(1) || c1 >= cols.max(1) {
                 return fail(&rid, "invalid_request", "Range is outside the worksheet.").to_string();
             }
-            ok(&rid, range_result(sh, r0, r1, c0, c1))
+            ok(&rid, range_result(sh, r0, r1, c0, c1, &sess.style_index))
         }
         "close" => {
             sessions.remove(&s("sessionId"));
@@ -243,10 +259,30 @@ fn dispatch(
             Ok(answer) => return answer,
             Err(e) => fail(&rid, "io_error", &format!("配管の転送に失敗: {e}")),
         },
-        "read_formula_cells" | "read_media" | "recalc_cells" => fail(
+        "read_formula_cells" => {
+            let sid = s("sessionId");
+            let Some(sess) = sessions.get(&sid) else {
+                return fail(&rid, "invalid_request", "そのセッションはありません").to_string();
+            };
+            let sheet_id = s("sheetId");
+            let Some(i) = sheet_index(&sess.book, &sheet_id) else {
+                return fail(&rid, "invalid_request", &format!("シートがありません: {sheet_id}"))
+                    .to_string();
+            };
+            ok(&rid, formula_cells_result(&sess.book.sheets[i]))
+        }
+        // **visuals を返していないので、この命令は来ないはず。** 向こうの
+        // read_media は open で配った visualId を鍵に引く作りで、こちらは
+        // まだ図形を返していない。来たなら想定違いなので、そう言って断る
+        "read_media" => fail(
             &rid,
             "unsupported_command",
-            &format!("{cmd} はまだ。読み(open/read_range)の突き合わせが先(設計の「進め方」)"),
+            "read_media はまだ。open が visuals を返していないので、この命令は来ない想定",
+        ),
+        "recalc_cells" => fail(
+            &rid,
+            "unsupported_command",
+            "recalc_cells はまだ(設計の「進め方」の2)。読みの突き合わせが先",
         ),
         other => fail(&rid, "invalid_request", &format!("知らない命令: {other}")),
     }
@@ -291,7 +327,13 @@ fn rng(a: Pos, b: Pos) -> Value {
     json!({"startRow": a.row, "startColumn": a.col, "endRow": b.row, "endColumn": b.col})
 }
 
-fn open_result(session_id: &str, path: &str, book: &Book, unsupported: &[String]) -> Value {
+fn open_result(
+    session_id: &str,
+    path: &str,
+    book: &Book,
+    unsupported: &[String],
+    styles: &[Value],
+) -> Value {
     let name = path.rsplit('/').next().unwrap_or(path);
     let mut sheets = Vec::new();
     let mut defined = Vec::new();
@@ -359,14 +401,14 @@ fn open_result(session_id: &str, path: &str, book: &Book, unsupported: &[String]
     // 部品の数は ZIP を開き直さないと分からない。**0 で誤魔化さず** null
     v.insert("entryCount".into(), Value::Null);
     v.insert("sheets".into(), json!(sheets));
-    v.insert("styles".into(), json!([]));
+    v.insert("styles".into(), json!(styles));
     v.insert("dxfStyles".into(), json!([]));
     v.insert("visuals".into(), json!([]));
     v.insert("definedNames".into(), json!(defined));
     v.insert(
         "xNotFilled".into(),
         json!([
-            "styles / dxfStyles(書式の索引表。CellFormat から組み直す — 次の便)",
+            "dxfStyles(条件付き書式の見た目。規則は返しているが見た目の表はまだ)",
             "visuals(図形・画像・グラフ)",
             "sparklines / pivotTables / pivotRanges",
             "entryCount",
@@ -424,7 +466,14 @@ fn cond_value(k: &CondKind) -> (String, Vec<String>, Option<String>) {
     }
 }
 
-fn range_result(sh: &Sheet, r0: u32, r1: u32, c0: u32, c1: u32) -> Value {
+fn range_result(
+    sh: &Sheet,
+    r0: u32,
+    r1: u32,
+    c0: u32,
+    c1: u32,
+    style_index: &BTreeMap<String, usize>,
+) -> Value {
     let inside = |p: Pos| p.row >= r0 && p.row <= r1 && p.col >= c0 && p.col <= c1;
 
     let mut cells = Vec::new();
@@ -443,6 +492,12 @@ fn range_result(sh: &Sheet, r0: u32, r1: u32, c0: u32, c1: u32) -> Value {
             o.insert("value".into(), v);
             if let Some(f) = f {
                 o.insert("formula".into(), json!(f));
+            }
+            // **書式は open で配った表の番号で指す。** 表に無い(素の書式)なら付けない
+            if let Some(v) = style_value(&cell.fmt) {
+                if let Some(i) = style_index.get(&v.to_string()) {
+                    o.insert("styleIndex".into(), json!(i));
+                }
             }
             if let Some((h, w)) = sh.cse.get(&p) {
                 o.insert(
@@ -518,10 +573,137 @@ fn range_result(sh: &Sheet, r0: u32, r1: u32, c0: u32, c1: u32) -> Value {
         "indexedThroughRow": r1,
         "indexingComplete": true,
         "xNotFilled": [
-            "cells.styleIndex(styles の索引表がまだ)",
             "cells.rich(セルの中で書式が変わる run をモデルが持たない)",
             "autoFilter(モデルが持たない)",
             "conditionalRules の cfvos / colors / dxfIndex / rank / priority",
         ],
     })
+}
+
+/// 式のあるセルだけを返す。向こうの `read_formula_cells`。
+///
+/// 呼ぶ側は依存の連鎖を辿るのに使う。**全部読んでから答える**ので
+/// `indexingComplete` は常に真、上限も設けていないので `truncated` は偽。
+fn formula_cells_result(sh: &Sheet) -> Value {
+    let cells: Vec<Value> = sh
+        .cells
+        .iter()
+        .filter_map(|(p, c)| {
+            let f = c.formula.as_ref()?;
+            let mut o = Map::new();
+            o.insert("row".into(), json!(p.row));
+            o.insert("column".into(), json!(p.col));
+            o.insert("value".into(), cell_value(sh, *p));
+            o.insert("formula".into(), json!(format!("={f}")));
+            Some(Value::Object(o))
+        })
+        .collect();
+    json!({"cells": cells, "indexingComplete": true, "truncated": false})
+}
+
+/// 書式の索引表。**向こうは `styles[]` の索引を返し、セルは番号で指す。**
+///
+/// officework は `CellFormat` をセルに直に持つので、**同じ書式をまとめて
+/// 番号を振り直す**。原本の `style_of`(読んだときの `<c s="…">`)は使わない —
+/// あれは保存で原本の styles.xml を据え置くための控えで、番号の意味が
+/// 向こうの索引と揃っている保証がない。
+///
+/// 返すのは**この範囲で実際に使われている書式だけ**。原本の styles.xml を
+/// 丸ごと写すと、使っていない何百もの書式が付いてくる。
+struct Styles {
+    order: Vec<Value>,
+    index: BTreeMap<String, usize>,
+}
+
+impl Styles {
+    fn new() -> Styles {
+        Styles { order: Vec::new(), index: BTreeMap::new() }
+    }
+
+    /// 書式を1つ入れて索引を返す。**素の書式(既定のまま)は番号を振らない** —
+    /// 呼ぶ側は `styleIndex` が無ければ既定で描く
+    fn intern(&mut self, f: &sheet::model::CellFormat) -> Option<usize> {
+        let v = style_value(f)?;
+        let key = v.to_string();
+        if let Some(i) = self.index.get(&key) {
+            return Some(*i);
+        }
+        let i = self.order.len();
+        self.order.push(v);
+        self.index.insert(key, i);
+        Some(i)
+    }
+}
+
+fn edge_value(e: &sheet::model::Edge) -> Option<Value> {
+    if !e.on {
+        return None;
+    }
+    let mut o = Map::new();
+    o.insert("style".into(), json!(e.style.xlsx()));
+    if let Some(c) = e.color {
+        o.insert("color".into(), json!(format!("{:06X}", c & 0xFF_FFFF)));
+    }
+    Some(Value::Object(o))
+}
+
+/// `CellFormat` を向こうの `CellStyle` の形へ。**既定のままなら `None`。**
+fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
+    use sheet::model::{HAlign, VAlign};
+    let mut o = Map::new();
+    if let Some(n) = &f.font {
+        o.insert("fontFamily".into(), json!(n));
+    }
+    if let Some(c) = f.size_c {
+        o.insert("fontSize".into(), json!(f64::from(c) / 100.0));
+    }
+    for (k, v) in [
+        ("bold", f.bold),
+        ("italic", f.italic),
+        ("underline", f.underline),
+        ("strikethrough", f.strike),
+        ("wrapText", f.wrap),
+    ] {
+        if v {
+            o.insert(k.into(), json!(true));
+        }
+    }
+    if let Some(c) = &f.color {
+        o.insert("fontColor".into(), json!(c));
+    }
+    if let Some(c) = &f.fill {
+        o.insert("fillColor".into(), json!(c));
+    }
+    let h = match f.align {
+        HAlign::General => None,
+        HAlign::Left => Some("left"),
+        HAlign::Center => Some("center"),
+        HAlign::Right => Some("right"),
+        HAlign::Justify => Some("justify"),
+    };
+    if let Some(h) = h {
+        o.insert("horizontalAlignment".into(), json!(h));
+    }
+    let v = match f.valign {
+        VAlign::Top => Some("top"),
+        VAlign::Middle => Some("center"),
+        VAlign::Bottom => None, // xlsx の既定
+    };
+    if let Some(v) = v {
+        o.insert("verticalAlignment".into(), json!(v));
+    }
+    if let Some(n) = &f.number_format {
+        o.insert("numberFormat".into(), json!(n));
+    }
+    for (k, e) in [
+        ("borderTop", &f.borders.top),
+        ("borderBottom", &f.borders.bottom),
+        ("borderLeft", &f.borders.left),
+        ("borderRight", &f.borders.right),
+    ] {
+        if let Some(v) = edge_value(e) {
+            o.insert(k.into(), v);
+        }
+    }
+    if o.is_empty() { None } else { Some(Value::Object(o)) }
 }
