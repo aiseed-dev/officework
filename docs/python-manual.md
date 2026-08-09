@@ -7,19 +7,40 @@ manuals. This is **the one document for people writing code** — in particular
 the range ⇄ array exchange, which is invisible from the UI, is specified here.
 Everything was measured on a real machine.
 
+## Code is a file, data is a file — never mixed
+
+**What gets exchanged is data only** (settled 2026-08-09). There is no
+mechanism, xlsm-style, for putting data and program in one file. Both cell
+functions and procedures live in `~/.config/office/plugins/*.py`, and **a
+workbook you receive contains no code at all**.
+
+- You receive a sheet (data). **You do the processing with your own code**
+- So `xl/joPython.xml` (workbook-borne code) is **gone**. Code in an old
+  workbook is shown but never run, and disappears on save (the open report
+  says so; `@export name` extracts it to a .py)
+- Since the code is only ever your own, **no sandbox (bubblewrap) is applied**,
+  and the `@name net` distinction is gone
+- Decorators (`@xw.func`, `@xw.ret`) are unnecessary too — **write a plain
+  `def`**
+
 ## Where Python runs, and what is bound
 
-| Place | Bindings | Sandbox |
+| Place | How you write it | Bindings |
 |---|---|---|
-| calc: Data > Python (one-liner / .py) | `b` = workbook, `s` = current sheet | sandboxed if available (with network) |
-| calc: `@name` (**a plugin .py** — procedures never travel in the workbook; decided 2026-08-08) | same | **always sandboxed** (no network; `net` enables it) |
-| calc: `=PY("fn",…)` + `@計算` (only functions embed, via `@save 関数name`) | arguments passed as values (below) | always sandboxed (no network) |
-| calc / writer: macros, plugins | calc: `b`/`s`; **writer: `d` = python-docx Document** | sandboxed |
-| writer: in-page Python (HTML) | `form` = dict of field name → value | always sandboxed |
+| Cell function (UDF) | `=double(A1)` — calls `def double(x)` in a plugin | arguments passed as values (below) |
+| Procedure | `@module` / `@module.func` | call `xw.Book.caller()` yourself |
+| Outside (Jupyter, …) | `from officework import calc as xw` | same |
+| calc: Data > Python (one-liner / .py) | typed into the panel | `b` = workbook, `s` = current sheet |
+| calc / writer: macros, plugins | — | calc: `b`/`s`; **writer: `d` = python-docx Document** |
+| writer: in-page Python (HTML) | — | `form` = dict of field name → value |
 
-Everything runs **on a copy** — a failure leaves the sheet/document unharmed;
-on success the result lands as **one undo step** (one Ctrl+Z even across
-multiple sheets).
+**Procedures and outside code drive the running calc directly** — not a
+temporary copy (this is the article's "a library that drives Excel itself,
+not files"). However many cells a procedure writes, **one Ctrl+Z** returns you
+to the state before it ran.
+
+The Data > Python one-liner and the writer side still run on a copy (a failure
+leaves the sheet/document unharmed; a success lands as one undo step).
 
 ## The office_sheet (pysheet) API
 
@@ -91,20 +112,30 @@ for i, row in enumerate(df.rows()):
 Aggregation, joins, and filtering belong on the polars side — that's the
 division of labor (the sheet is the form; computation is Python's job).
 
-## Arrays with =PY (UDF)
+## Cell functions (UDFs) and arrays
+
+Write a plain `def` in `~/.config/office/plugins/tools.py` and it is callable
+from a cell by that name. **No decorators** (neither `@xw.func` nor
+`@xw.ret(expand='table')` — the shape of the return value decides how it
+spreads).
 
 ```
-=PY("aggregate", A1:B10, 100, "甲")
+=aggregate(A1:B10, 100, "甲")
 ```
 
+- Function names **may be Japanese** (`=集計(A1:B10)`)
 - Range arguments arrive at your `def` as **row × column 2-D lists** of values
   (a single cell is a scalar)
 - Return values: scalar → into the cell / **1-D list → spills downward** /
   **2-D list → spills down-right**. If the target area holds someone's data,
   it stops with `#SPILL!` (nothing is overwritten)
-- Evaluation happens only on `@計算`, inside the sandbox. The function
-  definitions come from a script embedded under a name starting with 関数
-  via `@save`
+- **When the arguments change it recomputes in the background** (no need to
+  press `@計算`); the work runs off the main thread in one batch and is
+  written back as a single step
+- Built-in names (SUM and friends) win; a `def` with the same name is skipped
+- Only when the same name exists in two .py files do you qualify it:
+  `=tools.aggregate(…)`
+- The older form `=PY("aggregate", …)` still works
 
 ```python
 def aggregate(r, limit, kind):   # r = [[r1c1, r1c2], [r2c1, …], …]
@@ -136,16 +167,17 @@ qty = int(form.get("qty") or 0)
 form["total"] = qty * 150
 ```
 
-## What the sandbox allows
+## The execution environment
 
-- The real filesystem is **read-only**, your home directory is invisible, and
-  the only writable place is a scratch area for the exchange. The network is
-  **closed by default** — it opens only when you type `@name net` at that
-  moment (the permission is never saved anywhere)
-- Time-limited (procedures 60 s, =PY functions 30 s); overruns are killed
+- **No sandbox is applied** (removed 2026-08-09). Plugins are code you
+  installed yourself, so files and the network work normally. The `@name net`
+  distinction is gone (typing it says so)
+- Time-limited (procedures 60 s, cell functions 30 s); overruns are killed
   and reported
 - Libraries installed on the machine (polars, scipy, matplotlib, …) work
 - `print` output appears in the status bar (report progress and counts there)
+- The Data > Python one-liner and the writer side still run on a copy
+  (sandboxed if a sandbox is available)
 
 ## Writing with an AI — a collaboration guide
 
@@ -181,15 +213,23 @@ When filling form fields: write to the first run and empty the rest
 (p.runs[0].text = value; the remaining runs get "" — keeps paragraph
 formatting)
 
-[execution] inside a bubblewrap sandbox. Files are read-only (only the
-copy of the sheet/document is writable), network is closed by default
-(only opens when the user explicitly grants net). polars, scipy, and
-matplotlib are available. A failure leaves the original unharmed; success
-lands as a single undo step.
+[procedures — plugin .py files] put them in
+~/.config/office/plugins/name.py and run them with `@name` or `@name.func`.
+They drive the running calc directly:
+  from officework import calc as xw
+  def paste():
+      s = xw.Book.caller().sheets.active
+      s["A1"].value = [["received", "name"], ["2026-08-09", "Yamada"]]
+No decorators — a plain def. However many cells it writes, one Ctrl+Z undoes it.
 
-[when writing =PY cell functions] range arguments arrive as row × column
-2-D lists of values. Return a scalar / 1-D list (spills down) / 2-D list
-(spills down-right).
+[execution] plain Python, no sandbox (plugins are code the user installed
+themselves). Files and the network work normally; polars, scipy, and
+matplotlib are available.
+
+[when writing cell functions] a plain def in a plugin .py is callable as
+`=name(A1:B9)` (names may be Japanese). Range arguments arrive as row ×
+column 2-D lists of values. Return a scalar / 1-D list (spills down) / 2-D
+list (spills down-right). It recomputes automatically when arguments change.
 ```
 
 Then add **what you want, in plain language** (sheet name, heading row, what
@@ -198,21 +238,21 @@ heading row) — it shortens the conversation.
 
 ### Inspecting the code you receive
 
-Three checks before pasting — the sandbox protects **the machine and the
-network**, not **the correctness of the result**:
+**No sandbox is applied.** A .py you place in plugins is code you installed
+yourself, treated exactly like a script you'd run from VS Code. So **reading
+it before you install it** is the only gate:
 
 1. **Where does it write** (does it touch columns/rows you must not lose?)
 2. **What does it delete** (None assignments, row removals?)
-3. **Does it need net** (if it talks to the network, is the destination the
-   one you intended?)
+3. **What does it do outside** (network, file reads/writes — is the
+   destination the one you intended?)
 
-Beyond that the safety net is threefold: execution on a copy (failure is
-harmless), one-step undo (didn't like it? Ctrl+Z), and the sandbox (even
-misbehaving code can't reach the machine). So the right way to try things is
-**run it, look at the result, undo if you don't like it**. Once satisfied,
-place procedures in `~/.config/office/plugins/name.py` (they run as `@name`).
-**Only =PY functions may embed in a workbook** (`@save 関数name` —
-decided 2026-08-08 for safety).
+The remaining safety net is undo: however many cells a procedure writes,
+**one Ctrl+Z** returns you to the state before it ran. So the right way to try
+things is **run it, look at the result, undo if you don't like it**. Once
+reviewed, place it in `~/.config/office/plugins/name.py`.
+**Code can never be embedded in a workbook** — data and program are separate
+files (settled 2026-08-09).
 
 ### Migrating VBA
 

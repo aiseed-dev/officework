@@ -263,10 +263,11 @@ class Book:
 
     @staticmethod
     def caller():
-        raise NotImplementedError(
-            "Book.caller()/@func/@sub は Excel のアドイン機構の話です。"
-            "calc では「AI タブ → マクロを書く」(plugins/*.py)が同じ役目"
-        )
+        """呼び出し元のブック。calc が plugins の手続きを走らせているときも、
+        Jupyter から触っているときも、**動いている calc のブック**を返す
+        (officework には Excel のアドイン機構のような境目が無いので
+        attach() と同じもの)。xlwings の書き方をそのまま持ち込めるように残す。"""
+        return Book.attach()
 
     @property
     def name(self):

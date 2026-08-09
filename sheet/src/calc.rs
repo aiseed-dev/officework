@@ -212,9 +212,11 @@ fn lex(src: &str) -> Result<Vec<Tok>, String> {
             out.push(Tok::Num(s.parse().map_err(|_| format!("数値として読めません: {s}"))?));
             continue;
         }
-        if c.is_ascii_alphabetic() || c == '$' || c == '_' {
+        // 名前の頭は **ASCII に限らない** — plugins の関数は日本語で名づける
+        // (`=集計(A1:B9)`)。セル参照は ASCII なので取り違えは起きない
+        if c.is_alphabetic() || c == '$' || c == '_' {
             let st = i;
-            while i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == '$' || b[i] == '_' || b[i] == '.') {
+            while i < b.len() && (b[i].is_alphanumeric() || b[i] == '$' || b[i] == '_' || b[i] == '.') {
                 i += 1;
             }
             let word: String = b[st..i].iter().collect();
@@ -2740,6 +2742,30 @@ pub enum PyArg {
     Rect(u32, Vec<Value>),
 }
 
+/// plugins にある UDF の名前(ASCII は大文字にして入れる)。
+/// **sheet はファイルを覗かない** — calc が起動時と plugins が変わったときに
+/// 名前だけ渡し、こちらは式の見立て(=集計(A1) は UDF か)に使う。
+static UDF_NAMES: std::sync::RwLock<Option<std::collections::HashSet<String>>> =
+    std::sync::RwLock::new(None);
+
+/// plugins の UDF の名前を入れ替える(calc から呼ぶ)。
+pub fn set_udf_names<I: IntoIterator<Item = String>>(names: I) {
+    let set: HashSet<String> = names.into_iter().map(|n| n.to_ascii_uppercase()).collect();
+    if let Ok(mut g) = UDF_NAMES.write() {
+        *g = Some(set);
+    }
+}
+
+/// その名前は plugins の UDF か。字句解析は ASCII を大文字にするので、
+/// 渡す名前も大文字で持っている(日本語の名前はそのまま)。
+pub fn is_udf_name(n: &str) -> bool {
+    UDF_NAMES
+        .read()
+        .ok()
+        .and_then(|g| g.as_ref().map(|s| s.contains(n)))
+        .unwrap_or(false)
+}
+
 pub fn eval_py_call(sheet: &Sheet, formula: &str) -> Option<(String, Vec<PyArg>)> {
     if !is_py_formula(formula) {
         return None;
@@ -2750,15 +2776,21 @@ pub fn eval_py_call(sheet: &Sheet, formula: &str) -> Option<(String, Vec<PyArg>)
     let resolved = HashMap::new();
     // PY セルの引数評価では ROW()/COLUMN() の「いまのセル」は分からない — 原点で代える
     let mut p = P { t: &toks, i: 0, sheet, resolved: &resolved, at: Pos::new(0, 0), others: &[], sheet_at: 0, skip_hidden: Default::default(), lets: Vec::new() };
-    match (p.next(), p.next()) {
-        (Some(Tok::Name(n)), Some(Tok::LParen)) if n == "PY" => {}
+    // 素直な書き方 `=集計(A1:B9)` と、古い書き方 `=PY("集計", A1:B9)` の両方
+    let bare = match (p.next(), p.next()) {
+        (Some(Tok::Name(n)), Some(Tok::LParen)) if n == "PY" => None,
+        (Some(Tok::Name(n)), Some(Tok::LParen)) if is_udf_name(&n) => Some(n),
         _ => return None,
-    }
+    };
     let args = p.args().ok()?;
     let mut it = args.into_iter();
-    let name = match it.next()? {
-        Arg::One(Value::Text(t)) => t,
-        _ => return None, // 1つ目は関数名の文字でなければならない
+    let name = match &bare {
+        Some(n) => n.clone(),
+        // 古い書き方は1つ目が関数名の文字でなければならない
+        None => match it.next()? {
+            Arg::One(Value::Text(t)) => t,
+            _ => return None,
+        },
     };
     let rest = it
         .map(|a| match a {
@@ -2846,13 +2878,15 @@ fn expand_names(f: &str, names: &[(String, String)]) -> String {
 }
 
 /// シート全体を再計算する。循環参照は #CIRC! にする(黙って0にしない)。
-/// この式は PY セルか(=PY("関数", …) が**単独で**立っている)。
-/// PY は普通の再計算では**実行しない** — 「開く=実行」を持たないため。
-/// 「PY(…)+1」のような複合式は PY セルではない(そちらは #PY単独 になる)。
+/// この式は UDF(plugins の関数)のセルか。`=集計(A1:B9)` が**単独で**
+/// 立っていること(古い書き方の `=PY("集計", …)` も同じ扱い)。
+/// UDF は普通の再計算では計算しない — 別スレッドでまとめて回し、
+/// 答えが揃ってから1手で書き戻す(画面を止めないため)。
+/// 「集計(…)+1」のような複合式は UDF のセルではない。
 pub fn is_py_formula(f: &str) -> bool {
     let Ok(toks) = lex(f) else { return false };
     let mut it = toks.iter();
-    if !matches!(it.next(), Some(Tok::Name(n)) if n == "PY") {
+    if !matches!(it.next(), Some(Tok::Name(n)) if n == "PY" || is_udf_name(n)) {
         return false;
     }
     if !matches!(it.next(), Some(Tok::LParen)) {
@@ -2904,6 +2938,7 @@ pub fn recalc_book(book: &mut crate::Book, target: usize) {
                     break;
                 }
             }
+            stamp_py(tgt);
         }
         None => recalc_impl(tgt, &others, target),
     }
@@ -2929,6 +2964,47 @@ pub fn recalc_all(book: &mut crate::Book) {
     }
 }
 
+/// UDF のセルの「関数名+引数」の指紋を取り直す。**関数は回さない** —
+/// これを見て calc が「計算し直しが要る」を判断する(引数が変われば変わる)。
+/// UDF のセルが無ければ 0 で、そのときの費用はセルの走査1回だけ。
+fn stamp_py(sheet: &mut Sheet) {
+    use std::hash::{Hash, Hasher};
+    let py_cells: Vec<Pos> = sheet
+        .cells
+        .iter()
+        .filter_map(|(p, c)| c.formula.as_ref().filter(|f| is_py_formula(f)).map(|_| *p))
+        .collect();
+    if py_cells.is_empty() {
+        sheet.py_stamp = 0;
+        return;
+    }
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    for p in py_cells {
+        let Some(f) = sheet.cells.get(&p).and_then(|c| c.formula.clone()) else { continue };
+        p.hash(&mut h);
+        match eval_py_call(sheet, &f) {
+            Some((name, args)) => {
+                name.hash(&mut h);
+                for a in &args {
+                    match a {
+                        PyArg::One(v) => v.display().hash(&mut h),
+                        PyArg::Rect(c, vs) => {
+                            c.hash(&mut h);
+                            for v in vs {
+                                v.display().hash(&mut h);
+                            }
+                        }
+                    }
+                }
+            }
+            // 引数が解けない式も、式そのものが変われば指紋が変わる
+            None => f.hash(&mut h),
+        }
+    }
+    // 0 は「UDF のセルが無い」の意味に取ってあるので避ける
+    sheet.py_stamp = h.finish() | 1;
+}
+
 fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize) {
     // OFFSET/INDIRECT(計算で決まる参照)とスピルは、1回の走査では依存の順が
     // 読めないことがある — そのときだけ、値が動かなくなるまで回す(上限つき。
@@ -2948,6 +3024,7 @@ fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize) {
         });
     if !dynamic {
         recalc_pass(sheet, others, at);
+        stamp_py(sheet);
         return;
     }
     for _ in 0..5 {
@@ -2955,6 +3032,7 @@ fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize) {
             break;
         }
     }
+    stamp_py(sheet);
 }
 
 /// 再計算の1周。値が動いたら true(まだ安定していないかもしれない)
@@ -5102,9 +5180,10 @@ mod let_tests {
         assert_eq!(v("=LET(x,5,x)+x"), Value::Error("#NAME?".into()));
         // 知らない名前は今までどおり #NAME?
         assert_eq!(v("=UNKNOWNNAME+1"), Value::Error("#NAME?".into()));
-        // 和文の知らない名前は字句で落ちて #ERROR!(LET の前からこう。
-        // どちらもエラーで黙って計算はしない — 印の揃え方は在庫)
-        assert_eq!(v("=しらない名前+1"), Value::Error("#ERROR!".into()));
+        // 和文の知らない名前も #NAME?(2026-08-09 に揃った — plugins の関数を
+        // `=集計(A1)` と日本語で書けるように、名前の頭を ASCII に限るのをやめた。
+        // それまでは字句で落ちて #ERROR! だった)
+        assert_eq!(v("=しらない名前+1"), Value::Error("#NAME?".into()));
     }
 }
 

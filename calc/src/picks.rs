@@ -3008,48 +3008,41 @@ impl Calc {
                 } else if t == "@計算" || t == "@calc" {
                     self.run_py_calc(cx);
                 } else if t == "@" || t == "@list" {
-                    // ブックに載るのは関数(UDF)だけ。手続きは plugins の .py
-                    let fns: Vec<&str> =
+                    // コードは plugins の .py にしかない(ブックは運ばない)。
+                    // 古いブックに載っていたものは取り出し口の案内だけ出す
+                    let old: Vec<&str> =
                         self.book.scripts.iter().map(|(n, _)| n.as_str()).collect();
-                    let plugs: Vec<String> = std::fs::read_dir(plugins_dir())
-                        .ok()
-                        .into_iter()
-                        .flatten()
-                        .flatten()
-                        .map(|e| e.path())
-                        .filter(|p| p.extension().is_some_and(|e| e == "py"))
-                        .filter_map(|p| {
-                            p.file_stem().map(|s| s.to_string_lossy().to_string())
-                        })
-                        .collect();
-                    self.status = match (fns.is_empty(), plugs.is_empty()) {
-                        (true, true) => ui::t!(
-                            "Python はありません(関数は @save 関数名 でブックへ、手続きは plugins へ .py を置く)"
-                        )
-                        .into(),
-                        _ => ui::tf!(
-                            "ブックの関数: {} / plugins: {}(手続きは @名前 で実行)",
-                            if fns.is_empty() { "-".to_string() } else { fns.join(" / ") },
-                            if plugs.is_empty() { "-".to_string() } else { plugs.join(" / ") }
-                        )
-                        .into(),
-                    };
-                } else if let Some(name) = t.strip_prefix("@save ") {
-                    let name = name.trim().to_string();
-                    if name.is_empty() {
-                        self.status = ui::t!("@save 名前 の形で").into();
-                    } else if !name.starts_with("関数") {
-                        // 手続きはブックに載せない(発注者確定 2026-08-08:
-                        // ファイルを実行の起点にしない。UDF だけが旅できる)
-                        self.status = ui::tf!(
-                            "手続きはブックに載せられません(載るのは「関数」で始まる UDF だけ)。手続きは {} に .py を置いてください",
+                    let plugs = plugin_outline();
+                    let mut msg = if plugs.is_empty() {
+                        ui::tf!(
+                            "plugins に .py がありません({} に置くと =PY(\"関数名\", …) と @名前 が使えます)",
                             plugins_dir().display().to_string()
                         )
-                        .into();
+                        .to_string()
                     } else {
-                        self.store_python_dialog(name, cx);
+                        plugs
+                            .iter()
+                            .map(|(m, defs)| format!("{m}: {}", defs.join(" ")))
+                            .collect::<Vec<_>>()
+                            .join(" / ")
+                    };
+                    if !old.is_empty() {
+                        msg.push_str(&ui::tf!(
+                            " ※このブックに載っている古いコード({})は実行しません — @export 名前 で取り出し、保存で消えます",
+                            old.join(" ")
+                        ));
                     }
+                    self.status = msg.into();
+                } else if t.starts_with("@save") {
+                    // 2026-08-09 発注者確定: データとプログラムを1つのファイルに
+                    // しない。関数(UDF)もブックには載せない — 置き場は plugins だけ
+                    self.status = ui::tf!(
+                        "ブックにコードは載せません(データとプログラムは別のファイル)。関数も手続きも {} に .py を置いてください",
+                        plugins_dir().display().to_string()
+                    )
+                    .into();
                 } else if let Some(name) = t.strip_prefix("@del ") {
+                    // 古いブックに載っていたコードを、保存を待たずに外す
                     let name = name.trim();
                     let before = self.book.scripts.len();
                     self.book.scripts.retain(|(n, _)| n != name);
@@ -3060,44 +3053,44 @@ impl Calc {
                         self.status = ui::tf!("「{}」はありません", name).into();
                     }
                 } else if let Some(name) = t.strip_prefix("@export ") {
-                    // 古いブックの手続きの取り出し口(実行はしない。中身を見て、
-                    // 良ければ自分で plugins へ置く — それが取り込みの門)
+                    // 古いブックに載っていたコードの取り出し口(実行はしない。
+                    // 中身を見て、良ければ自分で plugins へ置く — それが取り込みの門)
                     self.export_python_dialog(name.trim().to_string(), cx);
                 } else if let Some(rest) = t.strip_prefix('@') {
-                    // 手続きは**手元(plugins)の .py だけ**実行する(発注者確定
-                    // 2026-08-08)。ブックに載って旅してきた手続きは実行しない —
-                    // ファイルは実行の起点になれない。サンドボックスは従来どおり必須、
-                    // 網は既定で閉じ「@名前 net」とその場で打ったときだけ開く
-                    let (name, net) = match rest.trim().strip_suffix(" net") {
-                        Some(n) => (n.trim(), true),
-                        None => (rest.trim(), false),
-                    };
-                    let path = plugins_dir().join(format!("{name}.py"));
-                    if path.exists() {
-                        match std::fs::read_to_string(&path) {
-                            Ok(code) => {
-                                if net {
-                                    self.status = ui::t!(
-                                        "網ありサンドボックスで実行します(ファイルは守られたまま)"
-                                    )
-                                    .into();
-                                }
-                                self.run_python_inner(code, true, net, cx);
-                            }
-                            Err(e) => self.status = ui::tf!("読めません: {}", e.to_string()).into(),
+                    // 実行するのは**手元(plugins)の .py だけ**(発注者確定
+                    // 2026-08-08 → 2026-08-09 に関数まで拡張)。ブックに載って
+                    // 旅してきたコードは実行しない — ファイルは実行の起点になれない。
+                    // サンドボックスは従来どおり必須、網は既定で閉じ
+                    // 「@名前 net」とその場で打ったときだけ開く
+                    // サンドボックスを着せなくなったので網の区別は無くなった。
+                    // 黙って受けると「網ありで動いた」と誤解されるので、断って言う
+                    if let Some(n) = rest.trim().strip_suffix(" net") {
+                        self.status = ui::tf!(
+                            "「net」は要らなくなりました(plugins は自分で据えたコードなので、そのまま網に出られます)。@{} と打ってください",
+                            n.trim()
+                        )
+                        .into();
+                        return;
+                    }
+                    let name = rest.trim();
+                    // 「モジュール.関数」なら、その関数だけを呼ぶ
+                    let (module, func) = match name.rsplit_once('.') {
+                        Some((m, f)) if plugins_dir().join(format!("{m}.py")).exists() => {
+                            (m, Some(f))
                         }
+                        _ => (name, None),
+                    };
+                    if plugins_dir().join(format!("{module}.py")).exists() {
+                        self.run_plugin(module, func, cx);
                     } else if self.book.scripts.iter().any(|(n, _)| n == name) {
-                        self.status = if name.starts_with("関数") {
-                            ui::t!("それは関数(UDF)です — =PY(\"名前\", …) のセルと @計算 が使います").into()
-                        } else {
-                            ui::tf!(
-                                "「{}」はブックの中の手続きです — ブックからは実行しません(@export {} で取り出し、確かめてから {} へ)",
-                                name,
-                                name,
-                                plugins_dir().display().to_string()
-                            )
-                            .into()
-                        };
+                        // 古いブックに載っているコードは、関数も手続きも実行しない
+                        self.status = ui::tf!(
+                            "「{}」はブックに載っているコードです — 実行しません(@export {} で取り出し、確かめてから {} へ)",
+                            name,
+                            name,
+                            plugins_dir().display().to_string()
+                        )
+                        .into();
                     } else {
                         self.status = ui::tf!(
                             "「{}」はありません({} の .py が @名前 で動きます。@list で一覧)",

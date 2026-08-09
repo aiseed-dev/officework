@@ -590,6 +590,10 @@ pub struct Sheet {
     /// (drawing・rels・media)ごと書き出す。読んだ画像と持ち場を分ける —
     /// 混ぜると保存で二重になる(writer と同じ構図)
     pub images_new: Vec<SheetImage>,
+    /// UDF(plugins の関数)のセルの引数の指紋。再計算のたびに計算し直す。
+    /// **ファイルには入らない** — アプリが「引数が変わったから計算し直す」を
+    /// 見分けるためだけの控え(0 = UDF のセルが無い)
+    pub py_stamp: u64,
     /// セルのふりがな(xlsx の rPh)。**日本語の xlsx の宝** — 欧米の実装が
     /// 落としがちなので、読んで持ち、保存で書き戻す。PHONETIC 関数が読む
     pub phonetics: BTreeMap<Pos, String>,
@@ -1447,9 +1451,10 @@ pub struct Book {
     /// こちらが理解できなかった definedName の原文(Print_Area など)。
     /// **理解はしないが、捨てない。** 保存でそのまま返す
     pub names_raw: Vec<String>,
-    /// ブックに載せる Python(名前, コード)。**開いても決して自動実行しない。**
-    /// 実行は明示の操作+サンドボックスのみ(SEKKEI「Python in Calc」参照)。
-    /// xlsx へは xl/joPython.xml で往復する(この形式の独自部品)
+    /// 古いブックに載っていた Python(名前, コード)。**読むだけ** —
+    /// 実行せず、保存では書き戻さない(2026-08-09 発注者確定: データと
+    /// プログラムを1つのファイルにしない)。@export で .py に取り出し、
+    /// 中を確かめて plugins へ置くのが取り込みの門。SEKKEI「Python in Calc」参照
     pub scripts: Vec<(String, String)>,
     /// ピボットの指図(xl/joPivot.xml で往復する独自部品)。
     /// Excel で保存し直すと消える — そのときピボットはただの値になる(正直な劣化)

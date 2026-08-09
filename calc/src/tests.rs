@@ -1606,36 +1606,37 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 手続きはブックから実行しない(cx: &mut gpui::TestAppContext) {
-        // 発注者確定 2026-08-08: ファイルを実行の起点にしない。
-        // ブックが運べるのは関数(UDF)だけ、手続きは plugins の .py だけ
+    fn ブックに載っているコードは実行しない(cx: &mut gpui::TestAppContext) {
+        // 発注者確定 2026-08-09: データとプログラムを1つのファイルにしない。
+        // 関数(UDF)も手続きも plugins の .py だけ — ブックからは何も実行しない
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.book.scripts.push(("取り込み試験".into(), "print(1)".into()));
             this.book.scripts.push(("関数集計".into(), "def f(x):\n    return x".into()));
-            // ブックの手続きは断る(実行せず、取り出しの道を案内)
-            this.prompt = Some(("py", Editor::new("@取り込み試験")));
+            // ブックに載っているものは、手続きも関数も断る(取り出しの道を案内)
+            for name in ["@取り込み試験", "@関数集計"] {
+                this.prompt = Some(("py", Editor::new(name)));
+                this.finish_prompt(cx);
+                assert!(
+                    this.status.contains("実行しません") && this.status.contains("@export"),
+                    "{name} を断っていない: {}",
+                    this.status
+                );
+            }
+            // @save はもう無い(ブックにコードは載せない)
+            this.prompt = Some(("py", Editor::new("@save 関数集計")));
             this.finish_prompt(cx);
             assert!(
-                this.status.contains("実行しません"),
-                "手続きを断っていない: {}",
-                this.status
-            );
-            // 関数は @計算 の持ち場だと言う(手続きとしては回さない)
-            this.prompt = Some(("py", Editor::new("@関数集計")));
-            this.finish_prompt(cx);
-            assert!(
-                this.status.contains("@計算"),
-                "関数の案内が出ない: {}",
-                this.status
-            );
-            // @save は「関数」で始まる名前だけ(手続きは門前で断る —
-            // ここで断るのでファイル選択のパネルは開かない)
-            this.prompt = Some(("py", Editor::new("@save 取り込み試験")));
-            this.finish_prompt(cx);
-            assert!(
-                this.status.contains("載せられません"),
+                this.status.contains("載せません"),
                 "@save の門が働いていない: {}",
+                this.status
+            );
+            // サンドボックスを外したので「net」の区別はもう無い(黙って受けない)
+            this.prompt = Some(("py", Editor::new("@居ない手続きxyz net")));
+            this.finish_prompt(cx);
+            assert!(
+                this.status.contains("要らなく"),
+                "net の始末を言っていない: {}",
                 this.status
             );
             // 無い名前は plugins の置き場を案内
@@ -2923,15 +2924,21 @@ mod udf_tests {
         let dir = std::env::temp_dir().join(format!("jo-udf-test-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let out = dir.join("out.txt");
-        let defs = "def 倍(x):\n    return x * 2\ndef 表(r):\n    return [[v * 10 for v in row] for row in r]";
+        let mods = vec![(
+            "道具".to_string(),
+            "def 倍(x):\n    return x * 2\ndef 表(r):\n    return [[v * 10 for v in row] for row in r]"
+                .to_string(),
+        )];
         let calls = vec![
             (
                 "B1".to_string(),
+                "道具".to_string(),
                 "倍".to_string(),
                 vec![sheet::calc::PyArg::One(sheet::Value::Number(21.0))],
             ),
             (
                 "D1".to_string(),
+                "道具".to_string(),
                 "表".to_string(),
                 vec![sheet::calc::PyArg::Rect(
                     2,
@@ -2944,7 +2951,7 @@ mod udf_tests {
                 )],
             ),
         ];
-        let script = build_udf_script(defs, &calls, &out);
+        let script = build_udf_script(&mods, &calls, &out);
         let py_path = dir.join("t.py");
         std::fs::write(&py_path, script).unwrap();
         let o = std::process::Command::new(&py).arg(&py_path).output().unwrap();
@@ -2955,6 +2962,47 @@ mod udf_tests {
         assert_eq!(results[0].1[0][0], "42", "倍(21) が違う: {raw:?}");
         assert_eq!(results[1].1[1][1], "40", "表の2x2が違う");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pluginsの関数は裸の名前で式に書ける() {
+        // 2026-08-09 発注者確定: 交換されるファイルはデータだけ。関数は各自の
+        // plugins にあり、式には `=倍(A1)` と普通に書く(=PY("倍", A1) も残す)
+        sheet::calc::set_udf_names(["倍".to_string(), "XWSPLIT".to_string()]);
+        let mut s = sheet::Sheet::default();
+        s.set(Pos::new(0, 0), sheet::Cell::input("21"));
+        assert!(sheet::calc::is_py_formula("倍(A1)"), "裸の名前が UDF と見なされない");
+        // 字句解析は ASCII を大文字にする — 小文字で書いても結ばれる
+        assert!(sheet::calc::is_py_formula("xwsplit(A1)"), "小文字の名前が結ばれない");
+        assert!(sheet::calc::is_py_formula("PY(\"倍\", A1)"), "古い書き方が壊れた");
+        // 登録簿に無い名前はただの関数(#NAME? になる) — 勝手に UDF にしない
+        assert!(!sheet::calc::is_py_formula("知らない関数(A1)"));
+        // 複合式は UDF のセルではない(値だけを置く場所なので)
+        assert!(!sheet::calc::is_py_formula("倍(A1)+1"));
+        // 引数は普通の式として評価されて渡る
+        let (name, args) = sheet::calc::eval_py_call(&s, "倍(A1)").expect("解けない");
+        assert_eq!(name, "倍");
+        assert!(matches!(&args[0], sheet::calc::PyArg::One(sheet::Value::Number(n)) if *n == 21.0));
+
+        // --- 指紋(py_stamp)が動いたときだけ裏で計算し直す ---
+        // (登録簿は機械にひとつなので、名前を使う試験はここに集めてある)
+        let mut s = sheet::Sheet::default();
+        s.set(Pos::new(0, 0), sheet::Cell::input("21"));
+        s.set(Pos::new(0, 1), sheet::Cell::input("=倍(A1)"));
+        sheet::calc::recalc(&mut s);
+        let a = s.py_stamp;
+        assert_ne!(a, 0, "UDF のセルがあるのに指紋が立たない");
+        sheet::calc::recalc(&mut s);
+        assert_eq!(a, s.py_stamp, "同じ中身で指紋が動いた(計算し直しが止まらない)");
+        s.set(Pos::new(0, 0), sheet::Cell::input("22"));
+        sheet::calc::recalc(&mut s);
+        assert_ne!(a, s.py_stamp, "引数が変わったのに指紋が動かない");
+        // UDF のセルが無いブックでは 0(見張りは何もしない)
+        let mut t = sheet::Sheet::default();
+        t.set(Pos::new(0, 0), sheet::Cell::input("=1+1"));
+        sheet::calc::recalc(&mut t);
+        assert_eq!(t.py_stamp, 0);
+        sheet::calc::set_udf_names(Vec::new());
     }
 
     #[test]
@@ -3423,6 +3471,42 @@ mod track_changes_tests {
         assert_eq!(c.who, "dev@機械");
         assert_eq!(c.at, Pos::parse("B2").unwrap());
         assert_eq!(c.after, "=A1&\"<>\"", "記号の逃がしが壊れた");
+    }
+}
+
+#[cfg(test)]
+mod color_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn 色は16進で直に指定できて読めない字は断る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let p = Pos::parse("A1").unwrap();
+            this.book.sheets[0].set(p, sheet::Cell::input("色"));
+            this.cursor = p;
+
+            // 「その他」を選ぶと打ち込みのパネルが開く
+            this.pick_kind = "font-color";
+            this.apply_pick("その他(RRGGBB を打つ)…", cx);
+            assert!(this.prompt.is_some(), "打ち込みのパネルが開かない");
+
+            // #付きでも大文字小文字でも通る
+            this.prompt = Some(("font-color-rgb", Editor::new("#ff8800")));
+            this.finish_prompt(cx);
+            assert_eq!(
+                this.book.sheets[0].get(p).unwrap().fmt.color.as_deref(),
+                Some("FF8800"),
+                "16進の色が入っていない"
+            );
+
+            // 読めない字は**黙って黒にせず**、断って打ち直させる
+            this.prompt = Some(("fill-color-rgb", Editor::new("みどり")));
+            this.finish_prompt(cx);
+            assert!(this.book.sheets[0].get(p).unwrap().fmt.fill.is_none(), "でたらめな色が入った");
+            assert!(this.status.contains("色が読めません"), "理由を言っていない: {}", this.status);
+            assert!(this.prompt.is_some(), "打ち直させていない");
+        });
     }
 }
 

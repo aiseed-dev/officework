@@ -12,15 +12,21 @@ pub(crate) fn py_literal(v: &sheet::Value) -> String {
     }
 }
 
-/// @計算 の台本。「関数」スクリプトの def を読み、各 PY セルを評価して
-/// 区切りの印(\x1c セル / \x1e 行 / \x1f 欄)で吐く。
+/// @計算 の台本。plugins の .py を**それぞれ別のモジュールとして**読み込み、
+/// 各 PY セルを評価して区切りの印(\x1c セル / \x1e 行 / \x1f 欄)で吐く。
+/// mods は (モジュール名, .py の中身)、calls は (セルA1, モジュール名, 関数名, 引数)。
 pub(crate) fn build_udf_script(
-    defs: &str,
-    calls: &[(String, String, Vec<sheet::calc::PyArg>)], // (セルA1, 関数名, 引数)
+    mods: &[(String, String)],
+    calls: &[(String, String, String, Vec<sheet::calc::PyArg>)],
     out_path: &std::path::Path,
 ) -> String {
+    let mut defs = String::new();
+    for (name, src) in mods {
+        // 中身は文字列として渡す(名前が Python の識別子でなくてもよい)
+        defs.push_str(&format!("_jo_mod({name:?}, {src:?})\n"));
+    }
     let mut body = String::new();
-    for (cell, fname, args) in calls {
+    for (cell, module, fname, args) in calls {
         let mut lit_args = Vec::new();
         for a in args {
             match a {
@@ -41,15 +47,29 @@ pub(crate) fn build_udf_script(
             }
         }
         body.push_str(&format!(
-            "_jo_emit({cell:?}, {fname}({args}))\n",
+            "_jo_emit({cell:?}, _jo_fn({module:?}, {fname:?})({args}))\n",
             cell = cell,
+            module = module,
             fname = fname,
             args = lit_args.join(", ")
         ));
     }
     format!(
         concat!(
-            "# aiseed calc の PY(UDF)評価。関数の定義はブックの「関数」スクリプト\n",
+            "# aiseed calc の PY(UDF)評価。関数の定義は plugins の .py にある\n",
+            "# (ブックはコードを運ばない — データとプログラムは別のファイル)\n",
+            "import types\n",
+            "_jo_mods = {{}}\n",
+            "def _jo_mod(name, src):\n",
+            "    m = types.ModuleType(name)\n",
+            "    m.__file__ = name + '.py'\n",
+            "    exec(compile(src, m.__file__, 'exec'), m.__dict__)\n",
+            "    _jo_mods[name] = m\n",
+            "def _jo_fn(module, fname):\n",
+            "    f = getattr(_jo_mods[module], fname, None)\n",
+            "    if f is None:\n",
+            "        raise NameError(module + '.py に ' + fname + ' がありません')\n",
+            "    return f\n",
             "{defs}\n",
             "_jo_out = []\n",
             "def _jo_emit(cell, r):\n",
@@ -749,6 +769,141 @@ pub(crate) fn plugins_dir() -> PathBuf {
         .join(".config/office/plugins")
 }
 
+/// plugins にある .py の名前(モジュール名)を並べる。
+pub(crate) fn plugin_modules() -> Vec<String> {
+    let mut v: Vec<String> = std::fs::read_dir(plugins_dir())
+        .ok()
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|e| e == "py"))
+        .filter_map(|p| p.file_stem().map(|s| s.to_string_lossy().to_string()))
+        .collect();
+    v.sort();
+    v
+}
+
+/// plugins の .py の見出し — (モジュール名, その中の def の名前)。
+/// **読むだけで実行しない**(@list の一覧に使う)。
+pub(crate) fn plugin_outline() -> Vec<(String, Vec<String>)> {
+    plugin_modules()
+        .into_iter()
+        .map(|m| {
+            let src =
+                std::fs::read_to_string(plugins_dir().join(format!("{m}.py"))).unwrap_or_default();
+            (m, def_names(&src))
+        })
+        .collect()
+}
+
+/// .py の中の `def 名前(` を並べる(先頭の桁のものだけ = 入れ子の def は数えない)。
+pub(crate) fn def_names(src: &str) -> Vec<String> {
+    src.lines()
+        .filter_map(|l| l.strip_prefix("def "))
+        .filter_map(|r| r.split_once('(').map(|(n, _)| n.trim().to_string()))
+        .filter(|n| !n.starts_with('_'))
+        .collect()
+}
+
+/// UDF の登録簿。**大文字にした関数名** → その名前を持つ (モジュール, 実際の名前)。
+/// 字句解析が ASCII を大文字にするので、こちらも大文字で引く(日本語はそのまま)。
+static UDF_MAP: std::sync::RwLock<Option<HashMap<String, Vec<(String, String)>>>> =
+    std::sync::RwLock::new(None);
+
+/// plugins を読み直して UDF の登録簿を作り、sheet に名前を渡す。
+/// 返りは**組み込み関数と名前がぶつかって見送ったもの**(黙って握り潰さない)。
+/// 中身は実行しない — `def` の行を数えるだけ。
+pub(crate) fn refresh_udfs() -> Vec<String> {
+    let mut map: HashMap<String, Vec<(String, String)>> = HashMap::new();
+    let mut clash: Vec<String> = Vec::new();
+    for m in plugin_modules() {
+        let Ok(src) = std::fs::read_to_string(plugins_dir().join(format!("{m}.py"))) else {
+            continue;
+        };
+        for f in def_names(&src) {
+            let up = f.to_ascii_uppercase();
+            // 組み込みの関数名は譲らない(SUM を上書きされたら帳票が壊れる)
+            if up == "PY" || crate::funcs::FUNCS.iter().any(|x| x.name == up) {
+                clash.push(format!("{m}.{f}"));
+                continue;
+            }
+            map.entry(up).or_default().push((m.clone(), f));
+        }
+    }
+    sheet::calc::set_udf_names(map.keys().cloned());
+    if let Ok(mut g) = UDF_MAP.write() {
+        *g = Some(map);
+    }
+    clash
+}
+
+/// plugins の置き場が最後に変わった時刻。ここが動いたら登録簿を作り直す。
+static PLUGINS_MTIME: std::sync::Mutex<Option<std::time::SystemTime>> =
+    std::sync::Mutex::new(None);
+
+/// plugins が変わっていれば登録簿を作り直す。返りは作り直したか。
+pub(crate) fn refresh_udfs_if_changed() -> bool {
+    let now = std::fs::metadata(plugins_dir()).and_then(|m| m.modified()).ok();
+    let Ok(mut last) = PLUGINS_MTIME.lock() else { return false };
+    if *last == now && last.is_some() {
+        return false;
+    }
+    *last = now;
+    drop(last);
+    refresh_udfs();
+    true
+}
+
+/// UDF の見張り。200ms ごとに (1) plugins が変わっていないか
+/// (2) 引数が変わっていないか を見て、要れば裏で計算し直す。
+pub(crate) fn start_udf_watch(view: gpui::Entity<Calc>, cx: &mut gpui::App) {
+    cx.spawn(async move |cx| {
+        loop {
+            cx.background_executor()
+                .timer(std::time::Duration::from_millis(200))
+                .await;
+            view.update(cx, |calc, cx| {
+                // plugins に .py が増えれば、式の見え方(どれが UDF か)が変わる
+                if refresh_udfs_if_changed() {
+                    sheet::recalc_all(&mut calc.book);
+                    cx.notify();
+                }
+                calc.udf_tick(cx);
+            });
+        }
+    })
+    .detach();
+}
+
+/// 式に書かれた名前を plugins の .py に結ぶ。返すのは (モジュール名, 関数名)。
+/// 普段は関数名だけでよい。同じ名前が2つの .py にあるときだけ
+/// "モジュール.関数" と書いて選ぶ — 無い・複数あるときは、そう言う
+/// (黙って選ばない)。
+pub(crate) fn resolve_udf(name: &str) -> Result<(String, String), String> {
+    if let Some((m, f)) = name.rsplit_once('.') {
+        return if plugins_dir().join(format!("{m}.py")).exists() {
+            Ok((m.to_string(), f.to_string()))
+        } else {
+            Err(format!("{m}.py がありません"))
+        };
+    }
+    let hits: Vec<(String, String)> = UDF_MAP
+        .read()
+        .ok()
+        .and_then(|g| g.as_ref().and_then(|m| m.get(&name.to_ascii_uppercase()).cloned()))
+        .unwrap_or_default();
+    match hits.len() {
+        0 => Err(format!("「{name}」の定義が plugins にありません")),
+        1 => Ok(hits[0].clone()),
+        _ => Err(format!(
+            "「{name}」が {} にあります — {}.{name} のようにモジュール名を付けてください",
+            hits.iter().map(|(m, _)| m.as_str()).collect::<Vec<_>>().join(" と "),
+            hits[0].0
+        )),
+    }
+}
+
 impl Calc {
     /// 選んだ範囲を matplotlib で棒グラフにして、シートに浮かべる。
     /// 1列目が項目名、残りの列が系列(先頭行が文字なら系列名)。
@@ -1325,21 +1480,38 @@ calc の隣に置いてください)").to_string()
         .detach();
     }
 
-    /// =PY(…) のセルを全部、サンドボックスの中で計算する(@計算)。
-    /// 関数の定義はブックの「関数」で始まる名前のスクリプトから読む。
-    /// **これ以外の道で PY セルが計算されることはない**(開く=実行を持たない)。
+    /// 裏で 200ms ごとに見て、UDF の引数が変わっていたら計算し直す。
+    /// 指紋(sheet の py_stamp)が動いたときだけ働くので、UDF の無いブックでは
+    /// 何も起きない。二重には走らせない(udf_busy)。
+    pub(crate) fn udf_tick(&mut self, cx: &mut Context<Self>) {
+        if self.udf_busy || self.prompt.is_some() {
+            return;
+        }
+        let now: Vec<u64> = self.book.sheets.iter().map(|s| s.py_stamp).collect();
+        if now == self.udf_stamp {
+            return;
+        }
+        self.udf_stamp = now.clone();
+        if now.iter().all(|s| *s == 0) {
+            return; // UDF のセルが1つも無い
+        }
+        self.run_udfs(true, cx);
+    }
+
+    /// UDF のセルを全部計算する(@計算 の手回し)。
     pub(crate) fn run_py_calc(&mut self, cx: &mut Context<Self>) {
         if !self.commit() {
             return;
         }
-        let defs: String = self
-            .book
-            .scripts
-            .iter()
-            .filter(|(n, _)| n.starts_with("関数"))
-            .map(|(_, c)| c.as_str())
-            .collect::<Vec<_>>()
-            .join("\n");
+        self.run_udfs(false, cx);
+    }
+
+    /// UDF のセルを別スレッドでまとめて計算し、答えが揃ってから1手で書き戻す。
+    /// 関数の定義は **plugins の .py**(ブックはコードを運ばない)。
+    /// auto=true は自動の計算 — undo の節目を作らず、書きかけの印も動かさない。
+    /// **サンドボックスは着せない**: 回すのは自分で plugins に置いたコードだけで、
+    /// ブックから旅して来たコードではない(2026-08-09 発注者確定)。
+    fn run_udfs(&mut self, auto: bool, cx: &mut Context<Self>) {
         let mut per_sheet: Vec<(usize, Vec<(String, String, Vec<sheet::calc::PyArg>)>)> =
             Vec::new();
         for (i, sh) in self.book.sheets.iter().enumerate() {
@@ -1358,14 +1530,64 @@ calc の隣に置いてください)").to_string()
             }
         }
         if per_sheet.is_empty() {
-            self.status = ui::t!("=PY(\"関数名\", 引数…) のセルがありません").into();
+            if !auto {
+                self.status = ui::t!("plugins の関数を呼んでいるセルがありません").into();
+            }
             return;
         }
-        if defs.trim().is_empty() {
-            self.status =
-                ui::t!("関数の定義がありません(@save 関数 で def の入った .py をブックに載せる)").into();
+        // 呼ばれている名前を plugins の .py に結ぶ。足りなければ名指しで言う
+        let names: Vec<String> = {
+            let mut v: Vec<String> = per_sheet
+                .iter()
+                .flat_map(|(_, cs)| cs.iter().map(|(_, n, _)| n.clone()))
+                .collect();
+            v.sort();
+            v.dedup();
+            v
+        };
+        let mut resolved: std::collections::HashMap<String, (String, String)> = Default::default();
+        let mut missing: Vec<String> = Vec::new();
+        for n in &names {
+            match resolve_udf(n) {
+                Ok(mf) => {
+                    resolved.insert(n.clone(), mf);
+                }
+                Err(e) => missing.push(e),
+            }
+        }
+        if !missing.is_empty() {
+            self.status = format!("{}({} に .py を置いてください)", missing.join(" / "), plugins_dir().display()).into();
             return;
         }
+        // 使うモジュールだけ読む(呼ばれていない plugins は動かさない)
+        let mut mods: Vec<(String, String)> = Vec::new();
+        for (m, _) in resolved.values() {
+            if mods.iter().any(|(n, _)| n == m) {
+                continue;
+            }
+            match std::fs::read_to_string(plugins_dir().join(format!("{m}.py"))) {
+                Ok(src) => mods.push((m.clone(), src)),
+                Err(e) => {
+                    self.status = format!("{m}.py が読めません: {e}").into();
+                    return;
+                }
+            }
+        }
+        // (セル, モジュール, 関数, 引数)へ組み替える
+        let per_sheet: Vec<(usize, Vec<(String, String, String, Vec<sheet::calc::PyArg>)>)> =
+            per_sheet
+                .into_iter()
+                .map(|(i, calls)| {
+                    let calls = calls
+                        .into_iter()
+                        .map(|(cell, name, args)| {
+                            let (m, f) = resolved[name.as_str()].clone();
+                            (cell, m, f, args)
+                        })
+                        .collect();
+                    (i, calls)
+                })
+                .collect();
         let dir = cage_work_dir("jo-udf");
         let _ = std::fs::create_dir_all(&dir);
         let mut scripts = Vec::new();
@@ -1375,27 +1597,21 @@ calc の隣に置いてください)").to_string()
                 *i,
                 dir.join(format!("udf{i}.py")),
                 out.clone(),
-                build_udf_script(&defs, calls, &out),
+                build_udf_script(&mods, calls, &out),
             ));
         }
-        self.status = ui::t!("PY を計算しています…(サンドボックスの中)").into();
+        if !auto {
+            self.status = ui::t!("関数を計算しています…").into();
+        }
+        self.udf_busy = true;
         let task = cx.background_executor().spawn(async move {
-            if cage_kind() == Cage::None {
-                return Err(
-                    ui::t!("サンドボックスが組めません(bubblewrap か Flatpak が要ります)。ブックの関数はサンドボックスの外では計算しません").to_string(),
-                );
-            }
             let py = find_python();
-            let venv = std::fs::canonicalize(".venv").unwrap_or_default();
             let mut results = Vec::new();
             for (i, py_path, out_path, script) in scripts {
                 std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
-                // 関数(UDF)は常に網なしのサンドボックス
-                let Some(mut c) = caged_python(&py, &dir, std::slice::from_ref(&venv), false)
-                else {
-                    return Err(ui::t!("サンドボックスが組めません(bubblewrap か Flatpak が要ります)。ブックの関数はサンドボックスの外では計算しません").to_string());
-                };
+                // サンドボックスは着せない — plugins は自分で据えたコード。
                 // 時間制限つき(30秒)。関数は値の計算だけ — それより長いのは異常
+                let mut c = std::process::Command::new(&py);
                 let (ok, _, err) = run_with_timeout(c.arg(&py_path), 30)?;
                 if !ok {
                     let last = err
@@ -1413,9 +1629,13 @@ calc の隣に置いてください)").to_string()
         cx.spawn(async move |this, cx| {
             let r = task.await;
             let _ = this.update(cx, |this, cx| {
+                this.udf_busy = false;
                 match r {
                     Ok(outs) => {
-                        this.checkpoint_book();
+                        // 自動の計算は undo の節目を作らない(利用者の1手ではない)
+                        if !auto {
+                            this.checkpoint_book();
+                        }
                         let (mut total, mut conflicts) = (0usize, 0usize);
                         for (i, raw) in outs {
                             let results = parse_udf_output(&raw);
@@ -1435,16 +1655,20 @@ calc の隣に置いてください)").to_string()
                             total += n;
                             conflicts += c;
                         }
-                        this.dirty = true;
+                        // 計算し終えた姿を指紋に控える(同じ引数で回り続けない)
+                        this.udf_stamp =
+                            this.book.sheets.iter().map(|s| s.py_stamp).collect();
                         this.sync_input();
-                        this.status = if conflicts > 0 {
-                            format!(
-                                "PY: {total} セルを計算、{conflicts} 件は #SPILL!(展開先に他のデータ)。Ctrl+Z で戻せます"
+                        if conflicts > 0 {
+                            this.status = format!(
+                                "関数: {total} セルを計算、{conflicts} 件は #SPILL!(展開先に他のデータ)"
                             )
-                            .into()
-                        } else {
-                            format!("PY: {total} セルを計算しました(Ctrl+Z で戻せます)").into()
-                        };
+                            .into();
+                        } else if !auto {
+                            this.dirty = true;
+                            this.status =
+                                format!("関数: {total} セルを計算しました(Ctrl+Z で戻せます)").into();
+                        }
                     }
                     Err(e) => this.status = e.into(),
                 }
@@ -1454,38 +1678,81 @@ calc の隣に置いてください)").to_string()
         .detach();
     }
 
-    /// .py を選んで**ブックに載せる**(実行はしない)。載せたコードは
-    /// 保存で xlsx に入り、帳票と一緒に旅をする。実行は @名前 で、必ずサンドボックスの中。
-    pub(crate) fn store_python_dialog(&mut self, name: String, cx: &mut Context<Self>) {
-        let ask = cx.background_executor().spawn(async {
-            rfd::FileDialog::new()
-                .add_filter("Python", &["py"])
-                .pick_file()
+    /// plugins の手続きを走らせる。**動いている calc をそのまま操る** —
+    /// 一時ファイルの複製ではなく、子のプロセスが officework のソケット越しに
+    /// このブックを書く(記事の「ファイルではなく Excel そのものを操作する」)。
+    /// 何回書いても Ctrl+Z 一回で戻る(頭で節目を1つ置き、その間 rpc は置かない)。
+    /// サンドボックスは着せない — plugins は自分で据えたコードで、ブックから
+    /// 旅して来たものではない(2026-08-09 発注者確定)。
+    pub(crate) fn run_plugin(&mut self, module: &str, func: Option<&str>, cx: &mut Context<Self>) {
+        if !self.commit() {
+            return;
+        }
+        let script = format!(
+            concat!(
+                "import sys\n",
+                "sys.path.insert(0, {dir:?})\n",
+                "import importlib\n",
+                "m = importlib.import_module({module:?})\n",
+                "{call}"
+            ),
+            dir = plugins_dir().to_string_lossy(),
+            module = module,
+            call = match func {
+                Some(f) => format!("getattr(m, {f:?})()\n"),
+                None => String::new(), // 取り込むだけ(昔ながらの「上から下まで走る .py」)
+            }
+        );
+        let dir = cage_work_dir("jo-plugin");
+        let _ = std::fs::create_dir_all(&dir);
+        let name = match func {
+            Some(f) => format!("{module}.{f}"),
+            None => module.to_string(),
+        };
+        self.checkpoint_book();
+        self.rpc_batch = true;
+        self.status = ui::tf!("「{}」を実行しています…", name.clone()).into();
+        let task = cx.background_executor().spawn(async move {
+            let py_path = dir.join("plugin.py");
+            std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
+            let mut c = std::process::Command::new(find_python());
+            // 時間制限つき(60秒)。返りは (終わったか, 出力, 誤り)
+            let (ok, out, err) = run_with_timeout(c.arg(&py_path), 60)?;
+            if !ok {
+                let last = err
+                    .lines()
+                    .rev()
+                    .find(|l| !l.trim().is_empty())
+                    .unwrap_or("原因不明")
+                    .to_string();
+                return Err(last);
+            }
+            Ok(out.trim().to_string())
         });
         cx.spawn(async move |this, cx| {
-            let r = ask.await;
+            let r = task.await;
             let _ = this.update(cx, |this, cx| {
-                if let Some(p) = r {
-                    match std::fs::read_to_string(&p) {
-                        Ok(code) => {
-                            this.book.scripts.retain(|(n, _)| *n != name);
-                            this.book.scripts.push((name.clone(), code));
-                            this.dirty = true;
-                            this.status = format!(
-                                "「{name}」をブックに載せました(保存で xlsx に入る。=PY(\"名前\", …) と @計算 が使います)"
-                            )
-                            .into();
-                        }
-                        Err(e) => this.status = format!("読めません: {e}").into(),
+                this.rpc_batch = false;
+                this.sync_input();
+                this.status = match r {
+                    Ok(out) if out.is_empty() => {
+                        ui::tf!("「{}」を実行しました(Ctrl+Z で1手で戻せます)", name).into()
                     }
-                }
+                    Ok(out) => format!(
+                        "{name}: {}(出力{}行。Ctrl+Z で1手で戻せます)",
+                        out.lines().last().unwrap_or_default(),
+                        out.lines().count()
+                    )
+                    .into(),
+                    Err(e) => format!("{name}: {e}").into(),
+                };
                 cx.notify();
             });
         })
         .detach();
     }
 
-    /// ブックに載っている(古い形の)手続きを .py に取り出す。**実行はしない** —
+    /// 古いブックに載っていたコードを .py に取り出す。**実行はしない** —
     /// 中身を確かめてから plugins へ置くのは人の手(それが取り込みの門)
     pub(crate) fn export_python_dialog(&mut self, name: String, cx: &mut Context<Self>) {
         let Some(code) = self

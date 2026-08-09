@@ -1668,15 +1668,15 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     }
                     Ok(Event::End(e)) if local(e.name().as_ref()) == b"script" => {
                         if let Some(n) = name.take() {
-                            // 手続き(「関数」以外)は読むが**実行できず、保存で
-                            // ブックから消える**(2026-08-08 発注者確定 —
-                            // ファイルを実行の起点にしない)。黙って落とさない:
-                            // 開くときの報告で言う。取り出しは @export 名前
-                            if !n.starts_with("関数") {
-                                rep.note(
-                                    "ブック搭載の手続きPython(実行しません。@export で取り出し。保存でブックから消えます)",
-                                );
-                            }
+                            // 古いブックに載っている Python は**関数(UDF)も含めて
+                            // 読むだけ**。実行せず、保存でブックから消える
+                            // (2026-08-08 発注者確定 → 2026-08-09 に UDF まで拡張:
+                            // データとプログラムを1つのファイルにしない)。
+                            // 黙って落とさない: 開くときの報告で言う。
+                            // 取り出しは @export 名前 → 中を確かめて plugins へ
+                            rep.note(
+                                "ブックに載っていた Python(実行しません。@export で取り出して plugins へ。保存でブックから消えます)",
+                            );
                             book.scripts.push((n, code.clone()));
                         }
                         in_s = false;
@@ -2868,24 +2868,10 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     for (name, xml) in &fresh_parts {
         put(name, xml)?;
     }
-    // ブックに書くのは**関数(UDF)だけ**(発注者確定 2026-08-08:
-    // ファイルを実行の起点にしない)。手続きは plugins の .py — 書かない。
-    // 古いブックから読んだ手続きは保存で消える(開くときの報告でそう言う)
-    let fns: Vec<&(String, String)> = book
-        .scripts
-        .iter()
-        .filter(|(n, _)| n.starts_with("関数"))
-        .collect();
-    if !fns.is_empty() {
-        let mut sx = String::from(
-            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<joPython>",
-        );
-        for (n, code) in fns {
-            sx.push_str(&format!("<script name=\"{}\">{}</script>", esc(n), esc(code)));
-        }
-        sx.push_str("</joPython>");
-        put("xl/joPython.xml", &sx)?;
-    }
+    // **ブックには Python を一切書かない**(発注者確定 2026-08-09:
+    // データとプログラムを1つのファイルにしない — xlsm の逆)。
+    // 関数(UDF)も手続きも plugins の .py にある。古いブックから読んだ
+    // コードは保存で消える(開くときの報告でそう言う。取り出しは @export)
     // 変更履歴(独自部品 xl/joChanges.xml)。Excel は読まない — 正直な劣化
     if !book.changes.is_empty() {
         let mut cx = String::from(
@@ -4933,9 +4919,9 @@ mod script_roundtrip_tests {
     use super::*;
 
     #[test]
-    fn ブックに載って往復するのは関数だけ() {
-        // 発注者確定 2026-08-08: ファイルを実行の起点にしない —
-        // 手続きは plugins へ。joPython に書かれる(=旅できる)のは UDF だけ
+    fn ブックには関数も手続きも書かない() {
+        // 発注者確定 2026-08-09: データとプログラムを1つのファイルにしない。
+        // 関数(UDF)も手続きも plugins の .py にある — ブックは何も運ばない
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.scripts.push((
@@ -4946,17 +4932,66 @@ mod script_roundtrip_tests {
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
         buf.set_position(0);
-        let (back, _) = read(buf.clone()).expect("読めない");
-        assert_eq!(back.scripts.len(), 1, "手続きがブックに残った(実行の起点になってしまう)");
-        assert_eq!(back.scripts[0].0, "関数集計");
-        assert!(back.scripts[0].1.contains("1 < 2"), "コードの逃がしが壊れた");
-        // もう一往復(古い部品と二重にならない)
-        let mut buf2 = Cursor::new(Vec::new());
+        let (back, _) = read(buf).expect("読めない");
+        assert!(back.scripts.is_empty(), "コードがブックに残った(ファイルが実行の起点になる)");
+    }
+
+    #[test]
+    fn 古いブックのコードは読めて報告が出て保存で消える() {
+        // 黙って落とさない: 開くときに報告し、@export で取り出せる状態にはする
+        let mut old = Book::new();
+        old.scripts.push(("関数集計".into(), "def 集計(x):\n    return 1 < 2 and x".into()));
+        // 古い形の xlsx を手で組む(いまの write はもう joPython を書かないため)
+        let mut buf = Cursor::new(Vec::new());
+        write(&old, &mut buf).expect("書けない");
         buf.set_position(0);
-        write_with(&back, Some(buf), &mut buf2).expect("書けない");
+        let with_py = 古い形にjoPythonを足す(buf.into_inner(), &old.scripts);
+
+        let (back, rep) = read(Cursor::new(with_py.clone())).expect("読めない");
+        assert_eq!(back.scripts.len(), 1, "古いブックのコードが読めない(@export できない)");
+        assert!(back.scripts[0].1.contains("1 < 2"), "コードの逃がしが壊れた");
+        assert!(
+            rep.unsupported.iter().any(|(n, _)| n.contains("ブックに載っていた Python")),
+            "黙って落とした(報告が無い): {:?}",
+            rep.unsupported
+        );
+        // 保存し直すと消える(原本を渡しても持ち越さない)
+        let mut buf2 = Cursor::new(Vec::new());
+        write_with(&back, Some(Cursor::new(with_py)), &mut buf2).expect("書けない");
         buf2.set_position(0);
         let (b3, _) = read(buf2).expect("読めない");
-        assert_eq!(b3.scripts.len(), 1, "二往復で二重になった");
+        assert!(b3.scripts.is_empty(), "保存し直してもコードが残った");
+    }
+
+    /// 試験のための小道具 — zip に xl/joPython.xml を足した「古い形」を作る
+    #[allow(non_snake_case)]
+    fn 古い形にjoPythonを足す(bytes: Vec<u8>, scripts: &[(String, String)]) -> Vec<u8> {
+        let mut zin = zip::ZipArchive::new(Cursor::new(bytes)).expect("zip が読めない");
+        let mut out = Cursor::new(Vec::new());
+        {
+            let mut zw = zip::ZipWriter::new(&mut out);
+            let opts: zip::write::FileOptions<()> =
+                zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+            for i in 0..zin.len() {
+                let mut f = zin.by_index(i).expect("項目が読めない");
+                let name = f.name().to_string();
+                let mut v = Vec::new();
+                f.read_to_end(&mut v).expect("中身が読めない");
+                zw.start_file(name, opts).expect("書けない");
+                zw.write_all(&v).expect("書けない");
+            }
+            let mut sx = String::from(
+                "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<joPython>",
+            );
+            for (n, code) in scripts {
+                sx.push_str(&format!("<script name=\"{}\">{}</script>", esc(n), esc(code)));
+            }
+            sx.push_str("</joPython>");
+            zw.start_file("xl/joPython.xml", opts).expect("書けない");
+            zw.write_all(sx.as_bytes()).expect("書けない");
+            zw.finish().expect("閉じられない");
+        }
+        out.into_inner()
     }
 
     #[test]

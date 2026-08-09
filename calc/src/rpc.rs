@@ -503,7 +503,11 @@ pub(crate) fn handle(calc: &mut Calc, line: &str, cx: &mut Context<Calc>) -> Str
                 return err("シートが保護されています");
             }
             calc.commit();
-            calc.checkpoint();
+            // 手続きの最中は節目を作らない(手続きの頭で1つ置いてある) —
+            // 何回書いても Ctrl+Z 一回で手続きの前に戻る
+            if !calc.rpc_batch {
+                calc.checkpoint();
+            }
             let mut n = 0usize;
             for (dr, row) in grid.iter().enumerate() {
                 for (dc, v) in row.iter().enumerate() {

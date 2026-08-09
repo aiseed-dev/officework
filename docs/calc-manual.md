@@ -290,99 +290,114 @@ The programmer's reference (ranges ⇄ arrays, the API, =PY arguments and return
 values) is the [Python manual](python-manual.md). This section is the
 operations side.
 
-**There are no VBA-style macros.** Python fills that role — but since
-2026-08-08, **only cell functions (UDFs) may travel inside a workbook**.
-Procedures (scripts that do work) live outside, in
-`~/.config/office/plugins/` — **a received file can never become the origin
-of execution**.
+**There are no VBA-style macros** — and no mechanism for putting code inside
+a document at all (settled 2026-08-09). Think of it as VS Code and Excel
+merged: the sheet is an .xlsx, the code is a .py, and they are separate files.
 
-Three safety principles. **Opening a file never executes anything** (execution
-is always an explicit action; the "open = execute" attack path does not
-exist). **Workbook-borne code always runs in a sandbox** and can only compute
-values. And **procedures only run from files you placed yourself.**
+- What people exchange is **data only**. A workbook you receive contains no code
+- Both cell functions and procedures live in `~/.config/office/plugins/*.py`,
+  installed once per machine
+- So "opening a file runs someone else's code" cannot happen by construction
+- Because the code is only ever your own, **no sandbox is applied** — the same
+  treatment as running a script from VS Code
 
 ### Setup
 
-- Python is found via `JO_PYTHON` → `.venv/bin/python` → `python3`
+- Python is found as `JO_PYTHON` → `.venv/bin/python` → `python3`
 - Put `office_sheet.so` (pysheet) **next to the calc executable**: build with
-  `cargo build -p pysheet --release --features extension-module` and copy
-  `liboffice_sheet.so` under the name `office_sheet.so`
-- The sandbox is bubblewrap (`apt install bubblewrap`). **On machines without
-  it, workbook-borne code is not executed** (and the app says so)
+  `cargo build -p pysheet --release --features extension-module` and rename
+  `liboffice_sheet.so` to `office_sheet.so`
+- Plugins live in `~/.config/office/plugins/` (create it if missing)
 
-### Running one line (Data > Python)
+### Writing cell functions in Python
 
-`b` = the workbook and `s` = the current sheet are pre-bound.
+Just write a plain `def` in `~/.config/office/plugins/tools.py`:
 
 ```python
-s["A30"] = "Nihon Funen Co., Ltd."   # value goes in, formatting untouched
+def double(x):
+    return x * 2
+
+def grid(table):
+    return [[v * 10 for v in row] for row in table]
 ```
 
-- Empty + Enter → choose a .py file to run (the code stays in your file, not
-  in the workbook)
-- Execution happens **on a copy** — if it fails, the sheet is unharmed; on
-  success the result lands as **one undo step** (even across sheets)
-- Everything installed on the machine (polars, scipy, …) is available
-
-### @-commands — functions in the workbook, procedures on your machine
-
-In the Data > Python input:
-
-| You type | What happens |
-|---|---|
-| `@save 関数name` | choose a .py and embed it (**only names starting with 関数** — UDF definitions; saved into the xlsx) |
-| `@name` | run **the plugin** `~/.config/office/plugins/name.py` (**always in the no-network sandbox**) |
-| `@name net` | run with network allowed (see below) |
-| `@list` (or `@`) | list workbook functions and plugins |
-| `@del name` | remove a function from the workbook |
-| `@export name` | extract a legacy embedded procedure to a .py (**never executed** — review it, then place it in plugins yourself) |
-| `@計算` | batch-evaluate =PY(…) cells (see below) |
-
-Functions are stored in the custom part `xl/joPython.xml`. If Excel opens and
-re-saves the file this part may disappear (**the values remain** — the
-degradation is on the safe side). Opening a workbook that carries a legacy
-embedded procedure is reported; it cannot run, and it disappears on save
-(`@export` retrieves it).
-
-### The sandbox
-
-Possibly-foreign code runs closed inside a cage (bubblewrap on plain Linux;
-the official nested sandbox in the Flatpak build): **no network, the real
-filesystem is read-only, your home directory is invisible (empty), and the only
-writable place is a scratch area for the exchange**. There is also a time
-limit (procedures 60 s, functions 30 s) — an infinite loop cannot hang the app.
-
-- Jobs that need the network (pulling a web form's inbox into a ledger, …)
-  get it **only when you type `@name net` at that moment**. The permission is
-  never saved anywhere — every grant is an explicit act
-- Code you typed or picked yourself also runs sandboxed when a sandbox exists
-  (defense in depth; that variant has network)
-
-### Writing cell functions in Python (PY, UDF)
+Call it from a cell like any other function. **No decorator, no registration**:
 
 ```
-=PY("fname", args…)
+=double(A1)          → 42 (when A1 is 21)
+=grid(A1:B2)         → spills 2×2 down-right
 ```
 
-1. Embed a .py that defines `def fname(…):` under a name starting with 関数
-   (e.g. `@save 関数sum`)
-2. Write `=PY("fname", A1:B10, 100, "甲")` in a cell
-3. **Data > Python, `@計算`** — only then are all PY cells evaluated at once,
-   in the no-network sandbox
-
-Specification:
-
-- **PY cells are not executed on open or on normal recalculation.** They keep
-  their last computed value; before the first evaluation they show `#PY?`.
-  "No open = execute" holds for cell functions too
-- Arguments are passed as **current values** (ranges as row×column 2-D lists).
-  The formulas stay, so pressing `@計算` again re-evaluates with fresh inputs
+- Function names **may be Japanese** (`=集計(A1:B9)`)
+- **When the arguments change, it recomputes in the background** — you do not
+  press `@計算`. The work runs off the main thread in one batch and is written
+  back as a single step once every answer is in
+- Arguments are passed as **current values** (ranges as row×column 2-D lists)
 - A 2-D return value **spills** down-right (1-D spills down). If the target
   area holds someone's data or formulas, it stops with `#SPILL!` — nothing is
   overwritten. When a result shrinks, the leftover area is cleared
-- Even after evaluation, one Ctrl+Z restores everything
-- Excel shows `#NAME?` for PY (saved values remain visible until Excel
-  recalculates)
+- Built-in names (SUM and friends) win; a `def` with the same name is skipped
+- Only when the same name exists in two .py files do you qualify it:
+  `=tools.double(A1)`
+- Edit the .py and calc notices, then recomputes
+- A cell not yet computed shows `#PY?`. Excel shows `#NAME?` (saved values
+  remain visible until Excel recalculates)
+- The older form `=PY("double", A1)` still works
+
+### Procedures (what replaces macros)
+
+`~/.config/office/plugins/inbox.py`:
+
+```python
+from officework import calc as xw
+
+def paste():
+    s = xw.Book.caller().sheets.active
+    s["A1"].value = [["received", "name"], ["2026-08-09", "Yamada"]]
+```
+
+Type `@inbox.paste` in the Data > Python field to run it. It drives **the
+running workbook directly** (not a temporary copy). However many cells it
+writes, **one Ctrl+Z** returns you to the state before the procedure.
+
+### Running a line of code (Data > Python)
+
+`b` = the book, `s` = the current sheet, are bound.
+
+```python
+s["A30"] = "Nihon Funen Co., Ltd."   # value only; formatting is left alone
+```
+
+- Press Enter on an empty field to pick a .py file instead
+- This one runs **on a copy** — a failure leaves the sheet untouched, and a
+  success is applied as **a single step** (one Ctrl+Z even across sheets)
+- Everything installed on the machine (polars, scipy, …) is available
+
+### @ commands
+
+| What you type | What happens |
+|---|---|
+| `@module` | run `~/.config/office/plugins/module.py` top to bottom |
+| `@module.func` | call just that function in that .py |
+| `@list` (or `@`) | the .py files in plugins and the defs inside them |
+| `@計算` | compute cell functions by hand (normally automatic, so rarely needed) |
+| `@export name` | extract code embedded in an **old** workbook to a .py (never runs it) |
+| `@del name` | drop code embedded in an old workbook |
+
+`@name net` is gone (with no sandbox there is no network distinction). Typing
+it says so.
+
+### Opening an old workbook
+
+If a workbook carries code in the old form (`xl/joPython.xml`), the report
+says so. It **cannot be run, and disappears on save** — `@export name` writes
+it to a .py so you can read it and install it into plugins yourself. That
+review is the only gate.
+
+### Time limits
+
+60 seconds for a procedure, 30 for a cell function. Past that it is stopped
+and says so, so a runaway loop never ties up the app.
 
 ## Shared folders and locking
 
@@ -407,7 +422,7 @@ No server. Everything works **through files** (i.e. in a shared folder):
   `.jo-history/name/timestamp.xlsx` (9 generations). Picking one opens it as
   an **untitled copy** — to restore, save it under the original name yourself
   (nothing is written back silently)
-- **Macros** (Plugins tab): choose a .py and Python runs in the sandbox
+- **Macros** (Plugins tab): choose a .py and run it
   (same machinery as Data > Python; b = workbook, s = sheet)
 - **Manage plugins**: lists and runs .py files from `~/.config/office/plugins`
 
@@ -458,7 +473,7 @@ following work differently here, or are delegated to Python:
 | Grayed elsewhere / different | Our way |
 |---|---|
 | Forecasting, statistics | polars, statsmodels |
-| Macros (VBA) | **deliberately absent**; Python in Calc (sandboxed) takes the role |
+| Macros (VBA) | **deliberately absent**; plugins written in Python take the role (code stays out of the workbook) |
 
 We also don't create **reference links** to external workbooks (values are
 imported instead) — no forms that break when a link dies.

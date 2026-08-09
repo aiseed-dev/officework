@@ -129,8 +129,16 @@ struct Calc {
     pw_pending: Option<PathBuf>,
     /// pick の一覧が指す実体(バージョン履歴・プラグインの表示名 → パス)
     pick_paths: Vec<(String, PathBuf)>,
-    /// PY のスピルの台帳(シート番号, アンカー → 行×列)。次の @計算 で前の面を消す
+    /// PY のスピルの台帳(シート番号, アンカー → 行×列)。次の計算で前の面を消す
     py_spills: std::collections::HashMap<(usize, Pos), (u32, u32)>,
+    /// UDF を計算し終えたときのシートごとの指紋。これと今の指紋が食い違えば
+    /// 「引数が変わった」— 裏で計算し直す(py.rs の udf_tick)
+    udf_stamp: Vec<u64>,
+    /// UDF の計算が走っている最中(二重に走らせない)
+    udf_busy: bool,
+    /// plugins の手続きが走っている最中。この間 rpc の書き込みは undo の節目を
+    /// 作らない — 手続きが何回セルを書いても **Ctrl+Z 一回で戻る**
+    rpc_batch: bool,
     /// トレースの光り(参照元=青緑 / 参照先=橙)。見え方だけ、保存されない
     trace: Vec<(Pos, bool)>,
     /// 自分が置いた排他ロック(閉じるとき・別のファイルを開くときに外す)
@@ -405,6 +413,9 @@ impl Calc {
             pw_pending: None,
             goal: None,
             py_spills: Default::default(),
+            udf_stamp: Vec::new(),
+            udf_busy: false,
+            rpc_batch: false,
             trace: Vec::new(),
             my_lock: None,
             locked_by: None,
@@ -3757,9 +3768,14 @@ fn main() {
                 ..Default::default()
             },
             move |window, cx| {
+                // plugins の関数の名前を先に登録簿へ — ブックを開く前に
+                // 揃っていないと `=集計(A1)` が UDF だと分からない
+                crate::py::refresh_udfs_if_changed();
                 let view = cx.new(|cx| Calc::new(arg2.clone(), cx));
                 // Python(officework)の口。この機械の中だけのユニックスソケット
                 crate::rpc::start(view.clone(), cx);
+                // plugins の関数を呼んでいるセルを裏で計算し続ける見張り
+                crate::py::start_udf_watch(view.clone(), cx);
                 window.focus(&view.focus_handle(cx), cx);
                 // 動かす・伸ばすたびに控える — 閉じる経路が何本あっても漏れない。
                 // 全画面は控えない(次も全画面で開くと出口が分かりにくい)
