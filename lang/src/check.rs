@@ -197,17 +197,25 @@ impl Checker {
             // 誤変換・重複表現はモデル。辞書では原理的に捕まらない。
             // **繋がらなければそう言う** — 表記ゆれが出たからといって
             // 「検査できなかった部分がある」(終了コード3)は消えない
+            // ここまでが辞書の指摘。モデルの分と突き合わせて重複を落とす
+            let by_dict = r.findings.len();
             match proof::proofread(&self.endpoint, text) {
                 Ok(notes) => {
                     for n in notes {
                         let at = char_index_of(text, &n.found);
-                        r.findings.push(Finding {
+                        let f = Finding {
                             kind: Kind::from_why(&n.why),
                             source: Source::Model,
                             found: n.found,
                             at,
                             candidates: vec![n.suggest],
-                        });
+                        };
+                        // **同じ語を2回言わない。**
+                        // モデルへの指示は狭めない — 辞書が取りこぼす形
+                        // (問合せ先/問い合わせ先)はモデルにしか見えないから
+                        if !already_said(&r.findings[..by_dict], &f) {
+                            r.findings.push(f);
+                        }
                     }
                 }
                 Err(e) => r.skipped.push(format!("日本語の校正({e})")),
@@ -302,6 +310,21 @@ impl Checker {
         }
         out
     }
+}
+
+/// モデルの指摘を、辞書が既に言っているか。
+///
+/// 1〜3 が入って辞書とモデルの守備範囲が重なった。利用者から見れば指摘は1つで、
+/// **どちらが言ったかは関係ない**(決めごと1)。残すのは**辞書の側** —
+/// GPU の有無で出る物が変わらないほうがよい。
+///
+/// 種別が同じで、文字列が一方に含まれていれば同じ指摘と見る
+/// (モデルは「お問合せ」と広く取ることがある)。
+fn already_said(by_dict: &[Finding], note: &Finding) -> bool {
+    by_dict.iter().any(|d| {
+        d.kind == note.kind
+            && (d.found.contains(&note.found) || note.found.contains(&d.found))
+    })
 }
 
 /// 長すぎる本文は頭を渡す(判定には全文は要らない)。
@@ -428,6 +451,38 @@ mod tests {
         let r = c.check("問い合わせを受け付けます。");
         assert!(r.findings.is_empty(), "{:?}", r.findings);
         assert!(!r.may_say_clean(), "モデル抜きで「指摘なし」と言えてしまう");
+    }
+
+    #[test]
+    fn 辞書が言った指摘をモデルに二度言わせない() {
+        // 1〜3 で辞書とモデルの守備範囲が重なった。**同じ語を2回出さない**
+        let dict = vec![Finding {
+            kind: Kind::Notation,
+            source: Source::Dictionary,
+            found: "問合せ".into(),
+            at: Some(1),
+            candidates: vec!["問い合わせ".into()],
+        }];
+        let same = Finding {
+            kind: Kind::Notation,
+            source: Source::Model,
+            found: "問合せ".into(),
+            at: Some(1),
+            candidates: vec!["問い合わせ".into()],
+        };
+        assert!(already_said(&dict, &same), "同じ指摘を落とせていない");
+
+        // モデルが広く取った場合も同じ指摘
+        let wider = Finding { found: "お問合せ".into(), ..same.clone() };
+        assert!(already_said(&dict, &wider), "広く取った同じ指摘を落とせていない");
+
+        // 種別が違えば別の指摘。誤変換は辞書には見えない
+        let other = Finding { kind: Kind::Conversion, found: "以外".into(), ..same.clone() };
+        assert!(!already_said(&dict, &other), "別の指摘まで落とした");
+
+        // 辞書が触れていない語はモデルの指摘が残る
+        let elsewhere = Finding { found: "打合せ".into(), ..same.clone() };
+        assert!(!already_said(&dict, &elsewhere), "無関係な指摘まで落とした");
     }
 
     #[test]
