@@ -58,17 +58,22 @@ jobs:
         # 往復させる。ここが通らないものは出さない
         shell: bash
         run: |
-          python -m venv /tmp/kensho
-          PY=/tmp/kensho/bin/python; [ -f "$PY" ] || PY=/tmp/kensho/Scripts/python
+          # **径路は書き下さない** — Windows に /tmp は無い(2026-08-09 に踏んだ)。
+          # 仮想環境は作業場所の下に作り、書き先は tempfile に決めさせる
+          python -m venv kensho-venv
+          PY=kensho-venv/bin/python
+          [ -f "$PY" ] || PY=kensho-venv/Scripts/python
           "$PY" -m pip install --quiet --find-links pysheet/dist officework
           "$PY" - <<'PYEOF'
+          import os, tempfile
           from officework import sheet
+          out = os.path.join(tempfile.mkdtemp(), "kensho.xlsx")
           b = sheet.Book.open("templates/在庫台帳.xlsx")
           s = b[0]
           assert s.shape[0] > 0, "行が読めていない"
           s["A1"] = "検査"
-          b.save("/tmp/kensho.xlsx")
-          assert sheet.Book.open("/tmp/kensho.xlsx")[0]["A1"] == "検査"
+          b.save(out)
+          assert sheet.Book.open(out)[0]["A1"] == "検査"
           print("往復できた:", b.sheet_names)
           PYEOF
       - uses: actions/upload-artifact@v5
