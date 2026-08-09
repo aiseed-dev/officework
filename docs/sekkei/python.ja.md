@@ -111,7 +111,7 @@ Seatbelt(「Mac 版」の節。当初は「Linux 専用」と割り切ってい�
 
 データ > Python。一行のコードか .py ファイルを、**b(ブック)と s(いまの
 シート)を束縛して**回す。裏はいまの表を一時 xlsx へ写し(原本の部品ごと)、
-office_sheet(pysheet)で実行し、保存されたものを読み戻して**1手として**
+officework.sheet(pysheet)で実行し、保存されたものを読み戻して**1手として**
 適用する(undo は束 — 複数シートに触っても Ctrl+Z 一回で戻る)。
 失敗しても表は無傷(実行は複製の上)。
 
@@ -220,20 +220,22 @@ matplotlib など機械にある物が全部使える。Excel は未知の部品
 「受信・名前・用件・状態=未対応」を追記する。帳票・コード・運用が
 1つの xlsx で旅をする。網なしサンドボックスでは同じコードの通信が拒否されることも実証。
 
-配り方: `cargo build -p pysheet --release --features extension-module` の
-`liboffice_sheet.so` を **office_sheet.so の名で calc の隣に**置く。
-無ければ status がその手順を言う。
+配り方: `pip install officework`、または `officework/` パッケージを
+**calc の隣に**置く(calc は自分の居場所を `sys.path` に足して
+`from officework import sheet` する)。無ければ status がその手順を言う。
+**裸の `.so` を置く形は 2026-08-09 に終わった** — docx / pptx が来ても
+同じ名前空間に入るよう、エンジンを `officework.sheet` へ移したため。
 
 ### 分業の橋 — `pysheet`(済 2026-08-03)
 
 `sheet` を Python から呼べるようにした(pyo3, crate は `pysheet`、
-import 名は `office_sheet`)。openpyxl と違い、罫線・結合・列幅・図形を
+配る名は `officework`、エンジンは `officework.sheet`)。openpyxl と違い、罫線・結合・列幅・図形を
 保ったまま値を差し込める — **polars で集計 → 帳票の枠を保ったまま差し込む**。
 マクロの置き換えがスクリプトになる、という当初の設計と一直線。
 
 ```python
-import office_sheet
-b = office_sheet.Book.open("様式7.xlsx")
+from officework import sheet
+b = sheet.Book.open("様式7.xlsx")
 s = b["提案見積書"]              # b[0] でも
 s["A30"] = "日本フネン株式会社"   # 書式は据え置き。文字列は「打ったのと同じ」解釈
 s["C30"] = "=B30*100"            # 式。置いた時点で再計算される

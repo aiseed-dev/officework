@@ -42,11 +42,18 @@ to the state before it ran.
 The Data > Python one-liner and the writer side still run on a copy (a failure
 leaves the sheet/document unharmed; a success lands as one undo step).
 
-## The office_sheet (pysheet) API
+## The `officework.sheet` API
+
+The engine ships on PyPI as **`officework`**; the xlsx engine is the `sheet`
+submodule. No app is needed to use it.
+
+```console
+$ pip install officework
+```
 
 ```python
-import office_sheet                     # inside calc it's pre-imported; b and s arrive bound
-b = office_sheet.Book.open("form.xlsx")
+from officework import sheet            # inside calc it's pre-imported; b and s arrive bound
+b = sheet.Book.open("form.xlsx")
 s = b["SheetName"]                      # or by index: b[0]
 b.sheet_names                           # ['見積書', …]
 b.add_sheet("NewSheet")                 # error if the name exists

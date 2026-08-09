@@ -58,7 +58,7 @@ Microsoft の堀は「**競合には VBA が作れない**」だった。実際�
 
 - **Rust で書いたこと。** 核(kumihan / sheet)が UI から独立した安全な
   部品になり、GPUI で速さは構造から出る。そして **PyO3** — sheet を
-  そのまま Python の束縛(pysheet / office_sheet)にする橋が安く架かった。
+  そのまま Python の束縛(crate は pysheet、配る名は officework)にする橋が安く架かった。
   「Rust が帳票の形を守り、Python が中身を作る」分業は、この橋の安さが
   前提。グラフ・ピボット・ソルバー・方程式が日単位で入ったのは、
   重い仕事を Python の公共財に投げ、Rust 側はボタンとサンドボックスだけ持ったから

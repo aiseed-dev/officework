@@ -337,9 +337,11 @@ AI タブの10ボタン。表計算なので、渡すのは**選んだ範囲**�
 ### 準備
 
 - Python: `JO_PYTHON` → `.venv/bin/python` → `python3` の順で探す
-- `office_sheet.so`(pysheet)を **calc の実行ファイルの隣**に置く:
-  `cargo build -p pysheet --release --features extension-module` で出来る
-  `liboffice_sheet.so` を `office_sheet.so` の名で置く
+- `officework` パッケージを **calc の実行ファイルの隣**に置く。あるいは
+  `pip install officework` で入れる。calc は自分の居場所を `sys.path` に足して
+  `from officework import sheet` するので、要るのは **`officework/` の
+  ディレクトリ**であって裸の `.so` ではない。この木から作るなら
+  `maturin build -m pysheet/Cargo.toml --release` の wheel を入れる
 - plugins の置き場: `~/.config/office/plugins/`(無ければ作る)
 
 ### セル関数を Python で書く

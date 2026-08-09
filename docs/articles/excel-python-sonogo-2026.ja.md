@@ -136,7 +136,7 @@ df1 = wb.sheets.active['A1'].options(pd.DataFrame, expand='table').value
 
 8 年前の別のマシンでの数字との比較なので、そのまま何倍とは言えません。ただ、遅くなる理由が減っているのは設計の側から説明できます。
 
-- **表の模型は Rust** です。Python にはそれを pyo3 で見せています（`office_sheet`）。openpyxl のように XML を組み直したり、COM でセルを 1 つずつ往復したりしません
+- **表の模型は Rust** です。Python にはそれを pyo3 で見せています（`officework.sheet`）。openpyxl のように XML を組み直したり、COM でセルを 1 つずつ往復したりしません
 - **動いているブックとのやり取りは、範囲をまとめて 1 回で渡します。** xlwings が遅かったのは COM の往復が積み上がるからで、前回の記事にも「Excel の API や マクロをどんどん使用すると処理が遅くなります」と書いていました
 - **走るのはネイティブの CPython** です。WebAssembly ではないので、機械に入っている polars も scipy も matplotlib も、コンパイル済みのものがそのまま動きます
 

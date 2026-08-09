@@ -106,14 +106,29 @@ and drawings.** There are buttons for charts, SmartArt, equations, pivots, and t
 solver, but the workers behind them are Python (matplotlib, polars, scipy).
 For heavier analysis, use polars or statsmodels directly.
 
-For xlsx there are Python bindings (`pysheet`). Unlike openpyxl, values can be
-inserted while **borders, merged cells, column widths, and shapes stay intact**.
+**The engine alone is on PyPI. You do not need the apps for it.**
+
+```console
+$ pip install officework
+```
+
+Unlike openpyxl, values can be inserted while **borders, merged cells, column
+widths, and shapes stay intact**.
 
 ```python
-import office_sheet
-b = office_sheet.Book.open("form7.xlsx")
+from officework import sheet
+
+b = sheet.Book.open("form7.xlsx")
 b["Sheet1"]["A30"] = "Nihon Funen Co., Ltd."   # formatting is preserved
 b.save("out.xlsx")
+print(b.unsupported)   # whatever it could not read is listed here, never dropped in silence
+```
+
+To drive a running calc from the outside, use the bridge instead. That one
+does need the app.
+
+```python
+from officework import calc as xw   # Book / Range, in the style of xlwings
 ```
 
 There is no equivalent for docx — python-docx already does the job
@@ -135,7 +150,7 @@ paper/    projects the page onto PDF
 ui/       glue to gpui (input, IME, ribbon)
 writer/   the docx app
 calc/     the xlsx app
-pysheet/  Python bindings for sheet (import office_sheet)
+pysheet/  Python bindings for sheet (pip install officework -> officework.sheet)
 ```
 
 **The screen and the paper are the same page projected onto different surfaces**,

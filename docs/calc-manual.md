@@ -337,9 +337,11 @@ merged: the sheet is an .xlsx, the code is a .py, and they are separate files.
 ### Setup
 
 - Python is found as `JO_PYTHON` → `.venv/bin/python` → `python3`
-- Put `office_sheet.so` (pysheet) **next to the calc executable**: build with
-  `cargo build -p pysheet --release --features extension-module` and rename
-  `liboffice_sheet.so` to `office_sheet.so`
+- Put the `officework` package **next to the calc executable**, or install it
+  with `pip install officework`. calc adds its own directory to `sys.path` and
+  does `from officework import sheet`, so what has to be there is the
+  `officework/` package directory — not a bare `.so`. To build it from this
+  tree: `maturin build -m pysheet/Cargo.toml --release` and install the wheel
 - Plugins live in `~/.config/office/plugins/` (create it if missing)
 
 ### Writing cell functions in Python

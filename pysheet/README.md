@@ -6,13 +6,24 @@ machine and without Excel.
 
 Written in Rust (15,000+ lines, 240+ tests), exposed to Python through PyO3.
 
-日本語は下にあります。
+日本語は下にあります (Japanese below).
+
+## Install
+
+```console
+$ pip install officework
+```
+
+Wheels are abi3 (CPython 3.10+), so one wheel per platform covers every
+version; Linux, macOS and Windows are published. **The engine needs no app
+installed** — only the bridge does. `pandas` is imported only if you ask for it
+(`pip install officework[pandas]`).
 
 ## Two ways in
 
 ```python
-import office_sheet                      # the engine — no app needed
-b = office_sheet.Book.open("form7.xlsx")
+from officework import sheet             # the engine — no app needed
+b = sheet.Book.open("form7.xlsx")
 s = b["quote"]
 s["A30"] = "Nihon Funen Co., Ltd."       # borders, merges, widths stay intact
 s["C30"] = "=B30*100"                    # a formula; recalculated on the spot
@@ -50,15 +61,6 @@ Measured on one machine, 1096 rows × 20 columns (21,920 cells):
 | DataFrame → sheet | 44 ms |
 | sheet → DataFrame | 65 ms |
 
-## Install
-
-```
-pip install officework
-```
-
-Wheels are abi3 (Python 3.10+), so one wheel per platform covers every version.
-`pandas` is only imported when you ask for it (`pip install officework[pandas]`).
-
 ## License
 
 **AGPL-3.0-or-later.**
@@ -75,14 +77,20 @@ network service.
 **帳票を壊さない xlsx エンジン**と、**動いているオフィスソフトを Python から
 操る橋**です。`xlwings` の使い勝手を、Excel なしで、手元だけで。
 
+```console
+$ pip install officework
+```
+
+**エンジンにアプリは要りません**(橋のほうだけ要ります)。
+
 `openpyxl` は理解できない部品を書き直すので、罫線・結合・列幅・図形が戻って
 きません。日本の事務の表計算は「印刷する様式」なので、そこが壊れると使えない。
 このエンジンは**原本を正として、変えた所だけ書き戻します**。読めなかった物は
 `b.unsupported` に出るので、黙って落ちることはありません。
 
 ```python
-import office_sheet
-b = office_sheet.Book.open("様式7.xlsx")
+from officework import sheet
+b = sheet.Book.open("様式7.xlsx")
 b["提案見積書"]["A30"] = "日本フネン株式会社"   # 書式は据え置き
 b.save("out.xlsx")
 ```

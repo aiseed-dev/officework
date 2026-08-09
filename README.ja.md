@@ -103,14 +103,27 @@ cargo run --release --bin office-spell -- --furigana 原稿.txt
 働くのは Python(matplotlib・polars・scipy)です。込み入った分析は
 そのまま polars・statsmodels で。
 
-xlsx には束縛(`pysheet`)があります。openpyxl と違い、罫線・結合・列幅・
-図形を保ったまま値を差し込めます。
+**エンジンだけなら PyPI から入ります。アプリは要りません。**
+
+```console
+$ pip install officework
+```
+
+openpyxl と違い、罫線・結合・列幅・図形を保ったまま値を差し込めます。
 
 ```python
-import office_sheet
-b = office_sheet.Book.open("様式7.xlsx")
+from officework import sheet
+
+b = sheet.Book.open("様式7.xlsx")
 b["提案見積書"]["A30"] = "日本フネン株式会社"   # 書式は据え置き
 b.save("out.xlsx")
+print(b.unsupported)   # 読めなかった物は黙って落とさず、ここに出る
+```
+
+動いている calc を外から操りたいときは橋のほうを。こちらはアプリが要ります。
+
+```python
+from officework import calc as xw   # xlwings 流の Book / Range
 ```
 
 docx には作っていません — python-docx がそのまま使えます(その保存を
@@ -131,7 +144,7 @@ paper/    紙面を PDF へ写す
 ui/       gpui との結線(入力・IME・リボン)
 writer/   docx のアプリ
 calc/     xlsx のアプリ
-pysheet/  sheet の Python 束縛(import office_sheet)
+pysheet/  sheet の Python 束縛(pip install officework → officework.sheet)
 ```
 
 **画面も紙も、同じ紙面を別の面に写すだけ**です。だから画面と印刷が食い違いません。

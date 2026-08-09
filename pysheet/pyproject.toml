@@ -42,7 +42,7 @@ Homepage = "https://github.com/aiseed-dev/officework"
 Source = "https://github.com/aiseed-dev/officework"
 
 [tool.maturin]
-# エンジン(Rust)は office_sheet、橋(純 Python)は officework/ をそのまま同梱
+# エンジン(Rust)は officework._sheet、橋(純 Python)は officework/ をそのまま同梱
 module-name = "officework._sheet"
 python-source = "."
 features = ["pyo3/extension-module"]

@@ -39,11 +39,18 @@
 データ > Python の一行と writer 側は、いまも複製の上で走る
 (失敗しても表・文書は無傷、成功したら結果が1手として入る)。
 
-## office_sheet(pysheet)の API
+## `officework.sheet` の API
+
+エンジンは PyPI に **`officework`** の名で出ています。xlsx のエンジンは
+`sheet` の副モジュールで、**アプリは要りません**。
+
+```console
+$ pip install officework
+```
 
 ```python
-import office_sheet                     # calc の中では import 済みで b, s が来る
-b = office_sheet.Book.open("帳票.xlsx")
+from officework import sheet            # calc の中では import 済みで b, s が来る
+b = sheet.Book.open("帳票.xlsx")
 s = b["シート名"]                        # 番号でも: b[0]
 b.sheet_names                           # ['見積書', …]
 b.add_sheet("新しいシート")              # 同名があればエラー
