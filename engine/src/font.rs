@@ -222,13 +222,26 @@ mod tests {
 
     #[test]
     fn 名前はファイル名ではなく書体名() {
-        // 「ipaexg」ではなく「IPAexゴシック」と名乗らせる
-        let f = resolve("IPAexゴシック").expect("IPAexゴシックが引けない");
-        assert!(
-            f.path.file_stem().unwrap().to_string_lossy() != "IPAexゴシック",
-            "ファイル名をそのまま書体名にしている"
+        // 「ipaexg」ではなく「IPAexゴシック」、「NotoSansCJK-Regular」ではなく
+        // 「Noto Sans CJK JP」と名乗らせる。
+        //
+        // **特定の書体を要求しない。** 以前は IPAexゴシックを expect していたが、
+        // それはこの機械に入っていただけで、試験したい性質(名前を name テーブル
+        // から取っているか)とは関係がない。CI(fonts-noto-cjk しか無い)で落ちた
+        // ので、**入っている書体のどれかで**同じ性質を見る形に改めた(2026-08-10)。
+        // 隣の 同名なら素の字面を採る が最初からこの作法だった
+        let all = list();
+        let 証人 = all
+            .iter()
+            .find(|f| f.japanese && f.path.file_stem().is_some_and(|s| s.to_string_lossy() != f.name));
+        let f = 証人.expect(
+            "日本語の書体が1つも無いか、どれもファイル名をそのまま書体名にしている\
+             (fonts-noto-cjk か fonts-ipaexfont を入れてください)",
         );
         assert!(f.japanese);
+        // 名前に拡張子や連番が混じっていないこと(ファイル名を切っただけの疑い)
+        assert!(!f.name.contains(".ttf") && !f.name.contains(".otf") && !f.name.contains(".ttc"),
+            "書体名にファイルの拡張子が混じっている: {}", f.name);
     }
 
     #[test]

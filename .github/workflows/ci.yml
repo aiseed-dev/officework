@@ -45,9 +45,13 @@ jobs:
         # 手元の機械には両方入っていたので緑に見えていた
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk wamerican
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-ipaexfont wamerican
       - name: 試験
-        run: cargo test -p sheet -p kumihan -p ooxml -p lang -p paper
+        # **--no-fail-fast。** 既定だと最初に落ちた試験バイナリで打ち切るので、
+        # 1件の環境依存が残り4つの crate を丸ごと隠す(2026-08-10 に踏んだ —
+        # kumihan の 1 件で paper・lang・sheet・ooxml が一度も走っていなかった)。
+        # 直す回数だけ CI を回すことになるので、**全部出させてから読む**
+        run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper
       - name: サイドカーが組めるか(pyoffice)
         run: cargo build -p sidecar
       - name: clippy

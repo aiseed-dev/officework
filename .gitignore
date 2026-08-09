@@ -26,3 +26,6 @@ __pycache__/
 # 本文のフォントは同梱しない(システムから探す)
 assets/
 tools/__pycache__/
+
+# 並走セッションの worktree(repo の中に作られる)
+.worktrees/
