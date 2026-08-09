@@ -41,7 +41,7 @@ jobs:
           - os: windows-latest
             args: --release --out dist
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -71,7 +71,7 @@ jobs:
           assert sheet.Book.open("/tmp/kensho.xlsx")[0]["A1"] == "検査"
           print("往復できた:", b.sheet_names)
           PYEOF
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: wheels-${{ matrix.os }}
           path: pysheet/dist
@@ -80,13 +80,13 @@ jobs:
   sdist:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: PyO3/maturin-action@v1
         with:
           command: sdist
           working-directory: pysheet
           args: --out dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: sdist
           path: pysheet/dist
@@ -100,7 +100,7 @@ jobs:
     permissions:
       id-token: write # Trusted Publisher(OIDC)に要る
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: dist
           merge-multiple: true
