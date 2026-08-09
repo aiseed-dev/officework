@@ -20,7 +20,7 @@
 use crate::ja::furigana::{self, Suggestion};
 use crate::Target;
 use crate::model::Endpoint;
-use crate::ja::proof;
+use crate::ja::{notation, proof};
 use crate::spell::{self, Dictionary};
 
 /// 指摘の種類。
@@ -84,7 +84,9 @@ pub struct Finding {
     pub found: String,
     /// 本文における文字位置(分からなければ None)
     pub at: Option<usize>,
-    /// 直し方・読み方の候補(高い順)
+    /// 直し方・読み方の候補(高い順)。
+    /// **表記ゆれだけは「直す先」ではなく「同じ文書の中の別の書き方」** —
+    /// どちらが正しいとは言わない(SEKKEI 決めごと6)
     pub candidates: Vec<String>,
 }
 
@@ -182,8 +184,15 @@ impl Checker {
             (None, None) => {}
         }
 
-        // --- 日本語: モデル。辞書では原理的に捕まらない ---
+        // --- 日本語 ---
         if lang == spell::Lang::Japanese {
+            // 表記ゆれは**文書の中だけで判る**ので、モデルが居なくても出す。
+            // GPU の無い機械で日本語の校正が動き出すのはここ
+            r.findings.extend(notation::findings(text));
+
+            // 誤変換・重複表現はモデル。辞書では原理的に捕まらない。
+            // **繋がらなければそう言う** — 表記ゆれが出たからといって
+            // 「検査できなかった部分がある」(終了コード3)は消えない
             match proof::proofread(&self.endpoint, text) {
                 Ok(notes) => {
                     for n in notes {
@@ -376,6 +385,45 @@ mod tests {
         assert!(!r.skipped.is_empty(), "モデルが無いのに検査できたことにした");
         assert!(!r.may_say_clean(), "指摘なしと言ってはいけない場面で言えてしまう");
         assert!(r.summary().contains("検査できません"), "{}", r.summary());
+    }
+
+    #[test]
+    fn 表記ゆれはモデルが無くても出る() {
+        // **これが辞書側を作った理由。** GPU の無い機械でも日本語の指摘が出る
+        let c = checker_with_dict();
+        let r = c.check("お問合せは下記まで。問い合わせを受け付けます。");
+        let n: Vec<&Finding> = r.findings.iter().filter(|f| f.kind == Kind::Notation).collect();
+        assert_eq!(n.len(), 2, "{:?}", r.findings);
+        assert!(n.iter().all(|f| f.source == Source::Dictionary), "{n:?}");
+        // どちらが正しいとは言わない。互いを指すだけ
+        assert_eq!(n[0].found, "問合せ");
+        assert_eq!(n[0].candidates, vec!["問い合わせ".to_string()]);
+    }
+
+    #[test]
+    fn 表記ゆれが出ても検査できなかったことは消えない() {
+        // 終了コード3(検査できなかった部分がある)は辞書が通っただけでは消えない。
+        // **黙って「指摘なし」にしない**の裏返し — 黙って「全部見た」にもしない
+        let c = checker_with_dict();
+        let r = c.check("お問合せは下記まで。問い合わせを受け付けます。");
+        assert!(!r.findings.is_empty(), "表記ゆれが出ていない");
+        assert!(
+            r.skipped.iter().any(|s| s.contains("日本語")),
+            "モデルに訊けなかったことを黙っている: {:?}",
+            r.skipped
+        );
+        assert!(!r.may_say_clean());
+        assert!(r.summary().contains("ただし"), "{}", r.summary());
+    }
+
+    #[test]
+    fn 表記が揃った日本語は指摘なしと言えない() {
+        // 表記ゆれが無くても、誤変換はモデルにしか見えない。
+        // 辞書が通ったからといって「綺麗です」と言ってはいけない
+        let c = checker_with_dict();
+        let r = c.check("問い合わせを受け付けます。");
+        assert!(r.findings.is_empty(), "{:?}", r.findings);
+        assert!(!r.may_say_clean(), "モデル抜きで「指摘なし」と言えてしまう");
     }
 
     #[test]

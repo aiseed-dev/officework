@@ -8,6 +8,7 @@
 
 pub mod aozora;
 pub mod furigana;
+pub mod notation;
 pub mod proof;
 
 use crate::{Language, Target};
