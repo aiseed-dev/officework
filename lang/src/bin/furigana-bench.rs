@@ -180,7 +180,7 @@ fn fmt(n: usize) -> String {
     let b = s.as_bytes();
     let mut o = String::new();
     for (i, c) in b.iter().enumerate() {
-        if i > 0 && (b.len() - i) % 3 == 0 {
+        if i > 0 && (b.len() - i).is_multiple_of(3) {
             o.push(',');
         }
         o.push(*c as char);

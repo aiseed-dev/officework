@@ -338,10 +338,6 @@ pub fn paginate(sheet: &Sheet, paper: Paper) -> (Vec<usize>, Vec<f32>) {
     (pages, offsets)
 }
 
-fn width_mm(line: &kumihan::Line) -> f32 {
-    line.cells.iter().map(|c| c.w_mm).sum()
-}
-
 /// 下線と取り消し線。フォントが持っていないので線として引く。
 fn rule(l: &PdfLayerReference, f: &CharFormat, x: f32, y: f32, w: f32, pt: f32) {
     let em = pt * 25.4 / 72.0;

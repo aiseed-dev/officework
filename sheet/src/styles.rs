@@ -928,7 +928,7 @@ mod build_tests {
     fn 書いたものを読み戻せる() {
         // 罫線を落とすと帳票として通らない。往復で守る
         let f = ruled();
-        let (xml, map) = build(&[f.clone()]);
+        let (xml, map) = build(std::slice::from_ref(&f));
         let back = parse(&xml, &[]);
         let i = map[&f];
         assert_eq!(back[i].borders, Borders::ALL, "罫線が消えた: {:?}", back[i]);
@@ -944,7 +944,7 @@ mod build_tests {
             align: HAlign::Center,
             ..Default::default()
         };
-        let (xml, map) = build(&[f.clone()]);
+        let (xml, map) = build(std::slice::from_ref(&f));
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.fill.as_deref(), Some("FFFF00"));
         assert_eq!(back.color.as_deref(), Some("FF0000"));
@@ -966,7 +966,7 @@ mod build_tests {
             borders: Borders { bottom: Edge::THIN, ..Borders::NONE },
             ..Default::default()
         };
-        let (xml, map) = build(&[f.clone()]);
+        let (xml, map) = build(std::slice::from_ref(&f));
         let back = &parse(&xml, &[])[map[&f]];
         assert!(back.borders.bottom.on, "下線が消えた");
         assert!(!back.borders.top.on, "無い罫線が増えた");
@@ -981,7 +981,7 @@ mod font_name_tests {
     fn 書体名が往復する() {
         // ＭＳ 明朝の帳票を保存して書体が消えると、開き直したとき別の字になる
         let f = CellFormat { font: Some("ＭＳ 明朝".into()), bold: true, ..Default::default() };
-        let (xml, map) = build(&[f.clone()]);
+        let (xml, map) = build(std::slice::from_ref(&f));
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.font.as_deref(), Some("ＭＳ 明朝"), "書体名が消えた");
         assert!(back.bold);
@@ -1001,7 +1001,7 @@ mod more_fmt_tests {
             wrap: true,
             ..Default::default()
         };
-        let (xml, map) = build(&[f.clone()]);
+        let (xml, map) = build(std::slice::from_ref(&f));
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.size_c, Some(1400), "大きさが消えた");
         assert!(back.strike, "取り消し線が消えた");

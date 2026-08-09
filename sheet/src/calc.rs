@@ -3084,7 +3084,7 @@ pub fn recalc_book(book: &mut crate::Book, target: usize) {
     let iter = book.calc_iter;
     let (left, rest) = book.sheets.split_at_mut(target);
     let (tgt, right) = rest.split_first_mut().expect("上で確かめた");
-    let others: Vec<&Sheet> = left.iter().map(|s| &*s).chain(right.iter().map(|s| &*s)).collect();
+    let others: Vec<&Sheet> = left.iter().chain(right.iter()).collect();
     match iter {
         Some((count, delta)) => {
             // 反復計算: 循環は前回の値で埋めて、変化が delta 以下に
@@ -3816,6 +3816,9 @@ fn array_call(name: &str, args: Vec<Arg>) -> Result<Vec<Vec<Value>>, Value> {
 }
 
 #[cfg(test)]
+// **日本語の試験名は家の作法。** ラテン大文字(XMATCH・calcPr・NA)が
+// 混じると non_snake_case が鳴るが、読みやすさを取る。製品のコードには許さない
+#[allow(non_snake_case)]
 mod tests {
     use super::*;
     use crate::model::Cell;
@@ -5616,6 +5619,8 @@ mod new_fn_tests {
     }
 
     #[test]
+    // **日本語の試験名は家の作法。** ラテン大文字が混じると non_snake_case が鳴る
+    #[allow(non_snake_case)]
     fn REPLACEは文字で数える() {
         // **バイトで数えると日本語で崩れる**
         assert_eq!(ev("=REPLACE(\"あいうえお\",2,2,\"XY\")", &[]), "あXYえお");
@@ -5625,6 +5630,8 @@ mod new_fn_tests {
     }
 
     #[test]
+    // **日本語の試験名は家の作法。** ラテン大文字が混じると non_snake_case が鳴る
+    #[allow(non_snake_case)]
     fn XMATCHは後ろからも探せて近似は断る() {
         let t = [("B1", "い"), ("B2", "ろ"), ("B3", "い")];
         assert_eq!(ev("=XMATCH(\"い\",B1:B3)", &t), "1");

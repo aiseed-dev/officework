@@ -4219,7 +4219,7 @@ mod rowheight_round {
 
 #[cfg(test)]
 mod carry_tests {
-    use crate::model::{Cell, Pos, Value};
+    use crate::model::{Cell, Pos};
     use crate::{Book, Sheet};
     use std::io::{Cursor, Read, Write};
 
@@ -4912,6 +4912,8 @@ mod validation_roundtrip_tests {
     }
 
     #[test]
+    // **日本語の試験名は家の作法。** ラテン大文字が混じると non_snake_case が鳴る
+    #[allow(non_snake_case)]
     fn 原本のcalcPrはcalcModeだけ差し替える() {
         // calcId 等の他の属性は据え置き
         let src = r#"<workbook><sheets/><calcPr calcId="191029"/></workbook>"#;
@@ -5217,6 +5219,8 @@ mod print_extras_roundtrip_tests {
     }
 
     #[test]
+    // **日本語の試験名は家の作法。** ラテン大文字が混じると non_snake_case が鳴る
+    #[allow(non_snake_case)]
     fn 配列数式は決められた範囲に収まり足りない席はNAになる() {
         let mut b = Book::new();
         for i in 0..3u32 {
@@ -5271,7 +5275,7 @@ mod print_extras_roundtrip_tests {
         // **付けないと「ブック全体の名前が2つ」になって開けないファイルに
         // なる。全部に付けるとブック全体の名前がシート限定に落ちる**
         let mut b = Book::new();
-        b.sheets.push(crate::Sheet::new("Sheet2".into()));
+        b.sheets.push(crate::Sheet::new("Sheet2"));
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[1].set(Pos::parse("A1").unwrap(), Cell::input("y"));
         b.sheets[0].names.push(("売上".into(), "A1:A3".into()));
@@ -6128,7 +6132,7 @@ mod sheet_rid {
         {
             let mut z = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
             let o: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
-            let mut put = |z: &mut zip::ZipWriter<_>, name: &str, s: &str| {
+            let put = |z: &mut zip::ZipWriter<_>, name: &str, s: &str| {
                 z.start_file(name, o).unwrap();
                 z.write_all(s.as_bytes()).unwrap();
             };
@@ -6246,7 +6250,7 @@ mod sheet_rid {
         {
             let mut z = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
             let o: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
-            let mut put = |z: &mut zip::ZipWriter<_>, name: &str, s: &str| {
+            let put = |z: &mut zip::ZipWriter<_>, name: &str, s: &str| {
                 z.start_file(name, o).unwrap();
                 z.write_all(s.as_bytes()).unwrap();
             };

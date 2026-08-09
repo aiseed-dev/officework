@@ -60,7 +60,7 @@ fn local(name: &[u8]) -> &[u8] {
     }
 }
 
-fn attr<'a>(e: &'a BytesStart, want: &str) -> Option<String> {
+fn attr(e: &BytesStart, want: &str) -> Option<String> {
     e.attributes().flatten().find_map(|a| {
         if local(a.key.as_ref()) == want.as_bytes() {
             Some(String::from_utf8_lossy(&a.value).to_string())
@@ -752,8 +752,8 @@ fn fldchar(
                 *field_hide = true;
             }
         }
-        Some("end") => {
-            if *in_field {
+        Some("end")
+            if *in_field => {
                 *in_field = false;
                 *field_hide = false;
                 if let Some(mark) = field_mark(field_instr) {
@@ -781,7 +781,6 @@ fn fldchar(
                     rep.note(&format!("フィールド({})", field_instr.trim()));
                 }
             }
-        }
         _ => {}
     }
 }
@@ -908,7 +907,6 @@ fn parse_document_full(
     let mut field_hide = false;
     let mut field_instr = String::new();
     let mut field_buf = String::new();
-    const SKIP_KNOWN: &[&str] = &["drawing", "pict", "object", "sdt"];
 
     let mut buf = Vec::new();
     // 直前のイベントの終わり位置(原文の切り出しに使う)
@@ -1348,13 +1346,12 @@ fn parse_document_full(
                     // 持つ(保存で作り直す)。引けなければ原文を控えて生かす
                     b"commentRangeStart" | b"commentRangeEnd" => {
                         let known = attr(&e, "id").is_some_and(|i| cmts.contains_key(&i));
-                        if !known {
-                            if para.is_some() {
+                        if !known
+                            && para.is_some() {
                                 let raw = &xml[start_pos..last_pos];
                                 anchors.push(raw.trim().to_string());
                                 rep.note("しおり・コメントの印(段落の頭に寄るが、保存で残る)");
                             }
-                        }
                     }
                     b"commentReference" => {
                         match attr(&e, "id").and_then(|i| cmts.get(&i)) {
@@ -2457,7 +2454,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use kumihan::{Align, CharFormat, ListKind, Block, Cellbox, Document, Paragraph, Run, Table};
+    use kumihan::{Block, Cellbox, Document, Paragraph, Run, Table};
 
     fn para(s: &str) -> Paragraph {
         Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(),
@@ -2672,7 +2669,7 @@ mod tests {
 
 #[cfg(test)]
 mod font_tests {
-    use kumihan::{Align, CharFormat, ListKind, Block, Document, Paragraph, Run};
+    use kumihan::{Block, Document, Paragraph, Run};
 
     #[test]
     fn 書体名が往復する() {

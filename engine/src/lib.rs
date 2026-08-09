@@ -8,6 +8,7 @@
 //!   - 行頭禁則(。、」などが行頭に来ない — 追い出しで直す)
 //!   - 行末禁則(「(『 などが行末に残らない)
 //!   - 欧文の語中で改行しない(語ごと次行へ)
+//!
 //! 縦書き・ルビ・均等割付・ぶら下げは K4(モデルはそれを妨げない形にする)。
 
 pub mod edit;
@@ -1260,7 +1261,9 @@ pub struct Frame {
 ///   1. 折る原因の字が行頭禁則なら、新しい行の頭が禁則でなくなるまで
 ///      前の行の末尾から字を引き取る(追い出し)
 ///   2. 前の行の末尾に行末禁則(開き括弧)が残っていれば、それも引き取る
+///
 /// 引き取った分だけ前の行は短くなる — 行長を超える方向には決して動かない。
+///
 /// 段落を行長で折る。x はまだ置かない(呼ぶ側が揃え・字下げを決める)。
 fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
               hyphenate: bool) -> Vec<Vec<Cell>> {
@@ -1273,7 +1276,7 @@ fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
              incoming_head: Option<char>) -> Vec<Cell> {
         let mut carry: Vec<Cell> = Vec::new();
         // 1) 折る原因の字が行頭禁則 → 頭が禁則でなくなるまで引き取る
-        if incoming_head.map_or(false, is_gyoto_kinsoku) {
+        if incoming_head.is_some_and(is_gyoto_kinsoku) {
             while cur.len() > 1 {
                 let c = cur.pop().unwrap();
                 let head_ok = !is_gyoto_kinsoku(c.ch);
@@ -1284,7 +1287,7 @@ fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
             }
         }
         // 2) 行末に開き括弧を残さない
-        while cur.len() > 1 && cur.last().map_or(false, |c| is_gyomatsu_kinsoku(c.ch)) {
+        while cur.len() > 1 && cur.last().is_some_and(|c| is_gyomatsu_kinsoku(c.ch)) {
             let c = cur.pop().unwrap();
             carry.insert(0, c);
         }
@@ -1816,7 +1819,7 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
     };
     // その段の起点(巻物の座標)。中身の無い段は最後の起点を使う
     let strip_start = |k: usize| -> f32 {
-        ranges.iter().filter(|(_, s)| *s <= k).map(|(y0, _)| *y0).last().unwrap_or(y0_mm)
+        ranges.iter().filter(|(_, s)| *s <= k).map(|(y0, _)| *y0).next_back().unwrap_or(y0_mm)
     };
     // 折る: y はページの積み上げへ、x は段の位置へ
     let place = |y: f32, k: usize| -> f32 {
@@ -2970,7 +2973,7 @@ mod ref_field_tests {
         // 参照の直後に打っても、参照は伸びない
         let e = "この仕様は3ページ".len();
         let mut t = d.body_text();
-        t.insert_str(e, "目");
+        t.insert(e, '目');
         d.set_body_text(&t, 10.5);
         let f: Vec<_> = d.paragraphs().flat_map(|p| p.runs.iter())
             .filter(|r| r.fmt.field.is_some())

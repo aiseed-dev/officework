@@ -52,7 +52,9 @@ impl Pos {
 
 /// セルの値(計算の結果)。
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum Value {
+    #[default]
     Empty,
     Number(f64),
     Text(String),
@@ -449,11 +451,6 @@ pub struct Cell {
     pub fmt: CellFormat,
 }
 
-impl Default for Value {
-    fn default() -> Self {
-        Value::Empty
-    }
-}
 
 impl Cell {
     /// 利用者が入力した文字列を、式か値として解釈する。
@@ -2089,15 +2086,12 @@ fn format_date(n: f64, code: &str) -> Option<String> {
                         }
                     }
                     // 和暦: g=R gg=令 ggg=令和 / e=年(ee=0詰め)。明治より前は西暦
-                    'g' => match crate::calc::era_of(days) {
-                        Some((era, initial, _)) => out.push_str(match *len {
-                            1 => initial,
-                            2 => &era[..era.char_indices().nth(1).map(|(i, _)| i)
-                                .unwrap_or(era.len())],
-                            _ => era,
-                        }),
-                        None => {}
-                    },
+                    'g' => if let Some((era, initial, _)) = crate::calc::era_of(days) { out.push_str(match *len {
+                        1 => initial,
+                        2 => &era[..era.char_indices().nth(1).map(|(i, _)| i)
+                            .unwrap_or(era.len())],
+                        _ => era,
+                    }) },
                     'e' => match crate::calc::era_of(days) {
                         Some((_, _, ey)) => out.push_str(&pad(ey, *len)),
                         None => out.push_str(&y.to_string()),
@@ -2118,7 +2112,7 @@ fn group(s: &str) -> String {
     let b = s.as_bytes();
     let mut o = String::new();
     for (i, c) in b.iter().enumerate() {
-        if i > 0 && (b.len() - i) % 3 == 0 {
+        if i > 0 && (b.len() - i).is_multiple_of(3) {
             o.push(',');
         }
         o.push(*c as char);
@@ -3035,7 +3029,7 @@ impl Sheet {
                 (a.col..=b.col).contains(&p.col) && p.row >= a.row
             }
         };
-        if self.merges_cross(&in_band) {
+        if self.merges_cross(in_band) {
             return Err("結合されたセルが範囲をまたいでいるため、シフトできません".into());
         }
         let shift = |p: Pos| {
@@ -3081,7 +3075,7 @@ impl Sheet {
             }
         };
         let in_band = |p: Pos| in_range(p) || beyond(p);
-        if self.merges_cross(&in_band) {
+        if self.merges_cross(in_band) {
             return Err("結合されたセルが範囲をまたいでいるため、シフトできません".into());
         }
         let shift_back = |p: Pos| {

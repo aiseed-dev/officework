@@ -674,7 +674,7 @@ pub fn sheet_to_pdf<W: Write>(
                     .replace("&P", &(i + 1).to_string())
                     .replace("&N", &total.to_string()))
             };
-            let mut put3 = |raw: &str, y: f32| {
+            let put3 = |raw: &str, y: f32| {
                 let (lf, cn, rt) = sheet::model::hf_split(raw);
                 let (lf, cn, rt) = (subst(&lf), subst(&cn), subst(&rt));
                 if !lf.is_empty() {

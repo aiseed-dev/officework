@@ -170,7 +170,7 @@ pub fn encrypt(plain: &[u8], password: &str) -> Result<Vec<u8>, String> {
     // 詰め物をした暗号文
     let mut data = plain.to_vec();
     let pad = (16 - data.len() % 16) % 16;
-    data.extend(std::iter::repeat(0u8).take(pad));
+    data.extend(std::iter::repeat_n(0u8, pad));
     ecb.enc(&mut data);
     let mut package = Vec::new();
     package.extend_from_slice(&(plain.len() as u64).to_le_bytes());
@@ -574,7 +574,7 @@ pub fn encrypt_agile(plain: &[u8], password: &str) -> Result<Vec<u8>, String> {
     for (i, seg) in plain.chunks(4096).enumerate() {
         let mut d = seg.to_vec();
         let pad = (16 - d.len() % 16) % 16;
-        d.extend(std::iter::repeat(0u8).take(pad));
+        d.extend(std::iter::repeat_n(0u8, pad));
         cbc_enc(&ecb, &agile_iv(h, &kd_salt, Some(&(i as u32).to_le_bytes()), 16), &mut d);
         package.extend_from_slice(&d);
     }

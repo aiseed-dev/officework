@@ -345,7 +345,7 @@ impl Builder {
             }
             "button" => {}
             "pre" | "code" | "span" | "small" | "label" | "details" | "tbody"
-            | "thead" | "html" | "body" | "meta" | "link" | "head" | "option" => {}
+            | "thead" | "html" | "body" | "meta" | "link" | "head" => {}
             other => {
                 let _ = tag;
                 self.note(&format!("知らない要素({other})"));

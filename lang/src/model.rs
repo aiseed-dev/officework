@@ -123,7 +123,7 @@ fn post(ep: &Endpoint, body: &str) -> Result<String, String> {
         ep.path,
         ep.host,
         auth,
-        body.as_bytes().len(),
+        body.len(),
         body
     );
     s.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
@@ -177,7 +177,7 @@ pub fn post_https(
     }
     req.push_str(&format!(
         "Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
-        body.as_bytes().len()
+        body.len()
     ));
     st.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
     let mut r = BufReader::new(st);

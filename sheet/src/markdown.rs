@@ -147,7 +147,7 @@ pub fn plain(lines: &[Line]) -> String {
         match l.block {
             Block::Bullet(d) => {
                 out.push_str(&"  ".repeat(d as usize));
-                out.push_str("・");
+                out.push('・');
             }
             Block::Ordered(n) => out.push_str(&format!("{n}. ")),
             _ => {}
