@@ -105,6 +105,11 @@ def their_view(sc, path):
     meta = r["result"]
     sid = meta.get("sessionId") or meta.get("session_id")
     out = {"sheets": [], "names": len(meta.get("definedNames") or [])}
+    # **サイドカーが「読めなかった」と言った物を落とさない。**
+    # Python の窓では `Book.unsupported` に出ていた物で、
+    # うちのサイドカーは答えに `xUnsupported` として載せる(向こうには無い欄)
+    if meta.get("xUnsupported"):
+        out["unsupported"] = meta["xUnsupported"]
     for sh in meta.get("sheets") or []:
         # **範囲はシートの外に出せない**(向こうは "Range is outside the
         # worksheet." で断る)。rowCount / columnCount に丸める
@@ -221,6 +226,12 @@ for name in b.sheet_names:
     out["sheets"].append(view)
 print(json.dumps(out, ensure_ascii=False))
 """ % (MAX_ROWS, MAX_COLS)
+
+
+# **うちのサイドカー**(sidecar/ の xlsx-sidecar)。指せば、Python の窓ではなく
+# **同じ通信の言葉で**突き合わせる — 本番と同じ道で比べるほうが正しい。
+# 未指定なら今までどおり Python の窓を使う(配った wheel の検査になる)
+OUR_SIDECAR = os.environ.get("OUR_SIDECAR")
 
 
 def our_view(path):
@@ -353,9 +364,10 @@ def diff_sheet(name, t, o, show_n, rph=False):
     return d, theirs_bug
 
 
-def compare(path, sc, show_n):
+def compare(path, sc, show_n, ours_sc=None):
     theirs = their_view(sc, path)
-    ours = our_view(path)
+    # **同じ抽出で揃える。** 通信の言葉が同じなら、取り出す道も同じでよい
+    ours = their_view(ours_sc, path) if ours_sc is not None else our_view(path)
     diffs, theirs_bug = [], []
     if "error" in theirs or "error" in ours:
         diffs.append(f"読めない — 向こう: {theirs.get('error')} / うち: {ours.get('error')}")
@@ -384,6 +396,7 @@ def main():
     ap.add_argument("files", nargs="*")
     ap.add_argument("--json", help="差の一覧の書き出し先")
     ap.add_argument("--show", type=int, default=5, help="1件ごとに出す差の上限")
+    ap.add_argument("--ours-sidecar", help="うちの側もこのサイドカーで比べる(既定は Python の窓)")
     a = ap.parse_args()
 
     if not SIDECAR.exists():
@@ -399,11 +412,19 @@ def main():
     if not files:
         sys.exit("比べる xlsx がありません")
 
+    ours_sc = None
+    if a.ours_sidecar or OUR_SIDECAR:
+        p = pathlib.Path(a.ours_sidecar or OUR_SIDECAR)
+        if not p.exists():
+            sys.exit(f"うちのサイドカーがありません: {p}")
+        ours_sc = Sidecar(p)
+        print(f"うちの側もサイドカーで比べる: {p}\n")
+
     sc = Sidecar(SIDECAR)
     report = []
     try:
         for f in files:
-            theirs, ours, diffs, theirs_bug = compare(f, sc, a.show)
+            theirs, ours, diffs, theirs_bug = compare(f, sc, a.show, ours_sc)
             report.append(
                 {
                     "file": str(f),
@@ -423,6 +444,8 @@ def main():
                 print(f"    ~ {d}")
     finally:
         sc.close()
+        if ours_sc is not None:
+            ours_sc.close()
 
     n = sum(1 for r in report if r["diffs"])
     m = sum(1 for r in report if not r["diffs"] and r["theirs_bug"])
@@ -433,10 +456,13 @@ def main():
     if m:
         print(f"  ほかに {m} 枚は △ — 向こうの欠陥と分かっている差だけ(うちの宿題ではない)")
     # **緑を大きく見せない。** 何を見ていないかを毎回言う
-    print(
-        "  比べていない: 書式・罫線・条件付き書式・入力規則・名前の定義・固定枠 "
-        "(Python の窓が返さない — 設計の「次の一手」)"
-    )
+    if a.ours_sidecar or OUR_SIDECAR:
+        print("  ※ うちの側はサイドカー。埋めていない欄は答えの xNotFilled に出る")
+    else:
+        print(
+            "  比べていない: 書式・罫線・条件付き書式・入力規則・名前の定義・固定枠 "
+            "(Python の窓が返さない — 設計の「次の一手」)"
+        )
     if a.json:
         pathlib.Path(a.json).write_text(
             json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"

@@ -1,0 +1,17 @@
+[package]
+name = "sidecar"    # pyoffice: genoffice の xlsx サイドカーと同じ言葉を喋る
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+description = "genoffice の xlsx サイドカーと同じ JSON を、officework の sheet で答える"
+
+[[bin]]
+name = "xlsx-sidecar"   # **向こうと同じ名前。** XLSX_SIDECAR_PATH で差し替えられる
+path = "src/main.rs"
+
+[dependencies]
+sheet = { path = "../sheet" }
+# **JSON だけは自分で書かない。** 通信の言葉は向こうが決めた物で、
+# こちらに直す権利がない。手書きの parser は静かに間違える場所そのもの。
+# 核(sheet)には入れない — ここは末端の実行ファイルだけの依存
+serde_json = "1"
