@@ -623,7 +623,11 @@ fn border_xml(b: &Borders) -> String {
 /// 1つの xf。applyX を付けないと読み手が無視することがある
 fn xf_xml(fi: usize, fl: usize, bi: usize, ni: usize, f: &CellFormat) -> String {
     let mut s = format!(
-        "<xf numFmtId=\"{ni}\" fontId=\"{fi}\" fillId=\"{fl}\" borderId=\"{bi}\" xfId=\"0\"\
+        // **行継続(\ + 改行)は行頭の空白ごと食う。** ここで属性の区切りの
+        // 空白が消えて `xfId="0"applyNumberFormat="1"` を書いていた —
+        // Excel も quick-xml も通すが、厳しい parser(roxmltree)は撥ねる
+        // (2026-08-09、genoffice のサイドカーとの突き合わせで見つかった)
+        "<xf numFmtId=\"{ni}\" fontId=\"{fi}\" fillId=\"{fl}\" borderId=\"{bi}\" xfId=\"0\" \
          applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\""
     );
     let mut attrs = String::new();
@@ -1011,5 +1015,50 @@ mod more_fmt_tests {
         let f = CellFormat { bold: true, ..Default::default() };
         let (xml, _) = build(&[f]);
         assert!(!xml.contains("vertical="), "既定なのに縦揃えを書いた");
+    }
+}
+
+#[cfg(test)]
+mod xml_wellformed_tests {
+    use super::*;
+    use crate::model::CellFormat;
+
+    /// 書いた styles.xml が**厳しい parser でも読めるか**。
+    ///
+    /// 2026-08-09、genoffice のサイドカー(roxmltree)がうちの xlsx を
+    /// 9枚とも撥ねて見つかった: 行継続(`\` + 改行)が行頭の空白ごと食い、
+    /// `xfId="0"applyNumberFormat="1"` と属性が繋がっていた。
+    /// Excel も quick-xml も通すので、**開いて確かめるだけでは出ない**。
+    #[test]
+    fn 属性の間に空白がある() {
+        let mut f = CellFormat::default();
+        f.bold = true;
+        f.fill = Some("FFF2CC".into());
+        let (xml, _) = build(&[f]);
+        // 引用符の開閉を数え、**閉じた直後**だけ見る。閉じたあとに来てよいのは
+        // 空白・`/`・`>`・`?` だけ(属性が続くなら必ず空白が要る)
+        let b: Vec<char> = xml.chars().collect();
+        let mut in_q = false;
+        let mut bad: Vec<String> = Vec::new();
+        for i in 0..b.len() {
+            if b[i] != '"' {
+                continue;
+            }
+            if in_q {
+                in_q = false;
+                match b.get(i + 1) {
+                    // `?` は <?xml … ?> の締め
+                    Some(c) if c.is_whitespace() || *c == '/' || *c == '>' || *c == '?' => {}
+                    Some(_) => {
+                        let to = (i + 20).min(b.len());
+                        bad.push(b[i.saturating_sub(12)..to].iter().collect());
+                    }
+                    None => {}
+                }
+            } else {
+                in_q = true;
+            }
+        }
+        assert!(bad.is_empty(), "属性の区切りが抜けている: {bad:?}");
     }
 }
