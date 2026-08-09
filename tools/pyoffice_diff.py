@@ -290,11 +290,22 @@ def norm_style(st):
         # こちらは持たない。意味は同じなので、どちらも無しに寄せる
         if k == "numberFormat" and v == "General":
             continue
+        # **既定を明示するか省くかの違いは差ではない。** 向こうは既定も
+        # 書いて返し、こちらは省く。xlsx の既定は 横=general・縦=bottom
+        if k == "horizontalAlignment" and v == "general":
+            continue
+        if k == "verticalAlignment" and v == "bottom":
+            continue
         if k.endswith("Color"):
             v = norm_color(v)
         elif k.startswith("border") and isinstance(v, dict):
             v = {"style": v.get("style"), "color": norm_color(v.get("color"))}
-            if v["color"] is None:
+            # **罫線の色の「自動」。** 原本の <color indexed="64"/> は色ではなく
+            # 「自動(前景)」で、向こうは 000000 に解いて返し、こちらは色なしで
+            # 返す。画面ではどちらも黒。**黒の明示と自動を区別できないのは
+            # 承知の上** — 実物では自動が圧倒的に多く(5万件超)、混ぜたままだと
+            # 本物の色の差が埋もれる。実際、青い罫線 73 件がこれに埋もれていた
+            if v["color"] in (None, "000000"):
                 del v["color"]
         elif k == "fontSize" and isinstance(v, (int, float)):
             v = round(float(v), 2)
