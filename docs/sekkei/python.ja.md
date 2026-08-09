@@ -307,3 +307,75 @@ writer 側の API(文書・記入欄・差し込み)は今後 officework.writer 
   .venv には officework.pth で結線(コピーしない — 常に最新)
 - **未対応と正直に言う物**: @xw.func / @xw.sub / Book.caller()(Excel の
   アドイン機構)— calc では AI タブのマクロ(plugins/*.py)が同じ役目
+
+## `officework.doc` — docx の束縛(2026-08-10 発注者「writer も読み書き両方」)
+
+`officework.sheet` と**同じ作り**で docx を出す。発注者 2026-08-10:
+「xlsx エンジンだけでなくて docx エンジンも必要でしょう」「writer も読み書き
+両方です。calc と同じやり方ができるようになるでしょう」。
+
+材料は揃っている — `ooxml`(4,744行・試験79件)が `read` / `write` /
+`write_with`(原本据え置き)を持ち、模型は `kumihan::Document`
+(段落・表・ヘッダー・フッター・用紙・変更履歴・しおり・透かし)。
+
+### 売り文句は sheet と同じ論法
+
+`python-docx` は理解できない部品の扱いが弱い。`write_with` は**原本を正として
+変えた所だけ書き戻す**ので、様式・ヘッダー・図形・変更履歴が壊れない。
+読めなかった物は `unsupported` に出る(黙って落とさない)。
+
+**これは xlsx で証明済みの主張である。** 他人の xlsx 30枚で「中身の食い違い
+ゼロ」まで持っていったのと同じことを、docx でもやる。
+
+### 作法(sheet から引き継ぐ)
+
+1. **名前は `officework.doc`。** `_sheet` と同じく `officework._doc` を
+   pyo3 で作り、`officework/__init__.py` から見せる。1つの wheel に同居させる
+   (利用者に2つ入れさせない)
+2. **原本を持ち歩く。** `Doc.open` で読んだ元のバイトを抱え、`save` は
+   `write_with` に渡す。**これをしないと売り文句が成り立たない**
+3. **`unsupported` を最初の見本に出す。** README の例に必ず入れる
+   (2026-08-10 の 0.1.2 で、見本が動かないまま配っていたのを踏んだ)
+4. **読めない物は読めないと言う。** 黙って空を返さない
+
+### 何を出すか — **模型をそのまま見せない**
+
+`kumihan::Document` は組版の模型で、Python から触るには細かすぎる
+(`Run` の `size_pt`・`CharFormat`・`anchors`)。`sheet` が
+`Book` / `Sheet` の2階建てで済ませたのと同じく、**docx も薄い層をかぶせる**。
+
+    d = doc.Doc.open("報告書.docx")
+    d.paragraphs            # 段落の一覧
+    d[3].text               # 段落の字(run をつないだもの)
+    d[3].text = "差し替え"   # 書式は据え置き(run の書式を保って字だけ替える)
+    d.tables[0][1][2]       # 表・行・セル
+    d.find("旧社名")         # 置換の下ごしらえ
+    d.unsupported
+    d.save("out.docx")
+
+**`text` の代入が肝。** 帳票の差し込みは「書式を保ったまま字を替える」で、
+これは `sheet` の `s["A30"] = …` と同じ仕草。run が複数に割れている段落で
+書式をどう保つかは実装の判断が要る(先頭 run の書式を継ぐのが素直)。
+
+### 範囲 — 読み書き両方を一度に出す
+
+発注者確定。`sheet` のときも読み書き両方で出した。`ooxml` は `writer` で
+使い込まれているので、同じ条件が揃っている。
+
+**ただし出す前に実物で測る。** xlsx で学んだとおり、**自分で書いた docx だけで
+往復を確かめると、環境依存と実物特有の形を必ず見落とす**(2026-08-09 に
+`sheetView` を Empty の枝でしか読んでいなかったのを踏んだ)。
+比較の相手は **genoffice の `packages/docx-engine`(TypeScript 20,762行)**。
+xlsx で `pyoffice_diff.py` がやったことを docx でやる。
+
+### genoffice への載せ替えは**別の話**(2026-08-10 当方)
+
+docx には**継ぎ目が無い**。向こうの docx エンジンは TypeScript で同一プロセス、
+xlsx のようなサイドカーも `XLSX_SIDECAR_PATH` に当たる環境変数も無い。
+載せ替えるには**継ぎ目そのものを作る**ことになり、上流にパッチが要る
+(「genoffice には何もしない」の方針から外れる)。
+
+**判断は先送りする。** `officework.doc` を出して実物で穴を測れば、
+「載せ替える価値があるか」が数で出る。それを見てから決める。
+pptx は officework に1行も無いので、そもそも移植ではなく新規開発 — 当面やらない。
+
