@@ -835,6 +835,46 @@ fn esc(s: &str) -> String {
 mod append_tests {
     use super::*;
 
+    #[test]
+    fn 型紙の名前付きスタイルを読む() {
+        // マークダウンの見出しの大きさはここから引く(2026-08-09)。
+        // 書式の実体は cellStyleXfs の方にあり、cellStyles が名前で指す
+        let xml = r##"<styleSheet>
+          <fonts count="3">
+            <font><sz val="11"/></font>
+            <font><sz val="22"/><b/></font>
+            <font><sz val="16"/><b/></font>
+          </fonts>
+          <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+          <borders count="1"><border/></borders>
+          <cellStyleXfs count="3">
+            <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+            <xf numFmtId="0" fontId="1" fillId="0" borderId="0"/>
+            <xf numFmtId="0" fontId="2" fillId="0" borderId="0"/>
+          </cellStyleXfs>
+          <cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>
+          <cellStyles count="3">
+            <cellStyle name="標準" xfId="0" builtinId="0"/>
+            <cellStyle name="見出し 1" xfId="1" builtinId="16"/>
+            <cellStyle name="見出し 2" xfId="2" builtinId="17"/>
+          </cellStyles>
+        </styleSheet>"##;
+        let named = parse_named(xml, &[]);
+        assert_eq!(named.len(), 3, "名前付きスタイルが読めていない: {named:?}");
+        let h1 = named.iter().find(|(_, b, _)| *b == Some(16)).expect("見出し 1 が無い");
+        assert_eq!(h1.0, "見出し 1");
+        assert_eq!(h1.2.size_c, Some(2200), "cellStyleXfs の font を引けていない");
+        assert!(h1.2.bold);
+        // cellXfs(セルの書式)の方は今までどおり別に読める
+        assert_eq!(parse(xml, &[]).len(), 1, "cellXfs の読みを壊した");
+        // markdown 側の引き当て: 型紙が既定に勝つ
+        let h = crate::markdown::heading_of(&named, 1).expect("引けない");
+        assert!((h.scale - 2.0).abs() < 0.01, "22pt / 11pt = 2.0 のはず: {}", h.scale);
+        // 型紙が持っていない段は既定に落ちる
+        let h3 = crate::markdown::heading_of(&named, 3).expect("既定に落ちない");
+        assert!((h3.scale - crate::markdown::DEFAULT_HEADINGS[2].scale).abs() < 0.01);
+    }
+
     const ORIG: &str = r#"<?xml version="1.0"?><styleSheet xmlns="x"><fonts count="1"><font><sz val="11"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf></cellXfs></styleSheet>"#;
 
     #[test]
