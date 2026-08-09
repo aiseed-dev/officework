@@ -124,15 +124,31 @@ b.save("out.xlsx")
 print(b.unsupported)   # whatever it could not read is listed here, never dropped in silence
 ```
 
+The same applies to docx. `python-docx` rewrites the parts of a file it does not
+understand; this engine keeps the original and writes back only what changed, so
+styles, headers, shapes and tracked changes survive.
+
+```python
+from officework import doc
+
+d = doc.Doc.open("report.docx")
+print(d.unsupported)               # whatever it could not read is listed here, never dropped in silence
+d.replace("Old Name Ltd.", "New Name Ltd.")   # formatting inside the paragraph is left alone
+d[3].text = "replaced"             # heading level, alignment and indent stay as they were
+print(d.tables[0][1][2].text)      # table, row, cell
+d.save("out.docx")
+```
+
+`replace()` is the one to reach for when filling in a form: it keeps each run's
+formatting, so a bold field label next to a plain value stays that way. Assigning
+to `.text` replaces the whole paragraph and gives it the first run's formatting.
+
 To drive a running calc from the outside, use the bridge instead. That one
 does need the app.
 
 ```python
 from officework import calc as xw   # Book / Range, in the style of xlwings
 ```
-
-There is no equivalent for docx — python-docx already does the job
-(and writer is verified to read documents saved by it).
 
 The reference for programmers is the [Python manual](docs/python-manual.md) —
 ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with
@@ -150,7 +166,7 @@ paper/    projects the page onto PDF
 ui/       glue to gpui (input, IME, ribbon)
 writer/   the docx app
 calc/     the xlsx app
-pysheet/  Python bindings for sheet (pip install officework -> officework.sheet)
+pysheet/  Python bindings (pip install officework -> officework.sheet, officework.doc)
 ```
 
 **The screen and the paper are the same page projected onto different surfaces**,
