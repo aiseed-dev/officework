@@ -1,6 +1,7 @@
 //! Python 側から往復できることの検査。
 //!
-//! cdylib を組み、`office_sheet.so` の名前で置いて、`test.py` を回す。
+//! cdylib を組み、`officework/_sheet.so` の名前で置いて、`test.py` を回す。
+//! **配る wheel と同じ形** — 平場ではなく officework の副モジュール。
 //! python3 が無い機械では飛ばす(無いのに失敗と言わない)。
 use std::process::Command;
 
@@ -25,13 +26,25 @@ fn python側から帳票を差し込める() {
     // (target/debug/deps/xxx → target/debug)
     let exe = std::env::current_exe().expect("自分の場所が分からない");
     let debug = exe.parent().and_then(|p| p.parent()).expect("target/debug が見つからない");
-    let so = debug.join("liboffice_sheet.so");
+    let so = debug.join("lib_sheet.so");
     assert!(so.exists(), "{} が無い", so.display());
 
     // Python の import 名に合わせて置く
     let dir = debug.join("pysheet-import");
     std::fs::create_dir_all(&dir).expect("作業場所を作れない");
-    std::fs::copy(&so, dir.join("office_sheet.so")).expect("置けない");
+    // **ソースの officework/ の隣に置く。** 一時ディレクトリに組んでも、
+    // .venv の officework.pth がソースの方を先に掴むので負ける(2026-08-09 に踏んだ)。
+    // 終わったら消す
+    let pkg = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/officework"));
+    let ext = pkg.join("_sheet.so");
+    std::fs::copy(&so, &ext).expect("置けない");
+    struct Cleanup(std::path::PathBuf);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+    let _cleanup = Cleanup(ext);
 
     let out = Command::new("python3")
         .arg(concat!(env!("CARGO_MANIFEST_DIR"), "/test.py"))

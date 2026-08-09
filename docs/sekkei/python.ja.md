@@ -131,7 +131,7 @@ office_sheet(pysheet)で実行し、保存されたものを読み戻して**1�
 **↑を狭めた: ブックが運べるのは関数(UDF)だけ**(発注者確定 2026-08-08)。
 同梱 Python を見据えて見直し — 手続きがブックで旅をすると**ファイルが実行の
 起点**になる(二重の防壁があっても、ブックの文言で「@名前 net と打って」と
-説得する道が残る = 帳面の中身を外へ送る口)。UDF は net の道が無く返せるのは
+説得する道が残る = 帳面の中身を外へ送る経路)。UDF は net の道が無く返せるのは
 セルの値だけなので、載せてよいのは UDF だと切った:
 
 - **joPython に書くのは「関数」で始まるスクリプトだけ**。@save も関数だけ受ける
@@ -287,10 +287,10 @@ d.save("記入済.docx")
 `from officework import calc as xw` の1行差し替えで、記事の Book / Range /
 .value / options(pd.DataFrame, expand='table') / save がそのまま動く。
 **calc 専用にしない**(発注者 2026-08-08)— 共有部(ソケット+JSON)は
-officework/__init__.py にあり、アプリごとの口は officework/<app>.sock。
-writer の口(文書・記入欄・差し込み)は今後 officework.writer として増やす。
+officework/__init__.py にあり、アプリごとのソケットは officework/<app>.sock。
+writer 側の API(文書・記入欄・差し込み)は今後 officework.writer として増やす。
 
-- **口**: calc が起動時にユニックスソケットを開く(calc/src/rpc.rs)。
+- **ソケット**: calc が起動時にユニックスソケットを開く(calc/src/rpc.rs)。
   径路は `$XDG_RUNTIME_DIR/jo-office/calc.sock`、AF_UNIX の 108 字上限を
   超えるときは `/tmp/jo-office-UID/`(Python 側と同じ規則)。**この機械の
   中だけ** — TCP は開かない(ネイティブファースト)

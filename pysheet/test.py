@@ -1,13 +1,13 @@
-# office_sheet(pysheet)の検査。Rust 側の tests/python_smoke.rs から呼ばれる。
+# officework.sheet(pysheet)の検査。Rust 側の tests/python_smoke.rs から呼ばれる。
 # 手で回すなら:
 #   cargo build -p pysheet
-#   mkdir -p /tmp/os && cp target/debug/liboffice_sheet.so /tmp/os/office_sheet.so
+#   mkdir -p /tmp/os/officework && cp target/debug/lib_sheet.so /tmp/os/officework/_sheet.so
 #   PYTHONPATH=/tmp/os python3 pysheet/test.py
 import os
 import sys
 import tempfile
 
-import office_sheet
+from officework import sheet as office_sheet
 
 def check(cond, msg):
     if not cond:

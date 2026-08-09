@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
-"""officework — 事務の道具一式(calc / writer)を Python から操る橋の共有部。
+"""officework — 帳票を壊さないエンジンと、動いているオフィスソフトを操る橋。
 
-アプリごとの口はユニックスソケット($XDG_RUNTIME_DIR/officework/<app>.sock、
-径路が AF_UNIX の 108 字上限を超えるときは /tmp/officework-UID/)。
+    from officework import sheet      # エンジン: xlsx。アプリは要らない
+    from officework import calc as xw # 橋: 動いている calc を操る
+
+**エンジン**は Rust(pyo3)。原本を正として、変えた所だけ書き戻すので、
+罫線・結合・列幅・図形が openpyxl のように壊れない。読めなかった物は
+`unsupported` に出る(黙って落とさない)。docx / pptx のエンジンも
+同じ名前空間に足す予定(officework.doc / officework.slide)。
+
+**橋**は純 Python。アプリごとのソケット($XDG_RUNTIME_DIR/officework/<app>.sock、
+径路が AF_UNIX の 108 字上限を超えるときは /tmp/officework-UID/)へ
 JSON を1行ずつ。**この機械の中だけ**で、ネットには出ない。
 
 表計算は `from officework import calc as xw`(xlwings 流の Book / Range)。
@@ -12,6 +20,24 @@ JSON を1行ずつ。**この機械の中だけ**で、ネットには出ない�
 import json
 import os
 import socket
+
+# エンジン(Rust)。橋だけを使うときは無くてよいが、**黙って None にしない** —
+# 触ったときに、入っていない理由をそのまま見せる
+try:
+    from . import _sheet as sheet  # noqa: F401
+    _sheet_error = None
+except Exception as e:  # pragma: no cover
+    # **名前を作らない** — None を入れると from officework import sheet が
+    # 黙って None を返し、後で意味不明な AttributeError になる
+    _sheet_error = e
+
+
+def __getattr__(name):
+    if name == "sheet":
+        raise ImportError(
+            "officework のエンジン(_sheet)が読めません: {!r}".format(_sheet_error)
+        ) from _sheet_error
+    raise AttributeError(name)
 
 
 class OfficeworkError(RuntimeError):

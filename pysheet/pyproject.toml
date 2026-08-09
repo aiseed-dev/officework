@@ -1,0 +1,48 @@
+# officework — PyPI へ出す形(2026-08-09 発注者「officework エンジンを
+# PyPI と conda-forge に公開するところから始めましょう」)。
+#
+# **配る名前は officework、import する名前は2つ**:
+#   from officework import sheet   → エンジン(単体で xlsx。アプリ不要)
+#   from officework import calc    → 橋(動いている calc を操る)
+# **3つ目・4つ目のエンジン(docx / pptx)が来ても同じ名前空間に入る** —
+# officework._doc / officework._slide を足すだけ(発注者 2026-08-09)。
+#
+# 組み方:
+#   cd pysheet && maturin build --release          # wheel(abi3-py310)
+#   maturin develop                                 # 手元の .venv へ入れる
+[build-system]
+requires = ["maturin>=1.9,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "officework"
+description = "帳票を壊さない xlsx エンジンと、動いているオフィスソフトを Python から操る橋"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "AGPL-3.0-or-later"
+authors = [{ name = "Yasuhiro Niji" }]
+keywords = ["xlsx", "excel", "spreadsheet", "office", "xlwings"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business :: Financial :: Spreadsheet",
+    "Natural Language :: Japanese",
+]
+dynamic = ["version"]
+
+# pandas は使うときだけ(options(pd.DataFrame) を呼んだときに import する)。
+# **必須にしない** — 値の出し入れだけなら要らないため
+[project.optional-dependencies]
+pandas = ["pandas"]
+
+[project.urls]
+Homepage = "https://github.com/aiseed-dev/officework"
+Source = "https://github.com/aiseed-dev/officework"
+
+[tool.maturin]
+# エンジン(Rust)は office_sheet、橋(純 Python)は officework/ をそのまま同梱
+module-name = "officework._sheet"
+python-source = "."
+features = ["pyo3/extension-module"]

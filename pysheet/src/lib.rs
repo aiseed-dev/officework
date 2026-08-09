@@ -392,7 +392,7 @@ fn col0(s: &str) -> PyResult<u32> {
 }
 
 #[pymodule]
-fn office_sheet(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _sheet(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBook>()?;
     m.add_class::<PySheet>()?;
     Ok(())
