@@ -1,0 +1,109 @@
+# officework(エンジン)を PyPI へ出す。
+#
+# **PyPI の Trusted Publisher(OIDC)で出す** — API トークンを持たない。
+# PyPI 側に登録する値:
+#   PyPI Project Name : officework
+#   Owner             : aiseed-dev
+#   Repository name   : officework
+#   Workflow name     : publish-pypi.yml
+#   Environment name  : pypi
+#
+# 出し方: `v0.1.0` のような版のタグを押す。手で回すこともできる
+# (Actions の画面から。dry_run を付けると PyPI へは上げず wheel だけ作る)。
+name: publish-pypi
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "PyPI へ上げずに wheel を作るだけ"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  # 各プラットフォームの wheel。abi3-py310 なので **1枚で 3.10 以降を賄う**
+  wheels:
+    name: wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            args: --release --out dist
+          - os: macos-latest
+            args: --release --out dist --target universal2-apple-darwin
+          - os: windows-latest
+            args: --release --out dist
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: wheel を組む
+        uses: PyO3/maturin-action@v1
+        with:
+          working-directory: pysheet
+          args: ${{ matrix.args }}
+          # Linux は古い glibc でも動くように manylinux の中で組む
+          manylinux: ${{ matrix.os == 'ubuntu-latest' && 'auto' || '' }}
+      - name: まっさらな環境で確かめる
+        # **組めただけで良しとしない** — 入れて import して、実物の xlsx を
+        # 往復させる。ここが通らないものは出さない
+        shell: bash
+        run: |
+          python -m venv /tmp/kensho
+          PY=/tmp/kensho/bin/python; [ -f "$PY" ] || PY=/tmp/kensho/Scripts/python
+          "$PY" -m pip install --quiet --find-links pysheet/dist officework
+          "$PY" - <<'PYEOF'
+          from officework import sheet
+          b = sheet.Book.open("templates/在庫台帳.xlsx")
+          s = b[0]
+          assert s.shape[0] > 0, "行が読めていない"
+          s["A1"] = "検査"
+          b.save("/tmp/kensho.xlsx")
+          assert sheet.Book.open("/tmp/kensho.xlsx")[0]["A1"] == "検査"
+          print("往復できた:", b.sheet_names)
+          PYEOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: pysheet/dist
+
+  # 元の形(sdist)。conda-forge はこちらを見る
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          working-directory: pysheet
+          args: --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: pysheet/dist
+
+  publish:
+    needs: [wheels, sdist]
+    # タグを押したときだけ。手回しのときは dry_run を外したときだけ
+    if: startsWith(github.ref, 'refs/tags/v') && !inputs.dry_run
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # Trusted Publisher(OIDC)に要る
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
