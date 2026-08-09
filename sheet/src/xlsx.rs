@@ -1003,6 +1003,16 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
             },
             Ok(Event::Empty(e)) => match local(e.name().as_ref()) {
                 b"col" => col_width(&e, &mut sh),
+                // **中身の無い行 `<row r="71" ht="23.1" customHeight="1"/>`。**
+                // 高さだけ決めた空行で、帳票では行間の調整によく使う。
+                // Start の枝にしか置いていなかったので、**高さが落ちていた**
+                // (日銀の資金循環で 115 箇所。2026-08-10)。
+                //
+                // **同じ形の穴は3度目。** xlsx の sheetView(Empty の枝にしか
+                // 無かった)・docx の `<w:p/>`(Start の枝にしか無かった)。
+                // quick-xml で読む所は、**Start と Empty の両方に置いたか**を
+                // 要素ごとに確かめること
+                b"row" => row_height(&e, &mut sh),
                 b"c" => {
                     // 値の無い自己完結のセル。書式だけなら、それは帳票の枠 —
                     // 落とすと保存で罫線が消える(Excel 以外の道具が書く形)
@@ -5785,6 +5795,51 @@ mod script_roundtrip_tests {
         assert_eq!(sh.show_gridlines, Some(false), "格子線が往復しない");
         assert_eq!(sh.show_formulas, Some(true), "式の表示が往復しない");
         assert_eq!(sh.zoom_scale, Some(85), "表示倍率が往復しない");
+    }
+
+    #[test]
+    fn 中身の無い行の高さを読める() {
+        // **`<row r="71" ht="23.1" customHeight="1"/>`** — 高さだけ決めた空行。
+        // 帳票では行間の調整に使う。Start の枝にしか置いていなかったので
+        // 高さが落ちていた(日銀の資金循環で 115 箇所。2026-08-10)。
+        //
+        // **同じ形の穴は3度目。** sheetView は Empty の枝にしか無く、
+        // docx の `<w:p/>` は Start の枝にしか無かった。**quick-xml で読む所は
+        // Start と Empty の両方に置いたかを要素ごとに確かめること**
+        let b = Book::new();
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+        let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        use std::io::{Read as _, Write as _};
+        let mut replaced = false;
+        for i in 0..z.len() {
+            let mut f = z.by_index(i).unwrap();
+            let name = f.name().to_string();
+            let mut s = Vec::new();
+            f.read_to_end(&mut s).unwrap();
+            if name.ends_with("sheet1.xml") {
+                let t = String::from_utf8(s).unwrap().replace(
+                    "<sheetData></sheetData>",
+                    r#"<sheetData><row r="3" ht="23.1" customHeight="1"/><row r="5" ht="9" customHeight="1" hidden="1"/></sheetData>"#,
+                );
+                // **本当に置き換わったかを見る。** 名前で真にすると、
+                // 差す先の綴りが変わったときに空振りしたまま緑になる
+                // (2026-08-10 に踏んだ — `<sheetData/>` を探していたが
+                //  書き出しは `<sheetData></sheetData>` だった)
+                replaced = t.contains("<row r=\"3\"");
+                s = t.into_bytes();
+            }
+            w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+            w.write_all(&s).unwrap();
+        }
+        assert!(replaced, "型紙を差す先が無い(書き出しの形が変わった)");
+        let out = w.finish().unwrap();
+        let (back, _) = read(Cursor::new(out.into_inner())).expect("読めない");
+        let sh = &back.sheets[0];
+        assert_eq!(sh.row_height.get(&2), Some(&23.1), "中身の無い行の高さが落ちている");
+        assert_eq!(sh.row_height.get(&4), Some(&9.0), "隠した空行の高さも落ちている");
+        assert!(sh.row_hidden.contains(&4), "中身の無い行の hidden が落ちている");
     }
 
     #[test]
