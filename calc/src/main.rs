@@ -274,6 +274,8 @@ struct Calc {
     /// CSV に書き出すときの文字コードと区切り。**日本の会計ソフトは
     /// まだ CP932 のものがある** — UTF-8 固定だと渡せない
     pub(crate) csv_kind: &'static str,
+    /// 最近使った記号(新しい順・最大12)。**次に同じ物を探させない**
+    pub(crate) recent_symbols: Vec<String>,
     /// 最後に控えを取った時刻
     pub(crate) recover_at: std::time::Instant,
     /// 0 の値を見せるか(表示タブ。消しても値は 0 のまま)
@@ -498,6 +500,7 @@ impl Calc {
                 .unwrap_or(300),
             recover_at: std::time::Instant::now(),
             csv_kind: "UTF-8(BOM付き)・カンマ",
+            recent_symbols: Vec::new(),
             dark: ui::settings::get("theme").as_deref() == Some("dark"),
             auto_calc: true,
             watch: Vec::new(),
@@ -2277,6 +2280,28 @@ impl Calc {
         let (a, b) = self.sel_rect();
         self.status = format!("{}:{}", a.a1(), b.a1()).into();
         self.sync_input();
+    }
+
+    /// 見張りから1つ外す(札の × が呼ぶ)。**全部消すのはリボンの「見張り」**
+    pub(crate) fn watch_remove(&mut self, si: usize, p: Pos) {
+        let before = self.watch.len();
+        self.watch.retain(|(s, q)| !(*s == si && *q == p));
+        self.status = if self.watch.len() < before {
+            ui::tf!("{} を見張りから外しました", p.a1()).into()
+        } else {
+            ui::t!("その見張りはもうありません").into()
+        };
+    }
+
+    /// 見張りの札を押したときに、そのセルへ飛ぶ
+    pub(crate) fn watch_goto(&mut self, si: usize, p: Pos) {
+        self.commit();
+        self.active = si.min(self.book.sheets.len().saturating_sub(1));
+        self.cursor = p;
+        self.anchor = None;
+        self.follow();
+        self.sync_input();
+        self.status = ui::tf!("{} へ移動しました", p.a1()).into();
     }
 
     /// カーソルが見える位置まで窓を動かす。

@@ -25,6 +25,10 @@ impl Calc {
                 // 打ちかけの続きに差し込む(セルを置き換えない)
                 self.input.insert(v);
                 self.dirty = true;
+                // **次に同じ物を探させない。** 新しい順に最大12
+                self.recent_symbols.retain(|x| x != v);
+                self.recent_symbols.insert(0, v.to_string());
+                self.recent_symbols.truncate(12);
                 self.status = ui::tf!("「{}」を差し込みました(Enter で確定)", v).into();
             }
             "shape" => {
@@ -157,6 +161,23 @@ impl Calc {
             }
             // 名前を式へ差し込む。**打っている所に入れる**(末尾ではない)。
             // まだ式を始めていなければ「=」から始めてあげる
+            // 記号: 組を選ぶ → その組の字を一字ずつ並べ直す
+            "symbol-group" => {
+                if v.starts_with("Unicode") {
+                    self.prompt = Some(("symbol-hex", Editor::new("")));
+                    return;
+                }
+                let chars = v.split_once(": ").map(|(_, r)| r.trim()).unwrap_or(v);
+                let at = self.pick.as_ref().map(|(_, a)| *a).unwrap_or_else(|| self.pop_anchor());
+                self.pick_kind = "symbol";
+                self.pick_note = Some(ui::t!("字を選ぶと式に入ります").into());
+                self.pick = Some((
+                    chars.split_whitespace().collect::<String>().chars()
+                        .map(|c| c.to_string()).collect(),
+                    at,
+                ));
+                return; // 2段目へ(閉じない)
+            }
             "paste-name" => {
                 let name = v.split(" = ").next().unwrap_or(v).to_string();
                 if self.input.text().is_empty() {
@@ -2680,6 +2701,28 @@ impl Calc {
                 };
             }
             // 文字の色・塗りの直指定(RRGGBB)。空 Enter = 自動/塗りなし
+            // Unicode の 16 進で記号を入れる(本家の「文字コード」欄)
+            "symbol-hex" => {
+                let t = text.trim().trim_start_matches("U+").trim_start_matches("u+");
+                match u32::from_str_radix(t, 16).ok().and_then(char::from_u32) {
+                    Some(ch) => {
+                        let s = ch.to_string();
+                        self.input.insert(&s);
+                        self.dirty = true;
+                        self.recent_symbols.retain(|x| *x != s);
+                        self.recent_symbols.insert(0, s.clone());
+                        self.recent_symbols.truncate(12);
+                        self.status =
+                            ui::tf!("「{}」(U+{}) を差し込みました", s, t.to_uppercase()).into();
+                    }
+                    None => {
+                        // **黙って何も入れない、をしない**
+                        self.status =
+                            ui::t!("Unicode が読めません(16進で。例: 3012 は 〒)").into();
+                        self.prompt = Some(("symbol-hex", Editor::new(t)));
+                    }
+                }
+            }
             "font-color-rgb" | "fill-color-rgb" => {
                 let is_font = kind == "font-color-rgb";
                 let t = text.trim().trim_start_matches('#').to_uppercase();

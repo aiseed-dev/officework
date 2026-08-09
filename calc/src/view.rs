@@ -1759,14 +1759,36 @@ impl Render for Calc {
                 .text_size(px(us * 11.0)).text_color(rgb(0x1B1B1B));
             w = w.child(div().font_weight(gpui::FontWeight::BOLD)
                 .text_color(rgb(0x1B6E3C)).child(ui::t!("見張り")));
-            for (si, p) in self.watch.iter().take(24) {
+            for (i, (si, p)) in self.watch.iter().take(24).enumerate() {
                 let Some(sh) = self.book.sheets.get(*si) else { continue };
                 let v = sh.get(*p).map(|c| c.value.display()).unwrap_or_default();
-                w = w.child(div().flex().flex_row().gap_1()
-                    .child(div().text_color(rgb(0x66707A))
-                        .child(SharedString::from(format!("{}!{}", sh.name, p.a1()))))
+                let (gsi, gp) = (*si, *p);
+                w = w.child(div().flex().flex_row().gap_1().items_center()
+                    // **押すとそのセルへ飛ぶ。** 見張りは「遠くの値を見る」
+                    // ための物なので、見て気になったら行けないと片手落ち
+                    .child(div()
+                        .id(SharedString::from(format!("watch-go-{i}")))
+                        .cursor_pointer()
+                        .text_color(rgb(0x1B6EC2))
+                        .hover(|st| st.text_color(rgb(0x0B4C8C)))
+                        .child(SharedString::from(format!("{}!{}", sh.name, gp.a1())))
+                        .on_click(cx.listener(move |this: &mut Calc, _, _, cx| {
+                            this.watch_goto(gsi, gp);
+                            cx.notify()
+                        })))
                     .child(div().font_weight(gpui::FontWeight::BOLD)
-                        .child(SharedString::from(v))));
+                        .child(SharedString::from(v)))
+                    // ×で1つだけ外す(全部消すのはリボンの「見張り」)
+                    .child(div()
+                        .id(SharedString::from(format!("watch-x-{i}")))
+                        .cursor_pointer().px_0p5()
+                        .text_color(rgb(0x99A2AA))
+                        .hover(|st| st.text_color(rgb(0xC00000)))
+                        .child("×")
+                        .on_click(cx.listener(move |this: &mut Calc, _, _, cx| {
+                            this.watch_remove(gsi, gp);
+                            cx.notify()
+                        }))));
             }
             w
         });

@@ -1892,17 +1892,21 @@ impl Calc {
                 }
             }
             // 記号を挿入: 一覧から選んで**数式バーへ**差し込む(セルは置き換えない)
+            // 記号。**分類で選んでから字を選ぶ**(平らに並べると探せない)。
+            // 最近使った分は先頭に出す。無い字は 16 進で打てる
             "inssymbol" => {
                 let at = self.pop_anchor();
-                self.pick_kind = "symbol";
-                self.pick = Some((
-                    ["〒", "℡", "№", "㈱", "〆", "※", "→", "←", "↑", "↓",
-                     "○", "●", "◎", "△", "▲", "×", "☑", "☐", "✓", "①", "②", "③"]
-                        .iter()
-                        .map(|v| v.to_string())
-                        .collect(),
-                    at,
-                ));
+                let mut items: Vec<String> = Vec::new();
+                if !self.recent_symbols.is_empty() {
+                    items.push(format!("最近使った: {}", self.recent_symbols.join(" ")));
+                }
+                for (name, chars) in SYMBOL_GROUPS {
+                    items.push(format!("{name}: {chars}"));
+                }
+                items.push("Unicode を打つ(例: 3012 → 〒)…".into());
+                self.pick_kind = "symbol-group";
+                self.pick_note = Some(ui::t!("記号(組を選ぶと一字ずつ出ます)").into());
+                self.pick = Some((items, at));
             }
             "addcomment" => {
                 self.commit();

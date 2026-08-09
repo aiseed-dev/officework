@@ -3534,6 +3534,75 @@ mod track_changes_tests {
 }
 
 #[cfg(test)]
+mod symbol_watch_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn 記号は組で選んでから字を選び最近使った分が先に出る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.run_cmd("inssymbol", cx);
+            let (items, _) = this.pick.clone().expect("組の一覧が出ない");
+            assert!(items.iter().any(|x| x.starts_with("帳票でよく使う")), "組が出ていない");
+            assert!(items.iter().any(|x| x.starts_with("Unicode")), "16進の口が無い");
+            assert!(!items.iter().any(|x| x.starts_with("最近使った")), "まだ何も使っていない");
+
+            // 組を選ぶと字が一つずつ並ぶ
+            this.apply_pick("しるし: ○●◎△▲▽▼□■◇◆☆★×✓☑☐", cx);
+            let (chars, _) = this.pick.clone().expect("字の一覧が出ない");
+            assert_eq!(chars[0], "○", "一字ずつになっていない: {chars:?}");
+
+            // 選ぶと式に入り、最近使った分に積まれる
+            this.apply_pick("★", cx);
+            assert!(this.input.text().contains('★'), "差し込まれていない");
+            assert_eq!(this.recent_symbols.first().map(|s| s.as_str()), Some("★"));
+
+            this.run_cmd("inssymbol", cx);
+            let (items, _) = this.pick.clone().unwrap();
+            assert!(items[0].starts_with("最近使った"), "最近使った分が先に出ない");
+        });
+    }
+
+    #[gpui::test]
+    fn Unicodeの16進で記号を入れられて読めなければ断る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.prompt = Some(("symbol-hex", Editor::new("3012")));
+            this.finish_prompt(cx);
+            assert!(this.input.text().contains('〒'), "U+3012 が入っていない");
+
+            this.prompt = Some(("symbol-hex", Editor::new("ゆうびん")));
+            this.finish_prompt(cx);
+            assert!(this.status.contains("Unicode が読めません"), "黙って流した: {}", this.status);
+            assert!(this.prompt.is_some(), "打ち直させていない");
+        });
+    }
+
+    #[gpui::test]
+    fn 見張りは一つずつ外せて押せば飛ぶ(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            let (a, b) = (Pos::parse("A1").unwrap(), Pos::parse("D9").unwrap());
+            this.watch.push((0, a));
+            this.watch.push((0, b));
+
+            // 札を押すとそこへ飛ぶ(遠くても窓が追いつく)
+            this.watch_goto(0, b);
+            assert_eq!(this.cursor, b, "飛んでいない");
+
+            // × は1つだけ外す
+            this.watch_remove(0, a);
+            assert_eq!(this.watch, vec![(0, b)], "1つだけ外せていない");
+            assert!(this.status.contains("外しました"), "言っていない: {}", this.status);
+
+            // もう無いものを外そうとしたら、そう言う(黙って成功にしない)
+            this.watch_remove(0, a);
+            assert!(this.status.contains("もうありません"), "黙って流した: {}", this.status);
+        });
+    }
+}
+
+#[cfg(test)]
 mod names_tests {
     use crate::*;
 
