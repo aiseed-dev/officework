@@ -1447,7 +1447,9 @@ impl Calc {
             self.status = format!("Python に渡せません: {e}").into();
             return;
         }
-        // office_sheet.so は実行ファイルの隣(HIKITSUGI の配り方を参照)
+        // officework は実行ファイルの隣か、pip で入れた物(HIKITSUGI の配り方)。
+        // **エンジンは officework.sheet**(2026-08-09 に office_sheet から
+        // 移した — docx / pptx が来ても同じ名前空間に入るように)
         let so_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|d| d.to_path_buf()))
@@ -1457,7 +1459,7 @@ impl Calc {
             concat!(
                 "import sys\n",
                 "sys.path.insert(0, {so_dir:?})\n",
-                "import office_sheet\n",
+                "from officework import sheet as office_sheet\n",
                 "b = office_sheet.Book.open({in_x:?})\n",
                 "s = b[{active}]\n",
                 "# ---- 利用者のコード ----\n",
@@ -1500,10 +1502,12 @@ impl Calc {
                     .find(|l| !l.trim().is_empty())
                     .unwrap_or("原因不明")
                     .to_string();
-                return Err(if err.contains("No module named 'office_sheet'") {
-                    ui::t!("office_sheet.so がありません(cargo build -p pysheet --release \
---features extension-module して、liboffice_sheet.so を office_sheet.so の名で \
-calc の隣に置いてください)").to_string()
+                return Err(if err.contains("No module named 'officework'")
+                    || err.contains("エンジン(_sheet)が読めません")
+                {
+                    ui::t!("officework のエンジンがありません(pip install officework で入ります。\
+手元で組むなら cargo build -p pysheet --release --features extension-module して、\
+lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてください)").to_string()
                 } else {
                     last
                 });
