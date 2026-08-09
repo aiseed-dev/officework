@@ -240,7 +240,10 @@ fn dispatch(
             let r = req.get("range").cloned().unwrap_or(Value::Null);
             let g = |k: &str| r.get(k).and_then(Value::as_u64).unwrap_or(0) as u32;
             let (r0, r1, c0, c1) = (g("startRow"), g("endRow"), g("startColumn"), g("endColumn"));
-            let (rows, cols) = sh.extent();
+            // **見せる大きさは `size()`。** 申告(`<dimension>`)と実際の大きいほう
+            // (2026-08-10 発注者確定)。`extent()` だと末尾の空行の高さや
+            // 罫線だけの枠が範囲の外に落ちて、呼ぶ側に一度も届かない
+            let (rows, cols) = sh.size();
             // **向こうと同じく、シートの外は断る。** 黙って丸めると、
             // 呼ぶ側は「そこは空だった」と受け取る
             if r1 >= rows.max(1) || c1 >= cols.max(1) {
@@ -351,7 +354,7 @@ fn open_result(
     let mut sheets = Vec::new();
     let mut defined = Vec::new();
     for (i, sh) in book.sheets.iter().enumerate() {
-        let (rows, cols) = sh.extent();
+        let (rows, cols) = sh.size();
         let mut widths: Vec<Value> = Vec::new();
         for (c, w) in &sh.col_width {
             widths.push(json!({"startColumn": c, "endColumn": c, "width": w,

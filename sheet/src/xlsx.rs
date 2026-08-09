@@ -1003,6 +1003,16 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
             },
             Ok(Event::Empty(e)) => match local(e.name().as_ref()) {
                 b"col" => col_width(&e, &mut sh),
+                // **書き手が申告した大きさ** `<dimension ref="A1:CN46"/>`。
+                // 単独では信じない — `Sheet::size` が実際と大きいほうを採る
+                b"dimension" => {
+                    if let Some(r) = attr(&e, "ref") {
+                        let end = r.rsplit(':').next().unwrap_or(&r);
+                        if let Some(p) = Pos::parse(end) {
+                            sh.dim = Some((p.row + 1, p.col + 1));
+                        }
+                    }
+                }
                 // **中身の無い行 `<row r="71" ht="23.1" customHeight="1"/>`。**
                 // 高さだけ決めた空行で、帳票では行間の調整によく使う。
                 // Start の枝にしか置いていなかったので、**高さが落ちていた**
