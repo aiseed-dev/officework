@@ -47,6 +47,7 @@ impl Calc {
         "ai-translate", "ai-furigana", "ai-continue", "ai-table", "ai-ask",
         "insert-function", "cell-styles", "sheet-view", "watch", "editheader",
         "cell-lock", "prot-allow", "recover", "recover-every", "csv-kind",
+        "autofit-col", "autofit-row",
         "pen", "highlighter", "eraser", "draw-select",
     ];
 
@@ -85,7 +86,7 @@ impl Calc {
         "trace-prec", "trace-dep", "remove-arrows", "pivot-select",
         "coauth-mode", "co-showcomment", "co-chat", "co-history", "plug-manage",
         "prot-doc", "prot-encrypt", "prot-sign", "ai-where",
-        "recover", "recover-every", "csv-kind",
+        "recover", "recover-every", "csv-kind", "autofit-col", "autofit-row",
         // 「許可する操作」は保護中にこそ触る。**鍵を掛けていないので
         // 隠す意味も無い** — 保護は事故止めであって錠前ではない(SEKKEI)
         "prot-allow",
@@ -2063,6 +2064,91 @@ impl Calc {
                         .into();
                     }
                 }
+            }
+            // **中身に合わせる**(本家の「列の幅の自動調整」「行の高さの
+            // 自動調整」)。見出しの境界を両押しでも同じことが起きる
+            "autofit-col" | "autofit-row" => {
+                self.commit();
+                let col = id == "autofit-col";
+                let (a, b) = self.sel_rect();
+                let (rows, cols) = self.sheet().extent();
+                self.checkpoint();
+                let mut n = 0;
+                if col {
+                    for c in a.col..=b.col {
+                        let mut need: f32 = 0.0;
+                        for r in 0..rows {
+                            let Some(cell) = self.sheet().get(Pos::new(r, c)) else { continue };
+                            if cell.fmt.wrap {
+                                continue; // 折り返すセルは幅を決める根拠にしない
+                            }
+                            let t = cell.value.display();
+                            if t.is_empty() {
+                                continue;
+                            }
+                            let size = cell
+                                .fmt
+                                .size_c
+                                .map(|k| k as f32 / 100.0 * 24.0 / 15.0 * 0.8)
+                                .unwrap_or(12.5);
+                            need = need.max(text_px(&t, size));
+                        }
+                        if need <= 0.0 {
+                            continue;
+                        }
+                        // px → xlsx の字数。**上限を置く**(1セルの長文で
+                        // 画面いっぱいの列にならないように。本家も 255 字)
+                        let chars = (need / PX_PER_CHW).clamp(1.0, 255.0);
+                        self.sheet_mut().col_width.insert(c, chars);
+                        n += 1;
+                    }
+                } else {
+                    let named = self.book.named_styles.clone();
+                    for r in a.row..=b.row {
+                        let mut want: f32 = 15.0; // xlsx の既定(pt)
+                        for c in 0..cols.max(1) {
+                            let p = Pos::new(r, c);
+                            let Some(cell) = self.sheet().get(p) else { continue };
+                            let t = cell.value.display();
+                            if t.is_empty() {
+                                continue;
+                            }
+                            let md = sheet::markdown::parse(&t);
+                            let scale = match &md {
+                                Some(l) if cell.fmt.wrap => {
+                                    sheet::markdown::wanted_height_pt(l, 15.0, &named) / 15.0
+                                }
+                                Some(l) => l
+                                    .iter()
+                                    .map(|x| sheet::markdown::line_scale(x, &named))
+                                    .fold(1.0, f32::max),
+                                None => 1.0,
+                            };
+                            let lines = if cell.fmt.wrap {
+                                let size = cell
+                                    .fmt
+                                    .size_c
+                                    .map(|k| k as f32 / 100.0 * 24.0 / 15.0 * 0.8)
+                                    .unwrap_or(12.5);
+                                let w = self.col_px(c).max(8.0);
+                                (text_px(&t, size) / w).ceil().max(1.0)
+                            } else {
+                                1.0
+                            };
+                            want = want.max(15.0 * scale * lines);
+                        }
+                        self.sheet_mut().row_height.insert(r, want);
+                        n += 1;
+                    }
+                }
+                self.dirty = true;
+                self.status = if n == 0 {
+                    ui::t!("中身が無いので合わせようがありません").into()
+                } else if col {
+                    ui::tf!("{} 列の幅を中身に合わせました(Ctrl+Z で戻せます)", n).into()
+                } else {
+                    ui::tf!("{} 行の高さを中身に合わせました(Ctrl+Z で戻せます)", n).into()
+                };
             }
             // CSV の形(文字コードと区切り)。**日本の会計ソフトは
             // まだ CP932 のものがある** — UTF-8 固定では渡せない

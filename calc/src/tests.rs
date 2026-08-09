@@ -3534,6 +3534,63 @@ mod track_changes_tests {
 }
 
 #[cfg(test)]
+mod autofit_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn 幅を中身に合わせるとはみ出さなくなる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let p = Pos::parse("A1").unwrap();
+            this.book.sheets[0].set(p, sheet::Cell::input("とても長い見出しの文字列です"));
+            this.cursor = p;
+            this.anchor = None;
+            this.sync_input(); // 直に置いた中身を編集欄へ(commit が空で潰さないよう)
+            let before = this.col_px(0);
+            this.run_cmd("autofit-col", cx);
+            let after = this.col_px(0);
+            assert!(after > before, "幅が広がっていない({before} → {after})");
+            // **はみ出しの判定と同じ物差し**で測って、収まっていること
+            let need = text_px("とても長い見出しの文字列です", 12.5);
+            assert!(after + 0.5 >= need, "合わせたのにまだはみ出す({after} < {need})");
+        });
+    }
+
+    #[gpui::test]
+    fn 折り返すセルは高さが行数ぶんになる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let p = Pos::parse("A1").unwrap();
+            let mut cell = sheet::Cell::input("あいうえおかきくけこさしすせそたちつてと");
+            cell.fmt.wrap = true;
+            this.book.sheets[0].set(p, cell);
+            this.book.sheets[0].col_width.insert(0, 6.0); // わざと狭く
+            this.cursor = p;
+            this.anchor = None;
+            this.sync_input();
+            this.run_cmd("autofit-row", cx);
+            let h = *this.book.sheets[0].row_height.get(&0).unwrap();
+            assert!(h > 15.0 * 2.0, "折り返しぶん高くなっていない({h} pt)");
+        });
+    }
+
+    #[gpui::test]
+    fn 中身が無ければ何もしないと言う(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.cursor = Pos::parse("A1").unwrap();
+            this.anchor = None;
+            this.run_cmd("autofit-col", cx);
+            assert!(
+                this.status.contains("中身が無い"),
+                "黙って何もしていない: {}",
+                this.status
+            );
+        });
+    }
+}
+
+#[cfg(test)]
 mod color_tests {
     use crate::*;
 

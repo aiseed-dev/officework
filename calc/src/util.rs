@@ -52,6 +52,19 @@ pub(crate) fn hex(s: &str) -> gpui::Rgba {
 pub(crate) const COL_W: f32 = 108.0;
 /// xlsx の列幅1(=「0」1個ぶん)を何画素にするか。既定幅 8.43 ≒ 108px の比
 pub(crate) const PX_PER_CHW: f32 = 108.0 / 8.43;
+/// **文字が要る幅(px)。** 半角=1・全角=2 で数えた概算。
+///
+/// 画面のはみ出し描き(隣の空きセルへ流す判定)と、列幅の自動調整で
+/// **同じ物差しを使う**。別々に測ると「自動調整したのにまだはみ出す」に
+/// なる。厳密な字送りではないが、両方が同じだけずれるので破綻しない。
+pub(crate) fn text_px(text: &str, size_px: f32) -> f32 {
+    let units: f32 = text
+        .chars()
+        .map(|ch| if (ch as u32) < 0x2E80 { 1.0 } else { 2.0 })
+        .sum();
+    units * size_px * 0.52 + 14.0
+}
+
 /// リボンから開く一覧の幅。書体名は長いので、セルの列幅ではなくこの幅。
 pub(crate) const POP_W: f32 = 240.0;
 

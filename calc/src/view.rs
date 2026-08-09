@@ -889,11 +889,7 @@ impl Render for Calc {
                         * f.size_c
                             .map(|c| c as f32 / 100.0 * 24.0 / 15.0 * 0.8)
                             .unwrap_or(12.5);
-                    let units: f32 = measured
-                        .chars()
-                        .map(|ch| if (ch as u32) < 0x2E80 { 1.0 } else { 2.0 })
-                        .sum();
-                    let need = units * size * 0.52 + 14.0;
+                    let need = text_px(&measured, size);
                     if need <= w {
                         continue; // 収まっている
                     }
@@ -1880,15 +1876,17 @@ impl Render for Calc {
             match self.menu_head {
                 Some(true) => {
                     entries.insert(0, ("colw", "列の幅…", "", true, false));
-                    entries.insert(1, ("hide-cols", "非表示", "", true, false));
-                    entries.insert(2, ("unhide-cols", "再表示", "", true, false));
-                    entries.insert(3, ("", "", "", false, false));
+                    entries.insert(1, ("autofit-col", "幅を中身に合わせる", "", true, false));
+                    entries.insert(2, ("hide-cols", "非表示", "", true, false));
+                    entries.insert(3, ("unhide-cols", "再表示", "", true, false));
+                    entries.insert(4, ("", "", "", false, false));
                 }
                 Some(false) => {
                     entries.insert(0, ("rowh", "行の高さ…", "", true, false));
-                    entries.insert(1, ("hide-rows", "非表示", "", true, false));
-                    entries.insert(2, ("unhide-rows", "再表示", "", true, false));
-                    entries.insert(3, ("", "", "", false, false));
+                    entries.insert(1, ("autofit-row", "高さを中身に合わせる", "", true, false));
+                    entries.insert(2, ("hide-rows", "非表示", "", true, false));
+                    entries.insert(3, ("unhide-rows", "再表示", "", true, false));
+                    entries.insert(4, ("", "", "", false, false));
                 }
                 None => {}
             }
@@ -2805,7 +2803,7 @@ impl Render for Calc {
                         "find" => "Enter で次へ / Esc で取消。式の中の文字も探します",
                         "split-delim" => "選択した列の文字を割って、右の列へ並べます(右は上書き)",
                         "shape-text" => "図形を選んで Enter でいつでも書き直せます",
-                        "py" => "b=ブック s=シート / @計算 =PY(…)セルを評価 / @名前 実行 @名前 net @save @list @del",
+                        "py" => "b=ブック s=シート / @edit 名前 で .py を編集 / @名前 実行 / @list 一覧 / @計算 手で計算",
                         "dt-col" | "dt-row" => "選んだ四角の左の列と上の行に入力値、上の行に式(2変数は角に式)。その時の値で埋めます",
                         "goal-target" | "goal-var" => "式のセルが目標の値になるよう、変えるセルの数を探します",
                         "replace-with" => "Enter で全て置き換え / **空のまま Enter = 検索だけ** / Esc で取消",
@@ -4319,6 +4317,8 @@ impl Render for Calc {
             .on_action(cx.listener(Calc::a_down))
             .on_action(cx.listener(Calc::a_page_up))
             .on_action(cx.listener(Calc::a_page_down))
+            .on_action(cx.listener(Calc::a_home))
+            .on_action(cx.listener(Calc::a_end))
             .on_action(cx.listener(Calc::a_doc_home))
             .on_action(cx.listener(Calc::a_doc_end))
             // Ctrl+矢印(データの端へ)と Ctrl+Shift+矢印(端まで選ぶ)。
