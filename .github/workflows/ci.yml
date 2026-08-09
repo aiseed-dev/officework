@@ -35,6 +35,17 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: 試験が要る物を入れる(フォントと辞書)
+        # **同梱しない物に依っている試験がある。** 走らせる機械の持ち物を使う
+        # のが製品の作りなので、CI にも入れる(隠して素通しにはしない):
+        #   fonts-noto-cjk  paper は font::for_document(None).unwrap() で
+        #                   日本語フォントを引く。無ければ「日本語のフォントが
+        #                   見つかりません」で panic する(2026-08-10 初回の CI で踏んだ)
+        #   wamerican       lang の綴り検査が /usr/share/dict/words を読む
+        # 手元の機械には両方入っていたので緑に見えていた
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk wamerican
       - name: 試験
         run: cargo test -p sheet -p kumihan -p ooxml -p lang -p paper
       - name: サイドカーが組めるか(pyoffice)
