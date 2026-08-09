@@ -1056,6 +1056,11 @@ fn parse_document_full(
                     b"pBdr" if in_ppr => boxed = true,
                     b"r" => fmt.sdt = sdt_cur.clone(),
                     b"t" => { in_text = true; cur.clear(); }
+                    // 脚注・文末脚注の印。空要素で来るのが普通なので実際に効くのは
+                    // Empty の枝だが、**両方の枝に置く** — 片方の枝でしか見ていない
+                    // せいで実物を取りこぼした前科がある(xlsx の sheetView)
+                    b"footnoteReference" | b"endnoteReference" =>
+                        rep.note("脚注・文末脚注の印(本文には出ない。保存で失われる)"),
                     // セル結合。横は列数、縦は restart/continue の区別で持つ
                     b"gridSpan" => if stack.last().is_some() {
                         cell_span = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0);
@@ -1075,11 +1080,22 @@ fn parse_document_full(
                         if r.read_to_end_into(name, &mut Vec::new()).is_ok() {
                             let end = r.buffer_position() as usize;
                             let raw = &xml[start_pos..end];
+                            // **模型は節を1つしか持てない。** 2つ目以降は上書きされ、
+                            // 保存で節の区切りごと消える(途中で用紙の向きが変わる
+                            // 文書がこれに当たる)。直せていないので帳簿には出す
+                            // (2026-08-10、genoffice の読み手と突き合わせて分かった)
+                            if doc.sect_raw.is_some() {
+                                rep.note("節の区切り(模型は1つしか持てない。保存で失われる)");
+                            }
                             doc.page = Some(parse_sect(raw));
                             doc.sect_raw = Some(raw.to_string());
                             last_pos = end;
                         }
                     }
+                    // 数式(OMML)。**中の字だけを本文に取り込む**ので、保存すると
+                    // 数式ではなくただの平文になる。落としてはいないが姿は変わる —
+                    // 黙っていられる話ではないので帳簿に出す
+                    b"oMath" => rep.note("数式(平文になる。保存で数式ではなくなる)"),
                     b"drawing" | b"pict" | b"object" => {
                         // **理解はしないが、捨てない。** 原文を丸ごと控えて保存で返す。
                         // 部分木は読み飛ばす — 中の a:t(図形の文字)を本文に
@@ -1221,6 +1237,28 @@ fn parse_document_full(
                             b.col_mm.push(twip_mm(w));
                         }
                     },
+                    // **空の段落 `<w:p/>`。** 中身の無い段落を Word はこの形で書く。
+                    // Start の枝には来ないので、ここで拾わないと**空行がまるごと消える** —
+                    // 段落の番号がずれ、保存すると行が詰まる。
+                    // (2026-08-10、他人の docx で本文 76 段落中 28 個がこの形だった。
+                    //  xlsx の sheetView を Empty の枝でしか読んでいなかったのと**同じ形の穴**)
+                    b"p" => {
+                        rep.paragraphs += 1;
+                        let p = Paragraph {
+                            line_spacing: 1.0,
+                            runs: vec![Run {
+                                text: String::new(),
+                                size_pt: DEFAULT_PT,
+                                font: None,
+                                fmt: Default::default(),
+                            }],
+                            ..Default::default()
+                        };
+                        match stack.last_mut() {
+                            Some(b) => b.cell.push(p),
+                            None => doc.push_para(p),
+                        }
+                    }
                     b"br" => if let Some(p) = para.as_mut() {
                         p.push(Run { text: "\n".into(), size_pt, font: font.clone(), fmt: fmt.clone() }) },
                     b"tab" => if let Some(p) = para.as_mut() {
@@ -1322,6 +1360,14 @@ fn parse_document_full(
                     },
                     b"drawing" | b"pict" | b"object" =>
                         rep.note(&format!("w:{}", String::from_utf8_lossy(&n))),
+                    // 脚注・文末脚注の印。**模型に持てない** — 本文を作り直すときに
+                    // 落ちるので、footnotes.xml だけが行き場を失って残る。
+                    // 直せていない物を黙って落とさないために、帳簿には必ず出す
+                    // (2026-08-10、genoffice の読み手と突き合わせて分かった。
+                    //  空要素で来るのが普通だが、念のため Start の枝にも置いてある —
+                    //  xlsx の sheetView を Empty の枝でしか読んでいなかった轍を踏まない)
+                    b"footnoteReference" | b"endnoteReference" =>
+                        rep.note("脚注・文末脚注の印(本文には出ない。保存で失われる)"),
                     // ページの色(空要素で来るのが普通の形)
                     b"background" => {
                         doc.page_color = attr(&e, "color")
@@ -4042,5 +4088,126 @@ mod image_insert_tests {
         let (back2, _) = read(buf2).expect("読み直せない");
         assert_eq!(back2.paragraphs().next().unwrap().images.len(), 1,
             "二度目の保存で画像が消えた");
+    }
+}
+
+#[cfg(test)]
+mod footnote_report_tests {
+    use super::*;
+
+    /// 脚注は模型に持てない(本文を作り直すときに印が落ちる)。
+    /// **黙って落とさない**ことだけは守る — 帳簿に出す。
+    /// 2026-08-10、genoffice の読み手と実物 27 枚を突き合わせて分かった穴。
+    fn body(inner: &str) -> String {
+        format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{inner}</w:body></w:document>"#
+        )
+    }
+
+    #[test]
+    fn 脚注の印は帳簿に出る() {
+        let xml = body(
+            r#"<w:p><w:r><w:t>本文</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r></w:p>"#,
+        );
+        let (doc, rep) = parse_document_xml(&xml);
+        assert_eq!(doc.body_text(), "本文", "本文が変わった");
+        assert!(
+            rep.unsupported.iter().any(|(n, _)| n.contains("脚注")),
+            "脚注の印を黙って落とした: {:?}",
+            rep.unsupported
+        );
+    }
+
+    #[test]
+    fn 文末脚注の印も帳簿に出る() {
+        let xml = body(r#"<w:p><w:r><w:endnoteReference w:id="2"/></w:r></w:p>"#);
+        let (_, rep) = parse_document_xml(&xml);
+        assert!(
+            rep.unsupported.iter().any(|(n, _)| n.contains("脚注")),
+            "文末脚注の印を黙って落とした: {:?}",
+            rep.unsupported
+        );
+    }
+
+    /// 節が2つある文書。模型は1つしか持てないので、保存で片方が消える。
+    /// **消えること自体は直せていない** — 黙って消さないことだけを守る。
+    #[test]
+    fn 二つ目の節の区切りは帳簿に出る() {
+        let sect = r#"<w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>"#;
+        let xml = body(&format!(
+            r#"<w:p><w:pPr>{sect}</w:pPr></w:p><w:p><w:r><w:t>次の節</w:t></w:r></w:p>{sect}"#
+        ));
+        let (_, rep) = parse_document_xml(&xml);
+        assert!(
+            rep.unsupported.iter().any(|(n, _)| n.contains("節の区切り")),
+            "2つ目の節を黙って捨てた: {:?}",
+            rep.unsupported
+        );
+    }
+
+    /// 数式は中の字だけを取り込むので、保存すると平文になる。
+    #[test]
+    fn 数式は帳簿に出る() {
+        let xml = body(
+            r#"<w:p><m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>E=mc</m:t></m:r></m:oMath></w:p>"#,
+        );
+        let (_, rep) = parse_document_xml(&xml);
+        assert!(
+            rep.unsupported.iter().any(|(n, _)| n.contains("数式")),
+            "数式が平文になることを黙っていた: {:?}",
+            rep.unsupported
+        );
+    }
+
+    /// **空の段落 `<w:p/>`。** Word が中身の無い段落をこの形で書く。
+    /// Start の枝にしか目が無いと丸ごと落ちる — xlsx の sheetView と同じ形の穴。
+    /// 2026-08-10、他人の docx(ONLYOFFICE の試験文書)で 76 段落中 28 個がこれだった。
+    #[test]
+    fn 空の段落は自己完結の形でも読める() {
+        let xml = body(
+            r#"<w:p><w:r><w:t>上</w:t></w:r></w:p><w:p/><w:p><w:r><w:t>下</w:t></w:r></w:p>"#,
+        );
+        let (doc, _) = parse_document_xml(&xml);
+        assert_eq!(doc.paragraphs().count(), 3, "空行が落ちた(段落の番号がずれる)");
+        assert_eq!(doc.body_text(), "上\n\n下", "空行が本文に出ない");
+    }
+
+    #[test]
+    fn 属性つきの空の段落も読める() {
+        // Word は改訂の印を属性で付けたまま自己完結の形にする
+        let xml = body(r#"<w:p w:rsidR="00A1"/><w:p><w:r><w:t>本文</w:t></w:r></w:p>"#);
+        let (doc, _) = parse_document_xml(&xml);
+        assert_eq!(doc.paragraphs().count(), 2, "属性が付くと見落とす");
+    }
+
+    #[test]
+    fn 表のセルの中の空の段落も読める() {
+        let xml = body(
+            r#"<w:tbl><w:tr><w:tc><w:p/><w:p><w:r><w:t>中</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#,
+        );
+        let (doc, _) = parse_document_xml(&xml);
+        let t = doc.tables().next().expect("表が無い");
+        assert_eq!(t.rows[0][0].paragraphs.len(), 2, "セルの中の空行が落ちた");
+    }
+
+    /// 空の段落は**保存でも残る**(往復して数が変わらない)。
+    #[test]
+    fn 空の段落は往復しても消えない() {
+        let xml = body(r#"<w:p><w:r><w:t>上</w:t></w:r></w:p><w:p/><w:p/><w:p><w:r><w:t>下</w:t></w:r></w:p>"#);
+        let (doc, _) = parse_document_xml(&xml);
+        let mut buf = Vec::new();
+        write(&doc, Cursor::new(&mut buf)).unwrap();
+        let (back, _) = read(Cursor::new(&buf)).unwrap();
+        assert_eq!(back.paragraphs().count(), 4, "保存で空行が詰まった");
+        assert_eq!(back.body_text(), "上\n\n\n下");
+    }
+
+    #[test]
+    fn 脚注が無ければ帳簿は空のまま() {
+        let xml = body(
+            r#"<w:p><w:r><w:t>ただの本文</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>"#,
+        );
+        let (_, rep) = parse_document_xml(&xml);
+        assert!(rep.is_lossless(), "何も無いのに帳簿が立った: {:?}", rep.unsupported);
     }
 }
