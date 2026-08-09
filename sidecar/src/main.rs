@@ -53,11 +53,75 @@ fn stamp_of(path: &str) -> (u64, u64) {
     }
 }
 
+/// **ZIP の配管は向こうへ丸ごと転送する。**
+///
+/// genoffice の TypeScript は 12 コマンドを**1つの実行ファイル**に流す
+/// (`apps/sheets/gateway/xlsx-package-io.ts` の保存も同じ client)。だから
+/// `XLSX_SIDECAR_PATH` でこちらに差し替えると、**`save_archive` もこちらに来る**。
+/// 設計の「ZIP の配管は触らない・向こうの実装を使う」は、実行ファイルを
+/// 分けない限り自動では成らない — **差し替えた途端に保存が死ぬ。**
+///
+/// 解が転送。向こうのバイナリを子として持ち、**要求の行をそのまま渡して
+/// 答えの行をそのまま返す**。CRC32 とマニフェスト照合つきの堅い実装が
+/// そのまま効き、こちらは1文字も解釈しない。
+struct Plumbing {
+    path: String,
+    child: Option<(std::process::Child, std::io::BufReader<std::process::ChildStdout>)>,
+}
+
+impl Plumbing {
+    fn new() -> Plumbing {
+        let path = std::env::var("GENOFFICE_SIDECAR").unwrap_or_else(|_| {
+            let home = std::env::var("HOME").unwrap_or_default();
+            format!("{home}/dev/genoffice/apps/sheets/native/xlsx-engine/target/release/xlsx-sidecar")
+        });
+        Plumbing { path, child: None }
+    }
+
+    /// 行を渡して行を受け取る。**中身は見ない。**
+    fn forward(&mut self, line: &str) -> Result<String, String> {
+        if self.child.is_none() {
+            let mut c = std::process::Command::new(&self.path)
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::inherit())
+                .spawn()
+                .map_err(|e| {
+                    format!(
+                        "向こうのサイドカーを起こせません({}): {e}。\
+                         GENOFFICE_SIDECAR で場所を指してください",
+                        self.path
+                    )
+                })?;
+            let so = c.stdout.take().ok_or("向こうの stdout が取れません")?;
+            self.child = Some((c, std::io::BufReader::new(so)));
+        }
+        let (c, rd) = self.child.as_mut().unwrap();
+        let si = c.stdin.as_mut().ok_or("向こうの stdin が取れません")?;
+        writeln!(si, "{line}").map_err(|e| format!("向こうへ書けません: {e}"))?;
+        si.flush().map_err(|e| format!("向こうへ流せません: {e}"))?;
+        let mut ans = String::new();
+        match rd.read_line(&mut ans) {
+            Ok(0) => {
+                // **落ちたら黙って握りつぶさない。** 次の要求で起こし直す
+                self.child = None;
+                Err("向こうのサイドカーが答えずに終わりました".into())
+            }
+            Ok(_) => Ok(ans.trim_end().to_string()),
+            Err(e) => {
+                self.child = None;
+                Err(format!("向こうから読めません: {e}"))
+            }
+        }
+    }
+}
+
 fn main() {
     let stdin = io::stdin();
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
     let mut sessions: BTreeMap<String, Session> = BTreeMap::new();
+    let mut plumbing = Plumbing::new();
     let mut seq: u64 = 0;
 
     for line in stdin.lock().lines() {
@@ -72,7 +136,7 @@ fn main() {
         if line.trim().is_empty() {
             continue;
         }
-        let res = handle(&line, &mut sessions, &mut seq);
+        let res = handle(&line, &mut sessions, &mut plumbing, &mut seq);
         let _ = writeln!(out, "{res}");
         let _ = out.flush();
     }
@@ -87,15 +151,34 @@ fn fail(request_id: &str, code: &str, message: &str) -> Value {
            "error": {"code": code, "message": message}})
 }
 
-fn handle(line: &str, sessions: &mut BTreeMap<String, Session>, seq: &mut u64) -> Value {
+/// 1行を捌いて、返す1行を作る。
+///
+/// **戻りが文字列なのは転送のため。** `Value` に一度入れ直すと、向こうの
+/// 答えを組み直すことになる — 通信の言葉はこちらに直す権利がないので、
+/// 配管の答えは**文字どおり素通し**にする。
+fn handle(
+    line: &str,
+    sessions: &mut BTreeMap<String, Session>,
+    plumbing: &mut Plumbing,
+    seq: &mut u64,
+) -> String {
+    dispatch(line, sessions, plumbing, seq)
+}
+
+fn dispatch(
+    line: &str,
+    sessions: &mut BTreeMap<String, Session>,
+    plumbing: &mut Plumbing,
+    seq: &mut u64,
+) -> String {
     let req: Value = match serde_json::from_str(line) {
         Ok(v) => v,
-        Err(e) => return fail("", "invalid_request", &format!("JSON が読めません: {e}")),
+        Err(e) => return fail("", "invalid_request", &format!("JSON が読めません: {e}")).to_string(),
     };
     let rid = req.get("requestId").and_then(Value::as_str).unwrap_or("").to_string();
     let cmd = match req.get("command").and_then(Value::as_str) {
         Some(c) => c,
-        None => return fail(&rid, "invalid_request", "command がありません"),
+        None => return fail(&rid, "invalid_request", "command がありません").to_string(),
     };
     let s = |k: &str| req.get(k).and_then(Value::as_str).unwrap_or("").to_string();
 
@@ -103,7 +186,7 @@ fn handle(line: &str, sessions: &mut BTreeMap<String, Session>, seq: &mut u64) -
         "open" => {
             let path = s("path");
             if path.is_empty() {
-                return fail(&rid, "invalid_request", "path がありません");
+                return fail(&rid, "invalid_request", "path がありません").to_string();
             }
             match open_book(&path) {
                 Ok((book, unsupported)) => {
@@ -120,18 +203,19 @@ fn handle(line: &str, sessions: &mut BTreeMap<String, Session>, seq: &mut u64) -
         "read_range" => {
             let sid = s("sessionId");
             let Some(sess) = sessions.get(&sid) else {
-                return fail(&rid, "invalid_request", "そのセッションはありません");
+                return fail(&rid, "invalid_request", "そのセッションはありません").to_string();
             };
             if stamp_of(&sess.path) != sess.stamp {
                 let p = sess.path.clone();
                 sessions.remove(&sid);
                 return fail(&rid, "workbook_error",
-                    &format!("原本が変わったのでセッションを捨てました。開き直してください: {p}"));
+                    &format!("原本が変わったのでセッションを捨てました。開き直してください: {p}"))
+                    .to_string();
             }
             let sess = &sessions[&sid];
             let sheet_id = s("sheetId");
             let Some(i) = sheet_index(&sess.book, &sheet_id) else {
-                return fail(&rid, "invalid_request", &format!("シートがありません: {sheet_id}"));
+                return fail(&rid, "invalid_request", &format!("シートがありません: {sheet_id}")).to_string();
             };
             let sh = &sess.book.sheets[i];
             let r = req.get("range").cloned().unwrap_or(Value::Null);
@@ -141,7 +225,7 @@ fn handle(line: &str, sessions: &mut BTreeMap<String, Session>, seq: &mut u64) -
             // **向こうと同じく、シートの外は断る。** 黙って丸めると、
             // 呼ぶ側は「そこは空だった」と受け取る
             if r1 >= rows.max(1) || c1 >= cols.max(1) {
-                return fail(&rid, "invalid_request", "Range is outside the worksheet.");
+                return fail(&rid, "invalid_request", "Range is outside the worksheet.").to_string();
             }
             ok(&rid, range_result(sh, r0, r1, c0, c1))
         }
@@ -152,13 +236,13 @@ fn handle(line: &str, sessions: &mut BTreeMap<String, Session>, seq: &mut u64) -
         // **居座りを止めるだけ。** こちらは全部読んでから答えるので、
         // 途中で止める物が無い(設計「段階索引」の決め)
         "cancel" => ok(&rid, json!({})),
-        // ZIP の配管。**向こうの実装を使う** — ここに来た時点で繋ぎ方が違う
+        // **ZIP の配管は向こうへ丸ごと転送する**(設計の「切る場所」)。
+        // 解釈しない — 要求の行をそのまま渡し、答えの行をそのまま返す
         "archive_manifest" | "read_entries" | "scan_entries" | "save_archive"
-        | "convert_workbook" => fail(
-            &rid,
-            "unsupported_command",
-            &format!("{cmd} は ZIP の配管。pyoffice では向こうの実装を使う(設計の「切る場所」)"),
-        ),
+        | "convert_workbook" => match plumbing.forward(line) {
+            Ok(answer) => return answer,
+            Err(e) => fail(&rid, "io_error", &format!("配管の転送に失敗: {e}")),
+        },
         "read_formula_cells" | "read_media" | "recalc_cells" => fail(
             &rid,
             "unsupported_command",
@@ -166,6 +250,7 @@ fn handle(line: &str, sessions: &mut BTreeMap<String, Session>, seq: &mut u64) -
         ),
         other => fail(&rid, "invalid_request", &format!("知らない命令: {other}")),
     }
+    .to_string()
 }
 
 /// xlsx を読んで、**開いた時点で計算し直す**(pysheet の `Book.open` と同じ作法)。
