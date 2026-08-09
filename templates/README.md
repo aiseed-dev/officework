@@ -8,6 +8,13 @@
 ファイルにしない)。関数も手続きも隣の .py にあり、`~/.config/office/plugins/` に
 自分で据え付けて使う(1機械1回)。
 
+    cp templates/台帳の関数.py  ~/.config/office/plugins/
+    cp templates/取り込み.py    ~/.config/office/plugins/
+
+**中身を読んでから置くこと。** 受け取った .py を確かめずに据え付けるのは、
+受け取った実行ファイルを叩くのと同じ。生成器(`gen_templates`)は配る前に
+**ブックにコードが入っていないこと**を確かめている。
+
 ## 問い合わせ台帳.xlsx
 
 Web フォームの受信箱を事務で回す台帳。

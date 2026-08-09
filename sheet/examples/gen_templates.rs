@@ -47,23 +47,46 @@ fn inquiries() -> Book {
     }
     // 集計の置き場(=PY は @計算 のときだけ動く)
     s.set(Pos::new(0, 7), Cell::input("状態の集計"));
-    s.set(Pos::new(1, 7), Cell::input("=PY(\"状態集計\", E2:E501)"));
+    s.set(Pos::new(1, 7), Cell::input("=状態集計(E2:E501)"));
     s.print_title_rows = Some((0, 0));
     s.print_gridlines = true;
     recalc(s);
-    b.scripts.push((
-        "関数".into(),
-        r#"def 状態集計(r):
-    from collections import Counter
-    c = Counter(v for row in r for v in row if v)
-    return [[k, n] for k, n in sorted(c.items())] or [["(まだ無い)", 0]]
-"#.into(),
-    ));
     b
 }
 
 /// 問い合わせ台帳の手続き。ブックには載せず、隣の .py として配る
 /// (据え付けは README — 中身を確かめて plugins へ、が取り込みの門)。
+/// 関数(UDF)は**ブックに入れない**。隣の .py に置き、使う人が
+/// `~/.config/office/plugins/` に据え付ける(1機械1回)。
+/// **データとプログラムを1つのファイルにしない**(2026-08-09 確定)
+const KANSU_PY: &str = r#"# 台帳テンプレ集の関数(UDF)。
+# ~/.config/office/plugins/台帳の関数.py に置くと、式から呼べます。
+#   =状態集計(E2:E501) / =要発注(A2:D100) / =実働(C2, D2)
+# 引数が変われば裏で計算し直します(押すボタンはありません)。
+
+
+def 状態集計(r):
+    from collections import Counter
+    c = Counter(v for row in r for v in row if v)
+    return [[k, n] for k, n in sorted(c.items())] or [["(まだ無い)", 0]]
+
+
+def 要発注(r):
+    out = [[row[0], row[2], row[3]] for row in r
+           if row[0] and row[2] is not None and row[3] is not None and row[2] < row[3]]
+    return out or [["(無し)", "", ""]]
+
+
+def 実働(a, b):
+    # "9:00"〜"18:00" → 休憩1時間を引いた時間数。空なら空
+    if not a or not b:
+        return ""
+    def m(t):
+        h, mm = str(t).split(":")
+        return int(h) * 60 + int(mm)
+    return round((m(b) - m(a) - 60) / 60, 2)
+"#;
+
 const INQUIRIES_TORIKOMI: &str = r#"# 問い合わせ台帳.xlsx の手続き「取り込み」—
 # フォームの受信箱(CSV を返す URL)から新着を台帳へ追記する。
 #
@@ -108,17 +131,9 @@ fn inventory() -> Book {
         s.set(Pos::new(r, 5), Cell::input(&format!("=C{0}*E{0}", r + 1)));
     }
     s.set(Pos::new(0, 7), Cell::input("要発注(在庫数<発注点)"));
-    s.set(Pos::new(1, 7), Cell::input("=PY(\"要発注\", A2:D100)"));
+    s.set(Pos::new(1, 7), Cell::input("=要発注(A2:D100)"));
     s.print_gridlines = true;
     recalc(s);
-    b.scripts.push((
-        "関数".into(),
-        r#"def 要発注(r):
-    out = [[row[0], row[2], row[3]] for row in r
-           if row[0] and row[2] is not None and row[3] is not None and row[2] < row[3]]
-    return out or [["(無し)", "", ""]]
-"#.into(),
-    ));
     b
 }
 
@@ -142,18 +157,6 @@ fn timesheet() -> Book {
     s.set(Pos::new(1, 3), Cell::input("18:00"));
     s.print_title_rows = Some((0, 0));
     recalc(s);
-    b.scripts.push((
-        "関数".into(),
-        r#"def 実働(a, b):
-    # "9:00"〜"18:00" → 休憩1時間を引いた時間数。空なら空
-    if not a or not b:
-        return ""
-    def m(t):
-        h, mm = str(t).split(":")
-        return int(h) * 60 + int(mm)
-    return round((m(b) - m(a) - 60) / 60, 2)
-"#.into(),
-    ));
     b
 }
 
@@ -164,16 +167,20 @@ fn main() {
     save(&timesheet(), "templates/勤怠表.xlsx");
     std::fs::write("templates/取り込み.py", INQUIRIES_TORIKOMI).expect("書けない");
     println!("書いた: templates/取り込み.py");
+    std::fs::write("templates/台帳の関数.py", KANSU_PY).expect("書けない");
+    println!("書いた: templates/台帳の関数.py");
     // 読み戻して壊れていないことを確かめる(黙って配らない)
     for p in ["templates/問い合わせ台帳.xlsx", "templates/在庫台帳.xlsx", "templates/勤怠表.xlsx"] {
         let f = std::fs::File::open(p).expect("開けない");
         let (back, rep) = sheet::xlsx::read(f).expect("読めない");
-        assert!(!back.scripts.is_empty(), "{p}: 同梱の関数が消えた");
+        // **ブックはコードを運ばない**(2026-08-09 確定)。
+        // 配る前に「入っていないこと」を確かめる — 入っていたら、
+        // 受け取ったファイルが実行の起点になってしまう
         assert!(
-            back.scripts.iter().all(|(n, _)| n.starts_with("関数")),
-            "{p}: 手続きがブックに残った(実行の起点になってしまう)"
+            back.scripts.is_empty(),
+            "{p}: ブックにコードが入っている(データとプログラムは分ける)"
         );
         assert!(rep.unsupported.is_empty(), "{p}: 読めないもの {:?}", rep.unsupported);
-        println!("検め OK: {p}({} スクリプト同梱)", back.scripts.len());
+        println!("検め OK: {p}(コードは入っていない)");
     }
 }
