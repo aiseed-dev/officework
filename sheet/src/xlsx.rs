@@ -106,6 +106,43 @@ fn merge(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
     }
 }
 
+/// `<sheetView rightToLeft="1" showGridLines="0" zoomScale="85" …>` —
+/// 画面の見え方。**Start と Empty の両方から呼ぶ** — Excel が書く sheetView は
+/// 中に `<selection/>` や `<pane/>` を抱えるので Start で来る。Empty でしか
+/// 見ていなかったので、**実物の xlsx では rtl すら読めていなかった**。
+fn sheet_view(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
+    let on = |k: &str| match attr(e, k).as_deref() {
+        Some("1") | Some("true") => Some(true),
+        Some(_) => Some(false),
+        None => None,
+    };
+    sh.rtl = on("rightToLeft") == Some(true);
+    sh.show_gridlines = on("showGridLines");
+    sh.show_formulas = on("showFormulas");
+    sh.zoom_scale = attr(e, "zoomScale").and_then(|v| v.parse().ok()).filter(|z| *z > 0);
+}
+
+/// `<pane xSplit="1" ySplit="1" topLeftCell="B2" activePane="bottomRight" state="frozen"/>` —
+/// 固定枠。**xSplit が列、ySplit が行**(取り違えると縦横が入れ替わる)。
+///
+/// `state="split"` は掴んで動かす**分割**で固定ではないので捨てる。
+/// 分割のときの xSplit は「何列ぶん」ではなく 1/20 ポイントの座標なので、
+/// 固定として読むと途方もない列数になる — 撥ねるのが正しい。
+fn pane(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
+    if !matches!(attr(e, "state").as_deref(), Some("frozen") | Some("frozenSplit")) {
+        return;
+    }
+    // schema は小数(xsd:double)なので一度 f64 で受けてから切り捨てる
+    let n = |k: &str| {
+        attr(e, k).and_then(|v| v.parse::<f64>().ok()).filter(|v| *v > 0.0).unwrap_or(0.0) as u32
+    };
+    let (frozen_columns, frozen_rows) = (n("xSplit"), n("ySplit"));
+    // 両方 0 の pane は「固定していない」— 空の固定枠を持ち越さない
+    if frozen_rows > 0 || frozen_columns > 0 {
+        sh.freeze = Some(crate::model::FreezePane { frozen_rows, frozen_columns });
+    }
+}
+
 /// `<row r="3" ht="27.5" customHeight="1" outlineLevel="1" hidden="1">` —
 /// 指定のある行だけ持つ(高さ・グループ化の深さ・畳み)。
 fn row_height(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
@@ -795,6 +832,10 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
     let (mut pos, mut ty) = (None::<Pos>, String::new());
     // いま <colBreaks> の中か(<rowBreaks> と <brk> の形が同じため)
     let mut in_col_breaks = false;
+    // いま <customSheetView> の中か。**あそこにも <pane> がぶら下がる** —
+    // 誰かが昔しまい込んだ表示設定を、いまの固定枠として読んでしまわないため
+    // (pageSetup など他の元素も同じ形で入るが、そちらは元からの持ち越し)
+    let mut in_custom_view = false;
     let (mut in_v, mut in_f, mut in_is) = (false, false, false);
     let (mut v, mut f) = (String::new(), String::new());
     // 印刷のヘッダー/フッター(Some(true)=oddHeader の中)
@@ -838,6 +879,11 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
                 b"is" => in_is = true,
                 b"mergeCell" => merge(&e, &mut sh),
                 b"col" => col_width(&e, &mut sh),
+                // 画面の見え方と固定枠。**Excel の sheetView は子を抱えるので
+                // ここ(Start)に来る** — Empty 側にも同じ組を置いてある
+                b"sheetView" => sheet_view(&e, &mut sh),
+                b"pane" if !in_custom_view => pane(&e, &mut sh),
+                b"customSheetView" => in_custom_view = true,
                 // 改ページの束。**中の <brk> は縦横で形が同じ**なので、
                 // どちらの中にいるかをここで覚える(Start でしか来ない)
                 b"rowBreaks" => in_col_breaks = false,
@@ -882,10 +928,10 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
                     sh.print_gridlines = on("gridLines");
                     sh.print_headings = on("headings");
                 }
-                // 右から左へ並べるシート(日本語の右横書きにも使う)
-                b"sheetView" => {
-                    sh.rtl = matches!(attr(&e, "rightToLeft").as_deref(), Some("1") | Some("true"));
-                }
+                // 画面の見え方(右から左・格子線・倍率)と固定枠。
+                // 子を持たない sheetView はこちら(Start 側にも同じ組がある)
+                b"sheetView" => sheet_view(&e, &mut sh),
+                b"pane" if !in_custom_view => pane(&e, &mut sh),
                 // 耳(タブ)の色。rgb 指定だけ拾う(theme 指定は色に解けない)
                 b"tabColor" => {
                     sh.tab_color = attr(&e, "rgb");
@@ -962,6 +1008,7 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
             }
             Ok(Event::End(e)) => match local(e.name().as_ref()) {
                 b"oddHeader" | b"oddFooter" => hf_side = None,
+                b"customSheetView" => in_custom_view = false,
                 b"v" => in_v = false,
                 b"f" => in_f = false,
                 b"is" => in_is = false,
@@ -3100,13 +3147,58 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             w.write_event(Event::Empty(tc)).unwrap();
             w.write_event(Event::End(BytesEnd::new("sheetPr"))).unwrap();
         }
-        // 右から左へ並べるシート(日本語の右横書き)。schema では先頭
-        if sh.rtl {
+        // 画面の見え方(schema では sheetPr の次)。右から左・固定枠・格子線・
+        // 倍率がここに集まる。**rtl のときだけ書いていたので固定枠を置く場所が
+        // なかった** — 常に書き、中身は持っているものだけを載せる
+        {
             w.write_event(Event::Start(BytesStart::new("sheetViews"))).unwrap();
             let mut sv = BytesStart::new("sheetView");
-            sv.push_attribute(("rightToLeft", "1"));
+            if sh.rtl {
+                sv.push_attribute(("rightToLeft", "1"));
+            }
+            // 読んだときだけ返す(None は原文に無かった = Excel の既定)。
+            // 既定を書き足さないので、触っていない帳票の差分が増えない
+            let b10 = |v: bool| if v { "1" } else { "0" };
+            if let Some(v) = sh.show_formulas {
+                sv.push_attribute(("showFormulas", b10(v)));
+            }
+            if let Some(v) = sh.show_gridlines {
+                sv.push_attribute(("showGridLines", b10(v)));
+            }
+            if let Some(z) = sh.zoom_scale {
+                sv.push_attribute(("zoomScale", z.to_string().as_str()));
+            }
             sv.push_attribute(("workbookViewId", "0"));
-            w.write_event(Event::Empty(sv)).unwrap();
+            match sh.freeze {
+                None => w.write_event(Event::Empty(sv)).unwrap(),
+                Some(f) => {
+                    w.write_event(Event::Start(sv)).unwrap();
+                    let mut p = BytesStart::new("pane");
+                    // **xSplit が列、ySplit が行。** 0 の側は書かない
+                    // (Excel は書かない。書くと「0列を固定」の余計な指定になる)
+                    if f.frozen_columns > 0 {
+                        p.push_attribute(("xSplit", f.frozen_columns.to_string().as_str()));
+                    }
+                    if f.frozen_rows > 0 {
+                        p.push_attribute(("ySplit", f.frozen_rows.to_string().as_str()));
+                    }
+                    // 止めた枠のすぐ右下のセル = 繰る側の左上
+                    let tl = Pos::new(f.frozen_rows, f.frozen_columns);
+                    p.push_attribute(("topLeftCell", tl.a1().as_str()));
+                    // 動く側の枠。行だけ止めれば下、列だけ止めれば右、両方なら右下
+                    p.push_attribute((
+                        "activePane",
+                        match (f.frozen_rows > 0, f.frozen_columns > 0) {
+                            (true, true) => "bottomRight",
+                            (true, false) => "bottomLeft",
+                            _ => "topRight",
+                        },
+                    ));
+                    p.push_attribute(("state", "frozen"));
+                    w.write_event(Event::Empty(p)).unwrap();
+                    w.write_event(Event::End(BytesEnd::new("sheetView"))).unwrap();
+                }
+            }
             w.write_event(Event::End(BytesEnd::new("sheetViews"))).unwrap();
         }
         // グループ化があるときは sheetFormatPr に深さの最大を書く
@@ -5234,6 +5326,138 @@ mod script_roundtrip_tests {
         assert!(t.header && t.totals && t.first_col && t.banded_cols, "性質が往復しない");
         assert!(back.sheets[0].rtl, "右から左が往復しない");
         assert!(back.sheets[0].get(p).unwrap().fmt.rtl_text, "右横書きが往復しない");
+    }
+
+    #[test]
+    fn 固定枠と画面の見え方が往復する() {
+        use crate::model::FreezePane;
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("見出し"));
+        // 見出しの1行と左の1列を止める。右から左と重ねて、同じ sheetView に
+        // 両方が載ること(片方が片方を追い出さないこと)も見る
+        b.sheets[0].freeze = Some(FreezePane { frozen_rows: 1, frozen_columns: 1 });
+        b.sheets[0].rtl = true;
+        b.sheets[0].show_gridlines = Some(false);
+        b.sheets[0].show_formulas = Some(true);
+        b.sheets[0].zoom_scale = Some(85);
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let (back, _) = read(buf).expect("読めない");
+        let sh = &back.sheets[0];
+        assert_eq!(
+            sh.freeze,
+            Some(FreezePane { frozen_rows: 1, frozen_columns: 1 }),
+            "固定枠が往復しない"
+        );
+        assert!(sh.rtl, "固定枠と一緒だと右から左が落ちる");
+        assert_eq!(sh.show_gridlines, Some(false), "格子線が往復しない");
+        assert_eq!(sh.show_formulas, Some(true), "式の表示が往復しない");
+        assert_eq!(sh.zoom_scale, Some(85), "表示倍率が往復しない");
+    }
+
+    #[test]
+    fn 見出し行を固定した実物の形を読める() {
+        // **Excel が書く sheetView は `<selection>` や `<pane>` を抱えるので
+        // Start で来る。** Empty でしか見ていなかったので、固定枠だけでなく
+        // rtl も実物では読めていなかった — その形を型紙にして押さえる
+        let b = Book::new();
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+        let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        use std::io::{Read as _, Write as _};
+        let mut replaced = false;
+        for i in 0..z.len() {
+            let mut f = z.by_index(i).unwrap();
+            let name = f.name().to_string();
+            let mut s = Vec::new();
+            f.read_to_end(&mut s).unwrap();
+            if name.ends_with("sheet1.xml") {
+                let t = String::from_utf8(s).unwrap().replace(
+                    r#"<sheetViews><sheetView workbookViewId="0"/></sheetViews>"#,
+                    r#"<sheetViews><sheetView tabSelected="1" rightToLeft="1" showGridLines="0" zoomScale="85" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>"#,
+                );
+                replaced = true;
+                s = t.into_bytes();
+            }
+            w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+            w.write_all(&s).unwrap();
+        }
+        assert!(replaced, "型紙を差す先が無い(書き出しの形が変わった)");
+        let out = w.finish().unwrap();
+        let (back, _) = read(Cursor::new(out.into_inner())).expect("読めない");
+        let sh = &back.sheets[0];
+        assert_eq!(
+            sh.freeze,
+            Some(crate::model::FreezePane { frozen_rows: 1, frozen_columns: 0 }),
+            "見出し行の固定が読めない"
+        );
+        assert!(sh.rtl, "子を持つ sheetView の rtl が読めない");
+        assert_eq!(sh.show_gridlines, Some(false), "格子線が読めない");
+        assert_eq!(sh.zoom_scale, Some(85), "表示倍率が読めない");
+    }
+
+    #[test]
+    fn 掴んで動かす分割は固定枠にしない() {
+        // state="split" の pane は仕切りであって固定ではない。しかも xSplit は
+        // 列数ではなく 1/20 ポイントの座標なので、固定として読むと
+        // 途方もない列数になる — 撥ねていることを押さえる
+        let b = Book::new();
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+        let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        use std::io::{Read as _, Write as _};
+        for i in 0..z.len() {
+            let mut f = z.by_index(i).unwrap();
+            let name = f.name().to_string();
+            let mut s = Vec::new();
+            f.read_to_end(&mut s).unwrap();
+            if name.ends_with("sheet1.xml") {
+                let t = String::from_utf8(s).unwrap().replace(
+                    r#"<sheetView workbookViewId="0"/>"#,
+                    r#"<sheetView workbookViewId="0"><pane xSplit="2310" ySplit="1170" topLeftCell="C4" activePane="bottomRight"/></sheetView>"#,
+                );
+                s = t.into_bytes();
+            }
+            w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+            w.write_all(&s).unwrap();
+        }
+        let out = w.finish().unwrap();
+        let (back, _) = read(Cursor::new(out.into_inner())).expect("読めない");
+        assert_eq!(back.sheets[0].freeze, None, "分割を固定枠として読んでいる");
+    }
+
+    #[test]
+    fn しまい込んだ表示設定の固定枠は拾わない() {
+        // customSheetView は「誰かが昔しまい込んだ表示設定」で、そこにも pane が
+        // ぶら下がる。いまの画面の固定枠として読むと、開いた人が設定した覚えの
+        // ない場所で表が止まる
+        let b = Book::new();
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+        let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        use std::io::{Read as _, Write as _};
+        for i in 0..z.len() {
+            let mut f = z.by_index(i).unwrap();
+            let name = f.name().to_string();
+            let mut s = Vec::new();
+            f.read_to_end(&mut s).unwrap();
+            if name.ends_with("sheet1.xml") {
+                let t = String::from_utf8(s).unwrap().replace(
+                    "</worksheet>",
+                    r#"<customSheetViews><customSheetView guid="{00000000-0000-0000-0000-000000000001}"><pane xSplit="3" ySplit="7" topLeftCell="D8" activePane="bottomRight" state="frozen"/></customSheetView></customSheetViews></worksheet>"#,
+                );
+                s = t.into_bytes();
+            }
+            w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+            w.write_all(&s).unwrap();
+        }
+        let out = w.finish().unwrap();
+        let (back, _) = read(Cursor::new(out.into_inner())).expect("読めない");
+        assert_eq!(back.sheets[0].freeze, None, "しまい込んだ表示設定の固定枠を拾っている");
     }
 
     #[test]

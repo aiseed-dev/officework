@@ -168,7 +168,8 @@ impl Calc {
                 self.frozen = None;
                 self.auto_filter = None;
                 self.filter_panel = None;
-                self.sheet_ui.clear();
+                // ファイルの固定枠を画面へ(sheet_ui もここで作り直す)
+                self.freeze_from_book();
                 self.undo_stack.clear();
                 self.redo_stack.clear();
                 self.clip_range = None;
@@ -297,7 +298,8 @@ impl Calc {
                 self.frozen = None;
                 self.auto_filter = None;
                 self.filter_panel = None;
-                self.sheet_ui.clear();
+                // ファイルの固定枠を画面へ(sheet_ui もここで作り直す)
+                self.freeze_from_book();
                 self.undo_stack.clear();
                 self.redo_stack.clear();
                 self.clip_range = None;
@@ -406,6 +408,8 @@ impl Calc {
     /// (数分ごとに出ては邪魔なので、しくじったときだけ言う)
     pub(crate) fn write_recover(&mut self, cx: &mut Context<Self>) {
         let dst = Self::recover_path_for(self.path.as_deref());
+        // 控えにも固定枠を載せる(復旧したときに画面が変わらないように)
+        self.freeze_into_book();
         let book = self.book.clone();
         let orig = self.path.clone();
         let task = cx.background_executor().spawn(async move {
@@ -944,6 +948,9 @@ impl Calc {
 
     /// 決まった場所へ書く。成功すると dirty が消える。
     pub(crate) fn save_to(&mut self, p: PathBuf) {
+        // 画面の固定枠をモデルへ。**書く前に必ず** — これが無いと、
+        // calc で固定した枠がファイルに載らない
+        self.freeze_into_book();
         // 原本の部品(図形・テーマ・印刷設定)を持ち越す。読み終えてから書く。
         // 暗号化されていた原本は解いた平文を渡す
         let original: Option<std::io::Cursor<Vec<u8>>> =

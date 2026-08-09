@@ -27,6 +27,34 @@ mod freeze_tests {
         sorted.dedup();
         assert_eq!(rows.len(), sorted.len(), "行が二重に出た: {rows:?}");
     }
+
+    #[gpui::test]
+    fn ファイルの固定枠が画面へ出て保存でモデルへ戻る(cx: &mut gpui::TestAppContext) {
+        // **画面とファイルが別のことを言わない**ための往復。固定枠は画面の状態
+        // (`frozen`)で持つので、開くときに model から移し、保存の前に model へ
+        // 戻す。どちらかが欠けると「固定が見えない」か「固定してもファイルに
+        // 載らない」かのどちらかになる
+        use sheet::model::FreezePane;
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            // ファイルが「見出しの1行を固定」と言っている状態
+            this.book.sheets[0].freeze = Some(FreezePane { frozen_rows: 1, frozen_columns: 0 });
+            this.freeze_from_book();
+            assert_eq!(this.frozen, Some(Pos::new(1, 0)), "ファイルの固定枠が画面へ出ない");
+            // 画面で左の2列も足して、モデルへ戻す
+            this.frozen = Some(Pos::new(1, 2));
+            this.freeze_into_book();
+            assert_eq!(
+                this.book.sheets[0].freeze,
+                Some(FreezePane { frozen_rows: 1, frozen_columns: 2 }),
+                "画面の固定枠がモデルへ戻らない"
+            );
+            // 固定を解いたら model からも消える(空の固定枠を書き残さない)
+            this.frozen = None;
+            this.freeze_into_book();
+            assert_eq!(this.book.sheets[0].freeze, None, "固定を解いてもモデルに残る");
+        });
+    }
 }
 
 #[cfg(test)]

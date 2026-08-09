@@ -484,6 +484,23 @@ impl Cell {
     }
 }
 
+/// 固定枠(ウィンドウ枠の固定)。**止める行数・列数**で持つ —
+/// Excel の「先頭の行を固定」と同じ数え方で、`frozen_rows: 1` なら
+/// 見出しの1行だけが止まる。xlsx の `sheetView > pane` と往復する。
+///
+/// genoffice のサイドカーが返す `FreezePane` と同じ形にしてある
+/// (突き合わせのときに欄を並べ替えずに済む)。
+///
+/// xlsx の `pane` は掴んで動かす**分割**(`state="split"`)も同じ形で書くが、
+/// あれは固定ではないので持たない(読みで捨てる)。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FreezePane {
+    /// 上で止める行数(0 = 行は止めない)
+    pub frozen_rows: u32,
+    /// 左で止める列数(0 = 列は止めない)
+    pub frozen_columns: u32,
+}
+
 /// 1枚のシート。疎な表なので BTreeMap で持つ(空セルは持たない)。
 #[derive(Debug, Clone, Default)]
 pub struct Sheet {
@@ -518,6 +535,18 @@ pub struct Sheet {
     /// 右から左へ並べる(xlsx の sheetView rightToLeft)。
     /// **日本語も右から書くことがある**(右横書き)— 発注者 2026-08-04
     pub rtl: bool,
+    /// 固定枠(xlsx の sheetView > pane)。None = 固定していない。
+    /// **台帳と様式では見出しの固定は既定に近い** — 読み書きしないと、
+    /// Excel で固定した台帳を開いて保存するだけで黙って消える
+    pub freeze: Option<FreezePane>,
+    /// 画面の格子線を描く(sheetView showGridLines)。
+    /// **None は「原文に書かれていなかった」** = Excel の既定(描く)。
+    /// 読んだ値だけを返し、こちらから既定を書き足さない — 以下2つも同じ作法
+    pub show_gridlines: Option<bool>,
+    /// 値でなく式を並べて見せる(showFormulas)。None = 既定(値を見せる)
+    pub show_formulas: Option<bool>,
+    /// 表示倍率 %(zoomScale)。None = 既定(100)
+    pub zoom_scale: Option<u32>,
     /// 隠しシート(xlsx の workbook.xml の sheet state="hidden")。
     /// 隠しても中身も式も生きている — 見えなくなるだけ
     pub hidden: bool,

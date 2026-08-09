@@ -1529,7 +1529,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                                 if this.active >= this.book.sheets.len() {
                                     this.active = 0;
                                 }
-                                this.sheet_ui.clear();
+                                // ファイルの固定枠を画面へ(sheet_ui も作り直す)
+                                this.freeze_from_book();
                                 this.dirty = true;
                                 this.sync_input();
                                 this.notes = rep

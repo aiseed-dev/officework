@@ -704,6 +704,39 @@ impl Calc {
         self.frozen = f;
     }
 
+    /// ファイルの固定枠を画面へ移す。**ブックを入れ替えた直後に呼ぶ。**
+    /// これが無いと、「見出し行を固定」と書いてあるファイルを固定なしで開く —
+    /// 画面とファイルが別のことを言う状態になる
+    fn freeze_from_book(&mut self) {
+        self.sheet_ui = self
+            .book
+            .sheets
+            .iter()
+            .map(|sh| {
+                let f = sh.freeze.map(|f| Pos::new(f.frozen_rows, f.frozen_columns));
+                (Pos::new(0, 0), Pos::new(0, 0), f)
+            })
+            .collect();
+        self.frozen = self.sheet_ui.get(self.active).and_then(|u| u.2);
+    }
+
+    /// 画面の固定枠をモデルへ移す。**保存の直前に呼ぶ。**
+    /// これが無いと、calc で固定してもファイルに載らない。
+    /// `frozen` は画面の状態なので、シートごとの控え(`sheet_ui`)から集める —
+    /// いま見ていないシートの固定も落とさないため
+    fn freeze_into_book(&mut self) {
+        self.remember_ui();
+        for (i, sh) in self.book.sheets.iter_mut().enumerate() {
+            sh.freeze = self.sheet_ui.get(i).and_then(|u| u.2).and_then(|p| {
+                // (0, 0) は「固定していない」— 空の固定枠を書かない
+                (p.row > 0 || p.col > 0).then_some(sheet::model::FreezePane {
+                    frozen_rows: p.row,
+                    frozen_columns: p.col,
+                })
+            });
+        }
+    }
+
     /// 画面に出ている行の並び(絞り込み中はその行だけ。グループ化で畳んだ行は
     /// 飛ばす)。描画と当たり判定で共有する。
     /// スライサーで残る行か(選びが空なら全部残る)。1行目=見出しは常に残す。
