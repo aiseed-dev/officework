@@ -1125,6 +1125,8 @@ pub(crate) fn cond_kind_name(k: &sheet::model::CondKind) -> String {
         CondKind::Bar(_) => ui::t!("データバー").to_string(),
         CondKind::Scale(..) => ui::t!("カラースケール").to_string(),
         CondKind::Icons(_) => ui::t!("アイコンセット").to_string(),
+        // 式は左上を錨にした原文。一覧では `=` を付けて見せる(編集欄と同じ形)
+        CondKind::Formula(f) => ui::tf!("数式 ={}", f).to_string(),
     }
 }
 

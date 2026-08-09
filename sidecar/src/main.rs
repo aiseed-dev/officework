@@ -334,6 +334,8 @@ fn cond_value(k: &CondKind) -> (String, Vec<String>, Option<String>) {
         CondKind::Bar(_) => ("dataBar".into(), vec![], None),
         CondKind::Scale(_, _, _) => ("colorScale".into(), vec![], None),
         CondKind::Icons(_) => ("iconSet".into(), vec![], None),
+        // 式は範囲の左上を錨にした原文のまま渡す(ずらすのは解く側の仕事)
+        CondKind::Formula(f) => ("expression".into(), vec![f.clone()], None),
     }
 }
 

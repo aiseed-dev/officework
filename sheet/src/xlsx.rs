@@ -225,10 +225,19 @@ fn parse_dxfs(xml: &str) -> Vec<(Option<String>, Option<String>)> {
                         if v.len() == 8 { v[2..].to_string() } else { v }
                     });
                 }
-                b"bgColor" if in_fill => {
-                    cur.1 = attr(&e, "rgb").map(|v| {
+                // 塗りの色は書き手によって置き場所が違う。
+                //   LibreOffice  <patternFill><bgColor rgb="FFDDEBF7"/>
+                //   openpyxl     <patternFill patternType="solid"><fgColor rgb="00DDEBF7"/>
+                //   Excel        両方書き、片方は indexed="64"(rgb 無し)
+                // **rgb を持っているほうを採る。** bgColor を先に見て、
+                // それが rgb を持たないときだけ fgColor に落ちる
+                b"bgColor" | b"fgColor" if in_fill => {
+                    let c = attr(&e, "rgb").map(|v| {
                         if v.len() == 8 { v[2..].to_string() } else { v }
                     });
+                    if c.is_some() && (local(e.name().as_ref()) == b"bgColor" || cur.1.is_none()) {
+                        cur.1 = c;
+                    }
                 }
                 _ => {}
             },
@@ -1436,6 +1445,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     "dataBar" => Some(("bar".into(), dxf)),
                     "colorScale" => Some(("scale".into(), dxf)),
                     "iconSet" => Some(("icons".into(), dxf)),
+                    // 数式で指定。中身は <formula> の子にある(finish_cf で取る)
+                    "expression" => Some(("expr".into(), dxf)),
                     _ => {
                         rep.note("条件付き書式(読めない種類。保存で失われる)");
                         None
@@ -1497,6 +1508,16 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                         Some(CondKind::Icons(
                             icon_name.unwrap_or("3TrafficLights1").to_string(),
                         ))
+                    } else if tag == "expr" {
+                        // 数式で指定。<formula> は1本(2本目以降は Excel も見ない)。
+                        // 式は範囲の左上を錨にした原文のまま貯める
+                        match formula.split('\u{1f}').next().map(str::trim) {
+                            Some(f) if !f.is_empty() => Some(CondKind::Formula(f.to_string())),
+                            _ => {
+                                rep.note("条件付き書式(数式で指定だが式が空。保存で失われる)");
+                                None
+                            }
+                        }
                     } else {
                         match (crate::model::CondOp::from_xlsx(&tag), nums.as_slice()) {
                             (Some(op), [v, ..]) => Some(CondKind::Cmp(op, *v)),
@@ -3721,6 +3742,13 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                             n + 1
                         )
                     }
+                    // 数式で指定。**持っている原文をそのまま返す** —
+                    // 画面で解くときにずらした式は、間違っても書かない
+                    CondKind::Formula(f) => format!(
+                        r#"<cfRule type="expression" dxfId="{dxf}" priority="{}"><formula>{}</formula></cfRule>"#,
+                        n + 1,
+                        f.replace('&', "&amp;").replace('<', "&lt;")
+                    ),
                 };
                 cf.push_str(&format!(
                     r#"<conditionalFormatting sqref="{sq}">{inner}</conditionalFormatting>"#
@@ -4455,6 +4483,44 @@ mod cond_tests {
     use crate::model::{Cell, CondAux, CondKind, CondOp, CondRule};
 
     #[test]
+    fn 塗りはfgcolorでもbgcolorでも読める() {
+        // 書き手ごとに置き場所が違う。片方しか見ないと、条件付き書式の
+        // 色が**黙って消える**(規則は残るので気付きにくい)
+        let dxf = |body: &str| {
+            super::parse_dxfs(&format!(
+                r#"<styleSheet><dxfs count="1"><dxf>{body}</dxf></dxfs></styleSheet>"#
+            ))
+            .first()
+            .cloned()
+            .map(|(_, fill)| fill)
+            .unwrap_or_default()
+        };
+        assert_eq!(
+            dxf(r#"<fill><patternFill><bgColor rgb="FFDDEBF7"/></patternFill></fill>"#),
+            Some("DDEBF7".into()),
+            "LibreOffice の書き方(bgColor)が読めない"
+        );
+        assert_eq!(
+            dxf(r#"<fill><patternFill patternType="solid"><fgColor rgb="00DDEBF7"/></patternFill></fill>"#),
+            Some("DDEBF7".into()),
+            "openpyxl の書き方(solid + fgColor)が読めない"
+        );
+        // 両方あるとき: rgb を持っている bgColor が勝つ
+        assert_eq!(
+            dxf(r#"<fill><patternFill patternType="solid"><fgColor indexed="64"/><bgColor rgb="FFFFC7CE"/></patternFill></fill>"#),
+            Some("FFC7CE".into()),
+            "Excel の書き方(indexed の fgColor + bgColor)が読めない"
+        );
+    }
+
+    fn roundtrip(b: &Book) -> Book {
+        let mut buf = Cursor::new(Vec::new());
+        write(b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        read(buf).expect("読めない").0
+    }
+
+    #[test]
     fn 条件付き書式が往復する() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("-5"));
@@ -4480,6 +4546,124 @@ mod cond_tests {
             !r[0].hits(Pos::parse("B1").unwrap(), &Value::Number(-5.0), &aux),
             "範囲の外に効いた"
         );
+    }
+
+    #[test]
+    fn 数式で指定した縞模様が往復して効く() {
+        // 実物の帳票でいちばん多い条件付き書式。読めないでは済まない
+        let mut b = Book::new();
+        for i in 0..10u32 {
+            b.sheets[0].set(Pos::new(i, 0), Cell::input(&format!("{}", i + 1)));
+        }
+        b.sheets[0].cond.push(CondRule {
+            range: (Pos::parse("A1").unwrap(), Pos::parse("B10").unwrap()),
+            kind: CondKind::Formula("MOD(ROW(),2)=0".into()),
+            color: None,
+            fill: Some("DDEBF7".into()),
+        });
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let (back, rep) = read(buf).expect("読めない");
+        assert!(
+            rep.unsupported.is_empty(),
+            "読めたのに報告が出た: {:?}",
+            rep.unsupported
+        );
+        let r = &back.sheets[0].cond;
+        assert_eq!(r.len(), 1, "規則が往復しない: {r:?}");
+        assert_eq!(
+            r[0].kind,
+            CondKind::Formula("MOD(ROW(),2)=0".into()),
+            "式の原文が往復しない"
+        );
+        assert_eq!(r[0].fill.as_deref(), Some("DDEBF7"), "見た目(dxf)が往復しない");
+        // 効き方 — ROW() は1から数えるので、偶数行(A2/A4…)が当たる
+        let sh = &back.sheets[0];
+        let aux = r[0].aux(sh);
+        for (a1, want) in [("A1", false), ("A2", true), ("A3", false), ("B4", true)] {
+            let p = Pos::parse(a1).unwrap();
+            assert_eq!(r[0].hits(p, &sh.value(p), &aux), want, "{a1} の縞が違う");
+        }
+        assert!(
+            !r[0].hits(Pos::parse("C2").unwrap(), &sh.value(Pos::parse("C2").unwrap()), &aux),
+            "範囲の外に効いた"
+        );
+    }
+
+    #[test]
+    fn 数式で指定は左上を錨に相対参照をずらす() {
+        // **ここが静かに狂う所。** 式は範囲の左上のことを書いたものとして
+        // 貯まっているので、他のセルではずらして解かないと1行ずれる
+        let mut b = Book::new();
+        let sh = &mut b.sheets[0];
+        sh.set(Pos::parse("C2").unwrap(), Cell::input("あ"));
+        sh.set(Pos::parse("C3").unwrap(), Cell::input("ああああ"));
+        sh.set(Pos::parse("C4").unwrap(), Cell::input("いい"));
+        // $ で列を固定した、行まるごとの色分け(実物でよく使う形)
+        sh.set(Pos::parse("A2").unwrap(), Cell::input("済"));
+        sh.set(Pos::parse("A3").unwrap(), Cell::input("未"));
+        sh.cond.push(CondRule {
+            range: (Pos::parse("C2").unwrap(), Pos::parse("C4").unwrap()),
+            kind: CondKind::Formula("LEN(C2)>3".into()),
+            color: Some("C00000".into()),
+            fill: None,
+        });
+        sh.cond.push(CondRule {
+            range: (Pos::parse("B2").unwrap(), Pos::parse("C3").unwrap()),
+            kind: CondKind::Formula(r#"$A2="済""#.into()),
+            color: None,
+            fill: Some("FFF2CC".into()),
+        });
+        let back = roundtrip(&b);
+        let sh = &back.sheets[0];
+        let r = &sh.cond;
+        assert_eq!(r.len(), 2, "規則が往復しない: {r:?}");
+
+        let aux = r[0].aux(sh);
+        for (a1, want) in [("C2", false), ("C3", true), ("C4", false)] {
+            let p = Pos::parse(a1).unwrap();
+            assert_eq!(
+                r[0].hits(p, &sh.value(p), &aux),
+                want,
+                "{a1}: 錨がずれている(左上の式をそのまま使っていないか)"
+            );
+        }
+
+        // $A は列を固定 — B列でも C列でも A列を見る。行だけがずれる
+        let aux = r[1].aux(sh);
+        for (a1, want) in [("B2", true), ("C2", true), ("B3", false), ("C3", false)] {
+            let p = Pos::parse(a1).unwrap();
+            assert_eq!(
+                r[1].hits(p, &sh.value(p), &aux),
+                want,
+                "{a1}: $ で固定した列が動いている"
+            );
+        }
+    }
+
+    #[test]
+    fn 数式で指定は解けなくても原文を落とさない() {
+        // 評価に失敗しても**ファイルは減らない** — 保存はいつも原文を返す
+        let mut b = Book::new();
+        let f = "COUNTIF(知らない表!A:A,A1)>0";
+        b.sheets[0].cond.push(CondRule {
+            range: (Pos::parse("A1").unwrap(), Pos::parse("A3").unwrap()),
+            kind: CondKind::Formula(f.into()),
+            color: None,
+            fill: Some("FCE4D6".into()),
+        });
+        let back = roundtrip(&b);
+        let sh = &back.sheets[0];
+        assert_eq!(
+            sh.cond.first().map(|r| &r.kind),
+            Some(&CondKind::Formula(f.into())),
+            "解けない式が保存で失われた"
+        );
+        // 解けない式は当たらない側へ倒す(見当違いの色を付けない)
+        let aux = sh.cond[0].aux(sh);
+        let p = Pos::parse("A1").unwrap();
+        assert!(!sh.cond[0].hits(p, &sh.value(p), &aux), "解けない式で色が付いた");
     }
 
     #[test]

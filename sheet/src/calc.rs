@@ -3032,6 +3032,38 @@ pub fn is_py_formula(f: &str) -> bool {
     false
 }
 
+/// 式を1本、`at` の位置に置いたつもりで解く(表には**書かない**)。
+///
+/// 条件付き書式の `expression` が使う — 表のどのセルにも無い式を、
+/// 「そこにあったら何になるか」で確かめるための入口。
+/// 引数なしの `ROW()`/`COLUMN()` は `at` を答える。
+///
+/// **他のシートは引けない**(`others` が空)。`別表!A1` は #REF! になる。
+/// 相対参照のずらしは呼ぶ側の仕事(`model::offset_refs`)
+pub fn eval_once(sheet: &Sheet, at: Pos, formula: &str) -> Value {
+    let f = formula.trim();
+    let f = expand_names(f.strip_prefix('=').unwrap_or(f), &sheet.names);
+    // 途中結果の控えは無い(この式は表の依存の輪に入っていない)。
+    // セルの値は表に入っている確定値をそのまま読む
+    let resolved: HashMap<Pos, Value> = HashMap::new();
+    let Ok(toks) = lex(&f) else { return Value::Error("#ERROR!".into()) };
+    let mut p = P {
+        t: &toks,
+        i: 0,
+        sheet,
+        resolved: &resolved,
+        at,
+        others: &[],
+        sheet_at: 0,
+        skip_hidden: Default::default(),
+        lets: Vec::new(),
+    };
+    match p.expr() {
+        Ok(v) if p.i == toks.len() => v,
+        _ => Value::Error("#ERROR!".into()),
+    }
+}
+
 /// 並びを返す関数(スピルする関数)。セル単独でも、四則・比較・& と
 /// 組み合わせた配列数式でも使える。答えが2次元なら隣へあふれる
 const ARRAY_FNS: &[&str] = &[

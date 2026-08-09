@@ -1139,7 +1139,29 @@ pub enum CondKind {
     Scale(String, Option<String>, String),
     /// アイコンセット(xlsx の iconSet 名。例 "3Arrows")
     Icons(String),
+    /// 数式で指定(xlsx の `expression`)。真になったセルに書式が付く。
+    /// 実物の帳票でいちばん多い条件付き書式 — `MOD(ROW(),2)=0` の縞。
+    ///
+    /// **持つのは範囲の左上を錨にした原文**(`=` は付けない。xlsx の
+    /// `<formula>` と同じ形)。例えば範囲 C2:C11 の `LEN(C2)>3` は、
+    /// C2 のことを書いた式として貯める。
+    ///
+    /// **評価する。** セルごとに左上からのずれだけ相対参照をずらし
+    /// (`offset_refs`)、その位置で解く(`aux()` が範囲を1回だけ歩いて
+    /// 当たりを控え、`hits()` はその控えを見る)。上の例なら C5 では
+    /// `LEN(C5)>3` を解く。**`$` で固定した側は動かない** — `$D2="済"` の
+    /// ような行まるごとの色分けが、これで意図どおりに効く。
+    ///
+    /// ずらすのは**解くときだけ**で、持っている原文は書き換えない。
+    /// 保存はいつも原文をそのまま返すので、評価が外れても**ファイルは減らない**。
+    Formula(String),
 }
+
+/// `expression` を解くセル数の上限。式は1セルずつ字句解析から解くので、
+/// 列まるごと(100万セル)を毎回の描画で回すわけにはいかない。
+/// 超えた範囲は**当たり無し**にする(効かないのは見れば分かるが、
+/// 見当違いの縞を自信たっぷりに描かれると気付けない)
+const COND_FORMULA_MAX: u64 = 20_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CondOp {
@@ -1185,6 +1207,9 @@ pub struct CondAux {
     /// 範囲の最小・最大(バー/スケール/アイコンの物差し)
     pub min: f64,
     pub max: f64,
+    /// 数式で指定(expression)が当たった位置。`hits()` には表が無いので、
+    /// 式を解くのはここ(範囲を1回歩く)で済ませ、判定は引くだけにする
+    pub hit: std::collections::HashSet<Pos>,
 }
 
 impl CondRule {
@@ -1253,6 +1278,34 @@ impl CondRule {
                 }
                 aux.dups = seen.into_iter().filter(|(_, n)| *n >= 2).map(|(k, _)| k).collect();
             }
+            CondKind::Formula(f) => {
+                // 式は範囲の左上に錨がある。セルごとに左上からのずれだけ
+                // 相対参照をずらして解く($ で固定した側は動かない)
+                // 逆さまの範囲("B10:A1")でも引き算が回らないよう abs_diff で数える
+                let cells =
+                    (b.row.abs_diff(a.row) as u64 + 1) * (b.col.abs_diff(a.col) as u64 + 1);
+                if f.trim().is_empty() || cells > COND_FORMULA_MAX {
+                    return aux;
+                }
+                for r in a.row..=b.row {
+                    for c in a.col..=b.col {
+                        let p = Pos::new(r, c);
+                        let moved =
+                            offset_refs(f, (r - a.row) as i64, (c - a.col) as i64);
+                        // 真(TRUE か 0 でない数)だけを当たりにする。
+                        // 誤り・文字・空は当たらない側へ倒す — 解けなかった式で
+                        // 書式を**付ける**より、付けないほうが害が小さい
+                        let hit = match crate::calc::eval_once(s, p, &moved) {
+                            Value::Bool(t) => t,
+                            Value::Number(n) => n != 0.0,
+                            _ => false,
+                        };
+                        if hit {
+                            aux.hit.insert(p);
+                        }
+                    }
+                }
+            }
             _ => {}
         }
         aux
@@ -1297,6 +1350,8 @@ impl CondRule {
                 let Value::Number(n) = v else { return false };
                 if *below { *n < aux.avg } else { *n > aux.avg }
             }
+            // 数式で指定は aux() で解き終えている(ここに表が無いため)
+            CondKind::Formula(_) => aux.hit.contains(&p),
             // バー/スケール/アイコンは「当たり外れ」ではなく物差し —
             // scalar() で 0〜1 を取り、描く側が形にする
             CondKind::Bar(_) | CondKind::Scale(..) | CondKind::Icons(_) => false,
