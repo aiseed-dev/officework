@@ -851,6 +851,44 @@ fn sheet_parts(
         .collect()
 }
 
+/// `<definedName>` が「単純」か — こちらのモデルで往復できる名前か。
+///
+/// **数ではなく意味で見る。** 前は属性の**数**を数えて、知っている分
+/// (`name` と `localSheetId`)にちょうど合うときだけ単純としていた。
+/// LibreOffice は名前の定義すべてに `function="false" hidden="false"
+/// vbProcedure="false"` を**既定値でも書く**ので数が合わず、中身は Excel と
+/// 同じ(`式!$A$1:$A$5`)なのに全部「理解できない名前」へ落ちていた。
+/// 式から引くと `#NAME?` になる(2026-08-09 第2便)。
+///
+/// 見方:
+/// - `name` / `localSheetId` — 既に理解して往復させている。単純のまま
+/// - 真偽の属性 — **偽(`0` / `false`)は無いのと同じ**。真なら隠し名前か
+///   マクロなので、こちらでは扱わず原文で持ち越す
+/// - それ以外(`comment` / `description` など中身を持つ属性)— 単純と見ると
+///   保存で書き戻せず**黙って落ちる**ので、原文で持ち越す側へ回す
+fn defined_name_plain(e: &BytesStart) -> bool {
+    /// 既定が偽で、立っていたら単純ではなくなる属性
+    const FLAGS: [&str; 6] = [
+        "hidden",
+        "function",
+        "vbProcedure",
+        "xlm",
+        "publishToServer",
+        "workbookParameter",
+    ];
+    e.attributes().flatten().all(|a| {
+        let k = String::from_utf8_lossy(local(a.key.as_ref())).to_string();
+        let v = String::from_utf8_lossy(&a.value).to_string();
+        match k.as_str() {
+            "name" => true,
+            // 読めない番号は「理解した」と言えない(シート限定が消える)
+            "localSheetId" => v.parse::<usize>().is_ok(),
+            _ if FLAGS.contains(&k.as_str()) => !matches!(v.as_str(), "1" | "true" | "TRUE"),
+            _ => false,
+        }
+    })
+}
+
 /// commentsN.xml → (セル参照, 本文) の列
 fn parse_comments(xml: &str) -> Vec<(Pos, String)> {
     let mut r = Reader::from_str(xml);
@@ -1240,15 +1278,15 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 Ok(Event::Start(e)) if local(e.name().as_ref()) == b"definedName" => {
                     // **localSheetId は理解する。** Excel の「このシートだけ」の
                     // 名前で、素通しにしていたので式から使えなかった。
-                    // それ以外の属性(hidden 等)が付いていたら「単純ではない」
+                    // 単純かどうかは属性の**意味**で決める(defined_name_plain)。
+                    // 数で数えると、既定値まで書く書き手(LibreOffice)の名前が
+                    // 丸ごと使えなくなる
                     let sid = attr(&e, "localSheetId").and_then(|v| v.parse::<usize>().ok());
                     let nm = attr(&e, "name").unwrap_or_default();
-                    let known = 1 + usize::from(sid.is_some());
                     // **`_xlnm.` で始まる名前(印刷範囲・タイトル行)はここで
                     // 拾わない。** 別の道でモデルへ入れているので、こちらでも
                     // 拾うと二重になって印刷の設定が壊れる(踏んで直した)
-                    let simple = e.attributes().flatten().count() == known
-                        && !nm.starts_with("_xlnm.");
+                    let simple = defined_name_plain(&e) && !nm.starts_with("_xlnm.");
                     in_defined = Some((nm, simple, start_pos, sid));
                     text.clear();
                 }
@@ -5816,6 +5854,68 @@ mod script_roundtrip_tests {
         buf2.set_position(0);
         let (b3, _) = read(buf2).expect("読めない");
         assert_eq!(b3.pivots.len(), 1, "二往復で二重になった");
+    }
+    /// 名前の定義に属性を差し込んだ xlsx を作って読み直す。
+    /// 既定値まで書く書き手(LibreOffice)を真似るための道具
+    fn 名前に属性をつけて読み直す(extra: &str) -> Book {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("1"));
+        b.sheets[0].names.push(("名前つき".into(), "A1:A5".into()));
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        // zip の中の workbook.xml の definedName に属性を差し込む
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+        let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        use std::io::{Read as _, Write as _};
+        let mut hit = false;
+        for i in 0..z.len() {
+            let mut f = z.by_index(i).unwrap();
+            let name = f.name().to_string();
+            let mut s = Vec::new();
+            f.read_to_end(&mut s).unwrap();
+            if name == "xl/workbook.xml" {
+                let t = String::from_utf8(s).unwrap().replace(
+                    "<definedName name=\"名前つき\"",
+                    &format!("<definedName {extra} name=\"名前つき\""),
+                );
+                hit = t.contains(extra);
+                s = t.into_bytes();
+            }
+            w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+            w.write_all(&s).unwrap();
+        }
+        assert!(hit, "属性を差し込めなかった(書き出しの形が変わった?)");
+        let out = w.finish().unwrap();
+        read(Cursor::new(out.into_inner())).expect("読めない").0
+    }
+
+    #[test]
+    fn 既定値つきの名前が式から引ける() {
+        // LibreOffice は名前の定義すべてに真偽の属性を**既定値でも**書く。
+        // 属性の数で「単純か」を決めていたので、中身は Excel と同じなのに
+        // 全部「理解できない名前」へ落ち、式から引くと #NAME? だった
+        let back = 名前に属性をつけて読み直す(r#"function="false" hidden="false" vbProcedure="false""#);
+        assert_eq!(
+            back.sheets[0].names,
+            vec![("名前つき".to_string(), "A1:A5".to_string())],
+            "偽の属性で名前が使えなくなった(names_raw: {:?})",
+            back.names_raw
+        );
+        assert!(back.names_raw.is_empty(), "単純な名前が原文へ回った: {:?}", back.names_raw);
+    }
+
+    #[test]
+    fn 隠し名前は原文のまま持ち越す() {
+        // hidden="1" は**立っている**ので単純ではない。式からは引かせず、
+        // 捨てもせず原文で持ち越す(今までどおり)
+        let back = 名前に属性をつけて読み直す(r#"hidden="1""#);
+        assert!(back.sheets[0].names.is_empty(), "隠し名前が式から引けてしまう");
+        assert_eq!(back.names_raw.len(), 1, "隠し名前を落とした: {:?}", back.names_raw);
+        assert!(
+            back.names_raw[0].contains("hidden=\"1\""),
+            "原文が変わった: {}",
+            back.names_raw[0]
+        );
     }
 }
 /// シートの割り当て — `<sheet>` の `r:id` を rels で解いているか。
