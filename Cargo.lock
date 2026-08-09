@@ -4673,6 +4673,8 @@ dependencies = [
 name = "pysheet"
 version = "0.1.2"
 dependencies = [
+ "kumihan",
+ "ooxml",
  "pyo3",
  "sheet",
 ]

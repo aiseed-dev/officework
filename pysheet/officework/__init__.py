@@ -2,19 +2,21 @@
 """officework — 帳票を壊さないエンジンと、動いているオフィスソフトを操る橋。
 
     from officework import sheet      # エンジン: xlsx。アプリは要らない
+    from officework import doc        # エンジン: docx。アプリは要らない
     from officework import calc as xw # 橋: 動いている calc を操る
 
 **エンジン**は Rust(pyo3)。原本を正として、変えた所だけ書き戻すので、
-罫線・結合・列幅・図形が openpyxl のように壊れない。読めなかった物は
-`unsupported` に出る(黙って落とさない)。docx / pptx のエンジンも
-同じ名前空間に足す予定(officework.doc / officework.slide)。
+罫線・結合・列幅・図形が openpyxl のように壊れない。docx も同じで、
+様式・ヘッダー・図形・変更履歴が python-docx のように崩れない。読めなかった物は
+`unsupported` に出る(黙って落とさない)。pptx のエンジンも
+同じ名前空間に足す予定(officework.slide)。
 
 **橋**は純 Python。アプリごとのソケット($XDG_RUNTIME_DIR/officework/<app>.sock、
 径路が AF_UNIX の 108 字上限を超えるときは /tmp/officework-UID/)へ
 JSON を1行ずつ。**この機械の中だけ**で、ネットには出ない。
 
 表計算は `from officework import calc as xw`(xlwings 流の Book / Range)。
-文書(writer)の口は今後ここに増える。
+文書(writer)の橋は今後ここに増える。
 """
 
 import json
@@ -25,6 +27,7 @@ import socket
 # 触ったときに、入っていない理由をそのまま見せる
 try:
     from . import _sheet as sheet  # noqa: F401
+    from . import _doc as doc  # noqa: F401
     _sheet_error = None
 except Exception as e:  # pragma: no cover
     # **名前を作らない** — None を入れると from officework import sheet が
@@ -33,7 +36,8 @@ except Exception as e:  # pragma: no cover
 
 
 def __getattr__(name):
-    if name == "sheet":
+    # sheet も doc も同じ拡張(_sheet.so)の中にいるので、読めない理由は1つ
+    if name in ("sheet", "doc"):
         raise ImportError(
             "officework のエンジン(_sheet)が読めません: {!r}".format(_sheet_error)
         ) from _sheet_error

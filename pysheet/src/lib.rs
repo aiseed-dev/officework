@@ -16,6 +16,8 @@
 //!     s["C30"] = "=B30*100"        # 文字列は「打ったのと同じ」解釈
 //!     b.save("out.xlsx")           # 罫線・結合・列幅・図形は元のまま
 
+mod doc;
+
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use pyo3::exceptions::{PyIOError, PyIndexError, PyKeyError, PyTypeError, PyValueError};
@@ -395,5 +397,8 @@ fn col0(s: &str) -> PyResult<u32> {
 fn _sheet(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBook>()?;
     m.add_class::<PySheet>()?;
+    // docx の束縛。**同じ .so に同居させる** — maturin が組む拡張は1つなので、
+    // 副モジュールとして建て、officework/_doc.py が `officework.doc` の名前で受ける
+    doc::register(m)?;
     Ok(())
 }
