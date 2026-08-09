@@ -253,9 +253,51 @@ def show(x):
     return "(空)" if x is None else repr(x)
 
 
-def diff_sheet(name, t, o, show_n):
-    """1枚のシートの差。**数ではなく中身**を突き合わせる。"""
+# ふりがなに使う字(カタカナ・長音・中黒・空白)。**向こうの欠陥**を見分けるのに使う
+_KANA = set(
+    "ァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトド"
+    "ナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロヮワヰヱヲンヴ"
+    "ーヽヾ・　 "
+)
+
+
+def is_furigana_glued(theirs, ours):
+    """向こうの値が「うちの値 + ふりがな」になっていないか。
+
+    向こうは共有文字列の `<rPh>`(ふりがな)の中の `<t>` を本文と**繋げて**返す
+    (`実` → `実ジツ`)。**日本語の xlsx でふりがなの無い物のほうが珍しい**ので、
+    これを混ぜたままにすると、やることの一覧がふりがなで埋まる。
+
+    **見分けは当て推量なので、二段で確かめる** — ここの形の判定に加えて、
+    呼ぶ側がそのファイルの sharedStrings.xml に `<rPh` があることを確かめる。
+    """
+    if not isinstance(theirs, str) or not isinstance(ours, str):
+        return False
+    if not theirs.startswith(ours) or len(theirs) == len(ours):
+        return False
+    tail = theirs[len(ours):]
+    return bool(tail) and all(ch in _KANA for ch in tail)
+
+
+def has_phonetics(path):
+    """このファイルの共有文字列にふりがなが入っているか(ZIP を直に覗く)。"""
+    try:
+        import zipfile
+
+        with zipfile.ZipFile(path) as z:
+            return b"<rPh" in z.read("xl/sharedStrings.xml")
+    except Exception:
+        return False
+
+
+def diff_sheet(name, t, o, show_n, rph=False):
+    """1枚のシートの差。**数ではなく中身**を突き合わせる。
+
+    戻りは (うちの宿題, 向こうの欠陥と分かっている差)。**混ぜない** —
+    混ぜると「直すことの一覧」が汚れる。
+    """
     d = []
+    theirs_bug = []
     if t.get("error"):
         return [f"[{name}] 向こうが断った: {t['error']}"]
     if t.get("extent") != o.get("extent"):
@@ -282,12 +324,21 @@ def diff_sheet(name, t, o, show_n):
             + ", ".join(f"{k}={show(oc[k]['v'])}" for k in only_o[:show_n])
         )
 
-    vbad, fbad = [], []
+    vbad, fbad, kana = [], [], []
     for k in sorted(set(tc) & set(oc)):
         if not same_value(tc[k]["v"], oc[k]["v"]):
-            vbad.append(f"{k}: 向こう {show(tc[k]['v'])} / うち {show(oc[k]['v'])}")
+            line = f"{k}: 向こう {show(tc[k]['v'])} / うち {show(oc[k]['v'])}"
+            if rph and is_furigana_glued(tc[k]["v"], oc[k]["v"]):
+                kana.append(line)
+            else:
+                vbad.append(line)
         if (tc[k]["f"] or "") != (oc[k]["f"] or ""):
             fbad.append(f"{k}: 向こう {show(tc[k]['f'])} / うち {show(oc[k]['f'])}")
+    if kana:
+        theirs_bug.append(
+            f"[{name}] ふりがなの連結 {len(kana)} 個(**向こうの欠陥**。うちが正しい): "
+            + " / ".join(kana[:show_n])
+        )
     if vbad:
         d.append(f"[{name}] 値が違うセル {len(vbad)} 個: " + " / ".join(vbad[:show_n]))
     if fbad:
@@ -299,16 +350,17 @@ def diff_sheet(name, t, o, show_n):
             f"[{name}] 結合が違う: うちに無い {sorted(tm - om)[:show_n]} / "
             f"向こうに無い {sorted(om - tm)[:show_n]}"
         )
-    return d
+    return d, theirs_bug
 
 
 def compare(path, sc, show_n):
     theirs = their_view(sc, path)
     ours = our_view(path)
-    diffs = []
+    diffs, theirs_bug = [], []
     if "error" in theirs or "error" in ours:
         diffs.append(f"読めない — 向こう: {theirs.get('error')} / うち: {ours.get('error')}")
-        return theirs, ours, diffs
+        return theirs, ours, diffs, theirs_bug
+    rph = has_phonetics(path)
     tn = [s["name"] for s in theirs["sheets"]]
     on = [s["name"] for s in ours["sheets"]]
     if tn != on:
@@ -319,10 +371,12 @@ def compare(path, sc, show_n):
         o = ot.get(t["name"])
         if o is None:
             continue
-        diffs += diff_sheet(t["name"], t, o, show_n)
+        d, tb = diff_sheet(t["name"], t, o, show_n, rph)
+        diffs += d
+        theirs_bug += tb
     if ours.get("unsupported"):
         diffs.append(f"うちが読めなかった物: {ours['unsupported']}")
-    return theirs, ours, diffs
+    return theirs, ours, diffs, theirs_bug
 
 
 def main():
@@ -349,20 +403,35 @@ def main():
     report = []
     try:
         for f in files:
-            theirs, ours, diffs = compare(f, sc, a.show)
-            report.append({"file": str(f), "diffs": diffs, "theirs": theirs, "ours": ours})
-            mark = "○" if not diffs else "×"
+            theirs, ours, diffs, theirs_bug = compare(f, sc, a.show)
+            report.append(
+                {
+                    "file": str(f),
+                    "diffs": diffs,
+                    "theirs_bug": theirs_bug,
+                    "theirs": theirs,
+                    "ours": ours,
+                }
+            )
+            # **△ = 差はあるが、向こうの欠陥と分かっている物だけ。**
+            # ○ と混ぜると宿題が水増しされ、× と混ぜると直せない物を追いかける
+            mark = "×" if diffs else ("△" if theirs_bug else "○")
             print(f"{mark} {f}")
             for d in diffs:
                 print(f"    {d}")
+            for d in theirs_bug:
+                print(f"    ~ {d}")
     finally:
         sc.close()
 
     n = sum(1 for r in report if r["diffs"])
+    m = sum(1 for r in report if not r["diffs"] and r["theirs_bug"])
     cells = sum(
         len(s.get("cells") or {}) for r in report for s in (r["theirs"].get("sheets") or [])
     )
     print(f"\n{len(report)} 枚中 {n} 枚で差が出ました(比べたセル {cells} 個)")
+    if m:
+        print(f"  ほかに {m} 枚は △ — 向こうの欠陥と分かっている差だけ(うちの宿題ではない)")
     # **緑を大きく見せない。** 何を見ていないかを毎回言う
     print(
         "  比べていない: 書式・罫線・条件付き書式・入力規則・名前の定義・固定枠 "
