@@ -35,10 +35,9 @@ struct Session {
     path: String,
     stamp: (u64, u64),
     book: Book,
-    /// `open` で組んだ書式の索引表。`read_range` の `styleIndex` はこれを指す。
-    /// **開いたときに一度だけ組む** — 範囲ごとに組み直すと同じ書式に違う番号が付く
-    styles: Vec<Value>,
-    /// 書式 → 番号。`read_range` が引く
+    /// 書式 → 番号。**`open` で一度だけ組み、`read_range` の `styleIndex` が指す**
+    /// (範囲ごとに組み直すと、同じ書式に違う番号が付く)。表そのものは
+    /// `open` の答えに載せて渡しきっているので、ここでは持たない
     style_index: BTreeMap<String, usize>,
 }
 
@@ -209,11 +208,11 @@ fn dispatch(
                         }
                     }
                     let v = open_result(&id, &path, &book, &unsupported, &st.order);
+                    // 表は答えに載せて渡しきる。手元に残すのは番号の引きだけ
                     let stamp = stamp_of(&path);
-                    let Styles { order, index } = st;
                     sessions.insert(
                         id,
-                        Session { path, stamp, book, styles: order, style_index: index },
+                        Session { path, stamp, book, style_index: st.index },
                     );
                     ok(&rid, v)
                 }
