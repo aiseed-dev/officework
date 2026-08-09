@@ -184,6 +184,8 @@ actions!(
         /// 昔ながらの配列数式を入れる(Ctrl+Shift+Enter)。**calc だけ**が
         /// 受け口を持つ — writer には表の配列という考えが無い
         ArrayEnter,
+        /// 毎日使う鍵。**受け口は両方のアプリに置く**(片方だけだと嘘になる)
+        InsertFn, PercentFmt, Print, FullScreen, SaveAs,
     ]
 );
 
@@ -216,6 +218,14 @@ pub fn bindings(context: &'static str) -> Vec<KeyBinding> {
         KeyBinding::new("ctrl-i", Italic, Some(context)),
         KeyBinding::new("ctrl-u", Underline, Some(context)),
         KeyBinding::new("ctrl-5", Strikeout, Some(context)),
+        // 関数の挿入(calc だけが受ける — writer に関数の一覧は無い)
+        KeyBinding::new("shift-f3", InsertFn, Some(context)),
+        // パーセント書式(同上)
+        KeyBinding::new("ctrl-shift-%", PercentFmt, Some(context)),
+        // 印刷(こちらは PDF に出す)・全画面・名前を付けて保存
+        KeyBinding::new("ctrl-p", Print, Some(context)),
+        KeyBinding::new("f11", FullScreen, Some(context)),
+        KeyBinding::new("ctrl-shift-s", SaveAs, Some(context)),
         KeyBinding::new("ctrl-home", DocHome, Some(context)),
         KeyBinding::new("ctrl-end", DocEnd, Some(context)),
         KeyBinding::new("shift-up", SelectUp, Some(context)),

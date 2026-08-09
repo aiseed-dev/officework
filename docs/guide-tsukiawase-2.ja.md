@@ -375,7 +375,7 @@ calc と突き合わせた結果の**全量**。要約と消し込みの順番�
   **[中] ウォッチの個別削除(Ctrl+左クリックで選択→「ウォッチを削除」、または「すべて削除」)・ダブルクリックでセルへ移動**(WatchWindow.aspx)
   - 本家: ウォッチ項目を個別に選んで削除できる。ダブルクリックで該当セルへジャンプできる
   - calc: calc/src/cmds.rs:901-925 の "watch" は選択範囲の式セルを追加するか(既存分は無視)、追加が無ければ self.watch.clear() で全消去するのみ(cmds.rs:917-920)。個別削除やダブルクリックでのジャンプは watch_bar (view.rs:1246-1264) にクリックハンドラが無く実装されていない
-- **[小] Shift+F3 で関数の挿入を開くキーボードショートカット**(InsertFunction.aspx)
+- ✔(2026-08-09)**[小] Shift+F3 で関数の挿入を開くキーボードショートカット**(InsertFunction.aspx)
   - 本家: Shift+F3 キーで「関数の挿入」ダイアログを開ける(ホームタブボタン・数式タブ・右クリック・fxアイコンと並ぶ複数経路の一つ)
   - calc: calc/src/main.rs の a_* アクション一覧、および repo 全体を "f3"/"shift-f3" で grep しても該当なし。insert-function はリボンボタン(ui/src/ribbon.rs:317)と cmds.rs:842 の実装のみで、キー割り当ては無い
 
@@ -392,7 +392,7 @@ calc と突き合わせた結果の**全量**。要約と消し込みの順番�
   **[中] レガシー配列数式(範囲選択→数式入力→Ctrl+Shift+Enterで確定、セル範囲全体に同じ式が入り数式バーに{}表示される旧来型CSE配列数式)**(InsertArrayFormulas.aspx)
   - 本家: セル範囲を選択し数式バーに数式を入力後、Ctrl+Shift+Enterを押すと選択範囲全体に配列数式として入り、数式が{}で囲まれる。編集時も再度Ctrl+Shift+Enterで確定。全消去時はセル全選択でDelete。
   - calc: calc/src/main.rs:1976 a_enter は quit_ask/name_edit/fn_args/fn_dlg/solver/prompt/shape_sel の分岐のみで、Shift+EnterやCtrl+Shift+Enterの特別処理は無い。Enterキーは常に move_cursor(1,0) に落ちる。sheet/src/calc.rs:2479 ARRAY_FNS は FILTER/SORT/UNIQUE/SEQUENCE/TRANSPOSE の5つの動的配列(スピル)関数のみを「配列数式」として自動判定する独自方式(sheet/src/calc.rs:2777 is_array_formula)であり、本家のCSE型配列数式とは仕組みが異なる。
-- **[小] パーセント書式のショートカットキー Ctrl+Shift+%**(Calculate-percentages.aspx)
+- ✔(2026-08-09)**[小] パーセント書式のショートカットキー Ctrl+Shift+%**(Calculate-percentages.aspx)
   - 本家: セルを選択しCtrl+Shift+%を押すとパーセント書式が適用される。
   - calc: calc/src/main.rs 内に '%' や percent に関連するキー割当が見つからない(grep該当なし)。リボンボタン(cmds.rs:1935)と右クリック(picks.rs:409)からは可能だが、キーボードショートカットの直接割当は無い。
 
@@ -716,9 +716,9 @@ from-excel(乗り換えの手引き)の起草で、Excel の課題の並びと�
   LAMBDA を活かすには名前が任意の式を持てるようにする改造(xlsx の往復にも
   波及)が先。即時呼び出し `=LAMBDA(x,x*2)(5)` だけ通しても実用が薄い
 - ✔(2026-08-08 実装: TEXTSPLIT は ARRAY_FNS に足してスピルする(列と行の区切り・空を飛ばす)。TEXTBEFORE/TEXTAFTER は何番目・負で後ろから・見つからない時の値まで。区切りが空・0番目は #VALUE!。試験3本)**[中] TEXTSPLIT・TEXTBEFORE・TEXTAFTER**
-- [小] REPLACE(位置指定の置換)
-- [小] XMATCH・SORTBY・RANDARRAY・VSTACK/HSTACK・TAKE/DROP・TOCOL などの拡張スピル
-- [小] データベース関数(DSUM・DAVERAGE・DGET など D 系)
+- ✔(2026-08-09)[小] REPLACE — **位置は文字で数える**(バイトだと日本語で崩れる)
+- ✔(2026-08-09)[小] 拡張スピル — XMATCH(後ろから探す -1 も。**近似は断る**)・SORTBY・RANDARRAY・VSTACK/HSTACK・TAKE/DROP・TOCOL/TOROW
+- ✔(2026-08-09)[小] D 系 — DSUM/DAVERAGE/DCOUNT/DMAX/DMIN/DGET。条件表は「見出し + 条件の行」(同じ行は AND、行どうしは OR)。列は名前でも番号でも。**DGET は1件でなければ返さない**
 - ✔(2026-08-08 実装: 見出しの右クリックに「非表示」「再表示」。器は既存の row_hidden/col_hidden = グループ化と同じで xlsx と往復。再表示は隠れた分を挟むように選ぶ Excel の作法。**使っている分を全部は隠せない**(戻す道が見えなくなるため断る)。試験2本)**[中] 行・列の非表示・再表示(直接のボタン・右クリック項目)**
 - ✔(2026-08-08 実装: `Calc::data_edge` — 隣に中身があれば塊の終わり、空なら
   次の中身まで。Ctrl+↑↓ は ui に EdgeUp/EdgeDown を新設(左右は既存の

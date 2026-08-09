@@ -3519,6 +3519,21 @@ impl Writer {
 
     /// 文字飾りの割り当て(本家 Ctrl+B / I / U / 5)。リボンのボタンと同じ道。
     /// **calc と writer の両方に置く** — 片方だけだと「キーの嘘」になる
+    /// Ctrl+P = 印刷(こちらは PDF に出す)。F11 = 全画面。
+    /// Ctrl+Shift+S = 名前を付けて保存。**calc と両方に置く**
+    fn do_print(&mut self, _: &ui::Print, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("pdf", cx);
+        cx.notify();
+    }
+    fn do_fullscreen(&mut self, _: &ui::FullScreen, window: &mut Window, cx: &mut Context<Self>) {
+        window.toggle_fullscreen();
+        cx.notify();
+    }
+    fn do_save_as_key(&mut self, _: &ui::SaveAs, _: &mut Window, cx: &mut Context<Self>) {
+        self.save_as(cx);
+        cx.notify();
+    }
+
     fn do_bold(&mut self, _: &ui::Bold, _: &mut Window, cx: &mut Context<Self>) {
         self.run_cmd("bold", cx);
         cx.notify();

@@ -1416,6 +1416,112 @@ fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
                 .map(|i| Value::Number((i + 1) as f64))
                 .unwrap_or(Value::Error("#N/A".into())));
         }
+        "XMATCH" => {
+            // XMATCH(探す値, 探す範囲, [照合の型], [検索の向き])
+            // 完全一致(0)だけを受ける。**近似は断る** — 並びが揃っている
+            // 前提を黙って敷くと、帳票が静かにずれた行を指す
+            let key = args.first().map(|g| g.first()).unwrap_or(Value::Empty);
+            let hay = args.get(1).map(|g| g.values()).unwrap_or(&[]);
+            if let Some(t) = args.get(2) {
+                if t.first().as_number() != 0.0 {
+                    return Ok(Value::Error("#VALUE!".into()));
+                }
+            }
+            // 検索の向き: -1 なら後ろから
+            let back = args.get(3).map(|g| g.first().as_number() < 0.0).unwrap_or(false);
+            let hit = if back {
+                hay.iter().rposition(|v| v.display() == key.display())
+            } else {
+                hay.iter().position(|v| v.display() == key.display())
+            };
+            return Ok(hit
+                .map(|i| Value::Number((i + 1) as f64))
+                .unwrap_or(Value::Error("#N/A".into())));
+        }
+        // データベース関数(D 系)。DSUM(表, 列, 条件表)。
+        // **条件表は「見出し + 条件の行」**という Excel の作法そのまま
+        "DSUM" | "DAVERAGE" | "DCOUNT" | "DMAX" | "DMIN" | "DGET" => {
+            let Some(Arg::Rect(w, vals)) = args.first() else {
+                return Ok(Value::Error("#VALUE!".into()));
+            };
+            let (w, vals) = (*w as usize, vals.clone());
+            if w == 0 || vals.len() < w {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
+            let heads: Vec<String> = vals[..w].iter().map(|v| v.display()).collect();
+            // 取り出す列: 見出しの名前でも、左から何本目でも
+            let field = args.get(1).map(|g| g.first()).unwrap_or(Value::Empty);
+            let fi = match &field {
+                Value::Number(n) => (*n as usize).checked_sub(1),
+                v => heads.iter().position(|h| *h == v.display()),
+            };
+            let Some(fi) = fi.filter(|i| *i < w) else {
+                return Ok(Value::Error("#VALUE!".into()));
+            };
+            // 条件表: 1行目が見出し、2行目以降が条件(同じ行は AND、行どうしは OR)
+            let Some(Arg::Rect(cw, cvals)) = args.get(2) else {
+                return Ok(Value::Error("#VALUE!".into()));
+            };
+            let (cw, cvals) = (*cw as usize, cvals.clone());
+            if cw == 0 || cvals.len() < cw * 2 {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
+            let cheads: Vec<String> = cvals[..cw].iter().map(|v| v.display()).collect();
+            let mut hits: Vec<Value> = Vec::new();
+            for row in vals[w..].chunks(w) {
+                let mut any = false;
+                for crow in cvals[cw..].chunks(cw) {
+                    let mut all = true;
+                    let mut used = false;
+                    for (k, cond) in crow.iter().enumerate() {
+                        let c = cond.display();
+                        if c.trim().is_empty() {
+                            continue;
+                        }
+                        used = true;
+                        let Some(ci) = cheads.get(k).and_then(|h| heads.iter().position(|x| x == h))
+                        else {
+                            all = false;
+                            break;
+                        };
+                        let cell = row.get(ci).cloned().unwrap_or(Value::Empty);
+                        if !matches_cond(&cell, &Value::Text(c.clone())) {
+                            all = false;
+                            break;
+                        }
+                    }
+                    if all && used {
+                        any = true;
+                        break;
+                    }
+                }
+                if any {
+                    hits.push(row.get(fi).cloned().unwrap_or(Value::Empty));
+                }
+            }
+            let nums: Vec<f64> = hits.iter().filter(|v| !v.is_empty()).map(|v| v.as_number()).collect();
+            return Ok(match name {
+                "DSUM" => Value::Number(nums.iter().sum()),
+                "DAVERAGE" => {
+                    if nums.is_empty() {
+                        Value::Error("#DIV/0!".into())
+                    } else {
+                        Value::Number(nums.iter().sum::<f64>() / nums.len() as f64)
+                    }
+                }
+                "DCOUNT" => Value::Number(nums.len() as f64),
+                "DMAX" => nums.iter().cloned().fold(None::<f64>, |m, v| Some(m.map_or(v, |x: f64| x.max(v))))
+                    .map(Value::Number).unwrap_or(Value::Number(0.0)),
+                "DMIN" => nums.iter().cloned().fold(None::<f64>, |m, v| Some(m.map_or(v, |x: f64| x.min(v))))
+                    .map(Value::Number).unwrap_or(Value::Number(0.0)),
+                // DGET は**1件でなければ黙って返さない**(Excel と同じ)
+                _ => match hits.len() {
+                    0 => Value::Error("#VALUE!".into()),
+                    1 => hits[0].clone(),
+                    _ => Value::Error("#NUM!".into()),
+                },
+            });
+        }
         "XLOOKUP" => {
             // XLOOKUP(探す値, 探す範囲, 返す範囲, [見つからないとき]) — 完全一致
             let key = args.first().map(|g| g.first()).unwrap_or(Value::Empty);
@@ -2111,6 +2217,23 @@ fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
             let v = a.first().cloned().unwrap_or(Value::Empty);
             let code = a.get(1).map(|v| v.display()).unwrap_or_default();
             Value::Text(format_value(&v, Some(&code)))
+        }
+        "REPLACE" => {
+            // REPLACE(文字列, 開始位置, 文字数, 置く文字)。**位置は1から**、
+            // 数え方は文字(バイトではない) — 日本語で崩れないように
+            let src: Vec<char> = a.first().map(|v| v.display()).unwrap_or_default().chars().collect();
+            let start = a.get(1).map(|v| v.as_number()).unwrap_or(1.0);
+            let n = a.get(2).map(|v| v.as_number()).unwrap_or(0.0);
+            let new = a.get(3).map(|v| v.display()).unwrap_or_default();
+            if start < 1.0 || n < 0.0 {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
+            let i = ((start as usize) - 1).min(src.len());
+            let j = (i + n as usize).min(src.len());
+            let mut out: String = src[..i].iter().collect();
+            out.push_str(&new);
+            out.extend(&src[j..]);
+            Value::Text(out)
         }
         "SUBSTITUTE" => {
             // SUBSTITUTE(文字列, 探す, 置く, [何個目だけ])
@@ -2911,8 +3034,10 @@ pub fn is_py_formula(f: &str) -> bool {
 
 /// 並びを返す関数(スピルする関数)。セル単独でも、四則・比較・& と
 /// 組み合わせた配列数式でも使える。答えが2次元なら隣へあふれる
-const ARRAY_FNS: &[&str] =
-    &["FILTER", "SORT", "UNIQUE", "SEQUENCE", "TRANSPOSE", "TEXTSPLIT"];
+const ARRAY_FNS: &[&str] = &[
+    "FILTER", "SORT", "UNIQUE", "SEQUENCE", "TRANSPOSE", "TEXTSPLIT",
+    "SORTBY", "RANDARRAY", "VSTACK", "HSTACK", "TAKE", "DROP", "TOCOL", "TOROW",
+];
 
 pub fn recalc(sheet: &mut Sheet) {
     recalc_impl(sheet, &[], 0);
@@ -3489,6 +3614,134 @@ fn array_call(name: &str, args: Vec<Arg>) -> Result<Vec<Vec<Value>>, Value> {
                 out.push(vec![Value::Text(String::new())]);
             }
             Ok(out)
+        }
+        // 拡張スピル。**縦横の向きを取り違えない**ことに注意して書く
+        "SORTBY" => {
+            // SORTBY(並べる範囲, 鍵の範囲, [1 昇順 / -1 降順])
+            let rows = rows_of(args.first().ok_or(err("#VALUE!"))?);
+            let keys: Vec<Value> = rows_of(args.get(1).ok_or(err("#VALUE!"))?)
+                .into_iter()
+                .map(|r| r.into_iter().next().unwrap_or(Value::Empty))
+                .collect();
+            if keys.len() != rows.len() {
+                return Err(err("#VALUE!"));
+            }
+            let desc = args
+                .get(2)
+                .map(|g| g.first().as_number() < 0.0)
+                .unwrap_or(false);
+            let mut idx: Vec<usize> = (0..rows.len()).collect();
+            idx.sort_by(|x, y| {
+                let (p, q) = (&keys[*x], &keys[*y]);
+                let o = match (p, q) {
+                    (Value::Number(m), Value::Number(n)) => {
+                        m.partial_cmp(n).unwrap_or(std::cmp::Ordering::Equal)
+                    }
+                    _ => p.display().cmp(&q.display()),
+                };
+                if desc { o.reverse() } else { o }
+            });
+            Ok(idx.into_iter().map(|i| rows[i].clone()).collect())
+        }
+        "RANDARRAY" => {
+            // RANDARRAY([行], [列], [最小], [最大], [整数か])
+            let n = |i: usize, d: f64| args.get(i).map(|g| g.first().as_number()).unwrap_or(d);
+            let (h, w) = (n(0, 1.0) as i64, n(1, 1.0) as i64);
+            if h < 1 || w < 1 || h * w > 200_000 {
+                return Err(err("#NUM!"));
+            }
+            let (lo, hi) = (n(2, 0.0), n(3, 1.0));
+            let whole = args.get(4).map(|g| g.first().as_number() != 0.0).unwrap_or(false);
+            let mut out = Vec::new();
+            for _r in 0..h {
+                let mut row = Vec::new();
+                for _c in 0..w {
+                    let v = lo + (hi - lo) * rand01();
+                    row.push(Value::Number(if whole { v.round() } else { v }));
+                }
+                out.push(row);
+            }
+            Ok(out)
+        }
+        "VSTACK" | "HSTACK" => {
+            // 縦(VSTACK)か横(HSTACK)に積む。足りない所は空
+            let mut parts: Vec<Vec<Vec<Value>>> = Vec::new();
+            for g in &args {
+                parts.push(rows_of(g));
+            }
+            if name == "VSTACK" {
+                let w = parts.iter().flatten().map(|r| r.len()).max().unwrap_or(0);
+                let mut out = Vec::new();
+                for p in parts {
+                    for mut r in p {
+                        r.resize(w, Value::Empty);
+                        out.push(r);
+                    }
+                }
+                Ok(out)
+            } else {
+                let h = parts.iter().map(|p| p.len()).max().unwrap_or(0);
+                let mut out = vec![Vec::new(); h];
+                for p in parts {
+                    let w = p.iter().map(|r| r.len()).max().unwrap_or(0);
+                    for i in 0..h {
+                        let mut r = p.get(i).cloned().unwrap_or_default();
+                        r.resize(w, Value::Empty);
+                        out[i].extend(r);
+                    }
+                }
+                Ok(out)
+            }
+        }
+        "TAKE" | "DROP" => {
+            // TAKE(範囲, 行数, [列数]) / DROP(同じ)。負なら後ろから
+            let rows = rows_of(args.first().ok_or(err("#VALUE!"))?);
+            let nr = args.get(1).map(|g| g.first().as_number() as i64).unwrap_or(0);
+            let nc = args.get(2).map(|g| g.first().as_number() as i64);
+            let cut = |len: usize, n: i64, take: bool| -> (usize, usize) {
+                let len = len as i64;
+                let n = n.clamp(-len, len);
+                match (take, n >= 0) {
+                    (true, true) => (0, n as usize),
+                    (true, false) => ((len + n) as usize, len as usize),
+                    (false, true) => (n as usize, len as usize),
+                    (false, false) => (0, (len + n) as usize),
+                }
+            };
+            let take = name == "TAKE";
+            let (a0, a1) = cut(rows.len(), nr, take);
+            let mut out: Vec<Vec<Value>> = rows[a0.min(rows.len())..a1.min(rows.len())].to_vec();
+            if let Some(nc) = nc {
+                let w = out.iter().map(|r| r.len()).max().unwrap_or(0);
+                let (b0, b1) = cut(w, nc, take);
+                for r in out.iter_mut() {
+                    r.resize(w, Value::Empty);
+                    *r = r[b0.min(w)..b1.min(w)].to_vec();
+                }
+            }
+            if out.is_empty() {
+                return Err(err("#CALC!"));
+            }
+            Ok(out)
+        }
+        "TOCOL" | "TOROW" => {
+            // 並びを1列(1行)に均す。**空は飛ばす**(Excel の既定は残すが、
+            // 帳票では空の行が並ぶ方が困る…ので既定は残し、2つ目の引数で飛ばす)
+            let rows = rows_of(args.first().ok_or(err("#VALUE!"))?);
+            let skip_empty = args.get(1).map(|g| g.first().as_number() != 0.0).unwrap_or(false);
+            let flat: Vec<Value> = rows
+                .into_iter()
+                .flatten()
+                .filter(|v| !(skip_empty && v.is_empty()))
+                .collect();
+            if flat.is_empty() {
+                return Err(err("#CALC!"));
+            }
+            Ok(if name == "TOCOL" {
+                flat.into_iter().map(|v| vec![v]).collect()
+            } else {
+                vec![flat]
+            })
         }
         "TRANSPOSE" => {
             let rows = rows_of(args.first().ok_or(err("#VALUE!"))?);
@@ -5311,5 +5564,96 @@ mod sheet3_tests {
         recalc_all(&mut b);
         // B2 の 10+20+30 と B3 の 1+2+3
         assert_eq!(b.sheets[0].value(Pos::parse("A1").unwrap()), Value::Number(66.0));
+    }
+}
+
+#[cfg(test)]
+mod new_fn_tests {
+    use super::*;
+    use crate::model::Cell;
+
+    /// A1 に式を入れて計算し、表示を返す。表は B 列から置く
+    fn ev(formula: &str, table: &[(&str, &str)]) -> String {
+        let mut s = Sheet::default();
+        for (a1, v) in table {
+            s.set(Pos::parse(a1).unwrap(), Cell::input(v));
+        }
+        s.set(Pos::parse("A1").unwrap(), Cell::input(formula));
+        recalc(&mut s);
+        s.get(Pos::parse("A1").unwrap()).unwrap().value.display()
+    }
+
+    #[test]
+    fn REPLACEは文字で数える() {
+        // **バイトで数えると日本語で崩れる**
+        assert_eq!(ev("=REPLACE(\"あいうえお\",2,2,\"XY\")", &[]), "あXYえお");
+        assert_eq!(ev("=REPLACE(\"abcdef\",1,3,\"Z\")", &[]), "Zdef");
+        // 位置が 0 以下は断る(黙って先頭に入れない)
+        assert_eq!(ev("=REPLACE(\"abc\",0,1,\"Z\")", &[]), "#VALUE!");
+    }
+
+    #[test]
+    fn XMATCHは後ろからも探せて近似は断る() {
+        let t = [("B1", "い"), ("B2", "ろ"), ("B3", "い")];
+        assert_eq!(ev("=XMATCH(\"い\",B1:B3)", &t), "1");
+        assert_eq!(ev("=XMATCH(\"い\",B1:B3,0,-1)", &t), "3", "後ろから探せていない");
+        assert_eq!(ev("=XMATCH(\"は\",B1:B3)", &t), "#N/A");
+        // 近似(1)は**黙って合わせず**断る
+        assert_eq!(ev("=XMATCH(\"い\",B1:B3,1)", &t), "#VALUE!");
+    }
+
+    #[test]
+    fn データベース関数は条件表で絞る() {
+        // 表: B1:C4(見出し + 3行)、条件表: E1:E2
+        let t = [
+            ("B1", "品"), ("C1", "額"),
+            ("B2", "机"), ("C2", "100"),
+            ("B3", "椅子"), ("C3", "200"),
+            ("B4", "机"), ("C4", "300"),
+            ("E1", "品"), ("E2", "机"),
+        ];
+        assert_eq!(ev("=DSUM(B1:C4,\"額\",E1:E2)", &t), "400");
+        assert_eq!(ev("=DAVERAGE(B1:C4,\"額\",E1:E2)", &t), "200");
+        assert_eq!(ev("=DCOUNT(B1:C4,\"額\",E1:E2)", &t), "2");
+        assert_eq!(ev("=DMAX(B1:C4,\"額\",E1:E2)", &t), "300");
+        // DGET は**1件でなければ返さない**(2件あるので #NUM!)
+        assert_eq!(ev("=DGET(B1:C4,\"額\",E1:E2)", &t), "#NUM!");
+        // 列は番号でも指せる
+        assert_eq!(ev("=DSUM(B1:C4,2,E1:E2)", &t), "400");
+    }
+
+    #[test]
+    fn 拡張スピルが並びを返す() {
+        let mut s = Sheet::default();
+        for (a1, v) in [("B1", "3"), ("B2", "1"), ("B3", "2"),
+                        ("C1", "さ"), ("C2", "あ"), ("C3", "い")] {
+            s.set(Pos::parse(a1).unwrap(), Cell::input(v));
+        }
+        // SORTBY: C 列を B 列の順で並べ替える
+        s.set(Pos::parse("E1").unwrap(), Cell::input("=SORTBY(C1:C3,B1:B3)"));
+        recalc(&mut s);
+        let g = |a1: &str| s.get(Pos::parse(a1).unwrap()).map(|c| c.value.display()).unwrap_or_default();
+        assert_eq!((g("E1"), g("E2"), g("E3")), ("あ".into(), "い".into(), "さ".into()));
+
+        // TAKE / DROP
+        let mut s2 = Sheet::default();
+        for (i, v) in ["1", "2", "3", "4"].iter().enumerate() {
+            s2.set(Pos::new(i as u32, 1), Cell::input(v));
+        }
+        s2.set(Pos::parse("D1").unwrap(), Cell::input("=TAKE(B1:B4,2)"));
+        s2.set(Pos::parse("E1").unwrap(), Cell::input("=DROP(B1:B4,-3)"));
+        recalc(&mut s2);
+        let h = |a1: &str| s2.get(Pos::parse(a1).unwrap()).map(|c| c.value.display()).unwrap_or_default();
+        assert_eq!((h("D1"), h("D2")), ("1".into(), "2".into()), "TAKE が先頭2つでない");
+        assert_eq!(h("E1"), "1", "DROP(-3) が先頭1つでない");
+
+        // VSTACK は縦に積む
+        let mut s3 = Sheet::default();
+        s3.set(Pos::parse("B1").unwrap(), Cell::input("1"));
+        s3.set(Pos::parse("C1").unwrap(), Cell::input("2"));
+        s3.set(Pos::parse("E1").unwrap(), Cell::input("=VSTACK(B1,C1)"));
+        recalc(&mut s3);
+        let k = |a1: &str| s3.get(Pos::parse(a1).unwrap()).map(|c| c.value.display()).unwrap_or_default();
+        assert_eq!((k("E1"), k("E2")), ("1".into(), "2".into()), "縦に積めていない");
     }
 }

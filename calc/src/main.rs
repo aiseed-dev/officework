@@ -2909,6 +2909,34 @@ impl Calc {
     /// 動的配列(FILTER などのスピル)がある今でもこれが要るのは、
     /// **古い帳票がこの形で書かれている**から。読めて書けて、同じ手で
     /// 直せないと乗り換えられない。
+    /// Shift+F3 = 関数の挿入(本家と同じ鍵)
+    fn a_insert_fn(&mut self, _: &ui::InsertFn, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("insert-function", cx);
+        cx.notify();
+    }
+    /// Ctrl+Shift+% = パーセント書式
+    fn a_percent(&mut self, _: &ui::PercentFmt, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("percents", cx);
+        cx.notify();
+    }
+    /// Ctrl+P = 印刷。**こちらは紙に出す口を持たないので PDF にする** —
+    /// 「印刷しました」と言って何も出ないより、出来た物を渡す
+    fn a_print(&mut self, _: &ui::Print, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("pdf", cx);
+        cx.notify();
+    }
+    /// F11 = 全画面(帳票を広く見る)
+    fn a_fullscreen(&mut self, _: &ui::FullScreen, window: &mut Window, cx: &mut Context<Self>) {
+        window.toggle_fullscreen();
+        self.status = ui::t!("全画面を切り替えました(F11 で戻ります)").into();
+        cx.notify();
+    }
+    /// Ctrl+Shift+S = 名前を付けて保存
+    fn a_save_as(&mut self, _: &ui::SaveAs, _: &mut Window, cx: &mut Context<Self>) {
+        self.save_as(cx);
+        cx.notify();
+    }
+
     fn a_array_enter(&mut self, _: &ui::ArrayEnter, _: &mut Window, cx: &mut Context<Self>) {
         let text = self.input.text().to_string();
         self.set_array_formula(&text, cx);
