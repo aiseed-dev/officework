@@ -23,11 +23,15 @@ fn main() {
     let mut list_only = false;
     let mut furigana = false;
     let mut washi = false;
+    let mut filter = false;
     let mut files: Vec<String> = Vec::new();
     for a in std::env::args().skip(1) {
         match a.as_str() {
             "-l" | "--list" => list_only = true,
             "--furigana" => furigana = true,
+            // 同音異義語を含む文だけモデルへ送る。**既定では効かない** —
+            // 落とすのは「大丈夫と証明できた文」ではなく「表に載っていない文」
+            "--filter" => filter = true,
             // pywashi の記法で本文ごと出す。そのまま washi --pdf で紙になる
             "--washi" => {
                 furigana = true;
@@ -49,7 +53,8 @@ fn main() {
         }
     };
 
-    let c = Checker::default();
+    let mut c = Checker::default();
+    c.filter_homophones = filter;
     if furigana {
         run_furigana(&c, &text, washi);
         return;
@@ -161,9 +166,13 @@ const HELP: &str = "office-spell — 日本語も見る綴り検査
 
   office-spell [ファイル…]        指摘を出す(標準入力も可)
   office-spell -l                語だけ出す(hunspell -l と同じ形)
+  office-spell --filter          同音異義語のある文だけモデルへ送る(速いが網羅しない)
   office-spell --furigana        ふりがなの候補を出す
   office-spell --washi           第1候補を振った本文を pywashi の記法で出す
                              (office-spell --washi 原稿.txt > 原稿.md && washi 原稿.md --pdf)
+
+--filter は**大きなコーパスを通すための物**。落とした文は「誤りが無い」のではなく
+「見ていない」ので、その数を必ず出し、終了コードは 3 になる。
 
 英語は辞書だけで動く(モデルも GPU も要らない)。
 日本語の誤変換は辞書に有る語になるので、辞書では捕まらない。だからモデルを使う。

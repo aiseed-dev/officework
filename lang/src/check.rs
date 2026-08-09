@@ -20,7 +20,7 @@
 use crate::ja::furigana::{self, Suggestion};
 use crate::Target;
 use crate::model::Endpoint;
-use crate::ja::{notation, okurigana, proof, wording};
+use crate::ja::{homophone, notation, okurigana, proof, wording};
 use crate::spell::{self, Dictionary};
 
 /// 指摘の種類。
@@ -122,6 +122,12 @@ pub struct Checker {
     pub dict: Option<Dictionary>,
     pub dict_problem: Option<String>,
     pub endpoint: Endpoint,
+    /// 同音異義語を含む文だけをモデルへ送るか。**既定は false。**
+    ///
+    /// 落とせるのは「大丈夫と証明できた文」ではなく「表に載っていない文」
+    /// なので、既定にはしない([`crate::ja::homophone`])。
+    /// 明示で頼まれたときだけ濾過し、見ていない文の数を `skipped` に残す
+    pub filter_homophones: bool,
     /// 一度判定した語は覚える。**同じ語を二度モデルに訊かない**
     seen: std::cell::RefCell<std::collections::BTreeMap<String, Verdict>>,
 }
@@ -132,7 +138,13 @@ impl Default for Checker {
             Ok(d) => (Some(d), None),
             Err(e) => (None, Some(e)),
         };
-        Self { dict, dict_problem, endpoint: Endpoint::default(), seen: Default::default() }
+        Self {
+            dict,
+            dict_problem,
+            endpoint: Endpoint::default(),
+            filter_homophones: false,
+            seen: Default::default(),
+        }
     }
 }
 
@@ -199,7 +211,24 @@ impl Checker {
             // 「検査できなかった部分がある」(終了コード3)は消えない
             // ここまでが辞書の指摘。モデルの分と突き合わせて重複を落とす
             let by_dict = r.findings.len();
-            match proof::proofread(&self.endpoint, text) {
+
+            // 濾過を頼まれていれば、紛らわしい語のある文だけを渡す。
+            // **落とした文は「大丈夫」ではなく「見ていない」** — 必ずそう言う
+            let cut = self.filter_homophones.then(|| homophone::filter(text));
+            let to_model = match &cut {
+                Some(f) => f.send.as_str(),
+                None => text,
+            };
+            if let Some(f) = &cut {
+                if !f.is_whole() {
+                    r.skipped.push(format!(
+                        "同音異義語の無い {} 文(全 {} 文)はモデルに渡していない",
+                        f.dropped, f.total
+                    ));
+                }
+            }
+
+            match proof::proofread(&self.endpoint, to_model) {
                 Ok(notes) => {
                     for n in notes {
                         let at = char_index_of(text, &n.found);
@@ -348,6 +377,7 @@ mod tests {
             dict_problem: None,
             // 繋がらない宛先。モデル側は必ず失敗する
             endpoint: Endpoint { port: 1, ..Default::default() },
+            filter_homophones: false,
             seen: Default::default(),
         }
     }
@@ -486,6 +516,31 @@ mod tests {
     }
 
     #[test]
+    fn 濾過は既定では効かない() {
+        // 落とせるのは「大丈夫と証明できた文」ではなく「表に載っていない文」。
+        // **既定にはしない**
+        let c = checker_with_dict();
+        assert!(!c.filter_homophones, "濾過が既定で効いている");
+        let r = c.check("犬が走る。猫が寝る。");
+        assert!(
+            !r.skipped.iter().any(|s| s.contains("渡していない")),
+            "既定なのに文を落とした: {:?}",
+            r.skipped
+        );
+    }
+
+    #[test]
+    fn 濾過したら落とした文を黙らない() {
+        // **黙って「指摘なし」にしない**の裏返し。見ていない範囲は必ず言う
+        let mut c = checker_with_dict();
+        c.filter_homophones = true;
+        let r = c.check("犬が走る。猫が寝る。それは以外な結果でした。");
+        let told = r.skipped.iter().any(|s| s.contains("渡していない") && s.contains("2 文"));
+        assert!(told, "落とした文を黙っている: {:?}", r.skipped);
+        assert!(!r.may_say_clean());
+    }
+
+    #[test]
     fn 混在文は両方を掛ける() {
         let c = checker_with_dict();
         let r = c.check("Radeon の documnt を確認する");
@@ -509,6 +564,7 @@ mod tests {
             dict: None,
             dict_problem: Some("辞書が見つかりません".into()),
             endpoint: Endpoint { port: 1, ..Default::default() },
+            filter_homophones: false,
             seen: Default::default(),
         };
         let r = c.check("the documnt");
