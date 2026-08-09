@@ -10,6 +10,7 @@
     python3 tools/pyoffice_diff.py                     # sample/ と templates/ を全部
     python3 tools/pyoffice_diff.py 様式7.xlsx …        # ファイルを指定
     python3 tools/pyoffice_diff.py --json out.json     # 差の一覧を書き出す
+    python3 tools/pyoffice_diff.py --show 20           # 1件ごとに出す差の上限(既定 5)
 
 向こうのサイドカーの場所は環境変数 GENOFFICE で変えられる
 (既定 ~/dev/genoffice)。組んでいなければそう言って終わる。
@@ -17,6 +18,18 @@
 うちのエンジンを動かす python は OFFICEWORK_PYTHON で選ぶ(既定はこの python)。
 **repo の直下で素の python を使うと、.venv の officework.pth がソースの方
 (エンジンの入っていない officework/)を先に掴む** — wheel を入れた仮想環境を指すこと。
+
+## 何を比べていて、何を比べていないか(2026-08-09 に深くした)
+
+比べる: シート名の並び・使っている範囲・**セルの値そのもの**・**式の文字列
+そのもの**・**結合の座標**。
+
+比べない(**比べられない**): 書式・罫線・条件付き書式・入力規則・
+名前の定義・固定枠。向こうの `read_range` は返すが、**`officework.sheet` の
+Python の窓が返さない**(`Book`/`Sheet` に出ている物が全部)。ここを比べるには
+Python の窓を太らせるのではなく、`sheet` クレートを直に使う Rust 側の
+書き出しが要る — 本番のサイドカーが Rust なので、そちらが正道。
+設計の「次の一手」を参照。
 """
 
 import argparse
@@ -29,6 +42,27 @@ import uuid
 
 GENOFFICE = pathlib.Path(os.environ.get("GENOFFICE", os.path.expanduser("~/dev/genoffice")))
 SIDECAR = GENOFFICE / "apps/sheets/native/xlsx-engine/target/release/xlsx-sidecar"
+
+# 端まで読むと大きい帳票で時間が飛ぶので上限を置く。**黙って切らない** —
+# 切ったら view に truncated を立て、報告に出す(切った所は「差が無い」ではない)
+MAX_ROWS = 5000
+MAX_COLS = 256
+
+# 数の食い違いを言う閾。xlsx に書かれた値をどちらもそのまま読むので本来は
+# 一致するが、10進の丸めで末尾が揺れることがある
+EPS = 1e-9
+
+
+def a1(row, col):
+    """0起点の (行, 列) を A1 に。26列を超えても正しく回す。"""
+    s = ""
+    c = col
+    while True:
+        s = chr(ord("A") + c % 26) + s
+        c = c // 26 - 1
+        if c < 0:
+            break
+    return f"{s}{row + 1}"
 
 
 class Sidecar:
@@ -64,7 +98,7 @@ class Sidecar:
 
 
 def their_view(sc, path):
-    """向こうの答えから、比べたい所だけ取り出す。"""
+    """向こうの答えを、比べる形に揃える。"""
     r = sc.call("open", path=str(pathlib.Path(path).resolve()))
     if not r.get("ok"):
         return {"error": r.get("error")}
@@ -72,13 +106,18 @@ def their_view(sc, path):
     sid = meta.get("sessionId") or meta.get("session_id")
     out = {"sheets": [], "names": len(meta.get("definedNames") or [])}
     for sh in meta.get("sheets") or []:
-        view = {"name": sh.get("name"), "cells": 0, "formulas": 0}
         # **範囲はシートの外に出せない**(向こうは "Range is outside the
         # worksheet." で断る)。rowCount / columnCount に丸める
         rows = int(sh.get("rowCount") or 0)
         cols = int(sh.get("columnCount") or 0)
+        view = {
+            "name": sh.get("name"),
+            "extent": [rows, cols],
+            "cells": {},
+            "merges": [],
+            "truncated": rows > MAX_ROWS or cols > MAX_COLS,
+        }
         if rows == 0 or cols == 0:
-            view["note"] = "空のシート"
             out["sheets"].append(view)
             continue
         rr = sc.call(
@@ -88,28 +127,45 @@ def their_view(sc, path):
             range={
                 "startRow": 0,
                 "startColumn": 0,
-                "endRow": rows - 1,
-                "endColumn": cols - 1,
+                "endRow": min(rows, MAX_ROWS) - 1,
+                "endColumn": min(cols, MAX_COLS) - 1,
             },
         )
         if not rr.get("ok"):
             # **黙って0件にしない。** 断られた理由をそのまま持ち上げる
             view["error"] = rr.get("error")
-        else:
-            res = rr["result"]
-            cells = res.get("cells") or []
-            # **書式だけのセルは数えない。** 向こうは罫線だけ引いた空欄も
+            out["sheets"].append(view)
+            continue
+        res = rr["result"]
+        # **段階索引。** 向こうは全部読み終わる前に答える。`indexingComplete`
+        # は「シート全体の索引が終わったか」で、**要求した範囲が揃っているか
+        # ではない**(2026-08-09 に踏んだ — 8行の帳面で indexedThroughRow=7、
+        # つまり全部揃っているのに complete は false だった)。
+        # 当てになるのは `indexedThroughRow >= 要求の最終行` のほう。
+        #
+        # ただし副作用がある: 条件付き書式・絞り込み・入力規則・保護は
+        # **complete のときだけ返る**(向こうの lib.rs:749-764)。早く読むと
+        # 黙って空で返る欄がある — pyoffice はここを真似るか、違えるなら
+        # 意識して違える
+        want = min(rows, MAX_ROWS) - 1
+        got = res.get("indexedThroughRow")
+        if got is None or got < want:
+            view["partial_through_row"] = got
+        if res.get("indexingComplete") is False:
+            view["side_fields_withheld"] = True
+        for c in res.get("cells") or []:
+            v = c.get("value")
+            f = c.get("formula")
+            # **書式だけのセルは持たない。** 向こうは罫線だけ引いた空欄も
             # 返す(帳票の様式では珍しくない)。こちらは「中身のあるセル」を
-            # 数えているので、揃えないと毎回差が出る(2026-08-09 に踏んだ)
-            has = [
-                c
-                for c in cells
-                if c.get("value") not in (None, "") or c.get("formula")
-            ]
-            view["cells"] = len(has)
-            view["fmt_only"] = len(cells) - len(has)
-            view["merges"] = len(res.get("merges") or [])
-            view["formulas"] = sum(1 for c in has if c.get("formula"))
+            # 見ているので、揃えないと毎回差が出る(2026-08-09 に踏んだ)
+            if v in (None, "") and not f:
+                continue
+            view["cells"][a1(c["row"], c["column"])] = {"v": v, "f": f}
+        for m in res.get("merges") or []:
+            view["merges"].append(
+                f"{a1(m['startRow'], m['startColumn'])}:{a1(m['endRow'], m['endColumn'])}"
+            )
         out["sheets"].append(view)
     if sid:
         sc.call("close", sessionId=sid)
@@ -124,26 +180,47 @@ OUR_PY = os.environ.get("OFFICEWORK_PYTHON", sys.executable)
 _OUR_SCRIPT = r"""
 import json, pathlib, sys
 from officework import sheet
+
+MAX_ROWS, MAX_COLS = %d, %d
+
+def a1(row, col):
+    s = ""
+    c = col
+    while True:
+        s = chr(ord("A") + c %% 26) + s
+        c = c // 26 - 1
+        if c < 0:
+            break
+    return "%%s%%d" %% (s, row + 1)
+
 path = sys.argv[1]
 b = sheet.Book.open(str(pathlib.Path(path).resolve()))
-out = {"sheets": [], "names": 0, "unsupported": b.unsupported}
+out = {"sheets": [], "names": None, "unsupported": b.unsupported}
 for name in b.sheet_names:
     s = b[name]
     rows, cols = s.shape
-    cells = formulas = 0
-    for r in range(min(rows, 200)):
-        for c in range(min(cols, 40)):
-            a1 = (chr(65 + c) if c < 26 else "A" + chr(65 + c - 26)) + str(r + 1)
-            # **式のあるセルは、答えが空でも数える。**「値のあるセルの中で
-            # 式を数える」と、空を返す式を取りこぼす(2026-08-09 に踏んだ)
-            f = s.formula(a1)
-            if f:
-                formulas += 1
-            if s[a1] not in (None, "") or f:
-                cells += 1
-    out["sheets"].append({"name": name, "cells": cells, "formulas": formulas})
+    view = {
+        "name": name,
+        "extent": [rows, cols],
+        "cells": {},
+        "merges": ["%%s:%%s" %% (a, z) for (a, z) in s.merges],
+        "truncated": rows > MAX_ROWS or cols > MAX_COLS,
+    }
+    grid = s.values()
+    for r in range(min(rows, MAX_ROWS)):
+        row = grid[r] if r < len(grid) else []
+        for c in range(min(cols, MAX_COLS)):
+            ref = a1(r, c)
+            v = row[c] if c < len(row) else None
+            # **式のあるセルは、答えが空でも持つ。**「値のあるセルの中で
+            # 式を見る」と、空を返す式を取りこぼす(2026-08-09 に踏んだ)
+            f = s.formula(ref)
+            if v in (None, "") and not f:
+                continue
+            view["cells"][ref] = {"v": v, "f": f}
+    out["sheets"].append(view)
 print(json.dumps(out, ensure_ascii=False))
-"""
+""" % (MAX_ROWS, MAX_COLS)
 
 
 def our_view(path):
@@ -163,7 +240,69 @@ def our_view(path):
         return {"error": f"答えが読めません: {r.stdout[:200]}"}
 
 
-def compare(path, sc):
+def same_value(a, b):
+    """値が同じか。数だけは丸めの揺れを許す。"""
+    if isinstance(a, bool) or isinstance(b, bool):
+        return a is b
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return abs(a - b) <= EPS * max(1.0, abs(a), abs(b))
+    return a == b
+
+
+def show(x):
+    return "(空)" if x is None else repr(x)
+
+
+def diff_sheet(name, t, o, show_n):
+    """1枚のシートの差。**数ではなく中身**を突き合わせる。"""
+    d = []
+    if t.get("error"):
+        return [f"[{name}] 向こうが断った: {t['error']}"]
+    if t.get("extent") != o.get("extent"):
+        d.append(f"[{name}] 使っている範囲: 向こう {t['extent']} / うち {o['extent']}")
+    if "partial_through_row" in t:
+        d.append(
+            f"[{name}] **向こうは {t['partial_through_row']} 行までしか索引していない** — "
+            f"この先の一致は当てにならない"
+        )
+    if t.get("truncated") or o.get("truncated"):
+        d.append(f"[{name}] 大きすぎて {MAX_ROWS}行×{MAX_COLS}列で切った — 先は見ていない")
+
+    tc, oc = t.get("cells") or {}, o.get("cells") or {}
+    only_t = sorted(set(tc) - set(oc))
+    only_o = sorted(set(oc) - set(tc))
+    if only_t:
+        d.append(
+            f"[{name}] うちに無いセル {len(only_t)} 個: "
+            + ", ".join(f"{k}={show(tc[k]['v'])}" for k in only_t[:show_n])
+        )
+    if only_o:
+        d.append(
+            f"[{name}] 向こうに無いセル {len(only_o)} 個: "
+            + ", ".join(f"{k}={show(oc[k]['v'])}" for k in only_o[:show_n])
+        )
+
+    vbad, fbad = [], []
+    for k in sorted(set(tc) & set(oc)):
+        if not same_value(tc[k]["v"], oc[k]["v"]):
+            vbad.append(f"{k}: 向こう {show(tc[k]['v'])} / うち {show(oc[k]['v'])}")
+        if (tc[k]["f"] or "") != (oc[k]["f"] or ""):
+            fbad.append(f"{k}: 向こう {show(tc[k]['f'])} / うち {show(oc[k]['f'])}")
+    if vbad:
+        d.append(f"[{name}] 値が違うセル {len(vbad)} 個: " + " / ".join(vbad[:show_n]))
+    if fbad:
+        d.append(f"[{name}] 式が違うセル {len(fbad)} 個: " + " / ".join(fbad[:show_n]))
+
+    tm, om = set(t.get("merges") or []), set(o.get("merges") or [])
+    if tm != om:
+        d.append(
+            f"[{name}] 結合が違う: うちに無い {sorted(tm - om)[:show_n]} / "
+            f"向こうに無い {sorted(om - tm)[:show_n]}"
+        )
+    return d
+
+
+def compare(path, sc, show_n):
     theirs = their_view(sc, path)
     ours = our_view(path)
     diffs = []
@@ -174,14 +313,13 @@ def compare(path, sc):
     on = [s["name"] for s in ours["sheets"]]
     if tn != on:
         diffs.append(f"シートの並びが違う: 向こう {tn} / うち {on}")
-    for t, o in zip(theirs["sheets"], ours["sheets"]):
-        if t.get("error"):
-            diffs.append(f"[{t['name']}] 向こうが断った: {t['error']}")
+    # 名前の並びが違っても、同じ名前のシート同士は比べる(片方だけの物は上で出た)
+    ot = {s["name"]: s for s in ours["sheets"]}
+    for t in theirs["sheets"]:
+        o = ot.get(t["name"])
+        if o is None:
             continue
-        if t["cells"] != o["cells"]:
-            diffs.append(f"[{t['name']}] 中身のあるセルの数: 向こう {t['cells']} / うち {o['cells']}")
-        if t["formulas"] != o["formulas"]:
-            diffs.append(f"[{t['name']}] 式のセルの数: 向こう {t['formulas']} / うち {o['formulas']}")
+        diffs += diff_sheet(t["name"], t, o, show_n)
     if ours.get("unsupported"):
         diffs.append(f"うちが読めなかった物: {ours['unsupported']}")
     return theirs, ours, diffs
@@ -191,6 +329,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("files", nargs="*")
     ap.add_argument("--json", help="差の一覧の書き出し先")
+    ap.add_argument("--show", type=int, default=5, help="1件ごとに出す差の上限")
     a = ap.parse_args()
 
     if not SIDECAR.exists():
@@ -210,7 +349,7 @@ def main():
     report = []
     try:
         for f in files:
-            theirs, ours, diffs = compare(f, sc)
+            theirs, ours, diffs = compare(f, sc, a.show)
             report.append({"file": str(f), "diffs": diffs, "theirs": theirs, "ours": ours})
             mark = "○" if not diffs else "×"
             print(f"{mark} {f}")
@@ -220,13 +359,21 @@ def main():
         sc.close()
 
     n = sum(1 for r in report if r["diffs"])
-    print(f"\n{len(report)} 枚中 {n} 枚で差が出ました")
+    cells = sum(
+        len(s.get("cells") or {}) for r in report for s in (r["theirs"].get("sheets") or [])
+    )
+    print(f"\n{len(report)} 枚中 {n} 枚で差が出ました(比べたセル {cells} 個)")
+    # **緑を大きく見せない。** 何を見ていないかを毎回言う
+    print(
+        "  比べていない: 書式・罫線・条件付き書式・入力規則・名前の定義・固定枠 "
+        "(Python の窓が返さない — 設計の「次の一手」)"
+    )
     if a.json:
         pathlib.Path(a.json).write_text(
             json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         print(f"書き出し: {a.json}")
-    return 0
+    return 1 if n else 0
 
 
 if __name__ == "__main__":
