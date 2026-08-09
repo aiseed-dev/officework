@@ -53,6 +53,10 @@ jobs:
           args: ${{ matrix.args }}
           # Linux は古い glibc でも動くように manylinux の中で組む
           manylinux: ${{ matrix.os == 'ubuntu-latest' && 'auto' || '' }}
+          # **毎回まっさらから組み直さない。** Windows は NTFS とリンクが
+          # 重く、他の2つより目に見えて遅い(2026-08-09 発注者指摘)。
+          # sccache は manylinux の入れ物の中でも効く
+          sccache: "true"
       - name: まっさらな環境で確かめる
         # **組めただけで良しとしない** — 入れて import して、実物の xlsx を
         # 往復させる。ここが通らないものは出さない
