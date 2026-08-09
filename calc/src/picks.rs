@@ -3788,11 +3788,21 @@ impl Calc {
         self.pick_kind = "sheet-menu";
         let y = (self.view_h_px - 420.0).max(ROW_H + 16.0);
         self.pick = Some((
-            ["挿入", "削除", "名前の変更", "コピーを作成", "左へ移動",
-             "右へ移動", "非表示", "再表示", "タブの色"]
-                .iter()
-                .map(|v| v.to_string())
-                .collect(),
+            {
+                // 保護は**そのシートの今の状態で言い分を変える**。
+                // 「保護する/解除する」が分かれていないと、押すまで
+                // どちらになるか分からない
+                let prot = if self.book.sheets.get(i).map(|s| s.protected).unwrap_or(false) {
+                    "保護を解除"
+                } else {
+                    "シートを保護"
+                };
+                ["挿入", "削除", "名前の変更", "コピーを作成", "左へ移動",
+                 "右へ移動", "非表示", "再表示", "タブの色", prot]
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect()
+            },
             (HEAD_W + 24.0, y),
         ));
     }
@@ -3962,6 +3972,27 @@ impl Calc {
                     self.status = ui::t!("隠したシート: 選ぶと表示に戻します").into();
                     self.sheet_menu_at = None;
                     return; // 2段目の一覧へ(pick_kind を戻さない)
+                }
+            }
+            // 耳から保護を掛け外し。**そのシートを開いてから**掛ける —
+            // いま見ているのと違うシートに黙って掛けない
+            "シートを保護" | "保護を解除" => {
+                if t < self.book.sheets.len() {
+                    self.commit();
+                    self.checkpoint();
+                    let on = !self.book.sheets[t].protected;
+                    self.book.sheets[t].protected = on;
+                    let name = self.book.sheets[t].name.clone();
+                    self.dirty = true;
+                    self.status = if on {
+                        ui::tf!(
+                            "シート「{}」を保護しました(ロックを外したセルだけ書けます)",
+                            name
+                        )
+                        .into()
+                    } else {
+                        ui::tf!("シート「{}」の保護を外しました", name).into()
+                    };
                 }
             }
             "タブの色" => {

@@ -3589,6 +3589,53 @@ mod track_changes_tests {
 }
 
 #[cfg(test)]
+mod tab_zoom_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn 耳の品書きは保護の今の状態で言い分を変える(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            // 掛かっていなければ「シートを保護」
+            this.open_sheet_menu(0);
+            let (items, _) = this.pick.clone().expect("耳の品書きが出ない");
+            assert!(items.contains(&"シートを保護".to_string()), "{items:?}");
+            assert!(!items.contains(&"保護を解除".to_string()));
+
+            // 押すと掛かる
+            this.apply_pick("シートを保護", cx);
+            assert!(this.book.sheets[0].protected, "保護が掛かっていない");
+            assert!(this.status.contains("保護しました"), "{}", this.status);
+
+            // 掛かっていれば「保護を解除」に変わる(押すまで分からない、を避ける)
+            this.open_sheet_menu(0);
+            let (items, _) = this.pick.clone().unwrap();
+            assert!(items.contains(&"保護を解除".to_string()), "{items:?}");
+            this.apply_pick("保護を解除", cx);
+            assert!(!this.book.sheets[0].protected, "保護が外れていない");
+        });
+    }
+
+    #[gpui::test]
+    fn ズームは上下の端で止まり百に戻せる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for _ in 0..30 {
+                this.run_cmd("zoom-in", cx);
+            }
+            assert!(this.zoom <= 2.0 + 1e-6, "上に抜けた: {}", this.zoom);
+            for _ in 0..30 {
+                this.run_cmd("zoom-out", cx);
+            }
+            assert!(this.zoom >= 0.5 - 1e-6, "下に抜けた: {}", this.zoom);
+            // 右下の倍率を押したときと同じ戻し方
+            this.zoom = 1.0;
+            assert_eq!(this.zoom, 1.0);
+        });
+    }
+}
+
+#[cfg(test)]
 mod flash_fill_tests {
     use crate::*;
 

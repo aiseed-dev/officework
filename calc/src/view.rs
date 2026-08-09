@@ -1818,7 +1818,42 @@ impl Render for Calc {
                 div().pr_2().text_size(px(us * 11.0)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x1B6E3C)).whitespace_nowrap()
                     .child(SharedString::from(s))
-            }));
+            }))
+            // ---- 右下のズーム(本家と同じ場所)。押した所がそのまま倍率 ----
+            .child(div().flex().flex_row().items_center().gap_1().pr_3()
+                .child(div()
+                    .id("zoom-out")
+                    .px_1p5().rounded_sm().cursor_pointer()
+                    .text_size(px(us * 13.0)).text_color(rgb(0x66707A))
+                    .hover(|s| s.bg(gpui::white()).text_color(rgb(0x1B6E3C)))
+                    .child("−")
+                    .on_click(cx.listener(|this: &mut Calc, _, _, cx| {
+                        this.run_cmd("zoom-out", cx);
+                        cx.notify()
+                    })))
+                // 倍率を押すと 100% に戻す(本家は一覧だが、戻したいのが大半)
+                .child(div()
+                    .id("zoom-now")
+                    .px_1().rounded_sm().cursor_pointer()
+                    .text_size(px(us * 11.0)).text_color(rgb(0x66707A))
+                    .whitespace_nowrap()
+                    .hover(|s| s.bg(gpui::white()).text_color(rgb(0x1B6E3C)))
+                    .child(SharedString::from(format!("{}%", (self.zoom * 100.0).round() as i32)))
+                    .on_click(cx.listener(|this: &mut Calc, _, _, cx| {
+                        this.zoom = 1.0;
+                        this.status = ui::t!("ズームを 100% に戻しました").into();
+                        cx.notify()
+                    })))
+                .child(div()
+                    .id("zoom-in")
+                    .px_1p5().rounded_sm().cursor_pointer()
+                    .text_size(px(us * 13.0)).text_color(rgb(0x66707A))
+                    .hover(|s| s.bg(gpui::white()).text_color(rgb(0x1B6E3C)))
+                    .child("+")
+                    .on_click(cx.listener(|this: &mut Calc, _, _, cx| {
+                        this.run_cmd("zoom-in", cx);
+                        cx.notify()
+                    }))));
 
         // ---- 右クリックのメニュー ----
         // **並びと名前は Euro-Office の右クリックメニューに合わせる**(リボンと
