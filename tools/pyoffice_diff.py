@@ -13,6 +13,10 @@
 
 向こうのサイドカーの場所は環境変数 GENOFFICE で変えられる
 (既定 ~/dev/genoffice)。組んでいなければそう言って終わる。
+
+うちのエンジンを動かす python は OFFICEWORK_PYTHON で選ぶ(既定はこの python)。
+**repo の直下で素の python を使うと、.venv の officework.pth がソースの方
+(エンジンの入っていない officework/)を先に掴む** — wheel を入れた仮想環境を指すこと。
 """
 
 import argparse
@@ -68,52 +72,95 @@ def their_view(sc, path):
     sid = meta.get("sessionId") or meta.get("session_id")
     out = {"sheets": [], "names": len(meta.get("definedNames") or [])}
     for sh in meta.get("sheets") or []:
-        sid_sheet = sh.get("id") or sh.get("sheetId")
         view = {"name": sh.get("name"), "cells": 0, "formulas": 0}
+        # **範囲はシートの外に出せない**(向こうは "Range is outside the
+        # worksheet." で断る)。rowCount / columnCount に丸める
+        rows = int(sh.get("rowCount") or 0)
+        cols = int(sh.get("columnCount") or 0)
+        if rows == 0 or cols == 0:
+            view["note"] = "空のシート"
+            out["sheets"].append(view)
+            continue
         rr = sc.call(
             "read_range",
             sessionId=sid,
-            sheetId=sid_sheet,
-            range={"startRow": 0, "startColumn": 0, "endRow": 200, "endColumn": 40},
+            sheetId=sh.get("id"),
+            range={
+                "startRow": 0,
+                "startColumn": 0,
+                "endRow": rows - 1,
+                "endColumn": cols - 1,
+            },
         )
-        if rr.get("ok"):
+        if not rr.get("ok"):
+            # **黙って0件にしない。** 断られた理由をそのまま持ち上げる
+            view["error"] = rr.get("error")
+        else:
             res = rr["result"]
             cells = res.get("cells") or []
-            view["cells"] = len(cells)
+            # **書式だけのセルは数えない。** 向こうは罫線だけ引いた空欄も
+            # 返す(帳票の様式では珍しくない)。こちらは「中身のあるセル」を
+            # 数えているので、揃えないと毎回差が出る(2026-08-09 に踏んだ)
+            has = [
+                c
+                for c in cells
+                if c.get("value") not in (None, "") or c.get("formula")
+            ]
+            view["cells"] = len(has)
+            view["fmt_only"] = len(cells) - len(has)
             view["merges"] = len(res.get("merges") or [])
-            view["formulas"] = sum(1 for c in cells if c.get("formula"))
+            view["formulas"] = sum(1 for c in has if c.get("formula"))
         out["sheets"].append(view)
     if sid:
         sc.call("close", sessionId=sid)
     return out
 
 
+# うちのエンジンは**別プロセスで動かす**。この道具を repo の直下で走らせると、
+# .venv の officework.pth が**ソースの officework/(エンジンの入っていない方)**を
+# 先に掴んでしまうため(2026-08-09 に踏んだ)。どの python を使うかを選べる形にする。
+OUR_PY = os.environ.get("OFFICEWORK_PYTHON", sys.executable)
+
+_OUR_SCRIPT = r"""
+import json, pathlib, sys
+from officework import sheet
+path = sys.argv[1]
+b = sheet.Book.open(str(pathlib.Path(path).resolve()))
+out = {"sheets": [], "names": 0, "unsupported": b.unsupported}
+for name in b.sheet_names:
+    s = b[name]
+    rows, cols = s.shape
+    cells = formulas = 0
+    for r in range(min(rows, 200)):
+        for c in range(min(cols, 40)):
+            a1 = (chr(65 + c) if c < 26 else "A" + chr(65 + c - 26)) + str(r + 1)
+            # **式のあるセルは、答えが空でも数える。**「値のあるセルの中で
+            # 式を数える」と、空を返す式を取りこぼす(2026-08-09 に踏んだ)
+            f = s.formula(a1)
+            if f:
+                formulas += 1
+            if s[a1] not in (None, "") or f:
+                cells += 1
+    out["sheets"].append({"name": name, "cells": cells, "formulas": formulas})
+print(json.dumps(out, ensure_ascii=False))
+"""
+
+
 def our_view(path):
-    """うちのエンジンの答えを、同じ形に揃える。"""
+    """うちのエンジンの答えを、同じ形に揃える(別プロセス)。"""
+    r = subprocess.run(
+        [OUR_PY, "-c", _OUR_SCRIPT, str(path)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    if r.returncode != 0:
+        last = [l for l in (r.stderr or "").splitlines() if l.strip()]
+        return {"error": last[-1] if last else "原因不明"}
     try:
-        from officework import sheet
-    except ImportError as e:
-        return {"error": f"officework が入っていません: {e}"}
-    try:
-        b = sheet.Book.open(str(pathlib.Path(path).resolve()))
-    except Exception as e:
-        return {"error": str(e)}
-    out = {"sheets": [], "names": 0, "unsupported": b.unsupported}
-    for name in b.sheet_names:
-        s = b[name]
-        rows, cols = s.shape
-        cells = 0
-        formulas = 0
-        for r in range(min(rows, 200)):
-            for c in range(min(cols, 40)):
-                a1 = f"{chr(65 + c) if c < 26 else 'A' + chr(65 + c - 26)}{r + 1}"
-                v = s[a1]
-                if v not in (None, ""):
-                    cells += 1
-                    if s.formula(a1):
-                        formulas += 1
-        out["sheets"].append({"name": name, "cells": cells, "formulas": formulas})
-    return out
+        return json.loads(r.stdout)
+    except json.JSONDecodeError:
+        return {"error": f"答えが読めません: {r.stdout[:200]}"}
 
 
 def compare(path, sc):
@@ -128,6 +175,9 @@ def compare(path, sc):
     if tn != on:
         diffs.append(f"シートの並びが違う: 向こう {tn} / うち {on}")
     for t, o in zip(theirs["sheets"], ours["sheets"]):
+        if t.get("error"):
+            diffs.append(f"[{t['name']}] 向こうが断った: {t['error']}")
+            continue
         if t["cells"] != o["cells"]:
             diffs.append(f"[{t['name']}] 中身のあるセルの数: 向こう {t['cells']} / うち {o['cells']}")
         if t["formulas"] != o["formulas"]:
