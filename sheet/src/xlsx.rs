@@ -787,6 +787,70 @@ fn resolve_target(t: &str) -> String {
     }
 }
 
+/// `xl/_rels/workbook.xml.rels` の的を zip の中の道に直す。
+/// 相対は `xl/` から数える("worksheets/sheet3.xml" → "xl/worksheets/sheet3.xml")。
+/// 先頭の `/` は入れ物の根から、`../` は一つ上へ。
+fn resolve_book_target(t: &str) -> String {
+    if let Some(rest) = t.strip_prefix('/') {
+        return rest.to_string();
+    }
+    let mut dirs: Vec<&str> = vec!["xl"];
+    let mut rest = t;
+    loop {
+        if let Some(r) = rest.strip_prefix("../") {
+            dirs.pop();
+            rest = r;
+        } else if let Some(r) = rest.strip_prefix("./") {
+            rest = r;
+        } else {
+            break;
+        }
+    }
+    dirs.push(rest);
+    dirs.join("/")
+}
+
+/// `xl/worksheets/sheet23.xml` → 23。**数として**並べ替えるための鍵。
+/// 文字列のままだと `sheet10.xml` が `sheet2.xml` より前に来る。
+/// 番号の読めない部品は最後へ回す
+fn sheet_part_no(n: &str) -> u32 {
+    n.rsplit_once("/sheet")
+        .and_then(|(_, r)| r.strip_suffix(".xml"))
+        .and_then(|d| d.parse().ok())
+        .unwrap_or(u32::MAX)
+}
+
+/// `workbook.xml` の `<sheet>` の並びを、それぞれの本体の部品名に直す。
+///
+/// **`r:id` を `xl/_rels/workbook.xml.rels` で解くのが正道。** 部品の番号は
+/// `<sheet>` の並びとも rId の順とも一致しない — Excel でシートを消したり
+/// 並べ替えたりすると離れる。`r:id` か rels の項が無いときだけ、部品を
+/// **数として**並べ替えて位置で対にする(昔のやり方)。
+///
+/// 返すのは `<sheet>` と同じ長さの列。解けなかった所は空文字
+/// (中身は空になるが、**名前と並びは狂わない**)。
+///
+/// `entries` は zip にある部品の全部(的が実在するかを確かめる)、
+/// `parts` は控えに使う `xl/worksheets/sheetN.xml` を数で並べた列
+fn sheet_parts(
+    rids: &[Option<String>],
+    rels: &[(String, String)],
+    entries: &[String],
+    parts: &[String],
+) -> Vec<String> {
+    rids.iter()
+        .enumerate()
+        .map(|(i, rid)| {
+            rid.as_deref()
+                .and_then(|r| rels.iter().find(|(id, _)| id == r))
+                .map(|(_, target)| target.clone())
+                .filter(|p| entries.iter().any(|n| n == p))
+                .or_else(|| parts.get(i).cloned())
+                .unwrap_or_default()
+        })
+        .collect()
+}
+
 /// commentsN.xml → (セル参照, 本文) の列
 fn parse_comments(xml: &str) -> Vec<(Pos, String)> {
     let mut r = Reader::from_str(xml);
@@ -1103,6 +1167,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     // シート名(workbook.xml の並び順)と、名前の定義
     let mut names = Vec::new();
     let mut hiddens: Vec<bool> = Vec::new();
+    // 各 `<sheet>` の r:id。本体の部品はこれを rels で解いて突き止める
+    let mut rids: Vec<Option<String>> = Vec::new();
     // (名前, 中身) — 中身は 'Sheet1'!$A$1:$B$2 の形
     // (名前, 中身, シート限定ならその番号)
     let mut defined: Vec<(String, String, Option<usize>)> = Vec::new();
@@ -1134,6 +1200,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                         attr(&e, "state").as_deref(),
                         Some("hidden") | Some("veryHidden")
                     ));
+                    // `r:id`(local は "id"。同居する sheetId とは別物)
+                    rids.push(attr(&e, "id"));
                 }
                 // 計算方法(calcPr)。manual を落とすと開き直しで勝手に自動へ戻る
                 // 1904年の日付系(古い Mac の Excel)。保存は原文持ち越しで
@@ -1201,12 +1269,37 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
             buf.clear();
         }
     }
-    let paths: Vec<String> = (0..zip.len())
+    // zip にある部品の全部(rels の的が実在するかを確かめるのに使う)
+    let entries: Vec<String> = (0..zip.len())
         .filter_map(|i| zip.by_index(i).ok().map(|f| f.name().to_string()))
-        .filter(|n| n.starts_with("xl/worksheets/sheet") && n.ends_with(".xml"))
         .collect();
-    let mut paths = paths;
-    paths.sort();
+    // 控え(r:id が無いか rels に項の無いとき)。**数として**並べ替える —
+    // 文字列だと sheet10.xml が sheet2.xml より前に来て、シートが 10 枚以上
+    // ある帳面は中身が丸ごと入れ替わる
+    let mut parts: Vec<String> = entries
+        .iter()
+        .filter(|n| n.starts_with("xl/worksheets/sheet") && n.ends_with(".xml"))
+        .cloned()
+        .collect();
+    parts.sort_by(|a, b| sheet_part_no(a).cmp(&sheet_part_no(b)).then_with(|| a.cmp(b)));
+    // ブックの rels(rId → 部品)。**シートの割り当てはこれが正**
+    let book_rels: Vec<(String, String)> = {
+        let mut s = String::new();
+        if let Ok(mut f) = zip.by_name("xl/_rels/workbook.xml.rels") {
+            let _ = f.read_to_string(&mut s);
+        }
+        parse_rels(&s)
+            .into_iter()
+            .filter(|(id, _, _, ext)| !id.is_empty() && !ext)
+            .map(|(id, _, target, _)| (id, resolve_book_target(&target)))
+            .collect()
+    };
+    // シートの並びは `<sheet>` の順。workbook.xml が読めなかったときだけ部品順
+    let paths: Vec<String> = if names.is_empty() {
+        parts.clone()
+    } else {
+        sheet_parts(&rids, &book_rels, &entries, &parts)
+    };
 
     let mut book = Book {
         sheets: Vec::new(),
@@ -2140,6 +2233,58 @@ fn patch_calc_pr(workbook: &str, manual: bool) -> String {
     }
 }
 
+/// workbook.xml の `<sheet>` から `r:id` を**並び順に**拾う。
+/// 書き出しで「どの部品がどのシートの物か」を読みと同じ道理で解くのに使う
+fn sheet_rids(xml: &str) -> Vec<Option<String>> {
+    let mut r = Reader::from_str(xml);
+    let mut out = Vec::new();
+    let mut buf = Vec::new();
+    loop {
+        match r.read_event_into(&mut buf) {
+            Ok(Event::Eof) | Err(_) => break,
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if local(e.name().as_ref()) == b"sheet" => {
+                out.push(attr(&e, "id"));
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+    out
+}
+
+/// 原本のブックの rels を、書き出す番号へ向け直す。
+///
+/// 本体は `<sheet>` の並び順に `sheet1..N` と振り直して書くので、
+/// **原本の的を持ち越すと `<sheet>` が別の部品を指す** — 消した跡や
+/// 並べ替えで、rId の順と部品の番号は離れているため。
+/// `rids` は原本の `<sheet>` の並び順の `r:id`
+fn patch_book_rels(rels: &str, rids: &[Option<String>], n_sheets: usize) -> String {
+    let mut inner = String::new();
+    for (id, ty, target, ext) in parse_rels(rels) {
+        let at = rids.iter().take(n_sheets).position(|r| r.as_deref() == Some(id.as_str()));
+        let (ty, target) = match at {
+            // 書き出す並びの番号へ。中身も worksheet として書くので型も揃える
+            Some(k) => (format!("{RNS}/worksheet"), format!("worksheets/sheet{}.xml", k + 1)),
+            // `<sheet>` から指されていないシートの項は落とす。
+            // 書き出す部品に無いものを残すと Excel が「修復」に入る
+            None if ty.ends_with("/worksheet") || ty.ends_with("/chartsheet") => continue,
+            None => (ty, target),
+        };
+        inner.push_str(&format!(
+            r#"<Relationship Id="{}" Type="{}" Target="{}"{}/>"#,
+            esc(&id),
+            esc(&ty),
+            esc(&target),
+            if ext { r#" TargetMode="External""# } else { "" }
+        ));
+    }
+    format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n\
+         <Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\
+         {inner}</Relationships>"
+    )
+}
+
 fn patch_sheet_states(workbook: &str, book: &Book) -> String {
     let mut out = String::new();
     let mut rest = workbook;
@@ -2547,6 +2692,39 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     let mut orig_styles: Option<String> = None;
     if let Some(src) = original {
         if let Ok(mut z) = zip::ZipArchive::new(src) {
+            // **どの部品がどのシートの物かは r:id で解く**(読みと同じ道理)。
+            // 部品の番号は `<sheet>` の並びとは一致しない。ここを部品の番号で
+            // 数えていたので、引き継ぐ印刷設定と図形が別のシートへ付いていた
+            let mut orig_wb = String::new();
+            if let Ok(mut f) = z.by_name("xl/workbook.xml") {
+                let _ = f.read_to_string(&mut orig_wb);
+            }
+            let mut orig_wb_rels = String::new();
+            if let Ok(mut f) = z.by_name("xl/_rels/workbook.xml.rels") {
+                let _ = f.read_to_string(&mut orig_wb_rels);
+            }
+            let orig_rids = sheet_rids(&orig_wb);
+            let orig_parts: Vec<String> = {
+                let entries: Vec<String> = (0..z.len())
+                    .filter_map(|i| z.by_index(i).ok().map(|f| f.name().to_string()))
+                    .collect();
+                let mut parts: Vec<String> = entries
+                    .iter()
+                    .filter(|n| n.starts_with("xl/worksheets/sheet") && n.ends_with(".xml"))
+                    .cloned()
+                    .collect();
+                parts.sort_by(|a, b| {
+                    sheet_part_no(a).cmp(&sheet_part_no(b)).then_with(|| a.cmp(b))
+                });
+                let rels: Vec<(String, String)> = parse_rels(&orig_wb_rels)
+                    .into_iter()
+                    .filter(|(id, _, _, ext)| !id.is_empty() && !ext)
+                    .map(|(id, _, target, _)| (id, resolve_book_target(&target)))
+                    .collect();
+                sheet_parts(&orig_rids, &rels, &entries, &parts)
+            };
+            // 部品名 → そのシートの並び順
+            let book_at = |part: &str| orig_parts.iter().position(|p| p == part);
             for i in 0..z.len() {
                 let Ok(mut f) = z.by_index(i) else { continue };
                 let name = f.name().to_string();
@@ -2573,14 +2751,12 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                             }
                         }
                     }
-                    let n: usize = name["xl/worksheets/sheet".len()..name.len() - 4]
-                        .parse()
-                        .unwrap_or(0);
-                    while sheet_extras.len() < n {
-                        sheet_extras.push(String::new());
-                    }
-                    if n >= 1 {
-                        sheet_extras[n - 1] = extra;
+                    // 部品の番号ではなく**このシートの並び順**へ入れる
+                    if let Some(k) = book_at(&name) {
+                        while sheet_extras.len() <= k {
+                            sheet_extras.push(String::new());
+                        }
+                        sheet_extras[k] = extra;
                     }
                 }
                 if name == "xl/workbook.xml" {
@@ -2648,15 +2824,24 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                     orig_ct = Some(String::from_utf8_lossy(&buf).to_string());
                     continue;
                 }
-                if let Some(n) = name
-                    .strip_prefix("xl/worksheets/_rels/sheet")
-                    .and_then(|r| r.strip_suffix(".xml.rels"))
-                    .and_then(|n| n.parse::<usize>().ok())
+                if let Some(base) = name
+                    .strip_prefix("xl/worksheets/_rels/")
+                    .and_then(|r| r.strip_suffix(".rels"))
                 {
-                    while orig_sheet_rels.len() < n {
-                        orig_sheet_rels.push(None);
+                    // この rels の持ち主の部品を、並び順へ直して置く
+                    if let Some(k) = book_at(&format!("xl/worksheets/{base}")) {
+                        while orig_sheet_rels.len() <= k {
+                            orig_sheet_rels.push(None);
+                        }
+                        orig_sheet_rels[k] = Some(String::from_utf8_lossy(&buf).to_string());
                     }
-                    orig_sheet_rels[n - 1] = Some(String::from_utf8_lossy(&buf).to_string());
+                    continue;
+                }
+                if name == "xl/_rels/workbook.xml.rels" {
+                    // 本体は並び順の番号で書き出すので、的もそこへ向け直す
+                    let s = String::from_utf8_lossy(&buf).to_string();
+                    let fixed = patch_book_rels(&s, &orig_rids, book.sheets.len());
+                    carried.push((name, fixed.into_bytes()));
                     continue;
                 }
                 if !regenerated {
@@ -2933,6 +3118,26 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 ct.replace_range(i..i + j + 2, "");
             } else {
                 break;
+            }
+        }
+        // シート本体の宣言も作り直す。**原本の部品の番号は飛んでいることが
+        // ある**(消した跡)が、こちらは並び順に sheet1..N と書き出すので、
+        // 原本の宣言をそのまま持ち越すと有る部品が漏れ、無い部品を宣言する
+        if orig_ct.is_some() {
+            for pat in [
+                r#"<Override PartName="/xl/worksheets/"#,
+                r#"<Override PartName="/xl/chartsheets/"#,
+            ] {
+                while let Some(i) = ct.find(pat) {
+                    match ct[i..].find("/>") {
+                        Some(j) => ct.replace_range(i..i + j + 2, ""),
+                        None => break,
+                    }
+                }
+            }
+            // 宣言の並び順は問われないので最後へ足す
+            if let Some(p) = ct.rfind("</Types>") {
+                ct.insert_str(p, &overrides);
             }
         }
         let n_tables: usize = book.sheets.iter().map(|s| s.tables.len()).sum();
@@ -5611,5 +5816,175 @@ mod script_roundtrip_tests {
         buf2.set_position(0);
         let (b3, _) = read(buf2).expect("読めない");
         assert_eq!(b3.pivots.len(), 1, "二往復で二重になった");
+    }
+}
+/// シートの割り当て — `<sheet>` の `r:id` を rels で解いているか。
+///
+/// **2026-08-09 の [大]。** 部品を文字列で並べ替えて位置で対にしていたので、
+/// `sheet10.xml` が `sheet2.xml` より前に来て、シートが 10 枚以上ある帳面は
+/// 中身が丸ごと入れ替わっていた(日銀の資金循環統計 30 枚で発覚)。
+/// **黙って別のシートの中身を返す**のがいちばん悪い型なので、受入試験を置く。
+///
+/// 自分で書く xlsx は `sheet1..9` しか作らないので、この形は
+/// **こちらの答案では永久に出ない** — 型紙を手で組む
+#[cfg(test)]
+mod sheet_rid {
+    use crate::model::{Pos, Value};
+    use std::io::Write;
+
+    /// 12 枚。`<sheet>` の並びと部品の番号を**わざと食い違わせる**。
+    ///
+    /// `<sheet name="表{i}" r:id="rId{i}"/>` を i=1..12 の順に並べ、
+    /// rels では `rId{i}` → `sheet{13-i}.xml`(逆順)へ向ける。
+    /// 各部品の A1 には**自分の部品番号**を書いてあるので、
+    /// 取り違えれば値で分かる
+    fn 型紙() -> Vec<u8> {
+        const N: usize = 12;
+        let mut buf = Vec::new();
+        {
+            let mut z = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
+            let o: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+            let mut put = |z: &mut zip::ZipWriter<_>, name: &str, s: &str| {
+                z.start_file(name, o).unwrap();
+                z.write_all(s.as_bytes()).unwrap();
+            };
+            let ct: String = (1..=N)
+                .map(|i| format!(r#"<Override PartName="/xl/worksheets/sheet{i}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>"#))
+                .collect();
+            put(&mut z, "[Content_Types].xml", &super::CT.replace("__SHEETS__", &ct));
+            put(&mut z, "_rels/.rels", super::RELS);
+            let sheets: String = (1..=N)
+                .map(|i| format!(r#"<sheet name="表{i}" sheetId="{i}" r:id="rId{i}"/>"#))
+                .collect();
+            put(&mut z, "xl/workbook.xml", &format!(
+                r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="{}" xmlns:r="{}"><sheets>{sheets}</sheets></workbook>"#,
+                super::NS, super::RNS));
+            // **逆順に向ける** — rId の順も部品の番号も当てにならない形
+            let rels: String = (1..=N)
+                .map(|i| format!(
+                    r#"<Relationship Id="rId{i}" Type="{}/worksheet" Target="worksheets/sheet{}.xml"/>"#,
+                    super::RNS, N + 1 - i))
+                .collect();
+            put(&mut z, "xl/_rels/workbook.xml.rels", &format!(
+                r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{rels}</Relationships>"#));
+            for p in 1..=N {
+                put(&mut z, &format!("xl/worksheets/sheet{p}.xml"), &format!(
+                    r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="{}"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>部品{p}</t></is></c></row></sheetData></worksheet>"#,
+                    super::NS));
+            }
+            z.finish().unwrap();
+        }
+        buf
+    }
+
+    fn a1(sh: &crate::Sheet) -> String {
+        match sh.get(Pos { row: 0, col: 0 }).map(|c| c.value.clone()) {
+            Some(Value::Text(t)) => t,
+            v => panic!("A1 が文字列でない: {v:?}"),
+        }
+    }
+
+    #[test]
+    fn r_idで解いた部品を読む() {
+        let (book, _) = crate::xlsx::read(std::io::Cursor::new(型紙())).unwrap();
+        assert_eq!(book.sheets.len(), 12, "シートの枚数");
+        for (i, sh) in book.sheets.iter().enumerate() {
+            // 並びは `<sheet>` の順のまま
+            assert_eq!(sh.name, format!("表{}", i + 1), "{i} 枚目の名前");
+            // 中身は rels の指す部品(逆順)
+            assert_eq!(a1(sh), format!("部品{}", 12 - i), "{} の中身が別のシートの物", sh.name);
+        }
+    }
+
+    #[test]
+    fn 文字列の並べ替えに戻っていない() {
+        // 文字列で並べると sheet10 が sheet2 より前に来る。
+        // その狂い方(表2 に 部品10 系の中身)を名指しで撥ねる
+        let (book, _) = crate::xlsx::read(std::io::Cursor::new(型紙())).unwrap();
+        assert_eq!(a1(&book.sheets[1]), "部品11", "表2 が文字列の並べ替えの中身を掴んでいる");
+    }
+
+    #[test]
+    fn 往復してもシートの中身が動かない() {
+        // 書き出しは部品を並び順に振り直すので、**ブックの rels の的も
+        // 向け直さないと**、開き直したときに別のシートを指す
+        let 原本 = 型紙();
+        let (book, _) = crate::xlsx::read(std::io::Cursor::new(原本.clone())).unwrap();
+        let mut out = Vec::new();
+        crate::xlsx::write_with(&book, Some(std::io::Cursor::new(&原本)), std::io::Cursor::new(&mut out))
+            .unwrap();
+        let (back, _) = crate::xlsx::read(std::io::Cursor::new(&out)).unwrap();
+        assert_eq!(back.sheets.len(), book.sheets.len(), "枚数が変わった");
+        for (before, after) in book.sheets.iter().zip(&back.sheets) {
+            assert_eq!(after.name, before.name, "名前の並びが変わった");
+            assert_eq!(a1(after), a1(before), "{} の中身が別のシートへ移った", before.name);
+        }
+    }
+
+    #[test]
+    fn 往復した帳面の部品と宣言が食い違わない() {
+        // 的の向け直しで、宣言(Content_Types)と rels と部品の三つが揃うこと。
+        // ずれていると Excel が「修復」に入る
+        let 原本 = 型紙();
+        let (book, _) = crate::xlsx::read(std::io::Cursor::new(原本.clone())).unwrap();
+        let mut out = Vec::new();
+        crate::xlsx::write_with(&book, Some(std::io::Cursor::new(&原本)), std::io::Cursor::new(&mut out))
+            .unwrap();
+        let mut z = zip::ZipArchive::new(std::io::Cursor::new(&out)).unwrap();
+        let mut ct = String::new();
+        let mut rels = String::new();
+        {
+            use std::io::Read;
+            z.by_name("[Content_Types].xml").unwrap().read_to_string(&mut ct).unwrap();
+            z.by_name("xl/_rels/workbook.xml.rels").unwrap().read_to_string(&mut rels).unwrap();
+        }
+        for i in 1..=12 {
+            let part = format!("xl/worksheets/sheet{i}.xml");
+            assert!(z.by_name(&part).is_ok(), "{part} が無い");
+            assert!(ct.contains(&format!(r#"PartName="/{part}""#)), "{part} の宣言が無い");
+            // `<sheet>` の i 枚目(rId{i})は i 番の部品を指すこと
+            assert!(
+                rels.contains(&format!(r#"Id="rId{i}" Type="{}/worksheet" Target="worksheets/sheet{i}.xml""#, super::RNS)),
+                "rId{i} の的が sheet{i}.xml へ向いていない: {rels}"
+            );
+        }
+        // 宣言が余っていない(原本の番号を持ち越していない)
+        assert_eq!(ct.matches(r#"PartName="/xl/worksheets/"#).count(), 12, "シートの宣言の数");
+    }
+
+    #[test]
+    fn r_idが無ければ数として並べ替える() {
+        // 控えの道。**文字列**で並べると sheet10 が sheet2 より前に来る
+        let mut buf = Vec::new();
+        {
+            let mut z = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
+            let o: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+            let mut put = |z: &mut zip::ZipWriter<_>, name: &str, s: &str| {
+                z.start_file(name, o).unwrap();
+                z.write_all(s.as_bytes()).unwrap();
+            };
+            put(&mut z, "_rels/.rels", super::RELS);
+            // r:id を書かない(古い書き手や壊れた帳面の形)
+            let sheets: String =
+                (1..=12).map(|i| format!(r#"<sheet name="表{i}" sheetId="{i}"/>"#)).collect();
+            put(&mut z, "xl/workbook.xml", &format!(
+                r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="{}" xmlns:r="{}"><sheets>{sheets}</sheets></workbook>"#,
+                super::NS, super::RNS));
+            for p in 1..=12 {
+                put(&mut z, &format!("xl/worksheets/sheet{p}.xml"), &format!(
+                    r#"<worksheet xmlns="{}"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>部品{p}</t></is></c></row></sheetData></worksheet>"#,
+                    super::NS));
+            }
+            z.finish().unwrap();
+        }
+        let (book, _) = crate::xlsx::read(std::io::Cursor::new(buf)).unwrap();
+        assert_eq!(book.sheets.len(), 12);
+        for (i, sh) in book.sheets.iter().enumerate() {
+            assert_eq!(a1(sh), format!("部品{}", i + 1), "{} が数の順で対になっていない", sh.name);
+        }
     }
 }
