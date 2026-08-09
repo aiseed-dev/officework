@@ -12,8 +12,12 @@ xlsx でやったこと(tools/pyoffice_diff.py)の docx 版。**自分で書い�
     python3 tools/pydoc_diff.py 報告書.docx …          # ファイルを指定
     python3 tools/pydoc_diff.py --corpus DIR           # DIR/*.docx を足す
     python3 tools/pydoc_diff.py --json out.json        # 差の一覧を書き出す
-    python3 tools/pydoc_diff.py --show 20              # 1件ごとに出す差の上限(既定 5)
+    python3 tools/pydoc_diff.py --show 20              # 1件ごとに出す**例**の上限(既定 5)
     python3 tools/pydoc_diff.py --roundtrip            # 開いて保存した物を向こうに読ませる
+
+`--show` は**出す例を絞るだけで、差の数は減らしません**。まとめの行には
+絞る前の総数が必ず出ます。絞った出力を総数と読んだ事故が 2026-08-10 に
+xlsx 側で起きた(7枚と報告した所が実は 58,487 件)ので、そう作ってあります。
 
 向こうの木の場所は環境変数 GENOFFICE で変えられる(既定 ~/dev/genoffice)。
 向こうは TypeScript なので tsx が要る。**向こうの木には何も置かない** —
@@ -136,21 +140,25 @@ def diff_roundtrip(path, tsx, show):
     """原本と「開いて保存した物」を、**向こうの読み手に**読ませて比べる。"""
     import tempfile, zipfile
 
-    diffs, theirs_bug = [], []
+    diffs, theirs_bug, total = [], [], 0
     with tempfile.TemporaryDirectory() as t:
         out = pathlib.Path(t) / "roundtrip.docx"
         err = our_roundtrip(path, out)
         if err:
-            return {}, {}, [f"うちが開いて保存できない: {err.splitlines()[-1]}"], []
+            return {}, {}, [f"うちが開いて保存できない: {err.splitlines()[-1]}"], [], 1
         before, after = theirs_view(path, tsx), theirs_view(out, tsx)
         if "error" in before:
-            return before, after, [], [f"向こうが原本を読めない: {before['error'].splitlines()[0]}"]
+            return before, after, [], [f"向こうが原本を読めない: {before['error'].splitlines()[0]}"], 0
         if "error" in after:
-            return before, after, [f"保存した物を向こうが読めない: {after['error'].splitlines()[0]}"], []
-        diffs += diff_seq("段落", before["paragraphs"], after["paragraphs"], show)
-        diffs += diff_tables(before["tables"], after["tables"], show)
-        diffs += diff_seq("ヘッダー", before["header"], after["header"], show)
-        diffs += diff_seq("フッター", before["footer"], after["footer"], show)
+            return before, after, [f"保存した物を向こうが読めない: {after['error'].splitlines()[0]}"], [], 1
+        for lines, k in (
+            diff_seq("段落", before["paragraphs"], after["paragraphs"], show),
+            diff_tables(before["tables"], after["tables"], show),
+            diff_seq("ヘッダー", before["header"], after["header"], show),
+            diff_seq("フッター", before["footer"], after["footer"], show),
+        ):
+            diffs += lines
+            total += k
         # **部品が減っていないか。** 原本を正として書き戻すのが売り文句なので、
         # ここが減っていたら主張ごと崩れる
         with zipfile.ZipFile(path) as z:
@@ -159,7 +167,8 @@ def diff_roundtrip(path, tsx, show):
             b = set(z.namelist())
         if a - b:
             diffs.append(f"[部品] 保存で消えた: {sorted(a - b)}")
-    return before, after, diffs, theirs_bug
+            total += len(a - b)
+    return before, after, diffs, theirs_bug, total
 
 
 def norm(s):
@@ -179,63 +188,79 @@ def norm(s):
 
 
 def diff_seq(kind, a, b, show):
-    """字の並びを突き合わせる。a=向こう、b=うち。"""
-    out = []
+    """字の並びを突き合わせる。a=向こう、b=うち。→ (出す行, 差の総数)
+
+    **`show` は出す例を絞るだけで、数えるのは最後まで数える。**
+    絞った出力を総数と読んで事故が起きたので(2026-08-10、xlsx 側で
+    7枚と報告した所が実は 58,487 件だった)、真の数は必ず持ち帰る。
+    """
+    out, n = [], 0
     # 空の段落は数え方の流儀が割れる(向こうは画像だけの段落も1つと数える)。
     # **落とさずに、まず素で比べる** — 揃わないときだけ中を出す
     if len(a) != len(b):
         out.append(f"[{kind}] 数が違う: 向こう {len(a)} / うち {len(b)}")
+        n += 1
     for i, (x, y) in enumerate(zip(a, b)):
         if norm(x) != norm(y):
-            out.append(f"[{kind}] {i}: 向こう {norm(x)!r} / うち {norm(y)!r}")
-            if len(out) >= show:
-                out.append(f"[{kind}] … 以下略")
-                break
-    return out
+            n += 1
+            if len(out) < show:
+                out.append(f"[{kind}] {i}: 向こう {norm(x)!r} / うち {norm(y)!r}")
+    if n > len(out):
+        out.append(f"[{kind}] ほか {n - len(out)} 件(--show で絞ってある)")
+    return out, n
 
 
 def diff_tables(a, b, show):
-    out = []
+    """表を突き合わせる。→ (出す行, 差の総数)。数えるのは最後まで([`diff_seq`])。"""
+    out, n = [], 0
+
+    def note(line):
+        nonlocal n
+        n += 1
+        if len(out) < show:
+            out.append(line)
+
     if len(a) != len(b):
-        out.append(f"[表] 数が違う: 向こう {len(a)} / うち {len(b)}")
+        note(f"[表] 数が違う: 向こう {len(a)} / うち {len(b)}")
     for ti, (ta, tb) in enumerate(zip(a, b)):
         if len(ta) != len(tb):
-            out.append(f"[表{ti}] 行数が違う: 向こう {len(ta)} / うち {len(tb)}")
+            note(f"[表{ti}] 行数が違う: 向こう {len(ta)} / うち {len(tb)}")
         for ri, (ra, rb) in enumerate(zip(ta, tb)):
             if len(ra) != len(rb):
-                out.append(f"[表{ti}] {ri}行目の列数が違う: 向こう {len(ra)} / うち {len(rb)}")
+                note(f"[表{ti}] {ri}行目の列数が違う: 向こう {len(ra)} / うち {len(rb)}")
             for ci, (ca, cb) in enumerate(zip(ra, rb)):
                 if norm(ca) != norm(cb):
-                    out.append(
-                        f"[表{ti}] {ri}行{ci}列: 向こう {norm(ca)!r} / うち {norm(cb)!r}"
-                    )
-                    if len(out) >= show:
-                        out.append("[表] … 以下略")
-                        return out
-    return out
+                    note(f"[表{ti}] {ri}行{ci}列: 向こう {norm(ca)!r} / うち {norm(cb)!r}")
+    if n > len(out):
+        out.append(f"[表] ほか {n - len(out)} 件(--show で絞ってある)")
+    return out, n
 
 
 def compare(path, tsx, show):
     theirs = theirs_view(path, tsx)
     ours = our_view(path)
-    diffs, theirs_bug = [], []
+    diffs, theirs_bug, total = [], [], 0
 
     if "error" in theirs:
         # **向こうが読めない物は、うちの宿題ではない。** 数に混ぜない
         theirs_bug.append(f"向こうが読めない: {theirs['error'].splitlines()[0]}")
-        return theirs, ours, diffs, theirs_bug
+        return theirs, ours, diffs, theirs_bug, total
     if "error" in ours:
         diffs.append(f"うちが読めない: {ours['error'].splitlines()[0]}")
-        return theirs, ours, diffs, theirs_bug
+        return theirs, ours, diffs, theirs_bug, 1
 
-    diffs += diff_seq("段落", theirs["paragraphs"], ours["paragraphs"], show)
-    diffs += diff_tables(theirs["tables"], ours["tables"], show)
-    diffs += diff_seq("ヘッダー", theirs["header"], ours["header"], show)
-    diffs += diff_seq("フッター", theirs["footer"], ours["footer"], show)
+    for lines, k in (
+        diff_seq("段落", theirs["paragraphs"], ours["paragraphs"], show),
+        diff_tables(theirs["tables"], ours["tables"], show),
+        diff_seq("ヘッダー", theirs["header"], ours["header"], show),
+        diff_seq("フッター", theirs["footer"], ours["footer"], show),
+    ):
+        diffs += lines
+        total += k
     # **読めなかった物は差ではないが、黙らせない。** 帳簿に出ているのが正しい姿
     if ours.get("unsupported"):
         theirs_bug.append(f"うちが未対応と申告した物: {ours['unsupported']}")
-    return theirs, ours, diffs, theirs_bug
+    return theirs, ours, diffs, theirs_bug, total
 
 
 def main():
@@ -273,11 +298,11 @@ def main():
     report = []
     for f in files:
         if a.roundtrip:
-            theirs, ours, diffs, theirs_bug = diff_roundtrip(f, tsx, a.show)
+            theirs, ours, diffs, theirs_bug, k = diff_roundtrip(f, tsx, a.show)
         else:
-            theirs, ours, diffs, theirs_bug = compare(f, tsx, a.show)
+            theirs, ours, diffs, theirs_bug, k = compare(f, tsx, a.show)
         report.append(
-            {"file": str(f), "diffs": diffs, "theirs_bug": theirs_bug,
+            {"file": str(f), "diffs": diffs, "diff_count": k, "theirs_bug": theirs_bug,
              "theirs": theirs, "ours": ours}
         )
         # **△ = 差はあるが、うちの宿題ではない物だけ。**
@@ -296,7 +321,18 @@ def main():
     cells = sum(
         len(row) for r in report for t in (r[side].get("tables") or []) for row in t
     )
-    print(f"\n{len(report)} 枚中 {n} 枚で差が出ました(比べた段落 {paras} ・セル {cells})")
+    # **例示の上限で数を誤読させない。** `--show` は1件あたりの**例**を絞るだけで、
+    # 差の総数は減らない。絞った出力を総数と読んだ事故が 2026-08-10 に xlsx 側で
+    # 起きている(7枚と報告した所が実は 58,487 件)。**総数を必ず出す。**
+    # pyoffice_diff.py は出力の字を数え直しているが、こちらは走査中に真の数を
+    # 持っているので、そのまま持ち帰っている
+    total = sum(r["diff_count"] for r in report)
+    print(
+        f"\n{len(report)} 枚中 {n} 枚で差が出ました"
+        f"(比べた段落 {paras} ・セル {cells} / 差の総数 {total} 件)"
+    )
+    if total and a.show < 20:
+        print(f"  ※ --show {a.show} は**例を絞っているだけ**。総数は上の {total} 件")
     if m:
         print(f"  ほかに {m} 枚は △ — うちの宿題ではない差だけ")
     # **緑を大きく見せない。** 何を見ていないかを毎回言う
