@@ -471,6 +471,46 @@ pub struct Cell {
 
 impl Cell {
     /// 利用者が入力した文字列を、式か値として解釈する。
+    /// **式が日付や時刻を返すなら、その表示形式を薦める。**
+    ///
+    /// `=DATE(2026,8,10)` の答えは通し番号 `46244` で、表示形式が無いと
+    /// **画面にも 46244 と出る**。Excel は General のセルに日付を返す式を
+    /// 入れると、セルの表示形式を日付に変える。同じ手当てが要る
+    /// (2026-08-10 に ironcalc と突き合わせて判明)。
+    ///
+    /// **薦めるだけで、押し付けない。** 既に表示形式のあるセルは触らない —
+    /// 呼ぶ側が「元の書式が無いときだけ使う」。pysheet の `__setitem__` が
+    /// Python の `date` に対して既にその作法(`date_fmt`)。
+    ///
+    /// **外側の関数だけを見る。** `=TODAY()+1` は日付だが `=YEAR(TODAY())`
+    /// は数(年)。中まで辿ると当たらなくなるので、**先頭の名前だけ**で決める。
+    /// `=A1+1`(A1 が日付)のような書式の伝播はしない — それは別の話。
+    pub fn date_format_of(formula: &str) -> Option<&'static str> {
+        let f = formula.trim_start_matches('=').trim_start();
+        let name: String = f
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '.')
+            .collect::<String>()
+            .to_ascii_uppercase();
+        // 括弧が続かないなら関数ではない(`=DATE` のような名前だけの参照)
+        if !f[name.len()..].trim_start().starts_with('(') {
+            return None;
+        }
+        match name.as_str() {
+            // 日付を返す
+            "DATE" | "TODAY" | "DATEVALUE" | "EDATE" | "EOMONTH" | "WORKDAY" => {
+                Some("yyyy/m/d")
+            }
+            // 日付と時刻の両方
+            "NOW" => Some("yyyy/m/d h:mm"),
+            // 時刻だけ
+            "TIME" | "TIMEVALUE" => Some("h:mm"),
+            // **YEAR / MONTH / DAY / WEEKDAY / DATEDIF / NETWORKDAYS は数を返す。**
+            // 日付の関数だからと形式を付けると、年 2026 が 1905年7月18日 になる
+            _ => None,
+        }
+    }
+
     pub fn input(s: &str) -> Cell {
         let t = s.trim();
         if let Some(f) = t.strip_prefix('=') {
@@ -1649,6 +1689,7 @@ impl Book {
 
 #[cfg(test)]
 mod r1c1_tests {
+
     use super::*;
 
     #[test]
@@ -3449,5 +3490,34 @@ mod shape_tests {
         // 知らない種類は四角で描く(黙って消さない)
         let unknown = SheetShape { kind: "hexagon".into(), ..sh };
         assert!(unknown.to_svg().contains("<rect"));
+    }
+}
+
+#[cfg(test)]
+mod input_fmt_tests {
+    use super::*;
+
+    #[test]
+    fn 日付を返す式には日付の形式を薦める() {
+        // **値は合っていても、形式が無いと画面に通し番号が出る。**
+        // =DATE(2026,8,10) は 46244(2026-08-10 に ironcalc と突き合わせて判明)
+        for f in ["=DATE(2026,8,10)", "=TODAY()", "=EOMONTH(A1,0)", "=today()"] {
+            assert_eq!(Cell::date_format_of(f), Some("yyyy/m/d"), "{f}");
+        }
+        assert_eq!(Cell::date_format_of("=NOW()"), Some("yyyy/m/d h:mm"));
+        assert_eq!(Cell::date_format_of("=TIME(9,30,0)"), Some("h:mm"));
+    }
+
+    #[test]
+    fn 数を返す関数に日付の形式を付けない() {
+        // **年 2026 に日付の形式を付けると 1905年7月18日 になる。**
+        // 日付の関数だからと一括りにしない
+        for f in ["=YEAR(TODAY())", "=MONTH(A1)", "=DAY(A1)", "=WEEKDAY(A1)", "=DATEDIF(A1,A2,\"D\")"] {
+            assert_eq!(Cell::date_format_of(f), None, "{f}");
+        }
+        // 括弧が続かないなら関数ではない
+        assert_eq!(Cell::date_format_of("=DATE"), None);
+        assert_eq!(Cell::date_format_of("=A1+1"), None);
+        assert_eq!(Cell::date_format_of("普通の字"), None);
     }
 }

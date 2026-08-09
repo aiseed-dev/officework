@@ -279,7 +279,12 @@ impl PySheet {
                 } else if let Ok(n) = v.extract::<f64>() {
                     (num_cell(n), None)
                 } else if let Ok(t) = v.extract::<String>() {
-                    (Cell::input(&t), None)
+                    // **日付を返す式には日付の形式を薦める**(元の形式が無いときだけ)。
+                    // Python の date を置いたときと同じ作法 — 打った字が
+                    // `"=TODAY()"` でも `date.today()` でも画面は同じであるべき
+                    let c = Cell::input(&t);
+                    let df = c.formula.as_deref().and_then(Cell::date_format_of);
+                    (c, df)
                 } else {
                     return Err(PyTypeError::new_err(format!(
                         "セルに置けるのは 数・bool・文字列・datetime/date/time・None。渡されたのは {}",

@@ -129,6 +129,8 @@ fn main() {
     let mut out = BufWriter::new(stdout.lock());
     let mut sessions: BTreeMap<String, Session> = BTreeMap::new();
     let mut plumbing = Plumbing::new();
+    // 計算のための居座り(径路 → 開いたブック)。向こうも Model を residents させる
+    let mut resident: BTreeMap<String, Resident> = BTreeMap::new();
     let mut seq: u64 = 0;
 
     for line in stdin.lock().lines() {
@@ -143,7 +145,7 @@ fn main() {
         if line.trim().is_empty() {
             continue;
         }
-        let res = handle(&line, &mut sessions, &mut plumbing, &mut seq);
+        let res = handle(&line, &mut sessions, &mut plumbing, &mut resident, &mut seq);
         let _ = writeln!(out, "{res}");
         let _ = out.flush();
     }
@@ -167,15 +169,17 @@ fn handle(
     line: &str,
     sessions: &mut BTreeMap<String, Session>,
     plumbing: &mut Plumbing,
+    resident: &mut BTreeMap<String, Resident>,
     seq: &mut u64,
 ) -> String {
-    dispatch(line, sessions, plumbing, seq)
+    dispatch(line, sessions, plumbing, resident, seq)
 }
 
 fn dispatch(
     line: &str,
     sessions: &mut BTreeMap<String, Session>,
     plumbing: &mut Plumbing,
+    resident: &mut BTreeMap<String, Resident>,
     seq: &mut u64,
 ) -> String {
     let req: Value = match serde_json::from_str(line) {
@@ -237,7 +241,10 @@ fn dispatch(
             let r = req.get("range").cloned().unwrap_or(Value::Null);
             let g = |k: &str| r.get(k).and_then(Value::as_u64).unwrap_or(0) as u32;
             let (r0, r1, c0, c1) = (g("startRow"), g("endRow"), g("startColumn"), g("endColumn"));
-            let (rows, cols) = sh.extent();
+            // **見せる大きさは `size()`。** 申告(`<dimension>`)と実際の大きいほう
+            // (2026-08-10 発注者確定)。`extent()` だと末尾の空行の高さや
+            // 罫線だけの枠が範囲の外に落ちて、呼ぶ側に一度も届かない
+            let (rows, cols) = sh.size();
             // **向こうと同じく、シートの外は断る。** 黙って丸めると、
             // 呼ぶ側は「そこは空だった」と受け取る
             if r1 >= rows.max(1) || c1 >= cols.max(1) {
@@ -279,11 +286,21 @@ fn dispatch(
             "unsupported_command",
             "read_media はまだ。open が visuals を返していないので、この命令は来ない想定",
         ),
-        "recalc_cells" => fail(
-            &rid,
-            "unsupported_command",
-            "recalc_cells はまだ(設計の「進め方」の2)。読みの突き合わせが先",
-        ),
+        // **計算**(設計の「進め方」の2)。ironcalc の代わりに sheet::calc が答える。
+        // セッションではなく**径路**で来る(向こうもそう作られている)ので、
+        // 開き直しを避けるために計算用の居座りを別に持つ
+        "recalc_cells" => {
+            let path = s("path");
+            if path.is_empty() {
+                return fail(&rid, "invalid_request", "path がありません").to_string();
+            }
+            let edits = req.get("edits").and_then(Value::as_array).cloned().unwrap_or_default();
+            let reads = req.get("reads").and_then(Value::as_array).cloned().unwrap_or_default();
+            match recalc(resident, &path, &edits, &reads) {
+                Ok(v) => ok(&rid, v),
+                Err(e) => fail(&rid, "workbook_error", &e),
+            }
+        }
         other => fail(&rid, "invalid_request", &format!("知らない命令: {other}")),
     }
     .to_string()
@@ -338,7 +355,7 @@ fn open_result(
     let mut sheets = Vec::new();
     let mut defined = Vec::new();
     for (i, sh) in book.sheets.iter().enumerate() {
-        let (rows, cols) = sh.extent();
+        let (rows, cols) = sh.size();
         let mut widths: Vec<Value> = Vec::new();
         for (c, w) in &sh.col_width {
             widths.push(json!({"startColumn": c, "endColumn": c, "width": w,
@@ -701,4 +718,96 @@ fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
         }
     }
     if o.is_empty() { None } else { Some(Value::Object(o)) }
+}
+
+/// 計算のために居座らせたブック。**径路で引く。**
+///
+/// 向こうは ironcalc の Model をセッションに残す。こちらも同じく、毎回
+/// ZIP を開き直さない。原本が変われば捨てる(`open` の居座りと同じ作法)。
+struct Resident {
+    stamp: (u64, u64),
+    book: Book,
+}
+
+/// `recalc_cells` — **打った字を入れて、計算して、頼まれた範囲を返す。**
+///
+/// 向こうの答えの形に揃える: `formatted`(表示形式を当てた文字列)・
+/// `number`(数なら生の値)・`isFormula`。`cached` は居座りが効いたか。
+fn recalc(
+    resident: &mut BTreeMap<String, Resident>,
+    path: &str,
+    edits: &[Value],
+    reads: &[Value],
+) -> Result<Value, String> {
+    let stamp = stamp_of(path);
+    let cached = match resident.get(path) {
+        Some(r) if r.stamp == stamp => true,
+        _ => {
+            // 原本が無い・変わったなら読み直す。**黙って古い答えを返さない**
+            let (book, _) = open_book(path)?;
+            resident.insert(path.to_string(), Resident { stamp, book });
+            false
+        }
+    };
+    let r = resident.get_mut(path).ok_or("居座りが作れません")?;
+
+    for e in edits {
+        let name = e.get("sheet").and_then(Value::as_str).unwrap_or_default();
+        let Some(sh) = r.book.sheets.iter_mut().find(|s| s.name == name) else {
+            // **知らないシートは黙って飛ばさない。** 呼ぶ側の思い違いが隠れる
+            return Err(format!("シートがありません: {name}"));
+        };
+        let row = e.get("row").and_then(Value::as_u64).unwrap_or(0) as u32;
+        let col = e.get("column").and_then(Value::as_u64).unwrap_or(0) as u32;
+        let input = e.get("input").and_then(Value::as_str).unwrap_or_default();
+        let p = Pos { row, col };
+        // **表示形式は据え置く。** 打ち直しで書式を落とすのは calc の掟に反する
+        let mut fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
+        let mut cell = if input.is_empty() {
+            sheet::model::Cell::default()
+        } else {
+            sheet::model::Cell::input(input)
+        };
+        // **日付を返す式には日付の形式を薦める** — 無いと画面に通し番号
+        // (46244)が出る。**元の形式があるときは触らない**(Excel と同じ)
+        if fmt.number_format.is_none() {
+            if let Some(f) = cell.formula.as_deref().and_then(sheet::model::Cell::date_format_of) {
+                fmt.number_format = Some(f.into());
+            }
+        }
+        cell.fmt = fmt;
+        sh.set(p, cell);
+    }
+    if !edits.is_empty() {
+        sheet::recalc_all(&mut r.book);
+    }
+
+    let mut cells = Vec::new();
+    for rd in reads {
+        let name = rd.get("sheet").and_then(Value::as_str).unwrap_or_default();
+        let Some(sh) = r.book.sheets.iter().find(|s| s.name == name) else {
+            return Err(format!("シートがありません: {name}"));
+        };
+        let g = |k: &str| rd.get("range").and_then(|x| x.get(k)).and_then(Value::as_u64).unwrap_or(0) as u32;
+        for row in g("startRow")..=g("endRow") {
+            for col in g("startColumn")..=g("endColumn") {
+                let p = Pos { row, col };
+                let Some(c) = sh.get(p) else { continue };
+                let v = sh.value(p);
+                let number = match v {
+                    sheet::Value::Number(n) => Some(n),
+                    _ => None,
+                };
+                cells.push(json!({
+                    "sheet": name,
+                    "row": row,
+                    "column": col,
+                    "formatted": sheet::model::format_value(&v, c.fmt.number_format.as_deref()),
+                    "number": number,
+                    "isFormula": c.formula.is_some(),
+                }));
+            }
+        }
+    }
+    Ok(json!({"cells": cells, "cached": cached}))
 }
