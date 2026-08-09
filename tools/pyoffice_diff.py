@@ -36,6 +36,7 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import uuid
@@ -523,7 +524,18 @@ def main():
     cells = sum(
         len(s.get("cells") or {}) for r in report for s in (r["theirs"].get("sheets") or [])
     )
-    print(f"\n{len(report)} 枚中 {n} 枚で差が出ました(比べたセル {cells} 個)")
+    # **例示の上限で数を誤読させない。** `--show` は1件あたりの**例**を絞る
+    # だけで、差の総数は減らない。出力を眺めて「差ゼロ」と読みかけた事故が
+    # 2026-08-10 に両側で起きた(こちらは 7 枚と報告した所が実は 58,487 件、
+    # 揃えの作業では 97 件動いたのを見落としかけた)。**総数を必ず出す。**
+    total = 0
+    for r in report:
+        for line in r["diffs"]:
+            hit = re.search(r"(\d+) 個", line)
+            total += int(hit.group(1)) if hit else 1
+    print(f"\n{len(report)} 枚中 {n} 枚で差が出ました(比べたセル {cells} 個 / 差の総数 {total} 件)")
+    if total and a.show < 20:
+        print(f"  ※ --show {a.show} は**例を絞っているだけ**。総数は上の {total} 件")
     if m:
         print(f"  ほかに {m} 枚は △ — 向こうの欠陥と分かっている差だけ(うちの宿題ではない)")
     # **緑を大きく見せない。** 何を見ていないかを毎回言う
