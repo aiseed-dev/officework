@@ -3023,6 +3023,33 @@ mod udf_tests {
         });
     }
 
+    #[gpui::test]
+    fn 日本語の名前でも編集面が開く(cx: &mut gpui::TestAppContext) {
+        // 発注者報告 2026-08-09:「道具.py は、編集できません」
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            // 無い名前は下書きを作る(disk には触らない — 開くだけ)
+            this.prompt = Some(("py", Editor::new("@edit 試し用モジュール")));
+            this.finish_prompt(cx);
+            let p = this.py_edit.as_ref().expect("編集面が開かない");
+            assert_eq!(p.name, "試し用モジュール", "日本語の名前が渡っていない");
+            assert!(p.ed.text().contains("def"), "下書きが入っていない");
+
+            // 開いている間、打鍵は**コード**へ行く(表ではない)
+            let before = this.py_edit.as_ref().unwrap().ed.text().to_string();
+            ui::handler::replace(this, None, "x");
+            let after = this.py_edit.as_ref().unwrap().ed.text().to_string();
+            assert_ne!(before, after, "打った字がコードに入らない");
+
+            // 名前を書かなければ、そう言う
+            this.py_edit = None;
+            this.prompt = Some(("py", Editor::new("@edit")));
+            this.finish_prompt(cx);
+            assert!(this.py_edit.is_none());
+            assert!(this.status.contains("@edit 名前"), "案内が出ない: {}", this.status);
+        });
+    }
+
     #[test]
     fn pluginsの関数は裸の名前で式に書ける() {
         // 2026-08-09 発注者確定: 交換されるファイルはデータだけ。関数は各自の

@@ -98,6 +98,9 @@ READY = {
         "show-right": "show-right",
         "co-chat": "co-chat", "co-history": "co-history",
         "plug-macros": "plug-macros", "plug-manage": "plug-manage",
+        "py-edit": "py-edit", "py-new": "py-new", "py-run": "py-run",
+        "py-list": "py-list", "py-line": "py-line", "py-calc": "py-calc",
+        "py-folder": "py-folder",
         "prot-encrypt": "prot-encrypt", "prot-sign": "prot-sign",
     },
     "calc": {
@@ -149,6 +152,9 @@ READY = {
         "co-showcomment": "co-showcomment", "co-chat": "co-chat",
         "co-history": "co-history",
         "plug-macros": "plug-macros", "plug-manage": "plug-manage",
+        "py-edit": "py-edit", "py-new": "py-new", "py-run": "py-run",
+        "py-list": "py-list", "py-line": "py-line", "py-calc": "py-calc",
+        "py-folder": "py-folder",
         "prot-doc": "prot-doc", "prot-encrypt": "prot-encrypt",
         "prot-sign": "prot-sign",
         "cell-lock": "cell-lock", "prot-allow": "prot-allow",
@@ -358,6 +364,17 @@ APP_TABS = {
             ("td-last", "最後の列"), ("td-band-col", "縞模様の列"),
             ("td-filter", "フィルタのボタン"), ("td-remdup", "重複データを削除"),
             ("td-torange", "範囲に変換する"), ("td-resize", "テーブルのサイズ変更"),
+        ]),
+        # Python は本家に無いタブ。**このソフトの芯なので独立させる**
+        # (2026-08-09 発注者「python をメインのメニューに追加してきちんとやれ」)。
+        # データタブのボタン1個に埋もれていて、@edit と打たないと .py を
+        # 編集できなかった — 日本語の名前は IME を挟むので Enter が変換に
+        # 食われる。**打たずに選べる**ようにするのがこのタブの目的
+        ("Python", "データ", [
+            ("py-edit", "関数を編集"), ("py-new", "新しい .py"),
+            ("py-run", "手続きを実行"), ("py-list", "一覧"),
+            ("py-line", "一行のコード"), ("py-calc", "計算し直す"),
+            ("py-folder", "置き場を開く"),
         ]),
     ],
 }

@@ -290,6 +290,22 @@ impl Calc {
                     self.status = ui::tf!("セルのスタイル「{}」を掛けました", v).into();
                 }
             }
+            // Python タブの一覧から選んだ .py(打たずに選べる道)
+            "py-edit" | "py-run" => {
+                let run = self.pick_kind == "py-run";
+                if let Some((_, path)) = self.pick_paths.iter().find(|(n, _)| n == v).cloned() {
+                    let name = path
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    if run {
+                        self.run_plugin(&name, None, cx);
+                    } else {
+                        self.open_py_edit(&name);
+                    }
+                }
+                self.pick_paths.clear();
+            }
             "unhide" => {
                 if let Some((_, path)) = self.pick_paths.iter().find(|(n, _)| n == v).cloned() {
                     if let Ok(i) = path.to_string_lossy().parse::<usize>() {

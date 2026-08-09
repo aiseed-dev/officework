@@ -38,6 +38,8 @@ impl Calc {
         "inssmartart", "insequation", "insslicer", "inscheckbox", "instextart",
         "coauth-mode", "co-delcomment", "co-showcomment", "co-chat",
         "co-history", "plug-macros", "plug-manage",
+        // Python タブ(2026-08-09)
+        "py-edit", "py-new", "py-run", "py-list", "py-line", "py-calc", "py-folder",
         "prot-doc", "prot-encrypt", "prot-sign",
         "zoom-in", "zoom-out", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
         "subscript", "align-just", "text-orient", "calc-mode",
@@ -807,6 +809,90 @@ impl Calc {
                 }
             },
             // マクロ = Python in Calc と同じ実体(サンドボックスの中で .py を回す)
+            // ---- Python タブ(2026-08-09 発注者「メインのメニューに追加して
+            // きちんとやれ」)。**打たずに選べる**のがこのタブの目的 —
+            // @edit と打つ道は残すが、日本語の名前は IME を挟むので
+            // Enter が変換に食われて辿り着けなかった ----
+            "py-edit" | "py-run" => {
+                let run = id == "py-run";
+                let mods = crate::py::plugin_modules();
+                if mods.is_empty() {
+                    self.status = ui::tf!(
+                        "plugins に .py がありません({} — 「新しい .py」で作れます)",
+                        plugins_dir().display().to_string()
+                    )
+                    .into();
+                } else {
+                    // 一覧には**中の def も見せる** — どれがどの関数か分かる
+                    let outline = crate::py::plugin_outline();
+                    let names: Vec<String> = outline
+                        .iter()
+                        .map(|(m, defs)| {
+                            if defs.is_empty() {
+                                m.clone()
+                            } else {
+                                format!("{m}  —  {}", defs.join(" "))
+                            }
+                        })
+                        .collect();
+                    self.pick_paths = outline
+                        .iter()
+                        .zip(names.iter())
+                        .map(|((m, _), n)| (n.clone(), plugins_dir().join(format!("{m}.py"))))
+                        .collect();
+                    self.pick_kind = if run { "py-run" } else { "py-edit" };
+                    let at = self.pop_anchor();
+                    self.pick = Some((names, at));
+                    self.status = if run {
+                        ui::t!("選ぶとその .py を実行します").into()
+                    } else {
+                        ui::t!("選ぶとその .py を編集します(Ctrl+S で保存 — セルの関数はすぐ計算し直ります)").into()
+                    };
+                    let _ = mods;
+                }
+            }
+            "py-new" => {
+                // 名前は後で付ける。まず書ける場所を出す(打つ前に画面が出る)
+                let mut n = 1;
+                while plugins_dir().join(format!("新しい道具{n}.py")).exists() {
+                    n += 1;
+                }
+                self.open_py_edit(&format!("新しい道具{n}"));
+            }
+            "py-list" => {
+                self.prompt = None;
+                let plugs = crate::py::plugin_outline();
+                self.status = if plugs.is_empty() {
+                    ui::tf!("plugins に .py がありません({})", plugins_dir().display().to_string())
+                } else {
+                    ui::tf!(
+                        "plugins: {}",
+                        plugs
+                            .iter()
+                            .map(|(m, d)| format!("{m}({})", d.join(" ")))
+                            .collect::<Vec<_>>()
+                            .join(" / ")
+                    )
+                }
+                .into();
+            }
+            "py-line" => {
+                self.prompt = Some(("py", Editor::new("")));
+            }
+            "py-calc" => {
+                self.run_py_calc(cx);
+            }
+            "py-folder" => {
+                let dir = plugins_dir();
+                let _ = std::fs::create_dir_all(&dir);
+                let d = dir.clone();
+                cx.background_executor()
+                    .spawn(async move {
+                        let _ = std::process::Command::new("xdg-open").arg(&d).spawn();
+                    })
+                    .detach();
+                self.status = ui::tf!("置き場: {}", dir.display().to_string()).into();
+            }
             "plug-macros" => {
                 self.commit();
                 self.run_python_file_dialog(cx);

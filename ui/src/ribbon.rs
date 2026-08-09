@@ -359,6 +359,21 @@ pub const CALC: &[Tab] = &[
         c("python", "Python", "python"),
         c("csv-kind", "CSV の形", "csv-kind"),
     ]},
+        // Python は本家に無いタブ。**このソフトの芯なので独立させる**
+    // (2026-08-09 発注者「python をメインのメニューに追加してきちんとやれ」)。
+    // データタブのボタン1個に埋もれていて、.py を編集するには @edit と
+    // 打つしかなかった — 日本語の名前は IME を挟むので Enter が変換に
+    // 食われて辿り着けない。**打たずに選べる**のがこのタブの目的。
+    // gen_ribbon.py の APP_TABS にも同じ並びを入れてある(生成し直しても出る)
+    Tab { name: "Python", cmds: &[
+        c("py-edit", "関数を編集", "py-edit"),
+        c("py-new", "新しい .py", "py-new"),
+        c("py-run", "手続きを実行", "py-run"),
+        c("py-list", "一覧", "py-list"),
+        c("py-line", "一行のコード", "py-line"),
+        c("py-calc", "計算し直す", "py-calc"),
+        c("py-folder", "置き場を開く", "py-folder"),
+    ]},
     Tab { name: "ピボットテーブル", cmds: &[
         c("pivot-insert", "ピボットテーブルを挿入", "pivot-insert"),
         c("pivot-fields", "フィールドリスト", "pivot-fields"),

@@ -313,6 +313,16 @@ pub const CALC: &[Tab] = &[
         c("python", "Python", "python"),
         c("csv-kind", "Formato CSV", "csv-kind"),
     ]},
+    // Python タブ(2026-08-09)。**語だけが違う** — id と並びは ja と同じ
+    Tab { name: "Python", cmds: &[
+        c("py-edit", "Editar funções", "py-edit"),
+        c("py-new", "Novo .py", "py-new"),
+        c("py-run", "Executar procedimento", "py-run"),
+        c("py-list", "Lista", "py-list"),
+        c("py-line", "Código de uma linha", "py-line"),
+        c("py-calc", "Recalcular", "py-calc"),
+        c("py-folder", "Abrir pasta", "py-folder"),
+    ]},
     Tab { name: "Tabela Dinâmica", cmds: &[
         c("pivot-insert", "Inserir tabela dinâmica", "pivot-insert"),
         c("pivot-fields", "Lista de campos", "pivot-fields"),
