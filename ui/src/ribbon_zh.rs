@@ -198,6 +198,7 @@ pub const CALC: &[Tab] = &[
         c("align-center", "中心", "align-center"),
         c("align-right", "右对齐", "align-right"),
         c("align-just", "两端对齐", "align-just"),
+        c("align-dist", "分散对齐", "align-dist"),
         c("merge", "合并和居中", "merge"),
         c("direction", "文字方向(从右横排)", "direction"),
         c("insert-function", "函数", "formula"),

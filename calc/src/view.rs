@@ -655,7 +655,7 @@ impl Render for Calc {
                    "fontcolor", "fillparag", "borders"]),
                 (&["top", "middle", "bottom", "wrap", "text-orient"],
                  &["align-left", "align-center", "align-right", "align-just",
-                   "merge", "direction"]),
+                   "align-dist", "merge", "direction"]),
                 (&["insert-function", "fill-num"], &["defname", "clear"]),
                 (&["sort-desc", "sort-asc"], &["setfilter", "clear-filter"]),
                 (&["format", "currency", "percents"],
@@ -1382,6 +1382,12 @@ impl Render for Calc {
                     HAlign::Center => d = d.justify_center(),
                     HAlign::Right => d = d.justify_end(),
                     HAlign::Justify => d = d.justify_between(),
+                    // 選択範囲内で中央: 跨る幅をまだ数えていないので、
+                    // 自分のセルの中で中央に置く(model.rs に断り書き)
+                    HAlign::CenterContinuous => d = d.justify_center(),
+                    // 均等割付: 字を1つずつ子にして端から端へ散らす。
+                    // 子を分けるのは下の描き分けの方(ここは寄せ方だけ)
+                    HAlign::Distribute => d = d.justify_between(),
                     HAlign::General => {}
                 }
                 if is_num && f.align == HAlign::General {
@@ -1450,6 +1456,20 @@ impl Render for Calc {
                         )
                         .child(SharedString::from(shown)),
                     );
+                } else if f.align == HAlign::Distribute {
+                    // 均等割付: 1字ずつ子にすると、上で入れた justify_between が
+                    // 字の間を等しく開けてくれる(回転のセルと同じ組み方)
+                    if shown.chars().count() > 1 {
+                        let mut spread = d;
+                        for ch in shown.chars() {
+                            spread = spread.child(SharedString::from(ch.to_string()));
+                        }
+                        row = row.child(spread);
+                    } else {
+                        // 1字だと justify_between は左端に寄せてしまう。
+                        // 本家は真ん中に置くので、こちらもそうする
+                        row = row.child(d.justify_center().child(SharedString::from(shown)));
+                    }
                 } else if let Some(md) = (!sel && !is_num && !is_err)
                     .then(|| sheet::markdown::parse(&shown))
                     .flatten()
@@ -2549,6 +2569,10 @@ impl Render for Calc {
                     HAlign::Center => d.justify_center(),
                     HAlign::Right => d.justify_end(),
                     HAlign::Justify => d.justify_between(),
+                    // セルと同じ扱い(model.rs の断り書きのとおり、
+                    // 選択範囲内で中央は今のところただの中央)
+                    HAlign::CenterContinuous => d.justify_center(),
+                    HAlign::Distribute => d.justify_between(),
                     HAlign::General if is_num => d.justify_end(),
                     HAlign::General => d.justify_start(),
                 };
@@ -2589,7 +2613,18 @@ impl Render for Calc {
                     if bs.right.on { kids.push(bar(false, false, bs.right).into_any_element()); }
                     d = d.children(kids);
                 }
-                out.push(d.child(SharedString::from(shown)).into_any_element());
+                // 均等割付は1字ずつ子にして端から端へ散らす(セル側と同じ)
+                if f.align == HAlign::Distribute && shown.chars().count() > 1 {
+                    for ch in shown.chars() {
+                        d = d.child(SharedString::from(ch.to_string()));
+                    }
+                    out.push(d.into_any_element());
+                } else {
+                    if f.align == HAlign::Distribute {
+                        d = d.justify_center(); // 1字は左端に寄せない
+                    }
+                    out.push(d.child(SharedString::from(shown)).into_any_element());
+                }
             }
             out
         };

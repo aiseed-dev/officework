@@ -413,7 +413,14 @@ pub fn sheet_to_pdf<W: Write>(
             // 数は右、文字は左(指定があればそちら)
             let right = match cell.fmt.align {
                 HAlign::Right => true,
-                HAlign::Left | HAlign::Center | HAlign::Justify => false,
+                // 中央・両端・均等割付は右ではない。**ここは左か右かしか
+                // 見ていない**ので、中央揃えも今は左に出る — 均等割付
+                // (字を幅いっぱいに散らす)も同じで、印刷側は据え置き
+                HAlign::Left
+                | HAlign::Center
+                | HAlign::Justify
+                | HAlign::CenterContinuous
+                | HAlign::Distribute => false,
                 HAlign::General => matches!(cell.value, Value::Number(_)),
             };
             let pt = 9.5f32 * scale;

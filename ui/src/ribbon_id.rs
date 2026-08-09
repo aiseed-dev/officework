@@ -198,6 +198,7 @@ pub const CALC: &[Tab] = &[
         c("align-center", "Tengah", "align-center"),
         c("align-right", "Rata kanan", "align-right"),
         c("align-just", "Rata Kiri-Kanan", "align-just"),
+        c("align-dist", "Terdistribusi", "align-dist"),
         c("merge", "Merge dan center", "merge"),
         c("direction", "Arah teks (kanan-ke-kiri)", "direction"),
         c("insert-function", "Fungsi", "formula"),

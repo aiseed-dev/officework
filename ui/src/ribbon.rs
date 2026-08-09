@@ -244,6 +244,7 @@ pub const CALC: &[Tab] = &[
         c("align-center", "中央揃え", "align-center"),
         c("align-right", "右揃え", "align-right"),
         c("align-just", "両端揃え", "align-just"),
+        c("align-dist", "均等割付", "align-dist"),
         c("merge", "結合して、中央に配置する", "merge"),
         c("direction", "文字の向き(右横書き)", "direction"),
         c("insert-function", "関数", "formula"),
