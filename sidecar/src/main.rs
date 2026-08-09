@@ -35,10 +35,12 @@ struct Session {
     path: String,
     stamp: (u64, u64),
     book: Book,
-    /// `open` で組んだ書式の索引表。`read_range` の `styleIndex` はこれを指す。
-    /// **開いたときに一度だけ組む** — 範囲ごとに組み直すと同じ書式に違う番号が付く
-    styles: Vec<Value>,
-    /// 書式 → 番号。`read_range` が引く
+    /// 書式 → 番号。`read_range` の `styleIndex` はこの番号を返す。
+    ///
+    /// **開いたときに一度だけ組む** — 範囲ごとに組み直すと同じ書式に違う番号が
+    /// 付く。番号が指す先(`styles[]` の表そのもの)は `open` の答えに載せて
+    /// 渡しきりで、ここには持たない — 表を返し直す命令は無いし、開いている
+    /// 間ずっと書式の JSON を抱えることになる
     style_index: BTreeMap<String, usize>,
 }
 
@@ -206,11 +208,9 @@ fn dispatch(
                     }
                     let v = open_result(&id, &path, &book, &unsupported, &st.order);
                     let stamp = stamp_of(&path);
-                    let Styles { order, index } = st;
-                    sessions.insert(
-                        id,
-                        Session { path, stamp, book, styles: order, style_index: index },
-                    );
+                    // 表は上の答えに載せて渡しきり。**残すのは索引だけ**
+                    let style_index = st.index;
+                    sessions.insert(id, Session { path, stamp, book, style_index });
                     ok(&rid, v)
                 }
                 Err(e) => fail(&rid, "workbook_error", &e),
