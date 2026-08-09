@@ -4512,7 +4512,7 @@ impl Render for Calc {
                    .children(prompt_panel)
                    // .py の編集面(zed 側の半分)。他のパネルより手前に置く
                    .children(self.py_edit.as_ref().map(|pe| {
-                       crate::pyedit::panel(pe, us, self.font_name.clone(), self.py_edit_ask)
+                       ui::pyedit::panel(pe, us, self.font_name.clone(), self.py_edit_ask)
                    }))
                    .children(dv_panel)
                    .children(solver_panel)

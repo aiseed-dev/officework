@@ -30,7 +30,6 @@ mod funcs;
 mod util;
 pub(crate) use util::*;
 mod py;
-mod pyedit;
 pub(crate) use py::*;
 mod io;
 pub(crate) use io::*;
@@ -138,7 +137,7 @@ struct Calc {
     /// UDF の計算が走っている最中(二重に走らせない)
     udf_busy: bool,
     /// plugins の .py を編集している面(zed 側の半分。pyedit.rs)
-    py_edit: Option<pyedit::PyEdit>,
+    py_edit: Option<ui::pyedit::PyEdit>,
     /// 書きかけのまま閉じようとした = 一度断った(もう一度 Esc で捨てる)
     py_edit_ask: bool,
     /// plugins の手続きが走っている最中。この間 rpc の書き込みは undo の節目を

@@ -761,12 +761,10 @@ for kind, cells in out:
 sys.stdout.buffer.write("\x1e".join(lines).encode("utf-8"))
 "#;
 
-/// プラグイン(.py)の置き場。writer と同じ ~/.config/office/plugins
+/// プラグイン(.py)の置き場。**正は ui::pyedit**(writer と共有の置き場なので、
+/// 編集する面と同じ所に置いてある)。呼び出し側を変えないための包み
 pub(crate) fn plugins_dir() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".config/office/plugins")
+    ui::pyedit::plugins_dir()
 }
 
 /// plugins にある .py の名前(モジュール名)を並べる。
@@ -923,6 +921,68 @@ pub(crate) fn resolve_udf(name: &str) -> Result<(String, String), String> {
 }
 
 impl Calc {
+
+    /// plugins の .py を開く(無ければ下書きを置く)。
+    pub(crate) fn open_py_edit(&mut self, name: &str) {
+        let name = name.trim();
+        if name.is_empty() {
+            self.status = ui::t!("@edit 名前 の形で(例: @edit 道具)").into();
+            return;
+        }
+        let path = plugins_dir().join(format!("{name}.py"));
+        let text = match std::fs::read_to_string(&path) {
+            Ok(s) => s,
+            Err(_) => ui::pyedit::skeleton(name),
+        };
+        self.py_edit = Some(ui::pyedit::PyEdit {
+            name: name.to_string(),
+            ed: Editor::new(&text),
+            top: 0,
+            saved: text.clone(),
+        });
+        // 先頭に置く(開いた瞬間に全部選ばれていると、1打で消える)
+        if let Some(p) = &mut self.py_edit {
+            p.ed.move_to(0, false);
+        }
+        self.status =
+            ui::tf!("{} を開きました(Ctrl+S で保存・Esc で閉じる)", path.display().to_string())
+                .into();
+    }
+
+    /// 書き出す。**保存した時点で見張りが気づき、シートが計算し直る。**
+    pub(crate) fn save_py_edit(&mut self) {
+        let Some(p) = &mut self.py_edit else { return };
+        let dir = plugins_dir();
+        if let Err(e) = std::fs::create_dir_all(&dir) {
+            self.status = ui::tf!("plugins の置き場が作れません: {}", e.to_string()).into();
+            return;
+        }
+        let path = dir.join(format!("{}.py", p.name));
+        match std::fs::write(&path, p.ed.text()) {
+            Ok(_) => {
+                p.saved = p.ed.text().to_string();
+                let n = p.name.clone();
+                self.status = ui::tf!("{}.py を保存しました(セルの関数は計算し直ります)", n).into();
+            }
+            Err(e) => self.status = ui::tf!("書けません: {}", e.to_string()).into(),
+        }
+    }
+
+    /// 閉じる。**書きかけがあれば一度断る**(黙って捨てない)。
+    /// もう一度 Esc を押すと捨てて閉じる。
+    pub(crate) fn close_py_edit(&mut self) {
+        let Some(p) = &self.py_edit else { return };
+        if p.dirty() && !self.py_edit_ask {
+            self.py_edit_ask = true;
+            self.status =
+                ui::t!("書きかけがあります。Ctrl+S で保存、もう一度 Esc で捨てて閉じる").into();
+            return;
+        }
+        self.py_edit = None;
+        self.py_edit_ask = false;
+        self.status = ui::t!("閉じました").into();
+    }
+
     /// 選んだ範囲を matplotlib で棒グラフにして、シートに浮かべる。
     /// 1列目が項目名、残りの列が系列(先頭行が文字なら系列名)。
     /// Python は別のスレッドで回す(メインスレッドを塞がない — ダイアログと同じ作法)。

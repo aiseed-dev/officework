@@ -1,22 +1,37 @@
-//! plugins の .py を calc の中で編集する面(2026-08-09 発注者
-//! 「zed と ONLYOFFICE の合体」)。
+//! plugins の .py を編集する面 — **writer と calc が共有する**
+//! (2026-08-09 発注者「zed と ONLYOFFICE の合体」「.py ファイルなので
+//! 両方から使えます」)。
 //!
-//! **編集の芯は `engine::edit::Editor`**(セル入力・数式バーと同じ物) —
-//! カーソル・選択・undo・IME がそこにある。ここが足すのは
-//! **複数行の見せ方と行き来**(行番号・行の上下・Home/End・Tab)だけ。
+//! plugins の置き場は両方で同じ `~/.config/office/plugins` なので、
+//! 編集する面も1つでいい。ここに置くのは**中身と見せ方**だけで、
+//! 「どこから開くか・保存したら何をするか」はアプリ側が決める
+//! (calc なら保存でセルの関数が計算し直る)。
 //!
-//! Zed の `editor` クレートは借りない。あれは 16 万行あって project / lsp /
-//! workspace / multi_buffer を引き連れてくる — Zed をほぼ丸ごと持ち込むことに
-//! なる。借りているのは **GPUI**(Zed の描画基盤)で、そこは既に土台。
+//! **編集の芯は `kumihan::Editor`**(セル入力・数式バー・writer の本文と
+//! 同じ物) — カーソル・選択・undo・IME はそこにある。ここが足すのは
+//! **論理行の勘定と見せ方**だけ(行番号・行の上下・Home/End・字下げ・色分け)。
 //!
-//! **保存すると、その場でシートが計算し直る。** plugins の置き場の時刻が
-//! 動くのを py.rs の見張りが見て、関数の登録簿を作り直し、UDF のセルを
-//! 計算し直す(この一巡が「合体」の実体)。
+//! zed の `editor` クレートは借りない。あれは 16 万行あって project / lsp /
+//! workspace / multi_buffer を引き連れてくる — zed をほぼ丸ごと持ち込むことに
+//! なる。借りているのは **GPUI**(zed の描画基盤)で、そこは既に土台。
 
-use crate::*;
+use gpui::{
+    div, px, rgb, InteractiveElement, IntoElement, ParentElement, SharedString, Styled,
+};
+use kumihan::Editor;
+use std::path::PathBuf;
+
+/// プラグイン(.py)の置き場。**writer と calc で同じ**。
+pub fn plugins_dir() -> PathBuf {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".config/office/plugins")
+}
+
 
 /// 編集中の .py。
-pub(crate) struct PyEdit {
+pub struct PyEdit {
     /// モジュール名(拡張子なし)
     pub name: String,
     pub ed: Editor,
@@ -27,7 +42,7 @@ pub(crate) struct PyEdit {
 }
 
 /// 画面に出す行数(パネルの高さに合わせた固定。窓の高さは見ていない)
-pub(crate) const VIEW_LINES: usize = 22;
+pub const VIEW_LINES: usize = 22;
 
 impl PyEdit {
     /// 本文を行に割る。**空の末尾行も1行と数える**(打てる場所だから)。
@@ -137,7 +152,7 @@ impl PyEdit {
 
 /// 新しい .py の下書き。**関数を1つ置いておく** — 空の画面より、
 /// 直せる例がある方が始めやすい。
-fn skeleton(name: &str) -> String {
+pub fn skeleton(name: &str) -> String {
     format!(
         "# {name}.py — plugins に置く Python\n\
          # ここに書いた def は、そのままセルから呼べる(=倍(A1) のように)。\n\
@@ -148,74 +163,11 @@ fn skeleton(name: &str) -> String {
     )
 }
 
-impl Calc {
-    /// plugins の .py を開く(無ければ下書きを置く)。
-    pub(crate) fn open_py_edit(&mut self, name: &str) {
-        let name = name.trim();
-        if name.is_empty() {
-            self.status = ui::t!("@edit 名前 の形で(例: @edit 道具)").into();
-            return;
-        }
-        let path = crate::py::plugins_dir().join(format!("{name}.py"));
-        let text = match std::fs::read_to_string(&path) {
-            Ok(s) => s,
-            Err(_) => skeleton(name),
-        };
-        self.py_edit = Some(PyEdit {
-            name: name.to_string(),
-            ed: Editor::new(&text),
-            top: 0,
-            saved: text.clone(),
-        });
-        // 先頭に置く(開いた瞬間に全部選ばれていると、1打で消える)
-        if let Some(p) = &mut self.py_edit {
-            p.ed.move_to(0, false);
-        }
-        self.status =
-            ui::tf!("{} を開きました(Ctrl+S で保存・Esc で閉じる)", path.display().to_string())
-                .into();
-    }
-
-    /// 書き出す。**保存した時点で見張りが気づき、シートが計算し直る。**
-    pub(crate) fn save_py_edit(&mut self) {
-        let Some(p) = &mut self.py_edit else { return };
-        let dir = crate::py::plugins_dir();
-        if let Err(e) = std::fs::create_dir_all(&dir) {
-            self.status = ui::tf!("plugins の置き場が作れません: {}", e.to_string()).into();
-            return;
-        }
-        let path = dir.join(format!("{}.py", p.name));
-        match std::fs::write(&path, p.ed.text()) {
-            Ok(_) => {
-                p.saved = p.ed.text().to_string();
-                let n = p.name.clone();
-                self.status = ui::tf!("{}.py を保存しました(セルの関数は計算し直ります)", n).into();
-            }
-            Err(e) => self.status = ui::tf!("書けません: {}", e.to_string()).into(),
-        }
-    }
-
-    /// 閉じる。**書きかけがあれば一度断る**(黙って捨てない)。
-    /// もう一度 Esc を押すと捨てて閉じる。
-    pub(crate) fn close_py_edit(&mut self) {
-        let Some(p) = &self.py_edit else { return };
-        if p.dirty() && !self.py_edit_ask {
-            self.py_edit_ask = true;
-            self.status =
-                ui::t!("書きかけがあります。Ctrl+S で保存、もう一度 Esc で捨てて閉じる").into();
-            return;
-        }
-        self.py_edit = None;
-        self.py_edit_ask = false;
-        self.status = ui::t!("閉じました").into();
-    }
-}
-
 // ---------- 色分け ----------
 
 /// 一続きの文字と、その種類。
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum Tok {
+pub enum Tok {
     Plain,
     Keyword,
     Str,
@@ -234,7 +186,7 @@ const KEYWORDS: &[&str] = &[
 
 /// 1行を色分けする。**行をまたぐ文字列("""…""")は追わない** — 見せ方の
 /// 割り切り(間違って色が付いても中身は壊れない)。
-pub(crate) fn colorize(line: &str) -> Vec<(String, Tok)> {
+pub fn colorize(line: &str) -> Vec<(String, Tok)> {
     let b: Vec<char> = line.chars().collect();
     let mut out: Vec<(String, Tok)> = Vec::new();
     let mut plain = String::new();
@@ -293,7 +245,7 @@ pub(crate) fn colorize(line: &str) -> Vec<(String, Tok)> {
     out
 }
 
-pub(crate) fn tok_color(t: Tok) -> gpui::Rgba {
+pub fn tok_color(t: Tok) -> gpui::Rgba {
     match t {
         Tok::Keyword => rgb(0x0F62A8),
         Tok::Str => rgb(0xA3324A),
@@ -390,7 +342,7 @@ mod tests {
 
 /// .py の編集面を描く。**表の上に大きく重ねる**(パネルの作法は
 /// 他の小窓と同じ — 外側の受け皿は聞き手を持たない)。
-pub(crate) fn panel(
+pub fn panel(
     p: &PyEdit,
     us: f32,
     font: SharedString,
@@ -433,9 +385,9 @@ pub(crate) fn panel(
     }
     let title = format!("{}.py{}", p.name, if p.dirty() { " *" } else { "" });
     let foot = if ask {
-        ui::t!("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる").to_string()
+        crate::t!("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる").to_string()
     } else {
-        ui::t!("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ")
+        crate::t!("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ")
             .to_string()
     };
     div()

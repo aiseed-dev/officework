@@ -33,6 +33,7 @@ macro_rules! tf {
 }
 
 pub mod icons;
+pub mod pyedit;
 pub mod ribbon;
 // gen_lang:begin(この間は ui/gen_lang.py が生成する — 手で書かない)
 pub mod ribbon_de;
