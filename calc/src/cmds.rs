@@ -42,7 +42,7 @@ impl Calc {
         "py-edit", "py-new", "py-run", "py-list", "py-line", "py-calc", "py-folder",
         "prot-doc", "prot-encrypt", "prot-sign",
         "zoom-in", "zoom-out", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
-        "subscript", "align-just", "text-orient", "calc-mode",
+        "subscript", "align-just", "align-dist", "text-orient", "calc-mode",
         "td-torange", "td-resize", "rtl-sheet", "direction",
         "colorschemas", "theme",
         "ai-where", "ai-summary", "ai-rewrite", "ai-polite", "ai-plain",
@@ -58,7 +58,7 @@ impl Calc {
     pub(crate) const FORMAT_CMDS: &'static [&'static str] = &[
         "bold", "italic", "underline", "strikeout", "subscript",
         "fontname", "fontsize", "incfont", "decfont", "fontcolor", "fillparag",
-        "borders", "align-left", "align-center", "align-right", "align-just",
+        "borders", "align-left", "align-center", "align-right", "align-just", "align-dist",
         "top", "middle", "bottom", "wrap", "text-orient",
         "comma", "currency", "percents", "digit-inc", "digit-dec",
         "numfmt", "format", "cell-format", "cell-styles", "copystyle",
@@ -198,6 +198,9 @@ impl Calc {
             "align-left" => self.fmt(|f| f.align = HAlign::Left),
             "align-center" => self.fmt(|f| f.align = HAlign::Center),
             "align-right" => self.fmt(|f| f.align = HAlign::Right),
+            // 均等割付(字をセルの幅いっぱいに散らす)。両端揃えと違って
+            // 折り返しは要らない — 1行の中で字の間を開ける
+            "align-dist" => self.fmt(|f| f.align = HAlign::Distribute),
             // 表示形式
             "comma" => self.fmt(|f| f.number_format = Some("#,##0".into())),
             // 行・列の出し入れ

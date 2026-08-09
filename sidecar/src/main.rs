@@ -649,7 +649,7 @@ fn edge_value(e: &sheet::model::Edge) -> Option<Value> {
 
 /// `CellFormat` を向こうの `CellStyle` の形へ。**既定のままなら `None`。**
 fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
-    use sheet::model::{HAlign, VAlign};
+    use sheet::model::VAlign;
     let mut o = Map::new();
     if let Some(n) = &f.font {
         o.insert("fontFamily".into(), json!(n));
@@ -674,14 +674,9 @@ fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
     if let Some(c) = &f.fill {
         o.insert("fillColor".into(), json!(c));
     }
-    let h = match f.align {
-        HAlign::General => None,
-        HAlign::Left => Some("left"),
-        HAlign::Center => Some("center"),
-        HAlign::Right => Some("right"),
-        HAlign::Justify => Some("justify"),
-    };
-    if let Some(h) = h {
+    // 揃えの名前は xlsx に書くときと同じ綴りで返す(突き合わせの相手は
+    // 生の属性値を見せるので、こちらも畳まずにそのまま出す)
+    if let Some(h) = f.align.as_xlsx() {
         o.insert("horizontalAlignment".into(), json!(h));
     }
     let v = match f.valign {

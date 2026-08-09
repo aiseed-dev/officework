@@ -5949,6 +5949,58 @@ mod script_roundtrip_tests {
         assert_eq!(f.align, crate::model::HAlign::Justify, "両端揃えが往復しない");
     }
 
+    /// 横の揃えは6通りとも、開いて保存して開き直しても元のまま。
+    ///
+    /// **前は畳んでいた** — `centerContinuous` を `center` に、`distributed` を
+    /// `justify` に寄せていたので、開くだけで見た目が変わっていた
+    /// (日銀の統計表の題を genoffice の読み手と突き合わせて発覚)
+    #[test]
+    fn 横の揃えは6通りとも往復する() {
+        use crate::model::HAlign;
+        let all = [
+            ("A1", HAlign::Left),
+            ("A2", HAlign::Center),
+            ("A3", HAlign::Right),
+            ("A4", HAlign::Justify),
+            ("A5", HAlign::CenterContinuous),
+            ("A6", HAlign::Distribute),
+        ];
+        let mut b = Book::new();
+        for (a1, al) in all {
+            let mut c = Cell::input("氏名");
+            c.fmt.align = al;
+            b.sheets[0].set(Pos::parse(a1).unwrap(), c);
+        }
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let bytes = buf.into_inner();
+
+        // xlsx の綴りのまま書けているか。**往復だけ見ても足りない** —
+        // 読み書き両方で同じ綴りに畳んでいれば往復は通ってしまう
+        let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+        let mut s = String::new();
+        use std::io::Read as _;
+        z.by_name("xl/styles.xml").unwrap().read_to_string(&mut s).unwrap();
+        assert!(
+            s.contains("horizontal=\"centerContinuous\""),
+            "styles.xml に centerContinuous が無い"
+        );
+        assert!(
+            s.contains("horizontal=\"distributed\""),
+            "styles.xml に distributed が無い"
+        );
+
+        let (back, _) = read(Cursor::new(bytes)).expect("読めない");
+        for (a1, al) in all {
+            let p = Pos::parse(a1).unwrap();
+            assert_eq!(
+                back.sheets[0].get(p).unwrap().fmt.align,
+                al,
+                "{a1} の揃えが往復しない"
+            );
+        }
+    }
+
     #[test]
     fn シートの保護が往復する() {
         let mut b = Book::new();

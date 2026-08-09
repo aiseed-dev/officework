@@ -246,6 +246,19 @@ pub enum HAlign {
     Right,
     /// 両端揃え(折り返した行を左右いっぱいに伸ばす)
     Justify,
+    /// **選択範囲内で中央**(xlsx の `centerContinuous`)。結合はせずに、
+    /// 右へ続く空セルをまたいで文字を中央に置く — 表の題を欄をまたいで
+    /// 中央に据える書き方で、日銀の統計表がこれを使う。
+    ///
+    /// **持つ値は正しいが、描くのは今のところ普通の中央揃え。** どこまで
+    /// 跨るか(右へ続く、空で同じ揃えのセルの並び)を描画側が数えねばならず、
+    /// そこは未着手 — 自分のセルの中で中央に寄る。値は畳まないので、
+    /// 開いて保存しても `centerContinuous` のまま返る
+    CenterContinuous,
+    /// 均等割付(xlsx の `distributed`)。文字をセルの幅いっぱいに
+    /// 散らして並べる。**日本語の帳票では姓名や項目名の幅を揃えるのに使う**
+    /// (nihongo.ja.md の K4)。文書側の `engine::Align::Distribute` と同じ考え
+    Distribute,
 }
 
 impl HAlign {
@@ -256,14 +269,18 @@ impl HAlign {
             HAlign::Center => Some("center"),
             HAlign::Right => Some("right"),
             HAlign::Justify => Some("justify"),
+            HAlign::CenterContinuous => Some("centerContinuous"),
+            HAlign::Distribute => Some("distributed"),
         }
     }
     pub fn from_xlsx(v: &str) -> HAlign {
         match v {
             "left" => HAlign::Left,
-            "center" | "centerContinuous" => HAlign::Center,
+            "center" => HAlign::Center,
             "right" => HAlign::Right,
-            "justify" | "distributed" => HAlign::Justify,
+            "justify" => HAlign::Justify,
+            "centerContinuous" => HAlign::CenterContinuous,
+            "distributed" => HAlign::Distribute,
             _ => HAlign::General,
         }
     }

@@ -198,6 +198,7 @@ pub const CALC: &[Tab] = &[
         c("align-center", "По центру", "align-center"),
         c("align-right", "Выровнять по правому краю", "align-right"),
         c("align-just", "По ширине", "align-just"),
+        c("align-dist", "Распределённый", "align-dist"),
         c("merge", "Объединить и поместить в центре", "merge"),
         c("direction", "Направление текста (справа налево)", "direction"),
         c("insert-function", "Функции", "formula"),

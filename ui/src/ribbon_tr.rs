@@ -198,6 +198,7 @@ pub const CALC: &[Tab] = &[
         c("align-center", "Orta", "align-center"),
         c("align-right", "Sağa Hizala", "align-right"),
         c("align-just", "İki yana yaslı", "align-just"),
+        c("align-dist", "Dağıtılmış", "align-dist"),
         c("merge", "Birleştir ve ortala", "merge"),
         c("direction", "Metin yönü (sağdan sola)", "direction"),
         c("insert-function", "Fonksiyon", "formula"),
