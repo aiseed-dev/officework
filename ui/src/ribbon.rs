@@ -508,9 +508,7 @@ mod tests {
                 );
             }
         }
-        for want in ["フォーム"] {
-            assert!(WRITER.iter().any(|t| t.name == want), "writer にタブが無い: {want}");
-        }
+        assert!(WRITER.iter().any(|t| t.name == "フォーム"), "writer にタブが無い: フォーム");
         for want in ["ピボットテーブル", "表のデザイン"] {
             assert!(CALC.iter().any(|t| t.name == want), "calc にタブが無い: {want}");
         }

@@ -15,9 +15,8 @@
 //! workspace / multi_buffer を引き連れてくる — zed をほぼ丸ごと持ち込むことに
 //! なる。借りているのは **GPUI**(zed の描画基盤)で、そこは既に土台。
 
-use gpui::{
-    div, px, rgb, InteractiveElement, IntoElement, ParentElement, SharedString, Styled,
-};
+// `panel` が中で `gpui::prelude::*` を引くので、飾りの trait はここに要らない
+use gpui::{div, px, rgb, SharedString};
 use kumihan::Editor;
 use std::path::PathBuf;
 
@@ -256,90 +255,6 @@ pub fn tok_color(t: Tok) -> gpui::Rgba {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn p(text: &str) -> PyEdit {
-        PyEdit { name: "試".into(), ed: Editor::new(text), top: 0, saved: text.into() }
-    }
-
-    #[test]
-    fn 行と桁を数える() {
-        let mut e = p("abc\ndef\n");
-        e.ed.move_to(5, false); // 2行目の 1 桁目
-        assert_eq!(e.caret(), (1, 1));
-        // 末尾の空行も1行と数える(打てる場所だから)
-        assert_eq!(e.lines().len(), 3);
-    }
-
-    #[test]
-    fn 上下の行で桁を保つ() {
-        let mut e = p("abcdef\nxy\nghijkl");
-        e.ed.move_to(5, false); // 1行目の 5 桁目
-        e.move_line(true, false);
-        assert_eq!(e.caret(), (1, 2), "短い行では行末に落ちる");
-        e.move_line(true, false);
-        assert_eq!(e.caret().0, 2);
-        // 一番上より上・一番下より下へは行かない
-        e.ed.move_to(0, false);
-        e.move_line(false, false);
-        assert_eq!(e.caret(), (0, 0));
-    }
-
-    #[test]
-    fn 日本語の行でも桁が壊れない() {
-        // バイトで持っているので、文字の途中に落ちると即座に化ける
-        let mut e = p("あいうえお\nか");
-        e.end(false);
-        e.move_line(true, false);
-        let (r, c) = e.caret();
-        assert_eq!(r, 1);
-        assert!(e.ed.text().is_char_boundary(e.ed.cursor()), "文字の途中に落ちた: 桁 {c}");
-    }
-
-    #[test]
-    fn 改行で字下げを引き継ぐ() {
-        let mut e = p("def f(x):");
-        e.end(false);
-        e.newline();
-        assert_eq!(e.ed.text(), "def f(x):\n    ", ": の後は4つ深くする");
-        e.ed.insert("return x");
-        e.newline();
-        assert_eq!(e.ed.text(), "def f(x):\n    return x\n    ", "字下げを引き継ぐ");
-    }
-
-    #[test]
-    fn homeは字の始まりと行頭を行き来する() {
-        let mut e = p("    return x");
-        e.end(false);
-        e.home(false);
-        assert_eq!(e.ed.cursor(), 4, "1回目は字の始まり");
-        e.home(false);
-        assert_eq!(e.ed.cursor(), 0, "2回目は行頭");
-    }
-
-    #[test]
-    fn 色分け() {
-        let v = colorize("def 倍(x):  # 二倍");
-        assert_eq!(v[0], ("def".into(), Tok::Keyword));
-        assert_eq!(v[1].1, Tok::Plain); // 空白
-        assert_eq!(v[2], ("倍".into(), Tok::DefName), "セルから呼べる名前を目立たせる");
-        assert!(v.iter().any(|(s, t)| *t == Tok::Comment && s.contains("二倍")));
-        // 文字列は閉じていなくても行末まで
-        let v = colorize("s = \"開いたまま");
-        assert!(v.iter().any(|(_, t)| *t == Tok::Str));
-    }
-
-    #[test]
-    fn 書きかけが分かる() {
-        let mut e = p("a");
-        assert!(!e.dirty());
-        e.ed.insert("b");
-        assert!(e.dirty(), "書きかけを見落とすと黙って捨てることになる");
-    }
-}
-
 /// .py の編集面を描く。**表の上に大きく重ねる**(パネルの作法は
 /// 他の小窓と同じ — 外側の受け皿は聞き手を持たない)。
 pub fn panel(
@@ -439,4 +354,88 @@ pub fn panel(
                 ),
         )
         .into_any_element()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn p(text: &str) -> PyEdit {
+        PyEdit { name: "試".into(), ed: Editor::new(text), top: 0, saved: text.into() }
+    }
+
+    #[test]
+    fn 行と桁を数える() {
+        let mut e = p("abc\ndef\n");
+        e.ed.move_to(5, false); // 2行目の 1 桁目
+        assert_eq!(e.caret(), (1, 1));
+        // 末尾の空行も1行と数える(打てる場所だから)
+        assert_eq!(e.lines().len(), 3);
+    }
+
+    #[test]
+    fn 上下の行で桁を保つ() {
+        let mut e = p("abcdef\nxy\nghijkl");
+        e.ed.move_to(5, false); // 1行目の 5 桁目
+        e.move_line(true, false);
+        assert_eq!(e.caret(), (1, 2), "短い行では行末に落ちる");
+        e.move_line(true, false);
+        assert_eq!(e.caret().0, 2);
+        // 一番上より上・一番下より下へは行かない
+        e.ed.move_to(0, false);
+        e.move_line(false, false);
+        assert_eq!(e.caret(), (0, 0));
+    }
+
+    #[test]
+    fn 日本語の行でも桁が壊れない() {
+        // バイトで持っているので、文字の途中に落ちると即座に化ける
+        let mut e = p("あいうえお\nか");
+        e.end(false);
+        e.move_line(true, false);
+        let (r, c) = e.caret();
+        assert_eq!(r, 1);
+        assert!(e.ed.text().is_char_boundary(e.ed.cursor()), "文字の途中に落ちた: 桁 {c}");
+    }
+
+    #[test]
+    fn 改行で字下げを引き継ぐ() {
+        let mut e = p("def f(x):");
+        e.end(false);
+        e.newline();
+        assert_eq!(e.ed.text(), "def f(x):\n    ", ": の後は4つ深くする");
+        e.ed.insert("return x");
+        e.newline();
+        assert_eq!(e.ed.text(), "def f(x):\n    return x\n    ", "字下げを引き継ぐ");
+    }
+
+    #[test]
+    fn homeは字の始まりと行頭を行き来する() {
+        let mut e = p("    return x");
+        e.end(false);
+        e.home(false);
+        assert_eq!(e.ed.cursor(), 4, "1回目は字の始まり");
+        e.home(false);
+        assert_eq!(e.ed.cursor(), 0, "2回目は行頭");
+    }
+
+    #[test]
+    fn 色分け() {
+        let v = colorize("def 倍(x):  # 二倍");
+        assert_eq!(v[0], ("def".into(), Tok::Keyword));
+        assert_eq!(v[1].1, Tok::Plain); // 空白
+        assert_eq!(v[2], ("倍".into(), Tok::DefName), "セルから呼べる名前を目立たせる");
+        assert!(v.iter().any(|(s, t)| *t == Tok::Comment && s.contains("二倍")));
+        // 文字列は閉じていなくても行末まで
+        let v = colorize("s = \"開いたまま");
+        assert!(v.iter().any(|(_, t)| *t == Tok::Str));
+    }
+
+    #[test]
+    fn 書きかけが分かる() {
+        let mut e = p("a");
+        assert!(!e.dirty());
+        e.ed.insert("b");
+        assert!(e.dirty(), "書きかけを見落とすと黙って捨てることになる");
+    }
 }
