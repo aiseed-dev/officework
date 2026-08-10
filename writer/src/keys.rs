@@ -66,7 +66,7 @@ impl Writer {
                     0.0
                 };
                 let d = dx + dy * 0.5;
-                if best.map_or(true, |(bd, _)| d < bd) {
+                if best.is_none_or(|(bd, _)| d < bd) {
                     best = Some((d, i));
                 }
             }
@@ -93,7 +93,7 @@ impl Writer {
                 continue;
             }
             let d = (line.y_mm - target).abs();
-            if best.map_or(true, |(bd, _)| d < bd) {
+            if best.is_none_or(|(bd, _)| d < bd) {
                 best = Some((d, nth));
             }
             nth += 1;
@@ -207,6 +207,12 @@ impl Writer {
     }
 
     /// run_cmd が処理できる id。**リボンの ready はこの表の中に限る**
+    /// **押せる見た目のボタンが全部ここに載っているか**の契約。
+    ///
+    /// 読むのは `wiring_tests` と `tools/wiring_check.py` で、製品の道からは
+    /// 呼ばれない — だから「使われていない」と言われるが、**消すと
+    /// 「押しても何も起きないボタン」を止める仕掛けが消える**
+    #[allow(dead_code)]
     pub(crate) const HANDLED: &'static [&'static str] = &[
         "open", "save", "undo", "redo", "selectall", "pdf",
         "bold", "italic", "underline", "strikeout", "fontcolor",
@@ -761,7 +767,7 @@ impl Writer {
         } else if let Some(prev) = self.doc_undo.take() {
             // マクロで置き換えた文書を、1手で元へ戻す
             self.target = Target::Body;
-            self.pg = prev.page.clone().unwrap_or_default();
+            self.pg = prev.page.unwrap_or_default();
             self.set_doc(prev);
             self.relayout_keep();
             self.dirty = true;

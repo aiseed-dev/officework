@@ -1245,7 +1245,7 @@ mod pivot_tests {
             assert!(this.pick.is_some(), "fontsize のパネルが開かない");
             close(this);
             this.run_cmd("condformat", cx);
-            assert_eq!(this.menu_sub.as_deref(), Some("cond"), "条件付き書式の一覧が開かない");
+            assert_eq!(this.menu_sub, Some("cond"), "条件付き書式の一覧が開かない");
             close(this);
             this.run_cmd("insert-function", cx);
             assert!(this.fn_dlg.is_some(), "関数の挿入の小窓が開かない");
@@ -2234,7 +2234,7 @@ mod recalc_tests {
             this.sync_input();
             this.prompt = Some(("col-width", Editor::new("")));
             this.finish_prompt(cx);
-            assert!(this.sheet().col_width.get(&1).is_none(), "既定に戻らない");
+            assert!(!this.sheet().col_width.contains_key(&1), "既定に戻らない");
         });
     }
 
@@ -3469,8 +3469,8 @@ mod data_table_tests {
             assert_eq!(v("B7"), 1000.0);
             // 元の入力セルは荒らさない(複製の上で回したか)
             assert_eq!(v("B2"), 1.0, "入力セルが書き換わっている");
-            // Ctrl+Z の1手で戻る
-            drop(v);
+            // Ctrl+Z の1手で戻る(`drop(v)` と書いていたが v は Copy で、
+            // 何も起きていなかった — 借りを外す必要はそもそも無い)
             this.undo_sheet();
             assert_eq!(
                 this.book.sheets[0].value(Pos::parse("B5").unwrap()).as_number(),
@@ -3761,6 +3761,9 @@ mod symbol_watch_tests {
         });
     }
 
+    // 家の作法の日本語の試験名。ラテン大文字で始まるので non_snake_case が
+    // 鳴る — **その場で許す**(まとめて消すと製品の命名まで見なくなる)
+    #[allow(non_snake_case)]
     #[gpui::test]
     fn Unicodeの16進で記号を入れられて読めなければ断る(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
@@ -3988,6 +3991,9 @@ mod cse_tests {
 mod csv_out_tests {
     use crate::*;
 
+    // 家の作法の日本語の試験名。ラテン大文字で始まるので non_snake_case が
+    // 鳴る — **その場で許す**(まとめて消すと製品の命名まで見なくなる)
+    #[allow(non_snake_case)]
     #[gpui::test]
     fn CSVはShift_JISでも書けて落ちた字を数える(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
@@ -4231,7 +4237,7 @@ mod cycle_ref_tests {
     /// 途中で止まると「戻せない」になり、押すのが怖い鍵になる
     #[test]
     fn 参照のドルを一巡させる() {
-        let c = |t: &str| cycle_ref_at(t, t.len()).map(|(s, cur)| (s, cur));
+        let c = |t: &str| cycle_ref_at(t, t.len());
         assert_eq!(c("=A1"), Some(("=$A$1".into(), 5)));
         assert_eq!(c("=$A$1"), Some(("=A$1".into(), 4)));
         assert_eq!(c("=A$1"), Some(("=$A1".into(), 4)));

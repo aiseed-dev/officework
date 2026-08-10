@@ -623,7 +623,7 @@ impl Writer {
                                         SharedString::from(format!("{n} × {c}"))
                                     })
                                     .collect();
-                                this.pg = doc.page.clone().unwrap_or_default();
+                                this.pg = doc.page.unwrap_or_default();
                                 this.set_doc(doc);
                                 this.adopt_font();
                                 this.relayout_keep();

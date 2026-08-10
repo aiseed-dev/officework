@@ -577,7 +577,7 @@ fn main() {
                             cx.background_executor()
                                 .timer(std::time::Duration::from_millis(1000))
                                 .await;
-                            let _ = v.update(cx, |c, cx| {
+                            v.update(cx, |c, cx| {
                                 let w = if i % 2 == 0 { 20.0 } else { 5.0 };
                                 c.book.sheets[0].col_width.insert(1, w);
                                 eprintln!("tick {}", i + 1);
@@ -586,7 +586,7 @@ fn main() {
                                 cx.notify();
                             });
                         }
-                        let _ = cx.update(|cx| cx.quit());
+                        cx.update(|cx| cx.quit());
                     })
                     .detach();
                 }

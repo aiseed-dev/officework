@@ -323,7 +323,7 @@ impl Calc {
             "cell-style" => {
                 if let Some((_, label, f)) = cell_styles().iter().find(|(k, _, _)| *k == v) {
                     let (f, label) = (*f, *label);
-                    self.fmt(move |c| f(c));
+                    self.fmt(f);
                     // 鍵ではなく見出し(訳した文に日本語を混ぜない)
                     self.status = ui::tf!("セルのスタイル「{}」を掛けました", label).into();
                 }
@@ -2403,7 +2403,7 @@ impl Calc {
             let (ra, rb) = x.range;
             ra.row <= b.row && rb.row >= a.row && ra.col <= b.col && rb.col >= a.col
         };
-        let had = self.sheet().validations.iter().any(|x| overlap(x));
+        let had = self.sheet().validations.iter().any(&overlap);
         self.book.sheets[self.active].validations.retain(|x| !overlap(x));
         match new_v {
             Some(v) => {
@@ -3620,7 +3620,7 @@ impl Calc {
             "subtotal-by" => {
                 let Some(mut pend) = self.sub_pend.take() else { return };
                 let t = text.trim().to_string();
-                if !pend.headers.iter().any(|h| *h == t) {
+                if !pend.headers.contains(&t) {
                     self.status =
                         ui::tf!("「{}」は見出しにありません: {}", t, pend.headers.join(" / "))
                             .into();

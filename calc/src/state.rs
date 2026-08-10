@@ -666,7 +666,7 @@ impl Calc {
             self.checkpoint();
             self.shape_sel = Some(i);
             self.shape_multi.clear();
-            self.shape_drag = Some((i, (x, y), if corner { (sx, sy) } else { (sx, sy) }, corner));
+            self.shape_drag = Some((i, (x, y), (sx, sy), corner));
             self.status = if corner {
                 ui::t!("右下を引いて大きさを変えます").into()
             } else {

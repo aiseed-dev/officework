@@ -501,7 +501,7 @@ impl Writer {
             self.status = ui::t!("しおりの名前を打ってから追加してください").into();
             return;
         }
-        if self.doc.paragraphs().any(|p| p.bookmarks.iter().any(|b| *b == name)) {
+        if self.doc.paragraphs().any(|p| p.bookmarks.contains(&name)) {
             self.status = ui::tf!("しおり「{}」は既にあります", name).into();
             return;
         }

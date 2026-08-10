@@ -76,7 +76,7 @@ pub(crate) fn to_hex(b: &[u8]) -> String {
 }
 
 pub(crate) fn unhex(s: &str) -> Option<Vec<u8>> {
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return None;
     }
     (0..s.len() / 2)
@@ -339,7 +339,7 @@ impl Calc {
         let (a, b) = self.sel_rect();
         let cells = (b.row - a.row + 1) as u64 * (b.col - a.col + 1) as u64;
         // 全選択のような巨大な矩形は数えない(描画のたびに走るので)
-        if cells < 2 || cells > 200_000 {
+        if !(2..=200_000).contains(&cells) {
             return None;
         }
         let mut n = 0u64;

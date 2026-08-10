@@ -172,11 +172,8 @@ pub(crate) fn caption_head() -> &'static str {
 /// (変換の下線・下線・取り消し線・蛍光ペン)はそのぶん下げて
 /// グリフの実位置に合わせる — 合わせないと下線が文字を横切る
 const HALF_LEADING: f32 = 0.309; // (1.618 - 1) / 2
-const MARGIN_MM: f32 = 20.0;
-const MEASURE_MM: f32 = 210.0 - 2.0 * MARGIN_MM;
 const SIZE_PT: f32 = 10.5;
 const LINE_MM: f32 = 6.4;
-const Y0_MM: f32 = 24.0;
 
 /// いま編集しているもの。本文か、表のセルか。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

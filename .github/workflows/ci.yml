@@ -1,15 +1,20 @@
 # push したら試験が回る。**緑を信じられる形にしておく**のが目的。
 #
-# GPUI(zed から git で取る)に依る `ui` / `writer` / `calc` は**ここでは回さない**。
-# 画面のいる crate を CI に載せると、取得と組み立てで何十分も掛かるうえ、
-# 落ちても原因が画面なのか中身なのか分からなくなる。回すのは**画面のいらない
-# 核**だけ — そこに 558 件の試験がある(sheet 263・kumihan 96・lang 89・
-# ooxml 79・paper 28・往復 3)。
+# **仕事は2つに分けてある。** 画面のいらない核は速いので毎回、GPUI を組む
+# `calc` / `writer` / `ui` は遅いので別の仕事にした(2026-08-11)。
 #
-# **外すなら、外した中に何が入っていたかを数えること。** calc・writer・ui を
-# 外したとき、その中の `wiring_tests`(押せる見た目のボタンが全部配線されて
-# いるか)まで一緒に外れていた — 家の方針が拠っている検査そのものだった。
-# 組み立てのいらない形に作り直して下に足してある(2026-08-10)。
+# 前は後者を**回していなかった**。理由は「取得と組み立てで何十分も掛かる」で、
+# それ自体は本当だが、**代わりに何も見ていなかった**のが問題だった:
+#
+#   - `wiring_tests`(押せる見た目のボタンが全部配線されているか)が
+#     `calc`/`writer` にあり、家の方針がそれに拠っていたのに走っていなかった
+#     (2026-08-10。組み立てのいらない形に作り直して下の仕事に移した)
+#   - `calc` 148 件・`writer` 38 件の試験も、**誰かが手で打ったときだけ**
+#     走っていた。ファイルを割った日は手で基準を取ったが、**それは作法であって
+#     仕掛けではない**
+#
+# **「完成した」と言うつもりなら、完成したままかを機械が見ている必要がある。**
+# 遅いのは受け入れる — 落ちるより遅いほうがいい。
 #
 # **Python の側も回す。** 2026-08-10 に、配っている import 名(officework.sheet)と
 # 文書の見本(office_sheet)が食い違っていたのを人手で見つけた。**素の環境で
@@ -93,6 +98,43 @@ jobs:
         # 消すと、製品のコードの命名まで見なくなる
         run: |
           cargo clippy -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar --all-targets -- \
+            -D warnings \
+            -A clippy::too_many_arguments \
+            -A clippy::type_complexity \
+            -A clippy::field_reassign_with_default \
+            -A clippy::needless_range_loop
+
+  # 画面のいる2つ。**遅い。** それでも走らせる — 走らせないと、直したものが
+  # 壊れたことに push まで誰も気付かない
+  apps:
+    name: cargo test (画面のいる calc / writer)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      # GPUI は zed を git から取って組む。**掛かるのはほぼ初回だけ**なので、
+      # 覆いが効くかどうかがこの仕事の速さを決める
+      - uses: Swatinem/rust-cache@v2
+      - name: GPUI が繋ぐ物を入れる
+        # **組み上がったバイナリの `ldd` から起こした**(推測ではない):
+        #   libxkbcommon / libxkbcommon-x11 / libxcb / libxcb-xkb
+        #   (libXau・libXdmcp は libxcb1-dev が連れてくる)
+        # wayland と vulkan は繋ぎ先に出てこない — 窓を開けるときの話で、
+        # **試験は窓を開けない**(この機械で 148/38 が画面なしで通っている)。
+        # フォントと辞書は核の仕事と同じ理由(同梱しない物に依る試験がある)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev libxcb-xkb-dev \
+            cmake clang pkg-config fonts-noto-cjk fonts-ipaexfont wamerican
+      - name: 試験
+        # 2026-08-11 の基準は calc 148 / writer 38。**減ったら赤にする**のが
+        # この仕事の役目で、数そのものはここに焼き付けない(増えるのが普通)
+        run: cargo test -p calc -p writer --no-fail-fast
+      - name: clippy
+        # 画面の2つと `ui` も同じ物差しで見る。許す4つは核と揃える
+        run: |
+          cargo clippy -p calc -p writer -p ui --all-targets -- \
             -D warnings \
             -A clippy::too_many_arguments \
             -A clippy::type_complexity \

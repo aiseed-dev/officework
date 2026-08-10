@@ -544,11 +544,7 @@ impl Calc {
                     (rows >= 2 && cols > 0)
                         .then(|| (Pos::new(0, 0), Pos::new(rows - 1, cols - 1)))
                 };
-                if picked.is_none() {
-                    self.status =
-                        ui::t!("元の表がありません(1行目が見出し、下にデータの行)").into();
-                } else {
-                    let (a, b) = picked.unwrap();
+                if let Some((a, b)) = picked {
                     if b.row <= a.row {
                         self.status = ui::t!("見出しの下にデータの行が要ります").into();
                     } else {
@@ -574,6 +570,14 @@ impl Calc {
                         });
                         self.pivot_pick("pivot-rows-pick");
                     }
+                } else {
+                    // **理由を言う。** clippy の指摘を直したとき、ここを丸ごと
+                    // 消していた(2026-08-11)。押しても何も起きないボタンに
+                    // なっていて、家訓に真正面から反していた —
+                    // 見つけたのは `lang` の文言の門番で、「もう使っていない訳が
+                    // 1句あります」と鳴った。**別の crate の検査が拾った**
+                    self.status =
+                        ui::t!("元の表がありません(1行目が見出し、下にデータの行)").into();
                 }
             }
             // シートの保護。パスワードは掛けない(掛けた振りもしない)—
@@ -1098,7 +1102,7 @@ impl Calc {
                 .map(|((k, l), deg)| {
                     (
                         k.to_string(),
-                        if *deg == cur as i32 { format!("✓ {l}") } else { l.to_string() },
+                        if *deg == cur { format!("✓ {l}") } else { l.to_string() },
                     )
                 })
                 .chain(menu(&[ui::item!("その他(角度を打つ)…")]))
@@ -1208,14 +1212,12 @@ impl Calc {
                 for r in a.row..=b.row {
                     for c in a.col..=b.col {
                         let p = Pos::new(r, c);
-                        if self.sheet().get(p).and_then(|x| x.formula.as_ref()).is_some()
-                            || self.anchor.is_none()
-                        {
-                            if !self.watch.contains(&(self.active, p)) {
+                        if (self.sheet().get(p).and_then(|x| x.formula.as_ref()).is_some()
+                            || self.anchor.is_none())
+                            && !self.watch.contains(&(self.active, p)) {
                                 self.watch.push((self.active, p));
                                 n += 1;
                             }
-                        }
                     }
                 }
                 if n == 0 && !self.watch.is_empty() {

@@ -2262,7 +2262,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             self.status = ui::t!("目的のセルが読めません(例: E6)").into();
             return;
         };
-        let Some(vars) = parse_cell_list(&sv.vars.text(), 64) else {
+        let Some(vars) = parse_cell_list(sv.vars.text(), 64) else {
             self.status = ui::t!("変数セルが読めません(例: B2:B4 や B2,C2。最大64個)").into();
             return;
         };
@@ -2506,51 +2506,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     }
 }
 
-#[cfg(test)]
-mod cage_tests {
-    use super::*;
-
-    fn args_of(c: &std::process::Command) -> Vec<String> {
-        std::iter::once(c.get_program().to_string_lossy().to_string())
-            .chain(c.get_args().map(|a| a.to_string_lossy().to_string()))
-            .collect()
-    }
-
-    #[test]
-    fn bwrapのサンドボックスは網を既定で切る() {
-        let d = PathBuf::from("/tmp/jo-py-1");
-        let py = std::path::Path::new("python3");
-        let c = caged_python_with(Cage::Bwrap, py, &d, &[], false).unwrap();
-        let a = args_of(&c);
-        assert_eq!(a[0], "/usr/bin/bwrap");
-        assert!(a.contains(&"--unshare-net".into()), "網が切れていない: {a:?}");
-        assert!(a.contains(&"--die-with-parent".into()));
-        // net を許したときだけ網が通る
-        let c2 = caged_python_with(Cage::Bwrap, py, &d, &[], true).unwrap();
-        assert!(!args_of(&c2).contains(&"--unshare-net".into()));
-    }
-
-    #[test]
-    fn flatpakのサンドボックスは公式の入れ子口を使う() {
-        // Flatpak の中では bwrap の入れ子が動かない — flatpak-spawn --sandbox
-        let d = PathBuf::from("/x/sandbox/jo-udf-9");
-        let py = std::path::Path::new("python3");
-        let c = caged_python_with(Cage::Flatpak, py, &d, &[], false).unwrap();
-        let a = args_of(&c);
-        assert_eq!(a[0], "flatpak-spawn");
-        assert!(a.contains(&"--sandbox".into()), "{a:?}");
-        assert!(
-            a.contains(&"--sandbox-expose=jo-udf-9".into()),
-            "作業場が expose されていない: {a:?}"
-        );
-        assert!(a.contains(&"--no-network".into()), "網が切れていない: {a:?}");
-        assert!(!args_of(&caged_python_with(Cage::Flatpak, py, &d, &[], true).unwrap())
-            .contains(&"--no-network".into()));
-        // サンドボックスが組めなければ None(「実行しない」と言うのは呼ぶ側)
-        assert!(caged_python_with(Cage::None, py, &d, &[], false).is_none());
-    }
-}
-
 impl Calc {
     /// データテーブル(感度表)。選んだ矩形の縁に置いた入力値を差し替えながら
     /// 式を計算し、中身を**値として**埋める。Excel の作法に合わせる:
@@ -2645,5 +2600,50 @@ impl Calc {
             if two { ui::t!("2変数") } else { ui::t!("1変数") }
         )
         .into();
+    }
+}
+
+#[cfg(test)]
+mod cage_tests {
+    use super::*;
+
+    fn args_of(c: &std::process::Command) -> Vec<String> {
+        std::iter::once(c.get_program().to_string_lossy().to_string())
+            .chain(c.get_args().map(|a| a.to_string_lossy().to_string()))
+            .collect()
+    }
+
+    #[test]
+    fn bwrapのサンドボックスは網を既定で切る() {
+        let d = PathBuf::from("/tmp/jo-py-1");
+        let py = std::path::Path::new("python3");
+        let c = caged_python_with(Cage::Bwrap, py, &d, &[], false).unwrap();
+        let a = args_of(&c);
+        assert_eq!(a[0], "/usr/bin/bwrap");
+        assert!(a.contains(&"--unshare-net".into()), "網が切れていない: {a:?}");
+        assert!(a.contains(&"--die-with-parent".into()));
+        // net を許したときだけ網が通る
+        let c2 = caged_python_with(Cage::Bwrap, py, &d, &[], true).unwrap();
+        assert!(!args_of(&c2).contains(&"--unshare-net".into()));
+    }
+
+    #[test]
+    fn flatpakのサンドボックスは公式の入れ子口を使う() {
+        // Flatpak の中では bwrap の入れ子が動かない — flatpak-spawn --sandbox
+        let d = PathBuf::from("/x/sandbox/jo-udf-9");
+        let py = std::path::Path::new("python3");
+        let c = caged_python_with(Cage::Flatpak, py, &d, &[], false).unwrap();
+        let a = args_of(&c);
+        assert_eq!(a[0], "flatpak-spawn");
+        assert!(a.contains(&"--sandbox".into()), "{a:?}");
+        assert!(
+            a.contains(&"--sandbox-expose=jo-udf-9".into()),
+            "作業場が expose されていない: {a:?}"
+        );
+        assert!(a.contains(&"--no-network".into()), "網が切れていない: {a:?}");
+        assert!(!args_of(&caged_python_with(Cage::Flatpak, py, &d, &[], true).unwrap())
+            .contains(&"--no-network".into()));
+        // サンドボックスが組めなければ None(「実行しない」と言うのは呼ぶ側)
+        assert!(caged_python_with(Cage::None, py, &d, &[], false).is_none());
     }
 }

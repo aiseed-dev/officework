@@ -1283,7 +1283,7 @@ impl Render for Calc {
                         if !e.on {
                             return Vec::new();
                         }
-                        let col = e.color.map(|v| rgb(v)).unwrap_or(ink);
+                        let col = e.color.map(rgb).unwrap_or(ink);
                         let w = e.style.px().max(1.0);
                         let place = |b: gpui::Div, off: f32| -> gpui::Div {
                             match (horiz, start) {
@@ -1580,7 +1580,7 @@ impl Render for Calc {
                         .bg(if on { rgb(0x1B6E3C) } else { rgb(0xFFFFFF) })
                         .flex().items_center().justify_center()
                         .text_size(px(us * 9.0)).text_color(rgb(0xFFFFFF))
-                        .children(on.then(|| "✓"))
+                        .children(on.then_some("✓"))
                 };
                 panel = panel.child(
                     div().id("flt-all").px_1p5().py_0p5().rounded_sm().cursor_pointer()
@@ -4209,7 +4209,7 @@ impl Render for Calc {
         // 型を絵で選ぶ。掛けても閉じない(連打で帳票の枠を組み立てる)。
         // アイコンは div の重ね棒 — SVG 資産が要らず、ペンの色にも追従する
         let border_palette = self.border_pal.map(|(vx, vy)| {
-            let pen = self.pen_color.map(|v| rgb(v)).unwrap_or(rgb(0x1B1B1B));
+            let pen = self.pen_color.map(rgb).unwrap_or(rgb(0x1B1B1B));
             let faint = rgb(0xD5DBE0);
             // ペンの見た目をそのまま絵に映す(太さと二重線。破線の刻みまでは
             // 描かない — 絵は場所の案内、線種の正確な見本はスタイルの一覧)
@@ -4525,7 +4525,7 @@ impl Render for Calc {
             .on_action(cx.listener(Calc::a_ui_smaller))
             .on_action(cx.listener(Calc::a_ins_link))
             .child(bar)
-            .children((self.tab != 0 && self.show_formula_bar).then(|| formula_bar))
+            .children((self.tab != 0 && self.show_formula_bar).then_some(formula_bar))
             .child(div().flex_1().overflow_hidden().relative()
                    // ホイールで窓を動かす(下に回すと先の行が見える)
                    .on_scroll_wheel(cx.listener(|this, e: &gpui::ScrollWheelEvent, _, cx| {
