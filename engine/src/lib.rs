@@ -30,6 +30,16 @@ pub struct RefField {
     pub page: bool,
 }
 
+/// 脚注ひとつぶんの中身。本文の印とは `id` で繋がる。
+#[derive(Debug, Clone, Default)]
+pub struct Footnote {
+    /// docx の `w:id`。**原文のまま**(振り直さない)
+    pub id: String,
+    pub endnote: bool,
+    /// 脚注の文章。段落の並び(普通は1段落)
+    pub paragraphs: Vec<Paragraph>,
+}
+
 /// 脚注・文末脚注の印(docx の `w:footnoteReference` / `w:endnoteReference`)。
 ///
 /// **中身は持たない。** 脚注の文章は `word/footnotes.xml` にあり、
@@ -453,6 +463,13 @@ pub struct Document {
     /// 節の設定の原文(w:sectPr)。ヘッダーの参照などが入っているので、
     /// **理解はしないが捨てない**。保存でそのまま返す
     pub sect_raw: Option<String>,
+    /// 脚注・文末脚注の**中身**(docx の `word/footnotes.xml` / `endnotes.xml`)。
+    /// 本文側の印([`CharFormat::footnote`])と **id で繋がる**。
+    ///
+    /// **保存はここを見ない** — 部品は原本のまま持ち越されるので、
+    /// ここは**紙面に出すためだけ**に読む(番号を振り、下の領域に組む)。
+    /// 仕切り線の定義(`w:type="separator"` など)は本物の脚注ではないので入れない
+    pub footnotes: Vec<Footnote>,
     /// ヘッダー(docx の headerN.xml)。全ページ同じもの(type="default")だけを持つ
     pub header: HeadFoot,
     /// フッター(docx の footerN.xml)
@@ -1098,7 +1115,7 @@ impl Document {
         Document {
             font: None,
             page: None,
-            sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+            sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
             blocks: text
                 .split('\n')
                 .map(|p| Block::Para(Paragraph {
@@ -1284,11 +1301,25 @@ fn is_word_char(c: char) -> bool {
     c.is_ascii_alphanumeric()
 }
 
-fn tokenize(p: &Paragraph, m: &Metrics) -> Vec<Tok> {
+fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut usize) -> Vec<Tok> {
     let mut out = Vec::new();
     // 段落の頭からのバイト位置。run をまたいで通しで数える
     let mut off = 0usize;
     for run in &p.runs {
+        // 脚注の印。**番号は出てくる順**(id の数ではない)に振る。
+        // 箇条書きの印と同じで**本文の字ではない**ので、
+        // off は動かさない — 動かすとカーソルが本文とずれる
+        if run.fmt.footnote.is_some() {
+            *notes += 1;
+            let size = run.size_pt * 0.7;
+            let mut fmt = run.fmt.clone();
+            fmt.superscript = true;
+            for ch in notes.to_string().chars() {
+                out.push(Tok::One(ch, m.advance_mm(ch, size), size,
+                                  fmt.clone(), run.font.clone(), off));
+            }
+            continue;
+        }
         let mut word: Vec<(char, f32, usize)> = Vec::new();
         for ch in run.text.chars() {
             if is_word_char(ch) {
@@ -1334,7 +1365,7 @@ pub struct Frame {
 ///
 /// 段落を行長で折る。x はまだ置かない(呼ぶ側が揃え・字下げを決める)。
 fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
-              hyphenate: bool) -> Vec<Vec<Cell>> {
+              hyphenate: bool, notes: &mut usize) -> Vec<Vec<Cell>> {
     let mut done: Vec<Vec<Cell>> = Vec::new();
     let mut cur: Vec<Cell> = Vec::new();
     let mut w_cur = 0.0f32;
@@ -1378,7 +1409,7 @@ fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
             w_cur += w;
         }
     }
-    for tok in tokenize(para, m) {
+    for tok in tokenize(para, m, notes) {
         let (cells, w): (Vec<Cell>, f32) = match &tok {
             Tok::One(ch, w, s, f, ft, o) =>
                 (vec![Cell { ch: *ch, x_mm: 0.0, w_mm: *w, size_pt: *s, fmt: f.clone(),
@@ -1509,6 +1540,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     // 節ごとの用紙。空なら節は1つで、行長は frame のものをそのまま使う
     // (今までの道を1ミリも変えないため — 節の無い文書が大多数)
     let sect_geo = section_geometry(doc);
+    // 脚注の通し番号。**文書に出てくる順**に振る(表の中の印も同じ流れで数える)
+    let mut note_no = 0usize;
     if let Some(first) = sect_geo.first() {
         // **0 から**置く。上の余白(y0_mm)から置くと、その手前を引いたときに
         // 「節が無い」と読めてしまい、**1ページ目だけ最後の節の紙**で刷られる
@@ -1594,7 +1627,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let para_eff: &Paragraph = owned_rest.as_ref().unwrap_or(para);
                 let measure = (measure - cap_shift).max(em);
                 for mut cells in break_para(para_eff, m, measure, marker.as_deref(),
-                                            doc.hyphenate) {
+                                            doc.hyphenate, &mut note_no) {
                     // 頭の1字を除いたぶん、バイト位置を戻す
                     if cap_len > 0 {
                         for c in &mut cells {
@@ -1722,7 +1755,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 }
             }
             Block::Table(table) => {
-                y = layout_table(table, m, frame, y, &mut sheet, table_no, doc.hyphenate);
+                y = layout_table(table, m, frame, y, &mut sheet, table_no, doc.hyphenate,
+                                 &mut note_no);
                 table_no += 1;
             }
         }
@@ -1768,7 +1802,7 @@ pub fn layout_hf(
                 r.text = r.text.replace(PAGES_MARK, &tot);
             }
         }
-        for cells in break_para(&para, m, measure, None, false) {
+        for cells in break_para(&para, m, measure, None, false, &mut 0) {
             let w: f32 = cells.iter().map(|c| c.w_mm).sum();
             let slack = (measure - w).max(0.0);
             let mut x = match para.align {
@@ -1992,7 +2026,7 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
 /// 罫線は「格子」ではなく**結合後のセルの縁**に引く — 結合の中を
 /// 線が横切ると、様式の枠が壊れて見える。
 fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mut Sheet,
-                table_no: usize, hyphenate: bool) -> f32 {
+                table_no: usize, hyphenate: bool, notes: &mut usize) -> f32 {
     // 列数は「セルの数」ではなく「セルが占める格子の数」
     let ncols = table
         .rows
@@ -2053,7 +2087,7 @@ fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mu
                 let inner = (w - 2.0 * CELL_PAD).max(2.0);
                 let mut para0 = 0usize;
                 for para in &cell.paragraphs {
-                    for cs in break_para(para, m, inner, None, hyphenate) {
+                    for cs in break_para(para, m, inner, None, hyphenate, notes) {
                         let b0 = para0 + cs.iter().map(|c| c.off).min().unwrap_or(0);
                         ls.push((cs, b0));
                     }
@@ -2707,7 +2741,7 @@ mod table_layout_tests {
             }],
             ..Default::default()
         };
-        let mut d = Document { font: None, page: None, sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
+        let mut d = Document { font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
@@ -2747,7 +2781,7 @@ mod merge_layout_tests {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let d = Document {
-            font: None, page: None, sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+            font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table { col_mm: vec![], rows })],
         };
         layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 })
@@ -2824,7 +2858,7 @@ mod gridcol_tests {
         let d = Document {
             font: None,
             page: None,
-            sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+            sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table {
                 col_mm,
                 rows: vec![vec![cell("項目"), cell("値")]],
@@ -3547,5 +3581,110 @@ mod footnote_mark_tests {
         ];
         normalize_runs(&mut runs, 10.5);
         assert_eq!(runs.len(), 1, "空の run が残った: {runs:?}");
+    }
+}
+
+#[cfg(test)]
+mod footnote_layout_tests {
+    use super::*;
+
+    fn 組む(d: &Document) -> Sheet {
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
+    }
+
+    fn 印(id: &str) -> Run {
+        Run { text: String::new(), size_pt: 10.5, font: None,
+              fmt: CharFormat {
+                  footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
+                  ..Default::default() } }
+    }
+    fn 字(t: &str) -> Run {
+        Run { text: t.into(), size_pt: 10.5, font: None, fmt: CharFormat::default() }
+    }
+    fn 段(runs: Vec<Run>) -> Block {
+        Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
+    }
+
+    /// **番号は出てくる順**。docx の id は書き手ごとにばらばら
+    /// (LibreOffice は 2・3・4、pandoc は 20・21・22)なので、
+    /// id をそのまま出すと 2 から始まる脚注になってしまう
+    #[test]
+    fn 脚注の番号は出てくる順に振る() {
+        let d = Document {
+            blocks: vec![
+                段(vec![字("あ"), 印("20"), 字("い"), 印("21")]),
+                段(vec![字("う"), 印("22")]),
+            ],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let sup: String = s.lines.iter()
+            .flat_map(|l| l.cells.iter())
+            .filter(|c| c.fmt.superscript)
+            .map(|c| c.ch)
+            .collect();
+        assert_eq!(sup, "123", "番号が出てくる順でない: {sup:?}");
+    }
+
+    /// 印は**本文の字ではない**。カーソルが本文とずれないよう、
+    /// 番号を出しても後ろの字のバイト位置は動かない
+    #[test]
+    fn 番号を出しても本文のバイト位置は動かない() {
+        let d = Document {
+            blocks: vec![段(vec![字("あい"), 印("2"), 字("うえ")])],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let 本文: Vec<(char, usize)> = s.lines[0].cells.iter()
+            .filter(|c| !c.fmt.superscript)
+            .map(|c| (c.ch, c.off))
+            .collect();
+        // あ=0 い=3 う=6 え=9(いずれも3バイト)。印は挟まっても動かさない
+        assert_eq!(本文, vec![('あ', 0), ('い', 3), ('う', 6), ('え', 9)],
+            "印のせいで本文のバイト位置がずれた: {本文:?}");
+    }
+
+    /// 番号は上付きで、本文より小さい
+    #[test]
+    fn 番号は上付きで小さい() {
+        let d = Document {
+            blocks: vec![段(vec![字("あ"), 印("2")])],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let c = s.lines[0].cells.iter().find(|c| c.fmt.superscript).expect("番号が無い");
+        assert_eq!(c.ch, '1');
+        assert!(c.size_pt < 10.5, "本文と同じ大きさ: {}", c.size_pt);
+        assert!(c.fmt.footnote.is_some(), "番号が脚注の印を持っていない");
+    }
+
+    /// 表のセルの中の印も同じ流れで数える(番号が飛ばない)
+    #[test]
+    fn 表の中の印も通しで数える() {
+        let cell = |runs: Vec<Run>| Cellbox {
+            paragraphs: vec![Paragraph { runs, line_spacing: 1.0, ..Default::default() }],
+            ..Default::default()
+        };
+        let d = Document {
+            blocks: vec![
+                段(vec![字("前"), 印("2")]),
+                Block::Table(Table {
+                    col_mm: vec![80.0],
+                    rows: vec![vec![cell(vec![字("表"), 印("3")])]],
+                }),
+                段(vec![字("後"), 印("4")]),
+            ],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let sup: String = s.lines.iter()
+            .flat_map(|l| l.cells.iter())
+            .filter(|c| c.fmt.superscript)
+            .map(|c| c.ch)
+            .collect();
+        assert_eq!(sup, "123", "表を挟むと番号が飛ぶ: {sup:?}");
     }
 }
