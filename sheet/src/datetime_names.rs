@@ -69,10 +69,10 @@ pub const TABLE: &[Names] = &[
         months_genitive: None,
         days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
         days_abbr: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-        long_date: "dddd, mmmm d, yyyy",
-        short_date: "m/d/yyyy",
+        long_date: "dd mmmm yyyy",
+        short_date: "dd/mm/yyyy",
         currency_pattern: 0,
-        lcid: 0x409,
+        lcid: 0x809,
     },
     Names {
         lang: "es",
@@ -147,7 +147,7 @@ pub const TABLE: &[Names] = &[
         lcid: 0x816,
     },
     Names {
-        lang: "pt-BR",
+        lang: "pt-br",
         months: ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"],
         months_abbr: ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"],
         months_genitive: None,
@@ -243,7 +243,7 @@ pub const LCID_LANG: &[(u32, &str)] = &[
     (0x410, "it"),
     (0x411, "ja"),
     (0x412, "ko"),
-    (0x416, "pt"),
+    (0x416, "pt-br"),
     (0x419, "ru"),
     (0x41f, "tr"),
     (0x421, "id"),
@@ -330,10 +330,10 @@ pub fn lang_of_lcid(lcid: u32) -> Option<&'static str> {
 pub fn names(lang: &str) -> &'static Names {
     TABLE
         .iter()
-        .find(|n| n.lang == lang)
+        .find(|n| n.lang.eq_ignore_ascii_case(lang))
         // "zh-tw" のような枝が無ければ "zh" へ、それも無ければ ja
         .or_else(|| lang.split_once('-').and_then(|(base, _)| {
-            TABLE.iter().find(|n| n.lang == base)
+            TABLE.iter().find(|n| n.lang.eq_ignore_ascii_case(base))
         }))
         .unwrap_or(&TABLE[0])
 }

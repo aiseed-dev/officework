@@ -659,10 +659,10 @@ impl Render for Writer {
                         .child(div().id("set-lang")
                             .px_3().py_1().rounded_sm().cursor_pointer()
                             .bg(item_bg)
-                            .child(SharedString::from(match lang_now.as_str() {
-                                "ja" => "日本語".to_string(),
-                                other => other.to_string(),
-                            }))
+                            // 札ではなく**その言語自身の名前**を出す。
+                            // `pt` と `pt-br` は札のままでは見分けられない
+                            .child(SharedString::from(
+                                ui::language_label(&lang_now).to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 let cur = ui::settings::get("language")
                                     .unwrap_or_else(|| "ja".into());

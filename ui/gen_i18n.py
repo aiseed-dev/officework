@@ -43,22 +43,48 @@ def literal_at(src, i):
     raise ValueError("unterminated literal")
 
 
+def strip_tests(src):
+    """試験モジュールだけを抜く。**その先の本文は残す。**
+
+    前は最初の `#[cfg(test)]` から**後ろを全部捨てて**いた。1枚のファイルの
+    途中に試験モジュールがあると、**その下の本番コードが門番の目に入らない**。
+    2026-08-11、`calc/src/py.rs` がまさにその形で、2509 行目の試験より下に
+    あった 7 句が**ずっと未訳のまま見えていなかった**(部屋割りで試験が
+    外に出て初めて現れた)。
+
+    括弧を数えて塊ごと抜く。`#[cfg(test)] mod tests;`(宣言だけ)は
+    そのまま残す — 中身は別のファイルにある
+    """
+    out = []
+    i = 0
+    while True:
+        cut = src.find("#[cfg(test)]", i)
+        if cut < 0:
+            out.append(src[i:])
+            return "".join(out)
+        out.append(src[i:cut])
+        j = src.find("{", cut)
+        semi = src.find(";", cut)
+        if j < 0 or (0 <= semi < j):
+            # `mod tests;` の宣言。ここでは何も抜かない
+            i = semi + 1 if semi >= 0 else cut + 12
+            continue
+        depth = 0
+        k = j
+        while k < len(src):
+            if src[k] == "{":
+                depth += 1
+            elif src[k] == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            k += 1
+        i = k + 1
+
+
 def keys_from(path):
     src = open(path, encoding="utf-8").read()
-    # 試験モジュールから先は見ない。ただし `#[cfg(test)] mod tests;` の
-    # **宣言**は本文の頭にある(calc の部屋割り)— そこでは切らない
-    pos = 0
-    while True:
-        cut = src.find("#[cfg(test)]", pos)
-        if cut < 0:
-            break
-        lines = src[cut:cut + 64].splitlines()
-        next_line = lines[1].strip() if len(lines) > 1 else ""
-        if next_line.startswith("mod ") and next_line.endswith(";"):
-            pos = cut + 1  # 宣言 — 本文はこの先も続く
-            continue
-        src = src[:cut]
-        break
+    src = strip_tests(src)
     out = []
     # `ui::item!("…")` は一覧の項の鍵(訳すのは見出しだけ)。t!/tf! と同じ鍵。
     # **lang/tests/i18n_soroi.rs の走査と揃えること** — 片方だけ知っていると、

@@ -63,6 +63,54 @@ def tabs(path: pathlib.Path, table: str) -> list[str]:
     return re.findall(r"\bTab\s*\{", m.group(1)) if m else []
 
 
+def labels(path: pathlib.Path, table: str) -> list[str]:
+    """ボタンに**出る語**を順に拾う。骨組みではなく中身を見るときに使う"""
+    src = path.read_text(encoding="utf-8")
+    m = re.search(rf"pub const {table}: &\[Tab\] = &\[(.*?)^\];", src, re.S | re.M)
+    if not m:
+        sys.exit(f"::error::{path.name} の {table} の表が見つかりません")
+    body = re.sub(r"//[^\n]*", "", m.group(1))
+    out: list[str] = []
+    for kind, args in re.findall(r"\b([cx])\(\s*((?:[^()]|\([^()]*\))*)\)", body):
+        lits = re.findall(r'"((?:[^"\\]|\\.)*)"', args)
+        if kind == "c" and len(lits) >= 3:
+            out.append(lits[1])
+        elif kind == "x" and lits:
+            out.append(lits[0])
+    return out
+
+
+def same_words(locales: list[str]) -> int:
+    """**語まで丸ごと同じ2言語が無いこと。**
+
+    2026-08-11、欧州ポルトガル語の札を `pt-PT` から `pt` に変えたら、
+    生成器が本家の `pt.json`(こちらの綴りと逆で**ブラジル語**)を
+    黙って拾い、欧州版のリボンがブラジル語で出来上がっていた。
+    骨組みの検査は id と並びしか見ないので、**中身が別言語でも緑**だった。
+
+    2つの言語が1文字も違わないなら、まず同じ材料から作っている。
+
+    **この検査だけでは足りない。** 当時は pt-BR がまだ無く、比べる相手が
+    いなかったので、これでも見つけられなかった。実際に効いたのは
+    「本家の欧州ファイルは薄いので、読み替えれば訳の欠けが露見する」
+    ほうだった。二重に見る。
+    """
+    bad = 0
+    for table in ("CALC", "WRITER"):
+        seen: dict[tuple[str, ...], str] = {}
+        for loc in locales:
+            key = tuple(labels(UI / f"ribbon_{loc}.rs", table))
+            if key in seen:
+                print(
+                    f"::error::{table}: {seen[key]} と {loc} の語が完全に同じです。"
+                    "同じ材料から作っていませんか"
+                    "(gen_ribbon_locale.py の VENDOR_LOCALE を確かめてください)"
+                )
+                bad = 1
+            seen[key] = loc
+    return bad
+
+
 def main() -> int:
     locales = sorted(
         p.stem[len("ribbon_"):]
@@ -105,6 +153,9 @@ def main() -> int:
                     break
         if not bad:
             print(f"{table}: {len(locales)} 言語とも ja と同じ骨組み(ボタン {len(ja)} 件)")
+    bad |= same_words(locales)
+    if not bad:
+        print(f"語の重なり: {len(locales)} 言語とも別の語で出来ています")
     return bad
 
 

@@ -114,7 +114,11 @@ def holes(s):
 # ---- 生成 -------------------------------------------------------------------
 
 def mod_name(loc):
-    return loc.replace("-", "_")
+    """ロケール札 → Rust の module 名。**小文字に落とす** — `pt-BR` を
+    そのまま繋ぐと `i18n_pt_BR` になり、rustc が non_snake_case で警告する。
+    CI は警告を誤りとして扱うので、そこで初めて気づくことになる
+    (2026-08-11、pt-BR を足して踏んだ)"""
+    return loc.replace("-", "_").lower()
 
 
 def registered():

@@ -499,6 +499,14 @@ OVERRIDES = {
     },
     "pt-BR": {
         # ブラジル**だけ**を分ける札(2026-08-11 発注者)
+        # 本家のブラジル語そのものが誤っていた3語。ブラジル語としても
+        # 誤りなので、欧州版と一緒に直す(2026-08-11):
+        #   Projeto da mesa   = 家具の机の設計(table を家具と取った)
+        #   Total de linhas   = 行数(「合計の行」ではない)
+        #   Faixa de proteção = 保護の帯(命令の動詞が要る所を名詞句に)
+        "表のデザイン": "Design da Tabela",
+        "合計行": "Linha de Totais",
+        "範囲を保護する": "Proteger Intervalo",
         "書式のコピー": "Copiar formato",
         "スタイル": "Estilo",
         "フィールドリスト": "Lista de campos",
@@ -527,6 +535,34 @@ OVERRIDES = {
         "関数を編集": "Editar função",
     },
     "pt": {
+        # **本家の欧州ファイル(pt-pt.json)は薄い。** 21 語は訳が無く、
+        # 2 語はブラジル語が紛れていた("Estilo de porcentagem"、
+        # データのタブが "Data"=日付)。**本家にあることは正しいことでは
+        # ない** — 欠けたところは原文と英語から訳し、隣の言語から写さない
+        # (2026-08-11。訳語の出どころは docs/sekkei/calc.ja.md)
+        "SmartArtの挿入": "Inserir SmartArt",
+        "カンマスタイル": "Estilo de vírgula",
+        "ゴールシーク": "Atingir objetivo",
+        "テーブルのサイズ変更": "Redimensionar tabela",
+        "ハイフン設定の変更": "Alterar a hifenização",
+        "ファイルからのテキスト": "Texto de um ficheiro",
+        "フィルタのボタン": "Botão de filtro",
+        "ヘッダー行": "Linha de cabeçalho",
+        "ページ数": "Número de páginas",
+        "ページ色の変更": "Alterar a cor da página",
+        "印刷物で次のページを開始する位置に改行を追加する": "Adicione uma quebra no sítio onde a página seguinte deve começar na cópia impressa",
+        "参照元のトレース": "Rastrear Precedentes",
+        "合計行": "Linha de totais",
+        "図形を結合": "Unir formas",
+        "推奨チャートを挿入": "Inserir gráfico recomendado",
+        "最初の列が右側に来るようにシートの方向を切り替える": "Inverta a direção da folha para que a primeira coluna fique do lado direito",
+        "最後の列": "Última coluna",
+        "範囲に変換する": "Converter em intervalo",
+        "範囲を保護する": "Proteger intervalo",
+        "罫線": "Bordas",
+        "表のデザイン": "Estrutura da Tabela",
+        "データ": "Dados",
+        "パーセントのスタイル": "Estilo de percentagem",
         # ポルトガル。**素の pt は欧州** — アンゴラ・モザンビーク等も
         # こちらに落ちる(分岐しているのはブラジルだけ)
         "書式のコピー": "Copiar formatação",
@@ -649,14 +685,24 @@ OVERRIDES = {
 }
 
 
+# 本家の綴りがこちらと違うもの。**ポルトガル語は札の意味が逆** —
+# 向こうの `pt.json` はブラジル、`pt-pt.json` が欧州。こちらは
+# 「分岐しているブラジルだけに札を付ける」と決めたので、
+# `pt`=欧州 / `pt-BR`=ブラジル(2026-08-11 発注者。sekkei/calc.ja.md)
+VENDOR_LOCALE = {"pt": "pt-pt", "pt-BR": "pt"}
+
+
 def load(app, loc):
-    """本家の対訳を読む。**綴りが違うことがある** — こちらの `pt-PT` は
-    向こうでは `pt-pt.json`。小文字でも探す(2026-08-11、pt-PT を足したとき)"""
-    for name in (loc, loc.lower()):
+    """本家の対訳を読む。綴りが違えば `VENDOR_LOCALE` で読み替える"""
+    want = VENDOR_LOCALE.get(loc, loc)
+    for name in (want, want.lower()):
         p = ROOT / app / f"main/locale/{name}.json"
         if p.exists():
             return json.load(open(p, encoding="utf-8"))
-    sys.exit(f"ロケールの現物が見つかりません: {ROOT / app / f'main/locale/{loc}.json'}")
+    sys.exit(
+        f"ロケールの現物が見つかりません: {ROOT / app / f'main/locale/{want}.json'}"
+        + (f"(こちらの {loc} を {want} と読み替えた)" if want != loc else "")
+    )
 
 
 def build_map(apps, target):
@@ -705,6 +751,45 @@ def parse_ribbon(src):
     return tables
 
 
+# 本家の英語は米国綴りの1種類しかない。こちらの `en` は英国基準と
+# 決めた(2026-08-11 発注者「英国基準がいいのでは」)ので、本家から
+# 来た語を綴り直す。
+#
+# **札にだけ掛ける。** はじめ「米国綴りは Center の1語だけ」と数えて
+# 上書き表に1行足して済ませたが、それは**大文字で始まる語しか
+# 数えていなかった** — 実際には "Font color" のように語中に 7 件あった。
+# そして id にも `align-center` があるので、ファイル全体に掛けると
+# ボタンの id が変わって配線が切れる。掛ける場所を間違えると、
+# 綴りが直る代わりにボタンが死ぬ。
+BRITISH = {
+    "color": "colour",
+    "colors": "colours",
+    "center": "centre",
+    "centers": "centres",
+    "centered": "centred",
+    "organizer": "organiser",
+    "customize": "customise",
+    "customized": "customised",
+    "analyze": "analyse",
+    "gray": "grey",
+}
+_BRITISH_RE = re.compile(
+    r"\b(" + "|".join(sorted(BRITISH, key=len, reverse=True)) + r")\b", re.I)
+
+
+def respell(target, label):
+    """米国綴りを英国綴りへ。`en` 以外はそのまま返す"""
+    if target != "en":
+        return label
+
+    def one(m):
+        w = m.group(0)
+        b = BRITISH[w.lower()]
+        return b[0].upper() + b[1:] if w[0].isupper() else b
+
+    return _BRITISH_RE.sub(one, label)
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit("使い方: gen_ribbon_locale.py <locale>  (例: en)")
@@ -717,13 +802,18 @@ def main():
 
     missing = []
 
+    respelled = []
+
     def tr(label, m):
         if label in over:
             return over[label]
-        if label in m:
-            return m[label]
-        missing.append(label)
-        return label
+        if label not in m:
+            missing.append(label)
+            return label
+        got = respell(target, m[label])
+        if got != m[label]:
+            respelled.append((m[label], got))
+        return got
 
     out = []
     out.append(f"""//! リボンの {target} 版 — **語だけが ja(ribbon.rs)と違う**。
@@ -761,6 +851,13 @@ use super::ribbon::{{c, x, Tab}};
             f"訳の見つからない語が {len(uniq)} 個あります"
             f"(OVERRIDES に足してから出し直してください):\n  "
             + "\n  ".join(uniq))
+    if target == "en" and not respelled:
+        sys.exit(
+            "::error::英語の綴り直しが1件も効いていません。"
+            "本家の語が変わったか BRITISH 表が壊れています "
+            "— 黙って米国綴りに戻さないため、ここで止めます")
+    for a, b in sorted(set(respelled)):
+        print(f"  綴り直し: {a} → {b}", file=sys.stderr)
     print("\n".join(out))
 
 

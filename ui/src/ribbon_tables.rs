@@ -13,6 +13,7 @@ pub fn tabs(lang: &str) -> Option<(&'static [Tab], &'static [Tab])> {
         "it" => Some((crate::ribbon_it::WRITER, crate::ribbon_it::CALC)),
         "ko" => Some((crate::ribbon_ko::WRITER, crate::ribbon_ko::CALC)),
         "pt" => Some((crate::ribbon_pt::WRITER, crate::ribbon_pt::CALC)),
+        "pt-br" => Some((crate::ribbon_pt_br::WRITER, crate::ribbon_pt_br::CALC)),
         "ru" => Some((crate::ribbon_ru::WRITER, crate::ribbon_ru::CALC)),
         "tr" => Some((crate::ribbon_tr::WRITER, crate::ribbon_tr::CALC)),
         "vi" => Some((crate::ribbon_vi::WRITER, crate::ribbon_vi::CALC)),

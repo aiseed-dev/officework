@@ -272,3 +272,80 @@ fn 同じ鍵が二度出てこない() {
         bad.iter().take(6).cloned().collect::<Vec<_>>().join("\n  ")
     );
 }
+
+/// **選べる言語には、その言語の名前が要る。**
+///
+/// 設定ページは `languages()` を巡回して札を出す。名前を書き忘れると
+/// 画面に `pt-br` と裸で出て、探している人には読めない。言語を足す人が
+/// ここで気づけるように、名前が無ければ落とす(2026-08-11、ポルトガル語を
+/// 2つに分けたときに要ることが分かった)。
+#[test]
+fn 選べる言語すべてに名前がある() {
+    let nameless: Vec<&str> = lang::i18n::languages()
+        .into_iter()
+        .filter(|t| lang::i18n::language_label(t) == *t)
+        .collect();
+    assert!(
+        nameless.is_empty(),
+        "名前の無い言語があります: {}\n  \
+         lang/src/i18n.rs の language_label にその言語自身の綴りで足してください",
+        nameless.join(", ")
+    );
+}
+
+/// 名前が重ならないこと。**同じ名前が2つ並ぶと選べない** —
+/// ポルトガル語を分けたとき、どちらも "Português" にすれば
+/// 見た目は綺麗でも、選ぶ人には区別がつかない
+#[test]
+fn 言語の名前が重ならない() {
+    let mut seen: std::collections::HashMap<&str, &str> = Default::default();
+    for tag in lang::i18n::languages() {
+        let name = lang::i18n::language_label(tag);
+        if let Some(prev) = seen.insert(name, tag) {
+            panic!("{prev} と {tag} が同じ名前 {name:?} で並びます");
+        }
+    }
+}
+
+/// **英語の表に米国綴りを混ぜない。**
+///
+/// `en` は英国基準と決めた(2026-08-11 発注者「英国基準がいいのでは」)。
+/// 決める前は米国 36 語・英国 16 語の**混在**で、どちらでもなかった。
+/// 一度揃えても、句を足す人が気づかなければまた混ざるのでここで見る。
+///
+/// **`-ize` / `-ise` は見ない。** 英国でも両方使う(Oxford は `-ize`)ので、
+/// 落とすと正しい綴りを誤りだと言うことになる。争いの無い語だけ。
+/// `dialog` も見ない — 英国でも UI の用語はこれで、`dialogue` は会話の意。
+#[test]
+fn 英語の表が英国綴りで揃っている() {
+    const AMERICAN: &[(&str, &str)] = &[
+        ("color", "colour"),
+        ("colors", "colours"),
+        ("colored", "coloured"),
+        ("center", "centre"),
+        ("centers", "centres"),
+        ("centered", "centred"),
+        ("gray", "grey"),
+        ("behavior", "behaviour"),
+        ("canceled", "cancelled"),
+        ("traveling", "travelling"),
+        ("labeled", "labelled"),
+        ("modeling", "modelling"),
+        ("defense", "defence"),
+    ];
+    let mut bad = Vec::new();
+    for (ja, en) in lang::i18n_en::TABLE {
+        for w in en.split(|c: char| !c.is_ascii_alphabetic()) {
+            let lower = w.to_ascii_lowercase();
+            if let Some((_, brit)) = AMERICAN.iter().find(|(a, _)| *a == lower) {
+                bad.push(format!("{ja} → {en}\n      {w} は {brit} に"));
+            }
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "英語の表に米国綴りが {} 件あります:\n  {}",
+        bad.len(),
+        bad.iter().take(6).cloned().collect::<Vec<_>>().join("\n  ")
+    );
+}

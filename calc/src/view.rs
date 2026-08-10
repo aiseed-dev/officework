@@ -3564,10 +3564,10 @@ impl Render for Calc {
                         .child(div().id("set-lang")
                             .px_3().py_1().rounded_sm().cursor_pointer()
                             .bg(item_bg)
-                            .child(SharedString::from(match lang_now.as_str() {
-                                "ja" => "日本語".to_string(),
-                                other => other.to_string(),
-                            }))
+                            // 札ではなく**その言語自身の名前**を出す。
+                            // `pt` と `pt-br` は札のままでは見分けられない
+                            .child(SharedString::from(
+                                ui::language_label(&lang_now).to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 let cur = ui::settings::get("language")
                                     .unwrap_or_else(|| "ja".into());
@@ -3698,11 +3698,16 @@ impl Render for Calc {
                     .child(div().text_size(px(us * 13.5))
                         .font_weight(gpui::FontWeight::BOLD)
                         .child(ui::t!("統計")));
+                // **印を付ける。** 見出し(「統計」)は t! に包んであるのに
+                // 行の名前は裸だったので、ポルトガル語で開くと見出しだけが
+                // 訳されて中身が日本語のまま並んでいた(2026-08-11、実機で
+                // 見つけた)。文言の門番は**印の付いた文しか見られない**ので、
+                // 包み忘れは検査を通り抜ける
                 for (k, v) in [
-                    ("シート", sheets_n),
-                    ("使っているセル", cells_n),
-                    ("式のセル", formulas_n),
-                    ("図形と画像", shapes_n),
+                    (ui::t!("シート"), sheets_n),
+                    (ui::t!("使っているセル"), cells_n),
+                    (ui::t!("式のセル"), formulas_n),
+                    (ui::t!("図形と画像"), shapes_n),
                 ] {
                     pane = pane.child(div().flex().flex_row()
                         .child(div().w(px(220.0)).text_color(dim).child(k))
@@ -3714,11 +3719,11 @@ impl Render for Calc {
                         .child(ui::t!("プロパティ")));
                 let pr = &self.book.props;
                 for (k, v, kind) in [
-                    ("作成者", pr.creator.clone(), "prop-creator"),
-                    ("タイトル", pr.title.clone(), "prop-title"),
-                    ("タグ", pr.keywords.clone(), "prop-keywords"),
-                    ("件名", pr.subject.clone(), "prop-subject"),
-                    ("コメント", pr.description.clone(), "prop-desc"),
+                    (ui::t!("作成者"), pr.creator.clone(), "prop-creator"),
+                    (ui::t!("タイトル"), pr.title.clone(), "prop-title"),
+                    (ui::t!("タグ"), pr.keywords.clone(), "prop-keywords"),
+                    (ui::t!("件名"), pr.subject.clone(), "prop-subject"),
+                    (ui::t!("コメント"), pr.description.clone(), "prop-desc"),
                 ] {
                     let empty = v.is_empty();
                     let init = v.clone();

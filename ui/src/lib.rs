@@ -14,7 +14,7 @@ pub use lang::ja::{furigana, proof};
 pub use lang::{check, spell, Language, Target};
 pub use lang::model::Endpoint;
 pub use lang::ai;
-pub use lang::i18n::{language, languages, tr, trf};
+pub use lang::i18n::{language, language_label, languages, tr, trf};
 
 /// 画面の文言(そのままの文)。ja の文が鍵 — ja では何も変わらない
 #[macro_export]
@@ -69,6 +69,7 @@ pub mod ribbon_id;
 pub mod ribbon_it;
 pub mod ribbon_ko;
 pub mod ribbon_pt;
+pub mod ribbon_pt_br;
 pub mod ribbon_ru;
 pub mod ribbon_tr;
 pub mod ribbon_vi;

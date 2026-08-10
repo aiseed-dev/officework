@@ -34,6 +34,7 @@ pub mod i18n_id;
 pub mod i18n_it;
 pub mod i18n_ko;
 pub mod i18n_pt;
+pub mod i18n_pt_br;
 pub mod i18n_ru;
 pub mod i18n_tr;
 pub mod i18n_vi;

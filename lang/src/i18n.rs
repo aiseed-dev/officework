@@ -64,6 +64,38 @@ pub fn languages() -> Vec<&'static str> {
     v
 }
 
+/// 言語の札を、**その言語の人が読める名前**にする。
+///
+/// 設定ページは長らく `de` `fr` `zh-tw` と札のまま並べていた。それで
+/// 済んでいたのは1つの言語に札が1つだったからで、**ポルトガル語を
+/// `pt`(欧州)と `pt-br`(ブラジル)に分けた時点で済まなくなった** —
+/// リスボンの人に `pt` と `pt-br` を見せても、どちらが自分のものか
+/// 読み取れない(2026-08-11)。
+///
+/// 名前は英語ではなく**その言語自身の綴り**で持つ。自分の言語を探す人が
+/// 読むのは、その言語の字だから。名前を書いていない札はそのまま返す
+/// (黙って消さない)。
+pub fn language_label(tag: &str) -> &str {
+    match tag {
+        "ja" => "日本語",
+        "de" => "Deutsch",
+        "en" => "English",
+        "es" => "Español",
+        "fr" => "Français",
+        "id" => "Bahasa Indonesia",
+        "it" => "Italiano",
+        "ko" => "한국어",
+        "pt" => "Português (Portugal)",
+        "pt-br" => "Português (Brasil)",
+        "ru" => "Русский",
+        "tr" => "Türkçe",
+        "vi" => "Tiếng Việt",
+        "zh" => "简体中文",
+        "zh-tw" => "繁體中文",
+        other => other,
+    }
+}
+
 fn lang_map() -> Option<&'static HashMap<&'static str, &'static str>> {
     static MAP: OnceLock<Option<HashMap<&'static str, &'static str>>> = OnceLock::new();
     MAP.get_or_init(|| {

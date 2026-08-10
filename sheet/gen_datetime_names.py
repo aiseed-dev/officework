@@ -33,6 +33,9 @@ SRC = ROOT / "vendor/sdkjs/common/NumFormat.js"
 OUT = ROOT / "sheet/src/datetime_names.rs"
 
 # うちの言語 → 本家の Name。**素直に引けない2つに注意**:
+#   en  **英国**。分岐したのは米国側で、豪・NZ・愛・南ア・印は英国綴りに
+#       従う(2026-08-11 発注者)。pt と同じ判じ方 — 多いほうではなく、
+#       **分岐していないほう**を素にすると枝の無い国が正しい側に落ちる
 #   pt  **ポルトガル**。ブラジルだけを pt-BR として分ける
 #       (2026-08-11 発注者確定)。vendor と CLDR は素の pt をブラジルに
 #        しているが、**落とし所の正しさは別の話**だった —
@@ -44,14 +47,14 @@ OUT = ROOT / "sheet/src/datetime_names.rs"
 LOCALES = {
     "ja": "ja",
     "de": "de",
-    "en": "en",
+    "en": "en-GB",
     "es": "es",
     "fr": "fr",
     "id": "id",
     "it": "it",
     "ko": "ko",
     "pt": "pt-PT",
-    "pt-BR": "pt-BR",
+    "pt-br": "pt-BR",
     "ru": "ru",
     "tr": "tr",
     "vi": "vi",
@@ -64,8 +67,8 @@ LOCALES = {
 # 中立の名前にも番号(0x11)を持つが、Excel が書くのは `[$-411]`(ja-JP)。
 # どの国を代表に置くかは**こちらの選択**なので、名指しで書いて材料と照合する
 CANON = {
-    "ja": "ja-JP", "de": "de-DE", "en": "en-US", "es": "es-ES", "fr": "fr-FR",
-    "id": "id-ID", "it": "it-IT", "ko": "ko-KR", "pt": "pt-PT", "pt-BR": "pt-BR", "ru": "ru-RU",
+    "ja": "ja-JP", "de": "de-DE", "en": "en-GB", "es": "es-ES", "fr": "fr-FR",
+    "id": "id-ID", "it": "it-IT", "ko": "ko-KR", "pt": "pt-PT", "pt-br": "pt-BR", "ru": "ru-RU",
     "tr": "tr-TR", "vi": "vi-VN", "zh": "zh-CN", "zh-tw": "zh-TW",
 }
 
@@ -138,9 +141,17 @@ def lcid_rows() -> list[tuple[int, str]]:
     src = SRC.read_text(encoding="utf-8")
     ours = set(LOCALES)
     out = []
+    # **まず地域ごと照合する。** 素直に `name.split("-")[0]` だけで拾うと
+    # `pt-BR` が `pt` に落ちる — こちらは `pt`=欧州 / `pt-br`=ブラジルと
+    # 分けたので、ブラジルの帳面を開いた人に欧州の暦を出すことになる
+    # (2026-08-11、pt を欧州にしたときに見つけた)。地域つきで一致しない
+    # ものだけ、根の言語へ落とす
+    exact = {v: k for k, v in CANON.items()}
     for m in re.finditer(r'^\t\d+: \{LCID: (\d+), Name: "([^"]+)"', src, re.M):
         lcid, name = int(m.group(1)), m.group(2)
-        if name.startswith("zh"):
+        if name in exact:
+            lang = exact[name]
+        elif name.startswith("zh"):
             lang = "zh-tw" if name in ("zh-TW", "zh-HK", "zh-MO", "zh-Hant") else "zh"
         else:
             lang = name.split("-")[0]
@@ -279,10 +290,10 @@ pub fn lang_of_lcid(lcid: u32) -> Option<&'static str> {{
 pub fn names(lang: &str) -> &'static Names {{
     TABLE
         .iter()
-        .find(|n| n.lang == lang)
+        .find(|n| n.lang.eq_ignore_ascii_case(lang))
         // "zh-tw" のような枝が無ければ "zh" へ、それも無ければ ja
         .or_else(|| lang.split_once('-').and_then(|(base, _)| {{
-            TABLE.iter().find(|n| n.lang == base)
+            TABLE.iter().find(|n| n.lang.eq_ignore_ascii_case(base))
         }}))
         .unwrap_or(&TABLE[0])
 }}
