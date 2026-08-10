@@ -1202,7 +1202,7 @@ mod pivot_tests {
             this.run_cmd("clear", cx);
             assert_eq!(f(this), Default::default(), "書式のクリアが効かない");
             // --- パネル・小窓が開く系 ---
-            let mut close = |this: &mut Calc| {
+            let close = |this: &mut Calc| {
                 this.pick = None;
                 this.pick_kind = "value";
                 this.pick_note = None;
@@ -1791,7 +1791,7 @@ mod pivot_tests {
         d.vfilter = Some((">=".into(), 70.0));
         d.totals = true;
         let spec = pivot_spec_json(&headers, &rows, &d);
-        let Some((g, k)) = run_py(spec) else { return };
+        let Some((g, _k)) = run_py(spec) else { return };
         // A=150, B=100 → 両方残る。しきい値を上げると片方だけに
         assert_eq!(g[1], vec!["A", "150"]);
         assert_eq!(g[2], vec!["B", "100"]);
@@ -2107,7 +2107,7 @@ mod recalc_tests {
     #[gpui::test]
     fn データバーとスケールとアイコンをメニューから掛けられる(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
-        c.update(cx, |this, cx| {
+        c.update(cx, |this, _cx| {
             for (i, v) in ["10", "20", "30"].iter().enumerate() {
                 this.book.sheets[0].set(Pos::new(i as u32, 0), sheet::Cell::input(v));
             }

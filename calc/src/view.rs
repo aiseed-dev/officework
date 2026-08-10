@@ -1572,7 +1572,7 @@ impl Render for Calc {
                 );
                 // (すべて選択)
                 let all_on = hide.is_none();
-                let all_vals: Vec<String> = vals.iter().map(|(v, _)| v.clone()).collect();
+                let _all_vals: Vec<String> = vals.iter().map(|(v, _)| v.clone()).collect();
                 let checkbox = |on: bool| {
                     div().flex_none().w(px(13.0)).h(px(13.0)).rounded_sm()
                         .border_1()
@@ -3236,7 +3236,7 @@ impl Render for Calc {
             let label = |t: &'static str| {
                 div().mt_1p5().text_size(px(us * 11.5)).text_color(rgb(0x444B52)).child(t)
             };
-            let btn = |id: &'static str, t: &'static str, on: bool| {
+            let btn = |id: &'static str, _t: &'static str, on: bool| {
                 div().id(id).px_2p5().py_1().rounded_sm().border_1()
                     .border_color(if on { rgb(0xC6CDD3) } else { rgb(0xEDEFF1) })
                     .text_size(px(us * 11.5))
