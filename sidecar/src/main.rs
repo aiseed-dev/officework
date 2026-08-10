@@ -367,6 +367,16 @@ fn open_result(
     let name = path.rsplit('/').next().unwrap_or(path);
     let mut sheets = Vec::new();
     let mut defined = Vec::new();
+    // **条件付き書式の見た目**(向こうの `dxfStyles`)。規則は `read_range` で
+    // 返しているのに見た目の表が空だったので、規則に色が付いているのに
+    // **画面には出ない**状態だった(2026-08-10、向こうの試験で判明)。
+    // 規則の並びと同じ順で積み、`dxfIndex` がその番号を指す
+    let mut dxfs: Vec<Value> = Vec::new();
+    for sh in &book.sheets {
+        for c in &sh.cond {
+            dxfs.push(dxf_value(c));
+        }
+    }
     for (i, sh) in book.sheets.iter().enumerate() {
         let (rows, cols) = sh.size();
         // **列の幅。** 向こうの `ColumnWidth` の作法は
@@ -375,32 +385,39 @@ fn open_result(
         // `skip_serializing_if`)。**`null` を入れると z.number() に撥ねられる**
         // (2026-08-10、向こうの試験で判明)。持たない物は**省く**のであって
         // `null` を置くのではない
-        let mut col_props: BTreeMap<u32, (Option<f32>, bool, u8)> = BTreeMap::new();
+        let mut col_props: BTreeMap<u32, (Option<f32>, bool, u8, bool)> = BTreeMap::new();
         for (c, w) in &sh.col_width {
-            col_props.entry(*c).or_insert((None, false, 0)).0 = Some(*w);
+            col_props.entry(*c).or_insert((None, false, 0, false)).0 = Some(*w);
         }
         for c in &sh.col_hidden {
-            col_props.entry(*c).or_insert((None, false, 0)).1 = true;
+            col_props.entry(*c).or_insert((None, false, 0, false)).1 = true;
         }
         for (c, l) in &sh.col_outline {
-            col_props.entry(*c).or_insert((None, false, 0)).2 = *l;
+            col_props.entry(*c).or_insert((None, false, 0, false)).2 = *l;
         }
-        let widths: Vec<Value> = col_props
-            .into_iter()
-            .map(|(c, (w, hidden, lvl))| {
-                let mut o = Map::new();
-                o.insert("startColumn".into(), json!(c));
-                o.insert("endColumn".into(), json!(c));
-                if let Some(w) = w {
-                    o.insert("width".into(), json!(w));
+        for c in &sh.col_collapsed {
+            col_props.entry(*c).or_insert((None, false, 0, false)).3 = true;
+        }
+        // **続きの列で中身が同じなら1つにまとめる。** 原本の
+        // `<col min="2" max="3" width="20"/>` は範囲で書かれており、
+        // 向こうも範囲で返す。1列ずつ返すと数が合わない
+        // (2026-08-10、向こうの試験で判明)
+        let mut widths: Vec<Value> = Vec::new();
+        let mut run: Option<(u32, u32, (Option<f32>, bool, u8, bool))> = None;
+        for (c, v) in col_props {
+            match &mut run {
+                Some((_, end, prev)) if *end + 1 == c && *prev == v => *end = c,
+                _ => {
+                    if let Some((a, z, v0)) = run.take() {
+                        widths.push(col_value(a, z, v0));
+                    }
+                    run = Some((c, c, v));
                 }
-                o.insert("hidden".into(), json!(hidden));
-                if lvl > 0 {
-                    o.insert("outlineLevel".into(), json!(lvl));
-                }
-                Value::Object(o)
-            })
-            .collect();
+            }
+        }
+        if let Some((a, z, v0)) = run {
+            widths.push(col_value(a, z, v0));
+        }
         let comments: Vec<Value> = sh
             .comments
             .iter()
@@ -418,7 +435,15 @@ fn open_result(
             })
             .collect();
         for (nm, r) in &sh.names {
-            defined.push(json!({"name": nm, "formula": format!("'{}'!{}", sh.name, r)}));
+            // **原本の綴りで返す。** 向こうは `Structure!$A$1:$B$2` の形で
+            // 返し、試験もそれを見ている(2026-08-10)。こちらは参照を
+            // `A1:B2` に解いて持っているので、**`$` を戻して組み直す**。
+            //
+            // シート名の引用符は**要るときだけ** — 空白や記号を含まない
+            // 名前に `'` を付けると、向こうと綴りが変わる
+            let quoted = sh.name.chars().any(|c| !c.is_alphanumeric() && c != '_');
+            let name = if quoted { format!("'{}'", sh.name) } else { sh.name.clone() };
+            defined.push(json!({"name": nm, "formula": format!("{name}!{}", absolute(r))}));
         }
         sheets.push(json!({
             "id": format!("sheet-{}", i + 1),
@@ -426,12 +451,12 @@ fn open_result(
             "rowCount": rows,
             "columnCount": cols,
             "columnWidths": widths,
-            "defaultRowHeight": Value::Null,
+            "defaultRowHeight": sh.default_row_height,
             "defaultColumnWidth": sh.default_col_width,
             "freeze": sh.freeze.as_ref().map(|f| json!({
                 "frozenRows": f.frozen_rows, "frozenColumns": f.frozen_columns})),
             "hidden": sh.hidden,
-            "tabColor": sh.tab_color,
+            "tabColor": sh.tab_color.as_deref().map(hex_color),
             "showGridLines": sh.show_gridlines.unwrap_or(true),
             "showFormulas": sh.show_formulas.unwrap_or(false),
             "tables": tables,
@@ -451,16 +476,15 @@ fn open_result(
     v.insert("entryCount".into(), json!(entry_count));
     v.insert("sheets".into(), json!(sheets));
     v.insert("styles".into(), json!(styles));
-    v.insert("dxfStyles".into(), json!([]));
+    v.insert("dxfStyles".into(), json!(dxfs));
     v.insert("visuals".into(), json!([]));
     v.insert("definedNames".into(), json!(defined));
     v.insert(
         "xNotFilled".into(),
         json!([
-            "dxfStyles(条件付き書式の見た目。規則は返しているが見た目の表はまだ)",
+            "dxfIndex はシートを跨ぐと番号がずれる(1枚の帳票では正しい)",
             "visuals(図形・画像・グラフ)",
             "sparklines / pivotTables / pivotRanges",
-            "defaultRowHeight",
             "comments.author(モデルが持たない)",
             "definedNames.sheetIndex(モデルは参照先のシートに載せている)",
             "rowCount/columnCount は <dimension> ではなく**実際に中身のある範囲**",
@@ -579,10 +603,16 @@ fn range_result(
     let conditional: Vec<Value> = sh
         .cond
         .iter()
-        .map(|c| {
+        .enumerate()
+        .map(|(i, c)| {
             let (kind, formulas, op) = cond_value(&c.kind);
+            // **`dxfIndex` は `open` で配った `dxfStyles` の番号。**
+            // 積む順を揃えてあるので、シート内の並びがそのまま番号になる
+            // (いまはシートを跨ぐと番号がずれる — 1枚しか持たない帳票が
+            //  ほとんどなので当面これで足りるが、**分かっていて残す**)
             json!({"ranges": [rng(c.range.0, c.range.1)], "ruleType": kind,
                    "operator": op, "formulas": formulas, "priority": 1,
+                   "dxfIndex": i,
                    "percent": false, "bottom": false, "cfvos": [], "colors": [],
                    "iconReverse": false, "showValue": true})
         })
@@ -618,13 +648,13 @@ fn range_result(
         // **鍵は掛けない・掛けた振りもしない**(SEKKEI writer の保護と同じ作法)
         "sheetProtection": json!({"protected": sh.protected, "hasPassword": false}),
         // **全部読んでから答える**ので、いつも索引は済んでいる(設計「段階索引」)
+        //
+        // **`xNotFilled` はここに載せない。** `read_range` の schema は
+        // `strict()` で、知らない欄があると撥ねる(`open` は `passthrough()`
+        // なので通っていた)。**足した欄が害になる所がある**
+        // (2026-08-10、向こうの試験で判明)
         "indexedThroughRow": r1,
         "indexingComplete": true,
-        "xNotFilled": [
-            "cells.rich(セルの中で書式が変わる run をモデルが持たない)",
-            "autoFilter(モデルが持たない)",
-            "conditionalRules の cfvos / colors / dxfIndex / rank / priority",
-        ],
     })
 }
 
@@ -690,7 +720,7 @@ fn edge_value(e: &sheet::model::Edge) -> Option<Value> {
     let mut o = Map::new();
     o.insert("style".into(), json!(e.style.xlsx()));
     if let Some(c) = e.color {
-        o.insert("color".into(), json!(format!("{:06X}", c & 0xFF_FFFF)));
+        o.insert("color".into(), json!(hex_color(&format!("{:06X}", c & 0xFF_FFFF))));
     }
     Some(Value::Object(o))
 }
@@ -727,10 +757,10 @@ fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
         o.insert(k.into(), json!(v));
     }
     if let Some(c) = &f.color {
-        o.insert("fontColor".into(), json!(c));
+        o.insert("fontColor".into(), json!(hex_color(c)));
     }
     if let Some(c) = &f.fill {
-        o.insert("fillColor".into(), json!(c));
+        o.insert("fillColor".into(), json!(hex_color(c)));
     }
     // 揃えの名前は xlsx に書くときと同じ綴りで返す(突き合わせの相手は
     // 生の属性値を見せるので、こちらも畳まずにそのまま出す)
@@ -911,4 +941,80 @@ fn uuid_v4(seq: u64) -> String {
         0x8000u16 | ((b >> 48) as u16 & 0x3FFF),
         b & 0xFFFF_FFFF_FFFF
     )
+}
+
+/// 列の幅ひとまとまりを、向こうの `ColumnWidth` の形へ。
+///
+/// **`width` と `outlineLevel` は無ければ省き、`startColumn`/`endColumn`/
+/// `hidden` は必ず出す**(向こうの `skip_serializing_if` の付き方)。
+fn col_value(a: u32, z: u32, (w, hidden, lvl, collapsed): (Option<f32>, bool, u8, bool)) -> Value {
+    let mut o = Map::new();
+    o.insert("startColumn".into(), json!(a));
+    o.insert("endColumn".into(), json!(z));
+    if let Some(w) = w {
+        o.insert("width".into(), json!(w));
+    }
+    o.insert("hidden".into(), json!(hidden));
+    if lvl > 0 {
+        o.insert("outlineLevel".into(), json!(lvl));
+    }
+    // 向こうと同じく**偽なら省く**(`skip_serializing_if`)
+    if collapsed {
+        o.insert("collapsed".into(), json!(true));
+    }
+    Value::Object(o)
+}
+
+/// 色を向こうの綴りへ。**`#RRGGBB`** で返す(`visuals.rs` が `format!("#{value}")`)。
+///
+/// こちらは原本の `FFRRGGBB`(先頭は透過)や `RRGGBB` のまま持っているので、
+/// **透過の桁を落として `#` を付ける**。`#` を付け忘れると、向こうの
+/// 試験が `'#92D050'` を期待して落ちる(2026-08-10 に踏んだ)。
+fn hex_color(c: &str) -> String {
+    let h = c.trim_start_matches('#');
+    let h = if h.len() == 8 { &h[2..] } else { h };
+    format!("#{}", h.to_uppercase())
+}
+
+/// `A1:B2` を `$A$1:$B$2` に。**名前の定義は絶対参照で書かれる**のが常で、
+/// 向こうもその綴りで返す。`sheet` は解いて持っているので戻す。
+fn absolute(r: &str) -> String {
+    r.split(':')
+        .map(|part| {
+            let mut out = String::new();
+            let mut chars = part.chars().peekable();
+            // 列(英字)の前と、行(数字)の前に `$` を置く
+            if chars.peek().is_some_and(|c| c.is_ascii_alphabetic()) {
+                out.push('$');
+            }
+            let mut in_row = false;
+            for c in part.chars() {
+                if c.is_ascii_digit() && !in_row {
+                    in_row = true;
+                    out.push('$');
+                }
+                out.push(c);
+            }
+            out
+        })
+        .collect::<Vec<_>>()
+        .join(":")
+}
+
+/// 条件付き書式の見た目を、向こうの `dxfStyles` の形へ。
+///
+/// **`CellStyle` と同じ器**を使う(向こうも `Vec<CellStyle>`)。真偽は必ず出し、
+/// 色は `#RRGGBB`。持っているのは文字色と塗りだけなので、他は既定のまま。
+fn dxf_value(c: &sheet::model::CondRule) -> Value {
+    let mut o = Map::new();
+    for k in ["bold", "italic", "underline", "strikethrough", "wrapText", "diagonalUp", "diagonalDown"] {
+        o.insert(k.into(), json!(false));
+    }
+    if let Some(x) = &c.color {
+        o.insert("fontColor".into(), json!(hex_color(x)));
+    }
+    if let Some(x) = &c.fill {
+        o.insert("fillColor".into(), json!(hex_color(x)));
+    }
+    Value::Object(o)
 }

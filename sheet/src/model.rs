@@ -584,6 +584,14 @@ pub struct Sheet {
     /// 全列の既定幅。`<col min="1" max="16384">` を1列ずつ展開しない
     /// (展開すると保存が 16,384 個の col で肥大する)
     pub default_col_width: Option<f32>,
+    /// 全行の既定の高さ(pt)。`<sheetFormatPr defaultRowHeight="15"/>`。
+    /// **書いてはいたが読んでいなかった**(2026-08-10、向こうの試験で判明)。
+    /// 無い行はこの高さで描くので、落とすと行間が変わる
+    pub default_row_height: Option<f32>,
+    /// 畳んである行・列(xlsx の `collapsed`)。アウトラインの「−」を押した状態。
+    /// **`hidden` とは別** — 畳んだ親の行そのものは見えている
+    pub row_collapsed: std::collections::BTreeSet<u32>,
+    pub col_collapsed: std::collections::BTreeSet<u32>,
     /// 行の高さ(pt)。無い行は既定。列幅と同じ構図
     pub row_height: BTreeMap<u32, f32>,
     /// 行のグループ化(アウトライン)の深さ 1〜7(xlsx の outlineLevel)。

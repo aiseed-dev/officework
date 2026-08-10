@@ -164,6 +164,11 @@ fn row_height(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
     if matches!(attr(e, "hidden").as_deref(), Some("1") | Some("true")) {
         sh.row_hidden.insert(r0);
     }
+    // **畳んである(アウトラインの「−」)。** hidden とは別で、
+    // 畳んだ親の行そのものは見えている
+    if matches!(attr(e, "collapsed").as_deref(), Some("1") | Some("true")) {
+        sh.row_collapsed.insert(r0);
+    }
 }
 
 /// `<col min="1" max="3" width="12.5"/>` — min..=max は1始まり。
@@ -187,7 +192,9 @@ fn col_width(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
     // グループ化の深さと畳み(幅の指定が無い col でも来る)
     let level = attr(e, "outlineLevel").and_then(|v| v.parse::<u8>().ok()).unwrap_or(0);
     let hidden = matches!(attr(e, "hidden").as_deref(), Some("1") | Some("true"));
-    if (level > 0 || hidden) && max - min <= 1000.0 {
+    // **畳んである(アウトラインの「−」)。** hidden とは別
+    let collapsed = matches!(attr(e, "collapsed").as_deref(), Some("1") | Some("true"));
+    if (level > 0 || hidden || collapsed) && max - min <= 1000.0 {
         for c in (min as u32)..=(max as u32) {
             if c >= 1 {
                 if level > 0 {
@@ -195,6 +202,9 @@ fn col_width(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
                 }
                 if hidden {
                     sh.col_hidden.insert(c - 1);
+                }
+                if collapsed {
+                    sh.col_collapsed.insert(c - 1);
                 }
             }
         }
@@ -989,6 +999,17 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
                 }
                 b"is" => in_is = true,
                 b"mergeCell" => merge(&e, &mut sh),
+                // **全行の既定の高さ。** 書いてはいたが読んでいなかった
+                // (2026-08-10)。無い行はこれで描くので、落とすと行間が変わる
+                b"sheetFormatPr" => {
+                    sh.default_row_height =
+                        attr(&e, "defaultRowHeight").and_then(|v| v.parse::<f32>().ok());
+                    // **全列の既定幅もここにある。** `<col>` の無い列はこの幅
+                    if sh.default_col_width.is_none() {
+                        sh.default_col_width =
+                            attr(&e, "defaultColWidth").and_then(|v| v.parse::<f32>().ok());
+                    }
+                }
                 b"col" => col_width(&e, &mut sh),
                 // 画面の見え方と固定枠。**Excel の sheetView は子を抱えるので
                 // ここ(Start)に来る** — Empty 側にも同じ組を置いてある
@@ -1003,6 +1024,18 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
             },
             Ok(Event::Empty(e)) => match local(e.name().as_ref()) {
                 b"col" => col_width(&e, &mut sh),
+                // **全行の既定の高さと全列の既定幅。** 原本は
+                // `<sheetFormatPr defaultRowHeight="15" customHeight="1"/>` と
+                // **自己終了形**で書かれるので、Empty の枝にも要る。
+                // **同じ形の穴は4度目**(sheetView・docx の <w:p/>・<row/>・これ)
+                b"sheetFormatPr" => {
+                    sh.default_row_height =
+                        attr(&e, "defaultRowHeight").and_then(|v| v.parse::<f32>().ok());
+                    if sh.default_col_width.is_none() {
+                        sh.default_col_width =
+                            attr(&e, "defaultColWidth").and_then(|v| v.parse::<f32>().ok());
+                    }
+                }
                 // **書き手が申告した大きさ** `<dimension ref="A1:CN46"/>`。
                 // 単独では信じない — `Sheet::size` が実際と大きいほうを採る
                 b"dimension" => {
