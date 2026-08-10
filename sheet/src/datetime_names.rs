@@ -147,6 +147,18 @@ pub const TABLE: &[Names] = &[
         lcid: 0x816,
     },
     Names {
+        lang: "pt-BR",
+        months: ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"],
+        months_abbr: ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"],
+        months_genitive: None,
+        days: ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"],
+        days_abbr: ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"],
+        long_date: "dddd, d\" de \"mmmm\" de \"yyyy",
+        short_date: "dd/mm/yyyy",
+        currency_pattern: 2,
+        lcid: 0x416,
+    },
+    Names {
         lang: "ru",
         months: ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"],
         months_abbr: ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"],

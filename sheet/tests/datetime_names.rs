@@ -12,8 +12,12 @@ use sheet::datetime_names::{names, TABLE};
 /// 何も出ない日付ができる** — 生成のときも見ているが、手で触られたら
 /// ここで落とす
 #[test]
-fn 十四言語ぶん揃っている() {
-    assert_eq!(TABLE.len(), 14, "言語の数が変わった");
+fn どの言語も欠けなく揃っている() {
+    // **数は書かない。** 言語が増えるたびに試験の名前と数を追いかけることに
+    // なり、追いかけ損ねた瞬間に名前のほうが嘘になる(2026-08-11、pt-PT を
+    // 足して気づいた)。ここで要るのは「欠けが無いこと」
+    assert!(TABLE.len() >= 14, "言語が減っている({} 件)", TABLE.len());
+    assert!(TABLE.iter().any(|n| n.lang == "ja"), "素の言語が無い");
     for n in TABLE {
         for (what, arr) in [("months", &n.months[..]), ("months_abbr", &n.months_abbr[..])] {
             assert_eq!(arr.len(), 12, "{}: {what}", n.lang);

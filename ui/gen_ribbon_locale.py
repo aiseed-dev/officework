@@ -497,14 +497,43 @@ OVERRIDES = {
         "読み取り専用を勧める": "Suggérer la lecture seule",
         "関数を編集": "Modifier la fonction",
     },
-    "pt": {
+    "pt-BR": {
+        # ブラジル**だけ**を分ける札(2026-08-11 発注者)
         "書式のコピー": "Copiar formato",
         "スタイル": "Estilo",
         "フィールドリスト": "Lista de campos",
-        # 表示タブ(こちらで足したボタン — 画面の文字の大きさ)
         "画面の文字を大きく": "Aumentar texto da tela",
         "画面の文字を小さく": "Diminuir texto da tela",
-        # 2026-08-10 に足した21語(台帳の消し込みで増えたボタン)
+        "CSV の形": "Formato CSV",
+        "セルのロック": "Bloquear célula",
+        "データテーブル": "Tabela de dados",
+        "フラッシュフィル": "Preencher pelo exemplo",
+        "一行のコード": "Linha de código",
+        "一覧": "Lista",
+        "名前を貼り付け": "Colar nome",
+        "復旧": "Recuperar",
+        "手続きを実行": "Executar procedimento",
+        "折り返して全体を表示する": "Quebrar texto",
+        "控えの間隔": "Intervalo das cópias",
+        "新しい .py": "Novo .py",
+        "範囲を足す": "Adicionar intervalo",
+        "紙に収める": "Ajustar ao papel",
+        "紙の切れ目": "Quebras de página",
+        "置き場を開く": "Abrir a pasta",
+        "計算し直す": "Recalcular",
+        "計算の種類": "Mostrar os valores como",
+        "許可する操作": "Operações permitidas",
+        "読み取り専用を勧める": "Sugerir somente leitura",
+        "関数を編集": "Editar função",
+    },
+    "pt": {
+        # ポルトガル。**素の pt は欧州** — アンゴラ・モザンビーク等も
+        # こちらに落ちる(分岐しているのはブラジルだけ)
+        "書式のコピー": "Copiar formatação",
+        "スタイル": "Estilo",
+        "フィールドリスト": "Lista de campos",
+        "画面の文字を大きく": "Aumentar texto do ecrã",
+        "画面の文字を小さく": "Diminuir texto do ecrã",
         "CSV の形": "Formato CSV",
         "セルのロック": "Bloquear célula",
         "データテーブル": "Tabela de dados",
@@ -621,10 +650,13 @@ OVERRIDES = {
 
 
 def load(app, loc):
-    p = ROOT / app / f"main/locale/{loc}.json"
-    if not p.exists():
-        sys.exit(f"ロケールの現物が見つかりません: {p}")
-    return json.load(open(p, encoding="utf-8"))
+    """本家の対訳を読む。**綴りが違うことがある** — こちらの `pt-PT` は
+    向こうでは `pt-pt.json`。小文字でも探す(2026-08-11、pt-PT を足したとき)"""
+    for name in (loc, loc.lower()):
+        p = ROOT / app / f"main/locale/{name}.json"
+        if p.exists():
+            return json.load(open(p, encoding="utf-8"))
+    sys.exit(f"ロケールの現物が見つかりません: {ROOT / app / f'main/locale/{loc}.json'}")
 
 
 def build_map(apps, target):

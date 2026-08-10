@@ -33,7 +33,12 @@ SRC = ROOT / "vendor/sdkjs/common/NumFormat.js"
 OUT = ROOT / "sheet/src/datetime_names.rs"
 
 # うちの言語 → 本家の Name。**素直に引けない2つに注意**:
-#   pt  本家の "pt" はブラジル(R$・綴りも別)。うちの訳は欧州なので pt-PT
+#   pt  **ポルトガル**。ブラジルだけを pt-BR として分ける
+#       (2026-08-11 発注者確定)。vendor と CLDR は素の pt をブラジルに
+#        しているが、**落とし所の正しさは別の話**だった —
+#        アンゴラ・モザンビーク・カーボベルデ・東ティモールはいずれも
+#        欧州の綴りに従うので、pt=欧州なら pt-AO から落ちてきた人が
+#        正しい側に着く。**分岐しているのはブラジルだけ**
 #   zh-tw 台湾。"zh-Hant" は香港(通貨 HK$)を指すので使わない
 # 言語と国を混ぜると壊れる、の実例が材料の側にもある
 LOCALES = {
@@ -46,6 +51,7 @@ LOCALES = {
     "it": "it",
     "ko": "ko",
     "pt": "pt-PT",
+    "pt-BR": "pt-BR",
     "ru": "ru",
     "tr": "tr",
     "vi": "vi",
@@ -59,7 +65,7 @@ LOCALES = {
 # どの国を代表に置くかは**こちらの選択**なので、名指しで書いて材料と照合する
 CANON = {
     "ja": "ja-JP", "de": "de-DE", "en": "en-US", "es": "es-ES", "fr": "fr-FR",
-    "id": "id-ID", "it": "it-IT", "ko": "ko-KR", "pt": "pt-PT", "ru": "ru-RU",
+    "id": "id-ID", "it": "it-IT", "ko": "ko-KR", "pt": "pt-PT", "pt-BR": "pt-BR", "ru": "ru-RU",
     "tr": "tr-TR", "vi": "vi-VN", "zh": "zh-CN", "zh-tw": "zh-TW",
 }
 
