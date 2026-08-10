@@ -2100,9 +2100,70 @@ mod rowcol_tests {
 /// **付けた書式が画面に出ないなら、それは飾りでしかない。**
 /// 対応するのは実務で使う分だけ — 桁区切り・小数・パーセント・通貨。
 /// 日付は別の話(連番の解釈が要る)なのでここでは扱わない。
+/// 書式コードの `[…]` を読み分ける。返すのは
+/// **(かっこを取り除いたコード, 記号, 経過時間の札)**。
+///
+/// Excel の書式コードは角かっこで4種類のことを言う
+/// (**`text` の印が要る** — 字下げだけの塊は rustdoc が組み立てようとして
+/// 落ちる。今日この罠を他人のコードで直したそばから自分で踏んだ):
+///
+/// ```text
+/// [$¥-411]#,##0   記号つきの地域指定 — 通貨記号はこう書かれる
+/// [$-409]mmmm     地域指定だけ — 月名を何語で出すか
+/// [Red] [赤]      色。ここは字を作る所なので使わない
+/// [h] [mm] [ss]   経過時間(24時をまたいでも巻き戻さない)
+/// ```
+///
+/// **前はどれも読み飛ばしていなかった**ので、`[Red]#,##0` が
+/// `[Red]46,240`、`[$-409]mmmm yyyy` が `[$-446240` と出ていた
+/// (2026-08-10、実物26枚のうち4枚がこの形の書式を持っていた)。
+///
+/// 地域の番号は取り出すが**まだ使っていない** — 月名を言語で出すには
+/// 描き手に月名の表を繋ぐ必要がある(`datetime_names` に材料はある)。
+/// 取り出しておくのは、繋ぐときにここを触らずに済むようにするため。
+fn take_brackets(code: &str) -> (String, String, Option<char>) {
+    let mut out = String::new();
+    let mut sym = String::new();
+    let mut elapsed = None;
+    let mut it = code.chars().peekable();
+    let mut quoted = false;
+    while let Some(c) = it.next() {
+        if c == '"' {
+            quoted = !quoted;
+            out.push(c);
+            continue;
+        }
+        if quoted || c != '[' {
+            out.push(c);
+            continue;
+        }
+        let mut inner = String::new();
+        for q in it.by_ref() {
+            if q == ']' {
+                break;
+            }
+            inner.push(q);
+        }
+        let low = inner.to_ascii_lowercase();
+        if let Some(rest) = inner.strip_prefix('$') {
+            // [$記号-地域] / [$-地域]。記号は字として出す
+            sym.push_str(rest.split('-').next().unwrap_or(""));
+        } else if low.chars().all(|c| c == 'h' || c == 'm' || c == 's') && !low.is_empty() {
+            // 経過時間。札は1字で覚える(hh も h と同じ意味)
+            elapsed = low.chars().next();
+            out.push_str(&inner);
+        }
+        // 色([Red]・[赤]・[Color3])と条件([>100])は字を作らない — 落とす
+    }
+    (out, sym, elapsed)
+}
+
 pub fn format_value(v: &Value, code: Option<&str>) -> String {
     let Value::Number(n) = v else { return v.display() };
     let Some(code) = code else { return v.display() };
+    // 角かっこを先に読み分ける。**残すと画面にそのまま出る**
+    let (stripped, bracket_sym, elapsed) = take_brackets(code);
+    let code: &str = &stripped;
 
     // テキスト形式(@)は素のまま(新しく打つ分を文字として扱うのは Excel の話。
     // 表示は変えない)
@@ -2126,7 +2187,7 @@ pub fn format_value(v: &Value, code: Option<&str>) -> String {
     }
 
     // 日付・時刻の書式なら、通し番号を暦に直して描く
-    if let Some(s) = format_date(*n, code) {
+    if let Some(s) = format_date(*n, code, elapsed) {
         return s;
     }
 
@@ -2150,12 +2211,30 @@ pub fn format_value(v: &Value, code: Option<&str>) -> String {
     if n < 0.0 {
         out.push('-');
     }
-    // 通貨の記号は書式の先頭にそのまま書かれている
-    for c in code.chars() {
-        if c == '#' || c == '0' || c == ',' || c == '.' || c == '%' || c == '"' {
-            break;
+    // 通貨の記号は書式の先頭に書かれている。**引用符つきの形も読む** —
+    // Excel は `"¥"#,##0` と書くので、`"` で切ると**円記号を丸ごと落とす**
+    // (実物26枚のうち2枚がこの形。2026-08-10 まで落としていた)。
+    // `\(` のような逃げも字として出す
+    out.push_str(&bracket_sym);
+    let mut it = code.chars().peekable();
+    while let Some(c) = it.next() {
+        match c {
+            '#' | '0' | ',' | '.' | '%' | ';' => break,
+            '"' => {
+                for q in it.by_ref() {
+                    if q == '"' {
+                        break;
+                    }
+                    out.push(q);
+                }
+            }
+            '\\' => {
+                if let Some(q) = it.next() {
+                    out.push(q);
+                }
+            }
+            _ => out.push(c),
         }
-        out.push(c);
     }
     out.push_str(&int);
     out.push_str(&frac);
@@ -2179,7 +2258,24 @@ pub fn format_value(v: &Value, code: Option<&str>) -> String {
 /// (`mmmm` → `08`)で、`aaa`/`aaaa` は `YOBI` と「曜日」を日本語で返す。
 /// 13言語ぶんの月名・曜日名は vendor/sdkjs/common/NumFormat.js の
 /// cultureInfo にある(sekkei/calc.ja.md「書式の一覧」参照)
-fn format_date(n: f64, code: &str) -> Option<String> {
+fn format_date(n: f64, code: &str, elapsed: Option<char>) -> Option<String> {
+    // **最初の節だけを使う。** 書式は `正;負;ゼロ;文字` の4節に分かれ、
+    // 日付の書式はたいてい `[$-409]mmmm yyyy;@` のように末尾に文字用の
+    // 節を持つ。切らないと `;@` がそのまま画面に出る
+    let code = {
+        let (mut cut, mut q) = (code.len(), false);
+        for (i, c) in code.char_indices() {
+            match c {
+                '"' => q = !q,
+                ';' if !q => {
+                    cut = i;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        &code[..cut]
+    };
     let mut bare = String::new();
     let mut quoted = false;
     for c in code.chars() {
@@ -2197,7 +2293,8 @@ fn format_date(n: f64, code: &str) -> Option<String> {
         || bare.contains('e') // 和暦の年
         || bare.contains('g') // 元号
         || (bare.contains('m') && bare.contains('s'));
-    if !datey || n < 0.0 {
+    // 経過時間の札([mm] だけ、など)も時刻の書式
+    if (!datey && elapsed.is_none()) || n < 0.0 {
         return None;
     }
 
@@ -2226,6 +2323,15 @@ fn format_date(n: f64, code: &str) -> Option<String> {
                 s.push(q);
             }
             toks.push(T::Lit(s));
+        } else if c == '\\' {
+            // `\ ` `\,` は次の1字を字として出す(Excel の逃げ)。
+            // 読み飛ばさないと画面に `\` が出る
+            if let Some(q) = it.next() {
+                match toks.last_mut() {
+                    Some(T::Lit(s)) => s.push(q),
+                    _ => toks.push(T::Lit(q.to_string())),
+                }
+            }
         } else if c.is_ascii_alphabetic() {
             let lc = c.to_ascii_lowercase();
             let mut len = 1;
@@ -2242,6 +2348,13 @@ fn format_date(n: f64, code: &str) -> Option<String> {
         }
     }
 
+    // 経過時間の総量(札の単位で数える)。24 時をまたいでも巻き戻さない
+    let total = match elapsed {
+        Some('h') => (n * 24.0).floor() as i64,
+        Some('m') => (n * 24.0 * 60.0).floor() as i64,
+        Some('s') => (n * 24.0 * 3600.0).round() as i64,
+        _ => 0,
+    };
     let mut out = String::new();
     let mut prev_hour = false; // 直前の字の札が h だったか(m の意味の判定)
     for (i, t) in toks.iter().enumerate() {
@@ -2258,6 +2371,12 @@ fn format_date(n: f64, code: &str) -> Option<String> {
                         format!("{:02}", y.rem_euclid(100))
                     }),
                     'd' => out.push_str(&pad(d, *len)),
+                    // **経過時間は巻き戻さない。** [h]:mm は 25:30 のように
+                    // 24 時を超えて数える(勤怠表の合計がこれ)。札が立って
+                    // いる字だけが通し、それ以外は普段どおりの時分秒
+                    'h' if elapsed == Some('h') => out.push_str(&total.to_string()),
+                    'm' if elapsed == Some('m') => out.push_str(&total.to_string()),
+                    's' if elapsed == Some('s') => out.push_str(&total.to_string()),
                     'h' => out.push_str(&pad(hh, *len)),
                     's' => out.push_str(&pad(ss, *len)),
                     'm' => {
@@ -3635,5 +3754,80 @@ mod input_fmt_tests {
         assert_eq!(Cell::date_format_of("=DATE"), None);
         assert_eq!(Cell::date_format_of("=A1+1"), None);
         assert_eq!(Cell::date_format_of("普通の字"), None);
+    }
+}
+
+#[cfg(test)]
+mod bracket_tests {
+    use super::*;
+
+    fn f(n: f64, code: &str) -> String {
+        format_value(&Value::Number(n), Some(code))
+    }
+
+    /// **角かっこを画面に出さない。** 前は読み飛ばしておらず、
+    /// `[Red]46,240` や `[$-446240` がそのまま出ていた
+    /// (2026-08-10。実物26枚のうち4枚がこの形の書式を持っていた)
+    #[test]
+    fn 角かっこが画面に出ない() {
+        for (n, code) in [
+            (1234.0, "[Red]#,##0"),
+            (1234.0, "[赤]#,##0"),
+            (46240.0, "[$-409]mmmm yyyy"),
+            (46240.0, "[$-411]yyyy/m/d"),
+        ] {
+            let got = f(n, code);
+            assert!(!got.contains('['), "{code} → {got}");
+            assert!(!got.contains(']'), "{code} → {got}");
+        }
+    }
+
+    /// **Excel は通貨記号を引用符で書く。** `"¥"#,##0` の `"` で切っていて、
+    /// 円記号を丸ごと落としていた — 実物の会計書式がこの形
+    #[test]
+    fn 引用符の通貨記号を落とさない() {
+        assert_eq!(f(1234.0, r##""¥"#,##0"##), "¥1,234");
+        // 角かっこの中に記号を書く形(こちらも Excel の綴り)
+        assert_eq!(f(1234.0, "[$¥-411]#,##0"), "¥1,234");
+        assert_eq!(f(1234.0, "[$€-407]#,##0"), "€1,234");
+        // 実物26枚に入っている会計書式まるごと
+        assert_eq!(f(1234.0, r##""¥"#,##0_);[Red]\("¥"#,##0\)"##), "¥1,234");
+    }
+
+    /// 日付の書式は**最初の節だけ**。`;@` が画面に出ていた
+    #[test]
+    fn 文字用の節を画面に出さない() {
+        assert_eq!(f(46240.0, "yyyy/m/d;@"), "2026/8/6");
+        assert!(!f(46240.0, "[$-409]mmmm\\ yyyy;@").contains(';'));
+    }
+
+    /// `\` は次の1字を字として出す逃げ。読まないと `\` が画面に出る
+    #[test]
+    fn 逃げの記号を画面に出さない() {
+        assert_eq!(f(46240.0, "yyyy\\年m\\月"), "2026年8月");
+        assert!(!f(46240.0, "[$-409]mmmm\\ yyyy").contains('\\'));
+    }
+
+    /// **経過時間は 24 時で巻き戻さない。** 勤怠表の合計がこの書式で、
+    /// 前は `[h]:mm` が `[0]:00` になっていた
+    #[test]
+    fn 経過時間は巻き戻さない() {
+        // 1.0625 日 = 25 時間 30 分
+        assert_eq!(f(1.0625, "[h]:mm"), "25:30");
+        assert_eq!(f(1.0625, "[mm]"), "1530");
+        assert_eq!(f(0.5, "[h]:mm"), "12:00");
+        // 札が無ければ普段どおり巻き戻す
+        assert_eq!(f(1.0625, "h:mm"), "1:30");
+    }
+
+    /// 直したことで**普通の書式が壊れていない**こと
+    #[test]
+    fn 素の書式は変わらない() {
+        assert_eq!(f(46240.0, "yyyy/m/d"), "2026/8/6");
+        assert_eq!(f(1234.5, "#,##0.0"), "1,234.5");
+        assert_eq!(f(1234.0, "¥#,##0"), "¥1,234");
+        assert_eq!(f(0.5, "h:mm"), "12:00");
+        assert_eq!(f(46240.0, "ggge\"年\"m\"月\"d\"日\""), "令和8年8月6日");
+        assert_eq!(f(0.1234, "0.00%"), "12.34%");
     }
 }
