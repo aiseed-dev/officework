@@ -12,7 +12,29 @@ import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
 import { randomUUID } from 'node:crypto'
 
-const [source, target, sheetsDir, sidecarPath] = process.argv.slice(2)
+const [source, target, sheetsDir, sidecarPath, editSpec] = process.argv.slice(2)
+
+// 5つめの引数があれば編集を1つ入れる。`シート名:行:列:打つ字`(行と列は0起点)。
+// **計画層が実際に働いたときに周りを壊さないか**を見るのが目的で、
+// 編集ゼロでは planCellEditsToXlsx のほとんどが素通りしてしまう
+const edits = editSpec
+  ? [
+      (() => {
+        const i = editSpec.lastIndexOf(':')
+        const [sheetName, row, column] = editSpec.slice(0, i).split(':')
+        const raw = editSpec.slice(i + 1)
+        const n = Number(raw)
+        return {
+          sheetName,
+          row: Number(row),
+          column: Number(column),
+          writeValue: true,
+          // 数として読めるなら数で置く(向こうの CellScalar は number|string|boolean|null)
+          cell: { value: Number.isFinite(n) && raw.trim() !== '' ? n : raw },
+        }
+      })(),
+    ]
+  : []
 
 // 向こうの client と同じ喋り方をする最小の相手。**12 コマンドのうち、
 // 保存が使う書庫まわりだけ**(archive_manifest / read_entries / save_archive)。
@@ -47,12 +69,11 @@ class Sidecar {
 const { saveWorkbookViaSidecar } = await import(`${sheetsDir}/src/gateway/xlsx-package-io.ts`)
 const client = new Sidecar()
 try {
-  // **編集は空。** 開いて保存しただけの物ができる
   const r = await saveWorkbookViaSidecar({
     client,
     sourcePath: source,
     targetPath: target,
-    edits: [],
+    edits: edits as any,
   })
   console.log(JSON.stringify({ ok: true, result: r ?? null }))
 } catch (e) {
