@@ -76,6 +76,18 @@ genoffice's helper as a child for those five commands, so a copy of that binary
 has to exist and `GENOFFICE_SIDECAR` has to point at it. Point it at the engine
 itself and it will call itself forever.
 
+## Which genoffice this was checked against
+
+**`fd33934` (2026-08-10).** The protocol is theirs and they can change it
+without telling anyone, because nobody here has asked them not to — this is a
+second implementation of someone else's interface, not an arrangement with them.
+So the commit is written down, and after pulling a newer genoffice the three
+tiers below get run again before trusting it.
+
+Their Rust helper was untouched by the seven commits that landed on 2026-08-10,
+which is the usual case: the protocol moves far more slowly than the application
+around it.
+
 ## How far it has been checked
 
 - **Cross-check against genoffice's own helper** over 26 real workbooks (Bank of
