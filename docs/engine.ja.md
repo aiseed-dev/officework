@@ -35,16 +35,17 @@ $ pip install officework
 表計算が officework で動きます:
 
 ```bash
-# 先に genoffice 自身の助手の控えを取る — エンジンはそちらへ転送する
-cp apps/sheets/native/xlsx-engine/target/release/xlsx-sidecar /tmp/genoffice-sidecar
+cargo build --release -p sidecar   # officework の木で
 
 XLSX_SIDECAR_PATH=/path/to/officework/target/release/xlsx-sidecar \
-GENOFFICE_SIDECAR=/tmp/genoffice-sidecar \
   npm run dev -w @genoffice/sheets
 ```
 
 **genoffice には1行のパッチも要りません。** 変数を外せば元の助手に戻ります。
-エンジンは `cargo build --release -p sidecar` で組みます。
+
+`.xls` の取り込みも要るなら、genoffice の助手の控えをどこかに置いて
+`GENOFFICE_SIDECAR=/その控え` を足してください。その1つだけがそちらへ転送
+されます。**エンジン自身を指すと自分を無限に呼び続けます。** 他は要りません。
 
 **ここで面白いのは、うちのエンジンではありません。** genoffice が継ぎ目を
 **継ぎ目であるべき場所に置いていた**こと、そしてその継ぎ目が本当に持ったこと
@@ -52,24 +53,26 @@ GENOFFICE_SIDECAR=/tmp/genoffice-sidecar \
 
 ## 何を差し替えているのか
 
-**読みと計算。書きは差し替えていません。** ここは大事なので、12 のコマンドを
-全部並べます:
+**12 のうち 11。**
 
 | コマンド | 誰がやるか |
 |---|---|
-| `open` `read_range` `read_formula_cells` `read_media` `recalc_cells` | **officework** |
+| `open` `read_range` `read_formula_cells` `read_media` `recalc_cells` | **officework** — セル・式・書式・罫線・結合・条件付き書式・入力規則・名前の定義・固定枠・表・コメント・**画像と図形**、そして計算 |
 | `close` `cancel` | officework(セッションの世話) |
-| `archive_manifest` `read_entries` `scan_entries` `save_archive` `convert_workbook` | **genoffice の助手へ、行をそのまま転送** |
+| `archive_manifest` `read_entries` `scan_entries` `save_archive` | **officework** — 部品の出し入れだけ。xlsx の意味はここでは解釈しない |
+| `convert_workbook` | **未実装。** `.xls`(BIFF8)は別の形式 |
 
-genoffice の Rust は xlsx を「書か」ないからです。TypeScript が XML のパッチを
-組み立て、助手は ZIP に当てるだけ — 触らない部品は圧縮済みのまま丸ごと写し、
-前後のマニフェストを CRC32 と大きさで照合します。**頼まれていない所をこの道が
-どう変えるかを測りました。何も変えません。** だから今日置き換える利益が無く、
-5つは素通しにしてあります。
+**だから genoffice の助手の控えは要りません。** `GENOFFICE_SIDECAR` を指すのは、
+`.xls` の取り込みを向こうの変換器で続けたいときだけ。指さなければ、その1つが
+「`.xls` は読めません」と言って止まります — **黙って空の帳面を開きません。**
 
-**この形のエンジンは独り立ちしていません。** その5つのために genoffice の助手を
-子として起こすので、**そのバイナリの控えが要り**、`GENOFFICE_SIDECAR` がそれを
-指している必要があります。エンジン自身を指すと、**自分を無限に呼び続けます**。
+genoffice に残っているのは**保存の段取り**です。どの XML をどう変えるかは
+向こうの TypeScript が決め、エンジンはそれを部品に当てる — 触らない部品は
+**圧縮済みのまま丸ごと写す**ので、CRC32 も圧縮後の大きさも変わりません
+(向こうは保存のたびに両方を確かめていて、詰め直すとそこで止まります)。
+
+グラフは位置を掴んでいますが、系列を組み立てていないので**出しません** —
+中身の無い枠を渡すと、空の四角を描かせることになります。
 
 ## どの genoffice で確かめたか
 
@@ -86,13 +89,15 @@ genoffice の Rust は xlsx を「書か」ないからです。TypeScript が X
 
 - **genoffice 自身の助手との突き合わせ** — 実物の帳票 26 枚(日銀の資金循環、
   統計局の家計調査ほか)で、値・式・結合・範囲・書式を欄ごとに比較
-- **genoffice 自身の試験をエンジンに当てる** — 21 件中 18 件。残る3件は
-  **わざと**です: 向こうが返すピボットの出力範囲は持っていない、書式表の番号を
-  向こうは原本の `cellXfs` の索引で振りこちらは振り直す、そして
-  **`CELL("filename")` が失敗することを期待している試験**があり、うちは正しく
-  答えを返します
+- **genoffice 自身の試験を、転送を一切使わずに当てる** — 21 件中 16 件。
+  残る5件のうち1件はグラフの型紙(解いていない)、あとは**判断**です:
+  ピボットの出力範囲は持っていない、書式表の番号を向こうは原本の `cellXfs` の
+  索引で振りこちらは振り直す、そして **`CELL("filename")` が失敗することを
+  期待している試験**があり、うちは正しく答えを返します
 - **実機** — 手で開いて動かす。文字・罫線・結合・書式・**依存3段の再計算**・
-  名前を付けて保存
+  名前を付けて保存・**ロゴと検印と図形の3つとも描かれた**
+- **保存がバイトを保つか**を外から確かめる — 実物3枚を向こうの保存の道に通し、
+  触っていない部品は **CRC32 も圧縮後の大きさも**一致、並びも原本のまま
 
 **どの段も、上の段には見えない欠陥を出しました。** 突き合わせは**両側に同じ
 簡略化を教えた所を構造的に見られません**。試験の schema が `passthrough()` なら、

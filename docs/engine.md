@@ -37,17 +37,18 @@ That environment variable is the whole story. Point it at officework's engine
 and genoffice's spreadsheet runs on officework:
 
 ```bash
-# Keep a copy of genoffice's own helper first — the engine forwards to it.
-cp apps/sheets/native/xlsx-engine/target/release/xlsx-sidecar /tmp/genoffice-sidecar
+cargo build --release -p sidecar   # in the officework checkout
 
 XLSX_SIDECAR_PATH=/path/to/officework/target/release/xlsx-sidecar \
-GENOFFICE_SIDECAR=/tmp/genoffice-sidecar \
   npm run dev -w @genoffice/sheets
 ```
 
-**genoffice needs no patch.** Not one line, not one file. Remove the two
-variables and it is back to its own helper. Build the engine with
-`cargo build --release -p sidecar`.
+**genoffice needs no patch.** Not one line, not one file. Remove the variable
+and it is back to its own helper.
+
+If you also want `.xls` import, keep a copy of genoffice's helper somewhere and
+add `GENOFFICE_SIDECAR=/that/copy`; that one command is forwarded to it. Point
+it at the engine itself and it will call itself forever. Nothing else needs it.
 
 The interesting part here is not our engine. It is that genoffice put a seam
 where a seam belonged, and the seam holds: a second implementation of a
@@ -55,26 +56,27 @@ protocol, written by someone with no access to their build, drops in behind it.
 
 ## What is actually replaced
 
-**Reading and calculating. Not writing.** The distinction matters, so here is
-the whole protocol:
+**Eleven of the twelve commands.**
 
 | Commands | Who does them |
 |---|---|
-| `open` `read_range` `read_formula_cells` `read_media` `recalc_cells` | **officework** |
+| `open` `read_range` `read_formula_cells` `read_media` `recalc_cells` | **officework** — cells, formulas, formats, borders, merges, conditional formats, validation, defined names, freeze panes, tables, comments, pictures and shapes, and the arithmetic |
 | `close` `cancel` | officework (session bookkeeping) |
-| `archive_manifest` `read_entries` `scan_entries` `save_archive` `convert_workbook` | **forwarded to genoffice's helper, byte for byte** |
+| `archive_manifest` `read_entries` `scan_entries` `save_archive` | **officework** — package-level only; nothing about xlsx is interpreted here |
+| `convert_workbook` | **not implemented.** Converts `.xls`, which is BIFF8, a different format |
 
-genoffice does not write xlsx in Rust. Its TypeScript computes an XML patch and
-the helper applies it to the ZIP, copying every untouched entry through still
-compressed and checking the manifest by CRC32 and size before and after. We
-measured what that path does to a workbook it was not asked to change: nothing.
-So replacing it would buy nothing today, and the five commands are passed
-straight through instead.
+**So no copy of genoffice's helper is needed.** Set `GENOFFICE_SIDECAR` only if
+you want `.xls` import to keep working through their converter; without it, that
+one command says `.xls` is not readable and stops, rather than opening an empty
+workbook.
 
-**This means the engine is not standalone in this configuration.** It spawns
-genoffice's helper as a child for those five commands, so a copy of that binary
-has to exist and `GENOFFICE_SIDECAR` has to point at it. Point it at the engine
-itself and it will call itself forever.
+What still belongs to genoffice is the *planning* of a save. Its TypeScript
+decides which XML changes to make; the engine applies them to the package,
+copying every untouched entry through still compressed so its CRC32 and its
+compressed size both survive — genoffice checks both after every save, and
+re-deflating an entry fails that check. Charts are located but their series are
+not parsed, so chart objects are not reported; emitting a frame with no data
+would draw an empty box.
 
 ## Which genoffice this was checked against
 
@@ -93,13 +95,17 @@ around it.
 - **Cross-check against genoffice's own helper** over 26 real workbooks (Bank of
   Japan flow-of-funds, Statistics Bureau household survey, and others): values,
   formulas, merges, extents and cell formats compared field by field.
-- **genoffice's own test suite**, run against the engine: 18 of 21. The three
-  are deliberate — genoffice reports pivot-table output ranges we do not model,
-  numbers its style table by the original `cellXfs` index where we renumber, and
-  has a test asserting that `CELL("filename")` *fails*, which ours answers
-  correctly.
+- **genoffice's own test suite**, run against the engine with nothing forwarded:
+  16 of 21. Of the five, one is a chart fixture we do not parse; the rest are
+  decisions — pivot-table output ranges we do not model, a style table numbered
+  by the original `cellXfs` index where we renumber, and a test asserting that
+  `CELL("filename")` *fails*, which ours answers correctly.
 - **The application itself**, opened and driven by hand: text, borders, merges,
-  cell formats, recalculation down three levels of dependency, and Save As.
+  cell formats, recalculation down three levels of dependency, Save As, and a
+  workbook carrying a logo, a stamp and a shape — all three drawn.
+- **Byte fidelity on save**, checked from outside: three real workbooks through
+  genoffice's save path, every untouched entry identical in CRC32 *and*
+  compressed size, order preserved.
 
 Each tier caught defects the one above it could not. The cross-check cannot see
 a simplification taught to both sides; a test suite whose schema is
