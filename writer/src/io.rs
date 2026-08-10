@@ -23,7 +23,7 @@ pub(crate) fn load_or_make_key() -> Result<ed25519_dalek::SigningKey, String> {
         let seed: [u8; 32] = bytes
             .get(..32)
             .and_then(|b| b.try_into().ok())
-            .ok_or("鍵ファイルが壊れています(~/.config/office/sign.key)")?;
+            .ok_or_else(|| ui::t!("鍵ファイルが壊れています(~/.config/office/sign.key)"))?;
         return Ok(ed25519_dalek::SigningKey::from_bytes(&seed));
     }
     let mut seed = [0u8; 32];
@@ -208,7 +208,7 @@ pub(crate) fn foreign_lock(p: &std::path::Path) -> Option<String> {
         .split(',')
         .map(str::trim)
         .find(|t| !t.is_empty())
-        .unwrap_or("誰か")
+        .unwrap_or(ui::t!("誰か"))
         .to_string();
     (who != lock_identity()).then_some(who)
 }

@@ -289,10 +289,19 @@ mod menu_run_tests {
                     .any(|p| matches!(p.style, kumihan::ParaStyle::Toc(_))),
                 "目次が入らない"
             );
+            // 「図 」と直に書かない — 訳の入る言語では雛形が変わる。
+            // **2つ目が 2 番になる**ことまで見る(1つ目を数えそこねると、
+            // どの図も 1 番のままになる。日本語では気づけない不具合だった)
             this.run_cmd("caption", cx);
             assert!(
-                this.doc.body_text().contains("図 "),
+                this.doc.body_text().contains(&ui::tf!("図 {}", 1)),
                 "図表番号が入らない: {}",
+                this.doc.body_text()
+            );
+            this.run_cmd("caption", cx);
+            assert!(
+                this.doc.body_text().contains(&ui::tf!("図 {}", 2)),
+                "2つ目の図表番号が 2 にならない(1つ目を数えそこねている): {}",
                 this.doc.body_text()
             );
         });
@@ -1073,5 +1082,40 @@ mod image_px_tests {
     #[test]
     fn 画像でないものは断る() {
         assert_eq!(image_px(b"not an image"), None);
+    }
+}
+
+/// 図表番号の頭は、**貼る字と探す字が同じ雛形から出ている**か。
+///
+/// 番号を付けるのは `ui::tf!("図 {}", n)`、次の番号を決めるのと図表目次を
+/// 作るのは段落の頭の照合。雛形は訳されるので、探す側に生の「図 」を書くと
+/// 日本語以外では一度も当たらず、図がすべて 1 番になり目次も空になる
+/// (2026-08-10 に見つけた)。二つを [`crate::caption_head`] に寄せたので、
+/// ここではその一致だけを見張る
+#[cfg(test)]
+mod caption_head_tests {
+    #[test]
+    fn 図表番号は貼る字と探す字が同じ雛形から出る() {
+        let head = crate::caption_head();
+        assert!(!head.is_empty(), "頭が空だと strip_prefix が全段落に当たる");
+        let label = ui::tf!("図 {}", 7);
+        assert!(
+            label.starts_with(head),
+            "貼る字「{label}」が探す頭「{head}」で始まらない — 番号を数え直せない"
+        );
+        assert_eq!(
+            label.strip_prefix(head).map(|r| r.trim().parse::<usize>()),
+            Some(Ok(7)),
+            "頭を外した残りが番号として読めない"
+        );
+    }
+
+    /// ja では**1バイトも変わらない**(いままでの文書が読めなくならないこと)。
+    /// ja かどうかは tr が鍵をそのまま返すかで見る(表に無い言語も同じ扱い)
+    #[test]
+    fn 日本語のときの頭はこれまでと同じ() {
+        if ui::tr("図 {}") == "図 {}" {
+            assert_eq!(crate::caption_head(), "図 ");
+        }
     }
 }

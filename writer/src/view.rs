@@ -728,11 +728,11 @@ impl Render for Writer {
                         .font_weight(gpui::FontWeight::BOLD)
                         .child(ui::t!("統計")));
                 for (k, v) in [
-                    ("ページ", total_pages),
-                    ("段落", paras),
-                    ("単語", words),
-                    ("文字数", nchars),
-                    ("文字数 (スペースを含む)", chars_all),
+                    (ui::t!("ページ"), total_pages),
+                    (ui::t!("段落"), paras),
+                    (ui::t!("単語"), words),
+                    (ui::t!("文字数"), nchars),
+                    (ui::t!("文字数 (スペースを含む)"), chars_all),
                 ] {
                     pane = pane.child(div().flex().flex_row()
                         .child(div().w(px(220.0)).text_color(th_status).child(k))
@@ -744,11 +744,11 @@ impl Render for Writer {
                         .child(ui::t!("プロパティ")));
                 let pr = self.doc.props.clone();
                 let vals: [(&'static str, String, &'static str); 5] = [
-                    ("作成者", pr.creator, "著者を追加"),
-                    ("タイトル", pr.title, "テキストの追加"),
-                    ("タグ", pr.keywords, "テキストの追加"),
-                    ("件名", pr.subject, "テキストの追加"),
-                    ("コメント", pr.description, "テキストの追加"),
+                    (ui::t!("作成者"), pr.creator, ui::t!("著者を追加")),
+                    (ui::t!("タイトル"), pr.title, ui::t!("テキストの追加")),
+                    (ui::t!("タグ"), pr.keywords, ui::t!("テキストの追加")),
+                    (ui::t!("件名"), pr.subject, ui::t!("テキストの追加")),
+                    (ui::t!("コメント"), pr.description, ui::t!("テキストの追加")),
                 ];
                 for (i, (k, v, ph)) in vals.into_iter().enumerate() {
                     let editing = self.file_field == Some(i as u8);
@@ -1411,10 +1411,10 @@ impl Render for Writer {
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(field("検索", &self.find_ed, self.find_field == 0)
+                .child(field(ui::t!("検索"), &self.find_ed, self.find_field == 0)
                     .id("find-f").cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| { this.find_field = 0; cx.notify() })))
-                .child(field("置換後", &self.repl_ed, self.find_field == 1)
+                .child(field(ui::t!("置換後"), &self.repl_ed, self.find_field == 1)
                     .id("find-r").cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| { this.find_field = 1; cx.notify() })))
                 .child(div().flex().flex_row().gap_2()
@@ -1857,7 +1857,11 @@ impl Render for Writer {
                 .flex().flex_col().gap_1();
             // 耳
             let mut ears = div().flex().flex_row().gap_1().mb_1();
-            for (i, name) in ["見出し", "コメント", "検索"].into_iter().enumerate() {
+            // 耳の照合は添字(nav_tab)。名前は見せる字だけなので訳してよい
+            for (i, name) in [ui::t!("見出し"), ui::t!("コメント"), ui::t!("検索")]
+                .into_iter()
+                .enumerate()
+            {
                 let on = self.nav_tab == i as u8;
                 ears = ears.child(div()
                     .id(SharedString::from(format!("navtab-{i}")))
@@ -2008,7 +2012,11 @@ impl Render for Writer {
                     .text_color(rgb(0x165E83)).mt_1().child(t)
             };
             // 小さなボタン(押すと run_cmd。入っていれば色が付く)
-            let btn = |this: &Writer, id: &'static str, label: &'static str| {
+            // 見出しは**訳したもの**を受ける。訳をこの中でやらないのは、鍵の走査が
+            // ソースを字句で読むから — `ui::t!(…)` は呼ぶ側に残す(calc と同じ作法)。
+            // 註の書き方にも同じ罠がある: 括弧の中を**引用符つきで**書くと走査は
+            // ここも鍵と数える(それで「…」が対訳表に紛れ込んだ 2026-08-10)
+            let btn = |this: &Writer, id: &'static str, label: SharedString| {
                 let on = this.toggled(id);
                 div().id(SharedString::from(format!("rp-{id}")))
                     .px_2().py_0p5().rounded_sm().cursor_pointer()
@@ -2031,15 +2039,15 @@ impl Render for Writer {
                     .child(ui::t!("設定 — いる場所を直す")));
 
             // 文字
-            d = d.child(head("文字"))
+            d = d.child(head(ui::t!("文字")))
                 .child(row()
-                    .child(btn(self, "bold", "太字").on_click(cx.listener(
+                    .child(btn(self, "bold", ui::t!("太字").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("bold", cx); cx.notify() })))
-                    .child(btn(self, "italic", "斜体").on_click(cx.listener(
+                    .child(btn(self, "italic", ui::t!("斜体").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("italic", cx); cx.notify() })))
-                    .child(btn(self, "underline", "下線").on_click(cx.listener(
+                    .child(btn(self, "underline", ui::t!("下線").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("underline", cx); cx.notify() })))
-                    .child(btn(self, "strikeout", "取消").on_click(cx.listener(
+                    .child(btn(self, "strikeout", ui::t!("取消").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("strikeout", cx); cx.notify() }))))
                 .child(row()
                     .child(div().text_size(px(11.0)).text_color(th_status)
@@ -2049,13 +2057,13 @@ impl Render for Writer {
                                 format!("{size_now}")
                             }, self.font_name)))))
                 .child(row()
-                    .child(btn(self, "decfont", "小さく").on_click(cx.listener(
+                    .child(btn(self, "decfont", ui::t!("小さく").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("decfont", cx); cx.notify() })))
-                    .child(btn(self, "incfont", "大きく").on_click(cx.listener(
+                    .child(btn(self, "incfont", ui::t!("大きく").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("incfont", cx); cx.notify() })))
-                    .child(btn(self, "fontcolor", "色").on_click(cx.listener(
+                    .child(btn(self, "fontcolor", ui::t!("色").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("fontcolor", cx); cx.notify() })))
-                    .child(btn(self, "clearstyle", "書式を消す").on_click(cx.listener(
+                    .child(btn(self, "clearstyle", ui::t!("書式を消す").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("clearstyle", cx); cx.notify() }))));
             if f.field.is_some() {
                 d = d.child(div().text_size(px(10.5)).text_color(th_status)
@@ -2071,14 +2079,14 @@ impl Render for Writer {
                 Some(p) => (p.align, p.spacing(), p.indent, p.list),
                 None => (Align::Left, 1.0, 0, ListKind::None),
             };
-            d = d.child(head("段落"))
+            d = d.child(head(ui::t!("段落")))
                 .child(row()
                     .children([
-                        ("align-left", "左", Align::Left),
-                        ("align-center", "中央", Align::Center),
-                        ("align-right", "右", Align::Right),
-                        ("align-just", "両端", Align::Justify),
-                        ("align-dist", "均等", Align::Distribute),
+                        ("align-left", ui::t!("左"), Align::Left),
+                        ("align-center", ui::t!("中央"), Align::Center),
+                        ("align-right", ui::t!("右"), Align::Right),
+                        ("align-just", ui::t!("両端"), Align::Justify),
+                        ("align-dist", ui::t!("均等"), Align::Distribute),
                     ].map(|(id, label, a)| {
                         let on = al == a;
                         div().id(SharedString::from(format!("rp-{id}")))
@@ -2099,44 +2107,43 @@ impl Render for Writer {
                     .child(div().text_size(px(11.0)).text_color(th_status)
                         .child(SharedString::from(ui::tf!("行間 {:.2} / 字下げ {}", ls, ind)))))
                 .child(row()
-                    .child(btn(self, "linespace", "行間").on_click(cx.listener(
+                    .child(btn(self, "linespace", ui::t!("行間").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("linespace", cx); cx.notify() })))
-                    .child(btn(self, "decoffset", "◂ 字下げ").on_click(cx.listener(
+                    .child(btn(self, "decoffset", ui::t!("◂ 字下げ").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("decoffset", cx); cx.notify() })))
-                    .child(btn(self, "incoffset", "字下げ ▸").on_click(cx.listener(
+                    .child(btn(self, "incoffset", ui::t!("字下げ ▸").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("incoffset", cx); cx.notify() }))))
                 .child(row()
-                    .child(btn(self, "markers", if lst == ListKind::Bullet {
-                        "箇条書き ✓"
-                    } else {
-                        "箇条書き"
+                    // **✓ は見出しだけ** — 鍵は素のまま(calc の freeze と同じ作法)
+                    .child(btn(self, "markers", {
+                        let l = ui::t!("箇条書き");
+                        if lst == ListKind::Bullet { format!("{l} ✓").into() } else { l.into() }
                     }).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("markers", cx); cx.notify() })))
-                    .child(btn(self, "numbering", if lst == ListKind::Number {
-                        "番号 ✓"
-                    } else {
-                        "番号"
+                    .child(btn(self, "numbering", {
+                        let l = ui::t!("番号");
+                        if lst == ListKind::Number { format!("{l} ✓").into() } else { l.into() }
                     }).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("numbering", cx); cx.notify() })))
-                    .child(btn(self, "paracolor", "背景").on_click(cx.listener(
+                    .child(btn(self, "paracolor", ui::t!("背景").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("paracolor", cx); cx.notify() })))
-                    .child(btn(self, "borders", "囲み").on_click(cx.listener(
+                    .child(btn(self, "borders", ui::t!("囲み").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("borders", cx); cx.notify() }))));
 
             // ページ
-            d = d.child(head("ページ"))
+            d = d.child(head(ui::t!("ページ")))
                 .child(div().text_size(px(11.0)).text_color(th_status)
                     .child(SharedString::from(ui::tf!("{:.0}×{:.0}mm / 余白 {:.0}mm / {}段{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!(" / 縦書き") } else { "" }))))
                 .child(row()
-                    .child(btn(self, "pageorient", "向き").on_click(cx.listener(
+                    .child(btn(self, "pageorient", ui::t!("向き").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pageorient", cx); cx.notify() })))
-                    .child(btn(self, "pagesize", "用紙").on_click(cx.listener(
+                    .child(btn(self, "pagesize", ui::t!("用紙").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagesize", cx); cx.notify() })))
-                    .child(btn(self, "pagemargins", "余白").on_click(cx.listener(
+                    .child(btn(self, "pagemargins", ui::t!("余白").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagemargins", cx); cx.notify() })))
-                    .child(btn(self, "columns", "段組み").on_click(cx.listener(
+                    .child(btn(self, "columns", ui::t!("段組み").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("columns", cx); cx.notify() })))
-                    .child(btn(self, "direction", "縦書き").on_click(cx.listener(
+                    .child(btn(self, "direction", ui::t!("縦書き").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("direction", cx); cx.notify() }))));
             Some(d)
         };
@@ -2439,11 +2446,12 @@ impl Render for Writer {
                 .flex().flex_col().gap_0p5()
                 .child(div().text_size(px(10.5)).text_color(rgb(0x66707A))
                     .child(ui::t!("段落のスタイル(選んだ段落に掛かる)")));
+            // 照合は番号(set_para_style)。名前は見せる字だけなので訳してよい
             for (n, label, pt, bold) in [
-                (0u8, "標準", 12.5f32, false),
-                (1, "見出し1", 16.0, true),
-                (2, "見出し2", 14.0, true),
-                (3, "見出し3", 12.5, true),
+                (0u8, ui::t!("標準"), 12.5f32, false),
+                (1, ui::t!("見出し1"), 16.0, true),
+                (2, ui::t!("見出し2"), 14.0, true),
+                (3, ui::t!("見出し3"), 12.5, true),
             ] {
                 let mut item = div()
                     .id(SharedString::from(format!("style-{n}")))
@@ -2509,8 +2517,8 @@ impl Render for Writer {
             for n in &self.proof {
                 // どちらの道具が出したかを隠さない。辞書の指摘は GPU 無しで再現できる
                 let tool = match n.source {
-                    ui::check::Source::Dictionary => "辞書",
-                    ui::check::Source::Model => "モデル",
+                    ui::check::Source::Dictionary => ui::t!("辞書"),
+                    ui::check::Source::Model => ui::t!("モデル"),
                 };
                 let cand = if n.candidates.is_empty() {
                     ui::t!("候補なし").to_string()
@@ -2529,28 +2537,29 @@ impl Render for Writer {
         // 項目の stop_propagation がクリック処理より先に効く — calc と同じ)
         let menu = self.menu_at.map(|(mx, my)| {
             let has_sel = self.ed.has_selection();
-            // (id, 名前, 付記, 押せるか)。"" は仕切り
+            // (id, 名前, 付記, 押せるか)。"" は仕切り。
+            // 照合は id — 名前は見せる字だけなので訳してよい
             let entries: Vec<(&'static str, &'static str, &'static str, bool)> = vec![
-                ("cut", "切り取り", "Ctrl+X", has_sel),
-                ("copy", "コピー", "Ctrl+C", has_sel),
-                ("paste", "貼り付け", "Ctrl+V", true),
+                ("cut", ui::t!("切り取り"), "Ctrl+X", has_sel),
+                ("copy", ui::t!("コピー"), "Ctrl+C", has_sel),
+                ("paste", ui::t!("貼り付け"), "Ctrl+V", true),
                 ("", "", "", false),
-                ("selword", "語を選択", "", true),
-                ("selline", "行を選択", "", true),
-                ("selall", "すべて選択", "Ctrl+A", true),
+                ("selword", ui::t!("語を選択"), "", true),
+                ("selline", ui::t!("行を選択"), "", true),
+                ("selall", ui::t!("すべて選択"), "Ctrl+A", true),
                 ("", "", "", false),
-                ("bold", "太字", "", true),
-                ("italic", "斜体", "", true),
-                ("underline", "下線", "", true),
+                ("bold", ui::t!("太字"), "", true),
+                ("italic", ui::t!("斜体"), "", true),
+                ("underline", ui::t!("下線"), "", true),
                 ("", "", "", false),
-                ("align-left", "左揃え", "", true),
-                ("align-center", "中央揃え", "", true),
-                ("align-right", "右揃え", "", true),
-                ("align-just", "両端揃え", "", true),
+                ("align-left", ui::t!("左揃え"), "", true),
+                ("align-center", ui::t!("中央揃え"), "", true),
+                ("align-right", ui::t!("右揃え"), "", true),
+                ("align-just", ui::t!("両端揃え"), "", true),
                 ("", "", "", false),
-                ("replace", "検索と置換", "Ctrl+F", true),
-                ("comment", "コメント", "", true),
-                ("wordcount", "文字数を数える", "", true),
+                ("replace", ui::t!("検索と置換"), "Ctrl+F", true),
+                ("comment", ui::t!("コメント"), "", true),
+                ("wordcount", ui::t!("文字数を数える"), "", true),
             ];
             let h_est = entries.len() as f32 * 25.0 + 10.0;
             let win_w = f32::from(window.viewport_size().width);

@@ -137,18 +137,34 @@ impl AiJob {
         }
     }
 
+    /// ステータスに出す名前(見せる字だけ — 照合には使わない)
     fn label(&self) -> &'static str {
         match self {
-            AiJob::Summary => "要約",
-            AiJob::Rewrite(_, _) => "書き直し",
-            AiJob::Translate => "翻訳",
-            AiJob::Furigana => "ふりがな",
-            AiJob::Continue => "続き",
-            AiJob::Table => "表",
-            AiJob::Ask(_) => "頼み",
-            AiJob::Macro(_) => "マクロ台本",
+            AiJob::Summary => ui::t!("要約"),
+            AiJob::Rewrite(_, _) => ui::t!("書き直し"),
+            AiJob::Translate => ui::t!("翻訳"),
+            AiJob::Furigana => ui::t!("ふりがな"),
+            AiJob::Continue => ui::t!("続き"),
+            AiJob::Table => ui::t!("表"),
+            AiJob::Ask(_) => ui::t!("頼み"),
+            AiJob::Macro(_) => ui::t!("マクロ台本"),
         }
     }
+}
+
+/// 図表番号の頭(「図 」)。**貼る字と探す字を同じ雛形から取る**ための1箇所。
+///
+/// 番号を付けるときは `ui::tf!("図 {}", n)` で貼り、次の番号を決めるときと
+/// 図表目次を作るときは段落の頭がこれで始まるかを見る。雛形は訳されるので
+/// (独 "Abbildung {}"、韓 "그림 {}")、探す側に生の「図 」を書くと**日本語
+/// 以外では一度も見つからず、図がすべて 1 番になり、図表目次も空になる**。
+/// 同じ鍵 `"図 {}"` から穴の手前を切り出せば、二つが食い違う余地がない。
+///
+/// 穴が頭に来る訳(「{} 図」)が来たら頭は空になる — 空の頭は
+/// `strip_prefix` が必ず通ってしまうので、そのときは日本語の形に戻す
+pub(crate) fn caption_head() -> &'static str {
+    let head = ui::t!("図 {}").split("{}").next().unwrap_or("");
+    if head.is_empty() { "図 " } else { head }
 }
 
 /// gpui の文字は行の高さが既定で黄金比(1.618×文字サイズ)なので、
@@ -1087,7 +1103,7 @@ impl Writer {
                     .lines()
                     .rev()
                     .find(|l| !l.trim().is_empty())
-                    .unwrap_or("原因不明")
+                    .unwrap_or(ui::t!("原因不明"))
                     .to_string();
                 return Err(if err.contains("No module named 'docx'") {
                     ui::t!("python-docx がありません(pip install python-docx。\
@@ -1193,7 +1209,7 @@ impl Writer {
     /// 名前を付けて保存(いつでもダイアログ。別のスレッド — rfd は同期)
     fn save_as(&mut self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
-            rfd::FileDialog::new().add_filter("Word文書", &["docx"]).save_file()
+            rfd::FileDialog::new().add_filter(ui::t!("Word文書"), &["docx"]).save_file()
         });
         cx.spawn(async move |this, cx| {
             let r = ask.await;
@@ -1670,8 +1686,9 @@ impl Writer {
             }
             let dir = plugins_dir();
             let _ = std::fs::create_dir_all(&dir);
+            // 1つ目も訳を通す(ここだけ生の字だと、ja 以外で名前が揃わない)
             let mut i = 1;
-            let mut path = dir.join("ai台本1.py");
+            let mut path = dir.join(ui::tf!("ai台本{}.py", i));
             while path.exists() {
                 i += 1;
                 path = dir.join(ui::tf!("ai台本{}.py", i));
@@ -2082,11 +2099,11 @@ impl Writer {
                 return;
             }
             // 先客の作業を後勝ちで潰さない。別の名前でなら保存できる
-            self.status = ui::tf!("{} が開いているため上書きしません。別の名前で保存します", self.locked_by.as_deref().unwrap_or("誰か"))
+            self.status = ui::tf!("{} が開いているため上書きしません。別の名前で保存します", self.locked_by.as_deref().unwrap_or(ui::t!("誰か")))
             .into();
         }
         let ask = cx.background_executor().spawn(async {
-            rfd::FileDialog::new().add_filter("Word文書", &["docx"]).save_file()
+            rfd::FileDialog::new().add_filter(ui::t!("Word文書"), &["docx"]).save_file()
         });
         cx.spawn(async move |this, cx| {
             let r = ask.await;
@@ -2428,7 +2445,7 @@ impl Writer {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
                 .add_filter("PDF", &["pdf"])
-                .set_file_name("文書.pdf")
+                .set_file_name(ui::t!("文書.pdf"))
                 .save_file()
         });
         cx.spawn(async move |this, cx| {
@@ -2854,11 +2871,13 @@ impl Writer {
         self.flush_target();
         let mut items: Vec<(String, usize)> = Vec::new();
         let mut at = 0usize;
+        // 探す頭は貼る雛形と同じところから(caption_head の註)
+        let head = caption_head();
         for p in self.doc.paragraphs() {
             let t: String = p.runs.iter().map(|r| r.text.as_str()).collect();
             let tt = t.trim();
             if p.style != kumihan::ParaStyle::Tof {
-                if let Some(rest) = tt.strip_prefix("図 ") {
+                if let Some(rest) = tt.strip_prefix(head) {
                     if rest.split_whitespace().next().is_some_and(|w| w.parse::<usize>().is_ok()) {
                         items.push((tt.to_string(), at));
                     }
@@ -3339,7 +3358,7 @@ impl Writer {
     fn open_dialog(&mut self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
-                .add_filter("Word文書とHTML", &["docx", "html", "htm"])
+                .add_filter(ui::t!("Word文書とHTML"), &["docx", "html", "htm"])
                 .pick_file()
         });
         cx.spawn(async move |this, cx| {

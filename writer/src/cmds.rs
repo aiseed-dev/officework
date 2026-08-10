@@ -178,7 +178,7 @@ impl Writer {
                 }
                 let ask = cx.background_executor().spawn(async {
                     rfd::FileDialog::new()
-                        .add_filter("画像", &["png", "jpg", "jpeg", "svg"])
+                        .add_filter(ui::t!("画像"), &["png", "jpg", "jpeg", "svg"])
                         .pick_file()
                 });
                 cx.spawn(async move |this, cx| {
@@ -271,7 +271,7 @@ impl Writer {
             "text-from-file" => {
                 let ask = cx.background_executor().spawn(async {
                     rfd::FileDialog::new()
-                        .add_filter("テキスト / Word文書", &["txt", "md", "docx"])
+                        .add_filter(ui::t!("テキスト / Word文書"), &["txt", "md", "docx"])
                         .pick_file()
                 });
                 cx.spawn(async move |this, cx| {
@@ -370,9 +370,9 @@ impl Writer {
                 }
                 if self.hf_edit.is_some() {
                     let (mark, what) = if id == "pagenum" {
-                        (kumihan::PAGE_MARK, "ページ番号")
+                        (kumihan::PAGE_MARK, ui::t!("ページ番号"))
                     } else {
-                        (kumihan::PAGES_MARK, "ページ数")
+                        (kumihan::PAGES_MARK, ui::t!("ページ数"))
                     };
                     self.hf_ed.insert(&mark.to_string());
                     self.on_edited();
@@ -439,9 +439,11 @@ impl Writer {
                 self.switch_target(Target::Body);
                 self.flush_target();
                 let mut n = 0usize;
+                // 探す頭は貼る雛形と同じところから(crate::caption_head の註)
+                let head = crate::caption_head();
                 for p in self.doc.paragraphs() {
                     let t: String = p.runs.iter().map(|r| r.text.as_str()).collect();
-                    if let Some(rest) = t.trim().strip_prefix("図 ") {
+                    if let Some(rest) = t.trim().strip_prefix(head) {
                         if let Ok(k) = rest.trim().parse::<usize>() {
                             n = n.max(k);
                         }
@@ -911,19 +913,20 @@ impl Writer {
             // 配色。**その時の値で塗る**(テーマ部品は作らない — Word で
             // 開いても同じ色に見える正直な形)。見出しの色と紙の色を組で当てる
             "colorschemas" => {
-                // (名前, 見出しの色, 紙の色)
-                const THEMES: &[(&str, &str, Option<&str>)] = &[
-                    ("標準", "1B1B1B", None),
-                    ("藍", "165E83", None),
-                    ("緑", "1B6E3C", None),
-                    ("臙脂", "8E3A46", None),
-                    ("藍(生成りの紙)", "165E83", Some("FBF7EE")),
-                    ("墨(灰の紙)", "2E3338", Some("F2F2F0")),
+                // (名前, 見出しの色, 紙の色)。照合は添字(self.theme)なので
+                // 名前は見せる字だけ — 訳してよい(const を外したのはそのため)
+                let themes: [(&'static str, &str, Option<&str>); 6] = [
+                    (ui::t!("標準"), "1B1B1B", None),
+                    (ui::t!("藍"), "165E83", None),
+                    (ui::t!("緑"), "1B6E3C", None),
+                    (ui::t!("臙脂"), "8E3A46", None),
+                    (ui::t!("藍(生成りの紙)"), "165E83", Some("FBF7EE")),
+                    (ui::t!("墨(灰の紙)"), "2E3338", Some("F2F2F0")),
                 ];
                 self.flush_target();
                 self.doc_undo = Some(self.doc.clone());
-                self.theme = (self.theme + 1) % THEMES.len();
-                let (name, head, paper) = THEMES[self.theme];
+                self.theme = (self.theme + 1) % themes.len();
+                let (name, head, paper) = themes[self.theme];
                 // 見出しの段落の字に色を当てる(段落ごとの範囲で塗る)
                 let mut at = 0usize;
                 let mut ranges: Vec<std::ops::Range<usize>> = Vec::new();
