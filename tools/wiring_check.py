@@ -45,25 +45,42 @@ def ready_ids(table: str) -> list[str]:
     return re.findall(r'\bc\(\s*"([^"]+)"', m.group(1))
 
 
-def handled(path: str) -> set[str]:
-    """`const HANDLED: &'static [&'static str] = &[ … ];` の中の文字列を拾う。"""
-    src = (ROOT / path).read_text(encoding="utf-8")
-    m = re.search(r"const HANDLED: &'static \[&'static str\] = &\[(.*?)^\s*\];", src, re.S | re.M)
-    if not m:
-        sys.exit(f"::error::{path} の HANDLED が見つかりません(書き方が変わった?)")
+def handled(crate: str) -> set[str]:
+    """`const HANDLED: &'static [&'static str] = &[ … ];` の中の文字列を拾う。
+
+    **ファイルを名指ししない。** `<crate>/src` を舐めて探す — 2026-08-10 の
+    部屋割りで `writer` の `HANDLED` が `main.rs` から `keys.rs` へ移り、
+    名指しだったこの検査が落ちた。落ちたこと自体は設計どおり(静かに緑に
+    なるよりずっと良い)だが、**割るたびに検査を追いかけるのは筋が悪い**。
+    文言の門番と同じく、置き場を舐める形に揃える。
+    """
+    hits = []
+    for f in sorted((ROOT / crate / "src").glob("*.rs")):
+        m = re.search(
+            r"const HANDLED: &'static \[&'static str\] = &\[(.*?)^\s*\];",
+            f.read_text(encoding="utf-8"),
+            re.S | re.M,
+        )
+        if m:
+            hits.append((f.name, m.group(1)))
+    if not hits:
+        sys.exit(f"::error::{crate}/src に HANDLED がありません(書き方が変わった?)")
+    if len(hits) > 1:
+        # 2つあったら、どちらが本物か決められない — 黙って片方を採らない
+        sys.exit(
+            f"::error::{crate}/src に HANDLED が {len(hits)} 個あります: "
+            + ", ".join(n for n, _ in hits)
+        )
     # 行末の注釈に文字列が入ることがあるので、コメントを落としてから拾う
-    body = re.sub(r"//[^\n]*", "", m.group(1))
+    body = re.sub(r"//[^\n]*", "", hits[0][1])
     return set(re.findall(r'"([^"]*)"', body))
 
 
 def main() -> int:
     bad = 0
-    for table, path, app in (
-        ("CALC", "calc/src/cmds.rs", "calc"),
-        ("WRITER", "writer/src/main.rs", "writer"),
-    ):
+    for table, app in (("CALC", "calc"), ("WRITER", "writer")):
         ready = ready_ids(table)
-        known = handled(path)
+        known = handled(app)
         # **読めなくなったら落ちる。** 静かに緑になるのが一番悪い
         if len(ready) < FLOOR or len(known) < FLOOR:
             print(f"::error::{app}: 表が読めていません(ready {len(ready)} / handled {len(known)})")
