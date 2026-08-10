@@ -50,6 +50,45 @@ pub(crate) fn hex(s: &str) -> gpui::Rgba {
 }
 
 pub(crate) const COL_W: f32 = 108.0;
+
+/// 定数表の1行 — [`ui::item!`] の組に中身をくっつけて平らな3つ組にする。
+///
+/// 表は `(鍵, 見出し, 中身)`。**引き当ては鍵**(日本語のまま)、画面は見出し。
+/// これで日本語のリテラルは表に1度きり — 鍵と見出しがずれる余地が無い。
+/// 表が `const` でなく `fn` なのは、見出しが実行時に決まる(言語は起動時に
+/// 読む)ため。どれも項が十数個の表なので、開くたびに作って構わない。
+pub(crate) fn row<T>(
+    (key, label): (&'static str, &'static str),
+    v: T,
+) -> (&'static str, &'static str, T) {
+    (key, label, v)
+}
+
+/// 一覧の項を [`ui::item!`] の組から作る(鍵はそのまま、見出しは訳)。
+///
+///     self.pick = Some((menu(&[ui::item!(…), ui::item!(…)]), at));
+pub(crate) fn menu(items: &[(&str, &str)]) -> Vec<(String, String)> {
+    items.iter().map(|(k, l)| (k.to_string(), l.to_string())).collect()
+}
+
+/// 一覧の項を**値そのもの**から作る(鍵=見出し)。
+///
+/// 書体名・ファイル名・シート名・定義した名前など、**画面の文言ではなく
+/// 中身**の一覧に使う。こういう字は訳さない — 訳したら別物を指してしまう。
+/// 訳すべき見出しは [`ui::item!`] のほうで作る。
+pub(crate) fn plain<I, S>(items: I) -> Vec<(String, String)>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    items
+        .into_iter()
+        .map(|s| {
+            let s = s.into();
+            (s.clone(), s)
+        })
+        .collect()
+}
 /// xlsx の列幅1(=「0」1個ぶん)を何画素にするか。既定幅 8.43 ≒ 108px の比
 pub(crate) const PX_PER_CHW: f32 = 108.0 / 8.43;
 /// **文字が要る幅(px)。** 半角=1・全角=2 で数えた概算。
@@ -68,16 +107,18 @@ pub(crate) fn text_px(text: &str, size_px: f32) -> f32 {
 /// 記号の組(分類名, 文字たち)。**帳票で本当に打つものを先に**。
 /// 本家は Unicode の「範囲」で切るが、それは字典の切り方で、
 /// 帳票を書く人の探し方ではない(通貨より先に 〒 や ㈱ が要る)
-pub(crate) const SYMBOL_GROUPS: &[(&str, &str)] = &[
-    ("帳票でよく使う", "〒℡№㈱㈲〆※‰°′″"),
-    ("しるし", "○●◎△▲▽▼□■◇◆☆★×✓☑☐"),
-    ("矢印", "→←↑↓⇒⇐⇔↔↗↘↙↖"),
-    ("丸数字", "①②③④⑤⑥⑦⑧⑨⑩⑪⑫"),
-    ("通貨", "¥＄€£¢₩₹"),
-    ("算術", "±×÷≠≒≦≧∞√∑∫"),
-    ("かっこ・区切り", "「」『』【】〔〕・…‥※〜"),
-    ("ギリシャ", "αβγδεζηθλμπστφω"),
-];
+pub(crate) fn symbol_groups() -> Vec<(&'static str, &'static str, &'static str)> {
+    vec![
+        row(ui::item!("帳票でよく使う"), "〒℡№㈱㈲〆※‰°′″"),
+        row(ui::item!("しるし"), "○●◎△▲▽▼□■◇◆☆★×✓☑☐"),
+        row(ui::item!("矢印"), "→←↑↓⇒⇐⇔↔↗↘↙↖"),
+        row(ui::item!("丸数字"), "①②③④⑤⑥⑦⑧⑨⑩⑪⑫"),
+        row(ui::item!("通貨"), "¥＄€£¢₩₹"),
+        row(ui::item!("算術"), "±×÷≠≒≦≧∞√∑∫"),
+        row(ui::item!("かっこ・区切り"), "「」『』【】〔〕・…‥※〜"),
+        row(ui::item!("ギリシャ"), "αβγδεζηθλμπστφω"),
+    ]
+}
 
 /// リボンから開く一覧の幅。書体名は長いので、セルの列幅ではなくこの幅。
 pub(crate) const POP_W: f32 = 240.0;
@@ -519,10 +560,10 @@ pub(crate) const SOLVER_OPS: [&str; 3] = ["<=", "=", ">="];
 pub(crate) struct DvDlg {
     /// 0=設定 1=メッセージを入力 2=エラー警告
     pub(crate) tab: u8,
-    /// 許可: DV_KINDS の添字(0 すべての値 / 1 整数 / 2 小数 /
+    /// 許可: dv_kinds() の添字(0 すべての値 / 1 整数 / 2 小数 /
     /// 3 リスト / 4 文字列の長さ)。読めない種類(日付など)を開いたら 5=そのまま
     pub(crate) kind: usize,
-    /// データ: DV_OPS の添字(整数/小数/文字数のときだけ)
+    /// データ: dv_ops() の添字(整数/小数/文字数のときだけ)
     pub(crate) op: usize,
     /// 空白を無視(xlsx の allowBlank)
     pub(crate) allow_blank: bool,
@@ -554,53 +595,76 @@ impl DvDlg {
     }
 }
 
-/// 許可の一覧(判定できる種類だけ。日付・時刻・カスタムは保持のみ)
-pub(crate) const DV_KINDS: [&str; 5] =
-    ["すべての値", "整数", "小数", "リスト", "文字列の長さ"];
+/// 許可の一覧(判定できる種類だけ。日付・時刻・カスタムは保持のみ)。
+/// **見出しだけの表** — 引き当ては添字で、`DV_KIND_XLSX` と並びが対。
+/// 並びを変えるときは必ず両方いっしょに
+pub(crate) fn dv_kinds() -> [&'static str; 5] {
+    [
+        ui::t!("すべての値"),
+        ui::t!("整数"),
+        ui::t!("小数"),
+        ui::t!("リスト"),
+        ui::t!("文字列の長さ"),
+    ]
+}
 /// kind の添字 → xlsx の type
 pub(crate) const DV_KIND_XLSX: [&str; 5] = ["", "whole", "decimal", "list", "textLength"];
-/// データ(比較)の一覧。並びは xlsx の operator と対
-pub(crate) const DV_OPS: [(&str, &str); 8] = [
-    ("between", "次の値の間"),
-    ("notBetween", "次の値の間以外"),
-    ("equal", "次の値に等しい"),
-    ("notEqual", "次の値に等しくない"),
-    ("greaterThan", "次の値より大きい"),
-    ("lessThan", "次の値より小さい"),
-    ("greaterThanOrEqual", "次の値より大きいか等しい"),
-    ("lessThanOrEqual", "次の値より小さいか等しい"),
-];
-/// エラー警告のスタイル(xlsx の errorStyle と対)
-pub(crate) const DV_STYLES: [(&str, &str); 3] =
-    [("stop", "停止"), ("warning", "警告"), ("information", "情報")];
+/// データ(比較)の一覧 `(xlsx の operator, 見出し)`。並びは xlsx の operator と対。
+/// **引き当ては operator**(訳さない字)、画面は見出し
+pub(crate) fn dv_ops() -> [(&'static str, &'static str); 8] {
+    [
+        ("between", ui::t!("次の値の間")),
+        ("notBetween", ui::t!("次の値の間以外")),
+        ("equal", ui::t!("次の値に等しい")),
+        ("notEqual", ui::t!("次の値に等しくない")),
+        ("greaterThan", ui::t!("次の値より大きい")),
+        ("lessThan", ui::t!("次の値より小さい")),
+        ("greaterThanOrEqual", ui::t!("次の値より大きいか等しい")),
+        ("lessThanOrEqual", ui::t!("次の値より小さいか等しい")),
+    ]
+}
+/// エラー警告のスタイル `(xlsx の errorStyle, 見出し)`。引き当ては errorStyle
+pub(crate) fn dv_styles() -> [(&'static str, &'static str); 3] {
+    [
+        ("stop", ui::t!("停止")),
+        ("warning", ui::t!("警告")),
+        ("information", ui::t!("情報")),
+    ]
+}
 
 /// SmartArt の一覧。**分類・並び・名前は Euro-Office の現物**
 /// (web-apps の define.js の並びと ja.json の訳)から取った。
 /// 載せるのは**うちの図形(SVG 方式)で組めるものだけ** —
 /// できないものを、できるように見せない。
-pub(crate) const SMARTART: &[(&str, &[(&str, &str)])] = &[
-    ("リスト", &[
-        ("カード型リスト", "block-list"),
-        ("縦方向リスト", "vbox-list"),
-        ("ピラミッドのリスト", "pyramid-list"),
-    ]),
-    ("プロセス", &[
-        ("基本ステップ", "basic-process"),
-        ("プロセス", "chevron-process"),
-        ("タイムライン", "timeline"),
-    ]),
-    ("循環", &[
-        ("基本の循環", "basic-cycle"),
-        ("ボックス循環", "block-cycle"),
-    ]),
-    ("階層", &[
-        ("組織図", "org-chart"),
-        ("階層", "hierarchy"),
-    ]),
-    ("関係", &[("基本ベン図", "venn")]),
-    ("マトリックス", &[("基本マトリックス", "matrix")]),
-    ("ピラミッド", &[("基本ピラミッド", "pyramid")]),
-];
+/// 分類は (鍵, 見出し, その中の形たち)。形も (鍵, 見出し, 図形の種類)。
+/// **引き当ては鍵**(日本語) — 見出しだけが画面の言語になる
+#[allow(clippy::type_complexity)]
+pub(crate) fn smartart(
+) -> Vec<(&'static str, &'static str, Vec<(&'static str, &'static str, &'static str)>)> {
+    vec![
+        row(ui::item!("リスト"), vec![
+            row(ui::item!("カード型リスト"), "block-list"),
+            row(ui::item!("縦方向リスト"), "vbox-list"),
+            row(ui::item!("ピラミッドのリスト"), "pyramid-list"),
+        ]),
+        row(ui::item!("プロセス"), vec![
+            row(ui::item!("基本ステップ"), "basic-process"),
+            row(ui::item!("プロセス"), "chevron-process"),
+            row(ui::item!("タイムライン"), "timeline"),
+        ]),
+        row(ui::item!("循環"), vec![
+            row(ui::item!("基本の循環"), "basic-cycle"),
+            row(ui::item!("ボックス循環"), "block-cycle"),
+        ]),
+        row(ui::item!("階層"), vec![
+            row(ui::item!("組織図"), "org-chart"),
+            row(ui::item!("階層"), "hierarchy"),
+        ]),
+        row(ui::item!("関係"), vec![row(ui::item!("基本ベン図"), "venn")]),
+        row(ui::item!("マトリックス"), vec![row(ui::item!("基本マトリックス"), "matrix")]),
+        row(ui::item!("ピラミッド"), vec![row(ui::item!("基本ピラミッド"), "pyramid")]),
+    ]
+}
 
 /// セル・範囲の列挙を読む(A1 / B2:B5 / $A$1。カンマ・読点・空白区切り)。
 /// 範囲は左上→右下に展開する。読めない・大きすぎるときは None。
@@ -654,7 +718,17 @@ pub(crate) fn split_fields(text: &str) -> Vec<String> {
         .collect()
 }
 
-pub(crate) const PIVOT_AGGS: [&str; 5] = ["合計", "平均", "個数", "最大", "最小"];
+/// 集計のしかたの一覧 `(鍵, 見出し)`。**鍵はピボットの定義に書き込む字** —
+/// 訳した字を書き込むと別物を指すので、鍵は日本語のまま。画面は見出しだけ
+pub(crate) fn pivot_aggs() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ui::item!("合計"),
+        ui::item!("平均"),
+        ui::item!("個数"),
+        ui::item!("最大"),
+        ui::item!("最小"),
+    ]
+}
 
 
 /// ピボットの指図を JSON にする(手で組む — グラフと同じ割り切り)。
@@ -916,18 +990,20 @@ pub(crate) fn image_px(bytes: &[u8]) -> Option<(u32, u32)> {
 
 /// 数値形式の一覧(本家のドロップダウン相当)。名前 → xlsx の書式コード。
 /// None = 一般(書式なし)。会計・分数はまだ描けないので載せない(台帳に控え)
-pub(crate) const NUMFMTS: &[(&str, Option<&str>)] = &[
-    ("一般", None),
-    ("数値 (1234.56)", Some("0.00")),
-    ("桁区切り (1,234)", Some("#,##0")),
-    ("通貨 (¥1,234)", Some("¥#,##0")),
-    ("パーセント (12.34%)", Some("0.00%")),
-    ("指数 (1.23E+04)", Some("0.00E+00")),
-    ("短い日付 (2026/8/6)", Some("yyyy/m/d")),
-    ("長い日付 (2026年8月6日)", Some("yyyy\"年\"m\"月\"d\"日\"")),
-    ("時刻 (13:45:00)", Some("h:mm:ss")),
-    ("テキスト (@)", Some("@")),
-];
+pub(crate) fn numfmts() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
+    vec![
+        row(ui::item!("一般"), None),
+        row(ui::item!("数値 (1234.56)"), Some("0.00")),
+        row(ui::item!("桁区切り (1,234)"), Some("#,##0")),
+        row(ui::item!("通貨 (¥1,234)"), Some("¥#,##0")),
+        row(ui::item!("パーセント (12.34%)"), Some("0.00%")),
+        row(ui::item!("指数 (1.23E+04)"), Some("0.00E+00")),
+        row(ui::item!("短い日付 (2026/8/6)"), Some("yyyy/m/d")),
+        row(ui::item!("長い日付 (2026年8月6日)"), Some("yyyy\"年\"m\"月\"d\"日\"")),
+        row(ui::item!("時刻 (13:45:00)"), Some("h:mm:ss")),
+        row(ui::item!("テキスト (@)"), Some("@")),
+    ]
+}
 
 /// オートフィルタの控え。**隠す値**で持つ — 後から増えた値は隠れない
 /// (Excel の「新しい項目は表示」に寄せた割り切り)。値は表示文字列。
@@ -939,14 +1015,17 @@ pub(crate) struct AutoFilter {
     pub(crate) hide: std::collections::BTreeMap<u32, std::collections::BTreeSet<String>>,
 }
 
-/// 大文字小文字の変え方(本家の5択)。pick の項目名がそのまま鍵
-pub(crate) const CASE_MODES: &[&str] = &[
-    "文の先頭だけ大文字",
-    "すべて小文字",
-    "すべて大文字",
-    "単語の先頭を大文字",
-    "大文字と小文字を入れ替え",
-];
+/// 大文字小文字の変え方(本家の5択)。**鍵は日本語のまま** —
+/// [`change_case`] の照合はこの鍵で行う(見出しだけが訳される)
+pub(crate) fn case_modes() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ui::item!("文の先頭だけ大文字"),
+        ui::item!("すべて小文字"),
+        ui::item!("すべて大文字"),
+        ui::item!("単語の先頭を大文字"),
+        ui::item!("大文字と小文字を入れ替え"),
+    ]
+}
 
 /// 選んだ変え方で文字列を変換する(Unicode の upper/lower に従う)
 pub(crate) fn change_case(t: &str, mode: &str) -> String {
@@ -1010,86 +1089,96 @@ pub(crate) fn change_case(t: &str, mode: &str) -> String {
 #[allow(clippy::type_complexity)]
 /// フォントの色のパレット(本家の標準の色に寄せる。「自動」= 色なし)
 /// 罫線の線種の一覧(本家のドロップダウンの12種)。名前 → BStyle
-pub(crate) const BORDER_STYLES: [(&str, sheet::model::BStyle); 12] = [
-    ("細い実線(既定)", sheet::model::BStyle::Thin),
-    ("極細", sheet::model::BStyle::Hair),
-    ("点線", sheet::model::BStyle::Dotted),
-    ("破線", sheet::model::BStyle::Dashed),
-    ("一点鎖線", sheet::model::BStyle::DashDot),
-    ("二点鎖線", sheet::model::BStyle::DashDotDot),
-    ("中太の実線", sheet::model::BStyle::Medium),
-    ("中太の破線", sheet::model::BStyle::MediumDashed),
-    ("中太の一点鎖線", sheet::model::BStyle::MediumDashDot),
-    ("中太の二点鎖線", sheet::model::BStyle::MediumDashDotDot),
-    ("太い実線", sheet::model::BStyle::Thick),
-    ("二重線", sheet::model::BStyle::Double),
-];
+pub(crate) fn border_styles() -> Vec<(&'static str, &'static str, sheet::model::BStyle)> {
+    use sheet::model::BStyle;
+    vec![
+        row(ui::item!("細い実線(既定)"), BStyle::Thin),
+        row(ui::item!("極細"), BStyle::Hair),
+        row(ui::item!("点線"), BStyle::Dotted),
+        row(ui::item!("破線"), BStyle::Dashed),
+        row(ui::item!("一点鎖線"), BStyle::DashDot),
+        row(ui::item!("二点鎖線"), BStyle::DashDotDot),
+        row(ui::item!("中太の実線"), BStyle::Medium),
+        row(ui::item!("中太の破線"), BStyle::MediumDashed),
+        row(ui::item!("中太の一点鎖線"), BStyle::MediumDashDot),
+        row(ui::item!("中太の二点鎖線"), BStyle::MediumDashDotDot),
+        row(ui::item!("太い実線"), BStyle::Thick),
+        row(ui::item!("二重線"), BStyle::Double),
+    ]
+}
 
-pub(crate) const FONT_COLORS: &[(&str, Option<&str>)] = &[
-    ("自動", None),
-    ("黒", Some("1B1B1B")),
-    ("赤", Some("C00000")),
-    ("橙", Some("ED7D31")),
-    ("黄", Some("FFC000")),
-    ("緑", Some("70AD47")),
-    ("青", Some("4472C4")),
-    ("紺", Some("1F4E79")),
-    ("紫", Some("7030A0")),
-    ("灰", Some("7F7F7F")),
-    ("白", Some("FFFFFF")),
-];
+pub(crate) fn font_colors() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
+    vec![
+        row(ui::item!("自動"), None),
+        row(ui::item!("黒"), Some("1B1B1B")),
+        row(ui::item!("赤"), Some("C00000")),
+        row(ui::item!("橙"), Some("ED7D31")),
+        row(ui::item!("黄"), Some("FFC000")),
+        row(ui::item!("緑"), Some("70AD47")),
+        row(ui::item!("青"), Some("4472C4")),
+        row(ui::item!("紺"), Some("1F4E79")),
+        row(ui::item!("紫"), Some("7030A0")),
+        row(ui::item!("灰"), Some("7F7F7F")),
+        row(ui::item!("白"), Some("FFFFFF")),
+    ]
+}
 
 /// 塗りつぶしのパレット(帳票で使う薄い色を先に)
-pub(crate) const FILL_COLORS: &[(&str, Option<&str>)] = &[
-    ("色なし", None),
-    ("薄い黄", Some("FFF2CC")),
-    ("薄い青", Some("DEEAF6")),
-    ("薄い緑", Some("E2EFDA")),
-    ("薄い橙", Some("FCE4D6")),
-    ("薄い灰", Some("D9D9D9")),
-    ("黄", Some("FFC000")),
-    ("橙", Some("ED7D31")),
-    ("緑", Some("70AD47")),
-    ("青", Some("4472C4")),
-    ("灰", Some("7F7F7F")),
-];
+pub(crate) fn fill_colors() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
+    vec![
+        row(ui::item!("色なし"), None),
+        row(ui::item!("薄い黄"), Some("FFF2CC")),
+        row(ui::item!("薄い青"), Some("DEEAF6")),
+        row(ui::item!("薄い緑"), Some("E2EFDA")),
+        row(ui::item!("薄い橙"), Some("FCE4D6")),
+        row(ui::item!("薄い灰"), Some("D9D9D9")),
+        row(ui::item!("黄"), Some("FFC000")),
+        row(ui::item!("橙"), Some("ED7D31")),
+        row(ui::item!("緑"), Some("70AD47")),
+        row(ui::item!("青"), Some("4472C4")),
+        row(ui::item!("灰"), Some("7F7F7F")),
+    ]
+}
 
-pub(crate) const CELL_STYLES: &[(&str, fn(&mut CellFormat))] = &[
-    ("標準", |f| *f = CellFormat::default()),
-    ("見出し", |f| {
+pub(crate) fn cell_styles() -> Vec<(&'static str, &'static str, fn(&mut CellFormat))> {
+    let f: Vec<(&'static str, &'static str, fn(&mut CellFormat))> = vec![
+    row(ui::item!("標準"), |f| *f = CellFormat::default()),
+    row(ui::item!("見出し"), |f| {
         f.bold = true;
         f.fill = Some("D5E8DC".into());
         f.borders.bottom = sheet::model::Edge::THIN;
     }),
-    ("表題", |f| {
+    row(ui::item!("表題"), |f| {
         f.bold = true;
         f.size_c = Some(1600);
         f.color = Some("1B6E3C".into());
     }),
-    ("良い", |f| {
+    row(ui::item!("良い"), |f| {
         f.fill = Some("C6EFCE".into());
         f.color = Some("006100".into());
     }),
-    ("悪い", |f| {
+    row(ui::item!("悪い"), |f| {
         f.fill = Some("FFC7CE".into());
         f.color = Some("9C0006".into());
     }),
-    ("どちらでもない", |f| {
+    row(ui::item!("どちらでもない"), |f| {
         f.fill = Some("FFEB9C".into());
         f.color = Some("9C6500".into());
     }),
-    ("メモ", |f| {
+    row(ui::item!("メモ"), |f| {
         f.fill = Some("FFFFCC".into());
         f.borders = Borders::ALL;
     }),
-    ("計算", |f| {
+    row(ui::item!("計算"), |f| {
         f.italic = true;
         f.fill = Some("F2F2F2".into());
         f.color = Some("7F7F7F".into());
     }),
-    ("通貨", |f| f.number_format = Some("¥#,##0".into())),
-    ("パーセント", |f| f.number_format = Some("0.0%".into())),
-];
+    row(ui::item!("通貨"), |f| f.number_format = Some("¥#,##0".into())),
+    row(ui::item!("パーセント"), |f| f.number_format = Some("0.0%".into())),
+    ];
+    f
+}
 
 pub(crate) fn col_name(c: u32) -> String {
     Pos::new(0, c).a1().trim_end_matches('1').to_string()

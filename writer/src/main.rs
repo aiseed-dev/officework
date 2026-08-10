@@ -915,7 +915,7 @@ impl Writer {
             return;
         }
         let hf = if footer { &self.doc.footer } else { &self.doc.header };
-        let which = if footer { "フッター" } else { "ヘッダー" };
+        let which = if footer { ui::t!("フッター") } else { ui::t!("ヘッダー") };
         if hf.paragraphs.is_empty() && hf.part.is_some() {
             // 読めたが持てなかった部品(表入りなど)。嘘の編集をさせない
             self.status = ui::tf!("この{}には表があり、この版では編集できません(保存では残ります)", which).into();
@@ -1513,7 +1513,7 @@ impl Writer {
         // 保存は docx として名前を聞く(HTML には書き戻さない)
         self.path = None;
         self.dirty = true;
-        self.status = ui::tf!("HTML を読みました — {}(JS は実行しません。保存は docx{})", p.file_name().unwrap_or_default().to_string_lossy(), if self.fm_open { "。記入は右上のパネルから" } else { "" })
+        self.status = ui::tf!("HTML を読みました — {}(JS は実行しません。保存は docx{})", p.file_name().unwrap_or_default().to_string_lossy(), if self.fm_open { ui::t!("。記入は右上のパネルから") } else { "" })
         .into();
     }
 
@@ -1921,7 +1921,7 @@ impl Writer {
             zw.min((self.view_h_px - 28.0) / (self.pg.h_mm * PX_PER_MM))
         };
         self.zoom = z.clamp(0.2, 5.0);
-        self.status = ui::tf!("{}に合わせました(ズーム {}%)", if width { "幅" } else { "ページ" }, (self.zoom * 100.0).round() as i32)
+        self.status = ui::tf!("{}に合わせました(ズーム {}%)", if width { ui::t!("幅") } else { ui::t!("ページ") }, (self.zoom * 100.0).round() as i32)
         .into();
     }
 
@@ -2140,10 +2140,10 @@ impl Writer {
                     ""
                 } else {
                     // 読めなかった要素は本文から消えている。黙って保存しない
-                    "(読めなかった要素は本文に戻りません)"
+                    ui::t!("(読めなかった要素は本文に戻りません)")
                 };
                 let enc_note =
-                    if self.encrypt_pw.is_some() { "(暗号化)" } else { "" };
+                    if self.encrypt_pw.is_some() { ui::t!("(暗号化)") } else { "" };
                 self.status = ui::tf!("保存しました — {}{}{}", p.file_name().unwrap_or_default().to_string_lossy(), enc_note, caveat)
                 .into();
                 // 保存先のロックを取り直す(別の名前で保存したときは
@@ -2612,7 +2612,7 @@ impl Writer {
             Some(kumihan::RefField { name: name.to_string(), page }),
         );
         self.relayout_keep();
-        self.status = ui::tf!("「{}」への参照を挿しました({}。参照は編集で中を触ると普通の字に戻ります)", name, if page { "ページ番号" } else { "しおりの文字" })
+        self.status = ui::tf!("「{}」への参照を挿しました({}。参照は編集で中を触ると普通の字に戻ります)", name, if page { ui::t!("ページ番号") } else { ui::t!("しおりの文字") })
         .into();
     }
 

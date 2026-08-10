@@ -3041,7 +3041,7 @@ impl Render for Calc {
                 };
                 ui::tf!("{}(このまま保持)", name).to_string()
             } else {
-                DV_KINDS[kindi].to_string()
+                dv_kinds()[kindi].to_string()
             };
             // 中身(右側)。タブごとに組む
             let mut pane = div().flex_1().flex().flex_col().gap_2().p_3()
@@ -3055,16 +3055,16 @@ impl Render for Calc {
                     if matches!(kindi, 1 | 2 | 4) {
                         row = row.child(div().flex_1().flex().flex_col().gap_1()
                             .child(label(ui::t!("データ").to_string()))
-                            .child(drop(2, DV_OPS[opi].1.to_string(), cx)));
+                            .child(drop(2, dv_ops()[opi].1.to_string(), cx)));
                     }
                     pane = pane.child(row);
                     if menu == 1 {
                         pane = pane.child(options(1,
-                            DV_KINDS.iter().map(|s| s.to_string()).collect(), cx));
+                            dv_kinds().iter().map(|s| s.to_string()).collect(), cx));
                     }
                     if menu == 2 {
                         pane = pane.child(options(2,
-                            DV_OPS.iter().map(|(_, n)| n.to_string()).collect(), cx));
+                            dv_ops().iter().map(|(_, n)| n.to_string()).collect(), cx));
                     }
                     pane = pane.child(check(1, allow_blank, ui::t!("空白を無視").to_string(), cx));
                     match kindi {
@@ -3114,10 +3114,10 @@ impl Render for Calc {
                 _ => {
                     pane = pane
                         .child(label(ui::t!("スタイル").to_string()))
-                        .child(drop(3, DV_STYLES[styl].1.to_string(), cx));
+                        .child(drop(3, dv_styles()[styl].1.to_string(), cx));
                     if menu == 3 {
                         pane = pane.child(options(3,
-                            DV_STYLES.iter().map(|(_, n)| n.to_string()).collect(), cx));
+                            dv_styles().iter().map(|(_, n)| n.to_string()).collect(), cx));
                     }
                     pane = pane
                         .child(label(ui::t!("タイトル").to_string()))
@@ -4286,11 +4286,12 @@ impl Render for Calc {
                 "内側の縦線", "内側の横線",
                 "罫線を消す",
             ];
-            let style_name = crate::util::BORDER_STYLES
+            // 見せる名前なので**見出し**(.1)を取る。引き当ては線種そのもの
+            let style_name = crate::util::border_styles()
                 .iter()
-                .find(|(_, b)| *b == self.pen_style)
-                .map(|(n, _)| *n)
-                .unwrap_or("細い実線(既定)");
+                .find(|(_, _, b)| *b == self.pen_style)
+                .map(|(_, l, _)| *l)
+                .unwrap_or(ui::t!("細い実線(既定)"));
             let color_name = match self.pen_color {
                 Some(v) => format!("#{v:06X}"),
                 None => ui::t!("自動(黒)").to_string(),
@@ -4366,10 +4367,15 @@ impl Render for Calc {
 
         let pick_panel = self.pick.clone().map(|(vals, (vx, vy))| {
             // 色の一覧(文字の色・塗り)は名前の左に色見本の四角を添える
-            let swatch_of = |name: &str| -> Option<Option<&'static str>> {
+            // **鍵で引く。** 見出し(訳)で引くと、日本語以外で色見本が消える
+            let swatch_of = |key: &str| -> Option<Option<&'static str>> {
                 match self.pick_kind {
-                    "font-color" => FONT_COLORS.iter().find(|(n, _)| *n == name).map(|(_, h)| *h),
-                    "fill-color" => FILL_COLORS.iter().find(|(n, _)| *n == name).map(|(_, h)| *h),
+                    "font-color" => {
+                        font_colors().iter().find(|(k, _, _)| *k == key).map(|(_, _, h)| *h)
+                    }
+                    "fill-color" => {
+                        fill_colors().iter().find(|(k, _, _)| *k == key).map(|(_, _, h)| *h)
+                    }
                     _ => None,
                 }
             };
@@ -4401,7 +4407,8 @@ impl Render for Calc {
                     .whitespace_nowrap()
                     .child(note.clone()));
             }
-            for (i, v) in vals.into_iter().enumerate() {
+            // v=鍵(照合と見分け)、label=画面に出す字。**見た目で照合しない**
+            for (i, (v, label)) in vals.into_iter().enumerate() {
                 let sw = swatch_of(&v);
                 p = p.child(div()
                     .id(SharedString::from(format!("pk{i}")))
@@ -4423,7 +4430,7 @@ impl Render for Calc {
                             None => q.bg(rgb(0xFFFFFF)),
                         }
                     }))
-                    .child(SharedString::from(v.clone()))
+                    .child(SharedString::from(label))
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                         move |this, _, _, cx| {
                             cx.stop_propagation();

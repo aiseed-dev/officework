@@ -196,8 +196,13 @@ struct Calc {
     menu_at: Option<(f32, f32)>,
     /// 開いている子メニュー(挿入▸ など)
     menu_sub: Option<&'static str>,
-    /// 「ドロップダウンリストから選択」などの一覧(候補, 出す場所)
-    pick: Option<(Vec<String>, (f32, f32))>,
+    /// 「ドロップダウンリストから選択」などの一覧(候補, 出す場所)。
+    ///
+    /// 候補は**(鍵, 見出し)の組**。鍵は日本語のまま — `apply_pick` の照合も
+    /// 色見本の引き当ても鍵で行う。見出しだけが画面の言語に訳される。
+    /// 中身が値そのもの(書体名・ファイル名・シート名など)のときは
+    /// [`plain`] で鍵と見出しを同じにする。
+    pick: Option<(Vec<(String, String)>, (f32, f32))>,
     /// pick の中身の意味: "value"=セルに入れる / "font"=書体 / "size"=文字の大きさ
     pick_kind: &'static str,
     /// 耳(シートのタブ)のメニューが指しているシート(右クリックで開く)。
@@ -1677,11 +1682,11 @@ impl Calc {
             self.sort_pend = Some(asc);
             self.pick_kind = "sort-expand";
             self.pick = Some((
-                vec![
-                    "拡張して並べ替え(続きの列も一緒に動く)".into(),
-                    "選択した範囲だけ並べ替え(横の列とはずれます)".into(),
-                    "やめる".into(),
-                ],
+                menu(&[
+                    ui::item!("拡張して並べ替え(続きの列も一緒に動く)"),
+                    ui::item!("選択した範囲だけ並べ替え(横の列とはずれます)"),
+                    ui::item!("やめる"),
+                ]),
                 at,
             ));
             self.status =
@@ -1702,7 +1707,7 @@ impl Calc {
         self.status = ui::tf!(
             "{}:{} を{}に並べ替えました(範囲の中だけ。Ctrl+Z で1手)",
             a.a1(), b.a1(),
-            if asc { "昇順" } else { "降順" }
+            if asc { ui::t!("昇順") } else { ui::t!("降順") }
         )
         .into();
     }
@@ -1742,7 +1747,7 @@ impl Calc {
         // 数式バーの控えを並べ替え後のセルに合わせる — 同期を怠ると、
         // 次の commit で並べ替え前の古い値が書き戻される
         self.sync_input();
-        self.status = ui::tf!("{} 列で{}に並べ替えました", Pos::new(0, c).a1().trim_end_matches('1'), if asc { "昇順" } else { "降順" })
+        self.status = ui::tf!("{} 列で{}に並べ替えました", Pos::new(0, c).a1().trim_end_matches('1'), if asc { ui::t!("昇順") } else { ui::t!("降順") })
             .into();
     }
 
@@ -1897,7 +1902,7 @@ impl Calc {
         let job2 = job.clone();
         self.ai_busy = true;
         self.status =
-            format!("AI({})に{}を頼んでいます…", back.label(), job.label()).into();
+            ui::tf!("AI({})に{}を頼んでいます…", back.label(), job.label()).into();
         let task = cx
             .background_executor()
             .spawn(async move { ui::ai::ask(back, &sys, &user) });
@@ -4086,13 +4091,13 @@ impl CalcAi {
 
     fn label(&self) -> &'static str {
         match self {
-            CalcAi::Summary => "要約",
-            CalcAi::Rewrite(_, _) => "書き直し",
-            CalcAi::Translate => "翻訳",
-            CalcAi::Furigana => "ふりがな",
-            CalcAi::Continue => "続き",
-            CalcAi::Table(_) => "表",
-            CalcAi::Ask(_) => "頼み",
+            CalcAi::Summary => ui::t!("要約"),
+            CalcAi::Rewrite(_, _) => ui::t!("書き直し"),
+            CalcAi::Translate => ui::t!("翻訳"),
+            CalcAi::Furigana => ui::t!("ふりがな"),
+            CalcAi::Continue => ui::t!("続き"),
+            CalcAi::Table(_) => ui::t!("表"),
+            CalcAi::Ask(_) => ui::t!("頼み"),
         }
     }
 }

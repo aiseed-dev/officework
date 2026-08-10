@@ -587,23 +587,37 @@ impl Calc {
         .detach();
     }
 
-    /// CSV の形の並び(見せる名前 → 文字コード, 区切り)。
+    /// CSV の形の並び `(鍵, 見出し, (文字コード, 区切り))`。
+    /// **引き当ては鍵**(日本語のまま。`csv_kind` に持ち続ける字)、画面は見出し。
     /// **Shift_JIS を出せることが要**(日本の会計ソフトはまだ CP932)
-    pub(crate) const CSV_KINDS: &'static [(&'static str, &'static str, char)] = &[
-        ("UTF-8(BOM付き)・カンマ", "utf8bom", ','),
-        ("Shift_JIS(CP932)・カンマ", "sjis", ','),
-        ("UTF-8(BOMなし)・カンマ", "utf8", ','),
-        ("UTF-8(BOM付き)・タブ", "utf8bom", '\t'),
-        ("Shift_JIS(CP932)・タブ", "sjis", '\t'),
-        ("UTF-8(BOM付き)・セミコロン", "utf8bom", ';'),
-    ];
+    #[allow(clippy::type_complexity)]
+    pub(crate) fn csv_kinds() -> Vec<(&'static str, &'static str, (&'static str, char))> {
+        vec![
+            row(ui::item!("UTF-8(BOM付き)・カンマ"), ("utf8bom", ',')),
+            row(ui::item!("Shift_JIS(CP932)・カンマ"), ("sjis", ',')),
+            row(ui::item!("UTF-8(BOMなし)・カンマ"), ("utf8", ',')),
+            row(ui::item!("UTF-8(BOM付き)・タブ"), ("utf8bom", '\t')),
+            row(ui::item!("Shift_JIS(CP932)・タブ"), ("sjis", '\t')),
+            row(ui::item!("UTF-8(BOM付き)・セミコロン"), ("utf8bom", ';')),
+        ]
+    }
+
+    /// いまの CSV の形の**見出し**(画面に出す字)。鍵が読めなければ鍵のまま
+    pub(crate) fn csv_kind_label(&self) -> String {
+        Self::csv_kinds()
+            .iter()
+            .find(|(k, _, _)| *k == self.csv_kind)
+            .map(|(_, l, _)| (*l).to_string())
+            .unwrap_or_else(|| self.csv_kind.to_string())
+    }
 
     pub(crate) fn write_csv(&mut self, p: &std::path::Path) {
-        let (enc, delim) = Self::CSV_KINDS
+        let (enc, delim) = Self::csv_kinds()
             .iter()
-            .find(|(n, _, _)| *n == self.csv_kind)
-            .map(|(_, e, d)| (*e, *d))
+            .find(|(k, _, _)| *k == self.csv_kind)
+            .map(|(_, _, (e, d))| (*e, *d))
             .unwrap_or(("utf8bom", ','));
+        let kind_label = self.csv_kind_label();
         let s = &self.book.sheets[self.active];
         let (rows, cols) = s.extent();
         let mut out = String::new();
@@ -649,7 +663,7 @@ impl Calc {
                 self.status = ui::tf!(
                     "CSV に書き出しました: {}({} — いまのシートの値だけ。式・書式・他のシートは入りません){}",
                     p.display(),
-                    self.csv_kind,
+                    kind_label,
                     if lost > 0 {
                         format!("。**{lost} 文字が Shift_JIS に無く「?」になりました**")
                     } else {
@@ -1000,10 +1014,11 @@ impl Calc {
         };
         match saved {
             Ok(_) => {
+                // 文に差し込む添え書きも画面の文言 — 訳さないと日本語だけ残る
                 let enc_note = if self.encrypt_pw.is_some() {
-                    "(暗号化)"
+                    ui::t!("(暗号化)")
                 } else if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("xltx")) {
-                    "(型紙 — 開くと新しいブックになります)"
+                    ui::t!("(型紙 — 開くと新しいブックになります)")
                 } else {
                     ""
                 };

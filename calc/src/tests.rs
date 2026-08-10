@@ -264,7 +264,8 @@ mod numfmt_tests {
             {
                 let (items, _) = this.pick.as_ref().expect("一覧が開かない");
                 assert!(
-                    items.iter().any(|i| i == "✓ パーセント (12.34%)"),
+                    // 印は**見出し**に付く(鍵は素のまま — 照合が言語で壊れない)
+                    items.iter().any(|(_, l)| l == "✓ パーセント (12.34%)"),
                     "今の書式に印が付かない: {items:?}"
                 );
                 assert!(this.status.contains("今の書式"), "{}", this.status);
@@ -880,14 +881,14 @@ mod pivot_tests {
             this.apply_pick("区分", cx);
             {
                 let (items, _) = this.pick.as_ref().unwrap();
-                assert!(items.iter().any(|i| i == "☑ 区分"), "選んだ印が付かない: {items:?}");
+                assert!(items.iter().any(|(_, l)| l == "☑ 区分"), "選んだ印が付かない: {items:?}");
             }
             this.apply_pick("→ 決定(列の選択へ)", cx);
             assert_eq!(this.pick_kind, "pivot-cols-pick");
             {
                 // 行に使った見出しは列の候補に出ない
                 let (items, _) = this.pick.as_ref().unwrap();
-                assert!(!items.iter().any(|i| i.contains("区分")), "{items:?}");
+                assert!(!items.iter().any(|(k, _)| k.contains("区分")), "{items:?}");
             }
             this.apply_pick("☐ 月", cx);
             this.apply_pick("→ 決定(列は無しでもよい)", cx);
@@ -2251,24 +2252,28 @@ mod recalc_tests {
             assert_eq!(this.pick_kind, "names-pick");
             {
                 let (items, _) = this.pick.as_ref().unwrap();
-                assert!(items.iter().any(|i| i == "単価表 = B2:C3"), "{items:?}");
+                // 鍵は `name:名前`、見出しは範囲つき — 両方見て割れ方を書き残す
+                assert!(
+                    items.iter().any(|(k, l)| k == "name:単価表" && l == "単価表 = B2:C3"),
+                    "{items:?}"
+                );
             }
             // 移動
-            this.apply_pick("単価表 = B2:C3", cx);
+            this.apply_pick("name:単価表", cx);
             assert_eq!(this.pick_kind, "name-act-pick");
             this.apply_pick("そこへ移動", cx);
             assert_eq!(this.cursor, Pos::parse("C3").unwrap());
             assert_eq!(this.anchor, Some(Pos::parse("B2").unwrap()));
             // 打ち直し
             this.run_cmd("defname", cx);
-            this.apply_pick("単価表 = B2:C3", cx);
+            this.apply_pick("name:単価表", cx);
             this.apply_pick("中身を打ち直す…", cx);
             this.prompt = Some(("name-range", Editor::new("B2:D9")));
             this.finish_prompt(cx);
             assert_eq!(this.sheet().names[0].1, "B2:D9");
             // 削除
             this.run_cmd("defname", cx);
-            this.apply_pick("単価表 = B2:D9", cx);
+            this.apply_pick("name:単価表", cx);
             this.apply_pick("名前を消す", cx);
             assert!(this.sheet().names.is_empty(), "名前が消えない");
         });
@@ -2289,9 +2294,13 @@ mod recalc_tests {
             this.run_cmd("editheader", cx);
             {
                 let (items, _) = this.pick.as_ref().unwrap();
-                assert!(items.iter().any(|i| i == "ヘッダー中: 月次売上"), "{items:?}");
+                // 鍵は欄の名前だけ。打った値は見出しにだけ付く
+                assert!(
+                    items.iter().any(|(k, l)| k == "ヘッダー中" && l == "ヘッダー中: 月次売上"),
+                    "{items:?}"
+                );
             }
-            this.apply_pick("フッター右: ", cx); // 値の付いた札でも先頭で見分ける
+            this.apply_pick("フッター右", cx); // 鍵は欄の名前(値は見出しの側)
             this.prompt = Some(("hf-edit", Editor::new("&P / &N")));
             this.finish_prompt(cx);
             assert_eq!(this.sheet().footer.as_deref(), Some("&R&P / &N"));
@@ -3242,7 +3251,7 @@ mod pivot_e2e_tests {
             assert_eq!(this.pick_kind, "pivot-rows-pick", "フィールドリストが開かない");
             {
                 let (items, _) = this.pick.as_ref().unwrap();
-                assert!(items.iter().any(|i| i == "☑ 区分"), "既存の行が ✓ にならない: {items:?}");
+                assert!(items.iter().any(|(_, l)| l == "☑ 区分"), "既存の行が ✓ にならない: {items:?}");
             }
             // 月を「列」へ広げて置き直す(Excel の形 — 1行目に札が出る)
             this.apply_pick("→ 決定(列の選択へ)", cx);
@@ -3599,8 +3608,8 @@ mod tab_zoom_tests {
             // 掛かっていなければ「シートを保護」
             this.open_sheet_menu(0);
             let (items, _) = this.pick.clone().expect("耳の品書きが出ない");
-            assert!(items.contains(&"シートを保護".to_string()), "{items:?}");
-            assert!(!items.contains(&"保護を解除".to_string()));
+            assert!(items.iter().any(|(k, _)| k == "シートを保護"), "{items:?}");
+            assert!(!items.iter().any(|(k, _)| k == "保護を解除"));
 
             // 押すと掛かる
             this.apply_pick("シートを保護", cx);
@@ -3610,7 +3619,7 @@ mod tab_zoom_tests {
             // 掛かっていれば「保護を解除」に変わる(押すまで分からない、を避ける)
             this.open_sheet_menu(0);
             let (items, _) = this.pick.clone().unwrap();
-            assert!(items.contains(&"保護を解除".to_string()), "{items:?}");
+            assert!(items.iter().any(|(k, _)| k == "保護を解除"), "{items:?}");
             this.apply_pick("保護を解除", cx);
             assert!(!this.book.sheets[0].protected, "保護が外れていない");
         });
@@ -3726,14 +3735,15 @@ mod symbol_watch_tests {
         c.update(cx, |this, cx| {
             this.run_cmd("inssymbol", cx);
             let (items, _) = this.pick.clone().expect("組の一覧が出ない");
-            assert!(items.iter().any(|x| x.starts_with("帳票でよく使う")), "組が出ていない");
-            assert!(items.iter().any(|x| x.starts_with("Unicode")), "16進の口が無い");
-            assert!(!items.iter().any(|x| x.starts_with("最近使った")), "まだ何も使っていない");
+            // 鍵は `symbols:組の名`、見出しは「組の名: 字たち」
+            assert!(items.iter().any(|(k, _)| k == "symbols:帳票でよく使う"), "組が出ていない");
+            assert!(items.iter().any(|(k, _)| k.starts_with("Unicode")), "16進の口が無い");
+            assert!(!items.iter().any(|(k, _)| k == "symbols:recent"), "まだ何も使っていない");
 
             // 組を選ぶと字が一つずつ並ぶ
-            this.apply_pick("しるし: ○●◎△▲▽▼□■◇◆☆★×✓☑☐", cx);
+            this.apply_pick("symbols:しるし", cx);
             let (chars, _) = this.pick.clone().expect("字の一覧が出ない");
-            assert_eq!(chars[0], "○", "一字ずつになっていない: {chars:?}");
+            assert_eq!(chars[0].0, "○", "一字ずつになっていない: {chars:?}");
 
             // 選ぶと式に入り、最近使った分に積まれる
             this.apply_pick("★", cx);
@@ -3742,7 +3752,7 @@ mod symbol_watch_tests {
 
             this.run_cmd("inssymbol", cx);
             let (items, _) = this.pick.clone().unwrap();
-            assert!(items[0].starts_with("最近使った"), "最近使った分が先に出ない");
+            assert_eq!(items[0].0, "symbols:recent", "最近使った分が先に出ない");
         });
     }
 
@@ -3799,13 +3809,13 @@ mod names_tests {
 
             // 式がまだ空なら「=」から始めてくれる
             this.pick_kind = "paste-name";
-            this.apply_pick("売上 = B2:B10", cx);
+            this.apply_pick("name:売上", cx);
             assert_eq!(this.input.text(), "=売上", "式に入っていない");
 
             // 続きを打ってから、また差し込む(末尾でなく打っている所へ)
             this.input.insert("+");
             this.pick_kind = "paste-name";
-            this.apply_pick("売上 = B2:B10", cx);
+            this.apply_pick("name:売上", cx);
             assert_eq!(this.input.text(), "=売上+売上", "打っている所に入らない");
         });
     }

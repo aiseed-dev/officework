@@ -432,24 +432,31 @@ pub(crate) struct ImportPend {
     pub used: (String, String),
 }
 
-/// 文字コードの選択肢(見せる名前, Python に渡す名前)。
-pub(crate) const IMPORT_ENCS: &[(&str, &str)] = &[
-    ("自動", "auto"),
-    ("UTF-8", "utf-8-sig"),
-    ("Shift_JIS(CP932)", "cp932"),
-    ("Latin-1", "latin-1"),
-];
+/// 文字コードの選択肢(鍵, 見せる名前, Python に渡す名前)。
+/// 符号化の名前(UTF-8 など)は**固有名詞なので訳さない** — 鍵と見出しが同じ
+pub(crate) fn import_encs() -> Vec<(&'static str, &'static str, &'static str)> {
+    vec![
+        crate::util::row(ui::item!("自動"), "auto"),
+        ("UTF-8", "UTF-8", "utf-8-sig"),
+        ("Shift_JIS(CP932)", "Shift_JIS(CP932)", "cp932"),
+        ("Latin-1", "Latin-1", "latin-1"),
+    ]
+}
 
-/// 区切りの選択肢(見せる名前, 実体)。「その他」はパネルで1文字を聞く。
-pub(crate) const IMPORT_DELIMS: &[(&str, &str)] = &[
-    ("自動", "auto"),
-    ("カンマ", ","),
-    ("タブ", "\t"),
-    ("セミコロン", ";"),
-    ("コロン", ":"),
-    ("スペース", " "),
-    ("その他…", "その他"),
-];
+/// 区切りの選択肢(鍵, 見せる名前, 実体)。「その他」はパネルで1文字を聞く。
+/// **実体は訳さない** — `その他` は分岐の合図として読まれる
+pub(crate) fn import_delims() -> Vec<(&'static str, &'static str, &'static str)> {
+    use crate::util::row;
+    vec![
+        row(ui::item!("自動"), "auto"),
+        row(ui::item!("カンマ"), ","),
+        row(ui::item!("タブ"), "\t"),
+        row(ui::item!("セミコロン"), ";"),
+        row(ui::item!("コロン"), ":"),
+        row(ui::item!("スペース"), " "),
+        row(ui::item!("その他…"), "その他"),
+    ]
+}
 
 pub(crate) const CSV_PY: &str = r#"
 import csv, sys
@@ -1930,8 +1937,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         let Some(pend) = &self.import_pend else { return };
         let (path, enc, delim) = (
             pend.path.clone(),
-            IMPORT_ENCS[pend.enc].1.to_string(),
-            match IMPORT_DELIMS[pend.delim].1 {
+            import_encs()[pend.enc].2.to_string(),
+            match import_delims()[pend.delim].2 {
                 "その他" => {
                     if pend.custom.is_empty() { ",".into() } else { pend.custom.clone() }
                 }
@@ -1997,25 +2004,27 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     pub(crate) fn import_pick(&mut self) {
         let Some(pend) = &self.import_pend else { return };
         let mut items: Vec<String> = Vec::new();
+        let (encs, delims) = (import_encs(), import_delims());
         let enc_label = if pend.enc == 0 && !pend.used.0.is_empty() {
-            format!("{}({})", IMPORT_ENCS[0].0, pend.used.0)
+            format!("{}({})", encs[0].1, pend.used.0)
         } else {
-            IMPORT_ENCS[pend.enc].0.to_string()
+            encs[pend.enc].1.to_string()
         };
+        // 区切りの名も画面の字 — 訳す。読めない字はそのまま括って見せる
         let delim_name = |d: &str| match d {
-            "," => "カンマ".to_string(),
-            "\t" => "タブ".to_string(),
-            ";" => "セミコロン".to_string(),
-            ":" => "コロン".to_string(),
-            " " => "スペース".to_string(),
+            "," => ui::t!("カンマ").to_string(),
+            "\t" => ui::t!("タブ").to_string(),
+            ";" => ui::t!("セミコロン").to_string(),
+            ":" => ui::t!("コロン").to_string(),
+            " " => ui::t!("スペース").to_string(),
             other => format!("「{other}」"),
         };
         let delim_label = if pend.delim == 0 && !pend.used.1.is_empty() {
-            format!("{}({})", IMPORT_DELIMS[0].0, delim_name(&pend.used.1))
-        } else if IMPORT_DELIMS[pend.delim].1 == "その他" && !pend.custom.is_empty() {
-            format!("{}{}", IMPORT_DELIMS[pend.delim].0, delim_name(&pend.custom))
+            format!("{}({})", delims[0].1, delim_name(&pend.used.1))
+        } else if delims[pend.delim].2 == "その他" && !pend.custom.is_empty() {
+            format!("{}{}", delims[pend.delim].1, delim_name(&pend.custom))
         } else {
-            IMPORT_DELIMS[pend.delim].0.to_string()
+            delims[pend.delim].1.to_string()
         };
         items.push(format!("{}: {}", ui::t!("文字コード"), enc_label));
         items.push(format!("{}: {}", ui::t!("区切り"), delim_label));
@@ -2041,7 +2050,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         self.pick_note =
             Some(ui::tf!("テキストの取り込み — {}(クリックで切替)", name).into());
         self.pick_kind = "csv-import-pick";
-        self.pick = Some((items, at));
+        // この一覧は**訳した字がそのまま鍵**(受け口も ui::t! で頭を作って
+        // 突き合わせる)。だから鍵と見出しは同じでよい
+        self.pick = Some((plain(items), at));
     }
 
     /// パネルの文字を Python の台本で絵にして、画像としてシートに浮かべる。
@@ -2631,7 +2642,7 @@ impl Calc {
         self.status = ui::tf!(
             "データテーブル: {} 個の答えを入れました({}。その時の値なので、入力を直したらもう一度)",
             out.len(),
-            if two { "2変数" } else { "1変数" }
+            if two { ui::t!("2変数") } else { ui::t!("1変数") }
         )
         .into();
     }

@@ -60,15 +60,20 @@ fn keys_in(src: &str) -> Vec<String> {
     let b = src.as_bytes();
     let mut out = Vec::new();
     let mut i = 0;
-    while let Some(rel) = src[i..].find("ui::t") {
+    // `ui::item!("…")` は一覧の項の鍵(訳すのは見出しだけ)。t!/tf! と同じ鍵。
+    // **ui/gen_i18n.py の走査と揃えること** — 片方だけ知っていると、生きている
+    // 訳を「使われていない」と数えて消せと言い出す(2026-08-10 の一敗)
+    while let Some(rel) = src[i..].find("ui::") {
         let at = i + rel;
         let rest = &src[at..];
         let head = if rest.starts_with("ui::tf!(") {
             8
         } else if rest.starts_with("ui::t!(") {
             7
+        } else if rest.starts_with("ui::item!(") {
+            10
         } else {
-            i = at + 5;
+            i = at + 4;
             continue;
         };
         let mut j = at + head;

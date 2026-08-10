@@ -251,12 +251,12 @@ impl Calc {
                     let at = self.pop_anchor();
                     self.pick_kind = "merge-pick";
                     self.pick = Some((
-                        vec![
-                            "結合して中央に配置".into(),
-                            "横方向に結合(行ごと)".into(),
-                            "セルの結合(揃えは触らない)".into(),
-                            "結合の解除".into(),
-                        ],
+                        menu(&[
+                            ui::item!("結合して中央に配置"),
+                            ui::item!("横方向に結合(行ごと)"),
+                            ui::item!("セルの結合(揃えは触らない)"),
+                            ui::item!("結合の解除"),
+                        ]),
                         at,
                     ));
                 }
@@ -310,9 +310,9 @@ impl Calc {
                 sh.landscape = !sh.landscape;
                 let landscape = sh.landscape;
                 self.dirty = true;
-                self.status = format!(
+                self.status = ui::tf!(
                     "印刷の向き: {}(PDF と保存に効きます)",
-                    if landscape { "横" } else { "縦" }
+                    if landscape { ui::t!("横") } else { ui::t!("縦") }
                 )
                 .into();
             }
@@ -386,10 +386,7 @@ impl Calc {
                 self.commit();
                 let at = self.pop_anchor();
                 self.pick_kind = "changecase";
-                self.pick = Some((
-                    CASE_MODES.iter().map(|v| v.to_string()).collect(),
-                    at,
-                ));
+                self.pick = Some((menu(&case_modes()), at));
             }
             // 数値の書式・セルのスタイル: 書式の小窓(道具箱)を開く
             // 数値の書式。本家のドロップダウン相当の一覧(その他=コード直打ち)
@@ -402,23 +399,26 @@ impl Calc {
                     .sheet()
                     .get(self.cursor)
                     .and_then(|c| c.fmt.number_format.clone());
-                let cur_name = NUMFMTS
+                let fmts = numfmts();
+                // 今のセルの書式に当たる行(鍵=照合用, 見出し=画面用)
+                let cur_row = fmts
                     .iter()
-                    .find(|(_, code)| code.map(|s| s.to_string()) == cur.as_ref().map(|s| s.to_string()))
-                    .map(|(n, _)| *n);
-                let mut items: Vec<String> = NUMFMTS
+                    .find(|(_, _, code)| code.map(|s| s.to_string()) == cur.as_ref().map(|s| s.to_string()))
+                    .map(|(k, l, _)| (*k, *l));
+                // **✓ は見出しにだけ付ける** — 鍵は素のまま(照合は鍵で走る)
+                let mut items: Vec<(String, String)> = fmts
                     .iter()
-                    .map(|(n, _)| {
-                        if Some(*n) == cur_name {
-                            format!("✓ {n}")
+                    .map(|(k, l, _)| {
+                        if Some(*k) == cur_row.map(|(k, _)| k) {
+                            (k.to_string(), format!("✓ {l}"))
                         } else {
-                            n.to_string()
+                            (k.to_string(), l.to_string())
                         }
                     })
                     .collect();
-                items.push("その他(書式コードを打つ)…".into());
-                self.status = match (cur_name, &cur) {
-                    (Some(n), _) => ui::tf!("今の書式: {}", n).into(),
+                items.extend(menu(&[ui::item!("その他(書式コードを打つ)…")]));
+                self.status = match (cur_row, &cur) {
+                    (Some((_, l)), _) => ui::tf!("今の書式: {}", l).into(),
                     (None, Some(code)) => ui::tf!("今の書式: カスタム(コード: {})", code).into(),
                     (None, None) => ui::t!("今の書式: 一般").into(),
                 };
@@ -446,19 +446,17 @@ impl Calc {
                     // 全部出す(前は16個で黙って切り捨てていた — 一覧は
                     // スクロールできるので削る理由が無い)
                     self.pick_kind = "font";
-                    self.pick = Some((vals, at));
+                    // 書体名は**中身**。訳したら別の書体を指してしまう
+                    self.pick = Some((plain(vals), at));
                 }
             }
             "fontsize" => {
                 let at = self.pop_anchor();
                 self.pick_kind = "size";
                 self.pick = Some((
-                    // Excel の標準の並び(6〜72)
-                    ["6", "8", "9", "10", "11", "12", "14", "16", "18", "20",
-                     "22", "24", "26", "28", "36", "48", "72"]
-                        .iter()
-                        .map(|v| v.to_string())
-                        .collect(),
+                    // Excel の標準の並び(6〜72)。**数は訳さない**
+                    plain(["6", "8", "9", "10", "11", "12", "14", "16", "18", "20",
+                           "22", "24", "26", "28", "36", "48", "72"]),
                     at,
                 ));
             }
@@ -622,10 +620,13 @@ impl Calc {
             "prot-allow" => {
                 let at = self.pop_anchor();
                 let a = self.sheet().protect_allow.clone();
-                let items: Vec<String> = a
+                // ☑/☐ は**見出しだけ**に付ける(鍵は名前そのもの — 入切の照合が走る)
+                let items: Vec<(String, String)> = a
                     .items()
                     .iter()
-                    .map(|(n, on)| format!("{} {}", if *on { "☑" } else { "☐" }, n))
+                    .map(|(n, on)| {
+                        (n.to_string(), format!("{} {}", if *on { "☑" } else { "☐" }, n))
+                    })
                     .collect();
                 self.pick_kind = "prot-allow";
                 self.pick_note = Some(
@@ -778,7 +779,8 @@ impl Calc {
                         self.pick_paths = v;
                         self.pick_kind = "history";
                         let at = self.pop_anchor();
-                self.pick = Some((names, at));
+                        // 控えの名前はファイル名 — 訳さない
+                        self.pick = Some((plain(names), at));
                         self.status =
                             ui::t!("バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)").into();
                     }
@@ -847,7 +849,8 @@ impl Calc {
                         .collect();
                     self.pick_kind = if run { "py-run" } else { "py-edit" };
                     let at = self.pop_anchor();
-                    self.pick = Some((names, at));
+                    // .py の名前と中の def — ファイルの中身なので訳さない
+                    self.pick = Some((plain(names), at));
                     self.status = if run {
                         ui::t!("選ぶとその .py を実行します").into()
                     } else {
@@ -936,7 +939,8 @@ impl Calc {
                     self.pick_paths = v;
                     self.pick_kind = "plugin";
                     let at = self.pop_anchor();
-                self.pick = Some((names, at));
+                    // .py のファイル名 — 訳さない
+                    self.pick = Some((plain(names), at));
                     self.status =
                         ui::t!("プラグイン: 選ぶとサンドボックスの中の Python で実行します(b=ブック s=シート)").into();
                 }
@@ -1031,8 +1035,8 @@ impl Calc {
             // SmartArt。分類 → 形の2段の一覧(分類・並び・名前は本家)
             "inssmartart" => {
                 self.commit();
-                let names: Vec<String> =
-                    SMARTART.iter().map(|(n, _)| n.to_string()).collect();
+                let names: Vec<(String, String)> =
+                    smartart().iter().map(|(k, l, _)| (k.to_string(), l.to_string())).collect();
                 self.pick_kind = "sa-cat";
                 let at = self.pop_anchor();
                 self.pick = Some((names, at));
@@ -1079,19 +1083,23 @@ impl Calc {
                     .get(self.cursor)
                     .and_then(|c| c.fmt.rotation)
                     .unwrap_or(0);
-                let items: Vec<String> = [
-                    ("角度なし", 0i32),
-                    ("左上がり 45度", 45),
-                    ("右下がり 45度", 135),
-                    ("上向き 90度", 90),
-                    ("下向き 90度", 180),
-                    ("縦書き(1字ずつ積む)", 255),
+                // ✓ は見出しにだけ。鍵は素のまま(picks.rs の角度の引き当てが鍵で走る)
+                let items: Vec<(String, String)> = [
+                    (ui::item!("角度なし"), 0i32),
+                    (ui::item!("左上がり 45度"), 45),
+                    (ui::item!("右下がり 45度"), 135),
+                    (ui::item!("上向き 90度"), 90),
+                    (ui::item!("下向き 90度"), 180),
+                    (ui::item!("縦書き(1字ずつ積む)"), 255),
                 ]
                 .iter()
-                .map(|(n, deg)| {
-                    if *deg == cur as i32 { format!("✓ {n}") } else { n.to_string() }
+                .map(|((k, l), deg)| {
+                    (
+                        k.to_string(),
+                        if *deg == cur as i32 { format!("✓ {l}") } else { l.to_string() },
+                    )
                 })
-                .chain(std::iter::once("その他(角度を打つ)…".to_string()))
+                .chain(menu(&[ui::item!("その他(角度を打つ)…")]))
                 .collect();
                 self.pick_note = Some(ui::t!("文字の向き(xlsx と同じ数え方 — 上向きが正)").into());
                 self.pick_kind = "orient-pick";
@@ -1146,7 +1154,7 @@ impl Calc {
                 let at = self.pop_anchor();
                 self.pick_kind = "cell-style";
                 self.pick = Some((
-                    CELL_STYLES.iter().map(|(n, _)| n.to_string()).collect(),
+                    cell_styles().iter().map(|(k, l, _)| (k.to_string(), l.to_string())).collect(),
                     at,
                 ));
                 self.status = ui::t!("セルのスタイル: 選ぶと選択に掛かります(Ctrl+Z で戻せます)").into();
@@ -1186,10 +1194,8 @@ impl Calc {
                         .map(|(i, n)| (n.clone(), PathBuf::from(i.to_string())))
                         .collect();
                     let at = self.pop_anchor();
-                    self.pick = Some((
-                        hidden.into_iter().map(|(_, n)| n).collect(),
-                        at,
-                    ));
+                    // シート名は中身 — 訳さない
+                    self.pick = Some((plain(hidden.into_iter().map(|(_, n)| n)), at));
                     self.status = ui::t!("隠したシート: 選ぶと表示に戻します").into();
                 }
             }
@@ -1312,10 +1318,8 @@ impl Calc {
             "colorschemas" => {
                 let at = self.pop_anchor();
                 self.pick_kind = "scheme";
-                self.pick = Some((
-                    sheet::theme::SCHEMES.iter().map(|(n, _)| n.to_string()).collect(),
-                    at,
-                ));
+                // 配色の名前は sheet の表(theme.rs)の中身。訳さない
+                self.pick = Some((plain(sheet::theme::SCHEMES.iter().map(|(n, _)| *n)), at));
                 self.status = ui::t!("配色の変更: 選ぶとテーマ色が入れ替わります").into();
             }
             // インターフェイステーマ(画面の明暗)。**セルは白のまま**
@@ -1556,10 +1560,10 @@ impl Calc {
                             }
                         }
                         self.dirty = true;
-                        self.status = format!(
+                        self.status = ui::tf!(
                             "{} 列を{}(Ctrl+Z で戻せます)",
                             targets.len(),
-                            if hide { "畳みました" } else { "開きました" }
+                            if hide { ui::t!("畳みました") } else { ui::t!("開きました") }
                         )
                         .into();
                     }
@@ -1602,10 +1606,10 @@ impl Calc {
                             }
                         }
                         self.dirty = true;
-                        self.status = format!(
+                        self.status = ui::tf!(
                             "{} 行を{}(Ctrl+Z で戻せます)",
                             targets.len(),
-                            if hide { "畳みました" } else { "開きました" }
+                            if hide { ui::t!("畳みました") } else { ui::t!("開きました") }
                         )
                         .into();
                     }
@@ -1699,17 +1703,22 @@ impl Calc {
                     Some(i) => {
                         let cur = self.book.pivots[i].show_as.clone();
                         let at = self.pop_anchor();
-                        let items: Vec<String> = ["そのまま", "比率", "累計", "差"]
-                            .iter()
-                            .map(|n| {
-                                let key = if *n == "そのまま" { "" } else { *n };
-                                if key == cur {
-                                    format!("✓ {n}")
-                                } else {
-                                    n.to_string()
-                                }
-                            })
-                            .collect();
+                        let items: Vec<(String, String)> = [
+                            ui::item!("そのまま"),
+                            ui::item!("比率"),
+                            ui::item!("累計"),
+                            ui::item!("差"),
+                        ]
+                        .iter()
+                        .map(|(k, l)| {
+                            let key = if *k == "そのまま" { "" } else { *k };
+                            // ✓ は見出しにだけ(鍵はそのまま照合に使う)
+                            (
+                                k.to_string(),
+                                if key == cur { format!("✓ {l}") } else { l.to_string() },
+                            )
+                        })
+                        .collect();
                         self.pick_note = Some(
                             ui::t!("計算の種類(比率=総計を100%とする。累計と差は小計・総計を出しません)")
                                 .into(),
@@ -1728,17 +1737,21 @@ impl Calc {
                     Some(i) => {
                         let cur = self.book.pivots[i].style.clone();
                         let at = self.pop_anchor();
-                        let items: Vec<String> = ["青(既定)", "緑", "橙", "灰"]
-                            .iter()
-                            .map(|n| {
-                                let key = if *n == "青(既定)" { "" } else { *n };
-                                if key == cur {
-                                    format!("✓ {n}")
-                                } else {
-                                    n.to_string()
-                                }
-                            })
-                            .collect();
+                        let items: Vec<(String, String)> = [
+                            ui::item!("青(既定)"),
+                            ui::item!("緑"),
+                            ui::item!("橙"),
+                            ui::item!("灰"),
+                        ]
+                        .iter()
+                        .map(|(k, l)| {
+                            let key = if *k == "青(既定)" { "" } else { *k };
+                            (
+                                k.to_string(),
+                                if key == cur { format!("✓ {l}") } else { l.to_string() },
+                            )
+                        })
+                        .collect();
                         self.pick_note =
                             Some(ui::t!("ピボットのスタイル(選ぶと掛け直します)").into());
                         self.pick_kind = "pivot-style-pick";
@@ -1754,14 +1767,20 @@ impl Calc {
                     sheet::model::hf_split(self.sheet().header.as_deref().unwrap_or(""));
                 let (fl, fc, fr) =
                     sheet::model::hf_split(self.sheet().footer.as_deref().unwrap_or(""));
-                let show = |name: &str, v: &str| {
-                    if v.is_empty() { name.to_string() } else { format!("{name}: {v}") }
+                // 鍵は欄の名前だけ(picks.rs は ':' の前で切って引き当てる)。
+                // 中身は**その人が打った字**なので、見出しの側にだけ添える
+                let show = |(k, l): (&'static str, &'static str), v: &str| {
+                    (k.to_string(), if v.is_empty() { l.to_string() } else { format!("{l}: {v}") })
                 };
-                let items: Vec<String> = vec![
-                    show("ヘッダー左", &hl), show("ヘッダー中", &hc), show("ヘッダー右", &hr),
-                    show("フッター左", &fl), show("フッター中", &fc), show("フッター右", &fr),
-                    "全部消す".into(),
+                let mut items: Vec<(String, String)> = vec![
+                    show(ui::item!("ヘッダー左"), &hl),
+                    show(ui::item!("ヘッダー中"), &hc),
+                    show(ui::item!("ヘッダー右"), &hr),
+                    show(ui::item!("フッター左"), &fl),
+                    show(ui::item!("フッター中"), &fc),
+                    show(ui::item!("フッター右"), &fr),
                 ];
+                items.extend(menu(&[ui::item!("全部消す")]));
                 self.pick_note = Some(
                     ui::t!("ヘッダー/フッター — 印刷と PDF に出ます(&P=頁 &N=総頁)").into(),
                 );
@@ -1804,26 +1823,27 @@ impl Calc {
                             let (name, on) = match id {
                                 "pivot-totals" => {
                                     d.totals = !d.totals;
-                                    ("総計", d.totals)
+                                    (ui::t!("総計"), d.totals)
                                 }
                                 "pivot-subtotals" => {
                                     d.subtotals = !d.subtotals;
-                                    ("小計", d.subtotals)
+                                    (ui::t!("小計"), d.subtotals)
                                 }
                                 "pivot-blank" => {
                                     d.blank_rows = !d.blank_rows;
-                                    ("空行", d.blank_rows)
+                                    (ui::t!("空行"), d.blank_rows)
                                 }
                                 _ => {
                                     d.compact = !d.compact;
-                                    ("コンパクト形式", d.compact)
+                                    (ui::t!("コンパクト形式"), d.compact)
                                 }
                             };
                             let d = self.book.pivots[i].clone();
                             self.dirty = true;
-                            self.status = format!(
-                                "{name}を{}にして置き直します…",
-                                if on { "あり" } else { "なし" }
+                            self.status = ui::tf!(
+                                "{}を{}にして置き直します…",
+                                name,
+                                if on { ui::t!("あり") } else { ui::t!("なし") }
                             )
                             .into();
                             self.spawn_pivot(d, Some(i), cx);
@@ -1889,14 +1909,15 @@ impl Calc {
                         }
                     }
                     self.dirty = true;
+                    // 文に差し込む字も画面の文言 — 訳さないと日本語だけ混じる
                     let what = match id {
-                        "td-header" => "1行目を見出しの帯に",
-                        "td-band-row" => "1行おきの縞々に",
-                        "td-band-col" => "1列おきの縞々に",
-                        "td-first" => "最初の列を太字に",
-                        _ => "最後の列を太字に",
+                        "td-header" => ui::t!("1行目を見出しの帯に"),
+                        "td-band-row" => ui::t!("1行おきの縞々に"),
+                        "td-band-col" => ui::t!("1列おきの縞々に"),
+                        "td-first" => ui::t!("最初の列を太字に"),
+                        _ => ui::t!("最後の列を太字に"),
                     };
-                    self.status = format!(
+                    self.status = ui::tf!(
                         "{}:{} を{}しました(Ctrl+Z で戻せます)",
                         a.a1(),
                         b.a1(),
@@ -1992,14 +2013,16 @@ impl Calc {
             // 最近使った分は先頭に出す。無い字は 16 進で打てる
             "inssymbol" => {
                 let at = self.pop_anchor();
-                let mut items: Vec<String> = Vec::new();
+                // **鍵はどの組かだけ** — 字の並びは picks.rs が組から引き直す
+                let mut items: Vec<(String, String)> = Vec::new();
                 if !self.recent_symbols.is_empty() {
-                    items.push(format!("最近使った: {}", self.recent_symbols.join(" ")));
+                    let chars = self.recent_symbols.join(" ");
+                    items.push(("symbols:recent".into(), ui::tf!("最近使った: {}", chars)));
                 }
-                for (name, chars) in SYMBOL_GROUPS {
-                    items.push(format!("{name}: {chars}"));
+                for (key, label, chars) in symbol_groups() {
+                    items.push((format!("symbols:{key}"), format!("{label}: {chars}")));
                 }
-                items.push("Unicode を打つ(例: 3012 → 〒)…".into());
+                items.extend(menu(&[ui::item!("Unicode を打つ(例: 3012 → 〒)…")]));
                 self.pick_kind = "symbol-group";
                 self.pick_note = Some(ui::t!("記号(組を選ぶと一字ずつ出ます)").into());
                 self.pick = Some((items, at));
@@ -2110,20 +2133,37 @@ impl Calc {
                 let has_col = sh.col_breaks.contains(&c);
                 // **できないことは並べない。** 1行目・A列の「前」には紙の
                 // 切れ目を置けない(そこが既に紙の頭)ので項目ごと出さない
-                let mut items: Vec<String> = Vec::new();
+                // **鍵は短い合図**(文ではない)。picks.rs はこの合図で引き当てる —
+                // 同じ日本語の文を鍵と見出しに二度書けば、いつかずれる
+                let mut items: Vec<(String, String)> = Vec::new();
                 if has_row {
-                    items.push(format!("この行({})の改ページを外す", r + 1));
+                    items.push((
+                        "pagebreak:row".into(),
+                        ui::tf!("この行({})の改ページを外す", r + 1),
+                    ));
                 } else if r > 0 {
-                    items.push(format!("{} 行から新しい紙にする(横の区切り)", r + 1));
+                    items.push((
+                        "pagebreak:row".into(),
+                        ui::tf!("{} 行から新しい紙にする(横の区切り)", r + 1),
+                    ));
                 }
                 if has_col {
-                    items.push(format!("この列({})の改ページを外す", col_name(c)));
+                    items.push((
+                        "pagebreak:col".into(),
+                        ui::tf!("この列({})の改ページを外す", col_name(c)),
+                    ));
                 } else if c > 0 {
-                    items.push(format!("{} 列から新しい紙にする(縦の区切り)", col_name(c)));
+                    items.push((
+                        "pagebreak:col".into(),
+                        ui::tf!("{} 列から新しい紙にする(縦の区切り)", col_name(c)),
+                    ));
                 }
                 let n = sh.row_breaks.len() + sh.col_breaks.len();
                 if n > 0 {
-                    items.push(format!("すべての改ページを外す({n} 個)"));
+                    items.push((
+                        "pagebreak:all".into(),
+                        ui::tf!("すべての改ページを外す({} 個)", n),
+                    ));
                 }
                 if items.is_empty() {
                     // A1 の上で、まだ1つも改ページが無いとき
@@ -2262,10 +2302,19 @@ impl Calc {
             // 名前を差し込む** — 覚えていなくても使える
             "paste-name" => {
                 let at = self.pop_anchor();
-                let mut items: Vec<String> =
-                    self.sheet().names.iter().map(|(n, r)| format!("{n} = {r}")).collect();
+                // 鍵は「何を指しているか」だけ(`name:` / `table:` + 名前)。
+                // 名前と範囲は**中身**なので見出しにそのまま出す(訳さない)
+                let mut items: Vec<(String, String)> = self
+                    .sheet()
+                    .names
+                    .iter()
+                    .map(|(n, r)| (format!("name:{n}"), format!("{n} = {r}")))
+                    .collect();
                 for t in &self.sheet().tables {
-                    items.push(format!("{} = {}:{}(テーブル)", t.name, t.a.a1(), t.b.a1()));
+                    items.push((
+                        format!("table:{}", t.name),
+                        ui::tf!("{} = {}:{}(テーブル)", t.name, t.a.a1(), t.b.a1()),
+                    ));
                 }
                 if items.is_empty() {
                     self.status = ui::t!(
@@ -2371,15 +2420,19 @@ impl Calc {
                 self.pick_kind = "csv-kind";
                 self.pick_note =
                     Some(ui::t!("CSV に書き出すときの文字コードと区切り").into());
+                // 引き当ては鍵、画面は見出し(io.rs の表)。✓ は見出しだけに
                 self.pick = Some((
-                    Self::CSV_KINDS
+                    Self::csv_kinds()
                         .iter()
-                        .map(|(n, _, _)| {
-                            if *n == self.csv_kind {
-                                format!("✓ {n}")
-                            } else {
-                                (*n).to_string()
-                            }
+                        .map(|(k, l, _)| {
+                            (
+                                (*k).to_string(),
+                                if *k == self.csv_kind {
+                                    format!("✓ {l}")
+                                } else {
+                                    (*l).to_string()
+                                },
+                            )
                         })
                         .collect(),
                     at,
@@ -2401,7 +2454,8 @@ impl Calc {
                     self.pick_note = Some(
                         ui::t!("保存できずに終わったブックの控え(選ぶと開きます)").into(),
                     );
-                    self.pick = Some((list.into_iter().map(|(n, _)| n).collect(), at));
+                    // 控えのファイル名 — 訳さない
+                    self.pick = Some((plain(list.into_iter().map(|(n, _)| n)), at));
                 }
             }
             // 自動復旧の間隔
@@ -2411,7 +2465,12 @@ impl Calc {
                 self.pick_note =
                     Some(ui::t!("自動復旧の控えを取る間隔(原本は上書きしません)").into());
                 self.pick = Some((
-                    vec!["取らない".into(), "1分ごと".into(), "5分ごと".into(), "10分ごと".into()],
+                    menu(&[
+                        ui::item!("取らない"),
+                        ui::item!("1分ごと"),
+                        ui::item!("5分ごと"),
+                        ui::item!("10分ごと"),
+                    ]),
                     at,
                 ));
             }
@@ -2442,13 +2501,13 @@ impl Calc {
                     ui::t!("紙に収める(選ぶと拡大縮小印刷の % より優先します)").into(),
                 );
                 self.pick = Some((
-                    vec![
-                        "拡大縮小しない".into(),
-                        "すべての列を1ページに".into(),
-                        "すべての行を1ページに".into(),
-                        "シートを1ページに".into(),
-                        "横2ページ×縦1ページ".into(),
-                    ],
+                    menu(&[
+                        ui::item!("拡大縮小しない"),
+                        ui::item!("すべての列を1ページに"),
+                        ui::item!("すべての行を1ページに"),
+                        ui::item!("シートを1ページに"),
+                        ui::item!("横2ページ×縦1ページ"),
+                    ]),
                     at,
                 ));
             }
@@ -2483,9 +2542,13 @@ impl Calc {
                 sh.print_gridlines = !sh.print_gridlines;
                 let on = sh.print_gridlines;
                 self.dirty = true;
-                self.status = format!(
+                self.status = ui::tf!(
                     "枠線の印刷: {}",
-                    if on { "する(表の薄い線が紙に出ます)" } else { "しない" }
+                    if on {
+                        ui::t!("する(表の薄い線が紙に出ます)")
+                    } else {
+                        ui::t!("しない")
+                    }
                 )
                 .into();
             }
@@ -2496,9 +2559,13 @@ impl Calc {
                 sh.print_headings = !sh.print_headings;
                 let on = sh.print_headings;
                 self.dirty = true;
-                self.status = format!(
+                self.status = ui::tf!(
                     "見出しの印刷: {}",
-                    if on { "する(行番号と列名が余白に出ます)" } else { "しない" }
+                    if on {
+                        ui::t!("する(行番号と列名が余白に出ます)")
+                    } else {
+                        ui::t!("しない")
+                    }
                 )
                 .into();
             }
@@ -2551,11 +2618,11 @@ impl Calc {
                     self.pick_note = Some(ui::t!("スパークラインの種類").into());
                     self.pick_kind = "spark-kind-pick";
                     self.pick = Some((
-                        vec![
-                            "折れ線".into(),
-                            "縦棒(カラム)".into(),
-                            "勝ち負け(正負)".into(),
-                        ],
+                        menu(&[
+                            ui::item!("折れ線"),
+                            ui::item!("縦棒(カラム)"),
+                            ui::item!("勝ち負け(正負)"),
+                        ]),
                         at,
                     ));
                 }
@@ -2564,10 +2631,14 @@ impl Calc {
                 let at = self.pop_anchor();
                 self.pick_kind = "shape";
                 self.pick = Some((
-                    ["四角形", "角丸四角形", "楕円", "右矢印", "ひし形", "直線"]
-                        .iter()
-                        .map(|v| v.to_string())
-                        .collect(),
+                    menu(&[
+                        ui::item!("四角形"),
+                        ui::item!("角丸四角形"),
+                        ui::item!("楕円"),
+                        ui::item!("右矢印"),
+                        ui::item!("ひし形"),
+                        ui::item!("直線"),
+                    ]),
                     at,
                 ));
             }
@@ -2596,16 +2667,22 @@ impl Calc {
             "defname" => {
                 self.commit();
                 let at = self.pop_anchor();
-                let mut items: Vec<String> = self
+                // 鍵は「何を指しているか」だけ(`name:` / `table:` + 名前)。
+                // 名前と範囲は中身なので見出しにそのまま出す — 訳さない
+                let mut items: Vec<(String, String)> = self
                     .sheet()
                     .names
                     .iter()
-                    .map(|(n, r)| format!("{n} = {r}"))
+                    .map(|(n, r)| (format!("name:{n}"), format!("{n} = {r}")))
                     .collect();
                 for t in &self.sheet().tables {
-                    items.push(format!("{} = {}:{}(テーブル)", t.name, t.a.a1(), t.b.a1()));
+                    items.push((
+                        format!("table:{}", t.name),
+                        ui::tf!("{} = {}:{}(テーブル)", t.name, t.a.a1(), t.b.a1()),
+                    ));
                 }
-                items.push("→ 新しい名前(いまの選択に付ける)…".into());
+                // 「→ 」は鍵の一部(picks.rs が starts_with で見る)
+                items.extend(menu(&[ui::item!("→ 新しい名前(いまの選択に付ける)…")]));
                 self.pick_note = Some(
                     ui::t!("名前の管理 — 名前を選ぶと 移動/打ち直し/削除。式の中で使えます").into(),
                 );
@@ -2616,19 +2693,22 @@ impl Calc {
             // 個別に選べる — トグルだけの形をやめ、一覧から選ぶ
             "freeze" => {
                 let at = self.pop_anchor();
-                let mut items: Vec<String> = Vec::new();
+                let mut items: Vec<(String, String)> = Vec::new();
                 if self.frozen.is_some() {
-                    items.push("固定の解除".into());
+                    items.extend(menu(&[ui::item!("固定の解除")]));
                 }
-                items.push("いまの位置で固定(上と左が留まる)".into());
-                items.push("最上行の固定".into());
-                items.push("最初の列の固定".into());
-                // 本家の「固定された枠に影を付ける」(viewtab:freezeshadow)
-                items.push(if self.freeze_shadow {
-                    "✓ 固定した枠に影を付ける".into()
-                } else {
-                    "固定した枠に影を付ける".into()
-                });
+                items.extend(menu(&[
+                    ui::item!("いまの位置で固定(上と左が留まる)"),
+                    ui::item!("最上行の固定"),
+                    ui::item!("最初の列の固定"),
+                ]));
+                // 本家の「固定された枠に影を付ける」(viewtab:freezeshadow)。
+                // **✓ は見出しだけ** — 鍵は素のまま(picks.rs がこの字で引き当てる)
+                let (k, l) = ui::item!("固定した枠に影を付ける");
+                items.push((
+                    k.to_string(),
+                    if self.freeze_shadow { format!("✓ {l}") } else { l.to_string() },
+                ));
                 self.pick_kind = "freeze";
                 self.pick = Some((items, at));
             }
@@ -2637,18 +2717,18 @@ impl Calc {
             "fillparag" => {
                 let at = self.pop_anchor();
                 self.pick_kind = "fill-color";
-                let mut items: Vec<String> =
-                    FILL_COLORS.iter().map(|(n, _)| n.to_string()).collect();
-                items.push("その他(RRGGBB を打つ)…".into());
+                let mut items: Vec<(String, String)> =
+                    fill_colors().iter().map(|(k, l, _)| (k.to_string(), l.to_string())).collect();
+                items.extend(menu(&[ui::item!("その他(RRGGBB を打つ)…")]));
                 self.pick = Some((items, at));
             }
             // フォントの色。同じくパレット
             "fontcolor" => {
                 let at = self.pop_anchor();
                 self.pick_kind = "font-color";
-                let mut items: Vec<String> =
-                    FONT_COLORS.iter().map(|(n, _)| n.to_string()).collect();
-                items.push("その他(RRGGBB を打つ)…".into());
+                let mut items: Vec<(String, String)> =
+                    font_colors().iter().map(|(k, l, _)| (k.to_string(), l.to_string())).collect();
+                items.extend(menu(&[ui::item!("その他(RRGGBB を打つ)…")]));
                 self.pick = Some((items, at));
             }
             // 並べ替えは**見出しを据え置き、行はまるごと動かす**
@@ -2775,7 +2855,8 @@ impl Calc {
         let hide = id.starts_with("hide");
         let (a, b) = self.sel_rect();
         let (lo, hi) = if cols { (a.col, b.col) } else { (a.row, b.row) };
-        let what = if cols { "列" } else { "行" };
+        // 文に差し込む字も画面の文言 — 訳さないと日本語だけ混じる
+        let what = if cols { ui::t!("列") } else { ui::t!("行") };
         // 使っている分を全部隠すと、戻す道(見出しを跨いで選ぶ)が消える
         if hide {
             let (rows, colsn) = self.sheet().extent();
@@ -2922,19 +3003,34 @@ impl Calc {
             return;
         }
         let at = self.pop_anchor();
-        let items: Vec<String> = self
+        // 日時・シート!番地・値・名乗りは**中身**。訳すのは「(空)」「(消した)」の
+        // 2語だけ。鍵は前のまま — picks.rs は3語目の「シート!A1」で跳ぶ
+        let items: Vec<(String, String)> = self
             .book
             .changes
             .iter()
             .rev()
             .take(200)
             .map(|c| {
-                let arrow = match (c.before.is_empty(), c.after.is_empty()) {
-                    (true, _) => format!("(空) → {}", c.after),
-                    (_, true) => format!("{} → (消した)", c.before),
-                    _ => format!("{} → {}", c.before, c.after),
+                let (arrow_key, arrow) = match (c.before.is_empty(), c.after.is_empty()) {
+                    (true, _) => (
+                        format!("(空) → {}", c.after),
+                        ui::tf!("(空) → {}", c.after),
+                    ),
+                    (_, true) => (
+                        format!("{} → (消した)", c.before),
+                        ui::tf!("{} → (消した)", c.before),
+                    ),
+                    _ => (
+                        format!("{} → {}", c.before, c.after),
+                        format!("{} → {}", c.before, c.after),
+                    ),
                 };
-                format!("{} {}!{} {} [{}]", c.when, c.sheet, c.at.a1(), arrow, c.who)
+                let head = format!("{} {}!{}", c.when, c.sheet, c.at.a1());
+                (
+                    format!("{head} {arrow_key} [{}]", c.who),
+                    format!("{head} {arrow} [{}]", c.who),
+                )
             })
             .collect();
         self.pick_note = Some(

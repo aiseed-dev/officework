@@ -1433,7 +1433,7 @@ impl Render for Writer {
 
         // ヘッダー・フッターの編集のパネル。開いている間、打鍵はここに入る
         let hf_panel = self.hf_edit.map(|footer| {
-            let title = if footer { "フッター" } else { "ヘッダー" };
+            let title = if footer { ui::t!("フッター") } else { ui::t!("ヘッダー") };
             // キャレットは | で見せる(検索のパネルと同じ割り切り)。
             // ページ番号の印は読める形で見せる
             let mut s = self.hf_ed.text().to_string();
@@ -1740,9 +1740,9 @@ impl Render for Writer {
                 "●".repeat(total - before)
             );
             let title = if self.pw_pending.is_some() {
-                "パスワード — この文書は暗号化されています"
+                ui::t!("パスワード — この文書は暗号化されています")
             } else {
-                "暗号化 — パスワードを決めて Enter(空で解除。Esc で取りやめ)"
+                ui::t!("暗号化 — パスワードを決めて Enter(空で解除。Esc で取りやめ)")
             };
             Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(380.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
@@ -2126,7 +2126,7 @@ impl Render for Writer {
             // ページ
             d = d.child(head("ページ"))
                 .child(div().text_size(px(11.0)).text_color(th_status)
-                    .child(SharedString::from(ui::tf!("{:.0}×{:.0}mm / 余白 {:.0}mm / {}段{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { " / 縦書き" } else { "" }))))
+                    .child(SharedString::from(ui::tf!("{:.0}×{:.0}mm / 余白 {:.0}mm / {}段{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!(" / 縦書き") } else { "" }))))
                 .child(row()
                     .child(btn(self, "pageorient", "向き").on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pageorient", cx); cx.notify() })))
@@ -2187,17 +2187,17 @@ impl Render for Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(SharedString::from(ui::tf!("{} — 宛先 {}(Esc で取りやめ)", if self.ai_macro { "AI にマクロ台本を頼む" } else { "AI に頼む" }, ui::ai::backend().label()))))
+                    .child(SharedString::from(ui::tf!("{} — 宛先 {}(Esc で取りやめ)", if self.ai_macro { ui::t!("AI にマクロ台本を頼む") } else { ui::t!("AI に頼む") }, ui::ai::backend().label()))))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(rgb(0xFFFFFF))
                     .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
                 .child(div().text_size(px(10.5)).text_color(rgb(0x66707A))
                     .child(if self.ai_macro {
-                        "台本はプラグイン置き場に置くだけです。読んで確かめてから\
-                         一覧で実行してください(自動では走りません)"
+                        ui::t!("台本はプラグイン置き場に置くだけです。読んで確かめてから\
+                         一覧で実行してください(自動では走りません)")
                     } else {
-                        "答えはカーソルの位置に入ります。Ctrl+Z で1手で戻せます"
+                        ui::t!("答えはカーソルの位置に入ります。Ctrl+Z で1手で戻せます")
                     })))
         };
 

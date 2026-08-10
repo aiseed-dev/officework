@@ -88,7 +88,7 @@ impl Writer {
                 self.relayout();
                 self.status = if self.doc.vertical {
                     let caveat = if self.doc.tables().next().is_some() {
-                        "表は初版では縦になりません。"
+                        ui::t!("表は初版では縦になりません。")
                     } else {
                         ""
                     };

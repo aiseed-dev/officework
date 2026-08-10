@@ -335,7 +335,7 @@ pub const CALC: &[Tab] = &[
         c("pivot-blank", "Leere Zeilen", "pivot-blank"),
         c("pivot-showas", "Berechnungsart", "pivot-showas"),
         c("pivot-layout", "Berichtslayout", "pivot-layout"),
-        c("pivot-style", "Stil", "pivot-style"),
+        c("pivot-style", "Formatvorlage", "pivot-style"),
     ]},
     Tab { name: "Tabellen-Design", cmds: &[
         c("td-header", "Kopfzeile", "td-header"),
