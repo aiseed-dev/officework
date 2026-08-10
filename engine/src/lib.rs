@@ -30,6 +30,23 @@ pub struct RefField {
     pub page: bool,
 }
 
+/// 脚注・文末脚注の印(docx の `w:footnoteReference` / `w:endnoteReference`)。
+///
+/// **中身は持たない。** 脚注の文章は `word/footnotes.xml` にあり、
+/// そこは保存で原本のまま持ち越される部品なので触らない。ここが持つのは
+/// 「本文のこの位置が、その id の脚注を指している」という**印だけ**。
+///
+/// `id` を数ではなく字で持つのは、**書き手によって番号の付け方が違う**から
+/// (pandoc は 20・21・22、LibreOffice は 2・3・4、仕切り線に -1 を使う物もある)。
+/// 数に直して振り直すと、footnotes.xml 側と繋がらなくなる
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FootnoteRef {
+    /// docx の `w:id`。**原文のまま**持つ(振り直さない)
+    pub id: String,
+    /// true なら文末脚注(endnote)、false なら脚注(footnote)
+    pub endnote: bool,
+}
+
 /// 文字の書式。**docx の `w:rPr` に対応する。**
 ///
 /// 既定(全部 false・色なし)が素の本文。`Default` で作れば何も付かない。
@@ -52,6 +69,11 @@ pub struct CharFormat {
     /// ルビ(ふりがな)。この run の字の上に半分の大きさで振る。
     /// field と同じ理由でここに持つ — run の切り貼りが面倒を見てくれる
     pub ruby: Option<String>,
+    /// 脚注・文末脚注の印。**位置が意味そのもの**なので、段落の控え
+    /// (anchors)ではなく run に持つ — どの語に付いた注かが変わると困る。
+    /// field・ruby と同じ持ち場で、run の切り貼りがそのまま効く。
+    /// **この run は字を持たない**(印だけの run)
+    pub footnote: Option<FootnoteRef>,
     /// 記入欄(docx の w:sdt = コンテンツコントロール)。
     /// **ここに持つと欄の中を普通に打てる** — 中で run が割れても、
     /// 両方が同じ欄を名乗るので欄は保たれる(field・ruby と逆で、
@@ -1050,7 +1072,9 @@ fn split_runs(runs: &[Run], byte: usize) -> (Vec<Run>, Vec<Run>) {
 fn normalize_runs(runs: &mut Vec<Run>, size_pt: f32) {
     let mut out: Vec<Run> = Vec::new();
     for r in runs.drain(..) {
-        if r.text.is_empty() {
+        // **脚注の印だけは、字が無くても残す。** ここで落とすと、
+        // 読めていても編集や組版を一度通っただけで印が消える
+        if r.text.is_empty() && r.fmt.footnote.is_none() {
             continue;
         }
         match out.last_mut() {
@@ -3481,5 +3505,47 @@ mod section_layout_tests {
             ..Default::default()
         };
         assert!(section_geometry(&d).is_empty(), "節が1つなのに節ごとの紙を作った");
+    }
+}
+
+#[cfg(test)]
+mod footnote_mark_tests {
+    use super::*;
+
+    /// **字を持たない run は均しで落とされる。** 脚注の印はそこに乗るので、
+    /// 守っていないと「読めているのに、編集や組版を一度通っただけで消える」
+    /// という形になる(2026-08-10)
+    #[test]
+    fn 均しても脚注の印は残る() {
+        let 印 = |id: &str| Run {
+            text: String::new(), size_pt: 10.5, font: None,
+            fmt: CharFormat {
+                footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
+                ..Default::default()
+            },
+        };
+        let 字 = |t: &str| Run {
+            text: t.into(), size_pt: 10.5, font: None, fmt: CharFormat::default(),
+        };
+        let mut runs = vec![字("本文"), 印("20"), 字("の続き"), 印("21")];
+        normalize_runs(&mut runs, 10.5);
+        assert_eq!(runs.iter().filter(|r| r.fmt.footnote.is_some()).count(), 2,
+            "印が落ちた: {runs:?}");
+        // 印を挟んだ字どうしは繋げない(繋ぐと印が字の外へ出る)
+        let order: Vec<&str> = runs.iter()
+            .map(|r| if r.fmt.footnote.is_some() { "印" } else { r.text.as_str() })
+            .collect();
+        assert_eq!(order, vec!["本文", "印", "の続き", "印"], "並びが変わった");
+    }
+
+    /// 印の付いていない空の run は今までどおり落とす(増やさない)
+    #[test]
+    fn 印の無い空のrunは今までどおり落ちる() {
+        let mut runs = vec![
+            Run { text: "あ".into(), size_pt: 10.5, font: None, fmt: CharFormat::default() },
+            Run { text: String::new(), size_pt: 10.5, font: None, fmt: CharFormat::default() },
+        ];
+        normalize_runs(&mut runs, 10.5);
+        assert_eq!(runs.len(), 1, "空の run が残った: {runs:?}");
     }
 }

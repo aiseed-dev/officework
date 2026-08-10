@@ -449,6 +449,40 @@ fn parse_sect(raw: &str) -> kumihan::PageSetup {
     }
 }
 
+/// 脚注・文末脚注の印を run として置く。
+///
+/// **印の run は字を持たない**(`<w:r><w:footnoteReference w:id="2"/></w:r>`)。
+/// 読み手は `</w:t>` で run を積むので、ここで積まないと印は消える。
+/// 脚注の**文章**は `word/footnotes.xml` にあり、そこは保存で原本のまま
+/// 持ち越される — **落ちていたのは本文の印だけ**で、印が消えると
+/// 文章は残ったまま指す物を失う(開くと脚注が消えて見える)。
+fn note_mark(
+    e: &BytesStart,
+    n: &[u8],
+    para: &mut Option<Vec<Run>>,
+    size_pt: f32,
+    font: &Option<String>,
+    fmt: &CharFormat,
+    rep: &mut Report,
+) {
+    let endnote = n == b"endnoteReference";
+    let Some(id) = attr(e, "id") else {
+        // id の無い印は指す先が引けない。作り話をせず、落として報告する
+        rep.note("脚注・文末脚注の印(id が無く、保存で失われる)");
+        return;
+    };
+    match para.as_mut() {
+        Some(p) => {
+            let mut f = fmt.clone();
+            f.footnote = Some(kumihan::FootnoteRef { id, endnote });
+            p.push(Run { text: String::new(), size_pt, font: font.clone(), fmt: f });
+            rep.note("脚注・文末脚注の印(本文には出ないが、保存で残る)");
+        }
+        // 段落の外に印は置けない(置き場が無い)
+        None => rep.note("脚注・文末脚注の印(段落の外。保存で失われる)"),
+    }
+}
+
 /// 節の種類(`<w:type w:val="continuous"/>`)。無ければ docx の既定 `nextPage`。
 fn sect_type(raw: &str) -> String {
     let Some(i) = raw.find("<w:type") else { return "nextPage".into() };
@@ -1123,7 +1157,7 @@ fn parse_document_full(
                     // Empty の枝だが、**両方の枝に置く** — 片方の枝でしか見ていない
                     // せいで実物を取りこぼした前科がある(xlsx の sheetView)
                     b"footnoteReference" | b"endnoteReference" =>
-                        rep.note("脚注・文末脚注の印(本文には出ない。保存で失われる)"),
+                        note_mark(&e, &n, &mut para, size_pt, &font, &fmt, &mut rep),
                     // セル結合。横は列数、縦は restart/continue の区別で持つ
                     b"gridSpan" => if stack.last().is_some() {
                         cell_span = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0);
@@ -1470,7 +1504,7 @@ fn parse_document_full(
                     //  空要素で来るのが普通だが、念のため Start の枝にも置いてある —
                     //  xlsx の sheetView を Empty の枝でしか読んでいなかった轍を踏まない)
                     b"footnoteReference" | b"endnoteReference" =>
-                        rep.note("脚注・文末脚注の印(本文には出ない。保存で失われる)"),
+                        note_mark(&e, &n, &mut para, size_pt, &font, &fmt, &mut rep),
                     // ページの色(空要素で来るのが普通の形)
                     b"background" => {
                         doc.page_color = attr(&e, "color")
@@ -1838,6 +1872,18 @@ fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             let _ = w.get_mut().write_all(a.as_bytes());
         }
         for run in &p.runs {
+            // 脚注・文末脚注の印。**字を持たない run** なので、下の
+            // 「空の run は飛ばす」より先に書く。docx は印を run の中に置き、
+            // 位置がそのまま「どの語に付いた注か」を表す
+            if let Some(fr) = &run.fmt.footnote {
+                let tag = if fr.endnote { "endnoteReference" } else { "footnoteReference" };
+                let style = if fr.endnote { "EndnoteReference" } else { "FootnoteReference" };
+                let _ = w.get_mut().write_all(format!(
+                    concat!(r#"<w:r><w:rPr><w:rStyle w:val="{style}"/></w:rPr>"#,
+                            r#"<w:{tag} w:id="{id}"/></w:r>"#),
+                    style = style, tag = tag, id = esc(&fr.id)).as_bytes());
+                continue;
+            }
             if run.text.is_empty() { continue }
             // 相互参照はフィールドとして書く(見えている値をキャッシュに持つ)
             if let Some(rf) = &run.fmt.field {
@@ -4469,8 +4515,9 @@ mod image_insert_tests {
 mod footnote_report_tests {
     use super::*;
 
-    /// 脚注は模型に持てない(本文を作り直すときに印が落ちる)。
-    /// **黙って落とさない**ことだけは守る — 帳簿に出す。
+    /// 脚注の**印**は run に持ち、保存で原文どおりの位置へ返す。
+    /// 脚注の**文章**(word/footnotes.xml)は原本のまま持ち越される部品なので
+    /// 触らない — 落ちていたのは本文の印だけだった。
     /// 2026-08-10、genoffice の読み手と実物 27 枚を突き合わせて分かった穴。
     fn body(inner: &str) -> String {
         format!(
@@ -4484,12 +4531,100 @@ mod footnote_report_tests {
             r#"<w:p><w:r><w:t>本文</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r></w:p>"#,
         );
         let (doc, rep) = parse_document_xml(&xml);
-        assert_eq!(doc.body_text(), "本文", "本文が変わった");
-        assert!(
-            rep.unsupported.iter().any(|(n, _)| n.contains("脚注")),
-            "脚注の印を黙って落とした: {:?}",
-            rep.unsupported
-        );
+        assert_eq!(doc.body_text(), "本文", "本文が変わった(印は字ではない)");
+        let note = rep.unsupported.iter().find(|(n, _)| n.contains("脚注"))
+            .map(|(n, _)| n.clone())
+            .unwrap_or_else(|| panic!("脚注の印を黙って通した: {:?}", rep.unsupported));
+        // **もう起きない損を帳簿が言い続けてはいけない**
+        assert!(!note.contains("保存で失われる"),
+            "もう起きない損を帳簿が言っている: {note}");
+        assert!(write_document_xml(&doc).contains(r#"w:id="1""#), "保存で印が消えた");
+    }
+
+
+    /// **実物(pandoc / LibreOffice Writer)から写した形。** どちらも
+    /// `<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr>
+    ///  <w:footnoteReference w:id="N"/></w:r>` で一致していた
+    fn 二つの印() -> String {
+        body(concat!(
+            r#"<w:p><w:r><w:t>本文の一つ目です</w:t></w:r>"#,
+            r#"<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteReference w:id="20"/></w:r>"#,
+            r#"<w:r><w:t>。同じ段落にもう一つ</w:t></w:r>"#,
+            r#"<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteReference w:id="21"/></w:r>"#,
+            r#"<w:r><w:t>。</w:t></w:r></w:p>"#,
+        ))
+    }
+
+    /// 印は**元の位置**へ返る。段落の頭へ寄せてはいけない —
+    /// 脚注は「どの語に付いた注か」が意味そのものなので、
+    /// 数式で使った控え(anchors)の作法はここでは使えない
+    #[test]
+    fn 脚注の印は元の位置に戻る() {
+        let (doc, _) = parse_document_xml(&二つの印());
+        let out = write_document_xml(&doc);
+        let 位置 = |s: &str| out.find(s).unwrap_or_else(|| panic!("{s} が無い: {out}"));
+        assert!(位置("本文の一つ目です") < 位置(r#"w:id="20""#), "一つ目の印が前へ出た");
+        assert!(位置(r#"w:id="20""#) < 位置("同じ段落にもう一つ"), "一つ目の印が後ろへ流れた");
+        assert!(位置("同じ段落にもう一つ") < 位置(r#"w:id="21""#), "二つ目の印が前へ出た");
+    }
+
+    /// **id は振り直さない。** 書き手ごとに番号の付け方が違い
+    /// (pandoc は 20 番台、LibreOffice は 2 番台)、
+    /// footnotes.xml 側と番号で繋がっているので、振り直すと切れる
+    #[test]
+    fn 脚注のidは原文のまま返る() {
+        let (doc, _) = parse_document_xml(&二つの印());
+        let out = write_document_xml(&doc);
+        assert!(out.contains(r#"w:id="20""#) && out.contains(r#"w:id="21""#),
+            "id が変わった: {out}");
+        assert_eq!(out.matches("<w:footnoteReference").count(), 2, "印の数が変わった");
+    }
+
+    /// 印の run は**字を持たない**。本文の字としては数えない
+    #[test]
+    fn 印は本文の字にならない() {
+        let (doc, _) = parse_document_xml(&二つの印());
+        assert_eq!(doc.body_text(), "本文の一つ目です。同じ段落にもう一つ。",
+            "印が本文の字に混ざった: {:?}", doc.body_text());
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.runs.iter().filter(|r| r.fmt.footnote.is_some()).count(), 2,
+            "印の run が2つ無い");
+    }
+
+    /// 文末脚注は脚注と別の札で返る(混ぜると別物になる)
+    #[test]
+    fn 文末脚注は文末脚注のまま返る() {
+        let xml = body(r#"<w:p><w:r><w:t>本文</w:t></w:r><w:r><w:endnoteReference w:id="7"/></w:r></w:p>"#);
+        let (doc, _) = parse_document_xml(&xml);
+        let p = doc.paragraphs().next().unwrap();
+        assert!(p.runs.iter().any(|r| r.fmt.footnote.as_ref().is_some_and(|f| f.endnote)),
+            "文末脚注の印になっていない");
+        let out = write_document_xml(&doc);
+        assert!(out.contains("<w:endnoteReference"), "脚注に化けた: {out}");
+        assert!(!out.contains("<w:footnoteReference"), "脚注も出た: {out}");
+    }
+
+    /// 二度往復しても増えも減りもしない
+    #[test]
+    fn 脚注の印は二度往復しても変わらない() {
+        let (doc, _) = parse_document_xml(&二つの印());
+        let once = write_document_xml(&doc);
+        let (doc2, _) = parse_document_xml(&once);
+        let twice = write_document_xml(&doc2);
+        assert_eq!(twice.matches("<w:footnoteReference").count(), 2,
+            "二度目で印が増減した: {twice}");
+        assert_eq!(doc2.body_text(), "本文の一つ目です。同じ段落にもう一つ。");
+    }
+
+    /// id の無い印は指す先が引けない。**作り話をせず落として報告する**
+    #[test]
+    fn idの無い印は落として報告する() {
+        let xml = body(r#"<w:p><w:r><w:t>本文</w:t></w:r><w:r><w:footnoteReference/></w:r></w:p>"#);
+        let (doc, rep) = parse_document_xml(&xml);
+        assert!(doc.paragraphs().next().unwrap().runs.iter()
+            .all(|r| r.fmt.footnote.is_none()), "id が無いのに印を作った");
+        assert!(rep.unsupported.iter().any(|(n, _)| n.contains("id が無く")),
+            "落としたのに報告していない: {:?}", rep.unsupported);
     }
 
     #[test]
