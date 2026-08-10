@@ -12,6 +12,7 @@
     python3 tools/i18n_remap.py --old <古い keys.json>   # 振り直して残りを数える
     python3 tools/i18n_remap.py --todo <loc>             # まだ訳の無い句を出す
 """
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -31,10 +32,43 @@ def save(p, obj):
     Path(p).write_text(json.dumps(obj, ensure_ascii=False), encoding="utf-8")
 
 
+# 材料がどの keys.json に合わせて振ってあるかの印。**二度振りを止めるため**。
+STAMP = I18N / ".remap-stamp"
+
+
+def fingerprint(path) -> str:
+    """keys.json の指紋。番号と原文の対だけを見る(訳や整形は関係ない)"""
+    rows = [(e["i"], e["ja"]) for e in load(path)]
+    return hashlib.sha256(repr(rows).encode("utf-8")).hexdigest()[:16]
+
+
 def remap(old_keys_path):
+    """材料の番号を、古い keys.json から**いまの** keys.json へ振り直す。
+
+    **二度回してはいけない。** 一度目で新しい番号になった材料を、二度目が
+    「古い番号」として読むと、番号は解決してしまうのに**別の文の訳が入る**。
+    黙って12言語ぶんが広範にずれる — `要約` に "Ziel"、`縦書き` に "Ruby"
+    のような壊れ方で、動かしても気づけない(2026-08-10 に実際に起きた)。
+
+    だから**いまの keys.json の指紋を材料の隣に置き**、既にその指紋へ
+    振ってあるなら断る。人が「もう一度念のため」と打っても壊れない。
+    """
+    now = fingerprint(I18N / "keys.json")
+    if STAMP.exists() and STAMP.read_text(encoding="utf-8").strip() == now:
+        sys.exit(
+            "材料は既にいまの keys.json に合わせて振ってあります(指紋 "
+            f"{now})。**二度振ると訳が別の文にずれます** — 何もしていません。\n"
+            "本当にやり直すなら、材料を git で戻してから1度だけ回してください。"
+        )
+    if fingerprint(old_keys_path) == now:
+        sys.exit(
+            f"--old といまの keys.json が同じです(指紋 {now})。"
+            "振り直すものがありません — 先に gen_lang.py --todo を回しましたか?"
+        )
     old = {e["i"]: e["ja"] for e in load(old_keys_path)}
     new = {e["ja"]: e["i"] for e in load(I18N / "keys.json")}
     total = len(new)
+    moved = 0
     for loc in LOCALES:
         p = I18N / f"{loc}.json"
         got, lost, seen = [], 0, set()
@@ -48,10 +82,17 @@ def remap(old_keys_path):
             if new[ja] in seen:
                 continue
             seen.add(new[ja])
+            moved += new[ja] != e["i"]
             got.append({"i": new[ja], "t": e["t"]})
         got.sort(key=lambda e: e["i"])
         save(p, got)
         print(f"{loc:6} {len(got):5} 訳 / 未訳 {total - len(got):4} / 原文が変わって捨てた {lost}")
+    STAMP.write_text(now + "\n", encoding="utf-8")
+    # **動いた番号の数を言う。** 0 なら振り直す必要が無かった(=間違えて
+    # 回した)ということで、黙って通すと次の一手が危ない
+    print(f"番号が動いた項目 {moved} 件。指紋 {now} を {STAMP.name} に控えました")
+    if moved == 0:
+        print("  ※ 1件も動いていません。--old の指定を確かめてください")
 
 
 def todo(loc):
