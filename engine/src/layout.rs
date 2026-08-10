@@ -65,7 +65,35 @@ pub(super) fn is_word_char(c: char) -> bool {
     c.is_ascii_alphanumeric()
 }
 
-pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut usize) -> Vec<Tok> {
+/// 注の通し番号。**脚注と文末脚注は別々に数える** — docx が
+/// `footnotes.xml` と `endnotes.xml` を別に番号付けするのと同じで、
+/// 1本の連番にすると脚注が「1・3」文末脚注が「2・4」と飛んで見える
+#[derive(Debug, Clone, Copy, Default)]
+pub struct NoteCount {
+    pub foot: usize,
+    pub end: usize,
+    pub foot_fmt: NoteNumFmt,
+    pub end_fmt: NoteNumFmt,
+}
+
+impl NoteCount {
+    fn of(doc: &Document) -> NoteCount {
+        NoteCount { foot: 0, end: 0,
+                    foot_fmt: doc.footnote_fmt, end_fmt: doc.endnote_fmt }
+    }
+    /// 次の番号を1つ進めて、その書式の字にする
+    fn next(&mut self, endnote: bool) -> String {
+        if endnote {
+            self.end += 1;
+            self.end_fmt.label(self.end)
+        } else {
+            self.foot += 1;
+            self.foot_fmt.label(self.foot)
+        }
+    }
+}
+
+pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount) -> Vec<Tok> {
     let mut out = Vec::new();
     // 段落の頭からのバイト位置。run をまたいで通しで数える
     let mut off = 0usize;
@@ -73,12 +101,12 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut usize) -> Vec<Tok
         // 脚注の印。**番号は出てくる順**(id の数ではない)に振る。
         // 箇条書きの印と同じで**本文の字ではない**ので、
         // off は動かさない — 動かすとカーソルが本文とずれる
-        if run.fmt.footnote.is_some() {
-            *notes += 1;
+        if let Some(fr) = &run.fmt.footnote {
+            let label = notes.next(fr.endnote);
             let size = run.size_pt * 0.7;
             let mut fmt = run.fmt.clone();
             fmt.superscript = true;
-            for ch in notes.to_string().chars() {
+            for ch in label.chars() {
                 out.push(Tok::One(ch, m.advance_mm(ch, size), size,
                                   fmt.clone(), run.font.clone(), off));
             }
@@ -129,7 +157,7 @@ pub struct Frame {
 ///
 /// 段落を行長で折る。x はまだ置かない(呼ぶ側が揃え・字下げを決める)。
 pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
-              hyphenate: bool, notes: &mut usize) -> Vec<Vec<Cell>> {
+              hyphenate: bool, notes: &mut NoteCount) -> Vec<Vec<Cell>> {
     let mut done: Vec<Vec<Cell>> = Vec::new();
     let mut cur: Vec<Cell> = Vec::new();
     let mut w_cur = 0.0f32;
@@ -305,7 +333,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     // (今までの道を1ミリも変えないため — 節の無い文書が大多数)
     let sect_geo = section_geometry(doc);
     // 脚注の通し番号。**文書に出てくる順**に振る(表の中の印も同じ流れで数える)
-    let mut note_no = 0usize;
+    let mut note_no = NoteCount::of(doc);
     if let Some(first) = sect_geo.first() {
         // **0 から**置く。上の余白(y0_mm)から置くと、その手前を引いたときに
         // 「節が無い」と読めてしまい、**1ページ目だけ最後の節の紙**で刷られる
@@ -561,7 +589,14 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
     }
     // 脚注の行の高さ。本文より小さく組む(Word の作法に近い比)
     let note_lh = frame.line_height_mm * 0.82;
-    for (i, (fr, at_y)) in anchors.iter().enumerate() {
+    // 番号は本文の印と**同じ数え方**でなければ意味がない。だから
+    // ここでも脚注と文末脚注を別々に、同じ順で数え直す
+    let mut count = NoteCount::of(doc);
+    // 文末脚注は紙の下ではなく**文書の末尾**へ。本文の行として後ろに足すので、
+    // 普通に頁をまたいで流れる(Word もそこに集める)
+    let mut tail: Vec<NoteBlock> = Vec::new();
+
+    for (fr, at_y) in anchors.iter() {
         // **id だけで引いてはいけない。** docx は footnotes.xml と
         // endnotes.xml を別々に番号付けするので、どちらも 1・2・3… から
         // 始まり **id は必ず衝突する**。脚注か文末脚注かまで見て一意になる
@@ -571,13 +606,13 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
             // 印はあるのに中身が引けない。**作り話をせず、出さない**
             continue;
         };
-        let no = i + 1;
+        let label = count.next(fr.endnote);
         let mut lines: Vec<Line> = Vec::new();
         let mut y = 0.0f32;
         for (pi, para) in note.paragraphs.iter().enumerate() {
-            // 番号は脚注の頭に置く。箇条書きの印と同じ扱いで**本文の字ではない**
-            let marker = (pi == 0).then(|| format!("{no} "));
-            let mut throwaway = 0usize;
+            // 番号は注の頭に置く。箇条書きの印と同じ扱いで**本文の字ではない**
+            let marker = (pi == 0).then(|| format!("{label} "));
+            let mut throwaway = NoteCount::default();
             for cells in break_para(para, m, frame.measure_mm, marker.as_deref(),
                                     doc.hyphenate, &mut throwaway) {
                 let mut x = 0.0f32;
@@ -591,7 +626,27 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
         if lines.is_empty() {
             continue;
         }
-        sheet.notes.push(NoteBlock { no, at_y: *at_y, lines, h_mm: y });
+        let block = NoteBlock { no: 0, at_y: *at_y, lines, h_mm: y };
+        if fr.endnote {
+            tail.push(block);
+        } else {
+            sheet.notes.push(block);
+        }
+    }
+
+    // 文末脚注を本文の後ろへ流す。**紙の下(sheet.notes)には入れない** —
+    // 入れると印のあるページの下に出てしまい、置き場が違う
+    if !tail.is_empty() {
+        let mut y = sheet.lines.iter().map(|l| l.y_mm).fold(frame.y0_mm, f32::max);
+        // 本文との間を1行あける(仕切りは引かない — 文末は改まった場所なので)
+        y += frame.line_height_mm;
+        for b in tail {
+            for l in b.lines {
+                y += 0.0;
+                sheet.lines.push(Line { y_mm: y + l.y_mm, ..l });
+            }
+            y += b.h_mm;
+        }
     }
 }
 
@@ -633,7 +688,7 @@ pub fn layout_hf(
                 r.text = r.text.replace(PAGES_MARK, &tot);
             }
         }
-        for cells in break_para(&para, m, measure, None, false, &mut 0) {
+        for cells in break_para(&para, m, measure, None, false, &mut NoteCount::default()) {
             let w: f32 = cells.iter().map(|c| c.w_mm).sum();
             let slack = (measure - w).max(0.0);
             let mut x = match para.align {
@@ -857,7 +912,7 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
 /// 罫線は「格子」ではなく**結合後のセルの縁**に引く — 結合の中を
 /// 線が横切ると、様式の枠が壊れて見える。
 pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mut Sheet,
-                table_no: usize, hyphenate: bool, notes: &mut usize) -> f32 {
+                table_no: usize, hyphenate: bool, notes: &mut NoteCount) -> f32 {
     // 列数は「セルの数」ではなく「セルが占める格子の数」
     let ncols = table
         .rows

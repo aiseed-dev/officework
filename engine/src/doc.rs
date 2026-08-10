@@ -15,6 +15,74 @@ pub struct RefField {
     pub page: bool,
 }
 
+/// 注の番号の書式(docx の `w:footnotePr` / `w:endnotePr` の `w:numFmt`)。
+///
+/// **脚注と文末脚注で既定が違う** — Word も LibreOffice も、脚注は算用数字、
+/// 文末脚注はローマ数字の小文字にする。実物(both-notes.docx)も
+/// `decimal` と `lowerRoman` を明記していた。
+///
+/// ここ(模型)の既定は算用数字で、**docx の既定を知っているのは読み手のほう**
+/// (settings.xml が黙っていたときに文末脚注をローマ数字にするのは ooxml の仕事)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NoteNumFmt {
+    #[default]
+    Decimal,
+    LowerRoman,
+    UpperRoman,
+    LowerLetter,
+    UpperLetter,
+}
+
+impl NoteNumFmt {
+    /// docx の `w:numFmt w:val`。知らない書式は算用数字に落とす
+    /// (**知った顔をしない** — 出ない番号より出る番号のほうがまし)
+    pub fn from_docx(v: &str) -> NoteNumFmt {
+        match v {
+            "lowerRoman" => NoteNumFmt::LowerRoman,
+            "upperRoman" => NoteNumFmt::UpperRoman,
+            "lowerLetter" => NoteNumFmt::LowerLetter,
+            "upperLetter" => NoteNumFmt::UpperLetter,
+            _ => NoteNumFmt::Decimal,
+        }
+    }
+
+    /// n(1 始まり)をこの書式の字にする
+    pub fn label(self, n: usize) -> String {
+        match self {
+            NoteNumFmt::Decimal => n.to_string(),
+            NoteNumFmt::LowerRoman => roman(n).to_lowercase(),
+            NoteNumFmt::UpperRoman => roman(n),
+            NoteNumFmt::LowerLetter => letter(n).to_lowercase(),
+            NoteNumFmt::UpperLetter => letter(n),
+        }
+    }
+}
+
+/// 1 → I、4 → IV。0 以下は空にせず 1 として扱う(番号は必ず出す)
+fn roman(n: usize) -> String {
+    const T: &[(usize, &str)] = &[
+        (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
+        (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+    ];
+    let mut n = n.max(1);
+    let mut out = String::new();
+    for (v, s) in T {
+        while n >= *v {
+            out.push_str(s);
+            n -= v;
+        }
+    }
+    out
+}
+
+/// 1 → A、27 → AA(Word の付け方)
+fn letter(n: usize) -> String {
+    let n = n.max(1);
+    let i = (n - 1) % 26;
+    let rep = (n - 1) / 26 + 1;
+    std::iter::repeat_n((b'A' + i as u8) as char, rep).collect()
+}
+
 /// 脚注ひとつぶんの中身。本文の印とは `id` で繋がる。
 #[derive(Debug, Clone, Default)]
 pub struct Footnote {
@@ -455,6 +523,10 @@ pub struct Document {
     /// ここは**紙面に出すためだけ**に読む(番号を振り、下の領域に組む)。
     /// 仕切り線の定義(`w:type="separator"` など)は本物の脚注ではないので入れない
     pub footnotes: Vec<Footnote>,
+    /// 脚注の番号の書式(docx の `w:footnotePr/w:numFmt`)
+    pub footnote_fmt: NoteNumFmt,
+    /// 文末脚注の番号の書式(`w:endnotePr/w:numFmt`)。**脚注とは別**
+    pub endnote_fmt: NoteNumFmt,
     /// ヘッダー(docx の headerN.xml)。全ページ同じもの(type="default")だけを持つ
     pub header: HeadFoot,
     /// フッター(docx の footerN.xml)
@@ -1097,7 +1169,7 @@ pub(super) fn normalize_runs(runs: &mut Vec<Run>, size_pt: f32) {
 
 impl Document {
     pub fn plain(text: &str, size_pt: f32) -> Document {
-        Document {
+        Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(),
             font: None,
             page: None,
             sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,

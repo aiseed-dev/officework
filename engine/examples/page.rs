@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out = std::env::args().nth(1).unwrap_or_else(|| "page.pdf".into());
     let m = Metrics::new(font_data()).map_err(|e| e.to_string())?;
 
-    let doc = Document { footnotes: Vec::new(),
+    let doc = Document { footnotes: Vec::new(), footnote_fmt: Default::default(), endnote_fmt: Default::default(),
         font: None,
         page: None,
         sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,

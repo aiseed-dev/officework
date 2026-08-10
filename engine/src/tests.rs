@@ -530,7 +530,7 @@ mod table_layout_tests {
             }],
             ..Default::default()
         };
-        let mut d = Document { font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
+        let mut d = Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
@@ -569,7 +569,7 @@ mod merge_layout_tests {
     fn sheet_of(rows: Vec<Vec<Cellbox>>) -> Sheet {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let d = Document {
+        let d = Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(),
             font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table { col_mm: vec![], rows })],
         };
@@ -644,7 +644,7 @@ mod gridcol_tests {
     fn rules_of(col_mm: Vec<f32>) -> Vec<[f32; 4]> {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let d = Document {
+        let d = Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(),
             font: None,
             page: None,
             sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
@@ -1422,14 +1422,18 @@ mod footnote_layout_tests {
             ..Default::default()
         };
         let s = 組む(&d);
-        assert_eq!(s.notes.len(), 2, "注が2つ組まれていない");
+        // **紙の下に来るのは脚注だけ。** 文末脚注は文書の末尾へ回るので
+        // ここには入らない(2026-08-11 に置き場を分けた)
+        assert_eq!(s.notes.len(), 1, "紙の下に文末脚注まで来た");
         let 文 = |n: &NoteBlock| -> String {
             n.lines.iter().flat_map(|l| l.cells.iter()).map(|c| c.ch).collect()
         };
         assert!(文(&s.notes[0]).contains("これは脚注"),
             "脚注の印に別の注が付いた: {:?}", 文(&s.notes[0]));
-        assert!(文(&s.notes[1]).contains("これは文末脚注"),
-            "文末脚注の印に別の注が付いた: {:?}", 文(&s.notes[1]));
+        let 全文: String = s.lines.iter()
+            .flat_map(|l| l.cells.iter()).map(|c| c.ch).collect();
+        assert!(全文.contains("これは文末脚注"), "文末脚注が末尾に出ていない");
+        assert!(!全文.contains("これは脚注"), "脚注まで本文へ流れた");
     }
 
     /// **番号は出てくる順**。docx の id は書き手ごとにばらばら
@@ -1510,5 +1514,113 @@ mod footnote_layout_tests {
             .map(|c| c.ch)
             .collect();
         assert_eq!(sup, "123", "表を挟むと番号が飛ぶ: {sup:?}");
+    }
+}
+
+
+#[cfg(test)]
+mod endnote_tests {
+    use crate::*;
+
+    fn 組む(d: &Document) -> Sheet {
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
+    }
+    fn 印(id: &str, endnote: bool) -> Run {
+        Run { text: String::new(), size_pt: 10.5, font: None,
+              fmt: CharFormat { footnote: Some(FootnoteRef { id: id.into(), endnote }),
+                                ..Default::default() } }
+    }
+    fn 字(t: &str) -> Run {
+        Run { text: t.into(), size_pt: 10.5, font: None, fmt: CharFormat::default() }
+    }
+    fn 段(runs: Vec<Run>) -> Block {
+        Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
+    }
+    fn 注(id: &str, endnote: bool, t: &str) -> Footnote {
+        Footnote { id: id.into(), endnote,
+                   paragraphs: vec![Paragraph { runs: vec![字(t)], line_spacing: 1.0,
+                                                ..Default::default() }] }
+    }
+
+    /// **id は必ず衝突する。** docx は footnotes.xml と endnotes.xml を
+    /// 別々に番号付けするので、両方を含む文書ではどちらも 1・2・3… になる。
+    /// 実物(both-notes.docx)は脚注 2・3 と文末脚注 2・3 だった
+    fn 混在() -> Document {
+        Document {
+            blocks: vec![段(vec![字("あ"), 印("2", false), 字("い"), 印("2", true)])],
+            footnotes: vec![
+                注("2", false, "脚注のほう"),
+                注("2", true, "文末脚注のほう"),
+            ],
+            endnote_fmt: NoteNumFmt::LowerRoman,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn 同じidでも脚注と文末脚注を取り違えない() {
+        let s = 組む(&混在());
+        let 下: Vec<String> = s.notes.iter()
+            .map(|n| n.lines.iter().flat_map(|l| l.cells.iter()).map(|c| c.ch).collect())
+            .collect();
+        assert_eq!(下.len(), 1, "紙の下に文末脚注まで出た: {下:?}");
+        assert!(下[0].contains("脚注のほう"), "紙の下が取り違えている: {下:?}");
+        let 全文: String = s.lines.iter()
+            .flat_map(|l| l.cells.iter()).map(|c| c.ch).collect();
+        assert!(全文.contains("文末脚注のほう"), "文末脚注が出ていない: {全文:?}");
+    }
+
+    /// **番号は別々に数える。** 1本の連番にすると
+    /// 脚注が「1・3」文末脚注が「2・4」と飛んで見える
+    #[test]
+    fn 脚注と文末脚注は別々に数える() {
+        let d = Document {
+            blocks: vec![段(vec![
+                字("あ"), 印("2", false), 印("2", true),
+                字("い"), 印("3", false), 印("3", true),
+            ])],
+            footnotes: vec![
+                注("2", false, "脚1"), 注("3", false, "脚2"),
+                注("2", true, "文末1"), 注("3", true, "文末2"),
+            ],
+            endnote_fmt: NoteNumFmt::LowerRoman,
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let 印の字: String = s.lines[0].cells.iter()
+            .filter(|c| c.fmt.superscript).map(|c| c.ch).collect();
+        // 脚注 1・2(算用数字)と 文末脚注 i・ii(ローマ数字)が交互に出る
+        assert_eq!(印の字, "1i2ii", "番号の振り方が違う: {印の字:?}");
+    }
+
+    /// 文末脚注は**紙の下ではなく文書の末尾**。置き場が違う
+    #[test]
+    fn 文末脚注は本文の後ろへ流れる() {
+        let s = 組む(&混在());
+        assert!(s.notes.iter().all(|n| !n.lines.is_empty()), "紙の下が空");
+        // 本文の最後の行より下に、文末脚注の行が来る
+        let 本文の底 = s.lines.iter()
+            .filter(|l| l.cells.iter().any(|c| c.ch == 'あ' || c.ch == 'い'))
+            .map(|l| l.y_mm).fold(0.0f32, f32::max);
+        let 文末の頭 = s.lines.iter()
+            .filter(|l| l.cells.iter().map(|c| c.ch).collect::<String>().contains("文末脚注のほう"))
+            .map(|l| l.y_mm).fold(f32::MAX, f32::min);
+        assert!(文末の頭 > 本文の底,
+            "文末脚注が本文より上に来た: 本文の底={本文の底} 文末={文末の頭}");
+    }
+
+    #[test]
+    fn 番号の書式を字にする() {
+        assert_eq!(NoteNumFmt::Decimal.label(4), "4");
+        assert_eq!(NoteNumFmt::LowerRoman.label(4), "iv");
+        assert_eq!(NoteNumFmt::UpperRoman.label(9), "IX");
+        assert_eq!(NoteNumFmt::LowerLetter.label(1), "a");
+        assert_eq!(NoteNumFmt::UpperLetter.label(27), "AA");
+        // 知らない書式は算用数字に落とす(知った顔をしない)
+        assert_eq!(NoteNumFmt::from_docx("chicago"), NoteNumFmt::Decimal);
+        assert_eq!(NoteNumFmt::from_docx("lowerRoman"), NoteNumFmt::LowerRoman);
     }
 }

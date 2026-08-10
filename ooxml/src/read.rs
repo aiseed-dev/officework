@@ -159,6 +159,14 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         };
     }
     doc.footnotes = notes;
+    // 注の番号の書式(settings.xml)。**docx の既定はここが知っている** —
+    // 黙っていれば脚注は算用数字、**文末脚注はローマ数字の小文字**
+    // (Word も LibreOffice もそうする。模型側の既定は算用数字なので、
+    //  文末脚注ぶんはここで入れ直す)
+    doc.footnote_fmt = note_num_fmt(&sxml, "footnotePr")
+        .unwrap_or(kumihan::NoteNumFmt::Decimal);
+    doc.endnote_fmt = note_num_fmt(&sxml, "endnotePr")
+        .unwrap_or(kumihan::NoteNumFmt::LowerRoman);
     if let Some(i) = sxml.find("<w:autoHyphenation") {
         let head = &sxml[i..(i + 60).min(sxml.len())];
         doc.hyphenate = !(head.contains("w:val=\"0\"") || head.contains("w:val=\"false\""));
@@ -448,6 +456,21 @@ pub(super) fn parse_sect(raw: &str) -> kumihan::PageSetup {
         bottom_mm: g("<w:pgMar", "w:bottom").unwrap_or(d.bottom_mm),
         columns: cols.clamp(1, 8),
     }
+}
+
+/// `settings.xml` の `w:footnotePr` / `w:endnotePr` から番号の書式を引く。
+/// **その札の中の** `w:numFmt` だけを見る — 文書には他にも `w:numFmt` が
+/// あるので、札の範囲を切らずに探すと隣の設定を拾う
+fn note_num_fmt(sxml: &str, tag: &str) -> Option<kumihan::NoteNumFmt> {
+    let open = format!("<w:{tag}>");
+    let close = format!("</w:{tag}>");
+    let s0 = sxml.find(&open)? + open.len();
+    let e0 = sxml[s0..].find(&close)? + s0;
+    let seg = &sxml[s0..e0];
+    let k = "<w:numFmt w:val=\"";
+    let v0 = seg.find(k)? + k.len();
+    let v1 = seg[v0..].find('"')? + v0;
+    Some(kumihan::NoteNumFmt::from_docx(&seg[v0..v1]))
 }
 
 /// `word/footnotes.xml`(`endnotes.xml`)から脚注の中身を読む。
