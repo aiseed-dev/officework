@@ -6,7 +6,7 @@
 //! 「開いて・直して・刷る」を試すための普通の帳票。中身はすべて架空。
 //! サンプルは生成物 — 直すのはこのファイル。
 
-use sheet::model::{Borders, CondKind, CondOp, CondRule, HAlign, VAlign, Validation};
+use sheet::model::{Borders, CondKind, CondLook, CondOp, CondRule, HAlign, VAlign, Validation};
 use sheet::{recalc, Book, Cell, Pos};
 
 /// 品番マスタ(品番・品名・単価)。カタログ(gen_catalog.py の同梱データ)と
@@ -198,8 +198,10 @@ fn suitou() -> Book {
     s.cond.push(CondRule {
         range: (Pos::new(1, 4), Pos::new(30, 4)),
         kind: CondKind::Cmp(CondOp::Lt, 10000.0),
-        color: None,
-        fill: Some("FCE4D6".into()),
+        look: CondLook {
+            fill: Some("FCE4D6".into()),
+            ..Default::default()
+        },
     });
     s.comments.insert(
         Pos::new(7, 4),
@@ -260,8 +262,10 @@ fn seiseki() -> Book {
     s.cond.push(CondRule {
         range: (Pos::new(1, 1), Pos::new(5, 3)),
         kind: CondKind::Cmp(CondOp::Gt, 79.0),
-        color: None,
-        fill: Some("E2EFDA".into()),
+        look: CondLook {
+            fill: Some("E2EFDA".into()),
+            ..Default::default()
+        },
     });
     recalc(s);
     b

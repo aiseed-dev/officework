@@ -1041,16 +1041,32 @@ fn absolute(r: &str) -> String {
 /// 条件付き書式の見た目を、向こうの `dxfStyles` の形へ。
 ///
 /// **`CellStyle` と同じ器**を使う(向こうも `Vec<CellStyle>`)。真偽は必ず出し、
-/// 色は `#RRGGBB`。持っているのは文字色と塗りだけなので、他は既定のまま。
+/// 色は `#RRGGBB`。
+///
+/// **飾りは三択を二択に畳む。** こちらの `CondLook` は「触らない(None)」と
+/// 「外す(Some(false))」を分けて持つが、向こうの契約は素の bool しか無い。
+/// どちらも `false` にする — 契約に無い区別を勝手に足さない
+/// (2026-08-10。前は**いつも false** で、Excel で赤字・太字にした規則が
+/// 太字と文字色を落として届いていた)。
+/// `wrapText`・`diagonalUp/Down` はこちらが dxf から読んでいないので false
 fn dxf_value(c: &sheet::model::CondRule) -> Value {
     let mut o = Map::new();
-    for k in ["bold", "italic", "underline", "strikethrough", "wrapText", "diagonalUp", "diagonalDown"] {
+    let lk = &c.look;
+    for (k, v) in [
+        ("bold", lk.bold),
+        ("italic", lk.italic),
+        ("underline", lk.underline),
+        ("strikethrough", lk.strike),
+    ] {
+        o.insert(k.into(), json!(v.unwrap_or(false)));
+    }
+    for k in ["wrapText", "diagonalUp", "diagonalDown"] {
         o.insert(k.into(), json!(false));
     }
-    if let Some(x) = &c.color {
+    if let Some(x) = &lk.color {
         o.insert("fontColor".into(), json!(hex_color(x)));
     }
-    if let Some(x) = &c.fill {
+    if let Some(x) = &lk.fill {
         o.insert("fillColor".into(), json!(hex_color(x)));
     }
     Value::Object(o)

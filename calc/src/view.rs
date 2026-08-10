@@ -1170,14 +1170,22 @@ impl Render for Calc {
                 let mut cond_color: Option<gpui::Rgba> = None;
                 let mut cond_bar: Option<(f32, gpui::Rgba)> = None;
                 let mut cond_icon: Option<(&'static str, gpui::Rgba)> = None;
+                // 条件付き書式が当たったときの飾り。**None は「触らない」** —
+                // セル自身の書式をそのまま活かす(Some(false) だけが外す)
+                let (mut cb, mut ci, mut cu, mut cs) = (None, None, None, None);
                 for (rule, aux) in &cond_prep {
                     if rule.hits(p, &v, aux) {
-                        if let Some(fill) = &rule.fill {
+                        let lk = &rule.look;
+                        if let Some(fill) = &lk.fill {
                             base = hex(fill);
                         }
-                        if let Some(c) = &rule.color {
+                        if let Some(c) = &lk.color {
                             cond_color = Some(hex(c));
                         }
+                        cb = lk.bold.or(cb);
+                        ci = lk.italic.or(ci);
+                        cu = lk.underline.or(cu);
+                        cs = lk.strike.or(cs);
                     }
                     // バー/スケール/アイコンは 0〜1 の物差しで描く
                     if let Some(t) = rule.scalar(p, &v, aux) {
@@ -1230,16 +1238,16 @@ impl Render for Calc {
                         gpui::Rgba { r: base.r * 0.55 + 0.43, g: base.g * 0.55 + 0.30, b: base.b * 0.55 + 0.08, a: 1.0 }
                     });
                 }
-                if f.bold {
+                if cb.unwrap_or(f.bold) {
                     d = d.font_weight(gpui::FontWeight::BOLD);
                 }
-                if f.italic {
+                if ci.unwrap_or(f.italic) {
                     d = d.italic();
                 }
-                if f.underline {
+                if cu.unwrap_or(f.underline) {
                     d = d.underline();
                 }
-                if f.strike {
+                if cs.unwrap_or(f.strike) {
                     d = d.line_through();
                 }
                 // 下付きは小さく下げて見せる(xlsx へは vertAlign で入る)

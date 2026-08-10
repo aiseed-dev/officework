@@ -1189,15 +1189,45 @@ impl Validation {
     }
 }
 
+/// 条件付き書式が当たったときの見た目(xlsx の `dxf`)。
+///
+/// **色と塗りだけではない。** dxf は太字・斜体・下線・取り消し線も持てる。
+/// 前は色と塗りしか読んでおらず、Excel で「赤字・太字」にした規則が
+/// **規則は残ったまま太字と文字色だけ落ちて**開いていた
+/// (2026-08-10 pyoffice セッションの報告。`~/xlsx-corpus/make_cond.xlsx`)。
+/// 規則が消えるより気付きにくい壊れ方で、画面では「条件付き書式が効いて
+/// いるのに赤くならない」と出る。
+///
+/// 飾りが `Option<bool>` なのは **dxf が三択だから** — 書いていない
+/// (触らない)・`<b/>`(太字にする)・`<b val="0"/>`(太字を外す)。
+/// `bool` に潰すと「触らない」と「外す」の区別が消えて、
+/// 元から太字のセルが規則に当たった途端に細くなる
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CondLook {
+    /// 文字色 RRGGBB
+    pub color: Option<String>,
+    /// 塗り RRGGBB
+    pub fill: Option<String>,
+    pub bold: Option<bool>,
+    pub italic: Option<bool>,
+    pub underline: Option<bool>,
+    pub strike: Option<bool>,
+}
+
+impl CondLook {
+    /// 色も塗りも飾りも無い(= dxf を書く必要が無い)
+    pub fn is_empty(&self) -> bool {
+        *self == CondLook::default()
+    }
+}
+
 /// 条件付き書式の1本。「範囲の値が◯◯なら、この見た目」。
 #[derive(Debug, Clone, PartialEq)]
 pub struct CondRule {
     pub range: (Pos, Pos),
     pub kind: CondKind,
-    /// 文字色 RRGGBB
-    pub color: Option<String>,
-    /// 塗り RRGGBB
-    pub fill: Option<String>,
+    /// 当たったときの見た目
+    pub look: CondLook,
 }
 
 /// 規則の種類(第1版 2026-08-07 で拡張 — 前は数の比較だけ)。
@@ -2809,7 +2839,7 @@ mod sort_tests {
         let rule = CondRule {
             range: (Pos::new(0, 0), Pos::new(2, 0)),
             kind: CondKind::Bar("638EC6".into()),
-            color: None, fill: None,
+            look: CondLook::default(),
         };
         let aux = rule.aux(&s);
         assert_eq!(aux.min, 10.0);
@@ -2822,7 +2852,7 @@ mod sort_tests {
         let sc = CondRule {
             range: (Pos::new(0, 0), Pos::new(2, 0)),
             kind: CondKind::Scale("FF0000".into(), Some("FFFF00".into()), "00FF00".into()),
-            color: None, fill: None,
+            look: CondLook::default(),
         };
         assert_eq!(sc.scale_color(0.0).unwrap(), "FF0000");
         assert_eq!(sc.scale_color(0.5).unwrap(), "FFFF00");

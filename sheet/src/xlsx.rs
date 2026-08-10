@@ -211,13 +211,21 @@ fn col_width(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
     }
 }
 
-/// styles.xml の dxfs(条件付き書式の見た目)→ (文字色, 塗り) の列。
-fn parse_dxfs(xml: &str) -> Vec<(Option<String>, Option<String>)> {
+/// styles.xml の dxfs(条件付き書式の見た目)→ `CondLook` の列。
+///
+/// **飾りは三択。** `<b/>` は太字にする、`<b val="0"/>` は太字を外す、
+/// 書いていなければ触らない。`val` の既定は true(xlsx の約束)なので、
+/// 属性が無ければ Some(true)。
+///
+/// 下線 `<u/>` は `val="none"` のときだけ「外す」— `single`・`double` は
+/// どれも「引く」に畳む(こちらは太さの別を持たない)
+fn parse_dxfs(xml: &str) -> Vec<crate::model::CondLook> {
+    use crate::model::CondLook;
     let mut r = Reader::from_str(xml);
-    let mut out = Vec::new();
+    let mut out: Vec<CondLook> = Vec::new();
     let mut buf = Vec::new();
     let (mut in_dxfs, mut in_dxf, mut in_font, mut in_fill) = (false, false, false, false);
-    let mut cur: (Option<String>, Option<String>) = (None, None);
+    let mut cur = CondLook::default();
     loop {
         match r.read_event_into(&mut buf) {
             Ok(Event::Eof) | Err(_) => break,
@@ -225,12 +233,12 @@ fn parse_dxfs(xml: &str) -> Vec<(Option<String>, Option<String>)> {
                 b"dxfs" => in_dxfs = true,
                 b"dxf" if in_dxfs => {
                     in_dxf = true;
-                    cur = (None, None);
+                    cur = CondLook::default();
                 }
                 b"font" if in_dxf => in_font = true,
                 b"fill" if in_dxf => in_fill = true,
                 b"color" if in_font => {
-                    cur.0 = attr(&e, "rgb").map(|v| {
+                    cur.color = attr(&e, "rgb").map(|v| {
                         // 先頭の FF は 8桁(AARRGGBB)のときだけ透過(FFF2CC を壊さない)
                         if v.len() == 8 { v[2..].to_string() } else { v }
                     });
@@ -245,9 +253,23 @@ fn parse_dxfs(xml: &str) -> Vec<(Option<String>, Option<String>)> {
                     let c = attr(&e, "rgb").map(|v| {
                         if v.len() == 8 { v[2..].to_string() } else { v }
                     });
-                    if c.is_some() && (local(e.name().as_ref()) == b"bgColor" || cur.1.is_none()) {
-                        cur.1 = c;
+                    if c.is_some() && (local(e.name().as_ref()) == b"bgColor" || cur.fill.is_none()) {
+                        cur.fill = c;
                     }
+                }
+                // 飾り。`val` が無ければ true(xlsx の既定)
+                b"b" | b"i" | b"strike" if in_font => {
+                    let on = attr(&e, "val").map(|v| v != "0" && v != "false").unwrap_or(true);
+                    match local(e.name().as_ref()) {
+                        b"b" => cur.bold = Some(on),
+                        b"i" => cur.italic = Some(on),
+                        _ => cur.strike = Some(on),
+                    }
+                }
+                b"u" if in_font => {
+                    // 太さの別(single/double/…)は持たない。none だけが「外す」
+                    let on = attr(&e, "val").map(|v| v != "none").unwrap_or(true);
+                    cur.underline = Some(on);
                 }
                 _ => {}
             },
@@ -1234,7 +1256,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
 
     // 書式表を先に読む。セルの s= はこの索引
     let mut styles: Vec<crate::model::CellFormat> = Vec::new();
-    let mut dxfs: Vec<(Option<String>, Option<String>)> = Vec::new();
+    let mut dxfs: Vec<crate::model::CondLook> = Vec::new();
     // テーマの色(styles より先に読む — 色を解くのに要る)
     let theme_colors: Vec<String> = {
         let mut tx = String::new();
@@ -1516,7 +1538,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 sqref: Option<(Pos, Pos)>,
                 taken: Option<(String, Option<usize>)>,
                 formula: &str,
-                dxfs: &[(Option<String>, Option<String>)],
+                dxfs: &[crate::model::CondLook],
                 cf_colors: &[String],
                 icon_name: Option<&str>,
                 rep: &mut Report,
@@ -1585,12 +1607,10 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     };
                     match kind {
                         Some(kind) => {
-                            let (color, fill) = dxf
+                            let look = dxf
                                 .and_then(|i| dxfs.get(i).cloned())
-                                .unwrap_or((None, None));
-                            sh.cond.push(crate::model::CondRule {
-                                range, kind, color, fill,
-                            });
+                                .unwrap_or_default();
+                            sh.cond.push(crate::model::CondRule { range, kind, look });
                         }
                         None => rep.note(
                             "条件付き書式(読めない条件。保存で失われる)",
@@ -3028,13 +3048,12 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         None => crate::styles::build(&used),
     };
     // 条件付き書式の見た目(dxfs)。全シートの規則から集めて番号を振る
-    let dxf_list: Vec<(Option<String>, Option<String>)> = {
-        let mut v = Vec::new();
+    let dxf_list: Vec<crate::model::CondLook> = {
+        let mut v: Vec<crate::model::CondLook> = Vec::new();
         for sh in &book.sheets {
             for r in &sh.cond {
-                let pair = (r.color.clone(), r.fill.clone());
-                if !v.contains(&pair) {
-                    v.push(pair);
+                if !v.contains(&r.look) {
+                    v.push(r.look.clone());
                 }
             }
         }
@@ -3044,12 +3063,34 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         styles_xml
     } else {
         let mut dx = format!("<dxfs count=\"{}\">", dxf_list.len());
-        for (color, fill) in &dxf_list {
+        for look in &dxf_list {
             dx.push_str("<dxf>");
-            if let Some(c) = color {
-                dx.push_str(&format!("<font><color rgb=\"FF{c}\"/></font>"));
+            // font の中身は**順番が決まっている**(b, i, strike, u, color)。
+            // 並べ替えると Excel が styles.xml ごと撥ねる
+            let f = |on: Option<bool>, tag: &str| match on {
+                Some(true) => format!("<{tag}/>"),
+                Some(false) => format!("<{tag} val=\"0\"/>"),
+                None => String::new(),
+            };
+            let font = format!(
+                "{}{}{}{}{}",
+                f(look.bold, "b"),
+                f(look.italic, "i"),
+                f(look.strike, "strike"),
+                match look.underline {
+                    Some(true) => "<u/>".to_string(),
+                    Some(false) => "<u val=\"none\"/>".to_string(),
+                    None => String::new(),
+                },
+                look.color
+                    .as_ref()
+                    .map(|c| format!("<color rgb=\"FF{c}\"/>"))
+                    .unwrap_or_default(),
+            );
+            if !font.is_empty() {
+                dx.push_str(&format!("<font>{font}</font>"));
             }
-            if let Some(f) = fill {
+            if let Some(f) = &look.fill {
                 dx.push_str(&format!(
                     "<fill><patternFill><bgColor rgb=\"FF{f}\"/></patternFill></fill>"
                 ));
@@ -3715,7 +3756,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             for (n, r) in sh.cond.iter().enumerate() {
                 let dxf = dxf_list
                     .iter()
-                    .position(|p| *p == (r.color.clone(), r.fill.clone()))
+                    .position(|p| *p == r.look)
                     .unwrap_or(0);
                 let (a, b) = r.range;
                 let sq = if a == b {
@@ -4442,20 +4483,20 @@ mod link_comment_tests {
 
     #[test]
     fn バーとスケールとアイコンの条件付き書式が往復する() {
-        use crate::model::{CondKind, CondRule};
+        use crate::model::{CondKind, CondLook, CondRule};
         let mut b = Book::new();
         for (i, v) in ["10", "20", "30"].iter().enumerate() {
             b.sheets[0].set(Pos::new(i as u32, 0), Cell::input(v));
         }
         let range = (Pos::new(0, 0), Pos::new(2, 0));
         b.sheets[0].cond.push(CondRule {
-            range, kind: CondKind::Bar("638EC6".into()), color: None, fill: None });
+            range, kind: CondKind::Bar("638EC6".into()), look: Default::default() });
         b.sheets[0].cond.push(CondRule {
             range,
             kind: CondKind::Scale("F8696B".into(), Some("FFEB84".into()), "63BE7B".into()),
-            color: None, fill: None });
+            look: Default::default() });
         b.sheets[0].cond.push(CondRule {
-            range, kind: CondKind::Icons("3Arrows".into()), color: None, fill: None });
+            range, kind: CondKind::Icons("3Arrows".into()), look: Default::default() });
         let back = roundtrip(&b);
         let cond = &back.sheets[0].cond;
         assert_eq!(cond.len(), 3, "本数が違う: {cond:?}");
@@ -4533,7 +4574,75 @@ mod link_comment_tests {
 #[cfg(test)]
 mod cond_tests {
     use super::*;
-    use crate::model::{Cell, CondAux, CondKind, CondOp, CondRule};
+    use crate::model::{Cell, CondAux, CondKind, CondLook, CondOp, CondRule};
+
+    /// **dxf は色と塗りだけではない。** 太字・斜体・下線・取り消し線も
+    /// 持てる。前は読んでおらず、Excel で「赤字・太字」にした規則が
+    /// **規則は残ったまま太字と文字色だけ落ちて**開いていた
+    /// (2026-08-10 pyoffice セッションの報告)
+    #[test]
+    fn 飾りを読む() {
+        let look = |body: &str| {
+            super::parse_dxfs(&format!(
+                r#"<styleSheet><dxfs count="1"><dxf>{body}</dxf></dxfs></styleSheet>"#
+            ))
+            .first()
+            .cloned()
+            .unwrap_or_default()
+        };
+        // 向こうの試験が使っている形(xlsx-sidecar.test.ts の雛形)
+        let lk = look(
+            r#"<font><b/><color rgb="FF9C0006"/></font><fill><patternFill><bgColor rgb="FFFFC7CE"/></patternFill></fill>"#,
+        );
+        assert_eq!(lk.bold, Some(true), "太字が落ちている");
+        assert_eq!(lk.color.as_deref(), Some("9C0006"), "文字色が落ちている");
+        assert_eq!(lk.fill.as_deref(), Some("FFC7CE"));
+
+        let lk = look(r#"<font><b/><i/><u/><strike/></font>"#);
+        assert_eq!(
+            (lk.bold, lk.italic, lk.underline, lk.strike),
+            (Some(true), Some(true), Some(true), Some(true)),
+            "4つとも読めていない"
+        );
+
+        // **三択を潰さない。** 書いていない=触らない、val="0"=外す
+        let lk = look(r#"<font><b val="0"/><u val="none"/></font>"#);
+        assert_eq!(lk.bold, Some(false), "val=0 は「外す」");
+        assert_eq!(lk.underline, Some(false), "u val=none は「外す」");
+        assert_eq!(lk.italic, None, "書いていない飾りまで決めている");
+        assert_eq!(look("").bold, None, "font が無いのに太字を決めている");
+    }
+
+    /// 飾りが保存で消えないこと。**読めたのに書かないと、開いて保存した
+    /// だけで帳票が痩せる**
+    #[test]
+    fn 飾りが往復する() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("-5"));
+        b.sheets[0].cond.push(CondRule {
+            range: (Pos::parse("A1").unwrap(), Pos::parse("A9").unwrap()),
+            kind: CondKind::Cmp(CondOp::Lt, 0.0),
+            look: CondLook {
+                color: Some("9C0006".into()),
+                fill: Some("FFC7CE".into()),
+                bold: Some(true),
+                italic: Some(true),
+                underline: Some(false),
+                strike: None,
+            },
+        });
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let r = read(buf).expect("読めない").0;
+        let lk = &r.sheets[0].cond[0].look;
+        assert_eq!(lk.color.as_deref(), Some("9C0006"), "文字色が往復しない");
+        assert_eq!(lk.fill.as_deref(), Some("FFC7CE"), "塗りが往復しない");
+        assert_eq!(lk.bold, Some(true), "太字が往復しない");
+        assert_eq!(lk.italic, Some(true), "斜体が往復しない");
+        assert_eq!(lk.underline, Some(false), "「下線を外す」が往復しない");
+        assert_eq!(lk.strike, None, "触らないはずの取り消し線が決まっている");
+    }
 
     #[test]
     fn 塗りはfgcolorでもbgcolorでも読める() {
@@ -4545,7 +4654,7 @@ mod cond_tests {
             ))
             .first()
             .cloned()
-            .map(|(_, fill)| fill)
+            .map(|lk| lk.fill)
             .unwrap_or_default()
         };
         assert_eq!(
@@ -4580,8 +4689,10 @@ mod cond_tests {
         b.sheets[0].cond.push(CondRule {
             range: (Pos::parse("A1").unwrap(), Pos::parse("A9").unwrap()),
             kind: CondKind::Cmp(CondOp::Lt, 0.0),
-            color: Some("C00000".into()),
-            fill: None,
+            look: CondLook {
+                color: Some("C00000".into()),
+                ..Default::default()
+            },
         });
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -4590,7 +4701,7 @@ mod cond_tests {
         let r = &back.sheets[0].cond;
         assert_eq!(r.len(), 1, "規則が往復しない");
         assert_eq!(r[0].kind, CondKind::Cmp(CondOp::Lt, 0.0));
-        assert_eq!(r[0].color.as_deref(), Some("C00000"), "見た目(dxf)が往復しない");
+        assert_eq!(r[0].look.color.as_deref(), Some("C00000"), "見た目(dxf)が往復しない");
         // 効き方
         let aux = CondAux::default();
         assert!(r[0].hits(Pos::parse("A1").unwrap(), &Value::Number(-5.0), &aux));
@@ -4611,8 +4722,10 @@ mod cond_tests {
         b.sheets[0].cond.push(CondRule {
             range: (Pos::parse("A1").unwrap(), Pos::parse("B10").unwrap()),
             kind: CondKind::Formula("MOD(ROW(),2)=0".into()),
-            color: None,
-            fill: Some("DDEBF7".into()),
+            look: CondLook {
+                fill: Some("DDEBF7".into()),
+                ..Default::default()
+            },
         });
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -4630,7 +4743,7 @@ mod cond_tests {
             CondKind::Formula("MOD(ROW(),2)=0".into()),
             "式の原文が往復しない"
         );
-        assert_eq!(r[0].fill.as_deref(), Some("DDEBF7"), "見た目(dxf)が往復しない");
+        assert_eq!(r[0].look.fill.as_deref(), Some("DDEBF7"), "見た目(dxf)が往復しない");
         // 効き方 — ROW() は1から数えるので、偶数行(A2/A4…)が当たる
         let sh = &back.sheets[0];
         let aux = r[0].aux(sh);
@@ -4659,14 +4772,18 @@ mod cond_tests {
         sh.cond.push(CondRule {
             range: (Pos::parse("C2").unwrap(), Pos::parse("C4").unwrap()),
             kind: CondKind::Formula("LEN(C2)>3".into()),
-            color: Some("C00000".into()),
-            fill: None,
+            look: CondLook {
+                color: Some("C00000".into()),
+                ..Default::default()
+            },
         });
         sh.cond.push(CondRule {
             range: (Pos::parse("B2").unwrap(), Pos::parse("C3").unwrap()),
             kind: CondKind::Formula(r#"$A2="済""#.into()),
-            color: None,
-            fill: Some("FFF2CC".into()),
+            look: CondLook {
+                fill: Some("FFF2CC".into()),
+                ..Default::default()
+            },
         });
         let back = roundtrip(&b);
         let sh = &back.sheets[0];
@@ -4703,8 +4820,10 @@ mod cond_tests {
         b.sheets[0].cond.push(CondRule {
             range: (Pos::parse("A1").unwrap(), Pos::parse("A3").unwrap()),
             kind: CondKind::Formula(f.into()),
-            color: None,
-            fill: Some("FCE4D6".into()),
+            look: CondLook {
+                fill: Some("FCE4D6".into()),
+                ..Default::default()
+            },
         });
         let back = roundtrip(&b);
         let sh = &back.sheets[0];
@@ -4727,11 +4846,11 @@ mod cond_tests {
             s.set(Pos::new(i as u32, 0), Cell::input(v));
         }
         let range = (Pos::new(0, 0), Pos::new(3, 0));
-        s.cond.push(CondRule { range, kind: CondKind::Between(8.0, 15.0, false), color: None, fill: Some("FFF2CC".into()) });
-        s.cond.push(CondRule { range, kind: CondKind::Text("2".into()), color: None, fill: Some("E2EFDA".into()) });
-        s.cond.push(CondRule { range, kind: CondKind::Dup(false), color: Some("9C0006".into()), fill: None });
-        s.cond.push(CondRule { range, kind: CondKind::Top(2, false), color: None, fill: Some("D9E1F2".into()) });
-        s.cond.push(CondRule { range, kind: CondKind::Avg(false), color: None, fill: None });
+        s.cond.push(CondRule { range, kind: CondKind::Between(8.0, 15.0, false), look: CondLook { fill: Some("FFF2CC".into()), ..Default::default() } });
+        s.cond.push(CondRule { range, kind: CondKind::Text("2".into()), look: CondLook { fill: Some("E2EFDA".into()), ..Default::default() } });
+        s.cond.push(CondRule { range, kind: CondKind::Dup(false), look: CondLook { color: Some("9C0006".into()), ..Default::default() } });
+        s.cond.push(CondRule { range, kind: CondKind::Top(2, false), look: CondLook { fill: Some("D9E1F2".into()), ..Default::default() } });
+        s.cond.push(CondRule { range, kind: CondKind::Avg(false), look: Default::default() });
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
         buf.set_position(0);

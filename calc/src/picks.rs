@@ -1195,8 +1195,10 @@ impl Calc {
                 self.book.sheets[self.active].cond.push(sheet::model::CondRule {
                     range,
                     kind: sheet::model::CondKind::Cmp(sheet::model::CondOp::Lt, 0.0),
-                    color: Some("C00000".into()),
-                    fill: None,
+                    look: sheet::model::CondLook {
+                        color: Some("C00000".into()),
+                        ..Default::default()
+                    },
                 });
                 self.dirty = true;
                 self.status = ui::tf!("{}:{} — 0未満を赤字にしました", range.0.a1(), range.1.a1()).into();
@@ -1257,7 +1259,7 @@ impl Calc {
                 self.commit();
                 self.checkpoint();
                 let range = self.sel_rect();
-                use sheet::model::{CondKind, CondRule};
+                use sheet::model::{CondKind, CondLook, CondRule};
                 let (kind, color, fill, said) = match id {
                     "cond-dup" => (
                         CondKind::Dup(false),
@@ -1286,7 +1288,11 @@ impl Calc {
                 };
                 self.book.sheets[self.active]
                     .cond
-                    .push(CondRule { range, kind, color, fill });
+                    .push(CondRule {
+                        range,
+                        kind,
+                        look: CondLook { color, fill, ..Default::default() },
+                    });
                 self.dirty = true;
                 self.status =
                     format!("{}:{} — {}", range.0.a1(), range.1.a1(), said).into();
@@ -1359,7 +1365,7 @@ impl Calc {
         self.commit();
         self.checkpoint();
         let range = self.sel_rect();
-        use sheet::model::{CondKind, CondRule};
+        use sheet::model::{CondKind, CondLook, CondRule};
         let (kind, said) = match id {
             "cond-bar" => (
                 CondKind::Bar("638EC6".into()),
@@ -1376,7 +1382,7 @@ impl Calc {
         };
         self.book.sheets[self.active]
             .cond
-            .push(CondRule { range, kind, color: None, fill: None });
+            .push(CondRule { range, kind, look: CondLook::default() });
         self.dirty = true;
         self.status = format!("{}:{} — {}", range.0.a1(), range.1.a1(), said).into();
     }
@@ -3011,8 +3017,10 @@ impl Calc {
                         if gt { sheet::model::CondOp::Gt } else { sheet::model::CondOp::Lt },
                         value,
                     ),
-                    color: None,
-                    fill: Some(if gt { "E2EFDA".into() } else { "FCE4D6".into() }),
+                    look: sheet::model::CondLook {
+                        fill: Some(if gt { "E2EFDA".into() } else { "FCE4D6".into() }),
+                        ..Default::default()
+                    },
                 });
                 self.dirty = true;
                 self.status = ui::tf!("{}:{} — {} より{}を塗ります", range.0.a1(), range.1.a1(), value, if gt { "大きい値" } else { "小さい値" }).into();
@@ -3036,8 +3044,10 @@ impl Calc {
                 self.book.sheets[self.active].cond.push(sheet::model::CondRule {
                     range,
                     kind: sheet::model::CondKind::Between(lo.min(hi), lo.max(hi), false),
-                    color: None,
-                    fill: Some("FFF2CC".into()),
+                    look: sheet::model::CondLook {
+                        fill: Some("FFF2CC".into()),
+                        ..Default::default()
+                    },
                 });
                 self.dirty = true;
                 self.status = ui::tf!("{}:{} — {} から {} の間を塗ります", range.0.a1(), range.1.a1(), lo.min(hi), lo.max(hi)).into();
@@ -3052,8 +3062,10 @@ impl Calc {
                 self.book.sheets[self.active].cond.push(sheet::model::CondRule {
                     range,
                     kind: sheet::model::CondKind::Text(text.clone()),
-                    color: None,
-                    fill: Some("FFF2CC".into()),
+                    look: sheet::model::CondLook {
+                        fill: Some("FFF2CC".into()),
+                        ..Default::default()
+                    },
                 });
                 self.dirty = true;
                 self.status = ui::tf!("{}:{} — 「{}」を含むセルを塗ります", range.0.a1(), range.1.a1(), text).into();
@@ -3070,8 +3082,10 @@ impl Calc {
                 self.book.sheets[self.active].cond.push(sheet::model::CondRule {
                     range,
                     kind: sheet::model::CondKind::Top(n.max(1), bottom),
-                    color: None,
-                    fill: Some(if bottom { "FCE4D6".into() } else { "D9E1F2".into() }),
+                    look: sheet::model::CondLook {
+                        fill: Some(if bottom { "FCE4D6".into() } else { "D9E1F2".into() }),
+                        ..Default::default()
+                    },
                 });
                 self.dirty = true;
                 self.status = ui::tf!("{}:{} — {}{} を塗ります", range.0.a1(), range.1.a1(), if bottom { "下位" } else { "上位" }, n.max(1)).into();

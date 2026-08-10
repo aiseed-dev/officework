@@ -315,16 +315,22 @@ pub fn sheet_to_pdf<W: Write>(
             // 塗りと文字色。条件付き書式は画面と同じ規則で上書きする
             let mut fill = cell.fmt.fill.clone();
             let mut ink = cell.fmt.color.clone();
+            // 条件付き書式の太字。**None は「触らない」**(セル自身の書式のまま)。
+            // 斜体・下線・取り消し線は紙ではまだ描かない — セル自身のそれらも
+            // 描いていないので、ここだけ描くと画面と紙の食い違いが増える
+            let mut bold = None;
             for (rule, aux) in cond_prep {
                 if rule.hits(p, &cell.value, aux) {
-                    if let Some(f) = &rule.fill {
+                    if let Some(f) = &rule.look.fill {
                         fill = Some(f.clone());
                     }
-                    if let Some(c) = &rule.color {
+                    if let Some(c) = &rule.look.color {
                         ink = Some(c.clone());
                     }
+                    bold = rule.look.bold.or(bold);
                 }
             }
+            let bold = bold.unwrap_or(cell.fmt.bold);
             // 塗りは罫線より先に敷く(線を塗り潰さない)
             if let Some((cr, cg, cb)) = fill.as_deref().and_then(hex_rgb) {
                 l.set_fill_color(Color::Rgb(Rgb::new(cr, cg, cb, None)));
@@ -444,7 +450,7 @@ pub fn sheet_to_pdf<W: Write>(
                 l.set_fill_color(Color::Rgb(Rgb::new(cr, cg, cb, None)));
             }
             l.use_text(&shown, pt, Mm(tx), Mm(ty), font);
-            if cell.fmt.bold {
+            if bold {
                 l.use_text(&shown, pt, Mm(tx + 0.1), Mm(ty), font);
             }
             if colored.is_some() {
@@ -797,8 +803,10 @@ mod tests {
         s.cond.push(sheet::model::CondRule {
             range: (Pos::parse("B2").unwrap(), Pos::parse("B2").unwrap()),
             kind: sheet::model::CondKind::Cmp(sheet::model::CondOp::Gt, 1000.0),
-            color: None,
-            fill: Some("E2EFDA".into()),
+            look: sheet::model::CondLook {
+                fill: Some("E2EFDA".into()),
+                ..Default::default()
+            },
         });
         let mut buf = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut buf).unwrap();
