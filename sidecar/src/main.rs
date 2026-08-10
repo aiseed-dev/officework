@@ -769,6 +769,17 @@ fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
 struct Resident {
     stamp: (u64, u64),
     book: Book,
+    /// 前回この居座りに当てた編集(**セルごと**に、打った字を覚える)。
+    ///
+    /// 呼ぶ側は「いま画面にある編集の**全部**」を毎回渡してくる作りで、
+    /// 減ることがある(取り消し)。当てっぱなしにすると**取り消したはずの値が
+    /// 残る** — 実際に残っていた(2026-08-10、向こうの試験
+    /// `serves repeat requests ... rebuilds after a revert` が捕まえた)。
+    ///
+    /// - **同じセルを打ち直しただけ**なら当て直せばよい(居座りが効く)
+    /// - **前に当てたセルが今回の一覧から消えていたら**取り消しなので、
+    ///   ファイルから組み直す(そのセルの元の中身はファイルしか知らない)
+    applied: BTreeMap<(String, u32, u32), String>,
 }
 
 /// `recalc_cells` — **打った字を入れて、計算して、頼まれた範囲を返す。**
@@ -782,27 +793,49 @@ fn recalc(
     reads: &[Value],
 ) -> Result<Value, String> {
     let stamp = stamp_of(path);
-    let cached = match resident.get(path) {
-        Some(r) if r.stamp == stamp => true,
-        _ => {
-            // 原本が無い・変わったなら読み直す。**黙って古い答えを返さない**
-            let (book, _, _) = open_book(path)?;
-            resident.insert(path.to_string(), Resident { stamp, book });
-            false
-        }
+    // 今回の編集を、セルごとの表にする
+    let want: BTreeMap<(String, u32, u32), String> = edits
+        .iter()
+        .map(|e| {
+            let g = |k: &str| e.get(k).and_then(Value::as_u64).unwrap_or(0) as u32;
+            (
+                (
+                    e.get("sheet").and_then(Value::as_str).unwrap_or_default().to_string(),
+                    g("row"),
+                    g("column"),
+                ),
+                e.get("input").and_then(Value::as_str).unwrap_or_default().to_string(),
+            )
+        })
+        .collect();
+
+    // **居座りが効くのは、原本が変わっておらず、前に当てたセルが1つも
+    // 消えていないとき。** 値が変わっただけなら当て直せば済む
+    let usable = match resident.get(path) {
+        Some(r) => r.stamp == stamp && r.applied.keys().all(|k| want.contains_key(k)),
+        None => false,
     };
+    if !usable {
+        let (book, _, _) = open_book(path)?;
+        resident.insert(path.to_string(), Resident { stamp, book, applied: BTreeMap::new() });
+    }
+    let cached = usable;
     let r = resident.get_mut(path).ok_or("居座りが作れません")?;
 
-    for e in edits {
-        let name = e.get("sheet").and_then(Value::as_str).unwrap_or_default();
-        let Some(sh) = r.book.sheets.iter_mut().find(|s| s.name == name) else {
+    // **中身の変わったセルだけ当てる。** 同じ字なら触らない
+    let fresh: Vec<_> = want
+        .iter()
+        .filter(|(k, v)| r.applied.get(*k) != Some(*v))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    r.applied = want;
+
+    for ((name, row, col), input) in &fresh {
+        let Some(sh) = r.book.sheets.iter_mut().find(|s| &s.name == name) else {
             // **知らないシートは黙って飛ばさない。** 呼ぶ側の思い違いが隠れる
             return Err(format!("シートがありません: {name}"));
         };
-        let row = e.get("row").and_then(Value::as_u64).unwrap_or(0) as u32;
-        let col = e.get("column").and_then(Value::as_u64).unwrap_or(0) as u32;
-        let input = e.get("input").and_then(Value::as_str).unwrap_or_default();
-        let p = Pos { row, col };
+        let p = Pos { row: *row, col: *col };
         // **表示形式は据え置く。** 打ち直しで書式を落とすのは calc の掟に反する
         let mut fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
         let mut cell = if input.is_empty() {
@@ -820,7 +853,7 @@ fn recalc(
         cell.fmt = fmt;
         sh.set(p, cell);
     }
-    if !edits.is_empty() {
+    if !fresh.is_empty() {
         sheet::recalc_all(&mut r.book);
     }
 
