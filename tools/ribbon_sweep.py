@@ -58,7 +58,52 @@ SKIP = {
     "saveas": "ファイルを選ぶ小窓",
     "pdf": "ファイルを選ぶ小窓",
     "quit": "終了",
+    # **機械の窓を開くボタン。** 押すと点検が止まるだけでなく、
+    # ファイルマネージャの窓が残る。2026-08-10、この2つが漏れていて
+    # 別のセッションに窓を4つ出させた(走らせた回数だけ開く)
+    "py-folder": "ファイルマネージャが開く",
+    "plug-macros": "ファイルを選ぶ小窓",
 }
+
+
+def check_skip():
+    """**SKIP の取りこぼしをソースから検算する。**
+
+    手で書く一覧は古びる — 実際に古びて、押してはいけないボタンを2つ
+    押していた。`calc/src/cmds.rs` を読み、ready なコマンドのうち
+    `xdg-open` かファイル選択を呼ぶものを数え上げ、SKIP に無ければ止める。
+
+    **落ちるのは「押すな」を見落としたときだけ**で、SKIP が多いぶんには
+    何も言わない(飛ばしすぎは終わりの一覧に出るので人が気づく)。
+    """
+    cm = open(os.path.join(ROOT, "calc/src/cmds.rs"), encoding="utf-8").read()
+    rb = open(os.path.join(ROOT, "ui/src/ribbon.rs"), encoding="utf-8").read()
+    m = re.search(r"pub const CALC: &\[Tab\] = &\[(.*?)^\];", rb, re.S | re.M)
+    if not m:
+        raise SystemExit("ui/src/ribbon.rs の CALC の表が読めません(書き方が変わった?)")
+    ready = set(re.findall(r'\bc\(\s*"([^"]+)"', m.group(1)))
+    if len(ready) < 80:
+        raise SystemExit(f"リボンの表が読めていません(ready {len(ready)} 件)")
+    danger = {}
+    for mm in re.finditer(r'^\s+"([a-z0-9\-|" ]+)" => \{', cm, re.M):
+        ids = [x.strip(' "') for x in mm.group(1).split("|")]
+        start = mm.end()
+        nxt = cm.find('" => {', start)
+        body = cm[start : nxt if nxt > 0 else start + 2000]
+        for pat, why in (
+            ("xdg-open", "ファイルマネージャが開く"),
+            ("file_dialog", "ファイルを選ぶ小窓"),
+        ):
+            if pat in body:
+                for i in ids:
+                    if i in ready:
+                        danger[i] = why
+    missing = {i: w for i, w in danger.items() if i not in SKIP}
+    if missing:
+        raise SystemExit(
+            "SKIP に足りないボタンがあります(押すと機械の窓が開きます):\n  "
+            + "\n  ".join(f"{i} — {w}" for i, w in sorted(missing.items()))
+        )
 CALC = os.path.join(ROOT, "target", "release", "calc")
 # 一覧の左端がボタンの左端からこれ以上ずれていたら「真下でない」
 X_SLACK = 4.0
@@ -423,6 +468,8 @@ def main():
     global STRICT
     STRICT = a.strict
     os.makedirs(a.shots, exist_ok=True)
+    # **押してはいけないボタンの一覧を、始める前に検算する**
+    check_skip()
     if not os.path.exists(CALC):
         raise SystemExit(f"{CALC} がありません。cargo build --release -p calc を先に")
 
