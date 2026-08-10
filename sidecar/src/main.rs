@@ -45,13 +45,8 @@ struct Session {
     /// **絵の中身はここに持たない。** 何十 MB にもなるし、向こうは要る物だけ
     /// 1つずつ聞きに来る作り。聞かれたときに原本から出す
     media: BTreeMap<String, (String, String)>,
-    /// 書式 → 番号。`read_range` の `styleIndex` はこの番号を返す。
-    ///
-    /// **開いたときに一度だけ組む** — 範囲ごとに組み直すと同じ書式に違う番号が
-    /// 付く。番号が指す先(`styles[]` の表そのもの)は `open` の答えに載せて
-    /// 渡しきりで、ここには持たない — 表を返し直す命令は無いし、開いている
-    /// 間ずっと書式の JSON を抱えることになる
-    style_index: BTreeMap<String, usize>,
+    // **書式の番号は持たない。** 原本の `<c s="…">`(`Sheet::style_of`)を
+    // そのまま返すので、こちらで採番する物が無くなった(2026-08-10)
 }
 
 /// ファイルの印(更新時刻, 大きさ)。読めなければ 0 — 消えたことも変化と見る。
@@ -219,13 +214,7 @@ fn dispatch(
                     // 撥ねられる(2026-08-10、向こうの試験で判明)。
                     // 中身は問われないと踏んでいたが、**形は問われていた**
                     let id = uuid_v4(*seq);
-                    let mut st = Styles::new();
-                    // **書式は全シートを通して1つの表にする**(向こうと同じ)
-                    for sh in &book.sheets {
-                        for c in sh.cells.values() {
-                            st.intern(&c.fmt);
-                        }
-                    }
+                    let styles = style_table(&book);
                     // **図形と画像は原本から読む**(モデルは原本どおりの
                     // アンカーを持たない)。読めなかった物は `skipped` に溜める
                     let mut skipped = Vec::new();
@@ -258,12 +247,10 @@ fn dispatch(
                     for w in unsupported.iter().chain(skipped.iter()) {
                         eprintln!("[officework] 読めなかった: {w}({path})");
                     }
-                    let v = open_result(&id, &path, &book, &st.order, entry_count, visuals);
+                    let v = open_result(&id, &path, &book, &styles, entry_count, visuals);
                     let stamp = stamp_of(&path);
-                    // 表は上の答えに載せて渡しきり。**残すのは索引だけ**
-                    let style_index = st.index;
                     let media = media_index(&v);
-                    sessions.insert(id, Session { path, stamp, book, style_index, media });
+                    sessions.insert(id, Session { path, stamp, book, media });
                     ok(&rid, v)
                 }
                 Err(e) => fail(&rid, "workbook_error", &e),
@@ -299,7 +286,7 @@ fn dispatch(
             if r1 >= rows.max(1) || c1 >= cols.max(1) {
                 return fail(&rid, "invalid_request", "Range is outside the worksheet.").to_string();
             }
-            ok(&rid, range_result(sh, r0, r1, c0, c1, &sess.style_index))
+            ok(&rid, range_result(sh, r0, r1, c0, c1))
         }
         "close" => {
             sessions.remove(&s("sessionId"));
@@ -1179,7 +1166,6 @@ fn range_result(
     r1: u32,
     c0: u32,
     c1: u32,
-    style_index: &BTreeMap<String, usize>,
 ) -> Value {
     let inside = |p: Pos| p.row >= r0 && p.row <= r1 && p.col >= c0 && p.col <= c1;
 
@@ -1209,11 +1195,10 @@ fn range_result(
             if let Some(f) = f {
                 o.insert("formula".into(), json!(f));
             }
-            // **書式は open で配った表の番号で指す。** 表に無い(素の書式)なら付けない
-            if let Some(v) = style_value(&cell.fmt) {
-                if let Some(i) = style_index.get(&v.to_string()) {
-                    o.insert("styleIndex".into(), json!(i));
-                }
+            // **原本の `<c s="…">` をそのまま返す。** `s` の無いセルには
+            // 付けない — 向こうも「無い」で来る(罫線の試験がそう見ている)
+            if let Some(i) = sh.style_of.get(&p) {
+                o.insert("styleIndex".into(), json!(i));
             }
             if let Some((h, w)) = sh.cse.get(&p) {
                 o.insert(
@@ -1345,38 +1330,37 @@ fn formula_cells_result(sh: &Sheet) -> Value {
         .collect();
     json!({"cells": cells, "indexingComplete": true, "truncated": false})
 }
-
-/// 書式の索引表。**向こうは `styles[]` の索引を返し、セルは番号で指す。**
+/// 書式の表。**原本の `cellXfs` の索引で並べる。**
 ///
-/// officework は `CellFormat` をセルに直に持つので、**同じ書式をまとめて
-/// 番号を振り直す**。原本の `style_of`(読んだときの `<c s="…">`)は使わない —
-/// あれは保存で原本の styles.xml を据え置くための控えで、番号の意味が
-/// 向こうの索引と揃っている保証がない。
+/// 前は「この範囲で実際に使われている書式だけ」を詰め直して自前で番号を
+/// 振っていた。使っていない何百もの書式を配らずに済む、という理屈だった。
 ///
-/// 返すのは**この範囲で実際に使われている書式だけ**。原本の styles.xml を
-/// 丸ごと写すと、使っていない何百もの書式が付いてくる。
-struct Styles {
-    order: Vec<Value>,
-    index: BTreeMap<String, usize>,
-}
-
-impl Styles {
-    fn new() -> Styles {
-        Styles { order: Vec::new(), index: BTreeMap::new() }
-    }
-
-    /// 書式を1つ入れて索引を返す。**素の書式(既定のまま)は番号を振らない** —
-    /// 呼ぶ側は `styleIndex` が無ければ既定で描く
-    fn intern(&mut self, f: &sheet::model::CellFormat) -> Option<usize> {
-        let v = style_value(f)?;
-        let key = v.to_string();
-        if let Some(i) = self.index.get(&key) {
-            return Some(*i);
+/// **取り消した(2026-08-10)。** 向こうは原本の索引で数えていて、番号が
+/// 食い違うと向こうの試験がそこで止まる。保存では困らない(向こうは
+/// `s=` を原文から読み直す)ので実害なしと判断していたが、**その試験は
+/// 先で図形と画像を確かめていた** — 番号の差が、別の検証を丸ごと隠していた。
+/// **道具を塞ぐのは実害。**
+///
+/// 使われていない索引は空の書式で埋める。原本の `styles.xml` を読み直せば
+/// 中身を入れられるが、**そこは `sheet` の持ち場**で、ここから覗く話ではない。
+fn style_table(book: &Book) -> Vec<Value> {
+    let mut used: BTreeMap<u32, Value> = BTreeMap::new();
+    for sh in &book.sheets {
+        for (p, i) in &sh.style_of {
+            if let Some(c) = sh.get(*p) {
+                if let Some(v) = style_value(&c.fmt) {
+                    used.entry(*i).or_insert(v);
+                }
+            }
         }
-        let i = self.order.len();
-        self.order.push(v);
-        self.index.insert(key, i);
-        Some(i)
+    }
+    // **隙間は「素の書式」で埋める。** 空の `{}` にしていたら、向こうの
+    // schema が `bold: z.boolean()` を求めていて撥ねられた — 真偽の欄は
+    // 偽でも必ず出す、という同じ約束が、表の中身にも掛かっている
+    let plain = plain_style();
+    match used.keys().copied().max() {
+        None => Vec::new(),
+        Some(m) => (0..=m).map(|i| used.get(&i).cloned().unwrap_or_else(|| plain.clone())).collect(),
     }
 }
 
@@ -1457,6 +1441,20 @@ fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
     // ままにすると、全部のセルに書式の番号が付いて表が膨らむ
     let plain = o.len() == 7 && o.values().all(|v| v == &json!(false));
     if plain { None } else { Some(Value::Object(o)) }
+}
+
+/// **素の書式そのもの。** `style_value` は素なら `None` を返す(セルに
+/// 番号を付けないため)が、`styles[]` の**隙間を埋めるには実体が要る** —
+/// 向こうの schema は表の中の書式にも `bold: z.boolean()` を求めている。
+fn plain_style() -> Value {
+    let mut f = sheet::model::CellFormat::default();
+    // 素だと `None` が返るので、いったん崩して作らせ、その印を消す
+    f.bold = true;
+    let mut v = style_value(&f).expect("素でない書式が None になった");
+    if let Some(o) = v.as_object_mut() {
+        o.insert("bold".into(), json!(false));
+    }
+    v
 }
 
 /// 計算のために居座らせたブック。**径路で引く。**
