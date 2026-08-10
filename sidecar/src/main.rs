@@ -13,8 +13,13 @@
 //!
 //! **まだ全部は喋れない。** 喋れないコマンドは
 //! `unsupported_command` で**断る** — それらしい空の答えを返さない。
-//! 埋まっていない欄は、答えに `xNotFilled` を添えて名前で言う
-//! (向こうに無い欄だが、知らない欄は無視される作りなので邪魔にならない)。
+//!
+//! **答えに自分の都合の欄を足さない。** 「埋めていない欄を名前で言う」つもりで
+//! `xNotFilled` / `xUnsupported` を添えていたが、**本番のアプリが起動できなかった**
+//! (2026-08-10)。`workbook:select` の schema は `strict()` で、知らない欄が
+//! あれば ZodError で撥ねる。**試験の schema は `passthrough()` だったので
+//! 通っていた** — 試験が緑でも本番が動かない、という形。
+//! 埋めていない欄は `docs/sekkei/pyoffice.ja.md` に書く。
 
 use std::collections::BTreeMap;
 use std::io::{self, BufRead, BufWriter, Write};
@@ -200,7 +205,7 @@ fn dispatch(
                 return fail(&rid, "invalid_request", "path がありません").to_string();
             }
             match open_book(&path) {
-                Ok((book, unsupported, entry_count)) => {
+                Ok((book, _unsupported, entry_count)) => {
                     *seq += 1;
                     // **セッションの id は UUID。** `ow-1` のような自前の
                     // 名前にしていたが、向こうは `z.uuid()` で検査していて
@@ -214,7 +219,7 @@ fn dispatch(
                             st.intern(&c.fmt);
                         }
                     }
-                    let v = open_result(&id, &path, &book, &unsupported, &st.order, entry_count);
+                    let v = open_result(&id, &path, &book, &st.order, entry_count);
                     let stamp = stamp_of(&path);
                     // 表は上の答えに載せて渡しきり。**残すのは索引だけ**
                     let style_index = st.index;
@@ -365,7 +370,6 @@ fn open_result(
     session_id: &str,
     path: &str,
     book: &Book,
-    unsupported: &[String],
     styles: &[Value],
     entry_count: usize,
 ) -> Value {
@@ -484,20 +488,16 @@ fn open_result(
     v.insert("dxfStyles".into(), json!(dxfs));
     v.insert("visuals".into(), json!([]));
     v.insert("definedNames".into(), json!(defined));
-    v.insert(
-        "xNotFilled".into(),
-        json!([
-            "dxfIndex はシートを跨ぐと番号がずれる(1枚の帳票では正しい)",
-            "visuals(図形・画像・グラフ)",
-            "sparklines / pivotTables / pivotRanges",
-            "comments.author(モデルが持たない)",
-            "definedNames.sheetIndex(モデルは参照先のシートに載せている)",
-            "rowCount/columnCount は <dimension> ではなく**実際に中身のある範囲**",
-        ]),
-    );
-    // **読めなかった物を答えに載せる。** 呼ぶ側が知らない欄なので邪魔にならず、
-    // 突き合わせでは「何を落としたか」がそのまま出る
-    v.insert("xUnsupported".into(), json!(unsupported));
+    // **`xNotFilled` と `xUnsupported` は載せない。**
+    //
+    // 「埋めていない欄を名前で言う」つもりで足したが、**本番のアプリが
+    // 起動できなかった**(2026-08-10、実機で `bojsjfy.xlsx` を開いて判明)。
+    // `workbook:select` の schema は `strict()` で、知らない欄があると
+    // ZodError で撥ねる。**試験は `passthrough()` だったので通っていた** —
+    // 試験が緑でも本番が動かない、という形。
+    //
+    // 埋めていない欄・読めなかった物は**設計文書に書く**。
+    // 通信の言葉に自分の都合の欄を足さない — **契約に無い物は載せない**。
     Value::Object(v)
 }
 
@@ -560,7 +560,16 @@ fn range_result(
             let Some(cell) = sh.get(p) else { continue };
             let v = cell_value(sh, p);
             let f = cell.formula.as_ref().map(|f| format!("={f}"));
-            if v.is_null() && f.is_none() {
+            // **書式だけのセルも返す。** 中身が空でも罫線を持っていれば、
+            // それは**帳票の枠**で、返さなければ画面に枠が出ない
+            // (2026-08-10、実機で `見積書.xlsx` を開いて判明 — 向こうが
+            //  54 セル返す所を 42 しか返していなかった)。
+            //
+            // 「中身のあるセルだけ」は**突き合わせの都合**で入れた判定だった。
+            // `pyoffice_diff.py` は両側でこれを揃えているので差が出ず、
+            // **道具の都合が本番の答えに漏れていた**ことに気付けなかった。
+            let styled = style_value(&cell.fmt).is_some();
+            if v.is_null() && f.is_none() && !styled {
                 continue;
             }
             let mut o = Map::new();
@@ -594,7 +603,23 @@ fn range_result(
         if h.is_none() && !hidden && lvl == 0 {
             continue;
         }
-        rows.push(json!({"row": r, "height": h, "hidden": hidden, "outlineLevel": lvl}));
+        // **列と同じ作法。** `height` と `outlineLevel` は無ければ**省く** —
+        // `null` や `0` を入れると撥ねられる(`outlineLevel` は 1 以上が契約)。
+        // 列(`col_value`)では直したのに、行で同じ誤りをしていた
+        // (2026-08-10、実機で開いて判明 — 列幅は届くのに**文字が来なかった**)
+        let mut o = Map::new();
+        o.insert("row".into(), json!(r));
+        if let Some(h) = h {
+            o.insert("height".into(), json!(h));
+        }
+        o.insert("hidden".into(), json!(hidden));
+        if lvl > 0 {
+            o.insert("outlineLevel".into(), json!(lvl));
+        }
+        if sh.row_collapsed.contains(&r) {
+            o.insert("collapsed".into(), json!(true));
+        }
+        rows.push(Value::Object(o));
     }
 
     let merges: Vec<Value> =
@@ -650,8 +675,15 @@ fn range_result(
         "conditionalRules": conditional,
         "autoFilter": Value::Null,
         "dataValidations": validations,
-        // **鍵は掛けない・掛けた振りもしない**(SEKKEI writer の保護と同じ作法)
-        "sheetProtection": json!({"protected": sh.protected, "hasPassword": false}),
+        // **原本に `<sheetProtection>` が無ければ `null`。**「保護が無い」と
+        // 「保護されていない」は別物で、向こうは前者を `null` で返す
+        // (2026-08-10、欄を機械的に突き合わせて判明 — 13 枚で食い違っていた)。
+        // 鍵は掛けない・掛けた振りもしない(SEKKEI writer の保護と同じ作法)
+        "sheetProtection": if sh.protected {
+            json!({"protected": true, "hasPassword": false})
+        } else {
+            Value::Null
+        },
         // **全部読んでから答える**ので、いつも索引は済んでいる(設計「段階索引」)
         //
         // **`xNotFilled` はここに載せない。** `read_range` の schema は
