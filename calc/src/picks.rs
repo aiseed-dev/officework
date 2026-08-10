@@ -931,7 +931,26 @@ impl Calc {
                     return; // 値の確認へ(pick_kind を戻さない)
                 }
             }
+            // 通貨を選んだ。**記号は選んだもの、並びは画面の言語**
+            "currency" => {
+                let Some((_, label, sym, dec)) =
+                    currencies().iter().find(|(k, _, _, _)| *k == v).cloned()
+                else {
+                    return;
+                };
+                let pattern = sheet::datetime_names::names(ui::language()).currency_pattern;
+                let code = currency_code(sym, dec, pattern);
+                let c = code.clone();
+                self.fmt(move |f| f.number_format = Some(c.clone()));
+                self.status =
+                    ui::tf!("通貨を「{}」にしました(コード: {})", label, code).into();
+            }
             "numfmt-pick" => {
+                // 「通貨…」は記号を約束しない — 通貨を選ぶ一覧へ渡す
+                if v == "通貨…" {
+                    self.run_cmd("currency", cx);
+                    return;
+                }
                 if v.starts_with("その他") {
                     // 書式コードの直打ち(カスタム書式)。今のコードを下敷きに
                     let cur = self

@@ -2211,15 +2211,32 @@ pub fn format_value(v: &Value, code: Option<&str>) -> String {
     if n < 0.0 {
         out.push('-');
     }
-    // 通貨の記号は書式の先頭に書かれている。**引用符つきの形も読む** —
-    // Excel は `"¥"#,##0` と書くので、`"` で切ると**円記号を丸ごと落とす**
-    // (実物26枚のうち2枚がこの形。2026-08-10 まで落としていた)。
-    // `\(` のような逃げも字として出す
+    // 記号は数の**前にも後ろにも**付く。`"¥"#,##0` と `#,##0.00 "€"` は
+    // どちらも実際の綴りで、**前しか読まないと独・仏・西・伊・葡・露・越の
+    // 記号が落ちる**(14言語のうち7つがこの並び。2026-08-10 に踏んだ)。
+    // 数の芯(# 0 ?)の前と後ろを、それぞれ字として出す
+    let sect = code.split(';').next().unwrap_or(code);
+    let core = |c: char| c == '#' || c == '0' || c == '?';
+    let (head, tail) = match (sect.find(core), sect.rfind(core)) {
+        (Some(a), Some(b)) => (&sect[..a], &sect[b + 1..]),
+        _ => (sect, ""),
+    };
     out.push_str(&bracket_sym);
-    let mut it = code.chars().peekable();
+    out.push_str(&affix(head));
+    out.push_str(&int);
+    out.push_str(&frac);
+    out.push_str(&affix(tail));
+    out
+}
+
+/// 数の前後に付く字を出す。引用と `\` の逃げを読み、`_x`(x の幅だけ空ける)と
+/// `*x`(x で埋める)は**何も出さない** — 幅の調整で、字ではない。
+/// `,` と `.` は数の側が出すので落とす
+fn affix(s: &str) -> String {
+    let mut out = String::new();
+    let mut it = s.chars();
     while let Some(c) = it.next() {
         match c {
-            '#' | '0' | ',' | '.' | '%' | ';' => break,
             '"' => {
                 for q in it.by_ref() {
                     if q == '"' {
@@ -2233,13 +2250,12 @@ pub fn format_value(v: &Value, code: Option<&str>) -> String {
                     out.push(q);
                 }
             }
+            '_' | '*' => {
+                it.next();
+            }
+            ',' | '.' => {}
             _ => out.push(c),
         }
-    }
-    out.push_str(&int);
-    out.push_str(&frac);
-    if percent {
-        out.push('%');
     }
     out
 }

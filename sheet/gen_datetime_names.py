@@ -121,6 +121,12 @@ def build() -> str:
         day_a = strings(field(b, "AbbreviatedDayNames"))[:7]
         gen = strings(field(b, "MonthGenitiveNames"))[:12]
         long_p = unescape_code(strings(field(b, "LongDatePattern"))[0])
+        # 通貨記号の**置き場所**。.NET の CurrencyPositivePattern:
+        #   0 = 記号n / 1 = n記号 / 2 = 記号␣n / 3 = n␣記号
+        # **記号そのものは載せない**(お金は帳票のもの)。置き場所だけが
+        # 読む人の言語の作法なので、ここに持つ
+        cpp = re.search(r"CurrencyPositivePattern: (\d+)", b)
+        cpp = cpp.group(1) if cpp else "0"
         for name, arr, want in (
             ("MonthNames", mon, 12), ("AbbreviatedMonthNames", mon_a, 12),
             ("DayNames", day, 7), ("AbbreviatedDayNames", day_a, 7),
@@ -141,6 +147,7 @@ def build() -> str:
             f"        days: [{', '.join(rs(x) for x in day)}],\n"
             f"        days_abbr: [{', '.join(rs(x) for x in day_a)}],\n"
             f"        long_date: {rs(long_p)},\n"
+            f"        currency_pattern: {cpp},\n"
             f"    }},"
         )
     body = "\n".join(rows)
@@ -171,6 +178,10 @@ pub struct Names {{
     /// 発注者の「各国で一つに決めて置いたほうがいい」に当たる物で、
     /// **本家が決めた既定をそのまま使う** — こちらで13本を考え直さない
     pub long_date: &'static str,
+    /// 通貨記号の**置き場所**だけ(0=記号n / 1=n記号 / 2=記号␣n / 3=n␣記号)。
+    /// **記号そのものは持たない** — お金は読む人の言語ではなく帳票のもの
+    /// (docs/sekkei/calc.ja.md)。並びだけが言語の作法
+    pub currency_pattern: u8,
 }}
 
 pub const TABLE: &[Names] = &[

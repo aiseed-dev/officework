@@ -2788,7 +2788,19 @@ impl Calc {
                 self.dedup_pend = Some((list, true));
                 self.dedup_pick();
             }
-            "currency" => self.fmt(|f| f.number_format = Some("¥#,##0".into())),
+            // **通貨は選ばせる。** 言語から決めない(お金は帳票のもの)。
+            // 二段の一覧 — 押すと通貨が並び、選ぶと書式が掛かる
+            "currency" => {
+                let at = self.pop_anchor();
+                self.pick_kind = "currency";
+                self.pick_note =
+                    Some(ui::t!("通貨(記号は帳票のお金。並びは画面の言語に従います)").into());
+                let items: Vec<(String, String)> = currencies()
+                    .iter()
+                    .map(|(k, l, _, _)| (k.to_string(), l.to_string()))
+                    .collect();
+                self.pick = Some((items, at));
+            }
             "percents" => self.fmt(|f| f.number_format = Some("0%".into())),
             // 関数の一覧。**使える名前だけを出す** — 無いものを並べない
             f @ ("fn-math" | "fn-text" | "fn-logical" | "fn-recent" | "fn-datetime"

@@ -990,12 +990,62 @@ pub(crate) fn image_px(bytes: &[u8]) -> Option<(u32, u32)> {
 
 /// 数値形式の一覧(本家のドロップダウン相当)。名前 → xlsx の書式コード。
 /// None = 一般(書式なし)。会計・分数はまだ描けないので載せない(台帳に控え)
+/// 選べる通貨。**(鍵, 記号, 小数の桁)**。
+///
+/// **通貨は読む人の言語ではなく、その帳票のお金**(2026-08-10 発注者確定)。
+/// だから言語から引かず、人に選ばせる。日本の会社が €建ての請求書を作るのは
+/// 普通で、相手が独語圏とは限らない。言語から決めると、**円の帳票を
+/// ドイツ語で開いた人に € と見せる**ことになる — 見た目ではなく
+/// 金額の意味を書き換えて見せることなので、日付のずれより重い。
+///
+/// 並びは「帳票でよく使う順」(記号の一覧と同じ考え方)。円が既定。
+/// **小数の桁も通貨で決まる** — 「¥1,234.00」は日本の帳票では見ない
+pub(crate) fn currencies() -> Vec<(&'static str, &'static str, &'static str, usize)> {
+    vec![
+        (ui::item!("円 (¥)").0, ui::item!("円 (¥)").1, "¥", 0),
+        (ui::item!("ドル ($)").0, ui::item!("ドル ($)").1, "$", 2),
+        (ui::item!("ユーロ (€)").0, ui::item!("ユーロ (€)").1, "€", 2),
+        (ui::item!("ポンド (£)").0, ui::item!("ポンド (£)").1, "£", 2),
+        (ui::item!("ウォン (₩)").0, ui::item!("ウォン (₩)").1, "₩", 0),
+        (ui::item!("元 (¥)").0, ui::item!("元 (¥)").1, "¥", 2),
+        (ui::item!("記号なし").0, ui::item!("記号なし").1, "", 0),
+    ]
+}
+
+/// 通貨の書式コードを組む。**記号は帳票のお金、並びは読む人の言語。**
+///
+/// `pattern` は `sheet::datetime_names` の `currency_pattern`
+/// (0=記号n / 1=n記号 / 2=記号␣n / 3=n␣記号)。独語は 3 なので
+/// `#,##0.00 "€"`、日本語は 0 なので `"¥"#,##0` になる。
+///
+/// **記号は引用符で包む。** Excel がそう書く綴りで、包まないと
+/// 記号によっては書式の記号と紛れる(`$` は Excel では特別な字)
+pub(crate) fn currency_code(symbol: &str, decimals: usize, pattern: u8) -> String {
+    let num = if decimals == 0 {
+        "#,##0".to_string()
+    } else {
+        format!("#,##0.{}", "0".repeat(decimals))
+    };
+    if symbol.is_empty() {
+        return num;
+    }
+    let sym = format!("\"{symbol}\"");
+    match pattern {
+        1 => format!("{num}{sym}"),
+        2 => format!("{sym} {num}"),
+        3 => format!("{num} {sym}"),
+        _ => format!("{sym}{num}"),
+    }
+}
+
 pub(crate) fn numfmts() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
     vec![
         row(ui::item!("一般"), None),
         row(ui::item!("数値 (1234.56)"), Some("0.00")),
         row(ui::item!("桁区切り (1,234)"), Some("#,##0")),
-        row(ui::item!("通貨 (¥1,234)"), Some("¥#,##0")),
+        // **記号を見出しに書かない。** 「通貨 (¥1,234)」と出すと、
+        // 独語の人に ¥ を約束することになる。押すと通貨を選ぶ一覧が開く
+        row(ui::item!("通貨…"), None),
         row(ui::item!("パーセント (12.34%)"), Some("0.00%")),
         row(ui::item!("指数 (1.23E+04)"), Some("0.00E+00")),
         row(ui::item!("短い日付 (2026/8/6)"), Some("yyyy/m/d")),

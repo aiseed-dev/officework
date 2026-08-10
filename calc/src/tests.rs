@@ -1184,8 +1184,13 @@ mod pivot_tests {
             assert_eq!(f(this).size_c, Some(1200), "文字が大きくならない");
             this.run_cmd("decfont", cx);
             assert_eq!(f(this).size_c, Some(1100));
+            // **通貨は押した瞬間には掛からない** — 通貨を選ぶ一覧が開く
+            // (2026-08-10 発注者確定: お金は帳票のものなので選ばせる)
             this.run_cmd("currency", cx);
-            assert_eq!(f(this).number_format.as_deref(), Some("¥#,##0"));
+            assert_eq!(this.pick_kind, "currency", "通貨の一覧が開かない");
+            assert_eq!(f(this).number_format, None, "選ぶ前に掛かっている");
+            this.apply_pick("円 (¥)", cx);
+            assert_eq!(f(this).number_format.as_deref(), Some("\"¥\"#,##0"));
             this.run_cmd("percents", cx);
             assert_eq!(f(this).number_format.as_deref(), Some("0%"));
             this.run_cmd("comma", cx);
@@ -4381,5 +4386,52 @@ mod sheet_name_table_tests {
             );
         }
         assert_eq!(mine.len(), sheet::theme::SCHEMES.len(), "並びの数が食い違う");
+    }
+}
+
+#[cfg(test)]
+mod currency_tests {
+    use crate::util::{currencies, currency_code};
+
+    /// **記号は帳票のお金、並びは読む人の言語。** 独語(pattern 3)は
+    /// 記号が後ろ、日本語(pattern 0)は前
+    #[test]
+    fn 記号は選び並びは言語で決まる() {
+        assert_eq!(currency_code("¥", 0, 0), "\"¥\"#,##0", "日本語の並び");
+        assert_eq!(currency_code("€", 2, 3), "#,##0.00 \"€\"", "独語の並び");
+        assert_eq!(currency_code("$", 2, 0), "\"$\"#,##0.00");
+        assert_eq!(currency_code("₩", 0, 1), "#,##0\"₩\"");
+        assert_eq!(currency_code("£", 2, 2), "\"£\" #,##0.00");
+    }
+
+    /// **円に小数は付けない。** 「¥1,234.00」は日本の帳票では見ない
+    #[test]
+    fn 小数の桁は通貨で決まる() {
+        let by = |k: &str| {
+            currencies().iter().find(|(key, _, _, _)| *key == k).map(|(_, _, s, d)| (*s, *d)).unwrap()
+        };
+        assert_eq!(by("円 (¥)"), ("¥", 0));
+        assert_eq!(by("ウォン (₩)"), ("₩", 0));
+        assert_eq!(by("ドル ($)"), ("$", 2));
+        assert_eq!(by("ユーロ (€)"), ("€", 2));
+    }
+
+    /// 記号なしはただの桁区切り
+    #[test]
+    fn 記号なしを選べる() {
+        assert_eq!(currency_code("", 0, 0), "#,##0");
+        assert_eq!(currency_code("", 2, 3), "#,##0.00");
+    }
+
+    /// **組んだコードを描き手が読めること。** 引用符つきの記号は
+    /// 2026-08-10 まで落ちていたので、往復で確かめる
+    #[test]
+    fn 組んだコードが描ける() {
+        let f = |code: &str| {
+            sheet::model::format_value(&sheet::Value::Number(1234.0), Some(code))
+        };
+        assert_eq!(f(&currency_code("¥", 0, 0)), "¥1,234");
+        assert_eq!(f(&currency_code("€", 2, 3)), "1,234.00 €");
+        assert_eq!(f(&currency_code("", 0, 0)), "1,234");
     }
 }
