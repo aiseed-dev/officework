@@ -288,6 +288,9 @@ struct P<'a> {
     /// LET が束ねた名前(大文字で持つ)。**後ろが勝ち**= 入れ子や
     /// 同じ名前の付け直しで内側が外側を隠す
     lets: Vec<(String, Value)>,
+    /// ブックの出どころ(絶対の径路)。`CELL("filename")` だけが使う。
+    /// **空 = まだ保存していない**(Excel も空文字を返す)
+    book_path: &'a str,
 }
 
 /// 参照を計算する関数(OFFSET/INDIRECT)の答え。
@@ -811,6 +814,31 @@ impl<'a> P<'a> {
                             }
                             return Ok(Value::Text(out));
                         }
+                        // CELL("filename") — **`径路[ファイル名]シート名`**。
+                        // 実物では `]` の後ろを取ってシート名にする常套句と
+                        // して使われる(=MID(CELL("filename",A1),
+                        // FIND("]",…)+1, 31))。**この形しか実装しない** —
+                        // "address"・"row"・"width" などは今までどおり
+                        // #NAME? で、要ると分かってから足す。
+                        //
+                        // 第2引数は参照だが、同じブックなら答えは変わらない
+                        // ので受け取って捨てる。保存前は空文字(Excel と同じ。
+                        // #NAME? のままにはしない — 実装できる物を
+                        // 誤りにして回避させない)
+                        if name == "CELL" {
+                            let args = self.args()?;
+                            let kind = args
+                                .first()
+                                .map(|g| g.first().display().to_ascii_lowercase())
+                                .unwrap_or_default();
+                            if kind != "filename" {
+                                return Ok(Value::Error("#NAME?".into()));
+                            }
+                            return Ok(Value::Text(cell_filename(
+                                self.book_path,
+                                &self.sheet.name,
+                            )));
+                        }
                         // LET(名前, 値, [名前, 値]…, 式) — 名前を束ねてから
                         // 最後の式を計算する。値は**先に計算して**束ねるので、
                         // 後の束縛や本体から前の名前が見える(Excel と同じ)
@@ -853,6 +881,29 @@ impl<'a> P<'a> {
             }
             other => Err(format!("式が途中で終わっています: {other:?}")),
         }
+    }
+}
+
+/// `CELL("filename")` の答え — **`径路[ファイル名]シート名`**。
+///
+/// 径路が空(まだ保存していない)なら空文字。Excel と同じで、
+/// このとき `FIND("]",…)` は #VALUE! になる — それが本家の姿。
+///
+/// 径路の区切りは OS のものをそのまま使う(Windows なら `\`)。
+/// Excel も同じで、式が拾うのは `]` の後ろだけなので影響しない
+pub fn cell_filename(book_path: &str, sheet_name: &str) -> String {
+    if book_path.is_empty() {
+        return String::new();
+    }
+    let p = std::path::Path::new(book_path);
+    let file = p.file_name().map(|s| s.to_string_lossy()).unwrap_or_default();
+    let dir = p.parent().map(|s| s.to_string_lossy()).unwrap_or_default();
+    // Excel は径路の末尾に区切りを付ける(`C:\帳票\[売上.xlsx]4月`)
+    let sep = std::path::MAIN_SEPARATOR;
+    if dir.is_empty() {
+        format!("[{file}]{sheet_name}")
+    } else {
+        format!("{dir}{sep}[{file}]{sheet_name}")
     }
 }
 
@@ -2940,7 +2991,7 @@ pub fn eval_py_call(sheet: &Sheet, formula: &str) -> Option<(String, Vec<PyArg>)
     // PY ( の中の引数を、通常の引数解析(範囲は形つき)で読む
     let resolved = HashMap::new();
     // PY セルの引数評価では ROW()/COLUMN() の「いまのセル」は分からない — 原点で代える
-    let mut p = P { t: &toks, i: 0, sheet, resolved: &resolved, at: Pos::new(0, 0), others: &[], sheet_at: 0, skip_hidden: Default::default(), lets: Vec::new() };
+    let mut p = P { t: &toks, i: 0, sheet, resolved: &resolved, at: Pos::new(0, 0), others: &[], sheet_at: 0, skip_hidden: Default::default(), lets: Vec::new(), book_path: "" };
     // 素直な書き方 `=集計(A1:B9)` と、古い書き方 `=PY("集計", A1:B9)` の両方
     let bare = match (p.next(), p.next()) {
         (Some(Tok::Name(n)), Some(Tok::LParen)) if n == "PY" => None,
@@ -3099,6 +3150,7 @@ pub fn eval_once(sheet: &Sheet, at: Pos, formula: &str) -> Value {
         sheet_at: 0,
         skip_hidden: Default::default(),
         lets: Vec::new(),
+        book_path: "",
     };
     match p.expr() {
         Ok(v) if p.i == toks.len() => v,
@@ -3114,7 +3166,8 @@ const ARRAY_FNS: &[&str] = &[
 ];
 
 pub fn recalc(sheet: &mut Sheet) {
-    recalc_impl(sheet, &[], 0);
+    // 1枚だけの計算にはブックが無い = 径路も無い(CELL("filename") は空)
+    recalc_impl(sheet, &[], 0, "");
 }
 
 /// ブックの1枚を、**他のシートを見ながら**再計算する
@@ -3124,6 +3177,8 @@ pub fn recalc_book(book: &mut crate::Book, target: usize) {
         return;
     }
     let iter = book.calc_iter;
+    // シートを借り分ける前に写しておく(借用が重なるため)
+    let path = book.path.clone();
     let (left, rest) = book.sheets.split_at_mut(target);
     let (tgt, right) = rest.split_first_mut().expect("上で確かめた");
     let others: Vec<&Sheet> = left.iter().chain(right.iter()).collect();
@@ -3132,14 +3187,14 @@ pub fn recalc_book(book: &mut crate::Book, target: usize) {
             // 反復計算: 循環は前回の値で埋めて、変化が delta 以下に
             // 落ち着くまで(上限 count 回)回す — Excel と同じ枠組み
             for _ in 0..count.max(1) {
-                let (changed, maxd) = recalc_pass_iter(tgt, &others, target, true);
+                let (changed, maxd) = recalc_pass_iter(tgt, &others, target, true, &path);
                 if !changed || maxd <= delta {
                     break;
                 }
             }
             stamp_py(tgt);
         }
-        None => recalc_impl(tgt, &others, target),
+        None => recalc_impl(tgt, &others, target, &path),
     }
 }
 
@@ -3204,7 +3259,7 @@ fn stamp_py(sheet: &mut Sheet) {
     sheet.py_stamp = h.finish() | 1;
 }
 
-fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize) {
+fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_path: &str) {
     // OFFSET/INDIRECT(計算で決まる参照)とスピルは、1回の走査では依存の順が
     // 読めないことがある — そのときだけ、値が動かなくなるまで回す(上限つき。
     // RAND/NOW 入りの式は毎回変わるので、比較からは外している)
@@ -3222,12 +3277,12 @@ fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize) {
                 .unwrap_or(false)
         });
     if !dynamic {
-        recalc_pass(sheet, others, at);
+        recalc_pass(sheet, others, at, book_path);
         stamp_py(sheet);
         return;
     }
     for _ in 0..5 {
-        if !recalc_pass(sheet, others, at) {
+        if !recalc_pass(sheet, others, at, book_path) {
             break;
         }
     }
@@ -3235,8 +3290,8 @@ fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize) {
 }
 
 /// 再計算の1周。値が動いたら true(まだ安定していないかもしれない)
-fn recalc_pass(sheet: &mut Sheet, others: &[&Sheet], at: usize) -> bool {
-    recalc_pass_iter(sheet, others, at, false).0
+fn recalc_pass(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_path: &str) -> bool {
+    recalc_pass_iter(sheet, others, at, false, book_path).0
 }
 
 /// 再計算の1周(反復モードつき)。反復モードでは循環参照を #CIRC! に
@@ -3246,6 +3301,7 @@ fn recalc_pass_iter(
     others: &[&Sheet],
     at: usize,
     iter_mode: bool,
+    book_path: &str,
 ) -> (bool, f64) {
     // PY セルはここでは計算しない(最後に計算した値を保つ)。
     // まだ一度も計算していなければ「#PY?」の印を置く(空白で誤魔化さない)
@@ -3319,6 +3375,7 @@ fn recalc_pass_iter(
         sheet: &Sheet,
         others: &[&Sheet],
         at: usize,
+        book_path: &str,
         resolved: &mut HashMap<Pos, Value>,
         visiting: &mut HashSet<Pos>,
         iter_mode: bool,
@@ -3343,13 +3400,13 @@ fn recalc_pass_iter(
         // 先に依存を解く
         for d in deps(f) {
             if map.contains_key(&d) && !resolved.contains_key(&d) {
-                let v = eval_at(d, map, sheet, others, at, resolved, visiting, iter_mode);
+                let v = eval_at(d, map, sheet, others, at, book_path, resolved, visiting, iter_mode);
                 resolved.insert(d, v);
             }
         }
         let v = match lex(f) {
             Ok(toks) => {
-                let mut p2 = P { t: &toks, i: 0, sheet, resolved, at: p, others, sheet_at: at, skip_hidden: Default::default(), lets: Vec::new() };
+                let mut p2 = P { t: &toks, i: 0, sheet, resolved, at: p, others, sheet_at: at, skip_hidden: Default::default(), lets: Vec::new(), book_path };
                 match p2.expr() {
                     Ok(v) if p2.i == toks.len() => v,
                     Ok(_) => Value::Error("#ERROR!".into()),
@@ -3365,7 +3422,7 @@ fn recalc_pass_iter(
 
     let map: HashMap<Pos, String> = formulas.iter().cloned().collect();
     for (p, _) in &formulas {
-        let v = eval_at(*p, &map, sheet, others, at, &mut resolved, &mut visiting, iter_mode);
+        let v = eval_at(*p, &map, sheet, others, at, book_path, &mut resolved, &mut visiting, iter_mode);
         resolved.insert(*p, v);
     }
     let mut max_delta = 0.0f64;
@@ -3399,7 +3456,7 @@ fn recalc_pass_iter(
                 c.value = v;
             }
         };
-        let rows = match eval_array(sheet, others, at, f, *origin) {
+        let rows = match eval_array(sheet, others, at, f, *origin, book_path) {
             Err(e) => {
                 put_origin(sheet, e, &mut changed);
                 continue;
@@ -3465,7 +3522,7 @@ fn recalc_pass_iter(
     // 小さければ足りない席は #N/A(Excel と同じ)、大きければ切る。
     // 1つの値しか返らない式は範囲いっぱいに配る(これも Excel と同じ)
     for (origin, f, (h, w)) in &cse_list {
-        let rows = match eval_array(sheet, others, at, f, *origin) {
+        let rows = match eval_array(sheet, others, at, f, *origin, book_path) {
             Err(e) => {
                 if let Some(c) = sheet.cells.get_mut(origin) {
                     if c.value != e && !volatile.contains(origin) {
@@ -3566,11 +3623,12 @@ fn eval_array(
     sheet_at: usize,
     f: &str,
     at: Pos,
+    book_path: &str,
 ) -> Result<Vec<Vec<Value>>, Value> {
     let err = |s: &str| Value::Error(s.into());
     let toks = lex(f).map_err(|_| err("#ERROR!"))?;
     let resolved = HashMap::new();
-    let mut p = P { t: &toks, i: 0, sheet, resolved: &resolved, at, others, sheet_at, skip_hidden: Default::default(), lets: Vec::new() };
+    let mut p = P { t: &toks, i: 0, sheet, resolved: &resolved, at, others, sheet_at, skip_hidden: Default::default(), lets: Vec::new(), book_path };
     let v = {
         let mut ap = AP { p: &mut p };
         ap.expr().map_err(|_| err("#ERROR!"))?
@@ -5772,5 +5830,80 @@ mod new_fn_tests {
         recalc(&mut s3);
         let k = |a1: &str| s3.get(Pos::parse(a1).unwrap()).map(|c| c.value.display()).unwrap_or_default();
         assert_eq!((k("E1"), k("E2")), ("1".into(), "2".into()), "縦に積めていない");
+    }
+}
+
+#[cfg(test)]
+mod cell_filename_tests {
+    use super::*;
+    use crate::Book;
+
+    /// Excel の `CELL("filename")` は **`径路[ファイル名]シート名`**。
+    /// 実物はここから `]` の後ろを取ってシート名にする
+    #[test]
+    fn 径路とファイル名とシート名を並べる() {
+        let sep = std::path::MAIN_SEPARATOR;
+        assert_eq!(
+            cell_filename(&format!("{sep}帳票{sep}売上.xlsx"), "4月"),
+            format!("{sep}帳票{sep}[売上.xlsx]4月")
+        );
+        // 径路の無い名前だけでも壊れない
+        assert_eq!(cell_filename("売上.xlsx", "4月"), "[売上.xlsx]4月");
+    }
+
+    /// **保存していないブックは空文字**(Excel と同じ)。
+    /// `#NAME?` にはしない — 実装できる物を誤りにして回避させない
+    #[test]
+    fn 保存前は空文字() {
+        assert_eq!(cell_filename("", "Sheet1"), "");
+    }
+
+    /// 常套句がそのまま通ること。`=MID(CELL("filename",A1),
+    /// FIND("]",CELL("filename",A1))+1, 31)` でシート名が取れる
+    #[test]
+    fn シート名を取り出す常套句が通る() {
+        let mut b = Book::new();
+        b.path = format!("{s}home{s}dev{s}売上.xlsx", s = std::path::MAIN_SEPARATOR);
+        b.sheets[0].name = "四月".into();
+        let s = &mut b.sheets[0];
+        s.set(Pos::parse("A1").unwrap(), crate::Cell::input("=CELL(\"filename\",A1)"));
+        s.set(
+            Pos::parse("A2").unwrap(),
+            crate::Cell::input(
+                "=MID(CELL(\"filename\",A1), FIND(\"]\",CELL(\"filename\",A1))+1, 31)",
+            ),
+        );
+        recalc_book(&mut b, 0);
+        let g = |a1: &str| {
+            b.sheets[0].get(Pos::parse(a1).unwrap()).map(|c| c.value.display()).unwrap_or_default()
+        };
+        assert!(g("A1").ends_with("[売上.xlsx]四月"), "いま {}", g("A1"));
+        assert_eq!(g("A2"), "四月", "シート名が取り出せない");
+    }
+
+    /// 種別が違えば今までどおり `#NAME?`。**できない物をできる顔で
+    /// 答えない** — "address" に 0 を返すほうが黙って壊れる
+    #[test]
+    fn ファイル名以外はまだ答えない() {
+        let mut b = Book::new();
+        b.path = "/tmp/x.xlsx".into();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), crate::Cell::input("=CELL(\"address\",A1)"));
+        recalc_book(&mut b, 0);
+        assert_eq!(
+            b.sheets[0].get(Pos::parse("A1").unwrap()).map(|c| c.value.display()).unwrap_or_default(),
+            "#NAME?"
+        );
+    }
+
+    /// 1枚だけの再計算(ブックが無い)では径路を知らない = 空文字
+    #[test]
+    fn ブックの無い再計算では空文字() {
+        let mut s = Sheet::new("Sheet1");
+        s.set(Pos::parse("A1").unwrap(), crate::Cell::input("=CELL(\"filename\")"));
+        recalc(&mut s);
+        assert_eq!(
+            s.get(Pos::parse("A1").unwrap()).map(|c| c.value.display()).unwrap_or_default(),
+            ""
+        );
     }
 }

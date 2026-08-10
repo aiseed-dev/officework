@@ -92,6 +92,15 @@ pub(crate) fn sig_path_for(p: &std::path::Path) -> PathBuf {
 }
 
 impl Calc {
+    /// ブックの道を差し替える。**`book.path` も一緒に動かす** —
+    /// `CELL("filename")` が `径路[ファイル名]シート名` を返すのに要る。
+    /// 別々に持つと片方だけ古くなり、式が前のファイル名を答える
+    pub(crate) fn set_path(&mut self, p: Option<PathBuf>) {
+        self.book.path =
+            p.as_ref().map(|x| x.display().to_string()).unwrap_or_default();
+        self.path = p;
+    }
+
     /// 自分のロックを外す(閉じる・別のファイルへ移るとき)。
     pub(crate) fn release_lock(&mut self) {
         if let Some(lp) = self.my_lock.take() {
@@ -182,7 +191,7 @@ impl Calc {
                     .into();
                 }
                 Self::note_recent(&p);
-                self.path = Some(p);
+                self.set_path(Some(p));
                 self.sync_input();
             }
             Err(e) => self.status = format!("開けません: {e}").into(),
@@ -303,7 +312,7 @@ impl Calc {
                 self.undo_stack.clear();
                 self.redo_stack.clear();
                 self.clip_range = None;
-                self.path = None;
+                self.set_path(None);
                 self.dirty = true;
                 self.sync_input();
                 self.status = ui::t!("控えを開きました(名無しの複製。保存で名前を聞きます。元へ戻すなら同じ名前で保存)").into();
@@ -504,7 +513,7 @@ impl Calc {
         }
         self.release_lock();
         self.locked_by = None;
-        self.path = None;
+        self.set_path(None);
         self.encrypt_pw = None;
         self.notes = Vec::new();
         self.book = Book::new();
@@ -1006,7 +1015,7 @@ impl Calc {
                 // 次の起動で「前回落ちました」と嘘を言う。道が変わる
                 // (名前を付けて保存)ときは古い道の分も捨てる
                 self.drop_recover();
-                self.path = Some(p);
+                self.set_path(Some(p));
                 self.drop_recover();
                 self.dirty = false;
                 // 挿した絵はもう原本(いま書いたファイル)にある。次の保存で

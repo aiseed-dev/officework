@@ -320,6 +320,11 @@ fn open_book(path: &str) -> Result<(Book, Vec<String>, usize), String> {
         .unwrap_or(0);
     let (mut book, rep) = sheet::xlsx::read(std::io::Cursor::new(&bytes))
         .map_err(|e| format!("{path}: xlsx として読めない: {e}"))?;
+    // **出どころを教える。** CELL("filename") が `径路[名前]シート名` を
+    // 返すのに要る。ファイルには入っていない情報なので、開いた側が入れる
+    book.path = std::fs::canonicalize(path)
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|_| path.to_string());
     sheet::recalc_all(&mut book);
     // **読めなかった物は名前で言う。** 黙って落とすのが一番悪い
     Ok((

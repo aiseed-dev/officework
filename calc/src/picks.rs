@@ -204,7 +204,7 @@ impl Calc {
                 };
                 self.open(path.clone());
                 // 控えを原本と取り違えないよう、道は持たせない
-                self.path = None;
+                self.set_path(None);
                 self.dirty = true;
                 self.status = ui::tf!(
                     "控えを開きました(元は {})。中身を確かめて「名前を付けて保存」してください — このまま上書きはしません",
