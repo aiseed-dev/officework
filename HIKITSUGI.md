@@ -13,10 +13,39 @@
   `git reset --soft HEAD~1` → `git reset` で戻した)
 
 - 発注者は実機で GUI を触り、日本語で不具合を報告する。
-  **1報告 = 原因究明 → 修正 → `cargo test --workspace` 緑 →
+  **1報告 = 原因究明 → 修正 → `cargo test --workspace` 緑 → clippy 緑 →
   `cargo build --release` → コミット**、の回転。発注者は
   `./target/release/{writer,calc}` を直接起動して確かめるので、
   **release の組み直しを忘れると「直っていない」と見える**
+
+- **コミット前に clippy を回す。`cargo test` が通っても CI は落ちる。**
+  CI は `--all-targets` で回すので、**試験の中の未使用 import** のような
+  `cargo test` が見ない物で赤になる(2026-08-10、条件付き書式の直しで
+  試験に `CondLook` の未使用 import を残し、CI を全部赤にした。
+  別のセッションに拾わせてしまった)。手元で走らせる形はこれ:
+
+      cargo clippy -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar \
+        --all-targets -- -D warnings -A clippy::too_many_arguments \
+        -A clippy::type_complexity -A clippy::field_reassign_with_default \
+        -A clippy::needless_range_loop
+
+  **この並びに calc・writer・ui は入っていない。** GUI の3つは門番の外に
+  あり、実際に `ui/src/pyedit.rs` の未使用 import などが溜まっている。
+
+- **CI が走らせる試験も同じ6つ足らずしかない**(2026-08-10 に数えた):
+
+      cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper
+
+  つまり **calc の 137 本・writer・ui の試験は CI で一度も走らない。**
+  「ready の嘘は wiring_tests が落とす」という方針が拠っている当の
+  `wiring_tests` が、手元でしか走っていない。おそらく GPUI の連結に
+  系のライブラリが要る(`.linklibs` の細工)のが理由で、**意図した除外かも
+  しれない** — だが結果として、押しても何も起きないボタンを CI は止めない。
+  `.github/` は別の持ち場なので、直すなら声を掛けてから。
+  `lang/tests/i18n_soroi.rs`(文言の門番)は lang なので**走っている**
+
+  「検査はあるが、検査が見ている場所が本番とずれている」— 同じ日に
+  4度踏んだ型(キーの嘘・文言の門番・clippy の範囲・試験の範囲)
 - 原因は推測で直さず、`vendor/zed/crates/gpui` のソースで裏を取る
 - **コミットは英語**で「何を・なぜ」(2026-08-10 発注者。GitHub で最初に
   読まれるため)。**設計・注釈・試験名は日本語のまま** — 中の作業の言語で、
