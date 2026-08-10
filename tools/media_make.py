@@ -35,6 +35,13 @@ PKG = "http://schemas.openxmlformats.org/package/2006/relationships"
 
 EMU_PER_PX = 9525
 
+# **最小のグラフの部品。** 中身は読まないので、形が整っていれば足りる
+CHART_XML = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart">'
+    "<c:chart><c:plotArea><c:barChart/></c:plotArea></c:chart></c:chartSpace>"
+)
+
 
 def png(width: int, height: int, rgb: tuple[int, int, int]) -> bytes:
     """べた塗りの PNG を1枚。**外の道具を使わない**ので、型紙が誰の手元でも同じ。"""
@@ -87,6 +94,25 @@ def pic(id_: int, name: str, rid: str) -> str:
         f"<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>"
         f"<xdr:spPr><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></xdr:spPr>"
         f"</xdr:pic><xdr:clientData/>"
+    )
+
+
+def chart_frame(id_: int, name: str, rid: str) -> str:
+    """`xdr:graphicFrame` — グラフの入れ物。
+
+    **officework はグラフの模型を持たない**(描くのは matplotlib)。だから
+    読み手は中に入らず、**在ったことだけを帳簿に載せる**。その道が働くかを
+    確かめるために、型紙に1つ入れておく(2026-08-11)。
+    """
+    return (
+        f"<xdr:graphicFrame macro=\"\"><xdr:nvGraphicFramePr>"
+        f'<xdr:cNvPr id="{id_}" name="{name}"/><xdr:cNvGraphicFramePr/>'
+        f"</xdr:nvGraphicFramePr><xdr:xfrm><a:off x=\"0\" y=\"0\"/>"
+        f'<a:ext cx="4000000" cy="2500000"/></xdr:xfrm>'
+        f'<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">'
+        f'<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" '
+        f'xmlns:r="{NS_R}" r:id="{rid}"/></a:graphicData></a:graphic>'
+        f"</xdr:graphicFrame><xdr:clientData/>"
     )
 
 
@@ -152,6 +178,9 @@ def build(out: pathlib.Path) -> None:
         f'{anchor_one(3, 4, 64, 64)}{pic(3, "検印", "rId2")}</xdr:oneCellAnchor>'
         # 2番目: 絵ではない図形
         f'{anchor_from_to(0, 8, 2, 10)}{shape(4, "注意書き", "社外秘", "FFF2CC")}'
+        f"</xdr:twoCellAnchor>"
+        # 3番目: グラフ。**中身は持たないが、在ったことは言う**の道を試す
+        f'{anchor_from_to(4, 0, 8, 8)}{chart_frame(5, "四半期の売上", "rId3")}'
         f"</xdr:twoCellAnchor></xdr:wsDr>"
     )
 
@@ -197,6 +226,7 @@ def build(out: pathlib.Path) -> None:
             f'<Relationships xmlns="{PKG}">'
             f'<Relationship Id="rId1" Type="{NS_R}/image" Target="../media/image1.png"/>'
             f'<Relationship Id="rId2" Type="{NS_R}/image" Target="../media/image2.png"/>'
+            f'<Relationship Id="rId3" Type="{NS_R}/chart" Target="../charts/chart1.xml"/>'
             f"</Relationships>"
         ),
     }
@@ -204,6 +234,7 @@ def build(out: pathlib.Path) -> None:
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for name, body in parts.items():
             z.writestr(name, body)
+        z.writestr("xl/charts/chart1.xml", CHART_XML)
         z.writestr("xl/media/image1.png", logo)
         z.writestr("xl/media/image2.png", stamp)
 

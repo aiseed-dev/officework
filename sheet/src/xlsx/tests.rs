@@ -1435,6 +1435,82 @@ mod shape_roundtrip_tests {
     use super::*;
     use crate::model::SheetShape;
 
+    /// **グラフは持たないが、黙って捨てない。**
+    ///
+    /// officework はグラフの模型を持たない — 描くのは matplotlib で、
+    /// 出来上がりは画像として置く(発注者確定)。だから系列も軸も読まない。
+    ///
+    /// だが 2026-08-11 まで、`graphicFrame` は**見てすらいなかった**
+    /// (`grep graphicFrame` で 0 件)。他人の作ったグラフ入りの帳票を開くと、
+    /// **出ないだけでなく、出なかったとも言わなかった** — 家訓に反する。
+    ///
+    /// **「持たない」と「黙って捨てる」は別のこと。** リッチテキストで
+    /// 同じ区別をしたのと同じ形。保存では原本の drawing がそのまま
+    /// 持ち越されるので、**壊れはしない。**
+    #[test]
+    fn グラフは読まないが帳簿には載せる() {
+        let b = Book::new();
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        // 図形の入った drawing を差し込む。**グラフの入れ物だけ**入れて、
+        // 中身(系列・軸)は空にしてある — 読み手はそこへ入らない
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+        let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        use std::io::{Read as _, Write as _};
+        let mut patched = false;
+        for i in 0..z.len() {
+            let mut f = z.by_index(i).unwrap();
+            let name = f.name().to_string();
+            let mut body = Vec::new();
+            f.read_to_end(&mut body).unwrap();
+            if name.ends_with("sheet1.xml") {
+                let t = String::from_utf8(body).unwrap();
+                let t = t.replace("</worksheet>", r#"<drawing r:id="rIdD"/></worksheet>"#);
+                patched = true;
+                body = t.into_bytes();
+            }
+            w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+            w.write_all(&body).unwrap();
+        }
+        assert!(patched, "型紙を差す先が無い(書き出しの形が変わった)");
+        const XDR: &str = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing";
+        const A: &str = "http://schemas.openxmlformats.org/drawingml/2006/main";
+        const PKG: &str = "http://schemas.openxmlformats.org/package/2006/relationships";
+        const REL: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+        for (name, body) in [
+            (
+                "xl/worksheets/_rels/sheet1.xml.rels",
+                format!(
+                    r#"<Relationships xmlns="{PKG}"><Relationship Id="rIdD" Type="{REL}/drawing" Target="../drawings/drawing1.xml"/></Relationships>"#
+                ),
+            ),
+            (
+                "xl/drawings/drawing1.xml",
+                format!(
+                    r#"<xdr:wsDr xmlns:xdr="{XDR}" xmlns:a="{A}"><xdr:twoCellAnchor>
+                    <xdr:from><xdr:col>1</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
+                    <xdr:to><xdr:col>6</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>12</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+                    <xdr:graphicFrame><xdr:nvGraphicFramePr><xdr:cNvPr id="2" name="売上"/></xdr:nvGraphicFramePr>
+                    <a:graphic><a:graphicData/></a:graphic></xdr:graphicFrame><xdr:clientData/>
+                    </xdr:twoCellAnchor></xdr:wsDr>"#
+                ),
+            ),
+        ] {
+            w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+            w.write_all(body.as_bytes()).unwrap();
+        }
+        let out = w.finish().unwrap();
+        let (back, rep) = read(Cursor::new(out.into_inner())).expect("読めない");
+
+        assert!(back.sheets[0].shapes.is_empty(), "グラフを図形として読んでしまった");
+        assert!(back.sheets[0].images.is_empty(), "グラフを画像として読んでしまった");
+        assert!(
+            rep.unsupported.iter().any(|(w, n)| w.contains("グラフ") && *n == 1),
+            "**グラフが黙って消えた** — 帳簿: {:?}",
+            rep.unsupported
+        );
+    }
+
     #[test]
     fn 挿した図形が往復する() {
         let mut b = Book::new();

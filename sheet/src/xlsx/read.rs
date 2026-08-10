@@ -342,6 +342,16 @@ pub(super) enum DrawKind {
     /// 図形。中身(種類・色・文字・回転・線幅…)は詰めてあり、
     /// 置き場所と大きさ(at / width / height / dx / dy)は受け手が埋める
     Shape(Box<crate::model::SheetShape>),
+    /// **グラフ。中身は持たない。**
+    ///
+    /// officework はグラフの模型を持たない — 描くのは matplotlib で、
+    /// 出来上がりは画像として置く(発注者確定)。だから系列も軸も読まない。
+    ///
+    /// **それでも、在ったことは言う。** 家訓は「読めなかった物は黙って
+    /// 落とさない」で、**「持たない」と「黙って捨てる」は別のこと**
+    /// (2026-08-11。リッチテキストで同じ区別をしたのと同じ形)。
+    /// 保存では原本の drawing がそのまま持ち越されるので、**壊れはしない。**
+    Chart,
 }
 
 /// drawing(xl/drawings/drawingN.xml)から、画像と図形のアンカーを拾う。
@@ -412,6 +422,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     let mut in_from = false;
     let mut in_ln = false;
     let mut in_sp = false;
+    let mut is_chart = false;
     // 回転・反転・線幅・不透明度・影(xfrm / a:ln w / a:alpha / outerShdw)
     let mut rot = 0.0f32;
     let (mut flip_h, mut flip_v) = (false, false);
@@ -436,6 +447,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     (path_w, path_h) = (1000.0, 1000.0);
                     in_sp = false;
                     in_ln = false;
+                    is_chart = false;
                     rot = 0.0;
                     (flip_h, flip_v) = (false, false);
                     line_w = 1.5;
@@ -448,6 +460,8 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     cur = t.to_vec()
                 }
                 b"sp" => in_sp = true,
+                // グラフの入れ物。**中に入らない** — 在ったことだけ控える
+                b"graphicFrame" => is_chart = true,
                 b"cNvPr" if sp_name.is_none() => sp_name = attr(&e, "name"),
                 b"xfrm" if in_sp => {
                     rot = attr(&e, "rot")
@@ -619,6 +633,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                                 ))),
                             }
                         }
+                        _ if is_chart => Some(DrawKind::Chart),
                         _ => None,
                     };
                     if let (Some(c), Some(rr), Some(k)) = (col, row, kind) {
@@ -1750,6 +1765,10 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                         sp.dy_px = oy_emu as f32 / 9525.0;
                         sh.shapes.push(*sp);
                     }
+                    // **持たないが、黙らない。** グラフの模型は持たない
+                    // 決めなので描かないが、在ったことは帳簿に載せる。
+                    // 原本の drawing は保存で持ち越されるので壊れはしない
+                    DrawKind::Chart => rep.note("グラフ(chart)"),
                 }
             }
         }
