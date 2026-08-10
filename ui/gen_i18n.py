@@ -15,9 +15,18 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# calc は部屋割り済み(2026-08-06)— src の全部屋を見る(試験は除く)
-SOURCES = [ROOT / "writer/src/main.rs"] + sorted(
-    p for p in (ROOT / "calc/src").glob("*.rs") if p.name != "tests.rs"
+# **両方のアプリと ui の全部屋を見る**(試験は除く)。
+#
+# 前は writer だけ main.rs を名指ししていた。writer も途中まで部屋割り
+# されていて、cmds.rs・io.rs・view.rs の 187 句を門番が見ていなかった。
+# 見ていない鍵の訳は「使われていない訳」に数えられる — つまり門番が
+# **生きている訳 135 句を消せ**と言っていた(2026-08-10 に気づいた)。
+# 部屋が増えたら足す、ではなく、**glob で全部見る**
+SOURCES = sorted(
+    p
+    for d in ("calc/src", "writer/src", "ui/src")
+    for p in (ROOT / d).glob("*.rs")
+    if p.name != "tests.rs"
 )
 TABLE = ROOT / "lang/src/i18n_en.rs"
 
