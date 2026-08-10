@@ -436,11 +436,22 @@ fn open_result(
             .tables
             .iter()
             .map(|t| {
-                json!({"range": rng(t.a, t.b),
-                       "headerRowCount": u32::from(t.header),
-                       "showRowStripes": t.banded_rows,
-                       "showColumnStripes": t.banded_cols,
-                       "styleName": t.name})
+                let mut o = Map::new();
+                o.insert("range".into(), rng(t.a, t.b));
+                o.insert("headerRowCount".into(), json!(u32::from(t.header)));
+                o.insert("showRowStripes".into(), json!(t.banded_rows));
+                o.insert("showColumnStripes".into(), json!(t.banded_cols));
+                // **`styleName` は様式の名前**(`TableStyleMedium2`)。
+                // `t.name`(`Table1`)を入れていた — 別物を渡していた。
+                // 原本に指定が無ければ**付けない**(欄は optional)
+                if let Some(s) = &t.style {
+                    o.insert("styleName".into(), json!(s));
+                }
+                // `headerFill` / `headerFontColor` / `stripeFill` は**出さない**。
+                // 組み込みの表の様式の配色は**ファイルではなく Excel が持って
+                // いる**ので、名前から色を組み立てることになる。60種類の色を
+                // 少しずつ間違えるくらいなら、黙って省くほうが正直
+                Value::Object(o)
             })
             .collect();
         for (nm, r) in &sh.names {

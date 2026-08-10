@@ -143,6 +143,19 @@ fn pane(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
     }
 }
 
+/// **`<c>` がそこに置かれていたことだけを控える**([`Sheet::seen`])。
+///
+/// 値も書式も無いセル(`<c r="D1" s="0"/>`)は `cells` に入れない — 入れると
+/// 「中身のある範囲」を意味する `extent` が狂う。だがシートの大きさとしては
+/// 数える。**要素があるのは、書き手がそこまで書いたということ。**
+///
+/// 落とすと、呼ぶ側が正しく要求した範囲を「シートの外」と断ることになる。
+fn saw_cell(sh: &mut Sheet, p: Option<Pos>) {
+    let Some(p) = p else { return };
+    let (r, c) = sh.seen.unwrap_or((0, 0));
+    sh.seen = Some((r.max(p.row + 1), c.max(p.col + 1)));
+}
+
 /// `<row r="3" ht="27.5" customHeight="1" outlineLevel="1" hidden="1">` —
 /// 指定のある行だけ持つ(高さ・グループ化の深さ・畳み)。
 fn row_height(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
@@ -359,6 +372,9 @@ fn parse_table(xml: &str) -> Option<crate::model::TableDef> {
         name: attr_of("table", "displayName")
             .or_else(|| attr_of("table", "name"))
             .unwrap_or_else(|| "テーブル".into()),
+        // **`table/@name` と `tableStyleInfo/@name` は別物。** 前者は
+        // `Table1` のような識別子、後者は `TableStyleMedium2` のような見た目
+        style: attr_of("tableStyleInfo", "name"),
         a,
         b,
         header: num("table", "headerRowCount", 1) > 0,
@@ -996,6 +1012,7 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
                 b"row" => row_height(&e, &mut sh),
                 b"c" => {
                     pos = attr(&e, "r").and_then(|s| Pos::parse(&s));
+                    saw_cell(&mut sh, pos);
                     ty = attr(&e, "t").unwrap_or_default();
                     // s は styles.xml の cellXfs の索引。書式はそちらにある
                     style = attr(&e, "s").and_then(|s| s.parse::<usize>().ok());
@@ -1081,6 +1098,7 @@ fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
                 b"c" => {
                     // 値の無い自己完結のセル。書式だけなら、それは帳票の枠 —
                     // 落とすと保存で罫線が消える(Excel 以外の道具が書く形)
+                    saw_cell(&mut sh, attr(&e, "r").and_then(|s| Pos::parse(&s)));
                     if let (Some(p), Some(si)) = (
                         attr(&e, "r").and_then(|s| Pos::parse(&s)),
                         attr(&e, "s").and_then(|s| s.parse::<usize>().ok()),
@@ -4054,7 +4072,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                         r#"<table xmlns="{ns}" id="{n}" name="{nm}" displayName="{nm}" ref="{r}""#,
                         r#" headerRowCount="{hdr}" totalsRowCount="{tot}">"#,
                         r#"{af}<tableColumns count="{cnt}">{cols}</tableColumns>"#,
-                        r#"<tableStyleInfo name="TableStyleMedium2" showFirstColumn="{fc}""#,
+                        r#"<tableStyleInfo name="{sty}" showFirstColumn="{fc}""#,
                         r#" showLastColumn="{lc}" showRowStripes="{rs}" showColumnStripes="{cs}"/>"#,
                         r#"</table>"#
                     ),
@@ -4071,6 +4089,9 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                     },
                     cnt = (t.b.col - t.a.col + 1),
                     cols = cols,
+                    // **原本の様式を据え置く。** ここを決め打ちにしていたので、
+                    // `TableStyleLight9` の帳票を開いて保存すると青くなっていた
+                    sty = esc(t.style.as_deref().unwrap_or("TableStyleMedium2")),
                     fc = b01(t.first_col),
                     lc = b01(t.last_col),
                     rs = b01(t.banded_rows),
@@ -4483,7 +4504,7 @@ mod link_comment_tests {
 
     #[test]
     fn バーとスケールとアイコンの条件付き書式が往復する() {
-        use crate::model::{CondKind, CondLook, CondRule};
+        use crate::model::{CondKind, CondRule};
         let mut b = Book::new();
         for (i, v) in ["10", "20", "30"].iter().enumerate() {
             b.sheets[0].set(Pos::new(i as u32, 0), Cell::input(v));
@@ -5931,6 +5952,52 @@ mod script_roundtrip_tests {
         assert!(back.sheets[0].get(p).unwrap().fmt.rtl_text, "右横書きが往復しない");
     }
 
+    /// **表の様式の名前を決め打ちにしていた。** `<tableStyleInfo name>` を
+    /// 読まず、書くときは必ず `TableStyleMedium2`。淡い緑の表を開いて
+    /// 保存すると、**黙って青くなっていた**。
+    ///
+    /// 表そのものの名前(`Table1`)と様式の名前(`TableStyleLight9`)は
+    /// 別物で、同じ `name` という綴りなのが罠(2026-08-10)。
+    #[test]
+    fn 表の様式の名前が往復する() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::new(0, 0), Cell::input("部署"));
+        b.sheets[0].set(Pos::new(1, 0), Cell::input("営業"));
+        b.sheets[0].tables.push(crate::model::TableDef {
+            name: "売上表".into(),
+            style: Some("TableStyleLight9".into()),
+            a: Pos::new(0, 0),
+            b: Pos::new(1, 0),
+            ..Default::default()
+        });
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let (back, _) = read(buf).expect("読めない");
+        let t = back.sheets[0].tables.first().expect("表が往復しない");
+        assert_eq!(t.style.as_deref(), Some("TableStyleLight9"), "様式の名前が往復しない");
+        assert_eq!(t.name, "売上表", "表の名前と様式の名前を取り違えている");
+
+        // 様式の指定が無い表は、書くときに既定へ落ちる(Excel が新しい表に
+        // 付けるもの)。**None のまま書いて属性を欠かすと Excel が開けない**
+        let mut b2 = Book::new();
+        b2.sheets[0].set(Pos::new(0, 0), Cell::input("あ"));
+        b2.sheets[0].tables.push(crate::model::TableDef {
+            a: Pos::new(0, 0),
+            b: Pos::new(0, 0),
+            ..Default::default()
+        });
+        let mut buf2 = Cursor::new(Vec::new());
+        write(&b2, &mut buf2).expect("書けない");
+        buf2.set_position(0);
+        let (back2, _) = read(buf2).expect("読めない");
+        assert_eq!(
+            back2.sheets[0].tables[0].style.as_deref(),
+            Some("TableStyleMedium2"),
+            "指定の無い表が既定に落ちない"
+        );
+    }
+
     #[test]
     fn 固定枠と画面の見え方が往復する() {
         use crate::model::FreezePane;
@@ -6044,6 +6111,62 @@ mod script_roundtrip_tests {
         assert!(sh.rtl, "子を持つ sheetView の rtl が読めない");
         assert_eq!(sh.show_gridlines, Some(false), "格子線が読めない");
         assert_eq!(sh.zoom_scale, Some(85), "表示倍率が読めない");
+    }
+
+    /// **中身も書式も無いセルも、シートの大きさには数える。**
+    ///
+    /// `<c r="D1" s="0"/>` は `cells` には入れない(`extent` は「中身のある
+    /// 範囲」の意味で 38 箇所から使われている)。だが要素が置かれているのは
+    /// **書き手がそこまで書いたということ**で、`<dimension>` の無いファイル
+    /// では、それが唯一の手掛かりになる。
+    ///
+    /// 落とすと、呼ぶ側が正しく要求した範囲を「シートの外」と断ってしまう
+    /// (2026-08-10、genoffice の試験が教えてくれた)。
+    #[test]
+    fn 空でも要素のあるセルまでを大きさに数える() {
+        let b = Book::new();
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+        let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        use std::io::{Read as _, Write as _};
+        let mut replaced = false;
+        for i in 0..z.len() {
+            let mut f = z.by_index(i).unwrap();
+            let name = f.name().to_string();
+            let mut s = Vec::new();
+            f.read_to_end(&mut s).unwrap();
+            if name.ends_with("sheet1.xml") {
+                let t = String::from_utf8(s).unwrap();
+                // **`<dimension>` ごと消す。** 申告が残っていると、そちらで
+                // 大きさが埋まってしまい、何を試しているのか分からなくなる
+                let t = match (t.find("<dimension"), t.find("<sheetData")) {
+                    (Some(a), Some(_)) => {
+                        let e = t[a..].find("/>").expect("dimension が閉じない") + a + 2;
+                        format!("{}{}", &t[..a], &t[e..])
+                    }
+                    _ => t,
+                };
+                let t = t.replace(
+                    "<sheetData></sheetData>",
+                    r#"<sheetData><row r="1"><c r="A1" t="str"><v>あ</v></c><c r="D1" s="0"/></row></sheetData>"#,
+                );
+                assert!(t.contains(r#"<c r="D1""#), "型紙を差せていない");
+                replaced = true;
+                s = t.into_bytes();
+            }
+            w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+            w.write_all(&s).unwrap();
+        }
+        assert!(replaced, "型紙を差す先が無い(書き出しの形が変わった)");
+        let out = w.finish().unwrap();
+        let (back, _) = read(Cursor::new(out.into_inner())).expect("読めない");
+        let sh = &back.sheets[0];
+        // 中身があるのは A1 だけ
+        assert_eq!(sh.extent(), (1, 1), "extent の意味を変えてしまっている");
+        // **見せる大きさは D 列まで。** 要素が置かれていた所まで数える
+        assert_eq!(sh.size(), (1, 4), "空でも要素のあるセルを大きさに数えていない");
+        assert!(sh.get(Pos::new(0, 3)).is_none(), "中身の無いセルを持ってしまっている");
     }
 
     #[test]

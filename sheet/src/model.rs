@@ -715,6 +715,17 @@ pub struct Sheet {
     /// 逆に申告が `A1` だけの手抜きな書き手もいるので、**単独では信じない** —
     /// 使うときは [`Sheet::size`] で実際と大きいほうを採る(2026-08-10 発注者確定)
     pub dim: Option<(u32, u32)>,
+    /// **原本に `<c>` が置かれていた一番大きい所**(行数, 列数)。
+    ///
+    /// `<c r="D1" s="0"/>` — 要素はあるが値も書式も持たないセル。中身が
+    /// 無いので [`Sheet::cells`] には入れない(入れると「中身のある範囲」を
+    /// 意味する [`Sheet::extent`] が 38 箇所で狂う)。**それでも、書き手が
+    /// そこまで書いたという事実は残す** — `<dimension>` を書かない書き手の
+    /// とき、これが「シートはここまである」と言える唯一の手掛かりになる。
+    ///
+    /// 読みで落とすと、呼ぶ側が正しく要求した範囲を「シートの外」と
+    /// 断ることになる(2026-08-10、向こうの試験が教えてくれた)
+    pub seen: Option<(u32, u32)>,
     /// **昔ながらの配列数式(CSE)。** 起点 → 覆う大きさ(行, 列)。
     ///
     /// Excel で範囲を選んで Ctrl+Shift+Enter で入れたもの。xlsx では
@@ -1537,8 +1548,12 @@ impl Sheet {
         self.cells.keys().fold((0, 0), |(r, c), p| (r.max(p.row + 1), c.max(p.col + 1)))
     }
 
-    /// **見せる大きさ。** `extent`(中身のあるセル)と、原本の `<dimension>` の
-    /// 申告と、**セルは無いが高さ・幅・隠し・畳みを持つ行や列**の、いちばん大きい所。
+    /// **見せる大きさ。** 次の4つの、いちばん大きい所:
+    ///
+    /// - `extent` — 中身のあるセル
+    /// - `dim` — 原本の `<dimension>` の申告
+    /// - `seen` — **`<c>` は置かれていたが、値も書式も無かった所**
+    /// - セルは無いが高さ・幅・隠し・畳みを持つ行や列
     ///
     /// `extent` と分けてあるのは、`extent` が「中身のある範囲」として
     /// 38 箇所から使われているため。**あちらの意味は変えない。**
@@ -1551,7 +1566,7 @@ impl Sheet {
     /// (最大で 30 行ぶん)。
     pub fn size(&self) -> (u32, u32) {
         let (mut r, mut c) = self.extent();
-        if let Some((dr, dc)) = self.dim {
+        for (dr, dc) in [self.dim, self.seen].into_iter().flatten() {
             r = r.max(dr);
             c = c.max(dc);
         }
@@ -1635,6 +1650,14 @@ pub struct BookProps {
 pub struct TableDef {
     /// 表の名前(式から使える。空白は入れられない)
     pub name: String,
+    /// **表の様式の名前**(`<tableStyleInfo name="TableStyleMedium2"/>`)。
+    ///
+    /// **`name` とは別物。** `name` は `Table1` のような式から使う識別子で、
+    /// こちらは見た目の名前。混同すると、保存で他人の帳票の配色が変わる。
+    ///
+    /// `None` は原本に指定が無いという意味。書くときは既定の
+    /// `TableStyleMedium2` に落とす(Excel が新しい表に付けるもの)
+    pub style: Option<String>,
     /// 範囲(左上, 右下)。見出し行を含む
     pub a: Pos,
     pub b: Pos,
@@ -1654,6 +1677,7 @@ impl Default for TableDef {
     fn default() -> Self {
         TableDef {
             name: "テーブル1".into(),
+            style: None,
             a: Pos::new(0, 0),
             b: Pos::new(0, 0),
             header: true,
