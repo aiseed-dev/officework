@@ -38,8 +38,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ルビ「{}」を振りました(保存で docx の w:ruby に)", "Ruby « {} » ajouté (enregistré comme w:ruby dans le docx)"),
     ("控えが読めません: {}", "Impossible de lire la copie : {}"),
     ("控えは暗号化されています(いまのパスワードでは解けません)", "La copie est chiffrée (le mot de passe actuel ne l'ouvre pas)"),
-    ("控えを開きました(名無しの複製。保存で名前を聞きます。\
-                               元へ戻すなら同じ名前で保存)", "Copie ouverte (un double sans nom. L'enregistrement demandera un nom. Pour revenir à l'original, enregistrez sous le même nom)"),
     ("まだファイルになっていません(保存すると申し送り帳が持てます)", "Pas encore de fichier (enregistrez pour obtenir un fichier de discussion)"),
     ("書き残しました(文書の隣の .chat.txt。開いた人が読めます)", "Message laissé (.chat.txt à côté du document ; quiconque l'ouvre peut le lire)"),
     ("チャットに書けません: {}", "Impossible d'écrire dans la discussion : {}"),
@@ -158,8 +156,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} が編集中です(読めますが上書き保存はできません。\
                                  相手が閉じたら、またこのボタンで確かめてください)", "{} est en train de modifier le fichier (vous pouvez le lire, mais pas enregistrer par-dessus. Quand cette personne l'aura fermé, réappuyez sur ce bouton pour vérifier)"),
     ("先客が居なくなっていたので、編集権を取り直しました", "L'éditeur précédent est parti ; les droits d'édition ont été repris"),
-    ("まだファイルになっていません(保存すると、上書きのたびに\
-                         控えが残ります)", "Ce n'est pas encore un fichier (une fois enregistré, chaque écrasement laisse une copie)"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Historique des versions : cliquez pour ouvrir une copie comme document sans titre"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Discussion : tapez puis Enter pour laisser un message (.chat.txt à côté du document)"),
     ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
@@ -167,8 +163,6 @@ pub const TABLE: &[(&str, &str)] = &[
                                fill(名前, 値)=記入・extract(名前)=読む・\
                                fields()=一覧・render(辞書)=雛形差し込み)", "Macros : choisissez un .py et le Python du bac à sable modifie une copie du document (dans le script, d est le Document python-docx. fill(nom, valeur) = remplir, extract(nom) = lire, fields() = lister, render(dictionnaire) = remplir un modèle)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Plugins : placez des fichiers .py dans {} et ils apparaissent ici"),
-    ("暗号化は入っています。新しいパスワードを打って Enter\
-                    (空のまま Enter で暗号化をやめる)", "Le chiffrement est actif. Tapez un nouveau mot de passe puis Enter (Enter à vide enlève le chiffrement)"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Chiffrer : tapez un mot de passe puis Enter (AES-256, dès le prochain enregistrement)"),
     ("まだファイルになっていません(先に保存してください)", "Pas encore de fichier (enregistrez d'abord)"),
     ("未保存の変更があります。保存してから署名してください", "Des modifications ne sont pas enregistrées ; enregistrez avant de signer"),

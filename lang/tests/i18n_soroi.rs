@@ -25,6 +25,40 @@ fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("workspace の根").to_path_buf()
 }
 
+/// リテラルの中身を**実行時の文字列**に直す。
+///
+/// **ここを飛ばすと重複が見えない。** 同じ文を、片方は1行で、片方は
+/// 行末の `\` で継いで書くことができる。ソースの字面では別物だが、
+/// 実行時は同じ鍵なので `HashMap` で**片方の訳が画面に出なくなる**。
+/// 2026-08-11 に 13 の表すべてで3件ずつ見つかった — 字面で比べていた
+/// この試験自身が、その3件を見落としていた
+fn unescape(lit: &str) -> String {
+    let mut out = String::new();
+    let mut it = lit.chars();
+    while let Some(c) = it.next() {
+        if c != '\\' {
+            out.push(c);
+            continue;
+        }
+        match it.next() {
+            // 行継続: 改行と、続く字下げを食う
+            Some('\n') => {
+                let rest: String = it.clone().collect();
+                let skip = rest.chars().take_while(|c| *c == ' ' || *c == '\t').count();
+                for _ in 0..skip {
+                    it.next();
+                }
+            }
+            Some('n') => out.push('\n'),
+            Some('t') => out.push('\t'),
+            Some('r') => out.push('\r'),
+            Some(x) => out.push(x),
+            None => {}
+        }
+    }
+    out
+}
+
 /// `"…"` のリテラルを1つ読む。`\` の次の1文字は中身として飛ばす
 /// (`\"` で終わりにしない)。返すのは**中身**(囲みの `"` は除く)
 fn literal_at(s: &[u8], i: usize) -> Option<(usize, String)> {
@@ -82,7 +116,7 @@ fn keys_in(src: &str) -> Vec<String> {
         }
         if j < b.len() && b[j] == b'"' {
             if let Some((end, lit)) = literal_at(b, j) {
-                out.push(lit);
+                out.push(unescape(&lit));
                 i = end;
                 continue;
             }
@@ -131,7 +165,7 @@ fn table_keys(lang: &str) -> BTreeSet<String> {
         // 鍵の次は訳のリテラル。読み飛ばして次の項目へ
         let Some(vq) = src[k_end..].find('"').map(|r| k_end + r) else { break };
         let Some((v_end, _)) = literal_at(b, vq) else { break };
-        out.insert(key);
+        out.insert(unescape(&key));
         i = v_end;
     }
     out
@@ -203,4 +237,38 @@ fn 穴埋めの数が言語をまたいで揃う() {
             );
         }
     }
+}
+
+/// **同じ鍵が表に2度あってはいけない。**
+///
+/// 表は `&[(&str, &str)]` の並びで、地図ではない。実行時に `HashMap` へ
+/// 畳むので、同じ鍵が2つあると**後の1つが勝ち、もう片方の訳は画面に
+/// 絶対出ない**。どちらが死ぬかは表の並び次第で、誰も選んでいない。
+///
+/// 見つけにくいのは、**同じ文でも書き方が違えば字面では別物に見える**
+/// から。片方を行末の `\` で継いで書いてあるだけで、ソースを字面で
+/// 比べる検査はすり抜ける。この試験は 2026-08-11 に足した — それまで
+/// 13 の表すべてに3件ずつ、静かに死んだ訳があった
+#[test]
+fn 同じ鍵が二度出てこない() {
+    let mut bad = Vec::new();
+    for lang in lang::i18n_tables::LANGS {
+        let t = lang::i18n_tables::table(lang).expect("登録済み");
+        let mut seen: std::collections::HashMap<&str, &str> = Default::default();
+        for (k, v) in t {
+            if let Some(prev) = seen.insert(k, v) {
+                if prev != *v {
+                    bad.push(format!("{lang}: {k}\n      → {prev}\n      → {v}"));
+                } else {
+                    bad.push(format!("{lang}: {k}(訳は同じ)"));
+                }
+            }
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "同じ鍵が2度ある表があります({} 件)。**後の1つしか画面に出ません**:\n  {}",
+        bad.len(),
+        bad.iter().take(6).cloned().collect::<Vec<_>>().join("\n  ")
+    );
 }

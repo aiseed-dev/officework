@@ -41,8 +41,6 @@ pub const TABLE: &[(&str, &str)] = &[
 ("ルビ「{}」を振りました(保存で docx の w:ruby に)", "Ruby \"{}\" set (saved as w:ruby in docx)"),
 ("控えが読めません: {}", "Can't read the copy: {}"),
 ("控えは暗号化されています(いまのパスワードでは解けません)", "The copy is encrypted (the current password doesn't open it)"),
-("控えを開きました(名無しの複製。保存で名前を聞きます。\
-                               元へ戻すなら同じ名前で保存)", "Opened the copy (untitled; saving asks for a name; to restore, save under the original name)"),
 ("まだファイルになっていません(保存すると申し送り帳が持てます)", "Not a file yet (save it to get a chat file)"),
 ("書き残しました(文書の隣の .chat.txt。開いた人が読めます)", "Message left (.chat.txt next to the document; whoever opens it can read it)"),
 ("チャットに書けません: {}", "Can't write to the chat: {}"),
@@ -161,8 +159,6 @@ pub const TABLE: &[(&str, &str)] = &[
 ("{} が編集中です(読めますが上書き保存はできません。\
                                  相手が閉じたら、またこのボタンで確かめてください)", "{} is editing (you can read, but overwrite-save is blocked; when they close it, press this button again)"),
 ("先客が居なくなっていたので、編集権を取り直しました", "The previous editor left, so the editing rights were taken over"),
-("まだファイルになっていません(保存すると、上書きのたびに\
-                         控えが残ります)", "Not a file yet (once saved, every overwrite keeps a copy)"),
 ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Version history: click to open a copy as an untitled document"),
 ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Chat: type and press Enter to leave a message (.chat.txt next to the document)"),
 ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
@@ -170,8 +166,6 @@ pub const TABLE: &[(&str, &str)] = &[
                                fill(名前, 値)=記入・extract(名前)=読む・\
                                fields()=一覧・render(辞書)=雛形差し込み)", "Macros: pick a .py and sandboxed Python edits a copy of the document (d is the python-docx Document; fill(name, value) fills, extract(name) reads, fields() lists, render(dict) fills a template)"),
 ("プラグイン: {} に .py を置くと、ここに並びます", "Plugins: put .py files in {} and they appear here"),
-("暗号化は入っています。新しいパスワードを打って Enter\
-                    (空のまま Enter で暗号化をやめる)", "Encryption is on. Type a new password and press Enter (empty Enter turns it off)"),
 ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Encrypt: type a password and press Enter (AES-256, from the next save)"),
 ("まだファイルになっていません(先に保存してください)", "Not a file yet (save first)"),
 ("未保存の変更があります。保存してから署名してください", "There are unsaved changes; save before signing"),

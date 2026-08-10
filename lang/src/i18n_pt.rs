@@ -38,8 +38,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ルビ「{}」を振りました(保存で docx の w:ruby に)", "Ruby \"{}\" aplicado (salvo como w:ruby no docx)"),
     ("控えが読めません: {}", "Não foi possível ler a cópia: {}"),
     ("控えは暗号化されています(いまのパスワードでは解けません)", "A cópia está criptografada (a senha atual não a abre)"),
-    ("控えを開きました(名無しの複製。保存で名前を聞きます。\
-                               元へ戻すなら同じ名前で保存)", "Cópia aberta (um duplicado sem nome. Ao salvar, pedimos o nome. Para restaurar o original, salve com o mesmo nome)"),
     ("まだファイルになっていません(保存すると申し送り帳が持てます)", "Ainda não é um arquivo (salve para ter um arquivo de chat)"),
     ("書き残しました(文書の隣の .chat.txt。開いた人が読めます)", "Recado deixado (.chat.txt ao lado do documento; quem abrir pode ler)"),
     ("チャットに書けません: {}", "Não foi possível escrever no chat: {}"),
@@ -158,8 +156,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} が編集中です(読めますが上書き保存はできません。\
                                  相手が閉じたら、またこのボタンで確かめてください)", "{} está a editar (pode ler, mas não pode guardar por cima. Quando fechar do outro lado, prima este botão outra vez para confirmar)"),
     ("先客が居なくなっていたので、編集権を取り直しました", "Quem editava saiu, então o direito de edição foi retomado"),
-    ("まだファイルになっていません(保存すると、上書きのたびに\
-                         控えが残ります)", "Ainda não é um arquivo (depois de salvar, cada gravação por cima deixa uma cópia)"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Histórico de versões: clique para abrir uma cópia como documento sem título"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Chat: digite e pressione Enter para deixar um recado (.chat.txt ao lado do documento)"),
     ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
@@ -167,8 +163,6 @@ pub const TABLE: &[(&str, &str)] = &[
                                fill(名前, 値)=記入・extract(名前)=読む・\
                                fields()=一覧・render(辞書)=雛形差し込み)", "Macros: escolha um .py e o Python dentro do sandbox edita uma cópia do documento (no guião, d é o Document do python-docx. fill(nome, valor) preenche, extract(nome) lê, fields() lista, render(dicionário) preenche um modelo)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Plugins: coloque arquivos .py em {} e eles aparecem aqui"),
-    ("暗号化は入っています。新しいパスワードを打って Enter\
-                    (空のまま Enter で暗号化をやめる)", "A criptografia está ligada. Digite uma nova senha e pressione Enter (Enter vazio a desliga)"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Criptografar: digite uma senha e pressione Enter (AES-256, a partir do próximo salvamento)"),
     ("まだファイルになっていません(先に保存してください)", "Ainda não é um arquivo (salve primeiro)"),
     ("未保存の変更があります。保存してから署名してください", "Há alterações não salvas; salve antes de assinar"),

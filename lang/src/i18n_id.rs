@@ -38,8 +38,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ルビ「{}」を振りました(保存で docx の w:ruby に)", "Ruby \"{}\" dipasang (disimpan sebagai w:ruby di docx)"),
     ("控えが読めません: {}", "Tidak bisa membaca salinan: {}"),
     ("控えは暗号化されています(いまのパスワードでは解けません)", "Salinan terenkripsi (kata sandi saat ini tidak bisa membukanya)"),
-    ("控えを開きました(名無しの複製。保存で名前を聞きます。\
-                               元へ戻すなら同じ名前で保存)", "Salinan dibuka (duplikat tanpa nama. Saat disimpan akan ditanya namanya. Untuk mengembalikan yang semula, simpan dengan nama yang sama)"),
     ("まだファイルになっていません(保存すると申し送り帳が持てます)", "Belum menjadi file (simpan untuk mendapatkan file obrolan)"),
     ("書き残しました(文書の隣の .chat.txt。開いた人が読めます)", "Pesan ditinggalkan (.chat.txt di samping dokumen; siapa pun yang membukanya bisa membaca)"),
     ("チャットに書けません: {}", "Tidak bisa menulis ke obrolan: {}"),
@@ -158,8 +156,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} が編集中です(読めますが上書き保存はできません。\
                                  相手が閉じたら、またこのボタンで確かめてください)", "{} sedang menyunting (Anda bisa membaca, tetapi tidak bisa menyimpan menimpa. Setelah orang itu menutupnya, tekan tombol ini lagi untuk memastikan)"),
     ("先客が居なくなっていたので、編集権を取り直しました", "Editor sebelumnya sudah pergi, jadi hak edit diambil alih"),
-    ("まだファイルになっていません(保存すると、上書きのたびに\
-                         控えが残ります)", "Belum menjadi berkas (setelah disimpan, setiap kali menimpa akan disisakan satu salinan)"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Riwayat versi: klik untuk membuka salinan sebagai dokumen tanpa nama"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Obrolan: ketik lalu tekan Enter untuk meninggalkan pesan (.chat.txt di samping dokumen)"),
     ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
@@ -167,8 +163,6 @@ pub const TABLE: &[(&str, &str)] = &[
                                fill(名前, 値)=記入・extract(名前)=読む・\
                                fields()=一覧・render(辞書)=雛形差し込み)", "Makro: pilih sebuah .py, lalu Python di dalam sandbox menyunting salinan dokumen (d dalam skrip adalah Document dari python-docx. fill(nama, nilai) = mengisi, extract(nama) = membaca, fields() = daftar, render(kamus) = mengisi templat)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Plugin: letakkan file .py di {} dan akan muncul di sini"),
-    ("暗号化は入っています。新しいパスワードを打って Enter\
-                    (空のまま Enter で暗号化をやめる)", "Enkripsi sedang aktif. Ketik kata sandi baru lalu Enter (Enter dalam keadaan kosong mematikan enkripsi)"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Enkripsi: ketik kata sandi lalu tekan Enter (AES-256, mulai penyimpanan berikutnya)"),
     ("まだファイルになっていません(先に保存してください)", "Belum menjadi file (simpan dulu)"),
     ("未保存の変更があります。保存してから署名してください", "Ada perubahan yang belum disimpan; simpan sebelum menandatangani"),

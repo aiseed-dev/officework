@@ -90,12 +90,38 @@ def table_keys():
     return out
 
 
+def unescape(lit):
+    """リテラルを**実行時の文字列**に。行継続(行末の `\\`)も畳む。
+
+    **字面で比べると重複が見えない。** 同じ文を、片方は1行で、片方は
+    行末の `\\` で継いで書ける。ソースでは別物でも実行時は同じ鍵なので、
+    `HashMap` に畳んだとき**片方の訳が画面に出なくなる**。
+    2026-08-11 に 13 の表すべてで3件ずつ見つかった
+    """
+    s = lit[1:-1] if lit.startswith('"') else lit
+    out, i = [], 0
+    while i < len(s):
+        if s[i] == "\\" and i + 1 < len(s):
+            c = s[i + 1]
+            if c == "\n":  # 行継続。続く字下げも食う
+                i += 2
+                while i < len(s) and s[i] in " \t":
+                    i += 1
+                continue
+            out.append({"n": "\n", "t": "\t", "r": "\r"}.get(c, c))
+            i += 2
+        else:
+            out.append(s[i])
+            i += 1
+    return "".join(out)
+
+
 def main():
     used = []
     for p in SOURCES:
-        used.extend(keys_from(p))
+        used.extend(unescape(k) for k in keys_from(p))
     used_set = dict.fromkeys(used)  # 順を保った一意化
-    table = table_keys()
+    table = [unescape(k) for k in table_keys()]
     table_set = set(table)
 
     missing = [k for k in used_set if k not in table_set]

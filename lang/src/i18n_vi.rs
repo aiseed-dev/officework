@@ -38,8 +38,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ルビ「{}」を振りました(保存で docx の w:ruby に)", "Đã đặt ruby \"{}\" (lưu thành w:ruby trong docx)"),
     ("控えが読めません: {}", "Không đọc được bản sao lưu: {}"),
     ("控えは暗号化されています(いまのパスワードでは解けません)", "Bản sao lưu đã bị mã hóa (mật khẩu hiện tại không mở được)"),
-    ("控えを開きました(名無しの複製。保存で名前を聞きます。\
-                               元へ戻すなら同じ名前で保存)", "Đã mở bản sao lưu (bản sao chưa có tên. Khi lưu sẽ hỏi tên. Muốn trở lại như cũ thì lưu với tên cũ)"),
     ("まだファイルになっていません(保存すると申し送り帳が持てます)", "Chưa phải là tệp (hãy lưu để có sổ nhắn tin)"),
     ("書き残しました(文書の隣の .chat.txt。開いた人が読めます)", "Đã ghi lời nhắn (.chat.txt cạnh tài liệu; ai mở tài liệu cũng đọc được)"),
     ("チャットに書けません: {}", "Không ghi được vào trò chuyện: {}"),
@@ -158,8 +156,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} が編集中です(読めますが上書き保存はできません。\
                                  相手が閉じたら、またこのボタンで確かめてください)", "{} đang sửa tệp này (bạn đọc được, nhưng không lưu đè được. Khi họ đóng xong, bấm lại nút này để xem)"),
     ("先客が居なくなっていたので、編集権を取り直しました", "Người sửa trước đã rời đi nên đã lấy lại quyền sửa"),
-    ("まだファイルになっていません(保存すると、上書きのたびに\
-                         控えが残ります)", "Chưa thành tệp (sau khi lưu, mỗi lần lưu đè sẽ giữ lại một bản sao)"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Lịch sử phiên bản: bấm để mở bản sao thành bản nhân đôi chưa có tên"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Trò chuyện: gõ rồi Enter để ghi lời nhắn (.chat.txt cạnh tài liệu)"),
     ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
@@ -167,8 +163,6 @@ pub const TABLE: &[(&str, &str)] = &[
                                fill(名前, 値)=記入・extract(名前)=読む・\
                                fields()=一覧・render(辞書)=雛形差し込み)", "Macro: chọn một .py thì Python trong sandbox sẽ sửa một bản sao của tài liệu (trong kịch bản, d là Document của python-docx. fill(tên, giá trị) = điền, extract(tên) = đọc, fields() = liệt kê, render(từ điển) = điền vào mẫu)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Plugin: đặt tệp .py vào {} thì chúng hiện ở đây"),
-    ("暗号化は入っています。新しいパスワードを打って Enter\
-                    (空のまま Enter で暗号化をやめる)", "Mã hoá đang bật. Gõ mật khẩu mới rồi bấm Enter (để trống rồi Enter thì tắt mã hoá)"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Mã hóa: gõ mật khẩu rồi Enter (AES-256; từ lần lưu sau)"),
     ("まだファイルになっていません(先に保存してください)", "Chưa phải là tệp (hãy lưu trước)"),
     ("未保存の変更があります。保存してから署名してください", "Có thay đổi chưa lưu. Hãy lưu rồi mới ký"),

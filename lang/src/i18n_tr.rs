@@ -38,8 +38,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ルビ「{}」を振りました(保存で docx の w:ruby に)", "\"{}\" ruby metni eklendi (kaydetmede docx'te w:ruby olarak)"),
     ("控えが読めません: {}", "Kopya okunamıyor: {}"),
     ("控えは暗号化されています(いまのパスワードでは解けません)", "Kopya şifreli (geçerli parola onu açmıyor)"),
-    ("控えを開きました(名無しの複製。保存で名前を聞きます。\
-                               元へ戻すなら同じ名前で保存)", "Kopya açıldı (adsız bir çoğaltma. Kaydederken ad sorulur. Eskiye dönmek için aynı adla kaydedin)"),
     ("まだファイルになっていません(保存すると申し送り帳が持てます)", "Henüz dosya değil (kaydedince sohbet dosyası oluşur)"),
     ("書き残しました(文書の隣の .chat.txt。開いた人が読めます)", "Mesaj bırakıldı (belgenin yanındaki .chat.txt; açan herkes okuyabilir)"),
     ("チャットに書けません: {}", "Sohbete yazılamıyor: {}"),
@@ -158,8 +156,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} が編集中です(読めますが上書き保存はできません。\
                                  相手が閉じたら、またこのボタンで確かめてください)", "{} şu anda düzenliyor (okuyabilirsiniz ama üzerine kaydedemezsiniz. O kişi kapatınca bu düğmeyle yeniden bakın)"),
     ("先客が居なくなっていたので、編集権を取り直しました", "Önceki düzenleyici ayrılmış; düzenleme hakkı devralındı"),
-    ("まだファイルになっていません(保存すると、上書きのたびに\
-                         控えが残ります)", "Henüz bir dosya değil (kaydettikten sonra her üzerine yazmada bir kopya kalır)"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Sürüm geçmişi: tıklayınca kopyayı adsız belge olarak açar"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Sohbet: yazıp Enter ile mesaj bırakın (belgenin yanındaki .chat.txt)"),
     ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
@@ -167,8 +163,6 @@ pub const TABLE: &[(&str, &str)] = &[
                                fill(名前, 値)=記入・extract(名前)=読む・\
                                fields()=一覧・render(辞書)=雛形差し込み)", "Makrolar: bir .py seçin, kum havuzundaki Python belgenin bir kopyasını düzenlesin (betikteki d, python-docx belgesidir. fill(ad, değer)=doldurur, extract(ad)=okur, fields()=listeler, render(sözlük)=şablonu doldurur)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Eklentiler: {} içine .py koyarsanız burada görünür"),
-    ("暗号化は入っています。新しいパスワードを打って Enter\
-                    (空のまま Enter で暗号化をやめる)", "Şifreleme açık. Yeni parolayı yazıp Enter (boş bırakıp Enter derseniz şifreleme kalkar)"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Şifrele: parolayı yazıp Enter'a basın (AES-256, bir sonraki kayıttan itibaren)"),
     ("まだファイルになっていません(先に保存してください)", "Henüz dosya değil (önce kaydedin)"),
     ("未保存の変更があります。保存してから署名してください", "Kaydedilmemiş değişiklikler var; imzalamadan önce kaydedin"),
