@@ -1038,3 +1038,34 @@ walk して形だけを機械的に突き合わせた**。`sheetProtection` は�
 `xlsx-gateway.ts` の検査を消したが、**`desktop-api.ts:1443` に同じ検査が
 残っている**。上流の直し漏れで、向こうのエンジンでも同じになる。
 
+### 保存も通った — **pyoffice が実機で成立した(2026-08-10)**
+
+編集を1つ入れてから「名前を付けて保存」で**保存できた**。
+
+**配管の転送が実機で効いた。** うちのサイドカーが向こうのバイナリを子として
+起こし、`save_archive` の行をそのまま渡して答えの行をそのまま返す — 設計の
+「ZIP の配管は触らない」が、環境変数2つで成立している。
+
+    開く   open / read_range     文字・罫線・結合・書式
+    計算   recalc_cells          sheet::calc が ironcalc の代わり
+    保存   save_archive          向こうへ転送
+
+**これで「製品は2本・エンジンは1つ」が、絵ではなく動く物になった。**
+
+- **読みと計算は officework**(`sheet` クレート)
+- **書きは genoffice のまま**(測って壊さないことを確かめた)
+- **genoffice の木は1文字も変えていない** — `XLSX_SIDECAR_PATH` と
+  `GENOFFICE_SIDECAR` だけ。戻すのも環境変数を外すだけ
+
+### 動かし方(次に試す人へ)
+
+    cd ~/dev/genoffice
+    export PATH="$HOME/.local/node/bin:$PATH"        # Node 24
+    cp apps/sheets/native/xlsx-engine/target/release/xlsx-sidecar /tmp/genoffice-orig-sidecar
+    XLSX_SIDECAR_PATH=~/dev/officework/target/release/xlsx-sidecar \
+    GENOFFICE_SIDECAR=/tmp/genoffice-orig-sidecar \
+      npm run dev -w @genoffice/sheets
+
+**控えを取ってから転送先をそちらへ向ける。** 向けないと自分自身を指して
+無限に呼び合う。`npm ci` が要る(node_modules は 1.2G)。
+
