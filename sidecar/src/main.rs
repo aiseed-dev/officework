@@ -200,9 +200,13 @@ fn dispatch(
                 return fail(&rid, "invalid_request", "path がありません").to_string();
             }
             match open_book(&path) {
-                Ok((book, unsupported)) => {
+                Ok((book, unsupported, entry_count)) => {
                     *seq += 1;
-                    let id = format!("ow-{seq}");
+                    // **セッションの id は UUID。** `ow-1` のような自前の
+                    // 名前にしていたが、向こうは `z.uuid()` で検査していて
+                    // 撥ねられる(2026-08-10、向こうの試験で判明)。
+                    // 中身は問われないと踏んでいたが、**形は問われていた**
+                    let id = uuid_v4(*seq);
                     let mut st = Styles::new();
                     // **書式は全シートを通して1つの表にする**(向こうと同じ)
                     for sh in &book.sheets {
@@ -210,7 +214,7 @@ fn dispatch(
                             st.intern(&c.fmt);
                         }
                     }
-                    let v = open_result(&id, &path, &book, &unsupported, &st.order);
+                    let v = open_result(&id, &path, &book, &unsupported, &st.order, entry_count);
                     let stamp = stamp_of(&path);
                     // 表は上の答えに載せて渡しきり。**残すのは索引だけ**
                     let style_index = st.index;
@@ -308,13 +312,21 @@ fn dispatch(
 
 /// xlsx を読んで、**開いた時点で計算し直す**(pysheet の `Book.open` と同じ作法)。
 /// 原本にキャッシュ値の無い式でも答えを返せる — 向こうは空を返す所(設計参照)。
-fn open_book(path: &str) -> Result<(Book, Vec<String>), String> {
+fn open_book(path: &str) -> Result<(Book, Vec<String>, usize), String> {
     let bytes = std::fs::read(path).map_err(|e| format!("{path}: 読めない: {e}"))?;
+    // 原本の部品の数(向こうの `entryCount`)。読むついでに数える
+    let entry_count = zip::ZipArchive::new(std::io::Cursor::new(&bytes))
+        .map(|z| z.len())
+        .unwrap_or(0);
     let (mut book, rep) = sheet::xlsx::read(std::io::Cursor::new(&bytes))
         .map_err(|e| format!("{path}: xlsx として読めない: {e}"))?;
     sheet::recalc_all(&mut book);
     // **読めなかった物は名前で言う。** 黙って落とすのが一番悪い
-    Ok((book, rep.unsupported.into_iter().map(|(w, n)| format!("{w} ×{n}")).collect()))
+    Ok((
+        book,
+        rep.unsupported.into_iter().map(|(w, n)| format!("{w} ×{n}")).collect(),
+        entry_count,
+    ))
 }
 
 fn sheet_index(book: &Book, sheet_id: &str) -> Option<usize> {
@@ -350,28 +362,45 @@ fn open_result(
     book: &Book,
     unsupported: &[String],
     styles: &[Value],
+    entry_count: usize,
 ) -> Value {
     let name = path.rsplit('/').next().unwrap_or(path);
     let mut sheets = Vec::new();
     let mut defined = Vec::new();
     for (i, sh) in book.sheets.iter().enumerate() {
         let (rows, cols) = sh.size();
-        let mut widths: Vec<Value> = Vec::new();
+        // **列の幅。** 向こうの `ColumnWidth` の作法は
+        // 「`startColumn`/`endColumn`/`hidden` は必ず出し、`width`・
+        // `outlineLevel`・`collapsed` は無ければ省く」(`lib.rs` の
+        // `skip_serializing_if`)。**`null` を入れると z.number() に撥ねられる**
+        // (2026-08-10、向こうの試験で判明)。持たない物は**省く**のであって
+        // `null` を置くのではない
+        let mut col_props: BTreeMap<u32, (Option<f32>, bool, u8)> = BTreeMap::new();
         for (c, w) in &sh.col_width {
-            widths.push(json!({"startColumn": c, "endColumn": c, "width": w,
-                               "hidden": sh.col_hidden.contains(c),
-                               "outlineLevel": sh.col_outline.get(c).copied().unwrap_or(0),
-                               "collapsed": false}));
+            col_props.entry(*c).or_insert((None, false, 0)).0 = Some(*w);
         }
-        // 幅は既定のまま隠しただけ・畳んだだけの列も落とさない
-        for c in sh.col_hidden.iter().chain(sh.col_outline.keys()) {
-            if !sh.col_width.contains_key(c) {
-                widths.push(json!({"startColumn": c, "endColumn": c, "width": Value::Null,
-                                   "hidden": sh.col_hidden.contains(c),
-                                   "outlineLevel": sh.col_outline.get(c).copied().unwrap_or(0),
-                                   "collapsed": false}));
-            }
+        for c in &sh.col_hidden {
+            col_props.entry(*c).or_insert((None, false, 0)).1 = true;
         }
+        for (c, l) in &sh.col_outline {
+            col_props.entry(*c).or_insert((None, false, 0)).2 = *l;
+        }
+        let widths: Vec<Value> = col_props
+            .into_iter()
+            .map(|(c, (w, hidden, lvl))| {
+                let mut o = Map::new();
+                o.insert("startColumn".into(), json!(c));
+                o.insert("endColumn".into(), json!(c));
+                if let Some(w) = w {
+                    o.insert("width".into(), json!(w));
+                }
+                o.insert("hidden".into(), json!(hidden));
+                if lvl > 0 {
+                    o.insert("outlineLevel".into(), json!(lvl));
+                }
+                Value::Object(o)
+            })
+            .collect();
         let comments: Vec<Value> = sh
             .comments
             .iter()
@@ -415,8 +444,11 @@ fn open_result(
     let mut v = Map::new();
     v.insert("sessionId".into(), json!(session_id));
     v.insert("name".into(), json!(name));
-    // 部品の数は ZIP を開き直さないと分からない。**0 で誤魔化さず** null
-    v.insert("entryCount".into(), Value::Null);
+    // 原本の部品の数。**`null` にしていたが、向こうは `z.number()` で
+    // 検査していて撥ねられる**(2026-08-10)。「持たないなら null」は
+    // こちらの都合で、契約は数を要求している。ZIP を数えれば済む話だった —
+    // **持てない物と、持とうとしなかった物を混同していた**
+    v.insert("entryCount".into(), json!(entry_count));
     v.insert("sheets".into(), json!(sheets));
     v.insert("styles".into(), json!(styles));
     v.insert("dxfStyles".into(), json!([]));
@@ -428,7 +460,6 @@ fn open_result(
             "dxfStyles(条件付き書式の見た目。規則は返しているが見た目の表はまだ)",
             "visuals(図形・画像・グラフ)",
             "sparklines / pivotTables / pivotRanges",
-            "entryCount",
             "defaultRowHeight",
             "comments.author(モデルが持たない)",
             "definedNames.sheetIndex(モデルは参照先のシートに載せている)",
@@ -673,16 +704,27 @@ fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
     if let Some(c) = f.size_c {
         o.insert("fontSize".into(), json!(f64::from(c) / 100.0));
     }
+    // **真偽の欄は偽でも必ず出す。** 向こうは zod で
+    // `bold: z.boolean()` と検査しており、**省くと undefined で撥ねられる**
+    // (2026-08-10、向こうの試験を掛けて 9 件中 7 件が落ちて判明)。
+    //
+    // 突き合わせでは「既定と同じなら省く」で差が出なかった —
+    // `pyoffice_diff.py` が両側を正規化してから比べるため。
+    // **突き合わせは「同じ答えか」、試験は「約束を守るか」で、別物。**
+    //
+    // 向こうの `CellStyle` の作法は「**真偽は必ず出し、`Option` は省く**」
+    // (`visuals.rs` の `skip_serializing_if` の付き方)。それに揃える
     for (k, v) in [
         ("bold", f.bold),
         ("italic", f.italic),
         ("underline", f.underline),
         ("strikethrough", f.strike),
         ("wrapText", f.wrap),
+        // 斜めの罫線はモデルに無いので、**常に偽**として出す
+        ("diagonalUp", false),
+        ("diagonalDown", false),
     ] {
-        if v {
-            o.insert(k.into(), json!(true));
-        }
+        o.insert(k.into(), json!(v));
     }
     if let Some(c) = &f.color {
         o.insert("fontColor".into(), json!(c));
@@ -713,7 +755,11 @@ fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
             o.insert(k.into(), v);
         }
     }
-    if o.is_empty() { None } else { Some(Value::Object(o)) }
+    // **真偽の欄は必ず入るので、`o` は空にならない。** 素の書式かどうかは
+    // 「真偽以外に何も無く、真偽が全部偽」で見る — ここを `o.is_empty()` の
+    // ままにすると、全部のセルに書式の番号が付いて表が膨らむ
+    let plain = o.len() == 7 && o.values().all(|v| v == &json!(false));
+    if plain { None } else { Some(Value::Object(o)) }
 }
 
 /// 計算のために居座らせたブック。**径路で引く。**
@@ -740,7 +786,7 @@ fn recalc(
         Some(r) if r.stamp == stamp => true,
         _ => {
             // 原本が無い・変わったなら読み直す。**黙って古い答えを返さない**
-            let (book, _) = open_book(path)?;
+            let (book, _, _) = open_book(path)?;
             resident.insert(path.to_string(), Resident { stamp, book });
             false
         }
@@ -790,20 +836,46 @@ fn recalc(
                 let p = Pos { row, col };
                 let Some(c) = sh.get(p) else { continue };
                 let v = sh.value(p);
-                let number = match v {
-                    sheet::Value::Number(n) => Some(n),
-                    _ => None,
-                };
-                cells.push(json!({
-                    "sheet": name,
-                    "row": row,
-                    "column": col,
-                    "formatted": sheet::model::format_value(&v, c.fmt.number_format.as_deref()),
-                    "number": number,
-                    "isFormula": c.formula.is_some(),
-                }));
+                let mut o = Map::new();
+                o.insert("sheet".into(), json!(name));
+                o.insert("row".into(), json!(row));
+                o.insert("column".into(), json!(col));
+                o.insert(
+                    "formatted".into(),
+                    json!(sheet::model::format_value(&v, c.fmt.number_format.as_deref())),
+                );
+                // **数でなければ `number` を省く。** `null` を入れると
+                // `z.number()` に撥ねられる(向こうは `skip_serializing_if`)
+                if let sheet::Value::Number(n) = v {
+                    o.insert("number".into(), json!(n));
+                }
+                o.insert("isFormula".into(), json!(c.formula.is_some()));
+                cells.push(Value::Object(o));
             }
         }
     }
     Ok(json!({"cells": cells, "cached": cached}))
+}
+
+/// セッションの id に使う UUID v4 の形。**外から見える形だけを揃える。**
+///
+/// 向こうは `z.uuid()` で検査しており、`ow-1` のような自前の名前は撥ねられる。
+/// 乱数の質は問われない(こちらの中で一意ならよい)ので、番号と時刻から組む —
+/// **`uuid` クレートを足すほどの話ではない。**
+fn uuid_v4(seq: u64) -> String {
+    let t = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    let a = t ^ (seq << 32);
+    let b = t.rotate_left(17) ^ seq.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    format!(
+        "{:08x}-{:04x}-4{:03x}-{:04x}-{:012x}",
+        (a >> 32) as u32,
+        (a >> 16) as u16,
+        (a & 0x0FFF) as u16,
+        // 変種の桁は 8/9/a/b のいずれかでなければならない
+        0x8000u16 | ((b >> 48) as u16 & 0x3FFF),
+        b & 0xFFFF_FFFF_FFFF
+    )
 }

@@ -15,3 +15,5 @@ sheet = { path = "../sheet" }
 # こちらに直す権利がない。手書きの parser は静かに間違える場所そのもの。
 # 核(sheet)には入れない — ここは末端の実行ファイルだけの依存
 serde_json = "1"
+# 原本の部品の数を数えるだけ(向こうの entryCount)
+zip = { version = "2", default-features = false }
