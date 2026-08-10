@@ -27,6 +27,23 @@ pub(crate) use sheet::{recalc, recalc_book, Book, Cell, Pos, Value};
 pub(crate) use ui::{handler, ribbon, HasEditor};
 
 mod funcs;
+// gen_funcs:begin(この間は calc/gen_funcs.py が生成する — 手で書かない)
+mod funcs_de;
+mod funcs_en;
+mod funcs_es;
+mod funcs_fr;
+mod funcs_id;
+mod funcs_it;
+mod funcs_ko;
+mod funcs_pt;
+mod funcs_pt_br;
+mod funcs_ru;
+mod funcs_tr;
+mod funcs_vi;
+mod funcs_zh;
+mod funcs_zh_tw;
+mod funcs_tables;
+// gen_funcs:end
 mod util;
 pub(crate) use util::*;
 mod py;

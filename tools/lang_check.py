@@ -68,6 +68,22 @@ def pane(lang, where="opts"):
         app.close()
 
 
+def funcs(lang):
+    """関数の一覧の小窓をその言語で撮る。**説明が出る唯一の場所**なので、
+    ここを見ないと訳が繋がったか分からない"""
+    os.environ["OFFICE_LANG"] = lang
+    app = rs.App(shots=OUT)
+    try:
+        # **数式バーの fx を押す。** リボンの段から辿ると、段の並びが
+        # 言語で変わるので座標が当てにならない(2026-08-11、データ段を
+        # 押していて空の表を撮っていた)。fx はどの言語でも同じ場所
+        app.click(125, 138)
+        time.sleep(1.4)
+        return app.shot(f"lang-fn-{lang}")
+    finally:
+        app.close()
+
+
 def listing(times):
     """言語欄を順に押して、名前が変わっていくところを撮る。
 
@@ -97,6 +113,10 @@ def main():
         n = int(args[0]) if args else len(rs_languages())
         for p in listing(n):
             print(f"  {p}")
+        return
+    if args and args[0] == "--funcs":
+        for lang in args[1:] or ["ja"]:
+            print(f"{lang}: {funcs(lang)}")
         return
     where = "opts"
     if args and args[0] == "--info":

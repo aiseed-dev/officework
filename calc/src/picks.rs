@@ -131,15 +131,7 @@ impl Calc {
                 self.formula_assist();
             }
             "func-cat" => {
-                let id = match v {
-                    "統計" => "fn-math",
-                    "数学" => "fn-math",
-                    "財務" => "fn-financial",
-                    "日付" => "fn-datetime",
-                    "文字列" => "fn-text",
-                    "論理" => "fn-logical",
-                    _ => "fn-lookup",
-                };
+                let id = util::fn_group_cmd(v);
                 self.run_cmd(id, cx);
             }
             // 保護中に許す操作。押すたびに入切して、一覧をその場で描き直す
@@ -1740,19 +1732,19 @@ impl Calc {
         if let Some((name, argi)) = stack.last() {
             if let Some(f) = funcs::FUNCS.iter().find(|f| f.name == name) {
                 let hint = f
-                    .arg_desc
+                    .arg_desc()
                     .get(*argi)
-                    .or(f.arg_desc.last())
+                    .or(f.arg_desc().last())
                     .copied()
                     .unwrap_or("");
-                let names = parse_fn_args(f.args);
+                let names = parse_fn_args(f.args());
                 let arg_name = names
                     .get(*argi)
                     .or(names.last())
                     .map(|(n, _)| n.clone())
                     .unwrap_or_default();
                 self.status =
-                    format!("{}{} — {}{}", f.name, f.args, arg_name, hint).into();
+                    format!("{}{} — {}{}", f.name, f.args(), arg_name, hint).into();
             }
         }
     }
@@ -1765,7 +1757,7 @@ impl Calc {
             self.status = ui::t!("その条件の関数がありません").into();
             return;
         };
-        let names = parse_fn_args(f.args);
+        let names = parse_fn_args(f.args());
         let eds = (0..names.len()).map(|_| Editor::new("")).collect();
         self.fn_args = Some(FnArgs {
             f,

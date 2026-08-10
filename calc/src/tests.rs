@@ -4483,4 +4483,100 @@ mod datefmt_tests {
         assert!(label("長い日付").ends_with("2026年8月6日"), "{}", label("長い日付"));
         assert!(label("曜日だけ").ends_with("木曜日"), "{}", label("曜日だけ"));
     }
+
+}
+
+#[cfg(test)]
+mod fnhelp_tests {
+    use crate::*;
+
+    /// **分類の綴りが3箇所で揃っていること。**
+    ///
+    /// 分類の名前は `FN_GROUPS`(耳の並び)・`funcs.rs` の `group`(絞り込みの
+    /// 照合)・`fn_group_cmd`(族の一覧を開くコマンド)の3箇所で使う。
+    /// どれか1つの綴りがずれても**画面は出る** — 耳を押しても何も絞られない、
+    /// あるいは黙って別の一覧が開くだけで、誰も落ちない。
+    /// 2026-08-11 に「日付」を「日付・時刻」へ広げたとき、この形で
+    /// `picks.rs` だけが取り残されていた。
+    #[test]
+    fn 関数の分類の綴りが揃っている() {
+        use std::collections::BTreeSet;
+        let 耳: BTreeSet<&str> = FN_GROUPS.iter().skip(1).copied().collect();
+        let 表: BTreeSet<&str> = crate::funcs::FUNCS.iter().map(|f| f.group).collect();
+        assert_eq!(耳, 表, "耳の並びと funcs.rs の分類が食い違っています");
+
+        // 族の一覧を開くコマンド。**既定に落ちてよいのはこの2つだけ**
+        let 既定でよい = ["検索/行列", "情報"];
+        for g in &耳 {
+            let id = util::fn_group_cmd(g);
+            if 既定でよい.contains(g) {
+                assert_eq!(id, "fn-lookup", "{g}");
+            } else {
+                assert_ne!(
+                    id, "fn-lookup",
+                    "{g} が既定に落ちています — fn_group_cmd の綴りがずれていませんか"
+                );
+            }
+        }
+    }
+
+    /// **どの言語でも、分類の耳が9つとも別の語になること。**
+    /// 同じ語が2つ並ぶと、押す人には区別がつかない
+    #[test]
+    fn 分類の耳が重ならない() {
+        let mut seen = std::collections::HashMap::new();
+        for g in FN_GROUPS {
+            let label = util::fn_group_label(g);
+            if let Some(prev) = seen.insert(label, *g) {
+                panic!("{prev} と {g} が同じ語 {label:?} で並びます");
+            }
+        }
+    }
+
+    /// **どの言語の関数の言葉も、素の表と1対1で揃っていること。**
+    ///
+    /// 引き当ては名前の二分探索なので、並びが名前順でなければ**静かに
+    /// 別の関数の説明が出る**(落ちない・警告も出ない)。数と並びの
+    /// 両方をここで見る。
+    #[test]
+    fn 関数の言葉がどの言語も揃っている() {
+        let 素: Vec<&str> = crate::funcs::FUNCS.iter().map(|f| f.name).collect();
+        assert!(素.windows(2).all(|w| w[0] < w[1]), "素の表が名前順に並んでいません");
+        let mut 見た = 0;
+        for lang in ui::languages() {
+            let Some(t) = crate::funcs_tables::text(lang) else {
+                // ja は素の表そのものなので登録簿に無い
+                assert_eq!(lang, "ja", "{lang} の関数の言葉が登録されていません");
+                continue;
+            };
+            見た += 1;
+            let names: Vec<&str> = t.iter().map(|r| r.name).collect();
+            assert_eq!(names, 素, "{lang}: 関数の並びが素の表と違います");
+            for r in t {
+                assert!(!r.desc.is_empty(), "{lang}: {} の説明が空です", r.name);
+                assert!(r.args.starts_with('('), "{lang}: {} の引数が変です: {}", r.name, r.args);
+            }
+        }
+        assert!(見た >= 14, "言語が減っています({見た} 件)");
+    }
+
+    /// **説明がその言語で書かれていること。** 穴を日本語で埋めると
+    /// 「英語で開いたのに1行だけ日本語」になる。仮名が混じっていたら落とす
+    /// (中国語・韓国語は漢字を使うので、仮名だけを見る)
+    #[test]
+    fn 関数の説明に日本語が残っていない() {
+        let かな = |s: &str| s.chars().any(|c| ('\u{3040}'..='\u{30ff}').contains(&c));
+        for lang in ui::languages() {
+            if lang == "ja" {
+                continue;
+            }
+            let Some(t) = crate::funcs_tables::text(lang) else { continue };
+            let 残り: Vec<&str> = t
+                .iter()
+                .filter(|r| かな(r.desc) || かな(r.args))
+                .map(|r| r.name)
+                .collect();
+            assert!(残り.is_empty(), "{lang}: 日本語のまま残っている関数 {残り:?}");
+        }
+    }
 }

@@ -2239,7 +2239,7 @@ impl Render for Calc {
                         }
                         cx.notify();
                     }))
-                    .child(SharedString::from(ui::tr(g))));
+                    .child(SharedString::from(fn_group_label(g)))); 
             }
             let start = sel.saturating_sub(5);
             let mut lst = div().flex().flex_col().h(px(252.0)).overflow_hidden()
@@ -2272,7 +2272,7 @@ impl Render for Calc {
             }
             let (syntax, desc) = list
                 .get(sel)
-                .map(|f| (format!("{}{}", f.name, f.args), f.desc.to_string()))
+                .map(|f| (format!("{}{}", f.name, f.args()), f.desc().to_string()))
                 .unwrap_or_default();
             let btn = |id: &'static str, label: String, primary: bool| {
                 div().id(id).px_3().py_1().rounded_sm().text_size(px(us * 12.5))
@@ -2371,8 +2371,8 @@ impl Render for Calc {
                 .names
                 .get(a.focus)
                 .map(|(n, _)| {
-                    let d = a.f.arg_desc.get(a.focus)
-                        .or(a.f.arg_desc.last())
+                    let d = a.f.arg_desc().get(a.focus)
+                        .or(a.f.arg_desc().last())
                         .copied()
                         .unwrap_or("");
                     format!("{n}: {d}")
@@ -2405,9 +2405,9 @@ impl Render for Calc {
                                 cx.notify();
                             }))))
                     .child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
-                        .child(SharedString::from(format!("{}{}", a.f.name, a.f.args))))
+                        .child(SharedString::from(format!("{}{}", a.f.name, a.f.args()))))
                     .child(div().text_size(px(us * 11.5)).text_color(rgb(0x4A545E))
-                        .child(SharedString::from(a.f.desc)))
+                        .child(SharedString::from(a.f.desc())))
                     .child(rows_el)
                     .child(div().text_size(px(us * 11.5)).text_color(rgb(0x4A545E))
                         .min_h(px(44.0)).px_2().py_1()
