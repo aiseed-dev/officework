@@ -4258,3 +4258,65 @@ mod cycle_ref_tests {
         assert_eq!(cycle_ref_at("=A12", 2), Some(("=$A$12".into(), 6)));
     }
 }
+
+#[cfg(test)]
+mod slicer_tests {
+    use crate::util::{slicer_items, slicer_cmp};
+
+    fn rows(vs: &[(&str, bool)]) -> Vec<(String, bool)> {
+        vs.iter().map(|(v, l)| (v.to_string(), *l)).collect()
+    }
+
+    /// **数だけの値は数として並べる。** 文字として並べると 10 が 2 より前に
+    /// 来て、伝票番号の列が読めなくなる
+    #[test]
+    fn 数の列は数の順に並ぶ() {
+        let r = rows(&[("10", true), ("2", true), ("100", true), ("9", true)]);
+        let (up, _) = slicer_items(&r, false, false);
+        assert_eq!(up, vec!["2", "9", "10", "100"]);
+        let (down, _) = slicer_items(&r, true, false);
+        assert_eq!(down, vec!["100", "10", "9", "2"]);
+    }
+
+    #[test]
+    fn 文字は符号位置の順に並ぶ() {
+        let r = rows(&[("う", true), ("あ", true), ("い", true)]);
+        assert_eq!(slicer_items(&r, false, false).0, vec!["あ", "い", "う"]);
+        assert_eq!(slicer_items(&r, true, false).0, vec!["う", "い", "あ"]);
+        // 数と文字が混じったら文字として比べる(数が先に来る)
+        assert_eq!(slicer_cmp("2", "あ"), std::cmp::Ordering::Less);
+    }
+
+    /// 空欄は値ではないので**並べ替えの外・いちばん最後**。
+    /// 降順にしても最後のまま(先頭に来ると値の一つに見える)
+    #[test]
+    fn 空白はいつも最後() {
+        let r = rows(&[("い", true), ("", true), ("あ", true)]);
+        assert_eq!(slicer_items(&r, false, false).0, vec!["あ", "い", "(空白)"]);
+        assert_eq!(slicer_items(&r, true, false).0, vec!["い", "あ", "(空白)"]);
+    }
+
+    /// ⊘ = 他の絞りで一行も残っていない値を並べない。
+    /// **同じ値の行が一つでも生きていれば残す**
+    #[test]
+    fn 行の無い値を外せる() {
+        let r = rows(&[("あ", false), ("い", true), ("あ", true), ("う", false)]);
+        assert_eq!(slicer_items(&r, false, false).0, vec!["あ", "い", "う"]);
+        assert_eq!(slicer_items(&r, false, true).0, vec!["あ", "い"], "生きた行がある値まで消えた");
+        // 空白も同じ扱い
+        let r = rows(&[("あ", true), ("", false)]);
+        assert_eq!(slicer_items(&r, false, true).0, vec!["あ"]);
+        assert_eq!(slicer_items(&r, false, false).0, vec!["あ", "(空白)"]);
+    }
+
+    /// 64 を超えたら切るが、**何件切ったかを返す**(黙って切らない)
+    #[test]
+    fn 多すぎる値は数を添えて切る() {
+        let v: Vec<(String, bool)> = (0..70).map(|i| (format!("{i:03}"), true)).collect();
+        let (items, cut) = slicer_items(&v, false, false);
+        assert_eq!(items.len(), 64);
+        assert_eq!(cut, 6);
+        // 切っていないときは 0
+        assert_eq!(slicer_items(&v[..10], false, false).1, 0);
+    }
+}

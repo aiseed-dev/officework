@@ -999,8 +999,13 @@ impl Calc {
                         self.status =
                             ui::t!("スライサーにする列を選んでください(見出しの下にデータの行が要ります)").into();
                     } else {
-                        self.slicer =
-                            Some((col, std::collections::BTreeSet::new(), false));
+                        self.slicer = Some(Slicer {
+                            col,
+                            sel: Default::default(),
+                            multi: false,
+                            desc: false,
+                            hide_empty: false,
+                        });
                         self.status = format!(
                             "スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)",
                             col_name(col)

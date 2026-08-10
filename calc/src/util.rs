@@ -1297,3 +1297,81 @@ pub(crate) fn cycle_ref_at(text: &str, cur: usize) -> Option<(String, usize)> {
     out.push_str(&text[end..]);
     Some((out, start + next.len()))
 }
+
+/// スライサー(列の値をボタンで並べ、押して絞る)。**見え方だけ** —
+/// 絞り込みと同じで、保存される中身は変わらない。
+///
+/// 前は `(u32, BTreeSet<String>, bool)` の組だった。並び順と
+/// 「空の項目を隠す」が加わって組では読めなくなったので名前を付けた
+/// (2026-08-10)。
+pub(crate) struct Slicer {
+    /// 見ている列
+    pub(crate) col: u32,
+    /// 選んだ値(空 = 素通し)
+    pub(crate) sel: std::collections::BTreeSet<String>,
+    /// 複数選択か
+    pub(crate) multi: bool,
+    /// 降順に並べるか(既定は昇順)
+    pub(crate) desc: bool,
+    /// **他の絞りで一行も残っていない値を並べないか。**
+    /// 既定は並べる — 押せるのに何も起きないボタンより、
+    /// 「その値の行は今は無い」が見えるほうが分かる場面もある
+    pub(crate) hide_empty: bool,
+}
+
+/// スライサーの値の並べ方。**数だけの値は数として比べる** —
+/// 文字として比べると 10 が 2 より前に来て、伝票番号の列が読めなくなる。
+///
+/// 漢字の五十音順はしない(読みが要る)。文字は符号位置の順で、
+/// かなは五十音、英字は ABC 順になる — そこまでが正直にできる範囲
+pub(crate) fn slicer_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    match (a.trim().parse::<f64>(), b.trim().parse::<f64>()) {
+        (Ok(x), Ok(y)) => x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal),
+        _ => a.cmp(b),
+    }
+}
+
+/// スライサーに並べる値。
+///
+/// `rows` は見出しの下の各行の (その行のその列の値, いま他の絞りで見えているか)。
+/// **「いま見えているか」に自分の選びは入れない** — 入れると選んだ瞬間に
+/// 他のボタンが消えて、選び直せなくなる。
+///
+/// 空欄は値ではないので「(空白)」として**並べ替えの外・いちばん最後**に置く。
+///
+/// 多すぎる列で画面が埋まらないよう 64 個まで。返す2つ目は**そこで落とした
+/// 数**。呼ぶ側はこれを画面に出すこと — 黙って切ると、押しても絞れない
+/// 理由が分からない。⊘ で外したぶんはここに数えない(外したのは承知の上)
+pub(crate) fn slicer_items(
+    rows: &[(String, bool)],
+    desc: bool,
+    hide_empty: bool,
+) -> (Vec<String>, usize) {
+    let mut seen: std::collections::HashMap<&str, bool> = Default::default();
+    let mut has_blank = false;
+    let mut blank_live = false;
+    for (v, live) in rows {
+        if v.is_empty() {
+            has_blank = true;
+            blank_live |= *live;
+        } else {
+            let e = seen.entry(v.as_str()).or_insert(false);
+            *e |= *live;
+        }
+    }
+    let mut items: Vec<&str> = seen
+        .iter()
+        .filter(|(_, live)| !hide_empty || **live)
+        .map(|(v, _)| *v)
+        .collect();
+    items.sort_by(|a, b| slicer_cmp(a, b));
+    if desc {
+        items.reverse();
+    }
+    let cut = items.len().saturating_sub(64);
+    let mut out: Vec<String> = items.into_iter().take(64).map(|s| s.to_string()).collect();
+    if has_blank && (!hide_empty || blank_live) {
+        out.push(ui::t!("(空白)").to_string());
+    }
+    (out, cut)
+}

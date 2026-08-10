@@ -118,9 +118,9 @@ struct Calc {
     solver: Option<Solver>,
     /// SmartArt の選択中の分類(2段の pick の1段目の答え)
     sa_cat: usize,
-    /// スライサー(列, 選んだ値たち, 複数選択か)。**見え方だけ** —
+    /// スライサー(列の値を押して絞る板)。**見え方だけ** —
     /// 絞り込みと同じで、保存される中身は変わらない
-    slicer: Option<(u32, std::collections::BTreeSet<String>, bool)>,
+    slicer: Option<Slicer>,
     /// コメントを見せるか(共同編集タブで切替。隠しても付いたまま)
     show_comments: bool,
     /// 暗号化のパスワード(次の保存から効く。開いた暗号化ブックからも入る)
@@ -741,7 +741,8 @@ impl Calc {
     /// 飛ばす)。描画と当たり判定で共有する。
     /// スライサーで残る行か(選びが空なら全部残る)。1行目=見出しは常に残す。
     fn slicer_keeps(&self, r: u32) -> bool {
-        let Some((col, sel, _)) = &self.slicer else { return true };
+        let Some(sl) = &self.slicer else { return true };
+        let (col, sel) = (&sl.col, &sl.sel);
         if sel.is_empty() || r == 0 {
             return true;
         }
@@ -816,7 +817,7 @@ impl Calc {
                 .take(fit as usize)
                 .collect();
         }
-        if self.slicer.as_ref().is_some_and(|(_, sel, _)| !sel.is_empty()) {
+        if self.slicer.as_ref().is_some_and(|sl| !sl.sel.is_empty()) {
             // スライサーで絞る: 見出し+選んだ値の行(絞り込みと同じ流儀)
             let (rows, _) = self.sheet().extent();
             (0..rows)
