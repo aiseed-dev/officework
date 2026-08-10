@@ -1201,6 +1201,10 @@ pub struct Sheet {
     pub cell_boxes: Vec<CellBox>,
     /// 置いた画像(実体, [x, 上端y, 幅, 高さ] mm)。画面も紙もこれを見る
     pub images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4])>,
+    /// **紙面の下に出す脚注**。組み上がった行を、印のある本文の行の y と
+    /// 一緒に持つ。どのページに載るかは折る側([`paper`] の頁割り)が決める —
+    /// **脚注の高さは本文に使える高さを削る**ので、頁割りと切り離せない
+    pub notes: Vec<NoteBlock>,
     /// **節ごとの用紙**。「この y(巻物の座標)から先はこの用紙」の並びで、
     /// y の昇順。節が1つだけの文書では**空**にしてある — 空なら今までどおり
     /// 呼ぶ側の用紙1つで折ればよい、という約束(既存の道を変えないため)。
@@ -1223,6 +1227,19 @@ impl Sheet {
         }
         cur
     }
+}
+
+/// 紙面の下に出す脚注ひとつぶん(組み上がった形)。
+#[derive(Debug, Clone, Default)]
+pub struct NoteBlock {
+    /// 出てくる順の番号(本文の印と同じ数)
+    pub no: usize,
+    /// **印のある本文の行の y**(巻物)。この行が載るページの下に出す
+    pub at_y: f32,
+    /// 組み上がった行。`y_mm` は**この脚注の中の相対**(0 から下へ)
+    pub lines: Vec<Line>,
+    /// 高さ(mm)
+    pub h_mm: f32,
 }
 
 /// 表のセル1つぶんの場所。
@@ -1761,7 +1778,67 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
             }
         }
     }
+    layout_notes(doc, m, frame, &mut sheet);
     sheet
+}
+
+/// 紙面の下に出す脚注を組む。
+///
+/// 本文を組んだ**あと**に、置かれた印([`CharFormat::footnote`] を持つ字)を
+/// なぞって拾う — 印は本文と同じ行に居るので、その行の y がそのまま
+/// 「どのページの下に出すか」の手がかりになる。
+///
+/// 番号は本文の印と同じ数(出てくる順)。脚注の中の文字は本文より小さく組む。
+fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &mut Sheet) {
+    if doc.footnotes.is_empty() {
+        return;
+    }
+    // 印のある行を、出てくる順に拾う。番号の字は1桁ずつ別の Cell になるので、
+    // **同じ id が続くぶんは1つに畳む**(2桁の脚注を2つと数えない)
+    let mut anchors: Vec<(String, f32)> = Vec::new();
+    for line in &sheet.lines {
+        let mut last: Option<String> = None;
+        for c in &line.cells {
+            match &c.fmt.footnote {
+                Some(fr) => {
+                    if last.as_deref() != Some(fr.id.as_str()) {
+                        anchors.push((fr.id.clone(), line.y_mm));
+                        last = Some(fr.id.clone());
+                    }
+                }
+                None => last = None,
+            }
+        }
+    }
+    // 脚注の行の高さ。本文より小さく組む(Word の作法に近い比)
+    let note_lh = frame.line_height_mm * 0.82;
+    for (i, (id, at_y)) in anchors.iter().enumerate() {
+        let Some(note) = doc.footnotes.iter().find(|n| n.id == *id) else {
+            // 印はあるのに中身が引けない。**作り話をせず、出さない**
+            continue;
+        };
+        let no = i + 1;
+        let mut lines: Vec<Line> = Vec::new();
+        let mut y = 0.0f32;
+        for (pi, para) in note.paragraphs.iter().enumerate() {
+            // 番号は脚注の頭に置く。箇条書きの印と同じ扱いで**本文の字ではない**
+            let marker = (pi == 0).then(|| format!("{no} "));
+            let mut throwaway = 0usize;
+            for cells in break_para(para, m, frame.measure_mm, marker.as_deref(),
+                                    doc.hyphenate, &mut throwaway) {
+                let mut x = 0.0f32;
+                let cells: Vec<Cell> = cells.into_iter()
+                    .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
+                    .collect();
+                y += note_lh;
+                lines.push(Line { cells, y_mm: y, from_body: false, byte0: 0, cell: None });
+            }
+        }
+        if lines.is_empty() {
+            continue;
+        }
+        sheet.notes.push(NoteBlock { no, at_y: *at_y, lines, h_mm: y });
+    }
 }
 
 /// ヘッダー(footer=false)・フッター(footer=true)を**1ページぶん**組む。

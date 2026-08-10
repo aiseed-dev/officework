@@ -278,6 +278,57 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
             });
         }
     }
+    // 脚注。**紙の下**に、仕切り線を挟んで置く。
+    // どの頁に載るかは頁割りが決めている(脚注の高さぶん本文の底が上がる)
+    for (k, l) in layers.iter().enumerate() {
+        let idx = match pg.notes.get(k) {
+            Some(v) if !v.is_empty() => v,
+            _ => continue,
+        };
+        let pp = papers.get(k).copied().unwrap_or(paper);
+        let total: f32 = idx.iter().map(|i| sheet.notes[*i].h_mm).sum();
+        // 下余白のすぐ上に積む。PDF の原点は左下なので、ここは上へ数える
+        let top = pp.margin_mm + total;
+        // 仕切り線。紙幅いっぱいには引かない(Word の作法に近い三分の一)
+        let sep_y = top + NOTE_GAP_MM * 0.5;
+        l.add_line(Line {
+            points: vec![
+                (Point::new(Mm(pp.margin_mm), Mm(sep_y)), false),
+                (Point::new(Mm(pp.margin_mm + (pp.width_mm - pp.margin_mm * 2.0) / 3.0),
+                            Mm(sep_y)), false),
+            ],
+            is_closed: false,
+        });
+        let mut up = 0.0f32;
+        for i in idx {
+            let nb = &sheet.notes[*i];
+            for nl in &nb.lines {
+                // nl.y_mm は脚注の中の相対(上から下へ)。紙の上では下から数える
+                let y = top - up - nl.y_mm;
+                let mut a = 0usize;
+                while a < nl.cells.len() {
+                    let c0 = &nl.cells[a];
+                    let mut b = a + 1;
+                    while b < nl.cells.len()
+                        && nl.cells[b].fmt == c0.fmt
+                        && nl.cells[b].size_pt == c0.size_pt
+                    {
+                        b += 1;
+                    }
+                    let seg = &nl.cells[a..b];
+                    let text: String = seg.iter().map(|c| c.ch).collect();
+                    let x = pp.margin_mm + c0.x_mm;
+                    l.use_text(&text, c0.size_pt, Mm(x), Mm(y), &font);
+                    if c0.fmt.bold {
+                        l.use_text(&text, c0.size_pt, Mm(x + 0.12), Mm(y), &font);
+                    }
+                    a = b;
+                }
+            }
+            up += nb.h_mm;
+        }
+    }
+
     // ペン(手描きの線)は文字の上に描く
     for (k, l) in layers.iter().enumerate() {
         for st in dress.ink.iter().filter(|s| !s.highlighter && s.page == k) {
@@ -321,6 +372,9 @@ pub struct Pagination {
     pub offsets: Vec<f32>,
     /// 頁ごとの紙。節で紙が変わる文書では頁ごとに違う
     pub papers: Vec<Paper>,
+    /// 頁ごとに載る脚注(`sheet.notes` の添字)。**脚注は紙の下を占める**ので、
+    /// その高さぶん本文の底が上がる — 頁割りと切り離せない
+    pub notes: Vec<Vec<usize>>,
     /// 頁ごとの**切れ目**(その頁に載る最初の行の巻物 y)。
     /// `offsets` は余白を引いた後の値で**前の頁の裾と重なる**ので、
     /// 「この y はどの頁か」を引くのにそのまま使うと1頁ずれる。
@@ -364,6 +418,9 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
     let mut pages = Vec::with_capacity(sheet.lines.len());
     let mut offsets = vec![0.0f32];
     let mut papers = vec![paper_at(0.0)];
+    // 頁ごとの脚注と、その高さ。**脚注が増えるとその頁の本文の底が上がる**
+    let mut notes: Vec<Vec<usize>> = vec![Vec::new()];
+    let mut note_h = 0.0f32;
     // 頁の切れ目 = その頁に載る最初の行の y。1頁目は巻物の頭から
     let mut starts = vec![f32::NEG_INFINITY];
     // 明示の改ページ(文書側の指定)。高さ超過とは別に、ここでも頁を割る
@@ -383,21 +440,40 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
                 break;
             }
         }
+        // この行に付いている脚注(まだこの頁に数えていないもの)
+        let mine: Vec<usize> = sheet.notes.iter().enumerate()
+            .filter(|(i, n)| (n.at_y - line.y_mm).abs() < 0.01
+                && !notes.last().unwrap().contains(i))
+            .map(|(i, _)| i)
+            .collect();
+        let add: f32 = mine.iter().map(|i| sheet.notes[*i].h_mm).sum();
+
         // **いま居るページの紙**で高さを測る。縦の節と横の節では
         // 1ページに入る行数がそもそも違う
         let cur = *papers.last().unwrap();
         let y_roll = line.y_mm - offsets.last().unwrap();
-        if forced || y_roll > cur.height_mm - cur.margin_mm {
+        // 脚注のぶん、本文に使える底が上がる(仕切りの隙間も見る)
+        let reserve = if note_h + add > 0.0 { note_h + add + NOTE_GAP_MM } else { 0.0 };
+        if forced || y_roll > cur.height_mm - cur.margin_mm - reserve {
             // 次のページへ。行の紙面上の高さは(余白ぶんを除いて)そのまま続ける
             let next = paper_at(line.y_mm);
             offsets.push(line.y_mm - next.margin_mm);
             papers.push(next);
             starts.push(line.y_mm);
+            // 行が次の頁へ動けば、**その行に付いた脚注も一緒に動く**
+            notes.push(mine.clone());
+            note_h = add;
+        } else {
+            notes.last_mut().unwrap().extend(mine.iter().copied());
+            note_h += add;
         }
         pages.push(offsets.len());
     }
-    Pagination { pages, offsets, papers, starts }
+    Pagination { pages, offsets, papers, starts, notes }
 }
+
+/// 本文と脚注の間の隙間(mm)。仕切り線もこの中に引く
+pub const NOTE_GAP_MM: f32 = 3.0;
 
 /// 下線と取り消し線。フォントが持っていないので線として引く。
 fn rule(l: &PdfLayerReference, f: &CharFormat, x: f32, y: f32, w: f32, pt: f32) {
@@ -856,3 +932,131 @@ mod image_tests {
         assert_eq!(&buf[..5], b"%PDF-");
     }
 }
+
+
+
+#[cfg(test)]
+mod footnote_area_tests {
+    use super::*;
+    use kumihan::{font, layout, Block, CharFormat, Document, FootnoteRef, Footnote,
+                  Frame, Metrics, Paragraph, Run};
+
+    fn 組む(d: &Document) -> Sheet {
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
+    }
+    fn 印(id: &str) -> Run {
+        Run { text: String::new(), size_pt: 10.5, font: None,
+              fmt: CharFormat { footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
+                                ..Default::default() } }
+    }
+    fn 字(t: &str) -> Run {
+        Run { text: t.into(), size_pt: 10.5, font: None, fmt: CharFormat::default() }
+    }
+    fn 段(runs: Vec<Run>) -> Block {
+        Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
+    }
+    fn 注(id: &str, t: &str) -> Footnote {
+        Footnote { id: id.into(), endnote: false,
+                   paragraphs: vec![Paragraph { runs: vec![字(t)], line_spacing: 1.0,
+                                                ..Default::default() }] }
+    }
+
+    /// **脚注は本文に使える高さを削る。** 削っていないと、脚注の上に
+    /// 本文が重なって刷られる
+    #[test]
+    fn 脚注のある頁では本文の底が上がる() {
+        let 長文 = "いろはにほへとちりぬるを。".repeat(200);
+        let なし = Document {
+            blocks: vec![段(vec![字(&長文)])],
+            ..Default::default()
+        };
+        let あり = Document {
+            blocks: vec![段(vec![印("9"), 字(&長文)])],
+            footnotes: vec![注("9", &"脚注の文章。".repeat(20))],
+            ..Default::default()
+        };
+        let (s1, s2) = (組む(&なし), 組む(&あり));
+        let p1 = paginate_full(&s1, Paper::default());
+        let p2 = paginate_full(&s2, Paper::default());
+        assert!(!s2.notes.is_empty(), "脚注が組まれていない");
+        let 一頁目 = |p: &Pagination| p.pages.iter().filter(|k| **k == 1).count();
+        assert!(一頁目(&p2) < 一頁目(&p1),
+            "脚注があるのに1頁目の本文の行数が減っていない: {} / {}",
+            一頁目(&p2), 一頁目(&p1));
+    }
+
+    /// **字が紙の中に収まる。** 「脚注が出た」だけを見る試験は、
+    /// 紙の外へ出ていても緑になる(SEKKEI.md の教訓)
+    #[test]
+    fn 脚注の字が紙の中に収まる() {
+        let 長文 = "いろはにほへとちりぬるを。".repeat(200);
+        let d = Document {
+            blocks: vec![段(vec![印("9"), 字(&長文)])],
+            footnotes: vec![注("9", "脚注の文章。")],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let pg = paginate_full(&s, Paper::default());
+        let mut 見た = 0usize;
+        for (k, idx) in pg.notes.iter().enumerate() {
+            if idx.is_empty() { continue }
+            let pp = pg.papers.get(k).copied().unwrap_or(Paper::default());
+            let total: f32 = idx.iter().map(|i| s.notes[*i].h_mm).sum();
+            let top = pp.margin_mm + total;
+            let mut up = 0.0f32;
+            for i in idx {
+                let nb = &s.notes[*i];
+                for nl in &nb.lines {
+                    let y = top - up - nl.y_mm;
+                    assert!(y > 0.0 && y < pp.height_mm,
+                        "脚注の字が紙の外: y={y} 紙の高さ={}", pp.height_mm);
+                    // 下余白より上、かつ本文の底より下に居る
+                    assert!(y <= top + 0.01, "脚注が本文の側へ食い込んだ: y={y} top={top}");
+                    見た += 1;
+                }
+                up += nb.h_mm;
+            }
+        }
+        assert!(見た > 0, "脚注の行を1つも見ていない(試験になっていない)");
+    }
+
+    /// 脚注は**印のある頁**に出る。印が2頁目なら脚注も2頁目
+    #[test]
+    fn 脚注は印のある頁に出る() {
+        let 長文 = "いろはにほへとちりぬるを。".repeat(200);
+        let d = Document {
+            blocks: vec![
+                段(vec![字(&長文)]),
+                段(vec![字("後ろの段落"), 印("9")]),
+            ],
+            footnotes: vec![注("9", "後ろの脚注。")],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let pg = paginate_full(&s, Paper::default());
+        assert!(pg.offsets.len() >= 2, "頁が足りず試験にならない");
+        let 載った: Vec<usize> = pg.notes.iter().enumerate()
+            .filter(|(_, v)| !v.is_empty()).map(|(k, _)| k).collect();
+        assert_eq!(載った.len(), 1, "脚注が複数の頁に出た: {載った:?}");
+        // 印のある行の頁と一致するか
+        let at_y = s.notes[0].at_y;
+        let 印の頁 = pg.page_at(at_y);
+        assert_eq!(載った[0], 印の頁, "脚注が印と違う頁に出た");
+        assert!(印の頁 > 0, "この試験は2頁目に印が来る形を見ている");
+    }
+
+    /// 脚注が無ければ今までどおり(頁割りは1ミリも変わらない)
+    #[test]
+    fn 脚注が無ければ頁割りは変わらない() {
+        let 長文 = "いろはにほへとちりぬるを。".repeat(200);
+        let d = Document { blocks: vec![段(vec![字(&長文)])], ..Default::default() };
+        let s = 組む(&d);
+        assert!(s.notes.is_empty(), "脚注が無いのに組んだ");
+        let pg = paginate_full(&s, Paper::default());
+        assert!(pg.notes.iter().all(|v| v.is_empty()), "脚注が無いのに頁に付いた");
+    }
+}
+
