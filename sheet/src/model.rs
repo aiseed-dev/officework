@@ -2170,7 +2170,15 @@ pub fn format_value(v: &Value, code: Option<&str>) -> String {
 /// 見分け方: 引用部("…")を除いた地に y・d・h(または m と s の組)が
 /// あれば日付・時刻。# や 0 が混ざるものは数の形式(例: `#,##0;[Red]…` の
 /// Red の d を日付と見ない)。m は h・s の隣なら「分」、それ以外は「月」。
-/// 和暦(g・e)はまだ描けない — 黙って数で出さず None(数の表示)に落とす
+/// **和暦(g・e)は描ける。** `ggge"年"m"月"d"日"` → 令和8年8月6日、
+/// `ge.m.d` → R8.8.6。元号は `calc::era_of` の表(DATESTRING と同じ道)。
+/// ここの注釈は長く「まだ描けない」と嘘を書いていた(2026-08-10 に実測して
+/// 気づいた)— **描ける物を描けないと書くと、次の人が二度作る**
+///
+/// 描けないのは**月名と曜日名**のほう。`m` は何文字並べても数字
+/// (`mmmm` → `08`)で、`aaa`/`aaaa` は `YOBI` と「曜日」を日本語で返す。
+/// 13言語ぶんの月名・曜日名は vendor/sdkjs/common/NumFormat.js の
+/// cultureInfo にある(sekkei/calc.ja.md「書式の一覧」参照)
 fn format_date(n: f64, code: &str) -> Option<String> {
     let mut bare = String::new();
     let mut quoted = false;
