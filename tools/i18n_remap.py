@@ -66,24 +66,39 @@ def remap(old_keys_path):
             "振り直すものがありません — 先に gen_lang.py --todo を回しましたか?"
         )
     old = {e["i"]: e["ja"] for e in load(old_keys_path)}
-    new = {e["ja"]: e["i"] for e in load(I18N / "keys.json")}
-    total = len(new)
+    # **同じ原文が2つの番号を持つことがある**(2026-08-10 時点で 12 句)。
+    # 文言の表とリボンの語の両方に出る字で、材料では別の番号になる。
+    # **これは事故ではなく、訳し分けるための自由度**  — 仏は 要約 を
+    # ボタンで "Résumer"、文の中で "Résumé" と使い分けている。
+    #
+    # ここを `{ja: 番号}` の辞書にすると後の1つしか残らず、**文言側の訳が
+    # リボン側の番号に書き込まれ、文言側は空になる**(訳が入れ替わる)。
+    # 番号は「文言の塊 → リボンの塊」の順に振られるので、**同じ原文の中では
+    # 順位で対応づける** — 1つ目は1つ目へ、2つ目は2つ目へ。
+    old_ranks, new_ranks = {}, {}
+    for i, ja in sorted(old.items()):
+        old_ranks.setdefault(ja, []).append(i)
+    for e in load(I18N / "keys.json"):
+        new_ranks.setdefault(e["ja"], []).append(e["i"])
+    for v in new_ranks.values():
+        v.sort()
+    total = sum(len(v) for v in new_ranks.values())
     moved = 0
     for loc in LOCALES:
         p = I18N / f"{loc}.json"
         got, lost, seen = [], 0, set()
         for e in load(p):
             ja = old.get(e["i"])
-            if ja is None or ja not in new:
+            if ja is None or ja not in new_ranks:
                 lost += 1
                 continue
-            # **番号が重なることがある。** 別々だった2つの原文が同じ文に
-            # 直されると、新しい番号は1つ。先に来たほうを採る(訳も同じ)
-            if new[ja] in seen:
+            rank = old_ranks[ja].index(e["i"])
+            dst = new_ranks[ja][min(rank, len(new_ranks[ja]) - 1)]
+            if dst in seen:
                 continue
-            seen.add(new[ja])
-            moved += new[ja] != e["i"]
-            got.append({"i": new[ja], "t": e["t"]})
+            seen.add(dst)
+            moved += dst != e["i"]
+            got.append({"i": dst, "t": e["t"]})
         got.sort(key=lambda e: e["i"])
         save(p, got)
         print(f"{loc:6} {len(got):5} 訳 / 未訳 {total - len(got):4} / 原文が変わって捨てた {lost}")
