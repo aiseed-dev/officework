@@ -1,0 +1,1479 @@
+//! 組版の試験。
+
+use super::doc::*;
+use super::layout::*;
+use crate::font;
+
+#[cfg(test)]
+mod kihon {
+    use super::*;
+
+    fn font() -> Vec<u8> {
+        // **同梱しない。** システムのフォントを使う
+        let (f, _) = crate::font::for_document(None).expect("日本語フォントが要る");
+        crate::font::load(f).expect("読めない")
+    }
+
+    fn sheet_of(text: &str, measure: f32) -> Sheet {
+        let data = font();
+        let m = Metrics::new(&data).unwrap();
+        let doc = Document::plain(text, 10.5);
+        layout(&doc, &m, &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: 20.0 })
+    }
+
+    const SAMPLE: &str = "日本の事務の実態は、文書ではなく様式です。その様式の定義をテキストにして、記入用の帳票・検証・データベースを全部そこから派生させます。「原本はテキスト。」と、私たちは Rust で書きます。";
+
+    #[test]
+    fn 記入欄の広がりを引ける() {
+        // 「氏名: 」(8バイト)+ 欄「山田　太郎」(15バイト)= 8..23
+        let mut d = Document::plain("氏名: 山田　太郎\n次の行", 10.5);
+        d.apply_char_format(8..23, |f| {
+            f.sdt = Some(Box::new(Sdt { tag: "氏名".into(), ..Default::default() }))
+        });
+        // 太字で run を割っても、欄は一つに繋がって返る
+        d.apply_char_format(8..14, |f| f.bold = true);
+        assert_eq!(d.sdt_range_at(12), Some(8..23), "割れた run が繋がらない");
+        assert_eq!(d.sdt_range_at(23), Some(8..23), "欄の直後(直前の字の慣習)");
+        assert_eq!(d.sdt_range_at(3), None, "欄の外");
+        assert_eq!(d.sdt_range_at(26), None, "次の段落");
+    }
+
+    #[test]
+    fn 行頭に句読点や閉じ括弧が来ない() {
+        for measure in [30.0, 40.0, 55.0, 70.0, 90.0] {
+            let s = sheet_of(SAMPLE, measure);
+            for l in &s.lines {
+                let c = l.cells[0].ch;
+                assert!(!is_gyoto_kinsoku(c),
+                    "行長{measure}mm で行頭が「{c}」: {}", l.text());
+            }
+        }
+    }
+
+    #[test]
+    fn 行末に開き括弧が残らない() {
+        for measure in [30.0, 40.0, 55.0, 70.0, 90.0] {
+            let s = sheet_of(SAMPLE, measure);
+            for l in &s.lines {
+                let c = l.cells.last().unwrap().ch;
+                assert!(!is_gyomatsu_kinsoku(c),
+                    "行長{measure}mm で行末が「{c}」: {}", l.text());
+            }
+        }
+    }
+
+    #[test]
+    fn 欧文の語は行の中で割れない() {
+        for measure in [30.0, 40.0, 55.0, 70.0] {
+            let s = sheet_of(SAMPLE, measure);
+            let joined: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
+            // "Rust" がどこかの行に丸ごとある(行またぎで割れていない)
+            assert!(joined.iter().any(|t| t.contains("Rust")),
+                "行長{measure}mm で Rust が割れた: {joined:?}");
+        }
+    }
+
+    #[test]
+    fn 行長を大きく超えない() {
+        // 追い出しで短くなるのは良い。超えるのは駄目(はみ出し)
+        for measure in [40.0, 55.0, 70.0] {
+            let s = sheet_of(SAMPLE, measure);
+            for l in &s.lines {
+                assert!(l.width_mm() <= measure + 0.1,
+                    "行長{measure}mm を超過: {:.2}mm 「{}」", l.width_mm(), l.text());
+            }
+        }
+    }
+
+    #[test]
+    fn 文字は一つも失われない() {
+        let want: String = SAMPLE.chars().filter(|c| *c != ' ').collect();
+        let s = sheet_of(SAMPLE, 55.0);
+        let got: String = s.lines.iter().flat_map(|l| l.cells.iter())
+            .map(|c| c.ch).filter(|c| *c != ' ').collect();
+        assert_eq!(got, want);
+    }
+
+    #[test]
+    fn 実フォントの字幅で組んでいる() {
+        let data = font();
+        let m = Metrics::new(&data).unwrap();
+        let zen = m.advance_mm('あ', 10.5);
+        let han = m.advance_mm('i', 10.5);
+        assert!(zen > 3.0 && zen < 4.5, "全角の送りが不自然: {zen}mm");
+        assert!(han < zen * 0.6, "半角が全角より十分細くない: {han}mm vs {zen}mm");
+    }
+}
+
+#[cfg(test)]
+mod format_tests {
+    use super::*;
+
+    fn doc(text: &str) -> Document {
+        Document::plain(text, 10.5)
+    }
+
+    #[test]
+    fn 打鍵しても書式が消えない() {
+        // 以前は set_body_text が段落を作り直していたので、打つたびに太字が消えた
+        let mut d = doc("表題\n本文");
+        d.apply_char_format(0..2, |f| f.bold = true);
+        d.apply_align(0..2, Align::Center);
+        // 1文字打った、のつもり
+        d.set_body_text("表題あ\n本文", 10.5);
+        let p = d.paragraphs().next().unwrap();
+        assert!(p.runs[0].fmt.bold, "太字が消えた");
+        assert_eq!(p.align, Align::Center, "揃えが消えた");
+    }
+
+    #[test]
+    fn 段落が増えても前の書式は残る() {
+        let mut d = doc("表題");
+        d.apply_char_format(0..2, |f| f.bold = true);
+        d.set_body_text("表題\n新しい段落", 10.5);
+        let ps: Vec<_> = d.paragraphs().collect();
+        assert!(ps[0].runs[0].fmt.bold);
+        assert!(!ps[1].runs[0].fmt.bold, "新しい段落まで太字になった");
+    }
+
+    #[test]
+    fn 選択した段落だけに掛かる() {
+        let mut d = doc("一行目\n二行目\n三行目");
+        // 「二行目」は 4..7(一行目=9バイト+改行)
+        let start = "一行目\n".len();
+        d.apply_char_format(start..start + 3, |f| f.bold = true);
+        let ps: Vec<_> = d.paragraphs().collect();
+        assert!(!ps[0].runs[0].fmt.bold, "上の段落まで太字になった");
+        assert!(ps[1].runs[0].fmt.bold, "選んだ段落が太字にならない");
+        assert!(!ps[2].runs[0].fmt.bold, "下の段落まで太字になった");
+    }
+
+    #[test]
+    fn 複数の段落にまたがる選択() {
+        let mut d = doc("一行目\n二行目\n三行目");
+        let end = "一行目\n二行目".len();
+        d.apply_align(0..end, Align::Center);
+        let ps: Vec<_> = d.paragraphs().collect();
+        assert_eq!(ps[0].align, Align::Center);
+        assert_eq!(ps[1].align, Align::Center);
+        assert_eq!(ps[2].align, Align::Left, "選んでいない段落まで動いた");
+    }
+
+    #[test]
+    fn 今の書式を読める() {
+        // ボタンを押した状態に見せるために要る
+        let mut d = doc("表題\n本文");
+        d.apply_char_format(0..2, |f| f.bold = true);
+        d.apply_align(0..2, Align::Right);
+        assert!(d.char_format_at(0..2).bold);
+        assert_eq!(d.align_at(0..2), Align::Right);
+        let second = "表題\n".len();
+        assert!(!d.char_format_at(second..second).bold, "別の段落の書式を返した");
+    }
+
+    #[test]
+    fn 表は消えない() {
+        let mut d = doc("本文");
+        d.blocks.push(Block::Table(Table { col_mm: vec![], rows: vec![vec![Cellbox::default()]] }));
+        d.set_body_text("本文を直した", 10.5);
+        assert_eq!(d.tables().count(), 1, "表が消えた");
+    }
+}
+
+#[cfg(test)]
+mod align_tests {
+    use super::*;
+
+    fn sheet(text: &str, a: Align) -> Sheet {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain(text, 10.5);
+        d.apply_align(0..text.len(), a);
+        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 })
+    }
+
+    #[test]
+    fn 中央揃えは左右の余りが等しい() {
+        let s = sheet("表題", Align::Center);
+        let line = &s.lines[0];
+        let left = line.cells[0].x_mm;
+        let right = 100.0 - (line.cells.last().unwrap().x_mm + line.cells.last().unwrap().w_mm);
+        assert!((left - right).abs() < 0.01, "左 {left}mm / 右 {right}mm");
+        assert!(left > 1.0, "中央に寄っていない");
+    }
+
+    #[test]
+    fn 右揃えは行末が行長に届く() {
+        let s = sheet("表題", Align::Right);
+        let last = s.lines[0].cells.last().unwrap();
+        assert!((last.x_mm + last.w_mm - 100.0).abs() < 0.01, "右端に着いていない");
+    }
+
+    #[test]
+    fn 左揃えは0から始まる() {
+        assert_eq!(sheet("表題", Align::Left).lines[0].cells[0].x_mm, 0.0);
+    }
+
+    #[test]
+    fn 書式が字まで届く() {
+        // 画面と紙が同じものを見るので、片方だけ太字になることが起きない
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("太字", 10.5);
+        d.apply_char_format(0..6, |f| f.bold = true);
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        assert!(s.lines[0].cells.iter().all(|c| c.fmt.bold), "字に書式が届いていない");
+    }
+}
+
+#[cfg(test)]
+mod size_tests {
+    use super::*;
+
+    #[test]
+    fn 打鍵しても大きさが戻らない() {
+        let mut d = Document::plain("表題\n本文", 10.5);
+        d.apply_size(0..2, |s| s + 6.0);
+        d.set_body_text("表題あ\n本文", 10.5);
+        assert_eq!(d.size_at(0..2), Some(16.5), "大きさが既定に戻った");
+        let second = "表題あ\n".len();
+        assert_eq!(d.size_at(second..second), Some(10.5), "他の段落まで変わった");
+    }
+
+    #[test]
+    fn 際限なく大きくならない() {
+        // 0pt にすると本文が消えて、原因が分からなくなる
+        let mut d = Document::plain("本文", 10.5);
+        for _ in 0..100 { d.apply_size(0..2, |s| s - 10.0) }
+        assert!(d.size_at(0..2).unwrap() >= 4.0, "小さくしすぎた");
+        for _ in 0..100 { d.apply_size(0..2, |s| s * 2.0) }
+        assert!(d.size_at(0..2).unwrap() <= 400.0, "大きくしすぎた");
+    }
+
+    #[test]
+    fn 書体を段落に掛けられる() {
+        let mut d = Document::plain("表題\n本文", 10.5);
+        d.apply_font(0..2, Some("BIZ UDPゴシック".into()));
+        assert_eq!(d.paragraphs().next().unwrap().runs[0].font.as_deref(), Some("BIZ UDPゴシック"));
+        assert_eq!(d.paragraphs().nth(1).unwrap().runs[0].font, None, "他の段落まで変わった");
+    }
+}
+
+#[cfg(test)]
+mod list_tests {
+    use super::*;
+
+    fn sheet(setup: impl Fn(&mut Document)) -> Sheet {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("一つ目\n二つ目\n三つ目", 10.5);
+        setup(&mut d);
+        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 })
+    }
+
+    fn text(s: &Sheet, i: usize) -> String {
+        s.lines.get(i).map(|l| l.text()).unwrap_or_default()
+    }
+
+    #[test]
+    fn 箇条書きの印が本文の前に出る() {
+        let s = sheet(|d| {
+            for b in &mut d.blocks {
+                if let Block::Para(p) = b { p.list = ListKind::Bullet }
+            }
+        });
+        assert!(text(&s, 0).starts_with('・'), "印が出ていない: {:?}", text(&s, 0));
+    }
+
+    #[test]
+    fn 段落番号は連番になる() {
+        let s = sheet(|d| {
+            for b in &mut d.blocks {
+                if let Block::Para(p) = b { p.list = ListKind::Number }
+            }
+        });
+        assert!(text(&s, 0).starts_with("1."), "{:?}", text(&s, 0));
+        assert!(text(&s, 1).starts_with("2."), "{:?}", text(&s, 1));
+        assert!(text(&s, 2).starts_with("3."), "{:?}", text(&s, 2));
+    }
+
+    #[test]
+    fn レベルで印と番号の形が変わる() {
+        let mut p = Paragraph { list: ListKind::Bullet, ..Default::default() };
+        assert_eq!(p.marker(0).as_deref(), Some("・"));
+        p.indent = 1;
+        assert_eq!(p.marker(0).as_deref(), Some("○"), "レベル2の印が変わらない");
+        p.list = ListKind::Number;
+        assert_eq!(p.marker(2).as_deref(), Some("(3) "), "レベル2の番号の形が違う");
+    }
+
+    #[test]
+    fn 深い番号は浅い番号が進むと振り出しに戻る() {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("一\n一の一\n一の二\n二\n二の一", 10.5);
+        for (i, ind) in [(0usize, 0u8), (1, 1), (2, 1), (3, 0), (4, 1)] {
+            if let Block::Para(p) = &mut d.blocks[i] {
+                p.list = ListKind::Number;
+                p.indent = ind;
+            }
+        }
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let texts: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
+        assert!(texts[1].starts_with("(1) "), "{:?}", texts[1]);
+        assert!(texts[2].starts_with("(2) "), "{:?}", texts[2]);
+        assert!(texts[3].starts_with("2. "), "{:?}", texts[3]);
+        assert!(texts[4].starts_with("(1) "), "深い数えが振り出しに戻らない: {:?}", texts[4]);
+    }
+
+    #[test]
+    fn 印は本文を書き換えない() {
+        // 編集中の文字位置とずれると、カーソルが合わなくなる
+        let mut d = Document::plain("一つ目", 10.5);
+        if let Block::Para(p) = &mut d.blocks[0] { p.list = ListKind::Bullet }
+        assert_eq!(d.body_text(), "一つ目", "本文に印が混ざった");
+    }
+
+    #[test]
+    fn インデントで右へ寄る() {
+        let plain = sheet(|_| {});
+        let ind = sheet(|d| {
+            for b in &mut d.blocks {
+                if let Block::Para(p) = b { p.indent = 2 }
+            }
+        });
+        assert!(ind.lines[0].cells[0].x_mm > plain.lines[0].cells[0].x_mm + 5.0,
+                "インデントが効いていない");
+    }
+
+    #[test]
+    fn 行間で行が離れる() {
+        let plain = sheet(|_| {});
+        let wide = sheet(|d| {
+            for b in &mut d.blocks {
+                if let Block::Para(p) = b { p.line_spacing = 2.0 }
+            }
+        });
+        let gap = |s: &Sheet| s.lines[1].y_mm - s.lines[0].y_mm;
+        assert!((gap(&wide) - gap(&plain) * 2.0).abs() < 0.1,
+                "行間が倍になっていない: {} → {}", gap(&plain), gap(&wide));
+    }
+
+    #[test]
+    fn インデントすると行長が縮む() {
+        // 右端がはみ出さないこと
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let long = "あ".repeat(60);
+        let mut d = Document::plain(&long, 10.5);
+        if let Block::Para(p) = &mut d.blocks[0] { p.indent = 3 }
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        for l in &s.lines {
+            let right = l.cells.last().map(|c| c.x_mm + c.w_mm).unwrap_or(0.0);
+            assert!(right <= 100.5, "行長を超えた: {right}mm");
+        }
+    }
+}
+
+#[cfg(test)]
+mod vertical_tests {
+    use super::*;
+
+    #[test]
+    fn 縦書きは右の列から左へ進み字は上から下へ() {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let d = Document::plain("一行目の文。\n二行目。", 10.5);
+        let pg = PageSetup::default();
+        let y0 = pg.top_mm + 4.0;
+        let measure = pg.h_mm - pg.top_mm - pg.bottom_mm - 8.0;
+        let mut sheet = layout(&d, &m,
+            &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: y0 });
+        fold_vertical(&mut sheet, &pg, y0, 6.0);
+        assert!(sheet.vertical);
+        assert_eq!(sheet.vert_x.len(), sheet.lines.len());
+        // 1列目は右端の近く、2列目はその左
+        let right = pg.w_mm - pg.right_mm;
+        assert!((sheet.vert_x[0] - (right - 6.0)).abs() < 0.5,
+            "1列目が右端に無い: {}", sheet.vert_x[0]);
+        assert!(sheet.vert_x[1] < sheet.vert_x[0], "2列目が左に来ていない");
+        // 字は上から下(Cell.x_mm が増える)
+        let cs = &sheet.lines[0].cells;
+        assert!(cs[0].x_mm < cs[1].x_mm, "字が上から下に並んでいない");
+        // 約物が縦用に置き換わる
+        assert!(cs.iter().any(|c| c.ch == '︒'), "句点が縦用でない");
+    }
+}
+
+#[cfg(test)]
+mod ruby_tests {
+    use super::*;
+
+    #[test]
+    fn ルビの行が基底の上に半分の大きさで出る() {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("組版の話", 10.5);
+        // 「組版」にだけルビを振る
+        d.apply_char_format(0..6, |f| f.ruby = Some("くみはん".into()));
+        let sheet = layout(&d, &m,
+            &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let body: Vec<&Line> = sheet.lines.iter().filter(|l| l.from_body).collect();
+        let ruby: Vec<&Line> = sheet.lines.iter().filter(|l| !l.from_body).collect();
+        assert_eq!(body.len(), 1);
+        assert_eq!(ruby.len(), 1, "ルビの行が無い");
+        assert_eq!(ruby[0].text(), "くみはん");
+        assert!(ruby[0].y_mm < body[0].y_mm, "ルビが基底より下にある");
+        assert!((ruby[0].cells[0].size_pt - 5.25).abs() < 0.01, "半分の大きさでない");
+        let bx0 = body[0].cells[0].x_mm;
+        let bx1 = body[0].cells[1].x_mm + body[0].cells[1].w_mm;
+        let rx0 = ruby[0].cells[0].x_mm;
+        let rlast = ruby[0].cells.last().unwrap();
+        let rx1 = rlast.x_mm + rlast.w_mm;
+        let (bc, rc) = ((bx0 + bx1) / 2.0, (rx0 + rx1) / 2.0);
+        assert!((bc - rc).abs() < 1.0, "ルビが基底の中央に来ていない: {bc} vs {rc}");
+    }
+}
+
+#[cfg(test)]
+mod distribute_tests {
+    use super::*;
+
+    #[test]
+    fn 均等割付は最後の行も行長いっぱいに広がる() {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("氏名", 10.5);
+        if let Some(Block::Para(p)) = d.blocks.first_mut() {
+            p.align = Align::Distribute;
+        }
+        let sheet = layout(&d, &m,
+            &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let line = &sheet.lines[0];
+        let last = line.cells.last().unwrap();
+        assert!(
+            (last.x_mm + last.w_mm - 100.0).abs() < 0.5,
+            "右端に届いていない: {}",
+            last.x_mm + last.w_mm
+        );
+        assert!(line.cells[0].x_mm < 0.5, "左端から始まっていない");
+    }
+}
+
+#[cfg(test)]
+mod table_layout_tests {
+    use super::*;
+
+    fn doc_with_table() -> Document {
+        let cell = |s: &str| Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run {
+                    text: s.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut d = Document::plain("前の本文", 10.5);
+        d.blocks.push(Block::Table(Table {
+            col_mm: vec![],
+            rows: vec![
+                vec![cell("品名"), cell("金額")],
+                vec![cell("防火戸"), cell("120,000")],
+            ],
+        }));
+        d
+    }
+
+    fn sheet() -> Sheet {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        layout(&doc_with_table(), &m,
+               &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 })
+    }
+
+    #[test]
+    fn 表の中身が紙面に出る() {
+        let s = sheet();
+        let all: String = s.lines.iter().map(|l| l.text()).collect();
+        assert!(all.contains("品名"), "表のセルが描かれていない");
+        assert!(all.contains("防火戸"));
+    }
+
+    #[test]
+    fn 表の行は本文由来ではない() {
+        // カーソルの位置合わせを壊さないための区別
+        let s = sheet();
+        let body: Vec<&Line> = s.lines.iter().filter(|l| l.from_body).collect();
+        assert_eq!(body.len(), 1, "本文の行数が違う: {}", body.len());
+        assert!(body[0].text().contains("前の本文"));
+        assert!(s.lines.iter().any(|l| !l.from_body), "表の行が無い");
+    }
+
+    #[test]
+    fn 罫線が引かれる() {
+        let s = sheet();
+        // 2行の表: 横線3本 + 縦線(3本×2行) = 9本
+        assert_eq!(s.rules.len(), 9, "罫線の数が違う: {}", s.rules.len());
+        // 横線は行長いっぱい
+        let h: Vec<_> = s.rules.iter().filter(|r| r[1] == r[3]).collect();
+        assert_eq!(h.len(), 3);
+        assert!(h.iter().all(|r| (r[2] - r[0] - 100.0).abs() < 0.01));
+    }
+
+    #[test]
+    fn セルの中で折り返す() {
+        let cell = |s: &str| Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run {
+                    text: s.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut d = Document { font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
+        d.blocks.push(Block::Table(Table {
+            col_mm: vec![],
+            rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
+        }));
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        // 50mm の列に 30文字(約110mm)は3行になる
+        let cell_lines = s.lines.iter().filter(|l| !l.from_body).count();
+        assert!(cell_lines >= 3, "セルの中で折り返していない: {cell_lines} 行");
+        // 右のセルにはみ出さない
+        for l in s.lines.iter().filter(|l| !l.from_body) {
+            if l.text().starts_with('あ') {
+                let right = l.cells.last().map(|c| c.x_mm + c.w_mm).unwrap_or(0.0);
+                assert!(right <= 50.0 + 0.5, "隣のセルへはみ出した: {right}mm");
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod merge_layout_tests {
+    use super::*;
+
+    fn cell(s: &str) -> Cellbox {
+        Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run {
+                    text: s.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }
+    }
+
+    fn sheet_of(rows: Vec<Vec<Cellbox>>) -> Sheet {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let d = Document {
+            font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+            blocks: vec![Block::Table(Table { col_mm: vec![], rows })],
+        };
+        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 })
+    }
+
+    #[test]
+    fn 横の結合は列をまたぐ() {
+        // 1行目: 見出しが2列ぶん。2行目: 普通の2列
+        let mut head = cell("見出し");
+        head.col_span = 2;
+        let s = sheet_of(vec![
+            vec![head],
+            vec![cell("左"), cell("右")],
+        ]);
+        let b0 = s.cell_boxes.iter().find(|b| b.row == 0 && b.col == 0).unwrap();
+        assert!((b0.w_mm - 100.0).abs() < 0.01, "結合したのに幅が広がらない: {}", b0.w_mm);
+        // 結合の中(x=50)を縦線が横切らない(1行目の帯だけを見る)
+        let mid_crosses = s.rules.iter().any(|r| {
+            r[0] == r[2] && (r[0] - 50.0).abs() < 0.01 && r[1] < b0.top_mm + b0.h_mm - 0.1
+                && r[3] > b0.top_mm + 0.1
+        });
+        assert!(!mid_crosses, "結合の中を縦線が横切った");
+        // 2行目には x=50 の縦線がある
+        let b1 = s.cell_boxes.iter().find(|b| b.row == 1 && b.col == 1).unwrap();
+        assert!((b1.x_mm - 50.0).abs() < 0.01, "2行目の右セルの位置が違う: {}", b1.x_mm);
+    }
+
+    #[test]
+    fn 縦の結合は行をまたぐ() {
+        let mut start = cell("項目");
+        start.v_merge = VMerge::Start;
+        let mut cont = cell("");
+        cont.v_merge = VMerge::Continue;
+        let s = sheet_of(vec![
+            vec![start, cell("1行目")],
+            vec![cont, cell("2行目")],
+        ]);
+        // 呑まれたセルには当たり判定が無く、始まりのセルが2行ぶんに延びる
+        assert!(s.cell_boxes.iter().all(|b| !(b.row == 1 && b.col == 0)),
+            "呑まれたセルに当たり判定が残っている");
+        let b0 = s.cell_boxes.iter().find(|b| b.row == 0 && b.col == 0).unwrap();
+        let b1 = s.cell_boxes.iter().find(|b| b.row == 1 && b.col == 1).unwrap();
+        let merged_bottom = b0.top_mm + b0.h_mm;
+        let row1_bottom = b1.top_mm + b1.h_mm;
+        assert!((merged_bottom - row1_bottom).abs() < 0.01,
+            "結合が2行目の下端まで延びていない: {merged_bottom} vs {row1_bottom}");
+        // 行の境の横線が、結合の中(左半分)を横切らない
+        let boundary = b1.top_mm;
+        for r in s.rules.iter().filter(|r| r[1] == r[3] && (r[1] - boundary).abs() < 0.01) {
+            assert!(r[0] >= 50.0 - 0.01,
+                "結合の中を横線が横切った: x {}..{}", r[0], r[2]);
+        }
+    }
+}
+
+#[cfg(test)]
+mod gridcol_tests {
+    use super::*;
+
+    fn cell(s: &str) -> Cellbox {
+        Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run {
+                    text: s.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }
+    }
+
+    fn rules_of(col_mm: Vec<f32>) -> Vec<[f32; 4]> {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let d = Document {
+            font: None,
+            page: None,
+            sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+            blocks: vec![Block::Table(Table {
+                col_mm,
+                rows: vec![vec![cell("項目"), cell("値")]],
+            })],
+        };
+        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 }).rules
+    }
+
+    #[test]
+    fn 列幅の指定が効く() {
+        // 30mm + 70mm の2列。縦線が 0, 30, 100 に立つ
+        let rules = rules_of(vec![30.0, 70.0]);
+        let mut vx: Vec<f32> = rules.iter().filter(|r| r[0] == r[2]).map(|r| r[0]).collect();
+        vx.sort_by(f32::total_cmp);
+        vx.dedup_by(|a, b| (*a - *b).abs() < 0.01);
+        assert_eq!(vx.len(), 3, "{vx:?}");
+        assert!((vx[1] - 30.0).abs() < 0.01, "指定した列幅で立っていない: {vx:?}");
+    }
+
+    #[test]
+    fn 行長を超える指定は比例で縮む() {
+        // 120+80=200mm を 100mm に。比率 3:2 のまま 60/40 になる
+        let rules = rules_of(vec![120.0, 80.0]);
+        let mut vx: Vec<f32> = rules.iter().filter(|r| r[0] == r[2]).map(|r| r[0]).collect();
+        vx.sort_by(f32::total_cmp);
+        vx.dedup_by(|a, b| (*a - *b).abs() < 0.01);
+        assert!((vx[1] - 60.0).abs() < 0.1, "比率が守られていない: {vx:?}");
+        assert!((vx[2] - 100.0).abs() < 0.1, "右へはみ出した: {vx:?}");
+    }
+}
+
+#[cfg(test)]
+mod empty_line_tests {
+    use super::*;
+
+    #[test]
+    fn 空の段落も行として持つ() {
+        // 持たないと、後ろの行のバイト勘定がずれてカーソルが合わなくなる
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let d = Document::plain("一行目\n\n三行目", 10.5);
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let body: Vec<&Line> = s.lines.iter().filter(|l| l.from_body).collect();
+        assert_eq!(body.len(), 3, "空行が消えた: {} 行", body.len());
+        assert!(body[1].cells.is_empty());
+        // 3行目は2行ぶん下にある
+        assert!((body[2].y_mm - body[0].y_mm - 12.0).abs() < 0.01);
+    }
+}
+
+#[cfg(test)]
+mod byte0_tests {
+    use super::*;
+
+    fn lines(text: &str, measure: f32) -> Vec<Line> {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let d = Document::plain(text, 10.5);
+        layout(&d, &m, &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: 20.0 })
+            .lines
+    }
+
+    #[test]
+    fn 折り返しても行のバイト位置が本文と合う() {
+        // 「行の文字数 + 1」で数えると、折り返した行の数だけずれていた
+        let text = "あ".repeat(40); // 100mm に入らないので折り返す
+        let ls = lines(&text, 100.0);
+        assert!(ls.len() >= 2, "折り返していない");
+        for l in &ls {
+            // byte0 の位置の字が、その行の先頭の字と一致する
+            let head = text[l.byte0..].chars().next().unwrap();
+            assert_eq!(head, l.cells[0].ch, "byte0 がずれている");
+        }
+        // 連結すると本文に戻る(空白落ちのない文)
+        let total: usize = ls.iter().map(|l| l.byte_end() - l.byte0).sum();
+        assert_eq!(total, text.len());
+    }
+
+    #[test]
+    fn 空白が落ちてもずれない() {
+        // 行末で捨てた空白のぶん、次の行の byte0 が進んでいること
+        let text = format!("{} {}", "a".repeat(40), "b".repeat(40));
+        let ls = lines(&text, 60.0);
+        assert!(ls.len() >= 2);
+        let l2 = &ls[1];
+        let head = text[l2.byte0..].chars().next().unwrap();
+        assert_eq!(head, l2.cells[0].ch, "落ちた空白の勘定が入っていない");
+    }
+
+    #[test]
+    fn 段落をまたいでも合う() {
+        let text = "一つ目\n二つ目の段落\n三";
+        let ls = lines(text, 100.0);
+        for l in &ls {
+            if l.cells.is_empty() { continue }
+            let head = text[l.byte0..].chars().next().unwrap();
+            assert_eq!(head, l.cells[0].ch);
+        }
+    }
+
+    #[test]
+    fn 箇条書きの印はバイト位置に入らない() {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("項目", 10.5);
+        if let Block::Para(p) = &mut d.blocks[0] { p.list = ListKind::Bullet }
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let l = &s.lines[0];
+        assert_eq!(l.byte0, 0);
+        // 印(・)ぶんが byte_end に乗っていない
+        assert_eq!(l.byte_end(), "項目".len(), "印が本文のバイトに混ざった");
+    }
+}
+
+#[cfg(test)]
+mod run_edit_tests {
+    use super::*;
+
+    fn bold_spans(d: &Document) -> Vec<(String, bool)> {
+        d.paragraphs()
+            .flat_map(|p| p.runs.iter())
+            .map(|r| (r.text.clone(), r.fmt.bold))
+            .collect()
+    }
+
+    #[test]
+    fn 段落の途中だけ太字にできる() {
+        let mut d = Document::plain("防火戸の仕様を確認", 10.5);
+        let s = "防火戸の".len();
+        let e = "防火戸の仕様".len();
+        d.apply_char_format(s..e, |f| f.bold = true);
+        assert_eq!(
+            bold_spans(&d),
+            vec![
+                ("防火戸の".into(), false),
+                ("仕様".into(), true),
+                ("を確認".into(), false)
+            ],
+            "選択の字だけが太字になっていない"
+        );
+    }
+
+    #[test]
+    fn 部分書式が打鍵で流されない() {
+        let mut d = Document::plain("防火戸の仕様を確認", 10.5);
+        let s = "防火戸の".len();
+        let e = "防火戸の仕様".len();
+        d.apply_char_format(s..e, |f| f.bold = true);
+        // 「仕様」の後ろに「書」を打った(1回の編集 = 1箇所の置き換え)
+        d.set_body_text("防火戸の仕様書を確認", 10.5);
+        assert_eq!(
+            bold_spans(&d),
+            vec![
+                ("防火戸の".into(), false),
+                ("仕様書".into(), true),
+                ("を確認".into(), false)
+            ],
+            "太字の中に打った字が太字にならない・境が流された"
+        );
+        // 頭に打っても境は動かない
+        d.set_body_text("この防火戸の仕様書を確認", 10.5);
+        assert_eq!(bold_spans(&d)[1], ("仕様書".into(), true), "頭への挿入で境がずれた");
+    }
+
+    #[test]
+    fn 選択の中だけ消しても境が残る() {
+        let mut d = Document::plain("あいうえお", 10.5);
+        d.apply_char_format(3..12, |f| f.bold = true); // いうえ
+        d.set_body_text("あいえお", 10.5); // 「う」を消した
+        assert_eq!(
+            bold_spans(&d),
+            vec![("あ".into(), false), ("いえ".into(), true), ("お".into(), false)],
+            "削除で境が流された"
+        );
+    }
+
+    #[test]
+    fn 途中の段落でenterしても下の性質がずれない() {
+        // 旧方式(段落番号で写す)の持病: 段落の増減で下の段落の性質がずれた
+        let mut d = Document::plain("一\n二\n三", 10.5);
+        let start = "一\n二".len();
+        d.apply_align(start + 1..start + 1, Align::Center); // 「三」を中央に
+        if let Block::Para(p) = &mut d.blocks[2] {
+            p.shade = Some("FFF2CC".into());
+        }
+        // 「二」の後ろで Enter
+        d.set_body_text("一\n二\n\n三", 10.5);
+        let ps: Vec<&Paragraph> = d.paragraphs().collect();
+        assert_eq!(ps.len(), 4);
+        assert_eq!(ps[3].align, Align::Center, "下の段落の揃えがずれた");
+        assert_eq!(ps[3].shade.as_deref(), Some("FFF2CC"), "下の段落の帯がずれた");
+        // 割った両方が段落の性質を持つ(Word と同じ)。下へ「ずれる」のとは違う
+        assert_eq!(ps[2].shade.as_deref(), Some("FFF2CC"));
+        // undo(= 逆向きの1回の編集)でも戻る
+        d.set_body_text("一\n二\n三", 10.5);
+        let ps: Vec<&Paragraph> = d.paragraphs().collect();
+        assert_eq!(ps[2].align, Align::Center, "undo で揃えが消えた");
+    }
+
+    #[test]
+    fn 編集しても表の位置が動かない() {
+        // 旧方式は打鍵のたびに表が末尾へ動いていた
+        let mut d = Document::plain("前\n後", 10.5);
+        d.blocks.insert(1, Block::Table(Table {
+            col_mm: vec![],
+            rows: vec![vec![Cellbox::default()]],
+        }));
+        d.set_body_text("前に足す\n後", 10.5);
+        let kinds: Vec<&str> = d.blocks.iter().map(|b| match b {
+            Block::Para(_) => "段落",
+            Block::Table(_) => "表",
+        }).collect();
+        assert_eq!(kinds, vec!["段落", "表", "段落"], "表が動いた: {kinds:?}");
+    }
+
+    #[test]
+    fn 段落の合流で頭の性質が残る() {
+        let mut d = Document::plain("一\n二", 10.5);
+        d.apply_align(0..0, Align::Center);
+        // 「一」と「二」の間の改行を消した
+        d.set_body_text("一二", 10.5);
+        let ps: Vec<&Paragraph> = d.paragraphs().collect();
+        assert_eq!(ps.len(), 1);
+        assert_eq!(ps[0].align, Align::Center, "合流で頭の性質が消えた");
+        assert_eq!(ps[0].runs[0].text, "一二");
+    }
+
+    #[test]
+    fn 大きさと書体も選択の字にだけ掛かる() {
+        let mut d = Document::plain("見出しと本文", 10.5);
+        d.apply_size(0.."見出し".len(), |_| 16.0);
+        d.apply_font(0.."見出し".len(), Some("ゴシック".into()));
+        let runs: Vec<&Run> = d.paragraphs().flat_map(|p| p.runs.iter()).collect();
+        assert_eq!(runs.len(), 2);
+        assert_eq!(runs[0].size_pt, 16.0);
+        assert_eq!(runs[0].font.as_deref(), Some("ゴシック"));
+        assert_eq!(runs[1].size_pt, 10.5, "選択の外まで変わった");
+        assert_eq!(runs[1].font, None);
+    }
+
+    #[test]
+    fn カーソル位置の書式が読める() {
+        let mut d = Document::plain("あ太字い", 10.5);
+        d.apply_char_format(3..9, |f| f.bold = true);
+        assert!(!d.char_format_at(0..0).bold, "頭で太字と言った");
+        assert!(d.char_format_at(9..9).bold, "太字の直後で太字と言わない");
+        assert!(!d.char_format_at(12..12).bold, "太字の外で太字と言った");
+    }
+}
+
+#[cfg(test)]
+mod ref_field_tests {
+    use super::*;
+
+    fn field_doc() -> Document {
+        let mut d = Document::plain("仕様は3ページを見る", 10.5);
+        let s = "仕様は".len();
+        let e = "仕様は3ページ".len();
+        d.apply_field(s..e, Some(RefField { name: "様式".into(), page: false }));
+        d
+    }
+
+    #[test]
+    fn 参照は編集で流されず前後の打鍵で消えない() {
+        let mut d = field_doc();
+        // 参照の前に打つ
+        d.set_body_text("この仕様は3ページを見る", 10.5);
+        let f: Vec<_> = d.paragraphs().flat_map(|p| p.runs.iter())
+            .filter(|r| r.fmt.field.is_some())
+            .map(|r| r.text.clone())
+            .collect();
+        assert_eq!(f, vec!["3ページ"], "参照が前の打鍵で壊れた");
+        // 参照の直後に打っても、参照は伸びない
+        let e = "この仕様は3ページ".len();
+        let mut t = d.body_text();
+        t.insert(e, '目');
+        d.set_body_text(&t, 10.5);
+        let f: Vec<_> = d.paragraphs().flat_map(|p| p.runs.iter())
+            .filter(|r| r.fmt.field.is_some())
+            .map(|r| r.text.clone())
+            .collect();
+        assert_eq!(f, vec!["3ページ"], "打った字が参照に呑まれた");
+    }
+
+    #[test]
+    fn 参照の中を触ると普通の字に降りる() {
+        let mut d = field_doc();
+        // 「3ページ」の中の「ペ」を消した
+        d.set_body_text("仕様は3ージを見る", 10.5);
+        assert!(d.paragraphs().flat_map(|p| p.runs.iter())
+            .all(|r| r.fmt.field.is_none()),
+            "壊れた参照が参照のまま残った");
+        assert_eq!(d.body_text(), "仕様は3ージを見る", "本文まで変わった");
+    }
+
+    #[test]
+    fn 参照の値を計算し直せる() {
+        let mut d = field_doc();
+        let n = d.refresh_fields(|name, page| {
+            assert_eq!(name, "様式");
+            assert!(!page);
+            Some("5ページ".into())
+        });
+        assert_eq!(n, 1);
+        assert_eq!(d.body_text(), "仕様は5ページを見る");
+        // 同じ値ならもう数えない
+        assert_eq!(d.refresh_fields(|_, _| Some("5ページ".into())), 0);
+    }
+
+    #[test]
+    fn 参照ごと太字にしても参照は残る() {
+        let mut d = field_doc();
+        d.apply_char_format(0..d.body_text().len(), |f| f.bold = true);
+        let r: Vec<_> = d.paragraphs().flat_map(|p| p.runs.iter())
+            .filter(|r| r.fmt.field.is_some()).collect();
+        assert_eq!(r.len(), 1, "太字で参照が消えた");
+        assert!(r[0].fmt.bold);
+    }
+}
+
+#[cfg(test)]
+mod hyphen_tests {
+    use super::*;
+
+    #[test]
+    fn 英語の語が音節で折れてハイフンが付く() {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let text = "The quick information hyphenation representation communication demonstration";
+        let mut d = Document::plain(text, 10.5);
+        d.hyphenate = true;
+        let s = layout(&d, &m, &Frame { measure_mm: 45.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let joined: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
+        assert!(joined.iter().any(|l| l.ends_with('-')),
+            "どの行末にもハイフンが無い: {joined:?}");
+        for l in &s.lines {
+            assert!(l.width_mm() <= 45.1, "行長を超えた: {}", l.width_mm());
+        }
+        // ハイフンを除けば、文字は一つも失われない
+        let got: String = s.lines.iter().flat_map(|l| l.cells.iter())
+            .map(|c| c.ch).filter(|c| *c != '-' && *c != ' ').collect();
+        let want: String = text.chars().filter(|c| *c != ' ').collect();
+        assert_eq!(got, want, "ハイフネーションで字が消えた");
+    }
+
+    #[test]
+    fn 切らなければ何も変わらない() {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let d = Document::plain("The quick information hyphenation", 10.5);
+        let s = layout(&d, &m, &Frame { measure_mm: 45.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        assert!(s.lines.iter().all(|l| !l.text().ends_with('-')),
+            "設定していないのに折った");
+    }
+}
+
+#[cfg(test)]
+mod dropcap_tests {
+    use super::*;
+
+    #[test]
+    fn 頭の1字が大きく残りは狭く組まれる() {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain(&format!("春{}", "はあけぼの。".repeat(8)), 10.5);
+        if let Block::Para(p) = &mut d.blocks[0] {
+            p.dropcap = true;
+        }
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let cap = &s.lines[0];
+        assert_eq!(cap.text(), "春");
+        assert!(cap.cells[0].size_pt > 25.0, "頭の字が大きくない: {}", cap.cells[0].size_pt);
+        // 本文は頭の字の右から始まり、バイト位置は「春」の後ろから
+        let body = &s.lines[1];
+        assert!(body.cells[0].x_mm > cap.cells[0].w_mm - 0.5, "本文が頭の字に重なる");
+        assert_eq!(body.byte0, "春".len(), "バイト勘定がずれた");
+        // 文字は一つも失われない
+        let got: String = s.lines.iter().flat_map(|l| l.cells.iter()).map(|c| c.ch).collect();
+        assert_eq!(got.chars().count(), format!("春{}", "はあけぼの。".repeat(8)).chars().count());
+    }
+}
+
+#[cfg(test)]
+mod column_tests {
+    use super::*;
+
+    fn folded(n_lines: usize, cols: u8) -> Sheet {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let text = (1..=n_lines).map(|i| format!("{i} 行目")).collect::<Vec<_>>().join("\n");
+        let d = Document::plain(&text, 10.5);
+        let pg = PageSetup { columns: cols, ..Default::default() };
+        let mut s = layout(&d, &m, &Frame {
+            measure_mm: pg.column_measure_mm(),
+            line_height_mm: 6.4,
+            y0_mm: 24.0,
+        });
+        fold_columns(&mut s, &pg, 24.0);
+        s
+    }
+
+    #[test]
+    fn 二段に折ると右の段へ続く() {
+        // A4 の1段は約40行。60行なら 1ページ目の左40行 + 右20行
+        let s = folded(60, 2);
+        let pg = PageSetup { columns: 2, ..Default::default() };
+        let left: Vec<&Line> = s.lines.iter()
+            .filter(|l| l.cells[0].x_mm < pg.column_measure_mm()).collect();
+        let right: Vec<&Line> = s.lines.iter()
+            .filter(|l| l.cells[0].x_mm >= pg.column_measure_mm()).collect();
+        assert!(!right.is_empty(), "右の段に何も行かない");
+        assert!(left.len() > right.len(), "左から詰まっていない");
+        // 右の段の頭は左の段の頭と同じ高さ(ページの頭)
+        assert!((right[0].y_mm - s.lines[0].y_mm).abs() < 0.01,
+            "右の段がページの頭から始まらない: {} vs {}", right[0].y_mm, s.lines[0].y_mm);
+        // ページは1枚に収まる(60行 = 2段ぶん以内)
+        assert!(s.breaks.is_empty(), "1ページに収まるのに頁が割れた");
+    }
+
+    #[test]
+    fn 二段でも溢れれば次のページへ() {
+        let s = folded(100, 2);
+        assert!(!s.breaks.is_empty(), "2段×1ページを超えたのに頁が割れない");
+        let pg = PageSetup::default();
+        let last = s.lines.last().unwrap();
+        assert!(last.y_mm > pg.h_mm, "2ページ目の座標が積み上がっていない");
+        // どの行も段の中に収まる(x が紙からはみ出さない)
+        for l in &s.lines {
+            let right = l.cells.last().map(|c| c.x_mm + c.w_mm).unwrap_or(0.0);
+            assert!(right <= pg.measure_mm() + 0.5, "段からはみ出した: {right}mm");
+        }
+    }
+
+    #[test]
+    fn 一段なら何も変わらない() {
+        let a = folded(30, 1);
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let text = (1..=30).map(|i| format!("{i} 行目")).collect::<Vec<_>>().join("\n");
+        let d = Document::plain(&text, 10.5);
+        let b = layout(&d, &m, &Frame {
+            measure_mm: PageSetup::default().column_measure_mm(),
+            line_height_mm: 6.4,
+            y0_mm: 24.0,
+        });
+        assert_eq!(a.lines.len(), b.lines.len());
+        for (x, y) in a.lines.iter().zip(&b.lines) {
+            assert!((x.y_mm - y.y_mm).abs() < 0.001, "1段なのに動いた");
+        }
+    }
+}
+
+#[cfg(test)]
+mod hf_layout_tests {
+    use super::*;
+
+    fn metrics() -> Vec<u8> {
+        font::load(font::for_document(None).unwrap().0).unwrap()
+    }
+
+    fn hf(text: &str) -> HeadFoot {
+        HeadFoot {
+            paragraphs: Document::plain(text, 10.5).paragraphs().cloned().collect(),
+            part: None,
+        }
+    }
+
+    #[test]
+    fn ページ番号の印が番号の字になる() {
+        let data = metrics();
+        let m = Metrics::new(&data).unwrap();
+        let pg = PageSetup::default();
+        let f = hf(&format!("- {PAGE_MARK} -"));
+        assert_eq!(layout_hf(&f, &m, &pg, 6.4, 1, 9, true)[0].text(), "- 1 -");
+        assert_eq!(layout_hf(&f, &m, &pg, 6.4, 12, 9, true)[0].text(), "- 12 -");
+    }
+
+    #[test]
+    fn ヘッダーは上余白フッターは下余白に入る() {
+        let data = metrics();
+        let m = Metrics::new(&data).unwrap();
+        let pg = PageSetup::default();
+        let h = layout_hf(&hf("頭"), &m, &pg, 6.4, 1, 1, false);
+        assert!(h[0].y_mm < pg.top_mm, "ヘッダーが本文域に食い込む: {}", h[0].y_mm);
+        assert!(h[0].y_mm > 0.0);
+        let f = layout_hf(&hf("足"), &m, &pg, 6.4, 1, 1, true);
+        assert!(f[0].y_mm > pg.h_mm - pg.bottom_mm,
+            "フッターが本文域に食い込む: {}", f[0].y_mm);
+        assert!(f[0].y_mm < pg.h_mm, "紙の外に出た: {}", f[0].y_mm);
+    }
+
+    #[test]
+    fn フッターの中央揃えが効く() {
+        let data = metrics();
+        let m = Metrics::new(&data).unwrap();
+        let pg = PageSetup::default();
+        let mut f = hf(&PAGE_MARK.to_string());
+        f.paragraphs[0].align = Align::Center;
+        let lines = layout_hf(&f, &m, &pg, 6.4, 1, 9, true);
+        assert!(lines[0].cells[0].x_mm > pg.measure_mm() * 0.3,
+            "中央に寄っていない: {}", lines[0].cells[0].x_mm);
+    }
+
+    #[test]
+    fn ページ数の印が総頁の字になる() {
+        let data = metrics();
+        let m = Metrics::new(&data).unwrap();
+        let pg = PageSetup::default();
+        let f = hf(&format!("{PAGE_MARK} / {PAGES_MARK}"));
+        assert_eq!(layout_hf(&f, &m, &pg, 6.4, 2, 7, true)[0].text(), "2 / 7");
+    }
+
+    #[test]
+    fn 無ければ何も出ない() {
+        let data = metrics();
+        let m = Metrics::new(&data).unwrap();
+        assert!(layout_hf(&HeadFoot::default(), &m, &PageSetup::default(), 6.4, 1, 1, false)
+            .is_empty());
+    }
+
+    #[test]
+    fn 平文との相互変換で書式が残る() {
+        // パネルでの編集は paras_text / set_paras_text を通る
+        let mut ps: Vec<Paragraph> =
+            Document::plain("社外秘", 10.5).paragraphs().cloned().collect();
+        ps[0].align = Align::Right;
+        ps[0].runs[0].fmt.bold = true;
+        set_paras_text(&mut ps, "社外秘・控", 10.5);
+        assert_eq!(paras_text(&ps), "社外秘・控");
+        assert_eq!(ps[0].align, Align::Right, "揃えが消えた");
+        assert!(ps[0].runs[0].fmt.bold, "太字が消えた");
+    }
+}
+
+#[cfg(test)]
+mod shade_carry_tests {
+    use super::*;
+
+    #[test]
+    fn 編集しても段落の帯と枠が残る() {
+        // set_body_text は段落をまるごと写すので、新しい性質も自動で残る
+        let mut d = Document::plain("見出し\n本文", 10.5);
+        if let Block::Para(p) = &mut d.blocks[0] {
+            p.shade = Some("DEEAF6".into());
+            p.boxed = true;
+        }
+        d.set_body_text("見出しに追記\n本文", 10.5);
+        let p = d.paragraphs().next().unwrap();
+        assert_eq!(p.shade.as_deref(), Some("DEEAF6"), "1文字打つだけで帯が消えた");
+        assert!(p.boxed, "枠が消えた");
+    }
+}
+
+/// 節が途中で変わる文書の組版。**`w:sectPr` は節の「終わり」に置かれる**ので、
+/// どの段落がどの節かを1つ取り違えると全部ずれる。そこを釘で打つ試験。
+#[cfg(test)]
+mod section_layout_tests {
+    use super::*;
+
+    fn 紙(w: f32, h: f32) -> PageSetup {
+        PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1 }
+    }
+
+    fn 段(text: &str, sect: Option<PageSetup>) -> Block {
+        段c(text, sect, false)
+    }
+
+    /// 節の種類まで指定する版(continuous = 改ページしない)
+    fn 段c(text: &str, sect: Option<PageSetup>, continuous: bool) -> Block {
+        Block::Para(Paragraph {
+            runs: vec![Run { text: text.into(), size_pt: 10.5, font: None,
+                             fmt: Default::default() }],
+            line_spacing: 1.0,
+            sect: sect.map(|page| SectionBreak { raw: String::new(), page, continuous }),
+            ..Default::default()
+        })
+    }
+
+    /// **真ん中だけ横向きの3節。** 節の境目の手前の段落と、最後の節
+    /// (`Document::page` から来るほう)が要注意 — 発注者 2026-08-10
+    fn 三節() -> Document {
+        let 縦 = 紙(210.0, 297.0);
+        let 横 = 紙(297.0, 210.0);
+        Document {
+            // 最後の節は Document::page が持つ(docx がそう書く)
+            page: Some(縦),
+            blocks: vec![
+                段("第一節の本文", None),
+                段("第一節の終わり", Some(縦)),   // ここまでが縦
+                段("第二節の本文", None),
+                段("第二節の終わり", Some(横)),   // ここまでが横
+                段("第三節の本文", None),          // ここは Document::page = 縦
+            ],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn 節末の段落は自分の節に属する() {
+        let geo = section_geometry(&三節());
+        let w: Vec<f32> = geo.iter().map(|g| g.w_mm).collect();
+        // **1つずれていないか。** 節末の段落(添字1・3)は自分の節の紙で組む
+        assert_eq!(w, vec![210.0, 210.0, 297.0, 297.0, 210.0],
+            "節の割り当てがずれている: {w:?}");
+    }
+
+    #[test]
+    fn 節が変われば行長も変わる() {
+        let d = 三節();
+        let geo = section_geometry(&d);
+        // 横の節は紙が広いぶん行長も広い(折り返しがやり直しになる所)
+        assert!(geo[2].column_measure_mm() > geo[0].column_measure_mm() + 50.0,
+            "横の節で行長が広がっていない: {} / {}",
+            geo[2].column_measure_mm(), geo[0].column_measure_mm());
+    }
+
+
+    #[test]
+    fn continuous_の節では頁を割らない() {
+        // 段組みを変えるためだけの節が実物には多い。そこで改ページすると
+        // **見た目が大きく変わる**(2026-08-10、pyoffice の指摘)
+        let 縦 = 紙(210.0, 297.0);
+        let d = Document {
+            page: Some(縦),
+            blocks: vec![
+                段c("一段の所", Some(縦), true),   // continuous: 紙は同じ
+                段("二段の所", None),
+            ],
+            ..Default::default()
+        };
+        let s = layout_for_test(&d);
+        assert!(s.breaks.is_empty(), "continuous で頁を割った: {:?}", s.breaks);
+        // 紙が変わらないので、節ごとの紙も増えない(先頭の1つだけ)
+        assert_eq!(s.sect_pages.len(), 1, "紙が変わらないのに増えた: {:?}", s.sect_pages);
+    }
+
+    #[test]
+    fn continuous_でも紙の大きさが違えば割る() {
+        // 1枚の紙は1つの大きさしか取れない。continuous でも従えない所
+        let d = Document {
+            page: Some(紙(297.0, 210.0)),                 // 横
+            blocks: vec![
+                段c("縦の所", Some(紙(210.0, 297.0)), true), // continuous だが縦→横
+                段("横の所", None),
+            ],
+            ..Default::default()
+        };
+        let s = layout_for_test(&d);
+        assert_eq!(s.breaks.len(), 1, "紙が変わるのに割らなかった: {:?}", s.breaks);
+        assert_eq!(s.sect_pages.len(), 2, "紙の切り替えが無い: {:?}", s.sect_pages);
+    }
+
+    #[test]
+    fn nextpage_の節は今までどおり割る() {
+        let 縦 = 紙(210.0, 297.0);
+        let d = Document {
+            page: Some(縦),
+            blocks: vec![段c("前", Some(縦), false), 段("後", None)],
+            ..Default::default()
+        };
+        assert_eq!(layout_for_test(&d).breaks.len(), 1, "nextPage で割らなかった");
+    }
+
+    /// 試験用に組む(フォントは実体を使う)
+    fn layout_for_test(d: &Document) -> Sheet {
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
+    }
+
+    #[test]
+    fn 節が一つなら今までどおり何も持たない() {
+        let d = Document {
+            page: Some(紙(210.0, 297.0)),
+            blocks: vec![段("本文", None)],
+            ..Default::default()
+        };
+        assert!(section_geometry(&d).is_empty(), "節が1つなのに節ごとの紙を作った");
+    }
+}
+
+#[cfg(test)]
+mod footnote_mark_tests {
+    use super::*;
+
+    /// **字を持たない run は均しで落とされる。** 脚注の印はそこに乗るので、
+    /// 守っていないと「読めているのに、編集や組版を一度通っただけで消える」
+    /// という形になる(2026-08-10)
+    #[test]
+    fn 均しても脚注の印は残る() {
+        let 印 = |id: &str| Run {
+            text: String::new(), size_pt: 10.5, font: None,
+            fmt: CharFormat {
+                footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
+                ..Default::default()
+            },
+        };
+        let 字 = |t: &str| Run {
+            text: t.into(), size_pt: 10.5, font: None, fmt: CharFormat::default(),
+        };
+        let mut runs = vec![字("本文"), 印("20"), 字("の続き"), 印("21")];
+        normalize_runs(&mut runs, 10.5);
+        assert_eq!(runs.iter().filter(|r| r.fmt.footnote.is_some()).count(), 2,
+            "印が落ちた: {runs:?}");
+        // 印を挟んだ字どうしは繋げない(繋ぐと印が字の外へ出る)
+        let order: Vec<&str> = runs.iter()
+            .map(|r| if r.fmt.footnote.is_some() { "印" } else { r.text.as_str() })
+            .collect();
+        assert_eq!(order, vec!["本文", "印", "の続き", "印"], "並びが変わった");
+    }
+
+    /// 印の付いていない空の run は今までどおり落とす(増やさない)
+    #[test]
+    fn 印の無い空のrunは今までどおり落ちる() {
+        let mut runs = vec![
+            Run { text: "あ".into(), size_pt: 10.5, font: None, fmt: CharFormat::default() },
+            Run { text: String::new(), size_pt: 10.5, font: None, fmt: CharFormat::default() },
+        ];
+        normalize_runs(&mut runs, 10.5);
+        assert_eq!(runs.len(), 1, "空の run が残った: {runs:?}");
+    }
+}
+
+#[cfg(test)]
+mod footnote_layout_tests {
+    use super::*;
+
+    fn 組む(d: &Document) -> Sheet {
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
+    }
+
+    fn 印(id: &str) -> Run {
+        Run { text: String::new(), size_pt: 10.5, font: None,
+              fmt: CharFormat {
+                  footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
+                  ..Default::default() } }
+    }
+    fn 字(t: &str) -> Run {
+        Run { text: t.into(), size_pt: 10.5, font: None, fmt: CharFormat::default() }
+    }
+    fn 段(runs: Vec<Run>) -> Block {
+        Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
+    }
+
+    /// **番号は出てくる順**。docx の id は書き手ごとにばらばら
+    /// (LibreOffice は 2・3・4、pandoc は 20・21・22)なので、
+    /// id をそのまま出すと 2 から始まる脚注になってしまう
+    #[test]
+    fn 脚注の番号は出てくる順に振る() {
+        let d = Document {
+            blocks: vec![
+                段(vec![字("あ"), 印("20"), 字("い"), 印("21")]),
+                段(vec![字("う"), 印("22")]),
+            ],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let sup: String = s.lines.iter()
+            .flat_map(|l| l.cells.iter())
+            .filter(|c| c.fmt.superscript)
+            .map(|c| c.ch)
+            .collect();
+        assert_eq!(sup, "123", "番号が出てくる順でない: {sup:?}");
+    }
+
+    /// 印は**本文の字ではない**。カーソルが本文とずれないよう、
+    /// 番号を出しても後ろの字のバイト位置は動かない
+    #[test]
+    fn 番号を出しても本文のバイト位置は動かない() {
+        let d = Document {
+            blocks: vec![段(vec![字("あい"), 印("2"), 字("うえ")])],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let 本文: Vec<(char, usize)> = s.lines[0].cells.iter()
+            .filter(|c| !c.fmt.superscript)
+            .map(|c| (c.ch, c.off))
+            .collect();
+        // あ=0 い=3 う=6 え=9(いずれも3バイト)。印は挟まっても動かさない
+        assert_eq!(本文, vec![('あ', 0), ('い', 3), ('う', 6), ('え', 9)],
+            "印のせいで本文のバイト位置がずれた: {本文:?}");
+    }
+
+    /// 番号は上付きで、本文より小さい
+    #[test]
+    fn 番号は上付きで小さい() {
+        let d = Document {
+            blocks: vec![段(vec![字("あ"), 印("2")])],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let c = s.lines[0].cells.iter().find(|c| c.fmt.superscript).expect("番号が無い");
+        assert_eq!(c.ch, '1');
+        assert!(c.size_pt < 10.5, "本文と同じ大きさ: {}", c.size_pt);
+        assert!(c.fmt.footnote.is_some(), "番号が脚注の印を持っていない");
+    }
+
+    /// 表のセルの中の印も同じ流れで数える(番号が飛ばない)
+    #[test]
+    fn 表の中の印も通しで数える() {
+        let cell = |runs: Vec<Run>| Cellbox {
+            paragraphs: vec![Paragraph { runs, line_spacing: 1.0, ..Default::default() }],
+            ..Default::default()
+        };
+        let d = Document {
+            blocks: vec![
+                段(vec![字("前"), 印("2")]),
+                Block::Table(Table {
+                    col_mm: vec![80.0],
+                    rows: vec![vec![cell(vec![字("表"), 印("3")])]],
+                }),
+                段(vec![字("後"), 印("4")]),
+            ],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        let sup: String = s.lines.iter()
+            .flat_map(|l| l.cells.iter())
+            .filter(|c| c.fmt.superscript)
+            .map(|c| c.ch)
+            .collect();
+        assert_eq!(sup, "123", "表を挟むと番号が飛ぶ: {sup:?}");
+    }
+}
