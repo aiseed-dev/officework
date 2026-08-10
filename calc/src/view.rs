@@ -941,6 +941,9 @@ impl Render for Calc {
                         sheet::model::VAlign::Top => d = d.items_start(),
                         sheet::model::VAlign::Middle => d = d.items_center(),
                         sheet::model::VAlign::Bottom => d = d.items_end(),
+                        // 縦の均等割付は**今のところ上揃えで描く**(sheet 側の
+                        // 覚え書きの通り)。持つ値は distributed のまま
+                        sheet::model::VAlign::Distribute => d = d.items_start(),
                     }
                     d = if to_left { d.justify_end() } else { d.justify_start() };
                     if f.bold {
@@ -1355,6 +1358,7 @@ impl Render for Calc {
                     sheet::model::VAlign::Top => d = d.items_start(),
                     sheet::model::VAlign::Middle => d = d.items_center(),
                     sheet::model::VAlign::Bottom => d = d.items_end(),
+                    sheet::model::VAlign::Distribute => d = d.items_start(),
                 }
                 if f.wrap {
                     d = d.whitespace_normal().overflow_hidden();
@@ -2562,6 +2566,7 @@ impl Render for Calc {
                     sheet::model::VAlign::Top => d = d.items_start(),
                     sheet::model::VAlign::Middle => d = d.items_center(),
                     sheet::model::VAlign::Bottom => d = d.items_end(),
+                    sheet::model::VAlign::Distribute => d = d.items_start(),
                 }
                 let is_num = matches!(v, Value::Number(_));
                 d = match f.align {
@@ -4440,6 +4445,13 @@ impl Render for Calc {
             .on_action(cx.listener(Calc::a_edit_cell))
             .on_action(cx.listener(Calc::a_array_enter))
             .on_action(cx.listener(Calc::a_flash_fill))
+            .on_action(cx.listener(Calc::a_zoom_reset))
+            .on_action(cx.listener(Calc::a_help))
+            .on_action(cx.listener(Calc::a_ins_date))
+            .on_action(cx.listener(Calc::a_ins_time))
+            .on_action(cx.listener(Calc::a_prev_sheet))
+            .on_action(cx.listener(Calc::a_next_sheet))
+            .on_action(cx.listener(Calc::a_cycle_ref))
             .on_action(cx.listener(Calc::a_insert_fn))
             .on_action(cx.listener(Calc::a_percent))
             .on_action(cx.listener(Calc::a_print))

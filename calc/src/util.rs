@@ -1130,52 +1130,11 @@ pub(crate) fn cond_kind_name(k: &sheet::model::CondKind) -> String {
     }
 }
 
-/// いまの日時「YYYY-MM-DD HH:MM」(地方時)。**外部の date を呼ばない** —
-/// 呼ぶと Windows で動かないし、スレッドを塞ぐ(引き継ぎの残件でもある)。
-/// 暦は civil-from-days の素直な算法(1970-01-01 起点)
+/// いまの日時「YYYY-MM-DD HH:MM」(地方時)。
+/// **中身は ui に置いた** — writer も同じ刻印を打つので、暦の算法を
+/// 2箇所に持たない
 pub(crate) fn now_stamp() -> String {
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
-    // 地方時のずれ(TZ の秒)。取れなければ UTC のまま出す
-    let off = std::env::var("TZ_OFFSET_SECS").ok().and_then(|v| v.parse::<i64>().ok());
-    let secs = secs + off.unwrap_or_else(local_offset_secs);
-    let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
-    let (y, m, d) = civil_from_days(days);
-    format!("{y:04}-{m:02}-{d:02} {:02}:{:02}", rem / 3600, (rem % 3600) / 60)
-}
-
-/// 地方時のずれ(秒)。/etc/localtime を読む気は無いので、
-/// date が居れば1回だけ聞き、居なければ 0(UTC)— 表示だけの用途
-fn local_offset_secs() -> i64 {
-    std::process::Command::new("date")
-        .arg("+%z")
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .and_then(|o| {
-            let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
-            let sign = if s.starts_with('-') { -1 } else { 1 };
-            let h: i64 = s.get(1..3)?.parse().ok()?;
-            let mi: i64 = s.get(3..5)?.parse().ok()?;
-            Some(sign * (h * 3600 + mi * 60))
-        })
-        .unwrap_or(0)
-}
-
-/// 1970-01-01 からの日数 → (年, 月, 日)。Howard Hinnant の civil_from_days
-fn civil_from_days(z: i64) -> (i64, u32, u32) {
-    let z = z + 719_468;
-    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    (if m <= 2 { y + 1 } else { y }, m, d)
+    ui::now_stamp()
 }
 
 /// フラッシュフィルの「作り方」の一片。
@@ -1261,4 +1220,80 @@ pub(crate) fn flash_apply(recipe: &[Piece], src: &[String]) -> Option<String> {
         }
     }
     Some(out)
+}
+
+/// **参照の `$` を回す**(F4)。`A1 → $A$1 → A$1 → $A1 → A1` の順。
+///
+/// `cur`(バイト位置)の**直前にある参照**を1つ選んで回し、
+/// (直した式, 新しいカーソル位置)を返す。参照が見つからなければ None。
+///
+/// 本家は選択中の参照を回すが、こちらは打っている途中を想定して
+/// 「カーソルの手前」を見る。**行だけ・列だけの $ も一巡に入れる** —
+/// 表を横に引き写すときに列だけ止めたい、が実際によくある。
+pub(crate) fn cycle_ref_at(text: &str, cur: usize) -> Option<(String, usize)> {
+    let b = text.as_bytes();
+    let cur = cur.min(b.len());
+    // カーソルの手前をさかのぼって「$?英字+$?数字」の並びを探す
+    let is_col = |c: u8| c.is_ascii_alphabetic();
+    let is_dig = |c: u8| c.is_ascii_digit();
+    let mut end = cur;
+    // カーソルが参照の途中にいるなら、その参照の終わりまで進める
+    while end < b.len() && is_dig(b[end]) {
+        end += 1;
+    }
+    let mut i = end;
+    // 数字
+    while i > 0 && is_dig(b[i - 1]) {
+        i -= 1;
+    }
+    if i == end {
+        return None; // 数字が無い = 参照ではない
+    }
+    if i > 0 && b[i - 1] == b'$' {
+        i -= 1;
+    }
+    let row_start = i;
+    // 英字
+    let mut j = i;
+    while j > 0 && is_col(b[j - 1]) {
+        j -= 1;
+    }
+    if j == row_start {
+        return None; // 英字が無い
+    }
+    if j > 0 && b[j - 1] == b'$' {
+        j -= 1;
+    }
+    let start = j;
+    // 直前が英数字なら関数名などの一部 — 参照ではない
+    if start > 0 && (b[start - 1].is_ascii_alphanumeric() || b[start - 1] == b'_') {
+        return None;
+    }
+    let refs = &text[start..end];
+    let plain: String = refs.chars().filter(|c| *c != '$').collect();
+    let (col, row): (String, String) = (
+        plain.chars().take_while(|c| c.is_ascii_alphabetic()).collect(),
+        plain.chars().skip_while(|c| c.is_ascii_alphabetic()).collect(),
+    );
+    // 列は3文字まで(XFD)。それ以上は参照ではない
+    if col.len() > 3 {
+        return None;
+    }
+    // 直後が `(` なら関数名(LOG10( など)。$ を付けたら壊れる
+    if b.get(end) == Some(&b'(') {
+        return None;
+    }
+    let had_col = refs.starts_with('$');
+    let had_row = refs.trim_start_matches('$').contains('$');
+    let next = match (had_col, had_row) {
+        (false, false) => format!("${col}${row}"),
+        (true, true) => format!("{col}${row}"),
+        (false, true) => format!("${col}{row}"),
+        (true, false) => format!("{col}{row}"),
+    };
+    let mut out = String::with_capacity(text.len() + 2);
+    out.push_str(&text[..start]);
+    out.push_str(&next);
+    out.push_str(&text[end..]);
+    Some((out, start + next.len()))
 }

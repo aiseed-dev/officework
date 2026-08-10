@@ -3534,6 +3534,44 @@ impl Writer {
         cx.notify();
     }
 
+    /// Ctrl+0 = 表示の倍率を等倍に戻す。**calc と両方に置く**
+    fn do_zoom_reset(&mut self, _: &ui::ZoomReset, _: &mut Window, cx: &mut Context<Self>) {
+        self.zoom = 1.0;
+        self.status = ui::t!("ズームを 100% に戻しました").into();
+        cx.notify();
+    }
+    /// F1 = 手引きの在り処。**窓を開かない** — 別の窓を出すより、
+    /// 読む物がどこにあるかを一行で言うほうが早い
+    fn do_help(&mut self, _: &ui::Help, _: &mut Window, cx: &mut Context<Self>) {
+        self.status = ui::t!(
+            "手引き: docs/writer-manual.ja.md(英語は writer-manual.md)。Python は writer-macro-manual.ja.md"
+        )
+        .into();
+        cx.notify();
+    }
+    /// Ctrl+; = 今日の日付、Ctrl+: = いまの時刻。**値として入れる** —
+    /// 関数だと開き直すたびに変わり、日付印にならない
+    fn do_ins_date(&mut self, _: &ui::InsDate, _: &mut Window, cx: &mut Context<Self>) {
+        self.insert_stamp(false, cx);
+    }
+    fn do_ins_time(&mut self, _: &ui::InsTime, _: &mut Window, cx: &mut Context<Self>) {
+        self.insert_stamp(true, cx);
+    }
+    fn insert_stamp(&mut self, time: bool, cx: &mut Context<Self>) {
+        let stamp = ui::now_stamp();
+        let Some((date, clock)) = stamp.split_once(' ') else {
+            // 黙って空を入れない
+            self.status = ui::t!("いまの時刻が取れませんでした").into();
+            cx.notify();
+            return;
+        };
+        let now = if time { clock } else { date };
+        self.editor().insert(now);
+        self.on_edited();
+        self.status = ui::tf!("{} を入れました(値なので後で変わりません)", now).into();
+        cx.notify();
+    }
+
     fn do_bold(&mut self, _: &ui::Bold, _: &mut Window, cx: &mut Context<Self>) {
         self.run_cmd("bold", cx);
         cx.notify();

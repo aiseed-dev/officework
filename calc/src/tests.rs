@@ -4207,3 +4207,54 @@ mod stale_string_tests {
         assert_eq!(f("A2"), "=INDIRECT(\"4月!B2\")", "文字列の中を書き換えてしまった");
     }
 }
+
+#[cfg(test)]
+mod cycle_ref_tests {
+    use crate::util::cycle_ref_at;
+
+    /// F4 = 参照の $ を回す。**一巡して元に戻る**ことまで見る —
+    /// 途中で止まると「戻せない」になり、押すのが怖い鍵になる
+    #[test]
+    fn 参照のドルを一巡させる() {
+        let c = |t: &str| cycle_ref_at(t, t.len()).map(|(s, cur)| (s, cur));
+        assert_eq!(c("=A1"), Some(("=$A$1".into(), 5)));
+        assert_eq!(c("=$A$1"), Some(("=A$1".into(), 4)));
+        assert_eq!(c("=A$1"), Some(("=$A1".into(), 4)));
+        assert_eq!(c("=$A1"), Some(("=A1".into(), 3)));
+        // 4回押すと元通り
+        let mut t = "=SUM(B12:C20)".to_string();
+        let mut cur = 12; // C20 の直後
+        for _ in 0..4 {
+            let (n, p) = cycle_ref_at(&t, cur).expect("参照が見つからない");
+            t = n;
+            cur = p;
+        }
+        assert_eq!(t, "=SUM(B12:C20)", "一巡して元に戻らない");
+    }
+
+    #[test]
+    fn 参照でないものには効かない() {
+        // 関数名(直後が丸かっこ)
+        assert_eq!(cycle_ref_at("=LOG10(", 6), None);
+        // 数だけ・文字だけ
+        assert_eq!(cycle_ref_at("=123", 4), None);
+        assert_eq!(cycle_ref_at("=ABC", 4), None);
+        // 列が4文字以上
+        assert_eq!(cycle_ref_at("=ABCD1", 6), None);
+    }
+
+    #[test]
+    fn シート名つきの参照はセルの側だけ回す() {
+        let c = |t: &str| cycle_ref_at(t, t.len());
+        assert_eq!(c("=4月!B2"), Some(("=4月!$B$2".into(), "=4月!$B$2".len())));
+        assert_eq!(c("='売上 表'!B2"), Some(("='売上 表'!$B$2".into(), "='売上 表'!$B$2".len())));
+    }
+
+    /// カーソルが参照の**途中**にいても、その参照を回す
+    /// (打っている最中に押すのが普通)
+    #[test]
+    fn 参照の途中で押しても効く() {
+        // "=A12" の A と 1 の間
+        assert_eq!(cycle_ref_at("=A12", 2), Some(("=$A$12".into(), 6)));
+    }
+}

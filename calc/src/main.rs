@@ -2977,6 +2977,93 @@ impl Calc {
         cx.notify();
     }
 
+    /// Ctrl+0 = ズームを 100% に戻す
+    fn a_zoom_reset(&mut self, _: &ui::ZoomReset, _: &mut Window, cx: &mut Context<Self>) {
+        self.zoom = 1.0;
+        self.status = ui::t!("ズームを 100% に戻しました").into();
+        cx.notify();
+    }
+    /// F1 = 手引き。**中に画面を作らない** — 手引きは docs にある文書なので、
+    /// その道を状態行で示す(嘘の「ヘルプ画面」を出すより確か)
+    fn a_help(&mut self, _: &ui::Help, _: &mut Window, cx: &mut Context<Self>) {
+        self.status = ui::t!(
+            "手引き: docs/calc-manual.ja.md(英語は calc-manual.md)。Python は python-manual.ja.md"
+        )
+        .into();
+        cx.notify();
+    }
+    /// Ctrl+; = 今日の日付、Ctrl+: = 今の時刻。**値として入れる** —
+    /// TODAY() だと開くたびに変わって、いつ書いたか分からなくなる
+    fn a_ins_date(&mut self, _: &ui::InsDate, _: &mut Window, cx: &mut Context<Self>) {
+        self.insert_stamp(false, cx);
+    }
+    fn a_ins_time(&mut self, _: &ui::InsTime, _: &mut Window, cx: &mut Context<Self>) {
+        self.insert_stamp(true, cx);
+    }
+    fn insert_stamp(&mut self, time: bool, cx: &mut Context<Self>) {
+        if self.cell_locked(self.cursor) {
+            self.status = Self::protected_msg().into();
+            cx.notify();
+            return;
+        }
+        // now_stamp は「YYYY-MM-DD HH:MM」。日付か時刻か、要る側だけ取る
+        let stamp = now_stamp();
+        let Some((date, clock)) = stamp.split_once(' ') else {
+            // 黙って空を入れない
+            self.status = ui::t!("いまの時刻が取れませんでした").into();
+            cx.notify();
+            return;
+        };
+        let now = if time { clock.to_string() } else { date.to_string() };
+        self.input.insert(&now);
+        self.edit_armed = true;
+        self.status = ui::tf!("{} を入れました(Enter で確定。値なので後で変わりません)", now)
+            .into();
+        cx.notify();
+    }
+    /// Alt+PageUp / PageDown = 前後のシートへ
+    fn a_prev_sheet(&mut self, _: &ui::PrevSheet, _: &mut Window, cx: &mut Context<Self>) {
+        self.hop_sheet(-1, cx);
+    }
+    fn a_next_sheet(&mut self, _: &ui::NextSheet, _: &mut Window, cx: &mut Context<Self>) {
+        self.hop_sheet(1, cx);
+    }
+    fn hop_sheet(&mut self, d: i32, cx: &mut Context<Self>) {
+        // 隠したシートは飛ばす(耳に出ていないものへ行かない)
+        let n = self.book.sheets.len();
+        let mut i = self.active as i32;
+        for _ in 0..n {
+            i = (i + d).rem_euclid(n as i32);
+            if !self.book.sheets[i as usize].hidden {
+                self.switch_sheet(i as usize);
+                cx.notify();
+                return;
+            }
+        }
+    }
+    /// F4 = 参照の $ を回す(A1 → $A$1 → A$1 → $A1 → A1)。
+    /// **打っている式の、カーソルの直前の参照**を回す
+    fn a_cycle_ref(&mut self, _: &ui::CycleRef, _: &mut Window, cx: &mut Context<Self>) {
+        let t = self.input.text().to_string();
+        if !t.starts_with('=') {
+            self.status = ui::t!("F4 は式の中の参照に効きます(= から始めてください)").into();
+            cx.notify();
+            return;
+        }
+        match cycle_ref_at(&t, self.input.cursor()) {
+            Some((txt, cur)) => {
+                self.input = Editor::new(&txt);
+                self.input.move_to(cur, false);
+                self.edit_armed = true;
+                self.status = ui::t!("参照の $ を回しました(F4 でもう一度)").into();
+            }
+            None => {
+                self.status = ui::t!("カーソルの手前に参照がありません").into();
+            }
+        }
+        cx.notify();
+    }
+
     /// Ctrl+E = フラッシュフィル
     fn a_flash_fill(&mut self, _: &ui::FlashFill, _: &mut Window, cx: &mut Context<Self>) {
         self.run_cmd("flash-fill", cx);
@@ -3985,6 +4072,15 @@ fn main() {
             .add_fonts(vec![std::borrow::Cow::Borrowed(font_data())])
             .expect("フォント登録");
         cx.bind_keys(ui::bindings("jo_edit"));
+        // **JO_KEYLOG=1 で打鍵と行き先を書き出す。** 「鍵が束縛に届いた」と
+        // 「受け口が動いた」は別物で、前者だけ見て入れたつもりになると
+        // キーの嘘になる(2026-08-10 に7つやった)。ここで見えるのは前者
+        // まで — 効いたかどうかは tools/key_check.py で中身を見ること
+        if std::env::var("JO_KEYLOG").is_ok() {
+            std::mem::forget(cx.observe_keystrokes(|e, _, _| {
+                eprintln!("KEY {} -> {:?}", e.keystroke, e.action.as_ref().map(|a| a.name()));
+            }));
+        }
         // 前に閉じたときの姿で開く。控えが無ければ既定の大きさで中央に
         let saved = ui::winstate::load("calc");
         let bounds = match saved {
