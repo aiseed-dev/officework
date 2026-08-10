@@ -278,12 +278,21 @@ fn twip_mm(v: f32) -> f32 {
     v * 25.4 / (20.0 * 72.0)
 }
 
-/// 原文が使う接頭辞(`wp14:` など)の宣言を付けた `<w:r>` に包む。
+/// 原文が使う接頭辞の宣言を ` xmlns:…="…"` の並びとして作る。
 /// 解決できない接頭辞があれば None(壊れた XML を書かないため)。
-fn wrap_with_ns(raw: &str, decls: &std::collections::BTreeMap<String, String>) -> Option<String> {
+///
+/// `skip_self` を立てると、**原文の根の要素が自分で宣言している接頭辞を
+/// 出さない**。LibreOffice の書き出す `<m:oMath xmlns:m="…">` がこれで、
+/// 重ねて付けると属性が二重になって XML が壊れる(Word は開けない)
+fn ns_attrs(
+    raw: &str,
+    decls: &std::collections::BTreeMap<String, String>,
+    skip_self: bool,
+) -> Option<String> {
     // 既定で分かっているもの(原本に宣言が無くても標準の URI)
     const KNOWN: &[(&str, &str)] = &[
         ("w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main"),
+        ("m", "http://schemas.openxmlformats.org/officeDocument/2006/math"),
         ("r", "http://schemas.openxmlformats.org/officeDocument/2006/relationships"),
         ("wp", "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"),
         ("a", "http://schemas.openxmlformats.org/drawingml/2006/main"),
@@ -333,10 +342,27 @@ fn wrap_with_ns(raw: &str, decls: &std::collections::BTreeMap<String, String>) -
         }
     }
     prefixes.remove("xmlns");
-    let mut out = String::from("<w:r");
+    // 原文の根の要素が自分で宣言している分は出さない(二重宣言を作らない)
+    let self_decls: std::collections::BTreeSet<String> = if skip_self {
+        let head = raw.find('>').map(|e| &raw[..e]).unwrap_or(raw);
+        head.match_indices("xmlns:")
+            .map(|(at, _)| {
+                let s = at + "xmlns:".len();
+                let n: usize = head[s..].bytes().take_while(|c| is_name(*c)).count();
+                head[s..s + n].to_string()
+            })
+            .collect()
+    } else {
+        Default::default()
+    };
+    let mut out = String::new();
     for p in &prefixes {
-        if p == "w" {
-            continue; // root で宣言済み
+        // `xml:` は XML の定めで**最初から結びついている**。宣言してはいけないし、
+        // 解決できない接頭辞として数えてもいけない。
+        // LibreOffice の数式は `<m:t xml:space="preserve">` を書くので、
+        // ここで弾いていた頃は数式が丸ごと落ちていた(2026-08-10、実物で判明)
+        if p == "w" || p == "xml" || self_decls.contains(p) {
+            continue; // root で宣言済み / XML の既定 / 原文が自分で宣言している
         }
         let uri = decls
             .get(p)
@@ -344,10 +370,32 @@ fn wrap_with_ns(raw: &str, decls: &std::collections::BTreeMap<String, String>) -
             .or_else(|| KNOWN.iter().find(|(k, _)| k == p).map(|(_, v)| *v))?;
         out.push_str(&format!(" xmlns:{p}=\"{uri}\""));
     }
-    out.push('>');
-    out.push_str(raw);
-    out.push_str("</w:r>");
     Some(out)
+}
+
+/// 原文が使う接頭辞(`wp14:` など)の宣言を付けた `<w:r>` に包む。
+/// 解決できない接頭辞があれば None(壊れた XML を書かないため)。
+fn wrap_with_ns(raw: &str, decls: &std::collections::BTreeMap<String, String>) -> Option<String> {
+    // 包む `<w:r>` は新しく建てる殻なので、原文の自前宣言は内側に残る。
+    // よって skip_self は立てない(内と外で同じ接頭辞を宣言しても壊れない)
+    let attrs = ns_attrs(raw, decls, false)?;
+    Some(format!("<w:r{attrs}>{raw}</w:r>"))
+}
+
+/// 数式(OMML)の原文を、段落の控え(anchors)に置ける形にする。
+///
+/// **`<w:r>` に包んではいけない。** `m:oMath` と `m:oMathPara` は
+/// 型の定めの上で run の中身ではなく、`w:p` の直下に run と**並ぶ**物なので、
+/// run に入れると Word が開けない XML になる。だから包まずに、
+/// 足りない接頭辞の宣言を**元の開き札そのものへ**差し込む。
+fn carry_math(raw: &str, decls: &std::collections::BTreeMap<String, String>) -> Option<String> {
+    let attrs = ns_attrs(raw, decls, true)?;
+    if attrs.is_empty() {
+        return Some(raw.to_string());
+    }
+    // 開き札の名前の直後(`<m:oMath` の後ろ)に差し込む
+    let at = raw.find([' ', '>', '/'])?;
+    Some(format!("{}{}{}", &raw[..at], attrs, &raw[at..]))
 }
 
 /// 原文から表示用の画像を引く。EMU(914400/inch)→ mm は ÷36000。
@@ -1092,10 +1140,37 @@ fn parse_document_full(
                             last_pos = end;
                         }
                     }
-                    // 数式(OMML)。**中の字だけを本文に取り込む**ので、保存すると
-                    // 数式ではなくただの平文になる。落としてはいないが姿は変わる —
-                    // 黙っていられる話ではないので帳簿に出す
-                    b"oMath" => rep.note("数式(平文になる。保存で数式ではなくなる)"),
+                    // 数式(OMML)。**理解はしないが、捨てない** — sect_raw や
+                    // 画像と同じ作法で、原文を丸ごと控えて保存で返す。
+                    //
+                    // 部分木は読み飛ばす。これが本題でもある: `local()` は接頭辞を
+                    // 落とすので `<m:t>` は `b"t"` の枝に落ち、**数式の中の字が
+                    // 本文に混ざっていた**(そして保存すると数式ではなく平文に
+                    // なっていた)。読み飛ばせば漏れも止まる。
+                    //
+                    // `oMathPara`(独立した数式)を先に捕まえるので、その中の
+                    // `oMath` は read_to_end に呑まれる = 二重に控えない
+                    b"oMath" | b"oMathPara" => {
+                        let name = e.name().to_owned();
+                        if r.read_to_end_into(name, &mut Vec::new()).is_ok() {
+                            let end = r.buffer_position() as usize;
+                            let raw = &xml[start_pos..end];
+                            match carry_math(raw, &ns_decls) {
+                                // 段落の並びの中の位置は失われ、段落の頭に寄る
+                                // (画像と同じ、正直な限界)。文そのものは残る
+                                Some(carried) => {
+                                    anchors.push(carried);
+                                    rep.note("数式(段落の頭に寄るが、保存で残る)");
+                                }
+                                None => {
+                                    // 出どころの分からない接頭辞。壊れた XML を
+                                    // 書くより、落として報告する方がまし
+                                    rep.note("数式(接頭辞が解決できず、保存で失われる)");
+                                }
+                            }
+                            last_pos = end;
+                        }
+                    }
                     b"drawing" | b"pict" | b"object" => {
                         // **理解はしないが、捨てない。** 原文を丸ごと控えて保存で返す。
                         // 部分木は読み飛ばす — 中の a:t(図形の文字)を本文に
@@ -3074,6 +3149,104 @@ mod anchor_tests {
         assert_eq!(doc.body_text(), "本文", "図形の中の文字が本文へ漏れた: {:?}", doc.body_text());
     }
 
+    // 数式(OMML)。**型紙は手で組む** — 自分の書き手で書いた文書で往復を
+    // 確かめると、読めていない所は行きも帰りも同じように読めないので差が出ない。
+    // 下の形はどちらも実物(pandoc / LibreOffice Writer)から写した
+    #[test]
+    fn 数式が原文のまま保存で返る() {
+        // pandoc の形: xmlns:m は root にあり、m:oMath は裸で来る
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p>
+            <w:r><w:t>式は</w:t></w:r>
+            <m:oMath><m:sSup><m:e><m:r><m:t>a</m:t></m:r></m:e><m:sup><m:r><m:t>2</m:t></m:r></m:sup></m:sSup></m:oMath>
+            <w:r><w:t>のとおり</w:t></w:r>
+        </w:p></w:body></w:document>"#;
+        let (doc, rep) = crate::parse_document_xml(xml);
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.anchors.len(), 1, "数式の原文を控えていない");
+        assert!(p.anchors[0].contains("<m:sSup>"), "{}", p.anchors[0]);
+        // **中の字を本文へ混ぜない。** 混ぜると保存で数式ではなく平文になる
+        // (`local()` が接頭辞を落とすので m:t が w:t の枝に落ちていた)
+        assert_eq!(doc.body_text(), "式はのとおり",
+            "数式の中の字が本文へ漏れた: {:?}", doc.body_text());
+        assert!(rep.unsupported.iter().any(|(n, _)| n.contains("数式")), "報告が無い");
+
+        let out = crate::write_document_xml(&doc);
+        assert!(out.contains("<m:sSup>"), "保存で数式が消えた");
+        assert!(out.contains("のとおり"), "本文が消えた");
+
+        // 二度目の往復でも増えも減りもしない(控えを控え直さない)
+        let (doc2, _) = crate::parse_document_xml(&out);
+        let p2 = doc2.paragraphs().next().unwrap();
+        assert_eq!(p2.anchors.len(), 1, "二度目で数式の控えが増減した");
+        assert_eq!(doc2.body_text(), "式はのとおり", "二度目で本文が変わった");
+    }
+
+    #[test]
+    fn 自前で名前空間を宣言する数式を二重に宣言しない() {
+        // LibreOffice Writer の形: root に xmlns:m は**無く**、m:oMath が
+        // 自分で宣言している。ここへ重ねて足すと属性が二重になり、
+        // Word が開けない XML になる
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>
+            <m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><w:rPr><w:rFonts w:ascii="Cambria Math"/></w:rPr><m:t>x</m:t></m:r></m:oMath>
+        </w:p></w:body></w:document>"#;
+        let (doc, _) = crate::parse_document_xml(xml);
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.anchors.len(), 1, "数式の原文を控えていない");
+        assert_eq!(p.anchors[0].matches("xmlns:m=").count(), 1,
+            "名前空間の宣言が二重になった: {}", p.anchors[0]);
+        assert_eq!(doc.body_text(), "", "数式の中の字が本文へ漏れた: {:?}", doc.body_text());
+        assert!(crate::write_document_xml(&doc).contains("Cambria Math"),
+            "保存で数式が消えた");
+    }
+
+    #[test]
+    fn xml_space_のある数式を落とさない() {
+        // **実物で踏んだ穴。** `xml:` は XML の定めで最初から結びついていて、
+        // どこにも宣言が無いのが正しい。それを「解決できない接頭辞」と数えて
+        // いたので、LibreOffice Writer の数式(`<m:t xml:space="preserve">`)が
+        // 4つとも丸ごと落ちていた。手で書いた文書では出ない形
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p>
+            <m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><w:rPr><w:rFonts w:ascii="Cambria Math"/></w:rPr><m:t xml:space="preserve">a </m:t></m:r></m:oMath>
+        </w:p></w:body></w:document>"#;
+        let (doc, rep) = crate::parse_document_xml(xml);
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.anchors.len(), 1, "xml:space で数式が落ちた: {:?}", rep.unsupported);
+        // xml: を宣言し直してはいけない(それも壊れた XML になる)
+        assert!(!p.anchors[0].contains("xmlns:xml="),
+            "xml: を宣言してしまった: {}", p.anchors[0]);
+        assert!(crate::write_document_xml(&doc).contains("xml:space"), "保存で数式が消えた");
+    }
+
+    #[test]
+    fn 独立した数式は二重に控えない() {
+        // m:oMathPara(独立した数式)の中には m:oMath が入っている。
+        // 外側を丸ごと控えるので、中の oMath を別に控えてはいけない
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p>
+            <m:oMathPara><m:oMathParaPr><m:jc m:val="center"/></m:oMathParaPr><m:oMath><m:r><m:t>y</m:t></m:r></m:oMath></m:oMathPara>
+        </w:p></w:body></w:document>"#;
+        let (doc, _) = crate::parse_document_xml(xml);
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.anchors.len(), 1, "控えの数が合わない: {:?}", p.anchors);
+        let out = crate::write_document_xml(&doc);
+        assert_eq!(out.matches("<m:oMath>").count(), 1, "数式が二重に出た: {out}");
+        assert_eq!(out.matches("<m:oMathPara ").count(), 1, "独立の殻が消えたか二重: {out}");
+        // 書き手の root は xmlns:m を宣言しないので、控えが自分で持つ必要がある
+        assert!(!out.contains("<w:document") || out.matches("xmlns:m=").count() == 1,
+            "名前空間の宣言が足りないか二重: {out}");
+    }
+
+    #[test]
+    fn 出どころの分からない接頭辞の数式は落として報告する() {
+        // 壊れた XML を書くより、落として帳簿に出す方がまし(画像と同じ作法)
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p>
+            <m:oMath><zz:mystery zz:val="1"/></m:oMath>
+        </w:p></w:body></w:document>"#;
+        let (doc, rep) = crate::parse_document_xml(xml);
+        assert!(doc.paragraphs().next().unwrap().anchors.is_empty(), "壊れた控えを作った");
+        assert!(rep.unsupported.iter().any(|(n, _)| n.contains("数式") && n.contains("失われる")),
+            "落としたのに報告していない: {:?}", rep.unsupported);
+    }
+
     #[test]
     fn 一文字打っても画像は消えない() {
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p>
@@ -4145,17 +4318,28 @@ mod footnote_report_tests {
         );
     }
 
-    /// 数式は中の字だけを取り込むので、保存すると平文になる。
+    /// 数式は原文を控えて保存で返す。**組版はしないが、失いもしない。**
+    /// 帳簿には出し続ける(読めてはいないので)が、
+    /// **もう起きない損(平文になる)を書いてはいけない。**
     #[test]
     fn 数式は帳簿に出る() {
         let xml = body(
             r#"<w:p><m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>E=mc</m:t></m:r></m:oMath></w:p>"#,
         );
-        let (_, rep) = parse_document_xml(&xml);
+        let (doc, rep) = parse_document_xml(&xml);
+        let note = rep
+            .unsupported
+            .iter()
+            .find(|(n, _)| n.contains("数式"))
+            .map(|(n, _)| n.clone())
+            .unwrap_or_else(|| panic!("数式を黙って通した: {:?}", rep.unsupported));
         assert!(
-            rep.unsupported.iter().any(|(n, _)| n.contains("数式")),
-            "数式が平文になることを黙っていた: {:?}",
-            rep.unsupported
+            !note.contains("平文"),
+            "もう起きない損を帳簿が言い続けている: {note}"
+        );
+        assert!(
+            write_document_xml(&doc).contains("E=mc"),
+            "保存で数式が失われた"
         );
     }
 
