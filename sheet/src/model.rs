@@ -294,6 +294,17 @@ pub enum VAlign {
     /// xlsx の既定は下揃え
     #[default]
     Bottom,
+    /// 上下いっぱいに散らす(xlsx の `distributed`)。折り返した行を
+    /// **セルの高さいっぱいに均等に配る** — 横の均等割付の縦版で、
+    /// 日銀の統計表が使っている(実物の corpus に 5 箇所)。
+    ///
+    /// **持つ値は正しいが、描くのは今のところ上揃え。** 行の間隔を高さから
+    /// 割り出す所が未着手 — `HAlign::CenterContinuous` と同じ扱いで、
+    /// **`Bottom` へ畳み戻さない**(畳むと保存で消える)。
+    ///
+    /// `justify` も xlsx にはあるが、実物 31 枚に 1 度も出ない。
+    /// **出てから足す** — 使われていない物を先に作らない
+    Distribute,
 }
 
 impl VAlign {
@@ -302,12 +313,16 @@ impl VAlign {
             VAlign::Top => Some("top"),
             VAlign::Middle => Some("center"),
             VAlign::Bottom => None,
+            VAlign::Distribute => Some("distributed"),
         }
     }
     pub fn from_xlsx(v: &str) -> VAlign {
         match v {
             "top" => VAlign::Top,
             "center" => VAlign::Middle,
+            "distributed" => VAlign::Distribute,
+            // **`justify` はまだ Bottom に落ちる。** 実物に出ないので変種を
+            // 作っていない(2026-08-10)。出たら足す
             _ => VAlign::Bottom,
         }
     }
@@ -3490,6 +3505,30 @@ mod shape_tests {
         // 知らない種類は四角で描く(黙って消さない)
         let unknown = SheetShape { kind: "hexagon".into(), ..sh };
         assert!(unknown.to_svg().contains("<rect"));
+    }
+}
+
+#[cfg(test)]
+mod valign_tests {
+    use super::*;
+
+    #[test]
+    fn 縦の均等割付を畳まず往復する() {
+        // **`_ => Bottom` に落ちていた。** 日銀の統計表が使っており、
+        // 畳むと保存で消える(2026-08-10)
+        assert_eq!(VAlign::from_xlsx("distributed"), VAlign::Distribute);
+        assert_eq!(VAlign::Distribute.as_xlsx(), Some("distributed"));
+        // 既定(下)は書かない — 触っていない帳票に差分を出さないため
+        assert_eq!(VAlign::from_xlsx("bottom"), VAlign::Bottom);
+        assert_eq!(VAlign::Bottom.as_xlsx(), None);
+    }
+
+    #[test]
+    fn 知らない縦位置は下に落とす() {
+        // `justify` は実物 31 枚に出ないので変種を作っていない。
+        // **出てから足す** — その判断ごと押さえておく
+        assert_eq!(VAlign::from_xlsx("justify"), VAlign::Bottom);
+        assert_eq!(VAlign::from_xlsx("なにか"), VAlign::Bottom);
     }
 }
 

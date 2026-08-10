@@ -666,7 +666,6 @@ fn edge_value(e: &sheet::model::Edge) -> Option<Value> {
 
 /// `CellFormat` を向こうの `CellStyle` の形へ。**既定のままなら `None`。**
 fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
-    use sheet::model::VAlign;
     let mut o = Map::new();
     if let Some(n) = &f.font {
         o.insert("fontFamily".into(), json!(n));
@@ -696,12 +695,9 @@ fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
     if let Some(h) = f.align.as_xlsx() {
         o.insert("horizontalAlignment".into(), json!(h));
     }
-    let v = match f.valign {
-        VAlign::Top => Some("top"),
-        VAlign::Middle => Some("center"),
-        VAlign::Bottom => None, // xlsx の既定
-    };
-    if let Some(v) = v {
+    // 横と同じく `as_xlsx()` に寄せる — 畳まずに xlsx の綴りで返し、
+    // 既定(`bottom`)だけ省く。変種が増えたときに**ここを直し忘れない**
+    if let Some(v) = f.valign.as_xlsx() {
         o.insert("verticalAlignment".into(), json!(v));
     }
     if let Some(n) = &f.number_format {
