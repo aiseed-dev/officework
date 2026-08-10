@@ -67,10 +67,17 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
     page_decor: F,
     out: W,
 ) -> Result<(), String> {
+    // **1ページ目の紙は最初の節のもの。** 呼ぶ側が渡してくる `paper` は
+    // 文書の用紙(= docx では**最後の節**)なので、途中で向きが変わる文書では
+    // これをそのまま使うと1ページ目だけ紙が違う、という形で狂う
+    let paper1 = sheet
+        .setup_at(0.0)
+        .map(|pg| Paper { width_mm: pg.w_mm, height_mm: pg.h_mm, margin_mm: pg.left_mm })
+        .unwrap_or(paper);
     let (doc, page, layer) = PdfDocument::new(
         "office",
-        Mm(paper.width_mm),
-        Mm(paper.height_mm),
+        Mm(paper1.width_mm),
+        Mm(paper1.height_mm),
         "本文",
     );
     let font = doc
@@ -136,16 +143,19 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
 
     // **改ページの計算は paginate に一本化。** 目次のページ番号も
     // 同じ関数から出るので、紙と番号が食い違わない
-    let (pages, offsets) = paginate(sheet, paper);
+    let (pages, offsets, papers) = paginate_papers(sheet, paper);
     for (i, line) in sheet.lines.iter().enumerate() {
         if line.cells.is_empty() {
             continue;
         }
         let k = pages[i];
         while layers.len() < k {
+            // **ページごとに紙の大きさが違いうる**(節が途中で変わる文書)。
+            // 節が1つなら papers はどれも同じなので、今までと変わらない
+            let pp = papers.get(layers.len()).copied().unwrap_or(paper);
             let (np, nl) = doc.add_page(
-                Mm(paper.width_mm),
-                Mm(paper.height_mm),
+                Mm(pp.width_mm),
+                Mm(pp.height_mm),
                 format!("本文 {}", layers.len() + 1),
             );
             let nl = doc.get_page(np).get_layer(nl);
@@ -153,16 +163,20 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
             layers.push(nl);
         }
         let l = &layers[k - 1];
+        // **裏返しはそのページの紙の高さで。** 節で紙が変わる文書では、
+        // 文書の紙(= 最後の節)で裏返すと、向きの違うページで字が
+        // 紙の外へ出る(縦 297 と横 210 なら 87mm ずれる)
+        let pp = papers.get(k - 1).copied().unwrap_or(paper);
         let y_roll = line.y_mm - offsets[k - 1];
         // PDF の原点は左下。紙面の y は上からなので裏返す
-        let y = paper.height_mm - y_roll;
+        let y = pp.height_mm - y_roll;
         if sheet.vertical {
             // 縦書き: 1字ずつ、列の x(絶対 mm)に正立で置く。
             // 字の腰は「上からの距離 + だいたいの上がり」で合わせる
             let colx = sheet.vert_x.get(i).copied().unwrap_or(0.0);
             for c in &line.cells {
                 let em = c.size_pt * 0.3528;
-                let cy = paper.height_mm - (y_roll + c.x_mm + em * 0.85);
+                let cy = pp.height_mm - (y_roll + c.x_mm + em * 0.85);
                 let txt = c.ch.to_string();
                 l.use_text(&txt, c.size_pt, Mm(colx), Mm(cy), &font);
                 if c.fmt.bold {
@@ -193,7 +207,7 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
             let seg = &line.cells[i..j];
             let text: String = seg.iter().map(|c| c.ch).collect();
             let w: f32 = seg.iter().map(|c| c.w_mm).sum();
-            let x = paper.margin_mm + c0.x_mm;
+            let x = pp.margin_mm + c0.x_mm;
             l.use_text(&text, c0.size_pt, Mm(x), Mm(y), &font);
             if c0.fmt.bold {
                 l.use_text(&text, c0.size_pt, Mm(x + 0.12), Mm(y), &font);
@@ -308,9 +322,30 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
 /// ページごとの繰り上げ量(そのページの先頭が巻物のどの高さか)。
 /// `to_pdf` もこれを使うので、**目次のページ番号と紙が必ず一致する**。
 pub fn paginate(sheet: &Sheet, paper: Paper) -> (Vec<usize>, Vec<f32>) {
-    let bottom = paper.height_mm - paper.margin_mm;
+    let (pages, offsets, _) = paginate_papers(sheet, paper);
+    (pages, offsets)
+}
+
+/// [`paginate`] と同じ折り方をして、**ページごとの紙**も返す。
+///
+/// 節が途中で変わる文書は、**ページごとに紙の大きさが違う**(縦の節のあとに
+/// 横の節、など)。`sheet.sect_pages` が空(節が1つ)なら、どのページも
+/// 渡された `paper` のままなので、今までと1ミリも変わらない。
+pub fn paginate_papers(sheet: &Sheet, paper: Paper) -> (Vec<usize>, Vec<f32>, Vec<Paper>) {
+    // その高さに効いている紙。節が無ければ呼ぶ側の紙をそのまま使う
+    let paper_at = |y: f32| -> Paper {
+        match sheet.setup_at(y) {
+            Some(pg) => Paper {
+                width_mm: pg.w_mm,
+                height_mm: pg.h_mm,
+                margin_mm: pg.left_mm,
+            },
+            None => paper,
+        }
+    };
     let mut pages = Vec::with_capacity(sheet.lines.len());
     let mut offsets = vec![0.0f32];
+    let mut papers = vec![paper_at(0.0)];
     // 明示の改ページ(文書側の指定)。高さ超過とは別に、ここでも頁を割る
     let mut breaks = sheet.breaks.iter().copied().peekable();
     for line in &sheet.lines {
@@ -328,14 +363,19 @@ pub fn paginate(sheet: &Sheet, paper: Paper) -> (Vec<usize>, Vec<f32>) {
                 break;
             }
         }
+        // **いま居るページの紙**で高さを測る。縦の節と横の節では
+        // 1ページに入る行数がそもそも違う
+        let cur = *papers.last().unwrap();
         let y_roll = line.y_mm - offsets.last().unwrap();
-        if forced || y_roll > bottom {
+        if forced || y_roll > cur.height_mm - cur.margin_mm {
             // 次のページへ。行の紙面上の高さは(余白ぶんを除いて)そのまま続ける
-            offsets.push(line.y_mm - paper.margin_mm);
+            let next = paper_at(line.y_mm);
+            offsets.push(line.y_mm - next.margin_mm);
+            papers.push(next);
         }
         pages.push(offsets.len());
     }
-    (pages, offsets)
+    (pages, offsets, papers)
 }
 
 /// 下線と取り消し線。フォントが持っていないので線として引く。
@@ -376,6 +416,144 @@ mod tests {
         let mut buf = Vec::new();
         to_pdf(&s, &data, Paper::default(), &mut buf).unwrap();
         buf
+    }
+
+
+    /// **途中で用紙の向きが変わる文書。** engine が節ごとに行を組み、
+    /// paper が節ごとの紙で折る — その2つが噛み合っているかを端から端まで見る。
+    /// (紙の大きさが違えば1ページに入る行数も違うので、折り目もずれる)
+    #[test]
+    fn 節ごとに紙の大きさが変わる() {
+        use kumihan::{Block, PageSetup, Paragraph, Run};
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let 紙 = |w: f32, h: f32| PageSetup {
+            w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1,
+        };
+        let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
+            runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+            line_spacing: 1.0, sect, ..Default::default()
+        });
+        let d = Document {
+            page: Some(紙(210.0, 297.0)),          // 最後の節 = 縦
+            blocks: vec![
+                段("縦の節の本文", None),
+                段("縦の節の終わり", Some(紙(210.0, 297.0))),
+                段("横の節の本文", Some(紙(297.0, 210.0))),
+                段("また縦の節", None),
+            ],
+            ..Default::default()
+        };
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        assert_eq!(s.sect_pages.len(), 3, "節ごとの紙が揃っていない: {:?}", s.sect_pages);
+
+        let (_, _, papers) = paginate_papers(&s, Paper::default());
+        let 幅: Vec<f32> = papers.iter().map(|p| p.width_mm).collect();
+        // 縦 → 横 → 縦。**節の切れ目で必ず頁が割れる**ので3ページ以上になる
+        assert!(papers.len() >= 3, "節の切れ目で頁が割れていない: {幅:?}");
+        assert_eq!(幅[0], 210.0, "1ページ目が最初の節の紙になっていない: {幅:?}");
+        assert!(幅.contains(&297.0), "横の節の紙が出ていない: {幅:?}");
+        assert_eq!(*幅.last().unwrap(), 210.0, "最後の節が縦に戻っていない: {幅:?}");
+
+        // PDF にしても落ちない(ページごとに大きさが違う紙を作る)
+        let mut buf = Vec::new();
+        to_pdf(&s, &data, Paper::default(), &mut buf).unwrap();
+        assert_eq!(&buf[..5], b"%PDF-");
+    }
+
+    #[test]
+    fn 節が一つなら折り方は今までどおり() {
+        let (s, _) = sheet("いろはにほへと。".repeat(200).as_str(), Align::Left);
+        assert!(s.sect_pages.is_empty(), "節が1つなのに節ごとの紙を持った");
+        let (pages, offsets) = paginate(&s, Paper::default());
+        let (p2, o2, papers) = paginate_papers(&s, Paper::default());
+        assert_eq!(pages, p2);
+        assert_eq!(offsets, o2);
+        assert!(papers.iter().all(|p| p.width_mm == 210.0), "紙が勝手に変わった");
+    }
+
+
+    /// **紙の外へ字が出ないか。** 節で紙が変わるとき、文書の紙(最後の節)で
+    /// 裏返すと、向きの違うページで字が紙からはみ出す(縦297と横210で87mmずれる)。
+    /// ページの大きさだけを見る試験では通ってしまうので、**中身の座標**を見る
+    #[test]
+    fn 節が変わっても字が紙の中に収まる() {
+        use kumihan::{Block, PageSetup, Paragraph, Run};
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let 紙 = |w: f32, h: f32| PageSetup {
+            w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1,
+        };
+        let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
+            runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+            line_spacing: 1.0, sect, ..Default::default()
+        });
+        let d = Document {
+            page: Some(紙(210.0, 297.0)),
+            blocks: vec![
+                段("縦の節。", Some(紙(210.0, 297.0))),
+                段("横の節。ここは紙が低い(210mm)ので、裏返しを間違えると外へ出る。", None),
+            ],
+            ..Default::default()
+        };
+        // 2つ目の節は Document::page(縦)なので、横は1つ目…ではない。
+        // 節末に紙を置いた1段目が縦、残りが最後の節。ここでは横紙を最後に置く
+        let d = Document { page: Some(紙(297.0, 210.0)), ..d };
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let (pages, offsets, papers) = paginate_papers(&s, Paper::default());
+        for (i, line) in s.lines.iter().enumerate() {
+            if line.cells.is_empty() { continue }
+            let k = pages[i];
+            let pp = papers[k - 1];
+            let y = pp.height_mm - (line.y_mm - offsets[k - 1]);
+            assert!(y >= 0.0 && y <= pp.height_mm,
+                "{k}ページ目({}x{})で字が紙の外: y={y}", pp.width_mm, pp.height_mm);
+            let right = pp.margin_mm + line.cells.last().unwrap().x_mm
+                + line.cells.last().unwrap().w_mm;
+            assert!(right <= pp.width_mm + 0.5,
+                "{k}ページ目で字が右へはみ出した: {right}mm > {}mm", pp.width_mm);
+        }
+    }
+
+
+    /// **1ページ目だけ紙が違う**という壊れ方。節ごとの紙を「上の余白から」
+    /// 置くと、その手前を引いたときに節が無いと読めて、1ページ目が
+    /// 最後の節の紙で刷られる。実物の2節 docx を PDF まで通して見つけた
+    #[test]
+    fn 一ページ目は最初の節の紙になる() {
+        use kumihan::{Block, PageSetup, Paragraph, Run};
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let 紙 = |w: f32, h: f32| PageSetup {
+            w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1,
+        };
+        let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
+            runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+            line_spacing: 1.0, sect, ..Default::default()
+        });
+        let d = Document {
+            page: Some(紙(297.0, 210.0)),                  // 最後の節 = 横
+            blocks: vec![
+                段("縦の節", Some(紙(210.0, 297.0))),       // 最初の節 = 縦
+                段("横の節", None),
+            ],
+            ..Default::default()
+        };
+        // 上の余白より上を引いても、最初の節が返らねばならない
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 });
+        assert_eq!(s.setup_at(0.0).map(|g| (g.w_mm, g.h_mm)), Some((210.0, 297.0)),
+            "巻物の頭で最初の節が引けない: {:?}", s.sect_pages);
+
+        let 紙面 = Paper { width_mm: 297.0, height_mm: 210.0, margin_mm: 20.0 };
+        let (_, _, papers) = paginate_papers(&s, 紙面);
+        assert_eq!((papers[0].width_mm, papers[0].height_mm), (210.0, 297.0),
+            "1ページ目が最後の節の紙で刷られた");
     }
 
     #[test]

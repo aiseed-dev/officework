@@ -938,6 +938,8 @@ fn parse_document_full(
     let mut anchors: Vec<String> = Vec::new();
     // この段落で終わる節の原文(w:pPr の中の w:sectPr)。段落を閉じるとき渡す
     let mut para_sect: Option<String> = None;
+    // 同じ節の、組版のための顔(解析済み)
+    let mut para_sect_pg: Option<kumihan::PageSetup> = None;
     // 表示できる画像(r:embed と wp:extent が読めたもの)
     let mut images: Vec<kumihan::InlineImage> = Vec::new();
     // 原本の root が宣言している名前空間。持ち越す原文の接頭辞をこれで包む
@@ -1141,7 +1143,10 @@ fn parse_document_full(
                                 // 区切りごと保存で消えていた)。
                                 // 用紙は最後の節のもので組むので、そこは言う
                                 para_sect = Some(raw.to_string());
-                                rep.note("節の区切り(原文のまま残るが、用紙は最後の節のもので組む)");
+                                // 組版のための顔も同時に作る(engine は
+                                // docx を解析しないので、解いた形で渡す)
+                                para_sect_pg = Some(parse_sect(raw));
+                                rep.note("節の区切り(用紙ごと組み直す。保存でも残る)");
                             } else {
                                 // 最後の節。用紙・ヘッダーの参照はここから読む
                                 doc.page = Some(parse_sect(raw));
@@ -1554,6 +1559,7 @@ fn parse_document_full(
                             rep.paragraphs += 1;
                             let mut p = Paragraph { align, anchors: std::mem::take(&mut anchors),
                                 sect_raw: para_sect.take(),
+                                sect: para_sect_pg.take(),
                                 images: std::mem::take(&mut images),
                                 comments: std::mem::take(&mut para_comments),
                                 bookmarks: std::mem::take(&mut para_bookmarks),
@@ -2598,7 +2604,7 @@ mod tests {
     use kumihan::{Block, Cellbox, Document, Paragraph, Run, Table};
 
     fn para(s: &str) -> Paragraph {
-        Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None,
+        Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None, sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: 10.5, font: None, fmt: Default::default() }] }
     }
@@ -2633,7 +2639,7 @@ mod tests {
 
     #[test]
     fn 文字サイズが保たれる() {
-        let d = Document { font: None, page: None, sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None,
+        let d = Document { font: None, page: None, sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None, sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "大見出し".into(), size_pt: 16.0, font: None, fmt: Default::default() },
@@ -2666,7 +2672,7 @@ mod tests {
 
     #[test]
     fn 段落内の改行が保たれる() {
-        let d = Document { font: None, page: None, sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None,
+        let d = Document { font: None, page: None, sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None, sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "一行目\n二行目".into(), size_pt: 10.5, font: None, fmt: Default::default() }]})]};
@@ -2819,7 +2825,7 @@ mod font_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None,
+            blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
                 align: Default::default(),
                 anchors: Vec::new(),
                     images: Vec::new(),
@@ -2875,7 +2881,7 @@ mod fmt_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None,
+            blocks: vec![Block::Para(Paragraph { align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None, sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("見出し", f.clone())] })],
         };
@@ -2890,7 +2896,7 @@ mod fmt_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None,
+            blocks: vec![Block::Para(Paragraph { align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None, sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("赤", f.clone())] })],
         };
@@ -2904,7 +2910,7 @@ mod fmt_tests {
                 font: None,
                 page: None,
                 sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-                blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None,
+                blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
                     align: a,
                     anchors: Vec::new(),
                     images: Vec::new(),
@@ -2952,7 +2958,7 @@ mod para_tests {
     use kumihan::{Align, Block, Document, ListKind, Paragraph, Run};
 
     fn para(list: ListKind, indent: u8, spacing: f32) -> Paragraph {
-        Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None,
+        Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
             align: Align::Left,
             anchors: Vec::new(),
                     images: Vec::new(),
@@ -3358,7 +3364,7 @@ mod vertalign_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None,
+            blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
                 align: Align::Left,
                 runs: vec![Run { text: "x2".into(), size_pt: 10.5, font: None, fmt }],
                 ..Default::default()
@@ -3511,7 +3517,7 @@ mod shade_tests {
 
     #[test]
     fn 段落の背景色と囲み枠が往復する() {
-        let mut p = Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None,
+        let mut p = Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
             line_spacing: 1.0,
             runs: vec![Run { text: "注意".into(), size_pt: 10.5, font: None,
                              fmt: Default::default() }],
@@ -4216,7 +4222,7 @@ mod hf_tests {
     use kumihan::{Align, Document, Paragraph, Run, PAGE_MARK};
 
     fn para(s: &str) -> Paragraph {
-        Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None,
+        Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
             line_spacing: 1.0,
             runs: vec![Run { text: s.into(), size_pt: 10.5, font: None,
                              fmt: Default::default() }],
@@ -4389,7 +4395,7 @@ mod image_insert_tests {
 
     #[test]
     fn 挿した画像が部品ごと保存され読み直せる() {
-        let mut p = Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None,
+        let mut p = Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
             line_spacing: 1.0,
             runs: vec![Run { text: "ロゴの下".into(), size_pt: 10.5, font: None,
                              fmt: Default::default() }],

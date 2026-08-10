@@ -262,9 +262,14 @@ pub struct Paragraph {
     /// **この段落で終わる節**の設定(`w:pPr` の中の `w:sectPr`)の原文。
     /// 途中の節の区切りはここに載り、**最後の節は `Document::sect_raw`** が持つ
     /// (docx はそう書き分ける)。anchors と同じ「理解はしないが捨てない」口で、
-    /// 保存で原文のまま返す。**組版は最後の節の用紙で通す** — 節ごとに
-    /// 用紙が変わる文書を「読める」ようにするのは別の仕事(設計の順の 2 の後半)
+    /// 保存で原文のまま返す
     pub sect_raw: Option<String>,
+    /// 上と**同じ節の、組版のための顔**。`sect_raw` は保存で原文を返すための物、
+    /// こちらは行長と紙の高さを決めるための物で、`anchors` と `images` が
+    /// 同じ関係にある(**持ち場が違うので混ぜない**)。
+    /// **engine は docx を解析しない** — 生の XML ではなく、読み手が解いた
+    /// [`PageSetup`] を受け取る
+    pub sect: Option<PageSetup>,
     /// 表示できる画像(anchors のうち、絵の実体と大きさが分かったもの)。
     /// 保存には使わない — 保存は anchors の原文が担う
     pub images: Vec<InlineImage>,
@@ -1144,6 +1149,28 @@ pub struct Sheet {
     pub cell_boxes: Vec<CellBox>,
     /// 置いた画像(実体, [x, 上端y, 幅, 高さ] mm)。画面も紙もこれを見る
     pub images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4])>,
+    /// **節ごとの用紙**。「この y(巻物の座標)から先はこの用紙」の並びで、
+    /// y の昇順。節が1つだけの文書では**空**にしてある — 空なら今までどおり
+    /// 呼ぶ側の用紙1つで折ればよい、という約束(既存の道を変えないため)。
+    /// 節の切れ目は必ず [`Sheet::breaks`] にも入るので、折る側は
+    /// 「頁が変わった所で用紙を引き直す」だけでよい
+    pub sect_pages: Vec<(f32, PageSetup)>,
+}
+
+impl Sheet {
+    /// 巻物の高さ `y` に効いている用紙。`sect_pages` が空なら None
+    /// (節が1つ = 呼ぶ側の用紙をそのまま使う)。
+    pub fn setup_at(&self, y: f32) -> Option<PageSetup> {
+        let mut cur = None;
+        for (at, pg) in &self.sect_pages {
+            if y >= *at - 0.01 {
+                cur = Some(*pg);
+            } else {
+                break;
+            }
+        }
+        cur
+    }
 }
 
 /// 表のセル1つぶんの場所。
@@ -1414,9 +1441,45 @@ fn lh_of(para: &Paragraph, frame: &Frame) -> f32 {
     frame.line_height_mm * para.spacing()
 }
 
+/// 節ごとの用紙を、**ブロックの番号で引ける形**に開く。
+///
+/// docx は `w:sectPr` を**その節の終わりに**置く。つまりある段落に効いている
+/// 用紙は「**その段落以降で最初に現れる節末**のもの」で、どれにも当たらない
+/// 後ろの部分だけが `Document::page`(最後の節)になる。
+/// **後ろから前へ**なぞると、これがそのまま書ける — 前から数えると
+/// 必ず1つずれる(節末の段落自身がどちらの節かを取り違える)。
+///
+/// 節が1つも無ければ空を返す。呼ぶ側はそのとき今までどおりに振る舞う。
+fn section_geometry(doc: &Document) -> Vec<PageSetup> {
+    if !doc.blocks.iter().any(|b| matches!(b, Block::Para(p) if p.sect.is_some())) {
+        return Vec::new();
+    }
+    let mut cur = doc.page.unwrap_or_default();
+    let mut geo = vec![cur; doc.blocks.len()];
+    for (i, b) in doc.blocks.iter().enumerate().rev() {
+        // 節末の段落は**その節に属する**ので、先に切り替えてから置く
+        if let Block::Para(p) = b {
+            if let Some(s) = p.sect {
+                cur = s;
+            }
+        }
+        geo[i] = cur;
+    }
+    geo
+}
+
 pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     let mut sheet = Sheet::default();
     let mut y = frame.y0_mm;
+    // 節ごとの用紙。空なら節は1つで、行長は frame のものをそのまま使う
+    // (今までの道を1ミリも変えないため — 節の無い文書が大多数)
+    let sect_geo = section_geometry(doc);
+    if let Some(first) = sect_geo.first() {
+        // **0 から**置く。上の余白(y0_mm)から置くと、その手前を引いたときに
+        // 「節が無い」と読めてしまい、**1ページ目だけ最後の節の紙**で刷られる
+        // (2026-08-10、実物の2節 docx を PDF まで通して見つけた)
+        sheet.sect_pages.push((0.0, *first));
+    }
 
     // 段落番号は「何番目の箇条書きか」で決まる。段落の位置ではない。
     // レベル(インデント)ごとに数え、浅い番号が進んだら深い数えは振り出しへ
@@ -1424,7 +1487,13 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     // 本文(段落を \n で繋いだもの)における、いまの段落の頭のバイト位置
     let mut para_byte0 = 0usize;
     let mut table_no = 0usize;
-    for block in &doc.blocks {
+    for (bi, block) in doc.blocks.iter().enumerate() {
+        // この段落に効いている行長。節が変われば紙の幅も余白も変わるので、
+        // **折り返しそのものがやり直しになる**(折る所だけの話ではない)
+        let block_measure = match sect_geo.get(bi) {
+            Some(pg) => pg.column_measure_mm(),
+            None => frame.measure_mm,
+        };
         match block {
             Block::Para(para) => {
                 // 改ページ。紙に写すときにここで頁が割れる
@@ -1434,7 +1503,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // インデント1段 = 全角2文字ぶん(日本の書類の慣習)
                 let em = para.runs.first().map(|r| r.size_pt).unwrap_or(10.5) * 25.4 / 72.0;
                 let indent_mm = para.indent as f32 * em * 2.0;
-                let measure = (frame.measure_mm - indent_mm).max(em);
+                let measure = (block_measure - indent_mm).max(em);
                 let marker = match para.list {
                     ListKind::None => {
                         counters.clear();
@@ -1599,6 +1668,14 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // 次の段落の頭 = この段落のバイト数 + 改行1つ
                 let plen: usize = para.runs.iter().map(|r| r.text.len()).sum();
                 para_byte0 += plen + 1;
+                // 節の切れ目。**この段落で節が終わる**ので、次の段落は新しい紙から。
+                // 折る側は breaks を見て頁を割り、sect_pages で用紙を引き直す
+                if para.sect.is_some() {
+                    if let Some(next) = sect_geo.get(bi + 1) {
+                        sheet.breaks.push(y);
+                        sheet.sect_pages.push((y, *next));
+                    }
+                }
             }
             Block::Table(table) => {
                 y = layout_table(table, m, frame, y, &mut sheet, table_no, doc.hyphenate);
@@ -3254,5 +3331,75 @@ mod shade_carry_tests {
         let p = d.paragraphs().next().unwrap();
         assert_eq!(p.shade.as_deref(), Some("DEEAF6"), "1文字打つだけで帯が消えた");
         assert!(p.boxed, "枠が消えた");
+    }
+}
+
+/// 節が途中で変わる文書の組版。**`w:sectPr` は節の「終わり」に置かれる**ので、
+/// どの段落がどの節かを1つ取り違えると全部ずれる。そこを釘で打つ試験。
+#[cfg(test)]
+mod section_layout_tests {
+    use super::*;
+
+    fn 紙(w: f32, h: f32) -> PageSetup {
+        PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1 }
+    }
+
+    fn 段(text: &str, sect: Option<PageSetup>) -> Block {
+        Block::Para(Paragraph {
+            runs: vec![Run { text: text.into(), size_pt: 10.5, font: None,
+                             fmt: Default::default() }],
+            line_spacing: 1.0,
+            sect,
+            ..Default::default()
+        })
+    }
+
+    /// **真ん中だけ横向きの3節。** 節の境目の手前の段落と、最後の節
+    /// (`Document::page` から来るほう)が要注意 — 発注者 2026-08-10
+    fn 三節() -> Document {
+        let 縦 = 紙(210.0, 297.0);
+        let 横 = 紙(297.0, 210.0);
+        Document {
+            // 最後の節は Document::page が持つ(docx がそう書く)
+            page: Some(縦),
+            blocks: vec![
+                段("第一節の本文", None),
+                段("第一節の終わり", Some(縦)),   // ここまでが縦
+                段("第二節の本文", None),
+                段("第二節の終わり", Some(横)),   // ここまでが横
+                段("第三節の本文", None),          // ここは Document::page = 縦
+            ],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn 節末の段落は自分の節に属する() {
+        let geo = section_geometry(&三節());
+        let w: Vec<f32> = geo.iter().map(|g| g.w_mm).collect();
+        // **1つずれていないか。** 節末の段落(添字1・3)は自分の節の紙で組む
+        assert_eq!(w, vec![210.0, 210.0, 297.0, 297.0, 210.0],
+            "節の割り当てがずれている: {w:?}");
+    }
+
+    #[test]
+    fn 節が変われば行長も変わる() {
+        let d = 三節();
+        let geo = section_geometry(&d);
+        // 横の節は紙が広いぶん行長も広い(折り返しがやり直しになる所)
+        assert!(geo[2].column_measure_mm() > geo[0].column_measure_mm() + 50.0,
+            "横の節で行長が広がっていない: {} / {}",
+            geo[2].column_measure_mm(), geo[0].column_measure_mm());
+    }
+
+    #[test]
+    fn 節が一つなら今までどおり何も持たない() {
+        let d = Document {
+            page: Some(紙(210.0, 297.0)),
+            blocks: vec![段("本文", None)],
+            ..Default::default()
+        };
+        assert!(section_geometry(&d).is_empty(), "節が1つなのに節ごとの紙を作った");
     }
 }
