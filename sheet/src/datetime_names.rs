@@ -25,6 +25,12 @@ pub struct Names {
     /// 発注者の「各国で一つに決めて置いたほうがいい」に当たる物で、
     /// **本家が決めた既定をそのまま使う** — こちらで13本を考え直さない
     pub long_date: &'static str,
+    /// その言語の「短い日付」の既定(Excel の書式コード)
+    pub short_date: &'static str,
+    /// この言語を指す地域番号。**書式コードに `[$-407]` として入れる** —
+    /// こちらが日付の書式を掛けるとき、何語で書いたかをファイルに残すため。
+    /// 残さないと、開いた人の環境しだいで別の月名が出る
+    pub lcid: u32,
     /// 通貨記号の**置き場所**だけ(0=記号n / 1=n記号 / 2=記号␣n / 3=n␣記号)。
     /// **記号そのものは持たない** — お金は読む人の言語ではなく帳票のもの
     /// (docs/sekkei/calc.ja.md)。並びだけが言語の作法
@@ -40,7 +46,9 @@ pub const TABLE: &[Names] = &[
         days: ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"],
         days_abbr: ["日", "月", "火", "水", "木", "金", "土"],
         long_date: "yyyy\"年\"m\"月\"d\"日\"",
+        short_date: "yyyy/mm/dd",
         currency_pattern: 0,
+        lcid: 0x411,
     },
     Names {
         lang: "de",
@@ -50,7 +58,9 @@ pub const TABLE: &[Names] = &[
         days: ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"],
         days_abbr: ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
         long_date: "dddd, d. mmmm yyyy",
+        short_date: "dd.mm.yyyy",
         currency_pattern: 3,
+        lcid: 0x407,
     },
     Names {
         lang: "en",
@@ -60,7 +70,9 @@ pub const TABLE: &[Names] = &[
         days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
         days_abbr: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
         long_date: "dddd, mmmm d, yyyy",
+        short_date: "m/d/yyyy",
         currency_pattern: 0,
+        lcid: 0x409,
     },
     Names {
         lang: "es",
@@ -70,7 +82,9 @@ pub const TABLE: &[Names] = &[
         days: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
         days_abbr: ["do.", "lu.", "ma.", "mi.", "ju.", "vi.", "sá."],
         long_date: "dddd, d\" de \"mmmm\" de \"yyyy",
+        short_date: "dd/mm/yyyy",
         currency_pattern: 3,
+        lcid: 0xc0a,
     },
     Names {
         lang: "fr",
@@ -80,7 +94,9 @@ pub const TABLE: &[Names] = &[
         days: ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
         days_abbr: ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."],
         long_date: "dddd d mmmm yyyy",
+        short_date: "dd/mm/yyyy",
         currency_pattern: 3,
+        lcid: 0x40c,
     },
     Names {
         lang: "id",
@@ -90,7 +106,9 @@ pub const TABLE: &[Names] = &[
         days: ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"],
         days_abbr: ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"],
         long_date: "dddd, dd mmmm yyyy",
+        short_date: "dd/mm/yyyy",
         currency_pattern: 0,
+        lcid: 0x421,
     },
     Names {
         lang: "it",
@@ -100,7 +118,9 @@ pub const TABLE: &[Names] = &[
         days: ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"],
         days_abbr: ["dom", "lun", "mar", "mer", "gio", "ven", "sab"],
         long_date: "dddd d mmmm yyyy",
+        short_date: "dd/mm/yyyy",
         currency_pattern: 3,
+        lcid: 0x410,
     },
     Names {
         lang: "ko",
@@ -110,7 +130,9 @@ pub const TABLE: &[Names] = &[
         days: ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"],
         days_abbr: ["일", "월", "화", "수", "목", "금", "토"],
         long_date: "yyyy\"년\" m\"월\" d\"일\" dddd",
+        short_date: "yyyy-mm-dd",
         currency_pattern: 0,
+        lcid: 0x412,
     },
     Names {
         lang: "pt",
@@ -120,7 +142,9 @@ pub const TABLE: &[Names] = &[
         days: ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"],
         days_abbr: ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"],
         long_date: "d\" de \"mmmm\" de \"yyyy",
+        short_date: "dd/mm/yyyy",
         currency_pattern: 3,
+        lcid: 0x816,
     },
     Names {
         lang: "ru",
@@ -130,7 +154,9 @@ pub const TABLE: &[Names] = &[
         days: ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"],
         days_abbr: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
         long_date: "d mmmm yyyy \"г.\"",
+        short_date: "dd.mm.yyyy",
         currency_pattern: 3,
+        lcid: 0x419,
     },
     Names {
         lang: "tr",
@@ -140,7 +166,9 @@ pub const TABLE: &[Names] = &[
         days: ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"],
         days_abbr: ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"],
         long_date: "d mmmm yyyy dddd",
+        short_date: "d.mm.yyyy",
         currency_pattern: 0,
+        lcid: 0x41f,
     },
     Names {
         lang: "vi",
@@ -150,7 +178,9 @@ pub const TABLE: &[Names] = &[
         days: ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"],
         days_abbr: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
         long_date: "dd mmmm yyyy",
+        short_date: "dd/mm/yyyy",
         currency_pattern: 3,
+        lcid: 0x42a,
     },
     Names {
         lang: "zh",
@@ -160,7 +190,9 @@ pub const TABLE: &[Names] = &[
         days: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"],
         days_abbr: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
         long_date: "yyyy\"年\"m\"月\"d\"日\"",
+        short_date: "yyyy/m/d",
         currency_pattern: 0,
+        lcid: 0x804,
     },
     Names {
         lang: "zh-tw",
@@ -170,7 +202,9 @@ pub const TABLE: &[Names] = &[
         days: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"],
         days_abbr: ["週日", "週一", "週二", "週三", "週四", "週五", "週六"],
         long_date: "yyyy\"年\"m\"月\"d\"日\"",
+        short_date: "yyyy/m/d",
         currency_pattern: 0,
+        lcid: 0x404,
     },
 ];
 

@@ -2801,6 +2801,20 @@ impl Calc {
                     .collect();
                 self.pick = Some((items, at));
             }
+            // **日付も選ばせる。** 見出しはその書式で描いた見本そのものなので、
+            // 何語で開いても嘘にならない
+            "datefmt" => {
+                let at = self.pop_anchor();
+                self.pick_kind = "datefmt";
+                self.pick_note = Some(
+                    ui::t!("日付の形(選ぶと、その形で書いたことがファイルに残ります)").into(),
+                );
+                let items: Vec<(String, String)> = date_formats()
+                    .into_iter()
+                    .map(|(k, label, _)| (k.to_string(), label))
+                    .collect();
+                self.pick = Some((items, at));
+            }
             "percents" => self.fmt(|f| f.number_format = Some("0%".into())),
             // 関数の一覧。**使える名前だけを出す** — 無いものを並べない
             f @ ("fn-math" | "fn-text" | "fn-logical" | "fn-recent" | "fn-datetime"

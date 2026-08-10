@@ -1038,6 +1038,38 @@ pub(crate) fn currency_code(symbol: &str, decimals: usize, pattern: u8) -> Strin
     }
 }
 
+/// 日付の書式の候補。**(鍵, 見出し, 書式コード)**。
+///
+/// 見出しは**その書式で描いた見本そのもの**にする。「長い日付
+/// (2026年8月6日)」のように例を焼き付けると、独語の人に日本語の日付を
+/// 約束することになる(2026-08-10 に訳者4人が指摘した形)。
+/// **描いた結果を見出しにすれば、見出しは嘘をつきようがない。**
+///
+/// 書式には `[$-407]` のように**地域を書き込む**。残さないと、開いた人の
+/// 環境しだいで別の月名が出る — その帳票が何語で書かれたかを持たせる
+/// (docs/sekkei/calc.ja.md「月名・曜日名は書式コードの地域から引く」)。
+pub(crate) fn date_formats() -> Vec<(&'static str, String, String)> {
+    let n = sheet::datetime_names::names(ui::language());
+    let tag = format!("[$-{:x}]", n.lcid);
+    // 見本は 2026-08-06(木)。通し番号 46240
+    let show = |code: &str| {
+        sheet::model::format_value(&sheet::Value::Number(46240.0), Some(code))
+    };
+    let rows: Vec<(&'static str, String)> = vec![
+        (ui::item!("短い日付").0, format!("{tag}{}", n.short_date)),
+        (ui::item!("長い日付").0, format!("{tag}{}", n.long_date)),
+        (ui::item!("年と月").0, format!("{tag}mmmm yyyy")),
+        (ui::item!("曜日だけ").0, format!("{tag}dddd")),
+        (ui::item!("時刻").0, "h:mm:ss".to_string()),
+    ];
+    rows.into_iter()
+        .map(|(k, code)| {
+            let sample = show(&code);
+            (k, format!("{} — {}", ui::tr(k), sample), code)
+        })
+        .collect()
+}
+
 pub(crate) fn numfmts() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
     vec![
         row(ui::item!("一般"), None),
@@ -1048,17 +1080,8 @@ pub(crate) fn numfmts() -> Vec<(&'static str, &'static str, Option<&'static str>
         row(ui::item!("通貨…"), None),
         row(ui::item!("パーセント (12.34%)"), Some("0.00%")),
         row(ui::item!("指数 (1.23E+04)"), Some("0.00E+00")),
-        row(ui::item!("短い日付 (2026/8/6)"), Some("yyyy/m/d")),
-        // **ここを言語ごとの書式コードにしたいが、まだできない。**
-        // 独語なら "d. mmmm yyyy" を入れたいところだが、書式の描き手
-        // (sheet/src/model.rs の 'm')は何文字並べても**月の数字**を返す —
-        // 実測で `d. mmmm yyyy` → `6. 08 2026`。13言語ぶんの月名・曜日名は
-        // 表としては engine に入ったが、**描き手がまだ使っていない**。
-        // 繋がるまでは札の嘘を別の嘘に置き換えるだけなので、日本語のまま
-        // 置く(2026-08-10)
-        row(ui::item!("長い日付 (2026年8月6日)"), Some("yyyy\"年\"m\"月\"d\"日\"")),
-        row(ui::item!("時刻 (13:45:00)"), Some("h:mm:ss")),
-        row(ui::item!("テキスト (@)"), Some("@")),
+        row(ui::item!("日付…"), None),
+                row(ui::item!("テキスト (@)"), Some("@")),
     ]
 }
 

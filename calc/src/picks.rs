@@ -945,7 +945,23 @@ impl Calc {
                 self.status =
                     ui::tf!("通貨を「{}」にしました(コード: {})", label, code).into();
             }
+            // 日付の形を選んだ
+            "datefmt" => {
+                let Some((_, label, code)) =
+                    date_formats().into_iter().find(|(k, _, _)| *k == v)
+                else {
+                    return;
+                };
+                let c = code.clone();
+                self.fmt(move |f| f.number_format = Some(c.clone()));
+                self.status = ui::tf!("日付の形を「{}」にしました(コード: {})", label, code).into();
+            }
             "numfmt-pick" => {
+                // 「日付…」も例を約束しない — 日付の形を選ぶ一覧へ渡す
+                if v == "日付…" {
+                    self.run_cmd("datefmt", cx);
+                    return;
+                }
                 // 「通貨…」は記号を約束しない — 通貨を選ぶ一覧へ渡す
                 if v == "通貨…" {
                     self.run_cmd("currency", cx);

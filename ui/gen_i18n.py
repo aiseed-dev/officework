@@ -117,10 +117,14 @@ def unescape(lit):
 
 
 def main():
-    used = []
+    # **突き合わせは実行時の文字列、印字はソースのリテラル。**
+    # 比べるほうを崩さないと重複が見えず、印字するほうを崩すと
+    # 骨組みが貼り付けられなくなる(2026-08-11 に後者をやった)
+    lit_of = {}
     for p in SOURCES:
-        used.extend(unescape(k) for k in keys_from(p))
-    used_set = dict.fromkeys(used)  # 順を保った一意化
+        for k in keys_from(p):
+            lit_of.setdefault(unescape(k), k)
+    used_set = dict.fromkeys(lit_of)  # 順を保った一意化
     table = [unescape(k) for k in table_keys()]
     table_set = set(table)
 
@@ -130,7 +134,7 @@ def main():
 
     if "--missing" in sys.argv:
         for k in missing:
-            print(f"    ({k}, \"\"),")
+            print(f"    ({lit_of[k]}, \"\"),")
         return
 
     ok = True

@@ -54,6 +54,16 @@ LOCALES = {
 }
 
 
+# 書式コードに書く地域番号は、**国つき**を使う。本家の表は "ja" のような
+# 中立の名前にも番号(0x11)を持つが、Excel が書くのは `[$-411]`(ja-JP)。
+# どの国を代表に置くかは**こちらの選択**なので、名指しで書いて材料と照合する
+CANON = {
+    "ja": "ja-JP", "de": "de-DE", "en": "en-US", "es": "es-ES", "fr": "fr-FR",
+    "id": "id-ID", "it": "it-IT", "ko": "ko-KR", "pt": "pt-PT", "ru": "ru-RU",
+    "tr": "tr-TR", "vi": "vi-VN", "zh": "zh-CN", "zh-tw": "zh-TW",
+}
+
+
 def strings(js_array: str) -> list[str]:
     """JS の文字列の並びを読む。`\\"` などの逃げも通す"""
     out = []
@@ -138,7 +148,16 @@ def lcid_rows() -> list[tuple[int, str]]:
 def build() -> str:
     cs = cultures()
     rows = []
+    for k, v in CANON.items():
+        if k not in LOCALES:
+            sys.exit(f"::error::CANON の {k} が LOCALES にありません")
+    lcid_of = {}
+    src_all = SRC.read_text(encoding="utf-8")
+    for m in re.finditer(r'^\t(\d+): \{LCID: \d+, Name: "([^"]+)"', src_all, re.M):
+        lcid_of[m.group(2)] = int(m.group(1))
     for ours, theirs in LOCALES.items():
+        if CANON[ours] not in lcid_of:
+            sys.exit(f"::error::本家に {CANON[ours]} がありません({ours} の地域番号)")
         if theirs not in cs:
             sys.exit(f"::error::本家に {theirs} がありません({ours} の材料)")
         b = cs[theirs]
@@ -148,6 +167,16 @@ def build() -> str:
         day_a = strings(field(b, "AbbreviatedDayNames"))[:7]
         gen = strings(field(b, "MonthGenitiveNames"))[:12]
         long_p = unescape_code(strings(field(b, "LongDatePattern"))[0])
+        # 短い日付。**本家は数の札で持つ**(`135` = dd.m.yyyy のような形)。
+        # 札の意味は本家の getShortDateFormat と同じ:
+        #   0=d 1=dd 2=m 3=mm 4=yy 5=yyyy、区切りは DateSeparator
+        # 並び(年月日の順と区切り)は読む人の言語の作法なので表に持つ
+        raw = strings(field(b, "ShortDatePattern"))[0]
+        if not raw.isdigit():
+            sys.exit(f"::error::{ours}: ShortDatePattern が数の札でない: {raw!r}")
+        tok = {"0": "d", "1": "dd", "2": "m", "3": "mm", "4": "yy", "5": "yyyy"}
+        sep = strings(field(b, "DateSeparator"))[0]
+        short_p = sep.join(tok[c] for c in raw)
         # 通貨記号の**置き場所**。.NET の CurrencyPositivePattern:
         #   0 = 記号n / 1 = n記号 / 2 = 記号␣n / 3 = n␣記号
         # **記号そのものは載せない**(お金は帳票のもの)。置き場所だけが
@@ -174,7 +203,9 @@ def build() -> str:
             f"        days: [{', '.join(rs(x) for x in day)}],\n"
             f"        days_abbr: [{', '.join(rs(x) for x in day_a)}],\n"
             f"        long_date: {rs(long_p)},\n"
+            f"        short_date: {rs(short_p)},\n"
             f"        currency_pattern: {cpp},\n"
+            f"        lcid: 0x{lcid_of[CANON[ours]]:x},\n"
             f"    }},"
         )
     body = "\n".join(rows)
@@ -206,6 +237,12 @@ pub struct Names {{
     /// 発注者の「各国で一つに決めて置いたほうがいい」に当たる物で、
     /// **本家が決めた既定をそのまま使う** — こちらで13本を考え直さない
     pub long_date: &'static str,
+    /// その言語の「短い日付」の既定(Excel の書式コード)
+    pub short_date: &'static str,
+    /// この言語を指す地域番号。**書式コードに `[$-407]` として入れる** —
+    /// こちらが日付の書式を掛けるとき、何語で書いたかをファイルに残すため。
+    /// 残さないと、開いた人の環境しだいで別の月名が出る
+    pub lcid: u32,
     /// 通貨記号の**置き場所**だけ(0=記号n / 1=n記号 / 2=記号␣n / 3=n␣記号)。
     /// **記号そのものは持たない** — お金は読む人の言語ではなく帳票のもの
     /// (docs/sekkei/calc.ja.md)。並びだけが言語の作法

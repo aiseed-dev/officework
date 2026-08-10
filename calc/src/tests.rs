@@ -4435,3 +4435,46 @@ mod currency_tests {
         assert_eq!(f(&currency_code("", 0, 0)), "1,234");
     }
 }
+
+#[cfg(test)]
+mod datefmt_tests {
+    use crate::util::date_formats;
+
+    /// **見出しは、その書式で描いた結果そのもの。**
+    /// 「長い日付 (2026年8月6日)」のように例を焼き付けると、独語の人に
+    /// 日本語の日付を約束することになる — 描いた物を出せば嘘のつきようがない
+    #[test]
+    fn 見出しが描いた結果と一致する() {
+        for (_, label, code) in date_formats() {
+            let drawn = sheet::model::format_value(
+                &sheet::Value::Number(46240.0),
+                Some(&code),
+            );
+            assert!(
+                label.ends_with(&drawn),
+                "見出しが結果と違う: {label} / 描くと {drawn}(コード {code})"
+            );
+        }
+    }
+
+    /// **日付の書式には地域を書き込む。** 残さないと、開いた人の環境しだいで
+    /// 別の月名が出る。時刻だけは言語に関わらないので付けない
+    #[test]
+    fn 日付には地域が入り時刻には入らない() {
+        let f = date_formats();
+        let by = |k: &str| f.iter().find(|(key, _, _)| *key == k).unwrap().2.clone();
+        for k in ["短い日付", "長い日付", "年と月", "曜日だけ"] {
+            assert!(by(k).starts_with("[$-"), "{k} に地域が無い: {}", by(k));
+        }
+        assert_eq!(by("時刻"), "h:mm:ss", "時刻に地域は要らない");
+    }
+
+    /// 日本語で動かしているので、既定は日本語の並びで出る
+    #[test]
+    fn 日本語では日本語の日付が出る() {
+        let f = date_formats();
+        let label = |k: &str| f.iter().find(|(key, _, _)| *key == k).unwrap().1.clone();
+        assert!(label("長い日付").ends_with("2026年8月6日"), "{}", label("長い日付"));
+        assert!(label("曜日だけ").ends_with("木曜日"), "{}", label("曜日だけ"));
+    }
+}
