@@ -15,5 +15,9 @@ sheet = { path = "../sheet" }
 # こちらに直す権利がない。手書きの parser は静かに間違える場所そのもの。
 # 核(sheet)には入れない — ここは末端の実行ファイルだけの依存
 serde_json = "1"
-# 原本の部品の数を数えるだけ(向こうの entryCount)
-zip = { version = "2", default-features = false }
+# 原本の部品の数を数え、配管(取り出し・差し替え・書き出し)を回す
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# 図形と画像は**モデルを通さず原本の drawing から読む** — 契約が欲しいのは
+# 原本どおりのアンカーと `drawingPath`/`drawingIndex`(保存側の位置指定)で、
+# officework のモデルはそれを持たない。sheet と同じ版に揃える
+quick-xml = "0.36"
