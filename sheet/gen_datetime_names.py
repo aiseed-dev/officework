@@ -108,6 +108,33 @@ def cultures() -> dict[str, str]:
     return out
 
 
+def lcid_rows() -> list[tuple[int, str]]:
+    """LCID → うちの言語。**書式コードの `[$-407]` を引くのに要る。**
+
+    本家の表は LCID を鍵に 152 ロケール持っている。それぞれの `Name`
+    (`de-AT` など)を枝で落として、うちの14言語に当たるものだけを拾う。
+    **暗記で書かない** — pt は 416=ブラジル / 816=欧州 で、覚えていると
+    必ず踏み外す(2026-08-10、実際に食い違った)。
+
+    中国語だけは枝で落とせない。繁体(台湾・香港・マカオ)は `zh-tw` の
+    表へ、簡体は `zh` へ送る
+    """
+    src = SRC.read_text(encoding="utf-8")
+    ours = set(LOCALES)
+    out = []
+    for m in re.finditer(r'^\t\d+: \{LCID: (\d+), Name: "([^"]+)"', src, re.M):
+        lcid, name = int(m.group(1)), m.group(2)
+        if name.startswith("zh"):
+            lang = "zh-tw" if name in ("zh-TW", "zh-HK", "zh-MO", "zh-Hant") else "zh"
+        else:
+            lang = name.split("-")[0]
+        if lang in ours:
+            out.append((lcid, lang))
+    if len(out) < 20:
+        sys.exit(f"::error::LCID の対応が取れていません({len(out)} 件)")
+    return sorted(out)
+
+
 def build() -> str:
     cs = cultures()
     rows = []
@@ -151,6 +178,7 @@ def build() -> str:
             f"    }},"
         )
     body = "\n".join(rows)
+    lcids = "\n".join(f'    (0x{k:x}, "{v}"),' for k, v in lcid_rows())
     return f'''//! 月名・曜日名と、言語ごとの「長い日付」の既定。
 //!
 //! **このファイルは sheet/gen_datetime_names.py が生成する。手で書かない。**
@@ -187,6 +215,21 @@ pub struct Names {{
 pub const TABLE: &[Names] = &[
 {body}
 ];
+
+/// LCID → うちの言語。書式コードの `[$-407]`(独)`[$-409]`(米)から引く。
+/// **本家の表から起こしてある** — 暗記だと pt の 416/816 を踏み外す
+pub const LCID_LANG: &[(u32, &str)] = &[
+{lcids}
+];
+
+/// 書式コードの地域指定から言語を引く。**知らない番号は None** —
+/// 勝手に近い言語へ寄せない(寄せた先が違えば、静かに別の月名が出る)
+pub fn lang_of_lcid(lcid: u32) -> Option<&'static str> {{
+    LCID_LANG
+        .binary_search_by_key(&lcid, |(k, _)| *k)
+        .ok()
+        .map(|i| LCID_LANG[i].1)
+}}
 
 /// その言語の暦の語。**知らない言語は日本語に落ちる** — 素の言語だから。
 /// 黙って英語にすると、日本語で使っている人に英語が出る事故になる

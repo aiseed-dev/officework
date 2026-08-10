@@ -2121,10 +2121,11 @@ mod rowcol_tests {
 /// 地域の番号は取り出すが**まだ使っていない** — 月名を言語で出すには
 /// 描き手に月名の表を繋ぐ必要がある(`datetime_names` に材料はある)。
 /// 取り出しておくのは、繋ぐときにここを触らずに済むようにするため。
-fn take_brackets(code: &str) -> (String, String, Option<char>) {
+fn take_brackets(code: &str) -> (String, String, Option<char>, Option<u32>) {
     let mut out = String::new();
     let mut sym = String::new();
     let mut elapsed = None;
+    let mut lcid = None;
     let mut it = code.chars().peekable();
     let mut quoted = false;
     while let Some(c) = it.next() {
@@ -2146,8 +2147,14 @@ fn take_brackets(code: &str) -> (String, String, Option<char>) {
         }
         let low = inner.to_ascii_lowercase();
         if let Some(rest) = inner.strip_prefix('$') {
-            // [$記号-地域] / [$-地域]。記号は字として出す
-            sym.push_str(rest.split('-').next().unwrap_or(""));
+            // [$記号-地域] / [$-地域]。記号は字として出し、地域は覚える
+            let mut parts = rest.splitn(2, '-');
+            sym.push_str(parts.next().unwrap_or(""));
+            // 地域は16進。`[$-411]` のほか `[$-F800]` のような形もあるが、
+            // 読めないものは黙って無視する(言語が分からないだけ)
+            if let Some(hex) = parts.next() {
+                lcid = u32::from_str_radix(hex.trim_start_matches("0x"), 16).ok();
+            }
         } else if low.chars().all(|c| c == 'h' || c == 'm' || c == 's') && !low.is_empty() {
             // 経過時間。札は1字で覚える(hh も h と同じ意味)
             elapsed = low.chars().next();
@@ -2155,14 +2162,14 @@ fn take_brackets(code: &str) -> (String, String, Option<char>) {
         }
         // 色([Red]・[赤]・[Color3])と条件([>100])は字を作らない — 落とす
     }
-    (out, sym, elapsed)
+    (out, sym, elapsed, lcid)
 }
 
 pub fn format_value(v: &Value, code: Option<&str>) -> String {
     let Value::Number(n) = v else { return v.display() };
     let Some(code) = code else { return v.display() };
     // 角かっこを先に読み分ける。**残すと画面にそのまま出る**
-    let (stripped, bracket_sym, elapsed) = take_brackets(code);
+    let (stripped, bracket_sym, elapsed, lcid) = take_brackets(code);
     let code: &str = &stripped;
 
     // テキスト形式(@)は素のまま(新しく打つ分を文字として扱うのは Excel の話。
@@ -2187,7 +2194,7 @@ pub fn format_value(v: &Value, code: Option<&str>) -> String {
     }
 
     // 日付・時刻の書式なら、通し番号を暦に直して描く
-    if let Some(s) = format_date(*n, code, elapsed) {
+    if let Some(s) = format_date(*n, code, elapsed, lcid) {
         return s;
     }
 
@@ -2274,7 +2281,7 @@ fn affix(s: &str) -> String {
 /// (`mmmm` → `08`)で、`aaa`/`aaaa` は `YOBI` と「曜日」を日本語で返す。
 /// 13言語ぶんの月名・曜日名は vendor/sdkjs/common/NumFormat.js の
 /// cultureInfo にある(sekkei/calc.ja.md「書式の一覧」参照)
-fn format_date(n: f64, code: &str, elapsed: Option<char>) -> Option<String> {
+fn format_date(n: f64, code: &str, elapsed: Option<char>, lcid: Option<u32>) -> Option<String> {
     // **最初の節だけを使う。** 書式は `正;負;ゼロ;文字` の4節に分かれ、
     // 日付の書式はたいてい `[$-409]mmmm yyyy;@` のように末尾に文字用の
     // 節を持つ。切らないと `;@` がそのまま画面に出る
@@ -2308,6 +2315,9 @@ fn format_date(n: f64, code: &str, elapsed: Option<char>) -> Option<String> {
         || bare.contains('a') // 曜日(aaa)
         || bare.contains('e') // 和暦の年
         || bare.contains('g') // 元号
+        // **月名は単独でも日付。** `mmmm` だけの書式は「8月」を出す
+        // (`m` 1つは分とも取れるので、3つ以上並んだときだけ)
+        || bare.contains("mmm")
         || (bare.contains('m') && bare.contains('s'));
     // 経過時間の札([mm] だけ、など)も時刻の書式
     if (!datey && elapsed.is_none()) || n < 0.0 {
@@ -2319,7 +2329,6 @@ fn format_date(n: f64, code: &str, elapsed: Option<char>) -> Option<String> {
     let total = ((n - days as f64) * 86400.0).round() as i64;
     let (hh, mi, ss) = (total / 3600 % 24, total / 60 % 60, total % 60);
     let wd = crate::calc::weekday0(days) as usize; // 0=日曜
-    const YOBI: [&str; 7] = ["日", "月", "火", "水", "木", "金", "土"];
 
     // 字句: 引用は文字どおり、同じ字の連なりは1つの札
     #[derive(PartialEq)]
@@ -2364,6 +2373,21 @@ fn format_date(n: f64, code: &str, elapsed: Option<char>) -> Option<String> {
         }
     }
 
+    // **月名・曜日名は書式コードが運ぶ地域で決まる。** 読む人の言語では
+    // ない — その書式が何語で書かれたかの話で、`[$-407]` の入ったセルは
+    // 日本語で開いても独語の月名で出る(「その帳票が独語で作られた」が
+    // 残るだけ。docs/sekkei/calc.ja.md)。
+    //
+    // 指定が無ければ日本語。実物26枚では月名・曜日名を使う書式は
+    // **2件とも地域指定を持っていた**(2026-08-10 に数えた)ので、
+    // 指定なしは実質「こちらで作った書式」であり、素の言語でよい
+    let names = crate::datetime_names::names(
+        lcid.and_then(crate::datetime_names::lang_of_lcid).unwrap_or("ja"),
+    );
+    // **属格を使うか。** 露語などは「8月」と「8月の」で形が違い、
+    // 日付の中(日と並ぶとき)は属格になる。`d` の札があれば属格
+    let genitive = bare.contains('d');
+
     // 経過時間の総量(札の単位で数える)。24 時をまたいでも巻き戻さない
     let total = match elapsed {
         Some('h') => (n * 24.0).floor() as i64,
@@ -2386,7 +2410,11 @@ fn format_date(n: f64, code: &str, elapsed: Option<char>) -> Option<String> {
                     } else {
                         format!("{:02}", y.rem_euclid(100))
                     }),
-                    'd' => out.push_str(&pad(d, *len)),
+                    'd' => match *len {
+                        3 => out.push_str(names.days_abbr[wd]),
+                        n if n >= 4 => out.push_str(names.days[wd]),
+                        _ => out.push_str(&pad(d, *len)),
+                    },
                     // **経過時間は巻き戻さない。** [h]:mm は 25:30 のように
                     // 24 時を超えて数える(勤怠表の合計がこれ)。札が立って
                     // いる字だけが通し、それ以外は普段どおりの時分秒
@@ -2404,14 +2432,31 @@ fn format_date(n: f64, code: &str, elapsed: Option<char>) -> Option<String> {
                                 _ => None,
                             })
                             .unwrap_or(false);
-                        out.push_str(&pad(if prev_hour || next_s { mi } else { mo }, *len));
+                        if prev_hour || next_s {
+                            out.push_str(&pad(mi, *len));
+                        } else {
+                            let k = (mo as usize).saturating_sub(1).min(11);
+                            match *len {
+                                3 => out.push_str(names.months_abbr[k]),
+                                4 => out.push_str(match names.months_genitive {
+                                    Some(g) if genitive => g[k],
+                                    _ => names.months[k],
+                                }),
+                                // mmmmm は頭文字1つ(J F M …)
+                                n if n >= 5 => {
+                                    let full = names.months[k];
+                                    out.push(full.chars().next().unwrap_or('?'));
+                                }
+                                _ => out.push_str(&pad(mo, *len)),
+                            }
+                        }
                     }
                     'a' => {
                         // aaa=短い曜日、aaaa=「〜曜日」
-                        out.push_str(YOBI[wd]);
-                        if *len >= 4 {
-                            out.push_str("曜日");
-                        }
+                        // aaa=短い曜日、aaaa=完全な曜日。**表から引く** —
+                        // 前は YOBI と「曜日」を日本語で焼き付けていて、
+                        // どの言語で開いても「木曜日」が出ていた
+                        out.push_str(if *len >= 4 { names.days[wd] } else { names.days_abbr[wd] });
                     }
                     // 和暦: g=R gg=令 ggg=令和 / e=年(ee=0詰め)。明治より前は西暦
                     'g' => if let Some((era, initial, _)) = crate::calc::era_of(days) { out.push_str(match *len {
@@ -3845,5 +3890,72 @@ mod bracket_tests {
         assert_eq!(f(0.5, "h:mm"), "12:00");
         assert_eq!(f(46240.0, "ggge\"年\"m\"月\"d\"日\""), "令和8年8月6日");
         assert_eq!(f(0.1234, "0.00%"), "12.34%");
+    }
+}
+
+#[cfg(test)]
+mod month_name_tests {
+    use super::*;
+
+    /// 2026-08-06(木)
+    fn f(code: &str) -> String {
+        format_value(&Value::Number(46240.0), Some(code))
+    }
+
+    /// **月名・曜日名は書式コードの地域で決まる。** 読む人の言語ではない —
+    /// `[$-407]` の入ったセルは日本語で開いても独語で出る
+    /// (「その帳票が独語で作られた」が残るだけ)
+    #[test]
+    fn 地域指定から月名と曜日名を引く() {
+        assert_eq!(f("[$-409]mmmm d, yyyy"), "August 6, 2026");
+        assert_eq!(f("[$-407]dddd, d. mmmm yyyy"), "Donnerstag, 6. August 2026");
+        assert_eq!(f("[$-40c]dddd d mmmm yyyy"), "jeudi 6 août 2026");
+        assert_eq!(f("[$-412]yyyy\"년\" m\"월\" d\"일\" dddd"), "2026년 8월 6일 목요일");
+    }
+
+    /// **属格を落とさない。** 露語は「8月」と「8月の」で形が違い、
+    /// 日と並ぶときは属格。Август ではなく августа
+    #[test]
+    fn 露語は属格になる() {
+        assert_eq!(f("[$-419]d mmmm yyyy \"г.\""), "6 августа 2026 г.");
+        // 日が無ければ主格
+        assert_eq!(f("[$-419]mmmm"), "Август");
+    }
+
+    /// 短縮と頭文字。mmm=短縮 / mmmm=完全 / mmmmm=頭文字1つ
+    #[test]
+    fn 月名の長さを使い分ける() {
+        assert_eq!(f("[$-409]mmm d"), "Aug 6");
+        assert_eq!(f("[$-409]mmmmm"), "A");
+        // **2つまでは数**(名前ではない)。`mm` 単独は月とも分とも取れる
+        // 曖昧な形なので日付と見なさない — ここは前からの割り切り
+        assert_eq!(f("[$-409]mm/d"), "08/6");
+    }
+
+    /// **地域指定が無ければ日本語。** 実物では月名を使う書式は必ず
+    /// 指定を持っていた(26枚で2件、いずれも指定つき)ので、
+    /// 指定なしは実質こちらで作った書式。素の言語でよい
+    #[test]
+    fn 地域指定が無ければ日本語() {
+        assert_eq!(f("aaaa"), "木曜日");
+        assert_eq!(f("aaa"), "木");
+        assert_eq!(f("mmmm"), "8月");
+        assert_eq!(f("yyyy\"年\"m\"月\"d\"日\""), "2026年8月6日");
+    }
+
+    /// 知らない地域は日本語に落ちる。**近い言語へ勝手に寄せない**
+    #[test]
+    fn 知らない地域は寄せない() {
+        assert_eq!(f("[$-4ff]mmmm"), "8月");
+    }
+
+    /// 月名を入れたことで**数と時刻が壊れていない**こと
+    #[test]
+    fn 数と時刻は変わらない() {
+        assert_eq!(f("yyyy/m/d"), "2026/8/6");
+        assert_eq!(f("ggge\"年\"m\"月\"d\"日\""), "令和8年8月6日");
+        assert_eq!(format_value(&Value::Number(0.5), Some("h:mm")), "12:00");
+        assert_eq!(format_value(&Value::Number(0.5), Some("h:mm:ss")), "12:00:00");
+        assert_eq!(format_value(&Value::Number(1234.5), Some("#,##0.0")), "1,234.5");
     }
 }
