@@ -112,6 +112,13 @@ For heavier analysis, use polars or statsmodels directly.
 $ pip install officework
 ```
 
+It embeds in other applications too. Since 2026-08-10 the engine can stand in
+for the xlsx helper inside [genoffice](https://github.com/genspark-ai/genoffice),
+an Electron spreadsheet, with no patch to genoffice at all — one environment
+variable. Reading and calculating come from officework; writing stays with
+genoffice's own implementation. See [the engine page](docs/engine.md) for the
+recipe and for exactly what is and is not replaced.
+
 Unlike openpyxl, values can be inserted while **borders, merged cells, column
 widths, and shapes stay intact**.
 

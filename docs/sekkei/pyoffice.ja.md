@@ -1,5 +1,13 @@
 # SEKKEI — pyoffice(genoffice に officework エンジンを載せる)
 
+> **名前は「pyoffice」で出しません**(2026-08-10 発注者確定)。外へ出すのは
+> **officework** と **officework エンジン**だけ。中身は officework が読み書き
+> しているもので**殻が違うだけ**なので、別製品の名前を作ると実態より大きく
+> 見えます。`pyoffice` はこの文書の中の**作業中の呼び名**として残します。
+>
+> 外向きの説明は [`docs/engine.md`](../engine.md)(正本)と
+> [`docs/engine.ja.md`](../engine.ja.md)。ここは判断の記録です。
+
 2026-08-09 発注者確定。**製品は2本・エンジンは1つ**(`office-two-shells` の線):
 
 | | officework | pyoffice |

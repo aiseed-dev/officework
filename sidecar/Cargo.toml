@@ -3,7 +3,7 @@ name = "sidecar"    # pyoffice: genoffice の xlsx サイドカーと同じ言�
 version = "0.0.1"
 edition.workspace = true
 license.workspace = true
-description = "genoffice の xlsx サイドカーと同じ JSON を、officework の sheet で答える"
+description = "officework エンジンを、genoffice の xlsx サイドカーの言葉で喋らせる"
 
 [[bin]]
 name = "xlsx-sidecar"   # **向こうと同じ名前。** XLSX_SIDECAR_PATH で差し替えられる

@@ -109,6 +109,12 @@ cargo run --release --bin office-spell -- --furigana 原稿.txt
 $ pip install officework
 ```
 
+**別のアプリの中にも入ります。** 2026-08-10 から、Electron の表計算
+[genoffice](https://github.com/genspark-ai/genoffice) の xlsx の助手を、
+このエンジンで置き換えられます — **genoffice には1行のパッチも要りません**。
+環境変数1つです。読みと計算が officework、**書きは genoffice のまま**。手順と
+「何を差し替えて、何を差し替えていないか」は[エンジンの説明](docs/engine.ja.md)へ。
+
 openpyxl と違い、罫線・結合・列幅・図形を保ったまま値を差し込めます。
 
 ```python
