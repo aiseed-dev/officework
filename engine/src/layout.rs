@@ -541,16 +541,18 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
         return;
     }
     // 印のある行を、出てくる順に拾う。番号の字は1桁ずつ別の Cell になるので、
-    // **同じ id が続くぶんは1つに畳む**(2桁の脚注を2つと数えない)
-    let mut anchors: Vec<(String, f32)> = Vec::new();
+    // **同じ印が続くぶんは1つに畳む**(2桁の脚注を2つと数えない)。
+    // 畳むときも id だけで見ない — 下と同じ理由で、脚注と文末脚注は
+    // 同じ id を持ちうる
+    let mut anchors: Vec<(FootnoteRef, f32)> = Vec::new();
     for line in &sheet.lines {
-        let mut last: Option<String> = None;
+        let mut last: Option<FootnoteRef> = None;
         for c in &line.cells {
             match &c.fmt.footnote {
                 Some(fr) => {
-                    if last.as_deref() != Some(fr.id.as_str()) {
-                        anchors.push((fr.id.clone(), line.y_mm));
-                        last = Some(fr.id.clone());
+                    if last.as_ref() != Some(fr) {
+                        anchors.push((fr.clone(), line.y_mm));
+                        last = Some(fr.clone());
                     }
                 }
                 None => last = None,
@@ -559,8 +561,13 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
     }
     // 脚注の行の高さ。本文より小さく組む(Word の作法に近い比)
     let note_lh = frame.line_height_mm * 0.82;
-    for (i, (id, at_y)) in anchors.iter().enumerate() {
-        let Some(note) = doc.footnotes.iter().find(|n| n.id == *id) else {
+    for (i, (fr, at_y)) in anchors.iter().enumerate() {
+        // **id だけで引いてはいけない。** docx は footnotes.xml と
+        // endnotes.xml を別々に番号付けするので、どちらも 1・2・3… から
+        // 始まり **id は必ず衝突する**。脚注か文末脚注かまで見て一意になる
+        let Some(note) = doc.footnotes.iter()
+            .find(|n| n.id == fr.id && n.endnote == fr.endnote)
+        else {
             // 印はあるのに中身が引けない。**作り話をせず、出さない**
             continue;
         };

@@ -1396,6 +1396,41 @@ mod footnote_layout_tests {
     fn 段(runs: Vec<Run>) -> Block {
         Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
     }
+    fn 尾印(id: &str) -> Run {
+        Run { text: String::new(), size_pt: 10.5, font: None,
+              fmt: CharFormat {
+                  footnote: Some(FootnoteRef { id: id.into(), endnote: true }),
+                  ..Default::default() } }
+    }
+    fn 注(id: &str, endnote: bool, t: &str) -> Footnote {
+        Footnote { id: id.into(), endnote,
+                   paragraphs: vec![Paragraph { runs: vec![字(t)], line_spacing: 1.0,
+                                                ..Default::default() }] }
+    }
+
+    /// **脚注と文末脚注は id が衝突する。** docx は `footnotes.xml` と
+    /// `endnotes.xml` を別々に番号付けするので、どちらも 1・2・3… から始まる。
+    /// id だけで引くと、印に別の注の文章が付く(2026-08-10 に踏んだ)
+    #[test]
+    fn 脚注と文末脚注のidが衝突しても取り違えない() {
+        let d = Document {
+            blocks: vec![段(vec![字("あ"), 印("2"), 字("い"), 尾印("2")])],
+            footnotes: vec![
+                注("2", false, "これは脚注"),
+                注("2", true, "これは文末脚注"),
+            ],
+            ..Default::default()
+        };
+        let s = 組む(&d);
+        assert_eq!(s.notes.len(), 2, "注が2つ組まれていない");
+        let 文 = |n: &NoteBlock| -> String {
+            n.lines.iter().flat_map(|l| l.cells.iter()).map(|c| c.ch).collect()
+        };
+        assert!(文(&s.notes[0]).contains("これは脚注"),
+            "脚注の印に別の注が付いた: {:?}", 文(&s.notes[0]));
+        assert!(文(&s.notes[1]).contains("これは文末脚注"),
+            "文末脚注の印に別の注が付いた: {:?}", 文(&s.notes[1]));
+    }
 
     /// **番号は出てくる順**。docx の id は書き手ごとにばらばら
     /// (LibreOffice は 2・3・4、pandoc は 20・21・22)なので、
