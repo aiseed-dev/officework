@@ -27,7 +27,7 @@ They are **separate apps**, not one giant suite.
 | Track changes | ○ (saved as real Word tracked changes) | — |
 | Bookmarks, watermark, page color, columns | ○ | — |
 | Drawing (pen, highlighter, eraser) | ○ (becomes shapes in docx) | — |
-| Formulas | — | arithmetic and functions (about 185, incl. dynamic arrays), recalculation, circular-reference detection, **=PY** (write your own functions in Python) |
+| Formulas | equations survive a round trip byte for byte (they are carried, not edited) | arithmetic and functions (about 185, incl. dynamic arrays and legacy CSE arrays), recalculation, circular-reference detection, **=PY** (write your own functions in Python) |
 | Sheets | — | multiple sheets, freeze panes, filter, slicer, sort, grouping and subtotals |
 | Pivot tables | — | ○ (backed by polars; the definition is stored in the workbook so it can refresh) |
 | Solver / goal seek | — | ○ (simplex LP, backed by scipy) |
@@ -36,7 +36,7 @@ They are **separate apps**, not one giant suite.
 | Conditional formatting, data validation | — | ○ (round-trips through xlsx) |
 | Links, defined names, paste special | — | ○ |
 | Portable Python (instead of macros) | macros run .py in a sandbox (`d` = python-docx document); code is never stored in the document | ○ (`@save` embeds code in the workbook; it always runs in a sandbox) |
-| Print settings | paper, orientation, margins, columns | paper (incl. JIS B), orientation, margins, print area |
+| Print settings | paper, orientation, margins, columns — **and a document whose paper changes partway** (portrait and landscape sections in one file, on screen and in the PDF) | paper (incl. JIS B), orientation, margins, print area |
 | PDF | ○ (headers/footers, watermark, ink and all) | ○ (borders, fills, follows print settings) |
 | Find and replace | ○ | ○ |
 | Cross-references to bookmarks | ○ (Word REF/PAGEREF fields) | — |
@@ -183,9 +183,19 @@ OFFICE_LANG=en ./target/release/writer      # temporary override
 #   language = "en"
 ```
 
-**The whole UI switches** — ribbon, status-bar messages, and dialogs
-(585 phrases per language, all translated; a language with missing phrases is
-never registered). There is also a settings page: File > Advanced settings
+**The whole UI switches** — ribbon, status-bar messages, and dialogs. Over 1,200
+phrases are translated in all 13 languages, and a language with missing phrases
+is never registered.
+
+The exact number is deliberately not written here: it only grows, so writing it
+down means writing something that goes stale. The guarantee lives in
+`cargo test` instead (`lang/tests/i18n_soroi.rs`), which checks on every run
+that English has no untranslated phrase, that no dead translations remain, and
+that all 13 tables carry the same keys. It used to be a script someone had to
+remember to run, so nobody ran it and 173 phrases went missing — **a script you
+have to remember is not a check.**
+
+There is also a settings page: File > Advanced settings
 shows the current language, font, proofreading endpoint, and Python path, and
 cycles through the languages (applies on next start).
 
