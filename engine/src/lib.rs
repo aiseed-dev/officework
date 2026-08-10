@@ -259,17 +259,10 @@ pub struct Paragraph {
     /// 読めなかった要素(画像など)の原文。**理解はしないが、捨てない。**
     /// 保存でそのまま返す
     pub anchors: Vec<String>,
-    /// **この段落で終わる節**の設定(`w:pPr` の中の `w:sectPr`)の原文。
+    /// **この段落で終わる節**(`w:pPr` の中の `w:sectPr`)。
     /// 途中の節の区切りはここに載り、**最後の節は `Document::sect_raw`** が持つ
-    /// (docx はそう書き分ける)。anchors と同じ「理解はしないが捨てない」口で、
-    /// 保存で原文のまま返す
-    pub sect_raw: Option<String>,
-    /// 上と**同じ節の、組版のための顔**。`sect_raw` は保存で原文を返すための物、
-    /// こちらは行長と紙の高さを決めるための物で、`anchors` と `images` が
-    /// 同じ関係にある(**持ち場が違うので混ぜない**)。
-    /// **engine は docx を解析しない** — 生の XML ではなく、読み手が解いた
-    /// [`PageSetup`] を受け取る
-    pub sect: Option<PageSetup>,
+    /// (docx はそう書き分ける)
+    pub sect: Option<SectionBreak>,
     /// 表示できる画像(anchors のうち、絵の実体と大きさが分かったもの)。
     /// 保存には使わない — 保存は anchors の原文が担う
     pub images: Vec<InlineImage>,
@@ -367,7 +360,7 @@ pub enum Block {
 }
 
 /// 用紙の設定(mm)。docx の `w:pgSz` / `w:pgMar` / `w:cols`。
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PageSetup {
     pub w_mm: f32,
     pub h_mm: f32,
@@ -385,6 +378,24 @@ impl Default for PageSetup {
         PageSetup { w_mm: 210.0, h_mm: 297.0, left_mm: 20.0, right_mm: 20.0,
                     top_mm: 20.0, bottom_mm: 20.0, columns: 1 }
     }
+}
+
+/// 節の切れ目。**この段落でひとつの節が終わる**という印。
+///
+/// 3つを**まとめて1つにしてある**。別々の欄にすると、片方だけ更新して
+/// 食い違う形の事故が必ず出る(必ず一緒に動く物なので)。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct SectionBreak {
+    /// 保存でそのまま返す原文。**理解はしないが捨てない**の口
+    /// (`anchors` と同じ持ち場)
+    pub raw: String,
+    /// 組版のための顔 — 行長と紙の高さを決める。
+    /// **engine は docx を解析しない**ので、読み手が解いた形で受け取る
+    pub page: PageSetup,
+    /// `w:type="continuous"` — **改ページしない**節。
+    /// 段組みを変えるためだけの節が実物には多く、そこで頁を割ると
+    /// 見た目が大きく変わる(2026-08-10、pyoffice の指摘)
+    pub continuous: bool,
 }
 
 /// 段の間(mm)。Word の既定(425twip ≒ 7.5mm)に合わせる
@@ -1459,8 +1470,8 @@ fn section_geometry(doc: &Document) -> Vec<PageSetup> {
     for (i, b) in doc.blocks.iter().enumerate().rev() {
         // 節末の段落は**その節に属する**ので、先に切り替えてから置く
         if let Block::Para(p) = b {
-            if let Some(s) = p.sect {
-                cur = s;
+            if let Some(sb) = &p.sect {
+                cur = sb.page;
             }
         }
         geo[i] = cur;
@@ -1670,10 +1681,19 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 para_byte0 += plen + 1;
                 // 節の切れ目。**この段落で節が終わる**ので、次の段落は新しい紙から。
                 // 折る側は breaks を見て頁を割り、sect_pages で用紙を引き直す
-                if para.sect.is_some() {
-                    if let Some(next) = sect_geo.get(bi + 1) {
-                        sheet.breaks.push(y);
-                        sheet.sect_pages.push((y, *next));
+                if let Some(sb) = &para.sect {
+                    if let Some(next) = sect_geo.get(bi + 1).copied() {
+                        let here = sect_geo[bi];
+                        // **紙の大きさが同じなら、continuous は頁を割らない。**
+                        // 段組みを変えるためだけの節がそれで、割ると見た目が変わる。
+                        // 大きさが違えば割るしかない — 1枚の紙は1つの大きさしか
+                        // 取れないので、continuous でも従えない
+                        let same = (here.w_mm - next.w_mm).abs() < 0.01
+                            && (here.h_mm - next.h_mm).abs() < 0.01;
+                        if !(sb.continuous && same) {
+                            sheet.breaks.push(y);
+                            sheet.sect_pages.push((y, next));
+                        }
                     }
                 }
             }
@@ -3346,11 +3366,16 @@ mod section_layout_tests {
     }
 
     fn 段(text: &str, sect: Option<PageSetup>) -> Block {
+        段c(text, sect, false)
+    }
+
+    /// 節の種類まで指定する版(continuous = 改ページしない)
+    fn 段c(text: &str, sect: Option<PageSetup>, continuous: bool) -> Block {
         Block::Para(Paragraph {
             runs: vec![Run { text: text.into(), size_pt: 10.5, font: None,
                              fmt: Default::default() }],
             line_spacing: 1.0,
-            sect,
+            sect: sect.map(|page| SectionBreak { raw: String::new(), page, continuous }),
             ..Default::default()
         })
     }
@@ -3391,6 +3416,61 @@ mod section_layout_tests {
         assert!(geo[2].column_measure_mm() > geo[0].column_measure_mm() + 50.0,
             "横の節で行長が広がっていない: {} / {}",
             geo[2].column_measure_mm(), geo[0].column_measure_mm());
+    }
+
+
+    #[test]
+    fn continuous_の節では頁を割らない() {
+        // 段組みを変えるためだけの節が実物には多い。そこで改ページすると
+        // **見た目が大きく変わる**(2026-08-10、pyoffice の指摘)
+        let 縦 = 紙(210.0, 297.0);
+        let d = Document {
+            page: Some(縦),
+            blocks: vec![
+                段c("一段の所", Some(縦), true),   // continuous: 紙は同じ
+                段("二段の所", None),
+            ],
+            ..Default::default()
+        };
+        let s = layout_for_test(&d);
+        assert!(s.breaks.is_empty(), "continuous で頁を割った: {:?}", s.breaks);
+        // 紙が変わらないので、節ごとの紙も増えない(先頭の1つだけ)
+        assert_eq!(s.sect_pages.len(), 1, "紙が変わらないのに増えた: {:?}", s.sect_pages);
+    }
+
+    #[test]
+    fn continuous_でも紙の大きさが違えば割る() {
+        // 1枚の紙は1つの大きさしか取れない。continuous でも従えない所
+        let d = Document {
+            page: Some(紙(297.0, 210.0)),                 // 横
+            blocks: vec![
+                段c("縦の所", Some(紙(210.0, 297.0)), true), // continuous だが縦→横
+                段("横の所", None),
+            ],
+            ..Default::default()
+        };
+        let s = layout_for_test(&d);
+        assert_eq!(s.breaks.len(), 1, "紙が変わるのに割らなかった: {:?}", s.breaks);
+        assert_eq!(s.sect_pages.len(), 2, "紙の切り替えが無い: {:?}", s.sect_pages);
+    }
+
+    #[test]
+    fn nextpage_の節は今までどおり割る() {
+        let 縦 = 紙(210.0, 297.0);
+        let d = Document {
+            page: Some(縦),
+            blocks: vec![段c("前", Some(縦), false), 段("後", None)],
+            ..Default::default()
+        };
+        assert_eq!(layout_for_test(&d).breaks.len(), 1, "nextPage で割らなかった");
+    }
+
+    /// 試験用に組む(フォントは実体を使う)
+    fn layout_for_test(d: &Document) -> Sheet {
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
     }
 
     #[test]

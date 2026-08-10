@@ -434,7 +434,10 @@ mod tests {
         };
         let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
-            line_spacing: 1.0, sect, ..Default::default()
+            line_spacing: 1.0,
+            sect: sect.map(|page| kumihan::SectionBreak {
+                raw: String::new(), page, continuous: false }),
+            ..Default::default()
         });
         let d = Document {
             page: Some(紙(210.0, 297.0)),          // 最後の節 = 縦
@@ -490,7 +493,10 @@ mod tests {
         };
         let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
-            line_spacing: 1.0, sect, ..Default::default()
+            line_spacing: 1.0,
+            sect: sect.map(|page| kumihan::SectionBreak {
+                raw: String::new(), page, continuous: false }),
+            ..Default::default()
         });
         let d = Document {
             page: Some(紙(210.0, 297.0)),
@@ -535,7 +541,10 @@ mod tests {
         };
         let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
-            line_spacing: 1.0, sect, ..Default::default()
+            line_spacing: 1.0,
+            sect: sect.map(|page| kumihan::SectionBreak {
+                raw: String::new(), page, continuous: false }),
+            ..Default::default()
         });
         let d = Document {
             page: Some(紙(297.0, 210.0)),                  // 最後の節 = 横

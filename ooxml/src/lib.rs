@@ -449,6 +449,19 @@ fn parse_sect(raw: &str) -> kumihan::PageSetup {
     }
 }
 
+/// 節の種類(`<w:type w:val="continuous"/>`)。無ければ docx の既定 `nextPage`。
+fn sect_type(raw: &str) -> String {
+    let Some(i) = raw.find("<w:type") else { return "nextPage".into() };
+    let head = &raw[i..(i + 120).min(raw.len())];
+    let k = "w:val=\"";
+    let Some(s0) = head.find(k) else { return "nextPage".into() };
+    let s0 = s0 + k.len();
+    match head[s0..].find('"') {
+        Some(e) => head[s0..s0 + e].to_string(),
+        None => "nextPage".into(),
+    }
+}
+
 /// sectPr の中から、全ページ同じヘッダー(フッター)の参照 r:id を引く。
 /// `<w:headerReference w:type="default" r:id="rId8"/>`。type 無しは default 扱い。
 fn hf_ref(sect: &str, tag: &str) -> Option<String> {
@@ -936,10 +949,8 @@ fn parse_document_full(
     let mut pending_cap: Option<Vec<Run>> = None;
     // 読めなかった要素の原文(画像など)。段落ごとに集めて持ち越す
     let mut anchors: Vec<String> = Vec::new();
-    // この段落で終わる節の原文(w:pPr の中の w:sectPr)。段落を閉じるとき渡す
-    let mut para_sect: Option<String> = None;
-    // 同じ節の、組版のための顔(解析済み)
-    let mut para_sect_pg: Option<kumihan::PageSetup> = None;
+    // この段落で終わる節(w:pPr の中の w:sectPr)。段落を閉じるとき渡す
+    let mut para_sect: Option<kumihan::SectionBreak> = None;
     // 表示できる画像(r:embed と wp:extent が読めたもの)
     let mut images: Vec<kumihan::InlineImage> = Vec::new();
     // 原本の root が宣言している名前空間。持ち越す原文の接頭辞をこれで包む
@@ -1142,10 +1153,12 @@ fn parse_document_full(
                                 // (以前はここで doc.sect_raw を上書きしていて、
                                 // 区切りごと保存で消えていた)。
                                 // 用紙は最後の節のもので組むので、そこは言う
-                                para_sect = Some(raw.to_string());
-                                // 組版のための顔も同時に作る(engine は
-                                // docx を解析しないので、解いた形で渡す)
-                                para_sect_pg = Some(parse_sect(raw));
+                                // 原文・組版の顔・改ページするかを**一緒に**持つ
+                                para_sect = Some(kumihan::SectionBreak {
+                                    raw: raw.to_string(),
+                                    page: parse_sect(raw),
+                                    continuous: sect_type(raw) == "continuous",
+                                });
                                 rep.note("節の区切り(用紙ごと組み直す。保存でも残る)");
                             } else {
                                 // 最後の節。用紙・ヘッダーの参照はここから読む
@@ -1558,8 +1571,7 @@ fn parse_document_full(
                             rep.runs += runs.len();
                             rep.paragraphs += 1;
                             let mut p = Paragraph { align, anchors: std::mem::take(&mut anchors),
-                                sect_raw: para_sect.take(),
-                                sect: para_sect_pg.take(),
+                                sect: para_sect.take(),
                                 images: std::mem::take(&mut images),
                                 comments: std::mem::take(&mut para_comments),
                                 bookmarks: std::mem::take(&mut para_bookmarks),
@@ -1711,7 +1723,7 @@ fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             || p.boxed
             // 節の区切りだけを持つ段落もある(区切り用の空段落)。
             // ここを足し忘れると pPr ごと書かれず、**区切りが黙って消える**
-            || p.sect_raw.is_some()
+            || p.sect.is_some()
             || p.style != ParaStyle::Body;
         if has_ppr {
             w.write_event(Event::Start(BS::new("w:pPr"))).unwrap();
@@ -1795,8 +1807,8 @@ fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             // 節の区切りを原文のまま返す。**pPr の一番後ろ**に置く —
             // スキーマ(CT_PPr)で sectPr は rPr の次、pPrChange の前と
             // 決まっていて、順を守らないと Word が開けない
-            if let Some(s) = &p.sect_raw {
-                let _ = w.get_mut().write_all(s.as_bytes());
+            if let Some(sb) = &p.sect {
+                let _ = w.get_mut().write_all(sb.raw.as_bytes());
             }
             w.write_event(Event::End(BytesEnd::new("w:pPr"))).unwrap();
         }
@@ -2604,7 +2616,7 @@ mod tests {
     use kumihan::{Block, Cellbox, Document, Paragraph, Run, Table};
 
     fn para(s: &str) -> Paragraph {
-        Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None, sect: None,
+        Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: 10.5, font: None, fmt: Default::default() }] }
     }
@@ -2639,7 +2651,7 @@ mod tests {
 
     #[test]
     fn 文字サイズが保たれる() {
-        let d = Document { font: None, page: None, sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None, sect: None,
+        let d = Document { font: None, page: None, sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "大見出し".into(), size_pt: 16.0, font: None, fmt: Default::default() },
@@ -2672,7 +2684,7 @@ mod tests {
 
     #[test]
     fn 段落内の改行が保たれる() {
-        let d = Document { font: None, page: None, sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None, sect: None,
+        let d = Document { font: None, page: None, sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "一行目\n二行目".into(), size_pt: 10.5, font: None, fmt: Default::default() }]})]};
@@ -2825,7 +2837,7 @@ mod font_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
+            blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
                 align: Default::default(),
                 anchors: Vec::new(),
                     images: Vec::new(),
@@ -2881,7 +2893,7 @@ mod fmt_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None, sect: None,
+            blocks: vec![Block::Para(Paragraph { align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("見出し", f.clone())] })],
         };
@@ -2896,7 +2908,7 @@ mod fmt_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect_raw: None, sect: None,
+            blocks: vec![Block::Para(Paragraph { align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("赤", f.clone())] })],
         };
@@ -2910,7 +2922,7 @@ mod fmt_tests {
                 font: None,
                 page: None,
                 sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-                blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
+                blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
                     align: a,
                     anchors: Vec::new(),
                     images: Vec::new(),
@@ -2958,7 +2970,7 @@ mod para_tests {
     use kumihan::{Align, Block, Document, ListKind, Paragraph, Run};
 
     fn para(list: ListKind, indent: u8, spacing: f32) -> Paragraph {
-        Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
+        Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
             align: Align::Left,
             anchors: Vec::new(),
                     images: Vec::new(),
@@ -3364,7 +3376,7 @@ mod vertalign_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
+            blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
                 align: Align::Left,
                 runs: vec![Run { text: "x2".into(), size_pt: 10.5, font: None, fmt }],
                 ..Default::default()
@@ -3418,8 +3430,8 @@ mod sect_tests {
         // 模型が節を1つしか持てなかったので、保存で区切りごと失われた
         let (doc, rep) = parse_document_xml(&二節());
         let ps: Vec<_> = doc.paragraphs().collect();
-        assert!(ps[1].sect_raw.is_some(), "途中の節を段落が持っていない");
-        assert!(ps[0].sect_raw.is_none() && ps[2].sect_raw.is_none(),
+        assert!(ps[1].sect.is_some(), "途中の節を段落が持っていない");
+        assert!(ps[0].sect.is_none() && ps[2].sect.is_none(),
             "関係の無い段落に節が付いた");
         assert!(doc.sect_raw.as_deref().is_some_and(|s| s.contains("landscape")),
             "最後の節が読めていない: {:?}", doc.sect_raw);
@@ -3453,8 +3465,32 @@ mod sect_tests {
         let (doc2, _) = parse_document_xml(&once);
         let twice = write_document_xml(&doc2);
         assert_eq!(twice.matches("<w:sectPr").count(), 2, "二度目で節が増減した: {twice}");
-        assert_eq!(doc2.paragraphs().filter(|p| p.sect_raw.is_some()).count(), 1,
+        assert_eq!(doc2.paragraphs().filter(|p| p.sect.is_some()).count(), 1,
             "二度目で途中の節の数が変わった");
+    }
+
+
+    #[test]
+    fn 節の種類を読む() {
+        // `w:type` が無ければ docx の既定は nextPage(改ページする)
+        let xml = |ty: &str| format!(r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:pPr><w:sectPr>{ty}<w:pgSz w:w="11906" w:h="16838"/></w:sectPr></w:pPr><w:r><w:t>前</w:t></w:r></w:p>
+<w:p><w:r><w:t>後</w:t></w:r></w:p>
+<w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>
+</w:body></w:document>"#);
+        let 読む = |ty: &str| -> kumihan::SectionBreak {
+            let (d, _) = parse_document_xml(&xml(ty));
+            let p = d.paragraphs().next().unwrap();
+            p.sect.clone().unwrap()
+        };
+        assert!(読む(r#"<w:type w:val="continuous"/>"#).continuous,
+            "continuous を読めていない");
+        assert!(!読む(r#"<w:type w:val="nextPage"/>"#).continuous,
+            "nextPage を continuous と読んだ");
+        assert!(!読む("").continuous, "type 無しの既定が nextPage になっていない");
+        // 原文はどの種類でもそのまま持ち越す
+        assert!(読む(r#"<w:type w:val="continuous"/>"#).raw.contains("continuous"),
+            "原文から種類が落ちた");
     }
 
     #[test]
@@ -3464,7 +3500,7 @@ mod sect_tests {
 <w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>
 </w:body></w:document>"#;
         let (doc, rep) = parse_document_xml(xml);
-        assert!(doc.paragraphs().all(|p| p.sect_raw.is_none()), "段落に節が付いた");
+        assert!(doc.paragraphs().all(|p| p.sect.is_none()), "段落に節が付いた");
         assert!(!rep.unsupported.iter().any(|(n, _)| n.contains("節の区切り")),
             "節が1つなのに区切りを報告した: {:?}", rep.unsupported);
         assert_eq!(write_document_xml(&doc).matches("<w:sectPr").count(), 1);
@@ -3517,7 +3553,7 @@ mod shade_tests {
 
     #[test]
     fn 段落の背景色と囲み枠が往復する() {
-        let mut p = Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
+        let mut p = Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
             line_spacing: 1.0,
             runs: vec![Run { text: "注意".into(), size_pt: 10.5, font: None,
                              fmt: Default::default() }],
@@ -4222,7 +4258,7 @@ mod hf_tests {
     use kumihan::{Align, Document, Paragraph, Run, PAGE_MARK};
 
     fn para(s: &str) -> Paragraph {
-        Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
+        Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
             line_spacing: 1.0,
             runs: vec![Run { text: s.into(), size_pt: 10.5, font: None,
                              fmt: Default::default() }],
@@ -4395,7 +4431,7 @@ mod image_insert_tests {
 
     #[test]
     fn 挿した画像が部品ごと保存され読み直せる() {
-        let mut p = Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect_raw: None, sect: None,
+        let mut p = Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
             line_spacing: 1.0,
             runs: vec![Run { text: "ロゴの下".into(), size_pt: 10.5, font: None,
                              fmt: Default::default() }],
