@@ -1331,5506 +1331,5931 @@
  },
  {
   "i": 266,
-  "ja": "{}:{} — {} より{}を塗ります",
-  "en": "{}:{} — coloring values {} than {}"
- },
- {
-  "i": 267,
   "ja": "「{}」をブックから外しました",
   "en": "\"{}\" removed from the workbook"
  },
  {
-  "i": 268,
+  "i": 267,
   "ja": "「{}」はありません",
   "en": "\"{}\" does not exist"
  },
  {
-  "i": 269,
+  "i": 268,
   "ja": "「{}」はありません(@list で一覧)",
   "en": "\"{}\" does not exist (@list lists)"
  },
  {
-  "i": 270,
+  "i": 269,
   "ja": "文字を消しました",
   "en": "Text removed"
  },
  {
-  "i": 271,
+  "i": 270,
   "ja": "図形に文字を入れました(保存で xlsx に入ります)",
   "en": "Text set on the shape (goes into the xlsx on save)"
  },
  {
-  "i": 272,
+  "i": 271,
   "ja": "「{}」で割れるセルが選択にありません",
   "en": "No cell in the selection splits on \"{}\""
  },
  {
-  "i": 273,
+  "i": 272,
   "ja": "{} 欄に割りました(右のセルは上書き。Ctrl+Z で戻せます)",
   "en": "Split into {} columns (cells to the right overwritten; Ctrl+Z undoes)"
  },
  {
-  "i": 274,
+  "i": 273,
   "ja": "「セル=目標値」の形で(例: D6=800000)",
   "en": "Use the form cell=target (e.g. D6=800000)"
  },
  {
-  "i": 275,
+  "i": 274,
   "ja": "読めません(例: D6=800000)",
   "en": "Can't parse (e.g. D6=800000)"
  },
  {
-  "i": 276,
+  "i": 275,
   "ja": "変えるセルが読めません(例: B2)",
   "en": "Can't parse the variable cell (e.g. B2)"
  },
  {
-  "i": 277,
+  "i": 276,
   "ja": "暗号化しません(次の保存から普通の xlsx)",
   "en": "Encryption off (next save is a plain xlsx)"
  },
  {
-  "i": 278,
+  "i": 277,
   "ja": "次の保存から、このパスワードで暗号化します(AES-128。Excel や LibreOffice でも開けます)",
   "en": "The next save is encrypted with this password (AES-128; opens in Excel and LibreOffice)"
  },
  {
-  "i": 279,
+  "i": 278,
   "ja": "式が空です(何も置きませんでした)",
   "en": "The formula is empty (nothing was placed)"
  },
  {
-  "i": 280,
+  "i": 279,
   "ja": "文字が空です(何も置きませんでした)",
   "en": "The text is empty (nothing was placed)"
  },
  {
-  "i": 281,
+  "i": 280,
   "ja": "ブックの情報を控えました(保存で xlsx に入ります)",
   "en": "Workbook info recorded (goes into the xlsx on save)"
  },
  {
-  "i": 282,
+  "i": 281,
   "ja": "範囲は A1:C9 の形で書いてください",
   "en": "Write the range like A1:C9"
  },
  {
-  "i": 283,
+  "i": 282,
   "ja": "左上と右下が逆です(A1:C9 の順で)",
   "en": "Top-left and bottom-right are swapped (order like A1:C9)"
  },
  {
-  "i": 284,
+  "i": 283,
   "ja": "表の範囲を {}:{} にしました(書式は掛け直しません — 表のデザインのボタンでどうぞ)",
   "en": "Table resized to {}:{} (formatting is not reapplied — use the Table Design buttons)"
  },
  {
-  "i": 285,
+  "i": 284,
   "ja": "文章がありません(何もしていません)",
   "en": "No text (nothing was done)"
  },
  {
-  "i": 286,
+  "i": 285,
   "ja": "用件がありません(何もしていません)",
   "en": "No request (nothing was done)"
  },
  {
-  "i": 287,
+  "i": 286,
   "ja": "何も書き残しませんでした",
   "en": "No message left"
  },
  {
-  "i": 288,
+  "i": 287,
   "ja": "書き残しました({})",
   "en": "Message left ({})"
  },
  {
-  "i": 289,
+  "i": 288,
   "ja": "書けません: {}",
   "en": "Can't write: {}"
  },
  {
-  "i": 290,
+  "i": 289,
   "ja": "「{}」は見出しにありません: {}",
   "en": "\"{}\" is not among the headings: {}"
  },
  {
-  "i": 291,
+  "i": 290,
   "ja": "合計する見出し(カンマ区切り可。空 Enter = 数の列全部)",
   "en": "Columns to total (comma-separated; empty Enter = every numeric column)"
  },
  {
-  "i": 292,
+  "i": 291,
   "ja": "数の列が見つかりません(合計する見出しを書いてください)",
   "en": "No numeric column found (name the columns to total)"
  },
  {
-  "i": 293,
+  "i": 292,
   "ja": "{} 区切りに小計と総計を入れ、明細をグループ化しました — 「詳細の非表示」で畳むと合計だけ残ります(Ctrl+Z で1手)",
   "en": "Subtotals and a grand total added for {} groups; detail rows grouped — Hide Detail leaves just the totals (one Ctrl+Z)"
  },
  {
-  "i": 294,
+  "i": 293,
   "ja": "探す言葉を入れてください",
   "en": "Type a search term"
  },
  {
-  "i": 295,
+  "i": 294,
   "ja": "「{}」→「{}」: {} カ所を置き換えました(Ctrl+Z で戻せます)",
   "en": "\"{}\" → \"{}\": {} replacements (Ctrl+Z undoes)"
  },
  {
-  "i": 296,
+  "i": 295,
   "ja": "候補が読めません(例: 甲,乙,丙 または =D2:D5)",
   "en": "Can't read the choices (e.g. 甲,乙,丙 or =D2:D5)"
  },
  {
-  "i": 297,
+  "i": 296,
   "ja": "外枠を引きました",
   "en": "Outer border drawn"
  },
  {
-  "i": 298,
+  "i": 297,
   "ja": "格子の罫線を引きました",
   "en": "Grid borders drawn"
  },
  {
-  "i": 299,
+  "i": 298,
   "ja": "罫線を消しました",
   "en": "Borders removed"
  },
  {
-  "i": 300,
+  "i": 299,
   "ja": "表示形式を戻しました",
   "en": "Number format cleared"
  },
  {
-  "i": 301,
+  "i": 300,
   "ja": "この列にはまだ値がありません",
   "en": "This column has no values yet"
  },
  {
-  "i": 302,
+  "i": 301,
   "ja": "蛍光ペンで引きました(Ctrl+Z で戻せます)",
   "en": "Highlighted (Ctrl+Z undoes)"
  },
  {
-  "i": 303,
+  "i": 302,
   "ja": "ペンで描きました(Ctrl+Z で戻せます)",
   "en": "Pen stroke drawn (Ctrl+Z undoes)"
  },
  {
-  "i": 304,
+  "i": 303,
   "ja": "シートが保護されています(保護タブの「シートを保護する」で解除)",
   "en": "The sheet is protected (Protection tab > Protect Sheet to release)"
  },
  {
-  "i": 305,
+  "i": 304,
   "ja": "表がありません",
   "en": "No table"
  },
  {
-  "i": 306,
+  "i": 305,
   "ja": "範囲を選んでから押してください",
   "en": "Select a range first"
  },
  {
-  "i": 307,
+  "i": 306,
   "ja": "ふりがなは1列だけ選んでください(読みは右隣の列に入ります)",
   "en": "Select a single column for furigana (readings go into the column to the right)"
  },
  {
-  "i": 308,
+  "i": 307,
   "ja": "選んだ範囲が空です",
   "en": "The selected range is empty"
  },
  {
-  "i": 309,
+  "i": 308,
   "ja": "右隣の列に中身があります(空けてから — 黙って上書きしません)",
   "en": "The column to the right is occupied (clear it first — nothing is overwritten silently)"
  },
  {
-  "i": 310,
+  "i": 309,
   "ja": "読みを右隣の列に入れました(Ctrl+Z で戻せます)",
   "en": "Readings placed in the column to the right (Ctrl+Z undoes)"
  },
  {
-  "i": 311,
+  "i": 310,
   "ja": "下の行に中身があります(空けてから — 黙って上書きしません)",
   "en": "The rows below are occupied (clear them first — nothing is overwritten silently)"
  },
  {
-  "i": 312,
+  "i": 311,
   "ja": "ここには中身があります(空きへカーソルを置いてから)",
   "en": "This cell is occupied (put the cursor on an empty one)"
  },
  {
-  "i": 313,
+  "i": 312,
   "ja": "このブックは暗号化されています。パスワードを打って Enter",
   "en": "This workbook is encrypted. Type the password and press Enter"
  },
  {
-  "i": 314,
+  "i": 313,
   "ja": "控えを開きました(名無しの複製。保存で名前を聞きます。元へ戻すなら同じ名前で保存)",
   "en": "Opened the copy (untitled; saving asks for a name; to restore, save under the original name)"
  },
  {
-  "i": 315,
+  "i": 314,
   "ja": "新しいブックです",
   "en": "New workbook"
  },
  {
-  "i": 316,
+  "i": 315,
   "ja": "図形を削除しました(Ctrl+Z で戻せます)",
   "en": "Shape deleted (Ctrl+Z undoes)"
  },
  {
-  "i": 317,
+  "i": 316,
   "ja": "空の表です",
   "en": "The sheet is empty"
  },
  {
-  "i": 318,
+  "i": 317,
   "ja": "結合する範囲を Shift+矢印で選んでください",
   "en": "Select the range to merge with Shift+arrows"
  },
  {
-  "i": 319,
+  "i": 318,
   "ja": "グラフにする範囲を選んでください(1列目が項目名、2列目からが数)",
   "en": "Select the range to chart (first column = labels, numbers from the second)"
  },
  {
-  "i": 320,
+  "i": 319,
   "ja": "グラフを描いています…",
   "en": "Drawing the chart…"
  },
  {
-  "i": 321,
+  "i": 320,
   "ja": "右に空きが見つかりません(場所を空けてから)",
   "en": "No free space to the right (clear some first)"
  },
  {
-  "i": 322,
+  "i": 321,
   "ja": "広がった分の場所が塞がっています(右下を空けてから更新)",
   "en": "The grown area is blocked (clear below-right, then refresh)"
  },
  {
-  "i": 323,
+  "i": 322,
   "ja": "Python を実行しています…",
   "en": "Running Python…"
  },
  {
-  "i": 324,
+  "i": 323,
   "ja": "Python を実行しました(Ctrl+Z で1手で戻せます)",
   "en": "Python finished (one Ctrl+Z undoes)"
  },
  {
-  "i": 325,
+  "i": 324,
   "ja": "一時ファイルが書けません",
   "en": "Can't write a temporary file"
  },
  {
-  "i": 326,
+  "i": 325,
   "ja": "清書しています…",
   "en": "Typesetting…"
  },
  {
-  "i": 327,
+  "i": 326,
   "ja": "テキスト",
   "en": "Text"
  },
  {
-  "i": 328,
+  "i": 327,
   "ja": "目的のセルが読めません(例: E6)",
   "en": "Can't parse the target cell (e.g. E6)"
  },
  {
-  "i": 329,
+  "i": 328,
   "ja": "変数セルが読めません(例: B2:B4 や B2,C2。最大64個)",
   "en": "Can't parse the variable cells (e.g. B2:B4 or B2,C2; up to 64)"
  },
  {
-  "i": 330,
+  "i": 329,
   "ja": "「値」が数として読めません",
   "en": "The target value is not a number"
  },
  {
-  "i": 331,
+  "i": 330,
   "ja": "線形ではありません — 単体法 LP は線形の問題だけを解きます(非線形は未対応。本家と同じ)",
   "en": "Not linear — simplex LP solves only linear problems (nonlinear unsupported, as in the original)"
  },
  {
-  "i": 332,
+  "i": 331,
   "ja": "解を探しています…(単体法 LP)",
   "en": "Solving… (simplex LP)"
  },
  {
-  "i": 333,
+  "i": 332,
   "ja": "この画像は読めません(PNG か JPEG を選んでください)",
   "en": "Can't read this image (choose a PNG or JPEG)"
  },
  {
-  "i": 334,
+  "i": 333,
   "ja": "横向き",
   "en": "landscape"
  },
  {
-  "i": 335,
+  "i": 334,
   "ja": "Shift+↓ で埋める範囲を選んでください(先頭行を下へ写します)",
   "en": "Select the fill range with Shift+↓ (the top row is copied down)"
  },
  {
-  "i": 336,
+  "i": 335,
   "ja": "絞り込みを解きました",
   "en": "Filter cleared"
  },
  {
-  "i": 337,
+  "i": 336,
   "ja": "印刷範囲を解きました(全域を印刷します)",
   "en": "Print area cleared (everything prints)"
  },
  {
-  "i": 338,
+  "i": 337,
   "ja": "印刷範囲にする範囲を Shift+矢印かドラッグで選んでください",
   "en": "Select the print area with Shift+arrows or by dragging"
  },
  {
-  "i": 339,
+  "i": 338,
   "ja": "日本語の書体が見つかりません",
   "en": "No Japanese font found"
  },
  {
-  "i": 340,
+  "i": 339,
   "ja": "このセルの式は他のセルを参照していません",
   "en": "This cell's formula references no other cells"
  },
  {
-  "i": 341,
+  "i": 340,
   "ja": "トレースを消しました",
   "en": "Trace cleared"
  },
  {
-  "i": 342,
+  "i": 341,
   "ja": "見出しの下にデータの行が要ります",
   "en": "Data rows are needed below the headings"
  },
  {
-  "i": 343,
+  "i": 342,
   "ja": "暗号化は入っています。新しいパスワードを打って Enter(空のまま Enter で暗号化をやめる)",
   "en": "Encryption is on. Type a new password and press Enter (empty Enter turns it off)"
  },
  {
-  "i": 344,
+  "i": 343,
   "ja": "暗号化: パスワードを打って Enter(次の保存から効きます)",
   "en": "Encrypt: type a password and press Enter (takes effect from the next save)"
  },
  {
-  "i": 345,
+  "i": 344,
   "ja": "このセルにコメントはありません",
   "en": "This cell has no comment"
  },
  {
-  "i": 346,
+  "i": 345,
   "ja": "まだファイルになっていません(保存すると、上書きのたびに控えが残ります)",
   "en": "Not a file yet (once saved, every overwrite keeps a copy)"
  },
  {
-  "i": 347,
+  "i": 346,
   "ja": "控えはまだありません(上書き保存のたびに .jo-history へ残ります)",
   "en": "No copies yet (every overwrite-save keeps one under .jo-history)"
  },
  {
-  "i": 348,
+  "i": 347,
   "ja": "バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)",
   "en": "Version history: pick one to open it untitled (save your current work first if you need it)"
  },
  {
-  "i": 349,
+  "i": 348,
   "ja": "まだファイルになっていません(保存すると、隣に申し送り帳ができます)",
   "en": "Not a file yet (save it to get a chat file alongside)"
  },
  {
-  "i": 350,
+  "i": 349,
   "ja": "まだ言伝はありません(打って Enter で書き残します)",
   "en": "No messages yet (type and press Enter to leave one)"
  },
  {
-  "i": 351,
+  "i": 350,
   "ja": "マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)",
   "en": "Macros: pick a .py and sandboxed Python runs (b = workbook, s = sheet; same machinery as Data > Python)"
  },
  {
-  "i": 352,
+  "i": 351,
   "ja": "プラグイン: 選ぶとサンドボックスの中の Python で実行します(b=ブック s=シート)",
   "en": "Plugins: pick one to run in sandboxed Python (b = workbook, s = sheet)"
  },
  {
-  "i": 353,
+  "i": 352,
   "ja": "空のセルを選んでください(中身のあるセルは潰しません)",
   "en": "Pick an empty cell (occupied cells are never overwritten)"
  },
  {
-  "i": 354,
+  "i": 353,
   "ja": "スライサーにする列を選んでください(見出しの下にデータの行が要ります)",
   "en": "Pick a column for the slicer (data rows are needed below the heading)"
  },
  {
-  "i": 355,
+  "i": 354,
   "ja": "テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます",
   "en": "Text art: type text and it is placed as a bold outlined image"
  },
  {
-  "i": 356,
+  "i": 355,
   "ja": "方程式: TeX の書き方で(例: \\frac{a}{b} や \\sum_{i=1}^n i^2)。Enter で清書",
   "en": "Equation: TeX notation (e.g. \\frac{a}{b}, \\sum_{i=1}^n i^2); Enter typesets"
  },
  {
-  "i": 357,
+  "i": 356,
   "ja": "SmartArt: 分類 → 形の順に選ぶ(図形の集まりとして入ります)",
   "en": "SmartArt: pick a category, then a layout (inserted as a group of shapes)"
  },
  {
-  "i": 358,
+  "i": 357,
   "ja": "ソルバー: 欄を押して打つ。目的・変数セル・制約を決めて「解を求める」",
   "en": "Solver: click a field and type; set target, variable cells, and constraints, then Solve"
  },
  {
-  "i": 359,
+  "i": 358,
   "ja": "下付きを切り替えました",
   "en": "Subscript toggled"
  },
  {
-  "i": 360,
+  "i": 359,
   "ja": "両端揃えにしました(折り返して全体を表示も入れます)",
   "en": "Justified (wrap is enabled too)"
  },
  {
-  "i": 361,
+  "i": 360,
   "ja": "文字を縦に積みました",
   "en": "Text stacked vertically"
  },
  {
-  "i": 362,
+  "i": 361,
   "ja": "文字の向きを戻しました",
   "en": "Text orientation reset"
  },
  {
-  "i": 363,
+  "i": 362,
   "ja": "計算方法: 自動(いつもすぐ計算します)",
   "en": "Calculation: automatic (always immediate)"
  },
  {
-  "i": 364,
+  "i": 363,
   "ja": "計算方法: 手動(F9 で計算します — 大きな表で待たされない)",
   "en": "Calculation: manual (F9 recalculates — no waiting on big sheets)"
  },
  {
-  "i": 365,
+  "i": 364,
   "ja": "統計",
   "en": "Statistical"
  },
  {
-  "i": 366,
+  "i": 365,
   "ja": "セルのスタイル: 選ぶと選択に掛かります(Ctrl+Z で戻せます)",
   "en": "Cell styles: pick one to apply to the selection (Ctrl+Z undoes)"
  },
  {
-  "i": 367,
+  "i": 366,
   "ja": "最後の1枚は隠せません",
   "en": "The last sheet can't be hidden"
  },
  {
-  "i": 368,
+  "i": 367,
   "ja": "隠したシート: 選ぶと表示に戻します",
   "en": "Hidden sheets: pick one to unhide"
  },
  {
-  "i": 369,
+  "i": 368,
   "ja": "見張りを空にしました",
   "en": "Watch list cleared"
  },
  {
-  "i": 370,
+  "i": 369,
   "ja": "ペン: 表の上をドラッグで描く(もう一度押すか Esc で戻る)",
   "en": "Pen: drag over the grid to draw (press again or Esc to put it away)"
  },
  {
-  "i": 371,
+  "i": 370,
   "ja": "蛍光ペン: ドラッグで引く(セルの上に薄く乗る)",
   "en": "Highlighter: drag to mark (a light band over the cells)"
  },
  {
-  "i": 372,
+  "i": 371,
   "ja": "配色の変更: 選ぶとテーマ色が入れ替わります",
   "en": "Color scheme: pick one to swap the theme colors"
  },
  {
-  "i": 373,
+  "i": 372,
   "ja": "画面を暗くしました(セルは白のまま — 画面と紙の一致を守る)",
   "en": "Screen darkened (cells stay white — screen and paper must agree)"
  },
  {
-  "i": 374,
+  "i": 373,
   "ja": "画面を明るくしました",
   "en": "Screen back to light"
  },
  {
-  "i": 375,
+  "i": 374,
   "ja": "表の中にカーソルを置いてください(表のない範囲は「表の挿入」で表にできます)",
   "en": "Put the cursor inside a table (Insert > Table turns a range into one)"
  },
  {
-  "i": 376,
+  "i": 375,
   "ja": "表の中にカーソルを置いてください",
   "en": "Put the cursor inside a table"
  },
  {
-  "i": 377,
+  "i": 376,
   "ja": "右から左へ並べます(右横書き。列は右から A B C…)",
   "en": "Right-to-left layout (columns run A B C… from the right)"
  },
  {
-  "i": 378,
+  "i": 377,
   "ja": "左から右へ戻しました",
   "en": "Back to left-to-right"
  },
  {
-  "i": 379,
+  "i": 378,
   "ja": "セルの中を右横書きにしました(1字ずつ右から。昔の看板の書き方)",
   "en": "Right-to-left text in the cell (character by character, like old signboards)"
  },
  {
-  "i": 380,
+  "i": 379,
   "ja": "数式バーを表示します",
   "en": "Formula bar shown"
  },
  {
-  "i": 381,
+  "i": 380,
   "ja": "数式バーを隠しました(表示タブで戻せます)",
   "en": "Formula bar hidden (View tab restores)"
  },
  {
-  "i": 382,
+  "i": 381,
   "ja": "見出しを表示します",
   "en": "Headings shown"
  },
  {
-  "i": 383,
+  "i": 382,
   "ja": "見出しを隠しました(列幅のドラッグ等は見出しと一緒に戻ります)",
   "en": "Headings hidden (column-width dragging returns with them)"
  },
  {
-  "i": 384,
+  "i": 383,
   "ja": "0 を表示します",
   "en": "Zeros shown"
  },
  {
-  "i": 385,
+  "i": 384,
   "ja": "0 を隠しました(見え方だけ — 値は 0 のまま)",
   "en": "Zeros hidden (display only — the values stay 0)"
  },
  {
-  "i": 386,
+  "i": 385,
   "ja": "表を範囲で選んでください(1行目が見出し)",
   "en": "Select the table as a range (row 1 = headings)"
  },
  {
-  "i": 387,
+  "i": 386,
   "ja": "まとめたい行(または列)を選んでください(見出しの番号を撫でる)",
   "en": "Select the rows (or columns) to group (drag across the headings)"
  },
  {
-  "i": 388,
+  "i": 387,
   "ja": "選択にグループ化した列がありません(先にグループ化)",
   "en": "No grouped columns in the selection (group first)"
  },
  {
-  "i": 389,
+  "i": 388,
   "ja": "グループ化した行の上で押してください(先に データ > グループ化)",
   "en": "Press on a grouped row (Data > Group first)"
  },
  {
-  "i": 390,
+  "i": 389,
   "ja": "選択にグループ化した行がありません(先に データ > グループ化)",
   "en": "No grouped rows in the selection (Data > Group first)"
  },
  {
-  "i": 391,
+  "i": 390,
   "ja": "更新したいピボットの上にカーソルを置いてください",
   "en": "Put the cursor on the pivot to refresh"
  },
  {
-  "i": 392,
+  "i": 391,
   "ja": "このブックにピボットはありません",
   "en": "This workbook has no pivots"
  },
  {
-  "i": 393,
+  "i": 392,
   "ja": "ピボット全体を選びました",
   "en": "Whole pivot selected"
  },
  {
-  "i": 394,
+  "i": 393,
   "ja": "ピボットの上にカーソルを置いてください",
   "en": "Put the cursor on a pivot"
  },
  {
-  "i": 395,
+  "i": 394,
   "ja": "行の見出しが2つ以上のピボットで効きます(挿入で複数選ぶ)",
   "en": "Works on pivots with 2+ row headings (pick several at insert)"
  },
  {
-  "i": 396,
+  "i": 395,
   "ja": "表の範囲を選んでください",
   "en": "Select the table range"
  },
  {
-  "i": 397,
+  "i": 396,
   "ja": "合計したい表の範囲を選んでください",
   "en": "Select the table range to total"
  },
  {
-  "i": 398,
+  "i": 397,
   "ja": "すぐ下の行に中身があります(空けてから — 黙って上書きしません)",
   "en": "The row just below is occupied (clear it first — nothing is overwritten silently)"
  },
  {
-  "i": 399,
+  "i": 398,
   "ja": "表にする範囲を選んでください",
   "en": "Select the range to turn into a table"
  },
  {
-  "i": 400,
+  "i": 399,
   "ja": "割りたいセルを選んでください(選択した列の文字を右へ割ります)",
   "en": "Select the cells to split (their text is split into the columns to the right)"
  },
  {
-  "i": 401,
+  "i": 400,
   "ja": "1行目の前では改ページできません",
   "en": "No page break before row 1"
  },
  {
-  "i": 402,
+  "i": 401,
   "ja": "タイトル行を解除しました",
   "en": "Title rows cleared"
  },
  {
-  "i": 403,
+  "i": 402,
   "ja": "繰り返す行を選んでから押してください(行の見出しをクリック)",
   "en": "Select the rows to repeat first (click the row headings)"
  },
  {
-  "i": 404,
+  "i": 403,
   "ja": "数が2つ以上要ります",
   "en": "At least two numbers are needed"
  },
  {
-  "i": 405,
+  "i": 404,
   "ja": "固定する位置にカーソルを置いてください(その上と左が留まります)",
   "en": "Put the cursor where panes should freeze (rows above and columns left stay)"
  },
  {
-  "i": 406,
+  "i": 405,
   "ja": "{}行 {}列を固定しました",
   "en": "Frozen at row {}, column {}"
  },
  {
-  "i": 407,
+  "i": 406,
   "ja": "重複した {} 行を削除しました",
   "en": "{} duplicate rows removed"
  },
  {
-  "i": 408,
+  "i": 407,
   "ja": "使える関数: {}",
   "en": "Available functions: {}"
  },
  {
-  "i": 409,
+  "i": 408,
   "ja": "{} が開いているため上書きしません。名前を付けて保存してください",
   "en": "{} has it open, so no overwrite; use Save As"
  },
  {
-  "i": 410,
+  "i": 409,
   "ja": "保存しました — {}{}",
   "en": "Saved — {}{}"
  },
  {
-  "i": 411,
+  "i": 410,
   "ja": "{} = {}(空白キーで切替)",
   "en": "{} = {} (space toggles)"
  },
  {
-  "i": 412,
+  "i": 411,
   "ja": "無題のブック",
   "en": "Untitled workbook"
  },
  {
-  "i": 413,
+  "i": 412,
   "ja": "calc — 実装済み {}/{}",
   "en": "calc — implemented {}/{}"
  },
  {
-  "i": 414,
+  "i": 413,
   "ja": "詳細を表示しました(+/− でいつでも)",
   "en": "Detail shown (+/− any time)"
  },
  {
-  "i": 415,
+  "i": 414,
   "ja": "詳細を畳みました(+ で開きます)",
   "en": "Detail collapsed (+ expands)"
  },
  {
-  "i": 416,
+  "i": 415,
   "ja": "リンク: {}(Ctrl+クリックで開く)",
   "en": "Link: {} (Ctrl+click opens)"
  },
  {
-  "i": 417,
+  "i": 416,
   "ja": "名前の定義 — {} に名前を付ける",
   "en": "Define name — name {}"
  },
  {
-  "i": 418,
+  "i": 417,
   "ja": "コメント — {}(空にして Enter で消す)",
   "en": "Comment — {} (empty Enter removes)"
  },
  {
-  "i": 419,
+  "i": 418,
   "ja": "条件付き書式 — {} で、いくつより大きい値を塗る?",
   "en": "Conditional formatting — in {}, color values greater than?"
  },
  {
-  "i": 420,
+  "i": 419,
   "ja": "条件付き書式 — {} で、いくつより小さい値を塗る?",
   "en": "Conditional formatting — in {}, color values less than?"
  },
  {
-  "i": 421,
+  "i": 420,
   "ja": "検索と置換 — 探す言葉",
   "en": "Find and replace — search term"
  },
  {
-  "i": 422,
+  "i": 421,
   "ja": "区切り位置 — {} を何で割る?(空 Enter = カンマ)",
   "en": "Text to columns — split {} on what? (empty Enter = comma)"
  },
  {
-  "i": 423,
+  "i": 422,
   "ja": "図形の文字(空にして Enter で消す)",
   "en": "Shape text (empty Enter removes)"
  },
  {
-  "i": 424,
+  "i": 423,
   "ja": "Python — 一行のコード(空 Enter = .py ファイルを選ぶ)",
   "en": "Python — one line of code (empty Enter picks a .py file)"
  },
  {
-  "i": 425,
+  "i": 424,
   "ja": "ゴールシーク — 目標(セル=値。例: D6=800000)",
   "en": "Goal seek — target (cell=value, e.g. D6=800000)"
  },
  {
-  "i": 426,
+  "i": 425,
   "ja": "{} をいくつにするか探します — 変えるセルは?(例: B2)",
   "en": "Solving for {} — which cell may change? (e.g. B2)"
  },
  {
-  "i": 427,
+  "i": 426,
   "ja": "「{}」を何に置き換える?",
   "en": "Replace \"{}\" with what?"
  },
  {
-  "i": 428,
+  "i": 427,
   "ja": "チャット — 言伝を書き残す(ブックの隣の .chat.txt)",
   "en": "Chat — leave a message (.chat.txt next to the workbook)"
  },
  {
-  "i": 429,
+  "i": 428,
   "ja": "方程式 — 式を打つ(TeX の書き方。清書して画像で置く)",
   "en": "Equation — type TeX (typeset and placed as an image)"
  },
  {
-  "i": 430,
+  "i": 429,
   "ja": "AI — 表にする文章",
   "en": "AI — text to turn into a table"
  },
  {
-  "i": 431,
+  "i": 430,
   "ja": "AI — 頼み(例: 合計の式を書いて)",
   "en": "AI — request (e.g. write me a sum formula)"
  },
  {
-  "i": 432,
+  "i": 431,
   "ja": "テーブルのサイズ変更 — 新しい範囲(A1:C9)",
   "en": "Resize table — new range (A1:C9)"
  },
  {
-  "i": 433,
+  "i": 432,
   "ja": "ブックの情報 — 作成者",
   "en": "Workbook info — author"
  },
  {
-  "i": 434,
+  "i": 433,
   "ja": "ブックの情報 — タイトル",
   "en": "Workbook info — title"
  },
  {
-  "i": 435,
+  "i": 434,
   "ja": "ブックの情報 — タグ",
   "en": "Workbook info — tags"
  },
  {
-  "i": 436,
+  "i": 435,
   "ja": "ブックの情報 — 件名",
   "en": "Workbook info — subject"
  },
  {
-  "i": 437,
+  "i": 436,
   "ja": "ブックの情報 — コメント",
   "en": "Workbook info — comments"
  },
  {
-  "i": 438,
+  "i": 437,
   "ja": "テキストアート — 飾り文字にする文字を打つ",
   "en": "Text art — type the text to decorate"
  },
  {
-  "i": 439,
+  "i": 438,
   "ja": "暗号化されたブック — パスワード",
   "en": "Encrypted workbook — password"
  },
  {
-  "i": 440,
+  "i": 439,
   "ja": "暗号化 — パスワード(空にして Enter で暗号化をやめる)",
   "en": "Encrypt — password (empty Enter turns it off)"
  },
  {
-  "i": 441,
+  "i": 440,
   "ja": "小計 1/2 — 何の区切りで集めるか(見出しを1つ)",
   "en": "Subtotal 1/2 — group by which heading (one)"
  },
  {
-  "i": 442,
+  "i": 441,
   "ja": "小計 2/2 — 合計する見出し",
   "en": "Subtotal 2/2 — headings to total"
  },
  {
-  "i": 443,
+  "i": 442,
   "ja": "制約の左辺と右辺を先に打ってください",
   "en": "Fill in both sides of the constraint first"
  },
  {
-  "i": 444,
+  "i": 443,
   "ja": "テキストの追加",
   "en": "Add text"
  },
  {
-  "i": 445,
+  "i": 444,
   "ja": "列{}",
   "en": "Column {}"
  },
  {
-  "i": 446,
+  "i": 445,
   "ja": "複数選択: 押した値を重ねて絞ります",
   "en": "Multi-select: pressed values stack as filters"
  },
  {
-  "i": 447,
+  "i": 446,
   "ja": "単数選択: 押した値ひとつで絞ります",
   "en": "Single-select: filter by one pressed value"
  },
  {
-  "i": 448,
+  "i": 447,
   "ja": "スライサーの絞りを解除しました",
   "en": "Slicer filter cleared"
  },
  {
-  "i": 449,
+  "i": 448,
   "ja": "絞りなし(全部見えています)",
   "en": "No filter (everything is visible)"
  },
  {
-  "i": 450,
+  "i": 449,
   "ja": "絞り: {}(見え方だけ。中身は変わりません)",
   "en": "Filter: {} (display only; the data is unchanged)"
  },
  {
-  "i": 451,
+  "i": 450,
   "ja": "自己診断 {}/15: B列の幅 {}(勝手に動けば描画は健全)",
   "en": "Self-test {}/15: column B width {} (if it moves by itself, rendering is healthy)"
  },
  {
-  "i": 452,
+  "i": 451,
   "ja": "スペル",
   "en": "Spell"
  },
  {
-  "i": 453,
+  "i": 452,
   "ja": "＋",
   "en": "+"
  },
  {
-  "i": 454,
+  "i": 453,
   "ja": "‹ 戻る",
   "en": "‹ Back"
  },
  {
-  "i": 455,
+  "i": 454,
   "ja": "新規作成",
   "en": "New"
  },
  {
-  "i": 456,
+  "i": 455,
   "ja": "テンプレートから作成",
   "en": "New from template"
  },
  {
-  "i": 457,
+  "i": 456,
   "ja": "開く",
   "en": "Open"
  },
  {
-  "i": 458,
+  "i": 457,
   "ja": "URLを開く",
   "en": "Open URL"
  },
  {
-  "i": 459,
+  "i": 458,
   "ja": "最近開いた",
   "en": "Recent"
  },
  {
-  "i": 460,
+  "i": 459,
   "ja": "保存",
   "en": "Save"
  },
  {
-  "i": 461,
+  "i": 460,
   "ja": "名前を付けて保存",
   "en": "Save As"
  },
  {
-  "i": 462,
+  "i": 461,
   "ja": "印刷",
   "en": "Print"
  },
  {
-  "i": 463,
+  "i": 462,
   "ja": "保護する",
   "en": "Protect"
  },
  {
-  "i": 464,
+  "i": 463,
   "ja": "詳細情報",
   "en": "Info"
  },
  {
-  "i": 465,
+  "i": 464,
   "ja": "ファイルの場所を開く",
   "en": "Open file location"
  },
  {
-  "i": 466,
+  "i": 465,
   "ja": "終了",
   "en": "Quit"
  },
  {
-  "i": 467,
+  "i": 466,
   "ja": "詳細設定",
   "en": "Advanced settings"
  },
  {
-  "i": 468,
+  "i": 467,
   "ja": "ヘルプ",
   "en": "Help"
  },
  {
-  "i": 469,
+  "i": 468,
   "ja": "機能のリクエスト",
   "en": "Feature request"
  },
  {
-  "i": 470,
+  "i": 469,
   "ja": "言語(リボンと文言)",
   "en": "Language (ribbon and messages)"
  },
  {
-  "i": 471,
+  "i": 470,
   "ja": "言語を控えました(次の起動から効きます。環境変数 OFFICE_LANG があればそちらが優先)",
   "en": "Language saved (takes effect on next start; the OFFICE_LANG environment variable wins if set)"
  },
  {
-  "i": 472,
+  "i": 471,
   "ja": "書体(OFFICE_FONT)",
   "en": "Font (OFFICE_FONT)"
  },
  {
-  "i": 473,
+  "i": 472,
   "ja": "(文書に従う)",
   "en": "(follows the document)"
  },
  {
-  "i": 474,
+  "i": 473,
   "ja": "校正の宛先",
   "en": "Proofreading endpoint"
  },
  {
-  "i": 475,
+  "i": 474,
   "ja": "Python の経路",
   "en": "Python path"
  },
  {
-  "i": 476,
+  "i": 475,
   "ja": "(自動: .venv → python3)",
   "en": "(auto: .venv → python3)"
  },
  {
-  "i": 477,
+  "i": 476,
   "ja": "名前(ロック・チャット・署名)",
   "en": "Name (lock, chat, signature)"
  },
  {
-  "i": 478,
+  "i": 477,
   "ja": "(まだありません。開く・保存すると残ります)",
   "en": "(none yet; opening and saving adds entries)"
  },
  {
-  "i": 479,
+  "i": 478,
   "ja": "文書の情報",
   "en": "Document info"
  },
  {
-  "i": 480,
+  "i": 479,
   "ja": "プロパティ",
   "en": "Properties"
  },
  {
-  "i": 481,
+  "i": 480,
   "ja": "欄を押して打ち、Enter で控える(保存で docx の情報に入ります)",
   "en": "Click a field, type, Enter records (goes into the docx properties on save)"
  },
  {
-  "i": 482,
+  "i": 481,
   "ja": "次へ (Enter)",
   "en": "Next (Enter)"
  },
  {
-  "i": 483,
+  "i": 482,
   "ja": "置換",
   "en": "Replace"
  },
  {
-  "i": 484,
+  "i": 483,
   "ja": "すべて置換",
   "en": "Replace all"
  },
  {
-  "i": 485,
+  "i": 484,
   "ja": "閉じる",
   "en": "Close"
  },
  {
-  "i": 486,
+  "i": 485,
   "ja": "ページ番号を挿入",
   "en": "Insert page number"
  },
  {
-  "i": 487,
+  "i": 486,
   "ja": "閉じる (Esc)",
   "en": "Close (Esc)"
  },
  {
-  "i": 488,
+  "i": 487,
   "ja": "この段落のコメント(レビュー > コメント で編集)",
   "en": "Comments on this paragraph (edit via Review > Comment)"
  },
  {
-  "i": 489,
+  "i": 488,
   "ja": "コメント — 空にして閉じると外れる",
   "en": "Comment — close empty to remove"
  },
  {
-  "i": 490,
+  "i": 489,
   "ja": "透かし — 空にして閉じると外れる",
   "en": "Watermark — close empty to remove"
  },
  {
-  "i": 491,
+  "i": 490,
   "ja": "しおり — 名前を打って追加。押すとそこへ移る",
   "en": "Bookmarks — type a name and Add; click one to jump"
  },
  {
-  "i": 492,
+  "i": 491,
   "ja": "追加 (Enter)",
   "en": "Add (Enter)"
  },
  {
-  "i": 493,
+  "i": 492,
   "ja": "(まだしおりはありません)",
   "en": "(no bookmarks yet)"
  },
  {
-  "i": 494,
+  "i": 493,
   "ja": "バージョン履歴 — 上書き保存のたびの控え(9世代まで)",
   "en": "Version history — a copy per overwrite-save (up to 9)"
  },
  {
-  "i": 495,
+  "i": 494,
   "ja": "(まだ控えはありません。上書き保存すると増えます)",
   "en": "(no copies yet; overwrite-saves add them)"
  },
  {
-  "i": 496,
+  "i": 495,
   "ja": "チャット — 文書の隣の申し送り帳(.chat.txt)",
   "en": "Chat — the message file next to the document (.chat.txt)"
  },
  {
-  "i": 497,
+  "i": 496,
   "ja": "(まだ書き込みはありません)",
   "en": "(no messages yet)"
  },
  {
-  "i": 498,
+  "i": 497,
   "ja": "送信 (Enter)",
   "en": "Send (Enter)"
  },
  {
-  "i": 499,
+  "i": 498,
   "ja": "方式は ECMA-376 Agile(AES-256)。Word や LibreOffice でも開けます。パスワードを忘れると誰にも開けません",
   "en": "The scheme is ECMA-376 Agile (AES-256). Opens in Word and LibreOffice. If you forget the password, nobody can open it"
  },
  {
-  "i": 500,
+  "i": 499,
   "ja": "URL を開く — Enter で取りに行く(JS は実行しません)",
   "en": "Open URL — Enter fetches (JavaScript is never executed)"
  },
  {
-  "i": 501,
+  "i": 500,
   "ja": "記入 — 欄を押して打ち、Enter で控え、送信で送る",
   "en": "Fill in — click a field, type, Enter records, Submit sends"
  },
  {
-  "i": 502,
+  "i": 501,
   "ja": "(見出しがありません。ホーム > 段落のスタイルで)",
   "en": "(no headings; set them via Home > paragraph styles)"
  },
  {
-  "i": 503,
+  "i": 502,
   "ja": "(コメントはありません)",
   "en": "(no comments)"
  },
  {
-  "i": 504,
+  "i": 503,
   "ja": "(見つかりません)",
   "en": "(not found)"
  },
  {
-  "i": 505,
+  "i": 504,
   "ja": "設定 — いる場所を直す",
   "en": "Settings — adjust where the cursor is"
  },
  {
-  "i": 506,
+  "i": 505,
   "ja": "(ここは相互参照。更新は 参考資料 > 相互参照)",
   "en": "(this is a cross-reference; update via References > Cross-reference)"
  },
  {
-  "i": 507,
+  "i": 506,
   "ja": "ルビ — 読みを打って Enter(空で外す。Esc で取りやめ)",
   "en": "Ruby — type the reading and press Enter (empty removes; Esc cancels)"
  },
  {
-  "i": 508,
+  "i": 507,
   "ja": "プラグイン — 押すとサンドボックス(bubblewrap)の中で実行",
   "en": "Plugins — click to run in the sandbox (bubblewrap)"
  },
  {
-  "i": 509,
+  "i": 508,
   "ja": "(まだありません。置き場に .py を置いてください。台本の d が python-docx の文書、fill(名前, 値)・extract(名前)・fields() で記入欄の出し入れ)",
   "en": "(none yet; put .py files in the folder. The script gets d = the python-docx Document; fill(name, value), extract(name), and fields() handle form fields)"
  },
  {
-  "i": 510,
+  "i": 509,
   "ja": "相互参照 — しおりの文字かページ番号を挿す",
   "en": "Cross-reference — insert a bookmark's text or page number"
  },
  {
-  "i": 511,
+  "i": 510,
   "ja": "参照を更新",
   "en": "Update references"
  },
  {
-  "i": 512,
+  "i": 511,
   "ja": "(しおりがありません。参考資料 > ブックマークで付けてください)",
   "en": "(no bookmarks; add them via References > Bookmark)"
  },
  {
-  "i": 513,
+  "i": 512,
   "ja": "文字",
   "en": "Text"
  },
  {
-  "i": 514,
+  "i": 513,
   "ja": "ページ",
   "en": "Page"
  },
  {
-  "i": 515,
+  "i": 514,
   "ja": "書体(選んだ段落に掛かる)",
   "en": "Font (applies to the selected paragraph)"
  },
  {
-  "i": 516,
+  "i": 515,
   "ja": "段落のスタイル(選んだ段落に掛かる)",
   "en": "Paragraph style (applies to the selected paragraph)"
  },
  {
-  "i": 517,
+  "i": 516,
   "ja": "この版で読み飛ばしたもの",
   "en": "Skipped by this version"
  },
  {
-  "i": 518,
+  "i": 517,
   "ja": "見張り",
   "en": "Watch"
  },
  {
-  "i": 519,
+  "i": 518,
   "ja": "まだ制約はありません。左辺・記号・右辺を打って「追加」",
   "en": "No constraints yet; fill left side, sign, right side and Add"
  },
  {
-  "i": 520,
+  "i": 519,
   "ja": "ソルバーのパラメータ",
   "en": "Solver parameters"
  },
  {
-  "i": 521,
+  "i": 520,
   "ja": "追加",
   "en": "Add"
  },
  {
-  "i": 522,
+  "i": 521,
   "ja": "変更",
   "en": "Change"
  },
  {
-  "i": 523,
+  "i": 522,
   "ja": "削除",
   "en": "Delete"
  },
  {
-  "i": 524,
+  "i": 523,
   "ja": "制約のない変数を非負にする",
   "en": "Make unconstrained variables non-negative"
  },
  {
-  "i": 525,
+  "i": 524,
   "ja": "解法の方法",
   "en": "Solving method"
  },
  {
-  "i": 526,
+  "i": 525,
   "ja": "単体法 LP",
   "en": "Simplex LP"
  },
  {
-  "i": 527,
+  "i": 526,
   "ja": "線形の問題を LP シンプレックスで解きます(裏方 scipy)。非線形はまだ解けません — そのときは断ります",
   "en": "Solves linear problems with LP simplex (backed by scipy). Nonlinear ones are not solved yet — it says so when refused"
  },
  {
-  "i": 528,
+  "i": 527,
   "ja": "すべてリセット",
   "en": "Reset all"
  },
  {
-  "i": 529,
+  "i": 528,
   "ja": "解を求める",
   "en": "Solve"
  },
  {
-  "i": 530,
+  "i": 529,
   "ja": "ブックの情報",
   "en": "Workbook info"
  },
  {
-  "i": 531,
+  "i": 530,
   "ja": "欄を押して打ち、Enter で控える(保存で xlsx の情報に入ります)",
   "en": "Click a field, type, Enter records (goes into the xlsx properties on save)"
  },
  {
-  "i": 532,
+  "i": 531,
   "ja": "セルの書式(選んでいる範囲に効く)",
   "en": "Cell formatting (applies to the selected range)"
  },
  {
-  "i": 533,
+  "i": 532,
   "ja": "格子",
   "en": "Grid"
  },
  {
-  "i": 534,
+  "i": 533,
   "ja": "外枠",
   "en": "Outline"
  },
  {
-  "i": 535,
+  "i": 534,
   "ja": "なし",
   "en": "None"
  },
  {
-  "i": 536,
+  "i": 535,
   "ja": "太字",
   "en": "Bold"
  },
  {
-  "i": 537,
+  "i": 536,
   "ja": "斜体",
   "en": "Italic"
  },
  {
-  "i": 538,
+  "i": 537,
   "ja": "下線",
   "en": "Underline"
  },
  {
-  "i": 539,
+  "i": 538,
   "ja": "取り消し",
   "en": "Strikethrough"
  },
  {
-  "i": 540,
+  "i": 539,
   "ja": "大きく",
   "en": "Bigger"
  },
  {
-  "i": 541,
+  "i": 540,
   "ja": "小さく",
   "en": "Smaller"
  },
  {
-  "i": 542,
+  "i": 541,
   "ja": "左",
   "en": "Left"
  },
  {
-  "i": 543,
+  "i": 542,
   "ja": "中央",
   "en": "Center"
  },
  {
-  "i": 544,
+  "i": 543,
   "ja": "右",
   "en": "Right"
  },
  {
-  "i": 545,
+  "i": 544,
   "ja": "上",
   "en": "Top"
  },
  {
-  "i": 546,
+  "i": 545,
   "ja": "中",
   "en": "Middle"
  },
  {
-  "i": 547,
+  "i": 546,
   "ja": "下",
   "en": "Bottom"
  },
  {
-  "i": 548,
+  "i": 547,
   "ja": "折り返し",
   "en": "Wrap"
  },
  {
-  "i": 549,
+  "i": 548,
   "ja": "保存していない変更があります",
   "en": "There are unsaved changes"
  },
  {
-  "i": 550,
+  "i": 549,
   "ja": "保存して終了しますか?(Enter = 保存して終了 / Esc = やめる)",
   "en": "Save and quit? (Enter = save and quit / Esc = cancel)"
  },
  {
-  "i": 551,
+  "i": 550,
   "ja": "保存して終了",
   "en": "Save and quit"
  },
  {
-  "i": 552,
+  "i": 551,
   "ja": "保存せず終了",
   "en": "Quit without saving"
  },
  {
-  "i": 553,
+  "i": 552,
   "ja": "キャンセル",
   "en": "Cancel"
  },
  {
-  "i": 554,
+  "i": 553,
   "ja": "編集: そのまま打つと続きに入ります(Esc で取消)",
   "en": "Editing: typing appends to the cell (Esc to cancel)"
  },
  {
-  "i": 555,
+  "i": 554,
   "ja": "{} を選びました",
   "en": "Selected {}"
  },
  {
-  "i": 556,
+  "i": 555,
   "ja": "{} へ移動しました",
   "en": "Moved to {}"
  },
  {
-  "i": 557,
+  "i": 556,
   "ja": "名前「{}」({})を選びました",
   "en": "Selected name \"{}\" ({})"
  },
  {
-  "i": 558,
+  "i": 557,
   "ja": "名前「{}」({})へ移動しました",
   "en": "Moved to name \"{}\" ({})"
  },
  {
-  "i": 559,
+  "i": 558,
   "ja": "名前「{}」を {} に付けました(名前ボックスで呼べます)",
   "en": "Assigned the name \"{}\" to {} (recall it from the name box)"
  },
  {
-  "i": 560,
+  "i": 559,
   "ja": "その条件の関数がありません",
   "en": "No function matches"
  },
  {
-  "i": 561,
+  "i": 560,
   "ja": "関数の引数: Tab で次の欄。セルをクリックすると参照が入ります。Enter で式に",
   "en": "Function arguments: Tab for the next field. Click a cell to insert a reference. Enter to build the formula"
  },
  {
-  "i": 562,
+  "i": 561,
   "ja": "式を入れました(Enter で確定 / Esc で取消)",
   "en": "Formula inserted (Enter to confirm / Esc to cancel)"
  },
  {
-  "i": 563,
+  "i": 562,
   "ja": "名前は変えませんでした",
   "en": "Name unchanged"
  },
  {
-  "i": 564,
+  "i": 563,
   "ja": "「{}」はシート名にできません(31字まで。: \\ / ? * [ ] は不可)",
   "en": "\"{}\" cannot be a sheet name (up to 31 chars; : \\ / ? * [ ] not allowed)"
  },
  {
-  "i": 565,
+  "i": 564,
   "ja": "「{}」は既にあります",
   "en": "\"{}\" already exists"
  },
  {
-  "i": 566,
+  "i": 565,
   "ja": "「{}」を「{}」にしました(式の参照 {} 箇所も追随)",
   "en": "Renamed \"{}\" to \"{}\" ({} formula references updated)"
  },
  {
-  "i": 567,
+  "i": 566,
   "ja": "「{}」を「{}」にしました",
   "en": "Renamed \"{}\" to \"{}\""
  },
  {
-  "i": 568,
+  "i": 567,
   "ja": "シート「{}」を挿しました",
   "en": "Inserted sheet \"{}\""
  },
  {
-  "i": 569,
+  "i": 568,
   "ja": "最後の1枚は消せません",
   "en": "Can't delete the last sheet"
  },
  {
-  "i": 570,
+  "i": 569,
   "ja": "見えるシートが無くなるので消せません(先に別のシートを表示してください)",
   "en": "Can't delete — no visible sheet would remain (unhide another sheet first)"
  },
  {
-  "i": 571,
+  "i": 570,
   "ja": "シート「{}」を削除しました(元に戻せない操作です)",
   "en": "Deleted sheet \"{}\" (this can't be undone)"
  },
  {
-  "i": 572,
+  "i": 571,
   "ja": "「{}」を作りました",
   "en": "Created \"{}\""
  },
  {
-  "i": 573,
+  "i": 572,
   "ja": "その向きには動かせません(端です)",
   "en": "Can't move that way (already at the end)"
  },
  {
-  "i": 574,
+  "i": 573,
   "ja": "シート「{}」を動かしました",
   "en": "Moved sheet \"{}\""
  },
  {
-  "i": 575,
+  "i": 574,
   "ja": "シート「{}」を隠しました(「再表示」で戻せます。保存で xlsx にも残ります)",
   "en": "Hid sheet \"{}\" (Unhide brings it back; kept in the xlsx on save)"
  },
  {
-  "i": 576,
+  "i": 575,
   "ja": "隠したシートはありません",
   "en": "No hidden sheets"
  },
  {
-  "i": 577,
+  "i": 576,
   "ja": "耳の色を{}にしました(保存で xlsx にも残ります)",
   "en": "Tab color set to {} (kept in the xlsx on save)"
  },
  {
-  "i": 578,
+  "i": 577,
   "ja": "耳の色を消しました",
   "en": "Tab color removed"
  },
  {
-  "i": 579,
+  "i": 578,
   "ja": "関数を挿入: 打って絞り込み、↑↓で選んで Enter(Esc で取消)",
   "en": "Insert function: type to filter, ↑↓ to choose, Enter to insert (Esc to cancel)"
  },
  {
-  "i": 580,
+  "i": 579,
   "ja": "名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。知らない名前は選択に付きます",
   "en": "Name box: go to a cell (B12), a range (A1:C9) or a name. An unknown name is assigned to the selection"
  },
  {
-  "i": 581,
+  "i": 580,
   "ja": "数式バーで編集: Enter で確定 / Esc で取消",
   "en": "Editing in the formula bar: Enter to confirm / Esc to cancel"
  },
  {
-  "i": 582,
+  "i": 581,
   "ja": "関数を挿入",
   "en": "Insert function"
  },
  {
-  "i": 583,
+  "i": 582,
   "ja": "(打つと絞り込み)",
   "en": "(type to filter)"
  },
  {
-  "i": 584,
+  "i": 583,
   "ja": "次へ",
   "en": "Next"
  },
  {
-  "i": 585,
+  "i": 584,
   "ja": "関数の引数",
   "en": "Function arguments"
  },
  {
-  "i": 586,
+  "i": 585,
   "ja": "関数の結果 = {}",
   "en": "Function result = {}"
  },
  {
-  "i": 587,
+  "i": 586,
   "ja": "セルをクリックすると、いまの欄に参照が入ります",
   "en": "Click a cell to insert a reference into the current field"
  },
  {
-  "i": 588,
+  "i": 587,
   "ja": "戻る",
   "en": "Back"
  },
  {
-  "i": 589,
+  "i": 588,
   "ja": "OK",
   "en": "OK"
  },
  {
-  "i": 590,
+  "i": 589,
   "ja": "シートの名前の変更",
   "en": "Rename sheet"
  },
  {
-  "i": 591,
+  "i": 590,
   "ja": "文字の色を{}にしました",
   "en": "Font color set to {}"
  },
  {
-  "i": 592,
+  "i": 591,
   "ja": "文字の色を自動に戻しました",
   "en": "Font color reset to automatic"
  },
  {
-  "i": 593,
+  "i": 592,
   "ja": "塗りを{}にしました",
   "en": "Fill set to {}"
  },
  {
-  "i": 594,
+  "i": 593,
   "ja": "塗りを消しました",
   "en": "Fill removed"
  },
  {
-  "i": 595,
+  "i": 594,
   "ja": "再計算しました(ブック全体)",
   "en": "Recalculated (whole workbook)"
  },
  {
-  "i": 596,
+  "i": 595,
   "ja": "再計算しました(このシートだけ)",
   "en": "Recalculated (this sheet only)"
  },
  {
-  "i": 597,
+  "i": 596,
   "ja": "固定を解きました",
   "en": "Panes unfrozen"
  },
  {
-  "i": 598,
+  "i": 597,
   "ja": "最上行を固定しました",
   "en": "Top row frozen"
  },
  {
-  "i": 599,
+  "i": 598,
   "ja": "最初の列を固定しました",
   "en": "First column frozen"
  },
  {
-  "i": 600,
+  "i": 599,
   "ja": "選択の中に変わる文字がありません",
   "en": "Nothing in the selection changes case"
  },
  {
-  "i": 601,
+  "i": 600,
   "ja": "{} セルの大文字小文字を変えました",
   "en": "Changed case in {} cells"
  },
  {
-  "i": 602,
+  "i": 601,
   "ja": "その範囲にコメントはありません",
   "en": "No comments in that range"
  },
  {
-  "i": 603,
+  "i": 602,
   "ja": "{} 個のコメントを消しました",
   "en": "Removed {} comments"
  },
  {
-  "i": 604,
+  "i": 603,
   "ja": "その範囲にハイパーリンクはありません",
   "en": "No hyperlinks in that range"
  },
  {
-  "i": 605,
+  "i": 604,
   "ja": "{} 個のハイパーリンクを消しました",
   "en": "Removed {} hyperlinks"
  },
  {
-  "i": 606,
+  "i": 605,
   "ja": "絞り込みの範囲を外しました",
   "en": "Filter range removed"
  },
  {
-  "i": 607,
+  "i": 606,
   "ja": "絞り込む表がありません(見出しの下にデータが要ります)",
   "en": "No table to filter (needs data below a header row)"
  },
  {
-  "i": 608,
+  "i": 607,
   "ja": "{}:{} に絞り込みの範囲を張りました — 見出しの ▼ から絞ります(表示だけ。保存はされず、閉じれば消えます)",
   "en": "Filter range set on {}:{} — use the ▼ in the header row (display only; not saved, gone when closed)"
  },
  {
-  "i": 609,
+  "i": 608,
   "ja": "「{}」だけを表示しています(見出しの ▼ で選び直せます)",
   "en": "Showing only \"{}\" (change it from the header ▼)"
  },
  {
-  "i": 610,
+  "i": 609,
   "ja": "絞り込みを掛け直しました — {} 行中 {} 行を表示",
   "en": "Filter reapplied — of {} rows, {} shown"
  },
  {
-  "i": 611,
+  "i": 610,
   "ja": "絞り込み中 — {} 行中 {} 行を表示(表示だけ。保存はされません)",
   "en": "Filtering — of {} rows, {} shown (display only; not saved)"
  },
  {
-  "i": 612,
+  "i": 611,
   "ja": "絞り込みなし(全部見えています)",
   "en": "No filter (everything visible)"
  },
  {
-  "i": 613,
+  "i": 612,
   "ja": "(すべて選択)",
   "en": "(Select all)"
  },
  {
-  "i": 614,
+  "i": 613,
   "ja": "(該当なし)",
   "en": "(no matches)"
  },
  {
-  "i": 615,
+  "i": 614,
   "ja": "値が多いので上位 1,000 種で切っています",
   "en": "Too many values — showing the first 1,000"
  },
  {
-  "i": 616,
+  "i": 615,
   "ja": "昇順",
   "en": "Ascending"
  },
  {
-  "i": 617,
+  "i": 616,
   "ja": "降順",
   "en": "Descending"
  },
  {
-  "i": 618,
+  "i": 617,
   "ja": "この列を解除",
   "en": "Clear this column"
  },
  {
-  "i": 619,
+  "i": 618,
   "ja": "クリックで入切 — すぐ効きます。Esc で閉じる",
   "en": "Click to toggle — takes effect at once. Esc to close"
  },
  {
-  "i": 620,
+  "i": 619,
   "ja": "{} 行中 {} 行を表示",
   "en": "Of {} rows, {} shown"
  },
  {
-  "i": 621,
+  "i": 620,
   "ja": "並べ替える表がありません(見出しの下にデータが要ります)",
   "en": "No table to sort (needs data below a header row)"
  },
  {
-  "i": 622,
+  "i": 621,
   "ja": "基準を左から強い順に(例: 金額 降順, 品名)。使える見出し: {}",
   "en": "Criteria, strongest first (e.g. Amount desc, Item). Available headers: {}"
  },
  {
-  "i": 623,
+  "i": 622,
   "ja": "並べ替えをやめました",
   "en": "Sort cancelled"
  },
  {
-  "i": 624,
+  "i": 623,
   "ja": "「{}」という見出しが見つかりません。使える見出し: {}",
   "en": "No header named \"{}\". Available headers: {}"
  },
  {
-  "i": 625,
+  "i": 624,
   "ja": "並べ替えました: {}(見出しは据え置き。Ctrl+Z で1手)",
   "en": "Sorted by {} (header row kept in place; Ctrl+Z undoes it)"
  },
  {
-  "i": 626,
+  "i": 625,
   "ja": "並べ替え — 基準を左から強い順に(例: 金額 降順, 品名)",
   "en": "Sort — criteria, strongest first (e.g. Amount desc, Item)"
  },
  {
-  "i": 627,
+  "i": 626,
   "ja": "数値の書式を「{}」にしました(コード: {})",
   "en": "Number format set to \"{}\" (code: {})"
  },
  {
-  "i": 628,
+  "i": 627,
   "ja": "数値の書式を「一般」に戻しました",
   "en": "Number format reset to General"
  },
  {
-  "i": 629,
+  "i": 628,
   "ja": "数値の書式コードを「{}」にしました(描けない書き方は素の数で出ます。保存で xlsx にも残ります)",
   "en": "Number format code set to \"{}\" (unrenderable codes fall back to the plain number; kept in the xlsx on save)"
  },
  {
-  "i": 630,
+  "i": 629,
   "ja": "数値の書式コード(例: #,##0.00 / yyyy/m/d。空 Enter = 一般)",
   "en": "Number format code (e.g. #,##0.00 / yyyy/m/d; empty Enter = General)"
  },
  {
-  "i": 631,
+  "i": 630,
   "ja": "「{}」は入力規則に合いません({} / Esc で戻す)",
   "en": "\"{}\" fails the data validation rule ({} / Esc to revert)"
  },
  {
-  "i": 632,
+  "i": 631,
   "ja": "入力規則に合いませんが、通しました({})",
   "en": "Fails the data validation rule, but accepted ({})"
  },
  {
-  "i": 633,
+  "i": 632,
   "ja": "入力規則をやめました",
   "en": "Validation cancelled"
  },
  {
-  "i": 634,
+  "i": 633,
   "ja": "画面の文字の大きさ {}%(次回もこの大きさで開きます)",
   "en": "UI text size {}% (opens at this size next time too)"
  },
  {
-  "i": 635,
+  "i": 634,
   "ja": "元の値を書いてください(例: 甲,乙,丙 または =D2:D5)",
   "en": "Write the source values (e.g. A,B,C or =D2:D5)"
  },
  {
-  "i": 636,
+  "i": 635,
   "ja": "条件の値を書いてください(半角の数で)",
   "en": "Write the condition value (ASCII digits)"
  },
  {
-  "i": 637,
+  "i": 636,
   "ja": "候補: {}",
   "en": "Options: {}"
  },
  {
-  "i": 638,
+  "i": 637,
   "ja": "文言だけ(値は制限しない)",
   "en": "Message only (values not restricted)"
  },
  {
-  "i": 639,
+  "i": 638,
   "ja": "入力規則を {}:{} に掛けました({}。保存で xlsx にも残ります)",
   "en": "Validation applied to {}:{} ({}; kept in the xlsx on save)"
  },
  {
-  "i": 640,
+  "i": 639,
   "ja": "この範囲の入力規則を外しました",
   "en": "Validation removed from this range"
  },
  {
-  "i": 641,
+  "i": 640,
   "ja": "入力規則はありません(何も変えていません)",
   "en": "No validation rule (nothing changed)"
  },
  {
-  "i": 642,
+  "i": 641,
   "ja": "日付",
   "en": "Date"
  },
  {
-  "i": 643,
+  "i": 642,
   "ja": "時刻",
   "en": "Time"
  },
  {
-  "i": 644,
+  "i": 643,
   "ja": "カスタム",
   "en": "Custom"
  },
  {
-  "i": 645,
+  "i": 644,
   "ja": "{}(このまま保持)",
   "en": "{} (kept as is)"
  },
  {
-  "i": 646,
+  "i": 645,
   "ja": "許可",
   "en": "Allow"
  },
  {
-  "i": 647,
+  "i": 646,
   "ja": "データ",
   "en": "Data"
  },
  {
-  "i": 648,
+  "i": 647,
   "ja": "空白を無視",
   "en": "Ignore blank"
  },
  {
-  "i": 649,
+  "i": 648,
   "ja": "元の値",
   "en": "Source"
  },
  {
-  "i": 650,
+  "i": 649,
   "ja": "候補の直書き(甲,乙,丙)か、範囲の参照(=D2:D5)",
   "en": "Type options directly (A,B,C) or reference a range (=D2:D5)"
  },
  {
-  "i": 651,
+  "i": 650,
   "ja": "値",
   "en": "Value"
  },
  {
-  "i": 652,
+  "i": 651,
   "ja": "最小",
   "en": "Minimum"
  },
  {
-  "i": 653,
+  "i": 652,
   "ja": "最大",
   "en": "Maximum"
  },
  {
-  "i": 654,
+  "i": 653,
   "ja": "半角の数で。数として読めない式は判定できず、堰き止めません",
   "en": "ASCII digits; a formula that isn't a number can't be judged and won't block input"
  },
  {
-  "i": 655,
+  "i": 654,
   "ja": "この種類(日付・時刻・カスタム)は判定できません — 規則は壊さず保ち、文言だけ直せます",
   "en": "This type (date/time/custom) can't be judged — the rule is kept intact; only the messages can be edited"
  },
  {
-  "i": 656,
+  "i": 655,
   "ja": "これらの変更を同じ設定の他のすべてのセルに適用する",
   "en": "Apply these changes to all other cells with the same settings"
  },
  {
-  "i": 657,
+  "i": 656,
   "ja": "タイトル",
   "en": "Title"
  },
  {
-  "i": 658,
+  "i": 657,
   "ja": "メッセージ",
   "en": "Message"
  },
  {
-  "i": 659,
+  "i": 658,
   "ja": "セルを選ぶと、下の状態行にこの説明が出ます",
   "en": "Shown in the status line below when the cell is selected"
  },
  {
-  "i": 660,
+  "i": 659,
   "ja": "スタイル",
   "en": "Style"
  },
  {
-  "i": 661,
+  "i": 660,
   "ja": "エラーメッセージ",
   "en": "Error message"
  },
  {
-  "i": 662,
+  "i": 661,
   "ja": "停止は堰き止め、警告・情報は通して言うだけ(Excel と同じ)",
   "en": "Stop blocks the input; Warning/Information accept it with a note (same as Excel)"
  },
  {
-  "i": 663,
+  "i": 662,
   "ja": "設定",
   "en": "Settings"
  },
  {
-  "i": 664,
+  "i": 663,
   "ja": "メッセージを入力",
   "en": "Input Message"
  },
  {
-  "i": 665,
+  "i": 664,
   "ja": "エラー警告",
   "en": "Error Alert"
  },
  {
-  "i": 666,
+  "i": 665,
   "ja": "データの入力規則",
   "en": "Data validation"
  },
  {
-  "i": 667,
+  "i": 666,
   "ja": "ピボットの上ではできません(カーソルをピボットの外に置いてから)",
   "en": "Not available on a pivot table (move the cursor off it first)"
  },
  {
-  "i": 668,
+  "i": 667,
   "ja": "今の書式: {}",
   "en": "Current format: {}"
  },
  {
-  "i": 669,
+  "i": 668,
   "ja": "今の書式: カスタム(コード: {})",
   "en": "Current format: custom (code: {})"
  },
  {
-  "i": 670,
+  "i": 669,
   "ja": "今の書式: 一般",
   "en": "Current format: General"
  },
  {
-  "i": 671,
+  "i": 670,
   "ja": "選択の横にデータが続いています。どう並べ替えますか?",
   "en": "There is data next to the selection. How do you want to sort?"
  },
  {
-  "i": 672,
+  "i": 671,
   "ja": "{}:{} を{}に並べ替えました(範囲の中だけ。Ctrl+Z で1手)",
   "en": "Sorted {}:{} {} (range only; Ctrl+Z undoes it)"
  },
  {
-  "i": 673,
+  "i": 672,
   "ja": "固定した枠に影を付けます(固定中だけ見えます)",
   "en": "Frozen panes get a shadow (visible while frozen)"
  },
  {
-  "i": 674,
+  "i": 673,
   "ja": "固定した枠の影を消しました",
   "en": "Frozen-pane shadow removed"
  },
  {
-  "i": 675,
+  "i": 674,
   "ja": "セルの ▾ を出さない",
   "en": "Hide the in-cell ▾"
  },
  {
-  "i": 676,
+  "i": 675,
   "ja": "行に並べる見出しをクリックで選ぶ(複数可)。選んだら「決定」",
   "en": "Click the headers to lay out as rows (multiple OK), then「決定」(Done)"
  },
  {
-  "i": 677,
+  "i": 676,
   "ja": "行に並べる見出しを1つは選んでください",
   "en": "Pick at least one header for the rows"
  },
  {
-  "i": 678,
+  "i": 677,
   "ja": "列に広げる見出し(なくてもよい)。選んだら「決定」",
   "en": "Headers to spread as columns (optional), then「決定」(Done)"
  },
  {
-  "i": 679,
+  "i": 678,
   "ja": "値にする見出しをクリック(次に集計を選びます)",
   "en": "Click the header to use as values (aggregation comes next)"
  },
  {
-  "i": 680,
+  "i": 679,
   "ja": "「{}」をどう集計しますか",
   "en": "How should \"{}\" be aggregated?"
  },
  {
-  "i": 681,
+  "i": 680,
   "ja": "元の表がありません(1行目が見出し、下にデータの行)",
   "en": "No source table (row 1 = headers, data rows below)"
  },
  {
-  "i": 682,
+  "i": 681,
   "ja": "ピボット 1/4 — 行に並べる見出し(クリックで入切・複数可)",
   "en": "Pivot 1/4 — headers for the rows (click to toggle, multiple OK)"
  },
  {
-  "i": 683,
+  "i": 682,
   "ja": "ピボット 2/4 — 列に広げる見出し(クリックで入切・無くてもよい)",
   "en": "Pivot 2/4 — headers for the columns (click to toggle, optional)"
  },
  {
-  "i": 684,
+  "i": 683,
   "ja": "ピボット 3/4 — 値にする見出しを1つ",
   "en": "Pivot 3/4 — one header for the values"
  },
  {
-  "i": 685,
+  "i": 684,
   "ja": "ピボット 4/4 — 「{}」の集計のしかた",
   "en": "Pivot 4/4 — how to aggregate \"{}\""
  },
  {
-  "i": 686,
+  "i": 685,
   "ja": "ピボットのスタイル(選ぶと掛け直します)",
   "en": "Pivot style (choosing reapplies it)"
  },
  {
-  "i": 687,
+  "i": 686,
   "ja": "自動(黒)",
   "en": "Automatic (black)"
  },
  {
-  "i": 688,
+  "i": 687,
   "ja": "線のスタイル(選ぶとペンに入ります — 次の罫線から効く)",
   "en": "Line style (goes into the pen; takes effect from the next borders)"
  },
  {
-  "i": 689,
+  "i": 688,
   "ja": "線の色(選ぶとペンに入ります)",
   "en": "Line color (goes into the pen)"
  },
  {
-  "i": 690,
+  "i": 689,
   "ja": "線のスタイル: {}(罫線の一覧から掛けると効きます)",
   "en": "Line style: {} (applies when you draw borders from the list)"
  },
  {
-  "i": 691,
+  "i": 690,
   "ja": "線の色: {}(罫線の一覧から掛けると効きます)",
   "en": "Line color: {} (applies when you draw borders from the list)"
  },
  {
-  "i": 692,
+  "i": 691,
   "ja": "罫線: {} を {}:{} に掛けました(Ctrl+Z で1手)",
   "en": "Borders: {} applied to {}:{} (Ctrl+Z undoes it)"
  },
  {
-  "i": 693,
+  "i": 692,
   "ja": "線の色: 自動(黒)",
   "en": "Line color: automatic (black)"
  },
  {
-  "i": 694,
+  "i": 693,
   "ja": "線の色: #{}(罫線の一覧から掛けると効きます)",
   "en": "Line color: #{} (applies when you draw borders from the list)"
  },
  {
-  "i": 695,
+  "i": 694,
   "ja": "色が読めません(RRGGBB の6桁。例: FF0000)",
   "en": "Can't read the color (6 hex digits RRGGBB, e.g. FF0000)"
  },
  {
-  "i": 696,
+  "i": 695,
   "ja": "線の色 — RRGGBB の6桁(例: FF0000。空 Enter = 自動)",
   "en": "Line color — 6 hex digits RRGGBB (e.g. FF0000; empty Enter = automatic)"
  },
  {
-  "i": 697,
+  "i": 696,
   "ja": "{} の上です — 操作は「ピボットテーブル」のタブで(更新・総計・小計・レイアウト。表を崩す操作は締まります)",
   "en": "On {} — use the Pivot Table tab (refresh, grand totals, subtotals, layout; table-breaking operations are locked)"
  },
  {
-  "i": 698,
+  "i": 697,
   "ja": "ピボット",
   "en": "Pivot"
  },
  {
-  "i": 699,
+  "i": 698,
   "ja": "{} の絞り込み — 「{}」(☑ 表示 / ☐ 隠す)",
   "en": "Filter of {} — «{}» (☑ shown / ☐ hidden)"
  },
  {
-  "i": 700,
+  "i": 699,
   "ja": "文字の向き(xlsx と同じ数え方 — 上向きが正)",
   "en": "Text orientation (xlsx convention — positive is upward)"
  },
  {
-  "i": 701,
+  "i": 700,
   "ja": "文字を {} にしました",
   "en": "Text set to {}"
  },
  {
-  "i": 702,
+  "i": 701,
   "ja": "文字を {} 度にしました(上向きが正)",
   "en": "Text rotated {} degrees (positive is upward)"
  },
  {
-  "i": 703,
+  "i": 702,
   "ja": "角度が読めません(-90〜90 の数。縦書きは一覧から)",
   "en": "Can't read the angle (a number from -90 to 90; vertical is in the list)"
  },
  {
-  "i": 704,
+  "i": 703,
   "ja": "文字の色 — RRGGBB の6桁(例: FF0000。空 Enter = 自動)",
   "en": "Font color — 6 hex digits RRGGBB (e.g. FF0000; empty Enter = automatic)"
  },
  {
-  "i": 705,
+  "i": 704,
   "ja": "塗りの色 — RRGGBB の6桁(例: FFF2CC。空 Enter = 塗りなし)",
   "en": "Fill color — 6 hex digits RRGGBB (e.g. FFF2CC; empty Enter = no fill)"
  },
  {
-  "i": 706,
+  "i": 705,
   "ja": "文字の角度 — -90〜90 の数(上向きが正。空 Enter = 0)",
   "en": "Text angle — a number from -90 to 90 (positive is upward; empty Enter = 0)"
  },
  {
-  "i": 707,
+  "i": 706,
   "ja": "ヘッダー/フッター — 印刷と PDF に出ます(&P=頁 &N=総頁)",
   "en": "Header/footer — appears in print and PDF (&P = page, &N = total pages)"
  },
  {
-  "i": 708,
+  "i": 707,
   "ja": "ヘッダー/フッターを消しました",
   "en": "Header/footer removed"
  },
  {
-  "i": 709,
+  "i": 708,
   "ja": "その区分を消しました",
   "en": "That section removed"
  },
  {
-  "i": 710,
+  "i": 709,
   "ja": "ヘッダー/フッターに入れました(印刷と PDF で見えます。&P=頁 &N=総頁)",
   "en": "Added to the header/footer (visible in print and PDF; &P = page, &N = total)"
  },
  {
-  "i": 711,
+  "i": 710,
   "ja": "ヘッダー/フッター — この区分の文字(&P=頁 &N=総頁。空 Enter = 消す)",
   "en": "Header/footer — text for this section (&P = page, &N = total; empty Enter = remove)"
  },
  {
-  "i": 712,
+  "i": 711,
   "ja": "名前の管理 — 名前を選ぶと 移動/打ち直し/削除。式の中で使えます",
   "en": "Name manager — pick a name to go there / rewrite / delete. Usable in formulas"
  },
  {
-  "i": 713,
+  "i": 712,
   "ja": "テーブルへ移動しました(名前の変更・削除は表のデザインで)",
   "en": "Moved to the table (rename/delete it from Table Design)"
  },
  {
-  "i": 714,
+  "i": 713,
   "ja": "名前「{}」をどうしますか",
   "en": "What to do with «{}»?"
  },
  {
-  "i": 715,
+  "i": 714,
   "ja": "「{}」({})へ移動しました",
   "en": "Moved to «{}» ({})"
  },
  {
-  "i": 716,
+  "i": 715,
   "ja": "「{}」の中身({})が場所として読めません",
   "en": "The content of «{}» ({}) is not a readable location"
  },
  {
-  "i": 717,
+  "i": 716,
   "ja": "名前「{}」を消しました(式の中の {} は #NAME? になります)",
   "en": "Name «{}» deleted ({} in formulas becomes #NAME?)"
  },
  {
-  "i": 718,
+  "i": 717,
   "ja": "場所が読めません(B12 か A1:C9 の形)",
   "en": "Can't read the location (B12 or A1:C9)"
  },
  {
-  "i": 719,
+  "i": 718,
   "ja": "名前「{}」= {} にしました",
   "en": "Name «{}» set to {}"
  },
  {
-  "i": 720,
+  "i": 719,
   "ja": "名前の中身 — 場所(B12 か A1:C9 の形)",
   "en": "Name content — location (B12 or A1:C9)"
  },
  {
-  "i": 721,
+  "i": 720,
   "ja": "重複する値を赤くします",
   "en": "Duplicate values shown in red"
  },
  {
-  "i": 722,
+  "i": 721,
   "ja": "一意の値を塗ります",
   "en": "Unique values filled"
  },
  {
-  "i": 723,
+  "i": 722,
   "ja": "平均より上を塗ります",
   "en": "Above-average values filled"
  },
  {
-  "i": 724,
+  "i": 723,
   "ja": "平均より下を塗ります",
   "en": "Below-average values filled"
  },
  {
-  "i": 725,
+  "i": 724,
   "ja": "「8〜15」の形で(半角の数)",
   "en": "Use the form 8〜15 (ASCII digits)"
  },
  {
-  "i": 726,
+  "i": 725,
   "ja": "{}:{} — {} から {} の間を塗ります",
   "en": "{}:{} — filling values between {} and {}"
  },
  {
-  "i": 727,
+  "i": 726,
   "ja": "含む文字を入れてください",
   "en": "Enter the text to look for"
  },
  {
-  "i": 728,
+  "i": 727,
   "ja": "{}:{} — 「{}」を含むセルを塗ります",
   "en": "{}:{} — filling cells containing «{}»"
  },
  {
-  "i": 729,
+  "i": 728,
   "ja": "個数を半角の数で(例: 10)",
   "en": "Enter a count in ASCII digits (e.g. 10)"
  },
  {
-  "i": 730,
-  "ja": "{}:{} — {}{} を塗ります",
-  "en": "{}:{} — filling the {}{}"
- },
- {
-  "i": 731,
+  "i": 729,
   "ja": "条件付き書式 — {} で、間なら塗る(8〜15 の形)",
   "en": "Conditional format — fill {} when between (form: 8〜15)"
  },
  {
-  "i": 732,
+  "i": 730,
   "ja": "条件付き書式 — {} で、含む文字は?",
   "en": "Conditional format — text to look for in {}?"
  },
  {
-  "i": 733,
+  "i": 731,
   "ja": "条件付き書式 — {} で、上位いくつを塗る?",
   "en": "Conditional format — top how many in {}?"
  },
  {
-  "i": 734,
+  "i": 732,
   "ja": "条件付き書式 — {} で、下位いくつを塗る?",
   "en": "Conditional format — bottom how many in {}?"
  },
  {
-  "i": 735,
+  "i": 733,
   "ja": "右下を引いて大きさを変えます(比は保ちます)",
   "en": "Drag the corner to resize (aspect kept)"
  },
  {
-  "i": 736,
+  "i": 734,
   "ja": "画像を選びました(ドラッグで移動 / 右下で大きさ / Del で削除)",
   "en": "Image selected (drag to move / corner to resize / Del to delete)"
  },
  {
-  "i": 737,
+  "i": 735,
   "ja": "読み込んだ画像は動かせません(保存で元の姿を守るため。挿し直せばこのアプリの画像になります)",
   "en": "Images loaded from the file can't be moved (their original form is preserved on save; re-insert to make them editable)"
  },
  {
-  "i": 738,
+  "i": 736,
   "ja": "画像を削除しました(Ctrl+Z で戻せます)",
   "en": "Image deleted (Ctrl+Z undoes it)"
  },
  {
-  "i": 739,
+  "i": 737,
   "ja": "画面の明暗(テーマ)",
   "en": "Interface theme (light/dark)"
  },
  {
-  "i": 740,
+  "i": 738,
   "ja": "暗い",
   "en": "Dark"
  },
  {
-  "i": 741,
+  "i": 739,
   "ja": "明るい",
   "en": "Light"
  },
  {
-  "i": 742,
+  "i": 740,
   "ja": "画面の文字の大きさ",
   "en": "UI text size"
  },
  {
-  "i": 743,
+  "i": 741,
   "ja": "{} 個の結合を解きました",
   "en": "{} merges removed"
  },
  {
-  "i": 744,
+  "i": 742,
   "ja": "{}:{} を横方向に結合しました({} 行ぶん)",
   "en": "{}:{} merged across ({} rows)"
  },
  {
-  "i": 745,
+  "i": 743,
   "ja": "{}:{} を結合しました(揃えはそのまま)",
   "en": "{}:{} merged (alignment untouched)"
  },
  {
-  "i": 746,
+  "i": 744,
   "ja": "{}:{} を結合し、中央に揃えました",
   "en": "{}:{} merged and centered"
  },
  {
-  "i": 747,
+  "i": 745,
   "ja": "書式を持ちました — 次に押したセル(選択)に塗ります(Esc でやめる)",
   "en": "Format picked up — it will be painted onto the next cell you click (Esc to cancel)"
  },
  {
-  "i": 748,
+  "i": 746,
   "ja": "{} に書式を塗りました(Ctrl+Z で戻せます)",
   "en": "Format painted onto {} (Ctrl+Z undoes it)"
  },
  {
-  "i": 749,
+  "i": 747,
   "ja": "書式のコピーをやめました",
   "en": "Format painting cancelled"
  },
  {
-  "i": 750,
+  "i": 748,
   "ja": "既定の大きさに戻しました",
   "en": "Reset to the default size"
  },
  {
-  "i": 751,
+  "i": 749,
   "ja": "半角の数で(例: 12.5)",
   "en": "Use ASCII digits (e.g. 12.5)"
  },
  {
-  "i": 752,
+  "i": 750,
   "ja": "列の幅は 0〜255 で",
   "en": "Column width must be 0–255"
  },
  {
-  "i": 753,
+  "i": 751,
   "ja": "行の高さは 0〜409 で",
   "en": "Row height must be 0–409"
  },
  {
-  "i": 754,
+  "i": 752,
   "ja": "列の幅を {} にしました({} 列)",
   "en": "Column width set to {} ({} columns)"
  },
  {
-  "i": 755,
+  "i": 753,
   "ja": "行の高さを {} pt にしました({} 行)",
   "en": "Row height set to {} pt ({} rows)"
  },
  {
-  "i": 756,
+  "i": 754,
   "ja": "列の幅 — 0〜255(「0」何個ぶんか。空 Enter = 既定に戻す)",
   "en": "Column width — 0–255 (in zeros of the standard font; empty Enter = default)"
  },
  {
-  "i": 757,
+  "i": 755,
   "ja": "行の高さ — 0〜409 pt(空 Enter = 既定に戻す)",
   "en": "Row height — 0–409 pt (empty Enter = default)"
  },
  {
-  "i": 758,
+  "i": 756,
   "ja": "シート「{}」が見つかりません",
   "en": "Sheet \"{}\" not found"
  },
  {
-  "i": 759,
+  "i": 757,
   "ja": "リンク先 {} へ移動しました",
   "en": "Jumped to link target {}"
  },
  {
-  "i": 760,
+  "i": 758,
   "ja": "リンク先({})が場所として読めません",
   "en": "Link target ({}) is not a valid reference"
  },
  {
-  "i": 761,
+  "i": 759,
   "ja": "ハイパーリンク — {}(URL か #シート名!B5。空にして Enter で外す)",
   "en": "Hyperlink — {} (URL or #Sheet!B5; empty Enter removes it)"
  },
  {
-  "i": 762,
+  "i": 760,
   "ja": "表示テキスト — {} に見せる文字(空 Enter = そのまま)",
   "en": "Display text — what {} shows (empty Enter = keep as is)"
  },
  {
-  "i": 763,
+  "i": 761,
   "ja": "{} 列",
   "en": "Column {}"
  },
  {
-  "i": 764,
+  "i": 762,
   "ja": "先頭行は見出し(消さない)",
   "en": "First row is a header (keep it)"
  },
  {
-  "i": 765,
+  "i": 763,
   "ja": "削除する",
   "en": "Delete"
  },
  {
-  "i": 766,
+  "i": 764,
   "ja": "比べる列を1つは選んでください",
   "en": "Pick at least one column to compare"
  },
  {
-  "i": 767,
+  "i": 765,
   "ja": "重複の削除 — 比べる列(クリックで入切)",
   "en": "Remove duplicates — columns to compare (click to toggle)"
  },
  {
-  "i": 768,
+  "i": 766,
   "ja": "このセルに塗りつぶしの色がありません",
   "en": "This cell has no fill color"
  },
  {
-  "i": 769,
+  "i": 767,
   "ja": "このセルの文字に色が付いていません",
   "en": "This cell has no font color"
  },
  {
-  "i": 770,
+  "i": 768,
   "ja": "セルの色が同じ行を上に集めました",
   "en": "Rows with the same cell color moved to the top"
  },
  {
-  "i": 771,
+  "i": 769,
   "ja": "フォントの色が同じ行を上に集めました",
   "en": "Rows with the same font color moved to the top"
  },
  {
-  "i": 772,
+  "i": 770,
   "ja": "式から範囲が読み取れません",
   "en": "Could not read a range from the formula"
  },
  {
-  "i": 773,
+  "i": 771,
   "ja": "集計の式を消しました(書式はそのまま)",
   "en": "Removed the total formula (format kept)"
  },
  {
-  "i": 774,
+  "i": 772,
   "ja": "平均",
   "en": "Average"
  },
  {
-  "i": 775,
+  "i": 773,
   "ja": "個数",
   "en": "Count"
  },
  {
-  "i": 776,
+  "i": 774,
   "ja": "標準偏差",
   "en": "StdDev"
  },
  {
-  "i": 777,
+  "i": 775,
   "ja": "分散",
   "en": "Variance"
  },
  {
-  "i": 778,
+  "i": 776,
   "ja": "合計",
   "en": "Sum"
  },
  {
-  "i": 779,
+  "i": 777,
   "ja": "{} を {} の{}に替えました(絞り込み中の行は数えません)",
   "en": "Changed {} over {} to: {} (filtered-out rows are skipped)"
  },
  {
-  "i": 780,
+  "i": 778,
   "ja": "CSV に書き出せませんでした: {}",
   "en": "Could not export to CSV: {}"
  },
  {
-  "i": 781,
+  "i": 779,
   "ja": "CSV に書き出す",
   "en": "Export to CSV"
  },
  {
-  "i": 782,
+  "i": 780,
   "ja": "データバーを敷きます(最小〜最大が棒の長さ)",
   "en": "Data bars added (bar length runs from min to max)"
  },
  {
-  "i": 783,
+  "i": 781,
   "ja": "カラースケールを塗ります(小=赤 〜 大=緑)",
   "en": "Color scale applied (low = red, high = green)"
  },
  {
-  "i": 784,
+  "i": 782,
   "ja": "3つの矢印を置きます(下/中/上の三段)",
   "en": "Three arrows added (low / middle / high)"
  },
  {
-  "i": 785,
+  "i": 783,
   "ja": "規則 {} をどうしますか",
   "en": "What to do with rule {}?"
  },
  {
-  "i": 786,
+  "i": 784,
   "ja": "{}:{} へ移動しました",
   "en": "Jumped to {}:{}"
  },
  {
-  "i": 787,
+  "i": 785,
   "ja": "規則({}:{} の {})を消しました",
   "en": "Removed the rule on {}:{} ({})"
  },
  {
-  "i": 788,
+  "i": 786,
   "ja": "このシートに条件付き書式はありません",
   "en": "This sheet has no conditional formatting"
  },
  {
-  "i": 789,
+  "i": 787,
   "ja": "ルールの管理 — 規則をクリックで選ぶ",
   "en": "Manage rules — click a rule to select it"
  },
  {
-  "i": 790,
+  "i": 788,
   "ja": "値の比較",
   "en": "Compare value"
  },
  {
-  "i": 791,
+  "i": 789,
   "ja": "{} と {} の間",
   "en": "Between {} and {}"
  },
  {
-  "i": 792,
+  "i": 790,
   "ja": "{} と {} の外",
   "en": "Outside {} and {}"
  },
  {
-  "i": 793,
+  "i": 791,
   "ja": "「{}」を含む",
   "en": "Contains \"{}\""
  },
  {
-  "i": 794,
+  "i": 792,
   "ja": "重複する値",
   "en": "Duplicate values"
  },
  {
-  "i": 795,
+  "i": 793,
   "ja": "一意の値",
   "en": "Unique values"
  },
  {
-  "i": 796,
+  "i": 794,
   "ja": "上位 {}",
   "en": "Top {}"
  },
  {
-  "i": 797,
+  "i": 795,
   "ja": "下位 {}",
   "en": "Bottom {}"
  },
  {
-  "i": 798,
+  "i": 796,
   "ja": "平均より上",
   "en": "Above average"
  },
  {
-  "i": 799,
+  "i": 797,
   "ja": "平均より下",
   "en": "Below average"
  },
  {
-  "i": 800,
+  "i": 798,
   "ja": "データバー",
   "en": "Data bar"
  },
  {
-  "i": 801,
+  "i": 799,
   "ja": "カラースケール",
   "en": "Color scale"
  },
  {
-  "i": 802,
+  "i": 800,
   "ja": "アイコンセット",
   "en": "Icon set"
  },
  {
-  "i": 803,
+  "i": 801,
   "ja": "「{}」のグループ化 — 単位を選ぶ",
   "en": "Group \"{}\" — pick a unit"
  },
  {
-  "i": 804,
+  "i": 802,
   "ja": "条件が空です(例: 含む 東京)",
   "en": "The condition is empty (e.g. contains Tokyo)"
  },
  {
-  "i": 805,
+  "i": 803,
   "ja": "「> 1000」の形で(比較は > >= < <= =)",
   "en": "Use the form \"> 1000\" (operators: > >= < <= =)"
  },
  {
-  "i": 806,
+  "i": 804,
   "ja": "しきい値が数として読めません",
   "en": "The threshold is not a number"
  },
  {
-  "i": 807,
+  "i": 805,
   "ja": "幅が数として読めません(例: 100)",
   "en": "The width is not a number (e.g. 100)"
  },
  {
-  "i": 808,
+  "i": 806,
   "ja": "幅は 0 より大きい数で",
   "en": "The width must be greater than 0"
  },
  {
-  "i": 809,
+  "i": 807,
   "ja": "ラベルで絞る — 例: 含む 東京 / で始まる 東 / で終わる 区",
   "en": "Label filter — e.g. 含む Tokyo / で始まる A / で終わる Z (contains / begins with / ends with)"
  },
  {
-  "i": 810,
+  "i": 808,
   "ja": "値で絞る — 例: > 1000(比較は > >= < <= =。空 Enter = 解除)",
   "en": "Value filter — e.g. > 1000 (operators > >= < <= =; empty Enter removes it)"
  },
  {
-  "i": 811,
+  "i": 809,
   "ja": "数の幅でグループ化 — 幅を数で(例: 100)",
   "en": "Group by numeric width — enter the width (e.g. 100)"
  },
  {
-  "i": 812,
+  "i": 810,
   "ja": "反復計算を切りました(循環参照は #CIRC! に戻ります)",
   "en": "Iterative calculation off (circular references show #CIRC! again)"
  },
  {
-  "i": 813,
+  "i": 811,
   "ja": "反復計算: 入(最大 {} 回、変化 {} まで) — 循環参照を回して解きます",
   "en": "Iterative calculation on (max {} passes, until change ≤ {}) — circular references are solved by iteration"
  },
  {
-  "i": 814,
+  "i": 812,
   "ja": "「100 0.001」の形で(回数は1以上)",
   "en": "Use the form \"100 0.001\" (count must be ≥ 1)"
  },
  {
-  "i": 815,
+  "i": 813,
   "ja": "反復計算 — 最大回数と変化量(例: 100 0.001。空 Enter = 切)",
   "en": "Iterative calculation — max passes and max change (e.g. 100 0.001; empty Enter turns it off)"
  },
  {
-  "i": 816,
+  "i": 814,
   "ja": "反復計算(循環参照)",
   "en": "Iterative calculation (circular references)"
  },
  {
-  "i": 817,
+  "i": 815,
   "ja": "入(最大 {} 回・変化 {} まで)",
   "en": "On (max {} passes, change ≤ {})"
  },
  {
-  "i": 818,
+  "i": 816,
   "ja": "切",
   "en": "Off"
  },
  {
-  "i": 819,
+  "i": 817,
   "ja": "参照の形式: R1C1(R[行]C[列] — 列見出しも数字になります)",
   "en": "Reference style: R1C1 (R[row]C[col] — column headers turn numeric)"
  },
  {
-  "i": 820,
+  "i": 818,
   "ja": "参照の形式: A1(いつもの B2 の形)",
   "en": "Reference style: A1 (the usual B2 form)"
  },
  {
-  "i": 821,
+  "i": 819,
   "ja": "参照の形式",
   "en": "Reference style"
  },
  {
-  "i": 822,
+  "i": 820,
   "ja": "スパークラインにする数の範囲を選んでください(置き場所はいまのセル)",
   "en": "Select the range of numbers for the sparkline (it is placed at the current cell)"
  },
  {
-  "i": 823,
+  "i": 821,
   "ja": "スパークラインの種類",
   "en": "Sparkline type"
  },
  {
-  "i": 824,
+  "i": 822,
   "ja": "縦棒のスパークライン",
   "en": "Column sparkline"
  },
  {
-  "i": 825,
+  "i": 823,
   "ja": "勝ち負けのスパークライン",
   "en": "Win/loss sparkline"
  },
  {
-  "i": 826,
+  "i": 824,
   "ja": "折れ線のスパークライン",
   "en": "Line sparkline"
  },
  {
-  "i": 827,
+  "i": 825,
   "ja": "{}を {} に置きました(その時の値で描く固定の絵。データを変えたら作り直してください)",
   "en": "Placed a {} at {} (a fixed picture of the current values; recreate it after the data changes)"
  },
  {
-  "i": 828,
+  "i": 826,
   "ja": "読めた行がありません(設定を見直してください)",
   "en": "No rows could be read (check the settings)"
  },
  {
-  "i": 829,
+  "i": 827,
   "ja": "{} 行 {} 欄を {} から流し込みました(値として)",
   "en": "Imported {} rows × {} fields at {} (as values)"
  },
  {
-  "i": 830,
+  "i": 828,
   "ja": "文字コード",
   "en": "Encoding"
  },
  {
-  "i": 831,
+  "i": 829,
   "ja": "区切り",
   "en": "Delimiter"
  },
  {
-  "i": 832,
+  "i": 830,
   "ja": "置き場所",
   "en": "Destination"
  },
  {
-  "i": 833,
+  "i": 831,
   "ja": "区切りの文字を1つ打ってください(例: |)",
   "en": "Type one delimiter character (e.g. |)"
  },
  {
-  "i": 834,
+  "i": 832,
   "ja": "場所が読めません(B12 の形で)",
   "en": "Not a valid cell (use the B12 form)"
  },
  {
-  "i": 835,
+  "i": 833,
   "ja": "読み込めません: {}",
   "en": "Could not read: {}"
  },
  {
-  "i": 836,
+  "i": 834,
   "ja": "取り込む({} 行)",
   "en": "Import ({} rows)"
  },
  {
-  "i": 837,
+  "i": 835,
   "ja": "テキストの取り込み — {}(クリックで切替)",
   "en": "Text import — {} (click a line to change it)"
  },
  {
-  "i": 838,
+  "i": 836,
   "ja": "区切りの文字を1つ(例: |)",
   "en": "One delimiter character (e.g. |)"
  },
  {
-  "i": 839,
+  "i": 837,
   "ja": "置き場所 — 左上のセル(B12 の形)",
   "en": "Destination — top-left cell (B12 form)"
  },
  {
-  "i": 840,
+  "i": 838,
   "ja": "罫線(連続で押せます。Esc で閉じる)",
   "en": "Borders (keep clicking; Esc closes)"
  },
  {
-  "i": 841,
+  "i": 839,
   "ja": "線のスタイル: {}…",
   "en": "Line style: {}…"
  },
  {
-  "i": 842,
+  "i": 840,
   "ja": "線の色: {}…",
   "en": "Line color: {}…"
  },
  {
-  "i": 843,
+  "i": 841,
   "ja": "{}(左上以外の値は消しました — Ctrl+Z で戻せます)",
   "en": "{} (values outside the top-left cell were cleared — Ctrl+Z restores them)"
  },
  {
-  "i": 844,
+  "i": 842,
   "ja": "{}(空だった左上へ最初の値を移しました)",
   "en": "{} (the top-left was empty, so the first value was moved there)"
  },
  {
-  "i": 845,
+  "i": 843,
   "ja": "Python から {} セルを書き込みました",
   "en": "Python wrote {} cells"
  },
  {
-  "i": 846,
+  "i": 844,
   "ja": "ロックを外しました(保護中でもここは書けます)",
   "en": "Unlocked (this cell stays writable while the sheet is protected)"
  },
  {
-  "i": 847,
+  "i": 845,
   "ja": "ロックを掛けました(保護中は書けません)",
   "en": "Locked (not writable while the sheet is protected)"
  },
  {
-  "i": 848,
+  "i": 846,
   "ja": "保護中に許す操作(押して入切。保護していないときは効きません)",
   "en": "Allowed while protected (click to toggle; no effect unless protected)"
  },
  {
-  "i": 849,
+  "i": 847,
   "ja": "plugins に .py がありません({} — 「新しい .py」で作れます)",
   "en": "No .py files in plugins ({} — \"New .py\" creates one)"
  },
  {
-  "i": 850,
+  "i": 848,
   "ja": "選ぶとその .py を実行します",
   "en": "Choosing one runs that .py"
  },
  {
-  "i": 851,
+  "i": 849,
   "ja": "選ぶとその .py を編集します(Ctrl+S で保存 — セルの関数はすぐ計算し直ります)",
   "en": "Choosing one edits that .py (Ctrl+S saves — cell functions recalculate at once)"
  },
  {
-  "i": 852,
+  "i": 850,
   "ja": "plugins に .py がありません({})",
   "en": "No .py files in plugins ({})"
  },
  {
-  "i": 853,
+  "i": 851,
   "ja": "plugins: {}",
   "en": "plugins: {}"
  },
  {
-  "i": 854,
+  "i": 852,
   "ja": "計算の種類(比率=総計を100%とする。累計と差は小計・総計を出しません)",
   "en": "Show values as (ratio = grand total is 100%. Running total and difference drop subtotals and grand totals)"
  },
  {
-  "i": 855,
+  "i": 853,
   "ja": "記号(組を選ぶと一字ずつ出ます)",
   "en": "Symbols (pick a group to see them one by one)"
  },
  {
-  "i": 856,
+  "i": 854,
   "ja": "改ページは紙の切れ目です。切りたい行(または列)にカーソルを置いてから押してください",
   "en": "A page break is where the paper ends. Put the cursor on the row (or column) you want to break at, then press this"
  },
  {
-  "i": 857,
+  "i": 855,
   "ja": "改ページ(紙の切れ目)",
   "en": "Page break (where the paper ends)"
  },
  {
-  "i": 858,
+  "i": 856,
   "ja": "足す範囲を Shift+矢印かドラッグで選んでください",
   "en": "Select the range to add with Shift+arrows or by dragging"
  },
  {
-  "i": 859,
+  "i": 857,
   "ja": "その範囲はもう印刷範囲に入っています",
   "en": "That range is already in the print area"
  },
  {
-  "i": 860,
+  "i": 858,
   "ja": "開いた人に「見るだけ」を勧めます(鍵ではありません — 直せます)",
   "en": "Suggests \"view only\" to whoever opens it (not a lock — it can be edited)"
  },
  {
-  "i": 861,
+  "i": 859,
   "ja": "読み取り専用の勧めをやめました",
   "en": "No longer suggesting read-only"
  },
  {
-  "i": 862,
+  "i": 860,
   "ja": "左に元の列が要ります(A 列では推し量れません)",
   "en": "The source column has to be to the left (nothing to infer from in column A)"
  },
  {
-  "i": 863,
+  "i": 861,
   "ja": "先に1つ書いてください(その書き方を見て下を埋めます)",
   "en": "Write one first (we read your example and fill in below it)"
  },
  {
-  "i": 864,
+  "i": 862,
   "ja": "書き方が読み取れませんでした(もう1つ見本を書くと当たりやすくなります)",
   "en": "Couldn't work out the pattern (one more example makes it easier to hit)"
  },
  {
-  "i": 865,
+  "i": 863,
   "ja": "埋める所がありませんでした",
   "en": "There was nothing to fill in"
  },
  {
-  "i": 866,
+  "i": 864,
   "ja": "{} 個を書き方に合わせて埋めました(Ctrl+Z で戻せます — 中身は必ず見てください)",
   "en": "Filled {} cells to match your example (Ctrl+Z undoes it — do check the contents)"
  },
  {
-  "i": 867,
+  "i": 865,
   "ja": "名前がまだありません(数式タブの「名前の管理」で、選んだ範囲に付けられます)",
   "en": "No names yet (Formulas tab > Name Manager gives the selected range a name)"
  },
  {
-  "i": 868,
+  "i": 866,
   "ja": "式に差し込む名前(いま打っている所に入ります)",
   "en": "Name to put in the formula (it goes where you are typing)"
  },
  {
-  "i": 869,
+  "i": 867,
   "ja": "中身が無いので合わせようがありません",
   "en": "Nothing in there, so there's nothing to fit to"
  },
  {
-  "i": 870,
+  "i": 868,
   "ja": "{} 列の幅を中身に合わせました(Ctrl+Z で戻せます)",
   "en": "Fitted {} columns to their contents (Ctrl+Z undoes it)"
  },
  {
-  "i": 871,
+  "i": 869,
   "ja": "{} 行の高さを中身に合わせました(Ctrl+Z で戻せます)",
   "en": "Fitted {} rows to their contents (Ctrl+Z undoes it)"
  },
  {
-  "i": 872,
+  "i": 870,
   "ja": "CSV に書き出すときの文字コードと区切り",
   "en": "Character encoding and separator for writing CSV"
  },
  {
-  "i": 873,
+  "i": 871,
   "ja": "復旧する控えはありません(いまは {} 秒ごとに控えています)",
   "en": "No backup to recover (we're keeping one every {} seconds)"
  },
  {
-  "i": 874,
+  "i": 872,
   "ja": "保存できずに終わったブックの控え(選ぶと開きます)",
   "en": "Backups of books that ended without saving (choose one to open it)"
  },
  {
-  "i": 875,
+  "i": 873,
   "ja": "自動復旧の控えを取る間隔(原本は上書きしません)",
   "en": "How often to keep an auto-recovery backup (the original is never overwritten)"
  },
  {
-  "i": 876,
+  "i": 874,
   "ja": "紙の切れ目を出します(いまは1枚に収まっています)",
   "en": "Showing where the paper ends (right now it all fits on one sheet)"
  },
  {
-  "i": 877,
+  "i": 875,
   "ja": "紙の切れ目を消しました",
   "en": "Page break lines off"
  },
  {
-  "i": 878,
+  "i": 876,
   "ja": "紙に収める(選ぶと拡大縮小印刷の % より優先します)",
   "en": "Fit to paper (this wins over the scaling % when set)"
  },
  {
-  "i": 879,
-  "ja": "使っている{}を全部は隠せません(戻す道が見えなくなるため)",
-  "en": "Can't hide every {} in use (you'd lose the way back)"
- },
- {
-  "i": 880,
-  "ja": "その{}はもう隠れています",
-  "en": "That {} is already hidden"
- },
- {
-  "i": 881,
-  "ja": "選んだ中に隠れた{}はありません(隠れた分を挟むように選ぶ)",
-  "en": "No hidden {} inside the selection (select across the hidden ones)"
- },
- {
-  "i": 882,
-  "ja": "{} {}を隠しました(見出しを跨いで選び「再表示」で戻せます)",
-  "en": "Hid {} {} (select across them and choose \"Unhide\" to bring them back)"
- },
- {
-  "i": 883,
-  "ja": "{} {}を戻しました",
-  "en": "Brought back {} {}"
- },
- {
-  "i": 884,
+  "i": 877,
   "ja": "変更履歴を記録します(もう一度押すと、開始時点との差を刻んで一覧を出します)",
   "en": "Recording changes (press again to record the difference from where you started and list it)"
  },
  {
-  "i": 885,
+  "i": 878,
   "ja": "記録を止めました(変わった所はありません)",
   "en": "Stopped recording (nothing changed)"
  },
  {
-  "i": 886,
+  "i": 879,
   "ja": "記録を止めました — {} 件を刻みました(一覧は同じボタンをもう一度)",
   "en": "Stopped recording — {} entries (press the same button again for the list)"
  },
  {
-  "i": 887,
+  "i": 880,
   "ja": "変更履歴はまだありません(共同編集タブの「変更履歴」で記録を始める)",
   "en": "No change history yet (start recording from \"Change history\" on the Collaborate tab)"
  },
  {
-  "i": 888,
+  "i": 881,
   "ja": "変更履歴 {} 件(新しい順。選んでもその場所へ跳ぶだけ — 戻す機能ではありません)",
   "en": "Change history: {} entries (newest first. Choosing one only jumps there — this does not undo)"
  },
  {
-  "i": 889,
+  "i": 882,
   "ja": "自動復旧の控えが書けません(保存先の権限を確かめてください)",
   "en": "Can't write the auto-recovery backup (check the permissions on the save location)"
  },
  {
-  "i": 890,
+  "i": 883,
   "ja": "CSV に書き出しました: {}({} — いまのシートの値だけ。式・書式・他のシートは入りません){}",
   "en": "Wrote CSV: {} ({} — values from this sheet only. No formulas, formatting or other sheets){}"
  },
  {
-  "i": 891,
+  "i": 884,
   "ja": "このブックは読み取り専用が勧められています(鍵ではありません — 直せます。保護タブで外せます)",
   "en": "This book suggests read-only (not a lock — it can be edited. The Protection tab turns it off)"
  },
  {
-  "i": 892,
+  "i": 885,
   "ja": "前に保存できずに終わったブックが {} 件あります(保護タブの隣の「復旧」で開けます)",
   "en": "{} books ended without saving (open them from \"Recover\", next to the Protection tab)"
  },
  {
-  "i": 893,
+  "i": 886,
   "ja": "回します(Shift で15度刻み)",
   "en": "Rotates (Shift for 15° steps)"
  },
  {
-  "i": 894,
+  "i": 887,
   "ja": "{} 個の図形を選んでいます(右クリック→整列で揃えます)",
   "en": "{} shapes selected (right-click > Align to line them up)"
  },
  {
-  "i": 895,
+  "i": 888,
   "ja": "シートが保護されています(このセルのロックを外すか、保護タブで解除)",
   "en": "The sheet is protected (unlock this cell, or release it on the Protection tab)"
  },
  {
-  "i": 896,
+  "i": 889,
   "ja": "{} からの配列数式の一部です。変えるには範囲を選び直して Ctrl+Shift+Enter(消すなら範囲を選んで Delete)",
   "en": "Part of the array formula anchored at {}. To change it, reselect the range and press Ctrl+Shift+Enter (to remove it, select the range and press Delete)"
  },
  {
-  "i": 897,
+  "i": 890,
   "ja": "{} を見張りから外しました",
   "en": "Stopped watching {}"
  },
  {
-  "i": 898,
+  "i": 891,
   "ja": "その見張りはもうありません",
   "en": "That watch is already gone"
  },
  {
-  "i": 899,
+  "i": 892,
   "ja": "配列数式の一部だけは消せません(範囲ぜんぶを選んでから Delete)",
   "en": "Can't delete part of an array formula (select the whole range, then Delete)"
  },
  {
-  "i": 900,
+  "i": 893,
   "ja": "配列数式を消しました(Ctrl+Z で戻せます)",
   "en": "Deleted the array formula (Ctrl+Z undoes it)"
  },
  {
-  "i": 901,
+  "i": 894,
   "ja": "{} 個の図形を削除しました(Ctrl+Z で戻せます)",
   "en": "Deleted {} shapes (Ctrl+Z undoes it)"
  },
  {
-  "i": 902,
+  "i": 895,
   "ja": "コードをコピーしました",
   "en": "Copied the code"
  },
  {
-  "i": 903,
+  "i": 896,
   "ja": "全画面を切り替えました(F11 で戻ります)",
   "en": "Toggled full screen (F11 goes back)"
  },
  {
-  "i": 904,
+  "i": 897,
   "ja": "ズームを 100% に戻しました",
   "en": "Zoom back to 100%"
  },
  {
-  "i": 905,
+  "i": 898,
   "ja": "手引き: docs/calc-manual.ja.md(英語は calc-manual.md)。Python は python-manual.ja.md",
   "en": "Manual: docs/calc-manual.ja.md (English is calc-manual.md). Python is python-manual.ja.md"
  },
  {
-  "i": 906,
+  "i": 899,
   "ja": "いまの時刻が取れませんでした",
   "en": "Couldn't get the current time"
  },
  {
-  "i": 907,
+  "i": 900,
   "ja": "{} を入れました(Enter で確定。値なので後で変わりません)",
   "en": "Put in {} (Enter commits. It's a value, so it won't change later)"
  },
  {
-  "i": 908,
+  "i": 901,
   "ja": "スライサーが開いていません(データタブの「スライサー」で開きます)",
   "en": "No slicer open (open one from \"Slicer\" on the Data tab)"
  },
  {
-  "i": 909,
+  "i": 902,
   "ja": "F4 は式の中の参照に効きます(= から始めてください)",
   "en": "F4 works on a reference inside a formula (start with =)"
  },
  {
-  "i": 910,
+  "i": 903,
   "ja": "参照の $ を回しました(F4 でもう一度)",
   "en": "Cycled the $ in the reference (F4 again for the next one)"
  },
  {
-  "i": 911,
+  "i": 904,
   "ja": "カーソルの手前に参照がありません",
   "en": "No reference before the cursor"
  },
  {
-  "i": 912,
+  "i": 905,
   "ja": "配列数式は「=」で始まる式にだけ使えます(Ctrl+Shift+Enter)",
   "en": "An array formula needs a formula starting with \"=\" (Ctrl+Shift+Enter)"
  },
  {
-  "i": 913,
+  "i": 906,
   "ja": "{}:{} に配列数式を入れました(数式バーでは {{ }} で囲んで見せます)",
   "en": "Put an array formula in {}:{} (the formula bar shows it wrapped in {{ }})"
  },
  {
-  "i": 914,
+  "i": 907,
   "ja": "図形を切り取りました(貼り付けで戻せます)",
   "en": "Cut the shape (paste brings it back)"
  },
  {
-  "i": 915,
+  "i": 908,
   "ja": "図形をコピーしました",
   "en": "Copied the shape"
  },
  {
-  "i": 916,
+  "i": 909,
   "ja": "貼り付ける図形がありません(先に図形をコピー)",
   "en": "No shape to paste (copy one first)"
  },
  {
-  "i": 917,
+  "i": 910,
   "ja": "図形を {} に貼り付けました",
   "en": "Pasted the shape at {}"
  },
  {
-  "i": 918,
+  "i": 911,
   "ja": "もうその位置です(後に描く図形が前に出ます)",
   "en": "Already there (shapes drawn later sit in front)"
  },
  {
-  "i": 919,
+  "i": 912,
   "ja": "最前面へ移動しました",
   "en": "Moved to the front"
  },
  {
-  "i": 920,
+  "i": 913,
   "ja": "前面へ移動しました",
   "en": "Moved forward"
  },
  {
-  "i": 921,
+  "i": 914,
   "ja": "背面へ移動しました",
   "en": "Moved backward"
  },
  {
-  "i": 922,
+  "i": 915,
   "ja": "最背面へ移動しました",
   "en": "Moved to the back"
  },
  {
-  "i": 923,
+  "i": 916,
   "ja": "90度回しました",
   "en": "Rotated 90°"
  },
  {
-  "i": 924,
+  "i": 917,
   "ja": "左右に反転しました",
   "en": "Flipped left to right"
  },
  {
-  "i": 925,
+  "i": 918,
   "ja": "上下に反転しました",
   "en": "Flipped top to bottom"
  },
  {
-  "i": 926,
+  "i": 919,
   "ja": "保存をやめました",
   "en": "Save cancelled"
  },
  {
-  "i": 927,
+  "i": 920,
   "ja": "SVG で保存しました: {}",
   "en": "Saved as SVG: {}"
  },
  {
-  "i": 928,
+  "i": 921,
   "ja": "設定は右の「図形の設定」のパネルでどうぞ",
   "en": "Settings are in the \"Shape settings\" panel on the right"
  },
  {
-  "i": 929,
+  "i": 922,
   "ja": "{} 個以上の図形を選んでから(Ctrl+クリックで足せます)",
   "en": "Select {} or more shapes first (Ctrl+click adds to the selection)"
  },
  {
-  "i": 930,
+  "i": 923,
   "ja": "{} 個を左に揃えました",
   "en": "Aligned {} to the left"
  },
  {
-  "i": 931,
+  "i": 924,
   "ja": "{} 個を左右の中央に揃えました",
   "en": "Centred {} horizontally"
  },
  {
-  "i": 932,
+  "i": 925,
   "ja": "{} 個を右に揃えました",
   "en": "Aligned {} to the right"
  },
  {
-  "i": 933,
+  "i": 926,
   "ja": "{} 個を上に揃えました",
   "en": "Aligned {} to the top"
  },
  {
-  "i": 934,
+  "i": 927,
   "ja": "{} 個を上下の中央に揃えました",
   "en": "Centred {} vertically"
  },
  {
-  "i": 935,
+  "i": 928,
   "ja": "{} 個を下に揃えました",
   "en": "Aligned {} to the bottom"
  },
  {
-  "i": 936,
+  "i": 929,
   "ja": "{} 個を横に等間隔で並べました",
   "en": "Spread {} evenly across"
  },
  {
-  "i": 937,
+  "i": 930,
   "ja": "{} 個を縦に等間隔で並べました",
   "en": "Spread {} evenly down"
  },
  {
-  "i": 938,
+  "i": 931,
   "ja": "回転: {}度",
   "en": "Rotation: {}°"
  },
  {
-  "i": 939,
+  "i": 932,
   "ja": "「{}」を許しました",
   "en": "Allowed \"{}\""
  },
  {
-  "i": 940,
+  "i": 933,
   "ja": "「{}」を禁じました",
   "en": "Forbade \"{}\""
  },
  {
-  "i": 941,
+  "i": 934,
   "ja": "字を選ぶと式に入ります",
   "en": "Pick a character to put it in the formula"
  },
  {
-  "i": 942,
+  "i": 935,
   "ja": "{} を式に入れました",
   "en": "Put {} in the formula"
  },
  {
-  "i": 943,
+  "i": 936,
   "ja": "CSV は「{}」で書き出します(いまから)",
   "en": "CSV will be written as \"{}\" from now on"
  },
  {
-  "i": 944,
+  "i": 937,
   "ja": "控えを開きました(元は {})。中身を確かめて「名前を付けて保存」してください — このまま上書きはしません",
   "en": "Opened the backup (the original is {}). Check the contents and use \"Save As\" — this will not overwrite it"
  },
  {
-  "i": 945,
+  "i": 938,
   "ja": "自動復旧の控えを取りません(落ちたら打った分は失います)",
   "en": "Not keeping auto-recovery backups (a crash loses what you typed)"
  },
  {
-  "i": 946,
+  "i": 939,
   "ja": "{} に控えます(原本は上書きしません)",
   "en": "Backing up every {} (the original is never overwritten)"
  },
  {
-  "i": 947,
+  "i": 940,
   "ja": "改ページを {} 個ぜんぶ外しました",
   "en": "Removed all {} page breaks"
  },
  {
-  "i": 948,
+  "i": 941,
   "ja": "{} 列の改ページを外しました",
   "en": "Removed the page break at column {}"
  },
  {
-  "i": 949,
+  "i": 942,
   "ja": "A 列の前では改ページできません",
   "en": "Nothing to break before column A"
  },
  {
-  "i": 950,
+  "i": 943,
   "ja": "{} 列から新しい紙にします",
   "en": "New sheet of paper from column {}"
  },
  {
-  "i": 951,
+  "i": 944,
   "ja": "{} 行の改ページを外しました",
   "en": "Removed the page break at row {}"
  },
  {
-  "i": 952,
+  "i": 945,
   "ja": "{} 行から新しい紙にします",
   "en": "New sheet of paper from row {}"
  },
  {
-  "i": 953,
+  "i": 946,
   "ja": "紙に合わせるのをやめました(拡大縮小印刷の % に戻ります)",
   "en": "No longer fitting to paper (back to the scaling %)"
  },
  {
-  "i": 954,
+  "i": 947,
   "ja": "{} にします(PDF と保存に効きます)",
   "en": "Set to {} (applies to PDF and to saving)"
  },
  {
-  "i": 955,
+  "i": 948,
   "ja": "{} へ跳びました",
   "en": "Jumped to {}"
  },
  {
-  "i": 956,
+  "i": 949,
   "ja": "「{}」(U+{}) を差し込みました",
   "en": "Inserted \"{}\" (U+{})"
  },
  {
-  "i": 957,
+  "i": 950,
   "ja": "Unicode が読めません(16進で。例: 3012 は 〒)",
   "en": "Can't read that Unicode (hexadecimal — 3012 is 〒, for example)"
  },
  {
-  "i": 958,
+  "i": 951,
   "ja": "{} — ただし INDIRECT など**文字列の中**の「{}!」{} 箇所は追随しません(手で直してください)",
   "en": "{} — but \"{}!\" inside strings, in INDIRECT and the like, does not follow: {} of them (fix those by hand)"
  },
  {
-  "i": 959,
+  "i": 952,
   "ja": "plugins に .py がありません(@edit 名前 で作れます。=PY(\"関数名\", …) と @名前 が使えるようになります)",
   "en": "No .py files in plugins (@edit name creates one. Then =PY(\"function\", …) and @name work)"
  },
  {
-  "i": 960,
+  "i": 953,
   "ja": " ※このブックに載っている古いコード({})は実行しません — @export 名前 で取り出し、保存で消えます",
   "en": " * The old code carried in this book ({}) is not run — take it out with @export name; saving drops it"
  },
  {
-  "i": 961,
+  "i": 954,
   "ja": "ブックにコードは載せません(データとプログラムは別のファイル)。関数も手続きも {} に .py を置いてください",
   "en": "Books do not carry code here (data and programs are separate files). Put your functions and procedures in {} as .py"
  },
  {
-  "i": 962,
+  "i": 955,
   "ja": "「net」は要らなくなりました(plugins は自分で据えたコードなので、そのまま網に出られます)。@{} と打ってください",
   "en": "\"net\" is no longer needed (plugins is code you installed yourself, so it can reach the network as it is). Type @{}"
  },
  {
-  "i": 963,
+  "i": 956,
   "ja": "「{}」はブックに載っているコードです — 実行しません(@export {} で取り出し、確かめてから {} へ)",
   "en": "\"{}\" is code carried in the book — it is not run (@export {} takes it out; check it, then put it in {})"
  },
  {
-  "i": 964,
+  "i": 957,
   "ja": "「{}」はありません({} の .py が @名前 で動きます。@list で一覧)",
   "en": "There is no \"{}\" (.py files in {} run as @name. @list shows them)"
  },
  {
-  "i": 965,
+  "i": 958,
   "ja": "線を消しました",
   "en": "Removed the line"
  },
  {
-  "i": 966,
+  "i": 959,
   "ja": "線の色を{}にしました",
   "en": "Made the line {}"
  },
  {
-  "i": 967,
+  "i": 960,
   "ja": "回転を戻しました",
   "en": "Rotation reset"
  },
  {
-  "i": 968,
+  "i": 961,
   "ja": "{}度回しました(時計回り)",
   "en": "Rotated {}° (clockwise)"
  },
  {
-  "i": 969,
+  "i": 962,
   "ja": "角度が読めません(数を1つ。例: 45 / -30)",
   "en": "Can't read that angle (one number — 45 or -30, for example)"
  },
  {
-  "i": 970,
+  "i": 963,
   "ja": "データテーブルをやめました",
   "en": "Data table cancelled"
  },
  {
-  "i": 971,
+  "i": 964,
   "ja": "入力セルが読めません(例: B2)",
   "en": "Can't read that input cell (B2, for example)"
  },
  {
-  "i": 972,
+  "i": 965,
   "ja": "行の入力セルが読めません(例: B3。空 Enter = 1変数)",
   "en": "Can't read the row input cell (B3, for example. Empty Enter = one variable)"
  },
  {
-  "i": 973,
+  "i": 966,
   "ja": "シート「{}」を保護しました(ロックを外したセルだけ書けます)",
   "en": "Protected sheet \"{}\" (only unlocked cells stay writable)"
  },
  {
-  "i": 974,
+  "i": 967,
   "ja": "シート「{}」の保護を外しました",
   "en": "Released the protection on sheet \"{}\""
  },
  {
-  "i": 975,
+  "i": 968,
   "ja": "{}秒たっても終わらないので止めました(無限ループ?)",
   "en": "Stopped it after {} seconds (an endless loop?)"
  },
  {
-  "i": 976,
+  "i": 969,
   "ja": "@edit 名前 の形で(例: @edit 道具)",
   "en": "Write it as @edit name (for example @edit tools)"
  },
  {
-  "i": 977,
+  "i": 970,
   "ja": "{} を開きました(Ctrl+S で保存・Esc で閉じる)",
   "en": "Opened {} (Ctrl+S saves, Esc closes)"
  },
  {
-  "i": 978,
+  "i": 971,
   "ja": "plugins の置き場が作れません: {}",
   "en": "Can't create the plugins directory: {}"
  },
  {
-  "i": 979,
+  "i": 972,
   "ja": "{}.py を保存しました(セルの関数は計算し直ります)",
   "en": "Saved {}.py (cell functions will recalculate)"
  },
  {
-  "i": 980,
+  "i": 973,
   "ja": "書きかけがあります。Ctrl+S で保存、もう一度 Esc で捨てて閉じる",
   "en": "There are unsaved edits. Ctrl+S saves; Esc again throws them away and closes"
  },
  {
-  "i": 981,
+  "i": 974,
   "ja": "閉じました",
   "en": "Closed"
  },
  {
-  "i": 982,
+  "i": 975,
   "ja": "サンドボックスが組めません(bubblewrap か Flatpak が要ります)。他所から来たかもしれないコードはサンドボックスの外では実行しません(apt install bubblewrap)",
   "en": "Can't build the sandbox (bubblewrap or Flatpak is required). Code that may have come from elsewhere is not run outside the sandbox (apt install bubblewrap)"
  },
  {
-  "i": 983,
+  "i": 976,
   "ja": "officework のエンジンがありません(pip install officework で入ります。手元で組むなら cargo build -p pysheet --release --features extension-module して、lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてください)",
   "en": "The officework engine is missing (pip install officework installs it. To build it here, run cargo build -p pysheet --release --features extension-module and put lib_sheet.so next to calc under the name officework/_sheet.so)"
  },
  {
-  "i": 984,
+  "i": 977,
   "ja": "plugins の関数を呼んでいるセルがありません",
   "en": "No cell calls a function from plugins"
  },
  {
-  "i": 985,
+  "i": 978,
   "ja": "関数を計算しています…",
   "en": "Calculating the function…"
  },
  {
-  "i": 986,
+  "i": 979,
   "ja": "「{}」を実行しています…",
   "en": "Running \"{}\"…"
  },
  {
-  "i": 987,
+  "i": 980,
   "ja": "「{}」を実行しました(Ctrl+Z で1手で戻せます)",
   "en": "Ran \"{}\" (Ctrl+Z undoes it in one step)"
  },
  {
-  "i": 988,
+  "i": 981,
   "ja": "取り出しました: {}(中身を確かめて、良ければ plugins へ)",
   "en": "Took it out: {} (check the contents; if it looks right, move it to plugins)"
  },
  {
-  "i": 989,
+  "i": 982,
   "ja": "数式 ={}",
   "en": "Formula ={}"
  },
  {
-  "i": 990,
+  "i": 983,
   "ja": "図形の塗り — RRGGBB の6桁(例: FFF2CC。空 Enter = 塗りなし)",
   "en": "Shape fill — six hex digits RRGGBB (FFF2CC, for example. Empty Enter = no fill)"
  },
  {
-  "i": 991,
+  "i": 984,
   "ja": "図形の線 — RRGGBB の6桁(例: 1B6E3C。空 Enter = 線なし)",
   "en": "Shape line — six hex digits RRGGBB (1B6E3C, for example. Empty Enter = no line)"
  },
  {
-  "i": 992,
+  "i": 985,
   "ja": "図形の回転 — 度の数(時計回り。例: 45 / -30。空 Enter = 0)",
   "en": "Shape rotation — an angle in degrees (clockwise; 45 or -30, for example. Empty Enter = 0)"
  },
  {
-  "i": 993,
+  "i": 986,
   "ja": "データテーブル 1/2 — 列の入力セル(左の列の値を入れる先。例: B2)",
   "en": "Data table 1/2 — column input cell (where the values in the left column go. B2, for example)"
  },
  {
-  "i": 994,
+  "i": 987,
   "ja": "データテーブル 2/2 — 行の入力セル(空 Enter = 1変数)",
   "en": "Data table 2/2 — row input cell (empty Enter = one variable)"
  },
  {
-  "i": 995,
+  "i": 988,
   "ja": "降順(大きい・後ろの値から)",
   "en": "Descending (largest, or last, first)"
  },
  {
-  "i": 996,
+  "i": 989,
   "ja": "昇順(小さい・前の値から)",
   "en": "Ascending (smallest, or first, first)"
  },
  {
-  "i": 997,
+  "i": 990,
   "ja": "いま一行も無い値は並べません",
   "en": "Not listing values with no rows left"
  },
  {
-  "i": 998,
+  "i": 991,
   "ja": "いま一行も無い値も並べます",
   "en": "Listing values with no rows left too"
  },
  {
-  "i": 999,
+  "i": 992,
   "ja": "いま残っている行がありません(⊘ を戻すと全部出ます)",
   "en": "No rows left right now (turn ⊘ off to see them all)"
  },
  {
-  "i": 1000,
+  "i": 993,
   "ja": "ほか {} 件は並べていません(64 件まで)",
   "en": "{} more not listed (64 at a time)"
  },
  {
-  "i": 1001,
+  "i": 994,
   "ja": "図形の設定",
   "en": "Shape settings"
  },
  {
-  "i": 1002,
+  "i": 995,
   "ja": "塗り",
   "en": "Fill"
  },
  {
-  "i": 1003,
+  "i": 996,
   "ja": "色…",
   "en": "Colour…"
  },
  {
-  "i": 1004,
+  "i": 997,
   "ja": "線",
   "en": "Line"
  },
  {
-  "i": 1005,
+  "i": 998,
   "ja": "太さ",
   "en": "Width"
  },
  {
-  "i": 1006,
+  "i": 999,
   "ja": "線の太さ: {} pt",
   "en": "Line width: {} pt"
  },
  {
-  "i": 1007,
+  "i": 1000,
   "ja": "不透明度",
   "en": "Opacity"
  },
  {
-  "i": 1008,
+  "i": 1001,
   "ja": "不透明度: {}%",
   "en": "Opacity: {}%"
  },
  {
-  "i": 1009,
+  "i": 1002,
   "ja": "回転",
   "en": "Rotation"
  },
  {
-  "i": 1010,
+  "i": 1003,
   "ja": "左右反転",
   "en": "Flip horizontally"
  },
  {
-  "i": 1011,
+  "i": 1004,
   "ja": "上下反転",
   "en": "Flip vertically"
  },
  {
-  "i": 1012,
+  "i": 1005,
   "ja": "角度…({}°)",
   "en": "Angle… ({}°)"
  },
  {
-  "i": 1013,
+  "i": 1006,
   "ja": "影",
   "en": "Shadow"
  },
  {
-  "i": 1014,
+  "i": 1007,
   "ja": "あり",
   "en": "On"
  },
  {
-  "i": 1015,
+  "i": 1008,
   "ja": "影を付けました",
   "en": "Added a shadow"
  },
  {
-  "i": 1016,
+  "i": 1009,
   "ja": "影を消しました",
   "en": "Removed the shadow"
  },
  {
-  "i": 1017,
+  "i": 1010,
   "ja": "手引き: docs/writer-manual.ja.md(英語は writer-manual.md)。Python は writer-macro-manual.ja.md",
   "en": "Manual: docs/writer-manual.ja.md (English is writer-manual.md). Python is writer-macro-manual.ja.md"
  },
  {
-  "i": 1018,
+  "i": 1011,
   "ja": "{} を入れました(値なので後で変わりません)",
   "en": "Put in {} (it's a value, so it won't change later)"
  },
  {
-  "i": 1019,
+  "i": 1012,
   "ja": "結合して中央に配置",
   "en": "Merge and centre"
  },
  {
-  "i": 1020,
+  "i": 1013,
   "ja": "横方向に結合(行ごと)",
   "en": "Merge across (row by row)"
  },
  {
-  "i": 1021,
+  "i": 1014,
   "ja": "セルの結合(揃えは触らない)",
   "en": "Merge cells (leave alignment alone)"
  },
  {
-  "i": 1022,
+  "i": 1015,
   "ja": "結合の解除",
   "en": "Unmerge"
  },
  {
-  "i": 1023,
+  "i": 1016,
   "ja": "印刷の向き: {}(PDF と保存に効きます)",
   "en": "Page orientation: {} (applies to PDF and to saving)"
  },
  {
-  "i": 1024,
+  "i": 1017,
   "ja": "横",
   "en": "Landscape"
  },
  {
-  "i": 1025,
+  "i": 1018,
   "ja": "縦",
   "en": "Portrait"
  },
  {
-  "i": 1026,
+  "i": 1019,
   "ja": "その他(書式コードを打つ)…",
   "en": "Other (type a format code)…"
  },
  {
-  "i": 1027,
+  "i": 1020,
   "ja": "角度なし",
   "en": "No rotation"
  },
  {
-  "i": 1028,
+  "i": 1021,
   "ja": "左上がり 45度",
   "en": "Rotate up 45°"
  },
  {
-  "i": 1029,
+  "i": 1022,
   "ja": "右下がり 45度",
   "en": "Rotate down 45°"
  },
  {
-  "i": 1030,
+  "i": 1023,
   "ja": "上向き 90度",
   "en": "Rotate up 90°"
  },
  {
-  "i": 1031,
+  "i": 1024,
   "ja": "下向き 90度",
   "en": "Rotate down 90°"
  },
  {
-  "i": 1032,
+  "i": 1025,
   "ja": "縦書き(1字ずつ積む)",
   "en": "Vertical (stack one character at a time)"
  },
  {
-  "i": 1033,
+  "i": 1026,
   "ja": "その他(角度を打つ)…",
   "en": "Other (type an angle)…"
  },
  {
-  "i": 1034,
+  "i": 1027,
   "ja": "{} 列を{}(Ctrl+Z で戻せます)",
   "en": "{} columns {} (Ctrl+Z undoes this)"
  },
  {
-  "i": 1035,
+  "i": 1028,
   "ja": "畳みました",
   "en": "collapsed"
  },
  {
-  "i": 1036,
+  "i": 1029,
   "ja": "開きました",
   "en": "expanded"
  },
  {
-  "i": 1037,
+  "i": 1030,
   "ja": "{} 行を{}(Ctrl+Z で戻せます)",
   "en": "{} rows {} (Ctrl+Z undoes this)"
  },
  {
-  "i": 1038,
+  "i": 1031,
   "ja": "そのまま",
   "en": "No calculation"
  },
  {
-  "i": 1039,
+  "i": 1032,
   "ja": "比率",
   "en": "% of total"
  },
  {
-  "i": 1040,
+  "i": 1033,
   "ja": "累計",
   "en": "Running total"
  },
  {
-  "i": 1041,
+  "i": 1034,
   "ja": "差",
   "en": "Difference"
  },
  {
-  "i": 1042,
+  "i": 1035,
   "ja": "青(既定)",
   "en": "Blue (default)"
  },
  {
-  "i": 1043,
+  "i": 1036,
   "ja": "緑",
   "en": "Green"
  },
  {
-  "i": 1044,
+  "i": 1037,
   "ja": "橙",
   "en": "Orange"
  },
  {
-  "i": 1045,
+  "i": 1038,
   "ja": "灰",
   "en": "Grey"
  },
  {
-  "i": 1046,
+  "i": 1039,
   "ja": "ヘッダー左",
   "en": "Header left"
  },
  {
-  "i": 1047,
+  "i": 1040,
   "ja": "ヘッダー中",
   "en": "Header centre"
  },
  {
-  "i": 1048,
+  "i": 1041,
   "ja": "ヘッダー右",
   "en": "Header right"
  },
  {
-  "i": 1049,
+  "i": 1042,
   "ja": "フッター左",
   "en": "Footer left"
  },
  {
-  "i": 1050,
+  "i": 1043,
   "ja": "フッター中",
   "en": "Footer centre"
  },
  {
-  "i": 1051,
+  "i": 1044,
   "ja": "フッター右",
   "en": "Footer right"
  },
  {
-  "i": 1052,
+  "i": 1045,
   "ja": "全部消す",
   "en": "Clear all"
  },
  {
-  "i": 1053,
+  "i": 1046,
   "ja": "総計",
   "en": "Grand totals"
  },
  {
-  "i": 1054,
+  "i": 1047,
   "ja": "小計",
   "en": "Subtotals"
  },
  {
-  "i": 1055,
+  "i": 1048,
   "ja": "空行",
   "en": "Blank rows"
  },
  {
-  "i": 1056,
+  "i": 1049,
   "ja": "コンパクト形式",
   "en": "Compact form"
  },
  {
-  "i": 1057,
+  "i": 1050,
   "ja": "{}を{}にして置き直します…",
   "en": "Rebuilding with {} as {}…"
  },
  {
-  "i": 1058,
+  "i": 1051,
   "ja": "1行目を見出しの帯に",
   "en": "Header row band"
  },
  {
-  "i": 1059,
+  "i": 1052,
   "ja": "1行おきの縞々に",
   "en": "Banded rows"
  },
  {
-  "i": 1060,
+  "i": 1053,
   "ja": "1列おきの縞々に",
   "en": "Banded columns"
  },
  {
-  "i": 1061,
+  "i": 1054,
   "ja": "最初の列を太字に",
   "en": "Bold first column"
  },
  {
-  "i": 1062,
+  "i": 1055,
   "ja": "最後の列を太字に",
   "en": "Bold last column"
  },
  {
-  "i": 1063,
+  "i": 1056,
   "ja": "{}:{} を{}しました(Ctrl+Z で戻せます)",
   "en": "{}:{} {} (Ctrl+Z undoes this)"
  },
  {
-  "i": 1064,
+  "i": 1057,
   "ja": "最近使った: {}",
   "en": "Recently used: {}"
  },
  {
-  "i": 1065,
+  "i": 1058,
   "ja": "Unicode を打つ(例: 3012 → 〒)…",
   "en": "Type Unicode (e.g. 3012 → 〒)…"
  },
  {
-  "i": 1066,
+  "i": 1059,
   "ja": "この行({})の改ページを外す",
   "en": "Remove the page break on this row ({})"
  },
  {
-  "i": 1067,
+  "i": 1060,
   "ja": "{} 行から新しい紙にする(横の区切り)",
   "en": "Start a new sheet at row {} (horizontal break)"
  },
  {
-  "i": 1068,
+  "i": 1061,
   "ja": "この列({})の改ページを外す",
   "en": "Remove the page break on this column ({})"
  },
  {
-  "i": 1069,
+  "i": 1062,
   "ja": "{} 列から新しい紙にする(縦の区切り)",
   "en": "Start a new sheet at column {} (vertical break)"
  },
  {
-  "i": 1070,
+  "i": 1063,
   "ja": "すべての改ページを外す({} 個)",
   "en": "Remove all page breaks ({})"
  },
  {
-  "i": 1071,
+  "i": 1064,
   "ja": "{} = {}:{}(テーブル)",
   "en": "{} = {}:{} (table)"
  },
  {
-  "i": 1072,
+  "i": 1065,
   "ja": "取らない",
   "en": "Off"
  },
  {
-  "i": 1073,
+  "i": 1066,
   "ja": "1分ごと",
   "en": "Every minute"
  },
  {
-  "i": 1074,
+  "i": 1067,
   "ja": "5分ごと",
   "en": "Every 5 minutes"
  },
  {
-  "i": 1075,
+  "i": 1068,
   "ja": "10分ごと",
   "en": "Every 10 minutes"
  },
  {
-  "i": 1076,
+  "i": 1069,
   "ja": "拡大縮小しない",
   "en": "No scaling"
  },
  {
-  "i": 1077,
+  "i": 1070,
   "ja": "すべての列を1ページに",
   "en": "Fit all columns on one page"
  },
  {
-  "i": 1078,
+  "i": 1071,
   "ja": "すべての行を1ページに",
   "en": "Fit all rows on one page"
  },
  {
-  "i": 1079,
+  "i": 1072,
   "ja": "シートを1ページに",
   "en": "Fit the sheet on one page"
  },
  {
-  "i": 1080,
+  "i": 1073,
   "ja": "横2ページ×縦1ページ",
   "en": "2 pages wide × 1 page tall"
  },
  {
-  "i": 1081,
+  "i": 1074,
   "ja": "枠線の印刷: {}",
   "en": "Print gridlines: {}"
  },
  {
-  "i": 1082,
+  "i": 1075,
   "ja": "する(表の薄い線が紙に出ます)",
   "en": "Yes (the faint grid lines appear on paper)"
  },
  {
-  "i": 1083,
+  "i": 1076,
   "ja": "しない",
   "en": "No"
  },
  {
-  "i": 1084,
+  "i": 1077,
   "ja": "見出しの印刷: {}",
   "en": "Print headings: {}"
  },
  {
-  "i": 1085,
+  "i": 1078,
   "ja": "する(行番号と列名が余白に出ます)",
   "en": "Yes (row numbers and column letters appear in the margin)"
  },
  {
-  "i": 1086,
+  "i": 1079,
   "ja": "折れ線",
   "en": "Line"
  },
  {
-  "i": 1087,
+  "i": 1080,
   "ja": "縦棒(カラム)",
   "en": "Column"
  },
  {
-  "i": 1088,
+  "i": 1081,
   "ja": "勝ち負け(正負)",
   "en": "Win/loss"
  },
  {
-  "i": 1089,
+  "i": 1082,
   "ja": "四角形",
   "en": "Rectangle"
  },
  {
-  "i": 1090,
+  "i": 1083,
   "ja": "角丸四角形",
   "en": "Rounded rectangle"
  },
  {
-  "i": 1091,
+  "i": 1084,
   "ja": "楕円",
   "en": "Ellipse"
  },
  {
-  "i": 1092,
+  "i": 1085,
   "ja": "右矢印",
   "en": "Right arrow"
  },
  {
-  "i": 1093,
+  "i": 1086,
   "ja": "ひし形",
   "en": "Diamond"
  },
  {
-  "i": 1094,
+  "i": 1087,
   "ja": "直線",
   "en": "Straight line"
  },
  {
-  "i": 1095,
+  "i": 1088,
   "ja": "→ 新しい名前(いまの選択に付ける)…",
   "en": "→ New name (for the current selection)…"
  },
  {
-  "i": 1096,
+  "i": 1089,
   "ja": "固定の解除",
   "en": "Unfreeze"
  },
  {
-  "i": 1097,
+  "i": 1090,
   "ja": "いまの位置で固定(上と左が留まる)",
   "en": "Freeze at the cursor (rows above and columns left stay put)"
  },
  {
-  "i": 1098,
+  "i": 1091,
   "ja": "最上行の固定",
   "en": "Freeze the top row"
  },
  {
-  "i": 1099,
+  "i": 1092,
   "ja": "最初の列の固定",
   "en": "Freeze the first column"
  },
  {
-  "i": 1100,
+  "i": 1093,
   "ja": "固定した枠に影を付ける",
   "en": "Shadow the frozen edge"
  },
  {
-  "i": 1101,
+  "i": 1094,
   "ja": "その他(RRGGBB を打つ)…",
   "en": "Other (type RRGGBB)…"
  },
  {
-  "i": 1102,
-  "ja": "列",
-  "en": "columns"
- },
- {
-  "i": 1103,
-  "ja": "行",
-  "en": "rows"
- },
- {
-  "i": 1104,
+  "i": 1095,
   "ja": "(空) → {}",
   "en": "(empty) → {}"
  },
  {
-  "i": 1105,
+  "i": 1096,
   "ja": "{} → (消した)",
   "en": "{} → (deleted)"
  },
  {
-  "i": 1106,
+  "i": 1097,
   "ja": "UTF-8(BOM付き)・カンマ",
   "en": "UTF-8 (with BOM), comma"
  },
  {
-  "i": 1107,
+  "i": 1098,
   "ja": "Shift_JIS(CP932)・カンマ",
   "en": "Shift_JIS (CP932), comma"
  },
  {
-  "i": 1108,
+  "i": 1099,
   "ja": "UTF-8(BOMなし)・カンマ",
   "en": "UTF-8 (no BOM), comma"
  },
  {
-  "i": 1109,
+  "i": 1100,
   "ja": "UTF-8(BOM付き)・タブ",
   "en": "UTF-8 (with BOM), tab"
  },
  {
-  "i": 1110,
+  "i": 1101,
   "ja": "Shift_JIS(CP932)・タブ",
   "en": "Shift_JIS (CP932), tab"
  },
  {
-  "i": 1111,
+  "i": 1102,
   "ja": "UTF-8(BOM付き)・セミコロン",
   "en": "UTF-8 (with BOM), semicolon"
  },
  {
-  "i": 1112,
+  "i": 1103,
   "ja": "(暗号化)",
   "en": "(encrypted)"
  },
  {
-  "i": 1113,
+  "i": 1104,
   "ja": "(型紙 — 開くと新しいブックになります)",
   "en": "(template — opening it makes a new workbook)"
  },
  {
-  "i": 1114,
+  "i": 1105,
   "ja": "拡張して並べ替え(続きの列も一緒に動く)",
   "en": "Expand the selection (the neighbouring columns move too)"
  },
  {
-  "i": 1115,
+  "i": 1106,
   "ja": "選択した範囲だけ並べ替え(横の列とはずれます)",
   "en": "Sort the selection only (it will fall out of step with the neighbouring columns)"
  },
  {
-  "i": 1116,
+  "i": 1107,
   "ja": "やめる",
   "en": "Cancel"
  },
  {
-  "i": 1117,
+  "i": 1108,
   "ja": "要約",
   "en": "Summarise"
  },
  {
-  "i": 1118,
+  "i": 1109,
   "ja": "書き直し",
   "en": "Rewrite"
  },
  {
-  "i": 1119,
+  "i": 1110,
   "ja": "翻訳",
   "en": "Translate"
  },
  {
-  "i": 1120,
+  "i": 1111,
   "ja": "ふりがな",
   "en": "Furigana"
  },
  {
-  "i": 1121,
+  "i": 1112,
   "ja": "続き",
   "en": "Continue"
  },
  {
-  "i": 1122,
+  "i": 1113,
   "ja": "表",
   "en": "Table"
  },
  {
-  "i": 1123,
+  "i": 1114,
   "ja": "頼み",
   "en": "Request"
  },
  {
-  "i": 1124,
+  "i": 1115,
   "ja": "そこへ移動",
   "en": "Go there"
  },
  {
-  "i": 1125,
+  "i": 1116,
   "ja": "中身を打ち直す…",
   "en": "Retype the contents…"
  },
  {
-  "i": 1126,
+  "i": 1117,
   "ja": "名前を消す",
   "en": "Delete the name"
  },
  {
-  "i": 1127,
+  "i": 1118,
   "ja": "月",
   "en": "Months"
  },
  {
-  "i": 1128,
+  "i": 1119,
   "ja": "四半期",
   "en": "Quarters"
  },
  {
-  "i": 1129,
+  "i": 1120,
   "ja": "年",
   "en": "Years"
  },
  {
-  "i": 1130,
+  "i": 1121,
   "ja": "数の幅…",
   "en": "By number range…"
  },
  {
-  "i": 1131,
+  "i": 1122,
   "ja": "グループ解除",
   "en": "Ungroup"
  },
  {
-  "i": 1132,
+  "i": 1123,
   "ja": "この規則を消す",
   "en": "Delete this rule"
  },
  {
-  "i": 1133,
+  "i": 1124,
   "ja": "→ 決定(絞り込む)",
   "en": "→ Apply (filter)"
  },
  {
-  "i": 1134,
+  "i": 1125,
   "ja": "→ すべて表示に戻す",
   "en": "→ Show everything again"
  },
  {
-  "i": 1135,
+  "i": 1126,
   "ja": "→ ラベルで絞る…",
   "en": "→ Filter by label…"
  },
  {
-  "i": 1136,
+  "i": 1127,
   "ja": "→ 値で絞る…",
   "en": "→ Filter by value…"
  },
  {
-  "i": 1137,
+  "i": 1128,
   "ja": "→ グループ化…",
   "en": "→ Group…"
  },
  {
-  "i": 1138,
+  "i": 1129,
   "ja": "→ 決定(列の選択へ)",
   "en": "→ Next (choose the columns)"
  },
  {
-  "i": 1139,
+  "i": 1130,
   "ja": "→ 決定(列は無しでもよい)",
   "en": "→ Done (columns are optional)"
  },
  {
-  "i": 1140,
-  "ja": "大きい値",
-  "en": "largest"
- },
- {
-  "i": 1141,
-  "ja": "小さい値",
-  "en": "smallest"
- },
- {
-  "i": 1142,
-  "ja": "下位",
-  "en": "Bottom"
- },
- {
-  "i": 1143,
-  "ja": "上位",
-  "en": "Top"
- },
- {
-  "i": 1144,
+  "i": 1131,
   "ja": "保護を解除",
   "en": "Unprotect the sheet"
  },
  {
-  "i": 1145,
+  "i": 1132,
   "ja": "シートを保護",
   "en": "Protect the sheet"
  },
  {
-  "i": 1146,
+  "i": 1133,
   "ja": "挿入",
   "en": "Insert"
  },
  {
-  "i": 1147,
+  "i": 1134,
   "ja": "名前の変更",
   "en": "Rename"
  },
  {
-  "i": 1148,
+  "i": 1135,
   "ja": "コピーを作成",
   "en": "Duplicate"
  },
  {
-  "i": 1149,
+  "i": 1136,
   "ja": "左へ移動",
   "en": "Move left"
  },
  {
-  "i": 1150,
+  "i": 1137,
   "ja": "右へ移動",
   "en": "Move right"
  },
  {
-  "i": 1151,
+  "i": 1138,
   "ja": "非表示",
   "en": "Hide"
  },
  {
-  "i": 1152,
+  "i": 1139,
   "ja": "再表示",
   "en": "Unhide"
  },
  {
-  "i": 1153,
+  "i": 1140,
   "ja": "タブの色",
   "en": "Tab colour"
  },
  {
-  "i": 1154,
+  "i": 1141,
   "ja": "色なし",
   "en": "No colour"
  },
  {
-  "i": 1155,
+  "i": 1142,
   "ja": "赤",
   "en": "Red"
  },
  {
-  "i": 1156,
+  "i": 1143,
   "ja": "黄",
   "en": "Yellow"
  },
  {
-  "i": 1157,
+  "i": 1144,
   "ja": "青",
   "en": "Blue"
  },
  {
-  "i": 1158,
+  "i": 1145,
   "ja": "紫",
   "en": "Purple"
  },
  {
-  "i": 1159,
+  "i": 1146,
   "ja": "自動",
   "en": "Automatic"
  },
  {
-  "i": 1160,
+  "i": 1147,
   "ja": "カンマ",
   "en": "Comma"
  },
  {
-  "i": 1161,
+  "i": 1148,
   "ja": "タブ",
   "en": "Tab"
  },
  {
-  "i": 1162,
+  "i": 1149,
   "ja": "セミコロン",
   "en": "Semicolon"
  },
  {
-  "i": 1163,
+  "i": 1150,
   "ja": "コロン",
   "en": "Colon"
  },
  {
-  "i": 1164,
+  "i": 1151,
   "ja": "スペース",
   "en": "Space"
  },
  {
-  "i": 1165,
+  "i": 1152,
   "ja": "その他…",
   "en": "Other…"
  },
  {
-  "i": 1166,
+  "i": 1153,
   "ja": "帳票でよく使う",
   "en": "Common in business forms"
  },
  {
-  "i": 1167,
+  "i": 1154,
   "ja": "しるし",
   "en": "Marks"
  },
  {
-  "i": 1168,
+  "i": 1155,
   "ja": "矢印",
   "en": "Arrows"
  },
  {
-  "i": 1169,
+  "i": 1156,
   "ja": "丸数字",
   "en": "Circled numbers"
  },
  {
-  "i": 1170,
+  "i": 1157,
   "ja": "通貨",
   "en": "Currency"
  },
  {
-  "i": 1171,
+  "i": 1158,
   "ja": "算術",
   "en": "Maths"
  },
  {
-  "i": 1172,
+  "i": 1159,
   "ja": "かっこ・区切り",
   "en": "Brackets and separators"
  },
  {
-  "i": 1173,
+  "i": 1160,
   "ja": "ギリシャ",
   "en": "Greek"
  },
  {
-  "i": 1174,
+  "i": 1161,
   "ja": "すべての値",
   "en": "Any value"
  },
  {
-  "i": 1175,
+  "i": 1162,
   "ja": "整数",
   "en": "Whole number"
  },
  {
-  "i": 1176,
+  "i": 1163,
   "ja": "小数",
   "en": "Decimal"
  },
  {
-  "i": 1177,
+  "i": 1164,
   "ja": "リスト",
   "en": "List"
  },
  {
-  "i": 1178,
+  "i": 1165,
   "ja": "文字列の長さ",
   "en": "Text length"
  },
  {
-  "i": 1179,
+  "i": 1166,
   "ja": "次の値の間",
   "en": "between"
  },
  {
-  "i": 1180,
+  "i": 1167,
   "ja": "次の値の間以外",
   "en": "not between"
  },
  {
-  "i": 1181,
+  "i": 1168,
   "ja": "次の値に等しい",
   "en": "equal to"
  },
  {
-  "i": 1182,
+  "i": 1169,
   "ja": "次の値に等しくない",
   "en": "not equal to"
  },
  {
-  "i": 1183,
+  "i": 1170,
   "ja": "次の値より大きい",
   "en": "greater than"
  },
  {
-  "i": 1184,
+  "i": 1171,
   "ja": "次の値より小さい",
   "en": "less than"
  },
  {
-  "i": 1185,
+  "i": 1172,
   "ja": "次の値より大きいか等しい",
   "en": "greater than or equal to"
  },
  {
-  "i": 1186,
+  "i": 1173,
   "ja": "次の値より小さいか等しい",
   "en": "less than or equal to"
  },
  {
-  "i": 1187,
+  "i": 1174,
   "ja": "停止",
   "en": "Stop"
  },
  {
-  "i": 1188,
+  "i": 1175,
   "ja": "警告",
   "en": "Warning"
  },
  {
-  "i": 1189,
+  "i": 1176,
   "ja": "情報",
   "en": "Information"
  },
  {
-  "i": 1190,
+  "i": 1177,
   "ja": "カード型リスト",
   "en": "Card list"
  },
  {
-  "i": 1191,
+  "i": 1178,
   "ja": "縦方向リスト",
   "en": "Vertical list"
  },
  {
-  "i": 1192,
+  "i": 1179,
   "ja": "ピラミッドのリスト",
   "en": "Pyramid list"
  },
  {
-  "i": 1193,
+  "i": 1180,
   "ja": "プロセス",
   "en": "Process"
  },
  {
-  "i": 1194,
+  "i": 1181,
   "ja": "基本ステップ",
   "en": "Basic steps"
  },
  {
-  "i": 1195,
+  "i": 1182,
   "ja": "タイムライン",
   "en": "Timeline"
  },
  {
-  "i": 1196,
+  "i": 1183,
   "ja": "循環",
   "en": "Cycle"
  },
  {
-  "i": 1197,
+  "i": 1184,
   "ja": "基本の循環",
   "en": "Basic cycle"
  },
  {
-  "i": 1198,
+  "i": 1185,
   "ja": "ボックス循環",
   "en": "Block cycle"
  },
  {
-  "i": 1199,
+  "i": 1186,
   "ja": "階層",
   "en": "Hierarchy"
  },
  {
-  "i": 1200,
+  "i": 1187,
   "ja": "組織図",
   "en": "Organisation chart"
  },
  {
-  "i": 1201,
+  "i": 1188,
   "ja": "関係",
   "en": "Relationship"
  },
  {
-  "i": 1202,
+  "i": 1189,
   "ja": "基本ベン図",
   "en": "Basic Venn"
  },
  {
-  "i": 1203,
+  "i": 1190,
   "ja": "マトリックス",
   "en": "Matrix"
  },
  {
-  "i": 1204,
+  "i": 1191,
   "ja": "基本マトリックス",
   "en": "Basic matrix"
  },
  {
-  "i": 1205,
+  "i": 1192,
   "ja": "ピラミッド",
   "en": "Pyramid"
  },
  {
-  "i": 1206,
+  "i": 1193,
   "ja": "基本ピラミッド",
   "en": "Basic pyramid"
  },
  {
-  "i": 1207,
+  "i": 1194,
   "ja": "一般",
   "en": "General"
  },
  {
-  "i": 1208,
+  "i": 1195,
   "ja": "数値 (1234.56)",
   "en": "Number (1234.56)"
  },
  {
-  "i": 1209,
+  "i": 1196,
   "ja": "桁区切り (1,234)",
   "en": "Thousands separator (1,234)"
  },
  {
-  "i": 1210,
+  "i": 1197,
   "ja": "通貨 (¥1,234)",
   "en": "Currency (¥1,234)"
  },
  {
-  "i": 1211,
+  "i": 1198,
   "ja": "パーセント (12.34%)",
   "en": "Percentage (12.34%)"
  },
  {
-  "i": 1212,
+  "i": 1199,
   "ja": "指数 (1.23E+04)",
   "en": "Scientific (1.23E+04)"
  },
  {
-  "i": 1213,
+  "i": 1200,
   "ja": "短い日付 (2026/8/6)",
   "en": "Short date (2026/8/6)"
  },
  {
-  "i": 1214,
+  "i": 1201,
   "ja": "長い日付 (2026年8月6日)",
   "en": "Long date (6 August 2026)"
  },
  {
-  "i": 1215,
+  "i": 1202,
   "ja": "時刻 (13:45:00)",
   "en": "Time (13:45:00)"
  },
  {
-  "i": 1216,
+  "i": 1203,
   "ja": "テキスト (@)",
   "en": "Text (@)"
  },
  {
-  "i": 1217,
+  "i": 1204,
   "ja": "文の先頭だけ大文字",
   "en": "Sentence case"
  },
  {
-  "i": 1218,
+  "i": 1205,
   "ja": "すべて小文字",
   "en": "lowercase"
  },
  {
-  "i": 1219,
+  "i": 1206,
   "ja": "すべて大文字",
   "en": "UPPERCASE"
  },
  {
-  "i": 1220,
+  "i": 1207,
   "ja": "単語の先頭を大文字",
   "en": "Capitalise Each Word"
  },
  {
-  "i": 1221,
+  "i": 1208,
   "ja": "大文字と小文字を入れ替え",
   "en": "tOGGLE cASE"
  },
  {
-  "i": 1222,
+  "i": 1209,
   "ja": "細い実線(既定)",
   "en": "Thin solid (default)"
  },
  {
-  "i": 1223,
+  "i": 1210,
   "ja": "極細",
   "en": "Hairline"
  },
  {
-  "i": 1224,
+  "i": 1211,
   "ja": "点線",
   "en": "Dotted"
  },
  {
-  "i": 1225,
+  "i": 1212,
   "ja": "破線",
   "en": "Dashed"
  },
  {
-  "i": 1226,
+  "i": 1213,
   "ja": "一点鎖線",
   "en": "Dash-dot"
  },
  {
-  "i": 1227,
+  "i": 1214,
   "ja": "二点鎖線",
   "en": "Dash-dot-dot"
  },
  {
-  "i": 1228,
+  "i": 1215,
   "ja": "中太の実線",
   "en": "Medium solid"
  },
  {
-  "i": 1229,
+  "i": 1216,
   "ja": "中太の破線",
   "en": "Medium dashed"
  },
  {
-  "i": 1230,
+  "i": 1217,
   "ja": "中太の一点鎖線",
   "en": "Medium dash-dot"
  },
  {
-  "i": 1231,
+  "i": 1218,
   "ja": "中太の二点鎖線",
   "en": "Medium dash-dot-dot"
  },
  {
-  "i": 1232,
+  "i": 1219,
   "ja": "太い実線",
   "en": "Thick solid"
  },
  {
-  "i": 1233,
+  "i": 1220,
   "ja": "二重線",
   "en": "Double"
  },
  {
-  "i": 1234,
+  "i": 1221,
   "ja": "黒",
   "en": "Black"
  },
  {
-  "i": 1235,
+  "i": 1222,
   "ja": "紺",
   "en": "Navy"
  },
  {
-  "i": 1236,
+  "i": 1223,
   "ja": "白",
   "en": "White"
  },
  {
-  "i": 1237,
+  "i": 1224,
   "ja": "薄い黄",
   "en": "Light yellow"
  },
  {
-  "i": 1238,
+  "i": 1225,
   "ja": "薄い青",
   "en": "Light blue"
  },
  {
-  "i": 1239,
+  "i": 1226,
   "ja": "薄い緑",
   "en": "Light green"
  },
  {
-  "i": 1240,
+  "i": 1227,
   "ja": "薄い橙",
   "en": "Light orange"
  },
  {
-  "i": 1241,
+  "i": 1228,
   "ja": "薄い灰",
   "en": "Light grey"
  },
  {
-  "i": 1242,
+  "i": 1229,
   "ja": "標準",
   "en": "Normal"
  },
  {
-  "i": 1243,
+  "i": 1230,
   "ja": "見出し",
   "en": "Heading"
  },
  {
-  "i": 1244,
+  "i": 1231,
   "ja": "表題",
   "en": "Title"
  },
  {
-  "i": 1245,
+  "i": 1232,
   "ja": "良い",
   "en": "Good"
  },
  {
-  "i": 1246,
+  "i": 1233,
   "ja": "悪い",
   "en": "Bad"
  },
  {
-  "i": 1247,
+  "i": 1234,
   "ja": "どちらでもない",
   "en": "Neutral"
  },
  {
-  "i": 1248,
+  "i": 1235,
   "ja": "メモ",
   "en": "Note"
  },
  {
-  "i": 1249,
+  "i": 1236,
   "ja": "計算",
   "en": "Calculation"
  },
  {
-  "i": 1250,
+  "i": 1237,
   "ja": "パーセント",
   "en": "Percent"
  },
  {
-  "i": 1251,
+  "i": 1238,
   "ja": "表は初版では縦になりません。",
   "en": "Tables do not turn vertical in this first release."
  },
  {
-  "i": 1252,
+  "i": 1239,
   "ja": "フッター",
   "en": "footer"
  },
  {
-  "i": 1253,
+  "i": 1240,
   "ja": "ヘッダー",
   "en": "header"
  },
  {
-  "i": 1254,
+  "i": 1241,
   "ja": "。記入は右上のパネルから",
   "en": ". Fill it in from the panel at the top right"
  },
  {
-  "i": 1255,
+  "i": 1242,
   "ja": "幅",
   "en": "width"
  },
  {
-  "i": 1256,
+  "i": 1243,
   "ja": "(読めなかった要素は本文に戻りません)",
   "en": "(elements that could not be read are not written back)"
  },
  {
-  "i": 1257,
+  "i": 1244,
   "ja": "ページ番号",
   "en": "page number"
  },
  {
-  "i": 1258,
+  "i": 1245,
   "ja": "しおりの文字",
   "en": "bookmark text"
  },
  {
-  "i": 1259,
+  "i": 1246,
   "ja": "パスワード — この文書は暗号化されています",
   "en": "Password — this document is encrypted"
  },
  {
-  "i": 1260,
+  "i": 1247,
   "ja": "暗号化 — パスワードを決めて Enter(空で解除。Esc で取りやめ)",
   "en": "Encryption — choose a password and press Enter (empty removes it, Esc cancels)"
  },
  {
-  "i": 1261,
+  "i": 1248,
   "ja": " / 縦書き",
   "en": " / vertical"
  },
  {
-  "i": 1262,
+  "i": 1249,
   "ja": "AI にマクロ台本を頼む",
   "en": "Ask the AI for a macro script"
  },
  {
-  "i": 1263,
+  "i": 1250,
   "ja": "AI に頼む",
   "en": "Ask the AI"
  },
  {
-  "i": 1264,
+  "i": 1251,
   "ja": "台本はプラグイン置き場に置くだけです。読んで確かめてから一覧で実行してください(自動では走りません)",
   "en": "Scripts are only placed in the plug-in folder. Read them and check them yourself, then run them from the list (they never run on their own)"
  },
  {
-  "i": 1265,
+  "i": 1252,
   "ja": "答えはカーソルの位置に入ります。Ctrl+Z で1手で戻せます",
   "en": "The answer goes in at the cursor. Ctrl+Z takes it back in one step"
  },
  {
+  "i": 1253,
+  "ja": "使っている列を全部は隠せません(戻す道が見えなくなるため)",
+  "en": "Can't hide every column in use (that would leave no way back)"
+ },
+ {
+  "i": 1254,
+  "ja": "使っている行を全部は隠せません(戻す道が見えなくなるため)",
+  "en": "Can't hide every row in use (that would leave no way back)"
+ },
+ {
+  "i": 1255,
+  "ja": "その列はもう隠れています",
+  "en": "Those columns are already hidden"
+ },
+ {
+  "i": 1256,
+  "ja": "その行はもう隠れています",
+  "en": "Those rows are already hidden"
+ },
+ {
+  "i": 1257,
+  "ja": "選んだ中に隠れた列はありません(隠れた分を挟むように選ぶ)",
+  "en": "No hidden columns in the selection (select across the hidden ones)"
+ },
+ {
+  "i": 1258,
+  "ja": "選んだ中に隠れた行はありません(隠れた分を挟むように選ぶ)",
+  "en": "No hidden rows in the selection (select across the hidden ones)"
+ },
+ {
+  "i": 1259,
+  "ja": "{} 列を隠しました(見出しを跨いで選び「再表示」で戻せます)",
+  "en": "Hid {} columns (select across the headings and use Unhide to bring them back)"
+ },
+ {
+  "i": 1260,
+  "ja": "{} 行を隠しました(見出しを跨いで選び「再表示」で戻せます)",
+  "en": "Hid {} rows (select across the headings and use Unhide to bring them back)"
+ },
+ {
+  "i": 1261,
+  "ja": "{} 列を戻しました",
+  "en": "Brought back {} columns"
+ },
+ {
+  "i": 1262,
+  "ja": "{} 行を戻しました",
+  "en": "Brought back {} rows"
+ },
+ {
+  "i": 1263,
+  "ja": "{} より大きい値",
+  "en": "values greater than {}"
+ },
+ {
+  "i": 1264,
+  "ja": "{} より小さい値",
+  "en": "values less than {}"
+ },
+ {
+  "i": 1265,
+  "ja": "{}:{} — {}を塗ります",
+  "en": "{}:{} — coloring {}"
+ },
+ {
   "i": 1266,
+  "ja": "下位 {} 件",
+  "en": "the bottom {}"
+ },
+ {
+  "i": 1267,
+  "ja": "上位 {} 件",
+  "en": "the top {}"
+ },
+ {
+  "i": 1268,
+  "ja": "下罫線",
+  "en": "Bottom border"
+ },
+ {
+  "i": 1269,
+  "ja": "上罫線",
+  "en": "Top border"
+ },
+ {
+  "i": 1270,
+  "ja": "左罫線",
+  "en": "Left border"
+ },
+ {
+  "i": 1271,
+  "ja": "右罫線",
+  "en": "Right border"
+ },
+ {
+  "i": 1272,
+  "ja": "すべての罫線(格子)",
+  "en": "All borders (grid)"
+ },
+ {
+  "i": 1273,
+  "ja": "内側の縦線",
+  "en": "Inside vertical border"
+ },
+ {
+  "i": 1274,
+  "ja": "内側の横線",
+  "en": "Inside horizontal border"
+ },
+ {
+  "i": 1275,
+  "ja": "罫線を消す",
+  "en": "No border"
+ },
+ {
+  "i": 1276,
+  "ja": "ロックされたセルの選択",
+  "en": "Select locked cells"
+ },
+ {
+  "i": 1277,
+  "ja": "ロックされていないセルの選択",
+  "en": "Select unlocked cells"
+ },
+ {
+  "i": 1278,
+  "ja": "セルの書式設定",
+  "en": "Format cells"
+ },
+ {
+  "i": 1279,
+  "ja": "列の書式設定",
+  "en": "Format columns"
+ },
+ {
+  "i": 1280,
+  "ja": "行の書式設定",
+  "en": "Format rows"
+ },
+ {
+  "i": 1281,
+  "ja": "列の挿入",
+  "en": "Insert columns"
+ },
+ {
+  "i": 1282,
+  "ja": "行の挿入",
+  "en": "Insert rows"
+ },
+ {
+  "i": 1283,
+  "ja": "ハイパーリンクの挿入",
+  "en": "Insert hyperlinks"
+ },
+ {
+  "i": 1284,
+  "ja": "列の削除",
+  "en": "Delete columns"
+ },
+ {
+  "i": 1285,
+  "ja": "行の削除",
+  "en": "Delete rows"
+ },
+ {
+  "i": 1286,
+  "ja": "並べ替え",
+  "en": "Sort"
+ },
+ {
+  "i": 1287,
+  "ja": "オートフィルターの使用",
+  "en": "Use AutoFilter"
+ },
+ {
+  "i": 1288,
+  "ja": "ピボットテーブルの使用",
+  "en": "Use PivotTable"
+ },
+ {
+  "i": 1289,
+  "ja": "暖色",
+  "en": "Warm"
+ },
+ {
+  "i": 1290,
+  "ja": "寒色",
+  "en": "Cool"
+ },
+ {
+  "i": 1291,
+  "ja": "墨",
+  "en": "Ink"
+ },
+ {
+  "i": 1292,
+  "ja": "画像",
+  "en": "Images"
+ },
+ {
+  "i": 1293,
+  "ja": "テキスト / Word文書",
+  "en": "Text / Word document"
+ },
+ {
+  "i": 1294,
+  "ja": "ページ数",
+  "en": "Page count"
+ },
+ {
+  "i": 1295,
+  "ja": "藍",
+  "en": "Indigo"
+ },
+ {
+  "i": 1296,
+  "ja": "臙脂",
+  "en": "Crimson"
+ },
+ {
+  "i": 1297,
+  "ja": "藍(生成りの紙)",
+  "en": "Indigo (unbleached paper)"
+ },
+ {
+  "i": 1298,
+  "ja": "墨(灰の紙)",
+  "en": "Ink (gray paper)"
+ },
+ {
+  "i": 1299,
+  "ja": "鍵ファイルが壊れています(~/.config/office/sign.key)",
+  "en": "The key file is damaged (~/.config/office/sign.key)"
+ },
+ {
+  "i": 1300,
+  "ja": "誰か",
+  "en": "someone"
+ },
+ {
+  "i": 1301,
+  "ja": "マクロ台本",
+  "en": "macro script"
+ },
+ {
+  "i": 1302,
+  "ja": "原因不明",
+  "en": "cause unknown"
+ },
+ {
+  "i": 1303,
+  "ja": "Word文書",
+  "en": "Word document"
+ },
+ {
+  "i": 1304,
+  "ja": "文書.pdf",
+  "en": "document.pdf"
+ },
+ {
+  "i": 1305,
+  "ja": "Word文書とHTML",
+  "en": "Word documents and HTML"
+ },
+ {
+  "i": 1306,
+  "ja": "段落",
+  "en": "Paragraphs"
+ },
+ {
+  "i": 1307,
+  "ja": "単語",
+  "en": "Words"
+ },
+ {
+  "i": 1308,
+  "ja": "文字数",
+  "en": "Characters"
+ },
+ {
+  "i": 1309,
+  "ja": "文字数 (スペースを含む)",
+  "en": "Characters (with spaces)"
+ },
+ {
+  "i": 1310,
+  "ja": "作成者",
+  "en": "Author"
+ },
+ {
+  "i": 1311,
+  "ja": "著者を追加",
+  "en": "Add an author"
+ },
+ {
+  "i": 1312,
+  "ja": "タグ",
+  "en": "Tags"
+ },
+ {
+  "i": 1313,
+  "ja": "件名",
+  "en": "Subject"
+ },
+ {
+  "i": 1314,
+  "ja": "コメント",
+  "en": "Comment"
+ },
+ {
+  "i": 1315,
+  "ja": "検索",
+  "en": "Find"
+ },
+ {
+  "i": 1316,
+  "ja": "置換後",
+  "en": "Replace with"
+ },
+ {
+  "i": 1317,
+  "ja": "取消",
+  "en": "Strikethrough"
+ },
+ {
+  "i": 1318,
+  "ja": "色",
+  "en": "Color"
+ },
+ {
+  "i": 1319,
+  "ja": "書式を消す",
+  "en": "Clear formatting"
+ },
+ {
+  "i": 1320,
+  "ja": "両端",
+  "en": "Justify"
+ },
+ {
+  "i": 1321,
+  "ja": "均等",
+  "en": "Distribute"
+ },
+ {
+  "i": 1322,
+  "ja": "行間",
+  "en": "Line spacing"
+ },
+ {
+  "i": 1323,
+  "ja": "◂ 字下げ",
+  "en": "◂ Indent"
+ },
+ {
+  "i": 1324,
+  "ja": "字下げ ▸",
+  "en": "Indent ▸"
+ },
+ {
+  "i": 1325,
+  "ja": "箇条書き",
+  "en": "Bullets"
+ },
+ {
+  "i": 1326,
+  "ja": "番号",
+  "en": "Numbering"
+ },
+ {
+  "i": 1327,
+  "ja": "背景",
+  "en": "Shading"
+ },
+ {
+  "i": 1328,
+  "ja": "囲み",
+  "en": "Borders"
+ },
+ {
+  "i": 1329,
+  "ja": "向き",
+  "en": "Orientation"
+ },
+ {
+  "i": 1330,
+  "ja": "用紙",
+  "en": "Paper"
+ },
+ {
+  "i": 1331,
+  "ja": "余白",
+  "en": "Margins"
+ },
+ {
+  "i": 1332,
+  "ja": "段組み",
+  "en": "Columns"
+ },
+ {
+  "i": 1333,
+  "ja": "縦書き",
+  "en": "Vertical"
+ },
+ {
+  "i": 1334,
+  "ja": "見出し1",
+  "en": "Heading 1"
+ },
+ {
+  "i": 1335,
+  "ja": "見出し2",
+  "en": "Heading 2"
+ },
+ {
+  "i": 1336,
+  "ja": "見出し3",
+  "en": "Heading 3"
+ },
+ {
+  "i": 1337,
+  "ja": "辞書",
+  "en": "dictionary"
+ },
+ {
+  "i": 1338,
+  "ja": "モデル",
+  "en": "model"
+ },
+ {
+  "i": 1339,
+  "ja": "切り取り",
+  "en": "Cut"
+ },
+ {
+  "i": 1340,
+  "ja": "コピー",
+  "en": "Copy"
+ },
+ {
+  "i": 1341,
+  "ja": "貼り付け",
+  "en": "Paste"
+ },
+ {
+  "i": 1342,
+  "ja": "語を選択",
+  "en": "Select word"
+ },
+ {
+  "i": 1343,
+  "ja": "行を選択",
+  "en": "Select line"
+ },
+ {
+  "i": 1344,
+  "ja": "すべて選択",
+  "en": "Select all"
+ },
+ {
+  "i": 1345,
+  "ja": "左揃え",
+  "en": "Align left"
+ },
+ {
+  "i": 1346,
+  "ja": "中央揃え",
+  "en": "Center"
+ },
+ {
+  "i": 1347,
+  "ja": "右揃え",
+  "en": "Align right"
+ },
+ {
+  "i": 1348,
+  "ja": "両端揃え",
+  "en": "Justify"
+ },
+ {
+  "i": 1349,
+  "ja": "検索と置換",
+  "en": "Find and replace"
+ },
+ {
+  "i": 1350,
+  "ja": "文字数を数える",
+  "en": "Word count"
+ },
+ {
+  "i": 1351,
   "ja": "書式のコピー",
   "en": "Format painter"
  },
  {
-  "i": 1267,
+  "i": 1352,
   "ja": "スタイル",
   "en": "Style"
  },
  {
-  "i": 1268,
+  "i": 1353,
   "ja": "フィールドリスト",
   "en": "Field list"
  },
  {
-  "i": 1269,
+  "i": 1354,
   "ja": "画面の文字を大きく",
   "en": "Bigger UI text"
  },
  {
-  "i": 1270,
+  "i": 1355,
   "ja": "画面の文字を小さく",
   "en": "Smaller UI text"
  },
  {
-  "i": 1271,
+  "i": 1356,
   "ja": "AI",
   "en": "AI"
  },
  {
-  "i": 1272,
+  "i": 1357,
   "ja": "印刷",
   "en": "Print"
  },
  {
-  "i": 1273,
+  "i": 1358,
   "ja": "宛先",
   "en": "Destination"
  },
  {
-  "i": 1274,
+  "i": 1359,
   "ja": "要約",
   "en": "Summarize"
  },
  {
-  "i": 1275,
+  "i": 1360,
   "ja": "書き直す",
   "en": "Rewrite"
  },
  {
-  "i": 1276,
+  "i": 1361,
   "ja": "敬語にする",
   "en": "Politer"
  },
  {
-  "i": 1277,
+  "i": 1362,
   "ja": "やさしく",
   "en": "Plainer"
  },
  {
-  "i": 1278,
+  "i": 1363,
   "ja": "翻訳",
   "en": "Translate"
  },
  {
-  "i": 1279,
+  "i": 1364,
   "ja": "ふりがな",
   "en": "Furigana"
  },
  {
-  "i": 1280,
+  "i": 1365,
   "ja": "続きを書く",
   "en": "Continue"
  },
  {
-  "i": 1281,
+  "i": 1366,
   "ja": "表にする",
   "en": "To table"
  },
  {
-  "i": 1282,
+  "i": 1367,
   "ja": "頼む",
   "en": "Ask"
  },
  {
-  "i": 1283,
+  "i": 1368,
   "ja": "ルビ",
   "en": "Ruby"
  },
  {
-  "i": 1284,
+  "i": 1369,
   "ja": "縦書き",
   "en": "Vertical text"
  },
  {
-  "i": 1285,
+  "i": 1370,
   "ja": "テキスト方向",
   "en": "Text direction"
  },
  {
-  "i": 1286,
+  "i": 1371,
   "ja": "均等割付",
   "en": "Distributed"
  },
  {
-  "i": 1287,
+  "i": 1372,
   "ja": "図表番号の挿入",
   "en": "Insert caption"
  },
  {
-  "i": 1288,
+  "i": 1373,
   "ja": "URL を開く",
   "en": "Open URL"
  },
  {
-  "i": 1289,
+  "i": 1374,
   "ja": "洋子さんの索引",
   "en": "Index"
  },
  {
-  "i": 1290,
+  "i": 1375,
   "ja": "青空文庫の注記",
   "en": "Aozora notes"
  },
  {
-  "i": 1291,
+  "i": 1376,
   "ja": "でんでん記法",
   "en": "Denden markup"
  },
  {
-  "i": 1292,
+  "i": 1377,
   "ja": "履歴の記録",
   "en": "Track changes"
  },
  {
-  "i": 1293,
+  "i": 1378,
   "ja": "変更履歴の表示",
   "en": "Show changes"
  },
  {
-  "i": 1294,
+  "i": 1379,
   "ja": "校正",
   "en": "Proofread"
  },
  {
-  "i": 1295,
+  "i": 1380,
   "ja": "文字数",
   "en": "Character count"
  },
  {
-  "i": 1296,
+  "i": 1381,
   "ja": "スペルチェック",
   "en": "Spell check"
  },
  {
-  "i": 1297,
+  "i": 1382,
   "ja": "類語辞典",
   "en": "Thesaurus"
  },
  {
-  "i": 1298,
+  "i": 1383,
   "ja": "誤変換",
   "en": "Misconversion"
  },
  {
-  "i": 1299,
+  "i": 1384,
   "ja": "表記ゆれ",
   "en": "Inconsistency"
  },
  {
-  "i": 1300,
+  "i": 1385,
   "ja": "小計",
   "en": "Subtotal"
  },
  {
-  "i": 1301,
+  "i": 1386,
   "ja": "計算方法",
   "en": "Calculation"
  },
  {
-  "i": 1302,
+  "i": 1387,
   "ja": "右横書き",
   "en": "Right-to-left text"
  },
  {
-  "i": 1303,
+  "i": 1388,
   "ja": "シートの方向",
   "en": "Sheet direction"
  },
  {
-  "i": 1304,
+  "i": 1389,
   "ja": "Python",
   "en": "Python"
  },
  {
-  "i": 1305,
+  "i": 1390,
   "ja": "チェックボックス",
   "en": "Checkbox"
  },
  {
-  "i": 1306,
+  "i": 1391,
   "ja": "外部リンク",
   "en": "External links"
  },
  {
-  "i": 1307,
+  "i": 1392,
   "ja": "推奨チャート",
   "en": "Recommended chart"
  },
  {
-  "i": 1308,
+  "i": 1393,
   "ja": "共同編集モード",
   "en": "Co-editing mode"
  },
  {
-  "i": 1309,
+  "i": 1394,
   "ja": "バージョン履歴",
   "en": "Version history"
  },
  {
-  "i": 1310,
+  "i": 1395,
   "ja": "チャット",
   "en": "Chat"
  },
  {
-  "i": 1311,
+  "i": 1396,
   "ja": "保護する",
   "en": "Protect"
  },
  {
-  "i": 1312,
+  "i": 1397,
   "ja": "暗号化する",
   "en": "Encrypt"
  },
  {
-  "i": 1313,
+  "i": 1398,
   "ja": "デジタル署名を追加",
   "en": "Add digital signature"
  },
  {
-  "i": 1314,
+  "i": 1399,
   "ja": "マクロ",
   "en": "Macros"
  },
  {
-  "i": 1315,
+  "i": 1400,
   "ja": "プラグインの管理",
   "en": "Manage plugins"
  },
  {
-  "i": 1316,
+  "i": 1401,
   "ja": "0を表示する",
   "en": "Show zeros"
  },
  {
-  "i": 1317,
+  "i": 1402,
   "ja": "100%に拡大する",
   "en": "Zoom to 100%"
  },
  {
-  "i": 1318,
+  "i": 1403,
   "ja": "インターフェイステーマ",
   "en": "Interface theme"
  },
  {
-  "i": 1319,
+  "i": 1404,
   "ja": "ウォッチウィンドウ",
   "en": "Watch window"
  },
  {
-  "i": 1320,
+  "i": 1405,
   "ja": "オートSUM",
   "en": "AutoSum"
  },
  {
-  "i": 1321,
+  "i": 1406,
   "ja": "コメントを削除",
   "en": "Delete comment"
  },
  {
-  "i": 1322,
+  "i": 1407,
   "ja": "ソルバー",
   "en": "Solver"
  },
  {
-  "i": 1323,
+  "i": 1408,
   "ja": "テキストからデータ",
   "en": "Text to data"
  },
  {
-  "i": 1324,
+  "i": 1409,
   "ja": "トレース矢印の削除",
   "en": "Remove arrows"
  },
  {
-  "i": 1325,
+  "i": 1410,
   "ja": "フィル",
   "en": "Fill"
  },
  {
-  "i": 1326,
+  "i": 1411,
   "ja": "フィルターを解除",
   "en": "Clear filter"
  },
  {
-  "i": 1327,
+  "i": 1412,
   "ja": "マクロを書く",
   "en": "Write macro"
  },
  {
-  "i": 1328,
+  "i": 1413,
   "ja": "区切り位置",
   "en": "Text to columns"
  },
  {
-  "i": 1329,
+  "i": 1414,
   "ja": "図表番号",
   "en": "Caption"
  },
  {
-  "i": 1330,
+  "i": 1415,
   "ja": "図表目次",
   "en": "Table of figures"
  },
  {
-  "i": 1331,
+  "i": 1416,
   "ja": "図表目次の更新",
   "en": "Update table of figures"
  },
  {
-  "i": 1332,
+  "i": 1417,
   "ja": "外部リンク(値で取り込む)",
   "en": "External links (import as values)"
  },
  {
-  "i": 1333,
+  "i": 1418,
   "ja": "数学/三角",
   "en": "Math & Trig"
  },
  {
-  "i": 1334,
+  "i": 1419,
   "ja": "数式の表示",
   "en": "Show formulas"
  },
  {
-  "i": 1335,
+  "i": 1420,
   "ja": "文字の向き(右横書き)",
   "en": "Right-to-left text"
  },
  {
-  "i": 1336,
+  "i": 1421,
   "ja": "文字列操作",
   "en": "Text"
  },
  {
-  "i": 1337,
+  "i": 1422,
   "ja": "日付/時刻",
   "en": "Date & Time"
  },
  {
-  "i": 1338,
+  "i": 1423,
   "ja": "最近使った関数",
   "en": "Recently used"
  },
  {
-  "i": 1339,
+  "i": 1424,
   "ja": "枠線も印刷",
   "en": "Print gridlines"
  },
  {
-  "i": 1340,
+  "i": 1425,
   "ja": "目次の更新",
   "en": "Update table of contents"
  },
  {
-  "i": 1341,
+  "i": 1426,
   "ja": "縞模様の列",
   "en": "Banded columns"
  },
  {
-  "i": 1342,
+  "i": 1427,
   "ja": "見出しも印刷",
   "en": "Print headings"
  },
  {
-  "i": 1343,
+  "i": 1428,
   "ja": "詳細の非表示",
   "en": "Hide detail"
  },
  {
-  "i": 1344,
+  "i": 1429,
   "ja": "重複の削除",
   "en": "Remove duplicates"
  },
  {
-  "i": 1345,
+  "i": 1430,
   "ja": "関数の挿入",
   "en": "Insert function"
  },
  {
-  "i": 1346,
+  "i": 1431,
   "ja": "CSV の形",
   "en": "CSV format"
  },
  {
-  "i": 1347,
+  "i": 1432,
   "ja": "セルのロック",
   "en": "Cell lock"
  },
  {
-  "i": 1348,
+  "i": 1433,
   "ja": "データテーブル",
   "en": "Data table"
  },
  {
-  "i": 1349,
+  "i": 1434,
   "ja": "フラッシュフィル",
   "en": "Fill by example"
  },
  {
-  "i": 1350,
+  "i": 1435,
   "ja": "一行のコード",
   "en": "One line of code"
  },
  {
-  "i": 1351,
+  "i": 1436,
   "ja": "一覧",
   "en": "List"
  },
  {
-  "i": 1352,
+  "i": 1437,
   "ja": "名前を貼り付け",
   "en": "Paste name"
  },
  {
-  "i": 1353,
+  "i": 1438,
   "ja": "復旧",
   "en": "Recover"
  },
  {
-  "i": 1354,
+  "i": 1439,
   "ja": "手続きを実行",
   "en": "Run procedure"
  },
  {
-  "i": 1355,
+  "i": 1440,
   "ja": "折り返して全体を表示する",
   "en": "Wrap text"
  },
  {
-  "i": 1356,
+  "i": 1441,
   "ja": "控えの間隔",
   "en": "Backup interval"
  },
  {
-  "i": 1357,
+  "i": 1442,
   "ja": "新しい .py",
   "en": "New .py"
  },
  {
-  "i": 1358,
+  "i": 1443,
   "ja": "範囲を足す",
   "en": "Add to area"
  },
  {
-  "i": 1359,
+  "i": 1444,
   "ja": "紙に収める",
   "en": "Fit to paper"
  },
  {
-  "i": 1360,
+  "i": 1445,
   "ja": "紙の切れ目",
   "en": "Page breaks"
  },
  {
-  "i": 1361,
+  "i": 1446,
   "ja": "置き場を開く",
   "en": "Open folder"
  },
  {
-  "i": 1362,
+  "i": 1447,
   "ja": "計算し直す",
   "en": "Recalculate"
  },
  {
-  "i": 1363,
+  "i": 1448,
   "ja": "計算の種類",
   "en": "Show values as"
  },
  {
-  "i": 1364,
+  "i": 1449,
   "ja": "許可する操作",
   "en": "Allowed actions"
  },
  {
-  "i": 1365,
+  "i": 1450,
   "ja": "読み取り専用を勧める",
   "en": "Suggest read-only"
  },
  {
-  "i": 1366,
+  "i": 1451,
   "ja": "関数を編集",
   "en": "Edit function"
  }
