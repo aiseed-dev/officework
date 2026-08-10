@@ -215,7 +215,14 @@ listed in `NOTICE.md`.
 
 ## Status
 
-Ribbon commands: **writer 124/124, calc 145/145 — zero grayed-out buttons; everything
-works** (2026-08-04). Design decisions are recorded in `SEKKEI.md` (Japanese),
-history and open items in `HIKITSUGI.md` (Japanese), and there are ready-to-open
-samples in `sample/`.
+Ribbon buttons: **writer 0 grayed out, calc 9** (2026-08-10). The nine are shape
+ordering, alignment, grouping and merging on the Layout tab, protecting a
+workbook or a range on Protect, and the normal and page-break views on View.
+Everything else on both ribbons works.
+
+Both figures are checked on every push against the ribbon tables themselves, so
+this line cannot quietly go stale — which is exactly what it had done: it said
+zero for months while calc showed nine.
+
+Design decisions are recorded in `SEKKEI.md` (Japanese), history and open items
+in `HIKITSUGI.md` (Japanese), and there are ready-to-open samples in `sample/`.

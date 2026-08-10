@@ -519,8 +519,19 @@ Configure on the Layout tab, then File > Print writes a PDF.
 
 ## Not implemented (gray) and alternatives
 
-**Zero grayed-out ribbon commands (155/155 including the AI tab).** The
-following work differently here, or are delegated to Python:
+**9 grayed-out ribbon buttons.** They are:
+
+| Tab | Grayed out |
+|---|---|
+| Layout | Bring forward, Send backward, Align, Group, Merge shapes |
+| Protect | Protect workbook, Protect range |
+| View | Normal, Page-break preview |
+
+Everything else on the ribbon works. The count is checked against the ribbon
+table on every push; this section previously claimed zero and had been wrong for
+months.
+
+The following work differently here, or are delegated to Python:
 
 | Grayed elsewhere / different | Our way |
 |---|---|
