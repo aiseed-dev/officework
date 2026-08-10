@@ -4280,12 +4280,8 @@ impl Render for Calc {
             // 場所だけを選ぶ9種。太さ・線種・色は**ペンだけ**が決める —
             // 「太い下罫線」のような太さ焼き込みの型は持たない
             // (発注者 2026-08-08「Microsoft 方式はやめて」)
-            const KINDS: &[&str] = &[
-                "下罫線", "上罫線", "左罫線", "右罫線",
-                "外枠", "すべての罫線(格子)",
-                "内側の縦線", "内側の横線",
-                "罫線を消す",
-            ];
+            // **(鍵, 見出し)** — 引き当ては鍵(日本語のまま)、絵と文字は見出し
+            let kinds = crate::util::border_kinds();
             // 見せる名前なので**見出し**(.1)を取る。引き当ては線種そのもの
             let style_name = crate::util::border_styles()
                 .iter()
@@ -4307,17 +4303,19 @@ impl Render for Calc {
                     .text_color(rgb(0x1B6E3C))
                     .whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(ui::t!("罫線(連続で押せます。Esc で閉じる)").to_string())));
-            for row_kinds in KINDS.chunks(4) {
+            for row_kinds in kinds.chunks(4) {
                 let mut r = div().flex().flex_row().gap_0p5();
-                for kind in row_kinds {
+                for (kind, label) in row_kinds {
                     let k: &'static str = kind;
+                    let l: &'static str = label;
                     r = r.child(div()
                         .id(SharedString::from(format!("bp-{k}")))
                         .p_0p5().rounded_sm().cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
                         .tooltip({
-                            let k2 = k;
-                            move |_, cx| cx.new(|_| Tip(k2.into(), us)).into()
+                            // 出るのは**見出し**(訳される)
+                            let l2 = l;
+                            move |_, cx| cx.new(|_| Tip(l2.into(), us)).into()
                         })
                         .child(icon(k))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(

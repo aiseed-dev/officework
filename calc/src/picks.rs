@@ -107,7 +107,8 @@ impl Calc {
                         }
                     }
                     self.dirty = true;
-                    self.status = ui::tf!("配色を「{}」にしました({} 箇所の色が追従。テーマ色を使っていないセルは変わりません)", v, n)
+                    let label = crate::util::color_scheme_label(v);
+                    self.status = ui::tf!("配色を「{}」にしました({} 箇所の色が追従。テーマ色を使っていないセルは変わりません)", label, n)
                     .into();
                 }
             }
@@ -154,16 +155,18 @@ impl Calc {
                     .items()
                     .iter()
                     .map(|(n, on)| {
-                        (n.to_string(), format!("{} {}", if *on { "☑" } else { "☐" }, n))
+                        let l = crate::util::protect_allow_label(n);
+                        (n.to_string(), format!("{} {}", if *on { "☑" } else { "☐" }, l))
                     })
                     .collect();
                 let at = self.pick.as_ref().map(|(_, at)| *at).unwrap_or_else(|| self.pop_anchor());
                 self.pick_kind = "prot-allow";
                 self.pick = Some((items, at));
                 let on = a.items().iter().find(|(n, _)| *n == name).map(|(_, o)| *o);
+                let label = crate::util::protect_allow_label(&name);
                 self.status = match on {
-                    Some(true) => ui::tf!("「{}」を許しました", name).into(),
-                    _ => ui::tf!("「{}」を禁じました", name).into(),
+                    Some(true) => ui::tf!("「{}」を許しました", label).into(),
+                    _ => ui::tf!("「{}」を禁じました", label).into(),
                 };
                 return; // pick_kind を "value" に戻さない(続けて入切する)
             }
@@ -2178,7 +2181,9 @@ impl Calc {
             }
         }
         self.dirty = true;
-        self.status = ui::tf!("罫線: {} を {}:{} に掛けました(Ctrl+Z で1手)", which, a.a1(), b.a1()).into();
+        // 引き当ては鍵で済んだ。報せるのは**見出し**(訳された名前)
+        let label = crate::util::border_kind_label(which);
+        self.status = ui::tf!("罫線: {} を {}:{} に掛けました(Ctrl+Z で1手)", label, a.a1(), b.a1()).into();
     }
 
     /// 「データの入力規則」のパネルを開く(いまの規則を下敷きに)
@@ -3079,7 +3084,15 @@ impl Calc {
                     },
                 });
                 self.dirty = true;
-                self.status = ui::tf!("{}:{} — {} より{}を塗ります", range.0.a1(), range.1.a1(), value, if gt { ui::t!("大きい値") } else { ui::t!("小さい値") }).into();
+                // 比べ方は**先に1つの句に組んで**から差し込む。trf の {} は
+                // 左から順に埋まるだけなので、「100 より大きい値」を数と語に
+                // 割ると語順を変えられない言語(独・西・伊・葡・尼)が壊れる
+                let what = if gt {
+                    ui::tf!("{} より大きい値", value)
+                } else {
+                    ui::tf!("{} より小さい値", value)
+                };
+                self.status = ui::tf!("{}:{} — {}を塗ります", range.0.a1(), range.1.a1(), what).into();
             }
             // 条件付き書式のパネル(間・文字・上位/下位N)
             "cond-between" => {
@@ -3144,7 +3157,14 @@ impl Calc {
                     },
                 });
                 self.dirty = true;
-                self.status = ui::tf!("{}:{} — {}{} を塗ります", range.0.a1(), range.1.a1(), if bottom { ui::t!("下位") } else { ui::t!("上位") }, n.max(1)).into();
+                // ここも句ごと1つの引数にする。区切りは**日本語の型の中**に
+                // 入れた(「上位 10 件」)— 訳の末尾に空白を仕込ませない
+                let what = if bottom {
+                    ui::tf!("下位 {} 件", n.max(1))
+                } else {
+                    ui::tf!("上位 {} 件", n.max(1))
+                };
+                self.status = ui::tf!("{}:{} — {}を塗ります", range.0.a1(), range.1.a1(), what).into();
             }
             "py" => {
                 let t = text.trim().to_string();

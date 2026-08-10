@@ -620,12 +620,14 @@ impl Calc {
             "prot-allow" => {
                 let at = self.pop_anchor();
                 let a = self.sheet().protect_allow.clone();
-                // ☑/☐ は**見出しだけ**に付ける(鍵は名前そのもの — 入切の照合が走る)
+                // ☑/☐ は**見出しだけ**に付ける(鍵は名前そのもの — 入切の照合が走る)。
+                // 名前は sheet の表、訳は calc の表 — 引き当ては鍵で
                 let items: Vec<(String, String)> = a
                     .items()
                     .iter()
                     .map(|(n, on)| {
-                        (n.to_string(), format!("{} {}", if *on { "☑" } else { "☐" }, n))
+                        let l = crate::util::protect_allow_label(n);
+                        (n.to_string(), format!("{} {}", if *on { "☑" } else { "☐" }, l))
                     })
                     .collect();
                 self.pick_kind = "prot-allow";
@@ -1318,8 +1320,12 @@ impl Calc {
             "colorschemas" => {
                 let at = self.pop_anchor();
                 self.pick_kind = "scheme";
-                // 配色の名前は sheet の表(theme.rs)の中身。訳さない
-                self.pick = Some((plain(sheet::theme::SCHEMES.iter().map(|(n, _)| *n)), at));
+                // 名前は sheet の表(theme.rs)が持つ = 鍵。訳は calc の表で当てる
+                let items: Vec<(String, String)> = sheet::theme::SCHEMES
+                    .iter()
+                    .map(|(n, _)| (n.to_string(), crate::util::color_scheme_label(n)))
+                    .collect();
+                self.pick = Some((items, at));
                 self.status = ui::t!("配色の変更: 選ぶとテーマ色が入れ替わります").into();
             }
             // インターフェイステーマ(画面の明暗)。**セルは白のまま**
@@ -2855,8 +2861,9 @@ impl Calc {
         let hide = id.starts_with("hide");
         let (a, b) = self.sel_rect();
         let (lo, hi) = if cols { (a.col, b.col) } else { (a.row, b.row) };
-        // 文に差し込む字も画面の文言 — 訳さないと日本語だけ混じる
-        let what = if cols { ui::t!("列") } else { ui::t!("行") };
+        // 「列」「行」を文の中へ差し込むのはやめた。差し込まれた語は語形を
+        // 変えられないので、独・西・伊・露は5つの文のどれかが必ず崩れる。
+        // **列の文と行の文を丸ごと持つ** — 訳す側は文として訳せる
         // 使っている分を全部隠すと、戻す道(見出しを跨いで選ぶ)が消える
         if hide {
             let (rows, colsn) = self.sheet().extent();
@@ -2867,9 +2874,11 @@ impl Calc {
                 .filter(|i| !already.contains(i) && !(lo..=hi).contains(i))
                 .count();
             if total > 0 && left == 0 {
-                self.status =
-                    ui::tf!("使っている{}を全部は隠せません(戻す道が見えなくなるため)", what)
-                        .into();
+                self.status = if cols {
+                    ui::t!("使っている列を全部は隠せません(戻す道が見えなくなるため)").into()
+                } else {
+                    ui::t!("使っている行を全部は隠せません(戻す道が見えなくなるため)").into()
+                };
                 return;
             }
         }
@@ -2892,20 +2901,28 @@ impl Calc {
         }
         if n == 0 {
             self.undo_stack.pop(); // 何も変わっていないので控えも戻す
-            self.status = if hide {
-                ui::tf!("その{}はもう隠れています", what).into()
-            } else {
-                ui::tf!("選んだ中に隠れた{}はありません(隠れた分を挟むように選ぶ)", what)
-                    .into()
+            self.status = match (hide, cols) {
+                (true, true) => ui::t!("その列はもう隠れています").into(),
+                (true, false) => ui::t!("その行はもう隠れています").into(),
+                (false, true) => {
+                    ui::t!("選んだ中に隠れた列はありません(隠れた分を挟むように選ぶ)").into()
+                }
+                (false, false) => {
+                    ui::t!("選んだ中に隠れた行はありません(隠れた分を挟むように選ぶ)").into()
+                }
             };
             return;
         }
         self.dirty = true;
-        self.status = if hide {
-            ui::tf!("{} {}を隠しました(見出しを跨いで選び「再表示」で戻せます)", n, what)
-                .into()
-        } else {
-            ui::tf!("{} {}を戻しました", n, what).into()
+        self.status = match (hide, cols) {
+            (true, true) => {
+                ui::tf!("{} 列を隠しました(見出しを跨いで選び「再表示」で戻せます)", n).into()
+            }
+            (true, false) => {
+                ui::tf!("{} 行を隠しました(見出しを跨いで選び「再表示」で戻せます)", n).into()
+            }
+            (false, true) => ui::tf!("{} 列を戻しました", n).into(),
+            (false, false) => ui::tf!("{} 行を戻しました", n).into(),
         };
     }
 }

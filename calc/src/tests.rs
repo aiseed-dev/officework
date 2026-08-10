@@ -4330,3 +4330,56 @@ mod slicer_tests {
         assert_eq!(slicer_items(&v[..10], false, false).1, 0);
     }
 }
+
+/// sheet が持つ名前と、calc が持つ訳の対応表がずれていないか。
+///
+/// 名前の**本体は sheet 側**(ProtectAllow / SCHEMES)にある。sheet は zip と
+/// quick-xml しか要らない器なので訳を持たせず、見出しは calc の表で当てる —
+/// つまり同じ日本語が2箇所に書かれる。片方だけ増えると画面に日本語が混じるか、
+/// 死んだ訳が残るので、**両方向**を見張る
+#[cfg(test)]
+mod sheet_name_table_tests {
+    use crate::util::{color_schemes, protect_allows};
+
+    #[test]
+    fn 保護中に許す操作の名前は両方の表に揃っている() {
+        let a = sheet::model::ProtectAllow::default();
+        let mine = protect_allows();
+        for (n, _) in a.items() {
+            assert!(
+                mine.iter().any(|(k, _)| *k == n),
+                "sheet の ProtectAllow::items にあって calc の protect_allows に無い: 「{n}」\
+                 (calc/src/util.rs に ui::item!(\"{n}\") を足す)"
+            );
+        }
+        let theirs = a.items();
+        for (k, _) in &mine {
+            assert!(
+                theirs.iter().any(|(n, _)| n == k),
+                "calc の protect_allows にあって sheet の ProtectAllow::items に無い: 「{k}」\
+                 (訳が宙に浮いている — 消すか、sheet 側に足す)"
+            );
+        }
+        assert_eq!(mine.len(), theirs.len(), "並びの数が食い違う");
+    }
+
+    #[test]
+    fn 配色の名前は両方の表に揃っている() {
+        let mine = color_schemes();
+        for (n, _) in sheet::theme::SCHEMES {
+            assert!(
+                mine.iter().any(|(k, _)| k == n),
+                "sheet の theme::SCHEMES にあって calc の color_schemes に無い: 「{n}」\
+                 (calc/src/util.rs に ui::item!(\"{n}\") を足す)"
+            );
+        }
+        for (k, _) in &mine {
+            assert!(
+                sheet::theme::SCHEMES.iter().any(|(n, _)| n == k),
+                "calc の color_schemes にあって sheet の theme::SCHEMES に無い: 「{k}」\
+                 (訳が宙に浮いている — 消すか、sheet 側に足す)"
+            );
+        }
+        assert_eq!(mine.len(), sheet::theme::SCHEMES.len(), "並びの数が食い違う");
+    }
+}

@@ -999,6 +999,13 @@ pub(crate) fn numfmts() -> Vec<(&'static str, &'static str, Option<&'static str>
         row(ui::item!("パーセント (12.34%)"), Some("0.00%")),
         row(ui::item!("指数 (1.23E+04)"), Some("0.00E+00")),
         row(ui::item!("短い日付 (2026/8/6)"), Some("yyyy/m/d")),
+        // **ここを言語ごとの書式コードにしたいが、まだできない。**
+        // 独語なら "d. mmmm yyyy" を入れたいところだが、書式の描き手
+        // (sheet/src/model.rs の 'm')は何文字並べても**月の数字**を返す —
+        // 実測で `d. mmmm yyyy` → `6. 08 2026`。13言語ぶんの月名・曜日名は
+        // 表としては engine に入ったが、**描き手がまだ使っていない**。
+        // 繋がるまでは札の嘘を別の嘘に置き換えるだけなので、日本語のまま
+        // 置く(2026-08-10)
         row(ui::item!("長い日付 (2026年8月6日)"), Some("yyyy\"年\"m\"月\"d\"日\"")),
         row(ui::item!("時刻 (13:45:00)"), Some("h:mm:ss")),
         row(ui::item!("テキスト (@)"), Some("@")),
@@ -1105,6 +1112,85 @@ pub(crate) fn border_styles() -> Vec<(&'static str, &'static str, sheet::model::
         row(ui::item!("太い実線"), BStyle::Thick),
         row(ui::item!("二重線"), BStyle::Double),
     ]
+}
+
+/// 罫線を掛ける**場所**の9種(罫線パレットの見出し・ツールチップ)。
+/// 太さ・線種・色はペンだけが決める — ここは場所しか言わない。
+/// **鍵は日本語のまま** — [`Calc::apply_borders`] の照合はこの鍵で行う
+/// (見出しだけが訳される)
+pub(crate) fn border_kinds() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ui::item!("下罫線"),
+        ui::item!("上罫線"),
+        ui::item!("左罫線"),
+        ui::item!("右罫線"),
+        ui::item!("外枠"),
+        ui::item!("すべての罫線(格子)"),
+        ui::item!("内側の縦線"),
+        ui::item!("内側の横線"),
+        ui::item!("罫線を消す"),
+    ]
+}
+
+/// 罫線の場所の鍵から、画面に出す見出しを引く。表に無ければ鍵をそのまま返す
+pub(crate) fn border_kind_label(key: &str) -> String {
+    border_kinds()
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, l)| l.to_string())
+        .unwrap_or_else(|| key.to_string())
+}
+
+/// 保護中に許す操作の見出し。**中身は sheet 側**
+/// ([`sheet::model::ProtectAllow::items`])— sheet は zip と quick-xml しか
+/// 要らない器なので、訳は**出す側のここ**で当てる。日本語の名前がそのまま鍵
+/// (入切の照合は sheet に渡る)。並びが食い違わないことは tests.rs が見張る
+pub(crate) fn protect_allows() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ui::item!("ロックされたセルの選択"),
+        ui::item!("ロックされていないセルの選択"),
+        ui::item!("セルの書式設定"),
+        ui::item!("列の書式設定"),
+        ui::item!("行の書式設定"),
+        ui::item!("列の挿入"),
+        ui::item!("行の挿入"),
+        ui::item!("ハイパーリンクの挿入"),
+        ui::item!("列の削除"),
+        ui::item!("行の削除"),
+        ui::item!("並べ替え"),
+        ui::item!("オートフィルターの使用"),
+        ui::item!("ピボットテーブルの使用"),
+    ]
+}
+
+/// 許す操作の鍵から見出しを引く。表に無ければ鍵をそのまま返す
+pub(crate) fn protect_allow_label(key: &str) -> String {
+    protect_allows()
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, l)| l.to_string())
+        .unwrap_or_else(|| key.to_string())
+}
+
+/// 配色(テーマ色の組)の見出し。**中身は sheet 側**([`sheet::theme::SCHEMES`])。
+/// 鍵はそちらの名前そのもの。並びが食い違わないことは tests.rs が見張る
+pub(crate) fn color_schemes() -> Vec<(&'static str, &'static str)> {
+    vec![
+        // 「Office」は色の組の固有名 — 訳す言葉ではない
+        ("Office", "Office"),
+        ui::item!("暖色"),
+        ui::item!("寒色"),
+        ui::item!("墨"),
+    ]
+}
+
+/// 配色の鍵から見出しを引く。表に無ければ鍵をそのまま返す
+pub(crate) fn color_scheme_label(key: &str) -> String {
+    color_schemes()
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, l)| l.to_string())
+        .unwrap_or_else(|| key.to_string())
 }
 
 pub(crate) fn font_colors() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
