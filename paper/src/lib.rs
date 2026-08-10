@@ -143,7 +143,8 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
 
     // **改ページの計算は paginate に一本化。** 目次のページ番号も
     // 同じ関数から出るので、紙と番号が食い違わない
-    let (pages, offsets, papers) = paginate_papers(sheet, paper);
+    let pg = paginate_full(sheet, paper);
+    let Pagination { pages, offsets, papers, .. } = &pg;
     for (i, line) in sheet.lines.iter().enumerate() {
         if line.cells.is_empty() {
             continue;
@@ -217,25 +218,19 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
         }
     }
 
-    let bottom = paper.height_mm - paper.margin_mm;
+    // **頁割りは本文と同じ物を使う**([`page_at`])。以前ここは
+    // 「どの頁も同じ高さ」と決め打ちした近似を**別に持っていた**ので、
+    // 本文とずれることがあった(2026-08-10 に一本化)
+    let page_of = |y: f32| -> usize { pg.page_at(y) };
     // 画像。行と同じ頁割りで置く
     {
-        let usable = bottom - paper.margin_mm;
-        let page_of = |y: f32| -> usize {
-            let mut off = 0.0f32;
-            let mut k = 0usize;
-            while y - off > bottom {
-                off = if k == 0 { bottom - paper.margin_mm } else { off + usable };
-                k += 1;
-            }
-            k
-        };
         for (bytes, [x, top, w_mm, h_mm]) in &sheet.images {
             let k = page_of(*top);
             if k >= layers.len() {
                 continue;
             }
-            let off = if k == 0 { 0.0 } else { (bottom - paper.margin_mm) + (k - 1) as f32 * usable };
+            let off = offsets[k];
+            let pp = papers.get(k).copied().unwrap_or(paper);
             // 復号できない画像は飛ばして続ける(1枚のために紙全体を失敗させない)
             let Ok(im) = ::image::load_from_memory(bytes) else { continue };
             // 透過つき(RGBA)は printpdf 0.7 が正しく埋め込めないので RGB に落とす
@@ -248,8 +243,8 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
             let natural_w = pw / dpi * 25.4;
             let natural_h = ph / dpi * 25.4;
             pdf_im.add_to_layer(layers[k].clone(), printpdf::ImageTransform {
-                translate_x: Some(Mm(paper.margin_mm + x)),
-                translate_y: Some(Mm(paper.height_mm - (top - off) - h_mm)),
+                translate_x: Some(Mm(pp.margin_mm + x)),
+                translate_y: Some(Mm(pp.height_mm - (top - off) - h_mm)),
                 scale_x: Some(w_mm / natural_w),
                 scale_y: Some(h_mm / natural_h),
                 dpi: Some(dpi),
@@ -260,33 +255,24 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
 
     // 表の罫線。行と同じ頁割りで引く(頁をまたぐ縦線は窓で切る)
     {
-        let usable = bottom - paper.margin_mm;
-        let page_of = |y: f32| -> usize {
-            let mut off = 0.0f32;
-            let mut k = 0usize;
-            // 行の頁割りと同じ計算: 1頁目は y0 から、以降は margin から
-            while y - off > bottom {
-                off = if k == 0 { bottom - paper.margin_mm } else { off + usable };
-                k += 1;
-            }
-            k
-        };
         for r in &sheet.rules {
             let [x1, y1, x2, y2] = *r;
             let k = page_of(y1.min(y2));
             if k >= layers.len() {
                 continue;
             }
-            let off = if k == 0 { 0.0 } else { (bottom - paper.margin_mm) + (k - 1) as f32 * usable };
+            let off = offsets[k];
+            let pp = papers.get(k).copied().unwrap_or(paper);
+            let bottom = pp.height_mm - pp.margin_mm;
             let l = &layers[k];
             let (ry1, ry2) = (
-                paper.height_mm - (y1 - off).clamp(paper.margin_mm, bottom),
-                paper.height_mm - (y2 - off).clamp(paper.margin_mm, bottom),
+                pp.height_mm - (y1 - off).clamp(pp.margin_mm, bottom),
+                pp.height_mm - (y2 - off).clamp(pp.margin_mm, bottom),
             );
             l.add_line(Line {
                 points: vec![
-                    (Point::new(Mm(paper.margin_mm + x1), Mm(ry1)), false),
-                    (Point::new(Mm(paper.margin_mm + x2), Mm(ry2)), false),
+                    (Point::new(Mm(pp.margin_mm + x1), Mm(ry1)), false),
+                    (Point::new(Mm(pp.margin_mm + x2), Mm(ry2)), false),
                 ],
                 is_closed: false,
             });
@@ -322,16 +308,48 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
 /// ページごとの繰り上げ量(そのページの先頭が巻物のどの高さか)。
 /// `to_pdf` もこれを使うので、**目次のページ番号と紙が必ず一致する**。
 pub fn paginate(sheet: &Sheet, paper: Paper) -> (Vec<usize>, Vec<f32>) {
-    let (pages, offsets, _) = paginate_papers(sheet, paper);
-    (pages, offsets)
+    let p = paginate_full(sheet, paper);
+    (p.pages, p.offsets)
 }
 
-/// [`paginate`] と同じ折り方をして、**ページごとの紙**も返す。
+/// 頁割りの答え一式。[`paginate_full`] が返す。
+#[derive(Debug, Clone, Default)]
+pub struct Pagination {
+    /// 行ごとの頁(**1始まり**。並びは `sheet.lines` の順)
+    pub pages: Vec<usize>,
+    /// 頁ごとの繰り上げ量(その頁の先頭が巻物のどの高さか)
+    pub offsets: Vec<f32>,
+    /// 頁ごとの紙。節で紙が変わる文書では頁ごとに違う
+    pub papers: Vec<Paper>,
+    /// 頁ごとの**切れ目**(その頁に載る最初の行の巻物 y)。
+    /// `offsets` は余白を引いた後の値で**前の頁の裾と重なる**ので、
+    /// 「この y はどの頁か」を引くのにそのまま使うと1頁ずれる。
+    /// 引くときは必ずこちら([`Pagination::page_at`])
+    pub starts: Vec<f32>,
+}
+
+impl Pagination {
+    /// 巻物の高さ `y` が載る頁(**0始まり** — `layers` の添字と同じ)。
+    /// **画像も罫線もこれを使う** — 本文と同じ表を引くので必ず一致する。
+    pub fn page_at(&self, y: f32) -> usize {
+        let mut k = 0usize;
+        for (j, st) in self.starts.iter().enumerate() {
+            if y >= *st - 0.01 {
+                k = j;
+            } else {
+                break;
+            }
+        }
+        k
+    }
+}
+
+/// [`paginate`] と同じ折り方をして、**頁ごとの紙と切れ目**も返す。
 ///
 /// 節が途中で変わる文書は、**ページごとに紙の大きさが違う**(縦の節のあとに
 /// 横の節、など)。`sheet.sect_pages` が空(節が1つ)なら、どのページも
 /// 渡された `paper` のままなので、今までと1ミリも変わらない。
-pub fn paginate_papers(sheet: &Sheet, paper: Paper) -> (Vec<usize>, Vec<f32>, Vec<Paper>) {
+pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
     // その高さに効いている紙。節が無ければ呼ぶ側の紙をそのまま使う
     let paper_at = |y: f32| -> Paper {
         match sheet.setup_at(y) {
@@ -346,6 +364,8 @@ pub fn paginate_papers(sheet: &Sheet, paper: Paper) -> (Vec<usize>, Vec<f32>, Ve
     let mut pages = Vec::with_capacity(sheet.lines.len());
     let mut offsets = vec![0.0f32];
     let mut papers = vec![paper_at(0.0)];
+    // 頁の切れ目 = その頁に載る最初の行の y。1頁目は巻物の頭から
+    let mut starts = vec![f32::NEG_INFINITY];
     // 明示の改ページ(文書側の指定)。高さ超過とは別に、ここでも頁を割る
     let mut breaks = sheet.breaks.iter().copied().peekable();
     for line in &sheet.lines {
@@ -372,10 +392,11 @@ pub fn paginate_papers(sheet: &Sheet, paper: Paper) -> (Vec<usize>, Vec<f32>, Ve
             let next = paper_at(line.y_mm);
             offsets.push(line.y_mm - next.margin_mm);
             papers.push(next);
+            starts.push(line.y_mm);
         }
         pages.push(offsets.len());
     }
-    (pages, offsets, papers)
+    Pagination { pages, offsets, papers, starts }
 }
 
 /// 下線と取り消し線。フォントが持っていないので線として引く。
@@ -452,7 +473,7 @@ mod tests {
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
         assert_eq!(s.sect_pages.len(), 3, "節ごとの紙が揃っていない: {:?}", s.sect_pages);
 
-        let (_, _, papers) = paginate_papers(&s, Paper::default());
+        let papers = paginate_full(&s, Paper::default()).papers;
         let 幅: Vec<f32> = papers.iter().map(|p| p.width_mm).collect();
         // 縦 → 横 → 縦。**節の切れ目で必ず頁が割れる**ので3ページ以上になる
         assert!(papers.len() >= 3, "節の切れ目で頁が割れていない: {幅:?}");
@@ -471,7 +492,8 @@ mod tests {
         let (s, _) = sheet("いろはにほへと。".repeat(200).as_str(), Align::Left);
         assert!(s.sect_pages.is_empty(), "節が1つなのに節ごとの紙を持った");
         let (pages, offsets) = paginate(&s, Paper::default());
-        let (p2, o2, papers) = paginate_papers(&s, Paper::default());
+        let pf = paginate_full(&s, Paper::default());
+        let (p2, o2, papers) = (pf.pages, pf.offsets, pf.papers);
         assert_eq!(pages, p2);
         assert_eq!(offsets, o2);
         assert!(papers.iter().all(|p| p.width_mm == 210.0), "紙が勝手に変わった");
@@ -510,7 +532,8 @@ mod tests {
         // 節末に紙を置いた1段目が縦、残りが最後の節。ここでは横紙を最後に置く
         let d = Document { page: Some(紙(297.0, 210.0)), ..d };
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
-        let (pages, offsets, papers) = paginate_papers(&s, Paper::default());
+        let pf = paginate_full(&s, Paper::default());
+        let (pages, offsets, papers) = (pf.pages, pf.offsets, pf.papers);
         for (i, line) in s.lines.iter().enumerate() {
             if line.cells.is_empty() { continue }
             let k = pages[i];
@@ -560,9 +583,66 @@ mod tests {
             "巻物の頭で最初の節が引けない: {:?}", s.sect_pages);
 
         let 紙面 = Paper { width_mm: 297.0, height_mm: 210.0, margin_mm: 20.0 };
-        let (_, _, papers) = paginate_papers(&s, 紙面);
+        let papers = paginate_full(&s, 紙面).papers;
         assert_eq!((papers[0].width_mm, papers[0].height_mm), (210.0, 297.0),
             "1ページ目が最後の節の紙で刷られた");
+    }
+
+
+    /// **画像・罫線の頁割りが本文とずれない。**
+    ///
+    /// ここは長らく本文とは別に「どの頁も同じ高さ」と決め打ちした近似を
+    /// 持っていた。同じ y に居る本文の行と同じ頁に来ることを直接見る —
+    /// 「PDF が出来た」だけを見る試験はこのずれを通してしまう
+    /// (SEKKEI.md「緑は『正しい』ではなく『この物差しでは差が出ない』」)
+    #[test]
+    fn 画像と罫線の頁割りが本文と一致する() {
+        let (s, _) = sheet(&"いろはにほへとちりぬるを。".repeat(400), Align::Left);
+        let pg = paginate_full(&s, Paper::default());
+        assert!(pg.offsets.len() >= 3, "頁が足りず試験にならない: {}", pg.offsets.len());
+        for (i, line) in s.lines.iter().enumerate() {
+            if line.cells.is_empty() { continue }
+            assert_eq!(pg.page_at(line.y_mm), pg.pages[i] - 1,
+                "行 {i}(y={})の頁が本文とずれた", line.y_mm);
+        }
+    }
+
+    /// 節で紙が変わる文書でも同じ。**紙の高さが頁ごとに違う**ので、
+    /// 「どの頁も同じ高さ」の近似はここで必ず外れる
+    #[test]
+    fn 節が変わっても画像と罫線の頁割りが本文と一致する() {
+        use kumihan::{Block, PageSetup, Paragraph, Run};
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let 紙 = |w: f32, h: f32| PageSetup {
+            w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1,
+        };
+        let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
+            runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+            line_spacing: 1.0,
+            sect: sect.map(|page| kumihan::SectionBreak {
+                raw: String::new(), page, continuous: false }),
+            ..Default::default()
+        });
+        let 長文 = "いろはにほへとちりぬるを。".repeat(120);
+        let d = Document {
+            page: Some(紙(297.0, 210.0)),                       // 最後の節 = 横
+            blocks: vec![
+                段(&長文, Some(紙(210.0, 297.0))),              // 縦の節
+                段(&長文, None),                                  // 横の節
+            ],
+            ..Default::default()
+        };
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 });
+        let pg = paginate_full(&s, Paper::default());
+        assert!(pg.papers.iter().any(|q| q.width_mm == 297.0), "横の紙が出ていない");
+        for (i, line) in s.lines.iter().enumerate() {
+            if line.cells.is_empty() { continue }
+            assert_eq!(pg.page_at(line.y_mm), pg.pages[i] - 1,
+                "行 {i}(y={})の頁が本文とずれた", line.y_mm);
+        }
     }
 
     #[test]
