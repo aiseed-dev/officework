@@ -3218,6 +3218,55 @@ mod anchor_tests {
     }
 
     #[test]
+    fn 表のセルの中の数式も持ち越す() {
+        // 段落は本文にも**表のセルの中にも**ある。控えの受け渡しが本文の
+        // 段落でしか働かないと、表の中の数式だけ静かに落ちる
+        // (向こう(genoffice)の試験を読んでいて気付いた筋。2026-08-10)
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body>
+            <w:tbl><w:tr><w:tc><w:p>
+                <w:r><w:t>面積</w:t></w:r>
+                <m:oMath><m:r><m:t>πr2</m:t></m:r></m:oMath>
+            </w:p></w:tc></w:tr></w:tbl>
+        </w:body></w:document>"#;
+        let (doc, _) = crate::parse_document_xml(xml);
+        let t: Vec<&crate::Table> = doc.tables().collect();
+        let cell_para = &t[0].rows[0][0].paragraphs[0];
+        assert_eq!(cell_para.anchors.len(), 1,
+            "表のセルの中で数式を控えていない: {:?}", cell_para.anchors);
+        let out = crate::write_document_xml(&doc);
+        assert!(out.contains("πr2"), "保存で表の中の数式が消えた: {out}");
+        assert_eq!(out.matches("<m:oMath").count(), 1, "数式が二重に出た: {out}");
+    }
+
+    #[test]
+    fn 一つの段落に数式が二つあっても両方残る() {
+        // 向こうの試験にこの形がある(multiple oMath fragments in one paragraph)
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p>
+            <m:oMath><m:r><m:t>甲</m:t></m:r></m:oMath>
+            <m:oMath><m:r><m:t>乙</m:t></m:r></m:oMath>
+        </w:p></w:body></w:document>"#;
+        let (doc, _) = crate::parse_document_xml(xml);
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.anchors.len(), 2, "二つ目を落とした: {:?}", p.anchors);
+        let out = crate::write_document_xml(&doc);
+        assert_eq!(out.matches("<m:oMath").count(), 2, "数式の数が合わない: {out}");
+        // 数式どうしの前後は入れ替わらない(段落の頭へ寄るのは全体として)
+        assert!(out.find('甲') < out.find('乙'), "数式どうしの順が入れ替わった: {out}");
+    }
+
+    #[test]
+    fn ヘッダーの中の数式も持ち越す() {
+        // ヘッダー・フッターは同じ読み手を別の root で通す。
+        // 控えの受け渡しがそこでも働くか
+        let xml = r#"<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:p>
+            <m:oMath><m:r><m:t>丙</m:t></m:r></m:oMath>
+        </w:p></w:hdr>"#;
+        let (doc, _) = crate::parse_document_xml(xml);
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.anchors.len(), 1, "ヘッダーで数式を控えていない: {:?}", p.anchors);
+    }
+
+    #[test]
     fn 独立した数式は二重に控えない() {
         // m:oMathPara(独立した数式)の中には m:oMath が入っている。
         // 外側を丸ごと控えるので、中の oMath を別に控えてはいけない
@@ -3257,6 +3306,26 @@ mod anchor_tests {
         doc.set_body_text("図を直した", 10.5);
         let out = crate::write_document_xml(&doc);
         assert!(out.contains("rId7"), "編集しただけで画像が消えた");
+    }
+
+    #[test]
+    fn 一文字打っても数式は消えない() {
+        // 画像と同じ約束を数式にも。`officework.doc` から本文を書き換える
+        // 人が居るので、**編集は控えを巻き添えにしない**
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p>
+            <w:r><w:t>式</w:t></w:r>
+            <m:oMath><m:r><m:t>E=mc2</m:t></m:r></m:oMath>
+        </w:p></w:body></w:document>"#;
+        let (mut doc, _) = crate::parse_document_xml(xml);
+        doc.set_body_text("式を直した", 10.5);
+        let out = crate::write_document_xml(&doc);
+        assert!(out.contains("E=mc2"), "編集しただけで数式が消えた: {out}");
+        // 段落を割っても、控えは前半に残って消えも増えもしない
+        let (mut doc2, _) = crate::parse_document_xml(xml);
+        doc2.set_body_text("上\n下", 10.5);
+        let out2 = crate::write_document_xml(&doc2);
+        assert_eq!(out2.matches("<m:oMath").count(), 1,
+            "段落を割ったら数式が消えたか二重になった: {out2}");
     }
 }
 
