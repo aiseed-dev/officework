@@ -75,6 +75,14 @@ class App:
         env = dict(os.environ)
         env.pop("WAYLAND_DISPLAY", None)  # 消すと gpui は X11 を選ぶ
         env["XDG_RUNTIME_DIR"] = self.run_dir
+        # **HOME も分ける。** 設定は `$HOME/.config/office/settings.toml` に
+        # あり、writer と calc と**発注者の窓**で1つを共有している。
+        # 点検で押したボタン(暗い画面・文字の大きさ)がそこへ書き込まれ、
+        # 2026-08-10 に発注者の ui_scale を 1.5 に変えてしまった。
+        # 直近ファイル・復旧の控え・鍵もここに集まるので、まとめて外へ出す
+        self.home = os.path.join(self.run_dir, "home")
+        os.makedirs(os.path.join(self.home, ".config", "office"), exist_ok=True)
+        env["HOME"] = self.home
         env.setdefault("DISPLAY", ":2")
         self.env = env
         self.log = open(os.path.join(self.run_dir, "calc.log"), "w+")

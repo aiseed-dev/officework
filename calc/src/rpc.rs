@@ -378,8 +378,12 @@ pub(crate) fn handle(calc: &mut Calc, line: &str, cx: &mut Context<Calc>) -> Str
                 calc.gridlines, calc.show_headers, calc.dark, calc.zoom, calc.ui_scale
             );
             format!(
-                "{{\"ok\":true,\"tab\":{},\"pick\":{},\"open\":{},\"toggles\":{toggles},\"status\":{},\"dirty\":{},\"edits\":{}}}",
+                "{{\"ok\":true,\"tab\":{},\"cur\":{},\"pick\":{},\"open\":{},\"toggles\":{toggles},\"status\":{},\"dirty\":{},\"edits\":{}}}",
                 calc.tab,
+                // いまのセル。**点検の道具が「押した所に当たったか」を
+                // 確かめられるようにする** — 当たっていない打鍵を
+                // 「効かない鍵」と数えた(2026-08-10)
+                J::S(calc.cursor.a1()).to_json(),
                 pick_at,
                 J::A(open.iter().map(|s| J::S(s.to_string())).collect()).to_json(),
                 J::S(calc.status.to_string()).to_json(),

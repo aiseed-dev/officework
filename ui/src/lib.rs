@@ -239,6 +239,8 @@ actions!(
         /// シートの行き来と参照の $ 回し。**calc だけ**が受け口を持つ —
         /// writer にシートも A1 参照も無い
         PrevSheet, NextSheet, CycleRef,
+        /// スライサーの板が開いている間だけ意味がある2つ。**calc だけ**
+        SlicerMulti, SlicerClear,
     ]
 );
 
@@ -290,6 +292,8 @@ pub fn bindings(context: &'static str) -> Vec<KeyBinding> {
         KeyBinding::new("alt-pageup", PrevSheet, Some(context)),
         KeyBinding::new("alt-pagedown", NextSheet, Some(context)),
         KeyBinding::new("f4", CycleRef, Some(context)),
+        KeyBinding::new("alt-s", SlicerMulti, Some(context)),
+        KeyBinding::new("alt-c", SlicerClear, Some(context)),
         KeyBinding::new("ctrl-home", DocHome, Some(context)),
         KeyBinding::new("ctrl-end", DocEnd, Some(context)),
         KeyBinding::new("shift-up", SelectUp, Some(context)),

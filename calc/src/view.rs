@@ -4493,6 +4493,8 @@ impl Render for Calc {
             .on_action(cx.listener(Calc::a_prev_sheet))
             .on_action(cx.listener(Calc::a_next_sheet))
             .on_action(cx.listener(Calc::a_cycle_ref))
+            .on_action(cx.listener(Calc::a_slicer_multi))
+            .on_action(cx.listener(Calc::a_slicer_clear))
             .on_action(cx.listener(Calc::a_insert_fn))
             .on_action(cx.listener(Calc::a_percent))
             .on_action(cx.listener(Calc::a_print))

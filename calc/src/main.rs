@@ -3044,6 +3044,37 @@ impl Calc {
     }
     /// F4 = 参照の $ を回す(A1 → $A$1 → A$1 → $A1 → A1)。
     /// **打っている式の、カーソルの直前の参照**を回す
+    /// Alt+S = スライサーの複数選択の入切、Alt+C = 絞りの解除。
+    /// **板が開いている間だけの鍵。** 開いていないときは黙らずにそう言う —
+    /// 押して何も起きないと、効かないのか開いていないのか分からない
+    fn a_slicer_multi(&mut self, _: &ui::SlicerMulti, _: &mut Window, cx: &mut Context<Self>) {
+        match &mut self.slicer {
+            Some(sl) => {
+                sl.multi = !sl.multi;
+                self.status = if sl.multi {
+                    ui::t!("複数選択: 押した値を重ねて絞ります").into()
+                } else {
+                    ui::t!("単数選択: 押した値ひとつで絞ります").into()
+                };
+            }
+            None => self.status = Self::no_slicer_msg().into(),
+        }
+        cx.notify();
+    }
+    fn a_slicer_clear(&mut self, _: &ui::SlicerClear, _: &mut Window, cx: &mut Context<Self>) {
+        match &mut self.slicer {
+            Some(sl) => {
+                sl.sel.clear();
+                self.status = ui::t!("スライサーの絞りを解除しました").into();
+            }
+            None => self.status = Self::no_slicer_msg().into(),
+        }
+        cx.notify();
+    }
+    fn no_slicer_msg() -> String {
+        ui::t!("スライサーが開いていません(データタブの「スライサー」で開きます)")
+            .to_string()
+    }
     fn a_cycle_ref(&mut self, _: &ui::CycleRef, _: &mut Window, cx: &mut Context<Self>) {
         let t = self.input.text().to_string();
         if !t.starts_with('=') {

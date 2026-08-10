@@ -19,7 +19,7 @@ ribbon_sweep.py の App をそのまま借りる(窓の世話・焦点・後始�
 状態行が変わるまで待ってから見る。
 
 いま見ているのは 2026-08-10 に足した束(Ctrl+0 / F1 / Ctrl+; / Ctrl+: /
-Alt+PageUp / Alt+PageDown / F4)。鍵を足したらここにも足す。
+Alt+PageUp / Alt+PageDown / F4 と、スライサーの Alt+S / Alt+C)。鍵を足したらここにも足す。
 """
 import os, sys, tempfile, time, zipfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -72,7 +72,13 @@ def three_sheet_book():
 
 
 def chord(app, mods, name, wait=0.7):
-    """修飾キー付きで押す。mods は ["Control_L", "Shift_L", "Alt_L"] など"""
+    """修飾キー付きで押す。mods は ["Control_L", "Shift_L", "Alt_L"] など。
+
+    **離すたびに sync して間を空ける。** まとめて離すと修飾が押されたままに
+    なることがあり、次の Return が ctrl-enter に化けて何も起きない。それを
+    「Ctrl+: が効かない」と読み違え、あげく配列のせいだと結論しかけた
+    (2026-08-10)。効いていなかったのは道具のほう。
+    """
     if not app.has_focus():
         app.take_focus()
     d = app.d
@@ -86,10 +92,33 @@ def chord(app, mods, name, wait=0.7):
     d.sync()
     time.sleep(0.06)
     xtest.fake_input(d, X.KeyRelease, kc)
+    d.sync()
+    time.sleep(0.03)
     for m in reversed(mcs):
         xtest.fake_input(d, X.KeyRelease, m)
-    d.sync()
+        d.sync()
+        time.sleep(0.03)
     time.sleep(wait)
+
+
+def chord_until(app, mods, key, tries=3):
+    """状態行が変わるまで最大 `tries` 回押す。変わった後の状態を返す。
+    `mods` が空なら修飾なしの1打鍵。
+
+    **打鍵の取りこぼしを鍵のせいにしないため。** XTEST の打鍵はときどき
+    落ちる(修飾2つで6回に1回ほど、修飾なしでも稀に)。死んだ束縛なら
+    3回とも落ちるので、ここで隠れるのは道具の取りこぼしだけ
+    """
+    before = app.state()["status"]
+    for _ in range(tries):
+        if mods:
+            chord(app, mods, key)
+        else:
+            app.key(key, 0.5)
+        st = settle(app, before, 2.0)
+        if st["status"] != before:
+            return st
+    return app.state()
 
 
 def settle(app, before, secs=4.0):
@@ -134,6 +163,24 @@ def cell_xy(app, a1):
     return (px + 46 + col * 108 + 40, py + 24 + row * 24 + 12)
 
 
+def goto(app, a1, tries=4):
+    """セルを押して、**本当にそこへ行ったか確かめる。**
+
+    座標は概算なので、時々ひとつ隣に当たる。当たらないまま鍵を押すと
+    「鍵が効かない」に化ける — 2026-08-10 にこれで3件でっち上げた。
+    ui_state の cur を見て、違えば押し直す。
+    """
+    for _ in range(tries):
+        app.key("Escape", 0.3)   # 開きっぱなしの一覧を閉じてから押す
+        app.click(*cell_xy(app, a1))
+        end = time.time() + 2
+        while time.time() < end:
+            if app.state().get("cur") == a1:
+                return
+            time.sleep(0.2)
+    raise SystemExit(f"{a1} に行けません(いま {app.state().get('cur')})")
+
+
 def main():
     bad = []
 
@@ -147,23 +194,26 @@ def main():
         app.seed()
         time.sleep(1.0)   # 480 セルの描き直しが済むまで待つ
 
+        # **打鍵が届くまで待ってから始める。** 窓が出ていても X の入力焦点は
+        # まだ来ていないことがあり、最初の数打鍵が丸ごと落ちる。それを
+        # 「鍵が効かない」と数えると、1回の点検で4件でっち上がる
+        # (2026-08-10)。F1 が返ってきたら始める
+        if "manual" not in chord_until(app, [], "F1", 8)["status"]:
+            raise SystemExit("打鍵が calc に届きません(焦点が取れていない)")
+
         # --- Ctrl+0 ズームを戻す -------------------------------------
         # **先に倍率をずらせない。** リボンの「拡大」は 13 段目にあり、
         # 段を渡り歩くと箱の座標が当てにならない(3回押しても 1.0 のまま
         # だった)。ここで見るのは「鍵が受け口まで届いて 1.0 になる」まで
         # ——「1.0 でない所から戻る」は util の試験ではなく handler が
         # 3行なので目で読める。Ctrl+= は ui_scale(画面全体)で zoom ではない
-        b = app.state()["status"]
-        chord(app, ["Control_L"], "0")
-        st = settle(app, b)
+        st = chord_until(app, ["Control_L"], "0")
         check("Ctrl+0 ズームを戻す(鍵が届く)",
               "100%" in st["status"] and st["toggles"][6] == 1.0,
               f"{st['toggles'][6]} / {st['status'][:24]}")
 
         # --- F1 手引き ------------------------------------------------
-        b = app.state()["status"]
-        app.key("F1")
-        st = settle(app, b)
+        st = chord_until(app, [], "F1")
         check("F1 手引き", "manual" in st["status"], st["status"][:44])
 
         # --- Ctrl+; 日付 / Ctrl+: 時刻 --------------------------------
@@ -172,11 +222,8 @@ def main():
             ("E6", ["Control_L", "Shift_L"], "semicolon", "Ctrl+: 時刻", 5, 2, ":"),
         ):
             app.rpc({"cmd": "set", "a1": a1, "values": [[""]]})
-            app.key("Escape", 0.3)   # 開きっぱなしの一覧を閉じてから押す
-            app.click(*cell_xy(app, a1))
-            b = app.state()["status"]
-            chord(app, mods, key)
-            settle(app, b)
+            goto(app, a1)
+            chord_until(app, mods, key)
             app.key("Return", 0.6)
             time.sleep(0.8)   # 確定が届くまで待つ(急ぐと空のまま読む)
             got = str(app.rpc({"cmd": "get", "a1": a1}).get("values", [[""]])[0][0])
@@ -185,19 +232,35 @@ def main():
 
         # --- F4 参照の $ を回す ---------------------------------------
         app.rpc({"cmd": "set", "a1": "E8", "values": [["=A1"]]})
-        app.key("Escape", 0.3)
-        app.click(*cell_xy(app, "E8"))
-        b = app.state()["status"]
-        app.key("F2", 0.6)          # 編集に入る(セルの式が編集欄に載る)
-        settle(app, b)
-        b = app.state()["status"]
-        app.key("F4", 0.6)
-        st = settle(app, b)
+        goto(app, "E8")
+        chord_until(app, [], "F2")  # 編集に入る(セルの式が編集欄に載る)
+        st = chord_until(app, [], "F4")
         app.key("Return", 0.8)
         time.sleep(0.8)
         got = str(app.rpc({"cmd": "get_formula", "a1": "E8"})
                   .get("formulas", [[""]])[0][0])
         check("F4 参照の $ を回す", got == "=$A$1", f"{got!r} / {st['status'][:24]}")
+        # --- Alt+S / Alt+C スライサーの複数選択と解除 -----------------
+        # **板が開いていないときは「開いていない」と言う**のも仕様のうち
+        app.key("Escape", 0.3)
+        st = chord_until(app, ["Alt_L"], "s")
+        check("Alt+S 板が無いときはそう言う", "開いていません" in st["status"],
+              st["status"][:34])
+
+        goto(app, "A2")
+        press(app, "insslicer")
+        time.sleep(0.8)
+        if "slicer" not in app.state()["open"]:
+            check("スライサーを開く", False, str(app.state()["open"]))
+        else:
+            st = chord_until(app, ["Alt_L"], "s")
+            check("Alt+S 複数選択に切り替える", "複数選択" in st["status"],
+                  st["status"][:24])
+            st = chord_until(app, ["Alt_L"], "s")
+            check("Alt+S もう一度で単数に戻る", "単数選択" in st["status"],
+                  st["status"][:24])
+            st = chord_until(app, ["Alt_L"], "c")
+            check("Alt+C 絞りを解除する", "解除" in st["status"], st["status"][:24])
     finally:
         if "--keep" not in sys.argv:
             app.close()
