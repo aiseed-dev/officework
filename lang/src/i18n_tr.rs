@@ -116,7 +116,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ルビを振る字を選んでから押してください", "Önce ruby eklenecek metni seçin"),
     ("これ以上戻せません", "Geri alınacak başka bir şey yok"),
     ("脚注にする字を選んでから押してください", "Önce dipnota dönüştürülecek metni seçin"),
-    ("選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)", "Seçilen metin dipnota dönüştürüldü (sayfanın altında görünür)"),
+    ("選んだ字を脚注にしました(紙の下に出ます)", "Seçilen metin dipnota dönüştürüldü (sayfanın altında görünür)"),
     ("脚注にできません(段落をまたぐ範囲は選べません)", "Dipnot yapılamıyor (seçim tek bir paragrafın içinde kalmalı)"),
     ("ルビ: 読みを打って Enter(空にして Enter で外す)", "Ruby: okunuşu yazıp Enter'a basın (boş bırakıp Enter kaldırır)"),
     ("レベル付きのリストです(Tab / Shift+Tab で深さ。印はレベルで変わる)", "Düzeyli liste (Tab / Shift+Tab derinliği değiştirir; işaret düzeye göre değişir)"),

@@ -116,7 +116,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ルビを振る字を選んでから押してください", "Selecione o texto que leva ruby antes de premir"),
     ("これ以上戻せません", "Não há mais nada para anular"),
     ("脚注にする字を選んでから押してください", "Selecione primeiro o texto que vai passar a nota de rodapé"),
-    ("選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)", "O texto selecionado passou a nota de rodapé (aparece no fundo da página)"),
+    ("選んだ字を脚注にしました(紙の下に出ます)", "O texto selecionado passou a nota de rodapé (aparece no fundo da página)"),
     ("脚注にできません(段落をまたぐ範囲は選べません)", "Não é possível criar a nota de rodapé (a seleção tem de ficar dentro de um parágrafo)"),
     ("ルビ: 読みを打って Enter(空にして Enter で外す)", "Ruby: escreva a leitura e prima Enter (Enter em branco retira-o)"),
     ("レベル付きのリストです(Tab / Shift+Tab で深さ。印はレベルで変わる)", "Lista com níveis (Tab / Shift+Tab muda a profundidade. A marca muda com o nível)"),

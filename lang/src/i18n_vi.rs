@@ -116,7 +116,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ルビを振る字を選んでから押してください", "Hãy chọn phần chữ cần đặt ruby trước"),
     ("これ以上戻せません", "Không còn gì để hoàn tác"),
     ("脚注にする字を選んでから押してください", "Hãy chọn phần chữ cần chuyển thành chú thích cuối trang trước"),
-    ("選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)", "Phần chữ đã chọn đã thành chú thích cuối trang (hiện ở cuối trang)"),
+    ("選んだ字を脚注にしました(紙の下に出ます)", "Phần chữ đã chọn đã thành chú thích cuối trang (hiện ở cuối trang)"),
     ("脚注にできません(段落をまたぐ範囲は選べません)", "Không thể tạo chú thích (vùng chọn phải nằm trong một đoạn văn)"),
     ("ルビ: 読みを打って Enter(空にして Enter で外す)", "Ruby: gõ cách đọc rồi nhấn Enter (để trống rồi Enter để bỏ)"),
     ("レベル付きのリストです(Tab / Shift+Tab で深さ。印はレベルで変わる)", "Danh sách nhiều cấp (Tab / Shift+Tab đổi độ sâu; ký hiệu thay đổi theo cấp)"),

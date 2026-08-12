@@ -188,6 +188,7 @@ impl Writer {
 
     /// 編集中のセルの段落へ書式を掛ける(セルは短いので丸ごと掛ける)。
     pub(crate) fn each_cell_para(&mut self, f: impl Fn(&mut kumihan::Paragraph)) {
+        self.checkpoint(false); // 表のセルの段落
         let Target::Cell { table, row, col } = self.target else { return };
         self.flush_target();
         if let Some(kumihan::Block::Table(tb)) = self
@@ -231,6 +232,7 @@ impl Writer {
 
     /// 選んでいる段落の性質を変える。
     pub(crate) fn para(&mut self, f: impl Fn(&mut kumihan::Paragraph) + Copy) {
+        self.checkpoint(false); // 段落の性質(揃え・箇条書き・字下げ・行間)
         if self.protected() {
             self.status =
                 ui::t!("読み取り専用で保護されています(保護タブの「保護」で解除できます)").into();
@@ -249,6 +251,7 @@ impl Writer {
     }
 
     pub(crate) fn size(&mut self, f: impl Fn(f32) -> f32 + Copy) {
+        self.checkpoint(false); // 文字の大きさ
         match self.target {
             Target::Body => {
                 let sel = self.ed.selection();
@@ -331,6 +334,7 @@ impl Writer {
     /// 用紙の設定を変える。**文書に書き戻す**(sect_raw を作り替える)ので
     /// 保存で残る。画面と紙は同じ寸法で追随する。
     pub(crate) fn set_page(&mut self, f: impl Fn(&mut kumihan::PageSetup)) {
+        self.checkpoint(false); // 用紙の設定
         f(&mut self.pg);
         self.doc.page = Some(self.pg);
         let tw = |mm: f32| -> i64 { (mm * 20.0 * 72.0 / 25.4).round() as i64 };
@@ -392,6 +396,7 @@ impl Writer {
     }
 
     pub(crate) fn set_align(&mut self, a: Align) {
+        self.checkpoint(false); // 揃え
         match self.target {
             Target::Body => {
                 let sel = self.ed.selection();
@@ -449,6 +454,7 @@ impl Writer {
 
     /// 相互参照を挿す。値を普通の字として打ってから、その範囲を参照にする。
     pub(crate) fn insert_ref(&mut self, name: &str, page: bool) {
+        self.checkpoint(false); // 相互参照
         self.switch_target(Target::Body);
         let Some(val) = self.ref_value(name, page) else {
             self.status = ui::tf!("しおり「{}」が見つかりません", name).into();
@@ -499,6 +505,7 @@ impl Writer {
 
     /// しおりを追加する(カーソルの段落へ)。
     pub(crate) fn bm_add(&mut self) {
+        self.checkpoint(false); // しおり
         let name = self.bm_ed.text().trim().to_string();
         if name.is_empty() {
             self.status = ui::t!("しおりの名前を打ってから追加してください").into();
@@ -528,6 +535,7 @@ impl Writer {
     /// 段落のスタイル。0 = 標準、1〜3 = 見出し。
     /// スタイル定義(styles.xml)を持たないので、見た目は直接書式で付ける。
     pub(crate) fn set_para_style(&mut self, n: u8) {
+        self.checkpoint(false); // 段落の様式
         let (pt, bold) = match n {
             1 => (16.0, true),
             2 => (13.0, true),
@@ -554,6 +562,7 @@ impl Writer {
     /// 印刷した紙とずれない。目次の行は ParaStyle::Toc の印を持ち、
     /// 「目次の更新」はその連続を丸ごと置き換える。
     pub(crate) fn make_toc(&mut self) {
+        self.checkpoint(false); // 目次
         self.switch_target(Target::Body);
         self.flush_target();
         // 見出しを集める(本文のバイト位置つき)
@@ -699,6 +708,7 @@ impl Writer {
     /// 図表目次。図表番号(「図 n」で始まる段落)を集めて一覧にする。
     /// 行は ParaStyle::Tof の印を持ち、「図表目次の更新」で丸ごと作り直す。
     pub(crate) fn make_tof(&mut self) {
+        self.checkpoint(false); // 図表目次
         self.switch_target(Target::Body);
         self.flush_target();
         let mut items: Vec<(String, usize)> = Vec::new();

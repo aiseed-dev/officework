@@ -1196,26 +1196,28 @@ mod screen_note_tests {
 }
 
 
-/// 脚注にする操作は**取り消せない**。
+/// 脚注にする操作の取り消し。
 ///
-/// 取り消しは `Editor` が持っていて、控えるのは**平文だけ**。この操作は
-/// 字を模型(注)へ移すので平文の巻き戻しでは戻らず、平文を取り直す時点で
-/// **それまでの履歴ごと消える**。直すには文書そのものの取り消しが要る。
+/// **前は戻せなかった。** 取り消しが `Editor` の平文しか見ておらず、
+/// 字を模型(注)へ移すこの操作は巻き戻せなかった。文書ごとの取り消しに
+/// 繋いだので(2026-08-13)、いまは本文も注も一手で戻る。
 ///
-/// 直せていないので、せめて**そう言う** — 文言に「取り消しはできません」を
-/// 入れてある。ここは**その約束が本当かを見る**(黙って戻せなくならないように)
+/// **Ctrl+Z の道(`undo_step`)で見る。** 前はここが `ed.undo()` を見ていて、
+/// 繋ぎ換えても**落ちなかった** — 下の層を見ていたので、直った瞬間に
+/// 気づけなかった。使い手の押す道で見る
 #[cfg(test)]
 mod footnote_undo_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 脚注にすると取り消せなくなる(cx: &mut gpui::TestAppContext) {
+    fn 脚注は一手で戻る(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.doc = Document::plain("あいうえお", SIZE_PT);
             this.ed = Editor::new(&this.doc.body_text());
             this.relayout();
-            // 1手打っておく(この履歴も消えることを見る)
+            // 1手打っておく(打鍵の道は before_edit を通る)
+            this.before_edit(true);
             this.ed.insert("か");
             this.on_edited();
             assert_eq!(this.doc.body_text(), "あいうえおか");
@@ -1226,11 +1228,14 @@ mod footnote_undo_tests {
             assert_eq!(this.doc.body_text(), "あえおか", "字が注へ移っていない");
             assert_eq!(this.doc.footnotes.len(), 1);
 
-            // **戻せない。** 文言がそう言っているとおり
-            assert!(!this.ed.undo(), "取り消せてしまった(文言が嘘になる)");
-            assert_eq!(this.doc.body_text(), "あえおか", "取り消せないのに本文が変わった");
-            assert!(this.status.contains("取り消し"),
-                "取り消せないことを言っていない: {}", this.status);
+            // **戻せる**(2026-08-13、文書ごとの取り消しに繋いだ)
+            this.undo_step();
+            assert_eq!(this.doc.body_text(), "あいうえおか", "脚注が取り消せない");
+            assert!(this.doc.footnotes.is_empty(), "本文は戻ったのに注が残った");
+            // やり直しも効く
+            this.redo_step();
+            assert_eq!(this.doc.body_text(), "あえおか");
+            assert_eq!(this.doc.footnotes.len(), 1);
         });
     }
 
@@ -1242,12 +1247,14 @@ mod footnote_undo_tests {
             this.doc = Document::plain("あいうえお", SIZE_PT);
             this.ed = Editor::new(&this.doc.body_text());
             this.relayout();
+            this.before_edit(true);
             this.ed.insert("か");
             this.on_edited();
             this.ed.move_to(3, false); // 選択なし
             this.run_cmd("footnote", cx);
             assert!(this.doc.footnotes.is_empty(), "選択が無いのに注ができた");
-            assert!(this.ed.undo(), "何もしていないのに履歴が消えた");
+            this.undo_step();
+            assert_eq!(this.doc.body_text(), "あいうえお", "何もしていないのに履歴が壊れた");
         });
     }
 }
@@ -1371,5 +1378,106 @@ mod doc_undo_tests {
             assert!(!太字(this), "捨てたはずのやり直しが効いた");
             assert_eq!(this.doc.body_text(), "あい");
         });
+    }
+}
+
+
+
+
+/// **文書を変える命令は、押した一手で戻せる。**
+///
+/// 「押せるのに何も起きない」を `wiring_tests` が止めるのと同じ形で、
+/// 「変えたのに戻せない」をここで止める。命令を足したときに控えを
+/// 入れ忘れても、この試験が落ちる。
+///
+/// 実際に2つ見つけた(2026-08-13): **脚注**と**縦書き**。どちらも
+/// 文書を変えるのに控えを取っていなかった。
+#[cfg(test)]
+mod undo_coverage_tests {
+    use crate::*;
+
+    /// 文書の姿を1本の字にする(戻ったかを見るための指紋)。
+    /// **見る欄が足りないと、戻っていなくても気づけない** — 縦書きは
+    /// 最初この指紋に入っておらず、取りこぼしを隠していた
+    fn sig(w: &Writer) -> String {
+        let mut out = String::new();
+        out.push_str(&w.doc.body_text());
+        out.push_str(&format!("|blocks={} notes={} vert={} ",
+            w.doc.blocks.len(), w.doc.footnotes.len(), w.doc.vertical as u8));
+        for p in w.doc.paragraphs() {
+            out.push_str(&format!(
+                "[a={:?} l={:?} i={} s={:.2} st={:?} pb={}",
+                p.align, p.list, p.indent, p.line_spacing, p.style,
+                p.page_break_before as u8));
+            for r in &p.runs {
+                out.push_str(&format!(
+                    " (b{} i{} u{} s{} sup{} sub{} sz{:.1} c{:?} h{:?} fn{})",
+                    r.fmt.bold as u8, r.fmt.italic as u8, r.fmt.underline as u8,
+                    r.fmt.strike as u8, r.fmt.superscript as u8, r.fmt.subscript as u8,
+                    r.size_pt, r.fmt.color, r.fmt.highlight, r.fmt.footnote.is_some() as u8));
+            }
+            out.push(']');
+        }
+        out.push_str(&format!("|pg={:?}", w.doc.page));
+        out
+    }
+
+    /// この試験の形(選択して押す)で**文書が変わる**命令。
+    /// 変わらない命令(欄を開くだけ・条件が要る物)はここに入れない —
+    /// 入れると「変わらないから戻せる」で緑になり、意味が無くなる
+    const 変える命令: &[&str] = &[
+        "bold", "italic", "underline", "strikeout", "superscript", "subscript",
+        "align-center", "align-right", "align-just", "align-dist",
+        "markers", "numbering", "incoffset", "linespace",
+        "incfont", "decfont", "highlight", "fontcolor",
+        "footnote", "direction", "pagebreak",
+    ];
+
+    #[gpui::test]
+    fn 文書を変える命令は一手で戻せる(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        for id in 変える命令 {
+            w.update(cx, |this, cx| {
+                this.doc = Document::plain("あいうえお", SIZE_PT);
+                this.ed = Editor::new(&this.doc.body_text());
+                this.pg = Default::default();
+                this.undo_stack.clear();
+                this.redo_stack.clear();
+                this.relayout();
+                this.ed.move_to(0, false);
+                this.ed.move_to(9, true);
+
+                let before = sig(this);
+                this.run_cmd(id, cx);
+                assert_ne!(sig(this), before,
+                    "「{id}」で文書が変わらない — この一覧から外すか、試験の形を直す");
+                this.undo_step();
+                assert_eq!(sig(this), before, "「{id}」が一手で戻らない(控えを取っていない)");
+            });
+        }
+    }
+
+    /// やり直しも効く(戻すだけで進めないと片道になる)
+    #[gpui::test]
+    fn 戻した一手はやり直せる(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        for id in 変える命令 {
+            w.update(cx, |this, cx| {
+                this.doc = Document::plain("あいうえお", SIZE_PT);
+                this.ed = Editor::new(&this.doc.body_text());
+                this.pg = Default::default();
+                this.undo_stack.clear();
+                this.redo_stack.clear();
+                this.relayout();
+                this.ed.move_to(0, false);
+                this.ed.move_to(9, true);
+
+                this.run_cmd(id, cx);
+                let after = sig(this);
+                this.undo_step();
+                this.redo_step();
+                assert_eq!(sig(this), after, "「{id}」がやり直せない");
+            });
+        }
     }
 }

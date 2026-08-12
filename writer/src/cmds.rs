@@ -83,6 +83,7 @@ impl Writer {
             // 初版の約束: 表・段組みは縦にならず、ASCII は1字ずつ縦に積む
             "direction" => {
                 self.flush_target();
+                self.checkpoint(false);
                 self.doc.vertical = !self.doc.vertical;
                 self.dirty = true;
                 self.relayout();
@@ -128,6 +129,7 @@ impl Writer {
                     return;
                 }
                 let at = sel.start;
+                self.checkpoint(false);
                 match self.doc.make_footnote(sel, false) {
                     Some(_) => {
                         // 字が注へ移ったので、編集中の平文を取り直す
@@ -136,7 +138,7 @@ impl Writer {
                         self.ed.move_to(at.min(len), false);
                         self.relayout();
                         self.dirty = true;
-                        self.status = ui::t!("選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)").into();
+                        self.status = ui::t!("選んだ字を脚注にしました(紙の下に出ます)").into();
                     }
                     None => {
                         self.status =

@@ -546,8 +546,8 @@
  },
  {
   "i": 109,
-  "ja": "選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)",
-  "en": "Moved the selected text into a footnote (it appears at the foot of the page; this cannot be undone)"
+  "ja": "選んだ字を脚注にしました(紙の下に出ます)",
+  "en": "Moved the selected text into a footnote (it appears at the foot of the page)"
  },
  {
   "i": 110,

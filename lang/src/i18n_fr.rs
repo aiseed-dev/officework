@@ -116,7 +116,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ルビを振る字を選んでから押してください", "Sélectionnez d'abord le texte à annoter en ruby"),
     ("これ以上戻せません", "Plus rien à annuler"),
     ("脚注にする字を選んでから押してください", "Sélectionnez d’abord le texte à transformer en note de bas de page"),
-    ("選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)", "Le texte sélectionné est devenu une note de bas de page (elle apparaît en bas de page)"),
+    ("選んだ字を脚注にしました(紙の下に出ます)", "Le texte sélectionné est devenu une note de bas de page (elle apparaît en bas de page)"),
     ("脚注にできません(段落をまたぐ範囲は選べません)", "Note de bas de page impossible (la sélection doit rester dans un seul paragraphe)"),
     ("ルビ: 読みを打って Enter(空にして Enter で外す)", "Ruby : tapez la lecture puis Enter (vide pour retirer)"),
     ("レベル付きのリストです(Tab / Shift+Tab で深さ。印はレベルで変わる)", "Liste à niveaux (Tab / Shift+Tab change la profondeur ; la puce suit le niveau)"),
