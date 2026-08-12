@@ -616,6 +616,10 @@ impl PySheet {
                     d.set_item(k, (e.style.xlsx(), e.color.map(|c| format!("{c:06X}"))))?;
                 }
             }
+            if f.unlocked {
+                // 保護中でも書けるセル(xlsx の locked="0")。既定(ロック)は出さない
+                d.set_item("locked", false)?;
+            }
             Ok(d)
         })
     }
@@ -666,6 +670,9 @@ impl PySheet {
                             .unwrap_or(VAlign::Bottom)
                     }
                     "rotation" => f.rotation = v.extract()?,
+                    "locked" => {
+                        f.unlocked = !v.extract::<Option<bool>>()?.unwrap_or(true)
+                    }
                     "border_top" | "border_bottom" | "border_left" | "border_right" => {
                         let e = if v.is_none() {
                             Edge::OFF
@@ -704,6 +711,50 @@ impl PySheet {
                 }
             }
             s.set(p, cell);
+            Ok(())
+        })
+    }
+
+    /// セルのコメント(無ければ None)。
+    fn comment(&self, key: &str) -> PyResult<Option<String>> {
+        let p = parse_ref(key)?;
+        self.with(|s| Ok(s.comments.get(&p).cloned()))
+    }
+
+    /// セルのコメントを置く(None で消す)。保存で commentsN.xml に入る。
+    fn set_comment(&self, key: &str, value: Option<&str>) -> PyResult<()> {
+        let p = parse_ref(key)?;
+        self.with(|s| {
+            match value.filter(|v| !v.is_empty()) {
+                Some(v) => {
+                    s.comments.insert(p, v.to_string());
+                }
+                None => {
+                    s.comments.remove(&p);
+                }
+            }
+            Ok(())
+        })
+    }
+
+    /// セルのハイパーリンク(外部URL。無ければ None)。
+    fn hyperlink(&self, key: &str) -> PyResult<Option<String>> {
+        let p = parse_ref(key)?;
+        self.with(|s| Ok(s.links.get(&p).cloned()))
+    }
+
+    /// セルのハイパーリンクを置く(None で消す)。
+    fn set_hyperlink(&self, key: &str, value: Option<&str>) -> PyResult<()> {
+        let p = parse_ref(key)?;
+        self.with(|s| {
+            match value.filter(|v| !v.is_empty()) {
+                Some(v) => {
+                    s.links.insert(p, v.to_string());
+                }
+                None => {
+                    s.links.remove(&p);
+                }
+            }
             Ok(())
         })
     }

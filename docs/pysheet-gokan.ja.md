@@ -111,7 +111,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ row / column / col_idx / column_letter / coordinate | 互換層 | 座標の算術 |
 | ✔ offset / parent | 互換層 | 参照の算術 |
 | ✔ data_type | 互換層 | 値の型から('f' は式、's' 文字、'b' 真偽、'n' 数・空) |
-| comment / hyperlink / protection | 足す | コメント・リンク・保護の読み書き。エンジンは持ち越し済み — 読み書きを足す |
+| ✔ comment / hyperlink / protection | 足す | コメント・リンク・保護の読み書き。エンジンは持ち越し済み — 読み書きを足す(**済 2026-08-12 夜**: 模型の comments / links / fmt.unlocked に口を張った。openpyxl の Comment(.text)/ Hyperlink(.target)/ Protection(.locked)の形で受け、本家の実物の代入も効く。コメントの author と hidden(式を隠す)は模型に無い — 正直に断る/空で返す。適合は両方向) |
 | ✔ alignment / border / fill / font / number_format | 足す(書式) | 読み書きとも作る(2026-08-12 発注者確定)。合否は**相手の定義どおり動くか** — openpyxl の Font/Border/PatternFill の形で受け、適合テストで証明する(**済 2026-08-12 夜**: エンジンに Sheet.fmt / set_fmt(dict の口)、sheet.py に Font / Border / Side / PatternFill / Alignment / Color。**属性名で受ける**ので openpyxl の実物の入れ物を代入しても効く。適合は両方向 — うちが書いた書式を openpyxl が読み、openpyxl が書いた書式をうちが読む。斜め罫線・solid 以外の塗り・indent は正直に断る) |
 | ✔ is_date | 足す(書式) | 表示形式が日付か — number_format の読みと同じ一件(済 2026-08-12: 引用と [] を除いて y/m/d/h/s が残るか+中身が数か) |
 | base_date / check_error / check_string / encoding / has_style / internal_value / pivotButton / quotePrefix / style / style_id | 要らない | 内部事情・古い API |

@@ -132,6 +132,47 @@ class Alignment:
         self.indent = indent
 
 
+class Comment:
+    """セルのコメント。openpyxl の Comment(text, author) の形。
+    模型は文だけを持つ — author は読みでは空になる(黙って落とさず、ここに書く)。"""
+
+    __slots__ = ("text", "author")
+
+    def __init__(self, text, author=""):
+        self.text = text
+        self.author = author
+
+    def __repr__(self):
+        return "<Comment {!r}>".format(self.text)
+
+
+class Hyperlink:
+    """セルのリンク。openpyxl の Hyperlink の役(target だけ持つ)。"""
+
+    __slots__ = ("target",)
+
+    def __init__(self, target):
+        self.target = target
+
+    def __repr__(self):
+        return "<Hyperlink {!r}>".format(self.target)
+
+
+class Protection:
+    """セルの保護。openpyxl の Protection(locked) の形。
+    シートを保護したとき、locked=False のセルだけが書ける(記入欄を開ける作法)。
+    hidden(式を隠す)は模型に無い — True を渡されたら正直に断る。"""
+
+    __slots__ = ("locked", "hidden")
+
+    def __init__(self, locked=True, hidden=False):
+        self.locked = locked
+        self.hidden = hidden
+
+    def __repr__(self):
+        return "<Protection locked={}>".format(self.locked)
+
+
 def _is_date_fmt(nf):
     # 表示形式が日付か。引用("...")と条件([...])の中を除いて
     # y / m / d / h / s が残るか — openpyxl と同じ考え方の簡易版
@@ -337,6 +378,39 @@ class Cell:
             return False
         v = self.value
         return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+    @property
+    def comment(self):
+        t = self.parent.comment(self.coordinate)
+        return None if t is None else Comment(t)
+
+    @comment.setter
+    def comment(self, v):
+        # openpyxl の Comment(.text)も、ただの文字も、None(消す)も受ける
+        self.parent.set_comment(
+            self.coordinate, None if v is None else str(getattr(v, "text", v))
+        )
+
+    @property
+    def hyperlink(self):
+        t = self.parent.hyperlink(self.coordinate)
+        return None if t is None else Hyperlink(t)
+
+    @hyperlink.setter
+    def hyperlink(self, v):
+        self.parent.set_hyperlink(
+            self.coordinate, None if v is None else str(getattr(v, "target", v))
+        )
+
+    @property
+    def protection(self):
+        return Protection(locked=self._fmt().get("locked", True))
+
+    @protection.setter
+    def protection(self, v):
+        if getattr(v, "hidden", False):
+            raise NotImplementedError("式を隠す(hidden)は模型に無い(台帳)")
+        self.parent.set_fmt(self.coordinate, locked=bool(getattr(v, "locked", True)))
 
     def __repr__(self):
         return "<Cell {!r}.{}>".format(self.parent.name, self.coordinate)
@@ -723,4 +797,5 @@ class Book:
 __all__ = [
     "Book", "Sheet", "Cell",
     "Font", "Border", "Side", "PatternFill", "Alignment", "Color",
+    "Comment", "Hyperlink", "Protection",
 ]

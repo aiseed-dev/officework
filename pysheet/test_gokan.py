@@ -204,6 +204,52 @@ if openpyxl is not None:
         c5.font = OFont(italic=True)
         check(b5[0].fmt("A2").get("italic"), "openpyxl の Font の代入が効かない")
 
+# --- セルの comment / hyperlink / protection(模型に既にある物の口)------------
+if openpyxl is not None:
+    with tempfile.TemporaryDirectory() as t:
+        bc = office_sheet.Book()
+        sc = bc[0]
+        sc["A1"] = "確認"
+        c1 = sc.cell(1, 1)
+        c1.comment = "ここを見る"
+        c1.hyperlink = "https://example.jp/"
+        c1.protection = office_sheet.Protection(locked=False)
+        check(c1.comment.text == "ここを見る", f"comment: {c1.comment}")
+        check(c1.hyperlink.target == "https://example.jp/", f"hyperlink: {c1.hyperlink}")
+        check(c1.protection.locked is False, f"protection: {c1.protection}")
+        out_c = os.path.join(t, "cell_extras.xlsx")
+        bc.save(out_c)
+
+        rc2 = openpyxl.load_workbook(out_c).active["A1"]
+        check(rc2.comment is not None and "ここを見る" in rc2.comment.text,
+              f"うちのコメントを本家が読めない: {rc2.comment}")
+        check(rc2.hyperlink is not None
+              and rc2.hyperlink.target == "https://example.jp/",
+              f"うちのリンクを本家が読めない: {rc2.hyperlink}")
+        check(rc2.protection.locked is False, "うちの保護を本家が読めない")
+
+        # 逆向き: 本家が書いた物をうちが読める
+        from openpyxl.comments import Comment as OComment
+        from openpyxl.styles import Protection as OProtection
+        wb6 = openpyxl.Workbook()
+        ws6 = wb6.active
+        ws6["B2"] = 1
+        ws6["B2"].comment = OComment("要確認", "甲")
+        ws6["B2"].hyperlink = "https://example.jp/b2"
+        ws6["B2"].protection = OProtection(locked=False)
+        out_c2 = os.path.join(t, "cell_extras_opx.xlsx")
+        wb6.save(out_c2)
+        b7 = office_sheet.Book.open(out_c2)
+        c7 = b7[0].cell(2, 2)
+        check(c7.comment is not None and "要確認" in c7.comment.text,
+              f"本家のコメント: {c7.comment}")
+        check(c7.hyperlink is not None and c7.hyperlink.target.startswith("https://"),
+              f"本家のリンク: {c7.hyperlink}")
+        check(c7.protection.locked is False, "本家の保護")
+        # 本家の Comment の物をそのまま代入しても効く
+        c7.comment = OComment("直した", "乙")
+        check(c7.comment.text == "直した", "本家の Comment の代入")
+
 # ================================================== xlwings の口(参照の算術)
 # 橋は動いているアプリが要るので、ソケットに出ない算術だけを定義値と照合する
 from officework import calc as xw
