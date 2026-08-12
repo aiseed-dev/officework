@@ -773,6 +773,111 @@ impl PySheet {
         })
     }
 
+    /// 行のグループ化 [(行, 深さ, 畳んで隠れているか)](1起点)。
+    #[getter]
+    fn row_groups(&self) -> PyResult<Vec<(u32, u8, bool)>> {
+        self.with(|s| {
+            Ok(s.row_outline
+                .iter()
+                .map(|(r, lv)| (r + 1, *lv, s.row_hidden.contains(r)))
+                .collect())
+        })
+    }
+
+    /// 列のグループ化 [(列の字, 深さ, 畳んで隠れているか)]。
+    #[getter]
+    fn col_groups(&self) -> PyResult<Vec<(String, u8, bool)>> {
+        self.with(|s| {
+            Ok(s.col_outline
+                .iter()
+                .map(|(c, lv)| {
+                    (Pos::new(0, *c).a1().trim_end_matches('1').to_string(), *lv,
+                     s.col_hidden.contains(c))
+                })
+                .collect())
+        })
+    }
+
+    /// 行をグループにする(openpyxl の row_dimensions.group と同じ定義)。
+    /// start / end は1起点、深さは 1〜7。hidden なら畳んだ状態で持つ
+    /// (**畳んだ台帳は畳んだまま次の人に渡る** — 絞り込みと違い保存に残る)。
+    #[pyo3(signature = (start, end=None, outline_level=1, hidden=false))]
+    fn group_rows(
+        &self,
+        start: u32,
+        end: Option<u32>,
+        outline_level: u8,
+        hidden: bool,
+    ) -> PyResult<()> {
+        let end = end.unwrap_or(start);
+        if start == 0 || end == 0 {
+            return Err(PyValueError::new_err("行番号は1から(0行は無い)"));
+        }
+        if !(1..=7).contains(&outline_level) {
+            return Err(PyValueError::new_err("グループの深さは 1〜7"));
+        }
+        self.with(|s| {
+            for r in start.min(end)..=start.max(end) {
+                s.row_outline.insert(r - 1, outline_level);
+                if hidden {
+                    s.row_hidden.insert(r - 1);
+                } else {
+                    s.row_hidden.remove(&(r - 1));
+                }
+            }
+            Ok(())
+        })
+    }
+
+    /// 列をグループにする(start / end は "B" の形)。
+    #[pyo3(signature = (start, end=None, outline_level=1, hidden=false))]
+    fn group_cols(
+        &self,
+        start: &str,
+        end: Option<&str>,
+        outline_level: u8,
+        hidden: bool,
+    ) -> PyResult<()> {
+        let a = col0(start)?;
+        let b = match end {
+            Some(e) => col0(e)?,
+            None => a,
+        };
+        if !(1..=7).contains(&outline_level) {
+            return Err(PyValueError::new_err("グループの深さは 1〜7"));
+        }
+        self.with(|s| {
+            for c in a.min(b)..=a.max(b) {
+                s.col_outline.insert(c, outline_level);
+                if hidden {
+                    s.col_hidden.insert(c);
+                } else {
+                    s.col_hidden.remove(&c);
+                }
+            }
+            Ok(())
+        })
+    }
+
+    /// 配列式(スピル)の一覧 [(左上のセル, 式, 行数, 列数)]。
+    /// openpyxl の array_formulae と同じ役。
+    #[getter]
+    fn array_formulae(&self) -> PyResult<Vec<(String, String, u32, u32)>> {
+        self.with(|s| {
+            Ok(s.cse
+                .iter()
+                .map(|(p, (rows, cols))| {
+                    let f = s
+                        .get(*p)
+                        .and_then(|c| c.formula.clone())
+                        .map(|f| format!("={f}"))
+                        .unwrap_or_default();
+                    (p.a1(), f, *rows, *cols)
+                })
+                .collect())
+        })
+    }
+
     /// 表(テーブル)の一覧 [(名前, 範囲, 様式の名前, 見出し行, 合計行)]。
     /// 名前は式から使える(構造化参照 `=SUM(明細[金額])`)。
     #[getter]

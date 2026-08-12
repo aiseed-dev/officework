@@ -132,6 +132,28 @@ class Alignment:
         self.indent = indent
 
 
+class _Dimensions:
+    """row_dimensions / column_dimensions の返り(openpyxl の役)。
+    いまは group だけ — 行の高さ・列の幅は Sheet の別の口が持つ。"""
+
+    def __init__(self, sheet, rows):
+        self._sheet = sheet
+        self._rows = rows
+
+    def group(self, start, end=None, outline_level=1, hidden=False):
+        """行(列)をグループにする。openpyxl と同じ定義。
+        畳んだ状態(hidden)は**保存に残る** — 畳んだ台帳は畳んだまま渡る。"""
+        if self._rows:
+            self._sheet._s.group_rows(int(start), None if end is None else int(end),
+                                      outline_level, hidden)
+        else:
+            self._sheet._s.group_cols(str(start), None if end is None else str(end),
+                                      outline_level, hidden)
+
+    def __repr__(self):
+        return "<{} dimensions>".format("row" if self._rows else "column")
+
+
 class Table:
     """表(テーブル)。openpyxl の Table の形(displayName / ref / tableStyleInfo)。
     名前は式から使える識別子 — `=SUM(明細[金額])` の「明細」。"""
@@ -850,6 +872,33 @@ class Sheet:
         if isinstance(value, (list, tuple)):
             value = ",".join(str(v) for v in value)
         self._s.print_area = value
+
+    @property
+    def row_dimensions(self):
+        """行の寸法(openpyxl の役)。いまはグループ化(group)だけ —
+        高さは行ごとの畑がまだ無い(台帳)。"""
+        return _Dimensions(self, rows=True)
+
+    @property
+    def column_dimensions(self):
+        """列の寸法(openpyxl の役)。いまはグループ化(group)だけ。"""
+        return _Dimensions(self, rows=False)
+
+    @property
+    def column_groups(self):
+        """列のグループ [(列の字, 深さ, 畳んで隠れているか)]。"""
+        return self._s.col_groups
+
+    @property
+    def row_groups(self):
+        """行のグループ [(行, 深さ, 畳んで隠れているか)]。"""
+        return self._s.row_groups
+
+    @property
+    def array_formulae(self):
+        """配列式(スピル)。openpyxl と同じく {左上のセル: 式} の形。
+        **うちは値まで計算されている**(openpyxl は式を持つだけ)。"""
+        return {a1: f for a1, f, _r, _c in self._s.array_formulae}
 
     @property
     def tables(self):

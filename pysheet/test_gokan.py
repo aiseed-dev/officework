@@ -266,6 +266,43 @@ if openpyxl is not None:
         c7.comment = OComment("直した", "乙")
         check(c7.comment.text == "直した", "本家の Comment の代入")
 
+# --- グループ化(明細を畳む)と配列式 -------------------------------------------
+if openpyxl is not None:
+    with tempfile.TemporaryDirectory() as t:
+        bg = office_sheet.Book()
+        sg = bg[0]
+        for i in range(1, 7):
+            sg.cell(i, 1, value=i)
+        sg.row_dimensions.group(2, 4, outline_level=1)
+        sg.row_dimensions.group(5, 6, outline_level=1, hidden=True)  # 畳んだ状態
+        sg.column_dimensions.group("B", "C", outline_level=1)
+        check([r for r, lv, h in sg.row_groups if lv == 1] == [2, 3, 4, 5, 6],
+              f"行グループ: {sg.row_groups}")
+        check([h for r, lv, h in sg.row_groups if r == 5] == [True],
+              "畳んだ状態が残らない")
+        check([c for c, lv, h in sg.column_groups] == ["B", "C"],
+              f"列グループ: {sg.column_groups}")
+        # 配列式(スピル)は値まで計算されている — openpyxl は式を持つだけ
+        sg["C1"] = "=SUM(A1:A3*2)"
+        check(sg["C1"] == 12, f"配列の計算: {sg['C1']}")
+        out_g = os.path.join(t, "group.xlsx")
+        bg.save(out_g)
+        rg = openpyxl.load_workbook(out_g).active
+        check(rg.row_dimensions[3].outlineLevel == 1,
+              f"うちのグループを本家が読めない: {rg.row_dimensions[3].outlineLevel}")
+        check(rg.row_dimensions[5].hidden, "畳んだ状態を本家が読めない")
+        check(rg.column_dimensions["B"].outlineLevel == 1, "列グループが往復しない")
+
+        # 逆向き: 本家が組んだグループをうちが読む
+        wb_g = openpyxl.Workbook()
+        wb_g.active["A1"] = 1
+        wb_g.active.row_dimensions.group(2, 3, outline_level=2, hidden=True)
+        out_g2 = os.path.join(t, "group_opx.xlsx")
+        wb_g.save(out_g2)
+        s_g2 = office_sheet.Book.open(out_g2)[0]
+        check([(r, lv, h) for r, lv, h in s_g2.row_groups] == [(2, 2, True), (3, 2, True)],
+              f"本家のグループ: {s_g2.row_groups}")
+
 # --- 表(テーブル): 作れて・構造化参照が計算されて・本家と往復する ---------------
 if openpyxl is not None:
     with tempfile.TemporaryDirectory() as t:
