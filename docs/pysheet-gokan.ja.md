@@ -92,7 +92,7 @@ add_heading と Run の add_text / clear はエンジンの書き口待ちだっ
 | ✔ add_table / tables | 足す | テーブル(構造化参照・フィルタ)。**「原文持ち越しのみ」は誤り**(2026-08-13 実測): 模型の TableDef・xlsx の読み書き(table 部品・tableParts・関係・宣言)・**構造化参照の計算**(2026-08-08 実装)まで既に動いていた — 欠けは Python の口だけ。張った(openpyxl の Table / TableStyleInfo の形。本家の実物も受ける)。**`=SUM(明細[金額])` が計算まで効くのが上位分** — openpyxl は式を計算しない。適合は両方向。名前に空白は断る(式から引けなくなる) |
 | ✔ array_formulae | 足す | 配列式。エンジンがスピルを覚える件(pyoffice の「返り値の形で広がる」)と同じ模型(済 2026-08-13: 模型の cse に口を張った。openpyxl と同じ {左上: 式} の形。**うちは値まで計算されている** — `=SUM(A1:A3*2)` が 12 を返す。openpyxl は式を持つだけ) |
 | ✔ column_groups | 足す | 行・列のグループ化(outlineLevel)の読み書き(小)。画面の畳みはアプリの在庫(**済 2026-08-13**: 模型の row_outline / col_outline に口を張った。openpyxl と同じ row_dimensions.group(start, end, outline_level, hidden) / column_dimensions.group と、row_groups / column_groups の読み。**畳んだ状態は保存に残る** — 畳んだ台帳は畳んだまま次の人に渡る(絞り込みと違う)。適合は両方向) |
-| move_range | 足す | 範囲の移動 — 式の参照も付いて動く。insert/remove と同族 |
+| ✔ move_range | 足す | 範囲の移動 — 式の参照も付いて動く。insert/remove と同族(**済 2026-08-13**: sheet::model::ops の Sheet::move_range。**参照の作法は Excel の切り貼りに合わせた** — 外から動かした範囲を指していた式は**付いて動く**(`=B1+1` → `=B6+1`)。openpyxl はここを古びたままにする(空のセルを指す)= うちの上位分。範囲の中の式はそのままで、translate=True なら中の相対参照がずれる(本家と同じ定義 — 適合検査で本家の結果と突き合わせ済み)。移った先は上書き、紙の外へは動かさない、結合も一緒に動く。橋にも rpc(語彙34)+ Range.move()。実機で確認) |
 | show_gridlines | 足す | sheetView の読み書き(小) |
 | active_cell / selected_cell / sheet_view | 要らない | 画面の状態。ファイルの帳簿ではない |
 | encoding / mime_type / path | 要らない | 内部事情 |

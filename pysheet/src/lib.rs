@@ -779,6 +779,32 @@ impl PySheet {
         })
     }
 
+    /// 範囲を動かす(切り取って貼るのと同じ)。openpyxl と同じ呼び方:
+    /// `move_range("B1:C3", rows=5, cols=0)` で下へ5行。
+    ///
+    /// **参照の作法は Excel の切り貼りに合わせる**(ここが openpyxl との違い):
+    /// 外から動かした範囲を指していた式は**付いて動く**(`=B1+1` は `=B6+1`)。
+    /// openpyxl はここを古びたままにする — 空になったセルを黙って指す方が
+    /// 危ないので、こちらは追随させる。範囲の中の式はそのまま(指していた先を
+    /// 指し続ける)で、`translate=True` なら中の相対参照も同じだけずらす
+    /// (openpyxl の translate と同じ定義)。移った先の中身は上書きされる。
+    #[pyo3(signature = (cell_range, rows=0, cols=0, translate=false))]
+    fn move_range(
+        &self,
+        cell_range: &str,
+        rows: i64,
+        cols: i64,
+        translate: bool,
+    ) -> PyResult<usize> {
+        let (a, b) = parse_range(cell_range)?;
+        if a.row as i64 + rows < 0 || a.col as i64 + cols < 0 {
+            return Err(PyValueError::new_err(
+                "紙の外(0行・0列より上)へは動かせません",
+            ));
+        }
+        self.with_calc(|s| Ok(s.move_range(a, b, rows, cols, translate)))
+    }
+
     /// 行のグループ化 [(行, 深さ, 畳んで隠れているか)](1起点)。
     #[getter]
     fn row_groups(&self) -> PyResult<Vec<(u32, u8, bool)>> {

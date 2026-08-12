@@ -115,6 +115,83 @@ impl Sheet {
         }
     }
 
+    /// **範囲を動かす**(切り取って貼るのと同じ)。`dr` / `dc` は動かす量
+    /// (下・右が正)。移った先にあった中身は上書きされる(Excel と同じ)。
+    ///
+    /// 参照の作法は**Excel の切り貼りに合わせる**:
+    ///
+    /// - **外から動かした範囲を指していた式は付いて動く**(`=B1+1` は
+    ///   B1 が B6 へ動けば `=B6+1` に)。openpyxl はここを古びたままにする —
+    ///   黙って別のセル(空になった B1)を指すより良い、がこちらの作法
+    /// - 動かす範囲の**中の式はそのまま**(指していた先を指し続ける)。
+    ///   `translate` を立てると、中の相対参照も同じ量だけずらす
+    ///   (openpyxl の `translate=True` と同じ)
+    ///
+    /// 返りは動かしたセルの数。範囲の外へ(負の座標へ)は動かさない。
+    pub fn move_range(&mut self, a: Pos, b: Pos, dr: i64, dc: i64, translate: bool) -> usize {
+        let (a, b) = (
+            Pos::new(a.row.min(b.row), a.col.min(b.col)),
+            Pos::new(a.row.max(b.row), a.col.max(b.col)),
+        );
+        if dr == 0 && dc == 0 {
+            return 0;
+        }
+        if a.row as i64 + dr < 0 || a.col as i64 + dc < 0 {
+            return 0; // 紙の外へは動かさない(黙って端に寄せない)
+        }
+        let inside = |p: Pos| {
+            (a.row..=b.row).contains(&p.row) && (a.col..=b.col).contains(&p.col)
+        };
+        let moved_to = |p: Pos| {
+            Pos::new((p.row as i64 + dr) as u32, (p.col as i64 + dc) as u32)
+        };
+        // 1. 動かすセルを抜き取る(中の式は translate のときだけずらす)
+        let taken: Vec<(Pos, Cell)> = self
+            .cells
+            .iter()
+            .filter(|(p, _)| inside(**p))
+            .map(|(p, c)| {
+                let mut c = c.clone();
+                if translate {
+                    if let Some(f) = &c.formula {
+                        c.formula = Some(offset_refs(f, dr, dc));
+                    }
+                }
+                (moved_to(*p), c)
+            })
+            .collect();
+        let n = taken.len();
+        let keys: Vec<Pos> = self.cells.keys().filter(|p| inside(**p)).cloned().collect();
+        for p in keys {
+            self.cells.remove(&p);
+        }
+        // 2. **外に残った式の参照を追随させる。** 動かした範囲を指していた
+        //    参照だけを動かす(中の式は上で扱った)
+        let landing: Vec<Pos> = taken.iter().map(|(p, _)| *p).collect();
+        for (p, c) in self.cells.iter_mut() {
+            if landing.contains(p) {
+                continue; // 上書きされる先は下で消える
+            }
+            if let Some(f) = &c.formula {
+                c.formula = Some(map_refs(f, |r| {
+                    if inside(r) { MapRef::To(moved_to(r)) } else { MapRef::Keep }
+                }));
+            }
+        }
+        // 3. 置く(先にあった中身は上書き — Excel と同じ)
+        for (p, c) in taken {
+            self.cells.insert(p, c);
+        }
+        // 4. 結合も一緒に動かす(範囲に丸ごと入っている物だけ)
+        for (x, y) in self.merges.iter_mut() {
+            if inside(*x) && inside(*y) {
+                *x = moved_to(*x);
+                *y = moved_to(*y);
+            }
+        }
+        n
+    }
+
     /// 行・列の出し入れに合わせて結合の範囲も動かす。
     ///
     /// 削除では**上端と下端で動きが違う**: 上端が消えた行なら次の行が

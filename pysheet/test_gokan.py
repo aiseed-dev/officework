@@ -291,6 +291,49 @@ if openpyxl is not None:
         c7.comment = OComment("直した", "乙")
         check(c7.comment.text == "直した", "本家の Comment の代入")
 
+# --- move_range: 動かして、外から指す式が付いて動く(上位分)---------------------
+if openpyxl is not None:
+    def lay(ws, setcell):
+        setcell(ws, "A1", 10)
+        setcell(ws, "B1", "=A1*2")
+        setcell(ws, "D1", "=B1+1")
+
+    bm = office_sheet.Book()
+    sm = bm[0]
+    lay(sm, lambda w, k, v: w.__setitem__(k, v))
+    n = sm.move_range("B1", rows=5)
+    check(n == 1, f"動いたセルの数: {n}")
+    check(sm.formula("B6") == "=A1*2", f"中の式が勝手に動いた: {sm.formula('B6')}")
+    check(sm["B6"] == 20, "動いた式の答えが違う")
+    # **上位分**: 外から指す式が付いて動く(openpyxl は古びたまま)
+    check(sm.formula("D1") == "=B6+1", f"外の式が追随しない: {sm.formula('D1')}")
+    check(sm["D1"] == 21, f"追随した式の答え: {sm['D1']}")
+    check(sm["B1"] is None, "元の場所が空になっていない")
+
+    # translate=True は本家と同じ定義(中の相対参照がずれる)
+    bm2 = office_sheet.Book()
+    sm2 = bm2[0]
+    lay(sm2, lambda w, k, v: w.__setitem__(k, v))
+    sm2.move_range("B1", rows=5, translate=True)
+    check(sm2.formula("B6") == "=A6*2", f"translate: {sm2.formula('B6')}")
+
+    # 本家の同じ呼びと突き合わせる(内側の式は同じ結果になる)
+    wb_m = openpyxl.Workbook()
+    ws_m = wb_m.active
+    lay(ws_m, lambda w, k, v: setattr(w[k], "value", v))
+    ws_m.move_range("B1", rows=5, translate=True)
+    check(ws_m["B6"].value == sm2.formula("B6"),
+          f"translate の結果が本家と違う: {ws_m['B6'].value} / {sm2.formula('B6')}")
+    # 外の式は本家では古びたまま — うちは追随する(違いを検査で明示)
+    check(ws_m["D1"].value == "=B1+1", "(本家の前提の確認)")
+
+    # 紙の外へは動かさない
+    try:
+        sm.move_range("A1", rows=-5)
+        check(False, "紙の外への移動が黙って通った")
+    except ValueError:
+        pass
+
 # --- グループ化(明細を畳む)と配列式 -------------------------------------------
 if openpyxl is not None:
     with tempfile.TemporaryDirectory() as t:

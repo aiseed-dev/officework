@@ -166,6 +166,17 @@ try:
 except xw.OfficeworkError:
     pass
 
+# move: 範囲を動かすと、外から指す式が付いて動く(Excel の切り貼りの作法)
+sh["L1"].value = 10
+sh["M1"].value = "=L1*2"
+sh["N1"].value = "=M1+1"
+check(sh["N1"].value == 21, f"下ごしらえ: {sh['N1'].value}")
+sh["M1"].move(rows=5)
+check(sh["M6"].formula == "=L1*2", f"中の式が動いた: {sh['M6'].formula}")
+check(sh["N1"].formula == "=M6+1", f"外の式が追随しない: {sh['N1'].formula}")
+check(sh["N1"].value == 21, "追随した式の答えが変わった")
+sh["L1:N6"].clear()
+
 # autofit: 中身に合わせる(DataFrame を落とした後に読める幅にする)
 sh["J1"].value = "とても長い品名がここに入ります"
 sh["J1"].column_width = 5          # **先に狭める** — 実機は前回の幅を持ち越す

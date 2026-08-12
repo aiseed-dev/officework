@@ -342,6 +342,13 @@ class Range:
         else:
             raise OfficeworkError('shift は "up" か "left"')
 
+    def move(self, rows=0, cols=0, translate=False):
+        """この範囲を動かす(切り取って貼るのと同じ)。移った先は上書き。
+        **外から動かした範囲を指していた式は付いて動く**(Excel の切り貼りと
+        同じ作法)。translate=True なら範囲の中の相対参照もずれる。"""
+        _call("move_range", rows=int(rows), cols=int(cols),
+              translate=bool(translate), **self._kw())
+
     def autofit(self, axis="columns"):
         """中身に合わせて列幅(既定)か行高を決める。リボンの「自動調整」と
         **同じ測り**(文字の幅はアプリが持っている)。axis は

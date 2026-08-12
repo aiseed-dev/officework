@@ -869,6 +869,59 @@ mod bracket_tests {
         assert_eq!(f(46240.0, "ggge\"年\"m\"月\"d\"日\""), "令和8年8月6日");
         assert_eq!(f(0.1234, "0.00%"), "12.34%");
     }
+
+    /// **範囲の移動**(2026-08-13)。切り貼りの作法 —
+    /// 外から指す式は付いて動き、中の式はそのまま(translate で動く)
+    #[test]
+    fn 移動で外から指す式が付いて動く() {
+        let mut s = Sheet { name: "表".into(), ..Default::default() };
+        s.set(Pos::new(0, 0), Cell::input("10"));            // A1 = 10
+        s.set(Pos::new(0, 1), Cell::input("=A1*2"));         // B1 = A1*2
+        s.set(Pos::new(0, 3), Cell::input("=B1+1"));         // D1 = B1+1
+        let n = s.move_range(Pos::new(0, 1), Pos::new(0, 1), 5, 0, false);
+        assert_eq!(n, 1, "動いたセルの数");
+        // 中の式はそのまま(A1 を指し続ける)
+        assert_eq!(
+            s.get(Pos::new(5, 1)).unwrap().formula.as_deref(),
+            Some("A1*2"),
+            "中の式が勝手に動いた"
+        );
+        // 外の式は追随する(B1 → B6)
+        assert_eq!(
+            s.get(Pos::new(0, 3)).unwrap().formula.as_deref(),
+            Some("B6+1"),
+            "外から指す式が付いて動いていない"
+        );
+        assert!(s.get(Pos::new(0, 1)).map(|c| c.value.is_empty()).unwrap_or(true),
+                "元の場所が空になっていない");
+    }
+
+    #[test]
+    fn 移動の_translate_は中の相対参照をずらす() {
+        let mut s = Sheet { name: "表".into(), ..Default::default() };
+        s.set(Pos::new(0, 0), Cell::input("10"));
+        s.set(Pos::new(0, 1), Cell::input("=A1*2"));
+        s.move_range(Pos::new(0, 1), Pos::new(0, 1), 5, 0, true);
+        assert_eq!(
+            s.get(Pos::new(5, 1)).unwrap().formula.as_deref(),
+            Some("A6*2"),
+            "translate で中の参照がずれていない(openpyxl と同じ定義)"
+        );
+    }
+
+    #[test]
+    fn 移動は移った先を上書きし_紙の外へは動かさない() {
+        let mut s = Sheet { name: "表".into(), ..Default::default() };
+        s.set(Pos::new(0, 0), Cell::input("元"));
+        s.set(Pos::new(2, 0), Cell::input("先"));
+        s.move_range(Pos::new(0, 0), Pos::new(0, 0), 2, 0, false);
+        assert_eq!(s.get(Pos::new(2, 0)).unwrap().value.display(), "元", "上書きしていない");
+        // 負の座標へは動かさない(黙って端に寄せない)
+        let before = s.cells.len();
+        assert_eq!(s.move_range(Pos::new(0, 0), Pos::new(0, 0), -5, 0, false), 0);
+        assert_eq!(s.cells.len(), before, "紙の外へ動かした");
+    }
+
 }
 
 #[cfg(test)]

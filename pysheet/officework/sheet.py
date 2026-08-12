@@ -874,6 +874,16 @@ class Sheet:
             value = ",".join(str(v) for v in value)
         self._s.print_area = value
 
+    def move_range(self, cell_range, rows=0, cols=0, translate=False):
+        """範囲を動かす(openpyxl と同じ呼び方)。移った先は上書き。
+
+        **openpyxl との違い(上位分)**: 外から動かした範囲を指していた式は
+        **付いて動く**(`=B1+1` は B1 が B6 へ動けば `=B6+1`)。openpyxl は
+        古びたまま(空のセルを指す)にする。範囲の中の式はそのままで、
+        translate=True なら中の相対参照もずれる(本家と同じ定義)。"""
+        return self._s.move_range(str(cell_range).replace("$", ""),
+                                  int(rows), int(cols), bool(translate))
+
     @property
     def row_dimensions(self):
         """行の寸法(openpyxl の役)。いまはグループ化(group)だけ —

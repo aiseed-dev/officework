@@ -677,6 +677,28 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 },
             }
         }
+        // 範囲を動かす(切り取って貼る)。**外から指す式は付いて動く**
+        "move_range" => {
+            let (si, a, b) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            if h.book().sheets[si].protected {
+                return err("シートが保護されています");
+            }
+            let dr = o.num("rows").unwrap_or(0.0) as i64;
+            let dc = o.num("cols").unwrap_or(0.0) as i64;
+            if a.row as i64 + dr < 0 || a.col as i64 + dc < 0 {
+                return err("紙の外(0行・0列より上)へは動かせません");
+            }
+            let translate = o.bool("translate").unwrap_or(false);
+            h.settle();
+            h.mark_once();
+            let n = h.book_mut().sheets[si].move_range(a, b, dr, dc, translate);
+            sheet::recalc_book(h.book_mut(), si);
+            h.mark_dirty();
+            format!("{{\"ok\":true,\"cells\":{n}}}")
+        }
         // 中身に合わせて列幅・行高を決める(リボンの「自動調整」と同じ測り)
         "autofit" => {
             let (si, a, b) = match target(h, &o) {
