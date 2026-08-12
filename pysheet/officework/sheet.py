@@ -457,6 +457,10 @@ class Book:
         return self._b.sheet_names.index(worksheet.title)
 
     def get_index(self, worksheet):
+        # openpyxl の古い別名(本家では index を使えと言う)
+        return self.index(worksheet)
+
+    def get_index(self, worksheet):
         # openpyxl でも廃止予定の旧名(index と同じ物)
         return self.index(worksheet)
 

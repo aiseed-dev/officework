@@ -3951,6 +3951,99 @@ impl Calc {
         self.dirty = true;
     }
 
+    /// シートを削除する(耳のメニューと橋(rpc)の共有 — 同じ作法で断る)。
+    /// 返りは消したシートの名前。undo は消える(sheets_restructured)。
+    pub(crate) fn delete_sheet_at(&mut self, t: usize) -> Result<String, String> {
+        if t >= self.book.sheets.len() {
+            return Err(ui::t!("そのシートがありません").to_string());
+        }
+        if self.book.sheets.len() <= 1 {
+            return Err(ui::t!("最後の1枚は消せません").to_string());
+        }
+        if self.book.sheets.iter().enumerate().filter(|(i, s)| *i != t && !s.hidden).count()
+            == 0
+        {
+            return Err(ui::t!(
+                "見えるシートが無くなるので消せません(先に別のシートを表示してください)"
+            )
+            .to_string());
+        }
+        if !self.commit() {
+            return Err(ui::t!("打ちかけの入力が入力規則で戻されました").to_string());
+        }
+        self.remember_ui();
+        let name = self.book.sheets[t].name.clone();
+        self.book.sheets.remove(t);
+        self.sheet_ui.remove(t);
+        self.watch.retain(|w| w.0 != t);
+        for w in self.watch.iter_mut() {
+            if w.0 > t {
+                w.0 -= 1;
+            }
+        }
+        if self.active >= t && self.active > 0 {
+            self.active -= 1;
+        }
+        if self.book.sheets[self.active].hidden {
+            if let Some(i) = self.book.sheets.iter().position(|s| !s.hidden) {
+                self.active = i;
+            }
+        }
+        self.sheets_restructured();
+        self.restore_ui();
+        self.sync_input();
+        recalc_book(&mut self.book, self.active);
+        Ok(name)
+    }
+
+    /// シートを複製する(耳のメニューと橋(rpc)の共有)。写しは元の右隣に
+    /// 入り、そこへ移る。名前は省略なら「名前 (2)」の流儀、指定ならシート名の
+    /// 決まり(31字・: \\ / ? * [ ] 不可・重複不可)で検査。返りは写しの名前。
+    pub(crate) fn copy_sheet_at(&mut self, t: usize, name: Option<&str>) -> Result<String, String> {
+        if t >= self.book.sheets.len() {
+            return Err(ui::t!("そのシートがありません").to_string());
+        }
+        let new_name = match name {
+            None => copy_sheet_name(&self.book, &self.book.sheets[t].name),
+            Some(n) => {
+                if n.is_empty()
+                    || n.chars().count() > 31
+                    || n.contains([':', '\\', '/', '?', '*', '[', ']'])
+                {
+                    return Err(ui::tf!(
+                        "「{}」はシート名にできません(31字まで。: \\ / ? * [ ] は不可)",
+                        n
+                    )
+                    .to_string());
+                }
+                if self.book.sheets.iter().any(|s| s.name == n) {
+                    return Err(ui::tf!("「{}」は既にあります", n).to_string());
+                }
+                n.to_string()
+            }
+        };
+        if !self.commit() {
+            return Err(ui::t!("打ちかけの入力が入力規則で戻されました").to_string());
+        }
+        self.remember_ui();
+        let mut copy = self.book.sheets[t].clone();
+        copy.name = new_name.clone();
+        copy.hidden = false;
+        self.book.sheets.insert(t + 1, copy);
+        self.sheet_ui.insert(t + 1, self.sheet_ui[t]);
+        for w in self.watch.iter_mut() {
+            if w.0 > t {
+                w.0 += 1;
+            }
+        }
+        self.sheets_restructured();
+        self.active = t + 1;
+        self.restore_ui();
+        self.sync_input();
+        recalc_book(&mut self.book, self.active);
+        Ok(new_name)
+    }
+
     /// 耳のメニューの実行。t = メニューが指しているシート
     pub(crate) fn sheet_menu_action(&mut self, v: &str) {
         let Some(t) = self.sheet_menu_at else { return };
@@ -3976,38 +4069,13 @@ impl Calc {
                 self.status = ui::tf!("シート「{}」を挿しました", name).into();
             }
             "削除" => {
-                if self.book.sheets.len() <= 1 {
-                    self.status = ui::t!("最後の1枚は消せません").into();
-                } else if self.book.sheets.iter().enumerate()
-                    .filter(|(i, s)| *i != t && !s.hidden).count() == 0
-                {
-                    self.status = ui::t!("見えるシートが無くなるので消せません(先に別のシートを表示してください)").into();
-                } else {
-                    let name = self.book.sheets[t].name.clone();
-                    self.book.sheets.remove(t);
-                    self.sheet_ui.remove(t);
-                    self.watch.retain(|w| w.0 != t);
-                    for w in self.watch.iter_mut() {
-                        if w.0 > t {
-                            w.0 -= 1;
-                        }
-                    }
-                    if self.active >= t && self.active > 0 {
-                        self.active -= 1;
-                    }
-                    if self.book.sheets[self.active].hidden {
-                        if let Some(i) = self.book.sheets.iter().position(|s| !s.hidden) {
-                            self.active = i;
-                        }
-                    }
-                    self.sheets_restructured();
-                    self.restore_ui();
-                    self.sync_input();
-                    recalc_book(&mut self.book, self.active);
-                    self.status =
+                self.status = match self.delete_sheet_at(t) {
+                    Ok(name) => {
                         ui::tf!("シート「{}」を削除しました(元に戻せない操作です)", name)
-                            .into();
-                }
+                            .into()
+                    }
+                    Err(e) => e.into(),
+                };
             }
             "名前の変更" => {
                 let cur = self.book.sheets[t].name.clone();
@@ -4015,23 +4083,10 @@ impl Calc {
                 return; // sheet_menu_at はパネルの確定まで持ち越す
             }
             "コピーを作成" => {
-                let mut copy = self.book.sheets[t].clone();
-                copy.name = copy_sheet_name(&self.book, &self.book.sheets[t].name);
-                copy.hidden = false;
-                let name = copy.name.clone();
-                self.book.sheets.insert(t + 1, copy);
-                self.sheet_ui.insert(t + 1, self.sheet_ui[t]);
-                for w in self.watch.iter_mut() {
-                    if w.0 > t {
-                        w.0 += 1;
-                    }
-                }
-                self.sheets_restructured();
-                self.active = t + 1;
-                self.restore_ui();
-                self.sync_input();
-                recalc_book(&mut self.book, self.active);
-                self.status = ui::tf!("「{}」を作りました", name).into();
+                self.status = match self.copy_sheet_at(t, None) {
+                    Ok(name) => ui::tf!("「{}」を作りました", name).into(),
+                    Err(e) => e.into(),
+                };
             }
             "左へ移動" | "右へ移動" => {
                 let to = if v == "左へ移動" {

@@ -151,6 +151,82 @@ impl Host for Calc {
         self.status = ui::tf!("Python から {} セルを書き込みました", n).into();
     }
 
+    fn version(&self) -> &'static str {
+        env!("CARGO_PKG_VERSION")
+    }
+
+    fn selection(&self) -> Option<(usize, Pos, Pos)> {
+        let a = self.anchor.unwrap_or(self.cursor);
+        let c = self.cursor;
+        Some((
+            self.active,
+            Pos::new(a.row.min(c.row), a.col.min(c.col)),
+            Pos::new(a.row.max(c.row), a.col.max(c.col)),
+        ))
+    }
+
+    fn select(&mut self, si: usize, a: Pos, b: Pos) -> Result<(), String> {
+        if !self.commit() {
+            return Err(
+                "打ちかけの入力が入力規則で戻されました(直すか、Esc で取り消してから)".into(),
+            );
+        }
+        ops::Host::activate_sheet(self, si)?;
+        self.cursor = a;
+        self.anchor = (a != b).then_some(b);
+        self.sync_input();
+        Ok(())
+    }
+
+    fn activate_sheet(&mut self, si: usize) -> Result<(), String> {
+        if si >= self.book.sheets.len() {
+            return Err("そのシートがありません".into());
+        }
+        if si != self.active {
+            self.switch_sheet(si);
+            if self.active != si {
+                // 打ちかけが入力規則で戻された等 — 理由は状態行にある
+                return Err(format!("{}", self.status));
+            }
+        }
+        Ok(())
+    }
+
+    fn set_status(&mut self, text: &str) -> Result<(), String> {
+        self.status = text.to_string().into();
+        Ok(())
+    }
+
+    fn to_pdf(&mut self, si: usize, p: &std::path::Path) -> Result<String, String> {
+        if si >= self.book.sheets.len() {
+            return Err("そのシートがありません".into());
+        }
+        // write_pdf は self.active のシートを出す — 一時的に差し替えて戻す
+        // (画面の場所は動かさない。結果は status の文言で返す)
+        let prev = self.active;
+        self.active = si;
+        self.write_pdf(p);
+        self.active = prev;
+        if p.exists() {
+            Ok(format!("{}", self.status))
+        } else {
+            Err(format!("{}", self.status))
+        }
+    }
+
+    fn copy_sheet(&mut self, si: usize, name: Option<&str>) -> Result<String, String> {
+        let n = self.copy_sheet_at(si, name)?;
+        self.status = ui::tf!("「{}」を作りました", n).into();
+        Ok(n)
+    }
+
+    fn delete_sheet(&mut self, si: usize) -> Result<String, String> {
+        let n = self.delete_sheet_at(si)?;
+        self.status =
+            ui::tf!("シート「{}」を削除しました(元に戻せない操作です)", n).into();
+        Ok(n)
+    }
+
     fn new_book(&mut self) -> Result<(), String> {
         if Calc::new_book(self) {
             Ok(())

@@ -132,10 +132,10 @@ Cell は `s.cell(row=, column=)` から)。
 | 相手 | 判定 | うちの対応・理由 |
 |---|---|---|
 | ✔ books | ある | モジュールの books(active / open / add) |
-| calculate | 足す | 橋に「全再計算」のコマンド |
-| selection / get_selection | 足す | **いま選んでいる範囲を Python から読む** — 「選んで、Jupyter で加工」の入り方 |
-| version | 足す | アプリの版を ping の返事に足す |
-| status_bar | 足す | アプリの status に文言を出す — 長い処理の進み具合を見せる |
+| ✔ calculate | 足す | 橋に「全再計算」のコマンド(済 2026-08-12: rpc calculate) |
+| ✔ selection / get_selection | 足す | **いま選んでいる範囲を Python から読む** — 「選んで、Jupyter で加工」の入り方(済 2026-08-12: rpc selection → app.selection / Book.selection。get_selection は向こうの async 遠隔 API の対なので selection だけ) |
+| ✔ version | 足す | アプリの版を ping の返事に足す(済 2026-08-12) |
+| ✔ status_bar | 足す | アプリの status に文言を出す — 長い処理の進み具合を見せる(済 2026-08-12: rpc status。読みは最後に出した文言の覚え — 状態行は読み戻せない) |
 | macro | 作らない | VBA を持たない(データとプログラムを分ける、2026-08-09 確定)。アプリ側の plugins が同じ役 |
 | create_report / render_template | 作らない | 向こうの有料(PRO)機能。差し込みは replace と値の代入が本筋 |
 | alert | 作らない | Python からアプリの画面に窓を割り込ませる道は作らない — 邪魔の経路。status_bar の文言で足りる |
@@ -153,9 +153,9 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ sheets | ある | _Sheets([] / active / iter / len) |
 | ✔ app / sheet_names | 互換層 | sheets から。app は小さな取っ手(books だけ持つ — App クラスは作らない、の帰結のまま) |
 | close | 足す | 橋に「閉じる」コマンド |
-| selection / get_selection | 足す | App の項と同じ |
-| load | 足す | 範囲 → DataFrame の直行便。**polars を第一に**(pandas は options で従来どおり) |
-| to_pdf | 足す | アプリは PDF 書き出しを持っている(io.rs)— 橋から呼ぶだけ |
+| ✔ selection / get_selection | 足す | App の項と同じ(済 2026-08-12) |
+| ✔ load | 足す | 範囲 → DataFrame の直行便。**polars を第一に**(pandas は options で従来どおり)(済 2026-08-12: 選択を読み、1マスなら表に広げる — xw.load / Book.load / Sheet.load) |
+| to_pdf | 足す | アプリは PDF 書き出しを持っている(io.rs)— 橋から呼ぶだけ。**Sheet.to_pdf は済** — Book の分はアプリの PDF がシート単位なので、束ねる口が要る |
 | names | 足す | 名前付き範囲(openpyxl の create_named_range と同じ一件) |
 | activate | 要らない | ブックは同時に1つの造り — 前に出す対象が無い |
 | set_mock_caller | 要らない | Excel アドイン開発の道具。caller が attach と同じ物なのでモックが要らない |
@@ -169,12 +169,12 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ name / range | ある | |
 | ✔ used_range | ある | expand("table") が同じ役。互換層で別名 |
 | ✔ book / cells / index | 互換層 | cells は全マス(A1:XFD1048576 — xlwings と同じ定義。読み書きするまで算術だけなので大きさは害にならない) |
-| clear / clear_contents | 足す | 範囲・シートの中身消し。実務多い |
-| copy / delete | 足す | シート複製・削除(エンジン側の「足す」と同じ機能を橋にも) |
+| ✔ clear / clear_contents | 足す | 範囲・シートの中身消し。実務多い(済 2026-08-12: rpc clear / clear_contents。contents は書式据え置き=set の Null と同じ道。結合は消さない — 解くのは unmerge) |
+| ✔ copy / delete | 足す | シート複製・削除(済 2026-08-12: rpc copy_sheet / delete_sheet。**耳のメニューと同じ関数**(picks.rs から切り出して共有)— 写しは右隣・sheet_ui/watch の帳尻・最後の1枚は断る・undo の束は消える、まで同じ。名前つき複製はシート名の決まりで検査) |
 | freeze_panes | 足す | |
-| load | 足す | Book.load と同じ |
-| to_pdf | 足す | シート単位の PDF |
-| activate / select | 足す | 画面のシートを Python から切り替える — 「見せる」のは見えるアプリならではの橋 |
+| ✔ load | 足す | Book.load と同じ(済 2026-08-12: used_range から) |
+| ✔ to_pdf | 足す | シート単位の PDF(済 2026-08-12: rpc to_pdf。印刷設定の言い分は note で返る) |
+| ✔ activate / select | 足す | 画面のシートを Python から切り替える — 「見せる」のは見えるアプリならではの橋(済 2026-08-12: rpc activate_sheet。切替は画面と同じ switch_sheet — 打ちかけの確定・絞り込み解除ごと) |
 | visible | 足す | 隠しシート(sheetState)の読み書き(小) |
 | autofit | 足す | 列幅の自動調整 — 文字の測りはアプリが持っている。橋から呼ぶ |
 | pictures | 足す | 画像の一覧と追加(sheet.add_image と対) |
@@ -194,12 +194,12 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ address / get_address / row / column / rows / columns / count / size / shape | 互換層 | 参照の算術 |
 | ✔ offset / resize / last_cell / current_region | 互換層 | current_region は expand と同族 |
 | ✔ sheet / get_value / raw_value / formula2 | 互換層 | formula2 = formula(動的配列の別名)。get_value は手(引数なし・value と同じ物 — 実物で確認) |
-| merge_cells | 互換層 | merge_area(足す)が来たらそこから出す — それまで待ち(2026-08-12 に行を分けた) |
-| clear / clear_contents | 足す | |
+| ✔ merge_cells | 互換層 | merges(rpc)の一覧と自分の重なりで出す(済 2026-08-12 — 互換層はこれで全部済) |
+| ✔ clear / clear_contents | 足す | (済 2026-08-12 — Sheet の項と同じ rpc) |
 | insert / delete | 足す | 範囲の挿入・削除(詰める向きつき) |
-| merge / unmerge / merge_area | 足す | 結合の書きと読み |
-| end | 足す | Ctrl+矢印相当。橋に end のコマンド |
-| select | 足す | Python から選択を動かして見せる |
+| ✔ merge / unmerge / merge_area | 足す | 結合の書きと読み(済 2026-08-12: rpc merge / unmerge / merge_area。作法はアプリと同じ sheet::model の merge。merge(across=True) は行ごと。unmerge は掛かる物を全部 — xlwings の定義どおり) |
+| ✔ end | 足す | Ctrl+矢印相当。橋に end のコマンド(済 2026-08-12。端は使っている範囲まで — 1048576 行目には飛ばない) |
+| ✔ select | 足す | Python から選択を動かして見せる(済 2026-08-12: rpc select。打ちかけは確定してから動く) |
 | add_hyperlink / hyperlink | 足す | リンクの読み書き(openpyxl Cell.hyperlink と同じ一件) |
 | note | 足す | セルのコメント(openpyxl comment と同じ一件) |
 | name / table | 足す | 名前付き範囲・テーブルの一件 |
@@ -293,8 +293,17 @@ Cell は `s.cell(row=, column=)` から)。
    **後半も大方済(2026-08-12)**: add_image(oneCellAnchor・images の読みつき)・
    add_table/add_row/add_column(docx。ooxml の tblGrid の穴も塞いだ)・
    options の polars(読み書き両方向)。
-   残りの背骨は**橋(アプリ側 rpc)の仕事**: selection / load / to_pdf・
-   Sheet.clear / activate — calc の rpc.rs に語彙を足してから(実機で確かめる件)
+   **橋の背骨も済(2026-08-12 夕)**: ops::handle に 15 語彙
+   (calculate / selection / select / activate_sheet / status / to_pdf /
+   copy_sheet / delete_sheet / merges / merge / unmerge / merge_area /
+   clear / clear_contents / end)、Host に画面側の口(calc/src/rpc.rs。
+   シートの複製・削除は耳のメニューと同じ関数を picks.rs から切り出して共有)。
+   calc.py の対応する口ごと**実機の calc で検査済み** —
+   tools/hashi_check.py(ribbon_sweep.py と対)。
+   橋の残り: Book.close・Book.to_pdf(束ね)・Sheet.freeze_panes / visible /
+   autofit / pictures / tables / names / page_setup・Range.insert / delete・
+   細目(note・hyperlink・group / ungroup・has_array / formula_array・
+   height / width / left / top・name / table)
 3. **書式の読み書き**(足す(書式)24 件)— エンジンの fmt に Python から書く道。合否は相手の定義どおり動くか
 4. **適合テストの移植** — 3つのテストの実務部分を pysheet/tests/ へ(NOTICE.md に出所)。書式の書き込みの「定義どおり」もここで証明する
 

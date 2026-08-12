@@ -255,11 +255,81 @@ class Range:
         # xlwings の current_region。うちは expand("table") と同族(台帳のとおり)
         return self.expand("table")
 
+    # ── ここから下は橋(rpc)に出る ──────────────────────────────
+
+    def clear(self):
+        """中身も書式も消す(結合はそのまま — 解くのは unmerge)。"""
+        _call("clear", **self._kw())
+
+    def clear_contents(self):
+        """値と式だけ消す(書式は据え置き)。"""
+        _call("clear_contents", **self._kw())
+
+    def merge(self, across=False):
+        """結合する。across=True は xlwings と同じく行ごとに結合する。
+        作法はアプリの結合と同じ(左上以外の中身は消える・空の左上へは
+        最初の中身が書式ごと移る)。"""
+        if across:
+            for r in self.rows:
+                _call("merge", **r._kw())
+        else:
+            _call("merge", **self._kw())
+
+    def unmerge(self):
+        """範囲に掛かる結合を全部解く(xlwings と同じ)。"""
+        _call("unmerge", **self._kw())
+
+    @property
+    def merge_area(self):
+        """左上のセルを含む結合の範囲。結合が無ければセル自身。"""
+        kw = {"a1": "{}{}".format(_col_name(self._c0), self._r0 + 1)}
+        if self._sheet is not None:
+            kw["sheet"] = self._sheet
+        return Range(_call("merge_area", **kw)["a1"], sheet=self._sheet)
+
+    @property
+    def merge_cells(self):
+        """範囲に結合が掛かっているか(xlwings と同じ真偽)。"""
+        kw = {}
+        if self._sheet is not None:
+            kw["sheet"] = self._sheet
+        for a, b in _call("merges", **kw)["merges"]:
+            r0, c0 = _parse_a1(a)
+            r1, c1 = _parse_a1(b)
+            if not (r1 < self._r0 or r0 > self._r1 or c1 < self._c0 or c0 > self._c1):
+                return True
+        return False
+
+    def end(self, direction):
+        """Ctrl+矢印相当。direction は "up" / "down" / "left" / "right"。
+        端は使っている範囲まで(Excel の 1048576 行目には飛ばない)。"""
+        d = str(direction).lower().lstrip("*")
+        kw = {"a1": "{}{}".format(_col_name(self._c0), self._r0 + 1), "direction": d}
+        if self._sheet is not None:
+            kw["sheet"] = self._sheet
+        return Range(_call("end", **kw)["a1"], sheet=self._sheet)
+
+    def select(self):
+        """画面の選択をこの範囲に動かして見せる。"""
+        _call("select", **self._kw())
+
     def __len__(self):
         return self.size
 
     def __repr__(self):
         return "<officework.calc Range {}>".format(self._a1())
+
+
+def _default_frame():
+    # polars を第一に(無ければ pandas)— SEKKEI「Python 側の道具は polars を第一に」
+    try:
+        import polars as pl
+
+        return pl.DataFrame
+    except ImportError:
+        import pandas as pd
+
+        return pd.DataFrame
 
 
 def _grid_to_frame(grid, convert, index=True, header=True):
@@ -378,6 +448,48 @@ class Sheet:
         # expand("table") が同じ役(台帳のとおり)
         return self.range("A1").expand("table")
 
+    def clear(self):
+        """シートの中身も書式も全部消す(結合はそのまま)。"""
+        _call("clear", sheet=self.name)
+
+    def clear_contents(self):
+        """シートの値と式を全部消す(書式は据え置き)。"""
+        _call("clear_contents", sheet=self.name)
+
+    def activate(self):
+        """画面のシートをこのシートに切り替える。"""
+        _call("activate_sheet", sheet=self.name)
+
+    def copy(self, name=None):
+        """シートを複製する(アプリの「コピーを作成」と同じ作法 — 写しは
+        自分の右隣に入り、画面はそこへ移る。名前は省略で「名前 (2)」)。
+        返りは写しのシート。undo の束は消える(アプリの複製と同じ)。"""
+        kw = {"sheet": self.name}
+        if name is not None:
+            kw["new_name"] = name
+        return Sheet(_call("copy_sheet", **kw)["name"])
+
+    def delete(self):
+        """シートを削除する(最後の1枚は断られる。元に戻せない操作)。"""
+        _call("delete_sheet", sheet=self.name)
+
+    def select(self):
+        # xlwings では activate と実質同じ(アプリは1つ)
+        self.activate()
+
+    def to_pdf(self, path):
+        """このシートを PDF に(帳票の印刷設定に従う)。返りは保存先。
+        効かせた設定はアプリの状態行と同じ文言で返事の note に載る。"""
+        _call("to_pdf", path=os.path.abspath(path), sheet=self.name)
+        return os.path.abspath(path)
+
+    def load(self, convert=None, index=True, header=True):
+        """使っている範囲を DataFrame に。**polars を第一に**
+        (polars が無ければ pandas)。convert で選べる。"""
+        rng = self.used_range
+        return _grid_to_frame(rng._get(), convert or _default_frame(),
+                              index=index, header=header)
+
     def __repr__(self):
         return "<officework.calc Sheet {}>".format(self.name)
 
@@ -454,6 +566,21 @@ class Book:
         # wb.app.books のような書き方だけ通るように、小さな取っ手を返す
         return _app
 
+    @property
+    def selection(self):
+        """いま画面で選んでいる範囲。「選んで、Jupyter で加工」の入り方。"""
+        r = _call("selection")
+        return Range(r["a1"], sheet=r["sheet"])
+
+    def load(self, convert=None, index=True, header=True):
+        """いま選んでいる範囲を DataFrame に(1マスだけなら表に広げる)。
+        **polars を第一に**(polars が無ければ pandas)。"""
+        rng = self.selection
+        if rng.shape == (1, 1):
+            rng = rng.expand("table")
+        return _grid_to_frame(rng._get(), convert or _default_frame(),
+                              index=index, header=header)
+
     def save(self, path=None):
         if path is not None:
             _call("save", path=os.path.abspath(path))
@@ -482,15 +609,44 @@ books = _Books()
 class _App:
     """Book.app の返り。App クラスは作らない(台帳)ので、名前は出さない。"""
 
+    _status_bar = None
+
     @property
     def books(self):
         return books
+
+    def calculate(self):
+        """全再計算(xlwings の App.calculate)。"""
+        _call("calculate")
+
+    @property
+    def version(self):
+        return _call("ping").get("version", "")
+
+    @property
+    def selection(self):
+        return Book.attach().selection
+
+    @property
+    def status_bar(self):
+        # アプリの状態行は読み戻せない — こちらから出した最後の文言を覚えて返す
+        return self._status_bar
+
+    @status_bar.setter
+    def status_bar(self, text):
+        _call("status", text=str(text))
+        self._status_bar = str(text)
 
     def __repr__(self):
         return "<officework.calc app>"
 
 
 _app = _App()
+
+
+def load(convert=None, index=True, header=True):
+    """いま選んでいる範囲を DataFrame に(xlwings の xw.load と同じ入り方)。"""
+    return Book.attach().load(convert=convert, index=index, header=header)
 
 
 def ping():

@@ -1,8 +1,11 @@
 //! ブックの操作の言葉 — **誰が呼んでも同じ意味**(SEKKEI「操作の言葉を
 //! 1本に」段A。2026-08-12 に calc/src/rpc.rs から純移動)。
 //!
-//! JSON 1行の9命令(ping / book_info / new / open / save / get /
-//! get_formula / set / expand)をここで捌く。**動いているアプリの都合**
+//! JSON 1行の命令(ping / book_info / new / open / save / get /
+//! get_formula / set / expand と、橋の背骨 2026-08-12: calculate /
+//! selection / select / activate_sheet / status / to_pdf / copy_sheet /
+//! delete_sheet / merges / merge / unmerge / merge_area / clear /
+//! clear_contents / end)をここで捌く。**動いているアプリの都合**
 //! (未保存の確認・undo の節目・状態行・画面の通知)は [`Host`] の向こう —
 //! calc が実装すれば生きた表への口、pysheet が実装すればファイルへの口に
 //! なる。**この口に無い動詞は既定で断る**(「できないものを、できるように
@@ -278,6 +281,39 @@ pub trait Host {
         Err("この口では save はできません".into())
     }
 
+    /// アプリの版(ping の返事に載せる)。ファイルの口は名乗らなくてよい
+    fn version(&self) -> &'static str {
+        ""
+    }
+    /// いま選んでいる範囲(シート, 左上, 右下)。画面のあるアプリだけが持つ
+    fn selection(&self) -> Option<(usize, sheet::Pos, sheet::Pos)> {
+        None
+    }
+    /// 選択を動かして見せる。画面のあるアプリだけ
+    fn select(&mut self, _si: usize, _a: sheet::Pos, _b: sheet::Pos) -> Result<(), String> {
+        Err("この口では select はできません".into())
+    }
+    /// 画面のシートを切り替える。画面のあるアプリだけ
+    fn activate_sheet(&mut self, _si: usize) -> Result<(), String> {
+        Err("この口では activate はできません".into())
+    }
+    /// 状態行に文言を出す(長い処理の進み具合を見せる)。画面のあるアプリだけ
+    fn set_status(&mut self, _text: &str) -> Result<(), String> {
+        Err("この口では status はできません".into())
+    }
+    /// シートを PDF に。返りは報告の文言(効かせた印刷設定など)
+    fn to_pdf(&mut self, _si: usize, _p: &std::path::Path) -> Result<String, String> {
+        Err("この口では to_pdf はできません".into())
+    }
+    /// シートの複製(耳のメニューと同じ作法)。返りは写しの名前
+    fn copy_sheet(&mut self, _si: usize, _name: Option<&str>) -> Result<String, String> {
+        Err("この口では copy_sheet はできません".into())
+    }
+    /// シートの削除(同じく)。返りは消した名前
+    fn delete_sheet(&mut self, _si: usize) -> Result<String, String> {
+        Err("この口では delete_sheet はできません".into())
+    }
+
     /// アプリにしか無い命令(calc の ribbon / ui_state)。既定は「知らない」
     fn extra(&mut self, _cmd: &str, _o: &Jobj) -> Option<String> {
         None
@@ -295,7 +331,11 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
         return err("cmd がありません");
     };
     match cmd.as_str() {
-        "ping" => format!("{{\"ok\":true,\"app\":\"{}\"}}", h.app()),
+        "ping" => format!(
+            "{{\"ok\":true,\"app\":\"{}\",\"version\":{}}}",
+            h.app(),
+            J::S(h.version().to_string()).to_json()
+        ),
         // ブックの情報(名前・道・シートの一覧・いまのシート)
         "book_info" => {
             let sheets = J::A(h.book().sheets.iter().map(|s| J::S(s.name.clone())).collect());
@@ -451,6 +491,262 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 w += 1;
             }
             format!("{{\"ok\":true,\"rows\":{},\"cols\":{}}}", hh.max(1), w.max(1))
+        }
+        // 全再計算(xlwings の App.calculate)
+        "calculate" => {
+            h.settle();
+            let si = h.active();
+            sheet::recalc_book(h.book_mut(), si);
+            "{\"ok\":true}".into()
+        }
+        // いま選んでいる範囲(「選んで、Jupyter で加工」の入り方)
+        "selection" => match h.selection() {
+            Some((si, a, b)) => {
+                let name = h.book().sheets[si].name.clone();
+                let a1 =
+                    if a == b { a.a1() } else { format!("{}:{}", a.a1(), b.a1()) };
+                format!(
+                    "{{\"ok\":true,\"sheet\":{},\"a1\":{}}}",
+                    J::S(name).to_json(),
+                    J::S(a1).to_json()
+                )
+            }
+            None => err("この口では selection はできません"),
+        },
+        // 選択を動かして見せる
+        "select" => {
+            let (si, a, b) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            match h.select(si, a, b) {
+                Ok(()) => "{\"ok\":true}".into(),
+                Err(e) => err(&e),
+            }
+        }
+        // 画面のシートを切り替える
+        "activate_sheet" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            match h.activate_sheet(si) {
+                Ok(()) => "{\"ok\":true}".into(),
+                Err(e) => err(&e),
+            }
+        }
+        // 状態行に文言を出す(長い処理の進み具合)
+        "status" => {
+            let Some(text) = o.str("text") else { return err("text がありません") };
+            match h.set_status(&text) {
+                Ok(()) => "{\"ok\":true}".into(),
+                Err(e) => err(&e),
+            }
+        }
+        // シートを PDF に(印刷設定に従う。効かせた物は note で言う)
+        "to_pdf" => {
+            let Some(p) = o.str("path") else { return err("path がありません") };
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            h.settle();
+            match h.to_pdf(si, std::path::Path::new(&p)) {
+                Ok(note) => format!("{{\"ok\":true,\"note\":{}}}", J::S(note).to_json()),
+                Err(e) => err(&e),
+            }
+        }
+        // シートの複製(写しは元の右隣・そこへ移る。名前は省略で「名前 (2)」)
+        "copy_sheet" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            let name = o.str("new_name");
+            match h.copy_sheet(si, name.as_deref()) {
+                Ok(n) => format!("{{\"ok\":true,\"name\":{}}}", J::S(n).to_json()),
+                Err(e) => err(&e),
+            }
+        }
+        // シートの削除(最後の1枚は断る。undo は消える — アプリの削除と同じ)
+        "delete_sheet" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            match h.delete_sheet(si) {
+                Ok(n) => format!("{{\"ok\":true,\"name\":{}}}", J::S(n).to_json()),
+                Err(e) => err(&e),
+            }
+        }
+        // 結合の一覧(["B2","C3"] の対の並び — pysheet の merges と同じ形)
+        "merges" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            let pairs = J::A(
+                h.book().sheets[si]
+                    .merges
+                    .iter()
+                    .map(|(a, b)| J::A(vec![J::S(a.a1()), J::S(b.a1())]))
+                    .collect(),
+            );
+            format!("{{\"ok\":true,\"merges\":{}}}", pairs.to_json())
+        }
+        // 結合する(家の作法 — アプリの結合と同じ sheet::model の merge)
+        "merge" => {
+            let (si, a, b) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            if h.book().sheets[si].protected {
+                return err("シートが保護されています");
+            }
+            h.settle();
+            h.mark_once();
+            let promoted = h.book_mut().sheets[si].merge(a, b);
+            sheet::recalc_book(h.book_mut(), si);
+            h.mark_dirty();
+            format!("{{\"ok\":true,\"promoted\":{promoted}}}")
+        }
+        // 範囲に掛かる結合を解く(xlwings の unmerge と同じ「掛かる物は全部」)
+        "unmerge" => {
+            let (si, a, b) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            if h.book().sheets[si].protected {
+                return err("シートが保護されています");
+            }
+            h.settle();
+            h.mark_once();
+            let n = h.book_mut().sheets[si].unmerge(a, b);
+            if n > 0 {
+                h.mark_dirty();
+            }
+            format!("{{\"ok\":true,\"removed\":{n}}}")
+        }
+        // セルを含む結合の範囲(無ければセル自身 — xlwings の merge_area)
+        "merge_area" => {
+            let (si, a, _) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            let sh = &h.book().sheets[si];
+            let a1 = match sh.merges.iter().find(|(x, y)| {
+                (x.row..=y.row).contains(&a.row) && (x.col..=y.col).contains(&a.col)
+            }) {
+                Some((x, y)) => format!("{}:{}", x.a1(), y.a1()),
+                None => a.a1(),
+            };
+            format!("{{\"ok\":true,\"a1\":{}}}", J::S(a1).to_json())
+        }
+        // 中身を消す。clear_contents は値と式だけ(書式は据え置き — set の
+        // Null と同じ道)、clear は書式ごと。a1 省略はシート全部。
+        // 結合は消さない(結合を解くのは unmerge の仕事)
+        "clear" | "clear_contents" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            if h.book().sheets[si].protected {
+                return err("シートが保護されています");
+            }
+            let span = match o.str("a1") {
+                Some(a1) => {
+                    let mut it = a1.split(':');
+                    let a = match it.next().and_then(sheet::Pos::parse) {
+                        Some(p) => p,
+                        None => return err("a1 が読めません"),
+                    };
+                    let b = match it.next() {
+                        Some(t) => match sheet::Pos::parse(t) {
+                            Some(p) => p,
+                            None => return err("a1 が読めません"),
+                        },
+                        None => a,
+                    };
+                    Some((a, b))
+                }
+                None => None,
+            };
+            h.settle();
+            h.mark_once();
+            let everything = cmd == "clear";
+            let sh = &mut h.book_mut().sheets[si];
+            let keys: Vec<sheet::Pos> = sh
+                .cells
+                .keys()
+                .filter(|p| match span {
+                    Some((a, b)) => {
+                        (a.row..=b.row).contains(&p.row) && (a.col..=b.col).contains(&p.col)
+                    }
+                    None => true,
+                })
+                .cloned()
+                .collect();
+            let n = keys.len();
+            for p in keys {
+                if everything {
+                    sh.cells.remove(&p);
+                } else {
+                    // 書式は据え置きで、値と式だけ消す(set の Null と同じ)
+                    let fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
+                    let mut cell = sheet::Cell::input("");
+                    cell.fmt = fmt;
+                    sh.set(p, cell);
+                }
+            }
+            sheet::recalc_book(h.book_mut(), si);
+            h.mark_dirty();
+            h.wrote(n);
+            format!("{{\"ok\":true,\"cells\":{n}}}")
+        }
+        // Ctrl+矢印相当(xlwings の end)。端は使っている範囲まで —
+        // Excel の 1048576 行目には飛ばない(そこに用は無い)
+        "end" => {
+            let (si, a, _) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            let Some(dir) = o.str("direction") else { return err("direction がありません") };
+            let (dr, dc): (i64, i64) = match dir.as_str() {
+                "up" => (-1, 0),
+                "down" => (1, 0),
+                "left" => (0, -1),
+                "right" => (0, 1),
+                _ => return err("direction は up / down / left / right"),
+            };
+            let sh = &h.book().sheets[si];
+            let (rows, cols) = sh.extent();
+            let (lim_r, lim_c) = (rows.max(1) as i64 - 1, cols.max(1) as i64 - 1);
+            let inside = |r: i64, c: i64| r >= 0 && c >= 0 && r <= lim_r && c <= lim_c;
+            let filled = |r: i64, c: i64| {
+                inside(r, c) && !sh.value(sheet::Pos::new(r as u32, c as u32)).is_empty()
+            };
+            let (mut r, mut c) = (a.row as i64, a.col as i64);
+            if filled(r, c) && filled(r + dr, c + dc) {
+                // 地続きの最後まで
+                while filled(r + dr, c + dc) {
+                    r += dr;
+                    c += dc;
+                }
+            } else {
+                // 次の埋まったセルへ。無ければ使っている範囲の端
+                loop {
+                    if !inside(r + dr, c + dc) {
+                        break;
+                    }
+                    r += dr;
+                    c += dc;
+                    if filled(r, c) {
+                        break;
+                    }
+                }
+            }
+            let p = sheet::Pos::new(r.max(0) as u32, c.max(0) as u32);
+            format!("{{\"ok\":true,\"a1\":{}}}", J::S(p.a1()).to_json())
         }
         other => match h.extra(other, &o) {
             Some(resp) => resp,
