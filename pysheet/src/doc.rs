@@ -18,7 +18,7 @@
 
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use pyo3::exceptions::{PyIOError, PyIndexError, PyValueError};
+use pyo3::exceptions::{PyIOError, PyIndexError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
 
 use kumihan::{Block, CharFormat, Document, Paragraph, Run};
@@ -402,6 +402,74 @@ impl PyDoc {
         Ok(PyParagraph { inner: Arc::clone(&self.inner), loc: Loc::Body(b) })
     }
 
+    /// 段落と表を**文書の順で**返す(python-docx の iter_inner_content)。
+    /// paragraphs / tables は種類別 — 差し込み文書の「上から順に」はこちら。
+    fn iter_inner_content(&self, py: Python<'_>) -> PyResult<Vec<Py<PyAny>>> {
+        let g = lock(&self.inner)?;
+        let mut out: Vec<Py<PyAny>> = Vec::new();
+        for (bi, b) in g.doc.blocks.iter().enumerate() {
+            match b {
+                Block::Para(_) => out.push(
+                    Py::new(py, PyParagraph { inner: Arc::clone(&self.inner), loc: Loc::Body(bi) })?
+                        .into_any(),
+                ),
+                Block::Table(_) => out.push(
+                    Py::new(py, PyTable { inner: Arc::clone(&self.inner), block: bi })?.into_any(),
+                ),
+            }
+        }
+        Ok(out)
+    }
+
+    /// 文書の情報(docProps/core.xml)。python-docx の core_properties の役 —
+    /// author(作成者)・title・keywords・subject・comments の読み書き。
+    #[getter]
+    fn core_properties(&self) -> PyCoreProps {
+        PyCoreProps { inner: Arc::clone(&self.inner) }
+    }
+
+    /// 画像を足す(python-docx の add_picture の役)。径路でも bytes でも。
+    /// 大きさは mm(省略は絵の実寸を 96dpi で mm に直した値。片方だけ
+    /// 渡せば縦横比を保つ)。返りは画像を持つ段落。
+    #[pyo3(signature = (image, width_mm=None, height_mm=None))]
+    fn add_picture(
+        &self,
+        image: &Bound<'_, PyAny>,
+        width_mm: Option<f32>,
+        height_mm: Option<f32>,
+    ) -> PyResult<PyParagraph> {
+        let data: Vec<u8> = if let Ok(b) = image.extract::<Vec<u8>>() {
+            b
+        } else if let Ok(p) = image.extract::<String>() {
+            std::fs::read(&p).map_err(|e| PyIOError::new_err(format!("{p}: 読めない: {e}")))?
+        } else {
+            return Err(PyTypeError::new_err(
+                "画像は 径路の文字列 か bytes(PNG / JPEG)で渡してください",
+            ));
+        };
+        let (wpx, hpx) = ops::image_px(&data).ok_or_else(|| {
+            PyValueError::new_err("PNG / JPEG として読めない(大きさが測れない)")
+        })?;
+        // 実寸(96dpi)を既定に、渡された辺へ縦横比を保って合わせる
+        let (w0, h0) = (wpx as f32 * 25.4 / 96.0, hpx as f32 * 25.4 / 96.0);
+        let (w_mm, h_mm) = match (width_mm, height_mm) {
+            (Some(w), Some(h)) => (w, h),
+            (Some(w), None) => (w, w * h0 / w0),
+            (None, Some(h)) => (h * w0 / h0, h),
+            (None, None) => (w0, h0),
+        };
+        let mut g = lock(&self.inner)?;
+        let mut p = Paragraph { line_spacing: 1.0, ..Default::default() };
+        p.images_new.push(kumihan::InlineImage {
+            bytes: std::sync::Arc::new(data),
+            w_mm,
+            h_mm,
+        });
+        g.doc.blocks.push(Block::Para(p));
+        let b = g.doc.blocks.len() - 1;
+        Ok(PyParagraph { inner: Arc::clone(&self.inner), loc: Loc::Body(b) })
+    }
+
     /// 改ページを足す(python-docx の add_page_break の役)。
     /// 本家は「改ページの run を持つ段落」を足すが、うちの模型は改ページを
     /// **段落の性質(page_break_before)**で持つ — 空の段落に印を付けて返す。
@@ -464,6 +532,72 @@ impl PyDoc {
     }
 }
 
+// ───────────────────────────────────────── 文書の情報
+
+/// 文書の情報(docProps/core.xml)。python-docx の core_properties の形。
+/// 呼び名は本家に合わせる: author = docx の dc:creator、comments = 説明欄。
+#[pyclass(name = "CoreProperties", module = "officework.doc")]
+struct PyCoreProps {
+    inner: Arc<Mutex<Inner>>,
+}
+
+#[pymethods]
+impl PyCoreProps {
+    #[getter]
+    fn author(&self) -> PyResult<String> {
+        Ok(lock(&self.inner)?.doc.props.creator.clone())
+    }
+    #[setter]
+    fn set_author(&self, value: &str) -> PyResult<()> {
+        lock(&self.inner)?.doc.props.creator = value.to_string();
+        Ok(())
+    }
+    #[getter]
+    fn title(&self) -> PyResult<String> {
+        Ok(lock(&self.inner)?.doc.props.title.clone())
+    }
+    #[setter]
+    fn set_title(&self, value: &str) -> PyResult<()> {
+        lock(&self.inner)?.doc.props.title = value.to_string();
+        Ok(())
+    }
+    #[getter]
+    fn keywords(&self) -> PyResult<String> {
+        Ok(lock(&self.inner)?.doc.props.keywords.clone())
+    }
+    #[setter]
+    fn set_keywords(&self, value: &str) -> PyResult<()> {
+        lock(&self.inner)?.doc.props.keywords = value.to_string();
+        Ok(())
+    }
+    #[getter]
+    fn subject(&self) -> PyResult<String> {
+        Ok(lock(&self.inner)?.doc.props.subject.clone())
+    }
+    #[setter]
+    fn set_subject(&self, value: &str) -> PyResult<()> {
+        lock(&self.inner)?.doc.props.subject = value.to_string();
+        Ok(())
+    }
+    #[getter]
+    fn comments(&self) -> PyResult<String> {
+        Ok(lock(&self.inner)?.doc.props.description.clone())
+    }
+    #[setter]
+    fn set_comments(&self, value: &str) -> PyResult<()> {
+        lock(&self.inner)?.doc.props.description = value.to_string();
+        Ok(())
+    }
+
+    fn __repr__(&self) -> PyResult<String> {
+        let g = lock(&self.inner)?;
+        Ok(format!(
+            "<officework.doc.CoreProperties {:?} by {:?}>",
+            g.doc.props.title, g.doc.props.creator
+        ))
+    }
+}
+
 // ───────────────────────────────────────── 段落
 
 /// 1つの段落。本文にも表のセルの中にもある。
@@ -519,6 +653,42 @@ impl PyParagraph {
     /// **run の切れ目を残す**(書式の分かれ目が動かない)。
     fn replace(&self, old: &str, new: &str) -> PyResult<usize> {
         self.with_mut(|p| replace_in_runs(&mut p.runs, old, new))
+    }
+
+    /// この段落の**前**に段落を差す(python-docx と同じ口。add_paragraph は
+    /// 末尾だけ)。手元の段落・run の札は**位置**で指しているので、
+    /// 差した後は引き直すこと(シートの札と同じ作法)。
+    #[pyo3(signature = (text=""))]
+    fn insert_paragraph_before(&self, text: &str) -> PyResult<PyParagraph> {
+        let mut g = lock(&self.inner)?;
+        let mut p = Paragraph { line_spacing: 1.0, ..Default::default() };
+        set_para_text(&mut p, text);
+        match self.loc {
+            Loc::Body(b) => {
+                if b > g.doc.blocks.len() {
+                    return Err(PyIndexError::new_err("この段落はもう文書に無い"));
+                }
+                g.doc.blocks.insert(b, Block::Para(p));
+                Ok(PyParagraph { inner: Arc::clone(&self.inner), loc: Loc::Body(b) })
+            }
+            Loc::Cell { block, row, col, para } => {
+                let cell = match g.doc.blocks.get_mut(block) {
+                    Some(Block::Table(t)) => {
+                        t.rows.get_mut(row).and_then(|r| r.get_mut(col))
+                    }
+                    _ => None,
+                }
+                .ok_or_else(|| PyIndexError::new_err("このセルはもう文書に無い"))?;
+                if para > cell.paragraphs.len() {
+                    return Err(PyIndexError::new_err("この段落はもうセルに無い"));
+                }
+                cell.paragraphs.insert(para, p);
+                Ok(PyParagraph {
+                    inner: Arc::clone(&self.inner),
+                    loc: Loc::Cell { block, row, col, para },
+                })
+            }
+        }
     }
 
     /// 書式のまとまり(run)の一覧。位置で引き直す**手**(handle)—
@@ -1130,6 +1300,7 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTable>()?;
     m.add_class::<PyRow>()?;
     m.add_class::<PyCell>()?;
+    m.add_class::<PyCoreProps>()?;
     parent.add_submodule(&m)
 }
 

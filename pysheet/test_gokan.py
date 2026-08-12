@@ -413,6 +413,48 @@ if pydocx is not None:
         check(r_mine.clear() is r_mine and r_mine.text == "" and r_mine.bold,
               "clear が自分を返さない・書式まで消える")
 
+        # --- 文書の順・途中に差す・文書の情報・画像 ----------------------------
+        d_mix = office_doc.Doc()
+        d_mix.add_paragraph("前")
+        d_mix.add_table(1, 1)
+        after = d_mix.add_paragraph("後")
+        kinds = [type(x).__name__ for x in d_mix.iter_inner_content()]
+        check(kinds == ["Paragraph", "Table", "Paragraph"],
+              f"iter_inner_content の順: {kinds}")
+        after.insert_paragraph_before("間")
+        check([p.text for p in d_mix.paragraphs] == ["前", "間", "後"],
+              f"insert_paragraph_before: {[p.text for p in d_mix.paragraphs]}")
+
+        d_mix.core_properties.author = "日本不燃 太郎"
+        d_mix.core_properties.title = "見積書"
+        # 画像(2×2 の最小 PNG)を径路の代わりに bytes で
+        png = (b"\x89PNG\r\n\x1a\n" +
+               b"\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02"
+               b"\x08\x02\x00\x00\x00\xfd\xd4\x9as" +
+               b"\x00\x00\x00\x0cIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe"
+               b"\xa75\x81\x84\x00\x00\x00\x00IEND\xaeB`\x82")
+        d_mix.add_picture(png, width=30)  # mm。縦横比を保って 30×30
+        out_m = os.path.join(t, "mix.docx")
+        d_mix.save(out_m)
+
+        back_m = pydocx.Document(out_m)
+        check(back_m.core_properties.author == "日本不燃 太郎"
+              and back_m.core_properties.title == "見積書",
+              f"文書の情報を本家が読めない: {back_m.core_properties.author}")
+        check(len(back_m.inline_shapes) == 1, "うちの画像を本家が読めない")
+        check(round(back_m.inline_shapes[0].width.mm) == 30,
+              f"画像の大きさ: {back_m.inline_shapes[0].width.mm}")
+        # 逆向き: 本家の文書の情報をうちが読める
+        d_o4 = pydocx.Document()
+        d_o4.core_properties.author = "甲"
+        d_o4.core_properties.comments = "控え"
+        out_o4 = os.path.join(t, "props.docx")
+        d_o4.save(out_o4)
+        d_r4 = office_doc.Doc.open(out_o4)
+        check(d_r4.core_properties.author == "甲"
+              and d_r4.core_properties.comments == "控え",
+              "本家の文書の情報がうちで読めない")
+
 # ==================== 第2歩(足すの背骨): 結合・固定枠・改名・複製・削除・並べ替え
 b = office_sheet.Book()
 s = b[0]

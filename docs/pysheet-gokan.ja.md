@@ -229,9 +229,9 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ add_heading | 足す | 当初「互換層(add_paragraph + style)」としたが、エンジンの Paragraph.style は**読みだけ**(2026-08-12 doc.rs と突き合わせて正した)。style の書きをエンジンに足してから(**済 2026-08-12 夜**: style の書き(body / heading1〜3。本家の "Heading 1" の名前でも受ける)+ add_heading(level 1〜3。0=Title は持たないので断る)。**まっさらの文書に最小の styles.xml**(Normal+見出し1〜3の名乗り)を書く — これが無いと読み手が pStyle を解決できず Normal に落ちる。原本があれば原本の定義を持ち越すだけ) |
 | ✔ add_page_break | 足す | (済 2026-08-12 夜。本家は「改ページの run」だが、うちは**段落の性質(page_break_before)**で持つ — 紙の上の意味は同じで、本家の paragraph_format.page_break_before でも読める) |
 | ✔ add_table | 足す | 表を新しく組む(明細の帳票づくりに要る)(済 2026-08-12。style 引数は「足す(書式)」待ち — 黙って捨てず断る。ついでに ooxml の書き手の穴を1つ塞いだ: 等分の表で tblGrid(必須部品)を省いていて、python-docx が読めなかった) |
-| add_picture | 足す | 図を入れる(sheet.add_image と対) |
-| iter_inner_content | 足す | 段落と表を**文書の順で**返す。うちの paragraphs / tables は種類別 — 順序を返す API をエンジンに |
-| core_properties | 足す | 文書情報の読み書き(小) |
+| ✔ add_picture | 足す | 図を入れる(sheet.add_image と対)(済 2026-08-12 夜: 径路でも bytes でも。大きさは mm の数でも本家の Length(Mm(60))でも。片方だけなら縦横比を保つ。返りは画像を持つ段落 — 本家の InlineShape とはそこだけ流儀が違う) |
+| ✔ iter_inner_content | 足す | 段落と表を**文書の順で**返す。うちの paragraphs / tables は種類別 — 順序を返す API をエンジンに(済 2026-08-12 夜) |
+| ✔ core_properties | 足す | 文書情報の読み書き(小)(済 2026-08-12 夜: author / title / keywords / subject / comments — 呼び名は本家、中身は docProps/core.xml の5欄) |
 | sections / add_section | 足す | エンジンの模型が1節しか持てない既知の残り(「実物で測った」の表)— 模型を太らせる件と同じ一件 |
 | comments / add_comment | 足す | コメントの読み書き。変更履歴と同じく、読めて書けて壊さない |
 | inline_shapes | 足す | 画像の一件(add_picture と対の読み) |
@@ -247,7 +247,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ clear | 互換層 | text = ""(段落の性質と先頭 run の書式は残る — 本家と同じ定義。自分を返す) |
 | ✔ iter_inner_content | 互換層 | runs から(リンクは hyperlinks(足す)が来たら混ぜる) |
 | ✔ add_run | 足す | 段落に run を継ぎ足す(済 2026-08-12 夜。書式は**末尾の run を継ぐ** — text の代入が先頭を継ぐのと対。style 引数(文字スタイル)はスタイル定義を持たない主義と衝突するので断る — 発注者判断待ちの一件) |
-| insert_paragraph_before | 足す | 途中に差す(add_paragraph は末尾だけ) |
+| ✔ insert_paragraph_before | 足す | 途中に差す(add_paragraph は末尾だけ)(済 2026-08-12 夜。手元の札は位置で指すので、差した後は引き直す — シートの札と同じ作法。style 引数は断る) |
 | hyperlinks | 足す | リンクの一件 |
 | ✔ paragraph_format | 足す(書式) | 段落書式(行間・字下げ・前後の間隔)(**済(部分)2026-08-12 夜**: alignment(本家の enum も受ける)・line_spacing・page_break_before — 模型が持つ物。space_before / space_after・left_indent は**模型に無い**ので読みは None・書きは正直に断る。模型の indent は段数(1段=全角2字)で、本家の Length との対応は決めてから) |
 | part / contains_page_break / rendered_page_breaks | 要らない | 内部・レイアウト依存 |

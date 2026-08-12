@@ -314,6 +314,16 @@ class Paragraph:
             )
         return Run(self._p.add_run(text))
 
+    def insert_paragraph_before(self, text=None, style=None):
+        """この段落の前に段落を差す(python-docx と同じ口)。
+        手元の段落の物は位置で指しているので、差した後は引き直すこと。"""
+        if style is not None:
+            raise NotImplementedError(
+                "スタイル引数はスタイル定義を持たない主義と衝突(台帳)。"
+                "見出しにするなら返りの .style に入れる"
+            )
+        return Paragraph(self._p.insert_paragraph_before(text or ""))
+
     def iter_inner_content(self):
         """段落の中身を順に。いまは run だけ(リンクの読みはエンジンの
         「足す」待ち — 台帳の hyperlinks)。"""
@@ -547,6 +557,31 @@ class Doc:
         足すが、うちは**段落の性質(page_break_before)**で持つ — 紙の上の
         意味は同じで、本家の paragraph_format.page_break_before でも読める。"""
         return Paragraph(self._d.add_page_break())
+
+    def add_picture(self, image, width=None, height=None):
+        """画像を足す(python-docx と同じ口)。径路でも bytes でも。
+        大きさは mm の数でも、本家の Length(Mm(60) 等)でもよい。
+        返りは画像を持つ段落(本家は InlineShape — そこだけ流儀が違う)。"""
+        def _mm(v):
+            if v is None:
+                return None
+            return float(v.mm) if hasattr(v, "mm") else float(v)
+
+        return Paragraph(self._d.add_picture(image, _mm(width), _mm(height)))
+
+    def iter_inner_content(self):
+        """段落と表を**文書の順**で返す(python-docx と同じ口)。"""
+        for b in self._d.iter_inner_content():
+            if isinstance(b, _doc.Table):
+                yield Table(b)
+            else:
+                yield Paragraph(b)
+
+    @property
+    def core_properties(self):
+        """文書の情報(author / title / keywords / subject / comments)。
+        読み書きとも本家と同じ呼び名(author = docx の dc:creator)。"""
+        return self._d.core_properties
 
     def add_table(self, rows, cols, style=None):
         """表を新しく組む(明細の帳票づくり)。各セルは空の段落を1つ持つ。
