@@ -1405,4 +1405,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("データテーブル: {} 個の答えを入れました({}。その時の値なので、入力を直したらもう一度)", "Veri tablosu: {} cevap yazıldı ({}. Bunlar şu andaki değerler, girişi değiştirirseniz yeniden çalıştırın)"),
     ("2変数", "İki değişken"),
     ("1変数", "Tek değişken"),
+    ("さっき開きました(窓が出るまで少し待ってください)", "Az önce açıldı (pencerenin görünmesi için biraz bekleyin)"),
+    ("開けません(xdg-open がありません): {}", "Açılamıyor (xdg-open yok): {}"),
 ];

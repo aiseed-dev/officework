@@ -190,6 +190,62 @@ pub fn svg_to_png(data: &[u8], scale: f32) -> Result<(Vec<u8>, u32, u32), String
     Ok((png, w.round() as u32, h.round() as u32))
 }
 
+/// 外の世界へ開いた結果。呼び手はこれで状態行の文言を分ける —
+/// 「黙って何も起きない」を作らないため
+pub enum Opened {
+    /// 渡した(窓なりブラウザなりが来る)
+    Yes,
+    /// さっき同じ相手を開けたばかり — 渡していない(窓は来ている途中か、もうある)
+    JustNow,
+    /// 渡せなかった(xdg-open が無い等)
+    Failed,
+}
+
+/// 同じ相手への連打を1回にまとめる判定(純粋な部分 — 試験はここを見る)。
+/// 直近に同じ target を開けていたら false
+fn open_gate(
+    last: &mut Option<(String, std::time::Instant)>,
+    target: &str,
+    now: std::time::Instant,
+    within: std::time::Duration,
+) -> bool {
+    if let Some((t, at)) = last.as_ref() {
+        if t == target && now.duration_since(*at) < within {
+            return false;
+        }
+    }
+    *last = Some((target.to_string(), now));
+    true
+}
+
+/// フォルダや URL を外のソフトで開く(xdg-open)。**calc と writer が共に使う。**
+///
+/// 素の `Command::spawn` を4箇所に散らしていたら、実機でファイルマネージャの
+/// 窓が8枚積もった(2026-08-12)。機構: GNOME Files は呼ばれるたびに
+/// **新しい窓**を開く+開くまで一拍ある+押した手応えが無い → 連打。
+/// 窓を数える手は無いので、**同じ相手は5秒に1回**だけ渡す。
+/// 子は看取る(spawn しっ放しだと zombie が積もる)
+pub fn open_outside(target: &str) -> Opened {
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+    static LAST: Mutex<Option<(String, Instant)>> = Mutex::new(None);
+    {
+        let mut last = LAST.lock().unwrap();
+        if !open_gate(&mut last, target, Instant::now(), Duration::from_secs(5)) {
+            return Opened::JustNow;
+        }
+    }
+    match std::process::Command::new("xdg-open").arg(target).spawn() {
+        Ok(mut child) => {
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+            Opened::Yes
+        }
+        Err(_) => Opened::Failed,
+    }
+}
+
 /// いまの日時「YYYY-MM-DD HH:MM」(地方時)。**外部の date を呼ばない** —
 /// 呼ぶと Windows で動かないし、スレッドを塞ぐ(引き継ぎの残件でもある)。
 /// **calc と writer が共に使う** — 暦の算法を2箇所に持たない。
@@ -498,6 +554,22 @@ mod tests {
 
     fn app(s: &str) -> App {
         App { ed: Editor::new(s), edits: 0 }
+    }
+
+    #[test]
+    fn 同じ相手への連打は1回にまとまる() {
+        use std::time::{Duration, Instant};
+        let within = Duration::from_secs(5);
+        let t0 = Instant::now();
+        let mut last = None;
+        // 1回目は通り、直後の連打(同じ相手)は止まる
+        assert!(open_gate(&mut last, "/tmp/a", t0, within));
+        assert!(!open_gate(&mut last, "/tmp/a", t0 + Duration::from_millis(300), within));
+        assert!(!open_gate(&mut last, "/tmp/a", t0 + Duration::from_secs(4), within));
+        // 別の相手はすぐ通る(URL とフォルダを続けて開くのは正当)
+        assert!(open_gate(&mut last, "https://example.com", t0 + Duration::from_secs(1), within));
+        // 時間が経てば同じ相手ももう一度通る(窓を閉じてしまった後の開き直し)
+        assert!(open_gate(&mut last, "https://example.com", t0 + Duration::from_secs(7), within));
     }
 
     #[test]

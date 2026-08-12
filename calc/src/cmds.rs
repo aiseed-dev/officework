@@ -899,13 +899,18 @@ impl Calc {
             "py-folder" => {
                 let dir = plugins_dir();
                 let _ = std::fs::create_dir_all(&dir);
-                let d = dir.clone();
-                cx.background_executor()
-                    .spawn(async move {
-                        let _ = std::process::Command::new("xdg-open").arg(&d).spawn();
-                    })
-                    .detach();
-                self.status = ui::tf!("置き場: {}", dir.display().to_string()).into();
+                self.status = match ui::open_outside(&dir.display().to_string()) {
+                    ui::Opened::Yes => {
+                        ui::tf!("開きます: {}", dir.display().to_string()).into()
+                    }
+                    ui::Opened::JustNow => {
+                        ui::t!("さっき開きました(窓が出るまで少し待ってください)").into()
+                    }
+                    ui::Opened::Failed => {
+                        ui::tf!("開けません(xdg-open がありません): {}",
+                            dir.display().to_string()).into()
+                    }
+                };
             }
             "plug-macros" => {
                 self.commit();

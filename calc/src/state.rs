@@ -832,8 +832,15 @@ impl Calc {
                     }
                     return;
                 }
-                let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
-                self.status = ui::tf!("開きます: {}", url).into();
+                self.status = match ui::open_outside(&url) {
+                    ui::Opened::Yes => ui::tf!("開きます: {}", url).into(),
+                    ui::Opened::JustNow => {
+                        ui::t!("さっき開きました(窓が出るまで少し待ってください)").into()
+                    }
+                    ui::Opened::Failed => {
+                        ui::tf!("開けません(xdg-open がありません): {}", url).into()
+                    }
+                };
                 return;
             }
         }

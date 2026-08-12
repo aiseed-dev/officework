@@ -3514,9 +3514,15 @@ impl Render for Calc {
                     |this, _, _, cx| {
                         match this.path.as_ref().and_then(|p| p.parent()) {
                             Some(dir) => {
-                                let _ = std::process::Command::new("xdg-open")
-                                    .arg(dir)
-                                    .spawn();
+                                this.status = match ui::open_outside(&dir.display().to_string()) {
+                                    ui::Opened::Yes => ui::tf!("開きます: {}",
+                                        dir.display().to_string()).into(),
+                                    ui::Opened::JustNow => ui::t!(
+                                        "さっき開きました(窓が出るまで少し待ってください)").into(),
+                                    ui::Opened::Failed => ui::tf!(
+                                        "開けません(xdg-open がありません): {}",
+                                        dir.display().to_string()).into(),
+                                };
                             }
                             None => {
                                 this.status = ui::t!("まだファイルになっていません").into();
