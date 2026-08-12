@@ -154,10 +154,10 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ fullname / name / save | ある | |
 | ✔ sheets | ある | _Sheets([] / active / iter / len) |
 | ✔ app / sheet_names | 互換層 | sheets から。app は小さな取っ手(books だけ持つ — App クラスは作らない、の帰結のまま) |
-| close | 足す | 橋に「閉じる」コマンド |
+| ✔ close | 足す | 橋に「閉じる」コマンド(済 2026-08-13: rpc close。**未保存があれば断る**(new / open と同じ作法)。アプリは常にブックを1つ持つ造りなので、閉じると新しい空のブックに戻る — 窓は閉じない(起動も終了も人の物)) |
 | ✔ selection / get_selection | 足す | App の項と同じ(済 2026-08-12) |
 | ✔ load | 足す | 範囲 → DataFrame の直行便。**polars を第一に**(pandas は options で従来どおり)(済 2026-08-12: 選択を読み、1マスなら表に広げる — xw.load / Book.load / Sheet.load) |
-| to_pdf | 足す | アプリは PDF 書き出しを持っている(io.rs)— 橋から呼ぶだけ。**Sheet.to_pdf は済** — Book の分はアプリの PDF がシート単位なので、束ねる口が要る |
+| to_pdf | 足す | アプリは PDF 書き出しを持っている(io.rs)— 橋から呼ぶだけ。**Sheet.to_pdf は済**。**Book の分は「細目」ではない**(2026-08-13 検分): paper::grid::sheet_to_pdf は自分で PdfDocument を作り、**頁番号もシート単位**で振る造り。束ねるには paper 側に「1つの文書へ足していく」口と、頁番号をブック通しにするかの判断が要る — 正直に断っている(Sheet.to_pdf を使う) |
 | ✔ names | 足す | 名前付き範囲(openpyxl の create_named_range と同じ一件)(済 2026-08-12 夜: rpc names / define_name / delete_name(語彙25)。wb.names.add("単価", "=Sheet1!$A$1")・refers_to・delete — xlwings の形。実機で式の追随まで検査) |
 | activate | 要らない | ブックは同時に1つの造り — 前に出す対象が無い |
 | set_mock_caller | 要らない | Excel アドイン開発の道具。caller が attach と同じ物なのでモックが要らない |
@@ -180,7 +180,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ visible | 足す | 隠しシート(sheetState)の読み書き(済 2026-08-12: rpc sheet_visible。隠す作法は耳のメニューの「非表示」と同じ関数 — 最後の見えている1枚は断る・いまのシートを隠したら見える所へ移る) |
 | ✔ autofit | 足す | 列幅の自動調整 — 文字の測りはアプリが持っている。橋から呼ぶ(**済 2026-08-13**: リボンの「自動調整」の腕を `Calc::autofit_at(a, b, col)` に切り出して rpc と共有(耳のメニューと同じ作法)。rpc autofit(語彙33)、Range.autofit("columns"/"rows") と Sheet.autofit。**DataFrame を落とした後に読める幅にする**のがこれ。実機で確認 — 検分中に自分の検査の落とし穴も1つ潰した(実機は前回の幅を持ち越すので、先に狭めてから測る)) |
 | ✔ pictures | 足す | 画像の一覧と追加(sheet.add_image と対)(**済 2026-08-13**: rpc pictures / add_image(bytes は16進で運ぶ・片方だけの大きさは縦横比を保つ)。`sheet.pictures.add(図, anchor="F4")` — 図は 径路 / bytes / **matplotlib の figure**(xlwings と同じ)。「Python で描いて実機のシートに浮かべる」= SEKKEI「calc の分業」の筋が橋から一本通った。実機で目視まで済) |
-| tables / names / page_setup | 足す | openpyxl 側の同じ一件(テーブル・名前付き範囲・印刷設定) |
+| ✔ tables / names / page_setup | 足す | openpyxl 側の同じ一件(テーブル・名前付き範囲・印刷設定)(済 2026-08-13: rpc sheet_tables / page_setup と、names の絞り込み。page_setup は**読むだけ** — 紙と余白は見ながら決める物なのでアプリのレイアウトタブが正) |
 | ✔ clear_formats | 足す(書式) | 書式を消すのも書式の書き込み(済 2026-08-12 夜: rpc clear_formats — 値は残る) |
 | render_template | 作らない | PRO 機能 |
 | charts | 作らない | グラフは matplotlib 画像(pictures で入る) |
@@ -202,14 +202,14 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ merge / unmerge / merge_area | 足す | 結合の書きと読み(済 2026-08-12: rpc merge / unmerge / merge_area。作法はアプリと同じ sheet::model の merge。merge(across=True) は行ごと。unmerge は掛かる物を全部 — xlwings の定義どおり) |
 | ✔ end | 足す | Ctrl+矢印相当。橋に end のコマンド(済 2026-08-12。端は使っている範囲まで — 1048576 行目には飛ばない) |
 | ✔ select | 足す | Python から選択を動かして見せる(済 2026-08-12: rpc select。打ちかけは確定してから動く) |
-| add_hyperlink / hyperlink | 足す | リンクの読み書き(openpyxl Cell.hyperlink と同じ一件) |
-| note | 足す | セルのコメント(openpyxl comment と同じ一件) |
+| ✔ add_hyperlink / hyperlink | 足す | リンクの読み書き(openpyxl Cell.hyperlink と同じ一件)(済 2026-08-13: rpc hyperlink。text_to_display も効く。screen_tip(吹き出し)は模型に無いので断る) |
+| ✔ note | 足す | セルのコメント(openpyxl comment と同じ一件)(済 2026-08-13: rpc note。Note.text / .delete()) |
 | ✔ name | 足す | 名前付き範囲の一件(済 2026-08-12 夜: Range.name の読み(範囲をちょうど指す名前)と代入 — xlwings の定義どおり) |
-| table | 足す | テーブル(構造化参照)の一件 — エンジンの add_table / tables(xlsx)と一緒に |
-| autofit | 足す | Sheet.autofit と同じ |
-| group / ungroup | 足す | 行・列のグループ化(column_groups と同じ一件) |
-| has_array / formula_array | 足す | 配列式の一件(array_formulae と一緒) |
-| height / width / left / top | 足す | **レイアウトの座標(ポイント)** — 画面の状態ではなく、モデルの列幅・行高から計算で出せる。画像・図形の置き場所の計算に使う(当初「画面のピクセル」と読み違えて要らないに入れていた — 2026-08-12 発注者指摘で正した) |
+| ✔ table | 足す | テーブル(構造化参照)の一件(済 2026-08-13: この範囲を含む表を返す) |
+| ✔ autofit | 足す | Sheet.autofit と同じ(済 2026-08-13) |
+| ✔ group / ungroup | 足す | 行・列のグループ化(column_groups と同じ一件)(済 2026-08-13: rpc group。level=0 で外す・hidden で畳む(保存に残る)) |
+| ✔ has_array / formula_array | 足す | 配列式の一件(array_formulae と一緒)(済 2026-08-13: rpc array_info) |
+| ✔ height / width / left / top | 足す | **レイアウトの座標(ポイント)** — 画面の状態ではなく、モデルの列幅・行高から計算で出せる。画像・図形の置き場所の計算に使う(当初「画面のピクセル」と読み違えて要らないに入れていた — 2026-08-12 発注者指摘で正した)(済 2026-08-13: rpc layout。列幅(字数→px→pt)と行高から測る) |
 | ✔ color / font / number_format / column_width / row_height / wrap_text / clear_formats | 足す(書式) | 書式の読み書き(openpyxl Cell と同じ一件)。合否は xlwings の定義どおり — color は**塗り**のタプル(RGB)、font は**性質ごと**の読み書き(font.bold = True は太字だけ変える — openpyxl の一式置き換えと逆の作法)、column_width は字数・row_height はポイント、範囲でまちまちなら None(**済 2026-08-12 夜**: rpc get_fmt / set_fmt / col_width / row_height / clear_formats。実機で検査) |
 | ✔ adjust_indent | 足す(書式) | 字下げ(indent)はエンジンの CellFormat にまだ無い — openpyxl の Alignment.indent と同じ一件。模型に足してから(**済 2026-08-13**: CellFormat に indent を足し、styles.xml の読み書き・**画面と PDF の描き**・Python の口(openpyxl の Alignment(indent=))まで通した。**踏んだ穴**: 字下げのあるセルの書式を1つ触ると 2→0 に消えていた(値の書き替えは据え置きが効くので残る)— 「書式は据え置き」の破れを塞いだ。実機で階層が段に見えるのを目視。適合は両方向+「触っても消えない」) |
 | autofill | 作らない | 連番・式の引き伸ばしの推測は画面の機能。Python 側では作って代入する方が明示的 |

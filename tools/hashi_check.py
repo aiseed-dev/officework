@@ -166,6 +166,30 @@ try:
 except xw.OfficeworkError:
     pass
 
+# 細目: note / hyperlink / group / 配列式 / 紙の上の寸法 / 表 / 印刷の設定
+sh["P1"].value = "確認"
+sh["P1"].note = "ここを見る"
+check(sh["P1"].note.text == "ここを見る", f"note: {sh['P1'].note}")
+sh["P1"].note = None
+check(sh["P1"].note is None, "note が消えない")
+sh["P1"].add_hyperlink("https://example.jp/", text_to_display="例")
+check(sh["P1"].hyperlink == "https://example.jp/", f"link: {sh['P1'].hyperlink}")
+check(sh["P1"].value == "例", "リンクの字が入っていない")
+sh["P2:P4"].group(level=1)
+check(sh["P2"].has_array is False, "配列式でないのに has_array")
+sh["P6"].value = "=SUM(A1:A2*2)"
+check(sh["P6"].has_array or sh["P6"].formula_array is None, "配列式の読みが立たない")
+sh["P2:P4"].ungroup()
+lay = sh["A1:B2"]
+check(lay.width > 0 and lay.height > 0 and lay.left == 0 and lay.top == 0,
+      f"紙の上の寸法: left={lay.left} top={lay.top} w={lay.width} h={lay.height}")
+check(sh["B1"].left > 0, "2列目の左端が 0 のまま")
+ps = sh.page_setup
+check(ps.orientation in ("portrait", "landscape"), f"印刷の設定: {ps}")
+check(isinstance(sh.tables, dict) and isinstance(sh.names, list),
+      "シートの表・名前の一覧が引けない")
+sh["P1:P6"].clear()
+
 # move: 範囲を動かすと、外から指す式が付いて動く(Excel の切り貼りの作法)
 sh["L1"].value = 10
 sh["M1"].value = "=L1*2"

@@ -342,6 +342,88 @@ class Range:
         else:
             raise OfficeworkError('shift は "up" か "left"')
 
+    @property
+    def note(self):
+        """セルのコメント(xlwings の note)。無ければ None。"""
+        t = _call("note", **self._kw())["text"]
+        return None if t is None else Note(self, t)
+
+    @note.setter
+    def note(self, value):
+        _call("note", text=None if value is None else str(
+            getattr(value, "text", value)), **self._kw())
+
+    @property
+    def hyperlink(self):
+        """セルのリンク(無ければ None)。"""
+        return _call("hyperlink", **self._kw())["url"]
+
+    def add_hyperlink(self, address, text_to_display=None, screen_tip=None):
+        """リンクを張る(xlwings と同じ口)。text_to_display を渡すと
+        セルの字もそれにする。screen_tip(吹き出し)は模型に無いので断る。"""
+        if screen_tip is not None:
+            raise NotImplementedError("吹き出し(screen_tip)は模型に無い(台帳)")
+        _call("hyperlink", url=str(address), **self._kw())
+        if text_to_display is not None:
+            self.value = text_to_display
+
+    @property
+    def table(self):
+        """この範囲を含む表(テーブル)。無ければ None。"""
+        kw = {}
+        if self._sheet is not None:
+            kw["sheet"] = self._sheet
+        for name, ref in _call("sheet_tables", **kw)["tables"]:
+            a, b = ref.split(":")
+            r0, c0 = _parse_a1(a)
+            r1, c1 = _parse_a1(b)
+            if (r0 <= self._r0 and self._r1 <= r1
+                    and c0 <= self._c0 and self._c1 <= c1):
+                return TableRef(name, ref)
+        return None
+
+    def group(self, level=1, hidden=False, axis="rows"):
+        """行(既定)か列をグループにする。level=0 で外す。
+        **畳んだ状態(hidden)は保存に残る** — 畳んだ台帳は畳んだまま渡る。"""
+        a = "columns" if str(axis).lower().startswith("c") else "rows"
+        _call("group", axis=a, level=int(level), hidden=bool(hidden), **self._kw())
+
+    def ungroup(self, axis="rows"):
+        """グループを外す。"""
+        self.group(level=0, axis=axis)
+
+    @property
+    def has_array(self):
+        """配列式(スピル)の左上か。"""
+        return _call("array_info", **self._kw())["has_array"]
+
+    @property
+    def formula_array(self):
+        """配列式の式(そうでなければ None)。"""
+        r = _call("array_info", **self._kw())
+        return r.get("formula") if r["has_array"] else None
+
+    def _layout(self):
+        return _call("layout", **self._kw())
+
+    @property
+    def left(self):
+        """紙の上の左端(ポイント)。列幅から測る — 画面の画素ではない。"""
+        return self._layout()["left"]
+
+    @property
+    def top(self):
+        return self._layout()["top"]
+
+    @property
+    def width(self):
+        """範囲の幅(ポイント)。画像・図形の置き場所の計算に使う。"""
+        return self._layout()["width"]
+
+    @property
+    def height(self):
+        return self._layout()["height"]
+
     def move(self, rows=0, cols=0, translate=False):
         """この範囲を動かす(切り取って貼るのと同じ)。移った先は上書き。
         **外から動かした範囲を指していた式は付いて動く**(Excel の切り貼りと
@@ -614,6 +696,56 @@ def _scalar(x):
     return str(x)
 
 
+class PageSetup:
+    """印刷の設定(読むだけ)。paper は xlsx の用紙コード(9=A4)。"""
+
+    __slots__ = ("paper", "landscape", "margins_mm", "print_area", "title_rows")
+
+    def __init__(self, r):
+        self.paper = r.get("paper")
+        self.landscape = r.get("landscape", False)
+        self.margins_mm = r.get("margins_mm")
+        self.print_area = r.get("print_area") or []
+        self.title_rows = r.get("title_rows")
+
+    @property
+    def orientation(self):
+        return "landscape" if self.landscape else "portrait"
+
+    def __repr__(self):
+        return "<officework.calc PageSetup 紙{} {}>".format(
+            self.paper, self.orientation)
+
+
+class Note:
+    """セルのコメント(xlwings の Note の役)。text の読み書き。"""
+
+    __slots__ = ("_rng", "text")
+
+    def __init__(self, rng, text):
+        self._rng = rng
+        self.text = text
+
+    def delete(self):
+        self._rng.note = None
+
+    def __repr__(self):
+        return "<officework.calc Note {!r}>".format(self.text)
+
+
+class TableRef:
+    """範囲を含む表(xlwings の Range.table の返り)。名前と範囲だけ持つ。"""
+
+    __slots__ = ("name", "ref")
+
+    def __init__(self, name, ref):
+        self.name = name
+        self.ref = ref
+
+    def __repr__(self):
+        return "<officework.calc Table {} {}>".format(self.name, self.ref)
+
+
 class Picture:
     """シートに浮かぶ画像(読みの札)。anchor は留めたセル、大きさは px。"""
 
@@ -764,6 +896,23 @@ class Sheet:
     def autofit(self, axis="columns"):
         """シート全体を中身に合わせる(xlwings と同じ口)。"""
         self.used_range.autofit(axis)
+
+    @property
+    def tables(self):
+        """このシートの表(テーブル)。名前で引ける。"""
+        return {n: TableRef(n, r)
+                for n, r in _call("sheet_tables", sheet=self.name)["tables"]}
+
+    @property
+    def names(self):
+        """このシートに属する名前付き範囲。"""
+        return [Name(n) for s, n, _ in _call("names")["names"] if s == self.name]
+
+    @property
+    def page_setup(self):
+        """印刷の設定(紙のコード・向き・余白 mm・印刷範囲・タイトル行)。
+        読むだけ — 変えるのはアプリのレイアウトタブ(見ながら決める物)。"""
+        return PageSetup(_call("page_setup", sheet=self.name))
 
     def insert_rows(self, at, count=1):
         """行を挿す(at は1起点の行番号)。**残った式の参照が付いて動く**。"""
@@ -940,6 +1089,19 @@ class Book:
             _call("save", path=os.path.abspath(path))
         else:
             _call("save")
+
+    def close(self):
+        """ブックを閉じる(未保存の変更があれば断る)。
+        アプリは常にブックを1つ持つ造りなので、閉じると**新しい空のブック**に
+        戻る — 窓は閉じない(起動も終了も人の物)。"""
+        _call("close")
+
+    def to_pdf(self, path=None, include=None, exclude=None):
+        raise NotImplementedError(
+            "ブック全体の PDF はまだ — アプリの PDF は**シート単位**で、"
+            "頁番号もシートごとに振る造り(paper 側で束ねる口が要る。台帳)。"
+            "いまは Sheet.to_pdf を使ってください"
+        )
 
     def __repr__(self):
         return "<officework.calc Book {}>".format(self.name)

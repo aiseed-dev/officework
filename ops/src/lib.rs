@@ -318,6 +318,10 @@ pub trait Host {
     fn save(&mut self, _p: PathBuf) -> Result<(), String> {
         Err("この口では save はできません".into())
     }
+    /// ブックを閉じる(新しい空のブックに戻る)。未保存の確認は口の側で済み
+    fn close_book(&mut self) -> Result<(), String> {
+        Err("この口では close はできません".into())
+    }
 
     /// アプリの版(ping の返事に載せる)。ファイルの口は名乗らなくてよい
     fn version(&self) -> &'static str {
@@ -676,6 +680,218 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                     Err(e) => err(&e),
                 },
             }
+        }
+        // ブックを閉じる(未保存があれば断る — new / open と同じ作法)
+        "close" => {
+            h.settle();
+            if h.dirty() {
+                return err("未保存の変更があります(保存するか、捨ててから)");
+            }
+            match h.close_book() {
+                Ok(()) => "{\"ok\":true}".into(),
+                Err(e) => err(&e),
+            }
+        }
+        // シートの表(テーブル)[[名前, 範囲], …]
+        "sheet_tables" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            let items: Vec<J> = h.book().sheets[si]
+                .tables
+                .iter()
+                .map(|t| {
+                    J::A(vec![
+                        J::S(t.name.clone()),
+                        J::S(format!("{}:{}", t.a.a1(), t.b.a1())),
+                    ])
+                })
+                .collect();
+            format!("{{\"ok\":true,\"tables\":{}}}", J::A(items).to_json())
+        }
+        // 印刷の設定(紙・向き・余白 mm・印刷範囲)
+        "page_setup" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            let sh = &h.book().sheets[si];
+            let margins = match sh.margins_mm {
+                Some((l, r, t, b)) => {
+                    format!("[{l},{r},{t},{b}]")
+                }
+                None => "null".into(),
+            };
+            let areas = J::A(
+                sh.print_areas
+                    .iter()
+                    .map(|(a, b)| J::S(format!("{}:{}", a.a1(), b.a1())))
+                    .collect(),
+            );
+            format!(
+                "{{\"ok\":true,\"paper\":{},\"landscape\":{},\"margins_mm\":{},\"print_area\":{},\"title_rows\":{}}}",
+                match sh.paper_size {
+                    Some(c) => J::N(f64::from(c)).to_json(),
+                    None => "null".into(),
+                },
+                sh.landscape,
+                margins,
+                areas.to_json(),
+                match sh.print_title_rows {
+                    Some((a, b)) => J::S(format!("{}:{}", a + 1, b + 1)).to_json(),
+                    None => "null".into(),
+                }
+            )
+        }
+        // セルのコメント(xlwings の note)。text を渡せば置く、null で消す
+        "note" => {
+            let (si, a, _) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            if !o.has("text") {
+                let t = h.book().sheets[si].comments.get(&a).cloned();
+                return format!(
+                    "{{\"ok\":true,\"text\":{}}}",
+                    match t {
+                        Some(v) => J::S(v).to_json(),
+                        None => "null".into(),
+                    }
+                );
+            }
+            h.settle();
+            h.mark_once();
+            let sh = &mut h.book_mut().sheets[si];
+            match o.str("text").filter(|v| !v.is_empty()) {
+                Some(v) => {
+                    sh.comments.insert(a, v);
+                }
+                None => {
+                    sh.comments.remove(&a);
+                }
+            }
+            h.mark_dirty();
+            "{\"ok\":true}".into()
+        }
+        // セルのリンク。url を渡せば置く、null で消す
+        "hyperlink" => {
+            let (si, a, _) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            if !o.has("url") {
+                let t = h.book().sheets[si].links.get(&a).cloned();
+                return format!(
+                    "{{\"ok\":true,\"url\":{}}}",
+                    match t {
+                        Some(v) => J::S(v).to_json(),
+                        None => "null".into(),
+                    }
+                );
+            }
+            h.settle();
+            h.mark_once();
+            let sh = &mut h.book_mut().sheets[si];
+            match o.str("url").filter(|v| !v.is_empty()) {
+                Some(v) => {
+                    sh.links.insert(a, v);
+                }
+                None => {
+                    sh.links.remove(&a);
+                }
+            }
+            h.mark_dirty();
+            "{\"ok\":true}".into()
+        }
+        // 行・列のグループ化。level を渡せば掛ける(0 で外す)、hidden で畳む
+        "group" => {
+            let (si, a, b) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            let rows = o.str("axis").as_deref() != Some("columns");
+            let level = o.num("level").unwrap_or(1.0).clamp(0.0, 7.0) as u8;
+            let hidden = o.bool("hidden").unwrap_or(false);
+            h.settle();
+            h.mark_once();
+            let sh = &mut h.book_mut().sheets[si];
+            let range: Vec<u32> = if rows {
+                (a.row..=b.row).collect()
+            } else {
+                (a.col..=b.col).collect()
+            };
+            for k in range {
+                let (outline, hid) = if rows {
+                    (&mut sh.row_outline, &mut sh.row_hidden)
+                } else {
+                    (&mut sh.col_outline, &mut sh.col_hidden)
+                };
+                if level == 0 {
+                    outline.remove(&k);
+                    hid.remove(&k);
+                } else {
+                    outline.insert(k, level);
+                    if hidden {
+                        hid.insert(k);
+                    } else {
+                        hid.remove(&k);
+                    }
+                }
+            }
+            h.mark_dirty();
+            "{\"ok\":true}".into()
+        }
+        // 配列式(スピル)か。左上のセルで見る
+        "array_info" => {
+            let (si, a, _) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            let sh = &h.book().sheets[si];
+            match sh.cse.get(&a) {
+                Some((rows, cols)) => {
+                    let f = sh
+                        .get(a)
+                        .and_then(|c| c.formula.clone())
+                        .map(|f| format!("={f}"))
+                        .unwrap_or_default();
+                    format!(
+                        "{{\"ok\":true,\"has_array\":true,\"formula\":{},\"rows\":{rows},\"cols\":{cols}}}",
+                        J::S(f).to_json()
+                    )
+                }
+                None => "{\"ok\":true,\"has_array\":false}".into(),
+            }
+        }
+        // 範囲の紙の上の場所と大きさ(ポイント)。列幅・行高から測る —
+        // 画面の画素ではなくモデルの寸法(画像・図形の置き場所の計算に使う)
+        "layout" => {
+            let (si, a, b) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            let sh = &h.book().sheets[si];
+            // xlsx の列幅は字数。字数 → px は 7倍+5(Excel の換算)、px → pt は 72/96
+            let col_pt = |c: u32| -> f64 {
+                let chars = sh
+                    .col_width
+                    .get(&c)
+                    .copied()
+                    .or(sh.default_col_width)
+                    .unwrap_or(8.43);
+                (f64::from(chars) * 7.0 + 5.0) * 72.0 / 96.0
+            };
+            let row_pt = |r: u32| -> f64 {
+                f64::from(sh.row_height.get(&r).copied().or(sh.default_row_height).unwrap_or(15.0))
+            };
+            let left: f64 = (0..a.col).map(col_pt).sum();
+            let top: f64 = (0..a.row).map(row_pt).sum();
+            let width: f64 = (a.col..=b.col).map(col_pt).sum();
+            let height: f64 = (a.row..=b.row).map(row_pt).sum();
+            format!(
+                "{{\"ok\":true,\"left\":{left},\"top\":{top},\"width\":{width},\"height\":{height}}}"
+            )
         }
         // 範囲を動かす(切り取って貼る)。**外から指す式は付いて動く**
         "move_range" => {

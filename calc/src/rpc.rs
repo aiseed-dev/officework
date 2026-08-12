@@ -295,6 +295,17 @@ impl Host for Calc {
         Ok(())
     }
 
+    fn close_book(&mut self) -> Result<(), String> {
+        // アプリは常にブックを1つ持つ造りなので、「閉じる」は**新しい空の
+        // ブックに戻る**こと(窓は閉じない — 起動も終了も人の物)
+        if Calc::new_book(self) {
+            self.status = ui::t!("ブックを閉じました(新しいブックです)").into();
+            Ok(())
+        } else {
+            Err(format!("{}", self.status))
+        }
+    }
+
     fn extra(&mut self, cmd: &str, _o: &Jobj) -> Option<String> {
         match cmd {
             // --- 画面の点検用(tools/ribbon_sweep.py が使う)---
