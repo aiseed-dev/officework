@@ -210,6 +210,9 @@ impl Writer {
     /// **編集先が本文かセルかで掛け先が違う。** セル編集中に本文へ掛けると、
     /// set_body_text がセルの文章で本文を上書きしてしまう。
     pub(crate) fn toggle(&mut self, f: impl Fn(&mut kumihan::CharFormat)) {
+        // 書式は**文書を直に変える**ので、平文の取り消しでは戻らない。
+        // 変える前に控える(太字・斜体・下線・取り消し線・上下付きが同じ道)
+        self.checkpoint(false);
         match self.target {
             Target::Body => {
                 let sel = self.ed.selection();

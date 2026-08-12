@@ -536,398 +536,398 @@
  },
  {
   "i": 107,
+  "ja": "これ以上戻せません",
+  "en": "Nothing left to undo"
+ },
+ {
+  "i": 108,
   "ja": "脚注にする字を選んでから押してください",
   "en": "Select the text to turn into a footnote first"
  },
  {
-  "i": 108,
+  "i": 109,
   "ja": "選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)",
   "en": "Moved the selected text into a footnote (it appears at the foot of the page; this cannot be undone)"
  },
  {
-  "i": 109,
+  "i": 110,
   "ja": "脚注にできません(段落をまたぐ範囲は選べません)",
   "en": "Cannot make a footnote (the selection must stay within one paragraph)"
  },
  {
-  "i": 110,
+  "i": 111,
   "ja": "ルビ: 読みを打って Enter(空にして Enter で外す)",
   "en": "Ruby: type the reading and press Enter (empty removes it)"
  },
  {
-  "i": 111,
+  "i": 112,
   "ja": "レベル付きのリストです(Tab / Shift+Tab で深さ。印はレベルで変わる)",
   "en": "Leveled list (Tab / Shift+Tab changes depth; the marker follows the level)"
  },
  {
-  "i": 112,
+  "i": 113,
   "ja": "ドロップキャップを切り替えました(docx では Word の枠になります)",
   "en": "Drop cap toggled (becomes a Word frame in docx)"
  },
  {
-  "i": 113,
+  "i": 114,
   "ja": "図は Python(matplotlib 等)で描いて貼ります(SVG なら拡大しても粗くなりません)",
   "en": "Draw figures with Python (matplotlib etc.) and paste them (SVG stays sharp at any scale)"
  },
  {
-  "i": 114,
+  "i": 115,
   "ja": "1×1 の枠を末尾に入れました(クリックして中に書けます)",
   "en": "1×1 frame added at the end (click to write inside)"
  },
  {
-  "i": 115,
+  "i": 116,
   "ja": "変えたい文字を選んでください",
   "en": "Select the text to change"
  },
  {
-  "i": 116,
+  "i": 117,
   "ja": "ここから新しいページになります",
   "en": "A new page starts here"
  },
  {
-  "i": 117,
+  "i": 118,
   "ja": "3×3 の表を末尾に入れました(セルをクリックで編集)",
   "en": "3×3 table added at the end (click a cell to edit)"
  },
  {
-  "i": 118,
+  "i": 119,
   "ja": "検索語を打って Enter で次へ",
   "en": "Type a search term; Enter finds the next"
  },
  {
-  "i": 119,
+  "i": 120,
   "ja": "{}を入れました(docx ではフィールドになります)",
   "en": "{} inserted (becomes a field in docx)"
  },
  {
-  "i": 120,
+  "i": 121,
   "ja": "今日の日付を入れました({}。固定の文字です)",
   "en": "Today's date inserted ({}; fixed text)"
  },
  {
-  "i": 121,
+  "i": 122,
   "ja": "日付が取れません(date コマンド)",
   "en": "Can't get the date"
  },
  {
-  "i": 122,
+  "i": 123,
   "ja": "変更履歴を記録します(保存で Word の変更履歴になります)",
   "en": "Recording changes (they become Word tracked changes on save)"
  },
  {
-  "i": 123,
+  "i": 124,
   "ja": "変更履歴の記録をやめました(記録していた差分は捨てました)",
   "en": "Stopped recording changes (the recorded differences were discarded)"
  },
  {
-  "i": 124,
+  "i": 125,
   "ja": "ペン: 紙の上をドラッグで描く(もう一度押すか Esc で戻る)",
   "en": "Pen: drag on the page to draw (press again or Esc to put it away)"
  },
  {
-  "i": 125,
+  "i": 126,
   "ja": "蛍光ペン: ドラッグで引く(文字の下に薄く入る)",
   "en": "Highlighter: drag to mark (a light band under the text)"
  },
  {
-  "i": 126,
+  "i": 127,
   "ja": "消しゴム: 線をなぞると1筆ずつ消える",
   "en": "Eraser: trace a line to remove it stroke by stroke"
  },
  {
-  "i": 127,
+  "i": 128,
   "ja": "文字の編集に戻りました",
   "en": "Back to text editing"
  },
  {
-  "i": 128,
+  "i": 129,
   "ja": "図 {}",
   "en": "Figure {}"
  },
  {
-  "i": 129,
+  "i": 130,
   "ja": "{} を入れました(中央揃えの段落)",
   "en": "{} inserted (centred paragraph)"
  },
  {
-  "i": 130,
+  "i": 131,
   "ja": "相互参照: しおりを選んで「文字」か「ページ」を挿す",
   "en": "Cross-reference: pick a bookmark, then insert its text or page number"
  },
  {
-  "i": 131,
+  "i": 132,
   "ja": "しおり: 名前を打って「追加」。一覧を押すとそこへ移る",
   "en": "Bookmarks: type a name and Add; click an entry to jump there"
  },
  {
-  "i": 132,
+  "i": 133,
   "ja": "このヘッダーには表があり、透かしを差し込めません(この版の制限)",
   "en": "This header contains a table, so no watermark can be inserted (a limit of this version)"
  },
  {
-  "i": 133,
+  "i": 134,
   "ja": "透かしを編集中(空にして閉じると外れる。Esc で閉じる)",
   "en": "Editing watermark (close empty to remove; Esc closes)"
  },
  {
-  "i": 134,
+  "i": 135,
   "ja": "ページの色: #{}",
   "en": "Page colour: #{}"
  },
  {
-  "i": 135,
+  "i": 136,
   "ja": "ページの色: 無し",
   "en": "Page colour: none"
  },
  {
-  "i": 136,
+  "i": 137,
   "ja": "ハイフネーション: 入(英語の語を音節で折って - を付けます)",
   "en": "Hyphenation: on (English words break at syllables with a hyphen)"
  },
  {
-  "i": 137,
+  "i": 138,
   "ja": "ハイフネーション: 切",
   "en": "Hyphenation: off"
  },
  {
-  "i": 138,
+  "i": 139,
   "ja": "コメントを表示します",
   "en": "Comments shown"
  },
  {
-  "i": 139,
+  "i": 140,
   "ja": "コメントを隠しました(付いてはいます)",
   "en": "Comments hidden (they are still there)"
  },
  {
-  "i": 140,
+  "i": 141,
   "ja": "この段落のコメントを外しました({} 件)",
   "en": "Comments removed from this paragraph ({})"
  },
  {
-  "i": 141,
+  "i": 142,
   "ja": "この段落にコメントはありません",
   "en": "This paragraph has no comments"
  },
  {
-  "i": 142,
+  "i": 143,
   "ja": "コメントを編集中(段落に付きます。空にして閉じると外れる)",
   "en": "Editing a comment (attaches to the paragraph; close empty to remove)"
  },
  {
-  "i": 143,
+  "i": 144,
   "ja": "保護を外しました(編集できます。保存で docx にも残ります)",
   "en": "Protection removed (editing is allowed; also saved into the docx)"
  },
  {
-  "i": 144,
+  "i": 145,
   "ja": "読み取り専用で保護しました(同じボタンで解除。パスワードは掛けません — 掛けた振りもしません)",
   "en": "Protected read-only (same button releases; no password, and no pretend-password)"
  },
  {
-  "i": 145,
+  "i": 146,
   "ja": "まだファイルになっていません(保存すると編集権=錠を取ります)",
   "en": "Not a file yet (saving takes the editing lock)"
  },
  {
-  "i": 146,
+  "i": 147,
   "ja": "編集権はこちら({})にあります。同じ文書は先に開いた人が書け、後の人は読むだけになります(錠は .~lock ファイル)",
   "en": "You ({}) hold the editing rights. Whoever opens a document first can write; later arrivals read only (the lock is a .~lock file)"
  },
  {
-  "i": 147,
+  "i": 148,
   "ja": "{} が編集中です(読めますが上書き保存はできません。相手が閉じたら、またこのボタンで確かめてください)",
   "en": "{} is editing (you can read, but overwrite-save is blocked; when they close it, press this button again)"
  },
  {
-  "i": 148,
+  "i": 149,
   "ja": "先客が居なくなっていたので、編集権を取り直しました",
   "en": "The previous editor left, so the editing rights were taken over"
  },
  {
-  "i": 149,
+  "i": 150,
   "ja": "バージョン履歴: 押すと控えを名無しの複製で開きます",
   "en": "Version history: click to open a copy as an untitled document"
  },
  {
-  "i": 150,
+  "i": 151,
   "ja": "チャット: 打って Enter で書き残す(文書の隣の .chat.txt)",
   "en": "Chat: type and press Enter to leave a message (.chat.txt next to the document)"
  },
  {
-  "i": 151,
+  "i": 152,
   "ja": "マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を直します(台本の d が python-docx の文書。fill(名前, 値)=記入・extract(名前)=読む・fields()=一覧・render(辞書)=雛形差し込み)",
   "en": "Macros: pick a .py and sandboxed Python edits a copy of the document (d is the python-docx Document; fill(name, value) fills, extract(name) reads, fields() lists, render(dict) fills a template)"
  },
  {
-  "i": 152,
+  "i": 153,
   "ja": "プラグイン: {} に .py を置くと、ここに並びます",
   "en": "Plugins: put .py files in {} and they appear here"
  },
  {
-  "i": 153,
+  "i": 154,
   "ja": "暗号化: パスワードを打って Enter(AES-256。次の保存から)",
   "en": "Encrypt: type a password and press Enter (AES-256, from the next save)"
  },
  {
-  "i": 154,
+  "i": 155,
   "ja": "まだファイルになっていません(先に保存してください)",
   "en": "Not a file yet (save first)"
  },
  {
-  "i": 155,
+  "i": 156,
   "ja": "未保存の変更があります。保存してから署名してください",
   "en": "There are unsaved changes; save before signing"
  },
  {
-  "i": 156,
+  "i": 157,
   "ja": "署名は有効です — {} が署名した時のままの中身です",
   "en": "The signature is valid — the content is unchanged since {} signed it"
  },
  {
-  "i": 157,
+  "i": 158,
   "ja": "署名しました — 隣の {} に添え書き(独自方式。Word の署名欄には出ません。もう一度押すと検めます)",
   "en": "Signed — written to {} next to the file (our own scheme; it does not appear in Word's signature line. Press again to verify)"
  },
  {
-  "i": 158,
+  "i": 159,
   "ja": "署名が置けません: {}",
   "en": "Can't write the signature: {}"
  },
  {
-  "i": 159,
+  "i": 160,
   "ja": "署名できません: {}",
   "en": "Can't sign: {}"
  },
  {
-  "i": 160,
+  "i": 161,
   "ja": "選択がありません",
   "en": "Nothing is selected"
  },
  {
-  "i": 161,
+  "i": 162,
   "ja": "切り取りました",
   "en": "Cut"
  },
  {
-  "i": 162,
+  "i": 163,
   "ja": "コピーしました",
   "en": "Copied"
  },
  {
-  "i": 163,
+  "i": 164,
   "ja": "貼り付けるものがありません",
   "en": "Nothing to paste"
  },
  {
-  "i": 164,
+  "i": 165,
   "ja": "「{}」を選びました",
   "en": "\"{}\" selected"
  },
  {
-  "i": 165,
+  "i": 166,
   "ja": "選択肢をカンマ区切りで打って Enter(例: 赤,青,黄)",
   "en": "Type choices comma-separated and press Enter (e.g. red,blue,yellow)"
  },
  {
-  "i": 166,
+  "i": 167,
   "ja": "名前を付ける記入欄の中にカーソルを置いてください",
   "en": "Put the cursor inside the field to name"
  },
  {
-  "i": 167,
+  "i": 168,
   "ja": "記入欄の名前を打って Enter(例: 氏名。Esc で取りやめ)",
   "en": "Type the field name and press Enter (e.g. name; Esc cancels)"
  },
  {
-  "i": 168,
+  "i": 169,
   "ja": "配色「{}」にしました(見出し {} 箇所と紙の色。Ctrl+Z で1手で戻せます)",
   "en": "Colour scheme \"{}\" applied ({} headings plus the page colour; one Ctrl+Z undoes)"
  },
  {
-  "i": 169,
+  "i": 170,
   "ja": "AI の宛先: {}(覚えました)",
   "en": "AI destination: {} (remembered)"
  },
  {
-  "i": 170,
+  "i": 171,
   "ja": "AI の宛先: {} — ただし今は使えません: {}",
   "en": "AI destination: {} — but it is unavailable right now: {}"
  },
  {
-  "i": 171,
+  "i": 172,
   "ja": "AI({})に頼む: 用件を打って Enter(選んだ字があれば一緒に渡します)",
   "en": "Ask AI ({}): type your request and press Enter (selected text is sent along)"
  },
  {
-  "i": 172,
+  "i": 173,
   "ja": "AI({})にマクロ台本を頼む: 用件を打って Enter(台本はプラグイン置き場に置くだけで、自動では走らせません)",
   "en": "Ask AI ({}) for a macro script: type your request and press Enter (the script is only placed with the plugins; it never runs automatically)"
  },
  {
-  "i": 173,
+  "i": 174,
   "ja": "ナビゲーション: 見出しを押すとそこへ飛びます",
   "en": "Navigation: click a heading to jump there"
  },
  {
-  "i": 174,
+  "i": 175,
   "ja": "縦書きでは見開きにしません(初版の約束)",
   "en": "No spread view in vertical writing (a first-version limit)"
  },
  {
-  "i": 175,
+  "i": 176,
   "ja": "見開き(2ページ並べ)にしました。印刷は1ページずつです",
   "en": "Spread view (two pages side by side); printing stays one page per sheet"
  },
  {
-  "i": 176,
+  "i": 177,
   "ja": "1ページずつの表示に戻しました",
   "en": "Back to single-page view"
  },
  {
-  "i": 177,
+  "i": 178,
   "ja": "100% に戻しました",
   "en": "Back to 100%"
  },
  {
-  "i": 178,
+  "i": 179,
   "ja": "ツールバーを常に表示します",
   "en": "Toolbar always shown"
  },
  {
-  "i": 179,
+  "i": 180,
   "ja": "ツールバーを畳みました(タブを押すと出ます)",
   "en": "Toolbar collapsed (click a tab to show it)"
  },
  {
-  "i": 180,
+  "i": 181,
   "ja": "右パネル: いる場所の設定を直せます",
   "en": "Right panel: adjust the settings where the cursor is"
  },
  {
-  "i": 181,
+  "i": 182,
   "ja": "文字数 {}(空白込み {})/ 段落 {}",
   "en": "{} characters ({} with spaces) / {} paragraphs"
  },
  {
-  "i": 182,
+  "i": 183,
   "ja": "未配線のコマンド: {}(不具合です)",
   "en": "Unwired command: {} (this is a bug)"
  },
  {
-  "i": 183,
+  "i": 184,
   "ja": "コピーする選択がありません",
   "en": "Nothing selected to copy"
  },
  {
-  "i": 184,
+  "i": 185,
   "ja": "切り取る選択がありません",
   "en": "Nothing selected to cut"
- },
- {
-  "i": 185,
-  "ja": "マクロの前に戻しました",
-  "en": "Restored to before the macro"
  },
  {
   "i": 186,

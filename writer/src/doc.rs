@@ -86,7 +86,9 @@ impl Writer {
             pw_open: false,
             pw_ed: Editor::new(""),
             pw_pending: None,
-            doc_undo: None,
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+            typing_run: false,
             chat_open: false,
             chat_ed: Editor::new(""),
             xr_open: false,
@@ -598,7 +600,7 @@ impl Writer {
                     Ok((bytes, out)) => {
                         match ooxml::read(std::io::Cursor::new(bytes)) {
                             Ok((doc, rep)) => {
-                                this.doc_undo = Some(this.doc.clone());
+                                this.checkpoint(false);
                                 this.target = Target::Body;
                                 this.notes = rep
                                     .unsupported
@@ -1179,7 +1181,7 @@ impl Writer {
             }
             return;
         }
-        self.doc_undo = Some(self.doc.clone());
+        self.checkpoint(false);
         let label = job.label();
         match job {
             // 要約は文書の頭に、印つきの段落として置く

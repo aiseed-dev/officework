@@ -372,11 +372,13 @@ impl Writer {
     }
 
     pub(crate) fn backspace(&mut self, _: &ui::Backspace, _: &mut Window, cx: &mut Context<Self>) {
+        self.checkpoint(true);
         self.editor().backspace();
         self.on_edited();
         cx.notify();
     }
     pub(crate) fn delete(&mut self, _: &ui::Delete, _: &mut Window, cx: &mut Context<Self>) {
+        self.checkpoint(true);
         self.editor().delete();
         self.on_edited();
         cx.notify();
@@ -711,6 +713,7 @@ impl Writer {
                 self.ai_go(job, cx);
             }
         } else {
+            self.checkpoint(true);
             self.editor().insert("\n");
             self.on_edited();
         }
@@ -752,34 +755,56 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn undo(&mut self, _: &ui::Undo, _: &mut Window, cx: &mut Context<Self>) {
+        self.undo_step();
+        cx.notify();
+    }
+    pub(crate) fn redo(&mut self, _: &ui::Redo, _: &mut Window, cx: &mut Context<Self>) {
+        self.redo_step();
+        cx.notify();
+    }
+    /// 一手戻す(窓に依らない中身。試験からも呼べる)
+    pub(crate) fn undo_step(&mut self) {
         // 道具(ペン)の間は筆の一手を戻す
         if self.tool.is_some() {
             if let Some(prev) = self.ink_undo.pop() {
                 self.doc.ink = prev;
                 self.dirty = true;
             }
-            cx.notify();
             return;
         }
-        // パネル(ヘッダー等)を編集中なら、そのパネルの一手を戻す
-        if self.editor().undo() {
-            self.on_edited();
-        } else if let Some(prev) = self.doc_undo.take() {
-            // マクロで置き換えた文書を、1手で元へ戻す
-            self.target = Target::Body;
-            self.pg = prev.page.unwrap_or_default();
-            self.set_doc(prev);
-            self.relayout_keep();
-            self.dirty = true;
-            self.status = ui::t!("マクロの前に戻しました").into();
+        // パネル(ヘッダー等)を編集中なら、そのパネルの一手を戻す。
+        // **パネルの打鍵は文書を変えない**ので、そこは Editor 自身の取り消し
+        if self.in_panel() {
+            if self.editor().undo() {
+                self.on_edited();
+            }
+            return;
         }
-        cx.notify();
+        // 変換の途中なら、まず変換を捨てる(Editor と同じ作法)
+        if self.ed.marked_range().is_some() {
+            self.ed.clear_marked();
+            return;
+        }
+        match self.undo_stack.pop() {
+            Some(prev) => {
+                let now = self.restore(prev);
+                self.redo_stack.push(now);
+            }
+            None => self.status = ui::t!("これ以上戻せません").into(),
+        }
     }
-    pub(crate) fn redo(&mut self, _: &ui::Redo, _: &mut Window, cx: &mut Context<Self>) {
-        if self.editor().redo() {
-            self.on_edited();
+    /// 一手やり直す
+    pub(crate) fn redo_step(&mut self) {
+        if self.in_panel() {
+            if self.editor().redo() {
+                self.on_edited();
+            }
+            return;
         }
-        cx.notify();
+        if let Some(next) = self.redo_stack.pop() {
+            let now = self.restore(next);
+            self.undo_stack.push(now);
+        }
     }
     pub(crate) fn do_save(&mut self, _: &ui::Save, _: &mut Window, cx: &mut Context<Self>) {
         self.save(false, cx);

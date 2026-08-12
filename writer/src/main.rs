@@ -317,7 +317,17 @@ struct Writer {
     pw_ed: Editor,
     pw_pending: Option<PathBuf>,
     /// マクロで置き換える直前の文書(Ctrl+Z で1手で戻すため)
-    doc_undo: Option<Document>,
+    /// **取り消しの控え。** 文書ごと控える(平文だけでは書式が戻らない)。
+    ///
+    /// 前は「平文の取り消し(`Editor`)」と「マクロ用に文書を1枚だけ控える」の
+    /// 二本立てだった。**書式を変える操作はどちらにも乗っていなかった** —
+    /// 太字も揃えも Ctrl+Z で戻らなかった(2026-08-13 に測って分かった)。
+    /// 一本にまとめ、打鍵も書式もここへ積む
+    undo_stack: Vec<Snapshot>,
+    redo_stack: Vec<Snapshot>,
+    /// 直前の一手が打鍵だったか。**続けて打った分は1手にまとめる** —
+    /// 1文字ごとに文書を控えると重いし、戻し方も細かすぎて使いにくい
+    typing_run: bool,
     /// チャット(文書の隣の申し送り帳)のパネルと入力欄
     chat_open: bool,
     chat_ed: Editor,
@@ -385,6 +395,9 @@ impl HasEditor for Writer {
         } else {
             &mut self.ed
         }
+    }
+    fn before_edit(&mut self, typing: bool) {
+        self.checkpoint(typing);
     }
     fn editor_ref(&self) -> &Editor {
         if self.pw_open {
@@ -512,6 +525,83 @@ impl HasEditor for Writer {
     }
 }
 
+
+/// 取り消しの控え1枚。**文書と平文とカーソルを揃えて持つ** —
+/// 別々に戻すと、文書と画面の言うことが食い違う。
+#[derive(Clone)]
+pub(crate) struct Snapshot {
+    doc: Document,
+    text: String,
+    cursor: usize,
+    target: Target,
+}
+
+impl Writer {
+    /// パネル(ヘッダー・置換など)を編集中か。
+    /// **パネルの打鍵は文書を変えない**ので、そちらは今までどおり
+    /// `Editor` 自身の取り消しに任せる
+    pub(crate) fn in_panel(&self) -> bool {
+        self.pw_open
+            || self.file_field.is_some()
+            || self.find_open
+            || self.hf_edit.is_some()
+            || self.cmt_edit
+            || self.wm_edit
+            || self.bm_open
+            || self.url_open
+            || self.fm_field.is_some()
+            || self.rb_open
+            || self.sd_open
+            || self.ai_open
+            || self.chat_open
+    }
+
+    /// **文書を変える前に**、いまの姿を控える。
+    ///
+    /// `typing` が真なら打鍵の一手。直前も打鍵なら控えない(まとめる)。
+    /// 控えたら redo は捨てる — 枝分かれした先へは戻れない
+    pub(crate) fn checkpoint(&mut self, typing: bool) {
+        if self.in_panel() {
+            return;
+        }
+        if typing && self.typing_run {
+            return;
+        }
+        self.undo_stack.push(Snapshot {
+            doc: self.doc.clone(),
+            text: self.ed.text().to_string(),
+            cursor: self.ed.cursor(),
+            target: self.target,
+        });
+        // 深すぎる控えは持たない(文書を丸ごと持つので)
+        const KEEP: usize = 100;
+        if self.undo_stack.len() > KEEP {
+            self.undo_stack.remove(0);
+        }
+        self.redo_stack.clear();
+        self.typing_run = typing;
+    }
+
+    /// 控えを1枚戻す(または進める)
+    pub(crate) fn restore(&mut self, s: Snapshot) -> Snapshot {
+        let now = Snapshot {
+            doc: self.doc.clone(),
+            text: self.ed.text().to_string(),
+            cursor: self.ed.cursor(),
+            target: self.target,
+        };
+        self.doc = s.doc;
+        self.ed = Editor::new(&s.text);
+        let len = self.ed.text().len();
+        self.ed.move_to(s.cursor.min(len), false);
+        self.target = s.target;
+        self.typing_run = false;
+        self.pg = self.doc.page.unwrap_or(self.pg);
+        self.relayout_keep();
+        self.dirty = true;
+        now
+    }
+}
 
 impl Focusable for Writer {
     fn focus_handle(&self, _cx: &App) -> FocusHandle {

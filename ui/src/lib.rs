@@ -428,6 +428,10 @@ pub trait HasEditor {
     fn editor_ref(&self) -> &Editor;
     /// 本文が変わったときに呼ばれる(組版のやり直し・再計算など)
     fn on_edited(&mut self) {}
+    /// **変える直前**に呼ばれる。取り消しの控えを取る場所。
+    /// `typing` が真なら打鍵の一手(続けて打った分はまとめてよい)。
+    /// 既定は何もしない — 控えを持たないアプリはそのまま
+    fn before_edit(&mut self, _typing: bool) {}
 }
 
 /// EntityInputHandler の中身。アプリの impl から丸ごと委譲する。
@@ -462,6 +466,7 @@ pub mod handler {
 
     /// 確定した文字が来た(通常の入力・IMEの確定・貼り付け)
     pub fn replace<T: HasEditor>(this: &mut T, range_utf16: Option<Range<usize>>, text: &str) {
+        this.before_edit(true);
         {
             let e = this.editor();
             if let Some(r) = range_utf16 {

@@ -1251,3 +1251,125 @@ mod footnote_undo_tests {
         });
     }
 }
+
+/// **文書ごとの取り消し。**
+///
+/// 前は「平文の取り消し(`Editor`)」と「マクロ用に文書を1枚控える」の
+/// 二本立てで、**書式を変える操作はどちらにも乗っていなかった** —
+/// 太字も揃えも Ctrl+Z で戻らなかった(2026-08-13 に測って分かった)。
+/// 一本にまとめ、打鍵も書式も同じ山へ積む。
+#[cfg(test)]
+mod doc_undo_tests {
+    use crate::*;
+
+    fn 開く(cx: &mut gpui::TestAppContext) -> gpui::Entity<Writer> {
+        cx.update(|cx| cx.new(|cx| Writer::new(None, cx)))
+    }
+    fn 太字(w: &Writer) -> bool {
+        w.doc.paragraphs().next().unwrap().runs.iter().any(|r| r.fmt.bold)
+    }
+
+    #[gpui::test]
+    fn 太字が取り消せる(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, cx| {
+            this.doc = Document::plain("あいうえお", SIZE_PT);
+            this.ed = Editor::new(&this.doc.body_text());
+            this.relayout();
+            this.ed.move_to(0, false);
+            this.ed.move_to(9, true);
+            this.run_cmd("bold", cx);
+            assert!(太字(this), "太字がかかっていない");
+
+            this.undo_step();
+            assert!(!太字(this), "取り消しても太字のまま");
+
+            this.redo_step();
+            assert!(太字(this), "やり直しても太字が戻らない");
+        });
+    }
+
+    /// **一本の履歴。** 打鍵と書式が同じ山に積まれ、新しい順に戻る。
+    /// 二本立てのままだと「打ってから太字」の後の Ctrl+Z が
+    /// 打鍵のほうを戻してしまい、使い手に順が読めない
+    #[gpui::test]
+    fn 打鍵と書式が同じ順で戻る(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, cx| {
+            this.doc = Document::plain("あいうえお", SIZE_PT);
+            this.ed = Editor::new(&this.doc.body_text());
+            this.relayout();
+
+            // 1手目: 打鍵
+            this.before_edit(true);
+            this.ed.move_to(15, false);
+            this.ed.insert("か");
+            this.on_edited();
+            assert_eq!(this.doc.body_text(), "あいうえおか");
+
+            // 2手目: 太字
+            this.ed.move_to(0, false);
+            this.ed.move_to(9, true);
+            this.run_cmd("bold", cx);
+            assert!(太字(this));
+
+            // 戻す → **新しい順**。まず太字が外れ、字は残る
+            this.undo_step();
+            assert!(!太字(this), "先に打鍵が戻った(順が違う)");
+            assert_eq!(this.doc.body_text(), "あいうえおか", "字まで戻った");
+
+            // もう一手 → 打鍵が戻る
+            this.undo_step();
+            assert_eq!(this.doc.body_text(), "あいうえお", "打鍵が戻らない");
+
+            // やり直しは逆順
+            this.redo_step();
+            assert_eq!(this.doc.body_text(), "あいうえおか");
+            this.redo_step();
+            assert!(太字(this), "やり直しで太字が戻らない");
+        });
+    }
+
+    /// 続けて打った分は**1手にまとめる**(1字ごとに戻らない)
+    #[gpui::test]
+    fn 続けた打鍵は一手にまとまる(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, _cx| {
+            this.doc = Document::plain("", SIZE_PT);
+            this.ed = Editor::new("");
+            this.relayout();
+            for c in ["あ", "い", "う"] {
+                this.before_edit(true);
+                this.ed.insert(c);
+                this.on_edited();
+            }
+            assert_eq!(this.doc.body_text(), "あいう");
+            this.undo_step();
+            assert_eq!(this.doc.body_text(), "", "続けた打鍵が1手になっていない");
+        });
+    }
+
+    /// 戻したあとに打つと、やり直しの先は捨てる(枝分かれしない)
+    #[gpui::test]
+    fn 戻したあとに打つとやり直しは消える(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, cx| {
+            this.doc = Document::plain("あ", SIZE_PT);
+            this.ed = Editor::new("あ");
+            this.relayout();
+            this.ed.move_to(0, false);
+            this.ed.move_to(3, true);
+            this.run_cmd("bold", cx);
+            this.undo_step();
+            assert!(!太字(this));
+            // ここで別の一手
+            this.before_edit(true);
+            this.ed.move_to(3, false);
+            this.ed.insert("い");
+            this.on_edited();
+            this.redo_step();
+            assert!(!太字(this), "捨てたはずのやり直しが効いた");
+            assert_eq!(this.doc.body_text(), "あい");
+        });
+    }
+}

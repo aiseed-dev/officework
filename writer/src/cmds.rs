@@ -954,7 +954,7 @@ impl Writer {
                     (ui::t!("墨(灰の紙)"), "2E3338", Some("F2F2F0")),
                 ];
                 self.flush_target();
-                self.doc_undo = Some(self.doc.clone());
+                self.checkpoint(false);
                 self.theme = (self.theme + 1) % themes.len();
                 let (name, head, paper) = themes[self.theme];
                 // 見出しの段落の字に色を当てる(段落ごとの範囲で塗る)
