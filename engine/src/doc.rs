@@ -886,6 +886,83 @@ impl Document {
     /// 選択範囲の run に手を入れる(部分書式の心臓)。
     /// 範囲の境で run を割り、中の run にだけ f を掛ける。
     /// 端が字の途中に掛かっていたら、その字はまるごと含める。
+    /// 選んだ範囲を**脚注にする**。その字を注の本文へ移し、跡に
+    /// **印だけの run**(字を持たない)を残す。返すのは置いた印。
+    ///
+    /// **段落をまたぐ範囲は受けない**(None を返す)。注は文の中の一点に付く
+    /// ものなので、またいだ範囲をどう畳むかに正解が無い —
+    /// 決められないことを黙って決めない。
+    ///
+    /// 番号は組むときに出てくる順で振るので、ここでは決めない。
+    pub fn make_footnote(
+        &mut self,
+        range: std::ops::Range<usize>,
+        endnote: bool,
+    ) -> Option<FootnoteRef> {
+        let body = self.body_text();
+        let mut start = range.start.min(body.len());
+        while start > 0 && !body.is_char_boundary(start) {
+            start -= 1;
+        }
+        let mut end = range.end.min(body.len());
+        while end < body.len() && !body.is_char_boundary(end) {
+            end += 1;
+        }
+        if start >= end {
+            return None;
+        }
+        // どの段落に入っているか。またいでいたら受けない
+        let mut at = 0usize;
+        let mut hit: Option<(usize, usize, usize)> = None; // (ブロック番号, 段落内 start, end)
+        for (bi, b) in self.blocks.iter().enumerate() {
+            let Block::Para(p) = b else { continue };
+            let len: usize = p.runs.iter().map(|r| r.text.len()).sum();
+            let (ps, pe) = (at, at + len);
+            at = pe + 1;
+            if start >= ps && end <= pe {
+                hit = Some((bi, start - ps, end - ps));
+                break;
+            }
+            if start < pe && end > pe {
+                return None; // 段落をまたいでいる
+            }
+        }
+        let (bi, ls, le) = hit?;
+        let Some(Block::Para(p)) = self.blocks.get_mut(bi) else { return None };
+
+        let (left, rest) = split_runs(&p.runs, ls);
+        let (mid, right) = split_runs(&rest, le - ls);
+        if mid.iter().all(|r| r.text.is_empty()) {
+            return None; // 字が無い(印だけを注にはできない)
+        }
+        let pt = p.runs.first().map(|r| r.size_pt).unwrap_or(10.5);
+
+        // 移した字が注の本文になる。段落は1つ
+        let note_para = Paragraph {
+            runs: mid,
+            line_spacing: 1.0,
+            ..Default::default()
+        };
+        let fr = self.add_footnote(endnote, vec![note_para]);
+
+        // 跡に印だけを置く
+        let Some(Block::Para(p)) = self.blocks.get_mut(bi) else { return None };
+        let mut runs = left;
+        runs.push(Run {
+            text: String::new(),
+            size_pt: pt,
+            font: None,
+            fmt: CharFormat {
+                footnote: Some(fr.clone()),
+                ..Default::default()
+            },
+        });
+        runs.extend(right);
+        p.runs = runs;
+        normalize_runs(&mut p.runs, pt);
+        Some(fr)
+    }
+
     fn apply_runs(&mut self, range: std::ops::Range<usize>, f: impl Fn(&mut Run)) {
         let body = self.body_text();
         let mut start = range.start.min(body.len());

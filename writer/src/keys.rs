@@ -218,7 +218,7 @@ impl Writer {
         "bold", "italic", "underline", "strikeout", "fontcolor",
         "superscript", "subscript", "highlight", "clearstyle",
         "align-left", "align-center", "align-right", "align-just", "align-dist",
-        "ruby", "direction",
+        "ruby", "direction", "footnote",
         "controls", "form-text", "form-combo", "form-dropdown", "form-checkbox",
         "form-radio", "form-image", "form-email", "form-phone", "form-complex",
         "form-signature", "form-name",

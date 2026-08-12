@@ -101,6 +101,7 @@ pub const WRITER: &[Tab] = &[
         c("bookmarks", "즐겨찾기", "bookmarks"),
         c("caption", "캡션", "caption"),
         c("crossref", "상호 참조", "crossref"),
+        c("footnote", "각주", "footnote"),
         c("tof", "그림 목차", "tof"),
         c("tof-update", "그림 목차 업데이트", "tof-update"),
     ]},

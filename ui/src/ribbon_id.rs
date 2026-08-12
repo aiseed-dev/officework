@@ -101,6 +101,7 @@ pub const WRITER: &[Tab] = &[
         c("bookmarks", "Bookmark", "bookmarks"),
         c("caption", "Keterangan", "caption"),
         c("crossref", "Cross-reference", "crossref"),
+        c("footnote", "Footnote", "footnote"),
         c("tof", "Daftar gambar", "tof"),
         c("tof-update", "Perbarui daftar gambar", "tof-update"),
     ]},

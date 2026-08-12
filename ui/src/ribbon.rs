@@ -147,6 +147,7 @@ pub const WRITER: &[Tab] = &[
         c("bookmarks", "ブックマーク", "bookmarks"),
         c("caption", "図表番号", "caption"),
         c("crossref", "相互参照", "crossref"),
+        c("footnote", "脚注", "footnote"),
         c("tof", "図表目次", "tof"),
         c("tof-update", "図表目次の更新", "tof-update"),
     ]},

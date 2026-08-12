@@ -101,6 +101,7 @@ pub const WRITER: &[Tab] = &[
         c("bookmarks", "Marcador", "bookmarks"),
         c("caption", "Legenda", "caption"),
         c("crossref", "Referência-cruzada", "crossref"),
+        c("footnote", "Nota de rodapé", "footnote"),
         c("tof", "Índice de ilustrações", "tof"),
         c("tof-update", "Atualizar o índice de ilustrações", "tof-update"),
     ]},

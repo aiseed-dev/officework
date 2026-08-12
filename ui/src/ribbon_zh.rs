@@ -101,6 +101,7 @@ pub const WRITER: &[Tab] = &[
         c("bookmarks", "书签", "bookmarks"),
         c("caption", "题注", "caption"),
         c("crossref", "交叉引用", "crossref"),
+        c("footnote", "脚注", "footnote"),
         c("tof", "图表目录", "tof"),
         c("tof-update", "更新图表目录", "tof-update"),
     ]},

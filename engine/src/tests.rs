@@ -1633,3 +1633,96 @@ mod endnote_tests {
         assert_eq!(NoteNumFmt::from_docx("lowerRoman"), NoteNumFmt::LowerRoman);
     }
 }
+
+
+/// 選んだ字を脚注にする(`make_footnote`)。
+///
+/// 空の注を作って別の窓で打たせる形にはしていない — 注を打つ場所を
+/// まだ持っていないので、**持っていない物を持っている顔をしない**。
+#[cfg(test)]
+mod make_footnote_tests {
+    use crate::*;
+
+    fn 文書(text: &str) -> Document {
+        Document::plain(text, 10.5)
+    }
+
+    #[test]
+    fn 選んだ字が注へ移り跡に印が残る() {
+        let mut d = 文書("あいうえお");
+        // 「いう」を脚注にする(あ=0..3、いう=3..9)
+        let fr = d.make_footnote(3..9, false).expect("脚注にできなかった");
+        assert_eq!(d.body_text(), "あえお", "字が本文から抜けていない");
+        assert_eq!(d.footnotes.len(), 1, "注が作られていない");
+        let t: String = d.footnotes[0].paragraphs.iter()
+            .flat_map(|p| p.runs.iter().map(|r| r.text.as_str())).collect();
+        assert_eq!(t, "いう", "注の中身が違う");
+        assert!(d.footnotes[0].added, "足した注の印が立っていない");
+        // 跡に**字を持たない印の run**が残る
+        let p = d.paragraphs().next().unwrap();
+        let mark = p.runs.iter().find(|r| r.fmt.footnote.is_some()).expect("印が無い");
+        assert!(mark.text.is_empty(), "印の run が字を持っている");
+        assert_eq!(mark.fmt.footnote.as_ref().unwrap(), &fr);
+    }
+
+    #[test]
+    fn 印は選んだ場所に残る() {
+        let mut d = 文書("あいうえお");
+        d.make_footnote(3..9, false).unwrap();
+        let p = d.paragraphs().next().unwrap();
+        // 「あ」の後ろ、「え」の前
+        let mut seen = String::new();
+        let mut at = None;
+        for r in &p.runs {
+            if r.fmt.footnote.is_some() {
+                at = Some(seen.clone());
+            }
+            seen.push_str(&r.text);
+        }
+        assert_eq!(at.as_deref(), Some("あ"), "印の位置が違う: {at:?}");
+    }
+
+    /// **段落をまたぐ範囲は受けない。** どう畳むかに正解が無いので、
+    /// 決められないことを黙って決めない
+    #[test]
+    fn 段落をまたぐ範囲は断る() {
+        let mut d = 文書("あい\nうえ");
+        let before = d.body_text();
+        assert!(d.make_footnote(3..12, false).is_none(), "またぐ範囲を受けてしまった");
+        assert_eq!(d.body_text(), before, "断ったのに本文が変わった");
+        assert!(d.footnotes.is_empty(), "断ったのに注ができた");
+    }
+
+    #[test]
+    fn 空の範囲は断る() {
+        let mut d = 文書("あいう");
+        assert!(d.make_footnote(3..3, false).is_none(), "空の範囲を受けてしまった");
+        assert!(d.footnotes.is_empty());
+    }
+
+    /// 二つ作っても id がぶつからない
+    #[test]
+    fn 二つ作ってもidがぶつからない() {
+        let mut d = 文書("あいうえおかきくけこ");
+        let a = d.make_footnote(0..3, false).unwrap();
+        let b = d.make_footnote(6..9, false).unwrap();
+        assert_ne!(a.id, b.id, "同じ id を二度使った");
+        assert_eq!(d.footnotes.len(), 2);
+    }
+
+    /// 組むと、注が紙の下に出て番号が振られる
+    #[test]
+    fn 作った注が紙の下に出る() {
+        let mut d = 文書("あいうえお");
+        d.make_footnote(3..9, false).unwrap();
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 });
+        assert_eq!(s.notes.len(), 1, "紙の下に出ていない");
+        let t: String = s.notes[0].lines.iter()
+            .flat_map(|l| l.cells.iter()).map(|c| c.ch).collect();
+        assert!(t.contains("いう"), "注の中身が出ていない: {t:?}");
+        assert!(t.starts_with('1'), "番号が振られていない: {t:?}");
+    }
+}

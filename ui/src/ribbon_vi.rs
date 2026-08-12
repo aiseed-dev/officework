@@ -101,6 +101,7 @@ pub const WRITER: &[Tab] = &[
         c("bookmarks", "Dấu trang", "bookmarks"),
         c("caption", "Chú thích hình/bảng", "caption"),
         c("crossref", "Tham chiếu chéo", "crossref"),
+        c("footnote", "Chú thích cuối trang", "footnote"),
         c("tof", "Mục lục hình/bảng", "tof"),
         c("tof-update", "Cập nhật mục lục hình/bảng", "tof-update"),
     ]},

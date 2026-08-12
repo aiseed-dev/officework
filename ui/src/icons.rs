@@ -41,6 +41,7 @@ pub static ICONS: &[(&str, &[u8])] = &[
     ("editheader", include_bytes!("../icons/editheader.svg")),
     ("fontcolor", include_bytes!("../icons/fontcolor.svg")),
     ("formula", include_bytes!("../icons/formula.svg")),
+    ("footnote", include_bytes!("../icons/footnote.svg")),
     ("goal-seek", include_bytes!("../icons/goal-seek.svg")),
     ("highlight", include_bytes!("../icons/highlight.svg")),
     ("hyphenation", include_bytes!("../icons/hyphenation.svg")),

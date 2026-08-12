@@ -116,6 +116,34 @@ impl Writer {
                 self.status =
                     ui::t!("ルビ: 読みを打って Enter(空にして Enter で外す)").into();
             }
+            // 脚注。**選んだ字を注へ移し**、跡に印を置く。
+            // 空の注を作って別の窓で打たせる形(Word の作法)にはしない —
+            // 注を打つ場所をまだ持っていないので、持っていない物を
+            // 持っている顔をすることになる
+            "footnote" => {
+                self.switch_target(Target::Body);
+                let sel = self.ed.selection();
+                if sel.is_empty() {
+                    self.status = ui::t!("脚注にする字を選んでから押してください").into();
+                    return;
+                }
+                let at = sel.start;
+                match self.doc.make_footnote(sel, false) {
+                    Some(_) => {
+                        // 字が注へ移ったので、編集中の平文を取り直す
+                        self.ed = Editor::new(&self.doc.body_text());
+                        let len = self.ed.text().len();
+                        self.ed.move_to(at.min(len), false);
+                        self.relayout();
+                        self.dirty = true;
+                        self.status = ui::t!("選んだ字を脚注にしました(紙の下に出ます)").into();
+                    }
+                    None => {
+                        self.status =
+                            ui::t!("脚注にできません(段落をまたぐ範囲は選べません)").into();
+                    }
+                }
+            }
             // 文字の大きさ
             "incfont" => self.size(|s| s + 1.0),
             "decfont" => self.size(|s| s - 1.0),
