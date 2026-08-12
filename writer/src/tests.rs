@@ -1120,3 +1120,76 @@ mod caption_head_tests {
         }
     }
 }
+
+/// 画面の脚注が**紙と同じ割り当て**になっているか。
+///
+/// 画面は長らく `paper::paginate`(頁の位置だけ)を別に呼んでいた。
+/// 脚注はその頁の本文の底を上げるので、別々に数えると
+/// **画面と PDF で脚注の出る頁が食い違う**。同じ `paginate_full` から
+/// 受け取っていることを、値そのもので突き合わせる。
+/// **現物には依らせない**(corpus は取り直す物なので、型紙は手で組む)
+#[cfg(test)]
+mod screen_note_tests {
+    use crate::*;
+
+    fn 脚注のある文書() -> Document {
+        let 字 = |t: &str| kumihan::Run {
+            text: t.into(), size_pt: SIZE_PT, font: None, fmt: Default::default() };
+        let 印 = kumihan::Run {
+            text: String::new(), size_pt: SIZE_PT, font: None,
+            fmt: kumihan::CharFormat {
+                footnote: Some(kumihan::FootnoteRef { id: "2".into(), endnote: false }),
+                ..Default::default() } };
+        let 長文 = "いろはにほへとちりぬるを。".repeat(120);
+        let mut d = Document::plain("", SIZE_PT);
+        d.blocks = vec![kumihan::Block::Para(kumihan::Paragraph {
+            runs: vec![字(&長文), 印],
+            line_spacing: 1.0,
+            ..Default::default()
+        })];
+        d.footnotes = vec![kumihan::Footnote {
+            id: "2".into(), endnote: false,
+            paragraphs: vec![kumihan::Paragraph {
+                runs: vec![字("これは脚注の文章。")],
+                line_spacing: 1.0,
+                ..Default::default() }],
+        }];
+        d
+    }
+
+    #[gpui::test]
+    fn 画面と紙で脚注の出る頁が同じ(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.doc = 脚注のある文書();
+            this.relayout();
+
+            assert!(!this.page.notes.is_empty(), "脚注が組まれていない");
+            // 画面が持っている割り当てと、紙が出す割り当てが同じであること
+            let 紙 = paper::paginate_full(&this.page, paper::Paper {
+                width_mm: this.pg.w_mm,
+                height_mm: this.pg.h_mm,
+                margin_mm: this.pg.left_mm,
+            });
+            assert_eq!(this.page_notes, 紙.notes,
+                "画面と紙で脚注の割り当てが違う");
+            assert_eq!(this.page_offsets, 紙.offsets,
+                "画面と紙で頁の切れ目が違う");
+            assert!(this.page_notes.iter().any(|v| !v.is_empty()),
+                "どの頁にも脚注が付いていない");
+        });
+    }
+
+    /// 脚注が無ければ今までどおり(画面の割り当ても空)
+    #[gpui::test]
+    fn 脚注が無ければ画面も空のまま(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.doc = Document::plain("本文だけ", SIZE_PT);
+            this.relayout();
+            assert!(this.page.notes.is_empty(), "脚注が無いのに組まれた");
+            assert!(this.page_notes.iter().all(|v| v.is_empty()),
+                "脚注が無いのに頁に付いた");
+        });
+    }
+}

@@ -331,6 +331,10 @@ struct Writer {
     ink_undo: Vec<Vec<kumihan::Stroke>>,
     /// ページの繰り上げ量(紙と同じ折り方)。筆のページ⇔巻物の変換に使う
     page_offsets: Vec<f32>,
+    /// ページごとに載る脚注(`self.page.notes` の添字)。**紙と同じ割り当て** —
+    /// PDF と画面で脚注の出るページが食い違わないよう、同じ `paginate_full`
+    /// から受け取る
+    page_notes: Vec<Vec<usize>>,
     /// 変更履歴を記録中か。記録開始時点の段落の写しを持つ
     track: bool,
     track_base: Option<Vec<String>>,

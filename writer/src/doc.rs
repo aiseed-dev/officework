@@ -98,6 +98,7 @@ impl Writer {
             locked_by: None,
             ink_undo: Vec::new(),
             page_offsets: vec![0.0],
+            page_notes: vec![Vec::new()],
             header_lines: Vec::new(),
             footer_lines: Vec::new(),
             font_name: kumihan::font::for_document(None)
@@ -397,11 +398,15 @@ impl Writer {
     /// 各ページの本当の番号は PDF で入る)。
     pub(crate) fn refresh_hf(&mut self) {
         let m = Metrics::new(&self.font_bytes).expect("フォント");
-        self.page_offsets = paper::paginate(&self.page, paper::Paper {
+        // **紙と同じ折り方を、同じ関数から受け取る。** 脚注はその頁の
+        // 本文の底を上げるので、別に数えると画面と PDF がずれる
+        let pn = paper::paginate_full(&self.page, paper::Paper {
             width_mm: self.pg.w_mm,
             height_mm: self.pg.h_mm,
             margin_mm: self.pg.left_mm,
-        }).1;
+        });
+        self.page_offsets = pn.offsets;
+        self.page_notes = pn.notes;
         // 複数ページ(見開き)。**画面だけ**の折り方 — PDF は 1ページずつ
         // (save_pdf は組み直してから写す)。縦書きとは併せない
         if self.multipage && !self.page.vertical {

@@ -1316,6 +1316,51 @@ impl Render for Writer {
                     .child(SharedString::from(line.text())));
             }
         }
+        // 脚注。**紙(PDF)と同じ割り当て**で、そのページの下に仕切り線とともに出す。
+        // 割り当ては paginate_full から受け取っているので、画面と紙で
+        // 脚注の出るページが食い違わない
+        for (k, idx) in self.page_notes.iter().enumerate() {
+            if idx.is_empty() {
+                continue;
+            }
+            let Some(off) = self.page_offsets.get(k).copied() else { continue };
+            let total: f32 = idx.iter()
+                .filter_map(|i| self.page.notes.get(*i))
+                .map(|n| n.h_mm)
+                .sum();
+            // ページの上端からの深さ。紙と同じ勘定(下余白のすぐ上に積む)
+            let block_top = self.pg.h_mm - self.pg.left_mm - total;
+            // 仕切り線。紙と同じく三分の一の長さ
+            paper = paper.child(div().absolute()
+                .left(px(self.pg.left_mm * pxmm))
+                .top(px((off + block_top - paper::NOTE_GAP_MM * 0.5) * pxmm))
+                .w(px((self.pg.w_mm - self.pg.left_mm * 2.0) / 3.0 * pxmm))
+                .h(px(1.0))
+                .bg(rgb(0x99A5AE)));
+            let mut up = 0.0f32;
+            for i in idx {
+                let Some(nb) = self.page.notes.get(*i) else { continue };
+                for nl in &nb.lines {
+                    if nl.cells.is_empty() {
+                        continue;
+                    }
+                    let pt = nl.cells[0].size_pt;
+                    let sz = pt * 96.0 / 72.0 * self.zoom;
+                    let y = off + block_top + up + nl.y_mm;
+                    paper = paper.child(div().absolute()
+                        .left(px((self.pg.left_mm + nl.cells[0].x_mm) * pxmm))
+                        .top(px(y * pxmm - sz * 0.88))
+                        .text_size(px(sz))
+                        .font_family(self.font_name.clone())
+                        .whitespace_nowrap()
+                        .text_color(rgb(0x1C1C1C))
+                        .child(SharedString::from(
+                            nl.cells.iter().map(|c| c.ch).collect::<String>())));
+                }
+                up += nb.h_mm;
+            }
+        }
+
         // キャレット。その場の文字の大きさに合わせて描く(縦書きは行の側)
         if !self.page.vertical {
             let sz = caret_pt * 96.0 / 72.0 * self.zoom;
