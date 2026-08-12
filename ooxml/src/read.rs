@@ -1124,6 +1124,7 @@ pub(super) fn parse_document_full(
     // 箇条書き・インデント・行間(w:numPr / w:ind / w:spacing)
     let mut list = ListKind::default();
     let mut indent = 0u8;
+    let mut first_line = 0i32; // w:ind の firstLine(正)/ hanging(負)。twip のまま持つ
     let mut line_spacing = 1.0f32;
     let mut page_break_before = false;
     // 段落の背景色(w:shd)と囲み枠(w:pBdr)
@@ -1217,7 +1218,8 @@ pub(super) fn parse_document_full(
                     },
                     b"p" => { para = Some(Vec::new()); size_pt = DEFAULT_PT; font = None;
                               fmt = CharFormat::default(); align = Align::default();
-                              list = ListKind::default(); indent = 0; line_spacing = 1.0;
+                              list = ListKind::default(); indent = 0; first_line = 0;
+                              line_spacing = 1.0;
                               page_break_before = false; shade = None; boxed = false;
                               pstyle = ParaStyle::Body; pstyle_id = None; ilvl = 0;
                               para_comments.clear(); para_bookmarks.clear();
@@ -1303,6 +1305,17 @@ pub(super) fn parse_document_full(
                         indent = attr(&e, "left")
                             .and_then(|v| v.parse::<f32>().ok())
                             .map(|v| (v / 420.0).round().clamp(0.0, 20.0) as u8)
+                            .unwrap_or(0);
+                        // 1行目の字下げは twip のまま(段落を触っても落とさない —
+                        // 2026-08-13 に「黙って消える」を実測で踏んだ)
+                        first_line = attr(&e, "firstLine")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(|v| v as i32)
+                            .or_else(|| {
+                                attr(&e, "hanging")
+                                    .and_then(|v| v.parse::<f32>().ok())
+                                    .map(|v| -(v as i32))
+                            })
                             .unwrap_or(0);
                     }
                     b"spacing" if in_ppr => {
@@ -1656,6 +1669,17 @@ pub(super) fn parse_document_full(
                             .and_then(|v| v.parse::<f32>().ok())
                             .map(|v| (v / 420.0).round().clamp(0.0, 20.0) as u8)
                             .unwrap_or(0);
+                        // 1行目の字下げは twip のまま(段落を触っても落とさない —
+                        // 2026-08-13 に「黙って消える」を実測で踏んだ)
+                        first_line = attr(&e, "firstLine")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(|v| v as i32)
+                            .or_else(|| {
+                                attr(&e, "hanging")
+                                    .and_then(|v| v.parse::<f32>().ok())
+                                    .map(|v| -(v as i32))
+                            })
+                            .unwrap_or(0);
                     }
                     b"spacing" if in_ppr => {
                         // w:line は 240 = 1行
@@ -1812,6 +1836,7 @@ pub(super) fn parse_document_full(
                                 page_break_before, list,
                                 // 深さ: w:ind(直接指定)が無ければ w:ilvl から
                                 indent: indent.max(ilvl),
+                                first_line_twips: first_line,
                                 line_spacing,
                                 style: pstyle,
                                 style_id: pstyle_id.take(),

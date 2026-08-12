@@ -379,6 +379,10 @@ pub struct Paragraph {
     pub list: ListKind,
     /// 左のインデント段数。1段 = 全角2文字ぶん(日本の書類の慣習)
     pub indent: u8,
+    /// 1行目の字下げ(twip。正= w:firstLine、負= w:hanging のぶら下げ)。
+    /// **原文の値をそのまま持って往復する** — 段落を触っても落とさないための箱で、
+    /// 紙面はまだ使わない(組みに効かせるのは K4 の均等割付と同じ回で)
+    pub first_line_twips: i32,
     /// 行間の倍率。1.0 が既定
     pub line_spacing: f32,
     /// 段落の背景色 `RRGGBB`(docx の w:shd)。見出しの帯に使われる

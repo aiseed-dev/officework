@@ -82,6 +82,7 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             || p.page_break_before
             || p.list != ListKind::None
             || p.indent > 0
+            || p.first_line_twips != 0
             || (p.spacing() - 1.0).abs() > 0.001
             || p.shade.is_some()
             || p.boxed
@@ -154,9 +155,17 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 w.write_event(Event::Empty(id)).unwrap();
                 w.write_event(Event::End(BytesEnd::new("w:numPr"))).unwrap();
             }
-            if p.indent > 0 {
+            if p.indent > 0 || p.first_line_twips != 0 {
                 let mut ind = BS::new("w:ind");
-                ind.push_attribute(("w:left", (p.indent as u32 * 420).to_string().as_str()));
+                if p.indent > 0 {
+                    ind.push_attribute(("w:left", (p.indent as u32 * 420).to_string().as_str()));
+                }
+                // 1行目の字下げ(twip のまま往復)。負はぶら下げ
+                if p.first_line_twips > 0 {
+                    ind.push_attribute(("w:firstLine", p.first_line_twips.to_string().as_str()));
+                } else if p.first_line_twips < 0 {
+                    ind.push_attribute(("w:hanging", (-p.first_line_twips).to_string().as_str()));
+                }
                 w.write_event(Event::Empty(ind)).unwrap();
             }
             if (p.spacing() - 1.0).abs() > 0.001 {

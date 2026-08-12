@@ -185,6 +185,7 @@ impl Builder {
             style: self.style,
             list: self.list,
             indent: self.depth.saturating_sub(1),
+            first_line_twips: 0,
             line_spacing: 1.0,
             runs,
             ..Default::default()

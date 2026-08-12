@@ -14,7 +14,7 @@ mod round {
     fn para(s: &str) -> Paragraph {
         Paragraph { style_id: None,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: 10.5, font: None, fmt: Default::default() }] }
+                    list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: 10.5, font: None, fmt: Default::default() }] }
     }
     fn doc(parts: &[&str]) -> Document {
         Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: parts.iter().map(|s| Block::Para(para(s))).collect() }
@@ -49,7 +49,7 @@ mod round {
     fn 文字サイズが保たれる() {
         let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
+                    list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "大見出し".into(), size_pt: 16.0, font: None, fmt: Default::default() },
             Run { text: "本文".into(), size_pt: 10.5, font: None, fmt: Default::default() },
         ]})]};
@@ -82,7 +82,7 @@ mod round {
     fn 段落内の改行が保たれる() {
         let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
+                    list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "一行目\n二行目".into(), size_pt: 10.5, font: None, fmt: Default::default() }]})]};
         let (back, _) = round_trip(&d);
         assert_eq!(texts(&back)[0], "一行目\n二行目");
@@ -250,6 +250,7 @@ mod font_tests {
                 page_break_before: false,
                     list: Default::default(),
                 indent: 0,
+                first_line_twips: 0,
                 line_spacing: 1.0,
                 shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run {
                     text: "日本フネン".into(),
@@ -301,7 +302,7 @@ mod fmt_tests {
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Para(Paragraph { style_id: None,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("見出し", f.clone())] })],
+                    list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("見出し", f.clone())] })],
         };
         let back = roundtrip(&d);
         assert_eq!(back.paragraphs().next().unwrap().runs[0].fmt, f, "書式が消えた");
@@ -316,7 +317,7 @@ mod fmt_tests {
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Para(Paragraph { style_id: None,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("赤", f.clone())] })],
+                    list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("赤", f.clone())] })],
         };
         assert_eq!(roundtrip(&d).paragraphs().next().unwrap().runs[0].fmt, f);
     }
@@ -335,6 +336,7 @@ mod fmt_tests {
                     page_break_before: false,
                     list: Default::default(),
                     indent: 0,
+                    first_line_twips: 0,
                     line_spacing: 1.0,
                     shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("表題", CharFormat::default())],
                 })],
@@ -383,6 +385,7 @@ mod para_tests {
             page_break_before: false,
             list,
             indent,
+            first_line_twips: 0,
             line_spacing: spacing,
             shade: None, boxed: false, images_new: Vec::new(),
             runs: vec![Run {
@@ -403,6 +406,22 @@ mod para_tests {
         assert_eq!(roundtrip(para(ListKind::Bullet, 0, 1.0)).list, ListKind::Bullet);
         assert_eq!(roundtrip(para(ListKind::Number, 0, 1.0)).list, ListKind::Number);
         assert_eq!(roundtrip(para(ListKind::None, 0, 1.0)).list, ListKind::None);
+    }
+
+    #[test]
+    fn 一行目の字下げが往復する() {
+        // 2026-08-13 に実測で踏んだ穴: 段落を触ると w:ind の firstLine が
+        // 黙って落ちていた(左と寄せは残るのに)。twip の生値で往復すること
+        for fl in [420i32, 210, -300] {
+            let mut p = para(ListKind::None, 0, 1.0);
+            p.first_line_twips = fl;
+            assert_eq!(roundtrip(p).first_line_twips, fl, "firstLine {fl} が消えた");
+        }
+        // 左インデントと同居しても両方残る
+        let mut p = para(ListKind::None, 2, 1.0);
+        p.first_line_twips = 420;
+        let r = roundtrip(p);
+        assert_eq!((r.indent, r.first_line_twips), (2, 420), "同居で片方が消えた");
     }
 
     #[test]
