@@ -111,16 +111,19 @@ class Range:
             kw["sheet"] = self._sheet
         return kw
 
+    def _make(self, r0, c0, r1, c1):
+        out = Range("{}{}".format(_col_name(c0), r0 + 1), sheet=self._sheet)
+        out._r1, out._c1 = r1, c1
+        return out
+
     def expand(self, mode="table"):
         if mode != "table":
             raise OfficeworkError("expand は 'table' だけに対応しています")
         r = _call("expand", **self._kw())
-        out = Range(
-            "{}{}".format(_col_name(self._c0), self._r0 + 1), sheet=self._sheet
+        return self._make(
+            self._r0, self._c0,
+            self._r0 + r["rows"] - 1, self._c0 + r["cols"] - 1,
         )
-        out._r1 = self._r0 + r["rows"] - 1
-        out._c1 = self._c0 + r["cols"] - 1
-        return out
 
     def options(self, convert=None, **kw):
         return Options(self, convert=convert, **kw)
@@ -156,6 +159,118 @@ class Range:
     def formula(self, v):
         # 式も set と同じ道(= から始まる文字列は式になる)
         self.value = v
+
+    # ── xlwings 互換層(参照の算術。橋には出ない)────────────────
+
+    @property
+    def formula2(self):
+        # xlwings では動的配列の式の別名。うちは式は1種類
+        return self.formula
+
+    @formula2.setter
+    def formula2(self, v):
+        self.formula = v
+
+    @property
+    def raw_value(self):
+        # 変換(options)を通さない素の値。うちは value と同じ物
+        return self._plain(self._get())
+
+    @raw_value.setter
+    def raw_value(self, v):
+        self.value = v
+
+    def get_value(self):
+        # xlwings では「その場で取りに行く」手。中身は value と同じ
+        return self.value
+
+    @property
+    def row(self):
+        return self._r0 + 1
+
+    @property
+    def column(self):
+        return self._c0 + 1
+
+    @property
+    def shape(self):
+        return (self._r1 - self._r0 + 1, self._c1 - self._c0 + 1)
+
+    @property
+    def size(self):
+        r, c = self.shape
+        return r * c
+
+    @property
+    def count(self):
+        return self.size
+
+    def get_address(self, row_absolute=True, column_absolute=True,
+                    include_sheetname=False, external=False):
+        def one(r, c):
+            return "{}{}{}{}".format(
+                "$" if column_absolute else "", _col_name(c),
+                "$" if row_absolute else "", r + 1,
+            )
+
+        a = one(self._r0, self._c0)
+        if (self._r0, self._c0) != (self._r1, self._c1):
+            a = "{}:{}".format(a, one(self._r1, self._c1))
+        if include_sheetname or external:
+            a = "{}!{}".format(self.sheet.name, a)
+        if external:
+            a = "[{}]{}".format(Book.attach().name, a)
+        return a
+
+    @property
+    def address(self):
+        return self.get_address()
+
+    @property
+    def sheet(self):
+        if self._sheet is not None:
+            return Sheet(self._sheet)
+        info = _call("book_info")
+        return Sheet(info["sheets"][info["active"]])
+
+    @property
+    def rows(self):
+        return [self._make(r, self._c0, r, self._c1)
+                for r in range(self._r0, self._r1 + 1)]
+
+    @property
+    def columns(self):
+        return [self._make(self._r0, c, self._r1, c)
+                for c in range(self._c0, self._c1 + 1)]
+
+    def offset(self, row_offset=0, column_offset=0):
+        return self._make(
+            self._r0 + row_offset, self._c0 + column_offset,
+            self._r1 + row_offset, self._c1 + column_offset,
+        )
+
+    def resize(self, row_size=None, column_size=None):
+        r, c = self.shape
+        if row_size is None:
+            row_size = r
+        if column_size is None:
+            column_size = c
+        return self._make(
+            self._r0, self._c0,
+            self._r0 + row_size - 1, self._c0 + column_size - 1,
+        )
+
+    @property
+    def last_cell(self):
+        return self._make(self._r1, self._c1, self._r1, self._c1)
+
+    @property
+    def current_region(self):
+        # xlwings の current_region。うちは expand("table") と同族(台帳のとおり)
+        return self.expand("table")
+
+    def __len__(self):
+        return self.size
 
     def __repr__(self):
         return "<officework.calc Range {}>".format(self._a1())
@@ -213,6 +328,28 @@ class Sheet:
 
     def __getitem__(self, a1):
         return self.range(a1)
+
+    # ── xlwings 互換層 ──────────────────────────────────────────
+
+    @property
+    def book(self):
+        return Book.attach()
+
+    @property
+    def index(self):
+        # xlwings と同じ1起点
+        return _call("book_info")["sheets"].index(self.name) + 1
+
+    @property
+    def cells(self):
+        # 使っている所だけでなく、シートの全部のセル(xlwings と同じ定義)。
+        # 読み書きするまでは参照の算術だけなので、大きさは害にならない
+        return self.range("A1:XFD1048576")
+
+    @property
+    def used_range(self):
+        # expand("table") が同じ役(台帳のとおり)
+        return self.range("A1").expand("table")
 
     def __repr__(self):
         return "<officework.calc Sheet {}>".format(self.name)
@@ -278,6 +415,18 @@ class Book:
     def fullname(self):
         return _call("book_info").get("path")
 
+    # ── xlwings 互換層 ──────────────────────────────────────────
+
+    @property
+    def sheet_names(self):
+        return list(_call("book_info")["sheets"])
+
+    @property
+    def app(self):
+        # App クラスは作らない(アプリは1つ、ブックも1つ — 選ぶ道具が要らない)。
+        # wb.app.books のような書き方だけ通るように、小さな取っ手を返す
+        return _app
+
     def save(self, path=None):
         if path is not None:
             _call("save", path=os.path.abspath(path))
@@ -301,6 +450,20 @@ class _Books:
 
 
 books = _Books()
+
+
+class _App:
+    """Book.app の返り。App クラスは作らない(台帳)ので、名前は出さない。"""
+
+    @property
+    def books(self):
+        return books
+
+    def __repr__(self):
+        return "<officework.calc app>"
+
+
+_app = _App()
 
 
 def ping():

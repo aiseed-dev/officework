@@ -24,9 +24,11 @@ import os
 import socket
 
 # エンジン(Rust)。橋だけを使うときは無くてよいが、**黙って None にしない** —
-# 触ったときに、入っていない理由をそのまま見せる
+# 触ったときに、入っていない理由をそのまま見せる。
+# sheet.py / _doc.py は _sheet(Rust)を包んだ純 Python の互換層
+# (openpyxl / python-docx の口。台帳: docs/pysheet-gokan.ja.md)
 try:
-    from . import _sheet as sheet  # noqa: F401
+    from . import sheet  # noqa: F401
     from . import _doc as doc  # noqa: F401
     _sheet_error = None
 except Exception as e:  # pragma: no cover

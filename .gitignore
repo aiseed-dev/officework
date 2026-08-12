@@ -23,6 +23,9 @@ sample/商品マスタ.csv
 .~lock.*
 __pycache__/
 
+# 組んだ Python 拡張(cargo build -p pysheet → コピー)。配るのは wheel の側
+pysheet/officework/_sheet*.so
+
 # 本文のフォントは同梱しない(システムから探す)
 assets/
 tools/__pycache__/

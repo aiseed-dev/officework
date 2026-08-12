@@ -47,8 +47,10 @@ fn python側から帳票を差し込める() {
     let _cleanup = Cleanup(ext);
 
     // xlsx(sheet)と docx(doc)。**同じ .so で両方**が動くことまで見る —
-    // 1つの wheel に同居させているので、片方だけ通っても足りない
-    for script in ["test.py", "test_doc.py"] {
+    // 1つの wheel に同居させているので、片方だけ通っても足りない。
+    // test_gokan.py は互換層の適合検査 — openpyxl / python-docx が居る環境では
+    // 本家と結果を突き合わせ、居なければその節を飛ばしたと言って通る
+    for script in ["test.py", "test_doc.py", "test_gokan.py"] {
         let out = Command::new("python3")
             .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(script))
             .env("PYTHONPATH", &dir)

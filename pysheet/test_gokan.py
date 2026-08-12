@@ -1,0 +1,331 @@
+# 互換層の適合検査 — **書きは定義どおり動作するか**(2026-08-12 発注者確定の合否線)。
+#
+# 本家(openpyxl / python-docx)が .venv に居れば、同じ手順を両方で動かして
+# **結果そのものを突き合わせる**。居なければその節は飛ばす(無いのに失敗と言わない)。
+# xlwings は Excel が無いと動かないので、参照の算術は文書の定義値と照合する。
+#
+# 手で回すなら:
+#   .venv/bin/python pysheet/test_gokan.py
+import os
+import sys
+import tempfile
+
+from officework import sheet as office_sheet
+
+
+def check(cond, msg):
+    if not cond:
+        print(f"NG: {msg}", file=sys.stderr)
+        sys.exit(1)
+
+
+# =============================================================== openpyxl の口
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
+    print("openpyxl が無いので突き合わせは飛ばした", file=sys.stderr)
+
+b = office_sheet.Book()
+s = b[0]
+
+# --- 空のシートの端(openpyxl の定義: 空でも 1 と "A1:A1")---------------------
+check(s.max_row == 1 and s.max_column == 1, f"空の max が 1 でない: {s.max_row},{s.max_column}")
+check(s.min_row == 1 and s.min_column == 1, "空の min が 1 でない")
+check(s.dimensions == "A1:A1", f"空の dimensions: {s.dimensions}")
+
+# --- append: 使われている範囲の次の行へ。dict は列を選んで書く ------------------
+s.append([1, 2])
+s.append({"B": 9})          # 列の字で
+s.append({3: "う"})         # 列の番号(1起点)でも
+check(s["A1"] == 1 and s["B1"] == 2, f"append の1行目: {s['A1']},{s['B1']}")
+check(s["B2"] == 9, f"append の dict(字): {s['B2']}")
+check(s["C3"] == "う", f"append の dict(番号): {s['C3']}")
+check(s.dimensions == "A1:C3", f"append 後の dimensions: {s.dimensions}")
+
+# --- cell(row, column, value=): 書いて、札(座標)が openpyxl と同じ形 ----------
+c = s.cell(row=2, column=3, value=7)
+check(s["C2"] == 7, "cell(value=) が書けていない")
+check(c.coordinate == "C2" and c.column_letter == "C" and c.col_idx == 3,
+      f"Cell の札: {c.coordinate},{c.column_letter},{c.col_idx}")
+check(c.data_type == "n", f"数の data_type: {c.data_type}")
+check(c.offset(row=1, column=-2).coordinate == "A3", "offset の算術")
+check(c.parent is s, "Cell.parent がシートに戻らない")
+s["D1"] = "=A1+B1"
+check(s.cell(row=1, column=4).data_type == "f", "式の data_type が 'f' でない")
+check(s.cell(row=3, column=3).data_type == "s", "字の data_type が 's' でない")
+
+# --- iter_rows / iter_cols / rows / columns ------------------------------------
+got = [[cc.coordinate for cc in row] for row in s.iter_rows(min_row=1, max_row=2, max_col=2)]
+check(got == [["A1", "B1"], ["A2", "B2"]], f"iter_rows の座標: {got}")
+got = list(s.iter_rows(min_row=1, max_row=1, max_col=2, values_only=True))
+check(got == [(1, 2)], f"iter_rows(values_only): {got}")
+got = [[cc.coordinate for cc in col] for col in s.iter_cols(min_col=2, max_col=3, max_row=2)]
+check(got == [["B1", "B2"], ["C1", "C2"]], f"iter_cols の座標: {got}")
+check(len(list(s.rows)) == s.max_row, "rows が max_row と食い違う")
+check(len(list(s.columns)) == s.max_column, "columns が max_column と食い違う")
+
+# --- Workbook の口 --------------------------------------------------------------
+check(b.sheetnames == b.sheet_names, "sheetnames が sheet_names と食い違う")
+ws2 = b.create_sheet()
+check(ws2.title in b.sheetnames, "create_sheet の既定の名前が一覧に無い")
+check(b.index(ws2) == len(b) - 1, "index(ws) が末尾を指さない")
+check(ws2.parent is b, "parent がブックに戻らない")
+check([w.title for w in b.worksheets] == b.sheetnames, "worksheets の並び")
+check(b.active.title == b.sheetnames[0], "active が先頭でない")
+check(ws2.title in b and "居ない名前" not in b, "in(__contains__)が効かない")
+b.close()  # 何もしないが、呼べること
+
+# --- insert_rows / delete_rows / insert_cols / delete_cols(amount つき)--------
+# openpyxl と同じ手順を並べて動かし、**盤面の値が同じになるか**を見る
+if openpyxl is not None:
+    def grid(rows, cols, at):
+        return [[at(i, j) for j in range(1, cols + 1)] for i in range(1, rows + 1)]
+
+    wb_o = openpyxl.Workbook()
+    ws_o = wb_o.active
+    b_j = office_sheet.Book()
+    ws_j = b_j[0]
+    for i in range(1, 4):
+        for j in range(1, 4):
+            ws_o.cell(row=i, column=j, value=i * 10 + j)
+            ws_j.cell(row=i, column=j, value=i * 10 + j)
+    for ws in (ws_o, ws_j):
+        ws.insert_rows(2, amount=2)
+        ws.delete_rows(1)
+        ws.insert_cols(2, amount=1)
+        ws.delete_cols(4, amount=2)
+    g_o = grid(4, 2, lambda i, j: ws_o.cell(row=i, column=j).value)
+    g_j = grid(4, 2, lambda i, j: ws_j.cell(row=i, column=j).value)
+    check(g_o == g_j, f"行・列の出し入れが openpyxl と食い違う:\n  本家 {g_o}\n  うち {g_j}")
+
+    # --- 定数(19個)は openpyxl の実物と同じ値 --------------------------------
+    from openpyxl.worksheet.worksheet import Worksheet as _W
+    for n in dir(_W):
+        if n.split("_")[0] in ("BREAK", "ORIENTATION", "PAPERSIZE", "SHEETSTATE"):
+            check(getattr(office_sheet.Sheet, n) == getattr(_W, n),
+                  f"定数 {n} が openpyxl と違う")
+
+    # --- 書いた物を本家が読めるか(定義どおりの何よりの証拠)--------------------
+    with tempfile.TemporaryDirectory() as t:
+        out = os.path.join(t, "gokan.xlsx")
+        b2 = office_sheet.Book()
+        s2 = b2[0]
+        s2.append(["品名", "数", "単価", "金額"])
+        s2.append(["ザボガードF", 4, 125000, "=B2*C2"])
+        b2.save(out)
+        r = openpyxl.load_workbook(out)
+        rs = r.active
+        check(rs["A1"].value == "品名" and rs["B2"].value == 4,
+              "うちが書いた値を openpyxl が読めない")
+        check(rs["D2"].value == "=B2*C2", "うちが書いた式を openpyxl が読めない")
+        rv = openpyxl.load_workbook(out, data_only=True).active
+        check(rv["D2"].value == 500000,
+              f"うちが書き込んだ計算済みの値(openpyxl 自身は作れない物): {rv['D2'].value}")
+
+        # 逆向き: 本家が書いた物をうちが読めるか
+        out2 = os.path.join(t, "opx.xlsx")
+        wb3 = openpyxl.Workbook()
+        ws3 = wb3.active
+        ws3.append([1, "あ", True])
+        wb3.save(out2)
+        b3 = office_sheet.Book.open(out2)
+        s3 = b3[0]
+        check(s3["A1"] == 1 and s3["B1"] == "あ" and s3["C1"] is True,
+              "openpyxl が書いた物をうちが読めない")
+
+# (第1歩では title の代入と create_sheet(index=) は「正直に断る」だったが、
+#  第2歩でエンジンに書き口が入った — 下の第2歩の節で本式に検査する)
+
+# ================================================== xlwings の口(参照の算術)
+# 橋は動いているアプリが要るので、ソケットに出ない算術だけを定義値と照合する
+from officework import calc as xw
+
+r = xw.Range("B2:D5")
+check(r.address == "$B$2:$D$5", f"address: {r.address}")
+check(r.get_address(False, False) == "B2:D5", "get_address(相対)")
+check(r.row == 2 and r.column == 2, f"row,column: {r.row},{r.column}")
+check(r.shape == (4, 3) and r.size == 12 and r.count == 12 and len(r) == 12,
+      f"shape,size: {r.shape},{r.size}")
+check(len(r.rows) == 4 and r.rows[0]._a1() == "B2:D2", "rows の刻み")
+check(len(r.columns) == 3 and r.columns[2]._a1() == "D2:D5", "columns の刻み")
+check(r.offset(1, 2)._a1() == "D3:F6", f"offset: {r.offset(1, 2)._a1()}")
+check(r.resize(2, 2)._a1() == "B2:C3", f"resize: {r.resize(2, 2)._a1()}")
+check(r.resize(row_size=1)._a1() == "B2:D2", "resize(片方だけ)")
+check(r.last_cell._a1() == "D5", f"last_cell: {r.last_cell._a1()}")
+one = xw.Range("A1")
+check(one.address == "$A$1" and one.shape == (1, 1), "1マスの算術")
+sh = xw.Sheet("見積")
+check(sh.cells._a1() == "A1:XFD1048576", "Sheet.cells が全マスでない")
+check(sh["B2"]._a1() == "B2", "Sheet の添字")
+
+# =============================================== python-docx の口(表と段落)
+try:
+    import docx as pydocx
+except ImportError:
+    pydocx = None
+    print("python-docx が無いので突き合わせは飛ばした", file=sys.stderr)
+
+from officework import doc as office_doc
+
+if pydocx is not None:
+    with tempfile.TemporaryDirectory() as t:
+        # 本家で作った文書を、うちで読んで**同じ添字が同じセルを指す**か
+        src = os.path.join(t, "hon.docx")
+        d_o = pydocx.Document()
+        d_o.add_paragraph("最初の段落")
+        tb = d_o.add_table(rows=3, cols=2)
+        for i in range(3):
+            for j in range(2):
+                tb.cell(i, j).text = f"{i}-{j}"
+        d_o.save(src)
+
+        d_j = office_doc.Doc.open(src)
+        t_j = d_j.tables[0]
+        t_o = pydocx.Document(src).tables[0]
+        for i in range(3):
+            for j in range(2):
+                check(t_j.cell(i, j).text == t_o.cell(i, j).text,
+                      f"cell({i},{j}) が本家と食い違う")
+        check([c.text for c in t_j.row_cells(1)] == [c.text for c in t_o.row_cells(1)],
+              "row_cells が本家と食い違う")
+        check([c.text for c in t_j.column_cells(1)] == [c.text for c in t_o.column_cells(1)],
+              "column_cells が本家と食い違う")
+        check(len(t_j.columns) == len(t_o.columns), "columns の数")
+        check([c.text for c in t_j.columns[1].cells] == [c.text for c in t_o.columns[1].cells],
+              "columns[j].cells が本家と食い違う")
+
+        # clear: 字は消え、段落の性質は残り、自分が返る(本家と同じ定義)
+        p_o = pydocx.Document(src).paragraphs[0]
+        ret_o = p_o.clear()
+        p_j = d_j[0]
+        ret_j = p_j.clear()
+        check(p_j.text == "" and p_o.text == "", "clear で字が消えない")
+        check(ret_j is p_j and ret_o is p_o, "clear が自分を返さない")
+
+        # iter_inner_content: run が順に出る
+        d_j2 = office_doc.Doc.open(src)
+        p = d_j2[0]
+        check([r.text for r in p.iter_inner_content()] == [r.text for r in p.runs],
+              "iter_inner_content が runs と食い違う")
+
+        # 書きの往復: うちがセルへ書いた物を本家が読めるか
+        t_j2 = d_j2.tables[0]
+        t_j2.cell(1, 1).text = "書き換えた"
+        out = os.path.join(t, "kaki.docx")
+        d_j2.save(out)
+        back = pydocx.Document(out)
+        check(back.tables[0].cell(1, 1).text == "書き換えた",
+              "うちが書いたセルを本家が読めない")
+
+        # font の両対応: 字の比べも .name も通る
+        rr = d_j2[0].runs if d_j2[0].runs else None
+        if rr:
+            f = rr[0].font
+            check(isinstance(f, str) and (f.name is None or isinstance(f.name, str)),
+                  "font の両対応(str と .name)が崩れている")
+
+# ==================== 第2歩(足すの背骨): 結合・固定枠・改名・複製・削除・並べ替え
+b = office_sheet.Book()
+s = b[0]
+
+# 結合: 家の作法(アプリと同じ)— 左上以外の中身は消え、空の左上へは最初の中身が移る
+s["B1"] = "題"
+s["C2"] = 9
+s.merge_cells("A1:C2")
+check(s.merged_cell_ranges == ["A1:C2"], f"結合が台帳に載らない: {s.merged_cell_ranges}")
+check(s["A1"] == "題", "空だった左上へ最初の中身が移っていない")
+check(s["B1"] is None and s["C2"] is None, "呑まれた中身が消えていない")
+
+# 解除: openpyxl と同じ定義 — その範囲そのものが結合でなければ ValueError
+try:
+    s.unmerge_cells("A1:B1")
+    check(False, "結合でない範囲の解除が黙って通った")
+except ValueError:
+    pass
+s.unmerge_cells("A1:C2")
+check(s.merged_cell_ranges == [], "解除できていない")
+
+# openpyxl の数字指定でも
+s.merge_cells(start_row=1, start_column=1, end_row=2, end_column=2)
+check(s.merged_cell_ranges == ["A1:B2"], "数字指定の結合")
+s.unmerge_cells(start_row=1, start_column=1, end_row=2, end_column=2)
+
+# 固定枠: A1 形式(openpyxl と同じ定義)
+s.freeze_panes = "B2"
+check(s.freeze_panes == "B2", f"固定枠: {s.freeze_panes}")
+s.freeze_panes = "A1"  # A1 は「固定なし」
+check(s.freeze_panes is None, "A1 で固定が解けない")
+s.freeze_panes = "A3"  # 上2行だけ
+check(s.freeze_panes == "A3", "行だけの固定")
+s.freeze_panes = None
+
+# 改名: 式の参照と名前の定義が追随する(openpyxl は追随しない — うちの上位分)
+b2 = office_sheet.Book()
+b2[0]["A1"] = 42
+w2 = b2.create_sheet("集計")
+w2["A1"] = "=Sheet1!A1*2"
+check(w2["A1"] == 84, "他のシートへの式")
+b2[0].title = "元データ"
+check(b2.sheetnames[0] == "元データ", "改名が一覧に出ない")
+check(w2.formula("A1") == "=元データ!A1*2", f"改名に式が追随しない: {w2.formula('A1')}")
+check(w2["A1"] == 84, "改名後の再計算")
+try:
+    w2.title = "元データ"
+    check(False, "同じ名前への改名が通った")
+except ValueError:
+    pass
+try:
+    w2.title = "a[b]"
+    check(False, "使えない字のシート名が通った")
+except ValueError:
+    pass
+
+# 複製・削除・並べ替え・途中に差す
+w3 = b2.copy_worksheet(b2[0])
+check(w3.title == "元データ Copy", f"複製の名前: {w3.title}")
+check(w3["A1"] == 42, "複製に中身が写っていない")
+w3["A1"] = 1
+check(b2[0]["A1"] == 42, "複製が元とつながったまま(独立していない)")
+b2.remove(w3)
+check("元データ Copy" not in b2.sheetnames, "削除できていない")
+head = b2.create_sheet("先頭", 0)
+check(b2.sheetnames[0] == "先頭" and head.title == "先頭", f"途中に差す: {b2.sheetnames}")
+b2.move_sheet("先頭", offset=1)
+check(b2.sheetnames[1] == "先頭", f"move_sheet の相対のずらし: {b2.sheetnames}")
+
+# 最後の1枚は抜けない(正直に断る)
+b3 = office_sheet.Book()
+try:
+    b3.remove(b3[0])
+    check(False, "最後の1枚が抜けた")
+except ValueError:
+    pass
+
+# openpyxl と読み合う: うちの結合・固定枠が本家に見え、本家の物がうちに見える
+if openpyxl is not None:
+    with tempfile.TemporaryDirectory() as t:
+        out = os.path.join(t, "gokan2.xlsx")
+        b4 = office_sheet.Book()
+        s4 = b4[0]
+        s4["A1"] = "見出し"
+        s4.merge_cells("A1:C1")
+        s4.freeze_panes = "A2"
+        b4.save(out)
+        rs = openpyxl.load_workbook(out).active
+        check([str(r) for r in rs.merged_cells.ranges] == ["A1:C1"],
+              f"うちの結合を openpyxl が読めない: {list(rs.merged_cells.ranges)}")
+        check(rs.freeze_panes == "A2", f"うちの固定枠を openpyxl が読めない: {rs.freeze_panes}")
+
+        out2 = os.path.join(t, "opx2.xlsx")
+        wb5 = openpyxl.Workbook()
+        ws5 = wb5.active
+        ws5["A1"] = "題"
+        ws5.merge_cells("A1:B2")
+        ws5.freeze_panes = "B2"
+        wb5.save(out2)
+        s5 = office_sheet.Book.open(out2)[0]
+        check(s5.merged_cell_ranges == ["A1:B2"], "本家の結合をうちが読めない")
+        check(s5.freeze_panes == "B2", f"本家の固定枠をうちが読めない: {s5.freeze_panes}")
+
+print("OK")
