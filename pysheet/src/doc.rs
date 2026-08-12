@@ -1037,17 +1037,48 @@ impl PyParagraph {
             .collect())
     }
 
+    /// この段落のリンク [(字, URL)]。python-docx の hyperlinks と同じ役。
+    #[getter]
+    fn hyperlinks(&self) -> PyResult<Vec<(String, String)>> {
+        self.with(|p| {
+            p.runs
+                .iter()
+                .filter_map(|r| r.fmt.link.clone().map(|u| (r.text.clone(), u)))
+                .collect()
+        })
+    }
+
+    /// 段落の末尾にリンクを足す(python-docx の add_hyperlink と同じ役)。
+    /// 書式は末尾の run を継ぐ。返りは足した run。
+    #[pyo3(signature = (text, address))]
+    fn add_hyperlink(&self, text: &str, address: &str) -> PyResult<PyRun> {
+        let idx = self.with_mut(|p| {
+            let (pt, font, mut fmt) = p
+                .runs
+                .last()
+                .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
+                .unwrap_or((DEFAULT_PT, None, CharFormat::default()));
+            fmt.link = Some(address.to_string());
+            p.runs.push(Run { text: text.to_string(), size_pt: pt, font, fmt });
+            p.runs.len() - 1
+        })?;
+        Ok(PyRun { inner: Arc::clone(&self.inner), loc: self.loc.clone(), idx })
+    }
+
     /// 段落の末尾に run を継ぎ足す(python-docx の add_run)。
     /// 書式は**末尾の run のものを継ぐ**(text の代入が先頭を継ぐのと対 —
     /// 続きを書くなら続きの書式)。段落が空なら既定の大きさの素の run。
     #[pyo3(signature = (text=""))]
     fn add_run(&self, text: &str) -> PyResult<PyRun> {
         let idx = self.with_mut(|p| {
-            let (pt, font, fmt) = p
+            let (pt, font, mut fmt) = p
                 .runs
                 .last()
                 .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
                 .unwrap_or((DEFAULT_PT, None, CharFormat::default()));
+            // **リンクは継がない** — 掛かりを決めるのは囲み(w:hyperlink)で、
+            // 字の書式ではない。継ぐと、リンクの隣に足した字まで青くなる
+            fmt.link = None;
             p.runs.push(Run { text: text.to_string(), size_pt: pt, font, fmt });
             p.runs.len() - 1
         })?;
@@ -1405,6 +1436,28 @@ impl PyRun {
             .ok_or_else(|| PyIndexError::new_err("この run はもう文書に無い"))?;
         r.fmt.style_id = id;
         Ok(())
+    }
+
+    /// リンク先(URL。無ければ None)。**囲み(w:hyperlink)が掛かりを決める**
+    /// ので、書式と同じ持ち場に置いてある — run を切り貼りしても付いて回る。
+    #[getter]
+    fn hyperlink(&self) -> PyResult<Option<String>> {
+        self.with(|r| r.fmt.link.clone())
+    }
+
+    #[setter]
+    fn set_hyperlink(&self, value: Option<String>) -> PyResult<()> {
+        self.with_mut(|r| r.fmt.link = value.filter(|v| !v.is_empty()))
+    }
+
+    /// 改行を足す(python-docx の add_break)。docx の w:br になる。
+    fn add_break(&self) -> PyResult<()> {
+        self.with_mut(|r| r.text.push('\n'))
+    }
+
+    /// タブを足す(python-docx の add_tab)。docx の w:tab になる。
+    fn add_tab(&self) -> PyResult<()> {
+        self.with_mut(|r| r.text.push('\t'))
     }
 
     /// 字を後ろに継ぎ足す(python-docx の add_text)。書式はこの run のまま。

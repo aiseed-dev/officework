@@ -823,6 +823,50 @@ if pydocx is not None:
               and d_r4.core_properties.comments == "控え",
               "本家の文書の情報がうちで読めない")
 
+        # --- リンク・改行・タブ: **保存で黙って消えない** ----------------------
+        # (2026-08-13 に踏んだ穴: リンクは読まれず unsupported にも出ず、
+        #  保存で消えていた。字だけ残るので気づきにくい)
+        from docx.oxml.ns import qn
+        from docx.opc.constants import RELATIONSHIP_TYPE as RT
+        src_l = os.path.join(t, "link.docx")
+        d_l = pydocx.Document()
+        par_l = d_l.add_paragraph("見よ: ")
+        run_l = par_l.add_run("公式サイト")
+        rid = par_l.part.relate_to("https://example.jp/", RT.HYPERLINK, is_external=True)
+        hl = par_l._p.makeelement(qn("w:hyperlink"), {qn("r:id"): rid})
+        hl.append(run_l._r)
+        par_l._p.append(hl)
+        d_l.save(src_l)
+
+        d_lr = office_doc.Doc.open(src_l)
+        check([(h.text, h.address) for h in d_lr[0].hyperlinks]
+              == [("公式サイト", "https://example.jp/")],
+              f"本家のリンクが読めない: {d_lr[0].hyperlinks}")
+        out_l = os.path.join(t, "link_rt.docx")
+        d_lr.save(out_l)
+        back_l = pydocx.Document(out_l)
+        check([(h.text, h.address) for h in back_l.paragraphs[0].hyperlinks]
+              == [("公式サイト", "https://example.jp/")],
+              "往復でリンクが消えた")
+
+        # うちが足したリンク・改行・タブを本家が読める
+        d_l2 = office_doc.Doc()
+        p_l2 = d_l2.add_paragraph("参照: ")
+        p_l2.add_hyperlink("うちの頁", "https://aiseed.example/")
+        r_l2 = p_l2.add_run("続き")
+        r_l2.add_break()
+        r_l2.add_tab()
+        r_l2.add_text("後")
+        out_l2 = os.path.join(t, "link_mine.docx")
+        d_l2.save(out_l2)
+        back_l2 = pydocx.Document(out_l2)
+        check([(h.text, h.address) for h in back_l2.paragraphs[0].hyperlinks]
+              == [("うちの頁", "https://aiseed.example/")],
+              f"うちのリンクを本家が読めない: {back_l2.paragraphs[0].hyperlinks}")
+        xml_l2 = back_l2.paragraphs[0]._p.xml
+        check("<w:br/>" in xml_l2 and "<w:tab/>" in xml_l2,
+              "改行・タブが要素になっていない")
+
         # --- スタイル定義を運ぶ(2026-08-12 発注者確定「持たない主義では無理」)--
         # (1) 知らないスタイル名が保存で消えない — 「書式は据え置き」の穴を塞ぐ
         d_s = pydocx.Document()

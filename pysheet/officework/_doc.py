@@ -165,6 +165,28 @@ class Run:
     def style(self, v):
         self._r.style = None if v is None else str(getattr(v, "name", v))
 
+    @property
+    def hyperlink(self):
+        """リンク先(URL。無ければ None)。"""
+        return self._r.hyperlink
+
+    @hyperlink.setter
+    def hyperlink(self, v):
+        self._r.hyperlink = v
+
+    def add_break(self, break_type=None):
+        """改行を足す(python-docx と同じ口)。docx の w:br になる。
+        改ページの break_type は段落の性質(page_break_before)で持つので断る。"""
+        if break_type is not None:
+            raise NotImplementedError(
+                "改ページは段落の性質(paragraph_format.page_break_before)で持つ(台帳)"
+            )
+        self._r.add_break()
+
+    def add_tab(self):
+        """タブを足す(python-docx と同じ口)。docx の w:tab になる。"""
+        self._r.add_tab()
+
     def add_text(self, text):
         """字を後ろに継ぎ足す(書式はこの run のまま — 本家と同じ定義)。"""
         self._r.add_text(text)
@@ -215,6 +237,19 @@ class InlineShape:
     def __repr__(self):
         return "<officework.doc InlineShape {:.0f}×{:.0f}mm>".format(
             self.width.mm, self.height.mm)
+
+
+class Hyperlink:
+    """段落の中のリンク(本家の Hyperlink の役)。text と address。"""
+
+    __slots__ = ("text", "address")
+
+    def __init__(self, text, address):
+        self.text = text
+        self.address = address
+
+    def __repr__(self):
+        return "<officework.doc Hyperlink {!r} → {}>".format(self.text, self.address)
 
 
 class Section:
@@ -471,6 +506,15 @@ class Paragraph:
         if style is not None:
             r.style = style
         return r
+
+    @property
+    def hyperlinks(self):
+        """この段落のリンク(本家と同じ口)。.text と .address を持つ。"""
+        return [Hyperlink(t, u) for t, u in self._p.hyperlinks]
+
+    def add_hyperlink(self, text, address):
+        """段落の末尾にリンクを足す。書式は末尾の run を継ぐ。"""
+        return Run(self._p.add_hyperlink(text, address))
 
     def insert_paragraph_before(self, text=None, style=None):
         """この段落の前に段落を差す(python-docx と同じ口)。

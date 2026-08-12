@@ -145,7 +145,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         let _ = f.read_to_string(&mut cxml);
     }
     let cmap = parse_comments(&cxml);
-    let (mut doc, mut rep) = parse_document_full(&xml, &media, &cmap);
+    let (mut doc, mut rep) = parse_document_rels(&xml, &media, &cmap, &targets);
     // このアプリのペン(joink)は原文控えから筆へ読み戻す
     extract_ink(&mut doc);
     if !styxml.is_empty() {
@@ -1104,6 +1104,16 @@ pub(super) fn parse_document_full(
     media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
     cmts: &std::collections::BTreeMap<String, Comment>,
 ) -> (Document, Report) {
+    parse_document_rels(xml, media, cmts, &Default::default())
+}
+
+/// 関係(rId → 的)つき。リンクの URL を解くのに要る
+pub(super) fn parse_document_rels(
+    xml: &str,
+    media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
+    cmts: &std::collections::BTreeMap<String, Comment>,
+    targets: &std::collections::BTreeMap<String, String>,
+) -> (Document, Report) {
     let mut r = Reader::from_str(xml);
     r.config_mut().trim_text(false);
 
@@ -1160,6 +1170,7 @@ pub(super) fn parse_document_full(
     let mut sdt_cur: Option<Box<kumihan::Sdt>> = None;
     let mut in_text = false;
     let mut in_rpr = false;
+    let mut cur_link: Option<String> = None;
     let mut cur = String::new();
     // フィールド(w:fldChar / w:instrText)。PAGE は印、REF は参照の run になる
     let mut in_instr = false;
@@ -1226,10 +1237,15 @@ pub(super) fn parse_document_full(
                               dropcap = false; }
                     b"rPr" => {
                         in_rpr = true;
-                        fmt = CharFormat { sdt: sdt_cur.clone(), ..Default::default() };
+                        fmt = CharFormat { sdt: sdt_cur.clone(), link: cur_link.clone(), ..Default::default() };
                     }
                     b"pPr" => in_ppr = true,
                     b"tblPr" => in_tblpr = true,
+                    // リンク。**外部の的(URL)は関係から解く** — 解けない
+                    // 内部リンク(しおりへ)は今は持たない(字は残る)
+                    b"hyperlink" => {
+                        cur_link = attr(&e, "id").and_then(|id| targets.get(&id).cloned());
+                    }
                     b"sz" if in_rpr => {
                         if let Some(v) = attr(&e, "val") {
                             if let Ok(h) = v.parse::<f32>() { size_pt = h / 2.0; }
@@ -1345,7 +1361,12 @@ pub(super) fn parse_document_full(
                     }
                     // 段落の囲み枠。辺の別は持たない(あれば囲みとみなす)
                     b"pBdr" if in_ppr => boxed = true,
-                    b"r" => fmt.sdt = sdt_cur.clone(),
+                    b"r" => {
+                        fmt.sdt = sdt_cur.clone();
+                        // **rPr の無い run にもリンクは掛かる** — 掛かりを
+                        // 決めるのは囲み(w:hyperlink)で、run の書式ではない
+                        fmt.link = cur_link.clone();
+                    }
                     b"t" => { in_text = true; cur.clear(); }
                     // 脚注・文末脚注の印。空要素で来るのが普通なので実際に効くのは
                     // Empty の枝だが、**両方の枝に置く** — 片方の枝でしか見ていない
@@ -1822,6 +1843,7 @@ pub(super) fn parse_document_full(
                     }
                     b"instrText" => in_instr = false,
                     b"rPr" => in_rpr = false,
+                    b"hyperlink" => cur_link = None,
                     b"pPr" => in_ppr = false,
                     b"tblPr" => in_tblpr = false,
                     b"p" => {

@@ -251,7 +251,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ iter_inner_content | 互換層 | runs から(リンクは hyperlinks(足す)が来たら混ぜる) |
 | ✔ add_run | 足す | 段落に run を継ぎ足す(済 2026-08-12 夜。書式は**末尾の run を継ぐ** — text の代入が先頭を継ぐのと対。style 引数は 2026-08-13 の主義転換で**効くようになった** — styles にある文字スタイルの名前) |
 | ✔ insert_paragraph_before | 足す | 途中に差す(add_paragraph は末尾だけ)(済 2026-08-12 夜。手元の札は位置で指すので、差した後は引き直す — シートの札と同じ作法。style 引数は断る) |
-| hyperlinks | 足す | リンクの一件 |
+| ✔ hyperlinks | 足す | リンクの一件(**済 2026-08-13**。踏んだ穴: docx のリンクは**読まれず・unsupported にも出ず・保存で消えて**いた(字だけ残るので気づきにくい)。CharFormat に link を足し(field・ruby と同じ持ち場 — run の切り貼りが効く)、読みは w:hyperlink の r:id を関係から URL に解き、書きは包み直して関係も宣言する。Paragraph.hyperlinks / add_hyperlink・Run.hyperlink。**add_run はリンクを継がない** — 掛かりを決めるのは囲みで字の書式ではない(検査が捕まえた)。適合は両方向) |
 | ✔ paragraph_format | 足す(書式) | 段落書式(行間・字下げ・前後の間隔)(**済(部分)2026-08-12 夜**: alignment(本家の enum も受ける)・line_spacing・page_break_before — 模型が持つ物。space_before / space_after・left_indent は**模型に無い**ので読みは None・書きは正直に断る。模型の indent は段数(1段=全角2字)で、本家の Length との対応は決めてから) |
 | part / contains_page_break / rendered_page_breaks | 要らない | 内部・レイアウト依存 |
 
@@ -261,7 +261,7 @@ Cell は `s.cell(row=, column=)` から)。
 |---|---|---|
 | ✔ text / bold / italic / underline / font | ある | ほかに color / size_pt も既にある(相手は font の下に置く — 互換層で両対応。_doc.py の _Font: str の子で `== "MS明朝"` も `.name` も通る) |
 | ✔ add_text / clear | 足す | 当初「互換層」としたが、エンジンの Run は**凍った写し**で run 単位の書き口が無い(2026-08-12 doc.rs と突き合わせて正した)。run の書きをエンジンに足してから(**済 2026-08-12 夜**: Run を**位置で引き直す手**に変えた — text / bold / italic / underline / strike / color / size_pt / font の読み書き、add_text は書式を保って継ぎ足し、clear は字だけ消して自分を返す。font の両対応(str と .name)も書きが効くようになった) |
-| add_break / add_tab / add_picture | 足す | |
+| ✔ add_break / add_tab | 足す | (済 2026-08-13: 読み書きは既にあり(w:br / w:tab ↔ 改行 / タブ)、口だけ張った。改ページの break_type は段落の性質(page_break_before)で持つので断る)。add_picture(run 単位)は段落の add_picture が同じ役 |
 | iter_inner_content | 足す | run の中の改行・タブ・画像も順に返す(add_break の一件) |
 | mark_comment_range | 足す | コメントの一件 |
 | ✔ style | 足す(書式) | 文字スタイル(済 2026-08-13 — styles の一件と一緒。読みは styles の名前、書きは styles にある文字スタイルだけ(無い名前は add_style で作ってから — 黙って作らない)。add_run(style=)・insert_paragraph_before(style=)も同じ道で効くようになった) |

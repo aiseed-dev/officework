@@ -365,6 +365,16 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                     hps = hps, raise = raise, base = base_sz, rt = esc(rt)
                 ).as_bytes());
             }
+            // リンク。**読んだ的をそのまま返す** — 包まないと、開いて保存
+            // しただけでリンクが黙って消える(2026-08-13 に踏んだ)
+            let linked = run.fmt.link.as_deref().and_then(|u| {
+                LINKS.with(|m| m.borrow().get(u).copied()).map(|i| (u.to_string(), i))
+            });
+            if let Some((_, i)) = &linked {
+                let mut hl = BS::new("w:hyperlink");
+                hl.push_attribute(("r:id", link_rid(*i).as_str()));
+                w.write_event(Event::Start(hl)).unwrap();
+            }
             w.write_event(Event::Start(BS::new("w:r"))).unwrap();
             w.write_event(Event::Start(BS::new("w:rPr"))).unwrap();
             // 文字スタイル。読んだ名前をそのまま返す(スキーマで rPr の先頭)。
@@ -433,6 +443,9 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             }
             if sdt.is_some() {
                 let _ = w.get_mut().write_all(b"</w:sdtContent></w:sdt>");
+            }
+            if linked.is_some() {
+                w.write_event(Event::End(BytesEnd::new("w:hyperlink"))).unwrap();
             }
             if mode != 0 {
                 let tag = if mode == 1 { "ins" } else { "del" };
@@ -531,8 +544,60 @@ pub(super) fn notes_xml(orig: Option<&str>, add: &[&kumihan::Footnote], endnote:
     }
 }
 
+
+/// 本文に出てくるリンクの的を**文書の順**で集める(重複は最初の1つ)。
+/// 書き手と関係(rels)が**同じ番号**を使うための一本道 — 別々に数えると
+/// r:id が食い違い、Word が「修復」に入る。
+pub(super) fn collect_links(doc: &Document) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut push = |p: &Paragraph, out: &mut Vec<String>| {
+        for r in &p.runs {
+            if let Some(u) = &r.fmt.link {
+                if !out.iter().any(|x| x == u) {
+                    out.push(u.clone());
+                }
+            }
+        }
+    };
+    for b in &doc.blocks {
+        match b {
+            Block::Para(p) => push(p, &mut out),
+            Block::Table(t) => {
+                for row in &t.rows {
+                    for c in row {
+                        for p in &c.paragraphs {
+                            push(p, &mut out);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// リンクの関係の Id(番号は collect_links の並び)
+pub(super) fn link_rid(i: usize) -> String {
+    format!("rIdJOlnk{}", i + 1)
+}
+
+thread_local! {
+    /// 書いている間だけの「URL → 番号」。書き手(write_para)は段落しか
+    /// 見えないので、文書ぜんたいで決まる番号をここから引く
+    static LINKS: std::cell::RefCell<std::collections::BTreeMap<String, usize>> =
+        std::cell::RefCell::new(Default::default());
+}
+
 pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc<Vec<u8>>>, Vec<Comment>) {
     use quick_xml::events::{BytesEnd, BytesStart as BS};
+    // リンクの番号を敷く(この文書を書いている間だけ)
+    LINKS.with(|m| {
+        let mut m = m.borrow_mut();
+        m.clear();
+        for (i, u) in collect_links(doc).into_iter().enumerate() {
+            m.insert(u, i);
+        }
+    });
     let mut w = Writer::new(Cursor::new(Vec::new()));
 
     let mut root = BS::new("w:document");
@@ -1030,7 +1095,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     // 挿した画像のぶん(rIdJO1〜)と、新しく作るヘッダー・フッターを足す
     if orig_rels.is_some() || !new_media.is_empty() || hdr.is_some() || ftr.is_some()
         || doc.page_color.is_some() || doc.hyphenate || doc.protection.is_some()
-        || !cmts_out.is_empty() || !orig_has_styles
+        || !cmts_out.is_empty() || !orig_has_styles || !collect_links(doc).is_empty()
     {
         let mut rels = orig_rels.unwrap_or_else(|| {
             concat!(
@@ -1054,6 +1119,25 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             let (ext, _) = image_kind(m);
             add.push_str(&format!(
                 r#"<Relationship Id="rIdJO{n}" Type="{RNS_DOC}/image" Target="media/joimg{n}.{ext}"/>"#
+            ));
+        }
+        // リンクの関係(外部の的)。**書いた r:id は必ず宣言する** —
+        // 宣言の無い r:id は Word が「修復」に入る。前の保存が残した
+        // 同じ Id は除いてから置き直す(番号は collect_links の並び)
+        for i in 0..collect_links(doc).len() {
+            let rid = link_rid(i);
+            let needle = format!("<Relationship Id=\"{rid}\"");
+            if let Some(at) = rels.find(&needle) {
+                if let Some(j) = rels[at..].find("/>") {
+                    rels.replace_range(at..at + j + 2, "");
+                }
+            }
+        }
+        for (i, url) in collect_links(doc).into_iter().enumerate() {
+            add.push_str(&format!(
+                r#"<Relationship Id="{}" Type="{RNS_DOC}/hyperlink" Target="{}" TargetMode="External"/>"#,
+                link_rid(i),
+                esc(&url),
             ));
         }
         // スタイル定義(styles.xml)への関係。まっさらの文書だけ
