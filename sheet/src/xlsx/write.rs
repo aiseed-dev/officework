@@ -1549,7 +1549,6 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         if sh.protected {
             let mut pr = BytesStart::new("sheetProtection");
             pr.push_attribute(("sheet", "1"));
-            pr.push_attribute(("objects", "1"));
             pr.push_attribute(("scenarios", "1"));
             // **既定に頼らず全部書く。** 属性ごとに既定の向きが違うので、
             // 省くと読み手によって解釈が割れる
@@ -1569,6 +1568,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 ("sort", a.sort),
                 ("autoFilter", a.autofilter),
                 ("pivotTables", a.pivot),
+                ("objects", a.objects),
             ] {
                 pr.push_attribute((k, d(v)));
             }

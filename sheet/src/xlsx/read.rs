@@ -996,6 +996,8 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                         }
                     };
                     let a = &mut sh.protect_allow;
+                    // **既定は禁止**(objects を書かない古い版は「図形も保護」)
+                    a.objects = !deny("objects", true);
                     a.select_locked = !deny("selectLockedCells", false);
                     a.select_unlocked = !deny("selectUnlockedCells", false);
                     a.format_cells = !deny("formatCells", true);

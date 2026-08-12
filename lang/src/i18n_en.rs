@@ -385,6 +385,7 @@ pub const TABLE: &[(&str, &str)] = &[
 ("計算方法: 自動(いつもすぐ計算します)", "Calculation: automatic (always immediate)"),
 ("計算方法: 手動(F9 で計算します — 大きな表で待たされない)", "Calculation: manual (F9 recalculates — no waiting on big sheets)"),
 ("統計", "Statistics"),
+("図形・画像の操作", "Moving shapes and pictures"),
 ("→ 並べ替え…", "→ Sort…"),
 ("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Pick the column to slice by (one at a time; this only changes what you see, not the data)"),
 ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Slicer: tap a value in column {} to filter (≡ = pick several / ✕ = clear; this only changes what you see, not the data)"),

@@ -1142,6 +1142,7 @@ pub(crate) fn border_kind_label(key: &str) -> String {
 /// (入切の照合は sheet に渡る)。並びが食い違わないことは tests.rs が見張る
 pub(crate) fn protect_allows() -> Vec<(&'static str, &'static str)> {
     vec![
+        ui::item!("図形・画像の操作"),
         ui::item!("ロックされたセルの選択"),
         ui::item!("ロックされていないセルの選択"),
         ui::item!("セルの書式設定"),

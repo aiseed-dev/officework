@@ -406,6 +406,10 @@ pub struct ProtectAllow {
     pub autofilter: bool,
     /// ピボットテーブルを操作できる
     pub pivot: bool,
+    /// 図形・画像を選んで動かせる(xlsx の `objects`)。
+    /// **既定は禁止** — 保護は「うっかり動かす」を止めるためのもので、
+    /// 図形はセルより簡単にずれる(2026-08-13、台帳「図形ロック」)
+    pub objects: bool,
 }
 
 impl Default for ProtectAllow {
@@ -424,14 +428,16 @@ impl Default for ProtectAllow {
             sort: false,
             autofilter: false,
             pivot: false,
+            objects: false,
         }
     }
 }
 
 impl ProtectAllow {
     /// 画面に出す並び(名前, 読む, 書く)。チェックの一覧と往復で使う
-    pub fn items(&self) -> [(&'static str, bool); 13] {
+    pub fn items(&self) -> [(&'static str, bool); 14] {
         [
+            ("図形・画像の操作", self.objects),
             ("ロックされたセルの選択", self.select_locked),
             ("ロックされていないセルの選択", self.select_unlocked),
             ("セルの書式設定", self.format_cells),
