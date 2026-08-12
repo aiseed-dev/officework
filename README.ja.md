@@ -161,6 +161,7 @@ from officework import doc
 d = doc.Doc.open("報告書.docx")
 print(d.unsupported)               # 読めなかった部品の一覧(空なら全部読めた)
 d.replace("旧社名", "新社名")       # 段落の中の書式はそのまま
+d.fill("宛先", "日本フネン株式会社") # 名前つき記入欄に差し込む(writer で付けた名前)
 d[3].text = "差し替え"              # 見出しの段は見出しのまま、寄せも1行目の字下げも残る
 print(d.tables[0][1][2].text)      # 表・行・セル
 d.save("out.docx")

@@ -259,6 +259,49 @@ jobs:
           assert not (a - b), f"保存で原本の部品が消えた: {sorted(a - b)}"
           print("docx の見本どおりに動いた: 段落", len(again), "表", len(again.tables))
           PY
+      - name: 名前つき記入欄の見本もそのまま動くか
+        # README の d.fill("宛先", …) の行を配った wheel で打つ。sample に
+        # 記入欄つきの docx が無いので、最小の w:sdt(本文と表の中に1つずつ)を
+        # その場で作って fields / fill / extract を通す(2026-08-13 に追加)
+        run: |
+          cd /tmp
+          /tmp/v/bin/python - <<'PY'
+          import zipfile
+          doc_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+          <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+          <w:p><w:sdt><w:sdtPr><w:tag w:val="宛先"/><w:text/></w:sdtPr>
+          <w:sdtContent><w:r><w:rPr><w:b/></w:rPr><w:t>ここに社名</w:t></w:r></w:sdtContent></w:sdt></w:p>
+          <w:tbl><w:tblGrid><w:gridCol w:w="4000"/></w:tblGrid>
+          <w:tr><w:tc><w:p><w:sdt><w:sdtPr><w:tag w:val="金額"/><w:text/></w:sdtPr>
+          <w:sdtContent><w:r><w:t>0</w:t></w:r></w:sdtContent></w:sdt></w:p></w:tc></w:tr></w:tbl>
+          </w:body></w:document>'''
+          ct = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+          <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+          <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+          <Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+          </Types>'''
+          rels = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+          <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+          </Relationships>'''
+          with zipfile.ZipFile("/tmp/fields.docx", "w") as z:
+              z.writestr("[Content_Types].xml", ct)
+              z.writestr("_rels/.rels", rels)
+              z.writestr("word/document.xml", doc_xml)
+
+          from officework import doc
+          d = doc.Doc.open("/tmp/fields.docx")
+          assert d.fields() == [("宛先", "ここに社名"), ("金額", "0")], d.fields()
+          assert d.fill("宛先", "日本フネン株式会社") == 1
+          assert d.fill("無い名前", "x") == 0, "無い欄で黙って成功してはいけない"
+          assert d.extract("宛先") == "日本フネン株式会社"
+          assert d.extract("無い名前") is None
+          d.save("/tmp/fields-out.docx")
+          again = doc.Doc.open("/tmp/fields-out.docx")
+          assert again.fields() == [("宛先", "日本フネン株式会社"), ("金額", "0")], "保存で欄が壊れた"
+          print("記入欄の見本どおりに動いた:", again.fields())
+          PY
 
       - name: 存在しない名前が文書に残っていないか
         # office_sheet は 1cae2f0 で officework.sheet へ移した。**貼ると

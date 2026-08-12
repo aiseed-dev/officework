@@ -177,6 +177,24 @@ d.find("Old Name Ltd.")            # paragraphs containing it, body and table ce
 d.replace("Old Name Ltd.", "New Name Ltd.")   # -> count
 ```
 
+### Filling by name (form fields)
+
+Surer than hunting for text: **named form fields** (content controls —
+placed in writer via Insert > Form field, named via "Name the field";
+the name is the docx `w:tag`). They resolve the same way in the body and
+inside table cells:
+
+```python
+d.fields()                  # [(name, current value)]
+d.fill("customer", "Nihon Funen K.K.")  # writes every field of that name -> count
+                            # (0 means no such field — never a silent success)
+d.extract("customer")       # value of the first one, or None
+```
+
+The field keeps its own formatting (a bold field stays bold). These are
+**the same words as the writer macros' `fill` / `extract` / `fields`**, so
+what you learned there carries over. All measured on this machine.
+
 ### Tables
 
 ```python

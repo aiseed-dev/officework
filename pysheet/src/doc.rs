@@ -183,6 +183,28 @@ fn set_para_text(p: &mut Paragraph, text: &str) {
     p.runs = vec![Run { text: text.to_string(), size_pt: pt, font, fmt }];
 }
 
+/// run の並びから、名前つき記入欄のまとまりを拾う → (名前, 始まり, 終わり)。
+/// 記入欄(w:sdt)は fmt.sdt を持つ**連続した run** で、同じ欄の run は
+/// 同じ中身の Sdt を指す。名前(w:tag)が空の欄は「名前で引く」対象にならない
+fn sdt_groups(runs: &[kumihan::Run]) -> Vec<(String, usize, usize)> {
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < runs.len() {
+        let Some(sdt) = runs[i].fmt.sdt.clone() else {
+            i += 1;
+            continue;
+        };
+        let start = i;
+        while i < runs.len() && runs[i].fmt.sdt.as_deref() == Some(sdt.as_ref()) {
+            i += 1;
+        }
+        if !sdt.tag.is_empty() {
+            out.push((sdt.tag.clone(), start, i));
+        }
+    }
+    out
+}
+
 /// run の並びの中で `old` を `new` に置き換える。返りは置き換えた回数。
 ///
 /// `text` の代入と違い、**run の切れ目をそのまま残す** — 見つかった所だけを
@@ -417,6 +439,61 @@ impl PyDoc {
             }
         }
         Ok(n)
+    }
+
+    /// 名前つき記入欄(コンテンツコントロール)の一覧 [(名前, いまの値)]。
+    /// 名前は docx の w:tag — writer の「記入欄に名前を付ける」が付ける物で、
+    /// writer マクロの fields() と同じ言葉。同じ名前が複数あればその数だけ並ぶ。
+    /// 本文も表のセルの中も見る(帳票の記入欄はたいてい表の中にある)
+    fn fields(&self) -> PyResult<Vec<(String, String)>> {
+        let g = lock(&self.inner)?;
+        let mut out = Vec::new();
+        for loc in g.all_locs() {
+            let Some(p) = g.para(&loc) else { continue };
+            for (tag, s, e) in sdt_groups(&p.runs) {
+                let text: String = p.runs[s..e].iter().map(|r| r.text.as_str()).collect();
+                out.push((tag, text));
+            }
+        }
+        Ok(out)
+    }
+
+    /// 名前の記入欄**すべて**に value を書く(writer マクロの fill と同じ言葉)。
+    /// 返りは書いた欄の数(0 なら、その名前の欄が無い — 黙って成功にしない)。
+    /// 書式は欄の先頭 run のまま
+    fn fill(&self, name: &str, value: &str) -> PyResult<usize> {
+        let mut g = lock(&self.inner)?;
+        let locs = g.all_locs();
+        let mut n = 0;
+        for loc in locs {
+            let Some(p) = g.para_mut(&loc) else { continue };
+            let groups = sdt_groups(&p.runs);
+            for (tag, s, e) in groups {
+                if tag != name {
+                    continue;
+                }
+                p.runs[s].text = value.to_string();
+                for r in &mut p.runs[s + 1..e] {
+                    r.text.clear();
+                }
+                n += 1;
+            }
+        }
+        Ok(n)
+    }
+
+    /// 名前の記入欄の最初の一つの値。無ければ None(空文字と区別が付く)
+    fn extract(&self, name: &str) -> PyResult<Option<String>> {
+        let g = lock(&self.inner)?;
+        for loc in g.all_locs() {
+            let Some(p) = g.para(&loc) else { continue };
+            for (tag, s, e) in sdt_groups(&p.runs) {
+                if tag == name {
+                    return Ok(Some(p.runs[s..e].iter().map(|r| r.text.as_str()).collect()));
+                }
+            }
+        }
+        Ok(None)
     }
 
     /// 本文の末尾に段落を足す。
@@ -1785,5 +1862,32 @@ mod tests {
         assert_eq!(resolve(0, 3, "行は").unwrap(), 0);
         assert!(resolve(3, 3, "行は").is_err());
         assert!(resolve(-4, 3, "行は").is_err());
+    }
+
+    #[test]
+    fn 記入欄のまとまりを名前で拾う() {
+        let sdt = |tag: &str| {
+            Some(Box::new(kumihan::Sdt { tag: tag.into(), ..Default::default() }))
+        };
+        let run = |text: &str, s: Option<Box<kumihan::Sdt>>| kumihan::Run {
+            text: text.into(),
+            size_pt: 10.5,
+            font: None,
+            fmt: kumihan::CharFormat { sdt: s, ..Default::default() },
+        };
+        let runs = vec![
+            run("前置き ", None),
+            run("ここに", sdt("宛先")), // 同じ欄が2つの run に割れている形
+            run("社名", sdt("宛先")),
+            run(" と ", None),
+            run("0", sdt("金額")),
+            run("印", sdt("")), // 名前なしの欄は「名前で引く」対象にならない
+        ];
+        let g = sdt_groups(&runs);
+        assert_eq!(
+            g,
+            vec![("宛先".to_string(), 1, 3), ("金額".to_string(), 4, 5)],
+            "欄のまとまりが違う: {g:?}"
+        );
     }
 }

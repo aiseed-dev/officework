@@ -160,6 +160,7 @@ from officework import doc
 d = doc.Doc.open("report.docx")
 print(d.unsupported)               # the list of parts it couldn't read (empty = everything was read)
 d.replace("Old Name Ltd.", "New Name Ltd.")   # formatting inside the paragraph is left alone
+d.fill("customer", "Nihon Funen K.K.")  # fill a named form field (named in writer)
 d[3].text = "replaced"             # the heading stays a heading; alignment and first-line indent survive
 print(d.tables[0][1][2].text)      # table, row, cell
 d.save("out.docx")
