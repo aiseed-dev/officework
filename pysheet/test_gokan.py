@@ -951,6 +951,17 @@ if pydocx is not None:
         check("<w:br/>" in xml_l2 and "<w:tab/>" in xml_l2,
               "改行・タブが要素になっていない")
 
+        # run の中身を順に(字・改行・タブ)
+        kinds = [type(x).__name__ if not isinstance(x, str) else "str"
+                 for x in r_l2.iter_inner_content()]
+        check(kinds == ["str", "Break", "Tab", "str"],
+              f"run の中身の順: {kinds}")
+        try:
+            r_l2.mark_comment_range(r_l2, 1)
+            check(False, "コメントの範囲が黙って通った")
+        except NotImplementedError:
+            pass
+
         # --- スタイル定義を運ぶ(2026-08-12 発注者確定「持たない主義では無理」)--
         # (1) 知らないスタイル名が保存で消えない — 「書式は据え置き」の穴を塞ぐ
         d_s = pydocx.Document()

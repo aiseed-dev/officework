@@ -187,6 +187,30 @@ class Run:
         """タブを足す(python-docx と同じ口)。docx の w:tab になる。"""
         self._r.add_tab()
 
+    def iter_inner_content(self):
+        """run の中身を順に(本家と同じ口)。字は str、改行とタブは
+        Break / Tab で返す — うちは両方を run の字(\\n・\\t)で持つので、
+        ここで**順のまま**解いて見せる。"""
+        buf = ""
+        for ch in self._r.text:
+            if ch in "\n\t":
+                if buf:
+                    yield buf
+                    buf = ""
+                yield Break() if ch == "\n" else Tab()
+            else:
+                buf += ch
+        if buf:
+            yield buf
+
+    def mark_comment_range(self, last_run, comment_id):
+        """本家は run から run までを範囲としてコメントに紐づけるが、
+        **うちのコメントは段落単位**(模型の粒度)。範囲は持てないので断る —
+        段落に付けるなら Paragraph.add_comment。"""
+        raise NotImplementedError(
+            "コメントの範囲は段落単位(模型の粒度)。Paragraph.add_comment を使う(台帳)"
+        )
+
     def add_text(self, text):
         """字を後ろに継ぎ足す(書式はこの run のまま — 本家と同じ定義)。"""
         self._r.add_text(text)
@@ -198,6 +222,24 @@ class Run:
 
     def __repr__(self):
         return repr(self._r)
+
+
+class Break:
+    """run の中の改行(docx の w:br)。iter_inner_content が返す。"""
+
+    __slots__ = ()
+
+    def __repr__(self):
+        return "<officework.doc Break>"
+
+
+class Tab:
+    """run の中のタブ(docx の w:tab)。"""
+
+    __slots__ = ()
+
+    def __repr__(self):
+        return "<officework.doc Tab>"
 
 
 class Length(int):
