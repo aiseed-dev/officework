@@ -22,9 +22,13 @@
 
 from __future__ import annotations
 
+import functools
 import pathlib
 import re
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import ribbon_parse  # noqa: E402  (表を読むのはここだけ)
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 UI = ROOT / "ui/src"
@@ -34,50 +38,38 @@ UI = ROOT / "ui/src"
 FLOOR = 80
 
 
-def buttons(path: pathlib.Path, table: str) -> list[tuple[str, str, bool]]:
-    """`pub const CALC: &[Tab] = &[ … ];` から (id, icon, ready) を順に拾う。
+@functools.lru_cache(maxsize=None)
+def _tables(path: pathlib.Path):
+    """**表を読むのは `ribbon_parse` だけ。**
 
-    `c("id", "語", "icon")` が押せるボタン、`x("語")` が灰色。
-    灰色は id を持たないので、**位置を保つために印だけ積む** —
-    数だけ合っていて並びがずれる、を見逃さないため。
+    ここには3つの読み手(骨組み・タブ・語)があり、**3つとも別々の正規表現で
+    同じ物を拾っていた**(2026-08-12 に統合)。拾う形は拾えなかった物を黙って
+    捨てるので、書き方が変われば3つとも静かに減る。いまは食べ尽くす形で、
+    知らない書き方が1つでもあれば読む前に落ちる。
     """
-    src = path.read_text(encoding="utf-8")
-    m = re.search(rf"pub const {table}: &\[Tab\] = &\[(.*?)^\];", src, re.S | re.M)
-    if not m:
-        sys.exit(f"::error::{path.name} の {table} の表が見つかりません(書き方が変わった?)")
-    body = re.sub(r"//[^\n]*", "", m.group(1))
-    out: list[tuple[str, str, bool]] = []
-    for kind, args in re.findall(r"\b([cx])\(\s*((?:[^()]|\([^()]*\))*)\)", body):
-        lits = re.findall(r'"((?:[^"\\]|\\.)*)"', args)
-        if kind == "c" and len(lits) >= 3:
-            out.append((lits[0], lits[2], True))
-        elif kind == "x":
-            out.append(("", "", False))
-    return out
+    return ribbon_parse.tables_or_die(path)
+
+
+def buttons(path: pathlib.Path, table: str) -> list[tuple[str, str, bool]]:
+    """(id, icon, ready) を順に。
+
+    **灰色も印だけ積む** — 数だけ合っていて並びがずれる、を見逃さないため。
+    """
+    return [
+        (c.id, c.icon, True) if c.ready else ("", "", False)
+        for tab in _tables(path)[table]
+        for c in tab.cmds
+    ]
 
 
 def tabs(path: pathlib.Path, table: str) -> list[str]:
-    """タブの並び(名前は訳されるので**数だけ**見る)。"""
-    src = path.read_text(encoding="utf-8")
-    m = re.search(rf"pub const {table}: &\[Tab\] = &\[(.*?)^\];", src, re.S | re.M)
-    return re.findall(r"\bTab\s*\{", m.group(1)) if m else []
+    """タブの並び。**名前は訳されるので数だけ**見る。"""
+    return [tab.name for tab in _tables(path)[table]]
 
 
 def labels(path: pathlib.Path, table: str) -> list[str]:
-    """ボタンに**出る語**を順に拾う。骨組みではなく中身を見るときに使う"""
-    src = path.read_text(encoding="utf-8")
-    m = re.search(rf"pub const {table}: &\[Tab\] = &\[(.*?)^\];", src, re.S | re.M)
-    if not m:
-        sys.exit(f"::error::{path.name} の {table} の表が見つかりません")
-    body = re.sub(r"//[^\n]*", "", m.group(1))
-    out: list[str] = []
-    for kind, args in re.findall(r"\b([cx])\(\s*((?:[^()]|\([^()]*\))*)\)", body):
-        lits = re.findall(r'"((?:[^"\\]|\\.)*)"', args)
-        if kind == "c" and len(lits) >= 3:
-            out.append(lits[1])
-        elif kind == "x" and lits:
-            out.append(lits[0])
-    return out
+    """ボタンに**出る語**を順に。骨組みではなく中身を見るときに使う。"""
+    return [c.label for tab in _tables(path)[table] for c in tab.cmds]
 
 
 def same_words(locales: list[str]) -> int:

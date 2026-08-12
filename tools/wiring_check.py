@@ -4,18 +4,28 @@
 載っているかを見る。載っていなければ、画面では押せるのに何も起きない。
 
 同じ照合は `calc/src/tests.rs` と `writer/src/tests.rs` の `wiring_tests` が
-していた。**だが calc と writer は CI で一度も走っていない**(gpui の連結が
-要るため、`.github/workflows/ci.yml` が意図して外している)。つまり
-「ready の嘘は wiring_tests が落とす」という方針は、**手元で誰かが
-cargo test を打ったときだけ成り立っていた**(2026-08-10、fork セッションが
-CI の対象を数えて見つけた)。
+している。**2026-08-10 の時点では、それが CI で一度も走っていなかった** —
+gpui の連結が要るため `ci.yml` が意図して外していて、つまり「ready の嘘は
+wiring_tests が落とす」という方針は**手元で誰かが cargo test を打ったときだけ**
+成り立っていた(fork セッションが CI の対象を数えて見つけた)。
 
-だからここでは**組み立てずに、原文の表そのものを読む**。どちらの表も素の
-リテラルで、`ui/src/ribbon.rs` は gpui を1度も使っていない。
+**その前提は `d1d120b`(2026-08-11)で失効した。** いま ci.yml には
+「cargo test(画面のいる calc / writer)」の仕事があり、`wiring_tests` は
+CI で走る。ここはもう**唯一の防波堤ではなく、速いほうの防波堤**:
 
-**この検査は、見えなくなったときに落ちる。** 字面を読む検査の一番の危険は
-「書き方が変わって何も拾えなくなり、静かに緑になる」ことで、それは
-まさに今日見つけた欠陥そのものの形だから、拾えた数が少なすぎたら落とす。
+- gpui の要らない安い仕事で、数秒で落ちる
+- 画面のいる仕事は GitHub のランナーで**まだ日が浅い**
+
+**畳むのは「画面のいる仕事が何日か続けて緑」を見てから。** 忘れると、
+重複した検査を永久に二重で保守することになる(期限つきの宿題)。
+
+読み方は**組み立てずに原文の表そのもの**。`ui/src/ribbon.rs` は gpui を
+1度も使っていない素のリテラルなので、これで足りる。
+
+**表を読むのは `ribbon_parse` に集めてある**(2026-08-12)。5つの道具が
+それぞれ正規表現で読んでいて、**全部が「拾う」形=拾えなかった物を黙って
+捨てる**形だった。いまは食べ尽くす形で、知らない書き方が1つでもあれば
+読む前に落ちる。
 """
 
 from __future__ import annotations
@@ -23,6 +33,9 @@ from __future__ import annotations
 import pathlib
 import re
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import ribbon_parse  # noqa: E402  (同じ棚の1枚。表を読むのはここだけ)
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -33,16 +46,8 @@ FLOOR = 60
 
 
 def ready_ids(table: str) -> list[str]:
-    """`ui/src/ribbon.rs` の `pub const CALC: &[Tab] = &[ … ];` から
-    `c("id", …)`(= ready: true)の id を順に拾う。
-
-    `x(…)`(灰色)は id を持たないので、そもそも拾えない。
-    """
-    src = (ROOT / "ui/src/ribbon.rs").read_text(encoding="utf-8")
-    m = re.search(rf"pub const {table}: &\[Tab\] = &\[(.*?)^\];", src, re.S | re.M)
-    if not m:
-        sys.exit(f"::error::ui/src/ribbon.rs の {table} の表が見つかりません(書き方が変わった?)")
-    return re.findall(r'\bc\(\s*"([^"]+)"', m.group(1))
+    """押せるボタンの id を順に。灰色(`x`)は id を持たないので出てこない。"""
+    return [c.id for tab in ribbon_parse.tables_or_die()[table] for c in tab.cmds if c.ready]
 
 
 def handled(crate: str) -> set[str]:

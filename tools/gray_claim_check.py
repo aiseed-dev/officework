@@ -26,6 +26,9 @@ import pathlib
 import re
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import ribbon_parse  # noqa: E402  (表を読むのはここだけ)
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # 灰色は `x("名前", "図")` で書く(`c(…)` が押せるほう)
@@ -50,19 +53,17 @@ ZERO_WORDS = re.compile(r"ゼロ|\bzero\b|\bno\b", re.I)
 
 
 def gray_counts() -> dict[str, int]:
-    """`ui/src/ribbon.rs` の表ごとに、灰色のボタンを数える。"""
-    src = (ROOT / "ui/src/ribbon.rs").read_text(encoding="utf-8")
-    out = {}
-    for table, app in (("WRITER", "writer"), ("CALC", "calc")):
-        m = re.search(rf"pub const {table}: &\[Tab\] = &\[(.*?)^\];", src, re.S | re.M)
-        if not m:
-            sys.exit(f"::error::ui/src/ribbon.rs の {table} が見つかりません(書き方が変わった?)")
-        body = m.group(1)
-        # **押せるボタンも数える。** ここが少なすぎたら表を読めていない証拠
-        if len(re.findall(r'\bc\(\s*"', body)) < FLOOR:
-            sys.exit(f"::error::{table} の表が読めていません(書き方が変わった?)")
-        out[app] = len(GRAY.findall(body))
-    return out
+    """表ごとに灰色のボタンを数える。
+
+    **床(`FLOOR`)は要らなくなった**(2026-08-12)。前は正規表現で拾う形
+    だったので「拾えなくなって 0 になる」を床で防いでいたが、いまは
+    `ribbon_parse` が**食べ尽くして残りが出たら落ちる** — 読めなくなったら
+    数える前に止まる。床は「全盲」しか拾えず、半分になった状態は
+    素通りしていた。
+    """
+    t = ribbon_parse.tables_or_die()
+    return {app: sum(1 for tab in t[table] for c in tab.cmds if not c.ready)
+            for table, app in (("WRITER", "writer"), ("CALC", "calc"))}
 
 
 def main() -> int:

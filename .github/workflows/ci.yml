@@ -64,6 +64,13 @@ jobs:
         run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar
       - name: サイドカーが組めるか(pyoffice)
         run: cargo build -p sidecar
+      - name: リボンの表を読む解析器が、崩れたら止まるか
+        # **検査を信じる前に、落ちる所を見る。** 6つの崩し方(新しい種類・
+        # マクロ書き・Tab を関数で作る・引数が増える・`/* */` で囲む・
+        # 表がもう1つ)それぞれで止まることを確かめる。
+        # 下の3つの検査は全部この解析器を通るので、**ここが効かなければ
+        # 3つとも静かに緑になる**(2026-08-12)
+        run: python3 tools/ribbon_parse.py --self-test
       - name: 押せる見た目のボタンが全部配線されているか
         # **外した crate の中に、外してはいけない検査が1つ紛れていた。**
         # 「ready の嘘は wiring_tests が落とす」という方針の当の検査が
