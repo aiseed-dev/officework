@@ -313,6 +313,30 @@ if openpyxl is not None:
               and str(dvs[0].sqref) == "B1:B5",
               f"うちの入力規則を本家が読めない: {dvs}")
 
+        # 印刷のタイトル行(頁ごとに繰り返す見出し — 複数頁の明細の定番)
+        sp.print_title_rows = "1:2"
+        check(sp.print_title_rows == "1:2", f"タイトル行: {sp.print_title_rows}")
+        check(sp.print_titles == "'{}'!$1:$2".format(sp.title),
+              f"print_titles の形: {sp.print_titles}")
+        try:
+            sp.print_title_cols = "A:B"
+            check(False, "列の繰り返しが黙って通った")
+        except NotImplementedError:
+            pass
+        out_pt = os.path.join(t, "titles.xlsx")
+        bp.save(out_pt)
+        rpt = openpyxl.load_workbook(out_pt).active
+        check(rpt.print_title_rows == "$1:$2",
+              f"うちのタイトル行を本家が読めない: {rpt.print_title_rows}")
+        # 逆向き
+        wb_t = openpyxl.Workbook()
+        wb_t.active["A1"] = 1
+        wb_t.active.print_title_rows = "1:3"
+        out_pt2 = os.path.join(t, "titles_opx.xlsx")
+        wb_t.save(out_pt2)
+        check(office_sheet.Book.open(out_pt2)[0].print_title_rows == "1:3",
+              "本家のタイトル行がうちで読めない")
+
         # 逆向き: 本家が書いた物をうちが読める(実物の DataValidation の代入も)
         from openpyxl.worksheet.datavalidation import DataValidation as ODV
         wb10 = openpyxl.Workbook()

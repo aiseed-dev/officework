@@ -774,6 +774,39 @@ class Sheet:
             value = ",".join(str(v) for v in value)
         self._s.print_area = value
 
+    @property
+    def print_title_rows(self):
+        """頁ごとに繰り返す見出し行("1:2" の形。openpyxl と同じ)。
+        PDF と印刷が実際に繰り返す — 複数頁の明細の定番。"""
+        return self._s.print_title_rows
+
+    @print_title_rows.setter
+    def print_title_rows(self, value):
+        self._s.print_title_rows = value
+
+    @property
+    def print_title_cols(self):
+        # 模型に列の繰り返しの畑が無い(台帳)。**黙って None を返さない** —
+        # 読みは None で正しいが、書きは断る(下の setter)
+        return None
+
+    @print_title_cols.setter
+    def print_title_cols(self, value):
+        if value:
+            raise NotImplementedError(
+                "列の繰り返し(print_title_cols)は模型に畑が無い(台帳)。"
+                "行の繰り返し(print_title_rows)は効く"
+            )
+
+    @property
+    def print_titles(self):
+        """openpyxl と同じ「'シート'!$1:$2」の形(無ければ None)。"""
+        r = self._s.print_title_rows
+        if not r:
+            return None
+        a, b = r.split(":")
+        return "'{}'!${}:${}".format(self.title, a, b)
+
     def add_data_validation(self, dv):
         """入力規則を足す(openpyxl と同じ口 — DataValidation を渡す)。
         本家の実物でもうちの DataValidation でもよい(属性名で受ける)。"""

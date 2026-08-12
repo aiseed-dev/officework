@@ -773,6 +773,41 @@ impl PySheet {
         })
     }
 
+    /// 印刷のタイトル行(頁ごとに繰り返す見出し)。openpyxl と同じ "1:2" の形。
+    /// 無ければ None。**PDF と印刷が実際に繰り返す**(paper::grid)。
+    #[getter]
+    fn print_title_rows(&self) -> PyResult<Option<String>> {
+        self.with(|s| Ok(s.print_title_rows.map(|(a, b)| format!("{}:{}", a + 1, b + 1))))
+    }
+
+    /// タイトル行を置く。"1:2"($ 付きでも)。None か空で消す。
+    #[setter]
+    fn set_print_title_rows(&self, value: Option<&str>) -> PyResult<()> {
+        let rows = match value.map(str::trim).filter(|v| !v.is_empty()) {
+            None => None,
+            Some(v) => {
+                let v = v.replace('$', "");
+                let (a, b) = v.split_once(':').unwrap_or((v.as_str(), v.as_str()));
+                let (a, b) = (
+                    a.trim().parse::<u32>().map_err(|_| {
+                        PyValueError::new_err(format!("タイトル行は \"1:2\" の形で: {v:?}"))
+                    })?,
+                    b.trim().parse::<u32>().map_err(|_| {
+                        PyValueError::new_err(format!("タイトル行は \"1:2\" の形で: {v:?}"))
+                    })?,
+                );
+                if a == 0 || b == 0 {
+                    return Err(PyValueError::new_err("行番号は1から(0行は無い)"));
+                }
+                Some((a.min(b) - 1, a.max(b) - 1))
+            }
+        };
+        self.with(|s| {
+            s.print_title_rows = rows;
+            Ok(())
+        })
+    }
+
     /// 入力規則の一覧 [(範囲, type, formula1, formula2, operator)]。
     #[getter]
     fn validations(&self) -> PyResult<Vec<(String, String, String, String, String)>> {
