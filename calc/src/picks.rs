@@ -312,6 +312,15 @@ impl Calc {
                     ui::tf!("{} にします(PDF と保存に効きます)", label).into()
                 };
             }
+            // 表のスタイルを選んだ(2026-08-12、台帳「テンプレート選択ギャラリー」)
+            "table-style" => {
+                if let Some((_, label, st)) =
+                    crate::util::table_styles().iter().find(|(k, _, _)| *k == v)
+                {
+                    let (st, label) = (*st, *label);
+                    self.make_table(st, Some(label));
+                }
+            }
             "cell-style" => {
                 if let Some((_, label, f)) = cell_styles().iter().find(|(k, _, _)| *k == v) {
                     let (f, label) = (*f, *label);

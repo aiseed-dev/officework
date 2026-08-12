@@ -2882,13 +2882,20 @@ impl Render for Calc {
             };
             // キャレットは | で見せる(writer の検索欄と同じ割り切り)。
             // パスワードは伏せ字
+            // **キャレットは文字の数で置く。** `ed.cursor()` は打った字への
+            // **バイト**位置で、伏せ字は `●`(3バイト)なので、そのまま
+            // 差し込むと文字の途中を割ることになる — Rust はそこで落ちる。
+            // 実際、パスワードを1文字打っただけで calc が落ちていた
+            // (2026-08-12。3の倍数のときだけ偶然通っていた)
+            let raw = ed.text();
+            let before = raw[..ed.cursor().min(raw.len())].chars().count();
             let mut text = if matches!(*kind, "pw-open" | "pw-set") {
-                "●".repeat(ed.text().chars().count())
+                "●".repeat(raw.chars().count())
             } else {
-                ed.text().to_string()
+                raw.to_string()
             };
-            let cur = ed.cursor().min(text.len());
-            text.insert(cur, '|');
+            let at = text.char_indices().nth(before).map_or(text.len(), |(i, _)| i);
+            text.insert(at, '|');
             // パネルは表の中央に出す(発注者 2026-08-06「表示位置を見直す」)。
             // 外側の受け皿は聞き手を持たない = 後ろのセルの操作を遮らない
             div().absolute().inset_0().flex().items_center().justify_center()

@@ -103,6 +103,66 @@ impl Calc {
         "setfilter", "merge", "inshyperlink", "instable", "data-validation", "rem-duplicates",
     ];
 
+    /// 選んだ範囲を表にする。**見た目は書式として掛ける**(表を外しても残る
+    /// — SEKKEI「表そのもの」の節)。`style` は色の組、`label` は状態行に出す
+    /// スタイルの名前(既定で作ったときは出さない)。
+    ///
+    /// `instable`(すぐ作る)と `table-tpl`(色を選んでから作る)の両方から
+    /// 呼ぶ。**2箇所に同じ組み立てを書かない** — 片方だけ直る事故を避ける
+    pub(crate) fn make_table(&mut self, style: crate::util::TableStyle, label: Option<&str>) {
+        if self.anchor.is_none() {
+            self.status = ui::t!("表にする範囲を選んでください").into();
+            return;
+        }
+        self.checkpoint();
+        let (a, b) = self.sel_rect();
+        for r in a.row..=b.row {
+            for c in a.col..=b.col {
+                let p = Pos::new(r, c);
+                let mut cell = self.sheet().get(p).cloned().unwrap_or_default();
+                if r == a.row {
+                    cell.fmt.bold = true;
+                    cell.fmt.fill = style.header.map(|h| h.into());
+                    cell.fmt.borders.top = sheet::model::Edge::THIN;
+                } else if (r - a.row) % 2 == 0 {
+                    cell.fmt.fill = style.band.map(|h| h.into());
+                }
+                if r == b.row {
+                    cell.fmt.borders.bottom = sheet::model::Edge::THIN;
+                }
+                if c == a.col {
+                    cell.fmt.borders.left = sheet::model::Edge::THIN;
+                }
+                if c == b.col {
+                    cell.fmt.borders.right = sheet::model::Edge::THIN;
+                }
+                self.book.sheets[self.active].set(p, cell);
+            }
+        }
+        let n = self.book.sheets.iter().map(|s| s.tables.len()).sum::<usize>() + 1;
+        self.book.sheets[self.active].tables.push(sheet::model::TableDef {
+            name: format!("テーブル{n}"),
+            a,
+            b,
+            ..Default::default()
+        });
+        self.dirty = true;
+        self.status = match label {
+            Some(l) => ui::tf!(
+                "{}:{} を「{}」の表にしました(範囲に変換・サイズ変更もできます。Ctrl+Z で戻せます)",
+                a.a1(),
+                b.a1(),
+                l
+            ),
+            None => ui::tf!(
+                "{}:{} を表にしました(見出しの帯と縞々。範囲に変換・サイズ変更もできます。Ctrl+Z で戻せます)",
+                a.a1(),
+                b.a1()
+            ),
+        }
+        .into();
+    }
+
     pub(crate) fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
         // 前に開いていた一覧の注記を落とす。**注記を出す一覧を鍵で閉じると
         // 残り、次に開いた一覧の見出しに前の説明が出ていた**(書体の一覧に
@@ -1973,52 +2033,28 @@ impl Calc {
             // フィルタのボタン = データタブの絞り込みと同じ実体
             "td-filter" => self.run_cmd("setfilter", cx),
             // 表の挿入 = 選択に表の書式(見出しの帯+縞々+外枠)を掛ける
-            "instable" | "table-tpl" => {
+            // 表にする。`instable` は既定の色ですぐ、`table-tpl` は
+            // **色を選んでから**(2026-08-12、台帳「テンプレート選択ギャラリー」)
+            "instable" => {
+                self.commit();
+                let st = crate::util::table_styles()[0].2;
+                self.make_table(st, None);
+            }
+            "table-tpl" => {
                 self.commit();
                 if self.anchor.is_none() {
                     self.status = ui::t!("表にする範囲を選んでください").into();
                 } else {
-                    self.checkpoint();
-                    let (a, b) = self.sel_rect();
-                    for r in a.row..=b.row {
-                        for c in a.col..=b.col {
-                            let p = Pos::new(r, c);
-                            let mut cell = self.sheet().get(p).cloned().unwrap_or_default();
-                            if r == a.row {
-                                cell.fmt.bold = true;
-                                cell.fmt.fill = Some("D5E8DC".into());
-                            } else if (r - a.row) % 2 == 0 {
-                                cell.fmt.fill = Some("F1F6F3".into());
-                            }
-                            if r == a.row {
-                                cell.fmt.borders.top = sheet::model::Edge::THIN;
-                            }
-                            if r == b.row {
-                                cell.fmt.borders.bottom = sheet::model::Edge::THIN;
-                            }
-                            if c == a.col {
-                                cell.fmt.borders.left = sheet::model::Edge::THIN;
-                            }
-                            if c == b.col {
-                                cell.fmt.borders.right = sheet::model::Edge::THIN;
-                            }
-                            self.book.sheets[self.active].set(p, cell);
-                        }
-                    }
-                    let n = self.book.sheets.iter().map(|s| s.tables.len()).sum::<usize>() + 1;
-                    self.book.sheets[self.active].tables.push(sheet::model::TableDef {
-                        name: format!("テーブル{n}"),
-                        a,
-                        b,
-                        ..Default::default()
-                    });
-                    self.dirty = true;
-                    self.status = format!(
-                        "{}:{} を表にしました(見出しの帯と縞々。範囲に変換・サイズ変更もできます。Ctrl+Z で戻せます)",
-                        a.a1(),
-                        b.a1()
-                    )
-                    .into();
+                    let at = self.pop_anchor();
+                    self.pick_kind = "table-style";
+                    self.pick = Some((
+                        crate::util::table_styles()
+                            .iter()
+                            .map(|(k, l, _)| (k.to_string(), l.to_string()))
+                            .collect(),
+                        at,
+                    ));
+                    self.status = ui::t!("表のスタイル: 選ぶと表になります(Ctrl+Z で戻せます)").into();
                 }
             }
             // 記号を挿入: 一覧から選んで**数式バーへ**差し込む(セルは置き換えない)

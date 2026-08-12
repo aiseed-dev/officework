@@ -1297,12 +1297,30 @@ mod pivot_tests {
             assert_eq!(this.book.sheets[0].extent().0, rows0 + 1, "行の挿入が効かない");
             this.run_cmd("cell-del", cx);
             assert_eq!(this.book.sheets[0].extent().0, rows0, "行の削除が効かない");
-            // 表の雛形(選択に書式+表オブジェクト)
+            // 表にする。**道が2つある**(2026-08-12、台帳「テンプレート選択
+            // ギャラリー」) — `instable` は既定の色ですぐ、`table-tpl` は
+            // 色の一覧を出してから
             this.anchor = Some(Pos::new(30, 0));
             this.cursor = Pos::new(32, 1);
             this.sync_input();
+            this.run_cmd("instable", cx);
+            assert!(!this.book.sheets[0].tables.is_empty(), "表にならない");
+            let n = this.book.sheets[0].tables.len();
+
+            // **一覧が出るだけでは表にならない。** 選んで初めて掛かる
+            this.anchor = Some(Pos::new(34, 0));
+            this.cursor = Pos::new(36, 1);
+            this.sync_input();
             this.run_cmd("table-tpl", cx);
-            assert!(!this.book.sheets[0].tables.is_empty(), "表の雛形が掛からない");
+            assert!(this.pick.is_some(), "表のスタイルの一覧が出ない");
+            assert_eq!(this.book.sheets[0].tables.len(), n, "選ぶ前に表になっている");
+            this.apply_pick("青", cx);
+            assert_eq!(this.book.sheets[0].tables.len(), n + 1, "選んでも表にならない");
+            assert_eq!(
+                this.book.sheets[0].get(Pos::new(34, 0)).map(|c| c.fmt.fill.clone()),
+                Some(Some("D6E4F0".into())),
+                "選んだ色が見出しに掛からない"
+            );
         });
     }
 
@@ -4578,5 +4596,37 @@ mod fnhelp_tests {
                 .collect();
             assert!(残り.is_empty(), "{lang}: 日本語のまま残っている関数 {残り:?}");
         }
+    }
+}
+
+#[cfg(test)]
+mod prompt_tests {
+    use crate::*;
+
+    /// **パスワード欄が落ちない。**
+    ///
+    /// 伏せ字は `●`(3バイト)、キャレットの位置は打った字への**バイト**位置。
+    /// そのまま `String::insert` すると文字の途中を割って Rust が落ちる。
+    /// 1文字打っただけで calc が落ちていた(2026-08-12)— 3の倍数のときだけ
+    /// 偶然通るので、試しに何文字か打った人だけが踏む。
+    #[test]
+    fn 伏せ字にキャレットを差し込んでも落ちない() {
+        // view.rs のパスワード欄と同じ式。**文字数で置く**
+        let caret = |raw: &str, cursor: usize, mask: bool| -> String {
+            let before = raw[..cursor.min(raw.len())].chars().count();
+            let mut text =
+                if mask { "●".repeat(raw.chars().count()) } else { raw.to_string() };
+            let at = text.char_indices().nth(before).map_or(text.len(), |(i, _)| i);
+            text.insert(at, '|');
+            text
+        };
+        for n in 0..8 {
+            let raw = "a".repeat(n);
+            assert_eq!(caret(&raw, n, true), format!("{}|{}", "●".repeat(n), ""), "{n} 文字");
+        }
+        // 途中にキャレットがあるとき
+        assert_eq!(caret("abcd", 2, true), "●●|●●");
+        // 伏せない欄は素の字のまま(日本語でも割らない)
+        assert_eq!(caret("あい", 3, false), "あ|い");
     }
 }

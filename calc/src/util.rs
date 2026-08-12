@@ -1288,6 +1288,39 @@ pub(crate) fn fill_colors() -> Vec<(&'static str, &'static str, Option<&'static 
     ]
 }
 
+/// 表のスタイル(見出しの帯の色と、縞の色)。**表を作るときに選ぶ。**
+///
+/// 前は色が1組に決め打ちで、緑の帳票しか作れなかった(2026-08-12 まで)。
+/// 見た目は**書式として掛かる** — 表を外しても残るし、後から掛け直せる
+/// (SEKKEI「表そのもの」の節)。だから色の組だけを持てばよい。
+///
+/// 色名は既に訳のある語をそのまま鍵にしている(新しい文言を増やさない)。
+pub(crate) fn table_styles() -> Vec<(&'static str, &'static str, TableStyle)> {
+    vec![
+        row(ui::item!("緑"), TableStyle::new("D5E8DC", "F1F6F3")),
+        row(ui::item!("青"), TableStyle::new("D6E4F0", "EEF4FA")),
+        row(ui::item!("橙"), TableStyle::new("FCE4D6", "FDF2EC")),
+        row(ui::item!("赤"), TableStyle::new("F8D7DA", "FCEEEF")),
+        row(ui::item!("紫"), TableStyle::new("E4DCEF", "F3F0F8")),
+        row(ui::item!("灰"), TableStyle::new("E7E9EB", "F4F5F6")),
+        // 色を敷かない。**罫線と太字だけ**で組む帳票のため
+        row(ui::item!("枠線だけ"), TableStyle { header: None, band: None }),
+    ]
+}
+
+/// 表のスタイル1つ。`None` は「色を敷かない」
+#[derive(Clone, Copy)]
+pub(crate) struct TableStyle {
+    pub(crate) header: Option<&'static str>,
+    pub(crate) band: Option<&'static str>,
+}
+
+impl TableStyle {
+    const fn new(header: &'static str, band: &'static str) -> Self {
+        Self { header: Some(header), band: Some(band) }
+    }
+}
+
 pub(crate) fn cell_styles() -> Vec<(&'static str, &'static str, fn(&mut CellFormat))> {
     let f: Vec<(&'static str, &'static str, fn(&mut CellFormat))> = vec![
     row(ui::item!("標準"), |f| *f = CellFormat::default()),
