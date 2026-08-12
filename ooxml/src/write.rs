@@ -88,27 +88,36 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             // 節の区切りだけを持つ段落もある(区切り用の空段落)。
             // ここを足し忘れると pPr ごと書かれず、**区切りが黙って消える**
             || p.sect.is_some()
-            || p.style != ParaStyle::Body;
+            || p.style != ParaStyle::Body
+            || p.style_id.is_some();
         if has_ppr {
             w.write_event(Event::Start(BS::new("w:pPr"))).unwrap();
-            // 段落のスタイル(pPr の先頭に置く — スキーマの並び)
-            match p.style {
-                ParaStyle::Heading(n) => {
-                    let mut st = BS::new("w:pStyle");
-                    st.push_attribute(("w:val", format!("Heading{n}").as_str()));
-                    w.write_event(Event::Empty(st)).unwrap();
+            // 段落のスタイル(pPr の先頭に置く — スキーマの並び)。
+            // **原文の styleId が第一** — 役割を知らない名前も、日本語版
+            // Word の "1" も、読んだままを返す(2026-08-12 発注者確定)
+            if let Some(id) = &p.style_id {
+                let mut st = BS::new("w:pStyle");
+                st.push_attribute(("w:val", id.as_str()));
+                w.write_event(Event::Empty(st)).unwrap();
+            } else {
+                match p.style {
+                    ParaStyle::Heading(n) => {
+                        let mut st = BS::new("w:pStyle");
+                        st.push_attribute(("w:val", format!("Heading{n}").as_str()));
+                        w.write_event(Event::Empty(st)).unwrap();
+                    }
+                    ParaStyle::Toc(n) => {
+                        let mut st = BS::new("w:pStyle");
+                        st.push_attribute(("w:val", format!("TOC{n}").as_str()));
+                        w.write_event(Event::Empty(st)).unwrap();
+                    }
+                    ParaStyle::Tof => {
+                        let mut st = BS::new("w:pStyle");
+                        st.push_attribute(("w:val", "TableofFigures"));
+                        w.write_event(Event::Empty(st)).unwrap();
+                    }
+                    ParaStyle::Body => {}
                 }
-                ParaStyle::Toc(n) => {
-                    let mut st = BS::new("w:pStyle");
-                    st.push_attribute(("w:val", format!("TOC{n}").as_str()));
-                    w.write_event(Event::Empty(st)).unwrap();
-                }
-                ParaStyle::Tof => {
-                    let mut st = BS::new("w:pStyle");
-                    st.push_attribute(("w:val", "TableofFigures"));
-                    w.write_event(Event::Empty(st)).unwrap();
-                }
-                ParaStyle::Body => {}
             }
             if p.page_break_before {
                 w.write_event(Event::Empty(BS::new("w:pageBreakBefore"))).unwrap();
@@ -349,6 +358,13 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             }
             w.write_event(Event::Start(BS::new("w:r"))).unwrap();
             w.write_event(Event::Start(BS::new("w:rPr"))).unwrap();
+            // 文字スタイル。読んだ名前をそのまま返す(スキーマで rPr の先頭)。
+            // 定義は styles.xml の持ち物(2026-08-12 発注者確定 — 捨てない)
+            if let Some(s) = &run.fmt.style_id {
+                let mut rs = BS::new("w:rStyle");
+                rs.push_attribute(("w:val", s.as_str()));
+                w.write_event(Event::Empty(rs)).unwrap();
+            }
             // 書体は文書の設定なので、読んだものをそのまま返す。
             // 日本語は eastAsia が本体。ascii/hAnsi にも同じ名前を入れておかないと
             // Word が英数字だけ別の書体で出す
@@ -671,6 +687,26 @@ pub(super) fn image_kind(bytes: &[u8]) -> (&'static str, &'static str) {
     }
 }
 
+/// このアプリで足したスタイル(styles_new)を、styles.xml へ追記する形の
+/// XML にする。**既に同じ styleId が居れば足さない**(開き直して保存、で
+/// 二重に増えないため)。定義は最小 — 名前の名乗りだけで、見た目は
+/// 直接書式が第一のまま。
+fn styles_new_xml(doc: &Document, existing: &str) -> String {
+    let mut out = String::new();
+    for s in &doc.styles_new {
+        if existing.contains(&format!("w:styleId=\"{}\"", esc(&s.id))) {
+            continue;
+        }
+        out.push_str(&format!(
+            r#"<w:style w:type="{}" w:styleId="{}"><w:name w:val="{}"/></w:style>"#,
+            esc(&s.kind),
+            esc(&s.id),
+            esc(&s.name),
+        ));
+    }
+    out
+}
+
 pub fn write_with<R: Read + Seek, W: Write + Seek>(
     doc: &Document,
     original: Option<R>,
@@ -739,6 +775,21 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 let mut buf = Vec::new();
                 if f.read_to_end(&mut buf).is_err() {
                     continue;
+                }
+                // このアプリで足したスタイルは、原本の styles.xml へ
+                // **追記だけ**する(core.xml と同じ外科術 — 作り直さない)
+                if name == "word/styles.xml" {
+                    let s0 = String::from_utf8_lossy(&buf).to_string();
+                    let add = styles_new_xml(doc, &s0);
+                    if !add.is_empty() {
+                        let mut s = s0;
+                        if let Some(pnt) = s.rfind("</w:styles>") {
+                            s.insert_str(pnt, &add);
+                        }
+                        zip.start_file(name, opts).map_err(|e| e.to_string())?;
+                        zip.write_all(s.as_bytes()).map_err(|e| e.to_string())?;
+                        continue;
+                    }
                 }
                 if name == "[Content_Types].xml" {
                     orig_ct = Some(String::from_utf8_lossy(&buf).to_string());
@@ -883,10 +934,16 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         zip.write_all(cx.as_bytes()).map_err(|e| e.to_string())?;
     }
 
-    // まっさらの文書には最小のスタイル定義を入れる(STYLES_MIN の注のとおり)
+    // まっさらの文書には最小のスタイル定義を入れる(STYLES_MIN の注のとおり)。
+    // このアプリで足したスタイルはその後ろに追記する
     if !orig_has_styles {
+        let mut s = STYLES_MIN.to_string();
+        let add = styles_new_xml(doc, &s);
+        if let Some(pnt) = s.rfind("</w:styles>") {
+            s.insert_str(pnt, &add);
+        }
         zip.start_file("word/styles.xml", opts).map_err(|e| e.to_string())?;
-        zip.write_all(STYLES_MIN.as_bytes()).map_err(|e| e.to_string())?;
+        zip.write_all(s.as_bytes()).map_err(|e| e.to_string())?;
     }
 
     // 本文の rels。原本の関係(既存の画像・ヘッダー等)は残し、

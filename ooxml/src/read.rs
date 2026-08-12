@@ -111,6 +111,14 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         let _ = f.read_to_string(&mut pxml);
     }
 
+    // スタイル定義の名乗り(styles.xml の id・名前・種類)。
+    // 定義の本体は保存で原本ごと持ち越す — ここは一覧を見せる写し
+    // (2026-08-12 発注者確定「スタイル定義は持たない主義では無理」)
+    let mut styxml = String::new();
+    if let Ok(mut f) = zip.by_name("word/styles.xml") {
+        let _ = f.read_to_string(&mut styxml);
+    }
+
     // 設定(settings.xml)。欧文ハイフネーションの旗を読む
     let mut sxml = String::new();
     if let Ok(mut f) = zip.by_name("word/settings.xml") {
@@ -137,6 +145,9 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     let (mut doc, mut rep) = parse_document_full(&xml, &media, &cmap);
     // このアプリのペン(joink)は原文控えから筆へ読み戻す
     extract_ink(&mut doc);
+    if !styxml.is_empty() {
+        doc.styles = parse_styles(&styxml);
+    }
     if !pxml.is_empty() {
         let field = |tag: &str| -> String {
             let open = format!("<{tag}");
@@ -896,6 +907,50 @@ pub(super) fn extract_ink(doc: &mut Document) {
     doc.ink.extend(ink);
 }
 
+/// styles.xml から スタイルの名乗り(id・名前・種類)を写す。
+/// 浅い読み(core.xml と同じ流儀)— 定義の本体は理解せず、原本が持ち越す。
+pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
+    fn attr_of(hay: &str, key: &str) -> String {
+        let pat = format!("{key}=\"");
+        hay.find(&pat)
+            .and_then(|s| {
+                let s = s + pat.len();
+                hay[s..].find('"').map(|e| unesc(&hay[s..s + e]))
+            })
+            .unwrap_or_default()
+    }
+    let mut out = Vec::new();
+    let mut from = 0;
+    while let Some(i) = xml[from..].find("<w:style ").map(|i| i + from) {
+        let head_end = match xml[i..].find('>') {
+            Some(e) => i + e,
+            None => break,
+        };
+        let head = &xml[i..head_end];
+        // <w:style …/> と <w:style …>…</w:style> の両方を受ける
+        let end = if head.ends_with('/') {
+            head_end
+        } else {
+            xml[head_end..].find("</w:style>").map(|e| head_end + e).unwrap_or(xml.len())
+        };
+        let id = attr_of(head, "w:styleId");
+        let kind = attr_of(head, "w:type");
+        let body = &xml[head_end..end];
+        let name = body
+            .find("<w:name ")
+            .map(|n| {
+                let seg = &body[n..body[n..].find('>').map(|e| n + e).unwrap_or(body.len())];
+                attr_of(seg, "w:val")
+            })
+            .unwrap_or_default();
+        if !id.is_empty() {
+            out.push(kumihan::StyleInfo { id, name, kind });
+        }
+        from = end.max(i + 1);
+    }
+    out
+}
+
 /// `w:pStyle` の val を段落の役割へ。見出しと目次の行だけを見る
 /// (それ以外のスタイルは今まで通り持たない)。
 /// 見出しの style id は日本語版 Word が「1」、英語版が「Heading1」。
@@ -1065,6 +1120,7 @@ pub(super) fn parse_document_full(
     let mut boxed = false;
     // 段落の役割(w:pStyle / w:outlineLvl)
     let mut pstyle = ParaStyle::Body;
+    let mut pstyle_id: Option<String> = None;
     // リストの深さ(w:ilvl)。w:ind が無い文書ではこれがインデントになる
     let mut ilvl = 0u8;
     // この段落に付いたコメント(commentReference を解決したもの)
@@ -1152,7 +1208,7 @@ pub(super) fn parse_document_full(
                               fmt = CharFormat::default(); align = Align::default();
                               list = ListKind::default(); indent = 0; line_spacing = 1.0;
                               page_break_before = false; shade = None; boxed = false;
-                              pstyle = ParaStyle::Body; ilvl = 0;
+                              pstyle = ParaStyle::Body; pstyle_id = None; ilvl = 0;
                               para_comments.clear(); para_bookmarks.clear();
                               dropcap = false; }
                     b"rPr" => {
@@ -1206,7 +1262,15 @@ pub(super) fn parse_document_full(
                     }
                     // 段落のスタイル。見出しと目次の行だけを持つ
                     b"pStyle" if in_ppr => {
-                        if let Some(v) = attr(&e, "val") { pstyle = style_of(&v); }
+                        if let Some(v) = attr(&e, "val") {
+                            pstyle = style_of(&v);
+                            // 役割を知らないスタイル名も**捨てない** — 原文のまま運ぶ
+                            pstyle_id = Some(v);
+                        }
+                    }
+                    // 文字スタイル。名前を運んで返すだけ(定義は styles.xml)
+                    b"rStyle" if in_rpr => {
+                        fmt.style_id = attr(&e, "val").filter(|v| !v.is_empty());
                     }
                     // スタイル名で見出しと分からなくても、outlineLvl があれば見出し
                     b"outlineLvl" if in_ppr => {
@@ -1550,7 +1614,15 @@ pub(super) fn parse_document_full(
                     }
                     // 段落のスタイル。見出しと目次の行だけを持つ
                     b"pStyle" if in_ppr => {
-                        if let Some(v) = attr(&e, "val") { pstyle = style_of(&v); }
+                        if let Some(v) = attr(&e, "val") {
+                            pstyle = style_of(&v);
+                            // 役割を知らないスタイル名も**捨てない** — 原文のまま運ぶ
+                            pstyle_id = Some(v);
+                        }
+                    }
+                    // 文字スタイル。名前を運んで返すだけ(定義は styles.xml)
+                    b"rStyle" if in_rpr => {
+                        fmt.style_id = attr(&e, "val").filter(|v| !v.is_empty());
                     }
                     // スタイル名で見出しと分からなくても、outlineLvl があれば見出し
                     b"outlineLvl" if in_ppr => {
@@ -1731,6 +1803,7 @@ pub(super) fn parse_document_full(
                                 indent: indent.max(ilvl),
                                 line_spacing,
                                 style: pstyle,
+                                style_id: pstyle_id.take(),
                                 shade: shade.take(), boxed,
                                 dropcap: false,
                                 images_new: Vec::new(),

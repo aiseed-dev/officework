@@ -583,6 +583,52 @@ if pydocx is not None:
               and d_r4.core_properties.comments == "控え",
               "本家の文書の情報がうちで読めない")
 
+        # --- スタイル定義を運ぶ(2026-08-12 発注者確定「持たない主義では無理」)--
+        # (1) 知らないスタイル名が保存で消えない — 「書式は据え置き」の穴を塞ぐ
+        d_s = pydocx.Document()
+        d_s.styles.add_style("社内様式", 1)  # WD_STYLE_TYPE.PARAGRAPH = 1
+        ps = d_s.add_paragraph("様式の段落")
+        ps.style = d_s.styles["社内様式"]
+        out_s = os.path.join(t, "style.docx")
+        d_s.save(out_s)
+
+        d_sr = office_doc.Doc.open(out_s)
+        check("社内様式" in d_sr.styles, f"本家のスタイルの名乗り: {list(d_sr.styles)}")
+        check(d_sr.styles["社内様式"].type == "paragraph", "スタイルの種類")
+        check(d_sr[0].style == "社内様式", f"知らないスタイル名の読み: {d_sr[0].style}")
+        out_s2 = os.path.join(t, "style_rt.docx")
+        d_sr.save(out_s2)  # 開いて保存 — スタイルが消えないか
+        back_s = pydocx.Document(out_s2)
+        check(back_s.paragraphs[0].style.name == "社内様式",
+              f"スタイル名が保存で消えた: {back_s.paragraphs[0].style.name}")
+
+        # (2) うちで足して・張って、本家が読める
+        d_a = office_doc.Doc()
+        d_a.styles.add_style("引用風", "paragraph")
+        d_a.styles.add_style("強調字", "character")
+        check("引用風" in d_a.styles and len(d_a.styles) >= 6,  # 最小定義4+2
+              f"add_style: {[s.name for s in d_a.styles]}")
+        pa = d_a.add_paragraph("引用の段落")
+        pa.style = "引用風"
+        check(d_a[0].style == "引用風", f"段落スタイルの張り: {d_a[0].style}")
+        ra = pa.add_run("大事", style="強調字")
+        check(ra.style == "強調字", f"文字スタイルの張り: {ra.style}")
+        try:
+            pa.style = "無い様式"
+            check(False, "無いスタイルが黙って通った")
+        except ValueError:
+            pass
+        out_a = os.path.join(t, "style_add.docx")
+        d_a.save(out_a)
+        back_a = pydocx.Document(out_a)
+        check(back_a.paragraphs[0].style.name == "引用風",
+              f"うちの段落スタイルを本家が読めない: {back_a.paragraphs[0].style.name}")
+        check(back_a.paragraphs[0].runs[-1].style.name == "強調字",
+              f"うちの文字スタイルを本家が読めない: {back_a.paragraphs[0].runs[-1].style}")
+        st_names = [s.name for s in back_a.styles]
+        check("引用風" in st_names and "強調字" in st_names,
+              f"うちの styles.xml 追記を本家が読めない: {st_names}")
+
         # --- inline_shapes(画像の読みの対)と コメント -------------------------
         d_m2 = office_doc.Doc.open(out_m)  # さっき画像を入れた文書
         shp = d_m2.inline_shapes

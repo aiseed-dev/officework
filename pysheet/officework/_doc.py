@@ -155,6 +155,16 @@ class Run:
     def color(self, v):
         self._r.color = v
 
+    @property
+    def style(self):
+        """文字スタイルの名前(指定なしは None)。書きは styles にある
+        文字スタイルの名前(本家のスタイルの物でも)。"""
+        return self._r.style
+
+    @style.setter
+    def style(self, v):
+        self._r.style = None if v is None else str(getattr(v, "name", v))
+
     def add_text(self, text):
         """字を後ろに継ぎ足す(書式はこの run のまま — 本家と同じ定義)。"""
         self._r.add_text(text)
@@ -205,6 +215,57 @@ class InlineShape:
     def __repr__(self):
         return "<officework.doc InlineShape {:.0f}×{:.0f}mm>".format(
             self.width.mm, self.height.mm)
+
+
+class Style:
+    """スタイルの名乗り(本家の style の役 — .name / .style_id / .type)。
+    定義の本体は styles.xml が持ち、保存で原本のまま持ち越される。"""
+
+    __slots__ = ("style_id", "name", "type")
+
+    def __init__(self, style_id, name, kind):
+        self.style_id = style_id
+        self.name = name
+        self.type = kind
+
+    def __repr__(self):
+        return "<officework.doc Style {!r} ({})>".format(self.name, self.type)
+
+
+class _Styles:
+    """Doc.styles の返り(本家の Styles の役)。名前で引け、add_style で足せる。"""
+
+    def __init__(self, raw_doc):
+        self._d = raw_doc
+
+    def _all(self):
+        return [Style(i, n, k) for i, n, k in self._d.styles]
+
+    def __iter__(self):
+        return iter(self._all())
+
+    def __len__(self):
+        return len(self._all())
+
+    def __contains__(self, name):
+        return any(s.name == name or s.style_id == name for s in self._all())
+
+    def __getitem__(self, name):
+        for s in self._all():
+            if s.name == name or s.style_id == name:
+                return s
+        raise KeyError("スタイルが無い: {!r}".format(name))
+
+    def add_style(self, name, style_type="paragraph", builtin=False):
+        """スタイルを足す(本家と同じ口)。style_type は "paragraph" /
+        "character" / "table"(本家の WD_STYLE_TYPE でもよい)。
+        名乗りだけの最小定義 — 見た目は直接書式が第一のまま。"""
+        kind = str(getattr(style_type, "name", style_type)).lower()
+        self._d.add_style(name, kind)
+        return self[name]
+
+    def __repr__(self):
+        return "<officework.doc Styles {}>".format([s.name for s in self._all()])
 
 
 class Comment:
@@ -367,23 +428,20 @@ class Paragraph:
 
     def add_run(self, text="", style=None):
         """段落の末尾に run を継ぎ足す(python-docx と同じ口)。
-        書式は末尾の run のものを継ぐ。style(文字スタイル)は
-        スタイル定義を持たない主義と衝突するので、渡されたら正直に断る。"""
+        書式は末尾の run のものを継ぐ。style は styles にある文字スタイル
+        (無い名前は断る — add_style で作ってから)。"""
+        r = Run(self._p.add_run(text))
         if style is not None:
-            raise NotImplementedError(
-                "文字スタイルはスタイル定義を持たない主義と衝突(台帳 — 発注者判断待ち)"
-            )
-        return Run(self._p.add_run(text))
+            r.style = style
+        return r
 
     def insert_paragraph_before(self, text=None, style=None):
         """この段落の前に段落を差す(python-docx と同じ口)。
         手元の段落の物は位置で指しているので、差した後は引き直すこと。"""
+        p = Paragraph(self._p.insert_paragraph_before(text or ""))
         if style is not None:
-            raise NotImplementedError(
-                "スタイル引数はスタイル定義を持たない主義と衝突(台帳)。"
-                "見出しにするなら返りの .style に入れる"
-            )
-        return Paragraph(self._p.insert_paragraph_before(text or ""))
+            p.style = style
+        return p
 
     def iter_inner_content(self):
         """段落の中身を順に。いまは run だけ(リンクの読みはエンジンの
@@ -643,6 +701,12 @@ class Doc:
         """文書の情報(author / title / keywords / subject / comments)。
         読み書きとも本家と同じ呼び名(author = docx の dc:creator)。"""
         return self._d.core_properties
+
+    @property
+    def styles(self):
+        """スタイルの一覧(本家と同じ口 — 名前で引け、add_style で足せる)。
+        定義の本体は styles.xml が持ち、保存で原本のまま持ち越される。"""
+        return _Styles(self._d)
 
     @property
     def inline_shapes(self):

@@ -533,7 +533,7 @@ mod table_layout_tests {
             }],
             ..Default::default()
         };
-        let mut d = Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
+        let mut d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
@@ -573,7 +573,7 @@ mod merge_layout_tests {
     fn sheet_of(rows: Vec<Vec<Cellbox>>) -> Sheet {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(),
+        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(),
             font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table { col_mm: vec![], rows,
         ..Default::default()
@@ -650,7 +650,7 @@ mod gridcol_tests {
     fn rules_of(col_mm: Vec<f32>) -> Vec<[f32; 4]> {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(),
+        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(),
             font: None,
             page: None,
             sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,

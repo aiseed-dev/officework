@@ -237,7 +237,7 @@ Cell は `s.cell(row=, column=)` から)。
 | sections / add_section | 足す | エンジンの模型が1節しか持てない既知の残り(「実物で測った」の表)— 模型を太らせる件と同じ一件 |
 | ✔ comments / add_comment | 足す | コメントの読み書き。変更履歴と同じく、読めて書けて壊さない(済 2026-08-12 夜: 模型の粒度どおり**段落単位** — Paragraph.add_comment(text, author) と Doc.comments(Comment.paragraph でどの段落かが分かる)。本家(1.2)の comments API もうちの書いた物を読める) |
 | ✔ inline_shapes | 足す | 画像の一件(add_picture と対の読み)(済 2026-08-12 夜: width / height は自前の Length(EMU。.mm / .pt が本家と同じ算術)。本文の段落の分 — セルの中は数えない(模型の粒度)) |
-| styles | 足す(書式) | スタイルの一覧と定義 — 書式の一件。**注(2026-08-12 夜)**: 模型は「スタイル定義(styles.xml)は持たない — 見た目は直接書式で付ける」を明記している(engine/src/doc.rs の ParaStyle)。この項を作るのは主義の変更 — 発注者の判断待ち(Run.style も同じ一件) |
+| ✔ styles | 足す(書式) | スタイルの一覧と定義 — 書式の一件(**済 2026-08-13**。発注者確定「スタイル定義は持たない主義では無理」で主義を改めた: (1) **知らないスタイル名も捨てない** — pStyle / rStyle の原文を Paragraph.style_id / CharFormat.style_id が運び、保存で返す(今までは開いて保存で消えていた = 「書式は据え置き」の穴。塞いだ)。(2) 定義の本体は**原文の styles.xml を正として持ち越し**、足した分だけ追記(core.xml と同じ外科術)。(3) Doc.styles(名前で引ける)・add_style(name, 種類)— 名乗りだけの最小定義で、見た目は直接書式が第一のまま。適合は両方向 — 本家の社内様式がうちの往復で残り、うちが足した様式を本家が読む) |
 | element / part / settings | 要らない | lxml の露出 |
 
 ### Paragraph(13)
@@ -248,7 +248,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ alignment | ある | align。互換層で別名 |
 | ✔ clear | 互換層 | text = ""(段落の性質と先頭 run の書式は残る — 本家と同じ定義。自分を返す) |
 | ✔ iter_inner_content | 互換層 | runs から(リンクは hyperlinks(足す)が来たら混ぜる) |
-| ✔ add_run | 足す | 段落に run を継ぎ足す(済 2026-08-12 夜。書式は**末尾の run を継ぐ** — text の代入が先頭を継ぐのと対。style 引数(文字スタイル)はスタイル定義を持たない主義と衝突するので断る — 発注者判断待ちの一件) |
+| ✔ add_run | 足す | 段落に run を継ぎ足す(済 2026-08-12 夜。書式は**末尾の run を継ぐ** — text の代入が先頭を継ぐのと対。style 引数は 2026-08-13 の主義転換で**効くようになった** — styles にある文字スタイルの名前) |
 | ✔ insert_paragraph_before | 足す | 途中に差す(add_paragraph は末尾だけ)(済 2026-08-12 夜。手元の札は位置で指すので、差した後は引き直す — シートの札と同じ作法。style 引数は断る) |
 | hyperlinks | 足す | リンクの一件 |
 | ✔ paragraph_format | 足す(書式) | 段落書式(行間・字下げ・前後の間隔)(**済(部分)2026-08-12 夜**: alignment(本家の enum も受ける)・line_spacing・page_break_before — 模型が持つ物。space_before / space_after・left_indent は**模型に無い**ので読みは None・書きは正直に断る。模型の indent は段数(1段=全角2字)で、本家の Length との対応は決めてから) |
@@ -263,7 +263,7 @@ Cell は `s.cell(row=, column=)` から)。
 | add_break / add_tab / add_picture | 足す | |
 | iter_inner_content | 足す | run の中の改行・タブ・画像も順に返す(add_break の一件) |
 | mark_comment_range | 足す | コメントの一件 |
-| style | 足す(書式) | 文字スタイル |
+| ✔ style | 足す(書式) | 文字スタイル(済 2026-08-13 — styles の一件と一緒。読みは styles の名前、書きは styles にある文字スタイルだけ(無い名前は add_style で作ってから — 黙って作らない)。add_run(style=)・insert_paragraph_before(style=)も同じ道で効くようになった) |
 | part / contains_page_break | 要らない | |
 
 ### Table(13)

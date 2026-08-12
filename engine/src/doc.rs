@@ -142,6 +142,10 @@ pub struct CharFormat {
     /// 両方が同じ欄を名乗るので欄は保たれる(field・ruby と逆で、
     /// 分割で落とさない。欄の中の編集は欄の中身だから)
     pub sdt: Option<Box<Sdt>>,
+    /// 文字スタイル(docx の `w:rStyle w:val`。原文のまま)。
+    /// 定義は styles.xml が持ち、こちらは名前を運んで返すだけ
+    /// (2026-08-12 発注者確定 — スタイルを捨てない)
+    pub style_id: Option<String>,
 }
 
 /// 記入欄の中身(docx の w:sdtPr)。
@@ -307,10 +311,16 @@ pub enum ListKind {
     Number,
 }
 
-/// 段落の役割(docx の `w:pStyle` の最小対応)。
+/// 段落の役割(docx の `w:pStyle` のうち、このアプリが**意味を知る**もの)。
 ///
 /// 見出しは目次の材料。目次の行は「目次の更新」で作り直すための印。
-/// スタイル定義(styles.xml)は持たない — 見た目は直接書式で付ける。
+///
+/// **役割を知らないスタイルも捨てない**(2026-08-12 発注者確定 —
+/// 「スタイル定義は持たない主義では無理」)。原文の styleId は
+/// [`Paragraph::style_id`] が運び、定義(styles.xml)は原文を正として
+/// 持ち越し、足した分だけ追記する([`Document::styles_new`])。
+/// 見た目の直接書式が第一、は変わらない — スタイルは名前と定義を
+/// **落とさない**ための入れ物。
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ParaStyle {
     #[default]
@@ -336,6 +346,10 @@ pub struct Paragraph {
     pub runs: Vec<Run>,
     /// 段落の役割(見出し・目次の行)。既定は本文
     pub style: ParaStyle,
+    /// 原文の `w:pStyle w:val`(そのまま)。役割を知らないスタイル名も
+    /// **保存で消さない**ためにここが運ぶ(2026-08-12 発注者確定)。
+    /// None はスタイル指定なし(このアプリで作った段落は役割から書く)
+    pub style_id: Option<String>,
     /// この段落に付いたコメント
     pub comments: Vec<Comment>,
     /// この段落に付いたしおり(docx の bookmarkStart の名前)。
@@ -560,9 +574,25 @@ pub struct Document {
     pub protection: Option<String>,
     /// 文書の情報(docx の docProps/core.xml)。作成者・タイトルなど
     pub props: CoreProps,
+    /// スタイル定義の**名乗りの一覧**(styles.xml から読んだ id・名前・種類)。
+    /// 定義の本体は原文の styles.xml が持ち、保存で丸ごと持ち越される —
+    /// ここは「どんなスタイルがあるか」を見せる写し(2026-08-12 発注者確定)
+    pub styles: Vec<StyleInfo>,
+    /// このアプリで**足した**スタイル。保存で styles.xml の末尾に追記する
+    /// (core.xml と同じ「原文へ差す」外科術 — 作り直さない)
+    pub styles_new: Vec<StyleInfo>,
     /// 縦書き(docx の sectPr の textDirection=tbRl)。
     /// 組みは fold_vertical が行を右からの列へ写す(K4)
     pub vertical: bool,
+}
+
+/// スタイルの名乗り(styles.xml の w:style の id・名前・種類)。
+/// kind は docx の type のまま: "paragraph" / "character" / "table" / "numbering"
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct StyleInfo {
+    pub id: String,
+    pub name: String,
+    pub kind: String,
 }
 
 /// 文書の情報(core properties)。空の欄は書かない
@@ -1184,6 +1214,7 @@ impl Document {
             font: None,
             page: None,
             sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+            styles: Vec::new(), styles_new: Vec::new(),
             blocks: text
                 .split('\n')
                 .map(|p| Block::Para(Paragraph {

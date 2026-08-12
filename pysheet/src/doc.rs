@@ -261,9 +261,24 @@ impl PyDoc {
     /// 空の文書。
     #[new]
     fn new() -> PyDoc {
+        let mut doc = Document::default();
+        // まっさらの文書が保存で持つ最小のスタイル定義(ooxml の STYLES_MIN)と
+        // **一覧を一致させる** — 書かれる物が見えない一覧は嘘になる
+        for (id, name) in [
+            ("Normal", "Normal"),
+            ("Heading1", "heading 1"),
+            ("Heading2", "heading 2"),
+            ("Heading3", "heading 3"),
+        ] {
+            doc.styles.push(kumihan::StyleInfo {
+                id: id.into(),
+                name: name.into(),
+                kind: "paragraph".into(),
+            });
+        }
         PyDoc {
             inner: Arc::new(Mutex::new(Inner {
-                doc: Document::default(),
+                doc,
                 original: None,
                 unsupported: Vec::new(),
             })),
@@ -400,6 +415,51 @@ impl PyDoc {
         g.doc.blocks.push(Block::Para(p));
         let b = g.doc.blocks.len() - 1;
         Ok(PyParagraph { inner: Arc::clone(&self.inner), loc: Loc::Body(b) })
+    }
+
+    /// スタイル定義の一覧 [(styleId, 名前, 種類)]。
+    /// 種類は docx のまま: "paragraph" / "character" / "table" / "numbering"。
+    /// 定義の本体は styles.xml が持ち、保存で原本のまま持ち越される —
+    /// ここは名乗りの一覧(2026-08-12 発注者確定「持たない主義では無理」)。
+    #[getter]
+    fn styles(&self) -> PyResult<Vec<(String, String, String)>> {
+        let g = lock(&self.inner)?;
+        Ok(g.doc
+            .styles
+            .iter()
+            .chain(g.doc.styles_new.iter())
+            .map(|s| (s.id.clone(), s.name.clone(), s.kind.clone()))
+            .collect())
+    }
+
+    /// スタイルを足す(名乗りだけの最小定義 — 見た目は直接書式が第一のまま)。
+    /// styleId は名前から空白を抜いた形(Word の流儀)。同じ物が居れば断る。
+    #[pyo3(signature = (name, kind="paragraph"))]
+    fn add_style(&self, name: &str, kind: &str) -> PyResult<()> {
+        if name.is_empty() {
+            return Err(PyValueError::new_err("スタイルの名前が空です"));
+        }
+        if !matches!(kind, "paragraph" | "character" | "table") {
+            return Err(PyValueError::new_err(format!(
+                "種類は paragraph / character / table: {kind:?}"
+            )));
+        }
+        let id: String = name.chars().filter(|c| !c.is_whitespace()).collect();
+        let mut g = lock(&self.inner)?;
+        if g.doc
+            .styles
+            .iter()
+            .chain(g.doc.styles_new.iter())
+            .any(|s| s.id == id || s.name == name)
+        {
+            return Err(PyValueError::new_err(format!("スタイル「{name}」は既にあります")));
+        }
+        g.doc.styles_new.push(kumihan::StyleInfo {
+            id,
+            name: name.to_string(),
+            kind: kind.to_string(),
+        });
+        Ok(())
     }
 
     /// 段落と表を**文書の順で**返す(python-docx の iter_inner_content)。
@@ -718,36 +778,76 @@ impl PyParagraph {
         Ok(PyRun { inner: Arc::clone(&self.inner), loc: self.loc.clone(), idx })
     }
 
-    /// 段落の役目。"body" か "heading1"〜"heading9"、目次なら "toc1" 等。
+    /// 段落の役目かスタイル。役目を知る物は "body" / "heading1"〜 / "toc1" 等、
+    /// それ以外のスタイルは**名前**(styles.xml の名乗り。無ければ styleId)。
     #[getter]
     fn style(&self) -> PyResult<String> {
-        self.with(|p| match p.style {
-            kumihan::ParaStyle::Body => "body".to_string(),
+        let g = lock(&self.inner)?;
+        let p = g.para(&self.loc).ok_or_else(|| {
+            PyIndexError::new_err("この段落はもう文書に無い(文書の形が変わった)")
+        })?;
+        Ok(match p.style {
+            kumihan::ParaStyle::Body => match &p.style_id {
+                Some(id) => g
+                    .doc
+                    .styles
+                    .iter()
+                    .chain(g.doc.styles_new.iter())
+                    .find(|s| s.id == *id)
+                    .map(|s| if s.name.is_empty() { s.id.clone() } else { s.name.clone() })
+                    .unwrap_or_else(|| id.clone()),
+                None => "body".to_string(),
+            },
             kumihan::ParaStyle::Heading(n) => format!("heading{n}"),
             kumihan::ParaStyle::Toc(n) => format!("toc{n}"),
             kumihan::ParaStyle::Tof => "tof".to_string(),
         })
     }
 
-    /// 段落の役目を替える。受けるのは "body"("Normal")と
-    /// "heading1"〜"heading3"("Heading 1"・"見出し 1" でも良い)。
-    /// **スタイル定義(styles.xml)は持たない主義**なので、それ以外の
-    /// スタイル名は正直に断る(見た目は直接書式で付ける)。
+    /// 段落の役目かスタイルを替える。"body"("Normal")と "heading1"〜3
+    /// ("Heading 1"・"見出し 1" でも)は役目として持ち、それ以外は
+    /// **styles にある段落スタイルの名前**を受ける(2026-08-12 発注者確定 —
+    /// 無い名前は add_style で作ってから。黙って作らない)。
     #[setter]
     fn set_style(&self, value: &str) -> PyResult<()> {
         let v = value.to_ascii_lowercase().replace(' ', "");
-        let style = match v.as_str() {
-            "body" | "normal" | "標準" => kumihan::ParaStyle::Body,
-            "heading1" | "見出し1" => kumihan::ParaStyle::Heading(1),
-            "heading2" | "見出し2" => kumihan::ParaStyle::Heading(2),
-            "heading3" | "見出し3" => kumihan::ParaStyle::Heading(3),
-            _ => {
-                return Err(PyValueError::new_err(format!(
-                    "役目は body / heading1〜3 だけ(スタイル定義は持たない主義): {value:?}"
-                )))
+        let role = match v.as_str() {
+            "body" | "normal" | "標準" => Some(kumihan::ParaStyle::Body),
+            "heading1" | "見出し1" => Some(kumihan::ParaStyle::Heading(1)),
+            "heading2" | "見出し2" => Some(kumihan::ParaStyle::Heading(2)),
+            "heading3" | "見出し3" => Some(kumihan::ParaStyle::Heading(3)),
+            _ => None,
+        };
+        let mut g = lock(&self.inner)?;
+        let (style, style_id) = match role {
+            Some(r) => (r, None),
+            None => {
+                let found = g
+                    .doc
+                    .styles
+                    .iter()
+                    .chain(g.doc.styles_new.iter())
+                    .find(|s| {
+                        (s.name == value || s.id == value)
+                            && (s.kind == "paragraph" || s.kind.is_empty())
+                    })
+                    .map(|s| s.id.clone());
+                match found {
+                    Some(id) => (kumihan::ParaStyle::Body, Some(id)),
+                    None => {
+                        return Err(PyValueError::new_err(format!(
+                            "スタイル「{value}」が styles に無い(add_style で作ってから)"
+                        )))
+                    }
+                }
             }
         };
-        self.with_mut(|p| p.style = style)
+        let p = g.para_mut(&self.loc).ok_or_else(|| {
+            PyIndexError::new_err("この段落はもう文書に無い(文書の形が変わった)")
+        })?;
+        p.style = style;
+        p.style_id = style_id;
+        Ok(())
     }
 
     /// 行の寄せ。"left" / "center" / "right" / "justify" / "distribute"。
@@ -975,6 +1075,60 @@ impl PyRun {
     #[setter]
     fn set_color(&self, value: Option<String>) -> PyResult<()> {
         self.with_mut(|r| r.fmt.color = value.filter(|v| !v.is_empty()))
+    }
+
+    /// 文字スタイル。読みは styles の名前(無ければ styleId、指定なしは None)。
+    /// 書きは **styles にある文字スタイルの名前**(None で外す)。
+    #[getter]
+    fn style(&self) -> PyResult<Option<String>> {
+        let g = lock(&self.inner)?;
+        let r = g
+            .para(&self.loc)
+            .and_then(|p| p.runs.get(self.idx))
+            .ok_or_else(|| PyIndexError::new_err("この run はもう文書に無い"))?;
+        Ok(r.fmt.style_id.as_ref().map(|id| {
+            g.doc
+                .styles
+                .iter()
+                .chain(g.doc.styles_new.iter())
+                .find(|s| s.id == *id)
+                .map(|s| if s.name.is_empty() { s.id.clone() } else { s.name.clone() })
+                .unwrap_or_else(|| id.clone())
+        }))
+    }
+
+    #[setter]
+    fn set_style(&self, value: Option<&str>) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        let id = match value {
+            None => None,
+            Some(v) => {
+                let found = g
+                    .doc
+                    .styles
+                    .iter()
+                    .chain(g.doc.styles_new.iter())
+                    .find(|s| (s.name == v || s.id == v) && s.kind == "character")
+                    .map(|s| s.id.clone());
+                match found {
+                    Some(id) => Some(id),
+                    None => {
+                        return Err(PyValueError::new_err(format!(
+                            "文字スタイル「{v}」が styles に無い(add_style(名前, \"character\") で作ってから)"
+                        )))
+                    }
+                }
+            }
+        };
+        let p = g
+            .para_mut(&self.loc)
+            .ok_or_else(|| PyIndexError::new_err("この段落はもう文書に無い"))?;
+        let r = p
+            .runs
+            .get_mut(self.idx)
+            .ok_or_else(|| PyIndexError::new_err("この run はもう文書に無い"))?;
+        r.fmt.style_id = id;
+        Ok(())
     }
 
     /// 字を後ろに継ぎ足す(python-docx の add_text)。書式はこの run のまま。
