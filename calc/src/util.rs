@@ -974,7 +974,7 @@ pub(crate) fn date_formats() -> Vec<(&'static str, String, String)> {
     let tag = format!("[$-{:x}]", n.lcid);
     // 見本は 2026-08-06(木)。通し番号 46240
     let show = |code: &str| {
-        sheet::model::format_value(&sheet::Value::Number(46240.0), Some(code))
+        sheet::model::format_value(&sheet::Value::Number(46240.0), Some(code), false)
     };
     let rows: Vec<(&'static str, String)> = vec![
         (ui::item!("短い日付").0, format!("{tag}{}", n.short_date)),

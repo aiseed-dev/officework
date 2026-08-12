@@ -508,20 +508,28 @@ pub(super) const CORE_REL: &str = r#"<Relationship Id="rIdCore" Type="http://sch
 pub(super) const CORE_XML_EMPTY: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"></cp:coreProperties>";
 
 /// core.xml の1つのタグを差し替える(無ければ足す)。原文の他の欄は残す。
+///
+/// **元の開きタグの属性は保つ。** openpyxl は `xmlns:dc` を根ではなく
+/// **要素自身に**宣言する(`<dc:creator xmlns:dc="…">`)— 属性ごと
+/// 作り直すと接頭辞の宣言が消え、厳密な読み手(lxml)が開けない
+/// 壊れた XML になる(2026-08-13、1904 の適合検査で発覚)。
 pub(super) fn set_core_tag(s: &str, tag: &str, val: &str) -> String {
     let esc = |t: &str| t.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
     let open = format!("<{tag}");
     let close = format!("</{tag}>");
-    let repl = if val.is_empty() {
-        format!("<{tag}/>")
-    } else {
-        format!("<{tag}>{}</{tag}>", esc(val))
-    };
     if let Some(i) = s.find(&open) {
         let rest = &s[i..];
-        let gt = rest.find('>').unwrap_or(0);
-        if gt > 0 && rest.as_bytes().get(gt - 1) == Some(&b'/') {
-            // <tag/> 自己完結
+        let Some(gt) = rest.find('>') else { return s.to_string() };
+        let selfclosed = gt > 0 && rest.as_bytes()[gt - 1] == b'/';
+        let attrs_end = if selfclosed { gt - 1 } else { gt };
+        let attrs = rest[open.len()..attrs_end].trim_end();
+        let sep = if attrs.is_empty() { "" } else { " " };
+        let repl = if val.is_empty() {
+            format!("<{tag}{sep}{attrs}/>")
+        } else {
+            format!("<{tag}{sep}{attrs}>{}</{tag}>", esc(val))
+        };
+        if selfclosed {
             return format!("{}{}{}", &s[..i], repl, &rest[gt + 1..]);
         }
         if let Some(c) = rest.find(&close) {
@@ -529,6 +537,18 @@ pub(super) fn set_core_tag(s: &str, tag: &str, val: &str) -> String {
         }
         s.to_string()
     } else if let Some(i) = s.rfind("</cp:coreProperties>") {
+        // 足すとき: 根に接頭辞の宣言が無い core.xml(openpyxl 産)もあるので、
+        // dc: の欄は要素自身に宣言を付けて足す(openpyxl と同じ流儀)
+        let decl = if tag.starts_with("dc:") {
+            r#" xmlns:dc="http://purl.org/dc/elements/1.1/""#
+        } else {
+            ""
+        };
+        let repl = if val.is_empty() {
+            format!("<{tag}{decl}/>")
+        } else {
+            format!("<{tag}{decl}>{}</{tag}>", esc(val))
+        };
         format!("{}{}{}", &s[..i], repl, &s[i..])
     } else {
         s.to_string()

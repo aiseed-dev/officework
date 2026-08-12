@@ -332,6 +332,47 @@ if openpyxl is not None:
         s11.add_data_validation(odv)  # 本家の実物をそのまま渡しても効く
         check(len(s11.validations) == 2, "本家の DataValidation の代入")
 
+# --- 1904 起点: 読めて・計算と表示が正しく・datetime が往復する ----------------
+if openpyxl is not None:
+    import datetime
+
+    with tempfile.TemporaryDirectory() as t:
+        # 本家で 1904 起点のブックを作る
+        wb12 = openpyxl.Workbook()
+        wb12.epoch = openpyxl.utils.datetime.CALENDAR_MAC_1904
+        ws12 = wb12.active
+        ws12["A1"] = datetime.date(2026, 8, 13)
+        ws12["A1"].number_format = "yyyy/m/d"
+        out_e = os.path.join(t, "mac1904.xlsx")
+        wb12.save(out_e)
+
+        b13 = office_sheet.Book.open(out_e)
+        s13 = b13[0]
+        check(b13.epoch.year == 1904, f"起点の読み: {b13.epoch}")
+        check(b13.excel_base_date.year == 1904, "excel_base_date(別名)")
+        # 表示: 1899 起点で読むと 4 年ずれる — 正しく 2026 で出るか
+        check(s13.display("A1").startswith("2026"),
+              f"1904 起点の表示が4年ずれている: {s13.display('A1')}")
+        # 関数: YEAR も起点どおり
+        s13["B1"] = "=YEAR(A1)"
+        check(s13["B1"] == 2026, f"1904 起点の YEAR: {s13['B1']}")
+        # datetime の書き込みも起点どおりの通し番号になる
+        s13["C1"] = datetime.date(2026, 8, 13)
+        check(s13["C1"] == s13["A1"], f"datetime の受けが起点とずれる: "
+              f"{s13['C1']} vs {s13['A1']}")
+        # 往復して本家が同じ日付で読める
+        out_e2 = os.path.join(t, "mac1904_rt.xlsx")
+        b13.save(out_e2)
+        r13 = openpyxl.load_workbook(out_e2)
+        check(r13.epoch.year == 1904, "往復で起点が消えた")
+        got = r13.active["A1"].value
+        check(getattr(got, "year", None) == 2026 and got.month == 8 and got.day == 13,
+              f"往復の日付を本家が読めない: {got!r}")
+
+        # 普通のブック(1899)はそのまま
+        b14 = office_sheet.Book()
+        check(b14.epoch.year == 1899, f"既定の起点: {b14.epoch}")
+
 # ================================================== xlwings の口(参照の算術)
 # 橋は動いているアプリが要るので、ソケットに出ない算術だけを定義値と照合する
 from officework import calc as xw

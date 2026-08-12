@@ -26,6 +26,7 @@ mod run;
 // **外から呼ばれる名前はここに集める。** どのモジュールに置いたかを
 // 呼ぶ側に知らせない — 置き場を変えても `sheet::calc::…` は変わらない
 pub use funcs::date_serial;
+pub use funcs::{date_serial_at, excel_epoch};
 // crate の中だけで使う物は、外へは出さない(割る前と同じ見え方)
 pub(crate) use funcs::{civil_from_days, era_of, weekday0, EXCEL_EPOCH_DAYS};
 pub use parse::cell_filename;

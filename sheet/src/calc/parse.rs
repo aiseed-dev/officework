@@ -285,6 +285,8 @@ pub(super) struct P<'a> {
     /// ブックの出どころ(絶対の径路)。`CELL("filename")` だけが使う。
     /// **空 = まだ保存していない**(Excel も空文字を返す)
     pub(super) book_path: &'a str,
+    /// 1904 起点のブックか(日付の関数と表示の境目が使う)
+    pub(super) date1904: bool,
 }
 
 /// 参照を計算する関数(OFFSET/INDIRECT)の答え。
@@ -855,12 +857,12 @@ impl<'a> P<'a> {
                                 self.skip_hidden.set(true);
                                 let again = self.args();
                                 self.skip_hidden.set(false);
-                                return call(&name, again?);
+                                return call(&name, again?, self.date1904);
                             }
-                            return call(&name, args);
+                            return call(&name, args, self.date1904);
                         }
                         let args = self.args()?;
-                        call(&name, args)
+                        call(&name, args, self.date1904)
                     }
                     _ => match name.as_str() {
                         "TRUE" => Ok(Value::Bool(true)),

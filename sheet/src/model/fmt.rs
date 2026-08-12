@@ -73,7 +73,9 @@ pub(super) fn take_brackets(code: &str) -> (String, String, Option<char>, Option
     (out, sym, elapsed, lcid)
 }
 
-pub fn format_value(v: &Value, code: Option<&str>) -> String {
+pub fn format_value(v: &Value, code: Option<&str>, date1904: bool) -> String {
+    // 起点(1899-12-30 か、1904 ブックの 1904-01-01)。日付の描きはこれを通す
+    let ep = crate::calc::excel_epoch(date1904);
     let Value::Number(n) = v else { return v.display() };
     let Some(code) = code else { return v.display() };
     // 角かっこを先に読み分ける。**残すと画面にそのまま出る**
@@ -102,7 +104,7 @@ pub fn format_value(v: &Value, code: Option<&str>) -> String {
     }
 
     // 日付・時刻の書式なら、通し番号を暦に直して描く
-    if let Some(s) = format_date(*n, code, elapsed, lcid) {
+    if let Some(s) = format_date(*n, code, elapsed, lcid, ep) {
         return s;
     }
 
@@ -189,7 +191,7 @@ pub(super) fn affix(s: &str) -> String {
 /// (`mmmm` → `08`)で、`aaa`/`aaaa` は `YOBI` と「曜日」を日本語で返す。
 /// 13言語ぶんの月名・曜日名は vendor/sdkjs/common/NumFormat.js の
 /// cultureInfo にある(sekkei/calc.ja.md「書式の一覧」参照)
-pub(super) fn format_date(n: f64, code: &str, elapsed: Option<char>, lcid: Option<u32>) -> Option<String> {
+pub(super) fn format_date(n: f64, code: &str, elapsed: Option<char>, lcid: Option<u32>, ep: i64) -> Option<String> {
     // **最初の節だけを使う。** 書式は `正;負;ゼロ;文字` の4節に分かれ、
     // 日付の書式はたいてい `[$-409]mmmm yyyy;@` のように末尾に文字用の
     // 節を持つ。切らないと `;@` がそのまま画面に出る
@@ -233,10 +235,10 @@ pub(super) fn format_date(n: f64, code: &str, elapsed: Option<char>, lcid: Optio
     }
 
     let days = n.floor() as i64;
-    let (y, mo, d) = crate::calc::civil_from_days(days - crate::calc::EXCEL_EPOCH_DAYS);
+    let (y, mo, d) = crate::calc::civil_from_days(days - ep);
     let total = ((n - days as f64) * 86400.0).round() as i64;
     let (hh, mi, ss) = (total / 3600 % 24, total / 60 % 60, total % 60);
-    let wd = crate::calc::weekday0(days) as usize; // 0=日曜
+    let wd = crate::calc::weekday0(days, ep) as usize; // 0=日曜
 
     // 字句: 引用は文字どおり、同じ字の連なりは1つの札
     #[derive(PartialEq)]
@@ -367,13 +369,13 @@ pub(super) fn format_date(n: f64, code: &str, elapsed: Option<char>, lcid: Optio
                         out.push_str(if *len >= 4 { names.days[wd] } else { names.days_abbr[wd] });
                     }
                     // 和暦: g=R gg=令 ggg=令和 / e=年(ee=0詰め)。明治より前は西暦
-                    'g' => if let Some((era, initial, _)) = crate::calc::era_of(days) { out.push_str(match *len {
+                    'g' => if let Some((era, initial, _)) = crate::calc::era_of(days, ep) { out.push_str(match *len {
                         1 => initial,
                         2 => &era[..era.char_indices().nth(1).map(|(i, _)| i)
                             .unwrap_or(era.len())],
                         _ => era,
                     }) },
-                    'e' => match crate::calc::era_of(days) {
+                    'e' => match crate::calc::era_of(days, ep) {
                         Some((_, _, ey)) => out.push_str(&pad(ey, *len)),
                         None => out.push_str(&y.to_string()),
                     },

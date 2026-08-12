@@ -766,6 +766,7 @@ impl Calc {
         let setup = paper::grid::PrintSetup {
             areas: sh.print_areas.clone(),
             margins_mm: sh.margins_mm,
+            date1904: self.book.date1904,
         };
         paper::grid::page_starts(sh, paper, &setup)
     }
@@ -810,6 +811,7 @@ impl Calc {
         let setup = paper::grid::PrintSetup {
             areas: areas.clone(),
             margins_mm: sh.margins_mm,
+            date1904: self.book.date1904,
         };
         match areas.len() {
             0 => {}

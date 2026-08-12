@@ -50,7 +50,7 @@ pub fn eval_py_call(sheet: &Sheet, formula: &str) -> Option<(String, Vec<PyArg>)
     // PY ( の中の引数を、通常の引数解析(範囲は形つき)で読む
     let resolved = HashMap::new();
     // PY セルの引数評価では ROW()/COLUMN() の「いまのセル」は分からない — 原点で代える
-    let mut p = P { t: &toks, i: 0, sheet, resolved: &resolved, at: Pos::new(0, 0), others: &[], sheet_at: 0, skip_hidden: Default::default(), lets: Vec::new(), book_path: "" };
+    let mut p = P { t: &toks, i: 0, sheet, resolved: &resolved, at: Pos::new(0, 0), others: &[], sheet_at: 0, skip_hidden: Default::default(), lets: Vec::new(), book_path: "", date1904: false };
     // 素直な書き方 `=集計(A1:B9)` と、古い書き方 `=PY("集計", A1:B9)` の両方
     let bare = match (p.next(), p.next()) {
         (Some(Tok::Name(n)), Some(Tok::LParen)) if n == "PY" => None,
@@ -210,6 +210,7 @@ pub fn eval_once(sheet: &Sheet, at: Pos, formula: &str) -> Value {
         skip_hidden: Default::default(),
         lets: Vec::new(),
         book_path: "",
+        date1904: false,
     };
     match p.expr() {
         Ok(v) if p.i == toks.len() => v,
@@ -225,8 +226,8 @@ pub(super) const ARRAY_FNS: &[&str] = &[
 ];
 
 pub fn recalc(sheet: &mut Sheet) {
-    // 1枚だけの計算にはブックが無い = 径路も無い(CELL("filename") は空)
-    recalc_impl(sheet, &[], 0, "");
+    // 1枚だけの計算にはブックが無い = 径路も無く、起点は 1899 の既定
+    recalc_impl(sheet, &[], 0, "", false);
 }
 
 /// ブックの1枚を、**他のシートを見ながら**再計算する
@@ -238,6 +239,7 @@ pub fn recalc_book(book: &mut crate::Book, target: usize) {
     let iter = book.calc_iter;
     // シートを借り分ける前に写しておく(借用が重なるため)
     let path = book.path.clone();
+    let d1904 = book.date1904;
     let (left, rest) = book.sheets.split_at_mut(target);
     let (tgt, right) = rest.split_first_mut().expect("上で確かめた");
     let others: Vec<&Sheet> = left.iter().chain(right.iter()).collect();
@@ -246,14 +248,14 @@ pub fn recalc_book(book: &mut crate::Book, target: usize) {
             // 反復計算: 循環は前回の値で埋めて、変化が delta 以下に
             // 落ち着くまで(上限 count 回)回す — Excel と同じ枠組み
             for _ in 0..count.max(1) {
-                let (changed, maxd) = recalc_pass_iter(tgt, &others, target, true, &path);
+                let (changed, maxd) = recalc_pass_iter(tgt, &others, target, true, &path, d1904);
                 if !changed || maxd <= delta {
                     break;
                 }
             }
             stamp_py(tgt);
         }
-        None => recalc_impl(tgt, &others, target, &path),
+        None => recalc_impl(tgt, &others, target, &path, d1904),
     }
 }
 
@@ -318,7 +320,7 @@ pub(super) fn stamp_py(sheet: &mut Sheet) {
     sheet.py_stamp = h.finish() | 1;
 }
 
-pub(super) fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_path: &str) {
+pub(super) fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_path: &str, date1904: bool) {
     // OFFSET/INDIRECT(計算で決まる参照)とスピルは、1回の走査では依存の順が
     // 読めないことがある — そのときだけ、値が動かなくなるまで回す(上限つき。
     // RAND/NOW 入りの式は毎回変わるので、比較からは外している)
@@ -336,12 +338,12 @@ pub(super) fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_
                 .unwrap_or(false)
         });
     if !dynamic {
-        recalc_pass(sheet, others, at, book_path);
+        recalc_pass(sheet, others, at, book_path, date1904);
         stamp_py(sheet);
         return;
     }
     for _ in 0..5 {
-        if !recalc_pass(sheet, others, at, book_path) {
+        if !recalc_pass(sheet, others, at, book_path, date1904) {
             break;
         }
     }
@@ -349,8 +351,8 @@ pub(super) fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_
 }
 
 /// 再計算の1周。値が動いたら true(まだ安定していないかもしれない)
-pub(super) fn recalc_pass(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_path: &str) -> bool {
-    recalc_pass_iter(sheet, others, at, false, book_path).0
+pub(super) fn recalc_pass(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_path: &str, date1904: bool) -> bool {
+    recalc_pass_iter(sheet, others, at, false, book_path, date1904).0
 }
 
 /// 再計算の1周(反復モードつき)。反復モードでは循環参照を #CIRC! に
@@ -361,6 +363,7 @@ pub(super) fn recalc_pass_iter(
     at: usize,
     iter_mode: bool,
     book_path: &str,
+    date1904: bool,
 ) -> (bool, f64) {
     // PY セルはここでは計算しない(最後に計算した値を保つ)。
     // まだ一度も計算していなければ「#PY?」の印を置く(空白で誤魔化さない)
@@ -435,6 +438,7 @@ pub(super) fn recalc_pass_iter(
         others: &[&Sheet],
         at: usize,
         book_path: &str,
+    date1904: bool,
         resolved: &mut HashMap<Pos, Value>,
         visiting: &mut HashSet<Pos>,
         iter_mode: bool,
@@ -459,13 +463,13 @@ pub(super) fn recalc_pass_iter(
         // 先に依存を解く
         for d in deps(f) {
             if map.contains_key(&d) && !resolved.contains_key(&d) {
-                let v = eval_at(d, map, sheet, others, at, book_path, resolved, visiting, iter_mode);
+                let v = eval_at(d, map, sheet, others, at, book_path, date1904, resolved, visiting, iter_mode);
                 resolved.insert(d, v);
             }
         }
         let v = match lex(f) {
             Ok(toks) => {
-                let mut p2 = P { t: &toks, i: 0, sheet, resolved, at: p, others, sheet_at: at, skip_hidden: Default::default(), lets: Vec::new(), book_path };
+                let mut p2 = P { t: &toks, i: 0, sheet, resolved, at: p, others, sheet_at: at, skip_hidden: Default::default(), lets: Vec::new(), book_path, date1904 };
                 match p2.expr() {
                     Ok(v) if p2.i == toks.len() => v,
                     Ok(_) => Value::Error("#ERROR!".into()),
@@ -481,7 +485,7 @@ pub(super) fn recalc_pass_iter(
 
     let map: HashMap<Pos, String> = formulas.iter().cloned().collect();
     for (p, _) in &formulas {
-        let v = eval_at(*p, &map, sheet, others, at, book_path, &mut resolved, &mut visiting, iter_mode);
+        let v = eval_at(*p, &map, sheet, others, at, book_path, date1904, &mut resolved, &mut visiting, iter_mode);
         resolved.insert(*p, v);
     }
     let mut max_delta = 0.0f64;
@@ -515,7 +519,7 @@ pub(super) fn recalc_pass_iter(
                 c.value = v;
             }
         };
-        let rows = match eval_array(sheet, others, at, f, *origin, book_path) {
+        let rows = match eval_array(sheet, others, at, f, *origin, book_path, date1904) {
             Err(e) => {
                 put_origin(sheet, e, &mut changed);
                 continue;
@@ -581,7 +585,7 @@ pub(super) fn recalc_pass_iter(
     // 小さければ足りない席は #N/A(Excel と同じ)、大きければ切る。
     // 1つの値しか返らない式は範囲いっぱいに配る(これも Excel と同じ)
     for (origin, f, (h, w)) in &cse_list {
-        let rows = match eval_array(sheet, others, at, f, *origin, book_path) {
+        let rows = match eval_array(sheet, others, at, f, *origin, book_path, date1904) {
             Err(e) => {
                 if let Some(c) = sheet.cells.get_mut(origin) {
                     if c.value != e && !volatile.contains(origin) {
@@ -683,11 +687,12 @@ pub(super) fn eval_array(
     f: &str,
     at: Pos,
     book_path: &str,
+    date1904: bool,
 ) -> Result<Vec<Vec<Value>>, Value> {
     let err = |s: &str| Value::Error(s.into());
     let toks = lex(f).map_err(|_| err("#ERROR!"))?;
     let resolved = HashMap::new();
-    let mut p = P { t: &toks, i: 0, sheet, resolved: &resolved, at, others, sheet_at, skip_hidden: Default::default(), lets: Vec::new(), book_path };
+    let mut p = P { t: &toks, i: 0, sheet, resolved: &resolved, at, others, sheet_at, skip_hidden: Default::default(), lets: Vec::new(), book_path, date1904 };
     let v = {
         let mut ap = AP { p: &mut p };
         ap.expr().map_err(|_| err("#ERROR!"))?

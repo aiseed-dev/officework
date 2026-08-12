@@ -1155,6 +1155,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     // 理解できなかった definedName の原文(hidden 属性つき等)。捨てない
     let mut defined_raw: Vec<String> = Vec::new();
     let mut calc_manual = false;
+    let mut date1904 = false;
     let mut calc_iter: Option<(u32, f64)> = None;
     let mut r1c1 = false;
     let mut read_only_rec = false;
@@ -1199,7 +1200,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     if local(e.name().as_ref()) == b"workbookPr" =>
                 {
                     if matches!(attr(&e, "date1904").as_deref(), Some("1") | Some("true")) {
-                        rep.note("1904年の日付系(このブックの日付表示は4年ずれます。保存では保たれます)");
+                        date1904 = true;
+                        rep.note("1904年の日付系(日付の計算と表示は 1904-01-01 起点で扱います。保存でも保たれます)");
                     }
                 }
                 Ok(Event::Start(e)) | Ok(Event::Empty(e))
@@ -1287,6 +1289,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         theme: theme_colors.clone(),
         named_styles,
         calc_manual,
+        date1904,
         calc_iter,
         r1c1,
         read_only_rec,

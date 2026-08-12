@@ -225,7 +225,7 @@ mod format_tests {
     use super::*;
 
     fn f(n: f64, code: &str) -> String {
-        format_value(&Value::Number(n), Some(code))
+        format_value(&Value::Number(n), Some(code), false)
     }
 
     #[test]
@@ -273,13 +273,13 @@ mod format_tests {
 
     #[test]
     fn 書式が無ければそのまま() {
-        assert_eq!(format_value(&Value::Number(1234.0), None), "1234");
+        assert_eq!(format_value(&Value::Number(1234.0), None, false), "1234");
     }
 
     #[test]
     fn 数でなければ触らない() {
-        assert_eq!(format_value(&Value::Text("品名".into()), Some("#,##0")), "品名");
-        assert_eq!(format_value(&Value::Error("#DIV/0!".into()), Some("0%")), "#DIV/0!");
+        assert_eq!(format_value(&Value::Text("品名".into()), Some("#,##0"), false), "品名");
+        assert_eq!(format_value(&Value::Error("#DIV/0!".into()), Some("0%"), false), "#DIV/0!");
     }
 }
 
@@ -801,7 +801,7 @@ mod bracket_tests {
     use super::*;
 
     fn f(n: f64, code: &str) -> String {
-        format_value(&Value::Number(n), Some(code))
+        format_value(&Value::Number(n), Some(code), false)
     }
 
     /// **角かっこを画面に出さない。** 前は読み飛ばしておらず、
@@ -877,7 +877,7 @@ mod month_name_tests {
 
     /// 2026-08-06(木)
     fn f(code: &str) -> String {
-        format_value(&Value::Number(46240.0), Some(code))
+        format_value(&Value::Number(46240.0), Some(code), false)
     }
 
     /// **月名・曜日名は書式コードの地域で決まる。** 読む人の言語ではない —
@@ -932,8 +932,8 @@ mod month_name_tests {
     fn 数と時刻は変わらない() {
         assert_eq!(f("yyyy/m/d"), "2026/8/6");
         assert_eq!(f("ggge\"年\"m\"月\"d\"日\""), "令和8年8月6日");
-        assert_eq!(format_value(&Value::Number(0.5), Some("h:mm")), "12:00");
-        assert_eq!(format_value(&Value::Number(0.5), Some("h:mm:ss")), "12:00:00");
-        assert_eq!(format_value(&Value::Number(1234.5), Some("#,##0.0")), "1,234.5");
+        assert_eq!(format_value(&Value::Number(0.5), Some("h:mm"), false), "12:00");
+        assert_eq!(format_value(&Value::Number(0.5), Some("h:mm:ss"), false), "12:00:00");
+        assert_eq!(format_value(&Value::Number(1234.5), Some("#,##0.0"), false), "1,234.5");
     }
 }

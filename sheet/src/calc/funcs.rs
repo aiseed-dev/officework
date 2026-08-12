@@ -332,10 +332,21 @@ pub fn date_serial(y: i64, m: i64, d: i64) -> i64 {
     days_from_civil(y, m, d) + EXCEL_EPOCH_DAYS
 }
 
+/// 起点。1904 のブック(workbookPr の date1904)は 1904-01-01 が通し番号 0 —
+/// 1899-12-30 との差は 1462 日(2026-08-13、起点の解釈をエンジンに)
+pub fn excel_epoch(date1904: bool) -> i64 {
+    if date1904 { EXCEL_EPOCH_DAYS - 1462 } else { EXCEL_EPOCH_DAYS }
+}
+
+/// 暦の日付 → 通し番号(起点つき)。1904 のブックの境目はこちらを通す
+pub fn date_serial_at(y: i64, m: i64, d: i64, ep: i64) -> i64 {
+    days_from_civil(y, m, d) + ep
+}
+
 /// 通し番号 → 曜日(0=日曜)。通し番号 1(1900-01-01)は月曜。
-pub(crate) fn weekday0(serial: i64) -> i64 {
+pub(crate) fn weekday0(serial: i64, ep: i64) -> i64 {
     // 1970-01-01(木)起点に直して数える
-    ((serial - EXCEL_EPOCH_DAYS).rem_euclid(7) + 4).rem_euclid(7)
+    ((serial - ep).rem_euclid(7) + 4).rem_euclid(7)
 }
 
 /// RAND 用の乱数(0.0 以上 1.0 未満)。暗号用ではない(表計算の RAND も同じ)。
@@ -361,7 +372,7 @@ pub(super) fn rand01() -> f64 {
 /// いまの機械の暦での「今日」の通し番号と、時刻(日の割合)。
 /// 時計は系の TZ 環境(日本なら JST)に従う — libc の localtime を使う
 /// chrono に頼らず、TZ のずれは環境変数 JO_TZ_OFF_HOURS で補える(既定 +9)。
-pub(super) fn today_serial() -> (f64, f64) {
+pub(super) fn today_serial(ep: i64) -> (f64, f64) {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
@@ -373,7 +384,7 @@ pub(super) fn today_serial() -> (f64, f64) {
     let local = secs + off_h * 3600;
     let days = local.div_euclid(86400);
     let frac = local.rem_euclid(86400) as f64 / 86400.0;
-    ((days + EXCEL_EPOCH_DAYS) as f64, frac)
+    ((days + ep) as f64, frac)
 }
 
 /// LENB 系の1文字の「バイト」数。全角=2、半角(ASCII と半角カナ)=1
@@ -459,14 +470,14 @@ pub(super) fn jis_zenkaku(s: &str) -> String {
 
 /// 元号。通し番号 → (名前, ローマ字の頭文字, 和暦の年)。明治より前は None。
 /// DATESTRING と表示形式(g・e)が**同じ表**を使う
-pub(crate) fn era_of(serial: i64) -> Option<(&'static str, &'static str, i64)> {
-    let (y, _, _) = civil_from_days(serial - EXCEL_EPOCH_DAYS);
+pub(crate) fn era_of(serial: i64, ep: i64) -> Option<(&'static str, &'static str, i64)> {
+    let (y, _, _) = civil_from_days(serial - ep);
     let eras: [(i64, &'static str, &'static str, i64); 5] = [
-        (date_serial(2019, 5, 1), "令和", "R", 2019),
-        (date_serial(1989, 1, 8), "平成", "H", 1989),
-        (date_serial(1926, 12, 25), "昭和", "S", 1926),
-        (date_serial(1912, 7, 30), "大正", "T", 1912),
-        (date_serial(1868, 10, 23), "明治", "M", 1868),
+        (date_serial_at(2019, 5, 1, ep), "令和", "R", 2019),
+        (date_serial_at(1989, 1, 8, ep), "平成", "H", 1989),
+        (date_serial_at(1926, 12, 25, ep), "昭和", "S", 1926),
+        (date_serial_at(1912, 7, 30, ep), "大正", "T", 1912),
+        (date_serial_at(1868, 10, 23, ep), "明治", "M", 1868),
     ];
     for (start, name, initial, base) in eras {
         if serial >= start {
@@ -477,18 +488,18 @@ pub(crate) fn era_of(serial: i64) -> Option<(&'static str, &'static str, i64)> {
 }
 
 /// 通し番号 → 和暦の文字(DATESTRING)。明治より前は西暦のまま
-pub(super) fn wareki(serial: i64) -> String {
-    let (y, m, d) = civil_from_days(serial - EXCEL_EPOCH_DAYS);
-    match era_of(serial) {
+pub(super) fn wareki(serial: i64, ep: i64) -> String {
+    let (y, m, d) = civil_from_days(serial - ep);
+    match era_of(serial, ep) {
         Some((name, _, ey)) => format!("{name}{ey:02}年{m:02}月{d:02}日"),
         None => format!("{y}年{m:02}月{d:02}日"),
     }
 }
 
 /// 30/360(米国方式)の日数。DAYS360 と YEARFRAC が使う
-pub(super) fn days360(s: i64, e: i64) -> i64 {
-    let (sy, sm, mut sd) = civil_from_days(s - EXCEL_EPOCH_DAYS);
-    let (ey, em, mut ed) = civil_from_days(e - EXCEL_EPOCH_DAYS);
+pub(super) fn days360(s: i64, e: i64, ep: i64) -> i64 {
+    let (sy, sm, mut sd) = civil_from_days(s - ep);
+    let (ey, em, mut ed) = civil_from_days(e - ep);
     if sd == 31 {
         sd = 30;
     }
@@ -548,7 +559,9 @@ impl Arg {
     }
 }
 
-pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
+pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, String> {
+    // 起点(1899-12-30 か 1904-01-01)。日付の境目は全部これを通す
+    let ep = excel_epoch(date1904);
     // 表を引く関数は形が要るので、平らにする前に受ける
     match name {
         "VLOOKUP" | "HLOOKUP" => {
@@ -1161,18 +1174,18 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
         "TRUE" => Value::Bool(true),
         "FALSE" => Value::Bool(false),
         // ---- 日付と時刻(値は Excel の通し番号 1899-12-30 起点)----
-        "TODAY" => Value::Number(today_serial().0),
+        "TODAY" => Value::Number(today_serial(ep).0),
         "NOW" => {
-            let (d, f) = today_serial();
+            let (d, f) = today_serial(ep);
             Value::Number(d + f)
         }
         "DATE" => {
             let g = |i: usize| a.get(i).map(|v| v.as_number() as i64).unwrap_or(0);
-            Value::Number(date_serial(g(0), g(1), g(2)) as f64)
+            Value::Number(date_serial_at(g(0), g(1), g(2), ep) as f64)
         }
         "YEAR" | "MONTH" | "DAY" => {
             let serial = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            let (y, m, d) = civil_from_days(serial - EXCEL_EPOCH_DAYS);
+            let (y, m, d) = civil_from_days(serial - ep);
             Value::Number(match name {
                 "YEAR" => y,
                 "MONTH" => m,
@@ -1182,7 +1195,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
         "WEEKDAY" => {
             // Excel の既定(1=日曜)。通し番号 1(1900-01-01)は月曜
             let serial = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            Value::Number(weekday0(serial) as f64 + 1.0)
+            Value::Number(weekday0(serial, ep) as f64 + 1.0)
         }
         "TIME" => {
             let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
@@ -1206,7 +1219,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
             let parts: Vec<i64> =
                 t.split(['/', '-']).filter_map(|p| p.trim().parse().ok()).collect();
             match parts.as_slice() {
-                [y, m, d] => Value::Number(date_serial(*y, *m, *d) as f64),
+                [y, m, d] => Value::Number(date_serial_at(*y, *m, *d, ep) as f64),
                 _ => Value::Error("#VALUE!".into()),
             }
         }
@@ -1214,13 +1227,13 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
             // n ヶ月あと(前)。EDATE は同じ日(無ければ月末)、EOMONTH はその月末
             let serial = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
             let months = a.get(1).map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            let (y, m, d) = civil_from_days(serial - EXCEL_EPOCH_DAYS);
+            let (y, m, d) = civil_from_days(serial - ep);
             let total = y * 12 + (m - 1) + months;
             let (ny, nm) = (total.div_euclid(12), total.rem_euclid(12) + 1);
-            let month_end = date_serial(ny, nm + 1, 1) - 1; // 13月は翌年1月に正しく繰り上がる
+            let month_end = date_serial_at(ny, nm + 1, 1, ep) - 1; // 13月は翌年1月に正しく繰り上がる
             Value::Number(match name {
                 "EOMONTH" => month_end,
-                _ => date_serial(ny, nm, d).min(month_end),
+                _ => date_serial_at(ny, nm, d, ep).min(month_end),
             } as f64)
         }
         "DATEDIF" => {
@@ -1231,8 +1244,8 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
             if e < s {
                 return Ok(Value::Error("#NUM!".into()));
             }
-            let (sy, sm, sd) = civil_from_days(s - EXCEL_EPOCH_DAYS);
-            let (ey, em, ed) = civil_from_days(e - EXCEL_EPOCH_DAYS);
+            let (sy, sm, sd) = civil_from_days(s - ep);
+            let (ey, em, ed) = civil_from_days(e - ep);
             let borrow = (em, ed) < (sm, sd);
             let months = ey * 12 + em - (sy * 12 + sm) - i64::from(ed < sd);
             Value::Number(match unit.as_str() {
@@ -1242,7 +1255,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
                 "YM" => months.rem_euclid(12),
                 "YD" => {
                     // 年を無視した日数: 始の年を終の直前まで進めて引く
-                    let anchor = date_serial(ey - i64::from(borrow), sm, sd);
+                    let anchor = date_serial_at(ey - i64::from(borrow), sm, sd, ep);
                     e - anchor
                 }
                 "MD" => {
@@ -1254,7 +1267,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
                     } else {
                         (ey, em - 1)
                     };
-                    e - date_serial(ay, am, sd)
+                    e - date_serial_at(ay, am, sd, ep)
                 }
                 _ => return Ok(Value::Error("#VALUE!".into())),
             } as f64)
@@ -1272,7 +1285,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
             let mut left = days.abs();
             while left > 0 {
                 cur += step;
-                let w = weekday0(cur);
+                let w = weekday0(cur, ep);
                 if w != 0 && w != 6 && !holidays.contains(&cur) {
                     left -= 1;
                 }
@@ -1291,7 +1304,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
             }
             let n = (lo..=hi)
                 .filter(|d| {
-                    let w = weekday0(*d);
+                    let w = weekday0(*d, ep);
                     w != 0 && w != 6 && !holidays.contains(d)
                 })
                 .count() as i64;
@@ -1411,7 +1424,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
             // TEXT(値, 表示形式) — セルの表示と同じ描き方で文字列にする
             let v = a.first().cloned().unwrap_or(Value::Empty);
             let code = a.get(1).map(|v| v.display()).unwrap_or_default();
-            Value::Text(format_value(&v, Some(&code)))
+            Value::Text(format_value(&v, Some(&code), date1904))
         }
         "REPLACE" => {
             // REPLACE(文字列, 開始位置, 文字数, 置く文字)。**位置は1から**、
@@ -1821,7 +1834,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
             } else {
                 x
             };
-            Value::Text(format_value(&Value::Number(x), Some(&code)))
+            Value::Text(format_value(&Value::Number(x), Some(&code), date1904))
         }
         "NUMBERVALUE" => {
             // NUMBERVALUE(文字列, [小数点], [桁区切り])
@@ -1902,7 +1915,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
         "DATESTRING" => {
             // 通し番号 → 和暦の文字(令和08年08月05日)。明治より前は西暦で
             let serial = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            Value::Text(wareki(serial))
+            Value::Text(wareki(serial, ep))
         }
         "ADDRESS" => {
             // ADDRESS(行, 列, [形式]) — 1=絶対(既定) 4=相対
@@ -1979,7 +1992,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
         "DAYS360" => {
             let s = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
             let e = a.get(1).map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            Value::Number(days360(s, e) as f64)
+            Value::Number(days360(s, e, ep) as f64)
         }
         "YEARFRAC" => {
             // 基準 0=30/360(既定) 1=実日数/年平均 2=/360 3=/365 4=欧州30/360
@@ -1991,27 +2004,27 @@ pub(super) fn call(name: &str, args: Vec<Arg>) -> Result<Value, String> {
                 1 => days / 365.25, // 実際の暦の平均(Excel の厳密式の近似)
                 2 => days / 360.0,
                 3 => days / 365.0,
-                4 => days360(s, e) as f64 / 360.0,
-                _ => days360(s, e) as f64 / 360.0,
+                4 => days360(s, e, ep) as f64 / 360.0,
+                _ => days360(s, e, ep) as f64 / 360.0,
             })
         }
         "WEEKNUM" => {
             // 年の何週目か(1=日曜始まり(既定)、2=月曜始まり)
             let serial = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
             let mon = a.get(1).map(|v| v.as_number()).unwrap_or(1.0) as i64 == 2;
-            let (y, _, _) = civil_from_days(serial - EXCEL_EPOCH_DAYS);
-            let jan1 = date_serial(y, 1, 1);
-            let head = if mon { (weekday0(jan1) + 6) % 7 } else { weekday0(jan1) };
+            let (y, _, _) = civil_from_days(serial - ep);
+            let jan1 = date_serial_at(y, 1, 1, ep);
+            let head = if mon { (weekday0(jan1, ep) + 6) % 7 } else { weekday0(jan1, ep) };
             Value::Number(((serial - jan1 + head) / 7 + 1) as f64)
         }
         "ISOWEEKNUM" => {
             // ISO 8601: 木曜を含む週がその年の第1週
             let serial = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
             // その週の木曜へ動かして年内通算で数える
-            let dow = (weekday0(serial) + 6) % 7; // 0=月曜
+            let dow = (weekday0(serial, ep) + 6) % 7; // 0=月曜
             let thu = serial - dow + 3;
-            let (y, _, _) = civil_from_days(thu - EXCEL_EPOCH_DAYS);
-            Value::Number(((thu - date_serial(y, 1, 1)) / 7 + 1) as f64)
+            let (y, _, _) = civil_from_days(thu - ep);
+            Value::Number(((thu - date_serial_at(y, 1, 1, ep)) / 7 + 1) as f64)
         }
         "NPV" => {
             // NPV(利率, 額…) — 1期目の終わりから割り引く(Excel と同じ)

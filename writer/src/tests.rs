@@ -1153,6 +1153,7 @@ mod screen_note_tests {
                 runs: vec![字("これは脚注の文章。")],
                 line_spacing: 1.0,
                 ..Default::default() }],
+            added: false,
         }];
         d
     }

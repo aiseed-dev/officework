@@ -24,7 +24,7 @@ use pyo3::exceptions::{PyIOError, PyIndexError, PyKeyError, PyTypeError, PyValue
 use pyo3::prelude::*;
 use pyo3::types::{PyDate, PyDateTime, PyDict, PyTime};
 
-use sheet::calc::date_serial;
+use sheet::calc::{date_serial_at, excel_epoch};
 use sheet::model::{
     format_value, rename_sheet_refs, BStyle, Edge, FreezePane, HAlign, SheetImage, VAlign,
 };
@@ -108,9 +108,9 @@ fn num_cell(n: f64) -> Cell {
 
 /// date/datetime の年月日 → Excel の通し番号(日の部分)。
 /// abi3 では C の accessor が使えないので、属性(year/month/day)で読む
-fn date_days(v: &Bound<'_, PyAny>) -> PyResult<i64> {
+fn date_days(v: &Bound<'_, PyAny>, date1904: bool) -> PyResult<i64> {
     let g = |n: &str| -> PyResult<i64> { v.getattr(n)?.extract() };
-    Ok(date_serial(g("year")?, g("month")?, g("day")?))
+    Ok(date_serial_at(g("year")?, g("month")?, g("day")?, excel_epoch(date1904)))
 }
 
 /// time/datetime の時刻 → 日の割合(0.0〜)。
@@ -281,6 +281,23 @@ impl PyBook {
         Ok(())
     }
 
+    /// 1904 起点のブックか(workbookPr の date1904)。日付の計算・表示・
+    /// datetime の受け渡しは全部この旗の起点で解釈する(2026-08-13)。
+    #[getter]
+    fn date1904(&self) -> PyResult<bool> {
+        Ok(lock(&self.inner)?.book.date1904)
+    }
+
+    /// 起点を替える。**通し番号はそのまま**なので、既にある日付の意味が
+    /// 4年動く(Excel でこの設定を切り替えたときと同じ)。再計算する。
+    #[setter]
+    fn set_date1904(&self, value: bool) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        g.book.date1904 = value;
+        recalc_all(&mut g.book);
+        Ok(())
+    }
+
     /// 全シートを再計算する(セルを置いた時点でそのシートは再計算済み。
     /// 明示的にやり直したいとき用)。
     fn recalc(&self) -> PyResult<()> {
@@ -374,15 +391,16 @@ impl PySheet {
     /// 置いたらこのシートは再計算される。
     fn __setitem__(&self, key: &str, value: Option<Bound<'_, PyAny>>) -> PyResult<()> {
         let p = parse_ref(key)?;
+        let d1904 = lock(&self.inner)?.book.date1904;
         // (セルの中身, セルに表示形式が無いときに付ける形式)
         let (cell, date_fmt): (Cell, Option<&str>) = match &value {
             None => (Cell::default(), None),
             // datetime は date の子なので、必ず datetime を先に見る
             Some(v) => {
                 if v.cast::<PyDateTime>().is_ok() {
-                    (num_cell(date_days(v)? as f64 + time_frac(v)?), Some("yyyy/m/d h:mm"))
+                    (num_cell(date_days(v, d1904)? as f64 + time_frac(v)?), Some("yyyy/m/d h:mm"))
                 } else if v.cast::<PyDate>().is_ok() {
-                    (num_cell(date_days(v)? as f64), Some("yyyy/m/d"))
+                    (num_cell(date_days(v, d1904)? as f64), Some("yyyy/m/d"))
                 } else if v.cast::<PyTime>().is_ok() {
                     (num_cell(time_frac(v)?), Some("h:mm"))
                 } else if let Ok(b) = v.extract::<bool>() {
@@ -428,11 +446,14 @@ impl PySheet {
     /// 表示形式(#,##0 など)を当てた、画面に出るのと同じ文字列。
     fn display(&self, key: &str) -> PyResult<String> {
         let p = parse_ref(key)?;
-        self.with(|s| {
-            Ok(match s.get(p) {
-                Some(c) => format_value(&c.value, c.fmt.number_format.as_deref()),
-                None => String::new(),
-            })
+        let mut g = lock(&self.inner)?;
+        let d1904 = g.book.date1904;
+        let s = g
+            .idx_sheet(self.idx)
+            .ok_or_else(|| PyIndexError::new_err("このシートはもうブックに無い"))?;
+        Ok(match s.get(p) {
+            Some(c) => format_value(&c.value, c.fmt.number_format.as_deref(), d1904),
+            None => String::new(),
         })
     }
 

@@ -900,6 +900,32 @@ class Book:
         return self._b.sheet_names.index(worksheet.title)
 
     @property
+    def epoch(self):
+        """日付の起点(openpyxl と同じ datetime)。1899-12-30 か、
+        1904 起点のブックは 1904-01-01。"""
+        import datetime
+
+        return (datetime.datetime(1904, 1, 1) if self._b.date1904
+                else datetime.datetime(1899, 12, 30))
+
+    @epoch.setter
+    def epoch(self, value):
+        # openpyxl と同じ2つの定数だけを受ける。通し番号はそのままなので、
+        # 既にある日付の意味が4年動く(Excel の設定切り替えと同じ)
+        y = getattr(value, "year", None)
+        if y == 1904:
+            self._b.date1904 = True
+        elif y in (1899, 1900):
+            self._b.date1904 = False
+        else:
+            raise ValueError("起点は 1899-12-30 か 1904-01-01: {!r}".format(value))
+
+    @property
+    def excel_base_date(self):
+        # openpyxl の別名
+        return self.epoch
+
+    @property
     def defined_names(self):
         """名前付き範囲(openpyxl と同じ dict 風)。名前は式(=単価*2)で使える。"""
         return _DefinedNames(self)

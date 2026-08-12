@@ -39,6 +39,8 @@ pub struct PrintSetup {
     pub areas: Vec<(sheet::Pos, sheet::Pos)>,
     /// 余白 mm(左, 右, 上, 下)。None なら paper.margin_mm を四辺に
     pub margins_mm: Option<(f32, f32, f32, f32)>,
+    /// 1904 起点のブックか(日付の描きが起点を替える)
+    pub date1904: bool,
 }
 
 /// **紙 N 枚に収めるための縮尺。** `fit_to_w`/`fit_to_h` のどちらかが
@@ -269,6 +271,7 @@ pub fn sheet_to_pdf<W: Write>(
         col_mm: &[f32],
         scale: f32,
         cond_prep: &[(sheet::model::CondRule, sheet::model::CondAux)],
+        date1904: bool,
     ) {
         // 印刷の枠線(printOptions gridLines)。薄い灰で先に敷く
         if grid.print_gridlines {
@@ -416,7 +419,7 @@ pub fn sheet_to_pdf<W: Write>(
                 }
                 continue;
             }
-            let shown = format_value(&cell.value, cell.fmt.number_format.as_deref());
+            let shown = format_value(&cell.value, cell.fmt.number_format.as_deref(), date1904);
             if shown.is_empty() {
                 continue;
             }
@@ -524,14 +527,14 @@ pub fn sheet_to_pdf<W: Write>(
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - y_used;
-                    draw_row(grid, &l, &font, *tr, y_top, th, ml, c0, ncols, &col_x, &col_mm, scale, &cond_prep);
+                    draw_row(grid, &l, &font, *tr, y_top, th, ml, c0, ncols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
                     y_used += th;
                 }
             }
         }
         let y_top = paper.height_mm - mt - y_used;
         y_used += rh;
-        draw_row(grid, &l, &font, r, y_top, rh, ml, c0, ncols, &col_x, &col_mm, scale, &cond_prep);
+        draw_row(grid, &l, &font, r, y_top, rh, ml, c0, ncols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
     }
     }
     // 図形(挿した分も読んだ分も)。**輪郭だけ**を紙に出す(塗りはまだ —
@@ -893,6 +896,7 @@ mod tests {
         let one = pages(&PrintSetup {
             areas: vec![(Pos::new(0, 0), Pos::new(2, 0))],
             margins_mm: None,
+            date1904: false,
         });
         // 同じ大きさの域を2つ = 紙も2枚(**繋げて1枚に詰めない**)
         let two = pages(&PrintSetup {
@@ -901,6 +905,7 @@ mod tests {
                 (Pos::new(5, 0), Pos::new(7, 0)),
             ],
             margins_mm: None,
+            date1904: false,
         });
         assert_eq!(one, 1, "1域なのに {one} 枚になった");
         assert_eq!(two, 2, "2域が {two} 枚 — 域ごとに紙を変えていない");
@@ -1036,6 +1041,7 @@ mod print_setup_tests {
         let setup = PrintSetup {
             areas: vec![(Pos::new(0, 0), Pos::new(4, 0))],
             margins_mm: None,
+            date1904: false,
         };
         let mut part = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &setup, &mut part).unwrap();
@@ -1049,11 +1055,11 @@ mod print_setup_tests {
         let s = long_sheet();
         let mut narrow = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) , date1904: false },
             &mut narrow).unwrap();
         let mut wide = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) , date1904: false },
             &mut wide).unwrap();
         assert!(pages(&wide) > pages(&narrow), "余白が紙の枚数に効いていない");
     }
