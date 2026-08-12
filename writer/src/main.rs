@@ -599,6 +599,8 @@ pub(crate) use py::*;
 mod util;
 pub(crate) use util::*;
 mod view;
+mod panels;
+pub(crate) use panels::Panels;
 mod doc;
 mod keys;
 mod text;
