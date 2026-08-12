@@ -1,0 +1,23 @@
+# 改行は checkout でも LF のまま(Windows でも)。
+#
+# rustc は CRLF を許すが、この repo には**ソースを1バイト単位で走査する
+# 検査**が複数ある(lang/tests/i18n_soroi.rs・tools/gen_i18n.py・
+# tools/wiring_check.py など)。Windows の checkout が CRLF に変えると、
+# 行継続の `\` の直後に `\r` が挟まって字句が狂う(2026-08-13 の
+# Windows CI で i18n_soroi が落ちた)。
+* text=auto eol=lf
+
+# 二進の部品は触らない(zip 系は git が自動で見分けるが、明示しておく)
+*.docx binary
+*.xlsx binary
+*.dotx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.ttc binary
+*.pdf binary
+*.so binary

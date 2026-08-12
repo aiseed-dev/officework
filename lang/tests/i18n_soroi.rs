@@ -177,7 +177,9 @@ fn app_keys() -> BTreeSet<String> {
         files.sort();
         assert!(!files.is_empty(), "{} に .rs がありません", d.display());
         for f in files {
-            let src = std::fs::read_to_string(&f).expect("読める");
+            // CRLF は LF に均す — Windows の checkout では行継続の `\` の
+            // 直後に `\r` が挟まり、字句の走査が狂う(2026-08-13 の Windows CI)
+            let src = std::fs::read_to_string(&f).expect("読める").replace("\r\n", "\n");
             out.extend(keys_in(&src));
         }
     }
@@ -189,7 +191,9 @@ fn app_keys() -> BTreeSet<String> {
 /// エスケープ済みの姿で比べる — アプリ側も同じ姿で取っているので揃う
 fn table_keys(lang: &str) -> BTreeSet<String> {
     let p = root().join(format!("lang/src/i18n_{}.rs", lang.replace('-', "_")));
-    let src = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
+    let src = std::fs::read_to_string(&p)
+        .unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+        .replace("\r\n", "\n"); // 上と同じ理由(Windows の CRLF)
     let b = src.as_bytes();
     let start = src.find("= &[").expect("表の始まり") + 4;
     let mut out = BTreeSet::new();

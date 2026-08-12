@@ -29,10 +29,40 @@ where
     if let Ok(f) = std::fs::File::open(&tmp) {
         let _ = f.sync_all();
     }
-    std::fs::rename(&tmp, path).map_err(|e| {
-        let _ = std::fs::remove_file(&tmp);
-        format!("入れ替えできません: {e}")
-    })
+    match std::fs::rename(&tmp, path) {
+        Ok(()) => Ok(()),
+        Err(e) if cfg!(windows) && path.exists() => {
+            // **Windows の rename は既存の上には置けない**(POSIX と違う —
+            // 2026-08-13 の Windows CI で発覚。ここが効かないと保存が丸ごと
+            // 失敗する)。元を .old に除けてから入れ替える。途中で落ちても
+            // (1) .old に元が丸ごと (2) .saving に新しい中身が丸ごと 残る —
+            // 「元のままか新しい中身か」より一段弱いが、**中身が消える形は無い**
+            let bak = path.with_file_name(format!(".{name}.old"));
+            let _ = std::fs::remove_file(&bak);
+            if let Err(e2) = std::fs::rename(path, &bak) {
+                let _ = std::fs::remove_file(&tmp);
+                return Err(format!("入れ替えできません: {e} / 元を除けられません: {e2}"));
+            }
+            match std::fs::rename(&tmp, path) {
+                Ok(()) => {
+                    let _ = std::fs::remove_file(&bak);
+                    Ok(())
+                }
+                Err(e2) => {
+                    // 元へ戻す。戻せたら書きかけは消す。戻せなかったら
+                    // **両方とも残す**(.old が元・.saving が新 — 消さない)
+                    if std::fs::rename(&bak, path).is_ok() {
+                        let _ = std::fs::remove_file(&tmp);
+                    }
+                    Err(format!("入れ替えできません: {e2}"))
+                }
+            }
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(&tmp);
+            Err(format!("入れ替えできません: {e}"))
+        }
+    }
 }
 
 #[cfg(test)]
