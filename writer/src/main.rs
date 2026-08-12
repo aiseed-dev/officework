@@ -328,6 +328,11 @@ struct Writer {
     /// 直前の一手が打鍵だったか。**続けて打った分は1手にまとめる** —
     /// 1文字ごとに文書を控えると重いし、戻し方も細かすぎて使いにくい
     typing_run: bool,
+    /// いま走っている命令が、もう控えを取ったか。
+    /// **一手で2枚控えると、Ctrl+Z を2回押さないと戻らない** —
+    /// 「空白ページ」は自分で控えたあと、中で打鍵と段落の変更を呼ぶので
+    /// 3枚積まれていた(2026-08-13)
+    acted: bool,
     /// チャット(文書の隣の申し送り帳)のパネルと入力欄
     chat_open: bool,
     chat_ed: Editor,
@@ -567,6 +572,9 @@ impl Writer {
         if typing && self.typing_run {
             return;
         }
+        if self.acted {
+            return; // この一手ではもう控えた
+        }
         self.undo_stack.push(Snapshot {
             doc: self.doc.clone(),
             text: self.ed.text().to_string(),
@@ -580,6 +588,7 @@ impl Writer {
         }
         self.redo_stack.clear();
         self.typing_run = typing;
+        self.acted = true;
     }
 
     /// 控えを1枚戻す(または進める)

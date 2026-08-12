@@ -89,6 +89,7 @@ impl Writer {
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             typing_run: false,
+            acted: false,
             chat_open: false,
             chat_ed: Editor::new(""),
             xr_open: false,

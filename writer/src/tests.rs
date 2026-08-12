@@ -96,7 +96,7 @@ mod menu_run_tests {
     /// ファイル選択の窓を開くボタン。**試験では押さない** —
     /// rfd は実際に窓を出しに行くので、画面の無い試験では返ってこない
     /// (踏んで確かめた。実機での確認に回す)
-    const DIALOG: &[&str] = &[
+    pub(super) const DIALOG: &[&str] = &[
         "open", "save", "pdf", "plug-macros", "insimage", "text-from-file",
         "insshape", "inssmartart", "inschart", "smartpicker", "instextart",
         "insequation",
@@ -1422,58 +1422,73 @@ mod undo_coverage_tests {
         out
     }
 
-    /// この試験の形(選択して押す)で**文書が変わる**命令。
-    /// 変わらない命令(欄を開くだけ・条件が要る物)はここに入れない —
-    /// 入れると「変わらないから戻せる」で緑になり、意味が無くなる
-    const 変える命令: &[&str] = &[
-        "bold", "italic", "underline", "strikeout", "superscript", "subscript",
-        "align-center", "align-right", "align-just", "align-dist",
-        "markers", "numbering", "incoffset", "linespace",
-        "incfont", "decfont", "highlight", "fontcolor",
-        "footnote", "direction", "pagebreak",
-    ];
+    /// 試験の形を整える。**前の命令が開いた欄は閉じる** — 欄が開いていると
+    /// 控えを取らない約束なので、閉じ忘れると「戻せない」が全部に伝染する
+    /// (最初これで 33 件が偽の赤になった)
+    fn 仕切り直す(this: &mut Writer) {
+        this.doc = Document::plain("あいうえお\nかきくけこ", SIZE_PT);
+        this.ed = Editor::new(&this.doc.body_text());
+        this.pg = Default::default();
+        this.undo_stack.clear();
+        this.redo_stack.clear();
+        this.target = Target::Body;
+        this.pw_open = false; this.file_field = None; this.find_open = false;
+        this.hf_edit = None; this.cmt_edit = false; this.wm_edit = false;
+        this.bm_open = false; this.url_open = false; this.fm_field = None;
+        this.rb_open = false; this.sd_open = false; this.ai_open = false;
+        this.chat_open = false; this.tool = None;
+        this.relayout();
+        this.ed.move_to(0, false);
+        this.ed.move_to(9, true);
+    }
+
+    /// 押さない命令と、その理由。**一覧を手で持たない**ので、
+    /// ここに無い命令は全部試される — 命令を足したら自動で見張りに入る
+    fn 押さない(id: &str) -> bool {
+        // 窓を開ける物(試験では返ってこない)。理由は menu_run_tests と同じ
+        super::menu_run_tests::DIALOG.contains(&id)
+            // 外の世界に出る物
+            || id.starts_with("ai-") || id.starts_with("plug-")
+            // 取り消しそのもの・クリップボード・校正
+            || matches!(id, "undo" | "redo" | "copy" | "cut" | "paste" | "spell")
+    }
 
     #[gpui::test]
     fn 文書を変える命令は一手で戻せる(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
-        for id in 変える命令 {
+        let mut 見た = 0usize;
+        for id in Writer::HANDLED.iter().filter(|i| !押さない(i)) {
             w.update(cx, |this, cx| {
-                this.doc = Document::plain("あいうえお", SIZE_PT);
-                this.ed = Editor::new(&this.doc.body_text());
-                this.pg = Default::default();
-                this.undo_stack.clear();
-                this.redo_stack.clear();
-                this.relayout();
-                this.ed.move_to(0, false);
-                this.ed.move_to(9, true);
-
+                仕切り直す(this);
                 let before = sig(this);
                 this.run_cmd(id, cx);
-                assert_ne!(sig(this), before,
-                    "「{id}」で文書が変わらない — この一覧から外すか、試験の形を直す");
+                if sig(this) == before {
+                    return; // この形では文書を変えない命令(欄を開くだけ等)
+                }
+                見た += 1;
                 this.undo_step();
-                assert_eq!(sig(this), before, "「{id}」が一手で戻らない(控えを取っていない)");
+                assert_eq!(sig(this), before,
+                    "「{id}」が一手で戻らない(控えを取っていない)");
             });
         }
+        // **数えておく。** 形が壊れて「どれも文書を変えない」になったら、
+        // 中身が空でも緑になってしまう
+        assert!(見た >= 40, "文書を変える命令が {見た} 件しか無い — 試験の形が壊れている");
     }
 
     /// やり直しも効く(戻すだけで進めないと片道になる)
     #[gpui::test]
     fn 戻した一手はやり直せる(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
-        for id in 変える命令 {
+        for id in Writer::HANDLED.iter().filter(|i| !押さない(i)) {
             w.update(cx, |this, cx| {
-                this.doc = Document::plain("あいうえお", SIZE_PT);
-                this.ed = Editor::new(&this.doc.body_text());
-                this.pg = Default::default();
-                this.undo_stack.clear();
-                this.redo_stack.clear();
-                this.relayout();
-                this.ed.move_to(0, false);
-                this.ed.move_to(9, true);
-
+                仕切り直す(this);
+                let before = sig(this);
                 this.run_cmd(id, cx);
                 let after = sig(this);
+                if after == before {
+                    return;
+                }
                 this.undo_step();
                 this.redo_step();
                 assert_eq!(sig(this), after, "「{id}」がやり直せない");
@@ -1481,3 +1496,5 @@ mod undo_coverage_tests {
         }
     }
 }
+
+

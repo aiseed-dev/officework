@@ -5,6 +5,13 @@ use crate::*;
 
 impl Writer {
     pub(crate) fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
+        // **一手 = 控え1枚。** 中で打鍵や段落の変更を呼ぶ命令があるので、
+        // ここで旗を落とし、最初の1枚だけを通す
+        self.acted = false;
+        self.run_cmd_inner(id, cx);
+        self.acted = false;
+    }
+    fn run_cmd_inner(&mut self, id: &str, cx: &mut Context<Self>) {
         // 読み取り専用の保護。文書を変えるボタンはここで断る(見る・出す・
         // 保存・検索の類いは通す)。解除はいつでも「保護」のボタン1手
         const READONLY_OK: &[&str] = &[
@@ -225,6 +232,7 @@ impl Writer {
             // テキストボックス = 1×1 の表。枠の中に文字が要る様式は
             // 表で組むのが日本の事務の通り相場(SEKKEI)
             "instext" => {
+                self.checkpoint(false); // テキストボックス
                 let empty = kumihan::Cellbox {
                     paragraphs: vec![kumihan::Paragraph {
                         runs: vec![kumihan::Run {
@@ -268,6 +276,7 @@ impl Writer {
             }
             // 空白ページの挿入 = 段落を切って、新しい段落を次の頁の頭から
             "blankpage" => {
+                self.checkpoint(false); // 空白ページ
                 handler::replace(self, None, "\n");
                 self.para(|p| p.page_break_before = true);
                 self.status = ui::t!("ここから新しいページになります").into();
@@ -275,6 +284,7 @@ impl Writer {
             // 表の挿入。3×3 を末尾に(大きさを選ぶ小窓はまだ無い)。
             // セル編集が入っているので、挿した表はそのまま書ける
             "instable" => {
+                self.checkpoint(false); // 表
                 let empty = || kumihan::Cellbox {
                     paragraphs: vec![kumihan::Paragraph {
                         runs: vec![kumihan::Run {
@@ -320,6 +330,7 @@ impl Writer {
             // テキストの追加(参考資料)= この段落を目次の材料にする。
             // 押すたびに 標準 → 見出し1 → 2 → 3 → 標準 と回る
             "add-text" => {
+                self.checkpoint(false); // 目次に入れる見出し
                 let sel = self.ed.selection();
                 let now = match self.target {
                     Target::Body => self.doc.para_at(sel).map(|p| p.style).unwrap_or_default(),
@@ -415,6 +426,7 @@ impl Writer {
             // 日付。**固定の文字**として入れる(開くたび変わるフィールドは、
             // 事務の書類では事故のもと — 提出日が勝手に変わる)
             "datetime" => {
+                self.checkpoint(false); // 日付・時刻
                 let out = std::process::Command::new("date")
                     .arg("+%Y年%-m月%-d日")
                     .output();
@@ -468,6 +480,7 @@ impl Writer {
             // (画像は段落の下に付くので、その下=図の下になる)。
             // 番号は既にある「図 n」の最大 + 1
             "caption" => {
+                self.checkpoint(false); // 図表番号
                 self.switch_target(Target::Body);
                 self.flush_target();
                 let mut n = 0usize;
@@ -567,6 +580,7 @@ impl Writer {
             // ページの色。無し → 薄クリーム → 薄青 → 薄緑 → 無し(文書に入り、
             // 保存で残る。紙(PDF)も同じ色に塗る)
             "pagecolor" => {
+                self.checkpoint(false); // ページの色
                 self.doc.page_color = match self.doc.page_color.as_deref() {
                     None => Some("FFF7DC".into()),
                     Some("FFF7DC") => Some("E8F1F8".into()),
@@ -583,6 +597,7 @@ impl Writer {
             "line-numbers" => self.line_numbers = !self.line_numbers,
             // 欧文のハイフネーション(入切)。日本語は禁則で折るので変わらない
             "hyphenation" => {
+                self.checkpoint(false); // ハイフネーション
                 self.doc.hyphenate = !self.doc.hyphenate;
                 self.dirty = true;
                 self.relayout_keep();
@@ -652,6 +667,7 @@ impl Writer {
             // パスワードは掛けない(**掛けた振りもしない**)— Word でも
             // 「編集の制限」として見え、解除も同じ1手でできる正直な保護
             "prot-doc" => {
+                self.checkpoint(false); // 文書の保護
                 if self.doc.protection.is_some() {
                     self.doc.protection = None;
                     self.dirty = true;
@@ -864,6 +880,7 @@ impl Writer {
             // 記入欄(コンテンツコントロール)。フォームタブの実体でもある
             "controls" | "form-text" | "form-image" | "form-email" | "form-phone"
             | "form-complex" | "form-signature" | "form-date" => {
+                self.checkpoint(false); // 記入欄
                 use kumihan::SdtKind as K;
                 let kind = match id {
                     "form-image" => K::Picture,
@@ -878,6 +895,7 @@ impl Writer {
             }
             // チェックの欄。**同じボタンで入切**(欄の中にカーソルがあるとき)
             "form-checkbox" | "form-radio" => {
+                self.checkpoint(false); // 記入欄(チェック・ラジオ)
                 if self.toggle_checkbox() {
                     return;
                 }
