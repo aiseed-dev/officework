@@ -579,6 +579,22 @@ class Cell:
         return isinstance(v, (int, float)) and not isinstance(v, bool)
 
     @property
+    def style(self):
+        """名前付き様式の名前。**貼った名前はセルに持たない**(貼るのは
+        書式そのもの)ので、読みは openpyxl と同じ既定の "Normal" を返す —
+        原本から開いたセルの名前は保存で原文のまま残る(触らなければ)。"""
+        return "Normal"
+
+    @style.setter
+    def style(self, name):
+        """名前付き様式を貼る。**その様式の書式をこのセルに写す** —
+        見た目は同じになるが、名前の帳簿はセルに持たない(模型の作り)。
+        無い名前は KeyError(黙って何もしない、はしない)。"""
+        n = str(getattr(name, "name", name))
+        d = self.parent.parent.named_style_fmt(n)  # 無ければ KeyError
+        self.parent.set_fmt(self.coordinate, **dict(d))
+
+    @property
     def comment(self):
         t = self.parent.comment(self.coordinate)
         return None if t is None else Comment(t)
@@ -1100,6 +1116,24 @@ class Book:
 
     def index(self, worksheet):
         return self._b.sheet_names.index(worksheet.title)
+
+    @property
+    def named_styles(self):
+        """名前付きセル様式の一覧(openpyxl と同じく**名前の並び**)。
+        定義は原本の styles.xml が持ち、保存でそのまま持ち越される。"""
+        return [n for n, _b in self._b.named_styles]
+
+    @property
+    def style_names(self):
+        # openpyxl の別名
+        return self.named_styles
+
+    def add_named_style(self, style):
+        raise NotImplementedError(
+            "名前付き様式を**作る**のはまだ — 定義は原本の styles.xml の持ち物で、"
+            "書き足す口を作っていない(台帳)。既にある様式を貼るのは "
+            "cell.style = \"名前\" で効く"
+        )
 
     @property
     def epoch(self):

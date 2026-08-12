@@ -298,6 +298,37 @@ impl PyBook {
         Ok(())
     }
 
+    /// 名前付きセル様式の一覧 [(名前, 組み込みの番号)]。
+    /// **定義は原本の styles.xml が持ち、保存でそのまま持ち越される** —
+    /// ここは名乗りの写し(型紙の見出しの大きさなどを引くのに使う)。
+    #[getter]
+    fn named_styles(&self) -> PyResult<Vec<(String, Option<u32>)>> {
+        Ok(lock(&self.inner)?
+            .book
+            .named_styles
+            .iter()
+            .map(|(n, b, _)| (n.clone(), *b))
+            .collect())
+    }
+
+    /// 名前付き様式の**書式**を dict で引く(Sheet.fmt と同じ鍵)。
+    /// 無い名前は KeyError。
+    fn named_style_fmt<'py>(
+        &self,
+        py: Python<'py>,
+        name: &str,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let g = lock(&self.inner)?;
+        let f = g
+            .book
+            .named_styles
+            .iter()
+            .find(|(n, _, _)| n == name)
+            .map(|(_, _, f)| f.clone())
+            .ok_or_else(|| PyKeyError::new_err(format!("名前付き様式が無い: {name:?}")))?;
+        fmt_dict(py, &f)
+    }
+
     /// 全シートを再計算する(セルを置いた時点でそのシートは再計算済み。
     /// 明示的にやり直したいとき用)。
     fn recalc(&self) -> PyResult<()> {
@@ -587,64 +618,9 @@ impl PySheet {
     /// left・right((線種, 色) — 色 None は自動の黒)。
     fn fmt<'py>(&self, py: Python<'py>, key: &str) -> PyResult<Bound<'py, PyDict>> {
         let p = parse_ref(key)?;
-        self.with(|s| {
-            let d = PyDict::new(py);
-            let Some(c) = s.get(p) else { return Ok(d) };
-            let f = &c.fmt;
-            for (k, on) in [
-                ("bold", f.bold),
-                ("italic", f.italic),
-                ("underline", f.underline),
-                ("strike", f.strike),
-                ("wrap", f.wrap),
-                ("shrink", f.shrink),
-            ] {
-                if on {
-                    d.set_item(k, true)?;
-                }
-            }
-            if let Some(v) = &f.font {
-                d.set_item("font", v)?;
-            }
-            if let Some(sc) = f.size_c {
-                d.set_item("size", sc as f64 / 100.0)?;
-            }
-            if let Some(v) = &f.color {
-                d.set_item("color", v)?;
-            }
-            if let Some(v) = &f.fill {
-                d.set_item("fill", v)?;
-            }
-            if let Some(v) = &f.number_format {
-                d.set_item("number_format", v)?;
-            }
-            if let Some(v) = f.align.as_xlsx() {
-                d.set_item("horizontal", v)?;
-            }
-            if let Some(v) = f.valign.as_xlsx() {
-                d.set_item("vertical", v)?;
-            }
-            if let Some(v) = f.rotation {
-                d.set_item("rotation", v)?;
-            }
-            for (k, e) in [
-                ("border_top", f.borders.top),
-                ("border_bottom", f.borders.bottom),
-                ("border_left", f.borders.left),
-                ("border_right", f.borders.right),
-            ] {
-                if e.on {
-                    d.set_item(k, (e.style.xlsx(), e.color.map(|c| format!("{c:06X}"))))?;
-                }
-            }
-            if f.indent > 0 {
-                d.set_item("indent", f.indent)?;
-            }
-            if f.unlocked {
-                // 保護中でも書けるセル(xlsx の locked="0")。既定(ロック)は出さない
-                d.set_item("locked", false)?;
-            }
-            Ok(d)
+        self.with(|s| match s.get(p) {
+            Some(c) => fmt_dict(py, &c.fmt),
+            None => Ok(PyDict::new(py)),
         })
     }
 
@@ -1175,6 +1151,73 @@ impl PySheet {
             s.remove_col(c);
             Ok(())
         })
+    }
+}
+
+/// CellFormat を Python の dict に写す(Sheet.fmt と Book.named_style_fmt の
+/// **一本道** — 別々に書くと鍵が食い違う)。持っている項目だけを入れる。
+fn fmt_dict<'py>(
+    py: Python<'py>,
+    f: &sheet::model::CellFormat,
+) -> PyResult<Bound<'py, PyDict>> {
+    {
+        {
+            let d = PyDict::new(py);
+            for (k, on) in [
+                ("bold", f.bold),
+                ("italic", f.italic),
+                ("underline", f.underline),
+                ("strike", f.strike),
+                ("wrap", f.wrap),
+                ("shrink", f.shrink),
+            ] {
+                if on {
+                    d.set_item(k, true)?;
+                }
+            }
+            if let Some(v) = &f.font {
+                d.set_item("font", v)?;
+            }
+            if let Some(sc) = f.size_c {
+                d.set_item("size", sc as f64 / 100.0)?;
+            }
+            if let Some(v) = &f.color {
+                d.set_item("color", v)?;
+            }
+            if let Some(v) = &f.fill {
+                d.set_item("fill", v)?;
+            }
+            if let Some(v) = &f.number_format {
+                d.set_item("number_format", v)?;
+            }
+            if let Some(v) = f.align.as_xlsx() {
+                d.set_item("horizontal", v)?;
+            }
+            if let Some(v) = f.valign.as_xlsx() {
+                d.set_item("vertical", v)?;
+            }
+            if let Some(v) = f.rotation {
+                d.set_item("rotation", v)?;
+            }
+            for (k, e) in [
+                ("border_top", f.borders.top),
+                ("border_bottom", f.borders.bottom),
+                ("border_left", f.borders.left),
+                ("border_right", f.borders.right),
+            ] {
+                if e.on {
+                    d.set_item(k, (e.style.xlsx(), e.color.map(|c| format!("{c:06X}"))))?;
+                }
+            }
+            if f.indent > 0 {
+                d.set_item("indent", f.indent)?;
+            }
+            if f.unlocked {
+                // 保護中でも書けるセル(xlsx の locked="0")。既定(ロック)は出さない
+                d.set_item("locked", false)?;
+            }
+            Ok(d)
+        }
     }
 }
 

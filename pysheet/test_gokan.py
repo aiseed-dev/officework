@@ -371,6 +371,55 @@ if openpyxl is not None:
         check([(r, lv, h) for r, lv, h in s_g2.row_groups] == [(2, 2, True), (3, 2, True)],
               f"本家のグループ: {s_g2.row_groups}")
 
+# --- 名前付きセル様式: 一覧が読め、貼れて、往復で消えない ----------------------
+if openpyxl is not None:
+    with tempfile.TemporaryDirectory() as t:
+        from openpyxl.styles import NamedStyle as ONamed, Font as OFont2, \
+            Border as OBorder2, Side as OSide2
+        wb_n = openpyxl.Workbook()
+        ws_n = wb_n.active
+        ns = ONamed(name="見出し行")
+        ns.font = OFont2(bold=True, size=12)
+        ns.border = OBorder2(bottom=OSide2(style="thin"))
+        wb_n.add_named_style(ns)
+        ws_n["A1"] = "品名"
+        ws_n["A1"].style = "見出し行"
+        ws_n["A2"] = "ザボガードF"
+        out_n = os.path.join(t, "named.xlsx")
+        wb_n.save(out_n)
+
+        b_n = office_sheet.Book.open(out_n)
+        s_n = b_n[0]
+        check("見出し行" in b_n.named_styles and "見出し行" in b_n.style_names,
+              f"名前付き様式の一覧: {b_n.named_styles}")
+        # 様式の書式が引ける
+        d_n = dict(b_n.named_style_fmt("見出し行"))
+        check(d_n.get("bold") and d_n.get("size") == 12.0,
+              f"様式の書式: {d_n}")
+        # 貼ると見た目が同じになる
+        s_n.cell(2, 1).style = "見出し行"
+        check(s_n.cell(2, 1).font.bold and s_n.cell(2, 1).font.size == 12,
+              "貼った様式の見た目が違う")
+        try:
+            s_n.cell(3, 1).style = "無い様式"
+            check(False, "無い様式が黙って通った")
+        except KeyError:
+            pass
+        try:
+            b_n.add_named_style(ns)
+            check(False, "様式を作るのが黙って通った")
+        except NotImplementedError:
+            pass
+        out_n2 = os.path.join(t, "named_rt.xlsx")
+        b_n.save(out_n2)
+        r_n = openpyxl.load_workbook(out_n2)
+        check("見出し行" in r_n.style_names, f"往復で様式が消えた: {r_n.style_names}")
+        # **触っていないセルは名前ごと残る**(据え置きの効き目)
+        check(r_n.active["A1"].style == "見出し行",
+              f"触っていないセルの様式名が消えた: {r_n.active['A1'].style}")
+        check(r_n.active["A2"].font.bold and r_n.active["A2"].font.size == 12,
+              "貼ったセルの見た目が本家で違う")
+
 # --- 表(テーブル): 作れて・構造化参照が計算されて・本家と往復する ---------------
 if openpyxl is not None:
     with tempfile.TemporaryDirectory() as t:

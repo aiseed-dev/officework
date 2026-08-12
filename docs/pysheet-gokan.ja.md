@@ -58,7 +58,8 @@ add_heading と Run の add_text / clear はエンジンの書き口待ちだっ
 | ✔ remove | 足す | シート削除(済 2026-08-12: Book.remove_sheet。**最後の1枚は抜けない** — シートの無い xlsx は無いので正直に断る。openpyxl は空のブックを許すが、あれは保存で壊れる側) |
 | ✔ create_named_range | 足す | 名前付き範囲。式が参照する物なのでエンジンの計算にも絡む(**済 2026-08-12 夜**: エンジンに Sheet.names / define_name / delete_name(名前は属するシートの物 — 模型どおり)。openpyxl の defined_names(dict 風)と create_named_range の顔つき。定義した名前は式(=単価*数量)で効き、本家と両方向で往復。scope は持たない — 正直に断る) |
 | ✔ epoch / excel_base_date | 足す | 1904 起点のブック(古い Mac 由来)を 1899-12-30 として読むと日付が4年ずれる — 黙って壊すのと同じ。起点の読みと解釈をエンジンに(**済 2026-08-13**: Book.date1904 の旗を評価器(funcs::call)・表示(format_value)・PDF(PrintSetup)・pysheet の datetime 受け渡しまで貫通。内部は 1899 のまま、通し番号↔暦日の**境目だけ**が excel_epoch(date1904) を通す(1904 は 24107)。元号・曜日・DATEDIF・WEEKNUM の類も同じ道。openpyxl の epoch / excel_base_date の顔つき — 読み書きとも、起点替えは「意味が4年動く」と注記して受ける。適合は本家の 1904 ブックと両方向 — 表示・YEAR・datetime 往復まで。**ついでに1つ塞いだ**: core.xml の欄の差し替えが要素に付いた xmlns 宣言を落とし、openpyxl 産のブックを保存すると lxml が開けない壊れた XML になっていた — 属性を保って差し替えるよう正した) |
-| add_named_style / named_styles / style_names | 足す(書式) | 名前付き様式は書式の書き込みの一部 |
+| ✔ named_styles / style_names | 足す(書式) | 名前付き様式は書式の書き込みの一部(**済 2026-08-13**。実測で分かったこと: **往復は既に効いていた** —様式の一覧も、触っていないセルの様式名も、原本の styles.xml 据え置きで残る。口を張った: Book.named_styles / style_names(名前の並び)と named_style_fmt(様式の書式を fmt と同じ鍵で引く)。`cell.style = "見出し行"` は**その様式の書式をセルに写す** — 見た目は同じになるが、名前の帳簿はセルに持たない(模型の作り)ので、読みは openpyxl の既定どおり "Normal"。無い名前は KeyError で断る) |
+| add_named_style | 足す(書式) | 様式を**作る**のは残 — 定義は原本の styles.xml の持ち物で、書き足す口(docx の styles_new と同じ外科術)が要る。正直に断っている |
 | data_only | 要らない | 「式か値か」を開くときに選ばされるのが openpyxl の弱点。うちは常に両方ある(値も式も同時に読める) |
 | get_sheet_by_name / get_sheet_names / remove_sheet | 要らない | 本家でも廃止予定の旧名 |
 | mime_type / template | 要らない | 内部事情 |
