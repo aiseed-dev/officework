@@ -189,10 +189,10 @@ impl gpui::Element for InputSink {
                     c.shape_rotate_at(f32::from(rel.x), f32::from(rel.y), e.modifiers.shift);
                     cx.notify();
                 } else if c.shape_drag.is_some() {
-                    c.shape_drag_at(f32::from(rel.x), f32::from(rel.y));
+                    c.shape_drag_at(f32::from(rel.x), f32::from(rel.y), e.modifiers.shift);
                     cx.notify();
                 } else if c.img_drag.is_some() {
-                    c.image_drag_at(f32::from(rel.x), f32::from(rel.y));
+                    c.image_drag_at(f32::from(rel.x), f32::from(rel.y), e.modifiers.shift);
                     cx.notify();
                 } else if c.size_drag.is_some() {
                     c.size_drag_at(f32::from(rel.x), f32::from(rel.y));
@@ -1104,9 +1104,10 @@ impl Render for Calc {
                             format!("={f}")
                         })
                         .unwrap_or_else(|| sheet::model::format_value(&v,
-                            cell.and_then(|x| x.fmt.number_format.as_deref())))
+                            cell.and_then(|x| x.fmt.number_format.as_deref()),
+                            self.book.date1904))
                 } else {
-                    sheet::model::format_value(&v, cell.and_then(|x| x.fmt.number_format.as_deref()))
+                    sheet::model::format_value(&v, cell.and_then(|x| x.fmt.number_format.as_deref()), self.book.date1904)
                 };
                 // Bool のセルはチェックボックスとして見せる(☑/☐。
                 // 空白キーで切替。Excel では TRUE/FALSE の値で見える)
@@ -2545,7 +2546,7 @@ impl Render for Calc {
                 let cell = self.sheet().get(a);
                 let f = cell.map(|x| x.fmt.clone()).unwrap_or_default();
                 let v = cell.map(|x| x.value.clone()).unwrap_or(Value::Empty);
-                let mut shown = sheet::model::format_value(&v, f.number_format.as_deref());
+                let mut shown = sheet::model::format_value(&v, f.number_format.as_deref(), self.book.date1904);
                 // 結合の上で編集中は、打ちかけを結合の枠の中に見せる(セルと同じ)
                 if self.cursor == a {
                     shown = self.input.text().to_string();

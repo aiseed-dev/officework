@@ -582,10 +582,20 @@ impl Calc {
         }
         cx.notify();
     }
+    // Ctrl+矢印は素では「データの端へ」。**図形を選んでいる間だけ**
+    // 1px 動かすほうへ回す(2026-08-13 発注者)。選んでいなければ従来どおり
     pub(crate) fn a_word_left(&mut self, _: &ui::WordLeft, _: &mut Window, cx: &mut Context<Self>) {
+        if self.nudge_shape(-1.0, 0.0) {
+            cx.notify();
+            return;
+        }
         self.go_edge(0, -1, false, cx);
     }
     pub(crate) fn a_word_right(&mut self, _: &ui::WordRight, _: &mut Window, cx: &mut Context<Self>) {
+        if self.nudge_shape(1.0, 0.0) {
+            cx.notify();
+            return;
+        }
         self.go_edge(0, 1, false, cx);
     }
     pub(crate) fn a_sel_word_left(&mut self, _: &ui::SelectWordLeft, _: &mut Window, cx: &mut Context<Self>) {
@@ -600,9 +610,17 @@ impl Calc {
         self.go_edge(0, 1, true, cx);
     }
     pub(crate) fn a_edge_up(&mut self, _: &ui::EdgeUp, _: &mut Window, cx: &mut Context<Self>) {
+        if self.nudge_shape(0.0, -1.0) {
+            cx.notify();
+            return;
+        }
         self.go_edge(-1, 0, false, cx);
     }
     pub(crate) fn a_edge_down(&mut self, _: &ui::EdgeDown, _: &mut Window, cx: &mut Context<Self>) {
+        if self.nudge_shape(0.0, 1.0) {
+            cx.notify();
+            return;
+        }
         self.go_edge(1, 0, false, cx);
     }
     pub(crate) fn a_sel_edge_up(&mut self, _: &ui::SelectEdgeUp, _: &mut Window, cx: &mut Context<Self>) {

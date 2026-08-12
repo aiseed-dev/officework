@@ -45,7 +45,7 @@ impl Calc {
     }
 
     /// 画像のドラッグ(移動 or 右下の掴みで大きさ変更)。図形と同じ作法
-    pub(crate) fn image_drag_at(&mut self, x: f32, y: f32) {
+    pub(crate) fn image_drag_at(&mut self, x: f32, y: f32, shift: bool) {
         let Some((i, (gx, gy), (ox, oy), resize)) = self.img_drag else { return };
         if self.sheet().images_new.len() <= i {
             return;
@@ -60,7 +60,16 @@ impl Calc {
             self.dirty = true;
             self.status = format!("大きさ: {w:.0}×{h:.0}px").into();
         } else {
-            let (nx, ny) = (ox + x - gx, oy + y - gy);
+            // Shift で横か縦に縛る(大きさ変更は元から比を保っている)
+            let (mut mx, mut my) = (x - gx, y - gy);
+            if shift {
+                if mx.abs() >= my.abs() {
+                    my = 0.0;
+                } else {
+                    mx = 0.0;
+                }
+            }
+            let (nx, ny) = (ox + mx, oy + my);
             if let (Some(c), Some(r)) = (self.col_at(nx.max(HEAD_W)), self.row_at(ny.max(ROW_H))) {
                 let at = Pos::new(r, c);
                 if let Some((cx0, cy0)) = self.cell_origin_px(at) {
@@ -369,37 +378,82 @@ impl Calc {
     }
 
     /// 図形のドラッグ(移動 or 右下の掴みで大きさ変更)。
-    pub(crate) fn shape_drag_at(&mut self, x: f32, y: f32) {
+    ///
+    /// **Shift を押している間は縛る**(2026-08-13、台帳
+    /// ManipulateObjects) — 大きさ変更は縦横の比を保ち、移動は横か縦の
+    /// どちらかだけに。**どちらに縛るかは、動かした量の大きいほう**で決める
+    pub(crate) fn shape_drag_at(&mut self, x: f32, y: f32, shift: bool) {
         let Some((i, (gx, gy), (ox, oy), resize)) = self.shape_drag else { return };
         if self.sheet().shapes_new.len() <= i {
             return;
         }
         if resize {
             let sp = &mut self.sheet_mut().shapes_new[i];
+            let ratio = if sp.width_px > 0.0 { sp.height_px / sp.width_px } else { 1.0 };
             sp.width_px = (x - ox).max(16.0);
-            sp.height_px = (y - oy).max(16.0);
+            sp.height_px = if shift {
+                (sp.width_px * ratio).max(16.0)
+            } else {
+                (y - oy).max(16.0)
+            };
             let (w, h) = (sp.width_px, sp.height_px);
             self.dirty = true;
             self.status = format!("大きさ: {w:.0}×{h:.0}px").into();
         } else {
             // 移動: 掴んだときのずれを保って、左上の来るセルに留め直す。
-            // セルからのはみ出しは px のずらしとして持つ(位置が飛ばない)
-            let (nx, ny) = (ox + x - gx, oy + y - gy);
-            if let (Some(c), Some(r)) = (self.col_at(nx.max(HEAD_W)), self.row_at(ny.max(ROW_H))) {
-                let at = Pos::new(r, c);
-                if let Some((cx0, cy0)) = self.cell_origin_px(at) {
-                    let (dx, dy) = ((nx - cx0).max(0.0), (ny - cy0).max(0.0));
-                    let sp = &mut self.sheet_mut().shapes_new[i];
-                    if sp.at != at || (sp.dx_px - dx).abs() > 0.5 || (sp.dy_px - dy).abs() > 0.5 {
-                        sp.at = at;
-                        sp.dx_px = dx;
-                        sp.dy_px = dy;
-                        self.dirty = true;
-                        self.status = format!("図形を {} に留めました", at.a1()).into();
-                    }
+            // **留め方は place_shape_px に1本化**(整列・分布・Ctrl+矢印と同じ道)
+            let before = {
+                let sp = &self.sheet().shapes_new[i];
+                (sp.at, sp.dx_px, sp.dy_px)
+            };
+            let (mut mx, mut my) = (x - gx, y - gy);
+            if shift {
+                // 横か縦か、動かした量の大きいほうだけ通す
+                if mx.abs() >= my.abs() {
+                    my = 0.0;
+                } else {
+                    mx = 0.0;
+                }
+            }
+            if self.place_shape_px(i, ox + mx, oy + my) {
+                let sp = &self.sheet().shapes_new[i];
+                if sp.at != before.0
+                    || (sp.dx_px - before.1).abs() > 0.5
+                    || (sp.dy_px - before.2).abs() > 0.5
+                {
+                    let at = sp.at;
+                    self.dirty = true;
+                    self.status = format!("図形を {} に留めました", at.a1()).into();
                 }
             }
         }
+    }
+
+    /// いま選んでいる図形を **1px** 動かす。Ctrl+矢印から呼ぶ。
+    ///
+    /// **図形を選んでいる間だけ** Ctrl+矢印を奪う(2026-08-13 発注者)。
+    /// 素の Ctrl+矢印は「データの端へ」で、表の仕事の芯なので、
+    /// 選んでいないときは触らない。動かしたら true — 呼んだ側は
+    /// 「端へ」をやめる
+    pub(crate) fn nudge_shape(&mut self, dx: f32, dy: f32) -> bool {
+        let Some(i) = self.shape_sel else { return false };
+        if self.sheet().shapes_new.len() <= i {
+            return false;
+        }
+        let sp = &self.sheet().shapes_new[i];
+        let (at, ox, oy) = (sp.at, sp.dx_px, sp.dy_px);
+        let Some((cx0, cy0)) = self.cell_origin_px(at) else { return false };
+        if self.place_shape_px(i, cx0 + ox + dx, cy0 + oy + dy) {
+            let sp = &self.sheet().shapes_new[i];
+            let (nat, ndx, ndy) = (sp.at, sp.dx_px, sp.dy_px);
+            if nat != at || (ndx - ox).abs() > 0.01 || (ndy - oy).abs() > 0.01 {
+                self.dirty = true;
+                self.status = format!("図形を {} に留めました", nat.a1()).into();
+            }
+        }
+        // **1px でも「動かした」と答える。** 左上の端に張り付いて動けなくても、
+        // カーソルが表の端まで飛んでいくよりは良い(選んでいるのは図形なので)
+        true
     }
 
     /// 「次を検索」。いまのセルの次(行→列の順)から探し、末尾まで行ったら

@@ -2000,12 +2000,12 @@ mod recalc_tests {
             assert!(corner, "右下の掴みにならない");
             // 移動(ドラッグの実体を直接)
             this.img_drag = Some((i, (ox + 10.0, oy + 10.0), (ox, oy), false));
-            this.image_drag_at(ox + 40.0, oy + 15.0);
+            this.image_drag_at(ox + 40.0, oy + 15.0, false);
             let im = &this.sheet().images_new[0];
             assert!(im.dx_px > 0.0 || im.at != Pos::parse("B2").unwrap(), "動かない");
             // 大きさ(比を保つ)
             this.img_drag = Some((i, (0.0, 0.0), (ox, oy), true));
-            this.image_drag_at(ox + 240.0, oy + 999.0);
+            this.image_drag_at(ox + 240.0, oy + 999.0, false);
             let im = &this.sheet().images_new[0];
             assert!((im.height_px / im.width_px - 0.5).abs() < 0.01, "比が崩れた: {}x{}", im.width_px, im.height_px);
             // 削除
@@ -4452,7 +4452,8 @@ mod currency_tests {
     #[test]
     fn 組んだコードが描ける() {
         let f = |code: &str| {
-            sheet::model::format_value(&sheet::Value::Number(1234.0), Some(code))
+            // 起点は 1900(この試験は日付ではなく通貨の書式を見ている)
+            sheet::model::format_value(&sheet::Value::Number(1234.0), Some(code), false)
         };
         assert_eq!(f(&currency_code("¥", 0, 0)), "¥1,234");
         assert_eq!(f(&currency_code("€", 2, 3)), "1,234.00 €");
@@ -4473,6 +4474,7 @@ mod datefmt_tests {
             let drawn = sheet::model::format_value(
                 &sheet::Value::Number(46240.0),
                 Some(&code),
+                false,
             );
             assert!(
                 label.ends_with(&drawn),
@@ -4628,5 +4630,87 @@ mod prompt_tests {
         assert_eq!(caret("abcd", 2, true), "●●|●●");
         // 伏せない欄は素の字のまま(日本語でも割らない)
         assert_eq!(caret("あい", 3, false), "あ|い");
+    }
+}
+
+#[cfg(test)]
+mod shape_nudge_tests {
+    use crate::*;
+
+    fn 図形を1つ置く(this: &mut Calc) -> (f32, f32) {
+        this.sheet_mut().shapes_new.push(sheet::model::SheetShape {
+            at: Pos::new(5, 3),
+            width_px: 80.0,
+            height_px: 40.0,
+            kind: "rect".into(),
+            ..Default::default()
+        });
+        this.shape_sel = Some(0);
+        this.cell_origin_px(Pos::new(5, 3)).unwrap()
+    }
+
+    /// **Shift を押すと縦横の比を保つ。** 押していなければ自由
+    #[gpui::test]
+    fn shift_を押した大きさ変更は比を保つ(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            let (ox, oy) = 図形を1つ置く(this);
+            // 右下の掴み。比は 40/80 = 0.5
+            this.shape_drag = Some((0, (ox + 80.0, oy + 40.0), (ox, oy), true));
+            this.shape_drag_at(ox + 200.0, oy + 41.0, true);
+            let sp = &this.sheet().shapes_new[0];
+            assert_eq!(sp.width_px, 200.0);
+            assert_eq!(sp.height_px, 100.0, "比 0.5 が保たれていない");
+
+            // Shift 無しなら縦は掴んだ位置のまま
+            this.shape_drag_at(ox + 200.0, oy + 41.0, false);
+            let sp = &this.sheet().shapes_new[0];
+            assert_eq!(sp.height_px, 41.0, "Shift 無しで比を保っている");
+        });
+    }
+
+    /// **Shift を押した移動は横か縦だけ。** 動かした量の大きいほうへ
+    #[gpui::test]
+    fn shift_を押した移動は縦横のどちらかに縛られる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            let (ox, oy) = 図形を1つ置く(this);
+            let 位置 = |this: &Calc| {
+                let sp = &this.sheet().shapes_new[0];
+                let (x, y) = this.cell_origin_px(sp.at).unwrap();
+                (x + sp.dx_px, y + sp.dy_px)
+            };
+            // 横に大きく、縦に少し → 縦は動かない
+            this.shape_drag = Some((0, (ox, oy), (ox, oy), false));
+            this.shape_drag_at(ox + 60.0, oy + 5.0, true);
+            let (_, y) = 位置(this);
+            assert!((y - oy).abs() < 0.6, "縦に動いています({} → {})", oy, y);
+        });
+    }
+
+    /// **図形を選んでいる間だけ Ctrl+矢印を奪う**(2026-08-13 発注者)。
+    /// 選んでいなければ従来どおり「データの端へ」でカーソルが動く
+    #[gpui::test]
+    fn ctrl矢印は図形を選んでいる間だけ図形を動かす(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            let (ox, oy) = 図形を1つ置く(this);
+            let 位置 = |this: &Calc| {
+                let sp = &this.sheet().shapes_new[0];
+                let (x, y) = this.cell_origin_px(sp.at).unwrap();
+                (x + sp.dx_px, y + sp.dy_px)
+            };
+            assert!(this.nudge_shape(1.0, 0.0), "選んでいるのに動かない");
+            let (x, _) = 位置(this);
+            assert!((x - (ox + 1.0)).abs() < 0.6, "1px 動いていない({ox} → {x})");
+            assert!(this.nudge_shape(0.0, 1.0));
+            let (_, y) = 位置(this);
+            assert!((y - (oy + 1.0)).abs() < 0.6, "縦に 1px 動いていない");
+
+            // **選んでいなければ奪わない。** ここが false でないと、表の
+            // 「データの端へ」が図形を置いた瞬間から使えなくなる
+            this.shape_sel = None;
+            assert!(!this.nudge_shape(1.0, 0.0), "選んでいないのに奪っています");
+        });
     }
 }
