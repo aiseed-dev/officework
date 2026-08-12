@@ -17,7 +17,7 @@ mod round {
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: 10.5, font: None, fmt: Default::default() }] }
     }
     fn doc(parts: &[&str]) -> Document {
-        Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: parts.iter().map(|s| Block::Para(para(s))).collect() }
+        Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: parts.iter().map(|s| Block::Para(para(s))).collect() }
     }
     fn round_trip(d: &Document) -> (Document, Report) {
         let mut buf = Cursor::new(Vec::new());
@@ -47,7 +47,7 @@ mod round {
 
     #[test]
     fn 文字サイズが保たれる() {
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "大見出し".into(), size_pt: 16.0, font: None, fmt: Default::default() },
@@ -80,7 +80,7 @@ mod round {
 
     #[test]
     fn 段落内の改行が保たれる() {
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "一行目\n二行目".into(), size_pt: 10.5, font: None, fmt: Default::default() }]})]};
@@ -96,7 +96,7 @@ mod round {
 
     #[test]
     fn 表が往復する() {
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
             Block::Para(para("(様式3) 会社概要")),
             Block::Table(Table { col_mm: vec![], rows: vec![
                 vec![cell("会　社　名"), cell("日本フネン株式会社")],
@@ -121,7 +121,7 @@ mod round {
 
     #[test]
     fn 表と本文の順序が保たれる() {
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
             Block::Para(para("前")),
             Block::Table(Table { col_mm: vec![], rows: vec![vec![cell("表1")]],
         ..Default::default()
@@ -141,7 +141,7 @@ mod round {
     #[test]
     fn 空セルも列として残る() {
         // 事務様式は「記入欄が空の表」が本体。空セルが消えると様式が壊れる
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Table(Table { col_mm: vec![], rows: vec![
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Table(Table { col_mm: vec![], rows: vec![
             vec![cell("氏名"), Cellbox::default()],
             vec![cell("所属"), Cellbox::default()],
         ],
@@ -183,7 +183,7 @@ mod round {
         vstart.v_merge = kumihan::VMerge::Start;
         let mut vcont = Cellbox::default();
         vcont.v_merge = kumihan::VMerge::Continue;
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
             Block::Table(Table { col_mm: vec![], rows: vec![
                 vec![head],
                 vec![vstart, cell("本社")],
@@ -239,7 +239,7 @@ mod font_tests {
     #[test]
     fn 書体名が往復する() {
         // **フォントは文書の設定。** 読んで捨てると、開き直したとき別の字になる
-        let doc = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
+        let doc = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
@@ -295,7 +295,7 @@ mod fmt_tests {
     #[test]
     fn 太字と斜体と下線が往復する() {
         let f = CharFormat { bold: true, italic: true, underline: true, ..Default::default() };
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
@@ -310,7 +310,7 @@ mod fmt_tests {
     #[test]
     fn 取り消し線と文字色が往復する() {
         let f = CharFormat { strike: true, color: Some("FF0000".into()), ..Default::default() };
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
@@ -324,7 +324,7 @@ mod fmt_tests {
     #[test]
     fn 中央揃えが往復する() {
         for a in [Align::Center, Align::Right, Align::Justify, Align::Left] {
-            let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
+            let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
                 font: None,
                 page: None,
                 sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
@@ -392,7 +392,7 @@ mod para_tests {
     }
 
     fn roundtrip(p: Paragraph) -> Paragraph {
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(p)] };
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(p)] };
         let mut buf = Vec::new();
         crate::write(&d, std::io::Cursor::new(&mut buf)).unwrap();
         crate::read(std::io::Cursor::new(&buf)).unwrap().0.paragraphs().next().unwrap().clone()
@@ -422,7 +422,7 @@ mod para_tests {
 
     #[test]
     fn 既定の段落には余計な指定を書かない() {
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(para(ListKind::None, 0, 1.0))] };
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(para(ListKind::None, 0, 1.0))] };
         let mut buf = Vec::new();
         crate::write(&d, std::io::Cursor::new(&mut buf)).unwrap();
         let mut z = zip::ZipArchive::new(std::io::Cursor::new(&buf)).unwrap();
@@ -460,7 +460,7 @@ mod break_round {
         para.page_break_before = true;
         para.runs.push(Run {
             text: "二頁目".into(), size_pt: 10.5, font: None, fmt: Default::default() });
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(para)] };
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(para)] };
         let mut buf = Vec::new();
         crate::write(&d, std::io::Cursor::new(&mut buf)).unwrap();
         let back = crate::read(std::io::Cursor::new(&buf)).unwrap().0;
@@ -778,7 +778,7 @@ mod vertalign_tests {
     use kumihan::{Align, Block, CharFormat, Document, Paragraph, Run};
 
     fn doc_with(fmt: CharFormat) -> Document {
-        Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
+        Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
@@ -967,7 +967,7 @@ mod shade_tests {
         };
         p.shade = Some("FFF2CC".into());
         p.boxed = true;
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
                            blocks: vec![Block::Para(p)] };
         let mut buf = Cursor::new(Vec::new());
         write(&d, &mut buf).expect("書けない");
@@ -1848,7 +1848,7 @@ mod image_insert_tests {
             w_mm: 50.0,
             h_mm: 30.0,
         });
-        let d = Document { styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
                            blocks: vec![Block::Para(p)] };
         let mut buf = Cursor::new(Vec::new());
         write(&d, &mut buf).expect("書けない");
@@ -1899,7 +1899,10 @@ mod footnote_report_tests {
             r#"<w:footnote w:id="21"><w:p><w:r><w:t>二つ目の脚注。</w:t></w:r></w:p></w:footnote>"#,
             r#"</w:footnotes>"#,
         );
-        let notes = parse_notes(xml, false, &Default::default());
+        let (notes, taken) = parse_notes(xml, false, &Default::default());
+        // 仕切りは注に数えないが、**id は取られている**ので控える
+        assert!(taken.contains(&"-1".to_string()) && taken.contains(&"0".to_string()),
+            "仕切り線の id を控えていない: {taken:?}");
         assert_eq!(notes.len(), 2, "仕切り線を脚注に数えた: {:?}",
             notes.iter().map(|n| n.id.clone()).collect::<Vec<_>>());
         assert_eq!(notes[0].id, "20");
@@ -2174,3 +2177,150 @@ mod note_fmt_tests {
         assert_eq!(e, kumihan::NoteNumFmt::Decimal, "文末脚注が隣を拾った");
     }
 }
+
+
+/// 脚注を**新しく作る**(部品ごと書き出す)。
+///
+/// 読み込んだ注は原本の部品がそのまま持ち越されるので触らない。
+/// 足したぶんだけ、`footnotes.xml`・`[Content_Types]` の宣言・
+/// `document.xml.rels` の関係を用意する。**この3つは揃っていないと
+/// Word が注を出さない**(部品だけあっても、宣言や関係が無ければ無視される)
+#[cfg(test)]
+mod add_note_tests {
+    use std::io::{Cursor, Read, Write};
+
+    /// 注を1つも持たない素の docx(手で組む。現物には依らせない)
+    fn 素のdocx() -> Vec<u8> {
+        let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let o: zip::write::FileOptions<'_, ()> = Default::default();
+        let mut put = |n: &str, d: &[u8]| {
+            zip.start_file(n, o).unwrap();
+            zip.write_all(d).unwrap();
+        };
+        put("[Content_Types].xml",
+            br#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>"#);
+        put("_rels/.rels", br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>"#);
+        put("word/_rels/document.xml.rels",
+            br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>"#);
+        put("word/document.xml",
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>ほんぶん</w:t></w:r></w:p></w:body></w:document>"#.as_bytes());
+        zip.finish().unwrap().into_inner()
+    }
+
+    fn 部品(z: &[u8], name: &str) -> Option<String> {
+        let mut a = zip::ZipArchive::new(Cursor::new(z.to_vec())).ok()?;
+        let mut f = a.by_name(name).ok()?;
+        let mut s = String::new();
+        f.read_to_string(&mut s).ok()?;
+        Some(s)
+    }
+
+    /// 脚注を足して保存する。**3つ揃って初めて Word が出す**
+    #[test]
+    fn 注の無い文書に脚注を足すと部品が揃う() {
+        let src = 素のdocx();
+        let (mut doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        let 本文 = kumihan::Paragraph {
+            runs: vec![kumihan::Run { text: "足した脚注の文章。".into(), size_pt: 9.0,
+                                      font: None, fmt: Default::default() }],
+            line_spacing: 1.0,
+            ..Default::default()
+        };
+        let fr = doc.add_footnote(false, vec![本文]);
+        // 本文の末尾に印を置く
+        if let Some(kumihan::Block::Para(p)) = doc.blocks.last_mut() {
+            p.runs.push(kumihan::Run {
+                text: String::new(), size_pt: 10.5, font: None,
+                fmt: kumihan::CharFormat { footnote: Some(fr.clone()), ..Default::default() },
+            });
+        }
+        let mut out = Vec::new();
+        crate::write_with(&doc, Some(Cursor::new(&src)), Cursor::new(&mut out)).unwrap();
+
+        // 1) 部品そのもの
+        let fx = 部品(&out, "word/footnotes.xml").expect("footnotes.xml が無い");
+        assert!(fx.contains("足した脚注の文章。"), "脚注の文章が入っていない: {fx}");
+        // **仕切り線が無いと Word は注を出さない**
+        assert!(fx.contains(r#"w:type="separator""#), "仕切り線の定義が無い: {fx}");
+        assert!(fx.contains(r#"w:type="continuationSeparator""#), "続きの仕切りが無い: {fx}");
+        // 2) 宣言
+        let ct = 部品(&out, "[Content_Types].xml").unwrap();
+        assert!(ct.contains("/word/footnotes.xml"), "宣言が無い: {ct}");
+        // 3) 関係
+        let rels = 部品(&out, "word/_rels/document.xml.rels").unwrap();
+        assert!(rels.contains("footnotes.xml"), "関係が無い: {rels}");
+        // 本文の印
+        let dx = 部品(&out, "word/document.xml").unwrap();
+        assert!(dx.contains("<w:footnoteReference"), "本文に印が無い: {dx}");
+
+        // 読み直して戻ること
+        let (back, _) = crate::read(Cursor::new(&out)).unwrap();
+        assert_eq!(back.footnotes.len(), 1, "読み直せない");
+        let t: String = back.footnotes[0].paragraphs.iter()
+            .flat_map(|p| p.runs.iter().map(|r| r.text.as_str())).collect();
+        assert_eq!(t, "足した脚注の文章。");
+    }
+
+    /// **既にある注を壊さない。** 原本の部品には仕切り線や、こちらが
+    /// 模型に持っていない書式が入っている。丸ごと作り直すと失う
+    #[test]
+    fn 既にある脚注に足しても元の注が残る() {
+        // 注を1つ持つ docx を組む
+        let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let o: zip::write::FileOptions<'_, ()> = Default::default();
+        {
+            let mut put = |n: &str, d: &[u8]| {
+                zip.start_file(n, o).unwrap();
+                zip.write_all(d).unwrap();
+            };
+            put("[Content_Types].xml", br#"<Types xmlns="ct"/>"#);
+            put("_rels/.rels", br#"<Relationships xmlns="r"/>"#);
+            put("word/_rels/document.xml.rels", br#"<Relationships xmlns="r"/>"#);
+            put("word/document.xml",
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>本</w:t></w:r><w:r><w:footnoteReference w:id="2"/></w:r></w:p></w:body></w:document>"#.as_bytes());
+            put("word/footnotes.xml",
+                concat!(
+                    r#"<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
+                    r#"<w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:separator/></w:r></w:p></w:footnote>"#,
+                    r#"<w:footnote w:id="2"><w:p><w:r><w:t>もとからの脚注</w:t></w:r></w:p></w:footnote>"#,
+                    r#"</w:footnotes>"#).as_bytes());
+        }
+        let src = zip.finish().unwrap().into_inner();
+
+        let (mut doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        assert_eq!(doc.footnotes.len(), 1, "もとの注が読めていない");
+        let fr = doc.add_footnote(false, vec![kumihan::Paragraph {
+            runs: vec![kumihan::Run { text: "あとから足した".into(), size_pt: 9.0,
+                                      font: None, fmt: Default::default() }],
+            line_spacing: 1.0,
+            ..Default::default()
+        }]);
+        // **id は取られている番号を避ける。** 仕切りが -1、もとの注が 2
+        assert_ne!(fr.id, "2", "既にある注と同じ id を選んだ");
+        assert_ne!(fr.id, "-1", "仕切り線と同じ id を選んだ");
+
+        let mut out = Vec::new();
+        crate::write_with(&doc, Some(Cursor::new(&src)), Cursor::new(&mut out)).unwrap();
+        let fx = 部品(&out, "word/footnotes.xml").unwrap();
+        assert!(fx.contains("もとからの脚注"), "もとの注が消えた: {fx}");
+        assert!(fx.contains("あとから足した"), "足した注が入っていない: {fx}");
+        assert!(fx.contains(r#"w:type="separator""#), "仕切り線が消えた: {fx}");
+
+        let (back, _) = crate::read(Cursor::new(&out)).unwrap();
+        assert_eq!(back.footnotes.len(), 2, "読み直すと数が合わない");
+    }
+
+    /// 注を足していない文書は**部品を1バイトも触らない**(今までどおり)
+    #[test]
+    fn 足さなければ部品はそのまま() {
+        let src = 素のdocx();
+        let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        let mut out = Vec::new();
+        crate::write_with(&doc, Some(Cursor::new(&src)), Cursor::new(&mut out)).unwrap();
+        assert!(部品(&out, "word/footnotes.xml").is_none(),
+            "注を足していないのに部品ができた");
+        let ct = 部品(&out, "[Content_Types].xml").unwrap();
+        assert!(!ct.contains("footnotes.xml"), "要らない宣言が入った: {ct}");
+    }
+}
+

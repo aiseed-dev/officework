@@ -128,11 +128,14 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     // 脚注・文末脚注の中身。**紙面に出すためだけに読む** —
     // 保存は部品を原本のまま持ち越すので、ここを書き戻しには使わない
     let mut notes: Vec<kumihan::Footnote> = Vec::new();
+    let mut note_ids: Vec<(String, bool)> = Vec::new();
     for (part, endnote) in [("word/footnotes.xml", false), ("word/endnotes.xml", true)] {
         let mut nxml = String::new();
         if let Ok(mut f) = zip.by_name(part) {
             if f.read_to_string(&mut nxml).is_ok() && !nxml.is_empty() {
-                notes.extend(parse_notes(&nxml, endnote, &media));
+                let (ns, taken) = parse_notes(&nxml, endnote, &media);
+                notes.extend(ns);
+                note_ids.extend(taken.into_iter().map(|id| (id, endnote)));
             }
         }
     }
@@ -170,6 +173,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         };
     }
     doc.footnotes = notes;
+    doc.note_ids_taken = note_ids;
     // 注の番号の書式(settings.xml)。**docx の既定はここが知っている** —
     // 黙っていれば脚注は算用数字、**文末脚注はローマ数字の小文字**
     // (Word も LibreOffice もそうする。模型側の既定は算用数字なので、
@@ -502,10 +506,11 @@ pub(super) fn parse_notes(
     xml: &str,
     endnote: bool,
     media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
-) -> Vec<kumihan::Footnote> {
+) -> (Vec<kumihan::Footnote>, Vec<String>) {
     let mut out = Vec::new();
+    let mut taken: Vec<String> = Vec::new();
     // 根の開き札(名前空間の宣言つき)。包み直すときにそのまま使う
-    let Some(head_end) = xml.find('>') else { return out };
+    let Some(head_end) = xml.find('>') else { return (out, taken) };
     let root = &xml[..head_end + 1];
     let decls = root
         .find(char::is_whitespace)
@@ -525,6 +530,11 @@ pub(super) fn parse_notes(
                 let id = attr(&e, "id").unwrap_or_default();
                 // 仕切り線の定義は脚注ではない
                 let kind = attr(&e, "type").unwrap_or_default();
+                // **id は種類に関わらず取られている。** 仕切りの id を
+                // 控えておかないと、新しい注に同じ番号を選んでしまう
+                if !id.is_empty() {
+                    taken.push(id.clone());
+                }
                 let name = e.name().to_owned();
                 if r.read_to_end_into(name, &mut Vec::new()).is_err() {
                     break;
@@ -545,13 +555,14 @@ pub(super) fn parse_notes(
                     id,
                     endnote,
                     paragraphs: d.paragraphs().cloned().collect(),
+                    added: false,
                 });
             }
             _ => {}
         }
         buf.clear();
     }
-    out
+    (out, taken)
 }
 
 /// 脚注・文末脚注の印を run として置く。

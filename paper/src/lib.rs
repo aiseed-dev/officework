@@ -959,7 +959,7 @@ mod footnote_area_tests {
         Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
     }
     fn 注(id: &str, t: &str) -> Footnote {
-        Footnote { id: id.into(), endnote: false,
+        Footnote { added: false, id: id.into(), endnote: false,
                    paragraphs: vec![Paragraph { runs: vec![字(t)], line_spacing: 1.0,
                                                 ..Default::default() }] }
     }

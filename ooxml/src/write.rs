@@ -474,6 +474,54 @@ pub(super) fn hf_xml(hf: &kumihan::HeadFoot, footer: bool) -> String {
     format!("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n{body}")
 }
 
+/// 足した注を `footnotes.xml`(`endnotes.xml`)に織り込む。
+///
+/// **原本があるときは丸ごと作り直さない。** 仕切り線の定義や、こちらが
+/// 模型に持っていない書式がそこにあるので、**閉じ札の直前へ差し込む**だけにする
+/// (`sectPr` を原文のまま返すのと同じ作法)。
+///
+/// 原本が無いときだけ、仕切り線ごと新しく作る — Word は
+/// `separator` と `continuationSeparator` が無いと注を出さない。
+pub(super) fn notes_xml(orig: Option<&str>, add: &[&kumihan::Footnote], endnote: bool) -> String {
+    let tag = if endnote { "endnote" } else { "footnote" };
+    let root = format!("w:{tag}s");
+    let mut body = String::new();
+    for n in add {
+        let mut w = Writer::new(Cursor::new(Vec::new()));
+        let (mut imgn, mut media, mut cmts, mut bmn, mut trkn) =
+            (0usize, Vec::new(), Vec::new(), 0usize, 0usize);
+        for p in &n.paragraphs {
+            write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, "");
+        }
+        let inner = String::from_utf8(w.into_inner().into_inner()).unwrap();
+        body.push_str(&format!(
+            "<w:{tag} w:id=\"{id}\">{inner}</w:{tag}>",
+            tag = tag, id = esc(&n.id), inner = inner));
+    }
+    match orig {
+        // 原本の閉じ札の直前へ差し込む(中身は1文字も触らない)
+        Some(o) => match o.rfind(&format!("</{root}>")) {
+            Some(at) => format!("{}{}{}", &o[..at], body, &o[at..]),
+            None => o.to_string(),
+        },
+        None => {
+            // 仕切り線の定義。**これが無いと Word は注を出さない**
+            let sep = format!(
+                concat!(
+                    "<w:{tag} w:type=\"separator\" w:id=\"-1\"><w:p><w:r>",
+                    "<w:separator/></w:r></w:p></w:{tag}>",
+                    "<w:{tag} w:type=\"continuationSeparator\" w:id=\"0\"><w:p><w:r>",
+                    "<w:continuationSeparator/></w:r></w:p></w:{tag}>",
+                ),
+                tag = tag);
+            format!(
+                "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n\
+                 <{root} xmlns:w=\"{W_NS}\">{sep}{body}</{root}>",
+                root = root, sep = sep, body = body)
+        }
+    }
+}
+
 pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc<Vec<u8>>>, Vec<Comment>) {
     use quick_xml::events::{BytesEnd, BytesStart as BS};
     let mut w = Writer::new(Cursor::new(Vec::new()));
@@ -749,6 +797,15 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         hf_xml(&doc.footer, true),
     ));
 
+    // このアプリで足した注。**あるときだけ**部品を書き直す
+    // (無ければ原本の部品がそのまま持ち越される = 今までどおり)
+    let notes_add: Vec<&kumihan::Footnote> =
+        doc.footnotes.iter().filter(|n| n.added && !n.endnote).collect();
+    let ends_add: Vec<&kumihan::Footnote> =
+        doc.footnotes.iter().filter(|n| n.added && n.endnote).collect();
+    let mut orig_notes: Option<String> = None;
+    let mut orig_ends: Option<String> = None;
+
     // [Content_Types] と本文の rels は、挿した画像のぶんを織り込んで作り直す
     let mut orig_ct: Option<String> = None;
     let mut orig_rels: Option<String> = None;
@@ -817,6 +874,16 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 if name == "word/comments.xml" && !cmts_out.is_empty() {
                     continue;
                 }
+                // 注を足したなら、その部品はこちらが書き直す(原文は控えて
+                // **差し込むだけ** — 仕切り線や持っていない書式を失わないため)
+                if name == "word/footnotes.xml" && !notes_add.is_empty() {
+                    orig_notes = Some(String::from_utf8_lossy(&buf).to_string());
+                    continue;
+                }
+                if name == "word/endnotes.xml" && !ends_add.is_empty() {
+                    orig_ends = Some(String::from_utf8_lossy(&buf).to_string());
+                    continue;
+                }
                 // 今回作り直す画像の実体だけは持ち越さない(二重に持たない)。
                 // 開き直した後の joimg は「既存の画像」なので、普通に持ち越す
                 if regen_media.contains(&name) {
@@ -855,6 +922,10 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
              "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"),
             ((!cmts_out.is_empty()).then_some("word/comments.xml"),
              "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"),
+            ((!notes_add.is_empty()).then_some("word/footnotes.xml"),
+             "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"),
+            ((!ends_add.is_empty()).then_some("word/endnotes.xml"),
+             "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml"),
             ((has_props || orig_core.is_some()).then_some("docProps/core.xml"),
              "application/vnd.openxmlformats-package.core-properties+xml"),
             ((!orig_has_styles).then_some("word/styles.xml"),
@@ -988,6 +1059,17 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 r#"<Relationship Id="rIdJOcm" Type="{RNS_DOC}/comments" Target="comments.xml"/>"#
             ));
         }
+        // 注(footnotes.xml / endnotes.xml)への関係。無いときだけ足す
+        for (need, id, kind, target) in [
+            (!notes_add.is_empty(), "rIdJOfn", "footnotes", "footnotes.xml"),
+            (!ends_add.is_empty(), "rIdJOen", "endnotes", "endnotes.xml"),
+        ] {
+            if need && !rels.contains(&format!("Target=\"{target}\"")) {
+                add.push_str(&format!(
+                    r#"<Relationship Id="{id}" Type="{RNS_DOC}/{kind}" Target="{target}"/>"#
+                ));
+            }
+        }
         // 設定(settings.xml)への関係。素の文書に設定を足したときだけ要る
         if (doc.page_color.is_some() || doc.hyphenate || doc.protection.is_some())
             && !rels.contains("Target=\"settings.xml\"")
@@ -1017,8 +1099,18 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 r#"<Relationship Id="{rid}" Type="{RNS_DOC}/{ty}" Target="{target}"/>"#
             ));
         }
-        if let Some(p) = rels.rfind("</Relationships>") {
-            rels.insert_str(p, &add);
+        // **自己完結の `<Relationships/>` も受ける。** 閉じ札を探すだけだと、
+        // 関係の1つも無い文書に足したぶんが**黙って落ちる**
+        // (画像・コメント・設定も同じ道を通るので、そこも一緒に直る)
+        if !add.is_empty() {
+            match rels.rfind("</Relationships>") {
+                Some(p) => rels.insert_str(p, &add),
+                None => {
+                    if let Some(p) = rels.rfind("/>") {
+                        rels.replace_range(p..p + 2, &format!(">{add}</Relationships>"));
+                    }
+                }
+            }
         }
         zip.start_file("word/_rels/document.xml.rels", opts).map_err(|e| e.to_string())?;
         zip.write_all(rels.as_bytes()).map_err(|e| e.to_string())?;
@@ -1040,6 +1132,18 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     if !cmts_out.is_empty() {
         zip.start_file("word/comments.xml", opts).map_err(|e| e.to_string())?;
         zip.write_all(comments_xml(&cmts_out).as_bytes()).map_err(|e| e.to_string())?;
+    }
+    // 注の部品。原本があれば差し込み、無ければ仕切り線ごと作る
+    for (add_list, orig, endnote, part) in [
+        (&notes_add, &orig_notes, false, "word/footnotes.xml"),
+        (&ends_add, &orig_ends, true, "word/endnotes.xml"),
+    ] {
+        if add_list.is_empty() {
+            continue;
+        }
+        zip.start_file(part, opts).map_err(|e| e.to_string())?;
+        zip.write_all(notes_xml(orig.as_deref(), add_list, endnote).as_bytes())
+            .map_err(|e| e.to_string())?;
     }
     // 設定(settings.xml)。ページの色を見せる旗と、ハイフネーションの旗を
     // 織り込む。原本の settings は他の設定ごと生かす(丸ごと作り直さない)

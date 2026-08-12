@@ -91,6 +91,11 @@ pub struct Footnote {
     pub endnote: bool,
     /// 脚注の文章。段落の並び(普通は1段落)
     pub paragraphs: Vec<Paragraph>,
+    /// **このアプリで足した**注。保存でこちらが部品
+    /// (`footnotes.xml`・宣言・関係)ごと書き出す。
+    /// 読み込んだ注(原本の部品が持っている)とは持ち場が違う —
+    /// 混ぜると保存で二重になる(`images` と `images_new` と同じ関係)
+    pub added: bool,
 }
 
 /// 脚注・文末脚注の印(docx の `w:footnoteReference` / `w:endnoteReference`)。
@@ -548,6 +553,10 @@ pub struct Document {
     /// ここは**紙面に出すためだけ**に読む(番号を振り、下の領域に組む)。
     /// 仕切り線の定義(`w:type="separator"` など)は本物の脚注ではないので入れない
     pub footnotes: Vec<Footnote>,
+    /// **部品に既にある注の id**(種類つき)。仕切り線の定義も含む。
+    /// 仕切りは `footnotes` に載せない — 本物の注ではないので — が、
+    /// **id は取られている**。新しい注に番号を選ぶとき、ここを見ないとぶつかる
+    pub note_ids_taken: Vec<(String, bool)>,
     /// 脚注の番号の書式(docx の `w:footnotePr/w:numFmt`)
     pub footnote_fmt: NoteNumFmt,
     /// 文末脚注の番号の書式(`w:endnotePr/w:numFmt`)。**脚注とは別**
@@ -1209,8 +1218,36 @@ pub(super) fn normalize_runs(runs: &mut Vec<Run>, size_pt: f32) {
 }
 
 impl Document {
+    /// 脚注(`endnote` が真なら文末脚注)を足し、本文に置く**印**を返す。
+    ///
+    /// **id は既にある物と衝突しない値を選ぶ。** docx は
+    /// `footnotes.xml` と `endnotes.xml` を別々に番号付けするので、
+    /// 衝突を見るのは**同じ種類の中だけ**でよい。
+    /// 番号(1・2・i・ii)は組むときに出てくる順で振るので、ここでは決めない。
+    ///
+    /// 返した印を run の `fmt.footnote` に入れれば、その位置が注の位置になる。
+    pub fn add_footnote(&mut self, endnote: bool, paragraphs: Vec<Paragraph>) -> FootnoteRef {
+        let mut n = 1u32;
+        while self.footnotes.iter().any(|f| f.endnote == endnote && f.id == n.to_string())
+            || self
+                .note_ids_taken
+                .iter()
+                .any(|(id, e)| *e == endnote && *id == n.to_string())
+        {
+            n += 1;
+        }
+        let id = n.to_string();
+        self.footnotes.push(Footnote {
+            id: id.clone(),
+            endnote,
+            paragraphs,
+            added: true,
+        });
+        FootnoteRef { id, endnote }
+    }
+
     pub fn plain(text: &str, size_pt: f32) -> Document {
-        Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(),
+        Document { note_ids_taken: Vec::new(), footnote_fmt: Default::default(), endnote_fmt: Default::default(),
             font: None,
             page: None,
             sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
