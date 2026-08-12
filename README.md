@@ -57,6 +57,13 @@ attack path does not exist here. See the [calc manual](docs/calc-manual.md).
 
 Requirements: Rust (1.80+), Japanese fonts, and on Linux either Wayland or X11.
 
+On Debian/Ubuntu the build also needs these packages (same list as CI):
+
+```bash
+sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev \
+  libxcb-xkb-dev libfontconfig1-dev cmake clang pkg-config
+```
+
 ```bash
 cargo build --release
 

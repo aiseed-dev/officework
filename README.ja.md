@@ -58,6 +58,13 @@
 
 必要なもの: Rust(1.80以降)、日本語のフォント、Linux なら Wayland か X11。
 
+Debian/Ubuntu では、組むときに次のパッケージも要ります(CI と同じ一覧):
+
+```bash
+sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev \
+  libxcb-xkb-dev libfontconfig1-dev cmake clang pkg-config
+```
+
 ```bash
 cargo build --release
 
