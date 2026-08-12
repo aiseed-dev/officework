@@ -572,6 +572,34 @@ if spec["totals"] and df.height:
         cells.append(df.select(agg_expr()).item())
     out.append(("t", cells))
 
+# 並べ替え(2026-08-13、台帳「ピボットの並べ替え」)。
+# **小計・空行を出しているときは掛けない** — 「d」の塊の間に区切りが
+# 挟まっており、並べ替えると区切りと中身の対応が崩れるため。黙って
+# 崩さずに、掛けなかったことを答えに載せる
+_so = spec.get("sort", "")
+if _so:
+    _n = len(idx)
+    _pos = [k for k, (kind, _c) in enumerate(out) if kind == "d"]
+    _block = bool(_pos) and (_pos[-1] - _pos[0] + 1) == len(_pos)
+    # 断るのは呼ぶ側(calc)の役目。ここは念のための素通し
+    if _block and _pos:
+        _rows = [out[k][1] for k in _pos]
+        def _label(c):
+            return tuple("" if x is None else str(x) for x in c[:_n])
+        def _val(c):
+            v = c[_n] if len(c) > _n else None
+            return v if isinstance(v, (int, float)) else float("-inf")
+        if _so == "見出しの昇順":
+            _rows.sort(key=_label)
+        elif _so == "見出しの降順":
+            _rows.sort(key=_label, reverse=True)
+        elif _so == "値の大きい順":
+            _rows.sort(key=_val, reverse=True)
+        elif _so == "値の小さい順":
+            _rows.sort(key=_val)
+        for k, c in zip(_pos, _rows):
+            out[k] = ("d", c)
+
 # 計算の種類(比率・累計・差)。データ行の値の欄だけを置き換える。
 # **累計と差は小計・総計を出さない**(積み上げの途中に総計が挟まると
 # 読み違えるため)ので、呼ぶ側が totals/subtotals を落として渡す

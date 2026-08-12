@@ -927,6 +927,7 @@ mod pivot_tests {
             vfilter: None,
             group_by: Vec::new(),
             show_as: String::new(),
+            sort: String::new(),
         }
     }
 
@@ -1824,6 +1825,47 @@ mod pivot_tests {
         assert_eq!(g.len(), ti + 1, "余計な行がある: {g:?}");
     }
 
+    /// **並べ替えが実際に効くこと**(2026-08-13、台帳「ピボットの並べ替え」)。
+    /// 台本を通して回すので、書いたつもりで効いていない、が起きない
+    #[test]
+    fn ピボットの並べ替えが効く() {
+        let headers: Vec<String> =
+            ["区分", "金額"].iter().map(|s| s.to_string()).collect();
+        let rows: Vec<Vec<String>> = [
+            ["B", "50"],
+            ["A", "150"],
+            ["C", "100"],
+        ]
+        .iter()
+        .map(|r| r.iter().map(|s| s.to_string()).collect())
+        .collect();
+        let 並び = |so: &str| -> Option<Vec<String>> {
+            let mut d = def(&["区分"], &[], "金額", "合計");
+            d.sort = so.to_string();
+            let (g, _) = run_py(pivot_spec_json(&headers, &rows, &d))?;
+            Some(g.iter().skip(1).map(|r| r[0].clone()).collect())
+        };
+        // **黙って飛ばさない。** `.venv` があるのに動かないなら、それは
+        // 「試験が無い」と同じ — 2026-08-13、壊しても通ることに気づいた
+        let Some(素) = 並び("") else {
+            assert!(
+                !std::path::Path::new("../.venv/bin/python").exists()
+                    && !std::path::Path::new(".venv/bin/python").exists(),
+                ".venv があるのにピボットの台本が回りません(試験が飛んでいます)"
+            );
+            return;
+        };
+        // **昇順は polars の素の並びと同じ**なので、この試験だけでは
+        // 効いている証拠にならない(2026-08-13、壊しても通ることを確認した)。
+        // 見出しの側は降順が、値の側は両方が、実際に並びを変える
+        assert_eq!(並び("見出しの昇順").unwrap(), vec!["A", "B", "C"], "見出しの昇順が効かない");
+        assert_eq!(並び("見出しの降順").unwrap(), vec!["C", "B", "A"], "見出しの降順が効かない");
+        assert_eq!(並び("値の大きい順").unwrap(), vec!["A", "C", "B"], "値の大きい順が効かない");
+        assert_eq!(並び("値の小さい順").unwrap(), vec!["B", "C", "A"], "値の小さい順が効かない");
+        // **知らない指定は素通し。** 黙って別の順に並べない
+        assert_eq!(並び("よくわからない順").unwrap(), 素, "知らない指定で並びが変わっている");
+    }
+
     #[test]
     fn 台本が実際にpolarsで回る() {
         let headers: Vec<String> =
@@ -2548,6 +2590,7 @@ mod recalc_tests {
                 vfilter: None,
                 group_by: Vec::new(),
                 show_as: String::new(),
+                sort: String::new(),
             });
             // ピボットに乗ると状態行が「タブで操作」と案内する
             this.cursor = Pos::parse("D2").unwrap();
@@ -4603,7 +4646,6 @@ mod fnhelp_tests {
 
 #[cfg(test)]
 mod prompt_tests {
-    use crate::*;
 
     /// **パスワード欄が落ちない。**
     ///

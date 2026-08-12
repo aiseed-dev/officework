@@ -706,7 +706,7 @@ pub(crate) fn pivot_spec_json(headers: &[String], rows: &[Vec<String>], d: &shee
         .collect::<Vec<_>>()
         .join(",");
     format!(
-        "{{\"headers\":[{}],\"rows\":[{}],\"index\":[{}],\"columns\":[{}],\"value\":\"{}\",\"agg\":\"{}\",\"totals\":{},\"subtotals\":{},\"blank_rows\":{},\"compact\":{},\"hide\":[{hides}],\"vfilter\":{vf},\"group\":[{groups}],\"show_as\":\"{sa}\"}}",
+        "{{\"headers\":[{}],\"rows\":[{}],\"index\":[{}],\"columns\":[{}],\"value\":\"{}\",\"agg\":\"{}\",\"totals\":{},\"subtotals\":{},\"blank_rows\":{},\"compact\":{},\"hide\":[{hides}],\"vfilter\":{vf},\"group\":[{groups}],\"show_as\":\"{sa}\",\"sort\":\"{so}\"}}",
         strs(headers),
         rows.iter().map(|r| format!("[{}]", strs(r))).collect::<Vec<_>>().join(","),
         strs(&d.rows_sel),
@@ -718,6 +718,7 @@ pub(crate) fn pivot_spec_json(headers: &[String], rows: &[Vec<String>], d: &shee
         d.blank_rows,
         d.compact,
         sa = esc(&d.show_as),
+        so = esc(&d.sort),
     )
 }
 

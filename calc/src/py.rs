@@ -568,6 +568,7 @@ impl Calc {
             vfilter: keep.as_ref().and_then(|d| d.vfilter.clone()),
             group_by: keep.as_ref().map(|d| d.group_by.clone()).unwrap_or_default(),
             show_as: keep.as_ref().map(|d| d.show_as.clone()).unwrap_or_default(),
+            sort: keep.as_ref().map(|d| d.sort.clone()).unwrap_or_default(),
             name: keep.as_ref().map(|d| d.name.clone()).unwrap_or_else(|| {
                 // 新しい名前(ピボットテーブル1, 2, …)。空きの番号を探す
                 let mut n = 1;

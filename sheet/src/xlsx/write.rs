@@ -1220,6 +1220,9 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             for (f, unit) in &d.group_by {
                 px.push_str(&format!("<g name=\"{}\" unit=\"{}\"/>", esc(f), esc(unit)));
             }
+            if !d.sort.is_empty() {
+                px.push_str(&format!("<so v=\"{}\"/>", esc(&d.sort)));
+            }
             if !d.show_as.is_empty() {
                 px.push_str(&format!("<sa v=\"{}\"/>", esc(&d.show_as)));
             }

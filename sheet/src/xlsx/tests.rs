@@ -931,6 +931,7 @@ mod validation_roundtrip_tests {
             vfilter: Some((">=".into(), 1000.0)),
             group_by: vec![("日付".into(), "四半期".into()), ("金額".into(), "幅:100".into())],
             show_as: "累計".into(),
+            sort: String::new(),
         });
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -2372,6 +2373,7 @@ mod script_roundtrip_tests {
             compact: false,
             dest: Pos::parse("E1").unwrap(),
             show_as: String::new(),
+            sort: String::new(),
             size: (4, 3),
             hide: Vec::new(),
             style: "緑".into(),

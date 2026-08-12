@@ -1927,6 +1927,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                                 vfilter: None,
                                 group_by: Vec::new(),
                                 show_as: String::new(),
+                                sort: String::new(),
                             });
                         }
                     }
@@ -1962,6 +1963,13 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     {
                         if let Some(d) = cur.as_mut() {
                             d.show_as = attr_un(&e, "v").unwrap_or_default();
+                        }
+                    }
+                    Ok(Event::Start(e)) | Ok(Event::Empty(e))
+                        if local(e.name().as_ref()) == b"so" =>
+                    {
+                        if let Some(d) = cur.as_mut() {
+                            d.sort = attr_un(&e, "v").unwrap_or_default();
                         }
                     }
                     Ok(Event::Start(e)) if local(e.name().as_ref()) == b"v" => field = 3,

@@ -587,6 +587,21 @@ impl Calc {
                     }
                 }
             }
+            "pivot-sort-pick" => {
+                if let Some(i) = self.pivot_at(self.cursor).or_else(|| self.pivot_flt.as_ref().map(|(p, _, _)| *p)) {
+                    let so = match v {
+                        "見出しの昇順" | "見出しの降順" | "値の大きい順" | "値の小さい順" => {
+                            v.to_string()
+                        }
+                        _ => String::new(), // そのまま
+                    };
+                    if let Some(d) = self.book.pivots.get_mut(i) {
+                        d.sort = so;
+                        let nd = d.clone();
+                        self.spawn_pivot(nd, Some(i), cx);
+                    }
+                }
+            }
             "pivot-showas-pick" => {
                 if let Some(i) = self.pivot_at(self.cursor) {
                     let sa = match v {
@@ -644,6 +659,42 @@ impl Calc {
                         .map(|(op, th)| format!("{op} {th}"))
                         .unwrap_or_default();
                     self.prompt = Some(("pivot-vfilter", Editor::new(&cur)));
+                    return;
+                }
+                if v == "→ 並べ替え…" {
+                    let at = self.pop_anchor();
+                    let Some(pi) = self.pivot_flt.as_ref().map(|(p, _, _)| *p) else { return };
+                    // **小計・空行を出している間は掛けない。** 区切りの塊の
+                    // 中身を並べ替えると、区切りと中身の対応が崩れる。
+                    // 黙って崩さずに、できない理由を言う(2026-08-13)
+                    if self.book.pivots.get(pi).is_some_and(|d| d.subtotals || d.blank_rows) {
+                        self.status = ui::t!(
+                            "小計や空行を出している間は並べ替えられません(先に小計を切ってください)"
+                        )
+                        .into();
+                        return;
+                    }
+                    let cur = self.book.pivots.get(pi).map(|d| d.sort.clone()).unwrap_or_default();
+                    let items: Vec<(String, String)> = [
+                        // **「そのまま」を流用しない。** あちらは計算の種類の
+                        // 選択肢で、全言語で「計算しない」と訳されている —
+                        // 並べ替えの一覧に置くと意味が変わる(2026-08-13、
+                        // 訳す人が気づいた)
+                        ui::item!("並べ替えない"),
+                        ui::item!("見出しの昇順"),
+                        ui::item!("見出しの降順"),
+                        ui::item!("値の大きい順"),
+                        ui::item!("値の小さい順"),
+                    ]
+                    .iter()
+                    .map(|(k, l)| {
+                        let key = if *k == "並べ替えない" { "" } else { *k };
+                        (k.to_string(), if key == cur { format!("✓ {l}") } else { l.to_string() })
+                    })
+                    .collect();
+                    self.pick_note = Some(ui::t!("並べ替え — 値の順は左端の値の欄で見ます").into());
+                    self.pick_kind = "pivot-sort-pick";
+                    self.pick = Some((items, at));
                     return;
                 }
                 if v == "→ グループ化…" {
@@ -1910,6 +1961,7 @@ impl Calc {
             ui::item!("→ ラベルで絞る…"),
             ui::item!("→ 値で絞る…"),
             ui::item!("→ グループ化…"),
+            ui::item!("→ 並べ替え…"),
         ]));
         let at = self.pop_anchor();
         let pname = self.book.pivots.get(pi).map(|d| d.name.clone()).unwrap_or_default();
