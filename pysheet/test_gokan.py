@@ -537,6 +537,25 @@ if openpyxl is not None:
               and str(dvs[0].sqref) == "B1:B5",
               f"うちの入力規則を本家が読めない: {dvs}")
 
+        # 枠線: 画面と印刷は別の設定
+        sp.show_gridlines = False
+        sp.print_gridlines = True
+        check(sp.show_gridlines is False and sp.print_gridlines is True,
+              "枠線の読み書き")
+
+        # 印刷のヘッダー/フッター(三分割。&P は頁番号 — xlsx の印)
+        sp.oddHeader.center.text = "見積書"
+        sp.oddHeader.right.text = "&D"
+        sp.oddFooter.center.text = "&P / &N"
+        check(sp.oddHeader.center.text == "見積書"
+              and sp.oddHeader.right.text == "&D",
+              f"ヘッダーの三分割: {sp.oddHeader._parts()}")
+        try:
+            sp.evenHeader
+            check(False, "偶数頁のヘッダーが黙って通った")
+        except NotImplementedError:
+            pass
+
         # 印刷のタイトル行(頁ごとに繰り返す見出し — 複数頁の明細の定番)
         sp.print_title_rows = "1:2"
         check(sp.print_title_rows == "1:2", f"タイトル行: {sp.print_title_rows}")
@@ -552,6 +571,22 @@ if openpyxl is not None:
         rpt = openpyxl.load_workbook(out_pt).active
         check(rpt.print_title_rows == "$1:$2",
               f"うちのタイトル行を本家が読めない: {rpt.print_title_rows}")
+        check(rpt.oddHeader.center.text == "見積書"
+              and rpt.oddFooter.center.text == "&P / &N",
+              f"うちのヘッダー/フッターを本家が読めない: "
+              f"{rpt.oddHeader.center.text} / {rpt.oddFooter.center.text}")
+        # 逆向き: 本家が書いたヘッダーをうちが読む
+        wb_h = openpyxl.Workbook()
+        wb_h.active["A1"] = 1
+        wb_h.active.oddHeader.left.text = "社外秘"
+        out_h = os.path.join(t, "hf_opx.xlsx")
+        wb_h.save(out_h)
+        s_h = office_sheet.Book.open(out_h)[0]
+        check(s_h.oddHeader.left.text == "社外秘",
+              f"本家のヘッダー: {s_h.oddHeader._parts()}")
+        check(rpt.sheet_view.showGridLines is False,
+              "うちの枠線(画面)を本家が読めない")
+        check(rpt.print_options.gridLines, "うちの枠線(印刷)を本家が読めない")
         # 逆向き
         wb_t = openpyxl.Workbook()
         wb_t.active["A1"] = 1

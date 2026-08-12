@@ -959,6 +959,65 @@ impl PySheet {
         })
     }
 
+    /// 画面の枠線を出すか(xlsx の sheetView showGridLines)。
+    /// 原本に指定が無ければ None(= 出す、が既定)。
+    #[getter]
+    fn show_gridlines(&self) -> PyResult<Option<bool>> {
+        self.with(|s| Ok(s.show_gridlines))
+    }
+
+    #[setter]
+    fn set_show_gridlines(&self, value: Option<bool>) -> PyResult<()> {
+        self.with(|s| {
+            s.show_gridlines = value;
+            Ok(())
+        })
+    }
+
+    /// **印刷**の枠線を出すか(xlsx の printOptions gridLines)。
+    /// 画面の枠線(show_gridlines)とは別の設定。
+    #[getter]
+    fn print_gridlines(&self) -> PyResult<bool> {
+        self.with(|s| Ok(s.print_gridlines))
+    }
+
+    #[setter]
+    fn set_print_gridlines(&self, value: bool) -> PyResult<()> {
+        self.with(|s| {
+            s.print_gridlines = value;
+            Ok(())
+        })
+    }
+
+    /// 印刷のヘッダー(xlsx の oddHeader の原文。&L 左 &C 中 &R 右)。
+    /// 無ければ None。三分割で扱うのは互換層の役。
+    #[getter]
+    fn print_header(&self) -> PyResult<Option<String>> {
+        self.with(|s| Ok(s.header.clone()))
+    }
+
+    #[setter]
+    fn set_print_header(&self, value: Option<&str>) -> PyResult<()> {
+        self.with(|s| {
+            s.header = value.filter(|v| !v.is_empty()).map(str::to_string);
+            Ok(())
+        })
+    }
+
+    /// 印刷のフッター(xlsx の oddFooter の原文)。
+    #[getter]
+    fn print_footer(&self) -> PyResult<Option<String>> {
+        self.with(|s| Ok(s.footer.clone()))
+    }
+
+    #[setter]
+    fn set_print_footer(&self, value: Option<&str>) -> PyResult<()> {
+        self.with(|s| {
+            s.footer = value.filter(|v| !v.is_empty()).map(str::to_string);
+            Ok(())
+        })
+    }
+
     /// 印刷のタイトル行(頁ごとに繰り返す見出し)。openpyxl と同じ "1:2" の形。
     /// 無ければ None。**PDF と印刷が実際に繰り返す**(paper::grid)。
     #[getter]

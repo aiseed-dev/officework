@@ -132,6 +132,103 @@ class Alignment:
         self.indent = indent
 
 
+class _HFPart:
+    """ヘッダー/フッターの1区分(openpyxl の HeaderFooterItem の役)。
+    `.text` の読み書きが本体 — 書くと元の三分割に組み直して置く。"""
+
+    __slots__ = ("_hf", "_which")
+
+    def __init__(self, hf, which):
+        self._hf = hf
+        self._which = which  # 0=左 1=中 2=右
+
+    @property
+    def text(self):
+        return self._hf._parts()[self._which]
+
+    @text.setter
+    def text(self, v):
+        parts = list(self._hf._parts())
+        parts[self._which] = "" if v is None else str(v)
+        self._hf._set(parts)
+
+    def __repr__(self):
+        return "<HeaderFooterItem {!r}>".format(self.text)
+
+
+class _HeaderFooter:
+    """印刷のヘッダー(かフッター)。openpyxl と同じく left / center / right
+    の三分割で触る。中身は xlsx の原文(&L 左 &C 中 &R 右)。
+
+    **奇数・偶数・先頭頁の別は模型に無い**(1つだけ持つ)ので、
+    evenHeader / firstHeader は正直に断る — 黙って同じ物を返さない。"""
+
+    def __init__(self, sheet, footer):
+        self._s = sheet
+        self._footer = footer
+
+    def _raw(self):
+        return (self._s._s.print_footer if self._footer
+                else self._s._s.print_header) or ""
+
+    def _parts(self):
+        # "&L左&C中&R右" → (左, 中, 右)。印より前の字は中(xlsx の慣わし)
+        left = center = right = ""
+        cur = 1
+        i = 0
+        raw = self._raw()
+        while i < len(raw):
+            if raw[i] == "&" and i + 1 < len(raw) and raw[i + 1] in "LCR":
+                cur = {"L": 0, "C": 1, "R": 2}[raw[i + 1]]
+                i += 2
+                continue
+            if cur == 0:
+                left += raw[i]
+            elif cur == 1:
+                center += raw[i]
+            else:
+                right += raw[i]
+            i += 1
+        return (left, center, right)
+
+    def _set(self, parts):
+        out = ""
+        for tag, v in zip("LCR", parts):
+            if v:
+                out += "&" + tag + v
+        if self._footer:
+            self._s._s.print_footer = out or None
+        else:
+            self._s._s.print_header = out or None
+
+    @property
+    def left(self):
+        return _HFPart(self, 0)
+
+    @property
+    def center(self):
+        return _HFPart(self, 1)
+
+    @property
+    def right(self):
+        return _HFPart(self, 2)
+
+    @property
+    def text(self):
+        """原文のまま(&L…&C…&R…)。うちの口。"""
+        return self._raw() or None
+
+    @text.setter
+    def text(self, v):
+        if self._footer:
+            self._s._s.print_footer = v
+        else:
+            self._s._s.print_header = v
+
+    def __repr__(self):
+        return "<{} {!r}>".format("Footer" if self._footer else "Header", self._raw())
+
+
 class _Dimensions:
     """row_dimensions / column_dimensions の返り(openpyxl の役)。
     いまは group だけ — 行の高さ・列の幅は Sheet の別の口が持つ。"""
@@ -958,6 +1055,53 @@ class Sheet:
         """表を外す(中身と書式は残る — Excel と同じ)。"""
         if not self._s.remove_table(str(getattr(name, "displayName", name))):
             raise KeyError("表が無い: {!r}".format(name))
+
+    @property
+    def show_gridlines(self):
+        """画面の枠線を出すか(openpyxl の sheet_view.showGridLines と同じ役)。
+        原本に指定が無ければ None(= 出す、が既定)。"""
+        return self._s.show_gridlines
+
+    @show_gridlines.setter
+    def show_gridlines(self, v):
+        self._s.show_gridlines = None if v is None else bool(v)
+
+    @property
+    def print_gridlines(self):
+        """**印刷**の枠線(openpyxl の print_options.gridLines)。画面とは別。"""
+        return self._s.print_gridlines
+
+    @print_gridlines.setter
+    def print_gridlines(self, v):
+        self._s.print_gridlines = bool(v)
+
+    @property
+    def oddHeader(self):
+        """印刷のヘッダー(openpyxl と同じ left / center / right)。
+        奇数・偶数・先頭頁の別は模型に無いので、これが唯一のヘッダー。"""
+        return _HeaderFooter(self, footer=False)
+
+    @property
+    def oddFooter(self):
+        return _HeaderFooter(self, footer=True)
+
+    @property
+    def evenHeader(self):
+        raise NotImplementedError(
+            "偶数頁だけのヘッダーは模型に無い(1つだけ持つ)。oddHeader を使う(台帳)"
+        )
+
+    @property
+    def evenFooter(self):
+        raise NotImplementedError("偶数頁だけのフッターは模型に無い(台帳)")
+
+    @property
+    def firstHeader(self):
+        raise NotImplementedError("先頭頁だけのヘッダーは模型に無い(台帳)")
+
+    @property
+    def firstFooter(self):
+        raise NotImplementedError("先頭頁だけのフッターは模型に無い(台帳)")
 
     @property
     def print_title_rows(self):

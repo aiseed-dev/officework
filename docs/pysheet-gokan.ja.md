@@ -85,7 +85,8 @@ add_heading と Run の add_text / clear はエンジンの書き口待ちだっ
 | ✔ merge_cells / unmerge_cells | 足す | 結合の**書き**(済 2026-08-12)。家の作法(アプリの結合と同じ — sheet::model::ops へ移して共有): 左上以外の中身は消え、空の左上へは最初の中身が書式ごと移る。unmerge は openpyxl どおり**厳密一致で ValueError**(掛かる結合をまとめて解く口はエンジン側) |
 | ✔ freeze_panes | 足す | ウィンドウ枠の固定。実務多い(済 2026-08-12。openpyxl と同じ A1 形式 — "B2" = 上1行・左1列) |
 | ✔ add_image | 足す | **matplotlib の図をシートに貼る** — アプリのグラフ分業と同じ道を Python にも。oneCellAnchor で書く(済 2026-08-12: 径路でも bytes でも。寸法は ops::image_px で測り、width_px/height_px で上書き。読み側の `images` も付けた — openpyxl はこれを公開 API で持たない) |
-| evenHeader / oddHeader / firstHeader / evenFooter / oddFooter / firstFooter | 足す | 印刷ヘッダー・フッター。writer のヘッダー・フッターの後に同じ模型で |
+| ✔ oddHeader / oddFooter | 足す | 印刷ヘッダー・フッター(**済 2026-08-13**。模型(header / footer)と xlsx の読み書きは既にあり、口だけ欠けていた。openpyxl と同じ left / center / right の三分割(中身は &L&C&R の原文。&P は頁番号)。適合は両方向) |
+| evenHeader / firstHeader / evenFooter / firstFooter | 足す | 奇数・偶数・先頭頁の**別**は模型に無い(1つだけ持つ)。**黙って同じ物を返さない** — 正直に断る。要る事例が出たら模型を太らせる |
 | ✔ print_area | 足す | 印刷設定。calc はモデルに読む所まで済み — 書きを足す(**済 2026-08-12 夜**: 読みは openpyxl と同じ「'シート'!$A$1:$C$10」(複数域は , 区切り)、書きは $ もシート名! も付いていてよい。PDF と印刷がこれに従う。print_titles 系は模型に無い — 残) |
 | ✔ print_titles / print_title_rows | 足す | 見出し行の繰り返し。**畑が無いと書いたのは誤り**(2026-08-13 実測で判明): 模型の print_title_rows・xlsx の読み書き(_xlnm.Print_Titles)・**PDF の繰り返し**(paper::grid の「タイトル行は2ページ目にも出る」)まで既に完動していた — 欠けていたのは Python の口だけ。張った(openpyxl と同じ "1:2" / print_titles は "'シート'!$1:$2")。適合は両方向 |
 | print_title_cols | 足す | **列**の繰り返しは模型に畑が無い(行だけ持つ)。読みは None、書きは正直に断る — 日本の帳票では行の繰り返しが定番で、列は出てから足す |
@@ -94,7 +95,7 @@ add_heading と Run の add_text / clear はエンジンの書き口待ちだっ
 | ✔ array_formulae | 足す | 配列式。エンジンがスピルを覚える件(pyoffice の「返り値の形で広がる」)と同じ模型(済 2026-08-13: 模型の cse に口を張った。openpyxl と同じ {左上: 式} の形。**うちは値まで計算されている** — `=SUM(A1:A3*2)` が 12 を返す。openpyxl は式を持つだけ) |
 | ✔ column_groups | 足す | 行・列のグループ化(outlineLevel)の読み書き(小)。画面の畳みはアプリの在庫(**済 2026-08-13**: 模型の row_outline / col_outline に口を張った。openpyxl と同じ row_dimensions.group(start, end, outline_level, hidden) / column_dimensions.group と、row_groups / column_groups の読み。**畳んだ状態は保存に残る** — 畳んだ台帳は畳んだまま次の人に渡る(絞り込みと違う)。適合は両方向) |
 | ✔ move_range | 足す | 範囲の移動 — 式の参照も付いて動く。insert/remove と同族(**済 2026-08-13**: sheet::model::ops の Sheet::move_range。**参照の作法は Excel の切り貼りに合わせた** — 外から動かした範囲を指していた式は**付いて動く**(`=B1+1` → `=B6+1`)。openpyxl はここを古びたままにする(空のセルを指す)= うちの上位分。範囲の中の式はそのままで、translate=True なら中の相対参照がずれる(本家と同じ定義 — 適合検査で本家の結果と突き合わせ済み)。移った先は上書き、紙の外へは動かさない、結合も一緒に動く。橋にも rpc(語彙34)+ Range.move()。実機で確認) |
-| show_gridlines | 足す | sheetView の読み書き(小) |
+| ✔ show_gridlines | 足す | sheetView の読み書き(小)(済 2026-08-13: 画面の枠線(show_gridlines。指定なしは None)と**印刷**の枠線(print_gridlines)は別の設定 — 両方に口を張った。適合は両方向) |
 | active_cell / selected_cell / sheet_view | 要らない | 画面の状態。ファイルの帳簿ではない |
 | encoding / mime_type / path | 要らない | 内部事情 |
 | set_printer_settings | 要らない | 内部部品(PrinterSettings)を直に差し込む API。印刷設定は print_area 系で足りる |
