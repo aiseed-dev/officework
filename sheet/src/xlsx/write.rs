@@ -203,6 +203,22 @@ pub(super) fn patch_book_rels(rels: &str, rids: &[Option<String>], n_sheets: usi
             if ext { r#" TargetMode="External""# } else { "" }
         ));
     }
+    // **共有文字列の関係は必ず要る。** こちらは必ず xl/sharedStrings.xml を
+    // 書き、セルは t="s" の索引で字を指す — 関係が無いと、厳密な読み手
+    // (openpyxl / lxml)は文字列の表を見つけられず添字が外れる。
+    // openpyxl が作った原本には**この関係が無い**ので、持ち越しだけでは
+    // 落ちる(2026-08-13、テーブルの検分で踏んだ)
+    if !inner.contains("/sharedStrings\"") {
+        let mut id = "rIdSS".to_string();
+        let mut n = 2;
+        while inner.contains(&format!("Id=\"{id}\"")) {
+            id = format!("rIdSS{n}");
+            n += 1;
+        }
+        inner.push_str(&format!(
+            r#"<Relationship Id="{id}" Type="{RNS}/sharedStrings" Target="sharedStrings.xml"/>"#
+        ));
+    }
     format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n\
          <Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\
@@ -1109,6 +1125,12 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         let n_tables: usize = book.sheets.iter().map(|s| s.tables.len()).sum();
         let has_comments = book.sheets.iter().any(|s| !s.comments.is_empty());
         let mut add = String::new();
+        // 共有文字列の宣言。**必ず書く部品なので必ず宣言する** —
+        // 原本(openpyxl 産など)に無いことがあり、持ち越しだけでは漏れる
+        // (関係の側と対。2026-08-13)
+        if !ct.contains("/xl/sharedStrings.xml") {
+            add.push_str(r#"<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>"#);
+        }
         for n in 1..=n_tables {
             add.push_str(&format!(
                 r#"<Override PartName="/xl/tables/table{n}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>"#

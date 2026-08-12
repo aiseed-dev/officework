@@ -123,6 +123,22 @@ if openpyxl is not None:
         check(rv["D2"].value == 500000,
               f"うちが書き込んだ計算済みの値(openpyxl 自身は作れない物): {rv['D2'].value}")
 
+        # **本家が作った字入りのブックを、うちが保存し直しても本家が読める。**
+        # openpyxl の原本は共有文字列の関係を持たないので、持ち越しだけだと
+        # 索引が外れて開けなくなっていた(2026-08-13 に踏んで直した)
+        out_ss = os.path.join(t, "ss_roundtrip.xlsx")
+        wb_ss = openpyxl.Workbook()
+        ws_ss = wb_ss.active
+        ws_ss.append(["品名", "金額"])
+        ws_ss.append(["ザボガードF", 125000])
+        wb_ss.save(out_ss)
+        b_ss = office_sheet.Book.open(out_ss)
+        out_ss2 = os.path.join(t, "ss_roundtrip_out.xlsx")
+        b_ss.save(out_ss2)
+        r_ss = openpyxl.load_workbook(out_ss2).active
+        check(r_ss["A1"].value == "品名" and r_ss["A2"].value == "ザボガードF",
+              f"字が往復しない(共有文字列の関係): {r_ss['A1'].value!r}")
+
         # 逆向き: 本家が書いた物をうちが読めるか
         out2 = os.path.join(t, "opx.xlsx")
         wb3 = openpyxl.Workbook()
