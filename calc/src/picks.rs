@@ -4044,6 +4044,31 @@ impl Calc {
         Ok(new_name)
     }
 
+    /// シートを隠す・戻す(耳のメニューと橋(rpc)の共有)。
+    /// 最後の見えている1枚は隠せない。隠したのがいまのシートなら見える所へ移る。
+    pub(crate) fn set_sheet_hidden(&mut self, t: usize, hidden: bool) -> Result<(), String> {
+        if t >= self.book.sheets.len() {
+            return Err(ui::t!("そのシートがありません").to_string());
+        }
+        if hidden
+            && self.book.sheets.iter().enumerate().filter(|(i, s)| *i != t && !s.hidden).count()
+                == 0
+        {
+            return Err(ui::t!("最後の1枚は隠せません").to_string());
+        }
+        self.remember_ui();
+        self.book.sheets[t].hidden = hidden;
+        if hidden && self.active == t {
+            if let Some(i) = self.book.sheets.iter().position(|s| !s.hidden) {
+                self.active = i;
+                self.restore_ui();
+                self.sync_input();
+            }
+        }
+        self.dirty = true;
+        Ok(())
+    }
+
     /// 耳のメニューの実行。t = メニューが指しているシート
     pub(crate) fn sheet_menu_action(&mut self, v: &str) {
         let Some(t) = self.sheet_menu_at else { return };
@@ -4114,27 +4139,15 @@ impl Calc {
                     .into();
             }
             "非表示" => {
-                if self.book.sheets.iter().enumerate()
-                    .filter(|(i, s)| *i != t && !s.hidden).count() == 0
-                {
-                    self.status = ui::t!("最後の1枚は隠せません").into();
-                } else {
-                    self.book.sheets[t].hidden = true;
-                    let name = self.book.sheets[t].name.clone();
-                    if self.active == t {
-                        if let Some(i) = self.book.sheets.iter().position(|s| !s.hidden) {
-                            self.active = i;
-                            self.restore_ui();
-                            self.sync_input();
-                        }
-                    }
-                    self.dirty = true;
-                    self.status = ui::tf!(
+                let name = self.book.sheets[t].name.clone();
+                self.status = match self.set_sheet_hidden(t, true) {
+                    Ok(()) => ui::tf!(
                         "シート「{}」を隠しました(「再表示」で戻せます。保存で xlsx にも残ります)",
                         name
                     )
-                    .into();
-                }
+                    .into(),
+                    Err(e) => e.into(),
+                };
             }
             "再表示" => {
                 let hidden: Vec<(usize, String)> = self

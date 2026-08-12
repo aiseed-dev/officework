@@ -142,6 +142,29 @@ impl<'a> Jobj<'a> {
         }
         None
     }
+    /// 数(整数も小数も)。無い・数でないなら None
+    pub fn num(&self, key: &str) -> Option<f64> {
+        let at = self.value_start(key)?;
+        let v = &self.src[at..];
+        let end = v
+            .find(|c: char| c == ',' || c == '}' || c == ']' || c.is_whitespace())
+            .unwrap_or(v.len());
+        v[..end].parse().ok()
+    }
+
+    /// 真偽。無い・真偽でないなら None
+    pub fn bool(&self, key: &str) -> Option<bool> {
+        let at = self.value_start(key)?;
+        let v = &self.src[at..];
+        if v.starts_with("true") {
+            Some(true)
+        } else if v.starts_with("false") {
+            Some(false)
+        } else {
+            None
+        }
+    }
+
     /// 2次元の並び(値は 文字列/数/真偽/null)。"values": [[...],[...]]
     pub fn grid(&self, key: &str) -> Option<Vec<Vec<J>>> {
         let at = self.value_start(key)?;
@@ -312,6 +335,18 @@ pub trait Host {
     /// シートの削除(同じく)。返りは消した名前
     fn delete_sheet(&mut self, _si: usize) -> Result<String, String> {
         Err("この口では delete_sheet はできません".into())
+    }
+    /// ウィンドウ枠の固定(いま画面が持っている値。保存で xlsx に載る)
+    fn get_freeze(&mut self, _si: usize) -> Result<(u32, u32), String> {
+        Err("この口では freeze はできません".into())
+    }
+    /// ウィンドウ枠の固定を置く。(0, 0) は解除
+    fn set_freeze(&mut self, _si: usize, _rows: u32, _cols: u32) -> Result<(), String> {
+        Err("この口では freeze はできません".into())
+    }
+    /// シートを隠す・戻す(最後の見えている1枚は断る、はアプリの作法)
+    fn set_sheet_hidden(&mut self, _si: usize, _hidden: bool) -> Result<(), String> {
+        Err("この口では visible はできません".into())
     }
 
     /// アプリにしか無い命令(calc の ribbon / ui_state)。既定は「知らない」
@@ -577,6 +612,43 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             match h.delete_sheet(si) {
                 Ok(n) => format!("{{\"ok\":true,\"name\":{}}}", J::S(n).to_json()),
                 Err(e) => err(&e),
+            }
+        }
+        // ウィンドウ枠の固定。rows / cols を渡せば置く((0,0) は解除)、
+        // 渡さなければ今の値を返す
+        "freeze" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            let (rows, cols) = (o.num("rows"), o.num("cols"));
+            if rows.is_none() && cols.is_none() {
+                match h.get_freeze(si) {
+                    Ok((r, c)) => format!("{{\"ok\":true,\"rows\":{r},\"cols\":{c}}}"),
+                    Err(e) => err(&e),
+                }
+            } else {
+                match h.set_freeze(si, rows.unwrap_or(0.0) as u32, cols.unwrap_or(0.0) as u32)
+                {
+                    Ok(()) => "{\"ok\":true}".into(),
+                    Err(e) => err(&e),
+                }
+            }
+        }
+        // シートの表示・非表示。value を渡せば置く、渡さなければ今の値を返す
+        "sheet_visible" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            match o.bool("value") {
+                None => {
+                    format!("{{\"ok\":true,\"visible\":{}}}", !h.book().sheets[si].hidden)
+                }
+                Some(v) => match h.set_sheet_hidden(si, !v) {
+                    Ok(()) => "{\"ok\":true}".into(),
+                    Err(e) => err(&e),
+                },
             }
         }
         // 結合の一覧(["B2","C3"] の対の並び — pysheet の merges と同じ形)

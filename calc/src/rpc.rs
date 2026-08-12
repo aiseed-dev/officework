@@ -227,6 +227,37 @@ impl Host for Calc {
         Ok(n)
     }
 
+    fn get_freeze(&mut self, si: usize) -> Result<(u32, u32), String> {
+        if si >= self.book.sheets.len() {
+            return Err("そのシートがありません".into());
+        }
+        self.remember_ui(); // sheet_ui をシート数まで育て、いまの画面の固定を写す
+        Ok(self
+            .sheet_ui
+            .get(si)
+            .and_then(|u| u.2)
+            .map(|p| (p.row, p.col))
+            .unwrap_or((0, 0)))
+    }
+
+    fn set_freeze(&mut self, si: usize, rows: u32, cols: u32) -> Result<(), String> {
+        if si >= self.book.sheets.len() {
+            return Err("そのシートがありません".into());
+        }
+        self.remember_ui();
+        let f = (rows > 0 || cols > 0).then_some(Pos::new(rows, cols));
+        self.sheet_ui[si].2 = f;
+        if si == self.active {
+            self.frozen = f;
+        }
+        self.dirty = true; // 保存の直前に freeze_into_book がモデルへ写す
+        Ok(())
+    }
+
+    fn set_sheet_hidden(&mut self, si: usize, hidden: bool) -> Result<(), String> {
+        Calc::set_sheet_hidden(self, si, hidden)
+    }
+
     fn new_book(&mut self) -> Result<(), String> {
         if Calc::new_book(self) {
             Ok(())

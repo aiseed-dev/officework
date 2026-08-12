@@ -171,11 +171,11 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ book / cells / index | 互換層 | cells は全マス(A1:XFD1048576 — xlwings と同じ定義。読み書きするまで算術だけなので大きさは害にならない) |
 | ✔ clear / clear_contents | 足す | 範囲・シートの中身消し。実務多い(済 2026-08-12: rpc clear / clear_contents。contents は書式据え置き=set の Null と同じ道。結合は消さない — 解くのは unmerge) |
 | ✔ copy / delete | 足す | シート複製・削除(済 2026-08-12: rpc copy_sheet / delete_sheet。**耳のメニューと同じ関数**(picks.rs から切り出して共有)— 写しは右隣・sheet_ui/watch の帳尻・最後の1枚は断る・undo の束は消える、まで同じ。名前つき複製はシート名の決まりで検査) |
-| freeze_panes | 足す | |
+| ✔ freeze_panes | 足す | (済 2026-08-12: rpc freeze。xlwings の定義どおり freeze_at("B2")=上2行左2列・"1:1"=上1行・"A:A"=左1列・unfreeze。画面の固定(sheet_ui)に置き、保存の freeze_into_book で xlsx へ) |
 | ✔ load | 足す | Book.load と同じ(済 2026-08-12: used_range から) |
 | ✔ to_pdf | 足す | シート単位の PDF(済 2026-08-12: rpc to_pdf。印刷設定の言い分は note で返る) |
 | ✔ activate / select | 足す | 画面のシートを Python から切り替える — 「見せる」のは見えるアプリならではの橋(済 2026-08-12: rpc activate_sheet。切替は画面と同じ switch_sheet — 打ちかけの確定・絞り込み解除ごと) |
-| visible | 足す | 隠しシート(sheetState)の読み書き(小) |
+| ✔ visible | 足す | 隠しシート(sheetState)の読み書き(済 2026-08-12: rpc sheet_visible。隠す作法は耳のメニューの「非表示」と同じ関数 — 最後の見えている1枚は断る・いまのシートを隠したら見える所へ移る) |
 | autofit | 足す | 列幅の自動調整 — 文字の測りはアプリが持っている。橋から呼ぶ |
 | pictures | 足す | 画像の一覧と追加(sheet.add_image と対) |
 | tables / names / page_setup | 足す | openpyxl 側の同じ一件(テーブル・名前付き範囲・印刷設定) |
@@ -300,8 +300,9 @@ Cell は `s.cell(row=, column=)` から)。
    シートの複製・削除は耳のメニューと同じ関数を picks.rs から切り出して共有)。
    calc.py の対応する口ごと**実機の calc で検査済み** —
    tools/hashi_check.py(ribbon_sweep.py と対)。
-   橋の残り: Book.close・Book.to_pdf(束ね)・Sheet.freeze_panes / visible /
-   autofit / pictures / tables / names / page_setup・Range.insert / delete・
+   追って freeze / sheet_visible も同日に(語彙は 17 に)。
+   橋の残り: Book.close・Book.to_pdf(束ね)・Sheet.autofit / pictures /
+   tables / names / page_setup・Range.insert / delete・
    細目(note・hyperlink・group / ungroup・has_array / formula_array・
    height / width / left / top・name / table)
 3. **書式の読み書き**(足す(書式)24 件)— エンジンの fmt に Python から書く道。合否は相手の定義どおり動くか

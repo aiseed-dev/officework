@@ -416,6 +416,41 @@ def _scalar(x):
     return str(x)
 
 
+class _FreezePanes:
+    """Sheet.freeze_panes の返り(xlwings と同じ形)。
+
+    freeze_at には**固定する範囲そのもの**を渡す — "B2" なら上2行と左2列、
+    "1:1" なら上1行だけ、"A:A" なら左1列だけが固定される。
+    """
+
+    def __init__(self, sheet):
+        self._sheet = sheet
+
+    def freeze_at(self, frozen_range):
+        if isinstance(frozen_range, Range):
+            if frozen_range._sheet not in (None, self._sheet.name):
+                raise OfficeworkError("別のシートの範囲です")
+            a1 = frozen_range._a1()
+        else:
+            a1 = str(frozen_range).replace("$", "")
+        last = a1.split(":")[-1]
+        if last.isalpha():  # "A:A" — 列だけ
+            rows, cols = 0, _parse_a1(last + "1")[1] + 1
+        elif last.isdigit():  # "1:1" — 行だけ
+            rows, cols = int(last), 0
+        else:  # "B2" / "A1:B2" — 右下までの行と列
+            r, c = _parse_a1(last)
+            rows, cols = r + 1, c + 1
+        _call("freeze", sheet=self._sheet.name, rows=rows, cols=cols)
+
+    def unfreeze(self):
+        _call("freeze", sheet=self._sheet.name, rows=0, cols=0)
+
+    def __repr__(self):
+        r = _call("freeze", sheet=self._sheet.name)
+        return "<officework.calc FreezePanes 行{} 列{}>".format(r["rows"], r["cols"])
+
+
 class Sheet:
     def __init__(self, name):
         self.name = name
@@ -459,6 +494,22 @@ class Sheet:
     def activate(self):
         """画面のシートをこのシートに切り替える。"""
         _call("activate_sheet", sheet=self.name)
+
+    @property
+    def freeze_panes(self):
+        """ウィンドウ枠の固定(xlwings と同じ形)。
+        freeze_at("B2") で上2行・左2列、freeze_at("1:1") で上1行、
+        unfreeze() で解除。保存で xlsx にも載る。"""
+        return _FreezePanes(self)
+
+    @property
+    def visible(self):
+        return _call("sheet_visible", sheet=self.name)["visible"]
+
+    @visible.setter
+    def visible(self, value):
+        # 隠す作法はアプリの「非表示」と同じ — 最後の見えている1枚は断られる
+        _call("sheet_visible", sheet=self.name, value=bool(value))
 
     def copy(self, name=None):
         """シートを複製する(アプリの「コピーを作成」と同じ作法 — 写しは

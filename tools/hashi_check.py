@@ -142,6 +142,37 @@ try:
 except xw.OfficeworkError:
     pass
 
+# freeze_panes: 固定して・読めて・解ける(xlwings の freeze_at の定義どおり)
+fp = sh.freeze_panes
+fp.freeze_at("B2")  # 上2行・左2列
+r = xw._call("freeze", sheet=sh.name)
+check((r["rows"], r["cols"]) == (2, 2), f"freeze_at('B2'): {r}")
+fp.freeze_at("1:1")  # 上1行だけ
+r = xw._call("freeze", sheet=sh.name)
+check((r["rows"], r["cols"]) == (1, 0), f"freeze_at('1:1'): {r}")
+fp.freeze_at("A:A")  # 左1列だけ
+r = xw._call("freeze", sheet=sh.name)
+check((r["rows"], r["cols"]) == (0, 1), f"freeze_at('A:A'): {r}")
+fp.unfreeze()
+r = xw._call("freeze", sheet=sh.name)
+check((r["rows"], r["cols"]) == (0, 0), "unfreeze が解けていない")
+
+# visible: 隠して・戻せて、最後の1枚は断られる
+cv = sh.copy()
+sv = wb.sheets[cv.name]
+sv.visible = False
+check(not sv.visible, "visible=False が効かない")
+check(wb.sheets.active.name != sv.name, "隠したシートが画面に出たまま")
+sv.visible = True
+check(sv.visible, "visible=True で戻らない")
+sv.delete()
+if len(wb.sheet_names) == 1:
+    try:
+        wb.sheets.active.visible = False
+        check(False, "最後の1枚の非表示が黙って通った")
+    except xw.OfficeworkError:
+        pass
+
 # to_pdf: シートを PDF に(帳票の印刷設定に従う)
 sh = wb.sheets.active  # 削除で札が古びたかもしれないので引き直す
 with tempfile.TemporaryDirectory() as t:
