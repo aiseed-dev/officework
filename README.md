@@ -7,7 +7,12 @@ The engine installs on its own (`pip install officework`): it reads and
 writes xlsx and docx without breaking their formatting, in the idiom of
 openpyxl, python-docx and xlwings. On top of it sit **Word and Excel that
 run on your machine** — where you watch the result, finish it by hand,
-and drive a live workbook from Python:
+and drive a live workbook from Python.
+
+The second purpose points the other way — **using Python from Office**:
+a cell formula like `=double(A1)` calls your own Python function and the
+result spills, and the chart and pivot buttons are backed by matplotlib
+and polars. This is what replaces VBA:
 
 - `writer` — opens, edits, and saves docx. Exports PDF ([manual](docs/writer-manual.md))
 - `calc` — opens, edits, and saves xlsx. Calculates formulas ([manual](docs/calc-manual.md))

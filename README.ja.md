@@ -7,7 +7,12 @@
 書式ごと壊さずに読み書きし、openpyxl・python-docx・xlwings の書き味を
 継いでいます。その上に **手元で動く Word と Excel** が載ります —
 自動化の結果を目で確かめ、手で仕上げ、起動中のブックを Python から
-直に操る場所です:
+直に操る場所です。
+
+二番目の目的はその逆向き — **Office から Python を使う**。セルの式
+`=倍(A1)` が自作の Python 関数を呼んで結果がスピルで広がり、グラフや
+ピボットのボタンの裏では matplotlib・polars が働きます。VBA の代わりは
+これです:
 
 - `writer` — docx を開いて、直して、保存する。PDF にもできる([手引き](docs/writer-manual.ja.md))
 - `calc` — xlsx を開いて、直して、保存する。式も計算する([手引き](docs/calc-manual.ja.md))

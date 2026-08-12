@@ -1,10 +1,9 @@
 # office — ネイティブ Rust の日本語オフィス(設計)
 
-## 一番の目的(2026-08-13 発注者確定)
+## 目的は2つ、向きが逆(2026-08-13 発注者確定)
 
-**Python を用いて Office を自動操作すること。** これがこのソフトの
-第一の目的で、他のすべて(2つのアプリ・エンジン・互換の顔)はこの線の上に
-並ぶ:
+**第一: Python を用いて Office を自動操作する**(Python → Office)。
+他のすべて(2つのアプリ・エンジン・互換の顔)はこの線の上に並ぶ:
 
 - **エンジン**(`pip install officework`)が主役 — xlsx / docx を書式ごと
   壊さずに読み書きし、openpyxl・python-docx・xlwings の書き味を継ぐ
@@ -15,6 +14,19 @@
 - ayumi の目標「移行の壁を消す」との関係: 壁の最大の物は VBA と手作業の
   帳票運用で、その置き換えの答えが Python 自動化。だから「ブックはコードを
   運ばない・コードは .py」も、この目的の形そのもの
+
+**第二: Office から Python を利用する**(Office → Python)。
+セルの式が plugins の Python 関数を呼び(`=倍(A1)`、2次元はスピル)、
+パネルの `@名前` が手続きを回し、グラフ・ピボット・ソルバーのボタンの
+裏で matplotlib・polars・scipy が働く — Python in Calc の側。
+
+**出自**: 発注者が 2018-12-24 に書いた記事
+「[ExcelにPythonが搭載?その後 — xlwings を使おう](https://qiita.com/yniji/items/b38bc312e860027108ac)」。
+Microsoft の「Excel に Python」は実現せず、記事は xlwings で
+**「Excel から Python を利用する」ことを「メインの使い方」**と呼び、
+マクロと UDF(動的配列で複数セルへ)を勧めた。officework はその答え合わせ —
+8年後に自分の calc へ本搭載した(python.ja.md「UDF とスピル」、
+続編は docs/articles/excel-python-sonogo-2026.ja.md)。
 
 以下の各節(2本のアプリ・ネイティブファースト…)は目的ではなく**手段の
 決め**として読む。
