@@ -118,6 +118,30 @@ if len(names) > 1:
     check(wb.sheets.active.name == names[1], "activate が効かない")
     wb.sheets[names[0]].activate()
 
+# 書式(xlwings の形): 塗り・font の性質ごとの書き・表示形式・折り返し・列幅・行高
+sh["A1"].color = (255, 255, 0)
+check(sh["A1"].color == (255, 255, 0), f"color の往復: {sh['A1'].color}")
+sh["A1"].font.bold = True
+sh["A1"].font.size = 14
+check(sh["A1"].font.bold and sh["A1"].font.size == 14,
+      f"font の性質ごとの書き: {sh['A1'].font.bold},{sh['A1'].font.size}")
+sh["A1"].font.color = "#C00000"
+check(sh["A1"].font.color == (192, 0, 0), f"font.color: {sh['A1'].font.color}")
+sh["B1:C1"].number_format = "#,##0"
+check(sh["B1"].number_format == "#,##0" and sh["C1"].number_format == "#,##0",
+      "number_format が範囲に効かない")
+sh["A1"].wrap_text = True
+check(sh["A1"].wrap_text, "wrap_text が効かない")
+sh["A1:B1"].column_width = 20
+check(sh["A1"].column_width == 20 and sh["B1"].column_width == 20,
+      f"column_width: {sh['A1'].column_width}")
+sh["A2"].row_height = 30
+check(sh["A2"].row_height == 30, f"row_height: {sh['A2'].row_height}")
+sh["A1"].clear_formats()
+check(sh["A1"].color is None and not sh["A1"].font.bold,
+      "clear_formats で書式が残っている")
+check(sh["B1"].number_format == "#,##0", "clear_formats が隣まで消した")
+
 # copy / delete: 複製は中身ごと・右隣に。削除で元に戻る(undo の束は消える)
 names0 = wb.sheet_names
 c1 = sh.copy()

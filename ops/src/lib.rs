@@ -19,7 +19,12 @@ use std::path::PathBuf;
 
 /// ソケットの置き場所。`$XDG_RUNTIME_DIR/officework/<app>.sock`。
 /// AF_UNIX の径路は 108 字までなので、長すぎるときは
-/// `/tmp/officework-UID/<app>.sock` へ落とす(Python 側も同じ規則)
+/// `/tmp/officework-UID/<app>.sock` へ落とす(Python 側も同じ規則)。
+/// **unix だけ** — 橋は「この機械の unix ソケット」が設計で、Windows の
+/// wheel(エンジンだけを配る)はこれを使わない。0.2.0 のタグで Windows の
+/// wheel がここで組めなくなって気づいた(2026-08-12 — publish の門は効き、
+/// PyPI には何も出ていない)
+#[cfg(unix)]
 pub fn sock_path(app: &str) -> PathBuf {
     if let Some(base) = std::env::var_os("XDG_RUNTIME_DIR") {
         let p = PathBuf::from(&base).join("officework").join(format!("{app}.sock"));
@@ -142,6 +147,16 @@ impl<'a> Jobj<'a> {
         }
         None
     }
+    /// 鍵があるか(値が null でも真)。「渡した項目だけ変える」書式の口が使う
+    pub fn has(&self, key: &str) -> bool {
+        self.value_start(key).is_some()
+    }
+
+    /// 値が null か(鍵が無いなら偽)
+    pub fn is_null(&self, key: &str) -> bool {
+        self.value_start(key).map(|at| self.src[at..].starts_with("null")).unwrap_or(false)
+    }
+
     /// 数(整数も小数も)。無い・数でないなら None
     pub fn num(&self, key: &str) -> Option<f64> {
         let at = self.value_start(key)?;
@@ -775,6 +790,203 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             h.wrote(n);
             format!("{{\"ok\":true,\"cells\":{n}}}")
         }
+        // 書式を読む(左上のセル。持っている項目だけ返る — pysheet の fmt と同じ鍵)
+        "get_fmt" => {
+            let (si, a, _) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            let sh = &h.book().sheets[si];
+            let mut out: Vec<String> = vec!["\"ok\":true".into()];
+            if let Some(c) = sh.get(a) {
+                let f = &c.fmt;
+                for (k, on) in [
+                    ("bold", f.bold),
+                    ("italic", f.italic),
+                    ("underline", f.underline),
+                    ("strike", f.strike),
+                    ("wrap", f.wrap),
+                    ("shrink", f.shrink),
+                ] {
+                    if on {
+                        out.push(format!("\"{k}\":true"));
+                    }
+                }
+                if let Some(v) = &f.font {
+                    out.push(format!("\"font\":{}", J::S(v.clone()).to_json()));
+                }
+                if let Some(sc) = f.size_c {
+                    out.push(format!("\"size\":{}", sc as f64 / 100.0));
+                }
+                if let Some(v) = &f.color {
+                    out.push(format!("\"color\":{}", J::S(v.clone()).to_json()));
+                }
+                if let Some(v) = &f.fill {
+                    out.push(format!("\"fill\":{}", J::S(v.clone()).to_json()));
+                }
+                if let Some(v) = &f.number_format {
+                    out.push(format!("\"number_format\":{}", J::S(v.clone()).to_json()));
+                }
+                if let Some(v) = f.align.as_xlsx() {
+                    out.push(format!("\"horizontal\":\"{v}\""));
+                }
+                if let Some(v) = f.valign.as_xlsx() {
+                    out.push(format!("\"vertical\":\"{v}\""));
+                }
+            }
+            format!("{{{}}}", out.join(","))
+        }
+        // 書式を書く(範囲の全セル。**渡した項目だけ**変わり、null は消す)
+        "set_fmt" => {
+            let (si, a, b) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            if h.book().sheets[si].protected {
+                return err("シートが保護されています");
+            }
+            h.settle();
+            h.mark_once();
+            let sh = &mut h.book_mut().sheets[si];
+            for r in a.row..=b.row {
+                for c in a.col..=b.col {
+                    let p = sheet::Pos::new(r, c);
+                    let mut cell = sh.get(p).cloned().unwrap_or_else(|| sheet::Cell::input(""));
+                    let f = &mut cell.fmt;
+                    if o.has("bold") {
+                        f.bold = o.bool("bold").unwrap_or(false);
+                    }
+                    if o.has("italic") {
+                        f.italic = o.bool("italic").unwrap_or(false);
+                    }
+                    if o.has("underline") {
+                        f.underline = o.bool("underline").unwrap_or(false);
+                    }
+                    if o.has("strike") {
+                        f.strike = o.bool("strike").unwrap_or(false);
+                    }
+                    if o.has("wrap") {
+                        f.wrap = o.bool("wrap").unwrap_or(false);
+                    }
+                    if o.has("shrink") {
+                        f.shrink = o.bool("shrink").unwrap_or(false);
+                    }
+                    if o.has("font") {
+                        f.font = o.str("font");
+                    }
+                    if o.has("size") {
+                        f.size_c = o.num("size").map(|x| (x * 100.0).round() as u32);
+                    }
+                    if o.has("color") {
+                        f.color = o.str("color");
+                        f.color_theme = None;
+                    }
+                    if o.has("fill") {
+                        f.fill = o.str("fill");
+                        f.fill_theme = None;
+                    }
+                    if o.has("number_format") {
+                        f.number_format = o.str("number_format");
+                    }
+                    if o.has("horizontal") {
+                        f.align = o
+                            .str("horizontal")
+                            .map(|x| sheet::model::HAlign::from_xlsx(&x))
+                            .unwrap_or_default();
+                    }
+                    if o.has("vertical") {
+                        f.valign = o
+                            .str("vertical")
+                            .map(|x| sheet::model::VAlign::from_xlsx(&x))
+                            .unwrap_or_default();
+                    }
+                    sh.set(p, cell);
+                }
+            }
+            h.mark_dirty();
+            "{\"ok\":true}".into()
+        }
+        // 書式を消す(値は残る)。a1 省略はシート全部
+        "clear_formats" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            if h.book().sheets[si].protected {
+                return err("シートが保護されています");
+            }
+            h.settle();
+            h.mark_once();
+            let sh = &mut h.book_mut().sheets[si];
+            let span = o.str("a1").and_then(|a1| {
+                let mut it = a1.split(':');
+                let a = it.next().and_then(sheet::Pos::parse)?;
+                Some((a, it.next().and_then(sheet::Pos::parse).unwrap_or(a)))
+            });
+            let keys: Vec<sheet::Pos> = sh
+                .cells
+                .keys()
+                .filter(|p| match span {
+                    Some((a, b)) => {
+                        (a.row..=b.row).contains(&p.row) && (a.col..=b.col).contains(&p.col)
+                    }
+                    None => true,
+                })
+                .cloned()
+                .collect();
+            let n = keys.len();
+            for p in keys {
+                let mut cell = sh.get(p).cloned().unwrap_or_default();
+                cell.fmt = Default::default();
+                sh.set(p, cell);
+            }
+            h.mark_dirty();
+            format!("{{\"ok\":true,\"cells\":{n}}}")
+        }
+        // 列幅(字数)・行高(ポイント)。value を渡せば範囲の列・行に置く、
+        // 渡さなければ「全部同じならその値、まちまちなら null」(xlwings と同じ)
+        "col_width" | "row_height" => {
+            let (si, a, b) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            let cols = cmd == "col_width";
+            match o.num("value") {
+                Some(v) => {
+                    h.settle();
+                    h.mark_once();
+                    let sh = &mut h.book_mut().sheets[si];
+                    if cols {
+                        for c in a.col..=b.col {
+                            sh.col_width.insert(c, v as f32);
+                        }
+                    } else {
+                        for r in a.row..=b.row {
+                            sh.row_height.insert(r, v as f32);
+                        }
+                    }
+                    h.mark_dirty();
+                    "{\"ok\":true}".into()
+                }
+                None => {
+                    let sh = &h.book().sheets[si];
+                    let vals: Vec<Option<f32>> = if cols {
+                        (a.col..=b.col)
+                            .map(|c| sh.col_width.get(&c).copied().or(sh.default_col_width))
+                            .collect()
+                    } else {
+                        (a.row..=b.row)
+                            .map(|r| sh.row_height.get(&r).copied().or(sh.default_row_height))
+                            .collect()
+                    };
+                    let same = vals.windows(2).all(|w| w[0] == w[1]);
+                    match (same, vals.first().copied().flatten()) {
+                        (true, Some(v)) => format!("{{\"ok\":true,\"value\":{v}}}"),
+                        _ => "{\"ok\":true,\"value\":null}".into(),
+                    }
+                }
+            }
+        }
         // Ctrl+矢印相当(xlwings の end)。端は使っている範囲まで —
         // Excel の 1048576 行目には飛ばない(そこに用は無い)
         "end" => {
@@ -962,6 +1174,7 @@ pub fn sig_path_for(p: &std::path::Path) -> PathBuf {
 }
 
 /// 鍵が用意できなかった理由。**文言はここでは作らない**(RunErr と同じ型)
+#[cfg(unix)]
 #[derive(Debug)]
 pub enum KeyErr {
     /// 鍵ファイルが壊れている(~/.config/office/sign.key)
@@ -972,7 +1185,9 @@ pub enum KeyErr {
     CantStore(std::io::Error),
 }
 
-/// 署名の鍵を読む。無ければ作る(/dev/urandom の種。0600 で置く)
+/// 署名の鍵を読む。無ければ作る(/dev/urandom の種。0600 で置く)。
+/// **unix だけ**(/dev/urandom と 0600 は unix の作法。使うのは calc/writer)
+#[cfg(unix)]
 pub fn load_or_make_key() -> Result<ed25519_dalek::SigningKey, KeyErr> {
     let kp = sign_key_path();
     if let Ok(bytes) = std::fs::read(&kp) {

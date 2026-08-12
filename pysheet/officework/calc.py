@@ -313,6 +313,62 @@ class Range:
         """画面の選択をこの範囲に動かして見せる。"""
         _call("select", **self._kw())
 
+    # ── 書式(xlwings の形。合否は相手の定義どおり)──────────────
+
+    @property
+    def font(self):
+        return _RangeFont(self)
+
+    @property
+    def color(self):
+        """セルの塗り(背景)の色。xlwings と同じく (r, g, b) のタプル。
+        塗りが無ければ None。読みは範囲の左上。"""
+        d = _call("get_fmt", **self._kw())
+        return _tuple_of(d["fill"]) if "fill" in d else None
+
+    @color.setter
+    def color(self, v):
+        _call("set_fmt", fill=_hex_of(v), **self._kw())
+
+    @property
+    def number_format(self):
+        return _call("get_fmt", **self._kw()).get("number_format", "General")
+
+    @number_format.setter
+    def number_format(self, v):
+        _call("set_fmt",
+              number_format=None if v in (None, "General") else v, **self._kw())
+
+    @property
+    def wrap_text(self):
+        return bool(_call("get_fmt", **self._kw()).get("wrap"))
+
+    @wrap_text.setter
+    def wrap_text(self, v):
+        _call("set_fmt", wrap=bool(v), **self._kw())
+
+    def clear_formats(self):
+        """範囲の書式を消す(値は残る)。"""
+        _call("clear_formats", **self._kw())
+
+    @property
+    def column_width(self):
+        """列幅(字数 — xlsx と同じ単位)。範囲の列がまちまちなら None。"""
+        return _call("col_width", **self._kw())["value"]
+
+    @column_width.setter
+    def column_width(self, v):
+        _call("col_width", value=float(v), **self._kw())
+
+    @property
+    def row_height(self):
+        """行高(ポイント)。範囲の行がまちまちなら None。"""
+        return _call("row_height", **self._kw())["value"]
+
+    @row_height.setter
+    def row_height(self, v):
+        _call("row_height", value=float(v), **self._kw())
+
     def __len__(self):
         return self.size
 
@@ -362,6 +418,83 @@ def _grid_to_frame(grid, convert, index=True, header=True):
         if df.index.name is None or df.index.name == "":
             df.index.name = None
     return df
+
+
+def _hex_of(v):
+    # 色 → "RRGGBB"。(r, g, b) のタプル / "#RRGGBB" / "RRGGBB" を受ける
+    if v is None:
+        return None
+    if isinstance(v, (tuple, list)) and len(v) == 3:
+        return "%02X%02X%02X" % tuple(int(x) for x in v)
+    s = str(v).lstrip("#")
+    return (s[-6:] if len(s) == 8 else s).upper()
+
+
+def _tuple_of(hex6):
+    # "RRGGBB" → (r, g, b)。xlwings は色をタプルで見せる
+    return tuple(int(hex6[i:i + 2], 16) for i in (0, 2, 4))
+
+
+class _RangeFont:
+    """Range.font の返り。xlwings と同じく、性質ごとに読み書きする
+    (font.bold = True は太字だけを変える — openpyxl の「一式の置き換え」とは
+    逆の作法。相手の定義に合わせてある)。"""
+
+    __slots__ = ("_rng",)
+
+    def __init__(self, rng):
+        self._rng = rng
+
+    def _get(self, key, default=None):
+        return _call("get_fmt", **self._rng._kw()).get(key, default)
+
+    def _set(self, **kw):
+        kw.update(self._rng._kw())
+        _call("set_fmt", **kw)
+
+    @property
+    def name(self):
+        return self._get("font")
+
+    @name.setter
+    def name(self, v):
+        self._set(font=v)
+
+    @property
+    def size(self):
+        return self._get("size")
+
+    @size.setter
+    def size(self, v):
+        self._set(size=None if v is None else float(v))
+
+    @property
+    def bold(self):
+        return bool(self._get("bold"))
+
+    @bold.setter
+    def bold(self, v):
+        self._set(bold=bool(v))
+
+    @property
+    def italic(self):
+        return bool(self._get("italic"))
+
+    @italic.setter
+    def italic(self, v):
+        self._set(italic=bool(v))
+
+    @property
+    def color(self):
+        c = self._get("color")
+        return _tuple_of(c) if c else None
+
+    @color.setter
+    def color(self, v):
+        self._set(color=_hex_of(v))
+
+    def __repr__(self):
+        return "<officework.calc Font {}>".format(self._rng._a1())
 
 
 def _to_grid(v):
@@ -490,6 +623,10 @@ class Sheet:
     def clear_contents(self):
         """シートの値と式を全部消す(書式は据え置き)。"""
         _call("clear_contents", sheet=self.name)
+
+    def clear_formats(self):
+        """シートの書式を全部消す(値は残る)。"""
+        _call("clear_formats", sheet=self.name)
 
     def activate(self):
         """画面のシートをこのシートに切り替える。"""
