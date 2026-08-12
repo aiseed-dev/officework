@@ -5,36 +5,7 @@
 
 use crate::*;
 
-/// 本文のフォント。**同梱せず、システムから探す**
-/// (埋め込むと実行ファイルがフォントを配ることになり、免許の表示義務も付く)。
-///
-/// 起動時に一度だけ読み、以後は借りて使う。
-/// 見つからなければ**その場で止める** — 日本語が豆腐になった画面を
-/// 「動いている」と見せない。
-pub(crate) fn font_data() -> &'static [u8] {
-    static FONT: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
-    FONT.get_or_init(|| {
-        {
-            // 文書が書体を指定していればそれを、無ければ機械にある日本語フォントを
-            let (fam, _) = kumihan::font::for_document(None).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
-            kumihan::font::load(fam).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            })
-        }
-    })
-}
-
-/// `RRGGBB` の1成分を 0.0〜1.0 で返す。読めない色は黒として扱う
-pub(crate) fn hex(s: &str, i: usize) -> f32 {
-    s.get(i * 2..i * 2 + 2)
-        .and_then(|h| u8::from_str_radix(h, 16).ok())
-        .map(|v| v as f32 / 255.0)
-        .unwrap_or(0.0)
-}
+pub(crate) use ops::{font_data, hex, image_px};
 
 /// セルの文章(段落を \n で繋いだもの)。
 pub(crate) fn cell_text(c: &kumihan::Cellbox) -> String {
@@ -44,41 +15,6 @@ pub(crate) fn cell_text(c: &kumihan::Cellbox) -> String {
 /// セルへ文章を戻す。段落ごとの書式は同じ位置から引き継ぐ(本文と同じ規則)。
 pub(crate) fn set_cell_text(c: &mut kumihan::Cellbox, text: &str) {
     kumihan::set_paras_text(&mut c.paragraphs, text, SIZE_PT);
-}
-
-/// PNG / JPEG の画素数 (幅, 高さ)。読めなければ None。
-/// 中身は復号しない — 大きさを知るだけなら頭を見れば足りる。
-pub(crate) fn image_px(bytes: &[u8]) -> Option<(u32, u32)> {
-    if bytes.starts_with(&[0x89, b'P', b'N', b'G']) {
-        // 署名8 + 長さ4 + "IHDR"4 の後に、幅・高さが BE で並ぶ
-        let w = u32::from_be_bytes(bytes.get(16..20)?.try_into().ok()?);
-        let h = u32::from_be_bytes(bytes.get(20..24)?.try_into().ok()?);
-        return Some((w, h));
-    }
-    if bytes.starts_with(&[0xFF, 0xD8]) {
-        let mut i = 2usize;
-        while i + 9 < bytes.len() {
-            if bytes[i] != 0xFF {
-                return None;
-            }
-            let marker = bytes[i + 1];
-            // 単独の印(長さ無し)は飛ばす
-            if marker == 0xFF || (0xD0..=0xD9).contains(&marker) || marker == 0x01 {
-                i += 2;
-                continue;
-            }
-            let len = u16::from_be_bytes([bytes[i + 2], bytes[i + 3]]) as usize;
-            // SOF0〜3 に高さ・幅
-            if matches!(marker, 0xC0..=0xC3) {
-                let h = u16::from_be_bytes([bytes[i + 5], bytes[i + 6]]) as u32;
-                let w = u16::from_be_bytes([bytes[i + 7], bytes[i + 8]]) as u32;
-                return Some((w, h));
-            }
-            i += 2 + len;
-        }
-        return None;
-    }
-    None
 }
 
 /// 変更履歴: 現在の段落の記(そのまま/新規/変更)。

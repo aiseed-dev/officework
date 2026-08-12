@@ -4090,6 +4090,8 @@ dependencies = [
 name = "ops"
 version = "0.0.1"
 dependencies = [
+ "ed25519-dalek",
+ "kumihan",
  "sheet",
 ]
 
@@ -7658,6 +7660,7 @@ dependencies = [
  "gpui_platform",
  "kumihan",
  "ooxml",
+ "ops",
  "paper",
  "pyrun",
  "rfd",

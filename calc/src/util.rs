@@ -2,28 +2,7 @@
 
 use crate::*;
 
-/// 本文のフォント。**同梱せず、システムから探す**
-/// (埋め込むと実行ファイルがフォントを配ることになり、免許の表示義務も付く)。
-///
-/// 起動時に一度だけ読み、以後は借りて使う。
-/// 見つからなければ**その場で止める** — 日本語が豆腐になった画面を
-/// 「動いている」と見せない。
-pub(crate) fn font_data() -> &'static [u8] {
-    static FONT: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
-    FONT.get_or_init(|| {
-        {
-            // 文書が書体を指定していればそれを、無ければ機械にある日本語フォントを
-            let (fam, _) = kumihan::font::for_document(None).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
-            kumihan::font::load(fam).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            })
-        }
-    })
-}
+pub(crate) use ops::{font_data, image_px};
 
 pub(crate) const ROW_H: f32 = 24.0;
 /// `RRGGBB` を色にする。読めなければ黒
@@ -40,13 +19,8 @@ pub(crate) fn tint(base: gpui::Rgba, k: f32) -> gpui::Rgba {
 }
 
 pub(crate) fn hex(s: &str) -> gpui::Rgba {
-    let g = |i: usize| {
-        s.get(i * 2..i * 2 + 2)
-            .and_then(|h| u8::from_str_radix(h, 16).ok())
-            .map(|v| v as f32 / 255.0)
-            .unwrap_or(0.0)
-    };
-    gpui::Rgba { r: g(0), g: g(1), b: g(2), a: 1.0 }
+    // 成分の読みは ops(writer と同じ)。gpui に包むのはここだけ
+    gpui::Rgba { r: ops::hex(s, 0), g: ops::hex(s, 1), b: ops::hex(s, 2), a: 1.0 }
 }
 
 pub(crate) const COL_W: f32 = 108.0;
@@ -999,37 +973,6 @@ pub(crate) fn solve_goal(base: &sheet::Sheet, target: Pos, goal: f64, var: Pos) 
         }
         (a, fa) = (b, fb);
         (b, fb) = (c, probe(c));
-    }
-    None
-}
-
-/// 画像の寸法(px)。PNG は IHDR、JPEG は SOF から(writer と同じ読み方)。
-pub(crate) fn image_px(bytes: &[u8]) -> Option<(u32, u32)> {
-    if bytes.starts_with(&[0x89, b'P', b'N', b'G']) {
-        let w = u32::from_be_bytes(bytes.get(16..20)?.try_into().ok()?);
-        let h = u32::from_be_bytes(bytes.get(20..24)?.try_into().ok()?);
-        return Some((w, h));
-    }
-    if bytes.starts_with(&[0xFF, 0xD8]) {
-        let mut i = 2usize;
-        while i + 9 < bytes.len() {
-            if bytes[i] != 0xFF {
-                return None;
-            }
-            let marker = bytes[i + 1];
-            if marker == 0xFF || (0xD0..=0xD9).contains(&marker) || marker == 0x01 {
-                i += 2;
-                continue;
-            }
-            let len = u16::from_be_bytes([bytes[i + 2], bytes[i + 3]]) as usize;
-            if matches!(marker, 0xC0..=0xC3) {
-                let h = u16::from_be_bytes([bytes[i + 5], bytes[i + 6]]) as u32;
-                let w = u16::from_be_bytes([bytes[i + 7], bytes[i + 8]]) as u32;
-                return Some((w, h));
-            }
-            i += 2 + len;
-        }
-        return None;
     }
     None
 }

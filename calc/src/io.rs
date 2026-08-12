@@ -2,93 +2,22 @@
 
 use crate::*;
 
-/// 排他ロックの置き場(LibreOffice と同じ `.~lock.<名前>#`)。
-/// ファイルサーバーの共有フォルダで「同時に開いて後勝ちで潰す」を防ぐ。
-pub(crate) fn lock_path_for(p: &std::path::Path) -> std::path::PathBuf {
-    let name = p.file_name().unwrap_or_default().to_string_lossy();
-    p.with_file_name(format!(".~lock.{name}#"))
-}
-
-/// 自分の名乗り(誰が開いているか)。user@host。
-pub(crate) fn lock_identity() -> String {
-    let user = std::env::var("USER")
-        .or_else(|_| std::env::var("USERNAME"))
-        .unwrap_or_else(|_| "?".into());
-    let host = std::fs::read_to_string("/etc/hostname")
-        .map(|s| s.trim().to_string())
-        .unwrap_or_else(|_| "?".into());
-    format!("{user}@{host}")
-}
+// 排他ロック・署名の鍵・16進は ops(calc と writer で1本。2026-08-12 段A)。
+// 訳の要る文言だけ、ここで包む
+pub(crate) use ops::{lock_identity, lock_path_for, sig_path_for, to_hex, unhex};
 
 /// 先客のロックを読む(あれば名乗りを返す)。自分自身のロックは先客と見ない。
 pub(crate) fn foreign_lock(p: &std::path::Path) -> Option<String> {
-    let lp = lock_path_for(p);
-    let raw = std::fs::read_to_string(lp).ok()?;
-    let who = raw
-        .split(',')
-        .map(str::trim)
-        .find(|t| !t.is_empty())
-        .unwrap_or("誰か")
-        .to_string();
-    (who != lock_identity()).then_some(who)
+    ops::foreign_lock(p, ui::t!("誰か"))
 }
 
-/// 署名の鍵の置き場。writer と共通の ~/.config/office/sign.key
-pub(crate) fn sign_key_path() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_default()
-        .join(".config/office/sign.key")
-}
-
-/// 署名の鍵を読む。無ければ作る(/dev/urandom の種。0600 で置く)
+/// 署名の鍵を読む。無ければ作る(本体は ops — ここは文言の包み)
 pub(crate) fn load_or_make_key() -> Result<ed25519_dalek::SigningKey, String> {
-    let kp = sign_key_path();
-    if let Ok(bytes) = std::fs::read(&kp) {
-        let seed: [u8; 32] = bytes
-            .get(..32)
-            .and_then(|b| b.try_into().ok())
-            .ok_or("鍵ファイルが壊れています(~/.config/office/sign.key)")?;
-        return Ok(ed25519_dalek::SigningKey::from_bytes(&seed));
-    }
-    let mut seed = [0u8; 32];
-    use std::io::Read as _;
-    std::fs::File::open("/dev/urandom")
-        .and_then(|mut f| f.read_exact(&mut seed))
-        .map_err(|e| ui::tf!("乱数が取れません: {}", e))?;
-    if let Some(dir) = kp.parent() {
-        let _ = std::fs::create_dir_all(dir);
-    }
-    use std::io::Write as _;
-    use std::os::unix::fs::OpenOptionsExt as _;
-    std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(&kp)
-        .and_then(|mut f| f.write_all(&seed))
-        .map_err(|e| ui::tf!("鍵が置けません: {}", e))?;
-    Ok(ed25519_dalek::SigningKey::from_bytes(&seed))
-}
-
-pub(crate) fn to_hex(b: &[u8]) -> String {
-    b.iter().map(|x| format!("{x:02x}")).collect()
-}
-
-pub(crate) fn unhex(s: &str) -> Option<Vec<u8>> {
-    if !s.len().is_multiple_of(2) {
-        return None;
-    }
-    (0..s.len() / 2)
-        .map(|i| u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).ok())
-        .collect()
-}
-
-/// 署名の添え書きの置き場。ブックの隣の 名前.xlsx.sig
-pub(crate) fn sig_path_for(p: &std::path::Path) -> PathBuf {
-    let mut os = p.as_os_str().to_owned();
-    os.push(".sig");
-    PathBuf::from(os)
+    ops::load_or_make_key().map_err(|e| match e {
+        ops::KeyErr::Corrupt => ui::t!("鍵ファイルが壊れています(~/.config/office/sign.key)").to_string(),
+        ops::KeyErr::NoRandom(e) => ui::tf!("乱数が取れません: {}", e).to_string(),
+        ops::KeyErr::CantStore(e) => ui::tf!("鍵が置けません: {}", e).to_string(),
+    })
 }
 
 impl Calc {

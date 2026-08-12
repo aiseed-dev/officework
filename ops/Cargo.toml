@@ -4,7 +4,11 @@ version = "0.0.1"
 edition.workspace = true
 license.workspace = true
 
-# sheet だけ。「動いているアプリ」の都合(undo の節目・状態行・画面)は
-# Host trait の向こう側 — 実装が calc なら生きた表、pysheet ならファイル
+# sheet と kumihan(エンジンの層)だけ。「動いているアプリ」の都合
+# (undo の節目・状態行・画面)は Host trait の向こう側 — 実装が calc なら
+# 生きた表、pysheet ならファイル。gpui は絶対に入れない
 [dependencies]
 sheet = { path = "../sheet" }
+kumihan = { path = "../engine" }
+# 署名の鍵(calc と writer が同じ鍵を使う)
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "fast"] }
