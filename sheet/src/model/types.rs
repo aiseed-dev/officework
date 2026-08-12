@@ -1643,11 +1643,47 @@ pub struct PivotDef {
 /// 保存は原文持ち越しなので、開いたファイルの情報は保存で消えない。
 #[derive(Debug, Clone, Default)]
 pub struct BookProps {
-    pub creator: String,
+    /// 著者。**`dc:creator` は1つの要素に `;` 区切りで何人でも入る**
+    /// (Excel の慣習)。並びが意味を持つ(先頭が主著者)ので集合ではなく列。
+    /// 読みで割り、書きで繋ぐ — 綴りの都合はここより外に出さない
+    pub creators: Vec<String>,
     pub title: String,
     pub subject: String,
     pub keywords: String,
     pub description: String,
+    /// カスタムプロパティ(docProps/custom.xml)。**core.xml とは別の部品** —
+    /// 宣言(Content_Types)と関係(_rels/.rels)も要る。空なら部品ごと作らない
+    pub custom: Vec<CustomProp>,
+}
+
+/// カスタムプロパティ1件(`docProps/custom.xml` の `<property>`)。
+/// 名前は**ブックの中で一意**(Excel も重複を許さない)。
+#[derive(Debug, Clone, PartialEq)]
+pub struct CustomProp {
+    pub name: String,
+    pub value: CustomVal,
+    /// 「内容にリンク」(`linkTarget` — 値の出どころが名前付き範囲)。
+    /// こちらは**繋ぎ直さないが、外しもしない**。落とすと Excel で
+    /// 繋がっていた札が黙って静かな値に変わる。画面では鎖の印を出す
+    pub link: Option<String>,
+}
+
+/// カスタムプロパティの値。型は `vt:` の要素名で決まる。
+#[derive(Debug, Clone, PartialEq)]
+pub enum CustomVal {
+    /// `vt:lpwstr` — 文字
+    Text(String),
+    /// `vt:r8` — 数
+    Number(f64),
+    /// `vt:filetime` — 日付。中身は `2026-08-13T00:00:00Z` の綴りのまま持つ
+    /// (暦の計算はしない。往復で崩さないことが先)
+    Date(String),
+    /// `vt:bool` — はい・いいえ
+    Bool(bool),
+    /// **こちらが知らない型**(`vt:i4`・`vt:cy` など)。タグ名と中身をそのまま
+    /// 持って保存で同じ要素を書き戻す。**黙って落とさない** —
+    /// 画面では値だけ見せ、打ち直しはさせない
+    Other(String, String),
 }
 
 /// 表オブジェクト(xlsx の table。範囲に名前と性質を付けたもの)。

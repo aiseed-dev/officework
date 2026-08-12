@@ -3601,11 +3601,71 @@ impl Calc {
                     self.insert_py_image(TEXTART_PY, "textart", text, cx);
                 }
             }
+            // 著者を1人足す(dc:creator は `;` 区切りで何人でも入る)
+            "prop-author-add" => {
+                let name = text.trim().to_string();
+                if name.is_empty() {
+                    return;
+                }
+                if self.book.props.creators.contains(&name) {
+                    self.status = ui::tf!("「{}」はもう著者に入っています", name).into();
+                    return;
+                }
+                self.book.props.creators.push(name);
+                self.dirty = true;
+                self.status =
+                    ui::t!("著者を足しました(保存で xlsx に入ります)").into();
+            }
+            // カスタムプロパティ 1/3 — 名前。2段目(型)へ送る
+            "prop-add-name" => {
+                let name = text.trim().to_string();
+                if name.is_empty() {
+                    self.status = ui::t!("名前が空です(何も足しませんでした)").into();
+                    return;
+                }
+                self.prop_add = Some((name, PropKind::Text));
+                self.prompt = Some(("prop-add-type", Editor::new("")));
+            }
+            // カスタムプロパティ 2/3 — 型。空 Enter は文字
+            "prop-add-type" => {
+                let Some((name, _)) = self.prop_add.take() else { return };
+                self.prop_add = Some((name, PropKind::parse(&text)));
+                self.prompt = Some(("prop-add-value", Editor::new("")));
+            }
+            // カスタムプロパティ 3/3 — 値。**ここで初めて足す**
+            "prop-add-value" => {
+                let Some((name, kind)) = self.prop_add.take() else { return };
+                use sheet::model::{CustomProp, CustomVal};
+                let value = match kind {
+                    PropKind::Text => CustomVal::Text(text),
+                    PropKind::Number => match text.trim().parse::<f64>() {
+                        Ok(n) => CustomVal::Number(n),
+                        Err(_) => {
+                            self.status =
+                                ui::tf!("「{}」は数として読めません(足しませんでした)", text)
+                                    .into();
+                            return;
+                        }
+                    },
+                    PropKind::Date => CustomVal::Date(text.trim().to_string()),
+                    PropKind::Bool => CustomVal::Bool(matches!(
+                        text.trim(),
+                        "はい" | "true" | "TRUE" | "1" | "○"
+                    )),
+                };
+                // 名前はブックの中で一意。同じ名前があれば差し替える
+                let props = &mut self.book.props.custom;
+                match props.iter().position(|p| p.name == name) {
+                    Some(i) => props[i].value = value,
+                    None => props.push(CustomProp { name: name.clone(), value, link: None }),
+                }
+                self.dirty = true;
+                self.status =
+                    ui::tf!("プロパティ「{}」を控えました(保存で xlsx に入ります)", name).into();
+            }
             // ブックの情報(保存で docProps/core.xml へ)
-            "prop-creator" | "prop-title" | "prop-keywords" | "prop-subject"
-            | "prop-desc" => {
+            "prop-title" | "prop-keywords" | "prop-subject" | "prop-desc" => {
                 let f = match kind {
-                    "prop-creator" => &mut self.book.props.creator,
                     "prop-title" => &mut self.book.props.title,
                     "prop-keywords" => &mut self.book.props.keywords,
                     "prop-subject" => &mut self.book.props.subject,

@@ -232,6 +232,10 @@ struct Calc {
     fmt_panel: Option<(f32, f32)>,
     /// 小さな入力のパネル(種類, 入力欄)。"name"=名前の定義。開いている間は打鍵がここへ
     prompt: Option<(&'static str, Editor)>,
+    /// カスタムプロパティを足す途中(名前, 型)。名前 → 型 → 値 の3段を
+    /// 小窓の連なりで訊く(小計・ゴールシークと同じ運び)。**値まで打って
+    /// 初めて足す** — 途中でやめたら何も残らない
+    prop_add: Option<(String, PropKind)>,
     /// パスワードを伏せずに出すか。**小窓を開くたびに false へ戻す** —
     /// 前に見せたまま次の人が開く、を起こさない(2026-08-13、台帳
     /// 「パスワード表示/非表示アイコン」)
@@ -414,6 +418,39 @@ impl Drop for Calc {
     fn drop(&mut self) {
         // 置きっぱなしのロックは他の人の警告になってしまう。最後の保険
         self.release_lock();
+    }
+}
+
+/// カスタムプロパティの型の選び(画面の言葉と `CustomVal` の間)。
+/// **知らない型は選べない** — 読んだだけの `Other` はここに無い
+#[derive(Clone, Copy, PartialEq)]
+enum PropKind {
+    Text,
+    Number,
+    Date,
+    Bool,
+}
+
+impl PropKind {
+    /// 画面の言葉から選ぶ。空欄と読めない綴りは文字に落とす
+    fn parse(t: &str) -> Self {
+        match t.trim() {
+            "数" | "数値" => Self::Number,
+            "日付" => Self::Date,
+            "はい・いいえ" | "はい/いいえ" | "真偽" => Self::Bool,
+            _ => Self::Text,
+        }
+    }
+
+    /// 画面に出す言葉。**印は literal に付ける** — `ui::t!` は文言の門番が
+    /// 走査できる形しか受けない(鍵=日本語の文そのもの)
+    fn label(self) -> &'static str {
+        match self {
+            Self::Text => ui::t!("文字"),
+            Self::Number => ui::t!("数"),
+            Self::Date => ui::t!("日付"),
+            Self::Bool => ui::t!("はい・いいえ"),
+        }
     }
 }
 

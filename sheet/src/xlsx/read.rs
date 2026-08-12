@@ -1110,6 +1110,88 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
     sh
 }
 
+/// `dc:creator` の1つの文字列を著者の列に割る。
+///
+/// Excel は複数の著者を**1つの要素に `;` 区切り**で入れる。前後の空白は
+/// 落とし、空の断片は数えない — 「山田;」は1人であって、名無しの2人目は
+/// いない。区切りが無ければそのまま1人。
+pub(super) fn split_creators(raw: &str) -> Vec<String> {
+    raw.split(';').map(|t| t.trim()).filter(|t| !t.is_empty()).map(String::from).collect()
+}
+
+/// `docProps/custom.xml` を読む。
+///
+/// 一件は `<property fmtid="…" pid="…" name="…"><vt:型>値</vt:型></property>`。
+/// **`fmtid` と `pid` は読まない** — この部品の `fmtid` は規格が1つに
+/// 定めていて(D5CDD505-…)、`pid` は2からの連番。書くときに振り直すので
+/// 原文の番号を持ち歩いても使い道がない。ただし `linkTarget` は意味を持つ
+/// ので抱える。知らない型も捨てずに `Other` で抱える。
+pub(super) fn parse_custom_props(xml: &str) -> Vec<crate::model::CustomProp> {
+    use crate::model::{CustomProp, CustomVal};
+    let unesc = |t: &str| {
+        t.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"")
+            .replace("&apos;", "'").replace("&amp;", "&")
+    };
+    let mut out: Vec<CustomProp> = Vec::new();
+    let mut rest = xml;
+    while let Some(i) = rest.find("<property") {
+        rest = &rest[i..];
+        let Some(head_end) = rest.find('>') else { break };
+        let head = &rest[..head_end];
+        // name="…" を取る。無名の property は Excel も作らないので飛ばす
+        let grab_attr = |want: &str| -> Option<String> {
+            let pat = format!("{want}=\"");
+            head.find(&pat).and_then(|a| {
+                let s = &head[a + pat.len()..];
+                s.find('"').map(|b| unesc(&s[..b]))
+            })
+        };
+        let name = grab_attr("name").unwrap_or_default();
+        let link = grab_attr("linkTarget").filter(|t| !t.is_empty());
+        let body_end = rest.find("</property>").unwrap_or(rest.len());
+        let body = &rest[head_end + 1..body_end.max(head_end + 1)];
+        rest = &rest[body_end.min(rest.len())..];
+        if name.is_empty() {
+            continue;
+        }
+        // 中身は `<vt:型>値</vt:型>` ひとつ。接頭辞は原本によって変わる
+        // (`vt:` が既定だが、根で既定名前空間にしている物もある)ので
+        // 接頭辞は捨てて**局所名で見る**
+        let Some(a) = body.find('<') else { continue };
+        let Some(b) = body[a..].find('>').map(|k| a + k) else { continue };
+        let tag_full = &body[a + 1..b];
+        let tag = tag_full.split(':').next_back().unwrap_or(tag_full);
+        let inner = body[b + 1..]
+            .find('<')
+            .map(|k| &body[b + 1..b + 1 + k])
+            .unwrap_or("");
+        let raw = unesc(inner);
+        let value = match tag {
+            "lpwstr" | "lpstr" => CustomVal::Text(raw),
+            "r8" | "r4" => match raw.trim().parse::<f64>() {
+                Ok(n) => CustomVal::Number(n),
+                Err(_) => CustomVal::Other(tag.to_string(), raw),
+            },
+            "filetime" | "date" => CustomVal::Date(raw),
+            // XML の真偽は "true"/"false" と "1"/"0" の両方が来る
+            "bool" => match raw.trim() {
+                "true" | "1" => CustomVal::Bool(true),
+                "false" | "0" => CustomVal::Bool(false),
+                _ => CustomVal::Other(tag.to_string(), raw),
+            },
+            _ => CustomVal::Other(tag.to_string(), raw),
+        };
+        // 名前はブックの中で一意。同じ名前が二度来たら後を採る
+        if let Some(k) = out.iter().position(|p: &CustomProp| p.name == name) {
+            out[k].value = value;
+            out[k].link = link;
+        } else {
+            out.push(CustomProp { name, value, link });
+        }
+    }
+    out
+}
+
 pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut zip = zip::ZipArchive::new(src).map_err(|e| format!("zipを開けません: {e}"))?;
     let mut rep = Report::default();
@@ -1322,12 +1404,21 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 .unwrap_or_default()
         };
         book.props = crate::model::BookProps {
-            creator: grab("dc:creator"),
+            // **`;` 区切りで複数の著者**(Excel の慣習)。区切りが無ければ1人。
+            // 空欄は0人 — 「空の名前が1人いる」ことにしない
+            creators: split_creators(&grab("dc:creator")),
             title: grab("dc:title"),
             subject: grab("dc:subject"),
             keywords: grab("cp:keywords"),
             description: grab("dc:description"),
+            custom: Vec::new(),
         };
+    }
+    // カスタムプロパティ(docProps/custom.xml)。core.xml とは**別の部品**
+    if let Ok(mut f) = zip.by_name("docProps/custom.xml") {
+        let mut s = String::new();
+        let _ = f.read_to_string(&mut s);
+        book.props.custom = parse_custom_props(&s);
     }
     for (i, path) in paths.iter().enumerate() {
         let mut s = String::new();

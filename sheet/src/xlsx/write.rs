@@ -571,11 +571,77 @@ pub(super) fn set_core_tag(s: &str, tag: &str, val: &str) -> String {
     }
 }
 
+pub(super) const CUSTOM_REL: &str = r#"<Relationship Id="rIdCustom" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/>"#;
+
+pub(super) const CUSTOM_CT: &str = r#"<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>"#;
+
+/// `.rels` から、その先を指す `<Relationship …/>` を取り除く。
+/// 部品を消したのに関係が残ると、包みが「無い先」を指して壊れる。
+pub(super) fn drop_rel_to(rels: &str, target: &str) -> String {
+    let mut s = rels.to_string();
+    loop {
+        let Some(hit) = s.find(&format!("Target=\"{target}\"")) else { return s };
+        // その属性を抱えている <Relationship … /> の頭と尻
+        let Some(a) = s[..hit].rfind("<Relationship") else { return s };
+        let Some(b) = s[hit..].find("/>").map(|k| hit + k + 2) else { return s };
+        s.replace_range(a..b, "");
+    }
+}
+
+/// カスタムプロパティを1つの文字列に繋ぐ(`dc:creator` の中身)。
+///
+/// **Excel は `;` で継ぐ。** 名前そのものに `;` が入っていたら区切りと
+/// 見分けが付かないので、繋ぐ前に落とす — 開き直したときに1人が2人に
+/// 化ける方が、記号が1つ消えるより悪い。
+pub(super) fn join_creators(v: &[String]) -> String {
+    v.iter()
+        .map(|s| s.replace(';', " ").trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+/// `docProps/custom.xml` をモデルから組む。
+///
+/// `fmtid` はこの部品に規格が定めた1つの値。`pid` は **2から連番** —
+/// 0と1は予約で、飛ばすと読み手が拒む。`linkTarget` は原本のまま返す。
+pub(super) fn custom_props_xml(props: &[crate::model::CustomProp]) -> String {
+    use crate::model::CustomVal;
+    let esc = |t: &str| {
+        t.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+    };
+    let mut s = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/custom-properties\" xmlns:vt=\"http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes\">",
+    );
+    for (i, p) in props.iter().enumerate() {
+        let (tag, val) = match &p.value {
+            CustomVal::Text(t) => ("lpwstr".to_string(), esc(t)),
+            // 数は**丸めずそのまま**。整数は小数点を付けない綴りで出す
+            CustomVal::Number(n) => ("r8".to_string(), format!("{n}")),
+            CustomVal::Date(d) => ("filetime".to_string(), esc(d)),
+            CustomVal::Bool(b) => ("bool".to_string(), if *b { "true" } else { "false" }.into()),
+            CustomVal::Other(t, v) => (t.clone(), esc(v)),
+        };
+        let link = match &p.link {
+            Some(t) => format!(r#" linkTarget="{}""#, esc(t)),
+            None => String::new(),
+        };
+        s.push_str(&format!(
+            r#"<property fmtid="{{D5CDD505-2E9C-101B-9397-08002B2CF9AE}}" pid="{}" name="{}"{link}><vt:{tag}>{val}</vt:{tag}></property>"#,
+            i + 2,
+            esc(&p.name)
+        ));
+    }
+    s.push_str("</Properties>");
+    s
+}
+
 /// docProps/core.xml をブックの情報で差し替える。
 pub(super) fn patch_core_props(orig: &str, p: &crate::model::BookProps) -> String {
+    let creator = join_creators(&p.creators);
     let mut s = orig.to_string();
     for (tag, v) in [
-        ("dc:creator", &p.creator),
+        ("dc:creator", &creator),
         ("dc:title", &p.title),
         ("dc:subject", &p.subject),
         ("cp:keywords", &p.keywords),
@@ -780,6 +846,9 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                     let s = String::from_utf8_lossy(&buf).to_string();
                     carried.push((name, patch_core_props(&s, &book.props).into_bytes()));
                     continue;
+                }
+                if name == "docProps/custom.xml" {
+                    continue; // カスタムプロパティはモデルから作り直す(下)
                 }
                 if name == "[Content_Types].xml" {
                     orig_ct = Some(String::from_utf8_lossy(&buf).to_string());
@@ -1052,7 +1121,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     let carry = !carried.is_empty();
     // ブックの情報。原本に core.xml が無い・新規ブックでも、書いた情報は残す
     let pr = &book.props;
-    let props_any = !(pr.creator.is_empty()
+    let props_any = !(pr.creators.is_empty()
         && pr.title.is_empty()
         && pr.subject.is_empty()
         && pr.keywords.is_empty()
@@ -1075,6 +1144,30 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 }
             }
         }
+    }
+    // カスタムプロパティ(docProps/custom.xml)。**部品・宣言・関係の3つで
+    // ひと組** — どれか1つでも欠けると、Excel は「修復しました」と言って
+    // 開く(関係だけ残って部品が無い方が重い。無い先を指すので壊れた包み)。
+    // 中身は上の持ち越しで一度落としてあるので、ここが唯一の書き手
+    let custom_any = !book.props.custom.is_empty();
+    if custom_any {
+        carried.push((
+            "docProps/custom.xml".to_string(),
+            custom_props_xml(&book.props.custom).into_bytes(),
+        ));
+    }
+    if let Some((_, buf)) = carried.iter_mut().find(|(n, _)| n == "_rels/.rels") {
+        let mut s = String::from_utf8_lossy(buf).to_string();
+        let had = s.contains("docProps/custom.xml");
+        if custom_any && !had {
+            if let Some(i) = s.rfind("</Relationships>") {
+                s.insert_str(i, CUSTOM_REL);
+            }
+        } else if !custom_any && had {
+            // 全部消したら関係も畳む。**空の部品を置いて誤魔化さない**
+            s = drop_rel_to(&s, "docProps/custom.xml");
+        }
+        *buf = s.into_bytes();
     }
     for (name, buf) in &carried {
         zip.start_file(name.as_str(), o).map_err(|e| e.to_string())?;
@@ -1170,6 +1263,18 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         }
         if core_fresh && !ct.contains("core-properties") {
             add.push_str(r#"<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>"#);
+        }
+        // カスタムプロパティの宣言。**消えたときは宣言も畳む**(部品の無い
+        // 宣言は Excel の修復を呼ぶ)。持ち越しでない CT にも同じ手で足りる
+        let ct_has_custom = ct.contains("/docProps/custom.xml");
+        if custom_any && !ct_has_custom {
+            add.push_str(CUSTOM_CT);
+        } else if !custom_any && ct_has_custom {
+            if let Some(i) = ct.find(r#"<Override PartName="/docProps/custom.xml""#) {
+                if let Some(j) = ct[i..].find("/>") {
+                    ct.replace_range(i..i + j + 2, "");
+                }
+            }
         }
         if !add.is_empty() {
             if let Some(p) = ct.rfind("</Types>") {
@@ -1270,14 +1375,14 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         put("xl/joSpill.xml", &sx)?;
     }
     if !carry {
+        let mut add = String::new();
         if core_fresh {
-            put(
-                "_rels/.rels",
-                &RELS.replace("</Relationships>", &format!("{CORE_REL}</Relationships>")),
-            )?;
-        } else {
-            put("_rels/.rels", RELS)?;
+            add.push_str(CORE_REL);
         }
+        if custom_any {
+            add.push_str(CUSTOM_REL);
+        }
+        put("_rels/.rels", &RELS.replace("</Relationships>", &format!("{add}</Relationships>")))?;
     }
 
     let sheets_xml: String = book.sheets.iter().enumerate()

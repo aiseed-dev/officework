@@ -279,6 +279,152 @@ mod carry_tests {
                    Some("品名".into()));
     }
 
+    /// 原本の `docProps/custom.xml` を、宣言(Content_Types)と
+    /// 関係(_rels/.rels)ごと差した xlsx を作る。
+    fn xlsx_with_custom(inner: &str) -> Vec<u8> {
+        let mut book = Book::default();
+        book.sheets.push(Sheet { name: "帳票".into(), ..Default::default() });
+        let mut base = Vec::new();
+        crate::xlsx::write(&book, Cursor::new(&mut base)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&base)).unwrap();
+        let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let o: zip::write::FileOptions<'_, ()> = Default::default();
+        for i in 0..z.len() {
+            let mut f = z.by_index(i).unwrap();
+            let name = f.name().to_string();
+            let mut buf = Vec::new();
+            f.read_to_end(&mut buf).unwrap();
+            if name == "[Content_Types].xml" {
+                buf = String::from_utf8(buf).unwrap().replace("</Types>",
+                    r#"<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/></Types>"#).into_bytes();
+            }
+            if name == "_rels/.rels" {
+                buf = String::from_utf8(buf).unwrap().replace("</Relationships>",
+                    r#"<Relationship Id="rIdCustom" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/></Relationships>"#).into_bytes();
+            }
+            out.start_file(name, o).unwrap();
+            out.write_all(&buf).unwrap();
+        }
+        out.start_file("docProps/custom.xml", o).unwrap();
+        out.write_all(format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">{inner}</Properties>"#).as_bytes()).unwrap();
+        out.finish().unwrap().into_inner()
+    }
+
+    /// 部品・宣言・関係の3つを一度に見る(どれか1つでも欠けたら包みが壊れる)
+    fn custom_parts(saved: &[u8]) -> (bool, bool, bool, String) {
+        let mut z = zip::ZipArchive::new(Cursor::new(saved)).unwrap();
+        let names: Vec<String> =
+            (0..z.len()).map(|i| z.by_index(i).unwrap().name().into()).collect();
+        let part = names.iter().any(|n| n == "docProps/custom.xml");
+        let mut ct = String::new();
+        z.by_name("[Content_Types].xml").unwrap().read_to_string(&mut ct).unwrap();
+        let mut rels = String::new();
+        z.by_name("_rels/.rels").unwrap().read_to_string(&mut rels).unwrap();
+        let mut body = String::new();
+        if part {
+            z.by_name("docProps/custom.xml").unwrap().read_to_string(&mut body).unwrap();
+        }
+        (part, ct.contains("/docProps/custom.xml"), rels.contains("docProps/custom.xml"), body)
+    }
+
+    #[test]
+    fn 原本のカスタムプロパティは開いて保存で残る() {
+        let src = xlsx_with_custom(
+            r#"<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="発注番号"><vt:lpwstr>A-1234</vt:lpwstr></property>"#,
+        );
+        let (book, _) = crate::xlsx::read(Cursor::new(&src)).unwrap();
+        assert_eq!(book.props.custom.len(), 1, "読めていない");
+        assert_eq!(book.props.custom[0].name, "発注番号");
+        let mut saved = Vec::new();
+        crate::xlsx::write_with(&book, Some(Cursor::new(&src)), Cursor::new(&mut saved)).unwrap();
+        let (part, ct, rels, body) = custom_parts(&saved);
+        assert!(part && ct && rels, "部品/宣言/関係のどれかが消えた: {part} {ct} {rels}");
+        assert!(body.contains("A-1234") && body.contains("発注番号"), "中身が変わった: {body}");
+    }
+
+    #[test]
+    fn カスタムプロパティの4つの型が往復する() {
+        use crate::model::{CustomProp, CustomVal};
+        let mut b = Book::new();
+        let mk = |n: &str, v: CustomVal| CustomProp { name: n.into(), value: v, link: None };
+        b.props.custom = vec![
+            mk("発注番号", CustomVal::Text("A-1234 <検>".into())),
+            mk("数量", CustomVal::Number(12.5)),
+            mk("納期", CustomVal::Date("2026-08-13T00:00:00Z".into())),
+            mk("承認済み", CustomVal::Bool(true)),
+        ];
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        // 新規ブックでも部品・宣言・関係の3つが揃う
+        let (part, ct, rels, _) = custom_parts(&buf);
+        assert!(part && ct && rels, "3つ揃わない: {part} {ct} {rels}");
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        assert_eq!(back.props.custom, b.props.custom, "カスタムプロパティが往復しない");
+    }
+
+    #[test]
+    fn 知らない型と内容へのリンクは落とさない() {
+        // vt:i4 はこちらが型として持たない。linkTarget も繋ぎ直さない。
+        // **どちらも保存で同じ姿に戻す**のが約束(黙って落とさない)
+        let src = xlsx_with_custom(
+            r#"<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="通し番号"><vt:i4>7</vt:i4></property><property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="3" name="部署" linkTarget="部署名"><vt:lpwstr>総務</vt:lpwstr></property>"#,
+        );
+        let (book, _) = crate::xlsx::read(Cursor::new(&src)).unwrap();
+        assert_eq!(book.props.custom.len(), 2);
+        assert_eq!(
+            book.props.custom[0].value,
+            crate::model::CustomVal::Other("i4".into(), "7".into()),
+            "知らない型を落とした"
+        );
+        assert_eq!(book.props.custom[1].link.as_deref(), Some("部署名"));
+        let mut saved = Vec::new();
+        crate::xlsx::write_with(&book, Some(Cursor::new(&src)), Cursor::new(&mut saved)).unwrap();
+        let (_, _, _, body) = custom_parts(&saved);
+        assert!(body.contains("<vt:i4>7</vt:i4>"), "知らない型が保存で化けた: {body}");
+        assert!(body.contains(r#"linkTarget="部署名""#), "リンクが消えた: {body}");
+    }
+
+    #[test]
+    fn カスタムプロパティを全部消すと宣言と関係も畳む() {
+        // 部品だけ消して宣言や関係を残すと、包みが「無い先」を指す —
+        // Excel はそれを「修復しました」と言って開く
+        let src = xlsx_with_custom(
+            r#"<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="発注番号"><vt:lpwstr>A-1234</vt:lpwstr></property>"#,
+        );
+        let (mut book, _) = crate::xlsx::read(Cursor::new(&src)).unwrap();
+        book.props.custom.clear();
+        let mut saved = Vec::new();
+        crate::xlsx::write_with(&book, Some(Cursor::new(&src)), Cursor::new(&mut saved)).unwrap();
+        let (part, ct, rels, _) = custom_parts(&saved);
+        assert!(!part, "部品が残っている");
+        assert!(!ct, "宣言が残っている");
+        assert!(!rels, "関係が残っている(無い先を指す)");
+    }
+
+    #[test]
+    fn 複数の著者が区切りで往復する() {
+        let mut b = Book::new();
+        b.props.creators = vec!["山田 太郎".into(), "鈴木 花子".into()];
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
+        let mut core = String::new();
+        z.by_name("docProps/core.xml").unwrap().read_to_string(&mut core).unwrap();
+        assert!(core.contains("山田 太郎; 鈴木 花子"), "`;` で繋がっていない: {core}");
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        assert_eq!(back.props.creators, ["山田 太郎", "鈴木 花子"], "著者が往復しない");
+    }
+
+    #[test]
+    fn 著者の空白と余分な区切りは数に入れない() {
+        // 「山田;」は1人。名無しの2人目はいない
+        assert_eq!(crate::xlsx::read::split_creators("山田; ; 鈴木 ;"), ["山田", "鈴木"]);
+        assert_eq!(crate::xlsx::read::split_creators("").len(), 0);
+        // 名前そのものの `;` は繋ぐ前に落とす(開き直して2人に化けさせない)
+        let one = vec!["山;田".to_string()];
+        assert_eq!(crate::xlsx::read::split_creators(&crate::xlsx::write::join_creators(&one)).len(), 1);
+    }
+
     #[test]
     fn 古い計算順は持ち越さない() {
         // calcChain が古いままだと Excel が誤った順で開くことがある
@@ -1816,13 +1962,13 @@ mod script_roundtrip_tests {
     fn ブックの情報が往復する() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
-        b.props.creator = "日本フネン".into();
+        b.props.creators = vec!["日本フネン".into()];
         b.props.title = "見積 <2026>".into();
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
         buf.set_position(0);
         let (back, _) = read(buf).expect("読めない");
-        assert_eq!(back.props.creator, "日本フネン", "作成者が往復しない");
+        assert_eq!(back.props.creators, ["日本フネン"], "作成者が往復しない");
         assert_eq!(back.props.title, "見積 <2026>", "逃がしが往復しない");
         assert_eq!(back.props.subject, "", "空欄は空欄のまま");
     }

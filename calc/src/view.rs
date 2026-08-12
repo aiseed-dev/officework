@@ -2852,7 +2852,10 @@ impl Render for Calc {
                 "ai-table" => ui::t!("AI — 表にする文章").to_string(),
                 "ai-ask" => ui::t!("AI — 頼み(例: 合計の式を書いて)").to_string(),
                 "table-resize" => ui::t!("テーブルのサイズ変更 — 新しい範囲(A1:C9)").to_string(),
-                "prop-creator" => ui::t!("ブックの情報 — 作成者").to_string(),
+                "prop-author-add" => ui::t!("著者を追加 — 名前を1人ぶん").to_string(),
+                "prop-add-name" => ui::t!("プロパティを追加 1/3 — 名前").to_string(),
+                "prop-add-type" => ui::t!("プロパティを追加 2/3 — 型(文字 / 数 / 日付 / はい・いいえ。空 Enter = 文字)").to_string(),
+                "prop-add-value" => ui::tf!("プロパティを追加 3/3 — {} の値", self.prop_add.as_ref().map(|(n, k)| format!("{n}({})", k.label())).unwrap_or_default()),
                 "prop-title" => ui::t!("ブックの情報 — タイトル").to_string(),
                 "prop-keywords" => ui::t!("ブックの情報 — タグ").to_string(),
                 "prop-subject" => ui::t!("ブックの情報 — 件名").to_string(),
@@ -3576,7 +3579,11 @@ impl Render for Calc {
                 })
                 .child(mk("f-help", ui::t!("ヘルプ"), false))
                 .child(mk("f-req", ui::t!("機能のリクエスト"), false));
-            let mut pane = div().flex_1().bg(gpui::white()).p_8()
+            // **巻けるようにする。** カスタムプロパティは何件でも増える —
+            // 巻けないと、足した先から「プロパティを追加」が画面の外へ出て
+            // 押せなくなる(2026-08-13、実機で下端が切れているのを見た)
+            let mut pane = div().id("file-pane").flex_1().overflow_y_scroll()
+                .bg(gpui::white()).p_8()
                 .flex().flex_col().gap_3().text_size(px(us * 12.5)).text_color(fg);
             if self.file_view == 2 {
                 // 詳細設定 — 器は ~/.config/office/settings.toml
@@ -3753,9 +3760,44 @@ impl Render for Calc {
                     .child(div().text_size(px(us * 13.5))
                         .font_weight(gpui::FontWeight::BOLD)
                         .child(ui::t!("プロパティ")));
+                // 著者は**何人でも**(dc:creator は `;` 区切り)。
+                // 一人ずつ札にして、× で外し、「＋」で足す
+                let mut authors = div().flex().flex_row().flex_wrap().gap_1();
+                for (i, who) in self.book.props.creators.iter().enumerate() {
+                    authors = authors.child(div()
+                        .flex().flex_row().items_center().gap_1()
+                        .px_2().py_0p5().rounded_sm()
+                        .bg(rgb(0xEFF3F6)).border_1().border_color(rgb(0xE1E6EA))
+                        .child(SharedString::from(who.clone()))
+                        .child(div()
+                            .id(SharedString::from(format!("prop-author-x{i}")))
+                            .px_1().cursor_pointer().text_color(gray)
+                            .hover(move |s| s.text_color(rgb(0xB00020)))
+                            .child("×")
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                if i < this.book.props.creators.len() {
+                                    let who = this.book.props.creators.remove(i);
+                                    this.dirty = true;
+                                    this.status = ui::tf!("著者「{}」を外しました", who).into();
+                                }
+                                cx.notify()
+                            }))));
+                }
+                authors = authors.child(div()
+                    .id("prop-author-add")
+                    .px_2().py_0p5().rounded_sm().cursor_pointer()
+                    .border_1().border_color(rgb(0xE1E6EA)).text_color(gray)
+                    .hover(move |s| s.bg(item_bg))
+                    .child(ui::t!("＋ 著者を追加"))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.prompt = Some(("prop-author-add", Editor::new("")));
+                        cx.notify()
+                    })));
+                pane = pane.child(div().flex().flex_row().items_center()
+                    .child(div().w(px(220.0)).text_color(dim).child(ui::t!("作成者")))
+                    .child(authors));
                 let pr = &self.book.props;
                 for (k, v, kind) in [
-                    (ui::t!("作成者"), pr.creator.clone(), "prop-creator"),
                     (ui::t!("タイトル"), pr.title.clone(), "prop-title"),
                     (ui::t!("タグ"), pr.keywords.clone(), "prop-keywords"),
                     (ui::t!("件名"), pr.subject.clone(), "prop-subject"),
@@ -3783,6 +3825,63 @@ impl Render for Calc {
                                 cx.notify()
                             }))));
                 }
+                // カスタムプロパティ(docProps/custom.xml)。決まった5項目では
+                // 足りないものを、名前・型・値で自分で足す
+                pane = pane.child(div().h(px(6.0)))
+                    .child(div().text_size(px(us * 13.5))
+                        .font_weight(gpui::FontWeight::BOLD)
+                        .child(ui::t!("カスタムプロパティ")));
+                for (i, p) in self.book.props.custom.iter().enumerate() {
+                    use sheet::model::CustomVal;
+                    let (kind, val) = match &p.value {
+                        CustomVal::Text(t) => (ui::t!("文字").to_string(), t.clone()),
+                        CustomVal::Number(n) => (ui::t!("数").to_string(), format!("{n}")),
+                        CustomVal::Date(d) => (ui::t!("日付").to_string(), d.clone()),
+                        CustomVal::Bool(b) => (ui::t!("はい・いいえ").to_string(),
+                            if *b { ui::t!("はい") } else { ui::t!("いいえ") }.to_string()),
+                        // 型を知らない値。**見せるが打ち直させない**
+                        CustomVal::Other(t, v) => (t.clone(), v.clone()),
+                    };
+                    let linked = p.link.is_some();
+                    pane = pane.child(div().flex().flex_row().items_center()
+                        .child(div().w(px(220.0)).text_color(dim)
+                            .whitespace_nowrap().overflow_hidden()
+                            .child(SharedString::from(if linked {
+                                // 内容にリンクしている札。繋ぎ直しはしないが外しもしない
+                                format!("🔗 {}", p.name)
+                            } else {
+                                p.name.clone()
+                            })))
+                        .child(div().w(px(90.0)).text_color(gray).text_size(px(us * 11.5))
+                            .child(SharedString::from(kind)))
+                        .child(div().w(px(230.0)).whitespace_nowrap().overflow_hidden()
+                            .child(SharedString::from(val)))
+                        .child(div()
+                            .id(SharedString::from(format!("prop-custom-x{i}")))
+                            .px_1().cursor_pointer().text_color(gray)
+                            .hover(move |s| s.text_color(rgb(0xB00020)))
+                            .child("×")
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                if i < this.book.props.custom.len() {
+                                    let p = this.book.props.custom.remove(i);
+                                    this.dirty = true;
+                                    this.status =
+                                        ui::tf!("プロパティ「{}」を外しました", p.name).into();
+                                }
+                                cx.notify()
+                            }))));
+                }
+                pane = pane.child(div()
+                    .id("prop-custom-add")
+                    .w(px(220.0)).px_2().py_1().rounded_sm().cursor_pointer()
+                    .border_1().border_color(rgb(0xE1E6EA)).text_color(gray)
+                    .hover(move |s| s.bg(item_bg))
+                    .child(ui::t!("プロパティを追加"))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.prop_add = None;
+                        this.prompt = Some(("prop-add-name", Editor::new("")));
+                        cx.notify()
+                    })));
                 pane = pane.child(div().text_size(px(us * 11.5)).text_color(dim)
                     .child(ui::t!("欄を押して打ち、Enter で控える(保存で xlsx の情報に入ります)")));
             }
