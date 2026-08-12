@@ -54,6 +54,28 @@ df2 = wb.sheets.active["A1"].options(pd.DataFrame, expand="table").value
 The bridge talks over a unix socket on **this machine only** — no TCP is opened.
 It needs [officework](https://github.com/aiseed-dev/officework) running.
 
+## Your old vocabulary still works
+
+Code written for openpyxl, xlwings or python-docx largely runs as-is:
+
+```python
+ws = wb.active                          # openpyxl: cell(), append, iter_rows,
+ws.cell(2, 3).value                     #   dimensions, create_sheet,
+ws.append(["Aug", "pens", 5000])        #   copy_worksheet, freeze_panes …
+xw.Range("B2").offset(1, 2).address     # xlwings: '$D$3' — resize,
+xw.Range("A1").current_region           #   last_cell, current_region …
+d.tables[0].cell(0, 1).text             # python-docx: row_cells, columns,
+d[3].runs[0].font.name                  #   runs, clear …
+```
+
+The inventory — all 324 core members of the three libraries, judged one
+by one — is in the repo:
+[docs/pysheet-gokan.ja.md](https://github.com/aiseed-dev/officework/blob/main/docs/pysheet-gokan.ja.md).
+Interop is proven with the originals' own eyes: openpyxl reads what this
+engine writes, **including the computed values** it cannot produce itself.
+See the [Python manual](https://github.com/aiseed-dev/officework/blob/main/docs/python-manual.md)
+for the details and the deliberate differences.
+
 ## Why the engines exist
 
 `openpyxl` and `python-docx` rewrite the parts of the file they do not
@@ -115,7 +137,7 @@ d.save("out.docx")
 詳しい説明は GitHub にあります。
 
 - [README.ja.md](https://github.com/aiseed-dev/officework/blob/main/README.ja.md) — 全体
-- [Python の手引き](https://github.com/aiseed-dev/officework/blob/main/docs/python-manual.ja.md) — 範囲⇄配列・=PY・サンドボックス
+- [Python の手引き](https://github.com/aiseed-dev/officework/blob/main/docs/python-manual.ja.md) — 範囲⇄配列・=PY・openpyxl / xlwings / python-docx の語彙
 - [Excel からの乗り換え](https://github.com/aiseed-dev/officework/blob/main/docs/from-excel.ja.md)
 
 ライセンスは **AGPL-3.0-or-later**。**社内で使う分に義務はありません**

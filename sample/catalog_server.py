@@ -6,7 +6,7 @@
 # - GET /order.html   — 注文書(JS なしの HTML フォーム。記入して送るだけ — form の
 #                       POST は JavaScript 以前からの素の仕組み)
 # - GET /catalog.csv  — 品番,分類,品名,説明,単価(税抜) の CSV(商品マスタ)
-# - POST /order       — 注文の受け口。JSON(注文書.xlsx の @送信 net)と
+# - POST /order       — 注文の受け口。JSON(注文書.xlsx の @送信)と
 #                       フォーム(order.html)の両方を受ける
 # - GET /orders       — 受けた注文の一覧(JSON。確認用)
 #

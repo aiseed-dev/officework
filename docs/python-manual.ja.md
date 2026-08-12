@@ -191,6 +191,82 @@ t[1][2].paragraphs     # そのセルの段落(Paragraph として)
 文字書式は Python から**設定できません**(`p.runs` で読めるだけ) —
 体裁を整えるのは writer の仕事です。
 
+## よその語彙でも書ける — openpyxl・xlwings・python-docx
+
+手持ちのコードと、頭に入っている語彙を捨てなくてよい(2026-08-12)。
+**API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.md)で、
+在庫は台帳 [docs/pysheet-gokan.ja.md](pysheet-gokan.ja.md) — 3ライブラリの
+中核 324 メンバーを1件ずつ判定してある(できる物・作る物・作らない物と
+その理由)。ここに書くのは**いま動く物だけ**、全部この機械で実測済み。
+
+そして書式据え置きと再計算という上位分は、どの語彙で書いても付いてくる。
+
+### openpyxl の語彙(officework.sheet)
+
+```python
+from officework import sheet
+wb = sheet.Book.open("売上台帳.xlsx")
+ws = wb.active                        # 先頭のシート
+ws.title, ws.max_row, ws.max_column   # ('売上台帳', 37, 6)
+ws.dimensions                         # 'A1:F37'
+ws.cell(2, 3).value                   # 'ボールペン(黒)'(行・列は1始まり)
+ws.append(["8月", "筆記具", "万年筆", 1, 5000, 5000])   # 末尾に1行
+for row in ws.iter_rows(min_row=2, max_row=3, values_only=True):
+    print(row)                        # ('4月', '筆記具', 'ボールペン(黒)', 12.0, …)
+ws2 = wb.create_sheet()               # 名前は自動(Sheet, Sheet1, …)
+wb.copy_worksheet(ws)                 # 複製 — 中身・書式・結合・列幅ごと
+wb.remove(ws2)                        # 最後の1枚は抜けない(正直に断る)
+wb.save("out.xlsx")
+```
+
+- まだ何も無い所も `ws.cell(50, 1)` で**参照だけの Cell** が返る
+  (value は None。書けばその場に入る — openpyxl と同じ感触)
+- `insert_rows` / `delete_rows` / `insert_cols` / `delete_cols` は
+  `amount=` つき。`merged_cell_ranges`・`freeze_panes` も通る
+- **こちらの流儀もそのまま生きている**: `ws["A1"]` は今までどおり
+  **値**を返す(openpyxl は Cell を返す — ここだけ流儀が違う。
+  Cell が欲しいときは `cell()` で)
+- openpyxl が読めるかは向こうの試験でも確かめてある — こちらが書いた
+  xlsx を openpyxl がそのまま読む(**こちらが計算した値も** —
+  openpyxl 自身は式を計算できない)
+
+### xlwings の語彙(officework.calc — 動いている calc へ)
+
+参照の算術が入った。**繋がっていなくても算術は使える**(実測):
+
+```python
+from officework import calc as xw
+xw.Range("B2").address                    # '$B$2'
+xw.Range("B2").offset(1, 2).address       # '$D$3'
+xw.Range("B2").resize(3, 2).address       # '$B$2:$C$4'
+xw.Range("B2:D5").last_cell.address       # '$D$5'
+xw.Range("A1").current_region             # 地続きの表全体(expand の同族)
+
+b = xw.Book.attach()                      # 動いている calc に(caller() も同じ)
+b.sheets.active["A1"].value = 42
+```
+
+calc が居なければ黙って何かの振りをせず、そう言う:
+`OfficeworkError: calc に繋がりません(…/officework/calc.sock: Connection refused)`
+
+### python-docx の語彙(officework.doc)
+
+```python
+from officework import doc
+d = doc.Doc.open("報告書.docx")
+t = d.tables[0]
+t.cell(0, 1).text                    # '件名'
+[c.text for c in t.row_cells(1)]     # ['7月3日', '外壁塗装工事', '株式会社みほん商事', '640,200円']
+len(t.columns)                       # 4
+p = d[3]
+p.runs[0].font == "MS明朝"           # font は文字列としても比べられ、
+p.runs[0].font.name                  # .name でも引ける(書体が run に明示されていなければ None)
+```
+
+段落には `clear` / `iter_inner_content` も。**Run は凍った写し**(読み専用。
+直すのは `paragraph.replace` / `.text` の側)— ここは python-docx と設計が
+違う所で、理由は台帳の Run の行にある。
+
 ## セルの関数(UDF)と配列
 
 `~/.config/office/plugins/道具.py` に普通に `def` を書けば、その名前で
@@ -245,8 +321,8 @@ form["total"] = qty * 150
 ## 実行の枠
 
 - **サンドボックスは着せない**(2026-08-09 に外した)。plugins は自分で
-  据えたコードなので、ファイルもネットワークも普通に使える。`@名前 net` の
-  区別も無くなった(打つと「要らなくなりました」と言う)
+  据えたコードなので、ファイルもネットワークも普通に使える。
+  `@名前 net` の区別も無くなった(打つと「要らなくなりました」と言う)
 - 時間制限つき(手続き60秒・セルの関数30秒)。超えたら止めてそう言う
 - 機械に入っているライブラリ(polars・scipy・matplotlib 等)は使える
 - print した文字はステータスバーに出る(進み具合や件数はそこで言う)
@@ -340,9 +416,22 @@ AI が書く → 検分(J 列は空きか・net 不要)→ 実行 → 結果を�
 
 ## 実例(そのまま読める見本)
 
-- [templates/](../templates/README.md) — 問い合わせ台帳(`@取り込み net` の
+**エンジンだけ(pip install officework — アプリ不要)。**
+6本とも実測してから置いてある(sample/README.md に出力の数字ごと):
+
+- [sample/差し込み.py](../sample/差し込み.py) — 見積書に宛名と数量を差し込む。
+  書式据え置き・式は合計まで追従
+- [sample/量産.py](../sample/量産.py) — 1つの型紙から宛先3件の見積書
+- [sample/集計.py](../sample/集計.py) — `values()` で36行を一気読み → 区分別集計
+- [sample/差し替え.py](../sample/差し替え.py) — docx の `replace()`(書式を保つ置換)
+- [sample/表の吸い上げ.py](../sample/表の吸い上げ.py) — 文書の表 → CSV
+- [sample/点検.py](../sample/点検.py) — フォルダ一括で `unsupported` を数える検品
+
+**アプリと組む(plugins の手続き)。**
+
+- [templates/](../templates/README.md) — 問い合わせ台帳(`@取り込み` の
   CSV 取り込み・=PY の状態集計)ほか
-- [sample/注文書.xlsx](../sample/README.md) — マスタの入れ替え(`@更新 net`)と
-  JSON の送信(`@送信 net`)
+- [sample/注文書.xlsx](../sample/README.md) — マスタの入れ替え(`@更新`)と
+  JSON の送信(`@送信`)
 - [sample/受注台帳.xlsx](../sample/README.md) — 取り込みの控え(K2)で
   重複を防ぐ増分の取り込み

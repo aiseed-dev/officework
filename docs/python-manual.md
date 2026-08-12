@@ -197,6 +197,86 @@ lost from the report, but the first two do disappear from the document on save,
 and an equation becomes plain text. Character formatting cannot be *set* from
 Python (only read through `p.runs`); shaping a document is the writer app's job.
 
+## Writing in vocabularies you already know — openpyxl, xlwings, python-docx
+
+You don't have to throw away your existing code or the vocabulary in your
+head (2026-08-12). The policy is **copy the API and the tests, never the
+implementation** (docs/sekkei/python.ja.md); the inventory is the ledger
+[docs/pysheet-gokan.ja.md](pysheet-gokan.ja.md) — all 324 core members of
+the three libraries, judged one by one (what works, what we will build,
+what we won't and why). Everything below works today and was measured on
+this machine.
+
+And the two things the originals can't give you — untouched formatting and
+recalculation — come along whichever vocabulary you write in.
+
+### The openpyxl vocabulary (officework.sheet)
+
+```python
+from officework import sheet
+wb = sheet.Book.open("売上台帳.xlsx")
+ws = wb.active                        # first sheet
+ws.title, ws.max_row, ws.max_column   # ('売上台帳', 37, 6)
+ws.dimensions                         # 'A1:F37'
+ws.cell(2, 3).value                   # 'ボールペン(黒)' (row/column are 1-based)
+ws.append(["8月", "筆記具", "万年筆", 1, 5000, 5000])   # one row at the end
+for row in ws.iter_rows(min_row=2, max_row=3, values_only=True):
+    print(row)                        # ('4月', '筆記具', 'ボールペン(黒)', 12.0, …)
+ws2 = wb.create_sheet()               # names itself (Sheet, Sheet1, …)
+wb.copy_worksheet(ws)                 # duplicate — contents, formats, merges, widths
+wb.remove(ws2)                        # the last sheet can't be removed (it says so)
+wb.save("out.xlsx")
+```
+
+- `ws.cell(50, 1)` returns a **reference-only Cell** even where nothing
+  exists yet (value is None; assign and it lands there — the openpyxl feel)
+- `insert_rows` / `delete_rows` / `insert_cols` / `delete_cols` take
+  `amount=`; `merged_cell_ranges` and `freeze_panes` work too
+- **our own idiom stays alive**: `ws["A1"]` still returns the **value**
+  (openpyxl returns a Cell — that is the one deliberate difference;
+  use `cell()` when you want a Cell)
+- interop is proven with the original's own eyes: openpyxl reads what we
+  write — **including the computed values** it cannot produce itself
+
+### The xlwings vocabulary (officework.calc — a running calc)
+
+Reference arithmetic is in. **The arithmetic works even without a
+connection** (measured):
+
+```python
+from officework import calc as xw
+xw.Range("B2").address                    # '$B$2'
+xw.Range("B2").offset(1, 2).address       # '$D$3'
+xw.Range("B2").resize(3, 2).address       # '$B$2:$C$4'
+xw.Range("B2:D5").last_cell.address       # '$D$5'
+xw.Range("A1").current_region             # the contiguous table (kin of expand)
+
+b = xw.Book.attach()                      # attach to a running calc (caller() too)
+b.sheets.active["A1"].value = 42
+```
+
+When no calc is running it never pretends — it says so:
+`OfficeworkError: calc に繋がりません(…/officework/calc.sock: Connection refused)`
+
+### The python-docx vocabulary (officework.doc)
+
+```python
+from officework import doc
+d = doc.Doc.open("報告書.docx")
+t = d.tables[0]
+t.cell(0, 1).text                    # '件名'
+[c.text for c in t.row_cells(1)]     # ['7月3日', '外壁塗装工事', '株式会社みほん商事', '640,200円']
+len(t.columns)                       # 4
+p = d[3]
+p.runs[0].font == "MS明朝"           # font compares as a string, and
+p.runs[0].font.name                  # answers .name too (None when the run names no font)
+```
+
+Paragraphs also carry `clear` / `iter_inner_content`. **A Run is a frozen
+copy** (read-only; you edit through `paragraph.replace` / `.text`) — this
+is a deliberate design difference from python-docx, and the reason is
+written next to Run in the ledger.
+
 ## Cell functions (UDFs) and arrays
 
 Write a plain `def` in `~/.config/office/plugins/tools.py` and it is callable
@@ -255,8 +335,8 @@ form["total"] = qty * 150
 ## The execution environment
 
 - **No sandbox is applied** (removed 2026-08-09). Plugins are code you
-  installed yourself, so files and the network work normally. The `@name net`
-  distinction is gone (typing it says so)
+  installed yourself, so files and the network work normally.
+  The `@name net` distinction is gone (typing it says so)
 - Time-limited (procedures 60 s, cell functions 30 s); overruns are killed
   and reported
 - Libraries installed on the machine (polars, scipy, matplotlib, …) work
@@ -360,9 +440,23 @@ the collaboration.
 
 ## Worked examples (readable as-is)
 
+**Engine only (pip install officework — no app needed).**
+All six were run in that folder before being written down (sample/README.md
+quotes the outputs):
+
+- [sample/差し込み.py](../sample/差し込み.py) — fill the quote form; formats
+  survive, formulas recalculate through to the total
+- [sample/量産.py](../sample/量産.py) — three quotes from one template
+- [sample/集計.py](../sample/集計.py) — bulk read with `values()`, totals by category
+- [sample/差し替え.py](../sample/差し替え.py) — docx `replace()` that keeps run formatting
+- [sample/表の吸い上げ.py](../sample/表の吸い上げ.py) — a document table → CSV
+- [sample/点検.py](../sample/点検.py) — open a whole folder and count unsupported parts
+
+**Working with the app (plugins procedures).**
+
 - [templates/](../templates/README.md) — an inquiry ledger (CSV intake with
-  `@取り込み net`, status aggregation with =PY) and more
+  `@取り込み`, status aggregation with =PY) and more
 - [sample/注文書.xlsx](../sample/README.md) — swapping in a product master
-  (`@更新 net`) and sending JSON (`@送信 net`)
+  (`@更新`) and sending JSON (`@送信`)
 - [sample/受注台帳.xlsx](../sample/README.md) — incremental intake that
   avoids duplicates with a watermark cell (K2)
