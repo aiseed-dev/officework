@@ -18,6 +18,17 @@ pub(super) const ROOT_RELS: &str = r#"<?xml version="1.0" encoding="UTF-8" stand
 
 pub(super) const W_NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
+/// まっさらから作る文書に入れる最小の styles.xml。
+/// **原本があれば使わない**(原本のスタイル定義を持ち越す)。
+/// これが無いと、pStyle の Heading1 を読む側(Word / python-docx)が
+/// styleId を解決できず「Normal」に落ちる — 見出しと名乗った物は
+/// 見出しとして読まれるのが「定義どおり」。名前(w:name)は Word の
+/// 組み込み名("heading 1")— 読み手はこれで組み込みスタイルと同一視する。
+/// 見た目は最小(太字と大きさ)だけ — スタイル定義は持たない主義のまま、
+/// 読み手への名乗りのためだけに置く
+pub(super) const STYLES_MIN: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/><w:szCs w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:style></w:styles>"#;
+
 pub(super) const RNS_DOC: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 /// 文書を document.xml の本体にする。
@@ -482,6 +493,18 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                 w.write_event(Event::Start(BS::new("w:tbl"))).unwrap();
                 // 罫線(事務様式は罫線が見えないと様式にならない)
                 w.write_event(Event::Start(BS::new("w:tblPr"))).unwrap();
+                // スタイル名(読んだ名前を返すだけ — 定義は styles.xml の持ち物)。
+                // スキーマ(CT_TblPr)の並び: tblStyle → jc → tblBorders → tblLayout
+                if let Some(st) = &t.style {
+                    let mut e = BS::new("w:tblStyle");
+                    e.push_attribute(("w:val", st.as_str()));
+                    w.write_event(Event::Empty(e)).unwrap();
+                }
+                if let Some(a) = t.align {
+                    let mut e = BS::new("w:jc");
+                    e.push_attribute(("w:val", a.as_docx()));
+                    w.write_event(Event::Empty(e)).unwrap();
+                }
                 w.write_event(Event::Start(BS::new("w:tblBorders"))).unwrap();
                 for side in ["top", "left", "bottom", "right", "insideH", "insideV"] {
                     let tag = format!("w:{side}");
@@ -492,6 +515,12 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                     w.write_event(Event::Empty(e)).unwrap();
                 }
                 w.write_event(Event::End(BytesEnd::new("w:tblBorders"))).unwrap();
+                // 列幅の固定。既定(autofit)は書かない — docx の既定と同じ
+                if t.fixed_layout {
+                    let mut e = BS::new("w:tblLayout");
+                    e.push_attribute(("w:type", "fixed"));
+                    w.write_event(Event::Empty(e)).unwrap();
+                }
                 w.write_event(Event::End(BytesEnd::new("w:tblPr"))).unwrap();
                 // 列幅を返す(読んだものを捨てると、保存で表の形が変わる)。
                 // tblGrid は ECMA-376 の必須部品 — 幅の指定が無い(等分)表でも
@@ -690,6 +719,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     let mut orig_settings: Option<String> = None;
     let mut orig_core: Option<String> = None;
     let mut orig_root_rels: Option<String> = None;
+    let mut orig_has_styles = false;
     let has_props = doc.props != Default::default();
     if let Some(src) = original {
         if let Ok(mut z) = zip::ZipArchive::new(src) {
@@ -702,6 +732,9 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 // 本文だけがこちらの管轄。他の部品は原本のまま
                 if name == "word/document.xml" {
                     continue;
+                }
+                if name == "word/styles.xml" {
+                    orig_has_styles = true; // 原本の定義を持ち越す(下で作らない)
                 }
                 let mut buf = Vec::new();
                 if f.read_to_end(&mut buf).is_err() {
@@ -773,6 +806,8 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
              "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"),
             ((has_props || orig_core.is_some()).then_some("docProps/core.xml"),
              "application/vnd.openxmlformats-package.core-properties+xml"),
+            ((!orig_has_styles).then_some("word/styles.xml"),
+             "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"),
         ] {
             let Some(name) = name else { continue };
             if !ct.contains(&format!("PartName=\"/{name}\"")) {
@@ -848,11 +883,17 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         zip.write_all(cx.as_bytes()).map_err(|e| e.to_string())?;
     }
 
+    // まっさらの文書には最小のスタイル定義を入れる(STYLES_MIN の注のとおり)
+    if !orig_has_styles {
+        zip.start_file("word/styles.xml", opts).map_err(|e| e.to_string())?;
+        zip.write_all(STYLES_MIN.as_bytes()).map_err(|e| e.to_string())?;
+    }
+
     // 本文の rels。原本の関係(既存の画像・ヘッダー等)は残し、
     // 挿した画像のぶん(rIdJO1〜)と、新しく作るヘッダー・フッターを足す
     if orig_rels.is_some() || !new_media.is_empty() || hdr.is_some() || ftr.is_some()
         || doc.page_color.is_some() || doc.hyphenate || doc.protection.is_some()
-        || !cmts_out.is_empty()
+        || !cmts_out.is_empty() || !orig_has_styles
     {
         let mut rels = orig_rels.unwrap_or_else(|| {
             concat!(
@@ -876,6 +917,12 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             let (ext, _) = image_kind(m);
             add.push_str(&format!(
                 r#"<Relationship Id="rIdJO{n}" Type="{RNS_DOC}/image" Target="media/joimg{n}.{ext}"/>"#
+            ));
+        }
+        // スタイル定義(styles.xml)への関係。まっさらの文書だけ
+        if !orig_has_styles && !rels.contains("Target=\"styles.xml\"") {
+            add.push_str(&format!(
+                r#"<Relationship Id="rIdJOsty" Type="{RNS_DOC}/styles" Target="styles.xml"/>"#
             ));
         }
         // コメント(comments.xml)への関係。無いときだけ足す

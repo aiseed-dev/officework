@@ -211,6 +211,7 @@ impl Writer {
                 self.doc.blocks.push(kumihan::Block::Table(kumihan::Table {
                     col_mm: vec![80.0],
                     rows: vec![vec![empty]],
+                    ..Default::default()
                 }));
                 self.dirty = true;
                 self.relayout_keep();
@@ -260,6 +261,7 @@ impl Writer {
                 self.doc.blocks.push(kumihan::Block::Table(kumihan::Table {
                     col_mm: vec![],
                     rows: (0..3).map(|_| (0..3).map(|_| empty()).collect()).collect(),
+                    ..Default::default()
                 }));
                 self.dirty = true;
                 self.relayout_keep();

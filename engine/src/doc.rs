@@ -435,6 +435,17 @@ pub struct Table {
     pub rows: Vec<Vec<Cellbox>>,
     /// 列の幅(mm)。docx の `w:gridCol`。空なら等分
     pub col_mm: Vec<f32>,
+    /// 表のスタイルの**名前だけ**(docx の `w:tblStyle w:val`)。
+    /// 定義(styles.xml)は持たない主義のまま — 名前を運んで返すだけ。
+    /// 読めた名前を書きで落とすと様式が崩れるので、往復のために持つ
+    pub style: Option<String>,
+    /// 表の置き方(docx の tblPr の `w:jc`)。None は指定なし(左)。
+    /// 使うのは Left / Center / Right だけ(表の置き方に両端揃えは無い)
+    pub align: Option<Align>,
+    /// 列幅を固定する(docx の `w:tblLayout w:type="fixed"`)。
+    /// **裏返しで持つ** — docx の既定は autofit(要素なし)なので、
+    /// `Default` の false がそのまま「autofit」になる
+    pub fixed_layout: bool,
 }
 
 /// 文書の中身は、段落か表。順序を保つ。

@@ -468,6 +468,7 @@ impl Builder {
                         self.doc.blocks.push(Block::Table(Table {
                             col_mm: Vec::new(),
                             rows,
+                            ..Default::default()
                         }));
                     }
                 }

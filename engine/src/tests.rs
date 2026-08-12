@@ -174,7 +174,9 @@ mod format_tests {
     #[test]
     fn 表は消えない() {
         let mut d = doc("本文");
-        d.blocks.push(Block::Table(Table { col_mm: vec![], rows: vec![vec![Cellbox::default()]] }));
+        d.blocks.push(Block::Table(Table { col_mm: vec![], rows: vec![vec![Cellbox::default()]],
+        ..Default::default()
+    }));
         d.set_body_text("本文を直した", 10.5);
         assert_eq!(d.tables().count(), 1, "表が消えた");
     }
@@ -480,7 +482,8 @@ mod table_layout_tests {
                 vec![cell("品名"), cell("金額")],
                 vec![cell("防火戸"), cell("120,000")],
             ],
-        }));
+        ..Default::default()
+    }));
         d
     }
 
@@ -534,7 +537,8 @@ mod table_layout_tests {
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
-        }));
+        ..Default::default()
+    }));
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
@@ -571,7 +575,9 @@ mod merge_layout_tests {
         let m = Metrics::new(&data).unwrap();
         let d = Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(),
             font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Table(Table { col_mm: vec![], rows })],
+            blocks: vec![Block::Table(Table { col_mm: vec![], rows,
+        ..Default::default()
+    })],
         };
         layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 })
     }
@@ -651,7 +657,8 @@ mod gridcol_tests {
             blocks: vec![Block::Table(Table {
                 col_mm,
                 rows: vec![vec![cell("項目"), cell("値")]],
-            })],
+        ..Default::default()
+    })],
         };
         layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 }).rules
     }
@@ -854,7 +861,8 @@ mod run_edit_tests {
         d.blocks.insert(1, Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![Cellbox::default()]],
-        }));
+        ..Default::default()
+    }));
         d.set_body_text("前に足す\n後", 10.5);
         let kinds: Vec<&str> = d.blocks.iter().map(|b| match b {
             Block::Para(_) => "段落",
@@ -1502,7 +1510,8 @@ mod footnote_layout_tests {
                 Block::Table(Table {
                     col_mm: vec![80.0],
                     rows: vec![vec![cell(vec![字("表"), 印("3")])]],
-                }),
+        ..Default::default()
+    }),
                 段(vec![字("後"), 印("4")]),
             ],
             ..Default::default()

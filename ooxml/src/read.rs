@@ -280,6 +280,12 @@ pub(super) struct TblBuild {
     cell: Vec<Paragraph>,
     /// 列幅(mm)。w:gridCol から
     col_mm: Vec<f32>,
+    /// 表のスタイルの名前(w:tblStyle)。定義は持たない — 名前を運ぶだけ
+    style: Option<String>,
+    /// 表の置き方(tblPr の w:jc)
+    align: Option<Align>,
+    /// 列幅の固定(w:tblLayout type="fixed")
+    fixed_layout: bool,
 }
 
 /// twip → mm(1twip = 1/20pt)
@@ -1078,6 +1084,7 @@ pub(super) fn parse_document_full(
     // 原本の root が宣言している名前空間。持ち越す原文の接頭辞をこれで包む
     let mut ns_decls: std::collections::BTreeMap<String, String> = Default::default();
     let mut in_ppr = false;
+    let mut in_tblpr = false;
     // 記入欄(w:sdt)。sdtPr を読んで控え、sdtContent の中の run に付ける
     let mut sdt_depth = 0usize;
     let mut in_sdtpr = false;
@@ -1153,6 +1160,7 @@ pub(super) fn parse_document_full(
                         fmt = CharFormat { sdt: sdt_cur.clone(), ..Default::default() };
                     }
                     b"pPr" => in_ppr = true,
+                    b"tblPr" => in_tblpr = true,
                     b"sz" if in_rpr => {
                         if let Some(v) = attr(&e, "val") {
                             if let Ok(h) = v.parse::<f32>() { size_pt = h / 2.0; }
@@ -1232,6 +1240,16 @@ pub(super) fn parse_document_full(
                     b"jc" if in_ppr => {
                         if let Some(v) = attr(&e, "val") { align = Align::from_docx(&v); }
                     }
+                    // 表の置き方・スタイル名・列幅の固定(w:tblPr の中)
+                    b"jc" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        b.align = attr(&e, "val").map(|v| Align::from_docx(&v));
+                    },
+                    b"tblStyle" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        b.style = attr(&e, "val").filter(|v| !v.is_empty());
+                    },
+                    b"tblLayout" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        b.fixed_layout = attr(&e, "type").as_deref() == Some("fixed");
+                    },
                     // 段落の背景色。fill が色(auto 以外)のときだけ
                     b"shd" if in_ppr => {
                         shade = attr(&e, "fill")
@@ -1566,6 +1584,16 @@ pub(super) fn parse_document_full(
                     b"jc" if in_ppr => {
                         if let Some(v) = attr(&e, "val") { align = Align::from_docx(&v); }
                     }
+                    // 表の置き方・スタイル名・列幅の固定(w:tblPr の中)
+                    b"jc" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        b.align = attr(&e, "val").map(|v| Align::from_docx(&v));
+                    },
+                    b"tblStyle" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        b.style = attr(&e, "val").filter(|v| !v.is_empty());
+                    },
+                    b"tblLayout" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        b.fixed_layout = attr(&e, "type").as_deref() == Some("fixed");
+                    },
                     // 段落の背景色。fill が色(auto 以外)のときだけ
                     b"shd" if in_ppr => {
                         shade = attr(&e, "fill")
@@ -1688,6 +1716,7 @@ pub(super) fn parse_document_full(
                     b"instrText" => in_instr = false,
                     b"rPr" => in_rpr = false,
                     b"pPr" => in_ppr = false,
+                    b"tblPr" => in_tblpr = false,
                     b"p" => {
                         if let Some(runs) = para.take() {
                             rep.runs += runs.len();
@@ -1757,7 +1786,13 @@ pub(super) fn parse_document_full(
                     },
                     b"tbl" => {
                         if let Some(b) = stack.pop() {
-                            let tb = Table { rows: b.rows, col_mm: b.col_mm };
+                            let tb = Table {
+                                rows: b.rows,
+                                col_mm: b.col_mm,
+                                style: b.style,
+                                align: b.align,
+                                fixed_layout: b.fixed_layout,
+                            };
                             if stack.is_empty() {
                                 doc.blocks.push(Block::Table(tb));
                             } else {

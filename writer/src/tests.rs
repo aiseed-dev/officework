@@ -19,6 +19,7 @@ mod cell_edit_tests {
         d.blocks.push(kumihan::Block::Table(kumihan::Table {
             col_mm: vec![],
             rows: vec![vec![cell("品名"), cell("金額")]],
+            ..Default::default()
         }));
         d
     }

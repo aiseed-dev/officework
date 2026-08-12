@@ -402,6 +402,41 @@ impl PyDoc {
         Ok(PyParagraph { inner: Arc::clone(&self.inner), loc: Loc::Body(b) })
     }
 
+    /// 改ページを足す(python-docx の add_page_break の役)。
+    /// 本家は「改ページの run を持つ段落」を足すが、うちの模型は改ページを
+    /// **段落の性質(page_break_before)**で持つ — 空の段落に印を付けて返す。
+    /// 紙の上の意味(ここで頁が変わる)は同じで、本家の
+    /// paragraph_format.page_break_before でもそのまま読める。
+    fn add_page_break(&self) -> PyResult<PyParagraph> {
+        let mut g = lock(&self.inner)?;
+        let p = Paragraph { line_spacing: 1.0, page_break_before: true, ..Default::default() };
+        g.doc.blocks.push(Block::Para(p));
+        let b = g.doc.blocks.len() - 1;
+        Ok(PyParagraph { inner: Arc::clone(&self.inner), loc: Loc::Body(b) })
+    }
+
+    /// 本文の末尾に見出しを足す(python-docx の add_heading の役)。
+    /// level は 1〜3 — この模型の見出しは3段まで(スタイル定義は持たない主義)。
+    /// level=0(Title)は無い物なので正直に断る。
+    #[pyo3(signature = (text="", level=1))]
+    fn add_heading(&self, text: &str, level: u8) -> PyResult<PyParagraph> {
+        if !(1..=3).contains(&level) {
+            return Err(PyValueError::new_err(format!(
+                "見出しは 1〜3(この模型の見出しは3段まで。0=Title は持たない): {level}"
+            )));
+        }
+        let mut g = lock(&self.inner)?;
+        let mut p = Paragraph {
+            line_spacing: 1.0,
+            style: kumihan::ParaStyle::Heading(level),
+            ..Default::default()
+        };
+        set_para_text(&mut p, text);
+        g.doc.blocks.push(Block::Para(p));
+        let b = g.doc.blocks.len() - 1;
+        Ok(PyParagraph { inner: Arc::clone(&self.inner), loc: Loc::Body(b) })
+    }
+
     /// 本文の末尾に表を組む(rows × cols)。各セルは空の段落を1つ持つ
     /// (docx のセルは段落無しでは立たない)。列の幅は等分。
     fn add_table(&self, rows: usize, cols: usize) -> PyResult<PyTable> {
@@ -412,6 +447,7 @@ impl PyDoc {
         let t = kumihan::Table {
             rows: (0..rows).map(|_| (0..cols).map(|_| empty_cell()).collect()).collect(),
             col_mm: Vec::new(),
+            ..Default::default()
         };
         g.doc.blocks.push(Block::Table(t));
         let block = g.doc.blocks.len() - 1;
@@ -485,24 +521,31 @@ impl PyParagraph {
         self.with_mut(|p| replace_in_runs(&mut p.runs, old, new))
     }
 
-    /// 書式のまとまり(run)の一覧。読むだけ — 差し込みの結果、書式が
-    /// 残っているかを確かめるのに使う。
+    /// 書式のまとまり(run)の一覧。位置で引き直す**手**(handle)—
+    /// 読みも書きもここから(python-docx の run と同じ使い方)。
     #[getter]
     fn runs(&self) -> PyResult<Vec<PyRun>> {
-        self.with(|p| {
-            p.runs
-                .iter()
-                .map(|r| PyRun {
-                    text: r.text.clone(),
-                    size_pt: r.size_pt,
-                    font: r.font.clone(),
-                    bold: r.fmt.bold,
-                    italic: r.fmt.italic,
-                    underline: r.fmt.underline,
-                    color: r.fmt.color.clone(),
-                })
-                .collect()
-        })
+        let n = self.with(|p| p.runs.len())?;
+        Ok((0..n)
+            .map(|idx| PyRun { inner: Arc::clone(&self.inner), loc: self.loc.clone(), idx })
+            .collect())
+    }
+
+    /// 段落の末尾に run を継ぎ足す(python-docx の add_run)。
+    /// 書式は**末尾の run のものを継ぐ**(text の代入が先頭を継ぐのと対 —
+    /// 続きを書くなら続きの書式)。段落が空なら既定の大きさの素の run。
+    #[pyo3(signature = (text=""))]
+    fn add_run(&self, text: &str) -> PyResult<PyRun> {
+        let idx = self.with_mut(|p| {
+            let (pt, font, fmt) = p
+                .runs
+                .last()
+                .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
+                .unwrap_or((DEFAULT_PT, None, CharFormat::default()));
+            p.runs.push(Run { text: text.to_string(), size_pt: pt, font, fmt });
+            p.runs.len() - 1
+        })?;
+        Ok(PyRun { inner: Arc::clone(&self.inner), loc: self.loc.clone(), idx })
     }
 
     /// 段落の役目。"body" か "heading1"〜"heading9"、目次なら "toc1" 等。
@@ -514,6 +557,27 @@ impl PyParagraph {
             kumihan::ParaStyle::Toc(n) => format!("toc{n}"),
             kumihan::ParaStyle::Tof => "tof".to_string(),
         })
+    }
+
+    /// 段落の役目を替える。受けるのは "body"("Normal")と
+    /// "heading1"〜"heading3"("Heading 1"・"見出し 1" でも良い)。
+    /// **スタイル定義(styles.xml)は持たない主義**なので、それ以外の
+    /// スタイル名は正直に断る(見た目は直接書式で付ける)。
+    #[setter]
+    fn set_style(&self, value: &str) -> PyResult<()> {
+        let v = value.to_ascii_lowercase().replace(' ', "");
+        let style = match v.as_str() {
+            "body" | "normal" | "標準" => kumihan::ParaStyle::Body,
+            "heading1" | "見出し1" => kumihan::ParaStyle::Heading(1),
+            "heading2" | "見出し2" => kumihan::ParaStyle::Heading(2),
+            "heading3" | "見出し3" => kumihan::ParaStyle::Heading(3),
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                    "役目は body / heading1〜3 だけ(スタイル定義は持たない主義): {value:?}"
+                )))
+            }
+        };
+        self.with_mut(|p| p.style = style)
     }
 
     /// 行の寄せ。"left" / "center" / "right" / "justify" / "distribute"。
@@ -529,6 +593,50 @@ impl PyParagraph {
             }
             .to_string()
         })
+    }
+
+    #[setter]
+    fn set_align(&self, value: &str) -> PyResult<()> {
+        let a = match value {
+            "left" => kumihan::Align::Left,
+            "center" => kumihan::Align::Center,
+            "right" => kumihan::Align::Right,
+            "justify" => kumihan::Align::Justify,
+            "distribute" => kumihan::Align::Distribute,
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                    "寄せは left / center / right / justify / distribute: {value:?}"
+                )))
+            }
+        };
+        self.with_mut(|p| p.align = a)
+    }
+
+    /// 行間の倍率(1.0 が既定)。docx の w:spacing lineRule="auto" と対。
+    #[getter]
+    fn line_spacing(&self) -> PyResult<f32> {
+        self.with(|p| p.spacing())
+    }
+
+    #[setter]
+    fn set_line_spacing(&self, value: f32) -> PyResult<()> {
+        if !(0.5..=5.0).contains(&value) {
+            return Err(PyValueError::new_err(format!(
+                "行間の倍率は 0.5〜5.0(それ以外は読みにくさの事故): {value}"
+            )));
+        }
+        self.with_mut(|p| p.line_spacing = value)
+    }
+
+    /// この段落の前で改ページする(docx の w:pageBreakBefore)。
+    #[getter]
+    fn page_break_before(&self) -> PyResult<bool> {
+        self.with(|p| p.page_break_before)
+    }
+
+    #[setter]
+    fn set_page_break_before(&self, value: bool) -> PyResult<()> {
+        self.with_mut(|p| p.page_break_before = value)
     }
 
     /// 表のセルの中の段落なら True。
@@ -548,38 +656,156 @@ impl PyParagraph {
     }
 }
 
-/// 書式のまとまり。**写しであって handle ではない**(読むだけ)。
-/// 字を替えるのは段落の `text` か `replace` から。
-#[pyclass(name = "Run", module = "officework.doc", frozen, get_all)]
+/// 書式のまとまり。**位置(段落+何番目)で引き直す手**(handle)。
+/// 当初は凍った写しだったが、run 単位の書き(add_text / clear / bold の
+/// 代入)のために手に変えた(2026-08-12 夜)。段落の text の代入や
+/// replace で run の並びが変わった後は、runs から引き直すこと。
+#[pyclass(name = "Run", module = "officework.doc")]
 struct PyRun {
-    text: String,
-    size_pt: f32,
-    font: Option<String>,
-    bold: bool,
-    italic: bool,
-    underline: bool,
-    color: Option<String>,
+    inner: Arc<Mutex<Inner>>,
+    loc: Loc,
+    idx: usize,
+}
+
+impl PyRun {
+    fn with<T>(&self, f: impl FnOnce(&Run) -> T) -> PyResult<T> {
+        let g = lock(&self.inner)?;
+        let r = g
+            .para(&self.loc)
+            .and_then(|p| p.runs.get(self.idx))
+            .ok_or_else(|| {
+                PyIndexError::new_err("この run はもう文書に無い(段落の形が変わった)")
+            })?;
+        Ok(f(r))
+    }
+
+    fn with_mut<T>(&self, f: impl FnOnce(&mut Run) -> T) -> PyResult<T> {
+        let mut g = lock(&self.inner)?;
+        let p = g.para_mut(&self.loc).ok_or_else(|| {
+            PyIndexError::new_err("この段落はもう文書に無い(文書の形が変わった)")
+        })?;
+        let r = p.runs.get_mut(self.idx).ok_or_else(|| {
+            PyIndexError::new_err("この run はもう文書に無い(段落の形が変わった)")
+        })?;
+        Ok(f(r))
+    }
 }
 
 #[pymethods]
 impl PyRun {
-    fn __repr__(&self) -> String {
-        let mut m = Vec::new();
-        if self.bold {
-            m.push("太");
+    #[getter]
+    fn text(&self) -> PyResult<String> {
+        self.with(|r| r.text.clone())
+    }
+
+    #[setter]
+    fn set_text(&self, value: &str) -> PyResult<()> {
+        self.with_mut(|r| r.text = value.to_string())
+    }
+
+    #[getter]
+    fn size_pt(&self) -> PyResult<f32> {
+        self.with(|r| r.size_pt)
+    }
+
+    #[setter]
+    fn set_size_pt(&self, value: f32) -> PyResult<()> {
+        if !(1.0..=400.0).contains(&value) {
+            return Err(PyValueError::new_err(format!("文字の大きさ(pt)が変: {value}")));
         }
-        if self.italic {
-            m.push("斜");
-        }
-        if self.underline {
-            m.push("下線");
-        }
-        format!(
-            "<officework.doc.Run {:?} {}pt{}>",
-            self.text,
-            self.size_pt,
-            if m.is_empty() { String::new() } else { format!(" {}", m.join("・")) }
-        )
+        self.with_mut(|r| r.size_pt = value)
+    }
+
+    #[getter]
+    fn font(&self) -> PyResult<Option<String>> {
+        self.with(|r| r.font.clone())
+    }
+
+    #[setter]
+    fn set_font(&self, value: Option<String>) -> PyResult<()> {
+        self.with_mut(|r| r.font = value.filter(|v| !v.is_empty()))
+    }
+
+    #[getter]
+    fn bold(&self) -> PyResult<bool> {
+        self.with(|r| r.fmt.bold)
+    }
+
+    #[setter]
+    fn set_bold(&self, value: bool) -> PyResult<()> {
+        self.with_mut(|r| r.fmt.bold = value)
+    }
+
+    #[getter]
+    fn italic(&self) -> PyResult<bool> {
+        self.with(|r| r.fmt.italic)
+    }
+
+    #[setter]
+    fn set_italic(&self, value: bool) -> PyResult<()> {
+        self.with_mut(|r| r.fmt.italic = value)
+    }
+
+    #[getter]
+    fn underline(&self) -> PyResult<bool> {
+        self.with(|r| r.fmt.underline)
+    }
+
+    #[setter]
+    fn set_underline(&self, value: bool) -> PyResult<()> {
+        self.with_mut(|r| r.fmt.underline = value)
+    }
+
+    #[getter]
+    fn strike(&self) -> PyResult<bool> {
+        self.with(|r| r.fmt.strike)
+    }
+
+    #[setter]
+    fn set_strike(&self, value: bool) -> PyResult<()> {
+        self.with_mut(|r| r.fmt.strike = value)
+    }
+
+    #[getter]
+    fn color(&self) -> PyResult<Option<String>> {
+        self.with(|r| r.fmt.color.clone())
+    }
+
+    #[setter]
+    fn set_color(&self, value: Option<String>) -> PyResult<()> {
+        self.with_mut(|r| r.fmt.color = value.filter(|v| !v.is_empty()))
+    }
+
+    /// 字を後ろに継ぎ足す(python-docx の add_text)。書式はこの run のまま。
+    fn add_text(&self, text: &str) -> PyResult<()> {
+        self.with_mut(|r| r.text.push_str(text))
+    }
+
+    /// 字を消す(書式は残る)。返りは自分(python-docx と同じ)。
+    fn clear(slf: PyRef<'_, Self>) -> PyResult<PyRef<'_, Self>> {
+        slf.with_mut(|r| r.text.clear())?;
+        Ok(slf)
+    }
+
+    fn __repr__(&self) -> PyResult<String> {
+        self.with(|r| {
+            let mut m = Vec::new();
+            if r.fmt.bold {
+                m.push("太");
+            }
+            if r.fmt.italic {
+                m.push("斜");
+            }
+            if r.fmt.underline {
+                m.push("下線");
+            }
+            format!(
+                "<officework.doc.Run {:?} {}pt{}>",
+                r.text,
+                r.size_pt,
+                if m.is_empty() { String::new() } else { format!(" {}", m.join("・")) }
+            )
+        })
     }
 }
 
@@ -686,6 +912,84 @@ impl PyTable {
                 .collect(),
             None => Vec::new(),
         })
+    }
+
+    /// 表のスタイルの**名前だけ**(docx の w:tblStyle の styleId)。
+    /// 定義(styles.xml)は持たない主義 — 読んだ名前を運んで返すだけ。
+    /// 定義が要る名前は、原本(雛形)の styles.xml が持っているのが前提。
+    #[getter]
+    fn style(&self) -> PyResult<Option<String>> {
+        let g = lock(&self.inner)?;
+        Ok(g.table(self.block).and_then(|t| t.style.clone()))
+    }
+
+    #[setter]
+    fn set_style(&self, value: Option<String>) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        match g.doc.blocks.get_mut(self.block) {
+            Some(Block::Table(t)) => {
+                t.style = value.filter(|v| !v.is_empty());
+                Ok(())
+            }
+            _ => Err(PyIndexError::new_err("この表はもう文書に無い")),
+        }
+    }
+
+    /// 表の置き方。"left" / "center" / "right"、指定なしは None。
+    #[getter]
+    fn alignment(&self) -> PyResult<Option<String>> {
+        let g = lock(&self.inner)?;
+        Ok(g.table(self.block).and_then(|t| t.align).map(|a| {
+            match a {
+                kumihan::Align::Center => "center",
+                kumihan::Align::Right => "right",
+                _ => "left",
+            }
+            .to_string()
+        }))
+    }
+
+    #[setter]
+    fn set_alignment(&self, value: Option<&str>) -> PyResult<()> {
+        let a = match value {
+            None => None,
+            Some("left") => Some(kumihan::Align::Left),
+            Some("center") => Some(kumihan::Align::Center),
+            Some("right") => Some(kumihan::Align::Right),
+            Some(v) => {
+                return Err(PyValueError::new_err(format!(
+                    "表の置き方は left / center / right(か None): {v:?}"
+                )))
+            }
+        };
+        let mut g = lock(&self.inner)?;
+        match g.doc.blocks.get_mut(self.block) {
+            Some(Block::Table(t)) => {
+                t.align = a;
+                Ok(())
+            }
+            _ => Err(PyIndexError::new_err("この表はもう文書に無い")),
+        }
+    }
+
+    /// 列幅を中身に合わせるか(docx の tblLayout。python-docx と同じ真偽)。
+    /// False = 固定(w:tblLayout type="fixed")。
+    #[getter]
+    fn autofit(&self) -> PyResult<bool> {
+        let g = lock(&self.inner)?;
+        Ok(g.table(self.block).map(|t| !t.fixed_layout).unwrap_or(true))
+    }
+
+    #[setter]
+    fn set_autofit(&self, value: bool) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        match g.doc.blocks.get_mut(self.block) {
+            Some(Block::Table(t)) => {
+                t.fixed_layout = !value;
+                Ok(())
+            }
+            _ => Err(PyIndexError::new_err("この表はもう文書に無い")),
+        }
     }
 
     fn __repr__(&self) -> PyResult<String> {

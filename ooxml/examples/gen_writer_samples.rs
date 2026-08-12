@@ -260,6 +260,7 @@ fn moushikomi_sample() -> Document {
                 },
             ],
         ],
+        ..Default::default()
     }));
     d.blocks.push(Block::Para(Paragraph {
         boxed: true,
@@ -318,6 +319,7 @@ fn houkoku_sample() -> Document {
             vec![cell("7月14日"), cell("屋根の点検"), cell("B社"), cell("135,000")],
             vec![cell("7月28日"), cell("足場の設置"), cell("C社"), cell("460,000")],
         ],
+        ..Default::default()
     }));
 
     d.blocks.push(Block::Para(heading(2, "所見")));
@@ -407,6 +409,7 @@ fn dougu_sample() -> Document {
             vec![cell("透かし"), cell("字を入れて紙に薄く出す"), cell("空にする")],
             vec![cell("段組み"), cell("2段に組み直す"), cell("もう一度押す")],
         ],
+        ..Default::default()
     }));
     d
 }

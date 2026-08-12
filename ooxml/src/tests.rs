@@ -102,7 +102,9 @@ mod round {
                 vec![cell("会　社　名"), cell("日本フネン株式会社")],
                 vec![cell("所　在　地"), cell("徳島県吉野川市川島町三ツ島新田179-1")],
                 vec![cell("資　本　金"), cell("3億1,400万円")],
-            ]}),
+            ],
+        ..Default::default()
+    }),
             Block::Para(para("以上")),
         ]};
         let (back, rep) = round_trip(&d);
@@ -121,9 +123,13 @@ mod round {
     fn 表と本文の順序が保たれる() {
         let d = Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
             Block::Para(para("前")),
-            Block::Table(Table { col_mm: vec![], rows: vec![vec![cell("表1")]] }),
+            Block::Table(Table { col_mm: vec![], rows: vec![vec![cell("表1")]],
+        ..Default::default()
+    }),
             Block::Para(para("中")),
-            Block::Table(Table { col_mm: vec![], rows: vec![vec![cell("表2")]] }),
+            Block::Table(Table { col_mm: vec![], rows: vec![vec![cell("表2")]],
+        ..Default::default()
+    }),
             Block::Para(para("後")),
         ]};
         let (back, _) = round_trip(&d);
@@ -138,7 +144,9 @@ mod round {
         let d = Document { footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Table(Table { col_mm: vec![], rows: vec![
             vec![cell("氏名"), Cellbox::default()],
             vec![cell("所属"), Cellbox::default()],
-        ]})]};
+        ],
+        ..Default::default()
+    })]};
         let (back, _) = round_trip(&d);
         let t: Vec<&Table> = back.tables().collect();
         assert_eq!(t[0].rows.len(), 2);
@@ -180,7 +188,9 @@ mod round {
                 vec![head],
                 vec![vstart, cell("本社")],
                 vec![vcont, cell("工場")],
-            ]}),
+            ],
+        ..Default::default()
+    }),
         ]};
         let (back, rep) = round_trip(&d);
         assert!(rep.is_lossless(), "未対応: {:?}", rep.unsupported);

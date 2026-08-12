@@ -226,8 +226,8 @@ Cell は `s.cell(row=, column=)` から)。
 | 相手 | 判定 | うちの対応・理由 |
 |---|---|---|
 | ✔ add_paragraph / paragraphs / save / tables | ある | |
-| add_heading | 足す | 当初「互換層(add_paragraph + style)」としたが、エンジンの Paragraph.style は**読みだけ**(2026-08-12 doc.rs と突き合わせて正した)。style の書きをエンジンに足してから |
-| add_page_break | 足す | |
+| ✔ add_heading | 足す | 当初「互換層(add_paragraph + style)」としたが、エンジンの Paragraph.style は**読みだけ**(2026-08-12 doc.rs と突き合わせて正した)。style の書きをエンジンに足してから(**済 2026-08-12 夜**: style の書き(body / heading1〜3。本家の "Heading 1" の名前でも受ける)+ add_heading(level 1〜3。0=Title は持たないので断る)。**まっさらの文書に最小の styles.xml**(Normal+見出し1〜3の名乗り)を書く — これが無いと読み手が pStyle を解決できず Normal に落ちる。原本があれば原本の定義を持ち越すだけ) |
+| ✔ add_page_break | 足す | (済 2026-08-12 夜。本家は「改ページの run」だが、うちは**段落の性質(page_break_before)**で持つ — 紙の上の意味は同じで、本家の paragraph_format.page_break_before でも読める) |
 | ✔ add_table | 足す | 表を新しく組む(明細の帳票づくりに要る)(済 2026-08-12。style 引数は「足す(書式)」待ち — 黙って捨てず断る。ついでに ooxml の書き手の穴を1つ塞いだ: 等分の表で tblGrid(必須部品)を省いていて、python-docx が読めなかった) |
 | add_picture | 足す | 図を入れる(sheet.add_image と対) |
 | iter_inner_content | 足す | 段落と表を**文書の順で**返す。うちの paragraphs / tables は種類別 — 順序を返す API をエンジンに |
@@ -235,7 +235,7 @@ Cell は `s.cell(row=, column=)` から)。
 | sections / add_section | 足す | エンジンの模型が1節しか持てない既知の残り(「実物で測った」の表)— 模型を太らせる件と同じ一件 |
 | comments / add_comment | 足す | コメントの読み書き。変更履歴と同じく、読めて書けて壊さない |
 | inline_shapes | 足す | 画像の一件(add_picture と対の読み) |
-| styles | 足す(書式) | スタイルの一覧と定義 — 書式の一件 |
+| styles | 足す(書式) | スタイルの一覧と定義 — 書式の一件。**注(2026-08-12 夜)**: 模型は「スタイル定義(styles.xml)は持たない — 見た目は直接書式で付ける」を明記している(engine/src/doc.rs の ParaStyle)。この項を作るのは主義の変更 — 発注者の判断待ち(Run.style も同じ一件) |
 | element / part / settings | 要らない | lxml の露出 |
 
 ### Paragraph(13)
@@ -246,10 +246,10 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ alignment | ある | align。互換層で別名 |
 | ✔ clear | 互換層 | text = ""(段落の性質と先頭 run の書式は残る — 本家と同じ定義。自分を返す) |
 | ✔ iter_inner_content | 互換層 | runs から(リンクは hyperlinks(足す)が来たら混ぜる) |
-| add_run | 足す | 段落に run を継ぎ足す |
+| ✔ add_run | 足す | 段落に run を継ぎ足す(済 2026-08-12 夜。書式は**末尾の run を継ぐ** — text の代入が先頭を継ぐのと対。style 引数(文字スタイル)はスタイル定義を持たない主義と衝突するので断る — 発注者判断待ちの一件) |
 | insert_paragraph_before | 足す | 途中に差す(add_paragraph は末尾だけ) |
 | hyperlinks | 足す | リンクの一件 |
-| paragraph_format | 足す(書式) | 段落書式(行間・字下げ・前後の間隔) |
+| ✔ paragraph_format | 足す(書式) | 段落書式(行間・字下げ・前後の間隔)(**済(部分)2026-08-12 夜**: alignment(本家の enum も受ける)・line_spacing・page_break_before — 模型が持つ物。space_before / space_after・left_indent は**模型に無い**ので読みは None・書きは正直に断る。模型の indent は段数(1段=全角2字)で、本家の Length との対応は決めてから) |
 | part / contains_page_break / rendered_page_breaks | 要らない | 内部・レイアウト依存 |
 
 ### Run(15)
@@ -257,7 +257,7 @@ Cell は `s.cell(row=, column=)` から)。
 | 相手 | 判定 | うちの対応・理由 |
 |---|---|---|
 | ✔ text / bold / italic / underline / font | ある | ほかに color / size_pt も既にある(相手は font の下に置く — 互換層で両対応。_doc.py の _Font: str の子で `== "MS明朝"` も `.name` も通る) |
-| add_text / clear | 足す | 当初「互換層」としたが、エンジンの Run は**凍った写し**で run 単位の書き口が無い(2026-08-12 doc.rs と突き合わせて正した)。run の書きをエンジンに足してから |
+| ✔ add_text / clear | 足す | 当初「互換層」としたが、エンジンの Run は**凍った写し**で run 単位の書き口が無い(2026-08-12 doc.rs と突き合わせて正した)。run の書きをエンジンに足してから(**済 2026-08-12 夜**: Run を**位置で引き直す手**に変えた — text / bold / italic / underline / strike / color / size_pt / font の読み書き、add_text は書式を保って継ぎ足し、clear は字だけ消して自分を返す。font の両対応(str と .name)も書きが効くようになった) |
 | add_break / add_tab / add_picture | 足す | |
 | iter_inner_content | 足す | run の中の改行・タブ・画像も順に返す(add_break の一件) |
 | mark_comment_range | 足す | コメントの一件 |
@@ -271,7 +271,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ rows | ある | ほかに shape / values(polars 直行)が既にあり、これは相手に**無い**上位分 |
 | ✔ cell(r,c) / row_cells / column_cells / columns | 互換層 | rows[r].cells[c] から。結合で行の列数が違うとき column_cells は無い行を飛ばす(長方形しか持てない本家に、この場合の定義が無い) |
 | ✔ add_row / add_column | 足す | 明細行の継ぎ足し。実務の定番(済 2026-08-12。add_column の width は python-docx と同じ EMU を受けて mm に直す。等分の表に幅つきの列は形が決まらないので正直に断る) |
-| style / alignment / autofit | 足す(書式) | 表のスタイル・配置・幅の自動調整 — 書式の一件 |
+| ✔ style / alignment / autofit | 足す(書式) | 表のスタイル・配置・幅の自動調整 — 書式の一件(**済 2026-08-12 夜**: kumihan の Table に style(**名前だけ運ぶ** — 定義は styles.xml の持ち物で、持たない主義のまま)・align・fixed_layout の畑、ooxml が tblPr の tblStyle / jc / tblLayout を読み書き。本家の enum・スタイルの物("Table Grid" は styleId "TableGrid" に寄せる)も受ける。適合は両方向) |
 | table_direction | 作らない | 右→左の表(アラビア語系の bidi)— このソフトの的の外。日本語の右横書き・縦書きは kumihan の側で扱う |
 | part / table | 要らない | |
 

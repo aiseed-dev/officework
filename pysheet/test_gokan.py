@@ -292,6 +292,127 @@ if pydocx is not None:
             check(isinstance(f, str) and (f.name is None or isinstance(f.name, str)),
                   "font の両対応(str と .name)が崩れている")
 
+        # --- 段落の書式: add_heading・style の書き・paragraph_format ----------
+        # うちが書いた物を本家が読める(定義どおりの何よりの証拠)
+        d_h = office_doc.Doc()
+        h = d_h.add_heading("第1章 概要", level=1)
+        check(h.style == "heading1", f"add_heading の役目: {h.style}")
+        p_f = d_h.add_paragraph("本文です")
+        p_f.paragraph_format.alignment = "center"
+        p_f.paragraph_format.line_spacing = 1.5
+        p_f.paragraph_format.page_break_before = True
+        p2 = d_h.add_paragraph("次の段落")
+        p2.style = "Heading 2"          # python-docx の名前でも受ける
+        check(p2.style == "heading2", f"style の書き(本家の名前): {p2.style}")
+        out_h = os.path.join(t, "heading.docx")
+        d_h.save(out_h)
+
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        back_h = pydocx.Document(out_h)
+        check(back_h.paragraphs[0].style.name == "Heading 1",
+              f"うちの見出しを本家が読めない: {back_h.paragraphs[0].style.name}")
+        bf = back_h.paragraphs[1].paragraph_format
+        check(bf.alignment == WD_ALIGN_PARAGRAPH.CENTER,
+              f"うちの寄せを本家が読めない: {bf.alignment}")
+        check(bf.line_spacing == 1.5, f"うちの行間を本家が読めない: {bf.line_spacing}")
+        check(bf.page_break_before, "うちの改ページ前を本家が読めない")
+        check(back_h.paragraphs[2].style.name == "Heading 2",
+              "style の書きが保存で消えた")
+
+        # 逆向き: 本家が書いた物をうちが読める
+        d_o2 = pydocx.Document()
+        d_o2.add_heading("題", level=2)
+        po = d_o2.add_paragraph("中央寄せ")
+        po.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        po.paragraph_format.line_spacing = 2.0
+        out_o = os.path.join(t, "heading_opx.docx")
+        d_o2.save(out_o)
+        d_r = office_doc.Doc.open(out_o)
+        check(d_r[0].style == "heading2", f"本家の見出しがうちで読めない: {d_r[0].style}")
+        check(d_r[1].paragraph_format.alignment == "center",
+              f"本家の寄せ: {d_r[1].paragraph_format.alignment}")
+        check(d_r[1].paragraph_format.line_spacing == 2.0,
+              f"本家の行間: {d_r[1].paragraph_format.line_spacing}")
+        # 本家の enum をそのまま代入しても効く
+        d_r[1].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        check(d_r[1].align == "right", "本家の enum の代入が効かない")
+        # 模型に無い物は黙って捨てない
+        try:
+            d_r[1].paragraph_format.space_before = 12
+            check(False, "space_before が黙って通った")
+        except NotImplementedError:
+            pass
+        try:
+            d_h.add_heading("題", level=0)
+            check(False, "level=0(Title)が黙って通った")
+        except ValueError:
+            pass
+
+        # --- 表の書式: style(名前だけ運ぶ)・alignment・autofit ---------------
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        d_t = pydocx.Document()
+        tb2 = d_t.add_table(rows=2, cols=2, style="Table Grid")
+        tb2.alignment = WD_TABLE_ALIGNMENT.CENTER
+        tb2.autofit = False
+        out_t = os.path.join(t, "tbl.docx")
+        d_t.save(out_t)
+
+        d_tr = office_doc.Doc.open(out_t)
+        t_r = d_tr.tables[0]
+        check(t_r.style == "TableGrid", f"本家の表スタイルがうちで読めない: {t_r.style}")
+        check(t_r.alignment == "center", f"本家の表の置き方: {t_r.alignment}")
+        check(t_r.autofit is False, f"本家の autofit: {t_r.autofit}")
+
+        # うちが書き替えた物を本家が読める(スタイル定義は原本の物が持ち越される)
+        t_r.alignment = WD_TABLE_ALIGNMENT.RIGHT  # 本家の enum をそのまま
+        t_r.autofit = True
+        out_t2 = os.path.join(t, "tbl2.docx")
+        d_tr.save(out_t2)
+        back_t = pydocx.Document(out_t2).tables[0]
+        check(back_t.style.name == "Table Grid",
+              f"うちが運んだスタイル名を本家が読めない: {back_t.style.name}")
+        check(back_t.alignment == WD_TABLE_ALIGNMENT.RIGHT,
+              f"うちの表の置き方を本家が読めない: {back_t.alignment}")
+        check(back_t.autofit, "うちの autofit を本家が読めない")
+
+        # --- run の手: add_run・性質ごとの書き・add_text・clear ----------------
+        d_run = office_doc.Doc()
+        pr = d_run.add_paragraph("請求先: ")
+        r2 = pr.add_run("株式会社甲")
+        r2.bold = True
+        r2.font.size = 12
+        r2.add_text(" 御中")
+        check(pr.text == "請求先: 株式会社甲 御中", f"add_run/add_text: {pr.text}")
+        check(pr.runs[1].bold and pr.runs[1].size_pt == 12, "run の性質の書き")
+        d_run.add_page_break()
+        p_last = d_run.add_paragraph("次の頁")
+        out_r = os.path.join(t, "runs.docx")
+        d_run.save(out_r)
+
+        back_r = pydocx.Document(out_r)
+        rr2 = back_r.paragraphs[0].runs
+        check(len(rr2) == 2 and rr2[1].bold and rr2[1].font.size.pt == 12,
+              f"うちの run の書式を本家が読めない: {[(r.text, r.bold) for r in rr2]}")
+        check(back_r.paragraphs[0].text == "請求先: 株式会社甲 御中",
+              "run の字が本家で崩れる")
+        # 改ページはうちの流儀(page_break_before)— 本家でもその形で読める
+        check(back_r.paragraphs[1].paragraph_format.page_break_before,
+              "add_page_break が本家で読めない")
+
+        # 本家の run の作法(clear が自分を返す・add_text が書式を保つ)と同じか
+        d_o3 = pydocx.Document()
+        po3 = d_o3.add_paragraph("あ")
+        ro3 = po3.add_run("い")
+        ro3.bold = True
+        ro3.add_text("う")
+        check(po3.text == "あいう" and po3.runs[1].bold, "(本家の前提の確認)")
+        r_mine = office_doc.Doc().add_paragraph("あ").add_run("い")
+        r_mine.bold = True
+        r_mine.add_text("う")
+        check(r_mine.text == "いう" and r_mine.bold, "うちの add_text が書式を落とす")
+        check(r_mine.clear() is r_mine and r_mine.text == "" and r_mine.bold,
+              "clear が自分を返さない・書式まで消える")
+
 # ==================== 第2歩(足すの背骨): 結合・固定枠・改名・複製・削除・並べ替え
 b = office_sheet.Book()
 s = b[0]
