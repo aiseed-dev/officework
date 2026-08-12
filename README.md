@@ -177,12 +177,15 @@ on a real machine.
 engine/   kumihan — typesetting core (line breaking, kinsoku, glyph widths, page geometry)
 ooxml/    docx reading and writing
 sheet/    xlsx reading and writing, formula engine, styles (styles.xml)
+ops/      the verbs of a workbook (open, read, write — same meaning for Python and the apps)
+pyrun/    the machinery that runs Python (sandbox, time limits)
 lang/     language-specific logic; knows nothing about gpui, runs headless
 paper/    projects the page onto PDF
 ui/       glue to gpui (input, IME, ribbon)
 writer/   the docx app
 calc/     the xlsx app
 pysheet/  Python bindings (pip install officework -> officework.sheet, officework.doc)
+sidecar/  the separate process that rides inside genoffice
 ```
 
 **The screen and the paper are the same page projected onto different surfaces**,
@@ -199,8 +202,8 @@ OFFICE_LANG=en ./target/release/writer      # temporary override
 #   language = "en"
 ```
 
-**The whole UI switches** — ribbon, status-bar messages, and dialogs. Over 1,200
-phrases are translated in all 13 languages, and a language with missing phrases
+**The whole UI switches** — ribbon, status-bar messages, and dialogs. Every
+phrase is translated in all 13 languages, and a language with missing phrases
 is never registered.
 
 The exact number is deliberately not written here: it only grows, so writing it
