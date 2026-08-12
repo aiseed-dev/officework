@@ -535,7 +535,11 @@ fn recalc(
                 o.insert("column".into(), json!(col));
                 o.insert(
                     "formatted".into(),
-                    json!(sheet::model::format_value(&v, c.fmt.number_format.as_deref())),
+                    json!(sheet::model::format_value(
+                        &v,
+                        c.fmt.number_format.as_deref(),
+                        r.book.date1904
+                    )),
                 );
                 // **数でなければ `number` を省く。** `null` を入れると
                 // `z.number()` に撥ねられる(向こうは `skip_serializing_if`)
