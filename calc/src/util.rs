@@ -225,79 +225,11 @@ pub(crate) fn copy_sheet_name(book: &Book, base: &str) -> String {
     }
 }
 
-/// 式の文字列の外側だけで、古いシート名の参照(`古!` と `'古'!`)を
-/// 新しい名前に書き換える。変えたら Some(新しい式)。
-/// 名前の頭が別の語の続きのとき(例: 「合計!」の中の「計!」)は書き換えない
-pub(crate) fn rename_refs_in(f: &str, old: &str, new: &str) -> Option<String> {
-    let needs_quote =
-        |n: &str| !n.chars().all(|c| c.is_alphanumeric() || c == '_') || n.is_empty();
-    let to = if needs_quote(new) { format!("'{new}'!") } else { format!("{new}!") };
-    let bare = format!("{old}!");
-    let quoted = format!("'{old}'!");
-    let cs: Vec<char> = f.chars().collect();
-    let mut out = String::new();
-    let mut i = 0;
-    let mut changed = false;
-    let mut in_str = false;
-    while i < cs.len() {
-        let c = cs[i];
-        if c == '"' {
-            in_str = !in_str;
-            out.push(c);
-            i += 1;
-            continue;
-        }
-        if !in_str {
-            let rest: String = cs[i..].iter().collect();
-            let prev_word = i > 0 && (cs[i - 1].is_alphanumeric() || cs[i - 1] == '_');
-            if rest.starts_with(&quoted) {
-                out.push_str(&to);
-                i += quoted.chars().count();
-                changed = true;
-                continue;
-            }
-            if !prev_word && rest.starts_with(&bare) {
-                out.push_str(&to);
-                i += bare.chars().count();
-                changed = true;
-                continue;
-            }
-        }
-        out.push(c);
-        i += 1;
-    }
-    changed.then_some(out)
-}
-
-/// 全シートの式と名前の定義の中のシート参照を、新しい名前へ書き換える。
-/// 書き換えた式の数を返す(黙って直さない — 状態行で件数を言う)
-pub(crate) fn rename_sheet_refs(book: &mut Book, old: &str, new: &str) -> usize {
-    let mut n = 0;
-    for s in book.sheets.iter_mut() {
-        let hits: Vec<(Pos, String)> = s
-            .cells
-            .iter()
-            .filter_map(|(p, c)| {
-                c.formula
-                    .as_ref()
-                    .and_then(|f| rename_refs_in(f, old, new))
-                    .map(|nf| (*p, nf))
-            })
-            .collect();
-        for (p, nf) in hits {
-            if let Some(c) = s.cells.get_mut(&p) {
-                c.formula = Some(nf);
-                n += 1;
-            }
-        }
-        for (_, r) in s.names.iter_mut() {
-            if let Some(nr) = rename_refs_in(r, old, new) {
-                *r = nr;
-            }
-        }
-    }
-    n
-}
+// 改名の参照書き換え(rename_refs_in / rename_sheet_refs)は 2026-08-12 に
+// sheet::model::refs へ**純移動**した — Python(pysheet)の改名でも式が
+// 追随するように。呼び側(picks.rs・tests.rs)の名前が変わらないよう再輸出する
+#[allow(unused_imports)] // rename_refs_in は tests.rs だけが使う
+pub(crate) use sheet::model::{rename_refs_in, rename_sheet_refs};
 
 /// 式の**文字列の中**に古いシート名の参照が残っている数を数える。
 /// 改名では文字列の中は書き換えない(INDIRECT は「動かない参照」を作る

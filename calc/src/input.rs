@@ -1095,11 +1095,7 @@ impl Calc {
         }
         if kind == "解除" {
             self.checkpoint();
-            let before = self.book.sheets[self.active].merges.len();
-            self.book.sheets[self.active].merges.retain(|(x, y)| {
-                y.row < a.row || x.row > b.row || y.col < a.col || x.col > b.col
-            });
-            let n = before - self.book.sheets[self.active].merges.len();
+            let n = self.book.sheets[self.active].unmerge(a, b);
             self.status = ui::tf!("{} 個の結合を解きました", n).into();
             self.dirty = true;
             return;
@@ -1125,20 +1121,15 @@ impl Calc {
     }
 
     /// 結合の実体(確認の後もここに来る)。kind: 中央/横方向/結合だけ
+    ///
+    /// 呑まれるセルの中身の扱い(消す・空の左上へ移す)は家の作法として
+    /// `Sheet::merge`(sheet::model::ops)にある — Python(pysheet)から
+    /// 結合しても同じ結果になるように、2026-08-12 に共有クレートへ移した。
+    /// 消すのは Ctrl+Z(この checkpoint)で戻せる — だから確認も出さない。
+    /// 横方向は行ごとが1つの結合なので、行ごとに同じ扱い
     pub(crate) fn merge_do(&mut self, a: Pos, b: Pos, kind: &str) {
         self.checkpoint();
         let sh = &mut self.book.sheets[self.active];
-        sh.merges.retain(|(x, y)| {
-            // 重なる結合は先に外す(入れ子の結合は帳票を壊す)
-            y.row < a.row || x.row > b.row || y.col < a.col || x.col > b.col
-        });
-        // 呑まれるセルの中身は**消す**(書式は残す)。残すと見えない値が
-        // SUM などの式に効いて、帳票が静かに嘘をつく(発注者 2026-08-08)。
-        // ただし左上が空白なら、読み順で最初の中身を左上へ**移してから**消す
-        // (「B1 に題があるのに A1 から選んで結合」で題が消えるのを防ぐ)。
-        // 文字列の全連結はしない — 数や式が混ざると合成でデータが化ける。
-        // 消すのは Ctrl+Z(この checkpoint)で戻せる — だから確認も出さない。
-        // 横方向は行ごとが1つの結合なので、行ごとに同じ扱い
         let bundles: Vec<(Pos, Pos)> = if kind == "横方向" {
             (a.row..=b.row)
                 .map(|r| (Pos::new(r, a.col), Pos::new(r, b.col)))
@@ -1148,48 +1139,12 @@ impl Calc {
         };
         let mut promoted = false;
         for (ba, bb) in bundles {
-            let empty = |sh: &sheet::Sheet, p: Pos| {
-                sh.get(p)
-                    .map(|c| c.formula.is_none() && c.value.is_empty())
-                    .unwrap_or(true)
-            };
-            if empty(sh, ba) {
-                let first = (ba.row..=bb.row)
-                    .flat_map(|r| (ba.col..=bb.col).map(move |cc| Pos::new(r, cc)))
-                    .find(|p| !empty(sh, *p));
-                if let Some(p) = first {
-                    // 値だけでなく**書式ごと**移す(発注者 2026-08-08 —
-                    // 「書式は値があった場所の書式」)。太字や色を置いて
-                    // けぼりにすると、移った値が素の見た目に化ける
-                    let src = sh.get(p).cloned().unwrap_or_default();
-                    sh.set(ba, src);
-                    promoted = true;
-                }
-            }
-            for r in ba.row..=bb.row {
-                for cc in ba.col..=bb.col {
-                    let p = Pos::new(r, cc);
-                    if p == ba {
-                        continue;
-                    }
-                    if let Some(cell) = sh.get(p) {
-                        if cell.formula.is_some() || !cell.value.is_empty() {
-                            let mut cell = cell.clone();
-                            cell.formula = None;
-                            cell.value = sheet::Value::Empty;
-                            sh.set(p, cell);
-                        }
-                    }
-                }
-            }
+            promoted |= sh.merge(ba, bb);
         }
 
         match kind {
             // 横方向: 行ごとに1本ずつ(本家の Merge Across)
             "横方向" => {
-                for r in a.row..=b.row {
-                    sh.merges.push((Pos::new(r, a.col), Pos::new(r, b.col)));
-                }
                 self.status = ui::tf!(
                     "{}:{} を横方向に結合しました({} 行ぶん)",
                     a.a1(), b.a1(), b.row - a.row + 1
@@ -1198,11 +1153,9 @@ impl Calc {
             }
             // 結合だけ(揃えは触らない — 本家の Merge Cells)
             "結合だけ" => {
-                sh.merges.push((a, b));
                 self.status = ui::tf!("{}:{} を結合しました(揃えはそのまま)", a.a1(), b.a1()).into();
             }
             _ => {
-                sh.merges.push((a, b));
                 // 名のとおり中央揃えも掛ける(解くときは揃えを触らない)
                 let mut anchor = sh.get(a).cloned().unwrap_or_default();
                 anchor.fmt.align = sheet::model::HAlign::Center;

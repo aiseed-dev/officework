@@ -163,6 +163,71 @@ impl Sheet {
         })
     }
 
+    /// セルを結合する(家の作法 — アプリの「結合」と同じ。発注者 2026-08-08。
+    /// 元は calc/src/input.rs の merge_do にあったが、Python(pysheet)からも
+    /// 同じ結果になるよう 2026-08-12 にここへ移した):
+    ///
+    /// - 重なる既存の結合は先に外す(入れ子の結合は帳票を壊す)
+    /// - 左上が空なら、読み順で最初の中身を**書式ごと**左上へ移す
+    ///   (「B1 に題があるのに A1 から選んで結合」で題が消えるのを防ぐ)
+    /// - 左上以外の中身は消す(書式は残す)— 残すと見えない値が SUM などの
+    ///   式に効いて、帳票が静かに嘘をつく
+    ///
+    /// 返りは「左上へ移したか」(呼び側が黙って動かさず、言葉で言うため)。
+    pub fn merge(&mut self, a: Pos, b: Pos) -> bool {
+        let (a, b) = (
+            Pos::new(a.row.min(b.row), a.col.min(b.col)),
+            Pos::new(a.row.max(b.row), a.col.max(b.col)),
+        );
+        self.unmerge(a, b);
+        let empty = |sh: &Sheet, p: Pos| {
+            sh.get(p).map(|c| c.formula.is_none() && c.value.is_empty()).unwrap_or(true)
+        };
+        let mut promoted = false;
+        if empty(self, a) {
+            let first = (a.row..=b.row)
+                .flat_map(|r| (a.col..=b.col).map(move |cc| Pos::new(r, cc)))
+                .find(|p| !empty(self, *p));
+            if let Some(p) = first {
+                // 値だけでなく**書式ごと**移す(「書式は値があった場所の書式」)
+                let src = self.get(p).cloned().unwrap_or_default();
+                self.set(a, src);
+                promoted = true;
+            }
+        }
+        for r in a.row..=b.row {
+            for cc in a.col..=b.col {
+                let p = Pos::new(r, cc);
+                if p == a {
+                    continue;
+                }
+                if let Some(cell) = self.get(p) {
+                    if cell.formula.is_some() || !cell.value.is_empty() {
+                        let mut cell = cell.clone();
+                        cell.formula = None;
+                        cell.value = Value::Empty;
+                        self.set(p, cell);
+                    }
+                }
+            }
+        }
+        self.merges.push((a, b));
+        promoted
+    }
+
+    /// 範囲に掛かる結合を解く。返りは解いた数。
+    /// 中身は戻らない(結合のときに消している — それも家の作法のまま)。
+    pub fn unmerge(&mut self, a: Pos, b: Pos) -> usize {
+        let (a, b) = (
+            Pos::new(a.row.min(b.row), a.col.min(b.col)),
+            Pos::new(a.row.max(b.row), a.col.max(b.col)),
+        );
+        let before = self.merges.len();
+        self.merges
+            .retain(|(x, y)| y.row < a.row || x.row > b.row || y.col < a.col || x.col > b.col);
+        before - self.merges.len()
+    }
+
     fn shift(&mut self, pick: impl Fn(&Pos) -> bool, dr: i64, dc: i64) {
         let moved: Vec<(Pos, Cell)> = self
             .cells

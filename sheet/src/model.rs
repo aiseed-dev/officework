@@ -20,7 +20,10 @@ mod refs;
 mod types;
 
 pub use fmt::format_value;
-pub use refs::{formula_from_r1c1, formula_to_r1c1, map_refs, offset_refs, shift_refs, MapRef};
+pub use refs::{
+    formula_from_r1c1, formula_to_r1c1, map_refs, offset_refs, rename_refs_in,
+    rename_sheet_refs, shift_refs, MapRef,
+};
 pub use types::*;
 
 #[cfg(test)]

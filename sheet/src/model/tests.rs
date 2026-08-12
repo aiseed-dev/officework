@@ -31,6 +31,74 @@ mod r1c1_tests {
 }
 
 #[cfg(test)]
+mod merge_tests {
+    use super::*;
+
+    fn s_with(cells: &[(&str, &str)]) -> Sheet {
+        let mut s = Sheet::new("試");
+        for (p, v) in cells {
+            s.set(Pos::parse(p).unwrap(), Cell::input(v));
+        }
+        s
+    }
+
+    fn p(s: &str) -> Pos {
+        Pos::parse(s).unwrap()
+    }
+
+    #[test]
+    fn 結合は左上以外の中身を消す_書式は残す() {
+        let mut s = s_with(&[("A1", "題"), ("B1", "消える"), ("B2", "123")]);
+        let mut c = s.get(p("B1")).cloned().unwrap();
+        c.fmt.number_format = Some("@".into());
+        s.set(p("B1"), c);
+        let promoted = s.merge(p("A1"), p("B2"));
+        assert!(!promoted, "左上に中身があるので移さない");
+        assert_eq!(s.merges, vec![(p("A1"), p("B2"))]);
+        assert_eq!(s.value(p("A1")), Value::Text("題".into()));
+        assert!(s.value(p("B1")).is_empty(), "呑まれた中身は消える");
+        assert!(s.value(p("B2")).is_empty());
+        assert_eq!(
+            s.get(p("B1")).unwrap().fmt.number_format.as_deref(),
+            Some("@"),
+            "書式は残る"
+        );
+    }
+
+    #[test]
+    fn 空の左上へは最初の中身が書式ごと移る() {
+        let mut s = s_with(&[("B1", "題")]);
+        let mut c = s.get(p("B1")).cloned().unwrap();
+        c.fmt.number_format = Some("@".into());
+        s.set(p("B1"), c);
+        let promoted = s.merge(p("A1"), p("C1"));
+        assert!(promoted, "移したと言う(呼び側が言葉で言うため)");
+        assert_eq!(s.value(p("A1")), Value::Text("題".into()));
+        assert_eq!(
+            s.get(p("A1")).unwrap().fmt.number_format.as_deref(),
+            Some("@"),
+            "値だけでなく書式ごと移る"
+        );
+        assert!(s.value(p("B1")).is_empty());
+    }
+
+    #[test]
+    fn 重なる結合は先に外れ_解除は数を返す() {
+        let mut s = s_with(&[]);
+        s.merge(p("A1"), p("B2"));
+        s.merge(p("B2"), p("C3")); // 重なる → 前のが外れる(入れ子は帳票を壊す)
+        assert_eq!(s.merges, vec![(p("B2"), p("C3"))]);
+        s.merge(p("E1"), p("F1"));
+        assert_eq!(s.unmerge(p("A1"), p("Z9")), 2, "掛かる結合を数えて外す");
+        assert!(s.merges.is_empty());
+        // 向きが逆でも直す
+        let mut s = s_with(&[]);
+        s.merge(p("B2"), p("A1"));
+        assert_eq!(s.merges, vec![(p("A1"), p("B2"))]);
+    }
+}
+
+#[cfg(test)]
 mod cell_basics {
     use super::*;
 

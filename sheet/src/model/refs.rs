@@ -419,3 +419,81 @@ pub fn offset_refs(formula: &str, dr: i64, dc: i64) -> String {
     }
     out
 }
+
+/// 式の文字列の外側だけで、古いシート名の参照(`古!` と `'古'!`)を
+/// 新しい名前に書き換える。変えたら Some(新しい式)。
+/// 名前の頭が別の語の続きのとき(例: 「合計!」の中の「計!」)は書き換えない。
+///
+/// 元は calc(アプリ)の util.rs にあったが、Python(pysheet)の改名でも
+/// 式が追随するよう 2026-08-12 にここへ移した。文字列の中(INDIRECT 等)は
+/// **書き換えない** — あれは data であって参照ではない(Excel も追随させない)。
+pub fn rename_refs_in(f: &str, old: &str, new: &str) -> Option<String> {
+    let needs_quote =
+        |n: &str| !n.chars().all(|c| c.is_alphanumeric() || c == '_') || n.is_empty();
+    let to = if needs_quote(new) { format!("'{new}'!") } else { format!("{new}!") };
+    let bare = format!("{old}!");
+    let quoted = format!("'{old}'!");
+    let cs: Vec<char> = f.chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    let mut changed = false;
+    let mut in_str = false;
+    while i < cs.len() {
+        let c = cs[i];
+        if c == '"' {
+            in_str = !in_str;
+            out.push(c);
+            i += 1;
+            continue;
+        }
+        if !in_str {
+            let rest: String = cs[i..].iter().collect();
+            let prev_word = i > 0 && (cs[i - 1].is_alphanumeric() || cs[i - 1] == '_');
+            if rest.starts_with(&quoted) {
+                out.push_str(&to);
+                i += quoted.chars().count();
+                changed = true;
+                continue;
+            }
+            if !prev_word && rest.starts_with(&bare) {
+                out.push_str(&to);
+                i += bare.chars().count();
+                changed = true;
+                continue;
+            }
+        }
+        out.push(c);
+        i += 1;
+    }
+    changed.then_some(out)
+}
+
+/// 全シートの式と名前の定義の中のシート参照を、新しい名前へ書き換える。
+/// 書き換えた式の数を返す(黙って直さない — 呼び側が件数を言える)
+pub fn rename_sheet_refs(book: &mut Book, old: &str, new: &str) -> usize {
+    let mut n = 0;
+    for s in book.sheets.iter_mut() {
+        let hits: Vec<(Pos, String)> = s
+            .cells
+            .iter()
+            .filter_map(|(p, c)| {
+                c.formula
+                    .as_ref()
+                    .and_then(|f| rename_refs_in(f, old, new))
+                    .map(|nf| (*p, nf))
+            })
+            .collect();
+        for (p, nf) in hits {
+            if let Some(c) = s.cells.get_mut(&p) {
+                c.formula = Some(nf);
+                n += 1;
+            }
+        }
+        for (_, r) in s.names.iter_mut() {
+            if let Some(nr) = rename_refs_in(r, old, new) {
+                *r = nr;
+            }
+        }
+    }
+    n
+}

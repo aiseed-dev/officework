@@ -25,7 +25,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDate, PyDateTime, PyTime};
 
 use sheet::calc::date_serial;
-use sheet::model::format_value;
+use sheet::model::{format_value, rename_sheet_refs, FreezePane};
 use sheet::{recalc_all, recalc_book, xlsx, Cell, Pos, Value};
 
 /// ブックの中身。Book と Sheet が同じものを見るために1枚挟む。
@@ -46,6 +46,38 @@ fn lock(inner: &Arc<Mutex<Inner>>) -> PyResult<MutexGuard<'_, Inner>> {
 
 fn parse_ref(s: &str) -> PyResult<Pos> {
     Pos::parse(s).ok_or_else(|| PyValueError::new_err(format!("セル参照として読めない: {s:?}")))
+}
+
+/// "A1:B2"(か "A1")→(左上, 右下)。向きが逆でも直す。
+fn parse_range(s: &str) -> PyResult<(Pos, Pos)> {
+    let (a, b) = match s.split_once(':') {
+        Some((l, r)) => (parse_ref(l.trim())?, parse_ref(r.trim())?),
+        None => {
+            let p = parse_ref(s.trim())?;
+            (p, p)
+        }
+    };
+    Ok((
+        Pos::new(a.row.min(b.row), a.col.min(b.col)),
+        Pos::new(a.row.max(b.row), a.col.max(b.col)),
+    ))
+}
+
+/// xlsx のシート名の決まり(アプリの改名と同じ検査):
+/// 空は不可・31字まで・`: \ / ? * [ ]` は不可・同じ名前は不可。
+fn check_sheet_name(book: &sheet::Book, name: &str) -> PyResult<()> {
+    if name.is_empty() {
+        return Err(PyValueError::new_err("シート名が空です"));
+    }
+    if name.chars().count() > 31 || name.contains([':', '\\', '/', '?', '*', '[', ']']) {
+        return Err(PyValueError::new_err(format!(
+            "「{name}」はシート名にできません(31字まで。: \\ / ? * [ ] は不可)"
+        )));
+    }
+    if book.sheets.iter().any(|s| s.name == name) {
+        return Err(PyValueError::new_err(format!("同じ名前のシートがある: {name:?}")));
+    }
+    Ok(())
 }
 
 /// Python へ返す値。Empty は None(Option 側)で返す。
@@ -180,15 +212,71 @@ impl PyBook {
         Ok(lock(&self.inner)?.book.sheets.len())
     }
 
-    /// シートを1枚足す。同じ名前があればエラー。
+    /// シートを1枚足す。同じ名前・xlsx で使えない名前はエラー。
     fn add_sheet(&self, name: &str) -> PyResult<PySheet> {
         let mut g = lock(&self.inner)?;
-        if g.book.sheets.iter().any(|s| s.name == name) {
-            return Err(PyValueError::new_err(format!("同じ名前のシートがある: {name:?}")));
-        }
+        check_sheet_name(&g.book, name)?;
         g.book.sheets.push(sheet::Sheet::new(name));
         let idx = g.book.sheets.len() - 1;
         Ok(PySheet { inner: Arc::clone(&self.inner), idx })
+    }
+
+    /// シートを丸ごと写して末尾に足す(中身・書式・結合・列幅・入力規則まで)。
+    fn copy_sheet(&self, name: &str, new_name: &str) -> PyResult<PySheet> {
+        let mut g = lock(&self.inner)?;
+        check_sheet_name(&g.book, new_name)?;
+        let src = g
+            .book
+            .sheets
+            .iter()
+            .find(|s| s.name == name)
+            .ok_or_else(|| PyKeyError::new_err(format!("シートが無い: {name:?}")))?;
+        let mut copy = src.clone();
+        copy.name = new_name.to_string();
+        g.book.sheets.push(copy);
+        let idx = g.book.sheets.len() - 1;
+        Ok(PySheet { inner: Arc::clone(&self.inner), idx })
+    }
+
+    /// シートを抜く。**最後の1枚は抜けない**(シートの無い xlsx は無い)。
+    /// 抜いたシートを指していた式は再計算でエラー値になる(黙って別の
+    /// シートを指すより良い)。手元の Sheet の札は**位置**で指しているので、
+    /// 抜いた後は book[...] で引き直すこと。
+    fn remove_sheet(&self, name: &str) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        if g.book.sheets.len() == 1 {
+            return Err(PyValueError::new_err("最後の1枚は抜けません"));
+        }
+        let idx = g
+            .book
+            .sheets
+            .iter()
+            .position(|s| s.name == name)
+            .ok_or_else(|| PyKeyError::new_err(format!("シートが無い: {name:?}")))?;
+        g.book.sheets.remove(idx);
+        recalc_all(&mut g.book);
+        Ok(())
+    }
+
+    /// シートを並べ替える(`to` は 0 起点の新しい位置)。
+    /// 手元の Sheet の札は**位置**で指しているので、並べ替えの後は引き直すこと。
+    fn move_sheet(&self, name: &str, to: usize) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        let idx = g
+            .book
+            .sheets
+            .iter()
+            .position(|s| s.name == name)
+            .ok_or_else(|| PyKeyError::new_err(format!("シートが無い: {name:?}")))?;
+        if to >= g.book.sheets.len() {
+            return Err(PyIndexError::new_err(format!(
+                "シートは {} 枚しかない: {to}",
+                g.book.sheets.len()
+            )));
+        }
+        let s = g.book.sheets.remove(idx);
+        g.book.sheets.insert(to, s);
+        Ok(())
     }
 
     /// 全シートを再計算する(セルを置いた時点でそのシートは再計算済み。
@@ -240,6 +328,28 @@ impl PySheet {
     #[getter]
     fn name(&self) -> PyResult<String> {
         self.with(|s| Ok(s.name.clone()))
+    }
+
+    /// 改名。**式の参照(`古い名前!A1`)と名前の定義も追随する** — アプリの
+    /// 改名と同じ作法(sheet::model::rename_sheet_refs)。文字列の中
+    /// (INDIRECT("古!A1") 等)は書き換えない — あれは data であって参照ではない。
+    #[setter]
+    fn set_name(&self, value: &str) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        let old = g
+            .book
+            .sheets
+            .get(self.idx)
+            .map(|s| s.name.clone())
+            .ok_or_else(|| PyKeyError::new_err("このシートはもうブックに無い"))?;
+        if value == old {
+            return Ok(());
+        }
+        check_sheet_name(&g.book, value)?;
+        rename_sheet_refs(&mut g.book, &old, value);
+        g.book.sheets[self.idx].name = value.to_string();
+        recalc_book(&mut g.book, self.idx);
+        Ok(())
     }
 
     /// 計算後の値。空なら None、エラー(#DIV/0! 等)は文字列。
@@ -347,6 +457,54 @@ impl PySheet {
     #[getter]
     fn merges(&self) -> PyResult<Vec<(String, String)>> {
         self.with(|s| Ok(s.merges.iter().map(|(a, b)| (a.a1(), b.a1())).collect()))
+    }
+
+    /// セルを結合する("A1:B2")。アプリの「結合だけ」と同じ家の作法
+    /// (sheet::model::ops の Sheet::merge): 重なる結合は先に外れ、左上が
+    /// 空なら読み順で最初の中身が**書式ごと**左上へ移り、左上以外の中身は
+    /// 消える(書式は残る)— 残すと見えない値が SUM に効いて帳票が嘘をつく。
+    /// 揃えは触らない。
+    fn merge_cells(&self, range: &str) -> PyResult<()> {
+        let (a, b) = parse_range(range)?;
+        if a == b {
+            return Err(PyValueError::new_err(format!("1マスは結合できない: {range:?}")));
+        }
+        self.with_calc(|s| {
+            s.merge(a, b);
+            Ok(())
+        })
+    }
+
+    /// 範囲に**掛かる**結合を解く(アプリの「解除」と同じ)。返りは解いた数。
+    /// 中身は戻らない(結合のときに消している)。
+    fn unmerge_cells(&self, range: &str) -> PyResult<usize> {
+        let (a, b) = parse_range(range)?;
+        self.with(|s| Ok(s.unmerge(a, b)))
+    }
+
+    /// 固定枠。openpyxl と同じ A1 形式 — "B2" は上1行・左1列を固定、
+    /// "A2" は上1行だけ、None(か "A1")は固定なし。
+    #[getter]
+    fn freeze_panes(&self) -> PyResult<Option<String>> {
+        self.with(|s| {
+            Ok(s.freeze.map(|f| Pos { row: f.frozen_rows, col: f.frozen_columns }.a1()))
+        })
+    }
+
+    #[setter]
+    fn set_freeze_panes(&self, value: Option<&str>) -> PyResult<()> {
+        let f = match value {
+            None => None,
+            Some(v) => {
+                let p = parse_ref(v)?;
+                (p.row > 0 || p.col > 0)
+                    .then_some(FreezePane { frozen_rows: p.row, frozen_columns: p.col })
+            }
+        };
+        self.with(|s| {
+            s.freeze = f;
+            Ok(())
+        })
     }
 
     /// 行を挿す。`at` は画面で見える行番号(1起点)。その行の位置に空行が入り、
