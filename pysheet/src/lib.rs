@@ -22,10 +22,12 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use pyo3::exceptions::{PyIOError, PyIndexError, PyKeyError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyDate, PyDateTime, PyTime};
+use pyo3::types::{PyDate, PyDateTime, PyDict, PyTime};
 
 use sheet::calc::date_serial;
-use sheet::model::{format_value, rename_sheet_refs, FreezePane, SheetImage};
+use sheet::model::{
+    format_value, rename_sheet_refs, BStyle, Edge, FreezePane, HAlign, SheetImage, VAlign,
+};
 use sheet::{recalc_all, recalc_book, xlsx, Cell, Pos, Value};
 
 /// ブックの中身。Book と Sheet が同じものを見るために1枚挟む。
@@ -553,6 +555,155 @@ impl PySheet {
         };
         self.with(|s| {
             s.freeze = f;
+            Ok(())
+        })
+    }
+
+    /// セルの書式を dict で読む。**持っている項目だけ**が入る(素のセルは空の
+    /// dict)。鍵: bold / italic / underline / strike / font / size(pt)/
+    /// color / fill(RRGGBB)/ number_format / horizontal / vertical
+    /// (xlsx の言葉)/ wrap / shrink / rotation / border_top・bottom・
+    /// left・right((線種, 色) — 色 None は自動の黒)。
+    fn fmt<'py>(&self, py: Python<'py>, key: &str) -> PyResult<Bound<'py, PyDict>> {
+        let p = parse_ref(key)?;
+        self.with(|s| {
+            let d = PyDict::new(py);
+            let Some(c) = s.get(p) else { return Ok(d) };
+            let f = &c.fmt;
+            for (k, on) in [
+                ("bold", f.bold),
+                ("italic", f.italic),
+                ("underline", f.underline),
+                ("strike", f.strike),
+                ("wrap", f.wrap),
+                ("shrink", f.shrink),
+            ] {
+                if on {
+                    d.set_item(k, true)?;
+                }
+            }
+            if let Some(v) = &f.font {
+                d.set_item("font", v)?;
+            }
+            if let Some(sc) = f.size_c {
+                d.set_item("size", sc as f64 / 100.0)?;
+            }
+            if let Some(v) = &f.color {
+                d.set_item("color", v)?;
+            }
+            if let Some(v) = &f.fill {
+                d.set_item("fill", v)?;
+            }
+            if let Some(v) = &f.number_format {
+                d.set_item("number_format", v)?;
+            }
+            if let Some(v) = f.align.as_xlsx() {
+                d.set_item("horizontal", v)?;
+            }
+            if let Some(v) = f.valign.as_xlsx() {
+                d.set_item("vertical", v)?;
+            }
+            if let Some(v) = f.rotation {
+                d.set_item("rotation", v)?;
+            }
+            for (k, e) in [
+                ("border_top", f.borders.top),
+                ("border_bottom", f.borders.bottom),
+                ("border_left", f.borders.left),
+                ("border_right", f.borders.right),
+            ] {
+                if e.on {
+                    d.set_item(k, (e.style.xlsx(), e.color.map(|c| format!("{c:06X}"))))?;
+                }
+            }
+            Ok(d)
+        })
+    }
+
+    /// セルの書式を書く。**渡した項目だけ**が変わる(他は据え置き)。
+    /// 消すには None を渡す(color=None で文字色が自動に戻る、等)。
+    /// 鍵と値の形は `fmt` の返りと同じ。罫線は None(消す)/ 線種の文字 /
+    /// (線種, 色) のどれでも。知らない鍵は黙って捨てず、エラーで言う。
+    #[pyo3(signature = (key, **kw))]
+    fn set_fmt(&self, key: &str, kw: Option<&Bound<'_, PyDict>>) -> PyResult<()> {
+        let p = parse_ref(key)?;
+        let Some(kw) = kw else { return Ok(()) };
+        self.with(|s| {
+            let mut cell = s.get(p).cloned().unwrap_or_else(|| Cell::input(""));
+            let f = &mut cell.fmt;
+            for (k, v) in kw.iter() {
+                let k: String = k.extract()?;
+                match k.as_str() {
+                    "bold" => f.bold = v.extract::<Option<bool>>()?.unwrap_or(false),
+                    "italic" => f.italic = v.extract::<Option<bool>>()?.unwrap_or(false),
+                    "underline" => f.underline = v.extract::<Option<bool>>()?.unwrap_or(false),
+                    "strike" => f.strike = v.extract::<Option<bool>>()?.unwrap_or(false),
+                    "wrap" => f.wrap = v.extract::<Option<bool>>()?.unwrap_or(false),
+                    "shrink" => f.shrink = v.extract::<Option<bool>>()?.unwrap_or(false),
+                    "font" => f.font = v.extract()?,
+                    "size" => {
+                        f.size_c = v.extract::<Option<f64>>()?.map(|x| (x * 100.0).round() as u32)
+                    }
+                    "color" => {
+                        f.color = v.extract::<Option<String>>()?;
+                        f.color_theme = None; // 直に塗った — テーマ由来ではなくなる
+                    }
+                    "fill" => {
+                        f.fill = v.extract::<Option<String>>()?;
+                        f.fill_theme = None;
+                    }
+                    "number_format" => f.number_format = v.extract()?,
+                    "horizontal" => {
+                        f.align = v
+                            .extract::<Option<String>>()?
+                            .map(|x| HAlign::from_xlsx(&x))
+                            .unwrap_or(HAlign::General)
+                    }
+                    "vertical" => {
+                        f.valign = v
+                            .extract::<Option<String>>()?
+                            .map(|x| VAlign::from_xlsx(&x))
+                            .unwrap_or(VAlign::Bottom)
+                    }
+                    "rotation" => f.rotation = v.extract()?,
+                    "border_top" | "border_bottom" | "border_left" | "border_right" => {
+                        let e = if v.is_none() {
+                            Edge::OFF
+                        } else if let Ok(style) = v.extract::<String>() {
+                            Edge::line(BStyle::from_xlsx(&style), None)
+                        } else if let Ok((style, color)) =
+                            v.extract::<(String, Option<String>)>()
+                        {
+                            let c = color
+                                .map(|x| {
+                                    u32::from_str_radix(&x, 16).map_err(|_| {
+                                        PyValueError::new_err(format!(
+                                            "罫線の色は RRGGBB で: {x:?}"
+                                        ))
+                                    })
+                                })
+                                .transpose()?;
+                            Edge::line(BStyle::from_xlsx(&style), c)
+                        } else {
+                            return Err(PyTypeError::new_err(
+                                "罫線は None / 線種の文字 / (線種, 色) で渡してください",
+                            ));
+                        };
+                        match k.as_str() {
+                            "border_top" => f.borders.top = e,
+                            "border_bottom" => f.borders.bottom = e,
+                            "border_left" => f.borders.left = e,
+                            _ => f.borders.right = e,
+                        }
+                    }
+                    other => {
+                        return Err(PyValueError::new_err(format!(
+                            "知らない書式の鍵: {other:?}(fmt() の返りと同じ鍵で)"
+                        )))
+                    }
+                }
+            }
+            s.set(p, cell);
             Ok(())
         })
     }

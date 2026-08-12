@@ -137,6 +137,73 @@ if openpyxl is not None:
 # (第1歩では title の代入と create_sheet(index=) は「正直に断る」だったが、
 #  第2歩でエンジンに書き口が入った — 下の第2歩の節で本式に検査する)
 
+# --- 書式の書き: うちが書いた書式を本家が読める(定義どおりの何よりの証拠)------
+if openpyxl is not None:
+    with tempfile.TemporaryDirectory() as t:
+        out = os.path.join(t, "fmt.xlsx")
+        bf = office_sheet.Book()
+        sf = bf[0]
+        c = sf.cell(1, 1, value="題")
+        c.font = office_sheet.Font(bold=True, size=14, color="FF0000")
+        c.border = office_sheet.Border(
+            top=office_sheet.Side("thin"),
+            bottom=office_sheet.Side("double", office_sheet.Color("0070C0")),
+        )
+        c.fill = office_sheet.PatternFill("solid", fgColor="FFFF00")
+        c.alignment = office_sheet.Alignment(
+            horizontal="center", vertical="center", wrap_text=True
+        )
+        sf["B1"] = 45000
+        sf.cell(1, 2).number_format = "yyyy/mm/dd"
+        check(sf.cell(1, 2).is_date, "日付の表示形式なのに is_date が False")
+        check(not sf.cell(1, 1).is_date, "字のセルまで is_date が True")
+        bf.save(out)
+
+        rc = openpyxl.load_workbook(out).active["A1"]
+        check(rc.font.bold and rc.font.size == 14, f"font が本家で読めない: {rc.font}")
+        check((rc.font.color.rgb or "").endswith("FF0000"), f"文字色: {rc.font.color}")
+        check(rc.border.top.style == "thin" and rc.border.bottom.style == "double",
+              f"罫線: {rc.border.top.style},{rc.border.bottom.style}")
+        check((rc.border.bottom.color.rgb or "").endswith("0070C0"),
+              f"罫線の色: {rc.border.bottom.color}")
+        check(rc.fill.patternType == "solid"
+              and (rc.fill.fgColor.rgb or "").endswith("FFFF00"),
+              f"塗り: {rc.fill.patternType},{rc.fill.fgColor}")
+        check(rc.alignment.horizontal == "center"
+              and rc.alignment.vertical == "center" and rc.alignment.wrap_text,
+              f"揃え: {rc.alignment}")
+        rb = openpyxl.load_workbook(out).active["B1"]
+        check(rb.number_format == "yyyy/mm/dd", f"表示形式: {rb.number_format}")
+
+        # 逆向き: 本家が書いた書式をうちが読める
+        out2 = os.path.join(t, "fmt_opx.xlsx")
+        from openpyxl.styles import (Alignment as OAlign, Border as OBorder,
+                                     Font as OFont, PatternFill as OFill,
+                                     Side as OSide)
+        wb4 = openpyxl.Workbook()
+        ws4 = wb4.active
+        oc = ws4["A1"]
+        oc.value = "題"
+        oc.font = OFont(bold=True, size=12, color="00B050")
+        oc.border = OBorder(left=OSide(style="medium"))
+        oc.fill = OFill("solid", fgColor="D9D9D9")
+        oc.alignment = OAlign(horizontal="right", wrap_text=True)
+        oc.number_format = "#,##0"
+        wb4.save(out2)
+
+        b5 = office_sheet.Book.open(out2)
+        d = b5[0].fmt("A1")
+        check(d.get("bold") and d.get("size") == 12.0, f"本家の font がうちで読めない: {d}")
+        check(d.get("color") == "00B050", f"本家の文字色: {d.get('color')}")
+        check(d.get("border_left", (None,))[0] == "medium", f"本家の罫線: {d}")
+        check(d.get("fill") == "D9D9D9", f"本家の塗り: {d.get('fill')}")
+        check(d.get("horizontal") == "right" and d.get("wrap"), f"本家の揃え: {d}")
+        check(d.get("number_format") == "#,##0", f"本家の表示形式: {d}")
+        # openpyxl の実物の入れ物をそのまま代入しても効く(属性名で受ける)
+        c5 = b5[0].cell(2, 1)
+        c5.font = OFont(italic=True)
+        check(b5[0].fmt("A2").get("italic"), "openpyxl の Font の代入が効かない")
+
 # ================================================== xlwings の口(参照の算術)
 # 橋は動いているアプリが要るので、ソケットに出ない算術だけを定義値と照合する
 from officework import calc as xw

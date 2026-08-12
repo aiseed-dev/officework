@@ -48,6 +48,112 @@ def _coord(row, col):
     return "{}{}".format(_col_letter(col), row)
 
 
+# ── 書式の入れ物(openpyxl の形。台帳「足す(書式)」2026-08-12)──────
+#
+# openpyxl の実物を渡されても動くように、**読みは属性名の一致だけ**に頼る
+# (isinstance を見ない)。うちの入れ物は座標を持たない値 — セルに代入して
+# 初めて効く、という openpyxl と同じ使い方。
+
+
+class Color:
+    """色。openpyxl の Color の役(rgb だけ持つ。"RRGGBB")。"""
+
+    __slots__ = ("rgb",)
+
+    def __init__(self, rgb=None):
+        self.rgb = rgb
+
+    def __repr__(self):
+        return "<Color {}>".format(self.rgb)
+
+
+def _rgb6(v):
+    # 色 → "RRGGBB"。文字列 / Color / openpyxl の Color(aRGB 8桁)を受ける
+    if v is None:
+        return None
+    rgb = getattr(v, "rgb", v)
+    if not isinstance(rgb, str):
+        return None
+    return (rgb[-6:] if len(rgb) == 8 else rgb).upper()
+
+
+class Side:
+    """罫線の1辺。style は xlsx の線種("thin" "medium" "double" …)。"""
+
+    __slots__ = ("style", "color")
+
+    def __init__(self, style=None, color=None):
+        self.style = style
+        self.color = color
+
+
+class Border:
+    def __init__(self, left=None, right=None, top=None, bottom=None,
+                 diagonal=None, **_rest):
+        if getattr(diagonal, "style", None) is not None:
+            raise NotImplementedError(
+                "斜めの罫線はまだエンジンに無い(台帳: docs/pysheet-gokan.ja.md)"
+            )
+        self.left = left
+        self.right = right
+        self.top = top
+        self.bottom = bottom
+
+
+class Font:
+    def __init__(self, name=None, size=None, bold=None, italic=None,
+                 underline=None, strike=None, color=None, **_rest):
+        self.name = name
+        self.size = size
+        self.bold = bold
+        self.italic = italic
+        self.underline = underline
+        self.strike = strike
+        self.color = color
+
+
+class PatternFill:
+    """塗りつぶし。効くのは solid だけ(模様はエンジンに無い — 正直に断る)。"""
+
+    def __init__(self, patternType=None, fgColor=None, start_color=None,
+                 end_color=None, fill_type=None, **_rest):
+        self.patternType = patternType if patternType is not None else fill_type
+        self.fgColor = fgColor if fgColor is not None else start_color
+
+
+class Alignment:
+    def __init__(self, horizontal=None, vertical=None, wrap_text=None,
+                 shrink_to_fit=None, text_rotation=0, indent=0, **_rest):
+        self.horizontal = horizontal
+        self.vertical = vertical
+        self.wrap_text = wrap_text
+        self.shrink_to_fit = shrink_to_fit
+        self.text_rotation = text_rotation
+        self.indent = indent
+
+
+def _is_date_fmt(nf):
+    # 表示形式が日付か。引用("...")と条件([...])の中を除いて
+    # y / m / d / h / s が残るか — openpyxl と同じ考え方の簡易版
+    if not nf or nf == "General":
+        return False
+    out = []
+    inq = inb = False
+    for ch in nf:
+        if ch == '"':
+            inq = not inq
+        elif inq:
+            pass
+        elif ch == "[":
+            inb = True
+        elif ch == "]":
+            inb = False
+        elif not inb:
+            out.append(ch)
+    s = "".join(out).lower()
+    return any(t in s for t in "ymdhs")
+
+
 class Cell:
     """参照だけ持つセル(座標+シートの札)。openpyxl の Cell の役。
 
@@ -96,6 +202,141 @@ class Cell:
 
     def offset(self, row=0, column=0):
         return Cell(self.parent, self.row + row, self.column + column)
+
+    # ── 書式(openpyxl の形で読み書き。合否は定義どおり動作するか)──
+
+    def _fmt(self):
+        return self.parent.fmt(self.coordinate)
+
+    @property
+    def font(self):
+        d = self._fmt()
+        return Font(
+            name=d.get("font"),
+            size=d.get("size"),
+            bold=d.get("bold", False),
+            italic=d.get("italic", False),
+            underline="single" if d.get("underline") else None,
+            strike=d.get("strike", False),
+            color=Color(d["color"]) if "color" in d else None,
+        )
+
+    @font.setter
+    def font(self, f):
+        # openpyxl と同じく、代入は font 一式の置き換え(bold を書かない
+        # Font を入れると太字は消える)
+        u = getattr(f, "underline", None)
+        size = getattr(f, "size", None)
+        self.parent.set_fmt(
+            self.coordinate,
+            font=getattr(f, "name", None),
+            size=None if size is None else float(size),
+            bold=bool(getattr(f, "bold", None)),
+            italic=bool(getattr(f, "italic", None)),
+            underline=bool(u) and u != "none",
+            strike=bool(getattr(f, "strike", None)),
+            color=_rgb6(getattr(f, "color", None)),
+        )
+
+    @property
+    def border(self):
+        d = self._fmt()
+
+        def side(k):
+            v = d.get(k)
+            if v is None:
+                return Side()
+            style, color = v
+            return Side(style=style, color=Color(color) if color else None)
+
+        return Border(
+            left=side("border_left"),
+            right=side("border_right"),
+            top=side("border_top"),
+            bottom=side("border_bottom"),
+        )
+
+    @border.setter
+    def border(self, b):
+        def edge(s):
+            if s is None or getattr(s, "style", None) is None:
+                return None  # エンジン側で「線なし」
+            return (s.style, _rgb6(getattr(s, "color", None)))
+
+        self.parent.set_fmt(
+            self.coordinate,
+            border_left=edge(getattr(b, "left", None)),
+            border_right=edge(getattr(b, "right", None)),
+            border_top=edge(getattr(b, "top", None)),
+            border_bottom=edge(getattr(b, "bottom", None)),
+        )
+
+    @property
+    def fill(self):
+        d = self._fmt()
+        if "fill" not in d:
+            return PatternFill(patternType=None)
+        return PatternFill(patternType="solid", fgColor=Color(d["fill"]))
+
+    @fill.setter
+    def fill(self, v):
+        pt = getattr(v, "patternType", None)
+        if pt is None:
+            pt = getattr(v, "fill_type", None)
+        if pt is None:
+            self.parent.set_fmt(self.coordinate, fill=None)
+            return
+        if pt != "solid":
+            raise NotImplementedError(
+                "塗りは solid だけ(模様の塗りはエンジンに無い — 台帳)"
+            )
+        fg = getattr(v, "fgColor", None)
+        if fg is None:
+            fg = getattr(v, "start_color", None)
+        self.parent.set_fmt(self.coordinate, fill=_rgb6(fg) or "000000")
+
+    @property
+    def alignment(self):
+        d = self._fmt()
+        return Alignment(
+            horizontal=d.get("horizontal"),
+            vertical=d.get("vertical"),
+            wrap_text=d.get("wrap", False),
+            shrink_to_fit=d.get("shrink", False),
+            text_rotation=d.get("rotation", 0),
+        )
+
+    @alignment.setter
+    def alignment(self, a):
+        if getattr(a, "indent", 0):
+            raise NotImplementedError("字下げ(indent)はまだエンジンに無い(台帳)")
+        rot = getattr(a, "text_rotation", 0) or 0
+        self.parent.set_fmt(
+            self.coordinate,
+            horizontal=getattr(a, "horizontal", None),
+            vertical=getattr(a, "vertical", None),
+            wrap=bool(getattr(a, "wrap_text", None)),
+            shrink=bool(getattr(a, "shrink_to_fit", None)),
+            rotation=int(rot) if rot else None,
+        )
+
+    @property
+    def number_format(self):
+        return self._fmt().get("number_format", "General")
+
+    @number_format.setter
+    def number_format(self, v):
+        self.parent.set_fmt(
+            self.coordinate, number_format=None if v in (None, "General") else v
+        )
+
+    @property
+    def is_date(self):
+        # 表示形式が日付で、中身が数(日付の通し番号)なら True
+        if not _is_date_fmt(self._fmt().get("number_format")):
+            return False
+        v = self.value
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
 
     def __repr__(self):
         return "<Cell {!r}.{}>".format(self.parent.name, self.coordinate)
@@ -479,4 +720,7 @@ class Book:
         return "<officework.sheet.Book {}>".format(self._b.sheet_names)
 
 
-__all__ = ["Book", "Sheet", "Cell"]
+__all__ = [
+    "Book", "Sheet", "Cell",
+    "Font", "Border", "Side", "PatternFill", "Alignment", "Color",
+]
