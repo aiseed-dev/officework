@@ -51,6 +51,10 @@ pub(crate) use py::*;
 mod io;
 pub(crate) use io::*;
 mod picks;
+// RPC は**ユニックスソケットが設計**(この機械の中だけ・ネイティブファースト)。
+// Windows ではこの受け口ごと開かない — ops が cfg(unix) で学んだのと同じ線
+// (0.2.0 で Windows の wheel を壊した教訓)
+#[cfg(unix)]
 mod rpc;
 mod cmds;
 mod view;
@@ -557,7 +561,9 @@ fn main() {
                 // 揃っていないと `=集計(A1)` が UDF だと分からない
                 crate::py::refresh_udfs_if_changed();
                 let view = cx.new(|cx| Calc::new(arg2.clone(), cx));
-                // Python(officework)の口。この機械の中だけのユニックスソケット
+                // Python(officework)の受け口。この機械の中だけのユニックス
+                // ソケット(Windows には無い — mod rpc の注記)
+                #[cfg(unix)]
                 crate::rpc::start(view.clone(), cx);
                 // plugins の関数を呼んでいるセルを裏で計算し続ける見張り
                 crate::py::start_udf_watch(view.clone(), cx);

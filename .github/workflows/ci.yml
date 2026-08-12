@@ -128,17 +128,27 @@ jobs:
             -A clippy::needless_range_loop
 
   # 画面のいる2つ。**遅い。** それでも走らせる — 走らせないと、直したものが
-  # 壊れたことに push まで誰も気付かない
+  # 壊れたことに push まで誰も気付かない。
+  #
+  # **Linux と macOS の両方で回す**(2026-08-13 発注者「Linux 以外も CI に」)。
+  # GPUI は zed 育ちなので mac は本場。mac の runner は下ごしらえが要らない —
+  # cmake/clang は標準、日本語フォントは Hiragino が /System/Library/Fonts に、
+  # 綴りの辞書 /usr/share/dict/words も標準で居る
   apps:
-    name: cargo test (画面のいる calc / writer)
-    runs-on: ubuntu-latest
+    name: cargo test (画面のいる calc / writer — ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # 片方が落ちても、もう片方は最後まで走らせて全部見る(--no-fail-fast と同じ理屈)
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       # GPUI は zed を git から取って組む。**掛かるのはほぼ初回だけ**なので、
       # 覆いが効くかどうかがこの仕事の速さを決める
       - uses: Swatinem/rust-cache@v2
-      - name: GPUI が繋ぐ物を入れる
+      - name: GPUI が繋ぐ物を入れる(Linux だけ)
         # **組み上がったバイナリの `ldd` から起こした**(推測ではない):
         #   libxkbcommon / libxkbcommon-x11 / libxcb / libxcb-xkb
         #   (libXau・libXdmcp は libxcb1-dev が連れてくる)
@@ -150,6 +160,7 @@ jobs:
         # 発見)— zed-font-kit の yeslogic-fontconfig-sys が**組む時**に
         # pkg-config で fontconfig.pc を探す。ldd は実行時の繋ぎ先しか
         # 見せないので、この物差しには組む時だけの依存という盲点がある
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
@@ -160,8 +171,16 @@ jobs:
         # 2026-08-11 の基準は calc 148 / writer 38。**減ったら赤にする**のが
         # この仕事の役目で、数そのものはここに焼き付けない(増えるのが普通)
         run: cargo test -p calc -p writer --no-fail-fast
+      - name: 核の試験も(macOS だけ)
+        # 核は Linux では自分の仕事(test)を持っている。mac のぶんはこの
+        # runner に相乗り — 仕事を増やすより、組んだ土台を使い回すほうが安い
+        if: runner.os == 'macOS'
+        run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
       - name: clippy
-        # 画面の2つと `ui` も同じ物差しで見る。許す4つは核と揃える
+        # 画面の2つと `ui` も同じ物差しで見る。許す4つは核と揃える。
+        # **Linux だけ** — 指摘は的でほぼ変わらず、mac で二度見る値打ちより
+        # runner の時間が惜しい(mac 固有の cfg 枝はうちのコードにほぼ無い)
+        if: runner.os == 'Linux'
         run: |
           cargo clippy -p calc -p writer -p ui --all-targets -- \
             -D warnings \
@@ -169,6 +188,23 @@ jobs:
             -A clippy::type_complexity \
             -A clippy::field_reassign_with_default \
             -A clippy::needless_range_loop
+
+  # 核を Windows でも(2026-08-13 発注者「Linux 以外も CI に」)。
+  # アプリ(calc/writer)はまだ — rpc の受け口は cfg(unix) で塞いだが、
+  # GPUI の Windows の的で組めるかは別の工事(配布方針の Win ビルドと同じ車線)。
+  # フォント: Windows は日本語フォント(Yu Gothic — .ttc)が標準で、
+  # engine/src/font.rs は .ttc も C:\Windows\Fonts も読める。
+  # 辞書: /usr/share/dict/words が無い — 綴りの試験は「無ければ飛ばす
+  # (そう言う)」に直した(lang/src/spell.rs)
+  core-windows:
+    name: cargo test (核 — Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: 試験
+        run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
 
   # 配る形で確かめる。**手元の木ではなく wheel を入れた素の環境で**
   python:
