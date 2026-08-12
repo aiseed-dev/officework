@@ -1,0 +1,68 @@
+# conda-forge へ出す recipe の下書き(2026-08-12)。
+# 提出先はこの repo ではなく conda-forge/staged-recipes —
+# ここに置くのは**下書きと検証の控え**(手順は隣の README.ja.md)。
+#
+# 版と sha256 は提出時に差し替える:
+#   curl -s https://pypi.org/pypi/officework/json \
+#     | python3 -c "import json,sys; d=json.load(sys.stdin); \
+#       [print(u['digests']['sha256']) for u in d['urls'] if u['packagetype']=='sdist']"
+
+{% set name = "officework" %}
+{% set version = "0.1.2" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: SDIST_SHA256_HERE
+
+build:
+  number: 0
+  # sdist は path 依存(sheet / engine / ooxml)を同梱している —
+  # maturin sdist で検証済み(2026-08-12。ネット無しで cargo が解ける)
+  script:
+    # AGPL の表示義務: Rust の依存の免許を束ねて同梱する
+    - cargo-bundle-licenses --format yaml --output THIRDPARTY.yml
+    - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  skip: true  # [win]  Windows は後(bwrap 相当が無く、まず Linux/mac から)
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('rust') }}
+    - {{ stdlib('c') }}
+    - cargo-bundle-licenses
+  host:
+    - python
+    - pip
+    - maturin >=1.9,<2.0
+  run:
+    - python
+
+test:
+  imports:
+    - officework
+  commands:
+    - python -c "from officework import sheet, doc, calc"
+
+about:
+  home: https://github.com/aiseed-dev/officework
+  license: AGPL-3.0-or-later
+  license_file:
+    - LICENSE
+    - THIRDPARTY.yml
+  summary: xlsx/docx engine that never breaks the original file, plus a bridge to a running spreadsheet
+  description: |
+    Write values into real-world xlsx forms while borders, merges, column
+    widths and number formats survive untouched; edit docx the same way
+    (only what you changed is written back). Formulas recalculate on
+    reopen. `from officework import calc` attaches to a running calc
+    (xlwings-style Book/Range) when the desktop app is present.
+  doc_url: https://github.com/aiseed-dev/officework/blob/main/docs/python-manual.md
+  dev_url: https://github.com/aiseed-dev/officework
+
+extra:
+  recipe-maintainers:
+    - aiseed-dev
