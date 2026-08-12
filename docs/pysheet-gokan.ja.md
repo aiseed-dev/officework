@@ -198,7 +198,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ sheet / get_value / raw_value / formula2 | 互換層 | formula2 = formula(動的配列の別名)。get_value は手(引数なし・value と同じ物 — 実物で確認) |
 | ✔ merge_cells | 互換層 | merges(rpc)の一覧と自分の重なりで出す(済 2026-08-12 — 互換層はこれで全部済) |
 | ✔ clear / clear_contents | 足す | (済 2026-08-12 — Sheet の項と同じ rpc) |
-| insert / delete | 足す | 範囲の挿入・削除(詰める向きつき) |
+| ✔ insert / delete | 足す | 範囲の挿入・削除(詰める向きつき)(**済 2026-08-13**: rpc insert_rows / delete_rows / insert_cols / delete_cols(語彙32)。Range.insert(shift="down"/"right")・delete(shift="up"/"left")と Sheet.insert_rows(at, count) 系。**残った式の参照が付いて動く**のが上位分 — 実機で確認(挿入で =H1*3 が =H2*3 になり答えも合う)。**部分的なセルのずらしは持たない** — 行・列は丸ごと動く、が家の作法。正直に断る) |
 | ✔ merge / unmerge / merge_area | 足す | 結合の書きと読み(済 2026-08-12: rpc merge / unmerge / merge_area。作法はアプリと同じ sheet::model の merge。merge(across=True) は行ごと。unmerge は掛かる物を全部 — xlwings の定義どおり) |
 | ✔ end | 足す | Ctrl+矢印相当。橋に end のコマンド(済 2026-08-12。端は使っている範囲まで — 1048576 行目には飛ばない) |
 | ✔ select | 足す | Python から選択を動かして見せる(済 2026-08-12: rpc select。打ちかけは確定してから動く) |

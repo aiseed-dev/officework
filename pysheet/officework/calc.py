@@ -313,6 +313,38 @@ class Range:
         """画面の選択をこの範囲に動かして見せる。"""
         _call("select", **self._kw())
 
+    def insert(self, shift="down"):
+        """この範囲の**行(か列)を丸ごと**挿す。shift="down" なら範囲の
+        行数ぶんの行、"right" なら列数ぶんの列。**残った式の参照が付いて
+        動く**(明細の行を増やす操作)。
+
+        部分的なセルのずらし(範囲の中だけ下げる)は模型に無い — 行・列は
+        丸ごと動く、が家の作法。"""
+        rows, cols = self.shape
+        if shift == "down":
+            _call("insert_rows", at=str(self.row), count=rows, **self._sheet_kw())
+        elif shift == "right":
+            _call("insert_cols", at=_col_name(self._c0), count=cols,
+                  **self._sheet_kw())
+        else:
+            raise OfficeworkError('shift は "down" か "right"')
+
+    def delete(self, shift="up"):
+        """この範囲の**行(か列)を丸ごと**抜く。shift="up" なら行、
+        "left" なら列。抜いた所を指していた式は #REF! になる —
+        黙って別のセルを指すより良い。"""
+        rows, cols = self.shape
+        if shift == "up":
+            _call("delete_rows", at=str(self.row), count=rows, **self._sheet_kw())
+        elif shift == "left":
+            _call("delete_cols", at=_col_name(self._c0), count=cols,
+                  **self._sheet_kw())
+        else:
+            raise OfficeworkError('shift は "up" か "left"')
+
+    def _sheet_kw(self):
+        return {"sheet": self._sheet} if self._sheet is not None else {}
+
     @property
     def name(self):
         """この範囲をちょうど指す名前(xlwings と同じ)。無ければ None。"""
@@ -712,6 +744,22 @@ class Sheet:
     def clear_formats(self):
         """シートの書式を全部消す(値は残る)。"""
         _call("clear_formats", sheet=self.name)
+
+    def insert_rows(self, at, count=1):
+        """行を挿す(at は1起点の行番号)。**残った式の参照が付いて動く**。"""
+        _call("insert_rows", at=str(at), count=count, sheet=self.name)
+
+    def delete_rows(self, at, count=1):
+        """行を抜く(1起点)。抜いた所を指していた式は #REF! になる。"""
+        _call("delete_rows", at=str(at), count=count, sheet=self.name)
+
+    def insert_cols(self, at, count=1):
+        """列を挿す(at は "C" の形)。"""
+        _call("insert_cols", at=str(at), count=count, sheet=self.name)
+
+    def delete_cols(self, at, count=1):
+        """列を抜く(at は "C" の形)。"""
+        _call("delete_cols", at=str(at), count=count, sheet=self.name)
 
     def activate(self):
         """画面のシートをこのシートに切り替える。"""

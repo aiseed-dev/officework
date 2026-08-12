@@ -666,6 +666,52 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 },
             }
         }
+        // 行・列を挿す/抜く(丸ごと)。**残った式の参照が付いて動く** —
+        // 明細の行を増やす操作そのもの。count は枚数(既定 1)
+        "insert_rows" | "delete_rows" | "insert_cols" | "delete_cols" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            if h.book().sheets[si].protected {
+                return err("シートが保護されています");
+            }
+            // at は行なら "3"(1起点)か "A3"、列なら "C" か "C3"
+            let Some(at) = o.str("at") else { return err("at がありません") };
+            let rows = cmd.ends_with("rows");
+            let idx = if rows {
+                match at.trim().parse::<u32>() {
+                    Ok(n) if n >= 1 => n - 1,
+                    _ => match sheet::Pos::parse(&at) {
+                        Some(p) => p.row,
+                        None => return err(&format!("行の指し方が読めません: {at:?}")),
+                    },
+                }
+            } else {
+                match sheet::Pos::parse(&format!("{}1", at.trim())) {
+                    Some(p) => p.col,
+                    None => match sheet::Pos::parse(&at) {
+                        Some(p) => p.col,
+                        None => return err(&format!("列の指し方が読めません: {at:?}")),
+                    },
+                }
+            };
+            let count = o.num("count").unwrap_or(1.0).max(1.0) as u32;
+            h.settle();
+            h.mark_once();
+            let sh = &mut h.book_mut().sheets[si];
+            for _ in 0..count {
+                match cmd.as_str() {
+                    "insert_rows" => sh.insert_row(idx),
+                    "delete_rows" => sh.remove_row(idx),
+                    "insert_cols" => sh.insert_col(idx),
+                    _ => sh.remove_col(idx),
+                }
+            }
+            sheet::recalc_book(h.book_mut(), si);
+            h.mark_dirty();
+            format!("{{\"ok\":true,\"count\":{count}}}")
+        }
         // シートの画像の一覧 [[留めたセル, 幅px, 高さpx], …]
         // (開いた帳票にあった物と、Python が貼った物の両方)
         "pictures" => {

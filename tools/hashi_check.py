@@ -166,6 +166,23 @@ try:
 except xw.OfficeworkError:
     pass
 
+# 行・列の出し入れ: **残った式の参照が付いて動く**(明細の行を増やす操作)
+sh["H1"].value = 10
+sh["H2"].value = "=H1*3"
+check(sh["H2"].value == 30, f"下ごしらえ: {sh['H2'].value}")
+sh.insert_rows(1)                    # 1行目に挿す — H1→H2、式は H3 へ
+check(sh["H2"].value == 10, f"挿入で値が動かない: {sh['H2'].value}")
+check(sh["H3"].formula == "=H2*3",
+      f"挿入で式の参照が追随しない: {sh['H3'].formula}")
+check(sh["H3"].value == 30, "追随した式の答えが違う")
+sh.delete_rows(1)                    # 戻す
+check(sh["H1"].value == 10 and sh["H2"].formula == "=H1*3", "削除で戻らない")
+sh["G1:G2"].insert()                 # Range から2行(shape の行数ぶん)
+check(sh["H3"].value == 10, f"Range.insert が2行入っていない: {sh['H3'].value}")
+sh["G1:G2"].delete()
+check(sh["H1"].value == 10, "Range.delete で戻らない")
+sh["H1:H2"].clear()
+
 # pictures: Python の絵が実機のシートに浮かぶ(SEKKEI「calc の分業」の筋)
 png1x1 = (b"\x89PNG\r\n\x1a\n"
           b"\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02"
