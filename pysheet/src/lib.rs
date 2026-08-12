@@ -715,6 +715,91 @@ impl PySheet {
         })
     }
 
+    /// 印刷範囲。openpyxl と同じ「'シート名'!$A$1:$C$10」の形
+    /// (複数の域は , 区切り)。無ければ None。
+    #[getter]
+    fn print_area(&self) -> PyResult<Option<String>> {
+        self.with(|s| {
+            if s.print_areas.is_empty() {
+                return Ok(None);
+            }
+            let name = s.name.clone();
+            Ok(Some(
+                s.print_areas
+                    .iter()
+                    .map(|(a, b)| format!("'{}'!{}:{}", name, abs_a1(*a), abs_a1(*b)))
+                    .collect::<Vec<_>>()
+                    .join(","),
+            ))
+        })
+    }
+
+    /// 印刷範囲を置く。"A1:C10"($ や シート名! 付きでも)を , 区切りで。
+    /// None か空で消す。PDF と印刷がこれに従う。
+    #[setter]
+    fn set_print_area(&self, value: Option<&str>) -> PyResult<()> {
+        let mut areas: Vec<(Pos, Pos)> = Vec::new();
+        if let Some(v) = value.filter(|v| !v.trim().is_empty()) {
+            for part in v.split(',') {
+                let p = part.trim().replace('$', "");
+                let p = p.rsplit('!').next().unwrap_or(&p);
+                areas.push(parse_range(p)?);
+            }
+        }
+        self.with(|s| {
+            s.print_areas = areas;
+            Ok(())
+        })
+    }
+
+    /// 入力規則の一覧 [(範囲, type, formula1, formula2, operator)]。
+    #[getter]
+    fn validations(&self) -> PyResult<Vec<(String, String, String, String, String)>> {
+        self.with(|s| {
+            Ok(s.validations
+                .iter()
+                .map(|v| {
+                    let r = if v.range.0 == v.range.1 {
+                        v.range.0.a1()
+                    } else {
+                        format!("{}:{}", v.range.0.a1(), v.range.1.a1())
+                    };
+                    (r, v.kind.clone(), v.formula.clone(), v.formula2.clone(), v.op.clone())
+                })
+                .collect())
+        })
+    }
+
+    /// 入力規則を足す。list なら formula1 は `"甲,乙"`(直書き)か範囲参照。
+    /// エンジンは list を効かせ(規則に合わない入力を堰き止め)、他の種類も
+    /// **落とさず持ち越す**(判定は分かる物だけ — 模型の注のとおり)。
+    #[pyo3(signature = (range, formula1, kind="list", operator="", formula2="", allow_blank=true))]
+    fn add_validation(
+        &self,
+        range: &str,
+        formula1: &str,
+        kind: &str,
+        operator: &str,
+        formula2: &str,
+        allow_blank: bool,
+    ) -> PyResult<()> {
+        let (a, b) = parse_range(range)?;
+        self.with(|s| {
+            s.validations.push(sheet::model::Validation {
+                range: (a, b),
+                formula: formula1.to_string(),
+                kind: kind.to_string(),
+                op: operator.to_string(),
+                formula2: formula2.to_string(),
+                input_msg: None,
+                error_msg: None,
+                allow_blank,
+                hide_arrow: false,
+            });
+            Ok(())
+        })
+    }
+
     /// 名前の定義 [(名前, 参照 "A1" か "A1:B2")]。式の中で名前が使える。
     #[getter]
     fn names(&self) -> PyResult<Vec<(String, String)>> {
@@ -830,6 +915,13 @@ impl PySheet {
 /// 画面の行番号(1起点)→ 内部の行(0起点)。0行目は無い。
 fn row0(at: u32) -> PyResult<u32> {
     at.checked_sub(1).ok_or_else(|| PyValueError::new_err("行番号は1から(0行は無い)"))
+}
+
+/// "C10" → "$C$10"(openpyxl の印刷範囲の形)。
+fn abs_a1(p: Pos) -> String {
+    let a1 = p.a1();
+    let i = a1.chars().take_while(|c| c.is_ascii_alphabetic()).count();
+    format!("${}${}", &a1[..i], &a1[i..])
 }
 
 /// 列の文字("A"〜)→ 内部の列(0起点)。

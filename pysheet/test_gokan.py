@@ -289,6 +289,49 @@ if openpyxl is not None:
         del b9.defined_names["tanka"]
         check("tanka" not in b9.defined_names, "名前が消えない")
 
+        # --- 印刷範囲と入力規則 ------------------------------------------------
+        bp = office_sheet.Book()
+        sp = bp[0]
+        sp["A1"] = 1
+        sp.print_area = "A1:C10"
+        check(sp.print_area == "'{}'!$A$1:$C$10".format(sp.title),
+              f"print_area の形: {sp.print_area}")
+        dv = office_sheet.DataValidation(type="list", formula1='"甲,乙,丙"')
+        dv.add("B1:B5")
+        sp.add_data_validation(dv)
+        check(sp.validations == [("B1:B5", "list", '"甲,乙,丙"', "", "")],
+              f"validations: {sp.validations}")
+        out_p = os.path.join(t, "print_dv.xlsx")
+        bp.save(out_p)
+
+        rp = openpyxl.load_workbook(out_p).active
+        check(rp.print_area.replace("$", "").endswith("!A1:C10"),
+              f"うちの印刷範囲を本家が読めない: {rp.print_area}")
+        dvs = rp.data_validations.dataValidation
+        check(len(dvs) == 1 and dvs[0].type == "list"
+              and dvs[0].formula1 == '"甲,乙,丙"'
+              and str(dvs[0].sqref) == "B1:B5",
+              f"うちの入力規則を本家が読めない: {dvs}")
+
+        # 逆向き: 本家が書いた物をうちが読める(実物の DataValidation の代入も)
+        from openpyxl.worksheet.datavalidation import DataValidation as ODV
+        wb10 = openpyxl.Workbook()
+        ws10 = wb10.active
+        ws10.print_area = "B2:D4"
+        odv = ODV(type="list", formula1="$D$2:$D$5")
+        ws10.add_data_validation(odv)
+        odv.add("A1:A3")
+        out_p2 = os.path.join(t, "print_dv_opx.xlsx")
+        wb10.save(out_p2)
+        b11 = office_sheet.Book.open(out_p2)
+        s11 = b11[0]
+        check(s11.print_area.replace("$", "").endswith("!B2:D4"),
+              f"本家の印刷範囲: {s11.print_area}")
+        check(any(v[0] == "A1:A3" and v[1] == "list" for v in s11.validations),
+              f"本家の入力規則: {s11.validations}")
+        s11.add_data_validation(odv)  # 本家の実物をそのまま渡しても効く
+        check(len(s11.validations) == 2, "本家の DataValidation の代入")
+
 # ================================================== xlwings の口(参照の算術)
 # 橋は動いているアプリが要るので、ソケットに出ない算術だけを定義値と照合する
 from officework import calc as xw

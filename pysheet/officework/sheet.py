@@ -132,6 +132,24 @@ class Alignment:
         self.indent = indent
 
 
+class DataValidation:
+    """入力規則。openpyxl の DataValidation の形(type / formula1 / add)。
+    list はエンジンが効かせる(規則に合わない入力を堰き止める)。
+    他の種類も落とさず持ち越す — 判定は分かる物だけ(模型の注のとおり)。"""
+
+    def __init__(self, type=None, formula1=None, formula2=None, operator=None,
+                 allow_blank=True, **_rest):
+        self.type = type
+        self.formula1 = formula1
+        self.formula2 = formula2
+        self.operator = operator
+        self.allow_blank = allow_blank
+        self.sqref = []
+
+    def add(self, cell_range):
+        self.sqref.append(str(cell_range))
+
+
 class DefinedName:
     """名前付き範囲の1件。openpyxl の DefinedName の形(attr_text が参照)。"""
 
@@ -745,6 +763,35 @@ class Sheet:
         # openpyxl と同じ「"B2:C3" の一覧」の形で返す
         return ["{}:{}".format(a, b) for a, b in self._s.merges]
 
+    @property
+    def print_area(self):
+        return self._s.print_area
+
+    @print_area.setter
+    def print_area(self, value):
+        # openpyxl と同じく、文字でも一覧でも受ける
+        if isinstance(value, (list, tuple)):
+            value = ",".join(str(v) for v in value)
+        self._s.print_area = value
+
+    def add_data_validation(self, dv):
+        """入力規則を足す(openpyxl と同じ口 — DataValidation を渡す)。
+        本家の実物でもうちの DataValidation でもよい(属性名で受ける)。"""
+        sqref = getattr(dv, "sqref", None)
+        ranges = ([str(r) for r in sqref] if isinstance(sqref, (list, tuple))
+                  else str(sqref).split())
+        if not ranges:
+            raise ValueError("先に dv.add(範囲) で掛ける範囲を決めてください")
+        for r in ranges:
+            self._s.add_validation(
+                r.replace("$", ""),
+                str(getattr(dv, "formula1", "") or ""),
+                kind=str(getattr(dv, "type", "") or ""),
+                operator=str(getattr(dv, "operator", "") or ""),
+                formula2=str(getattr(dv, "formula2", "") or ""),
+                allow_blank=bool(getattr(dv, "allow_blank", True)),
+            )
+
     def __repr__(self):
         return '<officework.sheet.Sheet "{}">'.format(self.name)
 
@@ -893,5 +940,5 @@ class Book:
 __all__ = [
     "Book", "Sheet", "Cell",
     "Font", "Border", "Side", "PatternFill", "Alignment", "Color",
-    "Comment", "Hyperlink", "Protection", "DefinedName",
+    "Comment", "Hyperlink", "Protection", "DefinedName", "DataValidation",
 ]

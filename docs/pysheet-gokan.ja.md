@@ -85,8 +85,9 @@ add_heading と Run の add_text / clear はエンジンの書き口待ちだっ
 | ✔ freeze_panes | 足す | ウィンドウ枠の固定。実務多い(済 2026-08-12。openpyxl と同じ A1 形式 — "B2" = 上1行・左1列) |
 | ✔ add_image | 足す | **matplotlib の図をシートに貼る** — アプリのグラフ分業と同じ道を Python にも。oneCellAnchor で書く(済 2026-08-12: 径路でも bytes でも。寸法は ops::image_px で測り、width_px/height_px で上書き。読み側の `images` も付けた — openpyxl はこれを公開 API で持たない) |
 | evenHeader / oddHeader / firstHeader / evenFooter / oddFooter / firstFooter | 足す | 印刷ヘッダー・フッター。writer のヘッダー・フッターの後に同じ模型で |
-| print_area / print_titles / print_title_rows / print_title_cols | 足す | 印刷設定。calc はモデルに読む所まで済み — 書きを足す |
-| add_data_validation | 足す | エンジンは list 規則を読み・効かせ・往復済み。追加の API を足す |
+| ✔ print_area | 足す | 印刷設定。calc はモデルに読む所まで済み — 書きを足す(**済 2026-08-12 夜**: 読みは openpyxl と同じ「'シート'!$A$1:$C$10」(複数域は , 区切り)、書きは $ もシート名! も付いていてよい。PDF と印刷がこれに従う。print_titles 系は模型に無い — 残) |
+| print_titles / print_title_rows / print_title_cols | 足す | 見出し行の繰り返し — 模型に畑が無い(pageSetup の titles)。模型を太らせてから |
+| ✔ add_data_validation | 足す | エンジンは list 規則を読み・効かせ・往復済み。追加の API を足す(**済 2026-08-12 夜**: add_validation(範囲, formula1, kind, operator, formula2, allow_blank)+ validations の読み。openpyxl の DataValidation の実物を add_data_validation に渡しても効く(sqref ごと)。適合は両方向) |
 | add_table / tables | 足す | テーブル(構造化参照・フィルタ)。いまは原文持ち越しのみ — 読み書きを足す |
 | array_formulae | 足す | 配列式。エンジンがスピルを覚える件(pyoffice の「返り値の形で広がる」)と同じ模型 |
 | column_groups | 足す | 行・列のグループ化(outlineLevel)の読み書き(小)。画面の畳みはアプリの在庫 |
