@@ -317,7 +317,11 @@ pub fn sheet_to_pdf<W: Write>(
             let mut ink = cell.fmt.color.clone();
             // 条件付き書式の太字。**None は「触らない」**(セル自身の書式のまま)。
             // 斜体・下線・取り消し線は紙ではまだ描かない — セル自身のそれらも
-            // 描いていないので、ここだけ描くと画面と紙の食い違いが増える
+            // 描いていないので、ここだけ描くと画面と紙の食い違いが増える。
+            // データバー・カラースケール・アイコン(rule.scalar の側)も
+            // **紙では控える**(2026-08-07 の決め — 条件付き書式 第2版)。
+            // 画面側の解決は calc/src/view.rs にあり、この割り切りは
+            // ここと画面の2箇所に散っている — 足すときは両方を見ること
             let mut bold = None;
             for (rule, aux) in cond_prep {
                 if rule.hits(p, &cell.value, aux) {

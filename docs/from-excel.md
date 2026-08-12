@@ -209,7 +209,7 @@ Excel's answer is Power Query and Copilot connectors — have your core business
 | From Text/CSV | Same | Data tab > "Text" opens a wizard (encoding, delimiter, destination, with a three-row preview) and pours the rows in as values. Not going through Power Query means fewer steps |
 | Choosing the encoding (against mojibake) | Same | Auto / UTF-8 / Shift_JIS (CP932) / Latin-1. Auto tries them in order and **reports which encoding it used** — it will not garble your text in silence |
 | Choosing the delimiter | Same | Auto / comma / tab / semicolon / colon / space / any other single character. Decimal separator, thousands separator and text qualifier are held back (on the ledger) |
-| From Web | Different | There is no built-in button. Put a procedure (.py) in `~/.config/office/plugins/` and run it with `@name net`, which gives it a sandbox with network access for that one run, and have it append to the ledger. **A procedure can never be started from a workbook** |
+| From Web | Different | There is no built-in button. Put a procedure (.py) in `~/.config/office/plugins/` and run it with `@name`, appending to the ledger — plugins code is your own, so the network is available as usual (the `net` suffix is no longer needed). **A procedure can never be started from a workbook** |
 | From Database | Different | There is no GUI connector. A procedure in plugins queries the database with polars or the like. Drivers live in your own Python environment |
 | From Another Workbook | Different | Data tab > "External link" imports a whole sheet from another xlsx **as values** (formulas become values; the source workbook's name goes into the sheet name) |
 | Live external references (=[Book1.xlsx]…) and Edit Links | By design | So that no form ever goes out with broken or stale references (a deliberate trade-off recorded in [the ledger](guide-tsukiawase-2.ja.md)). If you want current numbers, import again |
@@ -259,7 +259,7 @@ You write them the same way — start with `=`, and arithmetic, comparisons, ran
 | Automatic/manual recalculation and F9 | Same | F9 recalculates everything, Shift+F9 only the sheet |
 | Auditing formulas (Show Formulas, tracing, Watch Window) | Different | Show Formulas (Ctrl+`) is the same. Tracing lights up the cells involved instead of drawing arrows. The watch list is a strip along the bottom, not a window of its own |
 | Structured references (=Table1[Amount]) | Same | `=SUM(Sales[Amount])` works (**implemented 2026-08-08**). It points at the data body only — the header row and the totals row are not included. For the current row, `[@Amount]` (inside the table; from outside, `Sales[@Amount]`). An unknown table or column gives #REF!. The nested form `[[#Headers],[Column]]` is not accepted yet (it is a formula error — noted on the ledger) |
-| =PY (Python in Excel) | Different | Not in the cloud — **in a local sandbox, and free**. It runs only when you ask for Data > Python > Calculate (`@計算`); neither opening the file nor recalculating runs it. Excel shows #NAME? when it opens the file, but the values remain |
+| =PY (Python in Excel) | Different | Not in the cloud — **local and free**. The body is a def in plugins; the cell carries only the formula `=fname(…)`, not code. It recalculates in the background when arguments change (`@計算` remains as the manual crank). Excel shows #NAME? when it opens the file, but the last values remain |
 
 ## Function compatibility table
 
@@ -283,7 +283,7 @@ Nothing missing is hidden. Write a name that does not exist and it says #NAME? h
 | PMT, PV, FV, NPER, NPV, IRR, RATE | Yes | IRR and RATE are solved iteratively, as in Excel |
 | SUBTOTAL, AGGREGATE | Yes | **101–111 skip rows you hid by hand, including rows collapsed in an outline** (implemented 2026-08-08; 1–11 count everything, same as Excel). **Rows hidden by a filter, however, are still counted** — filtering is a screen-side state that the formula evaluator cannot see (noted on the ledger). For a total, average or count over only the visible rows, the statistics in the status bar do respect the filter |
 | PHONETIC, ASC, JIS, DBCS, LENB/LEFTB/RIGHTB/MIDB, DATESTRING, YEN | Yes | The standard Japanese set (Japanese era dates, counting full-width characters as 2) |
-| =PY (a cell function written in Python) | Yes (and here first) | Local sandbox, free. This function — a UDF — is the only Python a workbook is allowed to carry |
+| =PY (a cell function written in Python) | Yes (and here first) | Local and free. The body lives in plugins (the cell says `=fname(…)`; the old spelling `=PY` still works) — **workbooks carry no code** |
 
 ## PivotTables
 
@@ -385,7 +385,7 @@ Excel has three answers here: the Consolidate dialog, the data model (Power Pivo
 | Descriptive Statistics (one table of mean, median, stdev) | Different | No dialog produces the table, but the functions are all there — MEDIAN, MODE, STDEV(P)/VAR(P) (the .S/.P spellings too), PERCENTILE, QUARTILE, LARGE, SMALL. Kurtosis, skewness (KURT, SKEW) and GEOMEAN are absent (candidates for the ledger). If you want it as a single table, build it in polars and write it back |
 | Rank and percentile | Different | Functions rather than a tool — RANK(.EQ/.AVG), PERCENTILE, QUARTILE. Ties behave as in Excel (EQ gives the same rank, AVG averages the ranks) |
 | Correlation (a matrix across many columns) | Different | For two columns, =CORREL. There is no dialog for the whole matrix — build it in Data > Python (polars) and write it back. Covariance (the COVAR family) is absent (a candidate for the ledger) |
-| t-test, F-test, ANOVA, chi-squared | Different | Neither the test functions (T.TEST and its relatives) nor the dialogs exist. Tests are scipy.stats and statsmodels in Data > Python, the designated route — inside the sandbox, with no network, and usable as long as they are installed on the machine (the functions are not on the ledger yet — a candidate for it) |
+| t-test, F-test, ANOVA, chi-squared | Different | Neither the test functions (T.TEST and its relatives) nor the dialogs exist. Tests are scipy.stats and statsmodels in Data > Python, the designated route — usable as long as they are installed on the machine (the functions are not on the ledger yet — a candidate for it) |
 | Exponential smoothing, FORECAST.ETS, Forecast Sheet | Not yet | Forecast Sheet is an open item on the ledger. Only the straight-line forecast (FORECAST / FORECAST.LINEAR) is there. For smoothing and seasonal forecasts, statsmodels in Data > Python for now |
 
 ## Conditional formatting
@@ -522,7 +522,7 @@ Excel's answer is the cloud. **officework's answer is a shared folder** — whoe
 | Record Macro | Different | There is no record button. Ask the AI in plain language for the Python and try it in the sandbox (the manual carries a copy-paste briefing block). Once it satisfies you, move it into plugins and call it with `@name` from then on |
 | VBA and the Visual Basic Editor | By design | See above ([design](sekkei/python.ja.md)) |
 | The VBA you already have in .xlsm files | Different | Extract with olevba → hand it to the AI together with the briefing to get Python → check the answers against the same inputs. There is no way to open an .xlsm directly either |
-| Macro security settings (the three choices, the yellow bar) | By design | Nothing runs by itself and every run is explicit and sandboxed, so the moment that would ask you to choose never arrives |
+| Macro security settings (the three choices, the yellow bar) | By design | Nothing runs by itself and every run is a person's explicit action, so the moment that would ask you to choose never arrives |
 | Workbook_Open / Auto_Open | By design | Open = execute does not exist — the first safety principle of this software |
 | Worksheet_Change and the other events | By design | Build it out of data validation and conditional formatting plus an explicit `@name` or `@計算` |
 | Personal Macro Workbook (PERSONAL.XLSB) | Different | `~/.config/office/plugins/` is that place — `@name` reaches it from any workbook |
@@ -531,12 +531,12 @@ Excel's answer is the cloud. **officework's answer is a shared folder** — whoe
 | Office Scripts + Power Automate | Different | For scheduled runs, drive the engine (`officework.sheet`) from cron as ordinary Python |
 | MsgBox, InputBox, UserForms | Different | No windows pop up. `print` goes to the status bar and input comes from cells plus data validation — the sheet itself is the UI |
 | xlwings and COM automation | Same | A one-line swap to officework. `@xw.func` and `Book.caller()` are not supported (plugins fill the same role) |
-| Talking to the web or in-house APIs | Different | The sandbox has no network by default. It opens only when you type `@name net` at that moment, and **the permission is never saved anywhere** |
+| Talking to the web or in-house APIs | Different | Plugins code is your own, so the network is available as usual (the `@name net` distinction is gone — typing it says so). **Nothing in a workbook can ever be the starting point of a run** |
 
 ## AI (the Copilot equivalent)
 
-The AI writes code and prose. **Execution is always an explicit human action
-inside the sandbox**, and nothing the AI produces lands without a snapshot
+The AI writes code and prose. **Execution is always an explicit human
+action**, and nothing the AI produces lands without a snapshot
 first — every one of these steps back with a single Ctrl+Z. The default
 destination is a model on this machine, so nothing leaves your network.
 
@@ -633,7 +633,7 @@ Three jobs come before handing a workbook to someone else: look for mistakes, fl
 | Digital signatures | Same-shaped in intent, Different | Not a signature line but a signature file placed beside the workbook (`name.xlsx.sig`, Ed25519). What it actually provides is tamper detection and proof of the name |
 | Enabling/disabling macros, trusted locations | By design | With no open = execute, the moment that would demand you enable something never comes |
 | When you receive an .xlsm | Different | The VBA does not run. olevba → AI → check the answers in the sandbox (see the macros section) |
-| Worrying about macro viruses | Different | No automatic execution, plus the bubblewrap sandbox (no network, the real filesystem read-only). The only thing a workbook can carry is a =PY function |
+| Worrying about macro viruses | Different | No automatic execution, plus **workbooks carry no code**. A file you receive contains nothing that could run, so "someone else's code runs the moment you open it" cannot happen by construction |
 | Recommend read-only, Mark as Final | Not yet | The nearest paths are sheet protection and the exclusive lock (not on the ledger yet — a backlog candidate) |
 | The sheet-protection password is unknown | Different | We never look at passwords, so protection applied in Excel comes off with the same one-button press. Sheet protection was always about preventing slips — **if you need a safe, encrypt** |
 | Protected View (the warning for files from the internet) | By design | There is nothing that opens and executes to begin with ([design](sekkei/python.ja.md)). Parts we can't read appear in the report shown when the file opens |
@@ -661,7 +661,7 @@ no add-in registry — extension is entirely the .py files you put in
 | Changing the display language | Same | Pick it under "Language (ribbon and wording)" in Advanced settings; it takes effect at the next launch (Excel needs a restart too). Only languages whose wording is complete appear — the honest line that keeps us from claiming "45 languages". OFFICE_LANG wins if it's set |
 | Office theme (white, dark gray, black) | Different | Light and dark, two choices, switchable from either the View tab or Advanced settings and persisted. What darkens is the frame (band, tabs, headings) only — cells stay white, so screen and paper agree. Excel's "dark document" mode doesn't exist |
 | Customizing the status bar | Not yet | The bottom edge is a fixed construction (sheet tabs, status wording, and the selection's sum/average/count), with no right-click menu for choosing items. Narrowing it to three statistics was a design decision, and all three respect filtering and are always present (on the ledger) |
-| Adding and enabling add-ins (Options > Add-ins) | Different | There is no add-in dialog and no registry. Putting a .py in `~/.config/office/plugins/` **is** the installation; it is listed under the Plugins tab's "Manage plugins" and runs inside the sandbox (a network-cut scratch space) when selected. The same file is reachable as `@name` from Data > Python |
+| Adding and enabling add-ins (Options > Add-ins) | Different | There is no add-in dialog and no registry. Putting a .py in `~/.config/office/plugins/` **is** the installation; it is listed under the Plugins tab's "Manage plugins" and runs when selected (it is code you installed yourself — plain Python; **reading it before you place it** is the gate). The same file is reachable as `@name` from Data > Python |
 | Office Add-ins from the Store (web add-ins) | By design | We have neither a store nor an execution surface for web add-ins (a webview) — the native-first choice not to drag in browser-derived layers. Extension is always a local plugins .py, and we build no door through which a workbook or something that arrived from outside becomes the origin of execution |
 | Managing COM add-ins | By design | COM is a Windows-Excel-specific door and doesn't exist here. xlwings assets are accepted through a one-line swap over a socket, and Excel's add-in machinery (`@xw.func`, `@xw.sub`, `Book.caller()`) is honestly reported as "not supported" — plugins .py fills the same role |
 | Loading the Solver add-in | Different | There is no add-in-registration ritual to get through first — Solver and Goal Seek sit directly on the Data tab from the start. The one method is simplex LP; nonlinear problems are refused honestly |
@@ -669,7 +669,7 @@ no add-in registry — extension is entirely the .py files you put in
 | Writing and distributing your own add-in (.xlam / .xla) | Different | The home for "a feature I want from every workbook" is plugins — put a .py there and call `@name` (procedures) or `=fname(…)` (cell functions). Distribution is handing over the .py; the recipient reads it, then places it in their own plugins. Code embedded in an old workbook can only be pulled out with `@export` — never executed |
 | Removing, disabling, or not finding an add-in | Different | The list simply reads the files in the folder, so deleting (or moving away) a .py is the whole of removal and disabling. "It isn't showing up" only ever means "it isn't in the folder", and when the folder is empty the status bar tells you its path. With nothing resident and nothing auto-loaded, the accident where an add-in breaks startup can't occur |
 | Auto-loading at startup or on open (XLSTART) | By design | "Open = execute" and "start = execute" do not exist — the first safety principle of this software. Plugins procedures and =PY alike run only when a person explicitly acts, at that moment |
-| Add-in security (the warning bar, trusted publishers) | By design | The situation that would demand you enable something can't arise by construction — nothing runs automatically, every run is explicit, and every run is inside the sandbox (no network, the real filesystem read-only, home invisible, a time limit). Instead of building a registry of trust, we built a shape that doesn't ask for trust |
+| Add-in security (the warning bar, trusted publishers) | By design | The situation that would demand you enable something can't arise by construction — nothing runs automatically, every run is a person's explicit action, with a time limit. What you install is a plain .py, so **you can read it before you place it** — instead of building a registry of trust, we built a shape that doesn't ask for trust |
 | A workbook using add-in functions shows #NAME? | Same | An unknown function honestly comes out as #NAME? rather than quietly calculating as 0 — the same way it breaks in Excel. The other direction (a =PY workbook opened in Excel) is also #NAME?, but the last computed values remain — the degradation is on the safe side |
 
 ## Accessibility

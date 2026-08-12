@@ -35,7 +35,7 @@ They are **separate apps**, not one giant suite.
 | Chat, version history | ○ | ○ (no server — plain files in a shared folder) |
 | Conditional formatting, data validation | — | ○ (round-trips through xlsx) |
 | Links, defined names, paste special | — | ○ |
-| Portable Python (instead of macros) | macros run .py in a sandbox (`d` = python-docx document); code is never stored in the document | ○ (`@save` embeds code in the workbook; it always runs in a sandbox) |
+| Python (instead of macros) | macros run .py in a sandbox (`d` = python-docx document); code is never stored in the document | .py files in plugins — procedures via `@name`, cell functions like `=double(A1)` or `=PY`; never stored in the workbook |
 | Print settings | paper, orientation, margins, columns — **and a document whose paper changes partway** (portrait and landscape sections in one file, on screen and in the PDF) | paper (incl. JIS B), orientation, margins, print area |
 | PDF | ○ (headers/footers, watermark, ink and all) | ○ (borders, fills, follows print settings) |
 | Find and replace | ○ | ○ |
@@ -46,11 +46,12 @@ They are **separate apps**, not one giant suite.
 The ribbon layout follows Euro-Office, so people who switch don't have to relearn where things are.
 **Commands that don't work yet are shown grayed out** — we never make something look usable when it isn't.
 
-**There are no VBA-style macros.** Instead, calc can **carry Python inside the workbook**
-(`@save name` to embed, `@name` to run, `=PY(…)` as a cell function). Opening a file never
-executes anything, and code that arrived inside a workbook always runs in a sandbox
-(bubblewrap) — the "open = execute" attack path does not exist here.
-See the [calc manual](docs/calc-manual.md).
+**There are no VBA-style macros, and workbooks never carry code.** Sheets live
+in .xlsx, code lives in .py — separate files. Procedures and user functions go
+in `~/.config/office/plugins/`; run a procedure with `@name`, and call a
+function from a cell like any other (`=double(A1)`), or write one inline with
+`=PY(…)`. A workbook you receive contains no code, so the "open = execute"
+attack path does not exist here. See the [calc manual](docs/calc-manual.md).
 
 ## Running it
 
