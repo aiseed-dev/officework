@@ -670,6 +670,38 @@ if pydocx is not None:
         check("引用風" in st_names and "強調字" in st_names,
               f"うちの styles.xml 追記を本家が読めない: {st_names}")
 
+        # --- 節(sections): 実物の複数節を読めて・余白の書きが原文に効く --------
+        from docx.enum.section import WD_SECTION
+        from docx.shared import Mm as OMm
+        d_sec = pydocx.Document()
+        d_sec.add_paragraph("1節目")
+        s2_ = d_sec.add_section(WD_SECTION.NEW_PAGE)
+        s2_.page_width = OMm(297)   # 2節目は A4 横
+        s2_.page_height = OMm(210)
+        d_sec.add_paragraph("2節目")
+        out_sec = os.path.join(t, "sections.docx")
+        d_sec.save(out_sec)
+
+        d_sr2 = office_doc.Doc.open(out_sec)
+        secs = d_sr2.sections
+        check(len(secs) == 2, f"節の数: {len(secs)}")
+        # 本家の新規文書の既定は Letter(216×279)— A4 ではない
+        check(round(secs[0].page_width.mm) == 216 and secs[0].orientation == "portrait",
+              f"1節目の紙: {secs[0]}")
+        check(round(secs[1].page_width.mm) == 297 and secs[1].orientation == "landscape",
+              f"2節目の紙: {secs[1]}")
+        # 余白を書き替え → 保存 → 本家が読める(原文の sectPr への属性差し替え)
+        secs[1].left_margin = OMm(30)
+        check(round(secs[1].left_margin.mm) == 30, "余白の書きが読み戻せない")
+        out_sec2 = os.path.join(t, "sections_rt.docx")
+        d_sr2.save(out_sec2)
+        back_sec = pydocx.Document(out_sec2)
+        check(len(back_sec.sections) == 2, "往復で節が消えた")
+        check(round(back_sec.sections[1].left_margin.mm) == 30,
+              f"うちの余白を本家が読めない: {back_sec.sections[1].left_margin.mm}")
+        check(round(back_sec.sections[1].page_width.mm) == 297,
+              "差し替えで紙の大きさが崩れた")
+
         # --- inline_shapes(画像の読みの対)と コメント -------------------------
         d_m2 = office_doc.Doc.open(out_m)  # さっき画像を入れた文書
         shp = d_m2.inline_shapes

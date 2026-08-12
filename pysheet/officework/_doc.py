@@ -217,6 +217,43 @@ class InlineShape:
             self.width.mm, self.height.mm)
 
 
+class Section:
+    """節(本家の Section の役)。紙の大きさ・余白は Length(EMU)で
+    読み書き — 書きは原文の sectPr へ属性差し替えなので、理解しない設定
+    (ヘッダー参照・段組み)は崩れない。"""
+
+    __slots__ = ("_s",)
+
+    def __init__(self, raw):
+        self._s = raw
+
+    def _len_prop(name):  # noqa: N805 — 小さな工場
+        mm_name = name + "_mm"
+
+        def get(self):
+            return Mm(getattr(self._s, mm_name))
+
+        def set_(self, v):
+            setattr(self._s, mm_name, v.mm if hasattr(v, "mm") else float(v) / 36000)
+
+        return property(get, set_)
+
+    page_width = _len_prop("page_width")
+    page_height = _len_prop("page_height")
+    left_margin = _len_prop("left_margin")
+    right_margin = _len_prop("right_margin")
+    top_margin = _len_prop("top_margin")
+    bottom_margin = _len_prop("bottom_margin")
+    del _len_prop
+
+    @property
+    def orientation(self):
+        return self._s.orientation
+
+    def __repr__(self):
+        return repr(self._s)
+
+
 class Style:
     """スタイルの名乗り(本家の style の役 — .name / .style_id / .type)。
     定義の本体は styles.xml が持ち、保存で原本のまま持ち越される。"""
@@ -707,6 +744,17 @@ class Doc:
         """スタイルの一覧(本家と同じ口 — 名前で引け、add_style で足せる)。
         定義の本体は styles.xml が持ち、保存で原本のまま持ち越される。"""
         return _Styles(self._d)
+
+    @property
+    def sections(self):
+        """節の一覧(本家と同じ口)。途中の節+文書末の節。"""
+        return [Section(s) for s in self._d.sections]
+
+    def add_section(self, start_type=None):
+        raise NotImplementedError(
+            "節を足すのはまだ — 模型は節を段落の性質で持つので、"
+            "挿し方(どの段落で切るか)を決めてから(台帳)"
+        )
 
     @property
     def inline_shapes(self):

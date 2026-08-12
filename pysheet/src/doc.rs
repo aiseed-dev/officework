@@ -111,6 +111,18 @@ impl Inner {
         }
     }
 
+    /// 途中の節(sectPr を持つ段落)が blocks の何番目にいるか(順番どおり)。
+    /// 文書末の節はこれに含まれない(Document::sect_raw / page が持つ)
+    fn section_blocks(&self) -> Vec<usize> {
+        self.doc
+            .blocks
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| matches!(b, Block::Para(p) if p.sect.is_some()))
+            .map(|(i, _)| i)
+            .collect()
+    }
+
     /// 本文と表のセル、すべての段落の在り処を上から順に。
     /// `find` と `replace` が歩く順番でもある。
     fn all_locs(&self) -> Vec<Loc> {
@@ -488,6 +500,16 @@ impl PyDoc {
         PyCoreProps { inner: Arc::clone(&self.inner) }
     }
 
+    /// 節(セクション)の一覧。途中の節(順)+ 文書末の節。
+    /// 紙の大きさ・余白の読み書きは各節の手から — 書きは**原文の sectPr へ
+    /// 属性差し替え**なので、理解しない設定(ヘッダー参照・段組み)は崩れない。
+    #[getter]
+    fn sections(&self) -> PyResult<Vec<PySection>> {
+        let g = lock(&self.inner)?;
+        let n = g.section_blocks().len() + 1; // +1 = 文書末の節
+        Ok((0..n).map(|idx| PySection { inner: Arc::clone(&self.inner), idx }).collect())
+    }
+
     /// 画像を足す(python-docx の add_picture の役)。径路でも bytes でも。
     /// 大きさは mm(省略は絵の実寸を 96dpi で mm に直した値。片方だけ
     /// 渡せば縦横比を保つ)。返りは画像を持つ段落。
@@ -589,6 +611,183 @@ impl PyDoc {
             g.body_blocks().len(),
             g.table_blocks().len()
         ))
+    }
+}
+
+// ───────────────────────────────────────── 節(セクション)
+
+/// mm → docx の twips(1/20 pt)。sectPr の原文の属性がこの単位
+fn mm_twips(mm: f32) -> i64 {
+    (mm as f64 / 25.4 * 1440.0).round() as i64
+}
+
+/// sectPr の原文の属性を差し替える(要素・属性が無ければ足す)。
+/// **原文を正として、変えた属性だけ触る** — 理解しない属性はそのまま残る
+fn patch_sect(raw: &str, tag: &str, attr: &str, val: i64) -> String {
+    let open = format!("<{tag}");
+    if let Some(i) = raw.find(&open) {
+        let Some(end) = raw[i..].find("/>").map(|g| i + g) else { return raw.into() };
+        let pat = format!("{attr}=\"");
+        if let Some(a) = raw[i..end].find(&pat) {
+            let vs = i + a + pat.len();
+            let Some(ve) = raw[vs..].find('"') else { return raw.into() };
+            format!("{}{}{}", &raw[..vs], val, &raw[vs + ve..])
+        } else {
+            format!("{} {attr}=\"{}\"{}", &raw[..end], val, &raw[end..])
+        }
+    } else if let Some(c) = raw.rfind("</w:sectPr>") {
+        format!("{}<{tag} {attr}=\"{}\"/>{}", &raw[..c], val, &raw[c..])
+    } else {
+        raw.into()
+    }
+}
+
+/// 1つの節。idx が途中の節(sectPr を持つ段落の順)の数までなら途中、
+/// その次が文書末の節。位置で引き直す手(段落・run と同じ作法)。
+#[pyclass(name = "Section", module = "officework.doc")]
+struct PySection {
+    inner: Arc<Mutex<Inner>>,
+    idx: usize,
+}
+
+impl PySection {
+    /// (節の PageSetup を読む)。途中の節は段落の sect、最後は文書の page
+    fn page(&self) -> PyResult<kumihan::PageSetup> {
+        let g = lock(&self.inner)?;
+        let mids = g.section_blocks();
+        if self.idx < mids.len() {
+            match g.doc.blocks.get(mids[self.idx]) {
+                Some(Block::Para(p)) => {
+                    Ok(p.sect.as_ref().map(|s| s.page).unwrap_or_default())
+                }
+                _ => Err(PyIndexError::new_err("この節はもう文書に無い")),
+            }
+        } else {
+            Ok(g.doc.page.unwrap_or_default())
+        }
+    }
+
+    /// 節の PageSetup と sectPr の原文を一緒に書き替える
+    fn mutate(&self, f: impl FnOnce(&mut kumihan::PageSetup, &mut String)) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        let mids = g.section_blocks();
+        if self.idx < mids.len() {
+            let bi = mids[self.idx];
+            match g.doc.blocks.get_mut(bi) {
+                Some(Block::Para(p)) => match p.sect.as_mut() {
+                    Some(s) => {
+                        f(&mut s.page, &mut s.raw);
+                        Ok(())
+                    }
+                    None => Err(PyIndexError::new_err("この節はもう文書に無い")),
+                },
+                _ => Err(PyIndexError::new_err("この節はもう文書に無い")),
+            }
+        } else {
+            let mut page = g.doc.page.unwrap_or_default();
+            let mut raw = g
+                .doc
+                .sect_raw
+                .clone()
+                .unwrap_or_else(|| "<w:sectPr></w:sectPr>".to_string());
+            f(&mut page, &mut raw);
+            g.doc.page = Some(page);
+            g.doc.sect_raw = Some(raw);
+            Ok(())
+        }
+    }
+}
+
+#[pymethods]
+impl PySection {
+    #[getter]
+    fn page_width_mm(&self) -> PyResult<f32> {
+        Ok(self.page()?.w_mm)
+    }
+
+    #[setter]
+    fn set_page_width_mm(&self, v: f32) -> PyResult<()> {
+        self.mutate(|p, raw| {
+            p.w_mm = v;
+            *raw = patch_sect(raw, "w:pgSz", "w:w", mm_twips(v));
+        })
+    }
+
+    #[getter]
+    fn page_height_mm(&self) -> PyResult<f32> {
+        Ok(self.page()?.h_mm)
+    }
+
+    #[setter]
+    fn set_page_height_mm(&self, v: f32) -> PyResult<()> {
+        self.mutate(|p, raw| {
+            p.h_mm = v;
+            *raw = patch_sect(raw, "w:pgSz", "w:h", mm_twips(v));
+        })
+    }
+
+    #[getter]
+    fn left_margin_mm(&self) -> PyResult<f32> {
+        Ok(self.page()?.left_mm)
+    }
+
+    #[setter]
+    fn set_left_margin_mm(&self, v: f32) -> PyResult<()> {
+        self.mutate(|p, raw| {
+            p.left_mm = v;
+            *raw = patch_sect(raw, "w:pgMar", "w:left", mm_twips(v));
+        })
+    }
+
+    #[getter]
+    fn right_margin_mm(&self) -> PyResult<f32> {
+        Ok(self.page()?.right_mm)
+    }
+
+    #[setter]
+    fn set_right_margin_mm(&self, v: f32) -> PyResult<()> {
+        self.mutate(|p, raw| {
+            p.right_mm = v;
+            *raw = patch_sect(raw, "w:pgMar", "w:right", mm_twips(v));
+        })
+    }
+
+    #[getter]
+    fn top_margin_mm(&self) -> PyResult<f32> {
+        Ok(self.page()?.top_mm)
+    }
+
+    #[setter]
+    fn set_top_margin_mm(&self, v: f32) -> PyResult<()> {
+        self.mutate(|p, raw| {
+            p.top_mm = v;
+            *raw = patch_sect(raw, "w:pgMar", "w:top", mm_twips(v));
+        })
+    }
+
+    #[getter]
+    fn bottom_margin_mm(&self) -> PyResult<f32> {
+        Ok(self.page()?.bottom_mm)
+    }
+
+    #[setter]
+    fn set_bottom_margin_mm(&self, v: f32) -> PyResult<()> {
+        self.mutate(|p, raw| {
+            p.bottom_mm = v;
+            *raw = patch_sect(raw, "w:pgMar", "w:bottom", mm_twips(v));
+        })
+    }
+
+    /// 向き。"portrait" か "landscape"(紙の幅と高さから見る)。
+    #[getter]
+    fn orientation(&self) -> PyResult<&'static str> {
+        let p = self.page()?;
+        Ok(if p.w_mm > p.h_mm { "landscape" } else { "portrait" })
+    }
+
+    fn __repr__(&self) -> PyResult<String> {
+        let p = self.page()?;
+        Ok(format!("<officework.doc.Section {:.0}×{:.0}mm>", p.w_mm, p.h_mm))
     }
 }
 
@@ -1486,6 +1685,7 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyRow>()?;
     m.add_class::<PyCell>()?;
     m.add_class::<PyCoreProps>()?;
+    m.add_class::<PySection>()?;
     parent.add_submodule(&m)
 }
 
