@@ -233,8 +233,8 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ iter_inner_content | 足す | 段落と表を**文書の順で**返す。うちの paragraphs / tables は種類別 — 順序を返す API をエンジンに(済 2026-08-12 夜) |
 | ✔ core_properties | 足す | 文書情報の読み書き(小)(済 2026-08-12 夜: author / title / keywords / subject / comments — 呼び名は本家、中身は docProps/core.xml の5欄) |
 | sections / add_section | 足す | エンジンの模型が1節しか持てない既知の残り(「実物で測った」の表)— 模型を太らせる件と同じ一件 |
-| comments / add_comment | 足す | コメントの読み書き。変更履歴と同じく、読めて書けて壊さない |
-| inline_shapes | 足す | 画像の一件(add_picture と対の読み) |
+| ✔ comments / add_comment | 足す | コメントの読み書き。変更履歴と同じく、読めて書けて壊さない(済 2026-08-12 夜: 模型の粒度どおり**段落単位** — Paragraph.add_comment(text, author) と Doc.comments(Comment.paragraph でどの段落かが分かる)。本家(1.2)の comments API もうちの書いた物を読める) |
+| ✔ inline_shapes | 足す | 画像の一件(add_picture と対の読み)(済 2026-08-12 夜: width / height は自前の Length(EMU。.mm / .pt が本家と同じ算術)。本文の段落の分 — セルの中は数えない(模型の粒度)) |
 | styles | 足す(書式) | スタイルの一覧と定義 — 書式の一件。**注(2026-08-12 夜)**: 模型は「スタイル定義(styles.xml)は持たない — 見た目は直接書式で付ける」を明記している(engine/src/doc.rs の ParaStyle)。この項を作るのは主義の変更 — 発注者の判断待ち(Run.style も同じ一件) |
 | element / part / settings | 要らない | lxml の露出 |
 

@@ -815,6 +815,37 @@ impl PyParagraph {
         matches!(self.loc, Loc::Cell { .. })
     }
 
+    /// この段落の画像 [(幅mm, 高さmm)]。開いた文書にあった物と
+    /// add_picture で足した物の両方が見える(sheet の images と同じ形)。
+    #[getter]
+    fn images(&self) -> PyResult<Vec<(f32, f32)>> {
+        self.with(|p| {
+            p.images
+                .iter()
+                .chain(p.images_new.iter())
+                .map(|im| (im.w_mm, im.h_mm))
+                .collect()
+        })
+    }
+
+    /// この段落に付いたコメント [(書いた人, 中身)]。
+    /// **段落単位**で持つ(文中の範囲は持たない — 模型の粒度)。
+    #[getter]
+    fn comments(&self) -> PyResult<Vec<(String, String)>> {
+        self.with(|p| p.comments.iter().map(|c| (c.author.clone(), c.text.clone())).collect())
+    }
+
+    /// この段落にコメントを付ける。保存で comments.xml に入る。
+    #[pyo3(signature = (text, author=""))]
+    fn add_comment(&self, text: &str, author: &str) -> PyResult<()> {
+        self.with_mut(|p| {
+            p.comments.push(kumihan::Comment {
+                author: author.to_string(),
+                text: text.to_string(),
+            })
+        })
+    }
+
     fn __repr__(&self) -> PyResult<String> {
         let t = self.text()?;
         let short: String = t.chars().take(20).collect();

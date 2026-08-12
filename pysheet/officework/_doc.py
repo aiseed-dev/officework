@@ -168,6 +168,59 @@ class Run:
         return repr(self._r)
 
 
+class Length(int):
+    """docx の長さ(EMU)。本家の Length と同じ算術(.mm / .cm / .pt / .emu)。"""
+
+    @property
+    def emu(self):
+        return int(self)
+
+    @property
+    def mm(self):
+        return self / 36000
+
+    @property
+    def cm(self):
+        return self / 360000
+
+    @property
+    def pt(self):
+        return self / 12700
+
+
+def Mm(v):
+    """mm → Length。本家の docx.shared.Mm と同じ。"""
+    return Length(round(v * 36000))
+
+
+class InlineShape:
+    """文書の中の画像(本家の InlineShape の役)。width / height は Length。"""
+
+    __slots__ = ("width", "height")
+
+    def __init__(self, w_mm, h_mm):
+        self.width = Mm(w_mm)
+        self.height = Mm(h_mm)
+
+    def __repr__(self):
+        return "<officework.doc InlineShape {:.0f}×{:.0f}mm>".format(
+            self.width.mm, self.height.mm)
+
+
+class Comment:
+    """段落に付いたコメント(本家の Comment の役)。段落単位の粒度。"""
+
+    __slots__ = ("author", "text", "paragraph")
+
+    def __init__(self, author, text, paragraph):
+        self.author = author
+        self.text = text
+        self.paragraph = paragraph
+
+    def __repr__(self):
+        return "<officework.doc Comment {!r} by {!r}>".format(self.text, self.author)
+
+
 def _align_word(v):
     # 寄せの受け皿: "center" / python-docx の WD_ALIGN_PARAGRAPH(.name)/ None
     if v is None:
@@ -291,6 +344,14 @@ class Paragraph:
     @property
     def paragraph_format(self):
         return ParagraphFormat(self._p)
+
+    @property
+    def comments(self):
+        return [Comment(a, t, self) for a, t in self._p.comments]
+
+    def add_comment(self, text, author=""):
+        """この段落にコメントを付ける(段落単位 — 文中の範囲は持たない)。"""
+        self._p.add_comment(text, author)
 
     @property
     def in_table(self):
@@ -582,6 +643,26 @@ class Doc:
         """文書の情報(author / title / keywords / subject / comments)。
         読み書きとも本家と同じ呼び名(author = docx の dc:creator)。"""
         return self._d.core_properties
+
+    @property
+    def inline_shapes(self):
+        """文書の画像の一覧(本家と同じ口。width / height は Length)。
+        本文の段落の分 — 表のセルの中の画像は数えない(模型の粒度)。"""
+        out = []
+        for p in self._d.paragraphs:
+            for w, h in p.images:
+                out.append(InlineShape(w, h))
+        return out
+
+    @property
+    def comments(self):
+        """文書のコメントの一覧(本家と同じ口)。うちは**段落単位**の粒度 —
+        Comment.paragraph でどの段落かが分かる。付けるのは
+        Paragraph.add_comment から。"""
+        out = []
+        for p in self.paragraphs:
+            out.extend(p.comments)
+        return out
 
     def add_table(self, rows, cols, style=None):
         """表を新しく組む(明細の帳票づくり)。各セルは空の段落を1つ持つ。

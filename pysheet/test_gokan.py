@@ -455,6 +455,28 @@ if pydocx is not None:
               and d_r4.core_properties.comments == "控え",
               "本家の文書の情報がうちで読めない")
 
+        # --- inline_shapes(画像の読みの対)と コメント -------------------------
+        d_m2 = office_doc.Doc.open(out_m)  # さっき画像を入れた文書
+        shp = d_m2.inline_shapes
+        check(len(shp) == 1 and round(shp[0].width.mm) == 30,
+              f"inline_shapes: {shp}")
+        p0 = d_m2[0]
+        p0.add_comment("この行を確認", author="乙")
+        check(d_m2.comments[0].text == "この行を確認"
+              and d_m2.comments[0].author == "乙"
+              and d_m2.comments[0].paragraph.text == p0.text,
+              f"コメントの読み書き: {d_m2.comments}")
+        out_c = os.path.join(t, "cmt.docx")
+        d_m2.save(out_c)
+        d_c = office_doc.Doc.open(out_c)
+        check(d_c.comments and d_c.comments[0].text == "この行を確認",
+              "コメントが保存で消えた")
+        # 本家(1.2 以降)がコメント API を持つなら突き合わせる
+        back_c = pydocx.Document(out_c)
+        if hasattr(back_c, "comments"):
+            check(any(c.text == "この行を確認" for c in back_c.comments),
+                  f"うちのコメントを本家が読めない: {[c.text for c in back_c.comments]}")
+
 # ==================== 第2歩(足すの背骨): 結合・固定枠・改名・複製・削除・並べ替え
 b = office_sheet.Book()
 s = b[0]
