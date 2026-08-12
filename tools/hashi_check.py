@@ -166,6 +166,22 @@ try:
 except xw.OfficeworkError:
     pass
 
+# 名前付き範囲: add・refers_to・Range.name・式の追随・delete
+sh["C2"].value = 125000   # 上の clear_contents で消えているので置き直す
+wb.names.add("単価", "=%s!$C$2" % sh.name)
+check("単価" in wb.names and len(wb.names) == 1, f"names.add: {wb.names}")
+check(wb.names["単価"].refers_to == "=%s!$C$2" % sh.name,
+      f"refers_to: {wb.names['単価'].refers_to}")
+sh["E2"].value = "=単価*2"
+check(sh["E2"].value == 250000, f"名前が実機の式で効かない: {sh['E2'].value}")
+check(sh["C2"].name.name == "単価", "Range.name が引けない")
+sh["F1:F2"].name = "対象"
+check(wb.names["対象"].refers_to.endswith("$F$1:$F$2"), "Range.name の代入")
+wb.names["対象"].delete()
+wb.names["単価"].delete()
+check(len(wb.names) == 0, "delete で名前が消えない")
+sh["E2"].clear_contents()  # #NAME? を残さない
+
 # freeze_panes: 固定して・読めて・解ける(xlwings の freeze_at の定義どおり)
 fp = sh.freeze_panes
 fp.freeze_at("B2")  # 上2行・左2列

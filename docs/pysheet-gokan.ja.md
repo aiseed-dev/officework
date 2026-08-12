@@ -56,7 +56,7 @@ add_heading と Run の add_text / clear はエンジンの書き口待ちだっ
 | ✔ copy_worksheet | 足す | シート複製 — 月次の様式の写しは実務の定番(済 2026-08-12: Book.copy_sheet。中身・書式・結合・列幅ごと写し、写しは独立) |
 | ✔ move_sheet | 足す | シートの並べ替え(済 2026-08-12: Book.move_sheet。openpyxl の「相対のずらし」は互換層で) |
 | ✔ remove | 足す | シート削除(済 2026-08-12: Book.remove_sheet。**最後の1枚は抜けない** — シートの無い xlsx は無いので正直に断る。openpyxl は空のブックを許すが、あれは保存で壊れる側) |
-| create_named_range | 足す | 名前付き範囲。式が参照する物なのでエンジンの計算にも絡む |
+| ✔ create_named_range | 足す | 名前付き範囲。式が参照する物なのでエンジンの計算にも絡む(**済 2026-08-12 夜**: エンジンに Sheet.names / define_name / delete_name(名前は属するシートの物 — 模型どおり)。openpyxl の defined_names(dict 風)と create_named_range の顔つき。定義した名前は式(=単価*数量)で効き、本家と両方向で往復。scope は持たない — 正直に断る) |
 | epoch / excel_base_date | 足す | 1904 起点のブック(古い Mac 由来)を 1899-12-30 として読むと日付が4年ずれる — 黙って壊すのと同じ。起点の読みと解釈をエンジンに |
 | add_named_style / named_styles / style_names | 足す(書式) | 名前付き様式は書式の書き込みの一部 |
 | data_only | 要らない | 「式か値か」を開くときに選ばされるのが openpyxl の弱点。うちは常に両方ある(値も式も同時に読める) |
@@ -156,7 +156,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ selection / get_selection | 足す | App の項と同じ(済 2026-08-12) |
 | ✔ load | 足す | 範囲 → DataFrame の直行便。**polars を第一に**(pandas は options で従来どおり)(済 2026-08-12: 選択を読み、1マスなら表に広げる — xw.load / Book.load / Sheet.load) |
 | to_pdf | 足す | アプリは PDF 書き出しを持っている(io.rs)— 橋から呼ぶだけ。**Sheet.to_pdf は済** — Book の分はアプリの PDF がシート単位なので、束ねる口が要る |
-| names | 足す | 名前付き範囲(openpyxl の create_named_range と同じ一件) |
+| ✔ names | 足す | 名前付き範囲(openpyxl の create_named_range と同じ一件)(済 2026-08-12 夜: rpc names / define_name / delete_name(語彙25)。wb.names.add("単価", "=Sheet1!$A$1")・refers_to・delete — xlwings の形。実機で式の追随まで検査) |
 | activate | 要らない | ブックは同時に1つの造り — 前に出す対象が無い |
 | set_mock_caller | 要らない | Excel アドイン開発の道具。caller が attach と同じ物なのでモックが要らない |
 | api / flush / json / sync | 要らない | COM と xlwings Server の事情 |
@@ -202,7 +202,8 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ select | 足す | Python から選択を動かして見せる(済 2026-08-12: rpc select。打ちかけは確定してから動く) |
 | add_hyperlink / hyperlink | 足す | リンクの読み書き(openpyxl Cell.hyperlink と同じ一件) |
 | note | 足す | セルのコメント(openpyxl comment と同じ一件) |
-| name / table | 足す | 名前付き範囲・テーブルの一件 |
+| ✔ name | 足す | 名前付き範囲の一件(済 2026-08-12 夜: Range.name の読み(範囲をちょうど指す名前)と代入 — xlwings の定義どおり) |
+| table | 足す | テーブル(構造化参照)の一件 — エンジンの add_table / tables(xlsx)と一緒に |
 | autofit | 足す | Sheet.autofit と同じ |
 | group / ungroup | 足す | 行・列のグループ化(column_groups と同じ一件) |
 | has_array / formula_array | 足す | 配列式の一件(array_formulae と一緒) |

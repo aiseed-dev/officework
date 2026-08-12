@@ -132,6 +132,87 @@ class Alignment:
         self.indent = indent
 
 
+class DefinedName:
+    """名前付き範囲の1件。openpyxl の DefinedName の形(attr_text が参照)。"""
+
+    __slots__ = ("name", "attr_text")
+
+    def __init__(self, name, attr_text=None):
+        self.name = name
+        self.attr_text = attr_text
+
+    @property
+    def value(self):  # openpyxl の別名
+        return self.attr_text
+
+    def __repr__(self):
+        return "<DefinedName {!r}={!r}>".format(self.name, self.attr_text)
+
+
+def _split_ref(value, default_sheet):
+    # "Sheet!$A$1:$B$2" / "$A$1" / "A1" → (シート名, "A1:B2")
+    v = str(value).replace("$", "")
+    if "!" in v:
+        sheet, ref = v.rsplit("!", 1)
+        return sheet.strip("'"), ref
+    return default_sheet, v
+
+
+class _DefinedNames:
+    """Book.defined_names の返り。openpyxl と同じ dict 風の読み書き —
+    wb.defined_names["単価"] = DefinedName("単価", attr_text="Sheet1!$A$1")。
+    中身はシートの持ち物(names)— 名前はどこかのシートに属する。"""
+
+    def __init__(self, book):
+        self._b = book
+
+    def _all(self):
+        out = {}
+        for ws in self._b.worksheets:
+            for name, ref in ws.names:
+                out[name] = DefinedName(
+                    name, attr_text="{}!{}".format(ws.title, ref))
+        return out
+
+    def __getitem__(self, name):
+        try:
+            return self._all()[name]
+        except KeyError:
+            raise KeyError("名前が無い: {!r}".format(name)) from None
+
+    def __setitem__(self, name, dn):
+        sheet, ref = _split_ref(
+            getattr(dn, "attr_text", dn), self._b.sheetnames[0])
+        for ws in self._b.worksheets:  # 同じ名前は置き換え(どのシートでも)
+            ws.delete_name(name)
+        self._b[sheet].define_name(name, ref)
+
+    def __delitem__(self, name):
+        if not any(ws.delete_name(name) for ws in self._b.worksheets):
+            raise KeyError("名前が無い: {!r}".format(name))
+
+    def __contains__(self, name):
+        return name in self._all()
+
+    def __iter__(self):
+        return iter(self._all())
+
+    def __len__(self):
+        return len(self._all())
+
+    def keys(self):
+        return self._all().keys()
+
+    def items(self):
+        return self._all().items()
+
+    def values(self):
+        return self._all().values()
+
+    def __repr__(self):
+        return repr(self._all())
+
+
 class Comment:
     """セルのコメント。openpyxl の Comment(text, author) の形。
     模型は文だけを持つ — author は読みでは空になる(黙って落とさず、ここに書く)。"""
@@ -771,6 +852,21 @@ class Book:
     def index(self, worksheet):
         return self._b.sheet_names.index(worksheet.title)
 
+    @property
+    def defined_names(self):
+        """名前付き範囲(openpyxl と同じ dict 風)。名前は式(=単価*2)で使える。"""
+        return _DefinedNames(self)
+
+    def create_named_range(self, name, worksheet=None, value=None, scope=None):
+        """名前を定義する(openpyxl と同じ口)。value は "$A$1:$B$2" か
+        "Sheet!$A$1"。scope(ブック/シートの別)は持たない — 名前は
+        属するシートの物(それで式も保存も足りている)。"""
+        if scope is not None:
+            raise NotImplementedError("scope は持たない(名前はシートの物)")
+        sheet, ref = _split_ref(
+            value, worksheet.title if worksheet is not None else self.sheetnames[0])
+        self[sheet].define_name(name, ref)
+
     def get_index(self, worksheet):
         # openpyxl の古い別名(本家では index を使えと言う)
         return self.index(worksheet)
@@ -797,5 +893,5 @@ class Book:
 __all__ = [
     "Book", "Sheet", "Cell",
     "Font", "Border", "Side", "PatternFill", "Alignment", "Color",
-    "Comment", "Hyperlink", "Protection",
+    "Comment", "Hyperlink", "Protection", "DefinedName",
 ]

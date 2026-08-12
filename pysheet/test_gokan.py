@@ -250,6 +250,45 @@ if openpyxl is not None:
         c7.comment = OComment("直した", "乙")
         check(c7.comment.text == "直した", "本家の Comment の代入")
 
+# --- 名前付き範囲: 定義して・式で使えて・本家と往復する -------------------------
+if openpyxl is not None:
+    with tempfile.TemporaryDirectory() as t:
+        bn = office_sheet.Book()
+        sn = bn[0]
+        sn["A1"] = 100
+        sn["A2"] = 4
+        bn.create_named_range("単価", bn.worksheets[0], "$A$1")
+        bn.defined_names["数量"] = office_sheet.DefinedName(
+            "数量", attr_text="{}!$A$2".format(sn.title))
+        sn["B1"] = "=単価*数量"
+        check(sn["B1"] == 400, f"名前が式で効かない: {sn['B1']}")
+        check("単価" in bn.defined_names and len(bn.defined_names) == 2,
+              f"defined_names: {dict(bn.defined_names)}")
+        out_n = os.path.join(t, "names.xlsx")
+        bn.save(out_n)
+
+        rn = openpyxl.load_workbook(out_n)
+        got = {k: v.attr_text.replace("$", "") for k, v in rn.defined_names.items()}
+        check(got.get("単価", "").endswith("!A1"),
+              f"うちの名前を本家が読めない: {got}")
+
+        # 逆向き: 本家が定義した名前をうちが読み、式が計算される
+        from openpyxl.workbook.defined_name import DefinedName as ODefinedName
+        wb8 = openpyxl.Workbook()
+        ws8 = wb8.active
+        ws8["A1"] = 250
+        wb8.defined_names["tanka"] = ODefinedName(
+            "tanka", attr_text="{}!$A$1".format(ws8.title))
+        out_n2 = os.path.join(t, "names_opx.xlsx")
+        wb8.save(out_n2)
+        b9 = office_sheet.Book.open(out_n2)
+        s9 = b9[0]
+        check("tanka" in b9.defined_names, f"本家の名前: {dict(b9.defined_names)}")
+        s9["B1"] = "=tanka*2"
+        check(s9["B1"] == 500, f"本家の名前が式で効かない: {s9['B1']}")
+        del b9.defined_names["tanka"]
+        check("tanka" not in b9.defined_names, "名前が消えない")
+
 # ================================================== xlwings の口(参照の算術)
 # 橋は動いているアプリが要るので、ソケットに出ない算術だけを定義値と照合する
 from officework import calc as xw

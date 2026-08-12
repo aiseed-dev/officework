@@ -666,6 +666,60 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 },
             }
         }
+        // 名前付き範囲の一覧 [[シート, 名前, 参照], …](全シート)
+        "names" => {
+            let items: Vec<J> = h
+                .book()
+                .sheets
+                .iter()
+                .flat_map(|s| {
+                    s.names.iter().map(|(n, r)| {
+                        J::A(vec![J::S(s.name.clone()), J::S(n.clone()), J::S(r.clone())])
+                    })
+                })
+                .collect();
+            format!("{{\"ok\":true,\"names\":{}}}", J::A(items).to_json())
+        }
+        // 名前を定義する(同じ名前はどのシートの物でも置き換え)。式が追随する
+        "define_name" => {
+            let Some(name) = o.str("name") else { return err("name がありません") };
+            if name.is_empty() || name.contains([' ', '!', ':']) {
+                return err(&format!("名前に空白・! ・: は使えない: {name:?}"));
+            }
+            let (si, a, b_) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            let reference =
+                if a == b_ { a.a1() } else { format!("{}:{}", a.a1(), b_.a1()) };
+            h.settle();
+            h.mark_once();
+            for s in h.book_mut().sheets.iter_mut() {
+                s.names.retain(|(n, _)| *n != name);
+            }
+            h.book_mut().sheets[si].names.push((name, reference));
+            sheet::recalc_book(h.book_mut(), si);
+            h.mark_dirty();
+            "{\"ok\":true}".into()
+        }
+        // 名前を消す(どのシートの物でも)。式は #NAME? になる — 黙って残さない
+        "delete_name" => {
+            let Some(name) = o.str("name") else { return err("name がありません") };
+            h.settle();
+            h.mark_once();
+            let mut removed = false;
+            for s in h.book_mut().sheets.iter_mut() {
+                let before = s.names.len();
+                s.names.retain(|(n, _)| *n != name);
+                removed |= s.names.len() != before;
+            }
+            if removed {
+                let si = h.active();
+                sheet::recalc_book(h.book_mut(), si);
+                h.mark_dirty();
+            }
+            format!("{{\"ok\":true,\"removed\":{removed}}}")
+        }
         // 結合の一覧(["B2","C3"] の対の並び — pysheet の merges と同じ形)
         "merges" => {
             let si = match sheet_index(h, &o) {

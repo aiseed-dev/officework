@@ -715,6 +715,37 @@ impl PySheet {
         })
     }
 
+    /// 名前の定義 [(名前, 参照 "A1" か "A1:B2")]。式の中で名前が使える。
+    #[getter]
+    fn names(&self) -> PyResult<Vec<(String, String)>> {
+        self.with(|s| Ok(s.names.clone()))
+    }
+
+    /// 名前を定義する(同じ名前は置き換え)。参照はこのシートの "A1" か "A1:B2"。
+    /// 定義した名前は式(=名前*2)で使え、再計算が追随する。
+    fn define_name(&self, name: &str, reference: &str) -> PyResult<()> {
+        if name.is_empty() || name.contains([' ', '!', ':']) {
+            return Err(PyValueError::new_err(format!(
+                "名前に空白・! ・: は使えない: {name:?}"
+            )));
+        }
+        parse_range(reference)?; // 形の検査だけ(向きの正規化はしない — 原文を保つ)
+        self.with_calc(|s| {
+            s.names.retain(|(n, _)| n != name);
+            s.names.push((name.to_string(), reference.to_string()));
+            Ok(())
+        })
+    }
+
+    /// 名前を消す。返りは消せたか。
+    fn delete_name(&self, name: &str) -> PyResult<bool> {
+        self.with_calc(|s| {
+            let before = s.names.len();
+            s.names.retain(|(n, _)| n != name);
+            Ok(s.names.len() != before)
+        })
+    }
+
     /// セルのコメント(無ければ None)。
     fn comment(&self, key: &str) -> PyResult<Option<String>> {
         let p = parse_ref(key)?;

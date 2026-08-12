@@ -313,6 +313,23 @@ class Range:
         """画面の選択をこの範囲に動かして見せる。"""
         _call("select", **self._kw())
 
+    @property
+    def name(self):
+        """この範囲をちょうど指す名前(xlwings と同じ)。無ければ None。"""
+        me = self._a1()
+        target_sheet = self.sheet.name
+        for sheet, n, ref in _call("names")["names"]:
+            if sheet == target_sheet and ref == me:
+                return Name(n)
+        return None
+
+    @name.setter
+    def name(self, value):
+        kw = {"name": str(value), "a1": self._a1()}
+        if self._sheet is not None:
+            kw["sheet"] = self._sheet
+        _call("define_name", **kw)
+
     # ── 書式(xlwings の形。合否は相手の定義どおり)──────────────
 
     @property
@@ -760,6 +777,12 @@ class Book:
         r = _call("selection")
         return Range(r["a1"], sheet=r["sheet"])
 
+    @property
+    def names(self):
+        """名前付き範囲(xlwings の Names の役)。
+        wb.names.add("単価", "=Sheet1!$A$1")・wb.names["単価"].refers_to。"""
+        return _Names()
+
     def load(self, convert=None, index=True, header=True):
         """いま選んでいる範囲を DataFrame に(1マスだけなら表に広げる)。
         **polars を第一に**(polars が無ければ pandas)。"""
@@ -792,6 +815,87 @@ class _Books:
 
 
 books = _Books()
+
+
+class Name:
+    """名前付き範囲の1件(xlwings の Name の役)。refers_to は "=シート!$A$1"。"""
+
+    __slots__ = ("name",)
+
+    def __init__(self, name):
+        self.name = name
+
+    @property
+    def refers_to(self):
+        for sheet, n, ref in _call("names")["names"]:
+            if n == self.name:
+                def abs1(cell):
+                    # "A1" → "$A$1"(xlwings と同じ絶対参照の形)
+                    i = 0
+                    while i < len(cell) and cell[i].isalpha():
+                        i += 1
+                    return "$" + cell[:i] + "$" + cell[i:]
+                return "={}!{}".format(
+                    sheet, ":".join(abs1(p) for p in ref.split(":")))
+        raise OfficeworkError("名前「{}」がありません".format(self.name))
+
+    @refers_to.setter
+    def refers_to(self, v):
+        sheet, a1 = _parse_refers(v)
+        kw = {"name": self.name, "a1": a1}
+        if sheet:
+            kw["sheet"] = sheet
+        _call("define_name", **kw)
+
+    def delete(self):
+        _call("delete_name", name=self.name)
+
+    def __repr__(self):
+        return "<officework.calc Name {}>".format(self.name)
+
+
+def _parse_refers(v):
+    # "=Sheet!$A$1:$B$2" / "Sheet!A1" / "A1" → (シート名か None, "A1:B2")
+    s = str(v).lstrip("=").replace("$", "")
+    if "!" in s:
+        sheet, ref = s.rsplit("!", 1)
+        return sheet.strip("'"), ref
+    return None, s
+
+
+class _Names:
+    """Book.names の返り(xlwings の Names の役)。"""
+
+    def add(self, name, refers_to):
+        sheet, a1 = _parse_refers(refers_to)
+        kw = {"name": name, "a1": a1}
+        if sheet:
+            kw["sheet"] = sheet
+        _call("define_name", **kw)
+        return Name(name)
+
+    def _list(self):
+        return [n for _, n, _ in _call("names")["names"]]
+
+    def __getitem__(self, key):
+        names = self._list()
+        if isinstance(key, int):
+            return Name(names[key])
+        if key in names:
+            return Name(key)
+        raise OfficeworkError("名前「{}」がありません".format(key))
+
+    def __contains__(self, key):
+        return key in self._list()
+
+    def __iter__(self):
+        return (Name(n) for n in self._list())
+
+    def __len__(self):
+        return len(self._list())
+
+    def __repr__(self):
+        return "<officework.calc Names {}>".format(self._list())
 
 
 class _App:
