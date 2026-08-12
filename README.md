@@ -2,7 +2,12 @@
 
 *日本語版(secondary): [README.ja.md](README.ja.md)*
 
-**Word and Excel that run on your machine.** Two apps for docx and xlsx, written in Rust.
+**Automating Office work with Python — that is what this software is for.**
+The engine installs on its own (`pip install officework`): it reads and
+writes xlsx and docx without breaking their formatting, in the idiom of
+openpyxl, python-docx and xlwings. On top of it sit **Word and Excel that
+run on your machine** — where you watch the result, finish it by hand,
+and drive a live workbook from Python:
 
 - `writer` — opens, edits, and saves docx. Exports PDF ([manual](docs/writer-manual.md))
 - `calc` — opens, edits, and saves xlsx. Calculates formulas ([manual](docs/calc-manual.md))

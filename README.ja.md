@@ -2,7 +2,12 @@
 
 *正本(primary)は英語版: [README.md](README.md)。この日本語版は副です。*
 
-**手元で動く Word と Excel。** Rust で書いた、docx と xlsx のための2つのアプリ。
+**Python で Office の仕事を自動化する — それがこのソフトの一番の目的です。**
+エンジンは `pip install officework` で単体で入ります: xlsx / docx を
+書式ごと壊さずに読み書きし、openpyxl・python-docx・xlwings の書き味を
+継いでいます。その上に **手元で動く Word と Excel** が載ります —
+自動化の結果を目で確かめ、手で仕上げ、起動中のブックを Python から
+直に操る場所です:
 
 - `writer` — docx を開いて、直して、保存する。PDF にもできる([手引き](docs/writer-manual.ja.md))
 - `calc` — xlsx を開いて、直して、保存する。式も計算する([手引き](docs/calc-manual.ja.md))
