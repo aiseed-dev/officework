@@ -115,7 +115,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("横書きに戻しました", "Zurück zu horizontaler Schrift"),
     ("ルビを振る字を選んでから押してください", "Erst den Text auswählen, der Ruby bekommen soll"),
     ("脚注にする字を選んでから押してください", "Bitte zuerst den Text auswählen, der zur Fußnote werden soll"),
-    ("選んだ字を脚注にしました(紙の下に出ます)", "Der ausgewählte Text wurde zur Fußnote (er erscheint am Seitenfuß)"),
+    ("選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)", "Der ausgewählte Text wurde zur Fußnote (er erscheint am Seitenfuß; nicht widerrufbar)"),
     ("脚注にできません(段落をまたぐ範囲は選べません)", "Fußnote nicht möglich (die Auswahl muss innerhalb eines Absatzes bleiben)"),
     ("ルビ: 読みを打って Enter(空にして Enter で外す)", "Ruby: Lesung eingeben und Enter (leer + Enter entfernt sie)"),
     ("レベル付きのリストです(Tab / Shift+Tab で深さ。印はレベルで変わる)", "Liste mit Ebenen (Tab / Shift+Tab ändert die Tiefe; das Zeichen folgt der Ebene)"),

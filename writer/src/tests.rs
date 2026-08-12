@@ -1194,3 +1194,60 @@ mod screen_note_tests {
         });
     }
 }
+
+
+/// 脚注にする操作は**取り消せない**。
+///
+/// 取り消しは `Editor` が持っていて、控えるのは**平文だけ**。この操作は
+/// 字を模型(注)へ移すので平文の巻き戻しでは戻らず、平文を取り直す時点で
+/// **それまでの履歴ごと消える**。直すには文書そのものの取り消しが要る。
+///
+/// 直せていないので、せめて**そう言う** — 文言に「取り消しはできません」を
+/// 入れてある。ここは**その約束が本当かを見る**(黙って戻せなくならないように)
+#[cfg(test)]
+mod footnote_undo_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn 脚注にすると取り消せなくなる(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.doc = Document::plain("あいうえお", SIZE_PT);
+            this.ed = Editor::new(&this.doc.body_text());
+            this.relayout();
+            // 1手打っておく(この履歴も消えることを見る)
+            this.ed.insert("か");
+            this.on_edited();
+            assert_eq!(this.doc.body_text(), "あいうえおか");
+
+            this.ed.move_to(3, false);
+            this.ed.move_to(9, true);
+            this.run_cmd("footnote", cx);
+            assert_eq!(this.doc.body_text(), "あえおか", "字が注へ移っていない");
+            assert_eq!(this.doc.footnotes.len(), 1);
+
+            // **戻せない。** 文言がそう言っているとおり
+            assert!(!this.ed.undo(), "取り消せてしまった(文言が嘘になる)");
+            assert_eq!(this.doc.body_text(), "あえおか", "取り消せないのに本文が変わった");
+            assert!(this.status.contains("取り消し"),
+                "取り消せないことを言っていない: {}", this.status);
+        });
+    }
+
+    /// 選択が無ければ何も起きない(履歴も消さない)
+    #[gpui::test]
+    fn 選択が無ければ履歴を壊さない(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.doc = Document::plain("あいうえお", SIZE_PT);
+            this.ed = Editor::new(&this.doc.body_text());
+            this.relayout();
+            this.ed.insert("か");
+            this.on_edited();
+            this.ed.move_to(3, false); // 選択なし
+            this.run_cmd("footnote", cx);
+            assert!(this.doc.footnotes.is_empty(), "選択が無いのに注ができた");
+            assert!(this.ed.undo(), "何もしていないのに履歴が消えた");
+        });
+    }
+}

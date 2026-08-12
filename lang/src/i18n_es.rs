@@ -115,7 +115,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("横書きに戻しました", "De vuelta a la escritura horizontal"),
     ("ルビを振る字を選んでから押してください", "Seleccione primero el texto al que aplicar ruby"),
     ("脚注にする字を選んでから押してください", "Seleccione primero el texto que se convertirá en nota al pie"),
-    ("選んだ字を脚注にしました(紙の下に出ます)", "El texto seleccionado se ha convertido en nota al pie (aparece al pie de la página)"),
+    ("選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)", "El texto seleccionado se ha convertido en nota al pie (aparece al pie de la página; no se puede deshacer)"),
     ("脚注にできません(段落をまたぐ範囲は選べません)", "No se puede crear la nota al pie (la selección debe permanecer dentro de un párrafo)"),
     ("ルビ: 読みを打って Enter(空にして Enter で外す)", "Ruby: escriba la lectura y pulse Enter (vacío lo quita)"),
     ("レベル付きのリストです(Tab / Shift+Tab で深さ。印はレベルで変わる)", "Lista con niveles (Tab / Shift+Tab cambia la profundidad; la viñeta sigue al nivel)"),

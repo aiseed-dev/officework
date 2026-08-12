@@ -115,7 +115,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("横書きに戻しました", "Kembali ke tulisan horizontal"),
     ("ルビを振る字を選んでから押してください", "Pilih dulu teks yang akan diberi ruby"),
     ("脚注にする字を選んでから押してください", "Pilih dulu teks yang akan dijadikan catatan kaki"),
-    ("選んだ字を脚注にしました(紙の下に出ます)", "Teks terpilih dijadikan catatan kaki (muncul di bagian bawah halaman)"),
+    ("選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)", "Teks terpilih dijadikan catatan kaki (muncul di bagian bawah halaman; tidak dapat dibatalkan)"),
     ("脚注にできません(段落をまたぐ範囲は選べません)", "Tidak bisa membuat catatan kaki (pilihan harus berada dalam satu paragraf)"),
     ("ルビ: 読みを打って Enter(空にして Enter で外す)", "Ruby: ketik cara bacanya lalu tekan Enter (kosongkan lalu Enter untuk menghapus)"),
     ("レベル付きのリストです(Tab / Shift+Tab で深さ。印はレベルで変わる)", "Daftar bertingkat (Tab / Shift+Tab mengubah kedalaman; penanda mengikuti tingkatnya)"),

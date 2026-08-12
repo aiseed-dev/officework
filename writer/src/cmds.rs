@@ -136,7 +136,7 @@ impl Writer {
                         self.ed.move_to(at.min(len), false);
                         self.relayout();
                         self.dirty = true;
-                        self.status = ui::t!("選んだ字を脚注にしました(紙の下に出ます)").into();
+                        self.status = ui::t!("選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)").into();
                     }
                     None => {
                         self.status =

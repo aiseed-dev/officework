@@ -118,7 +118,7 @@ pub const TABLE: &[(&str, &str)] = &[
 ("横書きに戻しました", "Back to horizontal writing"),
 ("ルビを振る字を選んでから押してください", "Select the text to set ruby on first"),
 ("脚注にする字を選んでから押してください", "Select the text to turn into a footnote first"),
-("選んだ字を脚注にしました(紙の下に出ます)", "Moved the selected text into a footnote (it appears at the foot of the page)"),
+("選んだ字を脚注にしました(紙の下に出ます。取り消しはできません)", "Moved the selected text into a footnote (it appears at the foot of the page; this cannot be undone)"),
 ("脚注にできません(段落をまたぐ範囲は選べません)", "Cannot make a footnote (the selection must stay within one paragraph)"),
 ("ルビ: 読みを打って Enter(空にして Enter で外す)", "Ruby: type the reading and press Enter (empty removes it)"),
 ("レベル付きのリストです(Tab / Shift+Tab で深さ。印はレベルで変わる)", "Leveled list (Tab / Shift+Tab changes depth; the marker follows the level)"),
