@@ -493,17 +493,30 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                 }
                 w.write_event(Event::End(BytesEnd::new("w:tblBorders"))).unwrap();
                 w.write_event(Event::End(BytesEnd::new("w:tblPr"))).unwrap();
-                // 列幅を返す(読んだものを捨てると、保存で表の形が変わる)
-                if !t.col_mm.is_empty() {
-                    w.write_event(Event::Start(BS::new("w:tblGrid"))).unwrap();
+                // 列幅を返す(読んだものを捨てると、保存で表の形が変わる)。
+                // tblGrid は ECMA-376 の必須部品 — 幅の指定が無い(等分)表でも
+                // **幅なしの gridCol を格子の列数ぶん書く**。省くと python-docx が
+                // 表を読めない(2026-08-12 の突き合わせで発覚)
+                w.write_event(Event::Start(BS::new("w:tblGrid"))).unwrap();
+                if t.col_mm.is_empty() {
+                    let cols = t
+                        .rows
+                        .iter()
+                        .map(|r| r.iter().map(|c| c.span()).sum::<usize>())
+                        .max()
+                        .unwrap_or(1);
+                    for _ in 0..cols {
+                        w.write_event(Event::Empty(BS::new("w:gridCol"))).unwrap();
+                    }
+                } else {
                     for mm in &t.col_mm {
                         let mut g = BS::new("w:gridCol");
                         let tw = (mm * 20.0 * 72.0 / 25.4).round() as i64;
                         g.push_attribute(("w:w", tw.to_string().as_str()));
                         w.write_event(Event::Empty(g)).unwrap();
                     }
-                    w.write_event(Event::End(BytesEnd::new("w:tblGrid"))).unwrap();
                 }
+                w.write_event(Event::End(BytesEnd::new("w:tblGrid"))).unwrap();
                 for row in &t.rows {
                     w.write_event(Event::Start(BS::new("w:tr"))).unwrap();
                     for cell in row {

@@ -255,6 +255,18 @@ class Table:
 
     # ── python-docx の口(互換層)───────────────────────────────
 
+    def add_row(self):
+        """行を1つ足す(末尾)。明細行の継ぎ足し。返りは新しい行。"""
+        return Row(self._t.add_row())
+
+    def add_column(self, width=None):
+        """列を1つ足す(右端)。width は python-docx と同じ EMU
+        (docx.shared.Mm(25) 等がそのまま通る)。省略なら等分のまま。
+        返りは新しい列。"""
+        width_mm = None if width is None else width / 36000
+        self._t.add_column(width_mm)
+        return self.columns[-1]
+
     def cell(self, row_idx, col_idx):
         return Cell(self._t[row_idx][col_idx])
 
@@ -332,6 +344,17 @@ class Doc:
 
     def add_paragraph(self, text=""):
         return Paragraph(self._d.add_paragraph(text))
+
+    def add_table(self, rows, cols, style=None):
+        """表を新しく組む(明細の帳票づくり)。各セルは空の段落を1つ持つ。
+
+        style はまだ持てない(台帳の「足す(書式)」)— 黙って無視しない。
+        """
+        if style is not None:
+            raise NotImplementedError(
+                "表のスタイルはまだ持てない(台帳: docs/pysheet-gokan.ja.md の「足す(書式)」)"
+            )
+        return Table(self._d.add_table(rows, cols))
 
     def __getattr__(self, name):
         # エンジンに後から生えた口は、包み直しを待たずにそのまま通す

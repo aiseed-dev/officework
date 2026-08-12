@@ -328,4 +328,93 @@ if openpyxl is not None:
         check(s5.merged_cell_ranges == ["A1:B2"], "本家の結合をうちが読めない")
         check(s5.freeze_panes == "B2", f"本家の固定枠をうちが読めない: {s5.freeze_panes}")
 
+# ==================== 第3歩: 画像(xlsx)・表の書き(docx)・polars
+
+# --- add_image: 貼って・見えて・保存で xl/media に入り・読み直しで戻る -----------
+PNG_1x1 = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01"
+    b"\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+b6 = office_sheet.Book()
+s6 = b6[0]
+s6["A1"] = "グラフの下じき"
+s6.add_image(PNG_1x1, "B2")
+check(s6.images == [("B2", 1.0, 1.0)], f"貼った画像が見えない: {s6.images}")
+s6.add_image(PNG_1x1, "D4", width_px=200, height_px=100)  # 大きさの上書き
+with tempfile.TemporaryDirectory() as t:
+    out = os.path.join(t, "img.xlsx")
+    b6.save(out)
+    s7 = office_sheet.Book.open(out)[0]
+    check(("B2", 1.0, 1.0) in s7.images and ("D4", 200.0, 100.0) in s7.images,
+          f"画像が往復しない: {s7.images}")
+    import zipfile as _zf
+    with _zf.ZipFile(out) as z:
+        media = [n for n in z.namelist() if n.startswith("xl/media/")]
+    check(len(media) == 2, f"xl/media に絵が入っていない: {media}")
+
+    # 径路の文字列でも渡せる(matplotlib の savefig の出口をそのまま)
+    p = os.path.join(t, "e.png")
+    with open(p, "wb") as f:
+        f.write(PNG_1x1)
+    s6.add_image(p, "F1")
+    check(len(s6.images) == 3, "径路の add_image が効かない")
+
+# --- docx: add_table / add_row / add_column ------------------------------------
+d_j = office_doc.Doc()
+t_j = d_j.add_table(2, 3)
+check(t_j.shape == (2, 3), f"add_table の形: {t_j.shape}")
+t_j.cell(0, 0).text = "品名"
+row = t_j.add_row()
+check(t_j.shape == (3, 3) and len(row.cells) == 3, "add_row")
+row.cells[0].text = "ザボガードF"
+t_j.add_column()
+check(t_j.shape == (3, 4), f"add_column: {t_j.shape}")
+try:
+    d_j.add_table(2, 2, style="Table Grid")
+    check(False, "add_table の style が黙って捨てられた")
+except NotImplementedError:
+    pass
+
+if pydocx is not None:
+    with tempfile.TemporaryDirectory() as t:
+        out = os.path.join(t, "hyo.docx")
+        d_j.save(out)
+        back = pydocx.Document(out)
+        bt = back.tables[0]
+        check(len(bt.rows) == 3, f"うちが組んだ表を本家が読めない: {len(bt.rows)} 行")
+        check(len(bt.rows[0].cells) == 4, f"本家の見た列数: {len(bt.rows[0].cells)}")
+        check(bt.cell(0, 0).text == "品名" and bt.cell(2, 0).text == "ザボガードF",
+              "うちが書いた中身を本家が読めない")
+
+# --- polars: 第一の変換(ソケットに出ない純関数を直接確かめる)------------------
+try:
+    import polars as pl
+except ImportError:
+    pl = None
+    print("polars が無いので飛ばした", file=sys.stderr)
+
+if pl is not None:
+    grid = [["品名", "数"], ["ザボガードF", 4.0], ["ドリル", 2.0]]
+    df = xw._grid_to_frame(grid, pl.DataFrame)
+    check(df.columns == ["品名", "数"] and df.shape == (2, 2),
+          f"polars への変換: {df.columns} {df.shape}")
+    check(df["数"].to_list() == [4.0, 2.0], "polars の中身")
+    check(xw._to_grid(df) == grid, f"polars からの往復: {xw._to_grid(df)}")
+    check(xw._to_grid(pl.Series([1, 2])) == [[1], [2]], "polars の Series")
+    # 見出しなし
+    df2 = xw._grid_to_frame([[1, 2], [3, 4]], pl.DataFrame, header=False)
+    check(df2.shape == (2, 2), "polars header=False")
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+    print("pandas が無いので飛ばした", file=sys.stderr)
+
+if pd is not None:
+    grid = [["品名", "数"], ["ザボガードF", 4.0]]
+    df3 = xw._grid_to_frame(grid, pd.DataFrame)
+    check(list(df3.index) == ["ザボガードF"], "pandas の index(従来どおり)")
+
 print("OK")

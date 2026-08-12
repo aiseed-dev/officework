@@ -66,21 +66,7 @@ class Options:
         grid = rng._get()
         conv = self._convert
         if conv is not None and conv.__name__ == "DataFrame":
-            import pandas as pd
-
-            if not grid:
-                return pd.DataFrame()
-            if self._header:
-                head, body = grid[0], grid[1:]
-            else:
-                head, body = None, grid
-            df = pd.DataFrame(body, columns=head)
-            if self._index and df.shape[1] >= 1:
-                df = df.set_index(df.columns[0])
-                # xlwings と同じく、見出しの欄が None なら index 名も無し
-                if df.index.name is None or df.index.name == "":
-                    df.index.name = None
-            return df
+            return _grid_to_frame(grid, conv, index=self._index, header=self._header)
         return rng._plain(grid)
 
     @value.setter
@@ -276,9 +262,50 @@ class Range:
         return "<officework.calc Range {}>".format(self._a1())
 
 
+def _grid_to_frame(grid, convert, index=True, header=True):
+    """セルの2次元(values)を DataFrame へ。**polars を第一に**、pandas は従来どおり。
+
+    polars には index という物が無いので、polars のときは index は効かない
+    (見出しの列もただの列として入る)。
+    """
+    if (getattr(convert, "__module__", "") or "").startswith("polars"):
+        import polars as pl
+
+        if not grid:
+            return pl.DataFrame()
+        if header:
+            names = ["" if c is None else str(c) for c in grid[0]]
+            return pl.DataFrame(grid[1:], schema=names, orient="row")
+        return pl.DataFrame(grid, orient="row")
+    import pandas as pd
+
+    if not grid:
+        return pd.DataFrame()
+    if header:
+        head, body = grid[0], grid[1:]
+    else:
+        head, body = None, grid
+    df = pd.DataFrame(body, columns=head)
+    if index and df.shape[1] >= 1:
+        df = df.set_index(df.columns[0])
+        # xlwings と同じく、見出しの欄が None なら index 名も無し
+        if df.index.name is None or df.index.name == "":
+            df.index.name = None
+    return df
+
+
 def _to_grid(v):
     # DataFrame / ndarray / 2次元 / 1次元 / スカラー を 2次元へ
     name = type(v).__name__
+    mod = type(v).__module__ or ""
+    if mod.startswith("polars"):
+        # polars には index が無い — 見出し1行+中身をそのまま
+        if name == "DataFrame":
+            return [[str(c) for c in v.columns]] + [
+                [_scalar(x) for x in row] for row in v.rows()
+            ]
+        if name == "Series":
+            return [[_scalar(x)] for x in v.to_list()]
     if name == "DataFrame":
         rows = [
             [v.index.name if v.index.name is not None else ""]

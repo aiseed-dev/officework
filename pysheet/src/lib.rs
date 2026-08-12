@@ -25,7 +25,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDate, PyDateTime, PyTime};
 
 use sheet::calc::date_serial;
-use sheet::model::{format_value, rename_sheet_refs, FreezePane};
+use sheet::model::{format_value, rename_sheet_refs, FreezePane, SheetImage};
 use sheet::{recalc_all, recalc_book, xlsx, Cell, Pos, Value};
 
 /// ブックの中身。Book と Sheet が同じものを見るために1枚挟む。
@@ -480,6 +480,56 @@ impl PySheet {
     fn unmerge_cells(&self, range: &str) -> PyResult<usize> {
         let (a, b) = parse_range(range)?;
         self.with(|s| Ok(s.unmerge(a, b)))
+    }
+
+    /// 画像(PNG / JPEG)をシートに浮かべる。左上を `at` のセルに留める
+    /// (xlsx の oneCellAnchor)。アプリの「挿入 > グラフ」と同じ道 —
+    /// matplotlib で描いた PNG の径路か bytes をそのまま渡せる。
+    /// 大きさは絵から測る(width_px / height_px で上書きできる)。
+    #[pyo3(signature = (image, at="A1", width_px=None, height_px=None))]
+    fn add_image(
+        &self,
+        image: &Bound<'_, PyAny>,
+        at: &str,
+        width_px: Option<f32>,
+        height_px: Option<f32>,
+    ) -> PyResult<()> {
+        let data: Vec<u8> = if let Ok(b) = image.extract::<Vec<u8>>() {
+            b
+        } else if let Ok(p) = image.extract::<String>() {
+            std::fs::read(&p).map_err(|e| PyIOError::new_err(format!("{p}: 読めない: {e}")))?
+        } else {
+            return Err(PyTypeError::new_err(
+                "画像は 径路の文字列 か bytes(PNG / JPEG)で渡してください",
+            ));
+        };
+        let p = parse_ref(at)?;
+        let (w, h) = ops::image_px(&data)
+            .ok_or_else(|| PyValueError::new_err("PNG / JPEG として読めない(大きさが測れない)"))?;
+        self.with(|s| {
+            s.images_new.push(SheetImage {
+                at: p,
+                dx_px: 0.0,
+                dy_px: 0.0,
+                width_px: width_px.unwrap_or(w as f32),
+                height_px: height_px.unwrap_or(h as f32),
+                data,
+            });
+            Ok(())
+        })
+    }
+
+    /// シートの画像 [(留めたセル, 幅px, 高さpx)]。開いた帳票にあった物と、
+    /// add_image で足した物の両方が見える。
+    #[getter]
+    fn images(&self) -> PyResult<Vec<(String, f32, f32)>> {
+        self.with(|s| {
+            Ok(s.images
+                .iter()
+                .chain(s.images_new.iter())
+                .map(|im| (im.at.a1(), im.width_px, im.height_px))
+                .collect())
+        })
     }
 
     /// 固定枠。openpyxl と同じ A1 形式 — "B2" は上1行・左1列を固定、

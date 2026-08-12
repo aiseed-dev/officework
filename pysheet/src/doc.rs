@@ -229,6 +229,15 @@ fn replace_in_runs(runs: &mut [Run], old: &str, new: &str) -> usize {
     hits.len()
 }
 
+/// 空のセル(空の段落を1つ持つ)。docx のセルは段落無しでは立たないので、
+/// 表を組むとき・行や列を足すときはこれを敷く。
+fn empty_cell() -> kumihan::Cellbox {
+    kumihan::Cellbox {
+        paragraphs: vec![Paragraph { line_spacing: 1.0, ..Default::default() }],
+        ..Default::default()
+    }
+}
+
 /// Python の添字(負も可)→ 0起点の位置。
 fn resolve(i: isize, len: usize, what: &str) -> PyResult<usize> {
     let n = len as isize;
@@ -391,6 +400,22 @@ impl PyDoc {
         g.doc.blocks.push(Block::Para(p));
         let b = g.doc.blocks.len() - 1;
         Ok(PyParagraph { inner: Arc::clone(&self.inner), loc: Loc::Body(b) })
+    }
+
+    /// 本文の末尾に表を組む(rows × cols)。各セルは空の段落を1つ持つ
+    /// (docx のセルは段落無しでは立たない)。列の幅は等分。
+    fn add_table(&self, rows: usize, cols: usize) -> PyResult<PyTable> {
+        if rows == 0 || cols == 0 {
+            return Err(PyValueError::new_err("表は1行1列から"));
+        }
+        let mut g = lock(&self.inner)?;
+        let t = kumihan::Table {
+            rows: (0..rows).map(|_| (0..cols).map(|_| empty_cell()).collect()).collect(),
+            col_mm: Vec::new(),
+        };
+        g.doc.blocks.push(Block::Table(t));
+        let block = g.doc.blocks.len() - 1;
+        Ok(PyTable { inner: Arc::clone(&self.inner), block })
     }
 
     fn __repr__(&self) -> PyResult<String> {
@@ -593,6 +618,50 @@ impl PyTable {
         Ok((0..n)
             .map(|row| PyRow { inner: Arc::clone(&self.inner), block: self.block, row })
             .collect())
+    }
+
+    /// 行を1つ足す(末尾)。列の数はいちばん広い行に合わせ、
+    /// 各セルは空の段落を1つ持つ。明細行の継ぎ足しはこれ。
+    fn add_row(&self) -> PyResult<PyRow> {
+        let mut g = lock(&self.inner)?;
+        let t = match g.doc.blocks.get_mut(self.block) {
+            Some(Block::Table(t)) => t,
+            _ => return Err(PyIndexError::new_err("この表はもう文書に無い")),
+        };
+        let cols = t.rows.iter().map(|r| r.len()).max().unwrap_or(1);
+        t.rows.push((0..cols).map(|_| empty_cell()).collect());
+        let row = t.rows.len() - 1;
+        Ok(PyRow { inner: Arc::clone(&self.inner), block: self.block, row })
+    }
+
+    /// 列を1つ足す(右端。全部の行に空のセルが付く)。
+    /// `width_mm` は新しい列の幅 — 元の列に幅の指定が無い(等分)ときは
+    /// 受けられない(1列だけ幅を持つと形が決まらない)ので正直に断る。
+    #[pyo3(signature = (width_mm=None))]
+    fn add_column(&self, width_mm: Option<f32>) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        let t = match g.doc.blocks.get_mut(self.block) {
+            Some(Block::Table(t)) => t,
+            _ => return Err(PyIndexError::new_err("この表はもう文書に無い")),
+        };
+        match (width_mm, t.col_mm.is_empty()) {
+            (Some(w), false) => t.col_mm.push(w),
+            (Some(_), true) => {
+                return Err(PyValueError::new_err(
+                    "この表は列の幅が等分(未指定)なので、新しい列だけに幅を持てません。幅なしで足してください",
+                ))
+            }
+            (None, true) => {} // 等分のまま
+            (None, false) => {
+                // 幅を持つ表に幅なしの列は形が決まらない — 平均で足す
+                let avg = t.col_mm.iter().sum::<f32>() / t.col_mm.len() as f32;
+                t.col_mm.push(avg);
+            }
+        }
+        for row in t.rows.iter_mut() {
+            row.push(empty_cell());
+        }
+        Ok(())
     }
 
     /// (行数, いちばん長い行の列数)。DataFrame の shape と同じ向き。

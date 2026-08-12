@@ -83,7 +83,7 @@ add_heading と Run の add_text / clear はエンジンの書き口待ちだっ
 | ✔ parent | 互換層 | book へ戻る |
 | ✔ merge_cells / unmerge_cells | 足す | 結合の**書き**(済 2026-08-12)。家の作法(アプリの結合と同じ — sheet::model::ops へ移して共有): 左上以外の中身は消え、空の左上へは最初の中身が書式ごと移る。unmerge は openpyxl どおり**厳密一致で ValueError**(掛かる結合をまとめて解く口はエンジン側) |
 | ✔ freeze_panes | 足す | ウィンドウ枠の固定。実務多い(済 2026-08-12。openpyxl と同じ A1 形式 — "B2" = 上1行・左1列) |
-| add_image | 足す | **matplotlib の図をシートに貼る** — アプリのグラフ分業と同じ道を Python にも。oneCellAnchor で書く |
+| ✔ add_image | 足す | **matplotlib の図をシートに貼る** — アプリのグラフ分業と同じ道を Python にも。oneCellAnchor で書く(済 2026-08-12: 径路でも bytes でも。寸法は ops::image_px で測り、width_px/height_px で上書き。読み側の `images` も付けた — openpyxl はこれを公開 API で持たない) |
 | evenHeader / oddHeader / firstHeader / evenFooter / oddFooter / firstFooter | 足す | 印刷ヘッダー・フッター。writer のヘッダー・フッターの後に同じ模型で |
 | print_area / print_titles / print_title_rows / print_title_cols | 足す | 印刷設定。calc はモデルに読む所まで済み — 書きを足す |
 | add_data_validation | 足す | エンジンは list 規則を読み・効かせ・往復済み。追加の API を足す |
@@ -190,7 +190,7 @@ Cell は `s.cell(row=, column=)` から)。
 
 | 相手 | 判定 | うちの対応・理由 |
 |---|---|---|
-| value / formula / expand / options | ある | options は pandas 済み。**polars を第一の変換に足す** |
+| ✔ value / formula / expand / options | ある | options は pandas 済み。polars も済(2026-08-12): options(pl.DataFrame) の読みと、DataFrame / Series の代入の両方向。polars には index が無いので index 引数は polars では効かない |
 | ✔ address / get_address / row / column / rows / columns / count / size / shape | 互換層 | 参照の算術 |
 | ✔ offset / resize / last_cell / current_region | 互換層 | current_region は expand と同族 |
 | ✔ sheet / get_value / raw_value / formula2 | 互換層 | formula2 = formula(動的配列の別名)。get_value は手(引数なし・value と同じ物 — 実物で確認) |
@@ -227,7 +227,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ add_paragraph / paragraphs / save / tables | ある | |
 | add_heading | 足す | 当初「互換層(add_paragraph + style)」としたが、エンジンの Paragraph.style は**読みだけ**(2026-08-12 doc.rs と突き合わせて正した)。style の書きをエンジンに足してから |
 | add_page_break | 足す | |
-| add_table | 足す | 表を新しく組む(明細の帳票づくりに要る) |
+| ✔ add_table | 足す | 表を新しく組む(明細の帳票づくりに要る)(済 2026-08-12。style 引数は「足す(書式)」待ち — 黙って捨てず断る。ついでに ooxml の書き手の穴を1つ塞いだ: 等分の表で tblGrid(必須部品)を省いていて、python-docx が読めなかった) |
 | add_picture | 足す | 図を入れる(sheet.add_image と対) |
 | iter_inner_content | 足す | 段落と表を**文書の順で**返す。うちの paragraphs / tables は種類別 — 順序を返す API をエンジンに |
 | core_properties | 足す | 文書情報の読み書き(小) |
@@ -269,7 +269,7 @@ Cell は `s.cell(row=, column=)` から)。
 |---|---|---|
 | ✔ rows | ある | ほかに shape / values(polars 直行)が既にあり、これは相手に**無い**上位分 |
 | ✔ cell(r,c) / row_cells / column_cells / columns | 互換層 | rows[r].cells[c] から。結合で行の列数が違うとき column_cells は無い行を飛ばす(長方形しか持てない本家に、この場合の定義が無い) |
-| add_row / add_column | 足す | 明細行の継ぎ足し。実務の定番 |
+| ✔ add_row / add_column | 足す | 明細行の継ぎ足し。実務の定番(済 2026-08-12。add_column の width は python-docx と同じ EMU を受けて mm に直す。等分の表に幅つきの列は形が決まらないので正直に断る) |
 | style / alignment / autofit | 足す(書式) | 表のスタイル・配置・幅の自動調整 — 書式の一件 |
 | table_direction | 作らない | 右→左の表(アラビア語系の bidi)— このソフトの的の外。日本語の右横書き・縦書きは kumihan の側で扱う |
 | part / table | 要らない | |
@@ -290,8 +290,11 @@ Cell は `s.cell(row=, column=)` から)。
    merge の書き(家の作法を sheet::model::ops へ移してアプリと共有)・
    freeze_panes・シートの複製/削除/改名(改名は参照が追随 — rename_sheet_refs を
    sheet::model::refs へ移してアプリと共有)/並べ替え。
-   残りの背骨: add_image・add_table/add_row(docx)・橋の selection/load/to_pdf・
-   Range の options に polars
+   **後半も大方済(2026-08-12)**: add_image(oneCellAnchor・images の読みつき)・
+   add_table/add_row/add_column(docx。ooxml の tblGrid の穴も塞いだ)・
+   options の polars(読み書き両方向)。
+   残りの背骨は**橋(アプリ側 rpc)の仕事**: selection / load / to_pdf・
+   Sheet.clear / activate — calc の rpc.rs に語彙を足してから(実機で確かめる件)
 3. **書式の読み書き**(足す(書式)24 件)— エンジンの fmt に Python から書く道。合否は相手の定義どおり動くか
 4. **適合テストの移植** — 3つのテストの実務部分を pysheet/tests/ へ(NOTICE.md に出所)。書式の書き込みの「定義どおり」もここで証明する
 
