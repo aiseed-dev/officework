@@ -383,6 +383,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("計算方法: 手動(F9 で計算します — 大きな表で待たされない)", "Hesaplama: el ile (F9 yeniden hesaplar — büyük sayfalarda bekletmez)"),
     ("統計", "İstatistiksel"),
     ("→ 並べ替え…", "→ Sırala…"),
+    ("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Dilimleyici yapılacak sütunu seçin (her seferinde bir tane; yalnız görünüm, veriler değişmez)"),
+    ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Dilimleyici: süzmek için {} sütunundaki bir değere basın (≡ = çoklu seçim / ✕ = temizle; yalnız görünüm, veriler değişmez)"),
     ("並べ替えない", "Sıralama yok"),
     ("見出しの昇順", "Etiketler artan sırada"),
     ("見出しの降順", "Etiketler azalan sırada"),

@@ -1069,24 +1069,38 @@ impl Calc {
             "insslicer" => {
                 if self.slicer.take().is_none() {
                     self.commit();
-                    let col = self.cursor.col;
-                    let (rows, _) = self.sheet().extent();
+                    // **どの列にするかを選ばせる。** 前はカーソルの列を
+                    // 黙って使っていたので、押した人は自分がどの列を
+                    // スライサーにしたのか分からなかった(2026-08-13、
+                    // 台帳「スライサー挿入時の列チェック」)
+                    let (rows, cols) = self.sheet().extent();
                     if rows < 2 {
                         self.status =
                             ui::t!("スライサーにする列を選んでください(見出しの下にデータの行が要ります)").into();
                     } else {
-                        self.slicer = Some(Slicer {
-                            col,
-                            sel: Default::default(),
-                            multi: false,
-                            desc: false,
-                            hide_empty: false,
-                        });
-                        self.status = format!(
-                            "スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)",
-                            col_name(col)
-                        )
-                        .into();
+                        let items: Vec<(String, String)> = (0..cols)
+                            .map(|c| {
+                                let head = self
+                                    .sheet()
+                                    .get(Pos::new(0, c))
+                                    .map(|x| x.value.display())
+                                    .unwrap_or_default();
+                                let name = col_name(c);
+                                // 鍵は列の名前(A, B…)— 見出しは訳さないが、
+                                // **空の見出しでも列を選べる**ようにする
+                                let label = if head.trim().is_empty() {
+                                    name.clone()
+                                } else {
+                                    format!("{name}: {head}")
+                                };
+                                (name, label)
+                            })
+                            .collect();
+                        let at = self.pop_anchor();
+                        self.pick_note =
+                            Some(ui::t!("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)").into());
+                        self.pick_kind = "slicer-col";
+                        self.pick = Some((items, at));
                     }
                 }
             }

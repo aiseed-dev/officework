@@ -313,6 +313,22 @@ impl Calc {
                 };
             }
             // 表のスタイルを選んだ(2026-08-12、台帳「テンプレート選択ギャラリー」)
+            // スライサーにする列を選んだ(2026-08-13)
+            "slicer-col" => {
+                let Some(col) = (0..256).find(|c| crate::col_name(*c) == v) else { return };
+                self.slicer = Some(Slicer {
+                    col,
+                    sel: Default::default(),
+                    multi: false,
+                    desc: false,
+                    hide_empty: false,
+                });
+                self.status = ui::tf!(
+                    "スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)",
+                    crate::col_name(col)
+                )
+                .into();
+            }
             "table-style" => {
                 if let Some((_, label, st)) =
                     crate::util::table_styles().iter().find(|(k, _, _)| *k == v)

@@ -4645,6 +4645,37 @@ mod fnhelp_tests {
 }
 
 #[cfg(test)]
+mod slicer_col_tests {
+    use crate::*;
+
+    /// **どの列にするかを選ばせる。** 前はカーソルの列を黙って使っていて、
+    /// 押した人は自分がどの列をスライサーにしたのか分からなかった
+    /// (2026-08-13、台帳「スライサー挿入時の列チェック」)
+    #[gpui::test]
+    fn スライサーは列を選んでから出る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (p, v) in [((0, 0), "区分"), ((0, 1), "金額"), ((1, 0), "A"), ((1, 1), "10")] {
+                this.book.sheets[0].set(Pos::new(p.0, p.1), sheet::Cell::input(v));
+            }
+            this.cursor = Pos::new(0, 0);
+            this.sync_input();
+            this.run_cmd("insslicer", cx);
+            // **一覧が出るだけでは板は出ない**
+            assert!(this.slicer.is_none(), "選ぶ前にスライサーが出ている");
+            let items = this.pick.as_ref().expect("列の一覧が出ない").0.clone();
+            assert!(
+                items.iter().any(|(k, l)| k == "B" && l.contains("金額")),
+                "見出しが一覧に出ていない: {items:?}"
+            );
+            // カーソルは A 列だが、B を選べば B になる(黙ってカーソルを使わない)
+            this.apply_pick("B", cx);
+            assert_eq!(this.slicer.as_ref().map(|s| s.col), Some(1), "選んだ列にならない");
+        });
+    }
+}
+
+#[cfg(test)]
 mod prompt_tests {
 
     /// **パスワード欄が落ちない。**

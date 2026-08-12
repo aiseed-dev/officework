@@ -383,6 +383,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("計算方法: 手動(F9 で計算します — 大きな表で待たされない)", "Cách tính: thủ công (F9 để tính lại — không phải chờ với bảng lớn)"),
     ("統計", "Thống kê"),
     ("→ 並べ替え…", "→ Sắp xếp…"),
+    ("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Hãy chọn cột để làm slicer (mỗi lần một cái; chỉ cách hiển thị, dữ liệu không đổi)"),
+    ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Slicer: bấm một giá trị ở cột {} để lọc (≡ = chọn nhiều / ✕ = bỏ lọc; chỉ cách hiển thị, dữ liệu không đổi)"),
     ("並べ替えない", "Không sắp xếp"),
     ("見出しの昇順", "Nhãn tăng dần"),
     ("見出しの降順", "Nhãn giảm dần"),

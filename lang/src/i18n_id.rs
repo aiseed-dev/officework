@@ -383,6 +383,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("計算方法: 手動(F9 で計算します — 大きな表で待たされない)", "Metode kalkulasi: manual (F9 menghitung ulang — tidak menunggu di lembar besar)"),
     ("統計", "Statistik"),
     ("→ 並べ替え…", "→ Urutkan…"),
+    ("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Pilih kolom untuk slicer (satu per satu; tampilan saja, datanya tidak berubah)"),
+    ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Slicer: tekan sebuah nilai di kolom {} untuk menyaring (≡ = pilihan ganda / ✕ = bersihkan; tampilan saja, datanya tidak berubah)"),
     ("並べ替えない", "Tanpa pengurutan"),
     ("見出しの昇順", "Label menaik"),
     ("見出しの降順", "Label menurun"),

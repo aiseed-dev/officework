@@ -383,6 +383,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("計算方法: 手動(F9 で計算します — 大きな表で待たされない)", "Calcul : manuel (F9 recalcule — pas d'attente sur les grandes feuilles)"),
     ("統計", "Statistiques"),
     ("→ 並べ替え…", "→ Trier…"),
+    ("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Choisissez la colonne du segment (un à la fois ; affichage seulement, les données sont inchangées)"),
+    ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Segment : pressez une valeur de la colonne {} pour filtrer (≡ = sélection multiple / ✕ = effacer ; affichage seulement, les données sont inchangées)"),
     ("並べ替えない", "Aucun tri"),
     ("見出しの昇順", "Étiquettes par ordre croissant"),
     ("見出しの降順", "Étiquettes par ordre décroissant"),
