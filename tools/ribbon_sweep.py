@@ -40,6 +40,9 @@ import time
 from Xlib import X, XK, Xatom, display
 from Xlib.ext import xtest
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ribbon_parse  # noqa: E402
+
 # 「押して何か起きたか」「Esc で閉じるか」を見るか。**既定は見ない。**
 # この2つは誤報が多く(手では効く zoom-in を「無反応」と言う、長く回すと
 # Esc の判定が崩れる)、当たらない検査は無いより悪いので --strict に隔離
@@ -77,13 +80,12 @@ def check_skip():
     何も言わない(飛ばしすぎは終わりの一覧に出るので人が気づく)。
     """
     cm = open(os.path.join(ROOT, "calc/src/cmds.rs"), encoding="utf-8").read()
-    rb = open(os.path.join(ROOT, "ui/src/ribbon.rs"), encoding="utf-8").read()
-    m = re.search(r"pub const CALC: &\[Tab\] = &\[(.*?)^\];", rb, re.S | re.M)
-    if not m:
-        raise SystemExit("ui/src/ribbon.rs の CALC の表が読めません(書き方が変わった?)")
-    ready = set(re.findall(r'\bc\(\s*"([^"]+)"', m.group(1)))
-    if len(ready) < 80:
-        raise SystemExit(f"リボンの表が読めていません(ready {len(ready)} 件)")
+    # リボンの読みは tools/ribbon_parse.py に集めた(2026-08-12)。
+    # ここにあった正規表現は「合致する物を拾う」形で、**拾えなかった物は
+    # 黙って無かったことになる** — この検算では「押すな」の見落としに直結する。
+    # あちらは食べ尽くして残りが出たら落ちるので、床(< 80)はもう要らない
+    ready = {c.id for tab in ribbon_parse.tables_or_die()["CALC"]
+             for c in tab.cmds if c.ready}
     danger = {}
     for mm in re.finditer(r'^\s+"([a-z0-9\-|" ]+)" => \{', cm, re.M):
         ids = [x.strip(' "') for x in mm.group(1).split("|")]

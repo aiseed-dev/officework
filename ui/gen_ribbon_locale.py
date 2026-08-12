@@ -17,6 +17,9 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from ribbon_parse import tables_or_die  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent / "vendor/web-apps/apps"
 RIBBON = Path(__file__).resolve().parent / "src/ribbon.rs"
 
@@ -730,29 +733,13 @@ def build_map(apps, target):
     return out
 
 
-def parse_ribbon(src):
-    """ribbon.rs の WRITER / CALC を (名前, [(kind, フィールド…)]) に読む"""
-    tables = {}
-    for const in ("WRITER", "CALC"):
-        m = re.search(
-            rf"pub const {const}: &\[Tab\] = &\[(.*?)\n\];", src, re.S)
-        if not m:
-            sys.exit(f"{const} が見つかりません")
-        body = m.group(1)
-        tabs = []
-        for tm in re.finditer(
-                r'Tab \{ name: "([^"]+)", cmds: &\[(.*?)\]\s*\}', body, re.S):
-            name, cmds_src = tm.group(1), tm.group(2)
-            cmds = []
-            for cm in re.finditer(
-                    r'\b(c|x)\("((?:[^"\\]|\\.)*)"(?:, "((?:[^"\\]|\\.)*)")?'
-                    r'(?:, "((?:[^"\\]|\\.)*)")?\)', cmds_src):
-                kind = cm.group(1)
-                args = [a for a in cm.groups()[1:] if a is not None]
-                cmds.append((kind, args))
-            tabs.append((name, cmds))
-        tables[const] = tabs
-    return tables
+# `ribbon.rs` の読みは tools/ribbon_parse.py に集めた(2026-08-12)。
+# ここにあった自前の正規表現は「合致する物を拾う」形で、**書き方が変われば
+# 静かに減る**。5つの道具が同じ穴を持っていたので、1枚に寄せた。
+#
+# あちらは領域を**食べ尽くして、残りが1文字でも出たら落ちる**。読み落としが
+# 無い代わりに、表の書き方を変えたら解析器も直すことになる — その取引で正しい。
+# **この生成器は特に、読み落とすと生成物からボタンが消える**(黙って)。
 
 
 # 本家の英語は米国綴りの1種類しかない。こちらの `en` は英国基準と
@@ -801,8 +788,7 @@ def main():
     over = OVERRIDES.get(target, {})
     doc_map = build_map(["documenteditor", "spreadsheeteditor"], target)
     cell_map = build_map(["spreadsheeteditor", "documenteditor"], target)
-    src = open(RIBBON, encoding="utf-8").read()
-    tables = parse_ribbon(src)
+    tabs_of = tables_or_die(RIBBON)
 
     missing = []
 
@@ -834,18 +820,23 @@ def main():
 
 use super::ribbon::{{c, x, Tab}};
 """)
-    for const, tabs in tables.items():
+    def q(s):
+        """Rust のリテラルに戻す。解析器は逃げを解いた素の字を渡してくる"""
+        return s.replace("\\", "\\\\").replace('"', '\\"')
+
+    # **並びは WRITER → CALC。** 解析器の dict は CALC が先なので、そのまま
+    # 回すと生成物の2つの表が入れ替わる(受け入れ試験で気づいた)
+    for const in ("WRITER", "CALC"):
         m = doc_map if const == "WRITER" else cell_map
         out.append(f"pub const {const}: &[Tab] = &[")
-        for name, cmds in tabs:
-            out.append(f'    Tab {{ name: "{tr(name, m)}", cmds: &[')
-            for kind, args in cmds:
-                if kind == "c":
-                    cid, label, icon = args
-                    out.append(f'        c("{cid}", "{tr(label, m)}", "{icon}"),')
+        for tab in tabs_of[const]:
+            out.append(f'    Tab {{ name: "{q(tr(tab.name, m))}", cmds: &[')
+            for cmd in tab.cmds:
+                if cmd.ready:
+                    out.append(
+                        f'        c("{q(cmd.id)}", "{q(tr(cmd.label, m))}", "{q(cmd.icon)}"),')
                 else:
-                    label, icon = args
-                    out.append(f'        x("{tr(label, m)}", "{icon}"),')
+                    out.append(f'        x("{q(tr(cmd.label, m))}", "{q(cmd.icon)}"),')
             out.append("    ]},")
         out.append("];\n")
 
