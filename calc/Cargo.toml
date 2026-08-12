@@ -6,6 +6,8 @@ license.workspace = true
 
 [dependencies]
 sheet = { path = "../sheet" }
+pyrun = { path = "../pyrun" }
+ops = { path = "../ops" }
 # CSV を Shift_JIS でも書けるように(日本の会計ソフトはまだ CP932)
 encoding_rs = "0.8"
 

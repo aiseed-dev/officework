@@ -818,7 +818,9 @@ dependencies = [
  "gpui_platform",
  "kumihan",
  "ooxml",
+ "ops",
  "paper",
+ "pyrun",
  "rfd",
  "sheet",
  "ui",
@@ -4085,6 +4087,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ops"
+version = "0.0.1"
+dependencies = [
+ "sheet",
+]
+
+[[package]]
 name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4668,6 +4677,10 @@ dependencies = [
  "quote",
  "syn 2.0.119",
 ]
+
+[[package]]
+name = "pyrun"
+version = "0.0.1"
 
 [[package]]
 name = "pysheet"
@@ -6415,6 +6428,7 @@ dependencies = [
  "kumihan",
  "lang",
  "ooxml",
+ "pyrun",
  "resvg 0.48.1",
 ]
 
@@ -7645,6 +7659,7 @@ dependencies = [
  "kumihan",
  "ooxml",
  "paper",
+ "pyrun",
  "rfd",
  "rustls",
  "ui",

@@ -1,20 +1,11 @@
 //! writer の Python の裏方(main.rs から純移動 2026-08-08。部屋割りの4歩目)。
-//! Python を探す・マクロの台本を組む・プラグインの置き場。**純移動**
+//! Python を探す・マクロの台本を組む・プラグインの置き場。
+//! 探す・置き場は 2026-08-12 に pyrun へ(calc と同じ物を使う)。
 
-use crate::*;
-
-/// 自分の名乗り(誰が開いているか)。user@host。
-/// Python の探し方(calc と同じ)。JO_PYTHON > .venv > python3
-pub(crate) fn find_python() -> std::path::PathBuf {
-    if let Some(p) = std::env::var_os("JO_PYTHON") {
-        return p.into();
-    }
-    let venv = std::path::Path::new(".venv/bin/python");
-    if venv.exists() {
-        return venv.into();
-    }
-    "python3".into()
-}
+/// Python の探し方(calc と同じ — 正は pyrun)。JO_PYTHON > .venv > python3。
+/// 前はここに写しがあり、**実行ファイルから遡って .venv を探す直し
+/// (2026-08-07)が入っていなかった** — 写経のずれの実物。共有で自然に直る
+pub(crate) use pyrun::find_python;
 
 /// マクロ台本の全文を組む。前置きで d(python-docx の文書)のほかに、
 /// 記入欄へ**名前で**書く fill / fill_one、読む extract、名前と値の一覧
@@ -149,10 +140,5 @@ def tpl_fields():
     )
 }
 
-/// プラグイン(.py)の置き場。~/.config/office/plugins
-pub(crate) fn plugins_dir() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_default()
-        .join(".config/office/plugins")
-}
+/// プラグイン(.py)の置き場。~/.config/office/plugins(正は pyrun)
+pub(crate) use pyrun::plugins_dir;

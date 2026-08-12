@@ -61,7 +61,7 @@ jobs:
         # 1件の環境依存が残り4つの crate を丸ごと隠す(2026-08-10 に踏んだ —
         # kumihan の 1 件で paper・lang・sheet・ooxml が一度も走っていなかった)。
         # 直す回数だけ CI を回すことになるので、**全部出させてから読む**
-        run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar
+        run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
       - name: サイドカーが組めるか(pyoffice)
         run: cargo build -p sidecar
       - name: リボンの表を読む解析器が、崩れたら止まるか
@@ -113,7 +113,7 @@ jobs:
         # 日本語の試験名(non_snake_case)は**その場で**許してある。まとめて
         # 消すと、製品のコードの命名まで見なくなる
         run: |
-          cargo clippy -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar --all-targets -- \
+          cargo clippy -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops --all-targets -- \
             -D warnings \
             -A clippy::too_many_arguments \
             -A clippy::type_complexity \

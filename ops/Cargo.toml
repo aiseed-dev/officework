@@ -1,0 +1,10 @@
+[package]
+name = "ops"    # ブックの操作の言葉(Book/Range)。gpui を知らない(SEKKEI「操作の言葉を1本に」段A)
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+
+# sheet だけ。「動いているアプリ」の都合(undo の節目・状態行・画面)は
+# Host trait の向こう側 — 実装が calc なら生きた表、pysheet ならファイル
+[dependencies]
+sheet = { path = "../sheet" }

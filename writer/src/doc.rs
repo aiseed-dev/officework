@@ -554,34 +554,13 @@ impl Writer {
             let py_path = dir.join("run.py");
             std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
             let py = find_python();
-            let have_bwrap = std::path::Path::new("/usr/bin/bwrap").exists();
-            let mut cmd = if have_bwrap {
-                // サンドボックス: / は読み取り専用、ホームは空、書けるのは作業場だけ、
-                // ネット無し(calc の Python と同じサンドボックス)
-                let venv = std::fs::canonicalize(".venv").unwrap_or_default();
-                let mut c = std::process::Command::new("/usr/bin/bwrap");
-                c.args(["--ro-bind", "/", "/", "--tmpfs", "/home", "--tmpfs", "/tmp"]);
-                if venv.exists() {
-                    c.arg("--ro-bind").arg(&venv).arg(&venv);
-                }
-                c.arg("--bind").arg(&dir).arg(&dir);
-                c.args([
-                    "--unshare-net",
-                    "--dev",
-                    "/dev",
-                    "--proc",
-                    "/proc",
-                    "--die-with-parent",
-                    "--new-session",
-                    "--setenv",
-                    "HOME",
-                    "/tmp",
-                    "--",
-                ]);
-                c.arg(&py);
-                c
-            } else {
-                std::process::Command::new(&py)
+            // 囲いは calc と同じ pyrun(ネット無し)。前はここに bwrap の生の
+            // 写しがあり、Flatpak の分岐が入っていなかった — 共有で自然に直る。
+            // 組めない機械では素の Python(マクロは自分で選んだ .py)
+            let venv = std::fs::canonicalize(".venv").unwrap_or_default();
+            let mut cmd = match pyrun::caged_python(&py, &dir, &[venv], false) {
+                Some(c) => c,
+                None => std::process::Command::new(&py),
             };
             let o = cmd
                 .arg(&py_path)

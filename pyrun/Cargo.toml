@@ -1,0 +1,10 @@
+[package]
+name = "pyrun"  # Python 実行の機構。gpui も sheet も知らない(SEKKEI「操作の言葉を1本に」段A)
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+
+# 依存なし — サンドボックス(Cage)・時間制限つき実行・python の探索・
+# plugins の走査・埋め込み台本は、全部 std だけでできる。
+# ここに何かを足したくなったら、それは pyrun の仕事ではない合図
+[dependencies]

@@ -22,10 +22,8 @@ use std::path::PathBuf;
 
 /// プラグイン(.py)の置き場。**writer と calc で同じ**。
 pub fn plugins_dir() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".config/office/plugins")
+    // 正は pyrun(calc・writer と3枚で共有)。ここは呼び出し側を変えないための包み
+    pyrun::plugins_dir()
 }
 
 
