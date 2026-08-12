@@ -67,6 +67,7 @@ impl Calc {
         if ooxml::crypt::is_encrypted(&bytes) {
             // パネルでパスワードを聞き、Enter が続きをやる
             self.pw_pending = Some(p);
+            self.pw_show = false;
             self.prompt = Some(("pw-open", Editor::new("")));
             self.status =
                 ui::t!("このブックは暗号化されています。パスワードを打って Enter").into();

@@ -74,23 +74,58 @@ fn literal_at(s: &[u8], i: usize) -> Option<(usize, String)> {
 }
 
 /// ソース1つから `ui::t!("…")` / `ui::tf!("…", …)` の鍵を集める。
-/// **試験モジュールから先は見ない** — ただし `#[cfg(test)] mod tests;` の
-/// **宣言**は本文の頭に来る(calc の部屋割り)ので、そこでは切らない
-fn keys_in(src: &str) -> Vec<String> {
-    let mut src = src;
-    let mut cut_at = 0;
-    while let Some(rel) = src[cut_at..].find("#[cfg(test)]") {
-        let cut = cut_at + rel;
-        // **文字の境で切る。** バイト数で切ると日本語の途中で割れて落ちる
-        let end = src[cut..].char_indices().map(|(i, _)| cut + i).nth(64).unwrap_or(src.len());
-        let next = src[cut..end].lines().nth(1).unwrap_or("").trim();
-        if next.starts_with("mod ") && next.ends_with(';') {
-            cut_at = cut + 1;
-            continue;
+/// 試験だけの部分は見ない。
+///
+/// **`#[cfg(test)]` から後ろを捨ててはいけない。** 前はそうしていて、
+/// `calc/src/rpc.rs` の 100 行目にある `#[cfg(test)] fn handle` から下の
+/// 258 行が丸ごと見えず、**生きている訳を「もう使っていない」と数えて
+/// 消せと言い出した**(2026-08-13)。同じ欠陥を `ui/gen_i18n.py` で先に
+/// 直していたのに、**こちらを直し忘れて二つが食い違った** — 頭の注記に
+/// 「揃えること」と書いてあったのに。
+///
+/// いまは印の付いた**その項目だけ**を外す(括弧を数える)。`mod x;` の
+/// ような括弧を持たない宣言は、その行だけ。
+/// `#[cfg(test)]` の付いた項目**だけ**を抜く。後ろは残す。
+fn strip_test_items(src: &str) -> String {
+    const MARK: &str = "#[cfg(test)]";
+    let mut out = String::with_capacity(src.len());
+    let mut i = 0;
+    while let Some(rel) = src[i..].find(MARK) {
+        let at = i + rel;
+        out.push_str(&src[i..at]);
+        let rest = &src[at + MARK.len()..];
+        // 括弧を持つ項目(mod {…} / fn {…})は対応する `}` まで。
+        // 括弧より先に `;` が来るなら `mod x;` の類 — その行だけ
+        let brace = rest.find('{');
+        let semi = rest.find(';');
+        match (brace, semi) {
+            (Some(bpos), s) if s.is_none_or(|sp| bpos < sp) => {
+                let mut depth = 0usize;
+                let mut end = rest.len();
+                for (k, c) in rest.char_indices().skip(bpos) {
+                    if c == '{' {
+                        depth += 1;
+                    } else if c == '}' {
+                        depth -= 1;
+                        if depth == 0 {
+                            end = k + 1;
+                            break;
+                        }
+                    }
+                }
+                i = at + MARK.len() + end;
+            }
+            (_, Some(spos)) => i = at + MARK.len() + spos + 1,
+            _ => return out,
         }
-        src = &src[..cut];
-        break;
     }
+    out.push_str(&src[i..]);
+    out
+}
+
+fn keys_in(src: &str) -> Vec<String> {
+    let owned = strip_test_items(src);
+    let src: &str = &owned;
     let b = src.as_bytes();
     let mut out = Vec::new();
     let mut i = 0;
@@ -348,4 +383,41 @@ fn 英語の表が英国綴りで揃っている() {
         bad.len(),
         bad.iter().take(6).cloned().collect::<Vec<_>>().join("\n  ")
     );
+}
+
+/// **`#[cfg(test)]` の下に隠れた本文を見落とさない。**
+///
+/// 印から後ろを丸ごと捨てていたので、`calc/src/rpc.rs` の 100 行目にある
+/// `#[cfg(test)] fn handle` より下の 258 行が見えず、生きている訳を
+/// 「もう使っていない」と数えていた(2026-08-13)。**同じ欠陥を
+/// `ui/gen_i18n.py` では先に直していたのに、こちらを直し忘れていた。**
+/// 二つの走査は食い違いうるので、こちら側にも証拠を置く。
+#[test]
+fn 試験の印の下にある本文を見落とさない() {
+    // 関数に付いた印。**その関数だけ**が消え、下の句は残る
+    let src = r#"
+fn a() { let _ = ui::t!("上の句"); }
+#[cfg(test)]
+fn only_in_tests() { let _ = ui::t!("試験だけの句"); }
+fn b() { let _ = ui::t!("下の句"); }
+"#;
+    let got = keys_in(src);
+    assert!(got.contains(&"上の句".to_string()), "{got:?}");
+    assert!(got.contains(&"下の句".to_string()), "**印の下が見えていません**: {got:?}");
+    assert!(!got.contains(&"試験だけの句".to_string()), "試験の中まで数えています: {got:?}");
+
+    // モジュールに付いた印も同じ(中は消え、後ろは残る)
+    let src = r#"
+fn a() { let _ = ui::t!("前"); }
+#[cfg(test)]
+mod tests { fn t() { let _ = ui::t!("中"); } }
+fn b() { let _ = ui::t!("後"); }
+"#;
+    let got = keys_in(src);
+    assert_eq!(got, vec!["前".to_string(), "後".to_string()], "{got:?}");
+
+    // `#[cfg(test)] mod tests;` の**宣言**は本文の頭に来る(calc の部屋割り)。
+    // ここで切ると全部消える
+    let src = "#[cfg(test)]\nmod tests;\nfn a() { let _ = ui::t!(\"本文\"); }\n";
+    assert_eq!(keys_in(src), vec!["本文".to_string()]);
 }

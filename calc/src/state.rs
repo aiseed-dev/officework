@@ -82,6 +82,7 @@ impl Calc {
             sheet_menu_at: None,
             fmt_panel: None,
             prompt: None,
+            pw_show: false,
             show_formulas: false,
             view: Pos::new(0, 0),
             frozen: None,

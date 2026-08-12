@@ -704,6 +704,7 @@ impl Calc {
             // (AES-128)の複合ファイルに包む。空 Enter で解除
             "prot-encrypt" => {
                 self.pw_pending = None;
+                self.pw_show = false;
                 self.prompt = Some(("pw-set", Editor::new("")));
                 self.status = if self.encrypt_pw.is_some() {
                     ui::t!("暗号化は入っています。新しいパスワードを打って Enter(空のまま Enter で暗号化をやめる)").into()

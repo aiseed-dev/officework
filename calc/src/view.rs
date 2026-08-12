@@ -2889,7 +2889,11 @@ impl Render for Calc {
             // (2026-08-12。3の倍数のときだけ偶然通っていた)
             let raw = ed.text();
             let before = raw[..ed.cursor().min(raw.len())].chars().count();
-            let mut text = if matches!(*kind, "pw-open" | "pw-set") {
+            // 伏せる欄かどうか。**伏せたまま打ち間違えると気づけない**ので、
+            // 目のボタンで一時的に見せられる(2026-08-13、台帳
+            // 「パスワード表示/非表示アイコン」)。小窓を開くたび伏せ字に戻る
+            let is_pw = matches!(*kind, "pw-open" | "pw-set");
+            let mut text = if is_pw && !self.pw_show {
                 "●".repeat(raw.chars().count())
             } else {
                 raw.to_string()
@@ -2905,10 +2909,28 @@ impl Render for Calc {
                 .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .child(div().text_size(px(us * 12.0)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x1B6E3C)).child(SharedString::from(title)))
-                .child(div().mt_1p5().px_2().py_1().bg(rgb(0xFFFFFF))
-                    .border_1().border_color(rgb(0xC6CDD3)).rounded_sm()
-                    .text_size(px(us * 13.0)).font_family(self.font_name.clone())
-                    .child(SharedString::from(text)))
+                .child(div().mt_1p5().flex().flex_row().items_center().gap_1()
+                    .child(div().flex_1().px_2().py_1().bg(rgb(0xFFFFFF))
+                        .border_1().border_color(rgb(0xC6CDD3)).rounded_sm()
+                        .text_size(px(us * 13.0)).font_family(self.font_name.clone())
+                        .child(SharedString::from(text)))
+                    .when(is_pw, |d| {
+                        // 伏せ字の入切。**押しても打鍵の行き先は小窓のまま**
+                        let on = self.pw_show;
+                        d.child(div().id("pw-eye")
+                            .px_2().py_1().rounded_sm().cursor_pointer()
+                            .border_1().border_color(rgb(0xC6CDD3))
+                            .bg(if on { rgb(0xE4EFE8) } else { rgb(0xFFFFFF) })
+                            .text_size(px(us * 11.0))
+                            .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x66707A) })
+                            .child(if on { ui::t!("隠す") } else { ui::t!("見せる") })
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(
+                                |this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.pw_show = !this.pw_show;
+                                    cx.notify()
+                                })))
+                    }))
                 .child(div().mt_1().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                     .child(match *kind {
                         "name" => "Enter で決定 / Esc で取消。定義した名前は式の中で使えます(=単価*2)",

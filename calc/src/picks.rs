@@ -3502,6 +3502,7 @@ impl Calc {
                     Err(e) => {
                         // パネルは開いたまま。打ち直せる
                         self.pw_pending = Some(p);
+                        self.pw_show = false;
                         self.prompt = Some(("pw-open", Editor::new("")));
                         self.status = e.into();
                     }
