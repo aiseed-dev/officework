@@ -16,7 +16,7 @@ package:
 
 source:
   url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: SDIST_SHA256_HERE
+  sha256: 673125f41143bedce3e73dad943190dc7944a6960207043cbc2108875fe49972
 
 build:
   number: 0
