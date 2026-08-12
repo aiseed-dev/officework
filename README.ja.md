@@ -133,7 +133,7 @@ from officework import sheet
 b = sheet.Book.open("様式7.xlsx")
 b["提案見積書"]["A30"] = "日本フネン株式会社"   # 書式は据え置き
 b.save("out.xlsx")
-print(b.unsupported)   # 読めなかった物は黙って落とさず、ここに出る
+print(b.unsupported)   # 読めなかった部品の一覧(空なら全部読めた)
 ```
 
 docx も同じです。python-docx は理解できない部品を書き直してしまいますが、
@@ -144,9 +144,9 @@ docx も同じです。python-docx は理解できない部品を書き直して
 from officework import doc
 
 d = doc.Doc.open("報告書.docx")
-print(d.unsupported)               # 読めなかった物は黙って落とさず、ここに出る
+print(d.unsupported)               # 読めなかった部品の一覧(空なら全部読めた)
 d.replace("旧社名", "新社名")       # 段落の中の書式はそのまま
-d[3].text = "差し替え"              # 見出しの段は見出しのまま、寄せも字下げも据え置き
+d[3].text = "差し替え"              # 見出しの段は見出しのまま、寄せも残る(細かくは下の説明)
 print(d.tables[0][1][2].text)      # 表・行・セル
 d.save("out.docx")
 ```

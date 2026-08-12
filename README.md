@@ -137,7 +137,7 @@ from officework import sheet
 b = sheet.Book.open("form7.xlsx")
 b["Sheet1"]["A30"] = "Nihon Funen Co., Ltd."   # formatting is preserved
 b.save("out.xlsx")
-print(b.unsupported)   # whatever it could not read is listed here, never dropped in silence
+print(b.unsupported)   # the list of parts it couldn't read (empty = everything was read)
 ```
 
 The same applies to docx. `python-docx` rewrites the parts of a file it does not
@@ -148,9 +148,9 @@ styles, headers, shapes and tracked changes survive.
 from officework import doc
 
 d = doc.Doc.open("report.docx")
-print(d.unsupported)               # whatever it could not read is listed here, never dropped in silence
+print(d.unsupported)               # the list of parts it couldn't read (empty = everything was read)
 d.replace("Old Name Ltd.", "New Name Ltd.")   # formatting inside the paragraph is left alone
-d[3].text = "replaced"             # heading level, alignment and indent stay as they were
+d[3].text = "replaced"             # the heading stays a heading, alignment survives (details below)
 print(d.tables[0][1][2].text)      # table, row, cell
 d.save("out.docx")
 ```
