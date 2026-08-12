@@ -191,6 +191,31 @@ if openpyxl is not None:
         rb = openpyxl.load_workbook(out).active["B1"]
         check(rb.number_format == "yyyy/mm/dd", f"表示形式: {rb.number_format}")
 
+        # --- 字下げ(indent): 日本の帳票の項目の階層 ---------------------------
+        # **書式を触っても消えない**(2026-08-13 に踏んだ穴。据え置きの破れ)
+        out_i = os.path.join(t, "indent.xlsx")
+        from openpyxl.styles import Alignment as OAlign2
+        wb_i = openpyxl.Workbook()
+        ws_i = wb_i.active
+        ws_i["A1"] = "大項目"
+        ws_i["A2"] = "小項目"
+        ws_i["A2"].alignment = OAlign2(indent=2)
+        wb_i.save(out_i)
+        b_i = office_sheet.Book.open(out_i)
+        c_i = b_i[0].cell(2, 1)
+        check(c_i.alignment.indent == 2, f"本家の字下げが読めない: {c_i.alignment.indent}")
+        c_i.font = office_sheet.Font(bold=True)   # **書式を触る**
+        check(c_i.alignment.indent == 2, "書式を触ったら字下げが消えた")
+        b_i[0].cell(3, 1).value = "孫項目"
+        b_i[0].cell(3, 1).alignment = office_sheet.Alignment(indent=4)
+        out_i2 = os.path.join(t, "indent_out.xlsx")
+        b_i.save(out_i2)
+        r_i = openpyxl.load_workbook(out_i2).active
+        check(r_i["A2"].alignment.indent == 2 and r_i["A2"].font.bold,
+              f"往復で字下げが消えた: {r_i['A2'].alignment.indent}")
+        check(r_i["A3"].alignment.indent == 4,
+              f"うちが付けた字下げを本家が読めない: {r_i['A3'].alignment.indent}")
+
         # 逆向き: 本家が書いた書式をうちが読める
         out2 = os.path.join(t, "fmt_opx.xlsx")
         from openpyxl.styles import (Alignment as OAlign, Border as OBorder,

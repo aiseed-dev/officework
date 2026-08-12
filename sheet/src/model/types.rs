@@ -360,6 +360,10 @@ pub struct CellFormat {
     pub wrap: bool,
     /// 縮小して全体を表示(xlsx の alignment shrinkToFit)
     pub shrink: bool,
+    /// 字下げの段数(xlsx の alignment indent。1段 = 全角約1字)。
+    /// **日本の帳票は項目の階層を字下げで見せる** — 持たないと、
+    /// 書式を1つ触っただけで階層が潰れる(2026-08-13 に踏んで足した)
+    pub indent: u8,
     /// 表示形式(`#,##0` `0.00%` など)。xlsx の numFmt
     pub number_format: Option<String>,
     /// **保護中でも書き換えられる**セル(xlsx の `<protection locked="0"/>`)。

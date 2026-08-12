@@ -637,6 +637,9 @@ impl PySheet {
                     d.set_item(k, (e.style.xlsx(), e.color.map(|c| format!("{c:06X}"))))?;
                 }
             }
+            if f.indent > 0 {
+                d.set_item("indent", f.indent)?;
+            }
             if f.unlocked {
                 // 保護中でも書けるセル(xlsx の locked="0")。既定(ロック)は出さない
                 d.set_item("locked", false)?;
@@ -691,6 +694,9 @@ impl PySheet {
                             .unwrap_or(VAlign::Bottom)
                     }
                     "rotation" => f.rotation = v.extract()?,
+                    "indent" => {
+                        f.indent = v.extract::<Option<u8>>()?.unwrap_or(0).min(250)
+                    }
                     "locked" => {
                         f.unlocked = !v.extract::<Option<bool>>()?.unwrap_or(true)
                     }

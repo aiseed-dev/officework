@@ -278,6 +278,10 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
                     f.valign = va.unwrap_or_default();
                     f.wrap = wrap;
                     f.shrink = attr(&e, "shrinkToFit").as_deref() == Some("1");
+                    f.indent = attr(&e, "indent")
+                        .and_then(|v| v.parse::<u8>().ok())
+                        .unwrap_or(0)
+                        .min(250);
                     xf_fmt = Some(f);
                 }
             }
@@ -354,6 +358,7 @@ fn resolve(
         valign: VAlign::default(),
         wrap: false,
         shrink: false,
+        indent: 0,
         color: f.color,
         color_theme: f.color_theme,
         fill_theme: fill_themes.get(fillid).copied().flatten(),
@@ -648,6 +653,9 @@ fn xf_xml(fi: usize, fl: usize, bi: usize, ni: usize, f: &CellFormat) -> String 
     }
     if f.shrink {
         attrs.push_str(" shrinkToFit=\"1\"");
+    }
+    if f.indent > 0 {
+        attrs.push_str(&format!(" indent=\"{}\"", f.indent));
     }
     if let Some(r) = f.rotation {
         attrs.push_str(&format!(" textRotation=\"{r}\""));

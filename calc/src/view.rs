@@ -1406,6 +1406,18 @@ impl Render for Calc {
                 if is_num && f.align == HAlign::General {
                     d = d.justify_end();
                 }
+                // 字下げ(indent)。1段 = 全角約1字ぶん左を空ける。
+                // 右寄せのセルには掛けない(xlsx でも右寄せの indent は
+                // 右からの空きだが、まずは左の階層 — 日本の帳票の使い方)
+                if f.indent > 0 && !(is_num && f.align == HAlign::General)
+                    && f.align != HAlign::Right
+                {
+                    let pt = self.zoom
+                        * f.size_c
+                            .map(|c| c as f32 / 100.0 * 24.0 / 15.0 * 0.8)
+                            .unwrap_or(12.5);
+                    d = d.pl(px(f32::from(f.indent) * pt * 0.9));
+                }
                 // 文字色の優先順: エラー > リンク > 条件 > セルの色 > 既定
                 // (以前は最後に既定色で上書きしていて、セルの文字色が死んでいた)
                 if is_err {

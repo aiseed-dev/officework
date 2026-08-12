@@ -543,13 +543,13 @@ class Cell:
             wrap_text=d.get("wrap", False),
             shrink_to_fit=d.get("shrink", False),
             text_rotation=d.get("rotation", 0),
+            indent=d.get("indent", 0),
         )
 
     @alignment.setter
     def alignment(self, a):
-        if getattr(a, "indent", 0):
-            raise NotImplementedError("字下げ(indent)はまだエンジンに無い(台帳)")
         rot = getattr(a, "text_rotation", 0) or 0
+        ind = getattr(a, "indent", 0) or 0
         self.parent.set_fmt(
             self.coordinate,
             horizontal=getattr(a, "horizontal", None),
@@ -557,6 +557,7 @@ class Cell:
             wrap=bool(getattr(a, "wrap_text", None)),
             shrink=bool(getattr(a, "shrink_to_fit", None)),
             rotation=int(rot) if rot else None,
+            indent=int(ind),
         )
 
     @property

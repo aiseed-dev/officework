@@ -211,7 +211,7 @@ Cell は `s.cell(row=, column=)` から)。
 | has_array / formula_array | 足す | 配列式の一件(array_formulae と一緒) |
 | height / width / left / top | 足す | **レイアウトの座標(ポイント)** — 画面の状態ではなく、モデルの列幅・行高から計算で出せる。画像・図形の置き場所の計算に使う(当初「画面のピクセル」と読み違えて要らないに入れていた — 2026-08-12 発注者指摘で正した) |
 | ✔ color / font / number_format / column_width / row_height / wrap_text / clear_formats | 足す(書式) | 書式の読み書き(openpyxl Cell と同じ一件)。合否は xlwings の定義どおり — color は**塗り**のタプル(RGB)、font は**性質ごと**の読み書き(font.bold = True は太字だけ変える — openpyxl の一式置き換えと逆の作法)、column_width は字数・row_height はポイント、範囲でまちまちなら None(**済 2026-08-12 夜**: rpc get_fmt / set_fmt / col_width / row_height / clear_formats。実機で検査) |
-| adjust_indent | 足す(書式) | 字下げ(indent)はエンジンの CellFormat にまだ無い — openpyxl の Alignment.indent と同じ一件。模型に足してから |
+| ✔ adjust_indent | 足す(書式) | 字下げ(indent)はエンジンの CellFormat にまだ無い — openpyxl の Alignment.indent と同じ一件。模型に足してから(**済 2026-08-13**: CellFormat に indent を足し、styles.xml の読み書き・**画面と PDF の描き**・Python の口(openpyxl の Alignment(indent=))まで通した。**踏んだ穴**: 字下げのあるセルの書式を1つ触ると 2→0 に消えていた(値の書き替えは据え置きが効くので残る)— 「書式は据え置き」の破れを塞いだ。実機で階層が段に見えるのを目視。適合は両方向+「触っても消えない」) |
 | autofill | 作らない | 連番・式の引き伸ばしの推測は画面の機能。Python 側では作って代入する方が明示的 |
 | copy / copy_from / paste | 作らない | クリップボードは人の物 — Python が黙って上書きしない。値の移しは代入で |
 | copy_picture / to_png / to_pdf | 作らない | 範囲を絵にする道は持たない。PDF はシート・ブック単位まで |

@@ -448,7 +448,10 @@ pub fn sheet_to_pdf<W: Write>(
                     / 72.0;
                 x + cw - 1.5 - w
             } else {
-                x + 1.5
+                // 字下げ(indent)。1段 = 全角約1字ぶん左を空ける —
+                // 日本の帳票は項目の階層を字下げで見せる
+                let ind = f32::from(cell.fmt.indent) * pt * 25.4 / 72.0;
+                x + 1.5 + ind
             };
             let ty = y_top - rh + 2.0;
             // 文字は塗り色で描かれる(PDF の作法)ので、色付きの字は前後で入れ替える
