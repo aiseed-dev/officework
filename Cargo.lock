@@ -4686,7 +4686,7 @@ version = "0.0.1"
 
 [[package]]
 name = "pysheet"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "kumihan",
  "ooxml",
