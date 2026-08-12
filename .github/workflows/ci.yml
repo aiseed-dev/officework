@@ -144,11 +144,17 @@ jobs:
         #   (libXau・libXdmcp は libxcb1-dev が連れてくる)
         # wayland と vulkan は繋ぎ先に出てこない — 窓を開けるときの話で、
         # **試験は窓を開けない**(この機械で 148/38 が画面なしで通っている)。
-        # フォントと辞書は核の仕事と同じ理由(同梱しない物に依る試験がある)
+        # フォントと辞書は核の仕事と同じ理由(同梱しない物に依る試験がある)。
+        #
+        # **libfontconfig1-dev は ldd に出ない**のに要る(2026-08-13 に赤で
+        # 発見)— zed-font-kit の yeslogic-fontconfig-sys が**組む時**に
+        # pkg-config で fontconfig.pc を探す。ldd は実行時の繋ぎ先しか
+        # 見せないので、この物差しには組む時だけの依存という盲点がある
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev libxcb-xkb-dev \
+            libfontconfig1-dev \
             cmake clang pkg-config fonts-noto-cjk fonts-ipaexfont wamerican
       - name: 試験
         # 2026-08-11 の基準は calc 148 / writer 38。**減ったら赤にする**のが
