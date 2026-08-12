@@ -132,6 +132,83 @@ class Alignment:
         self.indent = indent
 
 
+class Table:
+    """表(テーブル)。openpyxl の Table の形(displayName / ref / tableStyleInfo)。
+    名前は式から使える識別子 — `=SUM(明細[金額])` の「明細」。"""
+
+    def __init__(self, displayName=None, ref=None, name=None,
+                 tableStyleInfo=None, headerRowCount=1, totalsRowCount=0, **_rest):
+        self.displayName = displayName if displayName is not None else name
+        self.ref = ref
+        self.tableStyleInfo = tableStyleInfo
+        self.headerRowCount = headerRowCount
+        self.totalsRowCount = totalsRowCount
+
+    @property
+    def name(self):
+        return self.displayName
+
+    def __repr__(self):
+        return "<Table {!r} {}>".format(self.displayName, self.ref)
+
+
+class TableStyleInfo:
+    """表の様式(openpyxl と同じ形)。name は "TableStyleMedium2" 等。"""
+
+    def __init__(self, name=None, showRowStripes=True, showColumnStripes=False,
+                 showFirstColumn=False, showLastColumn=False, **_rest):
+        self.name = name
+        self.showRowStripes = showRowStripes
+        self.showColumnStripes = showColumnStripes
+        self.showFirstColumn = showFirstColumn
+        self.showLastColumn = showLastColumn
+
+
+class _Tables:
+    """Sheet.tables の返り。openpyxl と同じく名前で引ける dict 風。"""
+
+    def __init__(self, sheet):
+        self._s = sheet
+
+    def _all(self):
+        out = {}
+        for name, ref, style, header, totals in self._s._s.tables:
+            t = Table(displayName=name, ref=ref,
+                      headerRowCount=1 if header else 0,
+                      totalsRowCount=1 if totals else 0)
+            if style:
+                t.tableStyleInfo = TableStyleInfo(name=style)
+            out[name] = t
+        return out
+
+    def __getitem__(self, name):
+        try:
+            return self._all()[name]
+        except KeyError:
+            raise KeyError("表が無い: {!r}".format(name)) from None
+
+    def __contains__(self, name):
+        return name in self._all()
+
+    def __iter__(self):
+        return iter(self._all())
+
+    def __len__(self):
+        return len(self._all())
+
+    def keys(self):
+        return self._all().keys()
+
+    def items(self):
+        return self._all().items()
+
+    def values(self):
+        return self._all().values()
+
+    def __repr__(self):
+        return repr(self._all())
+
+
 class DataValidation:
     """入力規則。openpyxl の DataValidation の形(type / formula1 / add)。
     list はエンジンが効かせる(規則に合わない入力を堰き止める)。
@@ -775,6 +852,38 @@ class Sheet:
         self._s.print_area = value
 
     @property
+    def tables(self):
+        """表(テーブル)。openpyxl と同じ名前で引ける形。
+        名前は式から使える — `=SUM(明細[金額])`(**構造化参照は計算まで効く** —
+        openpyxl は式を計算しないので、ここは上位分)。"""
+        return _Tables(self)
+
+    def add_table(self, table):
+        """表を足す(openpyxl と同じ口 — Table を渡す)。
+        本家の実物でもうちの Table でもよい(属性名で受ける)。"""
+        name = getattr(table, "displayName", None) or getattr(table, "name", None)
+        ref = getattr(table, "ref", None)
+        if not name or not ref:
+            raise ValueError("表には displayName と ref が要ります")
+        si = getattr(table, "tableStyleInfo", None)
+        header = getattr(table, "headerRowCount", 1)
+        totals = getattr(table, "totalsRowCount", 0)
+        self._s.add_table(
+            str(ref).replace("$", ""),
+            str(name),
+            style=getattr(si, "name", None) if si is not None else None,
+            header=bool(header),
+            totals=bool(totals),
+            banded_rows=bool(getattr(si, "showRowStripes", True)) if si else True,
+            banded_cols=bool(getattr(si, "showColumnStripes", False)) if si else False,
+        )
+
+    def remove_table(self, name):
+        """表を外す(中身と書式は残る — Excel と同じ)。"""
+        if not self._s.remove_table(str(getattr(name, "displayName", name))):
+            raise KeyError("表が無い: {!r}".format(name))
+
+    @property
     def print_title_rows(self):
         """頁ごとに繰り返す見出し行("1:2" の形。openpyxl と同じ)。
         PDF と印刷が実際に繰り返す — 複数頁の明細の定番。"""
@@ -1000,4 +1109,5 @@ __all__ = [
     "Book", "Sheet", "Cell",
     "Font", "Border", "Side", "PatternFill", "Alignment", "Color",
     "Comment", "Hyperlink", "Protection", "DefinedName", "DataValidation",
+    "Table", "TableStyleInfo",
 ]

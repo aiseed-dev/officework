@@ -773,6 +773,79 @@ impl PySheet {
         })
     }
 
+    /// 表(テーブル)の一覧 [(名前, 範囲, 様式の名前, 見出し行, 合計行)]。
+    /// 名前は式から使える(構造化参照 `=SUM(明細[金額])`)。
+    #[getter]
+    fn tables(&self) -> PyResult<Vec<(String, String, Option<String>, bool, bool)>> {
+        self.with(|s| {
+            Ok(s.tables
+                .iter()
+                .map(|t| {
+                    (
+                        t.name.clone(),
+                        format!("{}:{}", t.a.a1(), t.b.a1()),
+                        t.style.clone(),
+                        t.header,
+                        t.totals,
+                    )
+                })
+                .collect())
+        })
+    }
+
+    /// 表を作る。範囲は見出し行を含む "A1:C10"。名前は式から使う識別子で、
+    /// **空白は入れられない**(構造化参照が解けなくなる)。
+    /// style は様式の名前(`TableStyleMedium2` 等。省略は Excel の既定)。
+    #[pyo3(signature = (range, name, style=None, header=true, totals=false,
+                        banded_rows=true, banded_cols=false, filter=true))]
+    #[allow(clippy::too_many_arguments)]
+    fn add_table(
+        &self,
+        range: &str,
+        name: &str,
+        style: Option<String>,
+        header: bool,
+        totals: bool,
+        banded_rows: bool,
+        banded_cols: bool,
+        filter: bool,
+    ) -> PyResult<()> {
+        if name.is_empty() || name.contains(char::is_whitespace) {
+            return Err(PyValueError::new_err(format!(
+                "表の名前に空白は入れられない(式から引けなくなる): {name:?}"
+            )));
+        }
+        let (a, b) = parse_range(range)?;
+        self.with(|s| {
+            if s.tables.iter().any(|t| t.name == name) {
+                return Err(PyValueError::new_err(format!("表「{name}」は既にあります")));
+            }
+            s.tables.push(sheet::model::TableDef {
+                name: name.to_string(),
+                style,
+                a,
+                b,
+                header,
+                totals,
+                banded_rows,
+                banded_cols,
+                first_col: false,
+                last_col: false,
+                filter,
+            });
+            Ok(())
+        })
+    }
+
+    /// 表を外す(中身と書式は残る — Excel と同じ)。返りは外せたか。
+    fn remove_table(&self, name: &str) -> PyResult<bool> {
+        self.with(|s| {
+            let before = s.tables.len();
+            s.tables.retain(|t| t.name != name);
+            Ok(s.tables.len() != before)
+        })
+    }
+
     /// 印刷のタイトル行(頁ごとに繰り返す見出し)。openpyxl と同じ "1:2" の形。
     /// 無ければ None。**PDF と印刷が実際に繰り返す**(paper::grid)。
     #[getter]

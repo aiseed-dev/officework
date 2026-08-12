@@ -266,6 +266,60 @@ if openpyxl is not None:
         c7.comment = OComment("直した", "乙")
         check(c7.comment.text == "直した", "本家の Comment の代入")
 
+# --- 表(テーブル): 作れて・構造化参照が計算されて・本家と往復する ---------------
+if openpyxl is not None:
+    with tempfile.TemporaryDirectory() as t:
+        bt = office_sheet.Book()
+        st = bt[0]
+        st.append(["品名", "金額"])
+        st.append(["ザボガードF", 125000])
+        st.append(["F-02", 225000])
+        st.add_table(office_sheet.Table(
+            displayName="明細", ref="A1:B3",
+            tableStyleInfo=office_sheet.TableStyleInfo(name="TableStyleMedium9")))
+        check("明細" in st.tables and st.tables["明細"].ref == "A1:B3",
+              f"表の一覧: {dict(st.tables)}")
+        # **構造化参照が計算まで効く**(openpyxl は式を計算しない = 上位分)
+        st["D1"] = "=SUM(明細[金額])"
+        check(st["D1"] == 350000, f"構造化参照の計算: {st['D1']}")
+        out_t = os.path.join(t, "table.xlsx")
+        bt.save(out_t)
+
+        rt = openpyxl.load_workbook(out_t).active
+        check("明細" in rt.tables, f"うちの表を本家が読めない: {list(rt.tables)}")
+        check(rt.tables["明細"].ref == "A1:B3", f"表の範囲: {rt.tables['明細'].ref}")
+        check(rt["D1"].value == "=SUM(明細[金額])", "構造化参照の式が往復しない")
+
+        # 逆向き: 本家が作った表をうちが読み、式が計算できる
+        from openpyxl.worksheet.table import Table as OTable, TableStyleInfo as OTSI
+        wb_t2 = openpyxl.Workbook()
+        ws_t2 = wb_t2.active
+        ws_t2.append(["名", "数"])
+        ws_t2.append(["甲", 3])
+        ws_t2.append(["乙", 4])
+        otb = OTable(displayName="在庫", ref="A1:B3")
+        otb.tableStyleInfo = OTSI(name="TableStyleLight1", showRowStripes=True)
+        ws_t2.add_table(otb)
+        out_t2 = os.path.join(t, "table_opx.xlsx")
+        wb_t2.save(out_t2)
+        b_t2 = office_sheet.Book.open(out_t2)
+        s_t2 = b_t2[0]
+        check("在庫" in s_t2.tables, f"本家の表: {dict(s_t2.tables)}")
+        check(s_t2.tables["在庫"].tableStyleInfo.name == "TableStyleLight1",
+              "表の様式の名前が読めない")
+        s_t2["D1"] = "=SUM(在庫[数])"
+        check(s_t2["D1"] == 7, f"本家の表への構造化参照: {s_t2['D1']}")
+        # 本家の実物の Table をそのまま渡しても効く
+        s_t2.add_table(OTable(displayName="控え", ref="A1:B2"))
+        check("控え" in s_t2.tables, "本家の Table の代入")
+        s_t2.remove_table("控え")
+        check("控え" not in s_t2.tables, "表が外れない")
+        try:
+            s_t2.add_table(office_sheet.Table(displayName="悪い 名前", ref="A1:B2"))
+            check(False, "空白入りの名前が黙って通った")
+        except ValueError:
+            pass
+
 # --- 名前付き範囲: 定義して・式で使えて・本家と往復する -------------------------
 if openpyxl is not None:
     with tempfile.TemporaryDirectory() as t:

@@ -89,7 +89,7 @@ add_heading と Run の add_text / clear はエンジンの書き口待ちだっ
 | ✔ print_titles / print_title_rows | 足す | 見出し行の繰り返し。**畑が無いと書いたのは誤り**(2026-08-13 実測で判明): 模型の print_title_rows・xlsx の読み書き(_xlnm.Print_Titles)・**PDF の繰り返し**(paper::grid の「タイトル行は2ページ目にも出る」)まで既に完動していた — 欠けていたのは Python の口だけ。張った(openpyxl と同じ "1:2" / print_titles は "'シート'!$1:$2")。適合は両方向 |
 | print_title_cols | 足す | **列**の繰り返しは模型に畑が無い(行だけ持つ)。読みは None、書きは正直に断る — 日本の帳票では行の繰り返しが定番で、列は出てから足す |
 | ✔ add_data_validation | 足す | エンジンは list 規則を読み・効かせ・往復済み。追加の API を足す(**済 2026-08-12 夜**: add_validation(範囲, formula1, kind, operator, formula2, allow_blank)+ validations の読み。openpyxl の DataValidation の実物を add_data_validation に渡しても効く(sqref ごと)。適合は両方向) |
-| add_table / tables | 足す | テーブル(構造化参照・フィルタ)。いまは原文持ち越しのみ — 読み書きを足す |
+| ✔ add_table / tables | 足す | テーブル(構造化参照・フィルタ)。**「原文持ち越しのみ」は誤り**(2026-08-13 実測): 模型の TableDef・xlsx の読み書き(table 部品・tableParts・関係・宣言)・**構造化参照の計算**(2026-08-08 実装)まで既に動いていた — 欠けは Python の口だけ。張った(openpyxl の Table / TableStyleInfo の形。本家の実物も受ける)。**`=SUM(明細[金額])` が計算まで効くのが上位分** — openpyxl は式を計算しない。適合は両方向。名前に空白は断る(式から引けなくなる) |
 | array_formulae | 足す | 配列式。エンジンがスピルを覚える件(pyoffice の「返り値の形で広がる」)と同じ模型 |
 | column_groups | 足す | 行・列のグループ化(outlineLevel)の読み書き(小)。画面の畳みはアプリの在庫 |
 | move_range | 足す | 範囲の移動 — 式の参照も付いて動く。insert/remove と同族 |
