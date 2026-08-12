@@ -468,6 +468,126 @@ pub fn progress(tabs: &[Tab]) -> (usize, usize) {
 mod tests {
     use super::*;
 
+
+    /// **どのボタンにも実体のアイコンがある。**
+    ///
+    /// アイコンは [`crate::icons::find`] が引ける物しか出せない。表に足し忘れると
+    /// **ボタンだけが無地で出る** — 押せるし配線もされているので、
+    /// 配線の試験(`wiring_tests`)も文言の門番も素通りする。
+    ///
+    /// **描く側と同じ口(`find`)で引く。** 表は `ICONS` と `OWN_ICONS` の
+    /// 二枚あり、片方だけ見ると「無い」と誤って数える(最初それで
+    /// 数を間違えた)。
+    ///
+    /// **いま欠けている物は下に並べて許してある。** 全部描くまで赤には
+    /// できないが、**これ以上増やさない**ための止め木になる。
+    /// 描いたら一覧から外す(外し忘れも落ちる)。
+    /// 2026-08-13 に数えて 77 件。すべて calc の持ち場
+    const アイコンの無いボタン: &[&str] = &[
+        "cell-format",
+        "cell-lock",
+        "clear-filter",
+        "csv-kind",
+        "data-external-links",
+        "data-from-text",
+        "datatable",
+        "digit-dec",
+        "digit-inc",
+        "fill-num",
+        "fillparag",
+        "financial",
+        "fit-pages",
+        "flash-fill",
+        "format",
+        "formula-bar",
+        "freeze",
+        "group",
+        "hide-details",
+        "logical",
+        "math",
+        "named-range-huge",
+        "paste-name",
+        "pivot-blank",
+        "pivot-fields",
+        "pivot-insert",
+        "pivot-layout",
+        "pivot-refresh",
+        "pivot-refresh-all",
+        "pivot-select",
+        "pivot-showas",
+        "pivot-style",
+        "pivot-subtotals",
+        "pivot-totals",
+        "print-gridlines",
+        "print-headings",
+        "printarea-add",
+        "prot-allow",
+        "py-calc",
+        "py-edit",
+        "py-folder",
+        "py-line",
+        "py-list",
+        "py-new",
+        "py-run",
+        "python",
+        "read-only-rec",
+        "recover",
+        "recover-every",
+        "remove-arrows",
+        "rtl-sheet",
+        "setfilter",
+        "sheet-view",
+        "show-breaks",
+        "show-details",
+        "show-gridlines",
+        "show-headings",
+        "show-zeros",
+        "subtotal",
+        "table-tpl",
+        "td-band-col",
+        "td-band-row",
+        "td-filter",
+        "td-first",
+        "td-header",
+        "td-last",
+        "td-remdup",
+        "td-resize",
+        "td-torange",
+        "td-total",
+        "text-orient",
+        "theme",
+        "trace-dep",
+        "trace-prec",
+        "ui-bigger",
+        "ui-smaller",
+        "ungroup",
+    ];
+
+    #[test]
+    fn 実体の無いアイコンを増やさない() {
+        let mut missing: Vec<&str> = Vec::new();
+        for tabs in [WRITER, CALC] {
+            for t in tabs {
+                for cmd in t.cmds {
+                    if cmd.icon.is_empty() {
+                        continue;
+                    }
+                    if crate::icons::find(cmd.icon).is_none() && !missing.contains(&cmd.icon) {
+                        missing.push(cmd.icon);
+                    }
+                }
+            }
+        }
+        let 新しい: Vec<&&str> =
+            missing.iter().filter(|m| !アイコンの無いボタン.contains(m)).collect();
+        assert!(新しい.is_empty(),
+            "実体の無いアイコンが増えた: {新しい:?}(絵を描いて icons.rs に足す)");
+        let 直った: Vec<&&str> =
+            アイコンの無いボタン.iter().filter(|a| !missing.contains(a)).collect();
+        assert!(直った.is_empty(),
+            "アイコンができているのに一覧に残っている: {直った:?}(一覧から外す)");
+    }
+
     #[test]
     fn 各言語の表は語だけが違う() {
         // id・並び・ready・icon が ja と一致しない表は配線が壊れる —
