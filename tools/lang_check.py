@@ -68,7 +68,7 @@ def pane(lang, where="opts"):
         app.close()
 
 
-def funcs(lang):
+def funcs(lang, args_screen=False):
     """関数の一覧の小窓をその言語で撮る。**説明が出る唯一の場所**なので、
     ここを見ないと訳が繋がったか分からない"""
     os.environ["OFFICE_LANG"] = lang
@@ -79,7 +79,13 @@ def funcs(lang):
         # 押していて空の表を撮っていた)。fx はどの言語でも同じ場所
         app.click(125, 138)
         time.sleep(1.4)
-        return app.shot(f"lang-fn-{lang}")
+        if not args_screen:
+            return app.shot(f"lang-fn-{lang}")
+        # 「次へ」で引数の画面へ。**引数名と引数ごとの説明はここにしか出ない**
+        # **1回だけ。** 2回押すと引数の画面の OK まで押して閉じてしまう
+        app.click(500, 706)
+        time.sleep(1.2)
+        return app.shot(f"lang-fnargs-{lang}")
     finally:
         app.close()
 
@@ -114,9 +120,10 @@ def main():
         for p in listing(n):
             print(f"  {p}")
         return
-    if args and args[0] == "--funcs":
+    if args and args[0] in ("--funcs", "--fnargs"):
+        second = args[0] == "--fnargs"
         for lang in args[1:] or ["ja"]:
-            print(f"{lang}: {funcs(lang)}")
+            print(f"{lang}: {funcs(lang, second)}")
         return
     where = "opts"
     if args and args[0] == "--info":

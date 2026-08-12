@@ -68,9 +68,19 @@ HAND_JA = {
     "PHONETIC": {"a": "(範囲)", "d": "セルのふりがなを返します(読み込んだ xlsx のふりがな情報を引きます)。"},
 }
 # 本家の対訳に穴があった語をここで埋める(言語 → 関数名 → {a, d, ad})。
-# **穴を黙って日本語で埋めない** — 埋めていない穴があれば生成を止める
-PATCH = json.loads((ROOT / "calc/funcs_hand.json").read_text(encoding="utf-8")) \
-    if (ROOT / "calc/funcs_hand.json").exists() else {}
+# **穴を黙って日本語で埋めない** — 埋めていない穴があれば生成を止める。
+#
+# 2枚に分けてある:
+#   funcs_hand.json — 本家に**項目ごと無い**もの(日本語まわりの4関数ほか)
+#   funcs_args.json — 項目はあるが**引数の欄だけ英語のまま**のもの。
+#     台湾語は 188/188 の引数名と 177/188 の引数の説明が英語だった。
+#     インドネシア語・韓国語・ベトナム語も引数名だけ英語(2026-08-11 に数えた)
+def _patch(name):
+    p = ROOT / f"calc/{name}.json"
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+
+
+PATCH, ARGS = _patch("funcs_hand"), _patch("funcs_args")
 
 NAMES = [n for names in GROUPS.values() for n in names.split()]
 
@@ -87,6 +97,11 @@ def load(loc: str) -> dict:
     else:
         d = json.load(open(LANGDIR / f"{VENDOR[loc]}_desc.json", encoding="utf-8"))
     d.update(PATCH.get(loc, {}))
+    # 引数の欄だけの差し替えは**欄ごとに重ねる** — まるごと置き換えると、
+    # 本家が訳してある説明文まで消える
+    for name, fix in ARGS.get(loc, {}).items():
+        if name in d:
+            d[name] = {**d[name], **fix}
     return d
 
 
@@ -236,6 +251,66 @@ def european_pt_still_holds() -> str | None:
     return None
 
 
+def english_signatures(want: dict) -> list[str]:
+    """**引数の欄が英語のまま残っていないか。**
+
+    本家は言語によって訳の深さが違う。説明文だけ訳して引数の欄は英語、
+    という状態が台湾語で 188/188 続いていた — 画面には中国語の説明の下に
+    `ABS(number)` と出る。数えるまで気づかなかった(2026-08-11)。
+
+    **引数の無い関数は数えない。** `PI()` `TODAY()` は英語と同じで当たり前で、
+    正しく訳されている言語もちょうどその 7〜10 件だけが一致していた。
+    引数があるのに英語と1字も違わないなら、それは訳し忘れ。
+    """
+    import re as _re
+
+    def sigs(src: str) -> dict:
+        return dict(_re.findall(r'FnText \{ name: "([^"]*)", args: "([^"]*)"', src))
+
+    def helps(src: str) -> dict:
+        return dict(_re.findall(
+            r'FnText \{ name: "([^"]*)".*?arg_desc: &\[([^\]]*)\]', src))
+
+    base = want[SRCDIR / "funcs_en.rs"]
+    en_a, en_ad = sigs(base), helps(base)
+    bad = []
+    for p, text in want.items():
+        loc = p.stem[len("funcs_"):]
+        if not p.stem.startswith("funcs_") or loc in ("en", "tables"):
+            continue
+        # 引数の欄。語がたまたま一致することはある(fr の DEGREES(angle) など)
+        # ので少しだけ許す。**多数が一致していたら訳していない**
+        same = [n for n, a in sigs(text).items()
+                if a == en_a.get(n) and a.strip("()").strip()]
+        if len(same) > ALLOW_SAME_SIG:
+            bad.append(f"{loc}: 引数の欄が英語のままの関数が {len(same)} 個 "
+                       f"— {' '.join(same[:6])}")
+        # 引数ごとの説明は**散文**。偶然一致することはまず無いので 0 で締める
+        # (実測: 正しい8言語はいずれも 0、台湾語だけ 177 だった)
+        same_ad = [n for n, a in helps(text).items()
+                   if a.strip() and a == en_ad.get(n)]
+        if same_ad:
+            bad.append(f"{loc}: 引数の説明が英語のままの関数が {len(same_ad)} 個 "
+                       f"— {' '.join(same_ad[:6])}")
+    return bad
+
+
+# 引数の欄が英語と一致してよい数。**実測**では正しく訳されている9言語が
+# 0〜3件(語がたまたま一致する DEGREES(angle) の類)。余裕を見て 8
+ALLOW_SAME_SIG = 8
+
+
+def report_sigs(want: dict) -> int:
+    bad = english_signatures(want)
+    for b in bad:
+        print(f"::error::{b}")
+    if bad:
+        print("::error::calc/funcs_args.json で引数の欄を直してください")
+        return 1
+    print("引数の欄: どの言語も英語のままではありません")
+    return 0
+
+
 def main() -> int:
     if "--all" not in sys.argv and "--check" not in sys.argv:
         sys.stdout.write(ja_source())
@@ -269,13 +344,14 @@ def main() -> int:
                       " — python3 calc/gen_funcs.py --all で作り直してください")
                 return 1
         print(f"関数の言葉: {len(locs)} 言語とも材料と一致({len(NAMES)} 関数)")
-        return 0
+        return report_sigs(want)
 
     for p, s in want.items():
         p.write_text(s, encoding="utf-8")
     register(locs)
     print(f"関数の言葉を {len(locs)} 言語ぶん書きました({len(NAMES)} 関数)")
-    return 0
+    # **書いてから見る。** 先に見て止めると、直す人が結果を確かめられない
+    return report_sigs(want)
 
 
 if __name__ == "__main__":
