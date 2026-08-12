@@ -4645,6 +4645,50 @@ mod fnhelp_tests {
 }
 
 #[cfg(test)]
+mod svg_save_tests {
+    use crate::*;
+
+    /// **束ねた図形は1枚の SVG になる。** SmartArt は「うちの図形の集まり」
+    /// なので、1つだけ書き出すと図の一部しか保存できない(2026-08-13、
+    /// 台帳「SmartArt 右クリック『画像として保存』」)
+    #[gpui::test]
+    fn 束ねた図形が1枚のsvgにまとまる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            for (r, col) in [(1u32, 1u32), (3, 4)] {
+                this.sheet_mut().shapes_new.push(sheet::model::SheetShape {
+                    at: Pos::new(r, col),
+                    width_px: 60.0,
+                    height_px: 30.0,
+                    kind: "rect".into(),
+                    fill: Some("D5E8DC".into()),
+                    ..Default::default()
+                });
+            }
+            // 1つだけなら素の姿のまま(余計な包みを足さない)
+            let one = this.shapes_svg(&[0]);
+            assert_eq!(one.matches("<svg").count(), 1);
+            assert_eq!(one, this.sheet().shapes_new[0].to_svg(), "1つのときに姿が変わっている");
+
+            // 2つなら1枚に。**両方の中身が入っていること**
+            let two = this.shapes_svg(&[0, 1]);
+            assert_eq!(two.matches("<svg").count(), 1, "svg が2枚ある: {two}");
+            assert_eq!(two.matches("</svg>").count(), 1);
+            assert!(two.matches("<rect").count() >= 2, "図形が1つしか入っていない: {two}");
+            // 束の外接に合わせて広がる(1つぶんより大きい)
+            let w1 = this.sheet().shapes_new[0].width_px;
+            let w = two
+                .split("width=\"")
+                .nth(1)
+                .and_then(|t| t.split('"').next())
+                .and_then(|t| t.parse::<f32>().ok())
+                .expect("幅が読めない");
+            assert!(w > w1, "束の広さになっていない({w} <= {w1})");
+        });
+    }
+}
+
+#[cfg(test)]
 mod slicer_col_tests {
     use crate::*;
 

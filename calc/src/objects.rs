@@ -87,6 +87,59 @@ impl Calc {
         }
     }
 
+    /// 選んだ図形たちを **1枚の SVG** にまとめる。
+    ///
+    /// `SheetShape::to_svg` は1つで完結した `<svg>` を返すので、束ねるには
+    /// 外側の包みを外して位置をずらして並べ直す。**画素にはしない** —
+    /// うちの図形は素が SVG で、PNG に焼くと嘘の解像度が付く(既存の方針)。
+    ///
+    /// 画面に無い(位置の測れない)図形は入れられないので、入らなかった分は
+    /// 呼ぶ側が数えて言う。黙って欠けた図を書き出さない。
+    pub(crate) fn shapes_svg(&self, idx: &[usize]) -> String {
+        let inner = |svg: &str| -> String {
+            // `<svg …>` の閉じ `>` から `</svg>` まで
+            match (svg.find('>'), svg.rfind("</svg>")) {
+                (Some(a), Some(b)) if b > a => svg[a + 1..b].to_string(),
+                _ => String::new(),
+            }
+        };
+        let mut parts: Vec<(f32, f32, f32, f32, String)> = Vec::new();
+        for &k in idx {
+            let Some(sp) = self.sheet().shapes_new.get(k) else { continue };
+            let Some((x, y)) = self.cell_origin_px(sp.at) else { continue };
+            parts.push((
+                x + sp.dx_px,
+                y + sp.dy_px,
+                sp.width_px.max(4.0),
+                sp.height_px.max(4.0),
+                inner(&sp.to_svg()),
+            ));
+        }
+        if parts.len() <= 1 {
+            // 1つなら素の姿のまま(余計な包みを足さない)
+            return idx
+                .first()
+                .and_then(|k| self.sheet().shapes_new.get(*k))
+                .map(|sp| sp.to_svg())
+                .unwrap_or_default();
+        }
+        let x0 = parts.iter().map(|p| p.0).fold(f32::INFINITY, f32::min);
+        let y0 = parts.iter().map(|p| p.1).fold(f32::INFINITY, f32::min);
+        let x1 = parts.iter().map(|p| p.0 + p.2).fold(f32::NEG_INFINITY, f32::max);
+        let y1 = parts.iter().map(|p| p.1 + p.3).fold(f32::NEG_INFINITY, f32::max);
+        // 影のぶんの余白(to_svg が 4px ずらして描く)を右下に足す
+        let (w, h) = ((x1 - x0 + 8.0).max(4.0), (y1 - y0 + 8.0).max(4.0));
+        let body: String = parts
+            .iter()
+            .map(|(x, y, _, _, inner)| {
+                format!(r#"<g transform="translate({:.2} {:.2})">{inner}</g>"#, x - x0, y - y0)
+            })
+            .collect();
+        format!(
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w:.0}" height="{h:.0}" viewBox="0 0 {w:.0} {h:.0}">{body}</svg>"#
+        )
+    }
+
     /// 選んだ画像を消す(Del の実体)
     pub(crate) fn delete_selected_image(&mut self) -> bool {
         let Some(i) = self.img_sel.take() else { return false };
@@ -201,8 +254,20 @@ impl Calc {
             // 画像として保存 = SVG(うちの図形の素の姿。嘘の PNG 変換はしない)
             "sh-save" => {
                 let Some(i) = self.shape_sel else { return };
-                let Some(sp) = self.sheet().shapes_new.get(i) else { return };
-                let svg = sp.to_svg();
+                if self.sheet().shapes_new.get(i).is_none() {
+                    return;
+                }
+                // **束ねてあれば1枚にまとめる。** SmartArt は「うちの図形の
+                // 集まり」として組む設計なので、1つだけ書き出すと図の
+                // 一部しか保存できない(2026-08-13、台帳「SmartArt
+                // 右クリック『画像として保存』」)
+                let mut idx: Vec<usize> = std::iter::once(i)
+                    .chain(self.shape_multi.iter().copied())
+                    .collect();
+                idx.sort_unstable();
+                idx.dedup();
+                idx.retain(|&k| k < self.sheet().shapes_new.len());
+                let svg = self.shapes_svg(&idx);
                 let Some(path) = rfd::FileDialog::new()
                     .add_filter("SVG", &["svg"])
                     .set_file_name("figure.svg")
