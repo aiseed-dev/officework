@@ -178,7 +178,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ to_pdf | 足す | シート単位の PDF(済 2026-08-12: rpc to_pdf。印刷設定の言い分は note で返る) |
 | ✔ activate / select | 足す | 画面のシートを Python から切り替える — 「見せる」のは見えるアプリならではの橋(済 2026-08-12: rpc activate_sheet。切替は画面と同じ switch_sheet — 打ちかけの確定・絞り込み解除ごと) |
 | ✔ visible | 足す | 隠しシート(sheetState)の読み書き(済 2026-08-12: rpc sheet_visible。隠す作法は耳のメニューの「非表示」と同じ関数 — 最後の見えている1枚は断る・いまのシートを隠したら見える所へ移る) |
-| autofit | 足す | 列幅の自動調整 — 文字の測りはアプリが持っている。橋から呼ぶ |
+| ✔ autofit | 足す | 列幅の自動調整 — 文字の測りはアプリが持っている。橋から呼ぶ(**済 2026-08-13**: リボンの「自動調整」の腕を `Calc::autofit_at(a, b, col)` に切り出して rpc と共有(耳のメニューと同じ作法)。rpc autofit(語彙33)、Range.autofit("columns"/"rows") と Sheet.autofit。**DataFrame を落とした後に読める幅にする**のがこれ。実機で確認 — 検分中に自分の検査の落とし穴も1つ潰した(実機は前回の幅を持ち越すので、先に狭めてから測る)) |
 | ✔ pictures | 足す | 画像の一覧と追加(sheet.add_image と対)(**済 2026-08-13**: rpc pictures / add_image(bytes は16進で運ぶ・片方だけの大きさは縦横比を保つ)。`sheet.pictures.add(図, anchor="F4")` — 図は 径路 / bytes / **matplotlib の figure**(xlwings と同じ)。「Python で描いて実機のシートに浮かべる」= SEKKEI「calc の分業」の筋が橋から一本通った。実機で目視まで済) |
 | tables / names / page_setup | 足す | openpyxl 側の同じ一件(テーブル・名前付き範囲・印刷設定) |
 | ✔ clear_formats | 足す(書式) | 書式を消すのも書式の書き込み(済 2026-08-12 夜: rpc clear_formats — 値は残る) |

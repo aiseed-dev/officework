@@ -166,6 +166,17 @@ try:
 except xw.OfficeworkError:
     pass
 
+# autofit: 中身に合わせる(DataFrame を落とした後に読める幅にする)
+sh["J1"].value = "とても長い品名がここに入ります"
+sh["J1"].column_width = 5          # **先に狭める** — 実機は前回の幅を持ち越す
+before = sh["J1"].column_width
+sh["J1"].autofit()
+after = sh["J1"].column_width
+check(after > before, f"autofit で列幅が広がらない: {before} → {after}")
+sh["J2"].value = "行の高さも"
+sh["J2"].autofit("rows")          # 軸を替えても通る
+sh["J1:J2"].clear()
+
 # 行・列の出し入れ: **残った式の参照が付いて動く**(明細の行を増やす操作)
 sh["H1"].value = 10
 sh["H2"].value = "=H1*3"

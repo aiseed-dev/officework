@@ -363,6 +363,17 @@ pub trait Host {
     fn set_sheet_hidden(&mut self, _si: usize, _hidden: bool) -> Result<(), String> {
         Err("この口では visible はできません".into())
     }
+    /// 中身に合わせて列幅(col=true)・行高を決める。返りは合わせた本数。
+    /// **文字の測りはアプリが持っている**ので、画面のあるアプリだけ
+    fn autofit(
+        &mut self,
+        _si: usize,
+        _a: sheet::Pos,
+        _b: sheet::Pos,
+        _col: bool,
+    ) -> Result<usize, String> {
+        Err("この口では autofit はできません(文字の測りが要ります)".into())
+    }
 
     /// アプリにしか無い命令(calc の ribbon / ui_state)。既定は「知らない」
     fn extra(&mut self, _cmd: &str, _o: &Jobj) -> Option<String> {
@@ -664,6 +675,25 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                     Ok(()) => "{\"ok\":true}".into(),
                     Err(e) => err(&e),
                 },
+            }
+        }
+        // 中身に合わせて列幅・行高を決める(リボンの「自動調整」と同じ測り)
+        "autofit" => {
+            let (si, a, b) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            let col = o.str("axis").as_deref() != Some("rows");
+            h.settle();
+            h.mark_once();
+            match h.autofit(si, a, b, col) {
+                Ok(n) => {
+                    if n > 0 {
+                        h.mark_dirty();
+                    }
+                    format!("{{\"ok\":true,\"count\":{n}}}")
+                }
+                Err(e) => err(&e),
             }
         }
         // 行・列を挿す/抜く(丸ごと)。**残った式の参照が付いて動く** —

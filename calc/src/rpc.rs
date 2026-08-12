@@ -258,6 +258,24 @@ impl Host for Calc {
         Calc::set_sheet_hidden(self, si, hidden)
     }
 
+    fn autofit(&mut self, si: usize, a: Pos, b: Pos, col: bool) -> Result<usize, String> {
+        if si >= self.book.sheets.len() {
+            return Err("そのシートがありません".into());
+        }
+        // 測りはいま出ているシートの列幅を見る(折り返しの行高)ので、
+        // 別のシートを合わせるときは一時的に差し替えて戻す
+        let prev = self.active;
+        self.active = si;
+        let n = self.autofit_at(a, b, col);
+        self.active = prev;
+        self.status = if col {
+            ui::tf!("{} 列の幅を中身に合わせました(Ctrl+Z で戻せます)", n).into()
+        } else {
+            ui::tf!("{} 行の高さを中身に合わせました(Ctrl+Z で戻せます)", n).into()
+        };
+        Ok(n)
+    }
+
     fn new_book(&mut self) -> Result<(), String> {
         if Calc::new_book(self) {
             Ok(())

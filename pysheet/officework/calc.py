@@ -342,6 +342,15 @@ class Range:
         else:
             raise OfficeworkError('shift は "up" か "left"')
 
+    def autofit(self, axis="columns"):
+        """中身に合わせて列幅(既定)か行高を決める。リボンの「自動調整」と
+        **同じ測り**(文字の幅はアプリが持っている)。axis は
+        "columns" / "rows"(xlwings と同じ言い方。"c"/"r" でも通る)。
+        DataFrame を落とした後、これで読める幅になる。"""
+        a = str(axis).lower()
+        kind = "rows" if a.startswith("r") else "columns"
+        _call("autofit", axis=kind, **self._kw())
+
     def _sheet_kw(self):
         return {"sheet": self._sheet} if self._sheet is not None else {}
 
@@ -744,6 +753,10 @@ class Sheet:
     def clear_formats(self):
         """シートの書式を全部消す(値は残る)。"""
         _call("clear_formats", sheet=self.name)
+
+    def autofit(self, axis="columns"):
+        """シート全体を中身に合わせる(xlwings と同じ口)。"""
+        self.used_range.autofit(axis)
 
     def insert_rows(self, at, count=1):
         """行を挿す(at は1起点の行番号)。**残った式の参照が付いて動く**。"""

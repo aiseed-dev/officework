@@ -2398,76 +2398,8 @@ impl Calc {
                 self.commit();
                 let col = id == "autofit-col";
                 let (a, b) = self.sel_rect();
-                let (rows, cols) = self.sheet().extent();
                 self.checkpoint();
-                let mut n = 0;
-                if col {
-                    for c in a.col..=b.col {
-                        let mut need: f32 = 0.0;
-                        for r in 0..rows {
-                            let Some(cell) = self.sheet().get(Pos::new(r, c)) else { continue };
-                            if cell.fmt.wrap {
-                                continue; // 折り返すセルは幅を決める根拠にしない
-                            }
-                            let t = cell.value.display();
-                            if t.is_empty() {
-                                continue;
-                            }
-                            let size = cell
-                                .fmt
-                                .size_c
-                                .map(|k| k as f32 / 100.0 * 24.0 / 15.0 * 0.8)
-                                .unwrap_or(12.5);
-                            need = need.max(text_px(&t, size));
-                        }
-                        if need <= 0.0 {
-                            continue;
-                        }
-                        // px → xlsx の字数。**上限を置く**(1セルの長文で
-                        // 画面いっぱいの列にならないように。本家も 255 字)
-                        let chars = (need / PX_PER_CHW).clamp(1.0, 255.0);
-                        self.sheet_mut().col_width.insert(c, chars);
-                        n += 1;
-                    }
-                } else {
-                    let named = self.book.named_styles.clone();
-                    for r in a.row..=b.row {
-                        let mut want: f32 = 15.0; // xlsx の既定(pt)
-                        for c in 0..cols.max(1) {
-                            let p = Pos::new(r, c);
-                            let Some(cell) = self.sheet().get(p) else { continue };
-                            let t = cell.value.display();
-                            if t.is_empty() {
-                                continue;
-                            }
-                            let md = sheet::markdown::parse(&t);
-                            let scale = match &md {
-                                Some(l) if cell.fmt.wrap => {
-                                    sheet::markdown::wanted_height_pt(l, 15.0, &named) / 15.0
-                                }
-                                Some(l) => l
-                                    .iter()
-                                    .map(|x| sheet::markdown::line_scale(x, &named))
-                                    .fold(1.0, f32::max),
-                                None => 1.0,
-                            };
-                            let lines = if cell.fmt.wrap {
-                                let size = cell
-                                    .fmt
-                                    .size_c
-                                    .map(|k| k as f32 / 100.0 * 24.0 / 15.0 * 0.8)
-                                    .unwrap_or(12.5);
-                                let w = self.col_px(c).max(8.0);
-                                (text_px(&t, size) / w).ceil().max(1.0)
-                            } else {
-                                1.0
-                            };
-                            want = want.max(15.0 * scale * lines);
-                        }
-                        self.sheet_mut().row_height.insert(r, want);
-                        n += 1;
-                    }
-                }
+                let n = self.autofit_at(a, b, col);
                 self.dirty = true;
                 self.status = if n == 0 {
                     ui::t!("中身が無いので合わせようがありません").into()
@@ -3144,6 +3076,88 @@ impl Calc {
         self.pick_kind = "changes-pick";
         self.pick = Some((items, at));
     }
+
+    /// **中身に合わせて列幅・行高を決める。**(リボンの「自動調整」と
+    /// 橋(Python の autofit)の共有 — 文字の測りはアプリが持っているので
+    /// ここに置く。2026-08-13 に rpc と分け合うため run_cmd から切り出した)
+    ///
+    /// 返りは合わせた本数。undo の節目は**呼ぶ側**が置く
+    /// (リボンは1手、手続きの中はまとめて1手)。
+    pub(crate) fn autofit_at(&mut self, a: Pos, b: Pos, col: bool) -> usize {
+
+            let (rows, cols) = self.sheet().extent();
+            self.checkpoint();
+            let mut n = 0;
+            if col {
+                for c in a.col..=b.col {
+                    let mut need: f32 = 0.0;
+                    for r in 0..rows {
+                        let Some(cell) = self.sheet().get(Pos::new(r, c)) else { continue };
+                        if cell.fmt.wrap {
+                            continue; // 折り返すセルは幅を決める根拠にしない
+                        }
+                        let t = cell.value.display();
+                        if t.is_empty() {
+                            continue;
+                        }
+                        let size = cell
+                            .fmt
+                            .size_c
+                            .map(|k| k as f32 / 100.0 * 24.0 / 15.0 * 0.8)
+                            .unwrap_or(12.5);
+                        need = need.max(text_px(&t, size));
+                    }
+                    if need <= 0.0 {
+                        continue;
+                    }
+                    // px → xlsx の字数。**上限を置く**(1セルの長文で
+                    // 画面いっぱいの列にならないように。本家も 255 字)
+                    let chars = (need / PX_PER_CHW).clamp(1.0, 255.0);
+                    self.sheet_mut().col_width.insert(c, chars);
+                    n += 1;
+                }
+            } else {
+                let named = self.book.named_styles.clone();
+                for r in a.row..=b.row {
+                    let mut want: f32 = 15.0; // xlsx の既定(pt)
+                    for c in 0..cols.max(1) {
+                        let p = Pos::new(r, c);
+                        let Some(cell) = self.sheet().get(p) else { continue };
+                        let t = cell.value.display();
+                        if t.is_empty() {
+                            continue;
+                        }
+                        let md = sheet::markdown::parse(&t);
+                        let scale = match &md {
+                            Some(l) if cell.fmt.wrap => {
+                                sheet::markdown::wanted_height_pt(l, 15.0, &named) / 15.0
+                            }
+                            Some(l) => l
+                                .iter()
+                                .map(|x| sheet::markdown::line_scale(x, &named))
+                                .fold(1.0, f32::max),
+                            None => 1.0,
+                        };
+                        let lines = if cell.fmt.wrap {
+                            let size = cell
+                                .fmt
+                                .size_c
+                                .map(|k| k as f32 / 100.0 * 24.0 / 15.0 * 0.8)
+                                .unwrap_or(12.5);
+                            let w = self.col_px(c).max(8.0);
+                            (text_px(&t, size) / w).ceil().max(1.0)
+                        } else {
+                            1.0
+                        };
+                        want = want.max(15.0 * scale * lines);
+                    }
+                    self.sheet_mut().row_height.insert(r, want);
+                    n += 1;
+                }
+            }
+        n
+    }
+
 }
 
 /// 記録開始時点の写しが無いシート用の空(borrow のため const で置く)
