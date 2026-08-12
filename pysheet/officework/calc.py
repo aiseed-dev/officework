@@ -566,6 +566,74 @@ def _scalar(x):
     return str(x)
 
 
+class Picture:
+    """シートに浮かぶ画像(読みの札)。anchor は留めたセル、大きさは px。"""
+
+    __slots__ = ("anchor", "width", "height")
+
+    def __init__(self, anchor, width, height):
+        self.anchor = anchor
+        self.width = width
+        self.height = height
+
+    def __repr__(self):
+        return "<officework.calc Picture {} {:.0f}×{:.0f}px>".format(
+            self.anchor, self.width, self.height)
+
+
+def _image_bytes(image):
+    # 径路 / bytes / matplotlib の figure(savefig を持つ物)→ PNG/JPEG の bytes
+    if isinstance(image, bytes):
+        return image
+    if hasattr(image, "savefig"):  # matplotlib の figure
+        import io as _io
+
+        buf = _io.BytesIO()
+        image.savefig(buf, format="png", bbox_inches="tight")
+        return buf.getvalue()
+    with open(image, "rb") as f:
+        return f.read()
+
+
+class _Pictures:
+    """Sheet.pictures の返り。add で貼り、並びは読み(留めたセルと大きさ)。"""
+
+    def __init__(self, sheet):
+        self._sheet = sheet
+
+    def _list(self):
+        r = _call("pictures", sheet=self._sheet.name)
+        return [Picture(a, w, h) for a, w, h in r["pictures"]]
+
+    def add(self, image, anchor=None, width=None, height=None):
+        """画像を貼る。image は 径路 / bytes / matplotlib の figure。
+        anchor は "E2" か Range(省略は A1)。width / height は px
+        (片方だけなら縦横比を保つ)。保存で xlsx にも入る。"""
+        data = _image_bytes(image)
+        a1 = "A1"
+        if anchor is not None:
+            a1 = anchor._a1().split(":")[0] if isinstance(anchor, Range) else str(anchor)
+        kw = {"sheet": self._sheet.name, "a1": a1, "data": data.hex()}
+        if width is not None:
+            kw["width_px"] = float(width)
+        if height is not None:
+            kw["height_px"] = float(height)
+        r = _call("add_image", **kw)  # 片方だけなら向こうが縦横比を保つ
+        return Picture(a1, r["width_px"], r["height_px"])
+
+    def __len__(self):
+        return len(self._list())
+
+    def __iter__(self):
+        return iter(self._list())
+
+    def __getitem__(self, i):
+        return self._list()[i]
+
+    def __repr__(self):
+        return "<officework.calc Pictures {}>".format(len(self._list()))
+
+
 class _FreezePanes:
     """Sheet.freeze_panes の返り(xlwings と同じ形)。
 
@@ -694,6 +762,13 @@ class Sheet:
         rng = self.used_range
         return _grid_to_frame(rng._get(), convert or _default_frame(),
                               index=index, header=header)
+
+    @property
+    def pictures(self):
+        """シートの画像(xlwings の pictures の役)。
+        `pictures.add(図, anchor="E2")` — 図は 径路 / bytes /
+        **matplotlib の figure** のどれでも(xlwings と同じ)。"""
+        return _Pictures(self)
 
     def __repr__(self):
         return "<officework.calc Sheet {}>".format(self.name)

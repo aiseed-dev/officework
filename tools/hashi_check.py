@@ -166,6 +166,31 @@ try:
 except xw.OfficeworkError:
     pass
 
+# pictures: Python の絵が実機のシートに浮かぶ(SEKKEI「calc の分業」の筋)
+png1x1 = (b"\x89PNG\r\n\x1a\n"
+          b"\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02"
+          b"\x08\x02\x00\x00\x00\xfd\xd4\x9as"
+          b"\x00\x00\x00\x0cIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe"
+          b"\xa75\x81\x84\x00\x00\x00\x00IEND\xaeB`\x82")
+n0 = len(sh.pictures)
+p1 = sh.pictures.add(png1x1, anchor="F4", width=120)  # 片方 → 縦横比を保つ
+check(len(sh.pictures) == n0 + 1, "add で画像が増えない")
+check(p1.width == 120 and p1.height == 120, f"縦横比: {p1.width}×{p1.height}")
+check(any(p.anchor == "F4" for p in sh.pictures), f"留めたセル: {list(sh.pictures)}")
+try:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(3, 2))
+    # 札は ASCII(検査は日本語フォントを matplotlib に登録しない — 豆腐を出さない)
+    ax.bar(["A", "B", "C"], [4, 7, 2])
+    ax.set_title("bar")
+    sh.pictures.add(fig, anchor="F12", width=240)  # figure をそのまま
+    plt.close(fig)
+    check(len(sh.pictures) == n0 + 2, "matplotlib の figure が貼れない")
+except ImportError:
+    print("matplotlib が無いので figure の検査は飛ばした", file=sys.stderr)
+
 # 名前付き範囲: add・refers_to・Range.name・式の追随・delete
 sh["C2"].value = 125000   # 上の clear_contents で消えているので置き直す
 wb.names.add("単価", "=%s!$C$2" % sh.name)

@@ -666,6 +666,67 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 },
             }
         }
+        // シートの画像の一覧 [[留めたセル, 幅px, 高さpx], …]
+        // (開いた帳票にあった物と、Python が貼った物の両方)
+        "pictures" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            let sh = &h.book().sheets[si];
+            let items: Vec<J> = sh
+                .images
+                .iter()
+                .chain(sh.images_new.iter())
+                .map(|im| {
+                    J::A(vec![
+                        J::S(im.at.a1()),
+                        J::N(f64::from(im.width_px)),
+                        J::N(f64::from(im.height_px)),
+                    ])
+                })
+                .collect();
+            format!("{{\"ok\":true,\"pictures\":{}}}", J::A(items).to_json())
+        }
+        // 画像(PNG / JPEG)をシートに浮かべる。data は16進の bytes。
+        // アプリの「挿入 > グラフ」と同じ道 — matplotlib の絵が Python から
+        // 実機のシートに浮かぶ(SEKKEI「calc の分業」の筋)
+        "add_image" => {
+            let Some(hexdata) = o.str("data") else { return err("data がありません") };
+            let Some(data) = unhex(&hexdata) else {
+                return err("data が16進として読めません");
+            };
+            let Some((w, hh)) = image_px(&data) else {
+                return err("PNG / JPEG として読めない(大きさが測れない)");
+            };
+            let (si, a, _) = match target(h, &o) {
+                Ok(t) => t,
+                Err(e) => return e,
+            };
+            if h.book().sheets[si].protected {
+                return err("シートが保護されています");
+            }
+            // 実寸を既定に、片方だけ渡されたら縦横比を保って合わせる
+            let (w0, h0) = (w as f32, hh as f32);
+            let (width, height) = match (o.num("width_px"), o.num("height_px")) {
+                (Some(wq), Some(hq)) => (wq as f32, hq as f32),
+                (Some(wq), None) => (wq as f32, wq as f32 * h0 / w0),
+                (None, Some(hq)) => (hq as f32 * w0 / h0, hq as f32),
+                (None, None) => (w0, h0),
+            };
+            h.settle();
+            h.mark_once();
+            h.book_mut().sheets[si].images_new.push(sheet::model::SheetImage {
+                at: a,
+                dx_px: 0.0,
+                dy_px: 0.0,
+                width_px: width,
+                height_px: height,
+                data,
+            });
+            h.mark_dirty();
+            format!("{{\"ok\":true,\"width_px\":{width},\"height_px\":{height}}}")
+        }
         // 名前付き範囲の一覧 [[シート, 名前, 参照], …](全シート)
         "names" => {
             let items: Vec<J> = h
