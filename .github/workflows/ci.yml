@@ -64,6 +64,13 @@ jobs:
         run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
       - name: サイドカーが組めるか(pyoffice)
         run: cargo build -p sidecar
+      - name: Windows の的でも組めるか(pysheet — 配る wheel の3つ目の OS)
+        # v0.2.0 のタグで初めて発覚: pysheet が ops に依存した日に、ops の
+        # unix 専用 API(sock_path の uid・/dev/urandom・0600)が Windows の
+        # wheel を壊した。push のたびにここで見る — タグを押してから知るのは遅い
+        run: |
+          rustup target add x86_64-pc-windows-msvc
+          cargo check -p pysheet --target x86_64-pc-windows-msvc
       - name: リボンの表を読む解析器が、崩れたら止まるか
         # **検査を信じる前に、落ちる所を見る。** 6つの崩し方(新しい種類・
         # マクロ書き・Tab を関数で作る・引数が増える・`/* */` で囲む・
