@@ -148,7 +148,10 @@ p = d[3]
 p.text = "差し替え"        # 字を替える。見出しの段は見出しのまま、寄せもそのまま
 p.text                    # run をつないだ字
 p.replace("旧", "新")      # → 置き換えた数。run の切れ目は全部残る
-p.runs                    # 読むだけの [Run]: .text .bold .italic .underline .font .size_pt .color
+p.runs                    # [Run] — 読み書き両方: .text .bold .italic .underline
+                          #   .strike .color .size_pt .font .style .hyperlink
+p.runs[0].bold = True     # 書式は run 単位で書ける(2026-08-12 から)
+p.add_run("続き")          # 末尾に run を継ぎ足す(書式は末尾の run を継ぐ)
 p.style                   # "body" / "heading1"〜"heading9" / "toc1"… / "tof"
 p.align                   # "left" | "center" | "right" | "justify" | "distribute"
 p.in_table                # 表のセルの中の段落なら True
@@ -201,13 +204,19 @@ t.values()             # list[list[str]] — そのまま polars に渡せる
 t[1][2].paragraphs     # そのセルの段落(Paragraph として)
 ```
 
-### やらないこと
+### やらないことと、報告に出るが失われないもの
 
-読めるのは段落と表だけです。脚注・2つ目以降の節の区切り・数式は
-**`d.unsupported` に出ます** — 帳簿から黙って消えることはありませんが、
-前の2つは保存で文書からも消え、数式は平文になります。
-文字書式は Python から**設定できません**(`p.runs` で読めるだけ) —
-体裁を整えるのは writer の仕事です。
+本文として読めるのは段落と表です(節は `d.sections`、コメントは
+`d.comments`、画像の一件は `d.inline_shapes` で別に引ける)。
+
+脚注・数式は **`d.unsupported` に出ますが、保存で失われません** —
+報告の文言がそのまま言います(「脚注・文末脚注の印(本文には出ないが、
+保存で残る)」「数式(段落の頭に寄るが、保存で残る)」)。unsupported は
+「読めなかった」の帳簿であって「捨てた」の帳簿ではない、が読み方です。
+
+既存の数式は本文の text に出ません(原文のまま持ち越すだけ)。
+**新しく数式を書くなら `officework.tex`**(下の節)— LaTeX で受けて
+絵に組み、原文ごと文書に入ります。
 
 ## よその語彙でも書ける — openpyxl・xlwings・python-docx
 
@@ -248,6 +257,24 @@ wb.save("out.xlsx")
   xlsx を openpyxl がそのまま読む(**こちらが計算した値も** —
   openpyxl 自身は式を計算できない)
 
+書式と印刷も openpyxl の形で通る(2026-08-12〜13 に台帳 324 件を閉じた):
+
+```python
+from officework.sheet import Font, Border, Side, PatternFill, Alignment
+ws.cell(1, 1).font = Font(bold=True, size=14) # openpyxl の実物を渡してもよい
+                                              # (ws["A1"] は値を返す流儀なので cell() で)
+ws.column_dimensions["A"].width = 20          # 列幅(字数)・行高・hidden
+ws.print_title_rows = "1:1"                   # 毎ページ繰り返す見出し(列は "A:A")
+ws.freeze_panes = "B2"
+ws.add_table(...)                             # 表 — =SUM(明細[金額]) が計算まで効く
+wb.add_named_style(...)                       # 名前付き様式も運ぶ
+```
+
+入力規則・名前付き範囲・グループ化・画像(`add_image`)・ヘッダー/フッター
+(奇数・偶数・先頭の別まで)・1904 起点・`move_range`(式の参照が付いて動く)
+も同じ流儀で。**何がどこまであるかの正本は台帳**
+([pysheet-gokan.ja.md](pysheet-gokan.ja.md) — 324 件に判定と理由)。
+
 ### xlwings の語彙(officework.calc — 動いている calc へ)
 
 参照の算術が入った。**繋がっていなくても算術は使える**(実測):
@@ -281,9 +308,37 @@ p.runs[0].font == "MS明朝"           # font は文字列としても比べら�
 p.runs[0].font.name                  # .name でも引ける(書体が run に明示されていなければ None)
 ```
 
-段落には `clear` / `iter_inner_content` も。**Run は凍った写し**(読み専用。
-直すのは `paragraph.replace` / `.text` の側)— ここは python-docx と設計が
-違う所で、理由は台帳の Run の行にある。
+段落には `clear` / `iter_inner_content` も。**Run は位置で引き直す手**
+(python-docx と同じ使い方 — `r.bold = True` も `r.add_text("続き")` も効く。
+2026-08-12 に「凍った写し」から改めた)。段落の `text` 代入や `replace` で
+run の並びが変わった後は、`p.runs` から引き直すこと。
+
+書く方の口も一通りある — `d.add_heading(字, level)`(1〜3。0=Title は
+持たないので正直に断る)、`d.add_paragraph(字, style=)`、`d.add_picture`、
+`d.add_section()`、`d.add_table(rows, cols)`、`d.styles.add_style`、
+`p.add_comment(字)`(段落単位)、`d.core_properties`。在庫の全量と
+判定の理由は台帳([pysheet-gokan.ja.md](pysheet-gokan.ja.md))に。
+
+## 数式を組む(officework.tex)
+
+数式は **LaTeX で受けて絵に組む**(2026-08-13)。組版は自前で書かず、
+TeX(pdflatex)があればそちらで、無ければ matplotlib の mathtext で組む。
+**要るのは matplotlib だけ**で、TeX はあれば品質が上がる(行列の列まで揃う)。
+
+```python
+from officework import tex
+tex.kumi_kata()                       # "tex" | "mathtext" | None(今なにで組めるか)
+svg = tex.to_svg(r"\frac{a+b}{2}")    # bytes。字は輪郭になるので書体不要
+png, w_mm, h_mm = tex.to_png(r"\sqrt{x^2+y^2}", size_pt=11)  # 文書に入れるのはこちら
+```
+
+- 組めない式は **`tex.Muri` で断る**(理由つき — 黙って空の絵を返さない)
+- mathtext は LaTeX の**部分集合**。`\begin{matrix}` 系は `\substack` に
+  寄せて組む(**列は揃わない** — TeX があれば揃う)
+- SymPy から起こす `from_sympy()` もあるが、**式は書き直される**
+  (`(a+b)/2` → `a/2 + b/2`)。書いたとおりの見た目が要るなら LaTeX を直に
+- writer で数式を挿すと(挿入 > 方程式)、**絵と LaTeX の原文が二枚組**で
+  docx に入る — 渡した先の Word では絵として見え、officework では式として直せる
 
 ## セルの関数(UDF)と配列
 

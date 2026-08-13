@@ -91,6 +91,14 @@ r = pr.add_run("い")
 check(r.text == "い", "add_run に渡した字が入らない")
 check(pr.text == "あい", "run を足しても段落の字に出てこない")
 
+# run の書式は**全部の口が書ける**(台帳の約束)。size_pt は包み(_doc.py)の
+# setter だけが漏れていて、Rust 側にはあるのに Python から書けなかった
+# (2026-08-14 に発見)— 口ごとに縛って、片方だけの漏れを捕まえる
+r.size_pt = 14
+check(r.size_pt == 14.0, f"size_pt が書けない: {r.size_pt}")
+r.size_pt = None
+check(r.size_pt is None, "size_pt の指定を外せない(None = 文書の既定)")
+
 # run-clear-run: 字は消えるが**書式は残る**
 r.bold = True
 r.italic = True

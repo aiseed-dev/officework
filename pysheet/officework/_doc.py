@@ -109,7 +109,14 @@ class Run:
 
     @property
     def size_pt(self):
+        """字の大きさ(pt)。None = 指定なし(様式・文書の既定に従う)。"""
         return self._r.size_pt
+
+    @size_pt.setter
+    def size_pt(self, v):
+        # setter だけが包みから漏れていた(2026-08-14 に発見。エンジン側には
+        # 2026-08-12 からある)。None で指定を外せるのはエンジンと同じ約束
+        self._r.size_pt = None if v is None else float(v)
 
     @property
     def font(self):

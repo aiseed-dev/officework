@@ -153,7 +153,10 @@ p = d[3]
 p.text = "replacement"    # replace the text; the paragraph keeps its style and alignment
 p.text                    # runs joined
 p.replace("old", "new")   # -> how many were replaced. Keeps every run boundary
-p.runs                    # read-only [Run]: .text .bold .italic .underline .font .size_pt .color
+p.runs                    # [Run], readable *and* writable: .text .bold .italic
+                          #   .underline .strike .color .size_pt .font .style .hyperlink
+p.runs[0].bold = True     # formatting is set per run (since 2026-08-12)
+p.add_run("more")         # append a run (inherits the last run's formatting)
 p.style                   # "body", "heading1".."heading9", "toc1".., "tof"
 p.align                   # "left" | "center" | "right" | "justify" | "distribute"
 p.in_table                # True if this paragraph lives in a table cell
@@ -207,13 +210,19 @@ t.values()             # list[list[str]] — hand it straight to polars
 t[1][2].paragraphs     # the cell's paragraphs, as Paragraph objects
 ```
 
-### What it does not do
+### What it does not do — and what is reported but never lost
 
-Reading is limited to paragraphs and tables. Footnotes, second and later section
-breaks, and equations are **listed in `d.unsupported`** — they are not silently
-lost from the report, but the first two do disappear from the document on save,
-and an equation becomes plain text. Character formatting cannot be *set* from
-Python (only read through `p.runs`); shaping a document is the writer app's job.
+Body reading covers paragraphs and tables (sections are separate under
+`d.sections`, comments under `d.comments`, inline pictures under
+`d.inline_shapes`).
+
+Footnotes and equations are **listed in `d.unsupported` yet survive save** —
+the report's own wording says so ("kept on save"). Read `unsupported` as the
+ledger of what could not be *read in full*, not of what was thrown away.
+
+Existing equations do not appear in the body text (they are carried through
+verbatim). **To write a new equation, use `officework.tex`** (section below) —
+it takes LaTeX, typesets a picture, and stores the source alongside it.
 
 ## Writing in vocabularies you already know — openpyxl, xlwings, python-docx
 
@@ -256,6 +265,27 @@ wb.save("out.xlsx")
 - interop is proven with the original's own eyes: openpyxl reads what we
   write — **including the computed values** it cannot produce itself
 
+Formatting and print setup also speak openpyxl (the 324-item ledger was
+closed on 2026-08-12/13):
+
+```python
+from officework.sheet import Font, Border, Side, PatternFill, Alignment
+ws.cell(1, 1).font = Font(bold=True, size=14) # openpyxl's own objects work too
+                                              # (ws["A1"] returns the value — use cell())
+ws.column_dimensions["A"].width = 20          # width (chars), height, hidden
+ws.print_title_rows = "1:1"                   # repeat headings on every page ("A:A" for columns)
+ws.freeze_panes = "B2"
+ws.add_table(...)                             # tables — =SUM(Items[Amount]) computes
+wb.add_named_style(...)                       # named cell styles are carried too
+```
+
+Data validation, defined names, outline groups, pictures (`add_image`),
+headers/footers (down to odd/even/first pages), the 1904 epoch, and
+`move_range` (references follow the move) all work the same way. **The
+canonical list of what exists is the ledger**
+([pysheet-gokan.ja.md](pysheet-gokan.ja.md) — 324 items, each with a verdict
+and a reason).
+
 ### The xlwings vocabulary (officework.calc — a running calc)
 
 Reference arithmetic is in. **The arithmetic works even without a
@@ -290,10 +320,43 @@ p.runs[0].font == "MS明朝"           # font compares as a string, and
 p.runs[0].font.name                  # answers .name too (None when the run names no font)
 ```
 
-Paragraphs also carry `clear` / `iter_inner_content`. **A Run is a frozen
-copy** (read-only; you edit through `paragraph.replace` / `.text`) — this
-is a deliberate design difference from python-docx, and the reason is
-written next to Run in the ledger.
+Paragraphs also carry `clear` / `iter_inner_content`. **A Run is a live
+handle resolved by position** (same usage as python-docx — `r.bold = True`
+and `r.add_text("more")` both work; changed from "frozen copy" on
+2026-08-12). After `p.text = ...` or `replace` reshuffles the runs,
+re-fetch from `p.runs`.
+
+The writing side is complete too — `d.add_heading(text, level)` (1–3; we
+do not carry level 0 = Title, and say so), `d.add_paragraph(text, style=)`,
+`d.add_picture`, `d.add_section()`, `d.add_table(rows, cols)`,
+`d.styles.add_style`, `p.add_comment(text)` (paragraph-level), and
+`d.core_properties`. The full inventory with verdicts and reasons is the
+ledger ([pysheet-gokan.ja.md](pysheet-gokan.ja.md)).
+
+## Typesetting equations (officework.tex)
+
+Equations are **taken as LaTeX and typeset into a picture** (2026-08-13).
+We wrote no typesetter of our own: with TeX (pdflatex) installed it
+typesets there; without it, matplotlib's mathtext does the job. **All you
+need is matplotlib** — TeX, when present, raises the quality (matrix
+columns align properly).
+
+```python
+from officework import tex
+tex.kumi_kata()                       # "tex" | "mathtext" | None (what typesets today)
+svg = tex.to_svg(r"\frac{a+b}{2}")    # bytes; glyphs become outlines, no font needed
+png, w_mm, h_mm = tex.to_png(r"\sqrt{x^2+y^2}", size_pt=11)  # this one goes into documents
+```
+
+- A formula it cannot set raises **`tex.Muri`** with the reason — never a
+  silent empty picture
+- mathtext handles a **subset** of LaTeX. `\begin{matrix}`-style environments
+  are bent into `\substack` (**columns do not align** — with TeX they do)
+- `from_sympy()` builds LaTeX from a SymPy expression, but **SymPy rewrites
+  the formula** (`(a+b)/2` → `a/2 + b/2`). If you need it verbatim, pass LaTeX
+- Inserting an equation in writer (Insert > Equation) stores **the picture
+  and the LaTeX source as a pair** in the docx — Word shows the picture,
+  officework reopens it as an editable formula.
 
 ## Cell functions (UDFs) and arrays
 
