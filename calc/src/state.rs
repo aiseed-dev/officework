@@ -1412,7 +1412,7 @@ impl Calc {
             line: Some(if marker { "FFD54A".into() } else { "1B1B1B".into() }),
             points: pts
                 .iter()
-                .map(|(x, y)| ((x - x0) / w, (y - y0) / h))
+                .map(|(x, y)| sheet::model::PathPoint::at((x - x0) / w, (y - y0) / h))
                 .collect(),
             ..Default::default()
         });
@@ -1434,7 +1434,8 @@ impl Calc {
             let Some((ox, oy)) = self.cell_origin_px(sp.at) else { continue };
             let (x0, y0) = (ox + sp.dx_px, oy + sp.dy_px);
             let near = if sp.kind == "marker" { 7.0 } else { 4.0 };
-            let hit = sp.points.iter().any(|(px_, py_)| {
+            let hit = sp.points.iter().any(|pp| {
+                let (px_, py_) = (&pp.at.0, &pp.at.1);
                 let (cx, cy) = (x0 + px_ * sp.width_px, y0 + py_ * sp.height_px);
                 (cx - x).abs() <= near && (cy - y).abs() <= near
             });

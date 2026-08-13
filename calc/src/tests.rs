@@ -1434,12 +1434,12 @@ mod pivot_tests {
             // 底は 0 の高さ(範囲は -1..3 → 0 は 3/4 の位置 = y 0.75)
             assert!((sp.base - 0.75).abs() < 1e-4, "底が違う: {}", sp.base);
             // 負の値の棒の先端は底より下
-            assert!(sp.points[1].1 > sp.base, "負の棒が下に伸びていない");
+            assert!(sp.points[1].at.1 > sp.base, "負の棒が下に伸びていない");
             this.insert_sparkline("spark-wl");
             let sp = this.book.sheets[0].shapes_new.last().unwrap().clone();
             assert_eq!(sp.kind, "spark-wl");
             assert_eq!(sp.base, 0.5);
-            assert_eq!(sp.points.iter().map(|p| p.1).collect::<Vec<_>>(), vec![0.1, 0.9, 0.1]);
+            assert_eq!(sp.points.iter().map(|p| p.at.1).collect::<Vec<_>>(), vec![0.1, 0.9, 0.1]);
         });
     }
 
@@ -1593,7 +1593,7 @@ mod pivot_tests {
                 height_px: 20.0,
                 kind: "spark".into(),
                 line: Some("1B6E3C".into()),
-                points: vec![(0.0, 0.5), (1.0, 0.5)],
+                points: vec![sheet::model::PathPoint::at(0.0, 0.5), sheet::model::PathPoint::at(1.0, 0.5)],
                 ..Default::default()
             });
             assert!(this.shape_rot_handle(1).is_none(), "折れ線に回転の取っ手が出た");

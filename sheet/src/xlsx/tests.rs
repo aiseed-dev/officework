@@ -672,7 +672,7 @@ mod carry_tests {
                 height_px: 24.0,
                 kind: kind.into(),
                 line: Some("1B6E3C".into()),
-                points: vec![(0.0, 0.8), (0.33, 0.2), (0.66, 0.6), (1.0, 0.1)],
+                points: vec![crate::model::PathPoint::at(0.0, 0.8), crate::model::PathPoint::at(0.33, 0.2), crate::model::PathPoint::at(0.66, 0.6), crate::model::PathPoint::at(1.0, 0.1)],
                 base,
                 spark_marks: SparkMarks { high: true, low: true, last: true, ..Default::default() },
                 ..Default::default()
@@ -703,7 +703,7 @@ mod carry_tests {
             height_px: 24.0,
             kind: "spark-col".into(),
             line: Some("1B6E3C".into()),
-            points: vec![(0.0, 0.8), (0.5, 0.2)],
+            points: vec![crate::model::PathPoint::at(0.0, 0.8), crate::model::PathPoint::at(0.5, 0.2)],
             base: 1.0,
             ..Default::default()
         });
@@ -716,6 +716,83 @@ mod carry_tests {
         assert_eq!(back.sheets[0].shapes[0].kind, "spark-col", "種類を読み違えた");
         assert!((back.sheets[0].shapes[0].base - 1.0).abs() < 0.01, "底を読み違えた");
         assert_eq!(back.sheets[0].shapes[0].spark_marks, SparkMarks::default());
+    }
+
+
+    #[test]
+    fn 曲線の制御点が往復する() {
+        use crate::model::PathPoint;
+        let mut b = Book::new();
+        b.sheets[0].shapes_new.push(crate::model::SheetShape {
+            at: Pos::new(0, 0),
+            width_px: 160.0,
+            height_px: 100.0,
+            kind: "path".into(),
+            fill: Some("DCE6F1".into()),
+            line: Some("1B6E3C".into()),
+            points: vec![
+                PathPoint::at(0.0, 1.0),
+                PathPoint { at: (0.5, 0.0), c_in: Some((0.2, 0.0)), c_out: Some((0.8, 0.0)) },
+                PathPoint::at(1.0, 1.0),
+            ],
+            ..Default::default()
+        });
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
+        let name = (0..z.len())
+            .map(|i| z.by_index(i).unwrap().name().to_string())
+            .find(|n| n.starts_with("xl/drawings/drawing"))
+            .unwrap();
+        let mut dx = String::new();
+        z.by_name(&name).unwrap().read_to_string(&mut dx).unwrap();
+        assert!(dx.contains("cubicBezTo"), "曲線を書いていない:\n{dx}");
+
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        let got = &back.sheets[0].shapes[0].points;
+        assert_eq!(got.len(), 3, "点の数が変わった: {got:?}");
+        let near = |a: (f32, f32), b: (f32, f32)| {
+            (a.0 - b.0).abs() < 0.002 && (a.1 - b.1).abs() < 0.002
+        };
+        assert!(near(got[1].at, (0.5, 0.0)), "頂点が動いた: {:?}", got[1]);
+        assert!(
+            got[1].c_in.is_some_and(|c| near(c, (0.2, 0.0))),
+            "入りの制御点が往復しない: {:?}",
+            got[1]
+        );
+        assert!(
+            got[1].c_out.is_some_and(|c| near(c, (0.8, 0.0))),
+            "出の制御点が往復しない: {:?}",
+            got[1]
+        );
+    }
+
+    #[test]
+    fn 制御点の無い折れ線は直線のまま書く() {
+        // **スパークラインやペンの線を曲線にしない。** 制御点が無いなら
+        // lnTo のまま — 曲線で書くと Excel 側の見た目がわずかに変わる
+        use crate::model::PathPoint;
+        let mut b = Book::new();
+        b.sheets[0].shapes_new.push(crate::model::SheetShape {
+            at: Pos::new(0, 0),
+            width_px: 90.0,
+            height_px: 24.0,
+            kind: "spark".into(),
+            line: Some("1B6E3C".into()),
+            points: vec![PathPoint::at(0.0, 0.8), PathPoint::at(0.5, 0.2), PathPoint::at(1.0, 0.5)],
+            ..Default::default()
+        });
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
+        let name = (0..z.len())
+            .map(|i| z.by_index(i).unwrap().name().to_string())
+            .find(|n| n.starts_with("xl/drawings/drawing"))
+            .unwrap();
+        let mut dx = String::new();
+        z.by_name(&name).unwrap().read_to_string(&mut dx).unwrap();
+        assert!(!dx.contains("cubicBezTo"), "直線を曲線で書いた:\n{dx}");
+        assert!(dx.contains("lnTo"), "直線を書いていない");
     }
 
     #[test]
@@ -860,7 +937,7 @@ mod link_comment_tests {
             height_px: 22.0,
             kind: "spark-col".into(),
             line: Some("1B6E3C".into()),
-            points: vec![(0.17, 0.0), (0.5, 0.9), (0.83, 0.25)],
+            points: vec![crate::model::PathPoint::at(0.17, 0.0), crate::model::PathPoint::at(0.5, 0.9), crate::model::PathPoint::at(0.83, 0.25)],
             base: 0.75,
             ..Default::default()
         });
@@ -872,8 +949,8 @@ mod link_comment_tests {
             .expect("棒が折れ線に化けた(jo: の札が読めていない)");
         assert!((sp.base - 0.75).abs() < 1e-3, "底が違う: {}", sp.base);
         assert_eq!(sp.points.len(), 3, "棒の本数が違う: {:?}", sp.points);
-        assert!((sp.points[1].0 - 0.5).abs() < 0.02, "中心が違う: {:?}", sp.points[1]);
-        assert!((sp.points[1].1 - 0.9).abs() < 0.02, "先端が違う: {:?}", sp.points[1]);
+        assert!((sp.points[1].at.0 - 0.5).abs() < 0.02, "中心が違う: {:?}", sp.points[1]);
+        assert!((sp.points[1].at.1 - 0.9).abs() < 0.02, "先端が違う: {:?}", sp.points[1]);
     }
 
     #[test]
@@ -2055,7 +2132,7 @@ mod textbox_spark_roundtrip_tests {
             height_px: 24.0,
             kind: "spark".into(),
             line: Some("1B6E3C".into()),
-            points: vec![(0.0, 1.0), (0.5, 0.0), (1.0, 0.6)],
+            points: vec![crate::model::PathPoint::at(0.0, 1.0), crate::model::PathPoint::at(0.5, 0.0), crate::model::PathPoint::at(1.0, 0.6)],
             ..Default::default()
         });
         let mut buf = Cursor::new(Vec::new());
@@ -2068,7 +2145,7 @@ mod textbox_spark_roundtrip_tests {
         assert_eq!(tb.text.as_deref(), Some("注意: 締切は8/10 <厳守>"), "文字が化けた");
         let sk = sp.iter().find(|s| s.kind == "spark").expect("折れ線が無い");
         assert_eq!(sk.points.len(), 3);
-        assert!((sk.points[1].0 - 0.5).abs() < 0.01 && sk.points[1].1.abs() < 0.01);
+        assert!((sk.points[1].at.0 - 0.5).abs() < 0.01 && sk.points[1].at.1.abs() < 0.01);
     }
 }
 

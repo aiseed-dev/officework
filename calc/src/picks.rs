@@ -2238,7 +2238,12 @@ impl Calc {
             kind: kind.into(),
             fill: None,
             line: Some("1B6E3C".into()),
-            points,
+            // 組でこしらえた点を、形の点(制御点は無し=折れ線)へ包む。
+            // **包むのは一番外で1回** — 分岐ごとに包むと読みにくい
+            points: points
+                .into_iter()
+                .map(|(x, y)| sheet::model::PathPoint::at(x, y))
+                .collect(),
             base,
             ..Default::default()
         });

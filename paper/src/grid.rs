@@ -799,7 +799,8 @@ fn draw_sheet(
                     let n = sp.points.len().max(1) as f32;
                     let bw = (w / n * 0.7).max(0.5);
                     let base_y = y_top - sp.base * h;
-                    for (cx_, ty) in &sp.points {
+                    for pp in &sp.points {
+                        let (cx_, ty) = pp.at;
                         let (l, r) = (x + cx_ * w - bw / 2.0, x + cx_ * w + bw / 2.0);
                         let t = y_top - ty * h;
                         l1.add_line(Line {
@@ -812,11 +813,43 @@ fn draw_sheet(
                     }
                     continue;
                 }
-                "spark" | "ink" | "marker" => sp
-                    .points
-                    .iter()
-                    .map(|(px_, py_)| (x + px_ * w, y_top - py_ * h))
-                    .collect(),
+                // **曲線は紙では折れ線に割る。** printpdf の Line は直線の列
+                // しか持たない — 曲がっているものを直線1本にすると形が変わる
+                // ので、区間ごとに 12 に刻む(見た目で区別が付かない細かさ)
+                "spark" | "ink" | "marker" | "path" => {
+                    let ex = |p: (f32, f32)| (x + p.0 * w, y_top - p.1 * h);
+                    let mut out: Vec<(f32, f32)> = Vec::new();
+                    for (i, pp) in sp.points.iter().enumerate() {
+                        if i == 0 {
+                            out.push(ex(pp.at));
+                            continue;
+                        }
+                        let prev = &sp.points[i - 1];
+                        match (prev.c_out, pp.c_in) {
+                            (None, None) => out.push(ex(pp.at)),
+                            (co, ci) => {
+                                let p0 = ex(prev.at);
+                                let c1 = ex(co.unwrap_or(prev.at));
+                                let c2 = ex(ci.unwrap_or(pp.at));
+                                let p3 = ex(pp.at);
+                                for k in 1..=12 {
+                                    let t = k as f32 / 12.0;
+                                    let u = 1.0 - t;
+                                    let bx = u * u * u * p0.0
+                                        + 3.0 * u * u * t * c1.0
+                                        + 3.0 * u * t * t * c2.0
+                                        + t * t * t * p3.0;
+                                    let by = u * u * u * p0.1
+                                        + 3.0 * u * u * t * c1.1
+                                        + 3.0 * u * t * t * c2.1
+                                        + t * t * t * p3.1;
+                                    out.push((bx, by));
+                                }
+                            }
+                        }
+                    }
+                    out
+                }
                 _ => vec![
                     (x, y_top),
                     (x + w, y_top),
@@ -827,7 +860,10 @@ fn draw_sheet(
             // 回転と反転(折れ線もの以外)。紙は y が上向きなので、
             // いったん画面向きのずれに直してから時計回りに回す
             let rot = sp.rot.rem_euclid(360.0);
-            let poly = matches!(sp.kind.as_str(), "spark" | "spark-col" | "spark-wl" | "ink" | "marker");
+            let poly = matches!(
+                sp.kind.as_str(),
+                "spark" | "spark-col" | "spark-wl" | "ink" | "marker" | "path"
+            );
             let mut pts = pts;
             if (rot != 0.0 || sp.flip_h || sp.flip_v) && !poly {
                 let (ccx, ccy) = (x + w / 2.0, y_top - h / 2.0);

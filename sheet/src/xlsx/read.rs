@@ -453,7 +453,10 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     let mut in_t = false;
     // テキストボックスの組み方(bodyPr / pPr / rPr から拾う)
     let mut tfmt = crate::model::TextFmt::default();
-    let mut pts: Vec<(f32, f32)> = Vec::new();
+    let mut pts: Vec<crate::model::PathPoint> = Vec::new();
+    // 曲線の3つ組を貯める場所(cubicBezTo の中だけ)
+    let mut in_bez = false;
+    let mut bez: Vec<(f32, f32)> = Vec::new();
     let mut sp_name: Option<String> = None;
     let (mut path_w, mut path_h) = (1000.0f32, 1000.0f32);
     let mut has_custom = false;
@@ -562,6 +565,14 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                 {
                     text_fmt_attr(&e, &mut tfmt);
                 }
+                // **小道の区間。中に <a:pt/> を持つので Start で来る**
+                // (Empty 側に置いて一度取り逃がした — bodyPr で踏んだのと
+                // 同じ道理。3つ組かどうかはここで決まる)
+                b"cubicBezTo" if has_custom => {
+                    in_bez = true;
+                    bez.clear();
+                }
+                b"lnTo" | b"moveTo" if has_custom => in_bez = false,
                 _ => cur.clear(),
             },
             Ok(Event::Empty(e)) => match local(e.name().as_ref()) {
@@ -580,7 +591,25 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                 b"pt" if has_custom => {
                     let x = attr(&e, "x").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
                     let y = attr(&e, "y").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
-                    pts.push((x / path_w.max(1.0), y / path_h.max(1.0)));
+                    let at = (x / path_w.max(1.0), y / path_h.max(1.0));
+                    // **曲線の中では3つ組**(制御点2つ → 着地点)。
+                    // 制御点は前の点の c_out / この点の c_in へ振り分ける
+                    if in_bez {
+                        bez.push(at);
+                        if bez.len() == 3 {
+                            if let Some(prev) = pts.last_mut() {
+                                prev.c_out = Some(bez[0]);
+                            }
+                            pts.push(crate::model::PathPoint {
+                                at: bez[2],
+                                c_in: Some(bez[1]),
+                                c_out: None,
+                            });
+                            bez.clear();
+                        }
+                    } else {
+                        pts.push(crate::model::PathPoint::at(at.0, at.1));
+                    }
                 }
                 b"srgbClr" if in_sp && !in_effect => {
                     let v = attr(&e, "val");
@@ -687,10 +716,15 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                                     // 底は2欄目まで(3欄目の印を巻き込まない)
                                     let base: f32 =
                                         b.split(':').next().unwrap_or(b).parse().unwrap_or(1.0);
-                                    let tops: Vec<(f32, f32)> = pts
+                                    let tops: Vec<crate::model::PathPoint> = pts
                                         .chunks(4)
                                         .filter(|c| c.len() == 4)
-                                        .map(|c| ((c[0].0 + c[1].0) / 2.0, c[0].1))
+                                        .map(|c| {
+                                            crate::model::PathPoint::at(
+                                                (c[0].at.0 + c[1].at.0) / 2.0,
+                                                c[0].at.1,
+                                            )
+                                        })
                                         .collect();
                                     Some(DrawKind::Shape(Box::new(
                                         crate::model::SheetShape {

@@ -2262,13 +2262,16 @@ pub(super) fn shape_anchor_xml(sp: &crate::model::SheetShape, id: u32) -> String
     // 形: 折れ線(spark)は custGeom、他は prstGeom。
     // 縦棒・勝ち負けも custGeom(棒ごとに4点の閉じた小道 — Excel でも棒に見える)
     let bars = matches!(sp.kind.as_str(), "spark-col" | "spark-wl");
-    let poly = matches!(sp.kind.as_str(), "spark" | "ink" | "marker");
+    // 点で形を作るもの。**自由な形(path)もここ** — prstGeom には
+    // "path" という名前が無いので、prst に流すと Excel が読めない
+    let poly = matches!(sp.kind.as_str(), "spark" | "ink" | "marker" | "path");
     let geom = if bars && !sp.points.is_empty() {
         let n = sp.points.len().max(1) as f32;
         let bw = (10000.0 / n * 0.7).max(120.0);
         let base = (sp.base * 10000.0) as i64;
         let mut path = String::new();
-        for (cx_, ty) in &sp.points {
+        for pp in &sp.points {
+            let (cx_, ty) = (pp.at.0, pp.at.1);
             let (l, r) = (
                 ((cx_ * 10000.0) - bw / 2.0) as i64,
                 ((cx_ * 10000.0) + bw / 2.0) as i64,
@@ -2296,16 +2299,30 @@ pub(super) fn shape_anchor_xml(sp: &crate::model::SheetShape, id: u32) -> String
         )
     } else if poly && !sp.points.is_empty() {
         let mut path = String::new();
-        for (i, (x, y)) in sp.points.iter().enumerate() {
-            let (px_, py_) = ((x * 10000.0) as i64, (y * 10000.0) as i64);
+        // 0..1 を 10000 の目盛りへ
+        let g = |p: (f32, f32)| ((p.0 * 10000.0) as i64, (p.1 * 10000.0) as i64);
+        for (i, pp) in sp.points.iter().enumerate() {
+            let (px_, py_) = g(pp.at);
             if i == 0 {
                 path.push_str(&format!(
                     "<a:moveTo><a:pt x=\"{px_}\" y=\"{py_}\"/></a:moveTo>"
                 ));
-            } else {
-                path.push_str(&format!(
+                continue;
+            }
+            let prev = &sp.points[i - 1];
+            match (prev.c_out, pp.c_in) {
+                (None, None) => path.push_str(&format!(
                     "<a:lnTo><a:pt x=\"{px_}\" y=\"{py_}\"/></a:lnTo>"
-                ));
+                )),
+                (co, ci) => {
+                    // **曲線は制御点2つ+着地点の3つ組**(xlsx の cubicBezTo)。
+                    // 片方しか無ければ、その端の点自身を控えに使う
+                    let (c1x, c1y) = g(co.unwrap_or(prev.at));
+                    let (c2x, c2y) = g(ci.unwrap_or(pp.at));
+                    path.push_str(&format!(
+                        "<a:cubicBezTo><a:pt x=\"{c1x}\" y=\"{c1y}\"/><a:pt x=\"{c2x}\" y=\"{c2y}\"/><a:pt x=\"{px_}\" y=\"{py_}\"/></a:cubicBezTo>"
+                    ));
+                }
             }
         }
         format!(

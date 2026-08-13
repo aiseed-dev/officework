@@ -818,6 +818,35 @@ impl Sheet {
 
 /// シートに浮かぶ図形。**中身はベクタ**(発注者案 2026-08-04: SVG で作る —
 /// 拡大縮小で崩れない)。画面へは to_svg が SVG を作り、xlsx へは DrawingML の
+/// 形をつくる1点(0..1 に正規化)。
+///
+/// **制御点は「この点へ入る側」と「この点から出る側」の2つ。**
+/// どちらも `None` なら、その区間は直線 — スパークラインやペンの線は
+/// この姿のままで、曲線を足しても作りが分かれない
+/// (点の列と制御点の列を別々に持つと、片方だけ足したり消したりできて
+/// しまう。**同じことを2箇所で言わない**)。
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct PathPoint {
+    pub at: (f32, f32),
+    /// 手前の点からこの点へ来る曲線の制御点
+    pub c_in: Option<(f32, f32)>,
+    /// この点から次の点へ出る曲線の制御点
+    pub c_out: Option<(f32, f32)>,
+}
+
+impl PathPoint {
+    /// 角の点(曲がらない)
+    pub fn at(x: f32, y: f32) -> Self {
+        Self { at: (x, y), c_in: None, c_out: None }
+    }
+    pub fn x(&self) -> f32 {
+        self.at.0
+    }
+    pub fn y(&self) -> f32 {
+        self.at.1
+    }
+}
+
 /// スパークラインの点に付ける印。
 ///
 /// **元データには届かない。** この線は挿したときの数を焼き付けた折れ線で、
@@ -995,9 +1024,10 @@ pub struct SheetShape {
     /// スパークラインの**点の印**(高点・低点・最初・最後・負)。
     /// `kind` が `spark` 系のときだけ意味を持つ
     pub spark_marks: SparkMarks,
-    /// 折れ線の点(0..1 に正規化した x, y)。kind="spark" が使う。
-    /// "spark-col"/"spark-wl"(縦棒・勝ち負け)では (棒の中心x, 棒の先端y)
-    pub points: Vec<(f32, f32)>,
+    /// 形をつくる点(0..1 に正規化)。折れ線もの(`spark` / `ink` / `marker`)と
+    /// **自由な形**(`path`)が使う。
+    /// `spark-col`/`spark-wl`(縦棒・勝ち負け)では (棒の中心x, 棒の先端y)
+    pub points: Vec<PathPoint>,
     /// 棒の底(0..1 の y)。"spark-col"/"spark-wl" が使う(他は 0 のまま)
     pub base: f32,
     /// アンカーのセルからの右・下へのずらし(px)。SmartArt のような
@@ -1186,10 +1216,11 @@ impl SheetShape {
                 let bw = ((x1 - x0) / n * 0.7).max(1.5);
                 let base_y = y0 + self.base * (y1 - y0);
                 let mut bars = String::new();
-                for (px_, py_) in &self.points {
+                for p in &self.points {
+                    let (px_, py_) = p.at;
                     let cx_ = x0 + px_ * (x1 - x0);
                     let top = y0 + py_ * (y1 - y0);
-                    let neg = *py_ > self.base + 1e-6;
+                    let neg = py_ > self.base + 1e-6;
                     let col = if self.kind == "spark-wl" && neg {
                         "#C0504D"
                     } else {
@@ -1207,31 +1238,50 @@ impl SheetShape {
                 }
                 bars
             }
-            "spark" | "ink" | "marker" => {
-                // 正規化した点を大きさに展開した折れ線(塗らない)
-                let pts = self
-                    .points
-                    .iter()
-                    .map(|(px_, py_)| {
-                        format!("{:.1},{:.1}", x0 + px_ * (x1 - x0), y0 + py_ * (y1 - y0))
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" ");
+            "spark" | "ink" | "marker" | "path" => {
+                // 正規化した点を大きさに展開する。**制御点があれば曲線**
+                let ex = |p: (f32, f32)| (x0 + p.0 * (x1 - x0), y0 + p.1 * (y1 - y0));
+                let d = {
+                    let mut d = String::new();
+                    for (i, p) in self.points.iter().enumerate() {
+                        let (ax, ay) = ex(p.at);
+                        if i == 0 {
+                            d.push_str(&format!("M{ax:.1},{ay:.1}"));
+                            continue;
+                        }
+                        let prev = &self.points[i - 1];
+                        match (prev.c_out, p.c_in) {
+                            (None, None) => d.push_str(&format!(" L{ax:.1},{ay:.1}")),
+                            (co, ci) => {
+                                // 片方しか無ければ、その点自身を控えに使う
+                                let (c1x, c1y) = ex(co.unwrap_or(prev.at));
+                                let (c2x, c2y) = ex(ci.unwrap_or(p.at));
+                                d.push_str(&format!(
+                                    " C{c1x:.1},{c1y:.1} {c2x:.1},{c2y:.1} {ax:.1},{ay:.1}"
+                                ));
+                            }
+                        }
+                    }
+                    d
+                };
+                let _ = &d;
                 let (w_, o_) = match self.kind.as_str() {
                     "marker" => (9.0, 0.45), // 蛍光ペンは太く薄く
                     "ink" => (2.2, 1.0),
+                    "path" => (sw, 1.0),
                     _ => (1.5, 1.0),
                 };
                 // 点の印(高点・低点・最初・最後)。**焼き付けた点だけで決まる**ので
                 // 元データを引き直さずに出せる
                 let m = self.spark_marks;
                 let dots = if self.kind == "spark" && m != SparkMarks::default() {
-                    let key = |i: &(usize, &(f32, f32))| i.1 .1;
+                    let key = |i: &(usize, &PathPoint)| i.1.at.1;
                     let hi = self.points.iter().enumerate().min_by(|a, b| key(a).total_cmp(&key(b))).map(|(i, _)| i);
                     let lo = self.points.iter().enumerate().max_by(|a, b| key(a).total_cmp(&key(b))).map(|(i, _)| i);
                     let last = self.points.len().checked_sub(1);
                     let mut s = String::new();
-                    for (i, (px_, py_)) in self.points.iter().enumerate() {
+                    for (i, pp) in self.points.iter().enumerate() {
+                        let (px_, py_) = pp.at;
                         // 高点=赤 / 低点=青 / 最初と最後=線と同じ色。
                         // y は下向きなので**最小が高点**
                         let col = if m.high && Some(i) == hi {
@@ -1255,8 +1305,10 @@ impl SheetShape {
                 } else {
                     String::new()
                 };
+                // 自由な形(path)は塗る。折れ線ものは塗らない
+                let f_ = if self.kind == "path" { fill } else { "none" };
                 format!(
-                    r#"<polyline points="{pts}" fill="none" stroke="{line}" stroke-width="{w_}" stroke-opacity="{o_}" stroke-linecap="round" stroke-linejoin="round"/>{dots}"#
+                    r#"<path d="{d}" fill="{f_}" stroke="{line}" stroke-width="{w_}" stroke-opacity="{o_}" stroke-linecap="round" stroke-linejoin="round"/>{dots}"#
                 )
             }
             // 本家の図形ギャラリーの品揃え。**xlsx の prstGeom の名前を
