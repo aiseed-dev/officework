@@ -353,6 +353,31 @@ impl Calc {
                     ui::tf!("{} にします(PDF と保存に効きます)", label).into()
                 };
             }
+            // コメントの見せ方を選んだ(2026-08-13)。一覧の板と、セルに出る
+            // 付記は別の物 — 片方だけ切っても、もう片方は残る
+            "comment-show" => match v {
+                "list" => {
+                    self.comment_list = match self.comment_list {
+                        Some(_) => None,
+                        None => Some(CommentList::default()),
+                    };
+                    self.status = if self.comment_list.is_some() {
+                        ui::t!("コメントの一覧を出しました(ブック全体。押すとその場所へ跳びます)").into()
+                    } else {
+                        ui::t!("コメントの一覧を閉じました").into()
+                    };
+                }
+                _ => {
+                    self.show_comments = !self.show_comments;
+                    self.status = if self.show_comments {
+                        ui::t!("コメントを表示します").into()
+                    } else {
+                        ui::t!("コメントを隠しました(付いてはいます)").into()
+                    };
+                }
+            },
+            // どこまで消すかを選んだ(本家の「現在/自分/すべて」)
+            "comment-del" => self.delete_comments(v),
             // 表のスタイルを選んだ(2026-08-12、台帳「テンプレート選択ギャラリー」)
             // スライサーにする列を選んだ(2026-08-13)
             "slicer-col" => {
@@ -1611,6 +1636,18 @@ impl Calc {
             "defname" => {
                 self.commit();
                 self.prompt = Some(("name", Editor::new("")));
+            }
+            // コメントの一覧の板(ブック全体)。並べ替えと跳び先はこの板が持つ
+            "comment-list" => {
+                self.comment_list = match self.comment_list {
+                    Some(_) => None,
+                    None => Some(CommentList::default()),
+                };
+                self.status = if self.comment_list.is_some() {
+                    ui::t!("コメントの一覧を出しました(ブック全体。押すとその場所へ跳びます)").into()
+                } else {
+                    ui::t!("コメントの一覧を閉じました").into()
+                };
             }
             // コメントの筋に返信を足す(本家の「返信を追加」)
             "comment-reply" => {
@@ -3098,6 +3135,16 @@ impl Calc {
                     self.status = ui::t!("色が読めません(RRGGBB の6桁。例: FF0000)").into();
                     self.prompt = Some((kind, Editor::new(&t)));
                 }
+            }
+            // コメントに書き残す名乗り。器は settings.toml(言語と同じ所)
+            "user-name" => {
+                let t = text.trim();
+                ui::settings::set("user_name", t);
+                self.status = if t.is_empty() {
+                    ui::t!("名乗らないことにしました(これから書くコメントに名前は入りません)").into()
+                } else {
+                    ui::tf!("これから書くコメントに「{}」と残します(すでに書いた分は変わりません)", t).into()
+                };
             }
             // コメントへの返信。**筋の後ろに足す**(頭の文は書き換えない)
             "comment-reply" => {

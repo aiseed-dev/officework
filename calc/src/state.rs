@@ -44,6 +44,7 @@ impl Calc {
             sa_cat: 0,
             slicer: None,
             show_comments: true,
+            comment_list: None,
             pick_paths: Vec::new(),
             encrypt_pw: None,
             pw_pending: None,
@@ -366,6 +367,115 @@ impl Calc {
 
     /// 画面に出ている行の並び(絞り込み中はその行だけ。グループ化で畳んだ行は
     /// 飛ばす)。描画と当たり判定で共有する。
+    /// コメントの一覧に並べる行(**ブック全体**)。並べ方は板が持つ。
+    ///
+    /// 板を開いていなければ空 — 開いていない板のために毎回全シートを
+    /// 舐めない
+    pub(crate) fn comment_rows(&self) -> Vec<CommentRow> {
+        let Some(cl) = &self.comment_list else { return Vec::new() };
+        let mut rows: Vec<CommentRow> = Vec::new();
+        for (si, sh) in self.book.sheets.iter().enumerate() {
+            for (at, th) in &sh.comments {
+                let head = th.entries.first();
+                rows.push(CommentRow {
+                    sheet: si,
+                    at: *at,
+                    who: head.map(|e| e.who.clone()).unwrap_or_default(),
+                    when: head.map(|e| e.when.clone()).unwrap_or_default(),
+                    done: th.done,
+                    text: head.map(|e| e.text.clone()).unwrap_or_default(),
+                    replies: th.entries.len().saturating_sub(1),
+                });
+            }
+        }
+        sort_comments(&mut rows, cl.sort, cl.desc);
+        rows
+    }
+
+    /// コメントを消す。範囲は本家と同じ3つ(`here` / `mine` / `all`)。
+    ///
+    /// **`mine` は筋ごと消さない。** 自分の発言だけを抜いて、他の人の返信は
+    /// 残す — 自分が頭を書いた筋でも、付いた返信は他人の言葉なので
+    /// 黙って落とさない。頭が抜けたら、残った先頭がその筋の頭になる。
+    ///
+    /// **`all` はブック全体。** 一覧の板と範囲を揃えてある
+    pub(crate) fn delete_comments(&mut self, scope: &str) {
+        // 名乗りは器(settings.toml)から。**取るのはここだけ** —
+        // 芯は名前を引数で受けるので、試験は設定ファイルを触らない
+        let me = ui::settings::get("user_name").unwrap_or_default();
+        self.delete_comments_by(scope, me.trim());
+    }
+
+    /// [`Self::delete_comments`] の芯(`me` = 自分の名乗り)
+    pub(crate) fn delete_comments_by(&mut self, scope: &str, me: &str) {
+        match scope {
+            "here" => {
+                let p = self.cursor;
+                if self.sheet().comments.contains_key(&p) {
+                    self.checkpoint();
+                    self.book.sheets[self.active].comments.remove(&p);
+                    self.dirty = true;
+                    self.status =
+                        ui::tf!("{} のコメントを外しました(Ctrl+Z で戻せます)", p.a1()).into();
+                } else {
+                    self.status = ui::t!("このセルにコメントはありません").into();
+                }
+            }
+            "mine" => {
+                // 名乗りが決まっていないと「自分の」が決まらない。
+                // **名無しの発言を自分のものと決めつけない**
+                if me.is_empty() {
+                    self.status = ui::t!("名乗りが決まっていません(詳細設定の「コメントの名乗り」を入れると、自分のコメントだけ消せます)").into();
+                    return;
+                }
+                let (mut said, mut threads) = (0usize, 0usize);
+                for sh in &self.book.sheets {
+                    for th in sh.comments.values() {
+                        let n = th.entries.iter().filter(|e| e.who == me).count();
+                        said += n;
+                        if n == th.entries.len() {
+                            threads += 1;
+                        }
+                    }
+                }
+                if said == 0 {
+                    self.status =
+                        ui::tf!("{} さんのコメントはありません", me).into();
+                    return;
+                }
+                self.checkpoint_book();
+                for sh in &mut self.book.sheets {
+                    for th in sh.comments.values_mut() {
+                        th.entries.retain(|e| e.who != me);
+                    }
+                    // 空になった筋は消す(空の筋は「コメントが無い」と同じ)
+                    sh.comments.retain(|_, th| !th.entries.is_empty());
+                }
+                self.dirty = true;
+                self.status = ui::tf!(
+                    "自分の発言 {} 件を消しました(うち {} 筋は丸ごと。他の人の返信は残しています。Ctrl+Z で戻せます)",
+                    said, threads
+                )
+                .into();
+            }
+            _ => {
+                let n: usize = self.book.sheets.iter().map(|s| s.comments.len()).sum();
+                if n == 0 {
+                    self.status = ui::t!("このブックにコメントはありません").into();
+                    return;
+                }
+                self.checkpoint_book();
+                for sh in &mut self.book.sheets {
+                    sh.comments.clear();
+                }
+                self.dirty = true;
+                self.status =
+                    ui::tf!("ブック全体の {} 件のコメントを消しました(Ctrl+Z で戻せます)", n)
+                        .into();
+            }
+        }
+    }
+
     /// スライサーで残る行か(選びが空なら全部残る)。1行目=見出しは常に残す。
     pub(crate) fn slicer_keeps(&self, r: u32) -> bool {
         let Some(sl) = &self.slicer else { return true };

@@ -2005,6 +2005,12 @@ impl Render for Calc {
                     },
                     "",
                     self.sheet().comments.contains_key(&self.cursor), false),
+                // 一覧はブック全体 — このセルにコメントが無くても押せる
+                ("comment-list",
+                    if self.comment_list.is_some() { "コメントの一覧を閉じる" } else { "コメントの一覧" },
+                    "",
+                    self.book.sheets.iter().any(|s| !s.comments.is_empty()),
+                    false),
                 ("", "", "", false, false),
                 ("fmtcells", "セルをフォーマットする", "", true, false),
                 // 本家は「セルの書式設定 → 保護」タブ。**式のあるセルでだけ**
@@ -3003,6 +3009,7 @@ impl Render for Calc {
                 "fill-color-rgb" => ui::t!("塗りの色 — RRGGBB の6桁(例: FFF2CC。空 Enter = 塗りなし)").to_string(),
                 "fill-bg-rgb" => ui::t!("柄の地の色 — RRGGBB の6桁(例: FFFFFF。空 Enter = 白)").to_string(),
                 "comment-reply" => ui::t!("返信を追加 — この筋の後ろに足します").to_string(),
+                "user-name" => ui::t!("コメントの名乗り — 書き残す名前(空 Enter = 名乗らない)").to_string(),
                 "text-angle" => ui::t!("文字の角度 — -90〜90 の数(上向きが正。空 Enter = 0)").to_string(),
                 "hf-edit" => ui::t!("ヘッダー/フッター — この区分の文字(&P=頁 &N=総頁。空 Enter = 消す)").to_string(),
                 "name-range" => ui::t!("名前の中身 — 場所(B12 か A1:C9 の形)").to_string(),
@@ -3819,7 +3826,25 @@ impl Render for Calc {
                     .child(row(ui::t!("Python の経路"),
                         std::env::var("JO_PYTHON")
                             .unwrap_or_else(|_| ui::t!("(自動: .venv → python3)").into())))
-                    .child(row(ui::t!("名前(ロック・チャット・署名)"), lock_identity()));
+                    .child(row(ui::t!("名前(ロック・チャット・署名)"), lock_identity()))
+                    // コメントに書き残す名乗り。**機械の名前とは別**にする —
+                    // user@host は錠の相手を見分けるための綴りで、
+                    // 帳票に残す名前ではない。決めていなければ名乗らない
+                    // (「不明」のような名前を作らない)
+                    .child(div().flex().flex_row().items_center().gap_2()
+                        .child(div().w(px(us * 200.0)).text_color(dim)
+                            .child(ui::t!("コメントの名乗り")))
+                        .child(div().id("set-username")
+                            .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                            .child(SharedString::from(
+                                ui::settings::get("user_name")
+                                    .filter(|s| !s.trim().is_empty())
+                                    .unwrap_or_else(|| ui::t!("(名乗らない)").into())))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                let cur = ui::settings::get("user_name").unwrap_or_default();
+                                this.prompt = Some(("user-name", Editor::new(&cur)));
+                                cx.notify()
+                            }))));
             } else if self.file_view == 1 {
                 pane = pane.child(div().text_size(px(us * 16.0))
                     .font_weight(gpui::FontWeight::BOLD)
@@ -4024,6 +4049,126 @@ impl Render for Calc {
                 .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .child(sb)
                 .child(pane)
+        });
+
+        // ---- コメントの一覧の板(2026-08-13、台帳「並べ替え・削除範囲」) ----
+        // **ブック全体**を並べる(削除の「すべて」と範囲を揃えてある)。
+        // 押すとそのシートのその場所へ跳ぶ — 一覧から現物へ行けないと、
+        // 並べ替えても使い道がない
+        let comment_panel = self.comment_list.as_ref().map(|cl| {
+            let (sort, desc) = (cl.sort, cl.desc);
+            let rows = self.comment_rows();
+            let n = rows.len();
+            let mut head = div().flex().flex_row().items_center().gap_1()
+                .child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
+                    .child(SharedString::from(ui::tf!("コメント {} 件", n))))
+                .child(div().flex_1());
+            // 並べ替えの鍵。**選んでいる鍵をもう一度押すと逆順**(表の見出しと同じ作法)
+            for k in [CommentSort::Place, CommentSort::When, CommentSort::Who, CommentSort::Done] {
+                let on = sort == k;
+                let (key, label) = k.label();
+                head = head.child(div()
+                    .id(SharedString::from(format!("cl-sort-{key}")))
+                    .px_1p5().py_0p5().rounded_sm().cursor_pointer()
+                    .text_size(px(us * 11.0))
+                    .bg(if on { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
+                    .hover(|s| s.bg(rgb(0xEAF5EE)))
+                    .child(SharedString::from(if on {
+                        format!("{}{}", label, if desc { "↓" } else { "↑" })
+                    } else {
+                        label.to_string()
+                    }))
+                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                        cx.stop_propagation();
+                        if let Some(cl) = &mut this.comment_list {
+                            if cl.sort == k {
+                                cl.desc = !cl.desc;
+                            } else {
+                                cl.sort = k;
+                                cl.desc = false;
+                            }
+                            this.status = ui::tf!("{} の順に並べました", label).into();
+                        }
+                        cx.notify();
+                    })));
+            }
+            let mut p = div().id("comment-list").absolute()
+                .right(px(24.0)).top(px(ROW_H + 16.0))
+                .w(px(us * 360.0)).max_h(px((self.view_h_px - ROW_H - 60.0).max(120.0)))
+                .overflow_y_scroll()
+                .p_2().rounded_md().bg(gpui::white())
+                .border_1().border_color(rgb(0x1B6E3C)).shadow_lg()
+                .flex().flex_col().gap_1()
+                .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                .child(head.child(div().id("cl-close")
+                    .px_1p5().rounded_sm().cursor_pointer().text_size(px(us * 12.5))
+                    .hover(|s| s.bg(rgb(0xEAF5EE)))
+                    .child("✕")
+                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                        cx.stop_propagation();
+                        this.comment_list = None;
+                        cx.notify();
+                    }))));
+            if rows.is_empty() {
+                p = p.child(div().px_2().py_1().text_size(px(us * 12.0))
+                    .text_color(rgb(0x6B7680))
+                    .child(ui::t!("このブックにコメントはありません(右クリックの「コメントを追加」で付きます)")));
+            }
+            for (i, r) in rows.into_iter().enumerate() {
+                let sheet_name = self
+                    .book
+                    .sheets
+                    .get(r.sheet)
+                    .map(|s| s.name.clone())
+                    .unwrap_or_default();
+                let (si, at) = (r.sheet, r.at);
+                // 名乗りと日付は**無ければ書かない** —「不明」を作らない
+                let mut sub: Vec<String> = Vec::new();
+                if !r.who.is_empty() {
+                    sub.push(r.who.clone());
+                }
+                if !r.when.is_empty() {
+                    // 日付だけ出す(`2026-08-12T09:15:00Z` の T の前)。
+                    // **綴りを直さず、頭を切って見せるだけ** — 暦の計算は
+                    // しない決め(CommentEntry.when の註)。全部出すと
+                    // 板の幅を越えて、返信の数まで押し出される(実機で見た)
+                    sub.push(r.when.split('T').next().unwrap_or(&r.when).to_string());
+                }
+                if r.replies > 0 {
+                    sub.push(ui::tf!("返信 {}", r.replies));
+                }
+                p = p.child(div()
+                    .id(SharedString::from(format!("cl{i}")))
+                    .px_2().py_1().rounded_sm().border_1()
+                    .border_color(rgb(0xC6CDD3))
+                    .bg(if r.done { rgb(0xF2F5F3) } else { rgb(0xFFFFFF) })
+                    .cursor_pointer()
+                    .hover(|s| s.bg(rgb(0xEAF5EE)))
+                    .flex().flex_col()
+                    .child(div().flex().flex_row().items_center().gap_1()
+                        .child(div().text_size(px(us * 11.0)).text_color(rgb(0x1B6E3C))
+                            .child(SharedString::from(format!("{}!{}", sheet_name, at.a1()))))
+                        .child(div().flex_1())
+                        .child(div().text_size(px(us * 11.0)).text_color(rgb(0x6B7680))
+                            .child(SharedString::from(if r.done {
+                                ui::t!("✓ 解決済み").to_string()
+                            } else {
+                                sub.join(" · ")
+                            }))))
+                    .child(div().text_size(px(us * 12.0)).whitespace_nowrap().overflow_hidden()
+                        .child(SharedString::from(r.text.clone())))
+                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                        cx.stop_propagation();
+                        this.switch_sheet(si);
+                        this.anchor = None;
+                        this.cursor = at;
+                        this.follow();
+                        this.sync_input();
+                        this.status = ui::tf!("{} へ跳びました", at.a1()).into();
+                        cx.notify();
+                    })));
+            }
+            p
         });
 
         // ---- スライサーの小窓(列の値のボタンで絞る) ----
@@ -5149,7 +5294,8 @@ impl Render for Calc {
                    .children(fn_args_panel)
                    .children(quit_panel)
                    .children(shape_panel)
-                   .children(slicer_panel))
+                   .children(slicer_panel)
+                   .children(comment_panel))
             .children(watch_bar)
             .child(sheets_bar)
             .children(notes)

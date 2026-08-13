@@ -2778,7 +2778,6 @@ mod menu_run_tests {
             match id {
                 "show-formulas" => this.show_formulas,
                 "show-gridlines" => this.gridlines,
-                "co-showcomment" => this.show_comments,
                 "formula-bar" => this.show_formula_bar,
                 "show-headings" => this.show_headers,
                 "show-zeros" => this.show_zeros,
@@ -2786,8 +2785,10 @@ mod menu_run_tests {
                 _ => unreachable!(),
             }
         };
+        // co-showcomment は2択の小窓になったので、この輪の外
+        // (下の「コメントの表示は2択の小窓」で見る)
         for id in [
-            "show-formulas", "show-gridlines", "co-showcomment", "formula-bar",
+            "show-formulas", "show-gridlines", "formula-bar",
             "show-headings", "show-zeros", "rtl-sheet",
         ] {
             c.update(cx, |this, cx| {
@@ -2802,6 +2803,94 @@ mod menu_run_tests {
                 assert_eq!(before, state(this, id), "「{id}」が元に戻らない");
             });
         }
+    }
+
+    /// 「コメントの表示」は2択の小窓(一覧の板 / セルの付記)。
+    /// **押した瞬間には何も変わらない** — どちらを切り替えるか選んでから
+    #[gpui::test]
+    fn コメントの表示は2択の小窓(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let tips = this.show_comments;
+            this.run_cmd("co-showcomment", cx);
+            assert_eq!(this.pick_kind, "comment-show");
+            assert_eq!(this.pick.as_ref().unwrap().0.len(), 2);
+            assert_eq!(this.show_comments, tips, "選ぶ前に切り替わった");
+            assert!(this.comment_list.is_none());
+
+            // 小窓は選ぶたびに畳まれる(pick_kind が戻る)ので押し直す
+            this.apply_pick("list", cx);
+            assert!(this.comment_list.is_some(), "一覧が開かない");
+            assert_eq!(this.show_comments, tips, "付記まで巻き添えにした");
+
+            this.run_cmd("co-showcomment", cx);
+            this.apply_pick("tips", cx);
+            assert_ne!(this.show_comments, tips);
+            assert!(this.comment_list.is_some(), "一覧まで巻き添えにした");
+
+            this.run_cmd("co-showcomment", cx);
+            this.apply_pick("list", cx);
+            assert!(this.comment_list.is_none(), "もう一度で閉じない");
+        });
+    }
+
+    /// コメントの削除は3つの範囲。**「自分の」は筋ごと消さない** —
+    /// 他の人の返信は残す
+    #[gpui::test]
+    fn コメントの削除は現在と自分とすべて(cx: &mut gpui::TestAppContext) {
+        use sheet::model::{CommentEntry, CommentThread};
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        let entry = |who: &str, text: &str| CommentEntry {
+            who: who.into(),
+            when: String::new(),
+            text: text.into(),
+        };
+        c.update(cx, |this, _cx| {
+            this.add_sheet();
+            this.switch_sheet(0);
+            let a1 = Pos::parse("A1").unwrap();
+            let b2 = Pos::parse("B2").unwrap();
+            let put = |this: &mut Calc, si: usize, p: Pos, es: Vec<CommentEntry>| {
+                this.book.sheets[si].comments.insert(p, CommentThread { done: false, entries: es });
+            };
+            put(this, 0, a1, vec![entry("私", "頭"), entry("他人", "返信")]);
+            put(this, 0, b2, vec![entry("私", "私だけの筋")]);
+            put(this, 1, a1, vec![entry("他人", "他人の筋")]);
+
+            // 現在 = カーソルのセルだけ(いまのシート)
+            this.cursor = b2;
+            this.delete_comments_by("here", "私");
+            assert!(!this.book.sheets[0].comments.contains_key(&b2));
+            assert_eq!(this.book.sheets[0].comments.len(), 1);
+            this.undo_sheet();
+
+            // 自分 = 自分の発言だけ抜く。他人の返信が残った筋は消えない
+            this.delete_comments_by("mine", "私");
+            assert_eq!(
+                this.book.sheets[0].comments.get(&a1).map(|t| t.entries.len()),
+                Some(1),
+                "他人の返信まで消した"
+            );
+            assert_eq!(
+                this.book.sheets[0].comments.get(&a1).unwrap().text(),
+                "返信",
+                "頭が抜けたら残りが頭になる"
+            );
+            assert!(!this.book.sheets[0].comments.contains_key(&b2), "自分だけの筋が残った");
+            assert_eq!(this.book.sheets[1].comments.len(), 1, "他のシートの他人の筋まで消した");
+            this.undo_sheet();
+
+            // 名乗りが決まっていなければ何もしない(名無しを自分と決めつけない)
+            this.delete_comments_by("mine", "");
+            assert_eq!(this.book.sheets[0].comments.len(), 2, "名乗り無しで消えた");
+
+            // すべて = ブック全体
+            this.delete_comments_by("all", "");
+            assert!(this.book.sheets.iter().all(|s| s.comments.is_empty()));
+            this.undo_sheet();
+            assert_eq!(this.book.sheets[0].comments.len(), 2, "戻せない");
+            assert_eq!(this.book.sheets[1].comments.len(), 1, "他のシートが戻らない");
+        });
     }
 
     /// **見本のブックを開いた状態でも**全部のボタンが通る。
@@ -4345,6 +4434,84 @@ mod cycle_ref_tests {
 }
 
 #[cfg(test)]
+/// コメントの一覧の並べ替え(2026-08-13、台帳「並べ替え・削除範囲」)
+#[cfg(test)]
+mod comment_list_tests {
+    use crate::util::{sort_comments, CommentRow, CommentSort};
+    use sheet::model::Pos;
+
+    fn row(sheet: usize, a1: &str, who: &str, when: &str, done: bool) -> CommentRow {
+        CommentRow {
+            sheet,
+            at: Pos::parse(a1).unwrap(),
+            who: who.into(),
+            when: when.into(),
+            done,
+            text: a1.into(),
+            replies: 0,
+        }
+    }
+
+    fn keys(rows: &[CommentRow]) -> Vec<String> {
+        rows.iter().map(|r| format!("{}!{}", r.sheet, r.at.a1())).collect()
+    }
+
+    #[test]
+    fn 場所はシート順そのあとセル順() {
+        let mut r = vec![
+            row(1, "A1", "", "", false),
+            row(0, "B2", "", "", false),
+            row(0, "A3", "", "", false),
+        ];
+        // セル順は**読む順**(行が先、そのあと列)— B2 は A3 より上の行
+        sort_comments(&mut r, CommentSort::Place, false);
+        assert_eq!(keys(&r), ["0!B2", "0!A3", "1!A1"]);
+        sort_comments(&mut r, CommentSort::Place, true);
+        assert_eq!(keys(&r), ["1!A1", "0!A3", "0!B2"]);
+    }
+
+    /// **空の欄はいつも最後。** 降順にしても先頭へ来ない —
+    /// 名乗りの無い筋が頭に並ぶと、一覧が読めなくなる
+    #[test]
+    fn 名乗りの無い筋は昇順でも降順でも最後() {
+        let mut r = vec![
+            row(0, "A1", "", "", false),
+            row(0, "A2", "佐藤", "", false),
+            row(0, "A3", "鈴木", "", false),
+        ];
+        sort_comments(&mut r, CommentSort::Who, false);
+        assert_eq!(keys(&r), ["0!A2", "0!A3", "0!A1"]);
+        sort_comments(&mut r, CommentSort::Who, true);
+        assert_eq!(keys(&r), ["0!A3", "0!A2", "0!A1"], "空が先頭に来た");
+    }
+
+    #[test]
+    fn 日付は綴りの順で空は最後() {
+        let mut r = vec![
+            row(0, "A1", "", "2026-08-12T09:00:00Z", false),
+            row(0, "A2", "", "", false),
+            row(0, "A3", "", "2026-08-01T09:00:00Z", false),
+        ];
+        sort_comments(&mut r, CommentSort::When, false);
+        assert_eq!(keys(&r), ["0!A3", "0!A1", "0!A2"]);
+    }
+
+    /// 未解決が先(片づける相手が上に来る)
+    #[test]
+    fn 状態は未解決が先で同じなら場所の順() {
+        let mut r = vec![
+            row(0, "A1", "", "", true),
+            row(0, "A2", "", "", false),
+            row(0, "A3", "", "", false),
+        ];
+        sort_comments(&mut r, CommentSort::Done, false);
+        assert_eq!(keys(&r), ["0!A2", "0!A3", "0!A1"]);
+        // 同じ状態のときは場所で決まる = 並びが揺れない
+        sort_comments(&mut r, CommentSort::Done, true);
+        assert_eq!(keys(&r), ["0!A1", "0!A2", "0!A3"]);
+    }
+}
+
 mod slicer_tests {
     use crate::util::{slicer_items, slicer_cmp};
 

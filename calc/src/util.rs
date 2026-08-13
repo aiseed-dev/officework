@@ -1502,6 +1502,99 @@ pub(crate) fn cycle_ref_at(text: &str, cur: usize) -> Option<(String, usize)> {
     Some((out, start + next.len()))
 }
 
+/// コメントの一覧の並べ方(台帳 第2便の [中]、2026-08-13)。
+///
+/// 本家は「日付/著者/グループ/ステータス」の4択。**グループは置かない** —
+/// あれは文書サーバーに居る利用者の組の話で、手元のファイルには無い概念
+/// (「所有者・アップロード日」を作らなかったのと同じ理由)。
+/// 代わりに**場所**を入れた。帳票を上から追うときはこれがいちばん要る
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum CommentSort {
+    /// シート順 → セル順(既定)
+    Place,
+    /// 筋の頭を書いた日
+    When,
+    /// 筋の頭を書いた人
+    Who,
+    /// 未解決 → 解決済み
+    Done,
+}
+
+impl CommentSort {
+    /// 板の頭に出す札。**(鍵, 見出し)の組** — 鍵=日本語で引き当て、
+    /// 見出しだけが画面の言語になる(`ui::item!` の作法)
+    pub(crate) fn label(self) -> (&'static str, &'static str) {
+        match self {
+            CommentSort::Place => ui::item!("場所"),
+            CommentSort::When => ui::item!("日付"),
+            CommentSort::Who => ui::item!("著者"),
+            CommentSort::Done => ui::item!("状態"),
+        }
+    }
+}
+
+/// コメントの一覧の板(開いていれば並べ方を持つ)。
+pub(crate) struct CommentList {
+    pub(crate) sort: CommentSort,
+    /// 逆順に並べるか
+    pub(crate) desc: bool,
+}
+
+impl Default for CommentList {
+    fn default() -> Self {
+        Self { sort: CommentSort::Place, desc: false }
+    }
+}
+
+/// 一覧の1行。**画面にも試験にも同じ物を使う**ので、並べ替えは
+/// 描くところではなく [`sort_comments`] にある
+#[derive(Clone, PartialEq, Debug)]
+pub(crate) struct CommentRow {
+    /// どのシートか。**一覧はブック全体**(削除の「すべて」と範囲を揃える)
+    pub(crate) sheet: usize,
+    pub(crate) at: Pos,
+    /// 筋の頭を書いた人(空 = 名乗りが無い)
+    pub(crate) who: String,
+    /// 筋の頭の日(ISO8601 の綴りのまま。空 = 打ったばかり)
+    pub(crate) when: String,
+    pub(crate) done: bool,
+    /// 筋の頭の文
+    pub(crate) text: String,
+    /// 返信の数(頭は数えない)
+    pub(crate) replies: usize,
+}
+
+/// 一覧を並べ替える。
+///
+/// **空の欄はいつも最後**(降順でも先頭に来ない)— スライサーの「(空白)」と
+/// 同じ決め。名乗りや日付の無い筋が先頭に並ぶと、一覧が読めなくなる。
+///
+/// 同じ値のときは必ず**場所**で決める。並びが揺れると、消す相手を
+/// 押し間違える
+pub(crate) fn sort_comments(rows: &mut [CommentRow], sort: CommentSort, desc: bool) {
+    rows.sort_by(|a, b| {
+        let place = (a.sheet, a.at).cmp(&(b.sheet, b.at));
+        // 空を後ろへ回す比べ方(空同士は引き分け)
+        let blank_last = |x: &str, y: &str| match (x.is_empty(), y.is_empty()) {
+            (true, true) => std::cmp::Ordering::Equal,
+            // 空は「いつも最後」— desc で引っくり返さないよう、ここでは
+            // 印だけ返して下で扱う
+            _ => x.is_empty().cmp(&y.is_empty()),
+        };
+        let (blank, main) = match sort {
+            CommentSort::Place => (std::cmp::Ordering::Equal, place),
+            CommentSort::When => (blank_last(&a.when, &b.when), a.when.cmp(&b.when)),
+            CommentSort::Who => (blank_last(&a.who, &b.who), a.who.cmp(&b.who)),
+            CommentSort::Done => (std::cmp::Ordering::Equal, a.done.cmp(&b.done)),
+        };
+        if blank != std::cmp::Ordering::Equal {
+            return blank; // 空はここで決まる(逆順にしない)
+        }
+        let main = if desc { main.reverse() } else { main };
+        main.then(place)
+    });
+}
+
 /// スライサー(列の値をボタンで並べ、押して絞る)。**見え方だけ** —
 /// 絞り込みと同じで、保存される中身は変わらない。
 ///

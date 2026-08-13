@@ -79,6 +79,8 @@ impl Calc {
         "text-orient", "insert-function", "fn-math", "fn-text",
         "fn-logical", "fn-datetime", "fn-lookup", "fn-financial", "fn-more",
         "fn-recent", "sheet-view", "cell-styles",
+        // コメントは「表示のしかた」も「どこまで消すか」も小窓で選ぶ
+        "co-showcomment", "co-delcomment",
     ];
 
     /// シートの保護中でも通す操作(見るだけ・保存・保護の操作そのもの)
@@ -837,26 +839,55 @@ impl Calc {
                     }
                 }
             },
+            // 「コメントの表示」は2択の小窓に(2026-08-13、台帳「並べ替え」)。
+            // 一覧の板と、セルに出る付記は別の物 — 前は付記の入切だけだった
             "co-showcomment" => {
-                self.show_comments = !self.show_comments;
-                self.status = if self.show_comments {
-                    ui::t!("コメントを表示します").into()
-                } else {
-                    ui::t!("コメントを隠しました(付いてはいます)").into()
-                };
+                let items = vec![
+                    (
+                        "list".to_string(),
+                        if self.comment_list.is_some() {
+                            ui::t!("コメントの一覧を閉じる").to_string()
+                        } else {
+                            ui::t!("コメントの一覧を出す").to_string()
+                        },
+                    ),
+                    (
+                        "tips".to_string(),
+                        // **札は短く。** 小窓の幅を越えると切れて読めない
+                        // (実機で見た)。「付いたままです」は押したあとの
+                        // 状態行が言う
+                        if self.show_comments {
+                            ui::t!("セルの付記を隠す").to_string()
+                        } else {
+                            ui::t!("セルに付記を出す").to_string()
+                        },
+                    ),
+                ];
+                let at = self.pop_anchor();
+                self.pick_kind = "comment-show";
+                self.pick = Some((items, at));
             }
+            // 削除は範囲を選ばせる(本家の「現在/自分/すべて」)。
+            // **押した瞬間に消さない** — すべてはブック全体に効く
             "co-delcomment" => {
-                let p = self.cursor;
-                if self.sheet().comments.contains_key(&p) {
-                    self.checkpoint();
-                    self.book.sheets[self.active].comments.remove(&p);
-                    self.dirty = true;
-                    self.status =
-                        format!("{} のコメントを外しました(Ctrl+Z で戻せます)", p.a1())
-                            .into();
-                } else {
-                    self.status = ui::t!("このセルにコメントはありません").into();
-                }
+                let n_all: usize =
+                    self.book.sheets.iter().map(|s| s.comments.len()).sum();
+                let items = vec![
+                    (
+                        "here".to_string(),
+                        ui::tf!("このセルのコメント({})", self.cursor.a1()),
+                    ),
+                    ("mine".to_string(), ui::t!("自分のコメント").to_string()),
+                    (
+                        "all".to_string(),
+                        ui::tf!("すべてのコメント(ブック全体の {} 件)", n_all),
+                    ),
+                ];
+                let at = self.pop_anchor();
+                self.pick_note =
+                    Some(ui::t!("どこまで消すかを選ぶ(どれも Ctrl+Z で戻せます)").into());
+                self.pick_kind = "comment-del";
+                self.pick = Some((items, at));
             }
             // バージョン履歴。上書き保存のたびに .jo-history へ残る控えの一覧
             "co-history" => {

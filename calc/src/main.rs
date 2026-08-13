@@ -150,6 +150,8 @@ struct Calc {
     slicer: Option<Slicer>,
     /// コメントを見せるか(共同編集タブで切替。隠しても付いたまま)
     show_comments: bool,
+    /// コメントの一覧の板(開いていれば並べ方を持つ)。**ブック全体**を並べる
+    comment_list: Option<CommentList>,
     /// 暗号化のパスワード(次の保存から効く。開いた暗号化ブックからも入る)
     encrypt_pw: Option<String>,
     /// 「開くために聞いている」パスワード待ちのファイル
