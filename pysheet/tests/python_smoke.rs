@@ -51,7 +51,7 @@ fn python側から帳票を差し込める() {
     // test_gokan.py は互換層の適合検査 — openpyxl / python-docx が居る環境では
     // 本家と結果を突き合わせ、居なければその節を飛ばしたと言って通る。
     // test_shiyou.py は**本家の受け入れ仕様から起こした検査**(本家が居なくても回る)
-    for script in ["test.py", "test_doc.py", "test_gokan.py", "test_shiyou.py"] {
+    for script in ["test.py", "test_doc.py", "test_gokan.py", "test_shiyou.py", "test_tex.py"] {
         let out = Command::new("python3")
             .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(script))
             .env("PYTHONPATH", &dir)
