@@ -113,39 +113,3 @@ Using it inside your company — building forms, running ledgers, writing
 scripts — carries **no obligations at all**. Obligations appear only if you
 ship something built on it to third parties, or offer a modified version as a
 network service.
-
----
-
-## 日本語
-
-**帳票を壊さない xlsx / docx エンジン**です。`openpyxl` や `python-docx` と違い、
-罫線・結合・列幅・図形・様式・ヘッダーを保ったまま値を差し込めます。
-読めなかった物は `unsupported` に出るので、黙って落ちることはありません。
-
-```console
-$ pip install officework
-```
-
-```python
-from officework import sheet
-b = sheet.Book.open("様式7.xlsx")
-b["提案見積書"]["A30"] = "日本フネン株式会社"   # 書式は据え置き
-b.save("out.xlsx")
-
-from officework import doc
-d = doc.Doc.open("報告書.docx")
-print(d.unsupported)                   # 読めなかった物(黙って落とさない)
-d.replace("旧社名", "新社名")           # 段落の中の書式はそのまま
-d.save("out.docx")
-```
-
-詳しい説明は GitHub にあります。
-
-- [README.ja.md](https://github.com/aiseed-dev/officework/blob/main/README.ja.md) — 全体
-- [Python の手引き](https://github.com/aiseed-dev/officework/blob/main/docs/python-manual.ja.md) — 範囲⇄配列・=PY・openpyxl / xlwings / python-docx の語彙
-- [Excel からの乗り換え](https://github.com/aiseed-dev/officework/blob/main/docs/from-excel.ja.md)
-
-ライセンスは **AGPL-3.0-or-later**。**社内で使う分に義務はありません**
-(帳票を作る・台帳を回す・スクリプトを書く・社内に配る、いずれも自由)。
-義務が出るのは、これを組み込んだ物を社外へ配るときと、改造版をネットワーク
-越しの役務として外部に提供するときだけです。

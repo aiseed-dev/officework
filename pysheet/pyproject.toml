@@ -16,12 +16,12 @@ build-backend = "maturin"
 
 [project]
 name = "officework"
-description = "帳票を壊さない xlsx / docx エンジン(openpyxl・xlwings・python-docx の語彙で書ける)と、動いているオフィスソフトを Python から操る橋"
+description = "An openpyxl / python-docx / xlwings alternative: xlsx and docx engines that keep your forms intact and recalculate formulas, plus a bridge to a running office app"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "AGPL-3.0-or-later"
 authors = [{ name = "Yasuhiro Niji" }]
-keywords = ["xlsx", "excel", "spreadsheet", "office", "xlwings"]
+keywords = ["xlsx", "docx", "excel", "word", "spreadsheet", "office", "openpyxl", "python-docx", "xlwings"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: End Users/Desktop",
