@@ -505,7 +505,7 @@ OVERRIDES = {
         "読み取り専用を勧める": "Suggérer la lecture seule",
         "関数を編集": "Modifier la fonction",
     },
-    "pt-BR": {
+    "pt-br": {
         # ブラジル**だけ**を分ける札(2026-08-11 発注者)
         # 本家のブラジル語そのものが誤っていた3語。ブラジル語としても
         # 誤りなので、欧州版と一緒に直す(2026-08-11):
@@ -693,11 +693,10 @@ OVERRIDES = {
 }
 
 
-# 本家の綴りがこちらと違うもの。**ポルトガル語は札の意味が逆** —
-# 向こうの `pt.json` はブラジル、`pt-pt.json` が欧州。こちらは
-# 「分岐しているブラジルだけに札を付ける」と決めたので、
-# `pt`=欧州 / `pt-BR`=ブラジル(2026-08-11 発注者。sekkei/calc.ja.md)
-VENDOR_LOCALE = {"pt": "pt-pt", "pt-BR": "pt"}
+# 本家の綴りがこちらと違うもの。中身と経緯は正本 ui/locales.py に —
+# ポルトガル語は札の意味が逆(向こうの pt.json はブラジル)
+import locales
+VENDOR_LOCALE = locales.VENDOR
 
 
 def load(app, loc):

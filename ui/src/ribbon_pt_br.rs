@@ -1,10 +1,10 @@
-//! リボンの pt-BR 版 — **語だけが ja(ribbon.rs)と違う**。
+//! リボンの pt-br 版 — **語だけが ja(ribbon.rs)と違う**。
 //! id・並び・ready・icon は ja と同一(ribbon.rs の試験が保証する)。
 //!
 //! このファイルは手で書かない:
 //!
 //! ```text
-//! python3 ui/gen_ribbon_locale.py pt-BR > ui/src/ribbon_pt-BR.rs
+//! python3 ui/gen_ribbon_locale.py pt-br > ui/src/ribbon_pt-br.rs
 //! ```
 //!
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの

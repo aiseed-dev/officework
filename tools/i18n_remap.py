@@ -19,7 +19,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 I18N = ROOT / "ui/i18n"
+sys.path.insert(0, str(ROOT / "ui"))
+import locales  # noqa: E402  綴りの正本
 LOCALES = sorted(p.stem for p in I18N.glob("*.json") if p.stem != "keys")
+for _l in LOCALES:
+    if _l not in locales.TAGS:
+        sys.exit(f"正本に無い材料があります: ui/i18n/{_l}.json"
+                 f"(ui/locales.py の TAGS に足すか、名前を直す)")
 
 
 def load(p):

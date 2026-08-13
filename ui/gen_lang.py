@@ -34,6 +34,7 @@ EN_TABLE = ROOT / "lang/src/i18n_en.rs"
 
 sys.path.insert(0, str(HERE))
 import gen_ribbon_locale as grl  # noqa: E402
+import locales  # noqa: E402  綴りの正本(札・module・vendor はここだけが知る)
 
 
 # ---- 材料の鍵(番号 → 原文)------------------------------------------------
@@ -114,21 +115,24 @@ def holes(s):
 # ---- 生成 -------------------------------------------------------------------
 
 def mod_name(loc):
-    """ロケール札 → Rust の module 名。**小文字に落とす** — `pt-BR` を
-    そのまま繋ぐと `i18n_pt_BR` になり、rustc が non_snake_case で警告する。
-    CI は警告を誤りとして扱うので、そこで初めて気づくことになる
-    (2026-08-11、pt-BR を足して踏んだ)"""
-    return loc.replace("-", "_").lower()
+    """ロケール札 → Rust の module 名。変換の正本は ui/locales.py —
+    小文字落とし(pt-BR → i18n_pt_BR 警告、2026-08-11)は札の側で保証される"""
+    return locales.module(loc)
 
 
 def registered():
-    """生成済みの言語(en + ribbon/i18n の対が揃っているもの)"""
+    """生成済みの言語(en + ribbon/i18n の対が揃っているもの)。
+    正本(locales.TAGS)に無い物が生えていたら止める — 綴り違いの
+    ファイルが静かにもう1組できるのが、この正本が防ぐ事故そのもの"""
     langs = []
     for p in sorted((ROOT / "ui/src").glob("ribbon_*.rs")):
         if p.name == "ribbon_tables.rs":
             continue
         m = p.stem[len("ribbon_"):]
         loc = m.replace("_", "-")
+        if loc not in locales.TAGS:
+            sys.exit(f"正本に無いロケールのファイルがあります: {p.name}"
+                     f"(ui/locales.py の TAGS に足すか、ファイルを消す)")
         if (ROOT / f"lang/src/i18n_{m}.rs").exists():
             langs.append(loc)
     return langs
@@ -296,6 +300,7 @@ def main():
     if "--validate" in sys.argv:
         # 生成せず訳だけ検査(並列の翻訳作業向け — 共有ファイルに触れない)
         for loc in [a for a in sys.argv[1:] if not a.startswith("-")]:
+            loc = locales.canonical(loc)
             load_translations(loc)
             print(f"{loc}: 訳は完全です(生成は gen_lang.py {loc} で)")
         return
@@ -304,7 +309,7 @@ def main():
             n = check_table(l)
             print(f"{l}: OK({n} 句)")
         return
-    locs = [a for a in sys.argv[1:] if not a.startswith("-")]
+    locs = [locales.canonical(a) for a in sys.argv[1:] if not a.startswith("-")]
     if not locs:
         sys.exit("使い方: gen_lang.py <locale>… | --todo | --check")
     for loc in locs:
