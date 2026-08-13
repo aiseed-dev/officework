@@ -393,7 +393,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("統計", "Statistik"),
     ("図形・画像の操作", "Formen und Bilder verschieben"),
     ("→ 並べ替え…", "→ Sortieren…"),
-    ("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Spalte für den Datenschnitt wählen (immer nur einer; nur die Anzeige, die Daten bleiben unverändert)"),
     ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Datenschnitt: zum Filtern einen Wert in Spalte {} anklicken (≡ = Mehrfachauswahl / ✕ = löschen; nur die Anzeige, die Daten bleiben unverändert)"),
     ("並べ替えない", "Keine Sortierung"),
     ("見出しの昇順", "Beschriftungen aufsteigend"),
@@ -1598,4 +1597,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("このブックにコメントはありません(右クリックの「コメントを追加」で付きます)", "Diese Arbeitsmappe enthält keine Kommentare (mit „Kommentar hinzufügen“ im Rechtsklickmenü hinzufügen)"),
     ("返信 {}", "{} Antworten"),
     ("✓ 解決済み", "✓ Gelöst"),
+    ("スライサーにする列を選ぶ(何枚でも。☑ を押すと閉じる。見え方だけで、中身は変わりません)", "Spalten für Datenschnitte wählen (beliebig viele; ein ☑ antippen schließt ihn; nur die Anzeige, die Daten bleiben unverändert)"),
+    ("{} 列のスライサーを閉じました", "Datenschnitt für Spalte {} geschlossen"),
 ];

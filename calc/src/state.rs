@@ -42,7 +42,8 @@ impl Calc {
             menu_head: None,
             solver: None,
             sa_cat: 0,
-            slicer: None,
+            slicers: Vec::new(),
+            slicer_sel: 0,
             show_comments: true,
             comment_list: None,
             pick_paths: Vec::new(),
@@ -477,19 +478,53 @@ impl Calc {
     }
 
     /// スライサーで残る行か(選びが空なら全部残る)。1行目=見出しは常に残す。
+    ///
+    /// **板が何枚あっても、全部の板を通った行だけ残る**(かつ)。
+    /// Excel と同じ — 「品目=りんご」と「店=北」を別々の板で押したら
+    /// 両方に当てはまる行だけが見える
     pub(crate) fn slicer_keeps(&self, r: u32) -> bool {
-        let Some(sl) = &self.slicer else { return true };
-        let (col, sel) = (&sl.col, &sl.sel);
-        if sel.is_empty() || r == 0 {
+        if r == 0 {
+            return true; // 見出しの行は常に残す
+        }
+        self.slicers.iter().all(|sl| self.slicer_keeps_one(sl, r))
+    }
+
+    /// 板1枚ぶんの判定([`Self::slicer_keeps`] の中身)
+    pub(crate) fn slicer_keeps_one(&self, sl: &Slicer, r: u32) -> bool {
+        if sl.sel.is_empty() {
             return true;
         }
         let v = self
             .sheet()
-            .get(Pos::new(r, *col))
+            .get(Pos::new(r, sl.col))
             .map(|c| c.value.display())
             .unwrap_or_default();
         let v = if v.is_empty() { ui::t!("(空白)").to_string() } else { v };
-        sel.contains(&v)
+        sl.sel.contains(&v)
+    }
+
+    /// いま触っている板を1枚閉じる(Esc)。閉じたら true。
+    pub(crate) fn close_slicer(&mut self) -> bool {
+        if self.slicers.is_empty() {
+            return false;
+        }
+        let i = self.slicer_sel.min(self.slicers.len() - 1);
+        let col = self.slicers.remove(i).col;
+        self.slicer_sel = i.min(self.slicers.len().saturating_sub(1));
+        self.status = ui::tf!("{} 列のスライサーを閉じました", col_name(col)).into();
+        true
+    }
+
+    /// いま触っている板。**番号がずれていたら最後の板**に寄せる —
+    /// 板を閉じたあとに Alt+S が何も起こさないのを避ける
+    pub(crate) fn slicer_cur(&mut self) -> Option<&mut Slicer> {
+        if self.slicers.is_empty() {
+            return None;
+        }
+        if self.slicer_sel >= self.slicers.len() {
+            self.slicer_sel = self.slicers.len() - 1;
+        }
+        self.slicers.get_mut(self.slicer_sel)
     }
 
     /// 窓に入る行数。**セルの大きさは固定**で、窓が大きいほど多くの行が
@@ -554,7 +589,7 @@ impl Calc {
                 .take(fit as usize)
                 .collect();
         }
-        if self.slicer.as_ref().is_some_and(|sl| !sl.sel.is_empty()) {
+        if self.slicers.iter().any(|sl| !sl.sel.is_empty()) {
             // スライサーで絞る: 見出し+選んだ値の行(絞り込みと同じ流儀)
             let (rows, _) = self.sheet().extent();
             (0..rows)

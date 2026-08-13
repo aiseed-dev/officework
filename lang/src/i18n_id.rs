@@ -393,7 +393,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("統計", "Statistik"),
     ("図形・画像の操作", "Pindahkan bentuk dan gambar"),
     ("→ 並べ替え…", "→ Urutkan…"),
-    ("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Pilih kolom untuk slicer (satu per satu; tampilan saja, datanya tidak berubah)"),
     ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Slicer: tekan sebuah nilai di kolom {} untuk menyaring (≡ = pilihan ganda / ✕ = bersihkan; tampilan saja, datanya tidak berubah)"),
     ("並べ替えない", "Tanpa pengurutan"),
     ("見出しの昇順", "Label menaik"),
@@ -1598,4 +1597,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("このブックにコメントはありません(右クリックの「コメントを追加」で付きます)", "Buku kerja ini tidak memiliki komentar (tambahkan lewat “Tambah komentar” pada menu klik kanan)"),
     ("返信 {}", "{} balasan"),
     ("✓ 解決済み", "✓ Terselesaikan"),
+    ("スライサーにする列を選ぶ(何枚でも。☑ を押すと閉じる。見え方だけで、中身は変わりません)", "Pilih kolom untuk slicer (sebanyak yang Anda mau; tekan ☑ untuk menutupnya; tampilan saja, datanya tidak berubah)"),
+    ("{} 列のスライサーを閉じました", "Slicer kolom {} ditutup"),
 ];

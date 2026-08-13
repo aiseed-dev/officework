@@ -393,7 +393,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("統計", "İstatistiksel"),
     ("図形・画像の操作", "Şekilleri ve görselleri taşıma"),
     ("→ 並べ替え…", "→ Sırala…"),
-    ("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Dilimleyici yapılacak sütunu seçin (her seferinde bir tane; yalnız görünüm, veriler değişmez)"),
     ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Dilimleyici: süzmek için {} sütunundaki bir değere basın (≡ = çoklu seçim / ✕ = temizle; yalnız görünüm, veriler değişmez)"),
     ("並べ替えない", "Sıralama yok"),
     ("見出しの昇順", "Etiketler artan sırada"),
@@ -1598,4 +1597,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("このブックにコメントはありません(右クリックの「コメントを追加」で付きます)", "Bu çalışma kitabında yorum yok (sağ tık menüsündeki “Yorum ekle” ile eklenir)"),
     ("返信 {}", "{} yanıt"),
     ("✓ 解決済み", "✓ Çözüldü"),
+    ("スライサーにする列を選ぶ(何枚でも。☑ を押すと閉じる。見え方だけで、中身は変わりません)", "Dilimleyici yapılacak sütunları seçin (istediğiniz kadar; kapatmak için ☑ işaretine dokunun; yalnız görünüm, veriler değişmez)"),
+    ("{} 列のスライサーを閉じました", "{} sütununun dilimleyicisi kapatıldı"),
 ];

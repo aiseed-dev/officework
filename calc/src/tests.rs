@@ -4876,7 +4876,7 @@ mod slicer_col_tests {
             this.sync_input();
             this.run_cmd("insslicer", cx);
             // **一覧が出るだけでは板は出ない**
-            assert!(this.slicer.is_none(), "選ぶ前にスライサーが出ている");
+            assert!(this.slicers.is_empty(), "選ぶ前にスライサーが出ている");
             let items = this.pick.as_ref().expect("列の一覧が出ない").0.clone();
             assert!(
                 items.iter().any(|(k, l)| k == "B" && l.contains("金額")),
@@ -4884,7 +4884,59 @@ mod slicer_col_tests {
             );
             // カーソルは A 列だが、B を選べば B になる(黙ってカーソルを使わない)
             this.apply_pick("B", cx);
-            assert_eq!(this.slicer.as_ref().map(|s| s.col), Some(1), "選んだ列にならない");
+            assert_eq!(this.slicers.first().map(|s| s.col), Some(1), "選んだ列にならない");
+        });
+    }
+
+    /// **板は何枚でも開く。** 絞りは全部の板を通った行だけ残る(かつ)。
+    /// 同じ列をもう一度選ぶとその板が閉じる(一覧の ☑ を外す)
+    #[gpui::test]
+    fn スライサーは何枚でも開いてかつで絞る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            // 見出し + 4行(品目 × 店)
+            let rows = [
+                ("品目", "店"),
+                ("りんご", "北"),
+                ("りんご", "南"),
+                ("みかん", "北"),
+                ("みかん", "南"),
+            ];
+            for (r, (a, b)) in rows.iter().enumerate() {
+                this.book.sheets[0].set(Pos::new(r as u32, 0), sheet::Cell::input(a));
+                this.book.sheets[0].set(Pos::new(r as u32, 1), sheet::Cell::input(b));
+            }
+            let keeps = |this: &Calc| -> Vec<u32> {
+                (1..5).filter(|r| this.slicer_keeps(*r)).collect()
+            };
+
+            this.run_cmd("insslicer", cx);
+            this.apply_pick("A", cx);
+            this.run_cmd("insslicer", cx);
+            this.apply_pick("B", cx);
+            assert_eq!(this.slicers.len(), 2, "2枚目が開かない");
+            assert_eq!(keeps(this), vec![1, 2, 3, 4], "選ぶ前から絞っている");
+
+            this.slicers[0].sel.insert("りんご".into());
+            assert_eq!(keeps(this), vec![1, 2]);
+            this.slicers[1].sel.insert("南".into());
+            assert_eq!(keeps(this), vec![2], "かつになっていない");
+            // 見出しの行は板が何枚あっても残る
+            assert!(this.slicer_keeps(0));
+
+            // 一覧で同じ列をもう一度 = その板を閉じる。残った板の絞りは効いたまま
+            this.run_cmd("insslicer", cx);
+            let items = this.pick.as_ref().unwrap().0.clone();
+            assert!(items.iter().any(|(k, l)| k == "A" && l.starts_with('☑')), "☑ が付かない: {items:?}");
+            this.apply_pick("A", cx);
+            assert_eq!(this.slicers.len(), 1);
+            assert_eq!(keeps(this), vec![2, 4], "残った板の絞りが消えた");
+
+            // Esc は1枚ずつ閉じる(Esc の道はこれを呼ぶ)
+            assert!(this.close_slicer());
+            assert!(this.slicers.is_empty());
+            assert!(!this.close_slicer(), "無い板を閉じたと言った");
+            assert_eq!(keeps(this), vec![1, 2, 3, 4]);
         });
     }
 }

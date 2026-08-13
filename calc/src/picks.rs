@@ -382,13 +382,21 @@ impl Calc {
             // スライサーにする列を選んだ(2026-08-13)
             "slicer-col" => {
                 let Some(col) = (0..256).find(|c| crate::col_name(*c) == v) else { return };
-                self.slicer = Some(Slicer {
+                // 同じ列をもう一度選んだら**その板を閉じる**(☑ を外す)
+                if let Some(i) = self.slicers.iter().position(|s| s.col == col) {
+                    self.slicers.remove(i);
+                    self.slicer_sel = self.slicer_sel.min(self.slicers.len().saturating_sub(1));
+                    self.status = ui::tf!("{} 列のスライサーを閉じました", crate::col_name(col)).into();
+                    return;
+                }
+                self.slicers.push(Slicer {
                     col,
                     sel: Default::default(),
                     multi: false,
                     desc: false,
                     hide_empty: false,
                 });
+                self.slicer_sel = self.slicers.len() - 1;
                 self.status = ui::tf!(
                     "スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)",
                     crate::col_name(col)
@@ -2816,7 +2824,9 @@ impl Calc {
         self.shape_multi.clear();
         if self.filter_panel.take().is_some()
             || self.solver.take().is_some()
-            || self.slicer.take().is_some()
+            // Esc は**いま触っている板を1枚ずつ**閉じる — 何枚でも開ける
+            // 造りになったので、まとめて畳むと押し間違いで全部消える
+            || self.close_slicer()
             || self.prompt.take().is_some()
             || self.pick.take().is_some()
             || self.menu_sub.take().is_some()

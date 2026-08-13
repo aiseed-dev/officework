@@ -1125,12 +1125,15 @@ impl Calc {
             // スライサー。カーソルの列の一意な値をボタンで並べ、押して絞る。
             // 絞り込みと同じく**見え方だけ**(保存される中身は変わらない)
             "insslicer" => {
-                if self.slicer.take().is_none() {
+                {
                     self.commit();
                     // **どの列にするかを選ばせる。** 前はカーソルの列を
                     // 黙って使っていたので、押した人は自分がどの列を
                     // スライサーにしたのか分からなかった(2026-08-13、
-                    // 台帳「スライサー挿入時の列チェック」)
+                    // 台帳「スライサー挿入時の列チェック」)。
+                    // **開いている列には ☑ を付け、押すとその板を閉じる** —
+                    // 何枚でも開ける造りになったので、開ける口と閉じる口を
+                    // 同じ一覧にした(2026-08-13、台帳「複数列」)
                     let (rows, cols) = self.sheet().extent();
                     if rows < 2 {
                         self.status =
@@ -1151,12 +1154,14 @@ impl Calc {
                                 } else {
                                     format!("{name}: {head}")
                                 };
-                                (name, label)
+                                // ☑/☐ は apply_pick が剥がしてから照合する
+                                let on = self.slicers.iter().any(|s| s.col == c);
+                                (name, format!("{} {label}", if on { "☑" } else { "☐" }))
                             })
                             .collect();
                         let at = self.pop_anchor();
                         self.pick_note =
-                            Some(ui::t!("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)").into());
+                            Some(ui::t!("スライサーにする列を選ぶ(何枚でも。☑ を押すと閉じる。見え方だけで、中身は変わりません)").into());
                         self.pick_kind = "slicer-col";
                         self.pick = Some((items, at));
                     }

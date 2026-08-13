@@ -396,7 +396,6 @@ pub const TABLE: &[(&str, &str)] = &[
 ("統計", "Statistics"),
 ("図形・画像の操作", "Moving shapes and pictures"),
 ("→ 並べ替え…", "→ Sort…"),
-("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Pick the column to slice by (one at a time; this only changes what you see, not the data)"),
 ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Slicer: tap a value in column {} to filter (≡ = pick several / ✕ = clear; this only changes what you see, not the data)"),
 ("並べ替えない", "Do not sort"),
 ("見出しの昇順", "Labels A to Z"),
@@ -1601,4 +1600,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("このブックにコメントはありません(右クリックの「コメントを追加」で付きます)", "This workbook has no comments (add one with “Add comment” on the right-click menu)"),
     ("返信 {}", "{} replies"),
     ("✓ 解決済み", "✓ Resolved"),
+    ("スライサーにする列を選ぶ(何枚でも。☑ を押すと閉じる。見え方だけで、中身は変わりません)", "Pick the columns for slicers (as many as you like; tap a ☑ to close that one; this only changes what you see, not the data)"),
+    ("{} 列のスライサーを閉じました", "Closed the slicer on column {}"),
 ];

@@ -393,7 +393,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("統計", "Thống kê"),
     ("図形・画像の操作", "Di chuyển hình và ảnh"),
     ("→ 並べ替え…", "→ Sắp xếp…"),
-    ("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Hãy chọn cột để làm slicer (mỗi lần một cái; chỉ cách hiển thị, dữ liệu không đổi)"),
     ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Slicer: bấm một giá trị ở cột {} để lọc (≡ = chọn nhiều / ✕ = bỏ lọc; chỉ cách hiển thị, dữ liệu không đổi)"),
     ("並べ替えない", "Không sắp xếp"),
     ("見出しの昇順", "Nhãn tăng dần"),
@@ -1598,4 +1597,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("このブックにコメントはありません(右クリックの「コメントを追加」で付きます)", "Sổ làm việc này không có chú thích nào (thêm bằng “Thêm chú thích” trong menu chuột phải)"),
     ("返信 {}", "{} trả lời"),
     ("✓ 解決済み", "✓ Đã giải quyết"),
+    ("スライサーにする列を選ぶ(何枚でも。☑ を押すと閉じる。見え方だけで、中身は変わりません)", "Hãy chọn các cột để làm slicer (bao nhiêu tùy ý; bấm vào ☑ để đóng slicer đó; chỉ cách hiển thị, dữ liệu không đổi)"),
+    ("{} 列のスライサーを閉じました", "Đã đóng slicer của cột {}"),
 ];

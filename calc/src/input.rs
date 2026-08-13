@@ -798,27 +798,25 @@ impl Calc {
     /// **板が開いている間だけの鍵。** 開いていないときは黙らずにそう言う —
     /// 押して何も起きないと、効かないのか開いていないのか分からない
     pub(crate) fn a_slicer_multi(&mut self, _: &ui::SlicerMulti, _: &mut Window, cx: &mut Context<Self>) {
-        match &mut self.slicer {
-            Some(sl) => {
-                sl.multi = !sl.multi;
-                self.status = if sl.multi {
-                    ui::t!("複数選択: 押した値を重ねて絞ります").into()
-                } else {
-                    ui::t!("単数選択: 押した値ひとつで絞ります").into()
-                };
-            }
-            None => self.status = Self::no_slicer_msg().into(),
-        }
+        // 効くのは**いま触っている板**(何枚でも開ける造りになったので)
+        let now = self.slicer_cur().map(|sl| {
+            sl.multi = !sl.multi;
+            sl.multi
+        });
+        self.status = match now {
+            Some(true) => ui::t!("複数選択: 押した値を重ねて絞ります").into(),
+            Some(false) => ui::t!("単数選択: 押した値ひとつで絞ります").into(),
+            None => Self::no_slicer_msg().into(),
+        };
         cx.notify();
     }
     pub(crate) fn a_slicer_clear(&mut self, _: &ui::SlicerClear, _: &mut Window, cx: &mut Context<Self>) {
-        match &mut self.slicer {
-            Some(sl) => {
-                sl.sel.clear();
-                self.status = ui::t!("スライサーの絞りを解除しました").into();
-            }
-            None => self.status = Self::no_slicer_msg().into(),
-        }
+        let hit = self.slicer_cur().map(|sl| sl.sel.clear()).is_some();
+        self.status = if hit {
+            ui::t!("スライサーの絞りを解除しました").into()
+        } else {
+            Self::no_slicer_msg().into()
+        };
         cx.notify();
     }
     pub(crate) fn no_slicer_msg() -> String {

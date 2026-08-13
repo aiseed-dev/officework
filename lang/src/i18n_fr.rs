@@ -393,7 +393,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("統計", "Statistiques"),
     ("図形・画像の操作", "Déplacer les formes et les images"),
     ("→ 並べ替え…", "→ Trier…"),
-    ("スライサーにする列を選ぶ(1枚ずつ。見え方だけで、中身は変わりません)", "Choisissez la colonne du segment (un à la fois ; affichage seulement, les données sont inchangées)"),
     ("スライサー: {} 列の値を押して絞る(≡=複数選択 / ✕=解除。見え方だけで、中身は変わりません)", "Segment : pressez une valeur de la colonne {} pour filtrer (≡ = sélection multiple / ✕ = effacer ; affichage seulement, les données sont inchangées)"),
     ("並べ替えない", "Aucun tri"),
     ("見出しの昇順", "Étiquettes par ordre croissant"),
@@ -1598,4 +1597,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("このブックにコメントはありません(右クリックの「コメントを追加」で付きます)", "Ce classeur ne contient aucun commentaire (ajoutez-en un avec « Ajouter un commentaire » du menu contextuel)"),
     ("返信 {}", "{} réponses"),
     ("✓ 解決済み", "✓ Résolu"),
+    ("スライサーにする列を選ぶ(何枚でも。☑ を押すと閉じる。見え方だけで、中身は変わりません)", "Choisissez les colonnes des segments (autant que vous voulez ; touchez un ☑ pour le fermer ; affichage seulement, les données sont inchangées)"),
+    ("{} 列のスライサーを閉じました", "Segment de la colonne {} fermé"),
 ];

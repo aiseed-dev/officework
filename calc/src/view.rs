@@ -4172,9 +4172,13 @@ impl Render for Calc {
         });
 
         // ---- スライサーの小窓(列の値のボタンで絞る) ----
-        let slicer_panel = self.slicer.as_ref().map(|sl| {
+        // **何枚でも並ぶ**(2026-08-13)。右から順に置き、いま触っている板は
+        // 縁を太くする(Alt+S / Alt+C / Esc はその板に効く)
+        let slicer_sel = self.slicer_sel.min(self.slicers.len().saturating_sub(1));
+        let slicer_panels: Vec<gpui::AnyElement> = self.slicers.iter().enumerate().map(|(si, sl)| {
             let (col, multi, sel) = (sl.col, sl.multi, &sl.sel);
             let (desc, hide_empty) = (sl.desc, sl.hide_empty);
+            let cur = si == slicer_sel;
             // 見出し(1行目)と、その下の一意な値。空欄は「(空白)」で最後に
             let head = self
                 .sheet()
@@ -4184,7 +4188,8 @@ impl Render for Calc {
                 .unwrap_or_else(|| ui::tf!("列{}", col_name(col)));
             let (rows, _) = self.sheet().extent();
             // 各行の値と、**このスライサー以外の絞りで今その行が見えているか**。
-            // 自分の選びを混ぜない — 混ぜると選んだ途端に他の値が消えて戻せない
+            // 自分の選びを混ぜない — 混ぜると選んだ途端に他の値が消えて戻せない。
+            // **「他の絞り」には他の板も入る**(板が増えたので。2026-08-13)
             let hidden = &self.sheet().row_hidden;
             let src: Vec<(String, bool)> = (1..rows)
                 .map(|r| {
@@ -4193,30 +4198,47 @@ impl Render for Calc {
                         .get(Pos::new(r, col))
                         .map(|c| c.value.display())
                         .unwrap_or_default();
-                    (v, !hidden.contains(&r) && self.filter_keeps(r))
+                    let others = self
+                        .slicers
+                        .iter()
+                        .enumerate()
+                        .all(|(j, o)| j == si || self.slicer_keeps_one(o, r));
+                    (v, !hidden.contains(&r) && self.filter_keeps(r) && others)
                 })
                 .collect();
             let (items, cut) = slicer_items(&src, desc, hide_empty);
-            let mut p = div().absolute().right(px(24.0)).top(px(ROW_H + 16.0)).w(px(us * 190.0))
+            // 右から順に並べる(1枚目がいちばん右)
+            let w = us * 190.0;
+            let mut p = div().id(SharedString::from(format!("slicer{si}")))
+                .absolute().right(px(24.0 + si as f32 * (w + 8.0))).top(px(ROW_H + 16.0)).w(px(w))
                 .p_2().rounded_md().bg(gpui::white())
-                .border_1().border_color(rgb(0x1B6E3C)).shadow_lg()
+                .border_color(if cur { rgb(0x1B6E3C) } else { rgb(0xA9BDB0) })
+                .shadow_lg()
                 .flex().flex_col().gap_1()
-                .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                // どこを押しても**その板がいまの板になる**(Alt+S / Esc の相手)
+                .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                    cx.stop_propagation();
+                    this.slicer_sel = si;
+                    cx.notify();
+                }))
                 .child(div().flex().flex_row().items_center()
                     .child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                         .whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(head)))
                     .child(div().flex_1())
                     // ↑↓ = 並び順。**数だけの値は数として並ぶ**(10 が 2 の後)
-                    .child(div().id("sl-sort").px_1p5().rounded_sm().cursor_pointer()
+                    .child(div().id(SharedString::from(format!("sl-sort{si}")))
+                        .px_1p5().rounded_sm().cursor_pointer()
                         .text_size(px(us * 12.5))
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
                         .child(if desc { "↓" } else { "↑" })
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
-                            if let Some(sl) = &mut this.slicer {
+                            this.slicer_sel = si;
+                            if let Some(sl) = this.slicers.get_mut(si) {
                                 sl.desc = !sl.desc;
-                                this.status = if sl.desc {
+                                let desc = sl.desc;
+                                this.status = if desc {
                                     ui::t!("降順(大きい・後ろの値から)").into()
                                 } else {
                                     ui::t!("昇順(小さい・前の値から)").into()
@@ -4225,16 +4247,19 @@ impl Render for Calc {
                             cx.notify();
                         })))
                     // ⊘ = 他の絞りで一行も残っていない値を並べない
-                    .child(div().id("sl-hide-empty").px_1p5().rounded_sm().cursor_pointer()
+                    .child(div().id(SharedString::from(format!("sl-hide-empty{si}")))
+                        .px_1p5().rounded_sm().cursor_pointer()
                         .text_size(px(us * 12.5))
                         .bg(if hide_empty { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
                         .child("⊘")
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
-                            if let Some(sl) = &mut this.slicer {
+                            this.slicer_sel = si;
+                            if let Some(sl) = this.slicers.get_mut(si) {
                                 sl.hide_empty = !sl.hide_empty;
-                                this.status = if sl.hide_empty {
+                                let on = sl.hide_empty;
+                                this.status = if on {
                                     ui::t!("いま一行も無い値は並べません").into()
                                 } else {
                                     ui::t!("いま一行も無い値も並べます").into()
@@ -4243,16 +4268,19 @@ impl Render for Calc {
                             cx.notify();
                         })))
                     // ≡ = 複数選択の入切(本家のスライサーと同じ並び)
-                    .child(div().id("sl-multi").px_1p5().rounded_sm().cursor_pointer()
+                    .child(div().id(SharedString::from(format!("sl-multi{si}")))
+                        .px_1p5().rounded_sm().cursor_pointer()
                         .text_size(px(us * 12.5))
                         .bg(if multi { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
                         .child("≡")
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
-                            if let Some(sl) = &mut this.slicer {
+                            this.slicer_sel = si;
+                            if let Some(sl) = this.slicers.get_mut(si) {
                                 sl.multi = !sl.multi;
-                                this.status = if sl.multi {
+                                let on = sl.multi;
+                                this.status = if on {
                                     ui::t!("複数選択: 押した値を重ねて絞ります").into()
                                 } else {
                                     ui::t!("単数選択: 押した値ひとつで絞ります").into()
@@ -4260,18 +4288,22 @@ impl Render for Calc {
                             }
                             cx.notify();
                         })))
-                    // ✕ = 選びを解除(全部見せる)
-                    .child(div().id("sl-clear").px_1p5().rounded_sm().cursor_pointer()
+                    // ✕ = 選びを解除(全部見せる)。**板は閉じない** —
+                    // 閉じるのは Esc かリボンの一覧の ☑
+                    .child(div().id(SharedString::from(format!("sl-clear{si}")))
+                        .px_1p5().rounded_sm().cursor_pointer()
                         .text_size(px(us * 12.5)).hover(|s| s.bg(rgb(0xEAF5EE)))
                         .child("✕")
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
-                            if let Some(sl) = &mut this.slicer {
+                            this.slicer_sel = si;
+                            if let Some(sl) = this.slicers.get_mut(si) {
                                 sl.sel.clear();
                             }
                             this.status = ui::t!("スライサーの絞りを解除しました").into();
                             cx.notify();
                         }))));
+            p = if cur { p.border_2() } else { p.border_1() };
             if items.is_empty() {
                 p = p.child(div().px_2().py_1().text_size(px(us * 12.0))
                     .text_color(rgb(0x6B7680))
@@ -4280,7 +4312,7 @@ impl Render for Calc {
             for (i, v) in items.into_iter().enumerate() {
                 let on = sel.contains(&v);
                 p = p.child(div()
-                    .id(SharedString::from(format!("sl{i}")))
+                    .id(SharedString::from(format!("sl{si}-{i}")))
                     .px_2().py_1().rounded_sm().border_1()
                     .border_color(rgb(0xC6CDD3))
                     .bg(if on { rgb(0xBBD9EA) } else { rgb(0xFFFFFF) })
@@ -4290,7 +4322,8 @@ impl Render for Calc {
                     .child(SharedString::from(v.clone()))
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                         cx.stop_propagation();
-                        if let Some(Slicer { sel, multi, .. }) = &mut this.slicer {
+                        this.slicer_sel = si;
+                        if let Some(Slicer { sel, multi, .. }) = this.slicers.get_mut(si) {
                             if *multi {
                                 if !sel.remove(&v) {
                                     sel.insert(v.clone());
@@ -4316,8 +4349,8 @@ impl Render for Calc {
                     .text_color(rgb(0x6B7680))
                     .child(ui::tf!("ほか {} 件は並べていません(64 件まで)", cut)));
             }
-            p
-        });
+            p.into_any_element()
+        }).collect();
 
         // ---- 図形の設定(選ぶと右に出る) ----
         // 塗り・線・太さ・不透明度・回転/反転・影。どのボタンも shape_edit を
@@ -4960,7 +4993,9 @@ impl Render for Calc {
                     .border_b_1().border_color(rgb(0xE1E6EA))
                     .text_size(px(us * 11.0)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x1B6E3C))
-                    .whitespace_nowrap()
+                    // **折り返す。** 1行に押し込むと、幅を越えた案内が
+                    // 黙って切れる(2026-08-13 実機で見た — 「☑ を押すと
+                    // 閉じる」の先が読めなかった)
                     .child(note.clone()));
             }
             // v=鍵(照合と見分け)、label=画面に出す字。**見た目で照合しない**
@@ -5294,7 +5329,7 @@ impl Render for Calc {
                    .children(fn_args_panel)
                    .children(quit_panel)
                    .children(shape_panel)
-                   .children(slicer_panel)
+                   .children(slicer_panels)
                    .children(comment_panel))
             .children(watch_bar)
             .child(sheets_bar)

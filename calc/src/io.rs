@@ -454,7 +454,8 @@ impl Calc {
         self.frozen = None;
         self.auto_filter = None;
                 self.filter_panel = None;
-        self.slicer = None;
+        self.slicers.clear();
+        self.slicer_sel = 0;
         self.sheet_ui.clear();
         self.undo_stack.clear();
         self.redo_stack.clear();
