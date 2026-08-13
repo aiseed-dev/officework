@@ -78,6 +78,17 @@ $ gh pr create --repo conda-forge/staged-recipes --title "Add officework" \
     --body "xlsx/docx engines with formula recalculation (Rust + maturin, abi3). Built from the PyPI sdist; licenses of Rust dependencies are bundled via cargo-bundle-licenses."
 ```
 
-PR の中で聞かれたら: maintainer は awoni(本人が「I agree to be a
-maintainer」と一言コメント)。CI が落ちたら**このファイルに踏んだ穴を
-書き足してから**直す。
+PR を出した後の作法(テンプレートから 2026-08-14 に採取):
+
+- **審査は頼まないと来ない。** CI が緑になったら PR に
+  `@conda-forge/help-python-c, ready for review!` とコメントする
+  (Rust + maturin の Python 拡張は python/c hybrid の班。rust の班もあるが、
+  Python パッケージとしての審査はこちら)
+- **初投稿の人は班を直接呼べない**(GitHub の制限)。その場合は
+  `@conda-forge-admin, please ping conda-forge/help-python-c` と
+  コメントすると bot が代わりに呼ぶ
+- 審査は人間のボランティアで**数日〜数週**。急かさず、直しの指摘には
+  こまめに応じる。CI が落ちたら**このファイルに踏んだ穴を書き足してから**直す
+
+maintainer は awoni。PR の作者が awoni 本人なら同意のコメントは不要
+(他人が出す PR に名を載せるときだけ「I agree to be a maintainer」が要る)。
