@@ -78,9 +78,11 @@ s["A1"] = None     #        clear
 
 - **Formatting is preserved** — writing a value never touches borders, merges,
   or number formats
-- Empty cells read back as **None or ""** (never-touched cells are None; cells
-  where an empty string was stored are "". Both are falsy, so `if s["A1"]:`
-  usually suffices; to be precise use `s["A1"] in (None, "")`)
+- Empty cells read back as **None or ""** (never-touched cells are None; ""
+  appears when **the original file stored an empty string** — assigning
+  `s["A1"] = ""` yourself is the same as clearing, and reads back None.
+  Both are falsy, so `if s["A1"]:` usually suffices; to be precise use
+  `s["A1"] in (None, "")`)
 
 ### Ranges as arrays — the main topic
 
