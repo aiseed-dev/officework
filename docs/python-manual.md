@@ -9,7 +9,7 @@ Everything was measured on a real machine.
 
 ## Code is a file, data is a file — never mixed
 
-**What gets exchanged is data only** (settled 2026-08-09). There is no
+**What gets exchanged is data only.** There is no
 mechanism, xlsm-style, for putting data and program in one file. Both cell
 functions and procedures live in `~/.config/office/plugins/*.py`, and **a
 workbook you receive contains no code at all**.
@@ -157,7 +157,7 @@ p.text                    # runs joined
 p.replace("old", "new")   # -> how many were replaced. Keeps every run boundary
 p.runs                    # [Run], readable *and* writable: .text .bold .italic
                           #   .underline .strike .color .size_pt .font .style .hyperlink
-p.runs[0].bold = True     # formatting is set per run (since 2026-08-12)
+p.runs[0].bold = True     # formatting is set per run
 p.add_run("more")         # append a run (inherits the last run's formatting)
 p.style                   # "body", "heading1".."heading9", "toc1".., "tof"
 p.align                   # "left" | "center" | "right" | "justify" | "distribute"
@@ -229,7 +229,7 @@ it takes LaTeX, typesets a picture, and stores the source alongside it.
 ## Writing in vocabularies you already know — openpyxl, xlwings, python-docx
 
 You don't have to throw away your existing code or the vocabulary in your
-head (2026-08-12). The policy is **copy the API and the tests, never the
+head. The policy is **copy the API and the tests, never the
 implementation** (docs/sekkei/python.ja.md); the inventory is the ledger
 [docs/pysheet-gokan.ja.md](pysheet-gokan.ja.md) — all 324 core members of
 the three libraries, judged one by one (what works, what we will build,
@@ -267,8 +267,7 @@ wb.save("out.xlsx")
 - interop is proven with the original's own eyes: openpyxl reads what we
   write — **including the computed values** it cannot produce itself
 
-Formatting and print setup also speak openpyxl (the 324-item ledger was
-closed on 2026-08-12/13):
+Formatting and print setup also speak openpyxl:
 
 ```python
 from officework.sheet import Font, Border, Side, PatternFill, Alignment
@@ -282,7 +281,7 @@ wb.add_named_style(...)                       # named cell styles are carried to
 ```
 
 Data validation, defined names, outline groups, pictures (`add_image`),
-headers/footers (down to odd/even/first pages), the 1904 epoch, and
+headers/footers (down to odd/even/first pages), the 1904 date system, and
 `move_range` (references follow the move) all work the same way. **The
 canonical list of what exists is the ledger**
 ([pysheet-gokan.ja.md](pysheet-gokan.ja.md) — 324 items, each with a verdict
@@ -324,8 +323,7 @@ p.runs[0].font.name                  # answers .name too (None when the run name
 
 Paragraphs also carry `clear` / `iter_inner_content`. **A Run is a live
 handle resolved by position** (same usage as python-docx — `r.bold = True`
-and `r.add_text("more")` both work; changed from "frozen copy" on
-2026-08-12). After `p.text = ...` or `replace` reshuffles the runs,
+and `r.add_text("more")` both work). After `p.text = ...` or `replace` reshuffles the runs,
 re-fetch from `p.runs`.
 
 The writing side is complete too — `d.add_heading(text, level)` (1–3; we
@@ -337,7 +335,7 @@ ledger ([pysheet-gokan.ja.md](pysheet-gokan.ja.md)).
 
 ## Typesetting equations (officework.tex)
 
-Equations are **taken as LaTeX and typeset into a picture** (2026-08-13).
+Equations are **taken as LaTeX and typeset into a picture**.
 We wrote no typesetter of our own: with TeX (pdflatex) installed it
 typesets there; without it, matplotlib's mathtext does the job. **All you
 need is matplotlib** — TeX, when present, raises the quality (matrix
@@ -417,7 +415,7 @@ form["total"] = qty * 150
 
 ## The execution environment
 
-- **No sandbox is applied** (removed 2026-08-09). Plugins are code you
+- **No sandbox is applied.** Plugins are code you
   installed yourself, so files and the network work normally.
   The `@name net` distinction is gone (typing it says so)
 - Time-limited (procedures 60 s, cell functions 30 s); overruns are killed
@@ -500,7 +498,7 @@ The remaining safety net is undo: however many cells a procedure writes,
 things is **run it, look at the result, undo if you don't like it**. Once
 reviewed, place it in `~/.config/office/plugins/name.py`.
 **Code can never be embedded in a workbook** — data and program are separate
-files (settled 2026-08-09).
+files.
 
 ### Migrating VBA
 

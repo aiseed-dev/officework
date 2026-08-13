@@ -8,7 +8,7 @@
 
 ## コードはファイル、データはファイル — 混ぜない
 
-**交換されるファイルはデータだけ**(2026-08-09 発注者確定)。xlsm のように
+**交換されるファイルはデータだけ**。xlsm のように
 データとプログラムを1つのファイルに入れる仕組みは持たない。関数も手続きも
 `~/.config/office/plugins/*.py` にあり、**受け取ったブックには1バイトも
 コードが入っていない**。
@@ -54,7 +54,7 @@ b = sheet.Book.open("帳票.xlsx")
 s = b["シート名"]                        # 番号でも: b[0]
 b.sheet_names                           # ['見積書', …]
 b.add_sheet("新しいシート")              # 同名があればエラー
-b.recalc()                              # 式を計算し直す(値を読む前に)
+b.recalc()                              # 数式を計算し直す(値を読む前に)
 b.save("out.xlsx")                      # 原本の部品は据え置き
 b.unsupported                           # 読めなかった部品の一覧(空 = 全部読めた)
 ```
@@ -62,14 +62,14 @@ b.unsupported                           # 読めなかった部品の一覧(空 
 ### セルの読み書き
 
 ```python
-s["A1"]            # 読み: 数は float、文字は str、☑/☐ は bool、式セルは計算値
-s.formula("E2")    # 式そのもの("=SUM(B2:D2)"。式でなければ None)
+s["A1"]            # 読み: 数は float、文字は str、☑/☐ は bool、数式のセルは計算値
+s.formula("E2")    # 数式そのもの("=SUM(B2:D2)"。数式でなければ None)
 s.display("E2")    # 表示の文字("238"。表示形式を通した見た目)
 s["A1"] = 100      # 書き: 数
 s["A1"] = "文字"   #        文字
-s["A1"] = True     #        真偽(calc では ☑/☐ に見える)
-s["A1"] = "=B1*C1" #        式("=" で始まる文字列)
-s["A1"] = date(2026, 8, 5)  # datetime.date/datetime/time → Excel の通し番号
+s["A1"] = True     #        論理値(calc では ☑/☐ に見える)
+s["A1"] = "=B1*C1" #        数式("=" で始まる文字列)
+s["A1"] = date(2026, 8, 5)  # datetime.date/datetime/time → Excel のシリアル値
 s["A1"] = None     #        消す
 ```
 
@@ -95,7 +95,7 @@ data = [["ペン", 10, 150], ["ノート", 5, 180]]
 for i, row in enumerate(data):
     n = 2 + i                              # 2行目から
     s[f"A{n}"], s[f"B{n}"], s[f"C{n}"] = row
-    s[f"D{n}"] = f"=B{n}*C{n}"             # 式も文字列で入れる
+    s[f"D{n}"] = f"=B{n}*C{n}"             # 数式も文字列で入れる
 b.recalc()
 ```
 
@@ -120,7 +120,7 @@ for i, row in enumerate(df.rows()):
 
 同じ wheel、同じ約束を docx で。`doc` の副モジュールです。`Doc.open` が
 **元のバイトを抱えたまま**持ち、`save` は変えた所だけ書き戻すので、
-様式・ヘッダー・フッター・図形・変更履歴がそのまま通ります。
+スタイル・ヘッダー・フッター・図形・変更履歴がそのまま通ります。
 python-docx が約束できないのはここです。
 
 ```python
@@ -151,7 +151,7 @@ p.text                    # run をつないだ字
 p.replace("旧", "新")      # → 置き換えた数。run の切れ目は全部残る
 p.runs                    # [Run] — 読み書き両方: .text .bold .italic .underline
                           #   .strike .color .size_pt .font .style .hyperlink
-p.runs[0].bold = True     # 書式は run 単位で書ける(2026-08-12 から)
+p.runs[0].bold = True     # 書式は run 単位で書ける
 p.add_run("続き")          # 末尾に run を継ぎ足す(書式は末尾の run を継ぐ)
 p.style                   # "body" / "heading1"〜"heading9" / "toc1"… / "tof"
 p.align                   # "left" | "center" | "right" | "justify" | "distribute"
@@ -221,7 +221,7 @@ t[1][2].paragraphs     # そのセルの段落(Paragraph として)
 
 ## よその語彙でも書ける — openpyxl・xlwings・python-docx
 
-手持ちのコードと、頭に入っている語彙を捨てなくてよい(2026-08-12)。
+手持ちのコードと、頭に入っている語彙を捨てなくてよい。
 **API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.md)で、
 在庫は台帳 [docs/pysheet-gokan.ja.md](pysheet-gokan.ja.md) — 3ライブラリの
 中核 324 メンバーを1件ずつ判定してある(できる物・作る物・作らない物と
@@ -258,21 +258,21 @@ wb.save("out.xlsx")
   xlsx を openpyxl がそのまま読む(**こちらが計算した値も** —
   openpyxl 自身は式を計算できない)
 
-書式と印刷も openpyxl の形で通る(2026-08-12〜13 に台帳 324 件を閉じた):
+書式と印刷も openpyxl の形で通る:
 
 ```python
 from officework.sheet import Font, Border, Side, PatternFill, Alignment
 ws.cell(1, 1).font = Font(bold=True, size=14) # openpyxl の実物を渡してもよい
                                               # (ws["A1"] は値を返す流儀なので cell() で)
 ws.column_dimensions["A"].width = 20          # 列幅(字数)・行高・hidden
-ws.print_title_rows = "1:1"                   # 毎ページ繰り返す見出し(列は "A:A")
+ws.print_title_rows = "1:1"                   # 印刷タイトルのタイトル行(タイトル列は "A:A")
 ws.freeze_panes = "B2"
-ws.add_table(...)                             # 表 — =SUM(明細[金額]) が計算まで効く
-wb.add_named_style(...)                       # 名前付き様式も運ぶ
+ws.add_table(...)                             # テーブル — 構造化参照 =SUM(明細[金額]) が計算まで効く
+wb.add_named_style(...)                       # セルのスタイル(名前付きスタイル)も運ぶ
 ```
 
-入力規則・名前付き範囲・グループ化・画像(`add_image`)・ヘッダー/フッター
-(奇数・偶数・先頭の別まで)・1904 起点・`move_range`(式の参照が付いて動く)
+データの入力規則・名前付き範囲・グループ化・画像(`add_image`)・ヘッダー/フッター
+(奇数・偶数・先頭ページの別まで)・1904 日付システム・`move_range`(数式の参照が付いて動く)
 も同じ流儀で。**何がどこまであるかの正本は台帳**
 ([pysheet-gokan.ja.md](pysheet-gokan.ja.md) — 324 件に判定と理由)。
 
@@ -310,8 +310,7 @@ p.runs[0].font.name                  # .name でも引ける(書体が run に�
 ```
 
 段落には `clear` / `iter_inner_content` も。**Run は位置で引き直す手**
-(python-docx と同じ使い方 — `r.bold = True` も `r.add_text("続き")` も効く。
-2026-08-12 に「凍った写し」から改めた)。段落の `text` 代入や `replace` で
+(python-docx と同じ使い方 — `r.bold = True` も `r.add_text("続き")` も効く)。段落の `text` 代入や `replace` で
 run の並びが変わった後は、`p.runs` から引き直すこと。
 
 書く方の口も一通りある — `d.add_heading(字, level)`(1〜3。0=Title は
@@ -322,7 +321,7 @@ run の並びが変わった後は、`p.runs` から引き直すこと。
 
 ## 数式を組む(officework.tex)
 
-数式は **LaTeX で受けて絵に組む**(2026-08-13)。組版は自前で書かず、
+数式は **LaTeX で受けて絵に組む**。組版は自前で書かず、
 TeX(pdflatex)があればそちらで、無ければ matplotlib の mathtext で組む。
 **要るのは matplotlib だけ**で、TeX はあれば品質が上がる(行列の列まで揃う)。
 
@@ -394,7 +393,7 @@ form["total"] = qty * 150
 
 ## 実行の枠
 
-- **サンドボックスは着せない**(2026-08-09 に外した)。plugins は自分で
+- **サンドボックスは着せない**。plugins は自分で
   据えたコードなので、ファイルもネットワークも普通に使える。
   `@名前 net` の区別も無くなった(打つと「要らなくなりました」と言う)
 - 時間制限つき(手続き60秒・セルの関数30秒)。超えたら止めてそう言う
@@ -416,14 +415,14 @@ form["total"] = qty * 150
 次の環境で動く Python を書いてください。
 
 【calc のマクロ】b(ブック)と s(いまのシート)が束縛済み。
-- 読み: s["A1"](数=float・文字=str・☑=bool・式セルは計算値。
-  空は None か ""。式が要るなら s.formula("A1")、見た目は s.display("A1"))
+- 読み: s["A1"](数=float・文字=str・☑=bool・数式のセルは計算値。
+  空は None か ""。数式が要るなら s.formula("A1")、見た目は s.display("A1"))
 - 全面の読み: s.values()(行×列の2次元リスト。0 始まり)、広さは
   s.shape(属性。() を付けない)
-- 書き: s["A1"] = 値。式は "=B1*C1" の文字列。消すのは None
+- 書き: s["A1"] = 値。数式は "=B1*C1" の文字列。消すのは None
 - 【重要】範囲の添字(s["A2:C3"])と2次元の一括代入は無い —
   書き込みはループで1セルずつ。行番号は A1 表記で1始まり
-- 式を入れたら b.recalc() してから値を読む
+- 数式を入れたら b.recalc() してから値を読む
 - b.save() は呼ばない(適用はアプリ側の仕事)。print は画面のステータスバーに出る
 - 書式(罫線・結合・表示形式)は値を入れても壊れない — 触らなくてよい
 
@@ -467,8 +466,7 @@ polars・scipy・matplotlib も使える。
 残る安全網は undo — 手続きが何回書いても **Ctrl+Z 一回**で手続きの前に
 戻る。だから**まず回して、結果を見て、気に入らなければ戻す**が正しい試し方。
 検分の済んだものを `~/.config/office/plugins/名前.py` に置く(以後 `@名前`)。
-**ブックにコードは載せられない** — データとプログラムは別のファイル
-(2026-08-09 確定)。
+**ブックにコードは載せられない** — データとプログラムは別のファイル。
 
 ### VBA の移し替え
 

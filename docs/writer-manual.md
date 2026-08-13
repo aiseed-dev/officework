@@ -148,7 +148,7 @@ picture, e-mail, phone, composite, signature**.
   installed it typesets there (matrix columns align), otherwise matplotlib.
   **The picture and the LaTeX source go into the docx as a pair**, so Word
   shows the picture and writer reopens it as an editable formula. A formula
-  it cannot set is refused with the reason (2026-08-13)
+  it cannot set is refused with the reason
 - **Text box**: a 1×1 table (text inside a frame)
 - **Text from file**: inserts .txt / .md / .docx
 
