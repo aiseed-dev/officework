@@ -65,6 +65,18 @@ def _env(tex):
     return tex
 
 
+def _hadaka(tex):
+    """前後の空白と `$` を落とす(LaTeX を貼る人は $ ごと写すことが多い)。"""
+    if not tex or not tex.strip():
+        raise Muri("空の数式です")
+    t = tex.strip()
+    if t.startswith("$") and t.endswith("$") and len(t) > 1:
+        t = t[1:-1].strip()
+    if not t:
+        raise Muri("空の数式です")
+    return t
+
+
 def fit(tex):
     r"""mathtext が食える形に寄せる。**寄せられないものは Muri で断る。**
 
@@ -73,11 +85,7 @@ def fit(tex):
       * `\int\limits_a^b` → `\int_a^b`(sympy の既定が \limits つき)
       * `\le` `\ge` → `\leq` `\geq`(mathtext はこの綴りしか持たない)
     """
-    if not tex or not tex.strip():
-        raise Muri("空の数式です")
-    t = tex.strip()
-    if t.startswith("$") and t.endswith("$"):
-        t = t[1:-1]
+    t = _hadaka(tex)
     t = _env(t)
     t = t.replace(r"\limits", "")
     t = re.sub(r"\\le(?![a-zA-Z])", r"\\leq", t)
@@ -114,8 +122,98 @@ def to_svg(tex, size_pt=11.0, color="#000000", font_dir=None):
     return buf.getvalue()
 
 
-def to_png(tex, size_pt=11.0, color="#000000", bai=4.0):
+def kumi_kata():
+    """いま数式を何で組めるか。`"tex"` / `"mathtext"` / `None`。
+
+    **TeX があればそちらで組む**(発注者確定 2026-08-13)。本物の TeX は
+    LaTeX の全部を解し、行列の列も正しく揃う。無ければ mathtext に落ちる —
+    こちらは TeX の実体が要らない代わりに**部分集合**しか解さない。
+    どちらで組んだかで**文書は変わらない**(数式は絵として保存されるので、
+    渡した先では誰が見ても同じ)。差は作ったときの見た目に閉じる。
+    """
+    from shutil import which
+    if which("pdflatex") and which("pdftoppm"):
+        return "tex"
+    try:
+        import matplotlib  # noqa: F401
+        return "mathtext"
+    except ImportError:
+        return None
+
+
+# standalone は数式ぴったりの紙を作る(余白の切り出しが要らない)
+_TEX_HINAGATA = r"""\documentclass[preview,border=%(fuchi)spt]{standalone}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\begin{document}
+$\displaystyle %(shiki)s$
+\end{document}
+"""
+
+
+def _tex_png(t, size_pt, bai):
+    """本物の TeX で組む。返りは `(bytes, w_mm, h_mm)`。
+
+    pdflatex で紙にし、pdftoppm で画素にする。**寸法は紙から取る** —
+    画素数と解像度から逆に出すと丸めで動く(mathtext の側で踏んだ穴と同じ)。
+    """
+    import os
+    import subprocess
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        src = os.path.join(d, "s.tex")
+        with open(src, "w") as f:
+            f.write(_TEX_HINAGATA % {"fuchi": 1, "shiki": t})
+        r = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode", "-halt-on-error",
+             "-output-directory", d, src],
+            capture_output=True, text=True, timeout=30)
+        pdf = os.path.join(d, "s.pdf")
+        if r.returncode != 0 or not os.path.exists(pdf):
+            # TeX の言い分から**最初の ! の行**を拾う(そこに理由が書いてある)
+            wake = [l for l in r.stdout.splitlines() if l.startswith("!")]
+            raise Muri("TeX が組めない数式です: %s"
+                       % (wake[0][2:] if wake else "(理由が読めません)"))
+        # 紙の寸法(pt)。standalone なので数式ぴったり
+        info = subprocess.run(["pdfinfo", pdf], capture_output=True, text=True)
+        w_pt = h_pt = None
+        for line in info.stdout.splitlines():
+            if line.startswith("Page size:"):
+                nums = [x for x in line.replace("x", " ").split() if _kazu(x)]
+                if len(nums) >= 2:
+                    w_pt, h_pt = float(nums[0]), float(nums[1])
+        if not w_pt or not h_pt:
+            raise Muri("紙の寸法が読めません")
+        # standalone の紙は 10pt の本文で組まれている。指定の大きさへ縮める
+        k = float(size_pt) / 10.0
+        w_pt, h_pt = w_pt * k, h_pt * k
+        dpi = int(round(72.0 * float(bai) / k))
+        subprocess.run(["pdftoppm", "-png", "-r", str(dpi), "-singlefile",
+                        pdf, os.path.join(d, "out")],
+                       capture_output=True, timeout=30)
+        png = os.path.join(d, "out.png")
+        if not os.path.exists(png):
+            raise Muri("紙を画素にできません(pdftoppm)")
+        with open(png, "rb") as f:
+            data = f.read()
+    mm = 25.4 / 72.0
+    return data, w_pt * mm, h_pt * mm
+
+
+def _kazu(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+
+def to_png(tex, size_pt=11.0, color="#000000", bai=4.0, tex_wo_tsukau=None):
     """LaTeX を PNG に組む。返りは `(bytes, w_mm, h_mm)`。
+
+    **TeX があればそちらで組む**(行列の列まで揃う)。無ければ mathtext。
+    `tex_wo_tsukau` に True / False を渡せば選べる(検査で両方を見るため)。
 
     **文書に入れるのはこちら。** docx の画像は png / jpeg で、模型の
     InlineImage も「png/jpeg のまま」を持つ — SVG に寄り道すると、
@@ -124,6 +222,12 @@ def to_png(tex, size_pt=11.0, color="#000000", bai=4.0):
     `bai` は**紙の寸法に対する画素の倍率**。画面を拡大しても粗くならない
     ように大きめに作り、置く大きさ(w_mm/h_mm)は等倍で返す。
     """
+    if tex_wo_tsukau is None:
+        tex_wo_tsukau = kumi_kata() == "tex"
+    if tex_wo_tsukau:
+        # **原文をそのまま渡す。** TeX は LaTeX の全部を解すので、
+        # mathtext のために寄せる(fit)必要がない — 寄せると行列の列が崩れる
+        return _tex_png(_hadaka(tex), size_pt, bai)
     t = fit(tex)
     try:
         import matplotlib

@@ -94,6 +94,37 @@ try:
 except tex.Muri:
     pass
 
+# ── TeX があればそちらで組む(無ければ mathtext)────────────────
+kata = tex.kumi_kata()
+check(kata in ("tex", "mathtext"), f"組み方が変: {kata}")
+# mathtext は**必ず**通る道。TeX の有無に関わらず同じ約束を守る
+png_m, w_m, h_m = tex.to_png(r"\frac{a+b}{2}", tex_wo_tsukau=False)
+check(png_m[:8] == b"\x89PNG\r\n\x1a\n" and w_m > 0, "mathtext の道が壊れた")
+if kata == "tex":
+    png_t, w_t, h_t = tex.to_png(r"\frac{a+b}{2}", tex_wo_tsukau=True)
+    check(png_t[:8] == b"\x89PNG\r\n\x1a\n", "TeX の道が PNG を返さない")
+    check(0 < w_t < 60 and 0 < h_t < 40, f"TeX の寸法が変: {w_t} x {h_t} mm")
+    # 倍率を変えても置く寸法は動かない(mathtext の側と同じ約束)
+    s1 = tex.to_png(r"\frac{a}{b}", bai=2, tex_wo_tsukau=True)[1:]
+    s2 = tex.to_png(r"\frac{a}{b}", bai=6, tex_wo_tsukau=True)[1:]
+    check(abs(s1[0] - s2[0]) < 0.05 and abs(s1[1] - s2[1]) < 0.05,
+          f"TeX の側で倍率が寸法に効いた: {s1} {s2}")
+    # **TeX は寄せない。** 行列は \begin{matrix} のまま渡す(寄せると列が崩れる)
+    check(len(tex.to_png(r"\begin{bmatrix}1 & 200\\ 30000 & 4\end{bmatrix}",
+                         tex_wo_tsukau=True)[0]) > 500, "TeX で行列が組めない")
+    # 壊れた式は TeX の側でも断る。**理由を言う**(TeX の言い分を拾う)
+    try:
+        tex.to_png(r"\frac{1}{", tex_wo_tsukau=True)
+        check(False, "TeX の道が壊れた式を黙って受けた")
+    except tex.Muri as e:
+        check("TeX" in str(e) or "組めない" in str(e), f"理由を言っていない: {e}")
+    # 字の大きさが効く
+    check(tex.to_png(r"\frac{a}{b}", size_pt=22, tex_wo_tsukau=True)[2]
+          > tex.to_png(r"\frac{a}{b}", size_pt=11, tex_wo_tsukau=True)[2] * 1.5,
+          "TeX の側で字の大きさが効かない")
+else:
+    print("TeX が無いので TeX の節は飛ばした", file=sys.stderr)
+
 # ── SymPy から起こす道(入っていれば)──────────────────────────
 try:
     import sympy  # noqa: F401
