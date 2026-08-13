@@ -1040,6 +1040,36 @@ if pydocx is not None:
         check(round(back_sec.sections[1].page_width.mm) == 297,
               "差し替えで紙の大きさが崩れた")
 
+        # --- 節を足す: 末尾で切り、前の分が1節目になる(本家と同じ切り方)-------
+        d_as = office_doc.Doc()
+        d_as.add_paragraph("一節目")
+        s_new = d_as.add_section(WD_SECTION.NEW_PAGE)   # 本家の enum をそのまま
+        d_as.add_paragraph("二節目")
+        check(len(d_as.sections) == 2, f"節の数: {len(d_as.sections)}")
+        # 新しい節の紙を変えても、前の節は変わらない(節ごとに効く)
+        s_new.page_width = OMm(297)
+        s_new.page_height = OMm(210)
+        check(d_as.sections[0].orientation == "portrait"
+              and d_as.sections[1].orientation == "landscape",
+              f"節ごとの紙: {[x.orientation for x in d_as.sections]}")
+        out_as = os.path.join(t, "add_section.docx")
+        d_as.save(out_as)
+        back_as = pydocx.Document(out_as)
+        check(len(back_as.sections) == 2,
+              f"うちが足した節を本家が読めない: {len(back_as.sections)}")
+        check(round(back_as.sections[1].page_width.mm) == 297,
+              f"新しい節の紙が本家で違う: {back_as.sections[1].page_width.mm}")
+        check([p.text for p in back_as.paragraphs if p.text]
+              == ["一節目", "二節目"], "節を足したら字が変わった")
+        # 続きの節(改ページしない)も作れる
+        d_as.add_section("continuous")
+        check(len(d_as.sections) == 3, "続きの節が足せない")
+        try:
+            d_as.add_section(WD_SECTION.EVEN_PAGE)
+            check(False, "偶数頁始まりが黙って通った")
+        except ValueError:
+            pass
+
         # --- inline_shapes(画像の読みの対)と コメント -------------------------
         d_m2 = office_doc.Doc.open(out_m)  # さっき画像を入れた文書
         shp = d_m2.inline_shapes

@@ -577,6 +577,54 @@ impl PyDoc {
         PyCoreProps { inner: Arc::clone(&self.inner) }
     }
 
+    /// 節を足す(python-docx の add_section と同じ切り方)。
+    ///
+    /// **切るのは末尾** — いままで書いた分が前の節になり、これから足す物が
+    /// 新しい節に入る。中では、いまの文書末の節を「sectPr だけを持つ空の
+    /// 段落」として本文の末尾に置く(これが docx の途中の節の書き方)。
+    /// 文書末の節はそのまま残るので、新しい節は同じ紙と余白を継ぐ(本家も
+    /// 設定を写す)— 変えたければ返ってきた節の紙・余白を書き替える。
+    ///
+    /// start_type は "new_page"(既定)と "continuous" だけ。新しい段・
+    /// 偶数頁・奇数頁は模型に無いので**正直に断る** — 黙って改ページに
+    /// 落とすと、刷ったときに別物になる。返りは新しい**文書末の節**。
+    #[pyo3(signature = (start_type="new_page"))]
+    fn add_section(&self, start_type: &str) -> PyResult<PySection> {
+        let continuous =
+            match start_type.to_ascii_lowercase().replace(['_', ' '], "").as_str() {
+                "newpage" | "2" => false,
+                "continuous" | "0" => true,
+                other => {
+                    return Err(PyValueError::new_err(format!(
+                        "節の始め方は new_page か continuous だけ\
+                         (新しい段・偶数頁・奇数頁は模型に無い): {other:?}"
+                    )))
+                }
+            };
+        let mut g = lock(&self.inner)?;
+        let page = g.doc.page.unwrap_or_default();
+        let raw = g
+            .doc
+            .sect_raw
+            .clone()
+            .unwrap_or_else(|| "<w:sectPr></w:sectPr>".to_string());
+        let brk = kumihan::SectionBreak {
+            raw: set_sect_continuous(&raw, continuous),
+            page,
+            continuous,
+        };
+        g.doc.blocks.push(Block::Para(Paragraph {
+            line_spacing: 1.0,
+            sect: Some(brk),
+            ..Default::default()
+        }));
+        // 文書末の節は据え置き = 新しい節が同じ紙と余白を継ぐ(本家と同じ)
+        g.doc.page = Some(page);
+        g.doc.sect_raw = Some(raw);
+        let idx = g.section_blocks().len(); // 末尾の節は途中の節の次
+        Ok(PySection { inner: Arc::clone(&self.inner), idx })
+    }
+
     /// 節(セクション)の一覧。途中の節(順)+ 文書末の節。
     /// 紙の大きさ・余白の読み書きは各節の手から — 書きは**原文の sectPr へ
     /// 属性差し替え**なので、理解しない設定(ヘッダー参照・段組み)は崩れない。
@@ -716,6 +764,31 @@ fn patch_sect(raw: &str, tag: &str, attr: &str, val: i64) -> String {
         format!("{}<{tag} {attr}=\"{}\"/>{}", &raw[..c], val, &raw[c..])
     } else {
         raw.into()
+    }
+}
+
+/// sectPr の原文に「続き」の印(`<w:type w:val="continuous"/>`)を置く・外す。
+/// **改ページする節が docx の既定**なので、印は続きのときだけ書く
+/// (スキーマでは sectPr の頭のほう — pgSz より前に来る)。
+fn set_sect_continuous(raw: &str, continuous: bool) -> String {
+    // 既にある w:type は落としてから置き直す
+    let mut s = raw.to_string();
+    while let Some(i) = s.find("<w:type") {
+        match s[i..].find("/>") {
+            Some(j) => s.replace_range(i..i + j + 2, ""),
+            None => break,
+        }
+    }
+    if !continuous {
+        return s;
+    }
+    let ins = r#"<w:type w:val="continuous"/>"#;
+    match s.find('>') {
+        Some(i) if s.starts_with("<w:sectPr") => {
+            s.insert_str(i + 1, ins);
+            s
+        }
+        _ => format!("<w:sectPr>{ins}</w:sectPr>"),
     }
 }
 

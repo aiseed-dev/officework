@@ -837,10 +837,17 @@ class Doc:
         return [Section(s) for s in self._d.sections]
 
     def add_section(self, start_type=None):
-        raise NotImplementedError(
-            "節を足すのはまだ — 模型は節を段落の性質で持つので、"
-            "挿し方(どの段落で切るか)を決めてから(台帳)"
-        )
+        """節を足す(python-docx と同じ切り方)。**切るのは末尾** —
+        いままで書いた分が前の節になり、これから足す物が新しい節に入る。
+        新しい節は同じ紙と余白を継ぐので、変えるなら返ってきた節に書く。
+
+        start_type は本家の WD_SECTION でも "new_page" / "continuous" でも。
+        新しい段・偶数頁・奇数頁は模型に無いので正直に断る。"""
+        kind = "new_page"
+        if start_type is not None:
+            name = getattr(start_type, "name", None)
+            kind = str(name if name is not None else start_type).lower()
+        return Section(self._d.add_section(kind))
 
     @property
     def inline_shapes(self):
