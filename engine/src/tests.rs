@@ -1726,3 +1726,76 @@ mod make_footnote_tests {
         assert!(t.starts_with('1'), "番号が振られていない: {t:?}");
     }
 }
+
+
+/// 印刷モードの折り方(`fold_print`)。
+///
+/// **編集の画面は切れ目の無い巻物**で、頁の間隔は紙の高さより詰まっている
+/// (実測で紙 297mm に対し間隔 260mm — 余白ぶん)。だから紙の絵を後ろに
+/// 敷くだけでは重なる。中身を折り直して初めてページが見える。
+#[cfg(test)]
+mod fold_print_tests {
+    use crate::*;
+
+    fn 紙(w: f32, h: f32) -> PageSetup {
+        PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1 }
+    }
+    fn 行(y: f32) -> Line {
+        Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,
+                                  off: 0, fmt: Default::default(), font: None }],
+               y_mm: y, from_body: true, byte0: 0, cell: None }
+    }
+
+    #[test]
+    fn 頁ごとに紙の高さで積む() {
+        let mut s = Sheet { lines: vec![行(20.0), 行(270.0), 行(530.0)], ..Default::default() };
+        // 巻物では 260mm 間隔でも、折れば紙の高さ(+隙間)で積まれる
+        let tops = fold_print(&mut s, &[紙(210.0, 297.0); 3], &[0.0, 260.0, 522.0], 8.0);
+        assert_eq!(tops, vec![0.0, 305.0, 610.0], "頁の上端が紙の高さで積まれていない");
+        assert_eq!(s.lines[0].y_mm, 20.0, "1頁目の中の位置がずれた");
+        assert_eq!(s.lines[1].y_mm, 305.0 + 10.0, "2頁目の中の位置がずれた");
+        assert_eq!(s.lines[2].y_mm, 610.0 + 8.0, "3頁目の中の位置がずれた");
+    }
+
+    /// **頁ごとに紙が違ってよい。** 節で縦から横に変わる文書がこれ
+    #[test]
+    fn 紙の高さが頁ごとに違ってもよい() {
+        let mut s = Sheet { lines: vec![行(20.0), 行(270.0)], ..Default::default() };
+        let tops = fold_print(&mut s, &[紙(210.0, 297.0), 紙(297.0, 210.0)],
+                              &[0.0, 260.0], 8.0);
+        assert_eq!(tops, vec![0.0, 305.0], "縦の紙の高さで積んでいない");
+        assert_eq!(s.lines[1].y_mm, 315.0);
+    }
+
+    /// 1頁だけの文書は中身を動かさない(折る必要が無い)
+    #[test]
+    fn 一頁なら動かさない() {
+        let mut s = Sheet { lines: vec![行(20.0), 行(100.0)], ..Default::default() };
+        let tops = fold_print(&mut s, &[紙(210.0, 297.0)], &[0.0], 8.0);
+        assert_eq!(tops, vec![0.0]);
+        assert_eq!(s.lines[0].y_mm, 20.0);
+        assert_eq!(s.lines[1].y_mm, 100.0);
+    }
+
+    /// 脚注の**印のある行**も一緒に折る。折らないと、紙の下に出す位置が
+    /// 巻物のままになって別の頁に出る
+    #[test]
+    fn 脚注の目印も一緒に折る() {
+        let mut s = Sheet {
+            lines: vec![行(20.0), 行(270.0)],
+            notes: vec![NoteBlock { no: 1, at_y: 270.0, lines: vec![], h_mm: 5.0 }],
+            ..Default::default()
+        };
+        fold_print(&mut s, &[紙(210.0, 297.0); 2], &[0.0, 260.0], 8.0);
+        assert_eq!(s.notes[0].at_y, 315.0, "脚注の目印が巻物のまま");
+    }
+
+    /// 折ったら**頁の切れ目**もその位置に置き直す(紙に写す側が見る)
+    #[test]
+    fn 切れ目を置き直す() {
+        let mut s = Sheet { lines: vec![行(20.0), 行(270.0)], ..Default::default() };
+        fold_print(&mut s, &[紙(210.0, 297.0); 2], &[0.0, 260.0], 8.0);
+        assert_eq!(s.breaks, vec![305.0], "切れ目が折った後の位置になっていない");
+    }
+}

@@ -770,6 +770,76 @@ pub fn fold_vertical(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32, line_mm: f32
 /// 見え方 — 紙は1ページずつのまま)。offsets は paginate が出したページの
 /// 頭(巻物の y)。gap はページの間の空き mm。
 /// **座標を変えるだけ**なので、描く側も当たり判定も無変更で効く
+/// 巻物を**1ページずつ縦に積む**(印刷モードの折り方)。
+///
+/// 通常の編集の画面は**切れ目の無い巻物**で、頁の間隔は紙の高さより
+/// 詰まっている(余白ぶん)。実測で紙 297mm に対し間隔 260mm — だから
+/// 紙の絵をそのまま後ろに敷くと 37mm ずつ重なる。**中身を折り直す**しかない。
+///
+/// [`fold_pages`](fold_pages) の見開きと違い、**頁ごとに紙が違ってよい**
+/// (節で縦から横に変わる文書)。`papers` は頁ごとの用紙で、`offsets` と
+/// 同じ数だけ要る。足りない分は最後の紙を使う。
+///
+/// 返すのは**頁ごとの上端**(折った後の y)。紙の絵はここへ置く。
+pub fn fold_print(
+    sheet: &mut Sheet,
+    papers: &[PageSetup],
+    offsets: &[f32],
+    gap: f32,
+) -> Vec<f32> {
+    let paper_of = |k: usize| -> PageSetup {
+        papers.get(k).copied().or_else(|| papers.last().copied()).unwrap_or_default()
+    };
+    // 頁ごとの上端を先に積む(紙の高さは頁ごとに違う)
+    let mut tops = Vec::with_capacity(offsets.len());
+    let mut y = 0.0f32;
+    for k in 0..offsets.len().max(1) {
+        tops.push(y);
+        y += paper_of(k).h_mm + gap;
+    }
+    if offsets.len() <= 1 {
+        return tops;
+    }
+    let page_of = |y: f32| -> (usize, f32) {
+        let mut k = 0usize;
+        for (i, o) in offsets.iter().enumerate() {
+            if y >= *o - 0.01 {
+                k = i;
+            }
+        }
+        (k, y - offsets[k])
+    };
+    // 巻物の y → 折った後の y。中身は自分の頁の中の位置を保つ
+    let shift = |y: f32| -> f32 {
+        let (k, inner) = page_of(y);
+        tops[k] + inner
+    };
+    for line in &mut sheet.lines {
+        line.y_mm = shift(line.y_mm);
+    }
+    for r in &mut sheet.rules {
+        let h = r[3] - r[1];
+        r[1] = shift(r[1]);
+        r[3] = r[1] + h;
+    }
+    for b in &mut sheet.cell_boxes {
+        let h = b.h_mm;
+        b.top_mm = shift(b.top_mm);
+        b.h_mm = h;
+    }
+    for (_, im) in &mut sheet.images {
+        let h = im[3];
+        im[1] = shift(im[1]);
+        im[3] = h;
+    }
+    // 脚注は「印のある行」を手掛かりに置くので、その y も折る
+    for nb in &mut sheet.notes {
+        nb.at_y = shift(nb.at_y);
+    }
+    sheet.breaks = tops.iter().skip(1).copied().collect();
+    tops
+}
+
 pub fn fold_pages(sheet: &mut Sheet, pg: &PageSetup, offsets: &[f32], n: usize, gap: f32) {
     if n <= 1 || offsets.len() <= 1 {
         return;
