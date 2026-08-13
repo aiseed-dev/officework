@@ -184,6 +184,13 @@ jobs:
           mkdir -p "$OFFICE_FONT_DIR"
           curl -sSL -o "$OFFICE_FONT_DIR/NotoSansCJKjp-Regular.otf" \
             https://github.com/googlefonts/noto-cjk/raw/Sans2.004/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf
+          # 明朝も要る — 「明朝の書類はゴシックに化けない」の試験は、代替の
+          # 名前に「明朝」か「Serif」を要求する。Linux の apt fonts-noto-cjk は
+          # Sans と Serif の両方が入るのに、ここが Sans 1枚だと mac は
+          # Hiragino の英語名(Mincho)が照合に掛からず、Windows は明朝が
+          # そもそも無くて、どちらも落ちる(2026-08-13 に踏んだ)
+          curl -sSL -o "$OFFICE_FONT_DIR/NotoSerifCJKjp-Regular.otf" \
+            https://github.com/googlefonts/noto-cjk/raw/Serif2.002/Serif/OTF/Japanese/NotoSerifCJKjp-Regular.otf
       - name: 試験
         # 2026-08-11 の基準は calc 148 / writer 38。**減ったら赤にする**のが
         # この仕事の役目で、数そのものはここに焼き付けない(増えるのが普通)。
@@ -234,6 +241,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force "$env:OFFICE_FONT_DIR" | Out-Null
           Invoke-WebRequest -Uri "https://github.com/googlefonts/noto-cjk/raw/Sans2.004/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf" -OutFile "$env:OFFICE_FONT_DIR/NotoSansCJKjp-Regular.otf"
+          # 明朝も(apps の mac の段と同じ理由 — 明朝の代替の試験が要る)
+          Invoke-WebRequest -Uri "https://github.com/googlefonts/noto-cjk/raw/Serif2.002/Serif/OTF/Japanese/NotoSerifCJKjp-Regular.otf" -OutFile "$env:OFFICE_FONT_DIR/NotoSerifCJKjp-Regular.otf"
       - name: 試験
         env:
           OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
