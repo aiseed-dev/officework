@@ -550,7 +550,7 @@ pub(super) fn notes_xml(orig: Option<&str>, add: &[&kumihan::Footnote], endnote:
 /// r:id が食い違い、Word が「修復」に入る。
 pub(super) fn collect_links(doc: &Document) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
-    let mut push = |p: &Paragraph, out: &mut Vec<String>| {
+    let push = |p: &Paragraph, out: &mut Vec<String>| {
         for r in &p.runs {
             if let Some(u) = &r.fmt.link {
                 if !out.iter().any(|x| x == u) {
