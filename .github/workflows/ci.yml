@@ -137,7 +137,7 @@ jobs:
         # 日本語の試験名(non_snake_case)は**その場で**許してある。まとめて
         # 消すと、製品のコードの命名まで見なくなる
         run: |
-          cargo clippy -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops --all-targets -- \
+          bash tools/ci-clippy.sh -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops --all-targets -- \
             -D warnings \
             -A clippy::too_many_arguments \
             -A clippy::type_complexity \
@@ -228,7 +228,7 @@ jobs:
         # runner の時間が惜しい(mac 固有の cfg 枝はうちのコードにほぼ無い)
         if: runner.os == 'Linux'
         run: |
-          cargo clippy -p calc -p writer -p ui --all-targets -- \
+          bash tools/ci-clippy.sh -p calc -p writer -p ui --all-targets -- \
             -D warnings \
             -A clippy::too_many_arguments \
             -A clippy::type_complexity \
