@@ -114,6 +114,16 @@ Python in Calc が担う(2026-08-04 改訂): ブックにコードを**載せら
 sidecar で載る)、builder(これから)。ブラウザー・スマホは WASM で後から
 (「ネイティブが先」の順序のまま)。
 
+**↑を改めた(2026-08-13 発注者)。builder は作らない。** builder が
+やるはずだった「Web へ出す」は、**writer / calc の用紙の選択に「Web」を
+1枚足すだけ**でよい — A4 や Letter と並ぶ**写し先の1つ**であって、
+アプリではない。「壊さずに作り直せるサイトビルダー」の野心は畳む
+(必要が実証されたら再訪)。アプリは3つ(writer・calc・pyoffice)。
+これに伴い、builder を理由にしていた工事は理由を失う —
+リボンの表の `tabs(app, lang)` 化(3つ組は来ない)、写し先の三重化の
+備えなど。**builder と無関係に壊れている物**(条件付き書式の解決が
+画面と紙の2箇所に写して書かれている件)だけが残る。
+
 ## 層は6つ(2026-08-12)
 
 暗黙の「核 / アプリ」の2分では4つのアプリに足りなくなったので、名前を付ける:
@@ -263,7 +273,7 @@ clippy と試験の**対象クレートの並び**(calc・writer・ui が門番�
 | [docs/sekkei/sugata.ja.md](docs/sekkei/sugata.ja.md) | 姿(UI): リボン・額縁・テーマ色・設定・罫線の直交モデル |
 | [docs/sekkei/ayumi.ja.md](docs/sekkei/ayumi.ja.md) | 歩みと商い: 目標・里程標・名前と免許・製品名・配布・e-shop・同類との距離 |
 | [docs/sekkei/pyoffice.ja.md](docs/sekkei/pyoffice.ja.md) | pyoffice: genoffice に officework エンジンを載せる(読み・計算まで。書きはやらない) |
-| [docs/sekkei/builder.ja.md](docs/sekkei/builder.ja.md) | builder(4本目): セルの模型で Web/アプリ・宣言と AI・calc と writer を仕上げてから |
+| [docs/sekkei/builder.ja.md](docs/sekkei/builder.ja.md) | builder(4本目): セルの模型で Web/アプリ — **作らないと改めた(2026-08-13)。Web は用紙の選択へ** |
 
 **書き込みの規則**(従来の習慣の明文化):
 

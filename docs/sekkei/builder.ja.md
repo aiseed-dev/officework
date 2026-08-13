@@ -1,5 +1,9 @@
 # SEKKEI — builder(4本目の製品)
 
+> **この部屋ごと改めた(2026-08-13 発注者)。builder は作らない。**
+> 「Web へ出す」は writer / calc の**用紙の選択に「Web」を足す**形で
+> 写し先の1つになる — アプリは立てない。以下は経緯として残す。
+
 2026-08-11 発注者確定。**名前は `builder`。**
 
     officework   writer(docx)・calc(xlsx)   ← いまのまま守る
