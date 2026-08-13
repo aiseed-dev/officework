@@ -140,9 +140,15 @@ picture, e-mail, phone, composite, signature**.
   create new merges yet)
 - **Images**: PNG, JPEG, SVG (SVG is converted to a high-resolution PNG).
   Saved as proper docx parts, visible in Word
-- **Shapes, SmartArt (9 layouts), charts, text art, equations (TeX)**:
+- **Shapes, SmartArt (9 layouts), charts, text art**:
   behind the buttons Python (matplotlib etc.) draws the picture and pastes it
   as an image
+- **Equations**: Insert > Equation opens a small panel — **type LaTeX and
+  press Enter** (e.g. `\frac{a+b}{2}`). Python typesets it: with TeX
+  installed it typesets there (matrix columns align), otherwise matplotlib.
+  **The picture and the LaTeX source go into the docx as a pair**, so Word
+  shows the picture and writer reopens it as an editable formula. A formula
+  it cannot set is refused with the reason (2026-08-13)
 - **Text box**: a 1×1 table (text inside a frame)
 - **Text from file**: inserts .txt / .md / .docx
 
@@ -227,6 +233,9 @@ Tools that work on a document in a shared folder:
 ## View tab
 
 Navigation (left panel), fit page / fit width / 100% / zoom in / out,
+**print layout (sheets stacked one page at a time — the view where a
+document whose sections change paper size shows the difference; the editing
+view stays one continuous scroll)**,
 **multiple pages (spread — screen only; printing stays one page per sheet)**,
 dark mode (surroundings darken, paper stays white), ruler (mm),
 toolbar / status bar / side panel toggles.
