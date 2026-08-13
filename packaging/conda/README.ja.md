@@ -15,13 +15,25 @@ pyproject の頭にある方針(2026-08-09 発注者「PyPI と conda-forge に�
 
 ## 手順(公開の版が PyPI に上がってから)
 
-1. **sha256 を取る**(meta.yaml の頭に取り方のコマンド)
-2. meta.yaml の `version` と `sha256` を差し替える
-3. staged-recipes を fork し、`recipes/officework/meta.yaml` に置いて PR
+**形式は v1(recipe.yaml)が必須**(2026-08-14 に実測 — staged-recipes の
+README が「v0 の meta.yaml は新規には非推奨」と明言。下書きは v1 に
+作り直し済み)。
+
+1. **sha256 を取る**(recipe.yaml の頭に取り方のコマンド)
+2. recipe.yaml の `context.version` と `sha256` を差し替える。
+   `extra.recipe-maintainers` を**発注者の個人の GitHub ID** に
+   (組織名は不可。PR に「maintainer になる」と一言コメントする決まり)
+3. [staged-recipes](https://github.com/conda-forge/staged-recipes) を
+   fork し、`recipes/officework/recipe.yaml` に置いて main へ PR
 4. CI(linux-64 / osx-64 / osx-arm64)が通るのを見る。**落ちたら
-   このファイルに踏んだ穴を書き足す**
-5. 取り込まれると feedstock(conda-forge/officework-feedstock)ができ、
-   以後の版上げは feedstock 側の bot PR(sha256 差し替え)になる
+   このファイルに踏んだ穴を書き足す**。審査は人間のボランティア —
+   数日〜数週かかることがある。急かすなら PR に
+   `@conda-forge/help-python-c` を1回だけ
+5. 取り込まれると feedstock(conda-forge/officework-feedstock)が
+   自動で出来て、数時間で `conda install -c conda-forge officework` が
+   通るようになる。以後の版上げは PyPI に上げるたび bot
+   (regro-cf-autotick-bot)が feedstock に sha256 差し替えの PR を
+   出してくるので、maintainer が merge するだけ
 
 ## 決めてあること
 
@@ -46,7 +58,8 @@ pyproject の頭にある方針(2026-08-09 発注者「PyPI と conda-forge に�
 
 ## この repo 側でやっておくこと(残件)
 
-- [ ] 公開の版(v0.2.0 予定)のタグ → PyPI(先に workflow_dispatch の
-      「wheel を作るだけ」で予行)
-- [ ] `extra.recipe-maintainers` を発注者の GitHub ID に(いまは仮に
-      aiseed-dev)
+- [x] 公開の版のタグ → PyPI(0.2.0 は 2026-08-12 に済)
+- [ ] v0.3.0 のタグ → PyPI(支度済み 2026-08-14。sha256 はその後に取る)
+- [ ] `extra.recipe-maintainers` を発注者の**個人の** GitHub ID に
+      (いまは仮に aiseed-dev。組織名だと審査で止まる)
+- [x] recipe を v1(recipe.yaml)に(2026-08-14。v0 の meta.yaml は消した)
