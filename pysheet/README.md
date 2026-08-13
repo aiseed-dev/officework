@@ -76,6 +76,11 @@ engine writes, **including the computed values** it cannot produce itself.
 See the [Python manual](https://github.com/aiseed-dev/officework/blob/main/docs/python-manual.md)
 for the details and the deliberate differences.
 
+Since 0.3.0 the wheel also typesets **equations**: `officework.tex` takes
+LaTeX and returns SVG or PNG. With TeX installed it typesets there (matrix
+columns align); without it, matplotlib's mathtext does the job; with
+neither, it refuses with the reason — never a silent empty picture.
+
 ## Why the engines exist
 
 `openpyxl` and `python-docx` rewrite the parts of the file they do not

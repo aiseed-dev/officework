@@ -16,7 +16,7 @@ build-backend = "maturin"
 
 [project]
 name = "officework"
-description = "帳票を壊さない xlsx エンジンと、動いているオフィスソフトを Python から操る橋"
+description = "帳票を壊さない xlsx / docx エンジン(openpyxl・xlwings・python-docx の語彙で書ける)と、動いているオフィスソフトを Python から操る橋"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "AGPL-3.0-or-later"
