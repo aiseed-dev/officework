@@ -142,6 +142,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+    env:
+      # **組版の試験は「入っている日本語書体」で字幅を測る。** Linux は apt の
+      # Noto、mac は Hiragino、Windows は成り行き — 書体が違えば字幅が違い、
+      # 座標を見る試験が OS ごとに割れる(2026-08-13 に mac と Windows の
+      # kumihan で踏んだ)。だから3 OS とも**同じ Noto Sans CJK JP を1枚**
+      # 置いて、font.rs の探索(OFFICE_FONT_DIR)に指させる — fallback() の
+      # 好みの並びの筆頭なので、これが在れば必ずこれで測る。
+      # Linux ではこの置き場は空のまま(apt の Noto を使う — 結局同じ書体)
+      OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
@@ -167,6 +176,14 @@ jobs:
             libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev libxcb-xkb-dev \
             libfontconfig1-dev \
             cmake clang pkg-config fonts-noto-cjk fonts-ipaexfont wamerican
+      - name: 日本語フォントを入れる(macOS だけ)
+        # 上の env の注記のとおり。版は固定(Sans2.004)— 落ちてきた物が
+        # 変わると字幅の物差しが黙って変わるため
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p "$OFFICE_FONT_DIR"
+          curl -sSL -o "$OFFICE_FONT_DIR/NotoSansCJKjp-Regular.otf" \
+            https://github.com/googlefonts/noto-cjk/raw/Sans2.004/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf
       - name: 試験
         # 2026-08-11 の基準は calc 148 / writer 38。**減ったら赤にする**のが
         # この仕事の役目で、数そのものはここに焼き付けない(増えるのが普通)
@@ -199,10 +216,18 @@ jobs:
   core-windows:
     name: cargo test (核 — Windows)
     runs-on: windows-latest
+    env:
+      # apps の仕事の env と同じ理由 — 3 OS とも同じ Noto で字幅を測る。
+      # Server の runner は日本語書体の有無すら保証が無い
+      OFFICE_FONT_DIR: ${{ runner.temp }}\jpfonts
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: 日本語フォントを入れる
+        run: |
+          New-Item -ItemType Directory -Force "$env:OFFICE_FONT_DIR" | Out-Null
+          Invoke-WebRequest -Uri "https://github.com/googlefonts/noto-cjk/raw/Sans2.004/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf" -OutFile "$env:OFFICE_FONT_DIR\NotoSansCJKjp-Regular.otf"
       - name: 試験
         run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
 
