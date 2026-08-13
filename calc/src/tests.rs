@@ -4434,6 +4434,88 @@ mod cycle_ref_tests {
 }
 
 #[cfg(test)]
+/// 数学オートコレクトの掛かる所・掛からない所(2026-08-13、台帳)
+#[cfg(test)]
+mod autocorrect_tests {
+    use crate::*;
+
+    /// 打った文字を1つずつ流す(GPUI の入力ハンドラと同じ道)
+    fn type_in(this: &mut Calc, s: &str) {
+        for c in s.chars() {
+            ui::handler::replace(this, None, &c.to_string());
+        }
+    }
+
+    #[gpui::test]
+    fn セルに打つと記号になり式には掛からない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.autocorrect = true;
+
+            // ふつうのセル: 区切りを打った時に替わる
+            this.input = Editor::new("");
+            type_in(this, "\\alpha ");
+            assert_eq!(this.input.text(), "α ");
+
+            // **式には掛からない。** 式は打った通りに残す
+            this.input = Editor::new("");
+            type_in(this, "=\\alpha ");
+            assert_eq!(this.input.text(), "=\\alpha ", "式の中で替わった");
+
+            // 切っていれば何も起きない
+            this.autocorrect = false;
+            this.input = Editor::new("");
+            type_in(this, "\\times ");
+            assert_eq!(this.input.text(), "\\times ");
+        });
+    }
+
+    /// **仕舞うときにも掛かる。** Enter は区切りの打鍵ではないので、
+    /// ここが無いと「`\alpha` と打って Enter」だけ替わらない
+    #[gpui::test]
+    fn enterで仕舞っても記号になる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.autocorrect = true;
+            this.input = Editor::new("");
+            type_in(this, "\\beta");
+            this.commit();
+            assert_eq!(
+                this.sheet().get(Pos::new(0, 0)).map(|c| c.editable()),
+                Some("β".to_string())
+            );
+            // 式はそのまま
+            this.cursor = Pos::new(1, 0);
+            this.input = Editor::new("");
+            type_in(this, "=\"\\beta\"");
+            this.commit();
+            assert_eq!(
+                this.sheet().get(Pos::new(1, 0)).and_then(|c| c.formula.clone()),
+                Some("\"\\beta\"".to_string()),
+                "式の中で替わった"
+            );
+        });
+    }
+
+    /// **`.py` の編集面では掛けない** — `\alpha` は Python では別の意味を
+    /// 持つ綴りで、置き換えたら台本が黙って壊れる
+    #[gpui::test]
+    fn pythonの編集面では掛からない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.autocorrect = true;
+            assert!(this.math_autocorrect(), "そもそも入っていない");
+            this.py_edit = Some(ui::pyedit::PyEdit {
+                name: "t".into(),
+                ed: Editor::new(""),
+                top: 0,
+                saved: String::new(),
+            });
+            assert!(!this.math_autocorrect(), "Python の面で掛かる");
+        });
+    }
+}
+
 /// コメントの一覧の並べ替え(2026-08-13、台帳「並べ替え・削除範囲」)
 #[cfg(test)]
 mod comment_list_tests {

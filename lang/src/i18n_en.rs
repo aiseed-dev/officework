@@ -1614,4 +1614,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("大きさ: {}×{}px", "Size: {}×{}px"),
     ("引いて動かします(設定の「位置を自動に戻す」で並びに戻ります)", "Drag it to move it (use “Back to automatic position” in the settings to put it back in the row)"),
     ("見出しを引くと動きます。大きさも位置も見え方だけで、保存される中身は変わりません", "Drag the heading to move it. Size and position only change what you see; the saved data does not change"),
+    ("数学オートコレクト", "Math autocorrect"),
+    ("入(\\alpha と打つと α)", "On (type \\alpha and get α)"),
+    ("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)", "Math autocorrect: on (a symbol appears when you type a separator; Backspace brings the spelling back)"),
+    ("数学オートコレクト: 切(打った綴りのまま残ります)", "Math autocorrect: off (what you type stays as you typed it)"),
+    ("{} を記号に替えました(Backspace で綴りに戻ります)", "Turned {} into a symbol (Backspace brings the spelling back)"),
 ];

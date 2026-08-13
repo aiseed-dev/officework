@@ -3820,6 +3820,34 @@ impl Render for Calc {
                                 this.run_cmd("ref-style", cx);
                                 cx.notify()
                             }))))
+                    // 本家は「オートコレクトのオプション」の小窓(3タブ)。
+                    // こちらは**記号の置き換えだけ**入れたので入切の1行
+                    // (「認識される関数」と「入力中の自動フォーマット」は
+                    // 数式の組版が要る話で、そちらは LaTeX で受けて
+                    // Python に組ませる車線 — 一列の文字では出せない)
+                    .child(div().flex().flex_row().items_center().gap_2()
+                        .child(div().w(px(us * 200.0)).text_color(dim)
+                            .child(ui::t!("数学オートコレクト")))
+                        .child(div().id("set-autocorrect")
+                            .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                            .child(if self.autocorrect {
+                                ui::t!("入(\\alpha と打つと α)")
+                            } else {
+                                ui::t!("切")
+                            })
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.autocorrect = !this.autocorrect;
+                                ui::settings::set(
+                                    "math_autocorrect",
+                                    if this.autocorrect { "1" } else { "0" },
+                                );
+                                this.status = if this.autocorrect {
+                                    ui::t!("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)").into()
+                                } else {
+                                    ui::t!("数学オートコレクト: 切(打った綴りのまま残ります)").into()
+                                };
+                                cx.notify()
+                            }))))
                     .child(div().h(px(10.0)))
                     .child(row(ui::t!("書体(OFFICE_FONT)"),
                         std::env::var("OFFICE_FONT")

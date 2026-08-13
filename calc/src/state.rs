@@ -47,6 +47,10 @@ impl Calc {
             slicer_cfg: false,
             slicer_drag: None,
             show_comments: true,
+            // 器は settings.toml。書いていなければ入(綴りは "0" で切)
+            autocorrect: ui::settings::get("math_autocorrect")
+                .map(|v| v != "0")
+                .unwrap_or(true),
             comment_list: None,
             pick_paths: Vec::new(),
             encrypt_pw: None,
@@ -1998,6 +2002,14 @@ impl Calc {
     }
 
     pub(crate) fn commit(&mut self) -> bool {
+        // **仕舞うときにも数学オートコレクトを掛ける。** Enter は区切りの
+        // 打鍵ではないので、これが無いと「\alpha と打って Enter」— いちばん
+        // 普通の終わり方 — だけ替わらない。区切りは足さない(空)
+        // 見るのは**セルの打ちかけ**(`self.input`)そのもの — 小窓が開いて
+        // いると `editor_ref()` はそちらを指すので、ここでは使わない
+        if self.autocorrect && !self.input.text().starts_with('=') {
+            self.input.autocorrect_math("");
+        }
         let (cur, mut text) = (self.cursor, self.input.text().to_string());
         // R1C1 で打った式は A1 に戻して仕舞う(中身はいつも A1)
         if self.book.r1c1 {

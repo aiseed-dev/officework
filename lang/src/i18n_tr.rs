@@ -1611,4 +1611,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("大きさ: {}×{}px", "Boyut: {}×{}px"),
     ("引いて動かします(設定の「位置を自動に戻す」で並びに戻ります)", "Taşımak için sürükleyin (ayarlardaki “Otomatik konuma dön” ile sıraya geri döner)"),
     ("見出しを引くと動きます。大きさも位置も見え方だけで、保存される中身は変わりません", "Taşımak için başlığı sürükleyin. Boyut ve konum yalnızca görünümü değiştirir; kaydedilen veriler değişmez"),
+    ("数学オートコレクト", "Matematik otomatik düzeltme"),
+    ("入(\\alpha と打つと α)", "Açık (\\alpha yazınca α olur)"),
+    ("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)", "Matematik otomatik düzeltme: açık (ayırıcı yazdığınızda simge belirir; Backspace yazılışı geri getirir)"),
+    ("数学オートコレクト: 切(打った綴りのまま残ります)", "Matematik otomatik düzeltme: kapalı (yazdığınız neyse öyle kalır)"),
+    ("{} を記号に替えました(Backspace で綴りに戻ります)", "{} simgeye dönüştürüldü (Backspace yazılışı geri getirir)"),
 ];

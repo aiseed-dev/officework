@@ -1611,4 +1611,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("大きさ: {}×{}px", "Ukuran: {}×{}px"),
     ("引いて動かします(設定の「位置を自動に戻す」で並びに戻ります)", "Tarik untuk memindahkan (gunakan “Kembalikan ke posisi otomatis” di pengaturan untuk mengembalikannya ke barisan)"),
     ("見出しを引くと動きます。大きさも位置も見え方だけで、保存される中身は変わりません", "Tarik judulnya untuk memindahkan. Ukuran dan posisi hanya mengubah tampilan; data yang tersimpan tidak berubah"),
+    ("数学オートコレクト", "Koreksi otomatis matematika"),
+    ("入(\\alpha と打つと α)", "Aktif (ketik \\alpha menjadi α)"),
+    ("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)", "Koreksi otomatis matematika: aktif (simbol muncul saat Anda mengetik pemisah; Backspace mengembalikan ejaannya)"),
+    ("数学オートコレクト: 切(打った綴りのまま残ります)", "Koreksi otomatis matematika: nonaktif (yang Anda ketik tetap seperti itu)"),
+    ("{} を記号に替えました(Backspace で綴りに戻ります)", "{} diubah menjadi simbol (Backspace mengembalikan ejaannya)"),
 ];

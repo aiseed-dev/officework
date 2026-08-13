@@ -432,6 +432,14 @@ pub trait HasEditor {
     /// `typing` が真なら打鍵の一手(続けて打った分はまとめてよい)。
     /// 既定は何もしない — 控えを持たないアプリはそのまま
     fn before_edit(&mut self, _typing: bool) {}
+    /// 数学オートコレクト(`\alpha` → α)を掛けるか。
+    /// **既定は切** — 打鍵の途中で勝手に置き換わる物を、黙って入れない
+    fn math_autocorrect(&self) -> bool {
+        false
+    }
+    /// オートコレクトが働いたときに呼ばれる(状態行に出す用)。
+    /// `was` は元の綴り
+    fn on_autocorrect(&mut self, _was: &str) {}
 }
 
 /// EntityInputHandler の中身。アプリの impl から丸ごと委譲する。
@@ -467,6 +475,12 @@ pub mod handler {
     /// 確定した文字が来た(通常の入力・IMEの確定・貼り付け)
     pub fn replace<T: HasEditor>(this: &mut T, range_utf16: Option<Range<usize>>, text: &str) {
         this.before_edit(true);
+        // **区切りを打った時**に数学オートコレクトを掛ける(`\alpha ` → `α `)。
+        // 打っている途中に替えると、`\pi` を打とうとして `\p` で止まった人が
+        // 困る。**入れる前に**掛けるので、記号と区切りで1手になり、
+        // Backspace 1回で綴りに戻る
+        let auto = this.math_autocorrect() && is_delim(text);
+        let mut was = None;
         {
             let e = this.editor();
             if let Some(r) = range_utf16 {
@@ -478,11 +492,26 @@ pub mod handler {
             // どちらも undo の1手になる(Editor 側の規則)
             if e.marked_range().is_some() {
                 e.commit_marked(text);
-            } else {
+            } else if !auto || !e.autocorrect_math(text) {
                 e.insert(text);
+            } else {
+                was = e.just_autocorrected().map(|s| s.to_string());
             }
         }
+        if let Some(was) = was {
+            this.on_autocorrect(&was);
+        }
         this.on_edited();
+    }
+
+    /// オートコレクトの引き金になる打鍵か(綴りの終わりを告げる文字)。
+    /// 英字と `\` は綴りの続きなので引き金にしない
+    fn is_delim(text: &str) -> bool {
+        let mut it = text.chars();
+        match (it.next(), it.next()) {
+            (Some(c), None) => !c.is_ascii_alphabetic() && c != '\\',
+            _ => false, // 2文字以上(貼り付け・IME の確定)は引き金にしない
+        }
     }
 
     /// 変換中の文字が来た(未確定)

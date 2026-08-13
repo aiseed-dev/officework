@@ -33,6 +33,90 @@ pub struct Editor {
     pre_ime: Option<Snapshot>,
     undo: Vec<Snapshot>,
     redo: Vec<Snapshot>,
+    /// **直前の数学オートコレクトの控え。** 打っている途中で勝手に
+    /// 置き換わるので、**直後の Backspace で綴りに戻せる**ようにこれを持つ
+    /// (Word と同じ作法)。別の打鍵をしたら捨てる — ずっと覚えていると、
+    /// 無関係な Backspace が古い綴りを吐き出す
+    autocorrected: Option<AutoFix>,
+}
+
+/// 置き換えたばかりの記号の控え([`Editor::autocorrect_math`])
+#[derive(Debug, Clone)]
+struct AutoFix {
+    /// 置き換えた直後のキャレットの位置。**ここに居るときだけ**戻せる
+    caret: usize,
+    /// 入れた記号のバイト範囲(区切りの手前)
+    sym: Range<usize>,
+    /// 元の綴り(`\alpha`)
+    was: String,
+}
+
+/// 数学オートコレクト(2026-08-13、台帳「数学オートコレクト」)。
+///
+/// `\alpha` のような綴りを記号に替える。表は本家(と Word)の顔ぶれから
+/// **記号1文字で済む物だけ**。分数・上付き・根号の中身のような「組み方」が
+/// 要る物は入れない — 一列の文字では正しく出せず、出せない物を出せるように
+/// 見せることになる(数式そのものは LaTeX で受けて Python に組ませる)。
+///
+/// 引き当ては**綴りぴったり**。`\alphabet` を α+bet にはしない
+pub fn math_symbol(word: &str) -> Option<&'static str> {
+    // (綴り, 記号)。綴りは `\` 込み
+    const T: &[(&str, &str)] = &[
+        // ギリシャ文字(小)
+        ("\\alpha", "α"), ("\\beta", "β"), ("\\gamma", "γ"), ("\\delta", "δ"),
+        ("\\epsilon", "ε"), ("\\zeta", "ζ"), ("\\eta", "η"), ("\\theta", "θ"),
+        ("\\iota", "ι"), ("\\kappa", "κ"), ("\\lambda", "λ"), ("\\mu", "μ"),
+        ("\\nu", "ν"), ("\\xi", "ξ"), ("\\pi", "π"), ("\\rho", "ρ"),
+        ("\\sigma", "σ"), ("\\tau", "τ"), ("\\upsilon", "υ"), ("\\phi", "φ"),
+        ("\\chi", "χ"), ("\\psi", "ψ"), ("\\omega", "ω"),
+        // ギリシャ文字(大)
+        ("\\Gamma", "Γ"), ("\\Delta", "Δ"), ("\\Theta", "Θ"), ("\\Lambda", "Λ"),
+        ("\\Xi", "Ξ"), ("\\Pi", "Π"), ("\\Sigma", "Σ"), ("\\Phi", "Φ"),
+        ("\\Psi", "Ψ"), ("\\Omega", "Ω"),
+        // 演算と比較
+        ("\\times", "×"), ("\\div", "÷"), ("\\pm", "±"), ("\\mp", "∓"),
+        ("\\cdot", "·"), ("\\ne", "≠"), ("\\neq", "≠"), ("\\le", "≤"),
+        ("\\leq", "≤"), ("\\ge", "≥"), ("\\geq", "≥"), ("\\approx", "≈"),
+        ("\\equiv", "≡"), ("\\propto", "∝"), ("\\sim", "∼"),
+        // 大きい記号(**中身を組まない**ので、記号そのものだけ)
+        ("\\sum", "∑"), ("\\prod", "∏"), ("\\int", "∫"), ("\\sqrt", "√"),
+        ("\\partial", "∂"), ("\\nabla", "∇"), ("\\infty", "∞"),
+        // 矢印
+        ("\\to", "→"), ("\\rightarrow", "→"), ("\\leftarrow", "←"),
+        ("\\leftrightarrow", "↔"), ("\\Rightarrow", "⇒"), ("\\Leftarrow", "⇐"),
+        ("\\Leftrightarrow", "⇔"), ("\\uparrow", "↑"), ("\\downarrow", "↓"),
+        // 集合と論理
+        ("\\in", "∈"), ("\\notin", "∉"), ("\\subset", "⊂"), ("\\supset", "⊃"),
+        ("\\cup", "∪"), ("\\cap", "∩"), ("\\emptyset", "∅"),
+        ("\\forall", "∀"), ("\\exists", "∃"), ("\\therefore", "∴"),
+        ("\\because", "∵"),
+        // 図形と単位
+        ("\\angle", "∠"), ("\\perp", "⊥"), ("\\parallel", "∥"),
+        ("\\deg", "°"), ("\\degree", "°"), ("\\circ", "∘"), ("\\bullet", "•"),
+        ("\\ldots", "…"), ("\\permil", "‰"), ("\\micro", "µ"),
+        ("\\yen", "¥"), ("\\euro", "€"), ("\\pound", "£"),
+    ];
+    T.iter().find(|(k, _)| *k == word).map(|(_, v)| *v)
+}
+
+/// カーソルの手前にある「オートコレクトの相手」の綴りを探す。
+///
+/// `\` から始まり英字だけが続く塊。`\` が無ければ相手ではない —
+/// **ふつうの言葉を勝手に置き換えない**のがこの形の眼目で、
+/// `pi` を打っただけで π になっては帳票が書けない
+fn word_before(text: &str, at: usize) -> Option<(usize, &str)> {
+    let head = &text[..at];
+    let start = head
+        .char_indices()
+        .rev()
+        .take_while(|(_, c)| c.is_ascii_alphabetic() || *c == '\\')
+        .last()
+        .map(|(i, _)| i)?;
+    let w = &head[start..];
+    if !w.starts_with('\\') || w.len() < 2 {
+        return None;
+    }
+    Some((start, w))
 }
 
 impl Default for Editor {
@@ -52,6 +136,7 @@ impl Editor {
             pre_ime: None,
             undo: Vec::new(),
             redo: Vec::new(),
+            autocorrected: None,
         }
     }
 
@@ -118,6 +203,9 @@ impl Editor {
 
     /// 選択を置き換えて文字列を入れる(通常の入力・貼り付け)。undo の1手。
     pub fn insert(&mut self, s: &str) {
+        // 別の打鍵をしたらオートコレクトの控えは捨てる — 覚えたままだと、
+        // 位置がたまたま戻ったときに無関係な Backspace が古い綴りを吐く
+        self.autocorrected = None;
         self.checkpoint();
         let r = self.replace_range();
         self.text.replace_range(r.clone(), s);
@@ -126,8 +214,66 @@ impl Editor {
         self.marked = None;
     }
 
+    /// **数学オートコレクトを掛けて、区切りの文字を続けて入れる。**
+    ///
+    /// カーソルの手前が `\alpha` のような綴りなら記号に替え、そのうしろに
+    /// `delim`(打たれた空白や記号)を置く。**替えたら true。**
+    /// 替えなければ何もしない — 呼んだ側がふつうに入れる。
+    ///
+    /// 掛けるのは**区切りを打った時**。打っている途中に替えると、
+    /// `\pi` を打とうとして `\p` で止まった人が困る。
+    ///
+    /// 記号と区切りで**1手**(checkpoint は1回)。替えたことは控えておき、
+    /// **直後の Backspace で綴りに戻す** — 「元に戻せること」が
+    /// この機能の要件(台帳の札)
+    pub fn autocorrect_math(&mut self, delim: &str) -> bool {
+        self.autocorrected = None;
+        if self.marked.is_some() || self.has_selection() {
+            return false; // 変換中と選択中は触らない
+        }
+        let Some((start, word)) = word_before(&self.text, self.cursor) else {
+            return false;
+        };
+        let Some(sym) = math_symbol(word) else {
+            return false;
+        };
+        let was = word.to_string();
+        self.checkpoint();
+        self.text.replace_range(start..self.cursor, &format!("{sym}{delim}"));
+        self.cursor = start + sym.len() + delim.len();
+        self.anchor = self.cursor;
+        self.autocorrected = Some(AutoFix {
+            caret: self.cursor,
+            sym: start..start + sym.len(),
+            was,
+        });
+        true
+    }
+
+    /// いま置き換えたばかりの綴り(状態行に「Backspace で戻せます」と出す用)
+    pub fn just_autocorrected(&self) -> Option<&str> {
+        self.autocorrected
+            .as_ref()
+            .filter(|a| a.caret == self.cursor)
+            .map(|a| a.was.as_str())
+    }
+
     /// 後退削除。選択があればそれを消す。
+    ///
+    /// **置き換えたばかりの記号の直後なら、記号を綴りに戻す**(消さない)。
+    /// 打った区切りはそのまま残る — 消したいのは置き換えであって、
+    /// 自分で打った文字ではない(Word と同じ)
     pub fn backspace(&mut self) {
+        if let Some(a) = self.autocorrected.take() {
+            if a.caret == self.cursor && !self.has_selection() {
+                self.checkpoint();
+                self.text.replace_range(a.sym.clone(), &a.was);
+                let grew = a.was.len() as isize - (a.sym.end - a.sym.start) as isize;
+                self.cursor = (self.cursor as isize + grew) as usize;
+                self.anchor = self.cursor;
+                return;
+            }
+        }
         if self.has_selection() {
             self.insert("");
             return;
@@ -143,6 +289,7 @@ impl Editor {
     }
 
     pub fn delete(&mut self) {
+        self.autocorrected = None;
         if self.has_selection() {
             self.insert("");
             return;
@@ -439,5 +586,90 @@ mod tests {
         e.move_char(true, false);
         assert_eq!(e.text(), "");
         assert!(!e.undo());
+    }
+
+    // ---------- 数学オートコレクト(2026-08-13、台帳)----------
+
+    /// **区切りを打った時に替わる。** 綴りの途中では替わらない
+    /// (`\alph` は表に無いので何も起きない)
+    #[test]
+    fn 綴りは区切りを打った時に記号になる() {
+        let mut e = Editor::new("");
+        e.insert("\\alph"); // まだ綴りの途中
+        assert!(!e.autocorrect_math(" "));
+        assert_eq!(e.text(), "\\alph", "途中で替わった");
+        e.insert("a");
+        assert!(e.autocorrect_math(" "));
+        assert_eq!(e.text(), "α ");
+        assert_eq!(e.cursor(), e.text().len());
+    }
+
+    /// **ふつうの言葉を勝手に置き換えない。** `\` が無ければ相手ではない
+    #[test]
+    fn 円記号の無い綴りは触らない() {
+        let mut e = Editor::new("");
+        e.insert("pi");
+        assert!(!e.autocorrect_math(" "), "pi が π になった");
+        e.insert(" alpha");
+        assert!(!e.autocorrect_math(" "));
+        assert_eq!(e.text(), "pi alpha");
+    }
+
+    /// 知らない綴りは残す(黙って消さない)
+    #[test]
+    fn 表に無い綴りは残る() {
+        let mut e = Editor::new("");
+        e.insert("\\nosuch");
+        assert!(!e.autocorrect_math(" "));
+        assert_eq!(e.text(), "\\nosuch");
+    }
+
+    /// **元に戻せることが要件**(台帳の札)。直後の Backspace で綴りに戻り、
+    /// 自分で打った区切りは残る
+    #[test]
+    fn 直後のバックスペースで綴りに戻る() {
+        let mut e = Editor::new("");
+        e.insert("x=\\ne");
+        assert!(e.autocorrect_math("y"));
+        assert_eq!(e.text(), "x=≠y");
+        assert_eq!(e.just_autocorrected(), Some("\\ne"));
+        e.backspace();
+        assert_eq!(e.text(), "x=\\ney", "綴りに戻らない");
+        assert_eq!(e.cursor(), e.text().len());
+        // 2回目はふつうの後退削除
+        e.backspace();
+        assert_eq!(e.text(), "x=\\ne");
+    }
+
+    /// Ctrl+Z(Editor の undo)でも1手で戻る — 記号と区切りで1手
+    #[test]
+    fn 取り消しも一手() {
+        let mut e = Editor::new("");
+        e.insert("\\times");
+        assert!(e.autocorrect_math(" "));
+        assert_eq!(e.text(), "× ");
+        assert!(e.undo());
+        assert_eq!(e.text(), "\\times");
+    }
+
+    /// 別の打鍵をしたら控えは捨てる — 位置がたまたま戻っても吐き出さない
+    #[test]
+    fn 打ち足したあとのバックスペースはふつうに消す() {
+        let mut e = Editor::new("");
+        e.insert("\\pi");
+        assert!(e.autocorrect_math(" "));
+        e.insert("r");
+        assert_eq!(e.text(), "π r");
+        e.backspace();
+        assert_eq!(e.text(), "π ", "綴りが吐き出された");
+    }
+
+    #[test]
+    fn 表は綴りぴったりで引く() {
+        assert_eq!(math_symbol("\\alpha"), Some("α"));
+        assert_eq!(math_symbol("\\alphabet"), None);
+        assert_eq!(math_symbol("alpha"), None);
+        assert_eq!(math_symbol("\\Omega"), Some("Ω"));
+        assert_eq!(math_symbol("\\omega"), Some("ω"), "大小を取り違えている");
     }
 }

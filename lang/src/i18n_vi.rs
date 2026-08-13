@@ -1611,4 +1611,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("大きさ: {}×{}px", "Kích thước: {}×{}px"),
     ("引いて動かします(設定の「位置を自動に戻す」で並びに戻ります)", "Kéo để di chuyển (dùng “Trả về vị trí tự động” trong cài đặt để đưa nó lại vào hàng)"),
     ("見出しを引くと動きます。大きさも位置も見え方だけで、保存される中身は変わりません", "Kéo tiêu đề để di chuyển. Kích thước và vị trí chỉ thay đổi cách hiển thị; dữ liệu đã lưu không đổi"),
+    ("数学オートコレクト", "Tự động sửa ký hiệu toán"),
+    ("入(\\alpha と打つと α)", "Bật (gõ \\alpha sẽ thành α)"),
+    ("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)", "Tự động sửa ký hiệu toán: bật (gõ dấu phân cách thì ký hiệu hiện ra; Backspace đưa lại cách viết cũ)"),
+    ("数学オートコレクト: 切(打った綴りのまま残ります)", "Tự động sửa ký hiệu toán: tắt (bạn gõ thế nào thì giữ nguyên thế đó)"),
+    ("{} を記号に替えました(Backspace で綴りに戻ります)", "Đã đổi {} thành ký hiệu (Backspace đưa lại cách viết cũ)"),
 ];

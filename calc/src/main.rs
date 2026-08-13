@@ -161,6 +161,10 @@ struct Calc {
     slicer_drag: Option<(usize, (f32, f32), (f32, f32))>,
     /// コメントを見せるか(共同編集タブで切替。隠しても付いたまま)
     show_comments: bool,
+    /// 数学オートコレクト(`\alpha ` → `α `)を掛けるか。器は settings.toml。
+    /// **既定は入** — 打っても何も起きないより、Backspace で戻せる形で
+    /// 働くほうが分かる(戻せることが要件。台帳の札)
+    autocorrect: bool,
     /// コメントの一覧の板(開いていれば並べ方を持つ)。**ブック全体**を並べる
     comment_list: Option<CommentList>,
     /// 暗号化のパスワード(次の保存から効く。開いた暗号化ブックからも入る)
@@ -416,6 +420,21 @@ impl HasEditor for Calc {
             Some((_, ed)) => ed,
             None => &self.input,
         }
+    }
+    /// 数学オートコレクト(`\alpha ` → `α `)。**掛けない所が3つある**:
+    ///
+    /// - `.py` の編集面 — `\alpha` は Python では別の意味を持つ綴りで、
+    ///   置き換えたら台本が黙って壊れる
+    /// - 式(`=` で始まる打ちかけ)— 式は**打った通りに残す**
+    /// - 設定で切っているとき(既定は入。詳細設定で切れる)
+    fn math_autocorrect(&self) -> bool {
+        self.autocorrect
+            && self.py_edit.is_none()
+            && !self.editor_ref().text().starts_with('=')
+    }
+    fn on_autocorrect(&mut self, was: &str) {
+        self.status =
+            ui::tf!("{} を記号に替えました(Backspace で綴りに戻ります)", was).into();
     }
     fn on_edited(&mut self) {
         // 検索を打ち替えたら一覧の選択は先頭に戻す
