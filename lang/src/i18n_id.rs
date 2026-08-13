@@ -1447,4 +1447,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("プロパティ「{}」を控えました(保存で xlsx に入ります)", "Properti \"{}\" dicatat (masuk ke xlsx saat disimpan)"),
     ("プロパティ「{}」を外しました", "Properti \"{}\" dihapus"),
     ("ブックを閉じました(新しいブックです)", "Buku kerja ditutup (sekarang buku kerja baru)"),
+    ("刷るシートがありません(全部隠れています)", "Tidak ada yang dicetak (semua lembar tersembunyi)"),
 ];

@@ -1450,4 +1450,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("プロパティ「{}」を控えました(保存で xlsx に入ります)", "Property \"{}\" recorded (goes into the xlsx on save)"),
     ("プロパティ「{}」を外しました", "Removed the property \"{}\""),
     ("ブックを閉じました(新しいブックです)", "Workbook closed (this is now a new workbook)"),
+    ("刷るシートがありません(全部隠れています)", "Nothing to print (every sheet is hidden)"),
 ];

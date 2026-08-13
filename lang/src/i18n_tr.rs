@@ -1447,4 +1447,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("プロパティ「{}」を控えました(保存で xlsx に入ります)", "«{}» özelliği kaydedildi (kaydetmede xlsx'e girer)"),
     ("プロパティ「{}」を外しました", "«{}» özelliği çıkarıldı"),
     ("ブックを閉じました(新しいブックです)", "Kitap kapatıldı (artık yeni bir kitap)"),
+    ("刷るシートがありません(全部隠れています)", "Yazdırılacak sayfa yok (tümü gizli)"),
 ];

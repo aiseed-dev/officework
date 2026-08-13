@@ -1447,4 +1447,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("プロパティ「{}」を控えました(保存で xlsx に入ります)", "Đã ghi nhận thuộc tính “{}” (sẽ vào xlsx khi lưu)"),
     ("プロパティ「{}」を外しました", "Đã bỏ thuộc tính “{}”"),
     ("ブックを閉じました(新しいブックです)", "Đã đóng sổ tính (bây giờ là sổ tính mới)"),
+    ("刷るシートがありません(全部隠れています)", "Không có trang tính nào để in (tất cả đều bị ẩn)"),
 ];

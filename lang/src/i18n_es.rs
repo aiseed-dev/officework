@@ -1447,4 +1447,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("プロパティ「{}」を控えました(保存で xlsx に入ります)", "Propiedad «{}» anotada (entra en el xlsx al guardar)"),
     ("プロパティ「{}」を外しました", "Propiedad «{}» eliminada"),
     ("ブックを閉じました(新しいブックです)", "Libro cerrado (ahora es un libro nuevo)"),
+    ("刷るシートがありません(全部隠れています)", "No hay nada que imprimir (todas las hojas están ocultas)"),
 ];
