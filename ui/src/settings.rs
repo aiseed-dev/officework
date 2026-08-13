@@ -38,6 +38,25 @@ pub fn get(key: &str) -> Option<String> {
     None
 }
 
+/// 前置きで始まる鍵を全部読む(`key.bold = "ctrl-b"` の類)。
+/// 返りは(前置きを剥いだ名前, 値)。並びはファイルの上から順
+pub fn get_prefixed(prefix: &str) -> Vec<(String, String)> {
+    let Ok(s) = std::fs::read_to_string(path()) else { return Vec::new() };
+    let mut out = Vec::new();
+    for line in s.lines() {
+        let line = line.trim();
+        if line.starts_with('#') || line.starts_with('[') {
+            continue;
+        }
+        if let Some((k, v)) = line.split_once('=') {
+            if let Some(name) = k.trim().strip_prefix(prefix) {
+                out.push((name.to_string(), v.trim().trim_matches('"').to_string()));
+            }
+        }
+    }
+    out
+}
+
 /// settings.toml に1つの鍵を書く(他の行は保つ。無ければ行を足す)
 pub fn set(key: &str, value: &str) {
     let p = path();

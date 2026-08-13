@@ -125,6 +125,15 @@ fn strip_test_items(src: &str) -> String {
 
 fn keys_in(src: &str) -> Vec<String> {
     let owned = strip_test_items(src);
+    // ui クレート自身の中では `crate::t!` と書く(自分を ui:: とは
+    // 呼べない)。前置きを揃えてから走査する — この置き換えが無いと
+    // ui/src の文言が**黙って未訳のまま**になる(2026-08-14 に pyedit の
+    // 4句と鍵の言い分3句がその穴に落ちているのを見つけた)。
+    // **ui/gen_i18n.py の走査と揃えること**
+    let owned = owned
+        .replace("crate::tf!(", "ui::tf!(")
+        .replace("crate::t!(", "ui::t!(")
+        .replace("crate::item!(", "ui::item!(");
     let src: &str = &owned;
     let b = src.as_bytes();
     let mut out = Vec::new();

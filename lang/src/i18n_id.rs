@@ -1620,4 +1620,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("キーヒントを畳みました", "Tips tombol ditutup"),
     ("{} の段(札を打つと押します。Esc でやめる)", "Tab {} (ketik satu huruf untuk menekan tombol; Esc untuk berhenti)"),
     ("その札はありません(「{}」)", "Huruf itu tidak ada (“{}”)"),
+    ("Shift+→ で埋める範囲を選んでください(先頭列を右へ写します)", "Pilih rentang yang akan diisi dengan Shift+→ (kolom pertama disalin ke kanan)"),
+    ("列を選択しました(Shift+Space で行)", "Kolom dipilih (Shift+Spasi untuk baris)"),
+    ("行を選択しました(Ctrl+Space で列)", "Baris dipilih (Ctrl+Spasi untuk kolom)"),
+    ("設定の key.{} は知らない操作名です", "key.{} di pengaturan menyebut aksi yang tidak dikenal"),
+    ("設定の key.{} の鍵が読めません: {}", "Pintasan untuk key.{} di pengaturan tidak terbaca: {}"),
+    ("鍵 {} は {} と {} の取り合いです({} が勝ちます)", "Pintasan {} diperebutkan oleh {} dan {} ({} yang menang)"),
+    ("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Ada perubahan yang belum disimpan — Ctrl+S untuk menyimpan, Esc sekali lagi untuk membuang dan menutup"),
+    ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S simpan (fungsi sel dihitung ulang saat disimpan) / Esc tutup / Tab indentasi"),
 ];

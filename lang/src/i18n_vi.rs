@@ -1620,4 +1620,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("キーヒントを畳みました", "Đã đóng mẹo phím"),
     ("{} の段(札を打つと押します。Esc でやめる)", "Tab {} (gõ một chữ để bấm nút; Esc để dừng)"),
     ("その札はありません(「{}」)", "Không có chữ đó (“{}”)"),
+    ("Shift+→ で埋める範囲を選んでください(先頭列を右へ写します)", "Chọn vùng cần điền bằng Shift+→ (cột đầu tiên được sao chép sang phải)"),
+    ("列を選択しました(Shift+Space で行)", "Đã chọn cột (Shift+Space để chọn hàng)"),
+    ("行を選択しました(Ctrl+Space で列)", "Đã chọn hàng (Ctrl+Space để chọn cột)"),
+    ("設定の key.{} は知らない操作名です", "key.{} trong cài đặt là tên thao tác không xác định"),
+    ("設定の key.{} の鍵が読めません: {}", "Không đọc được phím tắt của key.{} trong cài đặt: {}"),
+    ("鍵 {} は {} と {} の取り合いです({} が勝ちます)", "Phím tắt {} bị tranh chấp giữa {} và {} ({} thắng)"),
+    ("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Có thay đổi chưa lưu — Ctrl+S để lưu, nhấn Esc lần nữa để bỏ và đóng"),
+    ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S lưu (khi lưu, các hàm trong ô được tính lại) / Esc đóng / Tab thụt lề"),
 ];

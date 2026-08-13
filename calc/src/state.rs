@@ -170,6 +170,11 @@ impl Calc {
             )
             .into();
         }
+        // settings.toml の key.* に読めない行があれば、開いた時に言う
+        // (黙って捨てると、効かない理由を利用者が探せない)
+        if let Some(w) = ui::key_warnings().first() {
+            c.status = w.clone().into();
+        }
         c
     }
 

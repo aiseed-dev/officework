@@ -89,7 +89,9 @@ def keys_from(path):
     # `ui::item!("…")` は一覧の項の鍵(訳すのは見出しだけ)。t!/tf! と同じ鍵。
     # **lang/tests/i18n_soroi.rs の走査と揃えること** — 片方だけ知っていると、
     # 生きている訳を「使われていない」と数えて消せと言い出す(2026-08-10 の一敗)
-    for m in re.finditer(r"ui::(?:tf?|item)!\(\s*", src):
+    # `crate::t!` は ui クレート自身の中の書き方(自分を ui:: と呼べない)。
+    # lang/tests/i18n_soroi.rs の走査と揃えること(あちらは置き換えで実装)
+    for m in re.finditer(r"(?:ui|crate)::(?:tf?|item)!\(\s*", src):
         j = m.end()
         if j < len(src) and src[j] == '"':
             _, lit = literal_at(src, j)

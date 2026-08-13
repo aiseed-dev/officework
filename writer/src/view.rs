@@ -1581,6 +1581,14 @@ impl Render for Writer {
             .on_action(cx.listener(Writer::do_save))
             .on_action(cx.listener(Writer::do_open))
             .on_action(cx.listener(Writer::do_quit))
+            // 定番の増強(2026-08-14)
+            .on_action(cx.listener(Writer::do_align_left))
+            .on_action(cx.listener(Writer::do_align_center))
+            .on_action(cx.listener(Writer::do_align_right))
+            .on_action(cx.listener(Writer::do_align_justify))
+            .on_action(cx.listener(Writer::do_page_break))
+            .on_action(cx.listener(Writer::do_font_bigger))
+            .on_action(cx.listener(Writer::do_font_smaller))
             .child(bar)
             .child(if let Some(fp) = filepage {
                 fp

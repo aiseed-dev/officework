@@ -127,6 +127,11 @@ jobs:
         # **限界**: 表に載せた語しか見ない。廃止を決めた回で表にも足すこと
         # (SEKKEI 書き込みの規則6)
         run: python3 tools/sunset_check.py
+      - name: キーの一覧が束縛の表と揃っているか
+        # 手引きの「すべてのキー」は ui/src/lib.rs の KEYS_* から自動生成
+        # (tools/keys_doc.py --write)。手で書いた表は必ずずれる —
+        # 鍵を足した回でこの門番が落ちたら、--write で書き直してコミット
+        run: python3 tools/keys_doc.py
       - name: clippy
         # **-D warnings で止める。** 警告を貯めると新しい指摘が埋もれる。
         # ただし家の作法と噛み合わない4つだけ許す — どれも正しさの話ではなく

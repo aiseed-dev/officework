@@ -303,6 +303,35 @@ impl Calc {
                     self.status = format!("{n} セルを埋めました").into();
                 }
             }
+            // 右へコピー(Ctrl+R)。リボンには無い — 鍵盤の道だけ。
+            // fill-num(下へ)の姉妹で、先頭列を右へ写す。式は相対参照が
+            // 列方向にずれ、$ は止まる(offset_refs が同じ規則で見る)
+            "fill-right" => {
+                let (a, b) = self.sel_rect();
+                if a.col == b.col {
+                    self.status = ui::t!("Shift+→ で埋める範囲を選んでください(先頭列を右へ写します)").into();
+                } else {
+                    self.commit();
+                    self.checkpoint();
+                    let sh = &mut self.book.sheets[self.active];
+                    let mut n = 0usize;
+                    for r in a.row..=b.row {
+                        let Some(src) = sh.get(Pos::new(r, a.col)).cloned() else { continue };
+                        for c in a.col + 1..=b.col {
+                            let mut cell = src.clone();
+                            if let Some(f) = &src.formula {
+                                cell.formula =
+                                    Some(sheet::model::offset_refs(f, 0, (c - a.col) as i64));
+                            }
+                            sh.set(Pos::new(r, c), cell);
+                            n += 1;
+                        }
+                    }
+                    recalc_book(&mut self.book, self.active);
+                    self.dirty = true;
+                    self.status = format!("{n} セルを埋めました").into();
+                }
+            }
             // 塗りつぶし。黄 → 水色 → 解除(色を選ぶ小窓がまだ無い)
             // 結合は本家の4択(結合して中央/横方向/結合だけ/解除)
             "merge" => {

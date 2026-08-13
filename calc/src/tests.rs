@@ -5536,4 +5536,51 @@ mod boolean_tests {
             assert!(this.status.contains("足し引きできません"), "理由を言っていない");
         });
     }
+
+    #[gpui::test]
+    fn 右へコピーで値も式もずれて写る(cx: &mut gpui::TestAppContext) {
+        // Ctrl+R(fill-right)。fill-num(下へ)の姉妹 — 先頭列を右へ、
+        // 式は相対参照が列方向にずれる
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (col, v) in ["7", "8", "9"].iter().enumerate() {
+                this.book.sheets[0].set(Pos::new(0, col as u32), sheet::Cell::input(v));
+            }
+            this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("=A1*2"));
+            recalc_book(&mut this.book, 0);
+            // A2:C2 を選んで右へ → B2=B1*2=16, C2=C1*2=18
+            this.anchor = Some(Pos::new(1, 0));
+            this.cursor = Pos::new(1, 2);
+            this.run_cmd("fill-right", cx);
+            for (col, want) in [(1u32, 16.0), (2, 18.0)] {
+                let v = this.book.sheets[0].value(Pos::new(1, col));
+                assert_eq!(v, sheet::Value::Number(want), "列{col}");
+            }
+            // 1列だけなら断って、選び方まで言う
+            this.anchor = None;
+            this.cursor = Pos::new(3, 0);
+            this.run_cmd("fill-right", cx);
+            assert!(this.status.contains("Shift+→"), "{}", this.status);
+        });
+    }
+
+    #[gpui::test]
+    fn 列と行の丸ごと選択(cx: &mut gpui::TestAppContext) {
+        // Ctrl+Space / Shift+Space の実体。使われている大きさまで選ぶ
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.book.sheets[0].set(Pos::new(0, 1), sheet::Cell::input("x"));
+            this.book.sheets[0].set(Pos::new(4, 2), sheet::Cell::input("y"));
+            this.cursor = Pos::new(2, 1);
+            this.anchor = None;
+            this.select_col_now();
+            let (a, b) = this.sel_rect();
+            assert_eq!((a, b), (Pos::new(0, 1), Pos::new(4, 1)), "列の丸ごと");
+            // 続けて行 — いま選んでいる行ぶんを丸ごと(0〜4行 × 全列)
+            this.select_row_now();
+            let (a, b) = this.sel_rect();
+            assert_eq!(a.col, 0, "行の丸ごとは列0から");
+            assert_eq!(b.col, 2, "使われている右端まで");
+        });
+    }
 }

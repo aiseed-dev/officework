@@ -1234,4 +1234,99 @@ impl Calc {
             });
         });
     }
+
+    // ---- 定番の増強(2026-08-14 発注者「割り当てが足りない」) ----
+    // どれもリボンと同じ道(run_cmd)を通す — 鍵だけの別実装を作らない
+
+    /// Ctrl+1 = セルの書式(本家と同じ)
+    pub(crate) fn a_cell_format(&mut self, _: &ui::CellFormat, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("cell-format", cx);
+        cx.notify();
+    }
+    /// Alt+= = オートSUM(ホームの Σ と同じ)
+    pub(crate) fn a_auto_sum(&mut self, _: &ui::AutoSum, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("sum", cx);
+        cx.notify();
+    }
+    /// Ctrl+D = 下へコピー(フィルと同じ道)
+    pub(crate) fn a_fill_down(&mut self, _: &ui::FillDown, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("fill-num", cx);
+        cx.notify();
+    }
+    /// Ctrl+R = 右へコピー
+    pub(crate) fn a_fill_right(&mut self, _: &ui::FillRight, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("fill-right", cx);
+        cx.notify();
+    }
+    /// Ctrl+T = 表にする(すぐ作る側。色を選ぶのはリボンの表↧)
+    pub(crate) fn a_make_table(&mut self, _: &ui::MakeTable, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("instable", cx);
+        cx.notify();
+    }
+    /// Shift+F2 = コメント
+    pub(crate) fn a_add_comment(&mut self, _: &ui::AddComment, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("addcomment", cx);
+        cx.notify();
+    }
+    /// Ctrl+Shift+L = フィルタの付け外し(setfilter 自体が切替の作り)
+    pub(crate) fn a_toggle_filter(&mut self, _: &ui::ToggleFilter, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("setfilter", cx);
+        cx.notify();
+    }
+    /// Ctrl+G / F5 = ジャンプ。名前ボックスに焦点を移す(押した時と同じ)
+    pub(crate) fn a_jump(&mut self, _: &ui::Jump, _: &mut Window, cx: &mut Context<Self>) {
+        self.commit();
+        self.name_edit = Some(Editor::new(""));
+        self.status = ui::t!(
+            "名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。\
+             知らない名前は選択に付きます")
+        .into();
+        cx.notify();
+    }
+    /// Ctrl+Space = 列の選択(いまの選択の列を丸ごと)
+    pub(crate) fn a_select_col(&mut self, _: &ui::SelectCol, _: &mut Window, cx: &mut Context<Self>) {
+        if self.editing() || self.py_edit.is_some() {
+            return; // 打ちかけの間は触らない(字の入力と取り合わない)
+        }
+        self.select_col_now();
+        cx.notify();
+    }
+    /// 列の丸ごと選択の実体(試験もここを叩く)
+    pub(crate) fn select_col_now(&mut self) {
+        self.commit();
+        let (rows, _) = self.sheet().size();
+        let (a, b) = self.sel_rect();
+        self.anchor = Some(Pos::new(0, a.col));
+        self.cursor = Pos::new(rows.max(1) - 1, b.col);
+        self.status = ui::t!("列を選択しました(Shift+Space で行)").into();
+        self.sync_input();
+    }
+    /// Shift+Space = 行の選択(いまの選択の行を丸ごと)
+    pub(crate) fn a_select_row(&mut self, _: &ui::SelectRow, _: &mut Window, cx: &mut Context<Self>) {
+        // 打ちかけの間、Shift+Space は**空白の字**。捌きが鍵を食うので
+        // 明示で入れる(黙って何も起きないのが一番悪い)
+        if let Some(p) = &mut self.py_edit {
+            p.ed.insert(" ");
+            cx.notify();
+            return;
+        }
+        if self.editing() {
+            self.input.insert(" ");
+            self.dirty = true;
+            cx.notify();
+            return;
+        }
+        self.select_row_now();
+        cx.notify();
+    }
+    /// 行の丸ごと選択の実体(試験もここを叩く)
+    pub(crate) fn select_row_now(&mut self) {
+        self.commit();
+        let (_, cols) = self.sheet().size();
+        let (a, b) = self.sel_rect();
+        self.anchor = Some(Pos::new(a.row, 0));
+        self.cursor = Pos::new(b.row, cols.max(1) - 1);
+        self.status = ui::t!("行を選択しました(Ctrl+Space で列)").into();
+        self.sync_input();
+    }
 }

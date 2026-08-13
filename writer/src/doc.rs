@@ -126,6 +126,11 @@ impl Writer {
                 w.dirty = false;
             }
         }
+        // settings.toml の key.* に読めない行があれば、開いた時に言う
+        // (calc と同じ — 黙って捨てない)
+        if let Some(warn) = ui::key_warnings().first() {
+            w.status = warn.clone().into();
+        }
         w
     }
 

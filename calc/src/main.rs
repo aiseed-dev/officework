@@ -587,7 +587,9 @@ fn main() {
         cx.text_system()
             .add_fonts(vec![std::borrow::Cow::Borrowed(font_data())])
             .expect("フォント登録");
-        cx.bind_keys(ui::bindings("jo_edit"));
+        // 共通+calc の表と、settings.toml の key.* の上書き。読めなかった
+        // 行の言い分は起動後に状態行へ(ui::key_warnings — 黙って捨てない)
+        cx.bind_keys(ui::bindings_for("calc", "jo_edit"));
         // **JO_KEYLOG=1 で打鍵と行き先を書き出す。** 「鍵が束縛に届いた」と
         // 「受け口が動いた」は別物で、前者だけ見て入れたつもりになると
         // キーの嘘になる(2026-08-10 に7つやった)。ここで見えるのは前者

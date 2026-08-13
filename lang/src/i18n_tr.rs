@@ -1620,4 +1620,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("キーヒントを畳みました", "Tuş ipuçları kapatıldı"),
     ("{} の段(札を打つと押します。Esc でやめる)", "{} sekmesi (bir harf düğmeye basar; Esc ile çıkın)"),
     ("その札はありません(「{}」)", "Böyle bir harf yok (“{}”)"),
+    ("Shift+→ で埋める範囲を選んでください(先頭列を右へ写します)", "Shift+→ ile doldurulacak aralığı seçin (ilk sütun sağa kopyalanır)"),
+    ("列を選択しました(Shift+Space で行)", "Sütun seçildi (satır için Shift+Boşluk)"),
+    ("行を選択しました(Ctrl+Space で列)", "Satır seçildi (sütun için Ctrl+Boşluk)"),
+    ("設定の key.{} は知らない操作名です", "Ayarlardaki key.{} bilinmeyen bir eylem adı"),
+    ("設定の key.{} の鍵が読めません: {}", "Ayarlardaki key.{} kısayolu okunamıyor: {}"),
+    ("鍵 {} は {} と {} の取り合いです({} が勝ちます)", "{} kısayolu {} ile {} arasında çakışıyor ({} kazanır)"),
+    ("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Kaydedilmemiş değişiklikler var — kaydetmek için Ctrl+S, vazgeçip kapatmak için tekrar Esc"),
+    ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S kaydet (kaydedince hücre işlevleri yeniden hesaplanır) / Esc kapat / Tab girinti"),
 ];

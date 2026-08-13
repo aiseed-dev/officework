@@ -844,4 +844,37 @@ impl Writer {
         self.open_dialog(cx);
         cx.notify();
     }
+
+    // ---- 定番の増強(2026-08-14 発注者「割り当てが足りない」)。
+    // Word の手の記憶: Ctrl+E/L/R/J の揃え・Ctrl+Enter の改ページ・
+    // Ctrl+]/[ の文字の大小。どれもリボンと同じ道(run_cmd)を通す ----
+
+    pub(crate) fn do_align_left(&mut self, _: &ui::AlignLeft, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("align-left", cx);
+        cx.notify();
+    }
+    pub(crate) fn do_align_center(&mut self, _: &ui::AlignCenter, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("align-center", cx);
+        cx.notify();
+    }
+    pub(crate) fn do_align_right(&mut self, _: &ui::AlignRight, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("align-right", cx);
+        cx.notify();
+    }
+    pub(crate) fn do_align_justify(&mut self, _: &ui::AlignJustify, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("align-just", cx);
+        cx.notify();
+    }
+    pub(crate) fn do_page_break(&mut self, _: &ui::PageBreak, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("pagebreak", cx);
+        cx.notify();
+    }
+    pub(crate) fn do_font_bigger(&mut self, _: &ui::FontBigger, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("incfont", cx);
+        cx.notify();
+    }
+    pub(crate) fn do_font_smaller(&mut self, _: &ui::FontSmaller, _: &mut Window, cx: &mut Context<Self>) {
+        self.run_cmd("decfont", cx);
+        cx.notify();
+    }
 }

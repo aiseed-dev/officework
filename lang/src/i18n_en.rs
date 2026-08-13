@@ -1623,4 +1623,14 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("キーヒントを畳みました", "Key hints closed"),
     ("{} の段(札を打つと押します。Esc でやめる)", "The {} tab (type a badge letter to press a button; Esc to stop)"),
     ("その札はありません(「{}」)", "There is no such badge (“{}”)"),
+    // 鍵盤の増強と設定の言い分(2026-08-14)
+    ("Shift+→ で埋める範囲を選んでください(先頭列を右へ写します)", "Select the range to fill with Shift+→ (the first column is copied to the right)"),
+    ("列を選択しました(Shift+Space で行)", "Column selected (Shift+Space selects the row)"),
+    ("行を選択しました(Ctrl+Space で列)", "Row selected (Ctrl+Space selects the column)"),
+    ("設定の key.{} は知らない操作名です", "key.{} in settings names an unknown action"),
+    ("設定の key.{} の鍵が読めません: {}", "The shortcut for key.{} in settings cannot be read: {}"),
+    ("鍵 {} は {} と {} の取り合いです({} が勝ちます)", "Shortcut {} is claimed by both {} and {} ({} wins)"),
+    // ui クレートの中の crate::t! が走査から漏れていた2句(2026-08-14 に発見)
+    ("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Unsaved changes — Ctrl+S to save, Esc again to discard and close"),
+    ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S save (cell functions recalculate on save) / Esc close / Tab indent"),
 ];

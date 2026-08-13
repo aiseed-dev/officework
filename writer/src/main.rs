@@ -738,7 +738,8 @@ fn main() {
         cx.text_system()
             .add_fonts(vec![std::borrow::Cow::Borrowed(font_data())])
             .expect("フォント登録");
-        cx.bind_keys(ui::bindings("jo_edit"));
+        // 共通+writer の表と、settings.toml の key.* の上書き(calc と同じ形)
+        cx.bind_keys(ui::bindings_for("writer", "jo_edit"));
         // 前に閉じたときの姿で開く。控えが無ければ既定の大きさで中央に
         let saved = ui::winstate::load("writer");
         let bounds = match saved {

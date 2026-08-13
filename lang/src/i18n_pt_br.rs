@@ -1620,4 +1620,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("キーヒントを畳みました", "Dicas de teclas fechadas"),
     ("{} の段(札を打つと押します。Esc でやめる)", "Guia {} (digite uma letra para pressionar um botão; Esc para sair)"),
     ("その札はありません(「{}」)", "Não existe essa letra (“{}”)"),
+    ("Shift+→ で埋める範囲を選んでください(先頭列を右へ写します)", "Selecione o intervalo a preencher com Shift+→ (a primeira coluna é copiada para a direita)"),
+    ("列を選択しました(Shift+Space で行)", "Coluna selecionada (Shift+Espaço para a linha)"),
+    ("行を選択しました(Ctrl+Space で列)", "Linha selecionada (Ctrl+Espaço para a coluna)"),
+    ("設定の key.{} は知らない操作名です", "key.{} nas configurações indica uma ação desconhecida"),
+    ("設定の key.{} の鍵が読めません: {}", "Não é possível ler o atalho de key.{} nas configurações: {}"),
+    ("鍵 {} は {} と {} の取り合いです({} が勝ちます)", "O atalho {} é disputado por {} e {} (ganha {})"),
+    ("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Há alterações não salvas — Ctrl+S para salvar, Esc de novo para descartar e fechar"),
+    ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S salvar (as funções de célula recalculam ao salvar) / Esc fechar / Tab recuar"),
 ];
