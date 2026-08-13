@@ -4928,3 +4928,100 @@ mod hide_formula_tests {
         );
     }
 }
+
+/// ポイントの編集(台帳 第2便「図形の編集」、2026-08-13)
+#[cfg(test)]
+mod point_edit_tests {
+    use crate::*;
+    use sheet::model::PathPoint as P;
+
+    fn setup(this: &mut Calc, pts: Vec<P>) -> (f32, f32) {
+        this.sheet_mut().shapes_new.push(sheet::model::SheetShape {
+            at: Pos::new(0, 0),
+            width_px: 100.0,
+            height_px: 100.0,
+            kind: "path".into(),
+            line: Some("1B6E3C".into()),
+            points: pts,
+            ..Default::default()
+        });
+        this.shape_sel = Some(0);
+        this.point_edit = Some(0);
+        this.cell_origin_px(Pos::new(0, 0)).unwrap()
+    }
+
+    #[gpui::test]
+    fn 取っ手は頂点と持っている制御点の分だけ出る(cx: &mut gpui::TestAppContext) {
+        // **描く側と押す側は同じ表**(point_handles)。数がここで決まる
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            setup(this, vec![
+                P::at(0.0, 1.0),
+                P { at: (0.5, 0.0), c_in: Some((0.2, 0.0)), c_out: Some((0.8, 0.0)) },
+                P::at(1.0, 1.0),
+            ]);
+            let hs = this.point_handles(0);
+            let v = hs.iter().filter(|(_, k, _, _)| *k == PtHandle::Vertex).count();
+            assert_eq!(v, 3, "頂点の取っ手が足りない");
+            assert_eq!(hs.len() - v, 2, "制御点は持っている分だけ出す");
+        });
+    }
+
+    #[gpui::test]
+    fn 頂点は2つより減らせない(cx: &mut gpui::TestAppContext) {
+        // 線でなくなるので断る。**押して黙って壊れない**
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            setup(this, vec![P::at(0.0, 0.0), P::at(1.0, 1.0)]);
+            let (_, _, hx, hy) = this.point_handles(0)[0];
+            this.point_add_or_remove(hx, hy);
+            assert_eq!(this.sheet().shapes_new[0].points.len(), 2, "2点を割った");
+        });
+    }
+
+    #[gpui::test]
+    fn 線の上を押すと頂点が増える(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            let (ox, oy) = setup(this, vec![P::at(0.0, 0.0), P::at(1.0, 0.0)]);
+            // 2点の真ん中(0.5, 0.0)の線上
+            assert!(this.point_add_or_remove(ox + 50.0, oy), "線を押しても増えない");
+            assert_eq!(this.sheet().shapes_new[0].points.len(), 3);
+        });
+    }
+
+    #[gpui::test]
+    fn 曲がりの入切で制御点が出入りする(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            setup(this, vec![P::at(0.0, 1.0), P::at(0.5, 0.0), P::at(1.0, 1.0)]);
+            this.point_toggle_curve(1);
+            let p = this.sheet().shapes_new[0].points[1];
+            assert!(p.c_in.is_some() && p.c_out.is_some(), "曲げたのに制御点が無い");
+            this.point_toggle_curve(1);
+            let p = this.sheet().shapes_new[0].points[1];
+            assert!(p.c_in.is_none() && p.c_out.is_none(), "角にしたのに制御点が残った");
+        });
+    }
+
+    #[gpui::test]
+    fn 頂点を動かすと制御点も一緒に動く(cx: &mut gpui::TestAppContext) {
+        // 曲がり方を保ったまま形だけ動かせる
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            let (ox, oy) = setup(this, vec![
+                P::at(0.0, 1.0),
+                P { at: (0.5, 0.5), c_in: Some((0.3, 0.5)), c_out: Some((0.7, 0.5)) },
+                P::at(1.0, 1.0),
+            ]);
+            let before = this.sheet().shapes_new[0].points[1];
+            this.pt_drag = Some((1, PtHandle::Vertex));
+            this.point_drag_at(ox + 60.0, oy + 30.0);
+            let after = this.sheet().shapes_new[0].points[1];
+            let (dx, dy) = (after.at.0 - before.at.0, after.at.1 - before.at.1);
+            let (ci, bi) = (after.c_in.unwrap(), before.c_in.unwrap());
+            assert!((ci.0 - (bi.0 + dx)).abs() < 1e-4, "制御点が付いてこない");
+            assert!((ci.1 - (bi.1 + dy)).abs() < 1e-4, "制御点が付いてこない");
+        });
+    }
+}

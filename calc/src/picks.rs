@@ -51,6 +51,17 @@ impl Calc {
                 // **鍵をそのまま文に差し込まない。** v は日本語の鍵なので、
                 // 訳した文の中に日本語が残ってしまう(一覧は ui::item! で組んである)
                 let (kind, name) = shape_kind(v);
+                // 自由な形は**点を持って生まれる**(点が無いと何も描けない)。
+                // 三角に置いて、そこからポイント編集で好きな形にする
+                let pts = if kind == "path" {
+                    vec![
+                        sheet::model::PathPoint::at(0.05, 0.9),
+                        sheet::model::PathPoint::at(0.5, 0.1),
+                        sheet::model::PathPoint::at(0.95, 0.9),
+                    ]
+                } else {
+                    Vec::new()
+                };
                 self.checkpoint();
                 let at = self.cursor;
                 self.sheet_mut().shapes_new.push(sheet::model::SheetShape {
@@ -60,6 +71,7 @@ impl Calc {
                     kind: kind.into(),
                     fill: None,
                     line: Some("1B6E3C".into()),
+                    points: pts,
                     ..Default::default()
                 });
                 self.shape_sel = Some(self.sheet().shapes_new.len() - 1);
@@ -1285,7 +1297,9 @@ impl Calc {
             // 図形の専用メニュー(実体は main.rs の shape_menu_action)
             "sh-cut" | "sh-copy" | "sh-paste" | "sh-del" | "sh-front" | "sh-forward"
             | "sh-backward" | "sh-back" | "sh-rot-r" | "sh-rot-l" | "sh-flip-h"
-            | "sh-flip-v" | "sh-save" | "sh-settings" => self.shape_menu_action(id),
+            | "sh-flip-v" | "sh-save" | "sh-settings" | "sh-points" => {
+                self.shape_menu_action(id)
+            }
             "sh-al-l" | "sh-al-c" | "sh-al-r" | "sh-al-t" | "sh-al-m" | "sh-al-b"
             | "sh-dist-h" | "sh-dist-v" => self.shape_align(id),
             "ps-values" => self.paste_special("values", cx),

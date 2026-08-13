@@ -179,6 +179,11 @@ struct Calc {
     shape_drag: Option<(usize, (f32, f32), (f32, f32), bool)>,
     /// 図形の回転ドラッグ(枠の上の丸を掴んでいる間だけ Some)
     shape_rot: Option<usize>,
+    /// **ポイントの編集**(頂点をつまむモード)。図形の番号。
+    /// このモードの間は、枠のドラッグではなく点のドラッグになる
+    point_edit: Option<usize>,
+    /// いまつまんでいる取っ手(点の番号, 種類)
+    pt_drag: Option<(usize, PtHandle)>,
     /// Ctrl+クリックで足した図形(shape_sel が主、こちらは控え。整列が使う)
     shape_multi: Vec<usize>,
     /// いま出ているメニューは図形の専用メニューか(右クリックが図形の上)
@@ -423,6 +428,17 @@ impl Drop for Calc {
         // 置きっぱなしのロックは他の人の警告になってしまう。最後の保険
         self.release_lock();
     }
+}
+
+/// ポイント編集でつまめる取っ手の種類。
+#[derive(Clone, Copy, PartialEq)]
+enum PtHandle {
+    /// 頂点そのもの
+    Vertex,
+    /// 手前から入る曲線の制御点
+    CtrlIn,
+    /// 次へ出る曲線の制御点
+    CtrlOut,
 }
 
 /// カスタムプロパティの型の選び(画面の言葉と `CustomVal` の間)。

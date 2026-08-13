@@ -1635,7 +1635,7 @@ pub(crate) fn shape_gallery(cat: &str) -> Vec<(&'static str, &'static str)> {
             ui::item!("四角形の吹き出し"),
             ui::item!("円形の吹き出し"),
         ],
-        "線" => vec![ui::item!("直線")],
+        "線" => vec![ui::item!("直線"), ui::item!("自由な形(点で作る)")],
         _ => Vec::new(),
     }
 }
@@ -1692,6 +1692,7 @@ pub(crate) fn shape_kind(v: &str) -> (&'static str, &'static str) {
         "四角形の吹き出し" => ("wedgeRectCallout", ui::t!("四角形の吹き出し")),
         "円形の吹き出し" => ("wedgeEllipseCallout", ui::t!("円形の吹き出し")),
         "直線" => ("line", ui::t!("直線")),
+        "自由な形(点で作る)" => ("path", ui::t!("自由な形(点で作る)")),
         _ => ("rect", ui::t!("四角形")),
     }
 }

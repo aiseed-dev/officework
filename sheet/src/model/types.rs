@@ -1337,8 +1337,9 @@ pub fn can_draw(kind: &str) -> bool {
         kind,
         // body_svg が直に持っている形
         "rect" | "roundRect" | "ellipse" | "rightArrow" | "diamond" | "line"
-        // 折れ線もの(このアプリが作る。points で描く)
-        | "spark" | "spark-col" | "spark-wl" | "ink" | "marker"
+        // 点で形を作るもの(このアプリが作る。points で描く)。
+        // `path` は**自由な形** — 頂点と制御点を人がつまんで決める
+        | "spark" | "spark-col" | "spark-wl" | "ink" | "marker" | "path"
     ) || preset_svg(kind, 0.0, 0.0, 1.0, 1.0, "").is_some()
 }
 

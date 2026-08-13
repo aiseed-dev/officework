@@ -185,7 +185,11 @@ impl gpui::Element for InputSink {
             }
             let rel = e.position - bounds.origin;
             view.update(cx, |c, cx| {
-                if c.shape_rot.is_some() {
+                if c.pt_drag.is_some() {
+                    // ポイント編集のドラッグは**いちばん先**(点は図形の上)
+                    c.point_drag_at(f32::from(rel.x), f32::from(rel.y));
+                    cx.notify();
+                } else if c.shape_rot.is_some() {
                     c.shape_rotate_at(f32::from(rel.x), f32::from(rel.y), e.modifiers.shift);
                     cx.notify();
                 } else if c.shape_drag.is_some() {
@@ -1942,7 +1946,16 @@ impl Render for Calc {
                 ("", "", "", false, false),
                 ("sh-macro", "マクロの割り当て", "", false, false),
                 ("sh-save", "画像として保存(SVG)", "", true, false),
-                ("sh-points", "ポイントの編集", "", false, false),
+                // **点で形を作る図形でだけ押せる。** prstGeom の形は
+                // 頂点を持たないので、押しても掴む物がない
+                ("sh-points",
+                    if self.point_edit.is_some() { "ポイントの編集をやめる" } else { "ポイントの編集" },
+                    "",
+                    self.shape_sel.is_some_and(|i| {
+                        self.sheet().shapes_new.get(i)
+                            .is_some_and(|sp| sp.points.len() >= 2)
+                    }),
+                    false),
                 ("", "", "", false, false),
                 ("sh-settings", "図形の詳細設定", "", true, false),
                 ("sh-link", "リンク", "", false, false),
@@ -2244,6 +2257,64 @@ impl Render for Calc {
             }
             Some(f)
         });
+        // ---- ポイントの編集(頂点と制御点の取っ手) ----
+        // **押す側と同じ `point_handles` から描く。** 別々に持つと、
+        // 見えている丸と当たり判定がずれる
+        let point_marks: Vec<gpui::AnyElement> = match self.point_edit {
+            None => Vec::new(),
+            Some(i) => {
+                let hs = self.point_handles(i);
+                // 頂点と制御点を結ぶ細い線(どの点の取っ手か分かるように)
+                let vtx: std::collections::HashMap<usize, (f32, f32)> = hs
+                    .iter()
+                    .filter(|(_, k, _, _)| *k == PtHandle::Vertex)
+                    .map(|(n, _, x, y)| (*n, (*x, *y)))
+                    .collect();
+                let mut out: Vec<gpui::AnyElement> = Vec::new();
+                for (n, kind, hx, hy) in &hs {
+                    if *kind != PtHandle::Vertex {
+                        if let Some((vx, vy)) = vtx.get(n) {
+                            // 斜めの線は div では引けないので、細い箱を
+                            // 中点に置いて向きを示す(印であって線ではない)
+                            out.push(
+                                div()
+                                    .absolute()
+                                    .left(px((vx + hx) / 2.0 - 1.0))
+                                    .top(px((vy + hy) / 2.0 - 1.0))
+                                    .w(px(2.0))
+                                    .h(px(2.0))
+                                    .bg(rgb(0x8AB6A0))
+                                    .into_any_element(),
+                            );
+                        }
+                    }
+                    let d = match kind {
+                        // 頂点は四角、制御点は丸(Illustrator と同じ見分け)
+                        PtHandle::Vertex => div()
+                            .absolute()
+                            .left(px(hx - 4.0))
+                            .top(px(hy - 4.0))
+                            .w(px(8.0))
+                            .h(px(8.0))
+                            .bg(gpui::white())
+                            .border_2()
+                            .border_color(rgb(0x1B6E3C))
+                            .cursor_grab(),
+                        _ => div()
+                            .absolute()
+                            .left(px(hx - 3.0))
+                            .top(px(hy - 3.0))
+                            .w(px(6.0))
+                            .h(px(6.0))
+                            .rounded_full()
+                            .bg(rgb(0x2E9E57))
+                            .cursor_grab(),
+                    };
+                    out.push(d.into_any_element());
+                }
+                out
+            }
+        };
         // Ctrl+クリックで束ねた分は細い枠だけ(取っ手は主の1つに)
         let shape_frames_more: Vec<_> = self
             .shape_multi
@@ -4155,6 +4226,7 @@ impl Render for Calc {
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             this.shape_sel = None;
+                            this.point_edit = None;
                             cx.notify();
                         }))));
             // 塗りと線の色(RGB 直指定のパネルを開く / なし)
@@ -5053,6 +5125,7 @@ impl Render for Calc {
                    .child(InputSink { view: me })
                    .children(shape_frame)
                    .children(shape_frames_more)
+                   .children(point_marks)
                    .children(img_frame)
                    .children(break_lines)
                    .children(ants)

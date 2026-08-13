@@ -1024,6 +1024,7 @@ impl Calc {
                     sh.shapes.extend(moved);
                 }
                 self.shape_sel = None;
+                self.point_edit = None;
             }
             Err(e) => self.status = ui::tf!("保存できません: {}", e).into(),
         }

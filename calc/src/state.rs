@@ -59,6 +59,8 @@ impl Calc {
             shape_sel: None,
             shape_drag: None,
             shape_rot: None,
+            point_edit: None,
+            pt_drag: None,
             shape_multi: Vec::new(),
             menu_shape: false,
             shape_clip: None,
@@ -601,6 +603,7 @@ impl Calc {
         self.head_drag = None;
         self.shape_drag = None;
         self.shape_rot = None;
+        self.pt_drag = None;
         if std::env::var_os("JO_MOUSE_LOG").is_some() {
             eprintln!(
                 "down x={x:.1} y={y:.1} clicks={clicks} grip={:?}",
@@ -624,6 +627,28 @@ impl Calc {
                 } else {
                     self.ink_cur = Some(vec![(x, y)]);
                 }
+                return;
+            }
+        }
+        // ポイント編集の取っ手。**図形の体より先に見る** — 点は図形の
+        // 上に載っているので、先に見ないと枠のドラッグに取られる
+        if let Some(i) = self.point_edit {
+            if ctrl {
+                // Ctrl+クリック = 頂点の追加/削除。当たれば終わり
+                if self.point_add_or_remove(x, y) {
+                    return;
+                }
+            } else if let Some((k, kind)) = self.point_hit(i, x, y) {
+                self.commit();
+                // **頂点のダブルクリックで角 ⇄ 曲線。** 制御点を出す口が
+                // 他に無いと、曲げられない図形しか作れない
+                if clicks >= 2 && kind == PtHandle::Vertex {
+                    self.point_toggle_curve(k);
+                    return;
+                }
+                self.checkpoint();
+                self.pt_drag = Some((k, kind));
+                self.status = ui::t!("点をつまみました(Ctrl+クリックで追加/削除)").into();
                 return;
             }
         }
@@ -677,6 +702,10 @@ impl Calc {
             return;
         }
         self.shape_sel = None;
+        // 選択が外れたらポイント編集も畳む — 残すと、選んでいない図形の
+        // 点だけが浮いて、押しても何も起きない取っ手になる
+        self.point_edit = None;
+        self.pt_drag = None;
         self.shape_multi.clear();
         // 浮いている画像(グラフ)も同じ扱い
         if let Some((i, (sx, sy), corner)) = self.image_at(x, y) {
@@ -1008,6 +1037,9 @@ impl Calc {
         }
         if self.head_drag.take().is_some() {
             return; // 列・行の選択の確定。status は select_* が出している
+        }
+        if self.pt_drag.take().is_some() {
+            return; // 点の移動の確定。status はつまんだ時に出している
         }
         if self.shape_rot.take().is_some() {
             return; // 回転の確定。status はドラッグ中に出している

@@ -157,6 +157,24 @@ impl Calc {
     /// window を要らなくしてあるので試験からそのまま呼べる
     pub(crate) fn shape_menu_action(&mut self, id: &str) {
         match id {
+            // ポイントの編集(入切)。**点で形を作る図形でだけ**
+            "sh-points" => {
+                if self.point_edit.is_some() {
+                    self.point_edit = None;
+                    self.pt_drag = None;
+                    self.status = ui::t!("ポイントの編集をやめました").into();
+                    return;
+                }
+                let Some(i) = self.shape_sel else { return };
+                if self.sheet().shapes_new.get(i).map(|s| s.points.len()).unwrap_or(0) < 2 {
+                    self.status =
+                        ui::t!("この図形は頂点を持っていません(線や自由な形で使えます)").into();
+                    return;
+                }
+                self.point_edit = Some(i);
+                self.status =
+                    ui::t!("ポイントの編集: 点をドラッグ / Ctrl+クリックで追加・削除 / ダブルクリックで角⇄曲線").into();
+            }
             "sh-copy" | "sh-cut" => {
                 let Some(i) = self.shape_sel else { return };
                 let Some(sp) = self.sheet().shapes_new.get(i).cloned() else { return };
@@ -165,6 +183,7 @@ impl Calc {
                     self.checkpoint();
                     self.sheet_mut().shapes_new.remove(i);
                     self.shape_sel = None;
+                    self.point_edit = None;
                     self.shape_multi.clear();
                     self.dirty = true;
                     self.status = ui::t!("図形を切り取りました(貼り付けで戻せます)").into();
@@ -625,5 +644,162 @@ impl Calc {
         }
         let cut = counts.len() > 1000;
         (counts.into_iter().take(1000).collect(), cut)
+    }
+}
+
+impl Calc {
+    /// ポイント編集の取っ手を全部あげる(格子px)。
+    ///
+    /// **描く側と押す側で同じ表を使う。** 別々に持つと、見えている丸と
+    /// 当たり判定がずれる — 回転の取っ手で一度その形を踏んでいる。
+    /// 返りは (点の番号, 種類, x, y)。制御点は**その点が持っているときだけ**
+    pub(crate) fn point_handles(&self, i: usize) -> Vec<(usize, PtHandle, f32, f32)> {
+        let Some(sp) = self.sheet().shapes_new.get(i) else { return Vec::new() };
+        let Some((sx, sy)) = self.cell_origin_px(sp.at) else { return Vec::new() };
+        let (ox, oy) = (sx + sp.dx_px, sy + sp.dy_px);
+        let (w, h) = (sp.width_px.max(1.0), sp.height_px.max(1.0));
+        let ex = |p: (f32, f32)| (ox + p.0 * w, oy + p.1 * h);
+        let mut out = Vec::new();
+        for (k, pp) in sp.points.iter().enumerate() {
+            let (x, y) = ex(pp.at);
+            out.push((k, PtHandle::Vertex, x, y));
+            if let Some(c) = pp.c_in {
+                let (x, y) = ex(c);
+                out.push((k, PtHandle::CtrlIn, x, y));
+            }
+            if let Some(c) = pp.c_out {
+                let (x, y) = ex(c);
+                out.push((k, PtHandle::CtrlOut, x, y));
+            }
+        }
+        out
+    }
+
+    /// その場所にある取っ手(近い順に1つ)。掴む半径は 7px
+    pub(crate) fn point_hit(&self, i: usize, x: f32, y: f32) -> Option<(usize, PtHandle)> {
+        let mut best: Option<(f32, usize, PtHandle)> = None;
+        for (k, kind, hx, hy) in self.point_handles(i) {
+            let d = (hx - x).powi(2) + (hy - y).powi(2);
+            if d <= 49.0 && best.map(|(bd, _, _)| d < bd).unwrap_or(true) {
+                best = Some((d, k, kind));
+            }
+        }
+        best.map(|(_, k, kind)| (k, kind))
+    }
+
+    /// つまんだ取っ手を動かす。座標は格子px → 図形の中の 0..1 へ直す
+    pub(crate) fn point_drag_at(&mut self, x: f32, y: f32) {
+        let Some(i) = self.point_edit else { return };
+        let Some((k, kind)) = self.pt_drag else { return };
+        let Some(sp) = self.sheet().shapes_new.get(i) else { return };
+        let Some((sx, sy)) = self.cell_origin_px(sp.at) else { return };
+        let (ox, oy) = (sx + sp.dx_px, sy + sp.dy_px);
+        let (w, h) = (sp.width_px.max(1.0), sp.height_px.max(1.0));
+        // **枠の外へは出さない。** 0..1 の外に出ると、xlsx の 10000 目盛りで
+        // 負や桁あふれになり、Excel が形を描けなくなる
+        let nx = ((x - ox) / w).clamp(0.0, 1.0);
+        let ny = ((y - oy) / h).clamp(0.0, 1.0);
+        let sp = &mut self.sheet_mut().shapes_new[i];
+        let Some(pp) = sp.points.get_mut(k) else { return };
+        match kind {
+            PtHandle::Vertex => {
+                // 頂点を動かすと、その点が持つ制御点も一緒に動く —
+                // 曲がり方を保ったまま形だけ動かせる(Illustrator と同じ作法)
+                let (dx, dy) = (nx - pp.at.0, ny - pp.at.1);
+                pp.at = (nx, ny);
+                if let Some(c) = &mut pp.c_in {
+                    *c = (c.0 + dx, c.1 + dy);
+                }
+                if let Some(c) = &mut pp.c_out {
+                    *c = (c.0 + dx, c.1 + dy);
+                }
+            }
+            PtHandle::CtrlIn => pp.c_in = Some((nx, ny)),
+            PtHandle::CtrlOut => pp.c_out = Some((nx, ny)),
+        }
+        self.dirty = true;
+    }
+
+    /// 頂点を足す/外す(Ctrl+クリック)。
+    ///
+    /// 取っ手の上なら**外す**、線の上なら**そこへ足す**。
+    /// 点が2つのときは外させない — 線でなくなる
+    pub(crate) fn point_add_or_remove(&mut self, x: f32, y: f32) -> bool {
+        let Some(i) = self.point_edit else { return false };
+        if let Some((k, PtHandle::Vertex)) = self.point_hit(i, x, y) {
+            let n = self.sheet().shapes_new[i].points.len();
+            if n <= 2 {
+                self.status = ui::t!("これ以上は減らせません(線には2点が要ります)").into();
+                return true;
+            }
+            self.checkpoint();
+            self.sheet_mut().shapes_new[i].points.remove(k);
+            self.dirty = true;
+            self.status = ui::t!("頂点を1つ外しました").into();
+            return true;
+        }
+        // 線の上: いちばん近い区間の真ん中へ足す
+        let Some(sp) = self.sheet().shapes_new.get(i) else { return false };
+        let Some((sx, sy)) = self.cell_origin_px(sp.at) else { return false };
+        let (ox, oy) = (sx + sp.dx_px, sy + sp.dy_px);
+        let (w, h) = (sp.width_px.max(1.0), sp.height_px.max(1.0));
+        let mut best: Option<(f32, usize)> = None;
+        for k in 1..sp.points.len() {
+            let a = sp.points[k - 1].at;
+            let b = sp.points[k].at;
+            let (ax, ay) = (ox + a.0 * w, oy + a.1 * h);
+            let (bx, by) = (ox + b.0 * w, oy + b.1 * h);
+            // 点と線分の距離(曲がりは見ない — 足す先は区間で足りる)
+            let (vx, vy) = (bx - ax, by - ay);
+            let len2 = vx * vx + vy * vy;
+            let t = if len2 > 0.0 {
+                (((x - ax) * vx + (y - ay) * vy) / len2).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            let d = (ax + vx * t - x).powi(2) + (ay + vy * t - y).powi(2);
+            if d <= 64.0 && best.map(|(bd, _)| d < bd).unwrap_or(true) {
+                best = Some((d, k));
+            }
+        }
+        let Some((_, k)) = best else { return false };
+        self.checkpoint();
+        let sp = &mut self.sheet_mut().shapes_new[i];
+        let a = sp.points[k - 1].at;
+        let b = sp.points[k].at;
+        sp.points.insert(
+            k,
+            sheet::model::PathPoint::at((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0),
+        );
+        self.dirty = true;
+        self.status = ui::t!("頂点を1つ足しました").into();
+        true
+    }
+
+    /// その点の曲がりを入切する(取っ手をダブルクリック相当)。
+    /// 曲げるときは、両隣へ向けて 1/3 の所に制御点を置く
+    pub(crate) fn point_toggle_curve(&mut self, k: usize) {
+        let Some(i) = self.point_edit else { return };
+        let Some(sp) = self.sheet().shapes_new.get(i) else { return };
+        let n = sp.points.len();
+        if k >= n {
+            return;
+        }
+        let cur = sp.points[k];
+        let prev = sp.points[k.saturating_sub(1)].at;
+        let next = sp.points[(k + 1).min(n - 1)].at;
+        self.checkpoint();
+        let pp = &mut self.sheet_mut().shapes_new[i].points[k];
+        if pp.c_in.is_some() || pp.c_out.is_some() {
+            pp.c_in = None;
+            pp.c_out = None;
+            self.status = ui::t!("この点を角にしました").into();
+        } else {
+            let a = cur.at;
+            pp.c_in = Some((a.0 + (prev.0 - a.0) / 3.0, a.1 + (prev.1 - a.1) / 3.0));
+            pp.c_out = Some((a.0 + (next.0 - a.0) / 3.0, a.1 + (next.1 - a.1) / 3.0));
+            self.status = ui::t!("この点を曲げました").into();
+        }
+        self.dirty = true;
     }
 }
