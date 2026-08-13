@@ -1558,4 +1558,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("この点を曲げました", "Ce point devient courbe"),
     ("点をつまみました(Ctrl+クリックで追加/削除)", "Point saisi (Ctrl+clic pour ajouter ou retirer)"),
     ("自由な形(点で作る)", "Forme libre (faite de points)"),
+    ("2つの図形を選んでください(Ctrl+クリックで足せます)", "Sélectionnez deux formes (Ctrl+clic pour en ajouter une)"),
+    ("この形は足し引きできません(輪郭を点で取れない形です)", "Cette forme ne peut pas être combinée (son contour ne peut pas être pris en points)"),
+    ("重なりが無いので何も残りませんでした", "Il n'est rien resté : elles ne se recouvrent pas"),
+    ("結合", "Union"),
+    ("交差", "Intersection"),
+    ("減算", "Soustraction"),
+    ("{}しました(輪郭に直したので、元の形と回転は戻せません)", "{} effectué (converti en contour ; la forme d'origine et la rotation ne peuvent pas être rétablies)"),
 ];

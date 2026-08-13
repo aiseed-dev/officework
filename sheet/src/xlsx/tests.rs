@@ -732,7 +732,7 @@ mod carry_tests {
             line: Some("1B6E3C".into()),
             points: vec![
                 PathPoint::at(0.0, 1.0),
-                PathPoint { at: (0.5, 0.0), c_in: Some((0.2, 0.0)), c_out: Some((0.8, 0.0)) },
+                PathPoint { at: (0.5, 0.0), start: false, c_in: Some((0.2, 0.0)), c_out: Some((0.8, 0.0)) },
                 PathPoint::at(1.0, 1.0),
             ],
             ..Default::default()

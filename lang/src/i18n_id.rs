@@ -1558,4 +1558,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("この点を曲げました", "Titik ini jadi melengkung"),
     ("点をつまみました(Ctrl+クリックで追加/削除)", "Titik dipegang (Ctrl+klik untuk menambah/menghapus)"),
     ("自由な形(点で作る)", "Bentuk bebas (dari titik)"),
+    ("2つの図形を選んでください(Ctrl+クリックで足せます)", "Pilih dua bentuk (Ctrl+klik untuk menambah)"),
+    ("この形は足し引きできません(輪郭を点で取れない形です)", "Bentuk ini tidak bisa digabung (garis luarnya tidak bisa diambil sebagai titik)"),
+    ("重なりが無いので何も残りませんでした", "Tidak ada yang tersisa — keduanya tidak bertumpuk"),
+    ("結合", "Gabung"),
+    ("交差", "Iris"),
+    ("減算", "Kurangi"),
+    ("{}しました(輪郭に直したので、元の形と回転は戻せません)", "{} selesai (diubah jadi garis luar, jadi bentuk asli dan putarannya tidak bisa dikembalikan)"),
 ];

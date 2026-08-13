@@ -1558,4 +1558,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("この点を曲げました", "Điểm này thành cong"),
     ("点をつまみました(Ctrl+クリックで追加/削除)", "Đã giữ một điểm (Ctrl+bấm để thêm/bớt)"),
     ("自由な形(点で作る)", "Hình tự do (tạo bằng điểm)"),
+    ("2つの図形を選んでください(Ctrl+クリックで足せます)", "Hãy chọn hai hình (Ctrl+bấm để thêm)"),
+    ("この形は足し引きできません(輪郭を点で取れない形です)", "Hình này không ghép được (không lấy được đường bao bằng điểm)"),
+    ("重なりが無いので何も残りませんでした", "Không còn gì — hai hình không chồng nhau"),
+    ("結合", "Hợp"),
+    ("交差", "Giao"),
+    ("減算", "Trừ"),
+    ("{}しました(輪郭に直したので、元の形と回転は戻せません)", "Đã {} (đã đổi thành đường bao nên không khôi phục được hình gốc và góc xoay)"),
 ];

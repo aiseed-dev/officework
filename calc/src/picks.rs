@@ -1300,6 +1300,9 @@ impl Calc {
             | "sh-flip-v" | "sh-save" | "sh-settings" | "sh-points" => {
                 self.shape_menu_action(id)
             }
+            "sh-b-union" => self.shapes_boolean(sheet::model::BoolOp::Union),
+            "sh-b-inter" => self.shapes_boolean(sheet::model::BoolOp::Intersect),
+            "sh-b-sub" => self.shapes_boolean(sheet::model::BoolOp::Subtract),
             "sh-al-l" | "sh-al-c" | "sh-al-r" | "sh-al-t" | "sh-al-m" | "sh-al-b"
             | "sh-dist-h" | "sh-dist-v" => self.shape_align(id),
             "ps-values" => self.paste_special("values", cx),
@@ -1703,6 +1706,11 @@ impl Calc {
                 ("sh-flip-v", "上下に反転", true),
             ],
             // 整列は2個から、分布は3個から(Ctrl+クリックで束ねる)
+            "sh-bool" => vec![
+                ("sh-b-union", "結合", true),
+                ("sh-b-inter", "交差", true),
+                ("sh-b-sub", "減算(主から控えを引く)", true),
+            ],
             "sh-align" => {
                 let n = self.shape_sel.is_some() as usize + self.shape_multi.len();
                 vec![

@@ -1558,4 +1558,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("この点を曲げました", "Bu nokta yuvarlatıldı"),
     ("点をつまみました(Ctrl+クリックで追加/削除)", "Nokta tutuldu (eklemek/çıkarmak için Ctrl+tık)"),
     ("自由な形(点で作る)", "Serbest şekil (noktalardan)"),
+    ("2つの図形を選んでください(Ctrl+クリックで足せます)", "İki şekil seçin (eklemek için Ctrl+tık)"),
+    ("この形は足し引きできません(輪郭を点で取れない形です)", "Bu şekil birleştirilemez (dış çizgisi noktalarla alınamıyor)"),
+    ("重なりが無いので何も残りませんでした", "Hiçbir şey kalmadı — üst üste gelmiyorlar"),
+    ("結合", "Birleştir"),
+    ("交差", "Kesiştir"),
+    ("減算", "Çıkar"),
+    ("{}しました(輪郭に直したので、元の形と回転は戻せません)", "{} yapıldı (dış çizgiye çevrildi; özgün şekil ve döndürme geri alınamaz)"),
 ];

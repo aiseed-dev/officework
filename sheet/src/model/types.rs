@@ -828,6 +828,13 @@ impl Sheet {
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct PathPoint {
     pub at: (f32, f32),
+    /// **ここから新しい輪郭が始まる**(SVG の `M`、xlsx の `moveTo`)。
+    ///
+    /// 穴のある形は、外側の輪郭のあとに内側の輪郭を続けて持つ。
+    /// 輪郭を別の列に分けて持つ案は採らなかった — 書式そのものが
+    /// 「moveTo で切れ目を入れた1本の列」なので、同じ形にしておく方が
+    /// 読み書きで取り違えない(先頭の点は立てなくてよい)
+    pub start: bool,
     /// 手前の点からこの点へ来る曲線の制御点
     pub c_in: Option<(f32, f32)>,
     /// この点から次の点へ出る曲線の制御点
@@ -837,7 +844,12 @@ pub struct PathPoint {
 impl PathPoint {
     /// 角の点(曲がらない)
     pub fn at(x: f32, y: f32) -> Self {
-        Self { at: (x, y), c_in: None, c_out: None }
+        Self { at: (x, y), start: false, c_in: None, c_out: None }
+    }
+
+    /// 新しい輪郭の始まりの点(穴の1点目など)
+    pub fn start_at(x: f32, y: f32) -> Self {
+        Self { at: (x, y), start: true, c_in: None, c_out: None }
     }
     pub fn x(&self) -> f32 {
         self.at.0
@@ -1245,8 +1257,10 @@ impl SheetShape {
                     let mut d = String::new();
                     for (i, p) in self.points.iter().enumerate() {
                         let (ax, ay) = ex(p.at);
-                        if i == 0 {
-                            d.push_str(&format!("M{ax:.1},{ay:.1}"));
+                        // **輪郭の切れ目で M を打つ。** 穴のある形は、
+                        // 外側の輪郭のあとに内側が続く(SVG は evenodd で抜く)
+                        if i == 0 || p.start {
+                            d.push_str(&format!("{}M{ax:.1},{ay:.1}", if i == 0 { "" } else { "Z " }));
                             continue;
                         }
                         let prev = &self.points[i - 1];
@@ -1307,8 +1321,10 @@ impl SheetShape {
                 };
                 // 自由な形(path)は塗る。折れ線ものは塗らない
                 let f_ = if self.kind == "path" { fill } else { "none" };
+                // 穴は even-odd で抜く(内側の輪郭が塗りを打ち消す)
+                let close = if self.kind == "path" { "Z" } else { "" };
                 format!(
-                    r#"<path d="{d}" fill="{f_}" stroke="{line}" stroke-width="{w_}" stroke-opacity="{o_}" stroke-linecap="round" stroke-linejoin="round"/>{dots}"#
+                    r#"<path d="{d}{close}" fill="{f_}" fill-rule="evenodd" stroke="{line}" stroke-width="{w_}" stroke-opacity="{o_}" stroke-linecap="round" stroke-linejoin="round"/>{dots}"#
                 )
             }
             // 本家の図形ギャラリーの品揃え。**xlsx の prstGeom の名前を

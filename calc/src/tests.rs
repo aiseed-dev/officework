@@ -4957,7 +4957,7 @@ mod point_edit_tests {
         c.update(cx, |this, _| {
             setup(this, vec![
                 P::at(0.0, 1.0),
-                P { at: (0.5, 0.0), c_in: Some((0.2, 0.0)), c_out: Some((0.8, 0.0)) },
+                P { at: (0.5, 0.0), start: false, c_in: Some((0.2, 0.0)), c_out: Some((0.8, 0.0)) },
                 P::at(1.0, 1.0),
             ]);
             let hs = this.point_handles(0);
@@ -5011,7 +5011,7 @@ mod point_edit_tests {
         c.update(cx, |this, _| {
             let (ox, oy) = setup(this, vec![
                 P::at(0.0, 1.0),
-                P { at: (0.5, 0.5), c_in: Some((0.3, 0.5)), c_out: Some((0.7, 0.5)) },
+                P { at: (0.5, 0.5), start: false, c_in: Some((0.3, 0.5)), c_out: Some((0.7, 0.5)) },
                 P::at(1.0, 1.0),
             ]);
             let before = this.sheet().shapes_new[0].points[1];
@@ -5022,6 +5022,88 @@ mod point_edit_tests {
             let (ci, bi) = (after.c_in.unwrap(), before.c_in.unwrap());
             assert!((ci.0 - (bi.0 + dx)).abs() < 1e-4, "制御点が付いてこない");
             assert!((ci.1 - (bi.1 + dy)).abs() < 1e-4, "制御点が付いてこない");
+        });
+    }
+}
+
+/// 図形の足し引き(台帳「図形のブール演算」、2026-08-13)
+#[cfg(test)]
+mod boolean_tests {
+    use crate::*;
+    use sheet::model::BoolOp;
+
+    fn two_rects(this: &mut Calc) {
+        for (r, c) in [(0u32, 0u32), (0, 0)] {
+            this.sheet_mut().shapes_new.push(sheet::model::SheetShape {
+                at: Pos::new(r, c),
+                width_px: 100.0,
+                height_px: 100.0,
+                kind: "rect".into(),
+                fill: Some("DCE6F1".into()),
+                ..Default::default()
+            });
+        }
+        // 2つ目を半分ずらす
+        this.sheet_mut().shapes_new[1].dx_px = 50.0;
+        this.sheet_mut().shapes_new[1].dy_px = 50.0;
+        this.shape_sel = Some(0);
+        this.shape_multi = vec![1];
+    }
+
+    #[gpui::test]
+    fn 結合すると1つの図形になる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            two_rects(this);
+            this.shapes_boolean(BoolOp::Union);
+            assert_eq!(this.sheet().shapes_new.len(), 1, "2つのままか、消えすぎた");
+            let sp = &this.sheet().shapes_new[0];
+            assert_eq!(sp.kind, "path", "自由な形になっていない");
+            assert!(sp.points.len() >= 6, "L 字の輪郭にならない: {}", sp.points.len());
+        });
+    }
+
+    #[gpui::test]
+    fn 中を抜くと輪郭が2本になる(cx: &mut gpui::TestAppContext) {
+        // **穴のあく形。** 輪郭の切れ目(start)で表す
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            two_rects(this);
+            // 2つ目を中に収める
+            let sp = &mut this.sheet_mut().shapes_new[1];
+            sp.width_px = 30.0;
+            sp.height_px = 30.0;
+            sp.dx_px = 35.0;
+            sp.dy_px = 35.0;
+            this.shapes_boolean(BoolOp::Subtract);
+            let sp = &this.sheet().shapes_new[0];
+            let starts = sp.points.iter().filter(|p| p.start).count();
+            assert_eq!(starts, 1, "穴の輪郭が無い(切れ目の数 {starts})");
+        });
+    }
+
+    #[gpui::test]
+    fn ひとつしか選んでいなければ断る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            two_rects(this);
+            this.shape_multi.clear();
+            this.shapes_boolean(BoolOp::Union);
+            assert_eq!(this.sheet().shapes_new.len(), 2, "1つで足し引きした");
+            assert!(this.status.contains("2つの図形"), "断り方が伝わらない: {}", this.status);
+        });
+    }
+
+    #[gpui::test]
+    fn 輪郭を出せない形は断る(cx: &mut gpui::TestAppContext) {
+        // **黙って四角で計算しない**
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            two_rects(this);
+            this.sheet_mut().shapes_new[1].kind = "wedgeEllipseCallout".into();
+            this.shapes_boolean(BoolOp::Union);
+            assert_eq!(this.sheet().shapes_new.len(), 2, "断らずに計算した");
+            assert!(this.status.contains("足し引きできません"), "理由を言っていない");
         });
     }
 }

@@ -2303,7 +2303,11 @@ pub(super) fn shape_anchor_xml(sp: &crate::model::SheetShape, id: u32) -> String
         let g = |p: (f32, f32)| ((p.0 * 10000.0) as i64, (p.1 * 10000.0) as i64);
         for (i, pp) in sp.points.iter().enumerate() {
             let (px_, py_) = g(pp.at);
-            if i == 0 {
+            // **輪郭の切れ目でも moveTo**(穴のある形は輪郭が2本以上)
+            if i == 0 || pp.start {
+                if pp.start {
+                    path.push_str("<a:close/>");
+                }
                 path.push_str(&format!(
                     "<a:moveTo><a:pt x=\"{px_}\" y=\"{py_}\"/></a:moveTo>"
                 ));

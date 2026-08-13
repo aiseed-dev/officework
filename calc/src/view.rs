@@ -1943,6 +1943,9 @@ impl Render for Calc {
                 ("sh-align", "整列", "", true, true),
                 ("sh-rotate", "回転", "", !sh_poly, true),
                 ("sh-group", "グループ化", "", false, false),
+                // 足し引き。**2つ選んでいるときだけ**(1つでは相手がいない)
+                ("sh-bool", "図形を結合", "",
+                    self.shape_sel.is_some() && !self.shape_multi.is_empty(), true),
                 ("", "", "", false, false),
                 ("sh-macro", "マクロの割り当て", "", false, false),
                 ("sh-save", "画像として保存(SVG)", "", true, false),

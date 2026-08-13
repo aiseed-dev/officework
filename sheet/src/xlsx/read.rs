@@ -457,6 +457,8 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     // 曲線の3つ組を貯める場所(cubicBezTo の中だけ)
     let mut in_bez = false;
     let mut bez: Vec<(f32, f32)> = Vec::new();
+    // 次に来る点が新しい輪郭の始まりか(moveTo の直後)
+    let mut next_starts = false;
     let mut sp_name: Option<String> = None;
     let (mut path_w, mut path_h) = (1000.0f32, 1000.0f32);
     let mut has_custom = false;
@@ -572,7 +574,12 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     in_bez = true;
                     bez.clear();
                 }
-                b"lnTo" | b"moveTo" if has_custom => in_bez = false,
+                b"lnTo" if has_custom => in_bez = false,
+                // 2本目以降の moveTo は**輪郭の切れ目**(穴など)
+                b"moveTo" if has_custom => {
+                    in_bez = false;
+                    next_starts = true;
+                }
                 _ => cur.clear(),
             },
             Ok(Event::Empty(e)) => match local(e.name().as_ref()) {
@@ -602,11 +609,14 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                             }
                             pts.push(crate::model::PathPoint {
                                 at: bez[2],
+                                start: false,
                                 c_in: Some(bez[1]),
                                 c_out: None,
                             });
                             bez.clear();
                         }
+                    } else if std::mem::take(&mut next_starts) && !pts.is_empty() {
+                        pts.push(crate::model::PathPoint::start_at(at.0, at.1));
                     } else {
                         pts.push(crate::model::PathPoint::at(at.0, at.1));
                     }

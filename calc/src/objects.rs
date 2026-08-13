@@ -803,3 +803,87 @@ impl Calc {
         self.dirty = true;
     }
 }
+
+impl Calc {
+    /// 図形どうしの足し引き(台帳「図形のブール演算」、2026-08-13)。
+    ///
+    /// **2つ選んでいるときだけ。** 主(`shape_sel`)から控え(`shape_multi`)を
+    /// 引く、という向きにする — 「どちらから引くか」を選べないと減算が使えない。
+    pub(crate) fn shapes_boolean(&mut self, op: sheet::model::BoolOp) {
+        use sheet::model::{combine, outline, to_points, BoolOp};
+        let (Some(a), Some(&b)) = (self.shape_sel, self.shape_multi.first()) else {
+            self.status = ui::t!("2つの図形を選んでください(Ctrl+クリックで足せます)").into();
+            return;
+        };
+        let (Some(sa), Some(sb)) = (
+            self.sheet().shapes_new.get(a).cloned(),
+            self.sheet().shapes_new.get(b).cloned(),
+        ) else {
+            return;
+        };
+        // **輪郭を出せない形は断る。** 黙って四角で計算しない
+        let (Some(oa), Some(ob)): (Option<Vec<Vec<(f32, f32)>>>, Option<Vec<Vec<(f32, f32)>>>) = (
+            outline(&sa.kind, &sa.points),
+            outline(&sb.kind, &sb.points),
+        ) else {
+            self.status =
+                ui::t!("この形は足し引きできません(輪郭を点で取れない形です)").into();
+            return;
+        };
+        // 2つ目を1つ目の枠の目盛りへ 直す(画面の px を経由する)
+        let (Some((ax, ay)), Some((bx, by))) = (
+            self.cell_origin_px(sa.at),
+            self.cell_origin_px(sb.at),
+        ) else {
+            return;
+        };
+        let (ax, ay) = (ax + sa.dx_px, ay + sa.dy_px);
+        let (bx, by) = (bx + sb.dx_px, by + sb.dy_px);
+        let (aw, ah) = (sa.width_px.max(1.0), sa.height_px.max(1.0));
+        let (bw, bh) = (sb.width_px.max(1.0), sb.height_px.max(1.0));
+        let ob: Vec<Vec<(f32, f32)>> = ob
+            .iter()
+            .map(|c| {
+                c.iter()
+                    .map(|&(x, y)| {
+                        // b の 0..1 → 画面 px → a の 0..1
+                        (((bx + x * bw) - ax) / aw, ((by + y * bh) - ay) / ah)
+                    })
+                    .collect()
+            })
+            .collect();
+        let res = combine(&oa, &ob, op);
+        if res.is_empty() {
+            self.status = ui::t!("重なりが無いので何も残りませんでした").into();
+            return;
+        }
+        self.checkpoint();
+        let pts = to_points(&res);
+        {
+            let sp = &mut self.sheet_mut().shapes_new[a];
+            sp.kind = "path".into();
+            sp.points = pts;
+            // 回転と反転は輪郭に焼き込んでいないので落とす(掛けたままだと
+            // 二重に掛かる)。**落とすことは状態行で言う**
+            sp.rot = 0.0;
+            sp.flip_h = false;
+            sp.flip_v = false;
+        }
+        // 引かれた側は消える(結合・交差・減算のどれでも1つになる)
+        let keep = a - usize::from(b < a);
+        self.sheet_mut().shapes_new.remove(b);
+        self.shape_sel = Some(keep);
+        self.shape_multi.clear();
+        self.dirty = true;
+        let name = match op {
+            BoolOp::Union => ui::t!("結合"),
+            BoolOp::Intersect => ui::t!("交差"),
+            BoolOp::Subtract => ui::t!("減算"),
+        };
+        self.status = ui::tf!(
+            "{}しました(輪郭に直したので、元の形と回転は戻せません)",
+            name
+        )
+        .into();
+    }
+}
