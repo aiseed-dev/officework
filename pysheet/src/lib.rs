@@ -298,16 +298,41 @@ impl PyBook {
         Ok(())
     }
 
+
+    /// 名前付きセル様式を**作る**(openpyxl の add_named_style)。
+    /// 書式は `set_fmt` と同じ鍵の dict で渡す。保存で styles.xml の
+    /// cellStyleXfs / cellStyles に**追記**する(原本の索引は動かさない)。
+    #[pyo3(signature = (name, **kw))]
+    fn add_named_style(&self, name: &str, kw: Option<&Bound<'_, PyDict>>) -> PyResult<()> {
+        if name.is_empty() {
+            return Err(PyValueError::new_err("様式の名前が空です"));
+        }
+        let mut g = lock(&self.inner)?;
+        if g.book.named_styles.iter().any(|(n, _, _)| n == name)
+            || g.book.named_styles_new.iter().any(|(n, _)| n == name)
+        {
+            return Err(PyValueError::new_err(format!("様式「{name}」は既にあります")));
+        }
+        let mut f = sheet::model::CellFormat::default();
+        if let Some(kw) = kw {
+            apply_fmt(&mut f, kw)?;
+        }
+        g.book.named_styles_new.push((name.to_string(), f));
+        Ok(())
+    }
+
     /// 名前付きセル様式の一覧 [(名前, 組み込みの番号)]。
     /// **定義は原本の styles.xml が持ち、保存でそのまま持ち越される** —
     /// ここは名乗りの写し(型紙の見出しの大きさなどを引くのに使う)。
     #[getter]
     fn named_styles(&self) -> PyResult<Vec<(String, Option<u32>)>> {
-        Ok(lock(&self.inner)?
-            .book
+        let g = lock(&self.inner)?;
+        // 原本の様式 + **このアプリで足した分**(保存で styles.xml に入る)
+        Ok(g.book
             .named_styles
             .iter()
             .map(|(n, b, _)| (n.clone(), *b))
+            .chain(g.book.named_styles_new.iter().map(|(n, _)| (n.clone(), None)))
             .collect())
     }
 
@@ -325,6 +350,9 @@ impl PyBook {
             .iter()
             .find(|(n, _, _)| n == name)
             .map(|(_, _, f)| f.clone())
+            .or_else(|| {
+                g.book.named_styles_new.iter().find(|(n, _)| n == name).map(|(_, f)| f.clone())
+            })
             .ok_or_else(|| PyKeyError::new_err(format!("名前付き様式が無い: {name:?}")))?;
         fmt_dict(py, &f)
     }
@@ -634,85 +662,7 @@ impl PySheet {
         let Some(kw) = kw else { return Ok(()) };
         self.with(|s| {
             let mut cell = s.get(p).cloned().unwrap_or_else(|| Cell::input(""));
-            let f = &mut cell.fmt;
-            for (k, v) in kw.iter() {
-                let k: String = k.extract()?;
-                match k.as_str() {
-                    "bold" => f.bold = v.extract::<Option<bool>>()?.unwrap_or(false),
-                    "italic" => f.italic = v.extract::<Option<bool>>()?.unwrap_or(false),
-                    "underline" => f.underline = v.extract::<Option<bool>>()?.unwrap_or(false),
-                    "strike" => f.strike = v.extract::<Option<bool>>()?.unwrap_or(false),
-                    "wrap" => f.wrap = v.extract::<Option<bool>>()?.unwrap_or(false),
-                    "shrink" => f.shrink = v.extract::<Option<bool>>()?.unwrap_or(false),
-                    "font" => f.font = v.extract()?,
-                    "size" => {
-                        f.size_c = v.extract::<Option<f64>>()?.map(|x| (x * 100.0).round() as u32)
-                    }
-                    "color" => {
-                        f.color = v.extract::<Option<String>>()?;
-                        f.color_theme = None; // 直に塗った — テーマ由来ではなくなる
-                    }
-                    "fill" => {
-                        f.fill = v.extract::<Option<String>>()?;
-                        f.fill_theme = None;
-                    }
-                    "number_format" => f.number_format = v.extract()?,
-                    "horizontal" => {
-                        f.align = v
-                            .extract::<Option<String>>()?
-                            .map(|x| HAlign::from_xlsx(&x))
-                            .unwrap_or(HAlign::General)
-                    }
-                    "vertical" => {
-                        f.valign = v
-                            .extract::<Option<String>>()?
-                            .map(|x| VAlign::from_xlsx(&x))
-                            .unwrap_or(VAlign::Bottom)
-                    }
-                    "rotation" => f.rotation = v.extract()?,
-                    "indent" => {
-                        f.indent = v.extract::<Option<u8>>()?.unwrap_or(0).min(250)
-                    }
-                    "locked" => {
-                        f.unlocked = !v.extract::<Option<bool>>()?.unwrap_or(true)
-                    }
-                    "border_top" | "border_bottom" | "border_left" | "border_right" => {
-                        let e = if v.is_none() {
-                            Edge::OFF
-                        } else if let Ok(style) = v.extract::<String>() {
-                            Edge::line(BStyle::from_xlsx(&style), None)
-                        } else if let Ok((style, color)) =
-                            v.extract::<(String, Option<String>)>()
-                        {
-                            let c = color
-                                .map(|x| {
-                                    u32::from_str_radix(&x, 16).map_err(|_| {
-                                        PyValueError::new_err(format!(
-                                            "罫線の色は RRGGBB で: {x:?}"
-                                        ))
-                                    })
-                                })
-                                .transpose()?;
-                            Edge::line(BStyle::from_xlsx(&style), c)
-                        } else {
-                            return Err(PyTypeError::new_err(
-                                "罫線は None / 線種の文字 / (線種, 色) で渡してください",
-                            ));
-                        };
-                        match k.as_str() {
-                            "border_top" => f.borders.top = e,
-                            "border_bottom" => f.borders.bottom = e,
-                            "border_left" => f.borders.left = e,
-                            _ => f.borders.right = e,
-                        }
-                    }
-                    other => {
-                        return Err(PyValueError::new_err(format!(
-                            "知らない書式の鍵: {other:?}(fmt() の返りと同じ鍵で)"
-                        )))
-                    }
-                }
-            }
+            apply_fmt(&mut cell.fmt, kw)?;
             s.set(p, cell);
             Ok(())
         })
@@ -985,6 +935,106 @@ impl PySheet {
     fn set_print_gridlines(&self, value: bool) -> PyResult<()> {
         self.with(|s| {
             s.print_gridlines = value;
+            Ok(())
+        })
+    }
+
+
+    /// 偶数頁・先頭頁だけのヘッダー/フッター(xlsx の evenHeader ほか)と、
+    /// それを使うかの旗。**左右で綴じる帳票**は偶数頁を別に組む。
+    #[getter]
+    fn print_header_even(&self) -> PyResult<Option<String>> {
+        self.with(|s| Ok(s.header_even.clone()))
+    }
+
+    #[setter]
+    fn set_print_header_even(&self, value: Option<&str>) -> PyResult<()> {
+        self.with(|s| {
+            s.header_even = value.filter(|v| !v.is_empty()).map(str::to_string);
+            if s.header_even.is_some() {
+                s.hf_diff_odd_even = true; // 置いたなら使う(旗の付け忘れを防ぐ)
+            }
+            Ok(())
+        })
+    }
+
+    #[getter]
+    fn print_footer_even(&self) -> PyResult<Option<String>> {
+        self.with(|s| Ok(s.footer_even.clone()))
+    }
+
+    #[setter]
+    fn set_print_footer_even(&self, value: Option<&str>) -> PyResult<()> {
+        self.with(|s| {
+            s.footer_even = value.filter(|v| !v.is_empty()).map(str::to_string);
+            if s.footer_even.is_some() {
+                s.hf_diff_odd_even = true;
+            }
+            Ok(())
+        })
+    }
+
+    #[getter]
+    fn print_header_first(&self) -> PyResult<Option<String>> {
+        self.with(|s| Ok(s.header_first.clone()))
+    }
+
+    #[setter]
+    fn set_print_header_first(&self, value: Option<&str>) -> PyResult<()> {
+        self.with(|s| {
+            s.header_first = value.filter(|v| !v.is_empty()).map(str::to_string);
+            if s.header_first.is_some() {
+                s.hf_diff_first = true;
+            }
+            Ok(())
+        })
+    }
+
+    #[getter]
+    fn print_footer_first(&self) -> PyResult<Option<String>> {
+        self.with(|s| Ok(s.footer_first.clone()))
+    }
+
+    #[setter]
+    fn set_print_footer_first(&self, value: Option<&str>) -> PyResult<()> {
+        self.with(|s| {
+            s.footer_first = value.filter(|v| !v.is_empty()).map(str::to_string);
+            if s.footer_first.is_some() {
+                s.hf_diff_first = true;
+            }
+            Ok(())
+        })
+    }
+
+    /// 印刷のタイトル列(頁ごとに左で繰り返す列。openpyxl と同じ "A:B" の形)。
+    /// **横に長い台帳で品名の列を毎ページ出す**ための物。
+    #[getter]
+    fn print_title_cols(&self) -> PyResult<Option<String>> {
+        self.with(|s| {
+            Ok(s.print_title_cols.map(|(a, b)| {
+                let letter = |c: u32| {
+                    let a1 = Pos::new(0, c).a1();
+                    a1.trim_end_matches(|ch: char| ch.is_ascii_digit()).to_string()
+                };
+                format!("{}:{}", letter(a), letter(b))
+            }))
+        })
+    }
+
+    /// タイトル列を置く。"A:B"($ 付きでも)。None か空で消す。
+    #[setter]
+    fn set_print_title_cols(&self, value: Option<&str>) -> PyResult<()> {
+        let cols = match value.map(str::trim).filter(|v| !v.is_empty()) {
+            None => None,
+            Some(v) => {
+                let v = v.replace('$', "");
+                let (a, b) = v.split_once(':').unwrap_or((v.as_str(), v.as_str()));
+                let (a, b) = (col0(a.trim())?, col0(b.trim())?);
+                Some((a.min(b), a.max(b)))
+            }
+        };
+        self.with(|s| {
+            s.print_title_cols = cols;
             Ok(())
         })
     }
@@ -1278,6 +1328,90 @@ fn fmt_dict<'py>(
             Ok(d)
         }
     }
+}
+
+
+/// dict の鍵を CellFormat に写す(Sheet.set_fmt と Book.add_named_style の
+/// **一本道** — 別々に書くと受ける鍵がずれる)。渡した項目だけ変える。
+fn apply_fmt(f: &mut sheet::model::CellFormat, kw: &Bound<'_, PyDict>) -> PyResult<()> {
+        for (k, v) in kw.iter() {
+            let k: String = k.extract()?;
+            match k.as_str() {
+                "bold" => f.bold = v.extract::<Option<bool>>()?.unwrap_or(false),
+                "italic" => f.italic = v.extract::<Option<bool>>()?.unwrap_or(false),
+                "underline" => f.underline = v.extract::<Option<bool>>()?.unwrap_or(false),
+                "strike" => f.strike = v.extract::<Option<bool>>()?.unwrap_or(false),
+                "wrap" => f.wrap = v.extract::<Option<bool>>()?.unwrap_or(false),
+                "shrink" => f.shrink = v.extract::<Option<bool>>()?.unwrap_or(false),
+                "font" => f.font = v.extract()?,
+                "size" => {
+                    f.size_c = v.extract::<Option<f64>>()?.map(|x| (x * 100.0).round() as u32)
+                }
+                "color" => {
+                    f.color = v.extract::<Option<String>>()?;
+                    f.color_theme = None; // 直に塗った — テーマ由来ではなくなる
+                }
+                "fill" => {
+                    f.fill = v.extract::<Option<String>>()?;
+                    f.fill_theme = None;
+                }
+                "number_format" => f.number_format = v.extract()?,
+                "horizontal" => {
+                    f.align = v
+                        .extract::<Option<String>>()?
+                        .map(|x| HAlign::from_xlsx(&x))
+                        .unwrap_or(HAlign::General)
+                }
+                "vertical" => {
+                    f.valign = v
+                        .extract::<Option<String>>()?
+                        .map(|x| VAlign::from_xlsx(&x))
+                        .unwrap_or(VAlign::Bottom)
+                }
+                "rotation" => f.rotation = v.extract()?,
+                "indent" => {
+                    f.indent = v.extract::<Option<u8>>()?.unwrap_or(0).min(250)
+                }
+                "locked" => {
+                    f.unlocked = !v.extract::<Option<bool>>()?.unwrap_or(true)
+                }
+                "border_top" | "border_bottom" | "border_left" | "border_right" => {
+                    let e = if v.is_none() {
+                        Edge::OFF
+                    } else if let Ok(style) = v.extract::<String>() {
+                        Edge::line(BStyle::from_xlsx(&style), None)
+                    } else if let Ok((style, color)) =
+                        v.extract::<(String, Option<String>)>()
+                    {
+                        let c = color
+                            .map(|x| {
+                                u32::from_str_radix(&x, 16).map_err(|_| {
+                                    PyValueError::new_err(format!(
+                                        "罫線の色は RRGGBB で: {x:?}"
+                                    ))
+                                })
+                            })
+                            .transpose()?;
+                        Edge::line(BStyle::from_xlsx(&style), c)
+                    } else {
+                        return Err(PyTypeError::new_err(
+                            "罫線は None / 線種の文字 / (線種, 色) で渡してください",
+                        ));
+                    };
+                    match k.as_str() {
+                        "border_top" => f.borders.top = e,
+                        "border_bottom" => f.borders.bottom = e,
+                        "border_left" => f.borders.left = e,
+                        _ => f.borders.right = e,
+                    }
+                }
+                other => {
+                    return Err(PyValueError::new_err(format!(
+                        "知らない書式の鍵: {other:?}(fmt() の返りと同じ鍵で)"
+                    )))
+                }
+            }
+        }    Ok(())
 }
 
 /// 画面の行番号(1起点)→ 内部の行(0起点)。0行目は無い。

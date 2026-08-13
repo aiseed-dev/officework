@@ -494,7 +494,10 @@ mod tests {
 ///
 /// xlsx はセルに書式を直接書けないので、**使った組み合わせを表にして索引を配る**。
 /// 索引は `write` 側で `<c s="…">` に入れる。
-pub fn build(used: &[CellFormat]) -> (String, BTreeMap<CellFormat, usize>) {
+pub fn build(
+    used: &[CellFormat],
+    named: &[(String, CellFormat)],
+) -> (String, BTreeMap<CellFormat, usize>) {
     // 素の書式は必ず 0 番。xlsx はそれを前提にしている道具が多い
     let mut order: Vec<CellFormat> = vec![CellFormat::default()];
     for f in used {
@@ -531,6 +534,11 @@ pub fn build(used: &[CellFormat]) -> (String, BTreeMap<CellFormat, usize>) {
         };
         xfs.push((fi, fl, bi, ni, f.clone()));
     }
+    // **表を書き出す前に**名前付き様式の分も足しておく — 書き出した後に
+    // 足すと、索引だけ増えて中身が並ばない(踏んだ)
+    let (named_xfs, named_cs) = named_style_parts(
+        named, 0, 0, 0, 1, &mut fonts, &mut fills, &mut borders,
+    );
 
     let mut s = String::from(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -562,13 +570,19 @@ pub fn build(used: &[CellFormat]) -> (String, BTreeMap<CellFormat, usize>) {
         s.push_str(&border_xml(b));
     }
     s.push_str("</borders>");
-    s.push_str("<cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs>");
+    s.push_str(&format!(
+        "<cellStyleXfs count=\"{}\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/>{named_xfs}</cellStyleXfs>",
+        1 + named.len()
+    ));
     s.push_str(&format!("<cellXfs count=\"{}\">", xfs.len()));
     for (fi, fl, bi, ni, f) in &xfs {
         s.push_str(&xf_xml(*fi, *fl, *bi, *ni, f));
     }
     s.push_str("</cellXfs>");
-    s.push_str("<cellStyles count=\"1\"><cellStyle name=\"標準\" xfId=\"0\" builtinId=\"0\"/></cellStyles>");
+    s.push_str(&format!(
+        "<cellStyles count=\"{}\"><cellStyle name=\"標準\" xfId=\"0\" builtinId=\"0\"/>{named_cs}</cellStyles>",
+        1 + named.len()
+    ));
     s.push_str("</styleSheet>");
 
     let map = order.into_iter().enumerate().map(|(i, f)| (f, i)).collect();
@@ -708,9 +722,57 @@ fn bump_count(s: &mut String, name: &str, add: usize) {
 /// 原本の xf・font・fill・border は1字も動かさない — 末尾に足すだけ。
 /// 返す索引は追記後の全体での番号(原本の xf 数 + 何番目か)。
 /// 原本に必要な節が無い壊れた styles.xml なら None(呼び手が build に落とす)
+
+/// 名前付きセル様式を cellStyleXfs / cellStyles の断片にする。
+/// 返りは (cellStyleXfs へ足す xf, cellStyles へ足す cellStyle,
+/// 使った font/fill/border/numFmt の断片)。
+///
+/// **索引は末尾に足す** — 既にある番号は動かさない(触っていないセルの
+/// 書式が原本の索引のまま書き戻る、という据え置きの土台を壊さないため)。
+#[allow(clippy::type_complexity)]
+fn named_style_parts(
+    named: &[(String, CellFormat)],
+    font_base: usize,
+    fill_base: usize,
+    border_base: usize,
+    xfid_base: usize,
+    fonts: &mut Vec<Fnt>,
+    fills: &mut Vec<Option<String>>,
+    borders: &mut Vec<Borders>,
+) -> (String, String) {
+    let mut xfs = String::new();
+    let mut styles = String::new();
+    for (i, (name, f)) in named.iter().enumerate() {
+        let font = Fnt {
+            bold: f.bold, italic: f.italic, underline: f.underline,
+            strike: f.strike, subscript: f.subscript, size_c: f.size_c,
+            color_theme: f.color_theme,
+            color: f.color.clone(), name: f.font.clone(),
+        };
+        let fi = font_base + idx(fonts, font);
+        let fl = match &f.fill {
+            Some(c) => fill_base + idx(fills, Some(c.clone())),
+            None => 0,
+        };
+        let bi = if f.borders == Borders::NONE {
+            0
+        } else {
+            border_base + idx(borders, f.borders)
+        };
+        xfs.push_str(&xf_xml(fi, fl, bi, 0, f));
+        styles.push_str(&format!(
+            "<cellStyle name=\"{}\" xfId=\"{}\"/>",
+            name.replace('&', "&amp;").replace('<', "&lt;").replace('"', "&quot;"),
+            xfid_base + i
+        ));
+    }
+    (xfs, styles)
+}
+
 pub fn append_to(
     orig: &str,
     used: &[CellFormat],
+    named: &[(String, CellFormat)],
 ) -> Option<(String, BTreeMap<CellFormat, usize>)> {
     let mut order: Vec<CellFormat> = Vec::new();
     for f in used {
@@ -766,6 +828,13 @@ pub fn append_to(
         };
         xfs.push(xf_xml(fi, fl, bi, ni, f));
     }
+    // 名前付き様式(このアプリで足した分)。**書式の表は上と同じ物を使う** —
+    // 別に作ると同じ書体が二重に並ぶ
+    let xfid_base = count_in("cellStyleXfs", "<xf")?;
+    let (named_xfs, named_styles) = named_style_parts(
+        named, font_base, fill_base, border_base, xfid_base,
+        &mut fonts, &mut fills, &mut borders,
+    );
 
     let mut s = orig.to_string();
     // 後ろの節から順に挿す(前を触ると位置がずれるため)
@@ -778,10 +847,24 @@ pub fn append_to(
             None => false,
         }
     };
+    if !named_styles.is_empty() {
+        // **後ろの節から**差す(前を触ると位置がずれる)。
+        // cellStyles は cellXfs より後ろ、cellStyleXfs は前
+        if !insert_end(&mut s, "cellStyles", &named_styles) {
+            return None;
+        }
+        bump_count(&mut s, "cellStyles", named.len());
+    }
     if !insert_end(&mut s, "cellXfs", &xfs.concat()) {
         return None;
     }
     bump_count(&mut s, "cellXfs", xfs.len());
+    if !named_xfs.is_empty() {
+        if !insert_end(&mut s, "cellStyleXfs", &named_xfs) {
+            return None;
+        }
+        bump_count(&mut s, "cellStyleXfs", named.len());
+    }
     if !borders.is_empty() {
         let frag: String = borders.iter().map(border_xml).collect();
         if !insert_end(&mut s, "borders", &frag) {
@@ -902,7 +985,7 @@ mod append_tests {
             number_format: Some("0.00".into()),
             ..Default::default()
         };
-        let (s, map) = append_to(ORIG, std::slice::from_ref(&f)).unwrap();
+        let (s, map) = append_to(ORIG, std::slice::from_ref(&f), &[]).unwrap();
         // 索引は原本の 2 つの続き
         assert_eq!(map[&f], 2);
         // 原本の xf は1字も変わらず残る
@@ -918,7 +1001,7 @@ mod append_tests {
 
     #[test]
     fn 追記なしなら原本のまま() {
-        let (s, map) = append_to(ORIG, &[]).unwrap();
+        let (s, map) = append_to(ORIG, &[], &[]).unwrap();
         assert_eq!(s, ORIG, "何も足していないのに変わった");
         assert!(map.is_empty());
     }
@@ -934,7 +1017,7 @@ mod build_tests {
 
     #[test]
     fn 素の書式は0番() {
-        let (_, map) = build(&[ruled()]);
+        let (_, map) = build(&[ruled()], &[]);
         assert_eq!(map[&CellFormat::default()], 0, "素の書式が0番でない");
     }
 
@@ -942,7 +1025,7 @@ mod build_tests {
     fn 書いたものを読み戻せる() {
         // 罫線を落とすと帳票として通らない。往復で守る
         let f = ruled();
-        let (xml, map) = build(std::slice::from_ref(&f));
+        let (xml, map) = build(std::slice::from_ref(&f), &[]);
         let back = parse(&xml, &[]);
         let i = map[&f];
         assert_eq!(back[i].borders, Borders::ALL, "罫線が消えた: {:?}", back[i]);
@@ -958,7 +1041,7 @@ mod build_tests {
             align: HAlign::Center,
             ..Default::default()
         };
-        let (xml, map) = build(std::slice::from_ref(&f));
+        let (xml, map) = build(std::slice::from_ref(&f), &[]);
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.fill.as_deref(), Some("FFFF00"));
         assert_eq!(back.color.as_deref(), Some("FF0000"));
@@ -969,7 +1052,7 @@ mod build_tests {
     #[test]
     fn 同じ書式は1つにまとまる() {
         let f = ruled();
-        let (_, map) = build(&[f.clone(), f.clone(), f.clone()]);
+        let (_, map) = build(&[f.clone(), f.clone(), f.clone()], &[]);
         assert_eq!(map.len(), 2, "素の書式 + 1 のはず: {map:?}");
     }
 
@@ -980,7 +1063,7 @@ mod build_tests {
             borders: Borders { bottom: Edge::THIN, ..Borders::NONE },
             ..Default::default()
         };
-        let (xml, map) = build(std::slice::from_ref(&f));
+        let (xml, map) = build(std::slice::from_ref(&f), &[]);
         let back = &parse(&xml, &[])[map[&f]];
         assert!(back.borders.bottom.on, "下線が消えた");
         assert!(!back.borders.top.on, "無い罫線が増えた");
@@ -995,7 +1078,7 @@ mod font_name_tests {
     fn 書体名が往復する() {
         // ＭＳ 明朝の帳票を保存して書体が消えると、開き直したとき別の字になる
         let f = CellFormat { font: Some("ＭＳ 明朝".into()), bold: true, ..Default::default() };
-        let (xml, map) = build(std::slice::from_ref(&f));
+        let (xml, map) = build(std::slice::from_ref(&f), &[]);
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.font.as_deref(), Some("ＭＳ 明朝"), "書体名が消えた");
         assert!(back.bold);
@@ -1015,7 +1098,7 @@ mod more_fmt_tests {
             wrap: true,
             ..Default::default()
         };
-        let (xml, map) = build(std::slice::from_ref(&f));
+        let (xml, map) = build(std::slice::from_ref(&f), &[]);
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.size_c, Some(1400), "大きさが消えた");
         assert!(back.strike, "取り消し線が消えた");
@@ -1027,7 +1110,7 @@ mod more_fmt_tests {
     fn 既定の縦揃えは書かない() {
         // xlsx の既定は下揃え。書かないことが既定を表す
         let f = CellFormat { bold: true, ..Default::default() };
-        let (xml, _) = build(&[f]);
+        let (xml, _) = build(&[f], &[]);
         assert!(!xml.contains("vertical="), "既定なのに縦揃えを書いた");
     }
 }
@@ -1048,7 +1131,7 @@ mod xml_wellformed_tests {
         let mut f = CellFormat::default();
         f.bold = true;
         f.fill = Some("FFF2CC".into());
-        let (xml, _) = build(&[f]);
+        let (xml, _) = build(&[f], &[]);
         // 引用符の開閉を数え、**閉じた直後**だけ見る。閉じたあとに来てよいのは
         // 空白・`/`・`>`・`?` だけ(属性が続くなら必ず空白が要る)
         let b: Vec<char> = xml.chars().collect();

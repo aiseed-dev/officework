@@ -59,7 +59,7 @@ add_heading と Run の add_text / clear はエンジンの書き口待ちだっ
 | ✔ create_named_range | 足す | 名前付き範囲。式が参照する物なのでエンジンの計算にも絡む(**済 2026-08-12 夜**: エンジンに Sheet.names / define_name / delete_name(名前は属するシートの物 — 模型どおり)。openpyxl の defined_names(dict 風)と create_named_range の顔つき。定義した名前は式(=単価*数量)で効き、本家と両方向で往復。scope は持たない — 正直に断る) |
 | ✔ epoch / excel_base_date | 足す | 1904 起点のブック(古い Mac 由来)を 1899-12-30 として読むと日付が4年ずれる — 黙って壊すのと同じ。起点の読みと解釈をエンジンに(**済 2026-08-13**: Book.date1904 の旗を評価器(funcs::call)・表示(format_value)・PDF(PrintSetup)・pysheet の datetime 受け渡しまで貫通。内部は 1899 のまま、通し番号↔暦日の**境目だけ**が excel_epoch(date1904) を通す(1904 は 24107)。元号・曜日・DATEDIF・WEEKNUM の類も同じ道。openpyxl の epoch / excel_base_date の顔つき — 読み書きとも、起点替えは「意味が4年動く」と注記して受ける。適合は本家の 1904 ブックと両方向 — 表示・YEAR・datetime 往復まで。**ついでに1つ塞いだ**: core.xml の欄の差し替えが要素に付いた xmlns 宣言を落とし、openpyxl 産のブックを保存すると lxml が開けない壊れた XML になっていた — 属性を保って差し替えるよう正した) |
 | ✔ named_styles / style_names | 足す(書式) | 名前付き様式は書式の書き込みの一部(**済 2026-08-13**。実測で分かったこと: **往復は既に効いていた** —様式の一覧も、触っていないセルの様式名も、原本の styles.xml 据え置きで残る。口を張った: Book.named_styles / style_names(名前の並び)と named_style_fmt(様式の書式を fmt と同じ鍵で引く)。`cell.style = "見出し行"` は**その様式の書式をセルに写す** — 見た目は同じになるが、名前の帳簿はセルに持たない(模型の作り)ので、読みは openpyxl の既定どおり "Normal"。無い名前は KeyError で断る) |
-| add_named_style | 足す(書式) | 様式を**作る**のは残 — 定義は原本の styles.xml の持ち物で、書き足す口(docx の styles_new と同じ外科術)が要る。正直に断っている |
+| ✔ add_named_style | 足す(書式) | 様式を**作る**(**済 2026-08-13**: Book.named_styles_new に持ち、保存で styles.xml の cellStyleXfs / cellStyles に**追記**する。原本があれば append_to(既にある書式追記の道)へ相乗り、無ければ build が並べる — どちらも**既存の索引は動かさない**ので、触っていないセルの書式は無傷。openpyxl の NamedStyle をそのまま渡せる。書式の受けは set_fmt と同じ apply_fmt(一本道)。適合は往復まで) |
 | data_only | 要らない | 「式か値か」を開くときに選ばされるのが openpyxl の弱点。うちは常に両方ある(値も式も同時に読める) |
 | get_sheet_by_name / get_sheet_names / remove_sheet | 要らない | 本家でも廃止予定の旧名 |
 | mime_type / template | 要らない | 内部事情 |
@@ -86,10 +86,10 @@ add_heading と Run の add_text / clear はエンジンの書き口待ちだっ
 | ✔ freeze_panes | 足す | ウィンドウ枠の固定。実務多い(済 2026-08-12。openpyxl と同じ A1 形式 — "B2" = 上1行・左1列) |
 | ✔ add_image | 足す | **matplotlib の図をシートに貼る** — アプリのグラフ分業と同じ道を Python にも。oneCellAnchor で書く(済 2026-08-12: 径路でも bytes でも。寸法は ops::image_px で測り、width_px/height_px で上書き。読み側の `images` も付けた — openpyxl はこれを公開 API で持たない) |
 | ✔ oddHeader / oddFooter | 足す | 印刷ヘッダー・フッター(**済 2026-08-13**。模型(header / footer)と xlsx の読み書きは既にあり、口だけ欠けていた。openpyxl と同じ left / center / right の三分割(中身は &L&C&R の原文。&P は頁番号)。適合は両方向) |
-| evenHeader / firstHeader / evenFooter / firstFooter | 足す | 奇数・偶数・先頭頁の**別**は模型に無い(1つだけ持つ)。**黙って同じ物を返さない** — 正直に断る。要る事例が出たら模型を太らせる |
+| ✔ evenHeader / firstHeader / evenFooter / firstFooter | 足す | 奇数・偶数・先頭頁の別(**済 2026-08-13**。**踏んだ穴**: 読まれてすらおらず、開いて保存すると偶数・先頭のヘッダーが消えていた — 左右で綴じる帳票の様式が崩れる。模型に4つの畑と differentOddEven / differentFirst の旗を足し、読み書きを通した。置くと旗が立つ(付け忘れ防止)。適合は往復まで) |
 | ✔ print_area | 足す | 印刷設定。calc はモデルに読む所まで済み — 書きを足す(**済 2026-08-12 夜**: 読みは openpyxl と同じ「'シート'!$A$1:$C$10」(複数域は , 区切り)、書きは $ もシート名! も付いていてよい。PDF と印刷がこれに従う。print_titles 系は模型に無い — 残) |
 | ✔ print_titles / print_title_rows | 足す | 見出し行の繰り返し。**畑が無いと書いたのは誤り**(2026-08-13 実測で判明): 模型の print_title_rows・xlsx の読み書き(_xlnm.Print_Titles)・**PDF の繰り返し**(paper::grid の「タイトル行は2ページ目にも出る」)まで既に完動していた — 欠けていたのは Python の口だけ。張った(openpyxl と同じ "1:2" / print_titles は "'シート'!$1:$2")。適合は両方向 |
-| print_title_cols | 足す | **列**の繰り返しは模型に畑が無い(行だけ持つ)。読みは None、書きは正直に断る — 日本の帳票では行の繰り返しが定番で、列は出てから足す |
+| ✔ print_title_cols | 足す | **列**の繰り返し(**済 2026-08-13**: 模型に畑を足し、Print_Titles の行の部と列の部を別々に解いて往復する(前は列だけの帳票は原文で持ち越すだけだった)。openpyxl と同じ "A:B" の形。**PDF はまだ列を繰り返さない** — 描く側が列を「連番」で持っており、そこを一覧に変える仕事が残る(ファイルには正しく入り、Excel は繰り返す)) |
 | ✔ add_data_validation | 足す | エンジンは list 規則を読み・効かせ・往復済み。追加の API を足す(**済 2026-08-12 夜**: add_validation(範囲, formula1, kind, operator, formula2, allow_blank)+ validations の読み。openpyxl の DataValidation の実物を add_data_validation に渡しても効く(sqref ごと)。適合は両方向) |
 | ✔ add_table / tables | 足す | テーブル(構造化参照・フィルタ)。**「原文持ち越しのみ」は誤り**(2026-08-13 実測): 模型の TableDef・xlsx の読み書き(table 部品・tableParts・関係・宣言)・**構造化参照の計算**(2026-08-08 実装)まで既に動いていた — 欠けは Python の口だけ。張った(openpyxl の Table / TableStyleInfo の形。本家の実物も受ける)。**`=SUM(明細[金額])` が計算まで効くのが上位分** — openpyxl は式を計算しない。適合は両方向。名前に空白は断る(式から引けなくなる) |
 | ✔ array_formulae | 足す | 配列式。エンジンがスピルを覚える件(pyoffice の「返り値の形で広がる」)と同じ模型(済 2026-08-13: 模型の cse に口を張った。openpyxl と同じ {左上: 式} の形。**うちは値まで計算されている** — `=SUM(A1:A3*2)` が 12 を返す。openpyxl は式を持つだけ) |

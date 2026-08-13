@@ -656,22 +656,45 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     out
 }
 
-/// `_xlnm.Print_Titles` の行の部($1:$4)を(シート番号, (先頭行, 末尾行))に解く。
-/// 列の繰り返し($A:$B)や混在は None(原文のまま持ち越す)。
-pub(super) fn parse_print_titles(raw: &str) -> Option<(usize, (u32, u32))> {
+/// `_xlnm.Print_Titles` を(シート番号, 行の部, 列の部)に解く。
+///
+/// 中身は `'表'!$1:$4`(行)・`'表'!$A:$B`(列)・その両方を `,` で
+/// 並べた形。**行と列は別々に持つ** — 片方だけの帳票が普通にある
+/// (2026-08-13 に列も持つようにした。前は行だけで、列は原文で持ち越し)。
+/// どちらも解けなければ None(原文のまま持ち越す側)。
+#[allow(clippy::type_complexity)]
+pub(super) fn parse_print_titles(
+    raw: &str,
+) -> Option<(usize, Option<(u32, u32)>, Option<(u32, u32)>)> {
     let sid = raw
         .split(SID_ATTR)
         .nth(1)
         .and_then(|r| r.split('"').next())
         .and_then(|v| v.parse::<usize>().ok())?;
     let body = raw.split('>').nth(1).and_then(|r| r.split('<').next())?;
-    let range = body.rsplit('!').next()?.replace('$', "");
-    let (a, b) = range.split_once(':')?;
-    let (a, b) = (a.trim().parse::<u32>().ok()?, b.trim().parse::<u32>().ok()?);
-    if a == 0 || b == 0 {
-        return None;
+    let mut rows = None;
+    let mut cols = None;
+    for part in body.split(',') {
+        let Some(range) = part.rsplit('!').next().map(|r| r.replace('$', "")) else {
+            continue;
+        };
+        let Some((a, b)) = range.split_once(':') else { continue };
+        let (a, b) = (a.trim().to_string(), b.trim().to_string());
+        if let (Ok(x), Ok(y)) = (a.parse::<u32>(), b.parse::<u32>()) {
+            if x > 0 && y > 0 {
+                rows = Some((x.min(y) - 1, x.max(y) - 1));
+            }
+        } else if !a.is_empty() && a.chars().all(|c| c.is_ascii_alphabetic()) {
+            // 列は字("A":"B")。行を足して Pos に解かせる
+            if let (Some(x), Some(y)) = (
+                crate::model::Pos::parse(&format!("{a}1")),
+                crate::model::Pos::parse(&format!("{b}1")),
+            ) {
+                cols = Some((x.col.min(y.col), x.col.max(y.col)));
+            }
+        }
     }
-    Some((sid, (a - 1, b - 1)))
+    (rows.is_some() || cols.is_some()).then_some((sid, rows, cols))
 }
 
 pub(super) fn resolve_target(t: &str) -> String {
@@ -837,8 +860,9 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
     let mut in_custom_view = false;
     let (mut in_v, mut in_f, mut in_is) = (false, false, false);
     let (mut v, mut f) = (String::new(), String::new());
-    // 印刷のヘッダー/フッター(Some(true)=oddHeader の中)
-    let mut hf_side: Option<bool> = None;
+    // 印刷のヘッダー/フッター。いまどの区分の中か
+    // ("oddHeader" などの元素の名前をそのまま持つ)
+    let mut hf_side: Option<Vec<u8>> = None;
     let mut style: Option<usize> = None;
     let mut buf = Vec::new();
     loop {
@@ -846,8 +870,18 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
             Ok(Event::Eof) | Err(_) => break,
             Ok(Event::Start(e)) => match local(e.name().as_ref()) {
                 // 印刷のヘッダー/フッター(文字は子の Text で拾う)
-                b"oddHeader" | b"oddFooter" => {
-                    hf_side = Some(local(e.name().as_ref()) == b"oddHeader");
+                b"oddHeader" | b"oddFooter" | b"evenHeader" | b"evenFooter"
+                | b"firstHeader" | b"firstFooter" => {
+                    hf_side = Some(local(e.name().as_ref()).to_vec());
+                }
+                // 奇数偶数・先頭頁で分ける旗(headerFooter の属性)。
+                // **持たないと保存で偶数・先頭のヘッダーが消える**
+                b"headerFooter" => {
+                    let on = |k: &str| {
+                        matches!(attr(&e, k).as_deref(), Some("1") | Some("true"))
+                    };
+                    sh.hf_diff_odd_even = on("differentOddEven");
+                    sh.hf_diff_first = on("differentFirst");
                 }
                 b"row" => row_height(&e, &mut sh),
                 b"c" => {
@@ -1041,10 +1075,14 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
             Ok(Event::Text(t)) if hf_side.is_some() => {
                 let s = t.unescape().unwrap_or_default().to_string();
                 if !s.is_empty() {
-                    if hf_side == Some(true) {
-                        sh.header = Some(s);
-                    } else {
-                        sh.footer = Some(s);
+                    match hf_side.as_deref() {
+                        Some(b"oddHeader") => sh.header = Some(s),
+                        Some(b"oddFooter") => sh.footer = Some(s),
+                        Some(b"evenHeader") => sh.header_even = Some(s),
+                        Some(b"evenFooter") => sh.footer_even = Some(s),
+                        Some(b"firstHeader") => sh.header_first = Some(s),
+                        Some(b"firstFooter") => sh.footer_first = Some(s),
+                        _ => {}
                     }
                 }
             }
@@ -1053,7 +1091,8 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                 if in_f { f.push_str(&s) } else { v.push_str(&s) }
             }
             Ok(Event::End(e)) => match local(e.name().as_ref()) {
-                b"oddHeader" | b"oddFooter" => hf_side = None,
+                b"oddHeader" | b"oddFooter" | b"evenHeader" | b"evenFooter"
+                | b"firstHeader" | b"firstFooter" => hf_side = None,
                 b"customSheetView" => in_custom_view = false,
                 b"v" => in_v = false,
                 b"f" => in_f = false,
@@ -2147,10 +2186,11 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
             }
         }
         if raw.contains("_xlnm.Print_Titles") {
-            // 行の部($1:$4)だけ読む。列の繰り返しはまだ(原文のまま残す)
-            if let Some((sid, rows)) = parse_print_titles(&raw) {
+            // 行の部($1:$4)と列の部($A:$B)。片方だけの帳票も普通にある
+            if let Some((sid, rows, cols)) = parse_print_titles(&raw) {
                 if let Some(sh) = book.sheets.get_mut(sid) {
-                    sh.print_title_rows = Some(rows);
+                    sh.print_title_rows = rows;
+                    sh.print_title_cols = cols;
                     continue;
                 }
             }

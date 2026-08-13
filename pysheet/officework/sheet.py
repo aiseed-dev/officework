@@ -163,13 +163,18 @@ class _HeaderFooter:
     **奇数・偶数・先頭頁の別は模型に無い**(1つだけ持つ)ので、
     evenHeader / firstHeader は正直に断る — 黙って同じ物を返さない。"""
 
-    def __init__(self, sheet, footer):
+    def __init__(self, sheet, footer, part="odd"):
         self._s = sheet
         self._footer = footer
+        self._part = part  # "odd" / "even" / "first"
+
+    def _attr(self):
+        # エンジン側の畑の名前(print_header / print_footer_even など)
+        base = "print_footer" if self._footer else "print_header"
+        return base if self._part == "odd" else base + "_" + self._part
 
     def _raw(self):
-        return (self._s._s.print_footer if self._footer
-                else self._s._s.print_header) or ""
+        return getattr(self._s._s, self._attr()) or ""
 
     def _parts(self):
         # "&L左&C中&R右" → (左, 中, 右)。印より前の字は中(xlsx の慣わし)
@@ -196,10 +201,7 @@ class _HeaderFooter:
         for tag, v in zip("LCR", parts):
             if v:
                 out += "&" + tag + v
-        if self._footer:
-            self._s._s.print_footer = out or None
-        else:
-            self._s._s.print_header = out or None
+        setattr(self._s._s, self._attr(), out or None)
 
     @property
     def left(self):
@@ -220,13 +222,13 @@ class _HeaderFooter:
 
     @text.setter
     def text(self, v):
-        if self._footer:
-            self._s._s.print_footer = v
-        else:
-            self._s._s.print_header = v
+        setattr(self._s._s, self._attr(), v)
 
     def __repr__(self):
-        return "<{} {!r}>".format("Footer" if self._footer else "Header", self._raw())
+        return "<{}{} {!r}>".format(
+            "" if self._part == "odd" else self._part,
+            "Footer" if self._footer else "Header",
+            self._raw())
 
 
 class _Dimensions:
@@ -1087,21 +1089,22 @@ class Sheet:
 
     @property
     def evenHeader(self):
-        raise NotImplementedError(
-            "偶数頁だけのヘッダーは模型に無い(1つだけ持つ)。oddHeader を使う(台帳)"
-        )
+        """偶数頁だけのヘッダー(**左右で綴じる帳票**はこれを別に組む)。
+        置くと「奇数偶数で分ける」旗が立つ(付け忘れると効かないため)。"""
+        return _HeaderFooter(self, footer=False, part="even")
 
     @property
     def evenFooter(self):
-        raise NotImplementedError("偶数頁だけのフッターは模型に無い(台帳)")
+        return _HeaderFooter(self, footer=True, part="even")
 
     @property
     def firstHeader(self):
-        raise NotImplementedError("先頭頁だけのヘッダーは模型に無い(台帳)")
+        """先頭頁だけのヘッダー(表紙の扱い)。"""
+        return _HeaderFooter(self, footer=False, part="first")
 
     @property
     def firstFooter(self):
-        raise NotImplementedError("先頭頁だけのフッターは模型に無い(台帳)")
+        return _HeaderFooter(self, footer=True, part="first")
 
     @property
     def print_title_rows(self):
@@ -1115,17 +1118,17 @@ class Sheet:
 
     @property
     def print_title_cols(self):
-        # 模型に列の繰り返しの畑が無い(台帳)。**黙って None を返さない** —
-        # 読みは None で正しいが、書きは断る(下の setter)
-        return None
+        """頁ごとに左で繰り返す見出し列("A:B" の形。openpyxl と同じ)。
+        横に長い台帳で品名の列を毎ページ出すための物。
+
+        **注**: ファイル(xlsx)には正しく入り、Excel は繰り返す。
+        こちらの PDF はまだ列を繰り返さない — 描く側が列を「連番」で
+        持っており、そこを一覧に変える仕事が残っている(台帳)。"""
+        return self._s.print_title_cols
 
     @print_title_cols.setter
     def print_title_cols(self, value):
-        if value:
-            raise NotImplementedError(
-                "列の繰り返し(print_title_cols)は模型に畑が無い(台帳)。"
-                "行の繰り返し(print_title_rows)は効く"
-            )
+        self._s.print_title_cols = value
 
     @property
     def print_titles(self):
@@ -1273,11 +1276,54 @@ class Book:
         return self.named_styles
 
     def add_named_style(self, style):
-        raise NotImplementedError(
-            "名前付き様式を**作る**のはまだ — 定義は原本の styles.xml の持ち物で、"
-            "書き足す口を作っていない(台帳)。既にある様式を貼るのは "
-            "cell.style = \"名前\" で効く"
-        )
+        """名前付き様式を作る(openpyxl と同じ口 — NamedStyle を渡す)。
+        保存で styles.xml の cellStyleXfs / cellStyles に**追記**する
+        (原本の索引は動かさないので、触っていないセルの書式は無傷)。
+        本家の NamedStyle でもうちの Font / Border / PatternFill / Alignment
+        を持つ物でもよい(属性名で受ける)。"""
+        name = getattr(style, "name", None)
+        if not name:
+            raise ValueError("様式には name が要ります")
+        kw = {}
+        f = getattr(style, "font", None)
+        if f is not None:
+            size = getattr(f, "size", None)
+            kw.update(
+                font=getattr(f, "name", None),
+                size=None if size is None else float(size),
+                bold=bool(getattr(f, "bold", None)),
+                italic=bool(getattr(f, "italic", None)),
+                strike=bool(getattr(f, "strike", None)),
+                color=_rgb6(getattr(f, "color", None)),
+            )
+            u = getattr(f, "underline", None)
+            kw["underline"] = bool(u) and u != "none"
+        b = getattr(style, "border", None)
+        if b is not None:
+            for side, key in (("left", "border_left"), ("right", "border_right"),
+                              ("top", "border_top"), ("bottom", "border_bottom")):
+                sd = getattr(b, side, None)
+                st = getattr(sd, "style", None) if sd is not None else None
+                kw[key] = None if st is None else (
+                    st, _rgb6(getattr(sd, "color", None)))
+        fill = getattr(style, "fill", None)
+        if fill is not None:
+            pt = getattr(fill, "patternType", None) or getattr(fill, "fill_type", None)
+            if pt == "solid":
+                fg = getattr(fill, "fgColor", None) or getattr(fill, "start_color", None)
+                kw["fill"] = _rgb6(fg) or "000000"
+        al = getattr(style, "alignment", None)
+        if al is not None:
+            kw.update(
+                horizontal=getattr(al, "horizontal", None),
+                vertical=getattr(al, "vertical", None),
+                wrap=bool(getattr(al, "wrap_text", None)),
+                indent=int(getattr(al, "indent", 0) or 0),
+            )
+        nf = getattr(style, "number_format", None)
+        if nf and nf != "General":
+            kw["number_format"] = nf
+        self._b.add_named_style(str(name), **kw)
 
     @property
     def epoch(self):

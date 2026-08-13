@@ -405,15 +405,27 @@ if openpyxl is not None:
             check(False, "無い様式が黙って通った")
         except KeyError:
             pass
+        # **様式を作る**(2026-08-13)。保存で styles.xml に追記される
+        ns2 = ONamed(name="合計行")
+        ns2.font = OFont2(bold=True, size=13)
+        ns2.fill = OFill("solid", fgColor="FFF2CC")
+        b_n.add_named_style(ns2)
+        check("合計行" in b_n.named_styles, f"作った様式: {b_n.named_styles}")
         try:
-            b_n.add_named_style(ns)
-            check(False, "様式を作るのが黙って通った")
-        except NotImplementedError:
+            b_n.add_named_style(ns2)
+            check(False, "同じ名前の様式が黙って通った")
+        except ValueError:
             pass
+        s_n.cell(4, 1).value = "合計"
+        s_n.cell(4, 1).style = "合計行"
+        check(s_n.cell(4, 1).font.bold and s_n.cell(4, 1).font.size == 13,
+              "作った様式が貼れない")
         out_n2 = os.path.join(t, "named_rt.xlsx")
         b_n.save(out_n2)
         r_n = openpyxl.load_workbook(out_n2)
         check("見出し行" in r_n.style_names, f"往復で様式が消えた: {r_n.style_names}")
+        check("合計行" in r_n.style_names,
+              f"うちが作った様式を本家が読めない: {r_n.style_names}")
         # **触っていないセルは名前ごと残る**(据え置きの効き目)
         check(r_n.active["A1"].style == "見出し行",
               f"触っていないセルの様式名が消えた: {r_n.active['A1'].style}")
@@ -550,31 +562,64 @@ if openpyxl is not None:
         check(sp.oddHeader.center.text == "見積書"
               and sp.oddHeader.right.text == "&D",
               f"ヘッダーの三分割: {sp.oddHeader._parts()}")
-        try:
-            sp.evenHeader
-            check(False, "偶数頁のヘッダーが黙って通った")
-        except NotImplementedError:
-            pass
+        # 偶数頁・先頭頁のヘッダー(左右で綴じる帳票・表紙)。
+        # **持たなかったころは保存で消えていた**(2026-08-13 に踏んだ)
+        sp.evenHeader.center.text = "偶数の頁"
+        sp.firstHeader.center.text = "表紙"
+        check(sp.evenHeader.center.text == "偶数の頁"
+              and sp.firstHeader.center.text == "表紙",
+              "偶数・先頭のヘッダーの読み書き")
 
         # 印刷のタイトル行(頁ごとに繰り返す見出し — 複数頁の明細の定番)
         sp.print_title_rows = "1:2"
         check(sp.print_title_rows == "1:2", f"タイトル行: {sp.print_title_rows}")
         check(sp.print_titles == "'{}'!$1:$2".format(sp.title),
               f"print_titles の形: {sp.print_titles}")
-        try:
-            sp.print_title_cols = "A:B"
-            check(False, "列の繰り返しが黙って通った")
-        except NotImplementedError:
-            pass
+        # 列の繰り返し(横に長い台帳で品名の列を毎ページ)。行と一緒に持てる
+        sp.print_title_cols = "A:B"
+        check(sp.print_title_cols == "A:B", f"タイトル列: {sp.print_title_cols}")
         out_pt = os.path.join(t, "titles.xlsx")
         bp.save(out_pt)
         rpt = openpyxl.load_workbook(out_pt).active
         check(rpt.print_title_rows == "$1:$2",
               f"うちのタイトル行を本家が読めない: {rpt.print_title_rows}")
+        check(rpt.print_title_cols == "$A:$B",
+              f"うちのタイトル列を本家が読めない: {rpt.print_title_cols}")
+        # 逆向き: 本家が行と列の両方を書いた物をうちが読む
+        wb_tc = openpyxl.Workbook()
+        wb_tc.active["A1"] = 1
+        wb_tc.active.print_title_rows = "1:1"
+        wb_tc.active.print_title_cols = "A:C"
+        out_tc = os.path.join(t, "titles_both.xlsx")
+        wb_tc.save(out_tc)
+        s_tc = office_sheet.Book.open(out_tc)[0]
+        check(s_tc.print_title_rows == "1:1" and s_tc.print_title_cols == "A:C",
+              f"本家の行と列: {s_tc.print_title_rows} / {s_tc.print_title_cols}")
         check(rpt.oddHeader.center.text == "見積書"
               and rpt.oddFooter.center.text == "&P / &N",
               f"うちのヘッダー/フッターを本家が読めない: "
               f"{rpt.oddHeader.center.text} / {rpt.oddFooter.center.text}")
+        check(rpt.evenHeader.center.text == "偶数の頁"
+              and rpt.firstHeader.center.text == "表紙",
+              f"偶数・先頭のヘッダーが往復で消えた: "
+              f"{rpt.evenHeader.center.text} / {rpt.firstHeader.center.text}")
+        # 本家が作った3種のヘッダーを、開いて保存しても落とさない
+        wb_e = openpyxl.Workbook()
+        wb_e.active["A1"] = 1
+        wb_e.active.oddHeader.center.text = "奇数"
+        wb_e.active.evenHeader.center.text = "偶数"
+        wb_e.active.firstHeader.center.text = "先頭"
+        out_e = os.path.join(t, "hf3.xlsx")
+        wb_e.save(out_e)
+        b_e = office_sheet.Book.open(out_e)
+        out_e2 = os.path.join(t, "hf3_rt.xlsx")
+        b_e.save(out_e2)
+        r_e = openpyxl.load_workbook(out_e2).active
+        check(r_e.oddHeader.center.text == "奇数"
+              and r_e.evenHeader.center.text == "偶数"
+              and r_e.firstHeader.center.text == "先頭",
+              f"往復で消えた: {r_e.oddHeader.center.text} / "
+              f"{r_e.evenHeader.center.text} / {r_e.firstHeader.center.text}")
         # 逆向き: 本家が書いたヘッダーをうちが読む
         wb_h = openpyxl.Workbook()
         wb_h.active["A1"] = 1

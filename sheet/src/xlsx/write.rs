@@ -317,12 +317,26 @@ pub(super) fn defined_names_xml(book: &Book) -> String {
     for raw in &book.names_raw {
         inner.push_str(raw);
     }
-    // タイトル行(モデルが正)
+    // タイトル行・列(モデルが正)。両方あれば **, で並べる**(Excel の形。
+    // 列が先 — Excel が書く順)
     for (i, sh) in book.sheets.iter().enumerate() {
+        let name = sh.name.replace('\'', "''");
+        let mut parts: Vec<String> = Vec::new();
+        if let Some((a, b)) = sh.print_title_cols {
+            // 列は字で($A:$B)。Pos の a1 から行番号を落として使う
+            let letter = |c: u32| {
+                let a1 = Pos::new(0, c).a1();
+                a1.trim_end_matches(|ch: char| ch.is_ascii_digit()).to_string()
+            };
+            parts.push(format!("'{name}'!${}:${}", letter(a), letter(b)));
+        }
         if let Some((a, b)) = sh.print_title_rows {
+            parts.push(format!("'{name}'!${}:${}", a + 1, b + 1));
+        }
+        if !parts.is_empty() {
             inner.push_str(&format!(
                 "<definedName name=\"_xlnm.Print_Titles\" localSheetId=\"{i}\">{}</definedName>",
-                esc(&format!("'{}'!${}:${}", sh.name.replace('\'', "''"), a + 1, b + 1))
+                esc(&parts.join(","))
             ));
         }
     }
@@ -471,15 +485,37 @@ pub(super) fn print_extra_xml(orig: &str, sh: &Sheet) -> String {
     if let Some(su) = setup {
         out.push_str(&su);
     }
-    // 印刷のヘッダー/フッター(schema では pageSetup の後・rowBreaks の前)
-    if sh.header.is_some() || sh.footer.is_some() {
+    // 印刷のヘッダー/フッター(schema では pageSetup の後・rowBreaks の前)。
+    // **奇数・偶数・先頭頁の別も書く** — 持たずに落としていたころは、
+    // 左右で綴じる帳票を開いて保存すると偶数頁の組みが消えていた(2026-08-13)
+    if sh.header.is_some()
+        || sh.footer.is_some()
+        || sh.header_even.is_some()
+        || sh.footer_even.is_some()
+        || sh.header_first.is_some()
+        || sh.footer_first.is_some()
+    {
         let esc = |t: &str| t.replace('&', "&amp;").replace('<', "&lt;");
-        out.push_str("<headerFooter>");
-        if let Some(h) = &sh.header {
-            out.push_str(&format!("<oddHeader>{}</oddHeader>", esc(h)));
+        let mut attrs = String::new();
+        if sh.hf_diff_odd_even {
+            attrs.push_str(" differentOddEven=\"1\"");
         }
-        if let Some(f) = &sh.footer {
-            out.push_str(&format!("<oddFooter>{}</oddFooter>", esc(f)));
+        if sh.hf_diff_first {
+            attrs.push_str(" differentFirst=\"1\"");
+        }
+        out.push_str(&format!("<headerFooter{attrs}>"));
+        // 並びはスキーマ(CT_HeaderFooter)の順: odd → even → first
+        for (tag, v) in [
+            ("oddHeader", &sh.header),
+            ("oddFooter", &sh.footer),
+            ("evenHeader", &sh.header_even),
+            ("evenFooter", &sh.footer_even),
+            ("firstHeader", &sh.header_first),
+            ("firstFooter", &sh.footer_first),
+        ] {
+            if let Some(t) = v {
+                out.push_str(&format!("<{tag}>{}</{tag}>", esc(t)));
+            }
         }
         out.push_str("</headerFooter>");
     }
@@ -939,11 +975,11 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     };
     let (styles_xml, style_idx) = match orig_styles
         .as_ref()
-        .and_then(|xml| crate::styles::append_to(xml, &used))
+        .and_then(|xml| crate::styles::append_to(xml, &used, &book.named_styles_new))
     {
         Some(r) => r,
         // 原本が無い(新規)か、節の見つからない styles.xml なら作り直し
-        None => crate::styles::build(&used),
+        None => crate::styles::build(&used, &book.named_styles_new),
     };
     // 条件付き書式の見た目(dxfs)。全シートの規則から集めて番号を振る
     let dxf_list: Vec<crate::model::CondLook> = {

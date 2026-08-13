@@ -688,11 +688,27 @@ pub struct Sheet {
     pub print_headings: bool,
     /// タイトル行(各ページの頭で繰り返す行の範囲。Print_Titles の行の部)
     pub print_title_rows: Option<(u32, u32)>,
+    /// タイトル列(各ページの左で繰り返す列の範囲。Print_Titles の列の部
+    /// `$A:$B`)。**横に長い台帳で品名の列を毎ページ出す**ための物
+    /// (2026-08-13。行だけ持っていて、列は原文で持ち越すだけだった)
+    pub print_title_cols: Option<(u32, u32)>,
     /// 印刷のヘッダー(xlsx の oddHeader の生の文字列。&L/&C/&R が区分、
     /// &P=頁 &N=総頁。紙(PDF)に出る — 画面の格子には出ない)
     pub header: Option<String>,
     /// 印刷のフッター(oddFooter)。作法は header と同じ
     pub footer: Option<String>,
+    /// 偶数頁・先頭頁だけのヘッダー/フッター(xlsx の evenHeader /
+    /// evenFooter / firstHeader / firstFooter)と、それを使うかの旗。
+    /// **持たないと保存で消えていた**(2026-08-13 に踏んで足した) —
+    /// 左右で綴じる帳票は偶数頁を別に組むので、消すと様式が崩れる
+    pub header_even: Option<String>,
+    pub footer_even: Option<String>,
+    pub header_first: Option<String>,
+    pub footer_first: Option<String>,
+    /// 奇数頁と偶数頁で分ける(headerFooter differentOddEven)
+    pub hf_diff_odd_even: bool,
+    /// 先頭頁だけ分ける(headerFooter differentFirst)
+    pub hf_diff_first: bool,
     /// 読んだ xlsx の図形(**表示だけ**。保存は原文の持ち越しが担う)
     pub shapes: Vec<SheetShape>,
     /// **このアプリで挿した**図形。保存でこちらが DrawingML として書き出す
@@ -1763,6 +1779,10 @@ pub struct Book {
     /// 「テンプレートに設定できませんか?」)。無ければアプリの既定に落ちる。
     /// 保存は原本の styles.xml 据え置きが担うので、こちらは読むだけ
     pub named_styles: Vec<(String, Option<u32>, CellFormat)>,
+    /// **このアプリで足した**名前付きセル様式(名前, 書式)。保存で
+    /// styles.xml の cellStyleXfs / cellStyles に追記する(画像や docx の
+    /// styles_new と同じ「原本へ差す」作法。2026-08-13)
+    pub named_styles_new: Vec<(String, CellFormat)>,
     /// 古いブックに載っていた Python(名前, コード)。**読むだけ** —
     /// 実行せず、保存では書き戻さない(2026-08-09 発注者確定: データと
     /// プログラムを1つのファイルにしない)。@export で .py に取り出し、
