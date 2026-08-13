@@ -2775,6 +2775,12 @@ impl Calc {
             cx.notify();
             return;
         }
+        // キーヒントはいちばん先に畳む(重なっている物の最前)
+        if self.key_hint.take().is_some() {
+            self.status = ui::t!("キーヒントを畳みました").into();
+            cx.notify();
+            return;
+        }
         // 入力のパネル → 一覧 → 子メニュー → 親メニュー → 書式の小窓 → コピーの破線、
         // の順で閉じる
         self.pivot_pend = None; // 聞き取り途中のピボット・小計は Esc でやめる

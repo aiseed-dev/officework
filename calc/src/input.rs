@@ -774,9 +774,15 @@ impl Calc {
     }
     /// Alt+PageUp / PageDown = 前後のシートへ
     pub(crate) fn a_prev_sheet(&mut self, _: &ui::PrevSheet, _: &mut Window, cx: &mut Context<Self>) {
+        // Alt を使った組み合わせなので、キーヒントの見張りは倒す —
+        // 離した拍子に札が出ては邪魔になる
+        self.alt_armed = false;
         self.hop_sheet(-1, cx);
     }
     pub(crate) fn a_next_sheet(&mut self, _: &ui::NextSheet, _: &mut Window, cx: &mut Context<Self>) {
+        // Alt を使った組み合わせなので、キーヒントの見張りは倒す —
+        // 離した拍子に札が出ては邪魔になる
+        self.alt_armed = false;
         self.hop_sheet(1, cx);
     }
     pub(crate) fn hop_sheet(&mut self, d: i32, cx: &mut Context<Self>) {
@@ -798,6 +804,9 @@ impl Calc {
     /// **板が開いている間だけの鍵。** 開いていないときは黙らずにそう言う —
     /// 押して何も起きないと、効かないのか開いていないのか分からない
     pub(crate) fn a_slicer_multi(&mut self, _: &ui::SlicerMulti, _: &mut Window, cx: &mut Context<Self>) {
+        // Alt を使った組み合わせなので、キーヒントの見張りは倒す —
+        // 離した拍子に札が出ては邪魔になる
+        self.alt_armed = false;
         // 効くのは**いま触っている板**(何枚でも開ける造りになったので)
         let now = self.slicer_cur().map(|sl| {
             sl.multi = !sl.multi;
@@ -811,6 +820,9 @@ impl Calc {
         cx.notify();
     }
     pub(crate) fn a_slicer_clear(&mut self, _: &ui::SlicerClear, _: &mut Window, cx: &mut Context<Self>) {
+        // Alt を使った組み合わせなので、キーヒントの見張りは倒す —
+        // 離した拍子に札が出ては邪魔になる
+        self.alt_armed = false;
         let hit = self.slicer_cur().map(|sl| sl.sel.clear()).is_some();
         self.status = if hit {
             ui::t!("スライサーの絞りを解除しました").into()
@@ -1066,6 +1078,9 @@ impl Calc {
     }
     /// Alt+Enter = セルの中の改行(Excel と同じ)。確定時に折り返しも立てる
     pub(crate) fn a_newline(&mut self, _: &ui::NewLine, _: &mut Window, cx: &mut Context<Self>) {
+        // Alt を使った組み合わせなので、キーヒントの見張りは倒す —
+        // 離した拍子に札が出ては邪魔になる
+        self.alt_armed = false;
         if self.editing() || self.edit_armed {
             self.input.insert("\n");
             cx.notify();

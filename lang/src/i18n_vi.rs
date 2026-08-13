@@ -1616,4 +1616,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)", "Tự động sửa ký hiệu toán: bật (gõ dấu phân cách thì ký hiệu hiện ra; Backspace đưa lại cách viết cũ)"),
     ("数学オートコレクト: 切(打った綴りのまま残ります)", "Tự động sửa ký hiệu toán: tắt (bạn gõ thế nào thì giữ nguyên thế đó)"),
     ("{} を記号に替えました(Backspace で綴りに戻ります)", "Đã đổi {} thành ký hiệu (Backspace đưa lại cách viết cũ)"),
+    ("キーヒント: 札の文字を打つと段を選び、もう一度でボタンを押します(Esc でやめる)", "Mẹo phím: gõ một chữ để chọn tab, gõ tiếp một chữ nữa để bấm nút (Esc để dừng)"),
+    ("キーヒントを畳みました", "Đã đóng mẹo phím"),
+    ("{} の段(札を打つと押します。Esc でやめる)", "Tab {} (gõ một chữ để bấm nút; Esc để dừng)"),
+    ("その札はありません(「{}」)", "Không có chữ đó (“{}”)"),
 ];

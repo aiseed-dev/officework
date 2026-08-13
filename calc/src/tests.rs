@@ -4434,6 +4434,92 @@ mod cycle_ref_tests {
 }
 
 #[cfg(test)]
+/// Alt のキーヒント(2026-08-13、台帳の残件⑤)
+#[cfg(test)]
+mod key_hint_tests {
+    use crate::*;
+
+    /// 札は打ち分けられる。**36 を超えたら全部2文字** —
+    /// 1文字と2文字を混ぜると、`A` を打った時に決まりか途中か分からない
+    #[test]
+    fn 札は重ならず長さも揃う() {
+        for n in [0, 1, 5, 36, 37, 100] {
+            let h = ui::key_hints(n);
+            assert_eq!(h.len(), n);
+            let uniq: std::collections::BTreeSet<_> = h.iter().collect();
+            assert_eq!(uniq.len(), n, "{n} 個で札が重なった");
+            let lens: std::collections::BTreeSet<_> = h.iter().map(|s| s.len()).collect();
+            assert!(lens.len() <= 1, "{n} 個で1文字と2文字が混ざった: {h:?}");
+        }
+    }
+
+    /// Alt で出て、段の札 → ボタンの札、の2段で辿る
+    #[gpui::test]
+    fn 段の札からボタンの札へ辿る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            assert!(this.hint_targets().is_empty(), "出す前から札がある");
+            this.toggle_key_hints();
+            let tabs = this.hint_targets();
+            assert!(tabs.len() >= 5, "段の札が足りない: {tabs:?}");
+            assert!(matches!(tabs[0].1, HintTo::Tab(_)));
+            // 隠れている文脈タブには札を配らない(ピボットの上でも表の中でもない)
+            let n_vis = ribbon::calc_tabs()
+                .iter()
+                .filter(|t| !this.ctx_tab_hidden(t))
+                .count();
+            assert_eq!(tabs.len(), n_vis);
+
+            // 「表示」の段を選ぶ
+            let (hint, to) = tabs
+                .iter()
+                .find(|(_, t)| matches!(t, HintTo::Tab(i) if ribbon::calc_tabs()[*i].cmds.iter().any(|c| c.id == "show-gridlines")))
+                .cloned()
+                .expect("表示の段が無い");
+            let HintTo::Tab(want) = to else { unreachable!() };
+            this.hint_type(&hint, cx);
+            assert_eq!(this.tab, want, "段が変わらない");
+
+            // 段の中はボタンの札になり、**押せるボタンにしか配らない**
+            let cmds = this.hint_targets();
+            assert!(!cmds.is_empty());
+            for (_, t) in &cmds {
+                let HintTo::Cmd(id) = t else { panic!("段の札のままだ") };
+                assert!(Calc::HANDLED.contains(id), "押せない {id} に札が付いた");
+            }
+
+            // 札を打つとその命令が走る
+            let (h, to) = cmds
+                .iter()
+                .find(|(_, t)| matches!(t, HintTo::Cmd("show-gridlines")))
+                .cloned()
+                .expect("枠線のボタンが無い");
+            let _ = to;
+            let before = this.gridlines;
+            this.hint_type(&h, cx);
+            assert_ne!(this.gridlines, before, "命令が走っていない");
+            assert!(this.key_hint.is_none(), "押したのに札が残っている");
+        });
+    }
+
+    /// **無い札を打ったら畳む。** 居座ると、次の字が格子へ行くのか札へ行くのか
+    /// 分からなくなる
+    #[gpui::test]
+    fn 無い札を打つと畳む(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.toggle_key_hints();
+            this.hint_type("!", cx);
+            assert!(this.key_hint.is_none());
+            // もう一度 Alt で出て、Alt でまた畳む
+            this.toggle_key_hints();
+            assert!(this.key_hint.is_some());
+            this.toggle_key_hints();
+            assert!(this.key_hint.is_none());
+        });
+    }
+}
+
 /// 数学オートコレクトの掛かる所・掛からない所(2026-08-13、台帳)
 #[cfg(test)]
 mod autocorrect_tests {

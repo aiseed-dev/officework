@@ -352,6 +352,7 @@ impl Host for Calc {
                     ("filter_panel", self.filter_panel.is_some()),
                     ("solver", self.solver.is_some()),
                     ("slicer", !self.slicers.is_empty()),
+                    ("key_hint", self.key_hint.is_some()),
                     ("name_edit", self.name_edit.is_some()),
                     ("quit_ask", self.quit_ask),
                     ("shape_sel", self.shape_sel.is_some()),

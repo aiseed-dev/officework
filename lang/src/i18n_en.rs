@@ -1619,4 +1619,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)", "Math autocorrect: on (a symbol appears when you type a separator; Backspace brings the spelling back)"),
     ("数学オートコレクト: 切(打った綴りのまま残ります)", "Math autocorrect: off (what you type stays as you typed it)"),
     ("{} を記号に替えました(Backspace で綴りに戻ります)", "Turned {} into a symbol (Backspace brings the spelling back)"),
+    ("キーヒント: 札の文字を打つと段を選び、もう一度でボタンを押します(Esc でやめる)", "Key hints: type a badge letter to pick a tab, then another to press a button (Esc to stop)"),
+    ("キーヒントを畳みました", "Key hints closed"),
+    ("{} の段(札を打つと押します。Esc でやめる)", "The {} tab (type a badge letter to press a button; Esc to stop)"),
+    ("その札はありません(「{}」)", "There is no such badge (“{}”)"),
 ];

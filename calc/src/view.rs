@@ -47,6 +47,11 @@ impl EntityInputHandler for Calc {
                 return;
             }
         }
+        // キーヒントが出ている間、打った字は**札への返事**(セルへは行かない)
+        if self.key_hint.is_some() {
+            self.hint_type(text, cx);
+            return;
+        }
         // セルを選んで**打ち始めたら置き換え**(Excel の作法)。追記になるのは
         // 同じセルで編集を続けている間(edit_armed)だけ — F2・ダブルクリック・
         // 2打目以降。IME の変換途中(marked)は消さない
@@ -65,6 +70,13 @@ impl EntityInputHandler for Calc {
     fn replace_and_mark_text_in_range(&mut self, r: Option<Range<usize>>, text: &str,
                                       sel: Option<Range<usize>>, _w: &mut Window,
                                       cx: &mut Context<Self>) {
+        // キーヒントが出ている間は**変換中の字もセルへ入れない。**
+        // かな入力のまま Alt を押した人が、札を打とうとしてセルに
+        // 「ち」を書き込んでしまうのを止める(札を辿るには直接入力が要る —
+        // 本家の Alt も同じ)
+        if self.key_hint.is_some() {
+            return;
+        }
         // IME の1打目も同じ(変換中の下線ごと、空にしてから始める)
         if self.prompt.is_none() && self.solver.is_none()
             && self.name_edit.is_none() && self.fn_dlg.is_none()
@@ -357,11 +369,11 @@ impl Render for Calc {
         // テーブルの上にあるときだけタブ行に現れる。常設にしない
         let on_pivot = self.pivot_at(self.cursor).is_some();
         let in_table = self.sheet().tables.iter().any(|t| t.contains(self.cursor));
-        // タブは名前でなく中身の id で見分ける(名前は言語で変わる)
-        let ctx_hidden = |tb: &ribbon::Tab| {
-            (tb.cmds.iter().any(|c| c.id == "pivot-layout") && !on_pivot)
-                || (tb.cmds.iter().any(|c| c.id == "td-header") && !in_table)
-        };
+        // タブは名前でなく中身の id で見分ける(名前は言語で変わる)。
+        // 見分けは `ctx_tab_hidden_with` に1本 — キーヒントの札も同じ物を
+        // 使う(別々に書くと、隠れた段に札が配られてずれる)
+        let ctx_hidden =
+            |tb: &ribbon::Tab| Calc::ctx_tab_hidden_with(tb, on_pivot, in_table);
         // 開いていたタブの文脈が消えたら、前のタブへ戻る(本家と同じ挙動)
         if ctx_hidden(&ribbon::calc_tabs()[self.tab]) {
             self.tab = if ctx_hidden(&ribbon::calc_tabs()[self.prev_tab]) {
@@ -383,6 +395,29 @@ impl Render for Calc {
                 ));
             }, |_, _: (), _, _| {}).absolute().size_full()
         };
+        // ---- Alt のキーヒントの札(2026-08-13、台帳の残件⑤) ----
+        // **札はタブとボタンの中に描く。** 座標を控えて上に重ねる手もあるが、
+        // `btn_box` は描き始めに空にする(前の段の場所が残らないように)ので、
+        // 描いている最中は読めない。中に入れれば座標の計算も要らない
+        let (mut hint_tab, mut hint_cmd) = (
+            std::collections::HashMap::<usize, String>::new(),
+            std::collections::HashMap::<&'static str, String>::new(),
+        );
+        for (h, to) in self.hint_targets() {
+            match to {
+                HintTo::Tab(i) => hint_tab.insert(i, h),
+                HintTo::Cmd(id) => hint_cmd.insert(id, h),
+            };
+        }
+        // 札の見た目(黒地に白。名札と同じ)
+        let badge = move |h: &str, us: f32| {
+            // 右肩に。**上へはみ出さない**(段の札が上の帯に掛かって読めない)
+            div().absolute().top(px(0.0)).right(px(-2.0))
+                .px_0p5().rounded_sm()
+                .bg(rgb(0x2B2F33)).text_color(rgb(0xF2F5F7))
+                .text_size(px(us * 9.5))
+                .child(SharedString::from(h.to_string()))
+        };
         let mut tabs = div().flex().flex_row().items_end().gap_1()
             .px_2().bg(th_band);
         for (i, tb) in ribbon::calc_tabs().iter().enumerate() {
@@ -398,6 +433,8 @@ impl Render for Calc {
                 .id(SharedString::from(format!("tab{i}")))
                 // 段の見出しも場所を控える(点検の道具が正確に押せるように)
                 .relative().child(mark_tab(i))
+                // Alt のキーヒントの札(出ているときだけ)
+                .children(hint_tab.get(&i).map(|h| badge(h, us)))
                 .px_2p5().pt_1p5()
                 .when(is_ctx, |d| d.bg(rgb(0xF3EDFB)).rounded_t_md())
                 .text_size(px(us * 12.0))
@@ -536,6 +573,7 @@ impl Render for Calc {
                 });
                 return div().id(SharedString::from(format!("h-{icon}")))
                     .relative().child(mark(cid))
+                    .children(hint_cmd.get(cid).map(|h| badge(h, us)))
                     .w(px(us * w)).h(px(us * 22.0)).px_1p5().rounded_sm()
                     .border_1().border_color(th_line)
                     .flex().items_center()
@@ -593,7 +631,8 @@ impl Render for Calc {
                             .child("▾"))));
                 if cmd.ready {
                     let cid = cmd.id;
-                    b = b.relative().child(mark(cid));
+                    b = b.relative().child(mark(cid))
+                        .children(hint_cmd.get(cid).map(|h| badge(h, us)));
                     b = b.cursor_pointer().hover(move |st| st.bg(th_btn_hover))
                         .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _, cx| {
                             this.run_from_ribbon(cid, f32::from(ev.position().x), cx);
@@ -643,7 +682,8 @@ impl Render for Calc {
                 }));
             if cmd.ready {
                 let cid = cmd.id;
-                b = b.relative().child(mark(cid));
+                b = b.relative().child(mark(cid))
+                    .children(hint_cmd.get(cid).map(|h| badge(h, us)));
                 b = b.cursor_pointer().hover(move |st| st.bg(th_btn_hover))
                     .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _, cx| {
                         this.run_from_ribbon(cid, f32::from(ev.position().x), cx);
@@ -5268,9 +5308,27 @@ impl Render for Calc {
         };
 
         let me: Entity<Calc> = cx.entity();
-        div().size_full().flex().flex_col().bg(rgb(0xF3F5F7))
+        div().size_full().flex().flex_col().bg(rgb(0xF3F5F7)).relative()
             .key_context("jo_edit")
             .track_focus(&self.focus)
+            // **Alt を単独で押して離したらキーヒント**(本家と同じ作法)。
+            // 押した時に旗を立て、離した時にまだ立っていれば出す — Alt+S の
+            // ような組み合わせを使ったら、その受け口が旗を倒す。
+            // **焦点を持つこの div に付ける** — 修飾の変化は焦点から根へ
+            // 配られるので、格子の受け皿(子)に付けても届かない
+            .on_modifiers_changed(cx.listener(
+                |this, e: &gpui::ModifiersChangedEvent, _, cx| {
+                    if e.modifiers.alt {
+                        // 他の修飾と一緒なら数えない(Ctrl+Alt などは別の鍵)
+                        this.alt_armed = !e.modifiers.control
+                            && !e.modifiers.shift
+                            && !e.modifiers.platform;
+                    } else if std::mem::take(&mut this.alt_armed) {
+                        this.toggle_key_hints();
+                        cx.notify();
+                    }
+                },
+            ))
             .on_action(cx.listener(Calc::a_backspace))
             .on_action(cx.listener(Calc::a_delete))
             .on_action(cx.listener(Calc::a_copy))

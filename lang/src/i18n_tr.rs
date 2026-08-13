@@ -1616,4 +1616,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)", "Matematik otomatik düzeltme: açık (ayırıcı yazdığınızda simge belirir; Backspace yazılışı geri getirir)"),
     ("数学オートコレクト: 切(打った綴りのまま残ります)", "Matematik otomatik düzeltme: kapalı (yazdığınız neyse öyle kalır)"),
     ("{} を記号に替えました(Backspace で綴りに戻ります)", "{} simgeye dönüştürüldü (Backspace yazılışı geri getirir)"),
+    ("キーヒント: 札の文字を打つと段を選び、もう一度でボタンを押します(Esc でやめる)", "Tuş ipuçları: bir harf sekmeyi seçer, sonraki harf düğmeye basar (Esc ile çıkın)"),
+    ("キーヒントを畳みました", "Tuş ipuçları kapatıldı"),
+    ("{} の段(札を打つと押します。Esc でやめる)", "{} sekmesi (bir harf düğmeye basar; Esc ile çıkın)"),
+    ("その札はありません(「{}」)", "Böyle bir harf yok (“{}”)"),
 ];

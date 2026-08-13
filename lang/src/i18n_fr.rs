@@ -1616,4 +1616,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)", "Autocorrection mathématique : activée (le symbole apparaît quand vous tapez un séparateur ; Backspace rétablit l’orthographe)"),
     ("数学オートコレクト: 切(打った綴りのまま残ります)", "Autocorrection mathématique : désactivée (ce que vous tapez reste tel quel)"),
     ("{} を記号に替えました(Backspace で綴りに戻ります)", "{} remplacé par un symbole (Backspace rétablit l’orthographe)"),
+    ("キーヒント: 札の文字を打つと段を選び、もう一度でボタンを押します(Esc でやめる)", "Touches d’accès : une lettre choisit un onglet, la suivante appuie sur un bouton (Esc pour arrêter)"),
+    ("キーヒントを畳みました", "Touches d’accès masquées"),
+    ("{} の段(札を打つと押します。Esc でやめる)", "Onglet {} (une lettre appuie sur un bouton ; Esc pour arrêter)"),
+    ("その札はありません(「{}」)", "Cette lettre n’existe pas (« {} »)"),
 ];

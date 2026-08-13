@@ -52,6 +52,8 @@ impl Calc {
                 .map(|v| v != "0")
                 .unwrap_or(true),
             comment_list: None,
+            key_hint: None,
+            alt_armed: false,
             pick_paths: Vec::new(),
             encrypt_pw: None,
             pw_pending: None,
@@ -507,6 +509,103 @@ impl Calc {
             .unwrap_or_default();
         let v = if v.is_empty() { ui::t!("(空白)").to_string() } else { v };
         sl.sel.contains(&v)
+    }
+
+    // ---- Alt のキーヒント(2026-08-13、台帳「Alt キーヒント」)----
+
+    /// キーヒントを出す/畳む(Alt を単独で押して離したとき)
+    pub(crate) fn toggle_key_hints(&mut self) {
+        if self.key_hint.take().is_some() {
+            self.status = ui::t!("キーヒントを畳みました").into();
+            return;
+        }
+        self.key_hint = Some(String::new());
+        self.status =
+            ui::t!("キーヒント: 札の文字を打つと段を選び、もう一度でボタンを押します(Esc でやめる)")
+                .into();
+    }
+
+    /// いま札を配る相手。**段を選ぶ前は段、選んだあとはその段のボタン。**
+    ///
+    /// 返すのは (札, 引き当ての鍵)。段なら鍵は段の番号、ボタンなら命令の id。
+    /// **押せないボタンには札を配らない** — 押しても何も起きない札を
+    /// 見せるのは「できないものを、できるように見せない」に反する
+    pub(crate) fn hint_targets(&self) -> Vec<(String, HintTo)> {
+        let tabs = ribbon::calc_tabs();
+        let Some(typed) = &self.key_hint else { return Vec::new() };
+        // 段の札(隠れている文脈タブは配らない)
+        let visible: Vec<usize> = (0..tabs.len())
+            .filter(|i| !self.ctx_tab_hidden(&tabs[*i]))
+            .collect();
+        if typed.is_empty() || !typed.starts_with('#') {
+            return ui::key_hints(visible.len())
+                .into_iter()
+                .zip(visible.into_iter().map(HintTo::Tab))
+                .collect();
+        }
+        // 段を選んだあと(頭に # を付けて見分ける)。押せるボタンだけ
+        let ids: Vec<&'static str> = tabs[self.tab]
+            .cmds
+            .iter()
+            .filter(|c| Calc::HANDLED.contains(&c.id))
+            .map(|c| c.id)
+            .collect();
+        ui::key_hints(ids.len())
+            .into_iter()
+            .zip(ids.into_iter().map(HintTo::Cmd))
+            .collect()
+    }
+
+    /// キーヒントに1文字打たれた。**当たれば実行、外れれば畳む** —
+    /// 当たらない札を打ったまま居座ると、次に打つ字が格子へ行くのか
+    /// 札へ行くのか分からなくなる
+    pub(crate) fn hint_type(&mut self, ch: &str, cx: &mut Context<Self>) {
+        let Some(typed) = self.key_hint.clone() else { return };
+        let head = typed.starts_with('#');
+        let now = format!("{}{}", typed.trim_start_matches('#'), ch.to_uppercase());
+        let targets = self.hint_targets();
+        // 打った分で始まる札が無ければ、打ち間違い
+        if !targets.iter().any(|(h, _)| h.starts_with(&now)) {
+            self.key_hint = None;
+            self.status = ui::tf!("その札はありません(「{}」)", ch).into();
+            cx.notify();
+            return;
+        }
+        match targets.iter().find(|(h, _)| *h == now) {
+            Some((_, HintTo::Tab(i))) => {
+                let i = *i;
+                self.prev_tab = self.tab;
+                self.tab = i;
+                self.key_hint = Some("#".into()); // 段の中の札へ進む
+                self.status = ui::tf!("{} の段(札を打つと押します。Esc でやめる)",
+                    ribbon::calc_tabs()[i].name).into();
+            }
+            Some((_, HintTo::Cmd(id))) => {
+                let id = *id;
+                self.key_hint = None;
+                self.run_from_ribbon(id, 0.0, cx);
+            }
+            // まだ途中(2文字の札の1文字目)
+            None => self.key_hint = Some(format!("{}{now}", if head { "#" } else { "" })),
+        }
+        cx.notify();
+    }
+
+    /// 文脈タブ(ピボット・表のデザイン)がいま隠れているか。
+    /// 描くところと同じ見分け方を使う — 別々に書くと札とタブがずれる
+    pub(crate) fn ctx_tab_hidden(&self, tb: &ribbon::Tab) -> bool {
+        Self::ctx_tab_hidden_with(
+            tb,
+            self.pivot_at(self.cursor).is_some(),
+            self.sheet().tables.iter().any(|t| t.contains(self.cursor)),
+        )
+    }
+
+    /// [`Self::ctx_tab_hidden`] の芯。描くところは `self` を借りたまま
+    /// `self.tab` を書き換えるので、旗を先に取ってからこちらを呼ぶ
+    pub(crate) fn ctx_tab_hidden_with(tb: &ribbon::Tab, on_pivot: bool, in_table: bool) -> bool {
+        (tb.cmds.iter().any(|c| c.id == "pivot-layout") && !on_pivot)
+            || (tb.cmds.iter().any(|c| c.id == "td-header") && !in_table)
     }
 
     /// 板の左上(格子の面の px)。`at` が無ければ**右から順に自動で並べる**。

@@ -1502,6 +1502,15 @@ pub(crate) fn cycle_ref_at(text: &str, cur: usize) -> Option<(String, usize)> {
     Some((out, start + next.len()))
 }
 
+/// Alt のキーヒントの札の行き先(2026-08-13、台帳「Alt キーヒント」)
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(crate) enum HintTo {
+    /// リボンの段(番号)
+    Tab(usize),
+    /// 段の中のボタン(命令の id)
+    Cmd(&'static str),
+}
+
 /// コメントの一覧の並べ方(台帳 第2便の [中]、2026-08-13)。
 ///
 /// 本家は「日付/著者/グループ/ステータス」の4択。**グループは置かない** —

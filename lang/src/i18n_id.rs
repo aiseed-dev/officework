@@ -1616,4 +1616,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)", "Koreksi otomatis matematika: aktif (simbol muncul saat Anda mengetik pemisah; Backspace mengembalikan ejaannya)"),
     ("数学オートコレクト: 切(打った綴りのまま残ります)", "Koreksi otomatis matematika: nonaktif (yang Anda ketik tetap seperti itu)"),
     ("{} を記号に替えました(Backspace で綴りに戻ります)", "{} diubah menjadi simbol (Backspace mengembalikan ejaannya)"),
+    ("キーヒント: 札の文字を打つと段を選び、もう一度でボタンを押します(Esc でやめる)", "Tips tombol: ketik satu huruf untuk memilih tab, lalu satu lagi untuk menekan tombol (Esc untuk berhenti)"),
+    ("キーヒントを畳みました", "Tips tombol ditutup"),
+    ("{} の段(札を打つと押します。Esc でやめる)", "Tab {} (ketik satu huruf untuk menekan tombol; Esc untuk berhenti)"),
+    ("その札はありません(「{}」)", "Huruf itu tidak ada (“{}”)"),
 ];

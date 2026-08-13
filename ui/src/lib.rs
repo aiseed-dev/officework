@@ -327,6 +327,28 @@ actions!(
 );
 
 /// 標準の割り当て。アプリの起動時に一度呼ぶ。
+/// **Alt のキーヒントの札**(2026-08-13、台帳「Alt キーヒント」)。
+///
+/// `n` 個の物に、打ち分けられる札を1つずつ配る。**札は画面に重ねて出す** —
+/// 本家は言葉から頭文字を取るが、こちらのリボンは日本語なので頭文字が
+/// 取れない。だから**順番に配って、配った札をその場に見せる**。
+/// 覚える物ではなく、読む物にする。
+///
+/// 並びは打ちやすい順(ホームポジション → 上段 → 下段 → 数字)。
+/// 36 を超えたら**全部2文字**にする — 1文字と2文字を混ぜると、
+/// `A` を打った時に「A で決まり」か「AS の途中」か決められない
+pub fn key_hints(n: usize) -> Vec<String> {
+    const POOL: &[u8] = b"ASDFGHJKLQWERTYUIOPZXCVBNM1234567890";
+    let one = |i: usize| (POOL[i] as char).to_string();
+    if n <= POOL.len() {
+        return (0..n).map(one).collect();
+    }
+    // 2文字。頭の字ごとに POOL 個ぶら下がる
+    (0..n)
+        .map(|i| format!("{}{}", one(i / POOL.len()), one(i % POOL.len())))
+        .collect()
+}
+
 pub fn bindings(context: &'static str) -> Vec<KeyBinding> {
     vec![
         KeyBinding::new("backspace", Backspace, Some(context)),
