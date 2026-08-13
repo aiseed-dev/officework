@@ -72,6 +72,28 @@ except tex.Muri as e:
 # ── $ で囲んであっても受ける(LaTeX を貼る人の癖)──────────────
 check(tex.fit(r"$\frac{1}{2}$") == r"\frac{1}{2}", "$ を外していない")
 
+# ── 文書に入れる PNG(模型の InlineImage は png/jpeg を持つ)────
+png, w_mm, h_mm = tex.to_png(r"\frac{a+b}{2}")
+check(png[:8] == b"\x89PNG\r\n\x1a\n", "PNG になっていない")
+check(0 < w_mm < 50 and 0 < h_mm < 30, f"寸法が変: {w_mm} x {h_mm} mm")
+# **倍率を変えても置く寸法は動かない。** 数式は本文の行に置くので、
+# ここが動くと行送りが変わる(tight で切り出すと dpi の丸めで 3% 動いた)
+sun = [tex.to_png(r"\frac{a+b}{2}", bai=b)[1:] for b in (1, 2, 4, 8)]
+check(all(abs(s[0] - sun[0][0]) < 0.01 and abs(s[1] - sun[0][1]) < 0.01 for s in sun),
+      f"倍率で寸法が動いた: {sun}")
+# 倍率を上げたぶんは**画素の細かさ**になる(拡大しても粗くならない)
+check(len(tex.to_png(r"\frac{a+b}{2}", bai=8)[0])
+      > len(tex.to_png(r"\frac{a+b}{2}", bai=1)[0]) * 3, "倍率が画素に効いていない")
+# 字を大きくすれば絵も大きくなる
+check(tex.to_png(r"\frac{a}{b}", size_pt=22)[2]
+      > tex.to_png(r"\frac{a}{b}", size_pt=11)[2] * 1.5, "字の大きさが効かない")
+# 組めないものは PNG の口でも断る(SVG の口と同じ規則)
+try:
+    tex.to_png(r"\begin{tikzpicture}x\end{tikzpicture}")
+    check(False, "PNG の口が知らない環境を黙って受けた")
+except tex.Muri:
+    pass
+
 # ── SymPy から起こす道(入っていれば)──────────────────────────
 try:
     import sympy  # noqa: F401

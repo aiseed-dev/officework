@@ -114,6 +114,68 @@ def to_svg(tex, size_pt=11.0, color="#000000", font_dir=None):
     return buf.getvalue()
 
 
+def to_png(tex, size_pt=11.0, color="#000000", bai=4.0):
+    """LaTeX を PNG に組む。返りは `(bytes, w_mm, h_mm)`。
+
+    **文書に入れるのはこちら。** docx の画像は png / jpeg で、模型の
+    InlineImage も「png/jpeg のまま」を持つ — SVG に寄り道すると、
+    画面のために作った物を保存でまた作り直すことになる。
+
+    `bai` は**紙の寸法に対する画素の倍率**。画面を拡大しても粗くならない
+    ように大きめに作り、置く大きさ(w_mm/h_mm)は等倍で返す。
+    """
+    t = fit(tex)
+    try:
+        import matplotlib
+    except ImportError as e:
+        raise Muri("matplotlib が入っていません(数式は組めません)") from e
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    # **先に寸法を測り、その大きさの紙に焼く。** bbox_inches="tight" で
+    # 切り出すと切り口が dpi で丸められ、**倍率を変えると寸法が動く**
+    # (実測で 3% ほど)。数式は本文の行に置くので、それでは行送りが変わる
+    w_pt, h_pt = _hakaru(plt, t, size_pt, color)
+    dpi = 72.0 * float(bai)
+    fig = plt.figure(figsize=(w_pt / 72.0, h_pt / 72.0), dpi=dpi)
+    try:
+        # 紙いっぱいに置く(測った枠と同じ大きさなので、余白は出ない)
+        fig.text(0, 0, "$%s$" % t, fontsize=float(size_pt), color=color,
+                 va="bottom", ha="left")
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=dpi, transparent=True)
+    finally:
+        plt.close(fig)
+    mm = 25.4 / 72.0
+    return buf.getvalue(), w_pt * mm, h_pt * mm
+
+
+def _hakaru(plt, t, size_pt, color):
+    """組んだ字が占める大きさ(pt)。**dpi 72 で測る** — 画素と pt が
+    1対1になるので、焼くときの倍率に左右されない。"""
+    fig = plt.figure(figsize=(1, 1), dpi=72)
+    try:
+        txt = fig.text(0, 0, "$%s$" % t, fontsize=float(size_pt), color=color)
+        fig.canvas.draw()
+        bb = txt.get_window_extent(fig.canvas.get_renderer())
+    except ValueError as e:
+        naka = str(e).strip().splitlines()
+        raise Muri("組めない数式です: %s" % (naka[-1] if naka else e)) from None
+    finally:
+        plt.close(fig)
+    return max(bb.width, 1.0), max(bb.height, 1.0)
+
+
+def _png_size(data):
+    """PNG の幅・高さ(画素)。**頭の 24 バイトを読むだけ** — 画像の
+    ライブラリを引き込まない(この一つのために依存を増やさない)。"""
+    if data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+        raise Muri("PNG になっていません")
+    w = int.from_bytes(data[16:20], "big")
+    h = int.from_bytes(data[20:24], "big")
+    return w, h
+
+
 def from_sympy(shiki):
     """SymPy の式から LaTeX を起こす(Python の式で数式を書きたいとき)。
 
