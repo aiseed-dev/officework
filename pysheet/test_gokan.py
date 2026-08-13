@@ -371,6 +371,60 @@ if openpyxl is not None:
         check([(r, lv, h) for r, lv, h in s_g2.row_groups] == [(2, 2, True), (3, 2, True)],
               f"本家のグループ: {s_g2.row_groups}")
 
+# --- 列の幅・行の高さ・隠し(帳票の形そのもの)---------------------------------
+if openpyxl is not None:
+    with tempfile.TemporaryDirectory() as t:
+        bw = office_sheet.Book()
+        sw = bw[0]
+        sw["A1"] = "品名"
+        # 指定の無い列は None(openpyxl も同じ — 既定幅は書き出さない)
+        check(sw.column_dimensions["A"].width is None,
+              f"触っていない列に幅がある: {sw.column_dimensions['A'].width}")
+        check(sw.row_dimensions[1].height is None, "触っていない行に高さがある")
+        sw.column_dimensions["A"].width = 20.0
+        sw.row_dimensions[1].height = 30.0
+        sw.column_dimensions["C"].hidden = True
+        sw.row_dimensions[3].hidden = True
+        check(sw.column_dimensions["A"].width == 20.0,
+              f"列幅の読み: {sw.column_dimensions['A'].width}")
+        check(sw.row_dimensions[1].height == 30.0, "行の高さの読み")
+        check(sw.column_dimensions["C"].hidden and sw.row_dimensions[3].hidden,
+              "隠しが残らない")
+        # 行に幅・列に高さは無い(黙って別の畑に書かない)
+        try:
+            sw.row_dimensions[1].width = 5
+            check(False, "行に幅を置けてしまう")
+        except AttributeError:
+            pass
+        out_w = os.path.join(t, "haba.xlsx")
+        bw.save(out_w)
+        rw = openpyxl.load_workbook(out_w).active
+        check(abs(rw.column_dimensions["A"].width - 20.0) < 0.01,
+              f"うちの列幅を本家が読めない: {rw.column_dimensions['A'].width}")
+        check(abs(rw.row_dimensions[1].height - 30.0) < 0.01,
+              f"うちの行の高さを本家が読めない: {rw.row_dimensions[1].height}")
+        check(rw.column_dimensions["C"].hidden, "列の隠しが往復しない")
+        check(rw.row_dimensions[3].hidden, "行の隠しが往復しない")
+
+        # 逆向き: 本家が置いた幅・高さをうちが読む(同じ数が返ること)
+        wb_w = openpyxl.Workbook()
+        ws_w = wb_w.active
+        ws_w["A1"] = 1
+        ws_w.column_dimensions["B"].width = 12.5
+        ws_w.row_dimensions[2].height = 24.0
+        ws_w.column_dimensions["D"].hidden = True
+        out_w2 = os.path.join(t, "haba_opx.xlsx")
+        wb_w.save(out_w2)
+        s_w2 = office_sheet.Book.open(out_w2)[0]
+        check(abs(s_w2.column_dimensions["B"].width - 12.5) < 0.01,
+              f"本家の列幅: {s_w2.column_dimensions['B'].width}")
+        check(abs(s_w2.row_dimensions[2].height - 24.0) < 0.01,
+              f"本家の行の高さ: {s_w2.row_dimensions[2].height}")
+        check(s_w2.column_dimensions["D"].hidden, "本家の列の隠しを読めない")
+        # 幅を消せば「指定なし」に戻る(既定幅で描く)
+        s_w2.column_dimensions["B"].width = None
+        check(s_w2.column_dimensions["B"].width is None, "幅を消せない")
+
 # --- 名前付きセル様式: 一覧が読め、貼れて、往復で消えない ----------------------
 if openpyxl is not None:
     with tempfile.TemporaryDirectory() as t:

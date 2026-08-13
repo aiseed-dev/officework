@@ -231,13 +231,76 @@ class _HeaderFooter:
             self._raw())
 
 
+class _Dim:
+    """1本の行(列)の寸法。openpyxl の RowDimension / ColumnDimension の役。
+
+    **持ち物ではなく窓** — width を書けばその場でシートに載る(openpyxl も
+    同じで、後から一括で流し込む作りにはなっていない)。
+    """
+
+    __slots__ = ("_sheet", "_rows", "_key")
+
+    def __init__(self, sheet, rows, key):
+        self._sheet = sheet
+        self._rows = rows
+        self._key = key
+
+    @property
+    def width(self):
+        """列の幅(字数)。行では openpyxl も持たないので None のまま。"""
+        if self._rows:
+            return None
+        return self._sheet._s.col_width(self._key)
+
+    @width.setter
+    def width(self, value):
+        if self._rows:
+            raise AttributeError("行に幅は無い(高さは height)")
+        self._sheet._s.set_col_width(self._key, None if value is None else float(value))
+
+    @property
+    def height(self):
+        """行の高さ(ポイント)。列では None。"""
+        if not self._rows:
+            return None
+        return self._sheet._s.row_height(self._key)
+
+    @height.setter
+    def height(self, value):
+        if not self._rows:
+            raise AttributeError("列に高さは無い(幅は width)")
+        self._sheet._s.set_row_height(self._key, None if value is None else float(value))
+
+    @property
+    def hidden(self):
+        """隠してあるか。**絞り込みと違って保存に残る**。"""
+        if self._rows:
+            return self._sheet._s.row_hidden(self._key)
+        return self._sheet._s.col_hidden(self._key)
+
+    @hidden.setter
+    def hidden(self, value):
+        if self._rows:
+            self._sheet._s.set_row_hidden(self._key, bool(value))
+        else:
+            self._sheet._s.set_col_hidden(self._key, bool(value))
+
+    def __repr__(self):
+        if self._rows:
+            return "<row {} 高さ{}>".format(self._key, self.height)
+        return "<column {} 幅{}>".format(self._key, self.width)
+
+
 class _Dimensions:
     """row_dimensions / column_dimensions の返り(openpyxl の役)。
-    いまは group だけ — 行の高さ・列の幅は Sheet の別の口が持つ。"""
+    添字は openpyxl と同じで、行は番号(1起点)・列は字("A")。"""
 
     def __init__(self, sheet, rows):
         self._sheet = sheet
         self._rows = rows
+
+    def __getitem__(self, key):
+        return _Dim(self._sheet, self._rows, int(key) if self._rows else str(key))
 
     def group(self, start, end=None, outline_level=1, hidden=False):
         """行(列)をグループにする。openpyxl と同じ定義。
@@ -1001,13 +1064,13 @@ class Sheet:
 
     @property
     def row_dimensions(self):
-        """行の寸法(openpyxl の役)。いまはグループ化(group)だけ —
-        高さは行ごとの畑がまだ無い(台帳)。"""
+        """行の寸法(openpyxl の役)。row_dimensions[1].height / .hidden、
+        まとめて畳むなら .group。"""
         return _Dimensions(self, rows=True)
 
     @property
     def column_dimensions(self):
-        """列の寸法(openpyxl の役)。いまはグループ化(group)だけ。"""
+        """列の寸法(openpyxl の役)。column_dimensions["A"].width / .hidden。"""
         return _Dimensions(self, rows=False)
 
     @property

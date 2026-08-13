@@ -333,6 +333,14 @@ pub fn book_to_pdf<W: Write>(
 /// `first` は「もう作ってある最初の頁」— 文書の1枚目はここへ入れる。
 /// 返りは (このシートの頁, 切れた列の数, 余白)。
 /// ヘッダー/フッターは総頁が決まってから別に描く([`draw_header_footer`])。
+/// **1枚の紙に左から出す列の並び**。`start` から `n` 本の束の前に、
+/// 繰り返すタイトル列を置く — ただし**束より左にあるものだけ**。
+/// 束の中や右のタイトル列は、その紙に現に出るか後の紙で出るので繰り返さない
+/// (繰り返すと同じ列が1枚に二度出る)。`n` が 0 なら繰り返す分だけ返る。
+pub fn band_cols(title_cols: &[u32], start: u32, n: u32) -> Vec<u32> {
+    title_cols.iter().copied().filter(|t| *t < start).chain(start..start + n).collect()
+}
+
 fn draw_sheet(
     doc: &PdfDocumentReference,
     font: &IndirectFontRef,
@@ -392,6 +400,17 @@ fn draw_sheet(
     // 「縦 → 横」の順で刷る = 束ごとに全行を出してから次の束へ)。
     // 1列が紙より広いときは、その1列だけで束にする(割りようが無い)
     let usable_w = paper.width_mm - ml - mr;
+    // 各ページの左で繰り返すタイトル列。行と違い、**列は幅の割り付けにも効く** —
+    // 繰り返す列のぶんだけ本体に使える幅が減る(Excel と同じ)。
+    // col_mm は c0 起点で並べてあるので、範囲の外の列は添字が無い = 繰り返さない
+    let title_cols: Vec<u32> = grid
+        .print_title_cols
+        .map(|(a, b)| (a..=b).filter(|c| *c >= c0 && *c < c1).collect())
+        .unwrap_or_default();
+    // 本数 0 で呼ぶと「繰り返す分だけ」が返る = その幅が本体から減る
+    let repeat_w = |start: u32| -> f32 {
+        band_cols(&title_cols, start, 0).iter().map(|t| col_mm[(t - c0) as usize]).sum()
+    };
     // **刷る単位の一覧**: (行の始まり, 行の終わり, 束の左端の列, 本数)。
     // 域ごとに列を束へ割る = 域が変わっても束が変わっても新しい紙になる
     let mut bands: Vec<(u32, u32, u32, u32)> = Vec::new();
@@ -400,8 +419,10 @@ fn draw_sheet(
         let mut w = 0.0f32;
         for c in ac0..ac1 {
             let cw = col_mm[(c - c0) as usize];
+            // 繰り返すタイトル列のぶんだけ、本体に使える幅は狭い
+            let avail = usable_w - repeat_w(start);
             // 縦の改ページ(colBreaks: この列から新しい紙)でも束を割る
-            if w > 0.0 && (grid.col_breaks.contains(&c) || w + cw > usable_w + 0.1) {
+            if w > 0.0 && (grid.col_breaks.contains(&c) || w + cw > avail + 0.1) {
                 bands.push((ar0, ar1, start, c - start));
                 start = c;
                 w = 0.0;
@@ -435,7 +456,10 @@ fn draw_sheet(
         .map(|(a, b)| (a..=b).filter(|r| *r < r1).collect())
         .unwrap_or_default();
 
-    // 1行を紙に描く(セルの塗り・罫線・値、印刷の枠線・行番号)
+    // 1行を紙に描く(セルの塗り・罫線・値、印刷の枠線・行番号)。
+    // **列は連続とは限らない** — `cols` はこの紙に左から出す列の並びで、
+    // タイトル列を繰り返す紙では左端に飛び地(A 列など)が入る。
+    // col_x / col_mm はその並びに揃えて渡すこと(col_x は本数+1)
     #[allow(clippy::too_many_arguments)]
     fn draw_row(
         grid: &Grid,
@@ -445,18 +469,18 @@ fn draw_sheet(
         y_top: f32,
         rh: f32,
         ml: f32,
-        c0: u32,
-        ncols: u32,
+        cols: &[u32],
         col_x: &[f32],
         col_mm: &[f32],
         scale: f32,
         cond_prep: &[(sheet::model::CondRule, sheet::model::CondAux)],
         date1904: bool,
     ) {
+        let ncols = cols.len();
         // 印刷の枠線(printOptions gridLines)。薄い灰で先に敷く
         if grid.print_gridlines {
             l.set_outline_color(Color::Rgb(Rgb::new(0.85, 0.87, 0.89, None)));
-            let w_total = col_x[ncols as usize];
+            let w_total = col_x[ncols];
             for (x1, y1, x2, y2) in [
                 (ml, y_top, ml + w_total, y_top),
                 (ml, y_top - rh, ml + w_total, y_top - rh),
@@ -469,7 +493,7 @@ fn draw_sheet(
                     is_closed: false,
                 });
             }
-            for i in 0..=ncols as usize {
+            for i in 0..=ncols {
                 l.add_line(Line {
                     points: vec![
                         (Point::new(Mm(ml + col_x[i]), Mm(y_top)), false),
@@ -486,10 +510,10 @@ fn draw_sheet(
             l.use_text((r + 1).to_string(), 6.5, Mm(ml - 7.0), Mm(y_top - rh + 2.0), font);
             l.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
         }
-        for c in c0..c0 + ncols {
+        for (i, &c) in cols.iter().enumerate() {
             let p = sheet::Pos::new(r, c);
-            let x = ml + col_x[(c - c0) as usize];
-            let cw = col_mm[(c - c0) as usize];
+            let x = ml + col_x[i];
+            let cw = col_mm[i];
             if cw <= 0.0 {
                 continue; // 畳んだ列(幅ゼロ)は中身も描かない
             }
@@ -650,13 +674,13 @@ fn draw_sheet(
     }
 
     // 列名の見出し(printOptions headings)。各ページの上の余白に
-    let draw_col_heads = |l: &PdfLayerReference, bc0: u32, bn: u32, cx: &[f32], cm: &[f32]| {
+    let draw_col_heads = |l: &PdfLayerReference, cols: &[u32], cx: &[f32], cm: &[f32]| {
         if !grid.print_headings {
             return;
         }
         l.set_fill_color(Color::Rgb(Rgb::new(0.4, 0.44, 0.48, None)));
-        for c in bc0..bc0 + bn {
-            let x = ml + cx[(c - bc0) as usize] + cm[(c - bc0) as usize] / 2.0 - 1.0;
+        for (i, &c) in cols.iter().enumerate() {
+            let x = ml + cx[i] + cm[i] / 2.0 - 1.0;
             let name = sheet::Pos::new(0, c).a1();
             let name = name.trim_end_matches('1');
             l.use_text(name, 6.5, Mm(x), Mm(paper.height_mm - mt + 1.5), font);
@@ -668,12 +692,12 @@ fn draw_sheet(
     let mut page_no = 1u32;
     // 束(横のページ)ごとに全行を出す。束が変わるたび新しい紙へ
     for (bi, &(r0, r1, bc0, bn)) in bands.iter().enumerate() {
-    let col_mm: Vec<f32> = (0..bn).map(|k| col_mm[(bc0 - c0 + k) as usize]).collect();
+    let cols = band_cols(&title_cols, bc0, bn);
+    let col_mm: Vec<f32> = cols.iter().map(|c| col_mm[(c - c0) as usize]).collect();
     let mut col_x = vec![0.0f32];
     for w in &col_mm {
         col_x.push(col_x.last().unwrap() + w);
     }
-    let (c0, ncols) = (bc0, bn);
     if bi > 0 {
         page_no += 1;
         y_used = 0.0;
@@ -685,7 +709,7 @@ fn draw_sheet(
         l = doc.get_page(np).get_layer(nl);
         hf_pages.push((np, nl));
     }
-    draw_col_heads(&l, c0, ncols, &col_x, &col_mm);
+    draw_col_heads(&l, &cols, &col_x, &col_mm);
     for r in r0..r1.max(r0 + 1) {
         // 畳んだ行は紙にも出さない(画面と同じ)
         if grid.row_hidden.contains(&r) {
@@ -704,20 +728,20 @@ fn draw_sheet(
             );
             l = doc.get_page(np).get_layer(nl);
             hf_pages.push((np, nl));
-            draw_col_heads(&l, c0, ncols, &col_x, &col_mm);
+            draw_col_heads(&l, &cols, &col_x, &col_mm);
             // タイトル行を頭で繰り返す(いま描く行が自分自身なら繰り返さない)
             if !title_rows.contains(&r) {
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - y_used;
-                    draw_row(grid, &l, font, *tr, y_top, th, ml, c0, ncols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
+                    draw_row(grid, &l, font, *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
                     y_used += th;
                 }
             }
         }
         let y_top = paper.height_mm - mt - y_used;
         y_used += rh;
-        draw_row(grid, &l, font, r, y_top, rh, ml, c0, ncols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
+        draw_row(grid, &l, font, r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
     }
     }
     // 図形(挿した分も読んだ分も)。**輪郭だけ**を紙に出す(塗りはまだ —
@@ -1251,6 +1275,49 @@ mod print_extras_tests {
         let mut without = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut without).unwrap();
         assert!(with_t.len() > without.len(), "タイトル行の繰り返しが出ていない");
+    }
+
+    /// タイトル列を差し込む規則そのもの。**同じ列を1枚に二度出さない**のが肝で、
+    /// PDF の字は埋め込み書体の符号なので外から読めない — 規則はここで縛る
+    #[test]
+    fn タイトル列は束より左のぶんだけ繰り返す() {
+        // A 列がタイトル。A を含む束(先頭)では繰り返さない = 二度出ない
+        assert_eq!(band_cols(&[0], 0, 3), vec![0, 1, 2]);
+        // 右の束では左端に A を差し込む
+        assert_eq!(band_cols(&[0], 3, 3), vec![0, 3, 4, 5]);
+        // A:B の2列でも同じ。束の中にいるものは差し込まない
+        assert_eq!(band_cols(&[0, 1], 1, 2), vec![0, 1, 2]);
+        assert_eq!(band_cols(&[0, 1], 4, 2), vec![0, 1, 4, 5]);
+        // 束より右にあるタイトル列は、その紙ではまだ出さない(後の紙で出る)
+        assert_eq!(band_cols(&[7], 0, 3), vec![0, 1, 2]);
+        // 指定が無ければ束そのまま
+        assert_eq!(band_cols(&[], 2, 2), vec![2, 3]);
+        // 本数 0 は「繰り返す分だけ」(幅の割り付けに使う)
+        assert_eq!(band_cols(&[0], 3, 0), vec![0]);
+    }
+
+    /// 繰り返す列は**幅の割り付けにも効く** — その分だけ本体が狭くなり、
+    /// 同じ表でも紙が増える。差し込みが描画だけの飾りになっていないこと
+    #[test]
+    fn タイトル列のぶん本体は狭くなる() {
+        let (fam, _) = kumihan::font::for_document(None).unwrap();
+        let data = kumihan::font::load(fam).unwrap();
+        let mut s = Grid { name: "広い".into(), ..Default::default() };
+        // 40mm × 12列。A4 縦の使える幅 170mm には4列ずつ = 3枚
+        for c in 0..12u32 {
+            s.set(Pos::new(0, c), Cell {
+                formula: None, value: Value::Number(c as f64), fmt: Default::default() });
+            s.col_width.insert(c, 20.0); // 20字 ≒ 40mm
+        }
+        let mut plain = Vec::new();
+        sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut plain).unwrap();
+        assert_eq!(pages(&plain), 3);
+        // A 列を毎ページ繰り返すと、2枚目からは本体に 130mm = 3列ずつ。
+        // A:D / A+E:G / A+H:J / A+K:L で4枚になる
+        s.print_title_cols = Some((0, 0));
+        let mut with_t = Vec::new();
+        sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut with_t).unwrap();
+        assert_eq!(pages(&with_t), 4, "タイトル列が幅の割り付けに効いていない");
     }
 
     /// 頁番号の規則そのもの(&P はブック通し・&N は総頁)。

@@ -699,14 +699,17 @@ def _scalar(x):
 class PageSetup:
     """印刷の設定(読むだけ)。paper は xlsx の用紙コード(9=A4)。"""
 
-    __slots__ = ("paper", "landscape", "margins_mm", "print_area", "title_rows")
+    __slots__ = (
+        "paper", "landscape", "margins_mm", "print_area", "title_rows", "title_cols")
 
     def __init__(self, r):
         self.paper = r.get("paper")
         self.landscape = r.get("landscape", False)
         self.margins_mm = r.get("margins_mm")
         self.print_area = r.get("print_area") or []
+        # 毎ページ繰り返す見出し。行は "1:2"、列は "A:B"(openpyxl と同じ形)
         self.title_rows = r.get("title_rows")
+        self.title_cols = r.get("title_cols")
 
     @property
     def orientation(self):

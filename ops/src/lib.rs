@@ -741,8 +741,13 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                     .map(|(a, b)| J::S(format!("{}:{}", a.a1(), b.a1())))
                     .collect(),
             );
+            // タイトル列は列の名前で返す(openpyxl と同じ "A:B" の形)
+            let letter = |c: u32| {
+                let a1 = sheet::Pos::new(0, c).a1();
+                a1.trim_end_matches(|ch: char| ch.is_ascii_digit()).to_string()
+            };
             format!(
-                "{{\"ok\":true,\"paper\":{},\"landscape\":{},\"margins_mm\":{},\"print_area\":{},\"title_rows\":{}}}",
+                "{{\"ok\":true,\"paper\":{},\"landscape\":{},\"margins_mm\":{},\"print_area\":{},\"title_rows\":{},\"title_cols\":{}}}",
                 match sh.paper_size {
                     Some(c) => J::N(f64::from(c)).to_json(),
                     None => "null".into(),
@@ -752,6 +757,10 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 areas.to_json(),
                 match sh.print_title_rows {
                     Some((a, b)) => J::S(format!("{}:{}", a + 1, b + 1)).to_json(),
+                    None => "null".into(),
+                },
+                match sh.print_title_cols {
+                    Some((a, b)) => J::S(format!("{}:{}", letter(a), letter(b))).to_json(),
                     None => "null".into(),
                 }
             )

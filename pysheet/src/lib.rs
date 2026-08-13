@@ -756,6 +756,90 @@ impl PySheet {
         })
     }
 
+    /// 列の幅(xlsx の単位 = 標準の書体の「0」何個ぶん)。
+    /// 指定の無い列は None = 既定幅(openpyxl の ColumnDimension.width と同じ)。
+    /// **列の字("A")で引く** — 行と間違えないため
+    fn col_width(&self, col: &str) -> PyResult<Option<f32>> {
+        let c = col0(col)?;
+        self.with(|s| Ok(s.col_width.get(&c).copied()))
+    }
+
+    /// 列の幅を置く。None で「指定なし」に戻す(既定幅で描く)
+    #[pyo3(signature = (col, width))]
+    fn set_col_width(&self, col: &str, width: Option<f32>) -> PyResult<()> {
+        let c = col0(col)?;
+        match width {
+            Some(w) if w < 0.0 => return Err(PyValueError::new_err("列幅に負の数は置けない")),
+            _ => {}
+        }
+        self.with(|s| {
+            match width {
+                Some(w) => s.col_width.insert(c, w),
+                None => s.col_width.remove(&c),
+            };
+            Ok(())
+        })
+    }
+
+    /// 行の高さ(ポイント)。指定の無い行は None = 既定の高さ。行番号は1起点
+    fn row_height(&self, row: u32) -> PyResult<Option<f32>> {
+        let r = row0(row)?;
+        self.with(|s| Ok(s.row_height.get(&r).copied()))
+    }
+
+    /// 行の高さを置く。None で「指定なし」に戻す
+    #[pyo3(signature = (row, height))]
+    fn set_row_height(&self, row: u32, height: Option<f32>) -> PyResult<()> {
+        let r = row0(row)?;
+        match height {
+            Some(h) if h < 0.0 => return Err(PyValueError::new_err("行の高さに負の数は置けない")),
+            _ => {}
+        }
+        self.with(|s| {
+            match height {
+                Some(h) => s.row_height.insert(r, h),
+                None => s.row_height.remove(&r),
+            };
+            Ok(())
+        })
+    }
+
+    /// 列を隠す/出す(xlsx の hidden。**絞り込みと違って保存に残る**)
+    fn col_hidden(&self, col: &str) -> PyResult<bool> {
+        let c = col0(col)?;
+        self.with(|s| Ok(s.col_hidden.contains(&c)))
+    }
+
+    fn set_col_hidden(&self, col: &str, hidden: bool) -> PyResult<()> {
+        let c = col0(col)?;
+        self.with(|s| {
+            if hidden {
+                s.col_hidden.insert(c);
+            } else {
+                s.col_hidden.remove(&c);
+            }
+            Ok(())
+        })
+    }
+
+    /// 行を隠す/出す
+    fn row_hidden(&self, row: u32) -> PyResult<bool> {
+        let r = row0(row)?;
+        self.with(|s| Ok(s.row_hidden.contains(&r)))
+    }
+
+    fn set_row_hidden(&self, row: u32, hidden: bool) -> PyResult<()> {
+        let r = row0(row)?;
+        self.with(|s| {
+            if hidden {
+                s.row_hidden.insert(r);
+            } else {
+                s.row_hidden.remove(&r);
+            }
+            Ok(())
+        })
+    }
+
     /// 行をグループにする(openpyxl の row_dimensions.group と同じ定義)。
     /// start / end は1起点、深さは 1〜7。hidden なら畳んだ状態で持つ
     /// (**畳んだ台帳は畳んだまま次の人に渡る** — 絞り込みと違い保存に残る)。
