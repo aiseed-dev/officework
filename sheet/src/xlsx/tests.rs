@@ -476,6 +476,120 @@ mod carry_tests {
         );
     }
 
+
+    #[test]
+    fn テキストボックスの組み方が往復する() {
+        use crate::model::{HAlign, TextAnchor, TextFmt};
+        let mut b = Book::new();
+        b.sheets[0].shapes_new.push(crate::model::SheetShape {
+            at: Pos::new(0, 0),
+            width_px: 200.0,
+            height_px: 90.0,
+            kind: "rect".into(),
+            text: Some("見出し".into()),
+            text_fmt: TextFmt {
+                align: HAlign::Center,
+                anchor: TextAnchor::Middle,
+                vertical: true,
+                bullet: Some(true),
+                strike: true,
+                sup: true,
+                sub: false,
+            },
+            ..Default::default()
+        });
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        let sp = &back.sheets[0].shapes[0];
+        assert_eq!(sp.text.as_deref(), Some("見出し"));
+        assert_eq!(sp.text_fmt, b.sheets[0].shapes_new[0].text_fmt, "組み方が往復しない");
+    }
+
+    #[test]
+    fn 組み方の既定は属性を書かない() {
+        // **書かないことが既定を表す**(xlsx の作法)。既定で属性を書くと、
+        // Excel で開いたとき「わざわざ左寄せにした」ことになる
+        let mut b = Book::new();
+        b.sheets[0].shapes_new.push(crate::model::SheetShape {
+            at: Pos::new(0, 0),
+            width_px: 100.0,
+            height_px: 50.0,
+            kind: "rect".into(),
+            text: Some("素".into()),
+            ..Default::default()
+        });
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
+        let mut dx = String::new();
+        let name = (0..z.len())
+            .map(|i| z.by_index(i).unwrap().name().to_string())
+            .find(|n| n.starts_with("xl/drawings/drawing") && n.ends_with(".xml"))
+            .expect("drawing が無い");
+        z.by_name(&name).unwrap().read_to_string(&mut dx).unwrap();
+        for attr in ["anchor=", "vert=", "algn=", "strike=", "baseline=", "buChar", "buAutoNum"] {
+            assert!(!dx.contains(attr), "既定なのに {attr} を書いた:\n{dx}");
+        }
+    }
+
+    #[test]
+    fn 上付きと下付きは両方立たない() {
+        // baseline は1つの属性。両方立てても書けるのは片方だけ
+        use crate::model::TextFmt;
+        let mut b = Book::new();
+        b.sheets[0].shapes_new.push(crate::model::SheetShape {
+            at: Pos::new(0, 0),
+            width_px: 100.0,
+            height_px: 50.0,
+            kind: "rect".into(),
+            text: Some("x".into()),
+            text_fmt: TextFmt { sup: true, sub: true, ..Default::default() },
+            ..Default::default()
+        });
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        let tf = &back.sheets[0].shapes[0].text_fmt;
+        assert!(tf.sup != tf.sub, "上付きと下付きが両方立っている: {tf:?}");
+    }
+
+
+    #[test]
+    fn 組み方は図形ごとに畳まれる() {
+        // **1つだけの往復では出ない穴。** 読みの途中の控えを図形ごとに
+        // 畳んでいないと、前の箱の揃えや箇条書きが次へ漏れる
+        // (2026-08-13、6つ並べた実物の見本で見つけた)
+        use crate::model::{HAlign, TextAnchor, TextFmt};
+        let mut b = Book::new();
+        let mk = |row: u32, t: &str, tf: TextFmt| crate::model::SheetShape {
+            at: Pos::new(row, 0),
+            width_px: 100.0,
+            height_px: 50.0,
+            kind: "rect".into(),
+            text: Some(t.into()),
+            text_fmt: tf,
+            ..Default::default()
+        };
+        b.sheets[0].shapes_new.push(mk(0, "飾りつき", TextFmt {
+            align: HAlign::Right,
+            anchor: TextAnchor::Bottom,
+            bullet: Some(true),
+            strike: true,
+            ..Default::default()
+        }));
+        b.sheets[0].shapes_new.push(mk(4, "素のまま", TextFmt::default()));
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        assert_eq!(back.sheets[0].shapes.len(), 2);
+        assert_eq!(
+            back.sheets[0].shapes[1].text_fmt,
+            TextFmt::default(),
+            "前の図形の組み方が漏れている"
+        );
+    }
+
     #[test]
     fn 古い計算順は持ち越さない() {
         // calcChain が古いままだと Excel が誤った順で開くことがある

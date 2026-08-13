@@ -401,6 +401,42 @@ pub(super) fn parse_table(xml: &str) -> Option<crate::model::TableDef> {
     })
 }
 
+/// テキストボックスの組み方を1つの要素から拾う(`bodyPr` / `pPr` / `rPr` /
+/// 箇条書きの印)。**Start と Empty の両方から呼ぶ**ので1箇所にまとめた。
+pub(super) fn text_fmt_attr(e: &BytesStart, tf: &mut crate::model::TextFmt) {
+    match local(e.name().as_ref()) {
+        b"bodyPr" => {
+            tf.anchor = match attr(e, "anchor").as_deref() {
+                Some("ctr") => crate::model::TextAnchor::Middle,
+                Some("b") => crate::model::TextAnchor::Bottom,
+                _ => crate::model::TextAnchor::Top,
+            };
+            // 縦組みは vert が横以外のとき。**種類は問わない** —
+            // eaVert も vert270 もこちらは1つの縦組みで見せる
+            tf.vertical = attr(e, "vert").is_some_and(|v| v != "horz");
+        }
+        b"pPr" => {
+            tf.align = match attr(e, "algn").as_deref() {
+                Some("ctr") => crate::model::HAlign::Center,
+                Some("r") => crate::model::HAlign::Right,
+                Some("just") => crate::model::HAlign::Justify,
+                _ => crate::model::HAlign::General,
+            };
+        }
+        b"buChar" => tf.bullet = Some(false),
+        b"buAutoNum" => tf.bullet = Some(true),
+        b"buNone" => tf.bullet = None,
+        b"rPr" => {
+            tf.strike = attr(e, "strike").is_some_and(|v| v != "noStrike");
+            // baseline は千分率。正が上付き、負が下付き
+            let base = attr(e, "baseline").and_then(|v| v.parse::<i32>().ok());
+            tf.sup = base.is_some_and(|b| b > 0);
+            tf.sub = base.is_some_and(|b| b < 0);
+        }
+        _ => {}
+    }
+}
+
 pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, DrawKind)> {
     let mut r = Reader::from_str(xml);
     let mut buf = Vec::new();
@@ -415,6 +451,8 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     // 図形の中の文字(a:t)と、custGeom の折れ線
     let mut text = String::new();
     let mut in_t = false;
+    // テキストボックスの組み方(bodyPr / pPr / rPr から拾う)
+    let mut tfmt = crate::model::TextFmt::default();
     let mut pts: Vec<(f32, f32)> = Vec::new();
     let mut sp_name: Option<String> = None;
     let (mut path_w, mut path_h) = (1000.0f32, 1000.0f32);
@@ -441,6 +479,10 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         (None, None, None, None, None, None, None, None);
                     (off_x, off_y) = (0, 0);
                     text.clear();
+                    // **組み方も1つずつ畳む。** 畳まないと、前の図形の
+                    // 揃えや箇条書きが次の箱に漏れる — 1つだけの試験では
+                    // 出ず、6つ並べた実物の見本で初めて出た(2026-08-13)
+                    tfmt = crate::model::TextFmt::default();
                     pts.clear();
                     sp_name = None;
                     has_custom = false;
@@ -479,6 +521,11 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         line_w = w / 12700.0;
                     }
                 }
+                b"bodyPr" | b"pPr" | b"buChar" | b"buAutoNum" | b"buNone" | b"rPr"
+                    if in_sp =>
+                {
+                    text_fmt_attr(&e, &mut tfmt);
+                }
                 b"blip" => {
                     if embed.is_none() {
                         embed = attr(&e, "embed");
@@ -506,6 +553,15 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     path_h = attr(&e, "h").and_then(|v| v.parse().ok()).unwrap_or(1000.0);
                 }
                 b"t" if in_sp => in_t = true,
+                // **Start と Empty の両方で来る。** bodyPr も pPr も rPr も
+                // 中に何か持てば Start、持たなければ Empty — 片方だけ見ていると
+                // 「箇条書きを付けた途端に揃えが読めなくなる」ような穴になる
+                // (sheet_view で一度踏んだのと同じ道理)
+                b"bodyPr" | b"pPr" | b"buChar" | b"buAutoNum" | b"buNone" | b"rPr"
+                    if in_sp =>
+                {
+                    text_fmt_attr(&e, &mut tfmt);
+                }
                 _ => cur.clear(),
             },
             Ok(Event::Empty(e)) => match local(e.name().as_ref()) {
@@ -542,6 +598,15 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         .map(|v| v / 100_000.0);
                 }
                 b"outerShdw" if in_sp => shadow = true,
+                // テキストボックスの組み方。**Start と Empty の両方で来る** —
+                // bodyPr も pPr も rPr も、中に何か持てば Start、持たなければ
+                // Empty。片方だけ見ていると「箇条書きを付けた途端に揃えが
+                // 読めなくなる」種類の穴になる(sheet_view で一度踏んだ道理)
+                b"bodyPr" | b"pPr" | b"buChar" | b"buAutoNum" | b"buNone" | b"rPr"
+                    if in_sp =>
+                {
+                    text_fmt_attr(&e, &mut tfmt);
+                }
                 b"ln" if in_sp => {
                     if let Some(w) = attr(&e, "w").and_then(|v| v.parse::<f32>().ok()) {
                         line_w = w / 12700.0;
@@ -585,6 +650,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         fill: fill.take(),
                         line: line.take(),
                         text: (!text.is_empty()).then(|| text.clone()),
+                        text_fmt: tfmt.clone(),
                         rot,
                         flip_h,
                         flip_v,

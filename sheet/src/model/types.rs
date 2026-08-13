@@ -805,6 +805,38 @@ impl Sheet {
 
 /// シートに浮かぶ図形。**中身はベクタ**(発注者案 2026-08-04: SVG で作る —
 /// 拡大縮小で崩れない)。画面へは to_svg が SVG を作り、xlsx へは DrawingML の
+/// テキストボックスの中の文字の組み方(xlsx の `txBody`)。
+///
+/// **画面で見せられることだけを持つ。** タブ位置(`a:tabLst`)は、文字を
+/// 重ね描きの div 1枚で出している以上、位置を守って描けない — 持たない。
+/// 持てば「設定はあるのに効かない」欄が1つ増える。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct TextFmt {
+    /// 横の揃え(`a:pPr@algn`)。`General` は指定なし=左
+    pub align: HAlign,
+    /// 縦の揃え(`a:bodyPr@anchor`)。**既定は上** — セルの既定(下)とは違う
+    pub anchor: TextAnchor,
+    /// 縦書き(`a:bodyPr@vert="eaVert"`)。日本語の縦組み
+    pub vertical: bool,
+    /// 箇条書き。`None`=無し / `Some(false)`=中黒 / `Some(true)`=番号
+    pub bullet: Option<bool>,
+    /// 取り消し線(`a:rPr@strike="sngStrike"`)
+    pub strike: bool,
+    /// 上付き・下付き(`a:rPr@baseline`)。**両方は立たない**
+    pub sup: bool,
+    pub sub: bool,
+}
+
+/// テキストボックスの縦の揃え。セルの [`VAlign`] とは**既定が違う**
+/// (セルは下、図形の中は上)ので別の型にした
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum TextAnchor {
+    #[default]
+    Top,
+    Middle,
+    Bottom,
+}
+
 /// 図形(prstGeom)として書く — Excel でも図形として開ける。
 #[derive(Debug, Clone, PartialEq)]
 pub struct SheetShape {
@@ -824,6 +856,9 @@ pub struct SheetShape {
     /// 図形の中の文字(テキストボックス)。xlsx の txBody と往復する。
     /// 画面へは SVG でなく重ね描き(組版の質と日本語のため)
     pub text: Option<String>,
+    /// その文字の組み方(揃え・縦書き・箇条書き・文字効果)。
+    /// `text` が無いときは意味を持たない
+    pub text_fmt: TextFmt,
     /// 折れ線の点(0..1 に正規化した x, y)。kind="spark" が使う。
     /// "spark-col"/"spark-wl"(縦棒・勝ち負け)では (棒の中心x, 棒の先端y)
     pub points: Vec<(f32, f32)>,
@@ -858,6 +893,7 @@ impl Default for SheetShape {
             fill: None,
             line: None,
             text: None,
+            text_fmt: TextFmt::default(),
             points: Vec::new(),
             base: 0.0,
             dx_px: 0.0,

@@ -4256,6 +4256,108 @@ impl Render for Calc {
                             cx.notify();
                         }))));
             }
+            // ---- 中の文字の組み方(テキストボックス。台帳 第2便の [中]) ----
+            // **文字が入っているときだけ出す。** 空の図形に段落の設定を
+            // 並べても掛ける相手がいない
+            if sp.text.is_some() {
+                let tf = sp.text_fmt.clone();
+                p = p.child(div().h(px(2.0)));
+                p = p.child(div().text_size(px(us * 10.5)).text_color(rgb(0x1B6E3C))
+                    .child(SharedString::from(ui::t!("中の文字").to_string())));
+                // 横の揃え
+                let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
+                    .child(lab(ui::t!("揃え").to_string()));
+                for (id, name, a) in [
+                    ("shp-al-l", ui::t!("左"), sheet::model::HAlign::General),
+                    ("shp-al-c", ui::t!("中央"), sheet::model::HAlign::Center),
+                    ("shp-al-r", ui::t!("右"), sheet::model::HAlign::Right),
+                ] {
+                    let on = tf.align == a;
+                    row = row.child(chip(id.into(), name.to_string(), on)
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            this.shape_edit(move |sp| sp.text_fmt.align = a);
+                            this.status = ui::t!("文字の揃えを変えました").into();
+                            cx.notify();
+                        })));
+                }
+                p = p.child(row);
+                // 縦の揃え
+                let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
+                    .child(lab(ui::t!("縦の位置").to_string()));
+                for (id, name, a) in [
+                    ("shp-an-t", ui::t!("上"), sheet::model::TextAnchor::Top),
+                    ("shp-an-m", ui::t!("中央"), sheet::model::TextAnchor::Middle),
+                    ("shp-an-b", ui::t!("下"), sheet::model::TextAnchor::Bottom),
+                ] {
+                    let on = tf.anchor == a;
+                    row = row.child(chip(id.into(), name.to_string(), on)
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            this.shape_edit(move |sp| sp.text_fmt.anchor = a);
+                            this.status = ui::t!("文字の縦の位置を変えました").into();
+                            cx.notify();
+                        })));
+                }
+                p = p.child(row);
+                // 箇条書き・縦書き
+                let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
+                    .child(lab(ui::t!("箇条書き").to_string()));
+                for (id, name, b) in [
+                    ("shp-bu-n", ui::t!("なし"), None),
+                    ("shp-bu-c", ui::t!("・"), Some(false)),
+                    ("shp-bu-1", ui::t!("1."), Some(true)),
+                ] {
+                    let on = tf.bullet == b;
+                    row = row.child(chip(id.into(), name.to_string(), on)
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            this.shape_edit(move |sp| sp.text_fmt.bullet = b);
+                            this.status = ui::t!("箇条書きを変えました").into();
+                            cx.notify();
+                        })));
+                }
+                p = p.child(row);
+                // 文字の効果と縦書き
+                let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
+                    .child(lab(ui::t!("効果").to_string()));
+                row = row.child(chip("shp-tv".into(), ui::t!("縦書き").to_string(), tf.vertical)
+                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                        cx.stop_propagation();
+                        this.shape_edit(|sp| sp.text_fmt.vertical = !sp.text_fmt.vertical);
+                        this.status = ui::t!("縦書きを切り替えました").into();
+                        cx.notify();
+                    })));
+                row = row.child(chip("shp-ts".into(), ui::t!("取り消し線").to_string(), tf.strike)
+                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                        cx.stop_propagation();
+                        this.shape_edit(|sp| sp.text_fmt.strike = !sp.text_fmt.strike);
+                        this.status = ui::t!("取り消し線を切り替えました").into();
+                        cx.notify();
+                    })));
+                // 上付きと下付きは**同時に立たない**(xlsx の baseline は1つ)
+                row = row.child(chip("shp-tsup".into(), ui::t!("上付き").to_string(), tf.sup)
+                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                        cx.stop_propagation();
+                        this.shape_edit(|sp| {
+                            sp.text_fmt.sup = !sp.text_fmt.sup;
+                            if sp.text_fmt.sup { sp.text_fmt.sub = false; }
+                        });
+                        this.status = ui::t!("上付きを切り替えました").into();
+                        cx.notify();
+                    })));
+                row = row.child(chip("shp-tsub".into(), ui::t!("下付き").to_string(), tf.sub)
+                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                        cx.stop_propagation();
+                        this.shape_edit(|sp| {
+                            sp.text_fmt.sub = !sp.text_fmt.sub;
+                            if sp.text_fmt.sub { sp.text_fmt.sup = false; }
+                        });
+                        this.status = ui::t!("下付きを切り替えました").into();
+                        cx.notify();
+                    })));
+                p = p.child(row);
+            }
             Some(p)
         });
 
@@ -4799,21 +4901,70 @@ impl Render for Calc {
                                    .into_any_element(),
                            );
                            if let Some(t) = &sp.text {
-                               layer.push(
-                                   div()
-                                       .absolute()
-                                       .left(px(x + 6.0))
-                                       .top(px(y + 4.0))
-                                       .w(px((sp.width_px - 12.0).max(8.0)))
-                                       .h(px((sp.height_px - 8.0).max(8.0)))
-                                       .overflow_hidden()
-                                       .text_size(px(us * 12.5))
-                                       .font_family(self.font_name.clone())
-                                       .text_color(rgb(0x1B1B1B))
-                                       .whitespace_normal()
-                                       .child(SharedString::from(t.clone()))
-                                       .into_any_element(),
-                               );
+                               // 組み方(揃え・縦書き・箇条書き・文字効果)。
+                               // **選べる物は描く** — 効かない設定を置かない
+                               let tf = &sp.text_fmt;
+                               let mut td = div()
+                                   .absolute()
+                                   .left(px(x + 6.0))
+                                   .top(px(y + 4.0))
+                                   .w(px((sp.width_px - 12.0).max(8.0)))
+                                   .h(px((sp.height_px - 8.0).max(8.0)))
+                                   .overflow_hidden()
+                                   .text_size(px(us * 12.5))
+                                   .font_family(self.font_name.clone())
+                                   .text_color(rgb(0x1B1B1B))
+                                   .whitespace_normal()
+                                   // 縦の揃えは flex の縦並びで取る
+                                   .flex()
+                                   .flex_col();
+                               td = match tf.anchor {
+                                   sheet::model::TextAnchor::Top => td.justify_start(),
+                                   sheet::model::TextAnchor::Middle => td.justify_center(),
+                                   sheet::model::TextAnchor::Bottom => td.justify_end(),
+                               };
+                               td = match tf.align {
+                                   sheet::model::HAlign::Center => td.text_center(),
+                                   sheet::model::HAlign::Right => td.text_right(),
+                                   _ => td,
+                               };
+                               if tf.strike {
+                                   td = td.line_through();
+                               }
+                               // 上付き・下付きは小さくして寄せる(セルと同じ手)
+                               if tf.sup || tf.sub {
+                                   td = td.text_size(px(us * 8.5));
+                                   td = if tf.sup { td.pb_2() } else { td.pt_2() };
+                               }
+                               // 縦書きは1字ずつ縦に並べる(セルの縦積みと同じ)。
+                               // GPUI に字の回転が無いので、和文はこれが素直
+                               if tf.vertical {
+                                   let mut col = div().flex().flex_col().items_center();
+                                   for ch in t.chars() {
+                                       col = col
+                                           .child(SharedString::from(ch.to_string()));
+                                   }
+                                   td = td.child(col);
+                               } else {
+                                   // 箇条書きは行の頭に印を付ける(実際に付けて見せる)
+                                   let body = match tf.bullet {
+                                       None => t.clone(),
+                                       Some(num) => t
+                                           .lines()
+                                           .enumerate()
+                                           .map(|(i, l)| {
+                                               if num {
+                                                   format!("{}. {l}", i + 1)
+                                               } else {
+                                                   format!("・{l}")
+                                               }
+                                           })
+                                           .collect::<Vec<_>>()
+                                           .join("\n"),
+                                   };
+                                   td = td.child(SharedString::from(body));
+                               }
+                               layer.push(td.into_any_element());
                            }
                            let _ = i;
                        }

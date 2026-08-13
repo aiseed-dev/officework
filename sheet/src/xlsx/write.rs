@@ -2195,16 +2195,59 @@ pub(super) fn shape_anchor_xml(sp: &crate::model::SheetShape, id: u32) -> String
     } else {
         format!("<a:prstGeom prst=\"{}\"><a:avLst/></a:prstGeom>", sp.kind)
     };
-    // 中の文字(テキストボックス)
+    // 中の文字(テキストボックス)。組み方は sp.text_fmt から。
+    // **既定のときは属性を書かない** — 書かないことが既定を表す(xlsx の作法)
     let txt = match &sp.text {
-        Some(t) => format!(
-            concat!(
-                "<xdr:txBody><a:bodyPr wrap=\"square\"/><a:lstStyle/>",
-                "<a:p><a:r><a:rPr lang=\"ja-JP\" sz=\"1100\"/><a:t>{}</a:t></a:r></a:p>",
-                "</xdr:txBody>"
-            ),
-            esc(t)
-        ),
+        Some(t) => {
+            let tf = &sp.text_fmt;
+            let anchor = match tf.anchor {
+                crate::model::TextAnchor::Top => "",
+                crate::model::TextAnchor::Middle => r#" anchor="ctr""#,
+                crate::model::TextAnchor::Bottom => r#" anchor="b""#,
+            };
+            // 縦書きは日本語の縦組み(eaVert = 東アジアの縦。字は回さない)
+            let vert = if tf.vertical { r#" vert="eaVert""# } else { "" };
+            let algn = match tf.align {
+                crate::model::HAlign::Center => r#" algn="ctr""#,
+                crate::model::HAlign::Right => r#" algn="r""#,
+                crate::model::HAlign::Justify => r#" algn="just""#,
+                _ => "",
+            };
+            // 箇条書き。中黒は buChar、番号は buAutoNum(算用数字+ピリオド)
+            let bullet = match tf.bullet {
+                Some(true) => r#"<a:buFont typeface="+mj-lt"/><a:buAutoNum type="arabicPeriod"/>"#,
+                Some(false) => r#"<a:buFont typeface="Arial"/><a:buChar char="・"/>"#,
+                None => "",
+            };
+            let ppr = if algn.is_empty() && bullet.is_empty() {
+                String::new()
+            } else {
+                format!("<a:pPr{algn}>{bullet}</a:pPr>")
+            };
+            let strike = if tf.strike { r#" strike="sngStrike""# } else { "" };
+            // 上付き・下付きは baseline の千分率(Office の既定に合わせる)
+            let base = if tf.sup {
+                r#" baseline="30000""#
+            } else if tf.sub {
+                r#" baseline="-25000""#
+            } else {
+                ""
+            };
+            format!(
+                concat!(
+                    "<xdr:txBody><a:bodyPr wrap=\"square\"{anchor}{vert}/><a:lstStyle/>",
+                    "<a:p>{ppr}<a:r><a:rPr lang=\"ja-JP\" sz=\"1100\"{strike}{base}/>",
+                    "<a:t>{t}</a:t></a:r></a:p>",
+                    "</xdr:txBody>"
+                ),
+                anchor = anchor,
+                vert = vert,
+                ppr = ppr,
+                strike = strike,
+                base = base,
+                t = esc(t)
+            )
+        }
         None => String::new(),
     };
     format!(
