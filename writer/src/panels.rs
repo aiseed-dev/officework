@@ -23,6 +23,7 @@ pub(crate) struct Panels {
     pub ai_panel: Option<gpui::Div>,
     pub sd_panel: Option<gpui::Div>,
     pub rb_panel: Option<gpui::Div>,
+    pub eq_panel: Option<gpui::Div>,
     pub plug_panel: Option<gpui::Div>,
     pub xr_panel: Option<gpui::Div>,
     pub font_panel: Option<gpui::Div>,
@@ -921,6 +922,29 @@ impl Writer {
                     .child(SharedString::from(t))))
         };
 
+        // 数式のパネル(LaTeX を打つ)。**組むのは Python** — TeX があれば
+        // そちらで組み、無ければ matplotlib。打った原文は絵と一緒に残る
+        let eq_panel = if !self.eq_open {
+            None
+        } else {
+            let mut t = self.eq_ed.text().to_string();
+            let cur = self.eq_ed.cursor().min(t.len());
+            t.insert(cur, '|');
+            Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(460.0))
+                .p_3().rounded_md().bg(rgb(0xF7F9FA))
+                .border_1().border_color(rgb(0xC6CDD3))
+                .flex().flex_col().gap_2()
+                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                    .text_color(rgb(0x165E83))
+                    .child(ui::t!("数式 — LaTeX を打って Enter(Esc で取りやめ)")))
+                .child(div().px_2().py_1().rounded_sm()
+                    .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
+                    .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                    .child(SharedString::from(t)))
+                .child(div().text_size(px(10.5)).text_color(rgb(0x60707C))
+                    .child(ui::t!("例: \\frac{a+b}{2} / \\sqrt{x^2+y^2}"))))
+        };
+
         // プラグインのパネル(置き場の .py 一覧。押すとサンドボックスの中で実行)
         let plug_panel = if !self.plug_open {
             None
@@ -1203,7 +1227,7 @@ impl Writer {
         Panels {
             find_panel, hf_panel, cmt_panel, wm_panel, bm_panel, hist_panel,
             chat_panel, pw_panel, url_panel, fm_panel, nav_panel, rp_panel,
-            lk_panel, ai_panel, sd_panel, rb_panel, plug_panel, xr_panel,
+            lk_panel, ai_panel, sd_panel, rb_panel, eq_panel, plug_panel, xr_panel,
             font_panel, size_panel, style_panel, symbol_panel, proof_panel,
         }
     }

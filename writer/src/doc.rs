@@ -82,6 +82,8 @@ impl Writer {
             rb_open: false,
             rb_ed: Editor::new(""),
             rb_range: 0..0,
+            eq_open: false,
+            eq_ed: Editor::new(""),
             encrypt_pw: None,
             pw_open: false,
             pw_ed: Editor::new(""),
@@ -764,6 +766,44 @@ impl Writer {
         } else {
             ui::tf!("ルビ「{}」を振りました(保存で docx の w:ruby に)", text).into()
         };
+    }
+
+    /// 数式のパネルの Enter。**組むのは Python** — 打った LaTeX を渡して
+    /// 絵をもらい、カーソルの段落に置く。原文も一緒に持たせるので、
+    /// 開き直しても直せる(絵だけだと消して打ち直しになる)
+    pub(crate) fn eq_commit(&mut self) {
+        self.eq_open = false;
+        let tex = self.eq_ed.text().trim().to_string();
+        if tex.is_empty() {
+            self.status = "".into();
+            return;
+        }
+        let size = self.doc.size_pt.unwrap_or(SIZE_PT);
+        match crate::py::kumu_suushiki(&tex, size) {
+            Ok((bytes, w_mm, h_mm)) => {
+                self.checkpoint(false);
+                let im = kumihan::InlineImage {
+                    bytes: std::sync::Arc::new(bytes),
+                    w_mm,
+                    h_mm,
+                    tex: Some(tex.clone()),
+                };
+                // 挿すのはカーソルの段落。**images_new にだけ入れる** —
+                // 組版(layout)は images と images_new の両方を描くので、
+                // 両方に入れると画面に二つ出る(実機で踏んだ)。
+                // images は「読み込んだ絵」の持ち場で、保存では書かれない
+                let cur = self.ed.cursor();
+                self.ed.move_to(cur, false);
+                self.para(|p| p.images_new.push(im.clone()));
+                self.dirty = true;
+                self.status = ui::tf!("数式を置きました({} で組みました)",
+                                      crate::py::suushiki_no_kumi_kata()).into();
+            }
+            // **黙って何も起きない、をしない。** 組めない理由をそのまま見せる
+            Err(e) => {
+                self.status = ui::tf!("数式を組めません: {}", e).into();
+            }
+        }
     }
 
     /// 上書きの前に、直前の中身を控えとして残す(最大9世代)。

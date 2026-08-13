@@ -142,3 +142,95 @@ def tpl_fields():
 
 /// プラグイン(.py)の置き場。~/.config/office/plugins(正は pyrun)
 pub(crate) use pyrun::plugins_dir;
+
+/// 数式を組む台本。**officework.tex に任せる** — 組版は自前で書かない。
+/// TeX があればそちらで組み、無ければ matplotlib(mathtext)に落ちる
+const SUUSHIKI: &str = r#"import json, sys
+try:
+    from officework import tex
+except ImportError:
+    print(json.dumps({"e": "officework が入っていません(pip install officework)"}))
+    raise SystemExit(0)
+try:
+    png, w, h = tex.to_png(sys.argv[1], size_pt=float(sys.argv[2]))
+except Exception as e:
+    print(json.dumps({"e": str(e)}))
+    raise SystemExit(0)
+open(sys.argv[3], "wb").write(png)
+print(json.dumps({"w": w, "h": h, "kata": tex.kumi_kata()}))
+"#;
+
+/// いま数式を何で組むか(状態行に出す字)。**組めないなら組めないと言う**
+pub(crate) fn suushiki_no_kumi_kata() -> String {
+    // **固有名詞は訳さない**(鍵にすると 14 言語ぶんの無駄な行が増える)
+    match hashiru(&["-c", "from officework import tex; print(tex.kumi_kata())"]) {
+        Some(s) if s.trim() == "tex" => "TeX".into(),
+        Some(s) if s.trim() == "mathtext" => "matplotlib".into(),
+        _ => "Python".into(),
+    }
+}
+
+/// 囲いの中から officework が見える道(.venv と PYTHONPATH の置き場)。
+/// bwrap は /home を tmpfs にするので、見せないと import で落ちる
+fn binds_for_python() -> Vec<std::path::PathBuf> {
+    let mut v: Vec<std::path::PathBuf> = Vec::new();
+    if let Ok(p) = std::fs::canonicalize(".venv") {
+        v.push(p);
+    }
+    if let Some(pp) = std::env::var_os("PYTHONPATH") {
+        for part in std::env::split_paths(&pp) {
+            if let Ok(p) = std::fs::canonicalize(&part) {
+                v.push(p);
+            }
+        }
+    }
+    v
+}
+
+/// Python を短く回して標準出力の最後の行を取る(サンドボックスの中)。
+fn hashiru(args: &[&str]) -> Option<String> {
+    let py = find_python();
+    let dir = pyrun::cage_work_dir("suushiki");
+    std::fs::create_dir_all(&dir).ok()?;
+    let mut c = pyrun::caged_python(&py, &dir, &binds_for_python(), false)?;
+    for a in args {
+        c.arg(a);
+    }
+    let out = c.output().ok()?;
+    let s = String::from_utf8_lossy(&out.stdout).to_string();
+    s.lines().last().map(|l| l.to_string())
+}
+
+/// **数式を組む。** 打った LaTeX を Python へ渡し、絵と寸法(mm)をもらう。
+/// 組めなければ**理由をそのまま**返す(黙って何も起きない、をしない)。
+pub(crate) fn kumu_suushiki(tex: &str, size_pt: f32) -> Result<(Vec<u8>, f32, f32), String> {
+    let py = find_python();
+    let dir = pyrun::cage_work_dir("suushiki");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let script = dir.join("kumu.py");
+    std::fs::write(&script, SUUSHIKI).map_err(|e| e.to_string())?;
+    let png = dir.join("out.png");
+    let _ = std::fs::remove_file(&png);
+    // **囲いの中から officework が見えるようにする。** bwrap は /home を
+    // tmpfs にするので、.venv も PYTHONPATH の置き場も見せないと import で落ちる
+    // (calc の Python と同じ作法)。組めない機械では素の Python
+    let mut c = match pyrun::caged_python(&py, &dir, &binds_for_python(), false) {
+        Some(c) => c,
+        None => std::process::Command::new(&py),
+    };
+    c.arg(&script).arg(tex).arg(format!("{size_pt}")).arg(&png);
+    let out = c.output().map_err(|e| e.to_string())?;
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    let last = stdout.lines().last().unwrap_or("").to_string();
+    if let Some(e) = ops::Jobj::parse(&last).and_then(|o| o.str("e")) {
+        return Err(e);
+    }
+    let o = ops::Jobj::parse(&last)
+        .ok_or_else(|| ui::tf!("Python の返事が読めません: {}", last).to_string())?;
+    let (w, h) = (o.num("w").unwrap_or(0.0) as f32, o.num("h").unwrap_or(0.0) as f32);
+    if w <= 0.0 || h <= 0.0 {
+        return Err(ui::t!("寸法が返りません").to_string());
+    }
+    let bytes = std::fs::read(&png).map_err(|e| e.to_string())?;
+    Ok((bytes, w, h))
+}

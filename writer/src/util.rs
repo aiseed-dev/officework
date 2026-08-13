@@ -3,8 +3,6 @@
 //! AI の答えの囲みはがし。**どれも状態を持たない関数**。
 //! **純移動**(見えるところを pub(crate) にしただけ — 挙動と文言は変えない)
 
-use crate::*;
-
 pub(crate) use ops::{font_data, hex, image_px};
 
 /// セルの文章(段落を \n で繋いだもの)。

@@ -1612,6 +1612,53 @@ mod paged_view_tests {
         });
     }
 
+    /// 数式の口。**組むのは Python** なので、ここで見るのは配線と断り方だけ —
+    /// 組んだ絵の良し悪しは実機と officework.tex の検査(test_tex.py)の持ち場
+    #[gpui::test]
+    fn 数式の釦でパネルが開く(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, cx| {
+            assert!(!this.eq_open, "はじめから開いている");
+            this.run_cmd("insequation", cx);
+            assert!(this.eq_open, "押してもパネルが開かない");
+            assert!(this.eq_ed.text().is_empty(), "前の字が残っている");
+            // 取りやめても何も置かない
+            this.eq_open = false;
+            let n: usize = this.doc.paragraphs().map(|p| p.images_new.len()).sum();
+            assert_eq!(n, 0, "開いただけで絵を置いた");
+        });
+    }
+
+    /// 空で Enter は**何も起きない**(空の絵を置かない)
+    #[gpui::test]
+    fn 空の数式は置かない(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, _| {
+            this.set_doc(Document::plain("本文"));
+            this.eq_open = true;
+            this.eq_ed = Editor::new("   ");
+            this.eq_commit();
+            assert!(!this.eq_open, "パネルが閉じない");
+            let n: usize = this.doc.paragraphs().map(|p| p.images_new.len()).sum();
+            assert_eq!(n, 0, "空なのに絵を置いた");
+        });
+    }
+
+    /// 組めない式は**黙って何も起きない、をしない**。理由を状態行に出す
+    #[gpui::test]
+    fn 組めない数式は理由を言う(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, _| {
+            this.set_doc(Document::plain("本文"));
+            this.eq_open = true;
+            this.eq_ed = Editor::new(r"\begin{tikzpicture}x\end{tikzpicture}");
+            this.eq_commit();
+            let n: usize = this.doc.paragraphs().map(|p| p.images_new.len()).sum();
+            assert_eq!(n, 0, "組めないのに絵を置いた");
+            assert!(!this.status.is_empty(), "断ったことを言っていない");
+        });
+    }
+
     #[gpui::test]
     fn 編集モードは折らない(cx: &mut gpui::TestAppContext) {
         let w = 開く(cx);

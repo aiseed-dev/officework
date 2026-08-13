@@ -1449,7 +1449,7 @@ impl Render for Writer {
         let Panels {
             find_panel, hf_panel, cmt_panel, wm_panel, bm_panel, hist_panel,
             chat_panel, pw_panel, url_panel, fm_panel, nav_panel, rp_panel,
-            lk_panel, ai_panel, sd_panel, rb_panel, plug_panel, xr_panel,
+            lk_panel, ai_panel, sd_panel, rb_panel, eq_panel, plug_panel, xr_panel,
             font_panel, size_panel, style_panel, symbol_panel, proof_panel,
         } = self.panels(dk, th_btn, th_btn_hover, th_cmd_border, th_status, th_top_fg, cx);
 
@@ -1608,6 +1608,7 @@ impl Render for Writer {
                     .children(plug_panel)
                     .children(pw_panel)
                     .children(rb_panel)
+                    .children(eq_panel)
                     .children(sd_panel)
                     .children(ai_panel)
                     .children(url_panel)

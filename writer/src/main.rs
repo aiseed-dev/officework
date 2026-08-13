@@ -321,6 +321,11 @@ struct Writer {
     rb_open: bool,
     rb_ed: Editor,
     rb_range: std::ops::Range<usize>,
+    /// 数式のパネル(LaTeX を打つ)。**組むのは Python** — 自前で組版は
+    /// 書かない(calc がグラフを matplotlib に任せるのと同じ分業)。
+    /// 打った原文は絵と一緒に持ち越すので、開き直しても直せる
+    eq_open: bool,
+    eq_ed: Editor,
     /// 暗号化のパスワード。Some なら保存で ECMA-376 Standard に包む
     encrypt_pw: Option<String>,
     /// パスワードのパネル。pw_pending が Some なら「開くために聞いている」
@@ -402,6 +407,8 @@ impl HasEditor for Writer {
             &mut self.fm_ed
         } else if self.rb_open {
             &mut self.rb_ed
+        } else if self.eq_open {
+            &mut self.eq_ed
         } else if self.sd_open {
             &mut self.sd_ed
         } else if self.ai_open {
@@ -436,6 +443,8 @@ impl HasEditor for Writer {
             &self.fm_ed
         } else if self.rb_open {
             &self.rb_ed
+        } else if self.eq_open {
+            &self.eq_ed
         } else if self.sd_open {
             &self.sd_ed
         } else if self.ai_open {
@@ -451,7 +460,7 @@ impl HasEditor for Writer {
             // パスワード・検索欄への打鍵は文書を変えない
             return;
         }
-        if self.chat_open || self.file_field.is_some() || self.rb_open
+        if self.chat_open || self.file_field.is_some() || self.rb_open || self.eq_open
             || self.url_open || self.fm_field.is_some() || self.sd_open
             || self.ai_open {
             // チャット・文書の情報・ルビの入力欄。打鍵は(確定まで)文書を変えない
@@ -567,6 +576,7 @@ impl Writer {
             || self.url_open
             || self.fm_field.is_some()
             || self.rb_open
+            || self.eq_open
             || self.sd_open
             || self.ai_open
             || self.chat_open

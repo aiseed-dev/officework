@@ -207,8 +207,23 @@ impl Writer {
             // 図形・グラフ・SmartArt・テキストアート・方程式も同じ道 —
             // **絵は Python で描いて画像として貼る**(SEKKEI「writer の挿入系」)。
             // 灰色で残すより、方針どおりに動くボタンにする(発注者判断)
+            // 数式。**LaTeX で受けて、組むのは Python**(自前で組版は書かない —
+            // calc がグラフを matplotlib に任せるのと同じ分業)。TeX が入って
+            // いればそちらで組み、無ければ matplotlib に落ちる。
+            // 打った原文は絵と一緒に持ち越すので、開き直しても直せる
+            "insequation" => {
+                self.switch_target(Target::Body);
+                self.eq_ed = Editor::new("");
+                self.find_open = false;
+                self.hf_edit = None;
+                self.cmt_edit = false;
+                self.rb_open = false;
+                self.eq_open = true;
+                self.status =
+                    ui::t!("数式: LaTeX を打って Enter(例: \\frac{a+b}{2})").into();
+            }
             "insimage" | "insshape" | "inssmartart" | "inschart" | "smartpicker"
-            | "instextart" | "insequation" => {
+            | "instextart" => {
                 if id != "insimage" {
                     self.status =
                         ui::t!("図は Python(matplotlib 等)で描いて貼ります(SVG なら拡大しても粗くなりません)").into();
