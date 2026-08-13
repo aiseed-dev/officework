@@ -149,10 +149,20 @@ pub fn substitute(name: &str) -> Option<&'static Family> {
         || name.to_lowercase().contains("gothic")
         || name.contains("メイリオ")
         || name.to_lowercase().contains("meiryo");
+    // 並びは「入れた書体(IPA/Noto)→ OS の持ち物」。後半は実機の書体 —
+    // Mac は Hiragino、Windows は游/メイリオ/ＭＳ が標準で、ここに無いと
+    // Noto も IPA も入れていない実機で明朝がゴシックの fallback に落ちる
+    // (2026-08-13、CI の3 OS 化で気づいた製品側の穴)。
+    // 書体は日本語名と英語名の両方で名乗ることがあるので、両方書く
+    // (resolve は空白・大小文字の揺れは吸うが、言語までは翻訳しない)
     let candidates: &[&str] = if mincho {
-        &["IPAex明朝", "Noto Serif CJK JP", "BIZ UDP明朝", "BIZ UD明朝", "IPA P明朝", "IPA明朝"]
+        &["IPAex明朝", "Noto Serif CJK JP", "BIZ UDP明朝", "BIZ UD明朝", "IPA P明朝", "IPA明朝",
+          "ヒラギノ明朝 ProN", "Hiragino Mincho ProN",
+          "游明朝", "游明朝体", "Yu Mincho", "ＭＳ 明朝", "MS Mincho"]
     } else if gothic {
-        &["IPAexゴシック", "Noto Sans CJK JP", "BIZ UDPゴシック", "IPA Pゴシック"]
+        &["IPAexゴシック", "Noto Sans CJK JP", "BIZ UDPゴシック", "IPA Pゴシック",
+          "ヒラギノ角ゴシック", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+          "游ゴシック", "Yu Gothic", "メイリオ", "Meiryo", "ＭＳ ゴシック", "MS Gothic"]
     } else {
         return None;
     };
@@ -165,7 +175,10 @@ pub fn substitute(name: &str) -> Option<&'static Family> {
 /// 同じ「日本語が組める」でも、名前順の先頭(AR PL UMing 等)より
 /// 見慣れたものを先に。
 pub fn fallback() -> Option<&'static Family> {
-    for c in ["Noto Sans CJK JP", "IPAexゴシック", "BIZ UDPゴシック", "IPA Pゴシック"] {
+    // 後半は実機の標準書体(Mac: Hiragino、Windows: 游/メイリオ)。
+    // 無いと名前順の先頭(AR PL UMing 等)に落ちて見た目が古びる
+    for c in ["Noto Sans CJK JP", "IPAexゴシック", "BIZ UDPゴシック", "IPA Pゴシック",
+              "ヒラギノ角ゴシック", "Hiragino Sans", "游ゴシック", "Yu Gothic", "メイリオ", "Meiryo"] {
         if let Some(f) = resolve(c) {
             return Some(f);
         }
