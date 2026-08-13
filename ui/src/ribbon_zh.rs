@@ -203,7 +203,7 @@ pub const CALC: &[Tab] = &[
         c("align-dist", "分散对齐", "align-dist"),
         c("merge", "合并和居中", "merge"),
         c("direction", "文字方向(从右横排)", "direction"),
-        c("insert-function", "函数", "formula"),
+        c("sum", "自动求和", "autosum"),
         c("fill-num", "填充", "fill-num"),
         c("defname", "名称管理", "named-range"),
         c("clear", "清除", "clear"),

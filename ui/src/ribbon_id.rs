@@ -203,7 +203,7 @@ pub const CALC: &[Tab] = &[
         c("align-dist", "Terdistribusi", "align-dist"),
         c("merge", "Merge dan center", "merge"),
         c("direction", "Arah teks (kanan-ke-kiri)", "direction"),
-        c("insert-function", "Fungsi", "formula"),
+        c("sum", "JumlahOtomatis", "autosum"),
         c("fill-num", "Isi", "fill-num"),
         c("defname", "Pengaturan Nama", "named-range"),
         c("clear", "Hapus", "clear"),

@@ -249,7 +249,10 @@ pub const CALC: &[Tab] = &[
         c("align-dist", "均等割付", "align-dist"),
         c("merge", "結合して、中央に配置する", "merge"),
         c("direction", "文字の向き(右横書き)", "direction"),
-        c("insert-function", "関数", "formula"),
+        // ホームの Σ は**オートSUM**(2026-08-13 発注者指摘)。前は関数の
+        // 挿入(fx と同じ小窓)を置いていたが、本家のホームの Σ は
+        // 「上の数値をまとめて =SUM()」の方。関数の挿入は数式タブと fx に居る
+        c("sum", "オートSUM", "autosum"),
         c("fill-num", "フィル", "fill-num"),
         c("defname", "名前の管理", "named-range"),
         c("clear", "消去", "clear"),

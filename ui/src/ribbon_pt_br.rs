@@ -203,7 +203,7 @@ pub const CALC: &[Tab] = &[
         c("align-dist", "Distribuído", "align-dist"),
         c("merge", "Mesclar e centralizar", "merge"),
         c("direction", "Direção do texto (direita para a esquerda)", "direction"),
-        c("insert-function", "Funções", "formula"),
+        c("sum", "AutoSoma", "autosum"),
         c("fill-num", "Preencher", "fill-num"),
         c("defname", "Gerenciador de nomes", "named-range"),
         c("clear", "Limpar", "clear"),

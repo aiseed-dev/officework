@@ -203,7 +203,7 @@ pub const CALC: &[Tab] = &[
         c("align-dist", "Phân bố đều", "align-dist"),
         c("merge", "Gộp", "merge"),
         c("direction", "Hướng chữ (phải sang trái)", "direction"),
-        c("insert-function", "Hàm số", "formula"),
+        c("sum", "AutoSum", "autosum"),
         c("fill-num", "Điền", "fill-num"),
         c("defname", "Quản lý tên", "named-range"),
         c("clear", "Xóa", "clear"),

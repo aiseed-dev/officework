@@ -203,7 +203,7 @@ pub const CALC: &[Tab] = &[
         c("align-dist", "균등 분할", "align-dist"),
         c("merge", "병합하고 가운데 맞춤", "merge"),
         c("direction", "텍스트 방향(오른쪽부터 쓰기)", "direction"),
-        c("insert-function", "함수", "formula"),
+        c("sum", "자동 합계", "autosum"),
         c("fill-num", "채우기", "fill-num"),
         c("defname", "이름 관리자", "named-range"),
         c("clear", "지우기", "clear"),
