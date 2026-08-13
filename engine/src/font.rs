@@ -34,8 +34,12 @@ pub struct Family {
 
 /// 探す場所。OS ごとの標準的な置き場と、利用者の置き場。
 fn dirs() -> Vec<PathBuf> {
+    // /system/fonts は Android(Noto CJK が標準で居る)。iOS は mac と同じ
+    // /System/Library/Fonts。スマホは wheel(PEP 730/738)で Python から
+    // エンジンを使う道があるので、探索先に最初から入れておく(2026-08-13)
     let mut v: Vec<PathBuf> = ["/usr/share/fonts", "/usr/local/share/fonts",
-        "/Library/Fonts", "/System/Library/Fonts", "C:\\Windows\\Fonts"]
+        "/Library/Fonts", "/System/Library/Fonts", "/system/fonts",
+        "C:\\Windows\\Fonts"]
         .iter().map(PathBuf::from).collect();
     if let Ok(h) = std::env::var("HOME") {
         v.push(PathBuf::from(&h).join(".fonts"));
