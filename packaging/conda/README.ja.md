@@ -59,7 +59,25 @@ README が「v0 の meta.yaml は新規には非推奨」と明言。下書き�
 ## この repo 側でやっておくこと(残件)
 
 - [x] 公開の版のタグ → PyPI(0.2.0 は 2026-08-12 に済)
-- [ ] v0.3.0 のタグ → PyPI(支度済み 2026-08-14。sha256 はその後に取る)
-- [ ] `extra.recipe-maintainers` を発注者の**個人の** GitHub ID に
-      (いまは仮に aiseed-dev。組織名だと審査で止まる)
+- [x] v0.3.0 のタグ → PyPI(2026-08-14 に済。recipe は 0.3.0 の sha256 入り)
+- [x] `extra.recipe-maintainers` = awoni(発注者の個人アカウント。2026-08-14)
+- [ ] staged-recipes へ PR(下の「出し方」— recipe.yaml はそのまま写せる形にした)
 - [x] recipe を v1(recipe.yaml)に(2026-08-14。v0 の meta.yaml は消した)
+
+## 出し方(そのまま打てる形。fork と PR は awoni のアカウントで)
+
+```console
+$ gh repo fork conda-forge/staged-recipes --clone
+$ cd staged-recipes
+$ git switch -c officework
+$ mkdir recipes/officework
+$ cp /home/dev/dev/officework/packaging/conda/recipe/recipe.yaml recipes/officework/
+$ git add recipes/officework && git commit -m "Add officework"
+$ git push -u origin officework
+$ gh pr create --repo conda-forge/staged-recipes --title "Add officework" \
+    --body "xlsx/docx engines with formula recalculation (Rust + maturin, abi3). Built from the PyPI sdist; licenses of Rust dependencies are bundled via cargo-bundle-licenses."
+```
+
+PR の中で聞かれたら: maintainer は awoni(本人が「I agree to be a
+maintainer」と一言コメント)。CI が落ちたら**このファイルに踏んだ穴を
+書き足してから**直す。
