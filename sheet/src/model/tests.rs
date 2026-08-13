@@ -737,8 +737,11 @@ mod shape_tests {
         assert!(svg.contains(r#"width="200""#), "{svg}");
         assert!(svg.contains("#FFF2CC") && svg.contains("#1B6E3C"));
         assert!(svg.contains("<ellipse"));
-        // 知らない種類は四角で描く(黙って消さない)
-        let unknown = SheetShape { kind: "hexagon".into(), ..sh };
+        // 知らない種類は四角で描く(黙って消さない)。
+        // **例に使う名前は「まだ描けない物」でなければならない** —
+        // hexagon はここの例だったが 2026-08-13 に描けるようになった
+        let unknown = SheetShape { kind: "cube".into(), ..sh };
+        assert!(!can_draw("cube"), "例に使った形が描けるようになっている");
         assert!(unknown.to_svg().contains("<rect"));
     }
 }
@@ -988,5 +991,94 @@ mod month_name_tests {
         assert_eq!(format_value(&Value::Number(0.5), Some("h:mm"), false), "12:00");
         assert_eq!(format_value(&Value::Number(0.5), Some("h:mm:ss"), false), "12:00:00");
         assert_eq!(format_value(&Value::Number(1234.5), Some("#,##0.0"), false), "1,234.5");
+    }
+}
+
+/// 図形ギャラリー(台帳 第2便の [中])。**形が形に見えるか**を縛る。
+#[cfg(test)]
+mod preset_shape_tests {
+    use crate::model::{can_draw, preset_svg, SheetShape};
+    use crate::Pos;
+
+    /// 本家の分類に並ぶ、いま描ける形の全部
+    const KINDS: &[&str] = &[
+        "triangle", "rtTriangle", "parallelogram", "trapezoid", "pentagon", "hexagon",
+        "octagon", "plus", "stadium",
+        "star4", "star5", "star6", "star8",
+        "leftArrow", "upArrow", "downArrow", "leftRightArrow", "upDownArrow",
+        "mathPlus", "mathMinus", "mathEqual", "mathNotEqual", "mathMultiply",
+        "flowChartProcess", "flowChartDecision", "flowChartInputOutput",
+        "flowChartConnector", "flowChartTerminator", "flowChartDocument",
+        "wedgeRectCallout", "wedgeEllipseCallout",
+    ];
+
+    fn shape(kind: &str) -> SheetShape {
+        SheetShape {
+            at: Pos::new(0, 0),
+            width_px: 120.0,
+            height_px: 70.0,
+            kind: kind.into(),
+            fill: Some("DCE6F1".into()),
+            line: Some("1B6E3C".into()),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn 足した形はどれも四角に落ちない() {
+        for k in KINDS {
+            assert!(can_draw(k), "{k} が描けない形のまま");
+            assert!(preset_svg(k, 0.0, 0.0, 100.0, 60.0, "").is_some(), "{k} の作図が無い");
+        }
+    }
+
+    #[test]
+    fn 元からある形も描ける形に数える() {
+        // **判断は can_draw 1箇所**(描く側と数える側で表が割れない)
+        for k in ["rect", "roundRect", "ellipse", "rightArrow", "diamond", "line",
+                  "spark", "spark-col", "spark-wl", "ink", "marker"] {
+            assert!(can_draw(k), "{k} を描けない形に数えている");
+        }
+    }
+
+    #[test]
+    fn 知らない形は描けないと答える() {
+        // 数えられて Report に載る側。**黙って四角にしない**ための入り口
+        for k in ["cube", "can", "heart", "ribbon", "actionButtonHome", ""] {
+            assert!(!can_draw(k), "{k} を描けることにしている");
+        }
+    }
+
+    #[test]
+    fn どの形も正しいsvgになる() {
+        // 座標の式を間違えると NaN が出て `points="NaN,NaN"` になり、
+        // 画面から figure が消える(絵は「出ない」としか言わない)
+        for k in KINDS {
+            let svg = shape(k).to_svg();
+            let mut r = quick_xml::Reader::from_str(&svg);
+            let mut buf = Vec::new();
+            loop {
+                match r.read_event_into(&mut buf) {
+                    Ok(quick_xml::events::Event::Eof) => break,
+                    Err(e) => panic!("{k} の SVG が壊れている: {e}\n{svg}"),
+                    _ => {}
+                }
+                buf.clear();
+            }
+            assert!(!svg.contains("NaN"), "{k} の座標に NaN がある:\n{svg}");
+            assert!(!svg.contains("inf"), "{k} の座標が無限大:\n{svg}");
+        }
+    }
+
+    #[test]
+    fn 潰れた大きさでも落ちない() {
+        // 幅も高さも 0 の図形(ドラッグの途中で来る)
+        for k in KINDS {
+            let mut sp = shape(k);
+            sp.width_px = 0.0;
+            sp.height_px = 0.0;
+            let svg = sp.to_svg();
+            assert!(!svg.contains("NaN"), "{k} が潰れた大きさで NaN:\n{svg}");
+        }
     }
 }

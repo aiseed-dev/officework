@@ -425,6 +425,57 @@ mod carry_tests {
         assert_eq!(crate::xlsx::read::split_creators(&crate::xlsx::write::join_creators(&one)).len(), 1);
     }
 
+
+    #[test]
+    fn 足した形の名前が往復する() {
+        // prstGeom の名前をそのまま種類にしているので、Excel で作った形も
+        // ここを通る。**名前を知らない形に丸めない**
+        let mut b = Book::new();
+        for (i, k) in ["star5", "hexagon", "wedgeEllipseCallout", "flowChartDecision"]
+            .iter()
+            .enumerate()
+        {
+            b.sheets[0].shapes_new.push(crate::model::SheetShape {
+                at: Pos::new(i as u32, 0),
+                width_px: 100.0,
+                height_px: 60.0,
+                kind: (*k).into(),
+                fill: Some("DCE6F1".into()),
+                ..Default::default()
+            });
+        }
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        let got: Vec<String> = back.sheets[0].shapes.iter().map(|s| s.kind.clone()).collect();
+        assert_eq!(got, ["star5", "hexagon", "wedgeEllipseCallout", "flowChartDecision"],
+                   "図形の種類が往復しない");
+    }
+
+    #[test]
+    fn 描けない形は黙って四角にせず報告する() {
+        // 保存では元の prstGeom の名前を返すのでファイルは壊れない。
+        // だが画面では四角に見える — **見える物が違うなら言う**
+        let mut b = Book::new();
+        b.sheets[0].shapes_new.push(crate::model::SheetShape {
+            at: Pos::new(0, 0),
+            width_px: 80.0,
+            height_px: 50.0,
+            kind: "cube".into(), // こちらが作図を持たない形
+            fill: Some("DCE6F1".into()),
+            ..Default::default()
+        });
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let (back, rep) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        assert_eq!(back.sheets[0].shapes[0].kind, "cube", "名前まで失っている");
+        assert!(
+            rep.unsupported.iter().any(|(n, _)| n.contains("描けない形")),
+            "描けない形を黙って通した: {:?}",
+            rep.unsupported
+        );
+    }
+
     #[test]
     fn 古い計算順は持ち越さない() {
         // calcChain が古いままだと Excel が誤った順で開くことがある

@@ -1053,13 +1053,258 @@ impl SheetShape {
                     r#"<polyline points="{pts}" fill="none" stroke="{line}" stroke-width="{w_}" stroke-opacity="{o_}" stroke-linecap="round" stroke-linejoin="round"/>"#
                 )
             }
-            _ => format!(
-                r#"<rect x="{x0}" y="{y0}" width="{}" height="{}" {style}/>"#,
-                x1 - x0,
-                y1 - y0
-            ),
+            // 本家の図形ギャラリーの品揃え。**xlsx の prstGeom の名前を
+            // そのまま種類に使う**ので、Excel で作った帳票の形もここに来る
+            k => match preset_svg(k, x0, y0, x1, y1, &style) {
+                Some(s) => s,
+                // 知らない形は四角で描く。**それを黙ってやらない** —
+                // 読みの Report が「描けない図形」として一件ずつ数える
+                None => format!(
+                    r#"<rect x="{x0}" y="{y0}" width="{}" height="{}" {style}/>"#,
+                    x1 - x0,
+                    y1 - y0
+                ),
+            },
         }
     }
+}
+
+/// その形を**その形として描けるか**。
+///
+/// 描けない名前は四角で見せることになるので、読みはこれを見て
+/// 「描けない図形」として数える。**判断はここ1箇所** — 描く側と
+/// 数える側で名前の表が割れると、黙って四角に化けたものが数から漏れる。
+pub fn can_draw(kind: &str) -> bool {
+    matches!(
+        kind,
+        // body_svg が直に持っている形
+        "rect" | "roundRect" | "ellipse" | "rightArrow" | "diamond" | "line"
+        // 折れ線もの(このアプリが作る。points で描く)
+        | "spark" | "spark-col" | "spark-wl" | "ink" | "marker"
+    ) || preset_svg(kind, 0.0, 0.0, 1.0, 1.0, "").is_some()
+}
+
+/// prstGeom の名前 → 形の SVG。**描ける形だけ** Some を返す。
+///
+/// 形は箱(x0,y0)-(x1,y1)に収める。Office の既定の調整値(adj)に寄せた
+/// 比で作る — 一致させることが目的ではなく、**その形に見えること**が目的。
+/// 知らない名前は None で、呼んだ側が四角に落として読みが数える。
+pub fn preset_svg(kind: &str, x0: f32, y0: f32, x1: f32, y1: f32, style: &str) -> Option<String> {
+    let (w, h) = (x1 - x0, y1 - y0);
+    let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
+    let m = w.min(h);
+    let poly = |pts: Vec<(f32, f32)>| {
+        let s: Vec<String> = pts.iter().map(|(x, y)| format!("{x:.1},{y:.1}")).collect();
+        format!(r#"<polygon points="{}" {style}/>"#, s.join(" "))
+    };
+    // 星形(外周と内周を交互に。箱に合わせて楕円へ乗せる)
+    let star = |n: usize, inner: f32| {
+        let (rx, ry) = (w / 2.0, h / 2.0);
+        let step = std::f32::consts::PI / n as f32;
+        let pts = (0..n * 2)
+            .map(|i| {
+                let r = if i % 2 == 0 { 1.0 } else { inner };
+                let a = -std::f32::consts::FRAC_PI_2 + step * i as f32;
+                (cx + a.cos() * rx * r, cy + a.sin() * ry * r)
+            })
+            .collect();
+        poly(pts)
+    };
+    // 正多角形(頂点を上から時計回り)
+    let ngon = |n: usize| {
+        let (rx, ry) = (w / 2.0, h / 2.0);
+        let step = std::f32::consts::TAU / n as f32;
+        let pts = (0..n)
+            .map(|i| {
+                let a = -std::f32::consts::FRAC_PI_2 + step * i as f32;
+                (cx + a.cos() * rx, cy + a.sin() * ry)
+            })
+            .collect();
+        poly(pts)
+    };
+    // 十字(腕の太さ t は短辺の割合)
+    let cross = |t: f32| {
+        let (ax, ay) = (w * t / 2.0, h * t / 2.0);
+        poly(vec![
+            (cx - ax, y0), (cx + ax, y0), (cx + ax, cy - ay), (x1, cy - ay),
+            (x1, cy + ay), (cx + ax, cy + ay), (cx + ax, y1), (cx - ax, y1),
+            (cx - ax, cy + ay), (x0, cy + ay), (x0, cy - ay), (cx - ax, cy - ay),
+        ])
+    };
+    // 横棒(数式の記号に使う。t=高さの割合)
+    let bar = |t: f32, yc: f32| {
+        let th = h * t / 2.0;
+        format!(
+            r#"<rect x="{x0:.1}" y="{:.1}" width="{w:.1}" height="{:.1}" {style}/>"#,
+            yc - th,
+            th * 2.0
+        )
+    };
+    let s = match kind {
+        // ---- 基本図形 ----
+        "triangle" => poly(vec![(cx, y0), (x1, y1), (x0, y1)]),
+        "rtTriangle" => poly(vec![(x0, y0), (x0, y1), (x1, y1)]),
+        "parallelogram" => {
+            let a = w * 0.25;
+            poly(vec![(x0 + a, y0), (x1, y0), (x1 - a, y1), (x0, y1)])
+        }
+        "trapezoid" => {
+            let a = w * 0.25;
+            poly(vec![(x0 + a, y0), (x1 - a, y0), (x1, y1), (x0, y1)])
+        }
+        "pentagon" => ngon(5),
+        "hexagon" => {
+            let a = m * 0.25;
+            poly(vec![
+                (x0 + a, y0), (x1 - a, y0), (x1, cy), (x1 - a, y1), (x0 + a, y1), (x0, cy),
+            ])
+        }
+        "octagon" => {
+            let a = m * 0.293;
+            poly(vec![
+                (x0 + a, y0), (x1 - a, y0), (x1, y0 + a), (x1, y1 - a),
+                (x1 - a, y1), (x0 + a, y1), (x0, y1 - a), (x0, y0 + a),
+            ])
+        }
+        "plus" => cross(0.5),
+        // 角を落とした四角(flowChartTerminator と同じ姿=丸みの強い角丸)
+        "flowChartTerminator" | "stadium" => format!(
+            r#"<rect x="{x0:.1}" y="{y0:.1}" width="{w:.1}" height="{h:.1}" rx="{r:.1}" ry="{r:.1}" {style}/>"#,
+            r = h / 2.0
+        ),
+        // ---- 星とリボン ----
+        "star4" => star(4, 0.35),
+        "star5" => star(5, 0.382),
+        "star6" => star(6, 0.577),
+        "star8" => star(8, 0.707),
+        // ---- 矢印(右向きは既存。残りは同じ形の向き違い)----
+        "leftArrow" | "upArrow" | "downArrow" => {
+            let neck = if kind == "leftArrow" { h * 0.25 } else { w * 0.25 };
+            match kind {
+                "leftArrow" => {
+                    let head = (w * 0.35).min(h);
+                    poly(vec![
+                        (x1, cy - neck), (x0 + head, cy - neck), (x0 + head, y0),
+                        (x0, cy), (x0 + head, y1), (x0 + head, cy + neck), (x1, cy + neck),
+                    ])
+                }
+                "upArrow" => {
+                    let head = (h * 0.35).min(w);
+                    poly(vec![
+                        (cx - neck, y1), (cx - neck, y0 + head), (x0, y0 + head),
+                        (cx, y0), (x1, y0 + head), (cx + neck, y0 + head), (cx + neck, y1),
+                    ])
+                }
+                _ => {
+                    let head = (h * 0.35).min(w);
+                    poly(vec![
+                        (cx - neck, y0), (cx - neck, y1 - head), (x0, y1 - head),
+                        (cx, y1), (x1, y1 - head), (cx + neck, y1 - head), (cx + neck, y0),
+                    ])
+                }
+            }
+        }
+        "leftRightArrow" => {
+            let (neck, head) = (h * 0.25, (w * 0.25).min(h));
+            poly(vec![
+                (x0, cy), (x0 + head, y0), (x0 + head, cy - neck), (x1 - head, cy - neck),
+                (x1 - head, y0), (x1, cy), (x1 - head, y1), (x1 - head, cy + neck),
+                (x0 + head, cy + neck), (x0 + head, y1),
+            ])
+        }
+        "upDownArrow" => {
+            let (neck, head) = (w * 0.25, (h * 0.25).min(w));
+            poly(vec![
+                (cx, y0), (x1, y0 + head), (cx + neck, y0 + head), (cx + neck, y1 - head),
+                (x1, y1 - head), (cx, y1), (x0, y1 - head), (cx - neck, y1 - head),
+                (cx - neck, y0 + head), (x0, y0 + head),
+            ])
+        }
+        // ---- 数式の記号 ----
+        "mathPlus" => cross(0.235),
+        "mathMinus" => bar(0.235, cy),
+        "mathEqual" => {
+            let g = h * 0.19;
+            format!("{}{}", bar(0.14, cy - g), bar(0.14, cy + g))
+        }
+        "mathNotEqual" => {
+            let g = h * 0.19;
+            let sl = w * 0.12;
+            format!(
+                "{}{}{}",
+                bar(0.14, cy - g),
+                bar(0.14, cy + g),
+                poly(vec![
+                    (cx + sl, y0), (cx + sl * 2.0, y0), (cx - sl, y1), (cx - sl * 2.0, y1),
+                ])
+            )
+        }
+        "mathMultiply" => {
+            // 斜めの十字。腕の太さは短辺の 0.2
+            let t = m * 0.1;
+            let (dx, dy) = (t, t);
+            poly(vec![
+                (x0 + dx, y0), (cx, cy - dy * 1.4), (x1 - dx, y0), (x1, y0 + dy),
+                (cx + dx * 1.4, cy), (x1, y1 - dy), (x1 - dx, y1), (cx, cy + dy * 1.4),
+                (x0 + dx, y1), (x0, y1 - dy), (cx - dx * 1.4, cy), (x0, y0 + dy),
+            ])
+        }
+        // ---- フローチャート(姿が同じものは同じ形で描く)----
+        "flowChartProcess" => format!(
+            r#"<rect x="{x0:.1}" y="{y0:.1}" width="{w:.1}" height="{h:.1}" {style}/>"#
+        ),
+        "flowChartDecision" => poly(vec![(cx, y0), (x1, cy), (cx, y1), (x0, cy)]),
+        "flowChartInputOutput" => {
+            let a = w * 0.25;
+            poly(vec![(x0 + a, y0), (x1, y0), (x1 - a, y1), (x0, y1)])
+        }
+        "flowChartConnector" => format!(
+            r#"<ellipse cx="{cx:.1}" cy="{cy:.1}" rx="{:.1}" ry="{:.1}" {style}/>"#,
+            w / 2.0,
+            h / 2.0
+        ),
+        "flowChartDocument" => {
+            // 下辺が波打つ紙
+            let a = h * 0.16;
+            format!(
+                r#"<path d="M{x0:.1},{y0:.1} L{x1:.1},{y0:.1} L{x1:.1},{:.1} Q{:.1},{:.1} {cx:.1},{:.1} Q{:.1},{:.1} {x0:.1},{:.1} Z" {style}/>"#,
+                y1 - a,
+                x1 - w * 0.25, y1 - a * 2.0,
+                y1 - a,
+                x0 + w * 0.25, y1,
+                y1 - a
+            )
+        }
+        // ---- 吹き出し ----
+        "wedgeRectCallout" => {
+            let b = y1 - h * 0.22; // 本体の下辺
+            format!(
+                r#"<path d="M{x0:.1},{y0:.1} L{x1:.1},{y0:.1} L{x1:.1},{b:.1} L{:.1},{b:.1} L{:.1},{y1:.1} L{:.1},{b:.1} L{x0:.1},{b:.1} Z" {style}/>"#,
+                x0 + w * 0.42,
+                x0 + w * 0.18,
+                x0 + w * 0.30
+            )
+        }
+        "wedgeEllipseCallout" => {
+            // **楕円と尻尾を1本の輪郭で描く。** 別々に描くと継ぎ目の線が
+            // 吹き出しの中を横切る(実機の絵で見えた)
+            let (rx, ry) = (w / 2.0, h * 0.39);
+            let ec = y0 + ry;
+            let at = |deg: f32| {
+                let a = deg.to_radians();
+                (cx + a.cos() * rx, ec + a.sin() * ry)
+            };
+            // 下側の左寄りに口を開ける(y は下向きなので 90 度が真下)
+            let (p1x, p1y) = at(100.0);
+            let (p2x, p2y) = at(140.0);
+            format!(
+                r#"<path d="M{p1x:.1},{p1y:.1} A{rx:.1},{ry:.1} 0 1 0 {p2x:.1},{p2y:.1} L{:.1},{y1:.1} Z" {style}/>"#,
+                x0 + w * 0.18
+            )
+        }
+        _ => return None,
+    };
+    Some(s)
 }
 
 /// シートに浮かぶ画像。左上をセルに留める(xlsx の oneCellAnchor)。

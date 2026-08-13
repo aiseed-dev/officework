@@ -1891,6 +1891,12 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                         });
                     }
                     DrawKind::Shape(mut sp) => {
+                        // **描けない形を黙って四角にしない。** 保存では
+                        // prstGeom の名前をそのまま返すので原本は壊れないが、
+                        // 画面では四角に見える — 見える物が違うなら言う
+                        if !crate::model::can_draw(&sp.kind) {
+                            rep.note("図形(描けない形。四角で見せます。保存では元の形のまま)");
+                        }
                         sp.at = at;
                         sp.width_px = width_px;
                         sp.height_px = height_px;
