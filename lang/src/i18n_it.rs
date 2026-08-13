@@ -1523,4 +1523,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("上付き", "Apice"),
     ("上付きを切り替えました", "Apice commutato"),
     ("下付き", "Pedice"),
+    ("このセルにコメントがありません", "Questa cella non ha commenti"),
+    ("解決済みにしました", "Segnato come risolto"),
+    ("解決済みを取り消しました", "Segno di risolto rimosso"),
+    ("返信が空です(何も足しませんでした)", "La risposta è vuota (non è stato aggiunto nulla)"),
+    ("{} のコメントに返信しました(保存で残ります)", "Risposto al commento in {} (resta al salvataggio)"),
+    ("返信を追加 — この筋の後ろに足します", "Aggiungi una risposta — va in fondo a questa discussione"),
 ];

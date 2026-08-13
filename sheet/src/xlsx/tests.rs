@@ -590,6 +590,76 @@ mod carry_tests {
         );
     }
 
+
+    #[test]
+    fn コメントの筋と著者と解決が往復する() {
+        use crate::model::{CommentEntry, CommentThread};
+        let mut b = Book::new();
+        let p = Pos::parse("A1").unwrap();
+        b.sheets[0].set(p, Cell::input("値"));
+        b.sheets[0].comments.insert(p, CommentThread {
+            done: true,
+            entries: vec![
+                CommentEntry { who: "山田 太郎".into(), when: "2026-08-01T09:00:00Z".into(),
+                               text: "元のコメント".into() },
+                CommentEntry { who: "鈴木 花子".into(), when: "2026-08-02T10:00:00Z".into(),
+                               text: "返信です".into() },
+            ],
+        });
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        assert_eq!(
+            back.sheets[0].comments.get(&p),
+            b.sheets[0].comments.get(&p),
+            "コメントの筋が往復しない"
+        );
+    }
+
+    #[test]
+    fn 直したコメントは古い写しとも食い違わない() {
+        // **これが直したかった穴。** 近代の Excel はスレッド側を見るので、
+        // 古い写しだけ書き換えると、直した文が Excel に映らない
+        // (2026-08-13 に実測してから直した)
+        use crate::model::CommentThread;
+        let mut b = Book::new();
+        let p = Pos::parse("A1").unwrap();
+        b.sheets[0].comments.insert(p, CommentThread::new("元の文", "山田"));
+        let mut src = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut src)).unwrap();
+
+        let (mut back, _) = crate::xlsx::read(Cursor::new(&src)).unwrap();
+        back.sheets[0].comments.get_mut(&p).unwrap().entries[0].text = "直した文".into();
+        let mut saved = Vec::new();
+        crate::xlsx::write_with(&back, Some(Cursor::new(&src)), Cursor::new(&mut saved)).unwrap();
+
+        let mut z = zip::ZipArchive::new(Cursor::new(&saved)).unwrap();
+        for n in ["xl/threadedComments/threadedComment1.xml", "xl/comments1.xml"] {
+            let mut s = String::new();
+            z.by_name(n).unwrap().read_to_string(&mut s).unwrap();
+            assert!(s.contains("直した文"), "{n} が古いまま");
+            assert!(!s.contains("元の文"), "{n} に古い文が残っている");
+        }
+    }
+
+    #[test]
+    fn 古いブックのコメントも著者が読める() {
+        // 前は <authors> と authorId を捨てていたので、誰が書いたか
+        // 分からなくなっていた
+        let mut b = Book::new();
+        let p = Pos::parse("B2").unwrap();
+        b.sheets[0].comments.insert(p, crate::model::CommentThread::new("覚書", "日本フネン"));
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
+        let mut cs = String::new();
+        z.by_name("xl/comments1.xml").unwrap().read_to_string(&mut cs).unwrap();
+        assert!(cs.contains("<author>日本フネン</author>"), "写しに著者が無い: {cs}");
+        // 写しだけを読む道(スレッドの部品が無い古いブック)でも著者が出る
+        let got = crate::xlsx::read::parse_comments(&cs);
+        assert_eq!(got[0].1.entries[0].who, "日本フネン", "著者を読み落とした");
+    }
+
     #[test]
     fn 古い計算順は持ち越さない() {
         // calcChain が古いままだと Excel が誤った順で開くことがある
@@ -755,7 +825,7 @@ mod link_comment_tests {
         b.sheets[0].set(p, Cell::input("単価"));
         b.sheets[0].comments.insert(p, "去年の実績から仮置き。要確認".into());
         let back = roundtrip(&b);
-        assert_eq!(back.sheets[0].comments.get(&p).map(|s| s.as_str()),
+        assert_eq!(back.sheets[0].comments.get(&p).map(|s| s.text()),
             Some("去年の実績から仮置き。要確認"), "コメントが往復しない");
     }
 
@@ -772,7 +842,7 @@ mod link_comment_tests {
         out.set_position(0);
         // 読み直せて中身が残る
         let (back, _) = read(Cursor::new(out.get_ref().clone())).expect("読み直せない");
-        assert_eq!(back.sheets[0].comments.get(&p).map(|s| s.as_str()),
+        assert_eq!(back.sheets[0].comments.get(&p).map(|s| s.text()),
             Some("ここに社名を書く"));
         assert!(back.sheets[0].links.contains_key(&p), "実物でリンクが消えた");
         // 部品の宣言も揃っている

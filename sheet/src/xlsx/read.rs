@@ -876,31 +876,65 @@ pub(super) fn defined_name_plain(e: &BytesStart) -> bool {
 }
 
 /// commentsN.xml → (セル参照, 本文) の列
-pub(super) fn parse_comments(xml: &str) -> Vec<(Pos, String)> {
+/// 古い `commentsN.xml`(著者の一覧 + セルごとの1件)を読む。
+///
+/// **著者も拾う。** 前は `<authors>` と `authorId` を捨てていたので、
+/// 誰が書いたコメントか分からなくなっていた。
+pub(super) fn parse_comments(xml: &str) -> Vec<(Pos, crate::model::CommentThread)> {
+    use crate::model::{CommentEntry, CommentThread};
     let mut r = Reader::from_str(xml);
     r.config_mut().trim_text(false);
-    let mut out = Vec::new();
+    let mut out: Vec<(Pos, CommentThread)> = Vec::new();
     let mut buf = Vec::new();
     let mut cur: Option<Pos> = None;
     let mut text = String::new();
     let mut in_t = false;
+    // 著者の一覧。comment@authorId がこの並びを指す
+    let mut authors: Vec<String> = Vec::new();
+    let mut in_authors = false;
+    let mut in_author = false;
+    let mut who = String::new();
     loop {
         match r.read_event_into(&mut buf) {
             Ok(Event::Eof) | Err(_) => break,
             Ok(Event::Start(e)) => match local(e.name().as_ref()) {
+                b"authors" => in_authors = true,
+                b"author" if in_authors => in_author = true,
                 b"comment" => {
                     cur = attr(&e, "ref").and_then(|s| Pos::parse(&s));
                     text.clear();
+                    who = attr(&e, "authorId")
+                        .and_then(|i| i.parse::<usize>().ok())
+                        .and_then(|i| authors.get(i).cloned())
+                        .unwrap_or_default();
                 }
                 b"t" if cur.is_some() => in_t = true,
                 _ => {}
             },
             Ok(Event::Text(t)) if in_t => text.push_str(&t.unescape().unwrap_or_default()),
+            Ok(Event::Text(t)) if in_author => {
+                who.push_str(&t.unescape().unwrap_or_default())
+            }
             Ok(Event::End(e)) => match local(e.name().as_ref()) {
                 b"t" => in_t = false,
+                b"author" => {
+                    in_author = false;
+                    authors.push(std::mem::take(&mut who));
+                }
+                b"authors" => in_authors = false,
                 b"comment" => {
                     if let Some(p) = cur.take() {
-                        out.push((p, std::mem::take(&mut text)));
+                        out.push((
+                            p,
+                            CommentThread {
+                                done: false,
+                                entries: vec![CommentEntry {
+                                    who: std::mem::take(&mut who),
+                                    when: String::new(),
+                                    text: std::mem::take(&mut text),
+                                }],
+                            },
+                        ));
                     }
                 }
                 _ => {}
@@ -908,6 +942,87 @@ pub(super) fn parse_comments(xml: &str) -> Vec<(Pos, String)> {
             _ => {}
         }
         buf.clear();
+    }
+    out
+}
+
+/// `xl/threadedComments/threadedCommentN.xml` を読む。**こちらが本体** —
+/// 古い `commentsN.xml` はその写しなので、両方あればこちらを採る。
+///
+/// 1件は `<threadedComment ref dT personId id parentId done><text>…</text>`。
+/// `parentId` を持つものが返信で、親の後ろに並ぶ。`personId` は
+/// `xl/persons/person.xml` の表示名を指す。
+pub(super) fn parse_threaded_comments(
+    xml: &str,
+    persons: &std::collections::BTreeMap<String, String>,
+) -> Vec<(Pos, crate::model::CommentThread)> {
+    use crate::model::{CommentEntry, CommentThread};
+    let mut r = Reader::from_str(xml);
+    r.config_mut().trim_text(false);
+    // (場所, 自分のid, 親のid, 解決済み, 発言)
+    let mut items: Vec<(Pos, String, Option<String>, bool, CommentEntry)> = Vec::new();
+    let mut buf = Vec::new();
+    let mut cur: Option<(Pos, String, Option<String>, bool, CommentEntry)> = None;
+    let mut in_text = false;
+    loop {
+        match r.read_event_into(&mut buf) {
+            Ok(Event::Eof) | Err(_) => break,
+            Ok(Event::Start(e)) => match local(e.name().as_ref()) {
+                b"threadedComment" => {
+                    let p = attr(&e, "ref").and_then(|s| Pos::parse(&s));
+                    let who = attr(&e, "personId")
+                        .and_then(|id| persons.get(&id).cloned())
+                        .unwrap_or_default();
+                    cur = p.map(|p| {
+                        (
+                            p,
+                            attr(&e, "id").unwrap_or_default(),
+                            attr(&e, "parentId"),
+                            matches!(attr(&e, "done").as_deref(), Some("1") | Some("true")),
+                            CommentEntry {
+                                who,
+                                when: attr(&e, "dT").unwrap_or_default(),
+                                text: String::new(),
+                            },
+                        )
+                    });
+                }
+                b"text" if cur.is_some() => in_text = true,
+                _ => {}
+            },
+            Ok(Event::Text(t)) if in_text => {
+                if let Some(c) = &mut cur {
+                    c.4.text.push_str(&t.unescape().unwrap_or_default());
+                }
+            }
+            Ok(Event::End(e)) => match local(e.name().as_ref()) {
+                b"text" => in_text = false,
+                b"threadedComment" => {
+                    if let Some(c) = cur.take() {
+                        items.push(c);
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+        buf.clear();
+    }
+    // 場所ごとに束ねる。**親を先に、返信をその後ろに** — 原文の並びが
+    // すでにその順なので、親を持たないものを先に流し込む
+    let mut out: Vec<(Pos, CommentThread)> = Vec::new();
+    for (p, _id, parent, done, entry) in items {
+        match out.iter_mut().find(|(q, _)| *q == p) {
+            Some((_, th)) => {
+                th.done |= done;
+                th.entries.push(entry);
+            }
+            None => {
+                // 親が先に来なかった筋(壊れた原文)でも落とさない
+                let _ = &parent;
+                out.push((p, CommentThread { done, entries: vec![entry] }));
+            }
+        }
     }
     out
 }
@@ -1525,6 +1640,40 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         let _ = f.read_to_string(&mut s);
         book.props.custom = parse_custom_props(&s);
     }
+    // コメントを書いた人の表示名(xl/persons/*.xml)。**ブックに1つ**なので
+    // シートを回る前に一度だけ読む。threadedComment@personId がここを指す
+    let persons: std::collections::BTreeMap<String, String> = {
+        let mut m = std::collections::BTreeMap::new();
+        let names: Vec<String> = (0..zip.len())
+            .filter_map(|i| zip.by_index(i).ok().map(|f| f.name().to_string()))
+            .filter(|n| n.starts_with("xl/persons/") && n.ends_with(".xml"))
+            .collect();
+        for n in names {
+            let mut s = String::new();
+            if let Ok(mut f) = zip.by_name(&n) {
+                let _ = f.read_to_string(&mut s);
+            }
+            let mut r = Reader::from_str(&s);
+            let mut buf = Vec::new();
+            loop {
+                match r.read_event_into(&mut buf) {
+                    Ok(Event::Eof) | Err(_) => break,
+                    Ok(Event::Start(e)) | Ok(Event::Empty(e))
+                        if local(e.name().as_ref()) == b"person" =>
+                    {
+                        if let (Some(id), Some(name)) =
+                            (attr_un(&e, "id"), attr_un(&e, "displayName"))
+                        {
+                            m.insert(id, name);
+                        }
+                    }
+                    _ => {}
+                }
+                buf.clear();
+            }
+        }
+        m
+    };
     for (i, path) in paths.iter().enumerate() {
         let mut s = String::new();
         if let Ok(mut f) = zip.by_name(path) { let _ = f.read_to_string(&mut s); }
@@ -1891,6 +2040,20 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 let mut cs = String::new();
                 let _ = f.read_to_string(&mut cs);
                 for (p, t) in parse_comments(&cs) {
+                    sh.comments.insert(p, t);
+                }
+            }
+        }
+        // **スレッドのコメントが本体。** 古い commentsN.xml はその写しなので、
+        // 両方あるときはこちらで上書きする — 写しだけ読んでいると返信が
+        // 見えず、直した内容も Excel 側へ届かない(2026-08-13 に実測)
+        for (_, _, target, _) in
+            rels.iter().filter(|(_, t, _, _)| t.ends_with("/threadedComment"))
+        {
+            if let Ok(mut f) = zip.by_name(&resolve_target(target)) {
+                let mut ts = String::new();
+                let _ = f.read_to_string(&mut ts);
+                for (p, t) in parse_threaded_comments(&ts, &persons) {
                     sh.comments.insert(p, t);
                 }
             }

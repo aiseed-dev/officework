@@ -1523,4 +1523,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("上付き", "Superskrip"),
     ("上付きを切り替えました", "Superskrip dialihkan"),
     ("下付き", "Subskrip"),
+    ("このセルにコメントがありません", "Sel ini tidak punya komentar"),
+    ("解決済みにしました", "Ditandai selesai"),
+    ("解決済みを取り消しました", "Tanda selesai dihapus"),
+    ("返信が空です(何も足しませんでした)", "Balasan kosong (tidak ada yang ditambahkan)"),
+    ("{} のコメントに返信しました(保存で残ります)", "Membalas komentar di {} (tersimpan saat disimpan)"),
+    ("返信を追加 — この筋の後ろに足します", "Tambah balasan — masuk ke akhir utas ini"),
 ];

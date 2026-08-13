@@ -2093,7 +2093,12 @@ impl Calc {
             }
             "addcomment" => {
                 self.commit();
-                let cur = self.sheet().comments.get(&self.cursor).cloned().unwrap_or_default();
+                let cur = self
+                    .sheet()
+                    .comments
+                    .get(&self.cursor)
+                    .map(|t| t.text().to_string())
+                    .unwrap_or_default();
                 self.prompt = Some(("comment", Editor::new(&cur)));
             }
             "text-column" => {

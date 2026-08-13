@@ -776,7 +776,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 return format!(
                     "{{\"ok\":true,\"text\":{}}}",
                     match t {
-                        Some(v) => J::S(v).to_json(),
+                        Some(v) => J::S(v.flatten()).to_json(),
                         None => "null".into(),
                     }
                 );
@@ -786,7 +786,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             let sh = &mut h.book_mut().sheets[si];
             match o.str("text").filter(|v| !v.is_empty()) {
                 Some(v) => {
-                    sh.comments.insert(a, v);
+                    sh.comments.insert(a, v.into());
                 }
                 None => {
                     sh.comments.remove(&a);

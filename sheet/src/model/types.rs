@@ -683,8 +683,14 @@ pub struct Sheet {
     pub names: Vec<(String, String)>,
     /// セルのハイパーリンク(外部URL)。sheet.xml の hyperlinks と往復する
     pub links: BTreeMap<Pos, String>,
-    /// セルのコメント。commentsN.xml と往復する
-    pub comments: BTreeMap<Pos, String>,
+    /// セルのコメント。**話の筋(スレッド)**で持つ。
+    ///
+    /// 近代の Excel はコメントを `xl/threadedComments/` に置き、
+    /// `xl/comments1.xml` はその**古い読み手向けの写し**になっている。
+    /// 前は写しのほうだけを読み書きしていたので、スレッドを持つブックを
+    /// 開いて直すと**写しだけが変わり、Excel が見る本体は元のまま**だった
+    /// (2026-08-13 に実測。返信もこちらから見えていなかった)
+    pub comments: BTreeMap<Pos, CommentThread>,
     /// 条件付き書式(cellIs だけ)。xlsx の conditionalFormatting と往復する
     pub cond: Vec<CondRule>,
     /// データの入力規則(list だけ)。xlsx の dataValidations と往復する
@@ -805,6 +811,80 @@ impl Sheet {
 
 /// シートに浮かぶ図形。**中身はベクタ**(発注者案 2026-08-04: SVG で作る —
 /// 拡大縮小で崩れない)。画面へは to_svg が SVG を作り、xlsx へは DrawingML の
+/// セルに付いた**話の筋**(コメントのスレッド)。
+///
+/// 先頭が元のコメント、あとが返信。`xl/threadedComments/` と往復し、
+/// `xl/comments1.xml` へは**古い読み手のために写しを書く**(本体はスレッド側)。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CommentThread {
+    /// 解決済み(`threadedComment@done`)。**筋ごと**に立つ — 返信1つだけを
+    /// 解決済みにはできない(Excel も同じ)
+    pub done: bool,
+    /// 発言。**空にはしない** — 空の筋は「コメントが無い」と同じなので消す
+    pub entries: Vec<CommentEntry>,
+}
+
+/// 筋の中の1発言。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CommentEntry {
+    /// 書いた人。古いブックでは `<authors>` の名前、スレッドでは person の
+    /// 表示名。**分からなければ空** — 「不明」と作らない
+    pub who: String,
+    /// いつ(`dT`)。**綴りのまま持つ**(ISO8601)。暦の計算はしない —
+    /// 往復で崩さないことが先
+    pub when: String,
+    pub text: String,
+}
+
+/// 文字1本から筋を作れるようにする。**打ったばかりのコメントは
+/// 「名無しの1発言の筋」**で、これが一番多い作り方
+impl From<&str> for CommentThread {
+    fn from(t: &str) -> Self {
+        Self::new(t, "")
+    }
+}
+impl From<String> for CommentThread {
+    fn from(t: String) -> Self {
+        Self::new(t, "")
+    }
+}
+
+impl CommentThread {
+    /// 文字1本から筋を作る(打ったばかりのコメント)
+    pub fn new(text: impl Into<String>, who: impl Into<String>) -> Self {
+        Self {
+            done: false,
+            entries: vec![CommentEntry {
+                who: who.into(),
+                when: String::new(),
+                text: text.into(),
+            }],
+        }
+    }
+
+    /// 筋の頭の文字(古い呼び出し側が欲しいのはたいていこれ)
+    pub fn text(&self) -> &str {
+        self.entries.first().map(|e| e.text.as_str()).unwrap_or("")
+    }
+
+    /// 画面や古い写しに出す一続きの文。**返信も解決も見えるように綴る** —
+    /// 頭だけ見せると、返信が付いていることが分からない
+    pub fn flatten(&self) -> String {
+        let mut s = String::new();
+        for (i, e) in self.entries.iter().enumerate() {
+            if i > 0 {
+                s.push('\n');
+            }
+            if !e.who.is_empty() {
+                s.push_str(&e.who);
+                s.push_str(": ");
+            }
+            s.push_str(&e.text);
+        }
+        s
+    }
+}
+
 /// テキストボックスの中の文字の組み方(xlsx の `txBody`)。
 ///
 /// **画面で見せられることだけを持つ。** タブ位置(`a:tabLst`)は、文字を

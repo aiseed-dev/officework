@@ -1523,4 +1523,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("上付き", "Üst simge"),
     ("上付きを切り替えました", "Üst simge değiştirildi"),
     ("下付き", "Alt simge"),
+    ("このセルにコメントがありません", "Bu hücrede açıklama yok"),
+    ("解決済みにしました", "Çözüldü olarak işaretlendi"),
+    ("解決済みを取り消しました", "Çözüldü işareti kaldırıldı"),
+    ("返信が空です(何も足しませんでした)", "Yanıt boş (hiçbir şey eklenmedi)"),
+    ("{} のコメントに返信しました(保存で残ります)", "{} hücresindeki açıklamaya yanıt verildi (kaydetmede kalır)"),
+    ("返信を追加 — この筋の後ろに足します", "Yanıt ekle — bu dizinin sonuna eklenir"),
 ];

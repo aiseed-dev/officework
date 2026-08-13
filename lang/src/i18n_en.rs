@@ -1526,4 +1526,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("上付き", "Superscript"),
     ("上付きを切り替えました", "Superscript toggled"),
     ("下付き", "Subscript"),
+    ("このセルにコメントがありません", "This cell has no comment"),
+    ("解決済みにしました", "Marked as resolved"),
+    ("解決済みを取り消しました", "Resolved mark removed"),
+    ("返信が空です(何も足しませんでした)", "The reply is empty (nothing was added)"),
+    ("{} のコメントに返信しました(保存で残ります)", "Replied to the comment on {} (kept on save)"),
+    ("返信を追加 — この筋の後ろに足します", "Add a reply — it goes to the end of this thread"),
 ];

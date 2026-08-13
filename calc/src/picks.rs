@@ -1575,9 +1575,43 @@ impl Calc {
                 self.commit();
                 self.prompt = Some(("name", Editor::new("")));
             }
+            // コメントの筋に返信を足す(本家の「返信を追加」)
+            "comment-reply" => {
+                self.commit();
+                if !self.sheet().comments.contains_key(&self.cursor) {
+                    self.status = ui::t!("このセルにコメントがありません").into();
+                    return;
+                }
+                self.prompt = Some(("comment-reply", Editor::new("")));
+            }
+            // 解決の印を入切する。**筋ごと**に立つ(返信1つだけは解決できない)
+            "comment-done" => {
+                self.commit();
+                let p = self.cursor;
+                if !self.sheet().comments.contains_key(&p) {
+                    self.status = ui::t!("このセルにコメントがありません").into();
+                    return;
+                }
+                self.checkpoint();
+                let th = self.book.sheets[self.active].comments.get_mut(&p).unwrap();
+                th.done = !th.done;
+                let now = th.done;
+                self.dirty = true;
+                self.status = if now {
+                    ui::t!("解決済みにしました").into()
+                } else {
+                    ui::t!("解決済みを取り消しました").into()
+                };
+            }
             "addcomment" => {
                 self.commit();
-                let cur = self.sheet().comments.get(&self.cursor).cloned().unwrap_or_default();
+                // 打ち直すのは**筋の頭の文**(返信は別の口で足す)
+                let cur = self
+                    .sheet()
+                    .comments
+                    .get(&self.cursor)
+                    .map(|t| t.text().to_string())
+                    .unwrap_or_default();
                 self.prompt = Some(("comment", Editor::new(&cur)));
             }
             "hyperlink" => {
@@ -3018,6 +3052,26 @@ impl Calc {
                     self.prompt = Some((kind, Editor::new(&t)));
                 }
             }
+            // コメントへの返信。**筋の後ろに足す**(頭の文は書き換えない)
+            "comment-reply" => {
+                let t = text.trim().to_string();
+                if t.is_empty() {
+                    self.status = ui::t!("返信が空です(何も足しませんでした)").into();
+                    return;
+                }
+                let p = self.cursor;
+                let Some(th) = self.book.sheets[self.active].comments.get_mut(&p) else {
+                    self.status = ui::t!("このセルにコメントがありません").into();
+                    return;
+                };
+                // 名乗りは共同編集の名前を使う。無ければ空のまま —
+                // **「不明」のような名前を作らない**
+                let who = ui::settings::get("user_name").unwrap_or_default();
+                th.entries.push(sheet::model::CommentEntry { who, when: String::new(), text: t });
+                self.dirty = true;
+                self.status =
+                    ui::tf!("{} のコメントに返信しました(保存で残ります)", p.a1()).into();
+            }
             // 柄の地の色(patternFill の bgColor)。柄が掛かっているときだけ意味を持つ
             "fill-bg-rgb" => {
                 let t = text.trim().trim_start_matches('#').to_uppercase();
@@ -3261,7 +3315,14 @@ impl Calc {
                         self.status = ui::tf!("{} のコメントを消しました", p.a1()).into();
                     }
                 } else {
-                    self.book.sheets[self.active].comments.insert(p, text);
+                    // 頭の文だけ差し替える(返信と解決の印は残す)
+                    let sh = &mut self.book.sheets[self.active];
+                    match sh.comments.get_mut(&p) {
+                        Some(th) if !th.entries.is_empty() => th.entries[0].text = text,
+                        _ => {
+                            sh.comments.insert(p, text.into());
+                        }
+                    }
                     self.dirty = true;
                     self.status = ui::tf!("{} にコメントを付けました(保存で残ります)", p.a1()).into();
                 }

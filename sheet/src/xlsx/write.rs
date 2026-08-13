@@ -24,6 +24,18 @@ pub(super) const RELS: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>"#;
 
 pub(super) const NS: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+/// スレッドのコメントの名前空間(2018。Excel 365 以降がこちらを見る)
+pub(super) const TCNS: &str =
+    "http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments";
+
+/// 番号から決まった形の GUID を作る。
+///
+/// **乱数を使わない。** 同じブックを2回書いたら同じ物が出てほしい —
+/// 差分が読めなくなるし、試験も書けない。Excel は中身を見ず、
+/// 一意であることしか要求しない
+pub(super) fn guid(n: usize) -> String {
+    format!("{{00000000-0000-0000-0000-{n:012X}}}")
+}
 pub(super) const RNS: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 pub(super) fn esc(s: &str) -> String {
@@ -798,6 +810,10 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                     || name == "xl/calcChain.xml"
                     // コメントの部品はこちらが作り直す
                     || name.starts_with("xl/comments")
+                    // スレッドと人の一覧もモデルが正。**古い物を残すと
+                    // 新しい写しと食い違う**(この節が直したかった穴そのもの)
+                    || name.starts_with("xl/threadedComments/")
+                    || name.starts_with("xl/persons/")
                     || name.starts_with("xl/drawings/vmlDrawing");
                 let mut buf = Vec::new();
                 if f.read_to_end(&mut buf).is_err() {
@@ -1273,6 +1289,11 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             if !sh.comments.is_empty() && !ct.contains(&part) {
                 add.push_str(&format!(r#"<Override PartName="{part}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"/>"#));
             }
+            // スレッドの本体。**古い写しと同じ回で宣言する**
+            let tpart = format!("/xl/threadedComments/threadedComment{}.xml", i + 1);
+            if !sh.comments.is_empty() && !ct.contains(&tpart) {
+                add.push_str(&format!(r#"<Override PartName="{tpart}" ContentType="application/vnd.ms-excel.threadedcomments+xml"/>"#));
+            }
         }
         // 挿した画像の部品の宣言(絵の拡張子と、新しく作った drawing)
         if media_out.iter().any(|(n, _)| n.ends_with(".png")) && !ct.contains("Extension=\"png\"") {
@@ -1296,6 +1317,9 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         }
         if !book.theme.is_empty() && !ct.contains("/xl/theme/theme1.xml") {
             add.push_str(r#"<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>"#);
+        }
+        if has_comments && !ct.contains("/xl/persons/person.xml") {
+            add.push_str(r#"<Override PartName="/xl/persons/person.xml" ContentType="application/vnd.ms-excel.person+xml"/>"#);
         }
         if core_fresh && !ct.contains("core-properties") {
             add.push_str(r#"<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>"#);
@@ -1469,6 +1493,39 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     put("xl/sharedStrings.xml", &format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <sst xmlns="{NS}" count="{}" uniqueCount="{}">{si}</sst>"#, shared.len(), shared.len()))?;
+
+    // コメントを書いた人の一覧。**ブックに1つ**(xl/persons/person.xml)。
+    // シートを回る前に集めておく — 同じ人が複数のシートに書いていても1件
+    let book_persons: Vec<String> = {
+        let mut v: Vec<String> = Vec::new();
+        for s in &book.sheets {
+            for th in s.comments.values() {
+                for e in &th.entries {
+                    if !v.contains(&e.who) {
+                        v.push(e.who.clone());
+                    }
+                }
+            }
+        }
+        v
+    };
+    if !book_persons.is_empty() {
+        let list: String = book_persons
+            .iter()
+            .enumerate()
+            .map(|(k, name)| {
+                format!(
+                    r#"<person displayName="{}" id="{}" userId="{}" providerId="None"/>"#,
+                    esc(name),
+                    guid(900_000 + k),
+                    esc(name)
+                )
+            })
+            .collect();
+        put("xl/persons/person.xml", &format!(
+            r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<personList xmlns="{TCNS}" xmlns:x="{NS}">{list}</personList>"#))?;
+    }
 
     for (i, sh) in book.sheets.iter().enumerate() {
         let mut w = Writer::new(Cursor::new(Vec::new()));
@@ -1995,6 +2052,12 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                     r#"<Relationship Id="rIdVML" Type="{RNS}/vmlDrawing" Target="../drawings/vmlDrawing{}.vml"/>"#,
                     i + 1
                 ));
+                // スレッドの本体への道。**この関係が無いと Excel は
+                // 古い写しだけを見る** = 返信も解決も無かったことになる
+                inner.push_str(&format!(
+                    r#"<Relationship Id="rIdTC" Type="http://schemas.microsoft.com/office/2017/10/relationships/threadedComment" Target="../threadedComments/threadedComment{}.xml"/>"#,
+                    i + 1
+                ));
             }
             put(&format!("xl/worksheets/_rels/sheet{}.xml.rels", i + 1), &format!(
                 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">{inner}</Relationships>"))?;
@@ -2063,16 +2126,39 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         }
         // コメントの本体と、Excel がコメントに使う最小の VML 図形
         if !sh.comments.is_empty() {
+            let persons = &book_persons;
+            // 著者の一覧(重複は畳む)。**古い写しにも名前を残す**
+            let mut authors: Vec<String> = Vec::new();
+            for th in sh.comments.values() {
+                for e in &th.entries {
+                    if !authors.contains(&e.who) {
+                        authors.push(e.who.clone());
+                    }
+                }
+            }
+            if authors.is_empty() {
+                authors.push(String::new());
+            }
             let mut cl = String::new();
-            for (p, t) in &sh.comments {
+            for (p, th) in &sh.comments {
+                let aid = th
+                    .entries
+                    .first()
+                    .and_then(|e| authors.iter().position(|a| *a == e.who))
+                    .unwrap_or(0);
+                // **写しには筋を一続きにして書く。** 頭だけ書くと、古い
+                // 読み手には返信が無かったことになる
                 cl.push_str(&format!(
-                    r#"<comment ref="{}" authorId="0"><text><r><t xml:space="preserve">{}</t></r></text></comment>"#,
-                    p.a1(), esc(t)
+                    r#"<comment ref="{}" authorId="{aid}"><text><r><t xml:space="preserve">{}</t></r></text></comment>"#,
+                    p.a1(),
+                    esc(&th.flatten())
                 ));
             }
+            let al: String =
+                authors.iter().map(|a| format!("<author>{}</author>", esc(a))).collect();
             put(&format!("xl/comments{}.xml", i + 1), &format!(
                 r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<comments xmlns="{NS}"><authors><author></author></authors><commentList>{cl}</commentList></comments>"#))?;
+<comments xmlns="{NS}"><authors>{al}</authors><commentList>{cl}</commentList></comments>"#))?;
             let mut shapes = String::new();
             for (n, (p, _)) in sh.comments.iter().enumerate() {
                 shapes.push_str(&format!(
@@ -2082,6 +2168,45 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             }
             put(&format!("xl/drawings/vmlDrawing{}.vml", i + 1), &format!(
                 r#"<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><o:shapelayout v:ext="edit"><o:idmap v:ext="edit" data="1"/></o:shapelayout><v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202" path="m,l,21600r21600,l21600,xe"><v:stroke joinstyle="miter"/><v:path gradientshapeok="t" o:connecttype="rect"/></v:shapetype>{shapes}</xml>"#))?;
+            // **スレッドの本体。** 近代の Excel はこちらを見るので、
+            // 古い写しと**同じ回で必ず一緒に書く** — 片方だけ書き換えると、
+            // 直したつもりの文が Excel に映らない(2026-08-13 に実測した穴)
+            let mut tc = String::new();
+            let mut n = 0usize;
+            for (p, th) in &sh.comments {
+                let mut parent: Option<String> = None;
+                let done = if th.done { r#" done="1""# } else { r#" done="0""# };
+                for e in &th.entries {
+                    n += 1;
+                    let id = guid(i * 1000 + n);
+                    let pid = match &parent {
+                        Some(x) => format!(r#" parentId="{x}""#),
+                        None => String::new(),
+                    };
+                    let person = match persons.iter().position(|a| *a == e.who) {
+                        Some(k) => guid(900_000 + k),
+                        None => guid(900_000),
+                    };
+                    // 日付は綴りのまま返す。無ければ書かない(嘘の日付を作らない)
+                    let dt = if e.when.is_empty() {
+                        String::new()
+                    } else {
+                        format!(r#" dT="{}""#, esc(&e.when))
+                    };
+                    tc.push_str(&format!(
+                        r#"<threadedComment ref="{}"{dt} personId="{person}" id="{id}"{pid}{}><text>{}</text></threadedComment>"#,
+                        p.a1(),
+                        if parent.is_none() { done } else { "" },
+                        esc(&e.text)
+                    ));
+                    if parent.is_none() {
+                        parent = Some(id);
+                    }
+                }
+            }
+            put(&format!("xl/threadedComments/threadedComment{}.xml", i + 1), &format!(
+                r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ThreadedComments xmlns="{TCNS}">{tc}</ThreadedComments>"#))?;
         }
     }
     zip.finish().map_err(|e| e.to_string())?;

@@ -94,7 +94,14 @@ pub(crate) fn open_result(
         let comments: Vec<Value> = sh
             .comments
             .iter()
-            .map(|(p, t)| json!({"row": p.row, "column": p.col, "author": "", "text": t}))
+            // **著者が読めるようになった**(前は空で出していた)。返信は
+            // 一続きの文にして出す — 呼び手は1つのコメントとして扱う
+            .map(|(p, t)| json!({
+                "row": p.row, "column": p.col,
+                "author": t.entries.first().map(|e| e.who.clone()).unwrap_or_default(),
+                "text": t.flatten(),
+                "resolved": t.done,
+            }))
             .collect();
         let tables: Vec<Value> = sh
             .tables

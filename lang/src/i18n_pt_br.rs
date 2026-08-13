@@ -1523,4 +1523,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("上付き", "Sobrescrito"),
     ("上付きを切り替えました", "Sobrescrito alternado"),
     ("下付き", "Subscrito"),
+    ("このセルにコメントがありません", "Esta célula não tem comentário"),
+    ("解決済みにしました", "Marcado como resolvido"),
+    ("解決済みを取り消しました", "Marca de resolvido removida"),
+    ("返信が空です(何も足しませんでした)", "A resposta está vazia (nada foi adicionado)"),
+    ("{} のコメントに返信しました(保存で残ります)", "Respondeu ao comentário em {} (fica ao salvar)"),
+    ("返信を追加 — この筋の後ろに足します", "Adicionar uma resposta — vai para o fim deste tópico"),
 ];

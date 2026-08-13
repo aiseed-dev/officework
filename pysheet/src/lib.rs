@@ -1269,7 +1269,8 @@ impl PySheet {
     /// セルのコメント(無ければ None)。
     fn comment(&self, key: &str) -> PyResult<Option<String>> {
         let p = parse_ref(key)?;
-        self.with(|s| Ok(s.comments.get(&p).cloned()))
+        // 返信も見えるように一続きの文で返す(Python は文字1本で扱う)
+        self.with(|s| Ok(s.comments.get(&p).map(|t| t.flatten())))
     }
 
     /// セルのコメントを置く(None で消す)。保存で commentsN.xml に入る。
@@ -1278,7 +1279,7 @@ impl PySheet {
         self.with(|s| {
             match value.filter(|v| !v.is_empty()) {
                 Some(v) => {
-                    s.comments.insert(p, v.to_string());
+                    s.comments.insert(p, v.into());
                 }
                 None => {
                     s.comments.remove(&p);

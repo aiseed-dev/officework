@@ -1561,7 +1561,7 @@ impl Calc {
             CalcAi::Summary => {
                 let p = self.cursor;
                 self.checkpoint();
-                self.book.sheets[self.active].comments.insert(p, out);
+                self.book.sheets[self.active].comments.insert(p, out.into());
                 self.dirty = true;
                 self.status = format!(
                     "要約を {} のコメントに付けました(Ctrl+Z で戻せます)",
@@ -1738,7 +1738,7 @@ impl Calc {
                     .into();
                 } else {
                     self.checkpoint();
-                    self.book.sheets[self.active].comments.insert(p, out);
+                    self.book.sheets[self.active].comments.insert(p, out.into());
                     self.dirty = true;
                     self.status = format!(
                         "答えを {} のコメントに付けました(Ctrl+Z で戻せます)",

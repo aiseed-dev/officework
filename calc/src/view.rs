@@ -1966,6 +1966,19 @@ impl Render for Calc {
                 ("reapply", "再適用", "", self.filter_active(), false),
                 ("", "", "", false, false),
                 ("addcomment", "コメントを追加", "", true, false),
+                // 返信と解決は**コメントが付いているセルでだけ**押せる。
+                // 無いセルで灰色に見えるのが正しい(できないものを、
+                // できるように見せない)
+                ("comment-reply", "返信を追加", "",
+                    self.sheet().comments.contains_key(&self.cursor), false),
+                ("comment-done",
+                    if self.sheet().comments.get(&self.cursor).is_some_and(|t| t.done) {
+                        "解決済みを取り消す"
+                    } else {
+                        "解決済みにする"
+                    },
+                    "",
+                    self.sheet().comments.contains_key(&self.cursor), false),
                 ("", "", "", false, false),
                 ("fmtcells", "セルをフォーマットする", "", true, false),
                 ("numfmt", "数値の書式", "", true, true),
@@ -2812,7 +2825,12 @@ impl Render for Calc {
         let mut tip_lines: Vec<String> = Vec::new();
         if self.show_comments {
             if let Some(t) = self.sheet().comments.get(&self.cursor) {
-                tip_lines.push(t.clone());
+                // 返信も解決も見えるように筋ごと出す
+                tip_lines.push(if t.done {
+                    format!("✓ {}", t.flatten())
+                } else {
+                    t.flatten()
+                });
             }
         }
         if let Some(u) = self.sheet().links.get(&self.cursor) {
@@ -2889,6 +2907,7 @@ impl Render for Calc {
                 "font-color-rgb" => ui::t!("文字の色 — RRGGBB の6桁(例: FF0000。空 Enter = 自動)").to_string(),
                 "fill-color-rgb" => ui::t!("塗りの色 — RRGGBB の6桁(例: FFF2CC。空 Enter = 塗りなし)").to_string(),
                 "fill-bg-rgb" => ui::t!("柄の地の色 — RRGGBB の6桁(例: FFFFFF。空 Enter = 白)").to_string(),
+                "comment-reply" => ui::t!("返信を追加 — この筋の後ろに足します").to_string(),
                 "text-angle" => ui::t!("文字の角度 — -90〜90 の数(上向きが正。空 Enter = 0)").to_string(),
                 "hf-edit" => ui::t!("ヘッダー/フッター — この区分の文字(&P=頁 &N=総頁。空 Enter = 消す)").to_string(),
                 "name-range" => ui::t!("名前の中身 — 場所(B12 か A1:C9 の形)").to_string(),

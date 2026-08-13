@@ -1523,4 +1523,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("上付き", "Chỉ số trên"),
     ("上付きを切り替えました", "Đã bật/tắt chỉ số trên"),
     ("下付き", "Chỉ số dưới"),
+    ("このセルにコメントがありません", "Ô này chưa có ghi chú"),
+    ("解決済みにしました", "Đã đánh dấu đã giải quyết"),
+    ("解決済みを取り消しました", "Đã bỏ dấu đã giải quyết"),
+    ("返信が空です(何も足しませんでした)", "Trả lời trống (chưa thêm gì)"),
+    ("{} のコメントに返信しました(保存で残ります)", "Đã trả lời ghi chú ở {} (sẽ giữ khi lưu)"),
+    ("返信を追加 — この筋の後ろに足します", "Thêm trả lời — sẽ vào cuối luồng này"),
 ];
