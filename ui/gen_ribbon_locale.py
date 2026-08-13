@@ -37,6 +37,7 @@ OVERRIDES = {
         "AI": "AI",
         # ファイル
         "印刷": "Print",
+        "印刷レイアウト": "Print layout",
         # AI タブ(こちらの設計。calc-manual.md の英語版と同じ語)
         "宛先": "Destination",
         "要約": "Summarize",
