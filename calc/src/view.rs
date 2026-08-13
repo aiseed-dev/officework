@@ -4275,6 +4275,42 @@ impl Render for Calc {
                             cx.notify();
                         }))));
             }
+            // ---- スパークラインの点の印(台帳 第2便の [小]) ----
+            // **折れ線のスパークラインのときだけ出す。** ペンや蛍光ペンには
+            // 高点も低点も無い
+            if sp.kind == "spark" {
+                let m = sp.spark_marks;
+                p = p.child(div().h(px(2.0)));
+                p = p.child(div().text_size(px(us * 10.5)).text_color(rgb(0x1B6E3C))
+                    .child(SharedString::from(ui::t!("点の印").to_string())));
+                let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
+                    .child(lab(ui::t!("印").to_string()));
+                for (id, name, on, which) in [
+                    ("spk-hi", ui::t!("高点"), m.high, 0u8),
+                    ("spk-lo", ui::t!("低点"), m.low, 1),
+                    ("spk-fi", ui::t!("最初"), m.first, 2),
+                    ("spk-la", ui::t!("最後"), m.last, 3),
+                ] {
+                    row = row.child(chip(id.into(), name.to_string(), on)
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            this.shape_edit(move |sp| {
+                                let k = &mut sp.spark_marks;
+                                match which {
+                                    0 => k.high = !k.high,
+                                    1 => k.low = !k.low,
+                                    2 => k.first = !k.first,
+                                    _ => k.last = !k.last,
+                                }
+                            });
+                            this.status = ui::t!("点の印を変えました").into();
+                            cx.notify();
+                        })));
+                }
+                p = p.child(row);
+                p = p.child(div().text_size(px(us * 9.5)).text_color(rgb(0x66707A))
+                    .child(ui::t!("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)")));
+            }
             // ---- 中の文字の組み方(テキストボックス。台帳 第2便の [中]) ----
             // **文字が入っているときだけ出す。** 空の図形に段落の設定を
             // 並べても掛ける相手がいない

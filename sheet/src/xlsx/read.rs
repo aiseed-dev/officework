@@ -668,14 +668,25 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                             // 自作の札(jo:spark-col:底)があれば棒に組み直す。
                             // 棒は4点1組の閉じた小道 — 先頭2点の中点が中心、
                             // 1点目の y が先端
+                            // 札は `jo:種類:底[:印]`。**印は後から足した欄**なので
+                            // 無い古い札も読める(split_once で2欄に割ってから、
+                            // 残りをさらに割る)
                             let marker = sp_name
                                 .as_deref()
                                 .and_then(|n| n.strip_prefix("jo:"))
                                 .and_then(|n| n.split_once(':'))
                                 .filter(|(k, _)| *k == "spark-col" || *k == "spark-wl");
+                            let marks = sp_name
+                                .as_deref()
+                                .and_then(|n| n.strip_prefix("jo:"))
+                                .and_then(|n| n.splitn(3, ':').nth(2))
+                                .map(crate::model::SparkMarks::parse)
+                                .unwrap_or_default();
                             match marker {
                                 Some((k, b)) if pts.len() >= 4 => {
-                                    let base: f32 = b.parse().unwrap_or(1.0);
+                                    // 底は2欄目まで(3欄目の印を巻き込まない)
+                                    let base: f32 =
+                                        b.split(':').next().unwrap_or(b).parse().unwrap_or(1.0);
                                     let tops: Vec<(f32, f32)> = pts
                                         .chunks(4)
                                         .filter(|c| c.len() == 4)
@@ -686,6 +697,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                                             kind: k.into(),
                                             points: tops,
                                             base,
+                                            spark_marks: marks,
                                             ..tpl
                                         },
                                     )))
@@ -694,6 +706,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                                     crate::model::SheetShape {
                                         kind: "spark".into(),
                                         points: std::mem::take(&mut pts),
+                                        spark_marks: marks,
                                         ..tpl
                                     },
                                 ))),

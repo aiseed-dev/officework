@@ -1529,4 +1529,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("返信が空です(何も足しませんでした)", "Die Antwort ist leer (nichts hinzugefügt)"),
     ("{} のコメントに返信しました(保存で残ります)", "Auf den Kommentar in {} geantwortet (bleibt beim Speichern)"),
     ("返信を追加 — この筋の後ろに足します", "Antwort hinzufügen — sie kommt ans Ende dieses Strangs"),
+    ("点の印", "Punktmarken"),
+    ("印", "Marken"),
+    ("高点", "Hoch"),
+    ("低点", "Tief"),
+    ("最初", "Erster"),
+    ("最後", "Letzter"),
+    ("点の印を変えました", "Marken geändert"),
+    ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "Keine Behandlung leerer Zellen und keine gemeinsame Achse (diese Linie hat die Zahlen vom Einfügen eingebrannt)"),
 ];

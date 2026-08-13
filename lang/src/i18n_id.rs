@@ -1529,4 +1529,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("返信が空です(何も足しませんでした)", "Balasan kosong (tidak ada yang ditambahkan)"),
     ("{} のコメントに返信しました(保存で残ります)", "Membalas komentar di {} (tersimpan saat disimpan)"),
     ("返信を追加 — この筋の後ろに足します", "Tambah balasan — masuk ke akhir utas ini"),
+    ("点の印", "Penanda titik"),
+    ("印", "Penanda"),
+    ("高点", "Tertinggi"),
+    ("低点", "Terendah"),
+    ("最初", "Pertama"),
+    ("最後", "Terakhir"),
+    ("点の印を変えました", "Penanda diubah"),
+    ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "Tidak ada penanganan sel kosong atau sumbu bersama (garis ini membekukan angka saat disisipkan)"),
 ];

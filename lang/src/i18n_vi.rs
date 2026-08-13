@@ -1529,4 +1529,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("返信が空です(何も足しませんでした)", "Trả lời trống (chưa thêm gì)"),
     ("{} のコメントに返信しました(保存で残ります)", "Đã trả lời ghi chú ở {} (sẽ giữ khi lưu)"),
     ("返信を追加 — この筋の後ろに足します", "Thêm trả lời — sẽ vào cuối luồng này"),
+    ("点の印", "Dấu điểm"),
+    ("印", "Dấu"),
+    ("高点", "Cao nhất"),
+    ("低点", "Thấp nhất"),
+    ("最初", "Đầu"),
+    ("最後", "Cuối"),
+    ("点の印を変えました", "Đã đổi dấu điểm"),
+    ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "Không có xử lý ô trống hay trục dọc chung (đường này đã nung sẵn các số lúc chèn)"),
 ];

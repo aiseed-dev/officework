@@ -811,6 +811,52 @@ impl Sheet {
 
 /// シートに浮かぶ図形。**中身はベクタ**(発注者案 2026-08-04: SVG で作る —
 /// 拡大縮小で崩れない)。画面へは to_svg が SVG を作り、xlsx へは DrawingML の
+/// スパークラインの点に付ける印。
+///
+/// **元データには届かない。** この線は挿したときの数を焼き付けた折れ線で、
+/// 元の範囲を覚えていない(台帳の割り切り)。だから「空セルの扱い」や
+/// 「縦軸のそろえ」のような**引き直しが要る設定は持たない** — 持っても
+/// 効かない。印は焼き付けた点だけで決められるので持てる。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SparkMarks {
+    /// いちばん高い点
+    pub high: bool,
+    /// いちばん低い点
+    pub low: bool,
+    pub first: bool,
+    pub last: bool,
+    /// 負の点(勝ち負け・縦棒で底より下)
+    pub negative: bool,
+}
+
+impl SparkMarks {
+    /// 札の綴り(`hlfen` のうち立っている字だけ)。**順は固定** —
+    /// 綴りが揺れると往復の突き合わせができない
+    pub fn tag(&self) -> String {
+        let mut s = String::new();
+        for (on, c) in [
+            (self.high, 'h'), (self.low, 'l'), (self.first, 'f'),
+            (self.last, 'e'), (self.negative, 'n'),
+        ] {
+            if on {
+                s.push(c);
+            }
+        }
+        s
+    }
+
+    /// 札の綴りから戻す。知らない字は黙って捨てる(前に進める)
+    pub fn parse(t: &str) -> Self {
+        Self {
+            high: t.contains('h'),
+            low: t.contains('l'),
+            first: t.contains('f'),
+            last: t.contains('e'),
+            negative: t.contains('n'),
+        }
+    }
+}
+
 /// セルに付いた**話の筋**(コメントのスレッド)。
 ///
 /// 先頭が元のコメント、あとが返信。`xl/threadedComments/` と往復し、
@@ -939,6 +985,9 @@ pub struct SheetShape {
     /// その文字の組み方(揃え・縦書き・箇条書き・文字効果)。
     /// `text` が無いときは意味を持たない
     pub text_fmt: TextFmt,
+    /// スパークラインの**点の印**(高点・低点・最初・最後・負)。
+    /// `kind` が `spark` 系のときだけ意味を持つ
+    pub spark_marks: SparkMarks,
     /// 折れ線の点(0..1 に正規化した x, y)。kind="spark" が使う。
     /// "spark-col"/"spark-wl"(縦棒・勝ち負け)では (棒の中心x, 棒の先端y)
     pub points: Vec<(f32, f32)>,
@@ -974,6 +1023,7 @@ impl Default for SheetShape {
             line: None,
             text: None,
             text_fmt: TextFmt::default(),
+            spark_marks: SparkMarks::default(),
             points: Vec::new(),
             base: 0.0,
             dx_px: 0.0,
@@ -1165,8 +1215,41 @@ impl SheetShape {
                     "ink" => (2.2, 1.0),
                     _ => (1.5, 1.0),
                 };
+                // 点の印(高点・低点・最初・最後)。**焼き付けた点だけで決まる**ので
+                // 元データを引き直さずに出せる
+                let m = self.spark_marks;
+                let dots = if self.kind == "spark" && m != SparkMarks::default() {
+                    let key = |i: &(usize, &(f32, f32))| i.1 .1;
+                    let hi = self.points.iter().enumerate().min_by(|a, b| key(a).total_cmp(&key(b))).map(|(i, _)| i);
+                    let lo = self.points.iter().enumerate().max_by(|a, b| key(a).total_cmp(&key(b))).map(|(i, _)| i);
+                    let last = self.points.len().checked_sub(1);
+                    let mut s = String::new();
+                    for (i, (px_, py_)) in self.points.iter().enumerate() {
+                        // 高点=赤 / 低点=青 / 最初と最後=線と同じ色。
+                        // y は下向きなので**最小が高点**
+                        let col = if m.high && Some(i) == hi {
+                            Some("#C0504D")
+                        } else if m.low && Some(i) == lo {
+                            Some("#4472C4")
+                        } else if (m.first && i == 0) || (m.last && Some(i) == last) {
+                            Some(line)
+                        } else {
+                            None
+                        };
+                        if let Some(c) = col {
+                            s.push_str(&format!(
+                                r#"<circle cx="{:.1}" cy="{:.1}" r="2.2" fill="{c}"/>"#,
+                                x0 + px_ * (x1 - x0),
+                                y0 + py_ * (y1 - y0)
+                            ));
+                        }
+                    }
+                    s
+                } else {
+                    String::new()
+                };
                 format!(
-                    r#"<polyline points="{pts}" fill="none" stroke="{line}" stroke-width="{w_}" stroke-opacity="{o_}" stroke-linecap="round" stroke-linejoin="round"/>"#
+                    r#"<polyline points="{pts}" fill="none" stroke="{line}" stroke-width="{w_}" stroke-opacity="{o_}" stroke-linecap="round" stroke-linejoin="round"/>{dots}"#
                 )
             }
             // 本家の図形ギャラリーの品揃え。**xlsx の prstGeom の名前を

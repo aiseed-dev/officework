@@ -1529,4 +1529,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("返信が空です(何も足しませんでした)", "Yanıt boş (hiçbir şey eklenmedi)"),
     ("{} のコメントに返信しました(保存で残ります)", "{} hücresindeki açıklamaya yanıt verildi (kaydetmede kalır)"),
     ("返信を追加 — この筋の後ろに足します", "Yanıt ekle — bu dizinin sonuna eklenir"),
+    ("点の印", "Nokta işaretleri"),
+    ("印", "İşaretler"),
+    ("高点", "Yüksek"),
+    ("低点", "Düşük"),
+    ("最初", "İlk"),
+    ("最後", "Son"),
+    ("点の印を変えました", "İşaretler değişti"),
+    ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "Boş hücre işleme ve ortak eksen yok (bu çizgi eklendiği andaki sayıları içine almıştır)"),
 ];

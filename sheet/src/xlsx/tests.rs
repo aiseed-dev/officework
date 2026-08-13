@@ -660,6 +660,64 @@ mod carry_tests {
         assert_eq!(got[0].1.entries[0].who, "日本フネン", "著者を読み落とした");
     }
 
+
+    #[test]
+    fn スパークラインの点の印が往復する() {
+        use crate::model::SparkMarks;
+        let mut b = Book::new();
+        for (kind, base) in [("spark", 0.0f32), ("spark-col", 1.0), ("spark-wl", 0.5)] {
+            b.sheets[0].shapes_new.push(crate::model::SheetShape {
+                at: Pos::new(0, 0),
+                width_px: 90.0,
+                height_px: 24.0,
+                kind: kind.into(),
+                line: Some("1B6E3C".into()),
+                points: vec![(0.0, 0.8), (0.33, 0.2), (0.66, 0.6), (1.0, 0.1)],
+                base,
+                spark_marks: SparkMarks { high: true, low: true, last: true, ..Default::default() },
+                ..Default::default()
+            });
+        }
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        for sp in &back.sheets[0].shapes {
+            assert_eq!(
+                sp.spark_marks,
+                SparkMarks { high: true, low: true, last: true, ..Default::default() },
+                "{} の点の印が往復しない",
+                sp.kind
+            );
+        }
+    }
+
+    #[test]
+    fn 印の欄が無い古い札も読める() {
+        // 札は `jo:種類:底` だった。**印は後から足した欄**なので、
+        // 古いブックの札を壊さずに読めなければならない
+        use crate::model::SparkMarks;
+        let mut b = Book::new();
+        b.sheets[0].shapes_new.push(crate::model::SheetShape {
+            at: Pos::new(0, 0),
+            width_px: 90.0,
+            height_px: 24.0,
+            kind: "spark-col".into(),
+            line: Some("1B6E3C".into()),
+            points: vec![(0.0, 0.8), (0.5, 0.2)],
+            base: 1.0,
+            ..Default::default()
+        });
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        // 3欄目を削って古い札に戻す
+        let s = String::from_utf8_lossy(&buf).to_string();
+        assert!(s.contains("jo:spark-col:1.0000:") || !s.contains("jo:"), "札の形が変わった");
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        assert_eq!(back.sheets[0].shapes[0].kind, "spark-col", "種類を読み違えた");
+        assert!((back.sheets[0].shapes[0].base - 1.0).abs() < 0.01, "底を読み違えた");
+        assert_eq!(back.sheets[0].shapes[0].spark_marks, SparkMarks::default());
+    }
+
     #[test]
     fn 古い計算順は持ち越さない() {
         // calcChain が古いままだと Excel が誤った順で開くことがある

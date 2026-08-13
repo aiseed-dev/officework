@@ -2394,9 +2394,12 @@ pub(super) fn shape_anchor_xml(sp: &crate::model::SheetShape, id: u32) -> String
         cx = cx,
         cy = cy,
         id = id,
-        // 縦棒・勝ち負けは name に自作の札を残す — 開き直しで棒に組み直せる
+        // 折れ線ものは name に自作の札を残す — 開き直しで組み直せる。
+        // **印は3つ目の欄**(無ければ空。古い札とも読み合える)
         name = if matches!(sp.kind.as_str(), "spark-col" | "spark-wl") {
-            format!("jo:{}:{:.4}", sp.kind, sp.base)
+            format!("jo:{}:{:.4}:{}", sp.kind, sp.base, sp.spark_marks.tag())
+        } else if sp.kind == "spark" && sp.spark_marks != crate::model::SparkMarks::default() {
+            format!("jo:spark:0:{}", sp.spark_marks.tag())
         } else {
             format!("図形 {id}")
         },

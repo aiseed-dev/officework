@@ -1532,4 +1532,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("返信が空です(何も足しませんでした)", "The reply is empty (nothing was added)"),
     ("{} のコメントに返信しました(保存で残ります)", "Replied to the comment on {} (kept on save)"),
     ("返信を追加 — この筋の後ろに足します", "Add a reply — it goes to the end of this thread"),
+    ("点の印", "Point markers"),
+    ("印", "Markers"),
+    ("高点", "High"),
+    ("低点", "Low"),
+    ("最初", "First"),
+    ("最後", "Last"),
+    ("点の印を変えました", "Markers changed"),
+    ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "No empty-cell handling or shared axis (this line has the numbers baked in from when it was inserted)"),
 ];
