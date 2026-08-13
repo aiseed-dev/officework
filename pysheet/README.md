@@ -7,7 +7,7 @@ your own machine and without Excel.
 Written in Rust (15,000+ lines, 240+ tests), exposed to Python through PyO3.
 
 日本語の説明は GitHub にあります (Japanese documentation on GitHub):
-[README.ja.md](https://github.com/aiseed-dev/officework/blob/main/README.ja.md)
+[Python の手引き](https://github.com/aiseed-dev/officework/blob/main/docs/python-manual.ja.md)
 
 ## Install
 
