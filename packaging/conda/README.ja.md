@@ -92,3 +92,12 @@ PR を出した後の作法(テンプレートから 2026-08-14 に採取):
 
 maintainer は awoni。PR の作者が awoni 本人なら同意のコメントは不要
 (他人が出す PR に名を載せるときだけ「I agree to be a maintainer」が要る)。
+
+## 踏んだ穴
+
+- **0.3.0 の sdist に LICENSE が入っていない**(2026-08-14、PR のチェック
+  リストを検分していて発見 — CI より先に見つかった)。license_file が
+  見つからずビルドが落ちる形。recipe は**第二の source** でタグの LICENSE を
+  取り、根に置いて解決(sha256 で釘付け)。リポジトリ側は pysheet/LICENSE を
+  置いたので **0.4.0 からは sdist が `pysheet/LICENSE` を運ぶ** — その版から
+  第二の source を消し、`license_file: pysheet/LICENSE` に切り替えられる
