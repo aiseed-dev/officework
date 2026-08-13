@@ -160,4 +160,34 @@ raises(NotImplementedError, lambda: setattr(pf, "space_before", 100),
 raises(NotImplementedError, lambda: setattr(pf, "space_after", 100),
        "段落後の余白を黙って受けている")
 
+# ── まだ塞いでいない穴(engine の模型)────────────────────────
+# **塞いだらここが落ちる。** そのときは「あるべき姿」の側に書き換えること —
+# 穴が塞がったのに検査が古いままだと、次に開いたとき誰も気づけない。
+#
+# 指定の無い文字の大きさが往復で焼き付く(w:sz を必ず書く + Run.size_pt が
+# f32 で無指定を持てない)。台帳の「本家の定義とずれている所」を見よ。
+try:
+    import docx as _honke
+except ImportError:
+    _honke = None
+
+if _honke is not None:
+    import os
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as t:
+        moto = os.path.join(t, "moto.docx")
+        ato = os.path.join(t, "ato.docx")
+        hd = _honke.Document()
+        hd.add_paragraph("大きさを指定していない字")
+        hd.save(moto)
+        check(_honke.Document(moto).paragraphs[0].runs[0].font.size is None,
+              "本家が作った時点で大きさが入っている(前提が崩れた)")
+        od.Doc.open(moto).save(ato)
+        ima = _honke.Document(ato).paragraphs[0].runs[0].font.size
+        check(ima is not None and abs(int(ima) - 133350) < 10,
+              "**穴が塞がった** — 指定の無い大きさが往復で焼き付かなくなった。"
+              "この節を『往復しても None のまま』に書き換え、台帳の穴の行を"
+              f"消すこと(いまの返り: {ima!r})")
+
 print("OK")
