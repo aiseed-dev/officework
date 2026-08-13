@@ -293,8 +293,11 @@ impl Writer {
                 let cur = self.ed.cursor();
                 self.ed.move_to(cur, false);
                 self.para(|p| {
-                    p.images.push(im.clone()); // 表示
-                    p.images_new.push(im.clone()); // 保存
+                    // **images_new にだけ入れる。** 組版は images(原本由来)と
+                    // images_new(このアプリで足した物)の両方を描くので、
+                    // 両方に入れると画面と紙で二重に描かれる(2026-08-13、
+                    // 数式の挿入が同じ形を踏んで発覚 — こちらが元祖だった)
+                    p.images_new.push(im.clone());
                 });
                 self.status = if is_svg {
                     ui::t!("SVG を高精細の画像にして挿しました(保存で docx に入ります)").into()
