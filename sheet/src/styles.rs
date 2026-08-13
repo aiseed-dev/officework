@@ -79,9 +79,42 @@ pub fn parse_named(xml: &str, theme: &[String]) -> Vec<(String, Option<u32>, Cel
     out
 }
 
+/// `<fills>` の1件。**べた塗り以外もここに収まる。**
+///
+/// 前は `Option<String>`(色1つ)で持っていた。柄(`patternType="lightGrid"`)
+/// もグラデーションも色1つに潰れるので、**そのセルの書式を1つでも触ると
+/// 柄がべた塗りに化けていた**(2026-08-13、実測で見つけた。ファイルを
+/// 開いて保存するだけなら styles.xml の据え置きで無事だったので、
+/// 触るまで表に出なかった)。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct FillDef {
+    /// べた塗りの色、柄のときは**前景色**(fgColor)
+    pub color: Option<String>,
+    /// 柄の名前(`solid` と `none` は入れない)
+    pub pattern: Option<String>,
+    /// 柄の地の色(bgColor)
+    pub bg: Option<String>,
+    pub grad: Option<crate::model::Gradient>,
+}
+
+impl FillDef {
+    fn from_fmt(f: &CellFormat) -> Self {
+        Self {
+            color: f.fill.clone(),
+            pattern: f.fill_pattern.clone(),
+            bg: f.fill_bg.clone(),
+            grad: f.fill_grad.clone(),
+        }
+    }
+    /// 塗りが何も無い(= fills の 0 番でよい)
+    fn is_none(&self) -> bool {
+        self.color.is_none() && self.pattern.is_none() && self.grad.is_none()
+    }
+}
+
 fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
     let mut fonts: Vec<Fnt> = Vec::new();
-    let mut fills: Vec<Option<String>> = Vec::new();
+    let mut fills: Vec<FillDef> = Vec::new();
     let mut borders: Vec<Borders> = Vec::new();
     let mut numfmts: BTreeMap<u32, String> = BTreeMap::new();
     let mut xfs: Vec<CellFormat> = Vec::new();
@@ -89,8 +122,11 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
     // いま何の中にいるか。同じ名前の要素が section ごとに意味を変えるため
     let (mut in_fonts, mut in_fills, mut in_borders, mut in_cellxfs) = (false, false, false, false);
     let mut font = Fnt::default();
-    let mut fill: Option<String> = None;
+    let mut fill = FillDef::default();
     let mut pattern_none = false;
+    // グラデーションの中(`<color>` は書体にも柄にも出るので、ここで分ける)
+    let mut in_grad = false;
+    let mut grad_pos: u32 = 0;
     let mut fill_theme: Option<(u8, i32)> = None;
     let mut fill_themes: Vec<Option<(u8, i32)>> = Vec::new();
     let mut bd = Borders::default();
@@ -117,9 +153,10 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
                     x if x == want => in_cellxfs = false,
                     b"font" if in_fonts => fonts.push(std::mem::take(&mut font)),
                     b"fill" if in_fills => {
-                        fills.push(fill.take());
+                        fills.push(std::mem::take(&mut fill));
                         fill_themes.push(fill_theme.take());
                     }
+                    b"gradientFill" if in_fills => in_grad = false,
                     b"border" if in_borders => borders.push(std::mem::take(&mut bd)),
                     b"xf" if in_cellxfs => {
                         let done = xf_fmt.take().or_else(|| {
@@ -214,23 +251,64 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
             // 書体は文書の設定。読み捨てない
             b"name" if in_fonts => font.name = attr(&e, "val"),
             b"fill" if in_fills => {
-                fill = None;
+                fill = FillDef::default();
                 pattern_none = false;
+                in_grad = false;
                 if empty {
-                    fills.push(fill.take());
+                    fills.push(std::mem::take(&mut fill));
                     fill_themes.push(fill_theme.take());
                 }
             }
-            // patternType="none" は塗り無し(fgColor が書かれていても)
+            // patternType="none" は塗り無し(fgColor が書かれていても)。
+            // **solid 以外の柄は名前ごと持つ** — 潰すと、触った途端に
+            // 網目や斜線がべた塗りに化ける
             b"patternFill" if in_fills => {
-                pattern_none = attr(&e, "patternType").as_deref() == Some("none");
+                let ty = attr(&e, "patternType");
+                pattern_none = ty.as_deref() == Some("none");
+                fill.pattern = match ty.as_deref() {
+                    None | Some("none") | Some("solid") => None,
+                    Some(t) => Some(t.to_string()),
+                };
+            }
+            b"gradientFill" if in_fills => {
+                in_grad = true;
+                let deg = attr(&e, "degree")
+                    .and_then(|v| v.parse::<f64>().ok())
+                    .map(|d| (d * 100.0).round() as i32)
+                    .unwrap_or(0);
+                fill.grad = Some(crate::model::Gradient {
+                    degree_c: deg,
+                    stops: Vec::new(),
+                    // 線形(既定)以外は型名ごと抱える
+                    path: attr(&e, "type").filter(|t| t != "linear"),
+                });
+            }
+            b"stop" if in_grad => {
+                grad_pos = attr(&e, "position")
+                    .and_then(|v| v.parse::<f64>().ok())
+                    .map(|p| (p * 1000.0).round().clamp(0.0, 1000.0) as u32)
+                    .unwrap_or(0);
+            }
+            // グラデーションの色。**書体の <color> と同じ名前**なので
+            // in_grad で分ける(混ぜると文字色が虹に持っていかれる)
+            b"color" if in_grad => {
+                if let Some(c) = rgb(&e).or_else(|| indexed(&e)) {
+                    if let Some(g) = &mut fill.grad {
+                        g.stops.push((grad_pos, c));
+                    }
+                }
             }
             // 塗りは patternFill > fgColor に入る
             b"fgColor" if in_fills && !pattern_none => {
                 fill_theme = theme_ref(&e);
-                fill = rgb(&e).or_else(|| indexed(&e)).or_else(|| {
+                fill.color = rgb(&e).or_else(|| indexed(&e)).or_else(|| {
                     fill_theme.map(|(i, t)| crate::theme::resolve(theme, i, t as f32 / 1000.0))
                 });
+            }
+            // 柄の地の色。**柄があるときだけ持つ** — べた塗りの bgColor は
+            // `indexed="64"`(自動)で意味を持たず、拾うと差分が濁る
+            b"bgColor" if in_fills && !pattern_none && fill.pattern.is_some() => {
+                fill.bg = rgb(&e).or_else(|| indexed(&e));
             }
             b"border" if in_borders => {
                 bd = Borders::default();
@@ -338,7 +416,7 @@ fn indexed(e: &quick_xml::events::BytesStart) -> Option<String> {
 fn resolve(
     (fid, fillid, bid, nfid): (usize, usize, usize, u32),
     fonts: &[Fnt],
-    fills: &[Option<String>],
+    fills: &[FillDef],
     fill_themes: &[Option<(u8, i32)>],
     borders: &[Borders],
     numfmts: &BTreeMap<u32, String>,
@@ -346,6 +424,7 @@ fn resolve(
     rot: Option<i32>,
 ) -> CellFormat {
     let f = fonts.get(fid).cloned().unwrap_or_default();
+    let fl = fills.get(fillid).cloned().unwrap_or_default();
     CellFormat {
         bold: f.bold,
         italic: f.italic,
@@ -363,7 +442,10 @@ fn resolve(
         color_theme: f.color_theme,
         fill_theme: fill_themes.get(fillid).copied().flatten(),
         font: f.name,
-        fill: fills.get(fillid).cloned().flatten(),
+        fill: fl.color,
+        fill_pattern: fl.pattern,
+        fill_bg: fl.bg,
+        fill_grad: fl.grad,
         borders: borders.get(bid).copied().unwrap_or_default(),
         align: align.unwrap_or_default(),
         number_format: numfmts.get(&nfid).cloned().or_else(|| builtin(nfid)),
@@ -507,7 +589,8 @@ pub fn build(
     }
     let mut fonts: Vec<Fnt> =
         vec![Fnt::default()];
-    let mut fills: Vec<Option<String>> = vec![None, None]; // 0=none 1=gray125 は予約席
+    // 0=none 1=gray125 は xlsx の予約席
+    let mut fills: Vec<FillDef> = vec![FillDef::default(), FillDef::default()];
     let mut borders: Vec<Borders> = vec![Borders::NONE];
     let mut numfmts: Vec<String> = Vec::new();
     let mut xfs: Vec<(usize, usize, usize, usize, CellFormat)> = Vec::new();
@@ -520,10 +603,8 @@ pub fn build(
             color: f.color.clone(), name: f.font.clone(),
         };
         let fi = idx(&mut fonts, font);
-        let fl = match &f.fill {
-            Some(c) => idx(&mut fills, Some(c.clone())),
-            None => 0,
-        };
+        let fd = FillDef::from_fmt(f);
+        let fl = if fd.is_none() { 0 } else { idx(&mut fills, fd) };
         let bi = idx(&mut borders, f.borders);
         let ni = match &f.number_format {
             Some(c) => {
@@ -617,8 +698,47 @@ fn font_xml(f: &Fnt) -> String {
     s
 }
 
-fn fill_xml(f: &Option<String>, gray125: bool) -> String {
-    match f {
+fn fill_xml(f: &FillDef, gray125: bool) -> String {
+    // グラデーションが先(柄とは排他。xlsx も塗りの要素は一つ)
+    if let Some(g) = &f.grad {
+        let ty = match &g.path {
+            Some(t) => format!(" type=\"{}\"", esc(t)),
+            None => String::new(),
+        };
+        // 角度は path のときは書かない(Excel も書かない)
+        let deg = if g.path.is_some() {
+            String::new()
+        } else {
+            format!(" degree=\"{}\"", g.degree_c as f64 / 100.0)
+        };
+        let stops: String = g
+            .stops
+            .iter()
+            .map(|(p, c)| {
+                format!(
+                    "<stop position=\"{}\"><color rgb=\"FF{c}\"/></stop>",
+                    *p as f64 / 1000.0
+                )
+            })
+            .collect();
+        return format!("<fill><gradientFill{ty}{deg}>{stops}</gradientFill></fill>");
+    }
+    if let Some(p) = &f.pattern {
+        // 柄。前景色と地の色は**書かれていた分だけ**書く
+        let fg = match &f.color {
+            Some(c) => format!("<fgColor rgb=\"FF{c}\"/>"),
+            None => String::new(),
+        };
+        let bg = match &f.bg {
+            Some(c) => format!("<bgColor rgb=\"FF{c}\"/>"),
+            None => String::new(),
+        };
+        return format!(
+            "<fill><patternFill patternType=\"{}\">{fg}{bg}</patternFill></fill>",
+            esc(p)
+        );
+    }
+    match &f.color {
         Some(c) => format!(
             "<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF{c}\"/>\
              <bgColor indexed=\"64\"/></patternFill></fill>"
@@ -731,7 +851,7 @@ fn named_style_parts(
     border_base: usize,
     xfid_base: usize,
     fonts: &mut Vec<Fnt>,
-    fills: &mut Vec<Option<String>>,
+    fills: &mut Vec<FillDef>,
     borders: &mut Vec<Borders>,
 ) -> (String, String) {
     let mut xfs = String::new();
@@ -744,10 +864,8 @@ fn named_style_parts(
             color: f.color.clone(), name: f.font.clone(),
         };
         let fi = font_base + idx(fonts, font);
-        let fl = match &f.fill {
-            Some(c) => fill_base + idx(fills, Some(c.clone())),
-            None => 0,
-        };
+        let fd = FillDef::from_fmt(f);
+        let fl = if fd.is_none() { 0 } else { fill_base + idx(fills, fd) };
         let bi = if f.borders == Borders::NONE {
             0
         } else {
@@ -800,7 +918,7 @@ pub fn append_to(
     }
 
     let mut fonts: Vec<Fnt> = Vec::new();
-    let mut fills: Vec<Option<String>> = Vec::new();
+    let mut fills: Vec<FillDef> = Vec::new();
     let mut borders: Vec<Borders> = Vec::new();
     let mut numfmts: Vec<String> = Vec::new();
     let mut xfs: Vec<String> = Vec::new();
@@ -812,9 +930,11 @@ pub fn append_to(
             color: f.color.clone(), name: f.font.clone(),
         };
         let fi = font_base + idx(&mut fonts, font);
-        let fl = match &f.fill {
-            Some(c) => fill_base + idx(&mut fills, Some(c.clone())),
-            None => 0, // 0 番は必ず「塗り無し」(xlsx の予約)
+        let fd = FillDef::from_fmt(f);
+        let fl = if fd.is_none() {
+            0 // 0 番は必ず「塗り無し」(xlsx の予約)
+        } else {
+            fill_base + idx(&mut fills, fd)
         };
         let bi = if f.borders == Borders::NONE {
             0 // 0 番は必ず「罫線無し」
@@ -1111,6 +1231,93 @@ mod more_fmt_tests {
         let f = CellFormat { bold: true, ..Default::default() };
         let (xml, _) = build(&[f], &[]);
         assert!(!xml.contains("vertical="), "既定なのに縦揃えを書いた");
+    }
+
+    #[test]
+    fn 塗りの柄と地の色が往復する() {
+        let f = CellFormat {
+            fill: Some("FF0000".into()),       // 前景
+            fill_pattern: Some("lightGrid".into()),
+            fill_bg: Some("00FF00".into()),    // 地
+            ..Default::default()
+        };
+        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        assert!(xml.contains(r#"patternType="lightGrid""#), "柄を書いていない: {xml}");
+        let back = &parse(&xml, &[])[map[&f]];
+        assert_eq!(back.fill_pattern.as_deref(), Some("lightGrid"), "柄が消えた");
+        assert_eq!(back.fill.as_deref(), Some("FF0000"), "前景色が消えた");
+        assert_eq!(back.fill_bg.as_deref(), Some("00FF00"), "地の色が消えた");
+    }
+
+    #[test]
+    fn グラデーションが往復する() {
+        let f = CellFormat {
+            fill_grad: Some(crate::model::Gradient {
+                degree_c: 4500, // 45度
+                stops: vec![(0, "FF0000".into()), (1000, "0000FF".into())],
+                path: None,
+            }),
+            ..Default::default()
+        };
+        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        assert!(xml.contains(r#"degree="45""#), "角度が書けていない: {xml}");
+        let back = &parse(&xml, &[])[map[&f]];
+        assert_eq!(back.fill_grad, f.fill_grad, "グラデーションが往復しない");
+    }
+
+    #[test]
+    fn べた塗りと塗り無しは今までどおり() {
+        // 柄の欄を足しても、いちばん多い2つの姿を変えない
+        let solid = CellFormat { fill: Some("FFF2CC".into()), ..Default::default() };
+        let (xml, map) = build(std::slice::from_ref(&solid), &[]);
+        assert!(xml.contains(r#"patternType="solid""#), "べた塗りが solid でない");
+        let back = &parse(&xml, &[])[map[&solid]];
+        assert_eq!(back.fill.as_deref(), Some("FFF2CC"));
+        assert_eq!(back.fill_pattern, None, "べた塗りに柄の名前が付いた");
+
+        let none = CellFormat { bold: true, ..Default::default() };
+        let (xml, map) = build(std::slice::from_ref(&none), &[]);
+        let back = &parse(&xml, &[])[map[&none]];
+        assert_eq!(back.fill, None, "塗り無しに色が付いた");
+        assert_eq!(back.fill_grad, None);
+    }
+
+    #[test]
+    fn 柄のセルの書式を触っても柄はべた塗りに化けない() {
+        // **これが直したかった穴。** 前は柄が色1つに潰れていたので、
+        // 太字にしただけで網目がべた塗りの前景色になっていた
+        // (開いて保存するだけなら styles.xml の据え置きで無事だったので、
+        // 触るまで表に出なかった — 2026-08-13 に実測で見つけた)
+        let orig = CellFormat {
+            fill: Some("FF0000".into()),
+            fill_pattern: Some("darkTrellis".into()),
+            fill_bg: Some("00FF00".into()),
+            ..Default::default()
+        };
+        let touched = CellFormat { bold: true, ..orig.clone() };
+        let (xml, map) = build(std::slice::from_ref(&touched), &[]);
+        let back = &parse(&xml, &[])[map[&touched]];
+        assert!(back.bold, "触った印が付いていない");
+        assert_eq!(back.fill_pattern.as_deref(), Some("darkTrellis"), "柄がべた塗りに化けた");
+        assert_eq!(back.fill_bg.as_deref(), Some("00FF00"), "地の色が消えた");
+    }
+
+    #[test]
+    fn 知らない放射の型も落とさない() {
+        // path 型は線形と別物。落として線形に均すと円形が横縞になる
+        let f = CellFormat {
+            fill_grad: Some(crate::model::Gradient {
+                degree_c: 0,
+                stops: vec![(0, "FFFFFF".into()), (1000, "000000".into())],
+                path: Some("path".into()),
+            }),
+            ..Default::default()
+        };
+        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        assert!(xml.contains(r#"type="path""#), "放射の型を書いていない: {xml}");
+        assert!(!xml.contains("degree="), "path に角度を書いた: {xml}");
+        let back = &parse(&xml, &[])[map[&f]];
+        assert_eq!(back.fill_grad.as_ref().and_then(|g| g.path.as_deref()), Some("path"));
     }
 }
 

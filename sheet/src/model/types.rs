@@ -326,6 +326,24 @@ impl VAlign {
     }
 }
 
+/// グラデーションの塗り(xlsx の `gradientFill`)。
+///
+/// **数はすべて整数で持つ。** xlsx の degree と position は小数だが、
+/// `CellFormat` は `Ord` を導出していて `f64` には付かない — 文字の
+/// 大きさ(`size_c`)と同じ手で、角度は度×100、位置は千分率に落とす。
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Gradient {
+    /// 角度(度×100)。0=左から右。`path` のときは意味を持たない
+    pub degree_c: i32,
+    /// 途中の色(位置 0..=1000 の千分率, 色 `RRGGBB`)。**位置の昇順**。
+    /// 2つ未満のグラデーションは xlsx にもならないので持たない
+    pub stops: Vec<(u32, String)>,
+    /// 放射(`gradientFill@type="path"`)なら Some にその型名。
+    /// 線形は None。**知らない型もそのまま抱える** — 落として線形に
+    /// 均すと、円形の塗りが黙って横縞になる
+    pub path: Option<String>,
+}
+
 /// セルの書式。xlsx の `styles.xml`(xf / font / fill / border)に対応する。
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CellFormat {
@@ -343,6 +361,18 @@ pub struct CellFormat {
     pub color_theme: Option<(u8, i32)>,
     /// 塗りがテーマ由来なら(番号, 明るさの加減×1000)
     pub fill_theme: Option<(u8, i32)>,
+    /// 塗りの**柄**(xlsx の `patternFill@patternType`)。`lightGrid` など。
+    ///
+    /// **べた塗りと塗り無しはここに入れない** — べた塗りは `fill` が色を
+    /// 持つこと、塗り無しは `fill` が `None` であることで表す。柄のときの
+    /// `fill` は**前景色**(fgColor)の意味になる
+    pub fill_pattern: Option<String>,
+    /// 柄の**地の色** `RRGGBB`(`patternFill` の bgColor)。
+    /// 柄があるときだけ意味を持つ
+    pub fill_bg: Option<String>,
+    /// グラデーション。**柄とは排他** — xlsx も塗りの要素は一つで、
+    /// `patternFill` と `gradientFill` は並べられない
+    pub fill_grad: Option<Gradient>,
     /// 書体の名前(xlsx の `<font><name>`)。文書の設定
     pub font: Option<String>,
     /// 文字の大きさ(pt×100 で持つ。f32 だと Ord が付かない)
