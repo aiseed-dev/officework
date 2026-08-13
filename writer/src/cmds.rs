@@ -4,7 +4,79 @@
 use crate::*;
 
 impl Writer {
+    /// **一覧が開くボタン。** リボンは ▾ を添える。押すと候補の一覧
+    /// (パネル)が出て、選んで終わる。腕の目印: font_list / size_list /
+    /// style_list / symbols を立てる物だけ
+    pub(crate) const MENU_IDS: &'static [&'static str] = &[
+        "fontname", "fontsize", "parastyle", "inssymbol",
+    ];
+
+    /// **小窓が開くボタン。** リボンは … を添える(メニュー項目末尾の
+    /// 「…」=「続きの画面がある」の古い約束)。押すと入力のパネルが開き、
+    /// 続きの操作が要る。この旗の総和が [`Self::dialog_open`] —
+    /// 印と「小窓中はリボン無効」が同じ一覧を見る(ずれると嘘になる)。
+    /// 常駐パネルの表示切替(nav / show-left / show-right / edit-header)は
+    /// 「すぐ効く」— 無印で、ここにも入れない
+    pub(crate) const DIALOG_IDS: &'static [&'static str] = &[
+        "replace", "watermark", "bookmarks", "co-addcomment", "co-history",
+        "co-chat", "plug-manage", "prot-encrypt", "form-combo",
+        "form-dropdown", "form-name", "ai-ask", "ruby", "insequation",
+    ];
+
+    /// **小窓(… の側)が開いているか。** [`Self::DIALOG_IDS`] の腕が立てる
+    /// 旗の総和 — 印と1対1で揃える。真の間はリボン全体(タブの切替も)を
+    /// 無効にする。閉じる道は今のまま(Esc・小窓の中のボタン)。
+    /// hf_edit(ヘッダー/フッター)はモード切替なので入れない
+    pub(crate) fn dialog_open(&self) -> bool {
+        self.find_open
+            || self.wm_edit
+            || self.bm_open
+            || self.cmt_edit
+            || self.hist_open
+            || self.plug_open
+            || self.pw_open
+            || self.sd_open
+            || self.ai_open
+            || self.rb_open
+            || self.eq_open
+            || self.chat_open
+    }
+
+    /// 開いている一覧(▾ の側)を畳む。**他のボタンやタブを押したら閉じ、
+    /// 押した操作はそのまま効く**約束(発注者 2026-08-14)
+    pub(crate) fn close_menus(&mut self) {
+        self.font_list = false;
+        self.size_list = false;
+        self.style_list = false;
+        self.symbols = false;
+    }
+
+    /// リボンのボタンから命令を出す。**小窓中は何も通さない** — 描画の
+    /// 縛り(灰色・無反応)と二重の錠。閉じる道(Esc・小窓の中のボタン・
+    /// 鍵盤の割り当て)は run_cmd 直呼びなので今のまま通る
+    pub(crate) fn run_from_ribbon(&mut self, id: &'static str, cx: &mut Context<Self>) {
+        if self.dialog_open() {
+            return;
+        }
+        self.run_cmd(id, cx);
+    }
+
     pub(crate) fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
+        // 一覧(▾)は**他を押したら閉じ、押した操作はそのまま効く**
+        // (発注者 2026-08-14)。自分のボタンだけは畳まない — トグル
+        // (もう一度押すと閉じる)の動きを壊さないため
+        if id != "fontname" {
+            self.font_list = false;
+        }
+        if id != "fontsize" {
+            self.size_list = false;
+        }
+        if id != "parastyle" {
+            self.style_list = false;
+        }
+        if id != "inssymbol" {
+            self.symbols = false;
+        }
         // **一手 = 控え1枚。** 中で打鍵や段落の変更を呼ぶ命令があるので、
         // ここで旗を落とし、最初の1枚だけを通す
         self.acted = false;

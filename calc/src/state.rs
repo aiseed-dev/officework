@@ -524,6 +524,10 @@ impl Calc {
             self.status = ui::t!("キーヒントを畳みました").into();
             return;
         }
+        // 小窓中はリボンが無効 — 押せない物に札を配らない
+        if self.dialog_open() {
+            return;
+        }
         self.key_hint = Some(String::new());
         self.status =
             ui::t!("キーヒント: 札の文字を打つと段を選び、もう一度でボタンを押します(Esc でやめる)")
@@ -1493,10 +1497,44 @@ impl Calc {
             .unwrap_or((self.head_w() + 16.0, self.head_h() + 16.0))
     }
 
+    /// **小窓(… の側)が開いているか。** [`Calc::DIALOG_IDS`] の腕が立てる
+    /// 旗の総和 — 印(…)と1対1で揃える(ずれると印が嘘になる)。
+    /// `fn_args` は「関数を挿入」の第2段(引数の画面)なので同じ小窓の続き。
+    /// 真の間はリボン全体(タブの切替も)を無効にする — 小窓を出したまま
+    /// 他の操作が走って状態が二重になるのを防ぐ。閉じる道は今のまま
+    /// (Esc・小窓の中のボタン)。
+    pub(crate) fn dialog_open(&self) -> bool {
+        self.prompt.is_some()
+            || self.fn_dlg.is_some()
+            || self.fn_args.is_some()
+            || self.fmt_panel.is_some()
+            || self.dv_dlg.is_some()
+            || self.solver.is_some()
+    }
+
+    /// 開いている一覧(▾ の側)を畳む。**他のボタンやタブを押したら閉じ、
+    /// 押した操作はそのまま効く**約束(発注者 2026-08-14)。セルの押下は
+    /// mouse_down_at が既に畳んでいる — 穴だったリボンの側をこれで塞ぐ。
+    pub(crate) fn close_menus(&mut self) {
+        self.pick = None;
+        self.pick_note = None;
+        self.menu_at = None;
+        self.menu_direct = false;
+        self.border_pal = None;
+    }
+
     /// リボンのボタンから命令を出す。**押したボタンの場所を控えてから**
     /// run_cmd に渡すので、開いた一覧はそのボタンの真下に出る
     /// ([`Self::pop_anchor`] / [`pop_under`])。
     pub(crate) fn run_from_ribbon(&mut self, id: &'static str, at_x: f32, cx: &mut Context<Self>) {
+        // 小窓中はリボンから何も通さない(描画の縛りと二重 — 鍵盤の
+        // Alt ヒント経由など、ボタンの絵を通らない道からも入るため)
+        if self.dialog_open() {
+            return;
+        }
+        // 開いている一覧は畳んでから走らせる(一覧を開くボタンなら
+        // run_cmd が開き直すので、置き換えの動きも自然に出る)
+        self.close_menus();
         let pane = self.pane_box.get();
         let btn = self.btn_box.borrow().get(id).copied();
         // 描く前に鍵から呼ばれた等でボタンの場所が無ければ押した点を使う

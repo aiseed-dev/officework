@@ -1714,3 +1714,106 @@ mod paged_view_tests {
         });
     }
 }
+
+/// リボンのボタンの印(▾=一覧 / …=小窓 / 無印=すぐ効く)の見張り
+#[cfg(test)]
+mod marker_tests {
+    use crate::*;
+
+    #[test]
+    fn 印の一覧は互いに素でリボンに実在する() {
+        // ▾(一覧)と …(小窓)の両方に居る id は印が決められない。
+        // リボンの表に無い id は印の付けようが無い
+        let ribbon_ids: std::collections::HashSet<&str> = ui::ribbon::WRITER
+            .iter()
+            .flat_map(|t| t.cmds.iter().map(|c| c.id))
+            .collect();
+        for id in Writer::MENU_IDS {
+            assert!(
+                !Writer::DIALOG_IDS.contains(id),
+                "{id} が一覧(▾)と小窓(…)の両方に居る"
+            );
+            assert!(ribbon_ids.contains(id), "{id}(▾)がリボンの表に無い");
+        }
+        for id in Writer::DIALOG_IDS {
+            assert!(ribbon_ids.contains(id), "{id}(…)がリボンの表に無い");
+        }
+    }
+
+    #[gpui::test]
+    fn 小窓の印のボタンは小窓の旗を立てる(cx: &mut gpui::TestAppContext) {
+        // DIALOG_IDS(…)を1つずつ叩き、dialog_open() が真になる物の数の
+        // 下限を見る。**1件ずつの強制はしない** — 前提の要る id
+        // (form-name は記入欄の中でしか開かない)があるため。
+        // 旗が立ったのに dialog_open() が偽なら、印と無効化がずれている
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            let mut seen = 0;
+            for id in Writer::DIALOG_IDS {
+                this.set_doc(Document::plain("見出し\n本文の字。"));
+                this.ed.select_all();
+                this.run_cmd(id, cx);
+                if this.dialog_open() {
+                    seen += 1;
+                }
+                // 一覧の側の旗が立ったら、それは … でなく ▾ の仲間
+                assert!(
+                    !this.font_list && !this.size_list && !this.style_list && !this.symbols,
+                    "{id}(…)が一覧を開いた — MENU_IDS の側では"
+                );
+                // 次の id のために全部畳む
+                this.find_open = false;
+                this.wm_edit = false;
+                this.bm_open = false;
+                this.cmt_edit = false;
+                this.hist_open = false;
+                this.plug_open = false;
+                this.pw_open = false;
+                this.sd_open = false;
+                this.ai_open = false;
+                this.rb_open = false;
+                this.eq_open = false;
+                this.chat_open = false;
+            }
+            assert!(seen >= 12, "小窓が開いた命令が {seen} 件しかない — 見張りになっていない");
+        });
+    }
+
+    #[gpui::test]
+    fn 一覧は他のボタンを押すと閉じて操作は効く(cx: &mut gpui::TestAppContext) {
+        // 一覧(▾)の閉じ方の約束: 他のボタンを押すと畳まれ、押した操作は
+        // そのまま効く
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.set_doc(Document::plain("本文の字。"));
+            this.ed.select_all();
+            this.run_cmd("fontsize", cx);
+            assert!(this.size_list, "fontsize の一覧が開いていない(前提が崩れた)");
+            this.run_from_ribbon("bold", cx);
+            assert!(!this.size_list, "他のボタンを押しても一覧が畳まれない");
+            assert!(
+                this.doc.char_format_at(this.ed.selection()).bold,
+                "畳んだだけで太字が効いていない — 押した操作はそのまま効く約束"
+            );
+        });
+    }
+
+    #[gpui::test]
+    fn 小窓中はリボンが効かない(cx: &mut gpui::TestAppContext) {
+        // 小窓(…)が開いている間はリボン全体が無効。閉じる道(Esc・
+        // 小窓の中のボタン)は run_cmd 直呼びなので今のまま
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.set_doc(Document::plain("本文の字。"));
+            this.ed.select_all();
+            this.run_cmd("replace", cx);
+            assert!(this.dialog_open(), "置き換えで小窓が開いていない(前提が崩れた)");
+            this.run_from_ribbon("bold", cx);
+            assert!(
+                !this.doc.char_format_at(this.ed.selection()).bold,
+                "小窓中にリボンの bold が通った — リボンは無効の約束"
+            );
+            assert!(this.find_open, "弾いただけのつもりが小窓まで消えた");
+        });
+    }
+}

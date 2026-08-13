@@ -1130,7 +1130,7 @@ mod pivot_tests {
             this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("2"));
             let mark = (777.0, 55.0);
             let mut seen = 0;
-            for id in Calc::DROP_IDS {
+            for id in Calc::MENU_IDS {
                 this.pick = None;
                 this.cursor = Pos::new(0, 0);
                 this.anchor = None;
@@ -1148,6 +1148,106 @@ mod pivot_tests {
                 this.prompt = None;
             }
             assert!(seen >= 10, "一覧が開いた命令が {seen} 件しかない — 見張りになっていない");
+        });
+    }
+
+    #[test]
+    fn 印の一覧は互いに素でリボンに実在する() {
+        // ▾(一覧)と …(小窓)の両方に居る id は印が決められない。
+        // リボンの表に無い id は印の付けようが無い(右クリック専用の
+        // numfmt・datefmt をうっかり入れると、ここで捕まる)
+        let ribbon_ids: std::collections::HashSet<&str> = ui::ribbon::CALC
+            .iter()
+            .flat_map(|t| t.cmds.iter().map(|c| c.id))
+            .collect();
+        for id in Calc::MENU_IDS {
+            assert!(
+                !Calc::DIALOG_IDS.contains(id),
+                "{id} が一覧(▾)と小窓(…)の両方に居る"
+            );
+            assert!(ribbon_ids.contains(id), "{id}(▾)がリボンの表に無い");
+        }
+        for id in Calc::DIALOG_IDS {
+            assert!(ribbon_ids.contains(id), "{id}(…)がリボンの表に無い");
+        }
+    }
+
+    #[gpui::test]
+    fn 小窓の印のボタンは小窓の旗を立てる(cx: &mut gpui::TestAppContext) {
+        // DIALOG_IDS(…)を1つずつ叩き、dialog_open() が見ている旗
+        // (prompt / fn_dlg / fmt_panel / dv_dlg / solver)のどれかが
+        // 立つ物の数の下限を見る。**1件ずつの強制はしない** — 前提の要る
+        // id(td-resize は表の上、goal-seek 等は状況次第)があるため。
+        // 立った旗が dialog_open() に含まれることは同時に確かめる —
+        // 印と無効化がずれると印が嘘になる
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("1"));
+            this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("2"));
+            let mut seen = 0;
+            for id in Calc::DIALOG_IDS {
+                this.cursor = Pos::new(0, 0);
+                this.anchor = None;
+                this.run_cmd(id, cx);
+                let flagged = this.prompt.is_some()
+                    || this.fn_dlg.is_some()
+                    || this.fmt_panel.is_some()
+                    || this.dv_dlg.is_some()
+                    || this.solver.is_some();
+                if flagged {
+                    assert!(
+                        this.dialog_open(),
+                        "{id} が小窓を開いたのに dialog_open() が偽 — 印と無効化がずれている"
+                    );
+                    seen += 1;
+                }
+                // 一覧の側の旗が立ったら、それは … でなく ▾ の仲間
+                assert!(
+                    this.pick.is_none() && this.menu_at.is_none() && this.border_pal.is_none(),
+                    "{id}(…)が一覧を開いた — MENU_IDS の側では"
+                );
+                this.prompt = None;
+                this.fn_dlg = None;
+                this.fmt_panel = None;
+                this.dv_dlg = None;
+                this.solver = None;
+            }
+            assert!(seen >= 15, "小窓が開いた命令が {seen} 件しかない — 見張りになっていない");
+        });
+    }
+
+    #[gpui::test]
+    fn 一覧は他のボタンを押すと閉じて操作は効く(cx: &mut gpui::TestAppContext) {
+        // 一覧(▾)の閉じ方の約束: 他のボタンを押すと畳まれ、押した操作は
+        // そのまま効く。前は bold を押すと一覧が開いたまま太字が掛かった(穴)
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("abc"));
+            this.cursor = Pos::new(0, 0);
+            // fontsize は機械の書体に依らず必ず一覧を開く(固定の17個)
+            this.run_cmd("fontsize", cx);
+            assert!(this.pick.is_some(), "fontsize の一覧が開いていない(前提が崩れた)");
+            this.run_from_ribbon("bold", 0.0, cx);
+            assert!(this.pick.is_none(), "他のボタンを押しても一覧が畳まれない");
+            let f = this.book.sheets[0].get(Pos::new(0, 0)).unwrap().fmt.clone();
+            assert!(f.bold, "畳んだだけで太字が効いていない — 押した操作はそのまま効く約束");
+        });
+    }
+
+    #[gpui::test]
+    fn 小窓中はリボンが効かない(cx: &mut gpui::TestAppContext) {
+        // 小窓(…)が開いている間はリボン全体が無効 — 他の操作が走って
+        // 状態が二重になるのを防ぐ。閉じる道(Esc)は今のまま
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("abc"));
+            this.cursor = Pos::new(0, 0);
+            this.run_cmd("insert-function", cx);
+            assert!(this.dialog_open(), "関数の挿入で小窓が開いていない(前提が崩れた)");
+            this.run_from_ribbon("bold", 0.0, cx);
+            let f = this.book.sheets[0].get(Pos::new(0, 0)).unwrap().fmt.clone();
+            assert!(!f.bold, "小窓中にリボンの bold が通った — リボンは無効の約束");
+            assert!(this.fn_dlg.is_some(), "弾いただけのつもりが小窓まで消えた");
         });
     }
 

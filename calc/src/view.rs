@@ -418,6 +418,9 @@ impl Render for Calc {
                 .text_size(px(us * 9.5))
                 .child(SharedString::from(h.to_string()))
         };
+        // 小窓(…)が開いている間はリボン全体 — タブの切替も — を無効にする。
+        // 一覧(▾)は外を押せば閉じる作りなので対象外
+        let dlg_open = self.dialog_open();
         let mut tabs = div().flex().flex_row().items_end().gap_1()
             .px_2().bg(th_band);
         for (i, tb) in ribbon::calc_tabs().iter().enumerate() {
@@ -438,10 +441,22 @@ impl Render for Calc {
                 .px_2p5().pt_1p5()
                 .when(is_ctx, |d| d.bg(rgb(0xF3EDFB)).rounded_t_md())
                 .text_size(px(us * 12.0))
-                .text_color(if is_ctx { rgb(0x8A63C9) } else if on { rgb(0x2E8B57) } else { th_fg })
+                // 小窓中はタブも灰色・無反応(ready でないボタンと同じ描き方)
+                .text_color(if dlg_open { th_gray }
+                    else if is_ctx { rgb(0x8A63C9) }
+                    else if on { rgb(0x2E8B57) } else { th_fg })
                 .font_weight(if on { gpui::FontWeight::BOLD } else { gpui::FontWeight::NORMAL })
-                .cursor_pointer()
-                .hover(|s| s.text_color(rgb(0x1B6E3C)))
+                .when(!dlg_open, |d| d.cursor_pointer()
+                    .hover(|s| s.text_color(rgb(0x1B6E3C)))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        // タブ切替でも開いている一覧は畳む(他を押したら閉じる)
+                        this.close_menus();
+                        if this.tab != 0 {
+                            this.prev_tab = this.tab;
+                        }
+                        this.tab = i;
+                        cx.notify()
+                    })))
                 .flex().flex_col().items_center().gap_1()
                 .child(tb.name)
                 // 現在地の緑の下線(デスクトップ版の形)
@@ -449,24 +464,19 @@ impl Render for Calc {
                     .bg(if on && is_ctx { rgb(0x8A63C9) }
                         else if on { rgb(0x2E8B57) }
                         else if is_ctx { rgb(0xF3EDFB) }
-                        else { th_band }))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    if this.tab != 0 {
-                        this.prev_tab = this.tab;
-                    }
-                    this.tab = i;
-                    cx.notify()
-                })));
+                        else { th_band })));
         }
         tabs = tabs.child(div().flex_1())
             .child(div().id("tab-find").px_2().pb_1().text_size(px(us * 12.0))
-                .text_color(rgb(0x555E66)).cursor_pointer()
-                .hover(|s| s.text_color(rgb(0x1B6E3C)))
-                .child("🔍")
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.run_cmd("replace", cx);
-                    cx.notify()
-                })));
+                .text_color(rgb(0x555E66))
+                .when(!dlg_open, |d| d.cursor_pointer()
+                    .hover(|s| s.text_color(rgb(0x1B6E3C)))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.close_menus();
+                        this.run_cmd("replace", cx);
+                        cx.notify()
+                    })))
+                .child("🔍"));
 
         // ボタンの帯: 本家のデスクトップ版の一段の絵ボタン(writer の写し)。
         // 主要なボタンは名札つきの大ボタン、他は絵だけ(乗ると名前が下のステータス
@@ -536,8 +546,17 @@ impl Render for Calc {
             ("show-gridlines", "枠線"), ("show-headings", "見出し"),
             ("show-zeros", "0表示"),
         ];
-        // 一覧・パネル・小窓が開くボタン(本家は ▼ を添える)。id で見分ける
-        let drop_ids = Calc::DROP_IDS;
+        // ボタンの印は3値: ▾=一覧が真下に開く / …=小窓が開く / 無印=すぐ効く。
+        // id からの導出(リボンの表は触らない)— 開かない物に開く印を出さない
+        let marker_of = |id: &'static str| -> Option<&'static str> {
+            if Calc::MENU_IDS.contains(&id) {
+                Some("▾")
+            } else if Calc::DIALOG_IDS.contains(&id) {
+                Some("…")
+            } else {
+                None
+            }
+        };
         // 押せるボタンは、描くときに**自分の場所を控える**。一覧をその
         // ボタンの真下に出すのに要る(pop_under)。リボンの一巡点検
         // (tools/ribbon_sweep.py)もここを rpc 経由で読む
@@ -571,23 +590,27 @@ impl Render for Calc {
                     }
                     cx.notify()
                 });
-                return div().id(SharedString::from(format!("h-{icon}")))
+                let mut b = div().id(SharedString::from(format!("h-{icon}")))
                     .relative().child(mark(cid))
                     .children(hint_cmd.get(cid).map(|h| badge(h, us)))
                     .w(px(us * w)).h(px(us * 22.0)).px_1p5().rounded_sm()
                     .border_1().border_color(th_line)
                     .flex().items_center()
-                    .text_size(px(us * 10.5)).text_color(th_fg)
+                    .text_size(px(us * 10.5))
+                    .text_color(if dlg_open { th_gray } else { th_fg })
                     .whitespace_nowrap().overflow_hidden()
                     .on_hover(hoverable)
                     .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
-                    .cursor_pointer().hover(move |st| st.bg(th_btn_hover))
-                    .child(val)
-                    .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _, cx| {
-                        this.run_from_ribbon(cid, f32::from(ev.position().x), cx);
-                        cx.notify()
-                    }))
-                    .into_any_element();
+                    .child(val);
+                // 小窓中は欄も無反応(リボン全体を無効にする約束)
+                if !dlg_open {
+                    b = b.cursor_pointer().hover(move |st| st.bg(th_btn_hover))
+                        .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _, cx| {
+                            this.run_from_ribbon(cid, f32::from(ev.position().x), cx);
+                            cx.notify()
+                        }));
+                }
+                return b.into_any_element();
             }
             let has_icon = ui::icons::find(icon).is_some();
             let big = BIG.iter().find(|(k, _)| *k == icon).map(|(_, s)| *s);
@@ -606,13 +629,14 @@ impl Render for Calc {
                 cx.notify()
             });
             // ピボットの上で締めるボタンは灰色に(本家の editPivot ロック。
-            // 押しても run_cmd 側で断るが、見た目でも先に伝える)
+            // 押しても run_cmd 側で断るが、見た目でも先に伝える)。
+            // 小窓中(dlg_open)も同じ描き方 — ready でないボタンと同じ扱い
             let locked = on_pivot && Calc::PIVOT_LOCKED.contains(&cmd.id);
-            let fg = if cmd.ready && !locked { th_fg } else { th_gray };
-            let drops = drop_ids.contains(&cmd.id);
+            let fg = if cmd.ready && !locked && !dlg_open { th_fg } else { th_gray };
+            let marker = marker_of(cmd.id);
             if let Some(short) = big {
                 // 名札つきの大ボタン(絵の下に短い名前 — 本家の言い方)。
-                // 一覧の開くボタンは名札の横に小さな ▾
+                // 開くボタンは名札の横に小さな印(▾=一覧 / …=小窓)
                 let mut b = div().id(SharedString::from(format!("h-{icon}")))
                     .px_2().h(px(us * 46.0)).rounded_sm()
                     .flex().flex_col().items_center().justify_center().gap_1()
@@ -626,10 +650,10 @@ impl Render for Calc {
                     .child(div().flex().flex_row().items_center().gap_0p5()
                         .text_size(px(us * 10.5)).text_color(fg)
                         .child(short)
-                        .children(drops.then(|| div()
+                        .children(marker.map(|m| div()
                             .text_size(px(us * 8.0)).text_color(th_gray)
-                            .child("▾"))));
-                if cmd.ready {
+                            .child(m))));
+                if cmd.ready && !dlg_open {
                     let cid = cmd.id;
                     b = b.relative().child(mark(cid))
                         .children(hint_cmd.get(cid).map(|h| badge(h, us)));
@@ -647,7 +671,7 @@ impl Render for Calc {
                 .on_hover(hoverable)
                 .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into());
             b = if has_icon {
-                if drops { b.px_0p5() } else { b.w(px(us * 26.0)) }
+                if marker.is_some() { b.px_0p5() } else { b.w(px(us * 26.0)) }
             } else {
                 b.px_1p5()
             };
@@ -657,9 +681,9 @@ impl Render for Calc {
                         .path(SharedString::from(format!("icons/{icon}.svg")))
                         .size(px(us * 18.0)).text_color(fg)
                 }))
-                .children((has_icon && drops).then(|| {
-                    // 一覧が開く印(本家の ▼)
-                    div().text_size(px(us * 8.0)).text_color(th_gray).child("▾")
+                .children(has_icon.then(|| marker).flatten().map(|m| {
+                    // 開く印(▾=一覧 / …=小窓。本家の ▼ の位置)
+                    div().text_size(px(us * 8.0)).text_color(th_gray).child(m)
                 }))
                 .children((!has_icon).then(|| {
                     // 短い札があればそちら(正式名はツールチップと状態行)。
@@ -676,11 +700,11 @@ impl Render for Calc {
                     div().text_size(px(us * 10.5)).text_color(fg)
                         .flex().flex_row().items_center().gap_0p5()
                         .child(text)
-                        .children(drops.then(|| div()
+                        .children(marker.map(|m| div()
                             .text_size(px(us * 8.0)).text_color(th_gray)
-                            .child("▾")))
+                            .child(m)))
                 }));
-            if cmd.ready {
+            if cmd.ready && !dlg_open {
                 let cid = cmd.id;
                 b = b.relative().child(mark(cid))
                     .children(hint_cmd.get(cid).map(|h| badge(h, us)));

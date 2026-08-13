@@ -64,23 +64,42 @@ impl Calc {
         "numfmt", "format", "cell-format", "cell-styles", "copystyle",
     ];
 
-    /// **一覧・パレット・小窓が開くボタン。** リボンは ▾ を添え、押すと
-    /// [`Calc::pop_anchor`] の場所に開く。試験もこの一覧を使って
-    /// 「どのボタンから開いても押した所に出るか」を確かめる
-    /// (位置の直書きが6箇所残っていた。2026-08-08 実機の一巡点検で発見)
-    pub(crate) const DROP_IDS: &'static [&'static str] = &[
-        "fontname", "fontsize", "changecase", "format", "cell-format",
-        "borders", "fontcolor", "fillparag", "freeze", "clear",
-        "data-validation", "custom-sort", "condformat", "numfmt",
-        "theme", "colorschemas", "pagesize", "pageorient", "pagemargins",
-        "insshape", "inssmartart", "instable", "table-tpl", "inssymbol",
-        "inschart", "pivot-insert", "pivot-fields", "pivot-style",
-        "pagebreak", "fit-pages", "recover", "recover-every",
-        "text-orient", "insert-function", "fn-math", "fn-text",
-        "fn-logical", "fn-datetime", "fn-lookup", "fn-financial", "fn-more",
-        "fn-recent", "sheet-view", "cell-styles",
-        // コメントは「表示のしかた」も「どこまで消すか」も小窓で選ぶ
+    /// **一覧・パレットが開くボタン。** リボンは ▾ を添え、押すと
+    /// [`Calc::pop_anchor`] の場所(押したボタンの真下)に開く。試験もこの
+    /// 一覧を使って「どのボタンから開いても押した所に出るか」を確かめる
+    /// (位置の直書きが6箇所残っていた。2026-08-08 実機の一巡点検で発見)。
+    ///
+    /// 腕の目印: `self.pick =` / `menu_at` / `border_pal` を立てる物だけ。
+    /// 何も開かない即時動作に ▾ を出さない(嘘の ▾ が16個あった。
+    /// 2026-08-14 の数え直しで除去)。小窓が開く物は [`Self::DIALOG_IDS`]。
+    pub(crate) const MENU_IDS: &'static [&'static str] = &[
+        "fontname", "fontsize", "changecase", "format", "fontcolor",
+        "fillparag", "freeze", "condformat", "colorschemas", "insshape",
+        "inssmartart", "table-tpl", "inssymbol", "pagebreak", "fit-pages",
+        "recover", "recover-every", "text-orient", "sheet-view", "cell-styles",
+        // コメントは「表示のしかた」も「どこまで消すか」も一覧で選ぶ
         "co-showcomment", "co-delcomment",
+        "pivot-style", "pivot-fields",
+        // 格子パレット(border_pal)。真下に落ちるので ▾ の側
+        "borders",
+        "merge", "prot-allow", "co-history", "py-edit", "plug-manage",
+        "insslicer", "editheader", "paste-name", "csv-kind", "defname",
+        "currency",
+    ];
+
+    /// **小窓が開くボタン。** リボンは … を添える(メニュー項目末尾の
+    /// 「…」=「続きの画面がある」の古い約束と同じ)。押すと入力や複数項目の
+    /// 画面が開き、続きの操作が要る。
+    ///
+    /// 腕の目印: `self.prompt =` / `fn_dlg` / `dv_dlg` / `fmt_panel` /
+    /// `solver` を立てる物だけ。この旗の総和が [`Self::dialog_open`] —
+    /// 印と「小窓中はリボン無効」が同じ一覧を見る(ずれると嘘になる)。
+    pub(crate) const DIALOG_IDS: &'static [&'static str] = &[
+        "insert-function", "cell-format", "data-validation", "custom-sort",
+        "python", "prot-encrypt", "co-chat", "instext", "insequation",
+        "ai-table", "ai-ask", "td-resize", "subtotal", "datatable",
+        "addcomment", "text-column", "goal-seek", "replace", "inshyperlink",
+        "solver",
     ];
 
     /// シートの保護中でも通す操作(見るだけ・保存・保護の操作そのもの)

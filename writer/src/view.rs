@@ -110,6 +110,20 @@ impl Render for Writer {
             })));
 
         let th_tab_idle = if dk { rgb(0x9AA5AE) } else { rgb(0x555E66) };
+        // 小窓(…)が開いている間はリボン全体 — タブの切替も — を無効にする。
+        // 一覧(▾)は他を押せば閉じる作りなので対象外
+        let dlg_open = self.dialog_open();
+        // ボタンの印は3値: ▾=一覧が開く / …=小窓が開く / 無印=すぐ効く。
+        // id からの導出(リボンの表は触らない)
+        let marker_of = |id: &'static str| -> Option<&'static str> {
+            if Writer::MENU_IDS.contains(&id) {
+                Some("▾")
+            } else if Writer::DIALOG_IDS.contains(&id) {
+                Some("…")
+            } else {
+                None
+            }
+        };
         let mut tabs = div().flex().flex_row().items_end().gap_1()
             .px_2().bg(th_tab_on_bg);
         for (i, tb) in ribbon::writer_tabs().iter().enumerate() {
@@ -118,34 +132,39 @@ impl Render for Writer {
                 .id(SharedString::from(format!("tab{i}")))
                 .px_2p5().pt_1p5()
                 .text_size(px(12.0))
-                .text_color(if on { th_tab_on_fg } else { th_tab_idle })
+                // 小窓中はタブも灰色・無反応(未実装のボタンと同じ描き方)
+                .text_color(if dlg_open { th_gray_fg }
+                    else if on { th_tab_on_fg } else { th_tab_idle })
                 .font_weight(if on { gpui::FontWeight::BOLD } else { gpui::FontWeight::NORMAL })
-                .cursor_pointer()
-                .hover(move |s| s.text_color(th_tab_on_fg))
+                .when(!dlg_open, |d| d.cursor_pointer()
+                    .hover(move |s| s.text_color(th_tab_on_fg))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        // タブ切替でも開いている一覧は畳む(他を押したら閉じる)
+                        this.close_menus();
+                        if i == 0 && this.tab != 0 {
+                            this.prev_tab = this.tab;
+                            this.file_view = 0;
+                            this.file_field = None;
+                        }
+                        this.tab = i;
+                        cx.notify()
+                    })))
                 .flex().flex_col().items_center().gap_1()
                 .child(tb.name)
                 // 現在地の青い下線(デスクトップ版の形)
                 .child(div().h(px(2.5)).w_full().rounded_sm()
-                    .bg(if on { th_btn } else { th_tab_on_bg }))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    if i == 0 && this.tab != 0 {
-                        this.prev_tab = this.tab;
-                        this.file_view = 0;
-                        this.file_field = None;
-                    }
-                    this.tab = i;
-                    cx.notify()
-                })));
+                    .bg(if on { th_btn } else { th_tab_on_bg })));
         }
         tabs = tabs.child(div().flex_1())
             .child(div().id("tab-find").px_2().pb_1().text_size(px(12.0))
-                .text_color(th_tab_idle).cursor_pointer()
-                .hover(move |s| s.text_color(th_tab_on_fg))
-                .child("🔍")
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.run_cmd("replace", cx);
-                    cx.notify()
-                })));
+                .text_color(th_tab_idle)
+                .when(!dlg_open, |d| d.cursor_pointer()
+                    .hover(move |s| s.text_color(th_tab_on_fg))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.run_from_ribbon("replace", cx);
+                        cx.notify()
+                    })))
+                .child("🔍"));
 
         let mut cmds = div().flex().flex_col().gap_0p5()
             .px_3().py_1().bg(th_cmd_bg)
@@ -289,17 +308,19 @@ impl Render for Writer {
                             .px_2().h(px(26.0))
                             .w(px(if cid == "fontname" { 150.0 } else { 56.0 }))
                             .rounded_sm().border_1().border_color(th_cmd_border)
-                            .text_size(px(12.0)).text_color(th_top_fg)
-                            .cursor_pointer()
-                            .hover(move |st| st.bg(th_btn_hover))
+                            .text_size(px(12.0))
+                            // 小窓中は欄も灰色・無反応(リボン全体を無効にする約束)
+                            .text_color(if dlg_open { th_gray_fg } else { th_top_fg })
+                            .when(!dlg_open, |d| d.cursor_pointer()
+                                .hover(move |st| st.bg(th_btn_hover))
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.run_from_ribbon(cid, cx);
+                                    cx.notify()
+                                })))
                             .child(div().flex_1().whitespace_nowrap()
                                 .overflow_hidden().child(SharedString::from(text)))
                             .child(div().text_size(px(9.0)).text_color(th_tab_idle)
-                                .child("▼"))
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.run_cmd(cid, cx);
-                                cx.notify()
-                            })));
+                                .child("▼")));
                         continue;
                     }
                     let Some(cmd) = ribbon::writer_tabs()[self.tab]
@@ -327,10 +348,13 @@ impl Render for Writer {
                         cx.notify()
                     });
                     let has_icon = ui::icons::find(icon).is_some();
+                    // 開く印(▾=一覧 / …=小窓)。無印はすぐ効くボタン
+                    let marker = marker_of(cmd.id);
                     if let Some(short) = big {
-                        // 名札つきの大ボタン(絵の下に短い名前。本家の言い方)
+                        // 名札つきの大ボタン(絵の下に短い名前。本家の言い方)。
+                        // 開くボタンは名札の横に小さな印。小窓中は灰色・無反応
                         let on = cmd.ready && self.toggled(cmd.id);
-                        let fg = if !cmd.ready {
+                        let fg = if !cmd.ready || dlg_open {
                             th_gray_fg
                         } else if on {
                             th_btn
@@ -349,17 +373,21 @@ impl Render for Writer {
                                     .size(px(20.0))
                                     .text_color(fg)
                             }))
-                            .child(div().text_size(px(10.5)).text_color(fg)
-                                .child(short));
+                            .child(div().flex().flex_row().items_center().gap_0p5()
+                                .text_size(px(10.5)).text_color(fg)
+                                .child(short)
+                                .children(marker.map(|m| div()
+                                    .text_size(px(8.0)).text_color(th_tab_idle)
+                                    .child(m))));
                         if on {
                             b = b.bg(th_btn_hover).border_1().border_color(th_btn);
                         }
-                        if cmd.ready {
+                        if cmd.ready && !dlg_open {
                             let cid = cmd.id;
                             b = b.cursor_pointer()
                                 .hover(move |st| st.bg(th_btn_hover))
                                 .on_click(cx.listener(move |this, _, _, cx| {
-                                    this.run_cmd(cid, cx);
+                                    this.run_from_ribbon(cid, cx);
                                     cx.notify()
                                 }));
                         }
@@ -367,46 +395,58 @@ impl Render for Writer {
                         continue;
                     }
                     let on = cmd.ready && self.toggled(cmd.id);
+                    // 小窓中は ready でも灰色・無反応(未実装と同じ描き方)
+                    let usable = cmd.ready && !dlg_open;
                     let mut b = div()
                         .id(SharedString::from(format!("h-{icon}")))
                         .h(px(26.0)).rounded_sm()
                         .flex().items_center().justify_center()
                         .on_hover(hoverable);
-                    b = if has_icon { b.w(px(26.0)) } else { b.px_1p5() };
+                    b = if has_icon {
+                        // 印つきは幅を固定しない(印のぶん広がる)
+                        if marker.is_some() { b.px_0p5() } else { b.w(px(26.0)) }
+                    } else {
+                        b.px_1p5()
+                    };
                     if on {
                         // 入っている印(押した結果が画面に残るもの)
                         b = b.bg(th_btn_hover).border_1().border_color(th_btn);
                     }
-                    if cmd.ready {
-                        let cid = cmd.id;
-                        b = b.cursor_pointer()
-                            .hover(move |st| st.bg(th_btn_hover))
-                            .children(has_icon.then(|| {
-                                gpui::svg()
-                                    .path(SharedString::from(format!("icons/{icon}.svg")))
-                                    .size(px(18.0))
-                                    .text_color(if on { th_btn } else { th_top_fg })
-                            }))
-                            .children((!has_icon).then(|| {
-                                div().text_size(px(10.5)).text_color(th_btn)
-                                    .child(label)
-                            }))
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.run_cmd(cid, cx);
-                                cx.notify()
-                            }));
+                    let icon_fg = if !usable {
+                        th_gray_fg
+                    } else if on {
+                        th_btn
                     } else {
-                        // 未実装。押せるように見せない
-                        b = b.children(has_icon.then(|| {
+                        th_top_fg
+                    };
+                    b = b
+                        .children(has_icon.then(|| {
                             gpui::svg()
                                 .path(SharedString::from(format!("icons/{icon}.svg")))
                                 .size(px(18.0))
-                                .text_color(th_gray_fg)
+                                .text_color(icon_fg)
+                        }))
+                        .children(has_icon.then(|| marker).flatten().map(|m| {
+                            // 開く印(▾=一覧 / …=小窓)
+                            div().text_size(px(8.0)).text_color(th_tab_idle).child(m)
                         }))
                         .children((!has_icon).then(|| {
-                            div().text_size(px(10.5)).text_color(th_gray_fg)
+                            div().text_size(px(10.5))
+                                .text_color(if usable { th_btn } else { th_gray_fg })
+                                .flex().flex_row().items_center().gap_0p5()
                                 .child(label)
+                                .children(marker.map(|m| div()
+                                    .text_size(px(8.0)).text_color(th_tab_idle)
+                                    .child(m)))
                         }));
+                    if usable {
+                        let cid = cmd.id;
+                        b = b.cursor_pointer()
+                            .hover(move |st| st.bg(th_btn_hover))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.run_from_ribbon(cid, cx);
+                                cx.notify()
+                            }));
                     }
                     row = row.child(b);
                 }
@@ -415,7 +455,8 @@ impl Render for Writer {
         } else {
             let mut row = div().flex().flex_row().flex_wrap().gap_1().items_center().py_1();
             for cmd in ribbon::writer_tabs()[self.tab].cmds {
-                if cmd.ready {
+                // 小窓中は ready でも灰色・無反応(未実装と同じ描き方)
+                if cmd.ready && !dlg_open {
                     let id = cmd.id;
                     row = row.child(div()
                         .id(SharedString::from(cmd.id))
@@ -431,11 +472,15 @@ impl Render for Writer {
                                 .text_color(th_btn)
                         }))
                         .child(cmd.label)
+                        // 開く印(▾=一覧 / …=小窓)
+                        .children(marker_of(cmd.id).map(|m| div()
+                            .text_size(px(9.0)).text_color(th_tab_idle)
+                            .child(m)))
                         .on_click(cx.listener(move |this, _, _, cx| {
-                            this.run_cmd(id, cx); cx.notify()
+                            this.run_from_ribbon(id, cx); cx.notify()
                         })));
                 } else {
-                    // 未実装。押せるように見せない
+                    // 未実装(と小窓中)。押せるように見せない
                     row = row.child(div().px_3().py_1().rounded_md()
                         .border_1().border_color(th_gray_border)
                         .text_color(th_gray_fg).text_size(px(12.0))
@@ -446,7 +491,10 @@ impl Render for Writer {
                                 .size(px(15.0))
                                 .text_color(th_gray_fg)
                         }))
-                        .child(cmd.label));
+                        .child(cmd.label)
+                        .children(marker_of(cmd.id).map(|m| div()
+                            .text_size(px(9.0)).text_color(th_tab_idle)
+                            .child(m))));
                 }
             }
             cmds = cmds.child(row);

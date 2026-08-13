@@ -1202,3 +1202,27 @@ TeX があれば揃う。二段構えが許されるのは**数式が絵とし�
     **結果は LaTeX として文書に残る**ので、実行時に AI は要らない
   文中の数式は段落の頭に寄る。`anchors` の持ち方の限界で、画像も同じ問題を
     抱えている。直すなら模型の作り替えで、画像とまとめてやるべき
+
+## リボンのボタンの印は3値(2026-08-14 発注者。UI 指示の第1弾)
+
+**▾=押すと一覧が出る / …=小窓(入力のパネル)が開く / 無印=すぐ効く。**
+calc と同じ約束(詳しくは calc の同名の節)。writer には印の仕組みそのものが
+無かったので新設した。部品の共通化はしない — 2例から抽象を作らない。
+writer の今の見た目(ボタンの形)に印だけ足した。
+
+分類(writer/src/cmds.rs の `MENU_IDS` / `DIALOG_IDS`。腕の実測):
+
+- ▾ = fontname / fontsize / parastyle / inssymbol(font_list・size_list・
+  style_list・symbols を立てる腕)
+- … = replace / watermark / bookmarks / co-addcomment / co-history /
+  co-chat / plug-manage / prot-encrypt / form-combo / form-dropdown /
+  form-name / ai-ask / ruby / insequation(入力パネルの旗を立てる腕)
+- 無印 = nav / show-left / show-right / edit-header — 常駐パネルの
+  表示切替とモード切替は「すぐ効く」ので印を付けない
+
+挙動も calc と同じ: 一覧(▾)は他のボタンやタブを押すと閉じて押した操作は
+そのまま効く(自分のボタンはトグルのまま)。小窓(…)中は `dialog_open()`
+(DIALOG_IDS が立てる旗の総和 — 印と1対1。hf_edit はモード切替なので
+入れない)が真の間、リボンのボタンとタブを灰色・無反応にし、
+run_from_ribbon でも弾く。閉じる道(Esc・小窓の中のボタン・鍵盤の
+割り当て)は今のまま。試験4本(marker_tests)で見張る。
