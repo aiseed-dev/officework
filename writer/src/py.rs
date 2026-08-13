@@ -143,27 +143,31 @@ def tpl_fields():
 /// プラグイン(.py)の置き場。~/.config/office/plugins(正は pyrun)
 pub(crate) use pyrun::plugins_dir;
 
-/// 数式を組む台本。**officework.tex に任せる** — 組版は自前で書かない。
-/// TeX があればそちらで組み、無ければ matplotlib(mathtext)に落ちる
-const SUUSHIKI: &str = r#"import json, sys
+/// 数式を組む台本。**officework/tex.py をそのまま埋め込む** —
+/// 写しを作らない(py.rs の冒頭が戒めている「写経のずれ」を作らないため)。
+/// 実体は一つで、Python からは `from officework import tex`、
+/// アプリからはこの埋め込みで使う。**officework が入っていなくても動く**
+/// (calc の CHART_PY などと同じで、要るのは matplotlib だけ)
+const TEX_PY: &str = include_str!("../../pysheet/officework/tex.py");
+
+/// 埋め込んだ tex.py の後ろに付ける呼び出し。argv は (式, 大きさ, 出力先)
+const SUUSHIKI_YOBI: &str = r#"
+# ---- ここから writer の呼び出し ----
+import json as _json, sys as _sys
 try:
-    from officework import tex
-except ImportError:
-    print(json.dumps({"e": "officework が入っていません(pip install officework)"}))
-    raise SystemExit(0)
-try:
-    png, w, h = tex.to_png(sys.argv[1], size_pt=float(sys.argv[2]))
-except Exception as e:
-    print(json.dumps({"e": str(e)}))
-    raise SystemExit(0)
-open(sys.argv[3], "wb").write(png)
-print(json.dumps({"w": w, "h": h, "kata": tex.kumi_kata()}))
+    _png, _w, _h = to_png(_sys.argv[1], size_pt=float(_sys.argv[2]))
+except Muri as _e:
+    print(_json.dumps({"e": str(_e)})); raise SystemExit(0)
+except Exception as _e:
+    print(_json.dumps({"e": "%s: %s" % (type(_e).__name__, _e)})); raise SystemExit(0)
+open(_sys.argv[3], "wb").write(_png)
+print(_json.dumps({"w": _w, "h": _h, "kata": kumi_kata()}))
 "#;
 
 /// いま数式を何で組むか(状態行に出す字)。**組めないなら組めないと言う**
 pub(crate) fn suushiki_no_kumi_kata() -> String {
     // **固有名詞は訳さない**(鍵にすると 14 言語ぶんの無駄な行が増える)
-    match hashiru(&["-c", "from officework import tex; print(tex.kumi_kata())"]) {
+    match hashiru_kata() {
         Some(s) if s.trim() == "tex" => "TeX".into(),
         Some(s) if s.trim() == "mathtext" => "matplotlib".into(),
         _ => "Python".into(),
@@ -187,15 +191,15 @@ fn binds_for_python() -> Vec<std::path::PathBuf> {
     v
 }
 
-/// Python を短く回して標準出力の最後の行を取る(サンドボックスの中)。
-fn hashiru(args: &[&str]) -> Option<String> {
+/// いま何で組めるかを、埋め込んだ tex.py に聞く(サンドボックスの中)。
+fn hashiru_kata() -> Option<String> {
     let py = find_python();
     let dir = pyrun::cage_work_dir("suushiki");
     std::fs::create_dir_all(&dir).ok()?;
+    let script = dir.join("kata.py");
+    std::fs::write(&script, format!("{TEX_PY}\nprint(kumi_kata())\n")).ok()?;
     let mut c = pyrun::caged_python(&py, &dir, &binds_for_python(), false)?;
-    for a in args {
-        c.arg(a);
-    }
+    c.arg(&script);
     let out = c.output().ok()?;
     let s = String::from_utf8_lossy(&out.stdout).to_string();
     s.lines().last().map(|l| l.to_string())
@@ -208,7 +212,8 @@ pub(crate) fn kumu_suushiki(tex: &str, size_pt: f32) -> Result<(Vec<u8>, f32, f3
     let dir = pyrun::cage_work_dir("suushiki");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let script = dir.join("kumu.py");
-    std::fs::write(&script, SUUSHIKI).map_err(|e| e.to_string())?;
+    std::fs::write(&script, format!("{TEX_PY}{SUUSHIKI_YOBI}"))
+        .map_err(|e| e.to_string())?;
     let png = dir.join("out.png");
     let _ = std::fs::remove_file(&png);
     // **囲いの中から officework が見えるようにする。** bwrap は /home を
