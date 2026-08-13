@@ -85,6 +85,9 @@ jobs:
           cargo check -p pysheet --target aarch64-apple-ios
           cargo check -p sidecar --target aarch64-linux-android
           cargo check -p sidecar --target aarch64-apple-ios
+          # lang は feature "ai"(rustls)を外した形で — スマホの組み方
+          cargo check -p lang --no-default-features --target aarch64-linux-android
+          cargo check -p lang --no-default-features --target aarch64-apple-ios
       - name: リボンの表を読む解析器が、崩れたら止まるか
         # **検査を信じる前に、落ちる所を見る。** 6つの崩し方(新しい種類・
         # マクロ書き・Tab を関数で作る・引数が増える・`/* */` で囲む・

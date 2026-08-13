@@ -6,11 +6,21 @@ license.workspace = true
 
 # gpui に依存しない。画面が無くても回せることがこのクレートの存在理由。
 # 青空文庫の17,000作品を窓越しには測れない。
+
+[features]
+default = ["ai"]
+# AI の外の宛先(https)。**スマホは default-features=false で外す** —
+# rustls の ring がビルドに NDK の cc を要求し、Android/iOS の的で
+# 組めない(2026-08-13 実測)。外しても素の TCP(ローカルのモデル)と
+# 校正・ふりがな・i18n はそのまま残る — 無くなるのは外の API への道
+# だけで、その道は post_https が「入っていない」と名乗って断る
+ai = ["dep:rustls", "dep:webpki-roots"]
+
 [dependencies]
 # AI の宛先(Claude API)。定額の CLI 経由なら要らないが、
 # API を選んだときのために https を持つ
-rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
-webpki-roots = "0.26"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"], optional = true }
+webpki-roots = { version = "0.26", optional = true }
 
 [[bin]]
 name = "furigana-bench"

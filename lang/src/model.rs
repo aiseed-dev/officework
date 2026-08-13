@@ -149,6 +149,7 @@ fn post(ep: &Endpoint, body: &str) -> Result<String, String> {
 
 /// https で POST して本文を返す(AI の宛先が外のときだけ使う)。
 /// **鍵は呼ぶ側が渡す** — この関数はどこにも控えない
+#[cfg(feature = "ai")]
 pub fn post_https(
     host: &str,
     path: &str,
@@ -196,6 +197,22 @@ pub fn post_https(
         return Err(format!("{}: {}", status.trim(), head(&out, 200)));
     }
     Ok(out)
+}
+
+/// 同じ名前の断り(feature "ai" を外した組み方 — スマホなど)。
+/// **黙って空を返さない** — 「指摘なし」と読み違えられるため。
+/// 形が本物と同じなので、呼ぶ側(ai.rs)は組み方を知らなくてよい
+#[cfg(not(feature = "ai"))]
+pub fn post_https(
+    host: &str,
+    _path: &str,
+    _body: &str,
+    _headers: &[(&str, &str)],
+) -> Result<String, String> {
+    Err(format!(
+        "この組み方に https は入っていません(feature \"ai\" なし)。\
+         外の宛先({host})へは出られません — ローカルのモデルは使えます"
+    ))
 }
 
 /// JSON から `"鍵":"…"` の値を1つ取り出す(完全な処理系は持たない)。
