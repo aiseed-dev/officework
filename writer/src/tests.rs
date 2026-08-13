@@ -1572,6 +1572,46 @@ mod paged_view_tests {
         });
     }
 
+    /// **挿した絵は一度だけ描かれる。** 組版は images(読み込んだ絵)と
+    /// images_new(このアプリで足した絵)の**両方**を描くので、足すときに
+    /// 両方へ入れると画面と紙で二重になる — 2026-08-13 に数式で踏み、
+    /// 画像の挿入にも同じ形があった(7feb1e6)。両方の道をここで縛る
+    #[gpui::test]
+    fn 挿した絵は一度だけ描かれる(cx: &mut gpui::TestAppContext) {
+        // 1x1 の PNG(この試験のためだけ。読めればよい)
+        const PNG: &[u8] = &[
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+            0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+            0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+            0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+            0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+        ];
+        let dir = std::env::temp_dir().join("officework-image-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("ten.png");
+        std::fs::write(&p, PNG).unwrap();
+
+        let w = 開く(cx);
+        w.update(cx, |this, _| {
+            this.set_doc(Document::plain("本文"));
+            this.insert_image(&p);
+            // 模型の側: 足した絵は images_new にだけ居る
+            let (old, new) = this
+                .doc
+                .paragraphs()
+                .map(|q| (q.images.len(), q.images_new.len()))
+                .fold((0usize, 0usize), |a, b| (a.0 + b.0, a.1 + b.1));
+            assert_eq!(new, 1, "足した絵が images_new に無い");
+            assert_eq!(old, 0, "足した絵を images にも入れている(二重描画の元)");
+            // 組版の側: 紙に出るのは一度だけ
+            this.relayout();
+            assert_eq!(this.page.images.len(), 1,
+                "紙に {} 回描かれた(一度であるべき)", this.page.images.len());
+        });
+        let _ = std::fs::remove_file(&p);
+    }
+
     /// 押す口が実際に効くこと。**機能があってもボタンが繋がっていなければ
     /// 誰にも届かない** — ここが無いと配線の切れに気づけない
     #[gpui::test]
