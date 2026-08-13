@@ -1097,11 +1097,23 @@ class Book:
         _call("close")
 
     def to_pdf(self, path=None, include=None, exclude=None):
-        raise NotImplementedError(
-            "ブック全体の PDF はまだ — アプリの PDF は**シート単位**で、"
-            "頁番号もシートごとに振る造り(paper 側で束ねる口が要る。台帳)。"
-            "いまは Sheet.to_pdf を使ってください"
-        )
+        """ブック全体を1つの PDF に(xlwings と同じ口)。
+
+        **頁番号(&P)と総頁(&N)はブック通し** — Excel がブック全体を
+        刷るときと同じ数え方。紙・向き・余白・印刷範囲はシートごとに効く
+        (1冊に A4 縦と横が混ざってよい)。隠したシートは刷らない。
+        include / exclude(シートの選り分け)は持たない — 要るなら
+        Sheet.to_pdf を並べるか、隠してから刷る。"""
+        if include is not None or exclude is not None:
+            raise NotImplementedError(
+                "シートの選り分け(include / exclude)は持たない。"
+                "隠したシートは刷らないので、visible で選ぶ(台帳)"
+            )
+        if path is None:
+            p = self.fullname
+            path = (os.path.splitext(p)[0] if p else "ブック1") + ".pdf"
+        _call("to_pdf", path=os.path.abspath(path), whole=True)
+        return os.path.abspath(path)
 
     def __repr__(self):
         return "<officework.calc Book {}>".format(self.name)

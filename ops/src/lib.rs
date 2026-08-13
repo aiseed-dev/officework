@@ -347,6 +347,10 @@ pub trait Host {
     fn to_pdf(&mut self, _si: usize, _p: &std::path::Path) -> Result<String, String> {
         Err("この口では to_pdf はできません".into())
     }
+    /// **ブック全体**を1つの PDF に(頁番号はブック通し)
+    fn book_to_pdf(&mut self, _p: &std::path::Path) -> Result<String, String> {
+        Err("この口では to_pdf はできません".into())
+    }
     /// シートの複製(耳のメニューと同じ作法)。返りは写しの名前
     fn copy_sheet(&mut self, _si: usize, _name: Option<&str>) -> Result<String, String> {
         Err("この口では copy_sheet はできません".into())
@@ -608,9 +612,17 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 Err(e) => err(&e),
             }
         }
-        // シートを PDF に(印刷設定に従う。効かせた物は note で言う)
+        // シートを PDF に(印刷設定に従う。効かせた物は note で言う)。
+        // whole=true で**ブック全体**を1つに束ねる(頁番号はブック通し)
         "to_pdf" => {
             let Some(p) = o.str("path") else { return err("path がありません") };
+            if o.bool("whole").unwrap_or(false) {
+                h.settle();
+                return match h.book_to_pdf(std::path::Path::new(&p)) {
+                    Ok(note) => format!("{{\"ok\":true,\"note\":{}}}", J::S(note).to_json()),
+                    Err(e) => err(&e),
+                };
+            }
             let si = match sheet_index(h, &o) {
                 Ok(i) => i,
                 Err(e) => return e,

@@ -214,6 +214,12 @@ impl Host for Calc {
         }
     }
 
+    fn book_to_pdf(&mut self, p: &std::path::Path) -> Result<String, String> {
+        let note = Calc::write_book_pdf(self, p)?;
+        self.status = note.clone().into();
+        Ok(note)
+    }
+
     fn copy_sheet(&mut self, si: usize, name: Option<&str>) -> Result<String, String> {
         let n = self.copy_sheet_at(si, name)?;
         self.status = ui::tf!("「{}」を作りました", n).into();

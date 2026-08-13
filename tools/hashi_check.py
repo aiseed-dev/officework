@@ -309,4 +309,20 @@ with tempfile.TemporaryDirectory() as t:
     check(got == out and os.path.exists(out) and os.path.getsize(out) > 0,
           "to_pdf が PDF を書かない")
 
+    # ブック全体を1つの PDF に(頁番号はブック通し)。
+    # 2枚目を足して、束ねた方が1枚ぶんより大きいことを見る
+    extra = sh.copy(name="二枚目")
+    wb.sheets["二枚目"]["A1"].value = "二枚目の中身"
+    out_b = os.path.join(t, "book.pdf")
+    got_b = wb.to_pdf(out_b)
+    check(got_b == out_b and os.path.getsize(out_b) > os.path.getsize(out),
+          f"ブックの PDF が1枚ぶんより小さい: "
+          f"{os.path.getsize(out_b)} vs {os.path.getsize(out)}")
+    try:
+        wb.to_pdf(out_b, include=["Sheet1"])
+        check(False, "シートの選り分けが黙って通った")
+    except NotImplementedError:
+        pass
+    extra.delete()
+
 print("OK")

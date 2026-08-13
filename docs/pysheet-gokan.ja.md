@@ -159,7 +159,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ close | 足す | 橋に「閉じる」コマンド(済 2026-08-13: rpc close。**未保存があれば断る**(new / open と同じ作法)。アプリは常にブックを1つ持つ造りなので、閉じると新しい空のブックに戻る — 窓は閉じない(起動も終了も人の物)) |
 | ✔ selection / get_selection | 足す | App の項と同じ(済 2026-08-12) |
 | ✔ load | 足す | 範囲 → DataFrame の直行便。**polars を第一に**(pandas は options で従来どおり)(済 2026-08-12: 選択を読み、1マスなら表に広げる — xw.load / Book.load / Sheet.load) |
-| to_pdf | 足す | アプリは PDF 書き出しを持っている(io.rs)— 橋から呼ぶだけ。**Sheet.to_pdf は済**。**Book の分は「細目」ではない**(2026-08-13 検分): paper::grid::sheet_to_pdf は自分で PdfDocument を作り、**頁番号もシート単位**で振る造り。束ねるには paper 側に「1つの文書へ足していく」口と、頁番号をブック通しにするかの判断が要る — 正直に断っている(Sheet.to_pdf を使う) |
+| ✔ to_pdf | 足す | アプリは PDF 書き出しを持っている(io.rs)— 橋から呼ぶだけ。**Sheet.to_pdf は済**。**ブック全体も済(2026-08-13 発注者「Book.to_pdf をつくりましょう」)**: paper に book_to_pdf を作り、sheet_to_pdf の中身を draw_sheet(共有の文書へ描く)と draw_header_footer(総頁が決まってから描く)に分けた。**頁番号(&P)と総頁(&N)はブック通し** — Excel がブック全体を刷るときと同じ数え方。紙・向き・余白・印刷範囲はシートごとに効き(1冊に縦と横が混ざってよい)、隠したシートは刷らない。xlwings の include / exclude は持たない(visible で選ぶ)。**ついでに1つ塞いだ**: ヘッダーの「&&」(素の & の書き方)が落ちていて「山田&田中」が壊れていた — 一度の走査に直し、頁番号の規則ごと hf_subst の試験で縛った |
 | ✔ names | 足す | 名前付き範囲(openpyxl の create_named_range と同じ一件)(済 2026-08-12 夜: rpc names / define_name / delete_name(語彙25)。wb.names.add("単価", "=Sheet1!$A$1")・refers_to・delete — xlwings の形。実機で式の追随まで検査) |
 | activate | 要らない | ブックは同時に1つの造り — 前に出す対象が無い |
 | set_mock_caller | 要らない | Excel アドイン開発の道具。caller が attach と同じ物なのでモックが要らない |

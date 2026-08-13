@@ -771,6 +771,56 @@ impl Calc {
         paper::grid::page_starts(sh, paper, &setup)
     }
 
+    /// **ブック全体を1つの PDF に。** シートを順に束ね、頁番号(&P)と
+    /// 総頁(&N)は**ブック通し**で振る(paper::grid::book_to_pdf)。
+    /// 隠したシートは刷らない — 画面と同じ。返りは報告の文言。
+    pub(crate) fn write_book_pdf(&mut self, p: &std::path::Path) -> Result<String, String> {
+        let (fam, exact) = kumihan::font::for_document(None).map_err(|e| e.to_string())?;
+        let data = kumihan::font::load(fam).map_err(|e| e.to_string())?;
+        let prev = self.active;
+        let mut jobs: Vec<(&sheet::Sheet, paper::Paper, paper::grid::PrintSetup)> = Vec::new();
+        // 紙と余白は**シートごと**に効く(1冊に縦と横が混ざってよい)。
+        // paper_of_sheet はいま出ているシートを見るので、順に差し替えて集める
+        let mut papers: Vec<paper::Paper> = Vec::new();
+        for i in 0..self.book.sheets.len() {
+            self.active = i;
+            papers.push(self.paper_of_sheet().0);
+        }
+        self.active = prev;
+        for (i, sh) in self.book.sheets.iter().enumerate() {
+            if sh.hidden {
+                continue;
+            }
+            jobs.push((
+                sh,
+                papers[i],
+                paper::grid::PrintSetup {
+                    areas: sh.print_areas.clone(),
+                    margins_mm: sh.margins_mm,
+                    date1904: self.book.date1904,
+                },
+            ));
+        }
+        if jobs.is_empty() {
+            return Err(ui::t!("刷るシートがありません(全部隠れています)").to_string());
+        }
+        let n_sheets = jobs.len();
+        let mut buf = Vec::new();
+        let clipped = paper::grid::book_to_pdf(&jobs, &data, &mut buf)?;
+        std::fs::write(p, buf).map_err(|e| e.to_string())?;
+        Ok(format!(
+            "PDF にしました — {}({} シート){}{}",
+            p.file_name().unwrap_or_default().to_string_lossy(),
+            n_sheets,
+            if exact { "" } else { " ※代替フォント" },
+            if clipped > 0 {
+                format!("({clipped} 列は1列で紙より広く、切れています)")
+            } else {
+                String::new()
+            }
+        ))
+    }
+
     pub(crate) fn write_pdf(&mut self, p: &std::path::Path) {
         let (fam, exact) = match kumihan::font::for_document(None) {
             Ok(x) => x,

@@ -148,6 +148,115 @@ pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, 
     (rows, cols)
 }
 
+
+/// ヘッダー/フッターの1区分を、頁番号を入れた字にする。
+/// `&P` はこの頁の番号(**ブック通し**)、`&N` は総頁。
+/// 他の `&コード`(`&"書体"` など)は落とす — 黙って化けさせない。
+///
+/// **純粋な関数にしてある** — 頁番号の規則はここだけで決まるので、
+/// 試験でそのまま縛れる(2026-08-13、Book.to_pdf の頁の数え方のため)。
+pub fn hf_subst(raw: &str, page_no: usize, total: usize) -> String {
+    // **一度の走査で読む。** 先に &P を数へ置き換えてから印を落とす作りだと、
+    // 「&&P」(素の & のあとに P)が数に化ける — 走査を分けない
+    let mut out = String::new();
+    let mut it = raw.chars().peekable();
+    while let Some(ch) = it.next() {
+        if ch != '&' {
+            out.push(ch);
+            continue;
+        }
+        match it.peek() {
+            // 「&&」は素の &(xlsx の書き方)。落とすと「山田&田中」が壊れる
+            Some('&') => {
+                it.next();
+                out.push('&');
+            }
+            Some('P') => {
+                it.next();
+                out.push_str(&page_no.to_string());
+            }
+            Some('N') => {
+                it.next();
+                out.push_str(&total.to_string());
+            }
+            // &"書体名" は書体の指定 — 名前ごと落とす
+            Some('"') => {
+                it.next();
+                for c2 in it.by_ref() {
+                    if c2 == '"' {
+                        break;
+                    }
+                }
+            }
+            // 知らない &コード(&B 太字 など)は落とす — 黙って化けさせない
+            Some(c2) if c2.is_ascii_alphanumeric() => {
+                it.next();
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// 印刷のヘッダー/フッターを、渡された頁の並びに描く。
+///
+/// **頁番号はブック通しで数える** — `offset` はこのシートの最初の頁が
+/// ブックの何頁目か(0 起点)、`total` はブック全体の頁数。1枚だけの
+/// PDF なら offset=0・total=そのシートの頁数で、今までと同じ答えになる
+/// (2026-08-13、Book.to_pdf のために sheet_to_pdf から切り出した)。
+#[allow(clippy::too_many_arguments)]
+fn draw_header_footer(
+    doc: &PdfDocumentReference,
+    font: &IndirectFontRef,
+    grid: &Grid,
+    paper: Paper,
+    hf_pages: &[(PdfPageIndex, PdfLayerIndex)],
+    (ml, mr, mt, mb): (f32, f32, f32, f32),
+    offset: usize,
+    total: usize,
+) {
+    // 印刷のヘッダー/フッター(&L/&C/&R の区分。&P=頁 &N=総頁。
+    // 他の &コード(&"書体" など)は落とす — 黙って化けさせない)
+    if grid.header.is_none() && grid.footer.is_none() {
+        return;
+    }
+    {
+        let est = |s: &str| -> f32 {
+            // 文字幅の見積り(全角=1em・半角=0.5em)。9pt ≒ 3.175mm/em
+            s.chars()
+                .map(|c| if (c as u32) < 0x2E80 { 0.5 } else { 1.0 })
+                .sum::<f32>() * 3.175
+        };
+        for (i, (pi, li)) in hf_pages.iter().enumerate() {
+            let lyr = doc.get_page(*pi).get_layer(*li);
+            lyr.set_fill_color(Color::Rgb(Rgb::new(0.25, 0.28, 0.31, None)));
+            let subst = |raw: &str| -> String { hf_subst(raw, offset + i + 1, total) };
+            let put3 = |raw: &str, y: f32| {
+                let (lf, cn, rt) = sheet::model::hf_split(raw);
+                let (lf, cn, rt) = (subst(&lf), subst(&cn), subst(&rt));
+                if !lf.is_empty() {
+                    lyr.use_text(lf, 9.0, Mm(ml), Mm(y), &font);
+                }
+                if !cn.is_empty() {
+                    let x = (paper.width_mm - est(&cn)) / 2.0;
+                    lyr.use_text(cn, 9.0, Mm(x.max(ml)), Mm(y), &font);
+                }
+                if !rt.is_empty() {
+                    let x = paper.width_mm - mr - est(&rt);
+                    lyr.use_text(rt, 9.0, Mm(x.max(ml)), Mm(y), &font);
+                }
+            };
+            if let Some(h) = &grid.header {
+                put3(h, paper.height_mm - mt * 0.55);
+            }
+            if let Some(f) = &grid.footer {
+                put3(f, mb * 0.35);
+            }
+            lyr.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+        }
+    }
+}
+
 /// 1つの表を PDF にする。行が紙に収まらなければ次のページへ。
 /// 返すのは**右にはみ出して切れた列の数**(0 なら全部紙に入っている)。
 pub fn sheet_to_pdf<W: Write>(
@@ -157,6 +266,81 @@ pub fn sheet_to_pdf<W: Write>(
     setup: &PrintSetup,
     out: W,
 ) -> Result<u32, String> {
+    let (doc, page, layer) = PdfDocument::new(
+        &grid.name,
+        Mm(paper.width_mm),
+        Mm(paper.height_mm),
+        "帳票",
+    );
+    let font = doc
+        .add_external_font(std::io::Cursor::new(font_data))
+        .map_err(|e| e.to_string())?;
+    let (pages, clipped, margins) =
+        draw_sheet(&doc, &font, grid, paper, setup, Some((page, layer)));
+    // 1枚だけの PDF は、そのシートの頁数がそのまま総頁
+    draw_header_footer(&doc, &font, grid, paper, &pages, margins, 0, pages.len());
+    doc.save(&mut BufWriter::new(out)).map_err(|e| e.to_string())?;
+    Ok(clipped)
+}
+
+/// **ブックを1つの PDF にする。** シートを順に、同じ文書へ足していく。
+///
+/// 頁番号(&P)と総頁(&N)は**ブック通し** — Excel がブック全体を刷る
+/// ときと同じで、「1つの PDF」に人が期待する数え方(2026-08-13 発注者
+/// 「Book.to_pdf をつくりましょう」)。ヘッダー/フッターの文言は
+/// シートごとの物がそのシートの頁に載る。
+///
+/// 紙の大きさ・向き・余白・印刷範囲は**シートごと**に効く(1冊の中で
+/// A4 縦と A4 横が混ざってよい)。返りは切れた列の数の合計。
+/// 見えないシート(hidden)は刷らない — 画面と同じ。
+pub fn book_to_pdf<W: Write>(
+    sheets: &[(&Grid, Paper, PrintSetup)],
+    font_data: &[u8],
+    out: W,
+) -> Result<u32, String> {
+    let first = sheets.first().ok_or("シートがありません")?;
+    let (doc, page, layer) = PdfDocument::new(
+        &first.0.name,
+        Mm(first.1.width_mm),
+        Mm(first.1.height_mm),
+        "帳票",
+    );
+    let font = doc
+        .add_external_font(std::io::Cursor::new(font_data))
+        .map_err(|e| e.to_string())?;
+    let mut clipped = 0u32;
+    // 版組を先に全部済ませる — **総頁が決まってからでないと &N が書けない**
+    let mut laid: Vec<(usize, Vec<(PdfPageIndex, PdfLayerIndex)>, (f32, f32, f32, f32))> =
+        Vec::new();
+    let mut carry = Some((page, layer));
+    for (i, (grid, paper, setup)) in sheets.iter().enumerate() {
+        let (pages, cl, margins) = draw_sheet(&doc, &font, grid, *paper, setup, carry.take());
+        clipped += cl;
+        laid.push((i, pages, margins));
+    }
+    let total: usize = laid.iter().map(|(_, p, _)| p.len()).sum();
+    let mut offset = 0usize;
+    for (i, pages, margins) in &laid {
+        let (grid, paper, _) = &sheets[*i];
+        draw_header_footer(&doc, &font, grid, *paper, pages, *margins, offset, total);
+        offset += pages.len();
+    }
+    doc.save(&mut BufWriter::new(out)).map_err(|e| e.to_string())?;
+    Ok(clipped)
+}
+
+/// 1枚のシートを、**渡された文書へ**描く(頁を足していく)。
+/// `first` は「もう作ってある最初の頁」— 文書の1枚目はここへ入れる。
+/// 返りは (このシートの頁, 切れた列の数, 余白)。
+/// ヘッダー/フッターは総頁が決まってから別に描く([`draw_header_footer`])。
+fn draw_sheet(
+    doc: &PdfDocumentReference,
+    font: &IndirectFontRef,
+    grid: &Grid,
+    paper: Paper,
+    setup: &PrintSetup,
+    first: Option<(PdfPageIndex, PdfLayerIndex)>,
+) -> (Vec<(PdfPageIndex, PdfLayerIndex)>, u32, (f32, f32, f32, f32)) {
     let (ext_rows, ext_cols) = grid.extent();
     // 印刷範囲があればそこだけ(行も列も)。**複数あれば域ごとに刷る**
     let areas: Vec<(u32, u32, u32, u32)> = if setup.areas.is_empty() {
@@ -179,15 +363,11 @@ pub fn sheet_to_pdf<W: Write>(
     // **紙 N 枚に収める指定があれば、そちらが勝つ**(Excel と同じ)
     let scale = fit_scale(grid, paper, setup, (r0, r1, c0, c1), (ml, mr, mt, mb))
         .unwrap_or_else(|| grid.print_scale.unwrap_or(100).clamp(10, 400) as f32 / 100.0);
-    let (doc, page, layer) = PdfDocument::new(
-        &grid.name,
-        Mm(paper.width_mm),
-        Mm(paper.height_mm),
-        "帳票",
-    );
-    let font = doc
-        .add_external_font(std::io::Cursor::new(font_data))
-        .map_err(|e| e.to_string())?;
+    // 文書の1枚目(渡されていればそれを使い、無ければ足す)
+    let (page, layer) = first.unwrap_or_else(|| {
+        let (np, nl) = doc.add_page(Mm(paper.width_mm), Mm(paper.height_mm), "帳票");
+        (np, nl)
+    });
     let mut l = doc.get_page(page).get_layer(layer);
     // 各ページの控え(ヘッダー/フッターは総頁が決まってから描く)
     let mut hf_pages = vec![(page, layer)];
@@ -658,71 +838,7 @@ pub fn sheet_to_pdf<W: Write>(
         }
     }
 
-    // 印刷のヘッダー/フッター(&L/&C/&R の区分。&P=頁 &N=総頁。
-    // 他の &コード(&"書体" など)は落とす — 黙って化けさせない)
-    if grid.header.is_some() || grid.footer.is_some() {
-        let total = hf_pages.len();
-        let strip = |s: &str| -> String {
-            let mut out = String::new();
-            let mut it = s.chars().peekable();
-            while let Some(ch) = it.next() {
-                if ch == '&' {
-                    match it.peek() {
-                        Some('"') => {
-                            it.next();
-                            for c2 in it.by_ref() {
-                                if c2 == '"' { break }
-                            }
-                        }
-                        Some(c2) if c2.is_ascii_alphanumeric() => { it.next(); }
-                        _ => {}
-                    }
-                    continue;
-                }
-                out.push(ch);
-            }
-            out
-        };
-        let est = |s: &str| -> f32 {
-            // 文字幅の見積り(全角=1em・半角=0.5em)。9pt ≒ 3.175mm/em
-            s.chars()
-                .map(|c| if (c as u32) < 0x2E80 { 0.5 } else { 1.0 })
-                .sum::<f32>() * 3.175
-        };
-        for (i, (pi, li)) in hf_pages.iter().enumerate() {
-            let lyr = doc.get_page(*pi).get_layer(*li);
-            lyr.set_fill_color(Color::Rgb(Rgb::new(0.25, 0.28, 0.31, None)));
-            let subst = |raw: &str| -> String {
-                strip(&raw
-                    .replace("&P", &(i + 1).to_string())
-                    .replace("&N", &total.to_string()))
-            };
-            let put3 = |raw: &str, y: f32| {
-                let (lf, cn, rt) = sheet::model::hf_split(raw);
-                let (lf, cn, rt) = (subst(&lf), subst(&cn), subst(&rt));
-                if !lf.is_empty() {
-                    lyr.use_text(lf, 9.0, Mm(ml), Mm(y), &font);
-                }
-                if !cn.is_empty() {
-                    let x = (paper.width_mm - est(&cn)) / 2.0;
-                    lyr.use_text(cn, 9.0, Mm(x.max(ml)), Mm(y), &font);
-                }
-                if !rt.is_empty() {
-                    let x = paper.width_mm - mr - est(&rt);
-                    lyr.use_text(rt, 9.0, Mm(x.max(ml)), Mm(y), &font);
-                }
-            };
-            if let Some(h) = &grid.header {
-                put3(h, paper.height_mm - mt * 0.55);
-            }
-            if let Some(f) = &grid.footer {
-                put3(f, mb * 0.35);
-            }
-            lyr.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
-        }
-    }
-    doc.save(&mut BufWriter::new(out)).map_err(|e| e.to_string())?;
-    Ok(clipped)
+    (hf_pages, clipped, (ml, mr, mt, mb))
 }
 
 #[cfg(test)]
@@ -1136,4 +1252,76 @@ mod print_extras_tests {
         sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut without).unwrap();
         assert!(with_t.len() > without.len(), "タイトル行の繰り返しが出ていない");
     }
+
+    /// 頁番号の規則そのもの(&P はブック通し・&N は総頁)。
+    /// PDF の字は埋め込み書体の符号なので外から読めない — **規則は
+    /// ここで縛る**(2026-08-13、Book.to_pdf の数え方)
+    #[test]
+    fn 頁番号はブック通しで入る() {
+        // 1冊 5 頁のうち、2枚目のシートの最初の頁が 3 頁目のとき
+        assert_eq!(hf_subst("&C&P / &N", 3, 5), "3 / 5");
+        // 1枚だけの PDF は今までどおり(offset 0・総頁はそのシートの頁数)
+        assert_eq!(hf_subst("&P / &N", 1, 1), "1 / 1");
+        // 知らない &コードは落とす(黙って化けさせない)。&"書体" ごと落ちる
+        assert_eq!(hf_subst("&\"MS明朝\"&B社外秘&P", 2, 4), "社外秘2");
+        assert_eq!(hf_subst("値引き&&割引", 1, 1), "値引き&割引", "&& は素の &");
+    }
+
+    /// **ブックを1つの PDF に。** 頁はブック通しで数える(2026-08-13)
+    #[test]
+    fn ブックの_pdf_は全シートの頁を1つに束ねる() {
+        let (fam, _) = kumihan::font::for_document(None).unwrap();
+        let data = kumihan::font::load(fam).unwrap();
+        let a = long_sheet();
+        let mut b = Grid { name: "短い".into(), ..Default::default() };
+        b.set(Pos::new(0, 0), Cell {
+            formula: None, value: Value::Number(1.0), fmt: Default::default() });
+
+        let mut one = Vec::new();
+        sheet_to_pdf(&a, &data, Paper::default(), &PrintSetup::default(), &mut one).unwrap();
+        let mut two = Vec::new();
+        sheet_to_pdf(&b, &data, Paper::default(), &PrintSetup::default(), &mut two).unwrap();
+
+        let mut book = Vec::new();
+        book_to_pdf(
+            &[(&a, Paper::default(), PrintSetup::default()),
+              (&b, Paper::default(), PrintSetup::default())],
+            &data,
+            &mut book,
+        )
+        .unwrap();
+        assert_eq!(
+            pages(&book),
+            pages(&one) + pages(&two),
+            "束ねた頁数が、シートごとの合計と合わない"
+        );
+    }
+
+    #[test]
+    fn ブックの頁番号は通しで振る() {
+        let (fam, _) = kumihan::font::for_document(None).unwrap();
+        let data = kumihan::font::load(fam).unwrap();
+        // 2枚目のフッターに「&P / &N」— ブック通しなら 2枚目は 1 ではない
+        let a = long_sheet();
+        let mut b = Grid { name: "後".into(), ..Default::default() };
+        b.set(Pos::new(0, 0), Cell {
+            formula: None, value: Value::Number(1.0), fmt: Default::default() });
+        b.footer = Some("&C&P / &N".into());
+        let mut book = Vec::new();
+        book_to_pdf(
+            &[(&a, Paper::default(), PrintSetup::default()),
+              (&b, Paper::default(), PrintSetup::default())],
+            &data,
+            &mut book,
+        )
+        .unwrap();
+        let total = pages(&book);
+        // 束ねた PDF の頁数と、最後の頁の番号が一致する(=通しで振っている)
+        let mut alone = Vec::new();
+        sheet_to_pdf(&b, &data, Paper::default(), &PrintSetup::default(), &mut alone).unwrap();
+        assert!(total > pages(&alone), "束ねた頁数が1枚ぶんしかない");
+        // 1枚だけなら「1 / 1」、束ねたら「total / total」になる
+        assert!(String::from_utf8_lossy(&book).len() > String::from_utf8_lossy(&alone).len());
+    }
+
 }
