@@ -1544,4 +1544,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("最後", "Terakhir"),
     ("点の印を変えました", "Penanda diubah"),
     ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "Tidak ada penanganan sel kosong atau sumbu bersama (garis ini membekukan angka saat disisipkan)"),
+    ("式を隠しました(数式バーに出ません。値は見えます)", "Rumus disembunyikan (tidak muncul di bilah rumus; nilainya tetap terlihat)"),
+    ("式を隠す印を付けました(シートを保護すると効きます)", "Ditandai untuk menyembunyikan rumus (berlaku setelah lembar dilindungi)"),
+    ("式を隠すのをやめました", "Rumus tidak lagi disembunyikan"),
+    ("(式は隠されています)", "(rumus disembunyikan)"),
 ];

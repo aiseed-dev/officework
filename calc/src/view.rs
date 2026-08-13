@@ -729,7 +729,17 @@ impl Render for Calc {
         // クリックで**編集モード**(発注者 2026-08-06)— 置き換えでなく、
         // 押した位置に文字カーソルを立てて続きを直せる。編集中はキャレットを見せる
         let in_edit = self.editing() || self.edit_armed;
-        let bar_text = {
+        // **式を隠すセル**(保護中)は、数式バーに式を出さない。
+        // 値は見える — 単価表の掛け率を伏せる、といった使い方
+        let formula_hidden = self.sheet().protected
+            && self
+                .sheet()
+                .get(self.cursor)
+                .is_some_and(|c| c.fmt.formula_hidden && c.formula.is_some());
+        let bar_text = if formula_hidden {
+            // **空欄にしない。** 空だと「式が無い」と読めてしまう
+            ui::t!("(式は隠されています)").to_string()
+        } else {
             let mut t = self.input.text().to_string();
             if in_edit {
                 let cur = self.input.cursor().min(t.len());
@@ -1981,6 +1991,17 @@ impl Render for Calc {
                     self.sheet().comments.contains_key(&self.cursor), false),
                 ("", "", "", false, false),
                 ("fmtcells", "セルをフォーマットする", "", true, false),
+                // 本家は「セルの書式設定 → 保護」タブ。**式のあるセルでだけ**
+                // 押せる — 式の無いセルで「式を隠す」は掛ける相手がいない
+                ("cell-hide-formula",
+                    if self.sheet().get(self.cursor).is_some_and(|c| c.fmt.formula_hidden) {
+                        "式を隠すのをやめる"
+                    } else {
+                        "式を隠す(保護中)"
+                    },
+                    "",
+                    self.sheet().get(self.cursor).is_some_and(|c| c.formula.is_some()),
+                    false),
                 ("numfmt", "数値の書式", "", true, true),
                 ("cond", "条件付き書式", "", true, true),
                 ("picklist", "ドロップダウンリストから選択する", "", true, false),

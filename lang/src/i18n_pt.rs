@@ -1544,4 +1544,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("最後", "Último"),
     ("点の印を変えました", "Marcas alteradas"),
     ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "Sem tratamento de células vazias nem eixo comum (esta linha tem os números fixados no momento em que foi inserida)"),
+    ("式を隠しました(数式バーに出ません。値は見えます)", "Fórmula ocultada (não aparece na barra de fórmulas; o valor continua visível)"),
+    ("式を隠す印を付けました(シートを保護すると効きます)", "Marcada para ocultar a fórmula (faz efeito ao proteger a folha)"),
+    ("式を隠すのをやめました", "A fórmula já não está ocultada"),
+    ("(式は隠されています)", "(a fórmula está ocultada)"),
 ];

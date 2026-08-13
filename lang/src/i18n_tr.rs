@@ -1544,4 +1544,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("最後", "Son"),
     ("点の印を変えました", "İşaretler değişti"),
     ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "Boş hücre işleme ve ortak eksen yok (bu çizgi eklendiği andaki sayıları içine almıştır)"),
+    ("式を隠しました(数式バーに出ません。値は見えます)", "Formül gizlendi (formül çubuğunda görünmez; değer görünmeye devam eder)"),
+    ("式を隠す印を付けました(シートを保護すると効きます)", "Formülü gizlemek için işaretlendi (sayfa korunduğunda etkili olur)"),
+    ("式を隠すのをやめました", "Formül artık gizli değil"),
+    ("(式は隠されています)", "(formül gizli)"),
 ];

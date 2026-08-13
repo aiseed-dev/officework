@@ -4895,3 +4895,36 @@ mod shape_gallery_tests {
         }
     }
 }
+
+/// 式を隠す(台帳 第2便「シート保護の詳細項目」の残り、2026-08-13)
+#[cfg(test)]
+mod hide_formula_tests {
+    use crate::Pos;
+
+    /// 数式バーが式を伏せるか(画面と同じ条件を1つの式にした)
+    fn hidden(protected: bool, mark: bool, has_formula: bool) -> bool {
+        protected && mark && has_formula
+    }
+
+    #[test]
+    fn 保護して初めて隠れる() {
+        // **印を付けただけでは効かない。** そこを取り違えると
+        // 「押したのに効かない」と読まれるので、画面の側でもそう言う
+        assert!(!hidden(false, true, true), "保護していないのに隠れている");
+        assert!(hidden(true, true, true), "保護したのに隠れない");
+        assert!(!hidden(true, false, true), "印が無いのに隠れている");
+        assert!(!hidden(true, true, false), "式が無いのに隠している");
+    }
+
+    #[test]
+    fn 式のあるセルでしか押せない() {
+        // 右クリックの項が灰色になる条件と同じ
+        let mut b = sheet::Book::new();
+        let p = Pos::parse("A1").unwrap();
+        b.sheets[0].set(p, sheet::Cell::input("ただの文字"));
+        assert!(
+            !b.sheets[0].get(p).is_some_and(|c| c.formula.is_some()),
+            "式の無いセルを式ありと見ている"
+        );
+    }
+}

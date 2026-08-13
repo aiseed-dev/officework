@@ -1547,4 +1547,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("最後", "Last"),
     ("点の印を変えました", "Markers changed"),
     ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "No empty-cell handling or shared axis (this line has the numbers baked in from when it was inserted)"),
+    ("式を隠しました(数式バーに出ません。値は見えます)", "Formula hidden (it will not show in the formula bar; the value still shows)"),
+    ("式を隠す印を付けました(シートを保護すると効きます)", "Marked to hide the formula (it takes effect once the sheet is protected)"),
+    ("式を隠すのをやめました", "The formula is no longer hidden"),
+    ("(式は隠されています)", "(the formula is hidden)"),
 ];

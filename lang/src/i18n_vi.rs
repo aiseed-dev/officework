@@ -1544,4 +1544,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("最後", "Cuối"),
     ("点の印を変えました", "Đã đổi dấu điểm"),
     ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "Không có xử lý ô trống hay trục dọc chung (đường này đã nung sẵn các số lúc chèn)"),
+    ("式を隠しました(数式バーに出ません。値は見えます)", "Đã ẩn công thức (không hiện ở thanh công thức; giá trị vẫn thấy)"),
+    ("式を隠す印を付けました(シートを保護すると効きます)", "Đã đánh dấu ẩn công thức (có hiệu lực khi bảo vệ trang tính)"),
+    ("式を隠すのをやめました", "Không còn ẩn công thức"),
+    ("(式は隠されています)", "(công thức đang bị ẩn)"),
 ];

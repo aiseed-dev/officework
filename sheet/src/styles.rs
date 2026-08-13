@@ -137,6 +137,7 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
     // 印を取りこぼす(セルのロックが往復しなくなる)
     let mut xf_fmt: Option<CellFormat> = None;
     let mut xf_unlocked = false;
+    let mut xf_hidden = false;
 
     let mut r = Reader::from_str(xml);
     let mut buf = Vec::new();
@@ -167,10 +168,13 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
                         });
                         if let Some(mut f) = done {
                             f.unlocked = xf_unlocked;
+                            f.formula_hidden = xf_hidden;
                             xfs.push(f);
                         }
                         xf = None;
                         xf_unlocked = false;
+                    xf_hidden = false;
+                        xf_hidden = false;
                     }
                     _ => {}
                 }
@@ -369,6 +373,10 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
                 if matches!(attr(&e, "locked").as_deref(), Some("0") | Some("false")) {
                     xf_unlocked = true;
                 }
+                // 式を隠すは既定が「隠さない」なので、立っているときだけ
+                if matches!(attr(&e, "hidden").as_deref(), Some("1") | Some("true")) {
+                    xf_hidden = true;
+                }
             }
             _ => {}
         }
@@ -450,6 +458,7 @@ fn resolve(
         align: align.unwrap_or_default(),
         number_format: numfmts.get(&nfid).cloned().or_else(|| builtin(nfid)),
         unlocked: false,
+        formula_hidden: false,
     }
 }
 
@@ -797,8 +806,14 @@ fn xf_xml(fi: usize, fl: usize, bi: usize, ni: usize, f: &CellFormat) -> String 
     if f.rtl_text {
         attrs.push_str(" readingOrder=\"2\"");
     }
-    // ロックを外したセルだけ <protection locked="0"/> を書く(既定はロック)
-    let prot = if f.unlocked { "<protection locked=\"0\"/>" } else { "" };
+    // ロックを外したセルだけ locked="0" を書く(既定はロック)。
+    // 式を隠すは既定が「隠さない」なので、立っているときだけ書く
+    let prot = match (f.unlocked, f.formula_hidden) {
+        (false, false) => String::new(),
+        (true, false) => "<protection locked=\"0\"/>".into(),
+        (false, true) => "<protection hidden=\"1\"/>".into(),
+        (true, true) => "<protection locked=\"0\" hidden=\"1\"/>".into(),
+    };
     if attrs.is_empty() && prot.is_empty() {
         s.push_str("/>");
     } else {
@@ -812,7 +827,7 @@ fn xf_xml(fi: usize, fl: usize, bi: usize, ni: usize, f: &CellFormat) -> String 
         if !attrs.is_empty() {
             s.push_str(&format!("<alignment{attrs}/>"));
         }
-        s.push_str(prot);
+        s.push_str(&prot);
         s.push_str("</xf>");
     }
     s
@@ -1231,6 +1246,29 @@ mod more_fmt_tests {
         let f = CellFormat { bold: true, ..Default::default() };
         let (xml, _) = build(&[f], &[]);
         assert!(!xml.contains("vertical="), "既定なのに縦揃えを書いた");
+    }
+
+
+    #[test]
+    fn 式を隠す印が往復する() {
+        // ロックとは別の印。**組み合わせも往復する**
+        for (lock, hide) in [(false, true), (true, true), (true, false), (false, false)] {
+            let f = CellFormat { unlocked: lock, formula_hidden: hide, ..Default::default() };
+            let (xml, map) = build(std::slice::from_ref(&f), &[]);
+            let back = &parse(&xml, &[])[map[&f]];
+            assert_eq!(back.unlocked, lock, "ロックが往復しない({lock},{hide})");
+            assert_eq!(back.formula_hidden, hide, "式を隠すが往復しない({lock},{hide})");
+        }
+    }
+
+    #[test]
+    fn 隠さないときは属性を書かない() {
+        // **書かないことが既定を表す。** hidden="0" を書くと、Excel では
+        // 「わざわざ隠さないことにした」になる
+        let f = CellFormat { bold: true, ..Default::default() };
+        let (xml, _) = build(std::slice::from_ref(&f), &[]);
+        assert!(!xml.contains("hidden="), "既定なのに hidden を書いた: {xml}");
+        assert!(!xml.contains("<protection"), "要らない protection を書いた: {xml}");
     }
 
     #[test]

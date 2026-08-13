@@ -1,5 +1,5 @@
-//! 画面の文言の pt-BR の対訳表 — **鍵は日本語の文そのもの**。
-//! このファイルは ui/gen_lang.py が生成する(訳の材料は ui/i18n/pt-BR.json)。手で書かない。
+//! 画面の文言の pt-br の対訳表 — **鍵は日本語の文そのもの**。
+//! このファイルは ui/gen_lang.py が生成する(訳の材料は ui/i18n/pt-br.json)。手で書かない。
 
 pub const TABLE: &[(&str, &str)] = &[
     ("乱数が取れません: {}", "Não foi possível obter números aleatórios: {}"),
@@ -1544,4 +1544,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("最後", "Último"),
     ("点の印を変えました", "Marcas alteradas"),
     ("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)", "Sem tratamento de células vazias nem eixo comum (esta linha tem os números fixados no momento em que foi inserida)"),
+    ("式を隠しました(数式バーに出ません。値は見えます)", "Fórmula ocultada (não aparece na barra de fórmulas; o valor continua visível)"),
+    ("式を隠す印を付けました(シートを保護すると効きます)", "Marcada para ocultar a fórmula (faz efeito ao proteger a planilha)"),
+    ("式を隠すのをやめました", "A fórmula não está mais ocultada"),
+    ("(式は隠されています)", "(a fórmula está ocultada)"),
 ];

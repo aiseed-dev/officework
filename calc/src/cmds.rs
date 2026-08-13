@@ -679,6 +679,33 @@ impl Calc {
                     ui::t!("ロックを掛けました(保護中は書けません)").into()
                 };
             }
+            // **式を隠す。** ロックと同じ組(xlsx の <protection>)で、
+            // こちらは「保護中、このセルの式を数式バーに出さない」。
+            // 値は見える — 単価表の掛け率を伏せる、といった使い方
+            "cell-hide-formula" => {
+                let (a, b) = self.sel_rect();
+                let all_shown = (a.row..=b.row).all(|r| {
+                    (a.col..=b.col).all(|c| {
+                        !self
+                            .sheet()
+                            .get(Pos::new(r, c))
+                            .map(|x| x.fmt.formula_hidden)
+                            .unwrap_or(false)
+                    })
+                });
+                self.fmt(|f| f.formula_hidden = all_shown);
+                self.status = if all_shown {
+                    // **保護していないと効かないことを、その場で言う** —
+                    // 押して何も起きないように見えるのが一番悪い
+                    if self.sheet().protected {
+                        ui::t!("式を隠しました(数式バーに出ません。値は見えます)").into()
+                    } else {
+                        ui::t!("式を隠す印を付けました(シートを保護すると効きます)").into()
+                    }
+                } else {
+                    ui::t!("式を隠すのをやめました").into()
+                };
+            }
             // 保護中に何を許すか(本家の「このシートのすべてのユーザーに
             // 許可する操作」)。✓ の一覧を押して入切する
             "prot-allow" => {
