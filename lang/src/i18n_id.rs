@@ -1162,9 +1162,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("拡張して並べ替え(続きの列も一緒に動く)", "Perluas pilihan (kolom di sebelahnya ikut bergerak)"),
     ("選択した範囲だけ並べ替え(横の列とはずれます)", "Urutkan hanya rentang yang dipilih (akan tidak sejalan dengan kolom di sebelahnya)"),
     ("やめる", "Batal"),
-    ("要約", "Peringkasan"),
+    ("要約", "Ringkas"),
     ("書き直し", "Penulisan ulang"),
-    ("翻訳", "Penerjemahan"),
+    ("翻訳", "Terjemahkan"),
     ("ふりがな", "Furigana"),
     ("続き", "Lanjutan"),
     ("表", "Tabel"),
@@ -1446,4 +1446,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」は数として読めません(足しませんでした)", "\"{}\" tidak terbaca sebagai angka (tidak ada yang ditambahkan)"),
     ("プロパティ「{}」を控えました(保存で xlsx に入ります)", "Properti \"{}\" dicatat (masuk ke xlsx saat disimpan)"),
     ("プロパティ「{}」を外しました", "Properti \"{}\" dihapus"),
+    ("ブックを閉じました(新しいブックです)", "Buku kerja ditutup (sekarang buku kerja baru)"),
 ];

@@ -1162,9 +1162,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("拡張して並べ替え(続きの列も一緒に動く)", "Ampliar la selección (las columnas contiguas también se mueven)"),
     ("選択した範囲だけ並べ替え(横の列とはずれます)", "Ordenar solo la selección (quedará desalineada respecto a las columnas contiguas)"),
     ("やめる", "Cancelar"),
-    ("要約", "Resumen"),
+    ("要約", "Resumir"),
     ("書き直し", "Reescribir"),
-    ("翻訳", "Traducción"),
+    ("翻訳", "Traducir"),
     ("ふりがな", "Furigana"),
     ("続き", "Continuar"),
     ("表", "Tabla"),
@@ -1446,4 +1446,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」は数として読めません(足しませんでした)", "«{}» no se lee como número (no se añadió nada)"),
     ("プロパティ「{}」を控えました(保存で xlsx に入ります)", "Propiedad «{}» anotada (entra en el xlsx al guardar)"),
     ("プロパティ「{}」を外しました", "Propiedad «{}» eliminada"),
+    ("ブックを閉じました(新しいブックです)", "Libro cerrado (ahora es un libro nuevo)"),
 ];

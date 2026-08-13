@@ -1446,4 +1446,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」は数として読めません(足しませんでした)", "«{}» não se lê como número (não foi adicionado nada)"),
     ("プロパティ「{}」を控えました(保存で xlsx に入ります)", "Propriedade «{}» anotada (ao guardar, vai para o xlsx)"),
     ("プロパティ「{}」を外しました", "Propriedade «{}» removida"),
+    ("ブックを閉じました(新しいブックです)", "Livro fechado (agora é um livro novo)"),
 ];
