@@ -808,6 +808,11 @@ impl Writer {
     /// 文書の下端(紙の座標 mm)。1ページに満たなくても紙1枚ぶんは白い
     /// 紙の見た目の幅(mm。見開きなら2枚ぶん)
     pub(crate) fn paper_w_mm(&self) -> f32 {
+        if self.paged {
+            // 頁ごとに紙が違いうる(節)。いちばん広い紙に合わせる
+            return self.page_papers.iter().map(|q| q.width_mm)
+                .fold(self.pg.w_mm, f32::max);
+        }
         if self.multipage && !self.page.vertical {
             self.pg.w_mm * 2.0 + PAGE_GAP_MM
         } else {
@@ -816,6 +821,12 @@ impl Writer {
     }
 
     pub(crate) fn content_mm(&self) -> f32 {
+        if self.paged {
+            // 最後の紙の下端まで
+            let last = self.page_tops.last().copied().unwrap_or(0.0);
+            let h = self.page_papers.last().map(|q| q.height_mm).unwrap_or(self.pg.h_mm);
+            return last + h;
+        }
         if self.multipage && !self.page.vertical {
             // 2枚ずつの段。ページ数の半分(切り上げ)ぶんの高さ
             let pages = self.page_offsets.len().max(1);

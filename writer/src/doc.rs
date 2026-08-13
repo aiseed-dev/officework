@@ -102,6 +102,9 @@ impl Writer {
             ink_undo: Vec::new(),
             page_offsets: vec![0.0],
             page_notes: vec![Vec::new()],
+            paged: false,
+            page_tops: vec![0.0],
+            page_papers: Vec::new(),
             header_lines: Vec::new(),
             footer_lines: Vec::new(),
             font_name: kumihan::font::for_document(None)
@@ -410,6 +413,23 @@ impl Writer {
         });
         self.page_offsets = pn.offsets;
         self.page_notes = pn.notes;
+        self.page_papers = pn.papers;
+        // 印刷モードは**紙を1枚ずつ積む**。折らないと紙の絵と中身が重なる
+        // (頁の間隔は紙の高さより詰まっているため)
+        self.page_tops = if self.paged && !self.page.vertical && !self.multipage {
+            let offs = self.page_offsets.clone();
+            let papers: Vec<kumihan::PageSetup> = self.page_papers.iter()
+                .map(|q| kumihan::PageSetup {
+                    w_mm: q.width_mm, h_mm: q.height_mm,
+                    left_mm: q.margin_mm, right_mm: q.margin_mm,
+                    top_mm: self.pg.top_mm, bottom_mm: self.pg.bottom_mm,
+                    columns: self.pg.columns,
+                })
+                .collect();
+            kumihan::fold_print(&mut self.page, &papers, &offs, PAGE_GAP_MM)
+        } else {
+            vec![0.0]
+        };
         // 複数ページ(見開き)。**画面だけ**の折り方 — PDF は 1ページずつ
         // (save_pdf は組み直してから写す)。縦書きとは併せない
         if self.multipage && !self.page.vertical {

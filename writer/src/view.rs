@@ -815,10 +815,27 @@ impl Render for Writer {
             Some(c) => gpui::Rgba { r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0 },
             None => gpui::Rgba { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },
         };
+        // 印刷モードでは容器を透明にして、**紙を1枚ずつ**子として敷く。
+        // 中身の座標は変えない(容器が原点のまま)ので、他は触らずに済む。
+        // 紙を先に足すので、あとから足す字や画像はその上に載る
         let mut paper = div().absolute()
             .left(px(28.0)).top(px(14.0 - self.scroll_mm * pxmm))
-            .w(px(self.paper_w_mm() * pxmm)).h(px(self.content_mm() * pxmm))
-            .bg(paper_bg).shadow_lg();
+            .w(px(self.paper_w_mm() * pxmm)).h(px(self.content_mm() * pxmm));
+        if self.paged {
+            for (k, top) in self.page_tops.clone().iter().enumerate() {
+                let q = self.page_papers.get(k).copied().unwrap_or(paper::Paper {
+                    width_mm: self.pg.w_mm,
+                    height_mm: self.pg.h_mm,
+                    margin_mm: self.pg.left_mm,
+                });
+                paper = paper.child(div().absolute()
+                    .left(px(0.0)).top(px(top * pxmm))
+                    .w(px(q.width_mm * pxmm)).h(px(q.height_mm * pxmm))
+                    .bg(paper_bg).shadow_lg());
+            }
+        } else {
+            paper = paper.bg(paper_bg).shadow_lg();
+        }
 
         // ルーラー(10mm ごとの目盛り。余白の位置が分かる)
         if self.ruler {

@@ -1498,3 +1498,92 @@ mod undo_coverage_tests {
 }
 
 
+
+
+/// 印刷モード(紙を1枚ずつ積む)。
+///
+/// **見た目は私には確かめられない**(この機械では GPUI が起動しない)。
+/// ここで守れるのは数字だけ — 画面が使う紙が紙(PDF)と同じであること、
+/// 字がその頁の紙の中に収まっていること。
+#[cfg(test)]
+mod paged_view_tests {
+    use crate::*;
+
+    fn 開く(cx: &mut gpui::TestAppContext) -> gpui::Entity<Writer> {
+        cx.update(|cx| cx.new(|cx| Writer::new(None, cx)))
+    }
+
+    #[gpui::test]
+    fn 節ごとに紙が変わる(cx: &mut gpui::TestAppContext) {
+        let f = std::path::PathBuf::from("/home/dev/docx-corpus/all3.docx");
+        if !f.exists() {
+            return;
+        }
+        let w = 開く(cx);
+        w.update(cx, |this, _| {
+            this.open(f);
+            this.paged = true;
+            this.relayout();
+            let sizes: Vec<(f32, f32)> = this.page_papers.iter()
+                .map(|q| (q.width_mm.round(), q.height_mm.round())).collect();
+            assert!(sizes.len() >= 2, "頁が2つ以上無い: {sizes:?}");
+            assert_ne!(sizes[0], sizes[1], "頁ごとに紙が変わっていない: {sizes:?}");
+            let widest = sizes.iter().map(|s| s.0).fold(0.0f32, f32::max);
+            assert!(this.paper_w_mm() >= widest - 0.5,
+                "広い紙がはみ出す: 紙の幅 {} < {widest}", this.paper_w_mm());
+        });
+    }
+
+    #[gpui::test]
+    fn 画面と紙で頁ごとの紙が同じ(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, _| {
+            this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400), SIZE_PT);
+            this.ed = Editor::new(&this.doc.body_text());
+            this.paged = true;
+            this.relayout();
+            let kami = paper::paginate_full(&this.page, paper::Paper {
+                width_mm: this.pg.w_mm,
+                height_mm: this.pg.h_mm,
+                margin_mm: this.pg.left_mm,
+            });
+            assert_eq!(this.page_papers.len(), kami.papers.len(), "頁の数が違う");
+        });
+    }
+
+    #[gpui::test]
+    fn 字がその頁の紙の中に収まる(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, _| {
+            this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400), SIZE_PT);
+            this.ed = Editor::new(&this.doc.body_text());
+            this.paged = true;
+            this.relayout();
+            assert!(this.page_tops.len() >= 3, "頁が足りず試験にならない");
+            let mita = this.page.lines.iter().filter(|l| !l.cells.is_empty()).count();
+            assert!(mita > 0, "行が無い");
+            for l in this.page.lines.iter().filter(|l| !l.cells.is_empty()) {
+                let k = this.page_tops.iter().rposition(|t| l.y_mm >= *t - 0.01).unwrap_or(0);
+                let top = this.page_tops[k];
+                let h = this.page_papers.get(k).map(|q| q.height_mm).unwrap_or(this.pg.h_mm);
+                assert!(l.y_mm >= top - 0.5 && l.y_mm <= top + h + 0.5,
+                    "字が紙の外: y={} 頁{k} は {top}..{}", l.y_mm, top + h);
+            }
+        });
+    }
+
+    #[gpui::test]
+    fn 編集モードは折らない(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, _| {
+            this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400), SIZE_PT);
+            this.ed = Editor::new(&this.doc.body_text());
+            this.relayout();
+            assert!(!this.paged, "既定が印刷モードになっている");
+            assert_eq!(this.page_tops, vec![0.0], "編集モードなのに折った");
+            let d = this.page_offsets.windows(2).map(|w| w[1] - w[0]).next().unwrap_or(0.0);
+            assert!(d > 0.0 && d < this.pg.h_mm,
+                "編集モードの頁の間隔が紙の高さになっている: {d}");
+        });
+    }
+}
