@@ -76,6 +76,97 @@ theme also live here.
 | Cancel / close | Esc |
 | Quit | Ctrl+Q |
 
+### All keys
+
+The table above covers just the basics. Every live binding is listed
+below (generated from the binding table — hand-written lists always
+drift). You can rebind in settings.toml: `key.bold = "alt-b"` replaces
+the default keys for that action (separate several with commas, unbind
+with an empty string `""`; unreadable lines are reported in the status
+bar at startup; action names are the English names below).
+
+<!-- keys:gen:start (rewritten by tools/keys_doc.py --write) -->
+| Key | Action |
+|---|---|
+| Backspace | Delete backwards (on a cell: clear it) |
+| Delete | Delete forwards (on a cell: clear it) |
+| ← | Move left |
+| → | Move right |
+| Shift+← | Extend selection left |
+| Shift+→ | Extend selection right |
+| Ctrl+← | Word left (calc: to the data edge) |
+| Ctrl+→ | Word right (calc: to the data edge) |
+| Ctrl+Shift+← | Extend selection a word left (calc: to the edge) |
+| Ctrl+Shift+→ | Extend selection a word right (calc: to the edge) |
+| PageUp | Page up |
+| PageDown | Page down |
+| Ctrl+F / Ctrl+H | Find and replace |
+| Ctrl+B | Bold |
+| Ctrl+I | Italic |
+| Ctrl+U | Underline |
+| Ctrl+5 | Strikethrough |
+| Ctrl+P | Print (to PDF) |
+| F11 | Toggle full screen |
+| Ctrl+Shift+S / F12 | Save as |
+| Ctrl+0 | Zoom to 100% |
+| F1 | Help |
+| Ctrl+; | Insert today's date |
+| Ctrl+: | Insert the current time |
+| Ctrl+Home | To the beginning |
+| Ctrl+End | To the end |
+| Shift+↑ | Extend selection up |
+| Shift+↓ | Extend selection down |
+| Ctrl+A | Select all |
+| Home | To the start of the line/row |
+| End | To the end of the line/row |
+| Enter | Confirm and move down / new line |
+| ↑ | Move up |
+| ↓ | Move down |
+| Tab | Move right / indent |
+| Shift+Tab | Move left / outdent |
+| Ctrl+Z | Undo |
+| Ctrl+Shift+Z / Ctrl+Y | Redo |
+| Ctrl+S | Save |
+| Ctrl+O | Open |
+| Ctrl+C | Copy |
+| Ctrl+X | Cut |
+| Ctrl+V | Paste |
+| Ctrl+Q | Quit |
+| Menu / Shift+F10 | Context menu |
+| Ctrl+= / Ctrl+Shift+= | Bigger UI text |
+| Ctrl+- | Smaller UI text |
+| Ctrl+K | Hyperlink |
+| Esc | Cancel / close |
+| Ctrl+↑ | To the data edge (up) |
+| Ctrl+↓ | To the data edge (down) |
+| Ctrl+Shift+↑ | Extend selection to the edge (up) |
+| Ctrl+Shift+↓ | Extend selection to the edge (down) |
+| F2 | Edit the cell |
+| Shift+F3 | Insert function |
+| Ctrl+Shift+% | Percent format |
+| Ctrl+E | Flash fill |
+| Ctrl+Shift+V | Paste values only |
+| Ctrl+Shift+Enter | Legacy array formula (CSE) |
+| F9 | Recalculate the whole book |
+| Shift+F9 | Recalculate this sheet |
+| Alt+Enter | New line inside the cell |
+| Alt+PageUp / Ctrl+PageUp | Previous sheet |
+| Alt+PageDown / Ctrl+PageDown | Next sheet |
+| F4 | Cycle $ in the reference |
+| Alt+S | Slicer multi-select (while open) |
+| Alt+C | Clear the slicer filter (while open) |
+| Ctrl+1 | Cell format |
+| Ctrl+Space | Select the column |
+| Shift+Space | Select the row |
+| Alt+= | AutoSum |
+| Ctrl+D | Fill down |
+| Ctrl+R | Fill right |
+| Ctrl+G / F5 | Go to (focus the name box) |
+| Ctrl+Shift+L | Toggle the filter |
+| Ctrl+T | Make a table |
+| Shift+F2 | Comment |
+<!-- keys:gen:end -->
+
 ### Mouse
 
 - Click to select, drag to select a range, Shift+click to extend from the anchor
@@ -286,7 +377,7 @@ nothing). **Keys are never stored in the workbook.**
 
 ## Cell text is Markdown
 
-Text cells are **drawn as Markdown** (settled 2026-08-09). The cell holds plain
+Text cells are **drawn as Markdown**. The cell holds plain
 text; the markup is interpreted only at draw time.
 
 ```
@@ -324,7 +415,7 @@ values) is the [Python manual](python-manual.md). This section is the
 operations side.
 
 **There are no VBA-style macros** — and no mechanism for putting code inside
-a document at all (settled 2026-08-09). Think of it as VS Code and Excel
+a document at all. Think of it as VS Code and Excel
 merged: the sheet is an .xlsx, the code is a .py, and they are separate files.
 
 - What people exchange is **data only**. A workbook you receive contains no code

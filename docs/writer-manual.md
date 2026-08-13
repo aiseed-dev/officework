@@ -73,6 +73,75 @@ Uncommitted IME text appears underlined in the body and becomes one undo step
 when committed. New features (ruby, vertical writing, …) are all reachable from
 buttons — there are no new shortcuts to memorize.
 
+### All keys
+
+Every live binding is listed below (generated from the binding table).
+You can rebind in settings.toml: `key.bold = "alt-b"` replaces the
+default keys for that action (separate several with commas, unbind with
+an empty string `""`; unreadable lines are reported in the status bar
+at startup; action names are the English names below).
+
+<!-- keys:gen:start (rewritten by tools/keys_doc.py --write) -->
+| Key | Action |
+|---|---|
+| Backspace | Delete backwards (on a cell: clear it) |
+| Delete | Delete forwards (on a cell: clear it) |
+| ← | Move left |
+| → | Move right |
+| Shift+← | Extend selection left |
+| Shift+→ | Extend selection right |
+| Ctrl+← | Word left (calc: to the data edge) |
+| Ctrl+→ | Word right (calc: to the data edge) |
+| Ctrl+Shift+← | Extend selection a word left (calc: to the edge) |
+| Ctrl+Shift+→ | Extend selection a word right (calc: to the edge) |
+| PageUp | Page up |
+| PageDown | Page down |
+| Ctrl+F / Ctrl+H | Find and replace |
+| Ctrl+B | Bold |
+| Ctrl+I | Italic |
+| Ctrl+U | Underline |
+| Ctrl+5 | Strikethrough |
+| Ctrl+P | Print (to PDF) |
+| F11 | Toggle full screen |
+| Ctrl+Shift+S / F12 | Save as |
+| Ctrl+0 | Zoom to 100% |
+| F1 | Help |
+| Ctrl+; | Insert today's date |
+| Ctrl+: | Insert the current time |
+| Ctrl+Home | To the beginning |
+| Ctrl+End | To the end |
+| Shift+↑ | Extend selection up |
+| Shift+↓ | Extend selection down |
+| Ctrl+A | Select all |
+| Home | To the start of the line/row |
+| End | To the end of the line/row |
+| Enter | Confirm and move down / new line |
+| ↑ | Move up |
+| ↓ | Move down |
+| Tab | Move right / indent |
+| Shift+Tab | Move left / outdent |
+| Ctrl+Z | Undo |
+| Ctrl+Shift+Z / Ctrl+Y | Redo |
+| Ctrl+S | Save |
+| Ctrl+O | Open |
+| Ctrl+C | Copy |
+| Ctrl+X | Cut |
+| Ctrl+V | Paste |
+| Ctrl+Q | Quit |
+| Menu / Shift+F10 | Context menu |
+| Ctrl+= / Ctrl+Shift+= | Bigger UI text |
+| Ctrl+- | Smaller UI text |
+| Ctrl+K | Hyperlink |
+| Esc | Cancel / close |
+| Ctrl+E | Align centre |
+| Ctrl+L | Align left |
+| Ctrl+R | Align right |
+| Ctrl+J | Justify |
+| Ctrl+Enter | Page break |
+| Ctrl+] | Bigger font |
+| Ctrl+[ | Smaller font |
+<!-- keys:gen:end -->
+
 ## Character formatting (Home)
 
 **Applies to the selected text only** (with no selection, to the whole paragraph).
@@ -279,6 +348,6 @@ Headless tools: `office-spell document.txt` (exit code 0=clean 1=findings
 ## No more gray
 
 All 114 ribbon commands work. The gray of "don't make it look usable when it
-isn't" reached **zero** in writer (2026-08-04). The remaining honest limits are
+isn't" reached **zero** in writer. The remaining honest limits are
 noted in each section above (first-version vertical writing, per-change
 accept/reject for tracked changes, no UI yet for creating cell merges).
