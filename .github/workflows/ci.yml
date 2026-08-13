@@ -73,14 +73,18 @@ jobs:
         run: |
           rustup target add x86_64-pc-windows-msvc
           cargo check -p pysheet --target x86_64-pc-windows-msvc
-      - name: スマホの的でも組めるか(pysheet — Android / iOS の wheel、PEP 738/730)
-        # 2026-08-13 発注者「Android/iOS 版の wheel を」。手元の実測では
-        # 両方とも一発で通った(依存が純 Rust + unix なので)— この状態を
-        # 保つ見張り。wheel を実際に組む仕事(cibuildwheel)は配布の車線で別途
+      - name: スマホの的でも組めるか(pysheet の wheel と sidecar の橋)
+        # 2026-08-13 発注者「Android/iOS 版の wheel を」「FFI を優先」。
+        # 手元の実測では全部一発で通った(依存が純 Rust + unix なので)—
+        # この状態を保つ見張り。sidecar はスマホでは関数の橋(ffi)として
+        # アプリに焼き込む(iOS はサブプロセス禁止)。wheel と .a/.so を
+        # 実際に組む仕事は配布の車線で別途
         run: |
           rustup target add aarch64-linux-android aarch64-apple-ios
           cargo check -p pysheet --target aarch64-linux-android
           cargo check -p pysheet --target aarch64-apple-ios
+          cargo check -p sidecar --target aarch64-linux-android
+          cargo check -p sidecar --target aarch64-apple-ios
       - name: リボンの表を読む解析器が、崩れたら止まるか
         # **検査を信じる前に、落ちる所を見る。** 6つの崩し方(新しい種類・
         # マクロ書き・Tab を関数で作る・引数が増える・`/* */` で囲む・

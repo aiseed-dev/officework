@@ -5,6 +5,13 @@ edition.workspace = true
 license.workspace = true
 description = "officework エンジンを、genoffice の xlsx サイドカーの言葉で喋らせる"
 
+[lib]
+name = "sidecar"
+# rlib は試験と bin のため。staticlib / cdylib はスマホのため — iOS は
+# サブプロセスを起こせないので、橋を関数(src/lib.rs の ffi)でアプリに
+# 焼き込む(iOS は .a、Android は .so)。2026-08-13 発注者「FFI を優先」
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [[bin]]
 name = "xlsx-sidecar"   # **向こうと同じ名前。** XLSX_SIDECAR_PATH で差し替えられる
 path = "src/main.rs"

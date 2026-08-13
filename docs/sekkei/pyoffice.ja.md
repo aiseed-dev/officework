@@ -1294,3 +1294,34 @@ CI はサイドカーを**組んで lint はしていたが、試験は走らせ
 - `.xls` を読めるようにしたくなったとき(BIFF8。別の企画)
 - genoffice の通信の言葉が変わったとき
 - **エンジン単体を配りたく**なったとき
+
+## 橋が関数になった — スマホの道(2026-08-13 発注者)
+
+**方針(記録のみ。実装は急がない — 発注者):**
+
+- **エンジンは FFI で焼き込む**(「ネイティブの庫を優先」。WASM は後日の選択肢のまま)
+- **画面は各 OS ネイティブ** — iOS は Swift、Android は Kotlin。
+  genoffice の Web 画面を WebView で使う案は採らない。Swift も Kotlin も
+  C の口を直に呼べるので、JS の糊の層がまるごと要らない —
+  「ネイティブが先」(SEKKEI)の順序がスマホでもそのまま通る
+
+構造の関門は1つだった: **iOS はアプリからのサブプロセス起動を禁じている**ので、
+stdio のサイドカーはスマホでは使えない。だから橋を「プロセス」から「関数」へ
+(この工事だけは済ませた — どの画面の案でも要る土台なので):
+
+- sidecar を庫(lib)と実行ファイル(bin)に割った。中身は `Bridge`(開いたブックの
+  居座りを抱えて JSON 1行を捌く)で、**stdio の実行ファイルも FFI も同じ Bridge を通る**。
+  通信の言葉は1文字も変わっていない
+- C の口は4つ: `officework_bridge_new` / `officework_bridge_handle`
+  (JSON 1行 → JSON 1行)/ `officework_string_free` / `officework_bridge_free`。
+  壊れた呼び方(null・非 UTF-8)にも **JSON の断りで答える** — 橋の向こうは
+  他人の言語なので、panic を輸出しない
+- 組み方: crate-type に staticlib / cdylib。iOS は .a を焼き込み、
+  Android は .so を積む。的の検査(aarch64-linux-android / aarch64-apple-ios
+  で cargo check)は CI の核の仕事に入れた
+- 実測: 関数の橋越しに sample/見積書.xlsx が開ける(ffi_tests)。
+  cdylib の書き出し記号も nm で4つ確認済み
+
+**残り(スマホの車線 — 全部後日)**: .a / .so を実際に組む CI の仕事、
+Swift / Kotlin の画面(新しいリポジトリになる見込み。officework 本体には
+FFI の口だけ置く)、C の頭書き(ヘッダ)を1枚書くか cbindgen で起こすか。
