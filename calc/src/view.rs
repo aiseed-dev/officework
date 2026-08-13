@@ -198,6 +198,11 @@ impl gpui::Element for InputSink {
                 } else if c.img_drag.is_some() {
                     c.image_drag_at(f32::from(rel.x), f32::from(rel.y), e.modifiers.shift);
                     cx.notify();
+                } else if c.slicer_drag.is_some() {
+                    // スライサーの板の移動。板は格子の上に浮いているので、
+                    // 押した所ではなく**窓の高さで**受ける
+                    c.slicer_drag_at(f32::from(rel.x), f32::from(rel.y));
+                    cx.notify();
                 } else if c.size_drag.is_some() {
                     c.size_drag_at(f32::from(rel.x), f32::from(rel.y));
                     cx.notify();
@@ -4207,12 +4212,21 @@ impl Render for Calc {
                 })
                 .collect();
             let (items, cut) = slicer_items(&src, desc, hide_empty);
-            // 右から順に並べる(1枚目がいちばん右)
-            let w = us * 190.0;
+            // 置き場所は数で持つ(`at` が無ければ右から順に並べる) —
+            // `.right()` で置くと、掴んだ瞬間に「いまどこか」が分からない
+            let (ox, oy) = self.slicer_origin(si);
+            let (w, h) = (sl.w, sl.h);
+            let (_, sel_bg, edge) = {
+                let st = slicer_styles();
+                let s = st.get(sl.style).copied().unwrap_or(st[0]);
+                (s.2, s.3, s.4)
+            };
+            let head_bg = slicer_styles().get(sl.style).map(|s| s.2).unwrap_or(0xFFFFFF);
             let mut p = div().id(SharedString::from(format!("slicer{si}")))
-                .absolute().right(px(24.0 + si as f32 * (w + 8.0))).top(px(ROW_H + 16.0)).w(px(w))
-                .p_2().rounded_md().bg(gpui::white())
-                .border_color(if cur { rgb(0x1B6E3C) } else { rgb(0xA9BDB0) })
+                .absolute().left(px(ox)).top(px(oy)).w(px(w)).max_h(px(h))
+                .overflow_y_scroll()
+                .p_2().rounded_md().bg(rgb(head_bg))
+                .border_color(rgb(edge))
                 .shadow_lg()
                 .flex().flex_col().gap_1()
                 // どこを押しても**その板がいまの板になる**(Alt+S / Esc の相手)
@@ -4222,10 +4236,37 @@ impl Render for Calc {
                     cx.notify();
                 }))
                 .child(div().flex().flex_row().items_center()
-                    .child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
-                        .whitespace_nowrap().overflow_hidden()
-                        .child(SharedString::from(head)))
+                    // 見出しをつかんで動かす(Excel と同じ)
+                    .child(div().id(SharedString::from(format!("sl-head{si}")))
+                        .text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
+                        .whitespace_nowrap().overflow_hidden().cursor_pointer()
+                        .child(SharedString::from(head))
+                        .on_mouse_down(gpui::MouseButton::Left,
+                            cx.listener(move |this, e: &gpui::MouseDownEvent, _, cx| {
+                                cx.stop_propagation();
+                                this.slicer_sel = si;
+                                let (px0, py0, _, _) = this.pane_box.get();
+                                this.slicer_grab(si,
+                                    f32::from(e.position.x) - px0,
+                                    f32::from(e.position.y) - py0);
+                                this.status = ui::t!("引いて動かします(設定の「位置を自動に戻す」で並びに戻ります)").into();
+                                cx.notify();
+                            })))
                     .child(div().flex_1())
+                    // ⚙ = 設定の板(大きさ・列数・スタイル・位置)
+                    .child(div().id(SharedString::from(format!("sl-cfg{si}")))
+                        .px_1p5().rounded_sm().cursor_pointer()
+                        .text_size(px(us * 12.5))
+                        .bg(if cur && self.slicer_cfg { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
+                        .hover(|s| s.bg(rgb(0xEAF5EE)))
+                        .child("⚙")
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            // 別の板の ⚙ を押したら、そちらの設定に移る
+                            this.slicer_cfg = !(this.slicer_cfg && this.slicer_sel == si);
+                            this.slicer_sel = si;
+                            cx.notify();
+                        })))
                     // ↑↓ = 並び順。**数だけの値は数として並ぶ**(10 が 2 の後)
                     .child(div().id(SharedString::from(format!("sl-sort{si}")))
                         .px_1p5().rounded_sm().cursor_pointer()
@@ -4309,13 +4350,19 @@ impl Render for Calc {
                     .text_color(rgb(0x6B7680))
                     .child(ui::t!("いま残っている行がありません(⊘ を戻すと全部出ます)")));
             }
+            // ボタンは cols 列に並べる(値の多い列を短く収める)。
+            // 幅は板の幅から余白と隙間を引いて割る
+            let ncol = sl.cols.clamp(1, 4);
+            let btn_w = ((w - 16.0 - (ncol - 1) as f32 * 4.0) / ncol as f32).max(24.0);
+            let mut grid = div().flex().flex_row().flex_wrap().gap_1();
             for (i, v) in items.into_iter().enumerate() {
                 let on = sel.contains(&v);
-                p = p.child(div()
+                grid = grid.child(div()
                     .id(SharedString::from(format!("sl{si}-{i}")))
+                    .w(px(btn_w))
                     .px_2().py_1().rounded_sm().border_1()
                     .border_color(rgb(0xC6CDD3))
-                    .bg(if on { rgb(0xBBD9EA) } else { rgb(0xFFFFFF) })
+                    .bg(if on { rgb(sel_bg) } else { rgb(0xFFFFFF) })
                     .text_size(px(us * 12.0)).cursor_pointer()
                     .whitespace_nowrap().overflow_hidden()
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
@@ -4344,6 +4391,7 @@ impl Render for Calc {
                         cx.notify();
                     })));
             }
+            p = p.child(grid);
             if cut > 0 {
                 p = p.child(div().px_2().py_1().text_size(px(us * 11.0))
                     .text_color(rgb(0x6B7680))
@@ -4351,6 +4399,152 @@ impl Render for Calc {
             }
             p.into_any_element()
         }).collect();
+
+        // ---- スライサーの設定(⚙ で出る) ----
+        // 本家は右のサイドバー(SlicerSettings)。こちらは図形の設定と同じ
+        // 「板の隣に出す」形にした — 右の帯を常設しない造りなので
+        let slicer_cfg_panel = if self.slicer_cfg {
+            self.slicers.get(slicer_sel).map(|sl| {
+                let si = slicer_sel;
+                let (w, h, cols, ratio, style) = (sl.w, sl.h, sl.cols, sl.ratio, sl.style);
+                let auto = sl.at.is_none();
+                let (ox, oy) = self.slicer_origin(si);
+                // 札の幅は 64px — 52px だと「一定の比率」「ボタンの列」が
+                // 2行に折れる(実機で見た)
+                let lab = |t: String| {
+                    div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
+                        .w(px(us * 64.0)).flex_none()
+                        .child(SharedString::from(t))
+                };
+                // ± の対。step は1押しぶん
+                let bump = |id: String, t: &'static str| {
+                    div().id(SharedString::from(id))
+                        .px_2().py_0p5().rounded_sm().border_1().border_color(rgb(0xC6CDD3))
+                        .bg(rgb(0xFFFFFF)).cursor_pointer().text_size(px(us * 12.0))
+                        .hover(|s| s.bg(rgb(0xEAF5EE)))
+                        .child(t)
+                };
+                let mut p = div().id("slicer-cfg").absolute()
+                    .left(px((ox - us * 210.0).max(0.0))).top(px(oy))
+                    .w(px(us * 200.0))
+                    .p_2().rounded_md().bg(gpui::white())
+                    .border_1().border_color(rgb(0x1B6E3C)).shadow_lg()
+                    .flex().flex_col().gap_1()
+                    .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                    .child(div().flex().flex_row().items_center()
+                        .child(div().text_size(px(us * 12.0)).font_weight(gpui::FontWeight::BOLD)
+                            .child(ui::t!("スライサーの設定")))
+                        .child(div().flex_1())
+                        .child(div().id("sl-cfg-close").px_1p5().rounded_sm().cursor_pointer()
+                            .text_size(px(us * 12.5)).hover(|s| s.bg(rgb(0xEAF5EE)))
+                            .child("✕")
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                cx.stop_propagation();
+                                this.slicer_cfg = false;
+                                cx.notify();
+                            }))));
+                // 幅・高さ。**一定の比率**を入れていれば片方でもう片方も動く
+                for (which, cur) in [("幅", w), ("高さ", h)] {
+                    let is_w = which == "幅";
+                    p = p.child(div().flex().flex_row().items_center().gap_1()
+                        .child(lab(if is_w { ui::t!("幅").to_string() } else { ui::t!("高さ").to_string() }))
+                        .child(bump(format!("sl-{which}-minus"), "−")
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                cx.stop_propagation();
+                                this.slicer_resize(si, is_w, -20.0);
+                                cx.notify();
+                            })))
+                        .child(div().w(px(us * 44.0)).text_size(px(us * 12.0))
+                            .child(SharedString::from(format!("{cur:.0}px"))))
+                        .child(bump(format!("sl-{which}-plus"), "+")
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                cx.stop_propagation();
+                                this.slicer_resize(si, is_w, 20.0);
+                                cx.notify();
+                            }))));
+                }
+                p = p.child(div().flex().flex_row().items_center().gap_1()
+                    .child(lab(ui::t!("一定の比率").to_string()))
+                    .child(div().id("sl-ratio").px_2().py_0p5().rounded_sm().border_1()
+                        .border_color(if ratio { rgb(0x1B6E3C) } else { rgb(0xC6CDD3) })
+                        .bg(if ratio { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
+                        .cursor_pointer().text_size(px(us * 11.5))
+                        .child(if ratio { ui::t!("入") } else { ui::t!("切") })
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            if let Some(sl) = this.slicers.get_mut(si) {
+                                sl.ratio = !sl.ratio;
+                            }
+                            cx.notify();
+                        }))));
+                // ボタンの列数(1〜4)
+                let mut colrow = div().flex().flex_row().items_center().gap_1()
+                    .child(lab(ui::t!("ボタンの列").to_string()));
+                for n in 1..=4u32 {
+                    let on = cols == n;
+                    colrow = colrow.child(div().id(SharedString::from(format!("sl-cols{n}")))
+                        .px_2().py_0p5().rounded_sm().border_1()
+                        .border_color(if on { rgb(0x1B6E3C) } else { rgb(0xC6CDD3) })
+                        .bg(if on { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
+                        .cursor_pointer().text_size(px(us * 11.5))
+                        .child(SharedString::from(n.to_string()))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            if let Some(sl) = this.slicers.get_mut(si) {
+                                sl.cols = n;
+                            }
+                            cx.notify();
+                        })));
+                }
+                p = p.child(colrow);
+                // スタイル(色の組)
+                let mut strow = div().flex().flex_row().flex_wrap().items_center().gap_1()
+                    .child(lab(ui::t!("スタイル").to_string()));
+                for (i, (_, label, _, sbg, edge)) in slicer_styles().into_iter().enumerate() {
+                    let on = style == i;
+                    strow = strow.child(div().id(SharedString::from(format!("sl-style{i}")))
+                        .px_2().py_0p5().rounded_sm()
+                        .border_2().border_color(if on { rgb(edge) } else { rgb(0xC6CDD3) })
+                        .bg(rgb(sbg)).cursor_pointer().text_size(px(us * 11.0))
+                        .child(SharedString::from(label))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            if let Some(sl) = this.slicers.get_mut(si) {
+                                sl.style = i;
+                            }
+                            cx.notify();
+                        })));
+                }
+                p = p.child(strow);
+                // 位置。**数を見せる**(引いて動かしたあと、どこに居るか分かる)
+                p = p.child(div().flex().flex_row().items_center().gap_1()
+                    .child(lab(ui::t!("位置").to_string()))
+                    .child(div().text_size(px(us * 11.5))
+                        .child(SharedString::from(if auto {
+                            ui::t!("自動(右から順)").to_string()
+                        } else {
+                            format!("{ox:.0}, {oy:.0}")
+                        }))));
+                p = p.child(div().id("sl-pos-auto")
+                    .px_2().py_0p5().rounded_sm().border_1().border_color(rgb(0xC6CDD3))
+                    .bg(rgb(0xFFFFFF)).cursor_pointer().text_size(px(us * 11.5))
+                    .hover(|s| s.bg(rgb(0xEAF5EE)))
+                    .child(ui::t!("位置を自動に戻す"))
+                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                        cx.stop_propagation();
+                        if let Some(sl) = this.slicers.get_mut(si) {
+                            sl.at = None;
+                        }
+                        this.status = ui::t!("位置を自動(右から順)に戻しました").into();
+                        cx.notify();
+                    })));
+                p = p.child(div().text_size(px(us * 10.5)).text_color(rgb(0x6B7680))
+                    .child(ui::t!("見出しを引くと動きます。大きさも位置も見え方だけで、保存される中身は変わりません")));
+                p
+            })
+        } else {
+            None
+        };
 
         // ---- 図形の設定(選ぶと右に出る) ----
         // 塗り・線・太さ・不透明度・回転/反転・影。どのボタンも shape_edit を
@@ -5330,6 +5524,7 @@ impl Render for Calc {
                    .children(quit_panel)
                    .children(shape_panel)
                    .children(slicer_panels)
+                   .children(slicer_cfg_panel)
                    .children(comment_panel))
             .children(watch_bar)
             .child(sheets_bar)

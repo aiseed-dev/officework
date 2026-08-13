@@ -4939,6 +4939,46 @@ mod slicer_col_tests {
             assert_eq!(keeps(this), vec![1, 2, 3, 4]);
         });
     }
+
+    /// 設定(大きさ・一定の比率・位置)。**「一定の比率」は片方を動かすと
+    /// もう片方も同じ率で動く**
+    #[gpui::test]
+    fn スライサーの大きさと位置(cx: &mut gpui::TestAppContext) {
+        use crate::util::Slicer;
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.pane_box.set((0.0, 0.0, 1000.0, 700.0));
+            this.slicers.push(Slicer::default());
+            this.slicers.push(Slicer { col: 1, ..Default::default() });
+            let (w0, h0) = (this.slicers[0].w, this.slicers[0].h);
+
+            // 比を保たないうちは幅だけが動く
+            this.slicer_resize(0, true, 20.0);
+            assert_eq!(this.slicers[0].w, w0 + 20.0);
+            assert_eq!(this.slicers[0].h, h0, "比を切っているのに高さが動いた");
+
+            // 入れると同じ率で追う(幅を2倍にすれば高さも2倍)
+            this.slicers[0].ratio = true;
+            let (w1, h1) = (this.slicers[0].w, this.slicers[0].h);
+            this.slicer_resize(0, true, w1);
+            assert!((this.slicers[0].h - h1 * 2.0).abs() < 0.01, "高さが追わない");
+
+            // 位置: `at` が無ければ右から順(1枚目がいちばん右)
+            this.slicers[0] = Slicer::default();
+            let (x0, _) = this.slicer_origin(0);
+            let (x1, _) = this.slicer_origin(1);
+            assert_eq!(x0, 1000.0 - 24.0 - 190.0);
+            assert!(x1 < x0, "2枚目が1枚目より右に出た");
+
+            // 引いて動かすと `at` が入り、自動の並びから外れる
+            this.slicer_grab(0, x0 + 5.0, 40.0);
+            this.slicer_drag_at(x0 - 100.0 + 5.0, 140.0);
+            assert_eq!(this.slicers[0].at, Some((x0 - 100.0, 140.0)));
+            // **面の外へは出さない**(出すと掴み直せない)
+            this.slicer_drag_at(-9999.0, -9999.0);
+            assert_eq!(this.slicers[0].at, Some((0.0, 0.0)));
+        });
+    }
 }
 
 #[cfg(test)]

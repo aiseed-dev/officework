@@ -1614,6 +1614,58 @@ pub(crate) struct Slicer {
     /// 既定は並べる — 押せるのに何も起きないボタンより、
     /// 「その値の行は今は無い」が見えるほうが分かる場面もある
     pub(crate) hide_empty: bool,
+    // ---- 見た目(2026-08-13、台帳「スライサー設定タブ」)----
+    /// 板の幅(px)。既定は 190
+    pub(crate) w: f32,
+    /// 板の高さ(px)。値が入りきらなければ中で送る
+    pub(crate) h: f32,
+    /// **幅と高さの比を保つか。** 片方を変えるともう片方も同じ率で動く
+    pub(crate) ratio: bool,
+    /// ボタンを何列に並べるか(1〜4)。値が多い列を短く収めるため
+    pub(crate) cols: u32,
+    /// スタイル([`slicer_styles`] の番号)
+    pub(crate) style: usize,
+    /// 置き場所(格子の面の px の左上)。`None` = 右から順に自動で並べる
+    pub(crate) at: Option<(f32, f32)>,
+}
+
+/// 板の既定の大きさ。**幅は前からの 190px**(変えると、いま開いている
+/// 帳票の見え方が黙って変わる)
+pub(crate) const SLICER_W: f32 = 190.0;
+pub(crate) const SLICER_H: f32 = 220.0;
+
+impl Default for Slicer {
+    fn default() -> Self {
+        Self {
+            col: 0,
+            sel: Default::default(),
+            multi: false,
+            desc: false,
+            hide_empty: false,
+            w: SLICER_W,
+            h: SLICER_H,
+            ratio: false,
+            cols: 1,
+            style: 0,
+            at: None,
+        }
+    }
+}
+
+/// スライサーのスタイル(見出しの地・選んだ値の地・縁)。
+///
+/// **画面で描き分けられる物だけ**を並べる(柄を18種から6種に絞ったのと
+/// 同じ線)。本家の 14 種は縞や角丸の違いを含むが、こちらは色の組で足りる。
+/// 組は (鍵, 見出し, 見出しの地, 選んだ値の地, 縁)
+pub(crate) fn slicer_styles() -> Vec<(&'static str, &'static str, u32, u32, u32)> {
+    let row = |(k, l): (&'static str, &'static str), a, b, c| (k, l, a, b, c);
+    vec![
+        row(ui::item!("緑"), 0xFFFFFF, 0xBBD9EA, 0x1B6E3C),
+        row(ui::item!("青"), 0xEEF4FA, 0xBBD9EA, 0x2E6DA4),
+        row(ui::item!("橙"), 0xFDF2EC, 0xF6C99B, 0xB86A22),
+        row(ui::item!("紫"), 0xF3F0F8, 0xD3C6EA, 0x6E4FA3),
+        row(ui::item!("灰"), 0xF4F5F6, 0xD5DADE, 0x6B7680),
+    ]
 }
 
 /// スライサーの値の並べ方。**数だけの値は数として比べる** —

@@ -44,6 +44,8 @@ impl Calc {
             sa_cat: 0,
             slicers: Vec::new(),
             slicer_sel: 0,
+            slicer_cfg: false,
+            slicer_drag: None,
             show_comments: true,
             comment_list: None,
             pick_paths: Vec::new(),
@@ -503,6 +505,60 @@ impl Calc {
         sl.sel.contains(&v)
     }
 
+    /// 板の左上(格子の面の px)。`at` が無ければ**右から順に自動で並べる**。
+    ///
+    /// 自動のときも数で返す — ドラッグの始まりに「いまどこに居るか」が要る。
+    /// `.right()` で置くと、掴んだ瞬間に位置が分からない
+    pub(crate) fn slicer_origin(&self, i: usize) -> (f32, f32) {
+        let Some(sl) = self.slicers.get(i) else { return (0.0, 0.0) };
+        if let Some(at) = sl.at {
+            return at;
+        }
+        // 自分より前の板の幅を足して、右端から左へ寄せる
+        let pane_w = self.pane_box.get().2;
+        let mut right = 24.0;
+        for j in 0..i {
+            right += self.slicers[j].w + 8.0;
+        }
+        ((pane_w - right - sl.w).max(0.0), ROW_H + 16.0)
+    }
+
+    /// 板の大きさを変える。**一定の比率**が入っていれば、片方を動かすと
+    /// もう片方も同じ率で動く(本家の「一定の割合」)
+    pub(crate) fn slicer_resize(&mut self, i: usize, is_w: bool, d: f32) {
+        let Some(sl) = self.slicers.get_mut(i) else { return };
+        let (w0, h0) = (sl.w, sl.h);
+        if is_w {
+            sl.w = (w0 + d).clamp(120.0, 640.0);
+            if sl.ratio && w0 > 0.0 {
+                sl.h = (h0 * sl.w / w0).clamp(80.0, 900.0);
+            }
+        } else {
+            sl.h = (h0 + d).clamp(80.0, 900.0);
+            if sl.ratio && h0 > 0.0 {
+                sl.w = (w0 * sl.h / h0).clamp(120.0, 640.0);
+            }
+        }
+        let (w, h) = (sl.w, sl.h);
+        self.status = ui::tf!("大きさ: {}×{}px", format!("{w:.0}"), format!("{h:.0}")).into();
+    }
+
+    /// 板を掴んだ(見出しの上でマウスを押した)
+    pub(crate) fn slicer_grab(&mut self, i: usize, x: f32, y: f32) {
+        let o = self.slicer_origin(i);
+        self.slicer_drag = Some((i, (x, y), o));
+    }
+
+    /// 板を引いている。**格子の面から出さない** — 面の外へ出すと掴み直せない
+    pub(crate) fn slicer_drag_at(&mut self, x: f32, y: f32) {
+        let Some((i, (gx, gy), (ox, oy))) = self.slicer_drag else { return };
+        let (_, _, pw, ph) = self.pane_box.get();
+        let Some(sl) = self.slicers.get_mut(i) else { return };
+        let nx = (ox + (x - gx)).clamp(0.0, (pw - sl.w).max(0.0));
+        let ny = (oy + (y - gy)).clamp(0.0, (ph - 40.0).max(0.0));
+        sl.at = Some((nx, ny));
+    }
+
     /// いま触っている板を1枚閉じる(Esc)。閉じたら true。
     pub(crate) fn close_slicer(&mut self) -> bool {
         if self.slicers.is_empty() {
@@ -511,6 +567,8 @@ impl Calc {
         let i = self.slicer_sel.min(self.slicers.len() - 1);
         let col = self.slicers.remove(i).col;
         self.slicer_sel = i.min(self.slicers.len().saturating_sub(1));
+        // 板が全部無くなったら設定の板も畳む(相手のいない設定は出さない)
+        self.slicer_cfg &= !self.slicers.is_empty();
         self.status = ui::tf!("{} 列のスライサーを閉じました", col_name(col)).into();
         true
     }
@@ -1197,6 +1255,9 @@ impl Calc {
         }
         if self.img_drag.take().is_some() {
             return; // 画像の移動・大きさの確定。status はドラッグ中に出している
+        }
+        if self.slicer_drag.take().is_some() {
+            return; // スライサーの板の移動の確定
         }
         if self.drag.take().is_some() && self.anchor.is_some() {
             let (a, b) = self.sel_rect();
