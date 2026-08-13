@@ -795,6 +795,40 @@ mod carry_tests {
         assert!(dx.contains("lnTo"), "直線を書いていない");
     }
 
+
+    #[test]
+    fn 名前の適用範囲が往復する() {
+        // **重なっていなくてもシート限定にできる。** 前は「同じ名前が
+        // 2枚にあるか」から当てていたので、これが作れなかった
+        use crate::model::DefinedName;
+        let mut b = Book::new();
+        b.sheets.push(crate::Sheet::new("2枚目"));
+        b.sheets[0].names.push(DefinedName { name: "限定".into(), range: "A1".into(), scoped: true });
+        b.sheets[0].names.push(DefinedName { name: "全体".into(), range: "B2".into(), scoped: false });
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        let g = |n: &str| back.sheets[0].names.iter().find(|d| d.name == n).cloned();
+        assert!(g("限定").is_some_and(|d| d.scoped), "シート限定が往復しない");
+        assert!(g("全体").is_some_and(|d| !d.scoped), "ブック全体がシート限定に落ちた");
+    }
+
+    #[test]
+    fn 重なったブック全体の名前は書き出しで限定に落とす() {
+        // ブック全体の名前が2つあると Excel は開けない。**印が無くても防ぐ**
+        use crate::model::DefinedName;
+        let mut b = Book::new();
+        b.sheets.push(crate::Sheet::new("2枚目"));
+        b.sheets[0].names.push(DefinedName::new("売上", "A1"));
+        b.sheets[1].names.push(DefinedName::new("売上", "B2"));
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
+        let mut wb = String::new();
+        z.by_name("xl/workbook.xml").unwrap().read_to_string(&mut wb).unwrap();
+        assert_eq!(wb.matches("localSheetId").count(), 2, "重なりを限定していない: {wb}");
+    }
+
     #[test]
     fn 古い計算順は持ち越さない() {
         // calcChain が古いままだと Excel が誤った順で開くことがある
@@ -836,12 +870,12 @@ mod name_roundtrip_tests {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("100"));
         b.sheets[0].set(Pos::parse("B1").unwrap(), Cell::input("=単価*2"));
-        b.sheets[0].names.push(("単価".into(), "A1".into()));
+        b.sheets[0].names.push(crate::model::DefinedName::new("単価", "A1"));
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
         buf.set_position(0);
         let (mut back, _) = read(buf).expect("読めない");
-        assert_eq!(back.sheets[0].names, vec![("単価".to_string(), "A1".to_string())],
+        assert_eq!(back.sheets[0].names, vec![crate::model::DefinedName::new("単価", "A1")],
             "名前が往復しない");
         recalc(&mut back.sheets[0]);
         assert_eq!(back.sheets[0].value(Pos::parse("B1").unwrap()), Value::Number(200.0));
@@ -1870,9 +1904,9 @@ mod print_extras_roundtrip_tests {
         b.sheets.push(crate::Sheet::new("Sheet2"));
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[1].set(Pos::parse("A1").unwrap(), Cell::input("y"));
-        b.sheets[0].names.push(("売上".into(), "A1:A3".into()));
-        b.sheets[1].names.push(("売上".into(), "A1:A5".into())); // 同じ名前
-        b.sheets[0].names.push(("税率".into(), "B1".into())); // こちらは1枚だけ
+        b.sheets[0].names.push(crate::model::DefinedName::new("売上", "A1:A3"));
+        b.sheets[1].names.push(crate::model::DefinedName::new("売上", "A1:A5")); // 同じ名前
+        b.sheets[0].names.push(crate::model::DefinedName::new("税率", "B1")); // こちらは1枚だけ
 
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -1896,8 +1930,8 @@ mod print_extras_roundtrip_tests {
         );
         // 読み返しても両方が元のシートに戻る
         let (back, _) = read(Cursor::new(bytes)).expect("読めない");
-        assert_eq!(back.sheets[0].names.iter().filter(|(n, _)| n == "売上").count(), 1);
-        assert_eq!(back.sheets[1].names.iter().filter(|(n, _)| n == "売上").count(), 1);
+        assert_eq!(back.sheets[0].names.iter().filter(|d| d.name == "売上").count(), 1);
+        assert_eq!(back.sheets[1].names.iter().filter(|d| d.name == "売上").count(), 1);
     }
 
     #[test]
@@ -2916,7 +2950,7 @@ mod script_roundtrip_tests {
     fn 名前に属性をつけて読み直す(extra: &str) -> Book {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("1"));
-        b.sheets[0].names.push(("名前つき".into(), "A1:A5".into()));
+        b.sheets[0].names.push(crate::model::DefinedName::new("名前つき", "A1:A5"));
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
         // zip の中の workbook.xml の definedName に属性を差し込む
@@ -2953,7 +2987,7 @@ mod script_roundtrip_tests {
         let back = 名前に属性をつけて読み直す(r#"function="false" hidden="false" vbProcedure="false""#);
         assert_eq!(
             back.sheets[0].names,
-            vec![("名前つき".to_string(), "A1:A5".to_string())],
+            vec![crate::model::DefinedName::new("名前つき", "A1:A5")],
             "偽の属性で名前が使えなくなった(names_raw: {:?})",
             back.names_raw
         );

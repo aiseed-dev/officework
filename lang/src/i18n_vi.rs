@@ -289,7 +289,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("打ちかけを取り消しました", "Đã hủy nội dung đang gõ"),
     ("名前を付けませんでした", "Chưa đặt tên"),
     ("「{}」は名前にできません(文字と数字と _。セル参照の形は不可)", "\"{}\" không dùng làm tên được (chỉ chữ, số và _; không được giống tham chiếu ô)"),
-    ("名前「{}」= {}(式の中で使えます)", "Tên \"{}\" = {} (dùng được trong công thức)"),
     ("{} のコメントを消しました", "Đã xóa nhận xét ở {}"),
     ("{} にコメントを付けました(保存で残ります)", "Đã thêm nhận xét vào {} (được giữ khi lưu)"),
     ("「{}」は数として読めません", "\"{}\" không đọc được thành số"),
@@ -1565,4 +1564,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("交差", "Giao"),
     ("減算", "Trừ"),
     ("{}しました(輪郭に直したので、元の形と回転は戻せません)", "Đã {} (đã đổi thành đường bao nên không khôi phục được hình gốc và góc xoay)"),
+    ("名前「{}」= {}(このシートだけで使えます)", "Tên “{}” = {} (chỉ dùng ở trang này)"),
+    ("名前「{}」= {}(どのシートからも使えます)", "Tên “{}” = {} (dùng được từ mọi trang)"),
+    ("名前「{}」= {} の適用範囲", "Phạm vi của tên “{}” = {}"),
+    ("ブック全体(どのシートからも使う)", "Toàn sổ làm việc (dùng từ mọi trang)"),
+    ("このシートだけ", "Chỉ trang này"),
 ];

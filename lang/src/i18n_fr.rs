@@ -289,7 +289,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("打ちかけを取り消しました", "Saisie annulée"),
     ("名前を付けませんでした", "Aucun nom donné"),
     ("「{}」は名前にできません(文字と数字と _。セル参照の形は不可)", "« {} » ne peut pas être un nom (lettres, chiffres et _ ; pas la forme d'une référence de cellule)"),
-    ("名前「{}」= {}(式の中で使えます)", "Nom « {} » = {} (utilisable dans les formules)"),
     ("{} のコメントを消しました", "Commentaire retiré de {}"),
     ("{} にコメントを付けました(保存で残ります)", "Commentaire ajouté à {} (conservé à l'enregistrement)"),
     ("「{}」は数として読めません", "« {} » n'est pas un nombre"),
@@ -1565,4 +1564,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("交差", "Intersection"),
     ("減算", "Soustraction"),
     ("{}しました(輪郭に直したので、元の形と回転は戻せません)", "{} effectué (converti en contour ; la forme d'origine et la rotation ne peuvent pas être rétablies)"),
+    ("名前「{}」= {}(このシートだけで使えます)", "Nom « {} » = {} (utilisable sur cette feuille seulement)"),
+    ("名前「{}」= {}(どのシートからも使えます)", "Nom « {} » = {} (utilisable depuis toute feuille)"),
+    ("名前「{}」= {} の適用範囲", "Étendue du nom « {} » = {}"),
+    ("ブック全体(どのシートからも使う)", "Tout le classeur (depuis toute feuille)"),
+    ("このシートだけ", "Cette feuille seulement"),
 ];

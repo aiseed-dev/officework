@@ -125,7 +125,8 @@ pub(crate) fn open_result(
                 Value::Object(o)
             })
             .collect();
-        for (nm, r) in &sh.names {
+        for d in &sh.names {
+            let (nm, r) = (&d.name, &d.range);
             // **原本の綴りで返す。** 向こうは `Structure!$A$1:$B$2` の形で
             // 返し、試験もそれを見ている(2026-08-10)。こちらは参照を
             // `A1:B2` に解いて持っているので、**`$` を戻して組み直す**。

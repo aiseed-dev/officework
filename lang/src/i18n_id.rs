@@ -289,7 +289,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("打ちかけを取り消しました", "Ketikan dibatalkan"),
     ("名前を付けませんでした", "Tidak diberi nama"),
     ("「{}」は名前にできません(文字と数字と _。セル参照の形は不可)", "\"{}\" tidak bisa menjadi nama (huruf, angka, dan _; bentuk referensi sel tidak boleh)"),
-    ("名前「{}」= {}(式の中で使えます)", "Nama \"{}\" = {} (bisa dipakai dalam rumus)"),
     ("{} のコメントを消しました", "Komentar dihapus dari {}"),
     ("{} にコメントを付けました(保存で残ります)", "Komentar ditambahkan ke {} (tersimpan saat menyimpan)"),
     ("「{}」は数として読めません", "\"{}\" tidak bisa dibaca sebagai angka"),
@@ -1565,4 +1564,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("交差", "Iris"),
     ("減算", "Kurangi"),
     ("{}しました(輪郭に直したので、元の形と回転は戻せません)", "{} selesai (diubah jadi garis luar, jadi bentuk asli dan putarannya tidak bisa dikembalikan)"),
+    ("名前「{}」= {}(このシートだけで使えます)", "Nama “{}” = {} (hanya di lembar ini)"),
+    ("名前「{}」= {}(どのシートからも使えます)", "Nama “{}” = {} (dari lembar mana pun)"),
+    ("名前「{}」= {} の適用範囲", "Lingkup nama “{}” = {}"),
+    ("ブック全体(どのシートからも使う)", "Seluruh buku kerja (dari lembar mana pun)"),
+    ("このシートだけ", "Hanya lembar ini"),
 ];

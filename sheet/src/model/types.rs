@@ -685,9 +685,9 @@ pub struct Sheet {
     /// チェックボックスと同じ**「許す」向き**で持ち、読み書きの所だけで
     /// 裏返す。向きを混ぜると必ずどこかで逆になる
     pub protect_allow: ProtectAllow,
-    /// 名前の定義(名前, 参照 "A1" か "A1:B2")。式の中で名前が使える。
+    /// 名前の定義。式の中で名前が使える。
     /// workbook.xml の definedNames と往復する
-    pub names: Vec<(String, String)>,
+    pub names: Vec<DefinedName>,
     /// セルのハイパーリンク(外部URL)。sheet.xml の hyperlinks と往復する
     pub links: BTreeMap<Pos, String>,
     /// セルのコメント。**話の筋(スレッド)**で持つ。
@@ -818,6 +818,27 @@ impl Sheet {
 
 /// シートに浮かぶ図形。**中身はベクタ**(発注者案 2026-08-04: SVG で作る —
 /// 拡大縮小で崩れない)。画面へは to_svg が SVG を作り、xlsx へは DrawingML の
+/// 名前の定義(「売上範囲」= Sheet1!B2:D9 のような)。
+///
+/// **どのシートに持たせるかと、どこまで効くかは別の話。** この列は
+/// 「指す先のシート」に持たせてあるが、名前が効く範囲(適用範囲)は
+/// `scoped` が決める — ブック全体なら他のシートの式からも引ける。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct DefinedName {
+    pub name: String,
+    /// 参照 "A1" か "A1:B2"
+    pub range: String,
+    /// **このシートだけで使える名前**(xlsx の `localSheetId`)。
+    /// `false` はブック全体。同じ名前を各シートに置きたいときに立てる
+    pub scoped: bool,
+}
+
+impl DefinedName {
+    pub fn new(name: impl Into<String>, range: impl Into<String>) -> Self {
+        Self { name: name.into(), range: range.into(), scoped: false }
+    }
+}
+
 /// 形をつくる1点(0..1 に正規化)。
 ///
 /// **制御点は「この点へ入る側」と「この点から出る側」の2つ。**

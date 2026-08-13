@@ -489,9 +489,9 @@ pub fn rename_sheet_refs(book: &mut Book, old: &str, new: &str) -> usize {
                 n += 1;
             }
         }
-        for (_, r) in s.names.iter_mut() {
-            if let Some(nr) = rename_refs_in(r, old, new) {
-                *r = nr;
+        for d in s.names.iter_mut() {
+            if let Some(nr) = rename_refs_in(&d.range, old, new) {
+                d.range = nr;
             }
         }
     }

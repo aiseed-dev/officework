@@ -373,27 +373,32 @@ pub(super) fn defined_names_xml(book: &Book) -> String {
     // localSheetId を付ける。**
     //
     // こちらのモデルは名前を「指す先のシート」に持たせていて、Excel の
-    // 「適用範囲」(ブック全体 / このシートだけ)は持っていない。全部に
-    // localSheetId を付けるとブック全体の名前がシート限定に落ちて、他の
-    // シートの式が壊れる。逆に一つも付けないと、同じ名前が2枚にあるとき
-    // **ブック全体の名前が2つ**になって開けないファイルになる。
-    // 重なったときだけシート限定にするのが、どちらも壊さない線。
+    // 適用範囲は**名前が自分で持っている**(`DefinedName.scoped`)。
+    // 前は「同じ名前が2枚にあるかどうか」から当てていた — 重なっていない
+    // シート限定の名前が作れず、逆に偶然重なったブック全体の名前が
+    // シート限定に落ちていた。いまは持っている印のとおりに書く。
+    //
+    // **重なりの見張りは残す。** ブック全体の名前が2つあると Excel は
+    // 開けないので、そうなる組み合わせは書き出しで防ぐ(後勝ちで限定する)
     let mut seen: std::collections::HashMap<&str, usize> = Default::default();
     for s in &book.sheets {
-        for (n, _) in &s.names {
-            *seen.entry(n.as_str()).or_insert(0) += 1;
+        for d in &s.names {
+            if !d.scoped {
+                *seen.entry(d.name.as_str()).or_insert(0) += 1;
+            }
         }
     }
     for (i, s) in book.sheets.iter().enumerate() {
-        for (n, r) in &s.names {
-            let scoped = seen.get(n.as_str()).copied().unwrap_or(0) > 1;
+        for d in &s.names {
+            // 持っている印か、ブック全体の名前が重なっているとき
+            let scoped = d.scoped || seen.get(d.name.as_str()).copied().unwrap_or(0) > 1;
             let sid = if scoped { format!(" localSheetId=\"{i}\"") } else { String::new() };
             inner.push_str(&format!(
                 "<definedName name=\"{}\"{}>'{}'!{}</definedName>",
-                esc(n),
+                esc(&d.name),
                 sid,
                 s.name.replace('\'', "''"),
-                dollars(r)
+                dollars(&d.range)
             ));
         }
     }

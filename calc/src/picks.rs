@@ -31,6 +31,26 @@ impl Calc {
                 self.recent_symbols.truncate(12);
                 self.status = ui::tf!("「{}」を差し込みました(Enter で確定)", v).into();
             }
+            // 名前の適用範囲(2段目)。**ここで初めて名前を入れる** —
+            // 途中でやめたら何も残らない
+            "name-scope" => {
+                let Some((name, range)) = self.name_new.take() else { return };
+                let scoped = v == "このシートだけ";
+                let s = &mut self.book.sheets[self.active];
+                s.names.retain(|d| d.name != name);
+                s.names.push(sheet::model::DefinedName {
+                    name: name.clone(),
+                    range: range.clone(),
+                    scoped,
+                });
+                recalc_book(&mut self.book, self.active);
+                self.dirty = true;
+                self.status = if scoped {
+                    ui::tf!("名前「{}」= {}(このシートだけで使えます)", name, range).into()
+                } else {
+                    ui::tf!("名前「{}」= {}(どのシートからも使えます)", name, range).into()
+                };
+            }
             // 分類を選んだ段。**2段目は1段目と同じ場所に重ねる**(目が飛ばない)
             "shape-cat" => {
                 let items = shape_gallery(v);
@@ -456,7 +476,7 @@ impl Calc {
                     return;
                 }
                 let name = v.strip_prefix("name:").unwrap_or(v).to_string();
-                if self.sheet().names.iter().any(|(n, _)| *n == name) {
+                if self.sheet().names.iter().any(|d| d.name == name) {
                     let at = self.pop_anchor();
                     self.name_pend = Some(name.clone());
                     self.pick_note = Some(ui::tf!("名前「{}」をどうしますか", name).into());
@@ -478,8 +498,8 @@ impl Calc {
                     .sheet()
                     .names
                     .iter()
-                    .find(|(n, _)| *n == name)
-                    .map(|(_, r)| r.clone())
+                    .find(|d| d.name == name)
+                    .map(|d| d.range.clone())
                     .unwrap_or_default();
                 match v {
                     "そこへ移動" => {
@@ -506,7 +526,7 @@ impl Calc {
                     _ => {
                         // 名前を消す
                         self.checkpoint();
-                        self.book.sheets[self.active].names.retain(|(n, _)| *n != name);
+                        self.book.sheets[self.active].names.retain(|d| d.name != name);
                         recalc_book(&mut self.book, self.active);
                         self.dirty = true;
                         self.status = ui::tf!("名前「{}」を消しました(式の中の {} は #NAME? になります)", name, name).into();
@@ -1839,14 +1859,14 @@ impl Calc {
             return;
         }
         // 定義済みの名前ならそこへ
-        if let Some((_, r)) = self
+        if let Some(r) = self
             .sheet()
             .names
             .iter()
-            .find(|(n, _)| n.eq_ignore_ascii_case(&t))
+            .find(|d| d.name.eq_ignore_ascii_case(&t))
             .cloned()
         {
-            let up = r.to_uppercase();
+            let up = r.range.to_uppercase();
             if let Some((a, b)) = up.split_once(':') {
                 if let (Some(pa), Some(pb)) = (Pos::parse(a), Pos::parse(b)) {
                     jump(self, pa, Some(pb));
@@ -1868,7 +1888,7 @@ impl Calc {
             self.cursor.a1()
         };
         self.checkpoint();
-        self.sheet_mut().names.push((t.clone(), range.clone()));
+        self.sheet_mut().names.push(sheet::model::DefinedName::new(t.clone(), range.clone()));
         self.dirty = true;
         self.status = ui::tf!("名前「{}」を {} に付けました(名前ボックスで呼べます)", t, range).into();
     }
@@ -2998,8 +3018,8 @@ impl Calc {
                 }
                 self.checkpoint();
                 let s = &mut self.book.sheets[self.active];
-                if let Some(e) = s.names.iter_mut().find(|(n, _)| *n == name) {
-                    e.1 = t.clone();
+                if let Some(e) = s.names.iter_mut().find(|d| d.name == name) {
+                    e.range = t.clone();
                 }
                 recalc_book(&mut self.book, self.active);
                 self.dirty = true;
@@ -3327,12 +3347,18 @@ impl Calc {
                 } else {
                     a.a1()
                 };
-                let s = &mut self.book.sheets[self.active];
-                s.names.retain(|(n, _)| *n != text);
-                s.names.push((text.clone(), range.clone()));
-                recalc_book(&mut self.book, self.active);
-                self.dirty = true;
-                self.status = ui::tf!("名前「{}」= {}(式の中で使えます)", text, range).into();
+                // 適用範囲を訊く2段目へ(本家の「新しい名前」も範囲を選ばせる)
+                self.name_new = Some((text.clone(), range.clone()));
+                self.pick_kind = "name-scope";
+                self.pick_note = Some(ui::tf!("名前「{}」= {} の適用範囲", text, range).into());
+                let at = self.pop_anchor();
+                self.pick = Some((
+                    menu(&[
+                        ui::item!("ブック全体(どのシートからも使う)"),
+                        ui::item!("このシートだけ"),
+                    ]),
+                    at,
+                ));
             }
             "comment" => {
                 let p = self.cursor;

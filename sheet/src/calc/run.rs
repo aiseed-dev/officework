@@ -102,12 +102,12 @@ pub fn deps(formula: &str) -> Vec<Pos> {
 /// 式の中の「名前」を参照に置き換える(=単価*2 → =A1*2)。
 /// 文字列の中は触らない。名前の前後が識別子の続きなら置き換えない。
 /// 長い名前から先に試す(「単価」と「単価計」を取り違えない)。
-pub(super) fn expand_names(f: &str, names: &[(String, String)]) -> String {
+pub(super) fn expand_names(f: &str, names: &[crate::model::DefinedName]) -> String {
     if names.is_empty() {
         return f.to_string();
     }
-    let mut sorted: Vec<&(String, String)> = names.iter().collect();
-    sorted.sort_by_key(|(n, _)| std::cmp::Reverse(n.chars().count()));
+    let mut sorted: Vec<&crate::model::DefinedName> = names.iter().collect();
+    sorted.sort_by_key(|d| std::cmp::Reverse(d.name.chars().count()));
     let ch: Vec<char> = f.chars().collect();
     let ident = |c: char| c.is_alphanumeric() || c == '_';
     let mut out = String::new();
@@ -130,12 +130,12 @@ pub(super) fn expand_names(f: &str, names: &[(String, String)]) -> String {
         let prev_ident = i > 0 && ident(ch[i - 1]);
         if !prev_ident {
             let mut hit = None;
-            for (n, r) in &sorted {
-                let nc: Vec<char> = n.chars().collect();
+            for d in &sorted {
+                let nc: Vec<char> = d.name.chars().collect();
                 if !nc.is_empty() && ch[i..].starts_with(&nc[..]) {
                     let after = ch.get(i + nc.len()).copied();
                     if !after.map(ident).unwrap_or(false) {
-                        hit = Some((nc.len(), r.clone()));
+                        hit = Some((nc.len(), d.range.clone()));
                         break;
                     }
                 }

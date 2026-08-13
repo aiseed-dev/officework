@@ -1236,14 +1236,32 @@ impl PySheet {
     }
 
     /// 名前の定義 [(名前, 参照 "A1" か "A1:B2")]。式の中で名前が使える。
+    ///
+    /// **組のままにしてある** — 適用範囲は `names_scoped` で別に引く。
+    /// 既に使っている台本の `for name, ref in sheet.names` を壊さない
     #[getter]
     fn names(&self) -> PyResult<Vec<(String, String)>> {
-        self.with(|s| Ok(s.names.clone()))
+        self.with(|s| Ok(s.names.iter().map(|d| (d.name.clone(), d.range.clone())).collect()))
+    }
+
+    /// 名前の定義(適用範囲つき) [(名前, 参照, このシートだけか)]。
+    #[getter]
+    fn names_scoped(&self) -> PyResult<Vec<(String, String, bool)>> {
+        self.with(|s| {
+            Ok(s.names
+                .iter()
+                .map(|d| (d.name.clone(), d.range.clone(), d.scoped))
+                .collect())
+        })
     }
 
     /// 名前を定義する(同じ名前は置き換え)。参照はこのシートの "A1" か "A1:B2"。
     /// 定義した名前は式(=名前*2)で使え、再計算が追随する。
-    fn define_name(&self, name: &str, reference: &str) -> PyResult<()> {
+    ///
+    /// `scoped=True` で**このシートだけの名前**(xlsx の localSheetId)。
+    /// 既定はブック全体 — 他のシートの式からも引ける
+    #[pyo3(signature = (name, reference, scoped=false))]
+    fn define_name(&self, name: &str, reference: &str, scoped: bool) -> PyResult<()> {
         if name.is_empty() || name.contains([' ', '!', ':']) {
             return Err(PyValueError::new_err(format!(
                 "名前に空白・! ・: は使えない: {name:?}"
@@ -1251,8 +1269,12 @@ impl PySheet {
         }
         parse_range(reference)?; // 形の検査だけ(向きの正規化はしない — 原文を保つ)
         self.with_calc(|s| {
-            s.names.retain(|(n, _)| n != name);
-            s.names.push((name.to_string(), reference.to_string()));
+            s.names.retain(|d| d.name != name);
+            s.names.push(sheet::model::DefinedName {
+                name: name.to_string(),
+                range: reference.to_string(),
+                scoped,
+            });
             Ok(())
         })
     }
@@ -1261,7 +1283,7 @@ impl PySheet {
     fn delete_name(&self, name: &str) -> PyResult<bool> {
         self.with_calc(|s| {
             let before = s.names.len();
-            s.names.retain(|(n, _)| n != name);
+            s.names.retain(|d| d.name != name);
             Ok(s.names.len() != before)
         })
     }

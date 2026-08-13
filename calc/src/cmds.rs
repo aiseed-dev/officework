@@ -2404,7 +2404,11 @@ impl Calc {
                     .sheet()
                     .names
                     .iter()
-                    .map(|(n, r)| (format!("name:{n}"), format!("{n} = {r}")))
+                    .map(|d| {
+                        // 適用範囲も見せる — 同じ名前が2つ並ぶことがある
+                        let scope = if d.scoped { " (このシート)" } else { "" };
+                        (format!("name:{}", d.name), format!("{} = {}{scope}", d.name, d.range))
+                    })
                     .collect();
                 for t in &self.sheet().tables {
                     items.push((
@@ -2705,7 +2709,10 @@ impl Calc {
                     .sheet()
                     .names
                     .iter()
-                    .map(|(n, r)| (format!("name:{n}"), format!("{n} = {r}")))
+                    .map(|d| {
+                        let scope = if d.scoped { " (このシート)" } else { "" };
+                        (format!("name:{}", d.name), format!("{} = {}{scope}", d.name, d.range))
+                    })
                     .collect();
                 for t in &self.sheet().tables {
                     items.push((

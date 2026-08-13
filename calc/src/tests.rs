@@ -2308,7 +2308,10 @@ mod recalc_tests {
             this.sync_input();
             this.prompt = Some(("name", Editor::new("単価表")));
             this.finish_prompt(cx);
-            assert_eq!(this.sheet().names, vec![("単価表".into(), "B2:C3".into())]);
+            // **名前が入るのは適用範囲を選んだ後**(2026-08-13 に段が1つ増えた)
+            assert!(this.sheet().names.is_empty(), "範囲を選ぶ前に入っている");
+            this.apply_pick("ブック全体(どのシートからも使う)", cx);
+            assert_eq!(this.sheet().names, vec![sheet::model::DefinedName::new("単価表", "B2:C3")]);
             // 一覧に出る
             this.anchor = None;
             this.cursor = Pos::parse("A1").unwrap();
@@ -2335,7 +2338,7 @@ mod recalc_tests {
             this.apply_pick("中身を打ち直す…", cx);
             this.prompt = Some(("name-range", Editor::new("B2:D9")));
             this.finish_prompt(cx);
-            assert_eq!(this.sheet().names[0].1, "B2:D9");
+            assert_eq!(this.sheet().names[0].range, "B2:D9");
             // 削除
             this.run_cmd("defname", cx);
             this.apply_pick("name:単価表", cx);
@@ -3214,14 +3217,14 @@ mod udf_tests {
         let mut b = Book::new();
         b.sheets.push(sheet::Sheet::new("Sheet2"));
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("=Sheet2!B1*2"));
-        b.sheets[0].names.push(("単価".into(), "Sheet2!B2".into()));
+        b.sheets[0].names.push(sheet::model::DefinedName::new("単価", "Sheet2!B2"));
         let n = rename_sheet_refs(&mut b, "Sheet2", "集計");
         assert_eq!(n, 1);
         assert_eq!(
             b.sheets[0].get(Pos::parse("A1").unwrap()).unwrap().formula.as_deref(),
             Some("集計!B1*2") // 式は = 抜きで持つ
         );
-        assert_eq!(b.sheets[0].names[0].1, "集計!B2");
+        assert_eq!(b.sheets[0].names[0].range, "集計!B2");
     }
 
     #[test]
@@ -3872,7 +3875,7 @@ mod names_tests {
     fn 名前を式の打っている所へ差し込む(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].names.push(("売上".into(), "B2:B10".into()));
+            this.book.sheets[0].names.push(sheet::model::DefinedName::new("売上", "B2:B10"));
             this.cursor = Pos::parse("D1").unwrap();
             this.sync_input();
 

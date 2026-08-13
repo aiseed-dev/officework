@@ -1069,7 +1069,8 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 .sheets
                 .iter()
                 .flat_map(|s| {
-                    s.names.iter().map(|(n, r)| {
+                    s.names.iter().map(|d| {
+                        let (n, r) = (&d.name, &d.range);
                         J::A(vec![J::S(s.name.clone()), J::S(n.clone()), J::S(r.clone())])
                     })
                 })
@@ -1091,9 +1092,9 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             h.settle();
             h.mark_once();
             for s in h.book_mut().sheets.iter_mut() {
-                s.names.retain(|(n, _)| *n != name);
+                s.names.retain(|d| d.name != name);
             }
-            h.book_mut().sheets[si].names.push((name, reference));
+            h.book_mut().sheets[si].names.push(sheet::model::DefinedName::new(name, reference));
             sheet::recalc_book(h.book_mut(), si);
             h.mark_dirty();
             "{\"ok\":true}".into()
@@ -1106,7 +1107,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             let mut removed = false;
             for s in h.book_mut().sheets.iter_mut() {
                 let before = s.names.len();
-                s.names.retain(|(n, _)| *n != name);
+                s.names.retain(|d| d.name != name);
                 removed |= s.names.len() != before;
             }
             if removed {

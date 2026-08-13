@@ -304,7 +304,7 @@ mod name_tests {
         let mut s = Sheet::new("表");
         s.set(Pos::parse("A1").unwrap(), Cell::input("100"));
         s.set(Pos::parse("B1").unwrap(), Cell::input("=単価*2"));
-        s.names.push(("単価".into(), "A1".into()));
+        s.names.push(crate::model::DefinedName::new("単価", "A1"));
         recalc(&mut s);
         assert_eq!(s.value(Pos::parse("B1").unwrap()), Value::Number(200.0),
             "名前が参照に展開されない");
@@ -317,20 +317,21 @@ mod name_tests {
             s.set(Pos::new(r, 0), Cell::input(v));
         }
         s.set(Pos::new(3, 0), Cell::input("=SUM(明細)"));
-        s.names.push(("明細".into(), "A1:A3".into()));
+        s.names.push(crate::model::DefinedName::new("明細", "A1:A3"));
         recalc(&mut s);
         assert_eq!(s.value(Pos::new(3, 0)), Value::Number(60.0));
     }
 
     #[test]
     fn 名前の途中一致では置き換えない() {
-        assert_eq!(expand_names("単価計*2", &[("単価".into(), "A1".into())]),
+        assert_eq!(expand_names("単価計*2", &[crate::model::DefinedName::new("単価", "A1")]),
             "単価計*2", "「単価計」の頭だけ置き換えた");
-        assert_eq!(expand_names("\"単価\"&A1", &[("単価".into(), "B9".into())]),
+        assert_eq!(expand_names("\"単価\"&A1", &[crate::model::DefinedName::new("単価", "B9")]),
             "\"単価\"&A1", "文字列の中を置き換えた");
         // 長い名前が勝つ
         assert_eq!(expand_names("単価計", &[
-            ("単価".into(), "A1".into()), ("単価計".into(), "B1".into())]), "B1");
+            crate::model::DefinedName::new("単価", "A1"),
+            crate::model::DefinedName::new("単価計", "B1")]), "B1");
     }
 }
 

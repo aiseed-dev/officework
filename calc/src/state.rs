@@ -37,6 +37,7 @@ impl Calc {
             pen_color: None,
             hf_pend: None,
             name_pend: None,
+            name_new: None,
             brush: None,
             menu_head: None,
             solver: None,

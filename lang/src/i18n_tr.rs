@@ -289,7 +289,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("打ちかけを取り消しました", "Giriş iptal edildi"),
     ("名前を付けませんでした", "Ad verilmedi"),
     ("「{}」は名前にできません(文字と数字と _。セル参照の形は不可)", "\"{}\" ad olamaz (harf, rakam ve _; hücre başvurusu biçimi olamaz)"),
-    ("名前「{}」= {}(式の中で使えます)", "Ad \"{}\" = {} (formüllerde kullanılabilir)"),
     ("{} のコメントを消しました", "{} hücresinin açıklaması silindi"),
     ("{} にコメントを付けました(保存で残ります)", "{} hücresine açıklama eklendi (kaydetmede korunur)"),
     ("「{}」は数として読めません", "\"{}\" sayı olarak okunamıyor"),
@@ -1565,4 +1564,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("交差", "Kesiştir"),
     ("減算", "Çıkar"),
     ("{}しました(輪郭に直したので、元の形と回転は戻せません)", "{} yapıldı (dış çizgiye çevrildi; özgün şekil ve döndürme geri alınamaz)"),
+    ("名前「{}」= {}(このシートだけで使えます)", "Ad «{}» = {} (yalnızca bu sayfada)"),
+    ("名前「{}」= {}(どのシートからも使えます)", "Ad «{}» = {} (herhangi bir sayfadan)"),
+    ("名前「{}」= {} の適用範囲", "«{}» = {} adının kapsamı"),
+    ("ブック全体(どのシートからも使う)", "Tüm çalışma kitabı (herhangi bir sayfadan)"),
+    ("このシートだけ", "Yalnızca bu sayfa"),
 ];

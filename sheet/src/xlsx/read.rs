@@ -2216,7 +2216,13 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     .filter(|i| *i < book.sheets.len())
                     .or_else(|| book.sheets.iter().position(|s| s.name == sheet_name));
                 match idx.map(|i| &mut book.sheets[i]) {
-                    Some(sh) => sh.names.push((nm, r)),
+                    // **localSheetId が付いていれば「このシートだけ」。**
+                    // 前は付いていることを重なりから当てていた(推測)
+                    Some(sh) => sh.names.push(crate::model::DefinedName {
+                        name: nm,
+                        range: r,
+                        scoped: sid.is_some(),
+                    }),
                     None => book.names_raw.push(format!(
                         "<definedName name=\"{}\">{}</definedName>",
                         esc(&nm),

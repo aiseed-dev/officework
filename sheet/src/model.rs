@@ -26,5 +26,8 @@ pub use refs::{
 };
 pub use types::*;
 
+mod boolops;
+pub use boolops::{combine, flatten, outline, to_points, BoolOp};
+
 #[cfg(test)]
 mod tests;

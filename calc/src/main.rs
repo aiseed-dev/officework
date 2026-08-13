@@ -133,6 +133,9 @@ struct Calc {
     hf_pend: Option<(bool, u8)>,
     /// 名前マネージャーで選んだ名前(移動/打ち直し/削除の相手)
     name_pend: Option<String>,
+    /// 名前を定義する途中(名前, 参照)。**適用範囲を訊く2段目まで持つ** —
+    /// 範囲まで選んで初めて名前が入る(途中でやめたら何も残らない)
+    name_new: Option<(String, String)>,
     /// 結合の確認待ちの種類(中央/横方向/結合だけ)
     /// 書式のコピー(刷毛)で持っている書式。次のクリックで塗って手放す
     brush: Option<CellFormat>,
