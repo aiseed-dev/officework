@@ -266,7 +266,7 @@ Cell は `s.cell(row=, column=)` から)。
 | ✔ add_text / clear | 足す | 当初「互換層」としたが、エンジンの Run は**凍った写し**で run 単位の書き口が無い(2026-08-12 doc.rs と突き合わせて正した)。run の書きをエンジンに足してから(**済 2026-08-12 夜**: Run を**位置で引き直す手**に変えた — text / bold / italic / underline / strike / color / size_pt / font の読み書き、add_text は書式を保って継ぎ足し、clear は字だけ消して自分を返す。font の両対応(str と .name)も書きが効くようになった) |
 | ✔ add_break / add_tab | 足す | (済 2026-08-13: 読み書きは既にあり(w:br / w:tab ↔ 改行 / タブ)、口だけ張った。改ページの break_type は段落の性質(page_break_before)で持つので断る)。add_picture(run 単位)は段落の add_picture が同じ役 |
 | ✔ iter_inner_content | 足す | run の中の改行・タブ・画像も順に返す(済 2026-08-13: 字は str、改行は Break、タブは Tab で**順のまま**。うちは両方を run の字(改行・タブ)で持つので、ここで解いて見せる。run の中の画像は模型では段落の持ち物 — そこは返らない) |
-| mark_comment_range | 足す | コメントの一件。**うちのコメントは段落単位**(模型の粒度)で、run から run までの範囲は持てない — 正直に断り、Paragraph.add_comment を案内する(2026-08-13) |
+| ✔ mark_comment_range | 作らない | コメントの一件。**うちのコメントは段落単位**(模型の粒度)で、run から run までの範囲は持てない。**判定を「足す」から改めた**(2026-08-13): 口は置いてあり、呼ぶと理由を言って Paragraph.add_comment を案内する(黙って何もしないと「付いた」と思われる) |
 | ✔ style | 足す(書式) | 文字スタイル(済 2026-08-13 — styles の一件と一緒。読みは styles の名前、書きは styles にある文字スタイルだけ(無い名前は add_style で作ってから — 黙って作らない)。add_run(style=)・insert_paragraph_before(style=)も同じ道で効くようになった) |
 | part / contains_page_break | 要らない | |
 
@@ -291,8 +291,9 @@ Cell は `s.cell(row=, column=)` から)。
    pysheet/test_gokan.py — **書きは本家と同じ手順を並べて動かし、結果そのものを
    突き合わせる**(うちが書いた xlsx を openpyxl が読める・計算済みの値まで見える、
    うちが書いた docx を python-docx が読める、まで)。python_smoke.rs が回す。
-   残り3件は上の注記のとおり: merge_cells(merge_area 待ち)・create_sheet の
-   index 引数(move_sheet 待ち)・Range の options に polars(「足す」の背骨と一緒に)
+   当時の残り3件も**済**(2026-08-13 に実測して確認): merge_cells(家の作法で
+   結合)・create_sheet の index 引数(move_sheet が入った)・
+   Range の options に polars(読み書き両方向)
 2. **足すの背骨**(102 件のうち実務で頻出の物から)— **前半済 2026-08-12**:
    merge の書き(家の作法を sheet::model::ops へ移してアプリと共有)・
    freeze_panes・シートの複製/削除/改名(改名は参照が追随 — rename_sheet_refs を
@@ -308,12 +309,32 @@ Cell は `s.cell(row=, column=)` から)。
    calc.py の対応する口ごと**実機の calc で検査済み** —
    tools/hashi_check.py(ribbon_sweep.py と対)。
    追って freeze / sheet_visible も同日に(語彙は 17 に)。
-   橋の残り: Book.close・Book.to_pdf(束ね)・Sheet.autofit / pictures /
-   tables / names / page_setup・Range.insert / delete・
+   **橋も済(2026-08-13)**: 当時の残り(Book.close・Book.to_pdf(束ね)・
+   Sheet.autofit / pictures / tables / names / page_setup・Range.insert / delete・
    細目(note・hyperlink・group / ungroup・has_array / formula_array・
-   height / width / left / top・name / table)
-3. **書式の読み書き**(足す(書式)24 件)— エンジンの fmt に Python から書く道。合否は相手の定義どおり動くか
-4. **適合テストの移植** — 3つのテストの実務部分を pysheet/tests/ へ(NOTICE.md に出所)。書式の書き込みの「定義どおり」もここで証明する
+   height / width / left / top・name / table))を全部入れ、語彙は 45 ほどに。
+   どれも実機の calc で確かめてある。
+3. ✔ **書式の読み書き**(足す(書式)24 件)— エンジンの fmt に Python から書く道。合否は相手の定義どおり動くか(済 2026-08-12〜13)
+4. ✔ **適合テストの移植**(済 2026-08-13)— **本家のテストは配り物に入っていない**
+   (openpyxl は sdist にも無く、公式の置き場も外から引けなかった)。入っていたのは
+   python-docx の**受け入れ仕様** `features/*.feature` 67本 — Gherkin で
+   「利用者から見た約束」が書いてある。こちらの方が移植の的として上等だった
+   (向こうの単体試験は内部の XML を見るものが多く、うちの作りには当たらない)。
+   その約束をうちの口で確かめる `pysheet/test_shiyou.py` を起こし、
+   python_smoke.rs の走行に繋いだ。出所は NOTICE.md。
+   openpyxl の側は**本家を実際に動かして突き合わせる** `test_gokan.py` が
+   その役をしている(向こうの試験を写すより強い — 実物の xlsx で照合する)。
+
+### 本家の定義とずれている所(2026-08-13、受け入れ仕様に照らして測った)
+
+| ずれ | 重さ | どうする |
+|---|---|---|
+| **指定の無い文字の大きさが往復で焼き付く** | **穴** | 原本に `w:sz` が無い run を開いて保存すると `10.5pt` が書き込まれる(実測: 本家が作った docx で `size=None` → `133350`)。**原本に無かった指定が増える** = 様式の大きさを変えても本文が追随しなくなる。因は `ooxml/src/write.rs` が `w:sz` を必ず書くことと、模型の `Run.size_pt` が `f32` で「指定なし」を持てないこと。直すには模型を `Option` にする(195箇所・5クレート)— **engine の持ち主に渡した**(2026-08-13) |
+| 太字・下線・寄せが三値でない | 設計の違い | 本家は None(継承)/ False(明示的にオフ)/ True の三値。うちは「既定値 = 指定なし」の二値で、`<w:b w:val="0"/>`(様式の太字をこの run だけ外す)を表せない。**往復では書き換えない**(既定値は書き出さないので原本のまま)ので実害は無く、当面このまま |
+| 段落の様式名が `body` / `heading1`(本家は `Normal` / `Heading 1`) | 直した | 模型の呼び名と docx の名乗り(style_id と UI 名)が別体系で、**段落から読んだ名前で styles[…] が引けなかった**。照合を緩めて(大小・空白を無視、body↔Normal の対応)どれで引いても同じ様式に当たるようにした |
+| `add_paragraph` に `style` が無い | 直した | 本家は `add_paragraph(text, style)`。受け入れ仕様を検査に起こして見つかった |
+| `add_heading` の level 0 と 4〜9 | 断る | 模型の見出しは3段まで。0(Title)も持たない — 黙って1段目にせず ValueError |
+| `add_column(width)` | 断る | 等分の表に1列だけ幅を持たせると形が決まらない。幅なしで足す道を案内する |
 
 採取の道具: [tools/gokan_inventory.py](../tools/gokan_inventory.py)。
 再採取は `.venv/bin/python tools/gokan_inventory.py inventory.json`

@@ -74,6 +74,8 @@ docx の `w:rFonts`、xlsx の `<font><name>` に名前が入っているので�
 
 | もの | ライセンス・条件 |
 |---|---|
+| **python-docx** の受け入れ仕様(`features/*.feature`) | MIT。`pysheet/test_shiyou.py` は**そこに書かれた約束**を officework の口で確かめる検査。写したのは「利用者から見た約束」であって向こうのコードではない。原文は sdist(PyPI)に入っている |
+| **openpyxl / python-docx** 本体 | MIT。`.venv` に居れば `pysheet/test_gokan.py` が**同じ手順を両方で動かして結果を突き合わせる**。同梱はしない — 居なければその節を飛ばす |
 | **青空文庫** のテキスト | 著作権消滅の作品のみ。`lang/corpus/fetch.py` が目録の `作品著作権フラグ` を見て、「あり」の928作品を除外する |
 | **SCOWL / Moby / WordNet**(`/usr/share/dict/words`) | OS 側の `hunspell-en-us` などを読むだけ。同梱しない |
 

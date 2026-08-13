@@ -346,6 +346,18 @@ class Style:
         return "<officework.doc Style {!r} ({})>".format(self.name, self.type)
 
 
+# 模型の様式名 → docx の様式。**模型は本文を "body" と呼ぶ**が、docx では
+# "Normal"。ここを繋がないと、段落から読んだ名前で styles[…] が引けない
+_STYLE_ALIAS = {"body": "normal", "normal": "body"}
+
+
+def _style_key(name):
+    """様式名の照合の形。docx は style_id("Heading1")と UI 名("heading 1")の
+    2つの名乗りを持ち、模型はさらに "heading1" と呼ぶ — **どれで引いても
+    同じ様式に当たる**ようにする(本家も id と UI 名の両方で引ける)。"""
+    return str(name).replace(" ", "").replace("-", "").lower()
+
+
 class _Styles:
     """Doc.styles の返り(本家の Styles の役)。名前で引け、add_style で足せる。"""
 
@@ -361,14 +373,22 @@ class _Styles:
     def __len__(self):
         return len(self._all())
 
+    def _find(self, name):
+        k = _style_key(name)
+        keys = {k, _STYLE_ALIAS.get(k, k)}
+        for s in self._all():
+            if {_style_key(s.name), _style_key(s.style_id)} & keys:
+                return s
+        return None
+
     def __contains__(self, name):
-        return any(s.name == name or s.style_id == name for s in self._all())
+        return self._find(name) is not None
 
     def __getitem__(self, name):
-        for s in self._all():
-            if s.name == name or s.style_id == name:
-                return s
-        raise KeyError("スタイルが無い: {!r}".format(name))
+        s = self._find(name)
+        if s is None:
+            raise KeyError("スタイルが無い: {!r}".format(name))
+        return s
 
     def add_style(self, name, style_type="paragraph", builtin=False):
         """スタイルを足す(本家と同じ口)。style_type は "paragraph" /
@@ -786,8 +806,13 @@ class Doc:
     def replace(self, old, new):
         return self._d.replace(old, new)
 
-    def add_paragraph(self, text=""):
-        return Paragraph(self._d.add_paragraph(text))
+    def add_paragraph(self, text="", style=None):
+        """段落を足す(python-docx と同じ口)。style は名前でも様式の物でも。
+        無い様式は**黙って作らない** — add_style で作ってから(家の作法)。"""
+        p = Paragraph(self._d.add_paragraph(text))
+        if style is not None:
+            p.style = style
+        return p
 
     def add_heading(self, text="", level=1):
         """見出しを足す(python-docx と同じ口)。level は 1〜3 —
