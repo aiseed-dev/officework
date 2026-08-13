@@ -235,15 +235,15 @@ fn draw_header_footer(
                 let (lf, cn, rt) = sheet::model::hf_split(raw);
                 let (lf, cn, rt) = (subst(&lf), subst(&cn), subst(&rt));
                 if !lf.is_empty() {
-                    lyr.use_text(lf, 9.0, Mm(ml), Mm(y), &font);
+                    lyr.use_text(lf, 9.0, Mm(ml), Mm(y), font);
                 }
                 if !cn.is_empty() {
                     let x = (paper.width_mm - est(&cn)) / 2.0;
-                    lyr.use_text(cn, 9.0, Mm(x.max(ml)), Mm(y), &font);
+                    lyr.use_text(cn, 9.0, Mm(x.max(ml)), Mm(y), font);
                 }
                 if !rt.is_empty() {
                     let x = paper.width_mm - mr - est(&rt);
-                    lyr.use_text(rt, 9.0, Mm(x.max(ml)), Mm(y), &font);
+                    lyr.use_text(rt, 9.0, Mm(x.max(ml)), Mm(y), font);
                 }
             };
             if let Some(h) = &grid.header {
@@ -659,7 +659,7 @@ fn draw_sheet(
             let x = ml + cx[(c - bc0) as usize] + cm[(c - bc0) as usize] / 2.0 - 1.0;
             let name = sheet::Pos::new(0, c).a1();
             let name = name.trim_end_matches('1');
-            l.use_text(name, 6.5, Mm(x), Mm(paper.height_mm - mt + 1.5), &font);
+            l.use_text(name, 6.5, Mm(x), Mm(paper.height_mm - mt + 1.5), font);
         }
         l.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
     };
@@ -710,14 +710,14 @@ fn draw_sheet(
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - y_used;
-                    draw_row(grid, &l, &font, *tr, y_top, th, ml, c0, ncols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
+                    draw_row(grid, &l, font, *tr, y_top, th, ml, c0, ncols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
                     y_used += th;
                 }
             }
         }
         let y_top = paper.height_mm - mt - y_used;
         y_used += rh;
-        draw_row(grid, &l, &font, r, y_top, rh, ml, c0, ncols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
+        draw_row(grid, &l, font, r, y_top, rh, ml, c0, ncols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
     }
     }
     // 図形(挿した分も読んだ分も)。**輪郭だけ**を紙に出す(塗りはまだ —
@@ -833,7 +833,7 @@ fn draw_sheet(
             l1.set_outline_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
             // 図形の中の文字(テキストボックス)。左上から素直に
             if let Some(t) = &sp.text {
-                l1.use_text(t, 9.0 * scale, Mm(x + 1.5), Mm(y_top - 4.5), &font);
+                l1.use_text(t, 9.0 * scale, Mm(x + 1.5), Mm(y_top - 4.5), font);
             }
         }
     }
