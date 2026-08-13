@@ -173,7 +173,6 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
                         }
                         xf = None;
                         xf_unlocked = false;
-                    xf_hidden = false;
                         xf_hidden = false;
                     }
                     _ => {}
@@ -345,7 +344,12 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
                 } else {
                     xf = Some(x);
                     xf_fmt = None;
+                    // 保護の印を xf の始まりでも畳む。**終わりの畳みだけでも
+                    // 普通の xlsx は通る**(試験で確かめた)ので、これは
+                    // `</xf>` に辿り着けない壊れた原文への備え。
+                    // `xf_unlocked` が前からそうしていたのに合わせた
                     xf_unlocked = false;
+                    xf_hidden = false;
                 }
             }
             b"alignment" if in_cellxfs => {
@@ -1269,6 +1273,24 @@ mod more_fmt_tests {
         let (xml, _) = build(std::slice::from_ref(&f), &[]);
         assert!(!xml.contains("hidden="), "既定なのに hidden を書いた: {xml}");
         assert!(!xml.contains("<protection"), "要らない protection を書いた: {xml}");
+    }
+
+
+    #[test]
+    fn 保護の印はセルごとに畳まれる() {
+        // 前のセルの「ロックを外した」「式を隠す」が次へ漏れないこと。
+        //
+        // **この試験は畳みの片方しか証明しない。** 畳みは xf の始まりと
+        // 終わりの2箇所にあり、終わりだけでも普通の xlsx は通る
+        // (始まりの畳みを外してもこの試験は通ることを確かめた)。
+        // 始まりの方は、終わりに辿り着けない壊れた原文への備え
+        let a = CellFormat { unlocked: true, formula_hidden: true, ..Default::default() };
+        let b = CellFormat { bold: true, ..Default::default() };
+        let (xml, map) = build(&[a.clone(), b.clone()], &[]);
+        let t = parse(&xml, &[]);
+        assert!(t[map[&a]].unlocked && t[map[&a]].formula_hidden, "印が往復しない");
+        assert!(!t[map[&b]].unlocked, "ロックの印が次のセルへ漏れた");
+        assert!(!t[map[&b]].formula_hidden, "式を隠す印が次のセルへ漏れた");
     }
 
     #[test]
