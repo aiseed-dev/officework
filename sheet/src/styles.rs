@@ -718,14 +718,8 @@ fn bump_count(s: &mut String, name: &str, add: usize) {
     }
 }
 
-/// **原本の styles.xml に、こちらで使う書式を追記する**(据え置き合成)。
-/// 原本の xf・font・fill・border は1字も動かさない — 末尾に足すだけ。
-/// 返す索引は追記後の全体での番号(原本の xf 数 + 何番目か)。
-/// 原本に必要な節が無い壊れた styles.xml なら None(呼び手が build に落とす)
-
 /// 名前付きセル様式を cellStyleXfs / cellStyles の断片にする。
-/// 返りは (cellStyleXfs へ足す xf, cellStyles へ足す cellStyle,
-/// 使った font/fill/border/numFmt の断片)。
+/// 返りは (cellStyleXfs へ足す xf, cellStyles へ足す cellStyle)。
 ///
 /// **索引は末尾に足す** — 既にある番号は動かさない(触っていないセルの
 /// 書式が原本の索引のまま書き戻る、という据え置きの土台を壊さないため)。
@@ -769,6 +763,11 @@ fn named_style_parts(
     (xfs, styles)
 }
 
+/// **原本の styles.xml に、こちらで使う書式を追記する**(据え置き合成)。
+/// 原本の xf・font・fill・border は1字も動かさない — 末尾に足すだけ。
+/// 返す索引は追記後の全体での番号(原本の xf 数 + 何番目か)。
+/// `named` は**このアプリで足した名前付き様式**(cellStyleXfs / cellStyles へ)。
+/// 原本に必要な節が無い壊れた styles.xml なら None(呼び手が build に落とす)
 pub fn append_to(
     orig: &str,
     used: &[CellFormat],
