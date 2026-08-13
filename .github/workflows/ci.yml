@@ -60,8 +60,10 @@ jobs:
         # **--no-fail-fast。** 既定だと最初に落ちた試験バイナリで打ち切るので、
         # 1件の環境依存が残り4つの crate を丸ごと隠す(2026-08-10 に踏んだ —
         # kumihan の 1 件で paper・lang・sheet・ooxml が一度も走っていなかった)。
-        # 直す回数だけ CI を回すことになるので、**全部出させてから読む**
-        run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
+        # 直す回数だけ CI を回すことになるので、**全部出させてから読む**。
+        # ci-test.sh 越し — 落ちたら試験の**名前**を走行ページの要約に書き出す
+        # (ログは認証が要り、貼られる尻尾に名前が無い往復を4回やった)
+        run: bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
       - name: サイドカーが組めるか(pyoffice)
         run: cargo build -p sidecar
       - name: Windows の的でも組めるか(pysheet — 配る wheel の3つ目の OS)
@@ -197,14 +199,14 @@ jobs:
         # OFFICE_FONT_DIR は Linux では空(apt の Noto を使う — 結局同じ書体)
         env:
           OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
-        run: cargo test -p calc -p writer --no-fail-fast
+        run: bash tools/ci-test.sh -p calc -p writer --no-fail-fast
       - name: 核の試験も(macOS だけ)
         # 核は Linux では自分の仕事(test)を持っている。mac のぶんはこの
         # runner に相乗り — 仕事を増やすより、組んだ土台を使い回すほうが安い
         if: runner.os == 'macOS'
         env:
           OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
-        run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
+        run: bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
       - name: clippy
         # 画面の2つと `ui` も同じ物差しで見る。許す4つは核と揃える。
         # **Linux だけ** — 指摘は的でほぼ変わらず、mac で二度見る値打ちより
@@ -244,9 +246,12 @@ jobs:
           # 明朝も(apps の mac の段と同じ理由 — 明朝の代替の試験が要る)
           Invoke-WebRequest -Uri "https://github.com/googlefonts/noto-cjk/raw/Serif2.002/Serif/OTF/Japanese/NotoSerifCJKjp-Regular.otf" -OutFile "$env:OFFICE_FONT_DIR/NotoSerifCJKjp-Regular.otf"
       - name: 試験
+        # shell: bash — Windows でも Git Bash で ci-test.sh(落ちた試験の
+        # 名前を要約に書き出す)をそのまま使う。pwsh 版を別に持つと必ずずれる
+        shell: bash
         env:
           OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
-        run: cargo test --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
+        run: bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
 
   # 配る形で確かめる。**手元の木ではなく wheel を入れた素の環境で**
   python:
