@@ -120,7 +120,6 @@ impl Writer {
                 w.set_doc(Document::plain(
                     "ここに打てます。日本語入力(IME)もそのまま使えます。\n\
                      Ctrl+S で docx として保存、Ctrl+O で開く。マクロはありません。",
-                    SIZE_PT,
                 ));
                 w.dirty = false;
             }
@@ -138,7 +137,7 @@ impl Writer {
     /// いまの編集内容を、編集先(本文かセル)へ書き戻す。
     pub(crate) fn flush_target(&mut self) {
         match self.target {
-            Target::Body => self.doc.set_body_text(self.ed.text(), SIZE_PT),
+            Target::Body => self.doc.set_body_text(self.ed.text()),
             Target::Cell { table, row, col } => {
                 let text = self.ed.text().to_string();
                 if let Some(kumihan::Block::Table(tb)) = self
@@ -308,7 +307,7 @@ impl Writer {
                             let t = para_text(p);
                             let (pt, font, fmt) = p.runs.first()
                                 .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
-                                .unwrap_or((SIZE_PT, None, Default::default()));
+                                .unwrap_or((None, None, Default::default()));
                             p.runs = vec![kumihan::Run {
                                 text: format!("{TRK_INS_S}{t}{TRK_INS_E}"),
                                 size_pt: pt, font, fmt,
@@ -319,7 +318,7 @@ impl Writer {
                             let (pre, del, ins, suf) = split_diff(&base[bi], &t);
                             let (pt, font, fmt) = p.runs.first()
                                 .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
-                                .unwrap_or((SIZE_PT, None, Default::default()));
+                                .unwrap_or((None, None, Default::default()));
                             let mut text = pre;
                             if !del.is_empty() {
                                 text.push(TRK_DEL_S);
@@ -350,7 +349,7 @@ impl Writer {
                         line_spacing: 1.0,
                         runs: vec![kumihan::Run {
                             text: format!("{TRK_DEL_S}{}{TRK_DEL_E}", base[bi]),
-                            size_pt: SIZE_PT,
+                            size_pt: None,
                             font: None,
                             fmt: Default::default(),
                         }],
@@ -438,9 +437,11 @@ impl Writer {
         }
         let total = self.total_pages();
         self.header_lines =
-            kumihan::layout_hf(&self.doc.header, &m, &self.pg, LINE_MM, 1, total, false);
+            kumihan::layout_hf(&self.doc.header, &m, &self.pg, LINE_MM, 1, total, false,
+                               self.doc.base_pt());
         self.footer_lines =
-            kumihan::layout_hf(&self.doc.footer, &m, &self.pg, LINE_MM, 1, total, true);
+            kumihan::layout_hf(&self.doc.footer, &m, &self.pg, LINE_MM, 1, total, true,
+                               self.doc.base_pt());
     }
 
     /// ヘッダー・フッターの編集のパネルを開く(もう一度で閉じる)。
@@ -698,7 +699,7 @@ impl Writer {
         self.notes = Vec::new();
         self.target = Target::Body;
         self.pg = kumihan::PageSetup::default();
-        self.set_doc(Document::plain("", SIZE_PT));
+        self.set_doc(Document::plain(""));
         self.dirty = false;
         self.status = ui::t!("新しい文書です").into();
         true
@@ -753,7 +754,7 @@ impl Writer {
         if range.is_empty() {
             return;
         }
-        self.doc.set_body_text(self.ed.text(), SIZE_PT);
+        self.doc.set_body_text(self.ed.text());
         let ruby = (!text.is_empty()).then(|| text.clone());
         self.doc.apply_char_format(range, move |f| f.ruby = ruby.clone());
         self.dirty = true;
@@ -1006,7 +1007,7 @@ impl Writer {
                 t.into_owned()
             }
         };
-        let (doc, notes, forms, links) = kumihan::html::parse_full(&text, SIZE_PT);
+        let (doc, notes, forms, links) = kumihan::html::parse_full(&text);
         self.html_forms = forms;
         self.html_links = links;
         self.fm_field = None;
@@ -1210,7 +1211,7 @@ impl Writer {
                 let text = self.ed.text().to_string();
                 let joined = ui::tf!("【要約】{}\n\n{}", out, text);
                 self.ed = Editor::new(&joined);
-                self.doc.set_body_text(self.ed.text(), SIZE_PT);
+                self.doc.set_body_text(self.ed.text());
             }
             // 置き換え(選択が無ければ全文)
             AiJob::Rewrite(_, _) | AiJob::Translate | AiJob::Table => {
@@ -1229,7 +1230,7 @@ impl Writer {
                 self.ed.move_to(r.start, false);
                 self.ed.move_to(r.end, true);
                 self.ed.insert(&out);
-                self.doc.set_body_text(self.ed.text(), SIZE_PT);
+                self.doc.set_body_text(self.ed.text());
             }
             // 続き・自由な頼みは、カーソル(選択の終わり)の後ろへ
             // Macro は上で受けて return 済み
@@ -1238,7 +1239,7 @@ impl Writer {
                 let at = sel.end.min(self.ed.text().len());
                 self.ed.move_to(at, false);
                 self.ed.insert(&format!("\n{out}"));
-                self.doc.set_body_text(self.ed.text(), SIZE_PT);
+                self.doc.set_body_text(self.ed.text());
             }
             // ふりがなは |語《よみ》 を**うちのルビ**に直して振る
             AiJob::Furigana => {
@@ -1248,7 +1249,7 @@ impl Writer {
                 self.ed.move_to(r.start, false);
                 self.ed.move_to(r.end, true);
                 self.ed.insert(&plain);
-                self.doc.set_body_text(self.ed.text(), SIZE_PT);
+                self.doc.set_body_text(self.ed.text());
                 let n = rubies.len();
                 for (range, yomi) in rubies {
                     self.doc.apply_char_format(range, move |f| {
@@ -1301,7 +1302,7 @@ impl Writer {
         };
         let alias = kind.label().to_string();
         let tag = kind.as_tag().to_string();
-        self.doc.set_body_text(self.ed.text(), SIZE_PT);
+        self.doc.set_body_text(self.ed.text());
         self.doc.apply_char_format(range.clone(), move |f| {
             f.sdt = Some(Box::new(kumihan::Sdt {
                 kind,

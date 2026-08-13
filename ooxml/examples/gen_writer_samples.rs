@@ -13,11 +13,11 @@ use kumihan::{
 const PT: f32 = 10.5;
 
 fn run(text: &str) -> Run {
-    Run { text: text.into(), size_pt: PT, font: None, fmt: CharFormat::default() }
+    Run { text: text.into(), size_pt: Some(PT), font: None, fmt: CharFormat::default() }
 }
 
 fn run_fmt(text: &str, f: CharFormat) -> Run {
-    Run { text: text.into(), size_pt: PT, font: None, fmt: f }
+    Run { text: text.into(), size_pt: Some(PT), font: None, fmt: f }
 }
 
 fn para(runs: Vec<Run>) -> Paragraph {
@@ -80,7 +80,7 @@ fn save(name: &str, doc: &Document) {
 
 // ---- 1. 日本語の組版(ルビ・均等割付・禁則・段組み・ドロップキャップ) ----
 fn kumihan_sample() -> Document {
-    let mut d = Document::plain("", PT);
+    let mut d = Document::plain("");
     d.blocks.clear();
     d.props.title = "日本語の組版".into();
     d.props.creator = "aiseed office".into();
@@ -146,7 +146,7 @@ fn kumihan_sample() -> Document {
 
 // ---- 2. 縦書きの手紙 ----
 fn tategaki_sample() -> Document {
-    let mut d = Document::plain("", PT);
+    let mut d = Document::plain("");
     d.blocks.clear();
     d.vertical = true;
     d.props.title = "縦書きの見本".into();
@@ -170,7 +170,7 @@ fn tategaki_sample() -> Document {
 
 // ---- 3. 申込書(表と記入欄) ----
 fn moushikomi_sample() -> Document {
-    let mut d = Document::plain("", PT);
+    let mut d = Document::plain("");
     d.blocks.clear();
     d.props.title = "講習会 申込書".into();
 
@@ -273,7 +273,7 @@ fn moushikomi_sample() -> Document {
 
 // ---- 4. 報告書(見出し・目次・ヘッダー・フッター・表) ----
 fn houkoku_sample() -> Document {
-    let mut d = Document::plain("", PT);
+    let mut d = Document::plain("");
     d.blocks.clear();
     d.props.title = "月次報告".into();
     d.props.creator = "aiseed office".into();
@@ -348,7 +348,7 @@ fn houkoku_sample() -> Document {
 // 「押してみる」ための材料を1枚に集める。試験(menu_run_tests)は
 // この文書も開いて全部のボタンを通す
 fn dougu_sample() -> Document {
-    let mut d = Document::plain("", PT);
+    let mut d = Document::plain("");
     d.blocks.clear();
     d.props.title = "道具くらべ".into();
 

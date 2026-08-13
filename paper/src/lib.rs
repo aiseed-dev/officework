@@ -502,7 +502,7 @@ mod tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain(text, 10.5);
+        let mut d = Document::plain(text);
         d.apply_align(0..text.len(), align);
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
         (s, data)
@@ -530,7 +530,7 @@ mod tests {
             top_mm: 20.0, bottom_mm: 20.0, columns: 1,
         };
         let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
-            runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+            runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
             line_spacing: 1.0,
             sect: sect.map(|page| kumihan::SectionBreak {
                 raw: String::new(), page, continuous: false }),
@@ -590,7 +590,7 @@ mod tests {
             top_mm: 20.0, bottom_mm: 20.0, columns: 1,
         };
         let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
-            runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+            runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
             line_spacing: 1.0,
             sect: sect.map(|page| kumihan::SectionBreak {
                 raw: String::new(), page, continuous: false }),
@@ -639,7 +639,7 @@ mod tests {
             top_mm: 20.0, bottom_mm: 20.0, columns: 1,
         };
         let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
-            runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+            runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
             line_spacing: 1.0,
             sect: sect.map(|page| kumihan::SectionBreak {
                 raw: String::new(), page, continuous: false }),
@@ -696,7 +696,7 @@ mod tests {
             top_mm: 20.0, bottom_mm: 20.0, columns: 1,
         };
         let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
-            runs: vec![Run { text: t.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+            runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
             line_spacing: 1.0,
             sect: sect.map(|page| kumihan::SectionBreak {
                 raw: String::new(), page, continuous: false }),
@@ -770,7 +770,7 @@ mod page_tests {
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
         let text = vec!["行"; n_lines].join("\n");
-        let d = Document::plain(&text, 10.5);
+        let d = Document::plain(&text);
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
         let mut buf = Vec::new();
         to_pdf(&s, &data, Paper::default(), &mut buf).unwrap();
@@ -812,17 +812,17 @@ mod hf_tests {
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
         let text = vec!["行"; 100].join("\n");
-        let d = Document::plain(&text, 10.5);
+        let d = Document::plain(&text);
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
         let pg = PageSetup::default();
         let hf = HeadFoot {
-            paragraphs: Document::plain(&PAGE_MARK.to_string(), 10.5)
+            paragraphs: Document::plain(&PAGE_MARK.to_string())
                 .paragraphs().cloned().collect(),
             part: None,
         };
         let mut buf = Vec::new();
         to_pdf_with(&s, &data, Paper::default(), &PageDress::default(),
-            |k| layout_hf(&hf, &m, &pg, 6.4, k, 9, true), &mut buf).unwrap();
+            |k| layout_hf(&hf, &m, &pg, 6.4, k, 9, true, kumihan::DEFAULT_PT), &mut buf).unwrap();
         assert_eq!(&buf[..5], b"%PDF-");
         // ページ数は本文で決まる(飾りで増えない)
         let hay = String::from_utf8_lossy(&buf).to_string();
@@ -844,7 +844,7 @@ mod break_tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain("一頁目\n二頁目", 10.5);
+        let mut d = Document::plain("一頁目\n二頁目");
         if let Block::Para(p) = &mut d.blocks[1] {
             p.page_break_before = true;
         }
@@ -865,7 +865,7 @@ mod break_tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain("本文", 10.5);
+        let mut d = Document::plain("本文");
         if let Block::Para(p) = &mut d.blocks[0] {
             p.page_break_before = true;
         }
@@ -895,7 +895,7 @@ mod image_tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain("写真の前\n写真の後", 10.5);
+        let mut d = Document::plain("写真の前\n写真の後");
         if let kumihan::Block::Para(p) = &mut d.blocks[0] {
             p.images.push(InlineImage {
                 bytes: std::sync::Arc::new(png()),
@@ -918,7 +918,7 @@ mod image_tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain("本文", 10.5);
+        let mut d = Document::plain("本文");
         if let kumihan::Block::Para(p) = &mut d.blocks[0] {
             p.images.push(InlineImage {
                 bytes: std::sync::Arc::new(b"not an image".to_vec()),
@@ -948,12 +948,12 @@ mod footnote_area_tests {
         layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
     }
     fn 印(id: &str) -> Run {
-        Run { text: String::new(), size_pt: 10.5, font: None,
+        Run { text: String::new(), size_pt: None, font: None,
               fmt: CharFormat { footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
                                 ..Default::default() } }
     }
     fn 字(t: &str) -> Run {
-        Run { text: t.into(), size_pt: 10.5, font: None, fmt: CharFormat::default() }
+        Run { text: t.into(), size_pt: None, font: None, fmt: CharFormat::default() }
     }
     fn 段(runs: Vec<Run>) -> Block {
         Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })

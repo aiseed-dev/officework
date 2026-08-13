@@ -160,12 +160,10 @@ raises(NotImplementedError, lambda: setattr(pf, "space_before", 100),
 raises(NotImplementedError, lambda: setattr(pf, "space_after", 100),
        "段落後の余白を黙って受けている")
 
-# ── まだ塞いでいない穴(engine の模型)────────────────────────
-# **塞いだらここが落ちる。** そのときは「あるべき姿」の側に書き換えること —
-# 穴が塞がったのに検査が古いままだと、次に開いたとき誰も気づけない。
-#
-# 指定の無い文字の大きさが往復で焼き付く(w:sz を必ず書く + Run.size_pt が
-# f32 で無指定を持てない)。台帳の「本家の定義とずれている所」を見よ。
+# ── 無指定は無指定のまま往復する(2026-08-13 に塞いだ穴)──────
+# 指定の無い文字の大きさが往復で 10.5pt に焼き付いていた(w:sz を必ず
+# 書く + Run.size_pt が f32 で無指定を持てない)。Run.size_pt を
+# Option にして根治 — 本家の font.size が None を返すのと同じ約束。
 try:
     import docx as _honke
 except ImportError:
@@ -185,9 +183,11 @@ if _honke is not None:
               "本家が作った時点で大きさが入っている(前提が崩れた)")
         od.Doc.open(moto).save(ato)
         ima = _honke.Document(ato).paragraphs[0].runs[0].font.size
-        check(ima is not None and abs(int(ima) - 133350) < 10,
-              "**穴が塞がった** — 指定の無い大きさが往復で焼き付かなくなった。"
-              "この節を『往復しても None のまま』に書き換え、台帳の穴の行を"
-              f"消すこと(いまの返り: {ima!r})")
+        check(ima is None,
+              f"指定の無い大きさが往復で焼き付いた(本家の読み: {ima!r}。"
+              "None のままが正 — 2026-08-13 に塞いだ穴が開き直している)")
+        # うちの口でも同じ約束(size_pt は None = 指定なし)
+        check(od.Doc.open(moto).paragraphs[0].runs[0].size_pt is None,
+              "無指定の run の size_pt が None でない")
 
 print("OK")

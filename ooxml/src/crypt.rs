@@ -687,7 +687,7 @@ mod tests {
 
     #[test]
     fn 文書ごと往復する() {
-        let d = kumihan::Document::plain("暗号化の検査", 10.5);
+        let d = kumihan::Document::plain("暗号化の検査");
         let mut plain = Vec::new();
         crate::write(&d, std::io::Cursor::new(&mut plain)).unwrap();
         let enc = encrypt(&plain, "かぎ").unwrap();

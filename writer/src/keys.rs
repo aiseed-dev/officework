@@ -193,7 +193,7 @@ impl Writer {
             // **1置換ごとに本文へ写す。** まとめて写すと「1回の編集 = 1箇所」の
             // 前提から外れ、最初と最後の一致の間の書式が均されてしまう
             // (SEKKEI「writer の編集モデル」の注意をここで解いた)
-            self.doc.set_body_text(self.ed.text(), SIZE_PT);
+            self.doc.set_body_text(self.ed.text());
             n += 1;
             if n > 100_000 {
                 break; // 置換後が検索語を含むと止まらなくなるのを防ぐ
@@ -226,7 +226,7 @@ impl Writer {
         "ai-where", "ai-summary", "ai-rewrite", "ai-polite", "ai-plain",
         "ai-translate", "ai-furigana", "ai-continue", "ai-table", "ai-ask",
         "ai-macro",
-        "nav", "fit-page", "fit-width", "zoom100", "multipage",
+        "nav", "fit-page", "fit-width", "zoom100", "multipage", "printview",
         "show-toolbar", "show-statusbar", "show-left", "show-right",
         "incfont", "decfont", "markers", "numbering",
         "incoffset", "decoffset", "linespace", "pagebreak",

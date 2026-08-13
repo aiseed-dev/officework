@@ -93,17 +93,20 @@ impl NoteCount {
     }
 }
 
-pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount) -> Vec<Tok> {
+pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: f32) -> Vec<Tok> {
     let mut out = Vec::new();
     // 段落の頭からのバイト位置。run をまたいで通しで数える
     let mut off = 0usize;
     for run in &p.runs {
+        // 無指定(None)はここで文書の既定に解く — Tok/Cell は紙面の産物なので
+        // 解決済みの数を持つ(模型の Option を紙面まで運ばない)
+        let rpt = run.pt(base);
         // 脚注の印。**番号は出てくる順**(id の数ではない)に振る。
         // 箇条書きの印と同じで**本文の字ではない**ので、
         // off は動かさない — 動かすとカーソルが本文とずれる
         if let Some(fr) = &run.fmt.footnote {
             let label = notes.next(fr.endnote);
-            let size = run.size_pt * 0.7;
+            let size = rpt * 0.7;
             let mut fmt = run.fmt.clone();
             fmt.superscript = true;
             for ch in label.chars() {
@@ -115,25 +118,25 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount) -> Vec
         let mut word: Vec<(char, f32, usize)> = Vec::new();
         for ch in run.text.chars() {
             if is_word_char(ch) {
-                word.push((ch, m.advance_mm(ch, run.size_pt), off));
+                word.push((ch, m.advance_mm(ch, rpt), off));
                 off += ch.len_utf8();
                 continue;
             }
             if !word.is_empty() {
-                out.push(Tok::Word(std::mem::take(&mut word), run.size_pt, run.fmt.clone(),
+                out.push(Tok::Word(std::mem::take(&mut word), rpt, run.fmt.clone(),
                                    run.font.clone()));
             }
             if ch == ' ' || ch == '\u{3000}' {
-                out.push(Tok::Space(m.advance_mm(ch, run.size_pt), run.size_pt,
+                out.push(Tok::Space(m.advance_mm(ch, rpt), rpt,
                                     run.fmt.clone(), run.font.clone(), off));
             } else {
-                out.push(Tok::One(ch, m.advance_mm(ch, run.size_pt), run.size_pt,
+                out.push(Tok::One(ch, m.advance_mm(ch, rpt), rpt,
                                   run.fmt.clone(), run.font.clone(), off));
             }
             off += ch.len_utf8();
         }
         if !word.is_empty() {
-            out.push(Tok::Word(word, run.size_pt, run.fmt.clone(), run.font.clone()));
+            out.push(Tok::Word(word, rpt, run.fmt.clone(), run.font.clone()));
         }
     }
     out
@@ -157,7 +160,7 @@ pub struct Frame {
 ///
 /// 段落を行長で折る。x はまだ置かない(呼ぶ側が揃え・字下げを決める)。
 pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
-              hyphenate: bool, notes: &mut NoteCount) -> Vec<Vec<Cell>> {
+              hyphenate: bool, notes: &mut NoteCount, base: f32) -> Vec<Vec<Cell>> {
     let mut done: Vec<Vec<Cell>> = Vec::new();
     let mut cur: Vec<Cell> = Vec::new();
     let mut w_cur = 0.0f32;
@@ -190,7 +193,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
     // 箇条書きの印は本文の前に置く。**本文の一部にはしない**ので、
     // 編集中の文字位置とずれない(印は組版のときだけ現れる)
     if let Some(mk) = marker {
-        let size = para.runs.first().map(|r| r.size_pt).unwrap_or(10.5);
+        let size = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base);
         let fmt = para.runs.first().map(|r| r.fmt.clone()).unwrap_or_default();
         let font = para.runs.first().and_then(|r| r.font.clone());
         for ch in mk.chars() {
@@ -201,7 +204,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
             w_cur += w;
         }
     }
-    for tok in tokenize(para, m, notes) {
+    for tok in tokenize(para, m, notes, base) {
         let (cells, w): (Vec<Cell>, f32) = match &tok {
             Tok::One(ch, w, s, f, ft, o) =>
                 (vec![Cell { ch: *ch, x_mm: 0.0, w_mm: *w, size_pt: *s, fmt: f.clone(),
@@ -329,6 +332,8 @@ pub(super) fn section_geometry(doc: &Document) -> Vec<PageSetup> {
 pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     let mut sheet = Sheet::default();
     let mut y = frame.y0_mm;
+    // 無指定の run をどの大きさで組むか。文書ごとに1回だけ解く
+    let base = doc.base_pt();
     // 節ごとの用紙。空なら節は1つで、行長は frame のものをそのまま使う
     // (今までの道を1ミリも変えないため — 節の無い文書が大多数)
     let sect_geo = section_geometry(doc);
@@ -361,7 +366,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     sheet.breaks.push(y);
                 }
                 // インデント1段 = 全角2文字ぶん(日本の書類の慣習)
-                let em = para.runs.first().map(|r| r.size_pt).unwrap_or(10.5) * 25.4 / 72.0;
+                let em = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base) * 25.4 / 72.0;
                 let indent_mm = para.indent as f32 * em * 2.0;
                 let measure = (block_measure - indent_mm).max(em);
                 let marker = match para.list {
@@ -388,7 +393,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 if para.dropcap {
                     let first = para.runs.first();
                     if let Some(ch) = first.and_then(|r| r.text.chars().next()) {
-                        let size0 = first.map(|r| r.size_pt).unwrap_or(10.5);
+                        let size0 = first.and_then(|r| r.size_pt).unwrap_or(base);
                         let cap_pt = size0 * 2.8;
                         let cap_w = m.advance_mm(ch, cap_pt) + 1.0;
                         cap_len = ch.len_utf8();
@@ -419,7 +424,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let para_eff: &Paragraph = owned_rest.as_ref().unwrap_or(para);
                 let measure = (measure - cap_shift).max(em);
                 for mut cells in break_para(para_eff, m, measure, marker.as_deref(),
-                                            doc.hyphenate, &mut note_no) {
+                                            doc.hyphenate, &mut note_no, base) {
                     // 頭の1字を除いたぶん、バイト位置を戻す
                     if cap_len > 0 {
                         for c in &mut cells {
@@ -548,7 +553,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
             }
             Block::Table(table) => {
                 y = layout_table(table, m, frame, y, &mut sheet, table_no, doc.hyphenate,
-                                 &mut note_no);
+                                 &mut note_no, base);
                 table_no += 1;
             }
         }
@@ -568,6 +573,7 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
     if doc.footnotes.is_empty() {
         return;
     }
+    let base = doc.base_pt();
     // 印のある行を、出てくる順に拾う。番号の字は1桁ずつ別の Cell になるので、
     // **同じ印が続くぶんは1つに畳む**(2桁の脚注を2つと数えない)。
     // 畳むときも id だけで見ない — 下と同じ理由で、脚注と文末脚注は
@@ -614,7 +620,7 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
             let marker = (pi == 0).then(|| format!("{label} "));
             let mut throwaway = NoteCount::default();
             for cells in break_para(para, m, frame.measure_mm, marker.as_deref(),
-                                    doc.hyphenate, &mut throwaway) {
+                                    doc.hyphenate, &mut throwaway, base) {
                 let mut x = 0.0f32;
                 let cells: Vec<Cell> = cells.into_iter()
                     .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
@@ -664,6 +670,7 @@ pub fn layout_hf(
     page_no: usize,
     total: usize,
     footer: bool,
+    base_pt: f32,
 ) -> Vec<Line> {
     if hf.paragraphs.is_empty() {
         return Vec::new();
@@ -688,7 +695,8 @@ pub fn layout_hf(
                 r.text = r.text.replace(PAGES_MARK, &tot);
             }
         }
-        for cells in break_para(&para, m, measure, None, false, &mut NoteCount::default()) {
+        for cells in break_para(&para, m, measure, None, false, &mut NoteCount::default(),
+                                base_pt) {
             let w: f32 = cells.iter().map(|c| c.w_mm).sum();
             let slack = (measure - w).max(0.0);
             let mut x = match para.align {
@@ -982,7 +990,7 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
 /// 罫線は「格子」ではなく**結合後のセルの縁**に引く — 結合の中を
 /// 線が横切ると、様式の枠が壊れて見える。
 pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mut Sheet,
-                table_no: usize, hyphenate: bool, notes: &mut NoteCount) -> f32 {
+                table_no: usize, hyphenate: bool, notes: &mut NoteCount, base: f32) -> f32 {
     // 列数は「セルの数」ではなく「セルが占める格子の数」
     let ncols = table
         .rows
@@ -1043,7 +1051,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 let inner = (w - 2.0 * CELL_PAD).max(2.0);
                 let mut para0 = 0usize;
                 for para in &cell.paragraphs {
-                    for cs in break_para(para, m, inner, None, hyphenate, notes) {
+                    for cs in break_para(para, m, inner, None, hyphenate, notes, base) {
                         let b0 = para0 + cs.iter().map(|c| c.off).min().unwrap_or(0);
                         ls.push((cs, b0));
                     }

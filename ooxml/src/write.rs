@@ -47,14 +47,14 @@ pub fn write_document_parts(doc: &Document) -> (String, Vec<std::sync::Arc<Vec<u
 pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
         imgn: &mut usize, media: &mut Vec<std::sync::Arc<Vec<u8>>>,
         cmts: &mut Vec<Comment>, bmn: &mut usize,
-        trkn: &mut usize, author: &str) {
+        trkn: &mut usize, author: &str, base: f32) {
         use quick_xml::events::{BytesEnd, BytesStart as BS, BytesText};
         // ドロップキャップは Word の作法どおり
         // 「枠の段落(頭の1字・大きめ)+本文の段落」に割って書く
         if p.dropcap {
             if let Some(ch) = p.runs.first().and_then(|r| r.text.chars().next()) {
                 let r0 = p.runs.first().unwrap();
-                let cap_pt = ((r0.size_pt * 2.8 * 2.0).round() as i32).to_string();
+                let cap_pt = ((r0.pt(base) * 2.8 * 2.0).round() as i32).to_string();
                 let font_xml = r0.font.as_deref().map(|f| format!(
                     r#"<w:rFonts w:ascii="{f}" w:hAnsi="{f}" w:eastAsia="{f}"/>"#,
                     f = esc(f))).unwrap_or_default();
@@ -72,7 +72,7 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 if let Some(r) = rest.runs.first_mut() {
                     r.text = r.text[ch.len_utf8()..].to_string();
                 }
-                write_para(w, &rest, imgn, media, cmts, bmn, trkn, author);
+                write_para(w, &rest, imgn, media, cmts, bmn, trkn, author, base);
                 return;
             }
         }
@@ -244,16 +244,20 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 let color = run.fmt.color.as_deref()
                     .map(|c| format!(r#"<w:color w:val="{c}"/>"#))
                     .unwrap_or_default();
+                // 大きさは指定のある run だけ書く(無指定を焼き込まない)
+                let sz_xml = run.size_pt
+                    .map(|pt| format!(r#"<w:sz w:val="{}"/>"#, (pt * 2.0).round() as i32))
+                    .unwrap_or_default();
                 let _ = w.get_mut().write_all(format!(
                     concat!(
-                        r#"<w:fldSimple w:instr="{instr}"><w:r><w:rPr>{b}{color}"#,
-                        r#"<w:sz w:val="{sz}"/></w:rPr>"#,
+                        r#"<w:fldSimple w:instr="{instr}"><w:r><w:rPr>{b}{color}{sz}"#,
+                        r#"</w:rPr>"#,
                         r#"<w:t xml:space="preserve">{t}</w:t></w:r></w:fldSimple>"#
                     ),
                     instr = esc(&instr),
                     b = b,
                     color = color,
-                    sz = (run.size_pt * 2.0).round() as i32,
+                    sz = sz_xml,
                     t = esc(&run.text),
                 ).as_bytes());
                 continue;
@@ -347,9 +351,12 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 None
             };
             if let Some(rt) = ruby_rt {
-                let hps = run.size_pt.round() as i32; // 半分の大きさ(半ポイント)
-                let base_sz = (run.size_pt * 2.0).round() as i32;
-                let raise = (run.size_pt * 2.0 * 0.9).round() as i32;
+                // ルビの寸法は無くても書く(hps が無いと Word がルビを出さない)。
+                // 無指定の run は文書の既定で導く — run 自身の w:sz とは別の話
+                let rpt = run.pt(base);
+                let hps = rpt.round() as i32; // 半分の大きさ(半ポイント)
+                let base_sz = (rpt * 2.0).round() as i32;
+                let raise = (rpt * 2.0 * 0.9).round() as i32;
                 let _ = w.get_mut().write_all(format!(
                     concat!(
                         // w:ruby は run の中(ECMA-376 §17.3.3.25 — 親は w:r)。
@@ -419,10 +426,15 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 col.push_attribute(("w:val", c.as_str()));
                 w.write_event(Event::Empty(col)).unwrap();
             }
-            let mut sz = BS::new("w:sz");
-            sz.push_attribute(("w:val",
-                format!("{}", (run.size_pt * 2.0).round() as i32).as_str()));
-            w.write_event(Event::Empty(sz)).unwrap();
+            // **指定のある run だけ w:sz を書く。** 常に書くと、無指定
+            // (文書の既定に従う)が往復のたびに「10.5pt 指定」へ化ける
+            // (2026-08-13、本家 python-docx との突き合わせで発覚した焼き付き)
+            if let Some(pt) = run.size_pt {
+                let mut sz = BS::new("w:sz");
+                sz.push_attribute(("w:val",
+                    format!("{}", (pt * 2.0).round() as i32).as_str()));
+                w.write_event(Event::Empty(sz)).unwrap();
+            }
             w.write_event(Event::End(BytesEnd::new("w:rPr"))).unwrap();
             for (i, seg) in chunk.split('\n').enumerate() {
                 if i > 0 { w.write_event(Event::Empty(BS::new("w:br"))).unwrap(); }
@@ -477,7 +489,7 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
 }
 
 /// ヘッダー・フッターの部品(headerN.xml / footerN.xml)の中身を作る。
-pub(super) fn hf_xml(hf: &kumihan::HeadFoot, footer: bool) -> String {
+pub(super) fn hf_xml(hf: &kumihan::HeadFoot, footer: bool, base: f32) -> String {
     use quick_xml::events::{BytesEnd, BytesStart as BS};
     let root_name = if footer { "w:ftr" } else { "w:hdr" };
     let mut w = Writer::new(Cursor::new(Vec::new()));
@@ -489,7 +501,7 @@ pub(super) fn hf_xml(hf: &kumihan::HeadFoot, footer: bool) -> String {
     let (mut imgn, mut media, mut cmts, mut bmn, mut trkn) =
         (0usize, Vec::new(), Vec::new(), 0usize, 0usize);
     for p in &hf.paragraphs {
-        write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, "");
+        write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, "", base);
     }
     w.write_event(Event::End(BytesEnd::new(root_name))).unwrap();
     let body = String::from_utf8(w.into_inner().into_inner()).unwrap();
@@ -504,7 +516,7 @@ pub(super) fn hf_xml(hf: &kumihan::HeadFoot, footer: bool) -> String {
 ///
 /// 原本が無いときだけ、仕切り線ごと新しく作る — Word は
 /// `separator` と `continuationSeparator` が無いと注を出さない。
-pub(super) fn notes_xml(orig: Option<&str>, add: &[&kumihan::Footnote], endnote: bool) -> String {
+pub(super) fn notes_xml(orig: Option<&str>, add: &[&kumihan::Footnote], endnote: bool, base: f32) -> String {
     let tag = if endnote { "endnote" } else { "footnote" };
     let root = format!("w:{tag}s");
     let mut body = String::new();
@@ -513,7 +525,7 @@ pub(super) fn notes_xml(orig: Option<&str>, add: &[&kumihan::Footnote], endnote:
         let (mut imgn, mut media, mut cmts, mut bmn, mut trkn) =
             (0usize, Vec::new(), Vec::new(), 0usize, 0usize);
         for p in &n.paragraphs {
-            write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, "");
+            write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, "", base);
         }
         let inner = String::from_utf8(w.into_inner().into_inner()).unwrap();
         body.push_str(&format!(
@@ -624,9 +636,10 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
     let mut bmn = 0usize;
     let mut trkn = 0usize;
     let author = doc.track_author.clone().unwrap_or_default();
+    let base = doc.base_pt();
     for b in &doc.blocks {
         match b {
-            Block::Para(p) => write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author),
+            Block::Para(p) => write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author, base),
             Block::Table(t) => {
                 w.write_event(Event::Start(BS::new("w:tbl"))).unwrap();
                 // 罫線(事務様式は罫線が見えないと様式にならない)
@@ -713,10 +726,10 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                         }
                         if cell.paragraphs.is_empty() {
                             write_para(&mut w, &Paragraph { line_spacing: 1.0, ..Default::default() },
-                                 &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author);
+                                 &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author, base);
                         } else {
                             for p in &cell.paragraphs {
-                                write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author)
+                                write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author, base)
                             }
                         }
                         w.write_event(Event::End(BytesEnd::new("w:tc"))).unwrap();
@@ -864,11 +877,11 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     }
     let hdr: Option<(String, String)> = (!hdr_src.paragraphs.is_empty()).then(|| (
         hdr_src.part.clone().unwrap_or_else(|| "word/johdr1.xml".to_string()),
-        hf_xml(&hdr_src, false),
+        hf_xml(&hdr_src, false, doc.base_pt()),
     ));
     let ftr: Option<(String, String)> = (!doc.footer.paragraphs.is_empty()).then(|| (
         doc.footer.part.clone().unwrap_or_else(|| "word/joftr1.xml".to_string()),
-        hf_xml(&doc.footer, true),
+        hf_xml(&doc.footer, true, doc.base_pt()),
     ));
 
     // このアプリで足した注。**あるときだけ**部品を書き直す
@@ -1235,7 +1248,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             continue;
         }
         zip.start_file(part, opts).map_err(|e| e.to_string())?;
-        zip.write_all(notes_xml(orig.as_deref(), add_list, endnote).as_bytes())
+        zip.write_all(notes_xml(orig.as_deref(), add_list, endnote, doc.base_pt()).as_bytes())
             .map_err(|e| e.to_string())?;
     }
     // 設定(settings.xml)。ページの色を見せる旗と、ハイフネーションの旗を

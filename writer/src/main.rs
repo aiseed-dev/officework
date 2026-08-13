@@ -493,7 +493,7 @@ impl HasEditor for Writer {
             // パネルの打鍵はその場で文書のヘッダー・フッターに反映する
             let text = self.hf_ed.text().to_string();
             let hf = if footer { &mut self.doc.footer } else { &mut self.doc.header };
-            kumihan::set_paras_text(&mut hf.paragraphs, &text, SIZE_PT);
+            kumihan::set_paras_text(&mut hf.paragraphs, &text);
             self.dirty = true;
             self.refresh_hf();
             return;

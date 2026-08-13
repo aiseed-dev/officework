@@ -25,7 +25,6 @@ use kumihan::{Block, CharFormat, Document, Paragraph, Run};
 
 /// 書式を持たない段落に字を入れるときの大きさ。
 /// kumihan の各所が `unwrap_or(10.5)` で使っている既定値に合わせる。
-const DEFAULT_PT: f32 = 10.5;
 
 /// 文書の中身。Doc / Paragraph / Table が同じ物を見るために1枚挟む
 /// (pysheet の `Inner` と同じ作り)。
@@ -179,7 +178,7 @@ fn set_para_text(p: &mut Paragraph, text: &str) {
         .runs
         .first()
         .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
-        .unwrap_or((DEFAULT_PT, None, CharFormat::default()));
+        .unwrap_or((None, None, CharFormat::default()));
     p.runs = vec![Run { text: text.to_string(), size_pt: pt, font, fmt }];
 }
 
@@ -1130,7 +1129,7 @@ impl PyParagraph {
                 .runs
                 .last()
                 .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
-                .unwrap_or((DEFAULT_PT, None, CharFormat::default()));
+                .unwrap_or((None, None, CharFormat::default()));
             fmt.link = Some(address.to_string());
             p.runs.push(Run { text: text.to_string(), size_pt: pt, font, fmt });
             p.runs.len() - 1
@@ -1148,7 +1147,7 @@ impl PyParagraph {
                 .runs
                 .last()
                 .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
-                .unwrap_or((DEFAULT_PT, None, CharFormat::default()));
+                .unwrap_or((None, None, CharFormat::default()));
             // **リンクは継がない** — 掛かりを決めるのは囲み(w:hyperlink)で、
             // 字の書式ではない。継ぐと、リンクの隣に足した字まで青くなる
             fmt.link = None;
@@ -1384,15 +1383,21 @@ impl PyRun {
         self.with_mut(|r| r.text = value.to_string())
     }
 
+    /// 字の大きさ(pt)。**None は「指定なし」**(文書の既定に従う)—
+    /// 本家 python-docx の font.size が None を返すのと同じ約束。
+    /// 以前はここで 10.5 を作って返していた(往復で焼き付く穴の一部)
     #[getter]
-    fn size_pt(&self) -> PyResult<f32> {
+    fn size_pt(&self) -> PyResult<Option<f32>> {
         self.with(|r| r.size_pt)
     }
 
+    /// None を入れると指定を外す(文書の既定に従う字に戻る)
     #[setter]
-    fn set_size_pt(&self, value: f32) -> PyResult<()> {
-        if !(1.0..=400.0).contains(&value) {
-            return Err(PyValueError::new_err(format!("文字の大きさ(pt)が変: {value}")));
+    fn set_size_pt(&self, value: Option<f32>) -> PyResult<()> {
+        if let Some(v) = value {
+            if !(1.0..=400.0).contains(&v) {
+                return Err(PyValueError::new_err(format!("文字の大きさ(pt)が変: {v}")));
+            }
         }
         self.with_mut(|r| r.size_pt = value)
     }
@@ -1557,9 +1562,12 @@ impl PyRun {
                 m.push("下線");
             }
             format!(
-                "<officework.doc.Run {:?} {}pt{}>",
+                "<officework.doc.Run {:?}{}{}>",
                 r.text,
-                r.size_pt,
+                match r.size_pt {
+                    Some(pt) => format!(" {pt}pt"),
+                    None => String::new(),
+                },
                 if m.is_empty() { String::new() } else { format!(" {}", m.join("・")) }
             )
         })
@@ -1850,7 +1858,7 @@ impl PyCell {
             _ => None,
         }
         .ok_or_else(|| PyIndexError::new_err("このセルはもう文書に無い"))?;
-        kumihan::set_paras_text(&mut cell.paragraphs, text, DEFAULT_PT);
+        kumihan::set_paras_text(&mut cell.paragraphs, text);
         Ok(())
     }
 
@@ -1899,7 +1907,7 @@ mod tests {
     fn run(text: &str, bold: bool) -> Run {
         Run {
             text: text.to_string(),
-            size_pt: 10.5,
+            size_pt: Some(10.5),
             font: None,
             fmt: CharFormat { bold, ..Default::default() },
         }
@@ -1926,10 +1934,12 @@ mod tests {
     }
 
     #[test]
-    fn 空の段落へ代入すると既定の大きさになる() {
+    fn 空の段落へ代入しても大きさは無指定のまま() {
+        // 以前はここで 10.5 が入っていた — それが往復の焼き付きの入り口。
+        // 無指定(None)は文書の既定に従う、が正しい形
         let mut p = Paragraph::default();
         set_para_text(&mut p, "あ");
-        assert_eq!(p.runs[0].size_pt, DEFAULT_PT);
+        assert_eq!(p.runs[0].size_pt, None);
     }
 
     #[test]
@@ -1997,7 +2007,7 @@ mod tests {
         };
         let run = |text: &str, s: Option<Box<kumihan::Sdt>>| kumihan::Run {
             text: text.into(),
-            size_pt: 10.5,
+            size_pt: Some(10.5),
             font: None,
             fmt: kumihan::CharFormat { sdt: s, ..Default::default() },
         };

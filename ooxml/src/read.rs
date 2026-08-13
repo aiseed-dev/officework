@@ -33,7 +33,6 @@ impl Report {
     }
 }
 
-pub(super) const DEFAULT_PT: f32 = 10.5;
 
 /// `<w:b/>` は付ける、`<w:b w:val="0"/>` は付けない。
 /// 有無だけで見ると「太字を解除した文書」を太字にしてしまう。
@@ -277,6 +276,18 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 if let Some(e) = head[s..].find('"') {
                     doc.font = Some(head[s..s + e].to_string());
                     break;
+                }
+            }
+        }
+        // 既定の大きさも同じ場所(w:sz)。読まないと、無指定の run を
+        // 画面・紙に写すときの基準が文書の言い分とずれる
+        if let Some(j) = head.find("<w:sz ") {
+            if let Some(k) = head[j..].find("w:val=\"") {
+                let s = j + k + 7;
+                if let Some(e) = head[s..].find('"') {
+                    if let Ok(h) = head[s..s + e].parse::<f32>() {
+                        doc.size_pt = Some(h / 2.0);
+                    }
                 }
             }
         }
@@ -576,7 +587,7 @@ pub(super) fn note_mark(
     e: &BytesStart,
     n: &[u8],
     para: &mut Option<Vec<Run>>,
-    size_pt: f32,
+    size_pt: Option<f32>,
     font: &Option<String>,
     fmt: &CharFormat,
     rep: &mut Report,
@@ -991,7 +1002,7 @@ pub(super) fn fldchar(
     field_buf: &mut String,
     para: &mut Option<Vec<Run>>,
     rep: &mut Report,
-    size_pt: f32,
+    size_pt: Option<f32>,
     font: &Option<String>,
     fmt: &CharFormat,
 ) {
@@ -1125,7 +1136,9 @@ pub(super) fn parse_document_rels(
     // いま読んでいるセルの結合(w:tcPr の gridSpan / vMerge)
     let mut cell_span = 0u8;
     let mut cell_vmerge = VMerge::None;
-    let mut size_pt = DEFAULT_PT;
+    // **無指定は None のまま持つ。** ここで数を入れると、往復で
+    // 「10.5pt 指定」が焼き付く(2026-08-13、本家 python-docx で発覚)
+    let mut size_pt: Option<f32> = None;
     // **書体は文書の設定**。docx が w:rFonts で持っているものを捨てない
     let mut font: Option<String> = None;
     // 文字の書式(w:rPr)と段落の揃え(w:jc)。読んで捨てると開き直したとき消える
@@ -1227,7 +1240,7 @@ pub(super) fn parse_document_rels(
                         cell_span = 0;
                         cell_vmerge = VMerge::None;
                     },
-                    b"p" => { para = Some(Vec::new()); size_pt = DEFAULT_PT; font = None;
+                    b"p" => { para = Some(Vec::new()); size_pt = None; font = None;
                               fmt = CharFormat::default(); align = Align::default();
                               list = ListKind::default(); indent = 0; first_line = 0;
                               line_spacing = 1.0;
@@ -1248,7 +1261,7 @@ pub(super) fn parse_document_rels(
                     }
                     b"sz" if in_rpr => {
                         if let Some(v) = attr(&e, "val") {
-                            if let Ok(h) = v.parse::<f32>() { size_pt = h / 2.0; }
+                            if let Ok(h) = v.parse::<f32>() { size_pt = Some(h / 2.0); }
                         }
                     }
                     // 日本語の書体は eastAsia に入る。ascii しか見ないと明朝が消える
@@ -1362,6 +1375,11 @@ pub(super) fn parse_document_rels(
                     // 段落の囲み枠。辺の別は持たない(あれば囲みとみなす)
                     b"pBdr" if in_ppr => boxed = true,
                     b"r" => {
+                        // 大きさは run ごとに立ち返る。前の run の指定を
+                        // 引きずると、無指定の run が「指定あり」に化ける
+                        // (書体 font には同じ形の持ち回りがまだ残っている —
+                        // 直すなら別の回で、試験と一緒に)
+                        size_pt = None;
                         fmt.sdt = sdt_cur.clone();
                         // **rPr の無い run にもリンクは掛かる** — 掛かりを
                         // 決めるのは囲み(w:hyperlink)で、run の書式ではない
@@ -1554,7 +1572,7 @@ pub(super) fn parse_document_rels(
                                     })
                                 })
                                 .map(|h| h / 2.0)
-                                .unwrap_or(size_pt);
+                                .or(size_pt);
                             if !base.is_empty() {
                                 if let Some(p) = para.as_mut() {
                                     let mut f2 = fmt.clone();
@@ -1600,7 +1618,7 @@ pub(super) fn parse_document_rels(
                             line_spacing: 1.0,
                             runs: vec![Run {
                                 text: String::new(),
-                                size_pt: DEFAULT_PT,
+                                size_pt: None,
                                 font: None,
                                 fmt: Default::default(),
                             }],
@@ -1617,7 +1635,7 @@ pub(super) fn parse_document_rels(
                         p.push(Run { text: "\t".into(), size_pt, font: font.clone(), fmt: fmt.clone() }) },
                     b"sz" if in_rpr => {
                         if let Some(v) = attr(&e, "val") {
-                            if let Ok(h) = v.parse::<f32>() { size_pt = h / 2.0; }
+                            if let Ok(h) = v.parse::<f32>() { size_pt = Some(h / 2.0); }
                         }
                     }
                     b"rFonts" if in_rpr => {
@@ -1866,7 +1884,7 @@ pub(super) fn parse_document_rels(
                                 dropcap: false,
                                 images_new: Vec::new(),
                                 runs: if runs.is_empty() {
-                                vec![Run { text: String::new(), size_pt: DEFAULT_PT, font: None, fmt: Default::default() }]
+                                vec![Run { text: String::new(), size_pt: None, font: None, fmt: Default::default() }]
                             } else { runs } };
                             // ドロップキャップの枠の段落は、次の段落の頭に合流する
                             if dropcap && !p.runs.iter().all(|r| r.text.is_empty()) {
@@ -1875,8 +1893,7 @@ pub(super) fn parse_document_rels(
                                 if let Some(mut cap) = pending_cap.take() {
                                     // 頭の字の大きさは本文に合わせる(2.8倍は組むとき掛かる。
                                     // 読んだ大きさのまま持つと保存のたびに育つ)
-                                    let body_pt = p.runs.first().map(|r| r.size_pt)
-                                        .unwrap_or(DEFAULT_PT);
+                                    let body_pt = p.runs.first().and_then(|r| r.size_pt);
                                     for r in &mut cap {
                                         r.size_pt = body_pt;
                                     }

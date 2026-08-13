@@ -254,15 +254,32 @@ impl CharFormat {
     }
 }
 
+/// 文書が大きさを何も言っていないときの見た目(pt)。**模型には入れない** —
+/// 模型では「言っていない」は `None` のまま持ち、画面・紙に写す瞬間だけ
+/// この値で解く。ここを模型に焼き込むと、無指定の docx が往復で
+/// 「10.5pt 指定」に化ける(2026-08-13、本家 python-docx との突き合わせで発覚)
+pub const DEFAULT_PT: f32 = 10.5;
+
 #[derive(Debug, Clone)]
 pub struct Run {
     pub text: String,
-    pub size_pt: f32,
+    /// 字の大きさ(pt)。docx の `w:sz`。
+    /// `None` は文書の既定に従う — `font` と同じ意味論。
+    /// **表示で困るからと勝手に数を入れない**(それが焼き付きの正体だった)
+    pub size_pt: Option<f32>,
     /// 書体の名前。**フォントは文書の設定**であって、アプリの好みではない。
     /// docx の `w:rFonts`、xlsx の `<font><name>` に入っているもの。
     /// `None` は文書の既定に従う
     pub font: Option<String>,
     pub fmt: CharFormat,
+}
+
+impl Run {
+    /// 画面・紙に写すときの大きさ。`base` は文書の既定
+    /// ([`Document::base_pt`])。模型の外へ出る瞬間だけここで解く
+    pub fn pt(&self, base: f32) -> f32 {
+        self.size_pt.unwrap_or(base)
+    }
 }
 
 /// 段落に入っている画像。表示のためのもの。
@@ -550,6 +567,9 @@ pub struct Document {
     /// 文書の既定の書体(docx の `w:docDefaults`)。
     /// 段落側が指定していなければこれを使う
     pub font: Option<String>,
+    /// 文書の既定の字の大きさ(docx の `w:docDefaults` の `w:sz`)。
+    /// run が `None` のときに効く。これも `None` なら [`DEFAULT_PT`]
+    pub size_pt: Option<f32>,
     /// 用紙の設定。無ければ既定(A4)
     pub page: Option<PageSetup>,
     /// 節の設定の原文(w:sectPr)。ヘッダーの参照などが入っているので、
@@ -677,7 +697,7 @@ pub fn paras_text(paras: &[Paragraph]) -> String {
 
 /// 平文を段落の列へ戻す。同じ位置の段落から書式を引き継ぐ
 /// (本文の `set_body_text` と同じ規則 — 段落をまるごと写す)。
-pub fn set_paras_text(paras: &mut Vec<Paragraph>, text: &str, size_pt: f32) {
+pub fn set_paras_text(paras: &mut Vec<Paragraph>, text: &str) {
     let old = std::mem::take(paras);
     *paras = text
         .split('\n')
@@ -688,7 +708,7 @@ pub fn set_paras_text(paras: &mut Vec<Paragraph>, text: &str, size_pt: f32) {
                 .runs
                 .first()
                 .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
-                .unwrap_or((size_pt, None, CharFormat::default()));
+                .unwrap_or((None, None, CharFormat::default()));
             p.runs = vec![Run { text: s.to_string(), size_pt: pt, font, fmt }];
             p
         })
@@ -730,7 +750,7 @@ impl Document {
     /// **run の境(部分書式)・段落の性質・表の位置が編集で流されない**
     /// (以前の「段落番号で写す」方式は、段落の増減で下の性質がずれ、
     /// 表が末尾へ動いていた)。
-    pub fn set_body_text(&mut self, text: &str, size_pt: f32) {
+    pub fn set_body_text(&mut self, text: &str) {
         let old = self.body_text();
         if old == text {
             return;
@@ -755,12 +775,12 @@ impl Document {
         {
             suf -= 1;
         }
-        self.splice_text(pre, ob.len() - suf, &text[pre..nb.len() - suf], size_pt);
+        self.splice_text(pre, ob.len() - suf, &text[pre..nb.len() - suf]);
     }
 
     /// 本文の `start..end`(バイト。段落は \n で繋いだ物差し)を `insert` で
     /// 置き換える。run の境と段落の性質を保つ、編集モデルの心臓。
-    pub fn splice_text(&mut self, start: usize, end: usize, insert: &str, size_pt: f32) {
+    pub fn splice_text(&mut self, start: usize, end: usize, insert: &str) {
         // 段落ごとの(blocks の位置, 本文での頭, 長さ)
         let mut paras: Vec<(usize, usize, usize)> = Vec::new();
         let mut at = 0usize;
@@ -774,7 +794,7 @@ impl Document {
         if paras.is_empty() {
             self.blocks.push(Block::Para(Paragraph {
                 line_spacing: 1.0,
-                runs: vec![Run { text: insert.to_string(), size_pt, font: None,
+                runs: vec![Run { text: insert.to_string(), size_pt: None, font: None,
                                  fmt: CharFormat::default() }],
                 ..Default::default()
             }));
@@ -810,7 +830,7 @@ impl Document {
             .find(|r| !r.text.is_empty())
             .or_else(|| head_para.runs.first())
             .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
-            .unwrap_or((size_pt, None, CharFormat::default()));
+            .unwrap_or((None, None, CharFormat::default()));
         let ins_run = |t: &str| {
             let mut fmt = ins_fmt.clone();
             // 参照(フィールド)の直後に打った字は参照の一部ではない。
@@ -862,7 +882,7 @@ impl Document {
             out.push(last);
         }
         for p in &mut out {
-            normalize_runs(&mut p.runs, size_pt);
+            normalize_runs(&mut p.runs);
         }
         // 置き換えの範囲に挟まっていた表などは、後ろへ避けて残す(消さない)
         let kept: Vec<Block> = self.blocks[bi_s..=bi_e]
@@ -944,7 +964,7 @@ impl Document {
         if mid.iter().all(|r| r.text.is_empty()) {
             return None; // 字が無い(印だけを注にはできない)
         }
-        let pt = p.runs.first().map(|r| r.size_pt).unwrap_or(10.5);
+        let pt = p.runs.first().and_then(|r| r.size_pt);
 
         // 移した字が注の本文になる。段落は1つ
         let note_para = Paragraph {
@@ -968,7 +988,7 @@ impl Document {
         });
         runs.extend(right);
         p.runs = runs;
-        normalize_runs(&mut p.runs, pt);
+        normalize_runs(&mut p.runs);
         Some(fr)
     }
 
@@ -1001,11 +1021,10 @@ impl Document {
             for r in &mut mid {
                 f(r);
             }
-            let pt = p.runs.first().map(|r| r.size_pt).unwrap_or(10.5);
             p.runs = left;
             p.runs.extend(mid);
             p.runs.extend(right);
-            normalize_runs(&mut p.runs, pt);
+            normalize_runs(&mut p.runs);
         }
     }
 
@@ -1038,8 +1057,11 @@ impl Document {
     /// 上限と下限を持つ — **際限なく大きく/小さくできると事故になる**
     /// (0pt にすると本文が消え、原因が分からなくなる)。
     pub fn apply_size(&mut self, range: std::ops::Range<usize>, f: impl Fn(f32) -> f32) {
+        // 手で大きさを変えた瞬間から「指定あり」になる(Word と同じ)。
+        // 無指定の run は文書の既定を出発点にする
+        let base = self.base_pt();
         if range.start < range.end {
-            self.apply_runs(range, |r| r.size_pt = f(r.size_pt).clamp(4.0, 400.0));
+            self.apply_runs(range, |r| r.size_pt = Some(f(r.pt(base)).clamp(4.0, 400.0)));
             return;
         }
         let target = self.para_range(range);
@@ -1049,7 +1071,28 @@ impl Document {
             }
             if let Block::Para(p) = b {
                 for r in &mut p.runs {
-                    r.size_pt = f(r.size_pt).clamp(4.0, 400.0);
+                    r.size_pt = Some(f(r.pt(base)).clamp(4.0, 400.0));
+                }
+            }
+        }
+    }
+
+    /// 選択範囲の文字の大きさを指定し直す(選択の字にだけ。空なら段落まるごと)。
+    /// `None` は**指定を外す** — 文書の既定に従う字に戻る(標準スタイルの形)。
+    pub fn set_size(&mut self, range: std::ops::Range<usize>, pt: Option<f32>) {
+        let v = pt.map(|p| p.clamp(4.0, 400.0));
+        if range.start < range.end {
+            self.apply_runs(range, |r| r.size_pt = v);
+            return;
+        }
+        let target = self.para_range(range);
+        for (i, b) in self.blocks.iter_mut().filter(|b| matches!(b, Block::Para(_))).enumerate() {
+            if !target.contains(&i) {
+                continue;
+            }
+            if let Block::Para(p) = b {
+                for r in &mut p.runs {
+                    r.size_pt = v;
                 }
             }
         }
@@ -1127,9 +1170,9 @@ impl Document {
         None
     }
 
-    /// いま選択範囲の文字の大きさ。
+    /// いま選択範囲の文字の大きさ(表示用に解決済み — 無指定なら文書の既定)。
     pub fn size_at(&self, range: std::ops::Range<usize>) -> Option<f32> {
-        self.run_at(range.start).map(|r| r.size_pt)
+        self.run_at(range.start).map(|r| r.pt(self.base_pt()))
     }
 
     /// 選択範囲にかかる段落の性質(箇条書き・インデント・行間)を変える。
@@ -1183,8 +1226,7 @@ impl Document {
     /// 書式の違う分断は繋がない(書式は据え置きの方針どおり)
     pub fn heal_runs(&mut self) {
         fn heal(p: &mut Paragraph) {
-            let pt = p.runs.first().map(|r| r.size_pt).unwrap_or(10.5);
-            normalize_runs(&mut p.runs, pt);
+            normalize_runs(&mut p.runs);
         }
         for b in &mut self.blocks {
             match b {
@@ -1279,7 +1321,9 @@ pub(super) fn split_runs(runs: &[Run], byte: usize) -> (Vec<Run>, Vec<Run>) {
 
 /// 空の run を除き、同じ書式の隣り合う run を繋ぐ(編集で際限なく増やさない)。
 /// 全部空なら、空の run を1つ残す(空の段落の形)。
-pub(super) fn normalize_runs(runs: &mut Vec<Run>, size_pt: f32) {
+pub(super) fn normalize_runs(runs: &mut Vec<Run>) {
+    // 字を全部消しても、段落は自分の大きさを覚えている(指定があれば)
+    let keep_pt = runs.first().and_then(|r| r.size_pt);
     let mut out: Vec<Run> = Vec::new();
     for r in runs.drain(..) {
         // **脚注の印だけは、字が無くても残す。** ここで落とすと、
@@ -1297,7 +1341,7 @@ pub(super) fn normalize_runs(runs: &mut Vec<Run>, size_pt: f32) {
         }
     }
     if out.is_empty() {
-        out.push(Run { text: String::new(), size_pt, font: None,
+        out.push(Run { text: String::new(), size_pt: keep_pt, font: None,
                        fmt: CharFormat::default() });
     }
     *runs = out;
@@ -1332,20 +1376,25 @@ impl Document {
         FootnoteRef { id, endnote }
     }
 
-    pub fn plain(text: &str, size_pt: f32) -> Document {
-        Document { note_ids_taken: Vec::new(), footnote_fmt: Default::default(), endnote_fmt: Default::default(),
-            font: None,
-            page: None,
-            sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            styles: Vec::new(), styles_new: Vec::new(),
+    /// 平文から文書を作る。字の大きさは**指定しない**(文書の既定に従う)。
+    /// ここで数を入れると、作っただけの文書が「大きさ指定つき」になる
+    pub fn plain(text: &str) -> Document {
+        Document {
             blocks: text
                 .split('\n')
                 .map(|p| Block::Para(Paragraph {
                     line_spacing: 1.0,
-                    shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run { text: p.to_string(), size_pt, font: None, fmt: Default::default() }],
+                    runs: vec![Run { text: p.to_string(), size_pt: None, font: None, fmt: Default::default() }],
                     ..Default::default() }))
                 .collect(),
+            ..Default::default()
         }
+    }
+
+    /// 画面・紙に写すときの、この文書の基準の大きさ(pt)。
+    /// docDefaults にあればそれ、無ければ [`DEFAULT_PT`]
+    pub fn base_pt(&self) -> f32 {
+        self.size_pt.unwrap_or(DEFAULT_PT)
     }
 }
 

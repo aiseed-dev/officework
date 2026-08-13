@@ -237,7 +237,7 @@ impl Writer {
                     paragraphs: vec![kumihan::Paragraph {
                         runs: vec![kumihan::Run {
                             text: String::new(),
-                            size_pt: SIZE_PT,
+                            size_pt: None,
                             font: None,
                             fmt: Default::default(),
                         }],
@@ -289,7 +289,7 @@ impl Writer {
                     paragraphs: vec![kumihan::Paragraph {
                         runs: vec![kumihan::Run {
                             text: String::new(),
-                            size_pt: SIZE_PT,
+                            size_pt: None,
                             font: None,
                             fmt: Default::default(),
                         }],
@@ -520,7 +520,7 @@ impl Writer {
                     line_spacing: 1.0,
                     runs: vec![kumihan::Run {
                         text: label.clone(),
-                        size_pt: SIZE_PT,
+                        size_pt: None,
                         font: None,
                         fmt: Default::default(),
                     }],
@@ -1083,12 +1083,34 @@ impl Writer {
                     "".into()
                 };
             }
+            // 印刷レイアウト。**紙を1枚ずつ積んで見せる**(編集は巻物のまま)。
+            // 節で紙が変わる文書は、この形でないと紙の大きさの違いが出せない
+            "printview" => {
+                if self.doc.vertical {
+                    self.status =
+                        ui::t!("縦書きでは印刷レイアウトにしません(初版の約束)").into();
+                    return;
+                }
+                self.paged = !self.paged;
+                if self.paged {
+                    self.multipage = false; // 画面だけの折り方どうし、両立させない
+                }
+                self.relayout();
+                self.status = if self.paged {
+                    ui::t!("印刷レイアウトにしました(紙が1枚ずつ出ます)").into()
+                } else {
+                    ui::t!("編集の表示に戻しました(続きの巻物)").into()
+                };
+            }
             "multipage" => {
                 if self.doc.vertical {
                     self.status = ui::t!("縦書きでは見開きにしません(初版の約束)").into();
                     return;
                 }
                 self.multipage = !self.multipage;
+                if self.multipage {
+                    self.paged = false;
+                }
                 self.relayout();
                 self.status = if self.multipage {
                     ui::t!("見開き(2ページ並べ)にしました。印刷は1ページずつです").into()

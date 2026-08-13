@@ -217,7 +217,7 @@ impl Writer {
         match self.target {
             Target::Body => {
                 let sel = self.ed.selection();
-                self.doc.set_body_text(self.ed.text(), SIZE_PT);
+                self.doc.set_body_text(self.ed.text());
                 self.doc.apply_char_format(sel, f);
             }
             Target::Cell { .. } => self.each_cell_para(|p| {
@@ -241,7 +241,7 @@ impl Writer {
         match self.target {
             Target::Body => {
                 let sel = self.ed.selection();
-                self.doc.set_body_text(self.ed.text(), SIZE_PT);
+                self.doc.set_body_text(self.ed.text());
                 self.doc.apply_para(sel, f);
             }
             Target::Cell { .. } => self.each_cell_para(f),
@@ -252,15 +252,36 @@ impl Writer {
 
     pub(crate) fn size(&mut self, f: impl Fn(f32) -> f32 + Copy) {
         self.checkpoint(false); // 文字の大きさ
+        let base = self.doc.base_pt();
         match self.target {
             Target::Body => {
                 let sel = self.ed.selection();
-                self.doc.set_body_text(self.ed.text(), SIZE_PT);
+                self.doc.set_body_text(self.ed.text());
                 self.doc.apply_size(sel, f);
             }
             Target::Cell { .. } => self.each_cell_para(|p| {
                 for r in &mut p.runs {
-                    r.size_pt = f(r.size_pt).clamp(4.0, 400.0);
+                    r.size_pt = Some(f(r.size_pt.unwrap_or(base)).clamp(4.0, 400.0));
+                }
+            }),
+        }
+        self.dirty = true;
+        self.relayout_keep();
+    }
+
+    /// 大きさを指定し直す。`None` は指定を外す(文書の既定に従う)—
+    /// 「標準」スタイルは 10.5 を焼き直すのではなく、指定を外す
+    pub(crate) fn size_set(&mut self, v: Option<f32>) {
+        self.checkpoint(false); // 文字の大きさ
+        match self.target {
+            Target::Body => {
+                let sel = self.ed.selection();
+                self.doc.set_body_text(self.ed.text());
+                self.doc.set_size(sel, v);
+            }
+            Target::Cell { .. } => self.each_cell_para(|p| {
+                for r in &mut p.runs {
+                    r.size_pt = v.map(|x| x.clamp(4.0, 400.0));
                 }
             }),
         }
@@ -300,6 +321,7 @@ impl Writer {
         let m = Metrics::new(&self.font_bytes).expect("フォント");
         let (hdr, ftr, pg) = (self.doc.header.clone(), self.doc.footer.clone(), self.pg);
         let total = self.total_pages();
+        let base_pt = self.doc.base_pt();
         // ページの色と透かしは紙にも(画面と紙の一致)
         let dress = paper::PageDress {
             bg: self.doc.page_color.as_deref().map(|c| (hex(c, 0), hex(c, 1), hex(c, 2))),
@@ -318,8 +340,8 @@ impl Writer {
                 &dress,
                 // ヘッダー・フッター。ページ番号はここで各頁の数字になる
                 |k| {
-                    let mut v = kumihan::layout_hf(&hdr, &m, &pg, LINE_MM, k, total, false);
-                    v.extend(kumihan::layout_hf(&ftr, &m, &pg, LINE_MM, k, total, true));
+                    let mut v = kumihan::layout_hf(&hdr, &m, &pg, LINE_MM, k, total, false, base_pt);
+                    v.extend(kumihan::layout_hf(&ftr, &m, &pg, LINE_MM, k, total, true, base_pt));
                     v
                 },
                 std::io::BufWriter::new(f),
@@ -400,7 +422,7 @@ impl Writer {
         match self.target {
             Target::Body => {
                 let sel = self.ed.selection();
-                self.doc.set_body_text(self.ed.text(), SIZE_PT);
+                self.doc.set_body_text(self.ed.text());
                 self.doc.apply_align(sel, a);
             }
             Target::Cell { .. } => self.each_cell_para(|p| p.align = a),
@@ -537,10 +559,12 @@ impl Writer {
     pub(crate) fn set_para_style(&mut self, n: u8) {
         self.checkpoint(false); // 段落の様式
         let (pt, bold) = match n {
-            1 => (16.0, true),
-            2 => (13.0, true),
-            3 => (11.5, true),
-            _ => (SIZE_PT, false),
+            1 => (Some(16.0), true),
+            2 => (Some(13.0), true),
+            3 => (Some(11.5), true),
+            // 標準 = 大きさの指定を**外す**(文書の既定に従う)。
+            // ここで 10.5 を入れ直すと、無指定が「指定あり」に化ける
+            _ => (None, false),
         };
         self.para(move |p| {
             p.style = if n == 0 {
@@ -549,7 +573,7 @@ impl Writer {
                 kumihan::ParaStyle::Heading(n)
             };
         });
-        self.size(move |_| pt);
+        self.size_set(pt);
         self.toggle(move |f| f.bold = bold);
         self.status = match n {
             0 => ui::t!("標準の段落にしました").into(),
@@ -622,7 +646,7 @@ impl Writer {
                 line_spacing: 1.0,
                 runs: vec![kumihan::Run {
                     text: t.clone(),
-                    size_pt: SIZE_PT,
+                    size_pt: None,
                     font: None,
                     fmt: Default::default(),
                 }],
@@ -761,7 +785,7 @@ impl Writer {
                     line_spacing: 1.0,
                     runs: vec![kumihan::Run {
                         text: ui::tf!("{}　{}　{}", t, "…".repeat(dots), num),
-                        size_pt: SIZE_PT,
+                        size_pt: None,
                         font: None,
                         fmt: Default::default(),
                     }],

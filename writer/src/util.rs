@@ -14,7 +14,7 @@ pub(crate) fn cell_text(c: &kumihan::Cellbox) -> String {
 
 /// セルへ文章を戻す。段落ごとの書式は同じ位置から引き継ぐ(本文と同じ規則)。
 pub(crate) fn set_cell_text(c: &mut kumihan::Cellbox, text: &str) {
-    kumihan::set_paras_text(&mut c.paragraphs, text, SIZE_PT);
+    kumihan::set_paras_text(&mut c.paragraphs, text);
 }
 
 /// 変更履歴: 現在の段落の記(そのまま/新規/変更)。

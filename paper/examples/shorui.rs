@@ -5,7 +5,7 @@ fn main() {
     let mut d = kumihan::Document::plain(
         "実施要領に基づく提案書\n\
          日本の事務の書類は、表題を中央に置き、本文を両端で揃える。\n\
-         この紙面は画面に出しているものと同じ座標をそのまま写している。", 10.5);
+         この紙面は画面に出しているものと同じ座標をそのまま写している。");
     d.apply_align(0.."実施要領に基づく提案書".len(), kumihan::Align::Center);
     d.apply_size(0.."実施要領に基づく提案書".len(), |_| 16.0);
     d.apply_char_format(0.."実施要領に基づく提案書".len(), |f| f.bold = true);

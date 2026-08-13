@@ -13,7 +13,7 @@ impl HasEditor for Doc {
     fn editor_ref(&self) -> &Editor { &self.ed }
     fn on_edited(&mut self) {
         // writer と同じ: 編集のたびに本文を文書へ反映する
-        self.doc.set_body_text(self.ed.text(), 10.5);
+        self.doc.set_body_text(self.ed.text());
     }
 }
 

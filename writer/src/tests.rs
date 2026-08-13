@@ -10,12 +10,12 @@ mod cell_edit_tests {
         let cell = |s: &str| kumihan::Cellbox {
             paragraphs: vec![kumihan::Paragraph {
                 runs: vec![kumihan::Run {
-                    text: s.into(), size_pt: SIZE_PT, font: None, fmt: Default::default() }],
+                    text: s.into(), size_pt: None, font: None, fmt: Default::default() }],
                 ..Default::default()
             }],
             ..Default::default()
         };
-        let mut d = Document::plain("本文", SIZE_PT);
+        let mut d = Document::plain("本文");
         d.blocks.push(kumihan::Block::Table(kumihan::Table {
             col_mm: vec![],
             rows: vec![vec![cell("品名"), cell("金額")]],
@@ -122,7 +122,7 @@ mod menu_run_tests {
                 w.update(cx, |this, cx| {
                     // 本文が空だと何も起きないボタンがあるので、毎回中身を入れておく
                     if this.ed.text().is_empty() {
-                        this.set_doc(Document::plain("見出し\n本文の字。", SIZE_PT));
+                        this.set_doc(Document::plain("見出し\n本文の字。"));
                     }
                     this.ed.select_all();
                     this.run_cmd(id, cx);
@@ -210,7 +210,7 @@ mod menu_run_tests {
     fn 主なボタンは文書を実際に変える(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         let fresh = |this: &mut Writer| {
-            this.set_doc(Document::plain("あいうえお\nかきくけこ", SIZE_PT));
+            this.set_doc(Document::plain("あいうえお\nかきくけこ"));
             this.ed.move_to(0, false);
             this.ed.move_to(15, true); // 1段落目を選ぶ
         };
@@ -269,7 +269,7 @@ mod menu_run_tests {
         });
         // 見出し → 目次 → 相互参照の的(しおり)
         w.update(cx, |this, cx| {
-            this.set_doc(Document::plain("章のはじめ\n本文です。", SIZE_PT));
+            this.set_doc(Document::plain("章のはじめ\n本文です。"));
             this.ed.move_to(0, false);
             // 見出しにするのは「テキストの追加」(parastyle は一覧のパネルを開く)
             this.run_cmd("add-text", cx);
@@ -308,7 +308,7 @@ mod menu_run_tests {
         });
         // 配色(見出しの色が付く)
         w.update(cx, |this, cx| {
-            this.set_doc(Document::plain("題", SIZE_PT));
+            this.set_doc(Document::plain("題"));
             this.ed.move_to(0, false);
             this.run_cmd("add-text", cx);
             this.run_cmd("colorschemas", cx);
@@ -321,7 +321,7 @@ mod menu_run_tests {
         });
         // ペン(描いた筆が文書に残る)
         w.update(cx, |this, cx| {
-            this.set_doc(Document::plain("紙", SIZE_PT));
+            this.set_doc(Document::plain("紙"));
             this.run_cmd("pen", cx);
             assert!(this.tool.is_some(), "ペンにならない");
             this.ink_begin(10.0, 10.0);
@@ -341,7 +341,7 @@ mod menu_run_tests {
         ui::ai::set_backend(ui::ai::Backend::ClaudeApi);
         if ui::ai::ready(ui::ai::Backend::ClaudeApi).is_err() {
             w.update(cx, |this, cx| {
-                this.set_doc(Document::plain("本文です。", SIZE_PT));
+                this.set_doc(Document::plain("本文です。"));
                 this.run_cmd("ai-summary", cx);
                 let st = this.status.to_string();
                 assert!(st.starts_with("AI:"), "断りの言葉が出ない: {st}");
@@ -366,7 +366,7 @@ mod menu_run_tests {
             ("controls", K::Text),
         ] {
             w.update(cx, |this, cx| {
-                this.set_doc(Document::plain("", SIZE_PT));
+                this.set_doc(Document::plain(""));
                 this.run_cmd(id, cx);
                 let kinds: Vec<_> = this
                     .doc
@@ -400,7 +400,7 @@ mod menu_run_tests {
         }
         // 名前「氏名」の記入欄(8..17)と、独自種類メールに名前「連絡先」を
         // 付けた欄(26..35。w:tag は jo:email:連絡先 に合成される)を持つ docx
-        let mut doc = Document::plain("氏名: 未記入\n宛先: 未記入", SIZE_PT);
+        let mut doc = Document::plain("氏名: 未記入\n宛先: 未記入");
         doc.apply_char_format(8..17, |f| {
             f.sdt = Some(Box::new(kumihan::Sdt {
                 kind: kumihan::SdtKind::Text,
@@ -655,7 +655,7 @@ render({"顧客名": "青森県庁", "担当者": "山田",
         let keep = ui::ai::backend();
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
-            this.set_doc(Document::plain("本文です。", SIZE_PT));
+            this.set_doc(Document::plain("本文です。"));
             this.run_cmd("ai-macro", cx);
             assert!(this.ai_open && this.ai_macro, "マクロのパネルが開かない");
             this.run_cmd("ai-macro", cx); // もう一度押すと閉じる
@@ -744,7 +744,7 @@ render({"顧客名": "青森県庁", "担当者": "山田",
             let base = p.runs.first().cloned();
             let mut field = kumihan::Run {
                 text: "　　　　　　　　".into(),
-                size_pt: base.as_ref().map(|r| r.size_pt).unwrap_or(SIZE_PT),
+                size_pt: base.as_ref().and_then(|r| r.size_pt),
                 font: base.as_ref().and_then(|r| r.font.clone()),
                 fmt: Default::default(),
             };
@@ -814,7 +814,7 @@ print(len(fields()))
     fn 記入欄に名前を付けられる(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
-            this.set_doc(Document::plain("", SIZE_PT));
+            this.set_doc(Document::plain(""));
             this.run_cmd("form-text", cx); // 欄が入りカーソルは欄の直後
             this.run_cmd("form-name", cx); // 名前のパネルが開く
             assert!(this.sd_open && this.sd_naming, "名前のパネルが開かない");
@@ -828,7 +828,7 @@ print(len(fields()))
                 .collect();
             assert!(tags.contains(&"氏名".to_string()), "名前が付かない: {tags:?}");
             // 欄の外で押すとパネルは開かず、ことばで断る
-            this.set_doc(Document::plain("ただの字", SIZE_PT));
+            this.set_doc(Document::plain("ただの字"));
             this.ed.move_to(0, false);
             this.run_cmd("form-name", cx);
             assert!(!this.sd_open, "欄が無いのにパネルが開く");
@@ -915,7 +915,7 @@ mod page_setup_tests {
     #[test]
     fn 用紙の変更が保存で残る() {
         // 画面で変えただけで docx に書かれないなら、それは飾り
-        let mut d = Document::plain("本文", SIZE_PT);
+        let mut d = Document::plain("本文");
         let mut pg = kumihan::PageSetup::default();
         std::mem::swap(&mut pg.w_mm, &mut pg.h_mm); // 横向き
         d.page = Some(pg);
@@ -1134,14 +1134,14 @@ mod screen_note_tests {
 
     fn 脚注のある文書() -> Document {
         let 字 = |t: &str| kumihan::Run {
-            text: t.into(), size_pt: SIZE_PT, font: None, fmt: Default::default() };
+            text: t.into(), size_pt: None, font: None, fmt: Default::default() };
         let 印 = kumihan::Run {
-            text: String::new(), size_pt: SIZE_PT, font: None,
+            text: String::new(), size_pt: None, font: None,
             fmt: kumihan::CharFormat {
                 footnote: Some(kumihan::FootnoteRef { id: "2".into(), endnote: false }),
                 ..Default::default() } };
         let 長文 = "いろはにほへとちりぬるを。".repeat(120);
-        let mut d = Document::plain("", SIZE_PT);
+        let mut d = Document::plain("");
         d.blocks = vec![kumihan::Block::Para(kumihan::Paragraph {
             runs: vec![字(&長文), 印],
             line_spacing: 1.0,
@@ -1186,7 +1186,7 @@ mod screen_note_tests {
     fn 脚注が無ければ画面も空のまま(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
-            this.doc = Document::plain("本文だけ", SIZE_PT);
+            this.doc = Document::plain("本文だけ");
             this.relayout();
             assert!(this.page.notes.is_empty(), "脚注が無いのに組まれた");
             assert!(this.page_notes.iter().all(|v| v.is_empty()),
@@ -1213,7 +1213,7 @@ mod footnote_undo_tests {
     fn 脚注は一手で戻る(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
-            this.doc = Document::plain("あいうえお", SIZE_PT);
+            this.doc = Document::plain("あいうえお");
             this.ed = Editor::new(&this.doc.body_text());
             this.relayout();
             // 1手打っておく(打鍵の道は before_edit を通る)
@@ -1244,7 +1244,7 @@ mod footnote_undo_tests {
     fn 選択が無ければ履歴を壊さない(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
-            this.doc = Document::plain("あいうえお", SIZE_PT);
+            this.doc = Document::plain("あいうえお");
             this.ed = Editor::new(&this.doc.body_text());
             this.relayout();
             this.before_edit(true);
@@ -1280,7 +1280,7 @@ mod doc_undo_tests {
     fn 太字が取り消せる(cx: &mut gpui::TestAppContext) {
         let w = 開く(cx);
         w.update(cx, |this, cx| {
-            this.doc = Document::plain("あいうえお", SIZE_PT);
+            this.doc = Document::plain("あいうえお");
             this.ed = Editor::new(&this.doc.body_text());
             this.relayout();
             this.ed.move_to(0, false);
@@ -1303,7 +1303,7 @@ mod doc_undo_tests {
     fn 打鍵と書式が同じ順で戻る(cx: &mut gpui::TestAppContext) {
         let w = 開く(cx);
         w.update(cx, |this, cx| {
-            this.doc = Document::plain("あいうえお", SIZE_PT);
+            this.doc = Document::plain("あいうえお");
             this.ed = Editor::new(&this.doc.body_text());
             this.relayout();
 
@@ -1342,7 +1342,7 @@ mod doc_undo_tests {
     fn 続けた打鍵は一手にまとまる(cx: &mut gpui::TestAppContext) {
         let w = 開く(cx);
         w.update(cx, |this, _cx| {
-            this.doc = Document::plain("", SIZE_PT);
+            this.doc = Document::plain("");
             this.ed = Editor::new("");
             this.relayout();
             for c in ["あ", "い", "う"] {
@@ -1361,7 +1361,7 @@ mod doc_undo_tests {
     fn 戻したあとに打つとやり直しは消える(cx: &mut gpui::TestAppContext) {
         let w = 開く(cx);
         w.update(cx, |this, cx| {
-            this.doc = Document::plain("あ", SIZE_PT);
+            this.doc = Document::plain("あ");
             this.ed = Editor::new("あ");
             this.relayout();
             this.ed.move_to(0, false);
@@ -1411,7 +1411,7 @@ mod undo_coverage_tests {
                 p.page_break_before as u8));
             for r in &p.runs {
                 out.push_str(&format!(
-                    " (b{} i{} u{} s{} sup{} sub{} sz{:.1} c{:?} h{:?} fn{})",
+                    " (b{} i{} u{} s{} sup{} sub{} sz{:?} c{:?} h{:?} fn{})",
                     r.fmt.bold as u8, r.fmt.italic as u8, r.fmt.underline as u8,
                     r.fmt.strike as u8, r.fmt.superscript as u8, r.fmt.subscript as u8,
                     r.size_pt, r.fmt.color, r.fmt.highlight, r.fmt.footnote.is_some() as u8));
@@ -1426,7 +1426,7 @@ mod undo_coverage_tests {
     /// 控えを取らない約束なので、閉じ忘れると「戻せない」が全部に伝染する
     /// (最初これで 33 件が偽の赤になった)
     fn 仕切り直す(this: &mut Writer) {
-        this.doc = Document::plain("あいうえお\nかきくけこ", SIZE_PT);
+        this.doc = Document::plain("あいうえお\nかきくけこ");
         this.ed = Editor::new(&this.doc.body_text());
         this.pg = Default::default();
         this.undo_stack.clear();
@@ -1538,7 +1538,7 @@ mod paged_view_tests {
     fn 画面と紙で頁ごとの紙が同じ(cx: &mut gpui::TestAppContext) {
         let w = 開く(cx);
         w.update(cx, |this, _| {
-            this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400), SIZE_PT);
+            this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
             this.ed = Editor::new(&this.doc.body_text());
             this.paged = true;
             this.relayout();
@@ -1555,7 +1555,7 @@ mod paged_view_tests {
     fn 字がその頁の紙の中に収まる(cx: &mut gpui::TestAppContext) {
         let w = 開く(cx);
         w.update(cx, |this, _| {
-            this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400), SIZE_PT);
+            this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
             this.ed = Editor::new(&this.doc.body_text());
             this.paged = true;
             this.relayout();
@@ -1572,11 +1572,51 @@ mod paged_view_tests {
         });
     }
 
+    /// 押す口が実際に効くこと。**機能があってもボタンが繋がっていなければ
+    /// 誰にも届かない** — ここが無いと配線の切れに気づけない
+    #[gpui::test]
+    fn 印刷レイアウトの釦で切り替わる(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, cx| {
+            assert!(!this.paged, "既定が印刷レイアウトになっている");
+            this.run_cmd("printview", cx);
+            assert!(this.paged, "押しても印刷レイアウトにならない");
+            this.run_cmd("printview", cx);
+            assert!(!this.paged, "もう一度押しても戻らない");
+        });
+    }
+
+    /// 画面だけの折り方どうし、両立させない(どちらを押しても他方が下りる)
+    #[gpui::test]
+    fn 印刷レイアウトと見開きは排他(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, cx| {
+            this.run_cmd("multipage", cx);
+            assert!(this.multipage && !this.paged, "見開きにならない");
+            this.run_cmd("printview", cx);
+            assert!(this.paged && !this.multipage, "印刷レイアウトで見開きが下りない");
+            this.run_cmd("multipage", cx);
+            assert!(this.multipage && !this.paged, "見開きで印刷レイアウトが下りない");
+        });
+    }
+
+    /// 縦書きは初版の約束で断る。**黙って何もしないのではなく、言って断る**
+    #[gpui::test]
+    fn 縦書きでは印刷レイアウトにしない(cx: &mut gpui::TestAppContext) {
+        let w = 開く(cx);
+        w.update(cx, |this, cx| {
+            this.doc.vertical = true;
+            this.run_cmd("printview", cx);
+            assert!(!this.paged, "縦書きなのに印刷レイアウトにした");
+            assert!(!this.status.is_empty(), "断ったことを言っていない");
+        });
+    }
+
     #[gpui::test]
     fn 編集モードは折らない(cx: &mut gpui::TestAppContext) {
         let w = 開く(cx);
         w.update(cx, |this, _| {
-            this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400), SIZE_PT);
+            this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
             this.ed = Editor::new(&this.doc.body_text());
             this.relayout();
             assert!(!this.paged, "既定が印刷モードになっている");

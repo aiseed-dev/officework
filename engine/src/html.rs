@@ -26,17 +26,16 @@ pub struct Field {
 }
 
 /// HTML を文書モデルへ写す。返り値は (文書, 帳簿)。
-pub fn parse(src: &str, size_pt: f32) -> (Document, Vec<String>) {
-    let (d, n, _, _) = parse_full(src, size_pt);
+pub fn parse(src: &str) -> (Document, Vec<String>) {
+    let (d, n, _, _) = parse_full(src);
     (d, n)
 }
 
 /// 記入欄(form)とリンクも返す版。リンクは (href, 見えている字)。
 pub fn parse_full(
     src: &str,
-    size_pt: f32,
 ) -> (Document, Vec<String>, Vec<Form>, Vec<(String, String)>) {
-    let mut b = Builder::new(size_pt);
+    let mut b = Builder::new();
     let bytes = src.as_bytes();
     let mut i = 0usize;
     while i < bytes.len() {
@@ -84,7 +83,6 @@ pub fn parse_full(
 }
 
 struct Builder {
-    size_pt: f32,
     doc: Document,
     runs: Vec<Run>,
     cur: String,
@@ -114,10 +112,9 @@ struct Builder {
 }
 
 impl Builder {
-    fn new(size_pt: f32) -> Builder {
+    fn new() -> Builder {
         Builder {
-            size_pt,
-            doc: Document::plain("", size_pt),
+            doc: Document::plain(""),
             runs: Vec::new(),
             cur: String::new(),
             bold: 0,
@@ -164,7 +161,7 @@ impl Builder {
         let text = std::mem::take(&mut self.cur);
         let run = Run {
             text,
-            size_pt: self.size_pt,
+            size_pt: None,
             font: None,
             fmt: self.fmt(),
         };
@@ -411,7 +408,7 @@ impl Builder {
                         fmt.ruby = (!rt.is_empty()).then_some(rt);
                         let run = Run {
                             text: base,
-                            size_pt: self.size_pt,
+                            size_pt: None,
                             font: None,
                             fmt,
                         };
@@ -611,7 +608,6 @@ mod tests {
     fn フォームの欄が集まる() {
         let (_, _, forms, _) = parse_full(
             "<form action=\"/order\" method=\"post\">             <input type=\"text\" name=\"品名\" value=\"鉛筆\">             <select name=\"数\"><option>1</option><option>2</option></select>             <textarea name=\"備考\">急ぎ</textarea>             <input type=\"submit\" value=\"送る\"></form>",
-            10.5,
         );
         assert_eq!(forms.len(), 1);
         let f = &forms[0];
@@ -624,7 +620,7 @@ mod tests {
 
     #[test]
     fn htmlのルビがうちのルビへ写る() {
-        let (d, _) = parse("<p><ruby>組版<rt>くみはん</rt></ruby>の話</p>", 10.5);
+        let (d, _) = parse("<p><ruby>組版<rt>くみはん</rt></ruby>の話</p>");
         let p = d.paragraphs().next().unwrap();
         let r = p.runs.iter().find(|r| r.text == "組版").expect("基底が無い");
         assert_eq!(r.fmt.ruby.as_deref(), Some("くみはん"));
@@ -636,7 +632,6 @@ mod tests {
         let (d, _) = parse(
             "<html><head><title>題</title></head><body>\
              <h1>見出し</h1><p>本文の<b>太字&amp;</b>続き</p></body></html>",
-            10.5,
         );
         assert_eq!(d.props.title, "題");
         let ps: Vec<_> = d.paragraphs().collect();
@@ -654,7 +649,7 @@ mod tests {
                     <tr><td>1</td><td>2</td></tr></table>";
         let lazy = "<table><tr><th>a<th>b<tr><td>1<td>2</table>";
         for src in [good, lazy] {
-            let (d, _) = parse(src, 10.5);
+            let (d, _) = parse(src);
             let t = d.tables().next().expect("表が無い");
             assert_eq!(t.rows.len(), 2, "行の数: {src}");
             assert_eq!(t.rows[0].len(), 2, "列の数: {src}");
@@ -666,7 +661,6 @@ mod tests {
     fn scriptは実行も表示もしないで帳簿に残らず消える() {
         let (d, _) = parse(
             "<p>前</p><script>alert('x')</script><p>後</p>",
-            10.5,
         );
         assert_eq!(d.body_text(), "前\n後");
     }
@@ -675,7 +669,6 @@ mod tests {
     fn 箇条書きと帳簿() {
         let (d, notes) = parse(
             "<ul><li>一</li><li>二</li></ul><img src=x><blink>謎</blink>",
-            10.5,
         );
         let ps: Vec<_> = d.paragraphs().collect();
         assert_eq!(ps[0].list, ListKind::Bullet);

@@ -17,7 +17,7 @@ mod kihon {
     fn sheet_of(text: &str, measure: f32) -> Sheet {
         let data = font();
         let m = Metrics::new(&data).unwrap();
-        let doc = Document::plain(text, 10.5);
+        let doc = Document::plain(text);
         layout(&doc, &m, &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: 20.0 })
     }
 
@@ -26,7 +26,7 @@ mod kihon {
     #[test]
     fn 記入欄の広がりを引ける() {
         // 「氏名: 」(8バイト)+ 欄「山田　太郎」(15バイト)= 8..23
-        let mut d = Document::plain("氏名: 山田　太郎\n次の行", 10.5);
+        let mut d = Document::plain("氏名: 山田　太郎\n次の行");
         d.apply_char_format(8..23, |f| {
             f.sdt = Some(Box::new(Sdt { tag: "氏名".into(), ..Default::default() }))
         });
@@ -110,7 +110,7 @@ mod format_tests {
     use super::*;
 
     fn doc(text: &str) -> Document {
-        Document::plain(text, 10.5)
+        Document::plain(text)
     }
 
     #[test]
@@ -120,7 +120,7 @@ mod format_tests {
         d.apply_char_format(0..2, |f| f.bold = true);
         d.apply_align(0..2, Align::Center);
         // 1文字打った、のつもり
-        d.set_body_text("表題あ\n本文", 10.5);
+        d.set_body_text("表題あ\n本文");
         let p = d.paragraphs().next().unwrap();
         assert!(p.runs[0].fmt.bold, "太字が消えた");
         assert_eq!(p.align, Align::Center, "揃えが消えた");
@@ -130,7 +130,7 @@ mod format_tests {
     fn 段落が増えても前の書式は残る() {
         let mut d = doc("表題");
         d.apply_char_format(0..2, |f| f.bold = true);
-        d.set_body_text("表題\n新しい段落", 10.5);
+        d.set_body_text("表題\n新しい段落");
         let ps: Vec<_> = d.paragraphs().collect();
         assert!(ps[0].runs[0].fmt.bold);
         assert!(!ps[1].runs[0].fmt.bold, "新しい段落まで太字になった");
@@ -177,7 +177,7 @@ mod format_tests {
         d.blocks.push(Block::Table(Table { col_mm: vec![], rows: vec![vec![Cellbox::default()]],
         ..Default::default()
     }));
-        d.set_body_text("本文を直した", 10.5);
+        d.set_body_text("本文を直した");
         assert_eq!(d.tables().count(), 1, "表が消えた");
     }
 }
@@ -189,7 +189,7 @@ mod align_tests {
     fn sheet(text: &str, a: Align) -> Sheet {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain(text, 10.5);
+        let mut d = Document::plain(text);
         d.apply_align(0..text.len(), a);
         layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 })
     }
@@ -221,7 +221,7 @@ mod align_tests {
         // 画面と紙が同じものを見るので、片方だけ太字になることが起きない
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain("太字", 10.5);
+        let mut d = Document::plain("太字");
         d.apply_char_format(0..6, |f| f.bold = true);
         let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
         assert!(s.lines[0].cells.iter().all(|c| c.fmt.bold), "字に書式が届いていない");
@@ -234,9 +234,9 @@ mod size_tests {
 
     #[test]
     fn 打鍵しても大きさが戻らない() {
-        let mut d = Document::plain("表題\n本文", 10.5);
+        let mut d = Document::plain("表題\n本文");
         d.apply_size(0..2, |s| s + 6.0);
-        d.set_body_text("表題あ\n本文", 10.5);
+        d.set_body_text("表題あ\n本文");
         assert_eq!(d.size_at(0..2), Some(16.5), "大きさが既定に戻った");
         let second = "表題あ\n".len();
         assert_eq!(d.size_at(second..second), Some(10.5), "他の段落まで変わった");
@@ -245,7 +245,7 @@ mod size_tests {
     #[test]
     fn 際限なく大きくならない() {
         // 0pt にすると本文が消えて、原因が分からなくなる
-        let mut d = Document::plain("本文", 10.5);
+        let mut d = Document::plain("本文");
         for _ in 0..100 { d.apply_size(0..2, |s| s - 10.0) }
         assert!(d.size_at(0..2).unwrap() >= 4.0, "小さくしすぎた");
         for _ in 0..100 { d.apply_size(0..2, |s| s * 2.0) }
@@ -254,7 +254,7 @@ mod size_tests {
 
     #[test]
     fn 書体を段落に掛けられる() {
-        let mut d = Document::plain("表題\n本文", 10.5);
+        let mut d = Document::plain("表題\n本文");
         d.apply_font(0..2, Some("BIZ UDPゴシック".into()));
         assert_eq!(d.paragraphs().next().unwrap().runs[0].font.as_deref(), Some("BIZ UDPゴシック"));
         assert_eq!(d.paragraphs().nth(1).unwrap().runs[0].font, None, "他の段落まで変わった");
@@ -268,7 +268,7 @@ mod list_tests {
     fn sheet(setup: impl Fn(&mut Document)) -> Sheet {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain("一つ目\n二つ目\n三つ目", 10.5);
+        let mut d = Document::plain("一つ目\n二つ目\n三つ目");
         setup(&mut d);
         layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 })
     }
@@ -313,7 +313,7 @@ mod list_tests {
     fn 深い番号は浅い番号が進むと振り出しに戻る() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain("一\n一の一\n一の二\n二\n二の一", 10.5);
+        let mut d = Document::plain("一\n一の一\n一の二\n二\n二の一");
         for (i, ind) in [(0usize, 0u8), (1, 1), (2, 1), (3, 0), (4, 1)] {
             if let Block::Para(p) = &mut d.blocks[i] {
                 p.list = ListKind::Number;
@@ -331,7 +331,7 @@ mod list_tests {
     #[test]
     fn 印は本文を書き換えない() {
         // 編集中の文字位置とずれると、カーソルが合わなくなる
-        let mut d = Document::plain("一つ目", 10.5);
+        let mut d = Document::plain("一つ目");
         if let Block::Para(p) = &mut d.blocks[0] { p.list = ListKind::Bullet }
         assert_eq!(d.body_text(), "一つ目", "本文に印が混ざった");
     }
@@ -367,7 +367,7 @@ mod list_tests {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let long = "あ".repeat(60);
-        let mut d = Document::plain(&long, 10.5);
+        let mut d = Document::plain(&long);
         if let Block::Para(p) = &mut d.blocks[0] { p.indent = 3 }
         let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
         for l in &s.lines {
@@ -385,7 +385,7 @@ mod vertical_tests {
     fn 縦書きは右の列から左へ進み字は上から下へ() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let d = Document::plain("一行目の文。\n二行目。", 10.5);
+        let d = Document::plain("一行目の文。\n二行目。");
         let pg = PageSetup::default();
         let y0 = pg.top_mm + 4.0;
         let measure = pg.h_mm - pg.top_mm - pg.bottom_mm - 8.0;
@@ -415,7 +415,7 @@ mod ruby_tests {
     fn ルビの行が基底の上に半分の大きさで出る() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain("組版の話", 10.5);
+        let mut d = Document::plain("組版の話");
         // 「組版」にだけルビを振る
         d.apply_char_format(0..6, |f| f.ruby = Some("くみはん".into()));
         let sheet = layout(&d, &m,
@@ -445,7 +445,7 @@ mod distribute_tests {
     fn 均等割付は最後の行も行長いっぱいに広がる() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain("氏名", 10.5);
+        let mut d = Document::plain("氏名");
         if let Some(Block::Para(p)) = d.blocks.first_mut() {
             p.align = Align::Distribute;
         }
@@ -470,12 +470,12 @@ mod table_layout_tests {
         let cell = |s: &str| Cellbox {
             paragraphs: vec![Paragraph {
                 runs: vec![Run {
-                    text: s.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+                    text: s.into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
                 ..Default::default()
             }],
             ..Default::default()
         };
-        let mut d = Document::plain("前の本文", 10.5);
+        let mut d = Document::plain("前の本文");
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![
@@ -528,12 +528,12 @@ mod table_layout_tests {
         let cell = |s: &str| Cellbox {
             paragraphs: vec![Paragraph {
                 runs: vec![Run {
-                    text: s.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+                    text: s.into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
                 ..Default::default()
             }],
             ..Default::default()
         };
-        let mut d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
+        let mut d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
@@ -563,7 +563,7 @@ mod merge_layout_tests {
         Cellbox {
             paragraphs: vec![Paragraph {
                 runs: vec![Run {
-                    text: s.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+                    text: s.into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
                 ..Default::default()
             }],
             ..Default::default()
@@ -573,7 +573,7 @@ mod merge_layout_tests {
     fn sheet_of(rows: Vec<Vec<Cellbox>>) -> Sheet {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(),
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table { col_mm: vec![], rows,
         ..Default::default()
@@ -640,7 +640,7 @@ mod gridcol_tests {
         Cellbox {
             paragraphs: vec![Paragraph {
                 runs: vec![Run {
-                    text: s.into(), size_pt: 10.5, font: None, fmt: Default::default() }],
+                    text: s.into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
                 ..Default::default()
             }],
             ..Default::default()
@@ -650,7 +650,7 @@ mod gridcol_tests {
     fn rules_of(col_mm: Vec<f32>) -> Vec<[f32; 4]> {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(),
+        let d = Document { note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None,
             page: None,
             sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
@@ -695,7 +695,7 @@ mod empty_line_tests {
         // 持たないと、後ろの行のバイト勘定がずれてカーソルが合わなくなる
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let d = Document::plain("一行目\n\n三行目", 10.5);
+        let d = Document::plain("一行目\n\n三行目");
         let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
         let body: Vec<&Line> = s.lines.iter().filter(|l| l.from_body).collect();
         assert_eq!(body.len(), 3, "空行が消えた: {} 行", body.len());
@@ -712,7 +712,7 @@ mod byte0_tests {
     fn lines(text: &str, measure: f32) -> Vec<Line> {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let d = Document::plain(text, 10.5);
+        let d = Document::plain(text);
         layout(&d, &m, &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: 20.0 })
             .lines
     }
@@ -759,7 +759,7 @@ mod byte0_tests {
     fn 箇条書きの印はバイト位置に入らない() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain("項目", 10.5);
+        let mut d = Document::plain("項目");
         if let Block::Para(p) = &mut d.blocks[0] { p.list = ListKind::Bullet }
         let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
         let l = &s.lines[0];
@@ -782,7 +782,7 @@ mod run_edit_tests {
 
     #[test]
     fn 段落の途中だけ太字にできる() {
-        let mut d = Document::plain("防火戸の仕様を確認", 10.5);
+        let mut d = Document::plain("防火戸の仕様を確認");
         let s = "防火戸の".len();
         let e = "防火戸の仕様".len();
         d.apply_char_format(s..e, |f| f.bold = true);
@@ -799,12 +799,12 @@ mod run_edit_tests {
 
     #[test]
     fn 部分書式が打鍵で流されない() {
-        let mut d = Document::plain("防火戸の仕様を確認", 10.5);
+        let mut d = Document::plain("防火戸の仕様を確認");
         let s = "防火戸の".len();
         let e = "防火戸の仕様".len();
         d.apply_char_format(s..e, |f| f.bold = true);
         // 「仕様」の後ろに「書」を打った(1回の編集 = 1箇所の置き換え)
-        d.set_body_text("防火戸の仕様書を確認", 10.5);
+        d.set_body_text("防火戸の仕様書を確認");
         assert_eq!(
             bold_spans(&d),
             vec![
@@ -815,15 +815,15 @@ mod run_edit_tests {
             "太字の中に打った字が太字にならない・境が流された"
         );
         // 頭に打っても境は動かない
-        d.set_body_text("この防火戸の仕様書を確認", 10.5);
+        d.set_body_text("この防火戸の仕様書を確認");
         assert_eq!(bold_spans(&d)[1], ("仕様書".into(), true), "頭への挿入で境がずれた");
     }
 
     #[test]
     fn 選択の中だけ消しても境が残る() {
-        let mut d = Document::plain("あいうえお", 10.5);
+        let mut d = Document::plain("あいうえお");
         d.apply_char_format(3..12, |f| f.bold = true); // いうえ
-        d.set_body_text("あいえお", 10.5); // 「う」を消した
+        d.set_body_text("あいえお"); // 「う」を消した
         assert_eq!(
             bold_spans(&d),
             vec![("あ".into(), false), ("いえ".into(), true), ("お".into(), false)],
@@ -834,14 +834,14 @@ mod run_edit_tests {
     #[test]
     fn 途中の段落でenterしても下の性質がずれない() {
         // 旧方式(段落番号で写す)の持病: 段落の増減で下の段落の性質がずれた
-        let mut d = Document::plain("一\n二\n三", 10.5);
+        let mut d = Document::plain("一\n二\n三");
         let start = "一\n二".len();
         d.apply_align(start + 1..start + 1, Align::Center); // 「三」を中央に
         if let Block::Para(p) = &mut d.blocks[2] {
             p.shade = Some("FFF2CC".into());
         }
         // 「二」の後ろで Enter
-        d.set_body_text("一\n二\n\n三", 10.5);
+        d.set_body_text("一\n二\n\n三");
         let ps: Vec<&Paragraph> = d.paragraphs().collect();
         assert_eq!(ps.len(), 4);
         assert_eq!(ps[3].align, Align::Center, "下の段落の揃えがずれた");
@@ -849,7 +849,7 @@ mod run_edit_tests {
         // 割った両方が段落の性質を持つ(Word と同じ)。下へ「ずれる」のとは違う
         assert_eq!(ps[2].shade.as_deref(), Some("FFF2CC"));
         // undo(= 逆向きの1回の編集)でも戻る
-        d.set_body_text("一\n二\n三", 10.5);
+        d.set_body_text("一\n二\n三");
         let ps: Vec<&Paragraph> = d.paragraphs().collect();
         assert_eq!(ps[2].align, Align::Center, "undo で揃えが消えた");
     }
@@ -857,13 +857,13 @@ mod run_edit_tests {
     #[test]
     fn 編集しても表の位置が動かない() {
         // 旧方式は打鍵のたびに表が末尾へ動いていた
-        let mut d = Document::plain("前\n後", 10.5);
+        let mut d = Document::plain("前\n後");
         d.blocks.insert(1, Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![Cellbox::default()]],
         ..Default::default()
     }));
-        d.set_body_text("前に足す\n後", 10.5);
+        d.set_body_text("前に足す\n後");
         let kinds: Vec<&str> = d.blocks.iter().map(|b| match b {
             Block::Para(_) => "段落",
             Block::Table(_) => "表",
@@ -873,10 +873,10 @@ mod run_edit_tests {
 
     #[test]
     fn 段落の合流で頭の性質が残る() {
-        let mut d = Document::plain("一\n二", 10.5);
+        let mut d = Document::plain("一\n二");
         d.apply_align(0..0, Align::Center);
         // 「一」と「二」の間の改行を消した
-        d.set_body_text("一二", 10.5);
+        d.set_body_text("一二");
         let ps: Vec<&Paragraph> = d.paragraphs().collect();
         assert_eq!(ps.len(), 1);
         assert_eq!(ps[0].align, Align::Center, "合流で頭の性質が消えた");
@@ -885,20 +885,20 @@ mod run_edit_tests {
 
     #[test]
     fn 大きさと書体も選択の字にだけ掛かる() {
-        let mut d = Document::plain("見出しと本文", 10.5);
+        let mut d = Document::plain("見出しと本文");
         d.apply_size(0.."見出し".len(), |_| 16.0);
         d.apply_font(0.."見出し".len(), Some("ゴシック".into()));
         let runs: Vec<&Run> = d.paragraphs().flat_map(|p| p.runs.iter()).collect();
         assert_eq!(runs.len(), 2);
-        assert_eq!(runs[0].size_pt, 16.0);
+        assert_eq!(runs[0].size_pt, Some(16.0));
         assert_eq!(runs[0].font.as_deref(), Some("ゴシック"));
-        assert_eq!(runs[1].size_pt, 10.5, "選択の外まで変わった");
+        assert_eq!(runs[1].size_pt, None, "選択の外まで変わった");
         assert_eq!(runs[1].font, None);
     }
 
     #[test]
     fn カーソル位置の書式が読める() {
-        let mut d = Document::plain("あ太字い", 10.5);
+        let mut d = Document::plain("あ太字い");
         d.apply_char_format(3..9, |f| f.bold = true);
         assert!(!d.char_format_at(0..0).bold, "頭で太字と言った");
         assert!(d.char_format_at(9..9).bold, "太字の直後で太字と言わない");
@@ -911,7 +911,7 @@ mod ref_field_tests {
     use super::*;
 
     fn field_doc() -> Document {
-        let mut d = Document::plain("仕様は3ページを見る", 10.5);
+        let mut d = Document::plain("仕様は3ページを見る");
         let s = "仕様は".len();
         let e = "仕様は3ページ".len();
         d.apply_field(s..e, Some(RefField { name: "様式".into(), page: false }));
@@ -922,7 +922,7 @@ mod ref_field_tests {
     fn 参照は編集で流されず前後の打鍵で消えない() {
         let mut d = field_doc();
         // 参照の前に打つ
-        d.set_body_text("この仕様は3ページを見る", 10.5);
+        d.set_body_text("この仕様は3ページを見る");
         let f: Vec<_> = d.paragraphs().flat_map(|p| p.runs.iter())
             .filter(|r| r.fmt.field.is_some())
             .map(|r| r.text.clone())
@@ -932,7 +932,7 @@ mod ref_field_tests {
         let e = "この仕様は3ページ".len();
         let mut t = d.body_text();
         t.insert(e, '目');
-        d.set_body_text(&t, 10.5);
+        d.set_body_text(&t);
         let f: Vec<_> = d.paragraphs().flat_map(|p| p.runs.iter())
             .filter(|r| r.fmt.field.is_some())
             .map(|r| r.text.clone())
@@ -944,7 +944,7 @@ mod ref_field_tests {
     fn 参照の中を触ると普通の字に降りる() {
         let mut d = field_doc();
         // 「3ページ」の中の「ペ」を消した
-        d.set_body_text("仕様は3ージを見る", 10.5);
+        d.set_body_text("仕様は3ージを見る");
         assert!(d.paragraphs().flat_map(|p| p.runs.iter())
             .all(|r| r.fmt.field.is_none()),
             "壊れた参照が参照のまま残った");
@@ -985,7 +985,7 @@ mod hyphen_tests {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let text = "The quick information hyphenation representation communication demonstration";
-        let mut d = Document::plain(text, 10.5);
+        let mut d = Document::plain(text);
         d.hyphenate = true;
         let s = layout(&d, &m, &Frame { measure_mm: 45.0, line_height_mm: 6.0, y0_mm: 20.0 });
         let joined: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
@@ -1005,7 +1005,7 @@ mod hyphen_tests {
     fn 切らなければ何も変わらない() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let d = Document::plain("The quick information hyphenation", 10.5);
+        let d = Document::plain("The quick information hyphenation");
         let s = layout(&d, &m, &Frame { measure_mm: 45.0, line_height_mm: 6.0, y0_mm: 20.0 });
         assert!(s.lines.iter().all(|l| !l.text().ends_with('-')),
             "設定していないのに折った");
@@ -1020,7 +1020,7 @@ mod dropcap_tests {
     fn 頭の1字が大きく残りは狭く組まれる() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let mut d = Document::plain(&format!("春{}", "はあけぼの。".repeat(8)), 10.5);
+        let mut d = Document::plain(&format!("春{}", "はあけぼの。".repeat(8)));
         if let Block::Para(p) = &mut d.blocks[0] {
             p.dropcap = true;
         }
@@ -1046,7 +1046,7 @@ mod column_tests {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let text = (1..=n_lines).map(|i| format!("{i} 行目")).collect::<Vec<_>>().join("\n");
-        let d = Document::plain(&text, 10.5);
+        let d = Document::plain(&text);
         let pg = PageSetup { columns: cols, ..Default::default() };
         let mut s = layout(&d, &m, &Frame {
             measure_mm: pg.column_measure_mm(),
@@ -1095,7 +1095,7 @@ mod column_tests {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let text = (1..=30).map(|i| format!("{i} 行目")).collect::<Vec<_>>().join("\n");
-        let d = Document::plain(&text, 10.5);
+        let d = Document::plain(&text);
         let b = layout(&d, &m, &Frame {
             measure_mm: PageSetup::default().column_measure_mm(),
             line_height_mm: 6.4,
@@ -1118,7 +1118,7 @@ mod hf_layout_tests {
 
     fn hf(text: &str) -> HeadFoot {
         HeadFoot {
-            paragraphs: Document::plain(text, 10.5).paragraphs().cloned().collect(),
+            paragraphs: Document::plain(text).paragraphs().cloned().collect(),
             part: None,
         }
     }
@@ -1129,8 +1129,8 @@ mod hf_layout_tests {
         let m = Metrics::new(&data).unwrap();
         let pg = PageSetup::default();
         let f = hf(&format!("- {PAGE_MARK} -"));
-        assert_eq!(layout_hf(&f, &m, &pg, 6.4, 1, 9, true)[0].text(), "- 1 -");
-        assert_eq!(layout_hf(&f, &m, &pg, 6.4, 12, 9, true)[0].text(), "- 12 -");
+        assert_eq!(layout_hf(&f, &m, &pg, 6.4, 1, 9, true, DEFAULT_PT)[0].text(), "- 1 -");
+        assert_eq!(layout_hf(&f, &m, &pg, 6.4, 12, 9, true, DEFAULT_PT)[0].text(), "- 12 -");
     }
 
     #[test]
@@ -1138,10 +1138,10 @@ mod hf_layout_tests {
         let data = metrics();
         let m = Metrics::new(&data).unwrap();
         let pg = PageSetup::default();
-        let h = layout_hf(&hf("頭"), &m, &pg, 6.4, 1, 1, false);
+        let h = layout_hf(&hf("頭"), &m, &pg, 6.4, 1, 1, false, DEFAULT_PT);
         assert!(h[0].y_mm < pg.top_mm, "ヘッダーが本文域に食い込む: {}", h[0].y_mm);
         assert!(h[0].y_mm > 0.0);
-        let f = layout_hf(&hf("足"), &m, &pg, 6.4, 1, 1, true);
+        let f = layout_hf(&hf("足"), &m, &pg, 6.4, 1, 1, true, DEFAULT_PT);
         assert!(f[0].y_mm > pg.h_mm - pg.bottom_mm,
             "フッターが本文域に食い込む: {}", f[0].y_mm);
         assert!(f[0].y_mm < pg.h_mm, "紙の外に出た: {}", f[0].y_mm);
@@ -1154,7 +1154,7 @@ mod hf_layout_tests {
         let pg = PageSetup::default();
         let mut f = hf(&PAGE_MARK.to_string());
         f.paragraphs[0].align = Align::Center;
-        let lines = layout_hf(&f, &m, &pg, 6.4, 1, 9, true);
+        let lines = layout_hf(&f, &m, &pg, 6.4, 1, 9, true, DEFAULT_PT);
         assert!(lines[0].cells[0].x_mm > pg.measure_mm() * 0.3,
             "中央に寄っていない: {}", lines[0].cells[0].x_mm);
     }
@@ -1165,14 +1165,15 @@ mod hf_layout_tests {
         let m = Metrics::new(&data).unwrap();
         let pg = PageSetup::default();
         let f = hf(&format!("{PAGE_MARK} / {PAGES_MARK}"));
-        assert_eq!(layout_hf(&f, &m, &pg, 6.4, 2, 7, true)[0].text(), "2 / 7");
+        assert_eq!(layout_hf(&f, &m, &pg, 6.4, 2, 7, true, DEFAULT_PT)[0].text(), "2 / 7");
     }
 
     #[test]
     fn 無ければ何も出ない() {
         let data = metrics();
         let m = Metrics::new(&data).unwrap();
-        assert!(layout_hf(&HeadFoot::default(), &m, &PageSetup::default(), 6.4, 1, 1, false)
+        assert!(layout_hf(&HeadFoot::default(), &m, &PageSetup::default(), 6.4, 1, 1, false,
+                          DEFAULT_PT)
             .is_empty());
     }
 
@@ -1180,10 +1181,10 @@ mod hf_layout_tests {
     fn 平文との相互変換で書式が残る() {
         // パネルでの編集は paras_text / set_paras_text を通る
         let mut ps: Vec<Paragraph> =
-            Document::plain("社外秘", 10.5).paragraphs().cloned().collect();
+            Document::plain("社外秘").paragraphs().cloned().collect();
         ps[0].align = Align::Right;
         ps[0].runs[0].fmt.bold = true;
-        set_paras_text(&mut ps, "社外秘・控", 10.5);
+        set_paras_text(&mut ps, "社外秘・控");
         assert_eq!(paras_text(&ps), "社外秘・控");
         assert_eq!(ps[0].align, Align::Right, "揃えが消えた");
         assert!(ps[0].runs[0].fmt.bold, "太字が消えた");
@@ -1197,12 +1198,12 @@ mod shade_carry_tests {
     #[test]
     fn 編集しても段落の帯と枠が残る() {
         // set_body_text は段落をまるごと写すので、新しい性質も自動で残る
-        let mut d = Document::plain("見出し\n本文", 10.5);
+        let mut d = Document::plain("見出し\n本文");
         if let Block::Para(p) = &mut d.blocks[0] {
             p.shade = Some("DEEAF6".into());
             p.boxed = true;
         }
-        d.set_body_text("見出しに追記\n本文", 10.5);
+        d.set_body_text("見出しに追記\n本文");
         let p = d.paragraphs().next().unwrap();
         assert_eq!(p.shade.as_deref(), Some("DEEAF6"), "1文字打つだけで帯が消えた");
         assert!(p.boxed, "枠が消えた");
@@ -1227,7 +1228,7 @@ mod section_layout_tests {
     /// 節の種類まで指定する版(continuous = 改ページしない)
     fn 段c(text: &str, sect: Option<PageSetup>, continuous: bool) -> Block {
         Block::Para(Paragraph {
-            runs: vec![Run { text: text.into(), size_pt: 10.5, font: None,
+            runs: vec![Run { text: text.into(), size_pt: Some(10.5), font: None,
                              fmt: Default::default() }],
             line_spacing: 1.0,
             sect: sect.map(|page| SectionBreak { raw: String::new(), page, continuous }),
@@ -1349,17 +1350,17 @@ mod footnote_mark_tests {
     #[test]
     fn 均しても脚注の印は残る() {
         let 印 = |id: &str| Run {
-            text: String::new(), size_pt: 10.5, font: None,
+            text: String::new(), size_pt: Some(10.5), font: None,
             fmt: CharFormat {
                 footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
                 ..Default::default()
             },
         };
         let 字 = |t: &str| Run {
-            text: t.into(), size_pt: 10.5, font: None, fmt: CharFormat::default(),
+            text: t.into(), size_pt: Some(10.5), font: None, fmt: CharFormat::default(),
         };
         let mut runs = vec![字("本文"), 印("20"), 字("の続き"), 印("21")];
-        normalize_runs(&mut runs, 10.5);
+        normalize_runs(&mut runs);
         assert_eq!(runs.iter().filter(|r| r.fmt.footnote.is_some()).count(), 2,
             "印が落ちた: {runs:?}");
         // 印を挟んだ字どうしは繋げない(繋ぐと印が字の外へ出る)
@@ -1373,10 +1374,10 @@ mod footnote_mark_tests {
     #[test]
     fn 印の無い空のrunは今までどおり落ちる() {
         let mut runs = vec![
-            Run { text: "あ".into(), size_pt: 10.5, font: None, fmt: CharFormat::default() },
-            Run { text: String::new(), size_pt: 10.5, font: None, fmt: CharFormat::default() },
+            Run { text: "あ".into(), size_pt: Some(10.5), font: None, fmt: CharFormat::default() },
+            Run { text: String::new(), size_pt: Some(10.5), font: None, fmt: CharFormat::default() },
         ];
-        normalize_runs(&mut runs, 10.5);
+        normalize_runs(&mut runs);
         assert_eq!(runs.len(), 1, "空の run が残った: {runs:?}");
     }
 }
@@ -1393,19 +1394,19 @@ mod footnote_layout_tests {
     }
 
     fn 印(id: &str) -> Run {
-        Run { text: String::new(), size_pt: 10.5, font: None,
+        Run { text: String::new(), size_pt: Some(10.5), font: None,
               fmt: CharFormat {
                   footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
                   ..Default::default() } }
     }
     fn 字(t: &str) -> Run {
-        Run { text: t.into(), size_pt: 10.5, font: None, fmt: CharFormat::default() }
+        Run { text: t.into(), size_pt: Some(10.5), font: None, fmt: CharFormat::default() }
     }
     fn 段(runs: Vec<Run>) -> Block {
         Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
     }
     fn 尾印(id: &str) -> Run {
-        Run { text: String::new(), size_pt: 10.5, font: None,
+        Run { text: String::new(), size_pt: Some(10.5), font: None,
               fmt: CharFormat {
                   footnote: Some(FootnoteRef { id: id.into(), endnote: true }),
                   ..Default::default() } }
@@ -1538,12 +1539,12 @@ mod endnote_tests {
         layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
     }
     fn 印(id: &str, endnote: bool) -> Run {
-        Run { text: String::new(), size_pt: 10.5, font: None,
+        Run { text: String::new(), size_pt: Some(10.5), font: None,
               fmt: CharFormat { footnote: Some(FootnoteRef { id: id.into(), endnote }),
                                 ..Default::default() } }
     }
     fn 字(t: &str) -> Run {
-        Run { text: t.into(), size_pt: 10.5, font: None, fmt: CharFormat::default() }
+        Run { text: t.into(), size_pt: Some(10.5), font: None, fmt: CharFormat::default() }
     }
     fn 段(runs: Vec<Run>) -> Block {
         Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
@@ -1644,7 +1645,7 @@ mod make_footnote_tests {
     use crate::*;
 
     fn 文書(text: &str) -> Document {
-        Document::plain(text, 10.5)
+        Document::plain(text)
     }
 
     #[test]
