@@ -670,6 +670,7 @@ impl PyDoc {
             bytes: std::sync::Arc::new(data),
             w_mm,
             h_mm,
+            tex: None, // python-docx の add_picture。数式は別の口
         });
         g.doc.blocks.push(Block::Para(p));
         let b = g.doc.blocks.len() - 1;

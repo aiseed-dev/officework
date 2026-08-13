@@ -470,8 +470,19 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             *imgn += 1;
             let n = *imgn;
             let (cx, cy) = ((im.w_mm * 36000.0) as i64, (im.h_mm * 36000.0) as i64);
+            // **数式なら原文(LaTeX)を代替テキストに積む。** 絵は組んだ結果
+            // でしかない — これが無いと、こちらで開き直しても直せなくなる。
+            // 渡した先の Word では絵として見え、読み上げにも意味が伝わる
+            let descr = match &im.tex {
+                Some(t) => format!(
+                    r#" descr="{}{}""#,
+                    crate::read::TEX_SIRUSI,
+                    crate::read::esc(t)
+                ),
+                None => String::new(),
+            };
             let xml = format!(
-                r#"<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="{cx}" cy="{cy}"/><wp:docPr id="{n}" name="図{n}"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="{n}" name="図{n}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdJO{n}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>"#
+                r#"<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="{cx}" cy="{cy}"/><wp:docPr id="{n}" name="図{n}"{descr}/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="{n}" name="図{n}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdJO{n}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>"#
             );
             let _ = w.get_mut().write_all(xml.as_bytes());
             media.push(im.bytes.clone());

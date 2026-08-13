@@ -289,6 +289,12 @@ pub struct InlineImage {
     pub bytes: std::sync::Arc<Vec<u8>>,
     pub w_mm: f32,
     pub h_mm: f32,
+    /// **数式なら、その原文(LaTeX)。** 絵は組んだ結果でしかないので、
+    /// これが無いと開き直したとき直せない(絵を消して打ち直しになる)。
+    /// docx では画像の代替テキスト(`wp:docPr descr`)に積んで往復する —
+    /// 渡した先の Word では絵として見え、こちらでは式として直せる。
+    /// 普通の画像は None
+    pub tex: Option<String>,
 }
 
 /// 段落の揃え。docx の `w:jc`。

@@ -901,6 +901,7 @@ mod image_tests {
                 bytes: std::sync::Arc::new(png()),
                 w_mm: 40.0,
                 h_mm: 30.0,
+                tex: None,
             });
         }
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
@@ -924,6 +925,7 @@ mod image_tests {
                 bytes: std::sync::Arc::new(b"not an image".to_vec()),
                 w_mm: 40.0,
                 h_mm: 30.0,
+                tex: None,
             });
         }
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });

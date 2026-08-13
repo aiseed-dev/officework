@@ -1900,6 +1900,7 @@ mod image_insert_tests {
             bytes: std::sync::Arc::new(png_bytes()),
             w_mm: 50.0,
             h_mm: 30.0,
+            tex: None,
         });
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
                            blocks: vec![Block::Para(p)] };
@@ -1922,6 +1923,59 @@ mod image_insert_tests {
         assert_eq!(back2.paragraphs().next().unwrap().images.len(), 1,
             "二度目の保存で画像が消えた");
     }
+
+    /// **数式は絵と原文の二枚組で往復する。** 絵は組んだ結果でしかないので、
+    /// 原文(LaTeX)が戻らないと開き直したとき直せない(絵を消して打ち直しになる)。
+    /// docx の画像の代替テキスト(wp:docPr descr)に積んで運ぶ —
+    /// 渡した先の Word では絵として見え、こちらでは式として直せる
+    #[test]
+    fn 数式は原文ごと往復する() {
+        let shiki = r"\frac{a+b}{2} < \sqrt{x^2} & \alpha";  // < と & も逃がせるか
+        let mut p = Paragraph { line_spacing: 1.0, ..Default::default() };
+        p.images_new.push(InlineImage {
+            bytes: std::sync::Arc::new(png_bytes()),
+            w_mm: 12.0,
+            h_mm: 8.0,
+            tex: Some(shiki.to_string()),
+        });
+        let d = Document { blocks: vec![Block::Para(p)], ..Default::default() };
+        let mut buf = Cursor::new(Vec::new());
+        write(&d, &mut buf).expect("書けない");
+        let first = buf.into_inner();
+
+        let (back, _) = read(Cursor::new(first.clone())).expect("読めない");
+        let im = &back.paragraphs().next().unwrap().images[0];
+        assert_eq!(im.tex.as_deref(), Some(shiki), "数式の原文が往復しない");
+
+        // 原本を渡すもう一往復でも消えない(アプリの保存と同じ形)
+        let mut buf2 = Cursor::new(Vec::new());
+        write_with(&back, Some(Cursor::new(&first)), &mut buf2).expect("書けない");
+        buf2.set_position(0);
+        let (back2, _) = read(buf2).expect("読み直せない");
+        assert_eq!(back2.paragraphs().next().unwrap().images[0].tex.as_deref(), Some(shiki),
+            "二度目の保存で数式の原文が消えた");
+    }
+
+    /// **普通の画像を数式と読み違えない。** 人が書いた説明文が代替テキストに
+    /// 入っていても、印が無ければ原文として拾わない
+    #[test]
+    fn 説明文つきの画像は数式にならない() {
+        let mut media = std::collections::BTreeMap::new();
+        media.insert("rId9".to_string(), std::sync::Arc::new(png_bytes()));
+        let raw = |descr: &str| format!(
+            r#"<wp:inline><wp:extent cx="360000" cy="180000"/><wp:docPr id="1" name="図1"{descr}/><a:blip r:embed="rId9"/></wp:inline>"#
+        );
+        // 印のある物だけが数式
+        let im = crate::read::image_of(&raw(r#" descr="officework:tex:\frac{1}{2}""#), &media).unwrap();
+        assert_eq!(im.tex.as_deref(), Some(r"\frac{1}{2}"), "印つきを拾えない");
+        // 人の説明文は式ではない
+        let im = crate::read::image_of(&raw(r#" descr="会社のロゴ""#), &media).unwrap();
+        assert_eq!(im.tex, None, "人の説明文を数式の原文と読み違えた");
+        // 代替テキストが無いのも当然 None
+        let im = crate::read::image_of(&raw(""), &media).unwrap();
+        assert_eq!(im.tex, None, "無いものを拾った");
+    }
+
 }
 
 #[cfg(test)]

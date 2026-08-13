@@ -439,6 +439,10 @@ pub(super) fn carry_math(raw: &str, decls: &std::collections::BTreeMap<String, S
     Some(format!("{}{}{}", &raw[..at], attrs, &raw[at..]))
 }
 
+/// 数式の画像の代替テキストに付ける印。**この印で始まるものだけ**を原文と
+/// 見なす — 人が書いた説明文を式と読み違えない。読み書きの両側で使う
+pub(super) const TEX_SIRUSI: &str = "officework:tex:";
+
 /// 原文から表示用の画像を引く。EMU(914400/inch)→ mm は ÷36000。
 pub(super) fn image_of(
     raw: &str,
@@ -454,7 +458,12 @@ pub(super) fn image_of(
     // wp:extent cx/cy(EMU)。無ければ表示しない(大きさを勝手に決めない)
     let cx: f32 = grab("cx=\"")?.parse().ok()?;
     let cy: f32 = grab("cy=\"")?.parse().ok()?;
-    Some(kumihan::InlineImage { bytes, w_mm: cx / 36000.0, h_mm: cy / 36000.0 })
+    // **数式なら原文(LaTeX)が代替テキストに積んである。** 拾わないと、
+    // こちらで書いた数式を開き直したとき絵のままで直せない
+    let tex = grab("descr=\"")
+        .filter(|d| d.starts_with(TEX_SIRUSI))
+        .map(|d| unesc(&d[TEX_SIRUSI.len()..]));
+    Some(kumihan::InlineImage { bytes, w_mm: cx / 36000.0, h_mm: cy / 36000.0, tex })
 }
 
 /// sectPr から用紙の寸法を読む(twip → mm)。
