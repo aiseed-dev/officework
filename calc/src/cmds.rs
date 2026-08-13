@@ -2623,17 +2623,21 @@ impl Calc {
                     ));
                 }
             }
+            // 図形は**分類の段が先**(本家と同じ2段)。1段に 30 以上並べると
+            // 探せない — 分類は本家の並びに合わせた
             "insshape" => {
                 let at = self.pop_anchor();
-                self.pick_kind = "shape";
+                self.pick_kind = "shape-cat";
+                self.pick_note = Some(ui::t!("図形の分類").into());
                 self.pick = Some((
                     menu(&[
-                        ui::item!("四角形"),
-                        ui::item!("角丸四角形"),
-                        ui::item!("楕円"),
-                        ui::item!("右矢印"),
-                        ui::item!("ひし形"),
-                        ui::item!("直線"),
+                        ui::item!("基本図形"),
+                        ui::item!("ブロック矢印"),
+                        ui::item!("数式図形"),
+                        ui::item!("フローチャート"),
+                        ui::item!("星とリボン"),
+                        ui::item!("吹き出し"),
+                        ui::item!("線"),
                     ]),
                     at,
                 ));
@@ -2715,7 +2719,14 @@ impl Calc {
                 self.pick_kind = "fill-color";
                 let mut items: Vec<(String, String)> =
                     fill_colors().iter().map(|(k, l, _)| (k.to_string(), l.to_string())).collect();
-                items.extend(menu(&[ui::item!("その他(RRGGBB を打つ)…")]));
+                items.extend(menu(&[
+                    ui::item!("その他(RRGGBB を打つ)…"),
+                    // 単色以外(台帳 第2便の [中])。**色を選ぶとべた塗りに戻る** —
+                    // 柄と虹はここから掛け直す
+                    ui::item!("柄を掛ける…"),
+                    ui::item!("グラデーション…"),
+                    ui::item!("柄の地の色…"),
+                ]));
                 self.pick = Some((items, at));
             }
             // フォントの色。同じくパレット

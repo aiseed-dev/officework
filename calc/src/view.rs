@@ -1213,7 +1213,14 @@ impl Render for Calc {
                         }
                     }
                 }
-                d = d.bg(base);
+                // 柄とグラデーション(台帳 第2便の [中])。**選べる物は描く** —
+                // 単色で描いていると、掛けた柄が画面に出ない
+                let (bgv, pat) = cell_background(&f, base);
+                d = d.bg(bgv);
+                if let Some(p) = pat {
+                    // 柄は下地の上に敷く(データバーと同じ重ね方)
+                    d = d.relative().child(div().absolute().inset_0().bg(p));
+                }
                 // データバー(文字の下に敷く。子は後の文字が上に描かれる)
                 if let Some((t, bc)) = cond_bar {
                     let bw = (self.col_px(c) - 2.0).max(0.0) * t;
@@ -2881,6 +2888,7 @@ impl Render for Calc {
                 "border-color-rgb" => ui::t!("線の色 — RRGGBB の6桁(例: FF0000。空 Enter = 自動)").to_string(),
                 "font-color-rgb" => ui::t!("文字の色 — RRGGBB の6桁(例: FF0000。空 Enter = 自動)").to_string(),
                 "fill-color-rgb" => ui::t!("塗りの色 — RRGGBB の6桁(例: FFF2CC。空 Enter = 塗りなし)").to_string(),
+                "fill-bg-rgb" => ui::t!("柄の地の色 — RRGGBB の6桁(例: FFFFFF。空 Enter = 白)").to_string(),
                 "text-angle" => ui::t!("文字の角度 — -90〜90 の数(上向きが正。空 Enter = 0)").to_string(),
                 "hf-edit" => ui::t!("ヘッダー/フッター — この区分の文字(&P=頁 &N=総頁。空 Enter = 消す)").to_string(),
                 "name-range" => ui::t!("名前の中身 — 場所(B12 か A1:C9 の形)").to_string(),

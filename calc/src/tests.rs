@@ -4831,3 +4831,67 @@ mod shape_nudge_tests {
         });
     }
 }
+
+/// 図形ギャラリー(台帳 第2便の [中] の画面側、2026-08-13)
+#[cfg(test)]
+mod shape_gallery_tests {
+    use crate::{shape_cat_label, shape_gallery, shape_kind};
+
+    const CATS: &[&str] = &[
+        "基本図形", "ブロック矢印", "数式図形", "フローチャート",
+        "星とリボン", "吹き出し", "線",
+    ];
+
+    #[test]
+    fn 一覧に並ぶ形はすべて本当に描ける() {
+        // **できないものを、できるように見せない。** 描けない名前を
+        // 並べると、押した人の前に四角が置かれる
+        let mut n = 0;
+        for c in CATS {
+            let items = shape_gallery(c);
+            assert!(!items.is_empty(), "{c} が空");
+            for (k, _) in items {
+                let (kind, _) = shape_kind(k);
+                assert!(
+                    sheet::model::can_draw(kind),
+                    "{c} の「{k}」= {kind} は描けない形",
+                );
+                n += 1;
+            }
+        }
+        assert!(n >= 30, "一覧が痩せている({n} 個)");
+    }
+
+    #[test]
+    fn 鍵はどの分類でも重ならない() {
+        // 分類をまたいで同じ鍵があると、2段目の引き当てが取り違える
+        // (フローチャートの「処理」と基本図形の「四角形」は別物)
+        let mut seen = std::collections::BTreeSet::new();
+        for c in CATS {
+            for (k, _) in shape_gallery(c) {
+                assert!(seen.insert(k), "鍵「{k}」が二度出てくる");
+            }
+        }
+    }
+
+    #[test]
+    fn 一覧の鍵はすべて種類に引き当たる() {
+        // 引き当てから漏れた鍵は黙って四角になる。**漏れを試験で捕まえる**
+        for c in CATS {
+            for (k, _) in shape_gallery(c) {
+                let (kind, _) = shape_kind(k);
+                assert!(
+                    kind != "rect" || k == "四角形",
+                    "「{k}」が引き当てから漏れて四角に落ちている",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn 分類の見出しがすべてある() {
+        for c in CATS {
+            assert!(!shape_cat_label(c).is_empty(), "{c} の見出しが空");
+        }
+    }
+}

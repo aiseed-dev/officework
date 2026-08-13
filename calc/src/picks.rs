@@ -31,17 +31,26 @@ impl Calc {
                 self.recent_symbols.truncate(12);
                 self.status = ui::tf!("「{}」を差し込みました(Enter で確定)", v).into();
             }
+            // 分類を選んだ段。**2段目は1段目と同じ場所に重ねる**(目が飛ばない)
+            "shape-cat" => {
+                let items = shape_gallery(v);
+                if items.is_empty() {
+                    return;
+                }
+                let at = self
+                    .pick
+                    .as_ref()
+                    .map(|(_, at)| *at)
+                    .unwrap_or_else(|| self.pop_anchor());
+                self.pick_kind = "shape";
+                self.pick_note = Some(SharedString::from(shape_cat_label(v).to_string()));
+                self.pick = Some((menu(&items), at));
+                return; // pick_kind を戻さない(2段目へ)
+            }
             "shape" => {
                 // **鍵をそのまま文に差し込まない。** v は日本語の鍵なので、
                 // 訳した文の中に日本語が残ってしまう(一覧は ui::item! で組んである)
-                let (kind, name) = match v {
-                    "角丸四角形" => ("roundRect", ui::t!("角丸四角形")),
-                    "楕円" => ("ellipse", ui::t!("楕円")),
-                    "右矢印" => ("rightArrow", ui::t!("右矢印")),
-                    "ひし形" => ("diamond", ui::t!("ひし形")),
-                    "直線" => ("line", ui::t!("直線")),
-                    _ => ("rect", ui::t!("四角形")),
-                };
+                let (kind, name) = shape_kind(v);
                 self.checkpoint();
                 let at = self.cursor;
                 self.sheet_mut().shapes_new.push(sheet::model::SheetShape {
@@ -1139,9 +1148,47 @@ impl Calc {
                     self.prompt = Some(("fill-color-rgb", Editor::new("")));
                     return; // パネルの確定まで
                 }
+                // 2段目へ(柄・グラデーション)。1段目と同じ場所に重ねる
+                if v == "柄を掛ける…" || v == "グラデーション…" {
+                    let at = self
+                        .pick
+                        .as_ref()
+                        .map(|(_, at)| *at)
+                        .unwrap_or_else(|| self.pop_anchor());
+                    let grad = v.starts_with("グラデーション");
+                    self.pick_kind = if grad { "fill-grad" } else { "fill-pattern" };
+                    self.pick_note = Some(
+                        if grad { ui::t!("グラデーション") } else { ui::t!("柄") }.into(),
+                    );
+                    self.pick = Some((menu(&if grad { grad_dirs() } else { fill_patterns() }), at));
+                    return;
+                }
+                if v == "柄の地の色…" {
+                    // **柄が無いときは効かない。そう言う** — 押して何も
+                    // 起きないと、鍵が効かないのか柄が無いのか分からない
+                    let has = self
+                        .sheet()
+                        .get(self.cursor)
+                        .map(|c| c.fmt.fill_pattern.is_some())
+                        .unwrap_or(false);
+                    if !has {
+                        self.status =
+                            ui::t!("いまのセルに柄が掛かっていません(先に「柄を掛ける」で選んでください)").into();
+                        return;
+                    }
+                    self.prompt = Some(("fill-bg-rgb", Editor::new("")));
+                    return;
+                }
                 if let Some((_, label, hx)) = fill_colors().iter().find(|(k, _, _)| *k == v) {
                     let c = hx.map(|h| h.to_string());
-                    self.fmt(move |f| f.fill = c.clone());
+                    // **色を選ぶ = べた塗り。** 柄と虹は外す — 単色を選んだのに
+                    // 前の網目が残っていたら、選んだ物と見える物が食い違う
+                    self.fmt(move |f| {
+                        f.fill = c.clone();
+                        f.fill_pattern = None;
+                        f.fill_bg = None;
+                        f.fill_grad = None;
+                    });
                     // 鍵ではなく見出し(訳した文に日本語を混ぜない)
                     self.status = if hx.is_some() {
                         ui::tf!("塗りを{}にしました", label).into()
@@ -1149,6 +1196,42 @@ impl Calc {
                         ui::t!("塗りを消しました").into()
                     };
                 }
+            }
+            // 柄を掛ける。**いまの塗りの色を前景に**、地は白から始める
+            // (地は「柄の地の色…」で後から変えられる)
+            "fill-pattern" => {
+                let Some(p) = pattern_kind(v) else { return };
+                let now = self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
+                // 色が無いまま柄だけ掛けると、白地に白の柄=何も見えない
+                let fg = now.fill.clone().unwrap_or_else(|| "808080".into());
+                let bg = now.fill_bg.clone().unwrap_or_else(|| "FFFFFF".into());
+                self.fmt(move |f| {
+                    f.fill = Some(fg.clone());
+                    f.fill_pattern = Some(p.to_string());
+                    f.fill_bg = Some(bg.clone());
+                    f.fill_grad = None; // 柄と虹は排他(xlsx も塗りの要素は一つ)
+                });
+                let label = fill_patterns().iter().find(|(k, _)| *k == v).map(|(_, l)| *l).unwrap_or("");
+                self.status =
+                    ui::tf!("柄を「{}」にしました(前景はいまの塗りの色、地は「柄の地の色」で変えられます)", label).into();
+            }
+            "fill-grad" => {
+                let Some((deg, path)) = grad_dir_of(v) else { return };
+                let now = self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
+                // いまの塗りの色から白へ。色が無ければ薄い青から白へ
+                let from = now.fill.clone().unwrap_or_else(|| "DEEAF6".into());
+                self.fmt(move |f| {
+                    f.fill_grad = Some(sheet::model::Gradient {
+                        degree_c: deg,
+                        stops: vec![(0, from.clone()), (1000, "FFFFFF".into())],
+                        path: path.then(|| "path".to_string()),
+                    });
+                    f.fill_pattern = None;
+                    f.fill_bg = None;
+                });
+                let label = grad_dirs().iter().find(|(k, _)| *k == v).map(|(_, l)| *l).unwrap_or("");
+                self.status =
+                    ui::tf!("グラデーションを「{}」にしました(いまの塗りの色から白へ)", label).into();
             }
             "sheet-menu" => {
                 self.sheet_menu_action(v);
@@ -2930,6 +3013,21 @@ impl Calc {
                         self.fmt(move |f| f.fill = c.clone());
                         self.status = ui::tf!("塗りを{}にしました", format!("#{t}")).into();
                     }
+                } else {
+                    self.status = ui::t!("色が読めません(RRGGBB の6桁。例: FF0000)").into();
+                    self.prompt = Some((kind, Editor::new(&t)));
+                }
+            }
+            // 柄の地の色(patternFill の bgColor)。柄が掛かっているときだけ意味を持つ
+            "fill-bg-rgb" => {
+                let t = text.trim().trim_start_matches('#').to_uppercase();
+                if t.is_empty() {
+                    self.fmt(|f| f.fill_bg = Some("FFFFFF".into()));
+                    self.status = ui::t!("柄の地を白に戻しました").into();
+                } else if t.len() == 6 && u32::from_str_radix(&t, 16).is_ok() {
+                    let c = Some(t.clone());
+                    self.fmt(move |f| f.fill_bg = c.clone());
+                    self.status = ui::tf!("柄の地を{}にしました", format!("#{t}")).into();
                 } else {
                     self.status = ui::t!("色が読めません(RRGGBB の6桁。例: FF0000)").into();
                     self.prompt = Some((kind, Editor::new(&t)));

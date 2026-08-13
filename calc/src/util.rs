@@ -1579,3 +1579,247 @@ pub(crate) fn slicer_items(
     }
     (out, cut)
 }
+
+/// 図形ギャラリー(台帳 第2便の [中]、2026-08-13)。
+///
+/// **分類は本家の並び。** 載せるのは `sheet::model::can_draw` が
+/// 「その形として描ける」と答えるものだけ — できないものを、
+/// できるように見せない(`cube` や `heart` を並べれば、四角が置かれる)。
+/// 組は (鍵=日本語, 見出し)。**引き当ては鍵**で、見出しだけが画面の言語になる。
+pub(crate) fn shape_gallery(cat: &str) -> Vec<(&'static str, &'static str)> {
+    match cat {
+        "基本図形" => vec![
+            ui::item!("四角形"),
+            ui::item!("角丸四角形"),
+            ui::item!("楕円"),
+            ui::item!("三角形"),
+            ui::item!("直角三角形"),
+            ui::item!("平行四辺形"),
+            ui::item!("台形"),
+            ui::item!("ひし形"),
+            ui::item!("五角形"),
+            ui::item!("六角形"),
+            ui::item!("八角形"),
+            ui::item!("十字"),
+        ],
+        "ブロック矢印" => vec![
+            ui::item!("右矢印"),
+            ui::item!("左矢印"),
+            ui::item!("上矢印"),
+            ui::item!("下矢印"),
+            ui::item!("左右矢印"),
+            ui::item!("上下矢印"),
+        ],
+        "数式図形" => vec![
+            ui::item!("加算記号"),
+            ui::item!("減算記号"),
+            ui::item!("乗算記号"),
+            ui::item!("等号"),
+            ui::item!("不等号"),
+        ],
+        "フローチャート" => vec![
+            ui::item!("処理"),
+            ui::item!("判断"),
+            ui::item!("データ"),
+            ui::item!("端子"),
+            ui::item!("書類"),
+            ui::item!("結合子"),
+        ],
+        "星とリボン" => vec![
+            ui::item!("星 4"),
+            ui::item!("星 5"),
+            ui::item!("星 6"),
+            ui::item!("星 8"),
+        ],
+        "吹き出し" => vec![
+            ui::item!("四角形の吹き出し"),
+            ui::item!("円形の吹き出し"),
+        ],
+        "線" => vec![ui::item!("直線")],
+        _ => Vec::new(),
+    }
+}
+
+/// 分類の鍵 → 画面の見出し(2段目の題に出す)
+pub(crate) fn shape_cat_label(cat: &str) -> &'static str {
+    match cat {
+        "ブロック矢印" => ui::t!("ブロック矢印"),
+        "数式図形" => ui::t!("数式図形"),
+        "フローチャート" => ui::t!("フローチャート"),
+        "星とリボン" => ui::t!("星とリボン"),
+        "吹き出し" => ui::t!("吹き出し"),
+        "線" => ui::t!("線"),
+        _ => ui::t!("基本図形"),
+    }
+}
+
+/// 図形の鍵 → (prstGeom の名前, 画面の見出し)。
+/// **知らない鍵は四角**(一覧から来る限り起こらないが、黙って落とさない)
+pub(crate) fn shape_kind(v: &str) -> (&'static str, &'static str) {
+    match v {
+        "角丸四角形" => ("roundRect", ui::t!("角丸四角形")),
+        "楕円" => ("ellipse", ui::t!("楕円")),
+        "三角形" => ("triangle", ui::t!("三角形")),
+        "直角三角形" => ("rtTriangle", ui::t!("直角三角形")),
+        "平行四辺形" => ("parallelogram", ui::t!("平行四辺形")),
+        "台形" => ("trapezoid", ui::t!("台形")),
+        "ひし形" => ("diamond", ui::t!("ひし形")),
+        "五角形" => ("pentagon", ui::t!("五角形")),
+        "六角形" => ("hexagon", ui::t!("六角形")),
+        "八角形" => ("octagon", ui::t!("八角形")),
+        "十字" => ("plus", ui::t!("十字")),
+        "右矢印" => ("rightArrow", ui::t!("右矢印")),
+        "左矢印" => ("leftArrow", ui::t!("左矢印")),
+        "上矢印" => ("upArrow", ui::t!("上矢印")),
+        "下矢印" => ("downArrow", ui::t!("下矢印")),
+        "左右矢印" => ("leftRightArrow", ui::t!("左右矢印")),
+        "上下矢印" => ("upDownArrow", ui::t!("上下矢印")),
+        "加算記号" => ("mathPlus", ui::t!("加算記号")),
+        "減算記号" => ("mathMinus", ui::t!("減算記号")),
+        "乗算記号" => ("mathMultiply", ui::t!("乗算記号")),
+        "等号" => ("mathEqual", ui::t!("等号")),
+        "不等号" => ("mathNotEqual", ui::t!("不等号")),
+        "処理" => ("flowChartProcess", ui::t!("処理")),
+        "判断" => ("flowChartDecision", ui::t!("判断")),
+        "データ" => ("flowChartInputOutput", ui::t!("データ")),
+        "端子" => ("flowChartTerminator", ui::t!("端子")),
+        "書類" => ("flowChartDocument", ui::t!("書類")),
+        "結合子" => ("flowChartConnector", ui::t!("結合子")),
+        "星 4" => ("star4", ui::t!("星 4")),
+        "星 5" => ("star5", ui::t!("星 5")),
+        "星 6" => ("star6", ui::t!("星 6")),
+        "星 8" => ("star8", ui::t!("星 8")),
+        "四角形の吹き出し" => ("wedgeRectCallout", ui::t!("四角形の吹き出し")),
+        "円形の吹き出し" => ("wedgeEllipseCallout", ui::t!("円形の吹き出し")),
+        "直線" => ("line", ui::t!("直線")),
+        _ => ("rect", ui::t!("四角形")),
+    }
+}
+
+/// 塗りの柄(xlsx の patternType)。
+///
+/// **画面で描き分けられる柄だけを並べる。** GPUI が持つ背景は
+/// 単色・線形グラデーション・斜線・市松の4つで、横線と縦線と斜め格子は
+/// 描き分けられない — 並べれば「選べるのに同じに見える」ことになる。
+/// 網の %% は**濃さの混色**で見せる: セルの大きさでは細かい点は目に
+/// 解けず、Excel も同じ見え方になる(方向を持つ柄だけが別物)。
+///
+/// 読むほうは xlsx のどの柄も受ける(往復は保つ) — 出せるものを絞るだけ。
+/// 組は (鍵=日本語, 見出し)。引き当ては `pattern_kind` が持つ
+pub(crate) fn fill_patterns() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ui::item!("網 6.25%"),
+        ui::item!("網 12.5%"),
+        ui::item!("網 25%"),
+        ui::item!("網 50%"),
+        ui::item!("斜線"),
+        ui::item!("市松"),
+    ]
+}
+
+/// 柄の鍵 → xlsx の patternType
+pub(crate) fn pattern_kind(v: &str) -> Option<&'static str> {
+    Some(match v {
+        "網 6.25%" => "gray0625",
+        "網 12.5%" => "gray125",
+        "網 25%" => "lightGray",
+        "網 50%" => "mediumGray",
+        "斜線" => "darkUp",
+        "市松" => "darkGrid",
+        _ => return None,
+    })
+}
+
+/// グラデーションの向き。**角度で持つ**(xlsx の degree)
+pub(crate) fn grad_dirs() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ui::item!("横(左から右)"),
+        ui::item!("縦(上から下)"),
+        ui::item!("斜め(左上から右下)"),
+        ui::item!("斜め(左下から右上)"),
+    ]
+}
+
+/// 向きの鍵 → (角度×100, 放射か)。
+/// **放射は並べない** — GPUI に放射の背景が無く、線形で代用すると
+/// 選んだ物と見える物が食い違う。読みは受ける(往復は保つ)
+pub(crate) fn grad_dir_of(v: &str) -> Option<(i32, bool)> {
+    Some(match v {
+        "横(左から右)" => (0, false),
+        "縦(上から下)" => (9000, false),
+        "斜め(左上から右下)" => (4500, false),
+        "斜め(左下から右上)" => (31500, false),
+        _ => return None,
+    })
+}
+
+/// セルの塗りを GPUI の背景に直す。**返りは(下地, 柄の重ね)**。
+///
+/// 柄は前景色で下地の上に敷く(データバーと同じ重ね方)。
+/// GPUI が持つ背景は単色・線形グラデーション・斜線・市松の4つなので、
+/// **描き分けられない柄は濃さの混色に落とす** — 方向を持たない網は
+/// セルの大きさでは点が目に解けず、混色のほうが実物に近い。
+/// 横線・縦線のような方向のある柄は一覧に並べていないが、Excel の帳票には
+/// 入ってくるので、ここへ来たら濃さで見せる(色は正しく、粗さだけが違う)。
+pub(crate) fn cell_background(
+    f: &sheet::model::CellFormat,
+    base: gpui::Rgba,
+) -> (gpui::Background, Option<gpui::Background>) {
+    use gpui::{checkerboard, linear_gradient, pattern_slash};
+    // グラデーションが先(柄とは排他)
+    if let Some(g) = &f.fill_grad {
+        let col = |i: usize, dflt: gpui::Rgba| {
+            g.stops.get(i).map(|(_, c)| hex(c)).unwrap_or(dflt)
+        };
+        let from = col(0, base);
+        let to = col(g.stops.len().saturating_sub(1), gpui::Rgba { r: 1.0, g: 1.0, b: 1.0, a: 1.0 });
+        // xlsx の 0 度は「左から右」、GPUI の 0 度は「上へ」で時計回り
+        let angle = (g.degree_c as f32 / 100.0 + 90.0).rem_euclid(360.0);
+        return (
+            linear_gradient(
+                angle,
+                gpui::linear_color_stop(from, 0.0),
+                gpui::linear_color_stop(to, 1.0),
+            ),
+            None,
+        );
+    }
+    let Some(p) = &f.fill_pattern else { return (base.into(), None) };
+    // 柄の下地は bgColor(無ければ白)、柄そのものは前景色(= fill)
+    let bg = f.fill_bg.as_deref().map(hex).unwrap_or(gpui::Rgba { r: 1.0, g: 1.0, b: 1.0, a: 1.0 });
+    let fg = f.fill.as_deref().map(hex).unwrap_or(gpui::Rgba { r: 0.5, g: 0.5, b: 0.5, a: 1.0 });
+    match p.as_str() {
+        // 斜めの縞。GPUI の斜線は1方向だけなので、上がりも下がりもこれで見せる
+        "darkUp" | "darkDown" | "lightUp" | "lightDown" => {
+            (bg.into(), Some(pattern_slash(fg, 1.0, 3.0)))
+        }
+        "darkGrid" | "darkTrellis" | "lightGrid" | "lightTrellis" => {
+            (bg.into(), Some(checkerboard(fg, 4.0)))
+        }
+        // 濃さで見せる柄(方向を持たないもの、と描き分けられないもの)
+        other => {
+            let t = match other {
+                "gray0625" => 0.0625,
+                "gray125" => 0.125,
+                "lightGray" => 0.25,
+                "mediumGray" => 0.5,
+                "darkGray" => 0.75,
+                // 方向のある柄(横線・縦線)は描き分けられない。濃さで見せる
+                "lightHorizontal" | "lightVertical" => 0.25,
+                "darkHorizontal" | "darkVertical" => 0.5,
+                _ => 0.5,
+            };
+            let mix = |a: f32, b: f32| a * (1.0 - t) + b * t;
+            (
+                gpui::Rgba {
+                    r: mix(bg.r, fg.r),
+                    g: mix(bg.g, fg.g),
+                    b: mix(bg.b, fg.b),
+                    a: 1.0,
+                }
+                .into(),
+                None,
+            )
+        }
+    }
+}
