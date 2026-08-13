@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" fill="none" id="btn-rtl-sheet">
+    <g class="icon-stroke-gray-primary"><rect x="3.5" y="3.5" width="13" height="13" rx="1"/><path d="M3.5 7.5h13M8 3.5v13M12.5 3.5v13"/></g>
+    <g class="icon-stroke-blue-primary"><path d="M13 20.5h8m0 0-2.5-2.5M21 20.5l-2.5 2.5"/></g>
+</svg>

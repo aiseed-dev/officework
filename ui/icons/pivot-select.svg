@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" fill="none" id="btn-pivot-select">
+    <g class="icon-stroke-gray-primary"><rect x="3.5" y="4.5" width="17" height="15" rx="1" stroke-dasharray="2 2"/></g>
+    <g class="icon-stroke-blue-primary"><path d="M9 9h6.5v6.5H9Z"/></g>
+</svg>

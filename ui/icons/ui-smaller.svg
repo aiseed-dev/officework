@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" fill="none" id="btn-ui-smaller">
+    <g class="icon-stroke-gray-primary"><path d="m3.5 17.5 4.5-11 4.5 11m-7.6-3h6.2"/></g>
+    <g class="icon-stroke-blue-primary"><path d="M18 9v9m-3-3 3 3 3-3"/></g>
+</svg>
