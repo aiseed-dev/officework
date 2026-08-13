@@ -139,6 +139,7 @@ pub const WRITER: &[Tab] = &[
         c("zoom100", "100%로 확대", "zoom100"),
         c("zoom-in", "확대", "zoom-in"),
         c("zoom-out", "축소", "zoom-out"),
+        c("printview", "인쇄 모양", "printview"),
         c("multipage", "여러 페이지", "multipage"),
         c("darkmode", "다크 모드", "darkmode"),
         c("ruler", "자", "ruler"),

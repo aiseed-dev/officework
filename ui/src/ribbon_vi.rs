@@ -139,6 +139,7 @@ pub const WRITER: &[Tab] = &[
         c("zoom100", "Thu phóng về 100%", "zoom100"),
         c("zoom-in", "Phóng to", "zoom-in"),
         c("zoom-out", "Thu nhỏ", "zoom-out"),
+        c("printview", "Bố cục in", "printview"),
         c("multipage", "Nhiều trang", "multipage"),
         c("darkmode", "Chế độ tối", "darkmode"),
         c("ruler", "Thước", "ruler"),

@@ -139,6 +139,7 @@ pub const WRITER: &[Tab] = &[
         c("zoom100", "縮放至 100%", "zoom100"),
         c("zoom-in", "放大", "zoom-in"),
         c("zoom-out", "縮小", "zoom-out"),
+        c("printview", "整頁模式", "printview"),
         c("multipage", "多頁", "multipage"),
         c("darkmode", "深色模式", "darkmode"),
         c("ruler", "尺規", "ruler"),
