@@ -39,10 +39,11 @@ fn from_file(key: &str) -> Option<String> {
     None
 }
 
+static LANG: OnceLock<String> = OnceLock::new();
+
 /// 画面の言語。**文言が揃った言語だけ**を受ける(登録簿 i18n_tables が正)。
-/// 優先順: 環境変数 OFFICE_LANG > settings.toml > 既定 ja
+/// 優先順: [`set_language`] の注入 > 環境変数 OFFICE_LANG > settings.toml > 既定 ja
 pub fn language() -> &'static str {
-    static LANG: OnceLock<String> = OnceLock::new();
     LANG.get_or_init(|| {
         let raw = std::env::var("OFFICE_LANG")
             .ok()
@@ -55,6 +56,21 @@ pub fn language() -> &'static str {
             "ja".into()
         }
     })
+}
+
+/// 言語を外から注ぐ — settings.toml を持たない的(スマホの Swift / Kotlin の
+/// 画面、WASM)のため。ファイルを読む代わりに、アプリが OS の言語設定を
+/// ここへ渡す。
+///
+/// **起動の最初に1回。** 一度 [`language`] が走ると値は固まるので、
+/// その後は効かず false を返す(黙って効いたふりをしない)。
+/// 知らない札も false — 黙って ja に落とさない。呼ばなければ今までどおり
+/// (環境変数 → settings.toml → ja)なので、デスクトップは何も変わらない
+pub fn set_language(tag: &str) -> bool {
+    if tag != "ja" && !crate::i18n_tables::LANGS.contains(&tag) {
+        return false;
+    }
+    LANG.set(tag.to_string()).is_ok()
 }
 
 /// 選べる言語(ja + 表の揃った言語)。設定ページの巡回もこれを見る
