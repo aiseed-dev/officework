@@ -958,10 +958,15 @@ impl Render for Calc {
                     {
                         continue;
                     }
-                    let to_left = match f.align {
-                        HAlign::Right => true,
-                        HAlign::Left | HAlign::General => false,
-                        _ => continue, // 中央・両端揃えは流さない
+                    // 伸びる向き: 右揃えは左へ、左揃えは右へ、**中央は両側へ**
+                    // (発注者 2026-08-14。本家も中央揃えの長い字は左右の空きに
+                    // またがって出る)。両端揃え・均等割付は流さない —
+                    // 字の間を割る組み方なので、はみ出しと相性が悪い
+                    let (to_left, both) = match f.align {
+                        HAlign::Right => (true, false),
+                        HAlign::Left | HAlign::General => (false, false),
+                        HAlign::Center | HAlign::CenterContinuous => (false, true),
+                        _ => continue,
                     };
                     let t1 = t.replace('\n', " ");
                     // マークダウンとして描くセルは、印を外した後の長さで幅を測る
@@ -982,43 +987,76 @@ impl Render for Calc {
                     if need <= w {
                         continue; // 収まっている
                     }
-                    // 伸びる方向の空きセルぶんだけ許す
-                    let (mut avail, mut left_ext, mut k) = (w, 0.0f32, ci);
-                    loop {
-                        if need <= avail {
-                            break;
-                        }
-                        let nk = if to_left {
-                            k.checked_sub(1)
-                        } else {
-                            (k + 1 < vis_cols.len()).then_some(k + 1)
-                        };
-                        let Some(nk) = nk else { break };
-                        let nc = vis_cols[nk];
+                    // 伸びる方向の空きセルぶんだけ許す。中央は左右を交互に
+                    // (どちらかが塞がっていれば、空いている側だけ伸びる)
+                    let free = |nc: u32| -> bool {
                         let np = Pos::new(r, nc);
-                        let occupied = self
+                        !(self
                             .sheet()
                             .get(np)
                             .is_some_and(|q| !q.value.is_empty() || q.formula.is_some())
                             || self.sheet().covered_by_merge(np)
-                            || np == self.cursor;
-                        if occupied {
+                            || np == self.cursor)
+                    };
+                    let (mut avail, mut left_ext) = (w, 0.0f32);
+                    let (mut lk, mut rk) = (ci, ci); // 伸ばした端(添字)
+                    let mut go_left = to_left || both;
+                    loop {
+                        if need <= avail {
                             break;
                         }
-                        let nw = self.col_px(nc);
-                        avail += nw;
-                        if to_left {
-                            left_ext += nw;
+                        // 中央は左右を交互に。片側だけの時はその向きへ
+                        let try_left = if both { go_left } else { to_left };
+                        let nk = if try_left {
+                            lk.checked_sub(1)
+                        } else {
+                            (rk + 1 < vis_cols.len()).then_some(rk + 1)
+                        };
+                        let grew = match nk {
+                            Some(nk) if free(vis_cols[nk]) => {
+                                let nw = self.col_px(vis_cols[nk]);
+                                avail += nw;
+                                if try_left {
+                                    left_ext += nw;
+                                    lk = nk;
+                                } else {
+                                    rk = nk;
+                                }
+                                true
+                            }
+                            _ => false,
+                        };
+                        if both {
+                            if !grew {
+                                // この向きは行き止まり — 反対側だけで続ける
+                                let other_ok = if go_left {
+                                    (rk + 1 < vis_cols.len()) && free(vis_cols[rk + 1])
+                                } else {
+                                    lk.checked_sub(1).is_some_and(|k| free(vis_cols[k]))
+                                };
+                                if !other_ok {
+                                    break;
+                                }
+                            }
+                            go_left = !go_left;
+                        } else if !grew {
+                            break;
                         }
-                        k = nk;
                     }
                     if avail <= w {
                         continue; // 隣が塞がっている — 今までどおり切る
                     }
                     spill_from.insert(p);
                     let wd = avail.min(need);
-                    let lx = if to_left { x0 + w - wd } else { x0 };
-                    let _ = left_ext;
+                    let lx = if both {
+                        // 左へ伸ばしたぶんだけ左から始める(足りない側は
+                        // 伸びた側に寄る — 本家と同じ「行けるところまで」)
+                        (x0 - left_ext).max(HEAD_W)
+                    } else if to_left {
+                        x0 + w - wd
+                    } else {
+                        x0
+                    };
                     let mut d = div().absolute()
                         .left(px(lx)).top(px(y))
                         .w(px(wd)).h(px(rh))
@@ -1034,7 +1072,13 @@ impl Render for Calc {
                         // 覚え書きの通り)。持つ値は distributed のまま
                         sheet::model::VAlign::Distribute => d = d.items_start(),
                     }
-                    d = if to_left { d.justify_end() } else { d.justify_start() };
+                    d = if both {
+                        d.justify_center()
+                    } else if to_left {
+                        d.justify_end()
+                    } else {
+                        d.justify_start()
+                    };
                     if f.bold {
                         d = d.font_weight(gpui::FontWeight::BOLD);
                     }

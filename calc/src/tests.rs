@@ -6110,4 +6110,27 @@ mod combo_tests {
             assert!(got.fmt.italic, "書式が運ばれていない");
         });
     }
+
+    #[gpui::test]
+    fn 中央揃えの長い文字は左右の空きへはみ出す(cx: &mut gpui::TestAppContext) {
+        // 発注者 2026-08-14「中央揃えも隣が空白セルだとセルの範囲を超えて表示」。
+        // 描画そのものは画面でしか見えないので、はみ出しの判定に使う
+        // 「空いているか」の条件をここで固定する(隣が塞がれば流さない)
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            let mut cell = sheet::Cell::input("中央揃えの長い文字列です");
+            cell.fmt.align = sheet::model::HAlign::Center;
+            this.book.sheets[0].set(Pos::new(1, 2), cell);
+            // 左右が空: どちらも「空いている」= 両側へ伸ばせる
+            for p in [Pos::new(1, 1), Pos::new(1, 3)] {
+                assert!(this.sheet().get(p).is_none(), "{} は空のはず", p.a1());
+            }
+            // 右隣を塞ぐと、そちらへは伸ばせない(はみ出しの判定の材料)
+            this.book.sheets[0].set(Pos::new(1, 3), sheet::Cell::input("x"));
+            assert!(
+                this.sheet().get(Pos::new(1, 3)).is_some_and(|q| !q.value.is_empty()),
+                "塞がっていない"
+            );
+        });
+    }
 }
