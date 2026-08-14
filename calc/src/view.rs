@@ -681,7 +681,7 @@ impl Render for Calc {
                         .path(SharedString::from(format!("icons/{icon}.svg")))
                         .size(px(us * 18.0)).text_color(fg)
                 }))
-                .children(has_icon.then(|| marker).flatten().map(|m| {
+                .children(has_icon.then_some(marker).flatten().map(|m| {
                     // 開く印(▾=一覧 / …=小窓。本家の ▼ の位置)
                     div().text_size(px(us * 8.0)).text_color(th_gray).child(m)
                 }))

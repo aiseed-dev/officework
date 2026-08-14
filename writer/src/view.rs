@@ -426,7 +426,7 @@ impl Render for Writer {
                                 .size(px(18.0))
                                 .text_color(icon_fg)
                         }))
-                        .children(has_icon.then(|| marker).flatten().map(|m| {
+                        .children(has_icon.then_some(marker).flatten().map(|m| {
                             // 開く印(▾=一覧 / …=小窓)
                             div().text_size(px(8.0)).text_color(th_tab_idle).child(m)
                         }))
