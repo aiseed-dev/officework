@@ -35,3 +35,5 @@ tools/__pycache__/
 
 # 実機の点検で撮った絵の置き場(ribbon_sweep.py・lang_check.py)
 scratch/
+packaging/out/
+packaging/cache/
