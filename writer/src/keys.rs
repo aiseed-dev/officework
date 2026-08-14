@@ -361,6 +361,8 @@ impl Writer {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
                 .add_filter(ui::t!("Word文書とHTML"), &["docx", "html", "htm"])
+                // マクロの .py もここから開く(素の文字のまま往復する)
+                .add_filter(ui::t!("マクロ・素の文字"), &["py", "txt", "md", "toml", "json", "csv"])
                 .pick_file()
         });
         cx.spawn(async move |this, cx| {

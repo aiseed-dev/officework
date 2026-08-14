@@ -1816,4 +1816,41 @@ mod marker_tests {
             assert!(this.find_open, "弾いただけのつもりが小窓まで消えた");
         });
     }
+
+    #[gpui::test]
+    fn pyを開いて保存しても素の文字のまま(cx: &mut gpui::TestAppContext) {
+        // 発注者 2026-08-14「pyedit は使うな、writer を使え」。
+        // **docx に化けさせない** — 化けたら plugins から読めなくなる
+        let dir = std::env::temp_dir().join(format!("ow-py-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("見本.py");
+        let src = "def 税込(x):\n    return round(float(x) * 1.1)\n";
+        std::fs::write(&f, src).unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(f.clone());
+            // 字下げが保たれていること(Python は字下げが構文)
+            assert!(this.doc.body_text().contains("    return"), "字下げが消えた");
+            assert!(this.status.contains("素の文字"), "{}", this.status);
+            // そのまま保存 → 中身が変わらない
+            this.save_to(f.clone());
+            let back = std::fs::read_to_string(&f).unwrap();
+            assert_eq!(back, src, "往復で中身が変わった");
+            // zip(docx)になっていないこと
+            assert!(!back.starts_with("PK"), "docx に化けている");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn 素の文字の拡張子を見分ける() {
+        use crate::doc::is_plain_ext;
+        for e in ["py", "PY", "txt", "md", "toml", "json", "csv"] {
+            assert!(is_plain_ext(e), "{e} は素の文字のはず");
+        }
+        for e in ["docx", "html", "xlsx", "png"] {
+            assert!(!is_plain_ext(e), "{e} は素の文字ではない");
+        }
+    }
 }

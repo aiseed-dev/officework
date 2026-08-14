@@ -2,6 +2,19 @@
 
 use crate::*;
 
+/// 素の文字として扱う拡張子。**マクロの .py は .py のまま往復する**
+/// (発注者 2026-08-14「pyedit は使うな、writer を使え」)。
+/// docx に化けさせない — 化けたら plugins から読めなくなる
+/// コードを見せる等幅の書体。**入っていなければ font.rs の代替が効く**
+/// (系統を保って選び直す)ので、ここは名指しでよい
+pub(crate) const MONO: &str = "BIZ UDゴシック";
+
+pub(crate) fn is_plain_ext(e: &str) -> bool {
+    ["py", "txt", "md", "toml", "json", "csv"]
+        .iter()
+        .any(|k| e.eq_ignore_ascii_case(k))
+}
+
 impl Writer {
     pub(crate) fn new(path: Option<PathBuf>, cx: &mut Context<Self>) -> Writer {
         let mut w = Writer {
@@ -1024,6 +1037,13 @@ impl Writer {
             self.open_html(&p, &bytes);
             return;
         }
+        // 素の文字(.py / .txt / .md)。**マクロを書くのは writer の仕事**
+        // (発注者 2026-08-14「pyedit は使うな、writer を使え」)。
+        // 段落 = 行として読み、保存も素の文字で返す(書式は付けない)
+        if p.extension().and_then(|e| e.to_str()).is_some_and(is_plain_ext) {
+            self.open_text(&p, &bytes);
+            return;
+        }
         if ooxml::crypt::is_encrypted(&bytes) {
             // パネルでパスワードを聞き、Enter(pw_commit)が続きをやる
             self.pw_pending = Some(p);
@@ -1589,6 +1609,59 @@ impl Writer {
     }
 
     /// 平文(zip)の docx を読み込む。open と pw_commit の共通の続き
+    /// 素の文字を開く(1行 = 1段落)。等幅の書体にして、字下げが読めるように
+    pub(crate) fn open_text(&mut self, p: &std::path::Path, bytes: &[u8]) {
+        // UTF-8 として読む(.py は UTF-8 が既定 — PEP 263)。読めない字は
+        // 置き換えの記号にする。**黙って開かないより、開いて見せてから直す**
+        let text = String::from_utf8_lossy(bytes).into_owned();
+        self.target = Target::Body;
+        self.hf_edit = None;
+        self.track = false;
+        self.track_base = None;
+        self.encrypt_pw = None;
+        self.notes.clear();
+        let mut doc = Document::plain(&text);
+        // **コードは等幅で、折り返さずに読む。** 明朝の紙面で組むと
+        // 字下げ(Python では構文)が読めず、長い行が紙の幅で折れる。
+        // 書体は run に持たせる — 保存は素の文字なので、この書式は
+        // 画面と PDF にだけ効き、ファイルには残らない
+        for b in &mut doc.blocks {
+            if let kumihan::Block::Para(para) = b {
+                for r in &mut para.runs {
+                    r.font = Some(MONO.into());
+                    r.size_pt = Some(10.0);
+                }
+            }
+        }
+        // 紙は横向き(A4 を寝かせる)。長い行が折り返しにくい。
+        // 余白も詰める — コードは端まで使う
+        self.pg = kumihan::PageSetup {
+            w_mm: 297.0, h_mm: 210.0,
+            left_mm: 12.0, right_mm: 12.0, top_mm: 12.0, bottom_mm: 12.0,
+            columns: 1,
+        };
+        self.set_doc(doc);
+        self.adopt_font();
+        self.path = Some(p.to_path_buf());
+        self.dirty = false;
+        let 行 = text.lines().count();
+        self.status = ui::tf!(
+            "{}({} 行)— 素の文字として開きました。保存も素の文字です",
+            p.file_name().unwrap_or_default().to_string_lossy(),
+            行
+        )
+        .into();
+    }
+
+    /// 素の文字として保存する(.py / .txt / .md)。段落を改行でつなぐ
+    pub(crate) fn save_text_to(&mut self, p: &std::path::Path) -> Result<(), String> {
+        self.flush_target();
+        let text = self.doc.body_text();
+        // 末尾の改行は残す(POSIX の作法。git の差分が汚れない)
+        let text = if text.ends_with('\n') { text } else { format!("{text}\n") };
+        std::fs::write(p, text).map_err(|e| e.to_string())
+    }
+
     pub(crate) fn open_plain(&mut self, p: PathBuf, bytes: Vec<u8>) {
         self.target = Target::Body;
         // 前の文書のパネルが残っていると、打鍵が新しい文書のヘッダーを潰す
@@ -1669,6 +1742,22 @@ impl Writer {
     }
 
     pub(crate) fn save_to(&mut self, p: PathBuf) {
+        // 素の文字(.py / .txt / .md)は素のまま返す — docx に化けさせない
+        if p.extension().and_then(|e| e.to_str()).is_some_and(is_plain_ext) {
+            match self.save_text_to(&p) {
+                Ok(()) => {
+                    self.path = Some(p.clone());
+                    self.dirty = false;
+                    self.status = ui::tf!(
+                        "{} に保存しました(素の文字)",
+                        p.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                    .into();
+                }
+                Err(e) => self.status = ui::tf!("保存できません: {}", e).into(),
+            }
+            return;
+        }
         self.flush_target();
         // 元のファイルの部品(画像・スタイル・ヘッダー等)を持ち越す。
         // 上書き保存では読み終えてから書く(同じファイルを同時に開かない)
