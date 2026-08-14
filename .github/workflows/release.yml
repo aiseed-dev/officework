@@ -1,0 +1,181 @@
+# アプリ(calc / writer)を包んで Releases に置く。
+#
+# 出し方: `app-v0.1.0-alpha` のようなタグを押す。手で回すこともできる
+# (Actions の画面から。draft を外さなければ下書きのまま置かれる)。
+#
+# **エンジンの版とは別に数える**(発注者 2026-08-14)。エンジンは PyPI の
+# officework(いま 0.3.0)、アプリはこれが初回で 0.1.0-alpha。だから
+# タグの頭を `app-v` にして、publish-pypi.yml の `v*` と取り違えないようにする。
+#
+# **Python を同梱する。** 機械に Python が入っていなくてもマクロが動く
+# (Windows は入っていないのが普通)。中身は python-build-standalone
+# (astral-sh・PSF ライセンスで再配布できる)の 3.14 系。
+name: release
+
+on:
+  push:
+    tags: ["app-v*"]
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: "下書きのまま置く(公開しない)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write   # Releases に置くのに要る
+
+env:
+  PY_VER: "3.14.6"
+  PY_TAG: "20260610"
+
+jobs:
+  linux:
+    name: Linux(tar.gz と .deb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: GPUI が繋ぐ物を入れる
+        # 中身は ci.yml の apps の仕事と同じ顔ぶれ(あちらで実測した物)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev libxcb-xkb-dev \
+            libfontconfig1-dev cmake clang pkg-config
+      - name: 包む
+        run: packaging/make-linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            packaging/out/*.tar.gz
+            packaging/out/*.deb
+
+  macos:
+    name: macOS(.dmg)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: 組む
+        run: cargo build --release -p calc -p writer
+      - name: 包む(.app と .dmg)
+        # **公証はまだしていない。** 署名の鍵を CI に置く工事が要る
+        # (docs/sekkei/ayumi.ja.md の配布の節)。それまでは
+        # 「初回だけ右クリック→開く」が要ると Releases の説明に書く
+        run: |
+          VER=$(grep -m1 '^version' calc/Cargo.toml | cut -d'"' -f2)
+          PY_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PY_TAG}/cpython-${PY_VER}%2B${PY_TAG}-aarch64-apple-darwin-install_only_stripped.tar.gz"
+          for app in calc writer; do
+            APP="dist/officework $app.app"
+            mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+            cp "target/release/$app" "$APP/Contents/MacOS/"
+            cat > "$APP/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleName</key><string>officework $app</string>
+            <key>CFBundleExecutable</key><string>$app</string>
+            <key>CFBundleIdentifier</key><string>io.github.aiseed-dev.officework.$app</string>
+            <key>CFBundleShortVersionString</key><string>$VER</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict></plist>
+          PLIST
+          done
+          # Python は calc の中に1つだけ置き、writer からも見えるようにする
+          curl -fsSL -o py.tar.gz "$PY_URL"
+          tar xzf py.tar.gz -C "dist/officework calc.app/Contents/MacOS"
+          "dist/officework calc.app/Contents/MacOS/python/bin/python3" -m pip install --quiet officework || true
+          cp -r sample/plugins dist/
+          cp packaging/README.ja.md dist/はじめに.md
+          hdiutil create -volname "officework $VER" -srcfolder dist -ov -format UDZO \
+            "officework-$VER-macos-arm64.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: "*.dmg"
+
+  windows:
+    name: Windows(zip)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: 組む
+        # **ここが初めての Windows の apps ビルド。** 核は ci.yml で毎回
+        # 組んでいるが、GPUI のアプリは組んだことが無い(2026-08-14)
+        run: cargo build --release -p calc -p writer
+      - name: 包む
+        # .msi はこれから(WiX の工事)。まず zip で試せる形にする
+        shell: bash
+        run: |
+          VER=$(grep -m1 '^version' calc/Cargo.toml | cut -d'"' -f2)
+          D="officework-$VER-windows-x86_64"
+          mkdir -p "$D"
+          cp target/release/calc.exe target/release/writer.exe "$D/"
+          curl -fsSL -o py.tar.gz \
+            "https://github.com/astral-sh/python-build-standalone/releases/download/${PY_TAG}/cpython-${PY_VER}%2B${PY_TAG}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+          tar xzf py.tar.gz -C "$D"
+          "$D/python/python.exe" -m pip install --quiet officework || true
+          cp -r sample/plugins "$D/"
+          cp packaging/README.ja.md "$D/はじめに.md"
+          7z a "$D.zip" "$D" > /dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: "*.zip"
+
+  release:
+    name: Releases に置く
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: 置く
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*
+          draft: ${{ inputs.draft != false }}
+          generate_release_notes: true
+          body: |
+            ## officework — アルファ版
+
+            **表計算と文書。Python でマクロが書けます。**
+
+            `.py` を `~/.config/office/plugins/`(Windows は
+            `%USERPROFILE%\.config\office\plugins\`)に置くと、セルから
+            日本語の関数として呼べます。
+
+            ```python
+            def 税込(x):
+                return round(float(x) * 1.1)
+            ```
+
+            → セルに `=税込(1000)` で **1100**。
+
+            **Python は同梱しています**(3.14。機械に入っていなくても動きます)。
+            ブックはコードを運ばないので「開く=実行」がありません。
+
+            ### 落とす物
+
+            | 機械 | ファイル |
+            |---|---|
+            | Linux | `.deb`(入れる)か `.tar.gz`(展開するだけ) |
+            | macOS | `.dmg` — **署名も公証もまだです**。初回は右クリック→開く |
+            | Windows | `.zip` — 展開して `calc.exe`。**署名はまだ**(SmartScreen が出ます) |
+
+            試し方と、動かないときの手当ては同梱の「はじめに」を見てください。
+
+            ### アルファです
+
+            見つかった不具合は
+            [Issues](https://github.com/aiseed-dev/officework/issues) へ。
+            エンジン(Python から使う `officework` パッケージ)は別に
+            [PyPI](https://pypi.org/project/officework/) で配っています。
