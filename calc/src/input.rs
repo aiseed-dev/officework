@@ -476,6 +476,22 @@ impl Calc {
     /// バーには選んだセルの中身が常に写っているので、**空かどうかでは分からない**
     /// — 中身のあるセルで矢印が「見えない文字カーソル」に化け、
     /// セルから出られなくなる(踏んで直した)。
+    /// 範囲を選んだまま打ち始めた — 字の入り先は**選択の起点**
+    /// (Excel のアクティブセルと同じ)。cursor は動いた側の端に居るので、
+    /// 両端を入れ替えて起点へ戻す。選択の範囲は変わらない。
+    /// これが無いと「選んで 1 を打って Ctrl+D」の 1 が選択の下端に入り、
+    /// 下向きコピーに上書きされて消える(発注者 2026-08-14 に報告された
+    /// 「最後の行に入らない」の正体)
+    pub(crate) fn edit_at_origin(&mut self) {
+        if let Some(a) = self.anchor {
+            if a != self.cursor {
+                self.anchor = Some(self.cursor);
+                self.cursor = a;
+                self.follow();
+            }
+        }
+    }
+
     pub(crate) fn editing(&self) -> bool {
         let saved = self.sheet().get(self.cursor).map(|c| c.editable()).unwrap_or_default();
         self.input.text() != saved

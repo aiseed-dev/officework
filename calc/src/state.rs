@@ -24,6 +24,7 @@ impl Calc {
             cond_pend: None,
             import_pend: None,
             border_pal: None,
+            fill_drag: None,
             pane_box: std::cell::Cell::new((0.0, 0.0, 0.0, 0.0)),
             pop_at: None,
             menu_direct: false,
@@ -918,6 +919,7 @@ impl Calc {
         self.size_drag = None;
         self.drag = None;
         self.head_drag = None;
+        self.fill_drag = None;
         self.shape_drag = None;
         self.shape_rot = None;
         self.pt_drag = None;
@@ -1044,6 +1046,27 @@ impl Calc {
                 "読み込んだ画像は動かせません(保存で元の姿を守るため。挿し直せばこのアプリの画像になります)"
             )
             .into();
+        }
+        // フィルハンドル(選択枠の右下の小さな四角)。セルの選択より先に見る。
+        // ダブルクリック = 隣の列の長さに合わせて下へ(本家と同じ)。
+        // ドラッグ = 引いた所まで写す。発注者 2026-08-14「Excel では
+        // そんな変な操作はしない」— 本家の手はこれ、が発端
+        if self.tool.is_none() && self.fn_args.is_none() && self.ref_pick.is_none() {
+            let (fa, fb) = self.sel_rect();
+            if let Some((_, _, x1, y1)) = self.range_px(fa, fb) {
+                if (x - x1).abs() <= 5.0 && (y - y1).abs() <= 5.0 {
+                    self.commit();
+                    if clicks >= 2 {
+                        self.fill_handle_auto();
+                    } else {
+                        self.fill_drag = Some((fa, fb, fb));
+                        self.status =
+                            ui::t!("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)")
+                                .into();
+                    }
+                    return;
+                }
+            }
         }
         // 見出しの境界の取っ手が最優先(セルの当たり判定より先に見る)。
         // **ダブルクリックの自動調整は撤去した**(2026-08-03 発注者報告)。
@@ -1331,7 +1354,28 @@ impl Calc {
     }
 
     /// 離した。ドラッグ選択はここで確定する。
+    /// フィルハンドルのドラッグ中。下か右の**どちらか**に伸ばす(本家と同じ)
+    pub(crate) fn fill_drag_at(&mut self, x: f32, y: f32) {
+        let Some((a, b, _)) = self.fill_drag else { return };
+        let Some(p) = self.cell_at(x, y) else { return };
+        let to = if p.row > b.row {
+            Pos::new(p.row, b.col)
+        } else if p.col > b.col {
+            Pos::new(b.row, p.col)
+        } else {
+            b
+        };
+        self.fill_drag = Some((a, b, to));
+    }
+
     pub(crate) fn mouse_up(&mut self) {
+        // フィルハンドルを離した = 写す(伸ばしていなければ何もしない)
+        if let Some((a, b, to)) = self.fill_drag.take() {
+            if to != b {
+                self.fill_handle_apply(a, b, to);
+            }
+            return;
+        }
         // 関数の引数・式の直入力のセル掴みは、離した所で終わり
         if let Some(a) = &mut self.fn_args {
             a.pick_from = None;

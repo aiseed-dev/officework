@@ -5843,6 +5843,135 @@ mod combo_tests {
     }
 
     #[gpui::test]
+    fn 範囲を選んで打った字は起点に入り下へコピーで全部になる(cx: &mut gpui::TestAppContext) {
+        // 発注者が貼った本家の仕様: 「1を入力して Ctrl+D を押すと、すべて
+        // 1 になります」。打った字の入り先が選択の下端になっていて、
+        // 下向きコピーに上書きされて消えていた(2026-08-14 の正体)
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for r in 0..5 {
+                this.book.sheets[0].set(Pos::new(r, 0), sheet::Cell::input("2"));
+            }
+            // A1 から下へ選ぶ(cursor は下端 A5 に居る — extend と同じ形)
+            this.anchor = Some(Pos::new(0, 0));
+            this.cursor = Pos::new(4, 0);
+            this.sync_input();
+            // 「1」を打ち始める(view.rs の打ち始めの処理と同じ道)
+            this.input = Editor::new("");
+            this.edit_armed = true;
+            this.edit_at_origin();
+            assert_eq!(this.cursor, Pos::new(0, 0), "字の入り先は選択の起点");
+            this.input.insert("1");
+            this.run_cmd("fill-num", cx);
+            for r in 0..5u32 {
+                assert_eq!(
+                    this.book.sheets[0].value(Pos::new(r, 0)),
+                    sheet::Value::Number(1.0),
+                    "行{}", r + 1
+                );
+            }
+        });
+    }
+
+    #[gpui::test]
+    fn 上が空の下へコピーは中身を消して書式は残す(cx: &mut gpui::TestAppContext) {
+        // 黙って飛ばさない — 空も配る(本家と同じ)。書式は帳票の枠なので残す
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let mut cell = sheet::Cell::input("9");
+            cell.fmt.bold = true;
+            this.book.sheets[0].set(Pos::new(1, 0), cell);
+            this.book.sheets[0].set(Pos::new(2, 0), sheet::Cell::input("8"));
+            this.anchor = Some(Pos::new(0, 0)); // A1 は空
+            this.cursor = Pos::new(2, 0);
+            this.sync_input();
+            this.run_cmd("fill-num", cx);
+            let c2 = this.book.sheets[0].get(Pos::new(1, 0)).unwrap();
+            assert_eq!(c2.value, sheet::Value::Empty, "中身は消える");
+            assert!(c2.fmt.bold, "書式は残る");
+            // 書式も持たないセルは器ごと消える(それが空の正しい姿)
+            assert_eq!(this.book.sheets[0].value(Pos::new(2, 0)), sheet::Value::Empty);
+        });
+    }
+
+    #[gpui::test]
+    fn フィルハンドルのダブルクリックは隣の列の長さまで埋める(cx: &mut gpui::TestAppContext) {
+        // 発注者の場面そのもの: B に数が4行、D4 に式 — D4 の右下を
+        // ダブルクリックすると、B の長さ(行7)まで式が下りる
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            for (i, v) in ["1", "2", "3", "4"].iter().enumerate() {
+                this.book.sheets[0].set(Pos::new(3 + i as u32, 2), sheet::Cell::input(v));
+            }
+            this.book.sheets[0].set(Pos::new(3, 3), sheet::Cell::input("=C4*2"));
+            recalc_book(&mut this.book, 0);
+            this.anchor = None;
+            this.cursor = Pos::new(3, 3);
+            this.sync_input(); // 実機では移動のたびに同期される
+            this.fill_handle_auto();
+            for (r, want) in [(4u32, 4.0), (5, 6.0), (6, 8.0)] {
+                assert_eq!(
+                    this.book.sheets[0].value(Pos::new(r, 3)),
+                    sheet::Value::Number(want),
+                    "行{}", r + 1
+                );
+            }
+            // 隣の長さの先へは行かない
+            assert!(this.book.sheets[0].get(Pos::new(7, 3)).is_none());
+            // 埋めた所までが選択になる
+            assert_eq!(this.sel_rect(), (Pos::new(3, 3), Pos::new(6, 3)));
+        });
+    }
+
+    #[gpui::test]
+    fn フィルハンドルは隣が空なら断って理由を言う(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.book.sheets[0].set(Pos::new(0, 3), sheet::Cell::input("5"));
+            this.anchor = None;
+            this.cursor = Pos::new(0, 3);
+            this.fill_handle_auto();
+            assert!(this.status.contains("手掛かり"), "{}", this.status);
+        });
+    }
+
+    #[gpui::test]
+    fn フィルハンドルのドラッグは塊を繰り返して写す(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            // 2行の塊(10, 20)を6行ぶんまで引く → 10,20,10,20 と繰り返す
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("10"));
+            this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("20"));
+            eprintln!("before: A1={:?} A2={:?}",
+                this.book.sheets[0].get(Pos::new(0, 0)).map(|c| c.value.clone()),
+                this.book.sheets[0].get(Pos::new(1, 0)).map(|c| c.value.clone()));
+            this.sync_input();
+            this.fill_handle_apply(Pos::new(0, 0), Pos::new(1, 0), Pos::new(5, 0));
+            eprintln!("status: {} / A3 raw={:?}", this.status,
+                this.book.sheets[0].get(Pos::new(2, 0)));
+            for (r, want) in [(2u32, 10.0), (3, 20.0), (4, 10.0), (5, 20.0)] {
+                assert_eq!(
+                    this.book.sheets[0].value(Pos::new(r, 0)),
+                    sheet::Value::Number(want),
+                    "行{}", r + 1
+                );
+            }
+            // 右方向: 式の列参照がずれる
+            this.book.sheets[0].set(Pos::new(7, 0), sheet::Cell::input("3"));
+            this.book.sheets[0].set(Pos::new(7, 1), sheet::Cell::input("4"));
+            this.book.sheets[0].set(Pos::new(8, 0), sheet::Cell::input("=A8*10"));
+            recalc_book(&mut this.book, 0);
+            this.cursor = Pos::new(8, 0);
+            this.sync_input();
+            this.fill_handle_apply(Pos::new(8, 0), Pos::new(8, 0), Pos::new(8, 1));
+            assert_eq!(
+                this.book.sheets[0].value(Pos::new(8, 1)),
+                sheet::Value::Number(40.0)
+            );
+        });
+    }
+
+    #[gpui::test]
     fn 右へコピーは1セルなら左の列を写す(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {

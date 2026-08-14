@@ -54,6 +54,84 @@ impl Calc {
         "pen", "highlighter", "eraser", "draw-select",
     ];
 
+    /// フィルハンドルの実体 — 元の選択 (a,b) を to まで写す(下か右)。
+    /// 元の塊を繰り返し写し、式は写した距離ぶんずれる(本家と同じ)
+    pub(crate) fn fill_handle_apply(&mut self, a: Pos, b: Pos, to: Pos) {
+        self.commit();
+        self.checkpoint();
+        let sh = &mut self.book.sheets[self.active];
+        let mut n = 0usize;
+        if to.row > b.row {
+            let h = b.row - a.row + 1;
+            for c in a.col..=b.col {
+                for r in b.row + 1..=to.row {
+                    let src_r = a.row + (r - a.row) % h;
+                    let Some(src) = sh.get(Pos::new(src_r, c)).cloned() else { continue };
+                    let mut cell = src.clone();
+                    if let Some(f) = &src.formula {
+                        cell.formula =
+                            Some(sheet::model::offset_refs(f, (r - src_r) as i64, 0));
+                    }
+                    sh.set(Pos::new(r, c), cell);
+                    n += 1;
+                }
+            }
+        } else if to.col > b.col {
+            let w = b.col - a.col + 1;
+            for r in a.row..=b.row {
+                for c in b.col + 1..=to.col {
+                    let src_c = a.col + (c - a.col) % w;
+                    let Some(src) = sh.get(Pos::new(r, src_c)).cloned() else { continue };
+                    let mut cell = src.clone();
+                    if let Some(f) = &src.formula {
+                        cell.formula =
+                            Some(sheet::model::offset_refs(f, 0, (c - src_c) as i64));
+                    }
+                    sh.set(Pos::new(r, c), cell);
+                    n += 1;
+                }
+            }
+        }
+        recalc_book(&mut self.book, self.active);
+        self.dirty = true;
+        // 埋めた所までが選択になる(本家と同じ — 続けてもう一度引ける)
+        self.anchor = Some(a);
+        self.cursor = to;
+        self.sync_input();
+        self.status = format!("{n} セルを埋めました").into();
+    }
+
+    /// フィルハンドルのダブルクリック — 隣の列の長さに合わせて下へ写す。
+    /// 左隣(空なら右隣)の途切れる手前まで(本家と同じ)
+    pub(crate) fn fill_handle_auto(&mut self) {
+        let (a, b) = self.sel_rect();
+        let sh = &self.book.sheets[self.active];
+        let has = |r: u32, c: u32| {
+            sh.get(Pos::new(r, c))
+                .map(|x| x.formula.is_some() || !matches!(x.value, Value::Empty))
+                .unwrap_or(false)
+        };
+        let probe = |col: u32| -> Option<u32> {
+            if !has(a.row, col) {
+                return None;
+            }
+            let mut r = a.row;
+            while has(r + 1, col) {
+                r += 1;
+            }
+            (r > b.row).then_some(r)
+        };
+        let target = if a.col > 0 { probe(a.col - 1) } else { None };
+        let target = target.or_else(|| probe(b.col + 1));
+        match target {
+            Some(last) => self.fill_handle_apply(a, b, Pos::new(last, b.col)),
+            None => {
+                self.status =
+                    ui::t!("隣の列に長さの手掛かりがありません(左右どちらも空)").into();
+            }
+        }
+    }
+
     /// 見た目だけを変える操作(保護の「セルの書式設定」を許すと通る)
     pub(crate) const FORMAT_CMDS: &'static [&'static str] = &[
         "bold", "italic", "underline", "strikeout", "subscript",
@@ -333,14 +411,23 @@ impl Calc {
                     let sh = &mut self.book.sheets[self.active];
                     let mut n = 0usize;
                     for c in a.col..=b.col {
-                        let Some(src) = sh.get(Pos::new(a.row, c)).cloned() else { continue };
+                        // 一番上が空でも黙って飛ばさない — 空を配る
+                        // (中身を消す。書式は残す — 帳票の枠を壊さない)
+                        let src = sh.get(Pos::new(a.row, c)).cloned();
                         for r in a.row + 1..=b.row {
-                            let mut cell = src.clone();
-                            if let Some(f) = &src.formula {
+                            let p = Pos::new(r, c);
+                            let mut cell = match &src {
+                                Some(s) => s.clone(),
+                                None => {
+                                    let fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
+                                    Cell { formula: None, value: Value::Empty, fmt }
+                                }
+                            };
+                            if let Some(f) = src.as_ref().and_then(|s| s.formula.as_ref()) {
                                 cell.formula =
                                     Some(sheet::model::offset_refs(f, (r - a.row) as i64, 0));
                             }
-                            sh.set(Pos::new(r, c), cell);
+                            sh.set(p, cell);
                             n += 1;
                         }
                     }
@@ -384,14 +471,22 @@ impl Calc {
                     let sh = &mut self.book.sheets[self.active];
                     let mut n = 0usize;
                     for r in a.row..=b.row {
-                        let Some(src) = sh.get(Pos::new(r, a.col)).cloned() else { continue };
+                        // 左端が空でも黙って飛ばさない(下へコピーと同じ決め)
+                        let src = sh.get(Pos::new(r, a.col)).cloned();
                         for c in a.col + 1..=b.col {
-                            let mut cell = src.clone();
-                            if let Some(f) = &src.formula {
+                            let p = Pos::new(r, c);
+                            let mut cell = match &src {
+                                Some(s) => s.clone(),
+                                None => {
+                                    let fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
+                                    Cell { formula: None, value: Value::Empty, fmt }
+                                }
+                            };
+                            if let Some(f) = src.as_ref().and_then(|s| s.formula.as_ref()) {
                                 cell.formula =
                                     Some(sheet::model::offset_refs(f, 0, (c - a.col) as i64));
                             }
-                            sh.set(Pos::new(r, c), cell);
+                            sh.set(p, cell);
                             n += 1;
                         }
                     }

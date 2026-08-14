@@ -63,6 +63,8 @@ impl EntityInputHandler for Calc {
         {
             self.input = Editor::new("");
             self.edit_armed = true;
+            // 字の入り先は選択の起点(Excel のアクティブセル)
+            self.edit_at_origin();
         }
         handler::replace(self, r, text);
         cx.notify();
@@ -86,6 +88,7 @@ impl EntityInputHandler for Calc {
         {
             self.input = Editor::new("");
             self.edit_armed = true;
+            self.edit_at_origin();
         }
         handler::replace_and_mark(self, r, text, sel);
         cx.notify();
@@ -209,6 +212,9 @@ impl gpui::Element for InputSink {
                     cx.notify();
                 } else if c.img_drag.is_some() {
                     c.image_drag_at(f32::from(rel.x), f32::from(rel.y), e.modifiers.shift);
+                    cx.notify();
+                } else if c.fill_drag.is_some() {
+                    c.fill_drag_at(f32::from(rel.x), f32::from(rel.y));
                     cx.notify();
                 } else if c.slicer_drag.is_some() {
                     // スライサーの板の移動。板は格子の上に浮いているので、
@@ -2705,6 +2711,37 @@ impl Render for Calc {
         // 「左上のセル1コマに切れた値+残る格子線」にしか見えない(発注者
         // 報告 2026-08-08)。範囲全体を不透明で覆い、値・書式・選択の枠を
         // ここで描く — マウスは受けない(InputSink が上で受ける)
+        // フィルハンドル(選択枠の右下の小さな四角)と、ドラッグ中の
+        // 写し先の枠。押す側の当たり判定は state.rs の mouse_down_at
+        // (±5px)— 見た目と当たりの中心を同じ range_px から取る
+        let fill_handle_overlay: Vec<gpui::AnyElement> = {
+            let mut out = Vec::new();
+            if self.tool.is_none() && self.py_edit.is_none() {
+                let (fa, fb) = self.sel_rect();
+                if let Some((_, _, x1, y1)) = self.range_px(fa, fb) {
+                    out.push(
+                        div().absolute()
+                            .left(px(x1 - 4.0)).top(px(y1 - 4.0))
+                            .w(px(7.0)).h(px(7.0))
+                            .bg(rgb(0x1B6E3C))
+                            .border_1().border_color(gpui::white())
+                            .into_any_element(),
+                    );
+                }
+                if let Some((a, _, to)) = self.fill_drag {
+                    if let Some((x0, y0, x1, y1)) = self.range_px(a, to) {
+                        out.push(
+                            div().absolute()
+                                .left(px(x0)).top(px(y0))
+                                .w(px(x1 - x0)).h(px(y1 - y0))
+                                .border_2().border_color(rgb(0x7BA88A))
+                                .into_any_element(),
+                        );
+                    }
+                }
+            }
+            out
+        };
         let merge_overlays: Vec<gpui::AnyElement> = {
             let mut out = Vec::new();
             let merges = self.sheet().merges.clone();
@@ -5478,6 +5515,7 @@ impl Render for Calc {
                    }))
                    .child(grid)
                    .children(merge_overlays)
+                   .children(fill_handle_overlay)
                    .children(pivot_frames)
                    .children(freeze_shadow)
                    .children(ink_preview)

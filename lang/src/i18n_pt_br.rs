@@ -1632,4 +1632,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("左の列を写しました({} セル)", "Coluna à esquerda copiada ({} células)"),
     ("1行目です(上に写す行がありません)", "Primeira linha (não há linha acima para copiar)"),
     ("A列です(左に写す列がありません)", "Coluna A (não há coluna à esquerda para copiar)"),
+    ("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)", "Arraste para baixo ou para a direita para copiar (clique duplo: até o comprimento da coluna vizinha)"),
+    ("隣の列に長さの手掛かりがありません(左右どちらも空)", "Não há coluna vizinha para indicar o comprimento (ambos os lados vazios)"),
 ];

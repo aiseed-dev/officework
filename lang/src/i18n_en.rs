@@ -1639,4 +1639,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("左の列を写しました({} セル)", "Copied the column to the left ({} cells)"),
     ("1行目です(上に写す行がありません)", "This is row 1 (no row above to copy)"),
     ("A列です(左に写す列がありません)", "This is column A (no column to the left to copy)"),
+    // フィルハンドル(2026-08-14)
+    ("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)", "Drag down or right to copy (double-click to fill to the neighbouring column's length)"),
+    ("隣の列に長さの手掛かりがありません(左右どちらも空)", "No neighbouring column to take the length from (both sides are empty)"),
 ];

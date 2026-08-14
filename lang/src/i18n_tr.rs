@@ -1632,4 +1632,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("左の列を写しました({} セル)", "Soldaki sütun kopyalandı ({} hücre)"),
     ("1行目です(上に写す行がありません)", "İlk satır (kopyalanacak üst satır yok)"),
     ("A列です(左に写す列がありません)", "A sütunu (kopyalanacak sol sütun yok)"),
+    ("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)", "Kopyalamak için aşağı veya sağa sürükleyin (çift tıklama: komşu sütunun uzunluğu kadar)"),
+    ("隣の列に長さの手掛かりがありません(左右どちらも空)", "Uzunluk alınacak komşu sütun yok (iki taraf da boş)"),
 ];
