@@ -302,7 +302,31 @@ impl Calc {
             "fill-num" => {
                 let (a, b) = self.sel_rect();
                 if a.row == b.row {
-                    self.status = ui::t!("Shift+↓ で埋める範囲を選んでください(先頭行を下へ写します)").into();
+                    // 高さ1の選択は**上の行を写す**(本家の Ctrl+D と同じ)。
+                    // 端まで選択は空の手前で止まる決めなので、空の最終セルを
+                    // 埋める一手はこちらが受け持つ(発注者 2026-08-14)
+                    if a.row == 0 {
+                        self.status = ui::t!("1行目です(上に写す行がありません)").into();
+                    } else {
+                        self.commit();
+                        self.checkpoint();
+                        let sh = &mut self.book.sheets[self.active];
+                        let mut n = 0usize;
+                        for c in a.col..=b.col {
+                            let Some(src) = sh.get(Pos::new(a.row - 1, c)).cloned() else {
+                                continue;
+                            };
+                            let mut cell = src.clone();
+                            if let Some(f) = &src.formula {
+                                cell.formula = Some(sheet::model::offset_refs(f, 1, 0));
+                            }
+                            sh.set(Pos::new(a.row, c), cell);
+                            n += 1;
+                        }
+                        recalc_book(&mut self.book, self.active);
+                        self.dirty = true;
+                        self.status = ui::tf!("上の行を写しました({} セル)", n).into();
+                    }
                 } else {
                     self.commit();
                     self.checkpoint();
@@ -331,7 +355,29 @@ impl Calc {
             "fill-right" => {
                 let (a, b) = self.sel_rect();
                 if a.col == b.col {
-                    self.status = ui::t!("Shift+→ で埋める範囲を選んでください(先頭列を右へ写します)").into();
+                    // 幅1の選択は**左の列を写す**(本家の Ctrl+R と同じ)
+                    if a.col == 0 {
+                        self.status = ui::t!("A列です(左に写す列がありません)").into();
+                    } else {
+                        self.commit();
+                        self.checkpoint();
+                        let sh = &mut self.book.sheets[self.active];
+                        let mut n = 0usize;
+                        for r in a.row..=b.row {
+                            let Some(src) = sh.get(Pos::new(r, a.col - 1)).cloned() else {
+                                continue;
+                            };
+                            let mut cell = src.clone();
+                            if let Some(f) = &src.formula {
+                                cell.formula = Some(sheet::model::offset_refs(f, 0, 1));
+                            }
+                            sh.set(Pos::new(r, a.col), cell);
+                            n += 1;
+                        }
+                        recalc_book(&mut self.book, self.active);
+                        self.dirty = true;
+                        self.status = ui::tf!("左の列を写しました({} セル)", n).into();
+                    }
                 } else {
                     self.commit();
                     self.checkpoint();

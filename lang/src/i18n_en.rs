@@ -363,7 +363,6 @@ pub const TABLE: &[(&str, &str)] = &[
 ("解を探しています…(単体法 LP)", "Solving… (simplex LP)"),
 ("この画像は読めません(PNG か JPEG を選んでください)", "Can't read this image (choose a PNG or JPEG)"),
 ("横向き", "landscape"),
-("Shift+↓ で埋める範囲を選んでください(先頭行を下へ写します)", "Select the fill range with Shift+↓ (the top row is copied down)"),
 ("絞り込みを解きました", "Filter cleared"),
 ("印刷範囲を解きました(全域を印刷します)", "Print area cleared (everything prints)"),
 ("印刷範囲にする範囲を Shift+矢印かドラッグで選んでください", "Select the print area with Shift+arrows or by dragging"),
@@ -1624,7 +1623,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} の段(札を打つと押します。Esc でやめる)", "The {} tab (type a badge letter to press a button; Esc to stop)"),
     ("その札はありません(「{}」)", "There is no such badge (“{}”)"),
     // 鍵盤の増強と設定の言い分(2026-08-14)
-    ("Shift+→ で埋める範囲を選んでください(先頭列を右へ写します)", "Select the range to fill with Shift+→ (the first column is copied to the right)"),
     ("列を選択しました(Shift+Space で行)", "Column selected (Shift+Space selects the row)"),
     ("行を選択しました(Ctrl+Space で列)", "Row selected (Ctrl+Space selects the column)"),
     ("設定の key.{} は知らない操作名です", "key.{} in settings names an unknown action"),
@@ -1636,4 +1634,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     // 開く物(コンボと絞り込み)の案内 — 2026-08-14
     ("打つと絞り込みます", "Type to filter"),
     ("一覧にありません(このまま Enter で確定)", "Not in the list (press Enter to use as typed)"),
+    // 1セルの下へ/右へコピー(本家の Ctrl+D/R — 2026-08-14)
+    ("上の行を写しました({} セル)", "Copied the row above ({} cells)"),
+    ("左の列を写しました({} セル)", "Copied the column to the left ({} cells)"),
+    ("1行目です(上に写す行がありません)", "This is row 1 (no row above to copy)"),
+    ("A列です(左に写す列がありません)", "This is column A (no column to the left to copy)"),
 ];

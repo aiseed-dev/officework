@@ -5656,11 +5656,11 @@ mod boolean_tests {
                 let v = this.book.sheets[0].value(Pos::new(1, col));
                 assert_eq!(v, sheet::Value::Number(want), "列{col}");
             }
-            // 1列だけなら断って、選び方まで言う
+            // 幅1の選択は左を写す(A列だけは写す物が無いので断る)
             this.anchor = None;
             this.cursor = Pos::new(3, 0);
             this.run_cmd("fill-right", cx);
-            assert!(this.status.contains("Shift+→"), "{}", this.status);
+            assert!(this.status.contains("A列"), "{}", this.status);
         });
     }
 
@@ -5800,7 +5800,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 使い捨て_下へコピーが最後の行に入るか(cx: &mut gpui::TestAppContext) {
+    fn 下へコピーは選択の最後の行まで入る(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 中身のある列(1 の下に 2 が4つ)を、1行目から5行目まで選んで下へ
@@ -5815,6 +5815,47 @@ mod combo_tests {
                 let v = this.book.sheets[0].value(Pos::new(r, 0));
                 assert_eq!(v, sheet::Value::Number(1.0), "行{}", r + 1);
             }
+        });
+    }
+
+    #[gpui::test]
+    fn 下へコピーは1セルなら上の行を写す(cx: &mut gpui::TestAppContext) {
+        // 本家の Ctrl+D。空の最終セルに立って一手で埋める道
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::new(0, 1), sheet::Cell::input("7"));
+            this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("=B1*2"));
+            recalc_book(&mut this.book, 0);
+            // B2(空)に立って下へコピー → B1 の 7 が写る
+            this.anchor = None;
+            this.cursor = Pos::new(1, 1);
+            this.run_cmd("fill-num", cx);
+            assert_eq!(this.book.sheets[0].value(Pos::new(1, 1)), sheet::Value::Number(7.0));
+            // 式も1行ずれて写る: A2 の =B1*2 を A3 に立って写す → =B2*2 = 14
+            this.cursor = Pos::new(2, 0);
+            this.run_cmd("fill-num", cx);
+            assert_eq!(this.book.sheets[0].value(Pos::new(2, 0)), sheet::Value::Number(14.0));
+            // 1行目では断って理由を言う
+            this.cursor = Pos::new(0, 3);
+            this.run_cmd("fill-num", cx);
+            assert!(this.status.contains("1行目"), "{}", this.status);
+        });
+    }
+
+    #[gpui::test]
+    fn 右へコピーは1セルなら左の列を写す(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("9"));
+            recalc_book(&mut this.book, 0);
+            this.anchor = None;
+            this.cursor = Pos::new(0, 1); // B1(空)に立って右へコピー
+            this.run_cmd("fill-right", cx);
+            assert_eq!(this.book.sheets[0].value(Pos::new(0, 1)), sheet::Value::Number(9.0));
+            // A列では断って理由を言う
+            this.cursor = Pos::new(3, 0);
+            this.run_cmd("fill-right", cx);
+            assert!(this.status.contains("A列"), "{}", this.status);
         });
     }
 }
