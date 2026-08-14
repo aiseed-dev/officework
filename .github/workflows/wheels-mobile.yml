@@ -1,0 +1,101 @@
+# スマホ(Android / iOS)の wheel を組む。
+#
+# **なぜ要るか**(発注者 2026-08-15「Flet をデスクトップ版で、スマホ版も
+# つくれます」): Flet はスマホ向けに包むとき **バイナリ wheel しか入れない**
+# (pypi.org と pypi.flet.dev から取る)。officework は Rust の拡張
+# (`officework._sheet`)を持つので、Android と iOS の札を付けた wheel が
+# 無いと Flet のスマホ版に載らない。
+#
+# **PyPI は受け付ける** — PEP 730(iOS)と PEP 738(Android)の札に対応済みで、
+# pip も 24.3 から iOS の札を読む。つまり普通に PyPI へ上げれば Flet が拾う。
+#
+# **まだ手で回す形にしてある。** 2026-08-15 の時点で手元では組めなかった
+# (Android の NDK が無く、母艦の ld が aarch64 のオブジェクトを繋ごうとして
+# 落ちる)。**この仕事が緑になるまで「スマホ対応」と言わない** — 通ったら
+# publish-pypi.yml に組み入れる。
+name: wheels-mobile
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "PyPI へ上げる(既定は作るだけ)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: wheel (Android arm64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: NDK を入れる
+        # **これが手元に無くて落ちていた所。** cargo は的向けに翻訳できるが、
+        # 繋ぐ(link)には NDK の中の clang が要る
+        id: ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+      - name: 組む
+        # cargo-ndk が NDK の clang を linker として cargo に教える。
+        # 素の maturin だけだと /usr/bin/ld を使って "file in wrong format"
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          pip install maturin cargo-zigbuild
+          cargo install cargo-ndk --locked
+          cd pysheet
+          cargo ndk -t arm64-v8a build --release
+          maturin build --release --target aarch64-linux-android --out ../dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-android
+          path: dist/*.whl
+
+  ios:
+    name: wheel (iOS arm64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 組む
+        # iOS は macOS の上でしか組めない(Xcode の SDK が要る)
+        run: |
+          pip install maturin
+          cd pysheet
+          maturin build --release --target aarch64-apple-ios --out ../dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-ios
+          path: dist/*.whl
+
+  publish:
+    name: PyPI へ上げる
+    needs: [android, ios]
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # Trusted Publisher(OIDC)。API トークンは持たない
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
