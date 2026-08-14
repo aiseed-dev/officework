@@ -460,6 +460,48 @@ Python 同梱**という形は、ストアの審査とサンドボックスの�
   ビルド中は網が無いので cargo-sources.json / python3-modules.json を
   生成して差す(README の手順)
 
+## ↑を改めた(2026-08-14 その2)— Flathub は使えない。Linux も直配布
+
+配布の形を決めるために3つのストアの決まりを一次資料で調べ直したところ、
+**Flathub が免許ではなく「AI の方針」で門前払い**と分かった。逐語:
+
+> Applications containing **AI-generated or AI-assisted code**, documentation,
+> or any other content are not allowed.
+> These submissions can be rejected without any further review.
+> Repeatedly violating these policies may result in a permanent ban.
+> (https://docs.flathub.org/docs/for-app-authors/requirements)
+
+officework は AI 支援で書いており、全コミットに Co-Authored-By が入って
+いる。隠すこともできない(隠すべきでもない)。実際の PR で AGENTS.md を
+見つけたレビュアーが即指摘して撤回された例が記録に残っている。
+直近500件の申請の内訳は **AI Slop 287件(57%)・受理 52件(10%)**。
+
+「成熟したプロジェクトには例外がありうる」の但し書きはあるが基準は非公開。
+しかも**サンドボックス脱出系の権限(うちが要る flatpak-spawn)は
+「LLM 使用の兆候があれば付与しない」と明記**されている — 二重に当たる。
+
+**決め(発注者 2026-08-14)**:
+
+| 的 | 形 | 理由 |
+|---|---|---|
+| **Linux** | **.deb + AppImage を直配布** | Flathub は AI の方針で出せない |
+| **Mac** | 公証済み **.dmg** 直配布 | 免許(AGPL と App Store の EULA) |
+| **Windows** | **Microsoft Store + .msi** | Store は AI の方針が無く AGPL も明文で可 |
+
+直配布は見劣りしない。むしろ **同梱 Python の版を自分で決められる**
+(Flathub は事前ビルドのバイナリを持ち込めず、runtime の python 3.13 に
+縛られる)。うちは 3.14 に固定したいので、直配布の方が設計に合う。
+
+**Flatpak の下ごしらえ(packaging/flatpak)は消さない** — 方針が変わる
+可能性はあるし、サンドボックスの二層構造の設計はそれ自体が資産。
+出せない理由の札を README に立てておく。
+
+そのとき直す物も分かっている(調べた): runtime を 50 に(47 は EOL)/
+python-build-standalone は持ち込めない(runtime の python か、CPython を
+ソースからビルド)/ --filesystem=home は不可で FileChooser ポータルの
+実装が必須 / アプリ名は Officework(全小文字は品質検査に落ちる)/
+metainfo に developer・screenshots・releases が要る。
+
 ## ↑を改めた(2026-08-14)— Mac/Windows は**ストアに出さず直配布**
 
 アルファ版を出す相談(発注者「普通の人に使ってほしい」)で、Linux は

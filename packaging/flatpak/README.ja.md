@@ -1,4 +1,23 @@
-# officework の Flatpak(試作)
+# officework の Flatpak(試作 — **いまは出せない**)
+
+> **2026-08-14: Flathub には当面出せない。** 免許ではなく
+> **AI の方針**が理由 — Flathub は「AI が書いた・AI が手伝ったコードを
+> 含むアプリは受け付けない」と明文化しており(requirements の
+> Generative AI policy)、officework は全コミットに Co-Authored-By が
+> 入っている。しかも **flatpak-spawn の例外は「LLM 使用の兆候があれば
+> 付与しない」**と名指しされている(うちの内側のサンドボックスに要る)。
+>
+> **この下ごしらえは残す。** 方針が変わる可能性があり、サンドボックスの
+> 二層構造の設計はそれ自体が資産だから。出すことになったら直す物:
+> runtime を 50 に(47 は EOL)/ python-build-standalone は持ち込めない
+> (runtime の python 3.13 を使うか CPython をソースからビルド)/
+> `--filesystem=home` は不可で FileChooser ポータルの実装が必須 /
+> アプリ名は `Officework`(全小文字は品質検査に落ちる)/ metainfo に
+> developer・screenshots・releases が要る。
+>
+> いまの配布は **Linux = .deb + AppImage / Mac = 公証済み .dmg /
+> Windows = Microsoft Store + .msi**(docs/sekkei/ayumi.ja.md)。
+
 
 2026-08-08 起こし。**まだ実機で組んでいない**(この機械には flatpak-builder が
 無い)。ここにあるのは manifest の試作と、組むとき・審査に出すときの手順と
