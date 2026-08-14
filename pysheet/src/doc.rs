@@ -23,9 +23,6 @@ use pyo3::prelude::*;
 
 use kumihan::{Block, CharFormat, Document, Paragraph, Run};
 
-/// 書式を持たない段落に字を入れるときの大きさ。
-/// kumihan の各所が `unwrap_or(10.5)` で使っている既定値に合わせる。
-
 /// 文書の中身。Doc / Paragraph / Table が同じ物を見るために1枚挟む
 /// (pysheet の `Inner` と同じ作り)。
 struct Inner {
