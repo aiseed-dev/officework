@@ -256,11 +256,42 @@ pub fn run_with_timeout(
     }
 }
 
-/// 裏方の Python を探す。JO_PYTHON → リポジトリの .venv → python3。
+/// 同梱の Python(配る形に入れる時の置き場)。実行ファイルの隣の
+/// `python/` を見る — Windows は `python/python.exe`、他は `python/bin/python3`。
+///
+/// **配るときは Python を同梱する**(発注者 2026-08-14。Windows は
+/// Python が入っていない機械が普通で、同梱しないと「動かない」から
+/// 始まる。Flet も同じ形)。中身は python-build-standalone
+/// (astral-sh。PSF ライセンスで再配布できる)の **3.14 系** — 手元の
+/// miniforge3 と揃える。3.12 ではスマホの的に届かない(発注者)。
+/// pip も入っているので、matplotlib や polars は同梱の python に
+/// 後から入れられる
+fn bundled_python(exe_dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    let cands = if cfg!(windows) {
+        ["python/python.exe", "python.exe"]
+    } else {
+        ["python/bin/python3", "python/bin/python"]
+    };
+    cands
+        .iter()
+        .map(|c| exe_dir.join(c))
+        .find(|p| p.exists())
+}
+
+/// 裏方の Python を探す。**JO_PYTHON → 同梱 → .venv → python3**。
 /// matplotlib が居るかは実行して分かる(居なければ status で言う)。
 pub fn find_python() -> std::path::PathBuf {
     if let Some(p) = std::env::var_os("JO_PYTHON") {
         return p.into();
+    }
+    // 配る形に同梱した Python(実行ファイルの隣)。**.venv より先に見る** —
+    // 配った物は同梱を使うのが筋で、開発機の .venv に引っ張られない
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            if let Some(p) = bundled_python(dir) {
+                return p;
+            }
+        }
     }
     // 今いるフォルダの .venv(リポジトリ直下で起動した形)
     let venv = std::path::Path::new(".venv/bin/python");
@@ -703,5 +734,19 @@ mod cage_tests {
     fn defの名前は先頭の桁だけ数える() {
         let src = "def 集計(r):\n    def _中(x):\n        pass\ndef _隠し(x):\n    pass\ndef 倍(x): ...\n";
         assert_eq!(def_names(src), vec!["集計", "倍"]);
+    }
+
+    #[test]
+    fn 同梱の_python_を実行ファイルの隣から見つける() {
+        // 配る形は python/ を実行ファイルの隣に置く(2026-08-14)。
+        // Windows は python/python.exe、他は python/bin/python3
+        let d = std::env::temp_dir().join(format!("owtest-bundled-{}", std::process::id()));
+        let sub = if cfg!(windows) { d.join("python") } else { d.join("python/bin") };
+        std::fs::create_dir_all(&sub).unwrap();
+        assert!(super::bundled_python(&d).is_none(), "無い時に見つけてはいけない");
+        let exe = if cfg!(windows) { sub.join("python.exe") } else { sub.join("python3") };
+        std::fs::write(&exe, b"").unwrap();
+        assert_eq!(super::bundled_python(&d), Some(exe), "隣の python を見つけていない");
+        let _ = std::fs::remove_dir_all(&d);
     }
 }
