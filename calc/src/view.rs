@@ -1005,10 +1005,7 @@ impl Render for Calc {
                         Some(l) => sheet::markdown::plain(l),
                         None => t1.clone(),
                     };
-                    let size = self.zoom
-                        * f.size_c
-                            .map(|c| c as f32 / 100.0 * 24.0 / 15.0 * 0.8)
-                            .unwrap_or(12.5);
+                    let size = cell_font_px(f.size_c, self.zoom);
                     let need = text_px(&measured, size);
                     if need <= w {
                         continue; // 収まっている
@@ -1321,9 +1318,7 @@ impl Render for Calc {
                     .bg(rgb(0xFFFFFF))
                     .flex().items_center()
                     .px_1p5()
-                    .text_size(px(self.zoom * cell.and_then(|x| x.fmt.size_c)
-                        .map(|c| c as f32 / 100.0 * 24.0 / 15.0 * 0.8)
-                        .unwrap_or(12.5)))
+                    .text_size(px(cell_font_px(cell.and_then(|x| x.fmt.size_c), self.zoom)))
                     .font_family(self.font_name.clone())
                     .overflow_hidden().whitespace_nowrap()
                     // セルの上は Excel と同じ十字(手のひらだと「押す物」に見える)
@@ -1519,10 +1514,7 @@ impl Render for Calc {
                 // 縮小して全体を表示(折り返しと併せない)— 幅に収まるまで
                 // 文字を小さくする。見積りは全角=1em・半角=0.5em
                 if f.shrink && !f.wrap {
-                    let size = self.zoom
-                        * f.size_c
-                            .map(|c| c as f32 / 100.0 * 24.0 / 15.0 * 0.8)
-                            .unwrap_or(12.5);
+                    let size = cell_font_px(f.size_c, self.zoom);
                     let units: f32 = shown
                         .chars()
                         .map(|ch| if (ch as u32) < 0x2E80 { 1.0 } else { 2.0 })
@@ -1556,10 +1548,7 @@ impl Render for Calc {
                 if f.indent > 0 && !(is_num && f.align == HAlign::General)
                     && f.align != HAlign::Right
                 {
-                    let pt = self.zoom
-                        * f.size_c
-                            .map(|c| c as f32 / 100.0 * 24.0 / 15.0 * 0.8)
-                            .unwrap_or(12.5);
+                    let pt = cell_font_px(f.size_c, self.zoom);
                     d = d.pl(px(f32::from(f.indent) * pt * 0.9));
                 }
                 // 文字色の優先順: エラー > リンク > 条件 > セルの色 > 既定
@@ -2855,9 +2844,7 @@ impl Render for Calc {
                     .bg(base)
                     .px_1p5().flex().overflow_hidden()
                     .font_family(self.font_name.clone())
-                    .text_size(px(self.zoom * f.size_c
-                        .map(|c| c as f32 / 100.0 * 24.0 / 15.0 * 0.8)
-                        .unwrap_or(12.5)));
+                    .text_size(px(cell_font_px(f.size_c, self.zoom)));
                 match f.valign {
                     sheet::model::VAlign::Top => d = d.items_start(),
                     sheet::model::VAlign::Middle => d = d.items_center(),

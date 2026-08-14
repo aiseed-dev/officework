@@ -6112,6 +6112,20 @@ mod combo_tests {
     }
 
     #[test]
+    fn 字の大きさは96dpiの換算() {
+        use crate::util::cell_font_px;
+        // 画面の標準どおり 1pt = 96/72 px。前は 1.28 倍で 4% 小さく、
+        // 書式の無いセルは 12.5px の直書き(11pt を 1.136 倍)だった
+        assert!((cell_font_px(Some(1100), 1.0) - 14.666_667).abs() < 0.01, "11pt");
+        assert!((cell_font_px(Some(1050), 1.0) - 14.0).abs() < 0.01, "10.5pt の帳票");
+        assert!((cell_font_px(Some(2400), 1.0) - 32.0).abs() < 0.01, "24pt");
+        // 書式が無ければ既定の 11pt(直書きの px を残さない)
+        assert_eq!(cell_font_px(None, 1.0), cell_font_px(Some(1100), 1.0));
+        // 画面の拡大はそのまま掛かる
+        assert!((cell_font_px(Some(1100), 2.0) - 29.333_334).abs() < 0.01, "2倍");
+    }
+
+    #[test]
     fn 中央のはみ出しはセルの中心が軸() {
         use crate::view::spill_band;
         // セル幅 100(x0=200)、文字は 220 要る。左右に 100 ずつ伸ばせる

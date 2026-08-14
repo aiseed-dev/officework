@@ -3507,11 +3507,9 @@ impl Calc {
                         if t.is_empty() {
                             continue;
                         }
-                        let size = cell
-                            .fmt
-                            .size_c
-                            .map(|k| k as f32 / 100.0 * 24.0 / 15.0 * 0.8)
-                            .unwrap_or(12.5);
+                        // 幅を測るのも画面と同じ換算で(cell_font_px の1本)。
+                        // ここだけ古い係数だと、列幅の自動調整が字より狭くなる
+                        let size = crate::util::cell_font_px(cell.fmt.size_c, 1.0);
                         need = need.max(text_px(&t, size));
                     }
                     if need <= 0.0 {
@@ -3546,11 +3544,7 @@ impl Calc {
                             None => 1.0,
                         };
                         let lines = if cell.fmt.wrap {
-                            let size = cell
-                                .fmt
-                                .size_c
-                                .map(|k| k as f32 / 100.0 * 24.0 / 15.0 * 0.8)
-                                .unwrap_or(12.5);
+                            let size = crate::util::cell_font_px(cell.fmt.size_c, 1.0);
                             let w = self.col_px(c).max(8.0);
                             (text_px(&t, size) / w).ceil().max(1.0)
                         } else {
