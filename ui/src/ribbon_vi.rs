@@ -318,12 +318,8 @@ pub const CALC: &[Tab] = &[
         c("flash-fill", "Điền nhanh", "flash-fill"),
     ]},
     Tab { name: "Python", cmds: &[
-        c("py-edit", "Sửa hàm", "py-edit"),
         c("py-new", "Tệp .py mới", "py-new"),
-        c("py-run", "Chạy thủ tục", "py-run"),
         c("py-list", "Danh sách", "py-list"),
-        c("py-line", "Một dòng mã", "py-line"),
-        c("py-calc", "Tính lại", "py-calc"),
         c("py-folder", "Mở thư mục", "py-folder"),
     ]},
     Tab { name: "PivotTable", cmds: &[

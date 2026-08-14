@@ -66,6 +66,76 @@ def sock_path(app):
     )
 
 
+def _find_app(app):
+    """アプリの実行ファイルを探す。**Python が主なので、こちらが起こす**
+    (発注者 2026-08-15「主従が逆転」)。順は:
+
+    1. 環境変数 `OFFICEWORK_CALC` / `OFFICEWORK_WRITER`(名指し)
+    2. PATH の中(`calc` / `officework-calc`)
+    3. 配り物のよくある置き場(/opt/officework、~/apps の下)
+    """
+    import shutil
+
+    env = os.environ.get("OFFICEWORK_" + app.upper())
+    if env and os.path.exists(env):
+        return env
+    for name in (app, "officework-" + app):
+        p = shutil.which(name)
+        if p:
+            return p
+    for base in ("/opt/officework", os.path.expanduser("~/apps")):
+        if not os.path.isdir(base):
+            continue
+        direct = os.path.join(base, app)
+        if os.path.exists(direct):
+            return direct
+        # ~/apps/officework-0.1.0-…/calc の形
+        for d in sorted(os.listdir(base), reverse=True):
+            p = os.path.join(base, d, app)
+            if os.path.exists(p):
+                return p
+    return None
+
+
+def launch(app, path=None, wait=20.0):
+    """アプリを起こして、繋がるまで待つ。既に動いていれば何もしない。
+
+    **openpyxl は画面を持たなかった。** officework は自前の画面があるので、
+    Python から呼べば**画面が出て、そこを操れる**(発注者 2026-08-15)。
+    """
+    import subprocess
+    import time
+
+    if os.path.exists(sock_path(app)):
+        try:
+            call(app, "ping")
+            return False          # もう動いている
+        except OfficeworkError:
+            pass                  # 死んだソケットが残っているだけ
+    exe = _find_app(app)
+    if not exe:
+        raise OfficeworkError(
+            "{} の実行ファイルが見つかりません。"
+            "OFFICEWORK_{} に径路を入れるか、PATH に置いてください".format(
+                app, app.upper()
+            )
+        )
+    args = [exe] + ([os.path.abspath(path)] if path else [])
+    subprocess.Popen(
+        args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
+    )
+    limit = time.time() + wait
+    while time.time() < limit:
+        try:
+            call(app, "ping")
+            return True
+        except OfficeworkError:
+            time.sleep(0.2)
+    raise OfficeworkError(
+        "{} を起こしましたが、{:.0f} 秒たっても繋がりません".format(app, wait)
+    )
+
+
 def call(app, cmd, **kw):
     req = {"cmd": cmd}
     req.update(kw)
@@ -75,8 +145,9 @@ def call(app, cmd, **kw):
         s.connect(sock_path(app))
     except OSError as e:
         raise OfficeworkError(
-            "{} に繋がりません({}: {})。起動してから使ってください".format(
-                app, sock_path(app), e
+            "{} に繋がりません({}: {})。"
+            "officework.launch({!r}) で起こせます".format(
+                app, sock_path(app), e, app
             )
         ) from None
     try:

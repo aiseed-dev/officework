@@ -219,6 +219,52 @@ fn open_gate(
     true
 }
 
+/// `.py` を編集する道具で開く。**プログラムの編集は表計算の仕事ではない**
+/// (発注者 2026-08-15。データとプログラムを分けた以上、calc の中に
+/// 編集面を持つのは筋が通らない)。順は:
+///
+/// 1. settings.toml の `editor`(利用者が決めた道具。zed でも何でも)
+/// 2. 隣にいる officework の writer(素の文字として開ける)
+/// 3. 機械の既定(xdg-open — .py に何が結ばれていても、それが答え)
+///
+/// 返りは開いた道具の名前(状態行に出すため)
+pub fn open_for_edit(path: &str) -> Result<String, String> {
+    // (1) 利用者の決めが最優先
+    if let Some(ed) = settings::get("editor").filter(|s| !s.trim().is_empty()) {
+        return match std::process::Command::new(&ed).arg(path).spawn() {
+            Ok(mut c) => {
+                std::thread::spawn(move || {
+                    let _ = c.wait();
+                });
+                Ok(ed)
+            }
+            Err(e) => Err(format!("{ed}: {e}")),
+        };
+    }
+    // (2) 隣の writer(配り物は同じ場所に居る)
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let w = dir.join(if cfg!(windows) { "writer.exe" } else { "writer" });
+            if w.exists() {
+                return match std::process::Command::new(&w).arg(path).spawn() {
+                    Ok(mut c) => {
+                        std::thread::spawn(move || {
+                            let _ = c.wait();
+                        });
+                        Ok("writer".into())
+                    }
+                    Err(e) => Err(format!("writer: {e}")),
+                };
+            }
+        }
+    }
+    // (3) 機械の既定
+    match open_outside(path) {
+        Opened::Yes | Opened::JustNow => Ok("機械の既定の道具".into()),
+        Opened::Failed => Err("開ける道具がありません".into()),
+    }
+}
+
 /// フォルダや URL を外のソフトで開く(xdg-open)。**calc と writer が共に使う。**
 ///
 /// 素の `Command::spawn` を4箇所に散らしていたら、実機でファイルマネージャの

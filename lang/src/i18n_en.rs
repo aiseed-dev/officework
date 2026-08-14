@@ -904,11 +904,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ロックを外しました(保護中でもここは書けます)", "Unlocked (this cell stays writable while the sheet is protected)"),
     ("ロックを掛けました(保護中は書けません)", "Locked (not writable while the sheet is protected)"),
     ("保護中に許す操作(押して入切。保護していないときは効きません)", "Allowed while protected (click to toggle; no effect unless protected)"),
-    ("plugins に .py がありません({} — 「新しい .py」で作れます)", "No .py files in plugins ({} — \"New .py\" creates one)"),
-    ("選ぶとその .py を実行します", "Choosing one runs that .py"),
-    ("選ぶとその .py を編集します(Ctrl+S で保存 — セルの関数はすぐ計算し直ります)", "Choosing one edits that .py (Ctrl+S saves — cell functions recalculate at once)"),
     ("plugins に .py がありません({})", "No .py files in plugins ({})"),
-    ("plugins: {}", "plugins: {}"),
     ("計算の種類(比率=総計を100%とする。累計と差は小計・総計を出しません)", "Show values as (ratio = grand total is 100%. Running total and difference drop subtotals and grand totals)"),
     ("記号(組を選ぶと一字ずつ出ます)", "Symbols (pick a group to see them one by one)"),
     ("改ページは紙の切れ目です。切りたい行(または列)にカーソルを置いてから押してください", "A page break is where the paper ends. Put the cursor on the row (or column) you want to break at, then press this"),
@@ -1650,4 +1646,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} に保存しました(素の文字)", "Saved to {} (plain text)"),
     ("{}({} 行)— 素の文字として開きました。保存も素の文字です", "{} ({} lines) — opened as plain text; it will be saved as plain text too"),
     ("マクロ・素の文字", "Macros and plain text"),
+    // Python タブは編集の口だけに(2026-08-15)
+    ("作れません: {}", "Cannot create it: {}"),
+    ("{} を作って {} で開きました(保存したらセルから呼べます)", "Created {} and opened it in {} (save it and you can call it from a cell)"),
+    ("{} は作りましたが開けません: {}", "Created {} but cannot open it: {}"),
+    ("選ぶと編集の道具で開きます", "Pick one to open it in your editor"),
+    ("{} を {} で開きました", "Opened {} in {}"),
 ];

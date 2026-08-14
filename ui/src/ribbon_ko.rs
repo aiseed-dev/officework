@@ -318,12 +318,8 @@ pub const CALC: &[Tab] = &[
         c("flash-fill", "빠른 채우기", "flash-fill"),
     ]},
     Tab { name: "Python", cmds: &[
-        c("py-edit", "함수 편집", "py-edit"),
         c("py-new", "새 .py", "py-new"),
-        c("py-run", "절차 실행", "py-run"),
         c("py-list", "목록", "py-list"),
-        c("py-line", "한 줄 코드", "py-line"),
-        c("py-calc", "다시 계산", "py-calc"),
         c("py-folder", "폴더 열기", "py-folder"),
     ]},
     Tab { name: "피벗 테이블", cmds: &[

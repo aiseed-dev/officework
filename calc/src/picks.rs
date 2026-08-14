@@ -512,18 +512,15 @@ impl Calc {
                 }
             }
             // Python タブの一覧から選んだ .py(打たずに選べる道)
-            "py-edit" | "py-run" => {
-                let run = self.pick_kind == "py-run";
+            // 一覧から選んだ .py は**編集の道具で開く**(発注者 2026-08-15。
+            // プログラムの編集は表計算の仕事ではない)。順は
+            // settings の editor → 隣の writer → 機械の既定
+            "py-edit" => {
                 if let Some((_, path)) = self.pick_paths.iter().find(|(n, _)| n == v).cloned() {
-                    let name = path
-                        .file_stem()
-                        .map(|s| s.to_string_lossy().to_string())
-                        .unwrap_or_default();
-                    if run {
-                        self.run_plugin(&name, None, cx);
-                    } else {
-                        self.open_py_edit(&name);
-                    }
+                    self.status = match ui::open_for_edit(&path.display().to_string()) {
+                        Ok(tool) => ui::tf!("{} を {} で開きました", v, tool).into(),
+                        Err(e) => ui::tf!("開けません: {}", e).into(),
+                    };
                 }
                 self.pick_paths.clear();
             }

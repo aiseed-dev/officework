@@ -318,12 +318,8 @@ pub const CALC: &[Tab] = &[
         c("flash-fill", "快速填入", "flash-fill"),
     ]},
     Tab { name: "Python", cmds: &[
-        c("py-edit", "編輯函式", "py-edit"),
         c("py-new", "新增 .py", "py-new"),
-        c("py-run", "執行程序", "py-run"),
         c("py-list", "清單", "py-list"),
-        c("py-line", "單行程式碼", "py-line"),
-        c("py-calc", "重新計算", "py-calc"),
         c("py-folder", "開啟資料夾", "py-folder"),
     ]},
     Tab { name: "樞紐分析表", cmds: &[

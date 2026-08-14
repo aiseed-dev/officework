@@ -318,12 +318,8 @@ pub const CALC: &[Tab] = &[
         c("flash-fill", "Мгновенное заполнение", "flash-fill"),
     ]},
     Tab { name: "Python", cmds: &[
-        c("py-edit", "Изменить функцию", "py-edit"),
         c("py-new", "Новый .py", "py-new"),
-        c("py-run", "Выполнить процедуру", "py-run"),
         c("py-list", "Список", "py-list"),
-        c("py-line", "Строка кода", "py-line"),
-        c("py-calc", "Пересчитать", "py-calc"),
         c("py-folder", "Открыть папку", "py-folder"),
     ]},
     Tab { name: "Сводная таблица", cmds: &[

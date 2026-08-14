@@ -18,7 +18,7 @@
 
 import os
 
-from . import OfficeworkError, call as _shared_call
+from . import OfficeworkError, call as _shared_call, launch as _launch
 
 JoofficeError = OfficeworkError  # 旧名との互換
 JocalcError = OfficeworkError
@@ -1017,16 +1017,33 @@ class _Sheets:
 
 
 class Book:
-    """動いている calc のブック。Book() = 新規(未保存が無ければ)、
-    Book('path.xlsx') = そのファイルを開く。"""
+    """ブック。**Python が主で、calc は従**(発注者 2026-08-15)。
 
-    def __init__(self, path=None):
+        wb = xw.Book()              # calc が起ち上がり、画面が出る
+        wb = xw.Book("台帳.xlsx")   # そのファイルを開いた calc が出る
+
+    calc が動いていなければ**こちらが起こす**。openpyxl は画面を持たず、
+    xlwings は Excel(と Windows)が要った — officework は自前の画面を
+    持っているので、Python から呼べば画面が出て、そこを操れる。
+
+    既に動いている calc に付きたいときは `Book.attach()`。
+    起こしたくないときは `xw.Book(launch=False)`。
+    """
+
+    def __init__(self, path=None, launch=True):
+        if launch:
+            _launch("calc", path)      # 動いていれば何もしない
         if path is not None:
             info = _call("book_info")
             if info.get("path") != os.path.abspath(path):
                 _call("open", path=os.path.abspath(path))
-        else:
+        elif not launch:
             _call("new")
+        else:
+            # 起こしたばかりなら空のブックが出ている。既に動いていて中身が
+            # あるときだけ、新しいブックにする(打ちかけを黙って消さない)
+            if _call("book_info").get("path") or _call("ui_state").get("dirty"):
+                _call("new")
         self.sheets = _Sheets()
 
     @staticmethod

@@ -318,12 +318,8 @@ pub const CALC: &[Tab] = &[
         c("flash-fill", "Remplissage instantané", "flash-fill"),
     ]},
     Tab { name: "Python", cmds: &[
-        c("py-edit", "Modifier la fonction", "py-edit"),
         c("py-new", "Nouveau .py", "py-new"),
-        c("py-run", "Exécuter une procédure", "py-run"),
         c("py-list", "Liste", "py-list"),
-        c("py-line", "Ligne de code", "py-line"),
-        c("py-calc", "Recalculer", "py-calc"),
         c("py-folder", "Ouvrir le dossier", "py-folder"),
     ]},
     Tab { name: "Tableau croisé dynamique", cmds: &[

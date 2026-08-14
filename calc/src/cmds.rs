@@ -39,7 +39,7 @@ impl Calc {
         "coauth-mode", "co-delcomment", "co-showcomment", "co-chat",
         "co-history", "plug-macros", "plug-manage",
         // Python タブ(2026-08-09)
-        "py-edit", "py-new", "py-run", "py-list", "py-line", "py-calc", "py-folder",
+        "py-new", "py-list", "py-folder",
         "prot-doc", "prot-encrypt", "prot-sign",
         "zoom-in", "zoom-out", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
         "subscript", "align-just", "align-dist", "text-orient", "calc-mode",
@@ -232,7 +232,7 @@ impl Calc {
         "pivot-style", "pivot-fields",
         // 格子パレット(border_pal)。真下に落ちるので ▾ の側
         "borders",
-        "merge", "prot-allow", "co-history", "py-edit", "plug-manage",
+        "merge", "prot-allow", "co-history", "py-list", "plug-manage",
         "insslicer", "editheader", "paste-name", "csv-kind", "defname",
         "currency",
     ];
@@ -1262,73 +1262,56 @@ impl Calc {
                 }
             },
             // マクロ = Python in Calc と同じ実体(サンドボックスの中で .py を回す)
-            // ---- Python タブ(2026-08-09 発注者「メインのメニューに追加して
-            // きちんとやれ」)。**打たずに選べる**のがこのタブの目的 —
-            // @edit と打つ道は残すが、日本語の名前は IME を挟むので
-            // Enter が変換に食われて辿り着けなかった ----
-            "py-edit" | "py-run" => {
-                let run = id == "py-run";
-                let mods = crate::py::plugin_modules();
-                if mods.is_empty() {
-                    self.status = ui::tf!(
-                        "plugins に .py がありません({} — 「新しい .py」で作れます)",
-                        plugins_dir().display().to_string()
-                    )
-                    .into();
-                } else {
-                    // 一覧には**中の def も見せる** — どれがどの関数か分かる
-                    let outline = crate::py::plugin_outline();
-                    let names: Vec<String> = outline
-                        .iter()
-                        .map(|(m, defs)| {
-                            if defs.is_empty() {
-                                m.clone()
-                            } else {
-                                format!("{m}  —  {}", defs.join(" "))
-                            }
-                        })
-                        .collect();
-                    self.pick_paths = outline
-                        .iter()
-                        .zip(names.iter())
-                        .map(|((m, _), n)| (n.clone(), plugins_dir().join(format!("{m}.py"))))
-                        .collect();
-                    self.pick_kind = if run { "py-run" } else { "py-edit" };
-                    let at = self.pop_anchor();
-                    // .py の名前と中の def — ファイルの中身なので訳さない
-                    self.pick = Some((plain(names), at));
-                    self.status = if run {
-                        ui::t!("選ぶとその .py を実行します").into()
-                    } else {
-                        ui::t!("選ぶとその .py を編集します(Ctrl+S で保存 — セルの関数はすぐ計算し直ります)").into()
-                    };
-                    let _ = mods;
-                }
-            }
+            // **編集は表計算の仕事ではない**(発注者 2026-08-15)。
+            // 骨組みだけ書いたファイルを作り、編集の道具に渡す —
+            // 利用者の editor(settings.toml)→ 隣の writer → 機械の既定、の順
             "py-new" => {
-                // 名前は後で付ける。まず書ける場所を出す(打つ前に画面が出る)
+                let dir = plugins_dir();
+                let _ = std::fs::create_dir_all(&dir);
                 let mut n = 1;
-                while plugins_dir().join(format!("新しい道具{n}.py")).exists() {
+                while dir.join(format!("新しい道具{n}.py")).exists() {
                     n += 1;
                 }
-                self.open_py_edit(&format!("新しい道具{n}"));
+                let path = dir.join(format!("新しい道具{n}.py"));
+                if let Err(e) = std::fs::write(&path, ui::pyedit::skeleton(&format!("新しい道具{n}"))) {
+                    self.status = ui::tf!("作れません: {}", e).into();
+                    return;
+                }
+                self.status = match ui::open_for_edit(&path.display().to_string()) {
+                    Ok(tool) => ui::tf!(
+                        "{} を作って {} で開きました(保存したらセルから呼べます)",
+                        path.file_name().unwrap_or_default().to_string_lossy(), tool
+                    )
+                    .into(),
+                    Err(e) => ui::tf!("{} は作りましたが開けません: {}",
+                        path.display().to_string(), e).into(),
+                };
             }
+            // 置いてある .py の一覧。**選ぶと編集の道具で開く** —
+            // 名前を眺めるだけでは、直したい時に置き場を探すことになる
             "py-list" => {
                 self.prompt = None;
+                let dir = plugins_dir();
                 let plugs = crate::py::plugin_outline();
-                self.status = if plugs.is_empty() {
-                    ui::tf!("plugins に .py がありません({})", plugins_dir().display().to_string())
-                } else {
-                    ui::tf!(
-                        "plugins: {}",
-                        plugs
-                            .iter()
-                            .map(|(m, d)| format!("{m}({})", d.join(" ")))
-                            .collect::<Vec<_>>()
-                            .join(" / ")
-                    )
+                if plugs.is_empty() {
+                    self.status =
+                        ui::tf!("plugins に .py がありません({})", dir.display().to_string()).into();
+                    return;
                 }
-                .into();
+                let at = self.pop_anchor();
+                self.pick_paths = plugs
+                    .iter()
+                    .map(|(m, _)| (m.clone(), dir.join(format!("{m}.py"))))
+                    .collect();
+                self.pick_kind = "py-edit";
+                self.pick_note = Some(ui::t!("選ぶと編集の道具で開きます").into());
+                self.pick = Some((
+                    plugs
+                        .iter()
+                        .map(|(m, d)| (m.clone(), format!("{m} — {}", d.join(" "))))
+                        .collect(),
+                    at,
+                ));
             }
             "py-line" => {
                 self.prompt = Some(("py", Editor::new("")));
