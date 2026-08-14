@@ -1640,4 +1640,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} は作りましたが開けません: {}", "{} oluşturuldu ama açılamıyor: {}"),
     ("選ぶと編集の道具で開きます", "Düzenleyicide açmak için seçin"),
     ("{} を {} で開きました", "{}, {} ile açıldı"),
+    ("記録を始めました。操作すると Python の行になります(もう一度押すと止まります)", "Kayıt başladı. Yaptıklarınız Python satırlarına dönüşür (durdurmak için tekrar basın)"),
+    ("記録を {} に書きました({} 行)— {} で開きます", "Kayıt {} dosyasına yazıldı ({} satır) — {} ile açılıyor"),
+    ("記録を {} に書きました({} 行)", "Kayıt {} dosyasına yazıldı ({} satır)"),
+    ("記録を書けません: {}", "Kayıt yazılamıyor: {}"),
 ];

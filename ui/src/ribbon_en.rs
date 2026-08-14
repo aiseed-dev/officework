@@ -318,6 +318,7 @@ pub const CALC: &[Tab] = &[
         c("flash-fill", "Fill by example", "flash-fill"),
     ]},
     Tab { name: "Python", cmds: &[
+        c("rec-toggle", "Record actions", "py-run"),
         c("py-new", "New .py", "py-new"),
         c("py-list", "List", "py-list"),
         c("py-folder", "Open folder", "py-folder"),

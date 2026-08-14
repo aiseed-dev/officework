@@ -1640,4 +1640,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} は作りましたが開けません: {}", "{} dibuat tetapi tidak bisa dibuka: {}"),
     ("選ぶと編集の道具で開きます", "Pilih untuk membukanya di editor"),
     ("{} を {} で開きました", "{} dibuka di {}"),
+    ("記録を始めました。操作すると Python の行になります(もう一度押すと止まります)", "Perekaman dimulai. Yang Anda lakukan menjadi Python (tekan lagi untuk berhenti)"),
+    ("記録を {} に書きました({} 行)— {} で開きます", "Rekaman ditulis ke {} ({} baris) — dibuka di {}"),
+    ("記録を {} に書きました({} 行)", "Rekaman ditulis ke {} ({} baris)"),
+    ("記録を書けません: {}", "Tidak bisa menulis rekaman: {}"),
 ];

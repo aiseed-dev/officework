@@ -2,6 +2,11 @@
 
 use crate::*;
 
+/// Python の真偽(True / False)
+fn py_bool(b: bool) -> &'static str {
+    if b { "True" } else { "False" }
+}
+
 impl Calc {
     /// run_cmd が処理できる id。**リボンの ready はこの表の中に限る**
     /// (試験で突き合わせる。合っていないボタンは「押せるのに何もしない」嘘になる)
@@ -39,7 +44,7 @@ impl Calc {
         "coauth-mode", "co-delcomment", "co-showcomment", "co-chat",
         "co-history", "plug-macros", "plug-manage",
         // Python タブ(2026-08-09)
-        "py-new", "py-list", "py-folder",
+        "rec-toggle", "py-new", "py-list", "py-folder",
         "prot-doc", "prot-encrypt", "prot-sign",
         "zoom-in", "zoom-out", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
         "subscript", "align-just", "align-dist", "text-orient", "calc-mode",
@@ -334,7 +339,35 @@ impl Calc {
         .into();
     }
 
+    /// 記録に残す書式の操作(id → Python の1行を作る型)。
+    /// **Python の口にある物だけ**を記録する — 記録した台本が走らないと
+    /// 意味が無いので、口の無い操作は残さない(下の rec_cmd が None を返す)
+    fn rec_cmd(&self, id: &str) -> Option<String> {
+        let (a, b) = self.sel_rect();
+        let r = if a == b { a.a1() } else { format!("{}:{}", a.a1(), b.a1()) };
+        let sheet = self.book.sheets[self.active].name.clone();
+        let v = crate::state::sheet_var(&sheet);
+        let now = self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
+        Some(match id {
+            // 入切の物は、掛けた後の姿を書く(押した回数ではなく結果)
+            "bold" => format!("s{v}[{r:?}].font.bold = {}", py_bool(!now.bold)),
+            "italic" => format!("s{v}[{r:?}].font.italic = {}", py_bool(!now.italic)),
+            "underline" => format!("s{v}[{r:?}].font.underline = {}", py_bool(!now.underline)),
+            "align-left" => format!("s{v}[{r:?}].api.align = \"left\""),
+            "align-center" => format!("s{v}[{r:?}].api.align = \"center\""),
+            "align-right" => format!("s{v}[{r:?}].api.align = \"right\""),
+            _ => return None,
+        })
+    }
+
     pub(crate) fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
+        // 操作の記録(始めていれば)。**押す前に取る** — 掛けた後の姿を
+        // 書くので、いまの状態から次の姿を組み立てる
+        if self.rec.is_some() {
+            if let Some(line) = self.rec_cmd(id) {
+                self.rec_line(line);
+            }
+        }
         // 前に開いていた一覧の注記を落とす。**注記を出す一覧を鍵で閉じると
         // 残り、次に開いた一覧の見出しに前の説明が出ていた**(書体の一覧に
         // 「ピボット 1/4 …」が出た。2026-08-08 実機で見つけた)
@@ -1262,6 +1295,42 @@ impl Calc {
                 }
             },
             // マクロ = Python in Calc と同じ実体(サンドボックスの中で .py を回す)
+            // **操作の記録**(発注者 2026-08-15)。主従が逆転した今、
+            // 「何を書けばいいか」を教える唯一の道具 — 手でやった操作が
+            // そのまま走る Python の台本になる。押すたびに 始める/止める
+            "rec-toggle" => {
+                if self.rec.is_none() {
+                    self.rec_start();
+                    return;
+                }
+                let Some(script) = self.rec_stop() else { return };
+                let dir = plugins_dir();
+                let _ = std::fs::create_dir_all(&dir);
+                let mut n = 1;
+                while dir.join(format!("記録{n}.py")).exists() {
+                    n += 1;
+                }
+                let path = dir.join(format!("記録{n}.py"));
+                let 行 = script.lines().count();
+                match std::fs::write(&path, script) {
+                    Ok(()) => {
+                        self.status = match ui::open_for_edit(&path.display().to_string()) {
+                            Ok(tool) => ui::tf!(
+                                "記録を {} に書きました({} 行)— {} で開きます",
+                                path.file_name().unwrap_or_default().to_string_lossy(),
+                                行, tool
+                            )
+                            .into(),
+                            Err(_) => ui::tf!(
+                                "記録を {} に書きました({} 行)",
+                                path.display().to_string(), 行
+                            )
+                            .into(),
+                        };
+                    }
+                    Err(e) => self.status = ui::tf!("記録を書けません: {}", e).into(),
+                }
+            }
             // **編集は表計算の仕事ではない**(発注者 2026-08-15)。
             // 骨組みだけ書いたファイルを作り、編集の道具に渡す —
             // 利用者の editor(settings.toml)→ 隣の writer → 機械の既定、の順

@@ -1640,4 +1640,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} は作りましたが開けません: {}", "Đã tạo {} nhưng không mở được: {}"),
     ("選ぶと編集の道具で開きます", "Chọn để mở bằng trình soạn thảo"),
     ("{} を {} で開きました", "Đã mở {} bằng {}"),
+    ("記録を始めました。操作すると Python の行になります(もう一度押すと止まります)", "Đã bắt đầu ghi. Thao tác của bạn thành mã Python (nhấn lần nữa để dừng)"),
+    ("記録を {} に書きました({} 行)— {} で開きます", "Đã ghi vào {} ({} dòng) — mở bằng {}"),
+    ("記録を {} に書きました({} 行)", "Đã ghi vào {} ({} dòng)"),
+    ("記録を書けません: {}", "Không ghi được: {}"),
 ];

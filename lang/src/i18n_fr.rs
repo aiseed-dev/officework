@@ -1640,4 +1640,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} は作りましたが開けません: {}", "{} a été créé mais ne peut pas être ouvert : {}"),
     ("選ぶと編集の道具で開きます", "Choisissez pour l'ouvrir dans votre éditeur"),
     ("{} を {} で開きました", "{} ouvert dans {}"),
+    ("記録を始めました。操作すると Python の行になります(もう一度押すと止まります)", "Enregistrement démarré. Ce que vous faites devient du Python (appuyez à nouveau pour arrêter)"),
+    ("記録を {} に書きました({} 行)— {} で開きます", "Enregistrement écrit dans {} ({} lignes) — ouverture dans {}"),
+    ("記録を {} に書きました({} 行)", "Enregistrement écrit dans {} ({} lignes)"),
+    ("記録を書けません: {}", "Impossible d'écrire l'enregistrement : {}"),
 ];

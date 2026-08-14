@@ -24,6 +24,7 @@ impl Calc {
             cond_pend: None,
             import_pend: None,
             border_pal: None,
+            rec: None,
             fill_drag: None,
             pane_box: std::cell::Cell::new((0.0, 0.0, 0.0, 0.0)),
             pop_at: None,
@@ -197,6 +198,71 @@ impl Calc {
         } else {
             p.a1()
         }
+    }
+
+    /// 記録に1行足す(記録していなければ何もしない)。
+    /// **Python の言葉で書く** — officework.calc(xlwings 流)の形。
+    /// 記録した物がそのまま走るのが要件なので、画面の言葉に訳さない
+    pub(crate) fn rec_line(&mut self, line: String) {
+        if let Some(r) = &mut self.rec {
+            // 同じ行が続くのは押し間違い(太字を2回など)。畳まない —
+            // **打った通りを残す**のが記録で、整えるのは人の仕事
+            r.push(line);
+        }
+    }
+
+    /// セルへの書き込みを記録する。値は Python のリテラルにする
+    pub(crate) fn rec_set(&mut self, p: Pos, text: &str) {
+        if self.rec.is_none() {
+            return;
+        }
+        let sheet = self.book.sheets[self.active].name.clone();
+        let lit = if text.is_empty() {
+            "None".to_string()
+        } else if text.starts_with('=') {
+            format!("{text:?}")
+        } else if text.parse::<f64>().is_ok() {
+            text.to_string()
+        } else {
+            format!("{text:?}")
+        };
+        self.rec_line(format!("s{}[{:?}].value = {}", sheet_var(&sheet), p.a1(), lit));
+    }
+
+    /// 記録を始める(前の記録は捨てる)
+    pub(crate) fn rec_start(&mut self) {
+        self.rec = Some(Vec::new());
+        self.status = ui::t!(
+            "記録を始めました。操作すると Python の行になります(もう一度押すと止まります)"
+        )
+        .into();
+    }
+
+    /// 記録を止めて、走る台本にして返す
+    pub(crate) fn rec_stop(&mut self) -> Option<String> {
+        let lines = self.rec.take()?;
+        let sheet = self.book.sheets[self.active].name.clone();
+        let path = self.path.as_ref().map(|p| p.display().to_string());
+        let mut out = String::from(
+            "\"\"\"calc の操作を記録した台本。**そのまま走ります。**\n\n\
+             走らせ方: python この台本.py\n\
+             calc が動いていなければ起ち上がります(Python が主)。\n\
+             \"\"\"\n\nfrom officework import calc as xw\n\n",
+        );
+        match &path {
+            Some(p) => out.push_str(&format!("wb = xw.Book({p:?})\n")),
+            None => out.push_str("wb = xw.Book()\n"),
+        }
+        out.push_str(&format!("s{} = wb.sheets[{:?}]\n\n", sheet_var(&sheet), sheet));
+        if lines.is_empty() {
+            out.push_str("# 記録された操作はありません\n");
+        } else {
+            for l in &lines {
+                out.push_str(l);
+                out.push('\n');
+            }
+        }
+        Some(out)
     }
 
     pub(crate) fn sync_input(&mut self) {
@@ -2330,6 +2396,9 @@ impl Calc {
         if text.contains('\n') {
             cell.fmt.wrap = true;
         }
+        // 記録(始めていれば)。**書けた物だけを残す** — 断られた入力や
+        // 保護で戻された物は台本に入れない(走らせて同じにならない物を書かない)
+        self.rec_set(cur, &text);
         self.sheet_mut().set(cur, cell);
         self.fit_row_to_markdown(cur);
         // 計算方法が手動なら待たされない(F9 / Shift+F9 で手回し)。
@@ -2384,5 +2453,19 @@ impl Calc {
     pub(crate) fn row_px(&self, r: u32) -> f32 {
         self.sheet().row_height.get(&r).map(|pt| pt * 24.0 / 15.0).unwrap_or(ROW_H)
             * self.zoom
+    }
+}
+
+/// シート名を変数の後ろに付ける形にする。**普通のシート名なら空**
+/// (`s["A1"]` と書ける)。2枚目以降や記号の入った名前のときだけ番号を足す
+pub(crate) fn sheet_var(name: &str) -> String {
+    if name == "Sheet1" || name.is_empty() {
+        String::new()
+    } else {
+        let safe: String = name
+            .chars()
+            .map(|c| if c.is_alphanumeric() { c } else { '_' })
+            .collect();
+        format!("_{safe}")
     }
 }

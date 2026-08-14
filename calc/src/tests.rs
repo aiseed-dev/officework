@@ -6265,4 +6265,55 @@ mod combo_tests {
             assert_eq!(a, b, "同じセルで指紋が揺れる");
         });
     }
+
+    #[gpui::test]
+    fn 操作の記録がそのまま走る台本になる(cx: &mut gpui::TestAppContext) {
+        // 発注者 2026-08-15「Calc 側に操作を記録できるようにだけする」。
+        // 主従が逆転した今、これが「何を書けばいいか」を教える唯一の道具 —
+        // **記録した物がそのまま走る**のが要件
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.rec_start();
+            assert!(this.rec.is_some(), "記録が始まっていない");
+            // 手で打つのと同じ道(打ちかけ → 確定)
+            this.cursor = Pos::new(0, 0);
+            this.input = Editor::new("売上");
+            this.commit();
+            this.cursor = Pos::new(1, 0);
+            this.input = Editor::new("1200");
+            this.commit();
+            this.cursor = Pos::new(2, 0);
+            this.input = Editor::new("=A2*1.1");
+            this.commit();
+            // 書式も(太字)
+            this.cursor = Pos::new(0, 0);
+            this.anchor = None;
+            this.sync_input();
+            this.run_cmd("bold", cx);
+
+            let script = this.rec_stop().expect("記録が取れない");
+            assert!(this.rec.is_none(), "止めたのに残っている");
+            // 走る形か(頭が揃っているか)
+            assert!(script.contains("from officework import calc as xw"), "{script}");
+            assert!(script.contains("wb = xw.Book()"), "{script}");
+            assert!(script.contains("s = wb.sheets[\"Sheet1\"]"), "{script}");
+            // 打った物が Python の言葉で入っているか
+            assert!(script.contains("s[\"A1\"].value = \"売上\""), "{script}");
+            assert!(script.contains("s[\"A2\"].value = 1200"), "数は数のまま: {script}");
+            assert!(script.contains("s[\"A3\"].value = \"=A2*1.1\""), "{script}");
+            assert!(script.contains("s[\"A1\"].font.bold = True"), "書式が記録されていない: {script}");
+        });
+    }
+
+    #[gpui::test]
+    fn 記録していなければ何も溜まらない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.input = Editor::new("x");
+            this.commit();
+            this.run_cmd("bold", cx);
+            assert!(this.rec.is_none(), "始めていないのに記録がある");
+            assert!(this.rec_stop().is_none(), "止める物が無いのに返ってきた");
+        });
+    }
 }

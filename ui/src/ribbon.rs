@@ -379,6 +379,7 @@ pub const CALC: &[Tab] = &[
     // どちらも「いまのブック」を前提にしない。だからここに残るのは
     // **編集の口だけ**。手続きの実行・一行のコード・計算し直すは外した
     Tab { name: "Python", cmds: &[
+        c("rec-toggle", "操作を記録", "py-run"),
         c("py-new", "新しい .py", "py-new"),
         c("py-list", "一覧", "py-list"),
         c("py-folder", "置き場を開く", "py-folder"),
