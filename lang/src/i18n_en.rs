@@ -252,10 +252,6 @@ pub const TABLE: &[(&str, &str)] = &[
 ("やり直すものがありません", "Nothing to redo"),
 ("やり直しました", "Redone"),
 ("(空白)", "(blank)"),
-("{}列を選択しました(1〜{}行)", "Column {} selected (rows 1–{})"),
-("{}〜{}列を選択しました(1〜{}行)", "Columns {}–{} selected (rows 1–{})"),
-("{}行を選択しました", "Row {} selected"),
-("{}〜{}行を選択しました", "Rows {}–{} selected"),
 ("{}列の幅: {}({:.0}px)", "Column {} width: {} ({:.0}px)"),
 ("{}行の高さ: {}pt({:.0}px)", "Row {} height: {}pt ({:.0}px)"),
 ("1筆消しました(Ctrl+Z で戻せます)", "One stroke erased (Ctrl+Z undoes)"),
@@ -1644,4 +1640,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     // 普通の貼り付けは書式も(2026-08-14)
     ("{} セルを貼り付けました(書式も)", "Pasted {} cells (formatting too)"),
     ("{} セルを貼り付けました(外から来た字なので書式は据え置き)", "Pasted {} cells (text from another app, so formatting is left as it was)"),
+    ("表ぜんぶを選択しました", "Selected the whole sheet"),
+    // 列・行の丸ごと選択は表の端まで(2026-08-14)
+    ("{}列を選択しました(列ぜんぶ)", "Selected column {} (the whole column)"),
+    ("{}〜{}列を選択しました(列ぜんぶ)", "Selected columns {}–{} (whole columns)"),
+    ("{}行を選択しました(行ぜんぶ)", "Selected row {} (the whole row)"),
+    ("{}〜{}行を選択しました(行ぜんぶ)", "Selected rows {}–{} (whole rows)"),
 ];

@@ -6228,12 +6228,12 @@ mod combo_tests {
             this.cursor = Pos::new(2, 1);
             this.anchor = None;
             this.sync_input();
-            // 角(見出しの幅・高さの内側)を押す
+            // 角(見出しの幅・高さの内側)を押す = **表の端まで**
             this.mouse_down_at(HEAD_W / 2.0, ROW_H / 2.0, false, false, 1);
             assert_eq!(
                 this.sel_rect(),
-                (Pos::new(0, 0), Pos::new(4, 2)),
-                "使われている範囲が全部選ばれていない"
+                (Pos::new(0, 0), Pos::new(crate::util::LAST_ROW, crate::util::LAST_COL)),
+                "表の端まで選ばれていない(Ctrl+A の「使われている範囲」とは別)"
             );
             // 列の見出し(角の右)は今までどおり列の選択のまま
             this.mouse_down_at(HEAD_W + 10.0, ROW_H / 2.0, false, false, 1);

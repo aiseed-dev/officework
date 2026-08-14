@@ -1154,7 +1154,7 @@ impl Render for Calc {
         // 全部選んでいる間は見出しと同じ緑にして「いま全選択」を見せる
         let all_on = has_sel
             && sel_a == Pos::new(0, 0)
-            && self.sheet().extent() == (sel_b.row + 1, sel_b.col + 1);
+            && (sel_b.row, sel_b.col) == (crate::util::LAST_ROW, crate::util::LAST_COL);
         let mut head = div().flex().flex_row().flex_none()
             .child(div().flex_none().w(px(HEAD_W)).h(px(ROW_H))
                    .bg(if all_on { rgb(0xCFE6D8) } else { th_head })

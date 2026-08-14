@@ -1095,7 +1095,13 @@ impl Calc {
             if !self.commit() {
                 return;
             }
-            self.select_all_now();
+            // **表の端まで**(列・行の見出しと同じ決め — 発注者 2026-08-14)。
+            // Ctrl+A は「使われている範囲」で別の道具。角は列と行の交わりなので、
+            // 列ぜんぶ × 行ぜんぶ = 表ぜんぶが筋
+            self.anchor = Some(Pos::new(LAST_ROW, LAST_COL));
+            self.cursor = Pos::new(0, 0);
+            self.sync_input();
+            self.status = ui::t!("表ぜんぶを選択しました").into();
             return;
         }
         // 見出しのクリック = 列・行の選択(Excel の作法)。撫でれば複数列・行
