@@ -1633,4 +1633,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)", "Arrastre hacia abajo o a la derecha para copiar (doble clic: hasta la longitud de la columna vecina)"),
     ("隣の列に長さの手掛かりがありません(左右どちらも空)", "No hay columna vecina que indique la longitud (ambos lados vacíos)"),
     ("{} を {} に写しました", "{} copiado en {}"),
+    ("{} セルを貼り付けました(書式も)", "{} celdas pegadas (también el formato)"),
+    ("{} セルを貼り付けました(外から来た字なので書式は据え置き)", "{} celdas pegadas (texto de otra aplicación; el formato se mantiene)"),
 ];

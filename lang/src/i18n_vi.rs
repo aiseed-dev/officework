@@ -1633,4 +1633,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)", "Kéo xuống hoặc sang phải để sao chép (nhấp đúp: theo độ dài cột bên cạnh)"),
     ("隣の列に長さの手掛かりがありません(左右どちらも空)", "Không có cột bên cạnh để lấy độ dài (hai bên đều trống)"),
     ("{} を {} に写しました", "Đã sao chép {} vào {}"),
+    ("{} セルを貼り付けました(書式も)", "Đã dán {} ô (kèm định dạng)"),
+    ("{} セルを貼り付けました(外から来た字なので書式は据え置き)", "Đã dán {} ô (chữ từ ứng dụng khác nên giữ nguyên định dạng)"),
 ];

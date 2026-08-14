@@ -1633,4 +1633,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)", "Seret ke bawah atau kanan untuk menyalin (klik dua kali: sepanjang kolom tetangga)"),
     ("隣の列に長さの手掛かりがありません(左右どちらも空)", "Tidak ada kolom tetangga sebagai acuan panjang (kiri dan kanan kosong)"),
     ("{} を {} に写しました", "{} disalin ke {}"),
+    ("{} セルを貼り付けました(書式も)", "{} sel ditempel (beserta formatnya)"),
+    ("{} セルを貼り付けました(外から来た字なので書式は据え置き)", "{} sel ditempel (teks dari aplikasi lain, format dibiarkan)"),
 ];

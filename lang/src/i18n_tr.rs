@@ -1633,4 +1633,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)", "Kopyalamak için aşağı veya sağa sürükleyin (çift tıklama: komşu sütunun uzunluğu kadar)"),
     ("隣の列に長さの手掛かりがありません(左右どちらも空)", "Uzunluk alınacak komşu sütun yok (iki taraf da boş)"),
     ("{} を {} に写しました", "{} → {} kopyalandı"),
+    ("{} セルを貼り付けました(書式も)", "{} hücre yapıştırıldı (biçim de dâhil)"),
+    ("{} セルを貼り付けました(外から来た字なので書式は据え置き)", "{} hücre yapıştırıldı (başka uygulamadan gelen yazı, biçim korundu)"),
 ];

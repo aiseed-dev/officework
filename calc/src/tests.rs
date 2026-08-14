@@ -6057,4 +6057,57 @@ mod combo_tests {
             assert_eq!(this.fill_corner(), (Pos::new(1, 1), Pos::new(2, 3)));
         });
     }
+
+    #[gpui::test]
+    fn 普通の貼り付けは書式も運ぶ(cx: &mut gpui::TestAppContext) {
+        // 発注者 2026-08-14「普通にコピーしたら、書式もコピーしないといけない」。
+        // 本家の Ctrl+V は中身と書式の両方。値だけ・書式だけは
+        // 「形式を選択して貼り付け」の側
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let mut src = sheet::Cell::input("42");
+            src.fmt.bold = true;
+            src.fmt.fill = Some("FFF2CC".into());
+            src.fmt.align = sheet::model::HAlign::Center;
+            this.book.sheets[0].set(Pos::new(0, 0), src);
+            // A1 をコピーして C3 へ貼る
+            this.cursor = Pos::new(0, 0);
+            this.anchor = None;
+            this.sync_input();
+            this.copy_now(cx);
+            this.cursor = Pos::new(2, 2);
+            this.sync_input();
+            this.paste_now(cx);
+            let got = this.book.sheets[0].get(Pos::new(2, 2)).cloned().unwrap();
+            assert_eq!(got.value, sheet::Value::Number(42.0), "中身");
+            assert!(got.fmt.bold, "太字が運ばれていない");
+            assert_eq!(got.fmt.fill.as_deref(), Some("FFF2CC"), "塗りが運ばれていない");
+            assert_eq!(got.fmt.align, sheet::model::HAlign::Center, "揃えが運ばれていない");
+            assert!(this.status.contains("書式も"), "{}", this.status);
+        });
+    }
+
+    #[gpui::test]
+    fn 貼り付けで式の参照はずれ書式は付いてくる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("10"));
+            this.book.sheets[0].set(Pos::new(0, 1), sheet::Cell::input("20"));
+            let mut f = sheet::Cell::input("=A1*2");
+            f.fmt.italic = true;
+            this.book.sheets[0].set(Pos::new(1, 0), f);
+            recalc_book(&mut this.book, 0);
+            this.cursor = Pos::new(1, 0);
+            this.anchor = None;
+            this.sync_input();
+            this.copy_now(cx);
+            this.cursor = Pos::new(1, 1); // 1つ右へ貼る → =B1*2 = 40
+            this.sync_input();
+            this.paste_now(cx);
+            let got = this.book.sheets[0].get(Pos::new(1, 1)).cloned().unwrap();
+            assert_eq!(got.formula.as_deref(), Some("B1*2"), "参照がずれていない");
+            assert_eq!(this.book.sheets[0].value(Pos::new(1, 1)), sheet::Value::Number(40.0));
+            assert!(got.fmt.italic, "書式が運ばれていない");
+        });
+    }
 }

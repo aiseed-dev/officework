@@ -848,6 +848,42 @@ pub(crate) fn paste_formats(s: &mut sheet::Sheet, at: Pos, cells: &[Vec<Option<C
     n
 }
 
+/// **すべて**(中身と書式)を貼る — 普通の Ctrl+V。このアプリでコピーした
+/// 範囲だけが通る道で、控えたセルをそのまま置く。式の相対参照は `shift`。
+///
+/// 本家の普通の貼り付けは書式も運ぶ(発注者 2026-08-14)。値だけ・書式だけ・
+/// 式だけは「形式を選択して貼り付け」の側にある — 分かれ道はそちら
+pub(crate) fn paste_all_cells(
+    s: &mut sheet::Sheet,
+    at: Pos,
+    cells: &[Vec<Option<Cell>>],
+    shift: Option<(i64, i64)>,
+) -> usize {
+    let mut n = 0usize;
+    for (dr, row) in cells.iter().enumerate() {
+        for (dc, src) in row.iter().enumerate() {
+            let p = Pos::new(at.row + dr as u32, at.col + dc as u32);
+            match src {
+                Some(src) => {
+                    let mut cell = src.clone();
+                    if let (Some((r, c)), Some(f)) = (shift, src.formula.as_deref()) {
+                        cell.formula = Some(sheet::model::offset_refs(f, r, c));
+                    }
+                    s.set(p, cell);
+                }
+                // 空のセルを貼るのも「貼る」— 元が空なら先も空にする
+                // (書式は元のまま。中身だけ消す — 帳票の枠を壊さない)
+                None => {
+                    let fmt = s.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
+                    s.set(p, Cell { formula: None, value: sheet::Value::Empty, fmt });
+                }
+            }
+            n += 1;
+        }
+    }
+    n
+}
+
 /// 格子を `at` から流し込む。返すのは置いたセルの数。
 ///
 /// **書式は据え置く**(帳票の枠を壊さない — 範囲の Delete と同じ規則)。

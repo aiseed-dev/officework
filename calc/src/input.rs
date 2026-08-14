@@ -462,14 +462,30 @@ impl Calc {
             )),
             _ => None,
         };
-        let grid = tsv_grid(&text);
         self.checkpoint();
         let at = self.cursor;
-        let n = paste_grid(&mut self.book.sheets[self.active], at, &grid, shift);
+        // **このアプリでコピーした範囲なら、書式も一緒に貼る**(本家と同じ。
+        // 発注者 2026-08-14)。外から来た TSV には書式が無いので中身だけ —
+        // その場合だけ貼り先の書式を据え置く(帳票の枠を壊さない)
+        let (n, with_fmt) = match (&self.clip_cells, shift) {
+            (Some(cells), Some(_)) => {
+                let cells = cells.clone();
+                (paste_all_cells(&mut self.book.sheets[self.active], at, &cells, shift), true)
+            }
+            _ => {
+                let grid = tsv_grid(&text);
+                (paste_grid(&mut self.book.sheets[self.active], at, &grid, shift), false)
+            }
+        };
         recalc_book(&mut self.book, self.active);
         self.dirty = true;
         self.sync_input();
-        self.status = format!("{n} セルを貼り付けました(書式は据え置き)").into();
+        self.status = if with_fmt {
+            ui::tf!("{} セルを貼り付けました(書式も)", n)
+        } else {
+            ui::tf!("{} セルを貼り付けました(外から来た字なので書式は据え置き)", n)
+        }
+        .into();
         cx.notify();
     }
     /// 数式バーを打ちかけか(バーの中身がセルの保存内容から変わっているか)。
