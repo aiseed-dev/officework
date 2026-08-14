@@ -23,8 +23,6 @@ import pathlib
 
 from officework import sheet
 
-# **pathlib.Path を渡せない**(openpyxl は受ける)ので str() を挟んでいる。
-# 2026-08-15 にこの見本で見つけた穴 — 直ったら str() を外す
 ここ = pathlib.Path(__file__).resolve().parent
 正本 = ここ / "種の在庫.xlsx"
 頁 = ここ / "種のカタログ.html"
@@ -57,25 +55,16 @@ def 正本を作る():
     ws.append(["番号", "分類", "品名", "単価", "在庫数", "覚え書き"])
     for i, (分類, 品名, 単価, 数) in enumerate(タネ, start=1):
         ws.append([f"{i:04d}", 分類, 品名, 単価, 数, ""])
-    # 見出しを太字に(**範囲の参照 ws["A1:F1"] は読めないので1つずつ** —
-    # openpyxl は組の組を返す。2026-08-15 にこの見本で見つけた穴)
-    for col in range(1, 7):
-        ws.cell(row=1, column=col).font = sheet.Font(bold=True)
+    # 見出しを太字に(範囲の参照は組の組で返る — openpyxl と同じ書き方)
+    for cell in ws["A1:F1"][0]:
+        cell.font = sheet.Font(bold=True)
     for col, w in (("A", 8), ("B", 10), ("C", 28), ("D", 10), ("E", 10), ("F", 20)):
         ws.column_dimensions[col].width = w
     for r in range(2, len(タネ) + 2):
         ws.cell(row=r, column=4).number_format = "¥#,##0"
     ws.freeze_panes = "A2"
-    b.save(str(正本))  # ← Path を受けない(穴)
+    b.save(正本)
     return len(タネ)
-
-
-def 整数(v):
-    """**数は float で返る**(340 → 340.0)ので見せる前に整える。
-    openpyxl は int を返す — 2026-08-15 にこの見本で見つけた穴"""
-    if v is None:
-        return None
-    return int(v) if float(v).is_integer() else v
 
 
 def 在庫の言い方(数):
@@ -90,18 +79,14 @@ def 在庫の言い方(数):
 
 
 def 読む():
-    b = sheet.Book.open(str(正本))
+    b = sheet.Book.open(正本)
     ws = b.active
     行 = []
     for r in ws.values():
         if not r or r[0] == "番号":
             continue
         番号, 分類, 品名, 単価, 数, _ = (list(r) + [None] * 6)[:6]
-        # **"0001" と入れても 1.0 で返る**(文字が打鍵の解釈器を通って
-        # 数にされる)。品番・郵便番号・電話番号が壊れる所なので、
-        # ここで4桁に戻している — 2026-08-15 に見つけた穴
-        番号 = f"{整数(番号):04d}" if 番号 is not None else ""
-        行.append((番号, 分類, 品名, 整数(単価), 整数(数)))
+        行.append((番号, 分類, 品名, 単価, 数))
     return 行
 
 
@@ -193,7 +178,7 @@ def 注文書を作る(行):
     # 印刷: 見出しの行を2枚目以降にも出す
     ws.print_area = f"A1:F{合計行}"
     ws.print_title_rows = f"{見出し}:{見出し}"
-    b.save(str(注文書))  # ← Path を受けない(穴)
+    b.save(注文書)
     return 合計行
 
 

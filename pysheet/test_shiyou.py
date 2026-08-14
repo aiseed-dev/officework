@@ -199,3 +199,107 @@ if _honke is not None:
               "無指定の run の size_pt が None でない")
 
 print("OK")
+
+
+def 文字は文字のまま置かれる():
+    """**ファイルの口と打鍵の口は別物**(2026-08-15)。
+
+    前は Python から文字を置くと「人が打った字の解釈器」を通っていて、
+    `"0001"` が数の 1 になり、前後の空白も削られていた。品番・郵便番号・
+    電話番号・会員番号が壊れる所。openpyxl は文字を文字のまま置く。
+    """
+    from officework import sheet
+
+    b = sheet.Book()
+    ws = b.active
+    ws["A1"] = "0001"
+    ws["A2"] = " 山田 太郎 "
+    ws["A3"] = "TRUE"
+    ws["A4"] = "3.14"
+    ws["A5"] = "=1+2"
+    ws["A6"] = ""
+    assert ws["A1"] == "0001", f"品番が数にされた: {ws['A1']!r}"
+    assert ws["A2"] == " 山田 太郎 ", f"前後の空白が削られた: {ws['A2']!r}"
+    assert ws["A3"] == "TRUE", f"TRUE が真偽にされた: {ws['A3']!r}"
+    assert ws["A4"] == "3.14", f"数に見える字が数にされた: {ws['A4']!r}"
+    # = で始まる字だけは式(openpyxl も同じ)
+    assert ws.formula("A5") == "=1+2", f"式にならない: {ws.formula('A5')!r}"
+    assert ws["A5"] == 3, f"式が計算されない: {ws['A5']!r}"
+    # 空文字は空のセル(使っている範囲の数え方を変えないため)
+    assert ws["A6"] is None, f"空文字が値になった: {ws['A6']!r}"
+    print("  文字は文字のまま置かれる: ok")
+
+
+def 整数はintで返る():
+    """openpyxl は xlsx の <v>340</v> を int で返す。340.0 だと見せる前に
+    毎回 int() が要り、品番や個数の桁が汚れる(2026-08-15)"""
+    from officework import sheet
+
+    b = sheet.Book()
+    ws = b.active
+    ws["A1"] = 340
+    ws["A2"] = 3.5
+    ws["A3"] = -7
+    assert isinstance(ws["A1"], int) and ws["A1"] == 340, repr(ws["A1"])
+    assert isinstance(ws["A2"], float) and ws["A2"] == 3.5, repr(ws["A2"])
+    assert isinstance(ws["A3"], int) and ws["A3"] == -7, repr(ws["A3"])
+    print("  整数はintで返る: ok")
+
+
+def appendは空の行も進める():
+    """`append([])` で行が進まないと、表題・空行・記入欄の定型の用紙が
+    1行ずつずれる(2026-08-15。種苗の会の注文書の見本で踏んだ)"""
+    from officework import sheet
+
+    b = sheet.Book()
+    ws = b.active
+    ws.append(["あ"])
+    ws.append([])
+    ws.append([""])
+    ws.append(["い"])
+    assert ws.cell(row=1, column=1).value == "あ", "1行目"
+    assert ws.cell(row=2, column=1).value is None, "空の行が飛んだ"
+    assert ws.cell(row=4, column=1).value == "い", f"4行目にならない"
+    print("  appendは空の行も進める: ok")
+
+
+def 範囲の参照は組の組で返る():
+    """`for row in ws["A1:C1"]` は openpyxl の定番の書き方(2026-08-15)"""
+    from officework import sheet
+
+    b = sheet.Book()
+    ws = b.active
+    ws.append(["a", "b", "c"])
+    ws.append(["d", "e", "f"])
+    r = ws["A1:C1"]
+    assert len(r) == 1 and len(r[0]) == 3, f"形が違う: {r}"
+    assert [c.value for c in r[0]] == ["a", "b", "c"]
+    col = ws["A1:A2"]
+    assert len(col) == 2 and len(col[0]) == 1, f"1列の形が違う: {col}"
+    assert [row[0].value for row in col] == ["a", "d"]
+    print("  範囲の参照は組の組で返る: ok")
+
+
+def 径路はPathでも受ける():
+    """openpyxl は pathlib.Path を受ける(2026-08-15)"""
+    import pathlib
+    import tempfile
+
+    from officework import sheet
+
+    with tempfile.TemporaryDirectory() as d:
+        p = pathlib.Path(d) / "t.xlsx"
+        b = sheet.Book()
+        b.active["A1"] = "あ"
+        b.save(p)
+        assert p.exists(), "Path で保存できない"
+        b2 = sheet.Book.open(p)
+        assert b2[b2.sheet_names[0]]["A1"] == "あ", "Path で開けない"
+    print("  径路はPathでも受ける: ok")
+
+
+文字は文字のまま置かれる()
+整数はintで返る()
+appendは空の行も進める()
+範囲の参照は組の組で返る()
+径路はPathでも受ける()

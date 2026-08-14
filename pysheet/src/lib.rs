@@ -87,6 +87,10 @@ fn check_sheet_name(book: &sheet::Book, name: &str) -> PyResult<()> {
 #[derive(IntoPyObject)]
 enum Out {
     Num(f64),
+    /// **整数は int で返す**(2026-08-15)。中は f64 だが、openpyxl は
+    /// xlsx の `<v>340</v>` を int で返すので、`340` が `340.0` になると
+    /// 見せる前に毎回 `int()` が要り、品番や個数の桁が汚れる
+    Int(i64),
     Text(String),
     Bool(bool),
 }
@@ -94,7 +98,13 @@ enum Out {
 fn to_out(v: &Value) -> Option<Out> {
     match v {
         Value::Empty => None,
-        Value::Number(n) => Some(Out::Num(*n)),
+        // 整数の値は int で返す(openpyxl と同じ)。**桁があふれる大きな数と
+        // 小数はそのまま f64** — 丸めて別の数にするより、型が変わるほうが害が小さい
+        Value::Number(n) => Some(if n.fract() == 0.0 && n.abs() < 9.007_199_254_740_992e15 {
+            Out::Int(*n as i64)
+        } else {
+            Out::Num(*n)
+        }),
         Value::Text(s) => Some(Out::Text(s.clone())),
         Value::Bool(b) => Some(Out::Bool(*b)),
         Value::Error(e) => Some(Out::Text(e.clone())),
@@ -468,12 +478,37 @@ impl PySheet {
                 } else if let Ok(n) = v.extract::<f64>() {
                     (num_cell(n), None)
                 } else if let Ok(t) = v.extract::<String>() {
-                    // **日付を返す式には日付の形式を薦める**(元の形式が無いときだけ)。
-                    // Python の date を置いたときと同じ作法 — 打った字が
-                    // `"=TODAY()"` でも `date.today()` でも画面は同じであるべき
-                    let c = Cell::input(&t);
-                    let df = c.formula.as_deref().and_then(Cell::date_format_of);
-                    (c, df)
+                    // **文字は文字のまま置く**(2026-08-15 に直した)。
+                    //
+                    // 前は `Cell::input(&t)` — **人が打った字の解釈器** — を
+                    // 通していたので、`ws["A1"] = "0001"` が数の 1 になり、
+                    // 品番・郵便番号・電話番号・会員番号が壊れていた。前後の
+                    // 空白も削られていた。**ファイルの口と打鍵の口は別物**で、
+                    // 打鍵の側が「0001 と打ったら数の 1」なのは Excel と同じで
+                    // 正しいが、API がそれを真似る理由は無い(openpyxl も
+                    // 文字は文字のまま置く。うちは「openpyxl の代替」と名乗る)。
+                    //
+                    // `=` で始まる字を式にするのだけは残す — openpyxl も
+                    // `ws["A1"] = "=SUM(A1:A2)"` を式として置く。
+                    // 空文字は空のセル(前と同じ。使っている範囲の数え方を変えない)
+                    if t.starts_with('=') || t.trim().is_empty() {
+                        // **日付を返す式には日付の形式を薦める**(元の形式が
+                        // 無いときだけ)。Python の date を置いたときと同じ作法 —
+                        // 打った字が `"=TODAY()"` でも `date.today()` でも
+                        // 画面は同じであるべき
+                        let c = Cell::input(&t);
+                        let df = c.formula.as_deref().and_then(Cell::date_format_of);
+                        (c, df)
+                    } else {
+                        (
+                            Cell {
+                                formula: None,
+                                value: sheet::Value::Text(t),
+                                fmt: Default::default(),
+                            },
+                            None,
+                        )
+                    }
                 } else {
                     return Err(PyTypeError::new_err(format!(
                         "セルに置けるのは 数・bool・文字列・datetime/date/time・None。渡されたのは {}",

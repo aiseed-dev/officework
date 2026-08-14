@@ -24,6 +24,8 @@ openpyxl との違いをはっきり書いておく:
   openpyxl の path("/xl/workbook.xml" という内部の定数)は真似しない
 """
 
+import os as _os
+
 from . import _sheet as _engine
 
 
@@ -46,6 +48,17 @@ def _col_index(letters):
 
 def _coord(row, col):
     return "{}{}".format(_col_letter(col), row)
+
+
+def _cell_rc(ref):
+    """"B12" を (12, 2) に。$ は落とす(絶対参照でも同じ場所)"""
+    t = ref.replace("$", "").strip()
+    i = 0
+    while i < len(t) and t[i].isalpha():
+        i += 1
+    if i == 0 or i == len(t):
+        raise ValueError("セル参照として読めない: {!r}".format(ref))
+    return int(t[i:]), _col_index(t[:i])
 
 
 # ── 書式の入れ物(openpyxl の形。台帳「足す(書式)」2026-08-12)──────
@@ -820,6 +833,11 @@ class Sheet:
     def __init__(self, raw, book):
         self._s = raw
         self._book = book
+        # append が置いた最後の行。**shape から数え直さない** —
+        # 中身が全部空の行を置いても shape は伸びないので、数え直すと
+        # 同じ行に上書きし続ける(表題・空行・見出しの用紙が1行ずつずれた。
+        # 2026-08-15)。openpyxl も内部で行を数えている
+        self._append_row = 0
 
     # ── うちの口(エンジンそのまま)──────────────────────────────
 
@@ -828,6 +846,22 @@ class Sheet:
         return self._s.name
 
     def __getitem__(self, key):
+        # **範囲(A1:F1)は Cell の組の組で返す**(openpyxl と同じ)。
+        # 見出しの行にまとめて書式を掛けるときの定番の書き方で、前は
+        # 「セル参照として読めない」で落ちていた(2026-08-15)。
+        # 1行なら ((c, c, …),)、1列なら ((c,), (c,), …) — openpyxl の形を
+        # そのまま真似るので、呼ぶ側は `for row in ws["A1:F1"]` と書ける
+        if isinstance(key, str) and ":" in key:
+            a, _, b = key.partition(":")
+            (r0, c0), (r1, c1) = _cell_rc(a), _cell_rc(b)
+            if r0 > r1:
+                r0, r1 = r1, r0
+            if c0 > c1:
+                c0, c1 = c1, c0
+            return tuple(
+                tuple(Cell(self, r, c) for c in range(c0, c1 + 1))
+                for r in range(r0, r1 + 1)
+            )
         return self._s[key]
 
     def __setitem__(self, key, value):
@@ -979,7 +1013,9 @@ class Sheet:
         空のシートでは1行目に入る。
         """
         rows, _ = self._s.shape
-        at = rows + 1  # 空なら shape=(0,0) で1行目
+        # 直に書かれて伸びた分にも追いつく(どちらか大きい方の次へ)
+        at = max(rows, self._append_row) + 1
+        self._append_row = at
         if isinstance(iterable, dict):
             for k, v in iterable.items():
                 col = k if isinstance(k, int) else _col_index(k)
@@ -1233,6 +1269,9 @@ class Book:
 
     @staticmethod
     def open(path):
+        # **pathlib.Path も受ける**(openpyxl と同じ。2026-08-15)。
+        # 芯は文字しか取らないので、ここで径路の形に直してから渡す
+        path = _os.fspath(path)
         b = Book.__new__(Book)
         b._b = _engine.Book.open(path)
         b._path = path
@@ -1241,7 +1280,8 @@ class Book:
     # ── うちの口(エンジンそのまま)──────────────────────────────
 
     def save(self, path):
-        self._b.save(path)
+        # pathlib.Path も受ける(上の open と同じ理由)
+        self._b.save(_os.fspath(path))
 
     def recalc(self):
         self._b.recalc()
