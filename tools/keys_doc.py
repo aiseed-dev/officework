@@ -16,7 +16,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LIB = ROOT / "ui/src/lib.rs"
+# キーの表は face(gpui を持たない層)にある。2026-08-15 に ui から移った
+LIB = ROOT / "face/src/keys.rs"
 
 # 操作名 → (日本語, 英語)。**束縛の表に居る操作は全部ここに要る**
 DESC = {

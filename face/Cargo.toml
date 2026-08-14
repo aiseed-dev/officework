@@ -1,0 +1,25 @@
+[package]
+# **持ち運べる層**(SEKKEI「層は6つ」の アプリ の、絵を描かない半分)。
+# リボンの表・14言語の札・キーの割り当て・関数名の表・設定・窓の控え。
+#
+# **gpui を依存に持たない。これが芯。** 発注者 2026-08-15「GPUI の殻を
+# kotlin と swift で書く」— 殻を増やすなら、殻でない物が殻から出ていないと
+# 同じ層を3回書き直すことになる。ここに gpui が入っていないことは
+# cargo が保証する(気をつける、ではなく壁で守る)。
+#
+# ui との分かれ目: **ここは「何があるか」、ui は「どう描くか」。**
+# ui は face を再公開しているので、呼ぶ側は今までどおり ui::ribbon で届く。
+name = "face"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+
+# **依存を増やすときは、それが Kotlin / Swift の殻からも使える物か考える。**
+# gpui・resvg のような描画の物はここに入れない
+[dependencies]
+# 言葉(i18n)。lang は模型の層で gpui を持たない。
+# **既定の機能は外す。** lang の "ai"(rustls → ring)は C の道具を要り、
+# スマホの的で組めない(CI が lang 自体で先に踏んでいた穴)。face が使うのは
+# lang::i18n の表だけなので、既定なしで足りる — これで face は
+# aarch64-linux-android / aarch64-apple-ios でそのまま組める
+lang = { path = "../lang", default-features = false }

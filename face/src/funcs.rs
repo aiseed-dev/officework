@@ -26,7 +26,10 @@ pub struct FnText {
 impl FnInfo {
     /// いまの言語の言葉。無ければ日本語(素の言語)に落ちる
     fn text(&self) -> Option<&'static FnText> {
-        let t = crate::funcs_tables::text(ui::language())?;
+        // 言葉は lang から直に取る。前は `ui::language()` 経由だったが、
+        // ui は gpui の側なので face からは呼べない(lang は模型の層で
+        // gpui を持たない)。**再公開を1つ剥がしただけで中身は同じ**
+        let t = crate::funcs_tables::text(lang::i18n::language())?;
         // 並びは名前順(生成器が揃える)ので二分探索で引ける
         t.binary_search_by_key(&self.name, |r| r.name).ok().map(|i| &t[i])
     }

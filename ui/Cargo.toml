@@ -6,6 +6,8 @@ license.workspace = true
 
 [dependencies]
 kumihan = { path = "../engine" }
+# 絵を描かない物(リボンの表・14言語の札・キー・設定)。gpui を持たない
+face = { path = "../face" }
 lang = { path = "../lang" }
 pyrun = { path = "../pyrun" }
 # GPUI は crates.io に無いので、版を固定して zed から直に取る

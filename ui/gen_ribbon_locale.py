@@ -2,12 +2,12 @@
 """ribbon.rs(正)から、別ロケールのリボン表を起こす。
 
 gen_ribbon.py(テンプレートから ja の表を起こす)と役割が違う:
-こちらは **いまの ui/src/ribbon.rs を構造の正** とし、語だけを
+こちらは **いまの face/src/ribbon.rs を構造の正** とし、語だけを
 Euro-Office のロケール(vendor/web-apps の ja.json → <locale>.json の対訳)で
 置き換える。手で足したボタン(AI タブなど本家に無いもの)は OVERRIDES 表で
 訳す。**訳が見つからない語があれば止まる**(黙って日本語のまま出さない)。
 
-    python3 ui/gen_ribbon_locale.py en > ui/src/ribbon_en.rs
+    python3 ui/gen_ribbon_locale.py en > face/src/ribbon_en.rs
 
 id・並び・ready・icon は ja と同一になる(試験 ribbon.rs 側で保証)。
 """
@@ -770,7 +770,7 @@ def main():
 //! このファイルは手で書かない:
 //!
 //! ```text
-//! python3 ui/gen_ribbon_locale.py {target} > ui/src/ribbon_{target}.rs
+//! python3 ui/gen_ribbon_locale.py {target} > face/src/ribbon_{target}.rs
 //! ```
 //!
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの

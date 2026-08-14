@@ -250,11 +250,38 @@ class App:
         walk(self.d.screen().root)
         return max(found, key=lambda r: r[3] * r[4]) if found else None
 
+    def scale(self):
+        """画面の倍率(HiDPI)。**アプリは論理座標で答え、XTEST は物理座標で
+        押す。** 掛け忘れると、倍率2の機械では窓の左上寄りを押し続ける。
+
+        2026-08-15 に踏んだ: `copy`(論理 12,68)を押したつもりが物理
+        (12,68)= 「ファイル」の段に当たり、裏の画面が開いて段に戻れず、
+        点検が1つ目のボタンで止まっていた。**アプリの不具合に見えたが
+        道具の側だった**(踏み跡「まず道具の側を疑う」)。
+
+        倍率は格子の面の**論理の幅**と窓の**物理の幅**の比で出す
+        (calc の格子は左端から窓幅いっぱいに広がる)。求まらなければ 1.0。
+        """
+        if getattr(self, "_scale", None):
+            return self._scale
+        self._scale = 1.0
+        w = self.window()
+        pane = self.rpc({"cmd": "ribbon"}).get("pane")
+        if w and pane and pane[0] == 0 and pane[2] > 0:
+            s = w[3] / pane[2]
+            # 出るのは 1.0 / 1.25 / 1.5 / 2.0 あたり。桁が違うなら
+            # 前提(格子が窓幅いっぱい)が崩れているので 1.0 に落とす
+            if 0.9 <= s <= 4.0:
+                self._scale = s
+        return self._scale
+
     def click(self, wx, wy, wait=0.9):
-        """窓の中の座標を押す"""
+        """窓の中の座標(**論理**)を押す。物理へは [`scale`] で直す"""
         w = self.window()
         if not w:
             raise SystemExit("窓が消えました(落ちた?)")
+        s = self.scale()
+        wx, wy = wx * s, wy * s
         xtest.fake_input(self.d, X.MotionNotify, x=w[1] + int(wx), y=w[2] + int(wy))
         self.d.sync()
         time.sleep(0.25)

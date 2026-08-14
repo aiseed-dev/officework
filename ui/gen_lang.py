@@ -13,10 +13,10 @@
     python3 ui/gen_lang.py --check            # 登録済み全言語の表を検査
 
 生成するもの(すべて「手で書かない」ファイル):
-- ui/src/ribbon_<loc>.rs — リボン(標準のボタンは vendor の本家対訳、
+- face/src/ribbon_<loc>.rs — リボン(標準のボタンは vendor の本家対訳、
   こちら独自のボタンは材料の訳)
 - lang/src/i18n_<loc>.rs — 文言の対訳表
-- lang/src/i18n_tables.rs / ui/src/ribbon_tables.rs — 登録簿
+- lang/src/i18n_tables.rs / face/src/ribbon_tables.rs — 登録簿
 - lang/src/lib.rs / ui/src/lib.rs の gen_lang:begin〜end 区間
 
 検査(止まる条件): 訳の欠け・番号のずれ・穴埋め {} の数の不一致・
@@ -171,7 +171,7 @@ def write_registries():
         body.append(
             f'        "{l}" => Some((crate::ribbon_{m}::WRITER, crate::ribbon_{m}::CALC)),')
     body += ["        _ => None,", "    }", "}", ""]
-    (ROOT / "ui/src/ribbon_tables.rs").write_text("\n".join(body), encoding="utf-8")
+    (ROOT / "face/src/ribbon_tables.rs").write_text("\n".join(body), encoding="utf-8")
 
     # lib.rs の目印区間
     def patch(path, lines):
@@ -184,7 +184,7 @@ def write_registries():
     patch(ROOT / "lang/src/lib.rs",
           "".join(f"pub mod i18n_{mod_name(l)};\n" for l in langs)
           + "pub mod i18n_tables;\n")
-    patch(ROOT / "ui/src/lib.rs",
+    patch(ROOT / "face/src/lib.rs",
           "".join(f"pub mod ribbon_{mod_name(l)};\n" for l in langs))
 
 
@@ -280,7 +280,7 @@ def generate(loc):
             grl.main()
     finally:
         sys.argv = old_argv
-    (ROOT / f"ui/src/ribbon_{m}.rs").write_text(buf.getvalue(), encoding="utf-8")
+    (ROOT / f"face/src/ribbon_{m}.rs").write_text(buf.getvalue(), encoding="utf-8")
 
     write_registries()
     n = check_table(loc)

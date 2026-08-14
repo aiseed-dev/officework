@@ -26,24 +26,13 @@ pub(crate) use sheet::model::{Borders, CellFormat, HAlign};
 pub(crate) use sheet::{recalc, recalc_book, Book, Cell, Pos, Value};
 pub(crate) use ui::{handler, ribbon, HasEditor};
 
-mod funcs;
-// gen_funcs:begin(この間は calc/gen_funcs.py が生成する — 手で書かない)
-mod funcs_de;
-mod funcs_en;
-mod funcs_es;
-mod funcs_fr;
-mod funcs_id;
-mod funcs_it;
-mod funcs_ko;
-mod funcs_pt;
-mod funcs_pt_br;
-mod funcs_ru;
-mod funcs_tr;
-mod funcs_vi;
-mod funcs_zh;
-mod funcs_zh_tw;
-mod funcs_tables;
-// gen_funcs:end
+// **関数の表は face へ移した**(2026-08-15)。名前も分類も説明も
+// 絵を描かない物で、Kotlin / Swift の殻も同じ表を読む。ここで
+// 再公開しているので crate::funcs の呼び出しは今までどおり
+pub(crate) use face::{
+    funcs, funcs_de, funcs_en, funcs_es, funcs_fr, funcs_id, funcs_it, funcs_ko, funcs_pt,
+    funcs_pt_br, funcs_ru, funcs_tables, funcs_tr, funcs_vi, funcs_zh, funcs_zh_tw,
+};
 mod util;
 pub(crate) use util::*;
 mod py;

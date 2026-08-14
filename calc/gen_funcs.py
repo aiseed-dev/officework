@@ -1,6 +1,6 @@
-# 関数の一覧表(calc/src/funcs.rs ほか)を Euro-Office の現物から起こす。
+# 関数の一覧表(face/src/funcs.rs ほか)を Euro-Office の現物から起こす。
 #
-#   python3 calc/gen_funcs.py          # 素の日本語 calc/src/funcs.rs
+#   python3 calc/gen_funcs.py          # 素の日本語 face/src/funcs.rs
 #   python3 calc/gen_funcs.py --all    # 全言語 + 登録簿 + mod の登録
 #   python3 calc/gen_funcs.py --check  # 生成物が材料と合っているか
 #
@@ -21,7 +21,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LANGDIR = ROOT / "vendor/web-apps/apps/spreadsheeteditor/main/resources/formula-lang"
-SRCDIR = ROOT / "calc/src"
+# **関数の表は face(gpui を持たない層)にある。** 2026-08-15 に
+# calc/src から移した — 名前も分類も説明も絵を描かない物で、
+# Kotlin / Swift の殻も同じ表を読む
+SRCDIR = ROOT / "face/src"
 
 # こちらの札 → 本家の綴り。**この置き場では pt が欧州**
 VENDOR = {
@@ -157,7 +160,10 @@ pub struct FnText {
 impl FnInfo {
     /// いまの言語の言葉。無ければ日本語(素の言語)に落ちる
     fn text(&self) -> Option<&'static FnText> {
-        let t = crate::funcs_tables::text(ui::language())?;
+        // 言葉は lang から直に取る。前は `ui::language()` 経由だったが、
+        // ui は gpui の側なので face からは呼べない(lang は模型の層で
+        // gpui を持たない)。**再公開を1つ剥がしただけで中身は同じ**
+        let t = crate::funcs_tables::text(lang::i18n::language())?;
         // 並びは名前順(生成器が揃える)ので二分探索で引ける
         t.binary_search_by_key(&self.name, |r| r.name).ok().map(|i| &t[i])
     }
@@ -221,17 +227,17 @@ pub fn text(lang: &str) -> Option<&'static [FnText]> {
 
 
 def register(locs: list[str]) -> None:
-    """calc/src/main.rs の mod の登録を書き換える"""
-    p = SRCDIR / "main.rs"
+    """face/src/lib.rs の mod の登録を書き換える"""
+    p = SRCDIR / "lib.rs"
     src = p.read_text(encoding="utf-8")
     block = ("// gen_funcs:begin(この間は calc/gen_funcs.py が生成する — 手で書かない)\n"
-             + "".join(f"mod {mod_name(l)};\n" for l in locs)
-             + "mod funcs_tables;\n"
+             + "".join(f"pub mod {mod_name(l)};\n" for l in locs)
+             + "pub mod funcs_tables;\n"
              + "// gen_funcs:end\n")
     if "// gen_funcs:begin" in src:
         src = re.sub(r"// gen_funcs:begin.*?// gen_funcs:end\n", block, src, flags=re.S)
     else:
-        src = src.replace("mod funcs;\n", "mod funcs;\n" + block, 1)
+        src = src.replace("pub mod funcs;\n", "pub mod funcs;\n" + block, 1)
     p.write_text(src, encoding="utf-8")
 
 

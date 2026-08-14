@@ -1,4 +1,4 @@
-"""`ui/src/ribbon.rs` の表を読む。**この repo で唯一の読み手。**
+"""`face/src/ribbon.rs` の表を読む。**この repo で唯一の読み手。**
 
 5つの道具がそれぞれ正規表現で `ribbon.rs` を読んでいた(`wiring_check` /
 `ribbon_locale_check` に3つ / `gray_claim_check` / `ribbon_sweep` /
@@ -43,7 +43,7 @@ import sys
 from typing import NamedTuple
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-RIBBON = ROOT / "ui/src/ribbon.rs"
+RIBBON = ROOT / "face/src/ribbon.rs"
 
 
 class Cmd(NamedTuple):

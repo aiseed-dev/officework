@@ -63,7 +63,7 @@ jobs:
         # 直す回数だけ CI を回すことになるので、**全部出させてから読む**。
         # ci-test.sh 越し — 落ちたら試験の**名前**を走行ページの要約に書き出す
         # (ログは認証が要り、貼られる尻尾に名前が無い往復を4回やった)
-        run: bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
+        run: bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops -p face
       - name: サイドカーが組めるか(pyoffice)
         run: cargo build -p sidecar
       - name: Windows の的でも組めるか(pysheet — 配る wheel の3つ目の OS)
@@ -88,6 +88,12 @@ jobs:
           # lang は feature "ai"(rustls)を外した形で — スマホの組み方
           cargo check -p lang --no-default-features --target aarch64-linux-android
           cargo check -p lang --no-default-features --target aarch64-apple-ios
+          # **face(持ち運べる層)がスマホで組めること。** 発注者 2026-08-15
+          # 「GPUI の殻を kotlin と swift で書く」の土台がこれ — リボンの表・
+          # 14言語の札・キーの割り当て・関数名の表が、殻を替えても使える。
+          # **組めなくなったらここで止める**(2026-08-15 の実測では両方緑)
+          cargo check -p face --target aarch64-linux-android
+          cargo check -p face --target aarch64-apple-ios
       - name: リボンの表を読む解析器が、崩れたら止まるか
         # **検査を信じる前に、落ちる所を見る。** 6つの崩し方(新しい種類・
         # マクロ書き・Tab を関数で作る・引数が増える・`/* */` で囲む・
@@ -128,10 +134,23 @@ jobs:
         # (SEKKEI 書き込みの規則6)
         run: python3 tools/sunset_check.py
       - name: キーの一覧が束縛の表と揃っているか
-        # 手引きの「すべてのキー」は ui/src/lib.rs の KEYS_* から自動生成
+        # 手引きの「すべてのキー」は face/src/keys.rs の KEYS_* から自動生成
         # (tools/keys_doc.py --write)。手で書いた表は必ずずれる —
         # 鍵を足した回でこの門番が落ちたら、--write で書き直してコミット
         run: python3 tools/keys_doc.py
+      - name: face に gpui が混ざっていないか(孫まで)
+        # **持ち運べる層の値打ちは「gpui を持たないこと」そのもの**
+        # (発注者 2026-08-15「GPUI の殻を kotlin と swift で書く」)。
+        # face/src/lib.rs の試験は直の依存しか見ないので、孫まではここで見る。
+        # GPL の3クレート(ztracing / zlog / ztracing_macro)は gpui 経由で
+        # しか来ないため、同じ検査で一緒に止まる
+        run: |
+          if cargo tree -p face -e normal --prefix none \
+             | grep -E '^(gpui|ztracing|zlog|ztracing_macro) '; then
+            echo "::error::face に gpui 系が入りました。描く物は ui / calc / writer の側へ"
+            exit 1
+          fi
+          echo "face は gpui を孫まで含めて引いていません"
       - name: clippy
         # **-D warnings で止める。** 警告を貯めると新しい指摘が埋もれる。
         # ただし家の作法と噛み合わない4つだけ許す — どれも正しさの話ではなく
@@ -142,7 +161,7 @@ jobs:
         # 日本語の試験名(non_snake_case)は**その場で**許してある。まとめて
         # 消すと、製品のコードの命名まで見なくなる
         run: |
-          bash tools/ci-clippy.sh -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops --all-targets -- \
+          bash tools/ci-clippy.sh -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops -p face --all-targets -- \
             -D warnings \
             -A clippy::too_many_arguments \
             -A clippy::type_complexity \

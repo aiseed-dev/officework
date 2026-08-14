@@ -605,7 +605,7 @@ HEAD = '''//! リボン(タブ+コマンド)。**Euro-Office の現物から生�
 //! だから「Euro-Office と全く同じか」は台本を回し直せば確かめられる。
 //!
 //! ```text
-//! python3 ui/gen_ribbon.py ja > ui/src/ribbon.rs
+//! python3 ui/gen_ribbon.py ja > face/src/ribbon.rs
 //! ```
 //!
 //! **全部入れる**(2026-08-04 発注者確定で改訂。以前は共同編集・保護・

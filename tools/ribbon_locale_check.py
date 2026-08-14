@@ -1,11 +1,11 @@
 """**13言語のリボンが ja と同じ骨組みかを、組み立てずに見る。**
 
-`ui/src/ribbon.rs`(ja)と `ui/src/ribbon_<loc>.rs`(生成物)は、
+`face/src/ribbon.rs`(ja)と `face/src/ribbon_<loc>.rs`(生成物)は、
 **語だけが違って id・並び・ready・icon は同じ**でなければならない。
 ずれると、日本語では押せるボタンがドイツ語では灰色、といったことが起きる。
 `c(…)` が `x(…)` に化けていれば、その言語だけボタンが死ぬ。
 
-同じ照合は `ui/src/ribbon.rs` の `各言語の表は語だけが違う` がしている。
+同じ照合は `face/src/ribbon.rs` の `各言語の表は語だけが違う` がしている。
 **だが ui は CI で走らない** — `.github/workflows/ci.yml` が gpui の連結を
 避けて calc・writer・ui を外しているため。2026-08-10、同じ理由で
 `wiring_tests`(押しても何も起きないボタンを止める検査)が CI の外に
@@ -31,7 +31,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import ribbon_parse  # noqa: E402  (表を読むのはここだけ)
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-UI = ROOT / "ui/src"
+# リボンの表と14言語は face(gpui を持たない層)へ移った(2026-08-15)
+UI = ROOT / "face/src"
 
 # 拾えた数がこれを下回ったら「読めていない」と見なす。
 # いまは CALC・WRITER とも 200 前後なので、半分を切ったら書き方が変わった
@@ -110,7 +111,7 @@ def main() -> int:
         if p.stem not in ("ribbon_tables",)
     )
     if not locales:
-        print("::error::ui/src に ribbon_<loc>.rs がありません")
+        print("::error::face/src に ribbon_<loc>.rs がありません")
         return 1
 
     bad = 0

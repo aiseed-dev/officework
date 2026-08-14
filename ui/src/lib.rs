@@ -57,29 +57,23 @@ macro_rules! item {
     };
 }
 
-pub mod combo;
-pub mod icons;
 pub mod pyedit;
-pub mod ribbon;
-// gen_lang:begin(この間は ui/gen_lang.py が生成する — 手で書かない)
-pub mod ribbon_de;
-pub mod ribbon_en;
-pub mod ribbon_es;
-pub mod ribbon_fr;
-pub mod ribbon_id;
-pub mod ribbon_it;
-pub mod ribbon_ko;
-pub mod ribbon_pt;
-pub mod ribbon_pt_br;
-pub mod ribbon_ru;
-pub mod ribbon_tr;
-pub mod ribbon_vi;
-pub mod ribbon_zh;
-pub mod ribbon_zh_tw;
-// gen_lang:end
-pub mod ribbon_tables;
-pub mod settings;
-pub mod winstate;
+
+// **絵を描かない物は face に移した**(2026-08-15。発注者「GPUI の殻を
+// kotlin と swift で書く」)。ここで丸ごと再公開しているので、呼ぶ側は
+// 今までどおり `ui::ribbon` / `ui::settings` で届く — 移しても
+// アプリ側は1行も変えていない。
+//
+// **新しく「何があるか」の表を足すときは face の側へ。** こちらに書くと
+// gpui に縛られ、Kotlin / Swift の殻から読めなくなる
+pub use face::{
+    combo, icons, ribbon, ribbon_de, ribbon_en, ribbon_es, ribbon_fr, ribbon_id, ribbon_it,
+    ribbon_ko, ribbon_pt, ribbon_pt_br, ribbon_ru, ribbon_tables, ribbon_tr, ribbon_vi, ribbon_zh,
+    ribbon_zh_tw, settings, winstate,
+};
+pub use face::keys::{
+    compose_keys, default_keys, KeyWarn, KEYS_CALC, KEYS_COMMON, KEYS_WRITER,
+};
 
 /// 窓の縁のつかみ(8箇所)。**GNOME の Wayland はサーバー側の飾り(外枠)を
 /// 付けない**(SSD 非対応)ので、縁を自前で掴めるようにしないと窓の大きさを
@@ -403,124 +397,6 @@ pub fn key_hints(n: usize) -> Vec<String> {
         .collect()
 }
 
-/// 既定の割り当ての表(鍵, 操作名)。**この表が正本** — 束縛は
-/// [`bindings_for`] がここから作り、settings.toml の `key.操作名 = "鍵"` が
-/// 上書きし、tools/keys_check.py が手引きの表との揃いを見る。
-///
-/// 同じ操作に行が2つある物(ctrl-f と ctrl-h の Find など)はどちらも効く。
-/// **受け口の無いアプリに束縛を作らない** — 前は1本の表を両アプリに配り、
-/// 「束縛はあるが writer では動かない」鍵があった(sugata の部屋
-/// 「キーの嘘」)。表を 共通/calc/writer に割って、その状態を無くした
-/// (2026-08-14)
-pub const KEYS_COMMON: &[(&str, &str)] = &[
-    ("backspace", "Backspace"),
-    ("delete", "Delete"),
-    ("left", "Left"),
-    ("right", "Right"),
-    ("shift-left", "SelectLeft"),
-    ("shift-right", "SelectRight"),
-    ("ctrl-left", "WordLeft"),
-    ("ctrl-right", "WordRight"),
-    ("ctrl-shift-left", "SelectWordLeft"),
-    ("ctrl-shift-right", "SelectWordRight"),
-    ("pageup", "PageUp"),
-    ("pagedown", "PageDown"),
-    ("ctrl-f", "Find"),
-    // Ctrl+H(本家の「検索と置換」)も同じ口へ — ここのパネルは
-    // 探す言葉 → 置き換える言葉 の2段で、空なら検索だけ
-    ("ctrl-h", "Find"),
-    ("ctrl-b", "Bold"),
-    ("ctrl-i", "Italic"),
-    ("ctrl-u", "Underline"),
-    ("ctrl-5", "Strikeout"),
-    ("ctrl-p", "Print"),
-    ("f11", "FullScreen"),
-    ("ctrl-shift-s", "SaveAs"),
-    // F12 も名前を付けて保存(本家と同じ。2026-08-14 に追加)
-    ("f12", "SaveAs"),
-    ("ctrl-0", "ZoomReset"),
-    ("f1", "Help"),
-    ("ctrl-;", "InsDate"),
-    ("ctrl-:", "InsTime"),
-    ("ctrl-home", "DocHome"),
-    ("ctrl-end", "DocEnd"),
-    ("shift-up", "SelectUp"),
-    ("shift-down", "SelectDown"),
-    ("ctrl-a", "SelectAll"),
-    ("home", "Home"),
-    ("end", "End"),
-    ("enter", "Enter"),
-    ("up", "Up"),
-    ("down", "Down"),
-    ("tab", "Tab"),
-    ("shift-tab", "ShiftTab"),
-    ("ctrl-z", "Undo"),
-    ("ctrl-shift-z", "Redo"),
-    ("ctrl-y", "Redo"),
-    ("ctrl-s", "Save"),
-    ("ctrl-o", "Open"),
-    ("ctrl-c", "Copy"),
-    ("ctrl-x", "Cut"),
-    ("ctrl-v", "Paste"),
-    ("ctrl-q", "Quit"),
-    ("menu", "ContextMenu"),
-    ("shift-f10", "ContextMenu"),
-    ("ctrl-=", "UiBigger"),
-    ("ctrl-shift-=", "UiBigger"),
-    ("ctrl--", "UiSmaller"),
-    ("ctrl-k", "InsLink"),
-    ("escape", "Cancel"),
-];
-
-/// calc だけの割り当て(受け口が calc にしか無い物)
-pub const KEYS_CALC: &[(&str, &str)] = &[
-    ("ctrl-up", "EdgeUp"),
-    ("ctrl-down", "EdgeDown"),
-    ("ctrl-shift-up", "SelectEdgeUp"),
-    ("ctrl-shift-down", "SelectEdgeDown"),
-    ("f2", "EditCell"),
-    ("shift-f3", "InsertFn"),
-    ("ctrl-shift-%", "PercentFmt"),
-    ("ctrl-e", "FlashFill"),
-    ("ctrl-shift-v", "PasteValues"),
-    ("ctrl-shift-enter", "ArrayEnter"),
-    ("f9", "Recalc"),
-    ("shift-f9", "RecalcSheet"),
-    ("alt-enter", "NewLine"),
-    ("alt-pageup", "PrevSheet"),
-    ("alt-pagedown", "NextSheet"),
-    // 本家の鍵(2026-08-14 に追加)。Alt 版も当面残す — 衝突しない
-    ("ctrl-pageup", "PrevSheet"),
-    ("ctrl-pagedown", "NextSheet"),
-    ("f4", "CycleRef"),
-    ("alt-s", "SlicerMulti"),
-    ("alt-c", "SlicerClear"),
-    // ここから 2026-08-14 の増強(本家の定番)
-    ("ctrl-1", "CellFormat"),
-    ("ctrl-space", "SelectCol"),
-    ("shift-space", "SelectRow"),
-    ("alt-=", "AutoSum"),
-    ("ctrl-d", "FillDown"),
-    ("ctrl-r", "FillRight"),
-    ("ctrl-g", "Jump"),
-    ("f5", "Jump"),
-    ("ctrl-shift-l", "ToggleFilter"),
-    ("ctrl-t", "MakeTable"),
-    ("shift-f2", "AddComment"),
-];
-
-/// writer だけの割り当て。ctrl-e は calc ではフラッシュフィル、
-/// writer では中央揃え — **本家の手の記憶がアプリごとに違う**ので、
-/// 同じ鍵でも表を分けて別の操作に割り当てる
-pub const KEYS_WRITER: &[(&str, &str)] = &[
-    ("ctrl-e", "AlignCenter"),
-    ("ctrl-l", "AlignLeft"),
-    ("ctrl-r", "AlignRight"),
-    ("ctrl-j", "AlignJustify"),
-    ("ctrl-enter", "PageBreak"),
-    ("ctrl-]", "FontBigger"),
-    ("ctrl-[", "FontSmaller"),
-];
 
 /// 操作名 → 束縛を1本作る。知らない名前は None(呼ぶ側が言う)
 fn make_binding(key: &str, name: &str, context: &'static str) -> Option<KeyBinding> {
@@ -557,80 +433,7 @@ pub fn key_warnings() -> &'static [String] {
     KEY_WARNINGS.get().map(Vec::as_slice).unwrap_or(&[])
 }
 
-/// アプリの既定の表(共通+アプリ固有)。マニュアル生成の道具も
-/// この並びを読む
-pub fn default_keys(app: &str) -> Vec<(&'static str, &'static str)> {
-    let own: &[(&str, &str)] = match app {
-        "calc" => KEYS_CALC,
-        "writer" => KEYS_WRITER,
-        _ => &[],
-    };
-    KEYS_COMMON.iter().chain(own).copied().collect()
-}
 
-/// 合成で見つけた言い分。**翻訳は掛けない**(bindings_for が最後に
-/// 掛ける)— 芯を言語から切り離し、試験が文言に依らないようにする
-#[derive(Debug, PartialEq)]
-pub enum KeyWarn {
-    /// 知らない操作名
-    UnknownAction(String),
-    /// 読めない鍵(操作名, 鍵)
-    BadKey(String, String),
-    /// 同じ鍵の取り合い(鍵, 先の操作, 後の操作 — 後が勝つ)
-    Contested(String, String, String),
-}
-
-/// 既定の表と上書きの**合成の芯**(純関数 — 試験がここを直に叩く)。
-///
-/// 決め(2026-08-14): 名前の照合は大文字小文字を見ない。1つの操作に
-/// 複数の鍵は「,」区切り。上書きは**その操作の既定の鍵を全部置き換える**。
-/// 空文字なら外す。知らない名前・読めない鍵は**その行だけ捨てて、
-/// 言い分に残す**。取り合い(同じ鍵に別の操作)は後の者が勝ち、それも言う
-pub fn compose_keys(
-    defaults: &[(&str, &str)],
-    overrides: &[(String, String)],
-    known: &dyn Fn(&str) -> bool,
-) -> (Vec<(String, String)>, Vec<KeyWarn>) {
-    let mut rows: Vec<(String, String)> = defaults
-        .iter()
-        .map(|(k, n)| (k.to_string(), n.to_string()))
-        .collect();
-    let mut warns: Vec<KeyWarn> = Vec::new();
-    for (name, keys) in overrides {
-        if !known(name) {
-            warns.push(KeyWarn::UnknownAction(name.clone()));
-            continue;
-        }
-        let mut good: Vec<String> = Vec::new();
-        for key in keys.split(',').map(str::trim).filter(|k| !k.is_empty()) {
-            let ok = key
-                .split_whitespace()
-                .all(|part| gpui::Keystroke::parse(part).is_ok());
-            if ok {
-                good.push(key.to_string());
-            } else {
-                warns.push(KeyWarn::BadKey(name.clone(), key.to_string()));
-            }
-        }
-        // 空文字は「外す」の意思。読める鍵が1つも無い書き損じなら
-        // **既定を残す** — 書き間違い1つで鍵が全部消えるのは酷
-        if good.is_empty() && !keys.trim().is_empty() {
-            continue;
-        }
-        rows.retain(|(_, n)| !n.eq_ignore_ascii_case(name));
-        rows.extend(good.into_iter().map(|k| (k, name.clone())));
-    }
-    for i in 0..rows.len() {
-        for j in i + 1..rows.len() {
-            if rows[i].0 == rows[j].0 && !rows[i].1.eq_ignore_ascii_case(&rows[j].1) {
-                warns.push(KeyWarn::Contested(
-                    rows[i].0.clone(), rows[i].1.clone(), rows[j].1.clone(),
-                ));
-            }
-        }
-    }
-    (rows, warns)
-}
 
 /// 標準の割り当て+settings.toml の `key.操作名 = "鍵"` の上書き。
 /// アプリの起動時に一度呼ぶ。読めなかった行の言い分は [`key_warnings`]
@@ -642,6 +445,10 @@ pub fn bindings_for(app: &str, context: &'static str) -> Vec<KeyBinding> {
         // 名前が操作として実在するか(束縛を1本試作して確かめる —
         // 操作の一覧を二重に持たないため)
         &|n| make_binding("ctrl-a", n, context).is_some(),
+        // **鍵の書き方が読めるか。ここが gpui の殻である証**(2026-08-15)。
+        // face::compose_keys は判定を持たず、殻から受け取る — Kotlin /
+        // Swift の殻はそれぞれの読み手を渡す
+        &|part| gpui::Keystroke::parse(part).is_ok(),
     );
     let out = rows
         .iter()
@@ -912,80 +719,5 @@ mod tests {
         // 「日本フネン」のうち UTF-16 で 0..2 =「日本」が変換対象
         handler::replace_and_mark(&mut a, None, "日本フネン", Some(0..2));
         assert_eq!(a.ed.selection(), 0.."日本".len(), "UTF-16→バイトの変換が違う");
-    }
-}
-
-#[cfg(test)]
-mod key_tests {
-    use super::compose_keys;
-
-    fn known(n: &str) -> bool {
-        ["Bold", "Italic", "Find"].iter().any(|k| k.eq_ignore_ascii_case(n))
-    }
-    fn over(pairs: &[(&str, &str)]) -> Vec<(String, String)> {
-        pairs.iter().map(|(a, b)| (a.to_string(), b.to_string())).collect()
-    }
-
-    #[test]
-    fn 上書きは既定の鍵を置き換え_他の操作は無傷() {
-        let defaults = [("ctrl-b", "Bold"), ("ctrl-f", "Find"), ("ctrl-h", "Find")];
-        let (rows, warns) = compose_keys(&defaults, &over(&[("bold", "alt-b")]), &known);
-        assert!(rows.contains(&("alt-b".into(), "bold".into())), "{rows:?}");
-        assert!(!rows.iter().any(|(k, _)| k == "ctrl-b"));
-        assert_eq!(rows.iter().filter(|(_, n)| n == "Find").count(), 2);
-        assert!(warns.is_empty(), "{warns:?}");
-    }
-
-    #[test]
-    fn 知らない操作名は言い分になり_既定は動かない() {
-        let defaults = [("ctrl-b", "Bold")];
-        let (rows, warns) = compose_keys(&defaults, &over(&[("nosuch", "ctrl-x")]), &known);
-        assert_eq!(warns, vec![super::KeyWarn::UnknownAction("nosuch".into())]);
-        assert!(rows.contains(&("ctrl-b".into(), "Bold".into())));
-    }
-
-    #[test]
-    fn 読めない鍵だけの上書きは既定を残して言う() {
-        let defaults = [("ctrl-b", "Bold")];
-        let (rows, warns) =
-            compose_keys(&defaults, &over(&[("bold", "nosuchmod-b")]), &known);
-        assert_eq!(
-            warns,
-            vec![super::KeyWarn::BadKey("bold".into(), "nosuchmod-b".into())]
-        );
-        // 書き損じで鍵が消えたら酷 — 既定の ctrl-b は生きている
-        assert!(rows.contains(&("ctrl-b".into(), "Bold".into())), "{rows:?}");
-    }
-
-    #[test]
-    fn 空文字の上書きは鍵を外す() {
-        let defaults = [("ctrl-b", "Bold"), ("ctrl-i", "Italic")];
-        let (rows, warns) = compose_keys(&defaults, &over(&[("bold", "")]), &known);
-        assert!(warns.is_empty(), "{warns:?}");
-        assert!(!rows.iter().any(|(_, n)| n.eq_ignore_ascii_case("bold")));
-        assert!(rows.iter().any(|(_, n)| n == "Italic"));
-    }
-
-    #[test]
-    fn 同じ鍵の取り合いは言い分になり_後の者が勝つ側に居る() {
-        let defaults = [("ctrl-b", "Bold"), ("ctrl-i", "Italic")];
-        let (rows, warns) = compose_keys(&defaults, &over(&[("find", "ctrl-b")]), &known);
-        assert_eq!(
-            warns,
-            vec![super::KeyWarn::Contested("ctrl-b".into(), "Bold".into(), "find".into())]
-        );
-        // 後の者(find)の行が表の後ろに居る — GPUI は後から結んだ方を優先
-        let bold_at = rows.iter().position(|(k, n)| k == "ctrl-b" && n == "Bold").unwrap();
-        let find_at = rows.iter().position(|(k, n)| k == "ctrl-b" && n == "find").unwrap();
-        assert!(find_at > bold_at);
-    }
-
-    #[test]
-    fn 複数の鍵はコンマで並べられる() {
-        let defaults = [("ctrl-b", "Bold")];
-        let (rows, warns) = compose_keys(&defaults, &over(&[("bold", "alt-b, ctrl-shift-b")]), &known);
-        assert!(warns.is_empty(), "{warns:?}");
-        assert!(rows.contains(&("alt-b".into(), "bold".into())));
-        assert!(rows.contains(&("ctrl-shift-b".into(), "bold".into())));
     }
 }
