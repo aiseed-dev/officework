@@ -215,6 +215,12 @@ pub fn run_with_timeout(
 ) -> Result<(bool, String, String), RunErr> {
     use std::io::Read;
     use std::process::Stdio;
+    // 証明書の道を渡す(py_env)。**ここが全部の実行の通り道** — 同梱の
+    // Python は組んだ機械の径路を焼き付けていて、そのままだと https が
+    // 全部落ちる(2026-08-14)。囲いの中でも /etc は読み取り専用で見える
+    for (k, v) in py_env() {
+        cmd.env(k, v);
+    }
     cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = cmd.spawn().map_err(RunErr::Spawn)?;
     let mut so = child.stdout.take();
@@ -276,6 +282,36 @@ fn bundled_python(exe_dir: &std::path::Path) -> Option<std::path::PathBuf> {
         .iter()
         .map(|c| exe_dir.join(c))
         .find(|p| p.exists())
+}
+
+/// 機械の証明書の束を探す(見つからなければ None)。
+///
+/// **配る Python は自分の径路を焼き付けている** — 同梱した python は
+/// 「組んだ機械の /install/ssl/cert.pem」を見に行き、配った先には無いので
+/// **https が全部落ちる**(2026-08-14 に見本の天気予報で踏んだ。この機械の
+/// venv も旧名の径路を指したまま壊れていた)。だから走らせる側が
+/// `SSL_CERT_FILE` で機械の束を教える。置き場は配り物ごとに違うので、
+/// よくある順に探す
+pub fn ca_bundle() -> Option<PathBuf> {
+    const CANDS: &[&str] = &[
+        "/etc/ssl/certs/ca-certificates.crt",       // Debian/Ubuntu
+        "/etc/pki/tls/certs/ca-bundle.crt",         // Fedora/RHEL
+        "/etc/ssl/ca-bundle.pem",                   // openSUSE
+        "/etc/ssl/cert.pem",                        // Alpine/macOS(Homebrew)
+        "/usr/local/etc/openssl/cert.pem",          // macOS(Homebrew の別置き)
+    ];
+    CANDS.iter().map(PathBuf::from).find(|p| p.exists())
+}
+
+/// 子の Python に渡す環境。いまは証明書の道だけ。
+/// **既に指されていれば触らない**(利用者の設定が勝つ)
+pub fn py_env() -> Vec<(&'static str, String)> {
+    if std::env::var_os("SSL_CERT_FILE").is_some() {
+        return Vec::new();
+    }
+    ca_bundle()
+        .map(|p| vec![("SSL_CERT_FILE", p.display().to_string())])
+        .unwrap_or_default()
 }
 
 /// 裏方の Python を探す。**JO_PYTHON → 同梱 → .venv → python3**。
@@ -748,5 +784,42 @@ mod cage_tests {
         std::fs::write(&exe, b"").unwrap();
         assert_eq!(super::bundled_python(&d), Some(exe), "隣の python を見つけていない");
         let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn 証明書の束を機械から探す() {
+        // 配る Python は自分の径路を焼き付けているので、走らせる側が
+        // 機械の束を教える(2026-08-14 に見本の天気予報で踏んだ)
+        match super::ca_bundle() {
+            Some(p) => assert!(p.exists(), "在ると言った物が無い: {}", p.display()),
+            None => eprintln!("この機械には既知の置き場に証明書の束が無い(飛ばす)"),
+        }
+        // 既に指されていれば触らない(利用者の設定が勝つ)
+        unsafe { std::env::set_var("SSL_CERT_FILE", "/tmp/わたしの束.pem") };
+        assert!(super::py_env().is_empty(), "利用者の設定を上書きしている");
+        unsafe { std::env::remove_var("SSL_CERT_FILE") };
+    }
+
+    #[test]
+    fn 証明書の道が子のプロセスに渡る() {
+        // **実際に子を起こして確かめる。** py_env を書いただけでは、
+        // run_with_timeout が渡し忘れていても気づけない(2026-08-14 に
+        // 見本の天気予報が https で落ちて分かった穴)
+        let Some(bundle) = super::ca_bundle() else {
+            eprintln!("この機械に証明書の束が無い — 飛ばす");
+            return;
+        };
+        unsafe { std::env::remove_var("SSL_CERT_FILE") };
+        let mut c = std::process::Command::new("python3");
+        c.args(["-c", "import os; print(os.environ.get('SSL_CERT_FILE', 'なし'))"]);
+        match super::run_with_timeout(&mut c, 10) {
+            Ok((true, out, _)) => assert_eq!(
+                out.trim(),
+                bundle.display().to_string(),
+                "子に証明書の道が渡っていない"
+            ),
+            Ok((false, _, e)) => panic!("python3 が落ちた: {e}"),
+            Err(_) => eprintln!("python3 が無い — 飛ばす"),
+        }
     }
 }
