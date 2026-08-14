@@ -483,6 +483,36 @@ GPL は Apple/Microsoft のストアの EULA と衝突する(VLC の件と同じ
   無料で筋も良い(zed 自身 gpui は Apache-2.0 で出す方針のはず)。
   通ればストアの道も開くが、**待たない**
 
+### 調べ直して分かった細部(2026-08-14。決めは変わらない)
+
+Mac App Store を諦める理由は**2.5.2(任意コードの実行)ではなかった** —
+発注者の見立て「任意コードの実行にはならない」は正しい。同じ形の物が
+実在する: **Excel の VBA・BBEdit の Unix filter・CotEditor** はどれも
+App Store に居て、サンドボックスの中で利用者の書いた台本を動かしている。
+MAS に居ない Nova や Keyboard Maestro の理由も 2.5.2 ではなく
+**サンドボックス**だった。
+
+本当に効くのは別の2つ:
+
+1. **App Sandbox の中では `~/.config/office/plugins/` が読めない**
+   (「利用者のホームへの無制限の権限は無い」)。Mac で MAS に出すなら
+   置き場を `~/Library/Application Scripts/<bundle-id>/` に移し、
+   `NSUserUnixTask` で走らせる作りに変える必要がある(Apple 曰く
+   「利用者が与えた台本を、アプリのサンドボックスの外で実行するための物」)。
+   **直配布ならこの作り替えは要らない**
+2. **免許**(上の GPL 依存)。Custom EULA では解けない — 譲渡不可の条項は
+   外せず、Usage Rules が EULA と独立に掛かる
+
+**署名の細部**(直配布でも要る): 同梱 Python の Mach-O(`python3`・
+`libpython3.x.dylib`・`lib-dynload/*.so`)は**全部が署名の対象**。
+一方 **`.py` は Mach-O ではないので署名の対象外** — 利用者の未署名の .py を
+走らせること自体は署名の話にならない。公証には Hardened Runtime が必須。
+
+**訂正**: macOS Sequoia の Gatekeeper の変更は「**正しく署名されていない
+か公証されていない**ソフト」に限る話で、**公証して staple した .dmg は
+影響を受けない**(初回のダイアログ1回だけ)。「直配布は摩擦がある」と
+書くのは誤り。
+
 **Python 同梱**はどの形でも変わらず要る(発注者「Windows の人もいる」)。
 実行ファイルの隣の `python/` を見る段を pyrun に足した(a822982)。
 中身は python-build-standalone の **3.14 系**(手元の miniforge3 と揃える。
