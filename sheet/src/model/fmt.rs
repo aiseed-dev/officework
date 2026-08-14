@@ -122,6 +122,22 @@ pub fn format_value(v: &Value, code: Option<&str>, date1904: bool) -> String {
         Some((i, f)) => (i.to_string(), format!(".{f}")),
         None => (s, String::new()),
     };
+    // **整数側の `0` の数だけ頭を 0 で詰める。** `0000` で 1 → `0001`。
+    // 品番・会員番号・郵便番号の定番の書式で、**入れていなかった**
+    // (`#,##0.00` や `¥#,##0` は効いていたので気づきにくかった)。
+    // 2026-08-15、種苗の会の注文書の見本を実機で見て見つけた —
+    // 番号の欄が 0001 でなく 1 で並んでいた。詰めるのは**桁区切りの前**
+    // (Excel も `00,000` で 1234 → `01,234`)
+    let int = {
+        let sect0 = code.split(';').next().unwrap_or(code);
+        let intpat = sect0.split_once('.').map(|(i, _)| i).unwrap_or(sect0);
+        let zeros = intpat.chars().filter(|c| *c == '0').count();
+        if int.len() < zeros {
+            format!("{int:0>zeros$}")
+        } else {
+            int
+        }
+    };
     let int = if comma { group(&int) } else { int };
 
     let mut out = String::new();
