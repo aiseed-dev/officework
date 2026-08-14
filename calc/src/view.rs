@@ -1147,11 +1147,24 @@ impl Render for Calc {
         // 列見出し
         // 見出しもセルも flex_none — **窓の大きさで伸縮させない**
         // (窓に合わせるのは見える範囲。セルの大きさは設定どおり固定)
-        let mut head = div().flex().flex_row().flex_none()
-            .child(div().flex_none().w(px(HEAD_W)).h(px(ROW_H)).bg(th_head)
-                   .border_r_1().border_b_1().border_color(rgb(0xD5DBE0)));
         let (sel_a, sel_b) = self.sel_rect();
         let has_sel = self.anchor.is_some();
+        // 左上の角 = 全部のセルを選ぶ(押せる升。当たり判定は
+        // state.rs の mouse_down_at。ここは見た目と誘いだけ)。
+        // 全部選んでいる間は見出しと同じ緑にして「いま全選択」を見せる
+        let all_on = has_sel
+            && sel_a == Pos::new(0, 0)
+            && self.sheet().extent() == (sel_b.row + 1, sel_b.col + 1);
+        let mut head = div().flex().flex_row().flex_none()
+            .child(div().flex_none().w(px(HEAD_W)).h(px(ROW_H))
+                   .bg(if all_on { rgb(0xCFE6D8) } else { th_head })
+                   .border_r_1().border_b_1().border_color(rgb(0xD5DBE0))
+                   .cursor_pointer()
+                   // 隅に小さな三角(本家と同じ印 — 押せると分かる)
+                   .flex().items_end().justify_end().pb_0p5().pr_0p5()
+                   .text_size(px(us * 8.0))
+                   .text_color(if all_on { rgb(0x1B6E3C) } else { rgb(0x9AA5AE) })
+                   .child("◢"));
         for c in self.visible_cols() {
             // 選択に入っている列の見出しは色を変える(いまどこを選んでいるかの道標)
             let on = has_sel && (sel_a.col..=sel_b.col).contains(&c) || c == self.cursor.col;

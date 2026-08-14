@@ -47,7 +47,7 @@ impl Calc {
         }
         let r = (self.cursor.row as i32 + dr).max(0) as u32;
         let c = (self.cursor.col as i32 + dc).max(0) as u32;
-        self.cursor = Pos::new(r.min(9999), c.min(255));
+        self.cursor = Pos::new(r.min(LAST_ROW), c.min(LAST_COL));
         self.follow();
         let (a, b) = self.sel_rect();
         self.status = format!("{}:{}", a.a1(), b.a1()).into();
@@ -113,18 +113,18 @@ impl Calc {
         let from = self.cursor;
         let r = (self.cursor.row as i32 + dr).max(0) as u32;
         let c = (self.cursor.col as i32 + dc).max(0) as u32;
-        let mut np = Pos::new(r.min(9999), c.min(255));
+        let mut np = Pos::new(r.min(LAST_ROW), c.min(LAST_COL));
         // 結合は1つのセルとして歩く(Excel と同じ):
         // 外から入ったら左上に立ち、左上から同じ向きへ動いたら反対側の外へ抜ける
         if let Some((a, b)) = self.merge_of(np) {
             let inside_from = self.merge_of(from) == Some((a, b));
             np = if inside_from {
                 match (dr.signum(), dc.signum()) {
-                    (1, _) => Pos::new((b.row + 1).min(9999), np.col),
+                    (1, _) => Pos::new((b.row + 1).min(LAST_ROW), np.col),
                     (-1, _) => {
                         if a.row == 0 { a } else { Pos::new(a.row - 1, np.col) }
                     }
-                    (_, 1) => Pos::new(np.row, (b.col + 1).min(255)),
+                    (_, 1) => Pos::new(np.row, (b.col + 1).min(LAST_COL)),
                     (_, -1) => {
                         if a.col == 0 { a } else { Pos::new(np.row, a.col - 1) }
                     }

@@ -826,30 +826,31 @@ impl Calc {
     }
 
     /// 列をまるごと選ぶ(使われている高さまで)。`a` が起点、`b` が動く側。
+    /// 列をまるごと選ぶ。**表の端まで**(使われている範囲で止めない —
+    /// 発注者 2026-08-14。列の見出しを押したら、その列は全部が対象。
+    /// 空の行に書式を掛ける・貼り付ける、が普通にできる)
     pub(crate) fn select_cols(&mut self, a: u32, b: u32) {
-        let rows = self.sheet().extent().0.max(1);
-        self.anchor = Some(Pos::new(rows - 1, a));
+        self.anchor = Some(Pos::new(LAST_ROW, a));
         self.cursor = Pos::new(0, b);
         self.sync_input();
         let (lo, hi) = (a.min(b), a.max(b));
         self.status = if lo == hi {
-            ui::tf!("{}列を選択しました(1〜{}行)", col_name(lo), rows).into()
+            ui::tf!("{}列を選択しました(列ぜんぶ)", col_name(lo)).into()
         } else {
-            ui::tf!("{}〜{}列を選択しました(1〜{}行)", col_name(lo), col_name(hi), rows).into()
+            ui::tf!("{}〜{}列を選択しました(列ぜんぶ)", col_name(lo), col_name(hi)).into()
         };
     }
 
-    /// 行をまるごと選ぶ(使われている幅まで)。
+    /// 行をまるごと選ぶ。**表の端まで**(列と同じ決め)
     pub(crate) fn select_rows(&mut self, a: u32, b: u32) {
-        let cols = self.sheet().extent().1.max(1);
-        self.anchor = Some(Pos::new(a, cols - 1));
+        self.anchor = Some(Pos::new(a, LAST_COL));
         self.cursor = Pos::new(b, 0);
         self.sync_input();
         let (lo, hi) = (a.min(b), a.max(b));
         self.status = if lo == hi {
-            ui::tf!("{}行を選択しました", lo + 1).into()
+            ui::tf!("{}行を選択しました(行ぜんぶ)", lo + 1).into()
         } else {
-            ui::tf!("{}〜{}行を選択しました", lo + 1, hi + 1).into()
+            ui::tf!("{}〜{}行を選択しました(行ぜんぶ)", lo + 1, hi + 1).into()
         };
     }
 
@@ -1086,6 +1087,15 @@ impl Calc {
                 base: if is_col { self.col_px(idx) } else { self.row_px(idx) },
                 moved: false,
             });
+            return;
+        }
+        // 見出しの左上の角 = **全部のセルを選ぶ**(Excel の作法。
+        // 発注者 2026-08-14)。行の見出しでも列の見出しでもない唯一の升
+        if x < HEAD_W && y < ROW_H && self.show_headers {
+            if !self.commit() {
+                return;
+            }
+            self.select_all_now();
             return;
         }
         // 見出しのクリック = 列・行の選択(Excel の作法)。撫でれば複数列・行

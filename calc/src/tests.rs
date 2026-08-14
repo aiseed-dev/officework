@@ -6186,4 +6186,59 @@ mod combo_tests {
             );
         });
     }
+
+    #[gpui::test]
+    fn 列と行の選択は表の端まで届き重くない(cx: &mut gpui::TestAppContext) {
+        // 発注者 2026-08-14「行選択や列選択も途中で止めずに同じく全範囲」。
+        // 全範囲になると、範囲を舐める操作(書式・消去)が 256 万セルを
+        // 歩きうる — 遅くないことも一緒に見る
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("a"));
+            this.select_cols(1, 1);
+            let (a, b) = this.sel_rect();
+            assert_eq!((a.row, b.row), (0, crate::util::LAST_ROW), "列が端まで届いていない");
+            assert_eq!((a.col, b.col), (1, 1));
+            this.select_rows(2, 2);
+            let (a, b) = this.sel_rect();
+            assert_eq!((a.col, b.col), (0, crate::util::LAST_COL), "行が端まで届いていない");
+            // 全範囲へ書式を掛けても待たされないこと(空セルに器を作らない)
+            let t = std::time::Instant::now();
+            this.select_cols(3, 3);
+            this.run_cmd("bold", cx);
+            let ms = t.elapsed().as_millis();
+            assert!(ms < 500, "列ぜんぶへの書式が {ms}ms 掛かった(遅すぎる)");
+            // 空だったセルに器を作って表を膨らませていないこと
+            assert!(
+                this.book.sheets[0].extent().1 <= 4,
+                "空の列まで実体が増えている: {:?}",
+                this.book.sheets[0].extent()
+            );
+        });
+    }
+
+    #[gpui::test]
+    fn 見出しの左上の角で全部のセルを選ぶ(cx: &mut gpui::TestAppContext) {
+        // 発注者 2026-08-14「セルの左上を選択した時は、全部のセルを対象に」。
+        // 本家と同じ。中身は Ctrl+A と同じ道(使われている範囲)を通す
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("a"));
+            this.book.sheets[0].set(Pos::new(4, 2), sheet::Cell::input("b"));
+            this.cursor = Pos::new(2, 1);
+            this.anchor = None;
+            this.sync_input();
+            // 角(見出しの幅・高さの内側)を押す
+            this.mouse_down_at(HEAD_W / 2.0, ROW_H / 2.0, false, false, 1);
+            assert_eq!(
+                this.sel_rect(),
+                (Pos::new(0, 0), Pos::new(4, 2)),
+                "使われている範囲が全部選ばれていない"
+            );
+            // 列の見出し(角の右)は今までどおり列の選択のまま
+            this.mouse_down_at(HEAD_W + 10.0, ROW_H / 2.0, false, false, 1);
+            let (a, b) = this.sel_rect();
+            assert_eq!((a.col, b.col), (0, 0), "角の右は列の選択のはず");
+        });
+    }
 }
