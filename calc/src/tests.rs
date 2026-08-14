@@ -5874,6 +5874,27 @@ mod combo_tests {
     }
 
     #[gpui::test]
+    fn 埋めた後カーソルのセルが空に見えない(cx: &mut gpui::TestAppContext) {
+        // 発注者 2026-08-14: A1=1、A1:A5 を選んで Ctrl+D — 「A1 を A2:A5 に
+        // 写しました」と出るのに A5 が空に見える。モデルには書けていた。
+        // カーソル(選択の下端 A5)のセルは打ちかけの欄を映すので、
+        // 埋めた後に欄を同期しないと空のままに見える
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("1"));
+            this.anchor = Some(Pos::new(0, 0));
+            this.cursor = Pos::new(4, 0); // A5(選択の下端 = 空)
+            this.sync_input();
+            assert_eq!(this.input.text(), "", "埋める前の欄は空");
+            this.run_cmd("fill-num", cx);
+            // モデルにも欄にも 1 が居る — 画面は欄を映すので、ここがずれると
+            // 「書けたのに空に見える」
+            assert_eq!(this.book.sheets[0].value(Pos::new(4, 0)), sheet::Value::Number(1.0));
+            assert_eq!(this.input.text(), "1", "欄が同期されていない — 空に見える");
+        });
+    }
+
+    #[gpui::test]
     fn 上が空の下へコピーは中身を消して書式は残す(cx: &mut gpui::TestAppContext) {
         // 黙って飛ばさない — 空も配る(本家と同じ)。書式は帳票の枠なので残す
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
@@ -5951,27 +5972,27 @@ mod combo_tests {
                     "行{}", r + 1
                 );
             }
-            // 1つだけの数は**写す**(本家の既定 — 連続にしない)
+            // 1つの数でも連続データが既定(7 → 8, 9)
             this.book.sheets[0].set(Pos::new(6, 2), sheet::Cell::input("7"));
             this.cursor = Pos::new(6, 2);
             this.sync_input();
             this.fill_handle_apply(Pos::new(6, 2), Pos::new(6, 2), Pos::new(8, 2), false);
-            for r in 7..=8u32 {
+            for (r, want) in [(7u32, 8.0), (8, 9.0)] {
                 assert_eq!(
                     this.book.sheets[0].value(Pos::new(r, 2)),
-                    sheet::Value::Number(7.0),
+                    sheet::Value::Number(want),
                     "行{}", r + 1
                 );
             }
-            // Ctrl の裏返し: 1つの数でも +1 の続きになる(1 → 2,3)
-            this.book.sheets[0].set(Pos::new(10, 0), sheet::Cell::input("1"));
+            // Ctrl の裏返し: 写し(5 を引いて 5,5 — 帳票の定数の列)
+            this.book.sheets[0].set(Pos::new(10, 0), sheet::Cell::input("5"));
             this.cursor = Pos::new(10, 0);
             this.sync_input();
             this.fill_handle_apply(Pos::new(10, 0), Pos::new(10, 0), Pos::new(12, 0), true);
-            for (r, want) in [(11u32, 2.0), (12, 3.0)] {
+            for r in 11..=12u32 {
                 assert_eq!(
                     this.book.sheets[0].value(Pos::new(r, 0)),
-                    sheet::Value::Number(want),
+                    sheet::Value::Number(5.0),
                     "行{}", r + 1
                 );
             }

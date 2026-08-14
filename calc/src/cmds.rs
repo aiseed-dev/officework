@@ -63,8 +63,8 @@ impl Calc {
 
     /// フィルハンドルの実体 — 元の選択 (a,b) を to まで写す(下か右)。
     /// 元の塊を繰り返し写し、式は写した距離ぶんずれる(本家と同じ)。
-    /// `invert` = Ctrl を押しながら引いた(既定の裏返し — 本家と同じ):
-    /// 続きを作る所は写しに、1つの数の写しは +1 の続きになる
+    /// `invert` = Ctrl を押しながら引いた(裏返し): 連続データ ↔ 写し。
+    /// **既定は連続データ**(1 を引けば 2,3,4 — 発注者確定 2026-08-14)
     pub(crate) fn fill_handle_apply(&mut self, a: Pos, b: Pos, to: Pos, invert: bool) {
         self.commit();
         self.checkpoint();
@@ -86,12 +86,12 @@ impl Calc {
                 .collect::<Option<Vec<_>>>()?;
             match nums.len() {
                 0 => None,
-                // 1つの数: 既定は写し(None)。Ctrl の裏返しで +1 の続き
-                1 => invert.then_some((nums[0], 1.0)),
+                // 数のドラッグは**連続データが既定**(発注者確定 2026-08-14 —
+                // 1 を引けば 2,3,4)。写したいときは Ctrl(裏返し)
+                1 => (!invert).then_some((nums[0], 1.0)),
                 _ => {
                     let step = nums[1] - nums[0];
                     let ok = nums.windows(2).all(|w| (w[1] - w[0] - step).abs() < 1e-9);
-                    // 2つ以上: 既定は続き。Ctrl の裏返しで写し
                     (ok && !invert).then(|| (*nums.last().unwrap(), step))
                 }
             }
@@ -475,6 +475,11 @@ impl Calc {
                         }
                         recalc_book(&mut self.book, self.active);
                         self.dirty = true;
+                    // カーソルのセルは打ちかけの欄を映す — 同期しないと
+                    // **書けたのに空に見える**(発注者 2026-08-14。選択の
+                    // 最後のセル=カーソルの居場所なので、いつも最後だけ
+                    // 空に見えた)
+                    self.sync_input();
                         let _ = n;
                         self.status = ui::tf!(
                             "{} を {} に写しました",
@@ -511,6 +516,11 @@ impl Calc {
                     }
                     recalc_book(&mut self.book, self.active);
                     self.dirty = true;
+                    // カーソルのセルは打ちかけの欄を映す — 同期しないと
+                    // **書けたのに空に見える**(発注者 2026-08-14。選択の
+                    // 最後のセル=カーソルの居場所なので、いつも最後だけ
+                    // 空に見えた)
+                    self.sync_input();
                     let _ = n;
                     self.status = ui::tf!(
                         "{} を {} に写しました",
@@ -547,6 +557,11 @@ impl Calc {
                         }
                         recalc_book(&mut self.book, self.active);
                         self.dirty = true;
+                    // カーソルのセルは打ちかけの欄を映す — 同期しないと
+                    // **書けたのに空に見える**(発注者 2026-08-14。選択の
+                    // 最後のセル=カーソルの居場所なので、いつも最後だけ
+                    // 空に見えた)
+                    self.sync_input();
                         let _ = n;
                         self.status = ui::tf!(
                             "{} を {} に写しました",
@@ -582,6 +597,11 @@ impl Calc {
                     }
                     recalc_book(&mut self.book, self.active);
                     self.dirty = true;
+                    // カーソルのセルは打ちかけの欄を映す — 同期しないと
+                    // **書けたのに空に見える**(発注者 2026-08-14。選択の
+                    // 最後のセル=カーソルの居場所なので、いつも最後だけ
+                    // 空に見えた)
+                    self.sync_input();
                     let _ = n;
                     self.status = ui::tf!(
                         "{} を {} に写しました",
