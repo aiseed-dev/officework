@@ -174,8 +174,9 @@ builder の芯「壊さずに作り直せる」がこのままでは立たない
 1. **段A**: UI でない塊を切り出す — `ops`(Book/Range の語彙。rpc.rs の
    9命令+calc/writer に写経されている13関数)と `pyrun`(Python 実行の
    機構 — Cage・埋め込み台本・plugins/UDF の管理。writer と共有になる)
-2. **段B**(後で判断): アプリの中の部屋(view/cmds/picks)のクレート化。
-   Calc 構造体の欄を API にする工事が要る
+2. **段B**: アプリの中の部屋(view/cmds/picks)のクレート化。
+   Calc 構造体の欄を API にする工事が要る。
+   **段B-1 は済んだ(2026-08-15、face クレート)** — 下の節を見よ
 3. **その次**: `sheet::Edit` + `apply(&[Edit]) -> Undo` — undo を丸ごとの
    控えから Edit の列へ。これが builder の「どのセルが人の手か」と、
    差分再計算(いまは1セル直すたびにシート全体を回している)の両方への道
@@ -192,6 +193,60 @@ builder の芯「壊さずに作り直せる」がこのままでは立たない
 writer 側は表で1度通してから同じ問いを持ち込む(文書の編集は run 単位で
 形が違う)。sidecar は載せ替えない — 向こうが決めた言葉を素通しするのが
 役目で、翻訳の層を挟むと余計な欄が入る余地になる。
+
+### 段B-1 済み: face(絵を描かない層)を切り出した(2026-08-15)
+
+発注者「**GPUI の殻を kotlin と swift で書く**」で段B に着手した。殻を
+増やすなら、殻でない物が殻の外に出ていないと同じ表を殻の数だけ書き直す。
+
+`face` クレート(**gpui を依存に持たない**)へ移した物: リボンの表と14言語の
+札、関数名・分類・説明の14言語、キーの割り当ての表と合成の芯、設定・窓の
+控え・コンボ・アイコン(SVG 262枚)。`ui` と `calc` が再公開しているので
+**呼ぶ側 73 箇所は1行も変えていない**。
+
+gpui を切るのに直したのは**2箇所だけ**だった: `compose_keys` の
+`gpui::Keystroke::parse` 直呼びを引数へ出したことと、`funcs.rs` の
+`ui::language()` を `lang::i18n::language()` にしたこと。
+
+壁は cargo に守らせる — face の試験(直の依存)+ CI の `cargo tree`(孫まで)。
+**face は aarch64-linux-android と aarch64-apple-ios でそのまま組める**
+(実測。CI にも入れた)。`lang` は既定の機能を外して引く(rustls → ring が
+C の道具を要る)。
+
+### 段B-2(これから): 命令と状態の層を降ろす
+
+**結合の表面を測った(2026-08-15)。ここが要点で、思ったより薄い。**
+
+命令の層 14,968 行(cmds 3,618 / state 2,471 / picks 4,750 / util 2,046 /
+py 2,083)が gpui に触るのは**5種類の呼び出しだけ**:
+
+| 呼び出し | 回数 | 意味 |
+|---|---|---|
+| `cx.notify()` | 39 | 模型が変わった、描き直せ |
+| `cx.spawn()` | 14 | 後で走らせる |
+| `cx.background_executor()` | 12 | 別の糸で走らせる |
+| `cx.read_from_clipboard()` | 1 | 貼り付け元を読む |
+| `cx.focus_handle()` | 1 | 焦点 |
+
+`cmds.rs` は 3,618 行で gpui の参照が**1つ**(`run_cmd` の
+`cx: &mut Context<Self>`)しかない。
+
+**型は既にある。** `ops::Host` が同じ問題を同じ形で解いている —
+「動いているアプリの都合は Host の向こう。calc が実装すれば生きた表への口、
+pysheet が実装すればファイルへの口」。段B-2 もこれに倣い、上の5つを持つ
+トレイトを立てて `cx` を置き換える。
+
+**先に知っておく制約(orphan rule)**: `Calc` 構造体をそのまま face 側へ
+移すことはできない。`impl Render for Calc` は gpui(よそのトレイト)を
+よその型に実装する形になり、Rust が許さない。**模型と見えを割る**のが正解 —
+持ち運べる側に `CalcModel`(状態+命令)を置き、gpui の `Calc` はそれを
+欄に持って `Render` だけを実装する。gpui 固有の欄(`focus: FocusHandle`・
+`img_cache`・`font_name: SharedString`・`pick_note: SharedString`)は
+`Calc` 側に残る。
+
+**段B-1 と違って呼ぶ側が大量に変わる**(`self.foo` が `self.model.foo` に
+なる)ので、便を分けること。急ぐ理由は無い — Kotlin / Swift の殻は
+まず「何があるか」(face)が要り、命令の層はその次。
 
 ## 原則
 
