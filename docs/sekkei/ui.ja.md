@@ -152,7 +152,55 @@ EDID が嘘をつく機械(プロジェクタ・テレビ・仮想画面で 0mm 
   編集そのものは外の道具へ渡す — settings の `editor`(zed でも何でも)→
   隣の writer → 機械の既定、の順(ui::open_for_edit)
 
-**まだ無い物**: 操作の記録(calc)、writer の差し込み。
+**まだ無い物**: writer の差し込み。
+
+## 操作の記録の穴を測った(2026-08-15)
+
+発注者の「Flet でランチャーを作る(中はテキスト駆動、表面は簡単な UI)」の
+下ごしらえ。**フォームの品書きを手で並べない**ために、まず記録がどこまで
+Python で書けるかを機械に数えさせた。
+
+**測り方**: リボンの押せる命令 192 件を記録つきで1件ずつ叩き、
+「中身が変わった(`edits` が増えた)のに記録が伸びない」物を穴として拾う。
+手で分類した表は作らない — 手で保つ表は必ず遅れて嘘になる。
+道具は `cargo test -p calc 記録の穴を数える -- --ignored --nocapture`
+(16 分かかるので既定では回さない。常に回る見張りは別に速いのを置いた)。
+
+**結果**: 叩いた 192 件のうち **41 件が中身を変え、書けたのは 8 件、
+穴が 33 件**。
+
+| 群 | 穴 |
+|---|---|
+| 文字の書式 | incfont / decfont / strikeout / subscript |
+| 揃え | top / middle / bottom / wrap / align-just / align-dist / direction |
+| 数の書式 | percents / comma / digit-inc / digit-dec |
+| 編集 | cut / paste / clear / cell-ins / cell-del |
+| 並べ替え | sort-asc / sort-desc |
+| ページと印刷 | pagesize / pageorient / pagemargins / scale / print-gridlines / print-headings |
+| 保護 | cell-lock / read-only-rec |
+| 挿入 | instext |
+
+**穴の性質は2つに分かれる**(着手の順を決めるのに要る):
+
+- **記録が書き方を知らないだけ** — Python の口は既にある。calc.py に
+  `number_format` `direction` `page_setup` `margins_mm` `landscape`
+  `insert_rows` `delete_rows` `clear` `clear_contents` `size` `wrap` が
+  実在する。ここは `rec_cmd` に腕を足すだけの機械仕事
+- **口そのものが無い** — cut / paste / sort / subscript / instext /
+  cell-lock あたり。こちらはエンジンの仕事
+
+**一件ずつの裏取りはまだしていない**(上の振り分けは calc.py の口の名前を
+見ただけ)。着手する便で1件ずつ確かめること。
+
+### 途中で踏んだ穴(記録として)
+
+- 最初に「記録できるのは 25 個」と数えたのは**間違い**だった。match の腕を
+  grep で数えただけで走らせていない(踏み跡「読んで断じない。走らせる」を
+  そのままやった)。実際の `rec_cmd` の腕は6つ
+- 次に「110 件が変わり、穴は 2 件」と出たのも**間違い**。試験がセルを直に
+  書いて `sync_input()` を呼んでいなかったので、最初の命令が空の打ちかけを
+  A1 に上書きし、どの操作でも `s["A1"].value = None` の一行が残っていた。
+  それを「書けた」と数えていた。**Ctrl+D の穴と同じ型を自分の試験でやった**
 
 ### 左右のパネル
 

@@ -360,14 +360,54 @@ impl Calc {
         })
     }
 
+    /// リボンの表からこの命令の名札を引く(記録の註に人の言葉で残すため)。
+    /// 見つからなければ id をそのまま返す
+    pub(crate) fn cmd_label(id: &str) -> &str {
+        ribbon::calc_tabs()
+            .iter()
+            .flat_map(|t| t.cmds.iter())
+            .find(|c| c.id == id)
+            .map(|c| c.label)
+            .unwrap_or(id)
+    }
+
+    /// **操作の記録の入口。** 中身は [`Self::run_cmd_inner`]。
+    ///
+    /// ここが薄い包みになっているのは「**書けなかった操作を黙って落とさない**」
+    /// ため(発注者 2026-08-15 の設計「記録の正直さ」)。前は
+    /// `rec_cmd` が `None` を返したら何も残らず、記録した .py は
+    /// **やった操作より短いのに、そうとは分からない**台本になっていた。
+    ///
+    /// 判定は手で分類しない。**走らせて測る** — 中身が変わった
+    /// (`edits` が増えた)のに記録が伸びていなければ、それが穴。
+    /// この形なら Python の口が増えたとき註が自然に消え、**一覧を手で
+    /// 保つ必要がない**(手で保つ表は必ず遅れて嘘になる)。
     pub(crate) fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
         // 操作の記録(始めていれば)。**押す前に取る** — 掛けた後の姿を
         // 書くので、いまの状態から次の姿を組み立てる
+        let rec_len = self.rec.as_ref().map(|v| v.len());
         if self.rec.is_some() {
             if let Some(line) = self.rec_cmd(id) {
                 self.rec_line(line);
             }
         }
+        let edits_before = self.edits;
+        self.run_cmd_inner(id, cx);
+        if let Some(n) = rec_len {
+            let 変わった = self.edits > edits_before;
+            let 書けた = self.rec.as_ref().is_some_and(|v| v.len() > n);
+            if 変わった && !書けた {
+                // **穴の印。** この行がそのまま Python の口の宿題になる
+                let line = format!(
+                    "# この操作はまだ Python で書けません: {}({id})",
+                    Self::cmd_label(id)
+                );
+                self.rec_line(line);
+            }
+        }
+    }
+
+    fn run_cmd_inner(&mut self, id: &str, cx: &mut Context<Self>) {
         // 前に開いていた一覧の注記を落とす。**注記を出す一覧を鍵で閉じると
         // 残り、次に開いた一覧の見出しに前の説明が出ていた**(書体の一覧に
         // 「ピボット 1/4 …」が出た。2026-08-08 実機で見つけた)

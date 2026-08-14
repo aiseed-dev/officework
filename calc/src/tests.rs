@@ -6379,3 +6379,119 @@ mod combo_tests {
         });
     }
 }
+
+#[cfg(test)]
+mod rec_gap_tests {
+    use crate::*;
+
+    /// **記録の穴を数える道具。** 手で分類した表は作らない — リボンの全命令を
+    /// 記録つきで叩き、「中身は変わったのに Python で書けなかった」物を
+    /// 機械に拾わせる(発注者 2026-08-15 の設計「記録の正直さ」)。
+    ///
+    /// **既定では回さない。** 192 命令ぶん Calc を作り直すので 16 分かかる
+    /// (Calc::new が機械の書体を数え上げる)。穴の一覧が要るときに手で:
+    ///
+    /// ```text
+    /// cargo test -p calc 記録の穴を数える -- --ignored --nocapture
+    /// ```
+    ///
+    /// 常に回る見張りは下の[`記録は書けなかった操作を黙って落とさない`]。
+    #[ignore = "重い(16分)。穴の一覧が要るときだけ手で回す"]
+    #[gpui::test]
+    fn 記録の穴を数える(cx: &mut gpui::TestAppContext) {
+        let ids: Vec<&'static str> = ui::ribbon::calc_tabs()
+            .iter()
+            .flat_map(|t| t.cmds.iter())
+            .filter(|c| c.ready && !c.id.is_empty())
+            .map(|c| c.id)
+            .collect();
+        let mut 書けた: Vec<&str> = Vec::new();
+        let mut 穴: Vec<&str> = Vec::new();
+        for id in &ids {
+            let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+            c.update(cx, |this, cx| {
+                // 何か中身がある状態から始める(空だと多くの命令が空振りする)
+                {
+                    let sh = &mut this.book.sheets[0];
+                    sh.set(Pos::new(0, 0), Cell::input("10"));
+                    sh.set(Pos::new(0, 1), Cell::input("20"));
+                    sh.set(Pos::new(1, 0), Cell::input("30"));
+                    sh.set(Pos::new(1, 1), Cell::input("40"));
+                }
+                this.cursor = Pos::parse("A1").unwrap();
+                // 打ちかけの控えをセルに合わせる(上の註と同じ理由)
+                this.sync_input();
+                this.rec = Some(Vec::new());
+                let before = this.edits;
+                this.run_cmd(id, cx);
+                if this.edits > before {
+                    let lines = this.rec.clone().unwrap_or_default();
+                    // 変えたなら**必ず**何か残っていること(本物の行か、穴の註)
+                    assert!(!lines.is_empty(), "{id}: 中身を変えたのに記録が空");
+                    if lines.iter().any(|l| l.starts_with("# この操作はまだ")) {
+                        穴.push(id);
+                    } else {
+                        書けた.push(id);
+                    }
+                }
+            });
+        }
+        eprintln!(
+            "記録: 書けた {} 件 / 穴 {} 件(叩いた {} 件)",
+            書けた.len(), 穴.len(), ids.len()
+        );
+        eprintln!("穴({} 件):", 穴.len());
+        for id in &穴 { eprintln!("    {id}  {}", Calc::cmd_label(id)); }
+        // **穴があること自体は落とさない**(いまは埋まっていないのが本当)。
+        // 落とすのは「変えたのに何も残らない」= 嘘の記録のときだけ(上の assert)
+        assert!(!書けた.is_empty(), "1件も書けないのはおかしい");
+    }
+}
+
+#[cfg(test)]
+mod rec_honest_tests {
+    use crate::*;
+
+    /// **書けなかった操作を黙って落とさない**(速い見張り。上の数え直しの
+    /// 道具は重くて既定では回らないので、仕組みが生きていることはここで見る)
+    #[gpui::test]
+    fn 中身を変えたのに書けない操作は註が残る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            {
+                let sh = &mut this.book.sheets[0];
+                sh.set(Pos::new(0, 0), Cell::input("10"));
+                sh.set(Pos::new(1, 0), Cell::input("20"));
+            }
+            this.cursor = Pos::parse("A1").unwrap();
+            this.sync_input();
+
+            // (1) Python の口がある操作 — 本物の行が残り、註は出ない
+            this.rec = Some(Vec::new());
+            this.run_cmd("bold", cx);
+            let lines = this.rec.clone().unwrap();
+            assert_eq!(lines.len(), 1, "太字が1行で残らない: {lines:?}");
+            assert!(lines[0].contains(".font.bold"), "太字が式で残らない: {lines:?}");
+            assert!(!lines[0].starts_with('#'), "書ける操作に註が出た");
+
+            // (2) 口の無い操作 — **黙って落とさず註が残る**
+            this.rec = Some(Vec::new());
+            let before = this.edits;
+            this.run_cmd("clear", cx);
+            let lines = this.rec.clone().unwrap();
+            assert!(this.edits > before, "消去が中身を変えていない(前提が崩れた)");
+            assert_eq!(lines.len(), 1, "註が1行で残らない: {lines:?}");
+            assert!(
+                lines[0].starts_with("# この操作はまだ Python で書けません"),
+                "穴が黙って落ちた: {lines:?}"
+            );
+            // **人の言葉で残す**(id だけだと宿題の一覧として読めない)
+            assert!(lines[0].contains("消去"), "名札が入っていない: {lines:?}");
+
+            // (3) 中身を変えない操作(一覧を開くだけ)には何も残さない
+            this.rec = Some(Vec::new());
+            this.run_cmd("fontname", cx);
+            assert!(this.rec.clone().unwrap().is_empty(), "画面だけの操作を記録した");
+        });
+    }
+}
