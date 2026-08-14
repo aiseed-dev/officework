@@ -6,6 +6,32 @@ impl Focusable for Calc {
     fn focus_handle(&self, _cx: &App) -> FocusHandle { self.focus.clone() }
 }
 
+/// はみ出しの帯の置き場を決める(純粋な計算 — 試験はここを見る)。
+///
+/// - `x0`/`w`: セルの左端と幅、`need`: 文字に要る幅
+/// - `left_ext`/`right_ext`: 左右へ伸ばせた幅
+/// - 返り: (帯の左端, 帯の幅)
+///
+/// 中央は**セルの中心を軸に**置く。左右で伸ばせた量が違えば、
+/// 足りない側の分だけ反対へ寄る(伸ばせる範囲で頭打ち)
+pub(crate) fn spill_band(
+    x0: f32, w: f32, need: f32, left_ext: f32, right_ext: f32, both: bool, to_left: bool,
+) -> (f32, f32) {
+    let avail = w + left_ext + right_ext;
+    let wd = avail.min(need);
+    let lx = if both {
+        let want = x0 + w / 2.0 - wd / 2.0;
+        let min_x = x0 - left_ext;
+        let max_x = x0 + w + right_ext - wd;
+        want.clamp(min_x.min(max_x), max_x.max(min_x))
+    } else if to_left {
+        x0 + w - wd
+    } else {
+        x0
+    };
+    (lx, wd)
+}
+
 impl EntityInputHandler for Calc {
     fn text_for_range(&mut self, r: Range<usize>, actual: &mut Option<Range<usize>>,
                       _w: &mut Window, _cx: &mut Context<Self>) -> Option<String> {
@@ -1000,13 +1026,16 @@ impl Render for Calc {
                     };
                     let (mut avail, mut left_ext) = (w, 0.0f32);
                     let (mut lk, mut rk) = (ci, ci); // 伸ばした端(添字)
-                    let mut go_left = to_left || both;
+                    // **足りない側から埋める。** 中央は「中心から左右へ
+                    // 同じだけ要る」ので、いま少ない側を伸ばすのが正しい
+                    // (交互に伸ばすと、片側が空の時に伸ばし過ぎる)。
+                    // 片寄せは今までどおりその向きだけ
                     loop {
                         if need <= avail {
                             break;
                         }
-                        // 中央は左右を交互に。片側だけの時はその向きへ
-                        let try_left = if both { go_left } else { to_left };
+                        let right_ext = avail - w - left_ext;
+                        let try_left = if both { left_ext <= right_ext } else { to_left };
                         let nk = if try_left {
                             lk.checked_sub(1)
                         } else {
@@ -1026,37 +1055,43 @@ impl Render for Calc {
                             }
                             _ => false,
                         };
-                        if both {
-                            if !grew {
-                                // この向きは行き止まり — 反対側だけで続ける
-                                let other_ok = if go_left {
-                                    (rk + 1 < vis_cols.len()) && free(vis_cols[rk + 1])
-                                } else {
-                                    lk.checked_sub(1).is_some_and(|k| free(vis_cols[k]))
-                                };
-                                if !other_ok {
-                                    break;
-                                }
+                        if !grew {
+                            if !both {
+                                break;
                             }
-                            go_left = !go_left;
-                        } else if !grew {
-                            break;
+                            // この向きは行き止まり — 反対側だけで続ける
+                            let other = if try_left {
+                                (rk + 1 < vis_cols.len() && free(vis_cols[rk + 1]))
+                                    .then(|| self.col_px(vis_cols[rk + 1]))
+                            } else {
+                                lk.checked_sub(1)
+                                    .filter(|k| free(vis_cols[*k]))
+                                    .map(|k| self.col_px(vis_cols[k]))
+                            };
+                            match other {
+                                Some(nw) => {
+                                    avail += nw;
+                                    if try_left {
+                                        rk += 1;
+                                    } else {
+                                        left_ext += nw;
+                                        lk -= 1;
+                                    }
+                                }
+                                None => break, // 両方行き止まり
+                            }
                         }
                     }
                     if avail <= w {
                         continue; // 隣が塞がっている — 今までどおり切る
                     }
                     spill_from.insert(p);
-                    let wd = avail.min(need);
-                    let lx = if both {
-                        // 左へ伸ばしたぶんだけ左から始める(足りない側は
-                        // 伸びた側に寄る — 本家と同じ「行けるところまで」)
-                        (x0 - left_ext).max(HEAD_W)
-                    } else if to_left {
-                        x0 + w - wd
-                    } else {
-                        x0
-                    };
+                    // 置き場の計算は spill_band(純関数 — 試験が数で見る)。
+                    // **左端を left_ext ぶん一律に引くのは誤り**だった —
+                    // 描く帯は文字の幅しかないので中心が左へずれる(2026-08-14)
+                    let right_ext = avail - w - left_ext;
+                    let (lx, wd) = spill_band(x0, w, need, left_ext, right_ext, both, to_left);
+                    let lx = lx.max(HEAD_W);
                     let mut d = div().absolute()
                         .left(px(lx)).top(px(y))
                         .w(px(wd)).h(px(rh))
