@@ -1628,10 +1628,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S simpan (fungsi sel dihitung ulang saat disimpan) / Esc tutup / Tab indentasi"),
     ("打つと絞り込みます", "Ketik untuk menyaring"),
     ("一覧にありません(このまま Enter で確定)", "Tidak ada di daftar (tekan Enter untuk memakai apa adanya)"),
-    ("上の行を写しました({} セル)", "Baris di atas disalin ({} sel)"),
-    ("左の列を写しました({} セル)", "Kolom kiri disalin ({} sel)"),
     ("1行目です(上に写す行がありません)", "Baris pertama (tidak ada baris di atas untuk disalin)"),
     ("A列です(左に写す列がありません)", "Kolom A (tidak ada kolom di kiri untuk disalin)"),
     ("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)", "Seret ke bawah atau kanan untuk menyalin (klik dua kali: sepanjang kolom tetangga)"),
     ("隣の列に長さの手掛かりがありません(左右どちらも空)", "Tidak ada kolom tetangga sebagai acuan panjang (kiri dan kanan kosong)"),
+    ("{} を {} に写しました", "{} disalin ke {}"),
 ];

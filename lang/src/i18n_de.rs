@@ -1628,10 +1628,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S speichern (beim Speichern rechnen die Zellfunktionen neu) / Esc schließen / Tab einrücken"),
     ("打つと絞り込みます", "Zum Filtern tippen"),
     ("一覧にありません(このまま Enter で確定)", "Nicht in der Liste (mit Enter wie eingegeben übernehmen)"),
-    ("上の行を写しました({} セル)", "Obere Zeile kopiert ({} Zellen)"),
-    ("左の列を写しました({} セル)", "Linke Spalte kopiert ({} Zellen)"),
     ("1行目です(上に写す行がありません)", "Erste Zeile (keine Zeile darüber zum Kopieren)"),
     ("A列です(左に写す列がありません)", "Spalte A (keine Spalte links zum Kopieren)"),
     ("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)", "Nach unten oder rechts ziehen zum Kopieren (Doppelklick: bis zur Länge der Nachbarspalte)"),
     ("隣の列に長さの手掛かりがありません(左右どちらも空)", "Keine Nachbarspalte als Längenmaß (links und rechts leer)"),
+    ("{} を {} に写しました", "{} nach {} kopiert"),
 ];

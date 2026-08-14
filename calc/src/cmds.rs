@@ -54,6 +54,13 @@ impl Calc {
         "pen", "highlighter", "eraser", "draw-select",
     ];
 
+    /// 範囲の呼び名(1セルなら G4、広ければ G4:H8)。埋めの報せは
+    /// **数ではなく場所を言う** — 「4 セル」だけでは、5つ選んだ人が
+    /// 1つ漏れたと読む(発注者 2026-08-14。元のセルは数えないため)
+    fn range_label(a: Pos, b: Pos) -> String {
+        if a == b { a.a1() } else { format!("{}:{}", a.a1(), b.a1()) }
+    }
+
     /// フィルハンドルの実体 — 元の選択 (a,b) を to まで写す(下か右)。
     /// 元の塊を繰り返し写し、式は写した距離ぶんずれる(本家と同じ)
     pub(crate) fn fill_handle_apply(&mut self, a: Pos, b: Pos, to: Pos) {
@@ -146,7 +153,18 @@ impl Calc {
         self.anchor = Some(a);
         self.cursor = to;
         self.sync_input();
-        self.status = format!("{n} セルを埋めました").into();
+        let _ = n;
+        let dst = if to.row > b.row {
+            (Pos::new(b.row + 1, a.col), Pos::new(to.row, b.col))
+        } else {
+            (Pos::new(a.row, b.col + 1), Pos::new(b.row, to.col))
+        };
+        self.status = ui::tf!(
+            "{} を {} に写しました",
+            Self::range_label(a, b),
+            Self::range_label(dst.0, dst.1)
+        )
+        .into();
     }
 
     /// フィルハンドルのダブルクリック — 隣の列の長さに合わせて下へ写す。
@@ -451,7 +469,13 @@ impl Calc {
                         }
                         recalc_book(&mut self.book, self.active);
                         self.dirty = true;
-                        self.status = ui::tf!("上の行を写しました({} セル)", n).into();
+                        let _ = n;
+                        self.status = ui::tf!(
+                            "{} を {} に写しました",
+                            Self::range_label(Pos::new(a.row - 1, a.col), Pos::new(a.row - 1, b.col)),
+                            Self::range_label(a, b)
+                        )
+                        .into();
                     }
                 } else {
                     self.commit();
@@ -481,7 +505,13 @@ impl Calc {
                     }
                     recalc_book(&mut self.book, self.active);
                     self.dirty = true;
-                    self.status = format!("{n} セルを埋めました").into();
+                    let _ = n;
+                    self.status = ui::tf!(
+                        "{} を {} に写しました",
+                        Self::range_label(Pos::new(a.row, a.col), Pos::new(a.row, b.col)),
+                        Self::range_label(Pos::new(a.row + 1, a.col), b)
+                    )
+                    .into();
                 }
             }
             // 右へコピー(Ctrl+R)。リボンには無い — 鍵盤の道だけ。
@@ -511,7 +541,13 @@ impl Calc {
                         }
                         recalc_book(&mut self.book, self.active);
                         self.dirty = true;
-                        self.status = ui::tf!("左の列を写しました({} セル)", n).into();
+                        let _ = n;
+                        self.status = ui::tf!(
+                            "{} を {} に写しました",
+                            Self::range_label(Pos::new(a.row, a.col - 1), Pos::new(b.row, a.col - 1)),
+                            Self::range_label(a, b)
+                        )
+                        .into();
                     }
                 } else {
                     self.commit();
@@ -540,7 +576,13 @@ impl Calc {
                     }
                     recalc_book(&mut self.book, self.active);
                     self.dirty = true;
-                    self.status = format!("{n} セルを埋めました").into();
+                    let _ = n;
+                    self.status = ui::tf!(
+                        "{} を {} に写しました",
+                        Self::range_label(a, Pos::new(b.row, a.col)),
+                        Self::range_label(Pos::new(a.row, a.col + 1), b)
+                    )
+                    .into();
                 }
             }
             // 塗りつぶし。黄 → 水色 → 解除(色を選ぶ小窓がまだ無い)
