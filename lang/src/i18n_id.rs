@@ -1636,4 +1636,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{}〜{}列を選択しました(列ぜんぶ)", "Kolom {}–{} dipilih (seluruh kolom)"),
     ("{}行を選択しました(行ぜんぶ)", "Baris {} dipilih (seluruh baris)"),
     ("{}〜{}行を選択しました(行ぜんぶ)", "Baris {}–{} dipilih (seluruh baris)"),
+    ("{} に保存しました(素の文字)", "Disimpan ke {} (teks polos)"),
+    ("{}({} 行)— 素の文字として開きました。保存も素の文字です", "{} ({} baris) — dibuka sebagai teks polos; akan disimpan sebagai teks polos juga"),
+    ("マクロ・素の文字", "Makro dan teks polos"),
 ];

@@ -1646,4 +1646,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{}〜{}列を選択しました(列ぜんぶ)", "Selected columns {}–{} (whole columns)"),
     ("{}行を選択しました(行ぜんぶ)", "Selected row {} (the whole row)"),
     ("{}〜{}行を選択しました(行ぜんぶ)", "Selected rows {}–{} (whole rows)"),
+    // 素の文字(.py など)を writer で開く・保存する(2026-08-14)
+    ("{} に保存しました(素の文字)", "Saved to {} (plain text)"),
+    ("{}({} 行)— 素の文字として開きました。保存も素の文字です", "{} ({} lines) — opened as plain text; it will be saved as plain text too"),
+    ("マクロ・素の文字", "Macros and plain text"),
 ];

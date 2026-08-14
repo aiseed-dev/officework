@@ -1636,4 +1636,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{}〜{}列を選択しました(列ぜんぶ)", "Spalten {}–{} ausgewählt (ganze Spalten)"),
     ("{}行を選択しました(行ぜんぶ)", "Zeile {} ausgewählt (ganze Zeile)"),
     ("{}〜{}行を選択しました(行ぜんぶ)", "Zeilen {}–{} ausgewählt (ganze Zeilen)"),
+    ("{} に保存しました(素の文字)", "In {} gespeichert (Klartext)"),
+    ("{}({} 行)— 素の文字として開きました。保存も素の文字です", "{} ({} Zeilen) — als Klartext geöffnet; wird auch als Klartext gespeichert"),
+    ("マクロ・素の文字", "Makros und Klartext"),
 ];

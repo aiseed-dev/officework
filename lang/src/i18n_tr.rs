@@ -1636,4 +1636,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{}〜{}列を選択しました(列ぜんぶ)", "{}–{} sütunları seçildi (sütunların tamamı)"),
     ("{}行を選択しました(行ぜんぶ)", "{} satırı seçildi (satırın tamamı)"),
     ("{}〜{}行を選択しました(行ぜんぶ)", "{}–{} satırları seçildi (satırların tamamı)"),
+    ("{} に保存しました(素の文字)", "{} dosyasına kaydedildi (düz metin)"),
+    ("{}({} 行)— 素の文字として開きました。保存も素の文字です", "{} ({} satır) — düz metin olarak açıldı; düz metin olarak kaydedilecek"),
+    ("マクロ・素の文字", "Makrolar ve düz metin"),
 ];

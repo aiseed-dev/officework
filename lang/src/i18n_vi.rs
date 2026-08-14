@@ -1636,4 +1636,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{}〜{}列を選択しました(列ぜんぶ)", "Đã chọn cột {}–{} (toàn bộ cột)"),
     ("{}行を選択しました(行ぜんぶ)", "Đã chọn hàng {} (toàn bộ hàng)"),
     ("{}〜{}行を選択しました(行ぜんぶ)", "Đã chọn hàng {}–{} (toàn bộ hàng)"),
+    ("{} に保存しました(素の文字)", "Đã lưu vào {} (văn bản thuần)"),
+    ("{}({} 行)— 素の文字として開きました。保存も素の文字です", "{} ({} dòng) — mở dưới dạng văn bản thuần; khi lưu cũng là văn bản thuần"),
+    ("マクロ・素の文字", "Macro và văn bản thuần"),
 ];
