@@ -5684,3 +5684,137 @@ mod boolean_tests {
         });
     }
 }
+
+#[cfg(test)]
+mod combo_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn 書体を選ぶと最近使った書体に積まれる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.cursor = Pos::new(0, 0);
+            // apply_pick は font の腕でモデルに書体を掛け、最近使った書体へ積む
+            this.pick_kind = "font";
+            this.apply_pick("游ゴシック", cx);
+            assert_eq!(this.recent_fonts.first().map(|s| s.as_str()), Some("游ゴシック"));
+            this.pick_kind = "font";
+            this.apply_pick("メイリオ", cx);
+            // 新しい順・重複しない(recent_symbols と同じ運び)
+            assert_eq!(this.recent_fonts, vec!["メイリオ".to_string(), "游ゴシック".to_string()]);
+            this.pick_kind = "font";
+            this.apply_pick("游ゴシック", cx);
+            assert_eq!(this.recent_fonts, vec!["游ゴシック".to_string(), "メイリオ".to_string()],
+                "同じ書体は先頭へ寄せ、二重に積まない");
+        });
+    }
+
+    #[gpui::test]
+    fn 大きさの自由入力は画面の入り口で丸める(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.cursor = Pos::new(0, 0);
+            // 11.3pt と打つ → 0.5 刻みで 11.5pt に丸めてモデルへ
+            this.pick_kind = "size";
+            this.apply_pick("11.3", cx);
+            let sz = this.book.sheets[0].get(Pos::new(0, 0)).map(|c| c.fmt.size_c);
+            assert_eq!(sz, Some(Some(1150)), "11.3 が 11.5pt に丸まっていない");
+            // 4pt 未満は 4pt へ寄せる
+            this.pick_kind = "size";
+            this.apply_pick("2", cx);
+            let sz = this.book.sheets[0].get(Pos::new(0, 0)).map(|c| c.fmt.size_c);
+            assert_eq!(sz, Some(Some(400)), "下の端に寄っていない");
+        });
+    }
+
+    #[gpui::test]
+    fn 大きさの丸めは模型の値には掛からない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            // よそで作った 2pt を模型に直に置く(画面を通さない道)
+            let mut cell = sheet::Cell::input("x");
+            cell.fmt.size_c = Some(200); // 2.00pt
+            this.book.sheets[0].set(Pos::new(0, 0), cell);
+            // 模型の値はそのまま — 丸めは apply_pick(=画面の入り口)にしかない
+            let sz = this.book.sheets[0].get(Pos::new(0, 0)).map(|c| c.fmt.size_c);
+            assert_eq!(sz, Some(Some(200)), "模型に置いた 2pt が黙って丸まった");
+        });
+    }
+
+    #[gpui::test]
+    fn 絞り込みつきの一覧は打つほど減る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.cursor = Pos::new(0, 0);
+            let items = plain(["赤", "青", "黄", "赤紫"]);
+            this.open_combo("value", items, (10.0, 10.0), "青");
+            // 開いたとき今の値(青)の位置に選択が居る
+            assert_eq!(this.pick_sel, 1, "今の値の位置に開いていない");
+            assert_eq!(this.pick_visible().len(), 4);
+            // 「赤」で絞ると 2 件(赤・赤紫)。選択は先頭へ戻す
+            if let Some(ed) = &mut this.pick_filter {
+                ed.insert("赤");
+            }
+            this.pick_filter_edited();
+            let vis = this.pick_visible();
+            assert_eq!(vis.len(), 2, "絞り込みが効いていない");
+            assert_eq!(vis[0].0, "赤");
+            assert_eq!(this.pick_sel, 0, "打ち替えで選択が先頭へ戻っていない");
+        });
+    }
+
+    #[gpui::test]
+    fn 一覧に無い値はそのまま確定できる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.cursor = Pos::new(0, 0);
+            // 書体のコンボ: 一覧に無い名前も打てる
+            this.open_combo("font", plain(["游ゴシック", "メイリオ"]), (10.0, 10.0), "游ゴシック");
+            if let Some(ed) = &mut this.pick_filter {
+                ed.insert("架空書体");
+            }
+            this.pick_filter_edited();
+            assert!(this.pick_visible().is_empty(), "架空の名前で絞ったのに何か残った");
+            // Enter = 合致が無いので打った字を確定
+            this.pick_confirm(cx);
+            let font = this.book.sheets[0].get(Pos::new(0, 0)).and_then(|c| c.fmt.font.clone());
+            assert_eq!(font.as_deref(), Some("架空書体"), "一覧に無い書体名が確定できない");
+            assert!(this.pick.is_none(), "確定後も一覧が開いたまま");
+        });
+    }
+
+    #[gpui::test]
+    fn 選択を確定するとその項が掛かる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.cursor = Pos::new(0, 0);
+            this.open_combo("size", plain(["10", "11", "12", "14"]), (10.0, 10.0), "11");
+            // 開いたとき 11 の位置。↓を1回で 12 へ
+            assert_eq!(this.pick_sel, 1);
+            this.pick_move(true);
+            assert_eq!(this.pick_sel, 2);
+            this.pick_confirm(cx);
+            let sz = this.book.sheets[0].get(Pos::new(0, 0)).map(|c| c.fmt.size_c);
+            assert_eq!(sz, Some(Some(1200)), "選んだ 12pt が掛かっていない");
+        });
+    }
+
+    #[gpui::test]
+    fn 使い捨て_下へコピーが最後の行に入るか(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            // 中身のある列(1 の下に 2 が4つ)を、1行目から5行目まで選んで下へ
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("1"));
+            for r in 1..=4 {
+                this.book.sheets[0].set(Pos::new(r, 0), sheet::Cell::input("2"));
+            }
+            this.anchor = Some(Pos::new(0, 0));
+            this.cursor = Pos::new(4, 0);
+            this.run_cmd("fill-num", cx);
+            for r in 1..=4u32 {
+                let v = this.book.sheets[0].value(Pos::new(r, 0));
+                assert_eq!(v, sheet::Value::Number(1.0), "行{}", r + 1);
+            }
+        });
+    }
+}

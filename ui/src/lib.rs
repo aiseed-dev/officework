@@ -57,6 +57,7 @@ macro_rules! item {
     };
 }
 
+pub mod combo;
 pub mod icons;
 pub mod pyedit;
 pub mod ribbon;

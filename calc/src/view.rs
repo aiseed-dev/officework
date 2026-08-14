@@ -57,7 +57,7 @@ impl EntityInputHandler for Calc {
         // 2打目以降。IME の変換途中(marked)は消さない
         if self.prompt.is_none() && self.solver.is_none()
             && self.name_edit.is_none() && self.fn_dlg.is_none()
-            && self.fn_args.is_none()
+            && self.fn_args.is_none() && self.pick_filter.is_none()
             && !self.edit_armed && !self.editing()
             && handler::marked_range_utf16(self).is_none()
         {
@@ -80,7 +80,7 @@ impl EntityInputHandler for Calc {
         // IME の1打目も同じ(変換中の下線ごと、空にしてから始める)
         if self.prompt.is_none() && self.solver.is_none()
             && self.name_edit.is_none() && self.fn_dlg.is_none()
-            && self.fn_args.is_none()
+            && self.fn_args.is_none() && self.pick_filter.is_none()
             && !self.edit_armed && !self.editing()
             && handler::marked_range_utf16(self).is_none()
         {
@@ -5209,7 +5209,15 @@ impl Render for Calc {
             pal
         });
 
-        let pick_panel = self.pick.clone().map(|(vals, (vx, vy))| {
+        let pick_panel = self.pick.as_ref().map(|(_, (vx, vy))| {
+            let (vx, vy) = (*vx, *vy);
+            // 絞り込みつきなら、いま出すのは**絞り込み後**の並び(打つほど減る)
+            let filtering = self.pick_filter.is_some();
+            let vals = self.pick_visible();
+            // 書体の一覧は各項を**その書体で描く**(font の kind のときだけ)。
+            // 「最近使った書体」の見出しは書体ではないので素の字で出す
+            let draw_in_font = self.pick_kind == "font";
+            let sel = self.pick_sel;
             // 色の一覧(文字の色・塗り)は名前の左に色見本の四角を添える
             // **鍵で引く。** 見出し(訳)で引くと、日本語以外で色見本が消える
             let swatch_of = |key: &str| -> Option<Option<&'static str>> {
@@ -5253,15 +5261,43 @@ impl Render for Calc {
                     // 閉じる」の先が読めなかった)
                     .child(note.clone()));
             }
+            // 絞り込みつきの一覧は、頭に検索欄を出す(打鍵はここへ流れる)。
+            // 打った字を見せ、カーソルの位置に「|」を差す(fn_dlg と同じ描き方)
+            if filtering {
+                if let Some(ed) = &self.pick_filter {
+                    let mut t = ed.text().to_string();
+                    let cur = ed.cursor().min(t.len());
+                    t.insert(cur, '|');
+                    let empty = ed.text().is_empty();
+                    p = p.child(div().px_2().py_1().mb_0p5()
+                        .border_1().border_color(rgb(0xC6CDD3)).rounded_sm()
+                        .text_size(px(us * 12.0))
+                        .text_color(if empty { rgb(0x9AA3AB) } else { rgb(0x1B1B1B) })
+                        .whitespace_nowrap().overflow_hidden()
+                        .child(SharedString::from(if empty {
+                            ui::t!("打つと絞り込みます").to_string()
+                        } else {
+                            t
+                        })));
+                }
+            }
+            if vals.is_empty() && filtering {
+                p = p.child(div().px_2().py_1().text_size(px(us * 12.0))
+                    .text_color(rgb(0x66707A))
+                    .child(ui::t!("一覧にありません(このまま Enter で確定)")));
+            }
             // v=鍵(照合と見分け)、label=画面に出す字。**見た目で照合しない**
             for (i, (v, label)) in vals.into_iter().enumerate() {
                 let sw = swatch_of(&v);
-                p = p.child(div()
+                let on = i == sel; // ↑↓の選択(絞り込み後の並びの添字)
+                let mut row = div()
                     .id(SharedString::from(format!("pk{i}")))
                     .px_2().py_1().rounded_sm().cursor_pointer()
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
                     .flex().flex_row().items_center().gap_2()
                     .text_size(px(us * 12.5))
+                    // 選んでいる項は帯で示す(↑↓・Enter の相手が目で分かる)
+                    .when(on, |s| s.bg(rgb(0xEAF5EE)))
                     // 「→ 」は次の段へ進むボタン — 並びの項目と見分ける
                     .text_color(if v.starts_with("→ ") { rgb(0x1B6E3C) } else { rgb(0x1B1B1B) })
                     .when(v.starts_with("→ "), |s| s
@@ -5275,13 +5311,20 @@ impl Render for Calc {
                             Some(h) => q.bg(hex(h)),
                             None => q.bg(rgb(0xFFFFFF)),
                         }
-                    }))
+                    }));
+                // 書体の一覧は各項を**その書体で**描く。頭の「最近使った書体」の
+                // 見出し(→ で始まらない案内)は書体名ではないので素の字のまま
+                if draw_in_font && !v.starts_with("→ ") && !v.starts_with("— ") {
+                    row = row.font_family(SharedString::from(v.clone()));
+                }
+                let v2 = v.clone();
+                p = p.child(row
                     .child(SharedString::from(label))
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                         move |this, _, _, cx| {
                             cx.stop_propagation();
-                            this.pick = None;
-                            this.apply_pick(&v, cx);
+                            this.close_pick();
+                            this.apply_pick(&v2, cx);
                             cx.notify();
                         })));
             }

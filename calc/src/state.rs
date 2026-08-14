@@ -92,6 +92,8 @@ impl Calc {
             menu_sub: None,
             pick: None,
             pick_kind: "value",
+            pick_filter: None,
+            pick_sel: 0,
             sheet_menu_at: None,
             fmt_panel: None,
             prompt: None,
@@ -138,6 +140,7 @@ impl Calc {
             recover_at: std::time::Instant::now(),
             csv_kind: "UTF-8(BOM付き)・カンマ",
             recent_symbols: Vec::new(),
+            recent_fonts: Vec::new(),
             dark: ui::settings::get("theme").as_deref() == Some("dark"),
             auto_calc: true,
             watch: Vec::new(),
@@ -211,8 +214,7 @@ impl Calc {
         self.input = Editor::new(&s);
         self.edit_armed = false; // セルを移った=編集は仕切り直し
         if self.pick_kind == "fn-complete" {
-            self.pick = None;
-                self.pick_note = None; // 補完の一覧も畳む
+            self.close_pick(); // 補完の一覧も畳む
         }
         // 入力メッセージ付きの規則のセルに乗ったら、その説明を出す
         if let Some((t, m)) = self
@@ -910,8 +912,7 @@ impl Calc {
     pub(crate) fn mouse_down_at(&mut self, x: f32, y: f32, shift: bool, ctrl: bool, clicks: usize) {
         self.menu_at = None;
         self.menu_direct = false;
-        self.pick = None;
-        self.pick_note = None;
+        self.close_pick();
         self.border_pal = None;
         // mouse-up を取り逃していても、新しい押下で必ず仕切り直す(自癒)
         self.size_drag = None;
@@ -1497,6 +1498,23 @@ impl Calc {
             .unwrap_or((self.head_w() + 16.0, self.head_h() + 16.0))
     }
 
+    /// いまのセルの書体名(指定が無ければ既定)。コンボを開くとき今の位置へ送るのに使う
+    pub(crate) fn cur_font_name(&self) -> String {
+        self.sheet()
+            .get(self.cursor)
+            .and_then(|c| c.fmt.font.clone())
+            .unwrap_or_else(|| "Noto Sans JP".to_string())
+    }
+
+    /// いまのセルの文字の大きさ(pt)。指定が無ければ既定 11pt
+    pub(crate) fn cur_size_pt(&self) -> f32 {
+        self.sheet()
+            .get(self.cursor)
+            .and_then(|c| c.fmt.size_c)
+            .map(|c| c as f32 / 100.0)
+            .unwrap_or(11.0)
+    }
+
     /// **小窓(… の側)が開いているか。** [`Calc::DIALOG_IDS`] の腕が立てる
     /// 旗の総和 — 印(…)と1対1で揃える(ずれると印が嘘になる)。
     /// `fn_args` は「関数を挿入」の第2段(引数の画面)なので同じ小窓の続き。
@@ -1516,8 +1534,7 @@ impl Calc {
     /// 押した操作はそのまま効く**約束(発注者 2026-08-14)。セルの押下は
     /// mouse_down_at が既に畳んでいる — 穴だったリボンの側をこれで塞ぐ。
     pub(crate) fn close_menus(&mut self) {
-        self.pick = None;
-        self.pick_note = None;
+        self.close_pick();
         self.menu_at = None;
         self.menu_direct = false;
         self.border_pal = None;

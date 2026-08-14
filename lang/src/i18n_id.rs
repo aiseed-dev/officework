@@ -1628,4 +1628,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("鍵 {} は {} と {} の取り合いです({} が勝ちます)", "Pintasan {} diperebutkan oleh {} dan {} ({} yang menang)"),
     ("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Ada perubahan yang belum disimpan — Ctrl+S untuk menyimpan, Esc sekali lagi untuk membuang dan menutup"),
     ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S simpan (fungsi sel dihitung ulang saat disimpan) / Esc tutup / Tab indentasi"),
+    ("打つと絞り込みます", "Ketik untuk menyaring"),
+    ("一覧にありません(このまま Enter で確定)", "Tidak ada di daftar (tekan Enter untuk memakai apa adanya)"),
 ];

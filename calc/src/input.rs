@@ -151,6 +151,10 @@ impl Calc {
         } else if let Some(d) = &mut self.fn_dlg {
             d.search.backspace();
             d.sel = 0;
+        } else if self.pick_filtering() {
+            // コンボの検索欄の1文字削除(選択は先頭へ)
+            self.editor().backspace();
+            self.pick_filter_edited();
         } else if self.name_edit.is_some()
             || self.solver.is_some()
             || self.filter_panel.is_some()
@@ -210,12 +214,16 @@ impl Calc {
         // パネル・小窓の欄が開いていれば、その欄の1文字削除(セルに流さない)
         if self.name_edit.is_some()
             || self.fn_dlg.is_some()
+            || self.pick_filtering()
             || self.solver.is_some()
             || self.filter_panel.is_some()
             || self.dv_dlg.is_some()
             || self.prompt.is_some()
         {
             self.editor().delete();
+            if self.pick_filtering() {
+                self.pick_filter_edited();
+            }
             cx.notify();
             return;
         }
@@ -478,6 +486,7 @@ impl Calc {
         if let Some(ed) = &mut self.name_edit { ed.move_char(false, false) }
         else if self.fn_args.is_some() { self.editor().move_char(false, false) }
         else if let Some(d) = &mut self.fn_dlg { d.search.move_char(false, false) }
+        else if let Some(ed) = &mut self.pick_filter { ed.move_char(false, false) }
         else if let Some(sv) = &mut self.solver { sv.focused().move_char(false, false) }
         else if let Some((_, ed)) = &mut self.prompt { ed.move_char(false, false) }
         else if self.editing() || self.edit_armed { self.input.move_char(false, false) }
@@ -488,6 +497,7 @@ impl Calc {
         if let Some(ed) = &mut self.name_edit { ed.move_char(true, false) }
         else if self.fn_args.is_some() { self.editor().move_char(true, false) }
         else if let Some(d) = &mut self.fn_dlg { d.search.move_char(true, false) }
+        else if let Some(ed) = &mut self.pick_filter { ed.move_char(true, false) }
         else if let Some(sv) = &mut self.solver { sv.focused().move_char(true, false) }
         else if let Some((_, ed)) = &mut self.prompt { ed.move_char(true, false) }
         else if self.editing() || self.edit_armed { self.input.move_char(true, false) }
@@ -644,6 +654,8 @@ impl Calc {
             a.focus = a.focus.saturating_sub(1);
         } else if let Some(d) = &mut self.fn_dlg {
             d.sel = d.sel.saturating_sub(1);
+        } else if self.pick_filtering() {
+            self.pick_move(false);
         } else {
             self.move_cursor(-1, 0);
         }
@@ -657,6 +669,8 @@ impl Calc {
         } else if let Some(d) = &mut self.fn_dlg {
             let n = fn_filtered(d.search.text(), d.group).len();
             d.sel = (d.sel + 1).min(n.saturating_sub(1));
+        } else if self.pick_filtering() {
+            self.pick_move(true);
         } else {
             self.move_cursor(1, 0);
         }
@@ -930,6 +944,12 @@ impl Calc {
         }
         if self.fn_dlg.is_some() {
             self.fn_next();
+            cx.notify();
+            return;
+        }
+        // 絞り込みつきの一覧: Enter で選択中の項(合致が無ければ打った字)を確定
+        if self.pick_filtering() {
+            self.pick_confirm(cx);
             cx.notify();
             return;
         }

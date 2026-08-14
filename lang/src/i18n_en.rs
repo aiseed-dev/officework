@@ -1633,4 +1633,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     // ui クレートの中の crate::t! が走査から漏れていた2句(2026-08-14 に発見)
     ("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Unsaved changes — Ctrl+S to save, Esc again to discard and close"),
     ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S save (cell functions recalculate on save) / Esc close / Tab indent"),
+    // 開く物(コンボと絞り込み)の案内 — 2026-08-14
+    ("打つと絞り込みます", "Type to filter"),
+    ("一覧にありません(このまま Enter で確定)", "Not in the list (press Enter to use as typed)"),
 ];

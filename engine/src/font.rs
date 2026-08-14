@@ -21,8 +21,11 @@ use std::sync::OnceLock;
 /// 使えるフォント1つ。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Family {
-    /// 書体の名前。文書に書かれるのはこれ
+    /// 書体の名前。文書に書かれるのはこれ(日本語名があればそちら)
     pub name: String,
+    /// 英語(ASCII)の書体名。**画面の絞り込みで日本語名と両方引くための副名。**
+    /// [`name`] が既に ASCII のときは同じ字。ASCII 名が無い書体では [`name`] と同じ
+    pub ascii: String,
     pub path: PathBuf,
     /// ttc(まとめ)の中の何番目か
     pub index: u32,
@@ -116,11 +119,14 @@ fn read_family(data: &[u8], index: u32, path: &Path) -> Option<Family> {
             local.get_or_insert(s);
         }
     }
-    let name = local.or(ascii)?;
+    // 画面に出すのは人が読む名前(日本語名があればそちら)。**英語名も捨てない** —
+    // 絞り込みで「Yu Gothic」と打っても「游ゴシック」に当てるため、副名として持つ
+    let name = local.clone().or_else(|| ascii.clone())?;
+    let ascii_name = ascii.unwrap_or_else(|| name.clone());
     // 日本語を組めるか。「あ」と「日」が引ければ足りる
     let japanese = face.glyph_index('あ').is_some() && face.glyph_index('日').is_some();
     let regular = face.is_regular();
-    Some(Family { name, path: path.to_path_buf(), index, japanese, regular })
+    Some(Family { name, ascii: ascii_name, path: path.to_path_buf(), index, japanese, regular })
 }
 
 /// 名前から実体を引く。**文書が指定した書体を出すための道。**
@@ -129,11 +135,11 @@ fn read_family(data: &[u8], index: u32, path: &Path) -> Option<Family> {
 /// (「MS ゴシック」「MSゴシック」の揺れを吸う)。
 pub fn resolve(name: &str) -> Option<&'static Family> {
     let all = list();
-    if let Some(f) = all.iter().find(|f| f.name == name) {
+    if let Some(f) = all.iter().find(|f| f.name == name || f.ascii == name) {
         return Some(f);
     }
     let key = norm(name);
-    all.iter().find(|f| norm(&f.name) == key)
+    all.iter().find(|f| norm(&f.name) == key || norm(&f.ascii) == key)
 }
 
 fn norm(s: &str) -> String {

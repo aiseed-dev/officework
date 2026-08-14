@@ -261,6 +261,12 @@ struct Calc {
     pick: Option<(Vec<(String, String)>, (f32, f32))>,
     /// pick の中身の意味: "value"=セルに入れる / "font"=書体 / "size"=文字の大きさ
     pick_kind: &'static str,
+    /// 絞り込みつきの一覧のときの検索欄。**Some の間はここへ打鍵が流れる**。
+    /// 打つほど一覧が絞られる(書体・入力規則)。素の一覧では None
+    pick_filter: Option<Editor>,
+    /// 一覧の中で今どれを選んでいるか(↑↓で動く。**絞り込み後の並びの添字**)。
+    /// 開くとき今の値の位置へ送る。Enter でここを確定する
+    pick_sel: usize,
     /// 耳(シートのタブ)のメニューが指しているシート(右クリックで開く)。
     /// 改名・色の2段目のパネルが閉じるまで持ち越す
     sheet_menu_at: Option<usize>,
@@ -345,6 +351,9 @@ struct Calc {
     pub(crate) csv_kind: &'static str,
     /// 最近使った記号(新しい順・最大12)。**次に同じ物を探させない**
     pub(crate) recent_symbols: Vec<String>,
+    /// 最近使った書体(新しい順・最大12)。書体の一覧の頭に出す。
+    /// recent_symbols と同じ器・同じ運び
+    pub(crate) recent_fonts: Vec<String>,
     /// 最後に控えを取った時刻
     pub(crate) recover_at: std::time::Instant,
     /// 0 の値を見せるか(表示タブ。消しても値は 0 のまま)
@@ -384,6 +393,10 @@ impl HasEditor for Calc {
         if let Some(d) = &mut self.fn_dlg {
             return &mut d.search;
         }
+        // 絞り込みつきの一覧(書体・入力規則)が開いている間は、打鍵はその検索欄へ
+        if let Some(ed) = &mut self.pick_filter {
+            return ed;
+        }
         if let Some(sv) = &mut self.solver {
             return sv.focused();
         }
@@ -413,6 +426,9 @@ impl HasEditor for Calc {
         }
         if let Some(d) = &self.fn_dlg {
             return &d.search;
+        }
+        if let Some(ed) = &self.pick_filter {
+            return ed;
         }
         if let Some(sv) = &self.solver {
             return sv.focused_ref();
@@ -448,14 +464,19 @@ impl HasEditor for Calc {
         if let Some(d) = &mut self.fn_dlg {
             d.sel = 0;
         }
+        // コンボの検索欄を打ち替えたら、絞り込み後の選択を先頭へ戻す
+        if self.pick_filter.is_some() {
+            self.pick_filter_edited();
+        }
         // 引数を打ち替えたら結果の下見を計算し直す
         if self.fn_args.is_some() {
             self.fn_args_recalc();
         }
-        // パネル・小窓・名前ボックスへの打鍵は文書を変えない
+        // パネル・小窓・名前ボックス・コンボの検索欄への打鍵は文書を変えない
         if self.prompt.is_none() && self.name_edit.is_none()
             && self.fn_dlg.is_none() && self.fn_args.is_none()
             && self.filter_panel.is_none() && self.dv_dlg.is_none()
+            && self.pick_filter.is_none()
         {
             self.dirty = true;
             // 式の直入力の支援: 打ちかけの関数名の補完一覧と、引数のヒント

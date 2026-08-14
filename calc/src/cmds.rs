@@ -267,14 +267,17 @@ impl Calc {
             "middle" => self.fmt(|f| f.valign = sheet::model::VAlign::Middle),
             "bottom" => self.fmt(|f| f.valign = sheet::model::VAlign::Bottom),
             "wrap" => self.fmt(|f| f.wrap = !f.wrap),
-            // 文字の大きさ(4〜72pt)
+            // 文字の大きさの +/−。**一覧の17個を1段ずつ辿る**(±1pt ではない —
+            // 本家もそう動く)。半端な値は動く向きの隣の一覧値へ寄り、端では止まる
             "incfont" => self.fmt(|f| {
                 let pt = f.size_c.map(|c| c as f32 / 100.0).unwrap_or(11.0);
-                f.size_c = Some((((pt + 1.0).min(72.0)) * 100.0) as u32);
+                let pt = ui::combo::step_size(pt, true);
+                f.size_c = Some((pt * 100.0) as u32);
             }),
             "decfont" => self.fmt(|f| {
                 let pt = f.size_c.map(|c| c as f32 / 100.0).unwrap_or(11.0);
-                f.size_c = Some((((pt - 1.0).max(4.0)) * 100.0) as u32);
+                let pt = ui::combo::step_size(pt, false);
+                f.size_c = Some((pt * 100.0) as u32);
             }),
             "align-left" => self.fmt(|f| f.align = HAlign::Left),
             "align-center" => self.fmt(|f| f.align = HAlign::Center),
@@ -542,33 +545,46 @@ impl Calc {
                     .unwrap_or((HEAD_W + 24.0, ROW_H + 24.0));
                 self.fmt_panel = Some(at);
             }
-            // 書体と大きさ: 一覧から選ぶ(日本語が組める書体だけ出す)
+            // 書体: 打つほど絞られるコンボ(照合は日本語名と英語名の両方)。
+            // 一覧に無い書体名も打てる。一覧は各項をその書体で描く(view.rs)
             "fontname" => {
-                let vals: Vec<String> = kumihan::font::list()
+                // (鍵=画面に出す名前, 副名=英語名)。絞り込みは両方を見る。
+                // 副名が同じでも鍵は画面の文言ではない — 訳したら別の書体を指す
+                let all = kumihan::font::list();
+                let mut vals: Vec<(String, String)> = Vec::new();
+                // 頭に「最近使った書体」— recent_symbols と同じ運び。案内の行を挟む
+                let recent: Vec<String> = self
+                    .recent_fonts
                     .iter()
-                    .filter(|f| f.japanese)
-                    .map(|f| f.name.clone())
+                    .filter(|n| all.iter().any(|f| &f.name == *n))
+                    .cloned()
                     .collect();
+                if !recent.is_empty() {
+                    for n in &recent {
+                        let ascii = all.iter().find(|f| &f.name == n)
+                            .map(|f| f.ascii.clone()).unwrap_or_else(|| n.clone());
+                        vals.push((n.clone(), ascii));
+                    }
+                }
+                for f in all.iter().filter(|f| f.japanese) {
+                    vals.push((f.name.clone(), f.ascii.clone()));
+                }
                 if vals.is_empty() {
                     self.status = ui::t!("日本語の書体が見つかりません").into();
                 } else {
                     let at = self.pop_anchor();
-                    // 全部出す(前は16個で黙って切り捨てていた — 一覧は
-                    // スクロールできるので削る理由が無い)
-                    self.pick_kind = "font";
-                    // 書体名は**中身**。訳したら別の書体を指してしまう
-                    self.pick = Some((plain(vals), at));
+                    let cur = self.cur_font_name();
+                    self.open_combo("font", vals, at, &cur);
                 }
             }
+            // 大きさ: 一覧は今の17個のまま。自由入力(打った数)は
+            // 4〜409pt・0.5 刻みに黙って丸める。丸めは画面の入力だけ(apply_pick)
             "fontsize" => {
                 let at = self.pop_anchor();
-                self.pick_kind = "size";
-                self.pick = Some((
-                    // Excel の標準の並び(6〜72)。**数は訳さない**
-                    plain(["6", "8", "9", "10", "11", "12", "14", "16", "18", "20",
-                           "22", "24", "26", "28", "36", "48", "72"]),
-                    at,
-                ));
+                let cur = ui::combo::size_label(self.cur_size_pt());
+                let vals: Vec<(String, String)> =
+                    plain(ui::combo::SIZES.iter().map(|p| ui::combo::size_label(*p)));
+                self.open_combo("size", vals, at, &cur);
             }
             // データタブ: Python 裏方と道具
             "data-from-text" => {

@@ -1628,4 +1628,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("鍵 {} は {} と {} の取り合いです({} が勝ちます)", "Phím tắt {} bị tranh chấp giữa {} và {} ({} thắng)"),
     ("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Có thay đổi chưa lưu — Ctrl+S để lưu, nhấn Esc lần nữa để bỏ và đóng"),
     ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S lưu (khi lưu, các hàm trong ô được tính lại) / Esc đóng / Tab thụt lề"),
+    ("打つと絞り込みます", "Gõ để lọc"),
+    ("一覧にありません(このまま Enter で確定)", "Không có trong danh sách (nhấn Enter để dùng như đã gõ)"),
 ];

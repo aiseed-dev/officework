@@ -1628,4 +1628,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("鍵 {} は {} と {} の取り合いです({} が勝ちます)", "Le raccourci {} est réclamé par {} et {} ({} l'emporte)"),
     ("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Modifications non enregistrées — Ctrl+S pour enregistrer, Échap encore pour abandonner et fermer"),
     ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S enregistrer (les fonctions de cellule sont recalculées) / Échap fermer / Tab indenter"),
+    ("打つと絞り込みます", "Tapez pour filtrer"),
+    ("一覧にありません(このまま Enter で確定)", "Absent de la liste (Entrée pour valider tel quel)"),
 ];

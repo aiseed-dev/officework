@@ -3,6 +3,94 @@
 use crate::*;
 
 impl Calc {
+    /// 一覧を閉じる。**絞り込みの検索欄と選択も必ず一緒に片づける** —
+    /// pick だけ消して pick_filter を残すと、次に開いた素の一覧へ古い打鍵が流れる。
+    pub(crate) fn close_pick(&mut self) {
+        self.pick = None;
+        self.pick_note = None;
+        self.pick_filter = None;
+        self.pick_sel = 0;
+    }
+
+    /// 絞り込みつきの一覧([`ui::combo::Kind::Filter`])を開く。
+    ///
+    /// 書体・入力規則など、数が増える一覧に使う。打鍵は検索欄へ流れ、打つほど
+    /// 絞られる。**開くとき今の値([`current`])の位置へ選択を送る**(絞り込み前の
+    /// 全体の中の位置。合致が無ければ先頭)。素の一覧を開くときは pick を直に組む。
+    pub(crate) fn open_combo(
+        &mut self,
+        kind: &'static str,
+        items: Vec<(String, String)>,
+        at: (f32, f32),
+        current: &str,
+    ) {
+        let borrowed: Vec<(&str, &str)> =
+            items.iter().map(|(k, l)| (k.as_str(), l.as_str())).collect();
+        self.pick_sel = ui::combo::current_index(&borrowed, current);
+        self.pick_kind = kind;
+        self.pick_filter = Some(Editor::new(""));
+        self.pick = Some((items, at));
+    }
+
+    /// いま画面に出ている(=絞り込み後の)一覧の項。検索欄が無ければ全部。
+    /// **添字は絞り込み後の並び**で数える(↑↓・Enter・マウスがこれを見る)。
+    pub(crate) fn pick_visible(&self) -> Vec<(String, String)> {
+        let Some((items, _)) = &self.pick else { return Vec::new() };
+        let Some(ed) = &self.pick_filter else { return items.clone() };
+        let borrowed: Vec<(&str, &str)> =
+            items.iter().map(|(k, l)| (k.as_str(), l.as_str())).collect();
+        ui::combo::filter(&borrowed, ed.text())
+            .into_iter()
+            .map(|i| items[i].clone())
+            .collect()
+    }
+
+    /// 絞り込みつきの一覧が開いていて、打鍵がその検索欄へ流れるべきか。
+    pub(crate) fn pick_filtering(&self) -> bool {
+        self.pick.is_some() && self.pick_filter.is_some()
+    }
+
+    /// 検索欄を打ち替えたときの後始末(選択を先頭へ戻す)。
+    pub(crate) fn pick_filter_edited(&mut self) {
+        self.pick_sel = 0;
+    }
+
+    /// 一覧の中の選択を1つ動かす(↑↓)。**絞り込み後の件数**で端を止める。
+    pub(crate) fn pick_move(&mut self, down: bool) {
+        let n = self.pick_visible().len();
+        if n == 0 {
+            self.pick_sel = 0;
+            return;
+        }
+        self.pick_sel = if down {
+            (self.pick_sel + 1).min(n - 1)
+        } else {
+            self.pick_sel.saturating_sub(1)
+        };
+    }
+
+    /// いま選んでいる項を確定する(Enter)。
+    ///
+    /// 絞り込みつきで**一覧に合致が無い**ときは、打った字そのものを確定する
+    /// (書体は一覧に無い名前も打てる・入力規則は規則側の決めに従う)。
+    pub(crate) fn pick_confirm(&mut self, cx: &mut Context<Self>) {
+        let vis = self.pick_visible();
+        let chosen = if let Some((_, label)) = vis.get(self.pick_sel) {
+            label.clone()
+        } else if let Some(ed) = &self.pick_filter {
+            // 合致なし — 打った字を確定(空なら何もしない)
+            let t = ed.text().trim().to_string();
+            if t.is_empty() {
+                return;
+            }
+            t
+        } else {
+            return;
+        };
+        self.close_pick();
+        self.apply_pick(&chosen, cx);
+    }
+
     /// 一覧から選んだものを適用する(pick_kind で意味が変わる)。
     pub(crate) fn apply_pick(&mut self, v: &str, cx: &mut Context<Self>) {
         // 「✓ 」は「今これが効いている」、「☑ /☐ 」は入切の印
@@ -13,12 +101,21 @@ impl Calc {
             "font" => {
                 let name = v.to_string();
                 self.fmt(move |f| f.font = Some(name.clone()));
+                // 最近使った書体を新しい順に最大12(recent_symbols と同じ運び)
+                self.recent_fonts.retain(|x| x != v);
+                self.recent_fonts.insert(0, v.to_string());
+                self.recent_fonts.truncate(12);
                 self.status = ui::tf!("書体を「{}」にしました", v).into();
             }
             "size" => {
                 if let Ok(pt) = v.parse::<f32>() {
+                    // 自由入力(打った数)は 4〜409pt・0.5 刻みに黙って丸める。
+                    // **丸めは画面の入力だけ** — 模型と Python の口には掛けない
+                    // (round_size を通すのはここ=画面から入る道の1箇所)
+                    let pt = ui::combo::round_size(pt);
                     self.fmt(move |f| f.size_c = Some((pt * 100.0) as u32));
-                    self.status = ui::tf!("文字の大きさを {}pt にしました", v).into();
+                    self.status =
+                        ui::tf!("文字の大きさを {}pt にしました", ui::combo::size_label(pt)).into();
                 }
             }
             "symbol" => {
@@ -2781,6 +2878,13 @@ impl Calc {
             cx.notify();
             return;
         }
+        // 絞り込みつきの一覧(書体・入力規則)は Esc で検索欄ごと閉じる。
+        // 素の一覧は下の `||` の列で従来どおり閉じる
+        if self.pick_filtering() {
+            self.close_pick();
+            cx.notify();
+            return;
+        }
         // 入力のパネル → 一覧 → 子メニュー → 親メニュー → 書式の小窓 → コピーの破線、
         // の順で閉じる
         self.pivot_pend = None; // 聞き取り途中のピボット・小計は Esc でやめる
@@ -4270,15 +4374,12 @@ impl Calc {
             }
             vals.sort();
         }
-        let total = vals.len();
-        vals.truncate(16);
-        if total > 16 {
-            // 切ったことを黙らない
-            self.status = format!("候補 {total} 件のうち先頭 16 件を出しています").into();
-        }
         let at = self.pop_anchor();
+        let cur = self.input.text().to_string();
+        // 打つほど絞られるコンボ。**数百件でも切り捨てない** — 絞り込みで足りる。
+        // 一覧に無い値の扱いは入力規則側の決めに従う(コンボでは丸めない・撥ねない)。
         // 同じ列に打たれている値そのもの — 訳す物ではない
-        self.pick = Some((plain(vals), at));
+        self.open_combo("value", plain(vals), at, &cur);
     }
 
     /// シートを切り替える。いまの編集を確定し、場所はシートごとに覚えている。

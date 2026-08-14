@@ -225,9 +225,10 @@ impl Writer {
                     }
                 }
             }
-            // 文字の大きさ
-            "incfont" => self.size(|s| s + 1.0),
-            "decfont" => self.size(|s| s - 1.0),
+            // 文字の大きさの +/−。**一覧の値を1段ずつ辿る**(±1pt ではない —
+            // calc と同じ ui::combo の判断。半端は隣の一覧値へ寄り、端で止まる)
+            "incfont" => self.size(|s| ui::combo::step_size(s, true)),
+            "decfont" => self.size(|s| ui::combo::step_size(s, false)),
             // 印刷・PDF。**組み直さない** — 画面と同じ紙面をそのまま写す
             "pdf" => self.save_pdf(cx),
             // 文字色。押すたびに 赤 → 青 → 黒(解除)と回す。

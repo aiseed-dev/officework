@@ -1628,4 +1628,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("鍵 {} は {} と {} の取り合いです({} が勝ちます)", "{} kısayolu {} ile {} arasında çakışıyor ({} kazanır)"),
     ("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Kaydedilmemiş değişiklikler var — kaydetmek için Ctrl+S, vazgeçip kapatmak için tekrar Esc"),
     ("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ", "Ctrl+S kaydet (kaydedince hücre işlevleri yeniden hesaplanır) / Esc kapat / Tab girinti"),
+    ("打つと絞り込みます", "Süzmek için yazın"),
+    ("一覧にありません(このまま Enter で確定)", "Listede yok (girildiği gibi kullanmak için Enter)"),
 ];

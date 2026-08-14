@@ -231,7 +231,16 @@ used in formulas.
 ## Formatting
 
 - Text: bold, italic, underline, strikethrough, **subscript**, color, font, size
-  (the font list shows **this machine's fonts**)
+- **The font box is a combo**: clicking opens the list positioned at the current
+  font. Type to filter (matches both Japanese and English names), ↑↓ to move,
+  Enter to confirm, Esc to close. Each entry is **drawn in its own font**, and
+  **recently used fonts** appear at the top. A font name not in the list can be
+  typed and confirmed as-is (the font list shows **this machine's fonts**)
+- **The size box is also a combo**: the list holds the 17 steps from 6 to 72pt.
+  Typing a free value rounds **silently** to 4–409pt in 0.5pt steps (rounding
+  applies to on-screen input only — an odd size made elsewhere round-trips
+  unchanged). **Grow/shrink** (+/−) walks the list one step at a time (an odd
+  size snaps to the neighbouring list value; it stops at the ends)
 - Cells: fill, borders (each side independently), horizontal and vertical
   alignment (including **justified**), wrap, **text orientation** (each press:
   vertical → stacked → back; for the vertical headings of Japanese forms)
