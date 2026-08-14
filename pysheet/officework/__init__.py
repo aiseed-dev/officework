@@ -68,33 +68,14 @@ def sock_path(app):
 
 def _find_app(app):
     """アプリの実行ファイルを探す。**Python が主なので、こちらが起こす**
-    (発注者 2026-08-15「主従が逆転」)。順は:
+    (発注者 2026-08-15「主従が逆転」)。
 
-    1. 環境変数 `OFFICEWORK_CALC` / `OFFICEWORK_WRITER`(名指し)
-    2. PATH の中(`calc` / `officework-calc`)
-    3. 配り物のよくある置き場(/opt/officework、~/apps の下)
+    探し方は `officework.app` の1本に集める — 2箇所に書くと必ずずれる
+    (実際、wheel に同梱した実行ファイルをこちらが見ていなかった)。
     """
-    import shutil
+    from .app import _exe
 
-    env = os.environ.get("OFFICEWORK_" + app.upper())
-    if env and os.path.exists(env):
-        return env
-    for name in (app, "officework-" + app):
-        p = shutil.which(name)
-        if p:
-            return p
-    for base in ("/opt/officework", os.path.expanduser("~/apps")):
-        if not os.path.isdir(base):
-            continue
-        direct = os.path.join(base, app)
-        if os.path.exists(direct):
-            return direct
-        # ~/apps/officework-0.1.0-…/calc の形
-        for d in sorted(os.listdir(base), reverse=True):
-            p = os.path.join(base, d, app)
-            if os.path.exists(p):
-                return p
-    return None
+    return _exe(app)
 
 
 def launch(app, path=None, wait=20.0):

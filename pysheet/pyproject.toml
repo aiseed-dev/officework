@@ -37,6 +37,16 @@ dynamic = ["version"]
 [project.optional-dependencies]
 pandas = ["pandas"]
 
+# **アプリの起動の口**(2026-08-15 発注者「配布も PyPI と conda-forge だけで
+# 問題ないかも」)。pip で入れると `officework-calc` / `officework-writer` が
+# 使える。**署名の要らない道** — mac の公証も Windows の SmartScreen も
+# 「ブラウザで落とした物」に付く印が引き金で、pip が入れた物には付かない。
+# Python 同梱も要らない(入れる人は Python を持っている)
+[project.scripts]
+officework = "officework.app:main"
+officework-calc = "officework.app:calc"
+officework-writer = "officework.app:writer"
+
 [project.urls]
 Homepage = "https://github.com/aiseed-dev/officework"
 Source = "https://github.com/aiseed-dev/officework"
@@ -57,3 +67,8 @@ features = ["pyo3/extension-module"]
 #     ソース木を触ったかで中身が変わる。実際 0.0.1 は 314 が2本、0.1.0 は
 #     312 と 314 が3本入っていた(2026-08-10 に手元の wheel で確認)
 exclude = ["**/__pycache__/**"]
+# **アプリの実行ファイルは officework/bin/ に置いて配る**(2026-08-15)。
+# 置くのは組む前で、CI がやる(packaging/put-bins.py)。手元で maturin を
+# 回すときは無くてよい — その場合 app.py が target/release/ を見に行く。
+# .gitignore に入れてあるので、git には入らない
+include = ["officework/bin/*"]
