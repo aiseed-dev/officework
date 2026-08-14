@@ -545,6 +545,29 @@ MAS に居ない Nova や Keyboard Maestro の理由も 2.5.2 ではなく
 2. **免許**(上の GPL 依存)。Custom EULA では解けない — 譲渡不可の条項は
    外せず、Usage Rules が EULA と独立に掛かる
 
+### 訂正: 免許の壁は **Apple だけ**。Microsoft は明文で FOSS を許している
+(2026-08-15)
+
+上の 08-14 の節で「GPL は Apple/Microsoft のストアの EULA と衝突する」と
+**Apple と Microsoft を一括りにしたのは誤り**。08-09 の表の方(「Store は
+AGPL も明文で可」)が正しかった。一次資料で確かめた:
+
+Microsoft の App Developer Agreement は、開発者が独自の免許を添えることを
+認めたうえで、その独自の免許が Standard Application License Terms の
+第3節(逆コンパイルの禁止・複製数の上限)と**衝突してよい**と明記している
+— 「**but only to the extent required by the FOSS that you use**」。
+5台までの上限も独自免許で上書きされる。VLC の JB Kempf の分析
+(<https://jbkempf.com/blog/Windows-Store-and-the-GPL/>)の結論は
+「FOSS を Windows ストアに出すのは、いまはかなり安全」。
+
+Apple はここが違う。**Usage Rules が EULA と独立に掛かる**ので独自免許で
+外せない — だから Mac App Store が駄目という 08-14 の判断は**そのまま
+生きている**。誤っていたのは Microsoft を巻き添えにした所だけ。
+
+つまり Windows は **ストアに出せる**(GPL の3クレートを抱えたまま)。
+出すかどうかはもう免許の話ではなく値打ちの話になった — 下の
+「PyPI を主にした後、ストアに何が残るか」の節へ続く。
+
 **署名の細部**(直配布でも要る): 同梱 Python の Mach-O(`python3`・
 `libpython3.x.dylib`・`lib-dynload/*.so`)は**全部が署名の対象**。
 一方 **`.py` は Mach-O ではないので署名の対象外** — 利用者の未署名の .py を
@@ -559,6 +582,69 @@ MAS に居ない Nova や Keyboard Maestro の理由も 2.5.2 ではなく
 実行ファイルの隣の `python/` を見る段を pyrun に足した(a822982)。
 中身は python-build-standalone の **3.14 系**(手元の miniforge3 と揃える。
 3.12 ではスマホの的に届かない)。PSF ライセンスで再配布でき、pip 同梱。
+
+## PyPI を主にした後、ストアに何が残るか(2026-08-15)
+
+発注者「配布も PyPI と conda-forge だけで問題ないかも」→「この形で進めて」
+で、**アプリの実行ファイルを wheel に載せた**(a0572f4)。素の venv で
+`pip install officework` だけで `officework-calc` が起ち、Python から
+calc を操れるところまで実機で確認済み。wheel は 36MB(PyPI の上限 100MB)。
+
+これで配布の地図が変わった。**署名が要らない道が1本通った** — mac の
+Gatekeeper も Windows の SmartScreen も「ブラウザで落とした物」に付く印
+(quarantine / Mark of the Web)が引き金で、pip が置いた物には付かない。
+
+続いて発注者「**Windows 版と Android 版だけストア配布にしましょうか**」。
+調べた結果を分けて書く。
+
+### Android — 配布の相談ではなく、**版が無い**
+
+実測(2026-08-15、vendor/zed/crates/gpui/src/platform.rs の cfg):
+GPUI の土台は **linux / macos / windows / freebsd の4つだけ**。
+`target_os = "android"` は gpui のどこにも無く、platform の下に
+android の実装も無い。作るなら描画・窓・入力・IME の層を丸ごと書く仕事で、
+**「ストアに出すかどうか」の手前の話**。
+
+スマホは **pyoffice の殻の仕事**(製品は2本・エンジンは1つ、の決めのとおり)。
+Flet は Android を組める。Python を 3.14 に決めたのは正しく効いているが、
+それは**エンジン(officework パッケージ)がスマホに載る**条件であって、
+**GPUI の殻が載る**条件ではない。ここを混ぜない。
+
+Google Play 側の要件も控えておく(出す番が来たとき用): 2026-08-31 から
+新規・更新は API 36(Android 16)必須、AAB のみ、2026-09 から
+**開発者の本人確認**が要る(未確認だと認証済み端末に入らない)。
+
+### Windows — ストアに出す筋はある。ただし PyPI の**後**
+
+免許の壁は上の訂正のとおり消えた(Microsoft は FOSS の独自免許を明文で
+許す)。ではストアが何を足すか:
+
+- **コード署名の証明書を買わなくて済む。** Microsoft がパッケージに署名する。
+  OV の証明書は年に数万円かかるうえ、買っても SmartScreen の評判が付くまで
+  時間がかかる。直配布の .msi はここが一番重い
+- **普通の人が探す場所にある**(発注者の「普通の人に使ってほしい」に効く)
+- 更新の仕組みがただで付く
+- MSIX の full-trust(デスクトップブリッジ)なら、Mac App Store の
+  サンドボックスで問題になった `~/.config/office/plugins/` の読みは
+  そのまま通る見込み — **ただしこれは未実測**。着手する便で実機で確かめる
+
+払う物: MSIX の工事(.msi の WiX とは別物。いまどちらも未着手)、審査待ち、
+ストアの言い分に合わせた説明の用意。Flathub と違い **AI の方針は無い**。
+
+**当面の並び**: PyPI と conda-forge を主にし、Windows ストアは第2便に置く。
+理由は、pip の道が Windows でも既に署名なしで通っていて、ストアは
+「Python を持っていない人」に届けるための足し前だから。順番を逆にすると、
+審査待ちのあいだ誰にも届かない。
+
+### いまの配布の地図(2026-08-15)
+
+| 的 | 主 | 足し前 |
+|---|---|---|
+| Python を持っている人(全 OS) | **PyPI / conda-forge** — 署名不要・実物確認済み | — |
+| Linux | 同上 | .deb / tar.gz(Python 同梱)。Flathub は AI の方針で出せない |
+| macOS | 同上 | 公証済み .dmg(Mac App Store は**免許で不可**のまま) |
+| Windows | 同上 | **Microsoft ストア**(免許は通る・証明書代が浮く)。第2便 |
+| Android | **無し** — GPUI に土台が無い | pyoffice の殻の仕事 |
 
 ## マニュアルは Excel の課題の並びを蒸留する(2026-08-08 発注者)
 
