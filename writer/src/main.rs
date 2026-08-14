@@ -24,6 +24,10 @@ pub(crate) use gpui_platform::application;
 pub(crate) use kumihan::{layout, Align, Document, Editor, Frame, ListKind, Metrics, Sheet as Page};
 pub(crate) use ui::{handler, ribbon, HasEditor};
 
+/// 画面の 1mm。**96dpi 固定**(機械の実 dpi は読まない — 発注者確定
+/// 2026-08-14)。紙は物理で決まり PDF は 72dpi の pt で出るので、画面だけ
+/// 機械ごとに動かすと印刷と合わせられない。calc の util::cell_font_px と
+/// 同じ筋(pt→px は 96/72)。実寸で見たいときは拡大で合わせる
 const PX_PER_MM: f32 = 96.0 / 25.4;
 /// 見開きのページの間の空き(mm)
 const PAGE_GAP_MM: f32 = 8.0;

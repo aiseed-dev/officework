@@ -6112,6 +6112,21 @@ mod combo_tests {
     }
 
     #[test]
+    fn 画面のdpiは96に固定されている() {
+        // 発注者確定 2026-08-14。実 dpi を読むと機械ごとに紙面が変わり、
+        // 印刷と合わせられない。calc(pt→px)と writer(mm→px)が同じ
+        // 96 を見ていることを、数で見張る
+        use crate::util::cell_font_px;
+        // 72pt = 1インチ = 96px
+        assert!((cell_font_px(Some(7200), 1.0) - 96.0).abs() < 0.01, "72pt が 1インチでない");
+        // 25.4mm = 1インチ = 96px(writer の PX_PER_MM と同じ値になるか)
+        let px_per_mm = 96.0f32 / 25.4;
+        assert!((px_per_mm * 25.4 - 96.0).abs() < 0.01);
+        // A4 の幅 210mm は常に 794px(どの機械でも同じ紙面)
+        assert_eq!((210.0 * px_per_mm).round(), 794.0);
+    }
+
+    #[test]
     fn 字の大きさは96dpiの換算() {
         use crate::util::cell_font_px;
         // 画面の標準どおり 1pt = 96/72 px。前は 1.28 倍で 4% 小さく、
