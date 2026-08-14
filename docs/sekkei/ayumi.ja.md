@@ -460,6 +460,34 @@ Python 同梱**という形は、ストアの審査とサンドボックスの�
   ビルド中は網が無いので cargo-sources.json / python3-modules.json を
   生成して差す(README の手順)
 
+## ↑を改めた(2026-08-14)— Mac/Windows は**ストアに出さず直配布**
+
+アルファ版を出す相談(発注者「普通の人に使ってほしい」)で、Linux は
+Flatpak、Mac/Windows はストアで、と進めかけたが、**免許で止まった**。
+
+**実測した事実**: gpui(Apache-2.0)が `sum_tree` 経由で
+**GPL-3.0-or-later の3クレート**(zlog / ztracing / ztracing_macro)を
+引き込んでいる。うちのコードはこれらを1行も使っていないが、
+`sum_tree` の**必須**依存(optional ではない)で、ztracing に自分を
+切る feature も無い。gpui を使う限り必ず付いてくる。
+
+GPL は Apple/Microsoft のストアの EULA と衝突する(VLC の件と同じ構図)。
+**AGPL をやめても、この3つが残る限りストアには出せない** — 免許を
+変えれば済む話ではなく、依存の構造の問題だった。
+
+**決め(発注者 2026-08-14)**:
+- **Mac は公証済み .dmg、Windows は .msi を直配布**。AGPL のまま出せる。
+  審査待ちが無いぶん、むしろ早く届く
+- **Linux は Flatpak**(上の節のまま。Flathub は GPL でも問題ない)
+- 上流(zed)に「sum_tree の ztracing 依存を optional に」を提案するのは
+  無料で筋も良い(zed 自身 gpui は Apache-2.0 で出す方針のはず)。
+  通ればストアの道も開くが、**待たない**
+
+**Python 同梱**はどの形でも変わらず要る(発注者「Windows の人もいる」)。
+実行ファイルの隣の `python/` を見る段を pyrun に足した(a822982)。
+中身は python-build-standalone の **3.14 系**(手元の miniforge3 と揃える。
+3.12 ではスマホの的に届かない)。PSF ライセンスで再配布でき、pip 同梱。
+
 ## マニュアルは Excel の課題の並びを蒸留する(2026-08-08 発注者)
 
 発注者が Excel Copilot コネクタの発表文(基幹のデータを Microsoft Graph に
