@@ -5936,23 +5936,30 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn フィルハンドルのドラッグは塊を繰り返して写す(cx: &mut gpui::TestAppContext) {
+    fn フィルハンドルのドラッグは数の並びの続きを作る(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            // 2行の塊(10, 20)を6行ぶんまで引く → 10,20,10,20 と繰り返す
+            // 本家のオートフィル: 10,20 を引くと 30,40,50,60(等差の続き)
             this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("10"));
             this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("20"));
-            eprintln!("before: A1={:?} A2={:?}",
-                this.book.sheets[0].get(Pos::new(0, 0)).map(|c| c.value.clone()),
-                this.book.sheets[0].get(Pos::new(1, 0)).map(|c| c.value.clone()));
             this.sync_input();
             this.fill_handle_apply(Pos::new(0, 0), Pos::new(1, 0), Pos::new(5, 0));
-            eprintln!("status: {} / A3 raw={:?}", this.status,
-                this.book.sheets[0].get(Pos::new(2, 0)));
-            for (r, want) in [(2u32, 10.0), (3, 20.0), (4, 10.0), (5, 20.0)] {
+            for (r, want) in [(2u32, 30.0), (3, 40.0), (4, 50.0), (5, 60.0)] {
                 assert_eq!(
                     this.book.sheets[0].value(Pos::new(r, 0)),
                     sheet::Value::Number(want),
+                    "行{}", r + 1
+                );
+            }
+            // 1つだけの数は**写す**(本家の既定 — 連続にしない)
+            this.book.sheets[0].set(Pos::new(6, 2), sheet::Cell::input("7"));
+            this.cursor = Pos::new(6, 2);
+            this.sync_input();
+            this.fill_handle_apply(Pos::new(6, 2), Pos::new(6, 2), Pos::new(8, 2));
+            for r in 7..=8u32 {
+                assert_eq!(
+                    this.book.sheets[0].value(Pos::new(r, 2)),
+                    sheet::Value::Number(7.0),
                     "行{}", r + 1
                 );
             }

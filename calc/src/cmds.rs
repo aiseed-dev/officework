@@ -61,33 +61,81 @@ impl Calc {
         self.checkpoint();
         let sh = &mut self.book.sheets[self.active];
         let mut n = 0usize;
+        // **連続データ(オートフィル)**: 元が全部数で2つ以上あり、間隔が
+        // 一定なら、写すのではなく**続きを作る**(1,2 → 3,4,5…。本家と同じ)。
+        // 1つだけ・式・文字は写す(本家の既定と同じ)
+        let series_of = |vals: &[Option<sheet::Cell>]| -> Option<(f64, f64)> {
+            if vals.len() < 2 {
+                return None;
+            }
+            let nums: Vec<f64> = vals
+                .iter()
+                .map(|c| match c {
+                    Some(c) if c.formula.is_none() => match c.value {
+                        Value::Number(x) => Some(x),
+                        _ => None,
+                    },
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()?;
+            let step = nums[1] - nums[0];
+            nums.windows(2)
+                .all(|w| (w[1] - w[0] - step).abs() < 1e-9)
+                .then(|| (*nums.last().unwrap(), step))
+        };
         if to.row > b.row {
             let h = b.row - a.row + 1;
             for c in a.col..=b.col {
+                let srcs: Vec<Option<sheet::Cell>> =
+                    (a.row..=b.row).map(|r| sh.get(Pos::new(r, c)).cloned()).collect();
+                let series = series_of(&srcs);
                 for r in b.row + 1..=to.row {
                     let src_r = a.row + (r - a.row) % h;
-                    let Some(src) = sh.get(Pos::new(src_r, c)).cloned() else { continue };
-                    let mut cell = src.clone();
-                    if let Some(f) = &src.formula {
+                    let src = srcs[(src_r - a.row) as usize].clone();
+                    let p = Pos::new(r, c);
+                    let mut cell = match &src {
+                        Some(s) => s.clone(),
+                        None => {
+                            let fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
+                            Cell { formula: None, value: Value::Empty, fmt }
+                        }
+                    };
+                    if let Some((last, step)) = series {
+                        cell.value = Value::Number(last + step * (r - b.row) as f64);
+                        cell.formula = None;
+                    } else if let Some(f) = src.as_ref().and_then(|s| s.formula.as_ref()) {
                         cell.formula =
                             Some(sheet::model::offset_refs(f, (r - src_r) as i64, 0));
                     }
-                    sh.set(Pos::new(r, c), cell);
+                    sh.set(p, cell);
                     n += 1;
                 }
             }
         } else if to.col > b.col {
             let w = b.col - a.col + 1;
             for r in a.row..=b.row {
+                let srcs: Vec<Option<sheet::Cell>> =
+                    (a.col..=b.col).map(|c| sh.get(Pos::new(r, c)).cloned()).collect();
+                let series = series_of(&srcs);
                 for c in b.col + 1..=to.col {
                     let src_c = a.col + (c - a.col) % w;
-                    let Some(src) = sh.get(Pos::new(r, src_c)).cloned() else { continue };
-                    let mut cell = src.clone();
-                    if let Some(f) = &src.formula {
+                    let src = srcs[(src_c - a.col) as usize].clone();
+                    let p = Pos::new(r, c);
+                    let mut cell = match &src {
+                        Some(s) => s.clone(),
+                        None => {
+                            let fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
+                            Cell { formula: None, value: Value::Empty, fmt }
+                        }
+                    };
+                    if let Some((last, step)) = series {
+                        cell.value = Value::Number(last + step * (c - b.col) as f64);
+                        cell.formula = None;
+                    } else if let Some(f) = src.as_ref().and_then(|s| s.formula.as_ref()) {
                         cell.formula =
                             Some(sheet::model::offset_refs(f, 0, (c - src_c) as i64));
                     }
-                    sh.set(Pos::new(r, c), cell);
+                    sh.set(p, cell);
                     n += 1;
                 }
             }
