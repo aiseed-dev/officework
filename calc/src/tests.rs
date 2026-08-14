@@ -5891,6 +5891,15 @@ mod combo_tests {
             // 「書けたのに空に見える」
             assert_eq!(this.book.sheets[0].value(Pos::new(4, 0)), sheet::Value::Number(1.0));
             assert_eq!(this.input.text(), "1", "欄が同期されていない — 空に見える");
+            // **もっと悪い方**(発注者が捕まえた実害): 同期していないと、
+            // セルを移った瞬間の commit が「空の打ちかけ」を A5 への編集と
+            // 誤認し、書いたばかりの 1 を消す。移っても値が残ること
+            this.move_cursor(1, 0);
+            assert_eq!(
+                this.book.sheets[0].value(Pos::new(4, 0)),
+                sheet::Value::Number(1.0),
+                "セルを移ると消える"
+            );
         });
     }
 
