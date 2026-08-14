@@ -186,9 +186,13 @@ struct Calc {
     pick_paths: Vec<(String, PathBuf)>,
     /// PY のスピルの台帳(シート番号, アンカー → 行×列)。次の計算で前の面を消す
     py_spills: std::collections::HashMap<(usize, Pos), (u32, u32)>,
-    /// UDF を計算し終えたときのシートごとの指紋。これと今の指紋が食い違えば
-    /// 「引数が変わった」— 裏で計算し直す(py.rs の udf_tick)
-    udf_stamp: Vec<u64>,
+    /// UDF を計算し終えたときの**セルごとの**指紋
+    /// (シート番号, セル) → 引数の指紋。これと今の指紋が食い違うセルだけを
+    /// 計算し直す。**シート全体で1つの指紋だと駄目**だった(2026-08-14):
+    /// 走っている最中に増えたセルまで「計算済み」と控えてしまい、二度と
+    /// 走らない(表の3行目だけ #PY? が残る)。差分にすると重さも消える —
+    /// 変わっていないセルは python に投げない(発注者「UDF の呼び出しは重い」)
+    udf_stamp: std::collections::HashMap<(usize, Pos), u64>,
     /// UDF の計算が走っている最中(二重に走らせない)
     udf_busy: bool,
     /// plugins の .py を編集している面(zed 側の半分。pyedit.rs)

@@ -1009,15 +1009,24 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         if self.udf_busy || self.prompt.is_some() {
             return;
         }
-        let now: Vec<u64> = self.book.sheets.iter().map(|s| s.py_stamp).collect();
-        if now == self.udf_stamp {
+        // **計算し直す物があるかだけ見る。** ここで指紋を控えてはいけない —
+        // 走っている最中に増えたセルまで「計算済み」になり、二度と走らない
+        // (2026-08-14。表の3行目が #PY? のまま残った)
+        if !self.udf_dirty() {
             return;
         }
-        self.udf_stamp = now.clone();
-        if now.iter().all(|s| *s == 0) {
-            return; // UDF のセルが1つも無い
-        }
         self.run_udfs(true, cx);
+    }
+
+    /// 引数の変わった UDF のセルがあるか(**セルごとの指紋**で見る)
+    pub(crate) fn udf_dirty(&self) -> bool {
+        self.book.sheets.iter().enumerate().any(|(i, sh)| {
+            sh.cells.iter().any(|(p, c)| {
+                c.formula.as_ref().is_some_and(|f| sheet::calc::is_py_formula(f))
+                    && sheet::calc::py_cell_stamp(sh, *p)
+                        != self.udf_stamp.get(&(i, *p)).copied()
+            })
+        })
     }
 
     /// UDF のセルを全部計算する(@計算 の手回し)。
@@ -1036,19 +1045,40 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     fn run_udfs(&mut self, auto: bool, cx: &mut Context<Self>) {
         let mut per_sheet: Vec<(usize, Vec<(String, String, Vec<sheet::calc::PyArg>)>)> =
             Vec::new();
+        // 投げたセルの控え(答えが返った時、この分だけ指紋を控える)
+        let mut sent: Vec<(usize, Vec<Pos>)> = Vec::new();
         for (i, sh) in self.book.sheets.iter().enumerate() {
             let mut calls = Vec::new();
+            let mut cells = Vec::new();
             for (p, c) in &sh.cells {
                 let Some(f) = &c.formula else { continue };
                 if !sheet::calc::is_py_formula(f) {
                     continue;
                 }
-                if let Some((name, args)) = sheet::calc::eval_py_call(sh, f) {
-                    calls.push((p.a1(), name, args));
+                // **変わっていないセルは投げない**(発注者 2026-08-14
+                // 「UDF の呼び出しは重い」)。100 行あるとき、1つ直すたびに
+                // 100 回ぶんを投げ直していた。手回し(@計算)のときは全部
+                let 変わった = sheet::calc::py_cell_stamp(sh, *p)
+                    != self.udf_stamp.get(&(i, *p)).copied();
+                if !auto || 変わった {
+                    if let Some((name, args)) = sheet::calc::eval_py_call(sh, f) {
+                        calls.push((p.a1(), name, args));
+                        cells.push(*p);
+                    }
                 }
             }
             if !calls.is_empty() {
                 per_sheet.push((i, calls));
+                sent.push((i, cells));
+            }
+        }
+        if std::env::var_os("JO_UDF_LOG").is_some() {
+            for (i, cs) in &per_sheet {
+                eprintln!(
+                    "[udf] シート{i}: {} 件 → {:?}",
+                    cs.len(),
+                    cs.iter().map(|(c, n, a)| (c.as_str(), n.as_str(), a.len())).collect::<Vec<_>>()
+                );
             }
         }
         if per_sheet.is_empty() {
@@ -1177,9 +1207,26 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                             total += n;
                             conflicts += c;
                         }
-                        // 計算し終えた姿を指紋に控える(同じ引数で回り続けない)
-                        this.udf_stamp =
-                            this.book.sheets.iter().map(|s| s.py_stamp).collect();
+                        // **投げたセルの指紋だけ**を控える(同じ引数で回り
+                        // 続けないため)。**全部を控え直してはいけない** —
+                        // 走っている間に増えたセルまで「計算済み」になり、
+                        // 二度と走らない(2026-08-14。表の3行目が #PY? の
+                        // まま残った本当の原因)。投げていない物は指紋を
+                        // 持たないまま残り、次の見回りで拾われる
+                        for (i, cells) in &sent {
+                            let sh = &this.book.sheets[*i];
+                            for p in cells {
+                                match sheet::calc::py_cell_stamp(sh, *p) {
+                                    Some(st) => {
+                                        this.udf_stamp.insert((*i, *p), st);
+                                    }
+                                    // 式でなくなった(消された)— 控えも消す
+                                    None => {
+                                        this.udf_stamp.remove(&(*i, *p));
+                                    }
+                                }
+                            }
+                        }
                         this.sync_input();
                         if conflicts > 0 {
                             this.status = format!(

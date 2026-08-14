@@ -6241,4 +6241,28 @@ mod combo_tests {
             assert_eq!((a.col, b.col), (0, 0), "角の右は列の選択のはず");
         });
     }
+
+    #[gpui::test]
+    fn udfは引数の変わったセルだけ投げ_全部のセルが計算される(cx: &mut gpui::TestAppContext) {
+        // 一周の実演で踏んだ2つ(2026-08-14):
+        // (1) 表の3行目が #PY? のまま永久に残った — 指紋がシート全体で1つ
+        //     だったので、走っている間に増えたセルまで「計算済み」になった
+        // (2) 1つ直すたびに全部のセルを python に投げ直していた(重い)
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            for r in 0..3u32 {
+                this.book.sheets[0].set(Pos::new(r, 0), sheet::Cell::input(&format!("{}", r + 1)));
+            }
+            recalc_book(&mut this.book, 0);
+            let sh = &this.book.sheets[0];
+            // セルごとの指紋が取れること(式でないセルは None)
+            assert!(sheet::calc::py_cell_stamp(sh, Pos::new(0, 0)).is_none(), "式でないのに指紋が出た");
+            // 指紋の控えが空なら「計算し直す物がある」= 全部が対象
+            this.udf_stamp.clear();
+            // 引数が同じなら指紋も同じ(投げ直さない土台)
+            let a = sheet::calc::py_cell_stamp(sh, Pos::new(0, 0));
+            let b = sheet::calc::py_cell_stamp(sh, Pos::new(0, 0));
+            assert_eq!(a, b, "同じセルで指紋が揺れる");
+        });
+    }
 }

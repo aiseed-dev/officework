@@ -282,6 +282,37 @@ pub fn recalc_all(book: &mut crate::Book) {
 /// UDF のセルの「関数名+引数」の指紋を取り直す。**関数は回さない** —
 /// これを見て calc が「計算し直しが要る」を判断する(引数が変われば変わる)。
 /// UDF のセルが無ければ 0 で、そのときの費用はセルの走査1回だけ。
+/// **セル1つ分**の指紋(関数名と引数の中身)。同じなら計算し直さない。
+/// 引数が解けない式は式そのもので取る。**セルごとに持つのが要点** —
+/// シート全体で1つだと、走っている最中に増えたセルを取りこぼす
+/// (2026-08-14 に表の3行目が #PY? のまま残って分かった)
+pub fn py_cell_stamp(sheet: &Sheet, p: Pos) -> Option<u64> {
+    use std::hash::{Hash, Hasher};
+    let f = sheet.cells.get(&p).and_then(|c| c.formula.clone())?;
+    if !is_py_formula(&f) {
+        return None;
+    }
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    match eval_py_call(sheet, &f) {
+        Some((name, args)) => {
+            name.hash(&mut h);
+            for a in &args {
+                match a {
+                    PyArg::One(v) => v.display().hash(&mut h),
+                    PyArg::Rect(c, vs) => {
+                        c.hash(&mut h);
+                        for v in vs {
+                            v.display().hash(&mut h);
+                        }
+                    }
+                }
+            }
+        }
+        None => f.hash(&mut h),
+    }
+    Some(h.finish() | 1)
+}
+
 pub(super) fn stamp_py(sheet: &mut Sheet) {
     use std::hash::{Hash, Hasher};
     let py_cells: Vec<Pos> = sheet

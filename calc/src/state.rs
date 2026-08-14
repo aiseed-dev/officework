@@ -60,7 +60,7 @@ impl Calc {
             pw_pending: None,
             goal: None,
             py_spills: Default::default(),
-            udf_stamp: Vec::new(),
+            udf_stamp: Default::default(),
             udf_busy: false,
             py_edit: None,
             py_edit_ask: false,
