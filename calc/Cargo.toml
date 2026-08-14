@@ -1,6 +1,6 @@
 [package]
 name = "calc"       # xlsx互換の表計算。writer とは別のソフト
-version = "0.0.1"
+version = "0.1.0-alpha"
 edition.workspace = true
 license.workspace = true
 
