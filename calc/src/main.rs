@@ -29,10 +29,14 @@ pub(crate) use ui::{handler, ribbon, HasEditor};
 // **関数の表は face へ移した**(2026-08-15)。名前も分類も説明も
 // 絵を描かない物で、Kotlin / Swift の殻も同じ表を読む。ここで
 // 再公開しているので crate::funcs の呼び出しは今までどおり
-pub(crate) use face::{
-    funcs, funcs_de, funcs_en, funcs_es, funcs_fr, funcs_id, funcs_it, funcs_ko, funcs_pt,
-    funcs_pt_br, funcs_ru, funcs_tables, funcs_tr, funcs_vi, funcs_zh, funcs_zh_tw,
-};
+// **calc が使うのは funcs だけ。** 14言語の表は face の中で
+// funcs_tables が引くので、並べると使われない再公開になる
+// (clippy が -D warnings で落とす)
+pub(crate) use face::funcs;
+// 14言語の突き合わせの試験だけが直に引く。**この試験は本当は face 側に
+// 引っ越すべき**(表がそちらへ移ったので)— 別便で
+#[cfg(test)]
+pub(crate) use face::funcs_tables;
 mod util;
 pub(crate) use util::*;
 mod py;
@@ -124,6 +128,10 @@ struct Calc {
     /// セルから開いた一覧(0.0)は列の幅に合わせるが、リボンからのものは
     /// 中身に合わせ、ボタンの幅を下限・POP_W を上限にする
     pub(crate) pop_btn_w: std::cell::Cell<f32>,
+    /// **開く元の上辺**(格子の面を基準にした y)。一覧が下に入らないとき
+    /// 上へ開くのに要る(発注者 2026-08-15「場所によっては上に出さないと
+    /// いけなかったり、上下に出す場合もある」)。pop_anchor が入れる
+    pub(crate) pop_top: std::cell::Cell<f32>,
     /// 罫線のペン(線種と色)。罫線の一覧から掛けるときに使う
     pen_style: sheet::model::BStyle,
     pen_color: Option<u32>,

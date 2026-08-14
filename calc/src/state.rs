@@ -32,6 +32,7 @@ impl Calc {
             edits: 0,
             btn_box: Rc::new(std::cell::RefCell::new(HashMap::new())),
             pop_btn_w: std::cell::Cell::new(0.0),
+            pop_top: std::cell::Cell::new(0.0),
             font_name: kumihan::font::for_document(None)
                 .map(|(fam, _)| gpui::SharedString::from(fam.name.clone()))
                 .unwrap_or_else(|_| "Noto Sans JP".into()),
@@ -1627,11 +1628,16 @@ impl Calc {
             self.pop_btn_w.set(0.0);
         }
         if let Some(at) = self.pop_at {
+            // 上へ開くときの基準(ボタンの上辺)は run_from_ribbon が入れてある
             return at;
         }
-        self.cell_origin_px(self.cursor)
-            .map(|(x, y)| (x, y + self.row_px(self.cursor.row)))
-            .unwrap_or((self.head_w() + 16.0, self.head_h() + 16.0))
+        // セルから開くときは**そのセルの上辺**が上へ開くときの基準になる。
+        // 下に入らなければセルの上に出す(いちばん下の行で効く)
+        let (x, y) = self
+            .cell_origin_px(self.cursor)
+            .unwrap_or((self.head_w() + 16.0, self.head_h() + 16.0));
+        self.pop_top.set(y);
+        (x, y + self.row_px(self.cursor.row))
     }
 
     /// いまのセルの書体名(指定が無ければ既定)。コンボを開くとき今の位置へ送るのに使う
@@ -1692,6 +1698,12 @@ impl Calc {
         let btn = self.btn_box.borrow().get(id).copied();
         // 描く前に鍵から呼ばれた等でボタンの場所が無ければ押した点を使う
         self.pop_btn_w.set(btn.map(|b| b.2).unwrap_or(0.0));
+        // 上へ開くときの基準はボタンの上辺(面を基準にした y)。
+        // 場所が分からない逃げ道では、押した点をボタンの上辺と見なす
+        self.pop_top.set(match btn {
+            Some(b) => b.1 - pane.1,
+            None => -2.0,
+        });
         self.pop_at = Some(match btn {
             Some(b) => pop_under(b, pane),
             None => pop_at_click(at_x, pane),

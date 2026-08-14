@@ -5258,7 +5258,16 @@ impl Render for Calc {
                 Some(v) => format!("#{v:06X}"),
                 None => ui::t!("自動(黒)").to_string(),
             };
-            let mut pal = div().id("border-pal").absolute().left(px(vx)).top(px(vy))
+            // 一覧と同じく窓の根に置くので、面の原点を足して窓の座標に直す
+            // (2026-08-15。前は面の中で切られ、必ず面の上端に出ていた)
+            let (pane_x, pane_y, _, _) = self.pane_box.get();
+            let (bw, bh) = (us * 176.0, us * 300.0);
+            let bx = (vx + pane_x).max(0.0).min((self.view_w_px - bw - 8.0).max(0.0));
+            let (b_up, b_at, _) =
+                pop_place(self.pop_top.get() + pane_y, vy + pane_y, bh, self.view_h_px);
+            let mut pal = div().id("border-pal").absolute().left(px(bx));
+            pal = if b_up { pal.bottom(px(b_at)) } else { pal.top(px(b_at)) };
+            let mut pal = pal
                 .w(px(us * 176.0))
                 .p_1().rounded_md().bg(rgb(0xFFFFFF))
                 .border_1().border_color(rgb(0xC6CDD3)).shadow_lg()
@@ -5357,15 +5366,36 @@ impl Render for Calc {
             // 狭いと読めず、大きさの一覧は広いと間が抜ける)
             let btn_w = self.pop_btn_w.get();
             let note_w = if self.pick_note.is_some() { 300.0 } else { 120.0 };
+            // **一覧は窓の根に置く**(2026-08-15)。前は格子の面の中にいて
+            // `overflow_hidden` に切られるため、リボンから開くと必ず面の
+            // 上端に出ていた(数式バーを挟んだ 80px 下)。根へ移したので、
+            // ここで面の原点を足して窓の座標に直す
+            let (pane_x, pane_y, _, _) = self.pane_box.get();
+            let wx = (vx + pane_x).max(0.0);
+            // 上下どちらへ開くか。中身の高さは項の数から見積もる —
+            // ぴったりでなくてよい(決めるのは向きだけで、あふれは中で送る)
+            let want_h = vals.len() as f32 * (us * 26.0)
+                + if filtering { us * 40.0 } else { 0.0 }
+                + if self.pick_note.is_some() { us * 28.0 } else { 0.0 }
+                + 12.0;
+            let (up, at, max_h) =
+                pop_place(self.pop_top.get() + pane_y, vy + pane_y, want_h, self.view_h_px);
             // 長い一覧(書体など)はパネルの中でスクロール — 数で切り捨てない
-            let mut p = div().id("pick-list").absolute().left(px(vx)).top(px(vy));
+            let mut p = div().id("pick-list").absolute().left(px(wx));
+            // 上に開くときは**下辺を開く元に合わせる**(中身が短くても隙間を
+            // 空けない)ので bottom で置く。下に開くときは top
+            p = if up { p.bottom(px(at)) } else { p.top(px(at)) };
+            // 幅は「窓に残っている幅」でも頭打ちにする — 真下に出したまま
+            // 右端からはみ出さないため(前は左へ寄せて逃げていた)
+            let room_w = (self.view_w_px - wx - 8.0).max(POP_MIN_W);
             p = if btn_w > 0.0 {
-                p.min_w(px(btn_w.max(note_w))).max_w(px(POP_W.max(note_w)))
+                p.min_w(px(btn_w.max(note_w).min(room_w)))
+                    .max_w(px(POP_W.max(note_w).min(room_w)))
             } else {
-                p.w(px(self.col_px(self.cursor.col).max(note_w)))
+                p.w(px(self.col_px(self.cursor.col).max(note_w).min(room_w)))
             };
             let mut p = p
-                .max_h(px((self.view_h_px - 160.0).max(160.0)))
+                .max_h(px(max_h.max(160.0)))
                 .overflow_y_scroll()
                 .p_1().rounded_md().bg(rgb(0xFFFFFF))
                 .border_1().border_color(rgb(0xC6CDD3)).shadow_lg()
@@ -5764,8 +5794,6 @@ impl Render for Calc {
                    .children(fmt_panel)
                    .children(menu)
                    .children(filepage)
-                   .children(border_palette)
-                   .children(pick_panel)
                    .children(prompt_panel)
                    // .py の編集面(zed 側の半分)。他のパネルより手前に置く
                    .children(self.py_edit.as_ref().map(|pe| {
@@ -5783,6 +5811,14 @@ impl Render for Calc {
             .children(watch_bar)
             .child(sheets_bar)
             .children(notes)
+            // **一覧と罫線のパレットは窓の根に置く**(2026-08-15)。格子の
+            // 面の中にいると `overflow_hidden` で切られ、リボンから開いた
+            // 一覧が必ず面の上端に出ていた(発注者「テキスト表示のすぐ下に
+            // 出したほうがいい」)。根なら面より上にも出せる。
+            // 座標は窓のもの(面の原点を足してある)。**耳や状態行より後に
+            // 置く** — 後に描く=手前なので、下の方で開いた一覧が隠れない
+            .children(border_palette)
+            .children(pick_panel)
             // 窓の縁のつかみ(最後に描く = 最初にマウスを受ける)
             .children(ui::resize_edges(window))
     }
