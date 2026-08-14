@@ -1052,7 +1052,7 @@ impl Calc {
         // ドラッグ = 引いた所まで写す。発注者 2026-08-14「Excel では
         // そんな変な操作はしない」— 本家の手はこれ、が発端
         if self.tool.is_none() && self.fn_args.is_none() && self.ref_pick.is_none() {
-            let (fa, fb) = self.sel_rect();
+            let (fa, fb) = self.fill_corner();
             if let Some((_, _, x1, y1)) = self.range_px(fa, fb) {
                 if (x - x1).abs() <= 5.0 && (y - y1).abs() <= 5.0 {
                     self.commit();
@@ -1494,6 +1494,16 @@ impl Calc {
     }
 
     /// 範囲の見えている部分の px 矩形 (x0, y0, x1, y1)。全部画面の外なら None。
+    /// フィルハンドルを描く(押す)ときの選択の角。角のセルが結合に
+    /// 呑まれていたら**結合の外周**まで広げる — 親セル1個分の角に描くと、
+    /// 結合の真ん中に緑の四角が浮く(発注者 2026-08-14「中央にゴミ」)
+    pub(crate) fn fill_corner(&self) -> (Pos, Pos) {
+        let (a, b) = self.sel_rect();
+        let a = self.merge_of(a).map(|(ma, _)| ma).unwrap_or(a);
+        let b = self.merge_of(b).map(|(_, mb)| mb).unwrap_or(b);
+        (a, b)
+    }
+
     pub(crate) fn range_px(&self, a: Pos, b: Pos) -> Option<(f32, f32, f32, f32)> {
         let (mut x0, mut x1) = (None, None);
         let mut x = HEAD_W;

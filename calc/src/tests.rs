@@ -6036,4 +6036,25 @@ mod combo_tests {
             assert!(this.status.contains("A列"), "{}", this.status);
         });
     }
+
+    #[gpui::test]
+    fn 結合して中央は書式が入り_ハンドルは外周の角に付く(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.book.sheets[0].set(Pos::new(1, 1), sheet::Cell::input("あいうえお"));
+            this.anchor = Some(Pos::new(1, 1));
+            this.cursor = Pos::new(2, 3);
+            this.sync_input();
+            this.merge_selection("中央");
+            let cell = this.book.sheets[0].get(Pos::new(1, 1)).cloned().unwrap();
+            assert_eq!(cell.fmt.align, sheet::model::HAlign::Center);
+            assert_eq!(cell.fmt.valign, sheet::model::VAlign::Middle);
+            // 結合の上にカーソルを1つ置いたとき、フィルハンドルの角は
+            // 親セル(B2)ではなく**結合の外周の角(D3)**
+            this.anchor = None;
+            this.cursor = Pos::new(1, 1);
+            this.sync_input();
+            assert_eq!(this.fill_corner(), (Pos::new(1, 1), Pos::new(2, 3)));
+        });
+    }
 }

@@ -2717,7 +2717,7 @@ impl Render for Calc {
         let fill_handle_overlay: Vec<gpui::AnyElement> = {
             let mut out = Vec::new();
             if self.tool.is_none() && self.py_edit.is_none() {
-                let (fa, fb) = self.sel_rect();
+                let (fa, fb) = self.fill_corner();
                 if let Some((_, _, x1, y1)) = self.range_px(fa, fb) {
                     out.push(
                         div().absolute()
@@ -2813,9 +2813,13 @@ impl Render for Calc {
                     d = d.border_2().border_color(rgb(0x1B6E3C));
                 } else {
                     // 引いてある罫線の辺を外周に(実線で。細部の線種はセル側と同じ
-                    // 描き分けまではしない — 結合の見た目の要は「1つに見える」こと)
+                    // 描き分けまではしない — 結合の見た目の要は「1つに見える」こと)。
+                    // **relative() は呼ばない** — この div は absolute で置いて
+                    // あり、relative() は置き場の指定を打ち消して重ね描きごと
+                    // 流してしまう(2026-08-14 発注者報告「中央に来ない」の正体。
+                    // カーソルが乗っている時だけ if 枝を通って正しく見えていた)。
+                    // absolute の親でも、中の帯の absolute はそのまま効く
                     let bs = &f.borders;
-                    d = d.relative();
                     let bar = |horiz: bool, start: bool, e: sheet::model::Edge| {
                         let col = e.color.map(rgb).unwrap_or(rgb(0x1B1B1B));
                         let t = e.style.px().max(1.0);
