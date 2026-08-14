@@ -1251,51 +1251,20 @@ impl Render for Calc {
                     r: 1.0, g: 1.0, b: 1.0, a: 1.0,
                 });
                 // 条件付き書式。**付けた条件は画面に出す**(出ないなら飾り)
-                let mut cond_color: Option<gpui::Rgba> = None;
-                let mut cond_bar: Option<(f32, gpui::Rgba)> = None;
-                let mut cond_icon: Option<(&'static str, gpui::Rgba)> = None;
+                // **当てはめは sheet::look の1本**(紙も同じ関数を通る)。
+                // ここは決まった答えを GPUI の形に写すだけ
+                let ck = sheet::look::resolve_cond(&cond_prep, p, &v);
+                if let Some(f) = &ck.fill {
+                    base = hex(f);
+                }
+                let cond_color: Option<gpui::Rgba> = ck.color.as_deref().map(hex);
+                let cond_bar: Option<(f32, gpui::Rgba)> =
+                    ck.bar.as_ref().map(|(t, c)| (*t as f32, hex(c)));
+                let cond_icon: Option<(&'static str, gpui::Rgba)> =
+                    ck.icon.map(|(glyph, c)| (glyph, hex(c)));
                 // 条件付き書式が当たったときの飾り。**None は「触らない」** —
                 // セル自身の書式をそのまま活かす(Some(false) だけが外す)
-                let (mut cb, mut ci, mut cu, mut cs) = (None, None, None, None);
-                for (rule, aux) in &cond_prep {
-                    if rule.hits(p, &v, aux) {
-                        let lk = &rule.look;
-                        if let Some(fill) = &lk.fill {
-                            base = hex(fill);
-                        }
-                        if let Some(c) = &lk.color {
-                            cond_color = Some(hex(c));
-                        }
-                        cb = lk.bold.or(cb);
-                        ci = lk.italic.or(ci);
-                        cu = lk.underline.or(cu);
-                        cs = lk.strike.or(cs);
-                    }
-                    // バー/スケール/アイコンは 0〜1 の物差しで描く
-                    if let Some(t) = rule.scalar(p, &v, aux) {
-                        use sheet::model::CondKind;
-                        match &rule.kind {
-                            CondKind::Bar(c) => cond_bar = Some((t as f32, hex(c))),
-                            CondKind::Scale(..) => {
-                                if let Some(c) = rule.scale_color(t) {
-                                    base = hex(&c);
-                                }
-                            }
-                            CondKind::Icons(name) => {
-                                // 3段: 下 / 中 / 上。矢印系は ↓→↑、他は ●の信号色
-                                let arrows = name.contains("Arrow");
-                                cond_icon = Some(if t < 1.0 / 3.0 {
-                                    (if arrows { "↓" } else { "●" }, hex("C62828"))
-                                } else if t < 2.0 / 3.0 {
-                                    (if arrows { "→" } else { "●" }, hex("E6A700"))
-                                } else {
-                                    (if arrows { "↑" } else { "●" }, hex("2E7D32"))
-                                });
-                            }
-                            _ => {}
-                        }
-                    }
-                }
+                let (cb, ci, cu, cs) = (ck.bold, ck.italic, ck.underline, ck.strike);
                 // 柄とグラデーション(台帳 第2便の [中])。**選べる物は描く** —
                 // 単色で描いていると、掛けた柄が画面に出ない
                 let (bgv, pat) = cell_background(&f, base);

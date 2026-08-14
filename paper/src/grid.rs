@@ -519,29 +519,27 @@ fn draw_sheet(
             }
             let Some(cell) = grid.cells.get(&p) else { continue };
 
-            // 塗りと文字色。条件付き書式は画面と同じ規則で上書きする
-            let mut fill = cell.fmt.fill.clone();
-            let mut ink = cell.fmt.color.clone();
-            // 条件付き書式の太字。**None は「触らない」**(セル自身の書式のまま)。
-            // 斜体・下線・取り消し線は紙ではまだ描かない — セル自身のそれらも
-            // 描いていないので、ここだけ描くと画面と紙の食い違いが増える。
-            // データバー・カラースケール・アイコン(rule.scalar の側)も
-            // **紙では控える**(2026-08-07 の決め — 条件付き書式 第2版)。
-            // 画面側の解決は calc/src/view.rs にあり、この割り切りは
-            // ここと画面の2箇所に散っている — 足すときは両方を見ること
-            let mut bold = None;
-            for (rule, aux) in cond_prep {
-                if rule.hits(p, &cell.value, aux) {
-                    if let Some(f) = &rule.look.fill {
-                        fill = Some(f.clone());
-                    }
-                    if let Some(c) = &rule.look.color {
-                        ink = Some(c.clone());
-                    }
-                    bold = rule.look.bold.or(bold);
-                }
-            }
-            let bold = bold.unwrap_or(cell.fmt.bold);
+            // 塗りと文字色。**条件付き書式の当てはめは sheet::look の1本** —
+            // 画面(calc/src/view.rs)も同じ関数を通るので、答えは必ず揃う。
+            // ここは決まった答えを紙の形に写すだけ
+            let ck = sheet::look::resolve_cond(cond_prep, p, &cell.value);
+            let fill = ck.fill.clone().or_else(|| cell.fmt.fill.clone());
+            let ink = ck.color.clone().or_else(|| cell.fmt.color.clone());
+            // **None は「触らない」**(セル自身の書式のまま)
+            let bold = ck.bold.unwrap_or(cell.fmt.bold);
+            //
+            // **カラースケールは 2026-08-14 から紙にも出る。** `ck.fill` が
+            // スケールの色も返すので、塗りとして自然に乗った(前は当てはめが
+            // 紙と画面の2箇所に分かれていて、紙は物差しの側を丸ごと捨てていた)。
+            // 紙は元から塗りを描けるので、足したのは判断だけで仕掛けは要らない
+            //
+            // **紙に出ないもの**(画面には出る。ここが残る差):
+            // - データバー(`ck.bar`)・アイコン(`ck.icon`)= 敷く/字を置く
+            //   仕掛けが要る。**やるならグリフが紙の書体にあるかを先に確かめる**
+            //   (↓→↑ と ● — 無い書体だと黙って空白か豆腐になる)
+            // - 斜体・下線・取り消し線(`ck.italic`/`underline`/`strike`)=
+            //   **セル自身のそれらも描いていない**ので、条件付き書式のぶんだけ
+            //   描くと食い違いがかえって増える
             // 塗りは罫線より先に敷く(線を塗り潰さない)
             if let Some((cr, cg, cb)) = fill.as_deref().and_then(hex_rgb) {
                 l.set_fill_color(Color::Rgb(Rgb::new(cr, cg, cb, None)));

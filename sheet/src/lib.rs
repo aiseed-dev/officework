@@ -7,6 +7,8 @@
 
 pub mod calc;
 pub mod datetime_names;
+/// 表のセルの**見え**を決める(画面と紙が同じ答えを得るための1本)
+pub mod look;
 pub mod markdown;
 pub mod model;
 pub mod styles;
