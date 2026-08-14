@@ -1059,7 +1059,7 @@ impl Calc {
                     if clicks >= 2 {
                         self.fill_handle_auto();
                     } else {
-                        self.fill_drag = Some((fa, fb, fb));
+                        self.fill_drag = Some((fa, fb, fb, ctrl));
                         self.status =
                             ui::t!("下か右へ引いて写します(ダブルクリックで隣の列の長さまで)")
                                 .into();
@@ -1356,7 +1356,7 @@ impl Calc {
     /// 離した。ドラッグ選択はここで確定する。
     /// フィルハンドルのドラッグ中。下か右の**どちらか**に伸ばす(本家と同じ)
     pub(crate) fn fill_drag_at(&mut self, x: f32, y: f32) {
-        let Some((a, b, _)) = self.fill_drag else { return };
+        let Some((a, b, _, ctrl)) = self.fill_drag else { return };
         let Some(p) = self.cell_at(x, y) else { return };
         let to = if p.row > b.row {
             Pos::new(p.row, b.col)
@@ -1365,14 +1365,14 @@ impl Calc {
         } else {
             b
         };
-        self.fill_drag = Some((a, b, to));
+        self.fill_drag = Some((a, b, to, ctrl));
     }
 
     pub(crate) fn mouse_up(&mut self) {
         // フィルハンドルを離した = 写す(伸ばしていなければ何もしない)
-        if let Some((a, b, to)) = self.fill_drag.take() {
+        if let Some((a, b, to, ctrl)) = self.fill_drag.take() {
             if to != b {
-                self.fill_handle_apply(a, b, to);
+                self.fill_handle_apply(a, b, to, ctrl);
             }
             return;
         }

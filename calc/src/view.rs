@@ -2728,7 +2728,7 @@ impl Render for Calc {
                             .into_any_element(),
                     );
                 }
-                if let Some((a, _, to)) = self.fill_drag {
+                if let Some((a, _, to, _)) = self.fill_drag {
                     if let Some((x0, y0, x1, y1)) = self.range_px(a, to) {
                         out.push(
                             div().absolute()

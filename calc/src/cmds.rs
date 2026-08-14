@@ -62,8 +62,10 @@ impl Calc {
     }
 
     /// フィルハンドルの実体 — 元の選択 (a,b) を to まで写す(下か右)。
-    /// 元の塊を繰り返し写し、式は写した距離ぶんずれる(本家と同じ)
-    pub(crate) fn fill_handle_apply(&mut self, a: Pos, b: Pos, to: Pos) {
+    /// 元の塊を繰り返し写し、式は写した距離ぶんずれる(本家と同じ)。
+    /// `invert` = Ctrl を押しながら引いた(既定の裏返し — 本家と同じ):
+    /// 続きを作る所は写しに、1つの数の写しは +1 の続きになる
+    pub(crate) fn fill_handle_apply(&mut self, a: Pos, b: Pos, to: Pos, invert: bool) {
         self.commit();
         self.checkpoint();
         let sh = &mut self.book.sheets[self.active];
@@ -72,9 +74,6 @@ impl Calc {
         // 一定なら、写すのではなく**続きを作る**(1,2 → 3,4,5…。本家と同じ)。
         // 1つだけ・式・文字は写す(本家の既定と同じ)
         let series_of = |vals: &[Option<sheet::Cell>]| -> Option<(f64, f64)> {
-            if vals.len() < 2 {
-                return None;
-            }
             let nums: Vec<f64> = vals
                 .iter()
                 .map(|c| match c {
@@ -85,10 +84,17 @@ impl Calc {
                     _ => None,
                 })
                 .collect::<Option<Vec<_>>>()?;
-            let step = nums[1] - nums[0];
-            nums.windows(2)
-                .all(|w| (w[1] - w[0] - step).abs() < 1e-9)
-                .then(|| (*nums.last().unwrap(), step))
+            match nums.len() {
+                0 => None,
+                // 1つの数: 既定は写し(None)。Ctrl の裏返しで +1 の続き
+                1 => invert.then_some((nums[0], 1.0)),
+                _ => {
+                    let step = nums[1] - nums[0];
+                    let ok = nums.windows(2).all(|w| (w[1] - w[0] - step).abs() < 1e-9);
+                    // 2つ以上: 既定は続き。Ctrl の裏返しで写し
+                    (ok && !invert).then(|| (*nums.last().unwrap(), step))
+                }
+            }
         };
         if to.row > b.row {
             let h = b.row - a.row + 1;
@@ -190,7 +196,7 @@ impl Calc {
         let target = if a.col > 0 { probe(a.col - 1) } else { None };
         let target = target.or_else(|| probe(b.col + 1));
         match target {
-            Some(last) => self.fill_handle_apply(a, b, Pos::new(last, b.col)),
+            Some(last) => self.fill_handle_apply(a, b, Pos::new(last, b.col), false),
             None => {
                 self.status =
                     ui::t!("隣の列に長さの手掛かりがありません(左右どちらも空)").into();

@@ -5943,7 +5943,7 @@ mod combo_tests {
             this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("10"));
             this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("20"));
             this.sync_input();
-            this.fill_handle_apply(Pos::new(0, 0), Pos::new(1, 0), Pos::new(5, 0));
+            this.fill_handle_apply(Pos::new(0, 0), Pos::new(1, 0), Pos::new(5, 0), false);
             for (r, want) in [(2u32, 30.0), (3, 40.0), (4, 50.0), (5, 60.0)] {
                 assert_eq!(
                     this.book.sheets[0].value(Pos::new(r, 0)),
@@ -5955,11 +5955,23 @@ mod combo_tests {
             this.book.sheets[0].set(Pos::new(6, 2), sheet::Cell::input("7"));
             this.cursor = Pos::new(6, 2);
             this.sync_input();
-            this.fill_handle_apply(Pos::new(6, 2), Pos::new(6, 2), Pos::new(8, 2));
+            this.fill_handle_apply(Pos::new(6, 2), Pos::new(6, 2), Pos::new(8, 2), false);
             for r in 7..=8u32 {
                 assert_eq!(
                     this.book.sheets[0].value(Pos::new(r, 2)),
                     sheet::Value::Number(7.0),
+                    "行{}", r + 1
+                );
+            }
+            // Ctrl の裏返し: 1つの数でも +1 の続きになる(1 → 2,3)
+            this.book.sheets[0].set(Pos::new(10, 0), sheet::Cell::input("1"));
+            this.cursor = Pos::new(10, 0);
+            this.sync_input();
+            this.fill_handle_apply(Pos::new(10, 0), Pos::new(10, 0), Pos::new(12, 0), true);
+            for (r, want) in [(11u32, 2.0), (12, 3.0)] {
+                assert_eq!(
+                    this.book.sheets[0].value(Pos::new(r, 0)),
+                    sheet::Value::Number(want),
                     "行{}", r + 1
                 );
             }
@@ -5970,7 +5982,7 @@ mod combo_tests {
             recalc_book(&mut this.book, 0);
             this.cursor = Pos::new(8, 0);
             this.sync_input();
-            this.fill_handle_apply(Pos::new(8, 0), Pos::new(8, 0), Pos::new(8, 1));
+            this.fill_handle_apply(Pos::new(8, 0), Pos::new(8, 0), Pos::new(8, 1), false);
             assert_eq!(
                 this.book.sheets[0].value(Pos::new(8, 1)),
                 sheet::Value::Number(40.0)

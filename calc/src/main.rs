@@ -107,8 +107,9 @@ struct Calc {
     /// 罫線のアイコンの格子パレット(開いている位置)。掛けても閉じない
     pub(crate) border_pal: Option<(f32, f32)>,
     /// フィルハンドル(選択枠の右下の角)のドラッグ中。
-    /// (元の選択の左上, 右下, いまの伸ばし先)。離した時に写す
-    pub(crate) fill_drag: Option<(Pos, Pos, Pos)>,
+    /// (元の選択の左上, 右下, いまの伸ばし先, Ctrl)。離した時に写す。
+    /// Ctrl は本家と同じ「既定の裏返し」— 写す↔連続データ
+    pub(crate) fill_drag: Option<(Pos, Pos, Pos, bool)>,
     /// 格子の面の窓の中での位置と大きさ(x, y, 幅, 高さ px)。描くたびに書く。
     /// リボンを押した窓の座標を、格子の面の座標に直すのに要る
     pub(crate) pane_box: std::cell::Cell<(f32, f32, f32, f32)>,
