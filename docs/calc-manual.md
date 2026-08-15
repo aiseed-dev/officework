@@ -396,6 +396,34 @@ pen once and draw in place after place.
 
 See the next section.
 
+## Drive calc from your own AI (MCP)
+
+There is a **path that runs the other way**: instead of calc calling an AI,
+**the AI you already use** (Claude Code, Claude Desktop — anything that speaks
+MCP) uses calc as a tool.
+
+```
+pip install "officework[mcp]"
+```
+
+Register `officework-mcp` with your MCP client, then you can say:
+
+> "Sum column B of the open sheet and put the total below it. Bold the header."
+
+**calc must be running**; if it isn't, the tools say so rather than failing
+silently.
+
+Only eight tools are exposed: book info / used range / read values / read
+formulas / write values / apply formatting / autofit / save.
+
+- **No tool runs arbitrary code.** One "run this Python" tool would let the
+  model do anything, well past what you agreed to
+- There is no tool to open a file — you decide what is open, in calc
+- Saving happens only when asked; nothing is overwritten on its own
+
+On this path, **the AI quota is between you and the AI product you chose**;
+officework just offers spreadsheet tools.
+
 ## AI — talk to it in the left panel
 
 **On 2026-08-15 the AI tab was removed.** Its ten buttons (summarize, rewrite,

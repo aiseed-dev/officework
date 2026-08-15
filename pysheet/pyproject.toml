@@ -36,6 +36,12 @@ dynamic = ["version"]
 # **必須にしない** — 値の出し入れだけなら要らないため
 [project.optional-dependencies]
 pandas = ["pandas"]
+# **MCP の口**(2026-08-15 発注者「MCP ツールを実装するのでもいいのかも」)。
+# `officework-mcp` を AI の客(Claude Code / Claude Desktop など)に
+# 登録すると、その AI が動いている calc を道具として使える。
+# **任意にしてある** — 使わない人に mcp とその蔓(pydantic ほか)を
+# 背負わせない
+mcp = ["mcp"]
 
 # **アプリの起動の口**(2026-08-15 発注者「配布も PyPI と conda-forge だけで
 # 問題ないかも」)。pip で入れると `officework-calc` / `officework-writer` が
@@ -46,6 +52,8 @@ pandas = ["pandas"]
 officework = "officework.app:main"
 officework-calc = "officework.app:calc"
 officework-writer = "officework.app:writer"
+# MCP の受け口(標準入出力で話す)。`pip install "officework[mcp]"` が要る
+officework-mcp = "officework.mcp:main"
 
 [project.urls]
 Homepage = "https://github.com/aiseed-dev/officework"
