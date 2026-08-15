@@ -4,7 +4,7 @@
 //! このファイルは手で書かない:
 //!
 //! ```text
-//! python3 ui/gen_ribbon_locale.py en > ui/src/ribbon_en.rs
+//! python3 ui/gen_ribbon_locale.py en > face/src/ribbon_en.rs
 //! ```
 //!
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
