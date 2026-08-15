@@ -11,7 +11,8 @@ Everything was measured on a real machine.
 
 **What gets exchanged is data only.** There is no
 mechanism, xlsm-style, for putting data and program in one file. Both cell
-functions and procedures live in `~/.config/officework/plugins/*.py`, and **a
+functions live in `~/.config/officework/funcs/*.py`, procedures in
+`~/.config/officework/plugins/*.py`, and **a
 workbook you receive contains no code at all**.
 
 - You receive a sheet (data). **You do the processing with your own code**
@@ -360,7 +361,7 @@ png, w_mm, h_mm = tex.to_png(r"\sqrt{x^2+y^2}", size_pt=11)  # this one goes int
 
 ## Cell functions (UDFs) and arrays
 
-Write a plain `def` in `~/.config/officework/plugins/tools.py` and it is callable
+Write a plain `def` in `~/.config/officework/funcs/tools.py` and it is callable
 from a cell by that name. **No decorators** (neither `@xw.func` nor
 `@xw.ret(expand='table')` — the shape of the return value decides how it
 spreads).

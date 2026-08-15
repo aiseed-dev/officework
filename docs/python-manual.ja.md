@@ -10,7 +10,8 @@
 
 **交換されるファイルはデータだけ**。xlsm のように
 データとプログラムを1つのファイルに入れる仕組みは持たない。関数も手続きも
-`~/.config/officework/plugins/*.py` にあり、**受け取ったブックには1バイトも
+`~/.config/officework/funcs/*.py`(式から呼ぶ関数)と
+`~/.config/officework/plugins/*.py`(人が押すマクロ)にあり、**受け取ったブックには1バイトも
 コードが入っていない**。
 
 - 人から受け取るのは表(データ)。**処理は自分のコードでする**
@@ -342,7 +343,7 @@ png, w_mm, h_mm = tex.to_png(r"\sqrt{x^2+y^2}", size_pt=11)  # 文書に入れ�
 
 ## セルの関数(UDF)と配列
 
-`~/.config/officework/plugins/道具.py` に普通に `def` を書けば、その名前で
+`~/.config/officework/funcs/道具.py` に普通に `def` を書けば、その名前で
 セルから呼べる。**デコレータは要らない**(`@xw.func` も
 `@xw.ret(expand='table')` も不要 — 返り値の形が広がり方を決める)。
 

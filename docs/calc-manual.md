@@ -540,8 +540,8 @@ a document at all. Think of it as VS Code and Excel
 merged: the sheet is an .xlsx, the code is a .py, and they are separate files.
 
 - What people exchange is **data only**. A workbook you receive contains no code
-- Both cell functions and procedures live in `~/.config/officework/plugins/*.py`,
-  installed once per machine
+- Cell functions live in `~/.config/officework/funcs/*.py`, procedures (macros)
+  in `~/.config/officework/plugins/*.py` — installed once per machine
 - So "opening a file runs someone else's code" cannot happen by construction
 - Because the code is only ever your own, **no sandbox is applied** — the same
   treatment as running a script from VS Code
@@ -554,11 +554,33 @@ merged: the sheet is an .xlsx, the code is a .py, and they are separate files.
   does `from officework import sheet`, so what has to be there is the
   `officework/` package directory — not a bare `.so`. To build it from this
   tree: `maturin build -m pysheet/Cargo.toml --release` and install the wheel
-- Plugins live in `~/.config/officework/plugins/` (create it if missing)
+- Two folders (create them if missing):
+  - `~/.config/officework/funcs/` — **functions called from cell formulas** (UDFs)
+  - `~/.config/officework/plugins/` — **macros a person runs by hand**
+
+### Why the folder was split in two (2026-08-16)
+
+There used to be one. Which meant **a macro's helper functions were also
+callable from the sheet** — a `def helper():` you wrote for one macro could be
+reached with `=helper()`. The risk is not the same:
+
+| | Function (funcs) | Macro (plugins) |
+|---|---|---|
+| Called by | a **formula** (`=with_tax(A1)`) | a **person** (picked from a list) |
+| Runs when | every open, every recalc | only when pressed |
+| On whose judgement | a formula left in a cell — its author need not be present | whoever is there |
+| Arguments | values only | the whole workbook |
+
+**What is left in a formula keeps running without anyone pressing anything.**
+So the folders are split, and "callable from a formula" now means "put in
+funcs".
+
+If you already keep functions in plugins, move them to funcs (if funcs is empty
+while plugins has .py files, calc says so at startup).
 
 ### Writing cell functions in Python
 
-Just write a plain `def` in `~/.config/officework/plugins/tools.py`:
+Just write a plain `def` in `~/.config/officework/funcs/tools.py`:
 
 ```python
 def double(x):
@@ -590,6 +612,8 @@ Call it from a cell like any other function. **No decorator, no registration**:
 - A cell not yet computed shows `#PY?`. Excel shows `#NAME?` (saved values
   remain visible until Excel recalculates)
 - The older form `=PY("double", A1)` still works
+- **Formulas > Python functions** lists what is in funcs; picking one opens that
+  .py in the editor
 
 ### Procedures (what replaces macros)
 
@@ -627,7 +651,7 @@ s["A30"] = "Nihon Funen Co., Ltd."   # value only; formatting is left alone
 | `@module` | run `~/.config/officework/plugins/module.py` top to bottom |
 | `@module.func` | call just that function in that .py |
 | `@edit name` | **open that .py for editing inside calc** (creates a starter file if missing) |
-| `@list` (or `@`) | the .py files in plugins and the defs inside them |
+| `@list` (or `@`) | the .py files in funcs and plugins, and the defs inside them |
 | `@計算` | compute cell functions by hand (normally automatic, so rarely needed) |
 | `@export name` | extract code embedded in an **old** workbook to a .py (never runs it) |
 | `@del name` | drop code embedded in an old workbook |
@@ -637,7 +661,8 @@ it says so.
 
 ### Editing a .py inside calc
 
-Type `@edit tools` and `~/.config/officework/plugins/tools.py` opens over the sheet.
+Type `@edit tools` and `tools.py` opens over the sheet (from plugins if it is
+there, otherwise from funcs).
 If it does not exist yet you get a starter file with one function in it.
 
 - Line numbers, and colouring for `def` names, keywords, strings and comments

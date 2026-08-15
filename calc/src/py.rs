@@ -253,7 +253,7 @@ pub(crate) fn plugins_dir() -> PathBuf {
     pyrun::plugins_dir()
 }
 
-pub(crate) use pyrun::{def_names, plugin_modules, plugin_outline};
+pub(crate) use pyrun::{def_names, plugin_outline};
 
 /// UDF の登録簿。**大文字にした関数名** → その名前を持つ (モジュール, 実際の名前)。
 /// 字句解析が ASCII を大文字にするので、こちらも大文字で引く(日本語はそのまま)。
@@ -266,8 +266,10 @@ static UDF_MAP: std::sync::RwLock<Option<HashMap<String, Vec<(String, String)>>>
 pub(crate) fn refresh_udfs() -> Vec<String> {
     let mut map: HashMap<String, Vec<(String, String)>> = HashMap::new();
     let mut clash: Vec<String> = Vec::new();
-    for m in plugin_modules() {
-        let Ok(src) = std::fs::read_to_string(plugins_dir().join(format!("{m}.py"))) else {
+    // **式から呼べるのは funcs の .py だけ**(2026-08-16)。前は plugins を
+    // 舐めていて、マクロの補助関数まで表の関数になっていた
+    for m in pyrun::modules_in(&pyrun::funcs_dir()) {
+        let Ok(src) = std::fs::read_to_string(pyrun::funcs_dir().join(format!("{m}.py"))) else {
             continue;
         };
         for f in def_names(&src) {
@@ -295,7 +297,7 @@ static PLUGINS_SEEN: std::sync::Mutex<Option<Vec<(String, u64, std::time::System
 
 /// plugins が変わっていれば登録簿を作り直す。返りは作り直したか。
 pub(crate) fn refresh_udfs_if_changed() -> bool {
-    let now = pyrun::plugins_shape();
+    let now = pyrun::shape_in(&pyrun::funcs_dir());
     let Ok(mut last) = PLUGINS_SEEN.lock() else { return false };
     if last.as_ref() == Some(&now) {
         return false;
@@ -336,7 +338,7 @@ pub(crate) fn start_udf_watch(view: gpui::Entity<Calc>, cx: &mut gpui::App) {
 /// (黙って選ばない)。
 pub(crate) fn resolve_udf(name: &str) -> Result<(String, String), String> {
     if let Some((m, f)) = name.rsplit_once('.') {
-        return if plugins_dir().join(format!("{m}.py")).exists() {
+        return if pyrun::funcs_dir().join(format!("{m}.py")).exists() {
             Ok((m.to_string(), f.to_string()))
         } else {
             Err(format!("{m}.py がありません"))
@@ -348,7 +350,7 @@ pub(crate) fn resolve_udf(name: &str) -> Result<(String, String), String> {
         .and_then(|g| g.as_ref().and_then(|m| m.get(&name.to_ascii_uppercase()).cloned()))
         .unwrap_or_default();
     match hits.len() {
-        0 => Err(format!("「{name}」の定義が plugins にありません")),
+        0 => Err(format!("「{name}」の定義が funcs にありません")),
         1 => Ok(hits[0].clone()),
         _ => Err(format!(
             "「{name}」が {} にあります — {}.{name} のようにモジュール名を付けてください",
@@ -360,20 +362,32 @@ pub(crate) fn resolve_udf(name: &str) -> Result<(String, String), String> {
 
 impl Calc {
 
-    /// plugins の .py を開く(無ければ下書きを置く)。
+    /// .py を開く(無ければ下書きを置く)。
+    ///
+    /// **置き場は中身で決める**(2026-08-16): funcs に在ればそちら、
+    /// plugins に在ればそちら、どちらにも無ければ **funcs**(新しく書く物は
+    /// たいてい式から呼ぶ関数で、保存したら見張りが拾って計算し直る)
     pub(crate) fn open_py_edit(&mut self, name: &str) {
         let name = name.trim();
         if name.is_empty() {
             self.status = ui::t!("@edit 名前 の形で(例: @edit 道具)").into();
             return;
         }
-        let path = plugins_dir().join(format!("{name}.py"));
+        let dir = if plugins_dir().join(format!("{name}.py")).exists()
+            && !pyrun::funcs_dir().join(format!("{name}.py")).exists()
+        {
+            plugins_dir()
+        } else {
+            pyrun::funcs_dir()
+        };
+        let path = dir.join(format!("{name}.py"));
         let text = match std::fs::read_to_string(&path) {
             Ok(s) => s,
             Err(_) => ui::pyedit::skeleton(name),
         };
         self.py_edit = Some(ui::pyedit::PyEdit {
             name: name.to_string(),
+            dir,
             ed: Editor::new(&text),
             top: 0,
             saved: text.clone(),
@@ -390,9 +404,10 @@ impl Calc {
     /// 書き出す。**保存した時点で見張りが気づき、シートが計算し直る。**
     pub(crate) fn save_py_edit(&mut self) {
         let Some(p) = &mut self.py_edit else { return };
-        let dir = plugins_dir();
+        // **開いた置き場へ書き戻す**(funcs か plugins か)
+        let dir = p.dir.clone();
         if let Err(e) = std::fs::create_dir_all(&dir) {
-            self.status = ui::tf!("plugins の置き場が作れません: {}", e.to_string()).into();
+            self.status = ui::tf!("置き場が作れません: {}", e.to_string()).into();
             return;
         }
         let path = dir.join(format!("{}.py", p.name));
@@ -1108,16 +1123,17 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             }
         }
         if !missing.is_empty() {
-            self.status = format!("{}({} に .py を置いてください)", missing.join(" / "), plugins_dir().display()).into();
+            // **式から呼ぶ関数の置き場は funcs**(2026-08-16)
+            self.status = format!("{}({} に .py を置いてください)", missing.join(" / "), pyrun::funcs_dir().display()).into();
             return;
         }
-        // 使うモジュールだけ読む(呼ばれていない plugins は動かさない)
+        // 使うモジュールだけ読む(呼ばれていない .py は動かさない)
         let mut mods: Vec<(String, String)> = Vec::new();
         for (m, _) in resolved.values() {
             if mods.iter().any(|(n, _)| n == m) {
                 continue;
             }
-            match std::fs::read_to_string(plugins_dir().join(format!("{m}.py"))) {
+            match std::fs::read_to_string(pyrun::funcs_dir().join(format!("{m}.py"))) {
                 Ok(src) => mods.push((m.clone(), src)),
                 Err(e) => {
                     self.status = format!("{m}.py が読めません: {e}").into();

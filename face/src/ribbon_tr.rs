@@ -264,6 +264,7 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Formül", cmds: &[
         c("insert-function", "İşlev ekle", "additional-formula"),
+        c("func-list", "Python işlevleri", "py-list"),
         c("sum", "Otomatik Toplam", "autosum"),
         c("fn-recent", "Son kullanılan işlevler", "recent"),
         c("fn-financial", "Finansal", "financial"),

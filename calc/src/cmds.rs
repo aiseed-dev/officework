@@ -44,7 +44,7 @@ impl Calc {
         "coauth-mode", "co-delcomment", "co-showcomment", "co-chat",
         "co-history",
         // Python タブ(2026-08-09)
-        "rec-toggle", "py-new", "py-list", "py-folder",
+        "rec-toggle", "py-new", "py-list", "py-folder", "func-list",
         "prot-doc", "prot-encrypt", "prot-sign",
         "zoom-in", "zoom-out", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
         // 左右のパネル(2026-08-15)
@@ -1375,8 +1375,10 @@ impl Calc {
             // **編集は表計算の仕事ではない**(発注者 2026-08-15)。
             // 骨組みだけ書いたファイルを作り、編集の道具に渡す —
             // 利用者の editor(settings.toml)→ 隣の writer → 機械の既定、の順
+            // **新しい .py は関数の置き場へ**(2026-08-16)。この腕は
+            // 「保存したらセルから呼べます」と言う — それは funcs の話
             "py-new" => {
-                let dir = plugins_dir();
+                let dir = pyrun::funcs_dir();
                 let _ = std::fs::create_dir_all(&dir);
                 let mut n = 1;
                 while dir.join(format!("新しい道具{n}.py")).exists() {
@@ -1396,6 +1398,34 @@ impl Calc {
                     Err(e) => ui::tf!("{} は作りましたが開けません: {}",
                         path.display().to_string(), e).into(),
                 };
+            }
+            // **式から呼べる Python の関数の一覧**(funcs の置き場)。
+            // 押すと名前と、その中の def が並ぶ — セルに `=名前(...)` と
+            // 書けるのはここに在る物だけ(2026-08-16)
+            "func-list" => {
+                self.prompt = None;
+                let dir = pyrun::funcs_dir();
+                let fs = pyrun::outline_in(&dir);
+                if fs.is_empty() {
+                    self.status = ui::tf!(
+                        "式から呼べる関数はまだありません({} に .py を置いてください)",
+                        dir.display().to_string()
+                    )
+                    .into();
+                    return;
+                }
+                let at = self.pop_anchor();
+                self.pick_paths =
+                    fs.iter().map(|(m, _)| (m.clone(), dir.join(format!("{m}.py")))).collect();
+                self.pick_kind = "py-edit";
+                self.pick_note =
+                    Some(ui::t!("セルに =名前(...) と書けます。選ぶと編集の道具で開きます").into());
+                self.pick = Some((
+                    fs.iter()
+                        .map(|(m, d)| (m.clone(), format!("{m} — {}", d.join(" "))))
+                        .collect(),
+                    at,
+                ));
             }
             // 置いてある .py の一覧。**選ぶと編集の道具で開く** —
             // 名前を眺めるだけでは、直したい時に置き場を探すことになる

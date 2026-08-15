@@ -3660,23 +3660,38 @@ impl Calc {
                 } else if t == "@計算" || t == "@calc" {
                     self.run_py_calc(cx);
                 } else if t == "@" || t == "@list" {
-                    // コードは plugins の .py にしかない(ブックは運ばない)。
-                    // 古いブックに載っていたものは取り出し口の案内だけ出す
+                    // コードは置き場の .py にしかない(ブックは運ばない)。
+                    // **置き場は2つ** — funcs=式から呼ぶ関数、plugins=人が押す
+                    // マクロ(2026-08-16 に割った)。片方だけ出すと、もう片方が
+                    // 「消えた」ように見える
                     let old: Vec<&str> =
                         self.book.scripts.iter().map(|(n, _)| n.as_str()).collect();
-                    let plugs = plugin_outline();
-                    let mut msg = if plugs.is_empty() {
-                        ui::tf!(
-                            "plugins に .py がありません(@edit 名前 で作れます。=PY(\"関数名\", …) と @名前 が使えるようになります)",
-                            plugins_dir().display().to_string()
-                        )
-                        .to_string()
-                    } else {
-                        plugs
-                            .iter()
+                    let line = |o: Vec<(String, Vec<String>)>| {
+                        o.iter()
                             .map(|(m, defs)| format!("{m}: {}", defs.join(" ")))
                             .collect::<Vec<_>>()
                             .join(" / ")
+                    };
+                    let funcs = line(pyrun::outline_in(&pyrun::funcs_dir()));
+                    let plugs = line(plugin_outline());
+                    let mut msg = if funcs.is_empty() && plugs.is_empty() {
+                        ui::tf!(
+                            "置き場に .py がありません(@edit 名前 で作れます。式から呼ぶ関数は {} へ)",
+                            pyrun::funcs_dir().display().to_string()
+                        )
+                        .to_string()
+                    } else {
+                        let mut s = String::new();
+                        if !funcs.is_empty() {
+                            s.push_str(&ui::tf!("関数(funcs) {}", funcs));
+                        }
+                        if !plugs.is_empty() {
+                            if !s.is_empty() {
+                                s.push_str("  ");
+                            }
+                            s.push_str(&ui::tf!("マクロ(plugins) {}", plugs));
+                        }
+                        s
                     };
                     if !old.is_empty() {
                         msg.push_str(&ui::tf!(

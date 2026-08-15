@@ -264,6 +264,7 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Công thức", cmds: &[
         c("insert-function", "Chèn hàm", "additional-formula"),
+        c("func-list", "Hàm Python", "py-list"),
         c("sum", "AutoSum", "autosum"),
         c("fn-recent", "Dùng gần đây", "recent"),
         c("fn-financial", "Tài chính", "financial"),

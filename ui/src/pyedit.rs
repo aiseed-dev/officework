@@ -31,6 +31,10 @@ pub fn plugins_dir() -> PathBuf {
 pub struct PyEdit {
     /// モジュール名(拡張子なし)
     pub name: String,
+    /// **どの置き場の .py か**(2026-08-16 に UDF とマクロを分けた)。
+    /// funcs = 式から呼ぶ関数 / plugins = 人が押すマクロ。
+    /// 開いた所へ書き戻す — 直したら別の置き場に増えた、を起こさない
+    pub dir: std::path::PathBuf,
     pub ed: Editor,
     /// 一番上に見えている行(0 起点)
     pub top: usize,
@@ -359,7 +363,13 @@ mod tests {
     use super::*;
 
     fn p(text: &str) -> PyEdit {
-        PyEdit { name: "試".into(), ed: Editor::new(text), top: 0, saved: text.into() }
+        PyEdit {
+            name: "試".into(),
+            dir: std::path::PathBuf::from("/tmp"),
+            ed: Editor::new(text),
+            top: 0,
+            saved: text.into(),
+        }
     }
 
     #[test]

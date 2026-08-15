@@ -315,6 +315,10 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "数式", cmds: &[
         c("insert-function", "関数の挿入", "additional-formula"),
+        // **式から呼べる Python の関数**(funcs の置き場)。人が押して
+        // 走るマクロとは別物なので、マクロの段ではなくここに置く
+        // (2026-08-16 発注者「UDF とマクロに区分しないといけないのでは」)
+        c("func-list", "Python の関数", "py-list"),
         c("sum", "オートSUM", "autosum"),
         c("fn-recent", "最近使った関数", "recent"),
         c("fn-financial", "財務", "financial"),

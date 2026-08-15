@@ -4758,6 +4758,7 @@ mod autocorrect_tests {
             assert!(this.math_autocorrect(), "そもそも入っていない");
             this.py_edit = Some(ui::pyedit::PyEdit {
                 name: "t".into(),
+                dir: pyrun::funcs_dir(),
                 ed: Editor::new(""),
                 top: 0,
                 saved: String::new(),

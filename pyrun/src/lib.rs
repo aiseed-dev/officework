@@ -40,15 +40,42 @@ pub fn config_dir() -> PathBuf {
 
 // ---- plugins(.py の置き場)-------------------------------------------------
 
-/// プラグイン(.py)の置き場。`<設定の置き場>/plugins`。
+/// **マクロ**(.py)の置き場。`<設定の置き場>/plugins`。
+/// 人が一覧から選んだときだけ走る物がここに居る。
 /// **ここが正** — ui::pyedit と calc/writer は包みで呼ぶ
 pub fn plugins_dir() -> PathBuf {
     config_dir().join("plugins")
 }
 
+/// **式から呼ぶ関数(UDF)**の置き場。`<設定の置き場>/funcs`。
+///
+/// # マクロと分けた理由(2026-08-16 発注者「UDF とマクロに区分しないと
+/// いけないのでは」)
+///
+/// 前は両方が `plugins` に同居していて、**マクロの中の def が全部**
+/// 表の関数として登録されていた(補助関数まで)。それだけなら散らかるだけ
+/// だが、効くのはその先:
+///
+/// - **UDF は人が押さなくても走る。** 再計算のたびに呼ばれる
+/// - **ブックが名前で呼べる。** `=集計(A1:B9)` は xlsx に保存されるので、
+///   受け取ったブックを開くと、こちらの `集計.py` が走る
+///
+/// 「ブックはコードを運ばない」は守れていても、**ブックはコードの名前を
+/// 運ぶ**。だから、式から呼ばれてよい物だけを別の置き場に置く —
+/// **そこへ置く手が門**になる(マクロの一覧と同じ形)。
+pub fn funcs_dir() -> PathBuf {
+    config_dir().join("funcs")
+}
+
 /// plugins にある .py の名前(モジュール名)を並べる。
 pub fn plugin_modules() -> Vec<String> {
-    let mut v: Vec<String> = std::fs::read_dir(plugins_dir())
+    modules_in(&plugins_dir())
+}
+
+/// 置き場の .py の名前(モジュール名)を並べる。**置き場を選べる形**に
+/// したのは、マクロ(plugins)と関数(funcs)で同じ走査を使うため
+pub fn modules_in(dir: &std::path::Path) -> Vec<String> {
+    let mut v: Vec<String> = std::fs::read_dir(dir)
         .ok()
         .into_iter()
         .flatten()
@@ -64,11 +91,15 @@ pub fn plugin_modules() -> Vec<String> {
 /// plugins の .py の見出し — (モジュール名, その中の def の名前)。
 /// **読むだけで実行しない**(@list の一覧に使う)。
 pub fn plugin_outline() -> Vec<(String, Vec<String>)> {
-    plugin_modules()
+    outline_in(&plugins_dir())
+}
+
+/// 置き場の .py の見出し — (モジュール名, その中の def の名前)
+pub fn outline_in(dir: &std::path::Path) -> Vec<(String, Vec<String>)> {
+    modules_in(dir)
         .into_iter()
         .map(|m| {
-            let src =
-                std::fs::read_to_string(plugins_dir().join(format!("{m}.py"))).unwrap_or_default();
+            let src = std::fs::read_to_string(dir.join(format!("{m}.py"))).unwrap_or_default();
             (m, def_names(&src))
         })
         .collect()
@@ -87,10 +118,16 @@ pub fn def_names(src: &str) -> Vec<String> {
 /// 足りない** — 中の .py を書き換えても置き場の時刻は動かないので(項目の
 /// 出入りでしか動かない)、1つ1つの名前・大きさ・時刻を見る。
 pub fn plugins_shape() -> Vec<(String, u64, std::time::SystemTime)> {
-    let mut v: Vec<_> = plugin_modules()
+    shape_in(&plugins_dir())
+}
+
+/// 置き場の姿(名前・大きさ・時刻)。**中を書き換えても置き場の時刻は
+/// 動かない**ので、1つ1つを見る
+pub fn shape_in(dir: &std::path::Path) -> Vec<(String, u64, std::time::SystemTime)> {
+    let mut v: Vec<_> = modules_in(dir)
         .into_iter()
         .filter_map(|m| {
-            let md = std::fs::metadata(plugins_dir().join(format!("{m}.py"))).ok()?;
+            let md = std::fs::metadata(dir.join(format!("{m}.py"))).ok()?;
             Some((m, md.len(), md.modified().ok()?))
         })
         .collect();

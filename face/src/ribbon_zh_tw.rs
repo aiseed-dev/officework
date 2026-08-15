@@ -264,6 +264,7 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "公式", cmds: &[
         c("insert-function", "插入函數", "additional-formula"),
+        c("func-list", "Python 函式", "py-list"),
         c("sum", "自動加總", "autosum"),
         c("fn-recent", "最近使用的函數", "recent"),
         c("fn-financial", "財務", "financial"),

@@ -191,6 +191,18 @@ impl Calc {
         if let Some(w) = ui::key_warnings().first() {
             c.status = w.clone().into();
         }
+        // **UDF とマクロを分けた**(2026-08-16)。式から呼べるのは funcs の
+        // .py だけになったので、前の置き方のままの人には**黙って #PY? に
+        // しない** — 移し先を言う
+        if pyrun::modules_in(&pyrun::funcs_dir()).is_empty()
+            && !pyrun::plugin_modules().is_empty()
+        {
+            c.status = ui::tf!(
+                "式から呼ぶ関数は {} に移してください(plugins は人が押すマクロの置き場になりました)",
+                pyrun::funcs_dir().display().to_string()
+            )
+            .into();
+        }
         c
     }
 

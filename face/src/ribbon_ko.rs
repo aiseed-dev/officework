@@ -264,6 +264,7 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "수식", cmds: &[
         c("insert-function", "함수 삽입", "additional-formula"),
+        c("func-list", "Python 함수", "py-list"),
         c("sum", "자동 합계", "autosum"),
         c("fn-recent", "최근에 사용한 함수", "recent"),
         c("fn-financial", "재무", "financial"),

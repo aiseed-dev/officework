@@ -29,6 +29,8 @@ RIBBON = Path(__file__).resolve().parent.parent / "face/src/ribbon.rs"
 # このスクリプトは止まる — その語をここに足してから出し直す
 OVERRIDES = {
     "en": {
+        # 式から呼べる Python の関数の一覧(2026-08-16。本家に無い)
+        "Python の関数": "Python functions",
         "書式のコピー": "Format painter",
         "スタイル": "Style",
         "フィールドリスト": "Field list",
