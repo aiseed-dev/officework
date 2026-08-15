@@ -6556,4 +6556,33 @@ mod web_export_tests {
         assert!(s.contains("charset=\"utf-8\""), "UTF-8 と名乗っていない");
         let _ = std::fs::remove_file(&p);
     }
+
+    /// **右パネルの3つ(塗り・字下げ・向き)が模型に届く。**
+    ///
+    /// 実機では「掛けました」と状態行が言うのに画面の印が変わらず、
+    /// どちらが嘘か分からなかった(2026-08-15)。模型を直に見て決める。
+    #[gpui::test]
+    fn 右パネルの塗りと字下げと向きが効く(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            this.set_fill(Some("FFC000"), "黄");
+            let f = this.sheet().get(this.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
+            assert_eq!(f.fill.as_deref(), Some("FFC000"), "塗りが入っていない");
+
+            this.bump_indent(1);
+            let f = this.sheet().get(this.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
+            assert_eq!(f.indent, 1, "字下げが入っていない");
+            this.bump_indent(-1);
+            let f = this.sheet().get(this.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
+            assert_eq!(f.indent, 0, "字下げが戻らない");
+
+            this.set_rotation(90, "上向き 90度");
+            let f = this.sheet().get(this.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
+            assert_eq!(f.rotation, Some(90), "向きが入っていない");
+            // 0 は「無し」— None に戻る(xlsx も 0 は書かない)
+            this.set_rotation(0, "角度なし");
+            let f = this.sheet().get(this.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
+            assert_eq!(f.rotation, None, "向きが戻らない");
+        });
+    }
 }

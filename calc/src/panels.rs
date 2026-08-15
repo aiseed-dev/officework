@@ -152,6 +152,93 @@ impl Calc {
                     cx.listener(move |this, _, _, cx| { this.run_cmd(cmd, cx); cx.notify() })));
             }
             d = d.child(r);
+
+            // 塗り — **色見本を直に並べる。** 開きっぱなしのパネルなので
+            // 「一覧を開いて選んで閉じる」の3手が1手になる
+            d = d.child(見出し(ui::t!("塗り").to_string()));
+            let 今塗 = f.fill.clone();
+            let mut r = 列();
+            for (i, (_, 札, hex)) in crate::util::fill_colors().into_iter().enumerate() {
+                let on = 今塗.as_deref() == hex;
+                let h = hex.map(|s| s.to_string());
+                let l = 札.to_string();
+                let 見本 = match hex {
+                    Some(x) => u32::from_str_radix(x, 16).unwrap_or(0xFFFFFF),
+                    None => 0xFFFFFF,
+                };
+                r = r.child(div()
+                    .id(SharedString::from(format!("fillsw{i}")))
+                    .w(px(us * 20.0)).h(px(us * 20.0)).rounded_sm().cursor_pointer()
+                    .bg(rgb(見本))
+                    // 色なしは斜めの線でなく「/」の字で示す(絵を増やさない)
+                    .border_1().border_color(if on { 主 } else { line })
+                    .when(on, |s| s.border_2())
+                    .flex().items_center().justify_center()
+                    .text_size(px(us * 10.0)).text_color(薄)
+                    .child(if hex.is_none() { "/" } else { "" })
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.set_fill(h.as_deref(), &l);
+                        cx.notify()
+                    })));
+            }
+            d = d.child(r);
+
+            // 字下げ — **模型は前からあったのに、掛ける道が無かった。**
+            // ここで初めて人の手が届く(1段 = 全角約1字)
+            d = d.child(見出し(ui::t!("字下げ").to_string()));
+            let mut r = 列();
+            r = r.child(釦("ind-dec", "−".to_string(), f.indent > 0).on_click(
+                cx.listener(|this, _, _, cx| { this.bump_indent(-1); cx.notify() })));
+            r = r.child(div().text_size(px(us * 11.5)).text_color(fg)
+                .child(format!("{}", f.indent)));
+            r = r.child(釦("ind-inc", "+".to_string(), true).on_click(
+                cx.listener(|this, _, _, cx| { this.bump_indent(1); cx.notify() })));
+            d = d.child(r);
+
+            // 文字の向き — 一覧と同じ6つ(鍵も同じ。xlsx の数え方で上向きが正)
+            d = d.child(見出し(ui::t!("文字の向き").to_string()));
+            let 今角 = f.rotation.unwrap_or(0);
+            let mut r = 列();
+            for (id, 札, deg) in [
+                ("rot-0", ui::t!("角度なし"), 0),
+                ("rot-45", ui::t!("左上がり 45度"), 45),
+                ("rot-135", ui::t!("右下がり 45度"), 135),
+                ("rot-90", ui::t!("上向き 90度"), 90),
+                ("rot-180", ui::t!("下向き 90度"), 180),
+                ("rot-255", ui::t!("縦書き(1字ずつ積む)"), 255),
+            ] {
+                let l = 札.to_string();
+                r = r.child(釦(id, 札.to_string(), 今角 == deg).on_click(
+                    cx.listener(move |this, _, _, cx| {
+                        this.set_rotation(deg, &l);
+                        cx.notify()
+                    })));
+            }
+            d = d.child(r);
+
+            // 条件付き書式 — **値を訊かないものだけ**をここに置く。
+            // 「値より大きいと…」のように打ち込みの要る規則は今までどおり
+            // リボンの一覧から(小窓が開くので、パネルの連打には向かない)
+            d = d.child(見出し(ui::t!("条件付き書式").to_string()));
+            let mut r = 列();
+            for (id, 札, act) in [
+                ("cf-neg", ui::t!("0未満を赤字"), "cond-neg"),
+                ("cf-dup", ui::t!("重複"), "cond-dup"),
+                ("cf-uniq", ui::t!("一意"), "cond-uniq"),
+                ("cf-avg-a", ui::t!("平均より上"), "cond-avg-above"),
+                ("cf-avg-b", ui::t!("平均より下"), "cond-avg-below"),
+                ("cf-bar", ui::t!("データバー"), "cond-bar"),
+                ("cf-scale", ui::t!("色の濃淡"), "cond-scale"),
+                ("cf-icons", ui::t!("アイコン"), "cond-icons"),
+                ("cf-clear", ui::t!("消す"), "cond-clear"),
+            ] {
+                r = r.child(釦(id, 札.to_string(), false).on_click(
+                    cx.listener(move |this, _, window, cx| {
+                        this.menu_action(act, window, cx);
+                        cx.notify()
+                    })));
+            }
+            d = d.child(r);
             Some(d.into_any_element())
         };
 

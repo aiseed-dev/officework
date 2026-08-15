@@ -358,6 +358,38 @@ used in formulas.
   mathtext renders it as an image. Unreadable input is refused with a message
 - **Hyperlink**: right-click or Insert tab. Empty + Enter removes
 
+## The side panels (View tab)
+
+**Right = settings for what you have selected, left = who you are talking to.**
+Both **stay open**; the grid just gets narrower (they never cover it).
+
+### Right panel, "Cell settings"
+
+Things that used to be scattered across dialogs and drop-downs, on one sheet.
+The point is that **it keeps working while open** — borders especially: pick a
+pen once and draw in place after place.
+
+- **Text**: bold / italic / underline
+- **Alignment**: left / centre / right / wrap
+- **Number format**: General / currency / thousands / percent / item code
+  (0000) / date (the rest is still in the drop-down)
+- **Borders**: a **pen** (thin, medium, thick, dashed, double) and **where to
+  draw** (grid, outline, top/bottom/left/right, erase) — **two axes**. We don't
+  carry the stamped presets: choose a pen, then press a place
+- **Fill**: swatches you press directly (patterns and gradients stay in the
+  drop-down)
+- **Indent**: − and + by one step. **This is the first way to apply it** — the
+  xlsx round-trip has worked for a while, but nothing could set it
+- **Text orientation**: none / 45° / 90° / stacked vertical
+- **Conditional formatting**: only the rules that **need no value from you**
+  (negative in red, duplicates, unique, above/below average, data bars, colour
+  scale, icons, clear). Rules that need typing ("greater than …") stay in the
+  drop-down
+
+### Left panel, "Ask the AI"
+
+See the next section.
+
 ## AI — talk to it in the left panel
 
 **On 2026-08-15 the AI tab was removed.** Its ten buttons (summarize, rewrite,

@@ -6633,398 +6633,446 @@
  },
  {
   "i": 1658,
-  "t": "Format übertragen"
+  "t": "Einzug"
  },
  {
   "i": 1659,
-  "t": "Typ"
+  "t": "Einzug auf {} gesetzt"
  },
  {
   "i": 1660,
-  "t": "Feldliste"
+  "t": "Der Einzug kann nicht schmaler werden"
  },
  {
   "i": 1661,
-  "t": "Oberflächentext größer"
+  "t": "Der Einzug kann nicht breiter werden"
  },
  {
   "i": 1662,
-  "t": "Oberflächentext kleiner"
+  "t": "Textausrichtung"
  },
  {
   "i": 1663,
-  "t": "KI"
+  "t": "Textausrichtung auf {} gesetzt"
  },
  {
   "i": 1664,
-  "t": "Drucken"
+  "t": "Bedingte Formatierung"
  },
  {
   "i": 1665,
-  "t": "Drucklayout"
+  "t": "Negative rot"
  },
  {
   "i": 1666,
-  "t": "Ziel"
+  "t": "Duplikate"
  },
  {
   "i": 1667,
-  "t": "Zusammenfassen"
+  "t": "Eindeutige"
  },
  {
   "i": 1668,
-  "t": "Umschreiben"
+  "t": "Farbskala"
  },
  {
   "i": 1669,
-  "t": "Höflicher"
+  "t": "Symbole"
  },
  {
   "i": 1670,
-  "t": "Einfacher"
+  "t": "Format übertragen"
  },
  {
   "i": 1671,
-  "t": "Übersetzen"
+  "t": "Typ"
  },
  {
   "i": 1672,
-  "t": "Furigana"
+  "t": "Feldliste"
  },
  {
   "i": 1673,
-  "t": "Fortsetzen"
+  "t": "Oberflächentext größer"
  },
  {
   "i": 1674,
-  "t": "In Tabelle"
+  "t": "Oberflächentext kleiner"
  },
  {
   "i": 1675,
-  "t": "Anfragen"
+  "t": "KI"
  },
  {
   "i": 1676,
-  "t": "Ruby"
+  "t": "Drucken"
  },
  {
   "i": 1677,
-  "t": "Vertikal"
+  "t": "Drucklayout"
  },
  {
   "i": 1678,
-  "t": "Textrichtung"
+  "t": "Ziel"
  },
  {
   "i": 1679,
-  "t": "Verteilt"
+  "t": "Zusammenfassen"
  },
  {
   "i": 1680,
-  "t": "Beschriftung einfügen"
+  "t": "Umschreiben"
  },
  {
   "i": 1681,
-  "t": "URL öffnen"
+  "t": "Höflicher"
  },
  {
   "i": 1682,
-  "t": "Index"
+  "t": "Einfacher"
  },
  {
   "i": 1683,
-  "t": "Aozora-Anmerkungen"
+  "t": "Übersetzen"
  },
  {
   "i": 1684,
-  "t": "Denden-Markup"
+  "t": "Furigana"
  },
  {
   "i": 1685,
-  "t": "Änderungen nachverfolgen"
+  "t": "Fortsetzen"
  },
  {
   "i": 1686,
-  "t": "Änderungen anzeigen"
+  "t": "In Tabelle"
  },
  {
   "i": 1687,
-  "t": "Korrektur"
+  "t": "Anfragen"
  },
  {
   "i": 1688,
-  "t": "Zeichen"
+  "t": "Ruby"
  },
  {
   "i": 1689,
-  "t": "Rechtschreibprüfung"
+  "t": "Vertikal"
  },
  {
   "i": 1690,
-  "t": "Thesaurus"
+  "t": "Textrichtung"
  },
  {
   "i": 1691,
-  "t": "Fehlkonvertierung"
+  "t": "Verteilt"
  },
  {
   "i": 1692,
-  "t": "Uneinheitliche Schreibung"
+  "t": "Beschriftung einfügen"
  },
  {
   "i": 1693,
-  "t": "Teilergebnisse"
+  "t": "URL öffnen"
  },
  {
   "i": 1694,
-  "t": "Berechnung"
+  "t": "Index"
  },
  {
   "i": 1695,
-  "t": "Rechts-nach-links-Text"
+  "t": "Aozora-Anmerkungen"
  },
  {
   "i": 1696,
-  "t": "Blattrichtung"
+  "t": "Denden-Markup"
  },
  {
   "i": 1697,
-  "t": "Python"
+  "t": "Änderungen nachverfolgen"
  },
  {
   "i": 1698,
-  "t": "Kontrollkästchen"
+  "t": "Änderungen anzeigen"
  },
  {
   "i": 1699,
-  "t": "Externe Verknüpfungen"
+  "t": "Korrektur"
  },
  {
   "i": 1700,
-  "t": "Empfohlene Diagramme"
+  "t": "Zeichen"
  },
  {
   "i": 1701,
-  "t": "Co-Bearbeitung"
+  "t": "Rechtschreibprüfung"
  },
  {
   "i": 1702,
-  "t": "Versionsverlauf"
+  "t": "Thesaurus"
  },
  {
   "i": 1703,
-  "t": "Chat"
+  "t": "Fehlkonvertierung"
  },
  {
   "i": 1704,
-  "t": "Schützen"
+  "t": "Uneinheitliche Schreibung"
  },
  {
   "i": 1705,
-  "t": "Verschlüsseln"
+  "t": "Teilergebnisse"
  },
  {
   "i": 1706,
-  "t": "Digitale Signatur hinzufügen"
+  "t": "Berechnung"
  },
  {
   "i": 1707,
-  "t": "Makros"
+  "t": "Rechts-nach-links-Text"
  },
  {
   "i": 1708,
-  "t": "Plugins verwalten"
+  "t": "Blattrichtung"
  },
  {
   "i": 1709,
-  "t": "Nullen anzeigen"
+  "t": "Python"
  },
  {
   "i": 1710,
-  "t": "Auf 100 % zoomen"
+  "t": "Kontrollkästchen"
  },
  {
   "i": 1711,
-  "t": "Oberflächendesign"
+  "t": "Externe Verknüpfungen"
  },
  {
   "i": 1712,
-  "t": "Überwachungsfenster"
+  "t": "Empfohlene Diagramme"
  },
  {
   "i": 1713,
-  "t": "AutoSumme"
+  "t": "Co-Bearbeitung"
  },
  {
   "i": 1714,
-  "t": "Aktionen aufzeichnen"
+  "t": "Versionsverlauf"
  },
  {
   "i": 1715,
-  "t": "Kommentar löschen"
+  "t": "Chat"
  },
  {
   "i": 1716,
-  "t": "Solver"
+  "t": "Schützen"
  },
  {
   "i": 1717,
-  "t": "Text zu Daten"
+  "t": "Verschlüsseln"
  },
  {
   "i": 1718,
-  "t": "Pfeile entfernen"
+  "t": "Digitale Signatur hinzufügen"
  },
  {
   "i": 1719,
-  "t": "Ausfüllen"
+  "t": "Makros"
  },
  {
   "i": 1720,
-  "t": "Filter löschen"
+  "t": "Plugins verwalten"
  },
  {
   "i": 1721,
-  "t": "Makro schreiben"
+  "t": "Nullen anzeigen"
  },
  {
   "i": 1722,
-  "t": "Text in Spalten"
+  "t": "Auf 100 % zoomen"
  },
  {
   "i": 1723,
-  "t": "Beschriftung"
+  "t": "Oberflächendesign"
  },
  {
   "i": 1724,
-  "t": "Abbildungsverzeichnis"
+  "t": "Überwachungsfenster"
  },
  {
   "i": 1725,
-  "t": "Abbildungsverzeichnis aktualisieren"
+  "t": "AutoSumme"
  },
  {
   "i": 1726,
-  "t": "Externe Verknüpfungen (als Werte einlesen)"
+  "t": "Aktionen aufzeichnen"
  },
  {
   "i": 1727,
-  "t": "Math. u. Trigonom."
+  "t": "Kommentar löschen"
  },
  {
   "i": 1728,
-  "t": "Formeln anzeigen"
+  "t": "Solver"
  },
  {
   "i": 1729,
-  "t": "Textrichtung (rechts nach links)"
+  "t": "Text zu Daten"
  },
  {
   "i": 1730,
-  "t": "Text"
+  "t": "Pfeile entfernen"
  },
  {
   "i": 1731,
-  "t": "Datum u. Uhrzeit"
+  "t": "Ausfüllen"
  },
  {
   "i": 1732,
-  "t": "Zuletzt verwendet"
+  "t": "Filter löschen"
  },
  {
   "i": 1733,
-  "t": "Gitternetzlinien drucken"
+  "t": "Makro schreiben"
  },
  {
   "i": 1734,
-  "t": "Inhaltsverzeichnis aktualisieren"
+  "t": "Text in Spalten"
  },
  {
   "i": 1735,
-  "t": "Gebänderte Spalten"
+  "t": "Beschriftung"
  },
  {
   "i": 1736,
-  "t": "Überschriften drucken"
+  "t": "Abbildungsverzeichnis"
  },
  {
   "i": 1737,
-  "t": "Detail ausblenden"
+  "t": "Abbildungsverzeichnis aktualisieren"
  },
  {
   "i": 1738,
-  "t": "Duplikate entfernen"
+  "t": "Externe Verknüpfungen (als Werte einlesen)"
  },
  {
   "i": 1739,
-  "t": "Funktion einfügen"
+  "t": "Math. u. Trigonom."
  },
  {
   "i": 1740,
-  "t": "CSV-Format"
+  "t": "Formeln anzeigen"
  },
  {
   "i": 1741,
-  "t": "Zelle sperren"
+  "t": "Textrichtung (rechts nach links)"
  },
  {
   "i": 1742,
-  "t": "Datentabelle"
+  "t": "Text"
  },
  {
   "i": 1743,
-  "t": "Musterfüllung"
+  "t": "Datum u. Uhrzeit"
  },
  {
   "i": 1744,
-  "t": "Liste"
+  "t": "Zuletzt verwendet"
  },
  {
   "i": 1745,
-  "t": "Namen einfügen"
+  "t": "Gitternetzlinien drucken"
  },
  {
   "i": 1746,
-  "t": "Wiederherstellen"
+  "t": "Inhaltsverzeichnis aktualisieren"
  },
  {
   "i": 1747,
-  "t": "Text umbrechen"
+  "t": "Gebänderte Spalten"
  },
  {
   "i": 1748,
-  "t": "Sicherungsintervall"
+  "t": "Überschriften drucken"
  },
  {
   "i": 1749,
-  "t": "Neue .py"
+  "t": "Detail ausblenden"
  },
  {
   "i": 1750,
-  "t": "Bereich hinzufügen"
+  "t": "Duplikate entfernen"
  },
  {
   "i": 1751,
-  "t": "Aufs Blatt einpassen"
+  "t": "Funktion einfügen"
  },
  {
   "i": 1752,
-  "t": "Blattgrenzen"
+  "t": "CSV-Format"
  },
  {
   "i": 1753,
-  "t": "Ordner öffnen"
+  "t": "Zelle sperren"
  },
  {
   "i": 1754,
-  "t": "Berechnungsart"
+  "t": "Datentabelle"
  },
  {
   "i": 1755,
-  "t": "Erlaubte Aktionen"
+  "t": "Musterfüllung"
  },
  {
   "i": 1756,
+  "t": "Liste"
+ },
+ {
+  "i": 1757,
+  "t": "Namen einfügen"
+ },
+ {
+  "i": 1758,
+  "t": "Wiederherstellen"
+ },
+ {
+  "i": 1759,
+  "t": "Text umbrechen"
+ },
+ {
+  "i": 1760,
+  "t": "Sicherungsintervall"
+ },
+ {
+  "i": 1761,
+  "t": "Neue .py"
+ },
+ {
+  "i": 1762,
+  "t": "Bereich hinzufügen"
+ },
+ {
+  "i": 1763,
+  "t": "Aufs Blatt einpassen"
+ },
+ {
+  "i": 1764,
+  "t": "Blattgrenzen"
+ },
+ {
+  "i": 1765,
+  "t": "Ordner öffnen"
+ },
+ {
+  "i": 1766,
+  "t": "Berechnungsart"
+ },
+ {
+  "i": 1767,
+  "t": "Erlaubte Aktionen"
+ },
+ {
+  "i": 1768,
   "t": "Schreibschutz empfehlen"
  }
 ]

@@ -2314,6 +2314,50 @@ impl Calc {
         if a == b { a.a1() } else { format!("{}:{}", a.a1(), b.a1()) }
     }
 
+    /// 塗りを選択に掛ける。**色を選ぶ = べた塗り** — 柄と虹は外す
+    /// (選んだ物と見える物が食い違わないように。picks.rs の一覧と同じ決め)
+    pub(crate) fn set_fill(&mut self, hex: Option<&str>, label: &str) {
+        let c = hex.map(|h| h.to_string());
+        self.fmt(move |f| {
+            f.fill = c.clone();
+            f.fill_pattern = None;
+            f.fill_bg = None;
+            f.fill_grad = None;
+        });
+        self.status = if hex.is_some() {
+            ui::tf!("塗りを{}にしました", label).into()
+        } else {
+            ui::t!("塗りを消しました").into()
+        };
+    }
+
+    /// 文字の向き(xlsx と同じ数え方 — 上向きが正。255 = 縦書き)
+    pub(crate) fn set_rotation(&mut self, deg: i32, label: &str) {
+        let r = if deg == 0 { None } else { Some(deg) };
+        self.fmt(move |f| f.rotation = r);
+        self.status = ui::tf!("文字の向きを{}にしました", label).into();
+    }
+
+    /// 字下げを増やす・減らす(xlsx の alignment indent。1段 = 全角約1字)。
+    ///
+    /// **模型は前から持っていたのに、掛ける道が無かった**(2026-08-13 に
+    /// 足したのは読み書きだけ)。右パネルで初めて人の手が届く。
+    /// 0 より下げず、15 で止める(xlsx の上限)
+    pub(crate) fn bump_indent(&mut self, d: i8) {
+        let now = self.sheet().get(self.cursor).map(|c| c.fmt.indent).unwrap_or(0);
+        let next = (now as i16 + d as i16).clamp(0, 15) as u8;
+        if next == now {
+            self.status = if d < 0 {
+                ui::t!("字下げはこれ以上狭められません").into()
+            } else {
+                ui::t!("字下げはこれ以上広げられません").into()
+            };
+            return;
+        }
+        self.fmt(move |f| f.indent = next);
+        self.status = ui::tf!("字下げを {} 段にしました", next).into();
+    }
+
     /// 表示形式を選択に掛ける。**空なら外す**(標準に戻す)
     pub(crate) fn set_number_format(&mut self, code: &str) {
         let (a, b) = self.sel_rect();

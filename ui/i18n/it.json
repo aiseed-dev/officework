@@ -6633,398 +6633,446 @@
  },
  {
   "i": 1658,
-  "t": "Copia formato"
+  "t": "Rientro"
  },
  {
   "i": 1659,
-  "t": "Stile"
+  "t": "Rientro impostato su {}"
  },
  {
   "i": 1660,
-  "t": "Elenco campi"
+  "t": "Il rientro non può ridursi oltre"
  },
  {
   "i": 1661,
-  "t": "Ingrandisci testo dello schermo"
+  "t": "Il rientro non può ampliarsi oltre"
  },
  {
   "i": 1662,
-  "t": "Riduci testo dello schermo"
+  "t": "Orientamento del testo"
  },
  {
   "i": 1663,
-  "t": "AI"
+  "t": "Orientamento del testo impostato su {}"
  },
  {
   "i": 1664,
-  "t": "Stampa"
+  "t": "Formattazione condizionale"
  },
  {
   "i": 1665,
-  "t": "Layout di stampa"
+  "t": "Negativi in rosso"
  },
  {
   "i": 1666,
-  "t": "Destinazione"
+  "t": "Duplicati"
  },
  {
   "i": 1667,
-  "t": "Riassumi"
+  "t": "Univoci"
  },
  {
   "i": 1668,
-  "t": "Riscrivi"
+  "t": "Scala di colori"
  },
  {
   "i": 1669,
-  "t": "Più formale"
+  "t": "Icone"
  },
  {
   "i": 1670,
-  "t": "Più semplice"
+  "t": "Copia formato"
  },
  {
   "i": 1671,
-  "t": "Traduci"
+  "t": "Stile"
  },
  {
   "i": 1672,
-  "t": "Furigana"
+  "t": "Elenco campi"
  },
  {
   "i": 1673,
-  "t": "Continua"
+  "t": "Ingrandisci testo dello schermo"
  },
  {
   "i": 1674,
-  "t": "In tabella"
+  "t": "Riduci testo dello schermo"
  },
  {
   "i": 1675,
-  "t": "Chiedi"
+  "t": "AI"
  },
  {
   "i": 1676,
-  "t": "Ruby"
+  "t": "Stampa"
  },
  {
   "i": 1677,
-  "t": "Verticale"
+  "t": "Layout di stampa"
  },
  {
   "i": 1678,
-  "t": "Direzione del testo"
+  "t": "Destinazione"
  },
  {
   "i": 1679,
-  "t": "Distribuito"
+  "t": "Riassumi"
  },
  {
   "i": 1680,
-  "t": "Inserisci didascalia"
+  "t": "Riscrivi"
  },
  {
   "i": 1681,
-  "t": "Apri URL"
+  "t": "Più formale"
  },
  {
   "i": 1682,
-  "t": "Indice"
+  "t": "Più semplice"
  },
  {
   "i": 1683,
-  "t": "Note Aozora"
+  "t": "Traduci"
  },
  {
   "i": 1684,
-  "t": "Notazione Denden"
+  "t": "Furigana"
  },
  {
   "i": 1685,
-  "t": "Revisioni"
+  "t": "Continua"
  },
  {
   "i": 1686,
-  "t": "Mostra revisioni"
+  "t": "In tabella"
  },
  {
   "i": 1687,
-  "t": "Correzione"
+  "t": "Chiedi"
  },
  {
   "i": 1688,
-  "t": "Caratteri"
+  "t": "Ruby"
  },
  {
   "i": 1689,
-  "t": "Controllo ortografia"
+  "t": "Verticale"
  },
  {
   "i": 1690,
-  "t": "Thesaurus"
+  "t": "Direzione del testo"
  },
  {
   "i": 1691,
-  "t": "Errori di conversione"
+  "t": "Distribuito"
  },
  {
   "i": 1692,
-  "t": "Incoerenze di grafia"
+  "t": "Inserisci didascalia"
  },
  {
   "i": 1693,
-  "t": "Subtotali"
+  "t": "Apri URL"
  },
  {
   "i": 1694,
-  "t": "Calcolo"
+  "t": "Indice"
  },
  {
   "i": 1695,
-  "t": "Testo da destra a sinistra"
+  "t": "Note Aozora"
  },
  {
   "i": 1696,
-  "t": "Direzione del foglio"
+  "t": "Notazione Denden"
  },
  {
   "i": 1697,
-  "t": "Python"
+  "t": "Revisioni"
  },
  {
   "i": 1698,
-  "t": "Casella di controllo"
+  "t": "Mostra revisioni"
  },
  {
   "i": 1699,
-  "t": "Collegamenti esterni"
+  "t": "Correzione"
  },
  {
   "i": 1700,
-  "t": "Grafico consigliato"
+  "t": "Caratteri"
  },
  {
   "i": 1701,
-  "t": "Modalità collaborativa"
+  "t": "Controllo ortografia"
  },
  {
   "i": 1702,
-  "t": "Cronologia versioni"
+  "t": "Thesaurus"
  },
  {
   "i": 1703,
-  "t": "Chat"
+  "t": "Errori di conversione"
  },
  {
   "i": 1704,
-  "t": "Proteggi"
+  "t": "Incoerenze di grafia"
  },
  {
   "i": 1705,
-  "t": "Crittografa"
+  "t": "Subtotali"
  },
  {
   "i": 1706,
-  "t": "Aggiungi firma digitale"
+  "t": "Calcolo"
  },
  {
   "i": 1707,
-  "t": "Macro"
+  "t": "Testo da destra a sinistra"
  },
  {
   "i": 1708,
-  "t": "Gestione plugin"
+  "t": "Direzione del foglio"
  },
  {
   "i": 1709,
-  "t": "Mostra zeri"
+  "t": "Python"
  },
  {
   "i": 1710,
-  "t": "Zoom al 100%"
+  "t": "Casella di controllo"
  },
  {
   "i": 1711,
-  "t": "Tema dell'interfaccia"
+  "t": "Collegamenti esterni"
  },
  {
   "i": 1712,
-  "t": "Finestra controllo celle"
+  "t": "Grafico consigliato"
  },
  {
   "i": 1713,
-  "t": "Somma automatica"
+  "t": "Modalità collaborativa"
  },
  {
   "i": 1714,
-  "t": "Registra azioni"
+  "t": "Cronologia versioni"
  },
  {
   "i": 1715,
-  "t": "Elimina commento"
+  "t": "Chat"
  },
  {
   "i": 1716,
-  "t": "Risolutore"
+  "t": "Proteggi"
  },
  {
   "i": 1717,
-  "t": "Da testo a dati"
+  "t": "Crittografa"
  },
  {
   "i": 1718,
-  "t": "Rimuovi frecce"
+  "t": "Aggiungi firma digitale"
  },
  {
   "i": 1719,
-  "t": "Riempimento"
+  "t": "Macro"
  },
  {
   "i": 1720,
-  "t": "Cancella filtro"
+  "t": "Gestione plugin"
  },
  {
   "i": 1721,
-  "t": "Scrivi macro"
+  "t": "Mostra zeri"
  },
  {
   "i": 1722,
-  "t": "Testo in colonne"
+  "t": "Zoom al 100%"
  },
  {
   "i": 1723,
-  "t": "Didascalia"
+  "t": "Tema dell'interfaccia"
  },
  {
   "i": 1724,
-  "t": "Indice delle figure"
+  "t": "Finestra controllo celle"
  },
  {
   "i": 1725,
-  "t": "Aggiorna indice delle figure"
+  "t": "Somma automatica"
  },
  {
   "i": 1726,
-  "t": "Collegamenti esterni (importa come valori)"
+  "t": "Registra azioni"
  },
  {
   "i": 1727,
-  "t": "Matematica e trigonometria"
+  "t": "Elimina commento"
  },
  {
   "i": 1728,
-  "t": "Mostra formule"
+  "t": "Risolutore"
  },
  {
   "i": 1729,
-  "t": "Orientamento del testo (da destra a sinistra)"
+  "t": "Da testo a dati"
  },
  {
   "i": 1730,
-  "t": "Testo"
+  "t": "Rimuovi frecce"
  },
  {
   "i": 1731,
-  "t": "Data e ora"
+  "t": "Riempimento"
  },
  {
   "i": 1732,
-  "t": "Usate di recente"
+  "t": "Cancella filtro"
  },
  {
   "i": 1733,
-  "t": "Stampa griglia"
+  "t": "Scrivi macro"
  },
  {
   "i": 1734,
-  "t": "Aggiorna sommario"
+  "t": "Testo in colonne"
  },
  {
   "i": 1735,
-  "t": "Colonne alternate"
+  "t": "Didascalia"
  },
  {
   "i": 1736,
-  "t": "Stampa intestazioni"
+  "t": "Indice delle figure"
  },
  {
   "i": 1737,
-  "t": "Nascondi dettaglio"
+  "t": "Aggiorna indice delle figure"
  },
  {
   "i": 1738,
-  "t": "Rimuovi duplicati"
+  "t": "Collegamenti esterni (importa come valori)"
  },
  {
   "i": 1739,
-  "t": "Inserisci funzione"
+  "t": "Matematica e trigonometria"
  },
  {
   "i": 1740,
-  "t": "Formato CSV"
+  "t": "Mostra formule"
  },
  {
   "i": 1741,
-  "t": "Blocca cella"
+  "t": "Orientamento del testo (da destra a sinistra)"
  },
  {
   "i": 1742,
-  "t": "Tabella dati"
+  "t": "Testo"
  },
  {
   "i": 1743,
-  "t": "Riempimento rapido"
+  "t": "Data e ora"
  },
  {
   "i": 1744,
-  "t": "Elenco"
+  "t": "Usate di recente"
  },
  {
   "i": 1745,
-  "t": "Incolla nome"
+  "t": "Stampa griglia"
  },
  {
   "i": 1746,
-  "t": "Ripristino"
+  "t": "Aggiorna sommario"
  },
  {
   "i": 1747,
-  "t": "Testo a capo"
+  "t": "Colonne alternate"
  },
  {
   "i": 1748,
-  "t": "Intervallo copie"
+  "t": "Stampa intestazioni"
  },
  {
   "i": 1749,
-  "t": "Nuovo .py"
+  "t": "Nascondi dettaglio"
  },
  {
   "i": 1750,
-  "t": "Aggiungi intervallo"
+  "t": "Rimuovi duplicati"
  },
  {
   "i": 1751,
-  "t": "Adatta alla pagina"
+  "t": "Inserisci funzione"
  },
  {
   "i": 1752,
-  "t": "Fine pagina"
+  "t": "Formato CSV"
  },
  {
   "i": 1753,
-  "t": "Apri cartella"
+  "t": "Blocca cella"
  },
  {
   "i": 1754,
-  "t": "Tipo di calcolo"
+  "t": "Tabella dati"
  },
  {
   "i": 1755,
-  "t": "Operazioni consentite"
+  "t": "Riempimento rapido"
  },
  {
   "i": 1756,
+  "t": "Elenco"
+ },
+ {
+  "i": 1757,
+  "t": "Incolla nome"
+ },
+ {
+  "i": 1758,
+  "t": "Ripristino"
+ },
+ {
+  "i": 1759,
+  "t": "Testo a capo"
+ },
+ {
+  "i": 1760,
+  "t": "Intervallo copie"
+ },
+ {
+  "i": 1761,
+  "t": "Nuovo .py"
+ },
+ {
+  "i": 1762,
+  "t": "Aggiungi intervallo"
+ },
+ {
+  "i": 1763,
+  "t": "Adatta alla pagina"
+ },
+ {
+  "i": 1764,
+  "t": "Fine pagina"
+ },
+ {
+  "i": 1765,
+  "t": "Apri cartella"
+ },
+ {
+  "i": 1766,
+  "t": "Tipo di calcolo"
+ },
+ {
+  "i": 1767,
+  "t": "Operazioni consentite"
+ },
+ {
+  "i": 1768,
   "t": "Suggerisci sola lettura"
  }
 ]
