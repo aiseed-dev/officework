@@ -22,7 +22,11 @@ from officework import doc, sheet
 台帳 = ここ / "種の受注台帳.xlsx"
 納品書 = ここ / "種の納品書.docx"
 
-台帳の見出し = ["受付日", "お名前", "番号", "品名", "袋数", "単価", "金額", "発送"]
+# **入金の突き合わせは当面は手でやる**(発注者 2026-08-15)。通帳の CSV と
+# 突き合わせる仕掛けは作らない。**ただし書く場所は要る** — 欄が無ければ
+# 手でもできない。「まだ」を人が「済」に直し、日を入れる
+台帳の見出し = ["受付日", "お名前", "番号", "品名", "袋数", "単価", "金額",
+                "入金", "入金日", "発送"]
 
 
 def 記入済みの注文書を作る():
@@ -102,8 +106,8 @@ def 台帳に載せる(受付日, 名前, 受けた):
             cell = ws.cell(row=1, column=c)
             cell.value = 名
             cell.font = sheet.Font(bold=True)
-        for col, w in (("A", 12), ("B", 16), ("C", 8), ("D", 26),
-                       ("E", 8), ("F", 10), ("G", 12), ("H", 8)):
+        for col, w in (("A", 12), ("B", 16), ("C", 8), ("D", 26), ("E", 8),
+                       ("F", 10), ("G", 12), ("H", 8), ("I", 12), ("J", 8)):
             ws.column_dimensions[col].width = w
         ws.freeze_panes = "A2"
     for 番号, 品名, 単価, 袋 in 受けた:
@@ -119,7 +123,8 @@ def 台帳に載せる(受付日, 名前, 受けた):
         c7 = ws.cell(row=r, column=7)
         c7.value = f"=E{r}*F{r}"
         c7.number_format = "¥#,##0"
-        ws.cell(row=r, column=8).value = "まだ"
+        ws.cell(row=r, column=8).value = "まだ"   # 入金(手で「済」に直す)
+        ws.cell(row=r, column=10).value = "まだ"  # 発送
     b.save(台帳)
     return ws.max_row - 1
 
