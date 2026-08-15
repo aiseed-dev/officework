@@ -520,10 +520,11 @@ impl Writer {
             None
         } else {
             let panel_bg = if dk { rgb(0x1B1E21) } else { rgb(0xF1F3F5) };
+            // **外枠を回す**(発注者 2026-08-15。calc と同じ作法)
             let mut d = div()
                 .flex_none().w(px(250.0)).h_full().overflow_hidden()
-                .p_2().bg(panel_bg)
-                .border_r_1().border_color(th_cmd_border)
+                .m_1().p_2().rounded_sm().bg(panel_bg)
+                .border_1().border_color(th_cmd_border)
                 .flex().flex_col().gap_1();
             // 耳
             let mut ears = div().flex().flex_row().gap_1().mb_1();
@@ -799,8 +800,8 @@ impl Writer {
             // 表の面が足された分、230px の幅では下が切れる
             let mut d = div().id("rp-panel")
                 .flex_none().w(px(230.0)).h_full().overflow_y_scroll()
-                .p_2().bg(panel_bg)
-                .border_l_1().border_color(th_cmd_border)
+                .m_1().p_2().rounded_sm().bg(panel_bg)
+                .border_1().border_color(th_cmd_border)
                 .flex().flex_col().gap_1()
                 .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))

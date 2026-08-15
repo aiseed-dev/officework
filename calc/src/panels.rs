@@ -60,11 +60,14 @@ impl Calc {
             None
         } else {
             let f = self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
+            // **外枠を回す**(発注者 2026-08-15)。内側の1辺だけだと窓の
+            // 地とパネルが地続きに見え、どこまでがパネルか分からなかった。
+            // 少し内側に置いて四方を囲む — 枠が窓の縁に潰されない
             let mut d = div()
                 .id("right-panel")
                 .flex_none().w(px(W * us)).h_full().overflow_y_scroll()
-                .p_2().bg(bg)
-                .border_l_1().border_color(line)
+                .m_1().p_2().rounded_sm().bg(bg)
+                .border_1().border_color(line)
                 .flex().flex_col().gap_0p5();
             d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                 .text_color(fg).child(ui::t!("セルの設定").to_string()));
@@ -246,10 +249,11 @@ impl Calc {
         let 左 = if !self.left_open {
             None
         } else {
+            // 右と同じく**四方を囲む**(2026-08-15)
             let mut d = div()
                 .flex_none().w(px(W * us)).h_full().overflow_hidden()
-                .p_2().bg(bg)
-                .border_r_1().border_color(line)
+                .m_1().p_2().rounded_sm().bg(bg)
+                .border_1().border_color(line)
                 .flex().flex_col().gap_1();
             d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                 .text_color(fg).child(ui::t!("AI と相談する").to_string()));
