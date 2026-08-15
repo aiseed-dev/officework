@@ -1647,4 +1647,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("記録を {} に書きました({} 行)— {} で開きます", "Đã ghi vào {} ({} dòng) — mở bằng {}"),
     ("記録を {} に書きました({} 行)", "Đã ghi vào {} ({} dòng)"),
     ("記録を書けません: {}", "Không ghi được: {}"),
+    ("AI の宛先", "Đích của AI"),
+    ("いま使えるか", "Hiện dùng được không"),
+    ("AI のモデル(JO_AI_MODEL)", "Mô hình AI (JO_AI_MODEL)"),
+    ("(宛先の既定)", "(mặc định của đích)"),
+    ("使えます", "Dùng được"),
+    ("頼んでみるまで分かりません(下の宛先へ繋ぎます)", "Chưa biết cho tới khi thử (nối tới đích bên dưới)"),
 ];

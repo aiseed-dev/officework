@@ -4014,6 +4014,38 @@ impl Render for Calc {
                                 };
                                 cx.notify()
                             }))))
+                    // ── AI ────────────────────────────────────────────
+                    // **宛先を覚えるのはここ**(発注者 2026-08-15
+                    // 「AI の設定を設定メニューに追加して」)。リボンの AI
+                    // タブは左パネルの会話に譲って消える予定なので、
+                    // 覚える設定の持ち場をこちらへ移しておく
+                    .child(div().h(px(10.0)))
+                    .child(div().flex().flex_row().items_center().gap_2()
+                        .child(div().w(px(us * 200.0)).text_color(dim)
+                            .child(ui::t!("AI の宛先")))
+                        .child(div().id("set-ai")
+                            .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                            .child(SharedString::from(ui::ai::backend().label().to_string()))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.run_cmd("ai-where", cx);
+                                cx.notify()
+                            }))))
+                    // **使えないなら理由を出す**(押してみるまで分からない、に
+                    // しない)。鍵そのものは出さない — 有る無しだけ。
+                    // **手元のモデルだけは「使えます」と言わない** — 繋がるか
+                    // 確かめずに言えば嘘になる(宛先は下の「校正の宛先」)
+                    .child(row(ui::t!("いま使えるか"), {
+                        let b = ui::ai::backend();
+                        match ui::ai::ready(b) {
+                            _ if b == ui::ai::Backend::Local =>
+                                ui::t!("頼んでみるまで分かりません(下の宛先へ繋ぎます)").to_string(),
+                            Ok(()) => ui::t!("使えます").to_string(),
+                            Err(e) => e,
+                        }
+                    }))
+                    .child(row(ui::t!("AI のモデル(JO_AI_MODEL)"),
+                        std::env::var("JO_AI_MODEL")
+                            .unwrap_or_else(|_| ui::t!("(宛先の既定)").into())))
                     .child(div().h(px(10.0)))
                     .child(row(ui::t!("書体(OFFICE_FONT)"),
                         std::env::var("OFFICE_FONT")

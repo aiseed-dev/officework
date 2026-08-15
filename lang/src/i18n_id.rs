@@ -1647,4 +1647,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("記録を {} に書きました({} 行)— {} で開きます", "Rekaman ditulis ke {} ({} baris) — dibuka di {}"),
     ("記録を {} に書きました({} 行)", "Rekaman ditulis ke {} ({} baris)"),
     ("記録を書けません: {}", "Tidak bisa menulis rekaman: {}"),
+    ("AI の宛先", "Tujuan AI"),
+    ("いま使えるか", "Bisa dipakai sekarang"),
+    ("AI のモデル(JO_AI_MODEL)", "Model AI (JO_AI_MODEL)"),
+    ("(宛先の既定)", "(bawaan tujuan)"),
+    ("使えます", "Bisa dipakai"),
+    ("頼んでみるまで分かりません(下の宛先へ繋ぎます)", "Belum diketahui sampai dicoba (menyambung ke tujuan di bawah)"),
 ];

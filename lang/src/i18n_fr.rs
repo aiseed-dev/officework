@@ -1647,4 +1647,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("記録を {} に書きました({} 行)— {} で開きます", "Enregistrement écrit dans {} ({} lignes) — ouverture dans {}"),
     ("記録を {} に書きました({} 行)", "Enregistrement écrit dans {} ({} lignes)"),
     ("記録を書けません: {}", "Impossible d'écrire l'enregistrement : {}"),
+    ("AI の宛先", "Destination de l'IA"),
+    ("いま使えるか", "Utilisable maintenant"),
+    ("AI のモデル(JO_AI_MODEL)", "Modèle d'IA (JO_AI_MODEL)"),
+    ("(宛先の既定)", "(valeur par défaut de la destination)"),
+    ("使えます", "Utilisable"),
+    ("頼んでみるまで分かりません(下の宛先へ繋ぎます)", "Inconnu jusqu'à la demande (se connecte à la destination ci-dessous)"),
 ];

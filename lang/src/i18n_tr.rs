@@ -1647,4 +1647,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("記録を {} に書きました({} 行)— {} で開きます", "Kayıt {} dosyasına yazıldı ({} satır) — {} ile açılıyor"),
     ("記録を {} に書きました({} 行)", "Kayıt {} dosyasına yazıldı ({} satır)"),
     ("記録を書けません: {}", "Kayıt yazılamıyor: {}"),
+    ("AI の宛先", "Yapay zekâ hedefi"),
+    ("いま使えるか", "Şu anda kullanılabilir mi"),
+    ("AI のモデル(JO_AI_MODEL)", "Yapay zekâ modeli (JO_AI_MODEL)"),
+    ("(宛先の既定)", "(hedefin varsayılanı)"),
+    ("使えます", "Kullanılabilir"),
+    ("頼んでみるまで分かりません(下の宛先へ繋ぎます)", "Sormadan bilinmez (aşağıdaki hedefe bağlanır)"),
 ];
