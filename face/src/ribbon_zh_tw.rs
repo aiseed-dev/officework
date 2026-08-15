@@ -225,7 +225,6 @@ pub const CALC: &[Tab] = &[
         c("inschart", "插入圖表", "inschart"),
         c("inssparkline", "插入迷你圖", "inssparkline"),
         c("addcomment", "評論", "ins-comment"),
-        c("insrecommend", "插入圖表", "smartpicker"),
         c("inshyperlink", "新增超連結", "inshyperlink"),
         c("insslicer", "插入切片器", "insslicer"),
         c("instext", "插入文字方塊", "instext"),
@@ -310,6 +309,7 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "記錄操作", "py-run"),
         c("py-new", "新增 .py", "py-new"),
         c("py-list", "清單", "py-list"),
+        c("ribbon-list", "功能區的巨集", "py-line"),
         c("py-folder", "開啟資料夾", "py-folder"),
     ]},
     Tab { name: "樞紐分析表", cmds: &[

@@ -67,6 +67,98 @@ pub fn funcs_dir() -> PathBuf {
     config_dir().join("funcs")
 }
 
+/// **リボンに出るマクロ**の置き場(2026-08-16 発注者「リボン用のマクロは
+/// 別にしたほうがいいのでは」)。
+///
+/// plugins との違いは**名乗り**にある。plugins の .py は何も名乗らなくてよい
+/// — 一覧に名前が出て、人が選ぶ。リボンに出るには、札(何と書くか)・
+/// 絵(どの印か)・段(どのタブか)を名乗る必要がある。名乗る物と名乗らない
+/// 物を同じ置き場に混ぜると、「名乗り忘れ」と「名乗る気が無い」が区別できない。
+///
+/// 同梱のピボット・グラフ・ソルバー等(下の `*_PY`)は**同じ役目の
+/// システム定義**。利用者の定義はここに置く。
+pub fn ribbon_dir() -> PathBuf {
+    config_dir().join("ribbon")
+}
+
+/// リボンに出るマクロの名乗り。
+pub struct RibbonDecl {
+    /// .py の名前(= 走らせるモジュール名)
+    pub module: String,
+    /// ボタンに出す札。**訳さない** — 利用者自身の言葉
+    pub label: String,
+    /// 絵の名前(icons の slot)。無い名前なら呼ぶ側が既定に落とす
+    pub icon: String,
+    /// どの段に出すか(既定は「マクロ」)
+    pub tab: String,
+}
+
+/// 置き場の .py から名乗りを読む。**Python は走らせない** — [`def_names`] と
+/// 同じで行を読むだけ(名乗りを読むために利用者のコードを走らせたら、
+/// 「押したときだけ走る」が嘘になる)。
+///
+/// 名乗りの形は素の Python の辞書1つ:
+///
+/// ```python
+/// リボン = {"札": "月次の締め", "絵": "py-list", "段": "マクロ"}
+/// ```
+///
+/// 英語の綴り(`ribbon` / `label` / `icon` / `tab`)も受ける。名乗りの無い
+/// .py はリボンに出ない(置き忘れをボタンにしない)。
+pub fn ribbon_decls(dir: &std::path::Path) -> Vec<RibbonDecl> {
+    modules_in(dir)
+        .into_iter()
+        .filter_map(|m| {
+            let src = std::fs::read_to_string(dir.join(format!("{m}.py"))).ok()?;
+            let kv = decl_dict(&src)?;
+            let get = |a: &str, b: &str| {
+                kv.iter().find(|(k, _)| k == a || k == b).map(|(_, v)| v.clone())
+            };
+            Some(RibbonDecl {
+                label: get("札", "label").unwrap_or_else(|| m.clone()),
+                icon: get("絵", "icon").unwrap_or_default(),
+                tab: get("段", "tab").unwrap_or_else(|| "マクロ".into()),
+                module: m,
+            })
+        })
+        .collect()
+}
+
+/// `リボン = { … }` の中の `"鍵": "値"` を拾う。**浅い読み手**で足りる —
+/// 名乗りは1段の辞書で、入れ子も式も要らない(rpc.rs の JSON と同じ流儀。
+/// 依存を増やさない)。見つからなければ `None`
+fn decl_dict(src: &str) -> Option<Vec<(String, String)>> {
+    let head = src.match_indices('{').find(|(i, _)| {
+        let before = src[..*i].trim_end();
+        before.strip_suffix('=').is_some_and(|b| {
+            let b = b.trim_end();
+            b.ends_with("リボン") || b.ends_with("ribbon")
+        })
+    })?;
+    let rest = &src[head.0 + 1..];
+    let end = rest.find('}')?;
+    let body = &rest[..end];
+    let mut out = Vec::new();
+    let mut it = body.char_indices().peekable();
+    let mut cur: Vec<String> = Vec::new();
+    while let Some((i, ch)) = it.next() {
+        if ch != '"' && ch != '\'' {
+            continue;
+        }
+        let close = body[i + 1..].find(ch)?;
+        cur.push(body[i + 1..i + 1 + close].to_string());
+        // 閉じの引用符まで読み飛ばす(**+1 を忘れると閉じが次の開きになる**)
+        while it.peek().is_some_and(|(j, _)| *j <= i + close + 1) {
+            it.next();
+        }
+        if cur.len() == 2 {
+            let v = cur.pop().unwrap();
+            out.push((cur.pop().unwrap(), v));
+        }
+    }
+    Some(out)
+}
+
 /// plugins にある .py の名前(モジュール名)を並べる。
 pub fn plugin_modules() -> Vec<String> {
     modules_in(&plugins_dir())
@@ -829,6 +921,40 @@ mod cage_tests {
     fn defの名前は先頭の桁だけ数える() {
         let src = "def 集計(r):\n    def _中(x):\n        pass\ndef _隠し(x):\n    pass\ndef 倍(x): ...\n";
         assert_eq!(def_names(src), vec!["集計", "倍"]);
+    }
+
+    #[test]
+    fn リボンの名乗りを走らせずに読む() {
+        let src = "リボン = {\"札\": \"月次の締め\", \"絵\": \"py-list\"}\n\nprint(1)\n";
+        let kv = decl_dict(src).unwrap();
+        assert_eq!(kv, vec![("札".into(), "月次の締め".into()), ("絵".into(), "py-list".into())]);
+        // 英語の綴りと ' の引用も受ける
+        let en = "ribbon = {'label': 'Month end', 'tab': 'マクロ'}\n";
+        assert_eq!(
+            decl_dict(en).unwrap(),
+            vec![("label".into(), "Month end".into()), ("tab".into(), "マクロ".into())]
+        );
+        // 名乗りが無ければ None(置き忘れをボタンにしない)
+        assert!(decl_dict("def 走る():\n    pass\n").is_none());
+        // 名前の一部が「リボン」で終わるだけの変数は拾わない
+        assert!(decl_dict("横リボン = {\"札\": \"x\"}\n").is_some());
+        assert!(decl_dict("設定 = {\"札\": \"x\"}\n").is_none());
+    }
+
+    #[test]
+    fn リボンの名乗りは既定で埋まる() {
+        let d = std::env::temp_dir().join(format!("owtest-ribbon-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(d.join("締め.py"), "リボン = {\"札\": \"月次の締め\"}\n").unwrap();
+        std::fs::write(d.join("名乗らない.py"), "def 走る():\n    pass\n").unwrap();
+        let v = ribbon_decls(&d);
+        assert_eq!(v.len(), 1, "名乗った .py だけがリボンに出る");
+        assert_eq!(v[0].module, "締め");
+        assert_eq!(v[0].label, "月次の締め");
+        assert_eq!(v[0].tab, "マクロ", "段は既定でマクロ");
+        assert_eq!(v[0].icon, "", "絵は空 — 既定に落とすのは呼ぶ側(icons を知らない)");
+        let _ = std::fs::remove_dir_all(&d);
     }
 
     #[test]

@@ -225,7 +225,6 @@ pub const CALC: &[Tab] = &[
         c("inschart", "Inserir gráfico", "inschart"),
         c("inssparkline", "Inserir sparkline", "inssparkline"),
         c("addcomment", "Comentários", "ins-comment"),
-        c("insrecommend", "Inserir gráfico", "smartpicker"),
         c("inshyperlink", "Adicionar hiperligação", "inshyperlink"),
         c("insslicer", "Inserir segmentação de dados", "insslicer"),
         c("instext", "Inserir caixa de texto", "instext"),
@@ -310,6 +309,7 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "Gravar ações", "py-run"),
         c("py-new", "Novo .py", "py-new"),
         c("py-list", "Lista", "py-list"),
+        c("ribbon-list", "Macros do friso", "py-line"),
         c("py-folder", "Abrir a pasta", "py-folder"),
     ]},
     Tab { name: "Tabela dinâmica", cmds: &[

@@ -31,6 +31,8 @@ OVERRIDES = {
     "en": {
         # 式から呼べる Python の関数の一覧(2026-08-16。本家に無い)
         "Python の関数": "Python functions",
+        # リボンに出るマクロの一覧(2026-08-16。本家に無い)
+        "リボンのマクロ": "Ribbon macros",
         "書式のコピー": "Format painter",
         "スタイル": "Style",
         "フィールドリスト": "Field list",

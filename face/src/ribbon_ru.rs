@@ -225,7 +225,6 @@ pub const CALC: &[Tab] = &[
         c("inschart", "Вставить диаграмму", "inschart"),
         c("inssparkline", "Вставить спарклайн", "inssparkline"),
         c("addcomment", "Комментарии", "ins-comment"),
-        c("insrecommend", "Вставить диаграмму", "smartpicker"),
         c("inshyperlink", "Добавить ссылку", "inshyperlink"),
         c("insslicer", "Вставить срез", "insslicer"),
         c("instext", "Вставить надпись", "instext"),
@@ -310,6 +309,7 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "Записывать действия", "py-run"),
         c("py-new", "Новый .py", "py-new"),
         c("py-list", "Список", "py-list"),
+        c("ribbon-list", "Макросы ленты", "py-line"),
         c("py-folder", "Открыть папку", "py-folder"),
     ]},
     Tab { name: "Сводная таблица", cmds: &[

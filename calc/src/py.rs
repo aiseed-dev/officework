@@ -325,6 +325,11 @@ pub(crate) fn start_udf_watch(view: gpui::Entity<Calc>, cx: &mut gpui::App) {
                     calc.udf_stamp.clear();
                     cx.notify();
                 }
+                // リボンに置いたマクロも見る。**別の置き場なので別に見る** —
+                // .py を足したのに次に起こすまでボタンが出ない、では手が止まる
+                if ui::ribbon::refresh_user_cmds() {
+                    cx.notify();
+                }
                 calc.udf_tick(cx);
             });
         }
@@ -1270,6 +1275,19 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     /// サンドボックスは着せない — plugins は自分で据えたコードで、ブックから
     /// 旅して来たものではない(2026-08-09 発注者確定)。
     pub(crate) fn run_plugin(&mut self, module: &str, func: Option<&str>, cx: &mut Context<Self>) {
+        self.run_plugin_in(plugins_dir(), module, func, cx);
+    }
+
+    /// 置き場を選んで手続きを走らせる。**置き場は2つ** — plugins(人が一覧から
+    /// 選ぶ)と ribbon(利用者がリボンに足したボタン)。走り方は同じで、
+    /// 違うのは呼ばれ方だけ
+    pub(crate) fn run_plugin_in(
+        &mut self,
+        dir_py: std::path::PathBuf,
+        module: &str,
+        func: Option<&str>,
+        cx: &mut Context<Self>,
+    ) {
         if !self.commit() {
             return;
         }
@@ -1281,7 +1299,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                 "m = importlib.import_module({module:?})\n",
                 "{call}"
             ),
-            dir = plugins_dir().to_string_lossy(),
+            dir = dir_py.to_string_lossy(),
             module = module,
             call = match func {
                 Some(f) => format!("getattr(m, {f:?})()\n"),

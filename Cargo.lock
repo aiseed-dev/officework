@@ -1774,6 +1774,7 @@ name = "face"
 version = "0.0.1"
 dependencies = [
  "lang",
+ "pyrun",
 ]
 
 [[package]]

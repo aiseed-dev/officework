@@ -225,7 +225,6 @@ pub const CALC: &[Tab] = &[
         c("inschart", "Inserisci grafico", "inschart"),
         c("inssparkline", "Inserire grafico sparkline", "inssparkline"),
         c("addcomment", "Commenti", "ins-comment"),
-        c("insrecommend", "Inserisci grafico", "smartpicker"),
         c("inshyperlink", "Aggiungi collegamento", "inshyperlink"),
         c("insslicer", "Inserisci filtro dati", "insslicer"),
         c("instext", "Inserisci casella di testo", "instext"),
@@ -310,6 +309,7 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "Registra azioni", "py-run"),
         c("py-new", "Nuovo .py", "py-new"),
         c("py-list", "Elenco", "py-list"),
+        c("ribbon-list", "Macro della barra", "py-line"),
         c("py-folder", "Apri cartella", "py-folder"),
     ]},
     Tab { name: "Tabella pivot", cmds: &[

@@ -990,6 +990,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} — ただし INDIRECT など**文字列の中**の「{}!」{} 箇所は追随しません(手で直してください)", "{} — but \"{}!\" inside strings, in INDIRECT and the like, does not follow: {} of them (fix those by hand)"),
     ("置き場に .py がありません(@edit 名前 で作れます。式から呼ぶ関数は {} へ)", "No .py files yet (@edit name creates one. Functions called from formulas go in {})"),
     ("関数(funcs) {}", "Functions (funcs) {}"),
+    ("この段のボタンになっています。選ぶと編集の道具で開きます", "These are the buttons on this tab. Pick one to open it in the editor"),
+    ("リボンに出るマクロはまだありません({} に .py を置き、リボン = {{\"札\": \"名前\"}} と名乗ります)", "No macros on the ribbon yet (put a .py in {} and declare it with ribbon = {{\"label\": \"Name\"}})"),
     ("マクロ(plugins) {}", "Macros (plugins) {}"),
     (" ※このブックに載っている古いコード({})は実行しません — @export 名前 で取り出し、保存で消えます", " * The old code carried in this book ({}) is not run — take it out with @export name; saving drops it"),
     ("ブックにコードは載せません(データとプログラムは別のファイル)。関数も手続きも {} に .py を置いてください", "Books do not carry code here (data and programs are separate files). Put your functions and procedures in {} as .py"),

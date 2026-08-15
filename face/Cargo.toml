@@ -23,3 +23,7 @@ license.workspace = true
 # lang::i18n の表だけなので、既定なしで足りる — これで face は
 # aarch64-linux-android / aarch64-apple-ios でそのまま組める
 lang = { path = "../lang", default-features = false }
+
+# 置き場の走査と、リボンに出るマクロの名乗り(pyrun は std だけで出来ていて
+# 描画も網も持たない — 殻を Kotlin/Swift で書くときもそのまま連れて行ける)
+pyrun = { path = "../pyrun" }

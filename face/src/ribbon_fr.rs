@@ -225,7 +225,6 @@ pub const CALC: &[Tab] = &[
         c("inschart", "Insérer un graphique", "inschart"),
         c("inssparkline", "Insérer un graphique sparkline", "inssparkline"),
         c("addcomment", "Commentaire", "ins-comment"),
-        c("insrecommend", "Insérer un graphique", "smartpicker"),
         c("inshyperlink", "Ajouter un lien", "inshyperlink"),
         c("insslicer", "Isérer un segment", "insslicer"),
         c("instext", "Insérez zone de texte", "instext"),
@@ -310,6 +309,7 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "Enregistrer les actions", "py-run"),
         c("py-new", "Nouveau .py", "py-new"),
         c("py-list", "Liste", "py-list"),
+        c("ribbon-list", "Macros du ruban", "py-line"),
         c("py-folder", "Ouvrir le dossier", "py-folder"),
     ]},
     Tab { name: "Tableau croisé dynamique", cmds: &[

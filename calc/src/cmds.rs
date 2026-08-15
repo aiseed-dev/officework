@@ -44,7 +44,7 @@ impl Calc {
         "coauth-mode", "co-delcomment", "co-showcomment", "co-chat",
         "co-history",
         // Python タブ(2026-08-09)
-        "rec-toggle", "py-new", "py-list", "py-folder", "func-list",
+        "rec-toggle", "py-new", "py-list", "py-folder", "func-list", "ribbon-list",
         "prot-doc", "prot-encrypt", "prot-sign",
         "zoom-in", "zoom-out", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
         // 左右のパネル(2026-08-15)
@@ -1424,6 +1424,32 @@ impl Calc {
                     fs.iter()
                         .map(|(m, d)| (m.clone(), format!("{m} — {}", d.join(" "))))
                         .collect(),
+                    at,
+                ));
+            }
+            // **リボンに出るマクロの一覧**(ribbon の置き場)。plugins との
+            // 違いは名乗り — 札・絵・段を名乗った .py だけがボタンになる
+            "ribbon-list" => {
+                self.prompt = None;
+                let dir = pyrun::ribbon_dir();
+                let decls = pyrun::ribbon_decls(&dir);
+                if decls.is_empty() {
+                    self.status = ui::tf!(
+                        "リボンに出るマクロはまだありません({} に .py を置き、リボン = {{\"札\": \"名前\"}} と名乗ります)",
+                        dir.display().to_string()
+                    )
+                    .into();
+                    return;
+                }
+                let at = self.pop_anchor();
+                self.pick_paths = decls
+                    .iter()
+                    .map(|d| (d.module.clone(), dir.join(format!("{}.py", d.module))))
+                    .collect();
+                self.pick_kind = "py-edit";
+                self.pick_note = Some(ui::t!("この段のボタンになっています。選ぶと編集の道具で開きます").into());
+                self.pick = Some((
+                    decls.iter().map(|d| (d.module.clone(), format!("{} — {}", d.module, d.label))).collect(),
                     at,
                 ));
             }
@@ -3315,6 +3341,13 @@ impl Calc {
                 self.input = Editor::new(&text);
                 self.commit();
                 self.sync_input();
+            }
+            // **利用者がリボンに足したマクロ**(~/.config/officework/ribbon/名前.py)。
+            // 静的な表に無い id はここだけを通る — 名乗った .py と1対1で、
+            // 名前を作れるのは置き場に .py を置いた人だけ(2026-08-16)
+            other if other.starts_with(ribbon::USER_PREFIX) => {
+                let m = other[ribbon::USER_PREFIX.len()..].to_string();
+                self.run_plugin_in(pyrun::ribbon_dir(), &m, None, cx);
             }
             other => {
                 // ここに来たら結線漏れ。黙らず画面に出す

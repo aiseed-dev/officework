@@ -225,7 +225,6 @@ pub const CALC: &[Tab] = &[
         c("inschart", "插入图表", "inschart"),
         c("inssparkline", "插入迷你图", "inssparkline"),
         c("addcomment", "批注", "ins-comment"),
-        c("insrecommend", "插入图表", "smartpicker"),
         c("inshyperlink", "添加链接", "inshyperlink"),
         c("insslicer", "插入切片器", "insslicer"),
         c("instext", "插入文本框", "instext"),
@@ -310,6 +309,7 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "记录操作", "py-run"),
         c("py-new", "新建 .py", "py-new"),
         c("py-list", "列表", "py-list"),
+        c("ribbon-list", "功能区的宏", "py-line"),
         c("py-folder", "打开文件夹", "py-folder"),
     ]},
     Tab { name: "数据透视表", cmds: &[

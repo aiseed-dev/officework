@@ -987,6 +987,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} — ただし INDIRECT など**文字列の中**の「{}!」{} 箇所は追随しません(手で直してください)", "{} — pero «{}!» **dentro de una cadena de texto**, en INDIRECT y similares, no se actualiza: {} sitios (corríjalos a mano)"),
     ("置き場に .py がありません(@edit 名前 で作れます。式から呼ぶ関数は {} へ)", "Aún no hay archivos .py (@edit nombre crea uno. Las funciones para fórmulas van en {})"),
     ("関数(funcs) {}", "Funciones (funcs) {}"),
+    ("この段のボタンになっています。選ぶと編集の道具で開きます", "Estos son los botones de esta pestaña. Elija uno para abrirlo en el editor"),
+    ("リボンに出るマクロはまだありません({} に .py を置き、リボン = {{\"札\": \"名前\"}} と名乗ります)", "Aún no hay macros en la cinta (ponga un .py en {} y decláralo con ribbon = {{\"label\": \"Nombre\"}})"),
     ("マクロ(plugins) {}", "Macros (plugins) {}"),
     (" ※このブックに載っている古いコード({})は実行しません — @export 名前 で取り出し、保存で消えます", " * El código antiguo que trae este libro ({}) no se ejecuta — sáquelo con @export nombre; al guardar desaparece"),
     ("ブックにコードは載せません(データとプログラムは別のファイル)。関数も手続きも {} に .py を置いてください", "Aquí los libros no llevan código (los datos y los programas son archivos aparte). Ponga sus funciones y sus procedimientos como .py en {}"),

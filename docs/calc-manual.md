@@ -728,6 +728,39 @@ and "Plugins", listing the same folder of .py files two different ways.
 The folder is still named `plugins` — renaming it would strand files people
 have already put there. Only the words on screen changed.
 
+### Putting a macro on the ribbon (2026-08-16)
+
+**A .py in `~/.config/officework/ribbon/` that declares itself becomes a ribbon
+button.** Macros tab > "Ribbon macros" shows what is currently there.
+
+```python
+ribbon = {"label": "Month end", "icon": "py-run", "tab": "マクロ"}
+
+from officework import calc as xw
+s = xw.Book.attach().sheets.active
+s["A1"].value = "closed"
+```
+
+- **label** — the text on the button. It is **not translated** (they are your words)
+- **icon** — an icon name; an unknown name falls back to the default
+- **tab** — which tab to appear on (the ja tab name). Defaults to the Macros tab
+
+The declaration is **read, never run** — your code runs when the button is
+pressed. A .py that does not declare itself does not become a button. New files
+show up within about a second; no restart.
+
+### The three folders
+
+| Folder | Called by | Runs when |
+|---|---|---|
+| `funcs/` | a **formula** (`=with_tax(A1)`) | every open, every recalc |
+| `ribbon/` | a **ribbon button** | only when pressed |
+| `plugins/` | **picked from a list** (`@name`) | only when picked |
+
+Pivot tables, charts and the solver are the **built-in ribbon macros** (polars
+and matplotlib underneath). The only difference is that those belong to
+officework and cannot be edited; these are yours.
+
 ### Only .py files in the folder can be launched
 
 **Macros launched from calc must live in `~/.config/officework/plugins`**

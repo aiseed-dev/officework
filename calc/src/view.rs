@@ -539,7 +539,14 @@ impl Render for Calc {
         let mut cmds = div().flex().flex_col().gap_0p5()
             .px_3().py_1().bg(th_band)
             .border_b_1().border_color(th_cmd_border);
-        let items = ribbon::calc_tabs()[self.tab].cmds;
+        // 静的な表のボタン + **利用者が置いたマクロ**(~/.config/officework/ribbon)。
+        // 段は ja の名前で照合する(表の内部の照合が ja なのと同じ)
+        let items: Vec<&ribbon::Cmd> = ribbon::calc_tabs()[self.tab]
+            .cmds
+            .iter()
+            .chain(ribbon::user_cmds_for(ribbon::CALC[self.tab].name))
+            .collect();
+        let items = &items[..];
         // 今のセルの書体と大きさ(ホームの欄に出す — 本家はコンボボックスで
         // **今の値が見える**。slot-field-fontname/fontsize)
         let cur_fmt = self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
@@ -608,6 +615,14 @@ impl Render for Calc {
         let mk_btn = |cmd: &ribbon::Cmd, cx: &mut Context<Self>| -> gpui::AnyElement {
             let label = cmd.label;
             let icon = cmd.icon;
+            // gpui の要素の鍵。**絵の名前では足りない** — 段の中で絵が重なると
+            // 後のボタンの押下が拾われなくなる(2026-08-16 実機で踏んだ:
+            // 利用者が置いたマクロが rec-toggle と同じ py-run の絵を名乗り、
+            // ボタンは出るのに押しても走らなかった)。id は段の中で一意
+            let key = SharedString::from(format!(
+                "h-{}",
+                if cmd.id.is_empty() { cmd.label } else { cmd.id }
+            ));
             // 書体と大きさはボタンでなく**欄**(本家の形): 今の値を枠の中に見せ、
             // 押すと一覧が開く
             if cmd.id == "fontname" || cmd.id == "fontsize" {
@@ -625,7 +640,7 @@ impl Render for Calc {
                     }
                     cx.notify()
                 });
-                let mut b = div().id(SharedString::from(format!("h-{icon}")))
+                let mut b = div().id(key.clone())
                     .relative().child(mark(cid))
                     .children(hint_cmd.get(cid).map(|h| badge(h, us)))
                     .w(px(us * w)).h(px(us * 22.0)).px_1p5().rounded_sm()
@@ -672,7 +687,7 @@ impl Render for Calc {
             if let Some(short) = big {
                 // 名札つきの大ボタン(絵の下に短い名前 — 本家の言い方)。
                 // 開くボタンは名札の横に小さな印(▾=一覧 / …=小窓)
-                let mut b = div().id(SharedString::from(format!("h-{icon}")))
+                let mut b = div().id(key.clone())
                     .px_2().h(px(us * 46.0)).rounded_sm()
                     .flex().flex_col().items_center().justify_center().gap_1()
                     .on_hover(hoverable)
@@ -700,7 +715,7 @@ impl Render for Calc {
                 }
                 return b.into_any_element();
             }
-            let mut b = div().id(SharedString::from(format!("h-{icon}")))
+            let mut b = div().id(key.clone())
                 .h(px(us * 26.0)).rounded_sm()
                 .flex().items_center().justify_center()
                 .on_hover(hoverable)
@@ -802,7 +817,7 @@ impl Render for Calc {
             }
             // 対の表に無いボタンも**黙って落とさない** — 右端に半々で足す
             let rest: Vec<&ribbon::Cmd> =
-                items.iter().filter(|c| !used.contains(c.id)).collect();
+                items.iter().copied().filter(|c| !used.contains(c.id)).collect();
             if !rest.is_empty() {
                 band = band.child(div().w(px(1.0)).h(px(us * 46.0))
                     .bg(th_cmd_border).mx_1());

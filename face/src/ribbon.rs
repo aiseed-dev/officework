@@ -58,6 +58,83 @@ pub struct Tab {
     pub cmds: &'static [Cmd],
 }
 
+// ---- 利用者が足したボタン -------------------------------------------------
+//
+// **静的な表(CALC/WRITER)には入れない。** 14言語をボタン単位で突き合わせる
+// 門番(tools/ribbon_locale_check.py)が「言語ごとに数が違う」と言い出す。
+// 利用者の札は利用者自身の言葉なので、そもそも訳さない — 対訳の表にも
+// 入れない(2026-08-16 発注者「システム定義とユーザー定義に分ける」)。
+
+/// 利用者のボタンの id の頭。押されたら `~/.config/officework/ribbon/<名前>.py`
+/// を走らせる、という約束
+pub const USER_PREFIX: &str = "py:";
+
+/// 名乗りに絵が無い(または知らない絵の名前だった)ときの既定
+const USER_ICON: &str = "py-run";
+
+/// 利用者のボタン1つ — ボタンと、出る段(ja の段名)
+pub struct UserBtn {
+    pub cmd: Cmd,
+    pub tab: &'static str,
+}
+
+type Shape = Vec<(String, u64, std::time::SystemTime)>;
+static USER: std::sync::RwLock<Option<(Shape, &'static [UserBtn])>> =
+    std::sync::RwLock::new(None);
+
+/// 利用者が `~/.config/officework/ribbon` に置いたマクロのボタン。
+///
+/// **描くたびに置き場を読まない。** 画面は1秒に何十回も組み直されるので、
+/// 走査は [`refresh_user_cmds`] が姿の変わったときだけ行う(UDF の見張りと
+/// 同じ形)。ここは控えを返すだけ。
+pub fn user_btns() -> &'static [UserBtn] {
+    if let Ok(g) = USER.read() {
+        if let Some((_, c)) = g.as_ref() {
+            return c;
+        }
+    }
+    refresh_user_cmds();
+    USER.read().ok().and_then(|g| g.as_ref().map(|(_, c)| *c)).unwrap_or(&[])
+}
+
+/// その段に出る利用者のボタン。段は**ja の段名**で照合する — 表の内部の
+/// 照合が ja なのと同じ(添字も名前も言語で動かない)
+pub fn user_cmds_for(tab_ja: &str) -> Vec<&'static Cmd> {
+    user_btns().iter().filter(|b| b.tab == tab_ja).map(|b| &b.cmd).collect()
+}
+
+/// 置き場の姿が変わっていればボタンを作り直す。返りは作り直したか。
+///
+/// 作った札と id は `&'static` として漏らす(`Box::leak`)。静的な表と同じ型で
+/// 扱えるようにするため — 漏れるのは**置き場を書き換えた回数**だけで、
+/// 1回あたり数十バイト。描くたびに漏れる作りではない。
+pub fn refresh_user_cmds() -> bool {
+    let dir = pyrun::ribbon_dir();
+    let now = pyrun::shape_in(&dir);
+    let Ok(mut g) = USER.write() else { return false };
+    if g.as_ref().map(|(s, _)| s) == Some(&now) {
+        return false;
+    }
+    let btns: Vec<UserBtn> = pyrun::ribbon_decls(&dir)
+        .into_iter()
+        .map(|d| {
+            let icon =
+                if crate::icons::find(&d.icon).is_some() { d.icon } else { USER_ICON.into() };
+            UserBtn {
+                cmd: Cmd {
+                    id: Box::leak(format!("{USER_PREFIX}{}", d.module).into_boxed_str()),
+                    label: Box::leak(d.label.into_boxed_str()),
+                    icon: Box::leak(icon.into_boxed_str()),
+                    ready: true,
+                },
+                tab: Box::leak(d.tab.into_boxed_str()),
+            }
+        })
+        .collect();
+    *g = Some((now, Box::leak(btns.into_boxed_slice())));
+    true
+}
+
 pub const WRITER: &[Tab] = &[
     Tab { name: "ファイル", cmds: &[
         c("open", "開く", "open"),
@@ -276,7 +353,10 @@ pub const CALC: &[Tab] = &[
         c("inschart", "グラフを挿入", "inschart"),
         c("inssparkline", "スパークラインを挿入する", "inssparkline"),
         c("addcomment", "コメント", "ins-comment"),
-        c("insrecommend", "グラフを挿入", "smartpicker"),
+        // ここに c("insrecommend", "グラフを挿入", "smartpicker") が居た
+        // (2026-08-16 に外した)。id は上の「推奨チャートを挿入」と同じ、
+        // 札は上の「グラフを挿入」と同じで、**押すと推奨チャートが出る**。
+        // 同じ働きのボタンが2つあり、片方は別の札を着ていた
         c("inshyperlink", "ハイパーリンクを追加", "inshyperlink"),
         c("insslicer", "スライサーを挿入", "insslicer"),
         c("instext", "テキストボックスを挿入する", "instext"),
@@ -385,6 +465,7 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "操作を記録", "py-run"),
         c("py-new", "新しい .py", "py-new"),
         c("py-list", "一覧", "py-list"),
+        c("ribbon-list", "リボンのマクロ", "py-line"),
         c("py-folder", "置き場を開く", "py-folder"),
     ]},
     Tab { name: "ピボットテーブル", cmds: &[
@@ -535,6 +616,42 @@ mod tests {
                     assert_eq!(x.icon, y.icon, "「{}」の icon が違う", x.id);
                     assert_eq!(x.ready, y.ready, "「{}」の ready が違う", x.id);
                     assert!(!y.label.is_empty(), "「{}」の語が空", x.id);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn 段の中でボタンの鍵が重ならない() {
+        // 画面はボタン1つ1つに gpui の鍵を与える。**段の中で鍵が重なると、
+        // 後のボタンの押下が拾われない** — ボタンは出るのに押しても何も
+        // 起きない、という形で出る(2026-08-16 実機で踏んだ。鍵が絵の名前
+        // だったころ、利用者のマクロが rec-toggle と同じ py-run を名乗った)。
+        // 鍵は id(灰色は札)なので、ここが一意ならあの症状は起きない
+        for (app, tabs) in [("writer", WRITER), ("calc", CALC)] {
+            for tab in tabs {
+                let mut seen: Vec<&str> = Vec::new();
+                for c in tab.cmds {
+                    let k = if c.id.is_empty() { c.label } else { c.id };
+                    assert!(!seen.contains(&k), "{app} の「{}」で鍵が重なった: {k}", tab.name);
+                    seen.push(k);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn 利用者のボタンは静的な表に混ざらない() {
+        // 14言語を突き合わせる門番は静的な表を数える。利用者の札は
+        // 利用者自身の言葉で、訳もしない — 表に混ぜたら数が合わなくなる
+        for tabs in [WRITER, CALC] {
+            for tab in tabs {
+                for c in tab.cmds {
+                    assert!(
+                        !c.id.starts_with(USER_PREFIX),
+                        "静的な表に利用者の id が混ざっている: {}",
+                        c.id
+                    );
                 }
             }
         }

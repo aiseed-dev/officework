@@ -225,7 +225,6 @@ pub const CALC: &[Tab] = &[
         c("inschart", "Chèn biểu đồ", "inschart"),
         c("inssparkline", "Chèn biểu đồ thu nhỏ", "inssparkline"),
         c("addcomment", "Bình luận", "ins-comment"),
-        c("insrecommend", "Chèn biểu đồ", "smartpicker"),
         c("inshyperlink", "Thêm siêu liên kết", "inshyperlink"),
         c("insslicer", "Chèn slicer", "insslicer"),
         c("instext", "Chèn văn bản", "instext"),
@@ -310,6 +309,7 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "Ghi lại thao tác", "py-run"),
         c("py-new", "Tệp .py mới", "py-new"),
         c("py-list", "Danh sách", "py-list"),
+        c("ribbon-list", "Macro ruy-băng", "py-line"),
         c("py-folder", "Mở thư mục", "py-folder"),
     ]},
     Tab { name: "PivotTable", cmds: &[

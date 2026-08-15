@@ -225,7 +225,6 @@ pub const CALC: &[Tab] = &[
         c("inschart", "Sisipkan Bagan", "inschart"),
         c("inssparkline", "Sisipkan sparkline", "inssparkline"),
         c("addcomment", "Komentar", "ins-comment"),
-        c("insrecommend", "Sisipkan Bagan", "smartpicker"),
         c("inshyperlink", "Tambahkan hyperlink", "inshyperlink"),
         c("insslicer", "Sisipkan Slicer", "insslicer"),
         c("instext", "Sisipkan Teks", "instext"),
@@ -310,6 +309,7 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "Rekam tindakan", "py-run"),
         c("py-new", ".py baru", "py-new"),
         c("py-list", "Daftar", "py-list"),
+        c("ribbon-list", "Makro pita", "py-line"),
         c("py-folder", "Buka folder plugins", "py-folder"),
     ]},
     Tab { name: "Tabel Pivot", cmds: &[

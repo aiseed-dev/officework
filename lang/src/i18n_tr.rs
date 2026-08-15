@@ -987,6 +987,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} — ただし INDIRECT など**文字列の中**の「{}!」{} 箇所は追随しません(手で直してください)", "{} — ancak INDIRECT gibi yerlerde **metnin içinde** geçen \"{}!\" yazısı bunu izlemez: {} yerde (elle düzeltin)"),
     ("置き場に .py がありません(@edit 名前 で作れます。式から呼ぶ関数は {} へ)", "Henüz .py dosyası yok (@edit ad ile oluşturulur. Formüllerden çağrılan işlevler {} içine konur)"),
     ("関数(funcs) {}", "İşlevler (funcs) {}"),
+    ("この段のボタンになっています。選ぶと編集の道具で開きます", "Bu sekmedeki düğmeler bunlar. Düzenleyicide açmak için birini seçin"),
+    ("リボンに出るマクロはまだありません({} に .py を置き、リボン = {{\"札\": \"名前\"}} と名乗ります)", "Şeritte henüz makro yok ({} içine bir .py koyup ribbon = {{\"label\": \"Ad\"}} ile bildirin)"),
     ("マクロ(plugins) {}", "Makrolar (plugins) {}"),
     (" ※このブックに載っている古いコード({})は実行しません — @export 名前 で取り出し、保存で消えます", " * Bu kitabın taşıdığı eski kod ({}) çalıştırılmaz — @export ad ile dışarı alın, kaydedince silinir"),
     ("ブックにコードは載せません(データとプログラムは別のファイル)。関数も手続きも {} に .py を置いてください", "Kitaplar kod taşımaz (veri ile program ayrı dosyalardır). İşlevleri de yordamları da {} içine .py olarak koyun"),

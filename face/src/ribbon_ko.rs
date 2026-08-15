@@ -225,7 +225,6 @@ pub const CALC: &[Tab] = &[
         c("inschart", "차트 삽입", "inschart"),
         c("inssparkline", "스파크라인 삽입", "inssparkline"),
         c("addcomment", "코멘트", "ins-comment"),
-        c("insrecommend", "차트 삽입", "smartpicker"),
         c("inshyperlink", "링크 추가", "inshyperlink"),
         c("insslicer", "슬라이서추가", "insslicer"),
         c("instext", "텍스트 상자 삽입", "instext"),
@@ -310,6 +309,7 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "동작 기록", "py-run"),
         c("py-new", "새 .py", "py-new"),
         c("py-list", "목록", "py-list"),
+        c("ribbon-list", "리본 매크로", "py-line"),
         c("py-folder", "폴더 열기", "py-folder"),
     ]},
     Tab { name: "피벗 테이블", cmds: &[
