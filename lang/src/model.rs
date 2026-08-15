@@ -22,11 +22,18 @@ pub struct Endpoint {
     /// Radeon Cloud の専用エンドポイントは Bearer を要求する
     pub api_key: Option<String>,
     pub timeout: Duration,
+    /// **暗号を掛けるか。** 手元(127.0.0.1)なら要らないが、
+    /// **会のサーバーへ出るなら要る** — 素の TCP では文書が丸見えになる
+    /// (2026-08-15 発注者「自分のサーバーにつながるように」)
+    pub tls: bool,
 }
 
 impl Default for Endpoint {
+    /// **`OFFICE_URL` が1本あればそれで足りる。** 人に4つ(host/port/path/
+    /// model)を書かせるのは酷なので、`https://ai.example.org/v1/chat/completions`
+    /// のような1行を先に見る。無ければ今までの4つに落ちる(後方互換)
     fn default() -> Self {
-        Self {
+        let mut ep = Self {
             host: var("OFFICE_HOST", "127.0.0.1"),
             port: std::env::var("OFFICE_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(8000),
             path: var("OFFICE_PATH", "/v1/chat/completions"),
@@ -35,7 +42,64 @@ impl Default for Endpoint {
             timeout: Duration::from_secs(
                 std::env::var("OFFICE_TIMEOUT").ok().and_then(|s| s.parse().ok()).unwrap_or(120),
             ),
+            tls: std::env::var("OFFICE_TLS").is_ok_and(|v| v == "1" || v == "true"),
+        };
+        if let Ok(u) = std::env::var("OFFICE_URL") {
+            if !u.trim().is_empty() {
+                ep.apply_url(u.trim());
+            }
         }
+        ep
+    }
+}
+
+impl Endpoint {
+    /// `https://host:port/path` を読んで宛先に写す。**読めない字は黙って
+    /// 捨てない** — 読めた所だけ当てて、残りは今までの値のままにする
+    pub fn apply_url(&mut self, u: &str) {
+        let (scheme, rest) = match u.split_once("://") {
+            Some((s, r)) => (s.to_ascii_lowercase(), r),
+            None => (String::new(), u),
+        };
+        if scheme == "https" {
+            self.tls = true;
+        } else if scheme == "http" {
+            self.tls = false;
+        }
+        let (hostport, path) = match rest.find('/') {
+            Some(i) => (&rest[..i], &rest[i..]),
+            None => (rest, ""),
+        };
+        let (host, port) = match hostport.rsplit_once(':') {
+            Some((h, p)) if p.chars().all(|c| c.is_ascii_digit()) && !p.is_empty() => {
+                (h, p.parse().ok())
+            }
+            _ => (hostport, None),
+        };
+        if !host.is_empty() {
+            self.host = host.to_string();
+        }
+        self.port = port.unwrap_or(if self.tls { 443 } else { self.port });
+        if !path.is_empty() {
+            self.path = path.to_string();
+        }
+    }
+
+    /// 人に見せる宛先(鍵は出さない)
+    pub fn shown(&self) -> String {
+        format!(
+            "{}://{}:{}{} / {}",
+            if self.tls { "https" } else { "http" },
+            self.host,
+            self.port,
+            self.path,
+            self.model
+        )
+    }
+
+    /// 手元だけで完結しているか(外に出ないと言ってよいか)
+    pub fn is_local(&self) -> bool {
+        matches!(self.host.as_str(), "127.0.0.1" | "localhost" | "::1")
     }
 }
 
@@ -109,6 +173,11 @@ fn head(s: &str, n: usize) -> String {
 }
 
 fn post(ep: &Endpoint, body: &str) -> Result<String, String> {
+    // **外へ出すなら暗号を掛ける。** 手元の 127.0.0.1 は素のままでよいが、
+    // 会のサーバーへ出す文書を平文で流さない(2026-08-15)
+    if ep.tls {
+        return post_tls(ep, body);
+    }
     let addr = format!("{}:{}", ep.host, ep.port);
     let mut s = TcpStream::connect(&addr)
         .map_err(|e| format!("モデルに繋がりません({addr}): {e}"))?;
@@ -145,6 +214,58 @@ fn post(ep: &Endpoint, body: &str) -> Result<String, String> {
         return Err(format!("モデルが拒否しました: {} / {}", status.trim(), head(&out, 200)));
     }
     Ok(out)
+}
+
+/// 宛先の港へ TLS で POST する(`Endpoint::tls`)。[`post_https`] は
+/// Anthropic 専用で 443 決め打ちなので、会のサーバー向けに港を選べる形を
+/// 別に持つ。**組み方に https が入っていなければ、そう言って断る**
+#[cfg(feature = "ai")]
+fn post_tls(ep: &Endpoint, body: &str) -> Result<String, String> {
+    let sock = TcpStream::connect((ep.host.as_str(), ep.port))
+        .map_err(|e| format!("モデルに繋がりません({}:{}): {e}", ep.host, ep.port))?;
+    sock.set_read_timeout(Some(ep.timeout)).ok();
+    let mut roots = rustls::RootCertStore::empty();
+    roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+    let cfg = rustls::ClientConfig::builder()
+        .with_root_certificates(roots)
+        .with_no_client_auth();
+    let name = rustls::pki_types::ServerName::try_from(ep.host.clone())
+        .map_err(|_| format!("ホスト名が変です: {}", ep.host))?;
+    let conn = rustls::ClientConnection::new(std::sync::Arc::new(cfg), name)
+        .map_err(|e| e.to_string())?;
+    let mut st = rustls::StreamOwned::new(conn, sock);
+    let auth = match &ep.api_key {
+        Some(k) => format!("Authorization: Bearer {k}\r\n"),
+        None => String::new(),
+    };
+    let req = format!(
+        "POST {} HTTP/1.0\r\nHost: {}\r\nContent-Type: application/json\r\n{}\
+         Content-Length: {}\r\nConnection: close\r\n\r\n{}",
+        ep.path,
+        ep.host,
+        auth,
+        body.len(),
+        body
+    );
+    st.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
+    let mut raw = String::new();
+    st.read_to_string(&mut raw).map_err(|e| e.to_string())?;
+    let (head_, body_) = raw
+        .split_once("\r\n\r\n")
+        .ok_or_else(|| "答えの形が変です".to_string())?;
+    let status = head_.lines().next().unwrap_or("");
+    if !status.contains(" 200") {
+        return Err(format!("モデルが拒否しました: {} / {}", status.trim(), head(body_, 200)));
+    }
+    Ok(body_.to_string())
+}
+
+/// 組み方に https が入っていないとき(スマホの的)
+#[cfg(not(feature = "ai"))]
+fn post_tls(_ep: &Endpoint, _body: &str) -> Result<String, String> {
+    Err("この組み方に https は入っていません(feature \"ai\" なし)。\
+         暗号なしでよければ宛先を http:// にしてください"
+        .to_string())
 }
 
 /// https で POST して本文を返す(AI の宛先が外のときだけ使う)。

@@ -58,6 +58,41 @@ pub fn get_prefixed(prefix: &str) -> Vec<(String, String)> {
 }
 
 /// settings.toml に1つの鍵を書く(他の行は保つ。無ければ行を足す)
+/// **設定ファイルの宛先を環境変数へ移す**(起動のときに一度だけ)。
+///
+/// `lang::model::Endpoint` は環境変数だけを見る。lang は face を知らない
+/// (依存の向きが逆)ので、橋渡しはこちら側でやる。
+///
+/// **環境変数が先**(その場の一時の上書き)。settings.toml は「いつもの
+/// 宛先」で、環境変数が立っていれば触らない — 詳細設定の画面に書いてある
+/// 約束をそのまま守る。
+///
+/// 読む鍵(2026-08-15 発注者「自分のサーバーにつながるようにしておけばいい」):
+///
+/// ```toml
+/// ai_url = "https://ai.example.org/v1/chat/completions"
+/// ai_model = "gpt-oss-120b"
+/// ai_timeout = "120"
+/// ```
+///
+/// **鍵(API キー)はここに書かない。** 環境変数 `OFFICE_API_KEY` から
+/// だけ読む — 設定ファイルにも文書にも鍵は入れない、の決めのまま
+pub fn ai_env_from_settings() {
+    for (k, env) in [
+        ("ai_url", "OFFICE_URL"),
+        ("ai_model", "OFFICE_MODEL"),
+        ("ai_timeout", "OFFICE_TIMEOUT"),
+    ] {
+        if std::env::var_os(env).is_some() {
+            continue; // その場の上書きが先
+        }
+        if let Some(v) = get(k).filter(|s| !s.trim().is_empty()) {
+            // SAFETY: 起動の初めに1度だけ、他の糸が走る前に呼ぶ
+            unsafe { std::env::set_var(env, v.trim()) };
+        }
+    }
+}
+
 pub fn set(key: &str, value: &str) {
     let p = path();
     if let Some(d) = p.parent() {

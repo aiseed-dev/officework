@@ -429,8 +429,32 @@ executable's credentials was removed on 2026-08-15, because Anthropic does not
 allow third-party products to offer claude.ai login or rate limits without
 prior approval.
 
-Unavailable destinations **say why on the spot** (default is the local model;
-**nothing leaves your network**).
+Unavailable destinations **say why on the spot**.
+
+### Run one server for your group (one key for everyone)
+
+**The "local model" destination is yours to point anywhere.** Stand up one
+server for the group and have everyone point at it: one place to manage keys,
+one bill. What runs behind it — a local model, a relay to some API — is the
+operator's call; officework only speaks the **OpenAI-compatible** endpoint.
+
+One line in `~/.config/office/settings.toml`:
+
+```toml
+ai_url = "https://ai.example.org/v1/chat/completions"
+ai_model = "gpt-oss-120b"
+```
+
+- **`https://` turns on encryption.** Don't send documents off the machine in
+  the clear (`http://` is for 127.0.0.1 only)
+- If the server needs a key, put it in the **`OFFICE_API_KEY` environment
+  variable** (never in the settings file or a document)
+- `OFFICE_URL` overrides it for one run
+- The current destination, and whether it leaves the machine, are shown on the
+  **Local model destination** row of this screen
+
+Common ports: Ollama `11434`, llama.cpp server `8080`, LM Studio `1234` — all
+on `/v1/chat/completions`.
 
 If the destination can't be reached the app says so (it never silently returns
 nothing). **Keys are never stored in the workbook.**

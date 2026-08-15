@@ -505,7 +505,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("言語を控えました(次の起動から効きます。環境変数 OFFICE_LANG があればそちらが優先)", "Đã lưu ngôn ngữ (có hiệu lực từ lần khởi động sau; nếu đặt biến môi trường OFFICE_LANG thì biến đó được ưu tiên)"),
     ("書体(OFFICE_FONT)", "Phông chữ (OFFICE_FONT)"),
     ("(文書に従う)", "(theo tài liệu)"),
-    ("校正の宛先", "Đích kiểm lỗi (endpoint)"),
     ("Python の経路", "Đường dẫn Python"),
     ("(自動: .venv → python3)", "(tự động: .venv → python3)"),
     ("名前(ロック・チャット・署名)", "Tên (khóa, trò chuyện, chữ ký)"),
@@ -1738,4 +1737,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("選んだところについて聞けます。文を直すときは、直した文を先に見せます — 押すまで入りません。", "Bạn có thể hỏi về phần đang chọn. Nếu câu chữ sẽ được viết lại, bạn được xem câu chữ mới trước — chưa bấm thì chưa chèn vào."),
     ("例: この段落を敬語にして / 半分の長さに / 言い方が硬くないか見て", "vd: viết đoạn này lịch sự hơn / ngắn bằng một nửa / xem giúp có cứng quá không"),
     ("コメントを表示しています(セルの吹き出し)", "Đang hiện bình luận (dạng bóng chú thích ở ô)"),
+    ("手元のモデルの宛先", "Đích của mô hình tại chỗ"),
+    ("この機械の中だけ", "chỉ ở trong máy này"),
+    ("外へ出ます", "đi ra khỏi máy này"),
+    ("宛先の決め方", "Cách đặt đích"),
+    ("settings.toml の ai_url / ai_model(環境変数 OFFICE_URL が優先)", "ai_url / ai_model trong settings.toml (biến môi trường OFFICE_URL được ưu tiên)"),
 ];

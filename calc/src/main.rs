@@ -632,6 +632,9 @@ fn main() {
             .expect("フォント登録");
         // 共通+calc の表と、settings.toml の key.* の上書き。読めなかった
         // 行の言い分は起動後に状態行へ(ui::key_warnings — 黙って捨てない)
+        // 設定ファイルに書いた AI の宛先を環境変数へ移す(起動に一度)。
+        // **環境変数が先** — その場の上書きは触らない
+        ui::settings::ai_env_from_settings();
         cx.bind_keys(ui::bindings_for("calc", "jo_edit"));
         // **JO_KEYLOG=1 で打鍵と行き先を書き出す。** 「鍵が束縛に届いた」と
         // 「受け口が動いた」は別物で、前者だけ見て入れたつもりになると

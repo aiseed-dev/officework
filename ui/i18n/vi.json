@@ -1953,5294 +1953,5310 @@
  },
  {
   "i": 488,
-  "t": "Đích kiểm lỗi (endpoint)"
- },
- {
-  "i": 489,
   "t": "Đường dẫn Python"
  },
  {
-  "i": 490,
+  "i": 489,
   "t": "(tự động: .venv → python3)"
  },
  {
-  "i": 491,
+  "i": 490,
   "t": "Tên (khóa, trò chuyện, chữ ký)"
  },
  {
-  "i": 492,
+  "i": 491,
   "t": "(chưa có; mở và lưu tệp sẽ thêm vào)"
  },
  {
-  "i": 493,
+  "i": 492,
   "t": "Thông tin tài liệu"
  },
  {
-  "i": 494,
+  "i": 493,
   "t": "Thuộc tính"
  },
  {
-  "i": 495,
+  "i": 494,
   "t": "Bấm vào ô nhập, gõ, Enter để ghi nhận (khi lưu sẽ vào thuộc tính của docx)"
  },
  {
-  "i": 496,
+  "i": 495,
   "t": "Tiếp (Enter)"
  },
  {
-  "i": 497,
+  "i": 496,
   "t": "Thay thế"
  },
  {
-  "i": 498,
+  "i": 497,
   "t": "Thay thế tất cả"
  },
  {
-  "i": 499,
+  "i": 498,
   "t": "Đóng"
  },
  {
-  "i": 500,
+  "i": 499,
   "t": "Chèn số trang"
  },
  {
-  "i": 501,
+  "i": 500,
   "t": "Đóng (Esc)"
  },
  {
-  "i": 502,
+  "i": 501,
   "t": "Nhận xét của đoạn văn này (sửa qua Xem lại > Nhận xét)"
  },
  {
-  "i": 503,
+  "i": 502,
   "t": "Nhận xét — đóng khi trống thì bị xóa"
  },
  {
-  "i": 504,
+  "i": 503,
   "t": "Hình mờ — đóng khi trống thì bị bỏ"
  },
  {
-  "i": 505,
+  "i": 504,
   "t": "Dấu trang — gõ tên rồi Thêm. Bấm vào một mục để chuyển đến đó"
  },
  {
-  "i": 506,
+  "i": 505,
   "t": "Thêm (Enter)"
  },
  {
-  "i": 507,
+  "i": 506,
   "t": "(chưa có dấu trang)"
  },
  {
-  "i": 508,
+  "i": 507,
   "t": "Lịch sử phiên bản — mỗi lần lưu đè giữ một bản (tối đa 9 bản)"
  },
  {
-  "i": 509,
+  "i": 508,
   "t": "(chưa có bản sao; lưu đè sẽ thêm vào)"
  },
  {
-  "i": 510,
+  "i": 509,
   "t": "Trò chuyện — sổ nhắn tin cạnh tài liệu (.chat.txt)"
  },
  {
-  "i": 511,
+  "i": 510,
   "t": "(chưa có lời nhắn)"
  },
  {
-  "i": 512,
+  "i": 511,
   "t": "Gửi (Enter)"
  },
  {
-  "i": 513,
+  "i": 512,
   "t": "Phương thức là ECMA-376 Agile (AES-256). Mở được trong Word và LibreOffice. Nếu quên mật khẩu thì không ai mở được"
  },
  {
-  "i": 514,
+  "i": 513,
   "t": "Mở URL — Enter để tải về (không bao giờ chạy JS)"
  },
  {
-  "i": 515,
+  "i": 514,
   "t": "Điền — bấm vào ô nhập, gõ, Enter để ghi nhận, Gửi để gửi đi"
  },
  {
-  "i": 516,
+  "i": 515,
   "t": "(chưa có tiêu đề; đặt qua Trang đầu > kiểu đoạn văn)"
  },
  {
-  "i": 517,
+  "i": 516,
   "t": "(không có nhận xét)"
  },
  {
-  "i": 518,
+  "i": 517,
   "t": "(không tìm thấy)"
  },
  {
-  "i": 519,
+  "i": 518,
   "t": "Cài đặt — chỉnh tại vị trí con trỏ"
  },
  {
-  "i": 520,
+  "i": 519,
   "t": "(đây là tham chiếu chéo; cập nhật qua Tham chiếu > Tham chiếu chéo)"
  },
  {
-  "i": 521,
+  "i": 520,
   "t": "Ruby — gõ cách đọc rồi Enter (trống để bỏ; Esc để hủy)"
  },
  {
-  "i": 522,
+  "i": 521,
   "t": "Plugin — bấm để chạy trong sandbox (bubblewrap)"
  },
  {
-  "i": 523,
+  "i": 522,
   "t": "(chưa có; hãy đặt tệp .py vào thư mục. Trong kịch bản, d là Document của python-docx; fill(tên, giá trị), extract(tên) và fields() thao tác các trường nhập)"
  },
  {
-  "i": 524,
+  "i": 523,
   "t": "Tham chiếu chéo — chèn phần chữ hoặc số trang của dấu trang"
  },
  {
-  "i": 525,
+  "i": 524,
   "t": "Cập nhật tham chiếu"
  },
  {
-  "i": 526,
+  "i": 525,
   "t": "(chưa có dấu trang; thêm qua Tham chiếu > Dấu trang)"
  },
  {
-  "i": 527,
+  "i": 526,
   "t": "Chữ"
  },
  {
-  "i": 528,
+  "i": 527,
   "t": "Trang"
  },
  {
-  "i": 529,
+  "i": 528,
   "t": "Phông chữ (áp vào đoạn văn đang chọn)"
  },
  {
-  "i": 530,
+  "i": 529,
   "t": "Kiểu đoạn văn (áp vào đoạn văn đang chọn)"
  },
  {
-  "i": 531,
+  "i": 530,
   "t": "Những phần phiên bản này đã bỏ qua"
  },
  {
-  "i": 532,
+  "i": 531,
   "t": "Theo dõi"
  },
  {
-  "i": 533,
+  "i": 532,
   "t": "Chưa có ràng buộc nào; nhập vế trái, dấu, vế phải rồi \"Thêm\""
  },
  {
-  "i": 534,
+  "i": 533,
   "t": "Tham số Solver"
  },
  {
-  "i": 535,
+  "i": 534,
   "t": "Thêm"
  },
  {
-  "i": 536,
+  "i": 535,
   "t": "Sửa"
+ },
+ {
+  "i": 536,
+  "t": "Xóa"
  },
  {
   "i": 537,
-  "t": "Xóa"
- },
- {
-  "i": 538,
   "t": "Đặt biến không ràng buộc thành không âm"
  },
  {
-  "i": 539,
+  "i": 538,
   "t": "Phương pháp giải"
  },
  {
-  "i": 540,
+  "i": 539,
   "t": "LP đơn hình"
  },
  {
-  "i": 541,
+  "i": 540,
   "t": "Giải bài toán tuyến tính bằng LP đơn hình (dựa trên scipy). Phi tuyến thì chưa giải được — khi đó sẽ báo từ chối"
  },
  {
-  "i": 542,
+  "i": 541,
   "t": "Đặt lại tất cả"
  },
  {
-  "i": 543,
+  "i": 542,
   "t": "Tìm nghiệm"
  },
  {
-  "i": 544,
+  "i": 543,
   "t": "Thông tin sổ làm việc"
  },
  {
-  "i": 545,
+  "i": 544,
   "t": "Trang tính"
  },
  {
-  "i": 546,
+  "i": 545,
   "t": "Ô đang dùng"
  },
  {
-  "i": 547,
+  "i": 546,
   "t": "Ô có công thức"
  },
  {
-  "i": 548,
+  "i": 547,
   "t": "Hình và ảnh"
  },
  {
-  "i": 549,
+  "i": 548,
   "t": "Bấm vào ô nhập, gõ, Enter để ghi nhận (khi lưu sẽ vào thuộc tính của xlsx)"
  },
  {
-  "i": 550,
+  "i": 549,
   "t": "Định dạng ô (áp vào vùng đang chọn)"
  },
  {
-  "i": 551,
+  "i": 550,
   "t": "Lưới"
  },
  {
-  "i": 552,
+  "i": 551,
   "t": "Viền ngoài"
  },
  {
-  "i": 553,
+  "i": 552,
   "t": "Không"
+ },
+ {
+  "i": 553,
+  "t": "Đậm"
  },
  {
   "i": 554,
-  "t": "Đậm"
- },
- {
-  "i": 555,
   "t": "Nghiêng"
  },
  {
-  "i": 556,
+  "i": 555,
   "t": "Gạch dưới"
  },
  {
-  "i": 557,
+  "i": 556,
   "t": "Gạch ngang chữ"
  },
  {
-  "i": 558,
+  "i": 557,
   "t": "To hơn"
  },
  {
-  "i": 559,
+  "i": 558,
   "t": "Nhỏ hơn"
  },
  {
-  "i": 560,
+  "i": 559,
   "t": "Trái"
  },
  {
-  "i": 561,
+  "i": 560,
   "t": "Giữa"
  },
  {
-  "i": 562,
+  "i": 561,
   "t": "Phải"
  },
  {
-  "i": 563,
+  "i": 562,
   "t": "Trên"
  },
  {
-  "i": 564,
+  "i": 563,
   "t": "Ở giữa"
  },
  {
-  "i": 565,
+  "i": 564,
   "t": "Dưới"
  },
  {
-  "i": 566,
+  "i": 565,
   "t": "Ngắt dòng"
  },
  {
-  "i": 567,
+  "i": 566,
   "t": "Có thay đổi chưa được lưu"
  },
  {
-  "i": 568,
+  "i": 567,
   "t": "Lưu và thoát? (Enter = lưu và thoát / Esc = hủy)"
  },
  {
-  "i": 569,
+  "i": 568,
   "t": "Lưu và thoát"
  },
  {
-  "i": 570,
+  "i": 569,
   "t": "Thoát không lưu"
  },
  {
-  "i": 571,
+  "i": 570,
   "t": "Hủy"
  },
  {
-  "i": 572,
+  "i": 571,
   "t": "Chỉnh sửa: gõ tiếp sẽ nhập nối vào nội dung hiện có (Esc để hủy)"
  },
  {
-  "i": 573,
+  "i": 572,
   "t": "Đã chọn {}"
  },
  {
-  "i": 574,
+  "i": 573,
   "t": "Đã di chuyển đến {}"
  },
  {
-  "i": 575,
+  "i": 574,
   "t": "Đã chọn tên \"{}\" ({})"
  },
  {
-  "i": 576,
+  "i": 575,
   "t": "Đã di chuyển đến tên \"{}\" ({})"
  },
  {
-  "i": 577,
+  "i": 576,
   "t": "Đã gán tên \"{}\" cho {} (có thể gọi từ hộp tên)"
  },
  {
-  "i": 578,
+  "i": 577,
   "t": "Không có hàm nào phù hợp"
  },
  {
-  "i": 579,
+  "i": 578,
   "t": "Đối số của hàm: Tab để sang trường tiếp theo. Nhấp vào ô để chèn tham chiếu. Enter để đưa vào công thức"
  },
  {
-  "i": 580,
+  "i": 579,
   "t": "Đã nhập công thức (Enter để xác nhận / Esc để hủy)"
  },
  {
-  "i": 581,
+  "i": 580,
   "t": "Không đổi tên"
  },
  {
-  "i": 582,
+  "i": 581,
   "t": "\"{}\" không thể dùng làm tên trang tính (tối đa 31 ký tự; không dùng : \\ / ? * [ ])"
  },
  {
-  "i": 583,
+  "i": 582,
   "t": "\"{}\" đã tồn tại"
  },
  {
-  "i": 584,
+  "i": 583,
   "t": "Đã đổi \"{}\" thành \"{}\" ({} tham chiếu trong công thức cũng được cập nhật)"
  },
  {
-  "i": 585,
+  "i": 584,
   "t": "Đã đổi \"{}\" thành \"{}\""
  },
  {
-  "i": 586,
+  "i": 585,
   "t": "Đã chèn trang tính \"{}\""
  },
  {
-  "i": 587,
+  "i": 586,
   "t": "Không thể xóa trang tính cuối cùng"
  },
  {
-  "i": 588,
+  "i": 587,
   "t": "Không thể xóa vì sẽ không còn trang tính nào hiển thị (hãy hiện trang tính khác trước)"
  },
  {
-  "i": 589,
+  "i": 588,
   "t": "Đã xóa trang tính \"{}\" (thao tác này không thể hoàn tác)"
  },
  {
-  "i": 590,
+  "i": 589,
   "t": "Đã tạo \"{}\""
  },
  {
-  "i": 591,
+  "i": 590,
   "t": "Không thể di chuyển theo hướng đó (đã ở ngoài cùng)"
  },
  {
-  "i": 592,
+  "i": 591,
   "t": "Đã di chuyển trang tính \"{}\""
  },
  {
-  "i": 593,
+  "i": 592,
   "t": "Đã ẩn trang tính \"{}\" (khôi phục bằng \"Hiện lại\". Khi lưu sẽ được giữ trong xlsx)"
  },
  {
-  "i": 594,
+  "i": 593,
   "t": "Không có trang tính nào bị ẩn"
  },
  {
-  "i": 595,
+  "i": 594,
   "t": "Đã đổi màu tab thành {} (khi lưu sẽ được giữ trong xlsx)"
  },
  {
-  "i": 596,
+  "i": 595,
   "t": "Đã xóa màu tab"
  },
  {
-  "i": 597,
+  "i": 596,
   "t": "Chèn hàm: gõ để lọc, chọn bằng ↑↓ rồi Enter (Esc để hủy)"
  },
  {
-  "i": 598,
+  "i": 597,
   "t": "Hộp tên: di chuyển theo địa chỉ ô (B12), vùng (A1:C9) hoặc tên. Tên chưa được biết sẽ được gán cho vùng chọn"
  },
  {
-  "i": 599,
+  "i": 598,
   "t": "Chỉnh sửa trên thanh công thức: Enter để xác nhận / Esc để hủy"
  },
  {
-  "i": 600,
+  "i": 599,
   "t": "Chèn hàm"
  },
  {
-  "i": 601,
+  "i": 600,
   "t": "(gõ để lọc)"
  },
  {
-  "i": 602,
+  "i": 601,
   "t": "Tiếp theo"
  },
  {
-  "i": 603,
+  "i": 602,
   "t": "Đối số của hàm"
  },
  {
-  "i": 604,
+  "i": 603,
   "t": "Kết quả của hàm = {}"
  },
  {
-  "i": 605,
+  "i": 604,
   "t": "Nhấp vào ô để chèn tham chiếu vào trường hiện tại"
  },
  {
-  "i": 606,
+  "i": 605,
   "t": "Quay lại"
  },
  {
-  "i": 607,
+  "i": 606,
   "t": "OK"
  },
  {
-  "i": 608,
+  "i": 607,
   "t": "Đổi tên trang tính"
  },
  {
-  "i": 609,
+  "i": 608,
   "t": "Đã đổi màu chữ thành {}"
  },
  {
-  "i": 610,
+  "i": 609,
   "t": "Đã trả màu chữ về tự động"
  },
  {
-  "i": 611,
+  "i": 610,
   "t": "Đã đổi màu nền thành {}"
  },
  {
-  "i": 612,
+  "i": 611,
   "t": "Đã xóa màu nền"
  },
  {
-  "i": 613,
+  "i": 612,
   "t": "Đã tính lại (toàn bộ sổ)"
  },
  {
-  "i": 614,
+  "i": 613,
   "t": "Đã tính lại (chỉ trang tính này)"
  },
  {
-  "i": 615,
+  "i": 614,
   "t": "Đã bỏ cố định"
  },
  {
-  "i": 616,
+  "i": 615,
   "t": "Đã cố định hàng trên cùng"
  },
  {
-  "i": 617,
+  "i": 616,
   "t": "Đã cố định cột đầu tiên"
  },
  {
-  "i": 618,
+  "i": 617,
   "t": "Không có chữ nào trong vùng chọn thay đổi"
  },
  {
-  "i": 619,
+  "i": 618,
   "t": "Đã đổi chữ hoa/thường ở {} ô"
  },
  {
-  "i": 620,
+  "i": 619,
   "t": "Không có chú thích trong vùng đó"
  },
  {
-  "i": 621,
+  "i": 620,
   "t": "Đã xóa {} chú thích"
  },
  {
-  "i": 622,
+  "i": 621,
   "t": "Không có siêu liên kết trong vùng đó"
  },
  {
-  "i": 623,
+  "i": 622,
   "t": "Đã xóa {} siêu liên kết"
  },
  {
-  "i": 624,
+  "i": 623,
   "t": "Đã bỏ vùng lọc"
  },
  {
-  "i": 625,
+  "i": 624,
   "t": "Không có bảng để lọc (cần dữ liệu dưới hàng tiêu đề)"
  },
  {
-  "i": 626,
+  "i": 625,
   "t": "Đã đặt vùng lọc {}:{} — lọc bằng ▼ ở hàng tiêu đề (chỉ hiển thị; không lưu, mất khi đóng)"
  },
  {
-  "i": 627,
+  "i": 626,
   "t": "Chỉ hiển thị \"{}\" (đổi bằng ▼ ở tiêu đề)"
  },
  {
-  "i": 628,
+  "i": 627,
   "t": "Đã áp dụng lại bộ lọc — trong {} hàng, hiện {} hàng"
  },
  {
-  "i": 629,
+  "i": 628,
   "t": "Đang lọc — trong {} hàng, hiện {} hàng (chỉ hiển thị; không lưu)"
  },
  {
-  "i": 630,
+  "i": 629,
   "t": "Không lọc (hiện tất cả)"
  },
  {
-  "i": 631,
+  "i": 630,
   "t": "(Chọn tất cả)"
  },
  {
-  "i": 632,
+  "i": 631,
   "t": "(không có kết quả)"
  },
  {
-  "i": 633,
+  "i": 632,
   "t": "Quá nhiều giá trị — chỉ hiện 1.000 giá trị đầu"
  },
  {
-  "i": 634,
+  "i": 633,
   "t": "Tăng dần"
  },
  {
-  "i": 635,
+  "i": 634,
   "t": "Giảm dần"
  },
  {
-  "i": 636,
+  "i": 635,
   "t": "Bỏ lọc cột này"
  },
  {
-  "i": 637,
+  "i": 636,
   "t": "Nhấp để bật/tắt — có hiệu lực ngay. Esc để đóng"
  },
  {
-  "i": 638,
+  "i": 637,
   "t": "Trong {} hàng, hiện {} hàng"
  },
  {
-  "i": 639,
+  "i": 638,
   "t": "Không có bảng để sắp xếp (cần dữ liệu dưới hàng tiêu đề)"
  },
  {
-  "i": 640,
+  "i": 639,
   "t": "Tiêu chí, mạnh nhất trước (vd: Số tiền desc, Mặt hàng). Tiêu đề dùng được: {}"
  },
  {
-  "i": 641,
+  "i": 640,
   "t": "Đã hủy sắp xếp"
  },
  {
-  "i": 642,
+  "i": 641,
   "t": "Không có tiêu đề \"{}\". Tiêu đề dùng được: {}"
  },
  {
-  "i": 643,
+  "i": 642,
   "t": "Đã sắp xếp theo {} (hàng tiêu đề giữ nguyên; Ctrl+Z hoàn tác)"
  },
  {
-  "i": 644,
+  "i": 643,
   "t": "Sắp xếp — tiêu chí, mạnh nhất trước (vd: Số tiền desc, Mặt hàng)"
  },
  {
-  "i": 645,
+  "i": 644,
   "t": "Đã đặt định dạng số thành \"{}\" (mã: {})"
  },
  {
-  "i": 646,
+  "i": 645,
   "t": "Đã trả định dạng số về Chung"
  },
  {
-  "i": 647,
+  "i": 646,
   "t": "Đã đặt mã định dạng số \"{}\" (mã không vẽ được sẽ hiện số thường; khi lưu sẽ giữ trong xlsx)"
  },
  {
-  "i": 648,
+  "i": 647,
   "t": "Mã định dạng số (vd: #,##0.00 / yyyy/m/d; Enter trống = Chung)"
  },
  {
-  "i": 649,
+  "i": 648,
   "t": "\"{}\" không đạt quy tắc kiểm tra ({} / Esc để hoàn lại)"
  },
  {
-  "i": 650,
+  "i": 649,
   "t": "Không đạt quy tắc kiểm tra nhưng đã chấp nhận ({})"
  },
  {
-  "i": 651,
+  "i": 650,
   "t": "Đã hủy quy tắc kiểm tra"
  },
  {
-  "i": 652,
+  "i": 651,
   "t": "Cỡ chữ màn hình {}% (lần sau cũng mở với cỡ này)"
  },
  {
-  "i": 653,
+  "i": 652,
   "t": "Hãy ghi các giá trị nguồn (vd: A,B,C hoặc =D2:D5)"
  },
  {
-  "i": 654,
+  "i": 653,
   "t": "Hãy ghi giá trị điều kiện (chữ số ASCII)"
  },
  {
-  "i": 655,
+  "i": 654,
   "t": "Lựa chọn: {}"
  },
  {
-  "i": 656,
+  "i": 655,
   "t": "Chỉ thông báo (không giới hạn giá trị)"
  },
  {
-  "i": 657,
+  "i": 656,
   "t": "Đã áp dụng xác thực cho {}:{} ({}; giữ trong xlsx khi lưu)"
  },
  {
-  "i": 658,
+  "i": 657,
   "t": "Đã bỏ xác thực khỏi vùng này"
  },
  {
-  "i": 659,
+  "i": 658,
   "t": "Không có xác thực (không thay đổi gì)"
  },
  {
-  "i": 660,
+  "i": 659,
   "t": "Ngày"
  },
  {
-  "i": 661,
+  "i": 660,
   "t": "Giờ"
  },
  {
-  "i": 662,
+  "i": 661,
   "t": "Tùy chỉnh"
  },
  {
-  "i": 663,
+  "i": 662,
   "t": "{} (giữ nguyên)"
  },
  {
-  "i": 664,
+  "i": 663,
   "t": "Cho phép"
  },
  {
-  "i": 665,
+  "i": 664,
   "t": "Dữ liệu"
  },
  {
-  "i": 666,
+  "i": 665,
   "t": "Bỏ qua ô trống"
  },
  {
-  "i": 667,
+  "i": 666,
   "t": "Nguồn"
  },
  {
-  "i": 668,
+  "i": 667,
   "t": "Gõ trực tiếp các lựa chọn (A,B,C) hoặc tham chiếu vùng (=D2:D5)"
  },
  {
-  "i": 669,
+  "i": 668,
   "t": "Giá trị"
  },
  {
-  "i": 670,
+  "i": 669,
   "t": "Tối thiểu"
  },
  {
-  "i": 671,
+  "i": 670,
   "t": "Tối đa"
  },
  {
-  "i": 672,
+  "i": 671,
   "t": "Chữ số ASCII; công thức không đọc được thành số thì không thể xét và không chặn nhập"
  },
  {
-  "i": 673,
+  "i": 672,
   "t": "Loại này (ngày/giờ/tùy chỉnh) không thể xét — quy tắc được giữ nguyên; chỉ sửa được thông báo"
  },
  {
-  "i": 674,
+  "i": 673,
   "t": "Áp dụng các thay đổi này cho mọi ô khác có cùng cài đặt"
  },
  {
-  "i": 675,
+  "i": 674,
   "t": "Tiêu đề"
  },
  {
-  "i": 676,
+  "i": 675,
   "t": "Thông báo"
  },
  {
-  "i": 677,
+  "i": 676,
   "t": "Hiện ở dòng trạng thái bên dưới khi chọn ô"
  },
  {
-  "i": 678,
+  "i": 677,
   "t": "Kiểu"
  },
  {
-  "i": 679,
+  "i": 678,
   "t": "Thông báo lỗi"
  },
  {
-  "i": 680,
+  "i": 679,
   "t": "Dừng chặn nhập; Cảnh báo/Thông tin cho qua kèm ghi chú (giống Excel)"
  },
  {
-  "i": 681,
+  "i": 680,
   "t": "Cài đặt"
  },
  {
-  "i": 682,
+  "i": 681,
   "t": "Thông báo nhập"
  },
  {
-  "i": 683,
+  "i": 682,
   "t": "Cảnh báo lỗi"
  },
  {
-  "i": 684,
+  "i": 683,
   "t": "Xác thực dữ liệu"
  },
  {
-  "i": 685,
+  "i": 684,
   "t": "Không thể thao tác trên pivot table (hãy đưa con trỏ ra ngoài trước)"
  },
  {
-  "i": 686,
+  "i": 685,
   "t": "Định dạng hiện tại: {}"
  },
  {
-  "i": 687,
+  "i": 686,
   "t": "Định dạng hiện tại: tùy chỉnh (mã: {})"
  },
  {
-  "i": 688,
+  "i": 687,
   "t": "Định dạng hiện tại: Chung"
  },
  {
-  "i": 689,
+  "i": 688,
   "t": "Có dữ liệu bên cạnh vùng chọn. Sắp xếp thế nào?"
  },
  {
-  "i": 690,
+  "i": 689,
   "t": "Đã sắp xếp {}:{} {} (chỉ trong vùng; Ctrl+Z hoàn tác)"
  },
  {
-  "i": 691,
+  "i": 690,
   "t": "Ngăn cố định được thêm bóng (chỉ hiện khi cố định)"
  },
  {
-  "i": 692,
+  "i": 691,
   "t": "Đã bỏ bóng của ngăn cố định"
  },
  {
-  "i": 693,
+  "i": 692,
   "t": "Không hiện ▾ của ô"
  },
  {
-  "i": 694,
+  "i": 693,
   "t": "Bấm các tiêu đề cho hàng (được nhiều), xong thì「決定」(Xong)"
  },
  {
-  "i": 695,
+  "i": 694,
   "t": "Hãy chọn ít nhất một tiêu đề cho hàng"
  },
  {
-  "i": 696,
+  "i": 695,
   "t": "Tiêu đề cho cột (không bắt buộc), xong thì「決定」(Xong)"
  },
  {
-  "i": 697,
+  "i": 696,
   "t": "Bấm tiêu đề dùng làm giá trị (tiếp theo chọn cách tổng hợp)"
  },
  {
-  "i": 698,
+  "i": 697,
   "t": "Tổng hợp «{}» thế nào?"
  },
  {
-  "i": 699,
+  "i": 698,
   "t": "Không có bảng nguồn (hàng 1 = tiêu đề, dữ liệu bên dưới)"
  },
  {
-  "i": 700,
+  "i": 699,
   "t": "Pivot 1/4 — tiêu đề cho hàng (bấm để bật/tắt, được nhiều)"
  },
  {
-  "i": 701,
+  "i": 700,
   "t": "Pivot 2/4 — tiêu đề cho cột (bấm để bật/tắt, không bắt buộc)"
  },
  {
-  "i": 702,
+  "i": 701,
   "t": "Pivot 3/4 — một tiêu đề cho giá trị"
  },
  {
-  "i": 703,
+  "i": 702,
   "t": "Pivot 4/4 — cách tổng hợp «{}»"
  },
  {
-  "i": 704,
+  "i": 703,
   "t": "Kiểu pivot (chọn sẽ áp lại)"
  },
  {
-  "i": 705,
+  "i": 704,
   "t": "Tự động (đen)"
  },
  {
-  "i": 706,
+  "i": 705,
   "t": "Kiểu nét (vào bút; có hiệu lực từ lần kẻ sau)"
  },
  {
-  "i": 707,
+  "i": 706,
   "t": "Màu nét (vào bút)"
  },
  {
-  "i": 708,
+  "i": 707,
   "t": "Kiểu nét: {} (có hiệu lực khi kẻ từ danh sách đường kẻ)"
  },
  {
-  "i": 709,
+  "i": 708,
   "t": "Màu nét: {} (có hiệu lực khi kẻ từ danh sách đường kẻ)"
  },
  {
-  "i": 710,
+  "i": 709,
   "t": "Đường kẻ: đã áp {} cho {}:{} (Ctrl+Z hoàn tác)"
  },
  {
-  "i": 711,
+  "i": 710,
   "t": "Màu nét: tự động (đen)"
  },
  {
-  "i": 712,
+  "i": 711,
   "t": "Màu nét: #{} (có hiệu lực khi kẻ từ danh sách đường kẻ)"
  },
  {
-  "i": 713,
+  "i": 712,
   "t": "Không đọc được màu (6 chữ số hex RRGGBB, vd: FF0000)"
  },
  {
-  "i": 714,
+  "i": 713,
   "t": "Màu nét — 6 chữ số hex RRGGBB (vd: FF0000; để trống + Enter = tự động)"
  },
  {
-  "i": 715,
+  "i": 714,
   "t": "Đang ở trên {} — thao tác tại thẻ «Pivot Table» (cập nhật, tổng, tổng phụ, bố cục; thao tác phá bảng bị khóa)"
  },
  {
-  "i": 716,
+  "i": 715,
   "t": "Pivot"
  },
  {
-  "i": 717,
+  "i": 716,
   "t": "Bộ lọc của {} — «{}» (☑ hiện / ☐ ẩn)"
  },
  {
-  "i": 718,
+  "i": 717,
   "t": "Hướng chữ (cách đếm như xlsx — dương là hướng lên)"
  },
  {
-  "i": 719,
+  "i": 718,
   "t": "Đã đặt chữ thành {}"
  },
  {
-  "i": 720,
+  "i": 719,
   "t": "Đã xoay chữ {} độ (dương là hướng lên)"
  },
  {
-  "i": 721,
+  "i": 720,
   "t": "Không đọc được góc (số từ -90 đến 90; chữ dọc chọn từ danh sách)"
  },
  {
-  "i": 722,
+  "i": 721,
   "t": "Màu chữ — 6 chữ số hex RRGGBB (vd: FF0000; để trống + Enter = tự động)"
  },
  {
-  "i": 723,
+  "i": 722,
   "t": "Màu tô — 6 chữ số hex RRGGBB (vd: FFF2CC; để trống + Enter = không tô)"
  },
  {
-  "i": 724,
+  "i": 723,
   "t": "Góc chữ — số từ -90 đến 90 (dương hướng lên; để trống + Enter = 0)"
  },
  {
-  "i": 725,
+  "i": 724,
   "t": "Đầu/chân trang — hiện khi in và trong PDF (&P = trang, &N = tổng)"
  },
  {
-  "i": 726,
+  "i": 725,
   "t": "Đã xóa đầu/chân trang"
  },
  {
-  "i": 727,
+  "i": 726,
   "t": "Đã xóa phần đó"
  },
  {
-  "i": 728,
+  "i": 727,
   "t": "Đã đưa vào đầu/chân trang (thấy khi in và trong PDF; &P = trang, &N = tổng)"
  },
  {
-  "i": 729,
+  "i": 728,
   "t": "Đầu/chân trang — chữ của phần này (&P = trang, &N = tổng; để trống + Enter = xóa)"
  },
  {
-  "i": 730,
+  "i": 729,
   "t": "Quản lý tên — chọn tên để đi tới / viết lại / xóa. Dùng được trong công thức"
  },
  {
-  "i": 731,
+  "i": 730,
   "t": "Đã đến bảng (đổi tên/xóa trong Thiết kế bảng)"
  },
  {
-  "i": 732,
+  "i": 731,
   "t": "Làm gì với «{}»?"
  },
  {
-  "i": 733,
+  "i": 732,
   "t": "Đã đến «{}» ({})"
  },
  {
-  "i": 734,
+  "i": 733,
   "t": "Nội dung của «{}» ({}) không đọc được thành vị trí"
  },
  {
-  "i": 735,
+  "i": 734,
   "t": "Đã xóa tên «{}» ({} trong công thức sẽ thành #NAME?)"
  },
  {
-  "i": 736,
+  "i": 735,
   "t": "Không đọc được vị trí (B12 hoặc A1:C9)"
  },
  {
-  "i": 737,
+  "i": 736,
   "t": "Tên «{}» = {}"
  },
  {
-  "i": 738,
+  "i": 737,
   "t": "Nội dung tên — vị trí (B12 hoặc A1:C9)"
  },
  {
-  "i": 739,
+  "i": 738,
   "t": "Giá trị trùng tô đỏ"
  },
  {
-  "i": 740,
+  "i": 739,
   "t": "Giá trị duy nhất được tô"
  },
  {
-  "i": 741,
+  "i": 740,
   "t": "Trên trung bình được tô"
  },
  {
-  "i": 742,
+  "i": 741,
   "t": "Dưới trung bình được tô"
  },
  {
-  "i": 743,
+  "i": 742,
   "t": "Dùng dạng 8〜15 (chữ số ASCII)"
  },
  {
-  "i": 744,
+  "i": 743,
   "t": "{}:{} — tô các giá trị giữa {} và {}"
  },
  {
-  "i": 745,
+  "i": 744,
   "t": "Nhập chữ cần chứa"
  },
  {
-  "i": 746,
+  "i": 745,
   "t": "{}:{} — tô các ô chứa «{}»"
  },
  {
-  "i": 747,
+  "i": 746,
   "t": "Số lượng bằng chữ số ASCII (vd: 10)"
  },
  {
-  "i": 748,
+  "i": 747,
   "t": "Định dạng có điều kiện — tô {} nếu ở giữa (dạng: 8〜15)"
  },
  {
-  "i": 749,
+  "i": 748,
   "t": "Định dạng có điều kiện — chữ cần chứa trong {}?"
  },
  {
-  "i": 750,
+  "i": 749,
   "t": "Định dạng có điều kiện — bao nhiêu hàng đầu trong {}?"
  },
  {
-  "i": 751,
+  "i": 750,
   "t": "Định dạng có điều kiện — bao nhiêu hàng cuối trong {}?"
  },
  {
-  "i": 752,
+  "i": 751,
   "t": "Kéo góc để đổi cỡ (giữ tỉ lệ)"
  },
  {
-  "i": 753,
+  "i": 752,
   "t": "Đã chọn ảnh (kéo = di chuyển / góc = cỡ / Del = xóa)"
  },
  {
-  "i": 754,
+  "i": 753,
   "t": "Ảnh đọc từ tệp không di chuyển được (giữ nguyên bản khi lưu; chèn lại để chỉnh sửa)"
  },
  {
-  "i": 755,
+  "i": 754,
   "t": "Đã xóa ảnh (Ctrl+Z hoàn tác)"
  },
  {
-  "i": 756,
+  "i": 755,
   "t": "Chủ đề giao diện (sáng/tối)"
  },
  {
-  "i": 757,
+  "i": 756,
   "t": "Tối"
  },
  {
-  "i": 758,
+  "i": 757,
   "t": "Sáng"
  },
  {
-  "i": 759,
+  "i": 758,
   "t": "Cỡ chữ màn hình"
  },
  {
-  "i": 760,
+  "i": 759,
   "t": "Đã bỏ {} vùng gộp"
  },
  {
-  "i": 761,
+  "i": 760,
   "t": "Đã gộp {}:{} theo hàng ({} hàng)"
  },
  {
-  "i": 762,
+  "i": 761,
   "t": "Đã gộp {}:{} (giữ nguyên căn chỉnh)"
  },
  {
-  "i": 763,
+  "i": 762,
   "t": "Đã gộp {}:{} và căn giữa"
  },
  {
-  "i": 764,
+  "i": 763,
   "t": "Đã lấy định dạng — sẽ quét lên ô bấm tiếp theo (Esc để hủy)"
  },
  {
-  "i": 765,
+  "i": 764,
   "t": "Đã quét định dạng lên {} (Ctrl+Z hoàn tác)"
  },
  {
-  "i": 766,
+  "i": 765,
   "t": "Đã hủy sao chép định dạng"
  },
  {
-  "i": 767,
+  "i": 766,
   "t": "Đã trả về cỡ mặc định"
  },
  {
-  "i": 768,
+  "i": 767,
   "t": "Dùng chữ số ASCII (vd: 12.5)"
  },
  {
-  "i": 769,
+  "i": 768,
   "t": "Độ rộng cột phải 0–255"
  },
  {
-  "i": 770,
+  "i": 769,
   "t": "Chiều cao hàng phải 0–409"
  },
  {
-  "i": 771,
+  "i": 770,
   "t": "Độ rộng cột đặt {} ({} cột)"
  },
  {
-  "i": 772,
+  "i": 771,
   "t": "Chiều cao hàng đặt {} pt ({} hàng)"
  },
  {
-  "i": 773,
+  "i": 772,
   "t": "Độ rộng cột — 0–255 (theo số chữ «0» của phông chuẩn; để trống + Enter = mặc định)"
  },
  {
-  "i": 774,
+  "i": 773,
   "t": "Chiều cao hàng — 0–409 pt (để trống + Enter = mặc định)"
  },
  {
-  "i": 775,
+  "i": 774,
   "t": "Không tìm thấy trang tính «{}»"
  },
  {
-  "i": 776,
+  "i": 775,
   "t": "Đã nhảy tới đích liên kết {}"
  },
  {
-  "i": 777,
+  "i": 776,
   "t": "Đích liên kết ({}) không phải tham chiếu hợp lệ"
  },
  {
-  "i": 778,
+  "i": 777,
   "t": "Siêu liên kết — {} (URL hoặc #Trang!B5; để trống + Enter để gỡ)"
  },
  {
-  "i": 779,
+  "i": 778,
   "t": "Văn bản hiển thị — nội dung {} hiển thị (để trống + Enter = giữ nguyên)"
  },
  {
-  "i": 780,
+  "i": 779,
   "t": "Cột {}"
  },
  {
-  "i": 781,
+  "i": 780,
   "t": "Hàng đầu là tiêu đề (giữ lại)"
  },
  {
-  "i": 782,
+  "i": 781,
   "t": "Xóa"
  },
  {
-  "i": 783,
+  "i": 782,
   "t": "Chọn ít nhất một cột để so sánh"
  },
  {
-  "i": 784,
+  "i": 783,
   "t": "Xóa trùng lặp — cột so sánh (bấm để bật/tắt)"
  },
  {
-  "i": 785,
+  "i": 784,
   "t": "Ô này không có màu tô"
  },
  {
-  "i": 786,
+  "i": 785,
   "t": "Chữ trong ô này không có màu"
  },
  {
-  "i": 787,
+  "i": 786,
   "t": "Đã gom các hàng cùng màu ô lên trên"
  },
  {
-  "i": 788,
+  "i": 787,
   "t": "Đã gom các hàng cùng màu chữ lên trên"
  },
  {
-  "i": 789,
+  "i": 788,
   "t": "Không đọc được vùng từ công thức"
  },
  {
-  "i": 790,
+  "i": 789,
   "t": "Đã xóa công thức tổng (giữ định dạng)"
  },
  {
-  "i": 791,
+  "i": 790,
   "t": "Trung bình"
  },
  {
-  "i": 792,
+  "i": 791,
   "t": "Đếm"
  },
  {
-  "i": 793,
+  "i": 792,
   "t": "Độ lệch chuẩn"
  },
  {
-  "i": 794,
+  "i": 793,
   "t": "Phương sai"
  },
  {
-  "i": 795,
+  "i": 794,
   "t": "Tổng"
  },
  {
-  "i": 796,
+  "i": 795,
   "t": "Đã đổi {} trên {} thành: {} (hàng bị lọc không tính)"
  },
  {
-  "i": 797,
+  "i": 796,
   "t": "Không thể xuất ra CSV: {}"
  },
  {
-  "i": 798,
+  "i": 797,
   "t": "Xuất ra CSV"
  },
  {
-  "i": 799,
+  "i": 798,
   "t": "Xuất ra web"
  },
  {
-  "i": 800,
+  "i": 799,
   "t": "Đã xuất ra web: {} (chỉ trang tính này; công thức thành kết quả, không JavaScript){}"
  },
  {
-  "i": 801,
+  "i": 800,
   "t": "Không thể xuất ra web: {}"
  },
  {
-  "i": 802,
+  "i": 801,
   "t": "Đã thêm thanh dữ liệu (độ dài từ nhỏ nhất đến lớn nhất)"
  },
  {
-  "i": 803,
+  "i": 802,
   "t": "Đã áp thang màu (thấp = đỏ, cao = xanh lá)"
  },
  {
-  "i": 804,
+  "i": 803,
   "t": "Đã đặt 3 mũi tên (thấp / giữa / cao)"
  },
  {
-  "i": 805,
+  "i": 804,
   "t": "Làm gì với quy tắc {}?"
  },
  {
-  "i": 806,
+  "i": 805,
   "t": "Đã nhảy tới {}:{}"
  },
  {
-  "i": 807,
+  "i": 806,
   "t": "Đã xóa quy tắc trên {}:{} ({})"
  },
  {
-  "i": 808,
+  "i": 807,
   "t": "Trang tính này không có định dạng có điều kiện"
  },
  {
-  "i": 809,
+  "i": 808,
   "t": "Quản lý quy tắc — bấm vào quy tắc để chọn"
  },
  {
-  "i": 810,
+  "i": 809,
   "t": "So sánh giá trị"
  },
  {
-  "i": 811,
+  "i": 810,
   "t": "Giữa {} và {}"
  },
  {
-  "i": 812,
+  "i": 811,
   "t": "Ngoài {} và {}"
  },
  {
-  "i": 813,
+  "i": 812,
   "t": "Chứa «{}»"
  },
  {
-  "i": 814,
+  "i": 813,
   "t": "Giá trị trùng lặp"
  },
  {
-  "i": 815,
+  "i": 814,
   "t": "Giá trị duy nhất"
  },
  {
-  "i": 816,
+  "i": 815,
   "t": "{} đầu"
  },
  {
-  "i": 817,
+  "i": 816,
   "t": "{} cuối"
  },
  {
-  "i": 818,
+  "i": 817,
   "t": "Trên trung bình"
  },
  {
-  "i": 819,
+  "i": 818,
   "t": "Dưới trung bình"
  },
  {
-  "i": 820,
+  "i": 819,
   "t": "Thanh dữ liệu"
  },
  {
-  "i": 821,
+  "i": 820,
   "t": "Thang màu"
  },
  {
-  "i": 822,
+  "i": 821,
   "t": "Bộ biểu tượng"
  },
  {
-  "i": 823,
+  "i": 822,
   "t": "Nhóm «{}» — chọn đơn vị"
  },
  {
-  "i": 824,
+  "i": 823,
   "t": "Điều kiện trống (vd: 含む Tokyo)"
  },
  {
-  "i": 825,
+  "i": 824,
   "t": "Dùng dạng «> 1000» (phép so sánh: > >= < <= =)"
  },
  {
-  "i": 826,
+  "i": 825,
   "t": "Ngưỡng không phải là số"
  },
  {
-  "i": 827,
+  "i": 826,
   "t": "Độ rộng không phải là số (vd: 100)"
  },
  {
-  "i": 828,
+  "i": 827,
   "t": "Độ rộng phải lớn hơn 0"
  },
  {
-  "i": 829,
+  "i": 828,
   "t": "Lọc theo nhãn — vd: 含む Tokyo / で始まる A / で終わる Z (chứa / bắt đầu bằng / kết thúc bằng)"
  },
  {
-  "i": 830,
+  "i": 829,
   "t": "Lọc theo giá trị — vd: > 1000 (phép > >= < <= =; để trống + Enter để gỡ)"
  },
  {
-  "i": 831,
+  "i": 830,
   "t": "Nhóm theo độ rộng số — nhập độ rộng (vd: 100)"
  },
  {
-  "i": 832,
+  "i": 831,
   "t": "Đã tắt tính lặp (tham chiếu vòng trở lại #CIRC!)"
  },
  {
-  "i": 833,
+  "i": 832,
   "t": "Tính lặp: bật (tối đa {} vòng, đến khi thay đổi ≤ {}) — tham chiếu vòng được giải bằng lặp"
  },
  {
-  "i": 834,
+  "i": 833,
   "t": "Dùng dạng «100 0.001» (số vòng ≥ 1)"
  },
  {
-  "i": 835,
+  "i": 834,
   "t": "Tính lặp — số vòng tối đa và thay đổi tối đa (vd: 100 0.001; để trống + Enter = tắt)"
  },
  {
-  "i": 836,
+  "i": 835,
   "t": "Tính lặp (tham chiếu vòng)"
  },
  {
-  "i": 837,
+  "i": 836,
   "t": "Bật (tối đa {} vòng, thay đổi ≤ {})"
  },
  {
-  "i": 838,
+  "i": 837,
   "t": "Tắt"
  },
  {
-  "i": 839,
+  "i": 838,
   "t": "Kiểu tham chiếu: R1C1 (R[hàng]C[cột] — tiêu đề cột thành số)"
  },
  {
-  "i": 840,
+  "i": 839,
   "t": "Kiểu tham chiếu: A1 (dạng B2 quen thuộc)"
  },
  {
-  "i": 841,
+  "i": 840,
   "t": "Kiểu tham chiếu"
  },
  {
-  "i": 842,
+  "i": 841,
   "t": "Chọn vùng số cho biểu đồ thu nhỏ (đặt tại ô hiện tại)"
  },
  {
-  "i": 843,
+  "i": 842,
   "t": "Loại biểu đồ thu nhỏ"
  },
  {
-  "i": 844,
+  "i": 843,
   "t": "Biểu đồ thu nhỏ dạng cột"
  },
  {
-  "i": 845,
+  "i": 844,
   "t": "Biểu đồ thu nhỏ thắng/thua"
  },
  {
-  "i": 846,
+  "i": 845,
   "t": "Biểu đồ thu nhỏ dạng đường"
  },
  {
-  "i": 847,
+  "i": 846,
   "t": "Đã đặt {} tại {} (hình cố định theo giá trị lúc đó; dữ liệu đổi thì tạo lại)"
  },
  {
-  "i": 848,
+  "i": 847,
   "t": "Không đọc được hàng nào (kiểm tra thiết lập)"
  },
  {
-  "i": 849,
+  "i": 848,
   "t": "Đã đổ {} hàng × {} cột vào {} (dưới dạng giá trị)"
  },
  {
-  "i": 850,
+  "i": 849,
   "t": "Bảng mã"
  },
  {
-  "i": 851,
+  "i": 850,
   "t": "Ký tự phân cách"
  },
  {
-  "i": 852,
+  "i": 851,
   "t": "Vị trí đặt"
  },
  {
-  "i": 853,
+  "i": 852,
   "t": "Nhập một ký tự phân cách (vd: |)"
  },
  {
-  "i": 854,
+  "i": 853,
   "t": "Ô không hợp lệ (dạng B12)"
  },
  {
-  "i": 855,
+  "i": 854,
   "t": "Không đọc được: {}"
  },
  {
-  "i": 856,
+  "i": 855,
   "t": "Nhập ({} hàng)"
  },
  {
-  "i": 857,
+  "i": 856,
   "t": "Nhập văn bản — {} (bấm vào dòng để đổi)"
  },
  {
-  "i": 858,
+  "i": 857,
   "t": "Một ký tự phân cách (vd: |)"
  },
  {
-  "i": 859,
+  "i": 858,
   "t": "Vị trí đặt — ô trên cùng bên trái (dạng B12)"
  },
  {
-  "i": 860,
+  "i": 859,
   "t": "Đường viền (bấm liên tiếp được; Esc để đóng)"
  },
  {
-  "i": 861,
+  "i": 860,
   "t": "Kiểu nét: {}…"
  },
  {
-  "i": 862,
+  "i": 861,
   "t": "Màu nét: {}…"
  },
  {
-  "i": 863,
+  "i": 862,
   "t": "{} (giá trị ngoài ô trên-trái đã bị xóa — Ctrl+Z khôi phục lại)"
  },
  {
-  "i": 864,
+  "i": 863,
   "t": "{} (ô trên-trái trống nên giá trị đầu tiên được chuyển vào đó)"
  },
  {
-  "i": 865,
+  "i": 864,
   "t": "Python đã ghi {} ô"
  },
  {
-  "i": 866,
+  "i": 865,
   "t": "Đã bỏ khoá (ô này vẫn ghi được khi trang tính đang được bảo vệ)"
  },
  {
-  "i": 867,
+  "i": 866,
   "t": "Đã khoá (không ghi được khi trang tính đang được bảo vệ)"
  },
  {
-  "i": 868,
+  "i": 867,
   "t": "Những thao tác được phép khi đang bảo vệ (bấm để bật tắt. Không bảo vệ thì không có tác dụng)"
  },
  {
-  "i": 869,
+  "i": 868,
   "t": "Không có tệp .py nào trong plugins ({})"
  },
  {
-  "i": 870,
+  "i": 869,
   "t": "Cách hiện giá trị (tỉ lệ = lấy tổng chung làm 100%. Luỹ kế và hiệu số không hiện tổng con và tổng chung)"
  },
  {
-  "i": 871,
+  "i": 870,
   "t": "Ký hiệu (chọn một nhóm để xem từng chữ một)"
  },
  {
-  "i": 872,
+  "i": 871,
   "t": "Ngắt trang là chỗ hết tờ giấy. Hãy đặt con trỏ vào hàng (hoặc cột) muốn ngắt rồi bấm nút này"
  },
  {
-  "i": 873,
+  "i": 872,
   "t": "Ngắt trang (chỗ hết tờ giấy)"
  },
  {
-  "i": 874,
+  "i": 873,
   "t": "Hãy chọn phạm vi cần thêm bằng Shift+mũi tên hoặc kéo chuột"
  },
  {
-  "i": 875,
+  "i": 874,
   "t": "Phạm vi đó đã nằm trong vùng in rồi"
  },
  {
-  "i": 876,
+  "i": 875,
   "t": "Gợi ý người mở tệp là \"chỉ xem\" (không phải khoá — vẫn sửa được)"
  },
  {
-  "i": 877,
+  "i": 876,
   "t": "Đã thôi gợi ý chỉ đọc"
  },
  {
-  "i": 878,
+  "i": 877,
   "t": "Cần có cột gốc ở bên trái (ở cột A thì không suy ra được gì)"
  },
  {
-  "i": 879,
+  "i": 878,
   "t": "Hãy viết một dòng trước (nhìn cách bạn viết rồi điền tiếp bên dưới)"
  },
  {
-  "i": 880,
+  "i": 879,
   "t": "Không đọc ra được cách viết (viết thêm một mẫu nữa thì dễ trúng hơn)"
  },
  {
-  "i": 881,
+  "i": 880,
   "t": "Không có chỗ nào để điền"
  },
  {
-  "i": 882,
+  "i": 881,
   "t": "Đã điền {} ô theo cách bạn viết (Ctrl+Z để hoàn tác — nhớ xem lại nội dung)"
  },
  {
-  "i": 883,
+  "i": 882,
   "t": "Chưa có tên nào (ở thẻ Công thức, dùng \"Quản lý tên\" để đặt tên cho phạm vi đang chọn)"
  },
  {
-  "i": 884,
+  "i": 883,
   "t": "Tên để chèn vào công thức (nó vào chỗ bạn đang gõ)"
  },
  {
-  "i": 885,
+  "i": 884,
   "t": "Không có nội dung nên không có gì để căn theo"
  },
  {
-  "i": 886,
+  "i": 885,
   "t": "Đã chỉnh {} cột vừa với nội dung (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 887,
+  "i": 886,
   "t": "Đã chỉnh {} hàng vừa với nội dung (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 888,
+  "i": 887,
   "t": "Bảng mã và dấu phân cách khi ghi ra CSV"
  },
  {
-  "i": 889,
+  "i": 888,
   "t": "Không có bản sao lưu nào để khôi phục (hiện cứ {} giây lại lưu một bản)"
  },
  {
-  "i": 890,
+  "i": 889,
   "t": "Bản sao lưu của những sổ tính kết thúc mà chưa lưu (chọn một cái để mở)"
  },
  {
-  "i": 891,
+  "i": 890,
   "t": "Khoảng cách giữa hai lần lưu bản khôi phục tự động (không ghi đè bản gốc)"
  },
  {
-  "i": 892,
+  "i": 891,
   "t": "Hiện chỗ hết tờ giấy (hiện giờ vừa đúng một tờ)"
  },
  {
-  "i": 893,
+  "i": 892,
   "t": "Đã tắt đường ngắt trang"
  },
  {
-  "i": 894,
+  "i": 893,
   "t": "Thu vừa tờ giấy (chọn thì cái này được ưu tiên hơn % phóng to thu nhỏ khi in)"
  },
  {
-  "i": 895,
+  "i": 894,
   "t": "Bắt đầu ghi lịch sử thay đổi (bấm lần nữa để ghi lại phần khác với lúc bắt đầu và xem danh sách)"
  },
  {
-  "i": 896,
+  "i": 895,
   "t": "Đã dừng ghi (không có chỗ nào thay đổi)"
  },
  {
-  "i": 897,
+  "i": 896,
   "t": "Đã dừng ghi — ghi được {} mục (bấm lại nút đó để xem danh sách)"
  },
  {
-  "i": 898,
+  "i": 897,
   "t": "Chưa có lịch sử thay đổi nào (bắt đầu ghi ở \"Lịch sử thay đổi\" trên thẻ Cộng tác)"
  },
  {
-  "i": 899,
+  "i": 898,
   "t": "Lịch sử thay đổi: {} mục (mới nhất trước. Chọn một mục thì chỉ nhảy tới chỗ đó — đây không phải là hoàn tác)"
  },
  {
-  "i": 900,
+  "i": 899,
   "t": "Không ghi được bản khôi phục tự động (hãy kiểm tra quyền ở nơi lưu)"
  },
  {
-  "i": 901,
+  "i": 900,
   "t": "Đã ghi ra CSV: {} ({} — chỉ có giá trị của trang tính này. Không có công thức, định dạng hay các trang khác){}"
  },
  {
-  "i": 902,
+  "i": 901,
   "t": "Sổ tính này được gợi ý chỉ đọc (không phải khoá — vẫn sửa được. Thẻ Bảo vệ tắt được nó)"
  },
  {
-  "i": 903,
+  "i": 902,
   "t": "Có {} sổ tính lần trước kết thúc mà chưa lưu (mở bằng \"Khôi phục\", ngay cạnh thẻ Bảo vệ)"
  },
  {
-  "i": 904,
+  "i": 903,
   "t": "Xoay (giữ Shift để xoay từng 15 độ)"
  },
  {
-  "i": 905,
+  "i": 904,
   "t": "Đang chọn {} hình (bấm chuột phải → Căn chỉnh để xếp cho thẳng)"
  },
  {
-  "i": 906,
+  "i": 905,
   "t": "Trang tính đang được bảo vệ (bỏ khoá ô này, hoặc gỡ bảo vệ ở thẻ Bảo vệ)"
  },
  {
-  "i": 907,
+  "i": 906,
   "t": "Đây là một phần của công thức mảng neo ở {}. Muốn sửa thì chọn lại cả phạm vi rồi bấm Ctrl+Shift+Enter (muốn xoá thì chọn phạm vi rồi bấm Delete)"
  },
  {
-  "i": 908,
+  "i": 907,
   "t": "Đã thôi theo dõi {}"
  },
  {
-  "i": 909,
+  "i": 908,
   "t": "Mục theo dõi đó không còn nữa"
  },
  {
-  "i": 910,
+  "i": 909,
   "t": "Không xoá được một phần của công thức mảng (chọn cả phạm vi rồi bấm Delete)"
  },
  {
-  "i": 911,
+  "i": 910,
   "t": "Đã xoá công thức mảng (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 912,
+  "i": 911,
   "t": "Đã xoá {} hình (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 913,
+  "i": 912,
   "t": "Đã chép mã"
  },
  {
-  "i": 914,
+  "i": 913,
   "t": "Đã chuyển chế độ toàn màn hình (F11 để quay lại)"
  },
  {
-  "i": 915,
+  "i": 914,
   "t": "Đã đưa mức phóng về 100%"
  },
  {
-  "i": 916,
+  "i": 915,
   "t": "Hướng dẫn: docs/calc-manual.ja.md (bản tiếng Anh là calc-manual.md). Python thì xem python-manual.ja.md"
  },
  {
-  "i": 917,
+  "i": 916,
   "t": "Không lấy được giờ hiện tại"
  },
  {
-  "i": 918,
+  "i": 917,
   "t": "Đã điền {} (Enter để chốt. Đây là giá trị nên sau này không đổi)"
  },
  {
-  "i": 919,
+  "i": 918,
   "t": "Chưa mở Slicer nào (mở bằng \"Slicer\" trên thẻ Dữ liệu)"
  },
  {
-  "i": 920,
+  "i": 919,
   "t": "F4 chỉ có tác dụng với tham chiếu trong công thức (hãy bắt đầu bằng =)"
  },
  {
-  "i": 921,
+  "i": 920,
   "t": "Đã đổi dấu $ trong tham chiếu (bấm F4 lần nữa để đổi tiếp)"
  },
  {
-  "i": 922,
+  "i": 921,
   "t": "Trước con trỏ không có tham chiếu nào"
  },
  {
-  "i": 923,
+  "i": 922,
   "t": "Công thức mảng chỉ dùng được với công thức bắt đầu bằng \"=\" (Ctrl+Shift+Enter)"
  },
  {
-  "i": 924,
+  "i": 923,
   "t": "Đã đặt công thức mảng vào {}:{} (thanh công thức hiện nó trong dấu {{ }})"
  },
  {
-  "i": 925,
+  "i": 924,
   "t": "Đã cắt hình (dán để đưa lại)"
  },
  {
-  "i": 926,
+  "i": 925,
   "t": "Đã chép hình"
  },
  {
-  "i": 927,
+  "i": 926,
   "t": "Không có hình nào để dán (hãy chép một hình trước)"
  },
  {
-  "i": 928,
+  "i": 927,
   "t": "Đã dán hình vào {}"
  },
  {
-  "i": 929,
+  "i": 928,
   "t": "Đã ở vị trí đó rồi (hình vẽ sau nằm ở phía trước)"
  },
  {
-  "i": 930,
+  "i": 929,
   "t": "Đã đưa lên trên cùng"
  },
  {
-  "i": 931,
+  "i": 930,
   "t": "Đã đưa lên trên một bậc"
  },
  {
-  "i": 932,
+  "i": 931,
   "t": "Đã đưa xuống dưới một bậc"
  },
  {
-  "i": 933,
+  "i": 932,
   "t": "Đã đưa xuống dưới cùng"
  },
  {
-  "i": 934,
+  "i": 933,
   "t": "Đã xoay 90 độ"
  },
  {
-  "i": 935,
+  "i": 934,
   "t": "Đã lật trái phải"
  },
  {
-  "i": 936,
+  "i": 935,
   "t": "Đã lật trên dưới"
  },
  {
-  "i": 937,
+  "i": 936,
   "t": "Đã huỷ việc lưu"
  },
  {
-  "i": 938,
+  "i": 937,
   "t": "Đã lưu dạng SVG: {}"
  },
  {
-  "i": 939,
+  "i": 938,
   "t": "Các thiết lập nằm ở bảng \"Thiết lập hình\" bên phải"
  },
  {
-  "i": 940,
+  "i": 939,
   "t": "Hãy chọn từ {} hình trở lên (Ctrl+bấm chuột để chọn thêm)"
  },
  {
-  "i": 941,
+  "i": 940,
   "t": "Đã căn {} hình sang trái"
  },
  {
-  "i": 942,
+  "i": 941,
   "t": "Đã căn {} hình vào giữa theo chiều ngang"
  },
  {
-  "i": 943,
+  "i": 942,
   "t": "Đã căn {} hình sang phải"
  },
  {
-  "i": 944,
+  "i": 943,
   "t": "Đã căn {} hình lên trên"
  },
  {
-  "i": 945,
+  "i": 944,
   "t": "Đã căn {} hình vào giữa theo chiều dọc"
  },
  {
-  "i": 946,
+  "i": 945,
   "t": "Đã căn {} hình xuống dưới"
  },
  {
-  "i": 947,
+  "i": 946,
   "t": "Đã xếp {} hình cách đều nhau theo chiều ngang"
  },
  {
-  "i": 948,
+  "i": 947,
   "t": "Đã xếp {} hình cách đều nhau theo chiều dọc"
  },
  {
-  "i": 949,
+  "i": 948,
   "t": "Xoay: {} độ"
  },
  {
-  "i": 950,
+  "i": 949,
   "t": "Đã cho phép \"{}\""
  },
  {
-  "i": 951,
+  "i": 950,
   "t": "Đã cấm \"{}\""
  },
  {
-  "i": 952,
+  "i": 951,
   "t": "Chọn một chữ thì nó vào công thức"
  },
  {
-  "i": 953,
+  "i": 952,
   "t": "Đã đưa {} vào công thức"
  },
  {
-  "i": 954,
+  "i": 953,
   "t": "Từ giờ CSV sẽ được ghi ra bằng \"{}\""
  },
  {
-  "i": 955,
+  "i": 954,
   "t": "Đã mở bản sao lưu (bản gốc là {}). Hãy xem lại nội dung rồi dùng \"Lưu với tên khác\" — cái này sẽ không ghi đè bản gốc"
  },
  {
-  "i": 956,
+  "i": 955,
   "t": "Không giữ bản khôi phục tự động (nếu máy tắt giữa chừng thì mất phần đã gõ)"
  },
  {
-  "i": 957,
+  "i": 956,
   "t": "Sẽ lưu lại mỗi {} (không ghi đè bản gốc)"
  },
  {
-  "i": 958,
+  "i": 957,
   "t": "Đã bỏ hết {} chỗ ngắt trang"
  },
  {
-  "i": 959,
+  "i": 958,
   "t": "Đã bỏ ngắt trang ở cột {}"
  },
  {
-  "i": 960,
+  "i": 959,
   "t": "Không ngắt trang trước cột A được"
  },
  {
-  "i": 961,
+  "i": 960,
   "t": "Từ cột {} sẽ sang tờ giấy mới"
  },
  {
-  "i": 962,
+  "i": 961,
   "t": "Đã bỏ ngắt trang ở hàng {}"
  },
  {
-  "i": 963,
+  "i": 962,
   "t": "Từ hàng {} sẽ sang tờ giấy mới"
  },
  {
-  "i": 964,
+  "i": 963,
   "t": "Đã thôi thu vừa tờ giấy (quay về % phóng to thu nhỏ)"
  },
  {
-  "i": 965,
+  "i": 964,
   "t": "Đặt thành {} (áp dụng cho PDF và cho lúc lưu)"
  },
  {
-  "i": 966,
+  "i": 965,
   "t": "Đã nhảy tới {}"
  },
  {
-  "i": 967,
+  "i": 966,
   "t": "Đã chèn \"{}\" (U+{})"
  },
  {
-  "i": 968,
+  "i": 967,
   "t": "Không đọc được mã Unicode đó (viết dạng thập lục phân. Ví dụ: 3012 là 〒)"
  },
  {
-  "i": 969,
+  "i": 968,
   "t": "{} — nhưng \"{}!\" nằm **trong chuỗi ký tự**, như ở INDIRECT, thì không đổi theo: {} chỗ (hãy sửa tay)"
  },
  {
-  "i": 970,
+  "i": 969,
   "t": "Không có tệp .py nào trong plugins (@edit tên để tạo. Sau đó dùng được =PY(\"tên hàm\", …) và @tên)"
  },
  {
-  "i": 971,
+  "i": 970,
   "t": " * Mã cũ nằm trong sổ tính này ({}) sẽ không chạy — dùng @export tên để lấy ra; lưu lại thì nó mất"
  },
  {
-  "i": 972,
+  "i": 971,
   "t": "Sổ tính ở đây không mang mã (dữ liệu và chương trình là hai tệp khác nhau). Hàm hay thủ tục đều đặt thành tệp .py trong {}"
  },
  {
-  "i": 973,
+  "i": 972,
   "t": "\"net\" không cần nữa (plugins là mã do chính bạn đặt vào, nên nó ra mạng được luôn). Hãy gõ @{}"
  },
  {
-  "i": 974,
+  "i": 973,
   "t": "\"{}\" là mã nằm trong sổ tính — nó không chạy (dùng @export {} để lấy ra; xem lại rồi đưa vào {})"
  },
  {
-  "i": 975,
+  "i": 974,
   "t": "Không có \"{}\" (các tệp .py trong {} chạy bằng @tên. @list để xem danh sách)"
  },
  {
-  "i": 976,
+  "i": 975,
   "t": "Đã bỏ đường viền"
  },
  {
-  "i": 977,
+  "i": 976,
   "t": "Đã đổi màu đường viền thành {}"
  },
  {
-  "i": 978,
+  "i": 977,
   "t": "Đã đặt lại góc xoay"
  },
  {
-  "i": 979,
+  "i": 978,
   "t": "Đã xoay {} độ (theo chiều kim đồng hồ)"
  },
  {
-  "i": 980,
+  "i": 979,
   "t": "Không đọc được góc đó (một con số. Ví dụ: 45 / -30)"
  },
  {
-  "i": 981,
+  "i": 980,
   "t": "Đã huỷ bảng dữ liệu"
  },
  {
-  "i": 982,
+  "i": 981,
   "t": "Không đọc được ô nhập đó (ví dụ: B2)"
  },
  {
-  "i": 983,
+  "i": 982,
   "t": "Không đọc được ô nhập của hàng (ví dụ: B3. Để trống rồi Enter = một biến)"
  },
  {
-  "i": 984,
+  "i": 983,
   "t": "Đã bảo vệ trang tính \"{}\" (chỉ những ô đã bỏ khoá mới ghi được)"
  },
  {
-  "i": 985,
+  "i": 984,
   "t": "Đã gỡ bảo vệ cho trang tính \"{}\""
  },
  {
-  "i": 986,
+  "i": 985,
   "t": "Quá {} giây vẫn chưa xong nên đã dừng lại (vòng lặp vô tận?)"
  },
  {
-  "i": 987,
+  "i": 986,
   "t": "Hãy viết theo dạng @edit tên (ví dụ: @edit congcu)"
  },
  {
-  "i": 988,
+  "i": 987,
   "t": "Đã mở {} (Ctrl+S để lưu, Esc để đóng)"
  },
  {
-  "i": 989,
+  "i": 988,
   "t": "Không tạo được thư mục plugins: {}"
  },
  {
-  "i": 990,
+  "i": 989,
   "t": "Đã lưu {}.py (hàm trong ô sẽ tính lại)"
  },
  {
-  "i": 991,
+  "i": 990,
   "t": "Còn phần chưa lưu. Ctrl+S để lưu; bấm Esc lần nữa để bỏ đi và đóng lại"
  },
  {
-  "i": 992,
+  "i": 991,
   "t": "Đã đóng"
  },
  {
-  "i": 993,
+  "i": 992,
   "t": "Không dựng được sandbox (cần bubblewrap hoặc Flatpak). Mã có thể đến từ nơi khác thì không chạy ngoài sandbox (apt install bubblewrap)"
  },
  {
-  "i": 994,
+  "i": 993,
   "t": "Không có engine của officework (cài bằng pip install officework. Muốn tự dựng tại chỗ thì chạy cargo build -p pysheet --release --features extension-module, rồi đặt lib_sheet.so cạnh calc với tên officework/_sheet.so)"
  },
  {
-  "i": 995,
+  "i": 994,
   "t": "Không có ô nào gọi hàm từ plugins"
  },
  {
-  "i": 996,
+  "i": 995,
   "t": "Đang tính hàm…"
  },
  {
-  "i": 997,
+  "i": 996,
   "t": "Đang chạy \"{}\"…"
  },
  {
-  "i": 998,
+  "i": 997,
   "t": "Đã chạy \"{}\" (Ctrl+Z hoàn tác trong một bước)"
  },
  {
-  "i": 999,
+  "i": 998,
   "t": "Đã lấy ra: {} (xem lại nội dung, nếu ổn thì chuyển vào plugins)"
  },
  {
-  "i": 1000,
+  "i": 999,
   "t": "Công thức ={}"
  },
  {
-  "i": 1001,
+  "i": 1000,
   "t": "Màu tô của hình — 6 chữ số RRGGBB (ví dụ: FFF2CC. Để trống rồi Enter = không tô)"
  },
  {
-  "i": 1002,
+  "i": 1001,
   "t": "Đường viền của hình — 6 chữ số RRGGBB (ví dụ: 1B6E3C. Để trống rồi Enter = không có đường viền)"
  },
  {
-  "i": 1003,
+  "i": 1002,
   "t": "Góc xoay của hình — số độ (theo chiều kim đồng hồ. Ví dụ: 45 / -30. Để trống rồi Enter = 0)"
  },
  {
-  "i": 1004,
+  "i": 1003,
   "t": "Bảng dữ liệu 1/2 — ô nhập của cột (nơi nhận giá trị ở cột bên trái. Ví dụ: B2)"
  },
  {
-  "i": 1005,
+  "i": 1004,
   "t": "Bảng dữ liệu 2/2 — ô nhập của hàng (để trống rồi Enter = một biến)"
  },
  {
-  "i": 1006,
+  "i": 1005,
   "t": "Giảm dần (bắt đầu từ giá trị lớn, hoặc đứng sau)"
  },
  {
-  "i": 1007,
+  "i": 1006,
   "t": "Tăng dần (bắt đầu từ giá trị nhỏ, hoặc đứng trước)"
  },
  {
-  "i": 1008,
+  "i": 1007,
   "t": "Không liệt kê những giá trị hiện không còn hàng nào"
  },
  {
-  "i": 1009,
+  "i": 1008,
   "t": "Liệt kê cả những giá trị hiện không còn hàng nào"
  },
  {
-  "i": 1010,
+  "i": 1009,
   "t": "Hiện không còn hàng nào (tắt ⊘ thì tất cả hiện lại)"
  },
  {
-  "i": 1011,
+  "i": 1010,
   "t": "Còn {} mục nữa chưa liệt kê (mỗi lần tối đa 64 mục)"
  },
  {
-  "i": 1012,
+  "i": 1011,
   "t": "Thiết lập hình"
  },
  {
-  "i": 1013,
+  "i": 1012,
   "t": "Màu tô"
  },
  {
-  "i": 1014,
+  "i": 1013,
   "t": "Màu…"
  },
  {
-  "i": 1015,
+  "i": 1014,
   "t": "Đường viền"
  },
  {
-  "i": 1016,
+  "i": 1015,
   "t": "Độ dày"
  },
  {
-  "i": 1017,
+  "i": 1016,
   "t": "Độ dày đường viền: {} pt"
  },
  {
-  "i": 1018,
+  "i": 1017,
   "t": "Độ mờ đục"
  },
  {
-  "i": 1019,
+  "i": 1018,
   "t": "Độ mờ đục: {}%"
  },
  {
-  "i": 1020,
+  "i": 1019,
   "t": "Xoay"
  },
  {
-  "i": 1021,
+  "i": 1020,
   "t": "Lật trái phải"
  },
  {
-  "i": 1022,
+  "i": 1021,
   "t": "Lật trên dưới"
  },
  {
-  "i": 1023,
+  "i": 1022,
   "t": "Góc… ({}°)"
  },
  {
-  "i": 1024,
+  "i": 1023,
   "t": "Bóng"
  },
  {
-  "i": 1025,
+  "i": 1024,
   "t": "Có"
  },
  {
-  "i": 1026,
+  "i": 1025,
   "t": "Đã thêm bóng"
  },
  {
-  "i": 1027,
+  "i": 1026,
   "t": "Đã bỏ bóng"
  },
  {
-  "i": 1028,
+  "i": 1027,
   "t": "Hướng dẫn: docs/writer-manual.ja.md (bản tiếng Anh là writer-manual.md). Python thì xem writer-macro-manual.ja.md"
  },
  {
-  "i": 1029,
+  "i": 1028,
   "t": "Đã điền {} (đây là giá trị nên sau này không đổi)"
  },
  {
-  "i": 1030,
+  "i": 1029,
   "t": "Gộp ô và căn giữa"
  },
  {
-  "i": 1031,
+  "i": 1030,
   "t": "Gộp ngang (từng hàng một)"
  },
  {
-  "i": 1032,
+  "i": 1031,
   "t": "Gộp ô (không đụng đến căn lề)"
  },
  {
-  "i": 1033,
+  "i": 1032,
   "t": "Bỏ gộp ô"
  },
  {
-  "i": 1034,
+  "i": 1033,
   "t": "Hướng in: {} (áp dụng cho PDF và khi lưu)"
  },
  {
-  "i": 1035,
+  "i": 1034,
   "t": "Ngang"
  },
  {
-  "i": 1036,
+  "i": 1035,
   "t": "Dọc"
  },
  {
-  "i": 1037,
+  "i": 1036,
   "t": "Khác (gõ mã định dạng)…"
  },
  {
-  "i": 1038,
+  "i": 1037,
   "t": "Không xoay"
  },
  {
-  "i": 1039,
+  "i": 1038,
   "t": "Nghiêng lên 45°"
  },
  {
-  "i": 1040,
+  "i": 1039,
   "t": "Nghiêng xuống 45°"
  },
  {
-  "i": 1041,
+  "i": 1040,
   "t": "Xoay lên 90°"
  },
  {
-  "i": 1042,
+  "i": 1041,
   "t": "Xoay xuống 90°"
  },
  {
-  "i": 1043,
+  "i": 1042,
   "t": "Viết dọc (xếp từng ký tự)"
  },
  {
-  "i": 1044,
+  "i": 1043,
   "t": "Khác (gõ góc)…"
  },
  {
-  "i": 1045,
+  "i": 1044,
   "t": "{} cột đã được {} (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1046,
+  "i": 1045,
   "t": "thu gọn"
  },
  {
-  "i": 1047,
+  "i": 1046,
   "t": "mở ra"
  },
  {
-  "i": 1048,
+  "i": 1047,
   "t": "{} hàng đã được {} (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1049,
+  "i": 1048,
   "t": "Giữ nguyên"
  },
  {
-  "i": 1050,
+  "i": 1049,
   "t": "Tỉ lệ"
  },
  {
-  "i": 1051,
+  "i": 1050,
   "t": "Luỹ kế"
  },
  {
-  "i": 1052,
+  "i": 1051,
   "t": "Hiệu số"
  },
  {
-  "i": 1053,
+  "i": 1052,
   "t": "Xanh lam (mặc định)"
  },
  {
-  "i": 1054,
+  "i": 1053,
   "t": "Xanh lá"
  },
  {
-  "i": 1055,
+  "i": 1054,
   "t": "Cam"
  },
  {
-  "i": 1056,
+  "i": 1055,
   "t": "Xám"
  },
  {
-  "i": 1057,
+  "i": 1056,
   "t": "Đầu trang trái"
  },
  {
-  "i": 1058,
+  "i": 1057,
   "t": "Đầu trang giữa"
  },
  {
-  "i": 1059,
+  "i": 1058,
   "t": "Đầu trang phải"
  },
  {
-  "i": 1060,
+  "i": 1059,
   "t": "Chân trang trái"
  },
  {
-  "i": 1061,
+  "i": 1060,
   "t": "Chân trang giữa"
  },
  {
-  "i": 1062,
+  "i": 1061,
   "t": "Chân trang phải"
  },
  {
-  "i": 1063,
+  "i": 1062,
   "t": "Xóa hết"
  },
  {
-  "i": 1064,
+  "i": 1063,
   "t": "Tổng chung"
  },
  {
-  "i": 1065,
+  "i": 1064,
   "t": "Tổng phụ"
  },
  {
-  "i": 1066,
+  "i": 1065,
   "t": "Dòng trống"
  },
  {
-  "i": 1067,
+  "i": 1066,
   "t": "Dạng gọn"
  },
  {
-  "i": 1068,
+  "i": 1067,
   "t": "Đặt {} thành {} rồi dựng lại…"
  },
  {
-  "i": 1069,
+  "i": 1068,
   "t": "Dải tiêu đề ở hàng đầu"
  },
  {
-  "i": 1070,
+  "i": 1069,
   "t": "Sọc xen kẽ theo hàng"
  },
  {
-  "i": 1071,
+  "i": 1070,
   "t": "Sọc xen kẽ theo cột"
  },
  {
-  "i": 1072,
+  "i": 1071,
   "t": "In đậm cột đầu"
  },
  {
-  "i": 1073,
+  "i": 1072,
   "t": "In đậm cột cuối"
  },
  {
-  "i": 1074,
+  "i": 1073,
   "t": "{}:{} — đã áp dụng {} (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1075,
+  "i": 1074,
   "t": "Dùng gần đây: {}"
  },
  {
-  "i": 1076,
+  "i": 1075,
   "t": "Gõ mã Unicode (ví dụ: 3012 → 〒)…"
  },
  {
-  "i": 1077,
+  "i": 1076,
   "t": "Bỏ ngắt trang ở hàng này ({})"
  },
  {
-  "i": 1078,
+  "i": 1077,
   "t": "Sang tờ giấy mới từ hàng {} (ngắt ngang)"
  },
  {
-  "i": 1079,
+  "i": 1078,
   "t": "Bỏ ngắt trang ở cột này ({})"
  },
  {
-  "i": 1080,
+  "i": 1079,
   "t": "Sang tờ giấy mới từ cột {} (ngắt dọc)"
  },
  {
-  "i": 1081,
+  "i": 1080,
   "t": "Bỏ mọi ngắt trang ({})"
  },
  {
-  "i": 1082,
+  "i": 1081,
   "t": "{} = {}:{} (bảng)"
  },
  {
-  "i": 1083,
+  "i": 1082,
   "t": "Không sao lưu"
  },
  {
-  "i": 1084,
+  "i": 1083,
   "t": "Mỗi phút"
  },
  {
-  "i": 1085,
+  "i": 1084,
   "t": "Mỗi 5 phút"
  },
  {
-  "i": 1086,
+  "i": 1085,
   "t": "Mỗi 10 phút"
  },
  {
-  "i": 1087,
+  "i": 1086,
   "t": "Không co giãn"
  },
  {
-  "i": 1088,
+  "i": 1087,
   "t": "Mọi cột vừa 1 trang giấy"
  },
  {
-  "i": 1089,
+  "i": 1088,
   "t": "Mọi hàng vừa 1 trang giấy"
  },
  {
-  "i": 1090,
+  "i": 1089,
   "t": "Cả trang tính vừa 1 trang giấy"
  },
  {
-  "i": 1091,
+  "i": 1090,
   "t": "Ngang 2 trang × dọc 1 trang"
  },
  {
-  "i": 1092,
+  "i": 1091,
   "t": "In đường lưới: {}"
  },
  {
-  "i": 1093,
+  "i": 1092,
   "t": "Có (các đường lưới mờ của bảng sẽ hiện trên giấy)"
  },
  {
-  "i": 1094,
+  "i": 1093,
   "t": "Không"
  },
  {
-  "i": 1095,
+  "i": 1094,
   "t": "In tiêu đề hàng/cột: {}"
  },
  {
-  "i": 1096,
+  "i": 1095,
   "t": "Có (số hàng và tên cột sẽ hiện ở lề)"
  },
  {
-  "i": 1097,
+  "i": 1096,
   "t": "Dạng đường"
  },
  {
-  "i": 1098,
+  "i": 1097,
   "t": "Dạng cột"
  },
  {
-  "i": 1099,
+  "i": 1098,
   "t": "Thắng/thua (dương-âm)"
  },
  {
-  "i": 1100,
+  "i": 1099,
   "t": "Hình chữ nhật"
  },
  {
-  "i": 1101,
+  "i": 1100,
   "t": "Chữ nhật bo góc"
  },
  {
-  "i": 1102,
+  "i": 1101,
   "t": "Hình bầu dục"
  },
  {
-  "i": 1103,
+  "i": 1102,
   "t": "Mũi tên phải"
  },
  {
-  "i": 1104,
+  "i": 1103,
   "t": "Hình thoi"
  },
  {
-  "i": 1105,
+  "i": 1104,
   "t": "Đường thẳng"
  },
  {
-  "i": 1106,
+  "i": 1105,
   "t": "→ Tên mới (gán cho vùng đang chọn)…"
  },
  {
-  "i": 1107,
+  "i": 1106,
   "t": "Bỏ cố định"
  },
  {
-  "i": 1108,
+  "i": 1107,
   "t": "Cố định tại vị trí con trỏ (các hàng phía trên và cột bên trái đứng yên)"
  },
  {
-  "i": 1109,
+  "i": 1108,
   "t": "Cố định hàng trên cùng"
  },
  {
-  "i": 1110,
+  "i": 1109,
   "t": "Cố định cột đầu tiên"
  },
  {
-  "i": 1111,
+  "i": 1110,
   "t": "Thêm bóng cho ngăn cố định"
  },
  {
-  "i": 1112,
+  "i": 1111,
   "t": "Khác (gõ RRGGBB)…"
  },
  {
-  "i": 1113,
+  "i": 1112,
   "t": "(trống) → {}"
  },
  {
-  "i": 1114,
+  "i": 1113,
   "t": "{} → (đã xóa)"
  },
  {
-  "i": 1115,
+  "i": 1114,
   "t": "UTF-8 (có BOM), dấu phẩy"
  },
  {
-  "i": 1116,
+  "i": 1115,
   "t": "Shift_JIS(CP932), dấu phẩy"
  },
  {
-  "i": 1117,
+  "i": 1116,
   "t": "UTF-8 (không BOM), dấu phẩy"
  },
  {
-  "i": 1118,
+  "i": 1117,
   "t": "UTF-8 (có BOM), tab"
  },
  {
-  "i": 1119,
+  "i": 1118,
   "t": "Shift_JIS(CP932), tab"
  },
  {
-  "i": 1120,
+  "i": 1119,
   "t": "UTF-8 (có BOM), dấu chấm phẩy"
  },
  {
-  "i": 1121,
+  "i": 1120,
   "t": "(đã mã hóa)"
  },
  {
-  "i": 1122,
+  "i": 1121,
   "t": "(mẫu — mở ra sẽ thành sổ làm việc mới)"
  },
  {
-  "i": 1123,
+  "i": 1122,
   "t": "Mở rộng vùng chọn (các cột kề bên cũng dời theo)"
  },
  {
-  "i": 1124,
+  "i": 1123,
   "t": "Chỉ sắp xếp vùng đã chọn (sẽ lệch so với các cột bên cạnh)"
  },
  {
-  "i": 1125,
+  "i": 1124,
   "t": "Hủy"
  },
  {
-  "i": 1126,
+  "i": 1125,
   "t": "Furigana"
  },
  {
-  "i": 1127,
+  "i": 1126,
   "t": "Yêu cầu"
  },
  {
-  "i": 1128,
+  "i": 1127,
   "t": "Đi đến đó"
  },
  {
-  "i": 1129,
+  "i": 1128,
   "t": "Nhập lại nội dung…"
  },
  {
-  "i": 1130,
+  "i": 1129,
   "t": "Xóa tên"
  },
  {
-  "i": 1131,
+  "i": 1130,
   "t": "Tháng"
  },
  {
-  "i": 1132,
+  "i": 1131,
   "t": "Quý"
  },
  {
-  "i": 1133,
+  "i": 1132,
   "t": "Năm"
  },
  {
-  "i": 1134,
+  "i": 1133,
   "t": "Theo khoảng số…"
  },
  {
-  "i": 1135,
+  "i": 1134,
   "t": "Bỏ nhóm"
  },
  {
-  "i": 1136,
+  "i": 1135,
   "t": "Xóa quy tắc này"
  },
  {
-  "i": 1137,
+  "i": 1136,
   "t": "→ Xong (lọc)"
  },
  {
-  "i": 1138,
+  "i": 1137,
   "t": "→ Hiện lại tất cả"
  },
  {
-  "i": 1139,
+  "i": 1138,
   "t": "→ Lọc theo nhãn…"
  },
  {
-  "i": 1140,
+  "i": 1139,
   "t": "→ Lọc theo giá trị…"
  },
  {
-  "i": 1141,
+  "i": 1140,
   "t": "→ Nhóm…"
  },
  {
-  "i": 1142,
+  "i": 1141,
   "t": "→ Xong (sang chọn cột)"
  },
  {
-  "i": 1143,
+  "i": 1142,
   "t": "→ Xong (cột không bắt buộc)"
  },
  {
-  "i": 1144,
+  "i": 1143,
   "t": "Bỏ bảo vệ"
  },
  {
-  "i": 1145,
+  "i": 1144,
   "t": "Bảo vệ trang tính"
  },
  {
-  "i": 1146,
+  "i": 1145,
   "t": "Chèn"
  },
  {
-  "i": 1147,
+  "i": 1146,
   "t": "Đổi tên"
  },
  {
-  "i": 1148,
+  "i": 1147,
   "t": "Tạo bản sao"
  },
  {
-  "i": 1149,
+  "i": 1148,
   "t": "Chuyển sang trái"
  },
  {
-  "i": 1150,
+  "i": 1149,
   "t": "Chuyển sang phải"
  },
  {
-  "i": 1151,
+  "i": 1150,
   "t": "Ẩn"
  },
  {
-  "i": 1152,
+  "i": 1151,
   "t": "Hiện lại"
  },
  {
-  "i": 1153,
+  "i": 1152,
   "t": "Màu tab"
  },
  {
-  "i": 1154,
+  "i": 1153,
   "t": "Không màu"
  },
  {
-  "i": 1155,
+  "i": 1154,
   "t": "Đỏ"
  },
  {
-  "i": 1156,
+  "i": 1155,
   "t": "Vàng"
  },
  {
-  "i": 1157,
+  "i": 1156,
   "t": "Xanh lam"
  },
  {
-  "i": 1158,
+  "i": 1157,
   "t": "Tím"
  },
  {
-  "i": 1159,
+  "i": 1158,
   "t": "Tự động"
  },
  {
-  "i": 1160,
+  "i": 1159,
   "t": "Dấu phẩy"
  },
  {
-  "i": 1161,
+  "i": 1160,
   "t": "Tab"
  },
  {
-  "i": 1162,
+  "i": 1161,
   "t": "Dấu chấm phẩy"
  },
  {
-  "i": 1163,
+  "i": 1162,
   "t": "Dấu hai chấm"
  },
  {
-  "i": 1164,
+  "i": 1163,
   "t": "Dấu cách"
  },
  {
-  "i": 1165,
+  "i": 1164,
   "t": "Khác…"
  },
  {
-  "i": 1166,
+  "i": 1165,
   "t": "Hay dùng trong biểu mẫu"
  },
  {
-  "i": 1167,
+  "i": 1166,
   "t": "Ký hiệu"
  },
  {
-  "i": 1168,
+  "i": 1167,
   "t": "Mũi tên"
  },
  {
-  "i": 1169,
+  "i": 1168,
   "t": "Số trong vòng tròn"
  },
  {
-  "i": 1170,
+  "i": 1169,
   "t": "Tiền tệ"
  },
  {
-  "i": 1171,
+  "i": 1170,
   "t": "Toán học"
  },
  {
-  "i": 1172,
+  "i": 1171,
   "t": "Dấu ngoặc và dấu phân cách"
  },
  {
-  "i": 1173,
+  "i": 1172,
   "t": "Hy Lạp"
  },
  {
-  "i": 1174,
+  "i": 1173,
   "t": "Mọi giá trị"
  },
  {
-  "i": 1175,
+  "i": 1174,
   "t": "Số nguyên"
  },
  {
-  "i": 1176,
+  "i": 1175,
   "t": "Số thập phân"
  },
  {
-  "i": 1177,
+  "i": 1176,
   "t": "Danh sách"
  },
  {
-  "i": 1178,
+  "i": 1177,
   "t": "Độ dài văn bản"
  },
  {
-  "i": 1179,
+  "i": 1178,
   "t": "nằm giữa"
  },
  {
-  "i": 1180,
+  "i": 1179,
   "t": "không nằm giữa"
  },
  {
-  "i": 1181,
+  "i": 1180,
   "t": "bằng"
  },
  {
-  "i": 1182,
+  "i": 1181,
   "t": "khác"
  },
  {
-  "i": 1183,
+  "i": 1182,
   "t": "lớn hơn"
  },
  {
-  "i": 1184,
+  "i": 1183,
   "t": "nhỏ hơn"
  },
  {
-  "i": 1185,
+  "i": 1184,
   "t": "lớn hơn hoặc bằng"
  },
  {
-  "i": 1186,
+  "i": 1185,
   "t": "nhỏ hơn hoặc bằng"
  },
  {
-  "i": 1187,
+  "i": 1186,
   "t": "Dừng"
  },
  {
-  "i": 1188,
+  "i": 1187,
   "t": "Cảnh báo"
  },
  {
-  "i": 1189,
+  "i": 1188,
   "t": "Thông tin"
  },
  {
-  "i": 1190,
+  "i": 1189,
   "t": "Danh sách dạng thẻ"
  },
  {
-  "i": 1191,
+  "i": 1190,
   "t": "Danh sách dọc"
  },
  {
-  "i": 1192,
+  "i": 1191,
   "t": "Danh sách kim tự tháp"
  },
  {
-  "i": 1193,
+  "i": 1192,
   "t": "Quy trình"
  },
  {
-  "i": 1194,
+  "i": 1193,
   "t": "Các bước cơ bản"
  },
  {
-  "i": 1195,
+  "i": 1194,
   "t": "Dòng thời gian"
  },
  {
-  "i": 1196,
+  "i": 1195,
   "t": "Chu trình"
  },
  {
-  "i": 1197,
+  "i": 1196,
   "t": "Chu trình cơ bản"
  },
  {
-  "i": 1198,
+  "i": 1197,
   "t": "Chu trình khối"
  },
  {
-  "i": 1199,
+  "i": 1198,
   "t": "Phân cấp"
  },
  {
-  "i": 1200,
+  "i": 1199,
   "t": "Sơ đồ tổ chức"
  },
  {
-  "i": 1201,
+  "i": 1200,
   "t": "Quan hệ"
  },
  {
-  "i": 1202,
+  "i": 1201,
   "t": "Biểu đồ Venn cơ bản"
  },
  {
-  "i": 1203,
+  "i": 1202,
   "t": "Ma trận"
  },
  {
-  "i": 1204,
+  "i": 1203,
   "t": "Ma trận cơ bản"
  },
  {
-  "i": 1205,
+  "i": 1204,
   "t": "Kim tự tháp"
  },
  {
-  "i": 1206,
+  "i": 1205,
   "t": "Kim tự tháp cơ bản"
  },
  {
-  "i": 1207,
+  "i": 1206,
   "t": "Chung"
  },
  {
-  "i": 1208,
+  "i": 1207,
   "t": "Số (1234.56)"
  },
  {
-  "i": 1209,
+  "i": 1208,
   "t": "Phân cách hàng nghìn (1,234)"
  },
  {
-  "i": 1210,
+  "i": 1209,
   "t": "Phần trăm (12.34%)"
  },
  {
-  "i": 1211,
+  "i": 1210,
   "t": "Khoa học (1.23E+04)"
  },
  {
-  "i": 1212,
+  "i": 1211,
   "t": "Văn bản (@)"
  },
  {
-  "i": 1213,
+  "i": 1212,
   "t": "Viết hoa đầu câu"
  },
  {
-  "i": 1214,
+  "i": 1213,
   "t": "Tất cả chữ thường"
  },
  {
-  "i": 1215,
+  "i": 1214,
   "t": "TẤT CẢ CHỮ HOA"
  },
  {
-  "i": 1216,
+  "i": 1215,
   "t": "Viết Hoa Mỗi Từ"
  },
  {
-  "i": 1217,
+  "i": 1216,
   "t": "Đảo chữ hoa/thường"
  },
  {
-  "i": 1218,
+  "i": 1217,
   "t": "Nét liền mảnh (mặc định)"
  },
  {
-  "i": 1219,
+  "i": 1218,
   "t": "Cực mảnh"
  },
  {
-  "i": 1220,
+  "i": 1219,
   "t": "Nét chấm"
  },
  {
-  "i": 1221,
+  "i": 1220,
   "t": "Nét đứt"
  },
  {
-  "i": 1222,
+  "i": 1221,
   "t": "Nét gạch-chấm"
  },
  {
-  "i": 1223,
+  "i": 1222,
   "t": "Nét gạch-chấm-chấm"
  },
  {
-  "i": 1224,
+  "i": 1223,
   "t": "Nét liền vừa"
  },
  {
-  "i": 1225,
+  "i": 1224,
   "t": "Nét đứt vừa"
  },
  {
-  "i": 1226,
+  "i": 1225,
   "t": "Nét gạch-chấm vừa"
  },
  {
-  "i": 1227,
+  "i": 1226,
   "t": "Nét gạch-chấm-chấm vừa"
  },
  {
-  "i": 1228,
+  "i": 1227,
   "t": "Nét liền đậm"
  },
  {
-  "i": 1229,
+  "i": 1228,
   "t": "Nét đôi"
  },
  {
-  "i": 1230,
+  "i": 1229,
   "t": "Đen"
  },
  {
-  "i": 1231,
+  "i": 1230,
   "t": "Xanh navy"
  },
  {
-  "i": 1232,
+  "i": 1231,
   "t": "Trắng"
  },
  {
-  "i": 1233,
+  "i": 1232,
   "t": "Vàng nhạt"
  },
  {
-  "i": 1234,
+  "i": 1233,
   "t": "Xanh lam nhạt"
  },
  {
-  "i": 1235,
+  "i": 1234,
   "t": "Xanh lá nhạt"
  },
  {
-  "i": 1236,
+  "i": 1235,
   "t": "Cam nhạt"
  },
  {
-  "i": 1237,
+  "i": 1236,
   "t": "Xám nhạt"
  },
  {
-  "i": 1238,
+  "i": 1237,
   "t": "Chuẩn"
  },
  {
-  "i": 1239,
+  "i": 1238,
   "t": "Tiêu đề"
  },
  {
-  "i": 1240,
+  "i": 1239,
   "t": "Tựa đề"
  },
  {
-  "i": 1241,
+  "i": 1240,
   "t": "Tốt"
  },
  {
-  "i": 1242,
+  "i": 1241,
   "t": "Xấu"
  },
  {
-  "i": 1243,
+  "i": 1242,
   "t": "Trung tính"
  },
  {
-  "i": 1244,
+  "i": 1243,
   "t": "Ghi chú"
  },
  {
-  "i": 1245,
+  "i": 1244,
   "t": "Tính toán"
  },
  {
-  "i": 1246,
+  "i": 1245,
   "t": "Phần trăm"
  },
  {
-  "i": 1247,
+  "i": 1246,
   "t": "bảng không chuyển sang viết dọc trong bản đầu; "
  },
  {
-  "i": 1248,
+  "i": 1247,
   "t": "chân trang"
  },
  {
-  "i": 1249,
+  "i": 1248,
   "t": "đầu trang"
  },
  {
-  "i": 1250,
+  "i": 1249,
   "t": ". Điền ở bảng phía trên bên phải"
  },
  {
-  "i": 1251,
+  "i": 1250,
   "t": "chiều rộng"
  },
  {
-  "i": 1252,
+  "i": 1251,
   "t": "(các phần tử không đọc được sẽ không quay lại nội dung)"
  },
  {
-  "i": 1253,
+  "i": 1252,
   "t": "số trang"
  },
  {
-  "i": 1254,
+  "i": 1253,
   "t": "phần chữ của dấu trang"
  },
  {
-  "i": 1255,
+  "i": 1254,
   "t": "Mật khẩu — tài liệu này đã được mã hóa"
  },
  {
-  "i": 1256,
+  "i": 1255,
   "t": "Mã hóa — chọn mật khẩu rồi nhấn Enter (để trống là bỏ mã hóa, Esc để hủy)"
  },
  {
-  "i": 1257,
+  "i": 1256,
   "t": " / viết dọc"
  },
  {
-  "i": 1258,
+  "i": 1257,
   "t": "Nhờ AI viết kịch bản macro"
  },
  {
-  "i": 1259,
+  "i": 1258,
   "t": "Nhờ AI"
  },
  {
-  "i": 1260,
+  "i": 1259,
   "t": "Kịch bản chỉ được đặt vào thư mục plugin. Hãy đọc và kiểm tra trước, rồi chạy từ danh sách (không bao giờ tự chạy)"
  },
  {
-  "i": 1261,
+  "i": 1260,
   "t": "Câu trả lời sẽ vào tại vị trí con trỏ; một lần Ctrl+Z là hoàn tác được"
  },
  {
-  "i": 1262,
+  "i": 1261,
   "t": "Không thể ẩn hết các cột đang dùng (sẽ không còn đường quay lại)"
  },
  {
-  "i": 1263,
+  "i": 1262,
   "t": "Không thể ẩn hết các hàng đang dùng (sẽ không còn đường quay lại)"
  },
  {
-  "i": 1264,
+  "i": 1263,
   "t": "Các cột đó đã bị ẩn rồi"
  },
  {
-  "i": 1265,
+  "i": 1264,
   "t": "Các hàng đó đã bị ẩn rồi"
  },
  {
-  "i": 1266,
+  "i": 1265,
   "t": "Trong vùng chọn không có cột nào đang ẩn (hãy chọn bao qua phần bị ẩn)"
  },
  {
-  "i": 1267,
+  "i": 1266,
   "t": "Trong vùng chọn không có hàng nào đang ẩn (hãy chọn bao qua phần bị ẩn)"
  },
  {
-  "i": 1268,
+  "i": 1267,
   "t": "Đã ẩn {} cột (chọn bao qua các tiêu đề rồi \"Hiện lại\" để khôi phục)"
  },
  {
-  "i": 1269,
+  "i": 1268,
   "t": "Đã ẩn {} hàng (chọn bao qua các tiêu đề rồi \"Hiện lại\" để khôi phục)"
  },
  {
-  "i": 1270,
+  "i": 1269,
   "t": "Đã hiện lại {} cột"
  },
  {
-  "i": 1271,
+  "i": 1270,
   "t": "Đã hiện lại {} hàng"
  },
  {
-  "i": 1272,
+  "i": 1271,
   "t": "các giá trị lớn hơn {}"
  },
  {
-  "i": 1273,
+  "i": 1272,
   "t": "các giá trị nhỏ hơn {}"
  },
  {
-  "i": 1274,
+  "i": 1273,
   "t": "{}:{} — tô {}"
  },
  {
-  "i": 1275,
+  "i": 1274,
   "t": "{} giá trị nhỏ nhất"
  },
  {
-  "i": 1276,
+  "i": 1275,
   "t": "{} giá trị lớn nhất"
  },
  {
-  "i": 1277,
+  "i": 1276,
   "t": "Viền dưới"
  },
  {
-  "i": 1278,
+  "i": 1277,
   "t": "Viền trên"
  },
  {
-  "i": 1279,
+  "i": 1278,
   "t": "Viền trái"
  },
  {
-  "i": 1280,
+  "i": 1279,
   "t": "Viền phải"
  },
  {
-  "i": 1281,
+  "i": 1280,
   "t": "Tất cả viền (lưới)"
  },
  {
-  "i": 1282,
+  "i": 1281,
   "t": "Viền dọc bên trong"
  },
  {
-  "i": 1283,
+  "i": 1282,
   "t": "Viền ngang bên trong"
  },
  {
-  "i": 1284,
+  "i": 1283,
   "t": "Xóa viền"
  },
  {
-  "i": 1285,
+  "i": 1284,
   "t": "Chọn ô đã khoá"
  },
  {
-  "i": 1286,
+  "i": 1285,
   "t": "Chọn ô chưa khoá"
  },
  {
-  "i": 1287,
+  "i": 1286,
   "t": "Định dạng ô"
  },
  {
-  "i": 1288,
+  "i": 1287,
   "t": "Định dạng cột"
  },
  {
-  "i": 1289,
+  "i": 1288,
   "t": "Định dạng hàng"
  },
  {
-  "i": 1290,
+  "i": 1289,
   "t": "Chèn cột"
  },
  {
-  "i": 1291,
+  "i": 1290,
   "t": "Chèn hàng"
  },
  {
-  "i": 1292,
+  "i": 1291,
   "t": "Chèn siêu liên kết"
  },
  {
-  "i": 1293,
+  "i": 1292,
   "t": "Xóa cột"
  },
  {
-  "i": 1294,
+  "i": 1293,
   "t": "Xóa hàng"
  },
  {
-  "i": 1295,
+  "i": 1294,
   "t": "Sắp xếp"
  },
  {
-  "i": 1296,
+  "i": 1295,
   "t": "Dùng bộ lọc tự động"
  },
  {
-  "i": 1297,
+  "i": 1296,
   "t": "Dùng pivot table"
  },
  {
-  "i": 1298,
+  "i": 1297,
   "t": "Màu ấm"
  },
  {
-  "i": 1299,
+  "i": 1298,
   "t": "Màu lạnh"
  },
  {
-  "i": 1300,
+  "i": 1299,
   "t": "Mực"
  },
  {
-  "i": 1301,
+  "i": 1300,
   "t": "Hình ảnh"
  },
  {
-  "i": 1302,
+  "i": 1301,
   "t": "Văn bản / tài liệu Word"
  },
  {
-  "i": 1303,
+  "i": 1302,
   "t": "tổng số trang"
  },
  {
-  "i": 1304,
+  "i": 1303,
   "t": "Chàm"
  },
  {
-  "i": 1305,
+  "i": 1304,
   "t": "Đỏ thẫm"
  },
  {
-  "i": 1306,
+  "i": 1305,
   "t": "Chàm (giấy mộc)"
  },
  {
-  "i": 1307,
+  "i": 1306,
   "t": "Mực (giấy xám)"
  },
  {
-  "i": 1308,
+  "i": 1307,
   "t": "Tệp khóa bị hỏng (~/.config/office/sign.key)"
  },
  {
-  "i": 1309,
+  "i": 1308,
   "t": "Ai đó"
  },
  {
-  "i": 1310,
+  "i": 1309,
   "t": "kịch bản macro"
  },
  {
-  "i": 1311,
+  "i": 1310,
   "t": "không rõ nguyên nhân"
  },
  {
-  "i": 1312,
+  "i": 1311,
   "t": "Tài liệu Word"
  },
  {
-  "i": 1313,
+  "i": 1312,
   "t": "tài liệu.pdf"
  },
  {
-  "i": 1314,
+  "i": 1313,
   "t": "Tài liệu Word và HTML"
  },
  {
-  "i": 1315,
+  "i": 1314,
   "t": "Đoạn văn"
  },
  {
-  "i": 1316,
+  "i": 1315,
   "t": "Từ"
  },
  {
-  "i": 1317,
+  "i": 1316,
   "t": "Ký tự"
  },
  {
-  "i": 1318,
+  "i": 1317,
   "t": "Ký tự (kể cả dấu cách)"
  },
  {
-  "i": 1319,
+  "i": 1318,
   "t": "Tác giả"
  },
  {
-  "i": 1320,
+  "i": 1319,
   "t": "Thêm tác giả"
  },
  {
-  "i": 1321,
+  "i": 1320,
   "t": "Thẻ"
  },
  {
-  "i": 1322,
+  "i": 1321,
   "t": "Chủ đề"
  },
  {
-  "i": 1323,
+  "i": 1322,
   "t": "Nhận xét"
  },
  {
-  "i": 1324,
+  "i": 1323,
   "t": "Tìm kiếm"
  },
  {
-  "i": 1325,
+  "i": 1324,
   "t": "Thay bằng"
  },
  {
-  "i": 1326,
+  "i": 1325,
   "t": "Gạch bỏ"
  },
  {
-  "i": 1327,
+  "i": 1326,
   "t": "Màu"
  },
  {
-  "i": 1328,
+  "i": 1327,
   "t": "Xóa định dạng"
  },
  {
-  "i": 1329,
+  "i": 1328,
   "t": "Đều"
  },
  {
-  "i": 1330,
+  "i": 1329,
   "t": "Phân bố"
  },
  {
-  "i": 1331,
+  "i": 1330,
   "t": "Giãn dòng"
  },
  {
-  "i": 1332,
+  "i": 1331,
   "t": "◂ Thụt lề"
  },
  {
-  "i": 1333,
+  "i": 1332,
   "t": "Thụt lề ▸"
  },
  {
-  "i": 1334,
+  "i": 1333,
   "t": "Dấu đầu dòng"
  },
  {
-  "i": 1335,
+  "i": 1334,
   "t": "Đánh số"
  },
  {
-  "i": 1336,
+  "i": 1335,
   "t": "Nền"
  },
  {
-  "i": 1337,
+  "i": 1336,
   "t": "Khung"
  },
  {
-  "i": 1338,
+  "i": 1337,
   "t": "Hướng"
  },
  {
-  "i": 1339,
+  "i": 1338,
   "t": "Giấy"
  },
  {
-  "i": 1340,
+  "i": 1339,
   "t": "Lề"
  },
  {
-  "i": 1341,
+  "i": 1340,
   "t": "Chia cột"
  },
  {
-  "i": 1342,
+  "i": 1341,
   "t": "Dọc"
  },
  {
-  "i": 1343,
+  "i": 1342,
   "t": "Tiêu đề 1"
  },
  {
-  "i": 1344,
+  "i": 1343,
   "t": "Tiêu đề 2"
  },
  {
-  "i": 1345,
+  "i": 1344,
   "t": "Tiêu đề 3"
  },
  {
-  "i": 1346,
+  "i": 1345,
   "t": "từ điển"
  },
  {
-  "i": 1347,
+  "i": 1346,
   "t": "mô hình"
  },
  {
-  "i": 1348,
+  "i": 1347,
   "t": "Cắt"
  },
  {
-  "i": 1349,
+  "i": 1348,
   "t": "Sao chép"
  },
  {
-  "i": 1350,
+  "i": 1349,
   "t": "Dán"
  },
  {
-  "i": 1351,
+  "i": 1350,
   "t": "Chọn từ"
  },
  {
-  "i": 1352,
+  "i": 1351,
   "t": "Chọn dòng"
  },
  {
-  "i": 1353,
+  "i": 1352,
   "t": "Chọn tất cả"
  },
  {
-  "i": 1354,
+  "i": 1353,
   "t": "Căn trái"
  },
  {
-  "i": 1355,
+  "i": 1354,
   "t": "Căn giữa"
  },
  {
-  "i": 1356,
+  "i": 1355,
   "t": "Căn phải"
  },
  {
-  "i": 1357,
+  "i": 1356,
   "t": "Canh đều"
  },
  {
-  "i": 1358,
+  "i": 1357,
   "t": "Tìm và thay thế"
  },
  {
-  "i": 1359,
+  "i": 1358,
   "t": "Đếm số chữ"
  },
  {
-  "i": 1360,
+  "i": 1359,
   "t": "Tiền tệ (ký hiệu thuộc về sổ tính; vị trí theo ngôn ngữ giao diện)"
  },
  {
-  "i": 1361,
+  "i": 1360,
   "t": "Đã đặt tiền tệ là \"{}\" (mã: {})"
  },
  {
-  "i": 1362,
+  "i": 1361,
   "t": "Yên (¥)"
  },
  {
-  "i": 1363,
+  "i": 1362,
   "t": "Đô la ($)"
  },
  {
-  "i": 1364,
+  "i": 1363,
   "t": "Euro (€)"
  },
  {
-  "i": 1365,
+  "i": 1364,
   "t": "Bảng (£)"
  },
  {
-  "i": 1366,
+  "i": 1365,
   "t": "Won (₩)"
  },
  {
-  "i": 1367,
+  "i": 1366,
   "t": "Nhân dân tệ (¥)"
  },
  {
-  "i": 1368,
+  "i": 1367,
   "t": "Không ký hiệu"
  },
  {
-  "i": 1369,
+  "i": 1368,
   "t": "Tiền tệ…"
  },
  {
-  "i": 1370,
+  "i": 1369,
   "t": "Dạng ngày (lựa chọn được ghi vào tệp)"
  },
  {
-  "i": 1371,
+  "i": 1370,
   "t": "Đã đặt dạng ngày là \"{}\" (mã: {})"
  },
  {
-  "i": 1372,
+  "i": 1371,
   "t": "Ngày ngắn"
  },
  {
-  "i": 1373,
+  "i": 1372,
   "t": "Ngày đầy đủ"
  },
  {
-  "i": 1374,
+  "i": 1373,
   "t": "Tháng và năm"
  },
  {
-  "i": 1375,
+  "i": 1374,
   "t": "Chỉ thứ"
  },
  {
-  "i": 1376,
+  "i": 1375,
   "t": "Ngày…"
  },
  {
-  "i": 1377,
+  "i": 1376,
   "t": "Hãy chọn một vùng hình chữ nhật chứa các giá trị nhập và công thức (lớn hơn 2 hàng 2 cột)"
  },
  {
-  "i": 1378,
+  "i": 1377,
   "t": "Với hai biến thì góc {} phải là công thức"
  },
  {
-  "i": 1379,
+  "i": 1378,
   "t": "Hãy gõ ô nhập (ví dụ: B2)"
  },
  {
-  "i": 1380,
+  "i": 1379,
   "t": "Không có chỗ nào để điền (công thức ở hàng trên, giá trị nhập ở cột bên trái; với hai biến thì công thức ở góc)"
  },
  {
-  "i": 1381,
+  "i": 1380,
   "t": "Bảng dữ liệu: đã điền {} kết quả ({}. Đây là giá trị lúc này, nên nếu sửa giá trị nhập thì hãy chạy lại)"
  },
  {
-  "i": 1382,
+  "i": 1381,
   "t": "Hai biến"
  },
  {
-  "i": 1383,
+  "i": 1382,
   "t": "Một biến"
  },
  {
-  "i": 1384,
+  "i": 1383,
   "t": "Vừa mở xong (đợi một chút để cửa sổ hiện ra)"
  },
  {
-  "i": 1385,
+  "i": 1384,
   "t": "Không mở được (thiếu xdg-open): {}"
  },
  {
-  "i": 1386,
+  "i": 1385,
   "t": "Số"
  },
  {
-  "i": 1387,
+  "i": 1386,
   "t": "Có"
  },
  {
-  "i": 1388,
+  "i": 1387,
   "t": "Không"
  },
  {
-  "i": 1389,
+  "i": 1388,
   "t": "Có/Không"
  },
  {
-  "i": 1390,
+  "i": 1389,
   "t": "Thuộc tính tùy chỉnh"
  },
  {
-  "i": 1391,
+  "i": 1390,
   "t": "Thêm thuộc tính"
  },
  {
-  "i": 1392,
+  "i": 1391,
   "t": "+ Thêm tác giả"
  },
  {
-  "i": 1393,
+  "i": 1392,
   "t": "Thêm tác giả — một tên"
  },
  {
-  "i": 1394,
+  "i": 1393,
   "t": "Đã thêm tác giả (sẽ vào xlsx khi lưu)"
  },
  {
-  "i": 1395,
+  "i": 1394,
   "t": "Đã bỏ tác giả “{}”"
  },
  {
-  "i": 1396,
+  "i": 1395,
   "t": "“{}” đã có trong danh sách tác giả"
  },
  {
-  "i": 1397,
+  "i": 1396,
   "t": "Thêm thuộc tính 1/3 — tên"
  },
  {
-  "i": 1398,
+  "i": 1397,
   "t": "Thêm thuộc tính 2/3 — kiểu (chữ / số / ngày / có-không. Enter trống = chữ)"
  },
  {
-  "i": 1399,
+  "i": 1398,
   "t": "Thêm thuộc tính 3/3 — giá trị của {}"
  },
  {
-  "i": 1400,
+  "i": 1399,
   "t": "Tên trống (chưa thêm gì)"
  },
  {
-  "i": 1401,
+  "i": 1400,
   "t": "“{}” không đọc được thành số (chưa thêm gì)"
  },
  {
-  "i": 1402,
+  "i": 1401,
   "t": "Đã ghi nhận thuộc tính “{}” (sẽ vào xlsx khi lưu)"
  },
  {
-  "i": 1403,
+  "i": 1402,
   "t": "Đã bỏ thuộc tính “{}”"
  },
  {
-  "i": 1404,
+  "i": 1403,
   "t": "Đã đóng sổ tính (bây giờ là sổ tính mới)"
  },
  {
-  "i": 1405,
+  "i": 1404,
   "t": "Không có trang tính nào để in (tất cả đều bị ẩn)"
  },
  {
-  "i": 1406,
+  "i": 1405,
   "t": "Phân loại hình"
  },
  {
-  "i": 1407,
+  "i": 1406,
   "t": "Hình cơ bản"
  },
  {
-  "i": 1408,
+  "i": 1407,
   "t": "Mũi tên khối"
  },
  {
-  "i": 1409,
+  "i": 1408,
   "t": "Hình công thức"
  },
  {
-  "i": 1410,
+  "i": 1409,
   "t": "Lưu đồ"
  },
  {
-  "i": 1411,
+  "i": 1410,
   "t": "Sao và dải băng"
  },
  {
-  "i": 1412,
+  "i": 1411,
   "t": "Chú thích"
  },
  {
-  "i": 1413,
+  "i": 1412,
   "t": "Áp dụng hoa văn…"
  },
  {
-  "i": 1414,
+  "i": 1413,
   "t": "Chuyển sắc…"
  },
  {
-  "i": 1415,
+  "i": 1414,
   "t": "Màu nền hoa văn…"
  },
  {
-  "i": 1416,
+  "i": 1415,
   "t": "Chuyển sắc"
  },
  {
-  "i": 1417,
+  "i": 1416,
   "t": "Hoa văn"
  },
  {
-  "i": 1418,
+  "i": 1417,
   "t": "Ô này chưa có hoa văn (hãy chọn ở “Áp dụng hoa văn” trước)"
  },
  {
-  "i": 1419,
+  "i": 1418,
   "t": "Đã đặt hoa văn “{}” (mặt trước dùng màu tô hiện tại; đổi nền ở “Màu nền hoa văn”)"
  },
  {
-  "i": 1420,
+  "i": 1419,
   "t": "Đã đặt chuyển sắc “{}” (từ màu tô hiện tại sang trắng)"
  },
  {
-  "i": 1421,
+  "i": 1420,
   "t": "Nền hoa văn trở lại trắng"
  },
  {
-  "i": 1422,
+  "i": 1421,
   "t": "Đã đặt nền hoa văn thành {}"
  },
  {
-  "i": 1423,
+  "i": 1422,
   "t": "Tam giác"
  },
  {
-  "i": 1424,
+  "i": 1423,
   "t": "Tam giác vuông"
  },
  {
-  "i": 1425,
+  "i": 1424,
   "t": "Hình bình hành"
  },
  {
-  "i": 1426,
+  "i": 1425,
   "t": "Hình thang"
  },
  {
-  "i": 1427,
+  "i": 1426,
   "t": "Ngũ giác"
  },
  {
-  "i": 1428,
+  "i": 1427,
   "t": "Lục giác"
  },
  {
-  "i": 1429,
+  "i": 1428,
   "t": "Bát giác"
  },
  {
-  "i": 1430,
+  "i": 1429,
   "t": "Chữ thập"
  },
  {
-  "i": 1431,
+  "i": 1430,
   "t": "Mũi tên trái"
  },
  {
-  "i": 1432,
+  "i": 1431,
   "t": "Mũi tên lên"
  },
  {
-  "i": 1433,
+  "i": 1432,
   "t": "Mũi tên xuống"
  },
  {
-  "i": 1434,
+  "i": 1433,
   "t": "Mũi tên trái-phải"
  },
  {
-  "i": 1435,
+  "i": 1434,
   "t": "Mũi tên lên-xuống"
  },
  {
-  "i": 1436,
+  "i": 1435,
   "t": "Dấu cộng"
  },
  {
-  "i": 1437,
+  "i": 1436,
   "t": "Dấu trừ"
  },
  {
-  "i": 1438,
+  "i": 1437,
   "t": "Dấu nhân"
  },
  {
-  "i": 1439,
+  "i": 1438,
   "t": "Dấu bằng"
  },
  {
-  "i": 1440,
+  "i": 1439,
   "t": "Dấu khác"
  },
  {
-  "i": 1441,
+  "i": 1440,
   "t": "Xử lý"
  },
  {
-  "i": 1442,
+  "i": 1441,
   "t": "Quyết định"
  },
  {
-  "i": 1443,
+  "i": 1442,
   "t": "Kết thúc"
  },
  {
-  "i": 1444,
+  "i": 1443,
   "t": "Tài liệu"
  },
  {
-  "i": 1445,
+  "i": 1444,
   "t": "Đầu nối"
  },
  {
-  "i": 1446,
+  "i": 1445,
   "t": "Sao 4 cánh"
  },
  {
-  "i": 1447,
+  "i": 1446,
   "t": "Sao 5 cánh"
  },
  {
-  "i": 1448,
+  "i": 1447,
   "t": "Sao 6 cánh"
  },
  {
-  "i": 1449,
+  "i": 1448,
   "t": "Sao 8 cánh"
  },
  {
-  "i": 1450,
+  "i": 1449,
   "t": "Chú thích chữ nhật"
  },
  {
-  "i": 1451,
+  "i": 1450,
   "t": "Chú thích bầu dục"
  },
  {
-  "i": 1452,
+  "i": 1451,
   "t": "Lưới 6,25%"
  },
  {
-  "i": 1453,
+  "i": 1452,
   "t": "Lưới 12,5%"
  },
  {
-  "i": 1454,
+  "i": 1453,
   "t": "Lưới 25%"
  },
  {
-  "i": 1455,
+  "i": 1454,
   "t": "Lưới 50%"
  },
  {
-  "i": 1456,
+  "i": 1455,
   "t": "Sọc chéo"
  },
  {
-  "i": 1457,
+  "i": 1456,
   "t": "Bàn cờ"
  },
  {
-  "i": 1458,
+  "i": 1457,
   "t": "Ngang (trái sang phải)"
  },
  {
-  "i": 1459,
+  "i": 1458,
   "t": "Dọc (trên xuống dưới)"
  },
  {
-  "i": 1460,
+  "i": 1459,
   "t": "Chéo (trên trái xuống phải)"
  },
  {
-  "i": 1461,
+  "i": 1460,
   "t": "Chéo (dưới trái lên phải)"
  },
  {
-  "i": 1462,
+  "i": 1461,
   "t": "Màu nền hoa văn — sáu chữ số thập lục RRGGBB (vd. FFFFFF. Enter trống = trắng)"
  },
  {
-  "i": 1463,
+  "i": 1462,
   "t": "Chữ bên trong"
  },
  {
-  "i": 1464,
+  "i": 1463,
   "t": "Canh lề"
  },
  {
-  "i": 1465,
+  "i": 1464,
   "t": "Đã đổi canh lề chữ"
  },
  {
-  "i": 1466,
+  "i": 1465,
   "t": "Vị trí dọc"
  },
  {
-  "i": 1467,
+  "i": 1466,
   "t": "Đã đổi vị trí dọc của chữ"
  },
  {
-  "i": 1468,
+  "i": 1467,
   "t": "•"
  },
  {
-  "i": 1469,
+  "i": 1468,
   "t": "1."
  },
  {
-  "i": 1470,
+  "i": 1469,
   "t": "Đã đổi kiểu danh sách"
  },
  {
-  "i": 1471,
+  "i": 1470,
   "t": "Hiệu ứng"
  },
  {
-  "i": 1472,
+  "i": 1471,
   "t": "Đã bật/tắt viết dọc"
  },
  {
-  "i": 1473,
+  "i": 1472,
   "t": "Gạch ngang"
  },
  {
-  "i": 1474,
+  "i": 1473,
   "t": "Đã bật/tắt gạch ngang"
  },
  {
-  "i": 1475,
+  "i": 1474,
   "t": "Chỉ số trên"
  },
  {
-  "i": 1476,
+  "i": 1475,
   "t": "Đã bật/tắt chỉ số trên"
  },
  {
-  "i": 1477,
+  "i": 1476,
   "t": "Chỉ số dưới"
  },
  {
-  "i": 1478,
+  "i": 1477,
   "t": "Ô này chưa có ghi chú"
  },
  {
-  "i": 1479,
+  "i": 1478,
   "t": "Đã đánh dấu đã giải quyết"
  },
  {
-  "i": 1480,
+  "i": 1479,
   "t": "Đã bỏ dấu đã giải quyết"
  },
  {
-  "i": 1481,
+  "i": 1480,
   "t": "Trả lời trống (chưa thêm gì)"
  },
  {
-  "i": 1482,
+  "i": 1481,
   "t": "Đã trả lời ghi chú ở {} (sẽ giữ khi lưu)"
  },
  {
-  "i": 1483,
+  "i": 1482,
   "t": "Thêm trả lời — sẽ vào cuối luồng này"
  },
  {
-  "i": 1484,
+  "i": 1483,
   "t": "Dấu điểm"
  },
  {
-  "i": 1485,
+  "i": 1484,
   "t": "Dấu"
  },
  {
-  "i": 1486,
+  "i": 1485,
   "t": "Cao nhất"
  },
  {
-  "i": 1487,
+  "i": 1486,
   "t": "Thấp nhất"
  },
  {
-  "i": 1488,
+  "i": 1487,
   "t": "Đầu"
  },
  {
-  "i": 1489,
+  "i": 1488,
   "t": "Cuối"
  },
  {
-  "i": 1490,
+  "i": 1489,
   "t": "Đã đổi dấu điểm"
  },
  {
-  "i": 1491,
+  "i": 1490,
   "t": "Không có xử lý ô trống hay trục dọc chung (đường này đã nung sẵn các số lúc chèn)"
  },
  {
-  "i": 1492,
+  "i": 1491,
   "t": "Đã ẩn công thức (không hiện ở thanh công thức; giá trị vẫn thấy)"
  },
  {
-  "i": 1493,
+  "i": 1492,
   "t": "Đã đánh dấu ẩn công thức (có hiệu lực khi bảo vệ trang tính)"
  },
  {
-  "i": 1494,
+  "i": 1493,
   "t": "Không còn ẩn công thức"
  },
  {
-  "i": 1495,
+  "i": 1494,
   "t": "(công thức đang bị ẩn)"
  },
  {
-  "i": 1496,
+  "i": 1495,
   "t": "Đã thoát chỉnh sửa điểm"
  },
  {
-  "i": 1497,
+  "i": 1496,
   "t": "Hình này không có đỉnh (dùng cho đường và hình tự do)"
  },
  {
-  "i": 1498,
+  "i": 1497,
   "t": "Chỉnh sửa điểm: kéo một điểm / Ctrl+bấm để thêm hoặc bớt / bấm đúp để đổi giữa góc và cong"
  },
  {
-  "i": 1499,
+  "i": 1498,
   "t": "Không bớt được nữa (một đường cần hai điểm)"
  },
  {
-  "i": 1500,
+  "i": 1499,
   "t": "Đã bớt một đỉnh"
  },
  {
-  "i": 1501,
+  "i": 1500,
   "t": "Đã thêm một đỉnh"
  },
  {
-  "i": 1502,
+  "i": 1501,
   "t": "Điểm này thành góc"
  },
  {
-  "i": 1503,
+  "i": 1502,
   "t": "Điểm này thành cong"
  },
  {
-  "i": 1504,
+  "i": 1503,
   "t": "Đã giữ một điểm (Ctrl+bấm để thêm/bớt)"
  },
  {
-  "i": 1505,
+  "i": 1504,
   "t": "Hình tự do (tạo bằng điểm)"
  },
  {
-  "i": 1506,
+  "i": 1505,
   "t": "Hãy chọn hai hình (Ctrl+bấm để thêm)"
  },
  {
-  "i": 1507,
+  "i": 1506,
   "t": "Hình này không ghép được (không lấy được đường bao bằng điểm)"
  },
  {
-  "i": 1508,
+  "i": 1507,
   "t": "Không còn gì — hai hình không chồng nhau"
  },
  {
-  "i": 1509,
+  "i": 1508,
   "t": "Hợp"
  },
  {
-  "i": 1510,
+  "i": 1509,
   "t": "Giao"
  },
  {
-  "i": 1511,
+  "i": 1510,
   "t": "Trừ"
  },
  {
-  "i": 1512,
+  "i": 1511,
   "t": "Đã {} (đã đổi thành đường bao nên không khôi phục được hình gốc và góc xoay)"
  },
  {
-  "i": 1513,
+  "i": 1512,
   "t": "Tên “{}” = {} (chỉ dùng ở trang này)"
  },
  {
-  "i": 1514,
+  "i": 1513,
   "t": "Tên “{}” = {} (dùng được từ mọi trang)"
  },
  {
-  "i": 1515,
+  "i": 1514,
   "t": "Phạm vi của tên “{}” = {}"
  },
  {
-  "i": 1516,
+  "i": 1515,
   "t": "Toàn sổ làm việc (dùng từ mọi trang)"
  },
  {
-  "i": 1517,
+  "i": 1516,
   "t": "Chỉ trang này"
  },
  {
-  "i": 1518,
+  "i": 1517,
   "t": "Hiện danh sách chú thích"
  },
  {
-  "i": 1519,
+  "i": 1518,
   "t": "Đóng danh sách chú thích"
  },
  {
-  "i": 1520,
+  "i": 1519,
   "t": "Hiện ghi chú trên ô"
  },
  {
-  "i": 1521,
+  "i": 1520,
   "t": "Ẩn ghi chú trên ô"
  },
  {
-  "i": 1522,
+  "i": 1521,
   "t": "Chú thích trên ô này ({})"
  },
  {
-  "i": 1523,
+  "i": 1522,
   "t": "Chú thích của tôi"
  },
  {
-  "i": 1524,
+  "i": 1523,
   "t": "Tất cả chú thích ({} trong toàn sổ làm việc)"
  },
  {
-  "i": 1525,
+  "i": 1524,
   "t": "Chọn mức độ xóa (mọi mức đều hoàn tác được bằng Ctrl+Z)"
  },
  {
-  "i": 1526,
+  "i": 1525,
   "t": "Đã mở danh sách chú thích (toàn sổ làm việc; bấm vào một dòng để nhảy tới vị trí đó)"
  },
  {
-  "i": 1527,
+  "i": 1526,
   "t": "Đã đóng danh sách chú thích"
  },
  {
-  "i": 1528,
+  "i": 1527,
   "t": "Bạn sẽ ẩn danh (các chú thích viết từ nay sẽ không kèm tên)"
  },
  {
-  "i": 1529,
+  "i": 1528,
   "t": "Các chú thích viết từ nay sẽ ký tên “{}” (những chú thích đã viết không thay đổi)"
  },
  {
-  "i": 1530,
+  "i": 1529,
   "t": "Đã gỡ chú thích trên {} (Ctrl+Z khôi phục lại)"
  },
  {
-  "i": 1531,
+  "i": 1530,
   "t": "Chưa đặt tên ký (điền “Tên ký chú thích” trong cài đặt nâng cao để chỉ xóa chú thích của mình)"
  },
  {
-  "i": 1532,
+  "i": 1531,
   "t": "Không có chú thích nào của {}"
  },
  {
-  "i": 1533,
+  "i": 1532,
   "t": "Đã xóa {} mục của bạn (trong đó {} chuỗi bị xóa trọn. Trả lời của người khác vẫn được giữ. Ctrl+Z khôi phục lại)"
  },
  {
-  "i": 1534,
+  "i": 1533,
   "t": "Sổ làm việc này không có chú thích nào"
  },
  {
-  "i": 1535,
+  "i": 1534,
   "t": "Đã xóa toàn bộ {} chú thích trong sổ làm việc (Ctrl+Z khôi phục lại)"
  },
  {
-  "i": 1536,
+  "i": 1535,
   "t": "Vị trí"
  },
  {
-  "i": 1537,
+  "i": 1536,
   "t": "Tác giả"
  },
  {
-  "i": 1538,
+  "i": 1537,
   "t": "Trạng thái"
  },
  {
-  "i": 1539,
+  "i": 1538,
   "t": "Tên ký chú thích"
  },
  {
-  "i": 1540,
+  "i": 1539,
   "t": "Tên ký chú thích — tên để lại trong chú thích (Enter với ô trống = ẩn danh)"
  },
  {
-  "i": 1541,
+  "i": 1540,
   "t": "(ẩn danh)"
  },
  {
-  "i": 1542,
+  "i": 1541,
   "t": "{} chú thích"
  },
  {
-  "i": 1543,
+  "i": 1542,
   "t": "Đã sắp xếp theo {}"
  },
  {
-  "i": 1544,
+  "i": 1543,
   "t": "Sổ làm việc này không có chú thích nào (thêm bằng “Thêm chú thích” trong menu chuột phải)"
  },
  {
-  "i": 1545,
+  "i": 1544,
   "t": "{} trả lời"
  },
  {
-  "i": 1546,
+  "i": 1545,
   "t": "✓ Đã giải quyết"
  },
  {
-  "i": 1547,
+  "i": 1546,
   "t": "Hãy chọn các cột để làm slicer (bao nhiêu tùy ý; bấm vào ☑ để đóng slicer đó; chỉ cách hiển thị, dữ liệu không đổi)"
  },
  {
-  "i": 1548,
+  "i": 1547,
   "t": "Đã đóng slicer của cột {}"
  },
  {
-  "i": 1549,
+  "i": 1548,
   "t": "Cài đặt slicer"
  },
  {
-  "i": 1550,
+  "i": 1549,
   "t": "Chiều cao"
  },
  {
-  "i": 1551,
+  "i": 1550,
   "t": "Giữ tỉ lệ"
  },
  {
-  "i": 1552,
+  "i": 1551,
   "t": "Bật"
  },
  {
-  "i": 1553,
+  "i": 1552,
   "t": "Số cột nút"
  },
  {
-  "i": 1554,
+  "i": 1553,
   "t": "Vị trí"
  },
  {
-  "i": 1555,
+  "i": 1554,
   "t": "Tự động (từ phải sang)"
  },
  {
-  "i": 1556,
+  "i": 1555,
   "t": "Trả về vị trí tự động"
  },
  {
-  "i": 1557,
+  "i": 1556,
   "t": "Đã trả vị trí về tự động (từ phải sang trái)"
  },
  {
-  "i": 1558,
+  "i": 1557,
   "t": "Kích thước: {}×{}px"
  },
  {
-  "i": 1559,
+  "i": 1558,
   "t": "Kéo để di chuyển (dùng “Trả về vị trí tự động” trong cài đặt để đưa nó lại vào hàng)"
  },
  {
-  "i": 1560,
+  "i": 1559,
   "t": "Kéo tiêu đề để di chuyển. Kích thước và vị trí chỉ thay đổi cách hiển thị; dữ liệu đã lưu không đổi"
  },
  {
-  "i": 1561,
+  "i": 1560,
   "t": "Tự động sửa ký hiệu toán"
  },
  {
-  "i": 1562,
+  "i": 1561,
   "t": "Bật (gõ \\alpha sẽ thành α)"
  },
  {
-  "i": 1563,
+  "i": 1562,
   "t": "Tự động sửa ký hiệu toán: bật (gõ dấu phân cách thì ký hiệu hiện ra; Backspace đưa lại cách viết cũ)"
  },
  {
-  "i": 1564,
+  "i": 1563,
   "t": "Tự động sửa ký hiệu toán: tắt (bạn gõ thế nào thì giữ nguyên thế đó)"
  },
  {
-  "i": 1565,
+  "i": 1564,
   "t": "Đã đổi {} thành ký hiệu (Backspace đưa lại cách viết cũ)"
  },
  {
-  "i": 1566,
+  "i": 1565,
   "t": "Mẹo phím: gõ một chữ để chọn tab, gõ tiếp một chữ nữa để bấm nút (Esc để dừng)"
  },
  {
-  "i": 1567,
+  "i": 1566,
   "t": "Đã đóng mẹo phím"
  },
  {
-  "i": 1568,
+  "i": 1567,
   "t": "Tab {} (gõ một chữ để bấm nút; Esc để dừng)"
  },
  {
-  "i": 1569,
+  "i": 1568,
   "t": "Không có chữ đó (“{}”)"
  },
  {
-  "i": 1570,
+  "i": 1569,
   "t": "Đã chọn cột (Shift+Space để chọn hàng)"
  },
  {
-  "i": 1571,
+  "i": 1570,
   "t": "Đã chọn hàng (Ctrl+Space để chọn cột)"
  },
  {
-  "i": 1572,
+  "i": 1571,
   "t": "key.{} trong cài đặt là tên thao tác không xác định"
  },
  {
-  "i": 1573,
+  "i": 1572,
   "t": "Không đọc được phím tắt của key.{} trong cài đặt: {}"
  },
  {
-  "i": 1574,
+  "i": 1573,
   "t": "Phím tắt {} bị tranh chấp giữa {} và {} ({} thắng)"
  },
  {
-  "i": 1575,
+  "i": 1574,
   "t": "Có thay đổi chưa lưu — Ctrl+S để lưu, nhấn Esc lần nữa để bỏ và đóng"
  },
  {
-  "i": 1576,
+  "i": 1575,
   "t": "Ctrl+S lưu (khi lưu, các hàm trong ô được tính lại) / Esc đóng / Tab thụt lề"
  },
  {
-  "i": 1577,
+  "i": 1576,
   "t": "Gõ để lọc"
  },
  {
-  "i": 1578,
+  "i": 1577,
   "t": "Không có trong danh sách (nhấn Enter để dùng như đã gõ)"
  },
  {
-  "i": 1579,
+  "i": 1578,
   "t": "Hàng đầu tiên (không có hàng trên để sao chép)"
  },
  {
-  "i": 1580,
+  "i": 1579,
   "t": "Cột A (không có cột bên trái để sao chép)"
  },
  {
-  "i": 1581,
+  "i": 1580,
   "t": "Kéo xuống hoặc sang phải để sao chép (nhấp đúp: theo độ dài cột bên cạnh)"
  },
  {
-  "i": 1582,
+  "i": 1581,
   "t": "Không có cột bên cạnh để lấy độ dài (hai bên đều trống)"
  },
  {
-  "i": 1583,
+  "i": 1582,
   "t": "Đã sao chép {} vào {}"
  },
  {
-  "i": 1584,
+  "i": 1583,
   "t": "Đã dán {} ô (kèm định dạng)"
  },
  {
-  "i": 1585,
+  "i": 1584,
   "t": "Đã dán {} ô (chữ từ ứng dụng khác nên giữ nguyên định dạng)"
  },
  {
-  "i": 1586,
+  "i": 1585,
   "t": "Đã chọn toàn bộ trang tính"
  },
  {
-  "i": 1587,
+  "i": 1586,
   "t": "Đã chọn cột {} (toàn bộ cột)"
  },
  {
-  "i": 1588,
+  "i": 1587,
   "t": "Đã chọn cột {}–{} (toàn bộ cột)"
  },
  {
-  "i": 1589,
+  "i": 1588,
   "t": "Đã chọn hàng {} (toàn bộ hàng)"
  },
  {
-  "i": 1590,
+  "i": 1589,
   "t": "Đã chọn hàng {}–{} (toàn bộ hàng)"
  },
  {
-  "i": 1591,
+  "i": 1590,
   "t": "Đã lưu vào {} (văn bản thuần)"
  },
  {
-  "i": 1592,
+  "i": 1591,
   "t": "{} ({} dòng) — mở dưới dạng văn bản thuần; khi lưu cũng là văn bản thuần"
  },
  {
-  "i": 1593,
+  "i": 1592,
   "t": "Macro và văn bản thuần"
  },
  {
-  "i": 1594,
+  "i": 1593,
   "t": "Không tạo được: {}"
  },
  {
-  "i": 1595,
+  "i": 1594,
   "t": "Đã tạo {} và mở bằng {} (lưu lại là gọi được từ ô)"
  },
  {
-  "i": 1596,
+  "i": 1595,
   "t": "Đã tạo {} nhưng không mở được: {}"
  },
  {
-  "i": 1597,
+  "i": 1596,
   "t": "Chọn để mở bằng trình soạn thảo"
  },
  {
-  "i": 1598,
+  "i": 1597,
   "t": "Đã mở {} bằng {}"
  },
  {
-  "i": 1599,
+  "i": 1598,
   "t": "Đã bắt đầu ghi. Thao tác của bạn thành mã Python (nhấn lần nữa để dừng)"
  },
  {
-  "i": 1600,
+  "i": 1599,
   "t": "Đã ghi vào {} ({} dòng) — mở bằng {}"
  },
  {
-  "i": 1601,
+  "i": 1600,
   "t": "Đã ghi vào {} ({} dòng)"
  },
  {
-  "i": 1602,
+  "i": 1601,
   "t": "Không ghi được: {}"
  },
  {
-  "i": 1603,
+  "i": 1602,
   "t": "Đích của AI"
  },
  {
-  "i": 1604,
+  "i": 1603,
   "t": "Hiện dùng được không"
  },
  {
-  "i": 1605,
+  "i": 1604,
   "t": "Mô hình AI (JO_AI_MODEL)"
  },
  {
-  "i": 1606,
+  "i": 1605,
   "t": "(mặc định của đích)"
  },
  {
-  "i": 1607,
+  "i": 1606,
   "t": "Dùng được"
  },
  {
-  "i": 1608,
+  "i": 1607,
   "t": "Chưa biết cho tới khi thử (nối tới đích bên dưới)"
  },
  {
-  "i": 1609,
+  "i": 1608,
   "t": "Đã mở bảng bên trái (Hỏi AI)"
  },
  {
-  "i": 1610,
+  "i": 1609,
   "t": "Đã đóng bảng bên trái"
  },
  {
-  "i": 1611,
+  "i": 1610,
   "t": "Đã mở bảng bên phải (Thiết lập ô)"
  },
  {
-  "i": 1612,
+  "i": 1611,
   "t": "Đã đóng bảng bên phải"
  },
  {
-  "i": 1613,
+  "i": 1612,
   "t": "Trò chuyện"
  },
  {
-  "i": 1614,
+  "i": 1613,
   "t": "Thiết lập ô"
  },
  {
-  "i": 1615,
+  "i": 1614,
   "t": "Ngắt dòng"
  },
  {
-  "i": 1616,
+  "i": 1615,
   "t": "Định dạng số"
  },
  {
-  "i": 1617,
+  "i": 1616,
   "t": "Dấu phân cách hàng nghìn"
  },
  {
-  "i": 1618,
+  "i": 1617,
   "t": "Mã hàng (0000)"
  },
  {
-  "i": 1619,
+  "i": 1618,
   "t": "Bút kẻ viền"
  },
  {
-  "i": 1620,
+  "i": 1619,
   "t": "Mảnh"
  },
  {
-  "i": 1621,
+  "i": 1620,
   "t": "Đậm"
  },
  {
-  "i": 1622,
+  "i": 1621,
   "t": "Đôi"
  },
  {
-  "i": 1623,
+  "i": 1622,
   "t": "Kẻ ở đâu (có thể bấm liên tiếp)"
  },
  {
-  "i": 1624,
+  "i": 1623,
   "t": "Xoá"
  },
  {
-  "i": 1625,
+  "i": 1624,
   "t": "Hỏi AI"
  },
  {
-  "i": 1626,
+  "i": 1625,
   "t": "Áp dụng"
  },
  {
-  "i": 1627,
+  "i": 1626,
   "t": "Đã bỏ đề xuất (không thay đổi gì)"
  },
  {
-  "i": 1628,
+  "i": 1627,
   "t": "Bấm vào đây để viết; Enter để gửi"
  },
  {
-  "i": 1629,
+  "i": 1628,
   "t": "Gửi"
  },
  {
-  "i": 1630,
+  "i": 1629,
   "t": "Đang nghĩ…"
  },
  {
-  "i": 1631,
+  "i": 1630,
   "t": "Hiện tại: {}"
  },
  {
-  "i": 1632,
+  "i": 1631,
   "t": "Đã trở lại bảng tính (bảng trò chuyện vẫn mở)"
  },
  {
-  "i": 1633,
+  "i": 1632,
   "t": "Sẽ sửa như sau."
  },
  {
-  "i": 1634,
+  "i": 1633,
   "t": "Đã có đề xuất (đọc ở bảng bên trái rồi bấm Áp dụng)"
  },
  {
-  "i": 1635,
+  "i": 1634,
   "t": "Đã trả lời (bảng bên trái)"
  },
  {
-  "i": 1636,
+  "i": 1635,
   "t": "Đã đưa định dạng số về Chung"
  },
  {
-  "i": 1637,
+  "i": 1636,
   "t": "Chưa có yêu cầu"
  },
  {
-  "i": 1638,
+  "i": 1637,
   "t": "Kịch bản đang chạy (xin đợi cho xong)"
  },
  {
-  "i": 1639,
+  "i": 1638,
   "t": "Đang chạy đề xuất…"
  },
  {
-  "i": 1640,
+  "i": 1639,
   "t": "Đã áp dụng."
  },
  {
-  "i": 1641,
+  "i": 1640,
   "t": "Đã áp dụng đề xuất (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1642,
+  "i": 1641,
   "t": "Đã đặt định dạng số là {}"
  },
  {
-  "i": 1643,
+  "i": 1642,
   "t": "Đã áp dụng đề xuất: {} (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1644,
+  "i": 1643,
   "t": "Kịch bản thất bại: {}"
  },
  {
-  "i": 1645,
+  "i": 1644,
   "t": "Kịch bản không chạy: {}"
  },
  {
-  "i": 1646,
+  "i": 1645,
   "t": "Đã có câu chữ đã sửa (đọc ở bảng bên trái rồi bấm Áp dụng)"
  },
  {
-  "i": 1647,
+  "i": 1646,
   "t": "Đã thay phần đang chọn (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1648,
+  "i": 1647,
   "t": "Đã chèn sau con trỏ (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1649,
+  "i": 1648,
   "t": "Đã trở lại nội dung (bảng trò chuyện vẫn mở)"
  },
  {
-  "i": 1650,
+  "i": 1649,
   "t": "Câu chữ sẽ chèn (chưa bấm thì chưa chèn)"
  },
  {
-  "i": 1651,
+  "i": 1650,
   "t": "Đã bỏ câu chữ (không thay đổi gì)"
  },
  {
-  "i": 1652,
+  "i": 1651,
   "t": "AI"
  },
  {
-  "i": 1653,
+  "i": 1652,
   "t": "Thụt lề"
  },
  {
-  "i": 1654,
+  "i": 1653,
   "t": "Đã đặt thụt lề {} bậc"
  },
  {
-  "i": 1655,
+  "i": 1654,
   "t": "Không thể thu hẹp thụt lề thêm nữa"
  },
  {
-  "i": 1656,
+  "i": 1655,
   "t": "Không thể nới rộng thụt lề thêm nữa"
  },
  {
-  "i": 1657,
+  "i": 1656,
   "t": "Hướng chữ"
  },
  {
-  "i": 1658,
+  "i": 1657,
   "t": "Đã đặt hướng chữ là {}"
  },
  {
-  "i": 1659,
+  "i": 1658,
   "t": "Định dạng có điều kiện"
  },
  {
-  "i": 1660,
+  "i": 1659,
   "t": "Số âm màu đỏ"
  },
  {
-  "i": 1661,
+  "i": 1660,
   "t": "Trùng lặp"
  },
  {
-  "i": 1662,
+  "i": 1661,
   "t": "Duy nhất"
  },
  {
-  "i": 1663,
+  "i": 1662,
   "t": "Thang màu"
  },
  {
-  "i": 1664,
+  "i": 1663,
   "t": "Biểu tượng"
  },
  {
-  "i": 1665,
+  "i": 1664,
   "t": "Bảng"
  },
  {
-  "i": 1666,
+  "i": 1665,
   "t": "{} hàng × {} cột — hiện ở hàng {}, cột {}"
  },
  {
-  "i": 1667,
+  "i": 1666,
   "t": "Thêm hàng trên"
  },
  {
-  "i": 1668,
+  "i": 1667,
   "t": "Thêm hàng dưới"
  },
  {
-  "i": 1669,
+  "i": 1668,
   "t": "Xoá hàng"
  },
  {
-  "i": 1670,
+  "i": 1669,
   "t": "Thêm cột trái"
  },
  {
-  "i": 1671,
+  "i": 1670,
   "t": "Thêm cột phải"
  },
  {
-  "i": 1672,
+  "i": 1671,
   "t": "Xoá cột"
  },
  {
-  "i": 1673,
+  "i": 1672,
   "t": "Đã thêm hàng phía trên"
  },
  {
-  "i": 1674,
+  "i": 1673,
   "t": "Đã thêm hàng phía dưới"
  },
  {
-  "i": 1675,
+  "i": 1674,
   "t": "Đã thêm cột bên trái"
  },
  {
-  "i": 1676,
+  "i": 1675,
   "t": "Đã thêm cột bên phải"
  },
  {
-  "i": 1677,
+  "i": 1676,
   "t": "Đã xoá hàng (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1678,
+  "i": 1677,
   "t": "Đã xoá cột (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1679,
+  "i": 1678,
   "t": "Không thể xoá hàng cuối cùng (xoá cả bảng là thao tác khác)"
  },
  {
-  "i": 1680,
+  "i": 1679,
   "t": "Không thể xoá cột cuối cùng (xoá cả bảng là thao tác khác)"
  },
  {
-  "i": 1681,
+  "i": 1680,
   "t": "Công thức"
  },
  {
-  "i": 1682,
+  "i": 1681,
   "t": "Sửa công thức"
  },
  {
-  "i": 1683,
+  "i": 1682,
   "t": "Đang sửa công thức (Enter dựng lại, Esc huỷ)"
  },
  {
-  "i": 1684,
+  "i": 1683,
   "t": "Đoạn này không có hình"
  },
  {
-  "i": 1685,
+  "i": 1684,
   "t": "Đã thu nhỏ hình"
  },
  {
-  "i": 1686,
+  "i": 1685,
   "t": "Đã phóng to hình"
  },
  {
-  "i": 1687,
+  "i": 1686,
   "t": "{:.0}×{:.0}mm"
  },
  {
-  "i": 1688,
+  "i": 1687,
   "t": "Thứ tự chồng"
  },
  {
-  "i": 1689,
+  "i": 1688,
   "t": "Đưa lên trên cùng"
  },
  {
-  "i": 1690,
+  "i": 1689,
   "t": "Đưa lên trên"
  },
  {
-  "i": 1691,
+  "i": 1690,
   "t": "Đưa xuống dưới"
  },
  {
-  "i": 1692,
+  "i": 1691,
   "t": "Đưa xuống dưới cùng"
  },
  {
-  "i": 1693,
+  "i": 1692,
   "t": "Xoay trái"
  },
  {
-  "i": 1694,
+  "i": 1693,
   "t": "Xoay phải"
  },
  {
-  "i": 1695,
+  "i": 1694,
   "t": "Lật ngang"
  },
  {
-  "i": 1696,
+  "i": 1695,
   "t": "Lật dọc"
  },
  {
-  "i": 1697,
+  "i": 1696,
   "t": "Khác"
  },
  {
-  "i": 1698,
+  "i": 1697,
   "t": "Đang chọn một hình"
  },
  {
-  "i": 1699,
+  "i": 1698,
   "t": "Đang chọn một ảnh"
  },
  {
-  "i": 1700,
+  "i": 1699,
   "t": "Chưa chọn hình hay ảnh nào (hãy bấm vào một cái trên trang tính)"
  },
  {
-  "i": 1701,
+  "i": 1700,
   "t": "Trang — thiết lập cho cả tài liệu"
  },
  {
-  "i": 1702,
+  "i": 1701,
   "t": "Đầu trang và chân trang"
  },
  {
-  "i": 1703,
+  "i": 1702,
   "t": "Sửa"
  },
  {
-  "i": 1704,
+  "i": 1703,
   "t": "Hình mờ"
  },
  {
-  "i": 1705,
+  "i": 1704,
   "t": "Màu trang"
  },
  {
-  "i": 1706,
+  "i": 1705,
   "t": "Bạn có thể hỏi về vùng đang chọn. Nếu điều gì đó sẽ thay đổi trang tính, bạn được xem trước nó sẽ làm gì — chưa bấm thì trang tính không đổi."
  },
  {
-  "i": 1707,
+  "i": 1706,
   "t": "vd: sắp xếp theo doanh số giảm dần / tô màu 5 dòng đầu / thêm dòng tổng"
  },
  {
-  "i": 1708,
+  "i": 1707,
   "t": "Đề xuất thay đổi (chưa bấm thì chưa có gì xảy ra)"
  },
  {
-  "i": 1709,
+  "i": 1708,
   "t": "Bạn có thể hỏi về phần đang chọn. Nếu câu chữ sẽ được viết lại, bạn được xem câu chữ mới trước — chưa bấm thì chưa chèn vào."
  },
  {
-  "i": 1710,
+  "i": 1709,
   "t": "vd: viết đoạn này lịch sự hơn / ngắn bằng một nửa / xem giúp có cứng quá không"
  },
  {
-  "i": 1711,
+  "i": 1710,
   "t": "Đang hiện bình luận (dạng bóng chú thích ở ô)"
  },
  {
+  "i": 1711,
+  "t": "Đích của mô hình tại chỗ"
+ },
+ {
   "i": 1712,
-  "t": "Sao chép định dạng"
+  "t": "chỉ ở trong máy này"
  },
  {
   "i": 1713,
-  "t": "Kiểu"
+  "t": "đi ra khỏi máy này"
  },
  {
   "i": 1714,
-  "t": "Danh sách trường"
+  "t": "Cách đặt đích"
  },
  {
   "i": 1715,
-  "t": "Phóng to chữ màn hình"
+  "t": "ai_url / ai_model trong settings.toml (biến môi trường OFFICE_URL được ưu tiên)"
  },
  {
   "i": 1716,
-  "t": "Thu nhỏ chữ màn hình"
+  "t": "Sao chép định dạng"
  },
  {
   "i": 1717,
-  "t": "AI"
+  "t": "Kiểu"
  },
  {
   "i": 1718,
-  "t": "In"
+  "t": "Danh sách trường"
  },
  {
   "i": 1719,
-  "t": "Bố cục in"
+  "t": "Phóng to chữ màn hình"
  },
  {
   "i": 1720,
-  "t": "Đích"
+  "t": "Thu nhỏ chữ màn hình"
  },
  {
   "i": 1721,
-  "t": "Tóm tắt"
+  "t": "AI"
  },
  {
   "i": 1722,
-  "t": "Viết lại"
+  "t": "In"
  },
  {
   "i": 1723,
-  "t": "Lịch sự hơn"
+  "t": "Bố cục in"
  },
  {
   "i": 1724,
-  "t": "Dễ hiểu hơn"
+  "t": "Đích"
  },
  {
   "i": 1725,
-  "t": "Dịch"
+  "t": "Tóm tắt"
  },
  {
   "i": 1726,
-  "t": "furigana"
+  "t": "Viết lại"
  },
  {
   "i": 1727,
-  "t": "Viết tiếp"
+  "t": "Lịch sự hơn"
  },
  {
   "i": 1728,
-  "t": "Thành bảng"
+  "t": "Dễ hiểu hơn"
  },
  {
   "i": 1729,
-  "t": "Yêu cầu"
+  "t": "Dịch"
  },
  {
   "i": 1730,
-  "t": "Ruby"
+  "t": "furigana"
  },
  {
   "i": 1731,
-  "t": "Viết dọc"
+  "t": "Viết tiếp"
  },
  {
   "i": 1732,
-  "t": "Hướng văn bản"
+  "t": "Thành bảng"
  },
  {
   "i": 1733,
-  "t": "Phân bố đều"
+  "t": "Yêu cầu"
  },
  {
   "i": 1734,
-  "t": "Chèn chú thích hình/bảng"
+  "t": "Ruby"
  },
  {
   "i": 1735,
-  "t": "Mở URL"
+  "t": "Viết dọc"
  },
  {
   "i": 1736,
-  "t": "Chỉ mục"
+  "t": "Hướng văn bản"
  },
  {
   "i": 1737,
-  "t": "Ghi chú Aozora"
+  "t": "Phân bố đều"
  },
  {
   "i": 1738,
-  "t": "Cú pháp Denden"
+  "t": "Chèn chú thích hình/bảng"
  },
  {
   "i": 1739,
-  "t": "Ghi lại thay đổi"
+  "t": "Mở URL"
  },
  {
   "i": 1740,
-  "t": "Hiển thị thay đổi"
+  "t": "Chỉ mục"
  },
  {
   "i": 1741,
-  "t": "Kiểm lỗi"
+  "t": "Ghi chú Aozora"
  },
  {
   "i": 1742,
-  "t": "Ký tự"
+  "t": "Cú pháp Denden"
  },
  {
   "i": 1743,
-  "t": "Kiểm tra chính tả"
+  "t": "Ghi lại thay đổi"
  },
  {
   "i": 1744,
-  "t": "Từ điển đồng nghĩa"
+  "t": "Hiển thị thay đổi"
  },
  {
   "i": 1745,
-  "t": "Chuyển đổi sai"
+  "t": "Kiểm lỗi"
  },
  {
   "i": 1746,
-  "t": "Viết không thống nhất"
+  "t": "Ký tự"
  },
  {
   "i": 1747,
-  "t": "Tổng phụ"
+  "t": "Kiểm tra chính tả"
  },
  {
   "i": 1748,
-  "t": "Cách tính"
+  "t": "Từ điển đồng nghĩa"
  },
  {
   "i": 1749,
-  "t": "Chữ phải sang trái"
+  "t": "Chuyển đổi sai"
  },
  {
   "i": 1750,
-  "t": "Hướng trang tính"
+  "t": "Viết không thống nhất"
  },
  {
   "i": 1751,
-  "t": "Python"
+  "t": "Tổng phụ"
  },
  {
   "i": 1752,
-  "t": "Hộp kiểm"
+  "t": "Cách tính"
  },
  {
   "i": 1753,
-  "t": "Liên kết ngoài"
+  "t": "Chữ phải sang trái"
  },
  {
   "i": 1754,
-  "t": "Biểu đồ đề xuất"
+  "t": "Hướng trang tính"
  },
  {
   "i": 1755,
-  "t": "Chế độ đồng soạn thảo"
+  "t": "Python"
  },
  {
   "i": 1756,
-  "t": "Lịch sử phiên bản"
+  "t": "Hộp kiểm"
  },
  {
   "i": 1757,
-  "t": "Trò chuyện"
+  "t": "Liên kết ngoài"
  },
  {
   "i": 1758,
-  "t": "Bảo vệ"
+  "t": "Biểu đồ đề xuất"
  },
  {
   "i": 1759,
-  "t": "Mã hóa"
+  "t": "Chế độ đồng soạn thảo"
  },
  {
   "i": 1760,
-  "t": "Thêm chữ ký số"
+  "t": "Lịch sử phiên bản"
  },
  {
   "i": 1761,
-  "t": "Macro"
+  "t": "Trò chuyện"
  },
  {
   "i": 1762,
-  "t": "Quản lý plugin"
+  "t": "Bảo vệ"
  },
  {
   "i": 1763,
-  "t": "Hiển thị số 0"
+  "t": "Mã hóa"
  },
  {
   "i": 1764,
-  "t": "Thu phóng về 100%"
+  "t": "Thêm chữ ký số"
  },
  {
   "i": 1765,
-  "t": "Chủ đề giao diện"
+  "t": "Macro"
  },
  {
   "i": 1766,
-  "t": "Cửa sổ theo dõi"
+  "t": "Quản lý plugin"
  },
  {
   "i": 1767,
-  "t": "AutoSum"
+  "t": "Hiển thị số 0"
  },
  {
   "i": 1768,
-  "t": "Ghi lại thao tác"
+  "t": "Thu phóng về 100%"
  },
  {
   "i": 1769,
-  "t": "Xóa nhận xét"
+  "t": "Chủ đề giao diện"
  },
  {
   "i": 1770,
-  "t": "Solver"
+  "t": "Cửa sổ theo dõi"
  },
  {
   "i": 1771,
-  "t": "Văn bản thành dữ liệu"
+  "t": "AutoSum"
  },
  {
   "i": 1772,
-  "t": "Xóa mũi tên truy vết"
+  "t": "Ghi lại thao tác"
  },
  {
   "i": 1773,
-  "t": "Điền"
+  "t": "Xóa nhận xét"
  },
  {
   "i": 1774,
-  "t": "Bỏ lọc"
+  "t": "Solver"
  },
  {
   "i": 1775,
-  "t": "Viết macro"
+  "t": "Văn bản thành dữ liệu"
  },
  {
   "i": 1776,
-  "t": "Tách cột"
+  "t": "Xóa mũi tên truy vết"
  },
  {
   "i": 1777,
-  "t": "Chú thích hình/bảng"
+  "t": "Điền"
  },
  {
   "i": 1778,
-  "t": "Mục lục hình/bảng"
+  "t": "Bỏ lọc"
  },
  {
   "i": 1779,
-  "t": "Cập nhật mục lục hình/bảng"
+  "t": "Viết macro"
  },
  {
   "i": 1780,
-  "t": "Liên kết ngoài (nhập theo giá trị)"
+  "t": "Tách cột"
  },
  {
   "i": 1781,
-  "t": "Toán & Lượng giác"
+  "t": "Chú thích hình/bảng"
  },
  {
   "i": 1782,
-  "t": "Hiển thị công thức"
+  "t": "Mục lục hình/bảng"
  },
  {
   "i": 1783,
-  "t": "Hướng chữ (phải sang trái)"
+  "t": "Cập nhật mục lục hình/bảng"
  },
  {
   "i": 1784,
-  "t": "Xử lý văn bản"
+  "t": "Liên kết ngoài (nhập theo giá trị)"
  },
  {
   "i": 1785,
-  "t": "Ngày & Giờ"
+  "t": "Toán & Lượng giác"
  },
  {
   "i": 1786,
-  "t": "Dùng gần đây"
+  "t": "Hiển thị công thức"
  },
  {
   "i": 1787,
-  "t": "In cả đường lưới"
+  "t": "Hướng chữ (phải sang trái)"
  },
  {
   "i": 1788,
-  "t": "Cập nhật mục lục"
+  "t": "Xử lý văn bản"
  },
  {
   "i": 1789,
-  "t": "Cột sọc xen kẽ"
+  "t": "Ngày & Giờ"
  },
  {
   "i": 1790,
-  "t": "In cả tiêu đề"
+  "t": "Dùng gần đây"
  },
  {
   "i": 1791,
-  "t": "Ẩn chi tiết"
+  "t": "In cả đường lưới"
  },
  {
   "i": 1792,
-  "t": "Xóa trùng lặp"
+  "t": "Cập nhật mục lục"
  },
  {
   "i": 1793,
-  "t": "Chèn hàm"
+  "t": "Cột sọc xen kẽ"
  },
  {
   "i": 1794,
-  "t": "Dạng CSV"
+  "t": "In cả tiêu đề"
  },
  {
   "i": 1795,
-  "t": "Khoá ô"
+  "t": "Ẩn chi tiết"
  },
  {
   "i": 1796,
-  "t": "Bảng dữ liệu"
+  "t": "Xóa trùng lặp"
  },
  {
   "i": 1797,
-  "t": "Điền nhanh"
+  "t": "Chèn hàm"
  },
  {
   "i": 1798,
-  "t": "Danh sách"
+  "t": "Dạng CSV"
  },
  {
   "i": 1799,
-  "t": "Dán tên"
+  "t": "Khoá ô"
  },
  {
   "i": 1800,
-  "t": "Khôi phục"
+  "t": "Bảng dữ liệu"
  },
  {
   "i": 1801,
-  "t": "Ngắt dòng trong ô"
+  "t": "Điền nhanh"
  },
  {
   "i": 1802,
-  "t": "Tần suất sao lưu"
+  "t": "Danh sách"
  },
  {
   "i": 1803,
-  "t": "Tệp .py mới"
+  "t": "Dán tên"
  },
  {
   "i": 1804,
-  "t": "Thêm vào vùng in"
+  "t": "Khôi phục"
  },
  {
   "i": 1805,
-  "t": "Thu vừa tờ giấy"
+  "t": "Ngắt dòng trong ô"
  },
  {
   "i": 1806,
-  "t": "Chỗ hết tờ giấy"
+  "t": "Tần suất sao lưu"
  },
  {
   "i": 1807,
-  "t": "Mở thư mục"
+  "t": "Tệp .py mới"
  },
  {
   "i": 1808,
-  "t": "Cách hiện giá trị"
+  "t": "Thêm vào vùng in"
  },
  {
   "i": 1809,
-  "t": "Thao tác được phép"
+  "t": "Thu vừa tờ giấy"
  },
  {
   "i": 1810,
+  "t": "Chỗ hết tờ giấy"
+ },
+ {
+  "i": 1811,
+  "t": "Mở thư mục"
+ },
+ {
+  "i": 1812,
+  "t": "Cách hiện giá trị"
+ },
+ {
+  "i": 1813,
+  "t": "Thao tác được phép"
+ },
+ {
+  "i": 1814,
   "t": "Gợi ý chỉ đọc"
  }
 ]

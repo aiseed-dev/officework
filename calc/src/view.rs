@@ -4046,10 +4046,24 @@ impl Render for Calc {
                     .child(row(ui::t!("書体(OFFICE_FONT)"),
                         std::env::var("OFFICE_FONT")
                             .unwrap_or_else(|_| ui::t!("(文書に従う)").into())))
-                    .child(row(ui::t!("校正の宛先"), {
+                    // **手元のモデルと校正の宛先。** 会のサーバーへ向けられる
+                    // ので(2026-08-15)、外に出るかどうかもここに出す —
+                    // 「外に出ない」は宛先を変えたら嘘になる
+                    .child(row(ui::t!("手元のモデルの宛先"), {
                         let ep = ui::Endpoint::default();
-                        format!("{}:{} / {}", ep.host, ep.port, ep.model)
+                        format!(
+                            "{}({})",
+                            ep.shown(),
+                            if ep.is_local() {
+                                ui::t!("この機械の中だけ")
+                            } else {
+                                ui::t!("外へ出ます")
+                            }
+                        )
                     }))
+                    .child(row(ui::t!("宛先の決め方"),
+                        ui::t!("settings.toml の ai_url / ai_model(環境変数 OFFICE_URL が優先)")
+                            .to_string()))
                     .child(row(ui::t!("Python の経路"),
                         std::env::var("JO_PYTHON")
                             .unwrap_or_else(|_| ui::t!("(自動: .venv → python3)").into())))
