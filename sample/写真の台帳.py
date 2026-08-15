@@ -131,33 +131,38 @@ def 台帳を作る():
         目次.cell(row=i + 1, column=5).value = 名
 
         ws = b.add_sheet(名)
-        # 見出しと欄。**人にしか分からない欄だけ**を空けておく —
-        # 撮影日と画素は写真自身が持っている(EXIF)
+        # **欄を先に置く**(発注者 2026-08-15)。開いてすぐ書ける所に無いと
+        # 書かれない。写真は下に置く — 見るのは後、書くのが先。
+        # 横に送らないと欄が見えない置き方(写真の右)はやめた
         ws.cell(row=1, column=1).value = 品名
         ws.cell(row=1, column=1).font = sheet.Font(bold=True, size=14)
-        欄 = [("撮影日", 撮 or "(EXIF に撮影日なし)"), ("画素", 画素),
-              ("ファイル名", p.name), ("場所", ""), ("覚え書き", "")]
+        欄 = [("撮影日", 撮), ("画素", 画素), ("ファイル名", p.name),
+              ("場所", None), ("覚え書き", None)]
         for r, (名前, 値) in enumerate(欄, start=3):
-            k = ws.cell(row=r, column=6)
+            k = ws.cell(row=r, column=1)
             k.value = 名前
             k.font = sheet.Font(bold=True)
-            v = ws.cell(row=r, column=7)
-            if 名前 == "撮影日" and 撮:
-                v.value = 撮
-                v.number_format = "yyyy/m/d h:mm"
+            v = ws.cell(row=r, column=2)
+            if 名前 == "撮影日":
+                if 撮:
+                    v.value = 撮
+                    v.number_format = "yyyy/m/d h:mm"
+                else:
+                    v.value = "(EXIF に撮影日なし)"
             else:
                 v.value = 値
-        for col, w in (("A", 3), ("B", 14), ("C", 14), ("D", 14), ("E", 14),
-                       ("F", 14), ("G", 40)):
+        # 「場所」と「覚え書き」は**人(か AI)が書く欄**。空けておく
+        for col, w in (("A", 14), ("B", 44), ("C", 14), ("D", 14), ("E", 14)):
             ws.column_dimensions[col].width = w
 
-        # **写真は大きく。** 長辺 640px で置く(画面でも紙でも見える大きさ)
+        # **写真は欄の下。** 長辺 640px で置く(画面でも紙でも見える大きさ)
+        写真の行 = 3 + len(欄) + 1
         比 = 見せる長辺 / max(*(int(x) for x in 画素.split("×"))) if 画素 and "×" in 画素 else 1.0
         w_px = int(round(int(画素.split("×")[0]) * 比)) if 画素 and "×" in 画素 else 見せる長辺
         h_px = int(round(int(画素.split("×")[1]) * 比)) if 画素 and "×" in 画素 else 見せる長辺
-        ws.add_image(p.read_bytes(), at="B3", width_px=w_px, height_px=h_px)
-        # 写真の下に行が来ないよう、収まる高さを B3 から配る
-        for r in range(3, 3 + 12):
+        ws.add_image(p.read_bytes(), at=f"A{写真の行}", width_px=w_px, height_px=h_px)
+        # 写真の下に行が食い込まないよう、収まる高さを配る
+        for r in range(写真の行, 写真の行 + 12):
             ws.row_dimensions[r].height = (h_px / 12.0) * 72.0 / 96.0
 
     b.save(台帳)
