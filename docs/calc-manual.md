@@ -720,8 +720,9 @@ and "Plugins", listing the same folder of .py files two different ways.
 - **Record actions**: what you do by hand accumulates as Python lines; stop and
   it becomes a .py
 - **New .py**: create a script in the folder and open it
-- **List**: the .py files in `~/.config/officework/plugins`; pick one to run it
-  (in the sandbox; b = workbook, s = sheet)
+- **List**: the .py files in `~/.config/officework/plugins`; picking one **opens
+  it in the editor**. To run one, type `@name` in Data > Python — there is no
+  ribbon button that runs a macro yet
 - **Open the folder**: opens `~/.config/officework/plugins` in your file manager
 
 The folder is still named `plugins` — renaming it would strand files people
