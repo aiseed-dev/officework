@@ -1800,3 +1800,76 @@ mod fold_print_tests {
         assert_eq!(s.breaks, vec![305.0], "切れ目が折った後の位置になっていない");
     }
 }
+
+#[cfg(test)]
+mod midashi_tests {
+    use super::*;
+
+    fn font() -> Vec<u8> {
+        let (f, _) = crate::font::for_document(None).expect("日本語フォントが要る");
+        crate::font::load(f).expect("読めない")
+    }
+
+    /// **見出しは見出しに見える**(2026-08-15)。
+    ///
+    /// 前は `ParaStyle::Heading` を組版が一度も見ておらず、docx の見出しが
+    /// 本文と同じ大きさ・太さで組まれていた(実機で報告書.docx を開いて
+    /// 気づいた)。読み書きは前から正しかったので、直したのは見えだけ。
+    #[test]
+    fn 見出しは本文より大きく太く組まれる() {
+        let data = font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let mk = |style: ParaStyle| {
+            let mut d = Document::plain("");
+            d.blocks = vec![Block::Para(Paragraph {
+                runs: vec![Run { text: "見出し".into(), size_pt: None, font: None,
+                                 fmt: Default::default() }],
+                style,
+                ..Default::default()
+            })];
+            d
+        };
+        let 本文 = layout(&mk(ParaStyle::Body), &m, &frame);
+        let h1 = layout(&mk(ParaStyle::Heading(1)), &m, &frame);
+        let h2 = layout(&mk(ParaStyle::Heading(2)), &m, &frame);
+
+        let 大きさ = |s: &Sheet| s.lines[0].cells[0].size_pt;
+        assert!(大きさ(&h1) > 大きさ(&本文), "H1 が本文より大きくない");
+        assert!(大きさ(&h2) > 大きさ(&本文), "H2 が本文より大きくない");
+        assert!(大きさ(&h1) > 大きさ(&h2), "H1 が H2 より大きくない");
+        assert!(h1.lines[0].cells[0].fmt.bold, "見出しが太字でない");
+        assert!(!本文.lines[0].cells[0].fmt.bold, "本文まで太字になった");
+    }
+
+    /// **run が自分で大きさを言っていればそちらが勝つ**(docx の作法)。
+    /// 04_月次報告.docx は見出しの run に `w:sz` を持っており、Word でも
+    /// その大きさで出る
+    #[test]
+    fn runの大きさは見出しより強い() {
+        let data = font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let mut d = Document::plain("");
+        d.blocks = vec![Block::Para(Paragraph {
+            runs: vec![Run { text: "見出し".into(), size_pt: Some(9.0), font: None,
+                             fmt: Default::default() }],
+            style: ParaStyle::Heading(1),
+            ..Default::default()
+        })];
+        let s = layout(&d, &m, &frame);
+        assert_eq!(s.lines[0].cells[0].size_pt, 9.0, "run の指定が負けた");
+        // 大きさは run が勝つが、太字は見出しの見え方として掛かる
+        assert!(s.lines[0].cells[0].fmt.bold, "見出しの太字が効いていない");
+    }
+
+    /// 行の高さも見出しに追従する。**しないと次の行と重なる**
+    #[test]
+    fn 見出しの行は高さも追従する() {
+        let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let p = |style: ParaStyle| Paragraph { style, ..Default::default() };
+        assert!(lh_of(&p(ParaStyle::Heading(1)), &frame) > lh_of(&p(ParaStyle::Body), &frame),
+                "H1 の行が本文と同じ高さ(重なる)");
+        assert_eq!(lh_of(&p(ParaStyle::Body), &frame), 6.0, "本文の高さが変わった");
+    }
+}

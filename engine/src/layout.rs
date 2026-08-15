@@ -161,6 +161,11 @@ pub struct Frame {
 /// 段落を行長で折る。x はまだ置かない(呼ぶ側が揃え・字下げを決める)。
 pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
               hyphenate: bool, notes: &mut NoteCount, base: f32) -> Vec<Vec<Cell>> {
+    // **見出しは大きく太く組む**([`head_scale`])。大きさは「基準」を
+    // 持ち上げる形にするので、run が自分で大きさを言っていればそちらが勝つ
+    // (docx の作法どおり — run の指定はスタイルより強い)
+    let scale = head_scale(para.style);
+    let base = base * scale;
     let mut done: Vec<Vec<Cell>> = Vec::new();
     let mut cur: Vec<Cell> = Vec::new();
     let mut w_cur = 0.0f32;
@@ -265,6 +270,19 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
     if !cur.is_empty() || done.is_empty() {
         done.push(cur);
     }
+    // 太字は**紙面のセルにだけ**掛ける。模型の run は触らない —
+    // 触ると開いて保存しただけで文書に `<w:b/>` が焼き付く。
+    // `CharFormat.bold` は bool なので「未指定」と「明示的に太字でない」を
+    // 区別できず、見出しの中で太字を外している run も太字になる。
+    // **平らな見出しより害は小さい**と見て倒した(styles.xml を読むように
+    // したら、そこで正しく解ける)
+    if scale > 1.0 {
+        for line in &mut done {
+            for c in line {
+                c.fmt.bold = true;
+            }
+        }
+    }
     done
 }
 
@@ -298,8 +316,38 @@ pub(super) fn hyphen_split(cs: &[(char, f32, usize)], size_pt: f32, m: &Metrics,
 /// セルの中の余白(mm)
 pub(super) const CELL_PAD: f32 = 1.4;
 
+/// **見出しの見え方**(2026-08-15)。基準の字に対する倍率で持つ。
+///
+/// 前は `ParaStyle::Heading` を**組版が一度も見ていなかった** — docx の
+/// `pStyle` も styles.xml も読めていて、模型にも `Heading(n)` として
+/// 入っているのに、本文と同じ大きさで組まれていた。生成した納品書も
+/// 既存の見本(報告書.docx)も見出しが平らで、実機で見て気づいた。
+///
+/// **模型には触らない。** 見出しであること(何であるか)は模型の持ち物で、
+/// 大きく太く組むこと(どう見えるか)は組版の持ち物。読み書きは前のまま
+/// なので、開いて保存しても文書は変わらない。
+///
+/// 倍率は自前で書き出す styles.xml と揃う値にした(基準 10.5pt のとき
+/// H1≒15.8pt・H2≒14.2pt・H3≒12.6pt。styles.xml は 16/14/12pt)。
+/// **絶対の pt にしないのは**、基準の字が大きい文書で見出しが本文より
+/// 小さくなるのを避けるため。
+///
+/// **まだ読んでいない物**: 文書自身の styles.xml。そこに書かれた本当の
+/// 大きさ・色・前後の空きは読めていないので、ここは既定の見え方でしかない。
+/// 見出しの前後の空きも入れていない(段の送りに関わるので別便)
+pub(super) fn head_scale(style: ParaStyle) -> f32 {
+    match style {
+        ParaStyle::Heading(1) => 1.5,
+        ParaStyle::Heading(2) => 1.35,
+        ParaStyle::Heading(3) => 1.2,
+        // 4 以降も見出しではあるので、本文よりは大きくする
+        ParaStyle::Heading(_) => 1.1,
+        _ => 1.0,
+    }
+}
+
 pub(super) fn lh_of(para: &Paragraph, frame: &Frame) -> f32 {
-    frame.line_height_mm * para.spacing()
+    frame.line_height_mm * para.spacing() * head_scale(para.style)
 }
 
 /// 節ごとの用紙を、**ブロックの番号で引ける形**に開く。
@@ -409,7 +457,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 font: first.and_then(|r| r.font.clone()),
                                 off: 0,
                             }],
-                            y_mm: y + frame.line_height_mm * para.spacing(),
+                            y_mm: y + lh_of(para, frame),
                             from_body: true,
                             byte0: para_byte0,
                             cell: None,
@@ -437,7 +485,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         sheet.lines.push(Line {
                             cells: Vec::new(), y_mm: y, from_body: true,
                             byte0: para_byte0 + cap_len, cell: None });
-                        y += frame.line_height_mm * para.spacing();
+                        y += lh_of(para, frame);
                         continue;
                     }
                     // 揃え。**行の幅と行長の差を、どこに置くか**の話でしかない
@@ -521,7 +569,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     let byte0 = para_byte0
                         + cells.iter().map(|c| c.off).min().unwrap_or(0);
                     sheet.lines.push(Line { cells, y_mm: y, from_body: true, byte0, cell: None });
-                    y += frame.line_height_mm * para.spacing();
+                    y += lh_of(para, frame);
                 }
                 // 画像は段落の下に置く。幅が行長を超えるなら比例で縮める
                 for im in para.images.iter().chain(para.images_new.iter()) {
