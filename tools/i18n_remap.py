@@ -35,7 +35,12 @@ def load(p):
 def save(p, obj):
     # **元の形のまま1行で書く。** 整形すると 12 個の材料が
     # 4,482 行に膨らんで、中身の差分が見えなくなる(2026-08-10 に一度やった)
-    Path(p).write_text(json.dumps(obj, ensure_ascii=False), encoding="utf-8")
+    # **1行1件で書く**(ui/gen_lang.py と同じ形)。詰めて書くと
+    # ファイルが1行になり、次の差分が「全部変わった」に見える —
+    # 触った所だけが差分に出るのが、見られる差分の条件(2026-08-16)
+    Path(p).write_text(
+        json.dumps(obj, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
+    )
 
 
 # 材料がどの keys.json に合わせて振ってあるかの印。**二度振りを止めるため**。
