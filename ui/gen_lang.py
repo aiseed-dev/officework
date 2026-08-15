@@ -125,7 +125,10 @@ def registered():
     正本(locales.TAGS)に無い物が生えていたら止める — 綴り違いの
     ファイルが静かにもう1組できるのが、この正本が防ぐ事故そのもの"""
     langs = []
-    for p in sorted((ROOT / "ui/src").glob("ribbon_*.rs")):
+    # **リボンの表は face(gpui を持たない層)へ移った**(2026-08-15)。
+    # ここを直し忘れると langs が空になり、**13言語の登録が丸ごと消える**
+    # (実際に一度消した — 静かに空にするので気づきにくい)
+    for p in sorted((ROOT / "face/src").glob("ribbon_*.rs")):
         if p.name == "ribbon_tables.rs":
             continue
         m = p.stem[len("ribbon_"):]

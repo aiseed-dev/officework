@@ -21,7 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from ribbon_parse import tables_or_die  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent / "vendor/web-apps/apps"
-RIBBON = Path(__file__).resolve().parent / "src/ribbon.rs"
+# **リボンの表は face(gpui を持たない層)へ移った**(2026-08-15)。
+# ここを直し忘れると、13言語の生成が丸ごと止まる
+RIBBON = Path(__file__).resolve().parent.parent / "face/src/ribbon.rs"
 
 # 本家に無い・こちらで足した語の対訳。ここに無い未解決語が出たら
 # このスクリプトは止まる — その語をここに足してから出し直す

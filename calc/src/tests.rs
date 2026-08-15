@@ -6495,3 +6495,62 @@ mod rec_honest_tests {
         });
     }
 }
+
+#[cfg(test)]
+mod web_export_tests {
+    use crate::*;
+
+    /// **Web に書き出す**(発注者 2026-08-15「calc に web 書き出しを作ると
+    /// 楽になるでしょう」)。肝は**表示形式を通すこと** — 画面と同じ字が
+    /// 頁に出ないと、台帳を正本にする意味が半分になる。
+    #[gpui::test]
+    fn 書き出した頁は画面と同じ字を出す(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        let dir = std::env::temp_dir().join("officework-web-test");
+        let _ = std::fs::create_dir_all(&dir);
+        let p = dir.join("t.html");
+        c.update(cx, |this, _cx| {
+            {
+                let sh = &mut this.book.sheets[0];
+                // 見出し(太字)
+                let mut h = Cell::input("番号");
+                h.fmt.bold = true;
+                sh.set(Pos::new(0, 0), h);
+                let mut h2 = Cell::input("単価");
+                h2.fmt.bold = true;
+                sh.set(Pos::new(0, 1), h2);
+                // 品番は「0000」の書式(1 → 0001)、単価は円
+                let mut a = Cell::input("1");
+                a.fmt.number_format = Some("0000".into());
+                sh.set(Pos::new(1, 0), a);
+                let mut b = Cell::input("360");
+                b.fmt.number_format = Some("¥#,##0".into());
+                b.fmt.align = sheet::model::HAlign::Right;
+                sh.set(Pos::new(1, 1), b);
+                // 逃げる字
+                sh.set(Pos::new(2, 0), Cell::input("<b>&"));
+            }
+            this.sync_input();
+            this.write_html(&p);
+        });
+        let s = std::fs::read_to_string(&p).expect("頁が書けていない");
+
+        // **表示形式が通る**(ここが本命)
+        assert!(s.contains("<td>0001</td>"), "0000 の書式が効いていない:\n{s}");
+        assert!(s.contains("¥360"), "円の書式が効いていない:\n{s}");
+        // 1行目は見出し(th)
+        assert!(s.contains("<th"), "見出しが th になっていない");
+        assert!(s.contains(">番号</th>"), "見出しの字が出ていない");
+        // 揃えと太字は持っていく
+        assert!(s.contains("class=\"r\""), "右揃えが出ていない");
+        // **逃げる字**(頁が壊れない)
+        assert!(s.contains("&lt;b&gt;&amp;"), "< > & を逃がしていない:\n{s}");
+        assert!(!s.contains("<b>&"), "生の < がそのまま出ている");
+        // **JavaScript を使わない**
+        assert!(!s.to_lowercase().contains("<script"), "script が入っている");
+        assert!(!s.to_lowercase().contains("onclick"), "on… の属性が入っている");
+        // 文字コードは UTF-8
+        assert!(s.contains("charset=\"utf-8\""), "UTF-8 と名乗っていない");
+        let _ = std::fs::remove_file(&p);
+    }
+}

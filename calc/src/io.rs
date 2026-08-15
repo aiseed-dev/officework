@@ -611,6 +611,139 @@ impl Calc {
         }
     }
 
+    /// **いまのシートを Web の頁(HTML)に書き出す**(発注者 2026-08-15
+    /// 「calc に web 書き出しを作ると楽になるでしょう」)。
+    ///
+    /// 台帳を正本にして頁を作る仕事は Python の台本でやってきたが、
+    /// **1枚の表を1枚の頁にするだけなら、アプリから直に出せたほうが早い** —
+    /// Python を持っていない人にも届く。
+    ///
+    /// 決め:
+    ///
+    /// - **JavaScript を使わない。** 表と字だけ。電波の細い所でも古い機械でも開く
+    /// - **表示形式を通す**(`format_value`)。`0001` は `0001` のまま、
+    ///   `¥#,##0` は `¥360` で出る。画面と同じ字が頁に出るのが筋
+    /// - **1行目は見出し**(`<th>`)にする。表の頭は見出しである方が多い
+    /// - **太字と揃えは持っていく**(それ以外の書式は落とす)
+    /// - **式は結果を出す。** 頁を見る人に式は要らない
+    /// - **結合は扱わない。** 落とすのではなく**そう言う** — 結合のあるシートは
+    ///   状態行で件数を告げる(黙って崩さない)
+    pub(crate) fn write_html(&mut self, p: &std::path::Path) {
+        use std::fmt::Write as _;
+        let s = &self.book.sheets[self.active];
+        let (rows, cols) = s.extent();
+        let cols = cols.max(1);
+        let d1904 = self.book.date1904;
+        let esc = |t: &str| {
+            t.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+        };
+        let 題 = s.name.clone();
+        let mut out = String::new();
+        let _ = write!(
+            out,
+            concat!(
+                "<!doctype html>\n<html lang=\"ja\"><head><meta charset=\"utf-8\">\n",
+                "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n",
+                "<title>{}</title>\n<style>\n",
+                "body{{font-family:sans-serif;max-width:60em;margin:0 auto;padding:1em;",
+                "line-height:1.7;color:#222}}\n",
+                "table{{border-collapse:collapse;width:100%}}\n",
+                "th,td{{border:1px solid #ccc;padding:.4em .6em}}\n",
+                "th{{background:#eff2f4;text-align:left}}\n",
+                ".r{{text-align:right}}.c{{text-align:center}}.b{{font-weight:bold}}\n",
+                "</style></head><body>\n<h1>{}</h1>\n<table>\n"
+            ),
+            esc(&題),
+            esc(&題)
+        );
+        let mut 結合 = 0usize;
+        for r in 0..rows {
+            out.push_str("<tr>");
+            for c in 0..cols {
+                let pos = sheet::Pos::new(r, c);
+                let cell = s.get(pos);
+                let 字 = cell
+                    .map(|x| {
+                        sheet::model::format_value(
+                            &x.value,
+                            x.fmt.number_format.as_deref(),
+                            d1904,
+                        )
+                    })
+                    .unwrap_or_default();
+                let mut 印 = String::new();
+                if let Some(x) = cell {
+                    if x.fmt.bold {
+                        印.push('b');
+                    }
+                    match x.fmt.align {
+                        sheet::model::HAlign::Right => 印.push('r'),
+                        sheet::model::HAlign::Center => 印.push('c'),
+                        _ => {}
+                    }
+                }
+                let 組 = if 印.is_empty() {
+                    String::new()
+                } else {
+                    format!(" class=\"{}\"", 印.chars().map(|ch| ch.to_string())
+                        .collect::<Vec<_>>().join(" "))
+                };
+                let 名 = if r == 0 { "th" } else { "td" };
+                let _ = write!(out, "<{名}{組}>{}</{名}>", esc(&字));
+            }
+            out.push_str("</tr>\n");
+        }
+        結合 += s.merges.len();
+        out.push_str(concat!(
+            "</table>\n<p style=\"color:#666;font-size:.9em\">",
+            "この頁は表計算の台帳から作っています。</p>\n</body></html>\n"
+        ));
+
+        match std::fs::write(p, out.as_bytes()) {
+            Ok(()) => {
+                // 入らない物を黙らない
+                self.status = ui::tf!(
+                    "Web に書き出しました: {}(いまのシートだけ。式は結果、JavaScript なし){}",
+                    p.display(),
+                    if 結合 > 0 {
+                        format!("。**結合 {結合} 箇所は頁では効きません**")
+                    } else {
+                        String::new()
+                    }
+                )
+                .into();
+            }
+            Err(e) => {
+                self.status = ui::tf!("Web に書き出せませんでした: {}", e).into();
+            }
+        }
+    }
+
+    /// Web に書き出す(場所を訊く)。CSV と同じ流儀 — **self.path は動かさない**
+    pub(crate) fn export_html_dialog(&mut self, cx: &mut Context<Self>) {
+        self.commit();
+        let name = format!("{}.html", self.book.sheets[self.active].name);
+        let ask = cx.background_executor().spawn(async move {
+            rfd::FileDialog::new()
+                .add_filter("Web の頁", &["html"])
+                .set_file_name(&name)
+                .save_file()
+        });
+        cx.spawn(async move |this, cx| {
+            let r = ask.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(mut p) = r {
+                    if p.extension().is_none() {
+                        p.set_extension("html");
+                    }
+                    this.write_html(&p);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     pub(crate) fn a_save(&mut self, _: &ui::Save, _: &mut Window, cx: &mut Context<Self>) {
         // .py の編集面が開いていれば、Ctrl+S はそちらの保存(ブックではない)
         if self.py_edit.is_some() {

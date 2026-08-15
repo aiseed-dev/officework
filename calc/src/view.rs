@@ -3823,6 +3823,15 @@ impl Render for Calc {
                         this.export_csv_dialog(cx);
                         cx.notify()
                     })))
+                // **Web の頁に書き出す**(発注者 2026-08-15)。台帳を正本にして
+                // 頁を作る仕事は Python の台本でやってきたが、1枚の表を1枚の
+                // 頁にするだけなら**アプリから直に出せたほうが早い** —
+                // Python を持っていない人にも届く
+                .child(mk("f-html", ui::t!("Web に書き出す"), true).on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.export_html_dialog(cx);
+                        cx.notify()
+                    })))
                 .child(mk("f-protect", ui::t!("保護する"), true).on_click(cx.listener(
                     |this, _, _, cx| {
                         if let Some(i) =
