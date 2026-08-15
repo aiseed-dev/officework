@@ -178,7 +178,10 @@ impl Render for Writer {
             &[
                 ("copy", None), ("cut", None), ("‖", None), ("fontname", None),
                 ("fontsize", None), ("incfont", None), ("decfont", None),
-                ("changecase", None), ("ruby", None), ("‖", None),
+                ("changecase", None), ("ruby", None),
+                // **ふりがな**(AI)はルビの隣。AI タブを廃した 2026-08-15 に
+                // ここへ移した — 会話では代われない仕事(入るのがルビの書式)
+                ("ai-furigana", None), ("‖", None),
                 ("markers", None),
                 ("numbering", None), ("multilevels", None), ("decoffset", None),
                 ("incoffset", None), ("linespace", None), ("direction", None),
@@ -263,6 +266,9 @@ impl Render for Writer {
         const PLUG_ROWS: &[&[LItem]] = &[&[
             ("plug-macros", Some("マクロ")),
             ("plug-manage", Some("プラグインの管理")),
+            // **マクロを書く**(AI)もここへ。置き場に .py を置く仕事で、
+            // 会話では代われない(2026-08-15、AI タブの廃止で移した)
+            ("ai-macro", Some("マクロを書く")),
         ]];
         let rows: Option<&[&[LItem]]> = match ribbon::WRITER[self.tab].name {
             "ホーム" => Some(HOME_ROWS),

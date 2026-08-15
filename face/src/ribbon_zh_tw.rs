@@ -28,6 +28,7 @@ pub const WRITER: &[Tab] = &[
         c("decfont", "縮小文字", "decfont"),
         c("changecase", "大小寫轉換", "changecase"),
         c("ruby", "注音標示", "ruby"),
+        c("ai-furigana", "注音", "ai-furigana"),
         c("bold", "粗體", "bold"),
         c("italic", "斜體", "italic"),
         c("underline", "下劃線", "underline"),
@@ -151,18 +152,6 @@ pub const WRITER: &[Tab] = &[
     Tab { name: "外掛程式", cmds: &[
         c("plug-macros", "巨集", "plug-macros"),
         c("plug-manage", "管理外掛程式", "plug-manage"),
-    ]},
-    Tab { name: "AI", cmds: &[
-        c("ai-where", "目的地", "ai-where"),
-        c("ai-summary", "摘要", "ai-summary"),
-        c("ai-rewrite", "改寫", "ai-rewrite"),
-        c("ai-polite", "更禮貌", "ai-polite"),
-        c("ai-plain", "更淺白", "ai-plain"),
-        c("ai-translate", "翻譯", "ai-translate"),
-        c("ai-furigana", "注音", "ai-furigana"),
-        c("ai-continue", "續寫", "ai-continue"),
-        c("ai-table", "轉成表格", "ai-table"),
-        c("ai-ask", "提出需求", "ai-ask"),
         c("ai-macro", "撰寫巨集", "ai-macro"),
     ]},
 ];
@@ -388,18 +377,6 @@ pub const CALC: &[Tab] = &[
     Tab { name: "外掛程式", cmds: &[
         c("plug-macros", "巨集", "plug-macros"),
         c("plug-manage", "管理外掛程式", "plug-manage"),
-    ]},
-    Tab { name: "AI", cmds: &[
-        c("ai-where", "目的地", "ai-where"),
-        c("ai-summary", "摘要", "ai-summary"),
-        c("ai-rewrite", "改寫", "ai-rewrite"),
-        c("ai-polite", "更禮貌", "ai-polite"),
-        c("ai-plain", "更淺白", "ai-plain"),
-        c("ai-translate", "翻譯", "ai-translate"),
-        c("ai-furigana", "注音", "ai-furigana"),
-        c("ai-continue", "續寫", "ai-continue"),
-        c("ai-table", "轉成表格", "ai-table"),
-        c("ai-ask", "提出需求", "ai-ask"),
     ]},
 ];
 

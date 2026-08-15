@@ -28,6 +28,7 @@ pub const WRITER: &[Tab] = &[
         c("decfont", "Perkecil Ukuran Huruf", "decfont"),
         c("changecase", "Ubah case", "changecase"),
         c("ruby", "Ruby", "ruby"),
+        c("ai-furigana", "Furigana", "ai-furigana"),
         c("bold", "Tebal", "bold"),
         c("italic", "Miring", "italic"),
         c("underline", "Garis bawah", "underline"),
@@ -151,18 +152,6 @@ pub const WRITER: &[Tab] = &[
     Tab { name: "Plugins", cmds: &[
         c("plug-macros", "Makro", "plug-macros"),
         c("plug-manage", "Kelola plugin", "plug-manage"),
-    ]},
-    Tab { name: "AI", cmds: &[
-        c("ai-where", "Tujuan", "ai-where"),
-        c("ai-summary", "Peringkasan", "ai-summary"),
-        c("ai-rewrite", "Tulis ulang", "ai-rewrite"),
-        c("ai-polite", "Lebih sopan", "ai-polite"),
-        c("ai-plain", "Lebih sederhana", "ai-plain"),
-        c("ai-translate", "Penerjemahan", "ai-translate"),
-        c("ai-furigana", "Furigana", "ai-furigana"),
-        c("ai-continue", "Lanjutkan", "ai-continue"),
-        c("ai-table", "Jadi tabel", "ai-table"),
-        c("ai-ask", "Minta", "ai-ask"),
         c("ai-macro", "Tulis makro", "ai-macro"),
     ]},
 ];
@@ -388,18 +377,6 @@ pub const CALC: &[Tab] = &[
     Tab { name: "Plugins", cmds: &[
         c("plug-macros", "Makro", "plug-macros"),
         c("plug-manage", "Kelola plugin", "plug-manage"),
-    ]},
-    Tab { name: "AI", cmds: &[
-        c("ai-where", "Tujuan", "ai-where"),
-        c("ai-summary", "Peringkasan", "ai-summary"),
-        c("ai-rewrite", "Tulis ulang", "ai-rewrite"),
-        c("ai-polite", "Lebih sopan", "ai-polite"),
-        c("ai-plain", "Lebih sederhana", "ai-plain"),
-        c("ai-translate", "Penerjemahan", "ai-translate"),
-        c("ai-furigana", "Furigana", "ai-furigana"),
-        c("ai-continue", "Lanjutkan", "ai-continue"),
-        c("ai-table", "Jadi tabel", "ai-table"),
-        c("ai-ask", "Minta", "ai-ask"),
     ]},
 ];
 

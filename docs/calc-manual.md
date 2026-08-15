@@ -358,28 +358,31 @@ used in formulas.
   mathtext renders it as an image. Unreadable input is refused with a message
 - **Hyperlink**: right-click or Insert tab. Empty + Enter removes
 
-## AI — transformations and generation by a model
+## AI — talk to it in the left panel
 
-Ten buttons on the AI tab. Because this is a spreadsheet, what's sent is **the
-selected range** and what comes back is **a table (cells) or a formula**.
-**Every response is one Ctrl+Z away.**
+**On 2026-08-15 the AI tab was removed.** Its ten buttons (summarize, rewrite,
+make polite, …) were replaced by **a conversation in the left panel** — you can
+just type "sort this table by sales", and you can ask for things no button
+could express ("turn this into a table with date and amount columns").
 
-- **Destination**: each press cycles local model → Claude (subscription) →
-  Claude (API). **Subscription** means calling the local `claude` command
-  (Claude Code CLI), so no API key is needed. Unavailable destinations say why
-  on the spot (default is the local model; **nothing leaves your network**)
-- **Summarize**: the selected table (or the used area) in 2–4 sentences, into
-  a **comment** at the cursor
-- **Rewrite / polite / plain / translate**: rewrites **only text cells** in the
-  selection (numbers and formulas are untouched)
-- **Furigana**: select one column and readings go into the **column to the
-  right** (the reading column of a name roster; refuses if it's occupied)
-- **Continue**: extends the selected table's pattern into the rows below
-  (**it's the model guessing — check the result**)
-- **To table**: type prose, get a table poured in at the cursor
-- **Ask**: type a request; answers starting with `=` are inserted **as a
-  formula** at the cursor, anything else becomes a comment ("write me a sum
-  formula" works)
+Open it with **View tab > Left panel**.
+
+- **The selected range is what you are asking about** (with nothing selected,
+  the request still goes through — some questions need no range)
+- **Requests that change the sheet come back as an officework Python script.**
+  **Nothing runs until you press.** Read it, then press Apply. What it did is
+  **one Ctrl+Z** away
+- Requests that don't change the sheet (what does this mean, write me one
+  formula) are simply answered
+
+A script is the form the model writes most accurately (the xlwings/openpyxl
+shape) and — more importantly — **the form a person can check**.
+
+**Choosing the destination** moved to File > Advanced settings, "AI
+destination". Each press cycles local model → Claude (subscription) → Claude
+(API). **Subscription** means calling the local `claude` command (Claude Code
+CLI), so no API key is needed. Unavailable destinations **say why on the spot**
+(default is the local model; **nothing leaves your network**).
 
 If the destination can't be reached the app says so (it never silently returns
 nothing). **Keys are never stored in the workbook.**

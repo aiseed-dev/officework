@@ -28,6 +28,7 @@ pub const WRITER: &[Tab] = &[
         c("decfont", "Уменьшить размер шрифта", "decfont"),
         c("changecase", "Изменить регистр", "changecase"),
         c("ruby", "Руби", "ruby"),
+        c("ai-furigana", "Фуригана", "ai-furigana"),
         c("bold", "Полужирный", "bold"),
         c("italic", "Italic", "italic"),
         c("underline", "Подчёркнутый", "underline"),
@@ -151,18 +152,6 @@ pub const WRITER: &[Tab] = &[
     Tab { name: "Плагины", cmds: &[
         c("plug-macros", "Макросы", "plug-macros"),
         c("plug-manage", "Управление плагинами", "plug-manage"),
-    ]},
-    Tab { name: "ИИ", cmds: &[
-        c("ai-where", "Адресат", "ai-where"),
-        c("ai-summary", "Сводка", "ai-summary"),
-        c("ai-rewrite", "Переписать", "ai-rewrite"),
-        c("ai-polite", "Вежливее", "ai-polite"),
-        c("ai-plain", "Проще", "ai-plain"),
-        c("ai-translate", "Перевод", "ai-translate"),
-        c("ai-furigana", "Фуригана", "ai-furigana"),
-        c("ai-continue", "Продолжить", "ai-continue"),
-        c("ai-table", "В таблицу", "ai-table"),
-        c("ai-ask", "Попросить", "ai-ask"),
         c("ai-macro", "Написать макрос", "ai-macro"),
     ]},
 ];
@@ -388,18 +377,6 @@ pub const CALC: &[Tab] = &[
     Tab { name: "Плагины", cmds: &[
         c("plug-macros", "Макросы", "plug-macros"),
         c("plug-manage", "Управление плагинами", "plug-manage"),
-    ]},
-    Tab { name: "ИИ", cmds: &[
-        c("ai-where", "Адресат", "ai-where"),
-        c("ai-summary", "Сводка", "ai-summary"),
-        c("ai-rewrite", "Переписать", "ai-rewrite"),
-        c("ai-polite", "Вежливее", "ai-polite"),
-        c("ai-plain", "Проще", "ai-plain"),
-        c("ai-translate", "Перевод", "ai-translate"),
-        c("ai-furigana", "Фуригана", "ai-furigana"),
-        c("ai-continue", "Продолжить", "ai-continue"),
-        c("ai-table", "В таблицу", "ai-table"),
-        c("ai-ask", "Попросить", "ai-ask"),
     ]},
 ];
 

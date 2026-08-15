@@ -332,7 +332,7 @@ writer 側の API(文書・記入欄・差し込み)は今後 officework.writer 
 - **Python 側**: pysheet/officework/(純 Python、依存なし。pandas は使う時だけ)。
   .venv には officework.pth で結線(コピーしない — 常に最新)
 - **未対応と正直に言う物**: @xw.func / @xw.sub / Book.caller()(Excel の
-  アドイン機構)— calc では AI タブのマクロ(plugins/*.py)が同じ役目
+  アドイン機構)— calc ではプラグインのマクロ(plugins/*.py)が同じ役目
 
 ## `officework.doc` — docx の束縛(2026-08-10 発注者「writer も読み書き両方」)
 

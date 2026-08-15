@@ -28,6 +28,7 @@ pub const WRITER: &[Tab] = &[
         c("decfont", "Yazı boyutunu azalt", "decfont"),
         c("changecase", "Büyük/küçük harf değiştir", "changecase"),
         c("ruby", "Ruby", "ruby"),
+        c("ai-furigana", "furigana", "ai-furigana"),
         c("bold", "Kalın", "bold"),
         c("italic", "Eğik", "italic"),
         c("underline", "Altı çizili", "underline"),
@@ -151,18 +152,6 @@ pub const WRITER: &[Tab] = &[
     Tab { name: "Eklentiler", cmds: &[
         c("plug-macros", "Makrolar", "plug-macros"),
         c("plug-manage", "Eklentileri yönet", "plug-manage"),
-    ]},
-    Tab { name: "YZ", cmds: &[
-        c("ai-where", "Hedef", "ai-where"),
-        c("ai-summary", "özet", "ai-summary"),
-        c("ai-rewrite", "Yeniden yaz", "ai-rewrite"),
-        c("ai-polite", "Daha kibar", "ai-polite"),
-        c("ai-plain", "Sadeleştir", "ai-plain"),
-        c("ai-translate", "çeviri", "ai-translate"),
-        c("ai-furigana", "furigana", "ai-furigana"),
-        c("ai-continue", "Devamını yaz", "ai-continue"),
-        c("ai-table", "Tabloya çevir", "ai-table"),
-        c("ai-ask", "Sor", "ai-ask"),
         c("ai-macro", "Makro yaz", "ai-macro"),
     ]},
 ];
@@ -388,18 +377,6 @@ pub const CALC: &[Tab] = &[
     Tab { name: "Eklentiler", cmds: &[
         c("plug-macros", "Makrolar", "plug-macros"),
         c("plug-manage", "Eklentileri yönet", "plug-manage"),
-    ]},
-    Tab { name: "YZ", cmds: &[
-        c("ai-where", "Hedef", "ai-where"),
-        c("ai-summary", "özet", "ai-summary"),
-        c("ai-rewrite", "Yeniden yaz", "ai-rewrite"),
-        c("ai-polite", "Daha kibar", "ai-polite"),
-        c("ai-plain", "Sadeleştir", "ai-plain"),
-        c("ai-translate", "çeviri", "ai-translate"),
-        c("ai-furigana", "furigana", "ai-furigana"),
-        c("ai-continue", "Devamını yaz", "ai-continue"),
-        c("ai-table", "Tabloya çevir", "ai-table"),
-        c("ai-ask", "Sor", "ai-ask"),
     ]},
 ];
 

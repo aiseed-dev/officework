@@ -2038,68 +2038,27 @@ impl Calc {
             return;
         }
         self.commit();
-        // 渡す範囲: 選択があればそこ。要約だけは無選択なら使っている全域
-        let sel = self.anchor.map(|_| self.sel_rect());
-        let (a, b) = match (&job, sel) {
-            (_, Some(r)) => r,
-            (CalcAi::Summary, None) => {
-                let (rows, cols) = self.sheet().extent();
-                if rows == 0 || cols == 0 {
-                    self.status = ui::t!("表がありません").into();
-                    return;
-                }
-                (Pos::new(0, 0), Pos::new((rows - 1).min(199), cols - 1))
-            }
-            // 会話は**選んでいなくても通す** — 「この式の意味は」のように
-            // 範囲の要らない用件がある(2026-08-15 実機で門前払いに気づいた)
-            (CalcAi::Table(_) | CalcAi::Ask(_) | CalcAi::Chat(_), None) => {
-                (self.cursor, self.cursor)
-            }
-            _ => {
-                self.status = ui::t!("範囲を選んでから押してください").into();
-                return;
-            }
+        // 渡す範囲: 選んでいればそこ。**選んでいなくても通す** —
+        // 「この式の意味は」のように範囲の要らない用件がある
+        // (2026-08-15 実機で門前払いに気づいた)
+        let (a, b) = self.anchor.map(|_| self.sel_rect()).unwrap_or((self.cursor, self.cursor));
+        let body = if self.anchor.is_none() {
+            String::new()
+        } else {
+            self.tsv_display(a, b)
         };
-        if matches!(job, CalcAi::Furigana) && a.col != b.col {
-            self.status =
-                ui::t!("ふりがなは1列だけ選んでください(読みは右隣の列に入ります)").into();
-            return;
-        }
-        let body = match &job {
-            CalcAi::Table(_) => String::new(),
-            CalcAi::Ask(_) | CalcAi::Chat(_) if self.anchor.is_none() => String::new(),
-            _ => self.tsv_display(a, b),
-        };
-        if body.trim().is_empty()
-            && !matches!(job, CalcAi::Table(_) | CalcAi::Ask(_) | CalcAi::Chat(_))
-        {
-            self.status = ui::t!("選んだ範囲が空です").into();
-            return;
-        }
-        let (sys, ask) = job.prompt();
-        let user = match &job {
-            CalcAi::Table(q) => q.clone(),
-            // 会話は**用件そのもの**が本体。表は付け合わせで、選んでいる
-            // 場所の番地も渡す(台本が s["A1:C9"] と書けるように)
-            CalcAi::Chat(q) => {
-                if body.trim().is_empty() {
-                    q.clone()
-                } else {
-                    format!(
-                        "{q}\n\n---\nいま選んでいるのはシート「{}」の {} です。\n{body}",
-                        self.sheet().name,
-                        self.sel_label(),
-                    )
-                }
-            }
-            CalcAi::Ask(q) => {
-                if body.trim().is_empty() {
-                    q.clone()
-                } else {
-                    format!("{q}\n\n---\n{body}")
-                }
-            }
-            _ => format!("{ask}\n\n---\n{body}"),
+        let (sys, _ask) = job.prompt();
+        let CalcAi::Chat(q) = &job;
+        // 会話は**用件そのもの**が本体。表は付け合わせで、選んでいる
+        // 場所の番地も渡す(台本が s["A1:C9"] と書けるように)
+        let user = if body.trim().is_empty() {
+            q.clone()
+        } else {
+            format!(
+                "{q}\n\n---\nいま選んでいるのはシート「{}」の {} です。\n{body}",
+                self.sheet().name,
+                self.sel_label(),
+            )
         };
         let sys = sys.to_string();
         let job2 = job.clone();
@@ -2114,7 +2073,7 @@ impl Calc {
             let _ = this.update(cx, |this, cx| {
                 this.ai_busy = false;
                 match r {
-                    Ok(out) => this.ai_apply(job2, a, b, out),
+                    Ok(out) => this.ai_apply(job2, out),
                     Err(e) => this.status = format!("AI: {e}").into(),
                 }
                 cx.notify();
@@ -2123,16 +2082,14 @@ impl Calc {
         .detach();
     }
 
-    /// 返事を表へ入れる。**1手で戻せる**(checkpoint してから)
-    pub(crate) fn ai_apply(&mut self, job: CalcAi, a: Pos, b: Pos, out: String) {
+    /// 返事を受け取る。**書類には入れない** — 左パネルへ返すだけ
+    /// (2026-08-15、AI タブを廃してからは会話しか通らない)
+    pub(crate) fn ai_apply(&mut self, job: CalcAi, out: String) {
         let out = out.trim().to_string();
         if out.is_empty() {
             self.status = ui::t!("AI: 答えが空でした(何もしていません)").into();
             return;
         }
-        let grid = |t: &str| -> Vec<Vec<String>> {
-            t.lines().map(|l| l.split('\t').map(str::to_string).collect()).collect()
-        };
         match job {
             // **会話は書類に入れない。** 左パネルに返し、変更案(Python)は
             // 人が「入れる」を押すまで走らせない — **押したのは人**が残る形
@@ -2154,196 +2111,6 @@ impl Calc {
                 } else {
                     ui::t!("答えました(左パネル)").into()
                 };
-            }
-            // 要約はカーソルのコメントへ(保存で xlsx に残る)
-            CalcAi::Summary => {
-                let p = self.cursor;
-                self.checkpoint();
-                self.book.sheets[self.active].comments.insert(p, out.into());
-                self.dirty = true;
-                self.status = format!(
-                    "要約を {} のコメントに付けました(Ctrl+Z で戻せます)",
-                    p.a1()
-                )
-                .into();
-            }
-            // 書き直し・翻訳: 同じ形の TSV を受け、**文字のセルだけ**置き換える
-            CalcAi::Rewrite(_, _) | CalcAi::Translate => {
-                let g = grid(&out);
-                let rows = (b.row - a.row + 1) as usize;
-                if g.len() != rows {
-                    self.status = format!(
-                        "AI: 行数が合いません({} 行の答え / {rows} 行の範囲)— 何もしていません",
-                        g.len()
-                    )
-                    .into();
-                    return;
-                }
-                self.checkpoint();
-                let mut n = 0usize;
-                for (ri, row) in g.iter().enumerate() {
-                    for (ci, v) in row.iter().enumerate() {
-                        let p = Pos::new(a.row + ri as u32, a.col + ci as u32);
-                        if p.col > b.col {
-                            break;
-                        }
-                        let is_text = matches!(
-                            self.sheet().get(p).map(|x| &x.value),
-                            Some(Value::Text(_))
-                        );
-                        if is_text && !v.trim().is_empty() {
-                            let fmt = self
-                                .sheet()
-                                .get(p)
-                                .map(|c| c.fmt.clone())
-                                .unwrap_or_default();
-                            let mut cell = Cell::input(v);
-                            cell.fmt = fmt;
-                            self.book.sheets[self.active].set(p, cell);
-                            n += 1;
-                        }
-                    }
-                }
-                recalc_book(&mut self.book, self.active);
-                self.dirty = true;
-                self.sync_input();
-                self.status = format!(
-                    "{n} 個の文字のセルを直しました(数字と式は触っていません。Ctrl+Z で1手)"
-                )
-                .into();
-            }
-            // ふりがな: 右隣の列へ(空きでなければ断る — 黙って潰さない)
-            CalcAi::Furigana => {
-                let yomi: Vec<&str> = out.lines().collect();
-                let rows = (b.row - a.row + 1) as usize;
-                if yomi.len() != rows {
-                    self.status = format!(
-                        "AI: 行数が合いません({} 行の答え / {rows} 行の範囲)— 何もしていません",
-                        yomi.len()
-                    )
-                    .into();
-                    return;
-                }
-                let dst = a.col + 1;
-                let used = (a.row..=b.row).any(|r| {
-                    self.sheet()
-                        .get(Pos::new(r, dst))
-                        .map(|c| !c.value.display().is_empty() || c.formula.is_some())
-                        .unwrap_or(false)
-                });
-                if used {
-                    self.status =
-                        ui::t!("右隣の列に中身があります(空けてから — 黙って上書きしません)").into();
-                    return;
-                }
-                self.checkpoint();
-                for (i, y) in yomi.iter().enumerate() {
-                    if y.trim().is_empty() {
-                        continue;
-                    }
-                    let p = Pos::new(a.row + i as u32, dst);
-                    self.book.sheets[self.active].set(p, Cell::input(y.trim()));
-                }
-                self.dirty = true;
-                self.status =
-                    ui::t!("読みを右隣の列に入れました(Ctrl+Z で戻せます)").into();
-            }
-            // 続き: 選択の下の空き行へ(空きでなければ断る)
-            CalcAi::Continue => {
-                let g = grid(&out);
-                let start = b.row + 1;
-                let used = g.iter().enumerate().any(|(ri, row)| {
-                    row.iter().enumerate().any(|(ci, _)| {
-                        self.sheet()
-                            .get(Pos::new(start + ri as u32, a.col + ci as u32))
-                            .map(|c| {
-                                !c.value.display().is_empty() || c.formula.is_some()
-                            })
-                            .unwrap_or(false)
-                    })
-                });
-                if used {
-                    self.status =
-                        ui::t!("下の行に中身があります(空けてから — 黙って上書きしません)").into();
-                    return;
-                }
-                self.checkpoint();
-                let n = paste_values_text(
-                    &mut self.book.sheets[self.active],
-                    Pos::new(start, a.col),
-                    &g,
-                );
-                recalc_book(&mut self.book, self.active);
-                self.dirty = true;
-                self.status = format!(
-                    "続きを {} 行足しました({n} 欄。よく確かめてください — AI の当て推量です。Ctrl+Z で1手)",
-                    g.len()
-                )
-                .into();
-            }
-            // 表にする: カーソルから流し込み(空きでなければ断る)
-            CalcAi::Table(_) => {
-                let g = grid(&out);
-                let at = self.cursor;
-                let used = g.iter().enumerate().any(|(ri, row)| {
-                    row.iter().enumerate().any(|(ci, _)| {
-                        self.sheet()
-                            .get(Pos::new(at.row + ri as u32, at.col + ci as u32))
-                            .map(|c| {
-                                !c.value.display().is_empty() || c.formula.is_some()
-                            })
-                            .unwrap_or(false)
-                    })
-                });
-                if used {
-                    self.status =
-                        ui::t!("ここには中身があります(空きへカーソルを置いてから)").into();
-                    return;
-                }
-                self.checkpoint();
-                let n = paste_values_text(&mut self.book.sheets[self.active], at, &g);
-                recalc_book(&mut self.book, self.active);
-                self.dirty = true;
-                self.status = format!(
-                    "表を {} に置きました({} 行 {n} 欄。Ctrl+Z で1手)",
-                    at.a1(),
-                    g.len()
-                )
-                .into();
-            }
-            // 頼む: = で始まる1行は式としてカーソルへ。他はコメントへ
-            CalcAi::Ask(_) => {
-                let p = self.cursor;
-                if out.starts_with('=') && !out.contains('\n') {
-                    self.checkpoint();
-                    let fmt =
-                        self.sheet().get(p).map(|c| c.fmt.clone()).unwrap_or_default();
-                    let mut cell = Cell::input(&out);
-                    cell.fmt = fmt;
-                    self.book.sheets[self.active].set(p, cell);
-                    recalc_book(&mut self.book, self.active);
-                    self.dirty = true;
-                    self.sync_input();
-                    let shown = self
-                        .sheet()
-                        .get(p)
-                        .map(|c| c.value.display())
-                        .unwrap_or_default();
-                    self.status = format!(
-                        "{} に式を入れました(= {shown}。式は数式バーで確かめられます。Ctrl+Z で1手)",
-                        p.a1()
-                    )
-                    .into();
-                } else {
-                    self.checkpoint();
-                    self.book.sheets[self.active].comments.insert(p, out.into());
-                    self.dirty = true;
-                    self.status = format!(
-                        "答えを {} のコメントに付けました(Ctrl+Z で戻せます)",
-                        p.a1()
-                    )
-                    .into();
-                }
             }
         }
     }

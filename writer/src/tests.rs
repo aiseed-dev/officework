@@ -342,7 +342,9 @@ mod menu_run_tests {
         if ui::ai::ready(ui::ai::Backend::ClaudeApi).is_err() {
             w.update(cx, |this, cx| {
                 this.set_doc(Document::plain("本文です。"));
-                this.run_cmd("ai-summary", cx);
+                // **ai-summary は 2026-08-15 に廃した**(AI タブごと)。
+                // 残っている ai-furigana で同じ断りを見る
+                this.run_cmd("ai-furigana", cx);
                 let st = this.status.to_string();
                 assert!(st.starts_with("AI:"), "断りの言葉が出ない: {st}");
                 assert!(!this.ai_busy, "断ったのに考え中のまま");

@@ -65,7 +65,7 @@ vertical text and so on) are still thinly compared against Excel's help — see
 |---|---|---|
 | Autofill (dragging the ■) | Different | There is no fill handle. Select the first row, extend with Shift+↓, and press "Fill" on Home — it copies the first row downward (downward only). Relative references shift, and formatting is copied too |
 | Building a series (1, 2, 3…) | Different | Fill only copies; it never guesses. For a running number, spill `=SEQUENCE(10)`, or fill `=A1+1` down. There are no custom lists for weekdays or month names |
-| Flash Fill (Ctrl+E) | Not yet | The AI tab's "Continue writing", or Data > Python, take its place (not in the ledger — a candidate for inventory) |
+| Flash Fill (Ctrl+E) | Not yet | Ask the left-panel conversation to "fill in the rest", or Data > Python (not in the ledger — a candidate for inventory) |
 | Paste values only | Same | Ctrl+Shift+V. Also from "Paste Special" on the right-click menu |
 | Paste Special | Different | Four choices — values only / formulas as they are / formatting only / transpose (values). No operations, no skip blanks, no column widths |
 | Format Painter (the brush) | Same | Next to Paste. It paints the next cell you click (Shift for a range); Esc to stop |
@@ -542,12 +542,12 @@ destination is a model on this machine, so nothing leaves your network.
 
 | Excel's name | Mark | How it works here |
 |---|---|---|
-| "Turn this into a table" | Same | AI tab, "To table". If the destination already holds something, it refuses |
+| "Turn this into a table" | Same | Ask the left-panel conversation; read the script, then Apply |
 | Asking for a formula | Different | Type the request into "Ask". The unit is one formula into one cell (not a calculated column added all at once) |
 | Summarizing data | Different | Two to four sentences land as a comment on the cursor's cell (and stay in the xlsx on save) |
 | Insights (recommended charts, suggested pivot tables) | Not yet | You build charts and pivots by hand — a path that stands up without AI (not on the ledger yet — a backlog candidate) |
 | Driving the app in natural language ("sort by amount") | Not yet | The AI answers in three shapes only — a table, a formula, a comment — and never operates the screen for you (a backlog candidate) |
-| Asking for a macro | Different | calc's AI tab has no button for it (writer does). Paste the "briefing for the AI", have it write the script, put it in plugins, and run it yourself |
+| Asking for a macro | Different | calc has no button for it (writer has one on the Plugins tab). Paste the "briefing for the AI", have it write the script, put it in plugins, and run it yourself |
 | AI-assisted VBA migration | Different | No one-press button yet. The pattern — olevba, then the briefing, then checking the answers in the sandbox — is written up in the manual |
 | Copilot connectors | By design | We don't bundle AI together with data ingestion (see the section on bringing data in) |
 | Licensing and sign-in | Different | Neither exists. The destination cycles local (default) → Claude subscription → Claude API (keys live in environment variables only). If one can't be used it says why and declines |
@@ -594,7 +594,7 @@ Three jobs come before handing a workbook to someone else: look for mistakes, fl
 | Typing a URL turns it into a hyperlink | Different | It doesn't. Links are made explicitly with Ctrl+K or from the Insert tab, and only what you typed into the dialog and confirmed becomes one. With no auto-linking, there is also no hunt for the setting that turns it off (see "Hyperlinks" above) |
 | Adding a word to the dictionary (proper nouns and company names flagged as errors) | Different | The user dictionary is a file, pointed at by the `OFFICE_DICT_USER` environment variable (the same convention hunspell uses). A word judged once is remembered and not asked about again. There is no "add to dictionary" button at the point of the flag yet, and no dictionary field in the settings page |
 | Proofing language (choosing a dictionary language per document) | Different | You don't pick a language — one entry point routes by content: English through the dictionary, Japanese through the model, and a mixed document through both (English words inside Japanese are ordinary). There is no screen for switching languages. "Language" in Advanced settings is for the ribbon's wording, which is a separate thing |
-| Thesaurus | Not yet | No way to invoke one, and it isn't on the ledger either. For rephrasing, the AI tab's "rewrite", "polite", and "plain" are a separate path that replaces text cells only |
+| Thesaurus | Not yet | No way to invoke one, and it isn't on the ledger either. For rephrasing, ask the left-panel conversation ("make this column polite") and read the script before applying |
 | Lowercase function names still work (=sum → =SUM) | Different | A function name typed in lowercase parses and calculates normally. What doesn't happen is a rewrite of what you typed — `=sum(A1:A3)` stays `=sum(A1:A3)` (Excel would upper-case it) |
 | Document Inspector (one sweep for hidden data and personal information) | Not yet | There is no sweeping inspection. The places to look are scattered — properties in the File tab's info panel, hidden sheets on the View tab, comments cell by cell. You can visit each part as listed below; what's missing is the button that bundles them (not on the ledger yet — a backlog candidate) |
 | Workbook properties (author, title, tags, subject, comments) | Same | Five fields appear in the File tab's "Workbook info" panel; click a field, type, and press Enter to record it. It goes into docProps on save and is visible in Excel |

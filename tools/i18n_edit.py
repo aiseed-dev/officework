@@ -29,10 +29,17 @@ literal_at = _g.literal_at
 
 
 def app_keys():
-    """アプリが実際に使っている鍵(門番と同じ見方)"""
+    """アプリが実際に使っている鍵(門番と同じ見方)。
+
+    **実行時の文字列で返す。** ソースの字面で比べてはいけない — 同じ文でも
+    片方が行末の `\\` で継いであれば字面は別物になり、**生きている訳を
+    「使われていない」と数えて消す**。2026-08-15、それで 4 句を消した
+    (i18n_en.rs の口上が同じ罠を警告していたのに、比べ方の側に穴があった)。
+    lang/tests/i18n_soroi.rs は最初から unescape して比べている — 揃える。
+    """
     keys = []
     for p in _g.SOURCES:
-        keys.extend(_g.keys_from(p))
+        keys.extend(_g.unescape(lit) for lit in _g.keys_from(p))
     return keys
 
 
@@ -92,8 +99,11 @@ def main():
             print(f"  {p.name:18} {len(items):5} 訳 / 未訳 {len(keys - got):4} / 不要 {len(got - keys):3}")
         return 0
 
-    _, items, _ = parse(tables()[0])
-    dead = [k for k, _, _ in items if k not in keys]
+    # **見るのは en。** ここが正本で、他の 12 個は生成物。前は
+    # `tables()[0]`(並びの頭 = i18n_de.rs)を読んでいて、en を直した直後に
+    # 「まだ 18 件ある」と言っていた(2026-08-15)
+    _, items, _ = parse(ROOT / "lang/src/i18n_en.rs")
+    dead = [k for k, _, _ in items if _g.unescape(k) not in keys]
     if "--dead" in sys.argv:
         print(f"使われていない訳 {len(dead)} 件:")
         for k in dead:
@@ -106,7 +116,7 @@ def main():
         p = ROOT / "lang/src/i18n_en.rs"
         head, items, tail = parse(p)
         before = len(items)
-        items = [it for it in items if it[0] in keys]
+        items = [it for it in items if _g.unescape(it[0]) in keys]
         write(p, head, items, tail)
         print(f"{p.name}: {before} → {len(items)}({before - len(items)} 件を外した)")
         return 0

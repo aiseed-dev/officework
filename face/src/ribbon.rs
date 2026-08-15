@@ -74,6 +74,7 @@ pub const WRITER: &[Tab] = &[
         c("decfont", "フォントサイズの縮小", "decfont"),
         c("changecase", "大文字小文字を変更", "changecase"),
         c("ruby", "ルビ", "ruby"),
+        c("ai-furigana", "ふりがな", "ai-furigana"),
         c("bold", "太字", "bold"),
         c("italic", "斜体", "italic"),
         c("underline", "下線", "underline"),
@@ -197,18 +198,6 @@ pub const WRITER: &[Tab] = &[
     Tab { name: "プラグイン", cmds: &[
         c("plug-macros", "マクロ", "plug-macros"),
         c("plug-manage", "プラグインの管理", "plug-manage"),
-    ]},
-    Tab { name: "AI", cmds: &[
-        c("ai-where", "宛先", "ai-where"),
-        c("ai-summary", "要約", "ai-summary"),
-        c("ai-rewrite", "書き直す", "ai-rewrite"),
-        c("ai-polite", "敬語にする", "ai-polite"),
-        c("ai-plain", "やさしく", "ai-plain"),
-        c("ai-translate", "翻訳", "ai-translate"),
-        c("ai-furigana", "ふりがな", "ai-furigana"),
-        c("ai-continue", "続きを書く", "ai-continue"),
-        c("ai-table", "表にする", "ai-table"),
-        c("ai-ask", "頼む", "ai-ask"),
         c("ai-macro", "マクロを書く", "ai-macro"),
     ]},
 ];
@@ -453,18 +442,6 @@ pub const CALC: &[Tab] = &[
     Tab { name: "プラグイン", cmds: &[
         c("plug-macros", "マクロ", "plug-macros"),
         c("plug-manage", "プラグインの管理", "plug-manage"),
-    ]},
-    Tab { name: "AI", cmds: &[
-        c("ai-where", "宛先", "ai-where"),
-        c("ai-summary", "要約", "ai-summary"),
-        c("ai-rewrite", "書き直す", "ai-rewrite"),
-        c("ai-polite", "敬語にする", "ai-polite"),
-        c("ai-plain", "やさしく", "ai-plain"),
-        c("ai-translate", "翻訳", "ai-translate"),
-        c("ai-furigana", "ふりがな", "ai-furigana"),
-        c("ai-continue", "続きを書く", "ai-continue"),
-        c("ai-table", "表にする", "ai-table"),
-        c("ai-ask", "頼む", "ai-ask"),
     ]},
 ];
 

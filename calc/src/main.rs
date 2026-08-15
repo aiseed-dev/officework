@@ -573,26 +573,17 @@ impl PropKind {
     }
 }
 
-/// AI に頼む仕事(calc 流)。writer と同じ10ボタンだが、表計算なので
-/// 渡すのは選択範囲の TSV、返してもらうのも TSV や式になる。
+/// AI に頼む仕事(calc 流)。
+///
+/// **2026-08-15、9つの動詞を廃した**(発注者「いまの AI のボタンは全部
+/// 要らない」「会話形式にして、書類を修正できるように」)。要約・翻訳・
+/// 敬語・ふりがな…は、左パネルの会話に「〜して」と打てば通る — しかも
+/// ボタンでは作れない頼み方(「表にして、列は日付と金額で」)もできる。
+/// 残るのは会話だけ。
 #[derive(Clone)]
 enum CalcAi {
-    /// 選択(無ければ使っている範囲)の表を要約 → カーソルのコメントへ
-    Summary,
-    /// 文字のセルを書き直して置き換える(整える・敬語・やさしく)
-    Rewrite(&'static str, &'static str),
-    /// 文字のセルを訳して置き換える
-    Translate,
-    /// 選択した1列の読みを右隣の列へ(名簿のフリガナ欄)
-    Furigana,
-    /// 選択のパターンから続きの行を作り、下の空きへ
-    Continue,
-    /// 文章から表を作り、カーソルから流し込む
-    Table(String),
-    /// 自由に頼む。= で始まる答えは式としてカーソルへ、他はコメントへ
-    Ask(String),
-    /// **会話**(2026-08-15)。答えを書類に入れず、**左パネルに返す**。
-    /// 表を直す頼みなら officework の Python を書かせ、人が見てから入れる
+    /// **会話**。答えを書類に入れず、**左パネルに返す**。表を直す頼みなら
+    /// officework の Python を書かせ、人が「入れる」を押してから走る
     Chat(String),
 }
 
@@ -600,27 +591,6 @@ impl CalcAi {
     /// モデルへの言いつけ(system)と、何を渡すか
     fn prompt(&self) -> (&'static str, &'static str) {
         match self {
-            CalcAi::Summary => (
-                "あなたは表を読む道具です。渡されたタブ区切りの表の要点を、                 2〜4文の日本語でまとめてください。前置き・後書きは書かず、                 要約の本文だけを返します。",
-                "次の表を要約してください。",
-            ),
-            CalcAi::Rewrite(sys, ask) => (sys, ask),
-            CalcAi::Translate => (
-                "あなたは表の中の文字を訳す道具です。渡されたタブ区切りの表と                 同じ行数・同じ列数のタブ区切りだけを返します。文字は日本語なら                 英語へ、それ以外なら日本語へ訳し、数字と空欄はそのまま写します。                 説明は書きません。",
-                "次の表の文字を訳してください。",
-            ),
-            CalcAi::Furigana => (
-                "あなたは日本語の読みを返す道具です。渡された1行1語の並びに                 対して、同じ行数で、各行にその語の読みをカタカナだけで返します。                 説明・記号は書きません。読めない行は空行にします。",
-                "次の各行の読みをカタカナで返してください。",
-            ),
-            CalcAi::Continue => (
-                "あなたは表のパターンを読む道具です。渡されたタブ区切りの表の                 規則を読み取り、**続きの行を3行だけ**、同じ列数のタブ区切りで                 返します。元の行は返しません。説明は書きません。",
-                "次の表の続きの行を作ってください。",
-            ),
-            CalcAi::Table(_) => (
-                "あなたは文章を表に整える道具です。渡された文章から表を作り、                 タブ区切り(1行目は見出し)だけを返します。説明・前置き・                 罫線の記号は書きません。",
-                "",
-            ),
             // **会話**。表を直す頼みなら officework の Python を書かせる。
             // 直接いじらせない — 人が見て「入れる」を押して初めて走る。
             // Python にするのは、AI がいちばん正確に書ける形であり(xlwings と
@@ -640,22 +610,11 @@ impl CalcAi {
                  囲みを使わず本文だけで答えます。",
                 "",
             ),
-            CalcAi::Ask(_) => (
-                "あなたは表計算を手伝う道具です。数式を頼まれたら = で始まる                 1つの数式だけを返します(使える関数: SUM AVERAGE COUNT COUNTA                  MIN MAX SUMIF COUNTIF ABS MOD POWER SQRT INT ROUND ROUNDUP TRUNC                  PRODUCT PMT PV FV NPER TODAY NOW DATE YEAR MONTH DAY WEEKDAY LEN                  LEFT RIGHT MID TRIM UPPER LOWER CONCATENATE IF AND OR NOT IFERROR                  ISBLANK ISERROR VLOOKUP HLOOKUP INDEX MATCH)。それ以外の頼みには                 答えの本文だけを返します。前置きは書きません。",
-                "",
-            ),
         }
     }
 
     fn label(&self) -> &'static str {
         match self {
-            CalcAi::Summary => ui::t!("要約"),
-            CalcAi::Rewrite(_, _) => ui::t!("書き直し"),
-            CalcAi::Translate => ui::t!("翻訳"),
-            CalcAi::Furigana => ui::t!("ふりがな"),
-            CalcAi::Continue => ui::t!("続き"),
-            CalcAi::Table(_) => ui::t!("表"),
-            CalcAi::Ask(_) => ui::t!("頼み"),
             CalcAi::Chat(_) => ui::t!("会話"),
         }
     }

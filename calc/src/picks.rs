@@ -4086,20 +4086,6 @@ impl Calc {
                     }
                 }
             }
-            "ai-table" => {
-                if text.is_empty() {
-                    self.status = ui::t!("文章がありません(何もしていません)").into();
-                } else {
-                    self.ai_go(CalcAi::Table(text), cx);
-                }
-            }
-            "ai-ask" => {
-                if text.is_empty() {
-                    self.status = ui::t!("用件がありません(何もしていません)").into();
-                } else {
-                    self.ai_go(CalcAi::Ask(text), cx);
-                }
-            }
             "chat" => {
                 if text.is_empty() {
                     self.status = ui::t!("何も書き残しませんでした").into();

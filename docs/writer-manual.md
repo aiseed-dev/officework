@@ -309,6 +309,31 @@ view stays one continuous scroll)**,
 dark mode (surroundings darken, paper stays white), ruler (mm),
 toolbar / status bar / side panel toggles.
 
+## AI — talk to it in the left panel
+
+**On 2026-08-15 the AI tab was removed.** Its eleven buttons (summarize,
+rewrite, make polite, …) were replaced by **a conversation in the left panel** —
+you can just type "make this paragraph polite", and you can ask for things no
+button could express.
+
+Open it with **View tab > Navigation** (left panel), then the **AI** ear.
+
+- **The selection is what you are asking about** (with nothing selected, the
+  whole document)
+- **Revised text is shown before it goes in.** Press Apply and it replaces the
+  selection, or is inserted after the cursor if nothing is selected. Either way
+  **one Ctrl+Z** undoes it
+- Requests that don't change the text (advice on wording) are simply answered
+
+**Two things stayed on the ribbon** — work the conversation cannot do:
+
+- **Home > Furigana** — what goes in is ruby *formatting*, not plain text
+- **Plugins > Write a macro** — it puts a .py in the plugins folder
+  (never run automatically; read it, then run it yourself)
+
+**Choosing the destination** lives in File > Advanced settings, "AI
+destination". Unavailable destinations **say why on the spot**.
+
 ## Proofreading (review)
 
 English spelling via the machine's dictionary; Japanese misconversions

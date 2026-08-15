@@ -1147,7 +1147,6 @@ impl Writer {
         let text = self.ed.text().to_string();
         // 渡すもの: 選択があればそこ、無ければ全文(続きはカーソルまで)
         let body = match &job {
-            AiJob::Continue => text[..sel.end.min(text.len())].to_string(),
             AiJob::Macro(_) => String::new(),
             // 会話は**選んでいなくても通す**(「この書き方でいい?」のように
             // 範囲の要らない用件がある)。選んでいれば、そこが相手
@@ -1313,36 +1312,10 @@ impl Writer {
         self.checkpoint(false);
         let label = job.label();
         match job {
-            // 要約は文書の頭に、印つきの段落として置く
-            AiJob::Summary => {
-                let text = self.ed.text().to_string();
-                let joined = ui::tf!("【要約】{}\n\n{}", out, text);
-                self.ed = Editor::new(&joined);
-                self.doc.set_body_text(self.ed.text());
-            }
-            // 置き換え(選択が無ければ全文)
-            AiJob::Rewrite(_, _) | AiJob::Translate | AiJob::Table => {
-                let out = if matches!(job, AiJob::Table) {
-                    // | 区切りの行を、読みやすい字の表に直す(表の挿入は次の課題)
-                    out.lines()
-                        .map(|l| {
-                            l.trim().trim_matches('|').replace('|', "　")
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                } else {
-                    out
-                };
-                let r = if sel.is_empty() { 0..self.ed.text().len() } else { sel };
-                self.ed.move_to(r.start, false);
-                self.ed.move_to(r.end, true);
-                self.ed.insert(&out);
-                self.doc.set_body_text(self.ed.text());
-            }
-            // 続き・自由な頼みは、カーソル(選択の終わり)の後ろへ
             // Macro と Chat は上で受けて return 済み
             AiJob::Macro(_) | AiJob::Chat(_) => unreachable!(),
-            AiJob::Continue | AiJob::Ask(_) => {
+            // 自由な頼みは、カーソル(選択の終わり)の後ろへ
+            AiJob::Ask(_) => {
                 let at = sel.end.min(self.ed.text().len());
                 self.ed.move_to(at, false);
                 self.ed.insert(&format!("\n{out}"));

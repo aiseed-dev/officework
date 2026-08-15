@@ -20,7 +20,7 @@ impl Writer {
     pub(crate) const DIALOG_IDS: &'static [&'static str] = &[
         "replace", "watermark", "bookmarks", "co-addcomment", "co-history",
         "co-chat", "plug-manage", "prot-encrypt", "form-combo",
-        "form-dropdown", "form-name", "ai-ask", "ruby", "insequation",
+        "form-dropdown", "form-name", "ruby", "insequation",
     ];
 
     /// **小窓(… の側)が開いているか。** [`Self::DIALOG_IDS`] の腕が立てる
@@ -1102,50 +1102,10 @@ impl Writer {
                     .into(),
                 };
             }
-            "ai-summary" => self.ai_go(AiJob::Summary, cx),
-            "ai-rewrite" => self.ai_go(
-                AiJob::Rewrite(
-                    "あなたは日本語の文章を整える道具です。意味を変えず、\
-                     読みやすく簡潔に書き直します。本文だけを返します。",
-                    "次の文章を、意味を変えずに読みやすく書き直してください。",
-                ),
-                cx,
-            ),
-            "ai-polite" => self.ai_go(
-                AiJob::Rewrite(
-                    "あなたは日本語の文章を整える道具です。内容を変えずに、\
-                     仕事の文書にふさわしい丁寧な言い方(です・ます)へ直します。\
-                     本文だけを返します。",
-                    "次の文章を、内容を変えずに丁寧な言い方へ直してください。",
-                ),
-                cx,
-            ),
-            "ai-plain" => self.ai_go(
-                AiJob::Rewrite(
-                    "あなたは日本語の文章をやさしくする道具です。難しい言葉を\
-                     やさしい言葉に置き換え、一文を短くします。内容は変えません。\
-                     本文だけを返します。",
-                    "次の文章を、内容を変えずにやさしい日本語へ直してください。",
-                ),
-                cx,
-            ),
-            "ai-translate" => self.ai_go(AiJob::Translate, cx),
+            // **ふりがなだけ残す。** 会話が入れるのは素の字で、ルビの
+            // 書式は付けられない — ここは AI タブを廃したあとも要る仕事
+            // (置き場はホームの「ルビ」の隣。2026-08-15)
             "ai-furigana" => self.ai_go(AiJob::Furigana, cx),
-            "ai-continue" => self.ai_go(AiJob::Continue, cx),
-            "ai-table" => self.ai_go(AiJob::Table, cx),
-            "ai-ask" => {
-                if self.ai_open {
-                    self.ai_open = false;
-                    self.ai_macro = false;
-                    return;
-                }
-                self.ai_ed = Editor::new("");
-                self.ai_open = true;
-                self.ai_macro = false;
-                self.find_open = false;
-                self.status = ui::tf!("AI({})に頼む: 用件を打って Enter(選んだ字があれば一緒に渡します)", ui::ai::backend().label())
-                .into();
-            }
             // マクロ台本を AI に書かせる。答えは文書に入れず、プラグイン
             // 置き場に .py で置く — 人が読んで確かめてから実行する
             "ai-macro" => {

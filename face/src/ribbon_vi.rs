@@ -28,6 +28,7 @@ pub const WRITER: &[Tab] = &[
         c("decfont", "Giảm cỡ chữ", "decfont"),
         c("changecase", "Đổi chữ hoa/thường", "changecase"),
         c("ruby", "Ruby", "ruby"),
+        c("ai-furigana", "furigana", "ai-furigana"),
         c("bold", "Đậm", "bold"),
         c("italic", "Nghiêng", "italic"),
         c("underline", "Gạch chân", "underline"),
@@ -151,18 +152,6 @@ pub const WRITER: &[Tab] = &[
     Tab { name: "Plugin", cmds: &[
         c("plug-macros", "Macro", "plug-macros"),
         c("plug-manage", "Quản lý plugin", "plug-manage"),
-    ]},
-    Tab { name: "AI", cmds: &[
-        c("ai-where", "Đích", "ai-where"),
-        c("ai-summary", "bản tóm tắt", "ai-summary"),
-        c("ai-rewrite", "Viết lại", "ai-rewrite"),
-        c("ai-polite", "Lịch sự hơn", "ai-polite"),
-        c("ai-plain", "Dễ hiểu hơn", "ai-plain"),
-        c("ai-translate", "bản dịch", "ai-translate"),
-        c("ai-furigana", "furigana", "ai-furigana"),
-        c("ai-continue", "Viết tiếp", "ai-continue"),
-        c("ai-table", "Thành bảng", "ai-table"),
-        c("ai-ask", "Yêu cầu", "ai-ask"),
         c("ai-macro", "Viết macro", "ai-macro"),
     ]},
 ];
@@ -388,18 +377,6 @@ pub const CALC: &[Tab] = &[
     Tab { name: "Plugin", cmds: &[
         c("plug-macros", "Macro", "plug-macros"),
         c("plug-manage", "Quản lý plugin", "plug-manage"),
-    ]},
-    Tab { name: "AI", cmds: &[
-        c("ai-where", "Đích", "ai-where"),
-        c("ai-summary", "bản tóm tắt", "ai-summary"),
-        c("ai-rewrite", "Viết lại", "ai-rewrite"),
-        c("ai-polite", "Lịch sự hơn", "ai-polite"),
-        c("ai-plain", "Dễ hiểu hơn", "ai-plain"),
-        c("ai-translate", "bản dịch", "ai-translate"),
-        c("ai-furigana", "furigana", "ai-furigana"),
-        c("ai-continue", "Viết tiếp", "ai-continue"),
-        c("ai-table", "Thành bảng", "ai-table"),
-        c("ai-ask", "Yêu cầu", "ai-ask"),
     ]},
 ];
 

@@ -28,6 +28,7 @@ pub const WRITER: &[Tab] = &[
         c("decfont", "Diminuir tamanho do tipo de letra", "decfont"),
         c("changecase", "Alternar maiúscula/minúscula", "changecase"),
         c("ruby", "Ruby", "ruby"),
+        c("ai-furigana", "Furigana", "ai-furigana"),
         c("bold", "Negrito", "bold"),
         c("italic", "Itálico", "italic"),
         c("underline", "Sublinhado", "underline"),
@@ -151,18 +152,6 @@ pub const WRITER: &[Tab] = &[
     Tab { name: "Plugins", cmds: &[
         c("plug-macros", "Macros", "plug-macros"),
         c("plug-manage", "Gerir plugins", "plug-manage"),
-    ]},
-    Tab { name: "IA", cmds: &[
-        c("ai-where", "Destino", "ai-where"),
-        c("ai-summary", "Resumir", "ai-summary"),
-        c("ai-rewrite", "Reescrever", "ai-rewrite"),
-        c("ai-polite", "Mais formal", "ai-polite"),
-        c("ai-plain", "Mais simples", "ai-plain"),
-        c("ai-translate", "Traduzir", "ai-translate"),
-        c("ai-furigana", "Furigana", "ai-furigana"),
-        c("ai-continue", "Continuar a escrever", "ai-continue"),
-        c("ai-table", "Converter em tabela", "ai-table"),
-        c("ai-ask", "Pedir", "ai-ask"),
         c("ai-macro", "Escrever macro", "ai-macro"),
     ]},
 ];
@@ -388,18 +377,6 @@ pub const CALC: &[Tab] = &[
     Tab { name: "Plugins", cmds: &[
         c("plug-macros", "Macros", "plug-macros"),
         c("plug-manage", "Gerir plugins", "plug-manage"),
-    ]},
-    Tab { name: "IA", cmds: &[
-        c("ai-where", "Destino", "ai-where"),
-        c("ai-summary", "Resumir", "ai-summary"),
-        c("ai-rewrite", "Reescrever", "ai-rewrite"),
-        c("ai-polite", "Mais formal", "ai-polite"),
-        c("ai-plain", "Mais simples", "ai-plain"),
-        c("ai-translate", "Traduzir", "ai-translate"),
-        c("ai-furigana", "Furigana", "ai-furigana"),
-        c("ai-continue", "Continuar a escrever", "ai-continue"),
-        c("ai-table", "Converter em tabela", "ai-table"),
-        c("ai-ask", "Pedir", "ai-ask"),
     ]},
 ];
 

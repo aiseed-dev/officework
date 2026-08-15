@@ -52,8 +52,7 @@ impl Calc {
         "subscript", "align-just", "align-dist", "text-orient", "calc-mode",
         "td-torange", "td-resize", "rtl-sheet", "direction",
         "colorschemas", "theme",
-        "ai-where", "ai-summary", "ai-rewrite", "ai-polite", "ai-plain",
-        "ai-translate", "ai-furigana", "ai-continue", "ai-table", "ai-ask",
+        "ai-where",
         "insert-function", "cell-styles", "sheet-view", "watch", "editheader",
         "cell-lock", "prot-allow", "recover", "recover-every", "csv-kind",
         "autofit-col", "autofit-row", "paste-name", "flash-fill",
@@ -254,7 +253,7 @@ impl Calc {
     pub(crate) const DIALOG_IDS: &'static [&'static str] = &[
         "insert-function", "cell-format", "data-validation", "custom-sort",
         "python", "prot-encrypt", "co-chat", "instext", "insequation",
-        "ai-table", "ai-ask", "td-resize", "subtotal", "datatable",
+        "td-resize", "subtotal", "datatable",
         "addcomment", "text-column", "goal-seek", "replace", "inshyperlink",
         "solver",
     ];
@@ -1812,7 +1811,10 @@ impl Calc {
                     _ => ui::t!("セルの操作に戻りました").into(),
                 };
             }
-            // AI タブ。**モデルに任せる変換と生成の道具箱**(writer と同じ宛先)
+            // **AI の宛先。** リボンの AI タブは 2026-08-15 に廃した
+            // (発注者「いまの AI のボタンは全部要らない」)ので、この命令は
+            // 詳細設定の「AI の宛先」からだけ呼ばれる。9つの動詞は左パネルの
+            // 会話に譲った — ボタンでは作れない頼み方も打てば通る
             "ai-where" => {
                 let next = ui::ai::backend().next();
                 ui::ai::set_backend(next);
@@ -1824,56 +1826,6 @@ impl Calc {
                     )
                     .into(),
                 };
-            }
-            "ai-summary" => self.ai_go(CalcAi::Summary, cx),
-            "ai-rewrite" => self.ai_go(
-                CalcAi::Rewrite(
-                    "あなたは表の中の文字を整える道具です。渡されたタブ区切りの表と\
-                     同じ行数・同じ列数のタブ区切りだけを返します。文字は意味を\
-                     変えずに読みやすく直し、数字と空欄はそのまま写します。",
-                    "次の表の文字を、意味を変えずに読みやすく直してください。",
-                ),
-                cx,
-            ),
-            "ai-polite" => self.ai_go(
-                CalcAi::Rewrite(
-                    "あなたは表の中の文字を整える道具です。渡されたタブ区切りの表と\
-                     同じ行数・同じ列数のタブ区切りだけを返します。文字は内容を\
-                     変えずに丁寧な言い方(です・ます)へ直し、数字と空欄はそのまま\
-                     写します。",
-                    "次の表の文字を、内容を変えずに丁寧な言い方へ直してください。",
-                ),
-                cx,
-            ),
-            "ai-plain" => self.ai_go(
-                CalcAi::Rewrite(
-                    "あなたは表の中の文字をやさしくする道具です。渡されたタブ区切りの\
-                     表と同じ行数・同じ列数のタブ区切りだけを返します。難しい言葉を\
-                     やさしい言葉に置き換え、数字と空欄はそのまま写します。",
-                    "次の表の文字を、内容を変えずにやさしい日本語へ直してください。",
-                ),
-                cx,
-            ),
-            "ai-translate" => self.ai_go(CalcAi::Translate, cx),
-            "ai-furigana" => self.ai_go(CalcAi::Furigana, cx),
-            "ai-continue" => self.ai_go(CalcAi::Continue, cx),
-            "ai-table" => {
-                self.commit();
-                self.prompt = Some(("ai-table", Editor::new("")));
-                self.status = format!(
-                    "AI({})が表にします: 文章を打って(貼って)Enter",
-                    ui::ai::backend().label()
-                )
-                .into();
-            }
-            "ai-ask" => {
-                self.commit();
-                self.prompt = Some(("ai-ask", Editor::new("")));
-                self.status = format!(
-                    "AI({})に頼む: 用件を打って Enter(選んだ範囲があれば一緒に渡します)",
-                    ui::ai::backend().label()
-                )
-                .into();
             }
             // 配色の変更(テーマ色の組を入れ替える)。テーマ由来の色を
             // 使っているセルは、色がそのまま追従する

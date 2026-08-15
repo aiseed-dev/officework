@@ -28,6 +28,7 @@ pub const WRITER: &[Tab] = &[
         c("decfont", "글꼴 크기 감소", "decfont"),
         c("changecase", "대소문자 변경", "changecase"),
         c("ruby", "루비", "ruby"),
+        c("ai-furigana", "후리가나", "ai-furigana"),
         c("bold", "굵게", "bold"),
         c("italic", "기울림꼴", "italic"),
         c("underline", "밑줄", "underline"),
@@ -151,18 +152,6 @@ pub const WRITER: &[Tab] = &[
     Tab { name: "플러그인", cmds: &[
         c("plug-macros", "매크로", "plug-macros"),
         c("plug-manage", "플러그인 관리", "plug-manage"),
-    ]},
-    Tab { name: "AI", cmds: &[
-        c("ai-where", "대상", "ai-where"),
-        c("ai-summary", "요약", "ai-summary"),
-        c("ai-rewrite", "다시 쓰기", "ai-rewrite"),
-        c("ai-polite", "정중하게", "ai-polite"),
-        c("ai-plain", "쉽게", "ai-plain"),
-        c("ai-translate", "번역", "ai-translate"),
-        c("ai-furigana", "후리가나", "ai-furigana"),
-        c("ai-continue", "이어 쓰기", "ai-continue"),
-        c("ai-table", "표로 만들기", "ai-table"),
-        c("ai-ask", "요청", "ai-ask"),
         c("ai-macro", "매크로 작성", "ai-macro"),
     ]},
 ];
@@ -388,18 +377,6 @@ pub const CALC: &[Tab] = &[
     Tab { name: "플러그인", cmds: &[
         c("plug-macros", "매크로", "plug-macros"),
         c("plug-manage", "플러그인 관리", "plug-manage"),
-    ]},
-    Tab { name: "AI", cmds: &[
-        c("ai-where", "대상", "ai-where"),
-        c("ai-summary", "요약", "ai-summary"),
-        c("ai-rewrite", "다시 쓰기", "ai-rewrite"),
-        c("ai-polite", "정중하게", "ai-polite"),
-        c("ai-plain", "쉽게", "ai-plain"),
-        c("ai-translate", "번역", "ai-translate"),
-        c("ai-furigana", "후리가나", "ai-furigana"),
-        c("ai-continue", "이어 쓰기", "ai-continue"),
-        c("ai-table", "표로 만들기", "ai-table"),
-        c("ai-ask", "요청", "ai-ask"),
     ]},
 ];
 

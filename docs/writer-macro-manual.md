@@ -17,7 +17,7 @@ Three ways:
 2. **Plugins tab > Manage plugins** — every `.py` in
    `~/.config/office/plugins/` is listed; click one to run it in the same
    sandbox.
-3. **AI tab > Write a macro** — describe what you want; the model writes a
+3. **Plugins tab > Write a macro** — describe what you want; the model writes a
    script into the plugins folder (`ai台本N.py`). It is **never run
    automatically** — read it, then run it from the plugins list.
 
@@ -149,7 +149,7 @@ consequences:
 
 ## Letting the AI write it
 
-**AI tab > Write a macro** sends the model this manual's rules (use only the
+**Plugins tab > Write a macro** sends the model this manual's rules (use only the
 functions above, walk rows, report with print, refuse with SystemExit) plus
 the **list of field names in the open document**, so it aims at real names.
 The reply is saved to the plugins folder and shown in the list. Read it before
