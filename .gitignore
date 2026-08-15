@@ -38,3 +38,8 @@ scratch/
 packaging/out/
 packaging/cache/
 pysheet/officework/bin/
+# 見本の写真と、それを埋めた台帳は生成物(sample/写真の台帳.py が作る)。
+# **実物大の JPEG を追跡に入れない** — 作り直せる 3MB を git に置く理由が無い
+# (他の見本の xlsx は手で組んだ小さい物なので追跡している)
+sample/写真/
+sample/写真の台帳.xlsx
