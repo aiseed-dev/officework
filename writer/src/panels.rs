@@ -519,17 +519,20 @@ impl Writer {
             None
         } else {
             let panel_bg = if dk { rgb(0x1B1E21) } else { rgb(0xF1F3F5) };
-            let mut d = div().absolute().left(px(0.0)).top(px(0.0))
-                .w(px(250.0)).h_full().overflow_hidden()
+            let mut d = div()
+                .flex_none().w(px(250.0)).h_full().overflow_hidden()
                 .p_2().bg(panel_bg)
                 .border_r_1().border_color(th_cmd_border)
                 .flex().flex_col().gap_1();
             // 耳
             let mut ears = div().flex().flex_row().gap_1().mb_1();
             // 耳の照合は添字(nav_tab)。名前は見せる字だけなので訳してよい
-            for (i, name) in [ui::t!("見出し"), ui::t!("コメント"), ui::t!("検索")]
-                .into_iter()
-                .enumerate()
+            // 左は**対話する相手**(2026-08-14 の決め)— ナビ・コメント・
+            // 検索・AI。耳の照合は添字(nav_tab)
+            for (i, name) in
+                [ui::t!("見出し"), ui::t!("コメント"), ui::t!("検索"), ui::t!("AI")]
+                    .into_iter()
+                    .enumerate()
             {
                 let on = self.nav_tab == i as u8;
                 ears = ears.child(div()
@@ -615,7 +618,7 @@ impl Writer {
                     }
                 }
                 // 検索(当たった場所を並べ、押すと飛ぶ)
-                _ => {
+                2 => {
                     let term = self.find_ed.text().to_string();
                     d = d.child(div()
                         .id("nav-find")
@@ -662,6 +665,99 @@ impl Writer {
                                 .child(ui::t!("(見つかりません)")));
                         }
                     }
+                }
+                // ── AI と相談する ─────────────────────────────────
+                // **答えは文書に入れない。** 直した文は下の欄に置き、
+                // 「入れる」を押して初めて文書が変わる。writer には
+                // calc のような Python の橋が無いので、入るのは**文そのもの**
+                _ => {
+                    let 主 = rgb(0x165E83);
+                    let 釦 = move |id: &'static str, label: String, 効き: bool| {
+                        div().id(SharedString::from(id))
+                            .px_2().py_0p5().rounded_sm().cursor_pointer()
+                            .text_size(px(11.5))
+                            .text_color(if 効き { th_top_fg } else { th_status })
+                            .border_1()
+                            .border_color(if 効き { 主 } else { th_cmd_border })
+                            .hover(move |st| st.bg(th_btn_hover))
+                            .child(SharedString::from(label))
+                    };
+                    d = d.child(div().text_size(px(10.5)).text_color(th_status).child(
+                        ui::t!("選んでいる所が相談の相手になります。直した文は\
+                                見せてから、押したときだけ入ります。").to_string()));
+                    let mut 会話 = div().id("ai-chat-log").flex().flex_col().gap_1().mt_1()
+                        .flex_1().min_h(px(0.0)).overflow_y_scroll();
+                    if self.ai_chat_log.is_empty() {
+                        会話 = 会話.child(div().text_size(px(11.0)).text_color(th_status)
+                            .child(ui::t!("例: この段落を敬語にして / 半分の長さに \
+                                           / この言い方は硬すぎますか").to_string()));
+                    }
+                    for (自分, 字) in &self.ai_chat_log {
+                        会話 = 会話.child(div().text_size(px(11.5))
+                            .text_color(if *自分 { 主 } else { th_top_fg })
+                            .child(format!("{} {}", if *自分 { "▸" } else { "◂" }, 字)));
+                    }
+                    d = d.child(会話);
+                    if let Some(plan) = self.ai_chat_plan.clone() {
+                        d = d.child(div().text_size(px(10.5)).text_color(th_status).mt_1()
+                            .child(ui::t!("入れる文(押すまで入りません)").to_string()));
+                        d = d.child(div().id("ai-chat-plan")
+                            .max_h(px(160.0)).overflow_y_scroll()
+                            .p_1().rounded_sm()
+                            .bg(if dk { rgb(0x14171A) } else { rgb(0xFFFFFF) })
+                            .border_1().border_color(th_cmd_border)
+                            .text_size(px(11.0)).text_color(th_top_fg)
+                            .children(plan.lines().map(|l| div().child(l.to_string()))));
+                        d = d.child(div().flex().flex_row().gap_1().mt_1()
+                            .child(釦("ai-chat-run", ui::t!("入れる").to_string(), true)
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.ai_chat_insert();
+                                    cx.notify()
+                                })))
+                            .child(釦("ai-chat-drop", ui::t!("やめる").to_string(), false)
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.ai_chat_plan = None;
+                                    this.status =
+                                        ui::t!("入れる文を捨てました(何もしていません)").into();
+                                    cx.notify()
+                                }))));
+                    }
+                    d = d.child(div()
+                        .id("ai-chat-in")
+                        .mt_1().p_1().rounded_sm().cursor_text()
+                        .bg(if dk { rgb(0x14171A) } else { rgb(0xFFFFFF) })
+                        .border_1()
+                        .border_color(if self.ai_chat_focus { 主 } else { th_cmd_border })
+                        .text_size(px(11.5)).text_color(th_top_fg)
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.ai_chat_focus = true;
+                            cx.notify()
+                        }))
+                        .child(if self.ai_chat_in.text().is_empty() {
+                            if self.ai_chat_focus {
+                                "|".to_string()
+                            } else {
+                                ui::t!("ここを押して書き、Enter で送る").to_string()
+                            }
+                        } else if self.ai_chat_focus {
+                            let mut s = self.ai_chat_in.text().to_string();
+                            let cur = self.ai_chat_in.cursor().min(s.len());
+                            s.insert(cur, '|');
+                            s
+                        } else {
+                            self.ai_chat_in.text().to_string()
+                        }));
+                    let mut r = div().flex().flex_row().gap_1().mt_1();
+                    r = r.child(釦("ai-chat-send", ui::t!("送る").to_string(), !self.ai_busy)
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.ai_chat_send(cx);
+                            cx.notify()
+                        })));
+                    if self.ai_busy {
+                        r = r.child(div().text_size(px(10.5)).text_color(th_status)
+                            .child(ui::t!("考えています…").to_string()));
+                    }
+                    d = d.child(r);
                 }
             }
             Some(d)

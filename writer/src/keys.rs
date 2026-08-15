@@ -4,6 +4,8 @@ use crate::*;
 
 impl Writer {
     pub(crate) fn click_at(&mut self, rel_x: f32, rel_y: f32, extend: bool) {
+        // 本文を押したら会話の欄から焦点が離れる(打鍵は本文へ戻る)
+        self.ai_chat_focus = false;
         let pxmm = PX_PER_MM * self.zoom;
         // 紙は編集領域の (28,14)px に置いてあり、スクロールで上へずれている
         let x_mm = (rel_x - 28.0) / pxmm - self.pg.left_mm;
@@ -437,6 +439,13 @@ impl Writer {
     }
 
     pub(crate) fn a_cancel(&mut self, _: &ui::Cancel, _: &mut Window, cx: &mut Context<Self>) {
+        // 会話の欄は Esc で焦点を返す(パネルは開いたまま — 本文へ戻るだけ)
+        if self.ai_chat_focus {
+            self.ai_chat_focus = false;
+            self.status = ui::t!("本文に戻りました(会話のパネルはそのまま)").into();
+            cx.notify();
+            return;
+        }
         // 道具 → メニュー → 検索のパネル → ヘッダーのパネル → 一覧のパネル、の順で戻す
         if self.tool.take().is_some() {
             self.ink_cur = None;
@@ -682,6 +691,12 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn enter(&mut self, _: &ui::Enter, _: &mut Window, cx: &mut Context<Self>) {
+        // 左パネルの会話の Enter = 送る(焦点はそのまま — 続けて書ける)
+        if self.ai_chat_focus {
+            self.ai_chat_send(cx);
+            cx.notify();
+            return;
+        }
         if self.pw_open {
             self.pw_commit();
             cx.notify();

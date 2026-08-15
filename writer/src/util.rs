@@ -187,3 +187,21 @@ pub(crate) fn strip_code_fence(s: &str) -> String {
     let body = rest.split_once('\n').map(|(_, b)| b).unwrap_or("");
     body.trim_end().trim_end_matches("```").trim_end().to_string()
 }
+
+/// 返事の中から**最初の囲み**(```〜```)を取り出す。囲みが無ければ None。
+///
+/// [`strip_code_fence`] は「返事まるごとが囲み」を剥がす道具で、こちらは
+/// **説明の中に埋まった囲み**を拾う(左パネルの会話。説明は会話に出し、
+/// 囲みの中身は「入れる」を押したときだけ文書へ入る)。
+pub(crate) fn 取り出す囲み(out: &str) -> Option<String> {
+    let mut it = out.split("```");
+    it.next()?; // 囲みの前(説明)
+    let 中 = it.next()?;
+    // ```text や ```md のような札は落とす。1行目に札しか無いときだけ
+    let 中 = match 中.split_once('\n') {
+        Some((頭, 残り)) if !頭.trim().is_empty() && !頭.contains(' ') => 残り,
+        _ => 中,
+    };
+    let t = 中.trim_start_matches('\n').trim_end().to_string();
+    if t.is_empty() { None } else { Some(t) }
+}

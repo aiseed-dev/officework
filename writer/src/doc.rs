@@ -85,6 +85,10 @@ impl Writer {
             ai_open: false,
             ai_ed: Editor::new(""),
             ai_busy: false,
+            ai_chat_log: Vec::new(),
+            ai_chat_in: Editor::new(""),
+            ai_chat_focus: false,
+            ai_chat_plan: None,
             multipage: false,
             sd_open: false,
             sd_ed: Editor::new(""),
@@ -1145,16 +1149,28 @@ impl Writer {
         let body = match &job {
             AiJob::Continue => text[..sel.end.min(text.len())].to_string(),
             AiJob::Macro(_) => String::new(),
-            AiJob::Ask(_) if sel.is_empty() => String::new(),
+            // 会話は**選んでいなくても通す**(「この書き方でいい?」のように
+            // 範囲の要らない用件がある)。選んでいれば、そこが相手
+            AiJob::Ask(_) | AiJob::Chat(_) if sel.is_empty() => String::new(),
             _ if sel.is_empty() => text.clone(),
             _ => text[sel.clone()].to_string(),
         };
-        if body.trim().is_empty() && !matches!(job, AiJob::Ask(_) | AiJob::Macro(_)) {
+        if body.trim().is_empty()
+            && !matches!(job, AiJob::Ask(_) | AiJob::Macro(_) | AiJob::Chat(_))
+        {
             self.status = ui::t!("文章がありません(打つか、選んでから押してください)").into();
             return;
         }
         let (sys, ask) = job.prompt();
         let user = match &job {
+            // **用件そのものが本体。** 選んだ字は付け合わせ
+            AiJob::Chat(q) => {
+                if body.trim().is_empty() {
+                    q.clone()
+                } else {
+                    format!("{q}\n\n---\n{body}")
+                }
+            }
             AiJob::Ask(q) => {
                 if body.trim().is_empty() {
                     q.clone()
@@ -1240,6 +1256,32 @@ impl Writer {
             self.status = ui::t!("AI: 答えが空でした(何もしていません)").into();
             return;
         }
+        // **会話は文書に入れない。** 左パネルに返し、置き換える文の案は
+        // 人が「入れる」を押すまで文書に触らせない(押したのは人、が残る形)
+        if matches!(job, AiJob::Chat(_)) {
+            let 案 = crate::util::取り出す囲み(&out);
+            let 見せる = match &案 {
+                Some(code) => {
+                    // 囲みの外の説明だけを会話に出す(文そのものは下の欄に置く)
+                    let 説明 = out.split("```").next().unwrap_or("").trim().to_string();
+                    if 説明.is_empty() {
+                        let _ = code;
+                        ui::t!("こう直します。").to_string()
+                    } else {
+                        説明
+                    }
+                }
+                None => out.clone(),
+            };
+            self.ai_chat_log.push((false, 見せる));
+            self.ai_chat_plan = 案;
+            self.status = if self.ai_chat_plan.is_some() {
+                ui::t!("直した文ができました(左パネルで読んでから「入れる」)").into()
+            } else {
+                ui::t!("答えました(左パネル)").into()
+            };
+            return;
+        }
         // マクロ台本は文書に入れない — プラグイン置き場に .py で置き、
         // 人が読んで確かめてから一覧から実行する(開く=実行なしのまま)
         if matches!(job, AiJob::Macro(_)) {
@@ -1298,8 +1340,8 @@ impl Writer {
                 self.doc.set_body_text(self.ed.text());
             }
             // 続き・自由な頼みは、カーソル(選択の終わり)の後ろへ
-            // Macro は上で受けて return 済み
-            AiJob::Macro(_) => unreachable!(),
+            // Macro と Chat は上で受けて return 済み
+            AiJob::Macro(_) | AiJob::Chat(_) => unreachable!(),
             AiJob::Continue | AiJob::Ask(_) => {
                 let at = sel.end.min(self.ed.text().len());
                 self.ed.move_to(at, false);
@@ -1333,6 +1375,58 @@ impl Writer {
         self.relayout();
         self.status =
             ui::tf!("AI の{}を入れました(Ctrl+Z で1手で戻せます)", label).into();
+    }
+
+    /// 会話を送る。**答えは文書でなくパネルへ**返る(AiJob::Chat)
+    pub(crate) fn ai_chat_send(&mut self, cx: &mut Context<Self>) {
+        let q = self.ai_chat_in.text().trim().to_string();
+        if q.is_empty() {
+            self.status = ui::t!("用件がありません").into();
+            return;
+        }
+        self.ai_chat_log.push((true, q.clone()));
+        self.ai_chat_in = Editor::new("");
+        self.ai_chat_plan = None;
+        self.ai_go(AiJob::Chat(q), cx);
+    }
+
+    /// **直した文を入れる。** ここが「人が押した」の一点 —
+    /// 押すまで AI は文書に触らない(2026-08-09 の決めを、人の一押しとして残す)。
+    ///
+    /// writer には calc のような Python の橋が無いので、入るのは**文そのもの**。
+    /// 選んでいればそこを置き換え、選んでいなければカーソルの後ろへ挿す。
+    /// どちらも Ctrl+Z 一手で戻る
+    pub(crate) fn ai_chat_insert(&mut self) {
+        let Some(plan) = self.ai_chat_plan.clone() else { return };
+        if self.protected() {
+            self.status =
+                ui::t!("読み取り専用で保護されています(保護タブの「保護」で解除できます)").into();
+            return;
+        }
+        self.switch_target(Target::Body);
+        self.flush_target();
+        self.checkpoint(false);
+        let sel = self.ed.selection();
+        let 置き換えた = !sel.is_empty();
+        if 置き換えた {
+            self.ed.move_to(sel.start, false);
+            self.ed.move_to(sel.end, true);
+            self.ed.insert(&plan);
+        } else {
+            let at = sel.end.min(self.ed.text().len());
+            self.ed.move_to(at, false);
+            self.ed.insert(&format!("\n{plan}"));
+        }
+        self.doc.set_body_text(self.ed.text());
+        self.dirty = true;
+        self.relayout();
+        self.ai_chat_plan = None;
+        self.ai_chat_log.push((false, ui::t!("入れました。").to_string()));
+        self.status = if 置き換えた {
+            ui::t!("選んでいた所を置き換えました(Ctrl+Z で戻せます)").into()
+        } else {
+            ui::t!("カーソルの後ろに入れました(Ctrl+Z で戻せます)").into()
+        };
     }
 
     /// 記入欄(コンテンツコントロール)を挿す。選択があればそれを欄にし、

@@ -1670,7 +1670,13 @@ impl Render for Writer {
             .child(if let Some(fp) = filepage {
                 fp
             } else {
-                div().flex_1().relative().overflow_hidden()
+                // 左右のパネルは**場所を取る**(重ねない)。紙の上に被せると
+                // 本文が隠れる — calc で 2026-08-15 に同じ物を直した。
+                // 紙の側に min_w(0) が要る(flex の既定 min-width:auto だと
+                // 紙が縮まず、右のパネルが枠の外へ押し出されて消える)
+                div().flex_1().overflow_hidden().flex().flex_row()
+                .children(nav_panel)
+                .child(div().flex_1().min_w(px(0.0)).relative().overflow_hidden()
                     .on_scroll_wheel(cx.listener(|this, e: &gpui::ScrollWheelEvent, _, cx| {
                         // 上に回すと delta は正 → 紙は頭の方へ戻る
                         let dy = match e.delta {
@@ -1699,8 +1705,6 @@ impl Render for Writer {
                     .children(url_panel)
                     .children(fm_panel)
                     .children(lk_panel)
-                    .children(nav_panel)
-                    .children(rp_panel)
                     .children(font_panel)
                     .children(size_panel)
                     .children(style_panel)
@@ -1757,7 +1761,8 @@ impl Render for Writer {
                                             })))))
                     }))
                     .child(InputSink { view: me })
-                    .children(menu)
+                    .children(menu))
+                .children(rp_panel)
             })
             .children(self.show_statusbar.then_some(statusbar))
             // 窓の縁のつかみ(最後に描く = 最初にマウスを受ける)。

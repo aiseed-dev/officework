@@ -6509,398 +6509,590 @@
  },
  {
   "i": 1627,
-  "t": "Copia formato"
+  "t": "Pannello sinistro (Chiedi all'IA) aperto"
  },
  {
   "i": 1628,
-  "t": "Stile"
+  "t": "Pannello sinistro chiuso"
  },
  {
   "i": 1629,
-  "t": "Elenco campi"
+  "t": "Pannello destro (Impostazioni cella) aperto"
  },
  {
   "i": 1630,
-  "t": "Ingrandisci testo dello schermo"
+  "t": "Pannello destro chiuso"
  },
  {
   "i": 1631,
-  "t": "Riduci testo dello schermo"
+  "t": "Conversazione"
  },
  {
   "i": 1632,
-  "t": "AI"
+  "t": "Impostazioni cella"
  },
  {
   "i": 1633,
-  "t": "Stampa"
- },
- {
-  "i": 1634,
-  "t": "Layout di stampa"
- },
- {
-  "i": 1635,
-  "t": "Destinazione"
- },
- {
-  "i": 1636,
-  "t": "Riassunto"
- },
- {
-  "i": 1637,
-  "t": "Riscrivi"
- },
- {
-  "i": 1638,
-  "t": "Più formale"
- },
- {
-  "i": 1639,
-  "t": "Più semplice"
- },
- {
-  "i": 1640,
-  "t": "Traduzione"
- },
- {
-  "i": 1641,
-  "t": "Furigana"
- },
- {
-  "i": 1642,
-  "t": "Continua"
- },
- {
-  "i": 1643,
-  "t": "In tabella"
- },
- {
-  "i": 1644,
-  "t": "Chiedi"
- },
- {
-  "i": 1645,
-  "t": "Ruby"
- },
- {
-  "i": 1646,
-  "t": "Verticale"
- },
- {
-  "i": 1647,
-  "t": "Direzione del testo"
- },
- {
-  "i": 1648,
-  "t": "Distribuito"
- },
- {
-  "i": 1649,
-  "t": "Inserisci didascalia"
- },
- {
-  "i": 1650,
-  "t": "Apri URL"
- },
- {
-  "i": 1651,
-  "t": "Indice"
- },
- {
-  "i": 1652,
-  "t": "Note Aozora"
- },
- {
-  "i": 1653,
-  "t": "Notazione Denden"
- },
- {
-  "i": 1654,
-  "t": "Revisioni"
- },
- {
-  "i": 1655,
-  "t": "Mostra revisioni"
- },
- {
-  "i": 1656,
-  "t": "Correzione"
- },
- {
-  "i": 1657,
-  "t": "Caratteri"
- },
- {
-  "i": 1658,
-  "t": "Controllo ortografia"
- },
- {
-  "i": 1659,
-  "t": "Thesaurus"
- },
- {
-  "i": 1660,
-  "t": "Errori di conversione"
- },
- {
-  "i": 1661,
-  "t": "Incoerenze di grafia"
- },
- {
-  "i": 1662,
-  "t": "Subtotali"
- },
- {
-  "i": 1663,
-  "t": "Calcolo"
- },
- {
-  "i": 1664,
-  "t": "Testo da destra a sinistra"
- },
- {
-  "i": 1665,
-  "t": "Direzione del foglio"
- },
- {
-  "i": 1666,
-  "t": "Python"
- },
- {
-  "i": 1667,
-  "t": "Casella di controllo"
- },
- {
-  "i": 1668,
-  "t": "Collegamenti esterni"
- },
- {
-  "i": 1669,
-  "t": "Grafico consigliato"
- },
- {
-  "i": 1670,
-  "t": "Modalità collaborativa"
- },
- {
-  "i": 1671,
-  "t": "Cronologia versioni"
- },
- {
-  "i": 1672,
-  "t": "Chat"
- },
- {
-  "i": 1673,
-  "t": "Proteggi"
- },
- {
-  "i": 1674,
-  "t": "Crittografa"
- },
- {
-  "i": 1675,
-  "t": "Aggiungi firma digitale"
- },
- {
-  "i": 1676,
-  "t": "Macro"
- },
- {
-  "i": 1677,
-  "t": "Gestione plugin"
- },
- {
-  "i": 1678,
-  "t": "Mostra zeri"
- },
- {
-  "i": 1679,
-  "t": "Zoom al 100%"
- },
- {
-  "i": 1680,
-  "t": "Tema dell'interfaccia"
- },
- {
-  "i": 1681,
-  "t": "Finestra controllo celle"
- },
- {
-  "i": 1682,
-  "t": "Somma automatica"
- },
- {
-  "i": 1683,
-  "t": "Registra azioni"
- },
- {
-  "i": 1684,
-  "t": "Elimina commento"
- },
- {
-  "i": 1685,
-  "t": "Risolutore"
- },
- {
-  "i": 1686,
-  "t": "Da testo a dati"
- },
- {
-  "i": 1687,
-  "t": "Rimuovi frecce"
- },
- {
-  "i": 1688,
-  "t": "Riempimento"
- },
- {
-  "i": 1689,
-  "t": "Cancella filtro"
- },
- {
-  "i": 1690,
-  "t": "Scrivi macro"
- },
- {
-  "i": 1691,
-  "t": "Testo in colonne"
- },
- {
-  "i": 1692,
-  "t": "Didascalia"
- },
- {
-  "i": 1693,
-  "t": "Indice delle figure"
- },
- {
-  "i": 1694,
-  "t": "Aggiorna indice delle figure"
- },
- {
-  "i": 1695,
-  "t": "Collegamenti esterni (importa come valori)"
- },
- {
-  "i": 1696,
-  "t": "Matematica e trigonometria"
- },
- {
-  "i": 1697,
-  "t": "Mostra formule"
- },
- {
-  "i": 1698,
-  "t": "Orientamento del testo (da destra a sinistra)"
- },
- {
-  "i": 1699,
-  "t": "Testo"
- },
- {
-  "i": 1700,
-  "t": "Data e ora"
- },
- {
-  "i": 1701,
-  "t": "Usate di recente"
- },
- {
-  "i": 1702,
-  "t": "Stampa griglia"
- },
- {
-  "i": 1703,
-  "t": "Aggiorna sommario"
- },
- {
-  "i": 1704,
-  "t": "Colonne alternate"
- },
- {
-  "i": 1705,
-  "t": "Stampa intestazioni"
- },
- {
-  "i": 1706,
-  "t": "Nascondi dettaglio"
- },
- {
-  "i": 1707,
-  "t": "Rimuovi duplicati"
- },
- {
-  "i": 1708,
-  "t": "Inserisci funzione"
- },
- {
-  "i": 1709,
-  "t": "Formato CSV"
- },
- {
-  "i": 1710,
-  "t": "Blocca cella"
- },
- {
-  "i": 1711,
-  "t": "Tabella dati"
- },
- {
-  "i": 1712,
-  "t": "Riempimento rapido"
- },
- {
-  "i": 1713,
-  "t": "Elenco"
- },
- {
-  "i": 1714,
-  "t": "Incolla nome"
- },
- {
-  "i": 1715,
-  "t": "Ripristino"
- },
- {
-  "i": 1716,
   "t": "Testo a capo"
  },
  {
+  "i": 1634,
+  "t": "Formato numero"
+ },
+ {
+  "i": 1635,
+  "t": "Separatore delle migliaia"
+ },
+ {
+  "i": 1636,
+  "t": "Codice articolo (0000)"
+ },
+ {
+  "i": 1637,
+  "t": "Penna bordi"
+ },
+ {
+  "i": 1638,
+  "t": "Sottile"
+ },
+ {
+  "i": 1639,
+  "t": "Spesso"
+ },
+ {
+  "i": 1640,
+  "t": "Doppio"
+ },
+ {
+  "i": 1641,
+  "t": "Dove tracciare (si può premere più volte)"
+ },
+ {
+  "i": 1642,
+  "t": "Cancella"
+ },
+ {
+  "i": 1643,
+  "t": "Chiedi all'IA"
+ },
+ {
+  "i": 1644,
+  "t": "L'intervallo selezionato è l'oggetto della richiesta. Le richieste che modificano il foglio vengono mostrate come script: nulla viene eseguito finché non premi."
+ },
+ {
+  "i": 1645,
+  "t": "es. ordina per vendite / colora i primi 5 / aggiungi una riga totale"
+ },
+ {
+  "i": 1646,
+  "t": "Modifica proposta (non viene eseguita finché non premi)"
+ },
+ {
+  "i": 1647,
+  "t": "Applica"
+ },
+ {
+  "i": 1648,
+  "t": "Proposta scartata (nulla è cambiato)"
+ },
+ {
+  "i": 1649,
+  "t": "Premi qui per scrivere; Invio manda"
+ },
+ {
+  "i": 1650,
+  "t": "Invia"
+ },
+ {
+  "i": 1651,
+  "t": "Sto pensando…"
+ },
+ {
+  "i": 1652,
+  "t": "Ora: {}"
+ },
+ {
+  "i": 1653,
+  "t": "Torno al foglio (il pannello della conversazione resta aperto)"
+ },
+ {
+  "i": 1654,
+  "t": "Ecco la modifica."
+ },
+ {
+  "i": 1655,
+  "t": "È pronta una proposta (leggila nel pannello sinistro, poi Applica)"
+ },
+ {
+  "i": 1656,
+  "t": "Risposto (pannello sinistro)"
+ },
+ {
+  "i": 1657,
+  "t": "Formato numero riportato a Generale"
+ },
+ {
+  "i": 1658,
+  "t": "Nessuna richiesta"
+ },
+ {
+  "i": 1659,
+  "t": "Uno script è in esecuzione (attendi che finisca)"
+ },
+ {
+  "i": 1660,
+  "t": "Eseguo la proposta…"
+ },
+ {
+  "i": 1661,
+  "t": "Applicato."
+ },
+ {
+  "i": 1662,
+  "t": "Proposta applicata (Ctrl+Z annulla)"
+ },
+ {
+  "i": 1663,
+  "t": "Formato numero impostato su {}"
+ },
+ {
+  "i": 1664,
+  "t": "Proposta applicata: {} (Ctrl+Z annulla)"
+ },
+ {
+  "i": 1665,
+  "t": "Lo script è fallito: {}"
+ },
+ {
+  "i": 1666,
+  "t": "Lo script non è stato eseguito: {}"
+ },
+ {
+  "i": 1667,
+  "t": "Il testo rivisto è pronto (leggilo nel pannello sinistro, poi Applica)"
+ },
+ {
+  "i": 1668,
+  "t": "Selezione sostituita (Ctrl+Z annulla)"
+ },
+ {
+  "i": 1669,
+  "t": "Inserito dopo il cursore (Ctrl+Z annulla)"
+ },
+ {
+  "i": 1670,
+  "t": "Torno al testo (il pannello della conversazione resta aperto)"
+ },
+ {
+  "i": 1671,
+  "t": "La selezione è l'oggetto della richiesta. Il testo rivisto viene mostrato prima ed entra solo se premi."
+ },
+ {
+  "i": 1672,
+  "t": "es. rendi questo paragrafo cortese / lungo la metà / suona troppo rigido?"
+ },
+ {
+  "i": 1673,
+  "t": "Testo da inserire (non entra finché non premi)"
+ },
+ {
+  "i": 1674,
+  "t": "Testo scartato (nulla è cambiato)"
+ },
+ {
+  "i": 1675,
+  "t": "Copia formato"
+ },
+ {
+  "i": 1676,
+  "t": "Stile"
+ },
+ {
+  "i": 1677,
+  "t": "Elenco campi"
+ },
+ {
+  "i": 1678,
+  "t": "Ingrandisci testo dello schermo"
+ },
+ {
+  "i": 1679,
+  "t": "Riduci testo dello schermo"
+ },
+ {
+  "i": 1680,
+  "t": "AI"
+ },
+ {
+  "i": 1681,
+  "t": "Stampa"
+ },
+ {
+  "i": 1682,
+  "t": "Layout di stampa"
+ },
+ {
+  "i": 1683,
+  "t": "Destinazione"
+ },
+ {
+  "i": 1684,
+  "t": "Riassunto"
+ },
+ {
+  "i": 1685,
+  "t": "Riscrivi"
+ },
+ {
+  "i": 1686,
+  "t": "Più formale"
+ },
+ {
+  "i": 1687,
+  "t": "Più semplice"
+ },
+ {
+  "i": 1688,
+  "t": "Traduzione"
+ },
+ {
+  "i": 1689,
+  "t": "Furigana"
+ },
+ {
+  "i": 1690,
+  "t": "Continua"
+ },
+ {
+  "i": 1691,
+  "t": "In tabella"
+ },
+ {
+  "i": 1692,
+  "t": "Chiedi"
+ },
+ {
+  "i": 1693,
+  "t": "Ruby"
+ },
+ {
+  "i": 1694,
+  "t": "Verticale"
+ },
+ {
+  "i": 1695,
+  "t": "Direzione del testo"
+ },
+ {
+  "i": 1696,
+  "t": "Distribuito"
+ },
+ {
+  "i": 1697,
+  "t": "Inserisci didascalia"
+ },
+ {
+  "i": 1698,
+  "t": "Apri URL"
+ },
+ {
+  "i": 1699,
+  "t": "Indice"
+ },
+ {
+  "i": 1700,
+  "t": "Note Aozora"
+ },
+ {
+  "i": 1701,
+  "t": "Notazione Denden"
+ },
+ {
+  "i": 1702,
+  "t": "Revisioni"
+ },
+ {
+  "i": 1703,
+  "t": "Mostra revisioni"
+ },
+ {
+  "i": 1704,
+  "t": "Correzione"
+ },
+ {
+  "i": 1705,
+  "t": "Caratteri"
+ },
+ {
+  "i": 1706,
+  "t": "Controllo ortografia"
+ },
+ {
+  "i": 1707,
+  "t": "Thesaurus"
+ },
+ {
+  "i": 1708,
+  "t": "Errori di conversione"
+ },
+ {
+  "i": 1709,
+  "t": "Incoerenze di grafia"
+ },
+ {
+  "i": 1710,
+  "t": "Subtotali"
+ },
+ {
+  "i": 1711,
+  "t": "Calcolo"
+ },
+ {
+  "i": 1712,
+  "t": "Testo da destra a sinistra"
+ },
+ {
+  "i": 1713,
+  "t": "Direzione del foglio"
+ },
+ {
+  "i": 1714,
+  "t": "Python"
+ },
+ {
+  "i": 1715,
+  "t": "Casella di controllo"
+ },
+ {
+  "i": 1716,
+  "t": "Collegamenti esterni"
+ },
+ {
   "i": 1717,
-  "t": "Intervallo copie"
+  "t": "Grafico consigliato"
  },
  {
   "i": 1718,
-  "t": "Nuovo .py"
+  "t": "Modalità collaborativa"
  },
  {
   "i": 1719,
-  "t": "Aggiungi intervallo"
+  "t": "Cronologia versioni"
  },
  {
   "i": 1720,
-  "t": "Adatta alla pagina"
+  "t": "Chat"
  },
  {
   "i": 1721,
-  "t": "Fine pagina"
+  "t": "Proteggi"
  },
  {
   "i": 1722,
-  "t": "Apri cartella"
+  "t": "Crittografa"
  },
  {
   "i": 1723,
-  "t": "Tipo di calcolo"
+  "t": "Aggiungi firma digitale"
  },
  {
   "i": 1724,
-  "t": "Operazioni consentite"
+  "t": "Macro"
  },
  {
   "i": 1725,
+  "t": "Gestione plugin"
+ },
+ {
+  "i": 1726,
+  "t": "Mostra zeri"
+ },
+ {
+  "i": 1727,
+  "t": "Zoom al 100%"
+ },
+ {
+  "i": 1728,
+  "t": "Tema dell'interfaccia"
+ },
+ {
+  "i": 1729,
+  "t": "Finestra controllo celle"
+ },
+ {
+  "i": 1730,
+  "t": "Somma automatica"
+ },
+ {
+  "i": 1731,
+  "t": "Registra azioni"
+ },
+ {
+  "i": 1732,
+  "t": "Elimina commento"
+ },
+ {
+  "i": 1733,
+  "t": "Risolutore"
+ },
+ {
+  "i": 1734,
+  "t": "Da testo a dati"
+ },
+ {
+  "i": 1735,
+  "t": "Rimuovi frecce"
+ },
+ {
+  "i": 1736,
+  "t": "Riempimento"
+ },
+ {
+  "i": 1737,
+  "t": "Cancella filtro"
+ },
+ {
+  "i": 1738,
+  "t": "Scrivi macro"
+ },
+ {
+  "i": 1739,
+  "t": "Testo in colonne"
+ },
+ {
+  "i": 1740,
+  "t": "Didascalia"
+ },
+ {
+  "i": 1741,
+  "t": "Indice delle figure"
+ },
+ {
+  "i": 1742,
+  "t": "Aggiorna indice delle figure"
+ },
+ {
+  "i": 1743,
+  "t": "Collegamenti esterni (importa come valori)"
+ },
+ {
+  "i": 1744,
+  "t": "Matematica e trigonometria"
+ },
+ {
+  "i": 1745,
+  "t": "Mostra formule"
+ },
+ {
+  "i": 1746,
+  "t": "Orientamento del testo (da destra a sinistra)"
+ },
+ {
+  "i": 1747,
+  "t": "Testo"
+ },
+ {
+  "i": 1748,
+  "t": "Data e ora"
+ },
+ {
+  "i": 1749,
+  "t": "Usate di recente"
+ },
+ {
+  "i": 1750,
+  "t": "Stampa griglia"
+ },
+ {
+  "i": 1751,
+  "t": "Aggiorna sommario"
+ },
+ {
+  "i": 1752,
+  "t": "Colonne alternate"
+ },
+ {
+  "i": 1753,
+  "t": "Stampa intestazioni"
+ },
+ {
+  "i": 1754,
+  "t": "Nascondi dettaglio"
+ },
+ {
+  "i": 1755,
+  "t": "Rimuovi duplicati"
+ },
+ {
+  "i": 1756,
+  "t": "Inserisci funzione"
+ },
+ {
+  "i": 1757,
+  "t": "Formato CSV"
+ },
+ {
+  "i": 1758,
+  "t": "Blocca cella"
+ },
+ {
+  "i": 1759,
+  "t": "Tabella dati"
+ },
+ {
+  "i": 1760,
+  "t": "Riempimento rapido"
+ },
+ {
+  "i": 1761,
+  "t": "Elenco"
+ },
+ {
+  "i": 1762,
+  "t": "Incolla nome"
+ },
+ {
+  "i": 1763,
+  "t": "Ripristino"
+ },
+ {
+  "i": 1764,
+  "t": "Testo a capo"
+ },
+ {
+  "i": 1765,
+  "t": "Intervallo copie"
+ },
+ {
+  "i": 1766,
+  "t": "Nuovo .py"
+ },
+ {
+  "i": 1767,
+  "t": "Aggiungi intervallo"
+ },
+ {
+  "i": 1768,
+  "t": "Adatta alla pagina"
+ },
+ {
+  "i": 1769,
+  "t": "Fine pagina"
+ },
+ {
+  "i": 1770,
+  "t": "Apri cartella"
+ },
+ {
+  "i": 1771,
+  "t": "Tipo di calcolo"
+ },
+ {
+  "i": 1772,
+  "t": "Operazioni consentite"
+ },
+ {
+  "i": 1773,
   "t": "Suggerisci sola lettura"
  }
 ]

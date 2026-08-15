@@ -85,6 +85,10 @@ enum AiJob {
     /// マクロ台本を書かせる(答えは文書に入れず、プラグイン置き場に
     /// .py で置く — 人が読んで確かめてから実行する。自動では走らせない)
     Macro(String),
+    /// **会話**(左パネル)。答えは文書に入れず、パネルへ返す。
+    /// 文を直す頼みなら、置き換える文を囲みに入れて見せ、
+    /// **人が「入れる」を押すまで文書に触らない**
+    Chat(String),
 }
 
 impl AiJob {
@@ -114,6 +118,20 @@ impl AiJob {
             ),
             AiJob::Ask(_) => (
                 "あなたは日本語の文書を扱う道具です。頼まれたことに対する答えの                 本文だけを返します。前置き・後書き・見出しは書きません。",
+                "",
+            ),
+            // **会話**。writer には Python の橋が無い(calc だけ)ので、
+            // 台本ではなく**置き換える文そのもの**を囲みで受け取る。
+            // 人が「入れる」を押して初めて文書が変わる
+            AiJob::Chat(_) => (
+                "あなたは文書づくりを手伝う相談相手です。日本語で短く答えます。\n\
+                 **文を直す頼み**(書き直し・敬語にする・短くする・訳す・\
+                 続きを書く・箇条書きにする など)のときは、まず1〜2文で\
+                 何をするかを言い、続けて ``` の囲みの中に\
+                 **文書に入れる文だけ**を書きます。囲みの中に説明・見出し・\
+                 引用符は入れません。\n\
+                 文を直さない頼み(意味を訊く・書き方を相談する等)は、\
+                 囲みを使わず本文だけで答えます。",
                 "",
             ),
             // 台本の作法 = サンドボックスの中の python-docx。前置きの関数だけを使わせ、
@@ -152,6 +170,7 @@ impl AiJob {
             AiJob::Table => ui::t!("表"),
             AiJob::Ask(_) => ui::t!("頼み"),
             AiJob::Macro(_) => ui::t!("マクロ台本"),
+            AiJob::Chat(_) => ui::t!("会話"),
         }
     }
 }
@@ -298,6 +317,17 @@ struct Writer {
     ai_ed: Editor,
     /// AI が働いている間は真(二重に頼まない)
     ai_busy: bool,
+    // ── 左パネルの会話(2026-08-15。ナビの4つ目の耳)────────────────
+    // **co-chat(共同編集のチャット)とは別物。** あちらは人と人、
+    // こちらは人と AI。名前を ai_chat_* にして取り違えを断つ
+    /// やりとり(自分か, 字)
+    pub(crate) ai_chat_log: Vec<(bool, String)>,
+    /// 用件の欄
+    pub(crate) ai_chat_in: Editor,
+    /// 欄に焦点があるか。**旗が立っている間だけ**打鍵を奪う
+    pub(crate) ai_chat_focus: bool,
+    /// 置き換える文の案(囲みの中身)。**押すまで文書に触らない**
+    pub(crate) ai_chat_plan: Option<String>,
     /// 複数ページ(見開き。画面だけの見え方 — 紙は1ページずつのまま)
     multipage: bool,
     /// **印刷モード。** 紙を1枚ずつ積んで見せる。
@@ -419,6 +449,10 @@ impl HasEditor for Writer {
             &mut self.ai_ed
         } else if self.chat_open {
             &mut self.chat_ed
+        } else if self.ai_chat_focus {
+            // 左パネルの会話の欄(押した後だけ)。**開いているだけでは
+            // 本文の打鍵を奪わない**
+            &mut self.ai_chat_in
         } else {
             &mut self.ed
         }
@@ -455,6 +489,8 @@ impl HasEditor for Writer {
             &self.ai_ed
         } else if self.chat_open {
             &self.chat_ed
+        } else if self.ai_chat_focus {
+            &self.ai_chat_in
         } else {
             &self.ed
         }
