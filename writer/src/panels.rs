@@ -18,7 +18,8 @@ pub(crate) struct Panels {
     pub url_panel: Option<gpui::Div>,
     pub fm_panel: Option<gpui::Div>,
     pub nav_panel: Option<gpui::Div>,
-    pub rp_panel: Option<gpui::Div>,
+    /// 右パネルは巻けるので `Stateful`(id を持つ)
+    pub rp_panel: Option<gpui::Stateful<gpui::Div>>,
     pub lk_panel: Option<gpui::Div>,
     pub ai_panel: Option<gpui::Div>,
     pub sd_panel: Option<gpui::Div>,
@@ -794,14 +795,74 @@ impl Writer {
                     .child(label)
             };
             let row = || div().flex().flex_row().flex_wrap().gap_1();
-            let mut d = div().absolute().right(px(0.0)).top(px(0.0))
-                .w(px(230.0)).h_full().overflow_hidden()
+            // 左と同じく**場所を取る**(重ねない)。巻けるようにもする —
+            // 表の面が足された分、230px の幅では下が切れる
+            let mut d = div().id("rp-panel")
+                .flex_none().w(px(230.0)).h_full().overflow_y_scroll()
                 .p_2().bg(panel_bg)
                 .border_l_1().border_color(th_cmd_border)
                 .flex().flex_col().gap_1()
                 .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("設定 — いる場所を直す")));
+
+            // **いる場所に追従する。** 表の中なら表の面、段落に数式や画像が
+            // あればその面を、文字・段落・ページの前に出す
+            // (発注者 2026-08-14「選んでいる物の設定に切り替わるように」)。
+            // 出すだけで下の面も残す — 表の中でも字は太字にしたい
+            if let Some((_, 行, 列, 行数, 列数)) = self.cursor_table() {
+                d = d.child(head(ui::t!("表")));
+                d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                    .child(SharedString::from(ui::tf!(
+                        "{}行 × {}列 — いま {}行目 {}列目", 行数, 列数, 行 + 1, 列 + 1))));
+                d = d.child(row()
+                    .child(btn(self, "tb-row-up", ui::t!("上に行").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.table_add_row(false); cx.notify() })))
+                    .child(btn(self, "tb-row-dn", ui::t!("下に行").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.table_add_row(true); cx.notify() })))
+                    .child(btn(self, "tb-row-del", ui::t!("行を消す").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.table_del_row(); cx.notify() }))));
+                d = d.child(row()
+                    .child(btn(self, "tb-col-l", ui::t!("左に列").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.table_add_col(false); cx.notify() })))
+                    .child(btn(self, "tb-col-r", ui::t!("右に列").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.table_add_col(true); cx.notify() })))
+                    .child(btn(self, "tb-col-del", ui::t!("列を消す").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.table_del_col(); cx.notify() }))));
+            }
+            // 数式と画像は**段落が持つ**(writer に図形の選択という状態は無い)。
+            // 数式は絵だが `tex` に原文を積んであるので、直せる
+            if let Some(p0) = &para {
+                let 絵: Vec<&kumihan::InlineImage> =
+                    p0.images.iter().chain(p0.images_new.iter()).collect();
+                let 式: Vec<&&kumihan::InlineImage> =
+                    絵.iter().filter(|im| im.tex.is_some()).collect();
+                if let Some(im) = 式.first() {
+                    let tex = im.tex.clone().unwrap_or_default();
+                    d = d.child(head(ui::t!("数式")));
+                    d = d.child(div().text_size(px(10.5)).text_color(th_status)
+                        .child(SharedString::from(tex.clone())));
+                    d = d.child(row().child(
+                        btn(self, "eq-edit", ui::t!("式を直す").into()).on_click(
+                            cx.listener(move |t, _, _, cx| {
+                                // 原文を欄に載せて開く。**打ち直しにしない**
+                                t.eq_ed = Editor::new(&tex);
+                                t.eq_open = true;
+                                t.status = ui::t!("式を直します(Enter で組み直し・Esc で取りやめ)").into();
+                                cx.notify()
+                            }))));
+                } else if let Some(im) = 絵.first() {
+                    d = d.child(head(ui::t!("画像")));
+                    d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                        .child(SharedString::from(
+                            ui::tf!("{:.0}×{:.0}mm", im.w_mm, im.h_mm))));
+                    d = d.child(row()
+                        .child(btn(self, "img-small", ui::t!("小さく").into()).on_click(
+                            cx.listener(|t, _, _, cx| { t.image_scale(0.9); cx.notify() })))
+                        .child(btn(self, "img-big", ui::t!("大きく").into()).on_click(
+                            cx.listener(|t, _, _, cx| { t.image_scale(1.1); cx.notify() }))));
+                }
+            }
 
             // 文字
             d = d.child(head(ui::t!("文字")))

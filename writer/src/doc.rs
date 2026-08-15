@@ -179,6 +179,208 @@ impl Writer {
         }
     }
 
+    /// いま表の中にいるか。いるなら (表の番号, 行, 列, 行数, 列数)。
+    ///
+    /// 右パネルが**いる場所に追従する**ための入口(2026-08-15)。
+    /// 表そのものの選択という状態は持たない — カーソルの居場所で決める
+    pub(crate) fn cursor_table(&self) -> Option<(usize, usize, usize, usize, usize)> {
+        let Target::Cell { table, row, col } = self.target else { return None };
+        let t = self.doc.tables().nth(table)?;
+        let rows = t.rows.len();
+        let cols = t.rows.iter().map(|r| r.len()).max().unwrap_or(0);
+        Some((table, row, col, rows, cols))
+    }
+
+    /// 表の中の空のセル1つ(行や列を足すときの中身)
+    fn empty_cell() -> kumihan::Cellbox {
+        kumihan::Cellbox {
+            paragraphs: vec![kumihan::Paragraph {
+                runs: vec![kumihan::Run {
+                    text: String::new(),
+                    size_pt: None,
+                    font: None,
+                    fmt: Default::default(),
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }
+    }
+
+    /// 行を足す(`below` なら下、でなければ上)。
+    ///
+    /// **表の操作はここが最初**(2026-08-15)。それまで writer には
+    /// 3×3 を末尾に置く「表の挿入」しか無く、**行の足し方が無かった** —
+    /// 帳票は必ず行が増えるので、これが無いと表は使い物にならない
+    pub(crate) fn table_add_row(&mut self, below: bool) {
+        let Some((ti, row, _, _, cols)) = self.cursor_table() else { return };
+        self.checkpoint(false);
+        self.flush_target();
+        let at = if below { row + 1 } else { row };
+        if let Some(tb) = self.table_mut(ti) {
+            let cells: Vec<_> = (0..cols.max(1)).map(|_| Self::empty_cell()).collect();
+            let at = at.min(tb.rows.len());
+            tb.rows.insert(at, cells);
+        }
+        self.dirty = true;
+        self.relayout_keep();
+        self.status = if below {
+            ui::t!("下に行を足しました").into()
+        } else {
+            ui::t!("上に行を足しました").into()
+        };
+    }
+
+    /// 列を足す(`right` なら右、でなければ左)。列幅の表も一緒に伸ばす
+    pub(crate) fn table_add_col(&mut self, right: bool) {
+        let Some((ti, _, col, _, _)) = self.cursor_table() else { return };
+        self.checkpoint(false);
+        self.flush_target();
+        let at = if right { col + 1 } else { col };
+        if let Some(tb) = self.table_mut(ti) {
+            for r in &mut tb.rows {
+                let at = at.min(r.len());
+                r.insert(at, Self::empty_cell());
+            }
+            // 列幅を持っている表なら、隣の幅を写して1本増やす
+            if !tb.col_mm.is_empty() {
+                let w = tb.col_mm.get(col.min(tb.col_mm.len() - 1)).copied().unwrap_or(20.0);
+                let at = at.min(tb.col_mm.len());
+                tb.col_mm.insert(at, w);
+            }
+        }
+        self.dirty = true;
+        self.relayout_keep();
+        self.status = if right {
+            ui::t!("右に列を足しました").into()
+        } else {
+            ui::t!("左に列を足しました").into()
+        };
+    }
+
+    /// いまの行を消す。**最後の1行は消さない**(表が消えるのは別の操作)
+    pub(crate) fn table_del_row(&mut self) {
+        let Some((ti, row, _, rows, _)) = self.cursor_table() else { return };
+        if rows <= 1 {
+            self.status = ui::t!("最後の1行は消せません(表ごと消すのは別の操作です)").into();
+            return;
+        }
+        self.checkpoint(false);
+        self.flush_target();
+        if let Some(tb) = self.table_mut(ti) {
+            if row < tb.rows.len() {
+                tb.rows.remove(row);
+            }
+        }
+        // カーソルは1つ上の行へ(消えた行に居続けない)。
+        // **書き戻さずに移る** — 消した行はもう無い
+        let next = row.saturating_sub(1);
+        self.retarget_fresh(Target::Cell { table: ti, row: next, col: 0 });
+        self.dirty = true;
+        self.relayout_keep();
+        self.status = ui::t!("行を消しました(Ctrl+Z で戻せます)").into();
+    }
+
+    /// いまの列を消す。**最後の1列は消さない**
+    pub(crate) fn table_del_col(&mut self) {
+        let Some((ti, row, col, _, cols)) = self.cursor_table() else { return };
+        if cols <= 1 {
+            self.status = ui::t!("最後の1列は消せません(表ごと消すのは別の操作です)").into();
+            return;
+        }
+        self.checkpoint(false);
+        self.flush_target();
+        if let Some(tb) = self.table_mut(ti) {
+            for r in &mut tb.rows {
+                if col < r.len() {
+                    r.remove(col);
+                }
+            }
+            if col < tb.col_mm.len() {
+                tb.col_mm.remove(col);
+            }
+        }
+        let next = col.saturating_sub(1);
+        self.retarget_fresh(Target::Cell { table: ti, row, col: next });
+        self.dirty = true;
+        self.relayout_keep();
+        self.status = ui::t!("列を消しました(Ctrl+Z で戻せます)").into();
+    }
+
+    /// いまの段落の画像を拡げる・縮める(縦横の比は保つ)。
+    ///
+    /// **数式も画像なので同じ道で効く** — 式の絵だけ大きくしたい、は
+    /// 普通の頼み。下限 5mm・上限 400mm(紙より大きくしない)
+    pub(crate) fn image_scale(&mut self, k: f32) {
+        let (pi, _) = self.cursor_para();
+        self.checkpoint(false);
+        self.flush_target();
+        let mut 触った = 0usize;
+        // 段落は流れ(blocks)の中に表と混ざっている。段落だけを数えて引く
+        if let Some(p) = self
+            .doc
+            .blocks
+            .iter_mut()
+            .filter_map(|b| match b {
+                kumihan::Block::Para(p) => Some(p),
+                _ => None,
+            })
+            .nth(pi)
+        {
+            for im in p.images.iter_mut().chain(p.images_new.iter_mut()) {
+                im.w_mm = (im.w_mm * k).clamp(5.0, 400.0);
+                im.h_mm = (im.h_mm * k).clamp(5.0, 400.0);
+                触った += 1;
+            }
+        }
+        if 触った == 0 {
+            self.status = ui::t!("この段落に絵がありません").into();
+            return;
+        }
+        self.dirty = true;
+        self.relayout_keep();
+        self.status = if k < 1.0 {
+            ui::t!("絵を小さくしました").into()
+        } else {
+            ui::t!("絵を大きくしました").into()
+        };
+    }
+
+    /// **書き戻さずに**編集先を移す。消した行・列の後始末に使う。
+    ///
+    /// `switch_target` は移る前に今の文章を書き戻すが、**もう無い場所へ
+    /// 書き戻すと事故になる**。2026-08-15 実機で踏んだ: 行を消したあと
+    /// `target` を Body に置いてから switch_target を呼んだら、手元に
+    /// 残っていたセルの字が**本文の1段落目を潰した**(「表のある文書」が
+    /// 「2-2」になった)。消したあとは書き戻す先が無い — 読み直すだけ
+    fn retarget_fresh(&mut self, next: Target) {
+        self.target = next;
+        let text = match next {
+            Target::Body => self.doc.body_text(),
+            Target::Cell { table, row, col } => self
+                .doc
+                .tables()
+                .nth(table)
+                .and_then(|t| t.rows.get(row))
+                .and_then(|r| r.get(col))
+                .map(cell_text)
+                .unwrap_or_default(),
+        };
+        self.ed = Editor::new(&text);
+    }
+
+    /// 表を番号で引く(本文の流れの中の何番目の表か)
+    fn table_mut(&mut self, i: usize) -> Option<&mut kumihan::Table> {
+        self.doc
+            .blocks
+            .iter_mut()
+            .filter_map(|b| match b {
+                kumihan::Block::Table(t) => Some(t),
+                _ => None,
+            })
+            .nth(i)
+    }
+
     /// 編集先を切り替える。いまの内容を書き戻してから、次の文章を持つ。
     pub(crate) fn switch_target(&mut self, next: Target) {
         if self.target == next {

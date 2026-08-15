@@ -309,6 +309,30 @@ view stays one continuous scroll)**,
 dark mode (surroundings darken, paper stays white), ruler (mm),
 toolbar / status bar / side panel toggles.
 
+## Right panel, "Settings — fix where you are"
+
+**It follows where you are.** If the cursor is inside a table, the table face
+comes first; if the paragraph holds an equation or a picture, that face does
+(the Text / Paragraph / Page faces stay below — you still want bold inside a
+table).
+
+- **Table** (when inside one): shows rows × columns and where you are, plus
+  **row above / row below / delete row / column left / column right / delete
+  column**. **Added 2026-08-15** — until then writer could only drop a 3×3
+  table at the end, with no way to add a row. The last row and column are never
+  deleted (deleting the whole table is a separate action)
+- **Equation** (when the paragraph holds one): shows the LaTeX source; "Edit
+  the equation" loads that source into the box. **You never retype it**
+- **Picture** (when the paragraph holds one): its size in mm, and smaller /
+  bigger
+- **Text**: bold, italic, underline, strike, size, font, colour, clear
+- **Paragraph**: alignment, line spacing, indent, bullets, numbering,
+  background, box
+- **Page**: orientation, paper, margins, columns, vertical writing
+
+The panel **takes space** (it never covers the page) and scrolls if its
+contents grow.
+
 ## AI — talk to it in the left panel
 
 **On 2026-08-15 the AI tab was removed.** Its eleven buttons (summarize,

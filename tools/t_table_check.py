@@ -30,7 +30,11 @@ sys.path.insert(0, str(ROOT / "ui"))
 import gen_lang as g  # noqa: E402
 
 # 見る場所。**試験は見ない**(試験の中の日本語は画面に出ない)
-DIRS = ("calc/src", "writer/src", "ui/src", "face/src", "lang/src")
+# **Rust 側の門番(lang/tests/i18n_soroi.rs)と同じ場所を見る。**
+# lang/src は入れない — 対訳の仕組みそのものが `t!("…")` を使っていて、
+# あれは画面の文言ではない。face/src は足してある(表の側に文言が
+# 増えても拾えるように。いまは空)
+DIRS = ("calc/src", "writer/src", "ui/src", "face/src")
 SKIP = {"tests.rs"}
 MACROS = ("ui::t!(", "ui::tf!(", "t!(", "tf!(")
 
@@ -75,10 +79,10 @@ def main():
             if p.name in SKIP:
                 continue
             for s in literals(p.read_text(encoding="utf-8")):
-                # 日本語を含まない句(記号だけ・英字だけ)は表に無くてよい
-                if not any("ぁ" <= c <= "ゟ" or "゠" <= c <= "ヿ"
-                           or "一" <= c <= "鿿" for c in s):
-                    continue
+                # **日本語を含まない句も飛ばさない。** 飛ばしていたら
+                # `{:.0}×{:.0}mm` が素通りし、Rust 側の門番
+                # (lang/tests/i18n_soroi.rs)だけが落ちた(2026-08-15)。
+                # **門番が2つで食い違うのは、1つも無いより悪い**
                 if s not in ja:
                     miss.setdefault(s, set()).add(os.path.join(d, p.name))
     if not miss:

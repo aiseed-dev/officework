@@ -6681,398 +6681,490 @@
  },
  {
   "i": 1670,
-  "t": "Salin format"
+  "t": "Tabel"
  },
  {
   "i": 1671,
-  "t": "Gaya"
+  "t": "{} baris × {} kolom — sekarang baris {}, kolom {}"
  },
  {
   "i": 1672,
-  "t": "Daftar bidang"
+  "t": "Baris di atas"
  },
  {
   "i": 1673,
-  "t": "Perbesar teks layar"
+  "t": "Baris di bawah"
  },
  {
   "i": 1674,
-  "t": "Perkecil teks layar"
+  "t": "Hapus baris"
  },
  {
   "i": 1675,
-  "t": "AI"
+  "t": "Kolom kiri"
  },
  {
   "i": 1676,
-  "t": "Cetak"
+  "t": "Kolom kanan"
  },
  {
   "i": 1677,
-  "t": "Tata letak cetak"
+  "t": "Hapus kolom"
  },
  {
   "i": 1678,
-  "t": "Tujuan"
+  "t": "Baris ditambahkan di atas"
  },
  {
   "i": 1679,
-  "t": "Ringkas"
+  "t": "Baris ditambahkan di bawah"
  },
  {
   "i": 1680,
-  "t": "Tulis ulang"
+  "t": "Kolom ditambahkan di kiri"
  },
  {
   "i": 1681,
-  "t": "Lebih sopan"
+  "t": "Kolom ditambahkan di kanan"
  },
  {
   "i": 1682,
-  "t": "Lebih sederhana"
+  "t": "Baris dihapus (Ctrl+Z membatalkannya)"
  },
  {
   "i": 1683,
-  "t": "Terjemahkan"
+  "t": "Kolom dihapus (Ctrl+Z membatalkannya)"
  },
  {
   "i": 1684,
-  "t": "Furigana"
+  "t": "Baris terakhir tidak bisa dihapus (menghapus seluruh tabel adalah tindakan lain)"
  },
  {
   "i": 1685,
-  "t": "Lanjutkan"
+  "t": "Kolom terakhir tidak bisa dihapus (menghapus seluruh tabel adalah tindakan lain)"
  },
  {
   "i": 1686,
-  "t": "Jadi tabel"
+  "t": "Rumus"
  },
  {
   "i": 1687,
-  "t": "Minta"
+  "t": "Ubah rumus"
  },
  {
   "i": 1688,
-  "t": "Ruby"
+  "t": "Mengubah rumus (Enter menyusun ulang, Esc membatalkan)"
  },
  {
   "i": 1689,
-  "t": "Vertikal"
+  "t": "Tidak ada gambar di paragraf ini"
  },
  {
   "i": 1690,
-  "t": "Arah teks"
+  "t": "Gambar diperkecil"
  },
  {
   "i": 1691,
-  "t": "Terdistribusi"
+  "t": "Gambar diperbesar"
  },
  {
   "i": 1692,
-  "t": "Sisipkan keterangan"
+  "t": "{:.0}×{:.0}mm"
  },
  {
   "i": 1693,
-  "t": "Buka URL"
+  "t": "Salin format"
  },
  {
   "i": 1694,
-  "t": "Indeks"
+  "t": "Gaya"
  },
  {
   "i": 1695,
-  "t": "Catatan Aozora"
+  "t": "Daftar bidang"
  },
  {
   "i": 1696,
-  "t": "Notasi Denden"
+  "t": "Perbesar teks layar"
  },
  {
   "i": 1697,
-  "t": "Lacak perubahan"
+  "t": "Perkecil teks layar"
  },
  {
   "i": 1698,
-  "t": "Tampilkan perubahan"
+  "t": "AI"
  },
  {
   "i": 1699,
-  "t": "Pemeriksaan"
+  "t": "Cetak"
  },
  {
   "i": 1700,
-  "t": "Karakter"
+  "t": "Tata letak cetak"
  },
  {
   "i": 1701,
-  "t": "Periksa ejaan"
+  "t": "Tujuan"
  },
  {
   "i": 1702,
-  "t": "Tesaurus"
+  "t": "Ringkas"
  },
  {
   "i": 1703,
-  "t": "Salah konversi"
+  "t": "Tulis ulang"
  },
  {
   "i": 1704,
-  "t": "Inkonsistensi"
+  "t": "Lebih sopan"
  },
  {
   "i": 1705,
-  "t": "Subtotal"
+  "t": "Lebih sederhana"
  },
  {
   "i": 1706,
-  "t": "Kalkulasi"
+  "t": "Terjemahkan"
  },
  {
   "i": 1707,
-  "t": "Teks kanan-ke-kiri"
+  "t": "Furigana"
  },
  {
   "i": 1708,
-  "t": "Arah lembar kerja"
+  "t": "Lanjutkan"
  },
  {
   "i": 1709,
-  "t": "Python"
+  "t": "Jadi tabel"
  },
  {
   "i": 1710,
-  "t": "Kotak centang"
+  "t": "Minta"
  },
  {
   "i": 1711,
-  "t": "Tautan eksternal"
+  "t": "Ruby"
  },
  {
   "i": 1712,
-  "t": "Grafik yang disarankan"
+  "t": "Vertikal"
  },
  {
   "i": 1713,
-  "t": "Mode pengeditan bersama"
+  "t": "Arah teks"
  },
  {
   "i": 1714,
-  "t": "Riwayat versi"
+  "t": "Terdistribusi"
  },
  {
   "i": 1715,
-  "t": "Obrolan"
+  "t": "Sisipkan keterangan"
  },
  {
   "i": 1716,
-  "t": "Lindungi"
+  "t": "Buka URL"
  },
  {
   "i": 1717,
-  "t": "Enkripsi"
+  "t": "Indeks"
  },
  {
   "i": 1718,
-  "t": "Tambahkan tanda tangan digital"
+  "t": "Catatan Aozora"
  },
  {
   "i": 1719,
-  "t": "Makro"
+  "t": "Notasi Denden"
  },
  {
   "i": 1720,
-  "t": "Kelola plugin"
+  "t": "Lacak perubahan"
  },
  {
   "i": 1721,
-  "t": "Tampilkan nol"
+  "t": "Tampilkan perubahan"
  },
  {
   "i": 1722,
-  "t": "Zoom ke 100%"
+  "t": "Pemeriksaan"
  },
  {
   "i": 1723,
-  "t": "Tema antarmuka"
+  "t": "Karakter"
  },
  {
   "i": 1724,
-  "t": "Jendela pantauan"
+  "t": "Periksa ejaan"
  },
  {
   "i": 1725,
-  "t": "JumlahOtomatis"
+  "t": "Tesaurus"
  },
  {
   "i": 1726,
-  "t": "Rekam tindakan"
+  "t": "Salah konversi"
  },
  {
   "i": 1727,
-  "t": "Hapus komentar"
+  "t": "Inkonsistensi"
  },
  {
   "i": 1728,
-  "t": "Solver"
+  "t": "Subtotal"
  },
  {
   "i": 1729,
-  "t": "Teks ke data"
+  "t": "Kalkulasi"
  },
  {
   "i": 1730,
-  "t": "Hapus panah"
+  "t": "Teks kanan-ke-kiri"
  },
  {
   "i": 1731,
-  "t": "Isi"
+  "t": "Arah lembar kerja"
  },
  {
   "i": 1732,
-  "t": "Bersihkan filter"
+  "t": "Python"
  },
  {
   "i": 1733,
-  "t": "Tulis makro"
+  "t": "Kotak centang"
  },
  {
   "i": 1734,
-  "t": "Teks ke kolom"
+  "t": "Tautan eksternal"
  },
  {
   "i": 1735,
-  "t": "Keterangan"
+  "t": "Grafik yang disarankan"
  },
  {
   "i": 1736,
-  "t": "Daftar gambar"
+  "t": "Mode pengeditan bersama"
  },
  {
   "i": 1737,
-  "t": "Perbarui daftar gambar"
+  "t": "Riwayat versi"
  },
  {
   "i": 1738,
-  "t": "Tautan eksternal (impor sebagai nilai)"
+  "t": "Obrolan"
  },
  {
   "i": 1739,
-  "t": "Matematika & Trigonometri"
+  "t": "Lindungi"
  },
  {
   "i": 1740,
-  "t": "Tampilkan rumus"
+  "t": "Enkripsi"
  },
  {
   "i": 1741,
-  "t": "Arah teks (kanan-ke-kiri)"
+  "t": "Tambahkan tanda tangan digital"
  },
  {
   "i": 1742,
-  "t": "Teks"
+  "t": "Makro"
  },
  {
   "i": 1743,
-  "t": "Tanggal & Waktu"
+  "t": "Kelola plugin"
  },
  {
   "i": 1744,
-  "t": "Baru digunakan"
+  "t": "Tampilkan nol"
  },
  {
   "i": 1745,
-  "t": "Cetak garis kisi"
+  "t": "Zoom ke 100%"
  },
  {
   "i": 1746,
-  "t": "Perbarui daftar isi"
+  "t": "Tema antarmuka"
  },
  {
   "i": 1747,
-  "t": "Kolom berpita"
+  "t": "Jendela pantauan"
  },
  {
   "i": 1748,
-  "t": "Cetak judul"
+  "t": "JumlahOtomatis"
  },
  {
   "i": 1749,
-  "t": "Sembunyikan rincian"
+  "t": "Rekam tindakan"
  },
  {
   "i": 1750,
-  "t": "Hapus duplikat"
+  "t": "Hapus komentar"
  },
  {
   "i": 1751,
-  "t": "Sisipkan fungsi"
+  "t": "Solver"
  },
  {
   "i": 1752,
-  "t": "Format CSV"
+  "t": "Teks ke data"
  },
  {
   "i": 1753,
-  "t": "Kunci sel"
+  "t": "Hapus panah"
  },
  {
   "i": 1754,
-  "t": "Tabel data"
+  "t": "Isi"
  },
  {
   "i": 1755,
-  "t": "Isi menurut contoh"
+  "t": "Bersihkan filter"
  },
  {
   "i": 1756,
-  "t": "Daftar"
+  "t": "Tulis makro"
  },
  {
   "i": 1757,
-  "t": "Tempel nama"
+  "t": "Teks ke kolom"
  },
  {
   "i": 1758,
-  "t": "Pemulihan"
+  "t": "Keterangan"
  },
  {
   "i": 1759,
-  "t": "Bungkus teks"
+  "t": "Daftar gambar"
  },
  {
   "i": 1760,
-  "t": "Selang salinan"
+  "t": "Perbarui daftar gambar"
  },
  {
   "i": 1761,
-  "t": ".py baru"
+  "t": "Tautan eksternal (impor sebagai nilai)"
  },
  {
   "i": 1762,
-  "t": "Tambah rentang"
+  "t": "Matematika & Trigonometri"
  },
  {
   "i": 1763,
-  "t": "Muatkan ke kertas"
+  "t": "Tampilkan rumus"
  },
  {
   "i": 1764,
-  "t": "Batas kertas"
+  "t": "Arah teks (kanan-ke-kiri)"
  },
  {
   "i": 1765,
-  "t": "Buka folder plugins"
+  "t": "Teks"
  },
  {
   "i": 1766,
-  "t": "Jenis perhitungan"
+  "t": "Tanggal & Waktu"
  },
  {
   "i": 1767,
-  "t": "Tindakan yang diizinkan"
+  "t": "Baru digunakan"
  },
  {
   "i": 1768,
+  "t": "Cetak garis kisi"
+ },
+ {
+  "i": 1769,
+  "t": "Perbarui daftar isi"
+ },
+ {
+  "i": 1770,
+  "t": "Kolom berpita"
+ },
+ {
+  "i": 1771,
+  "t": "Cetak judul"
+ },
+ {
+  "i": 1772,
+  "t": "Sembunyikan rincian"
+ },
+ {
+  "i": 1773,
+  "t": "Hapus duplikat"
+ },
+ {
+  "i": 1774,
+  "t": "Sisipkan fungsi"
+ },
+ {
+  "i": 1775,
+  "t": "Format CSV"
+ },
+ {
+  "i": 1776,
+  "t": "Kunci sel"
+ },
+ {
+  "i": 1777,
+  "t": "Tabel data"
+ },
+ {
+  "i": 1778,
+  "t": "Isi menurut contoh"
+ },
+ {
+  "i": 1779,
+  "t": "Daftar"
+ },
+ {
+  "i": 1780,
+  "t": "Tempel nama"
+ },
+ {
+  "i": 1781,
+  "t": "Pemulihan"
+ },
+ {
+  "i": 1782,
+  "t": "Bungkus teks"
+ },
+ {
+  "i": 1783,
+  "t": "Selang salinan"
+ },
+ {
+  "i": 1784,
+  "t": ".py baru"
+ },
+ {
+  "i": 1785,
+  "t": "Tambah rentang"
+ },
+ {
+  "i": 1786,
+  "t": "Muatkan ke kertas"
+ },
+ {
+  "i": 1787,
+  "t": "Batas kertas"
+ },
+ {
+  "i": 1788,
+  "t": "Buka folder plugins"
+ },
+ {
+  "i": 1789,
+  "t": "Jenis perhitungan"
+ },
+ {
+  "i": 1790,
+  "t": "Tindakan yang diizinkan"
+ },
+ {
+  "i": 1791,
   "t": "Sarankan hanya-baca"
  }
 ]

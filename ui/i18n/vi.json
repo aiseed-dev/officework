@@ -6681,398 +6681,490 @@
  },
  {
   "i": 1670,
-  "t": "Sao chép định dạng"
+  "t": "Bảng"
  },
  {
   "i": 1671,
-  "t": "Kiểu"
+  "t": "{} hàng × {} cột — hiện ở hàng {}, cột {}"
  },
  {
   "i": 1672,
-  "t": "Danh sách trường"
+  "t": "Thêm hàng trên"
  },
  {
   "i": 1673,
-  "t": "Phóng to chữ màn hình"
+  "t": "Thêm hàng dưới"
  },
  {
   "i": 1674,
-  "t": "Thu nhỏ chữ màn hình"
+  "t": "Xoá hàng"
  },
  {
   "i": 1675,
-  "t": "AI"
+  "t": "Thêm cột trái"
  },
  {
   "i": 1676,
-  "t": "In"
+  "t": "Thêm cột phải"
  },
  {
   "i": 1677,
-  "t": "Bố cục in"
+  "t": "Xoá cột"
  },
  {
   "i": 1678,
-  "t": "Đích"
+  "t": "Đã thêm hàng phía trên"
  },
  {
   "i": 1679,
-  "t": "Tóm tắt"
+  "t": "Đã thêm hàng phía dưới"
  },
  {
   "i": 1680,
-  "t": "Viết lại"
+  "t": "Đã thêm cột bên trái"
  },
  {
   "i": 1681,
-  "t": "Lịch sự hơn"
+  "t": "Đã thêm cột bên phải"
  },
  {
   "i": 1682,
-  "t": "Dễ hiểu hơn"
+  "t": "Đã xoá hàng (Ctrl+Z để hoàn tác)"
  },
  {
   "i": 1683,
-  "t": "Dịch"
+  "t": "Đã xoá cột (Ctrl+Z để hoàn tác)"
  },
  {
   "i": 1684,
-  "t": "furigana"
+  "t": "Không thể xoá hàng cuối cùng (xoá cả bảng là thao tác khác)"
  },
  {
   "i": 1685,
-  "t": "Viết tiếp"
+  "t": "Không thể xoá cột cuối cùng (xoá cả bảng là thao tác khác)"
  },
  {
   "i": 1686,
-  "t": "Thành bảng"
+  "t": "Công thức"
  },
  {
   "i": 1687,
-  "t": "Yêu cầu"
+  "t": "Sửa công thức"
  },
  {
   "i": 1688,
-  "t": "Ruby"
+  "t": "Đang sửa công thức (Enter dựng lại, Esc huỷ)"
  },
  {
   "i": 1689,
-  "t": "Viết dọc"
+  "t": "Đoạn này không có hình"
  },
  {
   "i": 1690,
-  "t": "Hướng văn bản"
+  "t": "Đã thu nhỏ hình"
  },
  {
   "i": 1691,
-  "t": "Phân bố đều"
+  "t": "Đã phóng to hình"
  },
  {
   "i": 1692,
-  "t": "Chèn chú thích hình/bảng"
+  "t": "{:.0}×{:.0}mm"
  },
  {
   "i": 1693,
-  "t": "Mở URL"
+  "t": "Sao chép định dạng"
  },
  {
   "i": 1694,
-  "t": "Chỉ mục"
+  "t": "Kiểu"
  },
  {
   "i": 1695,
-  "t": "Ghi chú Aozora"
+  "t": "Danh sách trường"
  },
  {
   "i": 1696,
-  "t": "Cú pháp Denden"
+  "t": "Phóng to chữ màn hình"
  },
  {
   "i": 1697,
-  "t": "Ghi lại thay đổi"
+  "t": "Thu nhỏ chữ màn hình"
  },
  {
   "i": 1698,
-  "t": "Hiển thị thay đổi"
+  "t": "AI"
  },
  {
   "i": 1699,
-  "t": "Kiểm lỗi"
+  "t": "In"
  },
  {
   "i": 1700,
-  "t": "Ký tự"
+  "t": "Bố cục in"
  },
  {
   "i": 1701,
-  "t": "Kiểm tra chính tả"
+  "t": "Đích"
  },
  {
   "i": 1702,
-  "t": "Từ điển đồng nghĩa"
+  "t": "Tóm tắt"
  },
  {
   "i": 1703,
-  "t": "Chuyển đổi sai"
+  "t": "Viết lại"
  },
  {
   "i": 1704,
-  "t": "Viết không thống nhất"
+  "t": "Lịch sự hơn"
  },
  {
   "i": 1705,
-  "t": "Tổng phụ"
+  "t": "Dễ hiểu hơn"
  },
  {
   "i": 1706,
-  "t": "Cách tính"
+  "t": "Dịch"
  },
  {
   "i": 1707,
-  "t": "Chữ phải sang trái"
+  "t": "furigana"
  },
  {
   "i": 1708,
-  "t": "Hướng trang tính"
+  "t": "Viết tiếp"
  },
  {
   "i": 1709,
-  "t": "Python"
+  "t": "Thành bảng"
  },
  {
   "i": 1710,
-  "t": "Hộp kiểm"
+  "t": "Yêu cầu"
  },
  {
   "i": 1711,
-  "t": "Liên kết ngoài"
+  "t": "Ruby"
  },
  {
   "i": 1712,
-  "t": "Biểu đồ đề xuất"
+  "t": "Viết dọc"
  },
  {
   "i": 1713,
-  "t": "Chế độ đồng soạn thảo"
+  "t": "Hướng văn bản"
  },
  {
   "i": 1714,
-  "t": "Lịch sử phiên bản"
+  "t": "Phân bố đều"
  },
  {
   "i": 1715,
-  "t": "Trò chuyện"
+  "t": "Chèn chú thích hình/bảng"
  },
  {
   "i": 1716,
-  "t": "Bảo vệ"
+  "t": "Mở URL"
  },
  {
   "i": 1717,
-  "t": "Mã hóa"
+  "t": "Chỉ mục"
  },
  {
   "i": 1718,
-  "t": "Thêm chữ ký số"
+  "t": "Ghi chú Aozora"
  },
  {
   "i": 1719,
-  "t": "Macro"
+  "t": "Cú pháp Denden"
  },
  {
   "i": 1720,
-  "t": "Quản lý plugin"
+  "t": "Ghi lại thay đổi"
  },
  {
   "i": 1721,
-  "t": "Hiển thị số 0"
+  "t": "Hiển thị thay đổi"
  },
  {
   "i": 1722,
-  "t": "Thu phóng về 100%"
+  "t": "Kiểm lỗi"
  },
  {
   "i": 1723,
-  "t": "Chủ đề giao diện"
+  "t": "Ký tự"
  },
  {
   "i": 1724,
-  "t": "Cửa sổ theo dõi"
+  "t": "Kiểm tra chính tả"
  },
  {
   "i": 1725,
-  "t": "AutoSum"
+  "t": "Từ điển đồng nghĩa"
  },
  {
   "i": 1726,
-  "t": "Ghi lại thao tác"
+  "t": "Chuyển đổi sai"
  },
  {
   "i": 1727,
-  "t": "Xóa nhận xét"
+  "t": "Viết không thống nhất"
  },
  {
   "i": 1728,
-  "t": "Solver"
+  "t": "Tổng phụ"
  },
  {
   "i": 1729,
-  "t": "Văn bản thành dữ liệu"
+  "t": "Cách tính"
  },
  {
   "i": 1730,
-  "t": "Xóa mũi tên truy vết"
+  "t": "Chữ phải sang trái"
  },
  {
   "i": 1731,
-  "t": "Điền"
+  "t": "Hướng trang tính"
  },
  {
   "i": 1732,
-  "t": "Bỏ lọc"
+  "t": "Python"
  },
  {
   "i": 1733,
-  "t": "Viết macro"
+  "t": "Hộp kiểm"
  },
  {
   "i": 1734,
-  "t": "Tách cột"
+  "t": "Liên kết ngoài"
  },
  {
   "i": 1735,
-  "t": "Chú thích hình/bảng"
+  "t": "Biểu đồ đề xuất"
  },
  {
   "i": 1736,
-  "t": "Mục lục hình/bảng"
+  "t": "Chế độ đồng soạn thảo"
  },
  {
   "i": 1737,
-  "t": "Cập nhật mục lục hình/bảng"
+  "t": "Lịch sử phiên bản"
  },
  {
   "i": 1738,
-  "t": "Liên kết ngoài (nhập theo giá trị)"
+  "t": "Trò chuyện"
  },
  {
   "i": 1739,
-  "t": "Toán & Lượng giác"
+  "t": "Bảo vệ"
  },
  {
   "i": 1740,
-  "t": "Hiển thị công thức"
+  "t": "Mã hóa"
  },
  {
   "i": 1741,
-  "t": "Hướng chữ (phải sang trái)"
+  "t": "Thêm chữ ký số"
  },
  {
   "i": 1742,
-  "t": "Xử lý văn bản"
+  "t": "Macro"
  },
  {
   "i": 1743,
-  "t": "Ngày & Giờ"
+  "t": "Quản lý plugin"
  },
  {
   "i": 1744,
-  "t": "Dùng gần đây"
+  "t": "Hiển thị số 0"
  },
  {
   "i": 1745,
-  "t": "In cả đường lưới"
+  "t": "Thu phóng về 100%"
  },
  {
   "i": 1746,
-  "t": "Cập nhật mục lục"
+  "t": "Chủ đề giao diện"
  },
  {
   "i": 1747,
-  "t": "Cột sọc xen kẽ"
+  "t": "Cửa sổ theo dõi"
  },
  {
   "i": 1748,
-  "t": "In cả tiêu đề"
+  "t": "AutoSum"
  },
  {
   "i": 1749,
-  "t": "Ẩn chi tiết"
+  "t": "Ghi lại thao tác"
  },
  {
   "i": 1750,
-  "t": "Xóa trùng lặp"
+  "t": "Xóa nhận xét"
  },
  {
   "i": 1751,
-  "t": "Chèn hàm"
+  "t": "Solver"
  },
  {
   "i": 1752,
-  "t": "Dạng CSV"
+  "t": "Văn bản thành dữ liệu"
  },
  {
   "i": 1753,
-  "t": "Khoá ô"
+  "t": "Xóa mũi tên truy vết"
  },
  {
   "i": 1754,
-  "t": "Bảng dữ liệu"
+  "t": "Điền"
  },
  {
   "i": 1755,
-  "t": "Điền nhanh"
+  "t": "Bỏ lọc"
  },
  {
   "i": 1756,
-  "t": "Danh sách"
+  "t": "Viết macro"
  },
  {
   "i": 1757,
-  "t": "Dán tên"
+  "t": "Tách cột"
  },
  {
   "i": 1758,
-  "t": "Khôi phục"
+  "t": "Chú thích hình/bảng"
  },
  {
   "i": 1759,
-  "t": "Ngắt dòng trong ô"
+  "t": "Mục lục hình/bảng"
  },
  {
   "i": 1760,
-  "t": "Tần suất sao lưu"
+  "t": "Cập nhật mục lục hình/bảng"
  },
  {
   "i": 1761,
-  "t": "Tệp .py mới"
+  "t": "Liên kết ngoài (nhập theo giá trị)"
  },
  {
   "i": 1762,
-  "t": "Thêm vào vùng in"
+  "t": "Toán & Lượng giác"
  },
  {
   "i": 1763,
-  "t": "Thu vừa tờ giấy"
+  "t": "Hiển thị công thức"
  },
  {
   "i": 1764,
-  "t": "Chỗ hết tờ giấy"
+  "t": "Hướng chữ (phải sang trái)"
  },
  {
   "i": 1765,
-  "t": "Mở thư mục"
+  "t": "Xử lý văn bản"
  },
  {
   "i": 1766,
-  "t": "Cách hiện giá trị"
+  "t": "Ngày & Giờ"
  },
  {
   "i": 1767,
-  "t": "Thao tác được phép"
+  "t": "Dùng gần đây"
  },
  {
   "i": 1768,
+  "t": "In cả đường lưới"
+ },
+ {
+  "i": 1769,
+  "t": "Cập nhật mục lục"
+ },
+ {
+  "i": 1770,
+  "t": "Cột sọc xen kẽ"
+ },
+ {
+  "i": 1771,
+  "t": "In cả tiêu đề"
+ },
+ {
+  "i": 1772,
+  "t": "Ẩn chi tiết"
+ },
+ {
+  "i": 1773,
+  "t": "Xóa trùng lặp"
+ },
+ {
+  "i": 1774,
+  "t": "Chèn hàm"
+ },
+ {
+  "i": 1775,
+  "t": "Dạng CSV"
+ },
+ {
+  "i": 1776,
+  "t": "Khoá ô"
+ },
+ {
+  "i": 1777,
+  "t": "Bảng dữ liệu"
+ },
+ {
+  "i": 1778,
+  "t": "Điền nhanh"
+ },
+ {
+  "i": 1779,
+  "t": "Danh sách"
+ },
+ {
+  "i": 1780,
+  "t": "Dán tên"
+ },
+ {
+  "i": 1781,
+  "t": "Khôi phục"
+ },
+ {
+  "i": 1782,
+  "t": "Ngắt dòng trong ô"
+ },
+ {
+  "i": 1783,
+  "t": "Tần suất sao lưu"
+ },
+ {
+  "i": 1784,
+  "t": "Tệp .py mới"
+ },
+ {
+  "i": 1785,
+  "t": "Thêm vào vùng in"
+ },
+ {
+  "i": 1786,
+  "t": "Thu vừa tờ giấy"
+ },
+ {
+  "i": 1787,
+  "t": "Chỗ hết tờ giấy"
+ },
+ {
+  "i": 1788,
+  "t": "Mở thư mục"
+ },
+ {
+  "i": 1789,
+  "t": "Cách hiện giá trị"
+ },
+ {
+  "i": 1790,
+  "t": "Thao tác được phép"
+ },
+ {
+  "i": 1791,
   "t": "Gợi ý chỉ đọc"
  }
 ]

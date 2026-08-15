@@ -1855,4 +1855,62 @@ mod marker_tests {
             assert!(!is_plain_ext(e), "{e} は素の文字ではない");
         }
     }
+
+    /// **表の行と列を足す・消すが模型に届く。**
+    ///
+    /// 2026-08-15 まで writer には「3×3 を末尾に置く」しか無く、
+    /// **行の足し方が無かった** — 帳票は必ず行が増えるので、右パネルに
+    /// 出すと同時にここで見張る
+    #[gpui::test]
+    fn 表の行と列を足して消せる(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.run_cmd("instable", cx);
+            let (r0, c0) = {
+                let t = this.doc.tables().next().expect("表がある");
+                (t.rows.len(), t.rows[0].len())
+            };
+            assert_eq!((r0, c0), (3, 3), "3×3 で始まる");
+            // カーソルを表の中へ(右パネルはここでだけ表の面を出す)
+            this.switch_target(Target::Cell { table: 0, row: 1, col: 1 });
+            assert!(this.cursor_table().is_some(), "表の中と分からない");
+            let 本文 = this.doc.body_text();
+
+            this.table_add_row(true);
+            assert_eq!(this.doc.tables().next().unwrap().rows.len(), 4, "行が増えない");
+            this.table_add_col(false);
+            assert_eq!(this.doc.tables().next().unwrap().rows[0].len(), 4, "列が増えない");
+            this.table_del_row();
+            assert_eq!(this.doc.tables().next().unwrap().rows.len(), 3, "行が減らない");
+            this.table_del_col();
+            assert_eq!(this.doc.tables().next().unwrap().rows[0].len(), 3, "列が減らない");
+            // **本文を巻き添えにしない。** 消したあとに編集先を移すとき、
+            // 手元に残ったセルの字を書き戻すと本文の1段落目が潰れる
+            // (2026-08-15 実機で踏んだ)。段落の数と字が変わらないこと
+            assert_eq!(
+                this.doc.body_text(),
+                本文,
+                "行や列を消したら本文が書き換わった(セルの字が本文へ流れた)"
+            );
+        });
+    }
+
+    /// **最後の1行・1列は消せない**(消せると表が消えたように見える)
+    #[gpui::test]
+    fn 表の最後の行と列は残る(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.run_cmd("instable", cx);
+            this.switch_target(Target::Cell { table: 0, row: 0, col: 0 });
+            for _ in 0..5 {
+                this.table_del_row();
+            }
+            assert_eq!(this.doc.tables().next().unwrap().rows.len(), 1, "最後の1行まで消えた");
+            for _ in 0..5 {
+                this.table_del_col();
+            }
+            assert_eq!(this.doc.tables().next().unwrap().rows[0].len(), 1, "最後の1列まで消えた");
+            assert!(this.status.contains("最後の1列"), "断りの言葉が出ない: {}", this.status);
+        });
+    }
 }
