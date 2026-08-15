@@ -417,17 +417,19 @@ A script is the form the model writes most accurately (the xlwings/openpyxl
 shape) and — more importantly — **the form a person can check**.
 
 **Choosing the destination** moved to File > Advanced settings, "AI
-destination". Each press cycles local model → **Claude Agent** → Claude (API).
+destination". Each press cycles local model → **Claude Agent** → **OpenAI
+Codex** → Claude (API).
 
 - **Claude Agent** — through Anthropic's Agent SDK. `pip install
   claude-agent-sdk` is all you need (the SDK bundles its own executable)
+- **OpenAI Codex** — runs the local `codex` (`npm i -g @openai/codex`). It
+  uses whatever credentials that CLI already holds, so a ChatGPT plan works.
+  Install it and sign in once with `codex` first
 - **Claude (API)** — calls the API directly; no Python required
 
-**Both need `ANTHROPIC_API_KEY`.** officework only ever uses API-key
-authentication — the path that piggybacked on a locally installed
-executable's credentials was removed on 2026-08-15, because Anthropic does not
+**The two Claude destinations need `ANTHROPIC_API_KEY`.** Anthropic does not
 allow third-party products to offer claude.ai login or rate limits without
-prior approval.
+prior approval, so those two use API-key authentication only.
 
 Unavailable destinations **say why on the spot**.
 

@@ -455,16 +455,20 @@ xlsx を開いて、直して、保存する表計算アプリ。式も計算す
 (xlwings と openpyxl の形)、**人が読んで確かめられる**からです。
 
 **宛先の選び方**は ファイル > 詳細設定 の「AI の宛先」に移りました。
-押すたびに 手元のモデル → **Claude Agent** → Claude(API)と回ります。
+押すたびに 手元のモデル → **Claude Agent** → **OpenAI Codex** →
+Claude(API)と回ります。
 
 - **Claude Agent** — Anthropic の Agent SDK 経由。`pip install
   claude-agent-sdk` だけで足ります(実行体は SDK が同梱)
+- **OpenAI Codex** — 手元の `codex` を呼びます(`npm i -g @openai/codex`)。
+  **その CLI が持っている認証をそのまま使う**ので、ChatGPT の契約でも
+  動きます。入れたあと一度 `codex` を起こしてサインインしてください
 - **Claude(API)** — API を直に叩きます。Python も要りません
 
-**どちらも `ANTHROPIC_API_KEY` が要ります。** officework は鍵での認証しか
-使いません — 手元の実行体の認証に相乗りする道は 2026-08-15 にやめました
-(第三者の製品で claude.ai のログインと枠を提供することを、Anthropic の
-規約が事前の承認なしには許していないため)。
+**Claude の2つは `ANTHROPIC_API_KEY` が要ります。** Anthropic は、第三者の
+製品が claude.ai のログインと枠を提供することを事前の承認なしには許して
+いないので、こちらは鍵での認証だけにしてあります(承認は別途取りに行く
+前提です)。
 
 使えない宛先なら**その場で理由**を言います。
 
