@@ -3652,8 +3652,11 @@ impl Calc {
             "py" => {
                 let t = text.trim().to_string();
                 if t.is_empty() {
-                    // 空 Enter = .py ファイルを選ぶ
-                    self.run_python_file_dialog(cx);
+                    // **空 Enter = 置き場の一覧。** 前はここからファイル選択が
+                    // 出て、どこの .py でも走らせられた(2026-08-16 に閉じた —
+                    // 発注者「calc, writer から起動できるのは、置き場を固定する
+                    // のがいい」)。外から来た物は置き場に置いてから選ぶ
+                    self.run_cmd("py-list", cx);
                 } else if t == "@計算" || t == "@calc" {
                     self.run_py_calc(cx);
                 } else if t == "@" || t == "@list" {

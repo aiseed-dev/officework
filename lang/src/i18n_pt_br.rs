@@ -161,10 +161,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("先客が居なくなっていたので、編集権を取り直しました", "Quem editava saiu, então o direito de edição foi retomado"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Histórico de versões: clique para abrir uma cópia como documento sem título"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Chat: digite e pressione Enter para deixar um recado (.chat.txt ao lado do documento)"),
-    ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
-                               直します(台本の d が python-docx の文書。\
-                               fill(名前, 値)=記入・extract(名前)=読む・\
-                               fields()=一覧・render(辞書)=雛形差し込み)", "Macros: escolha um .py e o Python dentro do sandbox edita uma cópia do documento (no guião, d é o Document do python-docx. fill(nome, valor) preenche, extract(nome) lê, fields() lista, render(dicionário) preenche um modelo)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Plugins: coloque arquivos .py em {} e eles aparecem aqui"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Criptografar: digite uma senha e pressione Enter (AES-256, a partir do próximo salvamento)"),
     ("まだファイルになっていません(先に保存してください)", "Ainda não é um arquivo (salve primeiro)"),
@@ -360,7 +356,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)", "Histórico de versões: escolha uma para abrir sem título (se precisar do trabalho atual, salve antes)"),
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Ainda não é um arquivo (salve para ter um arquivo de chat ao lado)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Ainda não há recados (digite e pressione Enter para deixar um)"),
-    ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Macros: escolha um .py e corre o Python dentro do sandbox (b = livro, s = folha. É o mesmo mecanismo de Dados > Python)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Escolha uma célula vazia (células ocupadas nunca são sobrescritas)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Escolha a coluna da segmentação de dados (precisa de linhas de dados abaixo do título)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Arte de texto: digite o texto e ele entra como imagem em negrito com contorno"),

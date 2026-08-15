@@ -164,10 +164,6 @@ pub const TABLE: &[(&str, &str)] = &[
 ("先客が居なくなっていたので、編集権を取り直しました", "The previous editor left, so the editing rights were taken over"),
 ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Version history: click to open a copy as an untitled document"),
 ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Chat: type and press Enter to leave a message (.chat.txt next to the document)"),
-("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
-                               直します(台本の d が python-docx の文書。\
-                               fill(名前, 値)=記入・extract(名前)=読む・\
-                               fields()=一覧・render(辞書)=雛形差し込み)", "Macros: pick a .py and sandboxed Python edits a copy of the document (d is the python-docx Document; fill(name, value) fills, extract(name) reads, fields() lists, render(dict) fills a template)"),
 ("プラグイン: {} に .py を置くと、ここに並びます", "Plugins: put .py files in {} and they appear here"),
 ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Encrypt: type a password and press Enter (AES-256, from the next save)"),
 ("まだファイルになっていません(先に保存してください)", "Not a file yet (save first)"),
@@ -363,7 +359,6 @@ pub const TABLE: &[(&str, &str)] = &[
 ("バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)", "Version history: pick one to open it untitled (save your current work first if you need it)"),
 ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Not a file yet (save it to get a chat file alongside)"),
 ("まだ言伝はありません(打って Enter で書き残します)", "No messages yet (type and press Enter to leave one)"),
-("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Macros: pick a .py and sandboxed Python runs (b = workbook, s = sheet; same machinery as Data > Python)"),
 ("空のセルを選んでください(中身のあるセルは潰しません)", "Pick an empty cell (occupied cells are never overwritten)"),
 ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Pick a column for the slicer (data rows are needed below the heading)"),
 ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Text art: type text and it is placed as a bold outlined image"),

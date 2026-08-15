@@ -161,10 +161,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("先客が居なくなっていたので、編集権を取り直しました", "Önceki düzenleyici ayrılmış; düzenleme hakkı devralındı"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Sürüm geçmişi: tıklayınca kopyayı adsız belge olarak açar"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Sohbet: yazıp Enter ile mesaj bırakın (belgenin yanındaki .chat.txt)"),
-    ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
-                               直します(台本の d が python-docx の文書。\
-                               fill(名前, 値)=記入・extract(名前)=読む・\
-                               fields()=一覧・render(辞書)=雛形差し込み)", "Makrolar: bir .py seçin, kum havuzundaki Python belgenin bir kopyasını düzenlesin (betikteki d, python-docx belgesidir. fill(ad, değer)=doldurur, extract(ad)=okur, fields()=listeler, render(sözlük)=şablonu doldurur)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Eklentiler: {} içine .py koyarsanız burada görünür"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Şifrele: parolayı yazıp Enter'a basın (AES-256, bir sonraki kayıttan itibaren)"),
     ("まだファイルになっていません(先に保存してください)", "Henüz dosya değil (önce kaydedin)"),
@@ -360,7 +356,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)", "Sürüm geçmişi: birini seçince kopyayı adsız açar (şu anki çalışmanız gerekiyorsa önce kaydedin)"),
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Henüz dosya değil (kaydedince yanında sohbet dosyası oluşur)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Henüz mesaj yok (yazıp Enter ile bırakın)"),
-    ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Makrolar: bir .py seçin, kum havuzundaki Python çalışsın (b=kitap, s=sayfa. Çalışan şey Veri > Python ile aynı)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Boş bir hücre seçin (dolu hücrelerin üzerine asla yazılmaz)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Dilimleyici için bir sütun seçin (başlığın altında veri satırları gerekli)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Metin sanatı: yazın; kalın ve kenarlıklı süslü yazı resim olarak yerleştirilir"),

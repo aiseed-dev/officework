@@ -151,7 +151,6 @@ pub const WRITER: &[Tab] = &[
     ]},
     Tab { name: "巨集", cmds: &[
         c("plug-manage", "清單", "plug-manage"),
-        c("plug-macros", "從檔案", "plug-macros"),
         c("ai-macro", "撰寫巨集", "ai-macro"),
     ]},
 ];
@@ -310,7 +309,6 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "記錄操作", "py-run"),
         c("py-new", "新增 .py", "py-new"),
         c("py-list", "清單", "py-list"),
-        c("plug-macros", "從檔案", "plug-macros"),
         c("py-folder", "開啟資料夾", "py-folder"),
     ]},
     Tab { name: "樞紐分析表", cmds: &[

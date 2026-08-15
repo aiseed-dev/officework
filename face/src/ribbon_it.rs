@@ -151,7 +151,6 @@ pub const WRITER: &[Tab] = &[
     ]},
     Tab { name: "Macro", cmds: &[
         c("plug-manage", "Elenco", "plug-manage"),
-        c("plug-macros", "Da file", "plug-macros"),
         c("ai-macro", "Scrivi macro", "ai-macro"),
     ]},
 ];
@@ -310,7 +309,6 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "Registra azioni", "py-run"),
         c("py-new", "Nuovo .py", "py-new"),
         c("py-list", "Elenco", "py-list"),
-        c("plug-macros", "Da file", "plug-macros"),
         c("py-folder", "Apri cartella", "py-folder"),
     ]},
     Tab { name: "Tabella pivot", cmds: &[

@@ -533,9 +533,6 @@ impl Render for Calc {
             ("prot-encrypt", "暗号化"), ("prot-sign", "署名"), ("prot-doc", "保護"),
             ("freeze", "枠の固定"), ("pen", "ペン"), ("highlighter", "蛍光ペン"),
             ("eraser", "消しゴム"),
-            // 段の名が「マクロ」になったので、釦の名札は仕事の側で言う
-            // (2026-08-16。段と同じ名札は「どっちを押すのか」になる)
-            ("plug-macros", "ファイルから"),
         ];
         let th_cmd_border = th_line;
         let th_btn_hover = th_hover;

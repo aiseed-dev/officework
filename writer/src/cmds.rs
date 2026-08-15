@@ -826,27 +826,6 @@ impl Writer {
                         ui::t!("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)").into();
                 }
             }
-            // マクロ。.py を選ぶとサンドボックスの中の Python が文書の複製を直す
-            "plug-macros" => {
-                let ask = cx.background_executor().spawn(async {
-                    rfd::FileDialog::new().add_filter("Python", &["py"]).pick_file()
-                });
-                cx.spawn(async move |this, cx| {
-                    let r = ask.await;
-                    let _ = this.update(cx, |this, cx| {
-                        if let Some(p) = r {
-                            this.run_macro_file(p, cx);
-                        }
-                        cx.notify();
-                    });
-                })
-                .detach();
-                self.status = ui::t!("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
-                               直します(台本の d が python-docx の文書。\
-                               fill(名前, 値)=記入・extract(名前)=読む・\
-                               fields()=一覧・render(辞書)=雛形差し込み)").into();
-            }
-            // プラグインの管理。置き場の .py を一覧し、マクロと同じサンドボックスで実行
             "plug-manage" => {
                 self.plug_open = !self.plug_open;
                 if self.plug_open {

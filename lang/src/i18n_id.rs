@@ -161,10 +161,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("先客が居なくなっていたので、編集権を取り直しました", "Editor sebelumnya sudah pergi, jadi hak edit diambil alih"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Riwayat versi: klik untuk membuka salinan sebagai dokumen tanpa nama"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Obrolan: ketik lalu tekan Enter untuk meninggalkan pesan (.chat.txt di samping dokumen)"),
-    ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
-                               直します(台本の d が python-docx の文書。\
-                               fill(名前, 値)=記入・extract(名前)=読む・\
-                               fields()=一覧・render(辞書)=雛形差し込み)", "Makro: pilih sebuah .py, lalu Python di dalam sandbox menyunting salinan dokumen (d dalam skrip adalah Document dari python-docx. fill(nama, nilai) = mengisi, extract(nama) = membaca, fields() = daftar, render(kamus) = mengisi templat)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Plugin: letakkan file .py di {} dan akan muncul di sini"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Enkripsi: ketik kata sandi lalu tekan Enter (AES-256, mulai penyimpanan berikutnya)"),
     ("まだファイルになっていません(先に保存してください)", "Belum menjadi file (simpan dulu)"),
@@ -360,7 +356,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)", "Riwayat versi: pilih satu untuk membukanya tanpa nama (simpan dulu pekerjaan Anda jika masih diperlukan)"),
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Belum menjadi file (simpan untuk mendapatkan file obrolan di sampingnya)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Belum ada pesan (ketik lalu tekan Enter untuk meninggalkannya)"),
-    ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Makro: pilih sebuah .py dan Python di dalam sandbox akan berjalan (b = buku kerja, s = lembar. Isinya sama dengan Data > Python)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Pilih sel kosong (sel yang ada isinya tidak pernah ditimpa)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Pilih kolom untuk slicer (perlu baris data di bawah judul)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Seni teks: ketik teks dan akan ditempatkan sebagai gambar tebal bergaris tepi"),

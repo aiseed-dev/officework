@@ -697,11 +697,31 @@ and "Plugins", listing the same folder of .py files two different ways.
 - **New .py**: create a script in the folder and open it
 - **List**: the .py files in `~/.config/office/plugins`; pick one to run it
   (in the sandbox; b = workbook, s = sheet)
-- **From a file**: run a .py from outside the folder
 - **Open the folder**: opens `~/.config/office/plugins` in your file manager
 
 The folder is still named `plugins` — renaming it would strand files people
 have already put there. Only the words on screen changed.
+
+### Only .py files in the folder can be launched
+
+**Macros launched from calc must live in `~/.config/office/plugins`**
+(2026-08-16). There used to be a "From a file" button, and pressing Enter on an
+empty Data > Python prompt did the same thing. Both are closed.
+
+A .py you were given goes **into the folder first**, then you pick it from the
+list. **That extra step is the gate** — read it before you put it there. It is
+plain Python; reading it tells you what it does.
+
+Three paths run Python:
+
+| Path | What runs |
+|---|---|
+| Macros > List, and `@name(...)` in a cell | **only .py from the folder** |
+| Data > Python (typing) | **what you just typed**; no file is read |
+| Left panel conversation > Apply | **what the AI wrote, that you read and pressed** |
+
+Every one starts with a person choosing, typing, or pressing. **Workbooks never
+carry code** — opening one never runs anything.
 
 ## Protection tab
 

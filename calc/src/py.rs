@@ -1361,28 +1361,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     }
 
     /// .py ファイルを選んで回す(コードは利用者のファイルにある —
-    /// 文書には決して入らない)。
-    pub(crate) fn run_python_file_dialog(&mut self, cx: &mut Context<Self>) {
-        let ask = cx.background_executor().spawn(async {
-            rfd::FileDialog::new()
-                .add_filter("Python", &["py"])
-                .pick_file()
-        });
-        cx.spawn(async move |this, cx| {
-            let r = ask.await;
-            let _ = this.update(cx, |this, cx| {
-                if let Some(p) = r {
-                    match std::fs::read_to_string(&p) {
-                        Ok(code) => this.run_python(code, cx),
-                        Err(e) => this.status = format!("読めません: {e}").into(),
-                    }
-                }
-                cx.notify();
-            });
-        })
-        .detach();
-    }
-
     /// CSV/TSV を選んで、ウィザードのパネル(文字コード・区切り・置き場所・
     /// プレビュー)を開く。読み直しは Python(CP932 も読める)。
     pub(crate) fn import_text_dialog(&mut self, cx: &mut Context<Self>) {

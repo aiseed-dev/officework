@@ -161,10 +161,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("先客が居なくなっていたので、編集権を取り直しました", "Der vorige Bearbeiter ist weg; das Bearbeitungsrecht wurde übernommen"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Versionsverlauf: Klick öffnet eine Kopie als unbenanntes Duplikat"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Chat: tippen und Enter hinterlässt eine Nachricht (.chat.txt neben dem Dokument)"),
-    ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
-                               直します(台本の d が python-docx の文書。\
-                               fill(名前, 値)=記入・extract(名前)=読む・\
-                               fields()=一覧・render(辞書)=雛形差し込み)", "Makros: Wählen Sie eine .py, dann bearbeitet Python in der Sandbox eine Kopie des Dokuments (d im Skript ist das python-docx-Dokument. fill(Name, Wert) = ausfüllen, extract(Name) = lesen, fields() = auflisten, render(dict) = Vorlage füllen)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Plugins: .py-Dateien in {} ablegen, dann erscheinen sie hier"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Verschlüsseln: Passwort eingeben und Enter (AES-256, ab dem nächsten Speichern)"),
     ("まだファイルになっていません(先に保存してください)", "Noch keine Datei (bitte zuerst speichern)"),
@@ -360,7 +356,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)", "Versionsverlauf: Auswahl öffnet die Kopie unbenannt (aktuelle Arbeit bei Bedarf vorher speichern)"),
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Noch keine Datei (nach dem Speichern entsteht daneben eine Chat-Datei)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Noch keine Nachrichten (tippen und Enter hinterlässt eine)"),
-    ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Makros: Wählen Sie eine .py, dann läuft Python in der Sandbox (b = Mappe, s = Blatt. Dahinter steckt dasselbe wie bei Daten > Python)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Eine leere Zelle wählen (belegte Zellen werden nie überschrieben)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Eine Spalte für den Datenschnitt wählen (unter der Überschrift werden Datenzeilen gebraucht)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Textkunst: Text eingeben, er wird fett mit Kontur als Bild eingefügt"),

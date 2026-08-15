@@ -161,10 +161,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("先客が居なくなっていたので、編集権を取り直しました", "L'éditeur précédent est parti ; les droits d'édition ont été repris"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Historique des versions : cliquez pour ouvrir une copie comme document sans titre"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Discussion : tapez puis Enter pour laisser un message (.chat.txt à côté du document)"),
-    ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
-                               直します(台本の d が python-docx の文書。\
-                               fill(名前, 値)=記入・extract(名前)=読む・\
-                               fields()=一覧・render(辞書)=雛形差し込み)", "Macros : choisissez un .py et le Python du bac à sable modifie une copie du document (dans le script, d est le Document python-docx. fill(nom, valeur) = remplir, extract(nom) = lire, fields() = lister, render(dictionnaire) = remplir un modèle)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Plugins : placez des fichiers .py dans {} et ils apparaissent ici"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Chiffrer : tapez un mot de passe puis Enter (AES-256, dès le prochain enregistrement)"),
     ("まだファイルになっていません(先に保存してください)", "Pas encore de fichier (enregistrez d'abord)"),
@@ -360,7 +356,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)", "Historique des versions : choisissez une copie pour l'ouvrir sans titre (enregistrez d'abord votre travail en cours si besoin)"),
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Pas encore de fichier (enregistrez pour obtenir un fichier de discussion à côté)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Pas encore de messages (tapez puis Enter pour en laisser un)"),
-    ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Macros : choisissez un .py et le Python du bac à sable s'exécute (b = classeur, s = feuille. C'est le même mécanisme que Données > Python)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Choisissez une cellule vide (les cellules occupées ne sont jamais écrasées)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Choisissez une colonne pour le segment (des lignes de données sont nécessaires sous l'en-tête)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Texte artistique : tapez un texte et il est placé en image, gras et contouré"),

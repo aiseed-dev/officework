@@ -12,7 +12,7 @@ anything.
 
 Three ways:
 
-1. **Macros tab > From a file** — pick a `.py` file. The script body is your code
+1. **Macros tab > List** — pick a `.py` from the folder. The script body is your code
    only (see the contract below).
 2. **Macros tab > List** — every `.py` in
    `~/.config/office/plugins/` is listed; click one to run it in the same

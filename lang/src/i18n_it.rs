@@ -161,10 +161,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("先客が居なくなっていたので、編集権を取り直しました", "L'editor precedente se n'è andato: diritti di modifica acquisiti"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Cronologia versioni: clic per aprire una copia come documento senza titolo"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Chat: digitare e premere Enter per lasciare un messaggio (.chat.txt accanto al documento)"),
-    ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
-                               直します(台本の d が python-docx の文書。\
-                               fill(名前, 値)=記入・extract(名前)=読む・\
-                               fields()=一覧・render(辞書)=雛形差し込み)", "Macro: scegliere un .py e Python nella sandbox modifica una copia del documento (nello script d è il documento python-docx; fill(nome, valore) = compila, extract(nome) = legge, fields() = elenca, render(dizionario) = riempie un modello)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Plugin: i file .py collocati in {} compaiono qui"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Crittografia: digitare una password e premere Enter (AES-256, dal prossimo salvataggio)"),
     ("まだファイルになっていません(先に保存してください)", "Non è ancora un file (salvare prima)"),
@@ -360,7 +356,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)", "Cronologia versioni: sceglierne una per aprirla come copia senza titolo (se serve, salvare prima il lavoro in corso)"),
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Non è ancora un file (salvarlo per avere accanto il file di chat)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Nessun messaggio ancora (digitare e premere Enter per lasciarne uno)"),
-    ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Macro: scegliere un .py e Python nella sandbox lo esegue (b = cartella di lavoro, s = foglio; stesso meccanismo di Dati > Python)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Scegliere una cella vuota (le celle occupate non vengono mai sovrascritte)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Scegliere la colonna per il filtro dati (servono righe di dati sotto l'intestazione)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Testo artistico: digitare il testo e viene inserito come immagine in grassetto con bordo"),

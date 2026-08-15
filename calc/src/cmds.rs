@@ -42,7 +42,7 @@ impl Calc {
         "group", "ungroup", "hide-details", "show-details", "subtotal", "solver",
         "inssmartart", "insequation", "insslicer", "inscheckbox", "instextart",
         "coauth-mode", "co-delcomment", "co-showcomment", "co-chat",
-        "co-history", "plug-macros",
+        "co-history",
         // Python タブ(2026-08-09)
         "rec-toggle", "py-new", "py-list", "py-folder",
         "prot-doc", "prot-encrypt", "prot-sign",
@@ -1444,12 +1444,6 @@ impl Calc {
                             dir.display().to_string()).into()
                     }
                 };
-            }
-            "plug-macros" => {
-                self.commit();
-                self.run_python_file_dialog(cx);
-                self.status =
-                    ui::t!("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)").into();
             }
             // チェックボックス(セルの部品)。空のセルに FALSE を置くと
             // ☑/☐ で見え、空白キーで切り替わる(Excel では TRUE/FALSE の値)

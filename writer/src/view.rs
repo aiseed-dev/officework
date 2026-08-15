@@ -269,7 +269,6 @@ impl Render for Writer {
         // 会話では代われない(2026-08-15、AI タブの廃止で移した)
         const PLUG_ROWS: &[&[LItem]] = &[&[
             ("plug-manage", Some("一覧")),
-            ("plug-macros", Some("ファイルから")),
             ("ai-macro", Some("マクロを書く")),
         ]];
         let rows: Option<&[&[LItem]]> = match ribbon::WRITER[self.tab].name {

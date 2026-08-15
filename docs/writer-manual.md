@@ -386,11 +386,15 @@ Headless tools: `office-spell document.txt` (exit code 0=clean 1=findings
 
 - **List**: the .py files in `~/.config/office/plugins`; pick one to run it
   (in the sandbox). Extensions like Aozora annotations or EPUB go here
-- **From a file**: choose a .py outside the folder and **Python in a sandbox** (bubblewrap) edits a copy
-  of the document; the result lands as one undo step. The script gets `d` =
-  the python-docx Document. **Code is never stored in the document** (no
-  executable content in docx — the policy differs from xlsx because python-docx
-  already exists as public infrastructure)
+  Picking one runs **Python in a sandbox** (bubblewrap) on a copy of the
+  document; the result lands as one undo step. The script gets `d` = the
+  python-docx Document. **Code is never stored in the document** (no executable
+  content in docx — the policy differs from xlsx because python-docx already
+  exists as public infrastructure)
+
+**Only .py files in the folder can be launched** (2026-08-16). The button that
+ran a .py from anywhere is gone. A file you were given goes into the folder
+first, then you pick it from the list — **that step is the gate**.
 - **Writing macros** — named fields (`fill`/`extract`), templates (`render`),
   speed rules, and the AI button: see the
   [writer macro manual](writer-macro-manual.md)

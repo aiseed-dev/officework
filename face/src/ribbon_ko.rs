@@ -151,7 +151,6 @@ pub const WRITER: &[Tab] = &[
     ]},
     Tab { name: "매크로", cmds: &[
         c("plug-manage", "목록", "plug-manage"),
-        c("plug-macros", "파일로부터", "plug-macros"),
         c("ai-macro", "매크로 작성", "ai-macro"),
     ]},
 ];
@@ -310,7 +309,6 @@ pub const CALC: &[Tab] = &[
         c("rec-toggle", "동작 기록", "py-run"),
         c("py-new", "새 .py", "py-new"),
         c("py-list", "목록", "py-list"),
-        c("plug-macros", "파일로부터", "plug-macros"),
         c("py-folder", "폴더 열기", "py-folder"),
     ]},
     Tab { name: "피벗 테이블", cmds: &[

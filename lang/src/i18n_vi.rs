@@ -161,10 +161,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("先客が居なくなっていたので、編集権を取り直しました", "Người sửa trước đã rời đi nên đã lấy lại quyền sửa"),
     ("バージョン履歴: 押すと控えを名無しの複製で開きます", "Lịch sử phiên bản: bấm để mở bản sao thành bản nhân đôi chưa có tên"),
     ("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)", "Trò chuyện: gõ rồi Enter để ghi lời nhắn (.chat.txt cạnh tài liệu)"),
-    ("マクロ: .py を選ぶと、サンドボックスの中の Python が文書の複製を\
-                               直します(台本の d が python-docx の文書。\
-                               fill(名前, 値)=記入・extract(名前)=読む・\
-                               fields()=一覧・render(辞書)=雛形差し込み)", "Macro: chọn một .py thì Python trong sandbox sẽ sửa một bản sao của tài liệu (trong kịch bản, d là Document của python-docx. fill(tên, giá trị) = điền, extract(tên) = đọc, fields() = liệt kê, render(từ điển) = điền vào mẫu)"),
     ("プラグイン: {} に .py を置くと、ここに並びます", "Plugin: đặt tệp .py vào {} thì chúng hiện ở đây"),
     ("暗号化: パスワードを打って Enter(AES-256。次の保存から)", "Mã hóa: gõ mật khẩu rồi Enter (AES-256; từ lần lưu sau)"),
     ("まだファイルになっていません(先に保存してください)", "Chưa phải là tệp (hãy lưu trước)"),
@@ -360,7 +356,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("バージョン履歴: 選ぶと控えを名無しの複製で開きます(いまの書きかけは要るなら先に保存)", "Lịch sử phiên bản: chọn một bản để mở thành bản chưa có tên (nếu cần bản đang làm dở thì lưu trước)"),
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Chưa phải là tệp (khi lưu sẽ có sổ nhắn tin bên cạnh)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Chưa có lời nhắn nào (gõ rồi Enter để ghi lại)"),
-    ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Macro: chọn một .py thì Python trong sandbox sẽ chạy (b = sổ tính, s = trang tính. Bên trong vẫn là Dữ liệu > Python)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Hãy chọn một ô trống (không bao giờ ghi đè ô có nội dung)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Hãy chọn cột để làm slicer (cần có hàng dữ liệu dưới tiêu đề)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Chữ nghệ thuật: gõ chữ và nó được đặt thành ảnh chữ đậm có viền"),
