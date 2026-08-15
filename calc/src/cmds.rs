@@ -1430,28 +1430,37 @@ impl Calc {
             // **リボンに出るマクロの一覧**(ribbon の置き場)。plugins との
             // 違いは名乗り — 札・絵・段を名乗った .py だけがボタンになる
             "ribbon-list" => {
+                // 一覧に混ぜる印。**値は画面に出ない** — 出るのは見出しの方で、
+                // こちらは選ばれた物を見分けるための印
+                const MIHON: &str = "\u{1}見本";
+                const BUNDLED_MARK: char = '\u{2}';
                 self.prompt = None;
                 let dir = pyrun::ribbon_dir();
                 let decls = pyrun::ribbon_decls(&dir);
-                if decls.is_empty() {
-                    self.status = ui::tf!(
-                        "リボンに出るマクロはまだありません({} に .py を置き、リボン = {{\"札\": \"名前\"}} と名乗ります)",
-                        dir.display().to_string()
-                    )
-                    .into();
-                    return;
-                }
                 let at = self.pop_anchor();
+                // 一覧は3段: 名乗ったマクロ / 見本を作る / 同梱の台本(読むだけ)。
+                // **空でも一覧を出す** — 何も無いと言われるより、そこから
+                // 作り始められる方が近い
+                let mut items: Vec<(String, String)> = decls
+                    .iter()
+                    .map(|d| (d.module.clone(), format!("{} — {}", d.module, d.label)))
+                    .collect();
                 self.pick_paths = decls
                     .iter()
                     .map(|d| (d.module.clone(), dir.join(format!("{}.py", d.module))))
                     .collect();
-                self.pick_kind = "py-edit";
-                self.pick_note = Some(ui::t!("この段のボタンになっています。選ぶと編集の道具で開きます").into());
-                self.pick = Some((
-                    decls.iter().map(|d| (d.module.clone(), format!("{} — {}", d.module, d.label))).collect(),
-                    at,
-                ));
+                items.push((MIHON.into(), ui::t!("見本を作る").to_string()));
+                for (n, _) in pyrun::BUNDLED {
+                    items.push((
+                        format!("{BUNDLED_MARK}{n}"),
+                        ui::tf!("同梱: {}(読むだけ)", *n).to_string(),
+                    ));
+                }
+                self.pick_kind = "ribbon-macro";
+                self.pick_note = Some(
+                    ui::t!("名乗った .py がこの段のボタンになります。選ぶと編集の道具で開きます").into(),
+                );
+                self.pick = Some((items, at));
             }
             // 置いてある .py の一覧。**選ぶと編集の道具で開く** —
             // 名前を眺めるだけでは、直したい時に置き場を探すことになる

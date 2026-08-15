@@ -741,6 +741,9 @@ s = xw.Book.attach().sheets.active
 s["A1"].value = "closed"
 ```
 
+You do not have to write it by hand — Macros > "Ribbon macros" has **Create an
+example**, which writes a working .py into the folder and opens it.
+
 - **label** — the text on the button. It is **not translated** (they are your words)
 - **icon** — an icon name; an unknown name falls back to the default
 - **tab** — which tab to appear on (the ja tab name). Defaults to the Macros tab
@@ -757,9 +760,15 @@ show up within about a second; no restart.
 | `ribbon/` | a **ribbon button** | only when pressed |
 | `plugins/` | **picked from a list** (`@name`) | only when picked |
 
-Pivot tables, charts and the solver are the **built-in ribbon macros** (polars
-and matplotlib underneath). The only difference is that those belong to
-officework and cannot be edited; these are yours.
+Pivot tables, charts and the solver are the **built-in side** (polars and
+matplotlib underneath). They appear further down the same list as
+"Built in: chart (read only)"; picking one opens a copy so you can read it.
+
+**Their contract is different, though.** A built-in script takes a spec (JSON)
+and returns an answer; it **never touches the workbook** — calc reads the range
+and hands it over. Your macro does the opposite: when pressed, it drives the
+live workbook. So copying a built-in script into the folder will not make it
+run the same way. They are there to be read, not to be used as a template.
 
 ### Only .py files in the folder can be launched
 

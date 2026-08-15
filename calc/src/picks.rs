@@ -515,6 +515,65 @@ impl Calc {
             // 一覧から選んだ .py は**編集の道具で開く**(発注者 2026-08-15。
             // プログラムの編集は表計算の仕事ではない)。順は
             // settings の editor → 隣の writer → 機械の既定
+            // リボンのマクロの一覧。3種が混ざる — 名乗ったマクロ(編集)、
+            // 見本を作る、同梱の台本を読む(2026-08-16)
+            "ribbon-macro" => {
+                let dir = pyrun::ribbon_dir();
+                if let Some(n) = v.strip_prefix('\u{2}') {
+                    // **同梱の台本は控えを書き出して開く。** 直しても効かない —
+                    // 契約が違う(指図を受け取ってブックに触らない純関数)ので、
+                    // 置き場に移しても同じようには走らない
+                    let Some((_, src)) = pyrun::BUNDLED.iter().find(|(k, _)| *k == n) else {
+                        return;
+                    };
+                    let out = std::env::temp_dir().join(format!("officework-同梱-{n}.py"));
+                    self.status = match std::fs::write(&out, src)
+                        .map_err(|e| e.to_string())
+                        .and_then(|_| ui::open_for_edit(&out.display().to_string()))
+                    {
+                        Ok(tool) => ui::tf!(
+                            "{} の控えを {} で開きました(読むだけ — 直しても効きません)",
+                            n,
+                            tool
+                        )
+                        .into(),
+                        Err(e) => ui::tf!("開けません: {}", e).into(),
+                    };
+                } else if v == "\u{1}見本" {
+                    // 見本は**そのまま動く物**を書く。動かない見本は、動かない
+                    // ことに気づくまでの時間を丸ごと無駄にする
+                    let _ = std::fs::create_dir_all(&dir);
+                    let mut path = dir.join("見本.py");
+                    let mut i = 2;
+                    while path.exists() {
+                        path = dir.join(format!("見本{i}.py"));
+                        i += 1;
+                    }
+                    let src = "リボン = {\"札\": \"見本\", \"絵\": \"py-run\", \"段\": \"マクロ\"}\n\
+                               \n\
+                               from officework import calc as xw\n\
+                               \n\
+                               s = xw.Book.attach().sheets.active\n\
+                               s[\"A1\"].value = \"見本が走りました\"\n";
+                    self.status = match std::fs::write(&path, src)
+                        .map_err(|e| e.to_string())
+                        .and_then(|_| ui::open_for_edit(&path.display().to_string()))
+                    {
+                        Ok(tool) => {
+                            ui::tf!("{} を作って {} で開きました", path.display().to_string(), tool)
+                                .into()
+                        }
+                        Err(e) => ui::tf!("開けません: {}", e).into(),
+                    };
+                } else if let Some((_, path)) = self.pick_paths.iter().find(|(n, _)| n == v).cloned()
+                {
+                    self.status = match ui::open_for_edit(&path.display().to_string()) {
+                        Ok(tool) => ui::tf!("{} を {} で開きました", v, tool).into(),
+                        Err(e) => ui::tf!("開けません: {}", e).into(),
+                    };
+                }
+                self.pick_paths.clear();
+            }
             "py-edit" => {
                 if let Some((_, path)) = self.pick_paths.iter().find(|(n, _)| n == v).cloned() {
                     self.status = match ui::open_for_edit(&path.display().to_string()) {
