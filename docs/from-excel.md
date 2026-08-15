@@ -209,7 +209,7 @@ Excel's answer is Power Query and Copilot connectors — have your core business
 | From Text/CSV | Same | Data tab > "Text" opens a wizard (encoding, delimiter, destination, with a three-row preview) and pours the rows in as values. Not going through Power Query means fewer steps |
 | Choosing the encoding (against mojibake) | Same | Auto / UTF-8 / Shift_JIS (CP932) / Latin-1. Auto tries them in order and **reports which encoding it used** — it will not garble your text in silence |
 | Choosing the delimiter | Same | Auto / comma / tab / semicolon / colon / space / any other single character. Decimal separator, thousands separator and text qualifier are held back (on the ledger) |
-| From Web | Different | There is no built-in button. Put a procedure (.py) in `~/.config/office/plugins/` and run it with `@name`, appending to the ledger — plugins code is your own, so the network is available as usual (the `net` suffix is no longer needed). **A procedure can never be started from a workbook** |
+| From Web | Different | There is no built-in button. Put a procedure (.py) in `~/.config/officework/plugins/` and run it with `@name`, appending to the ledger — plugins code is your own, so the network is available as usual (the `net` suffix is no longer needed). **A procedure can never be started from a workbook** |
 | From Database | Different | There is no GUI connector. A procedure in plugins queries the database with polars or the like. Drivers live in your own Python environment |
 | From Another Workbook | Different | Data tab > "External link" imports a whole sheet from another xlsx **as values** (formulas become values; the source workbook's name goes into the sheet name) |
 | Live external references (=[Book1.xlsx]…) and Edit Links | By design | So that no form ever goes out with broken or stale references (a deliberate trade-off recorded in [the ledger](guide-tsukiawase-2.ja.md)). If you want current numbers, import again |
@@ -514,7 +514,7 @@ Excel's answer is the cloud. **officework's answer is a shared folder** — whoe
   "open = execute" hole ([design](sekkei/python.ja.md)). Python takes the job:
   [Python manual](python-manual.md)
 - **The only thing a workbook may carry is a =PY function.** Procedures run
-  only from .py files you placed in `~/.config/office/plugins/` yourself —
+  only from .py files you placed in `~/.config/officework/plugins/` yourself —
   a received file can never become the origin of execution (settled 2026-08-08)
 
 | Excel's name | Mark | How it works here |
@@ -525,9 +525,9 @@ Excel's answer is the cloud. **officework's answer is a shared folder** — whoe
 | Macro security settings (the three choices, the yellow bar) | By design | Nothing runs by itself and every run is a person's explicit action, so the moment that would ask you to choose never arrives |
 | Workbook_Open / Auto_Open | By design | Open = execute does not exist — the first safety principle of this software |
 | Worksheet_Change and the other events | By design | Build it out of data validation and conditional formatting plus an explicit `@name` or `@計算` |
-| Personal Macro Workbook (PERSONAL.XLSB) | Different | `~/.config/office/plugins/` is that place — `@name` reaches it from any workbook |
+| Personal Macro Workbook (PERSONAL.XLSB) | Different | `~/.config/officework/plugins/` is that place — `@name` reaches it from any workbook |
 | Assigning a macro to a button or a shape | By design | We do not build a way to wire "clicked = execute" into a workbook (the button keeps its place, grayed) |
-| Your own worksheet functions (Function) | Different | Write a plain `def` in `~/.config/office/plugins/*.py` and call it as `=fname(…)`. A 2-D return value spills down-right. **No code is stored in the workbook** |
+| Your own worksheet functions (Function) | Different | Write a plain `def` in `~/.config/officework/plugins/*.py` and call it as `=fname(…)`. A 2-D return value spills down-right. **No code is stored in the workbook** |
 | Office Scripts + Power Automate | Different | For scheduled runs, drive the engine (`officework.sheet`) from cron as ordinary Python |
 | MsgBox, InputBox, UserForms | Different | No windows pop up. `print` goes to the status bar and input comes from cells plus data validation — the sheet itself is the UI |
 | xlwings and COM automation | Same | A one-line swap to officework. `@xw.func` and `Book.caller()` are not supported (plugins fill the same role) |
@@ -641,10 +641,10 @@ Three jobs come before handing a workbook to someone else: look for mistakes, fl
 ## Settings, customization, add-ins
 
 Excel's Options dialog corresponds to the File tab's **Advanced settings** page,
-backed by `~/.config/office/settings.toml` (the path is shown on the page). The
+backed by `~/.config/officework/settings.toml` (the path is shown on the page). The
 entries are trimmed to the ones that mean something in a native app. There is
 no add-in registry — extension is entirely the .py files you put in
-`~/.config/office/plugins/`. See "Collaboration tab and plugins" and
+`~/.config/officework/plugins/`. See "Collaboration tab and plugins" and
 "@-commands" in the [calc manual](calc-manual.md).
 
 | Excel's name | Mark | How it works here |
@@ -661,7 +661,7 @@ no add-in registry — extension is entirely the .py files you put in
 | Changing the display language | Same | Pick it under "Language (ribbon and wording)" in Advanced settings; it takes effect at the next launch (Excel needs a restart too). Only languages whose wording is complete appear — the honest line that keeps us from claiming "45 languages". OFFICE_LANG wins if it's set |
 | Office theme (white, dark gray, black) | Different | Light and dark, two choices, switchable from either the View tab or Advanced settings and persisted. What darkens is the frame (band, tabs, headings) only — cells stay white, so screen and paper agree. Excel's "dark document" mode doesn't exist |
 | Customizing the status bar | Not yet | The bottom edge is a fixed construction (sheet tabs, status wording, and the selection's sum/average/count), with no right-click menu for choosing items. Narrowing it to three statistics was a design decision, and all three respect filtering and are always present (on the ledger) |
-| Adding and enabling add-ins (Options > Add-ins) | Different | There is no add-in dialog and no registry. Putting a .py in `~/.config/office/plugins/` **is** the installation; it is listed under the Macros tab's "List" and runs when selected (it is code you installed yourself — plain Python; **reading it before you place it** is the gate). The same file is reachable as `@name` from Data > Python |
+| Adding and enabling add-ins (Options > Add-ins) | Different | There is no add-in dialog and no registry. Putting a .py in `~/.config/officework/plugins/` **is** the installation; it is listed under the Macros tab's "List" and runs when selected (it is code you installed yourself — plain Python; **reading it before you place it** is the gate). The same file is reachable as `@name` from Data > Python |
 | Office Add-ins from the Store (web add-ins) | By design | We have neither a store nor an execution surface for web add-ins (a webview) — the native-first choice not to drag in browser-derived layers. Extension is always a local plugins .py, and we build no door through which a workbook or something that arrived from outside becomes the origin of execution |
 | Managing COM add-ins | By design | COM is a Windows-Excel-specific door and doesn't exist here. xlwings assets are accepted through a one-line swap over a socket, and Excel's add-in machinery (`@xw.func`, `@xw.sub`, `Book.caller()`) is honestly reported as "not supported" — plugins .py fills the same role |
 | Loading the Solver add-in | Different | There is no add-in-registration ritual to get through first — Solver and Goal Seek sit directly on the Data tab from the start. The one method is simplex LP; nonlinear problems are refused honestly |

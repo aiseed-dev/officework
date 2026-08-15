@@ -267,7 +267,7 @@ calc の共同編集・プラグインの7ボタン(writer の仕組みの移植
 共同編集モード=錠の顔 / コメント削除・表示切替 / チャット=.chat.txt /
 バージョン履歴=.jo-history 9世代・一覧は pick 流用・開くと名無しの複製 /
 マクロ=run_python_file_dialog と同実体 / プラグイン管理=
-~/.config/office/plugins の一覧実行。保存前の keep_version は save_to に。
+~/.config/officework/plugins の一覧実行。保存前の keep_version は save_to に。
 同日、保護タブ3ボタンも完了: 保護=xlsx の sheetProtection(シート単位。
 堰は commit / fmt / 貼り付け / Del / run_cmd の白表 PROTECTED_OK)、
 暗号化=ooxml::crypt を保存/開くに結線(原本持ち越しは original_plain で
@@ -370,7 +370,7 @@ writer の排他ロック(calc と同じ .~lock.名前#。先客が居れば上�
 効き目本物 / 共同編集モード=排他ロックの顔 / バージョン履歴=
 .jo-history に9世代の控え+パネル / チャット=隣の .chat.txt の言伝 /
 マクロ=サンドボックスの中の python-docx が複製を直す(Ctrl+Z で戻る)/
-プラグインの管理=~/.config/office/plugins の一覧実行 /
+プラグインの管理=~/.config/officework/plugins の一覧実行 /
 暗号化=ECMA-376 Standard AES-128 を ooxml::crypt に自作
 (msoffcrypto で解ける=形式が本物。Agile はまだ読めないと言う)/
 署名=隣の .sig に Ed25519 の添え書き。設計は SEKKEI の
@@ -442,7 +442,7 @@ pysheet(Python 束縛、polars 連携)。
 元の機械からコピーしてもらえれば、①ごとこちらでやる。
 
 **両担当へ(発注者 2026-08-04): 設定の器と言語。** 正本は SEKKEI「設定 —
-器と言語」。`~/.config/office/settings.toml` + ファイルタブ「詳細設定」
+器と言語」。`~/.config/officework/settings.toml` + ファイルタブ「詳細設定」
 ページ(共有 ui/ に器を作り、両アプリから使う)。環境変数は一時上書きに
 降格(優先順: env > toml > 既定)。言語は段階制 — ①器 ②リボンの言葉の
 実行時切り替え(gen_ribbon を「ロケール→表」の埋め込みへ。**45言語の
@@ -456,7 +456,7 @@ pysheet(Python 束縛、polars 連携)。
 `lang::ai`(共通)— **定額の契約で使える道を用意した**(発注者指定):
 ①手元のモデル ②**Claude(定額)= 手元の claude コマンドを子で呼ぶ。
 鍵は要らない** ③Claude(API。鍵は環境変数だけ)。選んだ宛先は
-~/.config/office/ai.txt に覚える(JO_AI が優先)。CLI には道具を与えず
+~/.config/officework/ai.txt に覚える(JO_AI が優先)。CLI には道具を与えず
 (--allowed-tools 空)、文書は標準入力で渡す。writer のボタンは10個
 (宛先・要約・書き直す・敬語・やさしく・翻訳・ふりがな・続き・表・頼む)。
 **calc 側の AI タブと VBA の移し替えは calc 担当の受け持ちのまま** —
@@ -624,7 +624,7 @@ docProps/core.xml と往復)。**左パネル**(見出し/コメント/検索の
 
 **窓の位置と大きさの控え(2026-08-05、発注者「起動時の位置やサイズも保存できて
 いるか確認しておいて」→ 未実装だったので実装)**: ui::winstate。
-~/.config/office/window-{writer,calc}.txt に1行 `x y w h [max]`(recent と同じ作法)。
+~/.config/officework/window-{writer,calc}.txt に1行 `x y w h [max]`(recent と同じ作法)。
 開くときに読み(壊れた・常識外の控えは黙って捨てて既定の中央へ)、
 cx.observe_window_bounds で動かす・伸ばすたびに書く — 閉じる経路が何本あっても
 漏れない。全画面は控えない(次も全画面で開くと出口が分かりにくい)。
@@ -781,7 +781,7 @@ calc の手引きの関数一覧(44個のまま古かった)は現状(約185・�
 
 **国際化 段階①②(発注者「国際化を行って」2026-08-05)**: リボンの言葉が
 実行時に ja/en で切り替わる。SEKKEI「設定 — 器と言語」の段階どおり:
-- **器**: ui::settings — ~/.config/office/settings.toml の素朴な
+- **器**: ui::settings — ~/.config/officework/settings.toml の素朴な
   `key = "value"` 読み(依存を増やさない)。優先順 env > toml > 既定。
   いまは language だけ。**詳細設定ページ(GUI)はまだ** — 器の吸収先
   (フォント・校正宛先・名前・世代数…)ともども残件

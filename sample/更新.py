@@ -2,7 +2,7 @@
 # 品番マスタの写し(H〜J 列)をサーバーの正本と入れ替える。
 #
 # 据え付け(1機械1回): 中身を確かめてから
-#   ~/.config/office/plugins/更新.py
+#   ~/.config/officework/plugins/更新.py
 # へ写す。以後、注文書を開いて データ > Python のパネルで「@更新」
 URL = "http://127.0.0.1:8765/catalog.csv"
 

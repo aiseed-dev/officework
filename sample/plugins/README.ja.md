@@ -1,10 +1,10 @@
 # 見本の .py — 置けば動きます
 
-ここの `.py` を **`~/.config/office/plugins/`** にコピーして、calc を開き直すと使えます。
+ここの `.py` を **`~/.config/officework/plugins/`** にコピーして、calc を開き直すと使えます。
 
 ```
-mkdir -p ~/.config/office/plugins
-cp sample/plugins/*.py ~/.config/office/plugins/
+mkdir -p ~/.config/officework/plugins
+cp sample/plugins/*.py ~/.config/officework/plugins/
 ```
 
 置き場はアプリが起動時に作るので、無ければ一度 calc を開いてください。

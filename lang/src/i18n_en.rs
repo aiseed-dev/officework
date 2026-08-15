@@ -1330,7 +1330,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("臙脂", "Crimson"),
     ("藍(生成りの紙)", "Indigo (unbleached paper)"),
     ("墨(灰の紙)", "Ink (grey paper)"),
-    ("鍵ファイルが壊れています(~/.config/office/sign.key)", "The key file is damaged (~/.config/office/sign.key)"),
+    ("鍵ファイルが壊れています(~/.config/officework/sign.key)", "The key file is damaged (~/.config/officework/sign.key)"),
     ("誰か", "someone"),
     ("マクロ台本", "macro script"),
     ("原因不明", "cause unknown"),

@@ -2,7 +2,7 @@
 # 店(catalog_server)に溜まった注文を台帳へ追記する。
 #
 # 据え付け(1機械1回): 中身を確かめてから
-#   ~/.config/office/plugins/取り込み.py
+#   ~/.config/officework/plugins/取り込み.py
 # へ写す(templates/ の問い合わせ台帳の取り込みと同名 — 同じ機械で両方
 # 使うなら、どちらかを別名で置く。@名前 はファイル名がそのまま)。
 # 以後、台帳を開いて データ > Python のパネルで「@取り込み」

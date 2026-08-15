@@ -13,15 +13,37 @@
 
 use std::path::PathBuf;
 
-// ---- plugins(.py の置き場)-------------------------------------------------
+// ---- 設定の置き場 ----------------------------------------------------------
 
-/// プラグイン(.py)の置き場。~/.config/office/plugins。
-/// **ここが正** — ui::pyedit と calc/writer は包みで呼ぶ
-pub fn plugins_dir() -> PathBuf {
+/// 設定と控えの置き場。**`~/.config/officework`**。
+///
+/// # なぜここに在るのか
+///
+/// 置き場を決める所が散らばると必ずずれる(実際、9箇所が別々に径路を
+/// 書いていた)。**1箇所に集める**。pyrun は依存ゼロのいちばん下の層で、
+/// lang → face → アプリの全部から見えるので、置き場としてここが都合よい
+/// (pyrun の口上「ここに何かを足したくなったら pyrun の仕事ではない
+/// 合図」の例外 — これは依存ではなく径路の一言)。
+///
+/// # 名前を直した経緯(2026-08-16)
+///
+/// 2026-08-08 に製品名を office → **officework** に改めたのに、設定の
+/// 置き場だけ `~/.config/office` のまま残っていた(発注者が気づいた)。
+/// **まだ公開前なので、古い名前は残さず移した** — 二重に読む道を作ると、
+/// どちらが正かが分からなくなる。
+pub fn config_dir() -> PathBuf {
     std::env::var_os("HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))
-        .join(".config/office/plugins")
+        .join(".config/officework")
+}
+
+// ---- plugins(.py の置き場)-------------------------------------------------
+
+/// プラグイン(.py)の置き場。`<設定の置き場>/plugins`。
+/// **ここが正** — ui::pyedit と calc/writer は包みで呼ぶ
+pub fn plugins_dir() -> PathBuf {
+    config_dir().join("plugins")
 }
 
 /// plugins にある .py の名前(モジュール名)を並べる。

@@ -10,7 +10,7 @@
 
 **交換されるファイルはデータだけ**。xlsm のように
 データとプログラムを1つのファイルに入れる仕組みは持たない。関数も手続きも
-`~/.config/office/plugins/*.py` にあり、**受け取ったブックには1バイトも
+`~/.config/officework/plugins/*.py` にあり、**受け取ったブックには1バイトも
 コードが入っていない**。
 
 - 人から受け取るのは表(データ)。**処理は自分のコードでする**
@@ -342,7 +342,7 @@ png, w_mm, h_mm = tex.to_png(r"\sqrt{x^2+y^2}", size_pt=11)  # 文書に入れ�
 
 ## セルの関数(UDF)と配列
 
-`~/.config/office/plugins/道具.py` に普通に `def` を書けば、その名前で
+`~/.config/officework/plugins/道具.py` に普通に `def` を書けば、その名前で
 セルから呼べる。**デコレータは要らない**(`@xw.func` も
 `@xw.ret(expand='table')` も不要 — 返り値の形が広がり方を決める)。
 
@@ -431,7 +431,7 @@ python-docx の普通の API が使える。d.save() は呼ばない。
 様式の欄に書くときは「先頭ランに書き、残りのランを空にする」
 (p.runs[0].text = 値; 以降の run は ""; — 段落の書式が残る作法)
 
-【手続き(plugins の .py)】~/.config/office/plugins/名前.py に置き、
+【手続き(plugins の .py)】~/.config/officework/plugins/名前.py に置き、
 `@名前` か `@名前.関数` で動かす。動いている calc をそのまま操る:
   from officework import calc as xw
   def 貼り付け():
@@ -465,7 +465,7 @@ polars・scipy・matplotlib も使える。
 
 残る安全網は undo — 手続きが何回書いても **Ctrl+Z 一回**で手続きの前に
 戻る。だから**まず回して、結果を見て、気に入らなければ戻す**が正しい試し方。
-検分の済んだものを `~/.config/office/plugins/名前.py` に置く(以後 `@名前`)。
+検分の済んだものを `~/.config/officework/plugins/名前.py` に置く(以後 `@名前`)。
 **ブックにコードは載せられない** — データとプログラムは別のファイル。
 
 ### VBA の移し替え

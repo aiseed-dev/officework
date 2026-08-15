@@ -1,6 +1,6 @@
 """消費税の計算 — officework の見本(セルの関数)
 
-**置き場**: このファイルを `~/.config/office/plugins/` にコピーすると、
+**置き場**: このファイルを `~/.config/officework/plugins/` にコピーすると、
 calc のセルから呼べるようになります(calc を開き直してください)。
 
     =税込(1000)          → 1100

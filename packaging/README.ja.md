@@ -44,9 +44,9 @@ officework-calc
 見本を置き場にコピーして、calc を開き直します。
 
 ```
-mkdir -p ~/.config/office/plugins
-cp share/officework/plugins/*.py ~/.config/office/plugins/     # tar.gz の場合
-cp /opt/officework/share/officework/plugins/*.py ~/.config/office/plugins/   # .deb の場合
+mkdir -p ~/.config/officework/plugins
+cp share/officework/plugins/*.py ~/.config/officework/plugins/     # tar.gz の場合
+cp /opt/officework/share/officework/plugins/*.py ~/.config/officework/plugins/   # .deb の場合
 ```
 
 calc のセルに打ってみてください:
@@ -57,7 +57,7 @@ calc のセルに打ってみてください:
 ```
 
 **Python は同梱しています。** 機械に Python が入っていなくても動きます。
-`~/.config/office/plugins/` に `.py` を置くだけで、`def` の名前がそのまま
+`~/.config/officework/plugins/` に `.py` を置くだけで、`def` の名前がそのまま
 セルの関数になります(日本語の名前も使えます)。
 
 天気予報(`@天気`)と家計簿(`@家計簿`)の見本もありますが、こちらは
@@ -73,7 +73,7 @@ calc のセルに打ってみてください:
 - **字が豆腐(□)になる** — 日本語のフォントが要ります:
   `sudo apt install fonts-noto-cjk`
 - **セルの関数が `#PY?` のまま** — 置き場を確かめてください
-  (`~/.config/office/plugins/*.py`)。置いた後は calc を開き直します
+  (`~/.config/officework/plugins/*.py`)。置いた後は calc を開き直します
 - **画面が小さすぎる** — 設定 → ディスプレイ → 拡大/縮小(200% など)。
   字だけ大きくする設定(GNOME の文字倍率・Tweaks のフォント)は使わないで
   ください — 箱が置いていかれて崩れます

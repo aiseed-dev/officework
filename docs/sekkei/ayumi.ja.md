@@ -148,7 +148,7 @@ AI タブは作らない」(校正の節)。**校正をレビューに置くの�
   `claude` コマンド(Claude Code の CLI)を子で呼ぶ — **API の鍵は要らず**、
   CLI が持っている認証をそのまま使う ③**Claude(API)**= 鍵は環境変数
   `ANTHROPIC_API_KEY` からだけ読む。選んだ宛先は
-  `~/.config/office/ai.txt` に覚える(`JO_AI` が優先。鍵は決して書かない)。
+  `~/.config/officework/ai.txt` に覚える(`JO_AI` が優先。鍵は決して書かない)。
   CLI を呼ぶときは **道具を与えない**(`--allowed-tools` を空)= 手元の
   ファイルを触らせず、文書の中身は標準入力で渡す(コマンド行に載せない)。
   claude が見つからなければ入れ方を添えて断る
@@ -213,7 +213,7 @@ checkpoint してから = **Ctrl+Z の1手で戻る**。保護中は断る。Cal
   **台本の作法を system で教えて**(fill/extract/fields/render だけを使う・
   ラベル走査をしない・表は rows でなめる・print で報告・SystemExit で断る)、
   文書の**記入欄の名前一覧を的として渡す**。答えは文書に入れず
-  **~/.config/office/plugins に .py で置くだけ** — 人が読んで確かめてから
+  **~/.config/officework/plugins に .py で置くだけ** — 人が読んで確かめてから
   プラグイン一覧で実行する(開く=実行なし・変換結果は自動で走らない、の
   規律は VBA の移し替えと同じ)。コードフェンスは受け側でも剥がす
 - **ふりがな** — K4 のルビが効く場所。モデルには `|語《よみ》`(pywashi と
@@ -312,7 +312,7 @@ AsciiDoc で書き、washi で縦書きを確かめ、紙とデータに出す F
 
 **残差はプラグインにする(2026-08-04 発注者確定)。**
 青空注記の読み・EPUB 書き出し・TTS・VLM 書き起こしは、本体に入れず
-**プラグイン(`~/.config/office/plugins` の .py・サンドボックスの中で実行)**として
+**プラグイン(`~/.config/officework/plugins` の .py・サンドボックスの中で実行)**として
 提供する。これで置き場の議論が全部消える:
 
 - **本体の範囲は動かない**(出口は docx / PDF のまま)。広げるのは
@@ -585,7 +585,7 @@ MAS に居ない Nova や Keyboard Maestro の理由も 2.5.2 ではなく
 
 本当に効くのは別の2つ:
 
-1. **App Sandbox の中では `~/.config/office/plugins/` が読めない**
+1. **App Sandbox の中では `~/.config/officework/plugins/` が読めない**
    (「利用者のホームへの無制限の権限は無い」)。Mac で MAS に出すなら
    置き場を `~/Library/Application Scripts/<bundle-id>/` に移し、
    `NSUserUnixTask` で走らせる作りに変える必要がある(Apple 曰く
@@ -674,7 +674,7 @@ Google Play 側の要件も控えておく(出す番が来たとき用): 2026-08
 - **普通の人が探す場所にある**(発注者の「普通の人に使ってほしい」に効く)
 - 更新の仕組みがただで付く
 - MSIX の full-trust(デスクトップブリッジ)なら、Mac App Store の
-  サンドボックスで問題になった `~/.config/office/plugins/` の読みは
+  サンドボックスで問題になった `~/.config/officework/plugins/` の読みは
   そのまま通る見込み — **ただしこれは未実測**。着手する便で実機で確かめる
 
 払う物: MSIX の工事(.msi の WiX とは別物。いまどちらも未着手)、審査待ち、

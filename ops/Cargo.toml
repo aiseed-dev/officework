@@ -9,6 +9,8 @@ license.workspace = true
 # 生きた表、pysheet ならファイル。gpui は絶対に入れない
 [dependencies]
 sheet = { path = "../sheet" }
+# 設定の置き場は pyrun が正本(2026-08-16)。依存ゼロの std だけの機構
+pyrun = { path = "../pyrun" }
 kumihan = { path = "../engine" }
 # 署名の鍵(calc と writer が同じ鍵を使う)
 ed25519-dalek = { version = "2", default-features = false, features = ["std", "fast"] }

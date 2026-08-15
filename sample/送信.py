@@ -2,7 +2,7 @@
 # 注文行(品番と数量の入った行)をサーバーへ送る。
 #
 # 据え付け(1機械1回): 中身を確かめてから
-#   ~/.config/office/plugins/送信.py
+#   ~/.config/officework/plugins/送信.py
 # へ写す。以後、注文書を開いて データ > Python のパネルで「@送信」
 URL = "http://127.0.0.1:8765/order"
 

@@ -58,7 +58,7 @@ The ribbon layout follows Euro-Office, so people who switch don't have to relear
 
 **There are no VBA-style macros, and workbooks never carry code.** Sheets live
 in .xlsx, code lives in .py — separate files. Procedures and user functions go
-in `~/.config/office/plugins/`; run a procedure with `@name`, and call a
+in `~/.config/officework/plugins/`; run a procedure with `@name`, and call a
 function from a cell like any other (`=double(A1)`), or write one inline with
 `=PY(…)`. A workbook you receive contains no code, so the "open = execute"
 attack path does not exist here. See the [calc manual](docs/calc-manual.md).
@@ -209,7 +209,7 @@ ja (default), en, de, es, fr, id, it, ko, pt, ru, tr, vi, zh, zh-tw.
 
 ```bash
 OFFICE_LANG=en ./target/release/writer      # temporary override
-# or persistently, in ~/.config/office/settings.toml:
+# or persistently, in ~/.config/officework/settings.toml:
 #   language = "en"
 ```
 

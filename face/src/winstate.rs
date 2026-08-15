@@ -1,6 +1,6 @@
 //! 窓の位置と大きさの控え — 前に閉じたときの姿で次を開く。
 //!
-//! 置き場は ~/.config/office/window-<app>.txt(recent と同じ作法)。
+//! 置き場は ~/.config/officework/window-<app>.txt(recent と同じ作法)。
 //! 1行だけ: `x y w h` に、最大化なら ` max` を添える。
 //! 窓の控えは**あくまで控え** — 読めない・壊れている・画面に収まらない値なら
 //! 黙って既定に戻る(見えない場所に窓を開いてしまうのが一番の事故)。
@@ -18,10 +18,7 @@ pub struct WinState {
 }
 
 fn file(app: &str) -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_default()
-        .join(format!(".config/office/window-{app}.txt"))
+    lang::config_dir().join(format!("window-{app}.txt"))
 }
 
 /// 読む。無い・壊れている・大きさが常識外なら None(既定で開く)

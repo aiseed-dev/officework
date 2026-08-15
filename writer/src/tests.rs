@@ -102,7 +102,7 @@ mod menu_run_tests {
         "insequation",
     ];
 
-    /// AI の宛先は共有の設定(~/.config/office/ai.txt)。触る試験が並走すると
+    /// AI の宛先は共有の設定(~/.config/officework/ai.txt)。触る試験が並走すると
     /// 保存と復元が交錯して稀に落ちるので、同時には走らせない
     static AI_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 

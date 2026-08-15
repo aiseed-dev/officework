@@ -140,7 +140,7 @@ def tpl_fields():
     )
 }
 
-/// プラグイン(.py)の置き場。~/.config/office/plugins(正は pyrun)
+/// プラグイン(.py)の置き場。~/.config/officework/plugins(正は pyrun)
 pub(crate) use pyrun::plugins_dir;
 
 /// 数式を組む台本。**officework/tex.py をそのまま埋め込む** —

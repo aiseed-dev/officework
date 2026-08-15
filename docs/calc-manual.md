@@ -475,7 +475,7 @@ server for the group and have everyone point at it: one place to manage keys,
 one bill. What runs behind it — a local model, a relay to some API — is the
 operator's call; officework only speaks the **OpenAI-compatible** endpoint.
 
-One line in `~/.config/office/settings.toml`:
+One line in `~/.config/officework/settings.toml`:
 
 ```toml
 ai_url = "https://ai.example.org/v1/chat/completions"
@@ -540,7 +540,7 @@ a document at all. Think of it as VS Code and Excel
 merged: the sheet is an .xlsx, the code is a .py, and they are separate files.
 
 - What people exchange is **data only**. A workbook you receive contains no code
-- Both cell functions and procedures live in `~/.config/office/plugins/*.py`,
+- Both cell functions and procedures live in `~/.config/officework/plugins/*.py`,
   installed once per machine
 - So "opening a file runs someone else's code" cannot happen by construction
 - Because the code is only ever your own, **no sandbox is applied** — the same
@@ -554,11 +554,11 @@ merged: the sheet is an .xlsx, the code is a .py, and they are separate files.
   does `from officework import sheet`, so what has to be there is the
   `officework/` package directory — not a bare `.so`. To build it from this
   tree: `maturin build -m pysheet/Cargo.toml --release` and install the wheel
-- Plugins live in `~/.config/office/plugins/` (create it if missing)
+- Plugins live in `~/.config/officework/plugins/` (create it if missing)
 
 ### Writing cell functions in Python
 
-Just write a plain `def` in `~/.config/office/plugins/tools.py`:
+Just write a plain `def` in `~/.config/officework/plugins/tools.py`:
 
 ```python
 def double(x):
@@ -593,7 +593,7 @@ Call it from a cell like any other function. **No decorator, no registration**:
 
 ### Procedures (what replaces macros)
 
-`~/.config/office/plugins/inbox.py`:
+`~/.config/officework/plugins/inbox.py`:
 
 ```python
 from officework import calc as xw
@@ -624,7 +624,7 @@ s["A30"] = "Nihon Funen Co., Ltd."   # value only; formatting is left alone
 
 | What you type | What happens |
 |---|---|
-| `@module` | run `~/.config/office/plugins/module.py` top to bottom |
+| `@module` | run `~/.config/officework/plugins/module.py` top to bottom |
 | `@module.func` | call just that function in that .py |
 | `@edit name` | **open that .py for editing inside calc** (creates a starter file if missing) |
 | `@list` (or `@`) | the .py files in plugins and the defs inside them |
@@ -637,7 +637,7 @@ it says so.
 
 ### Editing a .py inside calc
 
-Type `@edit tools` and `~/.config/office/plugins/tools.py` opens over the sheet.
+Type `@edit tools` and `~/.config/officework/plugins/tools.py` opens over the sheet.
 If it does not exist yet you get a starter file with one function in it.
 
 - Line numbers, and colouring for `def` names, keywords, strings and comments
@@ -695,16 +695,16 @@ and "Plugins", listing the same folder of .py files two different ways.
 - **Record actions**: what you do by hand accumulates as Python lines; stop and
   it becomes a .py
 - **New .py**: create a script in the folder and open it
-- **List**: the .py files in `~/.config/office/plugins`; pick one to run it
+- **List**: the .py files in `~/.config/officework/plugins`; pick one to run it
   (in the sandbox; b = workbook, s = sheet)
-- **Open the folder**: opens `~/.config/office/plugins` in your file manager
+- **Open the folder**: opens `~/.config/officework/plugins` in your file manager
 
 The folder is still named `plugins` — renaming it would strand files people
 have already put there. Only the words on screen changed.
 
 ### Only .py files in the folder can be launched
 
-**Macros launched from calc must live in `~/.config/office/plugins`**
+**Macros launched from calc must live in `~/.config/officework/plugins`**
 (2026-08-16). There used to be a "From a file" button, and pressing Enter on an
 empty Data > Python prompt did the same thing. Both are closed.
 

@@ -296,7 +296,7 @@ Tools that work on a document in a shared folder:
   remove. Cross-verified against msoffcrypto-tool
 - **Digital signature**: a signature file next to the document
   (`document.docx.sig`, Ed25519; the key is auto-generated at
-  `~/.config/office/sign.key`). Tamper detection plus a name — it is not the
+  `~/.config/officework/sign.key`). Tamper detection plus a name — it is not the
   scheme that fills Word's signature line (and says so)
 
 ## View tab
@@ -384,7 +384,7 @@ Headless tools: `office-spell document.txt` (exit code 0=clean 1=findings
 
 ## Macros tab
 
-- **List**: the .py files in `~/.config/office/plugins`; pick one to run it
+- **List**: the .py files in `~/.config/officework/plugins`; pick one to run it
   (in the sandbox). Extensions like Aozora annotations or EPUB go here
   Picking one runs **Python in a sandbox** (bubblewrap) on a copy of the
   document; the result lands as one undo step. The script gets `d` = the

@@ -1,4 +1,4 @@
-//! 設定の器 — `~/.config/office/settings.toml`(recent・sign.key の隣)。
+//! 設定の器 — `~/.config/officework/settings.toml`(recent・sign.key の隣)。
 //!
 //! 優先順は **環境変数 > settings.toml > 既定**(現場の検証で一時的に
 //! 差し替えたいときのため。SEKKEI「設定 — 器と言語」)。
@@ -15,10 +15,7 @@ use std::path::PathBuf;
 
 /// settings.toml の置き場(recent・sign.key の隣)
 pub fn path() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_default()
-        .join(".config/office/settings.toml")
+    lang::config_dir().join("settings.toml")
 }
 
 /// settings.toml から素朴に1つの鍵を読む(`key = "value"` の行)

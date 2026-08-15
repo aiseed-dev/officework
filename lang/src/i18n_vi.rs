@@ -1327,7 +1327,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("臙脂", "Đỏ thẫm"),
     ("藍(生成りの紙)", "Chàm (giấy mộc)"),
     ("墨(灰の紙)", "Mực (giấy xám)"),
-    ("鍵ファイルが壊れています(~/.config/office/sign.key)", "Tệp khóa bị hỏng (~/.config/office/sign.key)"),
+    ("鍵ファイルが壊れています(~/.config/officework/sign.key)", "Tệp khóa bị hỏng (~/.config/officework/sign.key)"),
     ("誰か", "Ai đó"),
     ("マクロ台本", "kịch bản macro"),
     ("原因不明", "không rõ nguyên nhân"),

@@ -11,7 +11,7 @@ Everything was measured on a real machine.
 
 **What gets exchanged is data only.** There is no
 mechanism, xlsm-style, for putting data and program in one file. Both cell
-functions and procedures live in `~/.config/office/plugins/*.py`, and **a
+functions and procedures live in `~/.config/officework/plugins/*.py`, and **a
 workbook you receive contains no code at all**.
 
 - You receive a sheet (data). **You do the processing with your own code**
@@ -360,7 +360,7 @@ png, w_mm, h_mm = tex.to_png(r"\sqrt{x^2+y^2}", size_pt=11)  # this one goes int
 
 ## Cell functions (UDFs) and arrays
 
-Write a plain `def` in `~/.config/office/plugins/tools.py` and it is callable
+Write a plain `def` in `~/.config/officework/plugins/tools.py` and it is callable
 from a cell by that name. **No decorators** (neither `@xw.func` nor
 `@xw.ret(expand='table')` — the shape of the return value decides how it
 spreads).
@@ -460,7 +460,7 @@ When filling form fields: write to the first run and empty the rest
 formatting)
 
 [procedures — plugin .py files] put them in
-~/.config/office/plugins/name.py and run them with `@name` or `@name.func`.
+~/.config/officework/plugins/name.py and run them with `@name` or `@name.func`.
 They drive the running calc directly:
   from officework import calc as xw
   def paste():
@@ -496,7 +496,7 @@ it before you install it** is the only gate:
 The remaining safety net is undo: however many cells a procedure writes,
 **one Ctrl+Z** returns you to the state before it ran. So the right way to try
 things is **run it, look at the result, undo if you don't like it**. Once
-reviewed, place it in `~/.config/office/plugins/name.py`.
+reviewed, place it in `~/.config/officework/plugins/name.py`.
 **Code can never be embedded in a workbook** — data and program are separate
 files.
 

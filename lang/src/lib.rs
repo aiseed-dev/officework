@@ -45,6 +45,10 @@ pub mod i18n_tables;
 pub mod ja;
 pub mod latin;
 pub mod ai;
+
+// **設定の置き場は pyrun が正本**(2026-08-16)。ここを通して face と
+// アプリからも同じ1本を見る — 散らばると必ずずれる
+pub use pyrun::config_dir;
 pub mod model;
 pub mod spell;
 

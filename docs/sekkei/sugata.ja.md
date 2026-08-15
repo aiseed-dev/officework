@@ -106,7 +106,7 @@ writer で実施(calc への写しは申し送り):
   統計(ページ・段落・単語・文字数)と**プロパティ(編集できる)**。
   プロパティは docx の docProps/core.xml と往復(kumihan::CoreProps。
   原本の他の欄は残し、こちらの5欄だけ置き直す。空にすれば消える)。
-  最近開いたは ~/.config/office/recent-writer.txt に12件。
+  最近開いたは ~/.config/officework/recent-writer.txt に12件。
   ファイルのページでは InputSink のキャレット・筆のマウス処理を素通り
   させる(紙が無いので)。Esc は 欄 → ページ の順で閉じる
 - **表示タブも本家の2段**(2026-08-04 発注者が画像で指摘「できていないものが
@@ -143,7 +143,7 @@ writer の文字数に当たるもの(全選択のような巨大な矩形では
 OFFICE_DICT_USER)が散らばっているだけで**器が無い**。言語はリボンが
 ビルド時生成(gen_ribbon.py)なので利用者が切り替えられない。直す:
 
-- **器**: `~/.config/office/settings.toml`(recent・sign.key の隣)。
+- **器**: `~/.config/officework/settings.toml`(recent・sign.key の隣)。
   起動時に読み、**ファイルタブの「詳細設定」ページ**(本家と同じ場所)で
   編集して即保存。環境変数は**一時上書きの口**として残す
   (優先順: 環境変数 > settings.toml > 既定 — 現場の検証で差し替えたい

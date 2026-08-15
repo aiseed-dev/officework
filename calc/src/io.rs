@@ -14,7 +14,7 @@ pub(crate) fn foreign_lock(p: &std::path::Path) -> Option<String> {
 /// 署名の鍵を読む。無ければ作る(本体は ops — ここは文言の包み)
 pub(crate) fn load_or_make_key() -> Result<ed25519_dalek::SigningKey, String> {
     ops::load_or_make_key().map_err(|e| match e {
-        ops::KeyErr::Corrupt => ui::t!("鍵ファイルが壊れています(~/.config/office/sign.key)").to_string(),
+        ops::KeyErr::Corrupt => ui::t!("鍵ファイルが壊れています(~/.config/officework/sign.key)").to_string(),
         ops::KeyErr::NoRandom(e) => ui::tf!("乱数が取れません: {}", e).to_string(),
         ops::KeyErr::CantStore(e) => ui::tf!("鍵が置けません: {}", e).to_string(),
     })
@@ -308,7 +308,7 @@ impl Calc {
         })
     }
 
-    /// **自動復旧の控えの置き場。** `~/.config/office/recover/`。
+    /// **自動復旧の控えの置き場。** `~/.config/officework/recover/`。
     ///
     /// 本家(ローカルの Excel)と同じ考え方で、**開いているファイルを
     /// 勝手に上書きしない**。落ちたとき・電源が切れたときに失う分を
@@ -316,10 +316,7 @@ impl Calc {
     /// 上書きしてしまうと「保存していないつもりの変更」が原本に入り、
     /// Ctrl+Z でも戻せない — 帳票では取り返しがつかない。
     pub(crate) fn recover_dir() -> PathBuf {
-        std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_default()
-            .join(".config/office/recover")
+        pyrun::config_dir().join("recover")
     }
 
     /// いまのブックの控えの道。名前は**元の道から作る**ので、同じ
@@ -407,10 +404,7 @@ impl Calc {
 
     /// 最近開いた・保存したブックの控え(writer と同じ作法)
     pub(crate) fn recent_file() -> PathBuf {
-        std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_default()
-            .join(".config/office/recent-calc.txt")
+        pyrun::config_dir().join("recent-calc.txt")
     }
 
     pub(crate) fn note_recent(p: &std::path::Path) {

@@ -514,7 +514,7 @@ Claude(API)と回ります。
 その先で何を動かすか(手元のモデルでも、どこかの API への中継でも)は
 運用する人が決めることで、officework は **OpenAI 互換の口**を叩くだけです。
 
-`~/.config/office/settings.toml` に1行:
+`~/.config/officework/settings.toml` に1行:
 
 ```toml
 ai_url = "https://ai.example.org/v1/chat/completions"
@@ -577,7 +577,7 @@ LM Studio は `1234`。どれも `/v1/chat/completions` です。
 思ってほしい — 表は .xlsx、コードは .py で、どちらもファイルとして別々にある。
 
 - 人とやり取りするのは**データだけ**。受け取ったブックにコードは入っていない
-- 関数も手続きも `~/.config/office/plugins/*.py` に置く。**1機械1回の据え付け**
+- 関数も手続きも `~/.config/officework/plugins/*.py` に置く。**1機械1回の据え付け**
 - だから「開いただけで他人のコードが走る」が原理的に起こらない
 - コードが自分のものだけなので、サンドボックスは着せない(VS Code で
   スクリプトを走らせるのと同じ扱い)
@@ -590,11 +590,11 @@ LM Studio は `1234`。どれも `/v1/chat/completions` です。
   `from officework import sheet` するので、要るのは **`officework/` の
   ディレクトリ**であって裸の `.so` ではない。この木から作るなら
   `maturin build -m pysheet/Cargo.toml --release` の wheel を入れる
-- plugins の置き場: `~/.config/office/plugins/`(無ければ作る)
+- plugins の置き場: `~/.config/officework/plugins/`(無ければ作る)
 
 ### セル関数を Python で書く
 
-`~/.config/office/plugins/道具.py` に**普通に def を書くだけ**:
+`~/.config/officework/plugins/道具.py` に**普通に def を書くだけ**:
 
 ```python
 def 倍(x):
@@ -627,7 +627,7 @@ def 縦横(表):
 
 ### 手続き(マクロの置き換え)
 
-`~/.config/office/plugins/取り込み.py`:
+`~/.config/officework/plugins/取り込み.py`:
 
 ```python
 from officework import calc as xw
@@ -658,7 +658,7 @@ s["A30"] = "日本フネン株式会社"        # 書式は据え置きで値だ
 
 | 打つもの | 動き |
 |---|---|
-| `@モジュール` | `~/.config/office/plugins/モジュール.py` を上から下まで走らせる |
+| `@モジュール` | `~/.config/officework/plugins/モジュール.py` を上から下まで走らせる |
 | `@モジュール.関数` | その .py の関数だけを呼ぶ |
 | `@edit 名前` | **その .py を calc の中で開いて編集する**(無ければ下書きを作る) |
 | `@list`(または `@`) | plugins の .py と、その中の def の一覧 |
@@ -671,7 +671,7 @@ s["A30"] = "日本フネン株式会社"        # 書式は据え置きで値だ
 
 ### .py を calc の中で編集する
 
-`@edit 道具` と打つと、`~/.config/office/plugins/道具.py` が表の上に開きます。
+`@edit 道具` と打つと、`~/.config/officework/plugins/道具.py` が表の上に開きます。
 無ければ下書き(関数が1つ入ったもの)を作ります。
 
 - 行番号つき。`def` の名前・キーワード・文字列・コメントに色が付く
@@ -729,16 +729,16 @@ s["A30"] = "日本フネン株式会社"        # 書式は据え置きで値だ
 
 - **操作を記録**: 手でやった操作が Python の行として溜まる。止めると .py に
 - **新しい .py**: 置き場に新しい台本を作って開く
-- **一覧**: `~/.config/office/plugins` の .py を並べ、選ぶと走る
+- **一覧**: `~/.config/officework/plugins` の .py を並べ、選ぶと走る
   (サンドボックスの中。b=ブック s=シート)
-- **置き場を開く**: `~/.config/office/plugins` をファイル管理で開く
+- **置き場を開く**: `~/.config/officework/plugins` をファイル管理で開く
 
 置き場の名前は `plugins` のままです — 既に置いてある人の物を迷子に
 しないためで、画面の言葉だけを「マクロ」に揃えました。
 
 ### 走らせられるのは置き場の .py だけ
 
-**calc から起動できるマクロは `~/.config/office/plugins` の .py に
+**calc から起動できるマクロは `~/.config/officework/plugins` の .py に
 限ります**(2026-08-16)。前は「ファイルから」でどこの .py でも選べ、
 データ > Python の空 Enter でも同じことができました。どちらも閉じました。
 

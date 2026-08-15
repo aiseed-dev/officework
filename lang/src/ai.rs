@@ -2,7 +2,7 @@
 //!
 //! **どこへ送るかは人が決める。** 文書やブックの中身を外へ出すかは
 //! 現場の判断なので、既定は手元(ローカル)のまま、選んだ宛先を
-//! `~/.config/office/ai.txt` に覚える。**鍵が文書に入ることは決してない。**
+//! `~/.config/officework/ai.txt` に覚える。**鍵が文書に入ることは決してない。**
 //!
 //! 宛先は3つ:
 //!
@@ -93,10 +93,7 @@ impl Backend {
 }
 
 fn config_path() -> std::path::PathBuf {
-    std::env::var_os("HOME")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_default()
-        .join(".config/office/ai.txt")
+    pyrun::config_dir().join("ai.txt")
 }
 
 /// 覚えている宛先を読む(環境変数 `JO_AI` が優先)

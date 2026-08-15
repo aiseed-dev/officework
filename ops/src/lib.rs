@@ -1608,13 +1608,10 @@ pub fn foreign_lock(p: &std::path::Path, fallback: &str) -> Option<String> {
     (who != lock_identity()).then_some(who)
 }
 
-/// 署名の鍵の置き場。calc と writer で共通の ~/.config/office/sign.key
+/// 署名の鍵の置き場。calc と writer で共通の ~/.config/officework/sign.key
 /// (秘密鍵の種 32 バイト)
 pub fn sign_key_path() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_default()
-        .join(".config/office/sign.key")
+    pyrun::config_dir().join("sign.key")
 }
 
 /// 署名の添え書きの置き場。ファイルの隣の 名前.xlsx.sig / 名前.docx.sig
@@ -1628,7 +1625,7 @@ pub fn sig_path_for(p: &std::path::Path) -> PathBuf {
 #[cfg(unix)]
 #[derive(Debug)]
 pub enum KeyErr {
-    /// 鍵ファイルが壊れている(~/.config/office/sign.key)
+    /// 鍵ファイルが壊れている(~/.config/officework/sign.key)
     Corrupt,
     /// /dev/urandom が読めない
     NoRandom(std::io::Error),

@@ -882,12 +882,9 @@ impl Writer {
         .detach();
     }
 
-    /// 最近開いた・保存した文書の控え(~/.config/office/recent-writer.txt)
+    /// 最近開いた・保存した文書の控え(~/.config/officework/recent-writer.txt)
     pub(crate) fn recent_file() -> PathBuf {
-        std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_default()
-            .join(".config/office/recent-writer.txt")
+        pyrun::config_dir().join("recent-writer.txt")
     }
 
     pub(crate) fn note_recent(p: &std::path::Path) {

@@ -5,11 +5,11 @@
 共有フォルダに置いてコピーして使う。作り直しは `cargo run -p sheet --example gen_templates`。
 
 **ブックにコードは入っていない**(2026-08-09 確定 — データとプログラムを1つの
-ファイルにしない)。関数も手続きも隣の .py にあり、`~/.config/office/plugins/` に
+ファイルにしない)。関数も手続きも隣の .py にあり、`~/.config/officework/plugins/` に
 自分で据え付けて使う(1機械1回)。
 
-    cp templates/台帳の関数.py  ~/.config/office/plugins/
-    cp templates/取り込み.py    ~/.config/office/plugins/
+    cp templates/台帳の関数.py  ~/.config/officework/plugins/
+    cp templates/取り込み.py    ~/.config/officework/plugins/
 
 **中身を読んでから置くこと。** 受け取った .py を確かめずに据え付けるのは、
 受け取った実行ファイルを叩くのと同じ。生成器(`gen_templates`)は配る前に
@@ -23,7 +23,7 @@ Web フォームの受信箱を事務で回す台帳。
 - H2 の集計は、plugins に関数を置けば `=状態集計(…)` で出る。
   **引数が変われば裏で計算し直す**(押すボタンは無い)
 - 取り込みの手続きは隣の **取り込み.py**。中身を確かめて
-  `~/.config/office/plugins/取り込み.py` に置き、`@取り込み` で新着を追記する
+  `~/.config/officework/plugins/取り込み.py` に置き、`@取り込み` で新着を追記する
 
 ## 在庫台帳.xlsx
 

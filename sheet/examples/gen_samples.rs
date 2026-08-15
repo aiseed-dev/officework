@@ -397,7 +397,7 @@ const CHUMON_KOSHIN: &str = r#"# 注文書.xlsx の手続き「更新」—
 # 品番マスタの写し(H〜J 列)をサーバーの正本と入れ替える。
 #
 # 据え付け(1機械1回): 中身を確かめてから
-#   ~/.config/office/plugins/更新.py
+#   ~/.config/officework/plugins/更新.py
 # へ写す。以後、注文書を開いて データ > Python のパネルで「@更新 net」
 # (網ありサンドボックス — 許可はその場の操作だけで、ブックには保存されない)。
 URL = "http://127.0.0.1:8765/catalog.csv"
@@ -420,7 +420,7 @@ const CHUMON_SOSHIN: &str = r#"# 注文書.xlsx の手続き「送信」—
 # 注文行(品番と数量の入った行)をサーバーへ送る。
 #
 # 据え付け(1機械1回): 中身を確かめてから
-#   ~/.config/office/plugins/送信.py
+#   ~/.config/officework/plugins/送信.py
 # へ写す。以後、注文書を開いて データ > Python のパネルで「@送信 net」
 # (網ありサンドボックス — 許可はその場の操作だけで、ブックには保存されない)。
 URL = "http://127.0.0.1:8765/order"
@@ -478,7 +478,7 @@ const JUCHU_TORIKOMI: &str = r#"# 受注台帳.xlsx の手続き「取り込み�
 # 店(catalog_server)に溜まった注文を台帳へ追記する。
 #
 # 据え付け(1機械1回): 中身を確かめてから
-#   ~/.config/office/plugins/取り込み.py
+#   ~/.config/officework/plugins/取り込み.py
 # へ写す(templates/ の問い合わせ台帳の取り込みと同名 — 同じ機械で両方
 # 使うなら、どちらかを別名で置く。@名前 はファイル名がそのまま)。
 # 以後、台帳を開いて データ > Python のパネルで「@取り込み net」

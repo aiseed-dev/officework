@@ -16,10 +16,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 fn settings_path() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_default()
-        .join(".config/office/settings.toml")
+    pyrun::config_dir().join("settings.toml")
 }
 
 /// settings.toml から素朴に1つの鍵を読む(`key = "value"` の行)

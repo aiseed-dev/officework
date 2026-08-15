@@ -3893,7 +3893,7 @@ impl Render for Calc {
                 .bg(gpui::white()).p_8()
                 .flex().flex_col().gap_3().text_size(px(us * 12.5)).text_color(fg);
             if self.file_view == 2 {
-                // 詳細設定 — 器は ~/.config/office/settings.toml
+                // 詳細設定 — 器は ~/.config/officework/settings.toml
                 // (SEKKEI「設定 — 器と言語」。環境変数が一時上書きで優先)
                 let lang_now = ui::settings::get("language").unwrap_or_else(|| "ja".into());
                 let row = |label: &'static str, value: String| {

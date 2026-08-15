@@ -1327,7 +1327,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("臙脂", "Merah tua"),
     ("藍(生成りの紙)", "Nila (kertas alami)"),
     ("墨(灰の紙)", "Tinta (kertas abu-abu)"),
-    ("鍵ファイルが壊れています(~/.config/office/sign.key)", "File kunci rusak (~/.config/office/sign.key)"),
+    ("鍵ファイルが壊れています(~/.config/officework/sign.key)", "File kunci rusak (~/.config/officework/sign.key)"),
     ("誰か", "seseorang"),
     ("マクロ台本", "Skrip makro"),
     ("原因不明", "penyebab tidak diketahui"),

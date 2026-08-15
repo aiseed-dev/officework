@@ -226,7 +226,7 @@ Python で書けるかを機械に数えさせた。
   14言語の再生成を伴う
 - **記録**: 手の操作を officework の Python の行として写し取る
   (VBA は持たない、のまま)。語彙は ops の9命令。成果は
-  ~/.config/office/plugins の .py — ブックには載らない。
+  ~/.config/officework/plugins の .py — ブックには載らない。
   **Python の口が無い操作は註で残す** — 記録がそのまま API の穴の一覧
 - 編集は pyedit を使う(新設しない)。チェッカーは段階:
   (1) py_compile(必ずある)で保存時に文法 (2) traceback の行へ飛ぶ

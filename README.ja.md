@@ -58,7 +58,7 @@
 
 **VBA 型のマクロはありません。ブックはコードを運びません。**
 表は .xlsx に、コードは .py に — 別々のファイルです。自作のコードは
-`~/.config/office/plugins/` に .py で置きます。手続きなら `@名前` で実行、
+`~/.config/officework/plugins/` に .py で置きます。手続きなら `@名前` で実行、
 関数なら `=倍(A1)` のような普通の式でセルから呼べます(関数名は日本語でも
 かまいません)。受け取ったブックにコードは入っていないので、
 **「開いた瞬間に他人のコードが走る」という事故が、仕組みの上で起きません。**
@@ -209,7 +209,7 @@ ja(既定)・en・de・es・fr・id・it・ko・pt・ru・tr・vi・zh・zh-tw�
 
 ```bash
 OFFICE_LANG=en ./target/release/writer      # 一時的な上書き
-# 恒久には ~/.config/office/settings.toml に:
+# 恒久には ~/.config/officework/settings.toml に:
 #   language = "en"
 ```
 

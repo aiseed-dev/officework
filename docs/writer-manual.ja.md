@@ -277,7 +277,7 @@ settings.toml で変えられます: `key.bold = "alt-b"` のように書くと�
   読める)。Excel 系と同じく Word / LibreOffice でも開ける。
   空にして Enter で解除。msoffcrypto-tool との相互検証済み
 - **デジタル署名**: 隣に置く署名ファイル(`文書.docx.sig`、Ed25519。鍵は
-  `~/.config/office/sign.key` に自動生成)。改ざん検知と名前の証明が実体 —
+  `~/.config/officework/sign.key` に自動生成)。改ざん検知と名前の証明が実体 —
   Word の署名欄に出る方式ではない(そう言う)
 
 ## 表示タブ
@@ -356,7 +356,7 @@ settings.toml で変えられます: `key.bold = "alt-b"` のように書くと�
 
 ## マクロタブ
 
-- **一覧**: `~/.config/office/plugins` の .py を並べ、選ぶと走る
+- **一覧**: `~/.config/officework/plugins` の .py を並べ、選ぶと走る
   (サンドボックスの中)。青空注記・EPUB などの拡張はここに足していく
   選ぶと**サンドボックス(bubblewrap)の中の Python** が文書のコピーを直し、
   結果が1手として入る(Ctrl+Z で戻る)。スクリプトには `d` = python-docx の

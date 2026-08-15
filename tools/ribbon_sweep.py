@@ -122,7 +122,7 @@ class App:
         env = dict(os.environ)
         env.pop("WAYLAND_DISPLAY", None)  # 消すと gpui は X11 を選ぶ
         env["XDG_RUNTIME_DIR"] = self.run_dir
-        # **HOME も分ける。** 設定は `$HOME/.config/office/settings.toml` に
+        # **HOME も分ける。** 設定は `$HOME/.config/officework/settings.toml` に
         # あり、writer と calc と**発注者の窓**で1つを共有している。
         # 点検で押したボタン(暗い画面・文字の大きさ)がそこへ書き込まれ、
         # 2026-08-10 に発注者の ui_scale を 1.5 に変えてしまった。

@@ -46,7 +46,7 @@ Python in Calc が担う(2026-08-04 改訂): ブックにコードを**載せら
 
 **↑の Python の姿は改めた(2026-08-09)** — いまは**ブックはコードを一切
 運ばない**(`@save` も joPython.xml への書き込みも廃止)。コードは
-`~/.config/office/plugins/*.py` にだけあり、セルは `=倍(A1)` の普通の
+`~/.config/officework/plugins/*.py` にだけあり、セルは `=倍(A1)` の普通の
 関数呼び出し。正は [docs/sekkei/python.ja.md](docs/sekkei/python.ja.md) の
 「↑をさらに狭めて」の節。「開く=実行を持たない」という芯は変わっていない —
 むしろ「載せられるが走らせない」から「載せられない」へ強くなった。

@@ -2,7 +2,7 @@
 # フォームの受信箱(CSV を返す URL)から新着を台帳へ追記する。
 #
 # 据え付け(1機械1回): 中身を確かめてから
-#   ~/.config/office/plugins/取り込み.py
+#   ~/.config/officework/plugins/取り込み.py
 # へ写す。以後、台帳を開いて データ > Python のパネルで「@取り込み」
 # URL を自分のフォームのものに書き換えて使う。
 URL = "http://127.0.0.1:8000/inbox.csv"

@@ -13,7 +13,7 @@ pub(crate) fn foreign_lock(p: &std::path::Path) -> Option<String> {
 /// 署名の鍵を読む。無ければ作る(本体は ops — ここは文言の包み)
 pub(crate) fn load_or_make_key() -> Result<ed25519_dalek::SigningKey, String> {
     ops::load_or_make_key().map_err(|e| match e {
-        ops::KeyErr::Corrupt => ui::t!("鍵ファイルが壊れています(~/.config/office/sign.key)").to_string(),
+        ops::KeyErr::Corrupt => ui::t!("鍵ファイルが壊れています(~/.config/officework/sign.key)").to_string(),
         ops::KeyErr::NoRandom(e) => ui::tf!("乱数が取れません: {}", e).to_string(),
         ops::KeyErr::CantStore(e) => ui::tf!("鍵が置けません: {}", e).to_string(),
     })

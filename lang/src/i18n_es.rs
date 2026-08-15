@@ -1327,7 +1327,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("臙脂", "Carmesí"),
     ("藍(生成りの紙)", "Índigo (papel crudo)"),
     ("墨(灰の紙)", "Tinta (papel gris)"),
-    ("鍵ファイルが壊れています(~/.config/office/sign.key)", "El archivo de clave está dañado (~/.config/office/sign.key)"),
+    ("鍵ファイルが壊れています(~/.config/officework/sign.key)", "El archivo de clave está dañado (~/.config/officework/sign.key)"),
     ("誰か", "Alguien"),
     ("マクロ台本", "guion de macro"),
     ("原因不明", "causa desconocida"),

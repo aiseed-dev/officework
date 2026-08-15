@@ -57,10 +57,10 @@ fn inquiries() -> Book {
 /// 問い合わせ台帳の手続き。ブックには載せず、隣の .py として配る
 /// (据え付けは README — 中身を確かめて plugins へ、が取り込みの門)。
 /// 関数(UDF)は**ブックに入れない**。隣の .py に置き、使う人が
-/// `~/.config/office/plugins/` に据え付ける(1機械1回)。
+/// `~/.config/officework/plugins/` に据え付ける(1機械1回)。
 /// **データとプログラムを1つのファイルにしない**(2026-08-09 確定)
 const KANSU_PY: &str = r#"# 台帳テンプレ集の関数(UDF)。
-# ~/.config/office/plugins/台帳の関数.py に置くと、式から呼べます。
+# ~/.config/officework/plugins/台帳の関数.py に置くと、式から呼べます。
 #   =状態集計(E2:E501) / =要発注(A2:D100) / =実働(C2, D2)
 # 引数が変われば裏で計算し直します(押すボタンはありません)。
 
@@ -91,7 +91,7 @@ const INQUIRIES_TORIKOMI: &str = r#"# 問い合わせ台帳.xlsx の手続き「
 # フォームの受信箱(CSV を返す URL)から新着を台帳へ追記する。
 #
 # 据え付け(1機械1回): 中身を確かめてから
-#   ~/.config/office/plugins/取り込み.py
+#   ~/.config/officework/plugins/取り込み.py
 # へ写す。以後、台帳を開いて データ > Python のパネルで「@取り込み net」
 # (網ありサンドボックス — 許可はその場の操作だけで、ブックには保存されない)。
 # URL を自分のフォームのものに書き換えて使う。

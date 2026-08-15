@@ -57,7 +57,7 @@ SUNSET = [
     (
         re.compile(r"ブックに載せ|ブックに搭載|載せて持ち運"),
         re.compile(r"廃止|やめた|もう無い|昔"),
-        "2026-08-09 廃止。ブックはコードを運ばない。コードは ~/.config/office/plugins/*.py",
+        "2026-08-09 廃止。ブックはコードを運ばない。コードは ~/.config/officework/plugins/*.py",
     ),
     (
         re.compile(r"joPython"),
@@ -67,7 +67,7 @@ SUNSET = [
     (
         re.compile(r"workbook-borne|embeds? code in the workbook|carry Python inside"),
         re.compile(r"gone|removed|no longer|old form|refus"),
-        "2026-08-09: workbooks no longer carry code. Code lives in ~/.config/office/plugins/*.py",
+        "2026-08-09: workbooks no longer carry code. Code lives in ~/.config/officework/plugins/*.py",
     ),
     (
         re.compile(r"ブック由来のコード"),
