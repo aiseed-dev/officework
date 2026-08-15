@@ -6505,351 +6505,351 @@
  },
  {
   "i": 1626,
-  "t": "Önerilen değişiklik (basılmadan çalışmaz)"
- },
- {
-  "i": 1627,
   "t": "Uygula"
  },
  {
-  "i": 1628,
+  "i": 1627,
   "t": "Öneri atıldı (hiçbir şey değişmedi)"
  },
  {
-  "i": 1629,
+  "i": 1628,
   "t": "Yazmak için buraya basın; Enter gönderir"
  },
  {
-  "i": 1630,
+  "i": 1629,
   "t": "Gönder"
  },
  {
-  "i": 1631,
+  "i": 1630,
   "t": "Düşünüyor…"
  },
  {
-  "i": 1632,
+  "i": 1631,
   "t": "Şu an: {}"
  },
  {
-  "i": 1633,
+  "i": 1632,
   "t": "Sayfaya dönüldü (sohbet paneli açık kalır)"
  },
  {
-  "i": 1634,
+  "i": 1633,
   "t": "Değişiklik şöyle."
  },
  {
-  "i": 1635,
+  "i": 1634,
   "t": "Bir öneri hazır (sol panelde okuyup Uygula'ya basın)"
  },
  {
-  "i": 1636,
+  "i": 1635,
   "t": "Yanıtlandı (sol panel)"
  },
  {
-  "i": 1637,
+  "i": 1636,
   "t": "Sayı biçimi Genel'e döndürüldü"
  },
  {
-  "i": 1638,
+  "i": 1637,
   "t": "Sorulacak bir şey yok"
  },
  {
-  "i": 1639,
+  "i": 1638,
   "t": "Bir betik çalışıyor (bitmesini bekleyin)"
  },
  {
-  "i": 1640,
+  "i": 1639,
   "t": "Öneri çalıştırılıyor…"
  },
  {
-  "i": 1641,
+  "i": 1640,
   "t": "Uygulandı."
  },
  {
-  "i": 1642,
+  "i": 1641,
   "t": "Öneri uygulandı (Ctrl+Z geri alır)"
  },
  {
-  "i": 1643,
+  "i": 1642,
   "t": "Sayı biçimi {} olarak ayarlandı"
  },
  {
-  "i": 1644,
+  "i": 1643,
   "t": "Öneri uygulandı: {} (Ctrl+Z geri alır)"
  },
  {
-  "i": 1645,
+  "i": 1644,
   "t": "Betik başarısız oldu: {}"
  },
  {
-  "i": 1646,
+  "i": 1645,
   "t": "Betik çalışmadı: {}"
  },
  {
-  "i": 1647,
+  "i": 1646,
   "t": "Düzeltilmiş metin hazır (sol panelde okuyup Uygula'ya basın)"
  },
  {
-  "i": 1648,
+  "i": 1647,
   "t": "Seçim değiştirildi (Ctrl+Z geri alır)"
  },
  {
-  "i": 1649,
+  "i": 1648,
   "t": "İmlecin arkasına eklendi (Ctrl+Z geri alır)"
  },
  {
-  "i": 1650,
+  "i": 1649,
   "t": "Metne dönüldü (sohbet paneli açık kalır)"
  },
  {
-  "i": 1651,
+  "i": 1650,
   "t": "Eklenecek metin (basılmadan girmez)"
  },
  {
-  "i": 1652,
+  "i": 1651,
   "t": "Metin atıldı (hiçbir şey değişmedi)"
  },
  {
-  "i": 1653,
+  "i": 1652,
   "t": "YZ"
  },
  {
-  "i": 1654,
-  "t": "Seçili aralık sorunun konusudur. Sayfayı değiştiren istekler bir betik olarak gösterilir — siz basmadan çalışmaz."
- },
- {
-  "i": 1655,
-  "t": "örn. satışa göre sırala / ilk 5'i renklendir / toplam satırı ekle"
- },
- {
-  "i": 1656,
-  "t": "Seçim sorunun konusudur. Düzeltilmiş metin önce gösterilir ve yalnızca siz basınca girer."
- },
- {
-  "i": 1657,
-  "t": "örn. bu paragrafı daha kibar / yarı uzunlukta / bu ifade fazla mı sert"
- },
- {
-  "i": 1658,
+  "i": 1653,
   "t": "Girinti"
  },
  {
-  "i": 1659,
+  "i": 1654,
   "t": "Girinti {} olarak ayarlandı"
  },
  {
-  "i": 1660,
+  "i": 1655,
   "t": "Girinti daha fazla daraltılamaz"
  },
  {
-  "i": 1661,
+  "i": 1656,
   "t": "Girinti daha fazla genişletilemez"
  },
  {
-  "i": 1662,
+  "i": 1657,
   "t": "Metin yönü"
  },
  {
-  "i": 1663,
+  "i": 1658,
   "t": "Metin yönü {} olarak ayarlandı"
  },
  {
-  "i": 1664,
+  "i": 1659,
   "t": "Koşullu biçimlendirme"
  },
  {
-  "i": 1665,
+  "i": 1660,
   "t": "Negatifler kırmızı"
  },
  {
-  "i": 1666,
+  "i": 1661,
   "t": "Yinelenenler"
  },
  {
-  "i": 1667,
+  "i": 1662,
   "t": "Benzersizler"
  },
  {
-  "i": 1668,
+  "i": 1663,
   "t": "Renk ölçeği"
  },
  {
-  "i": 1669,
+  "i": 1664,
   "t": "Simgeler"
  },
  {
-  "i": 1670,
+  "i": 1665,
   "t": "Tablo"
  },
  {
-  "i": 1671,
+  "i": 1666,
   "t": "{} satır × {} sütun — şu an satır {}, sütun {}"
  },
  {
-  "i": 1672,
+  "i": 1667,
   "t": "Üste satır"
  },
  {
-  "i": 1673,
+  "i": 1668,
   "t": "Alta satır"
  },
  {
-  "i": 1674,
+  "i": 1669,
   "t": "Satırı sil"
  },
  {
-  "i": 1675,
+  "i": 1670,
   "t": "Sola sütun"
  },
  {
-  "i": 1676,
+  "i": 1671,
   "t": "Sağa sütun"
  },
  {
-  "i": 1677,
+  "i": 1672,
   "t": "Sütunu sil"
  },
  {
-  "i": 1678,
+  "i": 1673,
   "t": "Üste satır eklendi"
  },
  {
-  "i": 1679,
+  "i": 1674,
   "t": "Alta satır eklendi"
  },
  {
-  "i": 1680,
+  "i": 1675,
   "t": "Sola sütun eklendi"
  },
  {
-  "i": 1681,
+  "i": 1676,
   "t": "Sağa sütun eklendi"
  },
  {
-  "i": 1682,
+  "i": 1677,
   "t": "Satır silindi (Ctrl+Z geri alır)"
  },
  {
-  "i": 1683,
+  "i": 1678,
   "t": "Sütun silindi (Ctrl+Z geri alır)"
  },
  {
-  "i": 1684,
+  "i": 1679,
   "t": "Son satır silinemez (tablonun tamamını silmek ayrı bir işlemdir)"
  },
  {
-  "i": 1685,
+  "i": 1680,
   "t": "Son sütun silinemez (tablonun tamamını silmek ayrı bir işlemdir)"
  },
  {
-  "i": 1686,
+  "i": 1681,
   "t": "Denklem"
  },
  {
-  "i": 1687,
+  "i": 1682,
   "t": "Denklemi düzenle"
  },
  {
-  "i": 1688,
+  "i": 1683,
   "t": "Denklem düzenleniyor (Enter yeniden dizer, Esc iptal eder)"
  },
  {
-  "i": 1689,
+  "i": 1684,
   "t": "Bu paragrafta resim yok"
  },
  {
-  "i": 1690,
+  "i": 1685,
   "t": "Resim küçültüldü"
  },
  {
-  "i": 1691,
+  "i": 1686,
   "t": "Resim büyütüldü"
  },
  {
-  "i": 1692,
+  "i": 1687,
   "t": "{:.0}×{:.0}mm"
  },
  {
-  "i": 1693,
+  "i": 1688,
   "t": "Sıralama"
  },
  {
-  "i": 1694,
+  "i": 1689,
   "t": "En öne getir"
  },
  {
-  "i": 1695,
+  "i": 1690,
   "t": "Öne getir"
  },
  {
-  "i": 1696,
+  "i": 1691,
   "t": "Arkaya gönder"
  },
  {
-  "i": 1697,
+  "i": 1692,
   "t": "En arkaya gönder"
  },
  {
-  "i": 1698,
+  "i": 1693,
   "t": "Sola döndür"
  },
  {
-  "i": 1699,
+  "i": 1694,
   "t": "Sağa döndür"
  },
  {
-  "i": 1700,
+  "i": 1695,
   "t": "Yatay çevir"
  },
  {
-  "i": 1701,
+  "i": 1696,
   "t": "Dikey çevir"
  },
  {
-  "i": 1702,
+  "i": 1697,
   "t": "Diğer"
  },
  {
-  "i": 1703,
+  "i": 1698,
   "t": "Bir şekil seçili"
  },
  {
-  "i": 1704,
+  "i": 1699,
   "t": "Bir resim seçili"
  },
  {
-  "i": 1705,
+  "i": 1700,
   "t": "Seçili şekil veya resim yok (sayfada birine tıklayın)"
  },
  {
-  "i": 1706,
+  "i": 1701,
   "t": "Henüz yorum yok (İş birliği sekmesinden ekleyin)"
  },
  {
-  "i": 1707,
+  "i": 1702,
   "t": "{} sayfasındaki {} konumuna gidildi"
  },
  {
-  "i": 1708,
+  "i": 1703,
   "t": "Sayfa — tüm belgenin ayarları"
  },
  {
-  "i": 1709,
+  "i": 1704,
   "t": "Üst bilgi ve alt bilgi"
  },
  {
-  "i": 1710,
+  "i": 1705,
   "t": "Düzenle"
  },
  {
-  "i": 1711,
+  "i": 1706,
   "t": "Filigran"
  },
  {
-  "i": 1712,
+  "i": 1707,
   "t": "Sayfa rengi"
+ },
+ {
+  "i": 1708,
+  "t": "Seçili aralık hakkında soru sorabilirsiniz. Sayfayı değiştirecek bir şey varsa, ne yapılacağını önce görürsünüz — siz basmadan sayfa değişmez."
+ },
+ {
+  "i": 1709,
+  "t": "örn. satışa göre çoktan aza sırala / ilk 5'i renklendir / toplam satırı ekle"
+ },
+ {
+  "i": 1710,
+  "t": "Önerilen değişiklik (siz basmadan hiçbir şey olmaz)"
+ },
+ {
+  "i": 1711,
+  "t": "Seçim hakkında soru sorabilirsiniz. Metin yeniden yazılacaksa, yeni metni önce görürsünüz — siz basmadan hiçbir şey girmez."
+ },
+ {
+  "i": 1712,
+  "t": "örn. bu paragrafı daha kibar yap / yarı uzunlukta / kulağa sert geliyor mu söyle"
  },
  {
   "i": 1713,

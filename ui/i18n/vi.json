@@ -6505,351 +6505,351 @@
  },
  {
   "i": 1626,
-  "t": "Đề xuất thay đổi (chưa bấm thì chưa chạy)"
- },
- {
-  "i": 1627,
   "t": "Áp dụng"
  },
  {
-  "i": 1628,
+  "i": 1627,
   "t": "Đã bỏ đề xuất (không thay đổi gì)"
  },
  {
-  "i": 1629,
+  "i": 1628,
   "t": "Bấm vào đây để viết; Enter để gửi"
  },
  {
-  "i": 1630,
+  "i": 1629,
   "t": "Gửi"
  },
  {
-  "i": 1631,
+  "i": 1630,
   "t": "Đang nghĩ…"
  },
  {
-  "i": 1632,
+  "i": 1631,
   "t": "Hiện tại: {}"
  },
  {
-  "i": 1633,
+  "i": 1632,
   "t": "Đã trở lại bảng tính (bảng trò chuyện vẫn mở)"
  },
  {
-  "i": 1634,
+  "i": 1633,
   "t": "Sẽ sửa như sau."
  },
  {
-  "i": 1635,
+  "i": 1634,
   "t": "Đã có đề xuất (đọc ở bảng bên trái rồi bấm Áp dụng)"
  },
  {
-  "i": 1636,
+  "i": 1635,
   "t": "Đã trả lời (bảng bên trái)"
  },
  {
-  "i": 1637,
+  "i": 1636,
   "t": "Đã đưa định dạng số về Chung"
  },
  {
-  "i": 1638,
+  "i": 1637,
   "t": "Chưa có yêu cầu"
  },
  {
-  "i": 1639,
+  "i": 1638,
   "t": "Kịch bản đang chạy (xin đợi cho xong)"
  },
  {
-  "i": 1640,
+  "i": 1639,
   "t": "Đang chạy đề xuất…"
  },
  {
-  "i": 1641,
+  "i": 1640,
   "t": "Đã áp dụng."
  },
  {
-  "i": 1642,
+  "i": 1641,
   "t": "Đã áp dụng đề xuất (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1643,
+  "i": 1642,
   "t": "Đã đặt định dạng số là {}"
  },
  {
-  "i": 1644,
+  "i": 1643,
   "t": "Đã áp dụng đề xuất: {} (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1645,
+  "i": 1644,
   "t": "Kịch bản thất bại: {}"
  },
  {
-  "i": 1646,
+  "i": 1645,
   "t": "Kịch bản không chạy: {}"
  },
  {
-  "i": 1647,
+  "i": 1646,
   "t": "Đã có câu chữ đã sửa (đọc ở bảng bên trái rồi bấm Áp dụng)"
  },
  {
-  "i": 1648,
+  "i": 1647,
   "t": "Đã thay phần đang chọn (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1649,
+  "i": 1648,
   "t": "Đã chèn sau con trỏ (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1650,
+  "i": 1649,
   "t": "Đã trở lại nội dung (bảng trò chuyện vẫn mở)"
  },
  {
-  "i": 1651,
+  "i": 1650,
   "t": "Câu chữ sẽ chèn (chưa bấm thì chưa chèn)"
  },
  {
-  "i": 1652,
+  "i": 1651,
   "t": "Đã bỏ câu chữ (không thay đổi gì)"
  },
  {
-  "i": 1653,
+  "i": 1652,
   "t": "AI"
  },
  {
-  "i": 1654,
-  "t": "Vùng đang chọn là đối tượng của câu hỏi. Yêu cầu sửa bảng sẽ được trình bày dưới dạng kịch bản — chưa bấm thì chưa chạy."
- },
- {
-  "i": 1655,
-  "t": "vd: sắp xếp theo doanh số giảm dần / tô màu 5 dòng đầu / thêm dòng tổng"
- },
- {
-  "i": 1656,
-  "t": "Phần đang chọn là đối tượng của câu hỏi. Câu chữ đã sửa được trình ra trước và chỉ chèn khi bạn bấm."
- },
- {
-  "i": 1657,
-  "t": "vd: viết đoạn này lịch sự hơn / ngắn bằng một nửa / cách nói này có cứng quá không"
- },
- {
-  "i": 1658,
+  "i": 1653,
   "t": "Thụt lề"
  },
  {
-  "i": 1659,
+  "i": 1654,
   "t": "Đã đặt thụt lề {} bậc"
  },
  {
-  "i": 1660,
+  "i": 1655,
   "t": "Không thể thu hẹp thụt lề thêm nữa"
  },
  {
-  "i": 1661,
+  "i": 1656,
   "t": "Không thể nới rộng thụt lề thêm nữa"
  },
  {
-  "i": 1662,
+  "i": 1657,
   "t": "Hướng chữ"
  },
  {
-  "i": 1663,
+  "i": 1658,
   "t": "Đã đặt hướng chữ là {}"
  },
  {
-  "i": 1664,
+  "i": 1659,
   "t": "Định dạng có điều kiện"
  },
  {
-  "i": 1665,
+  "i": 1660,
   "t": "Số âm màu đỏ"
  },
  {
-  "i": 1666,
+  "i": 1661,
   "t": "Trùng lặp"
  },
  {
-  "i": 1667,
+  "i": 1662,
   "t": "Duy nhất"
  },
  {
-  "i": 1668,
+  "i": 1663,
   "t": "Thang màu"
  },
  {
-  "i": 1669,
+  "i": 1664,
   "t": "Biểu tượng"
  },
  {
-  "i": 1670,
+  "i": 1665,
   "t": "Bảng"
  },
  {
-  "i": 1671,
+  "i": 1666,
   "t": "{} hàng × {} cột — hiện ở hàng {}, cột {}"
  },
  {
-  "i": 1672,
+  "i": 1667,
   "t": "Thêm hàng trên"
  },
  {
-  "i": 1673,
+  "i": 1668,
   "t": "Thêm hàng dưới"
  },
  {
-  "i": 1674,
+  "i": 1669,
   "t": "Xoá hàng"
  },
  {
-  "i": 1675,
+  "i": 1670,
   "t": "Thêm cột trái"
  },
  {
-  "i": 1676,
+  "i": 1671,
   "t": "Thêm cột phải"
  },
  {
-  "i": 1677,
+  "i": 1672,
   "t": "Xoá cột"
  },
  {
-  "i": 1678,
+  "i": 1673,
   "t": "Đã thêm hàng phía trên"
  },
  {
-  "i": 1679,
+  "i": 1674,
   "t": "Đã thêm hàng phía dưới"
  },
  {
-  "i": 1680,
+  "i": 1675,
   "t": "Đã thêm cột bên trái"
  },
  {
-  "i": 1681,
+  "i": 1676,
   "t": "Đã thêm cột bên phải"
  },
  {
-  "i": 1682,
+  "i": 1677,
   "t": "Đã xoá hàng (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1683,
+  "i": 1678,
   "t": "Đã xoá cột (Ctrl+Z để hoàn tác)"
  },
  {
-  "i": 1684,
+  "i": 1679,
   "t": "Không thể xoá hàng cuối cùng (xoá cả bảng là thao tác khác)"
  },
  {
-  "i": 1685,
+  "i": 1680,
   "t": "Không thể xoá cột cuối cùng (xoá cả bảng là thao tác khác)"
  },
  {
-  "i": 1686,
+  "i": 1681,
   "t": "Công thức"
  },
  {
-  "i": 1687,
+  "i": 1682,
   "t": "Sửa công thức"
  },
  {
-  "i": 1688,
+  "i": 1683,
   "t": "Đang sửa công thức (Enter dựng lại, Esc huỷ)"
  },
  {
-  "i": 1689,
+  "i": 1684,
   "t": "Đoạn này không có hình"
  },
  {
-  "i": 1690,
+  "i": 1685,
   "t": "Đã thu nhỏ hình"
  },
  {
-  "i": 1691,
+  "i": 1686,
   "t": "Đã phóng to hình"
  },
  {
-  "i": 1692,
+  "i": 1687,
   "t": "{:.0}×{:.0}mm"
  },
  {
-  "i": 1693,
+  "i": 1688,
   "t": "Thứ tự chồng"
  },
  {
-  "i": 1694,
+  "i": 1689,
   "t": "Đưa lên trên cùng"
  },
  {
-  "i": 1695,
+  "i": 1690,
   "t": "Đưa lên trên"
  },
  {
-  "i": 1696,
+  "i": 1691,
   "t": "Đưa xuống dưới"
  },
  {
-  "i": 1697,
+  "i": 1692,
   "t": "Đưa xuống dưới cùng"
  },
  {
-  "i": 1698,
+  "i": 1693,
   "t": "Xoay trái"
  },
  {
-  "i": 1699,
+  "i": 1694,
   "t": "Xoay phải"
  },
  {
-  "i": 1700,
+  "i": 1695,
   "t": "Lật ngang"
  },
  {
-  "i": 1701,
+  "i": 1696,
   "t": "Lật dọc"
  },
  {
-  "i": 1702,
+  "i": 1697,
   "t": "Khác"
  },
  {
-  "i": 1703,
+  "i": 1698,
   "t": "Đang chọn một hình"
  },
  {
-  "i": 1704,
+  "i": 1699,
   "t": "Đang chọn một ảnh"
  },
  {
-  "i": 1705,
+  "i": 1700,
   "t": "Chưa chọn hình hay ảnh nào (hãy bấm vào một cái trên trang tính)"
  },
  {
-  "i": 1706,
+  "i": 1701,
   "t": "Chưa có bình luận nào (thêm ở thẻ Cộng tác)"
  },
  {
-  "i": 1707,
+  "i": 1702,
   "t": "Đã nhảy tới {} của {}"
  },
  {
-  "i": 1708,
+  "i": 1703,
   "t": "Trang — thiết lập cho cả tài liệu"
  },
  {
-  "i": 1709,
+  "i": 1704,
   "t": "Đầu trang và chân trang"
  },
  {
-  "i": 1710,
+  "i": 1705,
   "t": "Sửa"
  },
  {
-  "i": 1711,
+  "i": 1706,
   "t": "Hình mờ"
  },
  {
-  "i": 1712,
+  "i": 1707,
   "t": "Màu trang"
+ },
+ {
+  "i": 1708,
+  "t": "Bạn có thể hỏi về vùng đang chọn. Nếu điều gì đó sẽ thay đổi trang tính, bạn được xem trước nó sẽ làm gì — chưa bấm thì trang tính không đổi."
+ },
+ {
+  "i": 1709,
+  "t": "vd: sắp xếp theo doanh số giảm dần / tô màu 5 dòng đầu / thêm dòng tổng"
+ },
+ {
+  "i": 1710,
+  "t": "Đề xuất thay đổi (chưa bấm thì chưa có gì xảy ra)"
+ },
+ {
+  "i": 1711,
+  "t": "Bạn có thể hỏi về phần đang chọn. Nếu câu chữ sẽ được viết lại, bạn được xem câu chữ mới trước — chưa bấm thì chưa chèn vào."
+ },
+ {
+  "i": 1712,
+  "t": "vd: viết đoạn này lịch sự hơn / ngắn bằng một nửa / xem giúp có cứng quá không"
  },
  {
   "i": 1713,

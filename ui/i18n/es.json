@@ -6505,351 +6505,351 @@
  },
  {
   "i": 1626,
-  "t": "Cambio propuesto (no se ejecuta hasta pulsar)"
- },
- {
-  "i": 1627,
   "t": "Aplicar"
  },
  {
-  "i": 1628,
+  "i": 1627,
   "t": "Propuesta descartada (no se cambió nada)"
  },
  {
-  "i": 1629,
+  "i": 1628,
   "t": "Pulse aquí para escribir; Intro envía"
  },
  {
-  "i": 1630,
+  "i": 1629,
   "t": "Enviar"
  },
  {
-  "i": 1631,
+  "i": 1630,
   "t": "Pensando…"
  },
  {
-  "i": 1632,
+  "i": 1631,
   "t": "Ahora: {}"
  },
  {
-  "i": 1633,
+  "i": 1632,
   "t": "De vuelta a la hoja (el panel de conversación sigue abierto)"
  },
  {
-  "i": 1634,
+  "i": 1633,
   "t": "Este es el cambio."
  },
  {
-  "i": 1635,
+  "i": 1634,
   "t": "Hay una propuesta lista (léala en el panel izquierdo y pulse Aplicar)"
  },
  {
-  "i": 1636,
+  "i": 1635,
   "t": "Respondido (panel izquierdo)"
  },
  {
-  "i": 1637,
+  "i": 1636,
   "t": "Formato de número restablecido a General"
  },
  {
-  "i": 1638,
+  "i": 1637,
   "t": "No hay ninguna petición"
  },
  {
-  "i": 1639,
+  "i": 1638,
   "t": "Hay un script en marcha (espere a que termine)"
  },
  {
-  "i": 1640,
+  "i": 1639,
   "t": "Ejecutando la propuesta…"
  },
  {
-  "i": 1641,
+  "i": 1640,
   "t": "Aplicado."
  },
  {
-  "i": 1642,
+  "i": 1641,
   "t": "Propuesta aplicada (Ctrl+Z lo deshace)"
  },
  {
-  "i": 1643,
+  "i": 1642,
   "t": "Formato de número establecido en {}"
  },
  {
-  "i": 1644,
+  "i": 1643,
   "t": "Propuesta aplicada: {} (Ctrl+Z lo deshace)"
  },
  {
-  "i": 1645,
+  "i": 1644,
   "t": "El script falló: {}"
  },
  {
-  "i": 1646,
+  "i": 1645,
   "t": "El script no se ejecutó: {}"
  },
  {
-  "i": 1647,
+  "i": 1646,
   "t": "El texto revisado está listo (léalo en el panel izquierdo y pulse Aplicar)"
  },
  {
-  "i": 1648,
+  "i": 1647,
   "t": "Se reemplazó la selección (Ctrl+Z lo deshace)"
  },
  {
-  "i": 1649,
+  "i": 1648,
   "t": "Insertado tras el cursor (Ctrl+Z lo deshace)"
  },
  {
-  "i": 1650,
+  "i": 1649,
   "t": "De vuelta al texto (el panel de conversación sigue abierto)"
  },
  {
-  "i": 1651,
+  "i": 1650,
   "t": "Texto a insertar (no entra hasta pulsar)"
  },
  {
-  "i": 1652,
+  "i": 1651,
   "t": "Texto descartado (no se cambió nada)"
  },
  {
-  "i": 1653,
+  "i": 1652,
   "t": "IA"
  },
  {
-  "i": 1654,
-  "t": "El rango seleccionado es el objeto de la consulta. Las peticiones que cambian la hoja se muestran como un script: nada se ejecuta hasta que pulse."
- },
- {
-  "i": 1655,
-  "t": "p. ej. ordenar por ventas / colorear los 5 primeros / añadir fila de totales"
- },
- {
-  "i": 1656,
-  "t": "La selección es el objeto de la consulta. El texto revisado se muestra primero y solo entra si pulsa."
- },
- {
-  "i": 1657,
-  "t": "p. ej. hacer este párrafo más cortés / la mitad de largo / ¿suena demasiado rígido?"
- },
- {
-  "i": 1658,
+  "i": 1653,
   "t": "Sangría"
  },
  {
-  "i": 1659,
+  "i": 1654,
   "t": "Sangría establecida en {}"
  },
  {
-  "i": 1660,
+  "i": 1655,
   "t": "La sangría no puede reducirse más"
  },
  {
-  "i": 1661,
+  "i": 1656,
   "t": "La sangría no puede ampliarse más"
  },
  {
-  "i": 1662,
+  "i": 1657,
   "t": "Orientación del texto"
  },
  {
-  "i": 1663,
+  "i": 1658,
   "t": "Orientación del texto establecida en {}"
  },
  {
-  "i": 1664,
+  "i": 1659,
   "t": "Formato condicional"
  },
  {
-  "i": 1665,
+  "i": 1660,
   "t": "Negativos en rojo"
  },
  {
-  "i": 1666,
+  "i": 1661,
   "t": "Duplicados"
  },
  {
-  "i": 1667,
+  "i": 1662,
   "t": "Únicos"
  },
  {
-  "i": 1668,
+  "i": 1663,
   "t": "Escala de color"
  },
  {
-  "i": 1669,
+  "i": 1664,
   "t": "Iconos"
  },
  {
-  "i": 1670,
+  "i": 1665,
   "t": "Tabla"
  },
  {
-  "i": 1671,
+  "i": 1666,
   "t": "{} filas × {} columnas — ahora fila {}, columna {}"
  },
  {
-  "i": 1672,
+  "i": 1667,
   "t": "Fila arriba"
  },
  {
-  "i": 1673,
+  "i": 1668,
   "t": "Fila abajo"
  },
  {
-  "i": 1674,
+  "i": 1669,
   "t": "Eliminar fila"
  },
  {
-  "i": 1675,
+  "i": 1670,
   "t": "Columna izquierda"
  },
  {
-  "i": 1676,
+  "i": 1671,
   "t": "Columna derecha"
  },
  {
-  "i": 1677,
+  "i": 1672,
   "t": "Eliminar columna"
  },
  {
-  "i": 1678,
+  "i": 1673,
   "t": "Fila añadida arriba"
  },
  {
-  "i": 1679,
+  "i": 1674,
   "t": "Fila añadida abajo"
  },
  {
-  "i": 1680,
+  "i": 1675,
   "t": "Columna añadida a la izquierda"
  },
  {
-  "i": 1681,
+  "i": 1676,
   "t": "Columna añadida a la derecha"
  },
  {
-  "i": 1682,
+  "i": 1677,
   "t": "Fila eliminada (Ctrl+Z lo deshace)"
  },
  {
-  "i": 1683,
+  "i": 1678,
   "t": "Columna eliminada (Ctrl+Z lo deshace)"
  },
  {
-  "i": 1684,
+  "i": 1679,
   "t": "No se puede eliminar la última fila (eliminar toda la tabla es otra acción)"
  },
  {
-  "i": 1685,
+  "i": 1680,
   "t": "No se puede eliminar la última columna (eliminar toda la tabla es otra acción)"
  },
  {
-  "i": 1686,
+  "i": 1681,
   "t": "Ecuación"
  },
  {
-  "i": 1687,
+  "i": 1682,
   "t": "Editar la ecuación"
  },
  {
-  "i": 1688,
+  "i": 1683,
   "t": "Editando la ecuación (Intro recompone, Esc cancela)"
  },
  {
-  "i": 1689,
+  "i": 1684,
   "t": "No hay ninguna imagen en este párrafo"
  },
  {
-  "i": 1690,
+  "i": 1685,
   "t": "Imagen reducida"
  },
  {
-  "i": 1691,
+  "i": 1686,
   "t": "Imagen ampliada"
  },
  {
-  "i": 1692,
+  "i": 1687,
   "t": "{:.0}×{:.0}mm"
  },
  {
-  "i": 1693,
+  "i": 1688,
   "t": "Orden"
  },
  {
-  "i": 1694,
+  "i": 1689,
   "t": "Traer al frente"
  },
  {
-  "i": 1695,
+  "i": 1690,
   "t": "Traer adelante"
  },
  {
-  "i": 1696,
+  "i": 1691,
   "t": "Enviar atrás"
  },
  {
-  "i": 1697,
+  "i": 1692,
   "t": "Enviar al fondo"
  },
  {
-  "i": 1698,
+  "i": 1693,
   "t": "Girar a la izquierda"
  },
  {
-  "i": 1699,
+  "i": 1694,
   "t": "Girar a la derecha"
  },
  {
-  "i": 1700,
+  "i": 1695,
   "t": "Voltear horizontalmente"
  },
  {
-  "i": 1701,
+  "i": 1696,
   "t": "Voltear verticalmente"
  },
  {
-  "i": 1702,
+  "i": 1697,
   "t": "Otros"
  },
  {
-  "i": 1703,
+  "i": 1698,
   "t": "Hay una forma seleccionada"
  },
  {
-  "i": 1704,
+  "i": 1699,
   "t": "Hay una imagen seleccionada"
  },
  {
-  "i": 1705,
+  "i": 1700,
   "t": "No hay ninguna forma ni imagen seleccionada (haga clic en una en la hoja)"
  },
  {
-  "i": 1706,
+  "i": 1701,
   "t": "Todavía no hay comentarios (añada uno desde la pestaña Colaboración)"
  },
  {
-  "i": 1707,
+  "i": 1702,
   "t": "Se saltó a {} en {}"
  },
  {
-  "i": 1708,
+  "i": 1703,
   "t": "Página — ajustes de todo el documento"
  },
  {
-  "i": 1709,
+  "i": 1704,
   "t": "Encabezado y pie"
  },
  {
-  "i": 1710,
+  "i": 1705,
   "t": "Editar"
  },
  {
-  "i": 1711,
+  "i": 1706,
   "t": "Marca de agua"
  },
  {
-  "i": 1712,
+  "i": 1707,
   "t": "Color de página"
+ },
+ {
+  "i": 1708,
+  "t": "Puedes preguntar sobre el rango seleccionado. Si algo va a cambiar la hoja, primero ves qué hará: nada cambia hasta que pulses."
+ },
+ {
+  "i": 1709,
+  "t": "p. ej. ordenar por ventas de mayor a menor / colorear los 5 primeros / añadir una fila de totales"
+ },
+ {
+  "i": 1710,
+  "t": "Cambio propuesto (no pasa nada hasta que pulses)"
+ },
+ {
+  "i": 1711,
+  "t": "Puedes preguntar sobre la selección. Si se va a reescribir el texto, primero ves el texto nuevo: no entra nada hasta que pulses."
+ },
+ {
+  "i": 1712,
+  "t": "p. ej. hacer este párrafo más cortés / la mitad de largo / dime si suena rígido"
  },
  {
   "i": 1713,

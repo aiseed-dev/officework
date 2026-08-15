@@ -409,8 +409,8 @@ impl Calc {
             d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                 .text_color(fg).child(ui::t!("AI と相談する").to_string()));
             d = d.child(div().text_size(px(us * 10.5)).text_color(薄).child(
-                ui::t!("選んでいる範囲が相談の相手になります。表を直す頼みは、\
-                        台本にして見せます — 押すまで走りません。").to_string()));
+                ui::t!("選んだ範囲について聞けます。表を変えるときは、\
+                        やることを先に見せます — 押すまで表は変わりません。").to_string()));
 
             // やりとり
             // **残りの高さを全部使う**(固定の高さ + 余白の詰め物、だと
@@ -419,7 +419,7 @@ impl Calc {
                 .flex_1().min_h(px(0.0)).overflow_y_scroll();
             if self.chat_log.is_empty() {
                 会話 = 会話.child(div().text_size(px(us * 11.0)).text_color(薄).child(
-                    ui::t!("例: この表を売上の多い順に並べて / 上位5件に色を付けて \
+                    ui::t!("例: 売上の多い順に並べて / 上位5件に色をつけて \
                             / 合計の行を足して").to_string()));
             }
             for (自分, 字) in &self.chat_log {
@@ -432,7 +432,7 @@ impl Calc {
 
             // 変更案(Python)。**押すまで走らない**
             if let Some(plan) = self.chat_plan.clone() {
-                d = d.child(見出し(ui::t!("変更案(押すまで走りません)").to_string()));
+                d = d.child(見出し(ui::t!("変更案(押すまで動きません)").to_string()));
                 d = d.child(div().id("chat-plan")
                     .max_h(px(us * 150.0)).overflow_y_scroll()
                     .p_1().rounded_sm()

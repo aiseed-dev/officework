@@ -6505,351 +6505,351 @@
  },
  {
   "i": 1626,
-  "t": "Alteração proposta (não corre até premir)"
- },
- {
-  "i": 1627,
   "t": "Aplicar"
  },
  {
-  "i": 1628,
+  "i": 1627,
   "t": "Proposta descartada (nada foi alterado)"
  },
  {
-  "i": 1629,
+  "i": 1628,
   "t": "Prima aqui para escrever; Enter envia"
  },
  {
-  "i": 1630,
+  "i": 1629,
   "t": "Enviar"
  },
  {
-  "i": 1631,
+  "i": 1630,
   "t": "A pensar…"
  },
  {
-  "i": 1632,
+  "i": 1631,
   "t": "Agora: {}"
  },
  {
-  "i": 1633,
+  "i": 1632,
   "t": "De volta à folha (o painel de conversa fica aberto)"
  },
  {
-  "i": 1634,
+  "i": 1633,
   "t": "Eis a alteração."
  },
  {
-  "i": 1635,
+  "i": 1634,
   "t": "Há uma proposta pronta (leia no painel esquerdo e prima Aplicar)"
  },
  {
-  "i": 1636,
+  "i": 1635,
   "t": "Respondido (painel esquerdo)"
  },
  {
-  "i": 1637,
+  "i": 1636,
   "t": "Formato de número reposto para Geral"
  },
  {
-  "i": 1638,
+  "i": 1637,
   "t": "Não há pedido"
  },
  {
-  "i": 1639,
+  "i": 1638,
   "t": "Está a correr um script (aguarde que termine)"
  },
  {
-  "i": 1640,
+  "i": 1639,
   "t": "A executar a proposta…"
  },
  {
-  "i": 1641,
+  "i": 1640,
   "t": "Aplicado."
  },
  {
-  "i": 1642,
+  "i": 1641,
   "t": "Proposta aplicada (Ctrl+Z anula)"
  },
  {
-  "i": 1643,
+  "i": 1642,
   "t": "Formato de número definido como {}"
  },
  {
-  "i": 1644,
+  "i": 1643,
   "t": "Proposta aplicada: {} (Ctrl+Z anula)"
  },
  {
-  "i": 1645,
+  "i": 1644,
   "t": "O script falhou: {}"
  },
  {
-  "i": 1646,
+  "i": 1645,
   "t": "O script não correu: {}"
  },
  {
-  "i": 1647,
+  "i": 1646,
   "t": "O texto revisto está pronto (leia no painel esquerdo e prima Aplicar)"
  },
  {
-  "i": 1648,
+  "i": 1647,
   "t": "Substituída a seleção (Ctrl+Z anula)"
  },
  {
-  "i": 1649,
+  "i": 1648,
   "t": "Inserido depois do cursor (Ctrl+Z anula)"
  },
  {
-  "i": 1650,
+  "i": 1649,
   "t": "De volta ao texto (o painel de conversa fica aberto)"
  },
  {
-  "i": 1651,
+  "i": 1650,
   "t": "Texto a inserir (não entra até premir)"
  },
  {
-  "i": 1652,
+  "i": 1651,
   "t": "Texto descartado (nada foi alterado)"
  },
  {
-  "i": 1653,
+  "i": 1652,
   "t": "IA"
  },
  {
-  "i": 1654,
-  "t": "O intervalo selecionado é o objeto da pergunta. Pedidos que alteram a folha são mostrados como um script — nada corre até premir."
- },
- {
-  "i": 1655,
-  "t": "ex.: ordenar por vendas / colorir os 5 primeiros / adicionar linha de total"
- },
- {
-  "i": 1656,
-  "t": "A seleção é o objeto da pergunta. O texto revisto é mostrado primeiro e só entra se premir."
- },
- {
-  "i": 1657,
-  "t": "ex.: tornar este parágrafo cortês / metade do tamanho / soa demasiado rígido?"
- },
- {
-  "i": 1658,
+  "i": 1653,
   "t": "Avanço"
  },
  {
-  "i": 1659,
+  "i": 1654,
   "t": "Avanço definido para {}"
  },
  {
-  "i": 1660,
+  "i": 1655,
   "t": "O avanço não pode ficar mais estreito"
  },
  {
-  "i": 1661,
+  "i": 1656,
   "t": "O avanço não pode ficar mais largo"
  },
  {
-  "i": 1662,
+  "i": 1657,
   "t": "Orientação do texto"
  },
  {
-  "i": 1663,
+  "i": 1658,
   "t": "Orientação do texto definida para {}"
  },
  {
-  "i": 1664,
+  "i": 1659,
   "t": "Formatação condicional"
  },
  {
-  "i": 1665,
+  "i": 1660,
   "t": "Negativos a vermelho"
  },
  {
-  "i": 1666,
+  "i": 1661,
   "t": "Duplicados"
  },
  {
-  "i": 1667,
+  "i": 1662,
   "t": "Únicos"
  },
  {
-  "i": 1668,
+  "i": 1663,
   "t": "Escala de cores"
  },
  {
-  "i": 1669,
+  "i": 1664,
   "t": "Ícones"
  },
  {
-  "i": 1670,
+  "i": 1665,
   "t": "Tabela"
  },
  {
-  "i": 1671,
+  "i": 1666,
   "t": "{} linhas × {} colunas — agora linha {}, coluna {}"
  },
  {
-  "i": 1672,
+  "i": 1667,
   "t": "Linha acima"
  },
  {
-  "i": 1673,
+  "i": 1668,
   "t": "Linha abaixo"
  },
  {
-  "i": 1674,
+  "i": 1669,
   "t": "Eliminar linha"
  },
  {
-  "i": 1675,
+  "i": 1670,
   "t": "Coluna à esquerda"
  },
  {
-  "i": 1676,
+  "i": 1671,
   "t": "Coluna à direita"
  },
  {
-  "i": 1677,
+  "i": 1672,
   "t": "Eliminar coluna"
  },
  {
-  "i": 1678,
+  "i": 1673,
   "t": "Linha adicionada acima"
  },
  {
-  "i": 1679,
+  "i": 1674,
   "t": "Linha adicionada abaixo"
  },
  {
-  "i": 1680,
+  "i": 1675,
   "t": "Coluna adicionada à esquerda"
  },
  {
-  "i": 1681,
+  "i": 1676,
   "t": "Coluna adicionada à direita"
  },
  {
-  "i": 1682,
+  "i": 1677,
   "t": "Linha eliminada (Ctrl+Z anula)"
  },
  {
-  "i": 1683,
+  "i": 1678,
   "t": "Coluna eliminada (Ctrl+Z anula)"
  },
  {
-  "i": 1684,
+  "i": 1679,
   "t": "A última linha não pode ser eliminada (eliminar a tabela inteira é outra ação)"
  },
  {
-  "i": 1685,
+  "i": 1680,
   "t": "A última coluna não pode ser eliminada (eliminar a tabela inteira é outra ação)"
  },
  {
-  "i": 1686,
+  "i": 1681,
   "t": "Equação"
  },
  {
-  "i": 1687,
+  "i": 1682,
   "t": "Editar a equação"
  },
  {
-  "i": 1688,
+  "i": 1683,
   "t": "A editar a equação (Enter recompõe, Esc cancela)"
  },
  {
-  "i": 1689,
+  "i": 1684,
   "t": "Não há imagem neste parágrafo"
  },
  {
-  "i": 1690,
+  "i": 1685,
   "t": "Imagem reduzida"
  },
  {
-  "i": 1691,
+  "i": 1686,
   "t": "Imagem ampliada"
  },
  {
-  "i": 1692,
+  "i": 1687,
   "t": "{:.0}×{:.0}mm"
  },
  {
-  "i": 1693,
+  "i": 1688,
   "t": "Ordem"
  },
  {
-  "i": 1694,
+  "i": 1689,
   "t": "Trazer para a frente"
  },
  {
-  "i": 1695,
+  "i": 1690,
   "t": "Trazer para diante"
  },
  {
-  "i": 1696,
+  "i": 1691,
   "t": "Enviar para trás"
  },
  {
-  "i": 1697,
+  "i": 1692,
   "t": "Enviar para o fundo"
  },
  {
-  "i": 1698,
+  "i": 1693,
   "t": "Rodar para a esquerda"
  },
  {
-  "i": 1699,
+  "i": 1694,
   "t": "Rodar para a direita"
  },
  {
-  "i": 1700,
+  "i": 1695,
   "t": "Inverter na horizontal"
  },
  {
-  "i": 1701,
+  "i": 1696,
   "t": "Inverter na vertical"
  },
  {
-  "i": 1702,
+  "i": 1697,
   "t": "Outros"
  },
  {
-  "i": 1703,
+  "i": 1698,
   "t": "Está selecionada uma forma"
  },
  {
-  "i": 1704,
+  "i": 1699,
   "t": "Está selecionada uma imagem"
  },
  {
-  "i": 1705,
+  "i": 1700,
   "t": "Não há nenhuma forma nem imagem selecionada (clique numa na folha)"
  },
  {
-  "i": 1706,
+  "i": 1701,
   "t": "Ainda não há comentários (adicione um no separador Colaboração)"
  },
  {
-  "i": 1707,
+  "i": 1702,
   "t": "Saltou para {} em {}"
  },
  {
-  "i": 1708,
+  "i": 1703,
   "t": "Página — definições de todo o documento"
  },
  {
-  "i": 1709,
+  "i": 1704,
   "t": "Cabeçalho e rodapé"
  },
  {
-  "i": 1710,
+  "i": 1705,
   "t": "Editar"
  },
  {
-  "i": 1711,
+  "i": 1706,
   "t": "Marca de água"
  },
  {
-  "i": 1712,
+  "i": 1707,
   "t": "Cor da página"
+ },
+ {
+  "i": 1708,
+  "t": "Pode perguntar sobre o intervalo selecionado. Se algo for alterar a folha, vê primeiro o que vai fazer — nada muda até premir."
+ },
+ {
+  "i": 1709,
+  "t": "ex.: ordenar por vendas, do maior para o menor / colorir os 5 primeiros / adicionar uma linha de total"
+ },
+ {
+  "i": 1710,
+  "t": "Alteração proposta (nada acontece até premir)"
+ },
+ {
+  "i": 1711,
+  "t": "Pode perguntar sobre a seleção. Se o texto for reescrito, vê primeiro o texto novo — nada entra até premir."
+ },
+ {
+  "i": 1712,
+  "t": "ex.: tornar este parágrafo mais cortês / metade do tamanho / diga-me se soa rígido"
  },
  {
   "i": 1713,

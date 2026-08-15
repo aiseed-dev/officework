@@ -6505,351 +6505,351 @@
  },
  {
   "i": 1626,
-  "t": "Änderungsvorschlag (läuft erst auf Knopfdruck)"
- },
- {
-  "i": 1627,
   "t": "Übernehmen"
  },
  {
-  "i": 1628,
+  "i": 1627,
   "t": "Vorschlag verworfen (nichts geändert)"
  },
  {
-  "i": 1629,
+  "i": 1628,
   "t": "Hier klicken und tippen; Enter sendet"
  },
  {
-  "i": 1630,
+  "i": 1629,
   "t": "Senden"
  },
  {
-  "i": 1631,
+  "i": 1630,
   "t": "Denkt nach…"
  },
  {
-  "i": 1632,
+  "i": 1631,
   "t": "Jetzt: {}"
  },
  {
-  "i": 1633,
+  "i": 1632,
   "t": "Zurück zur Tabelle (das Gesprächspanel bleibt offen)"
  },
  {
-  "i": 1634,
+  "i": 1633,
   "t": "So wird es geändert."
  },
  {
-  "i": 1635,
+  "i": 1634,
   "t": "Ein Vorschlag ist fertig (im linken Panel lesen, dann Übernehmen)"
  },
  {
-  "i": 1636,
+  "i": 1635,
   "t": "Geantwortet (linkes Panel)"
  },
  {
-  "i": 1637,
+  "i": 1636,
   "t": "Zahlenformat auf Standard zurückgesetzt"
  },
  {
-  "i": 1638,
+  "i": 1637,
   "t": "Keine Frage eingegeben"
  },
  {
-  "i": 1639,
+  "i": 1638,
   "t": "Ein Skript läuft (bitte warten, bis es fertig ist)"
  },
  {
-  "i": 1640,
+  "i": 1639,
   "t": "Vorschlag wird ausgeführt…"
  },
  {
-  "i": 1641,
+  "i": 1640,
   "t": "Übernommen."
  },
  {
-  "i": 1642,
+  "i": 1641,
   "t": "Vorschlag übernommen (Strg+Z macht es rückgängig)"
  },
  {
-  "i": 1643,
+  "i": 1642,
   "t": "Zahlenformat auf {} gesetzt"
  },
  {
-  "i": 1644,
+  "i": 1643,
   "t": "Vorschlag übernommen: {} (Strg+Z macht es rückgängig)"
  },
  {
-  "i": 1645,
+  "i": 1644,
   "t": "Das Skript ist fehlgeschlagen: {}"
  },
  {
-  "i": 1646,
+  "i": 1645,
   "t": "Das Skript lief nicht: {}"
  },
  {
-  "i": 1647,
+  "i": 1646,
   "t": "Der überarbeitete Text ist fertig (im linken Panel lesen, dann Übernehmen)"
  },
  {
-  "i": 1648,
+  "i": 1647,
   "t": "Auswahl ersetzt (Strg+Z macht es rückgängig)"
  },
  {
-  "i": 1649,
+  "i": 1648,
   "t": "Hinter dem Cursor eingefügt (Strg+Z macht es rückgängig)"
  },
  {
-  "i": 1650,
+  "i": 1649,
   "t": "Zurück zum Text (das Gesprächspanel bleibt offen)"
  },
  {
-  "i": 1651,
+  "i": 1650,
   "t": "Einzufügender Text (erst auf Knopfdruck)"
  },
  {
-  "i": 1652,
+  "i": 1651,
   "t": "Text verworfen (nichts geändert)"
  },
  {
-  "i": 1653,
+  "i": 1652,
   "t": "KI"
  },
  {
-  "i": 1654,
-  "t": "Der markierte Bereich ist Gegenstand der Frage. Änderungswünsche werden als Skript gezeigt — nichts läuft, bis Sie drücken."
- },
- {
-  "i": 1655,
-  "t": "z. B. nach Umsatz sortieren / Top 5 einfärben / Summenzeile hinzufügen"
- },
- {
-  "i": 1656,
-  "t": "Die Auswahl ist Gegenstand der Frage. Überarbeiteter Text wird erst gezeigt und nur auf Knopfdruck eingefügt."
- },
- {
-  "i": 1657,
-  "t": "z. B. diesen Absatz höflicher / halb so lang / klingt das zu steif?"
- },
- {
-  "i": 1658,
+  "i": 1653,
   "t": "Einzug"
  },
  {
-  "i": 1659,
+  "i": 1654,
   "t": "Einzug auf {} gesetzt"
  },
  {
-  "i": 1660,
+  "i": 1655,
   "t": "Der Einzug kann nicht schmaler werden"
  },
  {
-  "i": 1661,
+  "i": 1656,
   "t": "Der Einzug kann nicht breiter werden"
  },
  {
-  "i": 1662,
+  "i": 1657,
   "t": "Textausrichtung"
  },
  {
-  "i": 1663,
+  "i": 1658,
   "t": "Textausrichtung auf {} gesetzt"
  },
  {
-  "i": 1664,
+  "i": 1659,
   "t": "Bedingte Formatierung"
  },
  {
-  "i": 1665,
+  "i": 1660,
   "t": "Negative rot"
  },
  {
-  "i": 1666,
+  "i": 1661,
   "t": "Duplikate"
  },
  {
-  "i": 1667,
+  "i": 1662,
   "t": "Eindeutige"
  },
  {
-  "i": 1668,
+  "i": 1663,
   "t": "Farbskala"
  },
  {
-  "i": 1669,
+  "i": 1664,
   "t": "Symbole"
  },
  {
-  "i": 1670,
+  "i": 1665,
   "t": "Tabelle"
  },
  {
-  "i": 1671,
+  "i": 1666,
   "t": "{} Zeilen × {} Spalten — jetzt Zeile {}, Spalte {}"
  },
  {
-  "i": 1672,
+  "i": 1667,
   "t": "Zeile darüber"
  },
  {
-  "i": 1673,
+  "i": 1668,
   "t": "Zeile darunter"
  },
  {
-  "i": 1674,
+  "i": 1669,
   "t": "Zeile löschen"
  },
  {
-  "i": 1675,
+  "i": 1670,
   "t": "Spalte links"
  },
  {
-  "i": 1676,
+  "i": 1671,
   "t": "Spalte rechts"
  },
  {
-  "i": 1677,
+  "i": 1672,
   "t": "Spalte löschen"
  },
  {
-  "i": 1678,
+  "i": 1673,
   "t": "Zeile darüber eingefügt"
  },
  {
-  "i": 1679,
+  "i": 1674,
   "t": "Zeile darunter eingefügt"
  },
  {
-  "i": 1680,
+  "i": 1675,
   "t": "Spalte links eingefügt"
  },
  {
-  "i": 1681,
+  "i": 1676,
   "t": "Spalte rechts eingefügt"
  },
  {
-  "i": 1682,
+  "i": 1677,
   "t": "Zeile gelöscht (Strg+Z macht es rückgängig)"
  },
  {
-  "i": 1683,
+  "i": 1678,
   "t": "Spalte gelöscht (Strg+Z macht es rückgängig)"
  },
  {
-  "i": 1684,
+  "i": 1679,
   "t": "Die letzte Zeile kann nicht gelöscht werden (die ganze Tabelle zu löschen ist eine andere Aktion)"
  },
  {
-  "i": 1685,
+  "i": 1680,
   "t": "Die letzte Spalte kann nicht gelöscht werden (die ganze Tabelle zu löschen ist eine andere Aktion)"
  },
  {
-  "i": 1686,
+  "i": 1681,
   "t": "Formel"
  },
  {
-  "i": 1687,
+  "i": 1682,
   "t": "Formel bearbeiten"
  },
  {
-  "i": 1688,
+  "i": 1683,
   "t": "Formel wird bearbeitet (Enter setzt neu, Esc bricht ab)"
  },
  {
-  "i": 1689,
+  "i": 1684,
   "t": "In diesem Absatz ist kein Bild"
  },
  {
-  "i": 1690,
+  "i": 1685,
   "t": "Bild verkleinert"
  },
  {
-  "i": 1691,
+  "i": 1686,
   "t": "Bild vergrößert"
  },
  {
-  "i": 1692,
+  "i": 1687,
   "t": "{:.0}×{:.0}mm"
  },
  {
-  "i": 1693,
+  "i": 1688,
   "t": "Anordnung"
  },
  {
-  "i": 1694,
+  "i": 1689,
   "t": "In den Vordergrund"
  },
  {
-  "i": 1695,
+  "i": 1690,
   "t": "Eine Ebene nach vorne"
  },
  {
-  "i": 1696,
+  "i": 1691,
   "t": "Eine Ebene nach hinten"
  },
  {
-  "i": 1697,
+  "i": 1692,
   "t": "In den Hintergrund"
  },
  {
-  "i": 1698,
+  "i": 1693,
   "t": "Nach links drehen"
  },
  {
-  "i": 1699,
+  "i": 1694,
   "t": "Nach rechts drehen"
  },
  {
-  "i": 1700,
+  "i": 1695,
   "t": "Horizontal spiegeln"
  },
  {
-  "i": 1701,
+  "i": 1696,
   "t": "Vertikal spiegeln"
  },
  {
-  "i": 1702,
+  "i": 1697,
   "t": "Sonstiges"
  },
  {
-  "i": 1703,
+  "i": 1698,
   "t": "Eine Form ist ausgewählt"
  },
  {
-  "i": 1704,
+  "i": 1699,
   "t": "Ein Bild ist ausgewählt"
  },
  {
-  "i": 1705,
+  "i": 1700,
   "t": "Es ist weder eine Form noch ein Bild ausgewählt (klicken Sie eines auf dem Blatt an)"
  },
  {
-  "i": 1706,
+  "i": 1701,
   "t": "Noch keine Kommentare (fügen Sie einen über die Registerkarte Zusammenarbeit hinzu)"
  },
  {
-  "i": 1707,
+  "i": 1702,
   "t": "Zu {} auf {} gesprungen"
  },
  {
-  "i": 1708,
+  "i": 1703,
   "t": "Seite — Einstellungen für das ganze Dokument"
  },
  {
-  "i": 1709,
+  "i": 1704,
   "t": "Kopf- und Fußzeile"
  },
  {
-  "i": 1710,
+  "i": 1705,
   "t": "Bearbeiten"
  },
  {
-  "i": 1711,
+  "i": 1706,
   "t": "Wasserzeichen"
  },
  {
-  "i": 1712,
+  "i": 1707,
   "t": "Seitenfarbe"
+ },
+ {
+  "i": 1708,
+  "t": "Sie können zum markierten Bereich Fragen stellen. Wenn etwas die Tabelle ändern würde, sehen Sie zuerst, was passieren soll — bis Sie drücken, ändert sich nichts."
+ },
+ {
+  "i": 1709,
+  "t": "z. B. nach Umsatz absteigend sortieren / die Top 5 einfärben / eine Summenzeile hinzufügen"
+ },
+ {
+  "i": 1710,
+  "t": "Änderungsvorschlag (bis Sie drücken, passiert nichts)"
+ },
+ {
+  "i": 1711,
+  "t": "Sie können zur Auswahl Fragen stellen. Wenn Text neu geschrieben würde, sehen Sie den neuen Text zuerst — bis Sie drücken, kommt nichts hinein."
+ },
+ {
+  "i": 1712,
+  "t": "z. B. diesen Absatz höflicher machen / halb so lang / sag mir, ob es steif klingt"
  },
  {
   "i": 1713,

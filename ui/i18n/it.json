@@ -6505,351 +6505,351 @@
  },
  {
   "i": 1626,
-  "t": "Modifica proposta (non viene eseguita finché non premi)"
- },
- {
-  "i": 1627,
   "t": "Applica"
  },
  {
-  "i": 1628,
+  "i": 1627,
   "t": "Proposta scartata (nulla è cambiato)"
  },
  {
-  "i": 1629,
+  "i": 1628,
   "t": "Premi qui per scrivere; Invio manda"
  },
  {
-  "i": 1630,
+  "i": 1629,
   "t": "Invia"
  },
  {
-  "i": 1631,
+  "i": 1630,
   "t": "Sto pensando…"
  },
  {
-  "i": 1632,
+  "i": 1631,
   "t": "Ora: {}"
  },
  {
-  "i": 1633,
+  "i": 1632,
   "t": "Torno al foglio (il pannello della conversazione resta aperto)"
  },
  {
-  "i": 1634,
+  "i": 1633,
   "t": "Ecco la modifica."
  },
  {
-  "i": 1635,
+  "i": 1634,
   "t": "È pronta una proposta (leggila nel pannello sinistro, poi Applica)"
  },
  {
-  "i": 1636,
+  "i": 1635,
   "t": "Risposto (pannello sinistro)"
  },
  {
-  "i": 1637,
+  "i": 1636,
   "t": "Formato numero riportato a Generale"
  },
  {
-  "i": 1638,
+  "i": 1637,
   "t": "Nessuna richiesta"
  },
  {
-  "i": 1639,
+  "i": 1638,
   "t": "Uno script è in esecuzione (attendi che finisca)"
  },
  {
-  "i": 1640,
+  "i": 1639,
   "t": "Eseguo la proposta…"
  },
  {
-  "i": 1641,
+  "i": 1640,
   "t": "Applicato."
  },
  {
-  "i": 1642,
+  "i": 1641,
   "t": "Proposta applicata (Ctrl+Z annulla)"
  },
  {
-  "i": 1643,
+  "i": 1642,
   "t": "Formato numero impostato su {}"
  },
  {
-  "i": 1644,
+  "i": 1643,
   "t": "Proposta applicata: {} (Ctrl+Z annulla)"
  },
  {
-  "i": 1645,
+  "i": 1644,
   "t": "Lo script è fallito: {}"
  },
  {
-  "i": 1646,
+  "i": 1645,
   "t": "Lo script non è stato eseguito: {}"
  },
  {
-  "i": 1647,
+  "i": 1646,
   "t": "Il testo rivisto è pronto (leggilo nel pannello sinistro, poi Applica)"
  },
  {
-  "i": 1648,
+  "i": 1647,
   "t": "Selezione sostituita (Ctrl+Z annulla)"
  },
  {
-  "i": 1649,
+  "i": 1648,
   "t": "Inserito dopo il cursore (Ctrl+Z annulla)"
  },
  {
-  "i": 1650,
+  "i": 1649,
   "t": "Torno al testo (il pannello della conversazione resta aperto)"
  },
  {
-  "i": 1651,
+  "i": 1650,
   "t": "Testo da inserire (non entra finché non premi)"
  },
  {
-  "i": 1652,
+  "i": 1651,
   "t": "Testo scartato (nulla è cambiato)"
  },
  {
-  "i": 1653,
+  "i": 1652,
   "t": "AI"
  },
  {
-  "i": 1654,
-  "t": "L'intervallo selezionato è l'oggetto della richiesta. Le richieste che modificano il foglio vengono mostrate come script: nulla viene eseguito finché non premi."
- },
- {
-  "i": 1655,
-  "t": "es. ordina per vendite / colora i primi 5 / aggiungi una riga totale"
- },
- {
-  "i": 1656,
-  "t": "La selezione è l'oggetto della richiesta. Il testo rivisto viene mostrato prima ed entra solo se premi."
- },
- {
-  "i": 1657,
-  "t": "es. rendi questo paragrafo cortese / lungo la metà / suona troppo rigido?"
- },
- {
-  "i": 1658,
+  "i": 1653,
   "t": "Rientro"
  },
  {
-  "i": 1659,
+  "i": 1654,
   "t": "Rientro impostato su {}"
  },
  {
-  "i": 1660,
+  "i": 1655,
   "t": "Il rientro non può ridursi oltre"
  },
  {
-  "i": 1661,
+  "i": 1656,
   "t": "Il rientro non può ampliarsi oltre"
  },
  {
-  "i": 1662,
+  "i": 1657,
   "t": "Orientamento del testo"
  },
  {
-  "i": 1663,
+  "i": 1658,
   "t": "Orientamento del testo impostato su {}"
  },
  {
-  "i": 1664,
+  "i": 1659,
   "t": "Formattazione condizionale"
  },
  {
-  "i": 1665,
+  "i": 1660,
   "t": "Negativi in rosso"
  },
  {
-  "i": 1666,
+  "i": 1661,
   "t": "Duplicati"
  },
  {
-  "i": 1667,
+  "i": 1662,
   "t": "Univoci"
  },
  {
-  "i": 1668,
+  "i": 1663,
   "t": "Scala di colori"
  },
  {
-  "i": 1669,
+  "i": 1664,
   "t": "Icone"
  },
  {
-  "i": 1670,
+  "i": 1665,
   "t": "Tabella"
  },
  {
-  "i": 1671,
+  "i": 1666,
   "t": "{} righe × {} colonne — ora riga {}, colonna {}"
  },
  {
-  "i": 1672,
+  "i": 1667,
   "t": "Riga sopra"
  },
  {
-  "i": 1673,
+  "i": 1668,
   "t": "Riga sotto"
  },
  {
-  "i": 1674,
+  "i": 1669,
   "t": "Elimina riga"
  },
  {
-  "i": 1675,
+  "i": 1670,
   "t": "Colonna a sinistra"
  },
  {
-  "i": 1676,
+  "i": 1671,
   "t": "Colonna a destra"
  },
  {
-  "i": 1677,
+  "i": 1672,
   "t": "Elimina colonna"
  },
  {
-  "i": 1678,
+  "i": 1673,
   "t": "Riga aggiunta sopra"
  },
  {
-  "i": 1679,
+  "i": 1674,
   "t": "Riga aggiunta sotto"
  },
  {
-  "i": 1680,
+  "i": 1675,
   "t": "Colonna aggiunta a sinistra"
  },
  {
-  "i": 1681,
+  "i": 1676,
   "t": "Colonna aggiunta a destra"
  },
  {
-  "i": 1682,
+  "i": 1677,
   "t": "Riga eliminata (Ctrl+Z annulla)"
  },
  {
-  "i": 1683,
+  "i": 1678,
   "t": "Colonna eliminata (Ctrl+Z annulla)"
  },
  {
-  "i": 1684,
+  "i": 1679,
   "t": "L'ultima riga non può essere eliminata (eliminare l'intera tabella è un'altra azione)"
  },
  {
-  "i": 1685,
+  "i": 1680,
   "t": "L'ultima colonna non può essere eliminata (eliminare l'intera tabella è un'altra azione)"
  },
  {
-  "i": 1686,
+  "i": 1681,
   "t": "Formula"
  },
  {
-  "i": 1687,
+  "i": 1682,
   "t": "Modifica la formula"
  },
  {
-  "i": 1688,
+  "i": 1683,
   "t": "Modifica della formula (Invio ricompone, Esc annulla)"
  },
  {
-  "i": 1689,
+  "i": 1684,
   "t": "In questo paragrafo non c'è alcuna immagine"
  },
  {
-  "i": 1690,
+  "i": 1685,
   "t": "Immagine rimpicciolita"
  },
  {
-  "i": 1691,
+  "i": 1686,
   "t": "Immagine ingrandita"
  },
  {
-  "i": 1692,
+  "i": 1687,
   "t": "{:.0}×{:.0}mm"
  },
  {
-  "i": 1693,
+  "i": 1688,
   "t": "Ordine"
  },
  {
-  "i": 1694,
+  "i": 1689,
   "t": "Porta in primo piano"
  },
  {
-  "i": 1695,
+  "i": 1690,
   "t": "Porta avanti"
  },
  {
-  "i": 1696,
+  "i": 1691,
   "t": "Porta indietro"
  },
  {
-  "i": 1697,
+  "i": 1692,
   "t": "Porta in secondo piano"
  },
  {
-  "i": 1698,
+  "i": 1693,
   "t": "Ruota a sinistra"
  },
  {
-  "i": 1699,
+  "i": 1694,
   "t": "Ruota a destra"
  },
  {
-  "i": 1700,
+  "i": 1695,
   "t": "Capovolgi orizzontalmente"
  },
  {
-  "i": 1701,
+  "i": 1696,
   "t": "Capovolgi verticalmente"
  },
  {
-  "i": 1702,
+  "i": 1697,
   "t": "Altro"
  },
  {
-  "i": 1703,
+  "i": 1698,
   "t": "È selezionata una forma"
  },
  {
-  "i": 1704,
+  "i": 1699,
   "t": "È selezionata un'immagine"
  },
  {
-  "i": 1705,
+  "i": 1700,
   "t": "Nessuna forma o immagine selezionata (fai clic su una nel foglio)"
  },
  {
-  "i": 1706,
+  "i": 1701,
   "t": "Ancora nessun commento (aggiungilo dalla scheda Collaborazione)"
  },
  {
-  "i": 1707,
+  "i": 1702,
   "t": "Passato a {} in {}"
  },
  {
-  "i": 1708,
+  "i": 1703,
   "t": "Pagina — impostazioni dell'intero documento"
  },
  {
-  "i": 1709,
+  "i": 1704,
   "t": "Intestazione e piè di pagina"
  },
  {
-  "i": 1710,
+  "i": 1705,
   "t": "Modifica"
  },
  {
-  "i": 1711,
+  "i": 1706,
   "t": "Filigrana"
  },
  {
-  "i": 1712,
+  "i": 1707,
   "t": "Colore pagina"
+ },
+ {
+  "i": 1708,
+  "t": "Puoi fare domande sull'intervallo selezionato. Se qualcosa cambierebbe il foglio, prima vedi che cosa farà: finché non premi, non cambia nulla."
+ },
+ {
+  "i": 1709,
+  "t": "es. ordina per vendite decrescenti / colora i primi 5 / aggiungi una riga totale"
+ },
+ {
+  "i": 1710,
+  "t": "Modifica proposta (finché non premi, non succede nulla)"
+ },
+ {
+  "i": 1711,
+  "t": "Puoi fare domande sulla selezione. Se il testo verrebbe riscritto, prima vedi il testo nuovo: finché non premi, non entra nulla."
+ },
+ {
+  "i": 1712,
+  "t": "es. rendi questo paragrafo più cortese / lungo la metà / dimmi se suona rigido"
  },
  {
   "i": 1713,

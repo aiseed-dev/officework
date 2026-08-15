@@ -6505,351 +6505,351 @@
  },
  {
   "i": 1626,
-  "t": "Usulan perubahan (tidak berjalan sampai ditekan)"
- },
- {
-  "i": 1627,
   "t": "Terapkan"
  },
  {
-  "i": 1628,
+  "i": 1627,
   "t": "Usulan dibuang (tidak ada yang diubah)"
  },
  {
-  "i": 1629,
+  "i": 1628,
   "t": "Tekan di sini untuk menulis; Enter mengirim"
  },
  {
-  "i": 1630,
+  "i": 1629,
   "t": "Kirim"
  },
  {
-  "i": 1631,
+  "i": 1630,
   "t": "Sedang berpikir…"
  },
  {
-  "i": 1632,
+  "i": 1631,
   "t": "Sekarang: {}"
  },
  {
-  "i": 1633,
+  "i": 1632,
   "t": "Kembali ke lembar (panel percakapan tetap terbuka)"
  },
  {
-  "i": 1634,
+  "i": 1633,
   "t": "Beginilah perubahannya."
  },
  {
-  "i": 1635,
+  "i": 1634,
   "t": "Usulan sudah siap (baca di panel kiri, lalu tekan Terapkan)"
  },
  {
-  "i": 1636,
+  "i": 1635,
   "t": "Sudah dijawab (panel kiri)"
  },
  {
-  "i": 1637,
+  "i": 1636,
   "t": "Format angka dikembalikan ke Umum"
  },
  {
-  "i": 1638,
+  "i": 1637,
   "t": "Tidak ada yang ditanyakan"
  },
  {
-  "i": 1639,
+  "i": 1638,
   "t": "Skrip sedang berjalan (mohon tunggu sampai selesai)"
  },
  {
-  "i": 1640,
+  "i": 1639,
   "t": "Menjalankan usulan…"
  },
  {
-  "i": 1641,
+  "i": 1640,
   "t": "Sudah diterapkan."
  },
  {
-  "i": 1642,
+  "i": 1641,
   "t": "Usulan diterapkan (Ctrl+Z membatalkannya)"
  },
  {
-  "i": 1643,
+  "i": 1642,
   "t": "Format angka disetel ke {}"
  },
  {
-  "i": 1644,
+  "i": 1643,
   "t": "Usulan diterapkan: {} (Ctrl+Z membatalkannya)"
  },
  {
-  "i": 1645,
+  "i": 1644,
   "t": "Skrip gagal: {}"
  },
  {
-  "i": 1646,
+  "i": 1645,
   "t": "Skrip tidak berjalan: {}"
  },
  {
-  "i": 1647,
+  "i": 1646,
   "t": "Teks perbaikan sudah siap (baca di panel kiri, lalu tekan Terapkan)"
  },
  {
-  "i": 1648,
+  "i": 1647,
   "t": "Bagian yang dipilih diganti (Ctrl+Z membatalkannya)"
  },
  {
-  "i": 1649,
+  "i": 1648,
   "t": "Disisipkan setelah kursor (Ctrl+Z membatalkannya)"
  },
  {
-  "i": 1650,
+  "i": 1649,
   "t": "Kembali ke naskah (panel percakapan tetap terbuka)"
  },
  {
-  "i": 1651,
+  "i": 1650,
   "t": "Teks yang akan dimasukkan (tidak masuk sampai ditekan)"
  },
  {
-  "i": 1652,
+  "i": 1651,
   "t": "Teks dibuang (tidak ada yang diubah)"
  },
  {
-  "i": 1653,
+  "i": 1652,
   "t": "AI"
  },
  {
-  "i": 1654,
-  "t": "Rentang yang dipilih menjadi bahan pertanyaan. Permintaan yang mengubah lembar ditampilkan sebagai skrip — tidak dijalankan sampai Anda menekan."
- },
- {
-  "i": 1655,
-  "t": "mis. urutkan dari penjualan terbesar / warnai 5 teratas / tambahkan baris total"
- },
- {
-  "i": 1656,
-  "t": "Bagian yang dipilih menjadi bahan pertanyaan. Teks perbaikan ditampilkan dulu dan hanya masuk kalau Anda menekan."
- },
- {
-  "i": 1657,
-  "t": "mis. buat paragraf ini lebih sopan / setengah panjangnya / apakah ini terlalu kaku"
- },
- {
-  "i": 1658,
+  "i": 1653,
   "t": "Indentasi"
  },
  {
-  "i": 1659,
+  "i": 1654,
   "t": "Indentasi disetel ke {}"
  },
  {
-  "i": 1660,
+  "i": 1655,
   "t": "Indentasi tidak bisa lebih sempit lagi"
  },
  {
-  "i": 1661,
+  "i": 1656,
   "t": "Indentasi tidak bisa lebih lebar lagi"
  },
  {
-  "i": 1662,
+  "i": 1657,
   "t": "Arah teks"
  },
  {
-  "i": 1663,
+  "i": 1658,
   "t": "Arah teks disetel ke {}"
  },
  {
-  "i": 1664,
+  "i": 1659,
   "t": "Format bersyarat"
  },
  {
-  "i": 1665,
+  "i": 1660,
   "t": "Negatif merah"
  },
  {
-  "i": 1666,
+  "i": 1661,
   "t": "Duplikat"
  },
  {
-  "i": 1667,
+  "i": 1662,
   "t": "Unik"
  },
  {
-  "i": 1668,
+  "i": 1663,
   "t": "Skala warna"
  },
  {
-  "i": 1669,
+  "i": 1664,
   "t": "Ikon"
  },
  {
-  "i": 1670,
+  "i": 1665,
   "t": "Tabel"
  },
  {
-  "i": 1671,
+  "i": 1666,
   "t": "{} baris × {} kolom — sekarang baris {}, kolom {}"
  },
  {
-  "i": 1672,
+  "i": 1667,
   "t": "Baris di atas"
  },
  {
-  "i": 1673,
+  "i": 1668,
   "t": "Baris di bawah"
  },
  {
-  "i": 1674,
+  "i": 1669,
   "t": "Hapus baris"
  },
  {
-  "i": 1675,
+  "i": 1670,
   "t": "Kolom kiri"
  },
  {
-  "i": 1676,
+  "i": 1671,
   "t": "Kolom kanan"
  },
  {
-  "i": 1677,
+  "i": 1672,
   "t": "Hapus kolom"
  },
  {
-  "i": 1678,
+  "i": 1673,
   "t": "Baris ditambahkan di atas"
  },
  {
-  "i": 1679,
+  "i": 1674,
   "t": "Baris ditambahkan di bawah"
  },
  {
-  "i": 1680,
+  "i": 1675,
   "t": "Kolom ditambahkan di kiri"
  },
  {
-  "i": 1681,
+  "i": 1676,
   "t": "Kolom ditambahkan di kanan"
  },
  {
-  "i": 1682,
+  "i": 1677,
   "t": "Baris dihapus (Ctrl+Z membatalkannya)"
  },
  {
-  "i": 1683,
+  "i": 1678,
   "t": "Kolom dihapus (Ctrl+Z membatalkannya)"
  },
  {
-  "i": 1684,
+  "i": 1679,
   "t": "Baris terakhir tidak bisa dihapus (menghapus seluruh tabel adalah tindakan lain)"
  },
  {
-  "i": 1685,
+  "i": 1680,
   "t": "Kolom terakhir tidak bisa dihapus (menghapus seluruh tabel adalah tindakan lain)"
  },
  {
-  "i": 1686,
+  "i": 1681,
   "t": "Rumus"
  },
  {
-  "i": 1687,
+  "i": 1682,
   "t": "Ubah rumus"
  },
  {
-  "i": 1688,
+  "i": 1683,
   "t": "Mengubah rumus (Enter menyusun ulang, Esc membatalkan)"
  },
  {
-  "i": 1689,
+  "i": 1684,
   "t": "Tidak ada gambar di paragraf ini"
  },
  {
-  "i": 1690,
+  "i": 1685,
   "t": "Gambar diperkecil"
  },
  {
-  "i": 1691,
+  "i": 1686,
   "t": "Gambar diperbesar"
  },
  {
-  "i": 1692,
+  "i": 1687,
   "t": "{:.0}×{:.0}mm"
  },
  {
-  "i": 1693,
+  "i": 1688,
   "t": "Susunan"
  },
  {
-  "i": 1694,
+  "i": 1689,
   "t": "Bawa ke depan"
  },
  {
-  "i": 1695,
+  "i": 1690,
   "t": "Maju satu"
  },
  {
-  "i": 1696,
+  "i": 1691,
   "t": "Mundur satu"
  },
  {
-  "i": 1697,
+  "i": 1692,
   "t": "Kirim ke belakang"
  },
  {
-  "i": 1698,
+  "i": 1693,
   "t": "Putar ke kiri"
  },
  {
-  "i": 1699,
+  "i": 1694,
   "t": "Putar ke kanan"
  },
  {
-  "i": 1700,
+  "i": 1695,
   "t": "Balik mendatar"
  },
  {
-  "i": 1701,
+  "i": 1696,
   "t": "Balik tegak"
  },
  {
-  "i": 1702,
+  "i": 1697,
   "t": "Lainnya"
  },
  {
-  "i": 1703,
+  "i": 1698,
   "t": "Sebuah bentuk terpilih"
  },
  {
-  "i": 1704,
+  "i": 1699,
   "t": "Sebuah gambar terpilih"
  },
  {
-  "i": 1705,
+  "i": 1700,
   "t": "Tidak ada bentuk atau gambar yang terpilih (klik salah satunya di lembar)"
  },
  {
-  "i": 1706,
+  "i": 1701,
   "t": "Belum ada komentar (tambahkan dari tab Kolaborasi)"
  },
  {
-  "i": 1707,
+  "i": 1702,
   "t": "Melompat ke {} di {}"
  },
  {
-  "i": 1708,
+  "i": 1703,
   "t": "Halaman — pengaturan seluruh dokumen"
  },
  {
-  "i": 1709,
+  "i": 1704,
   "t": "Header dan footer"
  },
  {
-  "i": 1710,
+  "i": 1705,
   "t": "Ubah"
  },
  {
-  "i": 1711,
+  "i": 1706,
   "t": "Tanda air"
  },
  {
-  "i": 1712,
+  "i": 1707,
   "t": "Warna halaman"
+ },
+ {
+  "i": 1708,
+  "t": "Anda bisa bertanya tentang rentang yang dipilih. Kalau sesuatu akan mengubah lembar, Anda melihat dulu apa yang akan dilakukan — tidak ada yang berubah sampai Anda menekan."
+ },
+ {
+  "i": 1709,
+  "t": "mis. urutkan dari penjualan terbesar / warnai 5 teratas / tambahkan baris total"
+ },
+ {
+  "i": 1710,
+  "t": "Usulan perubahan (tidak terjadi apa-apa sampai Anda menekan)"
+ },
+ {
+  "i": 1711,
+  "t": "Anda bisa bertanya tentang bagian yang dipilih. Kalau teks akan ditulis ulang, Anda melihat dulu teks barunya — tidak ada yang masuk sampai Anda menekan."
+ },
+ {
+  "i": 1712,
+  "t": "mis. buat paragraf ini lebih sopan / setengah panjangnya / beri tahu kalau terdengar kaku"
  },
  {
   "i": 1713,

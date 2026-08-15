@@ -683,14 +683,14 @@ impl Writer {
                             .child(SharedString::from(label))
                     };
                     d = d.child(div().text_size(px(10.5)).text_color(th_status).child(
-                        ui::t!("選んでいる所が相談の相手になります。直した文は\
-                                見せてから、押したときだけ入ります。").to_string()));
+                        ui::t!("選んだところについて聞けます。文を直すときは、\
+                                直した文を先に見せます — 押すまで入りません。").to_string()));
                     let mut 会話 = div().id("ai-chat-log").flex().flex_col().gap_1().mt_1()
                         .flex_1().min_h(px(0.0)).overflow_y_scroll();
                     if self.ai_chat_log.is_empty() {
                         会話 = 会話.child(div().text_size(px(11.0)).text_color(th_status)
                             .child(ui::t!("例: この段落を敬語にして / 半分の長さに \
-                                           / この言い方は硬すぎますか").to_string()));
+                                           / 言い方が硬くないか見て").to_string()));
                     }
                     for (自分, 字) in &self.ai_chat_log {
                         会話 = 会話.child(div().text_size(px(11.5))

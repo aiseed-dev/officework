@@ -8131,438 +8131,438 @@
  },
  {
   "i": 1626,
-  "ja": "変更案(押すまで走りません)",
-  "en": "Proposed change (nothing runs until you press)"
- },
- {
-  "i": 1627,
   "ja": "入れる",
   "en": "Apply"
  },
  {
-  "i": 1628,
+  "i": 1627,
   "ja": "変更案を捨てました(何もしていません)",
   "en": "Proposed change discarded (nothing was changed)"
  },
  {
-  "i": 1629,
+  "i": 1628,
   "ja": "ここを押して書き、Enter で送る",
   "en": "Click here to type; Enter sends"
  },
  {
-  "i": 1630,
+  "i": 1629,
   "ja": "送る",
   "en": "Send"
  },
  {
-  "i": 1631,
+  "i": 1630,
   "ja": "考えています…",
   "en": "Thinking…"
  },
  {
-  "i": 1632,
+  "i": 1631,
   "ja": "いま: {}",
   "en": "Now: {}"
  },
  {
-  "i": 1633,
+  "i": 1632,
   "ja": "表に戻りました(会話のパネルはそのまま)",
   "en": "Back to the sheet (the conversation panel stays open)"
  },
  {
-  "i": 1634,
+  "i": 1633,
   "ja": "こう直します。",
   "en": "Here is the change."
  },
  {
-  "i": 1635,
+  "i": 1634,
   "ja": "変更案ができました(左パネルで中身を見てから「入れる」)",
   "en": "A proposed change is ready (read it in the left panel, then press Apply)"
  },
  {
-  "i": 1636,
+  "i": 1635,
   "ja": "答えました(左パネル)",
   "en": "Answered (left panel)"
  },
  {
-  "i": 1637,
+  "i": 1636,
   "ja": "表示形式を標準に戻しました",
   "en": "Number format reset to General"
  },
  {
-  "i": 1638,
+  "i": 1637,
   "ja": "用件がありません",
   "en": "Nothing to ask"
  },
  {
-  "i": 1639,
+  "i": 1638,
   "ja": "いま台本が走っています(終わるまでお待ちください)",
   "en": "A script is running (please wait until it finishes)"
  },
  {
-  "i": 1640,
+  "i": 1639,
   "ja": "変更案を走らせています…",
   "en": "Running the proposed change…"
  },
  {
-  "i": 1641,
+  "i": 1640,
   "ja": "入れました。",
   "en": "Applied."
  },
  {
-  "i": 1642,
+  "i": 1641,
   "ja": "変更案を入れました(Ctrl+Z で戻せます)",
   "en": "Proposed change applied (Ctrl+Z undoes it)"
  },
  {
-  "i": 1643,
+  "i": 1642,
   "ja": "表示形式を {} にしました",
   "en": "Number format set to {}"
  },
  {
-  "i": 1644,
+  "i": 1643,
   "ja": "変更案を入れました: {}(Ctrl+Z で戻せます)",
   "en": "Proposed change applied: {} (Ctrl+Z undoes it)"
  },
  {
-  "i": 1645,
+  "i": 1644,
   "ja": "台本が落ちました: {}",
   "en": "The script failed: {}"
  },
  {
-  "i": 1646,
+  "i": 1645,
   "ja": "台本が走りませんでした: {}",
   "en": "The script did not run: {}"
  },
  {
-  "i": 1647,
+  "i": 1646,
   "ja": "直した文ができました(左パネルで読んでから「入れる」)",
   "en": "The revised text is ready (read it in the left panel, then press Apply)"
  },
  {
-  "i": 1648,
+  "i": 1647,
   "ja": "選んでいた所を置き換えました(Ctrl+Z で戻せます)",
   "en": "Replaced the selection (Ctrl+Z undoes it)"
  },
  {
-  "i": 1649,
+  "i": 1648,
   "ja": "カーソルの後ろに入れました(Ctrl+Z で戻せます)",
   "en": "Inserted after the cursor (Ctrl+Z undoes it)"
  },
  {
-  "i": 1650,
+  "i": 1649,
   "ja": "本文に戻りました(会話のパネルはそのまま)",
   "en": "Back to the document (the conversation panel stays open)"
  },
  {
-  "i": 1651,
+  "i": 1650,
   "ja": "入れる文(押すまで入りません)",
   "en": "Text to insert (nothing goes in until you press)"
  },
  {
-  "i": 1652,
+  "i": 1651,
   "ja": "入れる文を捨てました(何もしていません)",
   "en": "Discarded the text (nothing was changed)"
  },
  {
-  "i": 1653,
+  "i": 1652,
   "ja": "AI",
   "en": "AI"
  },
  {
-  "i": 1654,
-  "ja": "選んでいる範囲が相談の相手になります。表を直す頼みは、台本にして見せます — 押すまで走りません。",
-  "en": "The selected range is what you are asking about. Requests that change the sheet are shown as a script — nothing runs until you press."
- },
- {
-  "i": 1655,
-  "ja": "例: この表を売上の多い順に並べて / 上位5件に色を付けて / 合計の行を足して",
-  "en": "e.g. sort this table by sales / colour the top 5 / add a total row"
- },
- {
-  "i": 1656,
-  "ja": "選んでいる所が相談の相手になります。直した文は見せてから、押したときだけ入ります。",
-  "en": "The selection is what you are asking about. Revised text is shown first and only goes in when you press."
- },
- {
-  "i": 1657,
-  "ja": "例: この段落を敬語にして / 半分の長さに / この言い方は硬すぎますか",
-  "en": "e.g. make this paragraph polite / half as long / is this wording too stiff?"
- },
- {
-  "i": 1658,
+  "i": 1653,
   "ja": "字下げ",
   "en": "Indent"
  },
  {
-  "i": 1659,
+  "i": 1654,
   "ja": "字下げを {} 段にしました",
   "en": "Indent set to {}"
  },
  {
-  "i": 1660,
+  "i": 1655,
   "ja": "字下げはこれ以上狭められません",
   "en": "The indent cannot go any narrower"
  },
  {
-  "i": 1661,
+  "i": 1656,
   "ja": "字下げはこれ以上広げられません",
   "en": "The indent cannot go any wider"
  },
  {
-  "i": 1662,
+  "i": 1657,
   "ja": "文字の向き",
   "en": "Text orientation"
  },
  {
-  "i": 1663,
+  "i": 1658,
   "ja": "文字の向きを{}にしました",
   "en": "Text orientation set to {}"
  },
  {
-  "i": 1664,
+  "i": 1659,
   "ja": "条件付き書式",
   "en": "Conditional formatting"
  },
  {
-  "i": 1665,
+  "i": 1660,
   "ja": "0未満を赤字",
   "en": "Negative in red"
  },
  {
-  "i": 1666,
+  "i": 1661,
   "ja": "重複",
   "en": "Duplicates"
  },
  {
-  "i": 1667,
+  "i": 1662,
   "ja": "一意",
   "en": "Unique"
  },
  {
-  "i": 1668,
+  "i": 1663,
   "ja": "色の濃淡",
   "en": "Colour scale"
  },
  {
-  "i": 1669,
+  "i": 1664,
   "ja": "アイコン",
   "en": "Icons"
  },
  {
-  "i": 1670,
+  "i": 1665,
   "ja": "表",
   "en": "Table"
  },
  {
-  "i": 1671,
+  "i": 1666,
   "ja": "{}行 × {}列 — いま {}行目 {}列目",
   "en": "{} rows × {} columns — now at row {}, column {}"
  },
  {
-  "i": 1672,
+  "i": 1667,
   "ja": "上に行",
   "en": "Row above"
  },
  {
-  "i": 1673,
+  "i": 1668,
   "ja": "下に行",
   "en": "Row below"
  },
  {
-  "i": 1674,
+  "i": 1669,
   "ja": "行を消す",
   "en": "Delete row"
  },
  {
-  "i": 1675,
+  "i": 1670,
   "ja": "左に列",
   "en": "Column left"
  },
  {
-  "i": 1676,
+  "i": 1671,
   "ja": "右に列",
   "en": "Column right"
  },
  {
-  "i": 1677,
+  "i": 1672,
   "ja": "列を消す",
   "en": "Delete column"
  },
  {
-  "i": 1678,
+  "i": 1673,
   "ja": "上に行を足しました",
   "en": "Added a row above"
  },
  {
-  "i": 1679,
+  "i": 1674,
   "ja": "下に行を足しました",
   "en": "Added a row below"
  },
  {
-  "i": 1680,
+  "i": 1675,
   "ja": "左に列を足しました",
   "en": "Added a column to the left"
  },
  {
-  "i": 1681,
+  "i": 1676,
   "ja": "右に列を足しました",
   "en": "Added a column to the right"
  },
  {
-  "i": 1682,
+  "i": 1677,
   "ja": "行を消しました(Ctrl+Z で戻せます)",
   "en": "Row deleted (Ctrl+Z undoes it)"
  },
  {
-  "i": 1683,
+  "i": 1678,
   "ja": "列を消しました(Ctrl+Z で戻せます)",
   "en": "Column deleted (Ctrl+Z undoes it)"
  },
  {
-  "i": 1684,
+  "i": 1679,
   "ja": "最後の1行は消せません(表ごと消すのは別の操作です)",
   "en": "The last row cannot be deleted (deleting the whole table is a separate action)"
  },
  {
-  "i": 1685,
+  "i": 1680,
   "ja": "最後の1列は消せません(表ごと消すのは別の操作です)",
   "en": "The last column cannot be deleted (deleting the whole table is a separate action)"
  },
  {
-  "i": 1686,
+  "i": 1681,
   "ja": "数式",
   "en": "Equation"
  },
  {
-  "i": 1687,
+  "i": 1682,
   "ja": "式を直す",
   "en": "Edit the equation"
  },
  {
-  "i": 1688,
+  "i": 1683,
   "ja": "式を直します(Enter で組み直し・Esc で取りやめ)",
   "en": "Editing the equation (Enter re-renders, Esc cancels)"
  },
  {
-  "i": 1689,
+  "i": 1684,
   "ja": "この段落に絵がありません",
   "en": "There is no picture in this paragraph"
  },
  {
-  "i": 1690,
+  "i": 1685,
   "ja": "絵を小さくしました",
   "en": "Made the picture smaller"
  },
  {
-  "i": 1691,
+  "i": 1686,
   "ja": "絵を大きくしました",
   "en": "Made the picture bigger"
  },
  {
-  "i": 1692,
+  "i": 1687,
   "ja": "{:.0}×{:.0}mm",
   "en": "{:.0}×{:.0}mm"
  },
  {
-  "i": 1693,
+  "i": 1688,
   "ja": "重なり",
   "en": "Stacking"
  },
  {
-  "i": 1694,
+  "i": 1689,
   "ja": "最前面へ",
   "en": "Bring to front"
  },
  {
-  "i": 1695,
+  "i": 1690,
   "ja": "前へ",
   "en": "Bring forward"
  },
  {
-  "i": 1696,
+  "i": 1691,
   "ja": "後ろへ",
   "en": "Send backward"
  },
  {
-  "i": 1697,
+  "i": 1692,
   "ja": "最背面へ",
   "en": "Send to back"
  },
  {
-  "i": 1698,
+  "i": 1693,
   "ja": "左へ回す",
   "en": "Rotate left"
  },
  {
-  "i": 1699,
+  "i": 1694,
   "ja": "右へ回す",
   "en": "Rotate right"
  },
  {
-  "i": 1700,
+  "i": 1695,
   "ja": "左右を返す",
   "en": "Flip horizontally"
  },
  {
-  "i": 1701,
+  "i": 1696,
   "ja": "上下を返す",
   "en": "Flip vertically"
  },
  {
-  "i": 1702,
+  "i": 1697,
   "ja": "そのほか",
   "en": "Other"
  },
  {
-  "i": 1703,
+  "i": 1698,
   "ja": "図形を選んでいます",
   "en": "A shape is selected"
  },
  {
-  "i": 1704,
+  "i": 1699,
   "ja": "画像を選んでいます",
   "en": "A picture is selected"
  },
  {
-  "i": 1705,
+  "i": 1700,
   "ja": "図形も画像も選んでいません(表の上の図形か絵を押してください)",
   "en": "No shape or picture is selected (click one on the sheet)"
  },
  {
-  "i": 1706,
+  "i": 1701,
   "ja": "コメントはまだありません(共同編集タブの「コメント」で付けます)",
   "en": "No comments yet (add one from the Collaboration tab)"
  },
  {
-  "i": 1707,
+  "i": 1702,
   "ja": "{} の {} へ飛びました",
   "en": "Jumped to {} on {}"
  },
  {
-  "i": 1708,
+  "i": 1703,
   "ja": "ページ — 文書ぜんぶの決め",
   "en": "Page — settings for the whole document"
  },
  {
-  "i": 1709,
+  "i": 1704,
   "ja": "ヘッダーとフッター",
   "en": "Header and footer"
  },
  {
-  "i": 1710,
+  "i": 1705,
   "ja": "編集",
   "en": "Edit"
  },
  {
-  "i": 1711,
+  "i": 1706,
   "ja": "透かし",
   "en": "Watermark"
  },
  {
-  "i": 1712,
+  "i": 1707,
   "ja": "ページの色",
   "en": "Page colour"
+ },
+ {
+  "i": 1708,
+  "ja": "選んだ範囲について聞けます。表を変えるときは、やることを先に見せます — 押すまで表は変わりません。",
+  "en": "You can ask about the selected range. When something would change the sheet, you see what it will do first — nothing changes until you press."
+ },
+ {
+  "i": 1709,
+  "ja": "例: 売上の多い順に並べて / 上位5件に色をつけて / 合計の行を足して",
+  "en": "e.g. sort by sales, highest first / colour the top 5 / add a total row"
+ },
+ {
+  "i": 1710,
+  "ja": "変更案(押すまで動きません)",
+  "en": "Proposed change (nothing happens until you press)"
+ },
+ {
+  "i": 1711,
+  "ja": "選んだところについて聞けます。文を直すときは、直した文を先に見せます — 押すまで入りません。",
+  "en": "You can ask about the selection. When text would be rewritten, you see the new text first — nothing goes in until you press."
+ },
+ {
+  "i": 1712,
+  "ja": "例: この段落を敬語にして / 半分の長さに / 言い方が硬くないか見て",
+  "en": "e.g. make this paragraph polite / half as long / tell me if it sounds stiff"
  },
  {
   "i": 1713,
