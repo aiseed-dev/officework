@@ -43,3 +43,5 @@ pysheet/officework/bin/
 # (他の見本の xlsx は手で組んだ小さい物なので追跡している)
 sample/写真/
 sample/写真の台帳.xlsx
+# 便りの下書きは生成物(sample/月の便り.py が作る)。宛先が入るので追跡しない
+sample/便りの下書き/
