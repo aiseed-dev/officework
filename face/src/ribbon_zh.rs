@@ -382,6 +382,8 @@ pub const CALC: &[Tab] = &[
         c("show-gridlines", "网格线", "show-gridlines"),
         c("show-headings", "标题", "show-headings"),
         c("show-zeros", "显示 0", "show-zeros"),
+        c("show-left", "左侧面板", "show-left"),
+        c("show-right", "右侧面板", "show-right"),
     ]},
     Tab { name: "插件", cmds: &[
         c("plug-macros", "宏", "plug-macros"),

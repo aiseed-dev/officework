@@ -2869,6 +2869,13 @@ impl Calc {
             cx.notify();
             return;
         }
+        // 会話の欄は Esc で焦点を返す(パネルは開いたまま — 表へ戻るだけ)
+        if self.chat_focus {
+            self.chat_focus = false;
+            self.status = ui::t!("表に戻りました(会話のパネルはそのまま)").into();
+            cx.notify();
+            return;
+        }
         // キーヒントはいちばん先に畳む(重なっている物の最前)
         if self.key_hint.take().is_some() {
             self.status = ui::t!("キーヒントを畳みました").into();

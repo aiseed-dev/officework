@@ -445,6 +445,10 @@ pub const CALC: &[Tab] = &[
         c("show-gridlines", "枠線表示", "show-gridlines"),
         c("show-headings", "見出し", "show-headings"),
         c("show-zeros", "0を表示する", "show-zeros"),
+        // **左右のパネル**(2026-08-15 発注者)。writer の表示タブと同じ
+        // id・同じ札 — 訳が既にあるので新しい鍵は増えない
+        c("show-left", "左パネル", "show-left"),
+        c("show-right", "右パネル", "show-right"),
     ]},
     Tab { name: "プラグイン", cmds: &[
         c("plug-macros", "マクロ", "plug-macros"),

@@ -382,6 +382,8 @@ pub const CALC: &[Tab] = &[
         c("show-gridlines", "Líneas de cuadrícula", "show-gridlines"),
         c("show-headings", "Títulos", "show-headings"),
         c("show-zeros", "Mostrar ceros", "show-zeros"),
+        c("show-left", "Panel izquierdo", "show-left"),
+        c("show-right", "Panel derecho", "show-right"),
     ]},
     Tab { name: "Extensiones", cmds: &[
         c("plug-macros", "Macros", "plug-macros"),

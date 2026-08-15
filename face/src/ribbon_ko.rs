@@ -382,6 +382,8 @@ pub const CALC: &[Tab] = &[
         c("show-gridlines", "눈금선", "show-gridlines"),
         c("show-headings", "제목", "show-headings"),
         c("show-zeros", "0 표시", "show-zeros"),
+        c("show-left", "왼쪽 패널", "show-left"),
+        c("show-right", "오른쪽 패널", "show-right"),
     ]},
     Tab { name: "플러그인", cmds: &[
         c("plug-macros", "매크로", "plug-macros"),

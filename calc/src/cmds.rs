@@ -47,6 +47,8 @@ impl Calc {
         "rec-toggle", "py-new", "py-list", "py-folder",
         "prot-doc", "prot-encrypt", "prot-sign",
         "zoom-in", "zoom-out", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
+        // 左右のパネル(2026-08-15)
+        "show-left", "show-right",
         "subscript", "align-just", "align-dist", "text-orient", "calc-mode",
         "td-torange", "td-resize", "rtl-sheet", "direction",
         "colorschemas", "theme",
@@ -2896,6 +2898,24 @@ impl Calc {
             }
             // CSV の形(文字コードと区切り)。**日本の会計ソフトは
             // まだ CP932 のものがある** — UTF-8 固定では渡せない
+            // **左右のパネル**(2026-08-15)。writer と同じ id・同じ札。
+            // 開け閉めは「すぐ効く」ので印は無印(▾ も … も付けない)
+            "show-left" => {
+                self.left_open = !self.left_open;
+                self.status = if self.left_open {
+                    ui::t!("左パネル(AI と相談する)を開きました").into()
+                } else {
+                    ui::t!("左パネルを閉じました").into()
+                };
+            }
+            "show-right" => {
+                self.right_open = !self.right_open;
+                self.status = if self.right_open {
+                    ui::t!("右パネル(セルの設定)を開きました").into()
+                } else {
+                    ui::t!("右パネルを閉じました").into()
+                };
+            }
             "csv-kind" => {
                 let at = self.pop_anchor();
                 self.pick_kind = "csv-kind";

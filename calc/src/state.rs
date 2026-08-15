@@ -148,6 +148,13 @@ impl Calc {
             auto_calc: true,
             watch: Vec::new(),
             ai_busy: false,
+            left_open: false,
+            right_open: false,
+            chat_log: Vec::new(),
+            chat_in: Editor::new(""),
+            chat_plan: None,
+            chat_focus: false,
+            chat_busy: false,
             tool: None,
             ink_cur: None,
         };
@@ -983,6 +990,8 @@ impl Calc {
         self.menu_direct = false;
         self.close_pick();
         self.border_pal = None;
+        // 表を押したら会話の欄から焦点が離れる(打鍵はセルへ戻る)
+        self.chat_focus = false;
         // mouse-up を取り逃していても、新しい押下で必ず仕切り直す(自癒)
         self.size_drag = None;
         self.drag = None;
@@ -2041,7 +2050,11 @@ impl Calc {
                 }
                 (Pos::new(0, 0), Pos::new((rows - 1).min(199), cols - 1))
             }
-            (CalcAi::Table(_) | CalcAi::Ask(_), None) => (self.cursor, self.cursor),
+            // 会話は**選んでいなくても通す** — 「この式の意味は」のように
+            // 範囲の要らない用件がある(2026-08-15 実機で門前払いに気づいた)
+            (CalcAi::Table(_) | CalcAi::Ask(_) | CalcAi::Chat(_), None) => {
+                (self.cursor, self.cursor)
+            }
             _ => {
                 self.status = ui::t!("範囲を選んでから押してください").into();
                 return;
@@ -2054,11 +2067,11 @@ impl Calc {
         }
         let body = match &job {
             CalcAi::Table(_) => String::new(),
-            CalcAi::Ask(_) if self.anchor.is_none() => String::new(),
+            CalcAi::Ask(_) | CalcAi::Chat(_) if self.anchor.is_none() => String::new(),
             _ => self.tsv_display(a, b),
         };
         if body.trim().is_empty()
-            && !matches!(job, CalcAi::Table(_) | CalcAi::Ask(_))
+            && !matches!(job, CalcAi::Table(_) | CalcAi::Ask(_) | CalcAi::Chat(_))
         {
             self.status = ui::t!("選んだ範囲が空です").into();
             return;
@@ -2066,6 +2079,19 @@ impl Calc {
         let (sys, ask) = job.prompt();
         let user = match &job {
             CalcAi::Table(q) => q.clone(),
+            // 会話は**用件そのもの**が本体。表は付け合わせで、選んでいる
+            // 場所の番地も渡す(台本が s["A1:C9"] と書けるように)
+            CalcAi::Chat(q) => {
+                if body.trim().is_empty() {
+                    q.clone()
+                } else {
+                    format!(
+                        "{q}\n\n---\nいま選んでいるのはシート「{}」の {} です。\n{body}",
+                        self.sheet().name,
+                        self.sel_label(),
+                    )
+                }
+            }
             CalcAi::Ask(q) => {
                 if body.trim().is_empty() {
                     q.clone()
@@ -2108,6 +2134,27 @@ impl Calc {
             t.lines().map(|l| l.split('\t').map(str::to_string).collect()).collect()
         };
         match job {
+            // **会話は書類に入れない。** 左パネルに返し、変更案(Python)は
+            // 人が「入れる」を押すまで走らせない — **押したのは人**が残る形
+            CalcAi::Chat(_) => {
+                let 案 = 取り出す囲み(&out);
+                let 見せる = if let Some(code) = &案 {
+                    // 囲みの外の説明だけを会話に出す(台本は下の欄に置く)
+                    let 説明 = out.replace(&format!("```python\n{code}\n```"), "")
+                        .replace(&format!("```\n{code}\n```"), "");
+                    let t = 説明.trim().to_string();
+                    if t.is_empty() { ui::t!("こう直します。").to_string() } else { t }
+                } else {
+                    out.clone()
+                };
+                self.chat_log.push((false, 見せる));
+                self.chat_plan = 案;
+                self.status = if self.chat_plan.is_some() {
+                    ui::t!("変更案ができました(左パネルで中身を見てから「入れる」)").into()
+                } else {
+                    ui::t!("答えました(左パネル)").into()
+                };
+            }
             // 要約はカーソルのコメントへ(保存で xlsx に残る)
             CalcAi::Summary => {
                 let p = self.cursor;
@@ -2479,5 +2526,128 @@ pub(crate) fn sheet_var(name: &str) -> String {
             .map(|c| if c.is_alphanumeric() { c } else { '_' })
             .collect();
         format!("_{safe}")
+    }
+}
+
+/// AI の答えから ```python …``` の囲みを取り出す。**囲みが無ければ None**
+/// (表を直さない答え)。囲みの言語札は省かれることもあるので両方見る
+pub(crate) fn 取り出す囲み(out: &str) -> Option<String> {
+    let mut it = out.split("```");
+    it.next()?; // 囲みの前
+    let 中 = it.next()?;
+    let 中 = 中.strip_prefix("python").unwrap_or(中);
+    let t = 中.trim_start_matches('\n').trim_end().to_string();
+    if t.is_empty() { None } else { Some(t) }
+}
+
+impl Calc {
+    /// いま選んでいる所の名前(右パネルの見出しに出す)
+    pub(crate) fn sel_label(&self) -> String {
+        let (a, b) = self.sel_rect();
+        if a == b { a.a1() } else { format!("{}:{}", a.a1(), b.a1()) }
+    }
+
+    /// 表示形式を選択に掛ける。**空なら外す**(標準に戻す)
+    pub(crate) fn set_number_format(&mut self, code: &str) {
+        let (a, b) = self.sel_rect();
+        self.checkpoint();
+        let s = &mut self.book.sheets[self.active];
+        for r in a.row..=b.row {
+            for c in a.col..=b.col {
+                let p = Pos::new(r, c);
+                let mut cell = s.get(p).cloned().unwrap_or_default();
+                cell.fmt.number_format =
+                    if code.is_empty() { None } else { Some(code.to_string()) };
+                s.set(p, cell);
+            }
+        }
+        self.dirty = true;
+        self.status = if code.is_empty() {
+            ui::t!("表示形式を標準に戻しました").into()
+        } else {
+            ui::tf!("表示形式を {} にしました", code).into()
+        };
+    }
+
+    /// 会話を送る。**答えは書類でなくパネルへ**返る(CalcAi::Chat)
+    pub(crate) fn chat_send(&mut self, cx: &mut Context<Self>) {
+        let t = self.chat_in.text().trim().to_string();
+        if t.is_empty() {
+            self.status = ui::t!("用件がありません").into();
+            return;
+        }
+        self.chat_log.push((true, t.clone()));
+        self.chat_in = Editor::new("");
+        self.chat_plan = None;
+        self.ai_go(CalcAi::Chat(t), cx);
+    }
+
+    /// **変更案を走らせる。** ここが「人が押した」の一点 —
+    /// 押すまで AI は書類に触らない(2026-08-09 の決めの精神を保つ形)。
+    /// 台本は officework の橋を通ってこのアプリを操るので、走った跡は
+    /// undo の1手として残る。
+    ///
+    /// **裏で走らせる。** ここで待つと自分待ちになる — 台本は橋越しに
+    /// calc へ話しかけるのに、calc は台本の終了を待って命令を捌けない。
+    /// 2026-08-15 実機で踏んだ(「calc が応じません(忙しいか、閉じかけ)」)。
+    pub(crate) fn chat_run(&mut self, cx: &mut Context<Self>) {
+        let Some(plan) = self.chat_plan.clone() else { return };
+        if self.chat_busy {
+            self.status = ui::t!("いま台本が走っています(終わるまでお待ちください)").into();
+            return;
+        }
+        self.commit();
+        self.checkpoint_book();
+        let dir = std::env::temp_dir().join("officework-chat");
+        let _ = std::fs::create_dir_all(&dir);
+        let p = dir.join("plan.py");
+        if let Err(e) = std::fs::write(&p, plan.as_bytes()) {
+            self.status = ui::tf!("台本を置けません: {}", e).into();
+            return;
+        }
+        self.chat_busy = true;
+        self.status = ui::t!("変更案を走らせています…").into();
+        let py = crate::py::find_python();
+        let task = cx.background_executor().spawn(async move {
+            let mut cmd = std::process::Command::new(py);
+            cmd.arg(&p);
+            crate::py::run_with_timeout(&mut cmd, 60)
+        });
+        cx.spawn(async move |this, cx| {
+            let r = task.await;
+            let _ = this.update(cx, |this, cx| {
+                this.chat_busy = false;
+                match r {
+                    Ok((true, out, _)) => {
+                        this.chat_plan = None;
+                        let 尻 = out.lines().rev().take(3).collect::<Vec<_>>().join(" / ");
+                        this.chat_log.push((false, ui::t!("入れました。").to_string()));
+                        this.status = if 尻.trim().is_empty() {
+                            ui::t!("変更案を入れました(Ctrl+Z で戻せます)").into()
+                        } else {
+                            ui::tf!("変更案を入れました: {}(Ctrl+Z で戻せます)", 尻).into()
+                        };
+                        this.reload_from_disk_if_needed();
+                    }
+                    Ok((false, _, err)) => {
+                        this.status = ui::tf!("台本が落ちました: {}",
+                            err.lines().rev().take(2).collect::<Vec<_>>().join(" / ")).into();
+                    }
+                    Err(e) => {
+                        this.status = ui::tf!("台本が走りませんでした: {}", e).into();
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+        cx.notify();
+    }
+
+    /// 橋越しに書き換わった中身を画面へ。**橋は同じアプリを操るので、
+    /// 実際にはこの場で反映済み** — 念のため再計算だけ促す
+    pub(crate) fn reload_from_disk_if_needed(&mut self) {
+        recalc_book(&mut self.book, self.active);
+        self.dirty = true;
     }
 }

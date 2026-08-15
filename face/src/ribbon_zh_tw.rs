@@ -382,6 +382,8 @@ pub const CALC: &[Tab] = &[
         c("show-gridlines", "網格線", "show-gridlines"),
         c("show-headings", "標題", "show-headings"),
         c("show-zeros", "顯示 0", "show-zeros"),
+        c("show-left", "左側面板", "show-left"),
+        c("show-right", "右側面板", "show-right"),
     ]},
     Tab { name: "外掛程式", cmds: &[
         c("plug-macros", "巨集", "plug-macros"),

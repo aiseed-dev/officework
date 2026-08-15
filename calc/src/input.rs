@@ -155,7 +155,8 @@ impl Calc {
             // コンボの検索欄の1文字削除(選択は先頭へ)
             self.editor().backspace();
             self.pick_filter_edited();
-        } else if self.name_edit.is_some()
+        } else if self.chat_focus
+            || self.name_edit.is_some()
             || self.solver.is_some()
             || self.filter_panel.is_some()
             || self.dv_dlg.is_some()
@@ -212,7 +213,8 @@ impl Calc {
 
     pub(crate) fn a_delete(&mut self, _: &ui::Delete, _: &mut Window, cx: &mut Context<Self>) {
         // パネル・小窓の欄が開いていれば、その欄の1文字削除(セルに流さない)
-        if self.name_edit.is_some()
+        if self.chat_focus
+            || self.name_edit.is_some()
             || self.fn_dlg.is_some()
             || self.pick_filtering()
             || self.solver.is_some()
@@ -951,6 +953,12 @@ impl Calc {
     }
 
     pub(crate) fn a_enter(&mut self, _: &ui::Enter, _: &mut Window, cx: &mut Context<Self>) {
+        // 会話の欄の Enter = 送る(焦点はそのまま — 続けて書ける)
+        if self.chat_focus {
+            self.chat_send(cx);
+            cx.notify();
+            return;
+        }
         if let Some(p) = &mut self.py_edit {
             p.newline();
             self.py_edit_ask = false;

@@ -50,6 +50,7 @@ mod picks;
 #[cfg(unix)]
 mod rpc;
 mod cmds;
+mod panels;
 mod view;
 mod input;
 mod objects;
@@ -377,6 +378,23 @@ struct Calc {
     watch: Vec<(usize, Pos)>,
     /// AI に頼み中(終わるまで次の頼みは断る)
     ai_busy: bool,
+    /// **左パネル(会話)と右パネル(セルの設定)**(2026-08-15 発注者
+    /// 「左右のパネルを整備して、AI も使えるように」)。
+    /// リボンの表示タブの「左パネル」「右パネル」で開け閉めする
+    pub(crate) left_open: bool,
+    pub(crate) right_open: bool,
+    /// 会話のやりとり(自分か, 字)。**画面だけの物** — ブックには載らない
+    /// (データとプログラムを分ける、の決めのまま)
+    pub(crate) chat_log: Vec<(bool, String)>,
+    /// 会話の入力欄
+    pub(crate) chat_in: Editor,
+    /// AI が出した**変更案**(officework の Python)。人が「入れる」を
+    /// 押すまで走らない — **押したのは人**、が残る形にするため
+    pub(crate) chat_plan: Option<String>,
+    /// 会話の入力欄に焦点があるか(打鍵をそちらへ回す)
+    pub(crate) chat_focus: bool,
+    /// 変更案の台本が裏で走っている間(押し重ねを止める)
+    pub(crate) chat_busy: bool,
     /// 描画の道具(0=ペン 1=蛍光ペン 2=消しゴム)。writer と同じ形
     tool: Option<u8>,
     /// 描きかけの線(ドラッグ中)
@@ -416,6 +434,11 @@ impl HasEditor for Calc {
         if let Some(d) = &mut self.dv_dlg {
             return d.focused();
         }
+        // 会話の欄に焦点があるとき(欄を押した後)は打鍵をそこへ。
+        // **旗が立っている間だけ** — 開いているだけでは表の打鍵を奪わない
+        if self.chat_focus {
+            return &mut self.chat_in;
+        }
         match &mut self.prompt {
             Some((_, ed)) => ed,
             None => &mut self.input,
@@ -448,6 +471,9 @@ impl HasEditor for Calc {
         }
         if let Some(d) = &self.dv_dlg {
             return d.focused_ref();
+        }
+        if self.chat_focus {
+            return &self.chat_in;
         }
         match &self.prompt {
             Some((_, ed)) => ed,
@@ -565,6 +591,9 @@ enum CalcAi {
     Table(String),
     /// 自由に頼む。= で始まる答えは式としてカーソルへ、他はコメントへ
     Ask(String),
+    /// **会話**(2026-08-15)。答えを書類に入れず、**左パネルに返す**。
+    /// 表を直す頼みなら officework の Python を書かせ、人が見てから入れる
+    Chat(String),
 }
 
 impl CalcAi {
@@ -592,6 +621,25 @@ impl CalcAi {
                 "あなたは文章を表に整える道具です。渡された文章から表を作り、                 タブ区切り(1行目は見出し)だけを返します。説明・前置き・                 罫線の記号は書きません。",
                 "",
             ),
+            // **会話**。表を直す頼みなら officework の Python を書かせる。
+            // 直接いじらせない — 人が見て「入れる」を押して初めて走る。
+            // Python にするのは、AI がいちばん正確に書ける形であり(xlwings と
+            // openpyxl の形)、**人が読んで確かめられる**から
+            CalcAi::Chat(_) => (
+                "あなたは表計算を手伝う相談相手です。日本語で短く答えます。\n\
+                 **表を直す頼み**(並べ替え・色・書式・行や列の出し入れ・\
+                 計算の追加など)のときは、まず1〜2文で何をするかを言い、\
+                 続けて ```python の囲みの中に officework の台本だけを書きます。\
+                 台本の作法: 先頭は `from officework import calc as xw` と\
+                 `wb = xw.Book.attach()` と `s = wb.sheets.active`。\
+                 **attach です** — `xw.Book()` は新しいブックを作ってしまい、\
+                 いま開いている表が消えます。範囲は `s[\"A1:C9\"]`。\
+                 値は `.value`、書式は `.font.bold` `.number_format` `.fill` など。\
+                 **保存はしない**(人が見て決める)。説明は囲みの外に書きます。\n\
+                 表を直さない頼み(意味を訊く・式を1つ教える等)は、\
+                 囲みを使わず本文だけで答えます。",
+                "",
+            ),
             CalcAi::Ask(_) => (
                 "あなたは表計算を手伝う道具です。数式を頼まれたら = で始まる                 1つの数式だけを返します(使える関数: SUM AVERAGE COUNT COUNTA                  MIN MAX SUMIF COUNTIF ABS MOD POWER SQRT INT ROUND ROUNDUP TRUNC                  PRODUCT PMT PV FV NPER TODAY NOW DATE YEAR MONTH DAY WEEKDAY LEN                  LEFT RIGHT MID TRIM UPPER LOWER CONCATENATE IF AND OR NOT IFERROR                  ISBLANK ISERROR VLOOKUP HLOOKUP INDEX MATCH)。それ以外の頼みには                 答えの本文だけを返します。前置きは書きません。",
                 "",
@@ -608,6 +656,7 @@ impl CalcAi {
             CalcAi::Continue => ui::t!("続き"),
             CalcAi::Table(_) => ui::t!("表"),
             CalcAi::Ask(_) => ui::t!("頼み"),
+            CalcAi::Chat(_) => ui::t!("会話"),
         }
     }
 }

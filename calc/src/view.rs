@@ -49,7 +49,9 @@ impl EntityInputHandler for Calc {
                              _w: &mut Window, cx: &mut Context<Self>) {
         // 空白キーはチェックボックス(Bool のセル)の切替。打ちかけ・パネル・
         // 小窓が無いときだけ(文字としての空白を奪わない)
-        if text == " " && self.prompt.is_none() && self.solver.is_none() && !self.editing() {
+        if text == " " && self.prompt.is_none() && self.solver.is_none() && !self.editing()
+            && !self.chat_focus
+        {
             if let Some(Value::Bool(b)) =
                 self.sheet().get(self.cursor).map(|c| c.value.clone())
             {
@@ -84,6 +86,7 @@ impl EntityInputHandler for Calc {
         if self.prompt.is_none() && self.solver.is_none()
             && self.name_edit.is_none() && self.fn_dlg.is_none()
             && self.fn_args.is_none() && self.pick_filter.is_none()
+            && !self.chat_focus
             && !self.edit_armed && !self.editing()
             && handler::marked_range_utf16(self).is_none()
         {
@@ -109,6 +112,7 @@ impl EntityInputHandler for Calc {
         if self.prompt.is_none() && self.solver.is_none()
             && self.name_edit.is_none() && self.fn_dlg.is_none()
             && self.fn_args.is_none() && self.pick_filter.is_none()
+            && !self.chat_focus
             && !self.edit_armed && !self.editing()
             && handler::marked_range_utf16(self).is_none()
         {
@@ -5347,6 +5351,8 @@ impl Render for Calc {
             pal
         });
 
+        // 左右のパネル(2026-08-15)。格子の面に重ねる
+        let (left_panel, right_panel) = self.panels(window, cx);
         let pick_panel = self.pick.as_ref().map(|(_, (vx, vy))| {
             let (vx, vy) = (*vx, *vy);
             // 絞り込みつきなら、いま出すのは**絞り込み後**の並び(打つほど減る)
@@ -5605,7 +5611,15 @@ impl Render for Calc {
             .on_action(cx.listener(Calc::a_select_row))
             .child(bar)
             .children((self.tab != 0 && self.show_formula_bar).then_some(formula_bar))
-            .child(div().flex_1().overflow_hidden().relative()
+            // 左右のパネルは**場所を取る**(重ねない)。格子が細くなるだけで
+            // 行番号も A 列も隠れない(2026-08-15 実機 — 重ねたら A・B 列が
+            // 消え、右は面の overflow_hidden に切られて出てこなかった)
+            .child(div().flex_1().overflow_hidden().flex().flex_row()
+                   .children(left_panel)
+                   // **min_w(0) が要る。** flex の既定(min-width: auto)だと
+                   // 格子は中身の幅より縮まず、右のパネルが枠の外へ押し出されて
+                   // 消える(2026-08-15 実機 — 左だけ出て右が出なかった)
+                   .child(div().flex_1().min_w(px(0.0)).overflow_hidden().relative()
                    // ホイールで窓を動かす(下に回すと先の行が見える)
                    .on_scroll_wheel(cx.listener(|this, e: &gpui::ScrollWheelEvent, _, cx| {
                        // Ctrl+ホイール = 格子の拡大縮小(Excel と同じ)
@@ -5817,6 +5831,7 @@ impl Render for Calc {
                    .children(slicer_panels)
                    .children(slicer_cfg_panel)
                    .children(comment_panel))
+                   .children(right_panel))
             .children(watch_bar)
             .child(sheets_bar)
             .children(notes)
