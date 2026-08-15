@@ -1727,8 +1727,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("図形を選んでいます", "Sebuah bentuk terpilih"),
     ("画像を選んでいます", "Sebuah gambar terpilih"),
     ("図形も画像も選んでいません(表の上の図形か絵を押してください)", "Tidak ada bentuk atau gambar yang terpilih (klik salah satunya di lembar)"),
-    ("コメントはまだありません(共同編集タブの「コメント」で付けます)", "Belum ada komentar (tambahkan dari tab Kolaborasi)"),
-    ("{} の {} へ飛びました", "Melompat ke {} di {}"),
     ("ページ — 文書ぜんぶの決め", "Halaman — pengaturan seluruh dokumen"),
     ("ヘッダーとフッター", "Header dan footer"),
     ("編集", "Ubah"),
@@ -1739,4 +1737,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("変更案(押すまで動きません)", "Usulan perubahan (tidak terjadi apa-apa sampai Anda menekan)"),
     ("選んだところについて聞けます。文を直すときは、直した文を先に見せます — 押すまで入りません。", "Anda bisa bertanya tentang bagian yang dipilih. Kalau teks akan ditulis ulang, Anda melihat dulu teks barunya — tidak ada yang masuk sampai Anda menekan."),
     ("例: この段落を敬語にして / 半分の長さに / 言い方が硬くないか見て", "mis. buat paragraf ini lebih sopan / setengah panjangnya / beri tahu kalau terdengar kaku"),
+    ("コメントを表示しています(セルの吹き出し)", "Menampilkan komentar (sebagai balon pada sel)"),
 ];

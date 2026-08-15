@@ -1727,8 +1727,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("図形を選んでいます", "Đang chọn một hình"),
     ("画像を選んでいます", "Đang chọn một ảnh"),
     ("図形も画像も選んでいません(表の上の図形か絵を押してください)", "Chưa chọn hình hay ảnh nào (hãy bấm vào một cái trên trang tính)"),
-    ("コメントはまだありません(共同編集タブの「コメント」で付けます)", "Chưa có bình luận nào (thêm ở thẻ Cộng tác)"),
-    ("{} の {} へ飛びました", "Đã nhảy tới {} của {}"),
     ("ページ — 文書ぜんぶの決め", "Trang — thiết lập cho cả tài liệu"),
     ("ヘッダーとフッター", "Đầu trang và chân trang"),
     ("編集", "Sửa"),
@@ -1739,4 +1737,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("変更案(押すまで動きません)", "Đề xuất thay đổi (chưa bấm thì chưa có gì xảy ra)"),
     ("選んだところについて聞けます。文を直すときは、直した文を先に見せます — 押すまで入りません。", "Bạn có thể hỏi về phần đang chọn. Nếu câu chữ sẽ được viết lại, bạn được xem câu chữ mới trước — chưa bấm thì chưa chèn vào."),
     ("例: この段落を敬語にして / 半分の長さに / 言い方が硬くないか見て", "vd: viết đoạn này lịch sự hơn / ngắn bằng một nửa / xem giúp có cứng quá không"),
+    ("コメントを表示しています(セルの吹き出し)", "Đang hiện bình luận (dạng bóng chú thích ở ô)"),
 ];

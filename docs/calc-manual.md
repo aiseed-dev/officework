@@ -365,7 +365,9 @@ Both **stay open**; the grid just gets narrower (they never cover it).
 
 **A rail of icons runs down the outer edge** of each panel; pressing one
 switches the face (left: Ask the AI / Comments, right: Cell settings / Shapes
-and pictures). Hover an icon to see its name.
+and pictures). Hover an icon to see its name. **Choosing Comments collapses the
+left panel to the rail** — comments show as balloons on the cells, so no panel
+body is needed and the sheet gets the space back.
 
 ### Right panel, "Cell settings"
 

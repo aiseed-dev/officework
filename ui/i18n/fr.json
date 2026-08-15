@@ -6805,446 +6805,442 @@
  },
  {
   "i": 1701,
-  "t": "Pas encore de commentaires (ajoutez-en un depuis l'onglet Collaboration)"
- },
- {
-  "i": 1702,
-  "t": "Saut vers {} sur {}"
- },
- {
-  "i": 1703,
   "t": "Page — réglages de tout le document"
  },
  {
-  "i": 1704,
+  "i": 1702,
   "t": "En-tête et pied de page"
  },
  {
-  "i": 1705,
+  "i": 1703,
   "t": "Modifier"
  },
  {
-  "i": 1706,
+  "i": 1704,
   "t": "Filigrane"
  },
  {
-  "i": 1707,
+  "i": 1705,
   "t": "Couleur de page"
  },
  {
-  "i": 1708,
+  "i": 1706,
   "t": "Vous pouvez poser des questions sur la plage sélectionnée. Si quelque chose doit modifier la feuille, vous voyez d'abord ce que cela fera — rien ne change avant que vous n'appuyiez."
  },
  {
-  "i": 1709,
+  "i": 1707,
   "t": "ex. trier par ventes décroissantes / colorer les 5 premiers / ajouter une ligne de total"
  },
  {
-  "i": 1710,
+  "i": 1708,
   "t": "Modification proposée (rien ne se passe avant que vous n'appuyiez)"
  },
  {
-  "i": 1711,
+  "i": 1709,
   "t": "Vous pouvez poser des questions sur la sélection. Si le texte doit être réécrit, vous voyez d'abord le nouveau texte — rien n'entre avant que vous n'appuyiez."
  },
  {
-  "i": 1712,
+  "i": 1710,
   "t": "ex. rendre ce paragraphe plus poli / deux fois plus court / dites-moi si cela sonne rigide"
  },
  {
-  "i": 1713,
+  "i": 1711,
+  "t": "Affichage des commentaires (en bulles sur les cellules)"
+ },
+ {
+  "i": 1712,
   "t": "Copier le format"
  },
  {
-  "i": 1714,
+  "i": 1713,
   "t": "Style"
  },
  {
-  "i": 1715,
+  "i": 1714,
   "t": "Liste des champs"
  },
  {
-  "i": 1716,
+  "i": 1715,
   "t": "Agrandir le texte de l'écran"
  },
  {
-  "i": 1717,
+  "i": 1716,
   "t": "Réduire le texte de l'écran"
  },
  {
-  "i": 1718,
+  "i": 1717,
   "t": "IA"
  },
  {
-  "i": 1719,
+  "i": 1718,
   "t": "Imprimer"
  },
  {
-  "i": 1720,
+  "i": 1719,
   "t": "Mise en page"
  },
  {
-  "i": 1721,
+  "i": 1720,
   "t": "Destination"
  },
  {
-  "i": 1722,
+  "i": 1721,
   "t": "Résumer"
  },
  {
-  "i": 1723,
+  "i": 1722,
   "t": "Réécrire"
  },
  {
-  "i": 1724,
+  "i": 1723,
   "t": "Plus formel"
  },
  {
-  "i": 1725,
+  "i": 1724,
   "t": "Plus simple"
  },
  {
-  "i": 1726,
+  "i": 1725,
   "t": "Traduire"
  },
  {
-  "i": 1727,
+  "i": 1726,
   "t": "Furigana"
  },
  {
-  "i": 1728,
+  "i": 1727,
   "t": "Continuer"
  },
  {
-  "i": 1729,
+  "i": 1728,
   "t": "En tableau"
  },
  {
-  "i": 1730,
+  "i": 1729,
   "t": "Demander"
  },
  {
-  "i": 1731,
+  "i": 1730,
   "t": "Ruby"
  },
  {
-  "i": 1732,
+  "i": 1731,
   "t": "Vertical"
  },
  {
-  "i": 1733,
+  "i": 1732,
   "t": "Orientation du texte"
  },
  {
-  "i": 1734,
+  "i": 1733,
   "t": "Réparti"
  },
  {
-  "i": 1735,
+  "i": 1734,
   "t": "Insérer une légende"
  },
  {
-  "i": 1736,
+  "i": 1735,
   "t": "Ouvrir une URL"
  },
  {
-  "i": 1737,
+  "i": 1736,
   "t": "Index"
  },
  {
-  "i": 1738,
+  "i": 1737,
   "t": "Notes Aozora"
  },
  {
-  "i": 1739,
+  "i": 1738,
   "t": "Notation Denden"
  },
  {
-  "i": 1740,
+  "i": 1739,
   "t": "Suivi des modifications"
  },
  {
-  "i": 1741,
+  "i": 1740,
   "t": "Afficher les modifications"
  },
  {
-  "i": 1742,
+  "i": 1741,
   "t": "Correction"
  },
  {
-  "i": 1743,
+  "i": 1742,
   "t": "Caractères"
  },
  {
-  "i": 1744,
+  "i": 1743,
   "t": "Vérification orthographique"
  },
  {
-  "i": 1745,
+  "i": 1744,
   "t": "Dictionnaire des synonymes"
  },
  {
-  "i": 1746,
+  "i": 1745,
   "t": "Erreurs de conversion"
  },
  {
-  "i": 1747,
+  "i": 1746,
   "t": "Incohérences de graphie"
  },
  {
-  "i": 1748,
+  "i": 1747,
   "t": "Sous-totaux"
  },
  {
-  "i": 1749,
+  "i": 1748,
   "t": "Mode de calcul"
  },
  {
-  "i": 1750,
+  "i": 1749,
   "t": "Texte de droite à gauche"
  },
  {
-  "i": 1751,
+  "i": 1750,
   "t": "Sens de la feuille"
  },
  {
-  "i": 1752,
+  "i": 1751,
   "t": "Python"
  },
  {
-  "i": 1753,
+  "i": 1752,
   "t": "Case à cocher"
  },
  {
-  "i": 1754,
+  "i": 1753,
   "t": "Liens externes"
  },
  {
-  "i": 1755,
+  "i": 1754,
   "t": "Graphique recommandé"
  },
  {
-  "i": 1756,
+  "i": 1755,
   "t": "Mode coédition"
  },
  {
-  "i": 1757,
+  "i": 1756,
   "t": "Historique des versions"
  },
  {
-  "i": 1758,
+  "i": 1757,
   "t": "Discussion"
  },
  {
-  "i": 1759,
+  "i": 1758,
   "t": "Protéger"
  },
  {
-  "i": 1760,
+  "i": 1759,
   "t": "Chiffrer"
  },
  {
-  "i": 1761,
+  "i": 1760,
   "t": "Ajouter une signature numérique"
  },
  {
-  "i": 1762,
+  "i": 1761,
   "t": "Macros"
  },
  {
-  "i": 1763,
+  "i": 1762,
   "t": "Gérer les plugins"
  },
  {
-  "i": 1764,
+  "i": 1763,
   "t": "Afficher les zéros"
  },
  {
-  "i": 1765,
+  "i": 1764,
   "t": "Zoom à 100 %"
  },
  {
-  "i": 1766,
+  "i": 1765,
   "t": "Thème de l'interface"
  },
  {
-  "i": 1767,
+  "i": 1766,
   "t": "Fenêtre Espion"
  },
  {
-  "i": 1768,
+  "i": 1767,
   "t": "Somme automatique"
  },
  {
-  "i": 1769,
+  "i": 1768,
   "t": "Enregistrer les actions"
  },
  {
-  "i": 1770,
+  "i": 1769,
   "t": "Supprimer le commentaire"
  },
  {
-  "i": 1771,
+  "i": 1770,
   "t": "Solveur"
  },
  {
-  "i": 1772,
+  "i": 1771,
   "t": "Texte en données"
  },
  {
-  "i": 1773,
+  "i": 1772,
   "t": "Supprimer les flèches"
  },
  {
-  "i": 1774,
+  "i": 1773,
   "t": "Recopier"
  },
  {
-  "i": 1775,
+  "i": 1774,
   "t": "Effacer le filtre"
  },
  {
-  "i": 1776,
+  "i": 1775,
   "t": "Écrire une macro"
  },
  {
-  "i": 1777,
+  "i": 1776,
   "t": "Convertir"
  },
  {
-  "i": 1778,
+  "i": 1777,
   "t": "Légende"
  },
  {
-  "i": 1779,
+  "i": 1778,
   "t": "Table des illustrations"
  },
  {
-  "i": 1780,
+  "i": 1779,
   "t": "Mettre à jour la table des illustrations"
  },
  {
-  "i": 1781,
+  "i": 1780,
   "t": "Liens externes (importer en valeurs)"
  },
  {
-  "i": 1782,
+  "i": 1781,
   "t": "Math et trigonométrie"
  },
  {
-  "i": 1783,
+  "i": 1782,
   "t": "Afficher les formules"
  },
  {
-  "i": 1784,
+  "i": 1783,
   "t": "Sens du texte (droite à gauche)"
  },
  {
-  "i": 1785,
+  "i": 1784,
   "t": "Texte"
  },
  {
-  "i": 1786,
+  "i": 1785,
   "t": "Date et heure"
  },
  {
-  "i": 1787,
+  "i": 1786,
   "t": "Récemment utilisées"
  },
  {
-  "i": 1788,
+  "i": 1787,
   "t": "Imprimer le quadrillage"
  },
  {
-  "i": 1789,
+  "i": 1788,
   "t": "Mettre à jour la table des matières"
  },
  {
-  "i": 1790,
+  "i": 1789,
   "t": "Colonnes à bandes"
  },
  {
-  "i": 1791,
+  "i": 1790,
   "t": "Imprimer les en-têtes"
  },
  {
-  "i": 1792,
+  "i": 1791,
   "t": "Masquer le détail"
  },
  {
-  "i": 1793,
+  "i": 1792,
   "t": "Supprimer les doublons"
  },
  {
-  "i": 1794,
+  "i": 1793,
   "t": "Insérer une fonction"
  },
  {
-  "i": 1795,
+  "i": 1794,
   "t": "Format CSV"
  },
  {
-  "i": 1796,
+  "i": 1795,
   "t": "Verrouiller la cellule"
  },
  {
-  "i": 1797,
+  "i": 1796,
   "t": "Table de données"
  },
  {
-  "i": 1798,
+  "i": 1797,
   "t": "Remplissage instantané"
  },
  {
-  "i": 1799,
+  "i": 1798,
   "t": "Liste"
  },
  {
-  "i": 1800,
+  "i": 1799,
   "t": "Coller un nom"
  },
  {
-  "i": 1801,
+  "i": 1800,
   "t": "Récupérer"
  },
  {
-  "i": 1802,
+  "i": 1801,
   "t": "Renvoyer à la ligne"
  },
  {
-  "i": 1803,
+  "i": 1802,
   "t": "Intervalle des copies"
  },
  {
-  "i": 1804,
+  "i": 1803,
   "t": "Nouveau .py"
  },
  {
-  "i": 1805,
+  "i": 1804,
   "t": "Ajouter la plage"
  },
  {
-  "i": 1806,
+  "i": 1805,
   "t": "Ajuster au papier"
  },
  {
-  "i": 1807,
+  "i": 1806,
   "t": "Sauts de page"
  },
  {
-  "i": 1808,
+  "i": 1807,
   "t": "Ouvrir le dossier"
  },
  {
-  "i": 1809,
+  "i": 1808,
   "t": "Type de calcul"
  },
  {
-  "i": 1810,
+  "i": 1809,
   "t": "Actions permises"
  },
  {
-  "i": 1811,
+  "i": 1810,
   "t": "Suggérer la lecture seule"
  }
 ]

@@ -1727,8 +1727,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("図形を選んでいます", "Bir şekil seçili"),
     ("画像を選んでいます", "Bir resim seçili"),
     ("図形も画像も選んでいません(表の上の図形か絵を押してください)", "Seçili şekil veya resim yok (sayfada birine tıklayın)"),
-    ("コメントはまだありません(共同編集タブの「コメント」で付けます)", "Henüz yorum yok (İş birliği sekmesinden ekleyin)"),
-    ("{} の {} へ飛びました", "{} sayfasındaki {} konumuna gidildi"),
     ("ページ — 文書ぜんぶの決め", "Sayfa — tüm belgenin ayarları"),
     ("ヘッダーとフッター", "Üst bilgi ve alt bilgi"),
     ("編集", "Düzenle"),
@@ -1739,4 +1737,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("変更案(押すまで動きません)", "Önerilen değişiklik (siz basmadan hiçbir şey olmaz)"),
     ("選んだところについて聞けます。文を直すときは、直した文を先に見せます — 押すまで入りません。", "Seçim hakkında soru sorabilirsiniz. Metin yeniden yazılacaksa, yeni metni önce görürsünüz — siz basmadan hiçbir şey girmez."),
     ("例: この段落を敬語にして / 半分の長さに / 言い方が硬くないか見て", "örn. bu paragrafı daha kibar yap / yarı uzunlukta / kulağa sert geliyor mu söyle"),
+    ("コメントを表示しています(セルの吹き出し)", "Yorumlar gösteriliyor (hücre balonları olarak)"),
 ];

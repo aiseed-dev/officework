@@ -17,7 +17,7 @@
 use gpui::prelude::*;
 use gpui::{div, px, rgb, Context, SharedString, Window};
 
-use crate::{Calc, Pos};
+use crate::Calc;
 
 /// パネルの幅(px)。writer の 250 と揃える
 const W: f32 = 250.0;
@@ -352,60 +352,15 @@ impl Calc {
             None
         } else {
             let 面 = self.left_face;
+            // **コメントの面は柱だけ**(発注者 2026-08-15
+            // 「コメントの時は、左パネルはアイコンだけの表示でいいのでは」)。
+            // コメントはセルの吹き出しで見えるので、板を出す値打ちがない —
+            // そのぶん表が広く使える。押したときにコメントの表示も入れる
             let mut d = div()
                 .flex_1().min_w(px(0.0)).h_full().overflow_hidden()
                 .p_2()
                 .flex().flex_col().gap_1();
-            if 面 == 1 {
-                // ── コメントの一覧(ブック全体)。押すとその場所へ飛ぶ ──
-                d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
-                    .text_color(fg).child(ui::t!("コメント").to_string()));
-                let mut 行: Vec<(usize, Pos, String, String)> = Vec::new();
-                for (si, sh) in self.book.sheets.iter().enumerate() {
-                    for (at, th) in &sh.comments {
-                        let head = th.entries.first();
-                        行.push((
-                            si,
-                            *at,
-                            head.map(|e| e.who.clone()).unwrap_or_default(),
-                            head.map(|e| e.text.clone()).unwrap_or_default(),
-                        ));
-                    }
-                }
-                行.sort_by_key(|(si, at, _, _)| (*si, at.row, at.col));
-                if 行.is_empty() {
-                    d = d.child(div().text_size(px(us * 11.0)).text_color(薄).child(
-                        ui::t!("コメントはまだありません(共同編集タブの「コメント」で付けます)")
-                            .to_string()));
-                }
-                let mut 表 = div().id("cmt-list").flex().flex_col().gap_1()
-                    .flex_1().min_h(px(0.0)).overflow_y_scroll();
-                for (i, (si, at, who, text)) in 行.into_iter().take(200).enumerate() {
-                    let 名 = self.book.sheets[si].name.clone();
-                    表 = 表.child(div()
-                        .id(SharedString::from(format!("cmt{i}")))
-                        .px_1().py_0p5().rounded_sm().cursor_pointer()
-                        .hover(move |s| s.bg(if dk { rgb(0x2C333A) } else { rgb(0xEAF5EE) }))
-                        .flex().flex_col()
-                        .child(div().text_size(px(us * 10.0)).text_color(薄)
-                            .child(format!("{} {} {}", 名, at.a1(), who)))
-                        .child(div().text_size(px(us * 11.5)).text_color(fg)
-                            .child(text))
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            // 別のシートなら移ってから
-                            if this.active != si {
-                                this.active = si;
-                            }
-                            this.cursor = at;
-                            this.anchor = None;
-                            this.follow();
-                            this.sync_input();
-                            this.status = ui::tf!("{} の {} へ飛びました", 名, at.a1()).into();
-                            cx.notify()
-                        })));
-                }
-                d = d.child(表);
-            } else {
+            if 面 == 0 {
             d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                 .text_color(fg).child(ui::t!("AI と相談する").to_string()));
             d = d.child(div().text_size(px(us * 10.5)).text_color(薄).child(
@@ -490,16 +445,28 @@ impl Calc {
                 .child(柱釦("lf-ai", "ai-ask", ui::t!("AI と相談する").to_string(), 面 == 0)
                     .on_click(cx.listener(|this, _, _, cx| { this.left_face = 0; cx.notify() })))
                 .child(柱釦("lf-cmt", "co-showcomment", ui::t!("コメント").to_string(), 面 == 1)
-                    .on_click(cx.listener(|this, _, _, cx| { this.left_face = 1; cx.notify() })));
-            Some(div()
-                .flex_none().w(px((W + RAIL) * us)).h_full()
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.left_face = 1;
+                        // **コメントを見えるようにする。** 押したのに何も
+                        // 起きないと、切り替わったのか分からない
+                        this.show_comments = true;
+                        this.status = ui::t!("コメントを表示しています(セルの吹き出し)").into();
+                        cx.notify()
+                    })));
+            let mut 包み = div()
+                .flex_none()
+                .w(px((if 面 == 0 { W + RAIL } else { RAIL }) * us))
+                .h_full()
                 .m_1().rounded_sm().bg(bg)
                 .border_1().border_color(line)
                 .flex().flex_row()
-                .child(柱d)
-                .child(div().flex_none().w(px(1.0)).h_full().bg(line))
-                .child(d)
-                .into_any_element())
+                .child(柱d);
+            if 面 == 0 {
+                包み = 包み
+                    .child(div().flex_none().w(px(1.0)).h_full().bg(line))
+                    .child(d);
+            }
+            Some(包み.into_any_element())
         };
         (左, 右)
     }

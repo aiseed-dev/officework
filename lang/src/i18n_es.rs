@@ -1727,8 +1727,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("図形を選んでいます", "Hay una forma seleccionada"),
     ("画像を選んでいます", "Hay una imagen seleccionada"),
     ("図形も画像も選んでいません(表の上の図形か絵を押してください)", "No hay ninguna forma ni imagen seleccionada (haga clic en una en la hoja)"),
-    ("コメントはまだありません(共同編集タブの「コメント」で付けます)", "Todavía no hay comentarios (añada uno desde la pestaña Colaboración)"),
-    ("{} の {} へ飛びました", "Se saltó a {} en {}"),
     ("ページ — 文書ぜんぶの決め", "Página — ajustes de todo el documento"),
     ("ヘッダーとフッター", "Encabezado y pie"),
     ("編集", "Editar"),
@@ -1739,4 +1737,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("変更案(押すまで動きません)", "Cambio propuesto (no pasa nada hasta que pulses)"),
     ("選んだところについて聞けます。文を直すときは、直した文を先に見せます — 押すまで入りません。", "Puedes preguntar sobre la selección. Si se va a reescribir el texto, primero ves el texto nuevo: no entra nada hasta que pulses."),
     ("例: この段落を敬語にして / 半分の長さに / 言い方が硬くないか見て", "p. ej. hacer este párrafo más cortés / la mitad de largo / dime si suena rígido"),
+    ("コメントを表示しています(セルの吹き出し)", "Mostrando comentarios (como globos en las celdas)"),
 ];
