@@ -1742,4 +1742,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("外へ出ます", "đi ra khỏi máy này"),
     ("宛先の決め方", "Cách đặt đích"),
     ("settings.toml の ai_url / ai_model(環境変数 OFFICE_URL が優先)", "ai_url / ai_model trong settings.toml (biến môi trường OFFICE_URL được ưu tiên)"),
+    ("新しい会話", "Cuộc trò chuyện mới"),
+    ("新しい会話にしました(表は触っていません)", "Đã bắt đầu cuộc trò chuyện mới (không đụng vào trang tính)"),
+    ("直してもらう", "Nhờ sửa lại"),
+    ("そのままにする", "Cứ để vậy"),
+    ("落ちました。{}", "Thất bại. {}"),
+    ("入れました。{}", "Đã áp dụng. {}"),
+    ("宛先: {}(押すと替わる)", "Đích: {} (bấm để đổi)"),
+    ("さっきの台本が落ちました。誤りを読んで直した台本を出してください。\n\n【出た誤り】\n{}\n\n【落ちた台本】\n{}", "Kịch bản vừa rồi thất bại. Hãy đọc lỗi và đưa ra kịch bản đã sửa.\n\n【Lỗi】\n{}\n\n【Kịch bản thất bại】\n{}"),
 ];

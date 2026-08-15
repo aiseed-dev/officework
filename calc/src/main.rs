@@ -395,6 +395,9 @@ struct Calc {
     pub(crate) chat_focus: bool,
     /// 変更案の台本が裏で走っている間(押し重ねを止める)
     pub(crate) chat_busy: bool,
+    /// 走らせて落ちたときの誤り(「直してもらう」に添えて送る)。
+    /// 成功したら消える — 古い誤りを持ち回らない
+    pub(crate) chat_err: Option<String>,
     /// 左パネルのいまの面(0=会話 1=コメント)。柱のアイコンで切り替える
     pub(crate) left_face: u8,
     /// 右パネルのいまの面(0=セルの設定 1=図形と画像)

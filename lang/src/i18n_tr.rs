@@ -1742,4 +1742,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("外へ出ます", "bu makineden çıkar"),
     ("宛先の決め方", "Hedef nasıl belirlenir"),
     ("settings.toml の ai_url / ai_model(環境変数 OFFICE_URL が優先)", "settings.toml içindeki ai_url / ai_model (OFFICE_URL ortam değişkeni önceliklidir)"),
+    ("新しい会話", "Yeni sohbet"),
+    ("新しい会話にしました(表は触っていません)", "Yeni sohbet başlatıldı (sayfaya dokunulmadı)"),
+    ("直してもらう", "Düzeltmesini iste"),
+    ("そのままにする", "Böyle bırak"),
+    ("落ちました。{}", "Başarısız oldu. {}"),
+    ("入れました。{}", "Uygulandı. {}"),
+    ("宛先: {}(押すと替わる)", "Hedef: {} (değiştirmek için basın)"),
+    ("さっきの台本が落ちました。誤りを読んで直した台本を出してください。\n\n【出た誤り】\n{}\n\n【落ちた台本】\n{}", "Önceki betik başarısız oldu. Hatayı oku ve düzeltilmiş bir betik ver.\n\n[Hata]\n{}\n\n[Başarısız betik]\n{}"),
 ];

@@ -440,6 +440,13 @@ Open it with **View tab > Left panel**.
   **one Ctrl+Z** away
 - Requests that don't change the sheet (what does this mean, write me one
   formula) are simply answered
+- **The conversation continues** (2026-08-16). "Now sort that ascending
+  instead" works — the last three exchanges are sent along
+- **If it fails, press "Ask it to fix this".** When a script fails, the error
+  appears in the conversation and one press asks for a corrected script. Run,
+  fail, fix — as many rounds as you need
+- **"New conversation"** clears the thread (the sheet is untouched)
+- **The destination** can be switched right under the input box
 
 A script is the form the model writes most accurately (the xlwings/openpyxl
 shape) and — more importantly — **the form a person can check**.

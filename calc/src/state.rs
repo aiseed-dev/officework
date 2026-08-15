@@ -155,6 +155,7 @@ impl Calc {
             chat_plan: None,
             chat_focus: false,
             chat_busy: false,
+            chat_err: None,
             left_face: 0,
             right_face: 0,
             tool: None,
@@ -2389,10 +2390,58 @@ impl Calc {
             self.status = ui::t!("用件がありません").into();
             return;
         }
-        self.chat_log.push((true, t.clone()));
         self.chat_in = Editor::new("");
+        self.chat_ask(t, cx);
+    }
+
+    /// 頼みを1つ送る。**それまでのやりとりを添える**(2026-08-16)。
+    ///
+    /// 前は毎回1往復で切れていて、「さっきの表を今度は昇順に」が通らなかった。
+    /// 一問一答の口(`ask`)しか無いので、**書き起こしを頼みの頭に畳んで**
+    /// 渡す。直近だけにするのは、長い会話でセルの中身ごと膨らませないため
+    pub(crate) fn chat_ask(&mut self, 用件: String, cx: &mut Context<Self>) {
+        self.chat_log.push((true, 用件.clone()));
         self.chat_plan = None;
-        self.ai_go(CalcAi::Chat(t), cx);
+        // 直近の6つ(3往復)まで。**いま足した自分の発言は除く**
+        let n = self.chat_log.len().saturating_sub(1);
+        let 前 = &self.chat_log[n.saturating_sub(6)..n];
+        let q = if 前.is_empty() {
+            用件
+        } else {
+            let mut s = String::from("これまでのやりとり:\n");
+            for (自分, 字) in 前 {
+                s.push_str(if *自分 { "私: " } else { "あなた: " });
+                s.push_str(字);
+                s.push('\n');
+            }
+            format!("{s}\n続けて、次の頼みに答えてください。\n{用件}")
+        };
+        self.ai_go(CalcAi::Chat(q), cx);
+    }
+
+    /// **新しい会話にする。** やりとりも変更案も捨てる(書類は触らない)
+    pub(crate) fn chat_reset(&mut self) {
+        self.chat_log.clear();
+        self.chat_plan = None;
+        self.chat_err = None;
+        self.chat_in = Editor::new("");
+        self.status = ui::t!("新しい会話にしました(表は触っていません)").into();
+    }
+
+    /// **落ちた台本を直してもらう。** 出た誤りをそのまま添えて頼み直す —
+    /// Agent Panel の「走らせて、落ちたら直す」の芯はここ(2026-08-16)
+    pub(crate) fn chat_fix(&mut self, cx: &mut Context<Self>) {
+        let Some(err) = self.chat_err.take() else { return };
+        let 案 = self.chat_plan.clone().unwrap_or_default();
+        self.chat_ask(
+            ui::tf!(
+                "さっきの台本が落ちました。誤りを読んで直した台本を出してください。\n\n\
+                 【出た誤り】\n{}\n\n【落ちた台本】\n{}",
+                err,
+                案
+            ),
+            cx,
+        );
     }
 
     /// **変更案を走らせる。** ここが「人が押した」の一点 —
@@ -2433,8 +2482,17 @@ impl Calc {
                 match r {
                     Ok((true, out, _)) => {
                         this.chat_plan = None;
+                        this.chat_err = None;
                         let 尻 = out.lines().rev().take(3).collect::<Vec<_>>().join(" / ");
-                        this.chat_log.push((false, ui::t!("入れました。").to_string()));
+                        // **結果を会話に戻す。** 次の頼みがこれを踏まえられる
+                        this.chat_log.push((
+                            false,
+                            if 尻.trim().is_empty() {
+                                ui::t!("入れました。").to_string()
+                            } else {
+                                ui::tf!("入れました。{}", 尻).to_string()
+                            },
+                        ));
                         this.status = if 尻.trim().is_empty() {
                             ui::t!("変更案を入れました(Ctrl+Z で戻せます)").into()
                         } else {
@@ -2443,6 +2501,11 @@ impl Calc {
                         this.reload_from_disk_if_needed();
                     }
                     Ok((false, _, err)) => {
+                        // **誤りを控えて会話にも出す。** 「直してもらう」で
+                        // そのまま送れるようにする(Agent Panel の作法)
+                        let 尻 = err.lines().rev().take(4).collect::<Vec<_>>().join("\n");
+                        this.chat_log.push((false, ui::tf!("落ちました。{}", 尻).to_string()));
+                        this.chat_err = Some(尻.clone());
                         this.status = ui::tf!("台本が落ちました: {}",
                             err.lines().rev().take(2).collect::<Vec<_>>().join(" / ")).into();
                     }

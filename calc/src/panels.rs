@@ -361,8 +361,13 @@ impl Calc {
                 .p_2()
                 .flex().flex_col().gap_1();
             if 面 == 0 {
-            d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
-                .text_color(fg).child(ui::t!("AI と相談する").to_string()));
+            // 見出しの行。**新しい会話**は Agent Panel と同じく頭に置く
+            d = d.child(div().flex().flex_row().items_center().gap_2()
+                .child(div().flex_1().text_size(px(us * 12.5))
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(fg).child(ui::t!("AI と相談する").to_string()))
+                .child(釦("chat-new", ui::t!("新しい会話").to_string(), false).on_click(
+                    cx.listener(|this, _, _, cx| { this.chat_reset(); cx.notify() }))));
             d = d.child(div().text_size(px(us * 10.5)).text_color(薄).child(
                 ui::t!("選んだ範囲について聞けます。表を変えるときは、\
                         やることを先に見せます — 押すまで表は変わりません。").to_string()));
@@ -385,6 +390,18 @@ impl Calc {
             }
             d = d.child(会話);
 
+            // **落ちたら直してもらう。** 誤りを添えて頼み直す一押し —
+            // 走らせて直す、が Agent Panel の芯(2026-08-16)
+            if self.chat_err.is_some() {
+                d = d.child(列().mt_1()
+                    .child(釦("chat-fix", ui::t!("直してもらう").to_string(), true).on_click(
+                        cx.listener(|this, _, _, cx| { this.chat_fix(cx); cx.notify() })))
+                    .child(釦("chat-err-drop", ui::t!("そのままにする").to_string(), false)
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.chat_err = None;
+                            cx.notify()
+                        }))));
+            }
             // 変更案(Python)。**押すまで走らない**
             if let Some(plan) = self.chat_plan.clone() {
                 d = d.child(見出し(ui::t!("変更案(押すまで動きません)").to_string()));
@@ -439,6 +456,19 @@ impl Calc {
                     .child(ui::t!("考えています…").to_string()));
             }
             d = d.child(r);
+            // **宛先はここで替える**(Agent Panel はモデルを下に出す)。
+            // 詳細設定まで行かずに、話しながら切り替えられる
+            let 宛 = ui::ai::backend();
+            d = d.child(div()
+                .id("chat-where")
+                .mt_1().px_1().py_0p5().rounded_sm().cursor_pointer()
+                .text_size(px(us * 10.5)).text_color(薄)
+                .hover(move |s| s.bg(if dk { rgb(0x2C333A) } else { rgb(0xEAF5EE) }))
+                .child(ui::tf!("宛先: {}(押すと替わる)", 宛.label()).to_string())
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.run_cmd("ai-where", cx);
+                    cx.notify()
+                })));
             }
             // **外側の柱**(左パネルは窓の左端の側)。会話とコメントを切り替える
             let 柱d = 柱()

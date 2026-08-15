@@ -1742,4 +1742,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("外へ出ます", "quitte cette machine"),
     ("宛先の決め方", "Comment définir la destination"),
     ("settings.toml の ai_url / ai_model(環境変数 OFFICE_URL が優先)", "ai_url / ai_model dans settings.toml (la variable d'environnement OFFICE_URL l'emporte)"),
+    ("新しい会話", "Nouvelle conversation"),
+    ("新しい会話にしました(表は触っていません)", "Nouvelle conversation démarrée (la feuille n'a pas été touchée)"),
+    ("直してもらう", "Demander de corriger"),
+    ("そのままにする", "Laisser tel quel"),
+    ("落ちました。{}", "Échec. {}"),
+    ("入れました。{}", "Appliqué. {}"),
+    ("宛先: {}(押すと替わる)", "Destination : {} (appuyez pour changer)"),
+    ("さっきの台本が落ちました。誤りを読んで直した台本を出してください。\n\n【出た誤り】\n{}\n\n【落ちた台本】\n{}", "Le script précédent a échoué. Lis l'erreur et donne-moi un script corrigé.\n\n[Erreur]\n{}\n\n[Script en échec]\n{}"),
 ];
