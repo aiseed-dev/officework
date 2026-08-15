@@ -1090,7 +1090,7 @@ impl Writer {
                 .into();
             }
             // ---- AI(モデルに任せる変換と生成の道具箱)----
-            // 宛先は人が選ぶ。押すたびに 手元 → Claude(定額)→ Claude(API)
+            // 宛先は人が選ぶ。押すたびに 手元 → Claude Agent → Claude(API)
             "ai-where" => {
                 let now = ui::ai::backend();
                 let next = now.next();

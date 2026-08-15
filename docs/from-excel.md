@@ -550,7 +550,7 @@ destination is a model on this machine, so nothing leaves your network.
 | Asking for a macro | Different | calc has no button for it (writer has one on the Plugins tab). Paste the "briefing for the AI", have it write the script, put it in plugins, and run it yourself |
 | AI-assisted VBA migration | Different | No one-press button yet. The pattern — olevba, then the briefing, then checking the answers in the sandbox — is written up in the manual |
 | Copilot connectors | By design | We don't bundle AI together with data ingestion (see the section on bringing data in) |
-| Licensing and sign-in | Different | Neither exists. The destination cycles local (default) → Claude subscription → Claude API (keys live in environment variables only). If one can't be used it says why and declines |
+| Licensing and sign-in | Different | Neither exists. The destination cycles local (default) → Claude Agent → Claude API. **API key only** (from environment variables); there is no sign-in. If one can't be used it says why and declines |
 | Privacy | Different | Something leaves this machine only when you explicitly chose that destination. Keys never enter the workbook |
 | Adjusting wording (rewrite, polite form, translate) | Same | Only text cells are replaced; numbers and formulas are left alone |
 | Filling in the rest of the data | Same | "Continue". It tells you outright: this is the model guessing, so check it |

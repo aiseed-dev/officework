@@ -17,8 +17,12 @@ default = ["ai"]
 ai = ["dep:rustls", "dep:webpki-roots"]
 
 [dependencies]
-# AI の宛先(Claude API)。定額の CLI 経由なら要らないが、
-# API を選んだときのために https を持つ
+# **Python を探して時間制限つきで走らせる。** Agent SDK は Python の
+# 公式ライブラリなので、宛先の1つがこれを要る(2026-08-15)。
+# pyrun は依存ゼロの std だけの機構で、循環もしない
+pyrun = { path = "../pyrun" }
+# AI の宛先(Claude API を直に叩く道)。Python も SDK も要らない
+# — 規約が名指しで勧めている「API キー認証」そのもの
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"], optional = true }
 webpki-roots = { version = "0.26", optional = true }
 

@@ -16,10 +16,14 @@ OCR では金額を読み違えます** — 家計簿で金額を間違えるの
 **AI が使えなければ、この見本は動きません。名指しで断ります。**
 できない物をできるように見せない、がこのソフトの決めです。
 
-用意する物(どちらか一つ):
+用意する物:
 
 - `ANTHROPIC_API_KEY` を環境変数に置く(officework 本体の AI と同じ鍵)
-- `claude`(Claude Code)を入れておく — 定額の契約で使えます
+
+**鍵での認証だけを使います。** 手元の実行体の認証に相乗りする道は
+2026-08-15 にやめました — Anthropic の規約が、第三者の製品で
+claude.ai のログインと枠を提供することを(事前の承認なしには)
+許していないためです。
 
 ## なぜ手続き(@家計簿)なのか
 
@@ -32,8 +36,6 @@ import base64
 import json
 import mimetypes
 import os
-import shutil
-import subprocess
 import urllib.request
 
 from officework import calc as xw
@@ -59,18 +61,6 @@ def _画像を渡せる形に(path):
     kind = mimetypes.guess_type(path)[0] or "image/jpeg"
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode(), kind
-
-
-def _claude_cli_で読む(path):
-    """Claude Code(定額の契約)で読む。写真の径路を渡すだけで読んでくれる"""
-    claude = shutil.which("claude")
-    if not claude:
-        return None
-    r = subprocess.run(
-        [claude, "-p", f"{言いつけ}\n\n画像: {path}"],
-        capture_output=True, text=True, timeout=120,
-    )
-    return r.stdout.strip() if r.returncode == 0 else None
 
 
 def _api_で読む(path):
@@ -110,12 +100,11 @@ def 読む(path):
     if not os.path.exists(path):
         raise SystemExit(f"写真がありません: {path}")
 
-    答え = _claude_cli_で読む(path) or _api_で読む(path)
+    答え = _api_で読む(path)
     if 答え is None:
         raise SystemExit(
             "AI が使えないので読めません。"
-            "ANTHROPIC_API_KEY を環境変数に置くか、claude(Claude Code)を"
-            "入れてください"
+            "ANTHROPIC_API_KEY を環境変数に置いてください"
         )
     # JSON だけを取り出す(前置きが付いてきた時のため)
     s = 答え[答え.find("{"): 答え.rfind("}") + 1]

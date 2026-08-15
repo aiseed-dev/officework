@@ -7,11 +7,27 @@
 //! 宛先は3つ:
 //!
 //! - **ローカル** — 127.0.0.1 の OpenAI 互換(校正と同じ口)。外に出ない
-//! - **Claude(定額)** — 手元の `claude` コマンド(Claude Code の CLI)を
-//!   子で呼ぶ。**API の鍵は要らない** — CLI が持っている認証(定額の
-//!   契約でも)をそのまま使う。発注者の指定(2026-08-04)
-//! - **Claude(API)** — Anthropic の API。鍵は環境変数 `ANTHROPIC_API_KEY`
-//!   からだけ読む(設定ファイルにも文書にも書かない)
+//! - **Claude Agent** — Anthropic の Agent SDK(Python)を子で呼ぶ。
+//!   `pip install claude-agent-sdk` だけで足りる(SDK が自分の実行体を
+//!   同梱している)。**認証は API の鍵**
+//! - **Claude(API)** — Anthropic の API を直に叩く。Python も要らない
+//!
+//! # 鍵で認証する(2026-08-15 に作り替えた)
+//!
+//! 前は「手元の `claude` コマンドを子で呼び、その認証に相乗りする」道を
+//! 持っていた。**これは規約に反する**:
+//!
+//! > Unless previously approved, Anthropic does not allow third party
+//! > developers to offer claude.ai login or rate limits for their products,
+//! > including agents built on the Claude Agent SDK. Use the API key
+//! > authentication methods described in the Quickstart instead.
+//!
+//! 禁じられているのは「**開発者が自社製品でログインと枠を提供すること**」。
+//! そこで相乗りの道をやめ、公式の Agent SDK に載せ替えて、
+//! **鍵(`ANTHROPIC_API_KEY`)を要る物にした**。うちはログインの口を作らない。
+//!
+//! 画面に "Claude Code" とは書かない(Anthropic の商標の指針で許されて
+//! いない。使えるのは "Claude" / "Claude Agent")。
 //!
 //! 繋がらなければ「できません」と言う。**黙って空の結果にしない。**
 
@@ -23,8 +39,8 @@ pub enum Backend {
     /// 手元のモデル(既定。基幹網の外に出ない)
     #[default]
     Local,
-    /// Claude Code の CLI(定額の契約でも使える)
-    ClaudeCli,
+    /// Anthropic の Agent SDK(Python)経由。認証は API の鍵
+    ClaudeAgent,
     /// Anthropic の API(鍵は環境変数から)
     ClaudeApi,
 }
@@ -33,20 +49,23 @@ impl Backend {
     pub fn label(self) -> &'static str {
         match self {
             Backend::Local => "手元のモデル(外に出ない)",
-            Backend::ClaudeCli => "Claude(定額。手元の claude を使う)",
+            Backend::ClaudeAgent => "Claude Agent(SDK 経由。鍵は環境変数から)",
             Backend::ClaudeApi => "Claude(API。鍵は環境変数から)",
         }
     }
     fn as_str(self) -> &'static str {
         match self {
             Backend::Local => "local",
-            Backend::ClaudeCli => "claude-cli",
+            Backend::ClaudeAgent => "claude-agent",
             Backend::ClaudeApi => "claude-api",
         }
     }
     fn from_str(s: &str) -> Backend {
         match s.trim() {
-            "claude-cli" => Backend::ClaudeCli,
+            "claude-agent" => Backend::ClaudeAgent,
+            // 2026-08-15 に廃した宛先。**黙って読み替えない** — 手元の
+            // モデルへ落ちるので、選び直してもらう
+            "claude-cli" => Backend::Local,
             "claude-api" => Backend::ClaudeApi,
             _ => Backend::Local,
         }
@@ -54,8 +73,8 @@ impl Backend {
     /// 次の宛先(ボタンで回して選ぶ)
     pub fn next(self) -> Backend {
         match self {
-            Backend::Local => Backend::ClaudeCli,
-            Backend::ClaudeCli => Backend::ClaudeApi,
+            Backend::Local => Backend::ClaudeAgent,
+            Backend::ClaudeAgent => Backend::ClaudeApi,
             Backend::ClaudeApi => Backend::Local,
         }
     }
@@ -87,56 +106,74 @@ pub fn set_backend(b: Backend) {
     let _ = std::fs::write(p, b.as_str());
 }
 
-/// `claude` コマンドの居場所。**定額の契約で使う道** —
-/// 鍵は要らず、CLI が持っている認証をそのまま使う
-pub fn claude_cli() -> Option<std::path::PathBuf> {
-    if let Some(p) = std::env::var_os("JO_CLAUDE") {
-        let p = std::path::PathBuf::from(p);
-        if p.exists() {
-            return Some(p);
-        }
+/// Agent SDK に渡す小さな橋。**標準入力は使えない**(pyrun の
+/// `run_with_timeout` が閉じる)ので、頼みは JSON のファイルで渡す。
+///
+/// **道具は与えない**(`tools=[]`)— 手元のファイルを触らせない。
+/// 一往復で終わらせる(`max_turns=1`)。
+const BRIDGE: &str = r#"import json, sys
+import anyio
+from claude_agent_sdk import query, ClaudeAgentOptions
+
+spec = json.load(open(sys.argv[1], encoding="utf-8"))
+
+async def main():
+    out = []
+    opts = ClaudeAgentOptions(
+        system_prompt=spec.get("system") or None,
+        max_turns=1,
+        tools=[],
+        model=spec.get("model") or None,
+    )
+    async for m in query(prompt=spec["user"], options=opts):
+        for b in getattr(m, "content", None) or []:
+            t = getattr(b, "text", None)
+            if t:
+                out.append(t)
+    sys.stdout.write("".join(out))
+
+anyio.run(main)
+"#;
+
+/// 走らせられなかった理由を人の言葉に(pyrun の `RunErr` は素の型)
+fn run_err(e: &pyrun::RunErr) -> String {
+    match e {
+        pyrun::RunErr::Spawn(io) => format!("起こせません: {io}"),
+        pyrun::RunErr::Timeout(s) => format!("{s} 秒で切りました(返事が来ません)"),
+        pyrun::RunErr::Wait(m) => m.clone(),
     }
-    // PATH から
-    if let Ok(path) = std::env::var("PATH") {
-        for dir in path.split(':') {
-            let p = std::path::Path::new(dir).join("claude");
-            if p.is_file() {
-                return Some(p);
-            }
-        }
+}
+
+/// Agent SDK(Python)が入っているか。入っていなければ入れ方を言う
+fn agent_sdk_ready() -> Result<(), String> {
+    let py = pyrun::find_python();
+    let mut cmd = std::process::Command::new(py);
+    cmd.arg("-c").arg("import claude_agent_sdk");
+    match pyrun::run_with_timeout(&mut cmd, 30) {
+        Ok((true, _, _)) => Ok(()),
+        Ok((false, _, _)) => Err("Agent SDK が入っていません(pip install claude-agent-sdk \
+             で入ります。実行体は SDK が同梱しているので、ほかに要る物は \
+             ありません)"
+            .to_string()),
+        Err(e) => Err(format!("Python を動かせません: {}", run_err(&e))),
     }
-    // よくある置き場
-    let home = std::env::var_os("HOME").map(std::path::PathBuf::from)?;
-    for rel in [
-        ".local/bin/claude",
-        ".npm-global/bin/claude",
-        ".volta/bin/claude",
-        ".bun/bin/claude",
-    ] {
-        let p = home.join(rel);
-        if p.is_file() {
-            return Some(p);
-        }
-    }
-    for p in ["/usr/local/bin/claude", "/opt/homebrew/bin/claude"] {
-        let p = std::path::Path::new(p);
-        if p.is_file() {
-            return Some(p.to_path_buf());
-        }
-    }
-    None
 }
 
 /// いまの宛先が使えるか。使えないなら**理由を言う**(黙って空にしない)
 pub fn ready(b: Backend) -> Result<(), String> {
     match b {
         Backend::Local => Ok(()),
-        Backend::ClaudeCli => claude_cli().map(|_| ()).ok_or_else(|| {
-            "claude が見つかりません。定額の契約で使うには Claude Code の \
-             CLI を入れてください(npm i -g @anthropic-ai/claude-code)。\
-             置き場が変わっているなら JO_CLAUDE に道を教えてください"
-                .to_string()
-        }),
+        // **鍵を要る物にする。** Agent SDK は環境によっては他の資格情報も
+        // 拾えるが、うちが提供するのは鍵での認証だけ(規約の言う
+        // 「API key authentication」)。無ければここで断る
+        Backend::ClaudeAgent => {
+            if !std::env::var("ANTHROPIC_API_KEY").is_ok_and(|k| !k.is_empty()) {
+                return Err("ANTHROPIC_API_KEY がありません(鍵は環境変数からだけ読みます \
+                     — 文書にも設定にも書きません)"
+                    .to_string());
+            }
+            agent_sdk_ready()
+        }
         Backend::ClaudeApi => {
             if std::env::var("ANTHROPIC_API_KEY").is_ok_and(|k| !k.is_empty()) {
                 Ok(())
@@ -157,58 +194,52 @@ pub fn ask(b: Backend, system: &str, user: &str) -> Result<String, String> {
             let ep = Endpoint::default();
             model::chat(&ep, system, user, 0.2).map(|r| r.content)
         }
-        Backend::ClaudeCli => claude_cli_ask(system, user),
+        Backend::ClaudeAgent => agent_sdk_ask(system, user),
         Backend::ClaudeApi => claude_api_ask(system, user),
     }
 }
 
-/// Claude Code の CLI に頼む(定額の契約でも動く)。
-/// 一問一答の形(`-p`)で呼び、答えだけを受け取る。
-/// **道具は与えない**(`--allowed-tools` を空に)— 手元のファイルを
-/// 触らせない。文書の中身は標準入力で渡す(コマンド行に載せない)
-fn claude_cli_ask(system: &str, user: &str) -> Result<String, String> {
-    use std::io::Write as _;
-    let exe = claude_cli().ok_or("claude が見つかりません")?;
-    let mut cmd = std::process::Command::new(exe);
-    cmd.arg("-p")
-        .arg("--output-format")
-        .arg("text")
-        .arg("--allowed-tools")
-        .arg("")
-        .arg("--append-system-prompt")
-        .arg(system)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
-    if let Ok(m) = std::env::var("JO_AI_MODEL") {
-        if !m.is_empty() {
-            cmd.arg("--model").arg(m);
+/// Agent SDK(Python)に頼む。**文書の中身はコマンド行に載せない** —
+/// 一時のファイルに JSON で置いて径路だけ渡し、終わったら消す
+fn agent_sdk_ask(system: &str, user: &str) -> Result<String, String> {
+    let dir = std::env::temp_dir().join("officework-ai");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("置き場を作れません: {e}"))?;
+    // 同じ名前で重ならないように、頼みの指紋を混ぜる
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    use std::hash::{Hash, Hasher};
+    (system, user).hash(&mut h);
+    let spec = dir.join(format!("ask-{:x}.json", h.finish()));
+    let bridge = dir.join("bridge.py");
+    let model = std::env::var("JO_AI_MODEL").unwrap_or_default();
+    let body = format!(
+        "{{\"system\":{},\"user\":{},\"model\":{}}}",
+        format!("\"{}\"", model::esc(system)),
+        format!("\"{}\"", model::esc(user)),
+        format!("\"{}\"", model::esc(&model))
+    );
+    std::fs::write(&spec, body).map_err(|e| format!("頼みを置けません: {e}"))?;
+    std::fs::write(&bridge, BRIDGE).map_err(|e| format!("橋を置けません: {e}"))?;
+    let py = pyrun::find_python();
+    let mut cmd = std::process::Command::new(py);
+    cmd.arg(&bridge).arg(&spec);
+    let r = pyrun::run_with_timeout(&mut cmd, 180);
+    let _ = std::fs::remove_file(&spec);
+    match r {
+        Ok((true, out, _)) if !out.trim().is_empty() => Ok(out.trim().to_string()),
+        Ok((true, _, _)) => Err("答えが空です".to_string()),
+        Ok((false, _, err)) => {
+            let last = err
+                .lines()
+                .rev()
+                .find(|l| !l.trim().is_empty())
+                .unwrap_or("理由が分かりません");
+            Err(format!("Claude Agent: {last}"))
         }
+        Err(e) => Err(format!("Agent SDK を動かせません: {}", run_err(&e))),
     }
-    let mut ch = cmd
-        .spawn()
-        .map_err(|e| format!("claude を起こせません: {e}"))?;
-    if let Some(si) = ch.stdin.as_mut() {
-        si.write_all(user.as_bytes())
-            .map_err(|e| format!("claude に渡せません: {e}"))?;
-    }
-    let out = ch
-        .wait_with_output()
-        .map_err(|e| format!("claude が答えません: {e}"))?;
-    let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    if !out.status.success() || text.is_empty() {
-        let err = String::from_utf8_lossy(&out.stderr);
-        let last = err
-            .lines()
-            .rev()
-            .find(|l| !l.trim().is_empty())
-            .unwrap_or("答えが空です");
-        return Err(format!("claude: {last}"));
-    }
-    Ok(text)
 }
 
-/// Anthropic の API に頼む(鍵は環境変数からだけ)
+/// Anthropic の API に頼む(鍵は環境変数からだけ)/// Anthropic の API に頼む(鍵は環境変数からだけ)
 fn claude_api_ask(system: &str, user: &str) -> Result<String, String> {
     let key = std::env::var("ANTHROPIC_API_KEY").map_err(|_| "鍵がありません")?;
     let m = std::env::var("JO_AI_MODEL").unwrap_or_else(|_| "claude-sonnet-5".into());
@@ -236,9 +267,17 @@ fn claude_api_ask(system: &str, user: &str) -> Result<String, String> {
 mod tests {
     use super::*;
 
+    /// **廃した宛先は手元へ落とす。** 2026-08-15 に `claude-cli`(手元の
+    /// claude コマンドに相乗りする道)をやめた。古い ai.txt を読んだときに
+    /// 黙って別の外の宛先へ繋ぎ替えない — いちばん安全な手元へ倒す
+    #[test]
+    fn 廃した宛先は手元へ落ちる() {
+        assert_eq!(Backend::from_str("claude-cli"), Backend::Local);
+    }
+
     #[test]
     fn 宛先は覚えた形で戻る() {
-        for b in [Backend::Local, Backend::ClaudeCli, Backend::ClaudeApi] {
+        for b in [Backend::Local, Backend::ClaudeAgent, Backend::ClaudeApi] {
             assert_eq!(Backend::from_str(b.as_str()), b);
         }
         // 知らない字はローカル(いちばん安全な側)へ倒す
@@ -261,9 +300,11 @@ mod tests {
             let e = ready(Backend::ClaudeApi).unwrap_err();
             assert!(e.contains("ANTHROPIC_API_KEY"), "理由が薄い: {e}");
         }
-        if claude_cli().is_none() {
-            let e = ready(Backend::ClaudeCli).unwrap_err();
-            assert!(e.contains("claude"), "理由が薄い: {e}");
+        // Agent SDK も**鍵が要る**(うちが提供するのは鍵での認証だけ)。
+        // 鍵が無ければ、SDK が入っているかを見るより先にそう言う
+        if std::env::var("ANTHROPIC_API_KEY").is_err() {
+            let e = ready(Backend::ClaudeAgent).unwrap_err();
+            assert!(e.contains("ANTHROPIC_API_KEY"), "理由が薄い: {e}");
         }
         assert!(ready(Backend::Local).is_ok(), "手元はいつでも頼める");
     }

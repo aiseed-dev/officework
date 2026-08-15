@@ -417,10 +417,20 @@ A script is the form the model writes most accurately (the xlwings/openpyxl
 shape) and — more importantly — **the form a person can check**.
 
 **Choosing the destination** moved to File > Advanced settings, "AI
-destination". Each press cycles local model → Claude (subscription) → Claude
-(API). **Subscription** means calling the local `claude` command (Claude Code
-CLI), so no API key is needed. Unavailable destinations **say why on the spot**
-(default is the local model; **nothing leaves your network**).
+destination". Each press cycles local model → **Claude Agent** → Claude (API).
+
+- **Claude Agent** — through Anthropic's Agent SDK. `pip install
+  claude-agent-sdk` is all you need (the SDK bundles its own executable)
+- **Claude (API)** — calls the API directly; no Python required
+
+**Both need `ANTHROPIC_API_KEY`.** officework only ever uses API-key
+authentication — the path that piggybacked on a locally installed
+executable's credentials was removed on 2026-08-15, because Anthropic does not
+allow third-party products to offer claude.ai login or rate limits without
+prior approval.
+
+Unavailable destinations **say why on the spot** (default is the local model;
+**nothing leaves your network**).
 
 If the destination can't be reached the app says so (it never silently returns
 nothing). **Keys are never stored in the workbook.**
