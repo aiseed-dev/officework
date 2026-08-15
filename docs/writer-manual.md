@@ -382,15 +382,15 @@ based on measurements of 561 ambiguous-reading words).
 Headless tools: `office-spell document.txt` (exit code 0=clean 1=findings
 2=unreadable 3=incomplete), `--furigana`, `--washi`.
 
-## Plugins tab
+## Macros tab
 
-- **Macros**: choose a .py and **Python in a sandbox** (bubblewrap) edits a copy
+- **List**: the .py files in `~/.config/office/plugins`; pick one to run it
+  (in the sandbox). Extensions like Aozora annotations or EPUB go here
+- **From a file**: choose a .py outside the folder and **Python in a sandbox** (bubblewrap) edits a copy
   of the document; the result lands as one undo step. The script gets `d` =
   the python-docx Document. **Code is never stored in the document** (no
   executable content in docx — the policy differs from xlsx because python-docx
   already exists as public infrastructure)
-- **Manage plugins**: lists and runs .py files from `~/.config/office/plugins`
-  (in the sandbox). Extensions like Aozora annotations or EPUB go here
 - **Writing macros** — named fields (`fill`/`extract`), templates (`render`),
   speed rules, and the AI button: see the
   [writer macro manual](writer-macro-manual.md)

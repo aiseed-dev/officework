@@ -149,9 +149,9 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "왼쪽 패널", "show-left"),
         c("show-right", "오른쪽 패널", "show-right"),
     ]},
-    Tab { name: "플러그인", cmds: &[
-        c("plug-macros", "매크로", "plug-macros"),
-        c("plug-manage", "플러그인 관리", "plug-manage"),
+    Tab { name: "매크로", cmds: &[
+        c("plug-manage", "목록", "plug-manage"),
+        c("plug-macros", "파일로부터", "plug-macros"),
         c("ai-macro", "매크로 작성", "ai-macro"),
     ]},
 ];
@@ -306,10 +306,11 @@ pub const CALC: &[Tab] = &[
         c("csv-kind", "CSV 형식", "csv-kind"),
         c("flash-fill", "빠른 채우기", "flash-fill"),
     ]},
-    Tab { name: "Python", cmds: &[
+    Tab { name: "매크로", cmds: &[
         c("rec-toggle", "동작 기록", "py-run"),
         c("py-new", "새 .py", "py-new"),
         c("py-list", "목록", "py-list"),
+        c("plug-macros", "파일로부터", "plug-macros"),
         c("py-folder", "폴더 열기", "py-folder"),
     ]},
     Tab { name: "피벗 테이블", cmds: &[
@@ -373,10 +374,6 @@ pub const CALC: &[Tab] = &[
         c("show-zeros", "0 표시", "show-zeros"),
         c("show-left", "왼쪽 패널", "show-left"),
         c("show-right", "오른쪽 패널", "show-right"),
-    ]},
-    Tab { name: "플러그인", cmds: &[
-        c("plug-macros", "매크로", "plug-macros"),
-        c("plug-manage", "플러그인 관리", "plug-manage"),
     ]},
 ];
 

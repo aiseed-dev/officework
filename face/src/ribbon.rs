@@ -195,9 +195,11 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "左パネル", "show-left"),
         c("show-right", "右パネル", "show-right"),
     ]},
-    Tab { name: "プラグイン", cmds: &[
-        c("plug-macros", "マクロ", "plug-macros"),
-        c("plug-manage", "プラグインの管理", "plug-manage"),
+    // calc と同じく**マクロの段**へ(2026-08-16)。「一覧」は置き場の
+    // .py、「ファイルから」は置き場の外の .py
+    Tab { name: "マクロ", cmds: &[
+        c("plug-manage", "一覧", "plug-manage"),
+        c("plug-macros", "ファイルから", "plug-macros"),
         c("ai-macro", "マクロを書く", "ai-macro"),
     ]},
 ];
@@ -367,10 +369,16 @@ pub const CALC: &[Tab] = &[
     // セルの式。マクロはマクロ側がブックを新規に作ったり読み込んだりする —
     // どちらも「いまのブック」を前提にしない。だからここに残るのは
     // **編集の口だけ**。手続きの実行・一行のコード・計算し直すは外した
-    Tab { name: "Python", cmds: &[
+    // **マクロの段は1本**(2026-08-16 発注者「プラグインはマクロだけで
+    // いいのでは」)。前は Python の段とプラグインの段に割れていて、
+    // `py-list` と `plug-manage` が同じ置き場を2通りに並べていた。
+    // 「プラグイン」は作り手の言葉で、使う人の言葉は「マクロ」
+    // (2026-08-14 の決め)
+    Tab { name: "マクロ", cmds: &[
         c("rec-toggle", "操作を記録", "py-run"),
         c("py-new", "新しい .py", "py-new"),
         c("py-list", "一覧", "py-list"),
+        c("plug-macros", "ファイルから", "plug-macros"),
         c("py-folder", "置き場を開く", "py-folder"),
     ]},
     Tab { name: "ピボットテーブル", cmds: &[
@@ -438,10 +446,6 @@ pub const CALC: &[Tab] = &[
         // id・同じ札 — 訳が既にあるので新しい鍵は増えない
         c("show-left", "左パネル", "show-left"),
         c("show-right", "右パネル", "show-right"),
-    ]},
-    Tab { name: "プラグイン", cmds: &[
-        c("plug-macros", "マクロ", "plug-macros"),
-        c("plug-manage", "プラグインの管理", "plug-manage"),
     ]},
 ];
 
@@ -535,7 +539,10 @@ mod tests {
         // 発注者確定(2026-08-04): メニューは制限しない。実装しないものも
         // 場所は本家どおり(灰色)。タブごと消すことはしない
         for tabs in [WRITER, CALC] {
-            for want in ["共同編集", "保護", "プラグイン"] {
+            // **「プラグイン」は「マクロ」に改名した**(2026-08-16 発注者
+            // 「プラグインはマクロだけでいいのでは」)。本家に同じ段はあるが、
+            // 使う人の言葉に寄せた — 段を消したのではなく名を替えた
+            for want in ["共同編集", "保護", "マクロ"] {
                 assert!(
                     tabs.iter().any(|t| t.name == want),
                     "タブが無い: {want}"

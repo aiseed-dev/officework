@@ -361,7 +361,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Chưa phải là tệp (khi lưu sẽ có sổ nhắn tin bên cạnh)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Chưa có lời nhắn nào (gõ rồi Enter để ghi lại)"),
     ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Macro: chọn một .py thì Python trong sandbox sẽ chạy (b = sổ tính, s = trang tính. Bên trong vẫn là Dữ liệu > Python)"),
-    ("プラグイン: 選ぶとサンドボックスの中の Python で実行します(b=ブック s=シート)", "Plugin: chọn một cái thì nó chạy bằng Python trong sandbox (b = sổ tính, s = trang tính)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Hãy chọn một ô trống (không bao giờ ghi đè ô có nội dung)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Hãy chọn cột để làm slicer (cần có hàng dữ liệu dưới tiêu đề)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Chữ nghệ thuật: gõ chữ và nó được đặt thành ảnh chữ đậm có viền"),

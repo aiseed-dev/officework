@@ -361,7 +361,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Ainda não é um ficheiro (depois de guardar, fica um caderno de recados ao lado)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Ainda não há recados (escreva e prima Enter para deixar um)"),
     ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Macros: escolha um .py e o Python corre dentro do sandbox (b = livro, s = folha. É o mesmo mecanismo de Dados > Python)"),
-    ("プラグイン: 選ぶとサンドボックスの中の Python で実行します(b=ブック s=シート)", "Plugins: escolha um e é executado no Python dentro do sandbox (b = livro, s = folha)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Escolha uma célula vazia (não escrevemos por cima de células com conteúdo)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Escolha a coluna para a segmentação de dados (são precisas linhas de dados por baixo do cabeçalho)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Arte de texto: escreva o texto e ele é colocado como imagem, em negrito e com contorno"),

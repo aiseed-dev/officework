@@ -361,7 +361,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Henüz dosya değil (kaydedince yanında sohbet dosyası oluşur)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Henüz mesaj yok (yazıp Enter ile bırakın)"),
     ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Makrolar: bir .py seçin, kum havuzundaki Python çalışsın (b=kitap, s=sayfa. Çalışan şey Veri > Python ile aynı)"),
-    ("プラグイン: 選ぶとサンドボックスの中の Python で実行します(b=ブック s=シート)", "Eklentiler: seçtiğinizi kum havuzundaki Python çalıştırır (b=kitap, s=sayfa)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Boş bir hücre seçin (dolu hücrelerin üzerine asla yazılmaz)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Dilimleyici için bir sütun seçin (başlığın altında veri satırları gerekli)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Metin sanatı: yazın; kalın ve kenarlıklı süslü yazı resim olarak yerleştirilir"),

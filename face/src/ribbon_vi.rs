@@ -149,9 +149,9 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "Bảng bên trái", "show-left"),
         c("show-right", "Bảng bên phải", "show-right"),
     ]},
-    Tab { name: "Plugin", cmds: &[
-        c("plug-macros", "Macro", "plug-macros"),
-        c("plug-manage", "Quản lý plugin", "plug-manage"),
+    Tab { name: "Macro", cmds: &[
+        c("plug-manage", "Danh sách", "plug-manage"),
+        c("plug-macros", "Từ tệp", "plug-macros"),
         c("ai-macro", "Viết macro", "ai-macro"),
     ]},
 ];
@@ -306,10 +306,11 @@ pub const CALC: &[Tab] = &[
         c("csv-kind", "Dạng CSV", "csv-kind"),
         c("flash-fill", "Điền nhanh", "flash-fill"),
     ]},
-    Tab { name: "Python", cmds: &[
+    Tab { name: "Macro", cmds: &[
         c("rec-toggle", "Ghi lại thao tác", "py-run"),
         c("py-new", "Tệp .py mới", "py-new"),
         c("py-list", "Danh sách", "py-list"),
+        c("plug-macros", "Từ tệp", "plug-macros"),
         c("py-folder", "Mở thư mục", "py-folder"),
     ]},
     Tab { name: "PivotTable", cmds: &[
@@ -373,10 +374,6 @@ pub const CALC: &[Tab] = &[
         c("show-zeros", "Hiển thị số 0", "show-zeros"),
         c("show-left", "Bảng bên trái", "show-left"),
         c("show-right", "Bảng bên phải", "show-right"),
-    ]},
-    Tab { name: "Plugin", cmds: &[
-        c("plug-macros", "Macro", "plug-macros"),
-        c("plug-manage", "Quản lý plugin", "plug-manage"),
     ]},
 ];
 

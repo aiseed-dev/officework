@@ -149,9 +149,9 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "Left Panel", "show-left"),
         c("show-right", "Right Panel", "show-right"),
     ]},
-    Tab { name: "Plugins", cmds: &[
-        c("plug-macros", "Macros", "plug-macros"),
-        c("plug-manage", "Manage plugins", "plug-manage"),
+    Tab { name: "Macros", cmds: &[
+        c("plug-manage", "List", "plug-manage"),
+        c("plug-macros", "From file", "plug-macros"),
         c("ai-macro", "Write macro", "ai-macro"),
     ]},
 ];
@@ -306,10 +306,11 @@ pub const CALC: &[Tab] = &[
         c("csv-kind", "CSV format", "csv-kind"),
         c("flash-fill", "Fill by example", "flash-fill"),
     ]},
-    Tab { name: "Python", cmds: &[
+    Tab { name: "Macros", cmds: &[
         c("rec-toggle", "Record actions", "py-run"),
         c("py-new", "New .py", "py-new"),
         c("py-list", "List", "py-list"),
+        c("plug-macros", "From file", "plug-macros"),
         c("py-folder", "Open folder", "py-folder"),
     ]},
     Tab { name: "Pivot Table", cmds: &[
@@ -373,10 +374,6 @@ pub const CALC: &[Tab] = &[
         c("show-zeros", "Show zeros", "show-zeros"),
         c("show-left", "Left Panel", "show-left"),
         c("show-right", "Right Panel", "show-right"),
-    ]},
-    Tab { name: "Plugins", cmds: &[
-        c("plug-macros", "Macros", "plug-macros"),
-        c("plug-manage", "Manage plugins", "plug-manage"),
     ]},
 ];
 

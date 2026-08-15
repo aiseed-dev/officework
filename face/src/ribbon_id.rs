@@ -149,9 +149,9 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "Panel Kiri", "show-left"),
         c("show-right", "Panel Kanan", "show-right"),
     ]},
-    Tab { name: "Plugins", cmds: &[
-        c("plug-macros", "Makro", "plug-macros"),
-        c("plug-manage", "Kelola plugin", "plug-manage"),
+    Tab { name: "Makro", cmds: &[
+        c("plug-manage", "Daftar", "plug-manage"),
+        c("plug-macros", "Dari file", "plug-macros"),
         c("ai-macro", "Tulis makro", "ai-macro"),
     ]},
 ];
@@ -306,10 +306,11 @@ pub const CALC: &[Tab] = &[
         c("csv-kind", "Format CSV", "csv-kind"),
         c("flash-fill", "Isi menurut contoh", "flash-fill"),
     ]},
-    Tab { name: "Python", cmds: &[
+    Tab { name: "Makro", cmds: &[
         c("rec-toggle", "Rekam tindakan", "py-run"),
         c("py-new", ".py baru", "py-new"),
         c("py-list", "Daftar", "py-list"),
+        c("plug-macros", "Dari file", "plug-macros"),
         c("py-folder", "Buka folder plugins", "py-folder"),
     ]},
     Tab { name: "Tabel Pivot", cmds: &[
@@ -373,10 +374,6 @@ pub const CALC: &[Tab] = &[
         c("show-zeros", "Tampilkan nol", "show-zeros"),
         c("show-left", "Panel Kiri", "show-left"),
         c("show-right", "Panel Kanan", "show-right"),
-    ]},
-    Tab { name: "Plugins", cmds: &[
-        c("plug-macros", "Makro", "plug-macros"),
-        c("plug-manage", "Kelola plugin", "plug-manage"),
     ]},
 ];
 

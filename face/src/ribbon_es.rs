@@ -149,9 +149,9 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "Panel izquierdo", "show-left"),
         c("show-right", "Panel derecho", "show-right"),
     ]},
-    Tab { name: "Extensiones", cmds: &[
-        c("plug-macros", "Macros", "plug-macros"),
-        c("plug-manage", "Administrar complementos", "plug-manage"),
+    Tab { name: "Macros", cmds: &[
+        c("plug-manage", "Lista", "plug-manage"),
+        c("plug-macros", "Desde archivo", "plug-macros"),
         c("ai-macro", "Escribir macro", "ai-macro"),
     ]},
 ];
@@ -306,10 +306,11 @@ pub const CALC: &[Tab] = &[
         c("csv-kind", "Formato CSV", "csv-kind"),
         c("flash-fill", "Relleno rápido", "flash-fill"),
     ]},
-    Tab { name: "Python", cmds: &[
+    Tab { name: "Macros", cmds: &[
         c("rec-toggle", "Grabar acciones", "py-run"),
         c("py-new", "Nuevo .py", "py-new"),
         c("py-list", "Lista", "py-list"),
+        c("plug-macros", "Desde archivo", "plug-macros"),
         c("py-folder", "Abrir carpeta", "py-folder"),
     ]},
     Tab { name: "Tabla dinámica", cmds: &[
@@ -373,10 +374,6 @@ pub const CALC: &[Tab] = &[
         c("show-zeros", "Mostrar ceros", "show-zeros"),
         c("show-left", "Panel izquierdo", "show-left"),
         c("show-right", "Panel derecho", "show-right"),
-    ]},
-    Tab { name: "Extensiones", cmds: &[
-        c("plug-macros", "Macros", "plug-macros"),
-        c("plug-manage", "Administrar complementos", "plug-manage"),
     ]},
 ];
 

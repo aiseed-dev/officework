@@ -149,9 +149,9 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "左侧面板", "show-left"),
         c("show-right", "右侧面板", "show-right"),
     ]},
-    Tab { name: "插件", cmds: &[
-        c("plug-macros", "宏", "plug-macros"),
-        c("plug-manage", "管理插件", "plug-manage"),
+    Tab { name: "宏", cmds: &[
+        c("plug-manage", "列表", "plug-manage"),
+        c("plug-macros", "从文件", "plug-macros"),
         c("ai-macro", "编写宏", "ai-macro"),
     ]},
 ];
@@ -306,10 +306,11 @@ pub const CALC: &[Tab] = &[
         c("csv-kind", "CSV 格式", "csv-kind"),
         c("flash-fill", "快速填充", "flash-fill"),
     ]},
-    Tab { name: "Python", cmds: &[
+    Tab { name: "宏", cmds: &[
         c("rec-toggle", "记录操作", "py-run"),
         c("py-new", "新建 .py", "py-new"),
         c("py-list", "列表", "py-list"),
+        c("plug-macros", "从文件", "plug-macros"),
         c("py-folder", "打开文件夹", "py-folder"),
     ]},
     Tab { name: "数据透视表", cmds: &[
@@ -373,10 +374,6 @@ pub const CALC: &[Tab] = &[
         c("show-zeros", "显示 0", "show-zeros"),
         c("show-left", "左侧面板", "show-left"),
         c("show-right", "右侧面板", "show-right"),
-    ]},
-    Tab { name: "插件", cmds: &[
-        c("plug-macros", "宏", "plug-macros"),
-        c("plug-manage", "管理插件", "plug-manage"),
     ]},
 ];
 

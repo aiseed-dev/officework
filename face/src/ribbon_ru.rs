@@ -149,9 +149,9 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "Левая панель", "show-left"),
         c("show-right", "Правая панель", "show-right"),
     ]},
-    Tab { name: "Плагины", cmds: &[
-        c("plug-macros", "Макросы", "plug-macros"),
-        c("plug-manage", "Управление плагинами", "plug-manage"),
+    Tab { name: "Макросы", cmds: &[
+        c("plug-manage", "Список", "plug-manage"),
+        c("plug-macros", "Из файла", "plug-macros"),
         c("ai-macro", "Написать макрос", "ai-macro"),
     ]},
 ];
@@ -306,10 +306,11 @@ pub const CALC: &[Tab] = &[
         c("csv-kind", "Формат CSV", "csv-kind"),
         c("flash-fill", "Мгновенное заполнение", "flash-fill"),
     ]},
-    Tab { name: "Python", cmds: &[
+    Tab { name: "Макросы", cmds: &[
         c("rec-toggle", "Записывать действия", "py-run"),
         c("py-new", "Новый .py", "py-new"),
         c("py-list", "Список", "py-list"),
+        c("plug-macros", "Из файла", "plug-macros"),
         c("py-folder", "Открыть папку", "py-folder"),
     ]},
     Tab { name: "Сводная таблица", cmds: &[
@@ -373,10 +374,6 @@ pub const CALC: &[Tab] = &[
         c("show-zeros", "Показывать нули", "show-zeros"),
         c("show-left", "Левая панель", "show-left"),
         c("show-right", "Правая панель", "show-right"),
-    ]},
-    Tab { name: "Плагины", cmds: &[
-        c("plug-macros", "Макросы", "plug-macros"),
-        c("plug-manage", "Управление плагинами", "plug-manage"),
     ]},
 ];
 

@@ -149,9 +149,9 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "Sol Panel", "show-left"),
         c("show-right", "Sağ Panel", "show-right"),
     ]},
-    Tab { name: "Eklentiler", cmds: &[
-        c("plug-macros", "Makrolar", "plug-macros"),
-        c("plug-manage", "Eklentileri yönet", "plug-manage"),
+    Tab { name: "Makrolar", cmds: &[
+        c("plug-manage", "Liste", "plug-manage"),
+        c("plug-macros", "Dosyadan", "plug-macros"),
         c("ai-macro", "Makro yaz", "ai-macro"),
     ]},
 ];
@@ -306,10 +306,11 @@ pub const CALC: &[Tab] = &[
         c("csv-kind", "CSV biçimi", "csv-kind"),
         c("flash-fill", "Hızlı doldurma", "flash-fill"),
     ]},
-    Tab { name: "Python", cmds: &[
+    Tab { name: "Makrolar", cmds: &[
         c("rec-toggle", "İşlemleri kaydet", "py-run"),
         c("py-new", "Yeni .py", "py-new"),
         c("py-list", "Liste", "py-list"),
+        c("plug-macros", "Dosyadan", "plug-macros"),
         c("py-folder", "Klasörü aç", "py-folder"),
     ]},
     Tab { name: "Pivot Tablo", cmds: &[
@@ -373,10 +374,6 @@ pub const CALC: &[Tab] = &[
         c("show-zeros", "Sıfırları göster", "show-zeros"),
         c("show-left", "Sol Panel", "show-left"),
         c("show-right", "Sağ Panel", "show-right"),
-    ]},
-    Tab { name: "Eklentiler", cmds: &[
-        c("plug-macros", "Makrolar", "plug-macros"),
-        c("plug-manage", "Eklentileri yönet", "plug-manage"),
     ]},
 ];
 

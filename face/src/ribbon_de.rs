@@ -149,9 +149,9 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "Linkes Bedienfeld", "show-left"),
         c("show-right", "Rechtes Bedienungsfeld ", "show-right"),
     ]},
-    Tab { name: "Plugins", cmds: &[
-        c("plug-macros", "Makros", "plug-macros"),
-        c("plug-manage", "Plugins verwalten", "plug-manage"),
+    Tab { name: "Makros", cmds: &[
+        c("plug-manage", "Liste", "plug-manage"),
+        c("plug-macros", "Aus Datei", "plug-macros"),
         c("ai-macro", "Makro schreiben", "ai-macro"),
     ]},
 ];
@@ -306,10 +306,11 @@ pub const CALC: &[Tab] = &[
         c("csv-kind", "CSV-Format", "csv-kind"),
         c("flash-fill", "Musterfüllung", "flash-fill"),
     ]},
-    Tab { name: "Python", cmds: &[
+    Tab { name: "Makros", cmds: &[
         c("rec-toggle", "Aktionen aufzeichnen", "py-run"),
         c("py-new", "Neue .py", "py-new"),
         c("py-list", "Liste", "py-list"),
+        c("plug-macros", "Aus Datei", "plug-macros"),
         c("py-folder", "Ordner öffnen", "py-folder"),
     ]},
     Tab { name: "Pivot-Tabelle", cmds: &[
@@ -373,10 +374,6 @@ pub const CALC: &[Tab] = &[
         c("show-zeros", "Nullen anzeigen", "show-zeros"),
         c("show-left", "Linkes Bedienfeld", "show-left"),
         c("show-right", "Rechtes Bedienungsfeld ", "show-right"),
-    ]},
-    Tab { name: "Plugins", cmds: &[
-        c("plug-macros", "Makros", "plug-macros"),
-        c("plug-manage", "Plugins verwalten", "plug-manage"),
     ]},
 ];
 

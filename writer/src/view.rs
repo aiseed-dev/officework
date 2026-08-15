@@ -263,11 +263,13 @@ impl Render for Writer {
                 ("‖", None), ("show-statusbar", None), ("show-right", None),
             ],
         ];
+        // **マクロの段**(2026-08-16 に「プラグイン」から改名)。
+        // 「一覧」は置き場の .py、「ファイルから」は置き場の外の .py。
+        // **マクロを書く**(AI)もここ — 置き場に .py を置く仕事で、
+        // 会話では代われない(2026-08-15、AI タブの廃止で移した)
         const PLUG_ROWS: &[&[LItem]] = &[&[
-            ("plug-macros", Some("マクロ")),
-            ("plug-manage", Some("プラグインの管理")),
-            // **マクロを書く**(AI)もここへ。置き場に .py を置く仕事で、
-            // 会話では代われない(2026-08-15、AI タブの廃止で移した)
+            ("plug-manage", Some("一覧")),
+            ("plug-macros", Some("ファイルから")),
             ("ai-macro", Some("マクロを書く")),
         ]];
         let rows: Option<&[&[LItem]]> = match ribbon::WRITER[self.tab].name {
@@ -280,7 +282,7 @@ impl Render for Writer {
             "共同編集" => Some(COLLAB_ROWS),
             "保護" => Some(PROT_ROWS),
             "表示" => Some(VIEW_ROWS),
-            "プラグイン" => Some(PLUG_ROWS),
+            "マクロ" => Some(PLUG_ROWS),
             _ => None,
         };
         if let Some(rows) = rows {

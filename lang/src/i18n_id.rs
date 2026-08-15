@@ -361,7 +361,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Belum menjadi file (simpan untuk mendapatkan file obrolan di sampingnya)"),
     ("まだ言伝はありません(打って Enter で書き残します)", "Belum ada pesan (ketik lalu tekan Enter untuk meninggalkannya)"),
     ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Makro: pilih sebuah .py dan Python di dalam sandbox akan berjalan (b = buku kerja, s = lembar. Isinya sama dengan Data > Python)"),
-    ("プラグイン: 選ぶとサンドボックスの中の Python で実行します(b=ブック s=シート)", "Plugin: pilih satu untuk dijalankan dengan Python di dalam sandbox (b = buku kerja, s = lembar)"),
     ("空のセルを選んでください(中身のあるセルは潰しません)", "Pilih sel kosong (sel yang ada isinya tidak pernah ditimpa)"),
     ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Pilih kolom untuk slicer (perlu baris data di bawah judul)"),
     ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Seni teks: ketik teks dan akan ditempatkan sebagai gambar tebal bergaris tepi"),

@@ -686,9 +686,22 @@ No server. Everything works **through files** (i.e. in a shared folder):
   `.jo-history/name/timestamp.xlsx` (9 generations). Picking one opens it as
   an **untitled copy** — to restore, save it under the original name yourself
   (nothing is written back silently)
-- **Macros** (Plugins tab): choose a .py and run it
-  (same machinery as Data > Python; b = workbook, s = sheet)
-- **Manage plugins**: lists and runs .py files from `~/.config/office/plugins`
+
+## Macros tab
+
+**Folded into one tab on 2026-08-16.** It used to be split between "Python"
+and "Plugins", listing the same folder of .py files two different ways.
+
+- **Record actions**: what you do by hand accumulates as Python lines; stop and
+  it becomes a .py
+- **New .py**: create a script in the folder and open it
+- **List**: the .py files in `~/.config/office/plugins`; pick one to run it
+  (in the sandbox; b = workbook, s = sheet)
+- **From a file**: run a .py from outside the folder
+- **Open the folder**: opens `~/.config/office/plugins` in your file manager
+
+The folder is still named `plugins` — renaming it would strand files people
+have already put there. Only the words on screen changed.
 
 ## Protection tab
 

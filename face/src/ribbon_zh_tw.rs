@@ -149,9 +149,9 @@ pub const WRITER: &[Tab] = &[
         c("show-left", "左側面板", "show-left"),
         c("show-right", "右側面板", "show-right"),
     ]},
-    Tab { name: "外掛程式", cmds: &[
-        c("plug-macros", "巨集", "plug-macros"),
-        c("plug-manage", "管理外掛程式", "plug-manage"),
+    Tab { name: "巨集", cmds: &[
+        c("plug-manage", "清單", "plug-manage"),
+        c("plug-macros", "從檔案", "plug-macros"),
         c("ai-macro", "撰寫巨集", "ai-macro"),
     ]},
 ];
@@ -306,10 +306,11 @@ pub const CALC: &[Tab] = &[
         c("csv-kind", "CSV 格式", "csv-kind"),
         c("flash-fill", "快速填入", "flash-fill"),
     ]},
-    Tab { name: "Python", cmds: &[
+    Tab { name: "巨集", cmds: &[
         c("rec-toggle", "記錄操作", "py-run"),
         c("py-new", "新增 .py", "py-new"),
         c("py-list", "清單", "py-list"),
+        c("plug-macros", "從檔案", "plug-macros"),
         c("py-folder", "開啟資料夾", "py-folder"),
     ]},
     Tab { name: "樞紐分析表", cmds: &[
@@ -373,10 +374,6 @@ pub const CALC: &[Tab] = &[
         c("show-zeros", "顯示 0", "show-zeros"),
         c("show-left", "左側面板", "show-left"),
         c("show-right", "右側面板", "show-right"),
-    ]},
-    Tab { name: "外掛程式", cmds: &[
-        c("plug-macros", "巨集", "plug-macros"),
-        c("plug-manage", "管理外掛程式", "plug-manage"),
     ]},
 ];
 

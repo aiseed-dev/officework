@@ -42,7 +42,7 @@ impl Calc {
         "group", "ungroup", "hide-details", "show-details", "subtotal", "solver",
         "inssmartart", "insequation", "insslicer", "inscheckbox", "instextart",
         "coauth-mode", "co-delcomment", "co-showcomment", "co-chat",
-        "co-history", "plug-macros", "plug-manage",
+        "co-history", "plug-macros",
         // Python タブ(2026-08-09)
         "rec-toggle", "py-new", "py-list", "py-folder",
         "prot-doc", "prot-encrypt", "prot-sign",
@@ -238,7 +238,7 @@ impl Calc {
         "pivot-style", "pivot-fields",
         // 格子パレット(border_pal)。真下に落ちるので ▾ の側
         "borders",
-        "merge", "prot-allow", "co-history", "py-list", "plug-manage",
+        "merge", "prot-allow", "co-history", "py-list",
         "insslicer", "editheader", "paste-name", "csv-kind", "defname",
         "currency",
     ];
@@ -264,7 +264,7 @@ impl Calc {
         "freeze", "show-formulas", "show-gridlines",
         "setfilter", "clear-filter",
         "trace-prec", "trace-dep", "remove-arrows", "pivot-select",
-        "coauth-mode", "co-showcomment", "co-chat", "co-history", "plug-manage",
+        "coauth-mode", "co-showcomment", "co-chat", "co-history",
         "prot-doc", "prot-encrypt", "prot-sign", "ai-where",
         "recover", "recover-every", "csv-kind", "autofit-col", "autofit-row",
         "read-only-rec",
@@ -1450,44 +1450,6 @@ impl Calc {
                 self.run_python_file_dialog(cx);
                 self.status =
                     ui::t!("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)").into();
-            }
-            // プラグインの管理。置き場の .py を一覧し、同じサンドボックスで実行
-            "plug-manage" => {
-                let dir = plugins_dir();
-                let mut items: Vec<PathBuf> = std::fs::read_dir(&dir)
-                    .ok()
-                    .into_iter()
-                    .flatten()
-                    .flatten()
-                    .map(|e| e.path())
-                    .filter(|p| p.extension().is_some_and(|e| e == "py"))
-                    .collect();
-                items.sort();
-                if items.is_empty() {
-                    self.status = format!(
-                        "プラグイン: {} に .py を置くと、ここに並びます",
-                        dir.display()
-                    )
-                    .into();
-                } else {
-                    let v: Vec<(String, PathBuf)> = items
-                        .into_iter()
-                        .map(|q| {
-                            (
-                                q.file_name().unwrap_or_default().to_string_lossy().to_string(),
-                                q,
-                            )
-                        })
-                        .collect();
-                    let names: Vec<String> = v.iter().map(|(n, _)| n.clone()).collect();
-                    self.pick_paths = v;
-                    self.pick_kind = "plugin";
-                    let at = self.pop_anchor();
-                    // .py のファイル名 — 訳さない
-                    self.pick = Some((plain(names), at));
-                    self.status =
-                        ui::t!("プラグイン: 選ぶとサンドボックスの中の Python で実行します(b=ブック s=シート)").into();
-                }
             }
             // チェックボックス(セルの部品)。空のセルに FALSE を置くと
             // ☑/☐ で見え、空白キーで切り替わる(Excel では TRUE/FALSE の値)

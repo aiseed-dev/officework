@@ -364,7 +364,6 @@ pub const TABLE: &[(&str, &str)] = &[
 ("まだファイルになっていません(保存すると、隣に申し送り帳ができます)", "Not a file yet (save it to get a chat file alongside)"),
 ("まだ言伝はありません(打って Enter で書き残します)", "No messages yet (type and press Enter to leave one)"),
 ("マクロ: .py を選ぶとサンドボックスの中の Python が回ります(b=ブック s=シート。実体は データ > Python と同じ)", "Macros: pick a .py and sandboxed Python runs (b = workbook, s = sheet; same machinery as Data > Python)"),
-("プラグイン: 選ぶとサンドボックスの中の Python で実行します(b=ブック s=シート)", "Plugins: pick one to run in sandboxed Python (b = workbook, s = sheet)"),
 ("空のセルを選んでください(中身のあるセルは潰しません)", "Pick an empty cell (occupied cells are never overwritten)"),
 ("スライサーにする列を選んでください(見出しの下にデータの行が要ります)", "Pick a column for the slicer (data rows are needed below the heading)"),
 ("テキストアート: 文字を打つと、太字+縁取りの飾り文字を画像で置きます", "Text art: type text and it is placed as a bold outlined image"),

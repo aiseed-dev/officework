@@ -29,7 +29,7 @@
 | 手続き | `@モジュール` / `@モジュール.関数` | 自分で `xw.Book.caller()` を呼ぶ |
 | 外(Jupyter など) | `from officework import calc as xw` | 同上 |
 | calc: データ > Python(一行 / .py) | パネルに直接書く | `b` = ブック、`s` = いまのシート |
-| calc / writer: マクロ・プラグイン | — | calc は `b`/`s`、**writer は `d` = python-docx の文書** |
+| calc / writer: マクロタブ | — | calc は `b`/`s`、**writer は `d` = python-docx の文書** |
 | writer: ページの Python(HTML) | — | `form` = 記入欄の名前→値の辞書 |
 
 **手続きと外からのコードは、動いている calc をそのまま操る**(一時ファイルの
