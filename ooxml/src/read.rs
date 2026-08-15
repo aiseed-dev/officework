@@ -1158,6 +1158,8 @@ pub(super) fn parse_document_rels(
     let mut indent = 0u8;
     let mut first_line = 0i32; // w:ind の firstLine(正)/ hanging(負)。twip のまま持つ
     let mut line_spacing = 1.0f32;
+    let mut space_before_pt = 0.0f32;
+    let mut space_after_pt = 0.0f32;
     let mut page_break_before = false;
     // 段落の背景色(w:shd)と囲み枠(w:pBdr)
     let mut shade: Option<String> = None;
@@ -1253,6 +1255,8 @@ pub(super) fn parse_document_rels(
                               fmt = CharFormat::default(); align = Align::default();
                               list = ListKind::default(); indent = 0; first_line = 0;
                               line_spacing = 1.0;
+                              space_before_pt = 0.0;
+                              space_after_pt = 0.0;
                               page_break_before = false; shade = None; boxed = false;
                               pstyle = ParaStyle::Body; pstyle_id = None; ilvl = 0;
                               para_comments.clear(); para_bookmarks.clear();
@@ -1362,6 +1366,13 @@ pub(super) fn parse_document_rels(
                             .and_then(|v| v.parse::<f32>().ok())
                             .map(|v| (v / 240.0).clamp(0.5, 5.0))
                             .unwrap_or(1.0);
+                        // **段落の前後の空き**(twips = pt × 20)。
+                        // 前は読んでいなかったので、開いて保存すると消えていた
+                        let twips = |n: &str| {
+                            attr(&e, n).and_then(|v| v.parse::<f32>().ok()).map(|v| v / 20.0)
+                        };
+                        space_before_pt = twips("before").unwrap_or(0.0).max(0.0);
+                        space_after_pt = twips("after").unwrap_or(0.0).max(0.0);
                     }
                     b"jc" if in_ppr => {
                         if let Some(v) = attr(&e, "val") { align = Align::from_docx(&v); }
@@ -1735,6 +1746,14 @@ pub(super) fn parse_document_rels(
                             .and_then(|v| v.parse::<f32>().ok())
                             .map(|v| (v / 240.0).clamp(0.5, 5.0))
                             .unwrap_or(1.0);
+                        // **こちらは空要素(`<w:spacing …/>`)の腕。**
+                        // 実際に書かれるのはほぼこちらなので、上の Start の腕
+                        // だけ直しても効かない(2026-08-15 に踏んだ)
+                        let twips = |n: &str| {
+                            attr(&e, n).and_then(|v| v.parse::<f32>().ok()).map(|v| v / 20.0)
+                        };
+                        space_before_pt = twips("before").unwrap_or(0.0).max(0.0);
+                        space_after_pt = twips("after").unwrap_or(0.0).max(0.0);
                     }
                     b"jc" if in_ppr => {
                         if let Some(v) = attr(&e, "val") { align = Align::from_docx(&v); }
@@ -1887,6 +1906,8 @@ pub(super) fn parse_document_rels(
                                 indent: indent.max(ilvl),
                                 first_line_twips: first_line,
                                 line_spacing,
+                                space_before_pt,
+                                space_after_pt,
                                 style: pstyle,
                                 style_id: pstyle_id.take(),
                                 shade: shade.take(), boxed,

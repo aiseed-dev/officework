@@ -90,6 +90,11 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             // ここを足し忘れると pPr ごと書かれず、**区切りが黙って消える**
             || p.sect.is_some()
             || p.style != ParaStyle::Body
+            // **段落の前後の空き**(2026-08-15)。ここを足さないと pPr ごと
+            // 書かれず、空きだけを持つ段落で黙って消える — 上の
+            // 「区切りが黙って消える」と同じ抜け方
+            || p.space_before_pt > 0.0
+            || p.space_after_pt > 0.0
             || p.style_id.is_some();
         if has_ppr {
             w.write_event(Event::Start(BS::new("w:pPr"))).unwrap();
@@ -168,10 +173,24 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 }
                 w.write_event(Event::Empty(ind)).unwrap();
             }
-            if (p.spacing() - 1.0).abs() > 0.001 {
+            // 行間と**段落の前後の空き**。前は w:line だけ書いていたので、
+            // Word の文書を開いて保存すると before / after が黙って消えていた
+            // (2026-08-15)。twips = pt × 20
+            let 行間あり = (p.spacing() - 1.0).abs() > 0.001;
+            let 前 = (p.space_before_pt * 20.0).round() as u32;
+            let 後 = (p.space_after_pt * 20.0).round() as u32;
+            if 行間あり || 前 > 0 || 後 > 0 {
                 let mut sp = BS::new("w:spacing");
-                sp.push_attribute(("w:line", ((p.spacing() * 240.0).round() as u32).to_string().as_str()));
-                sp.push_attribute(("w:lineRule", "auto"));
+                if 前 > 0 {
+                    sp.push_attribute(("w:before", 前.to_string().as_str()));
+                }
+                if 後 > 0 {
+                    sp.push_attribute(("w:after", 後.to_string().as_str()));
+                }
+                if 行間あり {
+                    sp.push_attribute(("w:line", ((p.spacing() * 240.0).round() as u32).to_string().as_str()));
+                    sp.push_attribute(("w:lineRule", "auto"));
+                }
                 w.write_event(Event::Empty(sp)).unwrap();
             }
             if p.align != Align::Left {

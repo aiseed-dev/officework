@@ -346,6 +346,37 @@ pub(super) fn head_scale(style: ParaStyle) -> f32 {
     }
 }
 
+/// **段落の前の空き**(mm)。文書が言っていればそれ、言っていなくて見出しなら
+/// 既定の空き。docx の `w:spacing w:before` は pt で持っている。
+///
+/// 見出しの既定を置くのは、**見出しが本文に貼り付いて見えるのを防ぐ**ため
+/// (Word の Heading も styles.xml に前の空きを持っている — うちはまだ
+/// styles.xml を読まないので、ここで既定として与える)。
+/// 文書が明示していればそちらが勝つ。
+pub(super) fn space_before_mm(para: &Paragraph, base: f32) -> f32 {
+    if para.space_before_pt > 0.0 {
+        return para.space_before_pt * 25.4 / 72.0;
+    }
+    match para.style {
+        ParaStyle::Heading(1) => base * 0.9 * 25.4 / 72.0,
+        ParaStyle::Heading(_) => base * 0.7 * 25.4 / 72.0,
+        _ => 0.0,
+    }
+}
+
+/// 段落の後の空き(mm)。[`space_before_mm`] と同じ決め方で、見出しの既定は
+/// 前より小さい — **見出しは次の本文と組で読む**ものなので、上を広く、
+/// 下を狭くすると塊が見える(組版の定石)
+pub(super) fn space_after_mm(para: &Paragraph, base: f32) -> f32 {
+    if para.space_after_pt > 0.0 {
+        return para.space_after_pt * 25.4 / 72.0;
+    }
+    match para.style {
+        ParaStyle::Heading(_) => base * 0.25 * 25.4 / 72.0,
+        _ => 0.0,
+    }
+}
+
 pub(super) fn lh_of(para: &Paragraph, frame: &Frame) -> f32 {
     frame.line_height_mm * para.spacing() * head_scale(para.style)
 }
@@ -412,6 +443,12 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // 改ページ。紙に写すときにここで頁が割れる
                 if para.page_break_before && !sheet.lines.is_empty() {
                     sheet.breaks.push(y);
+                }
+                // **段落の前の空き。** 文書が言っていればそれ、言っていなくて
+                // 見出しなら既定の空き(見出しが本文に貼り付いて見えるのを防ぐ)。
+                // **紙の頭では空けない** — 上の余白が二重になる
+                if !sheet.lines.is_empty() {
+                    y += space_before_mm(para, base);
                 }
                 // インデント1段 = 全角2文字ぶん(日本の書類の慣習)
                 let em = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base) * 25.4 / 72.0;
@@ -571,6 +608,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     sheet.lines.push(Line { cells, y_mm: y, from_body: true, byte0, cell: None });
                     y += lh_of(para, frame);
                 }
+                // **段落の後の空き**(前の空きと同じ決め方)
+                y += space_after_mm(para, base);
                 // 画像は段落の下に置く。幅が行長を超えるなら比例で縮める
                 for im in para.images.iter().chain(para.images_new.iter()) {
                     let scale = if im.w_mm > measure { measure / im.w_mm } else { 1.0 };
