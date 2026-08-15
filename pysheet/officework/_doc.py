@@ -21,6 +21,8 @@
 (台帳: docs/pysheet-gokan.ja.md)。エンジンには手を入れない。
 """
 
+import os as _os
+
 from . import _sheet as _engine
 
 _doc = _engine.doc
@@ -770,12 +772,16 @@ class Doc:
 
     @staticmethod
     def open(path):
+        # **pathlib.Path も受ける**(python-docx と同じ。2026-08-15)。
+        # 芯は文字しか取らないので、ここで径路の形に直してから渡す。
+        # sheet.Book と揃えること — 片方だけ受けるのがいちばん困る
         d = Doc.__new__(Doc)
-        d._d = _doc.Doc.open(path)
+        d._d = _doc.Doc.open(_os.fspath(path))
         return d
 
     def save(self, path):
-        self._d.save(path)
+        # Path も受ける(上の open と同じ理由)
+        self._d.save(_os.fspath(path))
 
     @property
     def unsupported(self):
