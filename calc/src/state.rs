@@ -155,6 +155,8 @@ impl Calc {
             chat_plan: None,
             chat_focus: false,
             chat_busy: false,
+            left_face: 0,
+            right_face: 0,
             tool: None,
             ink_cur: None,
         };

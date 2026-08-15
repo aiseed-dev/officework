@@ -395,6 +395,10 @@ struct Calc {
     pub(crate) chat_focus: bool,
     /// 変更案の台本が裏で走っている間(押し重ねを止める)
     pub(crate) chat_busy: bool,
+    /// 左パネルのいまの面(0=会話 1=コメント)。柱のアイコンで切り替える
+    pub(crate) left_face: u8,
+    /// 右パネルのいまの面(0=セルの設定 1=図形と画像)
+    pub(crate) right_face: u8,
     /// 描画の道具(0=ペン 1=蛍光ペン 2=消しゴム)。writer と同じ形
     tool: Option<u8>,
     /// 描きかけの線(ドラッグ中)

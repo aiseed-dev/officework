@@ -17,10 +17,12 @@
 use gpui::prelude::*;
 use gpui::{div, px, rgb, Context, SharedString, Window};
 
-use crate::Calc;
+use crate::{Calc, Pos};
 
 /// パネルの幅(px)。writer の 250 と揃える
 const W: f32 = 250.0;
+/// 外側の柱の幅(px)。アイコン1つぶん
+const RAIL: f32 = 34.0;
 
 impl Calc {
     /// 左右のパネルを組む。返りは (左, 右)
@@ -54,6 +56,31 @@ impl Calc {
                 .child(t)
         };
         let 列 = || div().flex().flex_row().flex_wrap().gap_1();
+        // **外側の柱。** 面を切り替えるアイコンを縦に並べる
+        // (発注者 2026-08-15「左右のパネルの外側にアイコンをおいて
+        // 操作を変更できるように」)。ONLYOFFICE と同じ置き方
+        let 柱 = || div().flex_none().w(px(RAIL * us)).h_full()
+            .flex().flex_col().items_center().gap_1().py_1();
+        let 柱釦 = move |id: &'static str, icon: &'static str, 札: String, on: bool| {
+            div()
+                .id(SharedString::from(id))
+                .w(px(RAIL * us - 8.0)).h(px(RAIL * us - 8.0))
+                .rounded_sm().cursor_pointer()
+                .flex().items_center().justify_center()
+                .bg(if on {
+                    if dk { rgb(0x2C333A) } else { rgb(0xFFFFFF) }
+                } else {
+                    gpui::transparent_black().into()
+                })
+                .border_1()
+                .border_color(if on { 主 } else { gpui::transparent_black().into() })
+                .hover(move |s| s.bg(if dk { rgb(0x2C333A) } else { rgb(0xEAF5EE) }))
+                .tooltip(move |_, cx| cx.new(|_| crate::view::Tip(札.clone().into(), us)).into())
+                .child(gpui::svg()
+                    .path(SharedString::from(format!("icons/{icon}.svg")))
+                    .size(px(us * 18.0))
+                    .text_color(if on { 主 } else { 薄 }))
+        };
 
         // ── 右: セルの設定 ─────────────────────────────────────────
         let 右 = if !self.right_open {
@@ -63,12 +90,70 @@ impl Calc {
             // **外枠を回す**(発注者 2026-08-15)。内側の1辺だけだと窓の
             // 地とパネルが地続きに見え、どこまでがパネルか分からなかった。
             // 少し内側に置いて四方を囲む — 枠が窓の縁に潰されない
+            let 面 = self.right_face;
             let mut d = div()
                 .id("right-panel")
-                .flex_none().w(px(W * us)).h_full().overflow_y_scroll()
-                .m_1().p_2().rounded_sm().bg(bg)
-                .border_1().border_color(line)
+                .flex_1().min_w(px(0.0)).h_full().overflow_y_scroll()
+                .p_2()
                 .flex().flex_col().gap_0p5();
+            if 面 == 1 {
+                // ── 図形と画像 ───────────────────────────────────
+                d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
+                    .text_color(fg).child(ui::t!("図形と画像").to_string()));
+                let 図 = self.shape_sel;
+                let 絵 = self.img_sel;
+                if 図.is_none() && 絵.is_none() {
+                    // **選んでいないと言う。** 押せない釦を並べて黙るより、
+                    // 何をすれば効くかを書く
+                    d = d.child(div().text_size(px(us * 11.0)).text_color(薄).child(
+                        ui::t!("図形も画像も選んでいません(表の上の図形か絵を押してください)")
+                            .to_string()));
+                } else {
+                    d = d.child(div().text_size(px(us * 10.5)).text_color(薄)
+                        .child(if 図.is_some() {
+                            ui::t!("図形を選んでいます").to_string()
+                        } else {
+                            ui::t!("画像を選んでいます").to_string()
+                        }));
+                    d = d.child(見出し(ui::t!("重なり").to_string()));
+                    let mut r = 列();
+                    for (id, 札, act) in [
+                        ("sp-front", ui::t!("最前面へ"), "sh-front"),
+                        ("sp-fwd", ui::t!("前へ"), "sh-forward"),
+                        ("sp-bwd", ui::t!("後ろへ"), "sh-backward"),
+                        ("sp-back", ui::t!("最背面へ"), "sh-back"),
+                    ] {
+                        r = r.child(釦(id, 札.to_string(), false).on_click(
+                            cx.listener(move |this, _, _, cx| {
+                                this.shape_menu_action(act);
+                                cx.notify()
+                            })));
+                    }
+                    d = d.child(r);
+                    d = d.child(見出し(ui::t!("向き").to_string()));
+                    let mut r = 列();
+                    for (id, 札, act) in [
+                        ("sp-rot-l", ui::t!("左へ回す"), "sh-rot-l"),
+                        ("sp-rot-r", ui::t!("右へ回す"), "sh-rot-r"),
+                        ("sp-flip-h", ui::t!("左右を返す"), "sh-flip-h"),
+                        ("sp-flip-v", ui::t!("上下を返す"), "sh-flip-v"),
+                    ] {
+                        r = r.child(釦(id, 札.to_string(), false).on_click(
+                            cx.listener(move |this, _, _, cx| {
+                                this.shape_menu_action(act);
+                                cx.notify()
+                            })));
+                    }
+                    d = d.child(r);
+                    d = d.child(見出し(ui::t!("そのほか").to_string()));
+                    d = d.child(列()
+                        .child(釦("sp-del", ui::t!("消す").to_string(), false).on_click(
+                            cx.listener(|this, _, _, cx| {
+                                this.shape_menu_action("sh-del");
+                                cx.notify()
+                            }))));
+                }
+            } else {
             d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                 .text_color(fg).child(ui::t!("セルの設定").to_string()));
             d = d.child(div().text_size(px(us * 10.5)).text_color(薄)
@@ -242,19 +327,85 @@ impl Calc {
                     })));
             }
             d = d.child(r);
-            Some(d.into_any_element())
+            }
+            // **外側の柱**(面を切り替えるアイコン)。パネルの外枠は
+            // 柱ごと囲む — 柱もパネルの一部だから
+            let 柱d = 柱()
+                .child(柱釦("rf-cell", "cell-format", ui::t!("セルの設定").to_string(), 面 == 0)
+                    .on_click(cx.listener(|this, _, _, cx| { this.right_face = 0; cx.notify() })))
+                .child(柱釦("rf-shape", "insshape", ui::t!("図形と画像").to_string(), 面 == 1)
+                    .on_click(cx.listener(|this, _, _, cx| { this.right_face = 1; cx.notify() })));
+            Some(div()
+                .flex_none().w(px((W + RAIL) * us)).h_full()
+                .m_1().rounded_sm().bg(bg)
+                .border_1().border_color(line)
+                .flex().flex_row()
+                .child(d)
+                // 柱は**外側**(窓の縁の側)。仕切りの線を1本
+                .child(div().flex_none().w(px(1.0)).h_full().bg(line))
+                .child(柱d)
+                .into_any_element())
         };
 
         // ── 左: 会話 ──────────────────────────────────────────────
         let 左 = if !self.left_open {
             None
         } else {
-            // 右と同じく**四方を囲む**(2026-08-15)
+            let 面 = self.left_face;
             let mut d = div()
-                .flex_none().w(px(W * us)).h_full().overflow_hidden()
-                .m_1().p_2().rounded_sm().bg(bg)
-                .border_1().border_color(line)
+                .flex_1().min_w(px(0.0)).h_full().overflow_hidden()
+                .p_2()
                 .flex().flex_col().gap_1();
+            if 面 == 1 {
+                // ── コメントの一覧(ブック全体)。押すとその場所へ飛ぶ ──
+                d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
+                    .text_color(fg).child(ui::t!("コメント").to_string()));
+                let mut 行: Vec<(usize, Pos, String, String)> = Vec::new();
+                for (si, sh) in self.book.sheets.iter().enumerate() {
+                    for (at, th) in &sh.comments {
+                        let head = th.entries.first();
+                        行.push((
+                            si,
+                            *at,
+                            head.map(|e| e.who.clone()).unwrap_or_default(),
+                            head.map(|e| e.text.clone()).unwrap_or_default(),
+                        ));
+                    }
+                }
+                行.sort_by_key(|(si, at, _, _)| (*si, at.row, at.col));
+                if 行.is_empty() {
+                    d = d.child(div().text_size(px(us * 11.0)).text_color(薄).child(
+                        ui::t!("コメントはまだありません(共同編集タブの「コメント」で付けます)")
+                            .to_string()));
+                }
+                let mut 表 = div().id("cmt-list").flex().flex_col().gap_1()
+                    .flex_1().min_h(px(0.0)).overflow_y_scroll();
+                for (i, (si, at, who, text)) in 行.into_iter().take(200).enumerate() {
+                    let 名 = self.book.sheets[si].name.clone();
+                    表 = 表.child(div()
+                        .id(SharedString::from(format!("cmt{i}")))
+                        .px_1().py_0p5().rounded_sm().cursor_pointer()
+                        .hover(move |s| s.bg(if dk { rgb(0x2C333A) } else { rgb(0xEAF5EE) }))
+                        .flex().flex_col()
+                        .child(div().text_size(px(us * 10.0)).text_color(薄)
+                            .child(format!("{} {} {}", 名, at.a1(), who)))
+                        .child(div().text_size(px(us * 11.5)).text_color(fg)
+                            .child(text))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            // 別のシートなら移ってから
+                            if this.active != si {
+                                this.active = si;
+                            }
+                            this.cursor = at;
+                            this.anchor = None;
+                            this.follow();
+                            this.sync_input();
+                            this.status = ui::tf!("{} の {} へ飛びました", 名, at.a1()).into();
+                            cx.notify()
+                        })));
+                }
+                d = d.child(表);
+            } else {
             d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                 .text_color(fg).child(ui::t!("AI と相談する").to_string()));
             d = d.child(div().text_size(px(us * 10.5)).text_color(薄).child(
@@ -333,7 +484,22 @@ impl Calc {
                     .child(ui::t!("考えています…").to_string()));
             }
             d = d.child(r);
-            Some(d.into_any_element())
+            }
+            // **外側の柱**(左パネルは窓の左端の側)。会話とコメントを切り替える
+            let 柱d = 柱()
+                .child(柱釦("lf-ai", "ai-ask", ui::t!("AI と相談する").to_string(), 面 == 0)
+                    .on_click(cx.listener(|this, _, _, cx| { this.left_face = 0; cx.notify() })))
+                .child(柱釦("lf-cmt", "co-showcomment", ui::t!("コメント").to_string(), 面 == 1)
+                    .on_click(cx.listener(|this, _, _, cx| { this.left_face = 1; cx.notify() })));
+            Some(div()
+                .flex_none().w(px((W + RAIL) * us)).h_full()
+                .m_1().rounded_sm().bg(bg)
+                .border_1().border_color(line)
+                .flex().flex_row()
+                .child(柱d)
+                .child(div().flex_none().w(px(1.0)).h_full().bg(line))
+                .child(d)
+                .into_any_element())
         };
         (左, 右)
     }

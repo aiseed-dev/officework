@@ -363,6 +363,10 @@ used in formulas.
 **Right = settings for what you have selected, left = who you are talking to.**
 Both **stay open**; the grid just gets narrower (they never cover it).
 
+**A rail of icons runs down the outer edge** of each panel; pressing one
+switches the face (left: Ask the AI / Comments, right: Cell settings / Shapes
+and pictures). Hover an icon to see its name.
+
 ### Right panel, "Cell settings"
 
 Things that used to be scattered across dialogs and drop-downs, on one sheet.

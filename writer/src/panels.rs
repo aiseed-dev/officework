@@ -5,6 +5,9 @@
 
 use crate::*;
 
+/// 外側の柱の幅(px)。アイコン1つぶん(calc の RAIL と揃える)
+const RAIL: f32 = 34.0;
+
 /// render に返すパネルの束。欄の名前は view.rs にあった let の名前そのもの
 pub(crate) struct Panels {
     pub find_panel: Option<gpui::Div>,
@@ -18,8 +21,8 @@ pub(crate) struct Panels {
     pub url_panel: Option<gpui::Div>,
     pub fm_panel: Option<gpui::Div>,
     pub nav_panel: Option<gpui::Div>,
-    /// 右パネルは巻けるので `Stateful`(id を持つ)
-    pub rp_panel: Option<gpui::Stateful<gpui::Div>>,
+    /// 右パネル(柱つき。中身の側が巻ける)
+    pub rp_panel: Option<gpui::Div>,
     pub lk_panel: Option<gpui::Div>,
     pub ai_panel: Option<gpui::Div>,
     pub sd_panel: Option<gpui::Div>,
@@ -515,46 +518,41 @@ impl Writer {
             Some(d)
         };
 
-        // 左パネル(本家のナビゲーション)。見出し / コメント / 検索の耳を持つ
+        // **外側の柱**(発注者 2026-08-15。calc と同じ作法)。
+        // 面を切り替えるアイコンを縦に並べる
+        let 柱 = || div().flex_none().w(px(RAIL)).h_full()
+            .flex().flex_col().items_center().gap_1().py_1();
+        let 柱釦 = move |id: String, icon: &'static str, 札: String, on: bool| {
+            div()
+                .id(SharedString::from(id))
+                .w(px(RAIL - 8.0)).h(px(RAIL - 8.0))
+                .rounded_sm().cursor_pointer()
+                .flex().items_center().justify_center()
+                .bg(if on { th_btn_hover } else { gpui::transparent_black().into() })
+                .border_1()
+                .border_color(if on { th_btn } else { gpui::transparent_black().into() })
+                .hover(move |s| s.bg(th_btn_hover))
+                .tooltip(move |_, cx| cx.new(|_| crate::view::Tip(札.clone().into())).into())
+                .child(gpui::svg()
+                    .path(SharedString::from(format!("icons/{icon}.svg")))
+                    .size(px(18.0))
+                    .text_color(if on { th_btn } else { th_status }))
+        };
+
+        // 左パネル(本家のナビゲーション)。見出し / コメント / 検索 / AI
         let nav_panel = if !self.nav_open {
             None
         } else {
             let panel_bg = if dk { rgb(0x1B1E21) } else { rgb(0xF1F3F5) };
-            // **外枠を回す**(発注者 2026-08-15。calc と同じ作法)
             let mut d = div()
-                .flex_none().w(px(250.0)).h_full().overflow_hidden()
-                .m_1().p_2().rounded_sm().bg(panel_bg)
-                .border_1().border_color(th_cmd_border)
+                .flex_1().min_w(px(0.0)).h_full().overflow_hidden()
+                .p_2()
                 .flex().flex_col().gap_1();
-            // 耳
-            let mut ears = div().flex().flex_row().gap_1().mb_1();
-            // 耳の照合は添字(nav_tab)。名前は見せる字だけなので訳してよい
-            // 左は**対話する相手**(2026-08-14 の決め)— ナビ・コメント・
-            // 検索・AI。耳の照合は添字(nav_tab)
-            for (i, name) in
-                [ui::t!("見出し"), ui::t!("コメント"), ui::t!("検索"), ui::t!("AI")]
-                    .into_iter()
-                    .enumerate()
-            {
-                let on = self.nav_tab == i as u8;
-                ears = ears.child(div()
-                    .id(SharedString::from(format!("navtab-{i}")))
-                    .px_2().py_0p5().rounded_sm().cursor_pointer()
-                    .text_size(px(11.5))
-                    .text_color(if on { th_btn } else { th_status })
-                    .font_weight(if on {
-                        gpui::FontWeight::BOLD
-                    } else {
-                        gpui::FontWeight::NORMAL
-                    })
-                    .when(on, |st| st.bg(th_btn_hover))
-                    .child(name)
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.nav_tab = i as u8;
-                        cx.notify()
-                    })));
-            }
-            d = d.child(ears);
+            // **面の切り替えは外側の柱へ移した**(発注者 2026-08-15
+            // 「左右のパネルの外側にアイコンをおいて操作を変更できるように」)。
+            // 前は上に文字の耳が4つ並んでいて、その分だけ中身が狭かった。
+            // 左は**対話する相手**(2026-08-14 の決め)— 見出し・コメント・
+            // 検索・AI。照合は添字(nav_tab)
             match self.nav_tab {
                 // 見出し(押すと飛ぶ)
                 0 => {
@@ -762,7 +760,23 @@ impl Writer {
                     d = d.child(r);
                 }
             }
-            Some(d)
+            let 柱d = 柱()
+                .child(柱釦("nf-head".into(), "contents", ui::t!("見出し").to_string(), self.nav_tab == 0).on_click(
+                    cx.listener(|t, _, _, cx| { t.nav_tab = 0; cx.notify() })))
+                .child(柱釦("nf-cmt".into(), "co-showcomment", ui::t!("コメント").to_string(), self.nav_tab == 1).on_click(
+                    cx.listener(|t, _, _, cx| { t.nav_tab = 1; cx.notify() })))
+                .child(柱釦("nf-find".into(), "replace", ui::t!("検索").to_string(), self.nav_tab == 2).on_click(
+                    cx.listener(|t, _, _, cx| { t.nav_tab = 2; cx.notify() })))
+                .child(柱釦("nf-ai".into(), "ai-ask", ui::t!("AI").to_string(), self.nav_tab == 3).on_click(
+                    cx.listener(|t, _, _, cx| { t.nav_tab = 3; cx.notify() })));
+            Some(div()
+                .flex_none().w(px(250.0 + RAIL)).h_full()
+                .m_1().rounded_sm().bg(panel_bg)
+                .border_1().border_color(th_cmd_border)
+                .flex().flex_row()
+                .child(柱d)
+                .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
+                .child(d))
         };
 
         // 右パネル(本家の設定パネル)。**いる場所の設定を、その場で直す**
@@ -798,14 +812,60 @@ impl Writer {
             let row = || div().flex().flex_row().flex_wrap().gap_1();
             // 左と同じく**場所を取る**(重ねない)。巻けるようにもする —
             // 表の面が足された分、230px の幅では下が切れる
+            let 面 = self.rp_tab;
+            let return_rp;
             let mut d = div().id("rp-panel")
-                .flex_none().w(px(230.0)).h_full().overflow_y_scroll()
-                .m_1().p_2().rounded_sm().bg(panel_bg)
-                .border_1().border_color(th_cmd_border)
+                .flex_1().min_w(px(0.0)).h_full().overflow_y_scroll()
+                .p_2()
                 .flex().flex_col().gap_1()
                 .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("設定 — いる場所を直す")));
+                    .child(if 面 == 1 {
+                        ui::t!("ページ — 文書ぜんぶの決め")
+                    } else {
+                        ui::t!("設定 — いる場所を直す")
+                    }));
+            // **ページは「いる場所」ではない。** 文書ぜんぶに掛かる決めなので、
+            // 柱で別の面に分けた(発注者 2026-08-15「外側にアイコンをおいて
+            // 操作を変更できるように」)
+            if 面 == 1 {
+                d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                    .child(SharedString::from(ui::tf!("{:.0}×{:.0}mm / 余白 {:.0}mm / {}段{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!(" / 縦書き") } else { "" }))));
+                d = d.child(row()
+                    .child(btn(self, "pageorient", ui::t!("向き").into()).on_click(cx.listener(
+                        |t, _, _, cx| { t.run_cmd("pageorient", cx); cx.notify() })))
+                    .child(btn(self, "pagesize", ui::t!("用紙").into()).on_click(cx.listener(
+                        |t, _, _, cx| { t.run_cmd("pagesize", cx); cx.notify() })))
+                    .child(btn(self, "pagemargins", ui::t!("余白").into()).on_click(cx.listener(
+                        |t, _, _, cx| { t.run_cmd("pagemargins", cx); cx.notify() })))
+                    .child(btn(self, "columns", ui::t!("段組み").into()).on_click(cx.listener(
+                        |t, _, _, cx| { t.run_cmd("columns", cx); cx.notify() })))
+                    .child(btn(self, "direction", ui::t!("縦書き").into()).on_click(cx.listener(
+                        |t, _, _, cx| { t.run_cmd("direction", cx); cx.notify() }))));
+                d = d.child(head(ui::t!("ヘッダーとフッター")));
+                d = d.child(row()
+                    .child(btn(self, "edit-header", ui::t!("編集").into()).on_click(cx.listener(
+                        |t, _, _, cx| { t.run_cmd("edit-header", cx); cx.notify() })))
+                    .child(btn(self, "pagenum", ui::t!("ページ番号").into()).on_click(cx.listener(
+                        |t, _, _, cx| { t.run_cmd("pagenum", cx); cx.notify() })))
+                    .child(btn(self, "watermark", ui::t!("透かし").into()).on_click(cx.listener(
+                        |t, _, _, cx| { t.run_cmd("watermark", cx); cx.notify() })))
+                    .child(btn(self, "pagecolor", ui::t!("ページの色").into()).on_click(cx.listener(
+                        |t, _, _, cx| { t.run_cmd("pagecolor", cx); cx.notify() }))));
+                let 柱d = 柱()
+                    .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), false).on_click(
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
+                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), true).on_click(
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })));
+                return_rp = Some(div()
+                    .flex_none().w(px(230.0 + RAIL)).h_full()
+                    .m_1().rounded_sm().bg(panel_bg)
+                    .border_1().border_color(th_cmd_border)
+                    .flex().flex_row()
+                    .child(d)
+                    .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
+                    .child(柱d));
+            } else {
 
             // **いる場所に追従する。** 表の中なら表の面、段落に数式や画像が
             // あればその面を、文字・段落・ページの前に出す
@@ -958,21 +1018,21 @@ impl Writer {
                         |t, _, _, cx| { t.run_cmd("borders", cx); cx.notify() }))));
 
             // ページ
-            d = d.child(head(ui::t!("ページ")))
-                .child(div().text_size(px(11.0)).text_color(th_status)
-                    .child(SharedString::from(ui::tf!("{:.0}×{:.0}mm / 余白 {:.0}mm / {}段{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!(" / 縦書き") } else { "" }))))
-                .child(row()
-                    .child(btn(self, "pageorient", ui::t!("向き").into()).on_click(cx.listener(
-                        |t, _, _, cx| { t.run_cmd("pageorient", cx); cx.notify() })))
-                    .child(btn(self, "pagesize", ui::t!("用紙").into()).on_click(cx.listener(
-                        |t, _, _, cx| { t.run_cmd("pagesize", cx); cx.notify() })))
-                    .child(btn(self, "pagemargins", ui::t!("余白").into()).on_click(cx.listener(
-                        |t, _, _, cx| { t.run_cmd("pagemargins", cx); cx.notify() })))
-                    .child(btn(self, "columns", ui::t!("段組み").into()).on_click(cx.listener(
-                        |t, _, _, cx| { t.run_cmd("columns", cx); cx.notify() })))
-                    .child(btn(self, "direction", ui::t!("縦書き").into()).on_click(cx.listener(
-                        |t, _, _, cx| { t.run_cmd("direction", cx); cx.notify() }))));
-            Some(d)
+            let 柱d = 柱()
+                .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), true).on_click(
+                    cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
+                .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), false).on_click(
+                    cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })));
+            return_rp = Some(div()
+                .flex_none().w(px(230.0 + RAIL)).h_full()
+                .m_1().rounded_sm().bg(panel_bg)
+                .border_1().border_color(th_cmd_border)
+                .flex().flex_row()
+                .child(d)
+                .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
+                .child(柱d));
+            }
+            return_rp
         };
 
         // リンクのパネル(押すと辿る。公開 Web も見える — JS は実行しない)

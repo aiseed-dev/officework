@@ -309,6 +309,17 @@ view stays one continuous scroll)**,
 dark mode (surroundings darken, paper stays white), ruler (mm),
 toolbar / status bar / side panel toggles.
 
+## The side panels and their icon rails
+
+A rail of icons runs down the outer edge of each panel; pressing one switches
+the face:
+
+- **Left**: headings / comments / search / AI
+- **Right**: settings (where you are) / page (whole-document settings)
+
+Hover an icon to see its name. The panels **take space** — they never cover the
+page.
+
 ## Right panel, "Settings — fix where you are"
 
 **It follows where you are.** If the cursor is inside a table, the table face

@@ -64,6 +64,7 @@ impl Writer {
             view_w_px: 900.0,
             nav_open: false,
             nav_tab: 0,
+            rp_tab: 0,
             rp_open: false,
             show_toolbar: true,
             show_statusbar: true,

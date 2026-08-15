@@ -153,7 +153,7 @@ impl EntityInputHandler for Calc {
 struct InputSink { view: Entity<Calc> }
 impl IntoElement for InputSink { type Element = Self; fn into_element(self) -> Self { self } }
 /// マウスを載せたときの名札(本家のツールチップの形 — 黒地に白)
-struct Tip(SharedString, f32);
+pub(crate) struct Tip(pub(crate) SharedString, pub(crate) f32);
 impl gpui::Render for Tip {
     fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl gpui::IntoElement {
         div().px_2().py_1().rounded_md()

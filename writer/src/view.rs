@@ -1778,6 +1778,21 @@ impl Render for Writer {
     }
 }
 
+/// ホバーで出す小さな札。**絵だけの釦には要る** — 左右のパネルの柱は
+/// アイコンしか出さないので、これが無いと何の面か分からない(2026-08-15)。
+/// calc の `Tip` と同じ作り(2例から抽象は作らない — 部屋が別々のまま)
+pub(crate) struct Tip(pub(crate) SharedString);
+impl gpui::Render for Tip {
+    fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl gpui::IntoElement {
+        div().px_2().py_1().rounded_md()
+            .bg(gpui::rgb(0x2B2F33)).text_color(gpui::rgb(0xF2F5F7))
+            .text_size(px(11.0))
+            .border_1().border_color(gpui::rgb(0x14161A))
+            .shadow_md()
+            .child(self.0.clone())
+    }
+}
+
 /// 入力ハンドラは **paint のときに窓へ差す**(GPUI の作法)。
 /// 何も描かない要素だが、これが無いと IME もキー入力も届かない。
 struct InputSink {
