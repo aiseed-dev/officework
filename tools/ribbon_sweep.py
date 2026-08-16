@@ -363,12 +363,29 @@ class App:
         )
         return path
 
-    def close(self):
+    def close(self, keep=False):
+        """calc を止めて、**実行時ディレクトリごと片づける**。
+
+        2026-08-16 発注者「/tmp に calc や writer を保存するのはおかしい」。
+        `mkdtemp` で作ったまま消していなかったので、/tmp に 101 個
+        (2日分)積もっていた。試験用の HOME と socket と控えが丸ごと残る。
+        調べたいときだけ `keep=True`(径路を言ってから残す)。
+        """
         try:
             self.proc.terminate()
             self.proc.wait(5)
         except Exception:
             self.proc.kill()
+        try:
+            self.log.close()
+        except Exception:
+            pass
+        if keep:
+            print(f"実行時ディレクトリを残しました: {self.run_dir}")
+            return
+        import shutil
+
+        shutil.rmtree(self.run_dir, ignore_errors=True)
 
     @staticmethod
     def kill_strays():

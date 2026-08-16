@@ -100,11 +100,33 @@ class W:
         time.sleep(0.4)
         return self.shot(name)
 
+    def close(self, keep=False):
+        """writer を止めて、**実行時ディレクトリごと片づける**
+        (2026-08-16 発注者「/tmp に calc や writer を保存するのはおかしい」)"""
+        try:
+            self.proc.terminate()
+            self.proc.wait(5)
+        except Exception:
+            self.proc.kill()
+        try:
+            self.log.close()
+        except Exception:
+            pass
+        if keep:
+            print(f"実行時ディレクトリを残しました: {self.run_dir}")
+            return
+        import shutil
+
+        shutil.rmtree(self.run_dir, ignore_errors=True)
+
 
 if __name__ == "__main__":
     shots = sys.argv[1] if len(sys.argv) > 1 else "/tmp/writer-shot"
     a = W(shots)
-    w = a.window()
-    s = a.scale()
-    print("窓(論理):", round(w[3] / s), round(w[4] / s), " 倍率:", s)
-    print(a.take("writer"))
+    try:
+        w = a.window()
+        s = a.scale()
+        print("窓(論理):", round(w[3] / s), round(w[4] / s), " 倍率:", s)
+        print(a.take("writer"))
+    finally:
+        a.close()
