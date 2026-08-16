@@ -4195,7 +4195,7 @@ impl Render for Calc {
                         .child(押し("fd-go", ui::t!("探す (Enter)").into()).on_click(
                             cx.listener(|t: &mut Calc, _, _, cx| { t.find_in_folder(); cx.notify() }))))
                     .child(div().text_size(px(us * 11.5)).text_color(dim)
-                        .child(SharedString::from(match &self.fd_dir {
+                        .child(SharedString::from(match self.find_dir() {
                             Some(d) => ui::tf!("場所: {}", d.display()).to_string(),
                             None => ui::t!("場所がまだ決まっていません(「場所を選ぶ」)").to_string(),
                         })));

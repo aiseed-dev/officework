@@ -631,7 +631,30 @@ impl Render for Writer {
             let boxes = self.btn_box.clone();
             let mk = move |id: &'static str, label: &'static str, ready: bool| {
                 let rec = boxes.clone();
-                let d = div().id(id).relative().px_4().py_1p5().text_size(px(13.0));
+                // **控えは最初の子に**(calc の mark と同じ形)。最後に置くと
+                // 流れの中で label の下に置かれ、**1項目ぶん下の箱**を控えて
+                // いた(2026-08-17 実機で踏んだ — 押すと1つ下が反応した)
+                let d = div()
+                    .id(id)
+                    .relative()
+                    .child(
+                        gpui::canvas(
+                            move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                                rec.borrow_mut().insert(id, (
+                                    f32::from(b.origin.x),
+                                    f32::from(b.origin.y),
+                                    f32::from(b.size.width),
+                                    f32::from(b.size.height),
+                                ));
+                            },
+                            |_, _: (), _, _| {},
+                        )
+                        .absolute()
+                        .size_full(),
+                    )
+                    .px_4()
+                    .py_1p5()
+                    .text_size(px(13.0));
                 if ready {
                     d.text_color(th_top_fg)
                         .cursor_pointer()
@@ -640,23 +663,6 @@ impl Render for Writer {
                     d.text_color(th_gray_fg)
                 }
                 .child(label)
-                // **控えは最後の子に。** 頭に置くと押下を遮った(2026-08-17
-                // 実機で踏んだ — ファイルの面の項目が全部効かなくなった)
-                .child(
-                    gpui::canvas(
-                        move |b: gpui::Bounds<gpui::Pixels>, _, _| {
-                            rec.borrow_mut().insert(id, (
-                                f32::from(b.origin.x),
-                                f32::from(b.origin.y),
-                                f32::from(b.size.width),
-                                f32::from(b.size.height),
-                            ));
-                        },
-                        |_, _: (), _, _| {},
-                    )
-                    .absolute()
-                    .size_full(),
-                )
             };
             let sb = div().w(px(280.0)).bg(th_top_bg)
                 .border_r_1().border_color(th_cmd_border)
@@ -824,7 +830,7 @@ impl Render for Writer {
                         .child(押し("fd-go", ui::t!("探す (Enter)").into()).on_click(
                             cx.listener(|t, _, _, cx| { t.find_in_folder(); cx.notify() }))))
                     .child(div().text_size(px(11.5)).text_color(th_status)
-                        .child(SharedString::from(match &self.fd_dir {
+                        .child(SharedString::from(match self.find_dir() {
                             Some(d) => ui::tf!("場所: {}", d.display()).to_string(),
                             None => ui::t!("場所がまだ決まっていません(「場所を選ぶ」)").to_string(),
                         })));
@@ -838,6 +844,7 @@ impl Render for Writer {
                     一覧 = 一覧.child(div().text_color(th_status)
                         .child(ui::t!("(まだ探していません)")));
                 }
+                self.fd_box.borrow_mut().clear();
                 for (fi, f) in self.fd_hits.iter().enumerate() {
                     一覧 = 一覧.child(div().mt_1().text_color(th_btn)
                         .child(SharedString::from(format!(
@@ -850,8 +857,23 @@ impl Render for Writer {
                         let on = self.fd_at == Some((fi, hi));
                         // 長い行は縮める(一覧が横に流れない)
                         let line: String = h.text.chars().take(120).collect();
+                        let rec = self.fd_box.clone();
                         一覧 = 一覧.child(div()
                             .id(SharedString::from(format!("fd-h-{fi}-{hi}")))
+                            .relative()
+                            .child(gpui::canvas(
+                                move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                                    rec.borrow_mut().push((
+                                        fi,
+                                        hi,
+                                        f32::from(b.origin.x),
+                                        f32::from(b.origin.y),
+                                        f32::from(b.size.width),
+                                        f32::from(b.size.height),
+                                    ));
+                                },
+                                |_, _: (), _, _| {},
+                            ).absolute().size_full())
                             .px_1().rounded_sm().cursor_pointer()
                             .bg(if on { th_btn_hover } else { gpui::transparent_black().into() })
                             .hover(move |s| s.bg(th_btn_hover))

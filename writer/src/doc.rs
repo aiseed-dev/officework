@@ -64,6 +64,7 @@ impl Writer {
             fd_at: None,
             fd_peek: String::new(),
             fd_busy: false,
+            fd_box: Default::default(),
             native: false,
             style_new: None,
             style_ed: Editor::new(""),
@@ -2060,7 +2061,7 @@ impl Writer {
     /// 落としてから探す手間が消える。当たりは一覧に出て、選ぶと下に見え、
     /// 下の「読み込み」で初めて開く(見て、これだと分かってから開く)。
     pub(crate) fn find_in_folder(&mut self) {
-        let Some(dir) = self.fd_dir.clone() else {
+        let Some(dir) = self.find_dir() else {
             self.status = ui::t!("探す場所を選んでください").into();
             return;
         };
@@ -2112,6 +2113,24 @@ impl Writer {
         self.status = s.into();
     }
 
+    /// **探す場所。** 選んでいなければ(1)前に選んだ場所(settings.toml)
+    /// (2)いま開いている文書の隣、の順に決める。
+    ///
+    /// 開いている文書の隣は**当たり前の出発点**で、そこから始められないと
+    /// 「場所を選ぶ」を毎回押すことになる(2026-08-17)
+    pub(crate) fn find_dir(&self) -> Option<PathBuf> {
+        if let Some(d) = &self.fd_dir {
+            return Some(d.clone());
+        }
+        if let Some(s) = ui::settings::get("find_dir") {
+            let p = PathBuf::from(s);
+            if p.is_dir() {
+                return Some(p);
+            }
+        }
+        self.path.as_ref().and_then(|p| p.parent()).map(|d| d.to_path_buf())
+    }
+
     /// 探す場所を選ぶ(**窓は別のスレッド**)
     pub(crate) fn find_dir_dialog(&mut self, cx: &mut Context<Self>) {
         let start = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
@@ -2127,6 +2146,8 @@ impl Writer {
             let _ = this.update(cx, |this, cx| {
                 if let Some(p) = r {
                     this.status = ui::tf!("場所: {}", p.display().to_string()).into();
+                    // 次に開いたときも同じ場所から始められるように控える
+                    ui::settings::set("find_dir", &p.display().to_string());
                     this.fd_dir = Some(p);
                 }
                 cx.notify();
@@ -2203,7 +2224,7 @@ impl Writer {
             })
             .collect();
         let body = format!(
-            "{{\"tab\":{},\"native\":{},\"rp_open\":{},\"rp_tab\":{},\"rp_drawn\":{},\"file_view\":{},\"win_w\":{},\"win_h\":{},\"fd_files\":{},\"fd_hits\":{},\"sel\":[{},{}],\"status\":{:?},\"boxes\":[{}]}}",
+            "{{\"tab\":{},\"native\":{},\"rp_open\":{},\"rp_tab\":{},\"rp_drawn\":{},\"file_view\":{},\"win_w\":{},\"win_h\":{},\"fd_files\":{},\"fd_hits\":{},\"sel\":[{},{}],\"fd_boxes\":[{}],\"status\":{:?},\"boxes\":[{}]}}",
             self.tab,
             self.native,
             self.rp_open,
@@ -2216,6 +2237,15 @@ impl Writer {
             self.fd_tally.hits,
             self.ed.selection().start,
             self.ed.selection().end,
+            self
+                .fd_box
+                .borrow()
+                .iter()
+                .map(|(f, h, x, y, w, hh)| {
+                    format!("{{\"f\":{f},\"h\":{h},\"x\":{x},\"y\":{y},\"w\":{w},\"hh\":{hh}}}")
+                })
+                .collect::<Vec<_>>()
+                .join(","),
             self.status.to_string(),
             boxes.join(",")
         );

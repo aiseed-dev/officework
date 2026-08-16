@@ -253,6 +253,9 @@ struct Writer {
     /// 下に見せる中身(当たりの前後)
     fd_peek: String,
     fd_busy: bool,
+    /// **一覧の当たりの場所**(点検用。id は "fd-h-<ファイル>-<当たり>")。
+    /// 箱の鍵は `&'static str` なので、控える数を上から数本に絞る
+    fd_box: std::rc::Rc<std::cell::RefCell<Vec<(usize, usize, f32, f32, f32, f32)>>>,
     /// **ネイティブ文書(.adoc)を開いている**(2026-08-16)。
     /// 中身は意味だけで、見た目は [`Self::theme`] が持つ。false は互換
     /// (docx)— 直接書式が本文に入っている、今までの文書

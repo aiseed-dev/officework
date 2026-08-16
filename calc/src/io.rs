@@ -60,7 +60,7 @@ impl Calc {
     /// 素の字は face が読み、**.xlsx は calc がセルの字を渡す**。
     /// 選んでも開かず、下の「読み込み」で初めて開く
     pub(crate) fn find_in_folder(&mut self) {
-        let Some(dir) = self.fd_dir.clone() else {
+        let Some(dir) = self.find_dir() else {
             self.status = ui::t!("探す場所を選んでください").into();
             return;
         };
@@ -191,6 +191,21 @@ impl Calc {
         cx.notify();
     }
 
+    /// **探す場所。** 選んでいなければ(1)前に選んだ場所(settings.toml)
+    /// (2)いま開いているブックの隣、の順(writer と同じ決め)
+    pub(crate) fn find_dir(&self) -> Option<PathBuf> {
+        if let Some(d) = &self.fd_dir {
+            return Some(d.clone());
+        }
+        if let Some(s) = ui::settings::get("find_dir") {
+            let p = PathBuf::from(s);
+            if p.is_dir() {
+                return Some(p);
+            }
+        }
+        self.path.as_ref().and_then(|p| p.parent()).map(|d| d.to_path_buf())
+    }
+
     /// 探す場所を選ぶ(**窓は別のスレッド**)
     pub(crate) fn find_dir_dialog(&mut self, cx: &mut Context<Self>) {
         let start = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
@@ -206,6 +221,7 @@ impl Calc {
             let _ = this.update(cx, |this, cx| {
                 if let Some(p) = r {
                     this.status = ui::tf!("場所: {}", p.display().to_string()).into();
+                    ui::settings::set("find_dir", &p.display().to_string());
                     this.fd_dir = Some(p);
                 }
                 cx.notify();

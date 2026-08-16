@@ -2162,6 +2162,8 @@ mod marker_tests {
 
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
+            // **場所は既定で決まる** — 開いている文書の隣(2026-08-17)。
+            // ここでは文書を開いていないので明に渡す
             this.fd_dir = Some(dir.clone());
             this.fd_term = kumihan::Editor::new("unstructured");
             this.find_in_folder();
@@ -2184,6 +2186,26 @@ mod marker_tests {
                 this.status
             );
             assert!(this.ed.cursor() >= 4, "当たりの位置へ飛んでいない");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **場所は開いている文書の隣が既定**(2026-08-17)。毎回「場所を選ぶ」を
+    /// 押させない
+    #[gpui::test]
+    fn 探す場所は文書の隣が既定(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-finddir-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("覚え.txt"), "unstructured\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(dir.join("覚え.txt"));
+            assert_eq!(this.fd_dir, None, "まだ選んでいない");
+            assert_eq!(this.find_dir().as_deref(), Some(dir.as_path()), "隣が既定になっていない");
+            this.fd_term = kumihan::Editor::new("unstructured");
+            this.find_in_folder();
+            assert_eq!(this.fd_hits.len(), 1, "既定の場所で探せない: {}", this.status);
         });
         let _ = std::fs::remove_dir_all(&dir);
     }

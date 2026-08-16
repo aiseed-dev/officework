@@ -58,7 +58,19 @@ class W:
             if self.window():
                 break
             time.sleep(0.5)
-        time.sleep(1.5)
+        # **窓が育ちきるまで待つ。** 途中の姿(900×1000)で測ると倍率を
+        # 1.0 と誤り、以後ずっと**半分の位置**を押す(2026-08-17 に踏んだ。
+        # ファイルの面も段も全部効かず、canvas を疑って回り道をした)。
+        # 大きさが2回続けて同じになったら落ち着いたと見る
+        前 = None
+        for _ in range(40):
+            w = self.window()
+            now = (w[3], w[4]) if w else None
+            if now and now == 前:
+                break
+            前 = now
+            time.sleep(0.25)
+        time.sleep(0.8)
 
     window = rs.App.window
     take_focus = rs.App.take_focus
