@@ -38,9 +38,30 @@ pub struct StyleDef {
     pub line_spacing: Option<f32>,
 }
 
+/// **組み方** — 媒体の違いはここに集まる(発注者 2026-08-16
+/// 「テンプレートだけ変更すれば Web やアプリビルダーも作れる。横幅可変・
+/// ページ区切りなし。PowerPoint は文字がページを跨がらない。それだけのこと」)。
+///
+/// | 媒体 | 横幅 | 区切り |
+/// |---|---|---|
+/// | 紙(docx / PDF) | 固定(mm) | ページ |
+/// | Web / アプリ | **可変**(窓の幅) | **なし**(1本の流れ) |
+///
+/// **「跨ぎ」はまだ持たない。** 発表(1節=1枚・字が枚を跨がない)の組み手が
+/// 無いので、効かない切替を先に置かない(SEKKEI の決め)。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Setting {
+    /// 横幅が窓に従う(紙の幅を使わない)
+    pub fluid: bool,
+    /// ページに折らない(1本の長い流れ)
+    pub endless: bool,
+}
+
 /// テンプレート。文書の頭の `:template: 名前` が名指す実体。
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Theme {
+    /// 組み方(紙 / Web)。既定は紙
+    pub setting: Setting,
     /// 文書の既定の書体(`[文書]` の `書体`)
     pub font: Option<String>,
     /// 文書の既定の字の大きさ(`[文書]` の `大きさ`)
@@ -102,6 +123,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
     let mut th = Theme::default();
     // いま居る節。None = 頭(節の外)
     enum Sec {
+        Setting,
         Doc,
         Page,
         Style(usize),
@@ -114,7 +136,9 @@ pub fn parse(src: &str) -> Result<Theme, String> {
         }
         if let Some(name) = line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
             let name = name.trim();
-            cur = Some(if name == "文書" || name.eq_ignore_ascii_case("document") {
+            cur = Some(if name == "組み方" || name.eq_ignore_ascii_case("layout") {
+                Sec::Setting
+            } else if name == "文書" || name.eq_ignore_ascii_case("document") {
                 Sec::Doc
             } else if name == "ページ" || name.eq_ignore_ascii_case("page") {
                 Sec::Page
@@ -151,6 +175,25 @@ pub fn parse(src: &str) -> Result<Theme, String> {
         };
         match &cur {
             None => return Err(format!("{} 行目: 節の外に鍵があります: {k}", ln + 1)),
+            Some(Sec::Setting) => match k {
+                "横幅" | "width" => {
+                    th.setting.fluid = match s(v)?.as_str() {
+                        "可変" | "fluid" => true,
+                        "固定" | "fixed" => false,
+                        other => return Err(format!("{} 行目: 横幅は 可変 か 固定: {other}", ln + 1)),
+                    }
+                }
+                "区切り" | "break" => {
+                    th.setting.endless = match s(v)?.as_str() {
+                        "なし" | "none" => true,
+                        "ページ" | "page" => false,
+                        other => {
+                            return Err(format!("{} 行目: 区切りは ページ か なし: {other}", ln + 1))
+                        }
+                    }
+                }
+                _ => return Err(format!("{} 行目: [組み方] の知らない鍵: {k}", ln + 1)),
+            },
             Some(Sec::Doc) => match k {
                 "書体" | "font" => th.font = Some(s(v)?),
                 "大きさ" | "size" => th.size_pt = Some(n(v)?),
@@ -212,6 +255,16 @@ pub fn parse(src: &str) -> Result<Theme, String> {
 /// 門番は `parse(write(x)) == x`(往復)
 pub fn write(th: &Theme) -> String {
     let mut s = String::new();
+    if th.setting != Setting::default() {
+        s.push_str("[組み方]\n");
+        if th.setting.fluid {
+            s.push_str("横幅 = \"可変\"\n");
+        }
+        if th.setting.endless {
+            s.push_str("区切り = \"なし\"\n");
+        }
+        s.push('\n');
+    }
     if th.font.is_some() || th.size_pt.is_some() {
         s.push_str("[文書]\n");
         if let Some(f) = &th.font {
@@ -498,6 +551,16 @@ mod tests {
         let th = parse(src).unwrap();
         let back = write(&th);
         assert_eq!(parse(&back).unwrap(), th, "往復で崩れた:\n{back}");
+    }
+
+    #[test]
+    fn 組み方の値が往復する() {
+        let th = parse("[組み方]\n横幅 = \"可変\"\n区切り = \"なし\"\n").unwrap();
+        assert!(th.setting.fluid && th.setting.endless);
+        assert_eq!(parse(&write(&th)).unwrap(), th);
+        // 既定(紙)は書かない — 空の節を増やさない
+        assert_eq!(write(&Theme::default()), "");
+        assert!(parse("[組み方]\n横幅 = \"なんとなく\"\n").is_err(), "知らない値に黙った");
     }
 
     #[test]

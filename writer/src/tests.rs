@@ -2210,6 +2210,40 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **組み方の2値**(2026-08-17)。Web のテンプレート(横幅可変・区切り
+    /// なし)を着せると、紙の幅で折らず1本の流れになる
+    #[gpui::test]
+    fn 組み方でwebの流し組みになる(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-flow-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        // 何ページにもなる長さの本文
+        let mut body = String::from("= 題\n:template: web\n\n");
+        for i in 0..120 {
+            body.push_str(&format!("これは {i} 段落目の本文です。ながながと書きます。\n\n"));
+        }
+        std::fs::write(dir.join("長い.adoc"), &body).unwrap();
+        std::fs::write(dir.join("web.toml"), "[組み方]\n横幅 = \"可変\"\n区切り = \"なし\"\n")
+            .unwrap();
+        // 比べる相手(紙のまま)
+        std::fs::write(dir.join("紙.adoc"), body.replace(":template: web", ":template: 紙"))
+            .unwrap();
+        std::fs::write(dir.join("紙.toml"), "[スタイル.本文]\n").unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(dir.join("紙.adoc"));
+            assert!(this.tmpl.setting == Default::default(), "紙のはず");
+            let 紙 = this.total_pages();
+            assert!(紙 > 1, "紙で1ページに収まった(前提が崩れた): {紙}");
+
+            this.open(dir.join("長い.adoc"));
+            assert!(this.tmpl.setting.endless, "組み方が読めていない: {}", this.status);
+            assert_eq!(this.total_pages(), 1, "区切りなしなのに折れた");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// 互換(docx)では今までどおり直に掛かる — 封じるのはネイティブだけ
     #[gpui::test]
     fn 互換の文書では直接書式が今までどおり効く(cx: &mut gpui::TestAppContext) {

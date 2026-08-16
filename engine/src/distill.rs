@@ -163,6 +163,8 @@ pub fn distill(doc: &Document) -> (Document, Theme, Report) {
 
     // 3) テンプレートを組む
     let mut th = Theme {
+        // 蒸留の元は紙の文書なので、組み方は紙のまま
+        setting: Default::default(),
         font: base.font.clone(),
         size_pt: base.size_c.map(|c| c as f32 / 100.0),
         page: doc.page,

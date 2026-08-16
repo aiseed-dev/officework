@@ -459,12 +459,24 @@ impl Writer {
             );
             kumihan::fold_vertical(&mut self.page, &self.pg, y0, LINE_MM);
         } else {
+            // **組み方の2値**(2026-08-16 の決め、2026-08-17 に通した)。
+            // 横幅=可変 なら紙の幅ではなく窓の幅で組み、区切り=なし なら
+            // ページに折らない(1本の流れ = Web の姿)
+            let 組 = if self.native { self.tmpl.setting } else { Default::default() };
+            let measure = if 組.fluid {
+                // 画面の画素 → mm(紙の幅は使わない)。左右に少し余白を残す
+                ((self.view_w_px / crate::PX_PER_MM) - 16.0).max(40.0)
+            } else {
+                self.pg.column_measure_mm()
+            };
             self.page = layout(
                 src,
                 &m,
-                &Frame { measure_mm: self.pg.column_measure_mm(), line_height_mm: LINE_MM, y0_mm: y0 },
+                &Frame { measure_mm: measure, line_height_mm: LINE_MM, y0_mm: y0 },
             );
-            kumihan::fold_columns(&mut self.page, &self.pg, y0);
+            if !組.endless {
+                kumihan::fold_columns(&mut self.page, &self.pg, y0);
+            }
         }
         self.refresh_hf();
     }
@@ -663,6 +675,16 @@ impl Writer {
     /// 各ページの本当の番号は PDF で入る)。
     pub(crate) fn refresh_hf(&mut self) {
         let m = Metrics::new(&self.font_bytes).expect("フォント");
+        // **区切りなし(Web の組み方)は頁に数えない。** 組み手が折らないのに
+        // 数え手だけ折ると、1本のはずの流れが「3ページ」と言われる
+        // (2026-08-17 に踏んだ)
+        if self.native && self.tmpl.setting.endless {
+            self.page_offsets = vec![0.0];
+            self.page_notes.clear();
+            self.page_papers.clear();
+            self.page_tops.clear();
+            return;
+        }
         // **紙と同じ折り方を、同じ関数から受け取る。** 脚注はその頁の
         // 本文の底を上げるので、別に数えると画面と PDF がずれる
         let pn = paper::paginate_full(&self.page, paper::Paper {
