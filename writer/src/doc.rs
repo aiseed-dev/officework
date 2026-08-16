@@ -1009,6 +1009,7 @@ impl Writer {
                     w_mm,
                     h_mm,
                     tex: Some(tex.clone()),
+                    src: None,
                 };
                 // 挿すのはカーソルの段落。**images_new にだけ入れる** —
                 // 組版(layout)は images と images_new の両方を描くので、

@@ -122,6 +122,11 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                         st.push_attribute(("w:val", "TableofFigures"));
                         w.write_event(Event::Empty(st)).unwrap();
                     }
+                    ParaStyle::Quote => {
+                        let mut st = BS::new("w:pStyle");
+                        st.push_attribute(("w:val", "Quote"));
+                        w.write_event(Event::Empty(st)).unwrap();
+                    }
                     ParaStyle::Body => {}
                 }
             }

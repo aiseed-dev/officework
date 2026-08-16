@@ -463,7 +463,7 @@ pub(super) fn image_of(
     let tex = grab("descr=\"")
         .filter(|d| d.starts_with(TEX_SIRUSI))
         .map(|d| unesc(&d[TEX_SIRUSI.len()..]));
-    Some(kumihan::InlineImage { bytes, w_mm: cx / 36000.0, h_mm: cy / 36000.0, tex })
+    Some(kumihan::InlineImage { bytes, w_mm: cx / 36000.0, h_mm: cy / 36000.0, tex, src: None })
 }
 
 /// sectPr から用紙の寸法を読む(twip → mm)。
@@ -995,6 +995,7 @@ pub(super) fn style_of(val: &str) -> ParaStyle {
         "toc1" => ParaStyle::Toc(1),
         "toc2" => ParaStyle::Toc(2),
         "toc3" => ParaStyle::Toc(3),
+        "quote" | "blockquote" | "引用" | "引用文" => ParaStyle::Quote,
         _ => ParaStyle::Body,
     }
 }

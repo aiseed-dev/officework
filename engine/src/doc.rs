@@ -295,6 +295,10 @@ pub struct InlineImage {
     /// 渡した先の Word では絵として見え、こちらでは式として直せる。
     /// 普通の画像は None
     pub tex: Option<String>,
+    /// ネイティブ文書(.adoc)での**相対の径路**(`image::images/図1.png[]`)。
+    /// 画像の実体はファイルが正本で、bytes は開いたときの写し。
+    /// docx 由来の画像は None(bytes が正本)
+    pub src: Option<String>,
 }
 
 /// 段落の揃え。docx の `w:jc`。
@@ -364,6 +368,9 @@ pub enum ParaStyle {
     Toc(u8),
     /// 図表目次の行(docx の TableofFigures。「図表目次の更新」の印)
     Tof,
+    /// 引用(2026-08-16、AsciiDoc の ____ を受けるために足した。
+    /// docx では w:pStyle "Quote")
+    Quote,
 }
 
 /// 段落に付くコメント(docx の comments.xml)。**段落単位**で持つ
@@ -626,6 +633,10 @@ pub struct Document {
     pub protection: Option<String>,
     /// 文書の情報(docx の docProps/core.xml)。作成者・タイトルなど
     pub props: CoreProps,
+    /// **テンプレートの名前**(ネイティブ文書の頭の `:template: 名前`)。
+    /// 実体は文書の隣 → ~/.config/officework/templates/ → 同梱の既定、の順に
+    /// 探す(探すのはアプリの側 — 模型は名前を運ぶだけ)。docx には出ない
+    pub template: Option<String>,
     /// スタイル定義の**名乗りの一覧**(styles.xml から読んだ id・名前・種類)。
     /// 定義の本体は原文の styles.xml が持ち、保存で丸ごと持ち越される —
     /// ここは「どんなスタイルがあるか」を見せる写し(2026-08-12 発注者確定)

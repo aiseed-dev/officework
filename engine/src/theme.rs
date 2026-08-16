@@ -60,6 +60,7 @@ impl Theme {
     pub fn role_name(style: ParaStyle) -> Option<&'static str> {
         match style {
             ParaStyle::Body => Some("本文"),
+            ParaStyle::Quote => Some("引用"),
             ParaStyle::Heading(1) => Some("見出し1"),
             ParaStyle::Heading(2) => Some("見出し2"),
             ParaStyle::Heading(_) => Some("見出し3"),
