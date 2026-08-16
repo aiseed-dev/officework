@@ -821,40 +821,11 @@ pub(crate) fn parse_pivot_grid(raw: &str) -> (Vec<Vec<String>>, Vec<char>) {
     (grid, kinds)
 }
 
-/// 表のデザインの「合計行」。選択の下の行に、数の列へ =SUM(…) を入れて
-/// 太字+上罫線にする。1行目が見出し(文字)なら合計の範囲から外す。
-/// 文字の列の先頭には「合計」の札。書いた欄の数を返す。
+/// 表のデザインの「合計行」。**実装は [`sheet::tabledesign::add_total_row`]**
+/// (2026-08-16 に移した — 画面と Python の口が同じ所を呼ぶため)。
+/// ここは試験と昔の呼び手のための橋
 pub(crate) fn add_total_row(s: &mut sheet::Sheet, a: Pos, b: Pos) -> usize {
-    let header = (a.col..=b.col).any(|c| {
-        matches!(s.get(Pos::new(a.row, c)).map(|x| &x.value), Some(Value::Text(_)))
-    });
-    let from = if header && b.row > a.row { a.row + 1 } else { a.row };
-    let total = b.row + 1;
-    let mut n = 0usize;
-    for c in a.col..=b.col {
-        let numeric = (from..=b.row).any(|r| {
-            matches!(s.get(Pos::new(r, c)).map(|x| &x.value), Some(Value::Number(_)))
-        });
-        let p = Pos::new(total, c);
-        let fmt0 = s.get(p).map(|x| x.fmt.clone()).unwrap_or_default();
-        let mut cell = if numeric {
-            Cell::input(&format!(
-                "=SUM({}:{})",
-                Pos::new(from, c).a1(),
-                Pos::new(b.row, c).a1()
-            ))
-        } else if c == a.col {
-            Cell::input("合計")
-        } else {
-            s.get(p).cloned().unwrap_or_default()
-        };
-        cell.fmt = fmt0;
-        cell.fmt.bold = true;
-        cell.fmt.borders.top = sheet::model::Edge::THIN;
-        s.set(p, cell);
-        n += 1;
-    }
-    n
+    sheet::tabledesign::add_total_row(s, a, b)
 }
 
 /// データタブの「小計」(Excel の集計)。基準の列の値が変わる区切りごとに

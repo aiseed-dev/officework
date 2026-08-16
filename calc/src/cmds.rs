@@ -343,6 +343,23 @@ impl Calc {
     /// 記録に残す書式の操作(id → Python の1行を作る型)。
     /// **Python の口にある物だけ**を記録する — 記録した台本が走らないと
     /// 意味が無いので、口の無い操作は残さない(下の rec_cmd が None を返す)
+    /// 表の飾りの**次の姿**(入っていれば切る)。カーソルの居る表の旗を見る
+    /// — 表が無ければ「掛ける」から始める(押して何も起きないより素直)
+    pub(crate) fn td_next(&self, what: sheet::tabledesign::Deco) -> bool {
+        use sheet::tabledesign::Deco;
+        let p = self.cursor;
+        let Some(t) = self.sheet().tables.iter().find(|t| t.contains(p)) else {
+            return true;
+        };
+        !match what {
+            Deco::Header => t.header,
+            Deco::BandRow => t.banded_rows,
+            Deco::BandCol => t.banded_cols,
+            Deco::FirstCol => t.first_col,
+            Deco::LastCol => t.last_col,
+        }
+    }
+
     fn rec_cmd(&self, id: &str) -> Option<String> {
         let (a, b) = self.sel_rect();
         let r = if a == b { a.a1() } else { format!("{}:{}", a.a1(), b.a1()) };
@@ -1901,18 +1918,17 @@ impl Calc {
             "td-torange" => {
                 self.commit();
                 let p = self.cursor;
-                match self.sheet().tables.iter().position(|t| t.contains(p)) {
+                self.checkpoint();
+                match sheet::tabledesign::to_range(&mut self.book.sheets[self.active], p) {
                     None => {
                         self.status =
                             ui::t!("表の中にカーソルを置いてください(表のない範囲は「表の挿入」で表にできます)").into();
                     }
-                    Some(i) => {
-                        self.checkpoint();
-                        let t = self.book.sheets[self.active].tables.remove(i);
+                    Some(name) => {
                         self.dirty = true;
-                        self.status = format!(
+                        self.status = ui::tf!(
                             "表「{}」を普通の範囲に戻しました(帯や縞々の書式と式はそのまま残ります)",
-                            t.name
+                            name
                         )
                         .into();
                     }
@@ -2417,74 +2433,39 @@ impl Calc {
             // (掛けた書式・式が帳面に残るだけ。切り替え式に見せない。
             // まとめて掛けるなら挿入タブの「表の挿入」)
             "td-header" | "td-band-row" | "td-band-col" | "td-first" | "td-last" => {
-                // 表の中なら、表オブジェクトの性質も一緒に更新する
-                let pcur = self.cursor;
-                if let Some(i) = self.sheet().tables.iter().position(|t| t.contains(pcur)) {
-                    let t = &mut self.book.sheets[self.active].tables[i];
-                    match id {
-                        "td-header" => t.header = !t.header,
-                        "td-band-row" => t.banded_rows = !t.banded_rows,
-                        "td-band-col" => t.banded_cols = !t.banded_cols,
-                        "td-first" => t.first_col = !t.first_col,
-                        _ => t.last_col = !t.last_col,
-                    }
-                    self.dirty = true;
-                }
+                // **実装は sheet::tabledesign**(2026-08-16 に移した)。画面と
+                // Python の口が同じ所を呼ぶので、記録した行はそのまま走る
+                let what = match id {
+                    "td-header" => sheet::tabledesign::Deco::Header,
+                    "td-band-row" => sheet::tabledesign::Deco::BandRow,
+                    "td-band-col" => sheet::tabledesign::Deco::BandCol,
+                    "td-first" => sheet::tabledesign::Deco::FirstCol,
+                    _ => sheet::tabledesign::Deco::LastCol,
+                };
                 self.commit();
                 if self.anchor.is_none() {
                     self.status = ui::t!("表の範囲を選んでください").into();
                 } else {
                     self.checkpoint();
                     let (a, b) = self.sel_rect();
-                    for r in a.row..=b.row {
-                        for c in a.col..=b.col {
-                            let p = Pos::new(r, c);
-                            let mut cell = self.sheet().get(p).cloned().unwrap_or_default();
-                            let touched = match id {
-                                "td-header" if r == a.row => {
-                                    cell.fmt.bold = true;
-                                    cell.fmt.fill = Some("D5E8DC".into());
-                                    cell.fmt.borders.top = sheet::model::Edge::THIN;
-                                    true
-                                }
-                                "td-band-row" if r > a.row && (r - a.row) % 2 == 0 => {
-                                    cell.fmt.fill = Some("F1F6F3".into());
-                                    true
-                                }
-                                "td-band-col" if (c - a.col) % 2 == 1 => {
-                                    cell.fmt.fill = Some("F1F6F3".into());
-                                    true
-                                }
-                                "td-first" if c == a.col => {
-                                    cell.fmt.bold = true;
-                                    true
-                                }
-                                "td-last" if c == b.col => {
-                                    cell.fmt.bold = true;
-                                    true
-                                }
-                                _ => false,
-                            };
-                            if touched {
-                                self.book.sheets[self.active].set(p, cell);
-                            }
-                        }
-                    }
+                    let on = self.td_next(what);
+                    sheet::tabledesign::deco(&mut self.book.sheets[self.active], a, b, what, on);
                     self.dirty = true;
                     // 文に差し込む字も画面の文言 — 訳さないと日本語だけ混じる
-                    let what = match id {
+                    let what_ja = match id {
                         "td-header" => ui::t!("1行目を見出しの帯に"),
                         "td-band-row" => ui::t!("1行おきの縞々に"),
                         "td-band-col" => ui::t!("1列おきの縞々に"),
                         "td-first" => ui::t!("最初の列を太字に"),
                         _ => ui::t!("最後の列を太字に"),
                     };
-                    self.status = ui::tf!(
-                        "{}:{} を{}しました(Ctrl+Z で戻せます)",
-                        a.a1(),
-                        b.a1(),
-                        what
-                    )
+                    self.status = if on {
+                        ui::tf!("{}:{} を{}しました(Ctrl+Z で戻せます)", a.a1(), b.a1(), what_ja)
+                    } else {
+                        // 塗りは剥がさない(掛ける前の姿を覚えていない)。
+                        // **できないことを、できるように見せない**
+                        ui::tf!("表の性質から{}を外しました(掛かっている色は「書式のクリア」で消せます)", what_ja)
+                    }
                     .into();
                 }
             }
@@ -2495,25 +2476,17 @@ impl Calc {
                     self.status = ui::t!("合計したい表の範囲を選んでください").into();
                 } else {
                     let (a, b) = self.sel_rect();
-                    let below_used = (a.col..=b.col).any(|c| {
-                        self.sheet()
-                            .get(Pos::new(b.row + 1, c))
-                            .map(|cell| {
-                                !cell.value.display().is_empty() || cell.formula.is_some()
-                            })
-                            .unwrap_or(false)
-                    });
-                    if below_used {
+                    if sheet::tabledesign::below_used(self.sheet(), a, b) {
                         self.status =
                             ui::t!("すぐ下の行に中身があります(空けてから — 黙って上書きしません)").into();
                     } else {
                         self.checkpoint();
-                        add_total_row(&mut self.book.sheets[self.active], a, b);
+                        sheet::tabledesign::add_total_row(&mut self.book.sheets[self.active], a, b);
                         recalc_book(&mut self.book, self.active);
                         self.dirty = true;
-                        self.status = format!(
+                        self.status = ui::tf!(
                             "{} 行目に合計(=SUM)を足しました。式なので元が変われば追従します(Ctrl+Z で戻せます)",
-                            b.row + 2
+                            (b.row + 2).to_string()
                         )
                         .into();
                     }

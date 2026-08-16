@@ -12,6 +12,7 @@ pub mod look;
 pub mod markdown;
 pub mod model;
 pub mod styles;
+pub mod tabledesign;
 pub mod theme;
 pub mod xlsx;
 
