@@ -21,6 +21,7 @@
 //! 型は全部ここから見える(`use kumihan::Paragraph` は変わらない)。
 
 pub mod atomic;
+pub mod theme;
 pub mod edit;
 pub mod font;
 pub mod html;

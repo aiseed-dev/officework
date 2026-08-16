@@ -555,13 +555,17 @@ impl Writer {
     }
 
     /// 段落のスタイル。0 = 標準、1〜3 = 見出し。
-    /// スタイル定義(styles.xml)を持たないので、見た目は直接書式で付ける。
+    /// 見た目は直接書式で付ける(互換モードの作法のまま)が、**数字の正本は
+    /// 既定のテンプレート**(kumihan::theme::DEFAULT_TOML。2026-08-16)。
+    /// 焼き付ける値と合成が出す値がずれたら、段階Cの移行で見た目が変わる
     pub(crate) fn set_para_style(&mut self, n: u8) {
         self.checkpoint(false); // 段落の様式
         let (pt, bold) = match n {
-            1 => (Some(16.0), true),
-            2 => (Some(13.0), true),
-            3 => (Some(11.5), true),
+            1..=3 => {
+                let th = kumihan::theme::default_theme();
+                let def = th.style(&format!("見出し{n}"));
+                (def.and_then(|d| d.size_pt), def.map(|d| d.bold).unwrap_or(true))
+            }
             // 標準 = 大きさの指定を**外す**(文書の既定に従う)。
             // ここで 10.5 を入れ直すと、無指定が「指定あり」に化ける
             _ => (None, false),
