@@ -514,6 +514,51 @@ class Range:
         _call("set_fmt", vertical=v, **self._kw())
 
     @property
+    def indent(self):
+        """字下げの段数(1段 = 全角約1字)。日本の帳票の階層はこれで見せる。"""
+        return int(_call("get_fmt", **self._kw()).get("indent", 0))
+
+    @indent.setter
+    def indent(self, v):
+        _call("set_fmt", indent=int(v), **self._kw())
+
+    @property
+    def rotation(self):
+        """文字の向き(度。90 = 縦向き)。指定が無ければ None。"""
+        return _call("get_fmt", **self._kw()).get("rotation")
+
+    @rotation.setter
+    def rotation(self, v):
+        _call("set_fmt", rotation=None if v is None else int(v), **self._kw())
+
+    @property
+    def locked(self):
+        """シートを保護したときに堰き止められるか。**既定は True**。"""
+        return bool(_call("get_fmt", **self._kw()).get("locked", True))
+
+    @locked.setter
+    def locked(self, v):
+        _call("set_fmt", locked=bool(v), **self._kw())
+
+    @property
+    def formula_hidden(self):
+        """保護中に式を数式バーに出さない。"""
+        return bool(_call("get_fmt", **self._kw()).get("formula_hidden"))
+
+    @formula_hidden.setter
+    def formula_hidden(self, v):
+        _call("set_fmt", formula_hidden=bool(v), **self._kw())
+
+    @property
+    def rtl_text(self):
+        """セルの中を右横書きに(1字ずつ右から。昔の看板の書き方)。"""
+        return bool(_call("get_fmt", **self._kw()).get("rtl_text"))
+
+    @rtl_text.setter
+    def rtl_text(self, v):
+        _call("set_fmt", rtl_text=bool(v), **self._kw())
+
+    @property
     def shrink(self):
         """枠に収まるまで字を縮める。"""
         return bool(_call("get_fmt", **self._kw()).get("shrink"))
@@ -707,6 +752,15 @@ class _RangeFont:
     @italic.setter
     def italic(self, v):
         self._set(italic=bool(v))
+
+    @property
+    def subscript(self):
+        """下付き。"""
+        return bool(self._get("subscript"))
+
+    @subscript.setter
+    def subscript(self, v):
+        self._set(subscript=bool(v))
 
     @property
     def underline(self):
@@ -1007,9 +1061,31 @@ class Sheet:
 
     @property
     def page_setup(self):
-        """印刷の設定(紙のコード・向き・余白 mm・印刷範囲・タイトル行)。
-        読むだけ — 変えるのはアプリのレイアウトタブ(見ながら決める物)。"""
+        """印刷の設定(紙のコード・向き・余白 mm・印刷範囲・タイトル行)。"""
         return PageSetup(_call("page_setup", sheet=self.name))
+
+    def set_page_setup(self, paper=None, landscape=None, scale=None,
+                       fit_to_w=None, fit_to_h=None, print_gridlines=None,
+                       print_headings=None, margins_mm=None):
+        """印刷の設定を書く。**渡した物だけ**変わる(2026-08-16)。
+
+        - `paper`: 紙のコード(9 = A4、8 = A3。xlsx の paperSize)
+        - `landscape`: 横向きなら True
+        - `scale`: 印刷の倍率(10〜400%)。`fit_to_*` とは両立しない
+        - `margins_mm`: (左, 右, 上, 下) の mm
+        """
+        kw = {"sheet": self.name}
+        for k, v in (("paper", paper), ("landscape", landscape), ("scale", scale),
+                     ("fit_to_w", fit_to_w), ("fit_to_h", fit_to_h),
+                     ("print_gridlines", print_gridlines),
+                     ("print_headings", print_headings)):
+            if v is not None:
+                kw[k] = v
+        if margins_mm is not None:
+            l, r, t, b = margins_mm
+            kw.update(margin_l=l, margin_r=r, margin_t=t, margin_b=b)
+        _call("set_page_setup", **kw)
+        return self
 
     def insert_rows(self, at, count=1):
         """行を挿す(at は1起点の行番号)。**残った式の参照が付いて動く**。"""

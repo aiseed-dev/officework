@@ -461,6 +461,22 @@ impl Calc {
         boolean("strike", before.strike, after.strike, true);
         boolean("wrap_text", before.wrap, after.wrap, false);
         boolean("shrink", before.shrink, after.shrink, false);
+        boolean("subscript", before.subscript, after.subscript, true);
+        boolean("rtl_text", before.rtl_text, after.rtl_text, false);
+        boolean("formula_hidden", before.formula_hidden, after.formula_hidden, false);
+        // ロックは**裏返して**持っている(既定が「掛かっている」)
+        if before.unlocked != after.unlocked {
+            out.push(format!("{cell}.locked = {}", py_bool(!after.unlocked)));
+        }
+        if before.indent != after.indent {
+            out.push(format!("{cell}.indent = {}", after.indent));
+        }
+        if before.rotation != after.rotation {
+            match after.rotation {
+                Some(d) => out.push(format!("{cell}.rotation = {d}")),
+                None => out.push(format!("{cell}.rotation = None")),
+            }
+        }
         if before.font != after.font {
             match &after.font {
                 Some(f) => out.push(format!("{cell}.font.name = {f:?}")),
@@ -528,6 +544,12 @@ impl Calc {
         wrote.number_format = after.number_format.clone();
         wrote.align = after.align;
         wrote.valign = after.valign;
+        wrote.subscript = after.subscript;
+        wrote.rtl_text = after.rtl_text;
+        wrote.formula_hidden = after.formula_hidden;
+        wrote.unlocked = after.unlocked;
+        wrote.indent = after.indent;
+        wrote.rotation = after.rotation;
         // 色の由来は set_fmt が色そのものに落とすので、比べる前に揃える
         wrote.color_theme = after.color_theme;
         wrote.fill_theme = after.fill_theme;
@@ -588,6 +610,58 @@ impl Calc {
         Some(format!("s{v}[{a1:?}].value = [{}]", rows.join(", ")))
     }
 
+    /// **印刷の設定の差分から記録の行を起こす。** 余白・向き・紙・倍率・
+    /// 枠線と見出しの印刷 — レイアウトタブのボタンは巡回するので、
+    /// 「押した回数」ではなく**行き着いた姿**を書く
+    pub(crate) fn rec_page_diff(&self, before: &sheet::Sheet) -> Option<String> {
+        let a = self.sheet();
+        let mut kw: Vec<String> = Vec::new();
+        if before.paper_size != a.paper_size {
+            match a.paper_size {
+                Some(c) => kw.push(format!("paper={c}")),
+                None => kw.push("paper=None".into()),
+            }
+        }
+        if before.landscape != a.landscape {
+            kw.push(format!("landscape={}", py_bool(a.landscape)));
+        }
+        if before.print_scale != a.print_scale {
+            match a.print_scale {
+                Some(s) => kw.push(format!("scale={s}")),
+                None => kw.push("scale=None".into()),
+            }
+        }
+        if before.fit_to_w != a.fit_to_w {
+            kw.push(match a.fit_to_w {
+                Some(v) => format!("fit_to_w={v}"),
+                None => "fit_to_w=None".into(),
+            });
+        }
+        if before.fit_to_h != a.fit_to_h {
+            kw.push(match a.fit_to_h {
+                Some(v) => format!("fit_to_h={v}"),
+                None => "fit_to_h=None".into(),
+            });
+        }
+        if before.print_gridlines != a.print_gridlines {
+            kw.push(format!("print_gridlines={}", py_bool(a.print_gridlines)));
+        }
+        if before.print_headings != a.print_headings {
+            kw.push(format!("print_headings={}", py_bool(a.print_headings)));
+        }
+        if before.margins_mm != a.margins_mm {
+            kw.push(match a.margins_mm {
+                Some((l, r, t, b)) => format!("margins_mm=({l}, {r}, {t}, {b})"),
+                None => "margins_mm=None".into(),
+            });
+        }
+        if kw.is_empty() {
+            return None;
+        }
+        let v = crate::state::sheet_var(&self.book.sheets[self.active].name);
+        Some(format!("s{v}.set_page_setup({})", kw.join(", ")))
+    }
+
     /// リボンの表からこの命令の名札を引く(記録の註に人の言葉で残すため)。
     /// 見つからなければ id をそのまま返す
     pub(crate) fn cmd_label(id: &str) -> &str {
@@ -642,6 +716,10 @@ impl Calc {
             // 値が変わっていれば、書式の行があっても**値も**書く。
             // 消去のように両方変える操作があるため
             if let Some(line) = self.rec_value_diff(&s0) {
+                self.rec_line(line);
+            }
+            // 印刷の設定(余白・向き・紙・倍率・枠線と見出し)も同じ控えから
+            if let Some(line) = self.rec_page_diff(&s0) {
                 self.rec_line(line);
             }
             // 書式に言い表せない動きがあれば、下の穴の註へ落とす

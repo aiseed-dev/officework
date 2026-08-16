@@ -832,6 +832,57 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 }
             )
         }
+        // 印刷の設定を**書く**(2026-08-16。読むだけだったので、レイアウトタブの
+        // 操作が記録しても走らなかった)。渡した項目だけ変わる
+        "set_page_setup" => {
+            let si = match sheet_index(h, &o) {
+                Ok(i) => i,
+                Err(e) => return e,
+            };
+            h.settle();
+            h.mark_once();
+            let sh = &mut h.book_mut().sheets[si];
+            if o.has("paper") {
+                sh.paper_size = o.num("paper").map(|x| x as u32);
+            }
+            if o.has("landscape") {
+                sh.landscape = o.bool("landscape").unwrap_or(false);
+            }
+            if o.has("scale") {
+                sh.print_scale = o.num("scale").map(|x| x.clamp(10.0, 400.0) as u32);
+                if sh.print_scale.is_some() {
+                    // 「ページに合わせる」と倍率は両立しない(xlsx も片方だけ)
+                    sh.fit_to_w = None;
+                    sh.fit_to_h = None;
+                }
+            }
+            if o.has("fit_to_w") {
+                sh.fit_to_w = o.num("fit_to_w").map(|x| x as u32);
+            }
+            if o.has("fit_to_h") {
+                sh.fit_to_h = o.num("fit_to_h").map(|x| x as u32);
+            }
+            if o.has("print_gridlines") {
+                sh.print_gridlines = o.bool("print_gridlines").unwrap_or(false);
+            }
+            if o.has("print_headings") {
+                sh.print_headings = o.bool("print_headings").unwrap_or(false);
+            }
+            // 余白は4つの鍵で受ける(**浅い JSON の読み手に配列は無い** —
+            // 依存を増やさない流儀のまま、mm を1つずつ)
+            if ["margin_l", "margin_r", "margin_t", "margin_b"].iter().any(|k| o.has(k)) {
+                let (l0, r0, t0, b0) = sh.margins_mm.unwrap_or((20.0, 20.0, 20.0, 20.0));
+                let mm = |k: &str, now: f32| o.num(k).map(|x| x as f32).unwrap_or(now);
+                sh.margins_mm = Some((
+                    mm("margin_l", l0),
+                    mm("margin_r", r0),
+                    mm("margin_t", t0),
+                    mm("margin_b", b0),
+                ));
+            }
+            h.mark_dirty();
+            "{\"ok\":true}".into()
+        }
         // セルのコメント(xlwings の note)。text を渡せば置く、null で消す
         "note" => {
             let (si, a, _) = match target(h, &o) {
@@ -1325,6 +1376,9 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                     ("strike", f.strike),
                     ("wrap", f.wrap),
                     ("shrink", f.shrink),
+                    ("subscript", f.subscript),
+                    ("rtl_text", f.rtl_text),
+                    ("formula_hidden", f.formula_hidden),
                 ] {
                     if on {
                         out.push(format!("\"{k}\":true"));
@@ -1350,6 +1404,16 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 }
                 if let Some(v) = f.valign.as_xlsx() {
                     out.push(format!("\"vertical\":\"{v}\""));
+                }
+                if f.indent > 0 {
+                    out.push(format!("\"indent\":{}", f.indent));
+                }
+                if let Some(v) = f.rotation {
+                    out.push(format!("\"rotation\":{v}"));
+                }
+                // ロックは**既定が真**なので、外れているときだけ言う
+                if f.unlocked {
+                    out.push("\"locked\":false".into());
                 }
             }
             format!("{{{}}}", out.join(","))
@@ -1417,6 +1481,26 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                             .str("vertical")
                             .map(|x| sheet::model::VAlign::from_xlsx(&x))
                             .unwrap_or_default();
+                    }
+                    // **記録した操作が走るために足した**(2026-08-16)。
+                    // 下付き・右横書き・字下げ・文字の向き・ロック・式を隠す
+                    if o.has("subscript") {
+                        f.subscript = o.bool("subscript").unwrap_or(false);
+                    }
+                    if o.has("rtl_text") {
+                        f.rtl_text = o.bool("rtl_text").unwrap_or(false);
+                    }
+                    if o.has("indent") {
+                        f.indent = o.num("indent").unwrap_or(0.0).clamp(0.0, 250.0) as u8;
+                    }
+                    if o.has("rotation") {
+                        f.rotation = o.num("rotation").map(|x| x as i32);
+                    }
+                    if o.has("locked") {
+                        f.unlocked = !o.bool("locked").unwrap_or(true);
+                    }
+                    if o.has("formula_hidden") {
+                        f.formula_hidden = o.bool("formula_hidden").unwrap_or(false);
                     }
                     sh.set(p, cell);
                 }

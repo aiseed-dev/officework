@@ -6518,18 +6518,23 @@ mod rec_honest_tests {
             );
             this.anchor = None;
 
-            // (3) セルの外を変える操作 — **黙って落とさず註が残る**
+            // (3) まだ Python の口が無い操作 — **黙って落とさず註が残る**
+            // (図形。2026-08-16 に余白・向き・紙は書けるようになったので、
+            // ここの例を差し替えた — 穴が減ったら例も動く、が健全)
             this.rec = Some(Vec::new());
             let before = this.edits;
-            this.run_cmd("pagemargins", cx);
+            this.run_cmd("instext", cx);
             let lines = this.rec.clone().unwrap();
-            assert!(this.edits > before, "余白が何も変えていない(前提が崩れた)");
+            assert!(this.edits > before, "テキストボックスが何も変えていない(前提が崩れた)");
             assert!(
                 lines.iter().any(|l| l.starts_with("# この操作はまだ Python で書けません")),
                 "穴が黙って落ちた: {lines:?}"
             );
             // **人の言葉で残す**(id だけだと宿題の一覧として読めない)
-            assert!(lines.iter().any(|l| l.contains("余白")), "名札が入っていない: {lines:?}");
+            assert!(
+                lines.iter().any(|l| l.contains("テキストボックス")),
+                "名札が入っていない: {lines:?}"
+            );
 
             // (3) 中身を変えない操作(一覧を開くだけ)には何も残さない
             this.rec = Some(Vec::new());
