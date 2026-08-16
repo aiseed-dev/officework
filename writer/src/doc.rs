@@ -51,6 +51,9 @@ impl Writer {
             image_cache: Default::default(),
             font_bytes: std::sync::Arc::new(font_data().to_vec()),
             pg: kumihan::PageSetup::default(),
+            btn_box: Default::default(),
+            ui_dump_last: Default::default(),
+            rp_drawn: Default::default(),
             native: false,
             style_new: None,
             style_ed: Editor::new(""),
@@ -2017,6 +2020,41 @@ impl Writer {
             kumihan::theme::default_theme(),
             ui::tf!("テンプレート「{}」が見つからないので同梱の既定", name).to_string(),
         )
+    }
+
+    /// **リボンのボタンの場所を書き出す**(実機の点検のためだけ)。
+    ///
+    /// 環境変数 `OFFICEWORK_UI_DUMP` が指すファイルへ JSON を1つ。
+    /// **設定していなければ何もしない** — 網も socket も開けない。
+    /// calc の rpc `{"cmd":"ribbon"}` に当たるものを、writer には受け口が
+    /// 無いのでファイルで渡す(2026-08-16。座標を目分量で当てて3回外し、
+    /// 外した拍子に発注者の打鍵まで拾った)。
+    pub(crate) fn dump_ui(&self) {
+        let Some(path) = std::env::var_os("OFFICEWORK_UI_DUMP") else { return };
+        let boxes: Vec<String> = self
+            .btn_box
+            .borrow()
+            .iter()
+            .map(|(id, (x, y, w, h))| {
+                format!("{{\"id\":\"{id}\",\"x\":{x},\"y\":{y},\"w\":{w},\"h\":{h}}}")
+            })
+            .collect();
+        let body = format!(
+            "{{\"tab\":{},\"native\":{},\"rp_open\":{},\"rp_tab\":{},\"rp_drawn\":{},\"status\":{:?},\"boxes\":[{}]}}",
+            self.tab,
+            self.native,
+            self.rp_open,
+            self.rp_tab,
+            self.rp_drawn.get(),
+            self.status.to_string(),
+            boxes.join(",")
+        );
+        // 同じ中身なら書かない(毎フレーム書くのは無駄)
+        if *self.ui_dump_last.borrow() == body {
+            return;
+        }
+        *self.ui_dump_last.borrow_mut() = body.clone();
+        let _ = std::fs::write(path, body);
     }
 
     /// **蒸留** — 互換の文書(docx)を意味だけ+テンプレートに変える

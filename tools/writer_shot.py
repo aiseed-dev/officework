@@ -11,6 +11,7 @@
 ことは ribbon_sweep と同じ踏み跡(2026-08-15)。
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -42,6 +43,11 @@ class W:
         for k in ("GTK_IM_MODULE", "QT_IM_MODULE"):
             env.pop(k, None)
         env["XMODIFIERS"] = "@im=none"
+        # **リボンの場所を writer に書き出させる**(2026-08-16)。
+        # calc の rpc `{"cmd":"ribbon"}` に当たるもの。無いと座標を目分量で
+        # 当てることになり、3回外して発注者の打鍵まで拾った
+        self.ui_json = os.path.join(self.run_dir, "ui.json")
+        env["OFFICEWORK_UI_DUMP"] = self.ui_json
         self.env = env
         self.log = open(os.path.join(self.run_dir, "writer.log"), "w+")
         args = [WRITER] + ([path] if path else [])
@@ -94,9 +100,64 @@ class W:
         self.d.sync()
         time.sleep(wait)
 
+    def ui(self, tries=20, want_boxes=True):
+        """いまの画面の様子(段・ボタンの箱・状態行)。**writer が描いた
+        ものを読む** — 目分量で座標を当てない。
+
+        **控えは描いた後に埋まる**(canvas の prepaint は render の後)ので、
+        読む前にマウスを動かして1フレーム描かせる。踏み跡「押した直後の1手は
+        画に出ない」と同じ理由(2026-08-16)。
+        """
+        for i in range(tries):
+            self._nudge()
+            time.sleep(0.2)
+            try:
+                with open(self.ui_json, encoding="utf-8") as f:
+                    u = json.load(f)
+            except Exception:
+                continue
+            if not want_boxes or u.get("boxes") or i >= 3:
+                return u
+        raise SystemExit(f"ui.json が出ません({self.ui_json})。writer が描いていない?")
+
+    def _nudge(self):
+        """描き直させるためにマウスを少し動かす(押さない)"""
+        w = self.window()
+        if not w:
+            return
+        for dx in (300, 320):
+            xtest.fake_input(self.d, X.MotionNotify, x=w[1] + dx, y=w[2] + 700)
+            self.d.sync()
+            time.sleep(0.05)
+
+    def tab(self, i, wait=0.9):
+        """段を開く(番号)。**段の箱も writer が控えている**ので当てない"""
+        for _ in range(4):
+            u = self.ui()
+            if u["tab"] == i:
+                return u
+            b = next((x for x in u["boxes"] if x["id"] == f"@tab{i}"), None)
+            if b is None:
+                raise SystemExit(f"段 {i} の箱がありません")
+            self.click(b["x"] + b["w"] / 2, b["y"] + b["h"] / 2, wait)
+        raise SystemExit(f"段 {i} に切り替わりません")
+
+    def press(self, cmd_id, wait=1.0):
+        """リボンのボタンを **id で** 押す(いまの段に見えている物)"""
+        u = self.ui()
+        b = next((x for x in u["boxes"] if x["id"] == cmd_id), None)
+        if b is None:
+            raise SystemExit(f"「{cmd_id}」がいまの段に見えません(段 {u['tab']})")
+        self.click(b["x"] + b["w"] / 2, b["y"] + b["h"] / 2, wait)
+        return self.ui()
+
     def take(self, name):
-        """**撮る前に前面へ出す** — 出さないと古い画が撮れる"""
+        """**撮る前に前面へ出し、マウスを動かして描き直させる。**
+        前面に出すだけでは足りない — 押した直後の1手は画に出ないことがある
+        (踏み跡 2026-08-15。2026-08-16 に右パネルの面でまた踏んだ)"""
         self.take_focus()
+        time.sleep(0.3)
+        self._nudge()
         time.sleep(0.4)
         return self.shot(name)
 

@@ -4,6 +4,12 @@
 
 use crate::*;
 
+/// 段の箱の鍵(`&'static str` が要るので表で持つ。calc と同じ綴り)
+const TAB_IDS: &[&str] = &[
+    "@tab0", "@tab1", "@tab2", "@tab3", "@tab4", "@tab5",
+    "@tab6", "@tab7", "@tab8", "@tab9", "@tab10", "@tab11", "@tab12",
+];
+
 impl Render for Writer {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let me: Entity<Writer> = cx.entity();
@@ -13,6 +19,8 @@ impl Render for Writer {
         // リボンのぶん(約110px)を引いた近似で足りる
         self.view_h_px = (f32::from(window.viewport_size().height) - 136.0).max(100.0);
         self.view_w_px = f32::from(window.viewport_size().width).max(200.0);
+        // **点検の道具へ、ボタンの場所を渡す。** 環境変数が無ければ何もしない
+        self.dump_ui();
         let marked = self.ed.marked_range();
         let (cx_mm, cy_mm, caret_pt) = self.caret_xy();
 
@@ -150,6 +158,26 @@ impl Render for Writer {
                         cx.notify()
                     })))
                 .flex().flex_col().items_center().gap_1()
+                // **段の箱も控える**(id は calc と同じ `@tabN`)。
+                // 点検の道具が段を名前で切り替えられるように
+                .relative()
+                .child({
+                    let rec = self.btn_box.clone();
+                    let key: &'static str = TAB_IDS[i.min(TAB_IDS.len() - 1)];
+                    gpui::canvas(
+                        move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                            rec.borrow_mut().insert(key, (
+                                f32::from(b.origin.x),
+                                f32::from(b.origin.y),
+                                f32::from(b.size.width),
+                                f32::from(b.size.height),
+                            ));
+                        },
+                        |_, _: (), _, _| {},
+                    )
+                    .absolute()
+                    .size_full()
+                })
                 .child(tb.name)
                 // 現在地の青い下線(デスクトップ版の形)
                 .child(div().h(px(2.5)).w_full().rounded_sm()
@@ -357,6 +385,25 @@ impl Render for Writer {
                     let has_icon = ui::icons::find(icon).is_some();
                     // 開く印(▾=一覧 / …=小窓)。無印はすぐ効くボタン
                     let marker = marker_of(cmd.id);
+                    // **押せるボタンは自分の場所を控える**(実機の点検のため。
+                    // calc の btn_box と同じ形)。描くたびに上書きする
+                    let mark = {
+                        let rec = self.btn_box.clone();
+                        let cid = cmd.id;
+                        gpui::canvas(
+                            move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                                rec.borrow_mut().insert(cid, (
+                                    f32::from(b.origin.x),
+                                    f32::from(b.origin.y),
+                                    f32::from(b.size.width),
+                                    f32::from(b.size.height),
+                                ));
+                            },
+                            |_, _: (), _, _| {},
+                        )
+                        .absolute()
+                        .size_full()
+                    };
                     if let Some(short) = big {
                         // 名札つきの大ボタン(絵の下に短い名前。本家の言い方)。
                         // 開くボタンは名札の横に小さな印。小窓中は灰色・無反応
@@ -391,7 +438,7 @@ impl Render for Writer {
                         }
                         if cmd.ready && !dlg_open {
                             let cid = cmd.id;
-                            b = b.cursor_pointer()
+                            b = b.relative().child(mark).cursor_pointer()
                                 .hover(move |st| st.bg(th_btn_hover))
                                 .on_click(cx.listener(move |this, _, _, cx| {
                                     this.run_from_ribbon(cid, cx);
@@ -448,7 +495,7 @@ impl Render for Writer {
                         }));
                     if usable {
                         let cid = cmd.id;
-                        b = b.cursor_pointer()
+                        b = b.relative().child(mark).cursor_pointer()
                             .hover(move |st| st.bg(th_btn_hover))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.run_from_ribbon(cid, cx);

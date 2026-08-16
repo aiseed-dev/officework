@@ -224,6 +224,18 @@ struct Writer {
     font_bytes: std::sync::Arc<Vec<u8>>,
     /// 用紙。**文書の設定に従う**(既定 A4・余白20mm)
     pg: kumihan::PageSetup,
+    /// **リボンのボタンの場所**(id → 窓の中の x, y, 幅, 高さ)。描くたびに書く。
+    ///
+    /// 使い道は**実機の点検だけ**(tools/writer_shot.py)。calc には rpc の
+    /// `{"cmd":"ribbon"}` があるが writer には受け口が無く、座標を目分量で
+    /// 当てて何度も外した(2026-08-16。3回外し、外した拍子に発注者の打鍵まで
+    /// 拾った)。**網は開けない** — 環境変数 `OFFICEWORK_UI_DUMP` が指す
+    /// ファイルへ書き出すだけで、既定では何も起きない
+    btn_box: std::rc::Rc<std::cell::RefCell<std::collections::HashMap<&'static str, (f32, f32, f32, f32)>>>,
+    /// 前に書き出した中身(同じなら書かない — 毎フレーム書くのは無駄)
+    ui_dump_last: std::cell::RefCell<String>,
+    /// **右パネルが実際に描いた面**(点検用。状態と食い違ったら分かる)
+    rp_drawn: std::cell::Cell<u8>,
     /// **ネイティブ文書(.adoc)を開いている**(2026-08-16)。
     /// 中身は意味だけで、見た目は [`Self::theme`] が持つ。false は互換
     /// (docx)— 直接書式が本文に入っている、今までの文書
