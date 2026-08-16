@@ -2216,17 +2216,28 @@ impl Writer {
         } else {
             self.tmpl.styles.push(d);
         }
-        // **段落に名前を付ける。** `para` は Copy の閉包しか取らないが、
-        // `apply_para` は取らない(名前は String で写せない)
+        // **選んでいれば字に、選んでいなければ段落に**(2026-08-16)。
+        // 語を1つ選んで見た目を変えようとしたのに段落ぜんぶが変わる、では
+        // 直接書式の手軽さに勝てない — 選択の有無が意図そのもの
         self.switch_target(Target::Body);
         self.flush_target();
         let sel = self.ed.selection();
+        let 字 = sel.start != sel.end;
         let n = name.clone();
-        self.doc.apply_para(sel, |p| p.style_id = Some(n.clone()));
+        if !字 {
+            self.doc.apply_para(sel, |p| p.style_id = Some(n.clone()));
+        } else {
+            self.doc.apply_char_format(sel, |f| f.style_id = Some(n.clone()));
+        }
         let 書けた = self.save_template();
         self.dirty = true;
         self.relayout_keep();
-        self.status = ui::tf!("スタイル「{}」にしました({})", name, 書けた).into();
+        self.status = if 字 {
+            ui::tf!("選んだ字を「{}」にしました({})", name, 書けた)
+        } else {
+            ui::tf!("この段落を「{}」にしました({})", name, 書けた)
+        }
+        .into();
     }
 
     /// **スタイルを着替える**(右パネル。2026-08-16)。役割の名前なら

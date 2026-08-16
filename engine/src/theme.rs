@@ -13,7 +13,7 @@
 //! - [`compose`] が意味だけの [`Document`] の**写し**に書式を流し込む。
 //!   一方通行 — 写しから意味を推測して戻すことはしない
 
-use crate::doc::{Align, Document, PageSetup, ParaStyle};
+use crate::doc::{Align, Block, Document, PageSetup, ParaStyle};
 
 /// スタイル1つの書式。`None`/`false` は「テンプレートは指定しない」
 /// (文書の既定に従う)。
@@ -364,6 +364,28 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             }
         }
     }
+    // **文字単位のスタイル**(2026-08-16)。段落のを流し込んだ後に掛ける —
+    // 字に付いた名前の方が、段落の名前より内側にあるので勝つ。
+    // 段落だけの項目(帯・揃え・空き・行間)は字には効かない
+    for block in &mut out.blocks {
+        let Block::Para(para) = block else { continue };
+        for r in &mut para.runs {
+            let Some(name) = r.fmt.style_id.clone() else { continue };
+            let Some(def) = theme.style(&name) else { continue };
+            if let Some(s) = def.size_pt {
+                r.size_pt = Some(s);
+            }
+            if def.font.is_some() {
+                r.font = def.font.clone();
+            }
+            r.fmt.bold |= def.bold;
+            r.fmt.italic |= def.italic;
+            r.fmt.underline |= def.underline;
+            if def.color.is_some() {
+                r.fmt.color = def.color.clone();
+            }
+        }
+    }
     out
 }
 
@@ -430,6 +452,27 @@ mod tests {
         let out = compose(&d, &th);
         let ps: Vec<&Paragraph> = out.paragraphs().collect();
         assert_eq!(ps[1].runs[0].fmt.color.as_deref(), Some("C7433F"));
+    }
+
+    #[test]
+    fn 文字のスタイルは段落のより内側で勝つ() {
+        let mut th = default_theme();
+        th.styles.push(StyleDef {
+            name: "注意".into(),
+            color: Some("C7433F".into()),
+            size_pt: Some(14.0),
+            ..Default::default()
+        });
+        let mut d = 意味だけの文書();
+        if let crate::doc::Block::Para(p) = &mut d.blocks[0] {
+            // 見出し1(16pt)の中の1語だけ「注意」
+            p.runs[0].fmt.style_id = Some("注意".into());
+        }
+        let out = compose(&d, &th);
+        let ps: Vec<&Paragraph> = out.paragraphs().collect();
+        assert_eq!(ps[0].runs[0].size_pt, Some(14.0), "字の名前が段落の名前に負けた");
+        assert_eq!(ps[0].runs[0].fmt.color.as_deref(), Some("C7433F"));
+        assert!(ps[0].runs[0].fmt.bold, "段落の太字は残る(字の側が外していない)");
     }
 
     #[test]

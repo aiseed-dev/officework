@@ -90,6 +90,12 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
     for bm in &p.bookmarks {
         out.push_str(&format!("[[{bm}]]\n"));
     }
+    // **段落のスタイル名**(2026-08-16)。AsciiDoc の塊の属性の書き方。
+    // 書いていなかったので、右パネルで着せた名前が保存で黙って消えていた
+    // (実機で見つけた — 試験は合成しか見ていなかった)
+    if let Some(n) = &p.style_id {
+        out.push_str(&format!("[.{n}]\n"));
+    }
     // この段落が画像だけなら image:: のブロックで
     if let Some(im) = p.images_new.first().or_else(|| p.images.first()) {
         if p.runs.iter().all(|r| r.text.is_empty()) {
@@ -159,6 +165,13 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
         if sub {
             s.push('~');
         }
+        // **文字単位のスタイル**(2026-08-16)。AsciiDoc の役割の書き方
+        // `[.名前]#字#`。段落のスタイルと同じ表(テンプレート)を引く
+        let (open, close) = match &r.fmt.style_id {
+            Some(n) => (format!("[.{n}]#"), "#"),
+            None => (String::new(), ""),
+        };
+        s.push_str(&open);
         if let Some(ruby) = &r.fmt.ruby {
             s.push_str(&format!("ruby:{}[{}]", esc(&r.text), ruby));
         } else if let Some(url) = &r.fmt.link {
@@ -166,6 +179,7 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
         } else {
             s.push_str(&esc(&r.text));
         }
+        s.push_str(close);
         if sub {
             s.push('~');
         }
@@ -185,8 +199,14 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
 /// 本文の字の中の印を逃がす。逃がすのは**行の中で意味を持つ印だけ**
 fn esc(t: &str) -> String {
     let mut s = String::with_capacity(t.len());
-    for c in t.chars() {
+    let mut it = t.chars().peekable();
+    while let Some(c) = it.next() {
         if c == '*' || c == '_' || c == '^' || c == '~' || c == '\\' {
+            s.push('\\');
+        }
+        // **`[.` だけ逃がす** — 文字スタイルの書き出しと紛れるのはこの形だけ。
+        // `[` を一律に逃がすと、括弧つきの普通の文が読みにくくなる
+        if c == '[' && it.peek() == Some(&'.') {
             s.push('\\');
         }
         s.push(c);
@@ -265,6 +285,7 @@ pub fn parse(src: &str) -> Result<Document, String> {
     let mut lines = src.lines().enumerate().peekable();
     let mut pending_bookmarks: Vec<String> = Vec::new();
     let mut pending_break = false;
+    let mut pending_style: Option<String> = None;
     let mut in_quote = false;
     let mut fresh_note = 0usize;
 
@@ -317,6 +338,13 @@ pub fn parse(src: &str) -> Result<Document, String> {
             pending_bookmarks.push(name.to_string());
             continue;
         }
+        // 段落のスタイル名(次の塊に掛かる)
+        if let Some(name) = l.strip_prefix("[.").and_then(|s| s.strip_suffix(']')) {
+            if !name.is_empty() && !name.contains(['[', ']', '#', ' ']) {
+                pending_style = Some(name.to_string());
+                continue;
+            }
+        }
         if l == "|===" {
             let mut rows: Vec<&str> = Vec::new();
             let mut closed = false;
@@ -340,7 +368,7 @@ pub fn parse(src: &str) -> Result<Document, String> {
         if let Some(rest) = l.strip_prefix("image::") {
             let (path, _attrs) = split_macro_target(rest)
                 .ok_or_else(|| format!("{} 行目: image:: の形が読めません", ln + 1))?;
-            let mut p = base_para(&mut pending_bookmarks, &mut pending_break);
+            let mut p = base_para(&mut pending_bookmarks, &mut pending_break, &mut pending_style);
             p.images_new.push(InlineImage {
                 bytes: std::sync::Arc::new(Vec::new()),
                 w_mm: 0.0,
@@ -355,7 +383,7 @@ pub fn parse(src: &str) -> Result<Document, String> {
             let tex = rest
                 .strip_suffix(']')
                 .ok_or_else(|| format!("{} 行目: stem:[ が閉じていません", ln + 1))?;
-            let mut p = base_para(&mut pending_bookmarks, &mut pending_break);
+            let mut p = base_para(&mut pending_bookmarks, &mut pending_break, &mut pending_style);
             p.images_new.push(InlineImage {
                 bytes: std::sync::Arc::new(Vec::new()),
                 w_mm: 0.0,
@@ -367,7 +395,7 @@ pub fn parse(src: &str) -> Result<Document, String> {
             continue;
         }
         // 見出し・リスト・本文
-        let mut p = base_para(&mut pending_bookmarks, &mut pending_break);
+        let mut p = base_para(&mut pending_bookmarks, &mut pending_break, &mut pending_style);
         let body = if let Some(rest) = heading_of(l) {
             let (n, text) = rest;
             p.style = ParaStyle::Heading(n);
@@ -390,10 +418,15 @@ pub fn parse(src: &str) -> Result<Document, String> {
     Ok(doc)
 }
 
-fn base_para(bookmarks: &mut Vec<String>, brk: &mut bool) -> Paragraph {
+fn base_para(
+    bookmarks: &mut Vec<String>,
+    brk: &mut bool,
+    style: &mut Option<String>,
+) -> Paragraph {
     let mut p = Paragraph::default();
     p.bookmarks = std::mem::take(bookmarks);
     p.page_break_before = std::mem::take(brk);
+    p.style_id = style.take();
     p
 }
 
@@ -459,6 +492,29 @@ fn parse_inline(
             italic = !italic;
             i += 1;
             continue;
+        }
+        if let Some(after) = rest.strip_prefix("[.") {
+            if let (Some(rb), Some(_)) = (after.find("]#"), after.find('#')) {
+                let name = &after[..rb];
+                if !name.is_empty() && !name.contains(['[', ']', '#', ' ']) {
+                    let body = &after[rb + 2..];
+                    if let Some(end) = body.find('#') {
+                        flush(&mut runs, &mut cur, bold, italic);
+                        let mut fmt = CharFormat::default();
+                        fmt.bold = bold;
+                        fmt.italic = italic;
+                        fmt.style_id = Some(name.to_string());
+                        runs.push(Run {
+                            text: body[..end].to_string(),
+                            size_pt: None,
+                            font: None,
+                            fmt,
+                        });
+                        i += 2 + rb + 2 + end + 1;
+                        continue;
+                    }
+                }
+            }
         }
         if rest.starts_with('^') || rest.starts_with('~') {
             let up = rest.starts_with('^');
@@ -738,6 +794,18 @@ mod tests {
     #[test]
     fn 上付きと下付きが往復する() {
         往復("水は H^2^O ではなく H~2~O。\n");
+    }
+
+    #[test]
+    fn 文字単位のスタイルが往復する() {
+        往復("ここは[.注意]#気をつける#ところ。\n");
+        // 普通の文の `[.` は逃がして残す
+        往復("配列は \\[.5] と書く。\n");
+    }
+
+    #[test]
+    fn 段落のスタイル名が往復する() {
+        往復("[.注意書き]\nここは気をつける。\n\nふつうの段落。\n");
     }
 
     #[test]

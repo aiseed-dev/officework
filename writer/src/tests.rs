@@ -1994,10 +1994,13 @@ mod marker_tests {
             let th = kumihan::theme::parse(&std::fs::read_to_string(&toml).unwrap()).unwrap();
             assert!(th.style("大見出し").is_some(), "書いた物が読み返せない");
 
-            // 保存しても本文は意味だけ(スタイルの名前は載る)
+            // 保存しても本文は意味だけ(**スタイルの名前は載る**)
             this.save_to(path.clone());
             let back = std::fs::read_to_string(&path).unwrap();
             assert!(!back.contains("pt"), "見た目が本文に漏れた: {back}");
+            // 2026-08-16 に実機で見つけた穴 — 段落のスタイル名が黙って
+            // 消えていた(試験は合成しか見ていなかった)
+            assert!(back.contains("[.大見出し]"), "段落のスタイル名が保存で消えた: {back}");
         });
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -2105,6 +2108,44 @@ mod marker_tests {
             this.wear_style("注意書き");
             let p = this.doc.paragraphs().next().unwrap();
             assert_eq!(p.style_id.as_deref(), Some("注意書き"));
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **選んでいれば字に、選んでいなければ段落に**(2026-08-16。文字単位の
+    /// スタイルの門番)。語を1つ選んで直したのに段落ぜんぶが変わる、では
+    /// 直接書式の手軽さに勝てない
+    #[gpui::test]
+    fn 選んだ字だけにスタイルが付く(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-char-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("見本.adoc");
+        std::fs::write(&path, "= 題\n:template: 見本の型\n\nここは大事なところ。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.open(path.clone());
+            // 「大事」だけを選ぶ(バイト位置。「ここは」は 9 バイト)
+            this.ed.move_to(9, false);
+            this.ed.move_to(15, true);
+            this.run_cmd("fontcolor", cx);
+            assert!(this.style_new.is_some(), "誘導が出ない: {}", this.status);
+            this.style_ed = kumihan::Editor::new("注意");
+            this.style_commit();
+
+            let p = this.doc.paragraphs().next().unwrap();
+            assert_eq!(p.style_id, None, "段落に名前が付いた(選んだのは字だけ)");
+            let 付いた: Vec<&str> = p
+                .runs
+                .iter()
+                .filter(|r| r.fmt.style_id.as_deref() == Some("注意"))
+                .map(|r| r.text.as_str())
+                .collect();
+            assert_eq!(付いた, vec!["大事"], "選んだ字だけに付いていない");
+
+            // 保存すると [.注意]#大事# で残る
+            this.save_to(path.clone());
+            let back = std::fs::read_to_string(&path).unwrap();
+            assert!(back.contains("[.注意]#大事#"), "文字スタイルが保存されない: {back}");
         });
         let _ = std::fs::remove_dir_all(&dir);
     }
