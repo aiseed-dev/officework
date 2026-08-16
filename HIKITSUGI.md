@@ -140,10 +140,18 @@ pid を控えているので、後始末は `tools/kill_sweep.py` で。
 
 - 保存は `write_with(原本)` が基本(xlsx / docx とも)。原本を渡さないと
   図形・スタイル等の部品が消える
-- `kumihan::Paragraph` に性質を足すと、全指定 literal が数カ所で割れる
-  (engine/examples/page.rs、ooxml のテスト)。編集の持ち越しは
-  **run 粒度の splice**(SEKKEI「writer の編集モデル」)— 段落の性質も
-  run の境も、編集で流されない
+- **engine の共有の型に手を入れたら `cargo check --workspace --all-targets`
+  を1回。20秒で済む。** `kumihan::Paragraph` や `InlineImage` に性質を足す・
+  `ParaStyle` に枝を足すと、全指定 literal と網羅 match が**離れた crate**で
+  割れる(engine/examples/page.rs、ooxml と paper の試験、pysheet)。
+
+  2026-08-17 に実際に踏んだ: 2026-08-16 の `InlineImage.src` と
+  `ParaStyle::Quote` で **pysheet と paper が 15 commit のあいだ組めなく
+  なっていた**。手元では触った crate だけを試験していたので気付かず、
+  CI は赤いまま誰も見ていなかった。**「全部の試験は回さない」は正しいが、
+  workspace の check は試験ではない** — 別物として毎回やる。
+  編集の持ち越しは **run 粒度の splice**(SEKKEI「writer の編集モデル」)—
+  段落の性質も run の境も、編集で流されない
 - calc の編集判定は `editing()`(数式バーとセルの保存内容の差)。
   「バーが空か」で分岐してはいけない(バーには常にセルの中身が写る)
 

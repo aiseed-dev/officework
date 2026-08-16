@@ -214,10 +214,6 @@ fn esc(t: &str) -> String {
     s
 }
 
-fn unesc_push(s: &mut String, c: char) {
-    s.push(c);
-}
-
 /// そのセルの格子の列(左のセルの span の和)
 fn grid_col(row: &[Cellbox], k: usize) -> usize {
     row[..k].iter().map(|c| c.span()).sum()
@@ -316,7 +312,7 @@ pub fn parse(src: &str) -> Result<Document, String> {
                 lines.next();
                 continue;
             }
-            head_done = true; // 頭の印なしで本文が始まる形も受ける
+            // 頭の印なしで本文が始まる形も受ける(下の break でそのまま本文へ)
         }
         break;
     }

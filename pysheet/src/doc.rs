@@ -668,6 +668,7 @@ impl PyDoc {
             w_mm,
             h_mm,
             tex: None, // python-docx の add_picture。数式は別の口
+            src: None, // ネイティブ文書の相対の径路。ここは中身を直に持つ
         });
         g.doc.blocks.push(Block::Para(p));
         let b = g.doc.blocks.len() - 1;
@@ -1178,6 +1179,9 @@ impl PyParagraph {
             kumihan::ParaStyle::Heading(n) => format!("heading{n}"),
             kumihan::ParaStyle::Toc(n) => format!("toc{n}"),
             kumihan::ParaStyle::Tof => "tof".to_string(),
+            // 引用(AsciiDoc の `____`)。**下の set_style が受ける綴りと
+            // 同じ物を返す** — 読んで書き戻したら元に戻ること
+            kumihan::ParaStyle::Quote => "quote".to_string(),
         })
     }
 
@@ -1193,6 +1197,7 @@ impl PyParagraph {
             "heading1" | "見出し1" => Some(kumihan::ParaStyle::Heading(1)),
             "heading2" | "見出し2" => Some(kumihan::ParaStyle::Heading(2)),
             "heading3" | "見出し3" => Some(kumihan::ParaStyle::Heading(3)),
+            "quote" | "引用" => Some(kumihan::ParaStyle::Quote),
             _ => None,
         };
         let mut g = lock(&self.inner)?;

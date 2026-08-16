@@ -702,7 +702,7 @@ mod table_design_tests {
         s.set(Pos::new(1, 1), Cell::input("100"));
         s.set(Pos::new(2, 0), Cell::input("乙"));
         s.set(Pos::new(2, 1), Cell::input("50"));
-        add_total_row(&mut s, Pos::new(0, 0), Pos::new(2, 1));
+        sheet::tabledesign::add_total_row(&mut s, Pos::new(0, 0), Pos::new(2, 1));
         recalc(&mut s);
         let label = s.get(Pos::new(3, 0)).unwrap();
         assert_eq!(label.value.display(), "合計", "文字の列の先頭は札");
@@ -723,7 +723,7 @@ mod table_design_tests {
         for (r, v) in [(0, "10"), (1, "20")] {
             s.set(Pos::new(r, 0), Cell::input(v));
         }
-        add_total_row(&mut s, Pos::new(0, 0), Pos::new(1, 0));
+        sheet::tabledesign::add_total_row(&mut s, Pos::new(0, 0), Pos::new(1, 0));
         recalc(&mut s);
         let sum = s.get(Pos::new(2, 0)).unwrap();
         assert_eq!(sum.formula.as_deref(), Some("SUM(A1:A2)"));

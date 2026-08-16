@@ -821,13 +821,6 @@ pub(crate) fn parse_pivot_grid(raw: &str) -> (Vec<Vec<String>>, Vec<char>) {
     (grid, kinds)
 }
 
-/// 表のデザインの「合計行」。**実装は [`sheet::tabledesign::add_total_row`]**
-/// (2026-08-16 に移した — 画面と Python の口が同じ所を呼ぶため)。
-/// ここは試験と昔の呼び手のための橋
-pub(crate) fn add_total_row(s: &mut sheet::Sheet, a: Pos, b: Pos) -> usize {
-    sheet::tabledesign::add_total_row(s, a, b)
-}
-
 /// データタブの「小計」(Excel の集計)。基準の列の値が変わる区切りごとに
 /// 「〜 小計」の行(=SUM)を挿し、明細にグループ化(深さ1)を掛け、最後に
 /// 総計の行を足す。**小計・総計の行はグループ化しない** — 詳細を畳んでも
