@@ -353,6 +353,16 @@ struct Calc {
     hover_hint: Option<&'static str>,
     /// ファイルのページの右側(0=詳細情報 1=最近開いた)
     file_view: u8,
+    /// **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
+    /// writer と同じ形。xlsx はセルの字を串刺しで探す
+    fd_term: Editor,
+    fd_glob: Editor,
+    fd_dir: Option<PathBuf>,
+    fd_field: usize,
+    fd_hits: Vec<ui::search::FileHits>,
+    fd_tally: ui::search::Tally,
+    fd_at: Option<(usize, usize)>,
+    fd_peek: String,
     /// 表示の倍率(表示タブのズーム。0.5〜2.0)
     zoom: f32,
     /// 数式バーを見せるか(表示タブ)
@@ -420,6 +430,10 @@ impl HasEditor for Calc {
     // 小さな入力のパネル(名前の定義など)・ソルバーの小窓が開いている間は、
     // 打鍵(IME含む)はそこへ
     fn editor(&mut self) -> &mut Editor {
+        // ファイルの面の「フォルダから探す」の欄(2026-08-17)
+        if self.tab == 0 && self.file_view == 3 {
+            return if self.fd_field == 0 { &mut self.fd_term } else { &mut self.fd_glob };
+        }
         // .py の編集面が開いている間は、打鍵は全部そこへ
         if let Some(p) = &mut self.py_edit {
             return &mut p.ed;

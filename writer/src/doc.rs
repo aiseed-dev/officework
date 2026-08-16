@@ -54,6 +54,16 @@ impl Writer {
             btn_box: Default::default(),
             ui_dump_last: Default::default(),
             rp_drawn: Default::default(),
+            win_wh: Default::default(),
+            fd_term: Editor::new(""),
+            fd_glob: Editor::new(""),
+            fd_dir: None,
+            fd_field: 0,
+            fd_hits: Vec::new(),
+            fd_tally: Default::default(),
+            fd_at: None,
+            fd_peek: String::new(),
+            fd_busy: false,
             native: false,
             style_new: None,
             style_ed: Editor::new(""),
@@ -2022,6 +2032,137 @@ impl Writer {
         )
     }
 
+    /// **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
+    ///
+    /// 素の字は face が読み、**.docx は writer が中身を渡す** — 一度 txt に
+    /// 落としてから探す手間が消える。当たりは一覧に出て、選ぶと下に見え、
+    /// 下の「読み込み」で初めて開く(見て、これだと分かってから開く)。
+    pub(crate) fn find_in_folder(&mut self) {
+        let Some(dir) = self.fd_dir.clone() else {
+            self.status = ui::t!("探す場所を選んでください").into();
+            return;
+        };
+        let term = self.fd_term.text().to_string();
+        if term.trim().is_empty() {
+            self.status = ui::t!("探す字が空です").into();
+            return;
+        }
+        self.fd_busy = true;
+        self.fd_at = None;
+        self.fd_peek.clear();
+        // **docx の本文を渡す。** 読めない物は None を返して face に任せる
+        let extract = |p: &std::path::Path| -> Option<String> {
+            let e = p.extension().and_then(|x| x.to_str())?.to_ascii_lowercase();
+            if e != "docx" {
+                return None;
+            }
+            let bytes = std::fs::read(p).ok()?;
+            let (doc, _) = ooxml::read(std::io::Cursor::new(bytes)).ok()?;
+            Some(doc.body_text())
+        };
+        let q = ui::search::Query {
+            term: term.clone(),
+            glob: self.fd_glob.text().to_string(),
+            case: false,
+            max_files: 4000,
+            max_hits: 3000,
+            extract: &extract,
+        };
+        let (hits, tally) = ui::search::walk(&dir, &q);
+        self.fd_hits = hits;
+        self.fd_tally = tally;
+        self.fd_busy = false;
+        // **打ち切りも読めなかった数も言う。** 全部見たように見せない
+        let mut s = ui::tf!(
+            "{} 件のファイルに {} 件(見たのは {} 件 / {})",
+            tally.matched.to_string(),
+            tally.hits.to_string(),
+            tally.looked.to_string(),
+            ui::search::human_size(tally.bytes)
+        )
+        .to_string();
+        if tally.unread > 0 {
+            s.push_str(&ui::tf!(" — 読めなかった {} 件", tally.unread.to_string()));
+        }
+        if tally.cut {
+            s.push_str(&ui::t!(" — 多いので途中で止めました"));
+        }
+        self.status = s.into();
+    }
+
+    /// 探す場所を選ぶ(**窓は別のスレッド**)
+    pub(crate) fn find_dir_dialog(&mut self, cx: &mut Context<Self>) {
+        let start = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+        let ask = cx.background_executor().spawn(async move {
+            let mut d = rfd::FileDialog::new();
+            if let Some(s) = start {
+                d = d.set_directory(s);
+            }
+            d.pick_folder()
+        });
+        cx.spawn(async move |this, cx| {
+            let r = ask.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(p) = r {
+                    this.status = ui::tf!("場所: {}", p.display().to_string()).into();
+                    this.fd_dir = Some(p);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// 当たりを1つ選ぶ。**開かない** — 下にその前後を見せるだけ
+    pub(crate) fn find_peek(&mut self, fi: usize, hi: usize) {
+        let Some(f) = self.fd_hits.get(fi) else { return };
+        let Some(h) = f.hits.get(hi) else { return };
+        self.fd_at = Some((fi, hi));
+        // 前後を見せる(SFIND の下の窓と同じ役)。読めなければ当たりの行だけ
+        let body = std::fs::read_to_string(&f.path).ok();
+        self.fd_peek = match body {
+            Some(b) => {
+                let lines: Vec<&str> = b.split('\n').collect();
+                let i = (h.line as usize).saturating_sub(1);
+                let from = i.saturating_sub(6);
+                let to = (i + 7).min(lines.len());
+                lines[from..to]
+                    .iter()
+                    .enumerate()
+                    .map(|(k, l)| format!("{:05} {l}", from + k + 1))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            }
+            None => format!("{:05} {}", h.line, h.text),
+        };
+        self.status = ui::tf!(
+            "{} の {} 行目(下の「読み込み」で開きます)",
+            f.path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+            h.line.to_string()
+        )
+        .into();
+    }
+
+    /// 下の「読み込み」。**選んでいる当たりの文書を開き、その位置へ飛ぶ**
+    pub(crate) fn find_load(&mut self) {
+        let Some((fi, hi)) = self.fd_at else {
+            self.status = ui::t!("当たりを選んでから読み込んでください").into();
+            return;
+        };
+        let Some(f) = self.fd_hits.get(fi).cloned() else { return };
+        let at = f.hits.get(hi).map(|h| h.at).unwrap_or(0);
+        if self.dirty {
+            self.status = ui::t!("いまの文書に未保存の変更があります(保存するか、捨ててから)").into();
+            return;
+        }
+        self.open(f.path.clone());
+        // 開いた文書の中のその位置へ(素の字なら当たりの位置がそのまま効く)
+        let n = self.ed.text().len();
+        self.ed.move_to(at.min(n), false);
+        self.tab = self.prev_tab.max(1);
+        self.relayout_keep();
+    }
+
     /// **リボンのボタンの場所を書き出す**(実機の点検のためだけ)。
     ///
     /// 環境変数 `OFFICEWORK_UI_DUMP` が指すファイルへ JSON を1つ。
@@ -2040,12 +2181,17 @@ impl Writer {
             })
             .collect();
         let body = format!(
-            "{{\"tab\":{},\"native\":{},\"rp_open\":{},\"rp_tab\":{},\"rp_drawn\":{},\"status\":{:?},\"boxes\":[{}]}}",
+            "{{\"tab\":{},\"native\":{},\"rp_open\":{},\"rp_tab\":{},\"rp_drawn\":{},\"file_view\":{},\"win_w\":{},\"win_h\":{},\"fd_files\":{},\"fd_hits\":{},\"status\":{:?},\"boxes\":[{}]}}",
             self.tab,
             self.native,
             self.rp_open,
             self.rp_tab,
             self.rp_drawn.get(),
+            self.file_view,
+            self.win_wh.get().0,
+            self.win_wh.get().1,
+            self.fd_hits.len(),
+            self.fd_tally.hits,
             self.status.to_string(),
             boxes.join(",")
         );

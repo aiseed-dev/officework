@@ -953,6 +953,12 @@ impl Calc {
     }
 
     pub(crate) fn a_enter(&mut self, _: &ui::Enter, _: &mut Window, cx: &mut Context<Self>) {
+        // フォルダから探す(ファイルの面)。Enter で探す
+        if self.tab == 0 && self.file_view == 3 {
+            self.find_in_folder();
+            cx.notify();
+            return;
+        }
         // 会話の欄の Enter = 送る(焦点はそのまま — 続けて書ける)
         if self.chat_focus {
             self.chat_send(cx);

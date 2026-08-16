@@ -6630,4 +6630,38 @@ mod web_export_tests {
             assert_eq!(f.rotation, None, "向きが戻らない");
         });
     }
+    /// **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
+    /// xlsx の中身も串刺しで探せ、選んでも開かない
+    #[gpui::test]
+    fn フォルダから探して読み込む(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("calc-find-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("覚え.txt"), "あ\n単価 の見直し\n").unwrap();
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.fd_dir = Some(dir.clone());
+            this.fd_term = Editor::new("単価");
+            this.find_in_folder();
+            assert_eq!(this.fd_hits.len(), 1, "当たらない: {}", this.status);
+            assert_eq!(this.fd_hits[0].hits[0].line, 2);
+
+            // 選んでも開かない
+            let 前 = this.path.clone();
+            this.find_peek(0, 0);
+            assert_eq!(this.path, 前, "選んだだけで開いた");
+            assert!(this.fd_peek.contains("単価"));
+
+            // **calc が開けるのは表だけ。** 素の字が当たったら、そう言う
+            this.find_load(cx);
+            assert!(this.path.is_none(), "表でないのに開いた");
+            assert!(
+                this.status.contains("calc では開けません"),
+                "断りの言葉が出ない: {}",
+                this.status
+            );
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
 }

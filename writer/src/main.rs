@@ -236,6 +236,23 @@ struct Writer {
     ui_dump_last: std::cell::RefCell<String>,
     /// **右パネルが実際に描いた面**(点検用。状態と食い違ったら分かる)
     rp_drawn: std::cell::Cell<u8>,
+    /// **窓の論理の大きさ**(点検用)。物理との比が倍率 —
+    /// 道具が目分量で当てると半分の位置を押す(2026-08-17 に踏んだ)
+    win_wh: std::cell::Cell<(f32, f32)>,
+    /// **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
+    /// ファイルの面の3つ目の中身。探す字・場所・絞りと、当たりの一覧
+    fd_term: Editor,
+    fd_glob: Editor,
+    fd_dir: Option<PathBuf>,
+    /// 欄のどれを打っているか(0=字 1=絞り)
+    fd_field: usize,
+    fd_hits: Vec<ui::search::FileHits>,
+    fd_tally: ui::search::Tally,
+    /// 下に見せている当たり(ファイルの添字, 当たりの添字)
+    fd_at: Option<(usize, usize)>,
+    /// 下に見せる中身(当たりの前後)
+    fd_peek: String,
+    fd_busy: bool,
     /// **ネイティブ文書(.adoc)を開いている**(2026-08-16)。
     /// 中身は意味だけで、見た目は [`Self::theme`] が持つ。false は互換
     /// (docx)— 直接書式が本文に入っている、今までの文書
@@ -432,6 +449,8 @@ impl HasEditor for Writer {
             &mut self.cmt_ed
         } else if self.wm_edit {
             &mut self.wm_ed
+        } else if self.file_view == 3 && self.tab == 0 {
+            if self.fd_field == 0 { &mut self.fd_term } else { &mut self.fd_glob }
         } else if self.style_new.is_some() {
             &mut self.style_ed
         } else if self.bm_open {
@@ -474,6 +493,8 @@ impl HasEditor for Writer {
             &self.cmt_ed
         } else if self.wm_edit {
             &self.wm_ed
+        } else if self.file_view == 3 && self.tab == 0 {
+            if self.fd_field == 0 { &self.fd_term } else { &self.fd_glob }
         } else if self.style_new.is_some() {
             &self.style_ed
         } else if self.bm_open {

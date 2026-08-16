@@ -714,6 +714,12 @@ impl Writer {
             cx.notify();
             return;
         }
+        // フォルダから探す(ファイルの面)。Enter で探す
+        if self.tab == 0 && self.file_view == 3 {
+            self.find_in_folder();
+            cx.notify();
+            return;
+        }
         if self.find_open {
             self.find_next();
         } else if self.style_new.is_some() {

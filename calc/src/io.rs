@@ -56,6 +56,164 @@ impl Calc {
         }
     }
 
+    /// **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
+    /// 素の字は face が読み、**.xlsx は calc がセルの字を渡す**。
+    /// 選んでも開かず、下の「読み込み」で初めて開く
+    pub(crate) fn find_in_folder(&mut self) {
+        let Some(dir) = self.fd_dir.clone() else {
+            self.status = ui::t!("探す場所を選んでください").into();
+            return;
+        };
+        let term = self.fd_term.text().to_string();
+        if term.trim().is_empty() {
+            self.status = ui::t!("探す字が空です").into();
+            return;
+        }
+        self.fd_at = None;
+        self.fd_peek.clear();
+        // xlsx は**シートごとに1行=1行**にして渡す(行番号がセルの行に近い)
+        let extract = |p: &std::path::Path| -> Option<String> {
+            let e = p.extension().and_then(|x| x.to_str())?.to_ascii_lowercase();
+            if e != "xlsx" {
+                return None;
+            }
+            let f = std::fs::File::open(p).ok()?;
+            let (book, _) = sheet::xlsx::read(std::io::BufReader::new(f)).ok()?;
+            let mut out = String::new();
+            for sh in &book.sheets {
+                out.push_str(&format!("[{}]\n", sh.name));
+                let (rows, cols) = sh.extent();
+                for r in 0..rows {
+                    let mut line = String::new();
+                    for c in 0..cols {
+                        let v = sh
+                            .get(sheet::Pos::new(r, c))
+                            .map(|x| x.value.display())
+                            .unwrap_or_default();
+                        if !line.is_empty() {
+                            line.push('\t');
+                        }
+                        line.push_str(&v);
+                    }
+                    out.push_str(line.trim_end());
+                    out.push('\n');
+                }
+            }
+            Some(out)
+        };
+        let q = ui::search::Query {
+            term,
+            glob: self.fd_glob.text().to_string(),
+            case: false,
+            max_files: 4000,
+            max_hits: 3000,
+            extract: &extract,
+        };
+        let (hits, tally) = ui::search::walk(&dir, &q);
+        self.fd_hits = hits;
+        self.fd_tally = tally;
+        let mut s = ui::tf!(
+            "{} 件のファイルに {} 件(見たのは {} 件 / {})",
+            tally.matched.to_string(),
+            tally.hits.to_string(),
+            tally.looked.to_string(),
+            ui::search::human_size(tally.bytes)
+        )
+        .to_string();
+        if tally.unread > 0 {
+            s.push_str(&ui::tf!(" — 読めなかった {} 件", tally.unread.to_string()));
+        }
+        if tally.cut {
+            s.push_str(&ui::t!(" — 多いので途中で止めました"));
+        }
+        self.status = s.into();
+    }
+
+    /// 当たりを1つ選ぶ。**開かない** — 下に前後を見せるだけ
+    pub(crate) fn find_peek(&mut self, fi: usize, hi: usize) {
+        let Some(f) = self.fd_hits.get(fi) else { return };
+        let Some(h) = f.hits.get(hi) else { return };
+        self.fd_at = Some((fi, hi));
+        let body = std::fs::read_to_string(&f.path).ok();
+        self.fd_peek = match body {
+            Some(b) => {
+                let lines: Vec<&str> = b.split('\n').collect();
+                let i = (h.line as usize).saturating_sub(1);
+                let from = i.saturating_sub(6);
+                let to = (i + 7).min(lines.len());
+                lines[from..to]
+                    .iter()
+                    .enumerate()
+                    .map(|(k, l)| format!("{:05} {l}", from + k + 1))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            }
+            // xlsx は素の字で読めない — 当たりの行をそのまま見せる
+            None => format!("{:05} {}", h.line, h.text),
+        };
+        self.status = ui::tf!(
+            "{} の {} 行目(下の「読み込み」で開きます)",
+            f.path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+            h.line.to_string()
+        )
+        .into();
+    }
+
+    /// 下の「読み込み」。選んでいる当たりのブックを開く
+    pub(crate) fn find_load(&mut self, cx: &mut Context<Self>) {
+        let Some((fi, hi)) = self.fd_at else {
+            self.status = ui::t!("当たりを選んでから読み込んでください").into();
+            return;
+        };
+        let Some(f) = self.fd_hits.get(fi).cloned() else { return };
+        let _ = hi;
+        // **calc が開けるのは表だけ。** 素の字が当たっても開けないので、
+        // 壊れた言い分を出さずにそう言う(writer で開いてください)
+        let ok = f
+            .path
+            .extension()
+            .and_then(|x| x.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case("xlsx"));
+        if !ok {
+            self.status = ui::tf!(
+                "{} は calc では開けません(表ではない — writer で開いてください)",
+                f.path.file_name().unwrap_or_default().to_string_lossy().to_string()
+            )
+            .into();
+            return;
+        }
+        if self.dirty {
+            self.status = ui::t!("いまの文書に未保存の変更があります(保存するか、捨ててから)").into();
+            return;
+        }
+        self.open(f.path.clone());
+        self.tab = self.prev_tab.max(1);
+        cx.notify();
+    }
+
+    /// 探す場所を選ぶ(**窓は別のスレッド**)
+    pub(crate) fn find_dir_dialog(&mut self, cx: &mut Context<Self>) {
+        let start = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+        let ask = cx.background_executor().spawn(async move {
+            let mut d = rfd::FileDialog::new();
+            if let Some(s) = start {
+                d = d.set_directory(s);
+            }
+            d.pick_folder()
+        });
+        cx.spawn(async move |this, cx| {
+            let r = ask.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(p) = r {
+                    this.status = ui::tf!("場所: {}", p.display().to_string()).into();
+                    this.fd_dir = Some(p);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     pub(crate) fn open(&mut self, p: PathBuf) {
         let bytes = match std::fs::read(&p) {
             Ok(b) => b,

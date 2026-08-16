@@ -69,7 +69,7 @@ pub mod pyedit;
 pub use face::{
     combo, icons, ribbon, ribbon_de, ribbon_en, ribbon_es, ribbon_fr, ribbon_id, ribbon_it,
     ribbon_ko, ribbon_pt, ribbon_pt_br, ribbon_ru, ribbon_tables, ribbon_tr, ribbon_vi, ribbon_zh,
-    ribbon_zh_tw, settings, winstate,
+    ribbon_zh_tw, search, settings, winstate,
 };
 pub use face::keys::{
     compose_keys, default_keys, KeyWarn, KEYS_CALC, KEYS_COMMON, KEYS_WRITER,

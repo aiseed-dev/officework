@@ -2150,6 +2150,66 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
+    /// 素の字も docx も串刺しで、選んでも開かず、「読み込み」で初めて開く
+    #[gpui::test]
+    fn フォルダから探して読み込む(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-find-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("下")).unwrap();
+        std::fs::write(dir.join("一.txt"), "あ\nunstructured covariance\nい\n").unwrap();
+        std::fs::write(dir.join("下/二.md"), "# 題\n何もない\n").unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.fd_dir = Some(dir.clone());
+            this.fd_term = kumihan::Editor::new("unstructured");
+            this.find_in_folder();
+            assert_eq!(this.fd_hits.len(), 1, "当たりが1件でない: {}", this.status);
+            assert_eq!(this.fd_hits[0].hits[0].line, 2);
+            assert!(this.fd_tally.looked >= 2, "見た数が足りない");
+
+            // 選んでも**開かない**(下に見せるだけ)
+            let 前 = this.path.clone();
+            this.find_peek(0, 0);
+            assert_eq!(this.path, 前, "選んだだけで開いた");
+            assert!(this.fd_peek.contains("unstructured"), "下に出ない: {}", this.fd_peek);
+
+            // 「読み込み」で初めて開き、その位置へ行く
+            this.find_load();
+            assert_eq!(
+                this.path.as_ref().and_then(|p| p.file_name()),
+                Some(std::ffi::OsStr::new("一.txt")),
+                "読み込めていない: {}",
+                this.status
+            );
+            assert!(this.ed.cursor() >= 4, "当たりの位置へ飛んでいない");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **docx の中身も探せる**(写真の道具は一度 txt に落としていた)
+    #[gpui::test]
+    fn docx_の中身も串刺しで探せる(cx: &mut gpui::TestAppContext) {
+        let src = std::path::Path::new("../sample/カタログ.docx");
+        if !src.exists() {
+            eprintln!("見本の docx が無いので飛ばす");
+            return;
+        }
+        let dir = std::env::temp_dir().join(format!("writer-find2-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::copy(src, dir.join("見本.docx")).unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.fd_dir = Some(dir.clone());
+            this.fd_term = kumihan::Editor::new("注文書");
+            this.find_in_folder();
+            assert_eq!(this.fd_hits.len(), 1, "docx の中身が探せない: {}", this.status);
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// 互換(docx)では今までどおり直に掛かる — 封じるのはネイティブだけ
     #[gpui::test]
     fn 互換の文書では直接書式が今までどおり効く(cx: &mut gpui::TestAppContext) {

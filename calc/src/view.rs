@@ -3853,6 +3853,15 @@ impl Render for Calc {
                         }));
                     if self.file_view == 1 { d.bg(item_bg) } else { d }
                 })
+                // **フォルダから探す**(2026-08-17 発注者。SFIND の写真)
+                .child({
+                    let d = mk("f-find", ui::t!("フォルダから探す"), true).on_click(cx.listener(
+                        |this, _, _, cx| {
+                            this.file_view = 3;
+                            cx.notify()
+                        }));
+                    if self.file_view == 3 { d.bg(item_bg) } else { d }
+                })
                 .child(div().h(px(10.0)))
                 .child(mk("f-save", ui::t!("保存"), true).on_click(cx.listener(|this, _, _, cx| {
                     this.save(false, cx);
@@ -4147,6 +4156,97 @@ impl Render for Calc {
                                 this.prompt = Some(("user-name", Editor::new(&cur)));
                                 cx.notify()
                             }))));
+            } else if self.file_view == 3 {
+                // **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
+                // writer と同じ形 — 上に欄、真ん中に当たり、下に窓と「読み込み」
+                let 欄 = |this: &Calc, i: usize, ed: &Editor, w: f32, ph: &'static str| {
+                    let mut s = ed.text().to_string();
+                    if this.fd_field == i {
+                        let c = ed.cursor().min(s.len());
+                        s.insert(c, '|');
+                    }
+                    div().id(SharedString::from(format!("fd-{i}")))
+                        .w(px(us * w)).px_2().py_1().rounded_sm().cursor_pointer()
+                        .border_1()
+                        .border_color(if this.fd_field == i { rgb(0x1B6E3C) } else { rgb(0xC6CDD3) })
+                        .bg(gpui::white())
+                        .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
+                        .child(SharedString::from(if s.is_empty() { ph.to_string() } else { s }))
+                        .on_click(cx.listener(move |t: &mut Calc, _, _, cx| {
+                            t.fd_field = i;
+                            cx.notify()
+                        }))
+                };
+                let 押し = |id: &'static str, 札: SharedString| {
+                    div().id(id).px_3().py_1().rounded_sm().cursor_pointer()
+                        .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
+                        .text_size(px(us * 12.0))
+                        .hover(|s| s.bg(rgb(0xEAF5EE)))
+                        .child(札)
+                };
+                pane = pane
+                    .child(div().text_size(px(us * 16.0)).font_weight(gpui::FontWeight::BOLD)
+                        .child(ui::t!("フォルダから探す")))
+                    .child(div().flex().flex_row().items_center().gap_2()
+                        .child(欄(self, 0, &self.fd_term, 280.0, "探す字"))
+                        .child(欄(self, 1, &self.fd_glob, 120.0, "*.xlsx"))
+                        .child(押し("fd-dir", ui::t!("場所を選ぶ").into()).on_click(
+                            cx.listener(|t: &mut Calc, _, _, cx| { t.find_dir_dialog(cx); cx.notify() })))
+                        .child(押し("fd-go", ui::t!("探す (Enter)").into()).on_click(
+                            cx.listener(|t: &mut Calc, _, _, cx| { t.find_in_folder(); cx.notify() }))))
+                    .child(div().text_size(px(us * 11.5)).text_color(dim)
+                        .child(SharedString::from(match &self.fd_dir {
+                            Some(d) => ui::tf!("場所: {}", d.display()).to_string(),
+                            None => ui::t!("場所がまだ決まっていません(「場所を選ぶ」)").to_string(),
+                        })));
+                let mut 一覧 = div().id("fd-list")
+                    .flex_none().h(px(us * 300.0)).overflow_y_scroll()
+                    .p_2().rounded_sm().bg(gpui::white())
+                    .border_1().border_color(rgb(0xC6CDD3))
+                    .flex().flex_col().gap_0p5().text_size(px(us * 12.0));
+                if self.fd_hits.is_empty() {
+                    一覧 = 一覧.child(div().text_color(dim).child(ui::t!("(まだ探していません)")));
+                }
+                for (fi, f) in self.fd_hits.iter().enumerate() {
+                    一覧 = 一覧.child(div().mt_1().text_color(rgb(0x1B6E3C))
+                        .child(SharedString::from(format!(
+                            "{}   {}   {}",
+                            f.path.file_name().unwrap_or_default().to_string_lossy(),
+                            ui::search::human_size(f.size),
+                            f.path.parent().map(|d| d.display().to_string()).unwrap_or_default()
+                        ))));
+                    for (hi, h) in f.hits.iter().enumerate() {
+                        let on = self.fd_at == Some((fi, hi));
+                        let line: String = h.text.chars().take(120).collect();
+                        一覧 = 一覧.child(div()
+                            .id(SharedString::from(format!("fd-h-{fi}-{hi}")))
+                            .px_1().rounded_sm().cursor_pointer()
+                            .bg(if on { rgb(0xEAF5EE) } else { gpui::transparent_black().into() })
+                            .hover(|s| s.bg(rgb(0xEAF5EE)))
+                            .whitespace_nowrap().overflow_hidden()
+                            .child(SharedString::from(format!("{:05} {line}", h.line)))
+                            .on_click(cx.listener(move |t: &mut Calc, _, _, cx| {
+                                t.find_peek(fi, hi);
+                                cx.notify()
+                            })));
+                    }
+                }
+                pane = pane.child(一覧);
+                pane = pane.child(div().flex().flex_row().items_center().gap_2()
+                    .child(押し("fd-load", ui::t!("読み込み").into()).on_click(
+                        cx.listener(|t: &mut Calc, _, _, cx| { t.find_load(cx); cx.notify() })))
+                    .child(div().text_size(px(us * 11.5)).text_color(dim)
+                        .child(ui::t!("選んだ当たりの文書を開いて、その場所へ移ります"))));
+                pane = pane.child(div().id("fd-peek")
+                    .flex_1().min_h(px(us * 100.0)).overflow_y_scroll()
+                    .p_2().rounded_sm().bg(gpui::white())
+                    .border_1().border_color(rgb(0xC6CDD3))
+                    .text_size(px(us * 12.0))
+                    .child(SharedString::from(if self.fd_peek.is_empty() {
+                        ui::t!("(当たりを選ぶと、ここに前後が出ます)").to_string()
+                    } else {
+                        self.fd_peek.clone()
+                    })));
             } else if self.file_view == 1 {
                 pane = pane.child(div().text_size(px(us * 16.0))
                     .font_weight(gpui::FontWeight::BOLD)

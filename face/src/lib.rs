@@ -53,6 +53,7 @@ pub mod funcs_tables;
 pub mod icons;
 pub mod keys;
 pub mod ribbon;
+pub mod search;
 
 // gen_lang:begin(この間は ui/gen_lang.py が生成する — 手で書かない)
 pub mod ribbon_de;

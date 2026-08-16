@@ -67,11 +67,26 @@ class W:
     close = rs.App.close
 
     def scale(self):
-        """rpc が無いので**窓の物理幅から推す**(gpui は 1.0 か 2.0)。
-        画面の倍率は calc と同じ機械なので、そちらで実測した 2.0 を既定に
-        し、窓が小さければ 1.0 に落とす"""
+        """画面の倍率。**writer が書き出した論理の幅と、窓の物理の幅の比**
+        (2026-08-17)。
+
+        前は「窓が 1400 より広ければ 2.0」と当てていて、**900×1000 の窓で
+        1.0 と誤り、半分の位置を押していた** — ファイルの面の項目が全部
+        効かず、canvas を疑って回り道をした。当て推量をやめる。
+        """
         w = self.window()
-        return 2.0 if w and w[3] > 1400 else 1.0
+        if not w:
+            return 1.0
+        try:
+            u = self.ui(want_boxes=False)
+            lw = float(u.get("win_w") or 0)
+            if lw > 0:
+                s = w[3] / lw
+                if 0.5 <= s <= 4.0:
+                    return s
+        except Exception:
+            pass
+        return 2.0 if w[3] > 1400 else 1.0
 
     def click(self, x, y, wait=0.9):
         """**先に近くへ寄せてから**押す(いきなり飛ぶと押下が拾われない)"""

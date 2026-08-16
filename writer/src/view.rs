@@ -19,6 +19,10 @@ impl Render for Writer {
         // リボンのぶん(約110px)を引いた近似で足りる
         self.view_h_px = (f32::from(window.viewport_size().height) - 136.0).max(100.0);
         self.view_w_px = f32::from(window.viewport_size().width).max(200.0);
+        self.win_wh.set((
+            f32::from(window.viewport_size().width),
+            f32::from(window.viewport_size().height),
+        ));
         // **点検の道具へ、ボタンの場所を渡す。** 環境変数が無ければ何もしない
         self.dump_ui();
         let marked = self.ed.marked_range();
@@ -622,8 +626,12 @@ impl Render for Writer {
             None
         } else {
             let item_bg = th_qa_hover;
-            let mk = |id: &'static str, label: &'static str, ready: bool| {
-                let d = div().id(id).px_4().py_1p5().text_size(px(13.0));
+            // **ファイルの面の項目も場所を控える**(2026-08-17。点検の道具が
+            // 座標を当てずに押せるように。リボンのボタンと同じ形)
+            let boxes = self.btn_box.clone();
+            let mk = move |id: &'static str, label: &'static str, ready: bool| {
+                let rec = boxes.clone();
+                let d = div().id(id).relative().px_4().py_1p5().text_size(px(13.0));
                 if ready {
                     d.text_color(th_top_fg)
                         .cursor_pointer()
@@ -632,6 +640,23 @@ impl Render for Writer {
                     d.text_color(th_gray_fg)
                 }
                 .child(label)
+                // **控えは最後の子に。** 頭に置くと押下を遮った(2026-08-17
+                // 実機で踏んだ — ファイルの面の項目が全部効かなくなった)
+                .child(
+                    gpui::canvas(
+                        move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                            rec.borrow_mut().insert(id, (
+                                f32::from(b.origin.x),
+                                f32::from(b.origin.y),
+                                f32::from(b.size.width),
+                                f32::from(b.size.height),
+                            ));
+                        },
+                        |_, _: (), _, _| {},
+                    )
+                    .absolute()
+                    .size_full(),
+                )
             };
             let sb = div().w(px(280.0)).bg(th_top_bg)
                 .border_r_1().border_color(th_cmd_border)
@@ -668,6 +693,14 @@ impl Render for Writer {
                 .child(mk("f-recent", ui::t!("最近開いた"), true).on_click(cx.listener(
                     |this, _, _, cx| {
                         this.file_view = 1;
+                        cx.notify()
+                    })))
+                // **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
+                // 複数のファイルを串刺しで探し、選ぶと下に見え、
+                // 下の「読み込み」で初めて開く
+                .child(mk("f-find", ui::t!("フォルダから探す"), true).on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.file_view = 3;
                         cx.notify()
                     })))
                 .child(div().h(px(10.0)))
@@ -755,7 +788,101 @@ impl Render for Writer {
             let mut pane = div().flex_1().bg(th_cmd_bg).p_8()
                 .flex().flex_col().gap_3().text_size(px(12.5))
                 .text_color(th_top_fg);
-            if self.file_view == 2 {
+            if self.file_view == 3 {
+                // **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
+                // 上に欄、真ん中に当たりの一覧、下に見せる窓と「読み込み」
+                let 欄 = |this: &Writer, i: usize, ed: &Editor, w: f32, ph: &'static str| {
+                    let mut s = ed.text().to_string();
+                    if this.fd_field == i && this.file_view == 3 {
+                        let c = ed.cursor().min(s.len());
+                        s.insert(c, '|');
+                    }
+                    div().id(SharedString::from(format!("fd-{i}")))
+                        .w(px(w)).px_2().py_1().rounded_sm().cursor_text()
+                        .border_1()
+                        .border_color(if this.fd_field == i { th_btn } else { th_cmd_border })
+                        .bg(gpui::white())
+                        .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                        .child(SharedString::from(if s.is_empty() { ph.to_string() } else { s }))
+                        .on_click(cx.listener(move |t, _, _, cx| { t.fd_field = i; cx.notify() }))
+                };
+                let 押し = |id: &'static str, 札: SharedString| {
+                    div().id(id).px_3().py_1().rounded_sm().cursor_pointer()
+                        .border_1().border_color(th_btn).text_color(th_btn)
+                        .text_size(px(12.0))
+                        .hover(move |s| s.bg(th_btn_hover))
+                        .child(札)
+                };
+                pane = pane
+                    .child(div().text_size(px(16.0)).font_weight(gpui::FontWeight::BOLD)
+                        .child(ui::t!("フォルダから探す")))
+                    .child(div().flex().flex_row().items_center().gap_2()
+                        .child(欄(self, 0, &self.fd_term, 280.0, "探す字"))
+                        .child(欄(self, 1, &self.fd_glob, 120.0, "*.txt"))
+                        .child(押し("fd-dir", ui::t!("場所を選ぶ").into()).on_click(
+                            cx.listener(|t, _, _, cx| { t.find_dir_dialog(cx); cx.notify() })))
+                        .child(押し("fd-go", ui::t!("探す (Enter)").into()).on_click(
+                            cx.listener(|t, _, _, cx| { t.find_in_folder(); cx.notify() }))))
+                    .child(div().text_size(px(11.5)).text_color(th_status)
+                        .child(SharedString::from(match &self.fd_dir {
+                            Some(d) => ui::tf!("場所: {}", d.display()).to_string(),
+                            None => ui::t!("場所がまだ決まっていません(「場所を選ぶ」)").to_string(),
+                        })));
+                // 当たりの一覧(ファイルごとに見出し + 行番号つきの行)
+                let mut 一覧 = div().id("fd-list")
+                    .flex_none().h(px(320.0)).overflow_y_scroll()
+                    .p_2().rounded_sm().bg(gpui::white())
+                    .border_1().border_color(th_cmd_border)
+                    .flex().flex_col().gap_0p5().text_size(px(12.0));
+                if self.fd_hits.is_empty() {
+                    一覧 = 一覧.child(div().text_color(th_status)
+                        .child(ui::t!("(まだ探していません)")));
+                }
+                for (fi, f) in self.fd_hits.iter().enumerate() {
+                    一覧 = 一覧.child(div().mt_1().text_color(th_btn)
+                        .child(SharedString::from(format!(
+                            "{}   {}   {}",
+                            f.path.file_name().unwrap_or_default().to_string_lossy(),
+                            ui::search::human_size(f.size),
+                            f.path.parent().map(|d| d.display().to_string()).unwrap_or_default()
+                        ))));
+                    for (hi, h) in f.hits.iter().enumerate() {
+                        let on = self.fd_at == Some((fi, hi));
+                        // 長い行は縮める(一覧が横に流れない)
+                        let line: String = h.text.chars().take(120).collect();
+                        一覧 = 一覧.child(div()
+                            .id(SharedString::from(format!("fd-h-{fi}-{hi}")))
+                            .px_1().rounded_sm().cursor_pointer()
+                            .bg(if on { th_btn_hover } else { gpui::transparent_black().into() })
+                            .hover(move |s| s.bg(th_btn_hover))
+                            .whitespace_nowrap().overflow_hidden()
+                            .child(SharedString::from(format!("{:05} {line}", h.line)))
+                            .on_click(cx.listener(move |t, _, _, cx| {
+                                t.find_peek(fi, hi);
+                                cx.notify()
+                            })));
+                    }
+                }
+                pane = pane.child(一覧);
+                // **下の窓と「読み込み」**(発注者 2026-08-17
+                // 「下に読み込みボタンを置くのはどうか」)。見て、これだと
+                // 分かってから開く — 押し間違いで文書が入れ替わらない
+                pane = pane.child(div().flex().flex_row().items_center().gap_2()
+                    .child(押し("fd-load", ui::t!("読み込み").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.find_load(); cx.notify() })))
+                    .child(div().text_size(px(11.5)).text_color(th_status)
+                        .child(ui::t!("選んだ当たりの文書を開いて、その場所へ移ります"))));
+                pane = pane.child(div().id("fd-peek")
+                    .flex_1().min_h(px(120.0)).overflow_y_scroll()
+                    .p_2().rounded_sm().bg(gpui::white())
+                    .border_1().border_color(th_cmd_border)
+                    .text_size(px(12.0)).font_family(crate::doc::MONO)
+                    .child(SharedString::from(if self.fd_peek.is_empty() {
+                        ui::t!("(当たりを選ぶと、ここに前後が出ます)").to_string()
+                    } else {
+                        self.fd_peek.clone()
+                    })));
+            } else if self.file_view == 2 {
                 // 詳細設定 — 器は ~/.config/officework/settings.toml
                 // (SEKKEI「設定 — 器と言語」。環境変数が一時上書きで優先)
                 let lang_now = ui::settings::get("language").unwrap_or_else(|| "ja".into());
