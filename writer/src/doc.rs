@@ -9,6 +9,12 @@ use crate::*;
 /// (系統を保って選び直す)ので、ここは名指しでよい
 pub(crate) const MONO: &str = "BIZ UDゴシック";
 
+/// **ネイティブ文書の拡張子**(2026-08-16)。意味だけを持つ AsciiDoc。
+/// `.adoc` が正、`.asciidoc` も受ける(AsciiDoc の世間の綴り)
+pub(crate) fn is_native_ext(e: &str) -> bool {
+    e.eq_ignore_ascii_case("adoc") || e.eq_ignore_ascii_case("asciidoc")
+}
+
 pub(crate) fn is_plain_ext(e: &str) -> bool {
     ["py", "txt", "md", "toml", "json", "csv"]
         .iter()
@@ -45,6 +51,8 @@ impl Writer {
             image_cache: Default::default(),
             font_bytes: std::sync::Arc::new(font_data().to_vec()),
             pg: kumihan::PageSetup::default(),
+            native: false,
+            tmpl: kumihan::theme::default_theme(),
             find_open: false,
             find_field: 0,
             find_ed: Editor::new(""),
@@ -412,6 +420,16 @@ impl Writer {
     pub(crate) fn relayout(&mut self) {
         self.flush_target();
         let m = Metrics::new(&self.font_bytes).expect("フォント");
+        // **画面は常に「本文×テンプレート」の合成**(2026-08-16)。
+        // 合成は写しの上で行い、`self.doc`(意味の正本)は触らない —
+        // 保存されるのは意味だけ、が守られる。互換の文書は素通し
+        let composed;
+        let src: &Document = if self.native {
+            composed = kumihan::theme::compose(&self.doc, &self.tmpl);
+            &composed
+        } else {
+            &self.doc
+        };
         // 段組みなら1段の行長で組み、ページの物理座標へ折る。
         // 折った後の座標は画面もクリックも PDF もそのまま使える
         let y0 = self.pg.top_mm + 4.0;
@@ -420,14 +438,14 @@ impl Writer {
             let measure =
                 (self.pg.h_mm - self.pg.top_mm - self.pg.bottom_mm - 8.0).max(20.0);
             self.page = layout(
-                &self.doc,
+                src,
                 &m,
                 &Frame { measure_mm: measure, line_height_mm: LINE_MM, y0_mm: y0 },
             );
             kumihan::fold_vertical(&mut self.page, &self.pg, y0, LINE_MM);
         } else {
             self.page = layout(
-                &self.doc,
+                src,
                 &m,
                 &Frame { measure_mm: self.pg.column_measure_mm(), line_height_mm: LINE_MM, y0_mm: y0 },
             );
@@ -932,7 +950,10 @@ impl Writer {
     /// 名前を付けて保存(いつでもダイアログ。別のスレッド — rfd は同期)
     pub(crate) fn save_as(&mut self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
-            rfd::FileDialog::new().add_filter(ui::t!("Word文書"), &["docx"]).save_file()
+            rfd::FileDialog::new()
+                .add_filter(ui::t!("officework の文書"), &["adoc"])
+                .add_filter(ui::t!("Word文書"), &["docx"])
+                .save_file()
         });
         cx.spawn(async move |this, cx| {
             let r = ask.await;
@@ -1240,6 +1261,12 @@ impl Writer {
             e.eq_ignore_ascii_case("html") || e.eq_ignore_ascii_case("htm")
         }) {
             self.open_html(&p, &bytes);
+            return;
+        }
+        // **ネイティブ文書(.adoc)**(2026-08-16)。意味だけを持ち、
+        // 見た目はテンプレート — 素の文字とは扱いが違うので先に見る
+        if p.extension().and_then(|e| e.to_str()).is_some_and(is_native_ext) {
+            self.open_adoc(&p, &bytes);
             return;
         }
         // 素の文字(.py / .txt / .md)。**マクロを書くのは writer の仕事**
@@ -1921,6 +1948,81 @@ impl Writer {
         .into();
     }
 
+    /// **ネイティブ文書(.adoc)を開く。** 中身は意味だけで、見た目は
+    /// テンプレートが持つ(SEKKEI「本文とテンプレートを分ける」)。
+    pub(crate) fn open_adoc(&mut self, p: &std::path::Path, bytes: &[u8]) {
+        let text = String::from_utf8_lossy(bytes).replace("\r\n", "\n");
+        let doc = match kumihan::adoc::parse(&text) {
+            Ok(d) => d,
+            Err(e) => {
+                // **読めない所は言う。** 黙って本文に化けさせない
+                self.status = ui::tf!("{} が読めません: {}", p.display().to_string(), e).into();
+                return;
+            }
+        };
+        self.target = Target::Body;
+        self.hf_edit = None;
+        self.track = false;
+        self.track_base = None;
+        self.encrypt_pw = None;
+        self.notes.clear();
+        self.native = true;
+        let (tmpl, 言い分) = self.load_template(doc.template.as_deref(), p);
+        self.tmpl = tmpl;
+        // 用紙はテンプレートが持つ(本文は持たない)
+        self.pg = self.tmpl.page.unwrap_or_default();
+        self.set_doc(doc);
+        self.adopt_font();
+        self.path = Some(p.to_path_buf());
+        self.dirty = false;
+        self.status = ui::tf!(
+            "{} — 本文は意味だけ、見た目は{}",
+            p.file_name().unwrap_or_default().to_string_lossy(),
+            言い分
+        )
+        .into();
+    }
+
+    /// テンプレートを探して読む。**隣 → 置き場 → 同梱の既定**の順
+    /// (名前は文書の頭の `:template:`)。返りは(テンプレート, 言い分)
+    fn load_template(
+        &self,
+        name: Option<&str>,
+        doc_path: &std::path::Path,
+    ) -> (kumihan::theme::Theme, String) {
+        let Some(name) = name else {
+            return (kumihan::theme::default_theme(), ui::t!("同梱の既定").to_string());
+        };
+        let mut cands = Vec::new();
+        if let Some(dir) = doc_path.parent() {
+            cands.push(dir.join(format!("{name}.toml")));
+        }
+        cands.push(ui::settings::path().with_file_name("templates").join(format!("{name}.toml")));
+        for c in cands {
+            let Ok(src) = std::fs::read_to_string(&c) else { continue };
+            return match kumihan::theme::parse(&src) {
+                Ok(th) => (th, c.display().to_string()),
+                // **壊れたテンプレートは黙って既定に落ちない** — どこが
+                // 悪いか言わないと、直す手がかりが無い
+                Err(e) => (
+                    kumihan::theme::default_theme(),
+                    ui::tf!("{} が読めないので同梱の既定({})", c.display().to_string(), e)
+                        .to_string(),
+                ),
+            };
+        }
+        (
+            kumihan::theme::default_theme(),
+            ui::tf!("テンプレート「{}」が見つからないので同梱の既定", name).to_string(),
+        )
+    }
+
+    /// ネイティブ文書として保存する(.adoc)。**意味だけを書く**
+    pub(crate) fn save_adoc_to(&mut self, p: &std::path::Path) -> Result<(), String> {
+        self.flush_target();
+        std::fs::write(p, kumihan::adoc::write(&self.doc)).map_err(|e| e.to_string())
+    }
+
     /// 素の文字として保存する(.py / .txt / .md)。段落を改行でつなぐ
     pub(crate) fn save_text_to(&mut self, p: &std::path::Path) -> Result<(), String> {
         self.flush_target();
@@ -1988,7 +2090,10 @@ impl Writer {
             .into();
         }
         let ask = cx.background_executor().spawn(async {
-            rfd::FileDialog::new().add_filter(ui::t!("Word文書"), &["docx"]).save_file()
+            rfd::FileDialog::new()
+                .add_filter(ui::t!("officework の文書"), &["adoc"])
+                .add_filter(ui::t!("Word文書"), &["docx"])
+                .save_file()
         });
         cx.spawn(async move |this, cx| {
             let r = ask.await;
@@ -2010,6 +2115,24 @@ impl Writer {
     }
 
     pub(crate) fn save_to(&mut self, p: PathBuf) {
+        // **ネイティブ文書(.adoc)は意味だけを返す**(2026-08-16)。
+        // 見た目はテンプレートが持っているので、書くものは何も無い
+        if p.extension().and_then(|e| e.to_str()).is_some_and(is_native_ext) {
+            match self.save_adoc_to(&p) {
+                Ok(()) => {
+                    self.path = Some(p.clone());
+                    self.native = true;
+                    self.dirty = false;
+                    self.status = ui::tf!(
+                        "{} に保存しました(意味だけ — 見た目はテンプレート)",
+                        p.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                    .into();
+                }
+                Err(e) => self.status = ui::tf!("保存できません: {}", e).into(),
+            }
+            return;
+        }
         // 素の文字(.py / .txt / .md)は素のまま返す — docx に化けさせない
         if p.extension().and_then(|e| e.to_str()).is_some_and(is_plain_ext) {
             match self.save_text_to(&p) {

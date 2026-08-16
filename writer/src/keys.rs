@@ -361,6 +361,8 @@ impl Writer {
     pub(crate) fn open_dialog(&mut self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
+                // ネイティブ(.adoc)を先頭に — 既定で見えるのがこちら
+                .add_filter(ui::t!("officework の文書"), &["adoc", "asciidoc"])
                 .add_filter(ui::t!("Word文書とHTML"), &["docx", "html", "htm"])
                 // マクロの .py もここから開く(素の文字のまま往復する)
                 .add_filter(ui::t!("マクロ・素の文字"), &["py", "txt", "md", "toml", "json", "csv"])

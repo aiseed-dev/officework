@@ -1913,4 +1913,71 @@ mod marker_tests {
             assert!(this.status.contains("最後の1列"), "断りの言葉が出ない: {}", this.status);
         });
     }
+
+    /// **ネイティブ文書は意味だけを往復する**(2026-08-16。段階C の門番)。
+    /// 開く → 打つ → 保存 → 開き直す、で意味が同じこと
+    #[gpui::test]
+    fn adoc_を開いて保存すると意味が往復する(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-adoc-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("見本.adoc");
+        let src = "= 月次報告\n\n== まとめ\n\n*要点*だけ書く。\n";
+        std::fs::write(&path, src).unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(path.clone());
+            assert!(this.native, "ネイティブとして開いていない: {}", this.status);
+            assert_eq!(this.doc.props.title, "月次報告");
+            let ps: Vec<_> = this.doc.paragraphs().collect();
+            assert_eq!(ps[0].style, kumihan::ParaStyle::Heading(1));
+            // **意味だけ** — 見た目は本文に入らない(見出しの 16pt は
+            // テンプレートの側で、合成のときに乗る)
+            assert_eq!(ps[0].runs[0].size_pt, None, "本文に見た目が焼き付いた");
+
+            this.save_to(path.clone());
+            let back = std::fs::read_to_string(&path).unwrap();
+            assert_eq!(back, src, "保存で意味が崩れた");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 開いた直後に「変更あり」の印が付かない(付くと、触っていないのに
+    /// 保存を促されて、上書きの事故に繋がる)
+    #[gpui::test]
+    fn 開いた直後は変更ありにならない(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-adoc3-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("見本3.adoc");
+        std::fs::write(&path, "== 見出し\n\n本文。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(path.clone());
+            assert!(!this.dirty, "開いた直後に変更ありになった");
+            this.relayout();
+            assert!(!this.dirty, "組み直しただけで変更ありになった");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 合成は**写しの上**で行う — 紙面には見出しの大きさが乗るが、
+    /// 保存される意味の側は無指定のまま
+    #[gpui::test]
+    fn 合成は紙面にだけ効いて本文を汚さない(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-adoc2-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("見本2.adoc");
+        std::fs::write(&path, "== 見出し\n\n本文。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(path.clone());
+            let ps: Vec<_> = this.doc.paragraphs().collect();
+            assert_eq!(ps[0].runs[0].size_pt, None, "意味の側は無指定のまま");
+            // 合成した写しでは見出しが 16pt(既定テンプレート)
+            let c = kumihan::theme::compose(&this.doc, &this.tmpl);
+            let cps: Vec<_> = c.paragraphs().collect();
+            assert_eq!(cps[0].runs[0].size_pt, Some(16.0), "合成で見た目が乗らない");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
