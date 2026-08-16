@@ -157,6 +157,35 @@ class W:
             self.click(b["x"] + b["w"] / 2, b["y"] + b["h"] / 2, wait)
         raise SystemExit(f"段 {i} に切り替わりません")
 
+    def drag(self, x1, y1, x2, y2, wait=0.8):
+        """本文を**マウスで引いて選ぶ**(押す → 動かす → 離す)。
+
+        合成のダブルクリックは語を掴めなかった(2026-08-16)。人が字を
+        選ぶ本筋はこちらなので、こちらを持つ。座標は論理。
+        """
+        w = self.window()
+        if not w:
+            raise SystemExit("窓が消えました")
+        s = self.scale()
+        pts = [(x1, y1)] + [
+            (x1 + (x2 - x1) * k / 6.0, y1 + (y2 - y1) * k / 6.0) for k in range(1, 7)
+        ]
+        px, py = pts[0]
+        xtest.fake_input(self.d, X.MotionNotify, x=w[1] + int(px * s), y=w[2] + int(py * s))
+        self.d.sync()
+        time.sleep(0.2)
+        xtest.fake_input(self.d, X.ButtonPress, 1)
+        self.d.sync()
+        for px, py in pts[1:]:
+            time.sleep(0.05)
+            xtest.fake_input(self.d, X.MotionNotify, x=w[1] + int(px * s), y=w[2] + int(py * s))
+            self.d.sync()
+        time.sleep(0.1)
+        xtest.fake_input(self.d, X.ButtonRelease, 1)
+        self.d.sync()
+        time.sleep(wait)
+        return self.ui()
+
     def press(self, cmd_id, wait=1.0):
         """リボンのボタンを **id で** 押す(いまの段に見えている物)"""
         u = self.ui()

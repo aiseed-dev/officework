@@ -2203,7 +2203,7 @@ impl Writer {
             })
             .collect();
         let body = format!(
-            "{{\"tab\":{},\"native\":{},\"rp_open\":{},\"rp_tab\":{},\"rp_drawn\":{},\"file_view\":{},\"win_w\":{},\"win_h\":{},\"fd_files\":{},\"fd_hits\":{},\"status\":{:?},\"boxes\":[{}]}}",
+            "{{\"tab\":{},\"native\":{},\"rp_open\":{},\"rp_tab\":{},\"rp_drawn\":{},\"file_view\":{},\"win_w\":{},\"win_h\":{},\"fd_files\":{},\"fd_hits\":{},\"sel\":[{},{}],\"status\":{:?},\"boxes\":[{}]}}",
             self.tab,
             self.native,
             self.rp_open,
@@ -2214,6 +2214,8 @@ impl Writer {
             self.win_wh.get().1,
             self.fd_hits.len(),
             self.fd_tally.hits,
+            self.ed.selection().start,
+            self.ed.selection().end,
             self.status.to_string(),
             boxes.join(",")
         );
