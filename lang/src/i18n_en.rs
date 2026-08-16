@@ -995,6 +995,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("同梱: {}(読むだけ)", "Built in: {} (read only)"),
     ("名乗った .py がこの段のボタンになります。選ぶと編集の道具で開きます", "A .py that declares itself becomes a button on this tab. Pick one to open it in the editor"),
     ("見本を作る", "Create an example"),
+    ("選ぶと走ります(直すのは「置き場を開く」か @edit 名前)", "Picking one runs it (to edit, use \"Open the folder\" or @edit name)"),
     ("マクロ(plugins) {}", "Macros (plugins) {}"),
     (" ※このブックに載っている古いコード({})は実行しません — @export 名前 で取り出し、保存で消えます", " * The old code carried in this book ({}) is not run — take it out with @export name; saving drops it"),
     ("ブックにコードは載せません(データとプログラムは別のファイル)。関数も手続きも {} に .py を置いてください", "Books do not carry code here (data and programs are separate files). Put your functions and procedures in {} as .py"),
@@ -1634,7 +1635,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("作れません: {}", "Cannot create it: {}"),
     ("{} を作って {} で開きました(保存したらセルから呼べます)", "Created {} and opened it in {} (save it and you can call it from a cell)"),
     ("{} は作りましたが開けません: {}", "Created {} but cannot open it: {}"),
-    ("選ぶと編集の道具で開きます", "Pick one to open it in your editor"),
     ("{} を {} で開きました", "Opened {} in {}"),
     // 操作の記録(2026-08-15)
     ("記録を始めました。操作すると Python の行になります(もう一度押すと止まります)", "Recording started. What you do becomes Python (press again to stop)"),

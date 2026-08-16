@@ -511,6 +511,15 @@ impl Calc {
                     self.status = ui::tf!("セルのスタイル「{}」を掛けました", label).into();
                 }
             }
+            // **マクロの一覧から選んだ .py は走る。** 打たずに選べる道 —
+            // 日本語の名前は IME を挟むので `@名前` の Enter が変換に
+            // 食われて辿り着けないことがある(2026-08-09 の理由がまだ生きている)
+            "py-run" => {
+                if let Some((name, _)) = self.pick_paths.iter().find(|(n, _)| n == v).cloned() {
+                    self.run_plugin(&name, None, cx);
+                }
+                self.pick_paths.clear();
+            }
             // Python タブの一覧から選んだ .py(打たずに選べる道)
             // 一覧から選んだ .py は**編集の道具で開く**(発注者 2026-08-15。
             // プログラムの編集は表計算の仕事ではない)。順は

@@ -1422,7 +1422,14 @@ impl Calc {
                     Some(ui::t!("セルに =名前(...) と書けます。選ぶと編集の道具で開きます").into());
                 self.pick = Some((
                     fs.iter()
-                        .map(|(m, d)| (m.clone(), format!("{m} — {}", d.join(" "))))
+                        .map(|(m, d)| {
+                            // def が無い .py もある(上から下まで走る形)。
+                            // 尻の「—」を残すと、見出しが途中で切れたように見える
+                            let defs = d.join(" ");
+                            let head =
+                                if defs.is_empty() { m.clone() } else { format!("{m} — {defs}") };
+                            (m.clone(), head)
+                        })
                         .collect(),
                     at,
                 ));
@@ -1462,8 +1469,14 @@ impl Calc {
                 );
                 self.pick = Some((items, at));
             }
-            // 置いてある .py の一覧。**選ぶと編集の道具で開く** —
-            // 名前を眺めるだけでは、直したい時に置き場を探すことになる
+            // 置いてある .py の一覧。**選ぶと走る。**
+            //
+            // 2026-08-15 の主従逆転(fb50fbd)で `py-run` の腕が落ち、以来
+            // マクロの段に**マクロを走らせる道が無かった**(走るのは
+            // データ > Python に `@名前` と打つ1本だけ)。writer は
+            // 落ちておらず、calc だけが失っていた(2026-08-16 発注者
+            // 「普通のマクロは、ファイルからの実行になりませんか」)。
+            // 直すのは「置き場を開く」か `@edit 名前`
             "py-list" => {
                 self.prompt = None;
                 let dir = plugins_dir();
@@ -1478,12 +1491,20 @@ impl Calc {
                     .iter()
                     .map(|(m, _)| (m.clone(), dir.join(format!("{m}.py"))))
                     .collect();
-                self.pick_kind = "py-edit";
-                self.pick_note = Some(ui::t!("選ぶと編集の道具で開きます").into());
+                self.pick_kind = "py-run";
+                self.pick_note =
+                    Some(ui::t!("選ぶと走ります(直すのは「置き場を開く」か @edit 名前)").into());
                 self.pick = Some((
                     plugs
                         .iter()
-                        .map(|(m, d)| (m.clone(), format!("{m} — {}", d.join(" "))))
+                        .map(|(m, d)| {
+                            // def が無い .py もある(上から下まで走る形)。
+                            // 尻の「—」を残すと、見出しが途中で切れたように見える
+                            let defs = d.join(" ");
+                            let head =
+                                if defs.is_empty() { m.clone() } else { format!("{m} — {defs}") };
+                            (m.clone(), head)
+                        })
                         .collect(),
                     at,
                 ));

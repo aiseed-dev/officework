@@ -3856,6 +3856,18 @@ impl Render for Calc {
                         }
                         cx.notify()
                     })))
+                // **マクロ**(2026-08-16 発注者「決めた置き場に置いたマクロは、
+                // ファイルメニュのマクロから実行できるようにする」)。本家の
+                // File > マクロと同じ場所。押すと置き場の一覧が出て、選ぶと走る
+                .child(mk("f-macro", ui::t!("マクロ"), true).on_click(cx.listener(
+                    |this, _, _, cx| {
+                        if let Some(i) = ribbon::CALC.iter().position(|t| t.name == "マクロ") {
+                            this.prev_tab = i;
+                            this.tab = i;
+                        }
+                        this.run_cmd("py-list", cx);
+                        cx.notify()
+                    })))
                 .child(div().h(px(10.0)))
                 .child({
                     let d = mk("f-info", ui::t!("詳細情報"), true).on_click(cx.listener(
