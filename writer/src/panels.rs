@@ -898,7 +898,8 @@ impl Writer {
             // 左と同じく**場所を取る**(重ねない)。巻けるようにもする —
             // 表の面が足された分、230px の幅では下が切れる
             let 面 = self.rp_tab;
-            self.rp_drawn.set(面);
+            // **どの枝が組んだか**を控える(値を読んだだけでは分からない)
+            self.rp_drawn.set(9);
             let return_rp;
             let mut d = div().id("rp-panel")
                 .flex_1().min_w(px(0.0)).h_full().overflow_y_scroll()
@@ -915,6 +916,7 @@ impl Writer {
             // 柱で別の面に分けた(発注者 2026-08-15「外側にアイコンをおいて
             // 操作を変更できるように」)
             if 面 == 1 {
+                self.rp_drawn.set(1);
                 d = d.child(div().text_size(px(11.0)).text_color(th_status)
                     .child(SharedString::from(ui::tf!("{:.0}×{:.0}mm / 余白 {:.0}mm / {}段{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!(" / 縦書き") } else { "" }))));
                 d = d.child(row()
@@ -952,6 +954,7 @@ impl Writer {
                     .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
                     .child(柱d));
             } else if 面 == 2 {
+                self.rp_drawn.set(2);
             // **スタイルの面**(2026-08-16。ネイティブ文書だけ)。
             // いまの段落が着ているスタイルと、テンプレートの一覧を出す。
             // 押すと着替え、直すとテンプレートが変わって**同じスタイルの所が
