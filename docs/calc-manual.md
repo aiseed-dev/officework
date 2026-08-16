@@ -712,6 +712,25 @@ No server. Everything works **through files** (i.e. in a shared folder):
   an **untitled copy** — to restore, save it under the original name yourself
   (nothing is written back silently)
 
+## Searching a folder (2026-08-17)
+
+File > **Search a folder** walks a folder and searches many files at once.
+
+- **It reads inside .xlsx too** (the cell text) — you can see which workbook
+  holds what without opening any of them
+- Plain text (.txt / .md / .csv / .py …) as well
+- Narrow by name with `*.xlsx` (`;` for several)
+- The folder defaults to the one holding the open workbook (or the last one you
+  chose)
+- Hidden folders are skipped; if there is too much it stops early **and says so**
+
+Hits are grouped per file with line numbers (for .xlsx, one row per sheet row
+under the sheet name). Picking one **shows it below without opening anything**;
+it opens when you press **Load**.
+
+**calc can only open spreadsheets.** If a plain text file matches, it says so
+and points you at writer rather than failing with a broken message.
+
 ## Macros tab
 
 **Folded into one tab on 2026-08-16.** It used to be split between "Python"

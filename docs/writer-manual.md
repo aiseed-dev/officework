@@ -3,7 +3,7 @@
 *日本語版(secondary): [writer-manual.ja.md](writer-manual.ja.md)*
 
 A word processor that opens, edits, and saves docx. It exports PDF and can read
-JavaScript-free HTML as a document. **Ribbon: 114/114 — every button works
+JavaScript-free HTML as a document. **Ribbon: 118/118 — every button works
 (zero grayed out).**
 
 Three promises:
@@ -399,6 +399,142 @@ first, then you pick it from the list — **that step is the gate**.
   speed rules, and the AI button: see the
   [writer macro manual](writer-macro-manual.md)
 
+## Two kinds of document — meaning only, and the docx you were sent (2026-08-16)
+
+writer handles two kinds. **Which one you have open changes what you can do.**
+
+| | Native (.adoc) | Compatible (.docx) |
+|---|---|---|
+| Content | **meaning only** (headings, emphasis, quotes, tables…) | the look is in the text |
+| Look | a **template** (a .toml next to it) | the text itself |
+| Direct formatting | **blocked** → name it and it becomes a style | works as before |
+| Saving | .adoc (meaning only) | .docx (original parts kept) |
+
+**A docx you were sent behaves exactly as before.** Nothing changes for it.
+
+### Why the split
+
+Word had styles too, but direct formatting (make *this* line bold 12pt) was
+just as easy, so nobody used styles and documents sank into a swamp of
+formatting. **The design prevents it**: in a native document, naming a look is
+*easier* than applying it directly.
+
+## Native documents (.adoc)
+
+File > Open, pick a `.adoc`. It is plain text:
+
+```asciidoc
+= Monthly report
+:template: house-style
+
+== Summary
+
+Sales *rose* against last month.footnote:[Tokyo and Osaka combined]
+
+* Tokyo
+* Osaka
+```
+
+- `= Title` and `:template: name` at the top
+- Headings `==`–`====`, emphasis `*bold*` `_italic_`, quotes `____`
+- `footnote:[]`, bookmarks `[[name]]`, references `<<name>>`, ruby
+  `ruby:漢字[かんじ]`, maths `stem:[LaTeX]`, images `image::path[]`,
+  page break `<<<`, tables `|===`
+- **Not one bit of look goes in.** Size, colour and typeface live in the template
+
+### The template (where the look lives)
+
+`:template: house-style` looks for `house-style.toml` **next to the document →
+`~/.config/officework/templates/` → the built-in default**.
+
+```toml
+[文書]
+大きさ = 11
+
+[ページ]
+用紙 = "A4"
+余白 = 25
+
+[スタイル.見出し1]
+大きさ = 20
+太字 = true
+色 = "1B6E3C"
+```
+
+Keys are accepted in Japanese or English (`size`, `bold`, `color`, `[style.…]`).
+
+**The easiest way to get one is to ask the AI** ("make it look like a government
+form", "like an internal report"). It is text, so the AI can write it and you can
+read the diff.
+
+A broken template **says what is wrong** and falls back to the built-in default —
+falling back silently would leave you no way to fix it.
+
+### When you want to change the look
+
+Pressing size, typeface, colour, highlight, underline or strikethrough does not
+apply anything. Instead you get
+
+> **New style — give this look a name**
+> What it applies: size 11pt
+> `[ Large text ]` [Confirm (Enter)]
+
+Name it and the style goes **into the template**, so every place with that name
+changes at once. The AI suggests the name (without it you get a draft name).
+
+- **With text selected it applies to the text; without, to the paragraph**
+- A character style is saved as `[.name]#text#`
+- Emphasis, superscript and subscript are **meaning, so they are not blocked**
+
+### The Styles face in the right panel
+
+View > Right panel → the third icon on the rail. It shows the style this
+paragraph wears and the ones you can pick. Picking changes it; the size buttons
+edit **the template**, so everywhere with that style changes together.
+
+### Laying out for the web
+
+One extra section in the template lays the text out as **one continuous flow**
+instead of paper:
+
+```toml
+[組み方]
+横幅 = "可変"     # follow the window, not the paper
+区切り = "なし"   # do not fold into pages
+```
+
+Slides (one section per sheet, text never crossing a sheet) do not exist yet —
+so there is no switch for them either.
+
+## Reducing a docx to meaning (distilling)
+
+File > **Reduce to meaning (distil)**. It pulls the direct formatting out of a
+docx, groups similar looks into styles and moves them into a template.
+
+> Distilled — 1 style, 15 paragraphs. The look moved into the template
+
+- **It is lossy, so it is an explicit step.** Until you press it, the docx stays
+  a docx (original parts included)
+- Anything that does not fit a paragraph's look (one word in a different colour)
+  is dropped, and **the count is reported** — no pretending nothing was lost.
+  Emphasis, footnotes, links and ruby survive
+- Afterwards the document is native and saves as .adoc
+
+## Searching a folder (2026-08-17)
+
+File > **Search a folder** walks a folder and searches many files at once.
+
+- **It reads inside .docx too** — no need to convert to txt first
+- Plain text (.txt / .md / .adoc / .py / .csv …) as well
+- Narrow by name with `*.txt` (`;` for several)
+- The folder defaults to the one holding the open document (or the last one you
+  chose)
+- Hidden folders are skipped; if there is too much it stops early **and says so**
+
+Hits are grouped per file with line numbers. Picking one **shows its
+surroundings below without opening anything**. It opens only when you press
+**Load** below — so you look first, and a misclick never swaps your document.
+
 ## Printing (PDF) and saving
 
 - File > Print writes a PDF. **Screen and paper are the same page** — they
@@ -411,7 +547,7 @@ first, then you pick it from the list — **that step is the gate**.
 
 ## No more gray
 
-All 114 ribbon commands work. The gray of "don't make it look usable when it
+All 118 ribbon commands work. The gray of "don't make it look usable when it
 isn't" reached **zero** in writer. The remaining honest limits are
 noted in each section above (first-version vertical writing, per-change
 accept/reject for tracked changes, no UI yet for creating cell merges).
