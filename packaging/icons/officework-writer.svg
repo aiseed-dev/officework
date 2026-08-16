@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- officework writer のアプリの絵。
+       青 #165E83 は writer の画面が実際に使っているボタンと段の色
+       (view.rs の th_btn / th_tab_on_fg)— 新しい色は決めない。
+       calc と同じ「色の板の上に白い紙」の形にして、**中身だけで見分ける**。 -->
+  <title>officework writer</title>
+  <rect width="64" height="64" rx="14" fill="#165E83"/>
+  <rect x="14" y="11" width="36" height="42" rx="3" fill="#FFFFFF"/>
+  <g fill="#165E83">
+    <!-- 見出し(太く短く)と本文の行。最後の行は短い = 段落の終わり -->
+    <rect x="20" y="19" width="17" height="4" rx="2"/>
+    <rect x="20" y="29" width="24" height="3" rx="1.5"/>
+    <rect x="20" y="36" width="24" height="3" rx="1.5"/>
+    <rect x="20" y="43" width="14" height="3" rx="1.5"/>
+  </g>
+</svg>

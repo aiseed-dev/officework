@@ -73,6 +73,10 @@ jobs:
             APP="dist/officework $app.app"
             mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
             cp "target/release/$app" "$APP/Contents/MacOS/"
+            # **絵を持たせる。** 無いと Finder でも Dock でも無地になる
+            # (2026-08-17 のアルファの棚卸しまでそうだった)。
+            # .icns は tools/make_icons.py が SVG から起こしてコミットしてある
+            cp "packaging/icons/officework-$app.icns" "$APP/Contents/Resources/"
             cat > "$APP/Contents/Info.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -82,6 +86,7 @@ jobs:
             <key>CFBundleIdentifier</key><string>io.github.aiseed-dev.officework.$app</string>
             <key>CFBundleShortVersionString</key><string>$VER</string>
             <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleIconFile</key><string>officework-$app.icns</string>
             <key>NSHighResolutionCapable</key><true/>
           </dict></plist>
           PLIST
@@ -107,8 +112,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: 組む
-        # **ここが初めての Windows の apps ビルド。** 核は ci.yml で毎回
-        # 組んでいるが、GPUI のアプリは組んだことが無い(2026-08-14)
+        # 2026-08-17 から **ci.yml の apps でも Windows を組んでいる**ので、
+        # ここはもう初見ではない(それまでは「タグを押して初めて試される」
+        # 状態だった — アルファの棚卸しで見つけて的に足した)
         run: cargo build --release -p calc -p writer
       - name: 包む
         # .msi はこれから(WiX の工事)。まず zip で試せる形にする
@@ -124,6 +130,10 @@ jobs:
           "$D/python/python.exe" -m pip install --quiet officework || true
           cp -r sample/plugins "$D/"
           cp packaging/README.ja.md "$D/はじめに.md"
+          # 絵も入れる。**.exe 自身にはまだ焼き込んでいない**(build.rs で
+          # 資源として埋める工事が要る)ので、いまは近道を作る人が
+          # 使えるように同梱するだけ — 出来ないことを出来るように見せない
+          cp packaging/icons/officework-calc.ico packaging/icons/officework-writer.ico "$D/"
           7z a "$D.zip" "$D" > /dev/null
       - uses: actions/upload-artifact@v4
         with:
@@ -149,8 +159,8 @@ jobs:
 
             **表計算と文書。Python でマクロが書けます。**
 
-            `.py` を `~/.config/office/plugins/`(Windows は
-            `%USERPROFILE%\.config\office\plugins\`)に置くと、セルから
+            `.py` を `~/.config/officework/funcs/`(Windows は
+            `%USERPROFILE%\.config\officework\funcs\`)に置くと、セルから
             日本語の関数として呼べます。
 
             ```python

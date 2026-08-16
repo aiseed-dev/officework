@@ -20,7 +20,7 @@
 //!   機能(SEKKEI の決め。歴史とコメントは git)
 
 use crate::doc::{
-    Align, Block, Cellbox, CharFormat, Document, Footnote, FootnoteRef, InlineImage, ListKind,
+    Block, Cellbox, CharFormat, Document, Footnote, FootnoteRef, InlineImage, ListKind,
     Paragraph, ParaStyle, RefField, Run, Table, VMerge,
 };
 

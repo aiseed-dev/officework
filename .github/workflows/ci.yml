@@ -132,6 +132,13 @@ jobs:
         # UDF の置き場は plugins から funcs に分けた後だった —
         # **言われたとおりに置いても動かない**案内を配るところだった
         run: python3 tools/config_dir_check.py
+      - name: アプリの絵が揃っているか
+        # **`.desktop` が Icon= で名指ししているのに、絵が1枚も無かった**
+        # (2026-08-17 のアルファの棚卸しで見つけた — ランチャーで無地の
+        # 四角になる)。正本は packaging/icons の SVG 2枚で、配る形
+        # (PNG 9寸法・.ico・.icns)は tools/make_icons.py が起こす。
+        # 起こした物もコミットしてあるので、この門番に絵の道具は要らない
+        run: python3 tools/make_icons.py --check
       - name: 画面の文言が対訳の表を通っているか
         # **さらに一段下に同じ穴があった。** 上の2つはリボンの札しか見ない。
         # 画面の案内・状態行・パネルの札は `ui::t!` で書くが、その日本語が
@@ -191,18 +198,30 @@ jobs:
   # 画面のいる2つ。**遅い。** それでも走らせる — 走らせないと、直したものが
   # 壊れたことに push まで誰も気付かない。
   #
-  # **Linux と macOS の両方で回す**(2026-08-13 発注者「Linux 以外も CI に」)。
+  # **3 OS とも回す**(2026-08-13 発注者「Linux 以外も CI に」、
+  # Windows は 2026-08-17 に足した)。
   # GPUI は zed 育ちなので mac は本場。mac の runner は下ごしらえが要らない —
   # cmake/clang は標準、日本語フォントは Hiragino が /System/Library/Fonts に、
-  # 綴りの辞書 /usr/share/dict/words も標準で居る
+  # 綴りの辞書 /usr/share/dict/words も標準で居る。
+  #
+  # **Windows のアプリは、ここに足すまで一度も組まれていなかった。**
+  # 核だけ core-windows で毎回見ていて、画面のいる2つは release.yml の
+  # タグのときだけ = **初回リリースで初めて試される**状態だった(アルファの
+  # 棚卸しで見つけた)。手元では MSVC のリンカ(lib.exe)が無くて
+  # `--target x86_64-pc-windows-msvc` の check も終わらない —
+  # **CI がこの物差しの唯一の持ち主**なので、ここで見る。
+  #
+  # calc の RPC は unix ソケットが設計で `#[cfg(unix)]` の外に置いてある
+  # (0.2.0 で Windows の wheel を壊した教訓と同じ線)。それ以外に的ごとの
+  # 枝は無いはずだが、**「はず」を確かめるのがこの仕事**
   apps:
     name: cargo test (画面のいる calc / writer — ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
-      # 片方が落ちても、もう片方は最後まで走らせて全部見る(--no-fail-fast と同じ理屈)
+      # 1つ落ちても残りは最後まで走らせて全部見る(--no-fail-fast と同じ理屈)
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
@@ -252,12 +271,26 @@ jobs:
           # そもそも無くて、どちらも落ちる(2026-08-13 に踏んだ)
           curl -sSL -o "$OFFICE_FONT_DIR/NotoSerifCJKjp-Regular.otf" \
             https://github.com/googlefonts/noto-cjk/raw/Serif2.002/Serif/OTF/Japanese/NotoSerifCJKjp-Regular.otf
+      - name: 日本語フォントを入れる(Windows だけ)
+        # 上の mac の段と同じ理由・同じ版。Windows の runner は日本語書体の
+        # 有無すら保証が無く、明朝はそもそも入っていない(核の仕事
+        # core-windows と同じ手順 — 揃えてある)
+        if: runner.os == 'Windows'
+        env:
+          OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
+        run: |
+          New-Item -ItemType Directory -Force "$env:OFFICE_FONT_DIR" | Out-Null
+          Invoke-WebRequest -Uri "https://github.com/googlefonts/noto-cjk/raw/Sans2.004/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf" -OutFile "$env:OFFICE_FONT_DIR/NotoSansCJKjp-Regular.otf"
+          Invoke-WebRequest -Uri "https://github.com/googlefonts/noto-cjk/raw/Serif2.002/Serif/OTF/Japanese/NotoSerifCJKjp-Regular.otf" -OutFile "$env:OFFICE_FONT_DIR/NotoSerifCJKjp-Regular.otf"
       - name: 試験
         # 2026-08-11 の基準は calc 148 / writer 38。**減ったら赤にする**のが
         # この仕事の役目で、数そのものはここに焼き付けない(増えるのが普通)。
         # OFFICE_FONT_DIR は Linux では空(apt の Noto を使う — 結局同じ書体)
         env:
           OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
+        # **shell: bash を明示する。** Windows の runner の既定は PowerShell で、
+        # ci-test.sh は自分の口上で「step に shell: bash と書く」と言っている
+        shell: bash
         run: bash tools/ci-test.sh -p calc -p writer --no-fail-fast
       - name: 核の試験も(macOS だけ)
         # 核は Linux では自分の仕事(test)を持っている。mac のぶんはこの

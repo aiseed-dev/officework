@@ -109,6 +109,18 @@ MimeType=$([ "$app" = calc ] \
   && echo "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;" \
   || echo "application/vnd.openxmlformats-officedocument.wordprocessingml.document;")
 DESK
+  # **絵も一緒に入れる。** `.desktop` が Icon= で名指ししているのに絵が
+  # 無ければ、ランチャーで無地の四角になる(2026-08-17 のアルファの
+  # 棚卸しまで、まさにその状態だった)。正本は packaging/icons の SVG 1枚で、
+  # 配る形は tools/make_icons.py が起こしてコミットしてある
+  for s in 16 22 24 32 48 64 128 256 512; do
+    d="$DEB/usr/share/icons/hicolor/${s}x${s}/apps"
+    mkdir -p "$d"
+    cp "packaging/icons/hicolor/${s}x${s}/officework-$app.png" "$d/"
+  done
+  mkdir -p "$DEB/usr/share/icons/hicolor/scalable/apps"
+  cp "packaging/icons/officework-$app.svg" \
+     "$DEB/usr/share/icons/hicolor/scalable/apps/"
 done
 dpkg-deb --build --root-owner-group "$DEB" "$OUT/officework_${VER}_amd64.deb" > /dev/null
 

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- officework calc のアプリの絵。
+       緑 #1B6E3C は calc の画面が実際に使っている帯の色(view.rs の th_bar)
+       — 新しい色は決めない。白い紙の上に見出し行と格子。 -->
+  <title>officework calc</title>
+  <rect width="64" height="64" rx="14" fill="#1B6E3C"/>
+  <g>
+    <clipPath id="sheet">
+      <rect x="14" y="11" width="36" height="42" rx="3"/>
+    </clipPath>
+    <rect x="14" y="11" width="36" height="42" rx="3" fill="#FFFFFF"/>
+    <g clip-path="url(#sheet)">
+      <!-- 見出しの行 -->
+      <rect x="14" y="11" width="36" height="9" fill="#1B6E3C"/>
+      <!-- 格子(2列×3行) -->
+      <g stroke="#1B6E3C" stroke-width="2">
+        <path d="M32 20v33"/>
+        <path d="M14 31h36M14 42h36"/>
+      </g>
+    </g>
+  </g>
+</svg>
