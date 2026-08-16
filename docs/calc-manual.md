@@ -718,7 +718,7 @@ No server. Everything works **through files** (i.e. in a shared folder):
 and "Plugins", listing the same folder of .py files two different ways.
 
 - **Record actions**: what you do by hand accumulates as Python lines; stop and
-  it becomes a .py
+  it lands in `~/.config/officework/records/` as a .py
 - **New .py**: create a script in the folder and open it
 - **List**: the .py files in `~/.config/officework/plugins`; **picking one runs
   it**. To edit one, use "Open the folder" or `@edit name`
@@ -759,6 +759,11 @@ show up within about a second; no restart.
 | `funcs/` | a **formula** (`=with_tax(A1)`) | every open, every recalc |
 | `ribbon/` | a **ribbon button** | only when pressed |
 | `plugins/` | **picked from a list** (`@name`) | only when picked |
+| `records/` | — (just stored) | **never** |
+
+`records/` is where **recordings land** (Macros > Record actions). A recording
+is a draft: it does not appear in the list and does not run. Read it, fix it,
+and when you are happy with it move it to `plugins/` or `ribbon/`.
 
 Pivot tables, charts and the solver are the **built-in side** (polars and
 matplotlib underneath). They appear further down the same list as

@@ -1345,7 +1345,9 @@ impl Calc {
                     return;
                 }
                 let Some(script) = self.rec_stop() else { return };
-                let dir = plugins_dir();
+                // **記録は記録の置き場へ**(2026-08-16)。plugins に落とすと、
+                // 読む前・直す前の台本がそのままマクロの一覧に並ぶ
+                let dir = pyrun::records_dir();
                 let _ = std::fs::create_dir_all(&dir);
                 let mut n = 1;
                 while dir.join(format!("記録{n}.py")).exists() {
