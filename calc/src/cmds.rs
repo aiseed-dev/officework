@@ -610,6 +610,87 @@ impl Calc {
         Some(format!("s{v}[{a1:?}].value = [{}]", rows.join(", ")))
     }
 
+    /// **本当に変わったか。** 記録が見る所だけを比べる — セルの中身と書式、
+    /// 表の性質、印刷の設定。
+    ///
+    /// `edits` の増分では足りない。あれは `checkpoint()`(戻せるように控えを
+    /// 取る)で増えるので、**押しても何も変わらなかった命令まで「変わった」に
+    /// 数えていた** — 下揃えのセルにもう一度下揃えを掛ける、空の切り取り板を
+    /// 貼る、1セルだけ選んで並べ替える。穴の数え上げで 8 件中 5 件がこれだった
+    /// (2026-08-16)。**嘘の宿題は、宿題の一覧を読む気を失わせる。**
+    pub(crate) fn sheet_changed(&self, before: &sheet::Sheet) -> bool {
+        let a = self.sheet();
+        if a.cells.len() != before.cells.len() {
+            return true;
+        }
+        for (p, c) in &a.cells {
+            match before.cells.get(p) {
+                None => return true,
+                Some(d) => {
+                    if c.value != d.value || c.formula != d.formula || c.fmt != d.fmt {
+                        return true;
+                    }
+                }
+            }
+        }
+        if a.tables.len() != before.tables.len() {
+            return true;
+        }
+        for (t, u) in a.tables.iter().zip(&before.tables) {
+            let key = |x: &sheet::model::TableDef| {
+                (
+                    x.name.clone(),
+                    x.a,
+                    x.b,
+                    x.header,
+                    x.totals,
+                    x.banded_rows,
+                    x.banded_cols,
+                    x.first_col,
+                    x.last_col,
+                )
+            };
+            if key(t) != key(u) {
+                return true;
+            }
+        }
+        // 図形・画像・コメントは**数だけ**見る。中身までは比べない —
+        // 記録はまだそれらを書けないので、有無が分かれば註は出せる
+        if (a.shapes_new.len(), a.images.len(), a.images_new.len(), a.comments.len())
+            != (
+                before.shapes_new.len(),
+                before.images.len(),
+                before.images_new.len(),
+                before.comments.len(),
+            )
+        {
+            return true;
+        }
+        (
+            a.paper_size,
+            a.landscape,
+            a.print_scale,
+            a.fit_to_w,
+            a.fit_to_h,
+            a.print_gridlines,
+            a.print_headings,
+            a.margins_mm,
+            a.rtl,
+            a.protected,
+        ) != (
+            before.paper_size,
+            before.landscape,
+            before.print_scale,
+            before.fit_to_w,
+            before.fit_to_h,
+            before.print_gridlines,
+            before.print_headings,
+            before.margins_mm,
+            before.rtl,
+            before.protected,
+        )
+    }
+
     /// **印刷の設定の差分から記録の行を起こす。** 余白・向き・紙・倍率・
     /// 枠線と見出しの印刷 — レイアウトタブのボタンは巡回するので、
     /// 「押した回数」ではなく**行き着いた姿**を書く
@@ -707,7 +788,18 @@ impl Calc {
             )
         });
         let edits_before = self.edits;
+        // **本当に変わったか**を控えの姿と突き合わせる。`edits` は
+        // `checkpoint()`(戻せるように控えを取る)で増えるので、**押しても
+        // 何も変わらなかった命令まで「変わった」に数えていた** — 下揃えの
+        // セルにもう一度下揃えを掛ける、空の切り取り板を貼る、1セルだけ
+        // 選んで並べ替える。穴の数え上げで 8 件中 5 件がこれだった
+        // (2026-08-16。残る本物は図形だけ)
+        let 姿0 = self.rec.is_some().then(|| self.sheet().clone());
         self.run_cmd_inner(id, cx);
+        let 変わった = match &姿0 {
+            Some(s) => self.sheet_changed(s),
+            None => self.edits > edits_before,
+        };
         if let Some((f0, s0)) = before {
             let (lines, 全部言えた) = self.rec_fmt_diff(&f0);
             for line in lines {
@@ -726,7 +818,6 @@ impl Calc {
             self.rec_fmt_partial = !全部言えた;
         }
         if let Some(n) = rec_len {
-            let 変わった = self.edits > edits_before;
             let 書けた 
                 = self.rec.as_ref().is_some_and(|v| v.len() > n) && !self.rec_fmt_partial;
             self.rec_fmt_partial = false;
