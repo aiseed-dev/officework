@@ -261,22 +261,36 @@ impl Calc {
         .into();
     }
 
-    /// 記録を止めて、走る台本にして返す
+    /// 記録を止めて、**記録そのもの**を返す。
+    ///
+    /// 2026-08-16 発注者「記録した台本の頭に wb = xw.Book(径路) を持ってくるのが
+    /// おかしい。記録だけを記述すればいい。記録をそのままで動かそうとするのが
+    /// おかしい」。
+    ///
+    /// 前はブックを開く行とシートを束ねる行を頭に足して「そのまま走ります」と
+    /// 名乗っていた。**走らなかった** — calc がそのブックを開いたままなので
+    /// `xw.Book(径路)` は「未保存の変更があります」で断られる。走ると言って
+    /// 走らないより、**記録は記録だと言う**方がいい。走らせる物にするのは人の手
+    /// (どのブックに掛けるかは、記録した当人しか決められない)。
     pub(crate) fn rec_stop(&mut self) -> Option<String> {
         let lines = self.rec.take()?;
         let sheet = self.book.sheets[self.active].name.clone();
-        let path = self.path.as_ref().map(|p| p.display().to_string());
-        let mut out = String::from(
-            "\"\"\"calc の操作を記録した台本。**そのまま走ります。**\n\n\
-             走らせ方: python この台本.py\n\
-             calc が動いていなければ起ち上がります(Python が主)。\n\
-             \"\"\"\n\nfrom officework import calc as xw\n\n",
+        // 何をどこで記録したかは**記録の一部**。走らせる仕掛けではない。
+        // まだファイルになっていないブックは行ごと出さない(空の「ブック:」を
+        // 出すくらいなら黙る。訳の鍵も増やさない — これは画面ではなくファイル)
+        let book = self
+            .path
+            .as_ref()
+            .map(|p| format!("ブック: {}\n", p.display()))
+            .unwrap_or_default();
+        let mut out = format!(
+            "\"\"\"calc の操作の記録。\n\n\
+             {book}\
+             シート: {sheet}\n\n\
+             **このままでは走りません。** 記録は下書きです — 掛けたいブックへの\n\
+             繋ぎを頭に足し、plugins か ribbon の置き場へ移すとマクロになります。\n\
+             \"\"\"\n\n"
         );
-        match &path {
-            Some(p) => out.push_str(&format!("wb = xw.Book({p:?})\n")),
-            None => out.push_str("wb = xw.Book()\n"),
-        }
-        out.push_str(&format!("s{} = wb.sheets[{:?}]\n\n", sheet_var(&sheet), sheet));
         if lines.is_empty() {
             out.push_str("# 記録された操作はありません\n");
         } else {

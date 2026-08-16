@@ -718,7 +718,9 @@ No server. Everything works **through files** (i.e. in a shared folder):
 and "Plugins", listing the same folder of .py files two different ways.
 
 - **Record actions**: what you do by hand accumulates as Python lines; stop and
-  it lands in `~/.config/officework/records/` as a .py
+  it lands in `~/.config/officework/records/` as a .py. **It contains only the
+  record** — no line that opens a workbook (which workbook to apply it to is
+  yours to decide)
 - **New .py**: create a script in the folder and open it
 - **List**: the .py files in `~/.config/officework/plugins`; **picking one runs
   it**. To edit one, use "Open the folder" or `@edit name`

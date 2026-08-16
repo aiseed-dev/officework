@@ -6333,7 +6333,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 操作の記録がそのまま走る台本になる(cx: &mut gpui::TestAppContext) {
+    fn 操作の記録は記録だけを書く(cx: &mut gpui::TestAppContext) {
         // 発注者 2026-08-15「Calc 側に操作を記録できるようにだけする」。
         // 主従が逆転した今、これが「何を書けばいいか」を教える唯一の道具 —
         // **記録した物がそのまま走る**のが要件
@@ -6359,10 +6359,14 @@ mod combo_tests {
 
             let script = this.rec_stop().expect("記録が取れない");
             assert!(this.rec.is_none(), "止めたのに残っている");
-            // 走る形か(頭が揃っているか)
-            assert!(script.contains("from officework import calc as xw"), "{script}");
-            assert!(script.contains("wb = xw.Book()"), "{script}");
-            assert!(script.contains("s = wb.sheets[\"Sheet1\"]"), "{script}");
+            // **頭にブックを開く行を足さない**(2026-08-16 発注者「記録だけを
+            // 記述すればいい」)。足しても走らなかった — calc がそのブックを
+            // 開いたままなので断られる。走ると言って走らない方が悪い
+            assert!(!script.contains("xw.Book"), "ブックを開く行が混ざっている: {script}");
+            assert!(!script.contains("import"), "取り込みの行が混ざっている: {script}");
+            // 何をどこで記録したかは記録の一部
+            assert!(script.contains("シート: Sheet1"), "{script}");
+            assert!(script.contains("このままでは走りません"), "{script}");
             // 打った物が Python の言葉で入っているか
             assert!(script.contains("s[\"A1\"].value = \"売上\""), "{script}");
             assert!(script.contains("s[\"A2\"].value = 1200"), "数は数のまま: {script}");
