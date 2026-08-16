@@ -618,6 +618,32 @@ def _grid_to_frame(grid, convert, index=True, header=True):
     return df
 
 
+def run_macro(name, where=None):
+    """置き場のマクロを1つ走らせる(`~/.config/officework/`)。
+
+    `where` を省くと ribbon → plugins の順に探す。**記録した台本が
+    そのまま走る**ために要る口 — リボンに足したマクロのボタンを押すと、
+    記録には `xw.run_macro("締め")` の1行が残る(2026-08-16)。
+
+    走るのは**この Python の中**で、calc の中ではない。台本が
+    `xw.Book.attach()` で動いているブックを掴む形なら、押したときと
+    同じことが起きる。
+    """
+    import os
+    import runpy
+
+    base = os.path.join(
+        os.environ.get("HOME", "."), ".config", "officework")
+    dirs = [where] if where else ["ribbon", "plugins"]
+    for d in dirs:
+        path = os.path.join(base, d, name + ".py")
+        if os.path.exists(path):
+            runpy.run_path(path, run_name="__main__")
+            return path
+    raise FileNotFoundError(
+        "{} が置き場にありません({} の中を見ました)".format(name, " / ".join(dirs)))
+
+
 def _hex_of(v):
     # 色 → "RRGGBB"。(r, g, b) のタプル / "#RRGGBB" / "RRGGBB" を受ける
     if v is None:

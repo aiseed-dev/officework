@@ -26,6 +26,7 @@ impl Calc {
             border_pal: None,
             rec: None,
             rec_fmt_partial: false,
+            rec_sel: None,
             fill_drag: None,
             pane_box: std::cell::Cell::new((0.0, 0.0, 0.0, 0.0)),
             pop_at: None,
@@ -228,6 +229,22 @@ impl Calc {
     /// **Python の言葉で書く** — officework.calc(xlwings 流)の形。
     /// 記録した物がそのまま走るのが要件なので、画面の言葉に訳さない
     pub(crate) fn rec_line(&mut self, line: String) {
+        // **選んでいる所が変わっていたら、先に選択の行を置く**(2026-08-16
+        // 発注者「セルの選択等セル操作についても同じ」)。矢印キーやマウスの
+        // 一手ごとに書くと洪水になるので、**何かを記録する直前に**、前に
+        // 書いた選択と違っていたら1行入れる。Excel の記録も選択を残す
+        if self.rec.is_some() {
+            let (a, b) = self.sel_rect();
+            let now = if a == b { a.a1() } else { format!("{}:{}", a.a1(), b.a1()) };
+            if self.rec_sel.as_deref() != Some(now.as_str()) {
+                let sheet = self.book.sheets[self.active].name.clone();
+                let v = sheet_var(&sheet);
+                if let Some(r) = &mut self.rec {
+                    r.push(format!("s{v}[{now:?}].select()"));
+                }
+                self.rec_sel = Some(now);
+            }
+        }
         if let Some(r) = &mut self.rec {
             // 同じ行が続くのは押し間違い(太字を2回など)。畳まない —
             // **打った通りを残す**のが記録で、整えるのは人の仕事
@@ -256,6 +273,7 @@ impl Calc {
     /// 記録を始める(前の記録は捨てる)
     pub(crate) fn rec_start(&mut self) {
         self.rec = Some(Vec::new());
+        self.rec_sel = None;
         self.status = ui::t!(
             "記録を始めました。操作すると Python の行になります(もう一度押すと止まります)"
         )

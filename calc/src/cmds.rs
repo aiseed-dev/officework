@@ -393,9 +393,6 @@ impl Calc {
             // 差分から起こす(2026-08-16)。1つずつ手で書いていたころは
             // 6つしか無く、しかも align の3行は `.api.align` という
             // **Python に無い口**を書いていた — 記録は残るのに走らなかった
-            "select-row" => format!("s{v}[{r:?}].entire_row.select()"),
-            "select-col" => format!("s{v}[{r:?}].entire_column.select()"),
-            "selectall" => format!("s{v}.used_range.select()"),
             // 表のデザイン。**掛けた後の姿を書く**(入切なので)
             "td-header" | "td-band-row" | "td-band-col" | "td-first" | "td-last" => {
                 use sheet::tabledesign::Deco;
@@ -416,6 +413,11 @@ impl Calc {
             "td-torange" => format!("s{v}[{:?}].unlist()", self.cursor.a1()),
             "read-only-rec" => {
                 format!("b.read_only_recommended = {}", py_bool(!self.book.read_only_rec))
+            }
+            // **利用者がリボンに足したマクロ**も記録する(発注者 2026-08-16
+            // 「ユーザー定義のものを含めてすべて記録できないといけない」)
+            other if other.starts_with(ribbon::USER_PREFIX) => {
+                format!("xw.run_macro({:?})", &other[ribbon::USER_PREFIX.len()..])
             }
             _ => return None,
         })

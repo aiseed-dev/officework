@@ -516,6 +516,8 @@ impl Calc {
             // 食われて辿り着けないことがある(2026-08-09 の理由がまだ生きている)
             "py-run" => {
                 if let Some((name, _)) = self.pick_paths.iter().find(|(n, _)| n == v).cloned() {
+                    // 一覧から選んで走らせた分も記録に残す(2026-08-16)
+                    self.rec_line(format!("xw.run_macro({name:?})"));
                     self.run_plugin(&name, None, cx);
                 }
                 self.pick_paths.clear();

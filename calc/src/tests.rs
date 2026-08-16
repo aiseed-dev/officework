@@ -6478,9 +6478,11 @@ mod rec_honest_tests {
             this.rec = Some(Vec::new());
             this.run_cmd("bold", cx);
             let lines = this.rec.clone().unwrap();
-            assert_eq!(lines.len(), 1, "太字が1行で残らない: {lines:?}");
-            assert!(lines[0].contains(".font.bold"), "太字が式で残らない: {lines:?}");
-            assert!(!lines[0].starts_with('#'), "書ける操作に註が出た");
+            // 選択の行が先に入る(2026-08-16。Excel の記録も選択を残す)
+            assert_eq!(lines.len(), 2, "太字が2行(選択+太字)で残らない: {lines:?}");
+            assert!(lines[0].contains(".select()"), "選択が残らない: {lines:?}");
+            assert!(lines[1].contains(".font.bold"), "太字が式で残らない: {lines:?}");
+            assert!(!lines.iter().any(|l| l.starts_with('#')), "書ける操作に註が出た");
 
             // (2) 書式を変える操作 — 差分から起こす(2026-08-16。前はここが
             // 穴の例だった — 消去は註しか残らなかった)
@@ -6522,13 +6524,12 @@ mod rec_honest_tests {
             this.run_cmd("pagemargins", cx);
             let lines = this.rec.clone().unwrap();
             assert!(this.edits > before, "余白が何も変えていない(前提が崩れた)");
-            assert_eq!(lines.len(), 1, "註が1行で残らない: {lines:?}");
             assert!(
-                lines[0].starts_with("# この操作はまだ Python で書けません"),
+                lines.iter().any(|l| l.starts_with("# この操作はまだ Python で書けません")),
                 "穴が黙って落ちた: {lines:?}"
             );
             // **人の言葉で残す**(id だけだと宿題の一覧として読めない)
-            assert!(lines[0].contains("余白"), "名札が入っていない: {lines:?}");
+            assert!(lines.iter().any(|l| l.contains("余白")), "名札が入っていない: {lines:?}");
 
             // (3) 中身を変えない操作(一覧を開くだけ)には何も残さない
             this.rec = Some(Vec::new());
