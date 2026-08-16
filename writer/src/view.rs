@@ -648,6 +648,16 @@ impl Render for Writer {
                         }
                         cx.notify()
                     })))
+                // **蒸留**(2026-08-16。SEKKEI 段階D)。受け取った docx を
+                // 意味だけ+テンプレートに変える。**非可逆なので明示の1手** —
+                // 開いただけでは何も起きない
+                .child(mk("f-distill", ui::t!("意味だけにする(蒸留)"), !self.native).on_click(
+                    cx.listener(|this, _, _, cx| {
+                        this.tab = this.prev_tab;
+                        this.distill_now();
+                        cx.notify()
+                    }),
+                ))
                 .child(div().h(px(10.0)))
                 .child({
                     let d = mk("f-info", ui::t!("詳細情報"), true).on_click(cx.listener(

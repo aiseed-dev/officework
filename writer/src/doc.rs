@@ -2019,6 +2019,54 @@ impl Writer {
         )
     }
 
+    /// **蒸留** — 互換の文書(docx)を意味だけ+テンプレートに変える
+    /// (SEKKEI 段階D。2026-08-16)。
+    ///
+    /// **非可逆なので明示の1手**。押すまでは docx のまま扱い、原本据え置きの
+    /// 資産(読めなかった部品・節・変更履歴)を守る。押した後は
+    /// ネイティブになり、保存先は .adoc になる。
+    pub(crate) fn distill_now(&mut self) {
+        if self.native {
+            self.status = ui::t!("この文書はもう意味だけです(蒸留は要りません)").into();
+            return;
+        }
+        self.switch_target(Target::Body);
+        self.flush_target();
+        self.checkpoint(false);
+        let (doc, th, rep) = kumihan::distill::distill(&self.doc);
+        self.tmpl = th;
+        self.native = true;
+        // テンプレートの名前は文書の名前から(隣に .toml で置ける形)
+        let name = self
+            .path
+            .as_ref()
+            .and_then(|p| p.file_stem())
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| ui::t!("この文書の型").to_string());
+        let mut doc = doc;
+        doc.template = Some(name);
+        self.pg = self.tmpl.page.unwrap_or_default();
+        self.set_doc(doc);
+        self.adopt_font();
+        self.dirty = true;
+        // **落ちた物を数えて言う。** 「何も失っていない」と嘘をつかない
+        self.status = if rep.dropped == 0 {
+            ui::tf!(
+                "蒸留しました — スタイル {} 個・段落 {} 個。見た目はテンプレートへ移りました",
+                rep.styles.to_string(),
+                rep.paragraphs.to_string()
+            )
+        } else {
+            ui::tf!(
+                "蒸留しました — スタイル {} 個・段落 {} 個。段落の見た目に収まらない {} 箇所は落ちました(強調や脚注は残っています)",
+                rep.styles.to_string(),
+                rep.paragraphs.to_string(),
+                rep.dropped.to_string()
+            )
+        }
+        .into();
+    }
+
     /// **見た目を直に変える操作**(ネイティブでは封じる)。
     ///
     /// 意味の側(強調・上付き・下付き・見出し・引用・リスト)は封じない —

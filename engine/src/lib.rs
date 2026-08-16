@@ -22,6 +22,7 @@
 
 pub mod adoc;
 pub mod atomic;
+pub mod distill;
 pub mod theme;
 pub mod edit;
 pub mod font;

@@ -2002,6 +2002,54 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **蒸留は明示の1手**(2026-08-16。段階D の門番)。押すまで docx は
+    /// docx のまま。押すとネイティブになり、見た目はテンプレートへ移る
+    #[gpui::test]
+    fn 蒸留すると意味とテンプレートに分かれる(cx: &mut gpui::TestAppContext) {
+        // **直接書式を持つ見本を選ぶ。** よく出来た docx はスタイル任せで
+        // 直接書式を持たない(報告書.docx がそうだった)— 蒸留の効き目を
+        // 見るには、泥のある物で測る
+        let src = ["../sample/カタログ.docx", "../sample/議事録.docx", "../sample/送付状.docx"]
+            .iter()
+            .map(std::path::Path::new)
+            .find(|p| p.exists());
+        let Some(src) = src else {
+            eprintln!("見本の docx が無いので飛ばす");
+            return;
+        };
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(src.to_path_buf());
+            assert!(!this.native, "開いただけで蒸留された(明示の1手のはず)");
+            let 前 = this
+                .doc
+                .paragraphs()
+                .flat_map(|p| p.runs.iter())
+                .filter(|r| r.size_pt.is_some() || r.font.is_some())
+                .count();
+
+            this.distill_now();
+            assert!(this.native, "蒸留してもネイティブにならない");
+            let 後 = this
+                .doc
+                .paragraphs()
+                .flat_map(|p| p.runs.iter())
+                .filter(|r| r.size_pt.is_some() || r.font.is_some())
+                .count();
+            assert_eq!(後, 0, "本文に見た目が残った({前} → {後})");
+            let _ = 前;
+            assert!(this.doc.template.is_some(), "テンプレートの名前が付かない");
+            // 見た目はテンプレートの側にある
+            assert!(
+                this.tmpl.size_pt.is_some() || !this.tmpl.styles.is_empty(),
+                "テンプレートが空(見た目がどこにも行っていない)"
+            );
+            // 二度押しは断る
+            this.distill_now();
+            assert!(this.status.contains("もう意味だけ"), "二度目を断らない: {}", this.status);
+        });
+    }
+
     /// 互換(docx)では今までどおり直に掛かる — 封じるのはネイティブだけ
     #[gpui::test]
     fn 互換の文書では直接書式が今までどおり効く(cx: &mut gpui::TestAppContext) {

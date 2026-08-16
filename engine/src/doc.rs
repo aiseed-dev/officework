@@ -302,7 +302,10 @@ pub struct InlineImage {
 }
 
 /// 段落の揃え。docx の `w:jc`。
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+///
+/// `Hash` は蒸留([`crate::distill`])が使う — 見た目の鍵にして
+/// 同じ見た目の段落をまとめる
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Align {
     #[default]
     Left,
