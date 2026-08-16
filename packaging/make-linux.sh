@@ -93,7 +93,7 @@ Recommends: fonts-noto-cjk
 Maintainer: aiseed-dev <https://github.com/aiseed-dev/officework>
 Description: officework — 表計算と文書(Python でマクロが書ける)
  xlsx と docx を読み書きする、ネイティブの表計算とワープロ。
- .py を ~/.config/office/plugins に置くと、セルから日本語の関数として
+ .py を ~/.config/officework/funcs に置くと、セルから日本語の関数として
  呼べます。ブックはコードを運ばないので「開く=実行」がありません。
 CTRL
 for app in calc writer; do
