@@ -2191,6 +2191,65 @@ impl Writer {
         self.status = ui::tf!("スタイル「{}」にしました({})", name, 書けた).into();
     }
 
+    /// **スタイルを着替える**(右パネル。2026-08-16)。役割の名前なら
+    /// 段落の役割そのものを替え、そうでなければ `style_id` で名指す
+    pub(crate) fn wear_style(&mut self, name: &str) {
+        self.switch_target(Target::Body);
+        self.checkpoint(false);
+        self.flush_target();
+        let sel = self.ed.selection();
+        let role = match name {
+            "本文" => Some(kumihan::ParaStyle::Body),
+            "見出し1" => Some(kumihan::ParaStyle::Heading(1)),
+            "見出し2" => Some(kumihan::ParaStyle::Heading(2)),
+            "見出し3" => Some(kumihan::ParaStyle::Heading(3)),
+            "引用" => Some(kumihan::ParaStyle::Quote),
+            _ => None,
+        };
+        let n = name.to_string();
+        self.doc.apply_para(sel, |p| match role {
+            // 役割で出る名前は、役割の側で持つ(二重に名乗らない)
+            Some(r) => {
+                p.style = r;
+                p.style_id = None;
+            }
+            None => p.style_id = Some(n.clone()),
+        });
+        self.dirty = true;
+        self.relayout_keep();
+        self.status = ui::tf!("「{}」にしました", name.to_string()).into();
+    }
+
+    /// **いま着ているスタイルの字の大きさを1段動かす**(右パネル)。
+    /// 直るのはテンプレートなので、**同じスタイルの所が一度に変わる** —
+    /// ここがライブ合成の効き目そのもの
+    pub(crate) fn tweak_style(&mut self, step: i32) {
+        let (pi, _) = self.cursor_para();
+        let Some(para) = self.doc.paragraphs().nth(pi) else { return };
+        let name = para
+            .style_id
+            .clone()
+            .or_else(|| kumihan::theme::Theme::role_name(para.style).map(|s| s.to_string()))
+            .unwrap_or_else(|| ui::t!("本文").to_string());
+        let base = self.tmpl.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+        let now = self.tmpl.style(&name).and_then(|d| d.size_pt).unwrap_or(base);
+        let next = ui::combo::step_size(now, step > 0);
+        self.checkpoint(false);
+        match self.tmpl.styles.iter_mut().find(|d| d.name == name) {
+            Some(d) => d.size_pt = Some(next),
+            None => self.tmpl.styles.push(kumihan::theme::StyleDef {
+                name: name.clone(),
+                size_pt: Some(next),
+                ..Default::default()
+            }),
+        }
+        let 書けた = self.save_template();
+        self.dirty = true;
+        self.relayout_keep();
+        self.status =
+            ui::tf!("「{}」を {}pt にしました({})", name, next.to_string(), 書けた).into();
+    }
+
     /// テンプレートをファイルへ書き戻す。返りは言い分
     fn save_template(&self) -> String {
         let Some(name) = self.doc.template.clone() else {

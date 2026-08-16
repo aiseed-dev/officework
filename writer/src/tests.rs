@@ -2050,6 +2050,65 @@ mod marker_tests {
         });
     }
 
+    /// **スタイルを直すとテンプレートが変わり、同じスタイルの所が一度に
+    /// 変わる**(2026-08-16。C-3 の門番)。ライブ合成の効き目そのもの
+    #[gpui::test]
+    fn スタイルを直すと同じスタイルの所が一度に変わる(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-c3-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("見本.adoc");
+        std::fs::write(&path, "= 題\n:template: 見本の型\n\n== ひとつめ\n\n本文。\n\n== ふたつめ\n\n本文2。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(path.clone());
+            // 1つ目の見出しにカーソルを置いて、字を大きくする
+            this.ed.move_to(0, false);
+            this.tweak_style(1);
+            let want = this.tmpl.style("見出し1").and_then(|d| d.size_pt).unwrap();
+            assert!(want > 16.0, "テンプレートの見出し1が大きくなっていない");
+
+            // **合成では2つとも**大きくなる(直したのはテンプレートだから)
+            let c = kumihan::theme::compose(&this.doc, &this.tmpl);
+            let heads: Vec<f32> = c
+                .paragraphs()
+                .filter(|p| p.style == kumihan::ParaStyle::Heading(1))
+                .filter_map(|p| p.runs.first().and_then(|r| r.size_pt))
+                .collect();
+            assert_eq!(heads.len(), 2, "見出しが2つ無い");
+            assert!(heads.iter().all(|s| *s == want), "片方だけ変わった: {heads:?}");
+
+            // 本文の側は意味だけのまま
+            for p in this.doc.paragraphs() {
+                for r in &p.runs {
+                    assert_eq!(r.size_pt, None, "本文に見た目が入った");
+                }
+            }
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 着替えは役割と名前を使い分ける — 役割で出る名前は二重に名乗らない
+    #[gpui::test]
+    fn スタイルの着替えは役割と名前を使い分ける(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-c3b-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("見本.adoc");
+        std::fs::write(&path, "本文。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(path.clone());
+            this.wear_style("見出し2");
+            let p = this.doc.paragraphs().next().unwrap();
+            assert_eq!(p.style, kumihan::ParaStyle::Heading(2));
+            assert_eq!(p.style_id, None, "役割で出る名前を二重に名乗った");
+
+            this.wear_style("注意書き");
+            let p = this.doc.paragraphs().next().unwrap();
+            assert_eq!(p.style_id.as_deref(), Some("注意書き"));
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// 互換(docx)では今までどおり直に掛かる — 封じるのはネイティブだけ
     #[gpui::test]
     fn 互換の文書では直接書式が今までどおり効く(cx: &mut gpui::TestAppContext) {

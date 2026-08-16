@@ -879,11 +879,97 @@ impl Writer {
                 .flex().flex_col().gap_1()
                 .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(if 面 == 1 {
-                        ui::t!("ページ — 文書ぜんぶの決め")
-                    } else {
-                        ui::t!("設定 — いる場所を直す")
+                    .child(match 面 {
+                        1 => ui::t!("ページ — 文書ぜんぶの決め"),
+                        2 => ui::t!("スタイル — テンプレートを直す"),
+                        _ => ui::t!("設定 — いる場所を直す"),
                     }));
+            // **スタイルの面**(2026-08-16。ネイティブ文書だけ)。
+            // いまの段落が着ているスタイルと、テンプレートの一覧を出す。
+            // 押すと着替え、直すとテンプレートが変わって**同じスタイルの所が
+            // 一度に変わる** — ライブ合成の効き目がここに出る
+            if 面 == 2 {
+                let 着ている = para
+                    .as_ref()
+                    .and_then(|p| {
+                        p.style_id.clone().or_else(|| {
+                            kumihan::theme::Theme::role_name(p.style).map(|s| s.to_string())
+                        })
+                    })
+                    .unwrap_or_else(|| ui::t!("本文").to_string());
+                d = d.child(div().text_size(px(11.0)).text_color(th_status).child(
+                    SharedString::from(ui::tf!("いまの段落: {}", 着ている.clone())),
+                ));
+                // 役割のスタイル(段落そのものの意味)は先に、名前つきは後に
+                let mut names: Vec<String> = ["本文", "見出し1", "見出し2", "見出し3", "引用"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
+                for s in &self.tmpl.styles {
+                    if !names.contains(&s.name) {
+                        names.push(s.name.clone());
+                    }
+                }
+                let mut r = row();
+                for name in names {
+                    let on = name == 着ている;
+                    let n2 = name.clone();
+                    r = r.child(
+                        div()
+                            .id(SharedString::from(format!("rp-st-{name}")))
+                            .px_2().py_0p5().rounded_sm().cursor_pointer()
+                            .border_1()
+                            .border_color(if on { th_btn } else { th_cmd_border })
+                            .bg(if on { th_btn_hover } else { gpui::transparent_black().into() })
+                            .text_size(px(11.5))
+                            .text_color(if on { th_btn } else { th_top_fg })
+                            .hover(move |st| st.bg(th_btn_hover))
+                            .child(SharedString::from(name.clone()))
+                            .on_click(cx.listener(move |t, _, _, cx| {
+                                t.wear_style(&n2);
+                                cx.notify()
+                            })),
+                    );
+                }
+                d = d.child(r);
+                // いま着ているスタイルの中身(テンプレートが持っている値)
+                if let Some(def) = self.tmpl.style(&着ている) {
+                    let mut w: Vec<String> = Vec::new();
+                    if let Some(s) = def.size_pt {
+                        w.push(ui::tf!("大きさ {}pt", s.to_string()).to_string());
+                    }
+                    if let Some(f) = &def.font {
+                        w.push(ui::tf!("書体 {}", f.clone()).to_string());
+                    }
+                    if def.bold {
+                        w.push(ui::t!("太字").to_string());
+                    }
+                    if def.italic {
+                        w.push(ui::t!("斜体").to_string());
+                    }
+                    if def.underline {
+                        w.push(ui::t!("下線").to_string());
+                    }
+                    if let Some(c) = &def.color {
+                        w.push(ui::tf!("色 #{}", c.clone()).to_string());
+                    }
+                    d = d.child(head(ui::t!("このスタイルの中身")));
+                    d = d.child(div().text_size(px(11.0)).text_color(th_status).child(
+                        SharedString::from(if w.is_empty() {
+                            ui::t!("(文書の既定のまま)").to_string()
+                        } else {
+                            w.join("・")
+                        }),
+                    ));
+                    d = d.child(row()
+                        .child(btn(self, "st-bigger", ui::t!("字を大きく").into()).on_click(
+                            cx.listener(|t, _, _, cx| { t.tweak_style(1); cx.notify() })))
+                        .child(btn(self, "st-smaller", ui::t!("字を小さく").into()).on_click(
+                            cx.listener(|t, _, _, cx| { t.tweak_style(-1); cx.notify() }))));
+                }
+                d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                    .child(ui::t!("直すとテンプレートが変わり、同じスタイルの所が一度に変わります")));
+            }
             // **ページは「いる場所」ではない。** 文書ぜんぶに掛かる決めなので、
             // 柱で別の面に分けた(発注者 2026-08-15「外側にアイコンをおいて
             // 操作を変更できるように」)
@@ -1078,10 +1164,17 @@ impl Writer {
 
             // ページ
             let 柱d = 柱()
-                .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), true).on_click(
+                .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), 面 == 0).on_click(
                     cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), false).on_click(
-                    cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })));
+                .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), 面 == 1).on_click(
+                    cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
+                // **スタイルの面はネイティブ文書だけ**(2026-08-16)。互換の
+                // 文書にはテンプレートが無く、押しても見せる物が無い —
+                // できないことを、できるように見せない
+                .children(self.native.then(|| {
+                    柱釦("rf-style".into(), "styles", ui::t!("スタイル — テンプレートを直す").to_string(), 面 == 2)
+                        .on_click(cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() }))
+                }));
             return_rp = Some(div()
                 .flex_none().w(px(230.0 + RAIL)).h_full()
                 .m_1().rounded_sm().bg(panel_bg)
