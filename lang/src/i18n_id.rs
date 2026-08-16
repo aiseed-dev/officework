@@ -992,6 +992,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("同梱: {}(読むだけ)", "Bawaan: {} (baca saja)"),
     ("名乗った .py がこの段のボタンになります。選ぶと編集の道具で開きます", "Berkas .py yang menyatakan diri menjadi tombol pada tab ini. Pilih satu untuk membukanya di penyunting"),
     ("見本を作る", "Buat contoh"),
+    ("● 記録中 {} 行(押すと止める)", "● Merekam, {} baris (klik untuk berhenti)"),
     ("{} 行目に合計(=SUM)を足しました。式なので元が変われば追従します(Ctrl+Z で戻せます)", "Total (=SUM) ditambahkan di baris {}. Itu rumus, jadi mengikuti datanya (Ctrl+Z membatalkan)"),
     ("表「{}」を普通の範囲に戻しました(帯や縞々の書式と式はそのまま残ります)", "Tabel \"{}\" kembali menjadi rentang biasa (belang, format, dan rumus tetap)"),
     ("表の性質から{}を外しました(掛かっている色は「書式のクリア」で消せます)", "{} dimatikan pada tabel (warna yang sudah dipasang bisa dihapus dengan \"Bersihkan format\")"),

@@ -992,6 +992,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("同梱: {}(読むだけ)", "Incluso: {} (sola lettura)"),
     ("名乗った .py がこの段のボタンになります。選ぶと編集の道具で開きます", "Un .py che si dichiara diventa un pulsante di questa scheda. Scegline uno per aprirlo nell'editor"),
     ("見本を作る", "Crea un esempio"),
+    ("● 記録中 {} 行(押すと止める)", "● Registrazione, {} righe (clic per fermare)"),
     ("{} 行目に合計(=SUM)を足しました。式なので元が変われば追従します(Ctrl+Z で戻せます)", "Totale (=SOMMA) aggiunto alla riga {}. È una formula, quindi segue i dati (Ctrl+Z annulla)"),
     ("表「{}」を普通の範囲に戻しました(帯や縞々の書式と式はそのまま残ります)", "La tabella «{}» torna a essere un intervallo normale (bande, formato e formule restano)"),
     ("表の性質から{}を外しました(掛かっている色は「書式のクリア」で消せます)", "{} disattivato sulla tabella (i colori già applicati si tolgono con «Cancella formattazione»)"),

@@ -494,6 +494,57 @@ class Range:
     def wrap_text(self, v):
         _call("set_fmt", wrap=bool(v), **self._kw())
 
+    @property
+    def align(self):
+        """横の揃え。"left" / "center" / "right" / "justify" / "distributed"。
+        指定が無ければ None(数は右、文字は左、の既定に従う)。"""
+        return _call("get_fmt", **self._kw()).get("horizontal")
+
+    @align.setter
+    def align(self, v):
+        _call("set_fmt", horizontal=v, **self._kw())
+
+    @property
+    def valign(self):
+        """縦の揃え。"top" / "center" / "bottom"。"""
+        return _call("get_fmt", **self._kw()).get("vertical")
+
+    @valign.setter
+    def valign(self, v):
+        _call("set_fmt", vertical=v, **self._kw())
+
+    @property
+    def shrink(self):
+        """枠に収まるまで字を縮める。"""
+        return bool(_call("get_fmt", **self._kw()).get("shrink"))
+
+    @shrink.setter
+    def shrink(self, v):
+        _call("set_fmt", shrink=bool(v), **self._kw())
+
+    def table_style(self, what, on=True):
+        """表のデザインの飾り。`what` は "header"(見出しの帯)/ "band_row"
+        (1行おきの縞)/ "band_col" / "first_col" / "last_col"。
+
+        **`on=False` では塗りを剥がしません。** 掛ける前の姿を覚えていないので、
+        剥がすと元の色まで消えます。外れるのは表の性質だけ — 色を消すなら
+        `clear_formats()`。
+        """
+        _call("table_style", what=what, on=bool(on), **self._kw())
+        return self
+
+    def add_total_row(self):
+        """この範囲の下に合計行(=SUM)を足す。すぐ下に中身があれば断る
+        (黙って上書きしない)。"""
+        _call("table_total", **self._kw())
+        return self
+
+    def unlist(self):
+        """表オブジェクトを外して普通の範囲に戻す(書式と式は残る)。
+        xlwings/Excel の `ListObject.Unlist()` にあたる。"""
+        _call("table_to_range", **self._kw())
+        return self
+
     def clear_formats(self):
         """範囲の書式を消す(値は残る)。"""
         _call("clear_formats", **self._kw())
@@ -630,6 +681,23 @@ class _RangeFont:
     @italic.setter
     def italic(self, v):
         self._set(italic=bool(v))
+
+    @property
+    def underline(self):
+        return bool(self._get("underline"))
+
+    @underline.setter
+    def underline(self, v):
+        self._set(underline=bool(v))
+
+    @property
+    def strike(self):
+        """打ち消し線。xlwings の api.Font.Strikethrough にあたる。"""
+        return bool(self._get("strike"))
+
+    @strike.setter
+    def strike(self, v):
+        self._set(strike=bool(v))
 
     @property
     def color(self):
@@ -1066,6 +1134,15 @@ class Book:
     def name(self):
         p = _call("book_info").get("path")
         return os.path.basename(p) if p else "ブック1"
+
+    @property
+    def read_only_recommended(self):
+        """開いた人に「見るだけ」を勧める旗。**鍵ではありません** — 直せます。"""
+        return bool(_call("book_info").get("read_only_rec"))
+
+    @read_only_recommended.setter
+    def read_only_recommended(self, v):
+        _call("read_only_rec", on=bool(v))
 
     @property
     def fullname(self):

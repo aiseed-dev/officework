@@ -7,6 +7,29 @@ fn py_bool(b: bool) -> &'static str {
     if b { "True" } else { "False" }
 }
 
+/// セル1つを Python の値として書く(記録の `value = [[…]]` の材料)。
+/// **式は "=…" の字で書く** — 値を焼き付けず、入れ直せば式のまま入る
+fn py_cell(c: Option<&sheet::Cell>) -> String {
+    let Some(c) = c else { return "None".into() };
+    if let Some(f) = &c.formula {
+        return format!("{:?}", format!("={f}"));
+    }
+    match &c.value {
+        sheet::Value::Empty => "None".into(),
+        sheet::Value::Number(n) => {
+            if (n - n.round()).abs() < f64::EPSILON && n.abs() < 1e15 {
+                format!("{}", *n as i64)
+            } else {
+                format!("{n}")
+            }
+        }
+        sheet::Value::Bool(b) => py_bool(*b).into(),
+        // 誤りの値は**字として**入れる(=DIV/0! を書き戻すと式になってしまう)
+        sheet::Value::Error(e) => format!("{e:?}"),
+        sheet::Value::Text(s) => format!("{s:?}"),
+    }
+}
+
 impl Calc {
     /// run_cmd が処理できる id。**リボンの ready はこの表の中に限る**
     /// (試験で突き合わせる。合っていないボタンは「押せるのに何もしない」嘘になる)
@@ -365,17 +388,202 @@ impl Calc {
         let r = if a == b { a.a1() } else { format!("{}:{}", a.a1(), b.a1()) };
         let sheet = self.book.sheets[self.active].name.clone();
         let v = crate::state::sheet_var(&sheet);
-        let now = self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
         Some(match id {
-            // 入切の物は、掛けた後の姿を書く(押した回数ではなく結果)
-            "bold" => format!("s{v}[{r:?}].font.bold = {}", py_bool(!now.bold)),
-            "italic" => format!("s{v}[{r:?}].font.italic = {}", py_bool(!now.italic)),
-            "underline" => format!("s{v}[{r:?}].font.underline = {}", py_bool(!now.underline)),
-            "align-left" => format!("s{v}[{r:?}].api.align = \"left\""),
-            "align-center" => format!("s{v}[{r:?}].api.align = \"center\""),
-            "align-right" => format!("s{v}[{r:?}].api.align = \"right\""),
+            // **書式は書かない。** 掛けた後の姿を [`Self::rec_fmt_diff`] が
+            // 差分から起こす(2026-08-16)。1つずつ手で書いていたころは
+            // 6つしか無く、しかも align の3行は `.api.align` という
+            // **Python に無い口**を書いていた — 記録は残るのに走らなかった
+            "select-row" => format!("s{v}[{r:?}].entire_row.select()"),
+            "select-col" => format!("s{v}[{r:?}].entire_column.select()"),
+            "selectall" => format!("s{v}.used_range.select()"),
+            // 表のデザイン。**掛けた後の姿を書く**(入切なので)
+            "td-header" | "td-band-row" | "td-band-col" | "td-first" | "td-last" => {
+                use sheet::tabledesign::Deco;
+                let what = match id {
+                    "td-header" => Deco::Header,
+                    "td-band-row" => Deco::BandRow,
+                    "td-band-col" => Deco::BandCol,
+                    "td-first" => Deco::FirstCol,
+                    _ => Deco::LastCol,
+                };
+                format!(
+                    "s{v}[{r:?}].table_style({:?}, {})",
+                    what.name(),
+                    py_bool(self.td_next(what))
+                )
+            }
+            "td-total" => format!("s{v}[{r:?}].add_total_row()"),
+            "td-torange" => format!("s{v}[{:?}].unlist()", self.cursor.a1()),
+            "read-only-rec" => {
+                format!("b.read_only_recommended = {}", py_bool(!self.book.read_only_rec))
+            }
             _ => return None,
         })
+    }
+
+    /// **書式の差分から記録の行を起こす。** 掛ける前の姿と後の姿を比べ、
+    /// 変わった項目だけを Python の1行にする。
+    ///
+    /// 手で「この命令はこう書く」と並べていくと、必ず抜ける・必ず古くなる。
+    /// 差分なら**命令を増やしても記録は勝手に付いてくる** — 太字も
+    /// 表示形式も配色の変更も、書式を変えた限りは同じ道を通る。
+    ///
+    /// 見るのはカーソルのセル1つ(範囲は同じ書式になる前提。範囲の中で
+    /// 元がばらばらなら、揃えた結果が記録される — それが掛けた操作の意味)。
+    ///
+    /// 返りは(行, **全部を言い表せたか**)。表せない項目 — 罫線・字下げ・
+    /// 文字の向き・下付き・ロック — が変わっていたら `false` を返す。
+    /// **半分書けたものを「書けた」と数えない**(黙って半分だけ走るマクロは、
+    /// 走らないマクロより悪い)。判定は field を数えず、**表せた分を写した
+    /// 姿と本物を突き合わせる** — 項目が増えても勝手に追いつく
+    pub(crate) fn rec_fmt_diff(&self, before: &sheet::model::CellFormat) -> (Vec<String>, bool) {
+        let after = self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
+        if after == *before {
+            return (Vec::new(), true);
+        }
+        let (a, b) = self.sel_rect();
+        let r = if a == b { a.a1() } else { format!("{}:{}", a.a1(), b.a1()) };
+        let sheet = self.book.sheets[self.active].name.clone();
+        let v = crate::state::sheet_var(&sheet);
+        let cell = format!("s{v}[{r:?}]");
+        let mut out = Vec::new();
+        let mut boolean = |name: &str, was: bool, now: bool, font: bool| {
+            if was != now {
+                let dot = if font { ".font" } else { "" };
+                out.push(format!("{cell}{dot}.{name} = {}", py_bool(now)));
+            }
+        };
+        boolean("bold", before.bold, after.bold, true);
+        boolean("italic", before.italic, after.italic, true);
+        boolean("underline", before.underline, after.underline, true);
+        boolean("strike", before.strike, after.strike, true);
+        boolean("wrap_text", before.wrap, after.wrap, false);
+        boolean("shrink", before.shrink, after.shrink, false);
+        if before.font != after.font {
+            match &after.font {
+                Some(f) => out.push(format!("{cell}.font.name = {f:?}")),
+                None => out.push(format!("{cell}.font.name = None")),
+            }
+        }
+        if before.size_c != after.size_c {
+            match after.size_c {
+                Some(c) => {
+                    let pt = c as f32 / 100.0;
+                    let s = if (pt - pt.round()).abs() < 0.005 {
+                        format!("{}", pt.round() as i64)
+                    } else {
+                        format!("{pt}")
+                    };
+                    out.push(format!("{cell}.font.size = {s}"));
+                }
+                None => out.push(format!("{cell}.font.size = None")),
+            }
+        }
+        if before.color != after.color {
+            match &after.color {
+                Some(c) => out.push(format!("{cell}.font.color = {c:?}")),
+                None => out.push(format!("{cell}.font.color = None")),
+            }
+        }
+        if before.fill != after.fill {
+            match &after.fill {
+                Some(c) => out.push(format!("{cell}.color = {c:?}")),
+                None => out.push(format!("{cell}.color = None")),
+            }
+        }
+        if before.number_format != after.number_format {
+            match &after.number_format {
+                Some(f) => out.push(format!("{cell}.number_format = {f:?}")),
+                None => out.push(format!("{cell}.number_format = \"General\"")),
+            }
+        }
+        if before.align != after.align {
+            match after.align.as_xlsx() {
+                Some(x) => out.push(format!("{cell}.align = {x:?}")),
+                None => out.push(format!("{cell}.align = None")),
+            }
+        }
+        if before.valign != after.valign {
+            match after.valign.as_xlsx() {
+                Some(x) => out.push(format!("{cell}.valign = {x:?}")),
+                None => out.push(format!("{cell}.valign = None")),
+            }
+        }
+        // **言い表せたかを機械で確かめる。** 書ける項目だけを before に写し、
+        // それで after と同じになるなら全部言えている。ならなければ、
+        // 言えない項目(罫線・字下げ・回転・下付き・ロック…)が動いている
+        let mut wrote = before.clone();
+        wrote.bold = after.bold;
+        wrote.italic = after.italic;
+        wrote.underline = after.underline;
+        wrote.strike = after.strike;
+        wrote.wrap = after.wrap;
+        wrote.shrink = after.shrink;
+        wrote.font = after.font.clone();
+        wrote.size_c = after.size_c;
+        wrote.color = after.color.clone();
+        wrote.fill = after.fill.clone();
+        wrote.number_format = after.number_format.clone();
+        wrote.align = after.align;
+        wrote.valign = after.valign;
+        // 色の由来は set_fmt が色そのものに落とすので、比べる前に揃える
+        wrote.color_theme = after.color_theme;
+        wrote.fill_theme = after.fill_theme;
+        let 全部言えた = wrote == after;
+        (out, 全部言えた)
+    }
+
+    /// **値の差分から記録の行を起こす。** 掛ける前のセルと後のセルを比べ、
+    /// 変わった所を1つの `value =` にまとめる。
+    ///
+    /// 書式の差分([`Self::rec_fmt_diff`])で拾えない操作 — 消去・並べ替え・
+    /// フィル・置き換え・貼り付け — は、**何をしたか**を Python の言葉で
+    /// 言い直せない。言い直せないなら**結果を書く**。並べ替えを
+    /// `sort()` と書けないのは残念だが、書けないふりをして黙って落とすより、
+    /// 走って同じ結果になる方がいい(発注者 2026-08-16
+    /// 「マクロはそのとおり動作する必要がある」)。
+    ///
+    /// 広がりすぎたら諦めて `None` を返す(註が残る)。1つの操作が
+    /// 数千の欄を書き替えたなら、それは記録ではなくブックの複製になる。
+    pub(crate) fn rec_value_diff(&self, before: &sheet::Sheet) -> Option<String> {
+        let after = self.sheet();
+        let mut lo: Option<(u32, u32, u32, u32)> = None;
+        let keys: std::collections::BTreeSet<Pos> =
+            before.cells.keys().chain(after.cells.keys()).copied().collect();
+        for p in keys {
+            let x = before.cells.get(&p).map(|c| (c.value.clone(), c.formula.clone()));
+            let y = after.cells.get(&p).map(|c| (c.value.clone(), c.formula.clone()));
+            if x == y {
+                continue;
+            }
+            lo = Some(match lo {
+                None => (p.row, p.col, p.row, p.col),
+                Some((r0, c0, r1, c1)) => {
+                    (r0.min(p.row), c0.min(p.col), r1.max(p.row), c1.max(p.col))
+                }
+            });
+        }
+        let (r0, c0, r1, c1) = lo?;
+        // **広すぎる差分は書かない。** 2000 欄を超えたら、記録ではなく複製
+        if (r1 - r0 + 1) as u64 * (c1 - c0 + 1) as u64 > 2000 {
+            return None;
+        }
+        let mut rows = Vec::new();
+        for r in r0..=r1 {
+            let mut row = Vec::new();
+            for c in c0..=c1 {
+                row.push(py_cell(after.cells.get(&Pos::new(r, c))));
+            }
+            rows.push(format!("[{}]", row.join(", ")));
+        }
+        let sheet = self.book.sheets[self.active].name.clone();
+        let v = crate::state::sheet_var(&sheet);
+        let a1 = if r0 == r1 && c0 == c1 {
+            Pos::new(r0, c0).a1()
+        } else {
+            format!("{}:{}", Pos::new(r0, c0).a1(), Pos::new(r1, c1).a1())
+        };
+        Some(format!("s{v}[{a1:?}].value = [{}]", rows.join(", ")))
     }
 
     /// リボンの表からこの命令の名札を引く(記録の註に人の言葉で残すため)。
@@ -404,16 +612,44 @@ impl Calc {
         // 操作の記録(始めていれば)。**押す前に取る** — 掛けた後の姿を
         // 書くので、いまの状態から次の姿を組み立てる
         let rec_len = self.rec.as_ref().map(|v| v.len());
+        // **意図が書けるならそちらが勝つ。** 書けたら差分は取らない —
+        // `table_style(…)` の下に `.font.bold = True` が並ぶと、読む人は
+        // どちらが本体か分からなくなるし、掛け直しにもなる
+        let mut 意図あり = false;
         if self.rec.is_some() {
             if let Some(line) = self.rec_cmd(id) {
                 self.rec_line(line);
+                意図あり = true;
             }
         }
+        // 掛ける前の姿を控える(**掛けた後との差分**が記録の行になる)。
+        // 記録していない間は控えない — シートの複製は安くない
+        let before = (self.rec.is_some() && !意図あり).then(|| {
+            (
+                self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default(),
+                self.sheet().clone(),
+            )
+        });
         let edits_before = self.edits;
         self.run_cmd_inner(id, cx);
+        if let Some((f0, s0)) = before {
+            let (lines, 全部言えた) = self.rec_fmt_diff(&f0);
+            for line in lines {
+                self.rec_line(line);
+            }
+            // 値が変わっていれば、書式の行があっても**値も**書く。
+            // 消去のように両方変える操作があるため
+            if let Some(line) = self.rec_value_diff(&s0) {
+                self.rec_line(line);
+            }
+            // 書式に言い表せない動きがあれば、下の穴の註へ落とす
+            self.rec_fmt_partial = !全部言えた;
+        }
         if let Some(n) = rec_len {
             let 変わった = self.edits > edits_before;
-            let 書けた = self.rec.as_ref().is_some_and(|v| v.len() > n);
+            let 書けた 
+                = self.rec.as_ref().is_some_and(|v| v.len() > n) && !self.rec_fmt_partial;
+            self.rec_fmt_partial = false;
             if 変わった && !書けた {
                 // **穴の印。** この行がそのまま Python の口の宿題になる
                 let line = format!(

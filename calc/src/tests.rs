@@ -6366,7 +6366,7 @@ mod combo_tests {
             assert!(!script.contains("import"), "取り込みの行が混ざっている: {script}");
             // 何をどこで記録したかは記録の一部
             assert!(script.contains("シート: Sheet1"), "{script}");
-            assert!(script.contains("このままでは走りません"), "{script}");
+            assert!(!script.contains("走りません"), "要らない注意書きが混ざっている: {script}");
             // 打った物が Python の言葉で入っているか
             assert!(script.contains("s[\"A1\"].value = \"売上\""), "{script}");
             assert!(script.contains("s[\"A2\"].value = 1200"), "数は数のまま: {script}");
@@ -6482,19 +6482,53 @@ mod rec_honest_tests {
             assert!(lines[0].contains(".font.bold"), "太字が式で残らない: {lines:?}");
             assert!(!lines[0].starts_with('#'), "書ける操作に註が出た");
 
-            // (2) 口の無い操作 — **黙って落とさず註が残る**
+            // (2) 書式を変える操作 — 差分から起こす(2026-08-16。前はここが
+            // 穴の例だった — 消去は註しか残らなかった)
             this.rec = Some(Vec::new());
             let before = this.edits;
             this.run_cmd("clear", cx);
             let lines = this.rec.clone().unwrap();
             assert!(this.edits > before, "消去が中身を変えていない(前提が崩れた)");
+            assert!(
+                lines.iter().any(|l| l.contains(".font.bold = False")),
+                "消去した結果が書かれていない: {lines:?}"
+            );
+            assert!(
+                !lines.iter().any(|l| l.starts_with('#')),
+                "書けるようになったのに註が出た: {lines:?}"
+            );
+
+            // (2b) 値を変える操作 — 何をしたかは言い直せないが、**結果は書ける**
+            this.rec = Some(Vec::new());
+            this.cursor = Pos::parse("A1").unwrap();
+            this.anchor = Some(Pos::parse("A2").unwrap());
+            let before = this.edits;
+            this.run_cmd("sort-desc", cx);
+            let lines = this.rec.clone().unwrap();
+            assert!(this.edits > before, "並べ替えが中身を変えていない(前提が崩れた)");
+            assert!(
+                lines.iter().any(|l| l.contains(".value = ")),
+                "並べ替えた結果が書かれていない: {lines:?}"
+            );
+            assert!(
+                !lines.iter().any(|l| l.starts_with('#')),
+                "書けるようになったのに註が出た: {lines:?}"
+            );
+            this.anchor = None;
+
+            // (3) セルの外を変える操作 — **黙って落とさず註が残る**
+            this.rec = Some(Vec::new());
+            let before = this.edits;
+            this.run_cmd("pagemargins", cx);
+            let lines = this.rec.clone().unwrap();
+            assert!(this.edits > before, "余白が何も変えていない(前提が崩れた)");
             assert_eq!(lines.len(), 1, "註が1行で残らない: {lines:?}");
             assert!(
                 lines[0].starts_with("# この操作はまだ Python で書けません"),
                 "穴が黙って落ちた: {lines:?}"
             );
             // **人の言葉で残す**(id だけだと宿題の一覧として読めない)
-            assert!(lines[0].contains("消去"), "名札が入っていない: {lines:?}");
+            assert!(lines[0].contains("余白"), "名札が入っていない: {lines:?}");
 
             // (3) 中身を変えない操作(一覧を開くだけ)には何も残さない
             this.rec = Some(Vec::new());

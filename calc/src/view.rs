@@ -612,6 +612,7 @@ impl Render for Calc {
                 ));
             }, |_, _: (), _, _| {}).absolute().size_full()
         };
+        let rec_on = self.rec.is_some();
         let mk_btn = |cmd: &ribbon::Cmd, cx: &mut Context<Self>| -> gpui::AnyElement {
             let label = cmd.label;
             let icon = cmd.icon;
@@ -682,7 +683,17 @@ impl Render for Calc {
             // 押しても run_cmd 側で断るが、見た目でも先に伝える)。
             // 小窓中(dlg_open)も同じ描き方 — ready でないボタンと同じ扱い
             let locked = on_pivot && Calc::PIVOT_LOCKED.contains(&cmd.id);
-            let fg = if cmd.ready && !locked && !dlg_open { th_fg } else { th_gray };
+            // **記録中は「操作を記録」のボタンを赤く**(発注者 2026-08-16
+            // 「記録中は、それがわかるようにして」)。下の帯の印と二重にする —
+            // 押した所を見ている目と、画面全体を見ている目は別
+            let recording = cmd.id == "rec-toggle" && rec_on;
+            let fg = if recording {
+                rgb(0xC7433F)
+            } else if cmd.ready && !locked && !dlg_open {
+                th_fg
+            } else {
+                th_gray
+            };
             let marker = marker_of(cmd.id);
             if let Some(short) = big {
                 // 名札つきの大ボタン(絵の下に短い名前 — 本家の言い方)。
@@ -2004,6 +2015,30 @@ impl Render for Calc {
 
         // 下端はステータスバーを兼ねる(デスクトップ版の形):
         // 状態の文言と、選択の生きた値(合計・平均・個数)
+        // **記録中は見て分かるようにする**(発注者 2026-08-16)。状態行は次の
+        // 操作で流れてしまうので、印は消えずに残る場所に置く。赤い丸と件数 —
+        // 何件溜まったかが見えないと、押した操作が拾われたか分からない
+        if let Some(n) = self.rec.as_ref().map(|v| v.len()) {
+            sheets_bar = sheets_bar.child(
+                div()
+                    .id("rec-badge")
+                    .ml_2()
+                    .px_2()
+                    .rounded_sm()
+                    .bg(rgb(0xFDE7E7))
+                    .border_1()
+                    .border_color(rgb(0xC7433F))
+                    .text_size(px(us * 11.0))
+                    .text_color(rgb(0xC7433F))
+                    .whitespace_nowrap()
+                    .cursor_pointer()
+                    .child(SharedString::from(ui::tf!("● 記録中 {} 行(押すと止める)", n.to_string())))
+                    .on_click(cx.listener(|this: &mut Calc, _, _, cx| {
+                        this.run_cmd("rec-toggle", cx);
+                        cx.notify()
+                    })),
+            );
+        }
         sheets_bar = sheets_bar
             .child(div().pl_3().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
                 .whitespace_nowrap().overflow_hidden()

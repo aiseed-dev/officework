@@ -25,6 +25,7 @@ impl Calc {
             import_pend: None,
             border_pal: None,
             rec: None,
+            rec_fmt_partial: false,
             fill_drag: None,
             pane_box: std::cell::Cell::new((0.0, 0.0, 0.0, 0.0)),
             pop_at: None,
@@ -284,12 +285,7 @@ impl Calc {
             .map(|p| format!("ブック: {}\n", p.display()))
             .unwrap_or_default();
         let mut out = format!(
-            "\"\"\"calc の操作の記録。\n\n\
-             {book}\
-             シート: {sheet}\n\n\
-             **このままでは走りません。** 記録は下書きです — 掛けたいブックへの\n\
-             繋ぎを頭に足し、plugins か ribbon の置き場へ移すとマクロになります。\n\
-             \"\"\"\n\n"
+            "\"\"\"calc の操作の記録。\n\n{book}シート: {sheet}\n\"\"\"\n\n"
         );
         if lines.is_empty() {
             out.push_str("# 記録された操作はありません\n");

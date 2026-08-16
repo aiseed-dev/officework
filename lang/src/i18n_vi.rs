@@ -992,6 +992,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("同梱: {}(読むだけ)", "Kèm sẵn: {} (chỉ đọc)"),
     ("名乗った .py がこの段のボタンになります。選ぶと編集の道具で開きます", "Tệp .py tự khai báo sẽ thành nút trên thẻ này. Chọn một tệp để mở trong trình soạn thảo"),
     ("見本を作る", "Tạo mẫu"),
+    ("● 記録中 {} 行(押すと止める)", "● Đang ghi, {} dòng (bấm để dừng)"),
     ("{} 行目に合計(=SUM)を足しました。式なので元が変われば追従します(Ctrl+Z で戻せます)", "Đã thêm tổng (=SUM) ở dòng {}. Đó là công thức nên sẽ theo dữ liệu (Ctrl+Z hoàn tác)"),
     ("表「{}」を普通の範囲に戻しました(帯や縞々の書式と式はそのまま残ります)", "Bảng \"{}\" trở lại là một vùng thường (sọc, định dạng và công thức vẫn giữ)"),
     ("表の性質から{}を外しました(掛かっている色は「書式のクリア」で消せます)", "Đã tắt {} trên bảng (màu đã tô có thể xoá bằng \"Xoá định dạng\")"),
