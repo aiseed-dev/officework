@@ -308,6 +308,42 @@ b.sheets.active["A1"].value = 42
 When no calc is running it never pretends — it says so:
 `OfficeworkError: calc に繋がりません(…/officework/calc.sock: Connection refused)`
 
+**Formatting** (levelled up on 2026-08-16, so that a recording runs as-is):
+
+```python
+s = xw.Book.attach().sheets.active
+s["A1"].font.bold = True                  # bold / italic / underline / strike
+s["A1"].font.size = 12                    # name / size / color / subscript
+s["A1"].color = "FFF2CC"                  # cell fill
+s["A1"].number_format = "0%"
+s["A1"].align = "center"                  # left / center / right / justify / distributed
+s["A1"].valign = "top"                    # top / center / bottom
+s["A1"].wrap_text = True
+s["A1"].shrink = True
+s["A1"].indent = 2                        # indent steps
+s["A1"].rotation = 90                     # degrees
+s["A1"].locked = False                    # writable while the sheet is protected
+s["A1"].formula_hidden = True
+s["A1"].rtl_text = True
+```
+
+**Table design and printing**:
+
+```python
+s["A1:D9"].table_style("header", True)    # header / band_row / band_col /
+                                          # first_col / last_col
+s["A1:D9"].add_total_row()                # a =SUM row below (refuses if occupied)
+s["A1:D9"].unlist()                       # drop the table object, keep everything
+s.set_page_setup(landscape=True, paper=9, margins_mm=(10, 10, 10, 10))
+b.read_only_recommended = True
+xw.run_macro("month_end")                 # run one macro from the folder
+```
+
+**`table_style(…, False)` does not strip the fill** — the state before it was
+applied is not remembered, so stripping would wipe colours that were already
+there. Only the table property is turned off; use `clear_formats()` to remove
+colour.
+
 ### The python-docx vocabulary (officework.doc)
 
 ```python

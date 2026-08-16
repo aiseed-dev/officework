@@ -721,6 +721,42 @@ and "Plugins", listing the same folder of .py files two different ways.
   it lands in `~/.config/officework/records/` as a .py. **It contains only the
   record** — no line that opens a workbook (which workbook to apply it to is
   yours to decide)
+
+### What a recording contains (2026-08-16)
+
+**While recording, a red "● Recording, N lines" sits in the bottom bar.** Click
+it to stop. The Record actions button turns red too.
+
+What is written is not the name of the command but **the result it produced**:
+
+| what you did | the line you get |
+|---|---|
+| select A1 | `s["A1"].select()` |
+| bold | `s["A1"].font.bold = True` |
+| centre | `s["A1"].align = "center"` |
+| percent | `s["A1"].number_format = "0%"` |
+| sort / clear / paste | `s["A1:B3"].value = [[…], […]]` |
+| change the margins | `s.set_page_setup(margins_mm=(10, 10, 10, 10))` |
+| press a macro you put on the ribbon | `xw.run_macro("month_end")` |
+
+**For on/off commands the resulting state is written, not the number of
+presses.** Pressing bold twice gives you `= True` then `= False`. The margin
+button cycles, and what lands in the recording is the millimetres it ended on.
+
+A selection line is inserted **just before something else is recorded**, and
+only when the selection changed (writing one per arrow key would drown the
+recording).
+
+### Operations that cannot be written yet
+
+Borders, shapes and charts have no Python entry point yet. They leave
+
+    # この操作はまだ Python で書けません: テキストボックスを挿入する(instext)
+
+in the recording. **Nothing is dropped silently.** That line is the to-do list
+for the Python API. The same note appears when only part of a format change
+could be written — a macro that runs halfway is worse than one that does not
+run at all.
 - **New .py**: create a script in the folder and open it
 - **List**: the .py files in `~/.config/officework/plugins`; **picking one runs
   it**. To edit one, use "Open the folder" or `@edit name`

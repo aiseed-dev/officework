@@ -296,6 +296,41 @@ b.sheets.active["A1"].value = 42
 calc が居なければ黙って何かの振りをせず、そう言う:
 `OfficeworkError: calc に繋がりません(…/officework/calc.sock: Connection refused)`
 
+**書式の口**(2026-08-16 に揃えた。記録した操作がそのまま走るために要る):
+
+```python
+s = xw.Book.attach().sheets.active
+s["A1"].font.bold = True                  # bold / italic / underline / strike
+s["A1"].font.size = 12                    # name / size / color / subscript
+s["A1"].color = "FFF2CC"                  # セルの塗り
+s["A1"].number_format = "0%"
+s["A1"].align = "center"                  # left / center / right / justify / distributed
+s["A1"].valign = "top"                    # top / center / bottom
+s["A1"].wrap_text = True
+s["A1"].shrink = True                     # 枠に収まるまで縮める
+s["A1"].indent = 2                        # 字下げの段数(帳票の階層)
+s["A1"].rotation = 90                     # 文字の向き(度)
+s["A1"].locked = False                    # 保護中に書ける欄(既定は True)
+s["A1"].formula_hidden = True             # 保護中に式を見せない
+s["A1"].rtl_text = True                   # セルの中を右横書きに
+```
+
+**表のデザインと印刷**:
+
+```python
+s["A1:D9"].table_style("header", True)    # header / band_row / band_col /
+                                          # first_col / last_col
+s["A1:D9"].add_total_row()                # 下に =SUM の行(下に中身があれば断る)
+s["A1:D9"].unlist()                       # 表オブジェクトを外す(書式と式は残る)
+s.set_page_setup(landscape=True, paper=9, margins_mm=(10, 10, 10, 10))
+b.read_only_recommended = True            # 開いた人に「見るだけ」を勧める
+xw.run_macro("締め")                       # 置き場のマクロを1つ走らせる
+```
+
+**`table_style(…, False)` は塗りを剥がしません** — 掛ける前の姿を覚えて
+いないので、剥がすと元の色まで消えます。外れるのは表の性質だけで、色を
+消すなら `clear_formats()`。
+
 ### python-docx の語彙(officework.doc)
 
 ```python
