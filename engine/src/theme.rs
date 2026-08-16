@@ -207,6 +207,101 @@ pub fn parse(src: &str) -> Result<Theme, String> {
     Ok(th)
 }
 
+/// テンプレート → TOML(正規形)。**AI と人が読み書きする物**なので、
+/// 鍵は日本語で書き、並びは [`parse`] が読む順に揃える。
+/// 門番は `parse(write(x)) == x`(往復)
+pub fn write(th: &Theme) -> String {
+    let mut s = String::new();
+    if th.font.is_some() || th.size_pt.is_some() {
+        s.push_str("[文書]\n");
+        if let Some(f) = &th.font {
+            s.push_str(&format!("書体 = {f:?}\n"));
+        }
+        if let Some(n) = th.size_pt {
+            s.push_str(&format!("大きさ = {}\n", num(n)));
+        }
+        s.push('\n');
+    }
+    if let Some(p) = &th.page {
+        s.push_str("[ページ]\n");
+        let paper = match (p.w_mm, p.h_mm) {
+            (297.0, 210.0) => Some("A4横"),
+            (297.0, 420.0) => Some("A3"),
+            (182.0, 257.0) => Some("B5"),
+            (210.0, 297.0) => Some("A4"),
+            _ => None,
+        };
+        if let Some(k) = paper {
+            s.push_str(&format!("用紙 = {k:?}\n"));
+        }
+        // 4辺が同じときだけ「余白」で書ける(違う値は今の器が持てない)
+        if p.left_mm == p.right_mm && p.left_mm == p.top_mm && p.left_mm == p.bottom_mm {
+            s.push_str(&format!("余白 = {}\n", num(p.left_mm)));
+        }
+        if p.columns > 1 {
+            s.push_str(&format!("段組み = {}\n", p.columns));
+        }
+        s.push('\n');
+    }
+    for d in &th.styles {
+        s.push_str(&format!("[スタイル.{}]\n", d.name));
+        if let Some(n) = d.size_pt {
+            s.push_str(&format!("大きさ = {}\n", num(n)));
+        }
+        if let Some(f) = &d.font {
+            s.push_str(&format!("書体 = {f:?}\n"));
+        }
+        if d.bold {
+            s.push_str("太字 = true\n");
+        }
+        if d.italic {
+            s.push_str("斜体 = true\n");
+        }
+        if d.underline {
+            s.push_str("下線 = true\n");
+        }
+        if let Some(c) = &d.color {
+            s.push_str(&format!("色 = {c:?}\n"));
+        }
+        if let Some(c) = &d.shade {
+            s.push_str(&format!("帯 = {c:?}\n"));
+        }
+        if let Some(a) = d.align {
+            let k = match a {
+                Align::Left => "左",
+                Align::Center => "中央",
+                Align::Right => "右",
+                Align::Justify => "両端",
+                Align::Distribute => "均等",
+            };
+            s.push_str(&format!("揃え = {k:?}\n"));
+        }
+        if d.space_before_pt != 0.0 {
+            s.push_str(&format!("前の空き = {}\n", num(d.space_before_pt)));
+        }
+        if d.space_after_pt != 0.0 {
+            s.push_str(&format!("後の空き = {}\n", num(d.space_after_pt)));
+        }
+        if let Some(l) = d.line_spacing {
+            s.push_str(&format!("行間 = {}\n", num(l)));
+        }
+        s.push('\n');
+    }
+    while s.ends_with("\n\n") {
+        s.pop();
+    }
+    s
+}
+
+/// 数を素直に書く(整数は小数点を出さない — 人が読む物なので)
+fn num(v: f32) -> String {
+    if (v - v.round()).abs() < 0.005 {
+        format!("{}", v.round() as i64)
+    } else {
+        format!("{v}")
+    }
+}
+
 /// **合成** — 意味だけの文書の写しに、テンプレートの書式を流し込む。
 ///
 /// 返った写しは `layout` にそのまま渡せる(組版エンジンは無傷)。
@@ -349,6 +444,17 @@ mod tests {
         let ja = parse("[スタイル.見出し1]\n大きさ = 16\n太字 = true\n").unwrap();
         let en = parse("[style.見出し1]\nsize = 16\nbold = true\n").unwrap();
         assert_eq!(ja, en);
+    }
+
+    #[test]
+    fn テンプレートが往復する() {
+        // **門番**: 書いて読むと同じ物になる(AI が書いた物も、画面が
+        // 足したスタイルも、同じ表を通る)
+        let src = "[文書]\n大きさ = 11\n\n[ページ]\n用紙 = \"B5\"\n余白 = 15\n\n\
+                   [スタイル.見出し1]\n大きさ = 20\n太字 = true\n色 = \"1B6E3C\"\n後の空き = 8\n";
+        let th = parse(src).unwrap();
+        let back = write(&th);
+        assert_eq!(parse(&back).unwrap(), th, "往復で崩れた:\n{back}");
     }
 
     #[test]

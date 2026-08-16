@@ -151,12 +151,26 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             s.push('_');
             italic = r.fmt.italic;
         }
+        // 上付き・下付きは**意味**(x² / H₂O)。AsciiDoc の標準の印
+        let (sup, sub) = (r.fmt.superscript, r.fmt.subscript);
+        if sup {
+            s.push('^');
+        }
+        if sub {
+            s.push('~');
+        }
         if let Some(ruby) = &r.fmt.ruby {
             s.push_str(&format!("ruby:{}[{}]", esc(&r.text), ruby));
         } else if let Some(url) = &r.fmt.link {
             s.push_str(&format!("{url}[{}]", esc(&r.text)));
         } else {
             s.push_str(&esc(&r.text));
+        }
+        if sub {
+            s.push('~');
+        }
+        if sup {
+            s.push('^');
         }
     }
     if bold {
@@ -172,7 +186,7 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
 fn esc(t: &str) -> String {
     let mut s = String::with_capacity(t.len());
     for c in t.chars() {
-        if c == '*' || c == '_' || c == '\\' {
+        if c == '*' || c == '_' || c == '^' || c == '~' || c == '\\' {
             s.push('\\');
         }
         s.push(c);
@@ -446,6 +460,26 @@ fn parse_inline(
             i += 1;
             continue;
         }
+        if rest.starts_with('^') || rest.starts_with('~') {
+            let up = rest.starts_with('^');
+            let close = if up { '^' } else { '~' };
+            if let Some(end) = rest[1..].find(close) {
+                flush(&mut runs, &mut cur, bold, italic);
+                let mut fmt = CharFormat::default();
+                fmt.bold = bold;
+                fmt.italic = italic;
+                fmt.superscript = up;
+                fmt.subscript = !up;
+                runs.push(Run {
+                    text: rest[1..1 + end].to_string(),
+                    size_pt: None,
+                    font: None,
+                    fmt,
+                });
+                i += 1 + end + 1;
+                continue;
+            }
+        }
         if let Some(after) = rest.strip_prefix("<<") {
             if let Some(end) = after.find(">>") {
                 flush(&mut runs, &mut cur, bold, italic);
@@ -699,6 +733,11 @@ mod tests {
         assert!(!p[0].runs.iter().any(|r| r.fmt.bold));
         // 書き戻せば逃がしも戻る
         assert_eq!(write(&d), "星は \\* と書く。\n");
+    }
+
+    #[test]
+    fn 上付きと下付きが往復する() {
+        往復("水は H^2^O ではなく H~2~O。\n");
     }
 
     #[test]

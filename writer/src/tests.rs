@@ -1960,6 +1960,59 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **ネイティブでは見た目を直に変えさせない**(2026-08-16。C-2 の門番)。
+    /// 押すと名前を付ける道に入り、決めるとテンプレートへ入る
+    #[gpui::test]
+    fn ネイティブでは見た目がスタイルの新設になる(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-c2-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("見本.adoc");
+        std::fs::write(&path, "= 題\n:template: 見本の型\n\n本文の字。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.open(path.clone());
+            assert!(this.native);
+
+            // 字を大きく → 直には掛からず、名前の欄が出る
+            this.run_cmd("incfont", cx);
+            assert!(this.style_new.is_some(), "誘導が出ない: {}", this.status);
+            let ps: Vec<_> = this.doc.paragraphs().collect();
+            assert_eq!(ps[0].runs[0].size_pt, None, "直接書式が本文に入った");
+
+            // 名前を決める → テンプレートに入り、段落が名指す
+            this.style_ed = kumihan::Editor::new("大見出し");
+            this.style_commit();
+            assert!(this.style_new.is_none());
+            assert!(this.tmpl.style("大見出し").is_some(), "テンプレートに入っていない");
+            let ps: Vec<_> = this.doc.paragraphs().collect();
+            assert_eq!(ps[0].style_id.as_deref(), Some("大見出し"));
+            assert_eq!(ps[0].runs[0].size_pt, None, "決めた後も本文は意味だけ");
+
+            // テンプレートのファイルが隣に出来ている
+            let toml = dir.join("見本の型.toml");
+            assert!(toml.exists(), "テンプレートが書かれていない: {}", this.status);
+            let th = kumihan::theme::parse(&std::fs::read_to_string(&toml).unwrap()).unwrap();
+            assert!(th.style("大見出し").is_some(), "書いた物が読み返せない");
+
+            // 保存しても本文は意味だけ(スタイルの名前は載る)
+            this.save_to(path.clone());
+            let back = std::fs::read_to_string(&path).unwrap();
+            assert!(!back.contains("pt"), "見た目が本文に漏れた: {back}");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 互換(docx)では今までどおり直に掛かる — 封じるのはネイティブだけ
+    #[gpui::test]
+    fn 互換の文書では直接書式が今までどおり効く(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            assert!(!this.native, "新規は互換のはず");
+            this.run_cmd("incfont", cx);
+            assert!(this.style_new.is_none(), "互換で誘導が出た");
+        });
+    }
+
     /// 合成は**写しの上**で行う — 紙面には見出しの大きさが乗るが、
     /// 保存される意味の側は無指定のまま
     #[gpui::test]

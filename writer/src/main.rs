@@ -253,6 +253,12 @@ struct Writer {
     /// しおりのパネル(名前の入力欄つきの一覧)
     bm_open: bool,
     bm_ed: Editor,
+    /// **スタイルの新設**(2026-08-16。ネイティブ文書だけ)。
+    /// 見た目を直に変える操作を遮り、「この見た目に名前を付ける」へ
+    /// 誘導する。中身は(掛けたい見た目, 名前の欄)。
+    /// Word の失敗を設計で防ぐ要 — 直接書式より**楽な道が名前を付ける道**
+    style_new: Option<kumihan::theme::StyleDef>,
+    style_ed: Editor,
     /// バージョン履歴のパネル(上書き保存のたびに残る控えの一覧)
     hist_open: bool,
     /// プラグインのパネル(置き場の .py 一覧)
@@ -414,6 +420,8 @@ impl HasEditor for Writer {
             &mut self.cmt_ed
         } else if self.wm_edit {
             &mut self.wm_ed
+        } else if self.style_new.is_some() {
+            &mut self.style_ed
         } else if self.bm_open {
             &mut self.bm_ed
         } else if self.url_open {
@@ -454,6 +462,8 @@ impl HasEditor for Writer {
             &self.cmt_ed
         } else if self.wm_edit {
             &self.wm_ed
+        } else if self.style_new.is_some() {
+            &self.style_ed
         } else if self.bm_open {
             &self.bm_ed
         } else if self.url_open {

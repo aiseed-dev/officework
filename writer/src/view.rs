@@ -1545,7 +1545,7 @@ impl Render for Writer {
 
         // パネル群は部屋割りで panels.rs へ(純移動 2026-08-12)。名前も順も元のまま
         let Panels {
-            find_panel, hf_panel, cmt_panel, wm_panel, bm_panel, hist_panel,
+            find_panel, hf_panel, cmt_panel, wm_panel, bm_panel, style_new_panel, hist_panel,
             chat_panel, pw_panel, url_panel, fm_panel, nav_panel, rp_panel,
             lk_panel, ai_panel, sd_panel, rb_panel, eq_panel, plug_panel, xr_panel,
             font_panel, size_panel, style_panel, symbol_panel, proof_panel,
@@ -1714,6 +1714,7 @@ impl Render for Writer {
                     .children(cmt_panel)
                     .children(wm_panel)
                     .children(bm_panel)
+                    .children(style_new_panel)
                     .children(xr_panel)
                     .children(hist_panel)
                     .children(chat_panel)

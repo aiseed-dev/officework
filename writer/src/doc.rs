@@ -52,6 +52,8 @@ impl Writer {
             font_bytes: std::sync::Arc::new(font_data().to_vec()),
             pg: kumihan::PageSetup::default(),
             native: false,
+            style_new: None,
+            style_ed: Editor::new(""),
             tmpl: kumihan::theme::default_theme(),
             find_open: false,
             find_field: 0,
@@ -2015,6 +2017,148 @@ impl Writer {
             kumihan::theme::default_theme(),
             ui::tf!("テンプレート「{}」が見つからないので同梱の既定", name).to_string(),
         )
+    }
+
+    /// **見た目を直に変える操作**(ネイティブでは封じる)。
+    ///
+    /// 意味の側(強調・上付き・下付き・見出し・引用・リスト)は封じない —
+    /// AsciiDoc に落ちるので保存で残る。ここに並ぶのは**落ちる物**で、
+    /// 直に掛けても保存で消える。だから掛けさせず、名前を付けさせる
+    /// (発注者 2026-08-16「直接書式は原則封じる」)。
+    pub(crate) const LOOK_IDS: &'static [&'static str] = &[
+        "fontname",
+        "fontsize",
+        "incfont",
+        "decfont",
+        "fontcolor",
+        "highlight",
+        "underline",
+        "strikeout",
+    ];
+
+    /// ネイティブ文書で見た目の操作が来たら遮り、スタイルの新設へ誘導する。
+    /// 返りが true なら、呼んだ側は普通の処理をしない
+    pub(crate) fn look_guard(&mut self, id: &str, cx: &mut Context<Self>) -> bool {
+        if !self.native || !Self::LOOK_IDS.contains(&id) {
+            return false;
+        }
+        // 押した見た目を1つだけ持つスタイルの種を作る(名前はこれから)
+        let now = self.doc.char_format_at(self.ed.selection());
+        let base = self.doc.base_pt();
+        let cur_pt = self.doc.size_at(self.ed.selection()).unwrap_or(base);
+        let mut d = kumihan::theme::StyleDef::default();
+        match id {
+            "fontsize" | "incfont" => d.size_pt = Some(ui::combo::step_size(cur_pt, true)),
+            "decfont" => d.size_pt = Some(ui::combo::step_size(cur_pt, false)),
+            "fontname" => d.font = Some(self.font_name.to_string()),
+            "fontcolor" => d.color = Some("C00000".into()),
+            "highlight" => d.shade = Some("FFF3A0".into()),
+            "underline" => d.underline = !now.underline,
+            _ => d.italic = true, // strikeout の代わり(打ち消しは意味では持てない)
+        }
+        d.name = self.style_name_hint(id);
+        self.style_ed = Editor::new(&d.name);
+        self.style_new = Some(d);
+        self.status = ui::t!(
+            "ネイティブ文書では見た目を直には変えません。名前を付けてスタイルにします(Enter で決める・Esc でやめる)"
+        )
+        .into();
+        self.ai_name_style(id, cx);
+        true
+    }
+
+    /// 名前の下書き(AI が答えるまでの繋ぎ。**空欄で待たせない**)
+    fn style_name_hint(&self, id: &str) -> String {
+        match id {
+            "fontsize" | "incfont" => ui::t!("大きい字"),
+            "decfont" => ui::t!("小さい字"),
+            "fontname" => ui::t!("別の書体"),
+            "fontcolor" => ui::t!("色つきの字"),
+            "highlight" => ui::t!("目立たせる"),
+            "underline" => ui::t!("下線つき"),
+            _ => ui::t!("強い注意"),
+        }
+        .to_string()
+    }
+
+    /// **名付けは AI に**(発注者 2026-08-16「名付けは AI にやらせれば
+    /// 摩擦が消える」)。選んでいる字を見せて短い名前を1つ貰い、欄に入れる。
+    /// AI が居なければ下書きのまま — 待たせも断りもしない
+    fn ai_name_style(&mut self, id: &str, cx: &mut Context<Self>) {
+        let back = ui::ai::backend();
+        if ui::ai::ready(back).is_err() {
+            return;
+        }
+        let sel = self.ed.selection();
+        let text: String = self.ed.text().get(sel).unwrap_or_default().chars().take(80).collect();
+        let what = self.style_name_hint(id);
+        let sys = ui::t!(
+            "文書のスタイル名を1つだけ答える。日本語で、6字以内の名詞。説明も記号も付けない"
+        )
+        .to_string();
+        let user = format!("{text}\n---\n{what}");
+        let task = cx.background_executor().spawn(async move { ui::ai::ask(back, &sys, &user) });
+        cx.spawn(async move |this, cx| {
+            let r = task.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Ok(name) = r {
+                    let name = name.trim().lines().next().unwrap_or("").trim().to_string();
+                    if !name.is_empty() && name.chars().count() <= 12 && this.style_new.is_some() {
+                        this.style_ed = Editor::new(&name);
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// スタイルの新設を決める(名前の欄で Enter)。テンプレートに足し、
+    /// 選んでいる段落に名前を付け、テンプレートのファイルへ書き戻す
+    pub(crate) fn style_commit(&mut self) {
+        let Some(mut d) = self.style_new.take() else { return };
+        let name = self.style_ed.text().trim().to_string();
+        if name.is_empty() {
+            self.status = ui::t!("名前が空です(やめました)").into();
+            return;
+        }
+        d.name = name.clone();
+        self.checkpoint(false);
+        // 同じ名前があれば置き換える(直しの操作にもなる)
+        if let Some(i) = self.tmpl.styles.iter().position(|s| s.name == name) {
+            self.tmpl.styles[i] = d;
+        } else {
+            self.tmpl.styles.push(d);
+        }
+        // **段落に名前を付ける。** `para` は Copy の閉包しか取らないが、
+        // `apply_para` は取らない(名前は String で写せない)
+        self.switch_target(Target::Body);
+        self.flush_target();
+        let sel = self.ed.selection();
+        let n = name.clone();
+        self.doc.apply_para(sel, |p| p.style_id = Some(n.clone()));
+        let 書けた = self.save_template();
+        self.dirty = true;
+        self.relayout_keep();
+        self.status = ui::tf!("スタイル「{}」にしました({})", name, 書けた).into();
+    }
+
+    /// テンプレートをファイルへ書き戻す。返りは言い分
+    fn save_template(&self) -> String {
+        let Some(name) = self.doc.template.clone() else {
+            // 名指しが無い = 同梱の既定を着ている。**既定は書き換えない** —
+            // 他の文書まで巻き添えになる
+            return ui::t!("この文書だけ。テンプレートに残すには :template: で名前を付けてください")
+                .to_string();
+        };
+        let Some(dir) = self.path.as_ref().and_then(|p| p.parent()) else {
+            return ui::t!("文書がまだファイルになっていないので、テンプレートは書けません").to_string();
+        };
+        let at = dir.join(format!("{name}.toml"));
+        match std::fs::write(&at, kumihan::theme::write(&self.tmpl)) {
+            Ok(()) => ui::tf!("{} に書きました", at.display().to_string()).to_string(),
+            Err(e) => ui::tf!("テンプレートが書けません: {}", e).to_string(),
+        }
     }
 
     /// ネイティブ文書として保存する(.adoc)。**意味だけを書く**

@@ -497,6 +497,12 @@ impl Writer {
             cx.notify();
             return;
         }
+        if self.style_new.is_some() {
+            self.style_new = None;
+            self.status = ui::t!("スタイルの新設をやめました").into();
+            cx.notify();
+            return;
+        }
         if self.bm_open {
             self.bm_open = false;
             self.status = "".into();
@@ -710,6 +716,8 @@ impl Writer {
         }
         if self.find_open {
             self.find_next();
+        } else if self.style_new.is_some() {
+            self.style_commit();
         } else if self.bm_open {
             self.bm_add();
         } else if self.quit_ask {

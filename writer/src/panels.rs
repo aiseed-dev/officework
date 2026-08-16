@@ -15,6 +15,8 @@ pub(crate) struct Panels {
     pub cmt_panel: Option<gpui::Div>,
     pub wm_panel: Option<gpui::Div>,
     pub bm_panel: Option<gpui::Div>,
+    /// スタイルの新設(ネイティブ文書だけ)
+    pub style_new_panel: Option<gpui::Div>,
     pub hist_panel: Option<gpui::Div>,
     pub chat_panel: Option<gpui::Div>,
     pub pw_panel: Option<gpui::Div>,
@@ -251,6 +253,63 @@ impl Writer {
         };
 
         // しおりのパネル(名前の入力欄+一覧)
+        // **スタイルの新設**(2026-08-16)。ネイティブ文書で見た目を直に
+        // 変えようとしたときに出る。名前を付けるとテンプレートに入り、
+        // 同じスタイルの所が一度に変わる — 直接書式より楽な道にする
+        let style_new_panel = self.style_new.as_ref().map(|d| {
+            let mut t = self.style_ed.text().to_string();
+            let cur = self.style_ed.cursor().min(t.len());
+            t.insert(cur, '|');
+            // 何を掛けるのかを人の言葉で1行に
+            let mut what: Vec<String> = Vec::new();
+            if let Some(s) = d.size_pt {
+                what.push(ui::tf!("大きさ {}pt", s.to_string()).to_string());
+            }
+            if let Some(f) = &d.font {
+                what.push(ui::tf!("書体 {}", f.clone()).to_string());
+            }
+            if d.bold {
+                what.push(ui::t!("太字").to_string());
+            }
+            if d.italic {
+                what.push(ui::t!("斜体").to_string());
+            }
+            if d.underline {
+                what.push(ui::t!("下線").to_string());
+            }
+            if let Some(c) = &d.color {
+                what.push(ui::tf!("色 #{}", c.clone()).to_string());
+            }
+            if let Some(c) = &d.shade {
+                what.push(ui::tf!("帯 #{}", c.clone()).to_string());
+            }
+            div().absolute().left(px(16.0)).top(px(8.0)).w(px(400.0))
+                .p_3().rounded_md().bg(rgb(0xF7F9FA))
+                .border_1().border_color(rgb(0xC6CDD3))
+                .flex().flex_col().gap_2()
+                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                    .text_color(rgb(0x165E83))
+                    .child(ui::t!("スタイルの新設 — 見た目に名前を付けます")))
+                .child(div().text_size(px(11.0)).text_color(rgb(0x66707A))
+                    .child(SharedString::from(ui::tf!("掛けるもの: {}", what.join("・")))))
+                .child(div().flex().flex_row().gap_2().items_center()
+                    .child(div().flex_1().px_2().py_1().rounded_sm()
+                        .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
+                        .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                        .child(SharedString::from(t)))
+                    .child(div().id("style-ok").px_2p5().py_1().rounded_sm()
+                        .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
+                        .text_size(px(11.5)).cursor_pointer()
+                        .hover(|s| s.bg(rgb(0xEAF5EE)))
+                        .child(ui::t!("決める (Enter)"))
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.style_commit();
+                            cx.notify()
+                        }))))
+                .child(div().text_size(px(11.0)).text_color(rgb(0x66707A))
+                    .child(ui::t!("同じ名前があれば置き換えます。テンプレートに入るので、同じスタイルの所が一度に変わります")))
+        });
+
         let bm_panel = if !self.bm_open {
             None
         } else {
@@ -1443,7 +1502,7 @@ impl Writer {
         };
 
         Panels {
-            find_panel, hf_panel, cmt_panel, wm_panel, bm_panel, hist_panel,
+            find_panel, hf_panel, cmt_panel, wm_panel, bm_panel, style_new_panel, hist_panel,
             chat_panel, pw_panel, url_panel, fm_panel, nav_panel, rp_panel,
             lk_panel, ai_panel, sd_panel, rb_panel, eq_panel, plug_panel, xr_panel,
             font_panel, size_panel, style_panel, symbol_panel, proof_panel,
