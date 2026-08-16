@@ -50,11 +50,36 @@ pub struct StyleDef {
 /// **「跨ぎ」はまだ持たない。** 発表(1節=1枚・字が枚を跨がない)の組み手が
 /// 無いので、効かない切替を先に置かない(SEKKEI の決め)。
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Break {
+    /// 紙のように、入る分で折る
+    #[default]
+    Page,
+    /// 折らない(1本の長い流れ = Web)
+    None,
+    /// **節ごとに1枚**(見出し1 で改める = 発表)
+    Section,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Setting {
     /// 横幅が窓に従う(紙の幅を使わない)
     pub fluid: bool,
-    /// ページに折らない(1本の長い流れ)
-    pub endless: bool,
+    /// 区切り方
+    pub br: Break,
+    /// **字が枚を跨がない**(入りきらない段落は丸ごと次へ送る)。
+    /// 発表の資料の作法 — 1つの文が2枚に割れると読めない
+    pub keep: bool,
+}
+
+impl Setting {
+    /// 折らない(Web の流し組み)
+    pub fn endless(&self) -> bool {
+        self.br == Break::None
+    }
+    /// 節ごとに1枚(発表)
+    pub fn per_section(&self) -> bool {
+        self.br == Break::Section
+    }
 }
 
 /// テンプレート。文書の頭の `:template: 名前` が名指す実体。
@@ -184,13 +209,21 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                     }
                 }
                 "区切り" | "break" => {
-                    th.setting.endless = match s(v)?.as_str() {
-                        "なし" | "none" => true,
-                        "ページ" | "page" => false,
+                    th.setting.br = match s(v)?.as_str() {
+                        "なし" | "none" => Break::None,
+                        "ページ" | "page" => Break::Page,
+                        "節" | "section" => Break::Section,
                         other => {
-                            return Err(format!("{} 行目: 区切りは ページ か なし: {other}", ln + 1))
+                            return Err(format!(
+                                "{} 行目: 区切りは ページ / なし / 節: {other}",
+                                ln + 1
+                            ))
                         }
                     }
+                }
+                "跨ぎ" | "keep" => {
+                    // **裏返して読む** — 「跨ぎ = false」が「跨がない」
+                    th.setting.keep = !b(v)?;
                 }
                 _ => return Err(format!("{} 行目: [組み方] の知らない鍵: {k}", ln + 1)),
             },
@@ -260,8 +293,13 @@ pub fn write(th: &Theme) -> String {
         if th.setting.fluid {
             s.push_str("横幅 = \"可変\"\n");
         }
-        if th.setting.endless {
-            s.push_str("区切り = \"なし\"\n");
+        match th.setting.br {
+            Break::None => s.push_str("区切り = \"なし\"\n"),
+            Break::Section => s.push_str("区切り = \"節\"\n"),
+            Break::Page => {}
+        }
+        if th.setting.keep {
+            s.push_str("跨ぎ = false\n");
         }
         s.push('\n');
     }
@@ -439,6 +477,22 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             }
         }
     }
+    // **1節=1枚**(発表の組み方。2026-08-17)。見出し1 の前で必ず改める。
+    //
+    // 印は**写しの側**に付ける — 意味の正本は「ここが節の頭だ」としか
+    // 言っておらず、そこで紙を改めるかはテンプレートの決め。
+    // 組んだ後に頁の境を足すのではなく**折り手に折らせる**(docx の
+    // `w:pageBreakBefore` と同じ道)。後から境だけ足すと行の位置は
+    // 巻物のまま動かず、境の手前の余白ぶんが前の枚に取り残される
+    // (2026-08-17、実機で1枚目が見出しだけになって見つけた)
+    if theme.setting.per_section() {
+        for block in &mut out.blocks {
+            let Block::Para(para) = block else { continue };
+            if para.style == crate::doc::ParaStyle::Heading(1) {
+                para.page_break_before = true;
+            }
+        }
+    }
     out
 }
 
@@ -556,7 +610,11 @@ mod tests {
     #[test]
     fn 組み方の値が往復する() {
         let th = parse("[組み方]\n横幅 = \"可変\"\n区切り = \"なし\"\n").unwrap();
-        assert!(th.setting.fluid && th.setting.endless);
+        assert!(th.setting.fluid && th.setting.endless());
+        // 発表の組み方(1節=1枚・跨がない)
+        let s = parse("[組み方]\n区切り = \"節\"\n跨ぎ = false\n").unwrap();
+        assert!(s.setting.per_section() && s.setting.keep);
+        assert_eq!(parse(&write(&s)).unwrap(), s, "発表の組み方が往復しない");
         assert_eq!(parse(&write(&th)).unwrap(), th);
         // 既定(紙)は書かない — 空の節を増やさない
         assert_eq!(write(&Theme::default()), "");

@@ -492,10 +492,12 @@ View > Right panel → the third icon on the rail. It shows the style this
 paragraph wears and the ones you can pick. Picking changes it; the size buttons
 edit **the template**, so everywhere with that style changes together.
 
-### Laying out for the web
+### Laying out for the web, or as slides
 
-One extra section in the template lays the text out as **one continuous flow**
-instead of paper:
+One extra section in the template lays **the same body** out differently. You
+edit only the template; the body (.adoc) does not change by a single character.
+
+The web (one continuous flow):
 
 ```toml
 [組み方]
@@ -503,8 +505,20 @@ instead of paper:
 区切り = "なし"   # do not fold into pages
 ```
 
-Slides (one section per sheet, text never crossing a sheet) do not exist yet —
-so there is no switch for them either.
+Slides (one section per sheet):
+
+```toml
+[組み方]
+区切り = "節"     # a new sheet at every level-1 heading (== …)
+跨ぎ = false      # a paragraph never crosses a sheet
+```
+
+- Every section starts a fresh sheet, so the level-1 heading becomes the title
+  of that sheet
+- `跨ぎ = false` moves a paragraph that straddles a sheet boundary onto the
+  next sheet whole. A paragraph too tall for one sheet is left where it is
+- To see them one sheet at a time: View > **Print layout**
+- **You do not need PowerPoint** — slides are just another template
 
 ## Reducing a docx to meaning (distilling)
 

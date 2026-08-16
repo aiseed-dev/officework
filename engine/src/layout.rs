@@ -876,10 +876,16 @@ pub fn fold_vertical(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32, line_mm: f32
 /// 同じ数だけ要る。足りない分は最後の紙を使う。
 ///
 /// 返すのは**頁ごとの上端**(折った後の y)。紙の絵はここへ置く。
+///
+/// `starts` は**各頁に載る最初の行の y**(1枚目は `-∞`)で、どの頁に属するかは
+/// これで決める。`offsets`(紙の上端)は最初の行より余白ぶん上にあり、巻物は
+/// 空きを詰めて流れるので、境として使うと前の頁の末尾が次の頁へ化ける
+/// (2026-08-17、発表の組み方で踏んだ)。頁の中の位置は `offsets` から測る。
 pub fn fold_print(
     sheet: &mut Sheet,
     papers: &[PageSetup],
     offsets: &[f32],
+    starts: &[f32],
     gap: f32,
 ) -> Vec<f32> {
     let paper_of = |k: usize| -> PageSetup {
@@ -897,8 +903,8 @@ pub fn fold_print(
     }
     let page_of = |y: f32| -> (usize, f32) {
         let mut k = 0usize;
-        for (i, o) in offsets.iter().enumerate() {
-            if y >= *o - 0.01 {
+        for (i, s) in starts.iter().enumerate() {
+            if y >= *s - 0.01 {
                 k = i;
             }
         }
@@ -935,7 +941,14 @@ pub fn fold_print(
     tops
 }
 
-pub fn fold_pages(sheet: &mut Sheet, pg: &PageSetup, offsets: &[f32], n: usize, gap: f32) {
+pub fn fold_pages(
+    sheet: &mut Sheet,
+    pg: &PageSetup,
+    offsets: &[f32],
+    starts: &[f32],
+    n: usize,
+    gap: f32,
+) {
     if n <= 1 || offsets.len() <= 1 {
         return;
     }
@@ -943,8 +956,8 @@ pub fn fold_pages(sheet: &mut Sheet, pg: &PageSetup, offsets: &[f32], n: usize, 
     // 巻物の y → (ページ番号, ページ内の y)
     let page_of = |y: f32| -> (usize, f32) {
         let mut k = 0usize;
-        for (i, o) in offsets.iter().enumerate() {
-            if y >= *o - 0.01 {
+        for (i, s) in starts.iter().enumerate() {
+            if y >= *s - 0.01 {
                 k = i;
             }
         }

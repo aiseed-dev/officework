@@ -2260,8 +2260,56 @@ mod marker_tests {
             assert!(紙 > 1, "紙で1ページに収まった(前提が崩れた): {紙}");
 
             this.open(dir.join("長い.adoc"));
-            assert!(this.tmpl.setting.endless, "組み方が読めていない: {}", this.status);
+            assert!(this.tmpl.setting.endless(), "組み方が読めていない: {}", this.status);
             assert_eq!(this.total_pages(), 1, "区切りなしなのに折れた");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **発表の組み方**(2026-08-17)。1節=1枚で、段落が枚を跨がない
+    #[gpui::test]
+    fn 発表の組み方は節ごとに1枚になる(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-slide-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        // 3つの節。どれも1枚に収まる短さ
+        let body = "= 題\n:template: 発表\n\n\
+                    == ひとつめ\n\n短い本文。\n\n\
+                    == ふたつめ\n\n短い本文。\n\n\
+                    == みっつめ\n\n短い本文。\n";
+        std::fs::write(dir.join("話.adoc"), body).unwrap();
+        std::fs::write(dir.join("発表.toml"), "[組み方]\n区切り = \"節\"\n跨ぎ = false\n")
+            .unwrap();
+        // 比べる相手(紙)。同じ中身なら1枚に収まる
+        std::fs::write(dir.join("紙.adoc"), body.replace(":template: 発表", ":template: 紙"))
+            .unwrap();
+        std::fs::write(dir.join("紙.toml"), "[スタイル.本文]\n").unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(dir.join("紙.adoc"));
+            assert_eq!(this.total_pages(), 1, "紙では1枚に収まる(前提)");
+
+            this.open(dir.join("話.adoc"));
+            assert!(this.tmpl.setting.per_section(), "組み方が読めていない: {}", this.status);
+            assert!(this.tmpl.setting.keep, "跨がないが読めていない");
+            assert_eq!(this.total_pages(), 3, "節ごとに1枚になっていない");
+
+            // **見出しと本文が同じ枚に載る。** 枚数だけ合っていても、
+            // 見出しだけの枚と本文だけの枚に割れていたら発表にならない
+            // (2026-08-17、実機で1枚目が見出しだけに見えたので数え直した)
+            let mut 枚 = vec![String::new(); this.total_pages()];
+            for line in &this.page.lines {
+                if !line.from_body {
+                    continue;
+                }
+                let (p, _) = this.page_of_roll(line.y_mm);
+                枚[p].extend(line.cells.iter().map(|c| c.ch));
+            }
+            for (i, 節) in ["ひとつめ", "ふたつめ", "みっつめ"].iter().enumerate() {
+                assert!(枚[i].contains(節), "{}枚目に見出し「{節}」が無い: {枚:?}", i + 1);
+                assert!(枚[i].contains("短い本文。"), "{}枚目に本文が無い: {枚:?}", i + 1);
+            }
         });
         let _ = std::fs::remove_dir_all(&dir);
     }

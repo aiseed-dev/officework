@@ -751,6 +751,14 @@ impl Document {
             Block::Table(_) => None,
         })
     }
+    /// 段落を書ける形で順に見る(表は飛ばす — [`paragraphs`](Self::paragraphs)
+    /// と同じ数え方なので、番号がそのまま通じる)。
+    pub fn paragraphs_mut(&mut self) -> impl Iterator<Item = &mut Paragraph> {
+        self.blocks.iter_mut().filter_map(|b| match b {
+            Block::Para(p) => Some(p),
+            Block::Table(_) => None,
+        })
+    }
     pub fn tables(&self) -> impl Iterator<Item = &Table> {
         self.blocks.iter().filter_map(|b| match b {
             Block::Table(t) => Some(t),

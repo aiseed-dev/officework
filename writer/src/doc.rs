@@ -21,6 +21,59 @@ pub(crate) fn is_plain_ext(e: &str) -> bool {
         .any(|k| e.eq_ignore_ascii_case(k))
 }
 
+/// **組みの姿** — 紙面を1回組むのに要るものだけを持つ小さな器。
+///
+/// `self` を借りずに組めるようにするためにある。発表(跨がない)は写しに
+/// 改ページの印を足しながら**何度も組み直す**ので、その間 `self` の側は
+/// 書ける形でなければならない(2026-08-17)。
+pub(crate) struct Look {
+    pub pg: kumihan::PageSetup,
+    pub vertical: bool,
+    pub 組: kumihan::theme::Setting,
+    pub view_w_px: f32,
+}
+
+impl Look {
+    /// 1回ぶんの組み(合成済みの写し → 紙面)。**組みの本体はここ1箇所**。
+    fn lay_once(&self, src: &Document, m: &Metrics) -> Page {
+        // 段組みなら1段の行長で組み、ページの物理座標へ折る。
+        // 折った後の座標は画面もクリックも PDF もそのまま使える
+        let y0 = self.pg.top_mm + 4.0;
+        let mut page;
+        if self.vertical {
+            // 縦書き: 行長 = 紙の縦の使い幅で組み、右からの列へ写す(K4)
+            let measure = (self.pg.h_mm - self.pg.top_mm - self.pg.bottom_mm - 8.0).max(20.0);
+            page = layout(
+                src,
+                m,
+                &Frame { measure_mm: measure, line_height_mm: LINE_MM, y0_mm: y0 },
+            );
+            kumihan::fold_vertical(&mut page, &self.pg, y0, LINE_MM);
+        } else {
+            // **組み方の3値**(2026-08-16 の決め、2026-08-17 に通した)。
+            // 横幅=可変 なら紙の幅ではなく窓の幅で組み、区切り=なし なら
+            // ページに折らない(1本の流れ = Web の姿)。
+            // 区切り=節(発表)は**合成の側**で見出し1 に改ページの印が
+            // 付いているので、ここでは何もしない — 折り手がそこで割る
+            let measure = if self.組.fluid {
+                // 画面の画素 → mm(紙の幅は使わない)。左右に少し余白を残す
+                ((self.view_w_px / crate::PX_PER_MM) - 16.0).max(40.0)
+            } else {
+                self.pg.column_measure_mm()
+            };
+            page = layout(
+                src,
+                m,
+                &Frame { measure_mm: measure, line_height_mm: LINE_MM, y0_mm: y0 },
+            );
+            if !self.組.endless() {
+                kumihan::fold_columns(&mut page, &self.pg, y0);
+            }
+        }
+        page
+    }
+}
+
 impl Writer {
     pub(crate) fn new(path: Option<PathBuf>, cx: &mut Context<Self>) -> Writer {
         let mut w = Writer {
@@ -145,6 +198,7 @@ impl Writer {
             locked_by: None,
             ink_undo: Vec::new(),
             page_offsets: vec![0.0],
+            page_starts: vec![f32::NEG_INFINITY],
             page_notes: vec![Vec::new()],
             paged: false,
             page_tops: vec![0.0],
@@ -435,51 +489,88 @@ impl Writer {
 
     pub(crate) fn relayout(&mut self) {
         self.flush_target();
-        let m = Metrics::new(&self.font_bytes).expect("フォント");
+        // 字の寸法は **Arc の写しの上**で持つ — 組みの本体(lay_once)は
+        // self を書くので、self を借りたままにできない
+        let fb = self.font_bytes.clone();
+        let m = Metrics::new(&fb).expect("フォント");
         // **画面は常に「本文×テンプレート」の合成**(2026-08-16)。
         // 合成は写しの上で行い、`self.doc`(意味の正本)は触らない —
         // 保存されるのは意味だけ、が守られる。互換の文書は素通し
-        let composed;
-        let src: &Document = if self.native {
-            composed = kumihan::theme::compose(&self.doc, &self.tmpl);
-            &composed
-        } else {
-            &self.doc
-        };
-        // 段組みなら1段の行長で組み、ページの物理座標へ折る。
-        // 折った後の座標は画面もクリックも PDF もそのまま使える
-        let y0 = self.pg.top_mm + 4.0;
-        if self.doc.vertical {
-            // 縦書き: 行長 = 紙の縦の使い幅で組み、右からの列へ写す(K4)
-            let measure =
-                (self.pg.h_mm - self.pg.top_mm - self.pg.bottom_mm - 8.0).max(20.0);
-            self.page = layout(
-                src,
-                &m,
-                &Frame { measure_mm: measure, line_height_mm: LINE_MM, y0_mm: y0 },
-            );
-            kumihan::fold_vertical(&mut self.page, &self.pg, y0, LINE_MM);
-        } else {
-            // **組み方の2値**(2026-08-16 の決め、2026-08-17 に通した)。
-            // 横幅=可変 なら紙の幅ではなく窓の幅で組み、区切り=なし なら
-            // ページに折らない(1本の流れ = Web の姿)
-            let 組 = if self.native { self.tmpl.setting } else { Default::default() };
-            let measure = if 組.fluid {
-                // 画面の画素 → mm(紙の幅は使わない)。左右に少し余白を残す
-                ((self.view_w_px / crate::PX_PER_MM) - 16.0).max(40.0)
-            } else {
-                self.pg.column_measure_mm()
-            };
-            self.page = layout(
-                src,
-                &m,
-                &Frame { measure_mm: measure, line_height_mm: LINE_MM, y0_mm: y0 },
-            );
-            if !組.endless {
-                kumihan::fold_columns(&mut self.page, &self.pg, y0);
+        //
+        // 発表(跨がない)のときだけ、写しに改ページの印を足しながら
+        // 何度か組み直すので、写しは**書ける形**で持つ
+        let mut composed = self.native.then(|| kumihan::theme::compose(&self.doc, &self.tmpl));
+        let 組 = if self.native { self.tmpl.setting } else { Default::default() };
+        let 姿 = Look { pg: self.pg, vertical: self.doc.vertical, 組, view_w_px: self.view_w_px };
+        self.page = 姿.lay_once(composed.as_ref().unwrap_or(&self.doc), &m);
+        self.refresh_hf();
+        // **跨がない**(発表)。折った結果を見て、境をまたいだ段落があれば
+        // 写しにその段落の改ページの印を足し、**折り手に折り直させる**。
+        // refresh_hf の後でないと頁の境が分からない
+        if 組.keep {
+            if let Some(c) = composed.as_mut() {
+                self.keep_paragraphs_whole(c, &m, &姿);
             }
         }
-        self.refresh_hf();
+    }
+
+    /// **段落が枚を跨がないように送る**(発表の組み方)。
+    ///
+    /// 折ってみて、境をまたいだ段落があれば**写しのその段落に改ページの印を
+    /// 付けて組み直す**。自分で頁の高さを数えないのは、本物の折り手
+    /// (脚注が本文の底を上げる)と食い違わないため。1回につき1段落なので、
+    /// 段落の数で必ず止まる。
+    ///
+    /// **印を付けて組み直す**のがこの手の要。組んだ後の `breaks` に境だけ
+    /// 足しても、行は巻物の位置のまま動かない(2026-08-17 の踏み跡)。
+    fn keep_paragraphs_whole(&mut self, c: &mut Document, m: &Metrics, 姿: &Look) {
+        let n = c.paragraphs().count();
+        for _ in 0..n.min(200) {
+            let Some(i) = self.straddling_para(c) else { return };
+            let Some(p) = c.paragraphs_mut().nth(i) else { return };
+            if p.page_break_before {
+                // 既に改めている所で跨いでいる = その段落だけで1枚に
+                // 収まらない。送っても直らないので諦める
+                return;
+            }
+            p.page_break_before = true;
+            self.page = 姿.lay_once(c, m);
+            self.refresh_hf();
+        }
+    }
+
+    /// 頁の境を跨いでいる最初の段落(番号)。無ければ None。
+    fn straddling_para(&self, c: &Document) -> Option<usize> {
+        if self.page_offsets.len() <= 1 {
+            return None;
+        }
+        // 段落の頭のバイト位置(本文の流れ)
+        let mut at = 0usize;
+        let starts: Vec<usize> = c
+            .paragraphs()
+            .map(|p| {
+                let s = at;
+                at += p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
+                s
+            })
+            .collect();
+        for (i, &s) in starts.iter().enumerate() {
+            let e = starts.get(i + 1).copied().unwrap_or(usize::MAX);
+            let mut pages: Vec<usize> = Vec::new();
+            for line in &self.page.lines {
+                if !line.from_body || line.byte0 < s || line.byte0 >= e {
+                    continue;
+                }
+                let (pg, _) = self.page_of_roll(line.y_mm);
+                if !pages.contains(&pg) {
+                    pages.push(pg);
+                }
+            }
+            if pages.len() > 1 {
+                return Some(i);
+            }
+        }
+        None
     }
 
     /// いまの紙面の総頁(紙と同じ折り方で数える)。
@@ -488,8 +579,12 @@ impl Writer {
     }
 
     /// 巻物の y → (ページ, ページの中の y)。筆はページに固定する。
+    ///
+    /// **枚は `page_starts`(その枚の最初の行)で決め、枚の中の位置は
+    /// `page_offsets`(紙の上端)から測る。** 2つの物差しが要るのは、
+    /// 巻物が空きを詰めて流れるため — 詳しくは `page_starts` の註。
     pub(crate) fn page_of_roll(&self, y: f32) -> (usize, f32) {
-        let p = self.page_offsets.iter().rposition(|o| y >= *o - 0.01).unwrap_or(0);
+        let p = self.page_starts.iter().rposition(|s| y >= *s - 0.01).unwrap_or(0);
         (p, y - self.page_offsets.get(p).copied().unwrap_or(0.0))
     }
 
@@ -679,8 +774,9 @@ impl Writer {
         // **区切りなし(Web の組み方)は頁に数えない。** 組み手が折らないのに
         // 数え手だけ折ると、1本のはずの流れが「3ページ」と言われる
         // (2026-08-17 に踏んだ)
-        if self.native && self.tmpl.setting.endless {
+        if self.native && self.tmpl.setting.endless() {
             self.page_offsets = vec![0.0];
+            self.page_starts = vec![f32::NEG_INFINITY];
             self.page_notes.clear();
             self.page_papers.clear();
             self.page_tops.clear();
@@ -694,12 +790,14 @@ impl Writer {
             margin_mm: self.pg.left_mm,
         });
         self.page_offsets = pn.offsets;
+        self.page_starts = pn.starts;
         self.page_notes = pn.notes;
         self.page_papers = pn.papers;
         // 印刷モードは**紙を1枚ずつ積む**。折らないと紙の絵と中身が重なる
         // (頁の間隔は紙の高さより詰まっているため)
         self.page_tops = if self.paged && !self.page.vertical && !self.multipage {
             let offs = self.page_offsets.clone();
+            let sts = self.page_starts.clone();
             let papers: Vec<kumihan::PageSetup> = self.page_papers.iter()
                 .map(|q| kumihan::PageSetup {
                     w_mm: q.width_mm, h_mm: q.height_mm,
@@ -708,7 +806,7 @@ impl Writer {
                     columns: self.pg.columns,
                 })
                 .collect();
-            kumihan::fold_print(&mut self.page, &papers, &offs, PAGE_GAP_MM)
+            kumihan::fold_print(&mut self.page, &papers, &offs, &sts, PAGE_GAP_MM)
         } else {
             vec![0.0]
         };
@@ -716,7 +814,8 @@ impl Writer {
         // (save_pdf は組み直してから写す)。縦書きとは併せない
         if self.multipage && !self.page.vertical {
             let offs = self.page_offsets.clone();
-            kumihan::fold_pages(&mut self.page, &self.pg, &offs, 2, PAGE_GAP_MM);
+            let sts = self.page_starts.clone();
+            kumihan::fold_pages(&mut self.page, &self.pg, &offs, &sts, 2, PAGE_GAP_MM);
         }
         let total = self.total_pages();
         self.header_lines =

@@ -259,7 +259,8 @@ impl Render for Writer {
         const REF_ROWS: &[&[LItem]] = &[&[
             ("toc", Some("目次")), ("toc-update", None), ("add-text", None),
             ("‖", None), ("bookmarks", None), ("caption", None),
-            ("crossref", None), ("‖", None), ("tof", None), ("tof-update", None),
+            ("crossref", None), ("footnote", None),
+            ("‖", None), ("tof", None), ("tof-update", None),
         ]];
         const FORM_ROWS: &[&[LItem]] = &[&[
             ("form-text", None), ("form-combo", None), ("form-dropdown", None),
@@ -290,7 +291,8 @@ impl Render for Writer {
             &[
                 ("‖", None),
                 ("fit-width", Some("幅に合わせる")),
-                ("multipage", Some("複数ページ")), ("zoom-out", None),
+                ("multipage", Some("複数ページ")), ("printview", None),
+                ("zoom-out", None),
                 ("‖", None), ("‖", None),
                 ("‖", None), ("show-statusbar", None), ("show-right", None),
             ],

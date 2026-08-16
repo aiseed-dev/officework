@@ -1752,7 +1752,8 @@ mod fold_print_tests {
     fn 頁ごとに紙の高さで積む() {
         let mut s = Sheet { lines: vec![行(20.0), 行(270.0), 行(530.0)], ..Default::default() };
         // 巻物では 260mm 間隔でも、折れば紙の高さ(+隙間)で積まれる
-        let tops = fold_print(&mut s, &[紙(210.0, 297.0); 3], &[0.0, 260.0, 522.0], 8.0);
+        let tops = fold_print(&mut s, &[紙(210.0, 297.0); 3], &[0.0, 260.0, 522.0],
+                               &[f32::NEG_INFINITY, 270.0, 530.0], 8.0);
         assert_eq!(tops, vec![0.0, 305.0, 610.0], "頁の上端が紙の高さで積まれていない");
         assert_eq!(s.lines[0].y_mm, 20.0, "1頁目の中の位置がずれた");
         assert_eq!(s.lines[1].y_mm, 305.0 + 10.0, "2頁目の中の位置がずれた");
@@ -1764,7 +1765,7 @@ mod fold_print_tests {
     fn 紙の高さが頁ごとに違ってもよい() {
         let mut s = Sheet { lines: vec![行(20.0), 行(270.0)], ..Default::default() };
         let tops = fold_print(&mut s, &[紙(210.0, 297.0), 紙(297.0, 210.0)],
-                              &[0.0, 260.0], 8.0);
+                              &[0.0, 260.0], &[f32::NEG_INFINITY, 270.0], 8.0);
         assert_eq!(tops, vec![0.0, 305.0], "縦の紙の高さで積んでいない");
         assert_eq!(s.lines[1].y_mm, 315.0);
     }
@@ -1773,7 +1774,7 @@ mod fold_print_tests {
     #[test]
     fn 一頁なら動かさない() {
         let mut s = Sheet { lines: vec![行(20.0), 行(100.0)], ..Default::default() };
-        let tops = fold_print(&mut s, &[紙(210.0, 297.0)], &[0.0], 8.0);
+        let tops = fold_print(&mut s, &[紙(210.0, 297.0)], &[0.0], &[f32::NEG_INFINITY], 8.0);
         assert_eq!(tops, vec![0.0]);
         assert_eq!(s.lines[0].y_mm, 20.0);
         assert_eq!(s.lines[1].y_mm, 100.0);
@@ -1788,15 +1789,32 @@ mod fold_print_tests {
             notes: vec![NoteBlock { no: 1, at_y: 270.0, lines: vec![], h_mm: 5.0 }],
             ..Default::default()
         };
-        fold_print(&mut s, &[紙(210.0, 297.0); 2], &[0.0, 260.0], 8.0);
+        fold_print(&mut s, &[紙(210.0, 297.0); 2], &[0.0, 260.0],
+                   &[f32::NEG_INFINITY, 270.0], 8.0);
         assert_eq!(s.notes[0].at_y, 315.0, "脚注の目印が巻物のまま");
+    }
+
+    /// **頁は「その頁の最初の行」で分ける** — 紙の上端(offsets)は最初の行より
+    /// 余白ぶん上にあるので、境に使うと**前の頁の末尾が次の頁へ化ける**。
+    /// 巻物は空きを詰めて流れるので、上端は前の頁の終わりより手前に来る
+    /// (2026-08-17、発表の組み方で踏んだ)
+    #[test]
+    fn 紙の上端ではなく最初の行で頁を分ける() {
+        // 1頁目は 20 と 270、2頁目は 280 から。2頁目の紙の上端は 260 で、
+        // 270 の行より**上**にある
+        let mut s = Sheet { lines: vec![行(20.0), 行(270.0), 行(280.0)], ..Default::default() };
+        let tops = fold_print(&mut s, &[紙(210.0, 297.0); 2], &[0.0, 260.0],
+                              &[f32::NEG_INFINITY, 280.0], 8.0);
+        assert_eq!(s.lines[1].y_mm, 270.0, "1頁目の末尾が次の頁へ化けた");
+        assert_eq!(s.lines[2].y_mm, tops[1] + 20.0, "2頁目の頭がずれた");
     }
 
     /// 折ったら**頁の切れ目**もその位置に置き直す(紙に写す側が見る)
     #[test]
     fn 切れ目を置き直す() {
         let mut s = Sheet { lines: vec![行(20.0), 行(270.0)], ..Default::default() };
-        fold_print(&mut s, &[紙(210.0, 297.0); 2], &[0.0, 260.0], 8.0);
+        fold_print(&mut s, &[紙(210.0, 297.0); 2], &[0.0, 260.0],
+                   &[f32::NEG_INFINITY, 270.0], 8.0);
         assert_eq!(s.breaks, vec![305.0], "切れ目が折った後の位置になっていない");
     }
 }

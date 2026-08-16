@@ -902,6 +902,7 @@ mod image_tests {
                 w_mm: 40.0,
                 h_mm: 30.0,
                 tex: None,
+                src: None,
             });
         }
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
@@ -926,6 +927,7 @@ mod image_tests {
                 w_mm: 40.0,
                 h_mm: 30.0,
                 tex: None,
+                src: None,
             });
         }
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
