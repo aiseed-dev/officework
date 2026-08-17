@@ -93,7 +93,28 @@ pub struct Theme {
     pub size_pt: Option<f32>,
     /// ページ設定(`[ページ]`)。`None` はテンプレートが指定しない
     pub page: Option<PageSetup>,
+    /// 記入欄の送り先(`[送り先]`)。アプリの形で書き出すときに使います。
+    /// **どこへ送るかも見た目と同じくテンプレートの持ち物**です — 同じ
+    /// 記入用紙を、試験の宛先と本番の宛先で使い分けられます
+    pub submit: Option<Submit>,
     pub styles: Vec<StyleDef>,
+}
+
+/// 記入した内容の送り先。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Submit {
+    /// 送り先(`action`)
+    pub action: String,
+    /// 送り方。`"post"` か `"get"`
+    pub method: String,
+    /// 送るボタンの文字
+    pub label: String,
+}
+
+impl Default for Submit {
+    fn default() -> Self {
+        Self { action: String::new(), method: "post".into(), label: "送信".into() }
+    }
 }
 
 impl Theme {
@@ -148,6 +169,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
     let mut th = Theme::default();
     // いま居る節。None = 頭(節の外)
     enum Sec {
+        Submit,
         Setting,
         Doc,
         Page,
@@ -161,7 +183,10 @@ pub fn parse(src: &str) -> Result<Theme, String> {
         }
         if let Some(name) = line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
             let name = name.trim();
-            cur = Some(if name == "組み方" || name.eq_ignore_ascii_case("layout") {
+            cur = Some(if name == "送り先" || name.eq_ignore_ascii_case("submit") {
+                th.submit.get_or_insert_with(Default::default);
+                Sec::Submit
+            } else if name == "組み方" || name.eq_ignore_ascii_case("layout") {
                 Sec::Setting
             } else if name == "文書" || name.eq_ignore_ascii_case("document") {
                 Sec::Doc
@@ -200,6 +225,22 @@ pub fn parse(src: &str) -> Result<Theme, String> {
         };
         match &cur {
             None => return Err(format!("{} 行目: 節の外に鍵があります: {k}", ln + 1)),
+            Some(Sec::Submit) => {
+                let v2 = s(v)?;
+                let sub = th.submit.get_or_insert_with(Default::default);
+                match k {
+                    "宛先" | "action" => sub.action = v2,
+                    "送り方" | "method" => {
+                        let m = v2.to_ascii_lowercase();
+                        if m != "post" && m != "get" {
+                            return Err(format!("{} 行目: 送り方は post か get: {m}", ln + 1));
+                        }
+                        sub.method = m;
+                    }
+                    "ボタン" | "label" => sub.label = v2,
+                    _ => return Err(format!("{} 行目: [送り先] の知らない鍵: {k}", ln + 1)),
+                }
+            }
             Some(Sec::Setting) => match k {
                 "横幅" | "width" => {
                     th.setting.fluid = match s(v)?.as_str() {

@@ -15,7 +15,7 @@
 //! 読む側は [`crate::html`] にあります。あちらは他所の HTML を受ける口で、
 //! こちらは自分の文書を出す口です。
 
-use crate::doc::{Align, Block, Document, ListKind, ParaStyle, Run};
+use crate::doc::{Align, Block, Document, ListKind, ParaStyle, Run, Sdt, SdtKind};
 use crate::theme::{StyleDef, Theme};
 
 /// 出来上がりの HTML。`css` は別ファイルにも埋め込みにも使えます。
@@ -58,6 +58,10 @@ fn class_of(name: &str) -> String {
 
 /// run 1つを HTML に。**太字と斜体は意味**なので `strong` / `em` で出します。
 fn run_html(r: &Run) -> String {
+    // 記入欄は**その場**に出します。周りの字と並ぶのが記入用紙の形です
+    if let Some(sdt) = &r.fmt.sdt {
+        return field_html(sdt);
+    }
     let mut s = esc(&r.text);
     if let Some(name) = &r.fmt.style_id {
         s = format!("<span class=\"{}\">{s}</span>", class_of(name));
@@ -86,6 +90,77 @@ fn run_html(r: &Run) -> String {
 
 fn runs_html(runs: &[Run]) -> String {
     runs.iter().map(run_html).collect()
+}
+
+/// 記入欄1つ → HTML の入力欄。
+///
+/// **名前は `tag`(機械で引く名前)を使います。** 画面に出す名前(`alias`)は
+/// 人が読むためのもので、送られる側が見るのは `tag` です。docx の記入欄も
+/// 同じ分け方をしています。
+fn field_html(s: &Sdt) -> String {
+    let name = esc(if s.tag.is_empty() { &s.alias } else { &s.tag });
+    let label = esc(if s.alias.is_empty() { &s.tag } else { &s.alias });
+    let id = format!("f-{name}");
+    let input = match s.kind {
+        SdtKind::Dropdown | SdtKind::Combo => {
+            let opts: String = s
+                .items
+                .iter()
+                .map(|o| format!("<option>{}</option>", esc(o)))
+                .collect();
+            // コンボは打つこともできるので、選択肢を候補として添えます
+            if s.kind == SdtKind::Combo {
+                format!(
+                    "<input id=\"{id}\" name=\"{name}\" list=\"l-{name}\">\
+                     <datalist id=\"l-{name}\">{opts}</datalist>"
+                )
+            } else {
+                format!("<select id=\"{id}\" name=\"{name}\">{opts}</select>")
+            }
+        }
+        SdtKind::Checkbox => {
+            format!("<input id=\"{id}\" name=\"{name}\" type=\"checkbox\">")
+        }
+        SdtKind::Date => format!("<input id=\"{id}\" name=\"{name}\" type=\"date\">"),
+        SdtKind::Email => format!("<input id=\"{id}\" name=\"{name}\" type=\"email\">"),
+        SdtKind::Phone => format!("<input id=\"{id}\" name=\"{name}\" type=\"tel\">"),
+        SdtKind::Picture => {
+            format!("<input id=\"{id}\" name=\"{name}\" type=\"file\" accept=\"image/*\">")
+        }
+        // 複数行と署名は、いまは自由記入として出します。署名の絵を描かせる
+        // 部品は持っていないので、**無い機能を有るように見せません**
+        SdtKind::Complex | SdtKind::Signature => {
+            format!("<textarea id=\"{id}\" name=\"{name}\" rows=\"3\"></textarea>")
+        }
+        SdtKind::Text => format!("<input id=\"{id}\" name=\"{name}\">"),
+    };
+    format!("<label class=\"field\" for=\"{id}\">{label}</label>{input}")
+}
+
+/// 文書の中の記入欄を、出てくる順に集めます。
+pub fn fields(doc: &Document) -> Vec<Sdt> {
+    let mut v = Vec::new();
+    for b in &doc.blocks {
+        let paras: Vec<_> = match b {
+            Block::Para(p) => vec![p],
+            Block::Table(t) => t
+                .rows
+                .iter()
+                .flat_map(|r| r.iter())
+                .flat_map(|c| c.paragraphs.iter())
+                .collect(),
+        };
+        for p in paras {
+            for r in &p.runs {
+                if let Some(s) = &r.fmt.sdt {
+                    if !v.iter().any(|x: &Sdt| x.tag == s.tag && x.alias == s.alias) {
+                        v.push((**s).clone());
+                    }
+                }
+            }
+        }
+    }
+    v
 }
 
 /// 段落の役割 → タグ。
@@ -281,6 +356,9 @@ pub fn body(doc: &Document) -> String {
 }
 
 /// 文書とテンプレート → 1枚の HTML(CSS は `<style>` に入れます)。
+///
+/// テンプレートに `[送り先]` があり、文書に記入欄があれば、本文ごと
+/// `<form>` で包んで送るボタンを付けます(**アプリの形**)。
 pub fn page(doc: &Document, th: &Theme) -> Page {
     let css = css(th, !doc.props.title.is_empty());
     let title = if doc.props.title.is_empty() {
@@ -293,7 +371,25 @@ pub fn page(doc: &Document, th: &Theme) -> Page {
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
          <title>{}</title>\n<style>\n{css}</style>\n</head>\n<body>\n{}</body>\n</html>\n",
         esc(&title),
-        body(doc)
+        wrap_form(doc, th)
     );
     Page { html, css }
+}
+
+/// 記入欄があり、送り先も決まっていれば `<form>` で包みます。
+///
+/// **どちらか欠けたら包みません。** 送り先の無い form は押しても何も
+/// 起きないので、出来ないことを出来るように見せないためです。
+fn wrap_form(doc: &Document, th: &Theme) -> String {
+    let inner = body(doc);
+    let Some(sub) = &th.submit else { return inner };
+    if sub.action.is_empty() || fields(doc).is_empty() {
+        return inner;
+    }
+    format!(
+        "<form action=\"{}\" method=\"{}\">\n{inner}<p><button type=\"submit\">{}</button></p>\n</form>\n",
+        esc(&sub.action),
+        esc(&sub.method),
+        esc(&sub.label)
+    )
 }

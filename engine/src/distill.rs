@@ -169,6 +169,7 @@ pub fn distill(doc: &Document) -> (Document, Theme, Report) {
         size_pt: base.size_c.map(|c| c as f32 / 100.0),
         page: doc.page,
         styles: Vec::new(),
+            submit: None,
     };
     // 並びは文書に出てくる順(読む人が追える)
     let mut seen: Vec<&Look> = Vec::new();

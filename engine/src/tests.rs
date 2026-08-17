@@ -1883,6 +1883,84 @@ mod html_write_tests {
         assert!(p.html.starts_with("<!DOCTYPE html>"), "宣言が無い");
     }
 
+    /// **記入欄が adoc で往復する。** 意味だけの本文に書けなければ、
+    /// アプリの形にできません(2026-08-17)。
+    #[test]
+    fn 記入欄がadocで往復する() {
+        use crate::{adoc, doc::SdtKind as K};
+        let src = "= 申し込み\n\n\
+                   field:name[お名前]\n\n\
+                   field:addr[ご住所,複数行]\n\n\
+                   field:kind[参加区分,選ぶ:一般|学生]\n\n\
+                   field:day[希望日,日付]\n";
+        let d = adoc::parse(src).expect("読めない");
+        let got: Vec<_> = html_write::fields(&d)
+            .into_iter()
+            .map(|s| (s.tag, s.alias, s.kind, s.items))
+            .collect();
+        assert_eq!(
+            got,
+            vec![
+                ("name".into(), "お名前".into(), K::Text, vec![]),
+                ("addr".into(), "ご住所".into(), K::Complex, vec![]),
+                ("kind".into(), "参加区分".into(), K::Dropdown,
+                 vec!["一般".to_string(), "学生".to_string()]),
+                ("day".into(), "希望日".into(), K::Date, vec![]),
+            ]
+        );
+        // 書き戻すと元の字に戻る
+        assert_eq!(adoc::write(&d), src, "往復していない");
+    }
+
+    /// **記入欄は form になる**(アプリビルダーの土台)。
+    #[test]
+    fn 記入欄がformになる() {
+        use crate::doc::{CharFormat, Document, Paragraph, Run, Sdt, SdtKind};
+        let mut d = Document::default();
+        let mut p = Paragraph::default();
+        for (alias, tag, kind, items) in [
+            ("お名前", "name", SdtKind::Text, vec![]),
+            ("ご住所", "addr", SdtKind::Complex, vec![]),
+            ("参加区分", "kind", SdtKind::Dropdown, vec!["一般".to_string(), "学生".to_string()]),
+            ("希望日", "date", SdtKind::Date, vec![]),
+        ] {
+            p.runs.push(Run {
+                text: String::new(),
+                size_pt: None,
+                font: None,
+                fmt: CharFormat {
+                    sdt: Some(Box::new(Sdt {
+                        kind,
+                        alias: alias.into(),
+                        tag: tag.into(),
+                        items,
+                    })),
+                    ..Default::default()
+                },
+            });
+        }
+        d.push_para(p);
+
+        // 送り先があれば form で包む
+        let th = theme::parse(
+            "[送り先]\n宛先 = \"https://例.jp/受付\"\n送り方 = \"post\"\nボタン = \"申し込む\"\n",
+        )
+        .unwrap();
+        let h = html_write::page(&d, &th).html;
+        assert!(h.contains("<form action=\"https://例.jp/受付\" method=\"post\">"), "form が無い:\n{h}");
+        assert!(h.contains("name=\"name\""), "名前の欄が無い");
+        assert!(h.contains("<textarea"), "複数行の欄が無い");
+        assert!(h.contains("<select"), "選ぶ欄が無い");
+        assert!(h.contains("type=\"date\""), "日付の欄が無い");
+        assert!(h.contains("申し込む</button>"), "送るボタンが無い");
+
+        // **送り先が無ければ包まない。** 押しても何も起きない form は出さない
+        let 素 = theme::parse("[スタイル.本文]\n大きさ = 11\n").unwrap();
+        let h2 = html_write::page(&d, &素).html;
+        assert!(!h2.contains("<form"), "送り先が無いのに form を出した:\n{h2}");
+        assert!(h2.contains("name=\"name\""), "欄そのものは出るはず");
+    }
+
     /// 逃がし忘れると、本文の `<` でページが壊れます。
     #[test]
     fn 記号を逃がす() {

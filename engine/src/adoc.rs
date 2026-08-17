@@ -16,8 +16,11 @@
 //!   往復には影響しない
 //! - 表のセルは1行=1行(docx の縦結合は `.N+`、横結合は `N+` の頭書き)
 //! - ルビは自前のインライン `ruby:字[よみ]`(AsciiDoc に無い。規約)
-//! - 記入欄(sdt)・ペン・変更履歴は**ここに無い** — 互換モード(docx)の
-//!   機能(SEKKEI の決め。歴史とコメントは git)
+//! - 記入欄は `field:タグ[表示名,種類]`(2026-08-17 に足した)。**記入欄は
+//!   意味**です — 「ここに名前を書く」という指示であって見た目ではないので、
+//!   意味だけの本文に書けます。アプリの形(HTML の form)で書き出す土台
+//! - ペン・変更履歴は**ここに無い** — 互換モード(docx)の機能
+//!   (SEKKEI の決め。歴史とコメントは git)
 
 use crate::doc::{
     Block, Cellbox, CharFormat, Document, Footnote, FootnoteRef, InlineImage, ListKind,
@@ -172,7 +175,9 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             None => (String::new(), ""),
         };
         s.push_str(&open);
-        if let Some(ruby) = &r.fmt.ruby {
+        if let Some(sdt) = &r.fmt.sdt {
+            s.push_str(&field_src(sdt));
+        } else if let Some(ruby) = &r.fmt.ruby {
             s.push_str(&format!("ruby:{}[{}]", esc(&r.text), ruby));
         } else if let Some(url) = &r.fmt.link {
             s.push_str(&format!("{url}[{}]", esc(&r.text)));
@@ -212,6 +217,61 @@ fn esc(t: &str) -> String {
         s.push(c);
     }
     s
+}
+
+/// 記入欄の `[…]` の中身 → (表示名, 種類, 選択肢)。
+///
+/// 種類の名前は日本語で書きます。知らない名前は**文字の欄として扱い、
+/// 黙って捨てません**(表示名の一部として残ります)。
+fn parse_field(s: &str) -> (String, crate::doc::SdtKind, Vec<String>) {
+    use crate::doc::SdtKind as K;
+    let mut items = Vec::new();
+    let (alias, rest) = match s.split_once(',') {
+        Some((a, r)) => (a.trim().to_string(), r.trim()),
+        None => (s.trim().to_string(), ""),
+    };
+    if let Some(list) = rest.strip_prefix("選ぶ:").or_else(|| rest.strip_prefix("打てる選ぶ:")) {
+        items = list.split('|').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect();
+        let k = if rest.starts_with("打てる選ぶ") { K::Combo } else { K::Dropdown };
+        return (alias, k, items);
+    }
+    let kind = match rest {
+        "複数行" => K::Complex,
+        "チェック" => K::Checkbox,
+        "日付" => K::Date,
+        "メール" => K::Email,
+        "電話" => K::Phone,
+        "画像" => K::Picture,
+        "署名" => K::Signature,
+        _ => K::Text,
+    };
+    // 知らない種類は表示名に戻します(黙って落とさない)
+    let alias = if kind == K::Text && !rest.is_empty() && rest != "文字" {
+        format!("{alias},{rest}")
+    } else {
+        alias
+    };
+    (alias, kind, items)
+}
+
+/// 記入欄 → `field:…[…]` の字。読み手と対になります。
+fn field_src(s: &crate::doc::Sdt) -> String {
+    use crate::doc::SdtKind as K;
+    let mut o = format!("field:{}[{}", s.tag, s.alias);
+    match s.kind {
+        K::Text => {}
+        K::Dropdown => o.push_str(&format!(",選ぶ:{}", s.items.join("|"))),
+        K::Combo => o.push_str(&format!(",打てる選ぶ:{}", s.items.join("|"))),
+        K::Complex => o.push_str(",複数行"),
+        K::Checkbox => o.push_str(",チェック"),
+        K::Date => o.push_str(",日付"),
+        K::Email => o.push_str(",メール"),
+        K::Phone => o.push_str(",電話"),
+        K::Picture => o.push_str(",画像"),
+        K::Signature => o.push_str(",署名"),
+    }
+    o.push(']');
+    o
 }
 
 /// そのセルの格子の列(左のセルの span の和)
@@ -568,6 +628,27 @@ fn parse_inline(
             runs.push(Run { text: String::new(), size_pt: None, font: None, fmt });
             i += "footnote:[".len() + end + 1;
             continue;
+        }
+        // 記入欄。`field:タグ[表示名]` / `field:タグ[表示名,種類]` /
+        // `field:タグ[表示名,選ぶ:一般|学生]`
+        //
+        // **記入欄は意味です。** 「ここに名前を書く」という指示であって
+        // 見た目ではないので、意味だけの本文に書けます(2026-08-17。
+        // アプリの形で書き出すときの土台)。
+        if let Some(after) = rest.strip_prefix("field:") {
+            if let Some(open) = after.find('[') {
+                if let Some(close) = after[open..].find(']') {
+                    flush(&mut runs, &mut cur, bold, italic);
+                    let tag = after[..open].to_string();
+                    let 中 = &after[open + 1..open + close];
+                    let (alias, kind, items) = parse_field(中);
+                    let mut fmt = CharFormat::default();
+                    fmt.sdt = Some(Box::new(crate::doc::Sdt { kind, alias, tag, items }));
+                    runs.push(Run { text: String::new(), size_pt: None, font: None, fmt });
+                    i += "field:".len() + open + close + 1;
+                    continue;
+                }
+            }
         }
         if let Some(after) = rest.strip_prefix("ruby:") {
             if let Some(open) = after.find('[') {
