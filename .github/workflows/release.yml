@@ -130,14 +130,38 @@ jobs:
     needs: [linux, macos, windows]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         with:
           path: dist
+      - name: 名前と中身を決める
+        # **タグを明に決める。** 手で回したとき(workflow_dispatch)の
+        # `github.ref` は枝なので、任せると **`main` という名前の Release**
+        # が出来る(2026-08-17 に実際に出来た)。タグから来たときはその名前、
+        # 手で回したときは版から `app-v…` を組む。
+        #
+        # あわせて **署名なしの物が混ざっていたら下書きに落とす** —
+        # 説明文は「署名と公証つき」と言うので、そのまま公開すると嘘になる
+        id: meta
+        run: |
+          VER=$(grep -m1 '^version' calc/Cargo.toml | cut -d'"' -f2)
+          if [ "${GITHUB_REF#refs/tags/}" != "$GITHUB_REF" ]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=app-v$VER" >> "$GITHUB_OUTPUT"
+          fi
+          if ls dist/**/*-unsigned* > /dev/null 2>&1; then
+            echo "::warning::署名なしの物が混ざっています — 下書きのままにします"
+            echo "unsigned=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "unsigned=0" >> "$GITHUB_OUTPUT"
+          fi
       - name: 置く
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.meta.outputs.tag }}
           files: dist/**/*
-          draft: ${{ inputs.draft != false }}
+          draft: ${{ inputs.draft != false || steps.meta.outputs.unsigned == '1' }}
           generate_release_notes: true
           body: |
             ## officework — アルファ版

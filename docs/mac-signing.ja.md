@@ -299,6 +299,17 @@ xattr -p com.apple.quarantine ~/Downloads/officework-*.dmg
 
 下書きの Release は Releases の画面から消せる。残していても公開はされない。
 
+**間違って公開した / 名前が変な Release になったとき**も、消せば済む。
+中身(タグ)ごと消すには:
+
+```sh
+gh release delete <名前> --cleanup-tag --yes
+```
+
+> 2026-08-17 に一度、**`main` という名前の Release** が出来た。手で回した
+> ときの `github.ref` は枝なので、任せると枝の名前がタグになる。
+> いまはワークフローが**版から `app-v…` を組む**ので起きない。
+
 ---
 
 ## D. 手元の Mac で作る(下ごしらえの前に試すなら)
