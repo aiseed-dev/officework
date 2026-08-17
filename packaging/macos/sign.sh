@@ -1,65 +1,96 @@
 #!/usr/bin/env bash
 # macOS の署名と公証。**Developer ID の直配布**用(Mac App Store ではない)。
 #
-#   packaging/macos/sign.sh keychain          鍵を一時の keychain に入れる
+#   packaging/macos/sign.sh keychain          署名に使う証明書を決める
 #   packaging/macos/sign.sh app <path.app>    .app を中から外へ署名する
 #   packaging/macos/sign.sh notarize <file>   公証して staple する(.zip / .dmg)
 #   packaging/macos/sign.sh dmg <file.dmg>    .dmg 自身に署名する
 #   packaging/macos/sign.sh verify <file.dmg> 出来上がりを確かめる
 #
-# **要る秘密**(GitHub の Secrets。中身はどこにも出さない):
+# **2つの機械で同じ物が走る。** 要る物が違うだけ。
+#
+# ## 手元の Mac(簡単な方)— 渡す物はほぼ無い
+#
+#   鍵は既にその Mac の鍵束に居るので、**.p12 に書き出す必要が無い**。
+#   書き出しが要るのは、鍵の無い機械(CI)へ持っていくときだけ。
+#   公証の資格だけ一度貯めておく:
+#
+#     xcrun notarytool store-credentials officework \
+#       --key AuthKey_XXXX.p8 --key-id XXXX --issuer XXXX-…
+#
+#   以後は `export MAC_NOTARY_PROFILE=officework` だけでよい。
+#
+# ## CI(自動にしたくなったら)— Secrets で渡す
+#
 #   MAC_CERT_P12         Developer ID Application の .p12 を base64 にした物
 #   MAC_CERT_PASSWORD    その .p12 の合言葉
 #   MAC_API_KEY_P8       App Store Connect API キー(.p8)を base64 にした物
 #   MAC_API_KEY_ID       その Key ID
 #   MAC_API_ISSUER_ID    その Issuer ID
 #
-# **要るとは限らない物**:
+# ## どちらでも、要るとは限らない物
+#
 #   MAC_SIGN_IDENTITY    使う証明書の SHA-1。鍵束に Developer ID Application が
 #                        2枚以上あるときだけ要る(1枚なら自分で見つける)
 #
 # 手順書は docs/mac-signing.ja.md。
 #
 # **なぜ台本にするか**: ワークフローに直書きすると読む人が居なくなる。
-# ここなら手元の Mac でも同じ物が走る(発注者は実機を持っている)。
+# ここなら手元の Mac でも同じ物が走る。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 ENTITLEMENTS="$ROOT/packaging/macos/entitlements.plist"
-KEYCHAIN="${RUNNER_TEMP:-/tmp}/officework-sign.keychain-db"
+# 使い捨ての鍵束(CI で .p12 を入れるときだけ作る)
+TMP_KEYCHAIN="${RUNNER_TEMP:-/tmp}/officework-sign.keychain-db"
+# 決めた証明書の置き場(段をまたいで渡すため)
+IDFILE="${TMPDIR:-/tmp}/officework-sign-identity"
 
 die() { echo "❌ $*" >&2; exit 1; }
 
-# ---- 鍵を入れる -------------------------------------------------------------
+# codesign に渡す鍵束の指定。手元の Mac では**空**(既定の鍵束を使う)
+keychain_args() {
+  if [ -f "$TMP_KEYCHAIN" ]; then printf '%s\n%s\n' --keychain "$TMP_KEYCHAIN"; fi
+}
+
+# ---- 署名に使う証明書を決める -----------------------------------------------
 
 cmd_keychain() {
-  [ -n "${MAC_CERT_P12:-}" ] || die "MAC_CERT_P12 がありません(docs/mac-signing.ja.md)"
-  [ -n "${MAC_CERT_PASSWORD:-}" ] || die "MAC_CERT_PASSWORD がありません"
+  local where=""
+  if [ -n "${MAC_CERT_P12:-}" ]; then
+    # **CI の道**: 渡された .p12 を使い捨ての鍵束に入れる。
+    # login.keychain を触らないので、手元の Mac で走らせても汚さない
+    [ -n "${MAC_CERT_PASSWORD:-}" ] || die "MAC_CERT_PASSWORD がありません"
+    local kp
+    kp="$(uuidgen)"
+    security delete-keychain "$TMP_KEYCHAIN" 2>/dev/null || true
+    security create-keychain -p "$kp" "$TMP_KEYCHAIN"
+    security set-keychain-settings -lut 21600 "$TMP_KEYCHAIN"
+    security unlock-keychain -p "$kp" "$TMP_KEYCHAIN"
 
-  # **使い捨ての keychain。** login.keychain を触らない(手元の Mac で
-  # 走らせても、その機械の鍵束を汚さない)。合言葉はその場で作って捨てる
-  local kp
-  kp="$(uuidgen)"
-  security delete-keychain "$KEYCHAIN" 2>/dev/null || true
-  security create-keychain -p "$kp" "$KEYCHAIN"
-  security set-keychain-settings -lut 21600 "$KEYCHAIN"
-  security unlock-keychain -p "$kp" "$KEYCHAIN"
+    # **`-d` を使う**(`--decode` ではない)。macOS の base64 は BSD 系で、
+    # GNU 風の長い綴りが通るとは限らない。-d はどちらの機械でも通る
+    local p12="${RUNNER_TEMP:-/tmp}/cert.p12"
+    printf '%s' "$MAC_CERT_P12" | base64 -d > "$p12"
+    security import "$p12" -k "$TMP_KEYCHAIN" -P "$MAC_CERT_PASSWORD" \
+      -T /usr/bin/codesign -T /usr/bin/security
+    rm -f "$p12"
+    # codesign が合言葉を聞かずに鍵を使えるようにする(聞かれると CI が止まる)
+    security set-key-partition-list -S apple-tool:,apple:,codesign: \
+      -s -k "$kp" "$TMP_KEYCHAIN" > /dev/null
+    security list-keychain -d user -s "$TMP_KEYCHAIN" \
+      "$(security default-keychain | tr -d ' "')"
+    where="$TMP_KEYCHAIN"
+  else
+    # **手元の Mac の道**: 鍵は既にこの機械の鍵束に居る。
+    # **.p12 に書き出す必要は無い**
+    rm -f "$TMP_KEYCHAIN" 2>/dev/null || true
+    echo "この機械の鍵束を使います(.p12 は要りません)"
+  fi
 
-  # **`-d` を使う**(`--decode` ではない)。macOS の base64 は BSD 系で、
-  # GNU 風の長い綴りが通るとは限らない。-d はどちらの機械でも通る
-  local p12="${RUNNER_TEMP:-/tmp}/cert.p12"
-  printf '%s' "$MAC_CERT_P12" | base64 -d > "$p12"
-  security import "$p12" -k "$KEYCHAIN" -P "$MAC_CERT_PASSWORD" \
-    -T /usr/bin/codesign -T /usr/bin/security
-  rm -f "$p12"
-
-  # codesign が合言葉を聞かずに鍵を使えるようにする(聞かれると CI が止まる)
-  security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$kp" "$KEYCHAIN" > /dev/null
-  security list-keychain -d user -s "$KEYCHAIN" "$(security default-keychain | tr -d ' "')"
-
-  # 識別子(SHA-1)。**これは秘密ではない** — 署名した物から誰でも読める
   local found n ident
-  found="$(security find-identity -v -p codesigning "$KEYCHAIN" \
+  # shellcheck disable=SC2086  # $where は「無指定」も表したいので括らない
+  found="$(security find-identity -v -p codesigning $where \
            | grep "Developer ID Application" || true)"
   n="$(printf '%s' "$found" | grep -c . || true)"
 
@@ -67,7 +98,7 @@ cmd_keychain() {
     # 名指しがあればそれに従う(2枚以上ある鍵束で、どれを使うか決めた場合)
     ident="$MAC_SIGN_IDENTITY"
   elif [ "$n" -eq 0 ]; then
-    die "Developer ID Application の証明書が鍵束にありません(docs/mac-signing.ja.md の 0)"
+    die "Developer ID Application の証明書がありません(docs/mac-signing.ja.md の 0)"
   elif [ "$n" -gt 1 ]; then
     # **黙って選ばない。** 更新して古い物が残っている・別チームの物が
     # 混ざっている、のどちらでも「どちらで署名したか分からない物」が
@@ -82,6 +113,17 @@ cmd_keychain() {
   if [ -n "${GITHUB_ENV:-}" ]; then
     echo "SIGN_IDENTITY=$ident" >> "$GITHUB_ENV"
   fi
+  printf '%s' "$ident" > "$IDFILE"
+}
+
+identity() {
+  if [ -n "${SIGN_IDENTITY:-}" ]; then
+    printf '%s' "$SIGN_IDENTITY"
+  elif [ -s "$IDFILE" ]; then
+    cat "$IDFILE"
+  else
+    die "先に sign.sh keychain を走らせてください"
+  fi
 }
 
 # ---- .app を署名する --------------------------------------------------------
@@ -94,9 +136,11 @@ is_macho() { file -b "$1" | grep -q "Mach-O"; }
 is_exec() { file -b "$1" | grep -q "Mach-O.*executable"; }
 
 cmd_app() {
-  local app="$1"
+  local app="$1" id
   [ -d "$app" ] || die "$app がありません"
-  [ -n "${SIGN_IDENTITY:-}" ] || die "SIGN_IDENTITY がありません(先に keychain を)"
+  id="$(identity)"
+  local kc=()
+  while IFS= read -r a; do kc+=("$a"); done < <(keychain_args)
 
   # **中から外へ。** 包みを先に署名すると、後から中を触った時点で壊れる
   local n=0
@@ -108,12 +152,12 @@ cmd_app() {
     if is_exec "$f"; then
       codesign --force --timestamp --options runtime \
         --entitlements "$ENTITLEMENTS" \
-        --keychain "$KEYCHAIN" -s "$SIGN_IDENTITY" "$f" \
+        ${kc[@]+"${kc[@]}"} -s "$id" "$f" \
         2> >(grep -v "replacing existing signature" >&2)
     else
       # ライブラリ(.dylib / .so)は自分では走らないので権利は要らない
       codesign --force --timestamp --options runtime \
-        --keychain "$KEYCHAIN" -s "$SIGN_IDENTITY" "$f" \
+        ${kc[@]+"${kc[@]}"} -s "$id" "$f" \
         2> >(grep -v "replacing existing signature" >&2)
     fi
     n=$((n + 1))
@@ -122,7 +166,7 @@ cmd_app() {
   # 最後に包みそのもの
   codesign --force --timestamp --options runtime \
     --entitlements "$ENTITLEMENTS" \
-    --keychain "$KEYCHAIN" -s "$SIGN_IDENTITY" "$app"
+    ${kc[@]+"${kc[@]}"} -s "$id" "$app"
 
   codesign --verify --strict --verbose=2 "$app"
   echo "署名しました: $app(中の Mach-O $n 個 + 包み)"
@@ -130,27 +174,38 @@ cmd_app() {
 
 # ---- 公証 -------------------------------------------------------------------
 
+P8="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/asc.p8"
+
+# notarytool に渡す資格。手元は鍵束に貯めた名前1つ、CI は .p8 の3つ組
+notary_args() {
+  if [ -n "${MAC_NOTARY_PROFILE:-}" ]; then
+    printf '%s\n%s\n' --keychain-profile "$MAC_NOTARY_PROFILE"
+    return
+  fi
+  for v in MAC_API_KEY_P8 MAC_API_KEY_ID MAC_API_ISSUER_ID; do
+    [ -n "${!v:-}" ] || die "MAC_NOTARY_PROFILE も $v もありません(docs/mac-signing.ja.md の 3)"
+  done
+  printf '%s' "$MAC_API_KEY_P8" | base64 -d > "$P8"
+  printf '%s\n%s\n%s\n%s\n%s\n%s\n' \
+    --key "$P8" --key-id "$MAC_API_KEY_ID" --issuer "$MAC_API_ISSUER_ID"
+}
+
 cmd_notarize() {
   local f="$1"
   [ -e "$f" ] || die "$f がありません"
-  for v in MAC_API_KEY_P8 MAC_API_KEY_ID MAC_API_ISSUER_ID; do
-    [ -n "${!v:-}" ] || die "$v がありません(docs/mac-signing.ja.md)"
-  done
+  local na=()
+  while IFS= read -r a; do na+=("$a"); done < <(notary_args)
 
-  local p8="${RUNNER_TEMP:-/tmp}/asc.p8"
-  printf '%s' "$MAC_API_KEY_P8" | base64 -d > "$p8"
   # **--wait で待つ。** 待たずに次へ進むと staple が「まだ通っていない」で
-  # 落ちる。落ちたら log を取って理由を出す — 「失敗しました」だけでは直せない
-  if ! xcrun notarytool submit "$f" \
-        --key "$p8" --key-id "$MAC_API_KEY_ID" --issuer "$MAC_API_ISSUER_ID" \
-        --wait --timeout 30m; then
-    echo "公証が通りませんでした。直近の記録を出します:" >&2
-    xcrun notarytool history --key "$p8" --key-id "$MAC_API_KEY_ID" \
-      --issuer "$MAC_API_ISSUER_ID" 2>&1 | head -20 >&2 || true
-    rm -f "$p8"
+  # 落ちる。落ちたら理由を出す — 「失敗しました」だけでは直せない
+  echo "公証に出しています(数分かかります)…"
+  if ! xcrun notarytool submit "$f" "${na[@]}" --wait --timeout 30m; then
+    echo "公証が通りませんでした。直近の記録:" >&2
+    xcrun notarytool history "${na[@]}" 2>&1 | head -20 >&2 || true
+    rm -f "$P8"
     exit 1
   fi
-  rm -f "$p8"
+  rm -f "$P8"
 
   # .zip には staple できない(中身に貼る物なので)。中の .app へ貼る
   case "$f" in
@@ -160,9 +215,11 @@ cmd_notarize() {
 }
 
 cmd_dmg() {
-  local f="$1"
-  [ -n "${SIGN_IDENTITY:-}" ] || die "SIGN_IDENTITY がありません"
-  codesign --force --timestamp --keychain "$KEYCHAIN" -s "$SIGN_IDENTITY" "$f"
+  local f="$1" id
+  id="$(identity)"
+  local kc=()
+  while IFS= read -r a; do kc+=("$a"); done < <(keychain_args)
+  codesign --force --timestamp ${kc[@]+"${kc[@]}"} -s "$id" "$f"
   echo "署名しました: $f"
 }
 

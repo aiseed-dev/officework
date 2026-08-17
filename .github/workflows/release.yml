@@ -60,92 +60,34 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: 組む
-        run: cargo build --release -p calc -p writer
-      - name: 包む(.app に Python まで入れる)
-        # **署名の前に中身を全部そろえる。** 後から1つでも足すと署名が壊れる
-        # (同梱 Python と pip で入れた物も、全部が署名の対象)
-        run: |
-          VER=$(grep -m1 '^version' calc/Cargo.toml | cut -d'"' -f2)
-          PY_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PY_TAG}/cpython-${PY_VER}%2B${PY_TAG}-aarch64-apple-darwin-install_only_stripped.tar.gz"
-          for app in calc writer; do
-            APP="dist/officework $app.app"
-            mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-            cp "target/release/$app" "$APP/Contents/MacOS/"
-            # **絵を持たせる。** 無いと Finder でも Dock でも無地になる
-            # (2026-08-17 のアルファの棚卸しまでそうだった)。
-            # .icns は tools/make_icons.py が SVG から起こしてコミットしてある
-            cp "packaging/icons/officework-$app.icns" "$APP/Contents/Resources/"
-            cat > "$APP/Contents/Info.plist" <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-            <key>CFBundleName</key><string>officework $app</string>
-            <key>CFBundleExecutable</key><string>$app</string>
-            <key>CFBundleIdentifier</key><string>io.github.aiseed-dev.officework.$app</string>
-            <key>CFBundleShortVersionString</key><string>$VER</string>
-            <key>CFBundlePackageType</key><string>APPL</string>
-            <key>CFBundleIconFile</key><string>officework-$app.icns</string>
-            <key>NSHighResolutionCapable</key><true/>
-          </dict></plist>
-          PLIST
-          done
-          # Python は calc の中に1つだけ置き、writer からも見えるようにする
-          curl -fsSL -o py.tar.gz "$PY_URL"
-          tar xzf py.tar.gz -C "dist/officework calc.app/Contents/MacOS"
-          "dist/officework calc.app/Contents/MacOS/python/bin/python3" -m pip install --quiet officework || true
-          cp -r sample/plugins dist/
-          cp packaging/README.ja.md dist/はじめに.md
-          echo "VER=$VER" >> "$GITHUB_ENV"
-
-      # ---- ここから署名と公証(docs/mac-signing.ja.md)------------------------
-      #
-      # **順番に意味がある。** 中の Mach-O → .app → .app を公証して券を貼る
-      # → .dmg を作る → .dmg を署名 → .dmg を公証して券を貼る。
-      # .app にも券を貼るのは、利用者が .dmg から出した後に**繋がっていなくても**
-      # 開けるようにするため(貼っていないと初回に問い合わせが要る)。
-      - name: 鍵を入れる
+      - name: 組んで・包んで・署名する
+        # **手元の Mac と同じ台本を回す**(packaging/make-macos.sh)。
+        # 前はここに同じ手順が二重に書いてあった — 直す所が2箇所あると、
+        # 必ず片方が古くなる。
+        #
+        # 署名の秘密が無ければ**署名せずに包む**。その .dmg は名前に
+        # `-unsigned` が付くので、取り違えて「署名つき」と言って配ることは
+        # 起きない(発注者が手元の Mac で署名する道もあるため、
+        # ここで落とさない — docs/mac-signing.ja.md)
         env:
           MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
           MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
-          # 鍵束に Developer ID Application が2枚以上あるときだけ要る。
-          # 空なら台本が自分で見つける(2枚以上あって空なら、黙って選ばずに止まる)
+          MAC_API_KEY_P8: ${{ secrets.MAC_API_KEY_P8 }}
+          MAC_API_KEY_ID: ${{ secrets.MAC_API_KEY_ID }}
+          MAC_API_ISSUER_ID: ${{ secrets.MAC_API_ISSUER_ID }}
+          # 鍵束に Developer ID Application が2枚以上あるときだけ要る
           MAC_SIGN_IDENTITY: ${{ secrets.MAC_SIGN_IDENTITY }}
-        run: packaging/macos/sign.sh keychain
-      - name: .app を署名する(中から外へ)
         run: |
-          for app in dist/*.app; do
-            packaging/macos/sign.sh app "$app"
-          done
-      - name: .app を公証して券を貼る
-        env:
-          MAC_API_KEY_P8: ${{ secrets.MAC_API_KEY_P8 }}
-          MAC_API_KEY_ID: ${{ secrets.MAC_API_KEY_ID }}
-          MAC_API_ISSUER_ID: ${{ secrets.MAC_API_ISSUER_ID }}
-        run: |
-          # 公証は1つずつ出すより、まとめて zip にして1回で出すほうが速い
-          ditto -c -k --keepParent --sequesterRsrc dist apps.zip
-          packaging/macos/sign.sh notarize apps.zip
-          for app in dist/*.app; do xcrun stapler staple "$app"; done
-          rm -f apps.zip
-      - name: .dmg を作って、署名・公証・券貼り
-        env:
-          MAC_API_KEY_P8: ${{ secrets.MAC_API_KEY_P8 }}
-          MAC_API_KEY_ID: ${{ secrets.MAC_API_KEY_ID }}
-          MAC_API_ISSUER_ID: ${{ secrets.MAC_API_ISSUER_ID }}
-        run: |
-          DMG="officework-$VER-macos-arm64.dmg"
-          hdiutil create -volname "officework $VER" -srcfolder dist -ov -format UDZO "$DMG"
-          packaging/macos/sign.sh dmg "$DMG"
-          packaging/macos/sign.sh notarize "$DMG"
-      - name: 利用者と同じ目で確かめる
-        # **ここが実機の代わり。** spctl は Gatekeeper そのものなので、
-        # 通れば「初回は右クリック→開く」は要らない。落ちたら出さない
-        run: packaging/macos/sign.sh verify "officework-$VER-macos-arm64.dmg"
+          if [ -n "$MAC_CERT_P12" ]; then
+            packaging/make-macos.sh
+          else
+            echo "::warning::mac の署名の秘密がありません — 署名せずに包みます(名前に -unsigned が付きます)"
+            packaging/make-macos.sh --no-sign
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: "*.dmg"
+          path: "packaging/out/*.dmg"
 
   windows:
     name: Windows(zip)
@@ -221,7 +163,7 @@ jobs:
             | 機械 | ファイル |
             |---|---|
             | Linux | `.deb`(入れる)か `.tar.gz`(展開するだけ) |
-            | macOS | `.dmg` — 署名と公証つき。そのまま開けます |
+            | macOS | `.dmg` — 署名と公証つき。そのまま開けます(名前に `-unsigned` と付く物は署名前です) |
             | Windows | `.zip` — 展開して `calc.exe`。**署名はまだ**(SmartScreen が出ます) |
 
             試し方と、動かないときの手当ては同梱の「はじめに」を見てください。

@@ -1,365 +1,232 @@
-# macOS の署名と公証 — 用意する物と手順
+# macOS の署名と公証
 
-配る `.dmg` に**署名して公証する**ための下ごしらえ。ここを済ませると、
-利用者は落として**そのまま開ける**(「右クリック→開く」が要らなくなる)。
+配る `.dmg` に**署名して公証する**ための下ごしらえ。済ませると、利用者は
+落として**そのまま開ける**(「右クリック→開く」が要らなくなる)。
 
 出す形は **Developer ID の直配布**で、Mac App Store ではない。理由は
 [docs/sekkei/ayumi.ja.md](sekkei/ayumi.ja.md) の配布の節(gpui が GPL の
 3クレートを必須で引くので、Apple のストアの規約と衝突する)。
 
-作業は**一度きり**。済んだら CI が毎回やる。
+---
+
+## 結論から — 手元の Mac なら、毎回これ1行
+
+```sh
+MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
+```
+
+組んで・包んで・署名して・公証して・確かめるまで、これで終わる。
+
+そのための下ごしらえは**2つだけ**。どちらも**一度きり**。
+
+| | 何を | どこで |
+|---|---|---|
+| **A** | 証明書を用意する | Xcode で数クリック(下の A) |
+| **B** | 公証の資格を鍵束に貯める | ターミナルで1行(下の B) |
+
+> **`.p12` への書き出しは要らない。** 鍵は既にこの Mac の中にあり、
+> `codesign` がそのまま使う。書き出しが要るのは、鍵の無い機械(CI)へ
+> 持っていくときだけ — それは末尾の「C. CI に任せたくなったら」。
 
 ---
 
-## 0. いま何があるか確かめる(Mac で1行)
+## A. 証明書を用意する(一度きり)
 
-### ターミナルを開く
+### A-1. まず、もう持っていないか聞く
 
-以下は全部**ターミナル**に打つ。開き方:
-
-- `command + space` → `ターミナル` と打って Enter、または
-- Finder で `command + shift + U`(ユーティリティ)→ **ターミナル**
-
-黒い(または白い)窓が出て、`名前@機械名 ~ %` のような行が出れば準備完了。
-以下の ````` で囲んだ行を**1行ずつ貼って Enter**。
-
-### 証明書があるか聞く
-
-証明書は「作った覚えがあるか」ではなく、**機械に聞く**。
+ターミナル(`command + space` → `ターミナル`)で:
 
 ```sh
 security find-identity -v -p codesigning
 ```
 
-出方は3通りある。**どれかで進む先が変わる。**
-
-| 出方 | 意味 | 行き先 |
-|---|---|---|
-| `Developer ID Application: 名前 (TEAMID)` が出る | 証明書と秘密鍵が**両方この Mac にある** | **「0-A」へ**(そのまま使える) |
-| 何も出ない / `Apple Development:` などしか出ない | 使える物が**この Mac に無い** | 「1.」へ |
-| Apple のサイトには出るのに、ここに出ない | 証明書はあるが**秘密鍵がこの Mac に無い** | 「0-C」へ |
+`Developer ID Application: 名前 (チームID)` の行が出れば**もうある** →
+**A は終わり。B へ進む。**
 
 > `Apple Development:` `Mac Developer:` `Developer ID Installer:` は**別物**。
-> 前の2つは手元で動かすための物、最後は `.pkg` 用で、`.app` と `.dmg` には
-> 使えない。**必要なのは `Developer ID Application` ただ1つ。**
+> 前の2つは手元で動かすための物、最後は `.pkg` 用。
+> **要るのは `Developer ID Application` ただ1つ。**
+
+### A-2. Xcode で作る(いちばん短い)
+
+Xcode があるなら、**証明書の要求(CSR)を自分で作る必要は無い**。
+Xcode が裏で全部やる。
+
+1. **Xcode** を開く
+2. メニューの **Xcode → Settings…**(`command + ,`)
+3. **Accounts** の柱
+4. 左下の **＋** で Apple ID を足す(まだなら)。足したらチーム名を選ぶ
+5. 右下の **Manage Certificates…**
+6. 左下の **＋** → **Developer ID Application**
+7. 一覧に出れば出来上がり。**この Mac の鍵束に入っている**
+
+確かめる:
+
+```sh
+security find-identity -v -p codesigning
+```
+
+> **Developer ID Application が選べない**場合、そのアカウントの権限が
+> 足りない(Account Holder か Admin が要る)。個人の加入なら足りている。
+
+### A-3. Xcode を使わない道(参考)
+
+キーチェーンアクセスで CSR を作り、Apple のサイトに出して受け取る。
+Xcode が入っていない機械ではこちら。
+
+1. キーチェーンアクセスを開く(`open -a "Keychain Access"`)
+2. メニュー **キーチェーンアクセス → 証明書アシスタント →
+   認証局に証明書を要求…**
+3. メールと通称を入れ、**ディスクに保存**と**鍵ペア情報を指定**にチェック。
+   鍵は **2048 ビット・RSA**
+4. <https://developer.apple.com/account/resources/certificates/list> で
+   **＋** → **Developer ID Application** → 3 のファイルを上げる
+5. 出来た `.cer` を落として**ダブルクリック**(鍵束に入る)
 
 ---
 
-## 0-A. もう持っている場合 — 使える証明書か3つ確かめる
+## B. 公証の資格を鍵束に貯める(一度きり)
 
-`find-identity` に出た = **署名できる状態**だが、出す前に3つだけ見る。
+公証は Apple のサーバに出して待つ手続き。その資格を**一度だけ**貯めれば、
+以後は名前で呼べる。
 
-### ① 期限が切れていないか
+### B-1. App Store Connect の API キーを作る
 
-`-v` は「いま有効な物」だけを出すので、**出ている時点で期限内**。
-念のため日付で見るなら:
+Apple ID と合言葉より、API キーの方が手元にも CI にも向く
+(2要素認証に引っかからない。失効させても他に響かない)。
+
+1. <https://appstoreconnect.apple.com/access/integrations/api>
+2. **チームキー**の側で **＋**
+3. 名前は `officework-notary` など。**役割は Developer** でよい
+4. **`.p8` は一度しか落とせない**。落として安全な所に置く
+5. 同じ画面の **Key ID** と、上部の **Issuer ID** を控える
+
+### B-2. 鍵束に貯める
+
+```sh
+xcrun notarytool store-credentials officework \
+  --key ~/Downloads/AuthKey_XXXXXXXX.p8 \
+  --key-id XXXXXXXXXX \
+  --issuer xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+`officework` が**この資格の呼び名**。以後は `.p8` の場所も Key ID も
+打たなくてよくなる。
+
+---
+
+## 毎回やること
+
+```sh
+MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
+```
+
+中で起きること(全部 [packaging/make-macos.sh](../packaging/make-macos.sh) に書いてある):
+
+1. `cargo build --release`
+2. `.app` を2つ作り、**アイコンと同梱 Python(3.14)を入れる**
+3. **中の Mach-O を全部署名** → `.app` を署名
+4. `.app` を公証して**券を貼る**
+5. `.dmg` を作って署名 → 公証 → 券を貼る
+6. **`spctl` で確かめる**(= Gatekeeper そのもの。ここが通れば利用者も開ける)
+
+出来上がりは `packaging/out/officework-<版>-macos-<的>.dmg`。
+そのまま Releases に上げられる。
+
+> 署名の下ごしらえの前に「包む所まで」を試したいなら
+> `packaging/make-macos.sh --no-sign`。**配る物には付けないこと。**
+
+---
+
+## つまずいたら
+
+### 「証明書が2枚あります」と止まった
+
+更新して古い物が残っている、別チームの物が混ざっている。**どちらで署名
+したか分からない物を作らない**ために、台本はここで止まる。使う方の
+SHA-1(行頭の 40 桁)を控えて:
+
+```sh
+MAC_SIGN_IDENTITY=<40桁> MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
+```
+
+### Apple のサイトには出るのに、`find-identity` に出ない
+
+**証明書はあるが、対になる秘密鍵がこの Mac に無い。** 証明書だけ落として
+入れても署名はできない(鍵が本体で、証明書はその身分証)。別の Mac で
+作った・OS を入れ直した、のどれか。
+
+1. **鍵を持っている Mac から `.p12` をもらう**(下の C-1 の手順で書き出した物)。
+   もらったら**ダブルクリックで入れる**だけ
+2. **作り直す。** 古い方は Apple のサイトで **Revoke** してよい —
+   **その証明書で署名済みの物は、公証済みなら開けるまま**
+   (タイムスタンプが効いているため)
+
+> Developer ID Application はチームで **5枚まで**。使えない物が溜まって
+> いたら、作り直す前に Revoke して枠を空ける。
+
+### 証明書の期限を見たい
 
 ```sh
 security find-certificate -c "Developer ID Application" -p \
   | openssl x509 -noout -subject -dates
 ```
 
-`notAfter` が期限。Developer ID の証明書は**5年**で切れる。切れると
-**それ以降に署名した物**が弾かれる(公証済みで配り終えた物は、
-タイムスタンプが効いているので切れても開ける)。
+`notAfter` が期限(**5年**)。切れると**それ以降に署名する物**が弾かれる。
+公証済みで配り終えた物は、タイムスタンプが効いているので切れても開ける。
 
-### ② チームが合っているか
+### 公証が通らない
 
-括弧の中の 10 桁が Team ID。<https://developer.apple.com/account> の
-Membership に出ている物と同じであること。**複数のチームに属していると
-別チームの証明書が混ざる**ことがある。
-
-### ③ 2つ以上出ていないか
-
-```sh
-security find-identity -v -p codesigning | grep -c "Developer ID Application"
-```
-
-**2 以上なら、どれを使うか決めて指定する。** 更新して古い物が残っている、
-別チームの物がある、といった場合に起きる。`packaging/macos/sign.sh` は
-1つのときはそれを使い、**2つ以上あるときは黙って選ばずに止まる** —
-その場合は使う方の SHA-1(行頭の 40 桁)を控え、Secrets に
-
-| 名前 | 中身 |
-|---|---|
-| `MAC_SIGN_IDENTITY` | 使う証明書の SHA-1(40 桁) |
-
-を足す。1つしか無いなら**この Secret は要らない**。
-
-3つとも問題なければ「2. 証明書を .p12 に書き出す」へ。
+台本が直近の記録を出す。多いのは「署名し漏れた Mach-O がある」で、
+**同梱 Python の中**(`lib-dynload/*.so`・pip で入れた拡張)が定番。
+`make-macos.sh` は中身を全部そろえてから署名するので、手で順を変えない。
 
 ---
 
-## 0-B. チーム ID の見つけ方(どの道でも要る)
+## C. CI に任せたくなったら(いまは要らない)
 
-<https://developer.apple.com/account> の Membership に出ている 10 桁の英数字。
-証明書があるなら、その名前の括弧の中と同じ物。
+GitHub Actions で自動にする道。**鍵の無い機械に鍵を渡す**ことになるので、
+`.p12` への書き出しと Secrets が要る。手元で回すぶんには**全部不要**。
 
----
-
-## 0-C. サイトには出るのに、手元の Mac に出ない場合
-
-**証明書はあるが、対になる秘密鍵がこの Mac に無い。** 証明書だけを
-落として入れても署名はできない(鍵が本体で、証明書はその身分証)。
-よくあるのは、別の Mac で作った・OS を入れ直した・人が替わった、のどれか。
-
-道は2つ。
-
-1. **鍵を持っている Mac から `.p12` をもらう**(「2.」の手順で書き出した物)。
-   これが一番早い。もらったら**ダブルクリックで入れる**だけ
-2. **作り直す。** 古い方は Apple のサイトで **Revoke** してよい —
-   ただし**その証明書で署名済みの物は、公証済みなら開けるまま**
-   (タイムスタンプが効いているため)。Revoke したら「1.」へ
-
-> Developer ID Application の証明書は**チームで 5 枚まで**。使えない物が
-> 溜まっていたら、作り直す前に Revoke して枠を空ける。
-
----
-
-## 1. Developer ID Application の証明書を作る(まだ無い場合)
-
-Apple Developer Program の加入が要る(加入済み)。
-
-### 1-1. 署名要求(CSR)を Mac で作る
-
-1. **キーチェーンアクセス**を開く
-2. メニューの「キーチェーンアクセス」→「証明書アシスタント」→
-   **「認証局に証明書を要求…」**
-3. メールアドレスと通称を入れ、**「ディスクに保存」**と
-   **「鍵ペア情報を指定」**にチェック
-4. 鍵の情報は **2048 ビット・RSA**
-5. `CertificateSigningRequest.certSigningRequest` が出来る
-
-> ここで**秘密鍵がこの Mac の中に作られる**。以後の署名はこの鍵で行う —
-> 鍵が消えると証明書も使えなくなるので、2 で書き出した `.p12` が控えになる。
-
-### 1-2. Apple に出して受け取る
-
-1. <https://developer.apple.com/account/resources/certificates/list>
-2. **＋** →「**Developer ID Application**」を選ぶ
-3. 1-1 の `.certSigningRequest` を上げる
-4. 出来た `.cer` を落として**ダブルクリック**(キーチェーンに入る)
-5. `security find-identity -v -p codesigning` で出ることを確かめる
-
----
-
-## 2. 証明書を .p12 に書き出す
-
-`.p12` は**証明書と秘密鍵を1つの箱に入れて持ち出す形**。CI に渡すのは
-これ1つで足りる。
-
-### 2-0. 【近道】ターミナル1行で済ませる
-
-**キーチェーンアクセスを開かずに書き出せる。** 鍵束に
-Developer ID Application が1枚だけなら、これが一番早い。
+### C-1. 証明書を `.p12` に書き出す
 
 ```sh
 security export -t identities -f pkcs12 -o Certificates.p12
 ```
 
-- `.p12` に付ける**合言葉を聞かれる**ので、自分で決めて打つ
-  (これが `MAC_CERT_PASSWORD`)
-- 「キーチェーンアクセスが鍵を書き出そうとしています」の窓が出たら
-  **許可**(Mac のログインパスワード)
-- 出来たら **2-5** の確かめへ進む
+合言葉を聞かれるので決めて打つ(これが `MAC_CERT_PASSWORD`)。
+「鍵を書き出そうとしています」の窓が出たら**許可**。
 
-> **`-t identities` は「証明書と秘密鍵の対」という意味。** だから
-> これ1つで両方入る。鍵束に対が2つ以上あると**全部入ってしまう**ので、
-> その場合は下の画面からの道で1つだけ選ぶこと(0-A ③ で数えた枚数)。
->
-> この1行は手元に Mac が無くて**試せていない**。うまくいかなければ
-> 下の 2-1 からの道へ。どちらで作った `.p12` も中身は同じ。
+> `-t identities` は「証明書と秘密鍵の対」。鍵束に対が2つ以上あると
+> **全部入ってしまう**ので、その場合はキーチェーンアクセスの
+> **「自分の証明書」**カテゴリから1つだけ選んで書き出す
+> (「証明書」カテゴリでは `.p12` が灰色で選べない)。
 
----
-
-### 2-1. キーチェーンアクセスを開く
-
-**「キーチェーンアクセス」というアプリを探す。** 入り口は4つ、どれでもよい。
-
-| 道 | やり方 |
-|---|---|
-| **ターミナル**(確実) | `open -a "Keychain Access"` |
-| Spotlight | `command + space` → `キーチェーン` と打って Enter |
-| Finder | `command + shift + U`(ユーティリティが直に開く)→ **キーチェーンアクセス** をダブルクリック |
-| Finder のメニュー | **移動** → **ユーティリティ** |
-
-> **ターミナルの道が一番確実。** このアプリは画面では「キーチェーンアクセス」
-> でも、**中身の名前は英語のまま `Keychain Access`**。Spotlight はどちらでも
-> 引っかかるが、綴りで迷ったらこの1行でよい。
->
-> 置き場は `/System/Applications/Utilities/`(macOS 11 以降)。
-> Finder で「アプリケーション」を開いても**出てこない**ことがあるのは、
-> システム側の別の場所に居るため — 上の `command + shift + U` なら確実。
-
-> macOS 14 以降、パスワードは新しい「**パスワード**」アプリに移ったが、
-> **証明書はいまもキーチェーンアクセス**にある。**別のアプリ。**
-> 「パスワード」を開いても証明書は出てこない。
-
-### 2-2. **「自分の証明書」を選ぶ** ← ここが肝心
-
-- 左の柱で **ログイン**(login)
-- **カテゴリで「自分の証明書」**(My Certificates)
-
-**ここを間違えると詰まる。** 「証明書」(Certificates)のカテゴリにも
-同じ名前が出るが、そちらは**秘密鍵の付いていない見え方**で、書き出しても
-`.p12` が選べない(灰色になる)。
-
-| 見ている所 | `.p12` が選べるか |
-|---|---|
-| **自分の証明書** | **選べる**(鍵が付いている) |
-| 証明書 | 選べない(`.cer` だけ) |
-
-見分け方: **「自分の証明書」に出ている行には左に三角**が付く。開くと
-`Developer ID Application: …` の下に**秘密鍵**がぶら下がっている。
-三角が無ければ、その Mac に鍵が無い(「0-C」へ)。
-
-### 2-3. 書き出す
-
-1. `Developer ID Application: …` の**行そのもの**を選ぶ
-   (三角を開いて中の2つを選んでもよい。どちらでも `.p12` になる)
-2. 右クリック → **「"Developer ID Application: …" を書き出す…」**
-3. **フォーマット**を「**個人情報交換(.p12)**」にする
-   - ここが灰色で選べなければ **2-2 に戻る**(場所が違う)
-4. 保存先はどこでもよい。名前は `Certificates.p12` のまま
-
-### 2-4. 合言葉を2回聞かれる — **別々の物**
-
-ここが分かりにくい所。**続けて2種類のパスワードを聞かれる**。
-
-| 順 | 何を聞かれているか | 何を入れるか |
-|---|---|---|
-| 1回目 | **`.p12` に付ける合言葉**(確認で2度打つ) | **自分で新しく決める。** これが `MAC_CERT_PASSWORD` になる |
-| 2回目 | 「キーチェーンアクセスが鍵を書き出そうとしています」 | **その Mac のログインパスワード**(いつも使う物) |
-
-2回目は「許可するか」を聞かれているだけで、`.p12` とは関係ない。
-**1回目に決めた方**を控えておく(使い回さない)。
-
-### 2-5. 出来た物を確かめる(任意だが勧める)
-
-開けること・**鍵が入っていること**を、鍵そのものを出さずに見る。
-どちらも合言葉を聞いてくるので**打ち込む**(`-passin pass:…` と
-コマンドに書くと履歴と `ps` に残るのでやらない)。
-
-**① 誰の・いつまでの証明書か**
-
-```sh
-openssl pkcs12 -in Certificates.p12 -nokeys -passin stdin \
-  | openssl x509 -noout -subject -dates
-```
-
-```
-subject=CN = Developer ID Application: 名前 (ABCDE12345)
-notBefore=…
-notAfter=…                        ← ここが期限
-```
-
-**② 秘密鍵が入っているか**
+確かめる(鍵そのものは出ない):
 
 ```sh
 openssl pkcs12 -in Certificates.p12 -info -nokeys -noout -passin stdin
 ```
 
-```
-MAC: sha256, Iteration 2048
-Certificate bag
-Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, …     ← これが秘密鍵
-```
+`Shrouded Keybag` の行があれば秘密鍵が入っている。
 
-**`Shrouded Keybag` の行があれば鍵が入っている。** 無ければ証明書だけの
-`.p12` なので、2-2 に戻る(見ていた場所が違う)。
+### C-2. Secrets に入れる
 
-合言葉を間違えると `Mac verify error: invalid password?` と出る。
-
-> この2つは Linux の OpenSSL で実際に試した出力。macOS の
-> `/usr/bin/openssl` は LibreSSL なので、字面が少し違うことがある —
-> **`Keybag` の語が出るかどうか**を見ればよい。
-> うまくいかなければ飛ばしてよい: 間違った `.p12` なら、CI の最初の段
-> (`sign.sh keychain`)がその場で止まる。
-
-### 2-6. base64 にして持っていく
-
-```sh
-base64 -i Certificates.p12 | pbcopy   # クリップボードに入る
-```
-
-そのまま GitHub の Secret の欄に貼る(改行が入っていてよい)。
-
-> **中身は画面に出さない。** `cat` せずに `pbcopy` で直接クリップボードへ。
-> 貼り終えたら `pbcopy < /dev/null` でクリップボードを空にしておくとよい。
-
-> **`.p12` 本体は消さずに取っておく。** これが秘密鍵の控えで、Mac が
-> 壊れたときに証明書を作り直さずに済む唯一の道(「0-C」の1つ目)。
-
----
-
-## 3. 公証の鍵(App Store Connect API キー)を作る
-
-Apple ID と合言葉ではなく **API キー**を使う。CI 向けにこちらが推奨で、
-2要素認証に引っかからず、失効させても他に響かない。
-
-1. <https://appstoreconnect.apple.com/access/integrations/api>
-2. 「**チームキー**」の側で **＋**
-3. 名前は `officework-notary` など。**役割は Developer** でよい
-   (公証だけなら Admin は要らない)
-4. **`.p8` は一度しか落とせない**。落として安全な所に置く
-5. 同じ画面に出ている **Key ID** と、上部の **Issuer ID** を控える
-
-base64 にする:
-
-```sh
-base64 -i AuthKey_XXXXXXXX.p8 | pbcopy
-```
-
----
-
-## 4. GitHub の Secrets に入れる
-
-リポジトリの Settings → Secrets and variables → Actions → New repository secret。
-**5つ**要る。
+Settings → Secrets and variables → Actions。
 
 | 名前 | 中身 |
 |---|---|
-| `MAC_CERT_P12` | 2 で作った `.p12` の base64 |
-| `MAC_CERT_PASSWORD` | その `.p12` の合言葉 |
-| `MAC_API_KEY_P8` | 3 で落とした `.p8` の base64 |
-| `MAC_API_KEY_ID` | 3 の Key ID(10 桁ほど) |
-| `MAC_API_ISSUER_ID` | 3 の Issuer ID(UUID の形) |
+| `MAC_CERT_P12` | `base64 -i Certificates.p12 \| pbcopy` の中身 |
+| `MAC_CERT_PASSWORD` | C-1 で決めた合言葉 |
+| `MAC_API_KEY_P8` | `base64 -i AuthKey_XXXX.p8 \| pbcopy` の中身 |
+| `MAC_API_KEY_ID` | B-1 の Key ID |
+| `MAC_API_ISSUER_ID` | B-1 の Issuer ID |
+| `MAC_SIGN_IDENTITY` | **証明書が2枚以上あるときだけ** |
 
-**6つ目は要るとは限らない。**
+名前が1つでも違えば CI がその場で止まり、**どれが無いかを名指しで言う**。
 
-| 名前 | 中身 | いつ要るか |
-|---|---|---|
-| `MAC_SIGN_IDENTITY` | 使う証明書の SHA-1(40 桁) | 鍵束に Developer ID Application が**2枚以上**あるとき(0-A ③)。1枚なら要らない |
-
-名前が1つでも違うと CI がその場で止まり、**どれが無いかを名指しで言う**
-(`packaging/macos/sign.sh` が最初に見る)。
-
----
-
-## 5. 手元の Mac で先に試す(推奨)
-
-CI に上げる前に、同じ台本を手元で回せる。**その機械の鍵束は汚さない**
-(使い捨ての keychain を作って使う)。
-
-```sh
-export MAC_CERT_P12="$(base64 -i Certificates.p12)"
-export MAC_CERT_PASSWORD='…'
-export MAC_API_KEY_P8="$(base64 -i AuthKey_XXXXXXXX.p8)"
-export MAC_API_KEY_ID='…'
-export MAC_API_ISSUER_ID='…'
-
-cargo build --release -p calc -p writer
-# (.app を組む段は .github/workflows/release.yml の「包む」と同じ)
-
-packaging/macos/sign.sh keychain
-export SIGN_IDENTITY=…            # 上が出した SHA-1
-packaging/macos/sign.sh app "dist/officework calc.app"
-packaging/macos/sign.sh notarize officework-….dmg
-packaging/macos/sign.sh verify   officework-….dmg
-```
-
-`verify` が出す **`spctl` の行が Gatekeeper そのもの**。ここが通れば、
-利用者の機械でもそのまま開く。
+> **`.p12` 本体は消さずに取っておく。** これが秘密鍵の控えで、Mac が
+> 壊れたときに証明書を作り直さずに済む唯一の道。
 
 ---
 
@@ -369,13 +236,15 @@ packaging/macos/sign.sh verify   officework-….dmg
   `lib-dynload/*.so`・pip で入れた拡張 — 1つでも漏れると公証が落ちる
 - **`.py` は対象外**。Mach-O ではないので、利用者が置いたマクロを走らせる
   こと自体は署名の話にならない(設計の芯を曲げずに済む)
-- 権利(entitlements)は [packaging/macos/entitlements.plist](../packaging/macos/entitlements.plist)
+- 権利(entitlements)は
+  [packaging/macos/entitlements.plist](../packaging/macos/entitlements.plist)
   の**2つだけ**。`pip install` した拡張を読めるようにする物と、ctypes の物。
   App Sandbox は入れない(直配布では要らず、入れると
   `~/.config/officework/` が読めなくなる)
 
 ## まだしていないこと
 
-- **Intel(x86_64)の .dmg は出していない。** いまは arm64 だけ。
-  出すなら的を増やして universal にするか、2枚出す
+- **Intel(x86_64)の .dmg は出していない。** `make-macos.sh` は**走っている
+  Mac の的**で組む(Apple Silicon なら arm64)。両方出すなら2台で回すか、
+  universal に組む工事が要る
 - **Windows の署名**(SmartScreen)は別の話。証明書の種類も出し方も違う
