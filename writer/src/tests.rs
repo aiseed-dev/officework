@@ -2115,6 +2115,59 @@ mod marker_tests {
     /// **選んでいれば字に、選んでいなければ段落に**(2026-08-16。文字単位の
     /// スタイルの門番)。語を1つ選んで直したのに段落ぜんぶが変わる、では
     /// 直接書式の手軽さに勝てない
+    /// **書式のボタンは押すたびに切り替わる。** 付けることしか出来ないと、
+    /// 一度付けた見た目を外せません(2026-08-17 発注者
+    /// 「書式はトグルでないとダメでしょう」)。
+    #[gpui::test]
+    fn ネイティブでも書式のボタンで外せる(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-toggle-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("見本.adoc");
+        std::fs::write(&path, "= 題\n:template: 見本の型\n\nここは大事なところ。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.open(path.clone());
+            this.ed.move_to(9, false);
+            this.ed.move_to(15, true);
+
+            // 1回目 — 名前を付けてスタイルにする
+            this.run_cmd("fontcolor", cx);
+            assert!(this.style_new.is_some(), "1回目で誘導が出ない: {}", this.status);
+            this.style_ed = kumihan::Editor::new("注意");
+            this.style_commit();
+            let 付いた = |this: &Writer| {
+                this.doc
+                    .paragraphs()
+                    .next()
+                    .unwrap()
+                    .runs
+                    .iter()
+                    .filter(|r| r.fmt.style_id.as_deref() == Some("注意"))
+                    .count()
+            };
+            assert!(付いた(this) > 0, "1回目で付いていない");
+
+            // 2回目 — 同じボタンで外れる(新しいスタイルの画面は出ない)
+            this.ed.move_to(9, false);
+            this.ed.move_to(15, true);
+            this.run_cmd("fontcolor", cx);
+            assert!(this.style_new.is_none(), "2回目で誘導が出た: {}", this.status);
+            assert_eq!(付いた(this), 0, "2回目で外れていない: {}", this.status);
+
+            // 種類が違うボタンでは外れない(下線を押しても色は残る)
+            this.run_cmd("fontcolor", cx);
+            this.style_ed = kumihan::Editor::new("注意");
+            this.style_commit();
+            this.ed.move_to(9, false);
+            this.ed.move_to(15, true);
+            this.run_cmd("underline", cx);
+            assert!(this.style_new.is_some(), "下線は新しいスタイルになるはず");
+            this.style_new = None;
+            assert!(付いた(this) > 0, "下線のボタンで色まで外れた");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[gpui::test]
     fn 選んだ字だけにスタイルが付く(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-char-{}", std::process::id()));

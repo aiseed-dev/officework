@@ -1820,6 +1820,46 @@ mod fold_print_tests {
 }
 
 #[cfg(test)]
+mod char_format_tests {
+    use crate::doc::{CharFormat, Document, Paragraph, Run};
+
+    fn 段落(runs: &[(&str, bool)]) -> Document {
+        let mut d = Document::default();
+        let mut p = Paragraph::default();
+        for (s, bold) in runs {
+            p.runs.push(Run {
+                text: (*s).into(),
+                size_pt: None,
+                font: None,
+                fmt: CharFormat { bold: *bold, ..Default::default() },
+            });
+        }
+        d.push_para(p);
+        d
+    }
+
+    /// **選んだ字の書式を返す。** ここが1つ手前を見ていたせいで、太字の語を
+    /// 選んで太字のボタンを押しても外れなかった(2026-08-17 発注者
+    /// 「書式設定が戻せない」)。
+    #[test]
+    fn 選んでいるときは選んだ字の書式を見る() {
+        // 「ここは」は普通、「大事」は太字(どちらも 9 バイトと 6 バイト)
+        let d = 段落(&[("ここは", false), ("大事", true), ("なところ。", false)]);
+        assert!(d.char_format_at(9..15).bold, "選んだ字が太字なのに拾えていない");
+        assert!(!d.char_format_at(0..9).bold, "普通の字を太字と言った");
+    }
+
+    /// カーソルが1点のときは今までどおり**直前の字**を見る
+    /// (打つとその書式が続く、という慣習)。
+    #[test]
+    fn カーソル1点のときは直前の字を見る() {
+        let d = 段落(&[("ここは", false), ("大事", true), ("なところ。", false)]);
+        assert!(!d.char_format_at(9..9).bold, "境目の手前は普通の字のはず");
+        assert!(d.char_format_at(15..15).bold, "太字の直後は太字を継ぐはず");
+    }
+}
+
+#[cfg(test)]
 mod midashi_tests {
     use super::*;
 

@@ -1244,7 +1244,42 @@ impl Document {
     /// いま選択範囲が太字か(ボタンを押した状態に見せるため)。
     /// カーソルの位置の run の書式を返す。
     pub fn char_format_at(&self, range: std::ops::Range<usize>) -> CharFormat {
+        // **選んでいるときは、選んだ字の書式を返します。**
+        //
+        // `run_at` は「カーソルの直前の字」を返します。カーソルが1点のときは
+        // それが正しい(打つとその書式になる、という慣習)のですが、範囲を
+        // 選んでいるときに使うと、**選んだ字の1つ手前**を見てしまいます。
+        //
+        // そのせいで、太字の語を選んで太字のボタンを押しても外れませんでした
+        // (手前の字が太字でないので「いまは太字でない」と判断し、また
+        // 太字を掛けていた)。2026-08-17 発注者「書式設定が戻せない」。
+        if range.start != range.end {
+            if let Some(r) = self.run_from(range.start) {
+                return r.fmt.clone();
+            }
+        }
         self.run_at(range.start).map(|r| r.fmt.clone()).unwrap_or_default()
+    }
+
+    /// その位置から**始まる字**を持つ run(`run_at` と違い、手前は見ません)。
+    fn run_from(&self, pos: usize) -> Option<&Run> {
+        let mut at = 0usize;
+        for p in self.paragraphs() {
+            let len: usize = p.runs.iter().map(|r| r.text.len()).sum();
+            if pos < at + len {
+                let off = pos - at;
+                let mut racc = 0usize;
+                for r in &p.runs {
+                    let rend = racc + r.text.len();
+                    if off < rend {
+                        return Some(r);
+                    }
+                    racc = rend;
+                }
+            }
+            at += len + 1;
+        }
+        None
     }
 
     /// いま選択範囲の揃え。

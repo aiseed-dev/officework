@@ -2446,6 +2446,26 @@ impl Writer {
         if !self.native || !Self::LOOK_IDS.contains(&id) {
             return false;
         }
+        // **すでに付いていれば外す。** 書式のボタンは押すたびに切り替わるのが
+        // 当たり前で、付けることしかできないのは使いにくい
+        // (2026-08-17 発注者「書式はトグルでないとダメでしょう」)。
+        // 同じボタンが作るのと同じ種類の見た目を持つスタイルを着ていたら、
+        // それを脱がせます
+        if let Some(name) = self.style_worn_for(id) {
+            self.switch_target(Target::Body);
+            self.checkpoint(false);
+            self.flush_target();
+            let sel = self.ed.selection();
+            if sel.start == sel.end {
+                self.doc.apply_para(sel, |p| p.style_id = None);
+            } else {
+                self.doc.apply_char_format(sel, |f| f.style_id = None);
+            }
+            self.dirty = true;
+            self.relayout_keep();
+            self.status = ui::tf!("「{}」を外しました", name).into();
+            return true;
+        }
         // 押した見た目を1つだけ持つスタイルの種を作る(名前はこれから)
         let now = self.doc.char_format_at(self.ed.selection());
         let base = self.doc.base_pt();
@@ -2469,6 +2489,32 @@ impl Writer {
         .into();
         self.ai_name_style(id, cx);
         true
+    }
+
+    /// いま着ているスタイルのうち、このボタンが作るのと**同じ種類の見た目**を
+    /// 持つものの名前。無ければ None。
+    ///
+    /// 「下線のボタンを押したら下線のスタイルを脱ぐ」のように、押したボタンと
+    /// 対応する見た目だけを見ます。色のスタイルを着ているときに下線のボタンを
+    /// 押しても、色は外れません。
+    fn style_worn_for(&self, id: &str) -> Option<String> {
+        let sel = self.ed.selection();
+        // 選んでいれば字のスタイル、選んでいなければ段落のスタイル
+        let name = if sel.start == sel.end {
+            self.doc.para_at(sel.clone()).and_then(|p| p.style_id.clone())
+        } else {
+            self.doc.char_format_at(sel).style_id.clone()
+        }?;
+        let d = self.tmpl.style(&name)?;
+        let 同じ種類 = match id {
+            "fontsize" | "incfont" | "decfont" => d.size_pt.is_some(),
+            "fontname" => d.font.is_some(),
+            "fontcolor" => d.color.is_some(),
+            "highlight" => d.shade.is_some(),
+            "underline" => d.underline,
+            _ => d.italic,
+        };
+        同じ種類.then_some(name)
     }
 
     /// 名前の下書き(AI が答えるまでの繋ぎ。**空欄で待たせない**)
