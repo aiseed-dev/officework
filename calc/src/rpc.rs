@@ -292,7 +292,7 @@ impl Host for Calc {
     fn open(&mut self, p: &std::path::Path) -> Result<(), String> {
         Calc::open(self, p.to_path_buf());
         if self.path.as_deref() != Some(p) {
-            return Err(format!("開けません: {}", self.status));
+            return Err(ui::tf!("開けません: {}", self.status));
         }
         Ok(())
     }

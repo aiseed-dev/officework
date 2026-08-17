@@ -1196,7 +1196,7 @@ impl Calc {
                 sh.paper_size = Some(next);
                 self.dirty = true;
                 let name = paper_mm(next).map(|(_, _, n)| n).unwrap_or("A4");
-                self.status = format!("用紙: {name}(B は JIS)").into();
+                self.status = ui::tf!("用紙: {}(B は JIS)", name).into();
             }
             "pagemargins" => {
                 self.commit();
@@ -1212,7 +1212,7 @@ impl Calc {
                 };
                 sh.margins_mm = next;
                 self.dirty = true;
-                self.status = format!("印刷の余白: {label}").into();
+                self.status = ui::tf!("印刷の余白: {}", label).into();
             }
             "printarea" => {
                 self.commit();
@@ -1386,7 +1386,7 @@ impl Calc {
                     .map(|(p, _)| *p)
                     .collect();
                 if dependents.is_empty() {
-                    self.status = format!("{} を参照している式はありません", me.a1()).into();
+                    self.status = ui::tf!("{} を参照している式はありません", me.a1()).into();
                 } else {
                     self.status = format!(
                         "{} の参照先 {} セルを光らせました(トレース矢印の削除で消す)",
@@ -1578,7 +1578,7 @@ impl Calc {
                 let bytes = match std::fs::read(&p) {
                     Ok(b) => b,
                     Err(e) => {
-                        self.status = format!("読めません: {e}").into();
+                        self.status = ui::tf!("読めません: {}", e).into();
                         return;
                     }
                 };
@@ -1625,11 +1625,11 @@ impl Calc {
                                 .into();
                             }
                             Err(e) => {
-                                self.status = format!("署名が置けません: {e}").into();
+                                self.status = ui::tf!("署名が置けません: {}", e).into();
                             }
                         }
                     }
-                    Err(e) => self.status = format!("署名できません: {e}").into(),
+                    Err(e) => self.status = ui::tf!("署名できません: {}", e).into(),
                 }
             }
             // 共同編集モード。実体はファイルの錠(.~lock)による早い者勝ちの
@@ -2350,7 +2350,7 @@ impl Calc {
                     Some(i) => {
                         let t = &self.sheet().tables[i];
                         let init = format!("{}:{}", t.a.a1(), t.b.a1());
-                        self.status = format!("表「{}」の新しい範囲は?", t.name).into();
+                        self.status = ui::tf!("表「{}」の新しい範囲は?", t.name).into();
                         self.prompt = Some(("table-resize", Editor::new(&init)));
                     }
                 }
@@ -2375,11 +2375,11 @@ impl Calc {
             // 表示タブ(本家のデスクトップ版に合わせる)。どれも見え方だけ
             "zoom-in" => {
                 self.zoom = (self.zoom + 0.1).min(2.0);
-                self.status = format!("ズーム {}%", (self.zoom * 100.0).round() as i32).into();
+                self.status = ui::tf!("ズーム {}%", (self.zoom * 100.0).round() as i32).into();
             }
             "zoom-out" => {
                 self.zoom = (self.zoom - 0.1).max(0.5);
-                self.status = format!("ズーム {}%", (self.zoom * 100.0).round() as i32).into();
+                self.status = ui::tf!("ズーム {}%", (self.zoom * 100.0).round() as i32).into();
             }
             // 画面の文字の大きさ(リボン・数式バー・メニュー・状態行まで全部)。
             // 格子のズームとは別。設定に覚えて、次回も同じ大きさで開く
@@ -2625,7 +2625,7 @@ impl Calc {
                         let d = self.book.pivots[i].clone();
                         self.spawn_pivot(d, Some(i), cx);
                     }
-                    self.status = format!("{n} 件のピボットを更新しています…").into();
+                    self.status = ui::tf!("{} 件のピボットを更新しています…", n).into();
                 }
             }
             // フィールドリスト: いまの指図を ✓ 入りで4段に読み込み、
@@ -3022,7 +3022,7 @@ impl Calc {
                                 )
                                 .into();
                             }
-                            Some(Err(e)) => this.status = format!("取り込めません: {e}").into(),
+                            Some(Err(e)) => this.status = ui::tf!("取り込めません: {}", e).into(),
                         }
                         cx.notify();
                     });
@@ -3043,7 +3043,7 @@ impl Calc {
                 };
                 sh.print_scale = if next == 100 { None } else { Some(next) };
                 self.dirty = true;
-                self.status = format!("拡大縮小印刷: {next}%(PDF と保存に効きます)").into();
+                self.status = ui::tf!("拡大縮小印刷: {}%(PDF と保存に効きます)", next).into();
             }
             // 改ページ: いまの行から新しい紙を始める(もう一度で解除)
             // 改ページ。本家は「挿入 / 解除 / すべてリセット」の3択なので

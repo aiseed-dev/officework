@@ -185,7 +185,7 @@ impl Calc {
         self.checkpoint();
         let n = self.clear_range();
         self.sync_input();
-        self.status = format!("{n} セルの中身を消しました(書式は残る)").into();
+        self.status = ui::tf!("{} セルの中身を消しました(書式は残る)", n).into();
     }
     /// 選んだ範囲の中身を消す(**書式は残す** — 帳票の枠を壊さない)。
     /// 控えを取ってから呼ぶこと。返すのは消したセルの数。
@@ -370,7 +370,7 @@ impl Calc {
                 .collect(),
         );
         self.clip_range = Some((self.active, a, b));
-        self.status = format!("{}:{} をコピーしました", a.a1(), b.a1()).into();
+        self.status = ui::tf!("{}:{} をコピーしました", a.a1(), b.a1()).into();
         cx.notify();
     }
 
@@ -411,7 +411,7 @@ impl Calc {
         self.clip_range = None;
         self.checkpoint();
         let n = self.clear_range();
-        self.status = format!("{n} セルを切り取りました").into();
+        self.status = ui::tf!("{} セルを切り取りました", n).into();
         cx.notify();
     }
 
@@ -1065,7 +1065,7 @@ impl Calc {
                 self.commit();
                 self.anchor = Some(Pos::new(0, 0));
                 self.cursor = Pos::new(rows - 1, cols.saturating_sub(1));
-                self.status = format!("A1:{} を選択しました", self.cursor.a1()).into();
+                self.status = ui::tf!("A1:{} を選択しました", self.cursor.a1()).into();
                 self.sync_input();
             }
         }

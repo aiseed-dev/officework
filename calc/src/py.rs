@@ -686,7 +686,7 @@ impl Calc {
         cx: &mut Context<Self>,
     ) {
         let Some(si) = self.book.sheets.iter().position(|s| s.name == def.sheet) else {
-            self.status = format!("シート「{}」がありません(ピボットの元の表)", def.sheet).into();
+            self.status = ui::tf!("シート「{}」がありません(ピボットの元の表)", def.sheet).into();
             return;
         };
         let (a, b) = def.src;
@@ -706,7 +706,7 @@ impl Calc {
             .collect();
         let json = pivot_spec_json(&headers, &data, &def);
         let dir = std::env::temp_dir().join(format!("jo-pivot-{}", std::process::id()));
-        self.status = format!("{} の {} を集めています…", def.value, def.agg).into();
+        self.status = ui::tf!("{} の {} を集めています…", def.value, def.agg).into();
         let task = cx.background_executor().spawn(async move {
             let _ = std::fs::create_dir_all(&dir);
             let json_path = dir.join("pivot.json");
@@ -905,7 +905,7 @@ impl Calc {
                 sheet::xlsx::write_with(&self.book, original, std::io::BufWriter::new(f))
             });
         if let Err(e) = w {
-            self.status = format!("Python に渡せません: {e}").into();
+            self.status = ui::tf!("Python に渡せません: {}", e).into();
             return;
         }
         // officework は実行ファイルの隣か、pip で入れた物(HIKITSUGI の配り方)。
@@ -1012,7 +1012,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                                 };
                             }
                             Err(e) => {
-                                this.status = format!("結果が読めません: {e}").into();
+                                this.status = ui::tf!("結果が読めません: {}", e).into();
                             }
                         }
                     }
@@ -1131,7 +1131,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         }
         if !missing.is_empty() {
             // **式から呼ぶ関数の置き場は funcs**(2026-08-16)
-            self.status = format!("{}({} に .py を置いてください)", missing.join(" / "), pyrun::funcs_dir().display()).into();
+            self.status = ui::tf!("{}({} に .py を置いてください)", missing.join(" / "), pyrun::funcs_dir().display()).into();
             return;
         }
         // 使うモジュールだけ読む(呼ばれていない .py は動かさない)
@@ -1143,7 +1143,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             match std::fs::read_to_string(pyrun::funcs_dir().join(format!("{m}.py"))) {
                 Ok(src) => mods.push((m.clone(), src)),
                 Err(e) => {
-                    self.status = format!("{m}.py が読めません: {e}").into();
+                    self.status = ui::tf!("{}.py が読めません: {}", m, e).into();
                     return;
                 }
             }
@@ -1775,7 +1775,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         let mut rows: Vec<(Pos, usize, f64)> = Vec::new();
         for (l, op, r) in &sv.cons {
             let Some(cells) = parse_cell_list(l, 256) else {
-                self.status = format!("制約の左辺が読めません: {l}").into();
+                self.status = ui::tf!("制約の左辺が読めません: {}", l).into();
                 return;
             };
             let opi = SOLVER_OPS.iter().position(|o| o == op).unwrap_or(0);
@@ -1789,7 +1789,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                         .map(|c| c.value.as_number())
                         .unwrap_or(0.0),
                     None => {
-                        self.status = format!("制約の右辺が読めません: {r}").into();
+                        self.status = ui::tf!("制約の右辺が読めません: {}", r).into();
                         return;
                     }
                 },
@@ -1923,7 +1923,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                             .filter_map(|v| v.trim().parse().ok())
                             .collect();
                         if xs.len() != vars.len() {
-                            this.status = format!("答えの形が違います: {out}").into();
+                            this.status = ui::tf!("答えの形が違います: {}", out).into();
                         } else {
                             this.checkpoint();
                             for (p, x) in vars.iter().zip(&xs) {
@@ -1966,7 +1966,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     pub(crate) fn goal_seek(&mut self, target: Pos, goal: f64, var: Pos) {
         let base = self.sheet().clone();
         if base.get(target).and_then(|c| c.formula.as_ref()).is_none() {
-            self.status = format!("{} は式のセルではありません", target.a1()).into();
+            self.status = ui::tf!("{} は式のセルではありません", target.a1()).into();
             return;
         }
         let found = solve_goal(&base, target, goal, var);

@@ -234,7 +234,7 @@ impl Calc {
         let bytes = match std::fs::read(&p) {
             Ok(b) => b,
             Err(e) => {
-                self.status = format!("開けません: {e}").into();
+                self.status = ui::tf!("開けません: {}", e).into();
                 return;
             }
         };
@@ -298,7 +298,7 @@ impl Calc {
                 self.set_path(Some(p));
                 self.sync_input();
             }
-            Err(e) => self.status = format!("開けません: {e}").into(),
+            Err(e) => self.status = ui::tf!("開けません: {}", e).into(),
         }
     }
 
@@ -379,7 +379,7 @@ impl Calc {
         let raw = match std::fs::read(q) {
             Ok(b) => b,
             Err(e) => {
-                self.status = format!("控えが読めません: {e}").into();
+                self.status = ui::tf!("控えが読めません: {}", e).into();
                 return;
             }
         };
@@ -421,7 +421,7 @@ impl Calc {
                 self.sync_input();
                 self.status = ui::t!("控えを開きました(名無しの複製。保存で名前を聞きます。元へ戻すなら同じ名前で保存)").into();
             }
-            Err(e) => self.status = format!("控えが読めません: {e}").into(),
+            Err(e) => self.status = ui::tf!("控えが読めません: {}", e).into(),
         }
     }
 
@@ -1029,7 +1029,7 @@ impl Calc {
                                     ui::t!("この画像は読めません(PNG か JPEG を選んでください)").into();
                             }
                         },
-                        Err(e) => this.status = format!("読めません: {e}").into(),
+                        Err(e) => this.status = ui::tf!("読めません: {}", e).into(),
                     }
                 }
                 cx.notify();
@@ -1129,14 +1129,14 @@ impl Calc {
         let (fam, exact) = match kumihan::font::for_document(None) {
             Ok(x) => x,
             Err(e) => {
-                self.status = format!("PDF にできません: {e}").into();
+                self.status = ui::tf!("PDF にできません: {}", e).into();
                 return;
             }
         };
         let data = match kumihan::font::load(fam) {
             Ok(d) => d,
             Err(e) => {
-                self.status = format!("PDF にできません: {e}").into();
+                self.status = ui::tf!("PDF にできません: {}", e).into();
                 return;
             }
         };

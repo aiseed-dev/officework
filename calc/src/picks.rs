@@ -4328,7 +4328,7 @@ impl Calc {
                 if text.is_empty() {
                     if self.book.sheets[self.active].links.remove(&p).is_some() {
                         self.dirty = true;
-                        self.status = format!("{} のリンクを外しました", p.a1()).into();
+                        self.status = ui::tf!("{} のリンクを外しました", p.a1()).into();
                     }
                 } else {
                     self.book.sheets[self.active].links.insert(p, text);
@@ -4476,7 +4476,7 @@ impl Calc {
         self.auto_filter = None;
         self.filter_panel = None;
         self.sync_input();
-        self.status = format!("シート「{}」", self.sheet().name).into();
+        self.status = ui::tf!("シート「{}」", self.sheet().name).into();
     }
 
     /// シートを1枚足して、そこへ移る。

@@ -58,7 +58,7 @@ impl Calc {
             im.height_px = (im.width_px * ratio).max(16.0);
             let (w, h) = (im.width_px, im.height_px);
             self.dirty = true;
-            self.status = format!("大きさ: {w:.0}×{h:.0}px").into();
+            self.status = ui::tf!("大きさ: {:.0}×{:.0}px", w, h).into();
         } else {
             // Shift で横か縦に縛る(大きさ変更は元から比を保っている)
             let (mut mx, mut my) = (x - gx, y - gy);
@@ -80,7 +80,7 @@ impl Calc {
                         im.dx_px = dx;
                         im.dy_px = dy;
                         self.dirty = true;
-                        self.status = format!("画像を {} に留めました", at.a1()).into();
+                        self.status = ui::tf!("画像を {} に留めました", at.a1()).into();
                     }
                 }
             }
@@ -482,7 +482,7 @@ impl Calc {
             };
             let (w, h) = (sp.width_px, sp.height_px);
             self.dirty = true;
-            self.status = format!("大きさ: {w:.0}×{h:.0}px").into();
+            self.status = ui::tf!("大きさ: {:.0}×{:.0}px", w, h).into();
         } else {
             // 移動: 掴んだときのずれを保って、左上の来るセルに留め直す。
             // **留め方は place_shape_px に1本化**(整列・分布・Ctrl+矢印と同じ道)
@@ -507,7 +507,7 @@ impl Calc {
                 {
                     let at = sp.at;
                     self.dirty = true;
-                    self.status = format!("図形を {} に留めました", at.a1()).into();
+                    self.status = ui::tf!("図形を {} に留めました", at.a1()).into();
                 }
             }
         }
@@ -532,7 +532,7 @@ impl Calc {
             let (nat, ndx, ndy) = (sp.at, sp.dx_px, sp.dy_px);
             if nat != at || (ndx - ox).abs() > 0.01 || (ndy - oy).abs() > 0.01 {
                 self.dirty = true;
-                self.status = format!("図形を {} に留めました", nat.a1()).into();
+                self.status = ui::tf!("図形を {} に留めました", nat.a1()).into();
             }
         }
         // **1px でも「動かした」と答える。** 左上の端に張り付いて動けなくても、
@@ -551,7 +551,7 @@ impl Calc {
             .map(|(p, _)| *p)
             .collect();
         if hits.is_empty() {
-            self.status = format!("「{term}」は見つかりません").into();
+            self.status = ui::tf!("「{}」は見つかりません", term).into();
             return;
         }
         let cur = self.cursor;
