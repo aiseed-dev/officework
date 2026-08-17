@@ -137,8 +137,8 @@ Apple ID と合言葉より、**API キー**の方が向く(2要素認証に引�
 > **落とし損ねたら作り直せばよい** — 失効させて＋からもう一度、
 > C の台本を回すだけ。取っておく必要も無い。
 >
-> **作り直せないのは証明書の秘密鍵の方**(A で作った物)。あちらは
-> 失うと、それまでに署名した物との繋がりが切れる。
+> 証明書(A)の方も**作り直せる** — Xcode から数秒で、チームで5枚まで
+> 持てる。ただし**古い方を Revoke しないこと**(下の「証明書を作り直す」)。
 
 ### B-3. Key ID は**ファイル名にも入っている**
 
@@ -178,9 +178,9 @@ packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Issuer ID>
   (**Key ID は要らない** — `.p8` のファイル名から読む。
   名前を変えてしまったなら3つ目に書く)
 
-> **書き出した `.p12` は消さないこと**(Desktop に置かれる)。
-> この Mac が壊れたとき、証明書を作り直さずに済む唯一の控え。
-> 安全な所へ移して、合言葉はパスワード管理に残す。
+> 書き出した `.p12`(Desktop に置かれる)を取っておくと、Mac を替えても
+> **同じ証明書を使い続けられる**。無くしても A-2 で作り直せるので、
+> 慌てる物ではない。
 
 > 他人と共有している Mac では、この台本は使わず末尾の「手で入れる」へ。
 > 合言葉が一瞬 `ps` に見えるため。
@@ -274,12 +274,25 @@ MAC_SIGN_IDENTITY=<40桁> MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
 
 1. **鍵を持っている Mac から `.p12` をもらう**(末尾「手で入れる」の1の手順で書き出した物)。
    もらったら**ダブルクリックで入れる**だけ
-2. **作り直す。** 古い方は Apple のサイトで **Revoke** してよい —
-   **その証明書で署名済みの物は、公証済みなら開けるまま**
-   (タイムスタンプが効いているため)
+2. **新しく作る**(下の「証明書を作り直す」)
 
-> Developer ID Application はチームで **5枚まで**。使えない物が溜まって
-> いたら、作り直す前に Revoke して枠を空ける。
+### 証明書を作り直す
+
+**作り直せる。** A-2 の手順をもう一度やるだけで、チームで **5枚まで**
+持てる(Apple:「You can create up to five Developer ID Application
+certificates」)。以後の署名は新しい方で通り、`setup-ci-secrets.sh` を
+もう一度回せば CI も入れ替わる。
+
+> **古い方を Revoke しないこと。** Apple の明記:
+> 「Any Developer ID app signed with a certificate that has been revoked
+> **can no longer be installed nor launch if it's already installed**.」
+> ([Create Developer ID certificates](https://developer.apple.com/help/account/create-certificates/create-developer-id-certificates))
+>
+> つまり revoke は**既に配った物まで止める**。鍵が漏れたとき以外は触らず、
+> **そのまま期限切れにさせる**。放っておくだけで害は無い。
+>
+> 5枚が埋まって作れないときだけ、**もう配っていない**証明書を選んで
+> revoke する。
 
 ### 証明書の期限を見たい
 
@@ -358,8 +371,8 @@ base64 -i AuthKey_XXXX.p8  | pbcopy          # MAC_API_KEY_P8
 > **中身は画面に出さない。** `cat` せずに `pbcopy` で直接貼る。
 > 貼り終えたら `pbcopy < /dev/null` でクリップボードを空にしておく。
 
-> **`.p12` 本体は消さずに取っておく。** これが秘密鍵の控えで、Mac が
-> 壊れたときに証明書を作り直さずに済む唯一の道。
+> `.p12` を取っておくと、Mac を替えても同じ証明書を使い続けられる。
+> 無くしても A-2 で作り直せる。
 
 ---
 
