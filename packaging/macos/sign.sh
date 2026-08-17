@@ -14,6 +14,10 @@
 #   MAC_API_KEY_ID       その Key ID
 #   MAC_API_ISSUER_ID    その Issuer ID
 #
+# **要るとは限らない物**:
+#   MAC_SIGN_IDENTITY    使う証明書の SHA-1。鍵束に Developer ID Application が
+#                        2枚以上あるときだけ要る(1枚なら自分で見つける)
+#
 # 手順書は docs/mac-signing.ja.md。
 #
 # **なぜ台本にするか**: ワークフローに直書きすると読む人が居なくなる。
@@ -52,10 +56,26 @@ cmd_keychain() {
   security list-keychain -d user -s "$KEYCHAIN" "$(security default-keychain | tr -d ' "')"
 
   # 識別子(SHA-1)。**これは秘密ではない** — 署名した物から誰でも読める
-  local ident
-  ident="$(security find-identity -v -p codesigning "$KEYCHAIN" \
-           | grep "Developer ID Application" | head -1 | awk '{print $2}')"
-  [ -n "$ident" ] || die "Developer ID Application の証明書が鍵束にありません"
+  local found n ident
+  found="$(security find-identity -v -p codesigning "$KEYCHAIN" \
+           | grep "Developer ID Application" || true)"
+  n="$(printf '%s' "$found" | grep -c . || true)"
+
+  if [ -n "${MAC_SIGN_IDENTITY:-}" ]; then
+    # 名指しがあればそれに従う(2枚以上ある鍵束で、どれを使うか決めた場合)
+    ident="$MAC_SIGN_IDENTITY"
+  elif [ "$n" -eq 0 ]; then
+    die "Developer ID Application の証明書が鍵束にありません(docs/mac-signing.ja.md の 0)"
+  elif [ "$n" -gt 1 ]; then
+    # **黙って選ばない。** 更新して古い物が残っている・別チームの物が
+    # 混ざっている、のどちらでも「どちらで署名したか分からない物」が
+    # 出来てしまう。どれを使うかは人が決める(docs の 0-A ③)
+    echo "Developer ID Application の証明書が $n 枚あります:" >&2
+    printf '%s\n' "$found" >&2
+    die "MAC_SIGN_IDENTITY に使う方の SHA-1(40 桁)を入れてください"
+  else
+    ident="$(printf '%s' "$found" | awk '{print $2}')"
+  fi
   echo "署名に使う証明書: $ident"
   if [ -n "${GITHUB_ENV:-}" ]; then
     echo "SIGN_IDENTITY=$ident" >> "$GITHUB_ENV"

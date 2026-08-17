@@ -19,20 +19,88 @@
 security find-identity -v -p codesigning
 ```
 
-`Developer ID Application: …(チーム ID)` の行が出れば**もうある** →
-「2. 証明書を .p12 に書き出す」へ。出なければ「1.」から。
+出方は3通りある。**どれかで進む先が変わる。**
 
-> `Apple Development:` や `Mac Developer:` しか出ない場合は**別物**。
-> それらは手元で動かすための証明書で、配る物には使えない。
+| 出方 | 意味 | 行き先 |
+|---|---|---|
+| `Developer ID Application: 名前 (TEAMID)` が出る | 証明書と秘密鍵が**両方この Mac にある** | **「0-A」へ**(そのまま使える) |
+| 何も出ない / `Apple Development:` などしか出ない | 使える物が**この Mac に無い** | 「1.」へ |
+| Apple のサイトには出るのに、ここに出ない | 証明書はあるが**秘密鍵がこの Mac に無い** | 「0-C」へ |
 
-チーム ID は次でも見られる。
+> `Apple Development:` `Mac Developer:` `Developer ID Installer:` は**別物**。
+> 前の2つは手元で動かすための物、最後は `.pkg` 用で、`.app` と `.dmg` には
+> 使えない。**必要なのは `Developer ID Application` ただ1つ。**
+
+---
+
+## 0-A. もう持っている場合 — 使える証明書か3つ確かめる
+
+`find-identity` に出た = **署名できる状態**だが、出す前に3つだけ見る。
+
+### ① 期限が切れていないか
+
+`-v` は「いま有効な物」だけを出すので、**出ている時点で期限内**。
+念のため日付で見るなら:
 
 ```sh
-xcrun altool --list-providers -u <Apple ID> 2>/dev/null || true
+security find-certificate -c "Developer ID Application" -p \
+  | openssl x509 -noout -subject -dates
 ```
 
-見えなければ <https://developer.apple.com/account> の Membership に出ている
-10 桁の英数字。
+`notAfter` が期限。Developer ID の証明書は**5年**で切れる。切れると
+**それ以降に署名した物**が弾かれる(公証済みで配り終えた物は、
+タイムスタンプが効いているので切れても開ける)。
+
+### ② チームが合っているか
+
+括弧の中の 10 桁が Team ID。<https://developer.apple.com/account> の
+Membership に出ている物と同じであること。**複数のチームに属していると
+別チームの証明書が混ざる**ことがある。
+
+### ③ 2つ以上出ていないか
+
+```sh
+security find-identity -v -p codesigning | grep -c "Developer ID Application"
+```
+
+**2 以上なら、どれを使うか決めて指定する。** 更新して古い物が残っている、
+別チームの物がある、といった場合に起きる。`packaging/macos/sign.sh` は
+1つのときはそれを使い、**2つ以上あるときは黙って選ばずに止まる** —
+その場合は使う方の SHA-1(行頭の 40 桁)を控え、Secrets に
+
+| 名前 | 中身 |
+|---|---|
+| `MAC_SIGN_IDENTITY` | 使う証明書の SHA-1(40 桁) |
+
+を足す。1つしか無いなら**この Secret は要らない**。
+
+3つとも問題なければ「2. 証明書を .p12 に書き出す」へ。
+
+---
+
+## 0-C. サイトには出るのに、手元の Mac に出ない場合
+
+**証明書はあるが、対になる秘密鍵がこの Mac に無い。** 証明書だけを
+落として入れても署名はできない(鍵が本体で、証明書はその身分証)。
+よくあるのは、別の Mac で作った・OS を入れ直した・人が替わった、のどれか。
+
+道は2つ。
+
+1. **鍵を持っている Mac から `.p12` をもらう**(「2.」の手順で書き出した物)。
+   これが一番早い。もらったら**ダブルクリックで入れる**だけ
+2. **作り直す。** 古い方は Apple のサイトで **Revoke** してよい —
+   ただし**その証明書で署名済みの物は、公証済みなら開けるまま**
+   (タイムスタンプが効いているため)。Revoke したら「1.」へ
+
+> Developer ID Application の証明書は**チームで 5 枚まで**。使えない物が
+> 溜まっていたら、作り直す前に Revoke して枠を空ける。
+
+---
+
+## 0-B. チーム ID の見つけ方(どの道でも要る)
+
+<https://developer.apple.com/account> の Membership に出ている 10 桁の英数字。
+証明書があるなら、その名前の括弧の中と同じ物。
 
 ---
 
@@ -113,6 +181,12 @@ base64 -i AuthKey_XXXXXXXX.p8 | pbcopy
 | `MAC_API_KEY_P8` | 3 で落とした `.p8` の base64 |
 | `MAC_API_KEY_ID` | 3 の Key ID(10 桁ほど) |
 | `MAC_API_ISSUER_ID` | 3 の Issuer ID(UUID の形) |
+
+**6つ目は要るとは限らない。**
+
+| 名前 | 中身 | いつ要るか |
+|---|---|---|
+| `MAC_SIGN_IDENTITY` | 使う証明書の SHA-1(40 桁) | 鍵束に Developer ID Application が**2枚以上**あるとき(0-A ③)。1枚なら要らない |
 
 名前が1つでも違うと CI がその場で止まり、**どれが無いかを名指しで言う**
 (`packaging/macos/sign.sh` が最初に見る)。

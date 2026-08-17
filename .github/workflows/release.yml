@@ -108,6 +108,9 @@ jobs:
         env:
           MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
           MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          # 鍵束に Developer ID Application が2枚以上あるときだけ要る。
+          # 空なら台本が自分で見つける(2枚以上あって空なら、黙って選ばずに止まる)
+          MAC_SIGN_IDENTITY: ${{ secrets.MAC_SIGN_IDENTITY }}
         run: packaging/macos/sign.sh keychain
       - name: .app を署名する(中から外へ)
         run: |
