@@ -179,3 +179,8 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist
+          # **既にある物は飛ばす。** PyPI は同じ名前のファイルを2回受け取らない
+          # ので、一部だけ失敗した回をやり直すと、成功した分で必ず落ちる。
+          # 2026-08-17 に踏んだ: wheel 3つは上がったのに sdist だけ 400 で
+          # 落ち、やり直すと今度は wheel の重複で落ちる状態になった
+          skip-existing: true

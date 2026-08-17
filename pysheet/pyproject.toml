@@ -20,6 +20,13 @@ description = "An openpyxl / python-docx / xlwings alternative: xlsx and docx en
 readme = "README.md"
 requires-python = ">=3.10"
 license = "AGPL-3.0-or-later"
+# **これが無いと sdist が PyPI に拒まれる。** 書かないと maturin は
+# PKG-INFO に「License-File: LICENSE」と書くのに、実物を
+# officework-<版>/pysheet/LICENSE に置く(この crate は workspace の
+# 一員なので、sdist の中では pysheet/ の下に入る)。PyPI は宣言どおりの
+# 場所にあるかを見るので、400 で落ちる。明示すると根にも複製が置かれる
+# (2026-08-17、0.4.0 の公開で踏んだ。wheel 3つは上がり sdist だけ落ちた)
+license-files = ["LICENSE"]
 authors = [{ name = "Yasuhiro Niji" }]
 keywords = ["xlsx", "docx", "excel", "word", "spreadsheet", "office", "openpyxl", "python-docx", "xlwings"]
 classifiers = [
