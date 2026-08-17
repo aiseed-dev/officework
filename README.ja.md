@@ -1,6 +1,6 @@
 # officework
 
-*正本(primary)は英語版: [README.md](README.md)。この日本語版は副です。*
+*元は英語版([README.md](README.md))です。こちらは日本語訳です。*
 
 **Python で Office の仕事を自動化する — それがこのソフトの一番の目的です。**
 エンジンは `pip install officework` で単体で入ります: xlsx / docx を
@@ -228,7 +228,7 @@ d.save("out.docx")
 ```
 
 帳票に差し込むなら `replace()` を使ってください。文字ごとの書式
-(太字・色など)を残したまま置き換えるので、太字の項目名の隣に素の値が
+(太字・色など)を残したまま置き換えるので、太字の項目名の隣に普通の値が
 入る形が崩れません。`.text` への代入は段落を丸ごと書き替える大づかみな
 道具で、文字の書式は段落の先頭のものに揃います。
 
@@ -239,9 +239,9 @@ d.save("out.docx")
 from officework import calc as xw   # xlwings 流の Book / Range
 ```
 
-コードを書く人向けの正本は [Python の手引き](docs/python-manual.ja.md) —
+コードを書く人向けの説明は [Python の手引き](docs/python-manual.ja.md) にあります —
 **範囲⇄配列のやり取り**(values() と1セルずつの書き込み)、=PY の
-2次元リストとスピル、writer マクロの `d`、サンドボックスの中の約束、まで実測つき。
+2次元リストとスピル、writer マクロの `d`、サンドボックスの中の約束、まで、実際に動かして確かめた内容つきです。
 
 ## 構成
 
@@ -256,7 +256,7 @@ paper/    紙面を PDF へ写す
 ui/       gpui との結線(入力・IME・リボン)
 writer/   docx のアプリ
 calc/     xlsx のアプリ
-pysheet/  Python 束縛(pip install officework → officework.sheet / officework.doc)
+pysheet/  Python から使う部分(pip install officework → officework.sheet / officework.doc)
 sidecar/  genoffice に載せるときの別プロセス
 ```
 

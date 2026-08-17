@@ -18,7 +18,7 @@ Three ways:
    `~/.config/officework/plugins/` is listed; click one to run it in the same
    sandbox.
 3. **Macros tab > Write a macro** — describe what you want; the model writes a
-   script into the plugins folder (`ai台本N.py`). It is **never run
+   script into the plugins folder (`aiスクリプトN.py`). It is **never run
    automatically** — read it, then run it from the plugins list.
 
 ## The contract
