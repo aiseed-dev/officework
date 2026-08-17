@@ -175,9 +175,21 @@ cmd_app() {
   while IFS= read -r a; do kc+=("$a"); done < <(keychain_args)
 
   # **中から外へ。** 包みを先に署名すると、後から中を触った時点で壊れる
-  local n=0
+  local n=0 s=0
   while IFS= read -r f; do
-    is_macho "$f" || continue
+    if ! is_macho "$f"; then
+      # **Mach-O でなくても、実行権があれば署名が要る。**
+      # codesign は包みの中の実行権のあるファイルを「中身の一部」と見なす。
+      # 同梱 Python の `bin/pip3.14` などは shebang の台本なので Mach-O では
+      # なく、飛ばしていたら包み全体が「まったく署名されていない」と言われた
+      # (2026-08-17)。台本に hardened runtime も権利も要らないので素で署名する
+      if [ -x "$f" ] && [ ! -L "$f" ]; then
+        codesign --force --timestamp ${kc[@]+"${kc[@]}"} -s "$id" "$f" \
+          2> >(grep -v "replacing existing signature" >&2)
+        s=$((s + 1))
+      fi
+      continue
+    fi
     # **誤りを握り潰さない。** codesign は1つ署名するたびに
     # 「replacing existing signature」を stderr に出すので、**その1行だけ**
     # 捨てる。まとめて /dev/null に流すと、本当の失敗が見えなくなる
@@ -201,7 +213,7 @@ cmd_app() {
     ${kc[@]+"${kc[@]}"} -s "$id" "$app"
 
   codesign --verify --strict --verbose=2 "$app"
-  echo "署名しました: $app(中の Mach-O $n 個 + 包み)"
+  echo "署名しました: $app(Mach-O $n 個 + 台本 $s 個 + 包み)"
 }
 
 # ---- 公証 -------------------------------------------------------------------

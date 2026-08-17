@@ -419,6 +419,15 @@ security find-certificate -c "Developer ID Application" -p \
 `notAfter` が期限(**5年**)。切れると**それ以降に署名する物**が弾かれる。
 公証済みで配り終えた物は、タイムスタンプが効いているので切れても開ける。
 
+### 「code object is not signed at all」で止まる
+
+`In subcomponent:` に続く径路が、署名し漏れた物。**Mach-O とは限らない** —
+同梱 Python の `bin/pip3.14` のような shebang の台本も、実行権があれば
+codesign は包みの中身と見なす(2026-08-17 に踏んだ)。
+
+台本は Mach-O だけでなく**実行権のあるファイルも署名する**ようにした。
+台本には hardened runtime も権利も要らないので素で署名する。
+
 ### 公証が通らない
 
 台本が直近の記録を出す。多いのは「署名し漏れた Mach-O がある」で、
