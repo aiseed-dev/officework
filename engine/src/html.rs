@@ -5,7 +5,8 @@
 //! p / li / tr / td の閉じ忘れは癒す(実物の Web によくある形)。
 
 use crate::{
-    Block, Cellbox, CharFormat, Document, ListKind, Paragraph, ParaStyle, Run, Table,
+    Block, Cellbox, CharFormat, Document, InlineImage, ListKind, Paragraph, ParaStyle, Run,
+    Table,
 };
 
 /// 記入欄(HTML の form)。writer がパネルで記入し、GET/POST で送る
@@ -109,6 +110,9 @@ struct Builder {
     sel: Option<Field>,
     in_option: bool,
     ta: Option<Field>,
+    /// **この段落に付く画像**(`img` の径路)。中身は持たない — 実体は
+    /// ファイルが元で、読むのは呼ぶ側(engine はファイルを触らない)
+    imgs: Vec<InlineImage>,
 }
 
 impl Builder {
@@ -136,6 +140,7 @@ impl Builder {
             cur_form: None,
             sel: None,
             in_option: false,
+            imgs: Vec::new(),
             ta: None,
         }
     }
@@ -149,6 +154,10 @@ impl Builder {
             bold: self.bold > 0,
             italic: self.italic > 0,
             underline: self.under > 0,
+            // **リンクは字に付ける。** 2026-08-18 まで別の一覧に控えるだけで、
+            // 字には付けていなかった。読んで書き戻すとリンクが全部消えていた
+            // (リンクの一覧のページを読ませて気づいた)
+            link: self.cur_link.as_ref().map(|(href, _)| href.clone()),
             ..Default::default()
         }
     }
@@ -175,7 +184,9 @@ impl Builder {
     fn flush_para(&mut self) {
         self.flush_text();
         let runs = std::mem::take(&mut self.runs);
-        if runs.iter().all(|r| r.text.trim().is_empty()) {
+        let imgs = std::mem::take(&mut self.imgs);
+        // **絵だけの段落も残す。** 字が無いから捨てる、では写真が消える
+        if runs.iter().all(|r| r.text.trim().is_empty()) && imgs.is_empty() {
             return;
         }
         self.doc.blocks.push(Block::Para(Paragraph {
@@ -185,6 +196,7 @@ impl Builder {
             first_line_twips: 0,
             line_spacing: 1.0,
             runs,
+            images_new: imgs,
             ..Default::default()
         }));
         self.style = ParaStyle::Body;
@@ -193,10 +205,13 @@ impl Builder {
     fn end_cell(&mut self) {
         self.flush_text();
         if let Some(runs) = self.cell.take() {
+            // セルの中の画像も付ける(店の看板は表の中にいることが多い)
+            let imgs = std::mem::take(&mut self.imgs);
             self.row.push(Cellbox {
                 paragraphs: vec![Paragraph {
                     line_spacing: 1.0,
                     runs,
+                    images_new: imgs,
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -288,7 +303,28 @@ impl Builder {
                 self.end_cell();
                 self.cell = Some(Vec::new());
             }
-            "img" => self.note("画像(img。初版では出さない)"),
+            // **画像は径路で持つ。** 中身は読まない(engine はファイルを
+            // 触らない)ので、bytes は空のまま。開く側が隣から読む
+            "img" => {
+                let Some(src) = attr_of(tag, "src") else {
+                    self.note("画像(img。src がない)");
+                    return;
+                };
+                // 画素の指定があれば mm へ(96dpi)。無ければ 0(呼ぶ側が決める)
+                let mm = |k: &str| {
+                    attr_of(tag, k)
+                        .and_then(|v| v.trim_end_matches("px").parse::<f32>().ok())
+                        .map(|px| px * 25.4 / 96.0)
+                        .unwrap_or(0.0)
+                };
+                self.imgs.push(InlineImage {
+                    bytes: std::sync::Arc::new(Vec::new()),
+                    w_mm: mm("width"),
+                    h_mm: mm("height"),
+                    tex: None,
+                    src: Some(src),
+                });
+            }
             // 記入(フォーム)。欄は下線の空欄として見せ、中身は Form に集める
             "form" => {
                 self.cur_form = Some(Form {
@@ -546,16 +582,37 @@ impl Builder {
 
 /// 開始タグから属性を取り出す(部分集合。` key="値"` / ` key='値'` / ` key=値`)
 fn attr_of(tag: &str, key: &str) -> Option<String> {
-    let pat = format!(" {key}=");
-    let i = tag.find(&pat)? + pat.len();
-    let rest = &tag[i..];
-    let (q, rest) = match rest.chars().next()? {
-        '"' => ('"', &rest[1..]),
-        '\'' => ('\'', &rest[1..]),
-        _ => (' ', rest),
+    // **札は行をまたぐ。** Word は 80 字で折るので、`width=294 height=108` の
+    // 後ろに改行が来る。前は「半角空白の前まで」を値としていたので、折れた札の
+    // 値が次の行まで伸びて数として読めなかった(2026-08-18、たねの森のページで
+    // 画像の高さが 0 になっていた)
+    let pat = format!("{key}=");
+    let mut at = 0usize;
+    let i = loop {
+        let j = at + tag[at..].find(&pat)?;
+        // 直前が空白でなければ別の札の一部(例: font-height=)
+        let 前 = tag[..j].chars().next_back();
+        if j == 0 || 前.is_some_and(char::is_whitespace) {
+            break j + pat.len();
+        }
+        at = j + pat.len();
     };
-    let end = rest.find(q).unwrap_or(rest.len());
-    Some(decode_entities(rest[..end].trim_end_matches('>')))
+    let rest = &tag[i..];
+    let value = match rest.chars().next()? {
+        '"' => {
+            let r = &rest[1..];
+            &r[..r.find('"').unwrap_or(r.len())]
+        }
+        '\'' => {
+            let r = &rest[1..];
+            &r[..r.find('\'').unwrap_or(r.len())]
+        }
+        // 囲みが無いときは、空白か > で終わる
+        _ => &rest[..rest
+            .find(|c: char| c.is_whitespace() || c == '>')
+            .unwrap_or(rest.len())],
+    };
+    Some(decode_entities(value.trim_end_matches('>')))
 }
 
 /// 文字実体参照(最小限)と数値参照を戻す
@@ -668,12 +725,45 @@ mod tests {
     #[test]
     fn 箇条書きと帳簿() {
         let (d, notes) = parse(
-            "<ul><li>一</li><li>二</li></ul><img src=x><blink>謎</blink>",
+            "<ul><li>一</li><li>二</li></ul><blink>謎</blink>",
         );
         let ps: Vec<_> = d.paragraphs().collect();
         assert_eq!(ps[0].list, ListKind::Bullet);
         assert_eq!(ps[1].runs[0].text, "二");
-        assert!(notes.iter().any(|n| n.contains("img")), "{notes:?}");
         assert!(notes.iter().any(|n| n.contains("blink")), "{notes:?}");
+    }
+
+    /// **札が行をまたいでも読める。** Word は 80 字で折るので、値の後ろに
+    /// 改行が来る(2026-08-18、これで画像の高さが 0 になっていた)。
+    #[test]
+    fn 札が行をまたいでも読める() {
+        let (d, _) = parse("<p><img width=294 height=108\n   id=\"i1\" src=logo.gif></p>");
+        let im = d.paragraphs().next().unwrap().images_new.first().expect("画像が無い");
+        assert_eq!(im.src.as_deref(), Some("logo.gif"));
+        assert!((im.h_mm - 108.0 * 25.4 / 96.0).abs() < 0.1, "高さが読めない: {}", im.h_mm);
+    }
+
+    /// **画像は径路で残る。** 2026-08-18 まで捨てていたので、Word が書き出した
+    /// ページを読むと看板の絵が消えていた。中身は読まない(engine はファイルを
+    /// 触らない)ので、bytes は空で src だけが入る
+    #[test]
+    fn 画像は径路で残る() {
+        let (d, _) = parse(
+            "<p><img src=\"logo.gif\" width=294 height=108></p>\
+             <table><tr><td><img src=\"seed.png\"></td></tr></table>",
+        );
+        let p0 = d.paragraphs().next().expect("段落が無い");
+        let im = p0.images_new.first().expect("画像が付いていない");
+        assert_eq!(im.src.as_deref(), Some("logo.gif"));
+        assert!(im.bytes.is_empty(), "engine が中身を読んでしまっている");
+        assert!((im.w_mm - 294.0 * 25.4 / 96.0).abs() < 0.1, "幅が違う: {}", im.w_mm);
+        assert!((im.h_mm - 108.0 * 25.4 / 96.0).abs() < 0.1, "高さが違う: {}", im.h_mm);
+        // 表のセルの中の絵も残る
+        let t = d.tables().next().expect("表が無い");
+        assert_eq!(
+            t.rows[0][0].paragraphs[0].images_new.first().and_then(|i| i.src.as_deref()),
+            Some("seed.png"),
+            "セルの中の絵が消えた"
+        );
     }
 }
