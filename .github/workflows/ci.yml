@@ -45,6 +45,12 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          # **失敗した回でも組んだ物を残す。** 既定では job が失敗すると
+          # 保存しないので、組み立ての後ろの段で落ちるたびに、次の回も
+          # 一から組み直しになる(2026-08-17、Windows が 12分14秒かけて
+          # 組んだ後に put-bins.py の1行で落ち、その結果が捨てられた)
+          cache-on-failure: "true"
       - name: 試験が要る物を入れる(フォントと辞書)
         # **同梱しない物に依っている試験がある。** 走らせる機械の持ち物を使う
         # のが製品の作りなので、CI にも入れる(隠して素通しにはしない):
@@ -228,6 +234,12 @@ jobs:
       # GPUI は zed を git から取って組む。**掛かるのはほぼ初回だけ**なので、
       # 覆いが効くかどうかがこの仕事の速さを決める
       - uses: Swatinem/rust-cache@v2
+        with:
+          # **失敗した回でも組んだ物を残す。** 既定では job が失敗すると
+          # 保存しないので、組み立ての後ろの段で落ちるたびに、次の回も
+          # 一から組み直しになる(2026-08-17、Windows が 12分14秒かけて
+          # 組んだ後に put-bins.py の1行で落ち、その結果が捨てられた)
+          cache-on-failure: "true"
       - name: GPUI が繋ぐ物を入れる(Linux だけ)
         # **組み上がったバイナリの `ldd` から起こした**(推測ではない):
         #   libxkbcommon / libxkbcommon-x11 / libxcb / libxcb-xkb
@@ -326,6 +338,12 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          # **失敗した回でも組んだ物を残す。** 既定では job が失敗すると
+          # 保存しないので、組み立ての後ろの段で落ちるたびに、次の回も
+          # 一から組み直しになる(2026-08-17、Windows が 12分14秒かけて
+          # 組んだ後に put-bins.py の1行で落ち、その結果が捨てられた)
+          cache-on-failure: "true"
       - name: 日本語フォントを入れる
         # apps の仕事のフォントの段と同じ理由 — 3 OS とも同じ Noto で字幅を
         # 測る。Server の runner は日本語書体の有無すら保証が無い。
@@ -356,6 +374,12 @@ jobs:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          # **失敗した回でも組んだ物を残す。** 既定では job が失敗すると
+          # 保存しないので、組み立ての後ろの段で落ちるたびに、次の回も
+          # 一から組み直しになる(2026-08-17、Windows が 12分14秒かけて
+          # 組んだ後に put-bins.py の1行で落ち、その結果が捨てられた)
+          cache-on-failure: "true"
       - name: wheel を組む
         run: |
           pip install maturin

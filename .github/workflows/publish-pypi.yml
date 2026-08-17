@@ -47,6 +47,12 @@ jobs:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          # **失敗した回でも組んだ物を残す。** 既定では job が失敗すると
+          # 保存しないので、組み立ての後ろの段で落ちるたびに、次の回も
+          # 一から組み直しになる(2026-08-17、Windows が 12分14秒かけて
+          # 組んだ後に put-bins.py の1行で落ち、その結果が捨てられた)
+          cache-on-failure: "true"
       - name: 画面を組むのに要る物(Linux だけ)
         # 組み上がったバイナリの ldd から起こした一覧(ci.yml と同じ)。
         # libfontconfig1-dev は ldd に出ないが、組むときに要る
