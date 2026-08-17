@@ -83,6 +83,100 @@ impl Report {
     }
 }
 
+/// CSV(1行目が見出し)を読んで [`Data`] にします。
+///
+/// **1枚で足ります。** 見出しが `{{名前}}` と同じなら、その値は**1行目**から
+/// 取ります(宛名や合計のように1つだけの値)。表の繰り返しには全部の行を
+/// 使います。2枚に分けさせないのは、書く人の手間を増やさないためです。
+///
+/// 区切りはカンマ、囲みは `"` です。改行を含む欄も読めます。
+pub fn from_csv(src: &str, group: &str) -> Data {
+    let rows = read_csv(src);
+    let mut d = Data::new();
+    let Some(head) = rows.first() else { return d };
+    for r in rows.iter().skip(1) {
+        let mut one = BTreeMap::new();
+        for (i, h) in head.iter().enumerate() {
+            one.insert(h.clone(), r.get(i).cloned().unwrap_or_default());
+        }
+        // 1つだけの値は1行目から
+        if d.values.is_empty() {
+            for (k, v) in &one {
+                d.values.insert(k.clone(), v.clone());
+            }
+        }
+        d.rows.entry(group.to_string()).or_default().push(one);
+    }
+    d
+}
+
+/// CSV を桁の並びに。囲みの中の改行とカンマ、`""` の逃がしを見ます。
+fn read_csv(src: &str) -> Vec<Vec<String>> {
+    let mut rows = Vec::new();
+    let mut row = Vec::new();
+    let mut cell = String::new();
+    let mut quoted = false;
+    let mut it = src.chars().peekable();
+    while let Some(c) = it.next() {
+        if quoted {
+            if c == '"' {
+                if it.peek() == Some(&'"') {
+                    it.next();
+                    cell.push('"');
+                } else {
+                    quoted = false;
+                }
+            } else {
+                cell.push(c);
+            }
+            continue;
+        }
+        match c {
+            '"' if cell.is_empty() => quoted = true,
+            ',' => row.push(std::mem::take(&mut cell)),
+            '\r' => {}
+            '\n' => {
+                row.push(std::mem::take(&mut cell));
+                rows.push(std::mem::take(&mut row));
+            }
+            _ => cell.push(c),
+        }
+    }
+    if !cell.is_empty() || !row.is_empty() {
+        row.push(cell);
+        rows.push(row);
+    }
+    rows
+}
+
+/// この文書が名指している群(`{{群.項目}}` の群)。1つも無ければ None。
+///
+/// 2つ以上あれば、どれに流すかは人が決めることなので **None を返さず全部**
+/// 返します。呼ぶ側が「1つでなければ断る」と決められます。
+pub fn groups(doc: &Document) -> Vec<String> {
+    let mut v: Vec<String> = Vec::new();
+    let mut see = |p: &Paragraph| {
+        if let Some(g) = group_of(p) {
+            if !v.contains(&g) {
+                v.push(g);
+            }
+        }
+    };
+    for b in &doc.blocks {
+        match b {
+            Block::Para(p) => see(p),
+            Block::Table(t) => {
+                for c in t.rows.iter().flat_map(|r| r.iter()) {
+                    for p in &c.paragraphs {
+                        see(p);
+                    }
+                }
+            }
+        }
+    }
+    v
+}
+
 /// 文字列の中の `{{…}}` を探して、名前を順に返します。
 fn names(s: &str) -> Vec<(usize, usize, String)> {
     let mut v = Vec::new();

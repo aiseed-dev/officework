@@ -754,6 +754,11 @@ impl Render for Writer {
                         this.save_pdf(cx);
                         cx.notify()
                     })))
+                .child(mk("f-merge", ui::t!("データを差し込む(CSV)"), true).on_click(
+                    cx.listener(|this, _, _, cx| {
+                        this.merge_csv(cx);
+                        cx.notify()
+                    })))
                 .child(mk("f-html", ui::t!("Web の形で書き出す(HTML)"), true).on_click(
                     cx.listener(|this, _, _, cx| {
                         this.save_html(cx);

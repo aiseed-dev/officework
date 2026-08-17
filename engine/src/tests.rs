@@ -1895,6 +1895,34 @@ mod fill_tests {
         assert_eq!(rep.expanded.get("明細"), Some(&0));
     }
 
+    /// CSV 1枚で、1つだけの値と明細の両方をまかないます。
+    #[test]
+    fn csvから読める() {
+        let src = "宛名,品名,数量\nみほん商事,鉛筆,10\nみほん商事,消しゴム,5\n";
+        let d = fill::from_csv(src, "明細");
+        assert_eq!(d.values.get("宛名"), Some(&"みほん商事".to_string()));
+        assert_eq!(d.rows["明細"].len(), 2);
+        assert_eq!(d.rows["明細"][1]["品名"], "消しゴム");
+    }
+
+    /// 囲みの中の改行とカンマを読み違えないこと。
+    #[test]
+    fn csvの囲みを読む() {
+        let src = "品名,備考\n\"鉛筆, HB\",\"1行目\n2行目\"\n";
+        let d = fill::from_csv(src, "明細");
+        assert_eq!(d.rows["明細"][0]["品名"], "鉛筆, HB");
+        assert_eq!(d.rows["明細"][0]["備考"], "1行目\n2行目");
+    }
+
+    /// 差し込む所を見つけられること(画面から使うときの判断に要ります)。
+    #[test]
+    fn 差し込む所を数える() {
+        let d = adoc::parse(雛形).expect("雛形が読めない");
+        assert_eq!(fill::groups(&d), vec!["明細".to_string()]);
+        let 素 = adoc::parse("= 題\n\nただの本文。\n").unwrap();
+        assert!(fill::groups(&素).is_empty(), "無い所を有ると言った");
+    }
+
     /// **雛形は何度でも使える**(原本を書き換えない)。
     #[test]
     fn 雛形は書き換えられない() {

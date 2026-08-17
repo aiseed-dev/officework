@@ -290,6 +290,60 @@ impl Writer {
     }
 
     /// PDF として保存。保存先の選択は**別のスレッド**(rfd は同期)。
+    /// **CSV を差し込みます**(帳票。2026-08-17)。
+    ///
+    /// 雛形に `{{名前}}` と `{{群.項目}}` を書いておき、CSV を選ぶと、
+    /// 明細の行が CSV の行数だけ増えます。
+    pub(crate) fn merge_csv(&mut self, cx: &mut Context<Self>) {
+        self.flush_target();
+        let gs = kumihan::fill::groups(&self.doc);
+        if gs.is_empty() {
+            self.status = ui::t!(
+                "差し込む所がありません。表の行に {{群.項目}} と書いてください"
+            )
+            .into();
+            return;
+        }
+        if gs.len() > 1 {
+            // **どれに流すかは人が決めること。** 勝手に選ばない
+            self.status = ui::tf!("差し込む所が複数あります: {}", gs.join(" / ")).into();
+            return;
+        }
+        let ask = cx.background_executor().spawn(async {
+            rfd::FileDialog::new().add_filter("CSV", &["csv"]).pick_file()
+        });
+        cx.spawn(async move |this, cx| {
+            let r = ask.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(p) = r {
+                    this.merge_from(&p);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// CSV を読んで差し込みます。**元に戻せます**(節目を控えてから変えます)。
+    pub(crate) fn merge_from(&mut self, path: &std::path::Path) {
+        let Some(group) = kumihan::fill::groups(&self.doc).into_iter().next() else { return };
+        let src = match std::fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(e) => {
+                self.status = ui::tf!("読めません: {}", e).into();
+                return;
+            }
+        };
+        self.checkpoint(false);
+        let data = kumihan::fill::from_csv(&src, &group);
+        let (out, rep) = kumihan::fill::fill(&self.doc, &data);
+        self.doc = out;
+        self.ed = Editor::new(&self.doc.body_text());
+        self.dirty = true;
+        self.relayout();
+        self.status = rep.summary().into();
+    }
+
     /// **Web の形で書き出します**(2026-08-17。Web・アプリ・帳票の土台)。
     ///
     /// 本文は意味だけの HTML、見た目はテンプレート由来の CSS になります。
