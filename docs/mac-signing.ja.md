@@ -136,6 +136,10 @@ packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Key ID> <Issuer
 > 他人と共有している Mac では、この台本は使わず末尾の「手で入れる」へ。
 > 合言葉が一瞬 `ps` に見えるため。
 
+入った物は**名前だけ**ここで見られる(中身は二度と見られない):
+
+<https://github.com/aiseed-dev/officework/settings/secrets/actions>
+
 ### 入る秘密(名前だけ)
 
 | 名前 | 中身 |
@@ -274,8 +278,28 @@ openssl pkcs12 -in Certificates.p12 -info -nokeys -noout -passin stdin
 
 ### 2. Secrets に貼る
 
-Settings → Secrets and variables → Actions。名前は C の表のとおり。
-base64 はクリップボード経由で:
+**入れる場所はここ**(直に開ける):
+
+<https://github.com/aiseed-dev/officework/settings/secrets/actions>
+
+画面から辿るなら:
+
+1. リポジトリの上のタブで **Settings**
+   (**アカウント**の Settings ではない。リポジトリの名前の下に並ぶ方)
+2. 左の柱の **Secrets and variables** → **Actions**
+   (Codespaces / Dependabot もあるが、**Actions** を選ぶ)
+3. **Repository secrets** の側の緑の **New repository secret**
+   (**Environment secrets** ではない)
+4. **Name** に `MAC_CERT_P12`、**Secret** に中身を貼って **Add secret**
+5. 残りの4つ(または5つ)も同じように足す
+
+> **Settings のタブが見えない**なら、そのリポジトリへの権限が足りない
+> (管理者が要る)。
+>
+> **一度入れた中身は二度と見られない。** 名前の一覧と「いつ更新したか」
+> だけが出る。間違えたら **Update** で入れ直す(消して作り直さなくてよい)。
+
+名前は C の表のとおり。base64 はクリップボード経由で:
 
 ```sh
 base64 -i Certificates.p12 | pbcopy          # MAC_CERT_P12
