@@ -21,6 +21,14 @@ on:
         description: "下書きのまま置く(公開しない)"
         type: boolean
         default: true
+      mac_only:
+        # **試すときの近道。** mac の署名を確かめたいだけなら、Linux と
+        # Windows を組む意味が無い(そのぶん20分ほど短くなる)。
+        # Releases に置く段も飛ばすので、出来た .dmg は走行ページの
+        # Artifacts から落とす
+        description: "macOS だけ組む(署名を試すとき)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # Releases に置くのに要る
@@ -32,6 +40,7 @@ env:
 jobs:
   linux:
     name: Linux(tar.gz と .deb)
+    if: ${{ !inputs.mac_only }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -91,6 +100,7 @@ jobs:
 
   windows:
     name: Windows(zip)
+    if: ${{ !inputs.mac_only }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
@@ -127,6 +137,7 @@ jobs:
 
   release:
     name: Releases に置く
+    if: ${{ !inputs.mac_only }}
     needs: [linux, macos, windows]
     runs-on: ubuntu-latest
     steps:

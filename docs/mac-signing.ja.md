@@ -243,10 +243,18 @@ GitHub の macOS の機械が、手元と**同じ台本**
 
 <https://github.com/aiseed-dev/officework/actions/workflows/release.yml>
 
-右の **Run workflow** を押す。「下書きのまま置く」は**既定で入**なので、
-そのまま **Run workflow**。
+右の **Run workflow** を押す。押す前に:
 
-**初回は 20〜40 分**かかる(GPUI を一から組むため)。公証そのものは数分。
+- 「下書きのまま置く」は**既定で入**。そのままでよい
+- **「macOS だけ組む」に入れる** — 署名を試すだけなら Linux と Windows を
+  組む意味が無い(そのぶん20分ほど短くなる)。出来た `.dmg` は
+  走行ページの **Artifacts** から落とす
+
+**初回は 20〜40 分**(macOS だけなら 15〜25 分)。GPUI を一から組むため。
+公証そのものは数分。
+
+> **途中で止めない。** 止めると成果物は残らず、次も同じだけ掛かる。
+> 2回目からは組んだ物が覚えられているので短くなる。
 
 > `gh`(GitHub CLI)を使っているなら `gh workflow run release.yml` と
 > `gh run watch` でも同じ。
