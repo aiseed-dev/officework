@@ -61,6 +61,25 @@ jobs:
             libfontconfig1-dev cmake clang pkg-config
       - name: 包む
         run: packaging/make-linux.sh
+      - name: 入れて確かめる(.deb を入れ、消す)
+        # Windows と同じ理由で、**入るところまで機械にやらせる**。
+        # 置かれた物・デスクトップの項目・アイコンを見て、消えることも見る
+        run: |
+          sudo dpkg -i packaging/out/officework_*_amd64.deb
+          for f in /opt/officework/calc /opt/officework/writer \
+                   /usr/share/applications/officework-calc.desktop \
+                   /usr/share/icons/hicolor/48x48/apps/officework-calc.png; do
+            [ -e "$f" ] || { echo "入っていません: $f"; exit 1; }
+            echo "  入った: $f"
+          done
+          # デスクトップの項目が壊れていないか(desktop-file-validate があれば)
+          if command -v desktop-file-validate > /dev/null; then
+            desktop-file-validate /usr/share/applications/officework-calc.desktop
+            echo "  デスクトップの項目は正しい形です"
+          fi
+          sudo dpkg -r officework
+          [ -e /opt/officework/calc ] && { echo "消えていません"; exit 1; }
+          echo "  消えました"
       - uses: actions/upload-artifact@v4
         with:
           name: linux
@@ -156,6 +175,55 @@ jobs:
             choco install innosetup --no-progress -y
           }
           & $iscc "/DVersion=$env:VER" "/DSrc=..\out\windows" packaging\windows\officework.iss
+      - name: 入れて確かめる(黙って入れ、消す)
+        # **「組めた」で終わらせない。** 手元に Windows が無く、試せる人も
+        # いないので(2026-08-17 発注者)、機械にできることは機械にやらせる。
+        #
+        # 黙って入れる → 置かれた物とスタートメニューを見る → 黙って消す →
+        # 消えたことを見る。ここまでは人がいなくても確かめられる。
+        #
+        # **窓が開くかどうかは別**。GPUI が画面を出せるかは、この機械では
+        # 当てにならないので、試して結果を書き出すだけにして落とさない
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem packaging/out/*setup.exe | Select-Object -First 1
+          Write-Host "入れます: $($setup.Name)"
+          Start-Process -FilePath $setup.FullName `
+            -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+
+          $app = "$env:LOCALAPPDATA\Programs\officework"
+          foreach ($f in @("calc.exe", "writer.exe", "python\python.exe")) {
+            if (-not (Test-Path "$app\$f")) { throw "入っていません: $f" }
+            $mb = [math]::Round((Get-Item "$app\$f").Length / 1MB, 1)
+            Write-Host "  入った: $f ($mb MB)"
+          }
+          $menu = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\officework"
+          if (-not (Test-Path "$menu\officework calc.lnk")) {
+            throw "スタートメニューに出ていません"
+          }
+          Write-Host "  スタートメニューに出ました"
+
+          # 窓が開くかは当てにならないので、結果を書き出すだけ
+          try {
+            $p = Start-Process "$app\calc.exe" -PassThru
+            Start-Sleep -Seconds 8
+            if ($p.HasExited) {
+              Write-Host "起動: すぐ終了しました(終了コード $($p.ExitCode))"
+            } else {
+              Write-Host "起動: 8秒たっても動いています"
+              Stop-Process -Id $p.Id -Force
+            }
+          } catch {
+            Write-Host "起動: 試せませんでした($_)"
+          }
+
+          # 消えるかも見る
+          $un = Get-ChildItem "$app\unins*.exe" | Select-Object -First 1
+          Start-Process -FilePath $un.FullName `
+            -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          Start-Sleep -Seconds 3
+          if (Test-Path "$app\calc.exe") { throw "消えていません" }
+          Write-Host "  消えました"
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -232,6 +300,17 @@ jobs:
             > 落ち着いたら Microsoft ストアから出す予定です。
 
             試し方と、動かないときの手当ては同梱の「はじめに」を見てください。
+
+            ### どこまで確かめてあるか
+
+            Linux と Windows は、**機械が実際に入れて、置かれた物を見て、
+            消えることまで**確かめています。macOS は署名と公証が
+            Gatekeeper の検査(`spctl`)を通ることを確かめています。
+
+            ただし **Windows で窓が開くところは人の目で見ていません**。
+            開かない・おかしいときは
+            [Issues](https://github.com/aiseed-dev/officework/issues) に
+            書いてもらえると助かります。
 
             ### アルファです
 
