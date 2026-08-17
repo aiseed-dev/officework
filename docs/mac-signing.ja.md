@@ -133,18 +133,12 @@ Apple ID と合言葉より、**API キー**の方が向く(2要素認証に引�
 | **Key ID** | その行の **「キー ID」**の列 | 10 桁の英数字 |
 | **Issuer ID** | **表の上**に出ている「Issuer ID」(横に「コピー」) | UUID(`8a...-....-....-....-............`) |
 
-> **`.p8` は一度しか落とせない。** Apple の明記:
-> 「You can only download a key once.」「the key is not saved in your
-> developer account and you won't be able to download it again.
-> **If the Download button is disabled, you previously downloaded the key.**」
-> ([Revoke, edit, and download keys](https://developer.apple.com/help/account/keys/revoke-edit-and-download-keys))
+> `.p8` を落とせるのは1回だけ(ボタンは残るが押せなくなる)。
+> **落とし損ねたら作り直せばよい** — 失効させて＋からもう一度、
+> C の台本を回すだけ。取っておく必要も無い。
 >
-> **ボタンは消えずに残り、押せなくなるだけ**なので「まだ落とせそう」に
-> 見える。安全な所に置くこと。
->
-> ただし**失っても痛手は小さい**。証明書と違い、失効させて作り直し、
-> C の台本をもう一度回せば済む(1分)。**大事なのは証明書の方**で、
-> あちらは秘密鍵を失うと作り直しになる。
+> **作り直せないのは証明書の秘密鍵の方**(A で作った物)。あちらは
+> 失うと、それまでに署名した物との繋がりが切れる。
 
 ### B-3. Key ID は**ファイル名にも入っている**
 
