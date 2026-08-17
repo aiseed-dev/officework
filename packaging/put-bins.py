@@ -19,6 +19,15 @@ import shutil
 import subprocess
 import sys
 
+# Windows の標準出力は既定が cp1252 で、日本語を表示するだけで落ちる
+# (2026-08-17 に CI で踏んだ。12分かけて組んだ後に、print の1行で死んだ)。
+# 呼ぶ側に PYTHONIOENCODING を頼るのではなく、この台本自身で決める
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEST = ROOT / "pysheet" / "officework" / "bin"
 APPS = ("calc", "writer")

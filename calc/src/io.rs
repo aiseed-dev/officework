@@ -1077,7 +1077,12 @@ impl Calc {
 
     /// **ブック全体を1つの PDF に。** シートを順に束ね、頁番号(&P)と
     /// 総頁(&N)は**ブック通し**で振る(paper::grid::book_to_pdf)。
-    /// 隠したシートは刷らない — 画面と同じ。返りは報告の文言。
+    /// 隠したシートは刷らない(画面と同じです)。返り値は報告用の文言です。
+    ///
+    /// いま呼んでいるのは rpc.rs だけで、そちらは unix でしか組みません。
+    /// そのため Windows では「使われていない」と警告が出ます。この関数自体は
+    /// どの OS でも動くので、消さずに警告だけ止めます。
+    #[cfg_attr(not(unix), allow(dead_code))]
     pub(crate) fn write_book_pdf(&mut self, p: &std::path::Path) -> Result<String, String> {
         let (fam, exact) = kumihan::font::for_document(None).map_err(|e| e.to_string())?;
         let data = kumihan::font::load(fam).map_err(|e| e.to_string())?;
