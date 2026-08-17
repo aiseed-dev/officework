@@ -27,6 +27,8 @@ pub mod theme;
 pub mod edit;
 pub mod font;
 pub mod html;
+/// 意味だけの本文 + テンプレート → HTML + CSS(Web・アプリ・帳票の土台)
+pub mod html_write;
 pub use edit::Editor;
 
 mod doc;

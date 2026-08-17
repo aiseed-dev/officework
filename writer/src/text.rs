@@ -290,6 +290,44 @@ impl Writer {
     }
 
     /// PDF として保存。保存先の選択は**別のスレッド**(rfd は同期)。
+    /// **Web の形で書き出します**(2026-08-17。Web・アプリ・帳票の土台)。
+    ///
+    /// 本文は意味だけの HTML、見た目はテンプレート由来の CSS になります。
+    /// **合成しません** — 合成してしまうと、CSS を差し替えても何も変わらない
+    /// ものが出来上がります。
+    pub(crate) fn save_html(&mut self, cx: &mut Context<Self>) {
+        self.flush_target();
+        let ask = cx.background_executor().spawn(async {
+            rfd::FileDialog::new()
+                .add_filter("HTML", &["html"])
+                .set_file_name(ui::t!("文書.html"))
+                .save_file()
+        });
+        cx.spawn(async move |this, cx| {
+            let r = ask.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(p) = r {
+                    this.write_html(&p);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// HTML を1枚書きます(CSS は中に入れます)。
+    pub(crate) fn write_html(&mut self, path: &std::path::Path) {
+        // 互換の文書には型紙がないので、既定のテンプレートで出します
+        let th = if self.native { self.tmpl.clone() } else { kumihan::theme::default_theme() };
+        let page = kumihan::html_write::page(&self.doc, &th);
+        match std::fs::write(path, &page.html) {
+            Ok(()) => {
+                self.status = ui::tf!("{} に書き出しました", path.display()).into();
+            }
+            Err(e) => self.status = ui::tf!("書き出せません: {}", e).into(),
+        }
+    }
+
     pub(crate) fn save_pdf(&mut self, cx: &mut Context<Self>) {
         // 見開きは画面だけの見え方。紙は1ページずつなので組み直してから写す
         if self.multipage {

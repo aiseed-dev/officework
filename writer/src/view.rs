@@ -754,6 +754,11 @@ impl Render for Writer {
                         this.save_pdf(cx);
                         cx.notify()
                     })))
+                .child(mk("f-html", ui::t!("Web の形で書き出す(HTML)"), true).on_click(
+                    cx.listener(|this, _, _, cx| {
+                        this.save_html(cx);
+                        cx.notify()
+                    })))
                 .child(mk("f-protect", ui::t!("保護する"), true).on_click(cx.listener(
                     |this, _, _, cx| {
                         if let Some(i) =

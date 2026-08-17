@@ -1820,6 +1820,79 @@ mod fold_print_tests {
 }
 
 #[cfg(test)]
+mod html_write_tests {
+    use crate::{adoc, html_write, theme};
+
+    fn 文書(src: &str) -> crate::doc::Document {
+        adoc::parse(src).expect("adoc が読めない")
+    }
+
+    /// **本文は意味だけ。** 見た目は CSS の側に出て、HTML には入りません。
+    #[test]
+    fn 見た目はcssへ本文はhtmlへ() {
+        let d = 文書("= 題\n\n== 章の名前\n\n本文です。*ここ*が大事。\n");
+        let th = theme::parse("[スタイル.見出し1]\n大きさ = 20\n太字 = true\n").unwrap();
+        let p = html_write::page(&d, &th);
+
+        // 意味はタグで出る
+        assert!(p.html.contains("<h2>章の名前</h2>"), "題名があるので h2 のはず:\n{}", p.html);
+        assert_eq!(p.html.matches("<h1").count(), 1, "h1 が2つ以上ある:\n{}", p.html);
+        assert!(p.html.contains("<strong>ここ</strong>"), "強調が strong になっていない");
+        // 見た目は HTML に入らない
+        assert!(!p.html.contains("font-size:20pt\""), "見た目が本文に埋まった");
+        // 見た目は CSS に出る
+        assert!(p.css.contains("h2 {"), "見出し1 の規則が h2 に当たっていない:\n{}", p.css);
+        assert!(p.css.contains("font-size:20pt"), "大きさが CSS に出ていない");
+    }
+
+    /// **テンプレートを替えると CSS だけが変わる。** これが「同じ本文で
+    /// Web にも帳票にもなる」の根拠です。
+    #[test]
+    fn テンプレートを替えても本文は変わらない() {
+        let d = 文書("= 題\n\n本文です。\n");
+        let web = theme::parse("[組み方]\n横幅 = \"可変\"\n区切り = \"なし\"\n").unwrap();
+        let 紙 = theme::parse("[スタイル.本文]\n大きさ = 10.5\n").unwrap();
+        let a = html_write::page(&d, &web);
+        let b = html_write::page(&d, &紙);
+        assert_eq!(html_write::body(&d), html_write::body(&d), "本文が安定しない");
+        assert_ne!(a.css, b.css, "テンプレートを替えても CSS が同じ");
+        assert!(a.css.contains("max-width"), "横幅可変が効いていない:\n{}", a.css);
+    }
+
+    /// 箇条書きは `ul` / `ol` にまとめます(HTML の入れ物の作法)。
+    #[test]
+    fn 箇条書きはまとめて包む() {
+        let d = 文書("= 題\n\n* あ\n* い\n* う\n");
+        let h = html_write::body(&d);
+        assert_eq!(h.matches("<ul>").count(), 1, "ul が1つでない:\n{h}");
+        assert_eq!(h.matches("<li>").count(), 3, "項目が3つでない:\n{h}");
+    }
+
+    /// 出来た HTML が**形として正しい**か(閉じ忘れ・入れ子の乱れが無いか)。
+    #[test]
+    fn 出来たhtmlの形が崩れていない() {
+        let d = 文書("= 題\n\n== 章\n\n本文。*強調*と_斜体_。\n\n* あ\n* い\n\n____\n引用です。\n____\n");
+        let th = theme::parse("[スタイル.見出し1]\n大きさ = 18\n").unwrap();
+        let p = html_write::page(&d, &th);
+        // 開いた数と閉じた数が合うこと
+        for tag in ["h1", "h2", "p", "ul", "li", "strong", "em", "blockquote", "style", "body"] {
+            let open = p.html.matches(&format!("<{tag}")).count();
+            let close = p.html.matches(&format!("</{tag}>")).count();
+            assert_eq!(open, close, "{tag} の開閉が合わない({open} 対 {close}):\n{}", p.html);
+        }
+        assert!(p.html.starts_with("<!DOCTYPE html>"), "宣言が無い");
+    }
+
+    /// 逃がし忘れると、本文の `<` でページが壊れます。
+    #[test]
+    fn 記号を逃がす() {
+        let d = 文書("= 題\n\n1 < 2 & 3 > 0\n");
+        let h = html_write::body(&d);
+        assert!(h.contains("1 &lt; 2 &amp; 3 &gt; 0"), "逃がせていない:\n{h}");
+    }
+}
+
+#[cfg(test)]
 mod char_format_tests {
     use crate::doc::{CharFormat, Document, Paragraph, Run};
 
