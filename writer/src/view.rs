@@ -433,6 +433,12 @@ impl Render for Writer {
                             .flex().flex_col().items_center().justify_center()
                             .gap_1()
                             .on_hover(hoverable)
+                            // **マウスを置いたらすぐ説明を出す**(2026-08-17
+                            // 発注者)。下のステータスバーにも名前は出ますが、
+                            // マウスから遠くて気づきません。gpui の既定の
+                            // 待ち時間は 500 ミリ秒で、待たされる感じがあります
+                            .tooltip(move |_, cx| cx.new(|_| Tip(label.into())).into())
+                            .tooltip_show_delay(std::time::Duration::from_millis(150))
                             .children(has_icon.then(|| {
                                 gpui::svg()
                                     .path(SharedString::from(format!("icons/{icon}.svg")))
@@ -467,7 +473,9 @@ impl Render for Writer {
                         .id(SharedString::from(format!("h-{icon}")))
                         .h(px(26.0)).rounded_sm()
                         .flex().items_center().justify_center()
-                        .on_hover(hoverable);
+                        .on_hover(hoverable)
+                        .tooltip(move |_, cx| cx.new(|_| Tip(label.into())).into())
+                        .tooltip_show_delay(std::time::Duration::from_millis(150));
                     b = if has_icon {
                         // 印つきは幅を固定しない(印のぶん広がる)
                         if marker.is_some() { b.px_0p5() } else { b.w(px(26.0)) }

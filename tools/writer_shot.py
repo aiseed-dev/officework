@@ -217,6 +217,30 @@ class W:
         time.sleep(0.4)
         return self.shot(name)
 
+    def hover(self, cid, wait=0.8):
+        """ボタンの上にマウスを置いて、**動かさずに**撮れる状態にする。
+
+        `take()` は撮る前にマウスを動かすので、説明(ツールチップ)は
+        必ず消えます。説明を見たいときはこれを使い、`shot()` で撮ります
+        (2026-08-17、writer のリボンに説明を足したときに気づきました)。
+        """
+        from Xlib import X
+        from Xlib.ext import xtest
+
+        self.take_focus()
+        time.sleep(0.3)
+        b = next(x for x in self.ui()["boxes"] if x["id"] == cid)
+        s = self.scale()
+        w = self.window()
+        cx, cy = b["x"] + b["w"] / 2, b["y"] + b["h"] / 2
+        # **少しずつ寄せる**(いきなり飛ぶと動きとして拾われない — click と同じ)
+        for dx, dy in ((20, 20), (8, 8), (0, 0)):
+            xtest.fake_input(self.d, X.MotionNotify,
+                             x=w[1] + int((cx + dx) * s), y=w[2] + int((cy + dy) * s))
+            self.d.sync()
+            time.sleep(0.15)
+        time.sleep(wait)
+
     def close(self, keep=False):
         """writer を止めて、**実行時ディレクトリごと片づける**
         (2026-08-16 発注者「/tmp に calc や writer を保存するのはおかしい」)"""

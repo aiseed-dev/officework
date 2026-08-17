@@ -618,6 +618,7 @@ impl Writer {
                 .border_color(if on { th_btn } else { gpui::transparent_black().into() })
                 .hover(move |s| s.bg(th_btn_hover))
                 .tooltip(move |_, cx| cx.new(|_| crate::view::Tip(札.clone().into())).into())
+                .tooltip_show_delay(std::time::Duration::from_millis(150))
                 .child(gpui::svg()
                     .path(SharedString::from(format!("icons/{icon}.svg")))
                     .size(px(18.0))

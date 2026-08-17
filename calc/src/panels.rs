@@ -76,6 +76,7 @@ impl Calc {
                 .border_color(if on { 主 } else { gpui::transparent_black().into() })
                 .hover(move |s| s.bg(if dk { rgb(0x2C333A) } else { rgb(0xEAF5EE) }))
                 .tooltip(move |_, cx| cx.new(|_| crate::view::Tip(札.clone().into(), us)).into())
+                .tooltip_show_delay(std::time::Duration::from_millis(150))
                 .child(gpui::svg()
                     .path(SharedString::from(format!("icons/{icon}.svg")))
                     .size(px(us * 18.0))

@@ -652,6 +652,7 @@ impl Render for Calc {
                     .whitespace_nowrap().overflow_hidden()
                     .on_hover(hoverable)
                     .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
+                    .tooltip_show_delay(std::time::Duration::from_millis(150))
                     .child(val);
                 // 小窓中は欄も無反応(リボン全体を無効にする約束)
                 if !dlg_open {
@@ -703,6 +704,7 @@ impl Render for Calc {
                     .flex().flex_col().items_center().justify_center().gap_1()
                     .on_hover(hoverable)
                     .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
+                    .tooltip_show_delay(std::time::Duration::from_millis(150))
                     .children(has_icon.then(|| {
                         gpui::svg()
                             .path(SharedString::from(format!("icons/{icon}.svg")))
@@ -730,7 +732,8 @@ impl Render for Calc {
                 .h(px(us * 26.0)).rounded_sm()
                 .flex().items_center().justify_center()
                 .on_hover(hoverable)
-                .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into());
+                .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
+                .tooltip_show_delay(std::time::Duration::from_millis(150));
             b = if has_icon {
                 if marker.is_some() { b.px_0p5() } else { b.w(px(us * 26.0)) }
             } else {
