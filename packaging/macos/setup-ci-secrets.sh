@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # GitHub Actions で mac の署名をするための秘密を、**Mac から直に入れる**。
 #
-#   packaging/macos/setup-ci-secrets.sh <AuthKey_XXXX.p8> <Key ID> <Issuer ID>
+#   packaging/macos/setup-ci-secrets.sh <AuthKey_XXXX.p8> <Issuer ID>
+#   packaging/macos/setup-ci-secrets.sh <AuthKey_XXXX.p8> <Issuer ID> <Key ID>
+#
+# **Key ID はふつう打たなくてよい。** Apple が寄越す名前
+# `AuthKey_ABCD123456.p8` の中に入っているので、そこから読む
+# (3つ目に書けばそちらが勝つ)。Issuer ID はファイルから分からないので要る。
 #
 # 一度きりの作業。以後はタグを押すだけで署名つきの .dmg が出来る。
 #
@@ -26,10 +31,19 @@ cd "$(dirname "$0")/../.."
 
 die() { echo "❌ $*" >&2; exit 1; }
 
-P8="${1:-}"; KEY_ID="${2:-}"; ISSUER="${3:-}"
-[ -n "$P8" ] && [ -n "$KEY_ID" ] && [ -n "$ISSUER" ] || die \
-  "使い方: $0 <AuthKey_XXXX.p8> <Key ID> <Issuer ID>(docs/mac-signing.ja.md の B-1)"
+P8="${1:-}"; ISSUER="${2:-}"; KEY_ID="${3:-}"
+[ -n "$P8" ] && [ -n "$ISSUER" ] || die \
+  "使い方: $0 <AuthKey_XXXX.p8> <Issuer ID> [Key ID](docs/mac-signing.ja.md の B)"
 [ -f "$P8" ] || die "$P8 がありません"
+
+# **Key ID はファイル名から読む**(AuthKey_ABCD123456.p8 → ABCD123456)。
+# 打ち間違いが減るし、控え損ねても .p8 さえあれば分かる
+if [ -z "$KEY_ID" ]; then
+  KEY_ID="$(basename "$P8" | sed -n 's/^AuthKey_\([A-Za-z0-9]*\)\.p8$/\1/p')"
+  [ -n "$KEY_ID" ] || die \
+    "ファイル名から Key ID が読めません($(basename "$P8"))。3つ目に書いてください"
+  echo "Key ID(ファイル名から): $KEY_ID"
+fi
 
 command -v gh > /dev/null || die "GitHub CLI(gh)がありません: brew install gh && gh auth login"
 gh auth status > /dev/null 2>&1 || die "gh が認証されていません: gh auth login"

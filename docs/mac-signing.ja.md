@@ -23,7 +23,7 @@
 C はこれだけ:
 
 ```sh
-packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Key ID> <Issuer ID>
+packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Issuer ID>
 ```
 
 `.p12` の書き出しも base64 も貼り付けも、この台本が繋いでやる。
@@ -102,18 +102,61 @@ Xcode が入っていない機械ではこちら。
 Apple ID と合言葉より、**API キー**の方が向く(2要素認証に引っかからない。
 失効させても他に響かない)。
 
-1. <https://appstoreconnect.apple.com/access/integrations/api>
-2. **チームキー**の側で **＋**
-3. 名前は `officework-notary` など。**役割は Developer** でよい
-4. **`.p8` は一度しか落とせない**。落として安全な所に置く
-5. 同じ画面の **Key ID** と、上部の **Issuer ID** を控える
+**要るのは3つ**: `.p8` のファイル・**Key ID**・**Issuer ID**。
+どれも同じ画面で手に入る。
+
+### B-1. 作る
+
+**入る場所はここ**(直に開ける):
+
+<https://appstoreconnect.apple.com/access/integrations/api>
+
+画面から辿るなら **App Store Connect** → 上の **ユーザとアクセス**
+(Users and Access)→ **キー**(Integrations / Keys)→
+**App Store Connect API** → **チームキー**(Team Keys)。
+
+1. **＋** を押す
+2. 名前は `officework-notary` など(後から見て分かればよい)
+3. **アクセス(役割)は「Developer」でよい** — 公証だけなら Admin は要らない
+4. **生成** を押す
+
+> **作れない・＋ が無い**場合、そのアカウントの権限が足りない
+> (Account Holder か Admin が要る)。
+
+### B-2. 3つを受け取る
+
+作ると一覧に1行増える。**そこに全部ある。**
+
+| 要る物 | どこ | 形 |
+|---|---|---|
+| `.p8` のファイル | その行の **「ダウンロード」** | `AuthKey_XXXXXXXXXX.p8` |
+| **Key ID** | その行の **「キー ID」**の列 | 10 桁の英数字 |
+| **Issuer ID** | **表の上**に出ている「Issuer ID」(横に「コピー」) | UUID(`8a...-....-....-....-............`) |
+
+> **`.p8` は一度しか落とせない。** 落とし損ねたら、その鍵は捨てて
+> 作り直すしかない(失効させて＋からやり直す)。安全な所に置く。
+
+### B-3. Key ID は**ファイル名にも入っている**
+
+落とした `.p8` の名前が答え:
+
+```
+AuthKey_ABCD123456.p8
+        ^^^^^^^^^^  ← これが Key ID
+```
+
+だから、あとで Key ID を控え損ねても `.p8` さえあれば分かる。
+C の台本も**ファイル名から読み取る**ので、打たなくてよい。
+
+> **Issuer ID だけはファイルから分からない。** 上の画面でコピーして
+> 控えておくこと(チームで1つなので、一度控えれば使い回せる)。
 
 ---
 
 ## C. 秘密を GitHub に入れる(一度きり)
 
 ```sh
-packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Key ID> <Issuer ID>
+packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Issuer ID>
 ```
 
 この台本がやること:
@@ -127,7 +170,9 @@ packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Key ID> <Issuer
 要る物:
 
 - **GitHub CLI** — `brew install gh && gh auth login`
-- A の証明書と、B の `.p8` / Key ID / Issuer ID
+- A の証明書と、B の `.p8` と **Issuer ID**
+  (**Key ID は要らない** — `.p8` のファイル名から読む。
+  名前を変えてしまったなら3つ目に書く)
 
 > **書き出した `.p12` は消さないこと**(Desktop に置かれる)。
 > この Mac が壊れたとき、証明書を作り直さずに済む唯一の控え。
