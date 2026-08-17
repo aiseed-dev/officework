@@ -31,6 +31,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("マクロ {} を実行しました(Ctrl+Z で戻せます)", "Đã chạy macro {} (Ctrl+Z để hoàn tác)"),
     ("マクロ {}: {}(Ctrl+Z で戻せます)", "Macro {}: {} (Ctrl+Z để hoàn tác)"),
     ("マクロ: {}", "Macro: {}"),
+    ("マクロ", "Macro"),
     ("未保存の変更があります。先に保存してください(Ctrl+S)", "Có thay đổi chưa lưu. Hãy lưu trước (Ctrl+S)"),
     ("新しい文書です", "Tài liệu mới"),
     ("文書の情報を控えました(保存で docx に入ります)", "Đã ghi nhận thông tin tài liệu (sẽ vào docx khi lưu)"),

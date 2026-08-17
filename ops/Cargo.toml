@@ -14,3 +14,7 @@ pyrun = { path = "../pyrun" }
 kumihan = { path = "../engine" }
 # 署名の鍵(calc と writer が同じ鍵を使う)
 ed25519-dalek = { version = "2", default-features = false, features = ["std", "fast"] }
+# 鍵の種にする OS の乱数。**Windows に /dev/urandom は無い**(2026-08-17、
+# calc/writer を Windows の的に足して分かった)。鍵は安全に関わる値なので、
+# 時刻や pid で誤魔化さずに OS の口を使う。gpui が既に引いている小さな crate
+getrandom = "0.3"

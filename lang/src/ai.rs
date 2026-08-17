@@ -315,10 +315,10 @@ fn agent_sdk_ask(system: &str, user: &str) -> Result<String, String> {
     let bridge = dir.join("bridge.py");
     let model = std::env::var("JO_AI_MODEL").unwrap_or_default();
     let body = format!(
-        "{{\"system\":{},\"user\":{},\"model\":{}}}",
-        format!("\"{}\"", model::esc(system)),
-        format!("\"{}\"", model::esc(user)),
-        format!("\"{}\"", model::esc(&model))
+        "{{\"system\":\"{}\",\"user\":\"{}\",\"model\":\"{}\"}}",
+        model::esc(system),
+        model::esc(user),
+        model::esc(&model)
     );
     std::fs::write(&spec, body).map_err(|e| format!("頼みを置けません: {e}"))?;
     std::fs::write(&bridge, BRIDGE).map_err(|e| format!("橋を置けません: {e}"))?;

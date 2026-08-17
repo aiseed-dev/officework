@@ -1063,6 +1063,10 @@ mod pivot_tests {
         });
     }
 
+    /// **unix だけ**。この口はユニックスソケットが設計で、`mod rpc` 自体が
+    /// `#[cfg(unix)]` の向こうに居る(main.rs)。試験だけ的を選ばずに居ると
+    /// Windows で組めない(2026-08-17、Windows を CI の的に足して分かった)
+    #[cfg(unix)]
     #[gpui::test]
     fn jocalcの口は読み書きと展開ができる(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));

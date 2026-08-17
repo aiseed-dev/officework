@@ -31,6 +31,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("マクロ {} を実行しました(Ctrl+Z で戻せます)", "Makro {} çalıştırıldı (Ctrl+Z geri alır)"),
     ("マクロ {}: {}(Ctrl+Z で戻せます)", "Makro {}: {} (Ctrl+Z geri alır)"),
     ("マクロ: {}", "Makro: {}"),
+    ("マクロ", "Makrolar"),
     ("未保存の変更があります。先に保存してください(Ctrl+S)", "Kaydedilmemiş değişiklikler var; önce kaydedin (Ctrl+S)"),
     ("新しい文書です", "Yeni belge"),
     ("文書の情報を控えました(保存で docx に入ります)", "Belge bilgileri kaydedildi (kaydetmede docx'e girer)"),

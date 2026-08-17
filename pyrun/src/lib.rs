@@ -893,6 +893,18 @@ for kind, cells in out:
 sys.stdout.buffer.write("\x1e".join(lines).encode("utf-8"))
 "#;
 
+/// **同梱の台本の一覧**(名前, 中身)。読む道を作るために名前を付けた
+/// — 何が入っているかを見せない物は、直せるかどうかも判断できない。
+/// 走らせる道はここからは開かない(呼ぶ側が指図を組んで初めて動く)
+pub const BUNDLED: &[(&str, &str)] = &[
+    ("chart", CHART_PY),
+    ("pivot", PIVOT_PY),
+    ("solver", SOLVER_PY),
+    ("csv", CSV_PY),
+    ("equation", EQ_PY),
+    ("textart", TEXTART_PY),
+];
+
 #[cfg(test)]
 mod cage_tests {
     use super::*;
@@ -1029,15 +1041,3 @@ mod cage_tests {
     }
 }
 
-
-/// **同梱の台本の一覧**(名前, 中身)。読む道を作るために名前を付けた
-/// — 何が入っているかを見せない物は、直せるかどうかも判断できない。
-/// 走らせる道はここからは開かない(呼ぶ側が指図を組んで初めて動く)
-pub const BUNDLED: &[(&str, &str)] = &[
-    ("chart", CHART_PY),
-    ("pivot", PIVOT_PY),
-    ("solver", SOLVER_PY),
-    ("csv", CSV_PY),
-    ("equation", EQ_PY),
-    ("textart", TEXTART_PY),
-];

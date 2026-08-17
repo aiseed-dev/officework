@@ -2207,7 +2207,7 @@ impl Writer {
             s.push_str(&ui::tf!(" — 読めなかった {} 件", tally.unread.to_string()));
         }
         if tally.cut {
-            s.push_str(&ui::t!(" — 多いので途中で止めました"));
+            s.push_str(ui::t!(" — 多いので途中で止めました"));
         }
         self.status = s.into();
     }

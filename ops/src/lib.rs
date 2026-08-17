@@ -1773,20 +1773,26 @@ pub fn sig_path_for(p: &std::path::Path) -> PathBuf {
 }
 
 /// 鍵が用意できなかった理由。**文言はここでは作らない**(RunErr と同じ型)
-#[cfg(unix)]
 #[derive(Debug)]
 pub enum KeyErr {
     /// 鍵ファイルが壊れている(~/.config/officework/sign.key)
     Corrupt,
-    /// /dev/urandom が読めない
-    NoRandom(std::io::Error),
+    /// OS の乱数が取れない
+    NoRandom(String),
     /// 鍵ファイルが置けない
     CantStore(std::io::Error),
 }
 
-/// 署名の鍵を読む。無ければ作る(/dev/urandom の種。0600 で置く)。
-/// **unix だけ**(/dev/urandom と 0600 は unix の作法。使うのは calc/writer)
-#[cfg(unix)]
+/// 署名の鍵を読む。無ければ作る(OS の乱数を種にする)。
+///
+/// **どの機械でも同じ強さの鍵**を作る。種は `getrandom`(unix は
+/// getrandom(2)/urandom、Windows は BCryptGenRandom)— 2026-08-17 に
+/// calc/writer を Windows の的に足すまで、ここは `/dev/urandom` 直読みの
+/// `#[cfg(unix)]` で、**Windows では calc も writer も組めなかった**。
+/// 時刻や pid で代用しないのは、これが署名の鍵だから。
+///
+/// 置き方だけは的で違う: unix は 0600 で作る。Windows に mode は無く、
+/// 置き場(利用者の profile の下)が既に本人だけの物なので `create_new` のみ。
 pub fn load_or_make_key() -> Result<ed25519_dalek::SigningKey, KeyErr> {
     let kp = sign_key_path();
     if let Ok(bytes) = std::fs::read(&kp) {
@@ -1797,20 +1803,19 @@ pub fn load_or_make_key() -> Result<ed25519_dalek::SigningKey, KeyErr> {
         return Ok(ed25519_dalek::SigningKey::from_bytes(&seed));
     }
     let mut seed = [0u8; 32];
-    use std::io::Read as _;
-    std::fs::File::open("/dev/urandom")
-        .and_then(|mut f| f.read_exact(&mut seed))
-        .map_err(KeyErr::NoRandom)?;
+    getrandom::fill(&mut seed).map_err(|e| KeyErr::NoRandom(e.to_string()))?;
     if let Some(dir) = kp.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
     use std::io::Write as _;
-    use std::os::unix::fs::OpenOptionsExt as _;
-    std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(&kp)
+    let mut o = std::fs::OpenOptions::new();
+    o.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        o.mode(0o600);
+    }
+    o.open(&kp)
         .and_then(|mut f| f.write_all(&seed))
         .map_err(KeyErr::CantStore)?;
     Ok(ed25519_dalek::SigningKey::from_bytes(&seed))

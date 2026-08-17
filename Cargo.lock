@@ -4101,6 +4101,7 @@ name = "ops"
 version = "0.0.1"
 dependencies = [
  "ed25519-dalek",
+ "getrandom 0.3.4",
  "kumihan",
  "pyrun",
  "sheet",

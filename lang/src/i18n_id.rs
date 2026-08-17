@@ -31,6 +31,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("マクロ {} を実行しました(Ctrl+Z で戻せます)", "Makro {} dijalankan (Ctrl+Z membatalkan)"),
     ("マクロ {}: {}(Ctrl+Z で戻せます)", "Makro {}: {} (Ctrl+Z membatalkan)"),
     ("マクロ: {}", "Makro: {}"),
+    ("マクロ", "Makro"),
     ("未保存の変更があります。先に保存してください(Ctrl+S)", "Ada perubahan yang belum disimpan; simpan dulu (Ctrl+S)"),
     ("新しい文書です", "Dokumen baru"),
     ("文書の情報を控えました(保存で docx に入ります)", "Info dokumen dicatat (masuk ke docx saat disimpan)"),

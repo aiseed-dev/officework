@@ -31,6 +31,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("マクロ {} を実行しました(Ctrl+Z で戻せます)", "Macro {} executada (Ctrl+Z desfaz)"),
     ("マクロ {}: {}(Ctrl+Z で戻せます)", "Macro {}: {} (Ctrl+Z desfaz)"),
     ("マクロ: {}", "Macro: {}"),
+    ("マクロ", "Macros"),
     ("未保存の変更があります。先に保存してください(Ctrl+S)", "Há alterações não salvas; salve primeiro (Ctrl+S)"),
     ("新しい文書です", "Novo documento"),
     ("文書の情報を控えました(保存で docx に入ります)", "Informações do documento registradas (entram no docx ao salvar)"),

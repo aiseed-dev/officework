@@ -42,13 +42,13 @@ pub struct StyleDef {
 /// 「テンプレートだけ変更すれば Web やアプリビルダーも作れる。横幅可変・
 /// ページ区切りなし。PowerPoint は文字がページを跨がらない。それだけのこと」)。
 ///
-/// | 媒体 | 横幅 | 区切り |
-/// |---|---|---|
-/// | 紙(docx / PDF) | 固定(mm) | ページ |
-/// | Web / アプリ | **可変**(窓の幅) | **なし**(1本の流れ) |
+/// | 媒体 | 横幅 | 区切り | 跨ぎ |
+/// |---|---|---|---|
+/// | 紙(docx / PDF) | 固定(mm) | ページ | 跨ぐ |
+/// | Web / アプリ | **可変**(窓の幅) | **なし**(1本の流れ) | — |
+/// | 発表(スライド) | 固定 | **節**(見出し1 ごと) | **跨がない** |
 ///
-/// **「跨ぎ」はまだ持たない。** 発表(1節=1枚・字が枚を跨がない)の組み手が
-/// 無いので、効かない切替を先に置かない(SEKKEI の決め)。
+/// 3値とも 2026-08-17 に入った。
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Break {
     /// 紙のように、入る分で折る
@@ -411,7 +411,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         out.size_pt = theme.size_pt;
     }
     if out.page.is_none() {
-        out.page = theme.page.clone();
+        out.page = theme.page;
     }
     for block in &mut out.blocks {
         let crate::doc::Block::Para(para) = block else { continue };

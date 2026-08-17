@@ -88,7 +88,7 @@ pub fn deco(s: &mut Sheet, a: Pos, b: Pos, what: Deco, on: bool) -> usize {
                     cell.fmt.borders.top = Edge::THIN;
                     true
                 }
-                Deco::BandRow if r > a.row && (r - a.row) % 2 == 0 => {
+                Deco::BandRow if r > a.row && (r - a.row).is_multiple_of(2) => {
                     cell.fmt.fill = Some(BAND_FILL.into());
                     true
                 }
