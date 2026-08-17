@@ -518,6 +518,22 @@ naming it.
 **What is written wins**, so a `:template:` line takes precedence. With neither,
 the built-in default is used.
 
+### Turning the screen into a writing view
+
+An adoc document is **something you write**, not a picture of paper. You can look
+at it as paper, or write in a plain flowing view. Put this in the folder's
+`テンプレート.toml`:
+
+```toml
+[組み方]
+横幅 = "可変"     # use the window width, not the paper width
+区切り = "なし"   # do not break into pages
+```
+
+Widen the window and the lines get longer; no page breaks appear. **Not one
+character of the text changes** — printing still lays it out on A4 through the
+print format.
+
 ### A different format per destination
 
 The same text can look different on screen, on the web, and on paper. Just put one

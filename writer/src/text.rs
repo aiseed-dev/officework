@@ -946,6 +946,12 @@ impl Writer {
     /// 文書の下端(紙の座標 mm)。1ページに満たなくても紙1枚ぶんは白い
     /// 紙の見た目の幅(mm。見開きなら2枚ぶん)
     pub(crate) fn paper_w_mm(&self) -> f32 {
+        // **横幅可変(原稿の姿)のときは、紙も窓に合わせます。**
+        // 紙だけ A4 のままだと、窓のほうが広い機械で本文と表が紙からはみ出ます
+        // (2026-08-18 実機で見つけました)
+        if self.native && self.tmpl.setting.fluid {
+            return (self.view_w_px / crate::PX_PER_MM).max(60.0);
+        }
         if self.paged {
             // 頁ごとに紙が違いうる(節)。いちばん広い紙に合わせる
             return self.page_papers.iter().map(|q| q.width_mm)

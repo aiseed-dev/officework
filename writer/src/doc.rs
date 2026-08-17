@@ -56,8 +56,11 @@ impl Look {
             // 区切り=節(発表)は**合成の側**で見出し1 に改ページの印が
             // 付いているので、ここでは何もしない — 折り手がそこで割る
             let measure = if self.組.fluid {
-                // 画面の画素 → mm(紙の幅は使わない)。左右に少し余白を残す
-                ((self.view_w_px / crate::PX_PER_MM) - 16.0).max(40.0)
+                // 画面の画素 → mm(紙の幅は使わない)。**余白は紙と同じだけ
+                // 左右に空ける** — 前は 16mm 決め打ちで、窓が広い機械では
+                // 本文と表が紙からはみ出していた(2026-08-18 実機で見つけた)
+                let 余白 = self.pg.left_mm + self.pg.right_mm;
+                ((self.view_w_px / crate::PX_PER_MM) - 余白).max(40.0)
             } else {
                 self.pg.column_measure_mm()
             };
