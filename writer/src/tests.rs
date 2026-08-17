@@ -1973,13 +1973,17 @@ mod marker_tests {
             this.open(path.clone());
             assert!(this.native);
 
-            // 字を大きく → 直には掛からず、名前の欄が出る
+            // 字を大きく → 直には掛からず、右のスタイルの面が開く
             this.run_cmd("incfont", cx);
-            assert!(this.style_new.is_some(), "誘導が出ない: {}", this.status);
+            assert!(this.rp_open && this.rp_tab == 2, "スタイルの面が開かない: {}", this.status);
             let ps: Vec<_> = this.doc.paragraphs().collect();
             assert_eq!(ps[0].runs[0].size_pt, None, "直接書式が本文に入った");
 
-            // 名前を決める → テンプレートに入り、段落が名指す
+            // そこから新しく作る → テンプレートに入り、段落が名指す
+            this.style_new = Some(kumihan::theme::StyleDef {
+                size_pt: Some(16.0),
+                ..Default::default()
+            });
             this.style_ed = kumihan::Editor::new("大見出し");
             this.style_commit();
             assert!(this.style_new.is_none());
@@ -2173,7 +2177,12 @@ mod marker_tests {
             this.ed.move_to(9, false);
             this.ed.move_to(15, true);
             this.run_cmd("fontcolor", cx);
-            assert!(this.style_new.is_some(), "誘導が出ない: {}", this.status);
+            assert!(this.rp_open && this.rp_tab == 2, "スタイルの面が開かない: {}", this.status);
+            // その面から新しく作る
+            this.style_new = Some(kumihan::theme::StyleDef {
+                color: Some("C00000".into()),
+                ..Default::default()
+            });
             this.style_ed = kumihan::Editor::new("注意");
             this.style_commit();
 
