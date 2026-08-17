@@ -131,6 +131,12 @@ jobs:
         # **押せる約束なのに画面に出ない**。灰色の裏返しで、同じ嘘。
         # 2026-08-17 に印刷レイアウトと脚注の2つがこれで消えていた
         run: python3 tools/writer_rows_check.py
+      - name: AsciiDoc の書き方の表が本家とずれていないか
+        # **表示はすべてできないとダメ**(2026-08-18 発注者)。そのためには
+        # 「本家にどんな書き方があるか」を知っている必要があり、それを記憶で
+        # 書かないための門番。正本は asciidoctor の lib/asciidoctor.rb で、
+        # 写しが docs/sekkei/asciidoctor-syntax.json にある
+        run: python3 tools/adoc_syntax_check.py
       - name: 手引きの「書き方の一覧」が実物と揃っているか
         # **利用者はこの表を見てボタンを探す。** 本文の書き方・リボンのボタン・
         # HTML を1行に並べた表なので、ボタンの札が変わると押しても見つからない

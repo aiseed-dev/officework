@@ -1562,6 +1562,25 @@ AsciiDoc visual editor にならないといけないです」。
 普通の日本語の文に「読めなかった」と言い出す。うちの見本(06)と差し込みの
 `{{名前}}` では帳簿が空になることを試験で見張っている。
 
+#### 本家から書き方の表を取り込んだ(2026-08-18 発注者)
+
+発注者「表示については、こちらからとりこんだら」(asciidoctor の GitHub)。
+**記憶で書くのをやめた。**
+
+- `vendor/asciidoctor` に本家を置く(追跡しない。vendor/ は他の参照資料と同じ)
+- `lib/asciidoctor.rb` の `DELIMITED_BLOCKS`・`ADMONITION_STYLES`・
+  `LAYOUT_BREAK_CHARS` を写して `docs/sekkei/asciidoctor-syntax.json` に置く
+- engine の表(`adoc.rs` の `DELIMITED` / `ADMONITION`)と突き合わせる門番が
+  `tools/adoc_syntax_check.py`。CI に入れた
+
+取り込んで**7つ増えた**(記憶で書いた表には無かった): 開いた塊 `--`・
+覚え書きの塊 `////`・柵のコード ```` ``` ````・開いた塊 `~~~~`・そのまま通す塊
+`++++`・表の別の形 `,===` `:===` `!===`・横の区切り線 `'''`。手で並べた表は、
+必ずこれくらい漏れる。
+
+本家は ruby で動く(この機械にも入っていた: `ruby -Ilib bin/asciidoctor`)。
+**出来上がりを突き合わせる試験**はまだ作っていない — 次の手。
+
 #### 書き方の突き合わせ
 
 | うちの書き方 | 本家 | 同じか |

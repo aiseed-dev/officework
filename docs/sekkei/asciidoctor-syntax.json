@@ -1,0 +1,36 @@
+{
+ "_元": "asciidoctor の lib/asciidoctor.rb(MIT)から tools/adoc_syntax_check.py --update で写した表。https://github.com/asciidoctor/asciidoctor",
+ "_版": "2.1.0.alpha.0",
+ "delimited_blocks": {
+  "--": "open",
+  "----": "listing",
+  "....": "literal",
+  "====": "example",
+  "****": "sidebar",
+  "____": "quote",
+  "++++": "pass",
+  "|===": "table",
+  ",===": "table",
+  ":===": "table",
+  "!===": "table",
+  "~~~~": "open",
+  "////": "comment",
+  "```": "fenced_code"
+ },
+ "admonitions": [
+  "NOTE",
+  "TIP",
+  "IMPORTANT",
+  "WARNING",
+  "CAUTION"
+ ],
+ "layout_breaks": {
+  "\\'": "thematic_break",
+  "<": "page_break"
+ },
+ "markdown_breaks": {
+  "-": "thematic_break",
+  "*": "thematic_break",
+  "_": "thematic_break"
+ }
+}

@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""AsciiDoc の書き方の表が、本家(asciidoctor)とずれていないか見る。
+
+writer は AsciiDoc の視覚エディタです。**編集できるのは部分集合でよいが、
+表示はすべてできないといけない**(発注者 2026-08-18)。そのためには「本家に
+どんな書き方があるか」を知っている必要があり、それを**記憶で書かない**ための
+道具です。
+
+正本は本家の `lib/asciidoctor.rb` の `DELIMITED_BLOCKS` などです。写しを
+`docs/sekkei/asciidoctor-syntax.json` に置き、engine の表と突き合わせます。
+
+    python3 tools/adoc_syntax_check.py            # 突き合わせる
+    python3 tools/adoc_syntax_check.py --update   # 本家から写しを取り直す
+
+`--update` には `vendor/asciidoctor`(追跡していません)が要ります:
+
+    git clone --depth 1 https://github.com/asciidoctor/asciidoctor.git vendor/asciidoctor
+"""
+import json
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+写し = ROOT / "docs/sekkei/asciidoctor-syntax.json"
+本家 = ROOT / "vendor/asciidoctor/lib/asciidoctor.rb"
+ADOC_RS = ROOT / "engine/src/adoc.rs"
+
+# うちが**意味を知っていて編集もできる**区切り。表に無くてよい
+編集できる = {"____", "|==="}
+
+
+def 本家から読む():
+    src = 本家.read_text(encoding="utf-8")
+    m = re.search(r"DELIMITED_BLOCKS = \{(.*?)\n  \}", src, re.S)
+    blocks = dict(re.findall(r"'([^']+)' => \[:(\w+)", m.group(1)))
+    adm = re.findall(
+        r"'([A-Z]+)'",
+        re.search(r"ADMONITION_STYLES = ::Set\[([^\]]+)\]", src).group(1),
+    )
+    lay = dict(
+        re.findall(
+            r"'(\\?.)' => :(\w+),",
+            re.search(r"LAYOUT_BREAK_CHARS = \{(.*?)\}", src, re.S).group(1),
+        )
+    )
+    md = dict(
+        re.findall(
+            r"'(.)' => :(\w+),",
+            re.search(r"MARKDOWN_THEMATIC_BREAK_CHARS = \{(.*?)\}", src, re.S).group(1),
+        )
+    )
+    return {
+        "delimited_blocks": blocks,
+        "admonitions": adm,
+        "layout_breaks": lay,
+        "markdown_breaks": md,
+    }
+
+
+def engine_no_hyou():
+    src = ADOC_RS.read_text(encoding="utf-8")
+    m = re.search(r"const DELIMITED: &\[\(&str, &str\)\] = &\[(.*?)\n\];", src, re.S)
+    if not m:
+        sys.exit("engine/src/adoc.rs の DELIMITED が読めません(表の形が変わった?)")
+    印 = set(re.findall(r'\("([^"]+)",', m.group(1)))
+    a = re.search(r"const ADMONITION: &\[&str\] = &\[(.*?)\];", src, re.S)
+    if not a:
+        sys.exit("engine/src/adoc.rs の ADMONITION が読めません")
+    註記 = {x.rstrip(":") for x in re.findall(r'"([^"]+)"', a.group(1))}
+    return 印, 註記
+
+
+def main():
+    if "--update" in sys.argv:
+        if not 本家.is_file():
+            sys.exit(f"{本家} がありません。README の手順で vendor/asciidoctor を置いてください")
+        古い = json.loads(写し.read_text(encoding="utf-8")) if 写し.is_file() else {}
+        新しい = {k: v for k, v in 古い.items() if k.startswith("_")}
+        新しい.update(本家から読む())
+        写し.write_text(
+            json.dumps(新しい, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
+        )
+        print(f"{写し} を取り直しました")
+        return
+
+    if not 写し.is_file():
+        sys.exit(f"{写し} がありません(--update で作ります)")
+    表 = json.loads(写し.read_text(encoding="utf-8"))
+
+    # 本家が手元にあるなら、写しが古くないかも見る(`_` で始まる鍵は覚え書き)
+    中身 = {k: v for k, v in 表.items() if not k.startswith("_")}
+    if 本家.is_file() and 本家から読む() != 中身:
+        sys.exit(f"{写し} が本家より古いです(--update で取り直してください)")
+    表 = 中身
+
+    印, 註記 = engine_no_hyou()
+    悪い = []
+    for k in 表["delimited_blocks"]:
+        if k not in 編集できる and k not in 印:
+            悪い.append(f"塊の区切り「{k}」({表['delimited_blocks'][k]})を engine が知りません")
+    for a in 表["admonitions"]:
+        if a not in 註記:
+            悪い.append(f"註記「{a}」を engine が知りません")
+    if 悪い:
+        print("本家の AsciiDoc にあって、engine が知らない書き方があります:")
+        for x in 悪い:
+            print("  -", x)
+        print("engine/src/adoc.rs の DELIMITED / ADMONITION に足してください。")
+        sys.exit(1)
+    n = len(表["delimited_blocks"]) + len(表["admonitions"])
+    print(f"本家の書き方 {n} 種と揃っています(区切り {len(表['delimited_blocks'])}・"
+          f"註記 {len(表['admonitions'])})")
+
+
+if __name__ == "__main__":
+    main()

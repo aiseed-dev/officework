@@ -555,46 +555,90 @@ fn 次が空行<'a, I: Iterator<Item = (usize, &'a str)>>(
 }
 
 fn 本家だけの書き方(l: &str) -> Option<(&'static str, &'static str)> {
-    let t = l.trim_start();
-    for 印 in ["NOTE: ", "TIP: ", "IMPORTANT: ", "WARNING: ", "CAUTION: "] {
-        if t.starts_with(印) {
+    let t = l.trim_end();
+    let ts = t.trim_start();
+    // 註記(asciidoctor の ADMONITION_STYLES)
+    for 印 in ADMONITION {
+        if ts.starts_with(印) && ts[印.len()..].starts_with(' ') {
             return Some(("註記(NOTE: など)", "註記"));
         }
     }
-    // 塊の区切り。4つ以上の同じ記号だけの行
-    for 印 in ['-', '.', '*', '_', '='] {
-        if t.len() >= 4 && t.chars().all(|c| c == 印) && 印 != '_' {
-            return Some(("塊の区切り(---- など)", "塊の区切り"));
+    // 塊の区切り(DELIMITED_BLOCKS)。**うちが意味を知っている物は除く** —
+    // 引用(____)と表(|===)は編集できます
+    for (印, 名) in DELIMITED {
+        if 区切りか(t, 印) {
+            return Some((名, "塊の区切り"));
         }
     }
-    if t.starts_with("include::") {
+    // 横の区切り線。改ページ(<<<)はうちが扱うので除く
+    if matches!(t, "'''" | "---" | "***" | "___") {
+        return Some(("横の区切り線", "横の区切り線"));
+    }
+    if ts.starts_with("include::") {
         return Some(("取り込み(include::)", "取り込み"));
     }
-    if t.starts_with("=====") {
+    if ts.starts_with("=====") {
         return Some(("4段より深い見出し", "見出し4"));
     }
-    if t.starts_with("* [x]") || t.starts_with("* [ ]") || t.starts_with("- [x]") {
+    if ts.starts_with("* [x]") || ts.starts_with("* [ ]") || ts.starts_with("- [x]") {
         return Some(("チェックの箇条書き", "チェック"));
     }
+    if ts.starts_with("//") {
+        return Some(("覚え書きの行(//)", "覚え書き"));
+    }
     // 説明のリスト(用語:: 説明)。マクロ(名前:的[…])と紛れないよう `:: ` を見る
-    if let Some(i) = t.find(":: ") {
-        if i > 0 && !t[..i].contains(' ') && !t[..i].contains('[') {
+    if let Some(i) = ts.find(":: ") {
+        if i > 0 && !ts[..i].contains(' ') && !ts[..i].contains('[') {
             return Some(("説明のリスト(用語:: 説明)", "説明のリスト"));
         }
     }
     // 塊の題(.題)。箇条書きの `. ` とは違う
-    if t.starts_with('.') && !t.starts_with(". ") && t.len() > 1 && !t.starts_with("..") {
+    if ts.starts_with('.') && !ts.starts_with(". ") && ts.len() > 1 && !ts.starts_with("..") {
         return Some(("塊の題(.題)", "塊の題"));
     }
     // 属性の参照 {名前}。うちの差し込みは {{名前}} なので、二重は数えない
-    let b = t.as_bytes();
-    for (i, c) in t.char_indices() {
+    let b = ts.as_bytes();
+    for (i, c) in ts.char_indices() {
         let 二重 = b.get(i + 1) == Some(&b'{') || (i > 0 && b[i - 1] == b'{');
-        if c == '{' && !二重 && t[i..].contains('}') {
+        if c == '{' && !二重 && ts[i..].contains('}') {
             return Some(("属性の参照({名前})", ""));
         }
     }
     None
+}
+
+/// 註記の頭(asciidoctor の `ADMONITION_STYLES`)
+const ADMONITION: &[&str] = &["NOTE:", "TIP:", "IMPORTANT:", "WARNING:", "CAUTION:"];
+
+/// 塊の区切り(asciidoctor の `DELIMITED_BLOCKS`)。**うちが意味を知っている
+/// `____`(引用)と `|===`(表)は入れません。**
+///
+/// 表は `docs/sekkei/asciidoctor-syntax.json` に写してあり、
+/// `tools/adoc_syntax_check.py` が本家の表とずれていないか見ます
+/// (2026-08-18 発注者「表示については、こちらからとりこんだら」)。
+const DELIMITED: &[(&str, &str)] = &[
+    ("----", "コードの塊(----)"),
+    ("....", "字のまま出す塊(....)"),
+    ("====", "例の塊(====)"),
+    ("****", "傍注の塊(****)"),
+    ("++++", "そのまま通す塊(++++)"),
+    ("////", "覚え書きの塊(////)"),
+    ("~~~~", "開いた塊(~~~~)"),
+    ("--", "開いた塊(--)"),
+    ("```", "コードの塊(```)"),
+    (",===", "表(,===)"),
+    (":===", "表(:===)"),
+    ("!===", "表(!===)"),
+];
+
+/// その行が区切りか。**印は伸ばせます**(`-----` も `----` と同じ)。
+/// 4字の印は同じ字の並び、それ以外はちょうどその字。
+fn 区切りか(t: &str, 印: &str) -> bool {
+    let 頭 = 印.chars().next().unwrap_or(' ');
+    if 印.chars().count() == 4 && 印.chars().all(|c| c == 頭) {
+        return t.chars().count() >= 4 && t.chars().all(|x| x == 頭);
+    }
+    t == 印
 }
 
 
