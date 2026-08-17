@@ -48,6 +48,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("差し込む所が複数あります: {}", "C'è più di un punto in cui unire: {}"),
     ("Web の形で書き出す(HTML)", "Esporta per il web (HTML)"),
     ("{} に書き出しました", "Esportato in {}"),
+    ("{} に書き出しました(Web 用の書式 {} を使いました)", "Esportato in {} (con il formato web {})"),
+    ("PDF にしました — {}(印刷用の書式 {} を使いました)", "PDF creato — {} (con il formato di stampa {})"),
     ("{} に書き出しました(画像 {} 枚も一緒に)", "Esportato in {} (insieme a {} file di immagine)"),
     ("{} に書き出しました(画像 {} 枚が書けませんでした)", "Esportato in {} ({} file di immagine non sono stati scritti)"),
     ("文書.html", "documento.html"),

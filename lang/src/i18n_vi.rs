@@ -48,6 +48,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("差し込む所が複数あります: {}", "Có nhiều hơn một chỗ để trộn: {}"),
     ("Web の形で書き出す(HTML)", "Xuất ra dạng web (HTML)"),
     ("{} に書き出しました", "Đã xuất ra {}"),
+    ("{} に書き出しました(Web 用の書式 {} を使いました)", "Đã xuất ra {} (dùng định dạng web {})"),
+    ("PDF にしました — {}(印刷用の書式 {} を使いました)", "Đã tạo PDF — {} (dùng định dạng in {})"),
     ("{} に書き出しました(画像 {} 枚も一緒に)", "Đã xuất ra {} (kèm {} tệp ảnh)"),
     ("{} に書き出しました(画像 {} 枚が書けませんでした)", "Đã xuất ra {} (không ghi được {} tệp ảnh)"),
     ("文書.html", "tai-lieu.html"),

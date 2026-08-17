@@ -51,6 +51,8 @@ pub const TABLE: &[(&str, &str)] = &[
 ("差し込む所が複数あります: {}", "There is more than one place to merge into: {}"),
 ("Web の形で書き出す(HTML)", "Export for the web (HTML)"),
 ("{} に書き出しました", "Exported to {}"),
+("{} に書き出しました(Web 用の書式 {} を使いました)", "Exported to {} (using the web format {})"),
+("PDF にしました — {}(印刷用の書式 {} を使いました)", "Made a PDF — {} (using the print format {})"),
 ("{} に書き出しました(画像 {} 枚も一緒に)", "Exported to {} (along with {} image files)"),
 ("{} に書き出しました(画像 {} 枚が書けませんでした)", "Exported to {} ({} image files could not be written)"),
 ("文書.html", "document.html"),

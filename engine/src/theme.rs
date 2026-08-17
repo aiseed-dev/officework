@@ -168,6 +168,19 @@ pub fn default_theme() -> Theme {
 /// TOML(部分集合)からテンプレートを読む。
 /// 知らない節・知らない鍵は**黙って捨てずに** Err で言う — テンプレートは
 /// 人と AI が書く物で、綴りの間違いに黙ると「効かない」だけが残る
+/// 行の後ろの覚え書き(`#` から行末まで)を落とす。囲みの中の `#` は残す。
+fn strip_note(line: &str) -> &str {
+    let mut quoted = false;
+    for (i, c) in line.char_indices() {
+        match c {
+            '"' => quoted = !quoted,
+            '#' if !quoted => return &line[..i],
+            _ => {}
+        }
+    }
+    line
+}
+
 pub fn parse(src: &str) -> Result<Theme, String> {
     let mut th = Theme::default();
     // いま居る節。None = 頭(節の外)
@@ -180,8 +193,12 @@ pub fn parse(src: &str) -> Result<Theme, String> {
     }
     let mut cur: Option<Sec> = None;
     for (ln, raw) in src.lines().enumerate() {
-        let line = raw.trim();
-        if line.is_empty() || line.starts_with('#') {
+        // **行の後ろの覚え書き(#)を落とす。** TOML の普通の書き方で、
+        // 落とさないと `横幅 = "可変"  # 窓の幅で組む` が読めません
+        // (2026-08-18。手引きに書いた見本がそのまま落ちて気づきました)。
+        // `"` の中の # は字なので数えます
+        let line = strip_note(raw).trim();
+        if line.is_empty() {
             continue;
         }
         if let Some(name) = line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {

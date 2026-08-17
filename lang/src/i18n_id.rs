@@ -48,6 +48,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("差し込む所が複数あります: {}", "Ada lebih dari satu tempat untuk menggabungkan: {}"),
     ("Web の形で書き出す(HTML)", "Ekspor untuk web (HTML)"),
     ("{} に書き出しました", "Diekspor ke {}"),
+    ("{} に書き出しました(Web 用の書式 {} を使いました)", "Diekspor ke {} (memakai format web {})"),
+    ("PDF にしました — {}(印刷用の書式 {} を使いました)", "PDF dibuat — {} (memakai format cetak {})"),
     ("{} に書き出しました(画像 {} 枚も一緒に)", "Diekspor ke {} (bersama {} berkas gambar)"),
     ("{} に書き出しました(画像 {} 枚が書けませんでした)", "Diekspor ke {} ({} berkas gambar tidak dapat ditulis)"),
     ("文書.html", "dokumen.html"),

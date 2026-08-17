@@ -43,8 +43,3 @@
 [スタイル.注意]
 色 = "C0392B"
 太字 = true
-
-[送り先]
-宛先 = "https://example.jp/uketsuke"
-送り方 = "post"
-ボタン = "申し込む"

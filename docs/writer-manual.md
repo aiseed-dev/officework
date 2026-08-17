@@ -518,6 +518,27 @@ naming it.
 **What is written wins**, so a `:template:` line takes precedence. With neither,
 the built-in default is used.
 
+### A different format per destination
+
+The same text can look different on screen, on the web, and on paper. Just put one
+format file per destination.
+
+| Destination | File used |
+|---|---|
+| Screen and saving | `テンプレート.toml` |
+| Export for the web (HTML) | `テンプレート-web.toml` |
+| Print (PDF) | `テンプレート-印刷.toml` |
+
+**They never mix.** Exactly one is in effect at a time, falling back to
+`テンプレート.toml` when the file for that destination is absent. The status bar
+says which one was used.
+
+**An app is the same road as the web**: put `[送り先]` in `テンプレート-web.toml`
+and the fields become a form that submits.
+
+Adding `テンプレート-印刷.toml` **makes paper look different from the screen.**
+Without it they stay identical — whoever adds the file decides.
+
 ```toml
 [文書]
 大きさ = 11

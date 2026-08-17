@@ -48,6 +48,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("差し込む所が複数あります: {}", "Birleştirilecek birden fazla yer var: {}"),
     ("Web の形で書き出す(HTML)", "Web için dışa aktar (HTML)"),
     ("{} に書き出しました", "{} konumuna aktarıldı"),
+    ("{} に書き出しました(Web 用の書式 {} を使いました)", "{} konumuna aktarıldı (web biçimi {} kullanıldı)"),
+    ("PDF にしました — {}(印刷用の書式 {} を使いました)", "PDF oluşturuldu — {} (baskı biçimi {} kullanıldı)"),
     ("{} に書き出しました(画像 {} 枚も一緒に)", "{} konumuna aktarıldı ({} görüntü dosyasıyla birlikte)"),
     ("{} に書き出しました(画像 {} 枚が書けませんでした)", "{} konumuna aktarıldı ({} görüntü dosyası yazılamadı)"),
     ("文書.html", "belge.html"),

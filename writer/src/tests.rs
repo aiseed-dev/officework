@@ -2544,6 +2544,39 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **書き出し先ごとにテンプレートを持てる。** 混ぜないので、一度に効くのは
+    /// 1枚のまま(発注者 2026-08-18「表示用、印刷用、Web用、アプリ用と複数の
+    /// テンプレートを持つのも悪くないのでは」)。
+    #[gpui::test]
+    fn 書き出し先ごとの書式を使う(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-web-tmpl-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        // 画面は紙の幅、Web は横幅可変
+        std::fs::write(dir.join("テンプレート.toml"), "[スタイル.見出し1]\n大きさ = 18\n").unwrap();
+        std::fs::write(
+            dir.join("テンプレート-web.toml"),
+            "[組み方]\n横幅 = \"可変\"\n区切り = \"なし\"\n\n[スタイル.見出し1]\n大きさ = 30\n",
+        )
+        .unwrap();
+        let doc = dir.join("案内.adoc");
+        std::fs::write(&doc, "== 見出し\n\n本文。\n").unwrap();
+        let out = dir.join("案内.html");
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(doc.clone());
+            // 画面はフォルダの書式(18pt)
+            let c = kumihan::theme::compose(&this.doc, &this.tmpl);
+            assert_eq!(c.paragraphs().next().unwrap().runs[0].size_pt, Some(18.0));
+            this.write_html(&out);
+        });
+        let html = std::fs::read_to_string(&out).expect("HTML が無い");
+        // 書き出しは Web 用(30pt・横幅可変)
+        assert!(html.contains("font-size:30pt"), "Web 用の書式が効いていない:\n{html}");
+        assert!(html.contains("max-width"), "横幅可変が効いていない");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// **HTML に書き出すと、画像も隣に並ぶ。**
     ///
     /// HTML は画像を相対の径路で参照するので、HTML だけ書いても絵が出ません

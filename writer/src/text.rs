@@ -371,8 +371,9 @@ impl Writer {
 
     /// HTML を1枚書きます(CSS は中に入れます)。
     pub(crate) fn write_html(&mut self, path: &std::path::Path) {
-        // 互換の文書には型紙がないので、既定のテンプレートで出します
-        let th = if self.native { self.tmpl.clone() } else { kumihan::theme::default_theme() };
+        // **Web 用のテンプレートがあればそれで出します**(テンプレート-web.toml)。
+        // 無ければいま着ている物。互換の文書(docx)には型紙がないので既定です
+        let (th, 使った) = self.template_for("web");
         let page = kumihan::html_write::page(&self.doc, &th);
         if let Err(e) = std::fs::write(path, &page.html) {
             self.status = ui::tf!("書き出せません: {}", e).into();
@@ -396,6 +397,10 @@ impl Writer {
         self.status = if 書けない > 0 {
             ui::tf!("{} に書き出しました(画像 {} 枚が書けませんでした)",
                     path.display(), 書けない).into()
+        } else if let Some(t) = 使った {
+            // どのテンプレートで出したかは必ず言う(黙って別の見た目にしない)
+            ui::tf!("{} に書き出しました(Web 用の書式 {} を使いました)",
+                    path.display(), t).into()
         } else if page.assets.is_empty() {
             ui::tf!("{} に書き出しました", path.display()).into()
         } else {
@@ -433,7 +438,23 @@ impl Writer {
     /// **画面に出しているのと同じ紙面を写す**ので、画面と紙が食い違わない。
     pub(crate) fn write_pdf(&mut self, p: &std::path::Path) {
         let m = Metrics::new(&self.font_bytes).expect("フォント");
-        let (hdr, ftr, pg) = (self.doc.header.clone(), self.doc.footer.clone(), self.pg);
+        // **印刷用のテンプレートがあれば、それで組み直してから紙にします**
+        // (テンプレート-印刷.toml)。無ければ画面のままです — 画面と紙が
+        // 食い違わない約束は、こちらを置いたときだけ人が自分で外します
+        let (印刷th, 印刷で) = self.template_for("印刷");
+        let 印刷用 = 印刷で.as_ref().map(|_| {
+            let pg = 印刷th.page.unwrap_or(self.pg);
+            let 姿 = crate::doc::Look {
+                pg,
+                vertical: self.doc.vertical,
+                組: 印刷th.setting,
+                view_w_px: self.view_w_px,
+            };
+            (姿.lay_once(&kumihan::theme::compose(&self.doc, &印刷th), &m), pg)
+        });
+        let (hdr, ftr) = (self.doc.header.clone(), self.doc.footer.clone());
+        let pg = 印刷用.as_ref().map(|(_, pg)| *pg).unwrap_or(self.pg);
+        let sheet = 印刷用.as_ref().map(|(s, _)| s).unwrap_or(&self.page);
         let total = self.total_pages();
         let base_pt = self.doc.base_pt();
         // ページの色と透かしは紙にも(画面と紙の一致)
@@ -444,7 +465,7 @@ impl Writer {
         };
         let r = kumihan::atomic::save(p, |f| {
             paper::to_pdf_with(
-                &self.page,
+                sheet,
                 &self.font_bytes,
                 paper::Paper {
                     width_mm: pg.w_mm,
@@ -461,9 +482,12 @@ impl Writer {
                 std::io::BufWriter::new(f),
             )
         });
-        self.status = match r {
-            Ok(_) => ui::tf!("PDF にしました — {}", p.file_name().unwrap_or_default().to_string_lossy()).into(),
-            Err(e) => ui::tf!("PDF にできません: {}", e).into(),
+        self.status = match (r, 印刷で) {
+            (Ok(_), Some(t)) => ui::tf!("PDF にしました — {}(印刷用の書式 {} を使いました)",
+                                        p.file_name().unwrap_or_default().to_string_lossy(), t).into(),
+            (Ok(_), None) => ui::tf!("PDF にしました — {}",
+                                     p.file_name().unwrap_or_default().to_string_lossy()).into(),
+            (Err(e), _) => ui::tf!("PDF にできません: {}", e).into(),
         };
     }
 

@@ -35,7 +35,7 @@ pub(crate) struct Look {
 
 impl Look {
     /// 1回ぶんの組み(合成済みの写し → 紙面)。**組みの本体はここ1箇所**。
-    fn lay_once(&self, src: &Document, m: &Metrics) -> Page {
+    pub(crate) fn lay_once(&self, src: &Document, m: &Metrics) -> Page {
         // 段組みなら1段の行長で組み、ページの物理座標へ折る。
         // 折った後の座標は画面もクリックも PDF もそのまま使える
         let y0 = self.pg.top_mm + 4.0;
@@ -2279,6 +2279,31 @@ impl Writer {
             None,
             ui::tf!("テンプレート「{}」が見つからないので同梱の既定", name).to_string(),
         )
+    }
+
+    /// **書き出し先ごとのテンプレート。** 無ければいま着ている物。
+    ///
+    /// 発注者 2026-08-18「表示用、印刷用、Web用、アプリ用と複数のテンプレートを
+    /// 持つのも悪くないのでは」。**混ぜないので複雑になりません** — 一度に効くのは
+    /// 1枚のままで、どの1枚かが書き出し先で決まるだけです。
+    ///
+    /// 名前は `テンプレート-<用途>.toml`(フォルダの決まりと同じ形)。
+    /// 用途は `web` と `印刷` の2つで、画面と保存は `テンプレート.toml` です。
+    /// 返りは(テンプレート, 使った場所。None は今のまま)。
+    pub(crate) fn template_for(&self, 用途: &str) -> (kumihan::theme::Theme, Option<String>) {
+        let 今 = || (self.tmpl.clone(), None);
+        if !self.native {
+            // 互換の文書(docx)には型紙がない。既定で出す
+            return (kumihan::theme::default_theme(), None);
+        }
+        let Some(dir) = self.path.as_ref().and_then(|p| p.parent()) else { return 今() };
+        let at = dir.join(format!("テンプレート-{用途}.toml"));
+        let Ok(src) = std::fs::read_to_string(&at) else { return 今() };
+        match kumihan::theme::parse(&src) {
+            Ok(th) => (th, Some(at.display().to_string())),
+            // **壊れていたら黙って落ちない。** どれを使ったかは呼ぶ側が言う
+            Err(_) => 今(),
+        }
     }
 
     /// 保存した先のフォルダに書式のファイルがあれば着る。返りは着た場所。
