@@ -82,12 +82,20 @@ PLIST
 done
 
 # ---- 3. Python を同梱する ---------------------------------------------------
-# calc の中に1つだけ置き、writer からも見えるようにする(pyrun が隣を見る)
+# calc の中に1つだけ置き、writer からも見えるようにする。
+#
+# **Resources に置きます。** Contents/MacOS の下にディレクトリを置くと、
+# codesign がそれを入れ子のアプリだと解釈して
+# 「bundle format unrecognized, invalid, or unsuitable」で止まります
+# (2026-08-17、python/include/python3.14 で踏みました)。
+# Resources の中身はハッシュで封をするだけなので、ディレクトリがあっても
+# 問題になりません。中の Mach-O には署名が要りますが、それは sign.sh が
+# Contents 全体を歩いて行います。
 PY_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PY_TAG}/cpython-${PY_VER}%2B${PY_TAG}-${PY_ARCH}-install_only_stripped.tar.gz"
 curl -fsSL -o "$OUT/py.tar.gz" "$PY_URL"
-tar xzf "$OUT/py.tar.gz" -C "$DIST/officework calc.app/Contents/MacOS"
+tar xzf "$OUT/py.tar.gz" -C "$DIST/officework calc.app/Contents/Resources"
 rm -f "$OUT/py.tar.gz"
-"$DIST/officework calc.app/Contents/MacOS/python/bin/python3" -m pip install --quiet officework || true
+"$DIST/officework calc.app/Contents/Resources/python/bin/python3" -m pip install --quiet officework || true
 
 cp -r sample/plugins "$DIST/"
 cp packaging/README.ja.md "$DIST/はじめに.md"

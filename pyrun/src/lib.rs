@@ -553,10 +553,19 @@ fn base_python() -> PathBuf {
 /// pip も入っているので、matplotlib や polars は同梱の python に
 /// 後から入れられる
 fn bundled_python(exe_dir: &std::path::Path) -> Option<std::path::PathBuf> {
-    let cands = if cfg!(windows) {
-        ["python/python.exe", "python.exe"]
+    // macOS のアプリでは Contents/Resources に置きます。Contents/MacOS の下に
+    // ディレクトリがあると、codesign がそれを入れ子のアプリだと解釈して
+    // 署名できません(2026-08-17)。実行ファイルは Contents/MacOS にあるので、
+    // 1つ上がって Resources を見ます。
+    let cands: &[&str] = if cfg!(windows) {
+        &["python/python.exe", "python.exe"]
     } else {
-        ["python/bin/python3", "python/bin/python"]
+        &[
+            "python/bin/python3",
+            "python/bin/python",
+            "../Resources/python/bin/python3",
+            "../Resources/python/bin/python",
+        ]
     };
     cands
         .iter()
