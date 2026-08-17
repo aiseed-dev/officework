@@ -599,6 +599,19 @@ impl Render for Writer {
             .text_size(px(11.0)).text_color(th_status)
             .child(SharedString::from(ui::tf!("{}/{} ページ", cur_page, total_pages)))
             .child(SharedString::from(ui::tf!("文字数 {}", nchars)))
+            // **いまどちらの形式か。** 形式によって出来ることが違います
+            // (ネイティブでは直接書式を封じてスタイルへ誘導します)。
+            // それが画面のどこにも出ていませんでした(2026-08-17 発注者
+            // 「そもそも、docx か .adoc かわからない」)。
+            // 形式の名前はどの言語でも同じなので、翻訳の表は通しません
+            .child(
+                div()
+                    .px_1p5()
+                    .rounded_sm()
+                    .bg(if self.native { rgb(0xE3F0F6) } else { th_cmd_bg })
+                    .text_color(if self.native { rgb(0x165E83) } else { th_status })
+                    .child(if self.native { "adoc" } else { "docx" }),
+            )
             .child(div().flex_1().whitespace_nowrap().overflow_hidden()
                 .child(SharedString::from(match self.hover_hint {
                     Some(h) => h.to_string(),
