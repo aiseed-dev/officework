@@ -433,6 +433,8 @@ C の台本が使えない・使いたくないときの道。やることは同
 
 ### 1. 証明書を `.p12` に書き出す
 
+**鍵束に証明書が1つだけなら**、ターミナルで済む:
+
 ```sh
 security export -t identities -f pkcs12 -o Certificates.p12
 ```
@@ -440,18 +442,43 @@ security export -t identities -f pkcs12 -o Certificates.p12
 合言葉を聞かれるので決めて打つ(これが `MAC_CERT_PASSWORD`)。
 「鍵を書き出そうとしています」の窓が出たら**許可**。
 
-> `-t identities` は「証明書と秘密鍵の対」。鍵束に対が2つ以上あると
-> **全部入ってしまう**ので、その場合はキーチェーンアクセスの
-> **「自分の証明書」**カテゴリから1つだけ選んで書き出す
-> (「証明書」カテゴリでは `.p12` が灰色で選べない)。
+**2つ以上あるなら画面から1つ選ぶ。** `-t identities` は鍵束の対を
+**全部**入れてしまう。`Apple Development` を持っていれば必ずこうなる:
 
-確かめる(鍵そのものは出ない):
+1. `open -a "Keychain Access"`
+2. 左で **ログイン**、カテゴリで **自分の証明書**
+3. **`Developer ID Application: …` の行だけ**を選ぶ
+4. 右クリック → **書き出す** → **個人情報交換(.p12)**
+
+(「証明書」カテゴリでは `.p12` が灰色で選べない — 秘密鍵が付いていない
+見え方のため。)
+
+### 1-2. **出す前に、何が入っているか確かめる**
+
+ここを飛ばすと、間違った証明書を上げて CI で初めて気づくことになる
+(2026-08-17 に実際にやった。入っていたのは `Apple Development` だった)。
+
+```sh
+openssl pkcs12 -in Certificates.p12 -nokeys -passin stdin \
+  | openssl x509 -noout -subject
+```
+
+合言葉を打つと出る:
+
+```
+subject=... CN = Developer ID Application: 名前 (ABCDE12345)
+```
+
+**`Developer ID Application` で始まっていること。** `Apple Development` と
+出たら、書き出した物が違う(手元で動かすための証明書で、配る物には使えない)。
+
+秘密鍵も入っているかを見るなら:
 
 ```sh
 openssl pkcs12 -in Certificates.p12 -info -nokeys -noout -passin stdin
 ```
 
-`Shrouded Keybag` の行があれば秘密鍵が入っている。
+`Shrouded Keybag` の行があれば入っている。
 
 ### 2. Secrets に貼る
 
