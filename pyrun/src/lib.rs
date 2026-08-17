@@ -91,6 +91,92 @@ pub fn ribbon_dir() -> PathBuf {
     config_dir().join("ribbon")
 }
 
+/// **利用者が足したパッケージ**の置き場。`<設定の置き場>/.venv`。
+///
+/// # なぜ同梱の Python に入れさせないか(2026-08-17)
+///
+/// 「matplotlib は同梱の python に pip で入れられる」と書いていたが、
+/// **3つの配り方すべてで壊れる**と分かった:
+///
+/// - **macOS**: 署名済みの `.app` の中に後から `.so` を足すと**封が破れる**。
+///   同じ日に公証を通したばかりで、正面から衝突していた
+/// - **Linux(.deb)**: `/opt/officework` は root 所有。`sudo pip` になる
+/// - **Windows**: 入るが、入れ物が更新・削除で `{app}\python` を丸ごと消す
+///
+/// だから**同梱の Python は読むだけの物**にして、足した物は利用者の側に置く。
+/// マクロ(funcs / plugins)と同じ置き場なのは、**エディタの設定を要らなく
+/// するため**(発注者 2026-08-17「仮想環境と同じ場所にしないと editor の
+/// 設定が面倒」)— `~/.config/officework` を開けば、VS Code も PyCharm も
+/// 隣の `.venv` を自分で見つける。綴りを `.venv` にしてあるのはそのため。
+pub fn venv_dir() -> PathBuf {
+    config_dir().join(".venv")
+}
+
+/// 利用者の venv の Python(**在るときだけ**)。無ければ None。
+pub fn venv_python() -> Option<PathBuf> {
+    let p = if cfg!(windows) {
+        venv_dir().join("Scripts/python.exe")
+    } else {
+        venv_dir().join("bin/python3")
+    };
+    p.exists().then_some(p)
+}
+
+/// 利用者の venv の pip(案内に出す径路。**在らなくても綴りは返す**)。
+pub fn venv_pip() -> PathBuf {
+    if cfg!(windows) {
+        venv_dir().join("Scripts/pip.exe")
+    } else {
+        venv_dir().join("bin/pip")
+    }
+}
+
+/// 利用者の venv が**壊れていないか**。
+///
+/// venv は作った時の Python の径路を `pyvenv.cfg` に焼き付けるので、
+/// **アプリを入れ直して径路が変わると動かなくなる**(2026-08-14 に一度
+/// 踏んだ)。焼き付いた先が消えていたら作り直す合図。
+pub fn venv_broken() -> bool {
+    let cfg = venv_dir().join("pyvenv.cfg");
+    let Ok(s) = std::fs::read_to_string(&cfg) else {
+        return venv_dir().exists(); // 中身はあるのに cfg が無い = 壊れている
+    };
+    let home = s
+        .lines()
+        .find_map(|l| l.strip_prefix("home").map(|r| r.trim_start_matches([' ', '=']).trim()));
+    match home {
+        Some(h) => !std::path::Path::new(h).exists(),
+        None => true,
+    }
+}
+
+/// 利用者の venv を用意する(**在れば何もしない**)。
+///
+/// 素の Python(同梱か機械の物)から `--system-site-packages` で作るので、
+/// 同梱の標準ライブラリと `officework` はそのまま見えて、**足した物だけ**が
+/// 利用者の側に載る。壊れていたら畳んで作り直す。
+///
+/// 返すのは出来上がった Python。作れなければ理由を返す(**黙って諦めない**)。
+pub fn ensure_venv() -> Result<PathBuf, String> {
+    if let Some(p) = venv_python() {
+        if !venv_broken() {
+            return Ok(p);
+        }
+        // 焼き付いた径路が消えている — 畳んで作り直す
+        let _ = std::fs::remove_dir_all(venv_dir());
+    }
+    let base = base_python();
+    let out = std::process::Command::new(&base)
+        .args(["-m", "venv", "--system-site-packages"])
+        .arg(venv_dir())
+        .output()
+        .map_err(|e| format!("{} を起こせません: {e}", base.display()))?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
+    }
+    venv_python().ok_or_else(|| "作った venv に python が居ません".to_string())
+}
+
 /// リボンに出るマクロの名乗り。
 pub struct RibbonDecl {
     /// .py の名前(= 走らせるモジュール名)
@@ -423,6 +509,24 @@ pub fn run_with_timeout(
     }
 }
 
+/// **venv の素にする Python。** 同梱があればそれ、無ければ機械の物。
+///
+/// `find_python` と違って**利用者の venv は見ない** — 自分自身を素にして
+/// 作り直すと、入れ子になって元の Python が分からなくなる
+fn base_python() -> PathBuf {
+    if let Some(p) = std::env::var_os("JO_PYTHON") {
+        return p.into();
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            if let Some(p) = bundled_python(dir) {
+                return p;
+            }
+        }
+    }
+    "python3".into()
+}
+
 /// 同梱の Python(配る形に入れる時の置き場)。実行ファイルの隣の
 /// `python/` を見る — Windows は `python/python.exe`、他は `python/bin/python3`。
 ///
@@ -475,34 +579,50 @@ pub fn py_env() -> Vec<(&'static str, String)> {
         .unwrap_or_default()
 }
 
-/// 裏方の Python を探す。**JO_PYTHON → 同梱 → .venv → python3**。
+/// 裏方の Python を探す。
+/// **JO_PYTHON → 開発機の .venv → 利用者の venv → 同梱 → python3**。
 /// matplotlib が居るかは実行して分かる(居なければ status で言う)。
 pub fn find_python() -> std::path::PathBuf {
     if let Some(p) = std::env::var_os("JO_PYTHON") {
         return p.into();
     }
-    // 配る形に同梱した Python(実行ファイルの隣)。**.venv より先に見る** —
-    // 配った物は同梱を使うのが筋で、開発機の .venv に引っ張られない
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            if let Some(p) = bundled_python(dir) {
-                return p;
-            }
-        }
-    }
-    // 今いるフォルダの .venv(リポジトリ直下で起動した形)
+    // **開発機を先に見る。** 実行ファイルを遡って `.venv` が見つかるのは
+    // 「リポジトリの中から走らせている」印で、そのときは repo の `.venv`
+    // (polars 等が入っている物)が正しい。配った物の実行ファイルは
+    // リポジトリの中に居ないので、ここは素通りする。
+    //
+    // **この順を間違えて一度踏んだ**(2026-08-17): 利用者の venv を先に
+    // 見る形にしたら、開発機で出来たての空の venv が repo の `.venv` に
+    // 勝ち、polars が見えなくなった
     let venv = std::path::Path::new(".venv/bin/python");
     if venv.exists() {
         return venv.into();
     }
-    // 実行ファイルの場所から遡って .venv を探す(target/release/calc →
-    // リポジトリ直下)。**どこから起動しても同じ python に当たる** —
-    // CWD 頼みだと「polars がありません」になり、ピボットが置けない
+    // 実行ファイルの場所から遡って探す(target/release/calc → リポジトリ直下)。
+    // **どこから起動しても同じ python に当たる** — CWD 頼みだと
+    // 「polars がありません」になり、ピボットが置けない
     // (発注者の実機で踏んだ 2026-08-07)
     if let Ok(exe) = std::env::current_exe() {
         for dir in exe.ancestors().skip(1) {
             let p = dir.join(".venv/bin/python");
             if p.exists() {
+                return p;
+            }
+        }
+    }
+    // **利用者が足した物がここに載る**(~/.config/officework/.venv)。
+    // 同梱より先に見るのがこの順の要 — 同梱は読むだけの物で、足した物は
+    // こちらに居る。`--system-site-packages` なので同梱の中身も見える。
+    // **壊れていたら飛ばす**(次の同梱に落ちる)— 直すのは ensure_venv の仕事
+    if let Some(p) = venv_python() {
+        if !venv_broken() {
+            return p;
+        }
+    }
+    // 配る形に同梱した Python(実行ファイルの隣)
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            if let Some(p) = bundled_python(dir) {
                 return p;
             }
         }
@@ -904,6 +1024,58 @@ pub const BUNDLED: &[(&str, &str)] = &[
     ("equation", EQ_PY),
     ("textart", TEXTART_PY),
 ];
+
+#[cfg(test)]
+mod venv_tests {
+    use super::*;
+
+    /// 置き場は**マクロと同じフォルダの中**。エディタで開いたときに
+    /// 隣に居ることがこの決めの理由(発注者 2026-08-17)
+    #[test]
+    fn venvはマクロと同じ置き場に居る() {
+        assert_eq!(venv_dir().parent(), Some(config_dir().as_path()));
+        assert_eq!(venv_dir().file_name().unwrap(), ".venv");
+        // funcs と兄弟であること(エディタが1つのフォルダで両方見る)
+        assert_eq!(funcs_dir().parent(), venv_dir().parent());
+    }
+
+    /// **焼き付いた素の Python が消えていたら壊れている。**
+    /// venv は作った時の径路を pyvenv.cfg に持つので、アプリを入れ直して
+    /// 径路が変わると動かない(2026-08-14 に一度踏んだ)
+    #[test]
+    fn 素のpythonが消えたvenvは壊れていると分かる() {
+        let dir = std::env::temp_dir().join(format!("ow-venv-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let 見る = |cfg: &str| -> bool {
+            let home = cfg
+                .lines()
+                .find_map(|l| l.strip_prefix("home").map(|r| r.trim_start_matches([' ', '=']).trim()));
+            match home {
+                Some(h) => !std::path::Path::new(h).exists(),
+                None => true,
+            }
+        };
+        // 在る径路を指していれば壊れていない
+        assert!(!見る(&format!("home = {}\n", dir.display())), "在る径路を壊れていると言った");
+        // 消えた径路を指していれば壊れている
+        assert!(見る("home = /nowhere/bin\n"), "消えた径路を見逃した");
+        // home が無い pyvenv.cfg も壊れている扱い
+        assert!(見る("version = 3.14.6\n"), "home の無い cfg を見逃した");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// pip の径路は**在らなくても綴りを返す**(案内に出すため)
+    #[test]
+    fn pipの径路は案内のために常に綴れる() {
+        let p = venv_pip();
+        assert!(p.starts_with(venv_dir()));
+        let name = p.file_name().unwrap().to_string_lossy().to_string();
+        assert!(name.starts_with("pip"), "pip ではない: {name}");
+    }
+}
 
 #[cfg(test)]
 mod cage_tests {
