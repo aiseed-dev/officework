@@ -1,10 +1,11 @@
 # Python の手引き — 配列と API
 
-*正本(primary)は英語版: [python-manual.md](python-manual.md)。この日本語版は副です。*
+*元は英語版([python-manual.md](python-manual.md))です。こちらは日本語訳です。*
 
 ボタンの使い方は [calc](calc-manual.ja.md) / [writer](writer-manual.ja.md) の手引きに。
-ここは**コードを書く人のための1冊** — とくに「範囲⇄配列」のやり取りは
-画面から見えないので、ここが正本。全部この機械で実測してある。
+ここは**コードを書く人のための説明** — とくに「範囲⇄配列」のやり取りは
+画面からは見えないので、詳しいことはここに書きます。
+書いてあることは全部、この機械で実際に動かして確かめています。
 
 ## コードはファイル、データはファイル — 混ぜない
 
@@ -19,58 +20,67 @@
   コードは読んで見せるが実行せず、保存で消える(開くときに報告する。
   `@export 名前` で .py に取り出せる)
 - コードが自分のものだけになったので、**サンドボックス(bubblewrap)は
-  着せない**。`@名前 net` の区別も無くなった
+  使わない**。`@名前 net` の区別も無くなった
 - デコレータ(`@xw.func` / `@xw.ret`)も要らない。**普通の `def` を書けばいい**
 
 ## パッケージを足す — `~/.config/officework/.venv`
 
-matplotlib や polars のように**同梱していない物**は、利用者の側に入れる。
-置き場は**マクロと同じフォルダの中**:
+matplotlib や polars は最初から入っていません。使いたくなったら、自分で
+インストールします。入る場所は**マクロと同じフォルダの中**です。
 
 ```
 ~/.config/officework/
-├── funcs/      セルから呼ぶ関数(UDF)
-├── plugins/    一覧から選ぶマクロ
-├── ribbon/     リボンに出るマクロ
-├── records/    記録した台本
-└── .venv/      ← ここに入る
+├── funcs/      セルから呼ぶ関数(=倍(A1) のような)
+├── plugins/    一覧から選んで動かすマクロ
+├── ribbon/     リボンのボタンになるマクロ
+├── records/    記録した操作
+└── .venv/      ← パッケージはここに入る
 ```
 
-入れ方は、**アプリが径路まで言う**。「matplotlib がありません」と出たとき、
-そのまま打てる1行が続けて出る:
+インストールの方法は、**アプリが教えてくれます**。足りないときは、
+そのままコピーして使えるコマンドが表示されます。
 
 ```
 matplotlib がありません(No module named 'matplotlib')。次で入ります:
   /home/あなた/.config/officework/.venv/bin/pip install matplotlib
 ```
 
-`.venv` はその瞬間に無ければ作られる(Python を使わない人の所には作らない)。
+この `.venv` は、そのメッセージが出るときに無ければ自動で作られます。
+Python を使わない人のパソコンには作りません。
 
-### なぜ同梱の Python に入れないか
+### アプリに入っている Python に入れてはいけないのか
 
-**同梱の Python は読むだけの物**にしてある。そこへ後から足すと、
+入れないでください。アプリの中の Python は**読み取り専用のつもり**で
+置いてあります。そこに後からパッケージを足すと、こうなります。
 
-- **macOS**: 署名済みの `.app` の中身が変わり、**封が破れて開かなくなる**
-- **Linux(.deb)**: `/opt/officework` は管理者の物で、`sudo` が要る
-- **Windows**: 入るが、**更新・削除でアプリごと消える**
+- **macOS**: アプリの中身が変わったことになり、**署名が壊れて起動しなくなる**
+- **Linux(.deb)**: `/opt/officework` は管理者のものなので `sudo` が必要
+- **Windows**: 入りますが、**アプリを更新・削除すると一緒に消えます**
 
-`.venv` は `--system-site-packages` で作るので、同梱の標準ライブラリと
-`officework` はそのまま見える。**足した物だけ**が利用者の側に載る。
+`.venv` は `--system-site-packages` という設定で作ってあるので、アプリの中の
+標準ライブラリと `officework` はそのまま見えます。**あなたが足したものだけ**が
+`.venv` に入ります。
 
 ### エディタで書くとき
 
-`~/.config/officework` をそのまま開けばよい。**VS Code も PyCharm も
-隣の `.venv` を自分で見つける**ので、補完のための設定は要らない。
-マクロと venv を同じ場所にしてあるのはこのため。
+`~/.config/officework` をそのままエディタで開いてください。**VS Code も
+PyCharm も、隣にある `.venv` を自動で見つけます**。補完を効かせるための設定は
+要りません。マクロとパッケージを同じ場所にしてあるのは、このためです。
 
 ### 別の Python を使いたいとき
 
-`JO_PYTHON` に径路を入れれば、それが最優先になる。探す順は
-**`JO_PYTHON` → 開発機の `.venv` → 利用者の `.venv` → 同梱 → `python3`**。
+`JO_PYTHON` という環境変数にパスを入れると、それが最優先になります。
+探す順番はこうです。
 
-## Python が動く場所と、渡される束縛
+1. `JO_PYTHON`(指定があれば)
+2. リポジトリの `.venv`(ソースから動かしているとき)
+3. `~/.config/officework/.venv`(あなたが足したパッケージ)
+4. アプリに入っている Python
+5. パソコンの `python3`
 
-| 場所 | 書き方 | 束縛 |
+## Python が動く場所と、使える変数
+
+| 場所 | 書き方 | 最初から使える変数 |
 |---|---|---|
 | セルの関数(UDF) | `=倍(A1)` — plugins の `def 倍(x)` を呼ぶ | 引数が値で渡る(下記) |
 | 手続き | `@モジュール` / `@モジュール.関数` | 自分で `xw.Book.caller()` を呼ぶ |
@@ -238,7 +248,7 @@ d.extract("宛先")                   # 最初の欄の値。無ければ None
 
 書式は欄の先頭のものが残ります(太字の欄は太字のまま)。
 **writer のマクロの `fill` / `extract` / `fields` と同じ言葉**なので、
-マクロで書いた台本の知識がそのまま使えます。全部この機械で実測してあります。
+マクロで書いたコードの知識がそのまま使えます。全部この機械で実際に動かして確かめています。
 
 ### 表
 
@@ -266,17 +276,17 @@ t[1][2].paragraphs     # そのセルの段落(Paragraph として)
 **新しく数式を書くなら `officework.tex`**(下の節)— LaTeX で受けて
 絵に組み、原文ごと文書に入ります。
 
-## よその語彙でも書ける — openpyxl・xlwings・python-docx
+## 他のライブラリの書き方でも動く — openpyxl・xlwings・python-docx
 
-手持ちのコードと、頭に入っている語彙を捨てなくてよい。
+いま持っているコードも、覚えている書き方も、そのまま使えます。
 **API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.md)で、
 在庫は台帳 [docs/pysheet-gokan.ja.md](pysheet-gokan.ja.md) — 3ライブラリの
 中核 324 メンバーを1件ずつ判定してある(できる物・作る物・作らない物と
-その理由)。ここに書くのは**いま動く物だけ**、全部この機械で実測済み。
+その理由)。ここに書くのは**いま動くものだけ**で、全部この機械で動かして確かめています。
 
-そして書式据え置きと再計算という上位分は、どの語彙で書いても付いてくる。
+書式をそのまま保つことと、式を計算し直すことは、どの書き方をしても効きます。
 
-### openpyxl の語彙(officework.sheet)
+### openpyxl の書き方(officework.sheet)
 
 ```python
 from officework import sheet
@@ -320,12 +330,12 @@ wb.add_named_style(...)                       # セルのスタイル(名前付�
 
 データの入力規則・名前付き範囲・グループ化・画像(`add_image`)・ヘッダー/フッター
 (奇数・偶数・先頭ページの別まで)・1904 日付システム・`move_range`(数式の参照が付いて動く)
-も同じ流儀で。**何がどこまであるかの正本は台帳**
+も同じ流儀で。**何がどこまであるかは対応表を見てください**
 ([pysheet-gokan.ja.md](pysheet-gokan.ja.md) — 324 件に判定と理由)。
 
-### xlwings の語彙(officework.calc — 動いている calc へ)
+### xlwings の書き方(officework.calc — 動いている calc を操る)
 
-参照の算術が入った。**繋がっていなくても算術は使える**(実測):
+参照の算術が入った。**calc に繋がっていなくても計算だけは使えます**(確認済み):
 
 ```python
 from officework import calc as xw
@@ -342,7 +352,7 @@ b.sheets.active["A1"].value = 42
 calc が居なければ黙って何かの振りをせず、そう言う:
 `OfficeworkError: calc に繋がりません(…/officework/calc.sock: Connection refused)`
 
-**書式の口**(2026-08-16 に揃えた。記録した操作がそのまま走るために要る):
+**書式まわり**(記録した操作がそのまま動くために必要なもの):
 
 ```python
 s = xw.Book.attach().sheets.active
@@ -370,14 +380,14 @@ s["A1:D9"].add_total_row()                # 下に =SUM の行(下に中身が�
 s["A1:D9"].unlist()                       # 表オブジェクトを外す(書式と式は残る)
 s.set_page_setup(landscape=True, paper=9, margins_mm=(10, 10, 10, 10))
 b.read_only_recommended = True            # 開いた人に「見るだけ」を勧める
-xw.run_macro("締め")                       # 置き場のマクロを1つ走らせる
+xw.run_macro("締め")                       # plugins のマクロを1つ動かす
 ```
 
 **`table_style(…, False)` は塗りを剥がしません** — 掛ける前の姿を覚えて
 いないので、剥がすと元の色まで消えます。外れるのは表の性質だけで、色を
 消すなら `clear_formats()`。
 
-### python-docx の語彙(officework.doc)
+### python-docx の書き方(officework.doc)
 
 ```python
 from officework import doc
@@ -395,7 +405,7 @@ p.runs[0].font.name                  # .name でも引ける(書体が run に�
 (python-docx と同じ使い方 — `r.bold = True` も `r.add_text("続き")` も効く)。段落の `text` 代入や `replace` で
 run の並びが変わった後は、`p.runs` から引き直すこと。
 
-書く方の口も一通りある — `d.add_heading(字, level)`(1〜3。0=Title は
+書く方も一通りそろっています — `d.add_heading(字, level)`(1〜3。0=Title は
 持たないので正直に断る)、`d.add_paragraph(字, style=)`、`d.add_picture`、
 `d.add_section()`、`d.add_table(rows, cols)`、`d.styles.add_style`、
 `p.add_comment(字)`(段落単位)、`d.core_properties`。在庫の全量と
@@ -453,7 +463,7 @@ def 集計(r, 上限, 種別):        # r = [[行1列1, 行1列2], [行2列1, �
 
 **専用の手引き: [writer-macro-manual.ja.md](writer-macro-manual.ja.md)** —
 名前つき記入欄(`fill` / `extract` / `fields`)、雛形(`render` /
-`tpl_fields`、docxtpl)、サンドボックスの中身、AI に台本を書かせる話まで。
+`tpl_fields`、docxtpl)、サンドボックスの中身、AI にコードを書かせる話まで。
 
 ```python
 # d が python-docx の Document。API は python-docx の公式文書のまま
@@ -475,7 +485,7 @@ form["total"] = qty * 150
 
 ## 実行の枠
 
-- **サンドボックスは着せない**。plugins は自分で
+- **サンドボックスは使いません**。plugins は自分で
   据えたコードなので、ファイルもネットワークも普通に使える。
   `@名前 net` の区別も無くなった(打つと「要らなくなりました」と言う)
 - 時間制限つき(手続き60秒・セルの関数30秒)。超えたら止めてそう言う
@@ -496,7 +506,7 @@ form["total"] = qty * 150
 ```
 次の環境で動く Python を書いてください。
 
-【calc のマクロ】b(ブック)と s(いまのシート)が束縛済み。
+【calc のマクロ】b(ブック)と s(いまのシート)が最初から使えます。
 - 読み: s["A1"](数=float・文字=str・☑=bool・数式のセルは計算値。
   空は None か ""。数式が要るなら s.formula("A1")、見た目は s.display("A1"))
 - 全面の読み: s.values()(行×列の2次元リスト。0 始まり)、広さは
@@ -508,7 +518,7 @@ form["total"] = qty * 150
 - b.save() は呼ばない(適用はアプリ側の仕事)。print は画面のステータスバーに出る
 - 書式(罫線・結合・表示形式)は値を入れても壊れない — 触らなくてよい
 
-【writer のマクロ】d(python-docx の Document)が束縛済み。
+【writer のマクロ】d(python-docx の Document)が最初から使えます。
 python-docx の普通の API が使える。d.save() は呼ばない。
 様式の欄に書くときは「先頭ランに書き、残りのランを空にする」
 (p.runs[0].text = 値; 以降の run は ""; — 段落の書式が残る作法)
@@ -521,7 +531,7 @@ python-docx の普通の API が使える。d.save() は呼ばない。
       s["A1"].value = [["受信", "名前"], ["2026-08-09", "山田"]]
 デコレータは要らない(普通の def)。何回書いても Ctrl+Z 一回で戻る。
 
-【実行環境】素の Python(サンドボックスは着せない — plugins は利用者が
+【実行環境】普通の Python(サンドボックスは使いません — plugins は利用者が
 自分で据えたコードだから)。ファイルもネットワークも普通に使える。
 polars・scipy・matplotlib も使える。
 
@@ -537,7 +547,7 @@ polars・scipy・matplotlib も使える。
 
 ### 受け取ったコードの検分
 
-**サンドボックスは着せない。** plugins に置く .py は利用者が自分で据えた
+**サンドボックスは使いません。** plugins に置く .py は利用者が自分で置いた
 コードで、VS Code で書いたスクリプトを走らせるのと同じ扱いにしてある。
 だから**置く前に読む**のが唯一の門になる:
 
@@ -571,7 +581,7 @@ AI が書く → 検分(J 列は空きか・net 不要)→ 実行 → 結果を�
 ## 実例(そのまま読める見本)
 
 **エンジンだけ(pip install officework — アプリ不要)。**
-6本とも実測してから置いてある(sample/README.md に出力の数字ごと):
+6本とも実際に動かしてから置いてあります(結果の数字は sample/README.md に):
 
 - [sample/差し込み.py](../sample/差し込み.py) — 見積書に宛名と数量を差し込む。
   書式据え置き・式は合計まで追従
