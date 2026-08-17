@@ -87,7 +87,7 @@ impl Writer {
             dirty: false,
             drag_select: false,
             menu_at: None,
-            tab: 0,
+            tab: 1, // ファイルは全面ページなので、開きはホーム(calc と同じ)
             zoom: 1.0,
             scroll_mm: 0.0,
             caret_on: true,
