@@ -627,6 +627,26 @@ Apple はここが違う。**Usage Rules が EULA と独立に掛かる**ので�
 影響を受けない**(初回のダイアログ1回だけ)。「直配布は摩擦がある」と
 書くのは誤り。
 
+### 署名と公証を通した(2026-08-17)
+
+上の「署名の細部」で分かっていた事を、そのまま `packaging/macos/sign.sh`
+にした。手順書は [docs/mac-signing.ja.md](../mac-signing.ja.md)。
+
+**順番に意味がある**: 中の Mach-O → `.app` → **`.app` を公証して券を貼る**
+→ `.dmg` を作る → `.dmg` を署名 → `.dmg` を公証して券を貼る。
+`.app` にも貼るのは、利用者が `.dmg` から出した後に**繋がっていなくても**
+開けるようにするため(貼っていないと初回に問い合わせが要る)。
+
+- 資格は **App Store Connect の API キー**(`.p8` + Key ID + Issuer ID)。
+  Apple ID と合言葉より CI 向きで、2要素認証に引っかからない
+- 権利は**2つだけ** — `disable-library-validation`(利用者が
+  `pip install` した拡張を読む。同梱 pip の意味そのもの)と
+  `allow-unsigned-executable-memory`(ctypes)。App Sandbox は入れない
+- **鍵束は使い捨て**。手元の Mac で同じ台本を回しても、その機械の
+  login.keychain を触らない
+- 最後に `spctl`(= Gatekeeper そのもの)で見る。**ここが実機の代わり**で、
+  落ちたら出さない
+
 **Python 同梱**はどの形でも変わらず要る(発注者「Windows の人もいる」)。
 実行ファイルの隣の `python/` を見る段を pyrun に足した(a822982)。
 中身は python-build-standalone の **3.14 系**(手元の miniforge3 と揃える。

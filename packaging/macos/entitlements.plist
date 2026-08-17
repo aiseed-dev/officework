@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  officework の macOS の権利(Hardened Runtime のゆるめ方)。
+
+  公証には Hardened Runtime が要る。ただし素の Hardened Runtime は
+  **同梱 Python にとって厳しすぎる**ので、要る2つだけ開ける。
+  **開けるのは要る物だけ** — 「念のため」で足すと、その分だけ守りが薄くなる。
+
+  - disable-library-validation
+    利用者が `pip install matplotlib` のように**後から入れた拡張**は、
+    うちの証明書で署名されていない .so になる。これを開けないと
+    dlopen が弾かれ、**同梱 pip の意味が無くなる**(設計の芯:
+    「Python は同梱・後から入れられる」)。
+
+  - allow-unsigned-executable-memory
+    CPython の ctypes / 一部の拡張が書いて実行する領域を使う。
+    これが無いと ctypes を使う拡張がその場で落ちる。
+
+  **付けていない物**(付ける理由が無い):
+    allow-jit / allow-dyld-environment-variables / debugger /
+    get-task-allow(これは公証が拒む) / サンドボックス関係一式
+
+  App Sandbox は**入れない**。直配布(Developer ID)であって Mac App Store
+  ではないので要らず、入れると `~/.config/officework/` が読めなくなる
+  (docs/sekkei/ayumi.ja.md 2026-08-14 の調べ)。
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+</dict>
+</plist>

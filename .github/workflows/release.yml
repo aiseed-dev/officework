@@ -62,10 +62,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: 組む
         run: cargo build --release -p calc -p writer
-      - name: 包む(.app と .dmg)
-        # **公証はまだしていない。** 署名の鍵を CI に置く工事が要る
-        # (docs/sekkei/ayumi.ja.md の配布の節)。それまでは
-        # 「初回だけ右クリック→開く」が要ると Releases の説明に書く
+      - name: 包む(.app に Python まで入れる)
+        # **署名の前に中身を全部そろえる。** 後から1つでも足すと署名が壊れる
+        # (同梱 Python と pip で入れた物も、全部が署名の対象)
         run: |
           VER=$(grep -m1 '^version' calc/Cargo.toml | cut -d'"' -f2)
           PY_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PY_TAG}/cpython-${PY_VER}%2B${PY_TAG}-aarch64-apple-darwin-install_only_stripped.tar.gz"
@@ -97,8 +96,49 @@ jobs:
           "dist/officework calc.app/Contents/MacOS/python/bin/python3" -m pip install --quiet officework || true
           cp -r sample/plugins dist/
           cp packaging/README.ja.md dist/はじめに.md
-          hdiutil create -volname "officework $VER" -srcfolder dist -ov -format UDZO \
-            "officework-$VER-macos-arm64.dmg"
+          echo "VER=$VER" >> "$GITHUB_ENV"
+
+      # ---- ここから署名と公証(docs/mac-signing.ja.md)------------------------
+      #
+      # **順番に意味がある。** 中の Mach-O → .app → .app を公証して券を貼る
+      # → .dmg を作る → .dmg を署名 → .dmg を公証して券を貼る。
+      # .app にも券を貼るのは、利用者が .dmg から出した後に**繋がっていなくても**
+      # 開けるようにするため(貼っていないと初回に問い合わせが要る)。
+      - name: 鍵を入れる
+        env:
+          MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: packaging/macos/sign.sh keychain
+      - name: .app を署名する(中から外へ)
+        run: |
+          for app in dist/*.app; do
+            packaging/macos/sign.sh app "$app"
+          done
+      - name: .app を公証して券を貼る
+        env:
+          MAC_API_KEY_P8: ${{ secrets.MAC_API_KEY_P8 }}
+          MAC_API_KEY_ID: ${{ secrets.MAC_API_KEY_ID }}
+          MAC_API_ISSUER_ID: ${{ secrets.MAC_API_ISSUER_ID }}
+        run: |
+          # 公証は1つずつ出すより、まとめて zip にして1回で出すほうが速い
+          ditto -c -k --keepParent --sequesterRsrc dist apps.zip
+          packaging/macos/sign.sh notarize apps.zip
+          for app in dist/*.app; do xcrun stapler staple "$app"; done
+          rm -f apps.zip
+      - name: .dmg を作って、署名・公証・券貼り
+        env:
+          MAC_API_KEY_P8: ${{ secrets.MAC_API_KEY_P8 }}
+          MAC_API_KEY_ID: ${{ secrets.MAC_API_KEY_ID }}
+          MAC_API_ISSUER_ID: ${{ secrets.MAC_API_ISSUER_ID }}
+        run: |
+          DMG="officework-$VER-macos-arm64.dmg"
+          hdiutil create -volname "officework $VER" -srcfolder dist -ov -format UDZO "$DMG"
+          packaging/macos/sign.sh dmg "$DMG"
+          packaging/macos/sign.sh notarize "$DMG"
+      - name: 利用者と同じ目で確かめる
+        # **ここが実機の代わり。** spctl は Gatekeeper そのものなので、
+        # 通れば「初回は右クリック→開く」は要らない。落ちたら出さない
+        run: packaging/macos/sign.sh verify "officework-$VER-macos-arm64.dmg"
       - uses: actions/upload-artifact@v4
         with:
           name: macos
@@ -178,7 +218,7 @@ jobs:
             | 機械 | ファイル |
             |---|---|
             | Linux | `.deb`(入れる)か `.tar.gz`(展開するだけ) |
-            | macOS | `.dmg` — **署名も公証もまだです**。初回は右クリック→開く |
+            | macOS | `.dmg` — 署名と公証つき。そのまま開けます |
             | Windows | `.zip` — 展開して `calc.exe`。**署名はまだ**(SmartScreen が出ます) |
 
             試し方と、動かないときの手当ては同梱の「はじめに」を見てください。
