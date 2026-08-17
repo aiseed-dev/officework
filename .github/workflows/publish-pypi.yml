@@ -10,6 +10,10 @@
 #
 # 出し方: `v0.1.0` のような版のタグを押す。手で回すこともできる
 # (Actions の画面から。dry_run を付けると PyPI へは上げず wheel だけ作る)。
+#
+# **手で回すときは「Use workflow from」でタグを選ぶ。** 枝(main)を選ぶと
+# publish の段が飛ばされ、走行は「成功」と出るのに PyPI には何も上がらない
+# (2026-08-17 に実際に起きた)。いまは `guard` の仕事が先に止めて理由を言う。
 name: publish-pypi
 
 on:
@@ -26,9 +30,35 @@ permissions:
   contents: read
 
 jobs:
+  # **回し方が正しいかを先に見る。**
+  #
+  # publish の段は `refs/tags/v*` のときだけ動きます。枝(main)から
+  # dry_run を外して回すと、wheel と sdist は出来るのに publish が skipped に
+  # なり、**走行は「成功」と出るのに PyPI には何も上がりません**
+  # (2026-08-17 に実際に起きた)。20分組んでから気づくのは遅いので、
+  # 先に止めて理由を言います。
+  guard:
+    name: 回し方を見る
+    runs-on: ubuntu-latest
+    steps:
+      - name: タグから回しているか
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "dry_run です。PyPI へは上げません(wheel と sdist を作るだけ)"
+            exit 0
+          fi
+          case "$GITHUB_REF" in
+            refs/tags/v*) echo "タグ $GITHUB_REF から回しています。PyPI へ上げます" ;;
+            *)
+              echo "::error::PyPI へ上げるにはタグから回してください。いまの ref は $GITHUB_REF です。Actions の「Run workflow」で「Use workflow from」に v0.4.0 のようなタグを選んでください(このまま進めても publish は飛ばされ、何も上がりません)"
+              exit 1
+              ;;
+          esac
+
   # 各プラットフォームの wheel。abi3-py310 なので **1枚で 3.10 以降を賄う**
   wheels:
     name: wheel (${{ matrix.os }})
+    needs: [guard]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -150,6 +180,7 @@ jobs:
 
   # 元の形(sdist)。conda-forge はこちらを見る
   sdist:
+    needs: [guard]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
