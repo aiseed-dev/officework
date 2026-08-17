@@ -67,16 +67,20 @@ attack path does not exist here. See the [calc manual](docs/calc-manual.md).
 
 Three ways in, depending on what you want.
 
-**The engine, from PyPI** — no app needed. This is the main channel.
+**From PyPI** — the main channel, and from 0.4.0 it brings the apps as well.
 
 ```console
-$ pip install officework
+$ pip install officework      # engine, bridge, MCP server — and both apps
+$ officework-calc             # a spreadsheet with a window
+$ officework-writer
 ```
 
-**The apps** — **not published yet.** Build from source for now (below).
+The wheel is around 36 MB (larger on macOS, which is universal). This is the least troublesome route: a file pip put
+on your disk carries neither macOS's quarantine flag nor Windows' Mark of the
+Web, so Gatekeeper and SmartScreen never ask, and no bundled Python is needed.
 
-The packaging is written and the files it produces are these; Python 3.14 is
-bundled in each, so nothing else is required:
+**Installers** — **not published yet.** The packaging is written and produces
+the files below, each with Python 3.14 bundled, but no release is out:
 
 | | file | state |
 |---|---|---|

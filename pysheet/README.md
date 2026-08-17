@@ -16,9 +16,9 @@ $ pip install officework
 ```
 
 Wheels are abi3 (CPython 3.10+), so one wheel per platform covers every
-version; Linux, macOS and Windows are published. **The engine needs no app
-installed** — only the bridge does. `pandas` is imported only if you ask for it
-(`pip install officework[pandas]`).
+version; Linux, macOS and Windows are published. From 0.4.0 the wheel also
+carries the **apps themselves** — see below. `pandas` is imported only if you
+ask for it (`pip install officework[pandas]`).
 
 ## Three ways in
 
@@ -74,17 +74,28 @@ The tools it exposes are deliberately few: `book_info`, `used_range`,
 `read_range`, `read_formulas`, `write_range`, `set_format`, `autofit`, `save`.
 Reading a range gives values; `read_formulas` gives the formulas behind them.
 
-## Launch the app from the command line
+## The apps come with it too
 
 ```console
 $ officework-calc report.xlsx
 $ officework-writer report.docx
 ```
 
-These come with the package. **They do not carry the app** — the wheel holds
-the engines, not a GUI. They find an officework you already installed (from the
-[releases](https://github.com/aiseed-dev/officework/releases), or built from
-source) and hand the file to it.
+**Since 0.4.0 the wheel carries the two apps** (around 36 MB on Linux and
+Windows; more for the universal macOS wheel, which holds both architectures), so
+`pip install officework` is all it takes to get a spreadsheet and a word
+processor with a window. They are the same binaries the installers ship.
+
+This is the least troublesome way to get them: a file that pip put on your
+disk carries neither macOS's quarantine flag nor Windows' Mark of the Web, so
+Gatekeeper and SmartScreen never ask. Nor is a bundled Python needed — you
+already have one.
+
+If you would rather point at a build of your own:
+
+```console
+$ OFFICEWORK_CALC=/path/to/calc officework-calc report.xlsx
+```
 
 ## Your old vocabulary still works
 
