@@ -1192,6 +1192,7 @@ mod cage_tests {
 
     #[test]
     fn 証明書の束を機械から探す() {
+        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // 配る Python は自分の径路を焼き付けているので、走らせる側が
         // 機械の束を教える(2026-08-14 に見本の天気予報で踏んだ)
         match super::ca_bundle() {
@@ -1204,8 +1205,15 @@ mod cage_tests {
         unsafe { std::env::remove_var("SSL_CERT_FILE") };
     }
 
+    /// 環境変数はプロセス全体で1つなので、それを書き換えるテストは
+    /// **同時に走らせない**。下の2つは SSL_CERT_FILE を取り合っていて、
+    /// 片方が設定して消す隙間にもう片方が子を起こすと、子には何も渡らない。
+    /// 2026-08-17 に CI で落ちた(手元では 10 回に1回ほどしか出ない)
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn 証明書の道が子のプロセスに渡る() {
+        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // **実際に子を起こして確かめる。** py_env を書いただけでは、
         // run_with_timeout が渡し忘れていても気づけない(2026-08-14 に
         // 見本の天気予報が https で落ちて分かった穴)
