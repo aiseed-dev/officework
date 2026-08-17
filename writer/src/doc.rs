@@ -2446,122 +2446,34 @@ impl Writer {
         if !self.native || !Self::LOOK_IDS.contains(&id) {
             return false;
         }
-        // **すでに付いていれば外す。** 書式のボタンは押すたびに切り替わるのが
-        // 当たり前で、付けることしかできないのは使いにくい
-        // (2026-08-17 発注者「書式はトグルでないとダメでしょう」)。
-        // 同じボタンが作るのと同じ種類の見た目を持つスタイルを着ていたら、
-        // それを脱がせます
-        if let Some(name) = self.style_worn_for(id) {
-            self.switch_target(Target::Body);
-            self.checkpoint(false);
-            self.flush_target();
-            let sel = self.ed.selection();
-            if sel.start == sel.end {
-                self.doc.apply_para(sel, |p| p.style_id = None);
-            } else {
-                self.doc.apply_char_format(sel, |f| f.style_id = None);
-            }
-            self.dirty = true;
-            self.relayout_keep();
-            self.status = ui::tf!("「{}」を外しました", name).into();
-            return true;
-        }
-        // 押した見た目を1つだけ持つスタイルの種を作る(名前はこれから)
-        let now = self.doc.char_format_at(self.ed.selection());
-        let base = self.doc.base_pt();
-        let cur_pt = self.doc.size_at(self.ed.selection()).unwrap_or(base);
-        let mut d = kumihan::theme::StyleDef::default();
-        match id {
-            "fontsize" | "incfont" => d.size_pt = Some(ui::combo::step_size(cur_pt, true)),
-            "decfont" => d.size_pt = Some(ui::combo::step_size(cur_pt, false)),
-            "fontname" => d.font = Some(self.font_name.to_string()),
-            "fontcolor" => d.color = Some("C00000".into()),
-            "highlight" => d.shade = Some("FFF3A0".into()),
-            "underline" => d.underline = !now.underline,
-            _ => d.italic = true, // strikeout の代わり(打ち消しは意味では持てない)
-        }
-        d.name = self.style_name_hint(id);
-        self.style_ed = Editor::new(&d.name);
-        self.style_new = Some(d);
+        // **見た目のボタンは、スタイルの一覧へ案内します**(2026-08-17)。
+        //
+        // 前は押すたびに「名前を付けてください」と聞いていました。すると
+        //
+        // - 同じ見た目を使い回せず、押すたびにスタイルが増える
+        // - 外す方法が無い
+        //
+        // という状態でした。外す道として「もう一度押したら脱ぐ」を足しかけ
+        // ましたが、それも筋が通りません。色のボタンを押しただけで、色以外も
+        // 持っているスタイルごと外れてしまうためです(発注者の指摘)。
+        //
+        // 意味だけの文書で「下線」を押す人が本当にしたいのは、その字に役割を
+        // 与えることです。だから一覧を出して、選ぶか・外すか・新しく作るかを
+        // その場で決められるようにします。太字と斜体は意味(強調)なので、
+        // ここには来ません(そのまま効きます)。
+        self.rp_open = true;
+        self.rp_tab = 2;
         self.status = ui::t!(
-            "ネイティブ文書では見た目を直には変えません。名前を付けてスタイルにします(Enter で決める・Esc でやめる)"
+            "意味だけの文書では、見た目に名前を付けて使います。右のスタイルから選ぶか、新しく作ってください"
         )
         .into();
-        self.ai_name_style(id, cx);
+        cx.notify();
         true
     }
 
-    /// いま着ているスタイルのうち、このボタンが作るのと**同じ種類の見た目**を
-    /// 持つものの名前。無ければ None。
-    ///
-    /// 「下線のボタンを押したら下線のスタイルを脱ぐ」のように、押したボタンと
-    /// 対応する見た目だけを見ます。色のスタイルを着ているときに下線のボタンを
-    /// 押しても、色は外れません。
-    fn style_worn_for(&self, id: &str) -> Option<String> {
-        let sel = self.ed.selection();
-        // 選んでいれば字のスタイル、選んでいなければ段落のスタイル
-        let name = if sel.start == sel.end {
-            self.doc.para_at(sel.clone()).and_then(|p| p.style_id.clone())
-        } else {
-            self.doc.char_format_at(sel).style_id.clone()
-        }?;
-        let d = self.tmpl.style(&name)?;
-        let 同じ種類 = match id {
-            "fontsize" | "incfont" | "decfont" => d.size_pt.is_some(),
-            "fontname" => d.font.is_some(),
-            "fontcolor" => d.color.is_some(),
-            "highlight" => d.shade.is_some(),
-            "underline" => d.underline,
-            _ => d.italic,
-        };
-        同じ種類.then_some(name)
-    }
 
-    /// 名前の下書き(AI が答えるまでの繋ぎ。**空欄で待たせない**)
-    fn style_name_hint(&self, id: &str) -> String {
-        match id {
-            "fontsize" | "incfont" => ui::t!("大きい字"),
-            "decfont" => ui::t!("小さい字"),
-            "fontname" => ui::t!("別の書体"),
-            "fontcolor" => ui::t!("色つきの字"),
-            "highlight" => ui::t!("目立たせる"),
-            "underline" => ui::t!("下線つき"),
-            _ => ui::t!("強い注意"),
-        }
-        .to_string()
-    }
 
-    /// **名付けは AI に**(発注者 2026-08-16「名付けは AI にやらせれば
-    /// 摩擦が消える」)。選んでいる字を見せて短い名前を1つ貰い、欄に入れる。
-    /// AI が居なければ下書きのまま — 待たせも断りもしない
-    fn ai_name_style(&mut self, id: &str, cx: &mut Context<Self>) {
-        let back = ui::ai::backend();
-        if ui::ai::ready(back).is_err() {
-            return;
-        }
-        let sel = self.ed.selection();
-        let text: String = self.ed.text().get(sel).unwrap_or_default().chars().take(80).collect();
-        let what = self.style_name_hint(id);
-        let sys = ui::t!(
-            "文書のスタイル名を1つだけ答える。日本語で、6字以内の名詞。説明も記号も付けない"
-        )
-        .to_string();
-        let user = format!("{text}\n---\n{what}");
-        let task = cx.background_executor().spawn(async move { ui::ai::ask(back, &sys, &user) });
-        cx.spawn(async move |this, cx| {
-            let r = task.await;
-            let _ = this.update(cx, |this, cx| {
-                if let Ok(name) = r {
-                    let name = name.trim().lines().next().unwrap_or("").trim().to_string();
-                    if !name.is_empty() && name.chars().count() <= 12 && this.style_new.is_some() {
-                        this.style_ed = Editor::new(&name);
-                    }
-                }
-                cx.notify();
-            });
-        })
-        .detach();
-    }
+
 
     /// スタイルの新設を決める(名前の欄で Enter)。テンプレートに足し、
     /// 選んでいる段落に名前を付け、テンプレートのファイルへ書き戻す
@@ -2606,6 +2518,26 @@ impl Writer {
 
     /// **スタイルを着替える**(右パネル。2026-08-16)。役割の名前なら
     /// 段落の役割そのものを替え、そうでなければ `style_id` で名指す
+    /// スタイルを外します(選んでいれば字から、選んでいなければ段落から)。
+    /// 役割で出る見出しなどは「本文」に戻します。
+    pub(crate) fn strip_style(&mut self) {
+        self.switch_target(Target::Body);
+        self.checkpoint(false);
+        self.flush_target();
+        let sel = self.ed.selection();
+        if sel.start == sel.end {
+            self.doc.apply_para(sel, |p| {
+                p.style = kumihan::ParaStyle::Body;
+                p.style_id = None;
+            });
+        } else {
+            self.doc.apply_char_format(sel, |f| f.style_id = None);
+        }
+        self.dirty = true;
+        self.relayout_keep();
+        self.status = ui::t!("スタイルを外しました").into();
+    }
+
     pub(crate) fn wear_style(&mut self, name: &str) {
         self.switch_target(Target::Body);
         self.checkpoint(false);

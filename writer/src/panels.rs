@@ -981,6 +981,21 @@ impl Writer {
                     }
                 }
                 let mut r = row();
+                // **外す道**(2026-08-17)。見た目のボタンは一覧へ案内するので、
+                // ここに「なし」が無いと外せません
+                r = r.child(
+                    div()
+                        .id("rp-st-none")
+                        .px_2().py_0p5().rounded_sm().cursor_pointer()
+                        .border_1().border_color(th_cmd_border)
+                        .text_size(px(11.5)).text_color(th_status)
+                        .hover(move |st| st.bg(th_btn_hover))
+                        .child(SharedString::from(ui::t!("なし").to_string()))
+                        .on_click(cx.listener(|t, _, _, cx| {
+                            t.strip_style();
+                            cx.notify()
+                        })),
+                );
                 for name in names {
                     let on = name == 着ている;
                     let n2 = name.clone();
