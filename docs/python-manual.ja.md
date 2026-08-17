@@ -22,6 +22,52 @@
   着せない**。`@名前 net` の区別も無くなった
 - デコレータ(`@xw.func` / `@xw.ret`)も要らない。**普通の `def` を書けばいい**
 
+## パッケージを足す — `~/.config/officework/.venv`
+
+matplotlib や polars のように**同梱していない物**は、利用者の側に入れる。
+置き場は**マクロと同じフォルダの中**:
+
+```
+~/.config/officework/
+├── funcs/      セルから呼ぶ関数(UDF)
+├── plugins/    一覧から選ぶマクロ
+├── ribbon/     リボンに出るマクロ
+├── records/    記録した台本
+└── .venv/      ← ここに入る
+```
+
+入れ方は、**アプリが径路まで言う**。「matplotlib がありません」と出たとき、
+そのまま打てる1行が続けて出る:
+
+```
+matplotlib がありません(No module named 'matplotlib')。次で入ります:
+  /home/あなた/.config/officework/.venv/bin/pip install matplotlib
+```
+
+`.venv` はその瞬間に無ければ作られる(Python を使わない人の所には作らない)。
+
+### なぜ同梱の Python に入れないか
+
+**同梱の Python は読むだけの物**にしてある。そこへ後から足すと、
+
+- **macOS**: 署名済みの `.app` の中身が変わり、**封が破れて開かなくなる**
+- **Linux(.deb)**: `/opt/officework` は管理者の物で、`sudo` が要る
+- **Windows**: 入るが、**更新・削除でアプリごと消える**
+
+`.venv` は `--system-site-packages` で作るので、同梱の標準ライブラリと
+`officework` はそのまま見える。**足した物だけ**が利用者の側に載る。
+
+### エディタで書くとき
+
+`~/.config/officework` をそのまま開けばよい。**VS Code も PyCharm も
+隣の `.venv` を自分で見つける**ので、補完のための設定は要らない。
+マクロと venv を同じ場所にしてあるのはこのため。
+
+### 別の Python を使いたいとき
+
+`JO_PYTHON` に径路を入れれば、それが最優先になる。探す順は
+**`JO_PYTHON` → 開発機の `.venv` → 利用者の `.venv` → 同梱 → `python3`**。
+
 ## Python が動く場所と、渡される束縛
 
 | 場所 | 書き方 | 束縛 |

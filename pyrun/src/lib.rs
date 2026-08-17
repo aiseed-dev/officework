@@ -177,6 +177,21 @@ pub fn ensure_venv() -> Result<PathBuf, String> {
     venv_python().ok_or_else(|| "作った venv に python が居ません".to_string())
 }
 
+/// **入れ方の案内**。利用者の venv を用意して、**そのまま打てる1行**を返す。
+///
+/// 「pip で入れてください」だけでは、**どの pip か**が利用者に分からない
+/// (機械に python が何本も入っているのが普通)。ここで径路まで言う。
+///
+/// 呼ばれるのは「〜がありません」と言う瞬間だけなので、**Python を使わない
+/// 人の所には venv を作らない**。作れなかったときは素の `pip` と言う —
+/// 動かない径路を見せない。
+pub fn pip_hint(pkg: &str) -> String {
+    match ensure_venv() {
+        Ok(_) => format!("{} install {pkg}", venv_pip().display()),
+        Err(_) => format!("pip install {pkg}"),
+    }
+}
+
 /// リボンに出るマクロの名乗り。
 pub struct RibbonDecl {
     /// .py の名前(= 走らせるモジュール名)

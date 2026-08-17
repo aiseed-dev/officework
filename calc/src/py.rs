@@ -522,7 +522,8 @@ impl Calc {
                 let err = String::from_utf8_lossy(&o.stderr);
                 let last = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("原因不明");
                 return Err(if err.contains("No module named") {
-                    format!("matplotlib がありません({last})。conda か pip で入れてください")
+                    format!("matplotlib がありません({last})。次で入ります:\n  {}",
+                            pyrun::pip_hint("matplotlib"))
                 } else {
                     format!("グラフが描けません: {last}")
                 });
@@ -721,7 +722,8 @@ impl Calc {
                 let err = String::from_utf8_lossy(&o.stderr);
                 let last = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("原因不明");
                 return Err(if err.contains("No module named") {
-                    format!("polars がありません({last})。pip で入れてください")
+                    format!("polars がありません({last})。次で入ります:\n  {}",
+                            pyrun::pip_hint("polars"))
                 } else {
                     format!("集計できません: {last}")
                 });
@@ -1903,7 +1905,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                 let err = String::from_utf8_lossy(&o.stderr);
                 let last = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("原因不明");
                 return Err(if err.contains("No module named") {
-                    format!("scipy がありません({last})。pip で入れてください")
+                    format!("scipy がありません({last})。次で入ります:\n  {}",
+                            pyrun::pip_hint("scipy"))
                 } else {
                     last.to_string()
                 });
