@@ -331,6 +331,40 @@ impl PyDoc {
         })
     }
 
+    /// **雛形にデータを流し込む**(帳票。2026-08-17)。
+    ///
+    /// 記入欄に1つ書く [`fill`](Self::fill) とは別物です。あちらは欄1つ、
+    /// こちらは雛形まるごとです。
+    ///
+    /// `{{名前}}` を置き換え、`{{群.項目}}` を含む表の行はデータの数だけ
+    /// 増やします。**この文書を書き換えます**(雛形を残したいときは、
+    /// 先に別名で保存してください)。
+    ///
+    /// データに無い名前は `{{名前}}` のまま残し、返り値で知らせます。
+    /// 空にすると、金額の欄が空いた請求書が黙って出来上がるためです。
+    ///
+    /// ```python
+    /// d = doc.Doc.open("請求書.docx")
+    /// d.render({"宛名": "みほん商事", "合計": "3,000"},
+    ///          {"明細": [{"品名": "鉛筆", "数量": "10"},
+    ///                    {"品名": "消しゴム", "数量": "5"}]})
+    /// d.save("out.docx")
+    /// ```
+    #[pyo3(signature = (values, rows = None))]
+    fn render(
+        &self,
+        values: std::collections::BTreeMap<String, String>,
+        rows: Option<std::collections::BTreeMap<String, Vec<std::collections::BTreeMap<String, String>>>>,
+    ) -> PyResult<String> {
+        let mut d = kumihan::fill::Data { values, rows: rows.unwrap_or_default() };
+        // 数でも文字でも受けたいので、値はここまでで文字にしてもらう
+        let _ = &mut d;
+        let mut g = lock(&self.inner)?;
+        let (out, rep) = kumihan::fill::fill(&g.doc, &d);
+        g.doc = out;
+        Ok(rep.summary())
+    }
+
     /// 保存する。開いた元のファイルがあれば `ooxml::write_with` に渡し、
     /// **こちらが作り直さない部品は原本のまま持ち越す**(様式・図形・変更履歴・
     /// 読めなかった部品)。openpyxl / python-docx との違いはここ。

@@ -1820,6 +1820,101 @@ mod fold_print_tests {
 }
 
 #[cfg(test)]
+mod fill_tests {
+    use crate::{adoc, fill};
+    use std::collections::BTreeMap;
+
+    fn 行(items: &[(&str, &str)]) -> BTreeMap<String, String> {
+        items.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+    }
+
+    const 雛形: &str = "= 請求書\n\n\
+        {{宛名}} 御中\n\n\
+        |===\n\
+        | 品名 | 数量\n\
+        | {{明細.品名}} | {{明細.数量}}\n\
+        |===\n\n\
+        合計 {{合計}} 円\n";
+
+    /// **明細の行がデータの数だけ増える。** ここが帳票の芯です。
+    #[test]
+    fn 明細の行が増える() {
+        let d = adoc::parse(雛形).expect("雛形が読めない");
+        let mut data = fill::Data::new();
+        data.set("宛名", "みほん商事").set("合計", "3,000");
+        data.push_row("明細", 行(&[("品名", "鉛筆"), ("数量", "10")]));
+        data.push_row("明細", 行(&[("品名", "消しゴム"), ("数量", "5")]));
+        data.push_row("明細", 行(&[("品名", "定規"), ("数量", "2")]));
+
+        let (out, rep) = fill::fill(&d, &data);
+        let t = out.tables().next().expect("表が無い");
+        // 見出しの1行 + 明細3行
+        assert_eq!(t.rows.len(), 4, "行が増えていない: {}", t.rows.len());
+        let 字 = |r: usize, c: usize| -> String {
+            t.rows[r][c].paragraphs.iter()
+                .flat_map(|p| p.runs.iter()).map(|x| x.text.as_str()).collect()
+        };
+        assert_eq!(字(1, 0), "鉛筆");
+        assert_eq!(字(3, 1), "2");
+        assert_eq!(rep.expanded.get("明細"), Some(&3));
+        assert!(rep.unknown.is_empty(), "分からない名前があった: {:?}", rep.unknown);
+
+        // 表の外も差し込まれる
+        let 本文: String = out.paragraphs().flat_map(|p| p.runs.iter())
+            .map(|r| r.text.as_str()).collect();
+        assert!(本文.contains("みほん商事 御中"), "宛名が入っていない: {本文}");
+        assert!(本文.contains("合計 3,000 円"), "合計が入っていない: {本文}");
+    }
+
+    /// **分からない名前を黙って空にしない。** 空にすると「金額が空欄の
+    /// 請求書」が黙って出来上がります。
+    #[test]
+    fn 分からない名前は残して報告する() {
+        let d = adoc::parse(雛形).expect("雛形が読めない");
+        let mut data = fill::Data::new();
+        data.set("宛名", "みほん商事"); // 合計を入れ忘れた
+        data.push_row("明細", 行(&[("品名", "鉛筆"), ("数量", "10")]));
+
+        let (out, rep) = fill::fill(&d, &data);
+        let 本文: String = out.paragraphs().flat_map(|p| p.runs.iter())
+            .map(|r| r.text.as_str()).collect();
+        assert!(本文.contains("{{合計}}"), "空にしてしまった: {本文}");
+        assert_eq!(rep.unknown, vec!["合計".to_string()]);
+        assert!(rep.summary().contains("合計"), "報告に出ていない: {}", rep.summary());
+    }
+
+    /// データが1行も無いときは、明細の行が消えます(見出しは残る)。
+    #[test]
+    fn 明細が空なら行は出ない() {
+        let d = adoc::parse(雛形).expect("雛形が読めない");
+        let mut data = fill::Data::new();
+        data.set("宛名", "-").set("合計", "0");
+        data.rows.insert("明細".into(), vec![]);
+        let (out, rep) = fill::fill(&d, &data);
+        assert_eq!(out.tables().next().unwrap().rows.len(), 1, "見出しだけ残るはず");
+        assert_eq!(rep.expanded.get("明細"), Some(&0));
+    }
+
+    /// **雛形は何度でも使える**(原本を書き換えない)。
+    #[test]
+    fn 雛形は書き換えられない() {
+        let d = adoc::parse(雛形).expect("雛形が読めない");
+        let mut data = fill::Data::new();
+        data.set("宛名", "一回目").set("合計", "1");
+        data.push_row("明細", 行(&[("品名", "あ"), ("数量", "1")]));
+        let 前 = adoc::write(&d);
+        let _ = fill::fill(&d, &data);
+        // 表の書き方は読むときに空白を許し、書くときは詰めるので、
+        // 元の字ではなく**書き出した字どうし**で比べます
+        assert_eq!(adoc::write(&d), 前, "雛形が書き換わった");
+        // 2回目も同じ結果になること
+        let (a, _) = fill::fill(&d, &data);
+        let (b, _) = fill::fill(&d, &data);
+        assert_eq!(adoc::write(&a), adoc::write(&b), "2回目が違う");
+    }
+}
+
+#[cfg(test)]
 mod html_write_tests {
     use crate::{adoc, html_write, theme};
 
