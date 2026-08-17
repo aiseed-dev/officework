@@ -276,12 +276,15 @@ fn field_src(s: &crate::doc::Sdt) -> String {
 }
 
 /// そのセルの格子の列(左のセルの span の和)
-fn grid_col(row: &[Cellbox], k: usize) -> usize {
+pub(crate) fn grid_col(row: &[Cellbox], k: usize) -> usize {
     row[..k].iter().map(|c| c.span()).sum()
 }
 
-/// 縦結合の始まりが呑む行数(自分+下の Continue の数)
-fn vspan_of(t: &Table, ri: usize, col: usize) -> u8 {
+/// 縦結合の始まりが呑む行数(自分+下の Continue の数)。
+///
+/// **HTML の書き出しも同じ数え方を使います**([`crate::html_write`])。
+/// 結合の数え方が2箇所にあると、adoc と HTML で表の形が違ってきます。
+pub(crate) fn vspan_of(t: &Table, ri: usize, col: usize) -> u8 {
     let mut n = 1u8;
     for row in &t.rows[ri + 1..] {
         let hit = row
@@ -331,6 +334,105 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
         out.push('\n');
     }
     out.push_str("|===\n\n");
+}
+
+/// **この文書を adoc で保存すると落ちるもの。**
+///
+/// adoc は意味だけを持つので、見た目とページの飾りは保存で消えます。
+/// 消すこと自体は決めたとおりですが、**黙って消しません** — 何が消えるかを
+/// 数えて呼ぶ側に返し、呼ぶ側が人に見せます。
+///
+/// 消えた物の行き先はテンプレートです(SEKKEI の対応表)。ただしテンプレートが
+/// まだ持てない欄(ヘッダー・フッター・透かし・縦書き)もあるので、いまは
+/// 「消える」と言うのが正確です。
+pub fn dropped(doc: &Document) -> Vec<&'static str> {
+    let mut v: Vec<&'static str> = Vec::new();
+    let mut 足す = |name: &'static str| {
+        if !v.contains(&name) {
+            v.push(name);
+        }
+    };
+    if !doc.header.paragraphs.is_empty() {
+        足す("ヘッダー");
+    }
+    if !doc.footer.paragraphs.is_empty() {
+        足す("フッター");
+    }
+    if doc.watermark.is_some() {
+        足す("透かし");
+    }
+    if doc.page_color.is_some() {
+        足す("ページの色");
+    }
+    if doc.vertical {
+        足す("縦書き");
+    }
+    if doc.page.map(|p| p.columns > 1).unwrap_or(false) {
+        足す("段組み");
+    }
+    if !doc.ink.is_empty() {
+        足す("手描きの線");
+    }
+    // **表の中の段落も見ます。** 事務の様式は中身が表の中にあるので、
+    // 本文だけ見ると「何も落ちません」と嘘を言うことになります
+    let 表の中 = doc.blocks.iter().filter_map(|b| match b {
+        Block::Table(t) => Some(t),
+        Block::Para(_) => None,
+    });
+    let cells = 表の中
+        .flat_map(|t| t.rows.iter())
+        .flat_map(|r| r.iter())
+        .flat_map(|c| c.paragraphs.iter());
+    for p in doc.paragraphs().chain(cells) {
+        if !p.comments.is_empty() {
+            足す("コメント");
+        }
+        if p.align != crate::doc::Align::Left {
+            足す("段落の揃え");
+        }
+        if p.indent > 0 || p.first_line_twips != 0 {
+            足す("字下げ");
+        }
+        if p.line_spacing > 0.0 && p.line_spacing != 1.0 {
+            足す("行間");
+        }
+        if p.space_before_pt != 0.0 || p.space_after_pt != 0.0 {
+            足す("段落の前後の空き");
+        }
+        if p.shade.is_some() {
+            足す("段落の背景色");
+        }
+        if p.boxed {
+            足す("段落の囲み");
+        }
+        if p.dropcap {
+            足す("ドロップキャップ");
+        }
+        if matches!(p.style, ParaStyle::Toc(_) | ParaStyle::Tof) {
+            足す("目次の印");
+        }
+        for r in &p.runs {
+            if r.fmt.underline {
+                足す("下線");
+            }
+            if r.fmt.strike {
+                足す("取り消し線");
+            }
+            if r.fmt.color.is_some() {
+                足す("文字の色");
+            }
+            if r.fmt.highlight.is_some() {
+                足す("背景の色");
+            }
+            if r.size_pt.is_some() {
+                足す("字の大きさ");
+            }
+            if r.font.is_some() {
+                足す("フォント");
+            }
+        }
+    }
+    v
 }
 
 // ---- 読み ------------------------------------------------------------------

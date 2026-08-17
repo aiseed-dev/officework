@@ -2737,16 +2737,22 @@ impl Writer {
         // **ネイティブ文書(.adoc)は意味だけを返す**(2026-08-16)。
         // 見た目はテンプレートが持っているので、書くものは何も無い
         if p.extension().and_then(|e| e.to_str()).is_some_and(is_native_ext) {
+            // **消える物を先に数えます。** 書いた後では、何が消えたか分かりません
+            let 落ちる = kumihan::adoc::dropped(&self.doc);
             match self.save_adoc_to(&p) {
                 Ok(()) => {
                     self.path = Some(p.clone());
                     self.native = true;
                     self.dirty = false;
-                    self.status = ui::tf!(
-                        "{} に保存しました(本文だけ — 書式はテンプレートの側)",
-                        p.file_name().unwrap_or_default().to_string_lossy()
-                    )
-                    .into();
+                    let 名 = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                    self.status = if 落ちる.is_empty() {
+                        ui::tf!("{} に保存しました(本文だけ — 書式はテンプレートの側)", 名).into()
+                    } else {
+                        // **黙って捨てません。** adoc は意味だけを持つので、
+                        // ページの飾りと直接書式はここで消えます
+                        ui::tf!("{} に保存しました。この形式で持てないものが消えました: {}",
+                                名, 落ちる.join("・")).into()
+                    };
                 }
                 Err(e) => self.status = ui::tf!("保存できません: {}", e).into(),
             }

@@ -1943,6 +1943,52 @@ mod fill_tests {
 }
 
 #[cfg(test)]
+mod adoc_dropped_tests {
+    use crate::adoc;
+    use crate::doc::{CharFormat, Document, Paragraph, Run};
+
+    /// **adoc で保存すると消える物を、消える前に数える。**
+    ///
+    /// 消すこと自体は決めたとおりですが、黙って消すと、人は開き直したときに
+    /// 初めて気づきます(2026-08-17)。
+    #[test]
+    fn 消える物を数えて言う() {
+        let mut d = Document::default();
+        let mut p = Paragraph::default();
+        p.runs.push(Run {
+            text: "下線つき".into(),
+            size_pt: Some(16.0),
+            font: None,
+            fmt: CharFormat { underline: true, ..Default::default() },
+        });
+        p.align = crate::doc::Align::Center;
+        d.push_para(p);
+        d.watermark = Some("社外秘".into());
+        d.header.paragraphs.push(Paragraph::default());
+        d.header.paragraphs[0].runs.push(Run {
+            text: "ヘッダーの字".into(),
+            size_pt: None,
+            font: None,
+            fmt: CharFormat::default(),
+        });
+
+        let got = adoc::dropped(&d);
+        for 何 in ["下線", "字の大きさ", "段落の揃え", "透かし", "ヘッダー"] {
+            assert!(got.contains(&何), "「{何}」が挙がっていない: {got:?}");
+        }
+    }
+
+    /// 意味だけの文書では**何も消えません。** ここが空でないと、毎回
+    /// 「消えました」と出て、本当に消える時に気づけなくなります。
+    #[test]
+    fn 意味だけの文書では何も消えない() {
+        let src = "= 題\n\n== 章\n\n本文と*強調*。\n\n* あ\n* い\n";
+        let d = adoc::parse(src).expect("読めない");
+        assert!(adoc::dropped(&d).is_empty(), "何も無いのに挙がった: {:?}", adoc::dropped(&d));
+    }
+}
+
+#[cfg(test)]
 mod html_write_tests {
     use crate::{adoc, html_write, theme};
 
@@ -2082,6 +2128,75 @@ mod html_write_tests {
         let h2 = html_write::page(&d, &素).html;
         assert!(!h2.contains("<form"), "送り先が無いのに form を出した:\n{h2}");
         assert!(h2.contains("name=\"name\""), "欄そのものは出るはず");
+    }
+
+    /// **adoc に書けるものは HTML にも出る。**
+    ///
+    /// 発注者 2026-08-17「AsciiDoc の文法とリボンのボタンと HTML/CSS を
+    /// 合わせていくものでしょう」。片方にしか無い書き方があると、書いた人は
+    /// 書き出して初めて消えたことに気づきます。ここが見張りです。
+    ///
+    /// 意味の単位を1つ足したら、この表にも1行足してください。
+    #[test]
+    fn adocに書けるものはhtmlにも出る() {
+        let src = "= 題\n\n\
+                   [[しるし]]\n== 章\n\n\
+                   本文と<<しるし>>への参照。footnote:[注の文章]\n\n\
+                   <<<\n\n\
+                   改ページの後。\n\n\
+                   image::images/図1.png[]\n\n\
+                   stem:[x^2]\n\n\
+                   ruby:漢字[かんじ]と https://例.jp[リンク]。\n\n\
+                   x^2^ と H~2~O。\n\n\
+                   |===\n\
+                   2+|左右で1つ\n\
+                   .2+|上下で1つ|ふつう\n\
+                   |下の行\n\
+                   |===\n";
+        let d = 文書(src);
+        assert_eq!(adoc::write(&d), src, "adoc の往復が崩れた");
+        let h = html_write::body(&d);
+
+        for (何, 印) in [
+            ("しおり", "id=\"しるし\""),
+            ("相互参照", "href=\"#しるし\""),
+            ("脚注の印", "href=\"#fn1\""),
+            ("脚注の文章", "注の文章"),
+            ("改ページ", "class=\"pagebreak\""),
+            ("画像", "<img src=\"images/図1.png\""),
+            ("数式", "data-tex=\"x^2\""),
+            ("ルビ", "<ruby>漢字<rt>かんじ</rt></ruby>"),
+            ("リンク", "href=\"https://例.jp\""),
+            ("上付き", "<sup>2</sup>"),
+            ("下付き", "<sub>2</sub>"),
+            ("横の結合", "colspan=\"2\""),
+            ("縦の結合", "rowspan=\"2\""),
+        ] {
+            assert!(h.contains(印), "{何}が HTML に出ていない({印}):\n{h}");
+        }
+        // 縦結合の続きのセルは書かない(rowspan が占めるので、書くと桁が増える)
+        assert_eq!(h.matches("<td").count(), 4, "セルの数が合わない:\n{h}");
+    }
+
+    /// 画像の中身は**HTML に埋め込まず、別のファイルとして返します。**
+    #[test]
+    fn 画像は別のファイルとして返る() {
+        use crate::doc::{Document, InlineImage, Paragraph};
+        let mut d = Document::default();
+        let mut p = Paragraph::default();
+        p.images_new.push(InlineImage {
+            bytes: std::sync::Arc::new(vec![0xFF, 0xD8, 1, 2, 3]), // jpeg の頭
+            w_mm: 40.0,
+            h_mm: 30.0,
+            tex: None,
+            src: None,
+        });
+        d.push_para(p);
+        let page = html_write::page(&d, &theme::default_theme());
+        assert_eq!(page.assets.len(), 1, "画像が返ってこない");
+        assert_eq!(page.assets[0].0, "images/図1.jpg", "拡張子を中身から見ていない");
+        assert!(page.html.contains("src=\"images/図1.jpg\""), "本文が参照していない:\n{}", page.html);
+        assert!(!page.html.contains("base64"), "画像を埋め込んだ");
     }
 
     /// 逃がし忘れると、本文の `<` でページが壊れます。

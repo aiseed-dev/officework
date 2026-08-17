@@ -15,13 +15,57 @@
 //! 読む側は [`crate::html`] にあります。あちらは他所の HTML を受ける口で、
 //! こちらは自分の文書を出す口です。
 
-use crate::doc::{Align, Block, Document, ListKind, ParaStyle, Run, Sdt, SdtKind};
+use crate::doc::{Align, Block, Document, InlineImage, ListKind, ParaStyle, Run, Sdt, SdtKind};
 use crate::theme::{StyleDef, Theme};
+use std::sync::Arc;
 
 /// 出来上がりの HTML。`css` は別ファイルにも埋め込みにも使えます。
 pub struct Page {
     pub html: String,
     pub css: String,
+    /// 一緒に書き出す画像(HTML から見た相対の径路, 中身)。
+    ///
+    /// **画像を HTML の中に埋め込みません。** 埋め込むと文字数が何倍にもなり、
+    /// 直すときに画像だけ差し替えることも出来なくなります。呼ぶ側が
+    /// この並びをファイルに書きます。
+    pub assets: Vec<(String, Arc<Vec<u8>>)>,
+}
+
+/// 本文を組む途中の控え。**脚注と画像は後ろでまとめる**ので、出てきた順に
+/// ここへ集めます。
+#[derive(Default)]
+struct Ctx {
+    /// 脚注の文章(出てきた順)。番号は並びの位置
+    notes: Vec<String>,
+    assets: Vec<(String, Arc<Vec<u8>>)>,
+}
+
+impl Ctx {
+    /// 画像を控えて、HTML から参照する径路を返します。
+    ///
+    /// 径路はファイルが持っているもの(`src`)を使います。docx 由来の画像は
+    /// 径路を持たないので、こちらで名前を付けます。
+    fn asset(&mut self, im: &InlineImage) -> String {
+        if let Some(s) = &im.src {
+            if !im.bytes.is_empty() && !self.assets.iter().any(|(p, _)| p == s) {
+                self.assets.push((s.clone(), im.bytes.clone()));
+            }
+            return s.clone();
+        }
+        let path = format!("images/図{}.{}", self.assets.len() + 1, ext_of(&im.bytes));
+        self.assets.push((path.clone(), im.bytes.clone()));
+        path
+    }
+}
+
+/// 画像の中身から拡張子を見ます(先頭の数バイトで分かります)。
+fn ext_of(bytes: &[u8]) -> &'static str {
+    match bytes {
+        [0xFF, 0xD8, ..] => "jpg",
+        [b'G', b'I', b'F', ..] => "gif",
+        [b'R', b'I', b'F', b'F', ..] => "webp",
+        _ => "png",
+    }
 }
 
 /// HTML の特殊文字を逃がします。**属性にも本文にも同じ物を使います**
@@ -57,10 +101,35 @@ fn class_of(name: &str) -> String {
 }
 
 /// run 1つを HTML に。**太字と斜体は意味**なので `strong` / `em` で出します。
-fn run_html(r: &Run) -> String {
+fn run_html(r: &Run, doc: &Document, ctx: &mut Ctx) -> String {
     // 記入欄は**その場**に出します。周りの字と並ぶのが記入用紙の形です
     if let Some(sdt) = &r.fmt.sdt {
         return field_html(sdt);
+    }
+    // 脚注の印(字を持たない run)。文章は後ろにまとめて、行き帰りの
+    // リンクで結びます。adoc の `footnote:[…]` に対応します
+    if let Some(fr) = &r.fmt.footnote {
+        let text: String = doc
+            .footnotes
+            .iter()
+            .find(|f| f.id == fr.id && f.endnote == fr.endnote)
+            .map(|f| {
+                f.paragraphs
+                    .iter()
+                    .flat_map(|p| p.runs.iter())
+                    .map(|r| r.text.as_str())
+                    .collect()
+            })
+            .unwrap_or_default();
+        ctx.notes.push(text);
+        let n = ctx.notes.len();
+        return format!("<sup class=\"fn\"><a id=\"fnref{n}\" href=\"#fn{n}\">{n}</a></sup>");
+    }
+    // 相互参照。**見えている字は写しでしかない**ので、リンクの先はしおりの
+    // 名前にします(adoc の `<<名前>>`)
+    if let Some(f) = &r.fmt.field {
+        let label = if r.text.is_empty() { esc(&f.name) } else { esc(&r.text) };
+        return format!("<a href=\"#{}\">{label}</a>", esc(&f.name));
     }
     let mut s = esc(&r.text);
     if let Some(name) = &r.fmt.style_id {
@@ -88,8 +157,31 @@ fn run_html(r: &Run) -> String {
     s
 }
 
-fn runs_html(runs: &[Run]) -> String {
-    runs.iter().map(run_html).collect()
+fn runs_html(runs: &[Run], doc: &Document, ctx: &mut Ctx) -> String {
+    runs.iter().map(|r| run_html(r, doc, ctx)).collect()
+}
+
+/// 段落に入っている画像 → `img`。
+///
+/// 数式は**原文(LaTeX)を `data-tex` に残します。** 絵は組んだ結果でしかない
+/// ので、受け取った側が組み直せるようにします(模型が `tex` を運ぶのと同じ
+/// 理由です)。
+fn imgs_html(p: &crate::doc::Paragraph, ctx: &mut Ctx) -> String {
+    let mut o = String::new();
+    for im in p.images_new.iter().chain(p.images.iter()) {
+        let src = ctx.asset(im);
+        let size = format!(" style=\"width:{}mm;height:{}mm\"", im.w_mm, im.h_mm);
+        match &im.tex {
+            Some(tex) => o.push_str(&format!(
+                "<img class=\"stem\" src=\"{}\" alt=\"{}\" data-tex=\"{}\"{size}>",
+                esc(&src),
+                esc(tex),
+                esc(tex)
+            )),
+            None => o.push_str(&format!("<img src=\"{}\" alt=\"\"{size}>", esc(&src))),
+        }
+    }
+    o
 }
 
 /// 記入欄1つ → HTML の入力欄。
@@ -272,6 +364,10 @@ pub fn css(th: &Theme, 題名あり: bool) -> String {
     if th.setting.keep {
         o.push_str("p, blockquote, li { break-inside: avoid }\n");
     }
+    // 改ページ(adoc の `<<<`)。画面では続けて見せ、印刷で折ります
+    o.push_str("@media print { .pagebreak { break-before: page } }\n");
+    // 画像は入れ物より大きくしません(スマホで横にはみ出さないように)
+    o.push_str("img { max-width: 100% }\n");
 
     for d in &th.styles {
         // **本文の側と同じ数え方にします。** 題名があると見出しが1つ下がるので、
@@ -295,7 +391,21 @@ pub fn css(th: &Theme, 題名あり: bool) -> String {
 /// **合成しません。** 見た目はテンプレートが CSS として持つので、ここは
 /// 意味だけを出します。
 pub fn body(doc: &Document) -> String {
+    build(doc).0
+}
+
+/// 本文 → HTML と、一緒に書き出す画像。
+///
+/// 画像を持つ文書を書き出すときはこちらを使います。[`body`] は HTML だけを
+/// 返す入り口で、中身は同じです。
+pub fn body_with_assets(doc: &Document) -> (String, Vec<(String, Arc<Vec<u8>>)>) {
+    let (html, ctx) = build(doc);
+    (html, ctx.assets)
+}
+
+fn build(doc: &Document) -> (String, Ctx) {
     let mut o = String::new();
+    let mut ctx = Ctx::default();
     // 箇条書きは連続する段落をまとめます(HTML の ul / ol は入れ物なので)
     let mut list: Option<ListKind> = None;
     let 題名あり = !doc.props.title.is_empty();
@@ -307,7 +417,7 @@ pub fn body(doc: &Document) -> String {
         };
     };
 
-    if !doc.props.title.is_empty() {
+    if 題名あり {
         o.push_str(&format!("<h1 class=\"title\">{}</h1>\n", esc(&doc.props.title)));
     }
     for b in &doc.blocks {
@@ -316,16 +426,30 @@ pub fn body(doc: &Document) -> String {
             if let Block::Table(t) = b {
                 close(&mut o, &mut list);
                 o.push_str("<table>\n");
-                for row in &t.rows {
+                for (ri, row) in t.rows.iter().enumerate() {
                     o.push_str("  <tr>");
-                    for cell in row {
+                    for (k, cell) in row.iter().enumerate() {
+                        // 結合の数え方は adoc の書き出しと同じ関数を使います
+                        if cell.v_merge == crate::doc::VMerge::Continue {
+                            continue; // 縦結合の続きはセルを書かない(上の rowspan が占める)
+                        }
+                        let mut at = String::new();
+                        if cell.span() > 1 {
+                            at.push_str(&format!(" colspan=\"{}\"", cell.span()));
+                        }
+                        if cell.v_merge == crate::doc::VMerge::Start {
+                            let n = crate::adoc::vspan_of(t, ri, crate::adoc::grid_col(row, k));
+                            if n > 1 {
+                                at.push_str(&format!(" rowspan=\"{n}\""));
+                            }
+                        }
                         let inner: String = cell
                             .paragraphs
                             .iter()
-                            .map(|q| runs_html(&q.runs))
+                            .map(|q| runs_html(&q.runs, doc, &mut ctx))
                             .collect::<Vec<_>>()
                             .join("<br>");
-                        o.push_str(&format!("<td>{inner}</td>"));
+                        o.push_str(&format!("<td{at}>{inner}</td>"));
                     }
                     o.push_str("</tr>\n");
                 }
@@ -333,26 +457,59 @@ pub fn body(doc: &Document) -> String {
             }
             continue;
         };
+        let inner = format!("{}{}", imgs_html(p, &mut ctx), runs_html(&p.runs, doc, &mut ctx));
         if p.list != ListKind::None {
             if list != Some(p.list) {
                 close(&mut o, &mut list);
                 o.push_str(if p.list == ListKind::Bullet { "<ul>\n" } else { "<ol>\n" });
                 list = Some(p.list);
             }
-            o.push_str(&format!("  <li>{}</li>\n", runs_html(&p.runs)));
+            o.push_str(&format!("  <li>{inner}</li>\n"));
             continue;
         }
         close(&mut o, &mut list);
         let tag = tag_of(p.style, 題名あり);
-        let cls = p
-            .style_id
-            .as_ref()
-            .map(|n| format!(" class=\"{}\"", class_of(n)))
-            .unwrap_or_default();
-        o.push_str(&format!("<{tag}{cls}>{}</{tag}>\n", runs_html(&p.runs)));
+        // class は**スタイルの名前と改ページ**の2つが入ります
+        let mut cls: Vec<String> = Vec::new();
+        if let Some(n) = &p.style_id {
+            cls.push(class_of(n));
+        }
+        if p.page_break_before {
+            cls.push("pagebreak".into());
+        }
+        let cls = if cls.is_empty() {
+            String::new()
+        } else {
+            format!(" class=\"{}\"", cls.join(" "))
+        };
+        // しおりは**段落の id** にします。相互参照のリンクの先がこれです。
+        // 2つ以上あるときは、余りを空の span で置きます(名前を落とさない)
+        let id = match p.bookmarks.first() {
+            Some(b) => format!(" id=\"{}\"", esc(b)),
+            None => String::new(),
+        };
+        let 余り: String = p
+            .bookmarks
+            .iter()
+            .skip(1)
+            .map(|b| format!("<span id=\"{}\"></span>", esc(b)))
+            .collect();
+        o.push_str(&format!("<{tag}{id}{cls}>{余り}{inner}</{tag}>\n"));
     }
     close(&mut o, &mut list);
-    o
+    // 脚注は最後に並べます。番号から本文へ戻れるようにします
+    if !ctx.notes.is_empty() {
+        o.push_str("<ol class=\"footnotes\">\n");
+        for (i, t) in ctx.notes.iter().enumerate() {
+            let n = i + 1;
+            o.push_str(&format!(
+                "  <li id=\"fn{n}\">{} <a href=\"#fnref{n}\">↩</a></li>\n",
+                esc(t)
+            ));
+        }
+        o.push_str("</ol>\n");
+    }
+    (o, ctx)
 }
 
 /// 文書とテンプレート → 1枚の HTML(CSS は `<style>` に入れます)。
@@ -366,22 +523,22 @@ pub fn page(doc: &Document, th: &Theme) -> Page {
     } else {
         doc.props.title.clone()
     };
+    let (inner, ctx) = build(doc);
     let html = format!(
         "<!DOCTYPE html>\n<html lang=\"ja\">\n<head>\n<meta charset=\"utf-8\">\n\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
          <title>{}</title>\n<style>\n{css}</style>\n</head>\n<body>\n{}</body>\n</html>\n",
         esc(&title),
-        wrap_form(doc, th)
+        wrap_form(inner, doc, th)
     );
-    Page { html, css }
+    Page { html, css, assets: ctx.assets }
 }
 
 /// 記入欄があり、送り先も決まっていれば `<form>` で包みます。
 ///
 /// **どちらか欠けたら包みません。** 送り先の無い form は押しても何も
 /// 起きないので、出来ないことを出来るように見せないためです。
-fn wrap_form(doc: &Document, th: &Theme) -> String {
-    let inner = body(doc);
+fn wrap_form(inner: String, doc: &Document, th: &Theme) -> String {
     let Some(sub) = &th.submit else { return inner };
     if sub.action.is_empty() || fields(doc).is_empty() {
         return inner;

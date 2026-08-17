@@ -374,12 +374,34 @@ impl Writer {
         // 互換の文書には型紙がないので、既定のテンプレートで出します
         let th = if self.native { self.tmpl.clone() } else { kumihan::theme::default_theme() };
         let page = kumihan::html_write::page(&self.doc, &th);
-        match std::fs::write(path, &page.html) {
-            Ok(()) => {
-                self.status = ui::tf!("{} に書き出しました", path.display()).into();
-            }
-            Err(e) => self.status = ui::tf!("書き出せません: {}", e).into(),
+        if let Err(e) = std::fs::write(path, &page.html) {
+            self.status = ui::tf!("書き出せません: {}", e).into();
+            return;
         }
+        // **画像は隣に置きます**(HTML に埋め込みません)。HTML から見た相対の
+        // 径路で参照しているので、同じ場所に同じ形で並べる必要があります
+        let dir = path.parent().unwrap_or(std::path::Path::new("."));
+        let mut 書けない = 0usize;
+        for (rel, bytes) in &page.assets {
+            let to = dir.join(rel);
+            let ok = to
+                .parent()
+                .map(|d| std::fs::create_dir_all(d))
+                .unwrap_or(Ok(()))
+                .and_then(|()| std::fs::write(&to, bytes.as_slice()));
+            if ok.is_err() {
+                書けない += 1;
+            }
+        }
+        self.status = if 書けない > 0 {
+            ui::tf!("{} に書き出しました(画像 {} 枚が書けませんでした)",
+                    path.display(), 書けない).into()
+        } else if page.assets.is_empty() {
+            ui::tf!("{} に書き出しました", path.display()).into()
+        } else {
+            ui::tf!("{} に書き出しました(画像 {} 枚も一緒に)",
+                    path.display(), page.assets.len()).into()
+        };
     }
 
     pub(crate) fn save_pdf(&mut self, cx: &mut Context<Self>) {
