@@ -5,6 +5,12 @@
 use crate::*;
 
 /// 段の箱の鍵(`&'static str` が要るので表で持つ。calc と同じ綴り)
+/// カーソルの上端(文字の大きさに対する割合。ベースラインからの上向き)と高さ。
+/// **画面で測って決めた値です**(2026-08-17)。gpui が文字を箱の中で下寄りに
+/// 置くぶんを含んでいます。文字の描画位置を変えたら、ここも測り直してください。
+const CARET_TOP: f32 = 0.53;
+const CARET_H: f32 = 1.00;
+
 const TAB_IDS: &[&str] = &[
     "@tab0", "@tab1", "@tab2", "@tab3", "@tab4", "@tab5",
     "@tab6", "@tab7", "@tab8", "@tab9", "@tab10", "@tab11", "@tab12",
@@ -1684,13 +1690,22 @@ impl Render for Writer {
             }
         }
 
-        // キャレット。その場の文字の大きさに合わせて描く(縦書きは行の側)
-        if !self.page.vertical {
+        // カーソル。その場の文字の大きさに合わせて描きます(縦書きは行の側)。
+        //
+        // **位置は実際に画面で測って決めました**(2026-08-17。発注者
+        // 「カーソルの位置が上すぎる」)。文字を描く箱の上端は
+        // `y_mm - 0.88 * 大きさ` ですが、gpui はその箱の中で文字をさらに下に
+        // 置くので、同じ式をカーソルに使うと上へ 0.4 文字ぶんずれます。
+        // 実測では上端が 16px 高く、下端が 7px 足りませんでした。
+        //
+        // 点滅は 530 ミリ秒ごと(Windows の既定と同じ間隔)。打っている間は
+        // 消しません — 消えると打ち間違いに気づきにくくなります。
+        if !self.page.vertical && self.caret_on {
             let sz = caret_pt * 96.0 / 72.0 * self.zoom;
             paper = paper.child(div().absolute()
                 .left(px(cx_mm * pxmm))
-                .top(px(cy_mm * pxmm - sz * 0.88))
-                .w(px(1.5)).h(px(sz * 1.15))
+                .top(px(cy_mm * pxmm - sz * CARET_TOP))
+                .w(px(1.5)).h(px(sz * CARET_H))
                 .bg(rgb(0x165E83)));
         }
 

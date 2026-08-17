@@ -196,6 +196,10 @@ struct Writer {
     zoom: f32,
     /// 縦のスクロール(紙の座標 mm)。0 が紙の頭
     scroll_mm: f32,
+    /// カーソルを描くか。530 ミリ秒ごとに入れ替えて点滅させます
+    /// (2026-08-17 発注者「カーソルは点滅すべきでは」)。
+    /// 打っている間は消しません — 消えると打ち間違いに気づきにくくなります
+    caret_on: bool,
     /// 編集領域の高さ(px)。描画のたびに実測し、キャレット追従に使う
     view_h_px: f32,
     /// いま編集しているもの。**Editor は常にこの対象の文章を持つ**
@@ -745,6 +749,8 @@ impl EntityInputHandler for Writer {
         cx: &mut Context<Self>,
     ) {
         handler::replace(self, r, text);
+        // 打っている間は消さない。消えると打ち間違いに気づきにくくなります
+        self.caret_on = true;
         cx.notify();
     }
     fn replace_and_mark_text_in_range(

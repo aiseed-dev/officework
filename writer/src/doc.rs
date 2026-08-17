@@ -90,6 +90,7 @@ impl Writer {
             tab: 0,
             zoom: 1.0,
             scroll_mm: 0.0,
+            caret_on: true,
             view_h_px: 800.0,
             target: Target::Body,
             symbols: false,
@@ -227,6 +228,24 @@ impl Writer {
         if let Some(warn) = ui::key_warnings().first() {
             w.status = warn.clone().into();
         }
+        // カーソルの点滅。530 ミリ秒は Windows の既定と同じ間隔です
+        cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(530))
+                    .await;
+                if this
+                    .update(cx, |this, cx| {
+                        this.caret_on = !this.caret_on;
+                        cx.notify();
+                    })
+                    .is_err()
+                {
+                    break; // 窓が閉じた
+                }
+            }
+        })
+        .detach();
         w
     }
 
