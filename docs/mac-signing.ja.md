@@ -29,6 +29,10 @@ packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Issuer ID>
 `.p12` の書き出しも base64 も貼り付けも、この台本が繋いでやる。
 **秘密は画面に出ない**(`gh` へ直に流す)。
 
+> **`gh`(GitHub CLI)を使っていないなら**、台本は使えない。
+> 末尾の「[手で入れる](#手で入れるgh-を使わない場合)」へ — やることは同じで、
+> 画面から貼るだけ。**以後の「試す」も画面から回せる。**
+
 以後は毎回:
 
 ```sh
@@ -230,29 +234,22 @@ GitHub の macOS の機械が、手元と**同じ台本**
 
 ### 1. 秘密が入っているか(名前だけ)
 
-```sh
-gh secret list | grep MAC_
-```
+<https://github.com/aiseed-dev/officework/settings/secrets/actions>
 
 `MAC_CERT_P12` `MAC_CERT_PASSWORD` `MAC_API_KEY_P8` `MAC_API_KEY_ID`
-`MAC_API_ISSUER_ID` の5つが出れば足りている。
+`MAC_API_ISSUER_ID` の5つが並んでいれば足りている(中身は見えない)。
 
 ### 2. 手で回す
 
-```sh
-gh workflow run release.yml
-```
+<https://github.com/aiseed-dev/officework/actions/workflows/release.yml>
 
-画面からなら **Actions → release → Run workflow**。
-「下書きのまま置く」は**既定で入**なので、そのまま押す。
-
-進みを見る:
-
-```sh
-gh run watch
-```
+右の **Run workflow** を押す。「下書きのまま置く」は**既定で入**なので、
+そのまま **Run workflow**。
 
 **初回は 20〜40 分**かかる(GPUI を一から組むため)。公証そのものは数分。
+
+> `gh`(GitHub CLI)を使っているなら `gh workflow run release.yml` と
+> `gh run watch` でも同じ。
 
 ### 3. 記録で見る所
 
@@ -300,14 +297,24 @@ xattr -p com.apple.quarantine ~/Downloads/officework-*.dmg
 下書きの Release は Releases の画面から消せる。残していても公開はされない。
 
 **間違って公開した / 名前が変な Release になったとき**も、消せば済む。
-中身(タグ)ごと消すには:
+**Release とタグは別物**なので、2つとも消す。
 
-```sh
-gh release delete <名前> --cleanup-tag --yes
-```
+1. **Release を消す** —
+   <https://github.com/aiseed-dev/officework/releases> でその Release を
+   開き、右上の **ゴミ箱**(Delete)
+2. **タグを消す** — Release を消してもタグは残る。素の git でよい:
+
+   ```sh
+   git push origin :refs/tags/<名前>
+   ```
+
+   画面からなら <https://github.com/aiseed-dev/officework/tags> の
+   その行の **…** → **Delete tag**
 
 > 2026-08-17 に一度、**`main` という名前の Release** が出来た。手で回した
 > ときの `github.ref` は枝なので、任せると枝の名前がタグになる。
+> **枝と同じ名前のタグは git を迷わせる**(`git checkout main` が
+> どちらか聞いてくる)ので、これは消しておくとよい。
 > いまはワークフローが**版から `app-v…` を組む**ので起きない。
 
 ---
