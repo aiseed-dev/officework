@@ -453,6 +453,37 @@ struct Writer {
     checker: ui::check::Checker,
 }
 
+impl Writer {
+    /// 打った分を取り消して、文書の字に戻す(保護と、編集できない塊で使う)
+    pub(crate) fn undo_typing(&mut self) {
+        self.ed.clear_marked();
+        let want = match self.target {
+            Target::Body => self.doc.body_text(),
+            Target::Cell { table, row, col } => self
+                .doc
+                .tables()
+                .nth(table)
+                .and_then(|t| t.rows.get(row))
+                .and_then(|r| r.get(col))
+                .map(cell_text)
+                .unwrap_or_default(),
+        };
+        while self.ed.text() != want {
+            if !self.ed.undo() {
+                self.ed = Editor::new(&want);
+                break;
+            }
+        }
+    }
+
+    /// カーソルのある段落が「原文のまま持ち越した塊」か
+    pub(crate) fn raw_para_at_cursor(&self) -> bool {
+        let (pi, _) = self.cursor_para();
+        self.doc.paragraphs().nth(pi).is_some_and(|p| p.raw_adoc.is_some())
+    }
+
+}
+
 impl HasEditor for Writer {
     fn editor(&mut self) -> &mut Editor {
         // 置換・ヘッダーのパネルが開いている間、入力(IME含む)はそちらへ入る。
@@ -550,6 +581,18 @@ impl HasEditor for Writer {
             // チャット・文書の情報・ルビの入力欄。打鍵は(確定まで)文書を変えない
             return;
         }
+        // **本家の AsciiDoc の塊は編集させません**(発注者 2026-08-18
+        // 「セクションから下を Visual を編集できるというのではどうか」)。
+        // 註記やコードの塊は、意味を分かっていないまま触ると壊れます。
+        // 見せる・保存する・そのまま返すはしますが、打鍵は断ります
+        if self.target == Target::Body && self.raw_para_at_cursor() {
+            self.undo_typing();
+            self.status = ui::t!(
+                "ここは AsciiDoc の塊です。うちでは編集できません(原文のまま保存します)"
+            )
+            .into();
+            return;
+        }
         if self.protected() {
             // 読み取り専用の保護。**打った分を取り消して、文書は変えない。**
             // パネル(ヘッダー等)の打鍵は文書に入る前なので、パネルごと閉じて捨てる
@@ -559,24 +602,7 @@ impl HasEditor for Writer {
                 self.cmt_edit = false;
             }
             if !self.bm_open {
-                self.ed.clear_marked();
-                let want = match self.target {
-                    Target::Body => self.doc.body_text(),
-                    Target::Cell { table, row, col } => self
-                        .doc
-                        .tables()
-                        .nth(table)
-                        .and_then(|t| t.rows.get(row))
-                        .and_then(|r| r.get(col))
-                        .map(cell_text)
-                        .unwrap_or_default(),
-                };
-                while self.ed.text() != want {
-                    if !self.ed.undo() {
-                        self.ed = Editor::new(&want);
-                        break;
-                    }
-                }
+                self.undo_typing();
             }
             self.status =
                 ui::t!("読み取り専用で保護されています(保護タブの「保護」で解除できます)").into();

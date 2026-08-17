@@ -2,19 +2,24 @@
 
 *日本語版(secondary): [writer-manual.ja.md](writer-manual.ja.md)*
 
-**An AsciiDoc processor.** It parses your source (.adoc) into a structured
-document and hands it to a converter per destination — screen, PDF, HTML, docx.
-The screen is one of those converters, so you can write on paper or in a plain
-flowing view.
+**A visual editor for AsciiDoc.** You edit your source (.adoc) as it looks. It is
+not a replacement for a processor such as Asciidoctor — it is a tool for writing
+the source.
 
-It handles **a subset of AsciiDoc**. What that subset is fills 27 rows in "What to
-write, which button, what comes out" below. Ruby and form fields are our own
-extensions.
+Three different things:
 
-Markup outside that subset (admonitions `NOTE:`, delimited blocks `----`,
-`include::`, attribute references `{name}` and so on) **stays in the text as
-characters, but its meaning is lost**. Whatever was lost is listed in the status
-bar and the report when the file is opened, so it never goes out unnoticed.
+| | What it does |
+|---|---|
+| **Display** | Everything in the file you opened **is shown** — including blocks whose meaning we don't know; their characters still appear |
+| **Editing** | What you can edit visually is **a subset** (the 27 rows in "What to write, which button, what comes out"). Ruby and form fields are our own extensions |
+| **Saving** | The source you opened **is not damaged**. Blocks we don't know are written back exactly as they were |
+
+Blocks whose meaning we don't know (admonitions `NOTE:`, delimited blocks
+`----`, `include::` and so on) **are visible but not editable**. Put the caret in
+one and type, and the app says so instead. Edit those in a text editor.
+
+There are four destinations: screen, PDF, HTML and docx. The screen is one of
+them, so you can write on paper or in a plain flowing view.
 
 docx still opens, edits and saves as before — **docx is now one of the
 converters**. **Ribbon: 118/118 — every button works (zero grayed out).**

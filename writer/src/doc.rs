@@ -2665,23 +2665,22 @@ impl Writer {
 
 
 
-    /// スタイルの新設を決める(名前の欄で Enter)。テンプレートに足し、
-    /// 選んでいる段落に名前を付け、テンプレートのファイルへ書き戻す
+    /// スタイルの名前を決める(名前の欄で Enter)。選んでいる所に名前を付けます。
+    ///
+    /// **テンプレートは書き替えません**(発注者 2026-08-18「テンプレートの編集は
+    /// できないと割り切ったほうがいいのでは」)。writer は本文を書く道具で、
+    /// 見た目を決めるのはテンプレートを書く人の仕事です。名前だけが本文に付き、
+    /// その名前の見た目がテンプレートに無ければ、見た目は変わりません
+    /// (**そう言います** — 黙って何も起きないのがいちばん困ります)。
     pub(crate) fn style_commit(&mut self) {
-        let Some(mut d) = self.style_new.take() else { return };
+        let Some(_) = self.style_new.take() else { return };
         let name = self.style_ed.text().trim().to_string();
         if name.is_empty() {
             self.status = ui::t!("名前が空です(やめました)").into();
             return;
         }
-        d.name = name.clone();
+        let 定義あり = self.tmpl.style(&name).is_some();
         self.checkpoint(false);
-        // 同じ名前があれば置き換える(直しの操作にもなる)
-        if let Some(i) = self.tmpl.styles.iter().position(|s| s.name == name) {
-            self.tmpl.styles[i] = d;
-        } else {
-            self.tmpl.styles.push(d);
-        }
         // **選んでいれば字に、選んでいなければ段落に**(2026-08-16)。
         // 語を1つ選んで見た目を変えようとしたのに段落ぜんぶが変わる、では
         // 直接書式の手軽さに勝てない — 選択の有無が意図そのもの
@@ -2695,13 +2694,20 @@ impl Writer {
         } else {
             self.doc.apply_char_format(sel, |f| f.style_id = Some(n.clone()));
         }
-        let 書けた = self.save_template();
+        let 言い分 = if 定義あり {
+            ui::t!("テンプレートにある書式です").to_string()
+        } else {
+            ui::tf!("この名前はテンプレートにまだありません。見た目を決めるには {} に書いてください",
+                    self.tmpl_path.as_ref().map(|p| p.display().to_string())
+                        .unwrap_or_else(|| Self::FOLDER_TEMPLATE.to_string()))
+                .to_string()
+        };
         self.dirty = true;
         self.relayout_keep();
         self.status = if 字 {
-            ui::tf!("選んだ字を「{}」にしました({})", name, 書けた)
+            ui::tf!("選んだ字を「{}」にしました({})", name, 言い分)
         } else {
-            ui::tf!("この段落を「{}」にしました({})", name, 書けた)
+            ui::tf!("この段落を「{}」にしました({})", name, 言い分)
         }
         .into();
     }
@@ -2759,81 +2765,31 @@ impl Writer {
     /// 直るのはテンプレートなので、**同じスタイルの所が一度に変わる** —
     /// ここがライブ合成の効き目そのもの
     pub(crate) fn tweak_style(&mut self, step: i32) {
+        let _ = step;
+        // **大きさはテンプレートが決めます。**(発注者 2026-08-18
+        // 「テンプレートの編集はできないと割り切ったほうがいいのでは」)
+        // writer は本文を書く道具で、見た目はテンプレートを書く人の仕事です。
+        // ここで書き替えると、同じテンプレートを使う他の文書まで変わります
         let (pi, _) = self.cursor_para();
-        let Some(para) = self.doc.paragraphs().nth(pi) else { return };
-        let name = para
-            .style_id
-            .clone()
-            .or_else(|| kumihan::theme::Theme::role_name(para.style).map(|s| s.to_string()))
+        let name = self
+            .doc
+            .paragraphs()
+            .nth(pi)
+            .and_then(|p| {
+                p.style_id
+                    .clone()
+                    .or_else(|| kumihan::theme::Theme::role_name(p.style).map(|s| s.to_string()))
+            })
             .unwrap_or_else(|| ui::t!("本文").to_string());
-        let base = self.tmpl.size_pt.unwrap_or(kumihan::DEFAULT_PT);
-        let now = self.tmpl.style(&name).and_then(|d| d.size_pt).unwrap_or(base);
-        let next = ui::combo::step_size(now, step > 0);
-        self.checkpoint(false);
-        match self.tmpl.styles.iter_mut().find(|d| d.name == name) {
-            Some(d) => d.size_pt = Some(next),
-            None => self.tmpl.styles.push(kumihan::theme::StyleDef {
-                name: name.clone(),
-                size_pt: Some(next),
-                ..Default::default()
-            }),
-        }
-        let 書けた = self.save_template();
-        self.dirty = true;
-        self.relayout_keep();
-        self.status =
-            ui::tf!("「{}」を {}pt にしました({})", name, next.to_string(), 書けた).into();
-    }
-
-    /// テンプレートをファイルへ書き戻す。返りは言い分
-    ///
-    /// **書くのは常に文書の隣です。** 配られたテンプレート(置き場にある物)は
-    /// 書き替えません — 直すのは、それを配った人の仕事だからです
-    /// (発注者 2026-08-18「テンプレートは指示する人が作る」)。隣に写しが
-    /// 出来ると、この文書だけが写しの方を見るようになるので、**そうなったと
-    /// 言います**。黙って分かれると、配り主が元を直しても、この文書だけ
-    /// 古いままになります。
-    fn save_template(&mut self) -> String {
-        let Some(dir) = self.path.as_ref().and_then(|p| p.parent()) else {
-            return ui::t!("文書がまだファイルになっていないので、テンプレートは書けません").to_string();
-        };
-        // 書き先。名指しがあればその名前、無ければ**フォルダの書式のファイル**
-        // (発注者 2026-08-18「ディレクトリーの書式用のファイルをひとつおく。
-        // それがテンプレート」)
-        let at = match self.doc.template.clone() {
-            Some(name) => dir.join(format!("{name}.toml")),
-            None => dir.join(Self::FOLDER_TEMPLATE),
-        };
-        // フォルダの書式を**新しく作る**ときは、そう言います。このフォルダの
-        // 他の文書にも効くので、黙って作ると驚かせます
-        let 新しく作る = self.doc.template.is_none() && !at.exists();
-        // 元が隣の同じファイルなら「直した」、別の場所(または同梱の既定)なら
-        // 「この文書だけの写しを作った」
-        let 配られた = match &self.tmpl_path {
-            Some(from) if *from != at => Some(from.display().to_string()),
-            Some(_) => None,
-            None => Some(ui::t!("同梱の既定").to_string()),
-        };
-        match std::fs::write(&at, kumihan::theme::write(&self.tmpl)) {
-            Ok(()) => {
-                let 元 = 配られた;
-                self.tmpl_path = Some(at.clone());
-                match (新しく作る, 元) {
-                    (true, _) => ui::tf!(
-                        "このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います",
-                        at.display().to_string()
-                    )
-                    .to_string(),
-                    (false, Some(from)) => ui::tf!(
-                        "この文書だけの写しを {} に作りました。配られた {} は変えていません",
-                        at.display().to_string(), from
-                    )
-                    .to_string(),
-                    (false, None) => ui::tf!("{} に書きました", at.display().to_string()).to_string(),
-                }
-            }
-            Err(e) => ui::tf!("テンプレートが書けません: {}", e).to_string(),
-        }
+        self.status = ui::tf!(
+            "大きさはテンプレートで決めます。「{}」の大きさを変えるには {} を直してください",
+            name,
+            self.tmpl_path
+                .as_ref()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|| Self::FOLDER_TEMPLATE.to_string())
+        )
+        .into();
     }
 
     /// ネイティブ文書として保存する(.adoc)。**意味だけを書く**

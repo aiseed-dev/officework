@@ -1989,7 +1989,8 @@ mod marker_tests {
             let ps: Vec<_> = this.doc.paragraphs().collect();
             assert_eq!(ps[0].runs[0].size_pt, None, "直接書式が本文に入った");
 
-            // そこから新しく作る → テンプレートに入り、段落が名指す
+            // そこから名前を付ける → **本文に名前が付くだけ**。
+            // テンプレートは書き替えない(2026-08-18 発注者の決め)
             this.style_new = Some(kumihan::theme::StyleDef {
                 size_pt: Some(16.0),
                 ..Default::default()
@@ -1997,16 +1998,16 @@ mod marker_tests {
             this.style_ed = kumihan::Editor::new("大見出し");
             this.style_commit();
             assert!(this.style_new.is_none());
-            assert!(this.tmpl.style("大見出し").is_some(), "テンプレートに入っていない");
+            assert!(this.tmpl.style("大見出し").is_none(), "テンプレートを書き替えた");
+            assert!(this.status.to_string().contains("テンプレートにまだありません"),
+                    "見た目が付かないことを言っていない: {}", this.status);
             let ps: Vec<_> = this.doc.paragraphs().collect();
             assert_eq!(ps[0].style_id.as_deref(), Some("大見出し"));
             assert_eq!(ps[0].runs[0].size_pt, None, "決めた後も本文は意味だけ");
 
-            // テンプレートのファイルが隣に出来ている
-            let toml = dir.join("見本の型.toml");
-            assert!(toml.exists(), "テンプレートが書かれていない: {}", this.status);
-            let th = kumihan::theme::parse(&std::fs::read_to_string(&toml).unwrap()).unwrap();
-            assert!(th.style("大見出し").is_some(), "書いた物が読み返せない");
+            // **テンプレートのファイルは作られない。** 見た目を決めるのは
+            // テンプレートを書く人の仕事です
+            assert!(!dir.join("見本の型.toml").exists(), "テンプレートを書いた");
 
             // 保存しても本文は意味だけ(**スタイルの名前は載る**)
             this.save_to(path.clone());
@@ -2067,42 +2068,35 @@ mod marker_tests {
         });
     }
 
-    /// **スタイルを直すとテンプレートが変わり、同じスタイルの所が一度に
-    /// 変わる**(2026-08-16。C-3 の門番)。ライブ合成の効き目そのもの
+    /// **大きさはテンプレートで決める。** writer は本文を書く道具で、
+    /// 見た目はテンプレートを書く人の仕事です(発注者 2026-08-18
+    /// 「テンプレートの編集はできないと割り切ったほうがいいのでは」)。
+    /// 押しても黙って何も起きない、にはしません — どのファイルを直せばよいかを言います。
     #[gpui::test]
-    fn スタイルを直すと同じスタイルの所が一度に変わる(cx: &mut gpui::TestAppContext) {
+    fn 大きさはテンプレートで決めると言う(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-c3-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("テンプレート.toml"), "[スタイル.見出し1]\n大きさ = 16\n").unwrap();
         let path = dir.join("見本.adoc");
-        std::fs::write(&path, "= 題\n:template: 見本の型\n\n== ひとつめ\n\n本文。\n\n== ふたつめ\n\n本文2。\n").unwrap();
+        std::fs::write(&path, "== ひとつめ\n\n本文。\n").unwrap();
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             this.open(path.clone());
-            // 1つ目の見出しにカーソルを置いて、字を大きくする
+            let 前 = this.tmpl.style("見出し1").and_then(|d| d.size_pt);
             this.ed.move_to(0, false);
             this.tweak_style(1);
-            let want = this.tmpl.style("見出し1").and_then(|d| d.size_pt).unwrap();
-            assert!(want > 16.0, "テンプレートの見出し1が大きくなっていない");
-
-            // **合成では2つとも**大きくなる(直したのはテンプレートだから)
-            let c = kumihan::theme::compose(&this.doc, &this.tmpl);
-            let heads: Vec<f32> = c
-                .paragraphs()
-                .filter(|p| p.style == kumihan::ParaStyle::Heading(1))
-                .filter_map(|p| p.runs.first().and_then(|r| r.size_pt))
-                .collect();
-            assert_eq!(heads.len(), 2, "見出しが2つ無い");
-            assert!(heads.iter().all(|s| *s == want), "片方だけ変わった: {heads:?}");
-
-            // 本文の側は意味だけのまま
-            for p in this.doc.paragraphs() {
-                for r in &p.runs {
-                    assert_eq!(r.size_pt, None, "本文に見た目が入った");
-                }
-            }
+            assert_eq!(this.tmpl.style("見出し1").and_then(|d| d.size_pt), 前,
+                       "テンプレートを書き替えた");
+            let s = this.status.to_string();
+            assert!(s.contains("テンプレート"), "言い分がない: {s}");
+            assert!(s.contains("テンプレート.toml"), "直すファイルを言っていない: {s}");
         });
+        // ファイルも変わっていない
+        assert_eq!(std::fs::read_to_string(dir.join("テンプレート.toml")).unwrap(),
+                   "[スタイル.見出し1]\n大きさ = 16\n", "テンプレートが書き替わった");
         let _ = std::fs::remove_dir_all(&dir);
     }
+
 
     /// 着替えは役割と名前を使い分ける — 役割で出る名前は二重に名乗らない
     #[gpui::test]
@@ -2483,12 +2477,11 @@ mod marker_tests {
 
     /// **配られたテンプレートは書き替えない。**
     ///
-    /// 書式を直すと、書き先はいつも文書の隣です。元が別の場所(置き場の
-    /// テンプレートや同梱の既定)だったときは、**この文書だけの写しが出来た**
-    /// と言います。黙って分かれると、配り主が元を直しても、この文書だけが
-    /// 古いままになります(発注者 2026-08-18「テンプレートは指示する人が作る」)。
+    /// **配られたテンプレートは書き替えない。** そもそも writer は
+    /// テンプレートを書き替えません(2026-08-18)。押したときは、直すべき
+    /// ファイルの場所を言います。
     #[gpui::test]
-    fn 配られたテンプレートは書き替えず写しを作る(cx: &mut gpui::TestAppContext) {
+    fn 配られたテンプレートは書き替えない(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-tmpl-{}", std::process::id()));
         let 配り元 = dir.join("配り元");
         let _ = std::fs::create_dir_all(&配り元);
@@ -2499,18 +2492,16 @@ mod marker_tests {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             this.open(doc.clone());
-            // 置き場から配られた状態を作る(置き場そのものは触らない)
             this.tmpl_path = Some(配り元.join("社内標準.toml"));
             this.ed.move_to(0, false);
-            this.tweak_style(1); // 字を1段大きく = テンプレートを直す操作
+            this.tweak_style(1);
             let s = this.status.to_string();
-            assert!(s.contains("写し"), "写しを作ったと言っていない: {s}");
-            assert!(s.contains("配り元"), "元の場所を言っていない: {s}");
+            assert!(s.contains("配り元"), "直す場所を言っていない: {s}");
         });
-        // 配り元は変わっていない
-        let 元 = std::fs::read_to_string(配り元.join("社内標準.toml")).unwrap();
-        assert_eq!(元, "[スタイル.本文]\n大きさ = 11\n", "配られた側が書き替わった");
-        assert!(dir.join("社内標準.toml").is_file(), "隣に写しが出来ていない");
+        // 配り元も、文書の隣も、何も書かれていない
+        assert_eq!(std::fs::read_to_string(配り元.join("社内標準.toml")).unwrap(),
+                   "[スタイル.本文]\n大きさ = 11\n", "配られた側が書き替わった");
+        assert!(!dir.join("社内標準.toml").exists(), "隣に写しを作った");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

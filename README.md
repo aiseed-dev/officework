@@ -14,7 +14,7 @@ a cell formula like `=double(A1)` calls your own Python function and the
 result spills, and the chart and pivot buttons are backed by matplotlib
 and polars. This is what replaces VBA:
 
-- `writer` — **an AsciiDoc processor**: parses your source (.adoc) and converts it to screen, PDF, HTML or docx. It also opens, edits and saves docx ([manual](docs/writer-manual.md))
+- `writer` — **a visual editor for AsciiDoc**: edit your source (.adoc) as it looks, and put it out as screen, PDF, HTML or docx. It also opens, edits and saves docx ([manual](docs/writer-manual.md))
 - `calc` — opens, edits, and saves xlsx. Calculates formulas ([manual](docs/calc-manual.md))
 
 They are **separate apps**, not one giant suite.

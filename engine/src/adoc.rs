@@ -111,6 +111,13 @@ pub fn write(doc: &Document) -> String {
 }
 
 fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
+    // **原文のまま持ち越した行は、そのまま返します。**
+    // 空行を入れないのは、`----` の塊の中で行が離れてしまうからです
+    if let Some(raw) = &p.raw_adoc {
+        out.push_str(raw);
+        out.push('\n');
+        return;
+    }
     if p.page_break_before {
         out.push_str("<<<\n\n");
     }
@@ -540,45 +547,51 @@ pub fn dropped(doc: &Document) -> Vec<&'static str> {
 /// 字は本文として残しますが、意味は落ちています。落ちたことを言うためだけの
 /// 判定なので、**確かに本家の書き方だと分かる形だけ**を見ます(迷う形は
 /// 見ません — 普通の日本語の文を「読めなかった」と言うほうが害が大きい)。
-fn 本家だけの書き方(l: &str) -> Option<&'static str> {
+/// 次の行が空行か(原文のまま持ち越すとき、後ろの空行も含めるため)
+fn 次が空行<'a, I: Iterator<Item = (usize, &'a str)>>(
+    it: &mut std::iter::Peekable<I>,
+) -> bool {
+    it.peek().map(|(_, l)| l.trim().is_empty()).unwrap_or(false)
+}
+
+fn 本家だけの書き方(l: &str) -> Option<(&'static str, &'static str)> {
     let t = l.trim_start();
     for 印 in ["NOTE: ", "TIP: ", "IMPORTANT: ", "WARNING: ", "CAUTION: "] {
         if t.starts_with(印) {
-            return Some("註記(NOTE: など)");
+            return Some(("註記(NOTE: など)", "註記"));
         }
     }
     // 塊の区切り。4つ以上の同じ記号だけの行
     for 印 in ['-', '.', '*', '_', '='] {
         if t.len() >= 4 && t.chars().all(|c| c == 印) && 印 != '_' {
-            return Some("塊の区切り(---- など)");
+            return Some(("塊の区切り(---- など)", "塊の区切り"));
         }
     }
     if t.starts_with("include::") {
-        return Some("取り込み(include::)");
+        return Some(("取り込み(include::)", "取り込み"));
     }
     if t.starts_with("=====") {
-        return Some("4段より深い見出し");
+        return Some(("4段より深い見出し", "見出し4"));
     }
     if t.starts_with("* [x]") || t.starts_with("* [ ]") || t.starts_with("- [x]") {
-        return Some("チェックの箇条書き");
+        return Some(("チェックの箇条書き", "チェック"));
     }
     // 説明のリスト(用語:: 説明)。マクロ(名前:的[…])と紛れないよう `:: ` を見る
     if let Some(i) = t.find(":: ") {
         if i > 0 && !t[..i].contains(' ') && !t[..i].contains('[') {
-            return Some("説明のリスト(用語:: 説明)");
+            return Some(("説明のリスト(用語:: 説明)", "説明のリスト"));
         }
     }
     // 塊の題(.題)。箇条書きの `. ` とは違う
     if t.starts_with('.') && !t.starts_with(". ") && t.len() > 1 && !t.starts_with("..") {
-        return Some("塊の題(.題)");
+        return Some(("塊の題(.題)", "塊の題"));
     }
     // 属性の参照 {名前}。うちの差し込みは {{名前}} なので、二重は数えない
     let b = t.as_bytes();
     for (i, c) in t.char_indices() {
-        // **うちの差し込みは `{{名前}}`** なので、二重の中括弧は数えない
         let 二重 = b.get(i + 1) == Some(&b'{') || (i > 0 && b[i - 1] == b'{');
         if c == '{' && !二重 && t[i..].contains('}') {
-            return Some("属性の参照({名前})");
+            return Some(("属性の参照({名前})", ""));
         }
     }
     None
@@ -608,6 +621,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     let mut pending_style: Option<String> = None;
     let mut in_quote = false;
     let mut fresh_note = 0usize;
+    // 直前の行が「継げる本文」だったか(空行と特別な行で倒れる)
+    let mut 直前も本文 = false;
 
     // 文書の頭: `= 題名` と `:鍵: 値`
     let mut head_done = false;
@@ -647,10 +662,72 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     while let Some((ln, line)) = lines.next() {
         let l = line.trim_end();
         if l.is_empty() {
+            直前も本文 = false; // 空行が段落の切れ目
             continue;
         }
-        if let Some(何) = 本家だけの書き方(l) {
+        if let Some((何, 役割)) = 本家だけの書き方(l) {
             *帳簿.entry(何).or_default() += 1;
+            // **原文のまま持ち越し、役割の名前を付けます。**
+            // 意味は分からなくても、字は壊さず返し、テンプレートで見た目を
+            // 決められるようにします(2026-08-18)。役割が空の物
+            // (属性の参照)は、行そのものはうちの書き方なので普通に読みます
+            if !役割.is_empty() {
+                // 後ろに空行があればそれも原文に含める(塊の中で行が
+                // 離れず、塊の外では離れる — 元のままに返るのはこの形だけ)
+                let raw = |l: &str, 空行: bool, doc: &mut Document| {
+                    let mut p = Paragraph {
+                        line_spacing: 1.0,
+                        style_id: Some(役割.to_string()),
+                        raw_adoc: Some(if 空行 { format!("{l}\n") } else { l.to_string() }),
+                        ..Default::default()
+                    };
+                    p.runs.push(Run {
+                        text: l.to_string(),
+                        size_pt: None,
+                        font: None,
+                        fmt: CharFormat::default(),
+                    });
+                    doc.blocks.push(Block::Para(p));
+                };
+                let 空 = |it: &mut std::iter::Peekable<_>| -> bool { 次が空行(it) };
+                raw(l, 空(&mut lines), &mut doc);
+                // 区切りの塊(`----` など)は**閉じるまでまるごと**持ち越す
+                if 役割 == "塊の区切り" {
+                    let 印 = l.trim_end().to_string();
+                    while let Some((_, l2)) = lines.next() {
+                        let 閉じ = l2.trim_end() == 印;
+                        if !l2.trim().is_empty() {
+                            // 塊の**中身**は区切りとは別の役割にする(中身は
+                            // 読む物なので、区切りのように薄くしない)
+                            let 中 = !閉じ;
+                            let 空行 = 空(&mut lines);
+                            let mut q = Paragraph {
+                                line_spacing: 1.0,
+                                style_id: Some(
+                                    if 中 { "塊の中" } else { "塊の区切り" }.to_string(),
+                                ),
+                                raw_adoc: Some(if 空行 {
+                                    format!("{}\n", l2.trim_end())
+                                } else {
+                                    l2.trim_end().to_string()
+                                }),
+                                ..Default::default()
+                            };
+                            q.runs.push(Run {
+                                text: l2.trim_end().to_string(),
+                                size_pt: None,
+                                font: None,
+                                fmt: CharFormat::default(),
+                            });
+                            doc.blocks.push(Block::Para(q));
+                        }
+                        if 閉じ {
+                            break;
+                        }
+                    }
+                }
+                continue;
+            }
         }
         if l == "____" {
             in_quote = !in_quote;
@@ -739,6 +816,24 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             p.style = ParaStyle::Quote;
         }
         p.runs = parse_inline(body, &mut doc, &mut fresh_note)?;
+        // **続く行は同じ段落に継ぐ**(AsciiDoc の作法)。段落の切れ目は空行で、
+        // 行の折り返しではありません。80 桁で折った普通の AsciiDoc を開くと、
+        // 前は行ごとにバラバラの段落になり、保存で空行が入って構造が変わって
+        // いました(2026-08-18)。**継ぎ目に空白は入れません** — 日本語の文を
+        // 行で折っても語が割れないようにするためです
+        let 継ぐ = 直前も本文
+            && p.style == ParaStyle::Body
+            && p.list == ListKind::None
+            && p.bookmarks.is_empty()
+            && p.style_id.is_none()
+            && !p.page_break_before;
+        直前も本文 = p.list == ListKind::None && p.raw_adoc.is_none();
+        if 継ぐ {
+            if let Some(Block::Para(前)) = doc.blocks.last_mut() {
+                前.runs.extend(p.runs);
+                continue;
+            }
+        }
         doc.blocks.push(Block::Para(p));
     }
     let 帳簿 = 帳簿

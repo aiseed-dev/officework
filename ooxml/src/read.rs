@@ -1897,7 +1897,7 @@ pub(super) fn parse_document_rels(
                         if let Some(runs) = para.take() {
                             rep.runs += runs.len();
                             rep.paragraphs += 1;
-                            let mut p = Paragraph { align, anchors: std::mem::take(&mut anchors),
+                            let mut p = Paragraph { align, raw_adoc: None, anchors: std::mem::take(&mut anchors),
                                 sect: para_sect.take(),
                                 images: std::mem::take(&mut images),
                                 comments: std::mem::take(&mut para_comments),
