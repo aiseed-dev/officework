@@ -80,6 +80,11 @@ wheel は Linux と Windows で約 36MB(mac は2つの CPU 分が入るのでも
 ファイルには mac の quarantine も Windows の Mark of the Web も付かないので、
 Gatekeeper も SmartScreen も出ません。Python の同梱も要りません。
 
+> **Linux だけ、機械の側に要る物があります**(pip では入れられません):
+> `sudo apt install libxkbcommon0 libxkbcommon-x11-0 libxcb1 libxcb-xkb1 libfontconfig1 fonts-noto-cjk`
+> 足りなければ `officework-calc` がその場で名前を挙げて教えます。
+> mac と Windows は素で動きます。
+
 **インストーラ — まだ公開していません。** 包む仕組みは出来ていて、出来上がるのは
 この3つです(どれも Python 3.14 を同梱)。ただしまだリリースしていません。
 

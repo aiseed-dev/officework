@@ -47,6 +47,32 @@ def _exe(app):
     return shutil.which(name) or shutil.which("officework-" + app)
 
 
+# **画面が要る物**。wheel には入れられない(pip はシステムの共有ライブラリを
+# 入れられない)ので、無ければ入れ方を言う。Debian 系の名前で書き、
+# 他の配り物では apt が無いことを断る
+_APT = (
+    "libxkbcommon0 libxkbcommon-x11-0 libxcb1 libxcb-xkb1 libfontconfig1 "
+    "fonts-noto-cjk"
+)
+
+
+def _missing_libs(exe):
+    """繋ぎ先で見つからない共有ライブラリの名前(Linux だけ)。
+
+    **黙って落ちるのを防ぐため。** 無い状態で起こすと、端末に ld の
+    そっけない1行が出るだけで、何を入れればいいか分からない。
+    """
+    if not sys.platform.startswith("linux"):
+        return []
+    try:
+        out = subprocess.run(
+            ["ldd", exe], capture_output=True, text=True, timeout=10
+        ).stdout
+    except Exception:
+        return []  # ldd が無い機械では黙って先へ(判断材料が無い)
+    return [l.split("=>")[0].strip() for l in out.splitlines() if "not found" in l]
+
+
 def _run(app, argv):
     exe = _exe(app)
     if not exe:
@@ -54,6 +80,16 @@ def _run(app, argv):
             "{} の実行ファイルが見つかりません。\n"
             "この wheel には入っていない形かもしれません — "
             "OFFICEWORK_{} に径路を入れてください".format(app, app.upper())
+        )
+    lack = _missing_libs(exe)
+    if lack:
+        sys.exit(
+            "画面を出すのに要るライブラリがこの機械にありません:\n"
+            "  " + "\n  ".join(lack) + "\n\n"
+            "pip では入れられないので、機械の側で入れてください。\n"
+            "Debian / Ubuntu なら:\n"
+            "  sudo apt install " + _APT + "\n"
+            "(他の配り物では名前が違います。日本語のフォントも要ります)"
         )
     # **待たない。** アプリは窓を開けて動き続けるので、端末は返す
     if sys.platform == "win32":

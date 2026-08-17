@@ -79,6 +79,12 @@ The wheel is around 36 MB (larger on macOS, which is universal). This is the lea
 on your disk carries neither macOS's quarantine flag nor Windows' Mark of the
 Web, so Gatekeeper and SmartScreen never ask, and no bundled Python is needed.
 
+> **On Linux only, a few system libraries are needed** — pip cannot install
+> those: `sudo apt install libxkbcommon0 libxkbcommon-x11-0 libxcb1
+> libxcb-xkb1 libfontconfig1 fonts-noto-cjk`. If any are missing,
+> `officework-calc` names them instead of failing silently.
+> macOS and Windows need nothing extra.
+
 **Installers** — **not published yet.** The packaging is written and produces
 the files below, each with Python 3.14 bundled, but no release is out:
 
