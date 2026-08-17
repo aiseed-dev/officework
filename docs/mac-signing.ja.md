@@ -9,24 +9,35 @@
 
 ---
 
-## 結論から — 手元の Mac なら、毎回これ1行
+## 結論から — 下ごしらえは2つ、以後はタグを押すだけ
 
-```sh
-MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
-```
-
-組んで・包んで・署名して・公証して・確かめるまで、これで終わる。
-
-そのための下ごしらえは**2つだけ**。どちらも**一度きり**。
+**GitHub に作らせる。** タグを押せば署名・公証つきの `.dmg` が Releases に
+出る。手元でやることは**一度きりの下ごしらえ**だけ。
 
 | | 何を | どこで |
 |---|---|---|
 | **A** | 証明書を用意する | Xcode で数クリック(下の A) |
-| **B** | 公証の資格を鍵束に貯める | ターミナルで1行(下の B) |
+| **B** | 公証の API キーを作る | Apple のサイトで(下の B) |
+| **C** | 秘密を GitHub に入れる | **Mac でこの1行**(下の C) |
 
-> **`.p12` への書き出しは要らない。** 鍵は既にこの Mac の中にあり、
-> `codesign` がそのまま使う。書き出しが要るのは、鍵の無い機械(CI)へ
-> 持っていくときだけ — それは末尾の「C. CI に任せたくなったら」。
+C はこれだけ:
+
+```sh
+packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Key ID> <Issuer ID>
+```
+
+`.p12` の書き出しも base64 も貼り付けも、この台本が繋いでやる。
+**秘密は画面に出ない**(`gh` へ直に流す)。
+
+以後は毎回:
+
+```sh
+git tag app-v0.1.0-alpha && git push origin app-v0.1.0-alpha
+```
+
+> **手元の Mac で作ることもできる**(下の「D. 手元で作る」)。
+> そちらは `.p12` も GitHub も要らないので、**下ごしらえの前に一度試して
+> みる**のに向く。出来上がる物は同じ。
 
 ---
 
@@ -85,15 +96,11 @@ Xcode が入っていない機械ではこちら。
 
 ---
 
-## B. 公証の資格を鍵束に貯める(一度きり)
+## B. 公証の API キーを作る(一度きり)
 
-公証は Apple のサーバに出して待つ手続き。その資格を**一度だけ**貯めれば、
-以後は名前で呼べる。
-
-### B-1. App Store Connect の API キーを作る
-
-Apple ID と合言葉より、API キーの方が手元にも CI にも向く
-(2要素認証に引っかからない。失効させても他に響かない)。
+公証は Apple のサーバに出して待つ手続き。その資格が要る。
+Apple ID と合言葉より、**API キー**の方が向く(2要素認証に引っかからない。
+失効させても他に響かない)。
 
 1. <https://appstoreconnect.apple.com/access/integrations/api>
 2. **チームキー**の側で **＋**
@@ -101,27 +108,56 @@ Apple ID と合言葉より、API キーの方が手元にも CI にも向く
 4. **`.p8` は一度しか落とせない**。落として安全な所に置く
 5. 同じ画面の **Key ID** と、上部の **Issuer ID** を控える
 
-### B-2. 鍵束に貯める
+---
+
+## C. 秘密を GitHub に入れる(一度きり)
 
 ```sh
-xcrun notarytool store-credentials officework \
-  --key ~/Downloads/AuthKey_XXXXXXXX.p8 \
-  --key-id XXXXXXXXXX \
-  --issuer xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Key ID> <Issuer ID>
 ```
 
-`officework` が**この資格の呼び名**。以後は `.p8` の場所も Key ID も
-打たなくてよくなる。
+この台本がやること:
+
+1. 証明書があるか確かめる(2枚以上なら**どれを使うか聞く**)
+2. `.p12` に書き出す(**合言葉を2回聞かれる** — 自分で決める物)
+3. base64 にして `gh` で GitHub の Secrets へ入れる。
+   **値は画面にもクリップボードにも出ない**
+4. 入った名前だけを一覧で見せる
+
+要る物:
+
+- **GitHub CLI** — `brew install gh && gh auth login`
+- A の証明書と、B の `.p8` / Key ID / Issuer ID
+
+> **書き出した `.p12` は消さないこと**(Desktop に置かれる)。
+> この Mac が壊れたとき、証明書を作り直さずに済む唯一の控え。
+> 安全な所へ移して、合言葉はパスワード管理に残す。
+
+> 他人と共有している Mac では、この台本は使わず末尾の「手で入れる」へ。
+> 合言葉が一瞬 `ps` に見えるため。
+
+### 入る秘密(名前だけ)
+
+| 名前 | 中身 |
+|---|---|
+| `MAC_CERT_P12` | 証明書と秘密鍵(`.p12` の base64) |
+| `MAC_CERT_PASSWORD` | その合言葉 |
+| `MAC_API_KEY_P8` | 公証の API キー(`.p8` の base64) |
+| `MAC_API_KEY_ID` | Key ID |
+| `MAC_API_ISSUER_ID` | Issuer ID |
+| `MAC_SIGN_IDENTITY` | **証明書が2枚以上あるときだけ** |
 
 ---
 
-## 毎回やること
+## 毎回やること — タグを押す
 
 ```sh
-MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
+git tag app-v0.1.0-alpha
+git push origin app-v0.1.0-alpha
 ```
 
-中で起きること(全部 [packaging/make-macos.sh](../packaging/make-macos.sh) に書いてある):
+GitHub の macOS の機械が、手元と**同じ台本**
+([packaging/make-macos.sh](../packaging/make-macos.sh))を回す:
 
 1. `cargo build --release`
 2. `.app` を2つ作り、**アイコンと同梱 Python(3.14)を入れる**
@@ -130,13 +166,36 @@ MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
 5. `.dmg` を作って署名 → 公証 → 券を貼る
 6. **`spctl` で確かめる**(= Gatekeeper そのもの。ここが通れば利用者も開ける)
 
-出来上がりは `packaging/out/officework-<版>-macos-<的>.dmg`。
-そのまま Releases に上げられる。
-
-> 署名の下ごしらえの前に「包む所まで」を試したいなら
-> `packaging/make-macos.sh --no-sign`。**配る物には付けないこと。**
+秘密が入っていなければ**署名せずに包み**、名前に `-unsigned` が付く。
+落ちはしないので、取り違えて配ることだけ気をつければよい。
 
 ---
+
+## D. 手元の Mac で作る(下ごしらえの前に試すなら)
+
+`.p12` も GitHub も要らない。鍵は既にこの Mac の鍵束に居て、`codesign` が
+そのまま使う。
+
+公証の資格だけ一度貯める:
+
+```sh
+xcrun notarytool store-credentials officework \
+  --key ~/Downloads/AuthKey_XXXXXXXX.p8 \
+  --key-id XXXXXXXXXX \
+  --issuer xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+以後:
+
+```sh
+MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
+```
+
+出来上がりは `packaging/out/officework-<版>-macos-<的>.dmg`。
+
+> 署名の下ごしらえの前に「包む所まで」だけ試すなら
+> `packaging/make-macos.sh --no-sign`。**配る物には付けないこと**
+> (名前に `-unsigned` が付く)。
 
 ## つまずいたら
 
@@ -145,6 +204,10 @@ MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
 更新して古い物が残っている、別チームの物が混ざっている。**どちらで署名
 したか分からない物を作らない**ために、台本はここで止まる。使う方の
 SHA-1(行頭の 40 桁)を控えて:
+
+GitHub に作らせているなら Secrets に `MAC_SIGN_IDENTITY` を足す
+(C の台本は2枚以上あると聞いてくるので、自分で足す必要は無い)。
+手元で回すなら:
 
 ```sh
 MAC_SIGN_IDENTITY=<40桁> MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
@@ -156,7 +219,7 @@ MAC_SIGN_IDENTITY=<40桁> MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
 入れても署名はできない(鍵が本体で、証明書はその身分証)。別の Mac で
 作った・OS を入れ直した、のどれか。
 
-1. **鍵を持っている Mac から `.p12` をもらう**(下の C-1 の手順で書き出した物)。
+1. **鍵を持っている Mac から `.p12` をもらう**(末尾「手で入れる」の1の手順で書き出した物)。
    もらったら**ダブルクリックで入れる**だけ
 2. **作り直す。** 古い方は Apple のサイトで **Revoke** してよい —
    **その証明書で署名済みの物は、公証済みなら開けるまま**
@@ -183,12 +246,11 @@ security find-certificate -c "Developer ID Application" -p \
 
 ---
 
-## C. CI に任せたくなったら(いまは要らない)
+## 手で入れる(`gh` を使わない場合)
 
-GitHub Actions で自動にする道。**鍵の無い機械に鍵を渡す**ことになるので、
-`.p12` への書き出しと Secrets が要る。手元で回すぶんには**全部不要**。
+C の台本が使えない・使いたくないときの道。やることは同じ。
 
-### C-1. 証明書を `.p12` に書き出す
+### 1. 証明書を `.p12` に書き出す
 
 ```sh
 security export -t identities -f pkcs12 -o Certificates.p12
@@ -210,20 +272,18 @@ openssl pkcs12 -in Certificates.p12 -info -nokeys -noout -passin stdin
 
 `Shrouded Keybag` の行があれば秘密鍵が入っている。
 
-### C-2. Secrets に入れる
+### 2. Secrets に貼る
 
-Settings → Secrets and variables → Actions。
+Settings → Secrets and variables → Actions。名前は C の表のとおり。
+base64 はクリップボード経由で:
 
-| 名前 | 中身 |
-|---|---|
-| `MAC_CERT_P12` | `base64 -i Certificates.p12 \| pbcopy` の中身 |
-| `MAC_CERT_PASSWORD` | C-1 で決めた合言葉 |
-| `MAC_API_KEY_P8` | `base64 -i AuthKey_XXXX.p8 \| pbcopy` の中身 |
-| `MAC_API_KEY_ID` | B-1 の Key ID |
-| `MAC_API_ISSUER_ID` | B-1 の Issuer ID |
-| `MAC_SIGN_IDENTITY` | **証明書が2枚以上あるときだけ** |
+```sh
+base64 -i Certificates.p12 | pbcopy          # MAC_CERT_P12
+base64 -i AuthKey_XXXX.p8  | pbcopy          # MAC_API_KEY_P8
+```
 
-名前が1つでも違えば CI がその場で止まり、**どれが無いかを名指しで言う**。
+> **中身は画面に出さない。** `cat` せずに `pbcopy` で直接貼る。
+> 貼り終えたら `pbcopy < /dev/null` でクリップボードを空にしておく。
 
 > **`.p12` 本体は消さずに取っておく。** これが秘密鍵の控えで、Mac が
 > 壊れたときに証明書を作り直さずに済む唯一の道。
