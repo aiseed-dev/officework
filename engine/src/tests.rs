@@ -1966,6 +1966,47 @@ mod fill_tests {
 }
 
 #[cfg(test)]
+mod indent_tests {
+    use super::*;
+    use crate::theme;
+
+    /// **1行目の字下げが紙面に出る。** 日本語の本文は1字下げるのが普通です。
+    /// テンプレートに `字下げ = 1` と書くと、その段落の1行目だけが下がります
+    /// (2026-08-18。それまで模型は値を持つだけで、紙面では使っていませんでした)。
+    #[test]
+    fn 一行目だけ字下げする() {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let doc = crate::adoc::parse(
+            "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめも
+",
+        )
+        .unwrap();
+        let th = theme::parse("[文書]\n大きさ = 10.5\n\n[スタイル.本文]\n字下げ = 1\n").unwrap();
+        let c = theme::compose(&doc, &th);
+        // 10.5pt の1字 = 210 twips
+        let p0 = c.paragraphs().next().unwrap();
+        assert_eq!(p0.first_line_twips, 210, "合成で字下げが乗らない");
+
+        let s = layout(&c, &m, &Frame { measure_mm: 60.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        assert!(s.lines.len() >= 2, "2行以上に折れていない");
+        // 1行目は下がり、2行目は下がらない
+        let 頭 = |i: usize| s.lines[i].cells[0].x_mm;
+        let 字 = 10.5 * 25.4 / 72.0;
+        assert!((頭(0) - 頭(1) - 字).abs() < 0.2,
+                "1行目だけが1字ぶん下がっていない: {} と {}", 頭(0), 頭(1));
+    }
+
+    /// 書いた物を読み直すと同じになる(テンプレートの往復)。
+    #[test]
+    fn 字下げは往復する() {
+        let th = theme::parse("[スタイル.本文]\n字下げ = 1\n").unwrap();
+        let back = theme::parse(&theme::write(&th)).unwrap();
+        assert_eq!(back.style("本文").unwrap().first_line_chars, Some(1.0));
+    }
+}
+
+#[cfg(test)]
 mod adoc_dropped_tests {
     use crate::adoc;
     use crate::doc::{CharFormat, Document, Paragraph, Run};

@@ -41,6 +41,8 @@ struct Look {
     space_before_c: u32,
     space_after_c: u32,
     line_c: u32,
+    /// 1行目の字下げ(twips)。原文の値をそのまま鍵にする
+    first_twips: i32,
 }
 
 impl Look {
@@ -80,6 +82,7 @@ impl Look {
             space_before_c: (p.space_before_pt * 100.0).round() as u32,
             space_after_c: (p.space_after_pt * 100.0).round() as u32,
             line_c: (p.line_spacing * 100.0).round() as u32,
+            first_twips: p.first_line_twips,
         }
     }
 
@@ -98,6 +101,11 @@ impl Look {
             space_before_pt: self.space_before_c as f32 / 100.0,
             space_after_pt: self.space_after_c as f32 / 100.0,
             line_spacing: (self.line_c != 100).then_some(self.line_c as f32 / 100.0),
+            // twips → 全角の文字数(その段落の字の大きさで割る)
+            first_line_chars: (self.first_twips > 0).then(|| {
+                let pt = self.size_c.or(base.size_c).unwrap_or(1050) as f32 / 100.0;
+                (self.first_twips as f32 / 20.0 / pt * 10.0).round() / 10.0
+            }),
         }
     }
 }

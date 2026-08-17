@@ -36,6 +36,9 @@ pub struct StyleDef {
     pub space_after_pt: f32,
     /// 行間の倍率。`None` は指定なし
     pub line_spacing: Option<f32>,
+    /// **1行目の字下げ**(全角の文字数)。日本語の本文は1字下げるのが普通。
+    /// `None` は指定なし。負の値(ぶら下げ)は受けない
+    pub first_line_chars: Option<f32>,
 }
 
 /// **組み方** — 媒体の違いはここに集まる(発注者 2026-08-16
@@ -319,6 +322,9 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                     "前の空き" | "space_before" => d.space_before_pt = n(v)?,
                     "後の空き" | "space_after" => d.space_after_pt = n(v)?,
                     "行間" | "line_spacing" => d.line_spacing = Some(n(v)?),
+                    // 1行目の字下げ。**全角の文字数で書く** — 「1字下げ」と
+                    // 言うとおりに書けるのが大事で、pt や mm では言い直しになる
+                    "字下げ" | "first_line" => d.first_line_chars = Some(n(v)?.max(0.0)),
                     _ => return Err(format!("{} 行目: [スタイル] の知らない鍵: {k}", ln + 1)),
                 }
             }
@@ -420,6 +426,9 @@ pub fn write(th: &Theme) -> String {
         if let Some(l) = d.line_spacing {
             s.push_str(&format!("行間 = {}\n", num(l)));
         }
+        if let Some(f) = d.first_line_chars {
+            s.push_str(&format!("字下げ = {}\n", num(f)));
+        }
         s.push('\n');
     }
     while s.ends_with("\n\n") {
@@ -482,6 +491,14 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         if let Some(ls) = def.line_spacing {
             if para.line_spacing == 1.0 {
                 para.line_spacing = ls;
+            }
+        }
+        // 1行目の字下げ。**全角の文字数 × その段落の字の大きさ**で twips に。
+        // 本文が自分で持っていれば(docx 由来)そちらが勝つ
+        if para.first_line_twips == 0 {
+            if let Some(chars) = def.first_line_chars {
+                let pt = def.size_pt.or(theme.size_pt).unwrap_or(crate::DEFAULT_PT);
+                para.first_line_twips = (chars * pt * 20.0).round() as i32;
             }
         }
         for r in &mut para.runs {

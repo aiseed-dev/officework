@@ -159,6 +159,13 @@ pub struct Frame {
 /// 引き取った分だけ前の行は短くなる — 行長を超える方向には決して動かない。
 ///
 /// 段落を行長で折る。x はまだ置かない(呼ぶ側が揃え・字下げを決める)。
+/// 1行目の字下げ(mm)。段落が持つ twips から。負(ぶら下げ)は 0 とみなす。
+///
+/// **組み手と呼ぶ側の両方が同じ値を使う**ので、ここに1つだけ置きます。
+pub(super) fn first_line_mm(para: &Paragraph) -> f32 {
+    (para.first_line_twips.max(0) as f32 / 20.0) * 25.4 / 72.0
+}
+
 pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
               hyphenate: bool, notes: &mut NoteCount, base: f32) -> Vec<Vec<Cell>> {
     // **見出しは大きく太く組む**([`head_scale`])。大きさは「基準」を
@@ -195,6 +202,15 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
         carry
     }
 
+    // **1行目の字下げ**(日本語の本文の作法)。1行目だけ行長を縮めます。
+    // x をずらすのは呼ぶ側です([`first_line_mm`] を足す)。
+    //
+    // 空白の桝を1つ置く形も試しましたが、**画面の幅と合いません** — 桝の幅は
+    // こちらが決めても、画面は空白の字をフォントの幅で描くからです
+    // (2026-08-18 に実機で見て気づきました)。
+    // ぶら下げ(負の値)はまだ組めないので、0 として扱います
+    let first_mm = first_line_mm(para);
+
     // 箇条書きの印は本文の前に置く。**本文の一部にはしない**ので、
     // 編集中の文字位置とずれない(印は組版のときだけ現れる)
     if let Some(mk) = marker {
@@ -224,6 +240,8 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
                              font: ft.clone(), off: *o }], *w),
         };
 
+        // 1行目だけ行長が短い(字下げのぶん)
+        let measure = if done.is_empty() { (measure - first_mm).max(1.0) } else { measure };
         if w_cur + w > measure && !cur.is_empty() {
             if let Tok::Space(..) = tok {
                 // 行末に空白は要らない。行を折るだけ
@@ -519,8 +537,13 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 }
                 let para_eff: &Paragraph = owned_rest.as_ref().unwrap_or(para);
                 let measure = (measure - cap_shift).max(em);
+                let first_mm = first_line_mm(para_eff);
+                let mut 何行目 = 0usize;
                 for mut cells in break_para(para_eff, m, measure, marker.as_deref(),
                                             doc.hyphenate, &mut note_no, base) {
+                    // 1行目だけ字下げのぶん右へ(行長は組み手が縮めている)
+                    let 字下げ = if 何行目 == 0 { first_mm } else { 0.0 };
+                    何行目 += 1;
                     // 頭の1字を除いたぶん、バイト位置を戻す
                     if cap_len > 0 {
                         for c in &mut cells {
@@ -538,8 +561,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     }
                     // 揃え。**行の幅と行長の差を、どこに置くか**の話でしかない
                     let w: f32 = cells.iter().map(|c| c.w_mm).sum();
-                    let slack = (measure - w).max(0.0);
-                    let mut x = indent_mm + cap_shift + match para.align {
+                    let slack = (measure - 字下げ - w).max(0.0);
+                    let mut x = indent_mm + cap_shift + 字下げ + match para.align {
                         Align::Left | Align::Justify | Align::Distribute => 0.0,
                         Align::Center => slack / 2.0,
                         Align::Right => slack,

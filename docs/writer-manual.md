@@ -526,11 +526,27 @@ the built-in default is used.
 用紙 = "A4"
 余白 = 25
 
+[スタイル.本文]
+字下げ = 1          # indent the first line by one character
+行間 = 1.5
+
 [スタイル.見出し1]
 大きさ = 20
 太字 = true
 色 = "1B6E3C"
+後の空き = 8
 ```
+
+There are **twelve keys, and that is all**. We do not add more.
+
+| Applies to characters | Applies to paragraphs |
+|---|---|
+| size, font, bold, italic, underline, colour | background, alignment, first-line indent, space before, space after, line spacing |
+
+**Formatting nests three deep.** `[文書]` sets the base font and size, a paragraph
+style sits on top of it, and a character style (`[.name]#text#`) is innermost and
+wins. There is no "based on another style" (Word's basedOn) — with a chain of
+inheritance, nobody can say where a colour came from.
 
 Keys are accepted in Japanese or English (`size`, `bold`, `color`, `[style.…]`).
 
