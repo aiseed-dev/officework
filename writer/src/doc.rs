@@ -123,6 +123,7 @@ impl Writer {
             style_new: None,
             style_ed: Editor::new(""),
             tmpl: kumihan::theme::default_theme(),
+            tmpl_path: None, // 同梱の既定を着ている
             find_open: false,
             find_field: 0,
             find_ed: Editor::new(""),
@@ -2137,8 +2138,9 @@ impl Writer {
         self.encrypt_pw = None;
         self.notes.clear();
         self.native = true;
-        let (tmpl, 言い分) = self.load_template(doc.template.as_deref(), p);
+        let (tmpl, tmpl_path, 言い分) = self.load_template(doc.template.as_deref(), p);
         self.tmpl = tmpl;
+        self.tmpl_path = tmpl_path;
         // 用紙はテンプレートが持つ(本文は持たない)
         self.pg = self.tmpl.page.unwrap_or_default();
         self.set_doc(doc);
@@ -2194,13 +2196,14 @@ impl Writer {
 
     /// テンプレートを探して読む。**隣 → 置き場 → 同梱の既定**の順
     /// (名前は文書の頭の `:template:`)。返りは(テンプレート, 言い分)
+    /// 返りは(テンプレート, 読んだ場所, 言い分)。場所が None なら同梱の既定。
     fn load_template(
         &self,
         name: Option<&str>,
         doc_path: &std::path::Path,
-    ) -> (kumihan::theme::Theme, String) {
+    ) -> (kumihan::theme::Theme, Option<PathBuf>, String) {
         let Some(name) = name else {
-            return (kumihan::theme::default_theme(), ui::t!("同梱の既定").to_string());
+            return (kumihan::theme::default_theme(), None, ui::t!("同梱の既定").to_string());
         };
         let mut cands = Vec::new();
         if let Some(dir) = doc_path.parent() {
@@ -2210,11 +2213,12 @@ impl Writer {
         for c in cands {
             let Ok(src) = std::fs::read_to_string(&c) else { continue };
             return match kumihan::theme::parse(&src) {
-                Ok(th) => (th, c.display().to_string()),
+                Ok(th) => (th, Some(c.clone()), c.display().to_string()),
                 // **壊れたテンプレートは黙って既定に落ちない** — どこが
                 // 悪いか言わないと、直す手がかりが無い
                 Err(e) => (
                     kumihan::theme::default_theme(),
+                    None,
                     ui::tf!("{} が読めないので同梱の既定({})", c.display().to_string(), e)
                         .to_string(),
                 ),
@@ -2222,6 +2226,7 @@ impl Writer {
         }
         (
             kumihan::theme::default_theme(),
+            None,
             ui::tf!("テンプレート「{}」が見つからないので同梱の既定", name).to_string(),
         )
     }
@@ -2653,7 +2658,14 @@ impl Writer {
     }
 
     /// テンプレートをファイルへ書き戻す。返りは言い分
-    fn save_template(&self) -> String {
+    ///
+    /// **書くのは常に文書の隣です。** 配られたテンプレート(置き場にある物)は
+    /// 書き替えません — 直すのは、それを配った人の仕事だからです
+    /// (発注者 2026-08-18「テンプレートは指示する人が作る」)。隣に写しが
+    /// 出来ると、この文書だけが写しの方を見るようになるので、**そうなったと
+    /// 言います**。黙って分かれると、配り主が元を直しても、この文書だけ
+    /// 古いままになります。
+    fn save_template(&mut self) -> String {
         let Some(name) = self.doc.template.clone() else {
             // 名指しが無い = 同梱の既定を着ている。**既定は書き換えない** —
             // 他の文書まで巻き添えになる
@@ -2664,8 +2676,26 @@ impl Writer {
             return ui::t!("文書がまだファイルになっていないので、テンプレートは書けません").to_string();
         };
         let at = dir.join(format!("{name}.toml"));
+        // 元が隣の同じファイルなら「直した」、別の場所(または同梱の既定)なら
+        // 「この文書だけの写しを作った」
+        let 配られた = match &self.tmpl_path {
+            Some(from) if *from != at => Some(from.display().to_string()),
+            Some(_) => None,
+            None => Some(ui::t!("同梱の既定").to_string()),
+        };
         match std::fs::write(&at, kumihan::theme::write(&self.tmpl)) {
-            Ok(()) => ui::tf!("{} に書きました", at.display().to_string()).to_string(),
+            Ok(()) => {
+                let 元 = 配られた;
+                self.tmpl_path = Some(at.clone());
+                match 元 {
+                    Some(from) => ui::tf!(
+                        "この文書だけの写しを {} に作りました。配られた {} は変えていません",
+                        at.display().to_string(), from
+                    )
+                    .to_string(),
+                    None => ui::tf!("{} に書きました", at.display().to_string()).to_string(),
+                }
+            }
             Err(e) => ui::tf!("テンプレートが書けません: {}", e).to_string(),
         }
     }

@@ -37,16 +37,29 @@ WRITER = os.path.join(rs.ROOT, "target", "release", "writer")
 
 
 class W:
-    def __init__(self, shots, path=None):
+    def __init__(self, shots, path=None, home_files=None):
+        """`home_files` は偽の HOME に**起こす前に**置くファイル。
+
+        `{"…/templates/社内標準.toml": "中身"}` のように、HOME からの相対の
+        径路で渡します。配られたテンプレートのように、**アプリが起動時に
+        読む物**を試すために要ります(2026-08-18)。
+        """
         self.shots = shots
         os.makedirs(shots, exist_ok=True)
         self.run_dir = tempfile.mkdtemp(prefix="writer-shot-")
         env = dict(os.environ)
         env.pop("WAYLAND_DISPLAY", None)
         env["XDG_RUNTIME_DIR"] = self.run_dir
-        # **HOME を分ける** — 発注者の settings.toml を書き換えない
+        # **HOME を分ける** — 発注者の settings.toml を書き換えない。
+        # 置き場の名前は officework(2026-08-16 に office から移した。
+        # ここだけ古い名前のままで、置き場の物は1つも読まれていなかった)
         self.home = os.path.join(self.run_dir, "home")
-        os.makedirs(os.path.join(self.home, ".config", "office"), exist_ok=True)
+        os.makedirs(os.path.join(self.home, ".config", "officework"), exist_ok=True)
+        for rel, body in (home_files or {}).items():
+            to = os.path.join(self.home, rel)
+            os.makedirs(os.path.dirname(to), exist_ok=True)
+            with open(to, "w", encoding="utf-8") as f:
+                f.write(body)
         env["HOME"] = self.home
         env.setdefault("DISPLAY", ":0")
         # **IME を外す** — 通さないと XTEST の字がかな配列で化ける

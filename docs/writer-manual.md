@@ -533,6 +533,23 @@ read the diff.
 A broken template **says what is wrong** and falls back to the built-in default —
 falling back silently would leave you no way to fix it.
 
+#### A template you were given is never overwritten
+
+A template is made and handed out by **the person who decides the look** — a
+government form, a house style, a journal's layout all belong to that person, not
+to whoever writes the text.
+
+When you change a format, it is always written **next to the document you have
+open**. If the template came from somewhere else (`~/.config/officework/templates/`
+or the built-in default), you get:
+
+> Made a copy for this document only at /…/house-style.toml. The
+> /home/…/templates/house-style.toml you were given is unchanged
+
+**From then on, this document follows the copy.** Updates to the original will not
+reach it, so if the look itself needs fixing, ask the person who maintains the
+original.
+
 ### When you want to change the look
 
 Pressing size, typeface, colour, highlight, underline or strikethrough does not

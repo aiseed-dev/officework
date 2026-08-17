@@ -1067,6 +1067,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("直すとテンプレートが変わり、同じスタイルの所が一度に変わります", "Menyunting mengubah templat, jadi semua tempat dengan gaya itu berubah sekaligus"),
     ("この文書の型", "Templat dokumen ini"),
     ("{} に書きました", "Ditulis ke {}"),
+    ("この文書だけの写しを {} に作りました。配られた {} は変えていません", "Membuat salinan khusus dokumen ini di {}. {} yang diberikan tidak berubah"),
     ("この文書だけ。テンプレートに残すには :template: で名前を付けてください", "Dokumen ini saja. Untuk menyimpannya di templat, beri nama dengan :template:"),
     ("スタイルの新設 — 見た目に名前を付けます", "Gaya baru — beri nama tampilan ini"),
     ("スタイルの新設をやめました", "Gaya baru dibatalkan"),

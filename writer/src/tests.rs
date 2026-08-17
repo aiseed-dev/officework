@@ -2433,6 +2433,39 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **配られたテンプレートは書き替えない。**
+    ///
+    /// 書式を直すと、書き先はいつも文書の隣です。元が別の場所(置き場の
+    /// テンプレートや同梱の既定)だったときは、**この文書だけの写しが出来た**
+    /// と言います。黙って分かれると、配り主が元を直しても、この文書だけが
+    /// 古いままになります(発注者 2026-08-18「テンプレートは指示する人が作る」)。
+    #[gpui::test]
+    fn 配られたテンプレートは書き替えず写しを作る(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-tmpl-{}", std::process::id()));
+        let 配り元 = dir.join("配り元");
+        let _ = std::fs::create_dir_all(&配り元);
+        std::fs::write(配り元.join("社内標準.toml"), "[スタイル.本文]\n大きさ = 11\n").unwrap();
+        let doc = dir.join("報告.adoc");
+        std::fs::write(&doc, "= 報告\n:template: 社内標準\n\n本文です。\n").unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(doc.clone());
+            // 置き場から配られた状態を作る(置き場そのものは触らない)
+            this.tmpl_path = Some(配り元.join("社内標準.toml"));
+            this.ed.move_to(0, false);
+            this.tweak_style(1); // 字を1段大きく = テンプレートを直す操作
+            let s = this.status.to_string();
+            assert!(s.contains("写し"), "写しを作ったと言っていない: {s}");
+            assert!(s.contains("配り元"), "元の場所を言っていない: {s}");
+        });
+        // 配り元は変わっていない
+        let 元 = std::fs::read_to_string(配り元.join("社内標準.toml")).unwrap();
+        assert_eq!(元, "[スタイル.本文]\n大きさ = 11\n", "配られた側が書き替わった");
+        assert!(dir.join("社内標準.toml").is_file(), "隣に写しが出来ていない");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// **adoc で保存すると、画像も隣に並ぶ。**
     ///
     /// adoc は画像を径路で指すので、径路を与えないと保存で絵が消えます

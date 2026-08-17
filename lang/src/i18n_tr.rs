@@ -1067,6 +1067,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("直すとテンプレートが変わり、同じスタイルの所が一度に変わります", "Düzenlemek şablonu değiştirir, böylece o stilin bulunduğu her yer aynı anda değişir"),
     ("この文書の型", "Bu belgenin şablonu"),
     ("{} に書きました", "{} dosyasına yazıldı"),
+    ("この文書だけの写しを {} に作りました。配られた {} は変えていません", "Yalnızca bu belge için {} konumunda bir kopya oluşturuldu. Verilen {} değişmedi"),
     ("この文書だけ。テンプレートに残すには :template: で名前を付けてください", "Yalnızca bu belge. Bir şablonda tutmak için :template: ile ad verin"),
     ("スタイルの新設 — 見た目に名前を付けます", "Yeni stil — bu görünüme bir ad verin"),
     ("スタイルの新設をやめました", "Yeni stil iptal edildi"),
