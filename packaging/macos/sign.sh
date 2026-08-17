@@ -45,8 +45,10 @@ cmd_keychain() {
   security set-keychain-settings -lut 21600 "$KEYCHAIN"
   security unlock-keychain -p "$kp" "$KEYCHAIN"
 
+  # **`-d` を使う**(`--decode` ではない)。macOS の base64 は BSD 系で、
+  # GNU 風の長い綴りが通るとは限らない。-d はどちらの機械でも通る
   local p12="${RUNNER_TEMP:-/tmp}/cert.p12"
-  printf '%s' "$MAC_CERT_P12" | base64 --decode > "$p12"
+  printf '%s' "$MAC_CERT_P12" | base64 -d > "$p12"
   security import "$p12" -k "$KEYCHAIN" -P "$MAC_CERT_PASSWORD" \
     -T /usr/bin/codesign -T /usr/bin/security
   rm -f "$p12"
@@ -136,7 +138,7 @@ cmd_notarize() {
   done
 
   local p8="${RUNNER_TEMP:-/tmp}/asc.p8"
-  printf '%s' "$MAC_API_KEY_P8" | base64 --decode > "$p8"
+  printf '%s' "$MAC_API_KEY_P8" | base64 -d > "$p8"
   # **--wait で待つ。** 待たずに次へ進むと staple が「まだ通っていない」で
   # 落ちる。落ちたら log を取って理由を出す — 「失敗しました」だけでは直せない
   if ! xcrun notarytool submit "$f" \
