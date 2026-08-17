@@ -36,6 +36,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました", "Diubah ke adoc — {} format ke templat, {} paragraf ke teks"),
     ("adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました。段落ごとの書式に収まらない {} 箇所は落ちました(強調や脚注は残っています)", "Diubah ke adoc — {} format ke templat, {} paragraf ke teks. {} tempat yang tidak muat dalam format paragraf hilang (penekanan dan catatan kaki tetap)"),
     ("{} — 本文は adoc、書式は{}", "{} — teksnya adoc; formatnya dari {}"),
+    ("{}(数式 {} 個が組めませんでした)", "{} ({} rumus tidak dapat disusun)"),
     ("{} に保存しました(本文だけ — 書式はテンプレートの側)", "Disimpan ke {} (teks saja — formatnya ada di templat)"),
     ("{} に保存しました。この形式で持てないものが消えました: {}", "Disimpan ke {}. Format ini tidak dapat menyimpan hal berikut, jadi hilang: {}"),
     ("adoc 形式では、書式に名前を付けて使います。右のスタイルから選ぶか、新しく作ってください", "Dalam bentuk adoc, format diberi nama. Pilih gaya di sebelah kanan, atau buat yang baru"),

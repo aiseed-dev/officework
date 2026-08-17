@@ -336,6 +336,76 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
     out.push_str("|===\n\n");
 }
 
+/// 画像の中身から拡張子を見ます(先頭の数バイトで分かります)。
+///
+/// **HTML の書き出しも同じ物を使います**([`crate::html_write`])。名前の付け方が
+/// 2箇所にあると、同じ画像が形式によって違う名前になります。
+pub fn image_ext(bytes: &[u8]) -> &'static str {
+    match bytes {
+        [0xFF, 0xD8, ..] => "jpg",
+        [b'G', b'I', b'F', ..] => "gif",
+        [b'R', b'I', b'F', b'F', ..] => "webp",
+        _ => "png",
+    }
+}
+
+/// **径路の無い画像に径路を与えます。** 返りは、本文と一緒に書き出す
+/// ファイル(本文から見た相対の径路, 中身)。
+///
+/// adoc は画像を `image::径路[]` で指すので、径路が無い画像は書けません。
+/// docx から来た画像や、画面から挿した画像は径路を持っていないので、ここで
+/// 名前を付けます。**付けないと保存で絵が消えます**(2026-08-18 に直した)。
+///
+/// 画像の実体を書くのはこの関数の仕事ではありません(engine はファイルを
+/// 触りません)。呼ぶ側が返りをファイルに書きます。
+pub fn assign_image_paths(doc: &mut Document) -> Vec<(String, std::sync::Arc<Vec<u8>>)> {
+    // すでに使われている名前(同じ名前で上書きしないため)
+    let mut 使った: Vec<String> = Vec::new();
+    each_image(doc, &mut |im| {
+        if let Some(s) = &im.src {
+            使った.push(s.clone());
+        }
+    });
+    let mut out = Vec::new();
+    let mut n = 0usize;
+    each_image(doc, &mut |im| {
+        if im.src.is_some() || im.bytes.is_empty() {
+            return;
+        }
+        let name = loop {
+            n += 1;
+            let name = format!("images/図{n}.{}", image_ext(&im.bytes));
+            if !使った.contains(&name) {
+                break name;
+            }
+        };
+        使った.push(name.clone());
+        im.src = Some(name.clone());
+        out.push((name, im.bytes.clone()));
+    });
+    out
+}
+
+/// 文書の中の画像を、出てくる順に1つずつ渡します(表の中も見ます)。
+fn each_image(doc: &mut Document, f: &mut dyn FnMut(&mut InlineImage)) {
+    for b in &mut doc.blocks {
+        let paras: Vec<&mut Paragraph> = match b {
+            Block::Para(p) => vec![p],
+            Block::Table(t) => t
+                .rows
+                .iter_mut()
+                .flat_map(|r| r.iter_mut())
+                .flat_map(|c| c.paragraphs.iter_mut())
+                .collect(),
+        };
+        for p in paras {
+            for im in p.images_new.iter_mut().chain(p.images.iter_mut()) {
+                f(im);
+            }
+        }
+    }
+}
+
 /// **この文書を adoc で保存すると落ちるもの。**
 ///
 /// adoc は意味だけを持つので、見た目とページの飾りは保存で消えます。
@@ -412,6 +482,11 @@ pub fn dropped(doc: &Document) -> Vec<&'static str> {
             足す("目次の印");
         }
         for r in &p.runs {
+            // 相互参照は「しおりの文字」と「ページ番号」の2種類だが、adoc は
+            // `<<名前>>` の1種類しか持たない。ページ番号は文字の参照になる
+            if r.fmt.field.as_ref().is_some_and(|f| f.page) {
+                足す("相互参照のページ番号");
+            }
             if r.fmt.underline {
                 足す("下線");
             }

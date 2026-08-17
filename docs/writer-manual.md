@@ -17,7 +17,8 @@ Three promises:
 
 Try the samples in [sample/](../sample/README.md) — especially
 `sample/writer/01〜05` (Japanese typesetting, vertical writing, an application
-form, a monthly report, a feature tour).
+form, a monthly report, a feature tour) and `06_書き方の見本.adoc`, which puts
+every marking from the table below on one page.
 
 ## Starting
 
@@ -50,7 +51,7 @@ how Japanese documents are measured), status messages, proofreading, zoom.
 
 Tab order:
 **File / Home / Insert / Draw / Layout / References / Forms /
-Header & Footer / Collaboration / Protection / View / Plugins**.
+Header & Footer / Collaboration / Protection / View / Macros**.
 
 ## Basic keys
 
@@ -392,14 +393,14 @@ Headless tools: `office-spell document.txt` (exit code 0=clean 1=findings
   content in docx — the policy differs from xlsx because python-docx already
   exists as public infrastructure)
 
-**Only .py files in the folder can be launched** (2026-08-16). The button that
+**Only .py files in the folder can be launched.** The button that
 ran a .py from anywhere is gone. A file you were given goes into the folder
 first, then you pick it from the list — **that step is the gate**.
 - **Writing macros** — named fields (`fill`/`extract`), templates (`render`),
   speed rules, and the AI button: see the
   [writer macro manual](writer-macro-manual.md)
 
-## Two kinds of document — meaning only, and the docx you were sent (2026-08-16)
+## Two kinds of document — meaning only, and the docx you were sent
 
 writer handles two kinds. **Which one you have open changes what you can do.**
 
@@ -436,11 +437,73 @@ Sales *rose* against last month.footnote:[Tokyo and Osaka combined]
 ```
 
 - `= Title` and `:template: name` at the top
-- Headings `==`–`====`, emphasis `*bold*` `_italic_`, quotes `____`
-- `footnote:[]`, bookmarks `[[name]]`, references `<<name>>`, ruby
-  `ruby:漢字[かんじ]`, maths `stem:[LaTeX]`, images `image::path[]`,
-  page break `<<<`, tables `|===`
 - **Not one bit of look goes in.** Size, colour and typeface live in the template
+
+The full list of markings is in the next section.
+
+### What to write, which button, what comes out
+
+One thing per row, shown three ways: how you type it in the text, which ribbon
+button does the same, and what it becomes on the web. **All three mean the same
+thing** — typing it by hand and pressing the button give the same result.
+
+| What you want | Type this | Ribbon button | On the web (HTML) |
+|---|---|---|---|
+| Title | `= Title` | File > Info, the Title box | `<h1 class="title">` |
+| Heading 1 | `== Heading` | Home > Paragraph style > Heading 1 | `<h2>` |
+| Heading 2 | `=== Heading` | Home > Paragraph style > Heading 2 | `<h3>` |
+| Heading 3 | `==== Heading` | Home > Paragraph style > Heading 3 | `<h4>` |
+| Body text | just type it | Home > Paragraph style > Normal | `<p>` |
+| Quote | wrap in `____` | Styles in the right panel > Quote | `<blockquote>` |
+| Bullets | start with `* ` | Home > Bullets | `<ul>` and `<li>` |
+| Numbering | start with `. ` | Home > Numbering | `<ol>` and `<li>` |
+| Bold | `*bold*` | Home > Bold | `<strong>` |
+| Italic | `_italic_` | Home > Italic | `<em>` |
+| Superscript | `x^2^` | Home > Superscript | `<sup>` |
+| Subscript | `H~2~O` | Home > Subscript | `<sub>` |
+| Ruby (furigana) | `ruby:漢字[かんじ]` | Home > Ruby | `<ruby>` and `<rt>` |
+| Style (paragraph) | `[.name]` on the line above | Styles in the right panel | `class="st-name"` |
+| Style (characters) | `[.name]#text#` | Styles in the right panel | `<span class="st-name">` |
+| Hyperlink | `https://example.jp[label]` | (no button yet) | `<a href="…">` |
+| Footnote | `footnote:[the note]` | References > Footnote | a number linked to a list at the end |
+| Bookmark | `[[name]]` on the line above | References > Bookmarks | `id="name"` on the paragraph |
+| Cross-reference | `<<name>>` | References > Cross-reference | `<a href="#name">` |
+| Table | wrap in `\|===`, cells after `\|` | Insert > Table | `<table>` and `<td>` |
+| Merge cells across | `2+\|` | (no button yet) | `colspan="2"` |
+| Merge cells down | `.2+\|` | (no button yet) | `rowspan="2"` |
+| Picture | a paragraph of just `image::images/fig1.png[]` | Insert > Picture | `<img>` |
+| Equation | a paragraph of just `stem:[x^2]` | Insert > Equation | `<img>` (the source stays with it) |
+| Page break | `<<<` | Insert > Page break | breaks only when printed |
+| Form field | `field:name[label,kind]` | Forms > Text field | `<input>` `<select>` `<textarea>` |
+
+**What you do not write in the text.** Underline, strikethrough, font colour,
+highlight colour, font, font size, line spacing, alignment and borders go in the
+template, not in the text. Pressing those ribbon buttons opens the Styles face on
+the right. On the web they become CSS.
+
+**The title does not appear on the page.** `= Title` becomes the document title
+(File > Info, the Title box). It becomes a top-level heading when you export to the
+web, but it is not drawn on screen or on paper. If you want it on paper, write the
+first line as Heading 1.
+
+**Equations are typeset when the document is opened.** The text only carries the
+source (LaTeX). Typesetting is done by Python — with TeX if it is installed,
+otherwise matplotlib. If an equation cannot be set, you are told how many failed.
+
+**What appears nowhere yet.** Tables of contents and tables of figures are rebuilt
+wherever the document goes, so they are not in the text. Comments, ink and tracked
+changes are docx-only features.
+
+When you put a picture in, an `images` folder appears next to the text and the
+picture goes in it. The text only points at the file, so **keep the text and
+`images` together** when you move the document.
+
+A form field is a one-line text box unless you say otherwise. The other kinds are
+`複数行` (multi-line), `チェック` (checkbox), `日付` (date), `メール` (e-mail),
+`電話` (phone), `画像` (picture), `署名` (signature), `選ぶ:A|B` (pick one) and
+`打てる選ぶ:A|B` (pick or type). Fields added with a button all get the same name
+per kind, so if you add more than one, rename them with **Forms > Name** — that
+name is what the receiving side sees.
 
 ### The template (where the look lives)
 
@@ -534,7 +597,7 @@ docx, groups similar looks into styles and moves them into a template.
   Emphasis, footnotes, links and ruby survive
 - Afterwards the document is native and saves as .adoc
 
-## Searching a folder (2026-08-17)
+## Searching a folder
 
 File > **Search a folder** walks a folder and searches many files at once.
 

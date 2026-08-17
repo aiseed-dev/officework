@@ -29,7 +29,7 @@ pub struct StyleDef {
     pub underline: bool,
     /// 文字色 `RRGGBB`
     pub color: Option<String>,
-    /// 段落の帯(背景色)`RRGGBB`
+    /// 段落の背景色 `RRGGBB`(docx の網かけ)
     pub shade: Option<String>,
     pub align: Option<Align>,
     pub space_before_pt: f32,
@@ -302,7 +302,10 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                     "斜体" | "italic" => d.italic = b(v)?,
                     "下線" | "underline" => d.underline = b(v)?,
                     "色" | "color" => d.color = Some(s(v)?),
-                    "帯" | "shade" => d.shade = Some(s(v)?),
+                    // **リボンは「段落の背景色」と呼んでいる**ので、そちらを
+                    // 正しい書き方にします。「帯」は前に書いたテンプレートが
+                    // 読めなくならないように受け続けます
+                    "背景色" | "網かけ" | "帯" | "shade" => d.shade = Some(s(v)?),
                     "揃え" | "align" => {
                         d.align = Some(match s(v)?.as_str() {
                             "左" | "left" => Align::Left,
@@ -396,7 +399,7 @@ pub fn write(th: &Theme) -> String {
             s.push_str(&format!("色 = {c:?}\n"));
         }
         if let Some(c) = &d.shade {
-            s.push_str(&format!("帯 = {c:?}\n"));
+            s.push_str(&format!("背景色 = {c:?}\n"));
         }
         if let Some(a) = d.align {
             let k = match a {
@@ -498,7 +501,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
     }
     // **文字単位のスタイル**(2026-08-16)。段落のを流し込んだ後に掛ける —
     // 字に付いた名前の方が、段落の名前より内側にあるので勝つ。
-    // 段落だけの項目(帯・揃え・空き・行間)は字には効かない
+    // 段落だけの項目(背景色・揃え・空き・行間)は字には効かない
     for block in &mut out.blocks {
         let Block::Para(para) = block else { continue };
         for r in &mut para.runs {

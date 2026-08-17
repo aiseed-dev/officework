@@ -2144,6 +2144,10 @@ impl Writer {
         self.set_doc(doc);
         self.adopt_font();
         self.path = Some(p.to_path_buf());
+        // **数式は開いたときに組みます。** 本文が持っているのは LaTeX の原文
+        // だけなので、組まないと紙面には何も出ません(2026-08-18 に実機で
+        // 見つけました — 白紙の段落になっていました)
+        let 組めない = self.render_formulas();
         self.dirty = false;
         self.status = ui::tf!(
             "{} — 本文は adoc、書式は{}",
@@ -2151,6 +2155,41 @@ impl Writer {
             言い分
         )
         .into();
+        if 組めない > 0 {
+            self.status =
+                ui::tf!("{}(数式 {} 個が組めませんでした)", self.status.clone(), 組めない).into();
+        }
+    }
+
+    /// 本文の中の数式(LaTeX の原文だけを持つ画像)を組みます。返りは組めなかった数。
+    ///
+    /// 組むのは Python(TeX か matplotlib)です。**画面に出すためだけ**なので、
+    /// 文書が汚れた印は立てません — 保存で本文に入るのは原文の側です。
+    pub(crate) fn render_formulas(&mut self) -> usize {
+        let size = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+        let mut 組めない = 0usize;
+        let mut 組んだ = false;
+        for p in self.doc.paragraphs_mut() {
+            for im in p.images_new.iter_mut().chain(p.images.iter_mut()) {
+                let Some(tex) = im.tex.clone() else { continue };
+                if !im.bytes.is_empty() {
+                    continue;
+                }
+                match crate::py::kumu_suushiki(&tex, size) {
+                    Ok((bytes, w_mm, h_mm)) => {
+                        im.bytes = std::sync::Arc::new(bytes);
+                        im.w_mm = w_mm;
+                        im.h_mm = h_mm;
+                        組んだ = true;
+                    }
+                    Err(_) => 組めない += 1,
+                }
+            }
+        }
+        if 組んだ {
+            self.relayout_keep();
+        }
+        組めない
     }
 
     /// テンプレートを探して読む。**隣 → 置き場 → 同梱の既定**の順
@@ -2634,6 +2673,18 @@ impl Writer {
     /// ネイティブ文書として保存する(.adoc)。**意味だけを書く**
     pub(crate) fn save_adoc_to(&mut self, p: &std::path::Path) -> Result<(), String> {
         self.flush_target();
+        // **画像に径路を与えてから書きます。** adoc は画像を `image::径路[]` で
+        // 指すので、径路の無い画像(docx 由来・画面から挿した物)は書けません。
+        // 名前を付けて本文の隣に置きます
+        let 画像 = kumihan::adoc::assign_image_paths(&mut self.doc);
+        let dir = p.parent().unwrap_or(std::path::Path::new("."));
+        for (rel, bytes) in &画像 {
+            let to = dir.join(rel);
+            if let Some(d) = to.parent() {
+                std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+            }
+            std::fs::write(&to, bytes.as_slice()).map_err(|e| e.to_string())?;
+        }
         std::fs::write(p, kumihan::adoc::write(&self.doc)).map_err(|e| e.to_string())
     }
 

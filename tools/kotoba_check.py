@@ -26,6 +26,7 @@ TARGETS = [
     "README.md", "README.ja.md", "CLAUDE.md",
     "docs/*manual*.md", "docs/from-excel*.md", "docs/engine*.md",
     "docs/mac-signing.ja.md", "packaging/README.ja.md", "pysheet/README.md",
+    "sample/README.md",
 ]
 
 # 見ないもの(経緯を残す場所)

@@ -309,6 +309,29 @@ mod list_tests {
         assert_eq!(p.marker(2).as_deref(), Some("(3) "), "レベル2の番号の形が違う");
     }
 
+    /// **箇条書きの後の番号付きは1から。** 別のリストなので続けて数えない
+    /// (2026-08-18、見本を実機で開いて「3.」から始まっているのを見つけた)。
+    #[test]
+    fn 種類が変われば番号は振り出しに戻る() {
+        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("あ\nい\n一つ目\n二つ目");
+        for (i, kind) in [
+            (0usize, ListKind::Bullet),
+            (1, ListKind::Bullet),
+            (2, ListKind::Number),
+            (3, ListKind::Number),
+        ] {
+            if let Block::Para(p) = &mut d.blocks[i] {
+                p.list = kind;
+            }
+        }
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let texts: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
+        assert!(texts[2].starts_with("1."), "番号が1から始まらない: {:?}", texts);
+        assert!(texts[3].starts_with("2."), "2番目が違う: {:?}", texts);
+    }
+
     #[test]
     fn 深い番号は浅い番号が進むと振り出しに戻る() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();

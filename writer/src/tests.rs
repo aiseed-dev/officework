@@ -2433,6 +2433,36 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **adoc で保存すると、画像も隣に並ぶ。**
+    ///
+    /// adoc は画像を径路で指すので、径路を与えないと保存で絵が消えます
+    /// (画面から挿した画像は径路を持っていません)。
+    #[gpui::test]
+    fn adocで保存すると画像も隣に並ぶ(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-adocimg-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        let out = dir.join("絵入り.adoc");
+        w.update(cx, |this, _cx| {
+            let mut d = kumihan::Document::default();
+            let mut p = kumihan::Paragraph::default();
+            p.images_new.push(kumihan::InlineImage {
+                bytes: std::sync::Arc::new(vec![0x89, b'P', b'N', b'G', 9]),
+                w_mm: 30.0,
+                h_mm: 20.0,
+                tex: None,
+                src: None,
+            });
+            d.push_para(p);
+            this.set_doc(d);
+            this.save_adoc_to(&out).expect("保存できない");
+        });
+        let src = std::fs::read_to_string(&out).expect("adoc が無い");
+        assert!(src.contains("image::images/図1.png[]"), "画像が本文に出ていない:\n{src}");
+        assert!(dir.join("images/図1.png").is_file(), "画像のファイルが隣に無い");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// **HTML に書き出すと、画像も隣に並ぶ。**
     ///
     /// HTML は画像を相対の径路で参照するので、HTML だけ書いても絵が出ません

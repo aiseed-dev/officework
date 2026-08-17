@@ -428,6 +428,10 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     // 段落番号は「何番目の箇条書きか」で決まる。段落の位置ではない。
     // レベル(インデント)ごとに数え、浅い番号が進んだら深い数えは振り出しへ
     let mut counters: Vec<usize> = Vec::new();
+    // **段ごとの種類**(箇条書きか番号付きか)。種類が変われば別のリストなので
+    // 番号は1から振り直す。前は種類を見ていなかったので、箇条書き2つの後の
+    // 番号付きが「3.」から始まっていた(2026-08-18 に実機で見つけた)
+    let mut kinds: Vec<ListKind> = Vec::new();
     // 本文(段落を \n で繋いだもの)における、いまの段落の頭のバイト位置
     let mut para_byte0 = 0usize;
     let mut table_no = 0usize;
@@ -457,13 +461,20 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let marker = match para.list {
                     ListKind::None => {
                         counters.clear();
+                        kinds.clear();
                         None
                     }
                     _ => {
                         let l = para.indent as usize;
                         counters.truncate(l + 1);
+                        kinds.truncate(l + 1);
                         while counters.len() <= l {
                             counters.push(0);
+                            kinds.push(ListKind::None);
+                        }
+                        if kinds[l] != para.list {
+                            counters[l] = 0;
+                            kinds[l] = para.list;
                         }
                         counters[l] += 1;
                         para.marker(counters[l] - 1)

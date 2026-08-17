@@ -52,19 +52,14 @@ impl Ctx {
             }
             return s.clone();
         }
-        let path = format!("images/図{}.{}", self.assets.len() + 1, ext_of(&im.bytes));
+        // 名前の付け方は adoc の書き出しと同じ物を使います
+        let path = format!(
+            "images/図{}.{}",
+            self.assets.len() + 1,
+            crate::adoc::image_ext(&im.bytes)
+        );
         self.assets.push((path.clone(), im.bytes.clone()));
         path
-    }
-}
-
-/// 画像の中身から拡張子を見ます(先頭の数バイトで分かります)。
-fn ext_of(bytes: &[u8]) -> &'static str {
-    match bytes {
-        [0xFF, 0xD8, ..] => "jpg",
-        [b'G', b'I', b'F', ..] => "gif",
-        [b'R', b'I', b'F', b'F', ..] => "webp",
-        _ => "png",
     }
 }
 
@@ -169,6 +164,19 @@ fn runs_html(runs: &[Run], doc: &Document, ctx: &mut Ctx) -> String {
 fn imgs_html(p: &crate::doc::Paragraph, ctx: &mut Ctx) -> String {
     let mut o = String::new();
     for im in p.images_new.iter().chain(p.images.iter()) {
+        // **絵が無い数式は、原文をそのまま出します。** 空の img を出すと
+        // 壊れた画像の印が並ぶだけです(絵はまだ組んでいないだけなので)。
+        // 径路を持つ画像は、中身が無くてもファイルが隣にあるので出します
+        if im.bytes.is_empty() && im.src.is_none() {
+            if let Some(tex) = &im.tex {
+                o.push_str(&format!(
+                    "<span class=\"stem\" data-tex=\"{}\">{}</span>",
+                    esc(tex),
+                    esc(tex)
+                ));
+            }
+            continue;
+        }
         let src = ctx.asset(im);
         let size = format!(" style=\"width:{}mm;height:{}mm\"", im.w_mm, im.h_mm);
         match &im.tex {
