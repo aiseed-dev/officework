@@ -35,14 +35,27 @@ use crate::doc::{
 /// 移すのは distill の仕事)
 pub fn write(doc: &Document) -> String {
     let mut out = String::new();
+    // 頭(題名と属性)。**属性は読んだ順に返します** — 並べ替えると、
+    // 書いた人の差分が「全部変わった」に見えます
+    let mut head = String::new();
     if !doc.props.title.is_empty() {
-        out.push_str(&format!("= {}\n", doc.props.title));
-        if let Some(t) = &doc.template {
-            out.push_str(&format!(":template: {t}\n"));
+        head.push_str(&format!("= {}\n", doc.props.title));
+    }
+    let 名 = |k: &str| k == "template" || k == "テンプレート";
+    if let Some(t) = &doc.template {
+        if !doc.attrs.iter().any(|(k, _)| 名(k)) {
+            // このアプリが後から名前を付けた(読んだ字には無かった)
+            head.push_str(&format!(":template: {t}\n"));
         }
+    }
+    for (k, v) in &doc.attrs {
+        // テンプレートの名前は後から変わりうるので、いまの値で書きます
+        let v = if 名(k) { doc.template.clone().unwrap_or_else(|| v.clone()) } else { v.clone() };
+        head.push_str(&format!(":{k}: {v}\n"));
+    }
+    if !head.is_empty() {
+        out.push_str(&head);
         out.push('\n');
-    } else if let Some(t) = &doc.template {
-        out.push_str(&format!(":template: {t}\n\n"));
     }
     let mut quote_open = false;
     for (bi, b) in doc.blocks.iter().enumerate() {
@@ -535,14 +548,17 @@ pub fn parse(src: &str) -> Result<Document, String> {
         if !head_done {
             if let Some(rest) = l.strip_prefix(':') {
                 if let Some((k, v)) = rest.split_once(':') {
-                    match k.trim() {
-                        "template" | "テンプレート" => {
-                            doc.template = Some(v.trim().to_string());
-                            lines.next();
-                            continue;
-                        }
-                        other => return Err(format!("知らない属性 :{other}:(template)")),
+                    let (k, v) = (k.trim().to_string(), v.trim().to_string());
+                    // **知らない名前も捨てません。** AsciiDoc の文書は頭に
+                    // 属性を並べます(`:author:` `:revdate:` など)。捨てると、
+                    // 普通の AsciiDoc を開いて保存しただけで消えます
+                    // (2026-08-18。それまでは知らない名前で読むのをやめていました)
+                    if k == "template" || k == "テンプレート" {
+                        doc.template = Some(v.clone());
                     }
+                    doc.attrs.push((k, v));
+                    lines.next();
+                    continue;
                 }
             }
             if l.is_empty() {
@@ -1063,8 +1079,17 @@ mod tests {
         往復("[.注意書き]\nここは気をつける。\n\nふつうの段落。\n");
     }
 
+    /// **普通の AsciiDoc の文書が開ける。** 頭の属性(`:author:` など)は
+    /// AsciiDoc の作法で、知らない名前だからと読むのをやめては、ただの
+    /// AsciiDoc が開けないアプリになります(2026-08-18 に直しました)。
+    /// 知らない名前も**持ち越して往復します** — 開いて保存しただけで
+    /// 書いた人の字が消えないためです。
     #[test]
-    fn 知らない属性は黙らない() {
-        assert!(parse("= 題\n:謎の属性: 値\n\n本文。\n").is_err());
+    fn 知らない属性も持ち越して往復する() {
+        let src = "= 月次報告\n:author: 山田太郎\n:revdate: 2026-08-18\n:template: 社内標準\n\n                   == まとめ\n\n本文です。\n";
+        let d = parse(src).expect("普通の AsciiDoc が読めない");
+        assert_eq!(d.template.as_deref(), Some("社内標準"));
+        assert_eq!(d.attrs.len(), 3, "属性を落とした: {:?}", d.attrs);
+        assert_eq!(write(&d), src, "往復していない");
     }
 }

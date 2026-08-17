@@ -640,6 +640,14 @@ pub struct Document {
     /// 実体は文書の隣 → ~/.config/officework/templates/ → 同梱の既定、の順に
     /// 探す(探すのはアプリの側 — 模型は名前を運ぶだけ)。docx には出ない
     pub template: Option<String>,
+    /// **文書の頭の属性**(AsciiDoc の `:名前: 値`)。読んだ順に持ちます。
+    ///
+    /// AsciiDoc の文書は頭に属性を並べます(`:author:` `:revdate:` など)。
+    /// **知らない名前も捨てません** — 捨てると、普通の AsciiDoc を開いて
+    /// 保存しただけで持ち主の書いたことが消えます(anchors や sect_raw と
+    /// 同じ「理解はしないが捨てない」)。`template` はここにも入り、
+    /// [`Document::template`] からも引けます
+    pub attrs: Vec<(String, String)>,
     /// スタイル定義の**名乗りの一覧**(styles.xml から読んだ id・名前・種類)。
     /// 定義の本体は原文の styles.xml が持ち、保存で丸ごと持ち越される —
     /// ここは「どんなスタイルがあるか」を見せる写し(2026-08-12 発注者確定)
