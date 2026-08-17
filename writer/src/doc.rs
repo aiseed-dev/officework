@@ -2137,7 +2137,7 @@ impl Writer {
     /// テンプレートが持つ(SEKKEI「本文とテンプレートを分ける」)。
     pub(crate) fn open_adoc(&mut self, p: &std::path::Path, bytes: &[u8]) {
         let text = String::from_utf8_lossy(bytes).replace("\r\n", "\n");
-        let doc = match kumihan::adoc::parse(&text) {
+        let (doc, 帳簿) = match kumihan::adoc::parse_full(&text) {
             Ok(d) => d,
             Err(e) => {
                 // **読めない所は言う。** 黙って本文に化けさせない
@@ -2150,7 +2150,10 @@ impl Writer {
         self.track = false;
         self.track_base = None;
         self.encrypt_pw = None;
-        self.notes.clear();
+        // **うちが扱わない AsciiDoc の書き方は、帳簿に出します。**
+        // 字は本文として残りますが意味は落ちています。黙って化けさせると、
+        // 書いた人は出来上がりを見るまで気づけません(2026-08-18)
+        self.notes = 帳簿.iter().map(|n| SharedString::from(n.clone())).collect();
         self.native = true;
         let (tmpl, tmpl_path, 言い分) = self.load_template(doc.template.as_deref(), p);
         self.tmpl = tmpl;
@@ -2174,6 +2177,10 @@ impl Writer {
         if 組めない > 0 {
             self.status =
                 ui::tf!("{}(数式 {} 個が組めませんでした)", self.status.clone(), 組めない).into();
+        }
+        if !帳簿.is_empty() {
+            self.status = ui::tf!("{} — うちで扱わない書き方があります: {}",
+                                  self.status.clone(), 帳簿.join("・")).into();
         }
     }
 

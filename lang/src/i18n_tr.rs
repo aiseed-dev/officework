@@ -36,6 +36,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました", "adoc biçimine dönüştürüldü — {} biçim şablona, {} paragraf metne taşındı"),
     ("adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました。段落ごとの書式に収まらない {} 箇所は落ちました(強調や脚注は残っています)", "adoc biçimine dönüştürüldü — {} biçim şablona, {} paragraf metne taşındı. Paragraf biçimine sığmayan {} yer kayboldu (vurgu ve dipnotlar kaldı)"),
     ("{} — 本文は adoc、書式は{}", "{} — metin adoc; biçim {} kaynaklı"),
+    ("{} — うちで扱わない書き方があります: {}", "{} — işlemediğimiz biçimlendirme var: {}"),
     ("{} に保存しました。このフォルダの書式({})を使います", "{} konumuna kaydedildi. Bu klasörün biçimini ({}) kullanıyor"),
     ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Bu klasörün biçimi {} konumunda oluşturuldu. Aynı klasördeki belgeler bunu kullanır"),
     ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "uygulamayla gelen varsayılan (bu klasördeki {} dosyasını kullanmak için adını {} yapın ya da metnin başına :template: yazın)"),

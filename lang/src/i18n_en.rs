@@ -39,6 +39,7 @@ pub const TABLE: &[(&str, &str)] = &[
 ("adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました", "Converted to adoc — {} formats moved into the template, {} paragraphs into the text"),
 ("adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました。段落ごとの書式に収まらない {} 箇所は落ちました(強調や脚注は残っています)", "Converted to adoc — {} formats moved into the template, {} paragraphs into the text. {} spots that did not fit a per-paragraph format were dropped (emphasis and footnotes stayed)"),
 ("{} — 本文は adoc、書式は{}", "{} — the text is adoc; the formatting comes from {}"),
+("{} — うちで扱わない書き方があります: {}", "{} — it uses markup we do not handle: {}"),
 ("{} に保存しました。このフォルダの書式({})を使います", "Saved to {}. It uses this folder's format ({})"),
 ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Created this folder's format at {}. Documents in the same folder will use it"),
 ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "the built-in default (to use {} in this folder, rename it to {} or put :template: at the top of the text)"),

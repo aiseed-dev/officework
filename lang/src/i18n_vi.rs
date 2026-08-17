@@ -36,6 +36,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました", "Đã chuyển sang adoc — {} định dạng vào mẫu, {} đoạn vào nội dung"),
     ("adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました。段落ごとの書式に収まらない {} 箇所は落ちました(強調や脚注は残っています)", "Đã chuyển sang adoc — {} định dạng vào mẫu, {} đoạn vào nội dung. {} chỗ không vừa với định dạng theo đoạn đã mất (nhấn mạnh và cước chú vẫn còn)"),
     ("{} — 本文は adoc、書式は{}", "{} — nội dung là adoc; định dạng đến từ {}"),
+    ("{} — うちで扱わない書き方があります: {}", "{} — có cú pháp chúng tôi không xử lý: {}"),
     ("{} に保存しました。このフォルダの書式({})を使います", "Đã lưu vào {}. Dùng định dạng của thư mục này ({})"),
     ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Đã tạo định dạng của thư mục này tại {}. Các tài liệu cùng thư mục sẽ dùng nó"),
     ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "mặc định đi kèm (muốn dùng {} trong thư mục này, hãy đổi tên thành {} hoặc viết :template: ở đầu nội dung)"),

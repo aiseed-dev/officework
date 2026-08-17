@@ -2023,6 +2023,47 @@ mod indent_tests {
 }
 
 #[cfg(test)]
+mod adoc_notes_tests {
+    use crate::adoc;
+
+    /// **本家にあってうちに無い書き方は、帳簿に出す。**
+    ///
+    /// 字は本文として残りますが、意味は落ちています。2026-08-18 まで8つ試して
+    /// 8つとも黙って本文に化けていました(手引きには「読めないと言う」と
+    /// 書いてあったので、文書のほうが嘘でした)。
+    #[test]
+    fn 扱わない書き方を帳簿に出す() {
+        for (何, src) in [
+            ("註記", "NOTE: 気をつけて。\n"),
+            ("コードの塊", "----\nlet x = 1;\n----\n"),
+            ("塊の題", ".表の題\n\nふつうの段落。\n"),
+            ("説明のリスト", "用語:: 説明\n"),
+            ("取り込み", "include::別の.adoc[]\n"),
+            ("属性の参照", "宛名は {宛名} です。\n"),
+            ("深い見出し", "===== 見出し4\n"),
+            ("チェックの箇条書き", "* [x] 済み\n"),
+        ] {
+            let (_, notes) = adoc::parse_full(src).expect("読めない");
+            assert!(!notes.is_empty(), "{何}を黙って本文に化けさせた");
+        }
+    }
+
+    /// **うちの書き方では帳簿に何も出ない。** 毎回出ると、本当に落ちたときに
+    /// 気づけなくなります。
+    #[test]
+    fn うちの書き方では帳簿が空() {
+        let src = "= 題\n:template: 型\n\n== 見出し\n\n本文と*強調*。\
+                   ruby:漢字[かんじ]。footnote:[注]\n\n* あ\n* い\n\n\
+                   . 一\n. 二\n\n____\n引用。\n____\n\n<<<\n\n\
+                   |===\n2+|見出し\n|あ |い\n|===\n\nstem:[x^2]\n\n\
+                   image::images/図1.png[]\n\nfield:名前[お名前]\n\n\
+                   宛名は {{宛名}} です。\n";
+        let (_, notes) = adoc::parse_full(src).expect("読めない");
+        assert!(notes.is_empty(), "うちの書き方で帳簿が出た: {notes:?}");
+    }
+}
+
+#[cfg(test)]
 mod adoc_dropped_tests {
     use crate::adoc;
     use crate::doc::{CharFormat, Document, Paragraph, Run};

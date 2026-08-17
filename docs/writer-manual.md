@@ -2,9 +2,22 @@
 
 *日本語版(secondary): [writer-manual.ja.md](writer-manual.ja.md)*
 
-A word processor that opens, edits, and saves docx. It exports PDF and can read
-JavaScript-free HTML as a document. **Ribbon: 118/118 — every button works
-(zero grayed out).**
+**An AsciiDoc processor.** It parses your source (.adoc) into a structured
+document and hands it to a converter per destination — screen, PDF, HTML, docx.
+The screen is one of those converters, so you can write on paper or in a plain
+flowing view.
+
+It handles **a subset of AsciiDoc**. What that subset is fills 27 rows in "What to
+write, which button, what comes out" below. Ruby and form fields are our own
+extensions.
+
+Markup outside that subset (admonitions `NOTE:`, delimited blocks `----`,
+`include::`, attribute references `{name}` and so on) **stays in the text as
+characters, but its meaning is lost**. Whatever was lost is listed in the status
+bar and the report when the file is opened, so it never goes out unnoticed.
+
+docx still opens, edits and saves as before — **docx is now one of the
+converters**. **Ribbon: 118/118 — every button works (zero grayed out).**
 
 Three promises:
 

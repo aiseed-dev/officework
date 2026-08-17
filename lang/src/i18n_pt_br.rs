@@ -36,6 +36,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました", "Convertido para adoc — {} formatações para o modelo, {} parágrafos para o texto"),
     ("adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました。段落ごとの書式に収まらない {} 箇所は落ちました(強調や脚注は残っています)", "Convertido para adoc — {} formatações para o modelo, {} parágrafos para o texto. {} pontos que não cabiam em uma formatação de parágrafo se perderam (ênfase e notas ficaram)"),
     ("{} — 本文は adoc、書式は{}", "{} — o texto é adoc; a formatação vem de {}"),
+    ("{} — うちで扱わない書き方があります: {}", "{} — usa marcação que não tratamos: {}"),
     ("{} に保存しました。このフォルダの書式({})を使います", "Salvo em {}. Usa o formato desta pasta ({})"),
     ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Formato desta pasta criado em {}. Os documentos da mesma pasta vão usá-lo"),
     ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "o padrão incluído (para usar {} nesta pasta, renomeie para {} ou escreva :template: no início do texto)"),

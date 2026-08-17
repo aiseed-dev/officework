@@ -21,6 +21,16 @@
 //!   意味だけの本文に書けます。アプリの形(HTML の form)で書き出す土台
 //! - ペン・変更履歴は**ここに無い** — 互換モード(docx)の機能
 //!   (SEKKEI の決め。歴史とコメントは git)
+//!
+//! # 扱わない書き方は帳簿に出す
+//!
+//! 本家の AsciiDoc には、うちが扱わない書き方がたくさんあります(註記・
+//! コードの塊・取り込み・属性の参照など)。それらは**字としては本文に残り、
+//! 意味は落ちます**。[`parse_full`] が落ちた物の一覧を返し、writer が画面に
+//! 出します。**2026-08-18 まで黙って化けていました** — この註の上のほうに
+//! 「知らない書き方は Err で言う」と書いてありましたが、8つ試して8つとも
+//! 黙って本文になっていました。書いてあることと実物が違っていたので、
+//! 実物のほうを直しました
 
 use crate::doc::{
     Block, Cellbox, CharFormat, Document, Footnote, FootnoteRef, InlineImage, ListKind,
@@ -525,9 +535,72 @@ pub fn dropped(doc: &Document) -> Vec<&'static str> {
 
 // ---- 読み ------------------------------------------------------------------
 
+/// **本家の AsciiDoc にはあるが、うちが扱わない書き方。** 見つけたら名前を返す。
+///
+/// 字は本文として残しますが、意味は落ちています。落ちたことを言うためだけの
+/// 判定なので、**確かに本家の書き方だと分かる形だけ**を見ます(迷う形は
+/// 見ません — 普通の日本語の文を「読めなかった」と言うほうが害が大きい)。
+fn 本家だけの書き方(l: &str) -> Option<&'static str> {
+    let t = l.trim_start();
+    for 印 in ["NOTE: ", "TIP: ", "IMPORTANT: ", "WARNING: ", "CAUTION: "] {
+        if t.starts_with(印) {
+            return Some("註記(NOTE: など)");
+        }
+    }
+    // 塊の区切り。4つ以上の同じ記号だけの行
+    for 印 in ['-', '.', '*', '_', '='] {
+        if t.len() >= 4 && t.chars().all(|c| c == 印) && 印 != '_' {
+            return Some("塊の区切り(---- など)");
+        }
+    }
+    if t.starts_with("include::") {
+        return Some("取り込み(include::)");
+    }
+    if t.starts_with("=====") {
+        return Some("4段より深い見出し");
+    }
+    if t.starts_with("* [x]") || t.starts_with("* [ ]") || t.starts_with("- [x]") {
+        return Some("チェックの箇条書き");
+    }
+    // 説明のリスト(用語:: 説明)。マクロ(名前:的[…])と紛れないよう `:: ` を見る
+    if let Some(i) = t.find(":: ") {
+        if i > 0 && !t[..i].contains(' ') && !t[..i].contains('[') {
+            return Some("説明のリスト(用語:: 説明)");
+        }
+    }
+    // 塊の題(.題)。箇条書きの `. ` とは違う
+    if t.starts_with('.') && !t.starts_with(". ") && t.len() > 1 && !t.starts_with("..") {
+        return Some("塊の題(.題)");
+    }
+    // 属性の参照 {名前}。うちの差し込みは {{名前}} なので、二重は数えない
+    let b = t.as_bytes();
+    for (i, c) in t.char_indices() {
+        // **うちの差し込みは `{{名前}}`** なので、二重の中括弧は数えない
+        let 二重 = b.get(i + 1) == Some(&b'{') || (i > 0 && b[i - 1] == b'{');
+        if c == '{' && !二重 && t[i..].contains('}') {
+            return Some("属性の参照({名前})");
+        }
+    }
+    None
+}
+
+
 /// AsciiDoc(部分集合)→ 模型。**意味だけが入る** — 見た目の欄は触らない。
-/// 知らない書き方は Err で言う(黙って本文に化けると気づけない)
+/// 形が壊れていれば Err、うちが扱わない書き方は [`parse_full`] の帳簿に出る
 pub fn parse(src: &str) -> Result<Document, String> {
+    parse_full(src).map(|(d, _)| d)
+}
+
+/// AsciiDoc(部分集合)→ (模型, 帳簿)。
+///
+/// **帳簿は「読めたけれど、うちの書き方ではないもの」の一覧です。**
+/// 本家の AsciiDoc には、うちが扱わない書き方がたくさんあります(註記・
+/// コードの塊・取り込みなど)。それらは字としては残りますが、**意味は
+/// 落ちています**。黙って本文に化けさせると、書いた人は出来上がりを見るまで
+/// 気づけません(2026-08-18。それまで8つ試して8つとも黙って化けていました)。
+pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
+    let mut 帳簿: std::collections::BTreeMap<&'static str, usize> =
+        std::collections::BTreeMap::new();
     let mut doc = Document::default();
     let mut lines = src.lines().enumerate().peekable();
     let mut pending_bookmarks: Vec<String> = Vec::new();
@@ -575,6 +648,9 @@ pub fn parse(src: &str) -> Result<Document, String> {
         let l = line.trim_end();
         if l.is_empty() {
             continue;
+        }
+        if let Some(何) = 本家だけの書き方(l) {
+            *帳簿.entry(何).or_default() += 1;
         }
         if l == "____" {
             in_quote = !in_quote;
@@ -665,7 +741,11 @@ pub fn parse(src: &str) -> Result<Document, String> {
         p.runs = parse_inline(body, &mut doc, &mut fresh_note)?;
         doc.blocks.push(Block::Para(p));
     }
-    Ok(doc)
+    let 帳簿 = 帳簿
+        .into_iter()
+        .map(|(k, n)| if n > 1 { format!("{k} × {n}") } else { k.to_string() })
+        .collect();
+    Ok((doc, 帳簿))
 }
 
 fn base_para(
