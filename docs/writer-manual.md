@@ -507,8 +507,16 @@ name is what the receiving side sees.
 
 ### The template (where the look lives)
 
-`:template: house-style` looks for `house-style.toml` **next to the document →
-`~/.config/officework/templates/` → the built-in default**.
+Put **one format file per folder**. Documents in that folder use it without
+naming it.
+
+| How | What you write | What is used |
+|---|---|---|
+| One per folder (usual) | nothing | `テンプレート.toml` in the same folder |
+| Per document | `:template: house-style` at the top | `house-style.toml`, looked for **next to the document → `~/.config/officework/templates/`** |
+
+**What is written wins**, so a `:template:` line takes precedence. With neither,
+the built-in default is used.
 
 ```toml
 [文書]

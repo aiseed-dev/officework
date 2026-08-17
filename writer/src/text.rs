@@ -921,29 +921,9 @@ impl Writer {
     }
 
     /// 書式を触ったあとの組み直し。**本文を戻さない**
-    /// (戻すと今つけた書式が消える)。
+    /// (戻すと今つけた書式が消える)。中身は [`Writer::lay`] と同じです。
     pub(crate) fn relayout_keep(&mut self) {
-        let m = Metrics::new(&self.font_bytes).expect("フォント");
-        let y0 = self.pg.top_mm + 4.0;
-        if self.doc.vertical {
-            // 縦書き: 行長 = 紙の縦の使い幅で組み、右からの列へ写す(K4)
-            let measure =
-                (self.pg.h_mm - self.pg.top_mm - self.pg.bottom_mm - 8.0).max(20.0);
-            self.page = layout(
-                &self.doc,
-                &m,
-                &Frame { measure_mm: measure, line_height_mm: LINE_MM, y0_mm: y0 },
-            );
-            kumihan::fold_vertical(&mut self.page, &self.pg, y0, LINE_MM);
-        } else {
-            self.page = layout(
-                &self.doc,
-                &m,
-                &Frame { measure_mm: self.pg.column_measure_mm(), line_height_mm: LINE_MM, y0_mm: y0 },
-            );
-            kumihan::fold_columns(&mut self.page, &self.pg, y0);
-        }
-        self.refresh_hf();
+        self.lay();
     }
 
     /// クリックした画素位置(編集領域からの相対)にカーソルを置く。

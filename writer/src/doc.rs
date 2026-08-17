@@ -518,6 +518,17 @@ impl Writer {
 
     pub(crate) fn relayout(&mut self) {
         self.flush_target();
+        self.lay();
+    }
+
+    /// **組み直しの本体。** 合成も組み方の3値もここにしかありません。
+    ///
+    /// [`relayout`](Self::relayout) との違いは、編集中の字を本文へ戻すかどうか
+    /// だけです。前は組み直しが2箇所にあり、片方(`relayout_keep`)が
+    /// **テンプレートを合成していませんでした** — 書式を触った直後や、数式を
+    /// 組んだ直後だけ、色や書体が消えた紙面になっていました(2026-08-18 に
+    /// 見本を実機で見て気づきました)。
+    pub(crate) fn lay(&mut self) {
         // 字の寸法は **Arc の写しの上**で持つ — 組みの本体(lay_once)は
         // self を書くので、self を借りたままにできない
         let fb = self.font_bytes.clone();
@@ -2194,15 +2205,54 @@ impl Writer {
         組めない
     }
 
-    /// テンプレートを探して読む。**隣 → 置き場 → 同梱の既定**の順
-    /// (名前は文書の頭の `:template:`)。返りは(テンプレート, 言い分)
-    /// 返りは(テンプレート, 読んだ場所, 言い分)。場所が None なら同梱の既定。
+    /// **フォルダの書式のファイルの名前。**
+    ///
+    /// 発注者 2026-08-18「原則は、ディレクトリーの書式用のファイルをひとつ
+    /// おく。それがテンプレート」。名前を書かなくても、同じフォルダにこの
+    /// ファイルがあれば、そのフォルダの文書はこれを使います。
+    pub(crate) const FOLDER_TEMPLATE: &'static str = "テンプレート.toml";
+
+    /// テンプレートを探して読む。返りは(テンプレート, 読んだ場所, 言い分)。
+    /// 場所が None なら同梱の既定です。
+    ///
+    /// 探す順:
+    ///
+    /// 1. 本文の頭に `:template: 名前` があれば、その名前で **隣 → 置き場**
+    /// 2. 名前が無ければ、**同じフォルダの `テンプレート.toml`**
+    /// 3. どちらも無ければ同梱の既定
+    ///
+    /// 1が2より先なのは、**書いてあることが決まりより強い**からです。
     fn load_template(
         &self,
         name: Option<&str>,
         doc_path: &std::path::Path,
     ) -> (kumihan::theme::Theme, Option<PathBuf>, String) {
         let Some(name) = name else {
+            // 名指しが無いときは、フォルダの書式のファイルを使います
+            if let Some(dir) = doc_path.parent() {
+                let at = dir.join(Self::FOLDER_TEMPLATE);
+                if let Ok(src) = std::fs::read_to_string(&at) {
+                    return match kumihan::theme::parse(&src) {
+                        Ok(th) => (th, Some(at.clone()), at.display().to_string()),
+                        Err(e) => (
+                            kumihan::theme::default_theme(),
+                            None,
+                            ui::tf!("{} が読めないので同梱の既定({})", at.display().to_string(), e)
+                                .to_string(),
+                        ),
+                    };
+                }
+                // **書式のファイルらしい物があるのに名前が違うときは言います。**
+                // 黙って既定で開くと、置いた人は「効かない」としか分かりません
+                if let Some(他) = 他の型(dir) {
+                    return (
+                        kumihan::theme::default_theme(),
+                        None,
+                        ui::tf!("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)",
+                                他, Self::FOLDER_TEMPLATE).to_string(),
+                    );
+                }
+            }
             return (kumihan::theme::default_theme(), None, ui::t!("同梱の既定").to_string());
         };
         let mut cands = Vec::new();
@@ -2229,6 +2279,27 @@ impl Writer {
             None,
             ui::tf!("テンプレート「{}」が見つからないので同梱の既定", name).to_string(),
         )
+    }
+
+    /// 保存した先のフォルダに書式のファイルがあれば着る。返りは着た場所。
+    ///
+    /// **名指し(`:template:`)がある文書は触りません。** 書いてあることが
+    /// 決まりより強い、という順番は読むときと同じです。
+    fn adopt_folder_template(&mut self, doc_path: &std::path::Path) -> Option<String> {
+        if self.doc.template.is_some() {
+            return None;
+        }
+        let at = doc_path.parent()?.join(Self::FOLDER_TEMPLATE);
+        if self.tmpl_path.as_deref() == Some(at.as_path()) {
+            return None; // もう着ている
+        }
+        let src = std::fs::read_to_string(&at).ok()?;
+        let th = kumihan::theme::parse(&src).ok()?;
+        self.tmpl = th;
+        self.tmpl_path = Some(at.clone());
+        self.pg = self.tmpl.page.unwrap_or(self.pg);
+        self.relayout_keep();
+        Some(at.display().to_string())
     }
 
     /// **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
@@ -2666,16 +2737,19 @@ impl Writer {
     /// 言います**。黙って分かれると、配り主が元を直しても、この文書だけ
     /// 古いままになります。
     fn save_template(&mut self) -> String {
-        let Some(name) = self.doc.template.clone() else {
-            // 名指しが無い = 同梱の既定を着ている。**既定は書き換えない** —
-            // 他の文書まで巻き添えになる
-            return ui::t!("この文書だけ。テンプレートに残すには :template: で名前を付けてください")
-                .to_string();
-        };
         let Some(dir) = self.path.as_ref().and_then(|p| p.parent()) else {
             return ui::t!("文書がまだファイルになっていないので、テンプレートは書けません").to_string();
         };
-        let at = dir.join(format!("{name}.toml"));
+        // 書き先。名指しがあればその名前、無ければ**フォルダの書式のファイル**
+        // (発注者 2026-08-18「ディレクトリーの書式用のファイルをひとつおく。
+        // それがテンプレート」)
+        let at = match self.doc.template.clone() {
+            Some(name) => dir.join(format!("{name}.toml")),
+            None => dir.join(Self::FOLDER_TEMPLATE),
+        };
+        // フォルダの書式を**新しく作る**ときは、そう言います。このフォルダの
+        // 他の文書にも効くので、黙って作ると驚かせます
+        let 新しく作る = self.doc.template.is_none() && !at.exists();
         // 元が隣の同じファイルなら「直した」、別の場所(または同梱の既定)なら
         // 「この文書だけの写しを作った」
         let 配られた = match &self.tmpl_path {
@@ -2687,13 +2761,18 @@ impl Writer {
             Ok(()) => {
                 let 元 = 配られた;
                 self.tmpl_path = Some(at.clone());
-                match 元 {
-                    Some(from) => ui::tf!(
+                match (新しく作る, 元) {
+                    (true, _) => ui::tf!(
+                        "このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います",
+                        at.display().to_string()
+                    )
+                    .to_string(),
+                    (false, Some(from)) => ui::tf!(
                         "この文書だけの写しを {} に作りました。配られた {} は変えていません",
                         at.display().to_string(), from
                     )
                     .to_string(),
-                    None => ui::tf!("{} に書きました", at.display().to_string()).to_string(),
+                    (false, None) => ui::tf!("{} に書きました", at.display().to_string()).to_string(),
                 }
             }
             Err(e) => ui::tf!("テンプレートが書けません: {}", e).to_string(),
@@ -2825,8 +2904,14 @@ impl Writer {
                     self.path = Some(p.clone());
                     self.native = true;
                     self.dirty = false;
+                    // **保存した先のフォルダに書式のファイルがあれば、それを着ます。**
+                    // フォルダの書式はそのフォルダの文書に効く、という決まりなので、
+                    // 入れた文書だけ違う見た目のままだと辻褄が合いません
+                    let 着替えた = self.adopt_folder_template(&p);
                     let 名 = p.file_name().unwrap_or_default().to_string_lossy().to_string();
-                    self.status = if 落ちる.is_empty() {
+                    self.status = if let Some(at) = 着替えた {
+                        ui::tf!("{} に保存しました。このフォルダの書式({})を使います", 名, at).into()
+                    } else if 落ちる.is_empty() {
                         ui::tf!("{} に保存しました(本文だけ — 書式はテンプレートの側)", 名).into()
                     } else {
                         // **黙って捨てません。** adoc は意味だけを持つので、
@@ -2904,4 +2989,24 @@ impl Writer {
         }
     }
 
+}
+
+/// フォルダの中の、書式のファイルらしい物(.toml)を1つ返す。
+///
+/// 名前が `テンプレート.toml` でないものを見つけるためだけに使います。
+/// 2つ以上あればどれとも決められないので None を返します。
+fn 他の型(dir: &std::path::Path) -> Option<String> {
+    let mut hit = None;
+    for e in std::fs::read_dir(dir).ok()?.flatten() {
+        let p = e.path();
+        if p.extension().and_then(|x| x.to_str()) != Some("toml") {
+            continue;
+        }
+        let name = p.file_name()?.to_string_lossy().to_string();
+        if hit.is_some() {
+            return None; // 2つ以上ある — 選べない
+        }
+        hit = Some(name);
+    }
+    hit
 }

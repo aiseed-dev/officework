@@ -2412,6 +2412,54 @@ mod marker_tests {
         });
     }
 
+    /// **フォルダに書式のファイルを1つ置けば、そのフォルダの文書が使う。**
+    ///
+    /// 発注者 2026-08-18「原則は、ディレクトリーの書式用のファイルをひとつ
+    /// おく。それがテンプレート」。本文に `:template:` と書かなくても効きます。
+    #[gpui::test]
+    fn フォルダの書式のファイルを使う(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-folder-tmpl-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(
+            dir.join("テンプレート.toml"),
+            "[スタイル.見出し1]\n大きさ = 30\n",
+        )
+        .unwrap();
+        let doc = dir.join("案内.adoc");
+        std::fs::write(&doc, "== 見出し\n\n本文。\n").unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(doc.clone());
+            // 名指しは無いのに、フォルダの書式が効いている
+            assert_eq!(this.doc.template, None, "本文が名前を持ってしまった");
+            let c = kumihan::theme::compose(&this.doc, &this.tmpl);
+            let ps: Vec<_> = c.paragraphs().collect();
+            assert_eq!(ps[0].runs[0].size_pt, Some(30.0), "フォルダの書式が効いていない");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **名指しがあれば、そちらが勝つ。** 書いてあることが決まりより強い。
+    #[gpui::test]
+    fn 名指しはフォルダの書式より強い(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-tmpl-win-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("テンプレート.toml"), "[スタイル.見出し1]\n大きさ = 30\n").unwrap();
+        std::fs::write(dir.join("特別.toml"), "[スタイル.見出し1]\n大きさ = 40\n").unwrap();
+        let doc = dir.join("案内.adoc");
+        std::fs::write(&doc, ":template: 特別\n\n== 見出し\n\n本文。\n").unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(doc.clone());
+            let c = kumihan::theme::compose(&this.doc, &this.tmpl);
+            let ps: Vec<_> = c.paragraphs().collect();
+            assert_eq!(ps[0].runs[0].size_pt, Some(40.0), "名指しが負けた");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// 合成は**写しの上**で行う — 紙面には見出しの大きさが乗るが、
     /// 保存される意味の側は無指定のまま
     #[gpui::test]
