@@ -216,9 +216,18 @@ impl Writer {
         match path {
             Some(p) => w.open(p),
             None => {
+                // **新しい文書は adoc 形式で始めます**(2026-08-17 発注者
+                // 「構造が不明確というのが docx の基本的な問題でしょう。
+                // もう、adoc からはじめましょう」)。
+                //
+                // docx は本文と書式が混ざるので、後から機械で構造を拾い直す
+                // ことになります。最初から分けて書けば、その作業が要りません。
+                // 受け取った docx は今までどおり開けます。
+                w.native = true;
+                w.tmpl = kumihan::theme::default_theme();
                 w.set_doc(Document::plain(
                     "ここに打てます。日本語入力(IME)もそのまま使えます。\n\
-                     Ctrl+S で docx として保存、Ctrl+O で開く。マクロはありません。",
+                     Ctrl+S で保存、Ctrl+O で開く。書式は名前を付けて使います。",
                 ));
                 w.dirty = false;
             }
@@ -1116,7 +1125,10 @@ impl Writer {
             let _ = this.update(cx, |this, cx| {
                 if let Some(mut p) = r {
                     if p.extension().is_none() {
-                        p.set_extension("docx");
+                        // **拡張子を書かなければ、いまの形式のまま。**
+                        // adoc で書いていたのに docx で保存されると、書式が
+                        // 本文に焼き付いて元に戻せません
+                        p.set_extension(if this.native { "adoc" } else { "docx" });
                     }
                     this.save_to(p);
                 }
@@ -1448,6 +1460,7 @@ impl Writer {
     /// 効く(HTML 書き出しは作らない — 互換は書式の境界で守る)。
     /// JS は実行しない。理解しない要素は帳簿へ。文字コードは UTF-8 → CP932
     pub(crate) fn open_html(&mut self, p: &std::path::Path, bytes: &[u8]) {
+        self.native = false; // docx と同じ扱いに戻す(上の open_plain の註)
         let text = match std::str::from_utf8(bytes) {
             Ok(t) => t.to_string(),
             Err(_) => {
@@ -2062,6 +2075,7 @@ impl Writer {
     /// 平文(zip)の docx を読み込む。open と pw_commit の共通の続き
     /// 素の文字を開く(1行 = 1段落)。等幅の書体にして、字下げが読めるように
     pub(crate) fn open_text(&mut self, p: &std::path::Path, bytes: &[u8]) {
+        self.native = false; // docx と同じ扱いに戻す(上の open_plain の註)
         // UTF-8 として読む(.py は UTF-8 が既定 — PEP 263)。読めない字は
         // 置き換えの記号にする。**黙って開かないより、開いて見せてから直す**
         let text = String::from_utf8_lossy(bytes).into_owned();
@@ -2634,6 +2648,11 @@ impl Writer {
 
     pub(crate) fn open_plain(&mut self, p: PathBuf, bytes: Vec<u8>) {
         self.target = Target::Body;
+        // **docx を開いたら docx の扱いに戻します。** 新しい文書は adoc 形式で
+        // 始まるので、ここで戻さないと docx を開いても adoc のままになり、
+        // 保存で書式が本文から消えます(2026-08-17、adoc から始める形にして
+        // 見つかった)
+        self.native = false;
         // 前の文書のパネルが残っていると、打鍵が新しい文書のヘッダーを潰す
         self.hf_edit = None;
         self.track = false;

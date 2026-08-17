@@ -210,6 +210,9 @@ mod menu_run_tests {
     fn 主なボタンは文書を実際に変える(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         let fresh = |this: &mut Writer| {
+            // **docx を開いた状態で見ます。** adoc 形式では見た目のボタンが
+            // スタイルの面へ案内するので、直に掛かるかを見るのはこちら
+            this.native = false;
             this.set_doc(Document::plain("あいうえお\nかきくけこ"));
             this.ed.move_to(0, false);
             this.ed.move_to(15, true); // 1段落目を選ぶ
@@ -1428,6 +1431,11 @@ mod undo_coverage_tests {
     /// 控えを取らない約束なので、閉じ忘れると「戻せない」が全部に伝染する
     /// (最初これで 33 件が偽の赤になった)
     fn 仕切り直す(this: &mut Writer) {
+        // **docx を開いた状態で見ます。** adoc 形式では見た目のボタンが
+        // スタイルの面へ案内するだけで文書を変えないので、戻せるかを見るのは
+        // こちら(2026-08-17、新規を adoc にしたときに合わせた)
+        this.native = false;
+        this.rp_open = false;
         this.doc = Document::plain("あいうえお\nかきくけこ");
         this.ed = Editor::new(&this.doc.body_text());
         this.pg = Default::default();
@@ -1787,6 +1795,8 @@ mod marker_tests {
         // そのまま効く
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
+            // 一覧は docx のときに開く(adoc ではスタイルの面へ案内する)
+            this.native = false;
             this.set_doc(Document::plain("本文の字。"));
             this.ed.select_all();
             this.run_cmd("fontsize", cx);
@@ -2368,14 +2378,37 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **新しい文書は adoc 形式で始まる**(2026-08-17 発注者「もう、adoc から
+    /// はじめましょう」)。docx は本文と書式が混ざるので、後から機械で構造を
+    /// 拾い直すことになります。
+    #[gpui::test]
+    fn 新しい文書はadoc形式(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            assert!(this.native, "新規が docx になっている");
+            // 書式は本文に入らず、テンプレートの側にある
+            assert!(!this.tmpl.styles.is_empty(), "テンプレートが空");
+            for p in this.doc.paragraphs() {
+                for r in &p.runs {
+                    assert_eq!(r.size_pt, None, "本文に大きさが焼き付いている");
+                }
+            }
+            // 見た目のボタンは右のスタイルへ案内する(docx とは違う扱い)
+            this.run_cmd("underline", cx);
+            assert!(this.rp_open && this.rp_tab == 2, "スタイルの面が開かない");
+        });
+    }
+
     /// 互換(docx)では今までどおり直に掛かる — 封じるのはネイティブだけ
     #[gpui::test]
     fn 互換の文書では直接書式が今までどおり効く(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
-            assert!(!this.native, "新規は互換のはず");
+            // 新規は adoc 形式なので、docx を開いた状態を作る
+            this.native = false;
             this.run_cmd("incfont", cx);
-            assert!(this.style_new.is_none(), "互換で誘導が出た");
+            assert!(this.style_new.is_none(), "docx で誘導が出た");
+            assert!(!this.rp_open, "docx でスタイルの面が開いた");
         });
     }
 
