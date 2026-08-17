@@ -4,6 +4,11 @@ version = "0.1.0-alpha"
 edition.workspace = true
 license.workspace = true
 
+# Windows の .exe に絵を焼くためだけ(build.rs)。
+# **他の的では何もしない** — Linux と macOS の組み立てには触らない
+[build-dependencies]
+winresource = "0.1"
+
 [dependencies]
 sheet = { path = "../sheet" }
 pyrun = { path = "../pyrun" }

@@ -99,7 +99,7 @@ jobs:
           path: "packaging/out/*.dmg"
 
   windows:
-    name: Windows(zip)
+    name: Windows(setup.exe)
     if: ${{ !inputs.mac_only }}
     runs-on: windows-latest
     steps:
@@ -109,14 +109,15 @@ jobs:
       - name: 組む
         # 2026-08-17 から **ci.yml の apps でも Windows を組んでいる**ので、
         # ここはもう初見ではない(それまでは「タグを押して初めて試される」
-        # 状態だった — アルファの棚卸しで見つけて的に足した)
+        # 状態だった — アルファの棚卸しで見つけて的に足した)。
+        # .exe への絵の焼き込みは build.rs(winresource)がやる
         run: cargo build --release -p calc -p writer
-      - name: 包む
-        # .msi はこれから(WiX の工事)。まず zip で試せる形にする
+      - name: 中身をそろえる
         shell: bash
         run: |
           VER=$(grep -m1 '^version' calc/Cargo.toml | cut -d'"' -f2)
-          D="officework-$VER-windows-x86_64"
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          D="packaging/out/windows"
           mkdir -p "$D"
           cp target/release/calc.exe target/release/writer.exe "$D/"
           curl -fsSL -o py.tar.gz \
@@ -125,15 +126,22 @@ jobs:
           "$D/python/python.exe" -m pip install --quiet officework || true
           cp -r sample/plugins "$D/"
           cp packaging/README.ja.md "$D/はじめに.md"
-          # 絵も入れる。**.exe 自身にはまだ焼き込んでいない**(build.rs で
-          # 資源として埋める工事が要る)ので、いまは近道を作る人が
-          # 使えるように同梱するだけ — 出来ないことを出来るように見せない
-          cp packaging/icons/officework-calc.ico packaging/icons/officework-writer.ico "$D/"
-          7z a "$D.zip" "$D" > /dev/null
+      - name: 入れ物を作る(Inno Setup)
+        # **zip をやめた**(発注者 2026-08-17)。スタートメニュー・
+        # アンインストール・関連付けが zip では作れない。
+        # 管理者権限は求めない作りなので、会社の PC でも試せる。
+        # windows-latest には Inno Setup が入っている(無ければ choco で入れる)
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          & $iscc "/DVersion=$env:VER" "/DSrc=..\out\windows" packaging\windows\officework.iss
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: "*.zip"
+          path: "packaging/out/*setup.exe"
 
   release:
     name: Releases に置く
@@ -199,7 +207,11 @@ jobs:
             |---|---|
             | Linux | `.deb`(入れる)か `.tar.gz`(展開するだけ) |
             | macOS | `.dmg` — 署名と公証つき。そのまま開けます(名前に `-unsigned` と付く物は署名前です) |
-            | Windows | `.zip` — 展開して `calc.exe`。**署名はまだ**(SmartScreen が出ます) |
+            | Windows | `setup.exe` — 入れるとスタートメニューに出ます。**管理者権限は要りません** |
+
+            > **Windows は「WindowsによってPCが保護されました」が出ます。**
+            > まだ署名していないためです(**詳細情報 → 実行**で入ります)。
+            > 落ち着いたら Microsoft ストアから出す予定です。
 
             試し方と、動かないときの手当ては同梱の「はじめに」を見てください。
 

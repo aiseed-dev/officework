@@ -4,6 +4,11 @@ version = "0.1.0-alpha"
 edition.workspace = true
 license.workspace = true
 
+# Windows の .exe に絵を焼くためだけ(build.rs)。
+# **他の的では何もしない** — Linux と macOS の組み立てには触らない
+[build-dependencies]
+winresource = "0.1"
+
 [dependencies]
 # HTML の https(公開 Web も見える — 発注者 2026-08-04)
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }

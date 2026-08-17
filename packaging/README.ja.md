@@ -80,6 +80,8 @@ calc のセルに打ってみてください:
 
 ## まだ無い形
 
-- **Mac(.dmg)・Windows(.msi / Microsoft Store)** — 作る手順はこれから
+- **Microsoft ストア** — 落ち着いたら出します。それまで Windows の
+  `setup.exe` は署名が無いので「WindowsによってPCが保護されました」が
+  出ます(**詳細情報 → 実行**で入ります)
 - **Flatpak** — 下ごしらえは `packaging/flatpak/` にありますが、
   Flathub の AI の方針で当面出せません(理由はそこの README に)
