@@ -64,7 +64,49 @@
 **「開いた瞬間に他人のコードが走る」という事故が、仕組みの上で起きません。**
 詳しくは [calc の手引き](docs/calc-manual.ja.md)。
 
-## 動かす
+## 手に入れる
+
+やりたいことに応じて3つの道があります。
+
+**エンジンだけ — PyPI から。** アプリは要りません。**これが主な配り方です。**
+
+```console
+$ pip install officework
+```
+
+**アプリ — まだ公開していません。** いまはソースから組んでください(下の「組む」)。
+
+包む仕組みは出来ていて、出来上がるのはこの3つです。どれも Python 3.14 を
+同梱しているので、他に入れる物はありません。
+
+| | ファイル | いまの状態 |
+|---|---|---|
+| Linux | `.deb`、または展開するだけの `.tar.gz` | 手元で作って中身を確認済み |
+| macOS | `.dmg` | 署名と公証の準備は済み。**通しではまだ動かしていません** |
+| Windows | `setup.exe` | 管理者権限なしで入ります。署名はまだなので SmartScreen が出ます(**詳細情報 → 実行**)。落ち着いたら Microsoft ストアから |
+
+**ソースから組む** — 下の「組む」へ。
+
+## 自分で足した物の置き場
+
+足す物は全部この1つのフォルダに入ります。どの OS でも同じ場所です
+(Windows は `%USERPROFILE%\.config\officework`)。
+
+```
+~/.config/officework/
+├── funcs/         セルから呼ぶ関数:  =倍(A1)
+├── ribbon/        リボンのボタンになるマクロ
+├── plugins/       一覧から選ぶマクロ
+├── records/       記録した操作(下書き。そのままでは走りません)
+├── .venv/         足したパッケージ(matplotlib、polars など)
+└── settings.toml  言語、キーの割り当て
+```
+
+このフォルダを VS Code で開けば、エディタが `.venv` を自分で見つけます。
+マクロとパッケージを同じ場所にしているのはそのためです。パッケージが
+足りないときは、アプリがそのままコピーできるコマンドを表示します。
+
+## 組む
 
 必要なもの: Rust(1.80以降)、日本語のフォント、Linux なら Wayland か X11。
 
@@ -131,6 +173,15 @@ cargo run --release --bin office-spell -- --furigana 原稿.txt
 ```console
 $ pip install officework
 ```
+
+**MCP サーバ**も付いています。AI に、動いているアプリを操らせられます:
+
+```console
+$ pip install "officework[mcp]"   # あとは officework-mcp を AI 側に登録する
+```
+
+読み書き・書式・自動調整・保存の8つだけを渡します。同じ橋を使うので
+決まりも同じ — このパソコンの中だけで、TCP は開きません。
 
 **別のアプリの中にも入ります。** Electron 製の表計算
 [genoffice](https://github.com/genspark-ai/genoffice) は、xlsx の読み書きを

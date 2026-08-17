@@ -63,7 +63,49 @@ function from a cell like any other (`=double(A1)`), or write one inline with
 `=PY(…)`. A workbook you receive contains no code, so the "open = execute"
 attack path does not exist here. See the [calc manual](docs/calc-manual.md).
 
-## Running it
+## Getting it
+
+Three ways in, depending on what you want.
+
+**The engine, from PyPI** — no app needed. This is the main channel.
+
+```console
+$ pip install officework
+```
+
+**The apps** — **not published yet.** Build from source for now (below).
+
+The packaging is written and the files it produces are these; Python 3.14 is
+bundled in each, so nothing else is required:
+
+| | file | state |
+|---|---|---|
+| Linux | `.deb`, or `.tar.gz` to just unpack | built and checked here |
+| macOS | `.dmg` | signing and notarization are set up, **not yet run end to end** |
+| Windows | `setup.exe` | installs without administrator rights. Unsigned, so SmartScreen will ask — *More info → Run anyway*. A Microsoft Store listing is meant to replace that |
+
+**From source** — see below.
+
+## Where your own files live
+
+One folder holds everything you add. It is the same path on every platform
+(`%USERPROFILE%\.config\officework` on Windows).
+
+```
+~/.config/officework/
+├── funcs/         Python called from cells:  =double(A1)
+├── ribbon/        macros that appear as ribbon buttons
+├── plugins/       macros you pick from a list
+├── records/       recorded actions (drafts, not run)
+├── .venv/         packages you add (matplotlib, polars …)
+└── settings.toml  language, key bindings
+```
+
+Open that folder in VS Code and the editor finds `.venv` on its own — that is
+why the macros and the packages share one place. When a package is missing the
+app prints the exact command to install it, path and all.
+
+## Building from source
 
 Requirements: Rust (1.80+), Japanese fonts, and on Linux either Wayland or X11.
 
@@ -128,6 +170,12 @@ For heavier analysis, use polars or statsmodels directly.
 
 ```console
 $ pip install officework
+```
+
+An **MCP server** ships with it, so an AI assistant can drive the running app:
+
+```console
+$ pip install "officework[mcp]"   # then register `officework-mcp` with your client
 ```
 
 It embeds in other applications too. Since 2026-08-10 the engine can stand in

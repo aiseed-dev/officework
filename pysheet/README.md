@@ -54,6 +54,38 @@ df2 = wb.sheets.active["A1"].options(pd.DataFrame, expand="table").value
 The bridge talks over a unix socket on **this machine only** — no TCP is opened.
 It needs [officework](https://github.com/aiseed-dev/officework) running.
 
+## Let an AI drive the app (MCP)
+
+```console
+$ pip install "officework[mcp]"
+```
+
+That installs `officework-mcp`, an MCP server speaking over stdin/stdout.
+Register it with an MCP client (Claude Code, Claude Desktop, …) and the
+assistant can read and write the workbook you have open — the same bridge the
+Python API uses, so the same rules apply: your machine only, no TCP.
+
+```jsonc
+// claude_desktop_config.json
+{ "mcpServers": { "officework": { "command": "officework-mcp" } } }
+```
+
+The tools it exposes are deliberately few: `book_info`, `used_range`,
+`read_range`, `read_formulas`, `write_range`, `set_format`, `autofit`, `save`.
+Reading a range gives values; `read_formulas` gives the formulas behind them.
+
+## Launch the app from the command line
+
+```console
+$ officework-calc report.xlsx
+$ officework-writer report.docx
+```
+
+These come with the package. **They do not carry the app** — the wheel holds
+the engines, not a GUI. They find an officework you already installed (from the
+[releases](https://github.com/aiseed-dev/officework/releases), or built from
+source) and hand the file to it.
+
 ## Your old vocabulary still works
 
 Code written for openpyxl, xlwings or python-docx largely runs as-is:
@@ -80,6 +112,11 @@ Since 0.3.0 the wheel also typesets **equations**: `officework.tex` takes
 LaTeX and returns SVG or PNG. With TeX installed it typesets there (matrix
 columns align); without it, matplotlib's mathtext does the job; with
 neither, it refuses with the reason — never a silent empty picture.
+
+New in 0.4.0, the bridge reaches the rest of a cell's formatting —
+`align`, `valign`, `indent`, `rotation`, `shrink`, `locked`,
+`underline`, `strike`, `superscript`, `subscript` — plus page setup and the
+table-design commands, so a macro can finish a form rather than only fill it.
 
 ## Why the engines exist
 
