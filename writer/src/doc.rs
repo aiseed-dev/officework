@@ -2306,6 +2306,28 @@ impl Writer {
         }
     }
 
+    /// **紙の折り方で組んだ紙面。** 印刷用のテンプレートがあるときだけ返します
+    /// (無ければ画面の紙面がそのまま紙の紙面です)。
+    ///
+    /// 発注者 2026-08-18「『画面と紙は同じ紙面』という約束はやめにしたら」。
+    /// 約束は外しましたが、**数える所(ページ番号・目次)は紙で数えます** —
+    /// 目次が「3ページ」と言うのに紙の3ページに無い、が起きないためです。
+    ///
+    /// 返りは(紙面, 用紙, 使ったファイル)。
+    pub(crate) fn print_layout(&self) -> Option<(Page, kumihan::PageSetup, String)> {
+        let (th, 使った) = self.template_for("印刷");
+        let 使った = 使った?;
+        let m = Metrics::new(&self.font_bytes).ok()?;
+        let pg = th.page.unwrap_or(self.pg);
+        let 姿 = Look {
+            pg,
+            vertical: self.doc.vertical,
+            組: th.setting,
+            view_w_px: self.view_w_px,
+        };
+        Some((姿.lay_once(&kumihan::theme::compose(&self.doc, &th), &m), pg, 使った))
+    }
+
     /// 保存した先のフォルダに書式のファイルがあれば着る。返りは着た場所。
     ///
     /// **名指し(`:template:`)がある文書は触りません。** 書いてあることが

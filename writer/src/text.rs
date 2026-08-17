@@ -439,23 +439,26 @@ impl Writer {
     pub(crate) fn write_pdf(&mut self, p: &std::path::Path) {
         let m = Metrics::new(&self.font_bytes).expect("フォント");
         // **印刷用のテンプレートがあれば、それで組み直してから紙にします**
-        // (テンプレート-印刷.toml)。無ければ画面のままです — 画面と紙が
-        // 食い違わない約束は、こちらを置いたときだけ人が自分で外します
-        let (印刷th, 印刷で) = self.template_for("印刷");
-        let 印刷用 = 印刷で.as_ref().map(|_| {
-            let pg = 印刷th.page.unwrap_or(self.pg);
-            let 姿 = crate::doc::Look {
-                pg,
-                vertical: self.doc.vertical,
-                組: 印刷th.setting,
-                view_w_px: self.view_w_px,
-            };
-            (姿.lay_once(&kumihan::theme::compose(&self.doc, &印刷th), &m), pg)
-        });
+        // (テンプレート-印刷.toml)。無ければ画面の紙面がそのまま紙になります
+        let 印刷用 = self.print_layout();
+        let 印刷で = 印刷用.as_ref().map(|(_, _, t)| t.clone());
         let (hdr, ftr) = (self.doc.header.clone(), self.doc.footer.clone());
-        let pg = 印刷用.as_ref().map(|(_, pg)| *pg).unwrap_or(self.pg);
-        let sheet = 印刷用.as_ref().map(|(s, _)| s).unwrap_or(&self.page);
-        let total = self.total_pages();
+        let pg = 印刷用.as_ref().map(|(_, pg, _)| *pg).unwrap_or(self.pg);
+        let sheet = 印刷用.as_ref().map(|(s, _, _)| s).unwrap_or(&self.page);
+        // **ヘッダーのページ数も紙で数えます**(画面の枚数ではありません)
+        let total = 印刷用
+            .as_ref()
+            .map(|(s, pg, _)| {
+                paper::paginate(s, paper::Paper {
+                    width_mm: pg.w_mm, height_mm: pg.h_mm, margin_mm: pg.left_mm,
+                })
+                .0
+                .iter()
+                .copied()
+                .max()
+                .unwrap_or(1)
+            })
+            .unwrap_or_else(|| self.total_pages());
         let base_pt = self.doc.base_pt();
         // ページの色と透かしは紙にも(画面と紙の一致)
         let dress = paper::PageDress {
@@ -594,18 +597,7 @@ impl Writer {
                 if !page {
                     return Some(t.trim().to_string());
                 }
-                let (pages, _) = paper::paginate(&self.page, paper::Paper {
-                    width_mm: self.pg.w_mm,
-                    height_mm: self.pg.h_mm,
-                    margin_mm: self.pg.left_mm,
-                });
-                let mut hit = 1usize;
-                for (l, pg2) in self.page.lines.iter().zip(&pages) {
-                    if l.from_body && l.byte0 <= at {
-                        hit = *pg2;
-                    }
-                }
-                return Some(hit.to_string());
+                return Some(self.page_of_byte()(at).to_string());
             }
             at += t.len() + 1;
         }
@@ -723,6 +715,32 @@ impl Writer {
         };
     }
 
+    /// **本文のバイト位置 → ページ番号**(紙の折り方で数える)。
+    ///
+    /// 画面と紙は同じとは限りません(印刷用のテンプレートを置けば違います)。
+    /// 目次・図表目次・相互参照のページ番号は**必ず紙で数えます** — 「3ページ」と
+    /// 書いてあるのに紙の3ページに無い、が起きないためです(2026-08-18)。
+    pub(crate) fn page_of_byte(&self) -> impl Fn(usize) -> usize + use<> {
+        let (sheet, pg) = match self.print_layout() {
+            Some((s, pg, _)) => (s, pg),
+            None => (self.page.clone(), self.pg),
+        };
+        let (pages, _) = paper::paginate(&sheet, paper::Paper {
+            width_mm: pg.w_mm,
+            height_mm: pg.h_mm,
+            margin_mm: pg.left_mm,
+        });
+        move |byte: usize| {
+            let mut hit = 1usize;
+            for (l, p) in sheet.lines.iter().zip(&pages) {
+                if l.from_body && l.byte0 <= byte {
+                    hit = *p;
+                }
+            }
+            hit
+        }
+    }
+
     /// 目次を作る・挿し直す。見出し(ホーム > 段落のスタイル)が材料。
     /// ページ番号は紙(PDF)と同じ折り方(paper::paginate)から出すので、
     /// 印刷した紙とずれない。目次の行は ParaStyle::Toc の印を持ち、
@@ -746,21 +764,8 @@ impl Writer {
                 ui::t!("見出しがありません(ホーム > 段落のスタイルで見出しを付けてください)").into();
             return;
         }
-        // 行 → ページ番号(紙と同じ折り方)
-        let (pages, _) = paper::paginate(&self.page, paper::Paper {
-            width_mm: self.pg.w_mm,
-            height_mm: self.pg.h_mm,
-            margin_mm: self.pg.left_mm,
-        });
-        let page_of = |byte: usize| -> usize {
-            let mut hit = 1usize;
-            for (l, pg) in self.page.lines.iter().zip(&pages) {
-                if l.from_body && l.byte0 <= byte {
-                    hit = *pg;
-                }
-            }
-            hit
-        };
+        // 行 → ページ番号は**紙の折り方**で出します
+        let page_of = self.page_of_byte();
         // 目次の行。レベルぶん字下げし、点線(…)を実フォントの字幅で詰めて
         // 番号を右端に着地させる(揃えの機構は使わず、文字で作る —
         // 静的な本文なので、開いた Word でもそのままの見た目になる)
@@ -898,20 +903,7 @@ impl Writer {
                 ui::t!("図表番号がありません(参考資料 > 図表番号で付けてください)").into();
             return;
         }
-        let (pages, _) = paper::paginate(&self.page, paper::Paper {
-            width_mm: self.pg.w_mm,
-            height_mm: self.pg.h_mm,
-            margin_mm: self.pg.left_mm,
-        });
-        let page_of = |byte: usize| -> usize {
-            let mut hit = 1usize;
-            for (l, pg) in self.page.lines.iter().zip(&pages) {
-                if l.from_body && l.byte0 <= byte {
-                    hit = *pg;
-                }
-            }
-            hit
-        };
+        let page_of = self.page_of_byte();
         let m = Metrics::new(&self.font_bytes).expect("フォント");
         let measure = self.pg.measure_mm();
         let w_of = |s: &str| -> f32 { s.chars().map(|c| m.advance_mm(c, SIZE_PT)).sum() };

@@ -676,9 +676,15 @@ surroundings below without opening anything**. It opens only when you press
 
 ## Printing (PDF) and saving
 
-- File > Print writes a PDF. **Screen and paper are the same page** — they
-  cannot disagree. Real header/footer numbers, watermark, page color, ink,
-  and vertical writing all carry over
+- File > Print writes a PDF. Real header/footer numbers, watermark, page color,
+  ink, and vertical writing all carry over
+- **Screen and paper can be the same, or different.** Add
+  `テンプレート-印刷.toml` and paper gets its own look; without it, what you see
+  is what is printed
+- **Anything counted is counted on paper.** Page numbers in the table of
+  contents, the table of figures and cross-references, and the page count in
+  headers, all follow the *printed* pages, however many pages the screen shows.
+  A "page 3" in the contents is always page 3 on paper
 - Ctrl+S saves docx (blocked if someone else holds the lock). Body, tables,
   images, and headers are written back; parts we don't understand are carried
   over from the original file. Elements we couldn't read are noted as

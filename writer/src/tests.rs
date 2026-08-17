@@ -2544,6 +2544,44 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **目次のページ番号は紙で数える。** 画面と紙が違ってもよい形にしたので
+    /// (2026-08-18)、数える所だけは紙に合わせないと嘘の目次になります。
+    #[gpui::test]
+    fn 目次のページ番号は紙で数える(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-toc-print-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        // 画面は A4、紙は小さい(B5 の半分ほど)ので、紙のほうが枚数が増える
+        std::fs::write(dir.join("テンプレート.toml"), "[ページ]\n用紙 = \"A4\"\n").unwrap();
+        std::fs::write(
+            dir.join("テンプレート-印刷.toml"),
+            "[ページ]\n用紙 = \"A4\"\n余白 = 90\n",
+        )
+        .unwrap();
+        let doc = dir.join("章.adoc");
+        let mut src = String::from("== 一つ目\n\n");
+        for _ in 0..40 {
+            src.push_str("本文の行です。ここは紙の枚数を増やすための行です。\n\n");
+        }
+        src.push_str("== 二つ目\n\n終わり。\n");
+        std::fs::write(&doc, &src).unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(doc.clone());
+            let 画面 = this.total_pages();
+            let 紙 = this.print_layout().expect("印刷用が読めない");
+            let (pages, _) = paper::paginate(&紙.0, paper::Paper {
+                width_mm: 紙.1.w_mm, height_mm: 紙.1.h_mm, margin_mm: 紙.1.left_mm });
+            let 紙の枚数 = pages.iter().copied().max().unwrap_or(1);
+            assert!(紙の枚数 > 画面, "紙のほうが枚数が多い形になっていない({紙の枚数} と {画面})");
+            // 最後の見出しのページ番号は**紙の**枚数(画面の枚数ではない)
+            let 末尾 = this.doc.body_text().len();
+            assert_eq!(this.page_of_byte()(末尾), 紙の枚数,
+                       "目次が画面の枚数で数えている");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// **書き出し先ごとにテンプレートを持てる。** 混ぜないので、一度に効くのは
     /// 1枚のまま(発注者 2026-08-18「表示用、印刷用、Web用、アプリ用と複数の
     /// テンプレートを持つのも悪くないのでは」)。
