@@ -773,10 +773,10 @@ impl Render for Writer {
                         }
                         cx.notify()
                     })))
-                // **蒸留**(2026-08-16。SEKKEI 段階D)。受け取った docx を
+                // **adoc 形式にする**(2026-08-16。SEKKEI 段階D)。受け取った docx を
                 // 意味だけ+テンプレートに変える。**非可逆なので明示の1手** —
                 // 開いただけでは何も起きない
-                .child(mk("f-distill", ui::t!("意味だけにする(蒸留)"), !self.native).on_click(
+                .child(mk("f-distill", ui::t!("adoc 形式にする(本文と書式を分ける)"), !self.native).on_click(
                     cx.listener(|this, _, _, cx| {
                         this.tab = this.prev_tab;
                         this.distill_now();

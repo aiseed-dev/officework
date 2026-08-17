@@ -2009,12 +2009,12 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// **蒸留は明示の1手**(2026-08-16。段階D の門番)。押すまで docx は
+    /// **押したときだけ変わる**(2026-08-16。段階D の門番)。押すまで docx は
     /// docx のまま。押すとネイティブになり、見た目はテンプレートへ移る
     #[gpui::test]
-    fn 蒸留すると意味とテンプレートに分かれる(cx: &mut gpui::TestAppContext) {
+    fn adoc形式にすると本文と書式に分かれる(cx: &mut gpui::TestAppContext) {
         // **直接書式を持つ見本を選ぶ。** よく出来た docx はスタイル任せで
-        // 直接書式を持たない(報告書.docx がそうだった)— 蒸留の効き目を
+        // 直接書式を持たない(報告書.docx がそうだった)— この操作の効き目を
         // 見るには、泥のある物で測る
         let src = ["../sample/カタログ.docx", "../sample/議事録.docx", "../sample/送付状.docx"]
             .iter()
@@ -2027,7 +2027,7 @@ mod marker_tests {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             this.open(src.to_path_buf());
-            assert!(!this.native, "開いただけで蒸留された(明示の1手のはず)");
+            assert!(!this.native, "開いただけで変わった(押したときだけのはず)");
             let 前 = this
                 .doc
                 .paragraphs()
@@ -2036,7 +2036,7 @@ mod marker_tests {
                 .count();
 
             this.distill_now();
-            assert!(this.native, "蒸留してもネイティブにならない");
+            assert!(this.native, "adoc 形式にならない");
             let 後 = this
                 .doc
                 .paragraphs()
@@ -2053,7 +2053,7 @@ mod marker_tests {
             );
             // 二度押しは断る
             this.distill_now();
-            assert!(this.status.contains("もう意味だけ"), "二度目を断らない: {}", this.status);
+            assert!(this.status.contains("もう adoc"), "二度目を断らない: {}", this.status);
         });
     }
 

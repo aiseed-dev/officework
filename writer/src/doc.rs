@@ -2132,7 +2132,7 @@ impl Writer {
         self.path = Some(p.to_path_buf());
         self.dirty = false;
         self.status = ui::tf!(
-            "{} — 本文は意味だけ、見た目は{}",
+            "{} — 本文は adoc、書式は{}",
             p.file_name().unwrap_or_default().to_string_lossy(),
             言い分
         )
@@ -2375,7 +2375,11 @@ impl Writer {
         let _ = std::fs::write(path, body);
     }
 
-    /// **蒸留** — 互換の文書(docx)を意味だけ+テンプレートに変える
+    /// **adoc 形式にする** — docx を本文(.adoc)と書式(.toml)に分けます。
+    ///
+    /// 書式は無くなりません。同じ見た目の所をまとめて名前を付け、書式の
+    /// ファイルへ移します。「意味だけにする」と呼んでいましたが、書式を
+    /// 捨てるように読めるので改めました(2026-08-17 発注者)。
     /// (SEKKEI 段階D。2026-08-16)。
     ///
     /// **非可逆なので明示の1手**。押すまでは docx のまま扱い、原本据え置きの
@@ -2383,7 +2387,7 @@ impl Writer {
     /// ネイティブになり、保存先は .adoc になる。
     pub(crate) fn distill_now(&mut self) {
         if self.native {
-            self.status = ui::t!("この文書はもう意味だけです(蒸留は要りません)").into();
+            self.status = ui::t!("この文書はもう adoc 形式です").into();
             return;
         }
         self.switch_target(Target::Body);
@@ -2408,13 +2412,13 @@ impl Writer {
         // **落ちた物を数えて言う。** 「何も失っていない」と嘘をつかない
         self.status = if rep.dropped == 0 {
             ui::tf!(
-                "蒸留しました — スタイル {} 個・段落 {} 個。見た目はテンプレートへ移りました",
+                "adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました",
                 rep.styles.to_string(),
                 rep.paragraphs.to_string()
             )
         } else {
             ui::tf!(
-                "蒸留しました — スタイル {} 個・段落 {} 個。段落の見た目に収まらない {} 箇所は落ちました(強調や脚注は残っています)",
+                "adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました。段落ごとの書式に収まらない {} 箇所は落ちました(強調や脚注は残っています)",
                 rep.styles.to_string(),
                 rep.paragraphs.to_string(),
                 rep.dropped.to_string()
@@ -2464,7 +2468,7 @@ impl Writer {
         self.rp_open = true;
         self.rp_tab = 2;
         self.status = ui::t!(
-            "意味だけの文書では、見た目に名前を付けて使います。右のスタイルから選ぶか、新しく作ってください"
+            "adoc 形式では、書式に名前を付けて使います。右のスタイルから選ぶか、新しく作ってください"
         )
         .into();
         cx.notify();
@@ -2720,7 +2724,7 @@ impl Writer {
                     self.native = true;
                     self.dirty = false;
                     self.status = ui::tf!(
-                        "{} に保存しました(意味だけ — 見た目はテンプレート)",
+                        "{} に保存しました(本文だけ — 書式はテンプレートの側)",
                         p.file_name().unwrap_or_default().to_string_lossy()
                     )
                     .into();

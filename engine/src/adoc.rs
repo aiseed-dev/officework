@@ -31,7 +31,8 @@ use crate::doc::{
 
 /// 模型 → AsciiDoc(正規形)。**意味だけを書く** — 見た目の欄
 /// (size_pt・font・色…)は見ない。ネイティブ文書では常に空のはずで、
-/// 互換の文書を通しても書式は落ちる(それが「蒸留」の片割れ)
+/// docx をそのまま通すと、本文に直に付いた書式は落ちる(書式を別ファイルへ
+/// 移すのは distill の仕事)
 pub fn write(doc: &Document) -> String {
     let mut out = String::new();
     if !doc.props.title.is_empty() {
