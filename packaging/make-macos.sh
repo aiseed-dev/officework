@@ -47,6 +47,14 @@ DMG="$OUT/officework-${VER}-macos-${ARCH}${SUFFIX}.dmg"
 
 echo "== officework ${VER}(${ARCH})を包みます(署名: $([ $SIGN = 1 ] && echo あり || echo なし))"
 
+# ---- 0. 署名できるか先に見る ------------------------------------------------
+# **組む前に確かめる。** 2026-08-17、7分15秒かけて組んだ後に
+# 「証明書がありません」で止まった。証明書の確認は数秒で済むので、
+# 待たせてから落とす理由が無い
+if [ $SIGN = 1 ]; then
+  packaging/macos/sign.sh keychain
+fi
+
 # ---- 1. 組む ----------------------------------------------------------------
 cargo build --release -p calc -p writer
 
@@ -87,7 +95,7 @@ cp packaging/README.ja.md "$DIST/はじめに.md"
 # ---- 4. 署名・公証 ----------------------------------------------------------
 # **中身を全部そろえてから署名する。** 後から1つでも足すと署名が壊れる
 if [ $SIGN = 1 ]; then
-  packaging/macos/sign.sh keychain
+  # 0. で済ませてあるので、ここでは選び直さない
   for app in "$DIST"/*.app; do
     packaging/macos/sign.sh app "$app"
   done

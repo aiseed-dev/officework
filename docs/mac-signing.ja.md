@@ -369,6 +369,18 @@ GitHub に作らせているなら Secrets に `MAC_SIGN_IDENTITY` を足す
 MAC_SIGN_IDENTITY=<40桁> MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
 ```
 
+### CI で「1 identity imported」の直後に「証明書がありません」
+
+`.p12` は読めているのに、`security find-identity -v` が1件も返さない状態。
+`-v` は**証明書の鎖が辿れる物だけ**を出すので、Apple の中間証明書
+(Developer ID CA)が鍵束に無いと、証明書自体は入っているのに出ない。
+まっさらな CI の機械で起きる。
+
+台本が自分で中間証明書を入れて見直すようにした(2026-08-17)。それでも
+駄目なときは、**鍵束の中身の一覧を出してから止まる**ので、log を見れば
+`.p12` に何が入っていたか分かる。よくあるのは「Developer ID Application
+ではない別の証明書を書き出していた」。
+
 ### Apple のサイトには出るのに、`find-identity` に出ない
 
 **証明書はあるが、対になる秘密鍵がこの Mac に無い。** 証明書だけ落として

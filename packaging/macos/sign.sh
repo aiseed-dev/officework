@@ -94,11 +94,43 @@ cmd_keychain() {
            | grep "Developer ID Application" || true)"
   n="$(printf '%s' "$found" | grep -c . || true)"
 
+  # **`-v` で出ないときは、`-v` 無しでもう一度見る。**
+  #
+  # `-v` は「いま有効な物」だけを出す。有効かどうかには**証明書の鎖が
+  # 辿れること**が要り、Apple の中間証明書(Developer ID CA)が鍵束に
+  # 無いと、証明書自体は入っているのに1件も出ない。まっさらな CI の
+  # 機械で起きる(2026-08-17、`1 identity imported` の直後に
+  # 「証明書がありません」と言った)。
+  #
+  # 中間証明書は誰でも取れる公開の物なので、入れて見直す。
+  if [ "$n" -eq 0 ] && [ -n "$where" ]; then
+    echo "有効な物として出ませんでした。Apple の中間証明書を入れて見直します…" >&2
+    local ca="${RUNNER_TEMP:-/tmp}/DeveloperIDG2CA.cer"
+    if curl -fsSL -o "$ca" https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer; then
+      security import "$ca" -k "$where" 2>/dev/null || true
+      rm -f "$ca"
+    fi
+    found="$(security find-identity -v -p codesigning $where \
+             | grep "Developer ID Application" || true)"
+    n="$(printf '%s' "$found" | grep -c . || true)"
+  fi
+
   if [ -n "${MAC_SIGN_IDENTITY:-}" ]; then
     # 名指しがあればそれに従う(2枚以上ある鍵束で、どれを使うか決めた場合)
     ident="$MAC_SIGN_IDENTITY"
   elif [ "$n" -eq 0 ]; then
-    die "Developer ID Application の証明書がありません(docs/mac-signing.ja.md の 0)"
+    # **何が入っているのかを見せてから止める。** 「ありません」だけでは
+    # 直しようがない。証明書の名前は秘密ではない(署名した物から誰でも読める)
+    echo "鍵束の中身(名前だけ。中身は出しません):" >&2
+    # shellcheck disable=SC2086
+    security find-identity -p codesigning $where >&2 || true
+    echo >&2
+    echo "**Developer ID Application が1つも見つかりません。** よくある原因:" >&2
+    echo "  - .p12 に入っているのが別の証明書(Apple Development など)" >&2
+    echo "  - 証明書の鎖が辿れない(上で中間証明書を入れても駄目だった)" >&2
+    echo "上の一覧に Developer ID Application が出ているなら、その SHA-1 を" >&2
+    echo "MAC_SIGN_IDENTITY に入れれば先へ進めます。" >&2
+    die "docs/mac-signing.ja.md の A を見てください"
   elif [ "$n" -gt 1 ]; then
     # **黙って選ばない。** 更新して古い物が残っている・別チームの物が
     # 混ざっている、のどちらでも「どちらで署名したか分からない物」が
