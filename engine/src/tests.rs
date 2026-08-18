@@ -2062,6 +2062,63 @@ mod title_tests {
 }
 
 #[cfg(test)]
+mod adoc_honke_tests {
+    use crate::adoc;
+
+    /// **表のセルは次の行に続く**(本家の作法)。2026-08-18 まで断っていたので、
+    /// 本家の手引き 176 枚のうち 11 枚が開けませんでした。
+    #[test]
+    fn 表のセルが次の行に続く() {
+        // 1行目のセルの数が桁の数(ここでは2桁)。以降は流れで切られる
+        let src = "|===\n|あ |い\n|一つ目のセル\nその続きの行\n|二つ目\n|===\n";
+        let d = adoc::parse(src).expect("読めない");
+        let t = d.tables().next().expect("表が無い");
+        let 字 = |r: usize, c: usize| -> String {
+            t.rows[r][c].paragraphs.iter().flat_map(|p| p.runs.iter())
+                .map(|x| x.text.as_str()).collect()
+        };
+        assert_eq!(t.rows.len(), 2, "2行にならない: {:?}", t.rows.len());
+        assert_eq!(字(1, 0), "一つ目のセルその続きの行", "続きの行が繋がっていない");
+        assert_eq!(字(1, 1), "二つ目", "1行に1セルずつ書いた分が流れていない");
+    }
+
+    /// **セルの指定を読み飛ばす**(`h|` 見出し・`^|` 中央・`a|` など)。
+    /// 効かせるのは結合だけで、残りは指定として捨てます。
+    #[test]
+    fn セルの指定を読み飛ばす() {
+        let d = adoc::parse("|===\nh|見出し ^|中央 a|中身\n|===\n").expect("読めない");
+        let t = d.tables().next().expect("表が無い");
+        assert_eq!(t.rows[0].len(), 3, "セルが3つに割れていない");
+        let 字: String = t.rows[0][0].paragraphs.iter().flat_map(|p| p.runs.iter())
+            .map(|x| x.text.as_str()).collect();
+        assert_eq!(字, "見出し", "指定が字に混ざった");
+    }
+
+    /// **文書の頭は空行までが頭。** 著者の行で打ち切ると、その後ろの属性が
+    /// 本文に落ちて、書き戻しで消えます(2026-08-18 に本家の README で発覚)。
+    #[test]
+    fn 頭は空行まで続く() {
+        let src = "= 題\n著者 <mail>\n// 覚え書き\n:idprefix:\n:idseparator: -\n\n本文。\n";
+        let d = adoc::parse(src).expect("読めない");
+        assert_eq!(adoc::write(&d), src, "頭が往復していない");
+        assert_eq!(d.paragraphs().count(), 2, "頭が本文に落ちた");
+    }
+
+    /// **行を継ぐときの空白。** 日本語は入れず、英語は入れます。
+    #[test]
+    fn 継ぎ目の空白は和字のときだけ省く() {
+        let d = adoc::parse("plain CSS.\nThe build minifies it.\n").expect("読めない");
+        let 字: String = d.paragraphs().flat_map(|p| p.runs.iter())
+            .map(|r| r.text.as_str()).collect();
+        assert_eq!(字, "plain CSS. The build minifies it.", "英語の語がくっついた");
+        let d2 = adoc::parse("日本語の文を\n行で折った。\n").expect("読めない");
+        let 字2: String = d2.paragraphs().flat_map(|p| p.runs.iter())
+            .map(|r| r.text.as_str()).collect();
+        assert_eq!(字2, "日本語の文を行で折った。", "日本語に空白が入った");
+    }
+}
+
+#[cfg(test)]
 mod adoc_notes_tests {
     use crate::adoc;
 

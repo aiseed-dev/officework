@@ -66,9 +66,18 @@ pub fn write(doc: &Document) -> String {
         }
     }
     for (k, v) in &doc.attrs {
+        if k.is_empty() {
+            head.push_str(&format!("{v}\n")); // 原文のままの行(著者の行など)
+            continue;
+        }
         // テンプレートの名前は後から変わりうるので、いまの値で書きます
         let v = if 名(k) { doc.template.clone().unwrap_or_else(|| v.clone()) } else { v.clone() };
-        head.push_str(&format!(":{k}: {v}\n"));
+        // 値の無い属性は `:名前:` と書く(後ろに空白を足さない)
+        if v.is_empty() {
+            head.push_str(&format!(":{k}:\n"));
+        } else {
+            head.push_str(&format!(":{k}: {v}\n"));
+        }
     }
     if !head.is_empty() {
         out.push_str(&head);
@@ -245,14 +254,16 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
 /// 本文の字の中の印を逃がす。逃がすのは**行の中で意味を持つ印だけ**
 fn esc(t: &str) -> String {
     let mut s = String::with_capacity(t.len());
-    let mut it = t.chars().peekable();
-    while let Some(c) = it.next() {
+    let mut it = t.char_indices().peekable();
+    while let Some((i, c)) = it.next() {
         if c == '*' || c == '_' || c == '^' || c == '~' || c == '\\' {
             s.push('\\');
         }
-        // **`[.` だけ逃がす** — 文字スタイルの書き出しと紛れるのはこの形だけ。
-        // `[` を一律に逃がすと、括弧つきの普通の文が読みにくくなる
-        if c == '[' && it.peek() == Some(&'.') {
+        // **`[.名前]#` の形だけ逃がす** — 文字スタイルの書き出しと紛れるのは
+        // この形だけです。`[.` を一律に逃がすと、本家の役割の書き方
+        // (`[.path]_…_`)に余計な `\` が入ります(2026-08-18、本家の手引きを
+        // 読ませて見つけた)
+        if c == '[' && 字のスタイルに見える(&t[i..]) {
             s.push('\\');
         }
         s.push(c);
@@ -678,8 +689,11 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     // 直前の行が「継げる本文」だったか(空行と特別な行で倒れる)
     let mut 直前も本文 = false;
 
-    // 文書の頭: `= 題名` と `:鍵: 値`
+    // 文書の頭: `= 題名` と `:鍵: 値`。**空行までが頭**(本家の作法)
     let mut head_done = false;
+    // 頭に入ったか(`= 題` か `:鍵:` を1つでも見たか)。見ていない文書の
+    // 1行目を頭の行と誤らないための旗
+    let mut 頭に入った = false;
     while let Some((_, line)) = lines.peek().copied() {
         let l = line.trim_end();
         if !head_done && doc.props.title.is_empty() && l.starts_with("= ") {
@@ -695,6 +709,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             };
             p.runs.push(Run { text: 題, size_pt: None, font: None, fmt: CharFormat::default() });
             doc.blocks.push(Block::Para(p));
+            頭に入った = true;
             lines.next();
             continue;
         }
@@ -710,6 +725,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                         doc.template = Some(v.clone());
                     }
                     doc.attrs.push((k, v));
+                    頭に入った = true;
                     lines.next();
                     continue;
                 }
@@ -719,7 +735,17 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 lines.next();
                 continue;
             }
-            // 頭の印なしで本文が始まる形も受ける(下の break でそのまま本文へ)
+            // **頭は空行まで続きます**(本家の作法)。`:鍵: 値` でない行
+            // (著者の行など)も**そのまま持ち越します** — 前はここで頭を
+            // 打ち切っていたので、後ろに並ぶ属性が本文に落ち、書き戻しで
+            // 消えていました(2026-08-18、本家の README で見つけた)。
+            // 鍵が空の項目は「原文のままの行」の印です
+            if 頭に入った {
+                doc.attrs.push((String::new(), l.to_string()));
+                lines.next();
+                continue;
+            }
+            // 頭の印が1つも無い文書は、そのまま本文へ
         }
         break;
     }
@@ -757,6 +783,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 let 空 = |it: &mut std::iter::Peekable<_>| -> bool { 次が空行(it) };
                 raw(l, 空(&mut lines), &mut doc);
                 // 区切りの塊(`----` など)は**閉じるまでまるごと**持ち越す
+                直前も本文 = false; // 原文のままの行に続きを繋がない
                 if 役割 == "塊の区切り" {
                     let 印 = l.trim_end().to_string();
                     while let Some((_, l2)) = lines.next() {
@@ -895,6 +922,15 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         直前も本文 = p.list == ListKind::None && p.raw_adoc.is_none();
         if 継ぐ {
             if let Some(Block::Para(前)) = doc.blocks.last_mut() {
+                let 継 = 継ぎ目(
+                    前.runs.last().map(|r| r.text.as_str()).unwrap_or(""),
+                    p.runs.first().map(|r| r.text.as_str()).unwrap_or(""),
+                );
+                if !継.is_empty() {
+                    if let Some(r) = 前.runs.last_mut() {
+                        r.text.push(' ');
+                    }
+                }
                 前.runs.extend(p.runs);
                 continue;
             }
@@ -1139,39 +1175,35 @@ fn parse_table_lines(
     fresh_note: &mut usize,
 ) -> Result<Table, String> {
     let mut t = Table::default();
-    // 縦結合の続き(列, 残り行数)。docx の格子と同じく Continue を配る
-    let mut vstarts: Vec<(usize, u8)> = Vec::new();
+    // **セルの中身は次の行に続きます**(本家の作法。2026-08-18 に直した)。
+    // `|` で始まらない行は前の行の続きです。前は「表の行はセルごとに | で
+    // 始める」と断っていたので、本家の手引き 176 枚のうち 11 枚が開けません
+    // でした
+    let mut 繋いだ: Vec<String> = Vec::new();
     for l in rows_src {
-        let mut row: Vec<Cellbox> = Vec::new();
-        // 前の行から続く縦結合ぶんの Continue を先に置く
-        vstarts.sort_by_key(|x| x.0);
-        let pending = vstarts.clone();
-        for &(col, _) in &pending {
-            let mut at = row.len();
-            let mut acc = 0usize;
-            for (k, c) in row.iter().enumerate() {
-                if acc >= col {
-                    at = k;
-                    break;
-                }
-                acc += c.span();
-            }
-            let mut cb = Cellbox::default();
-            cb.v_merge = VMerge::Continue;
-            row.insert(at.min(row.len()), cb);
+        let 頭 = l.trim_start();
+        if 繋いだ.is_empty() || 頭.starts_with('|') || セルの指定つき(頭) {
+            繋いだ.push((*l).to_string());
+        } else if let Some(前) = 繋いだ.last_mut() {
+            前.push_str(継ぎ目(前, 頭));
+            前.push_str(頭);
         }
-        for s in &mut vstarts {
-            s.1 -= 1;
-        }
-        vstarts.retain(|s| s.1 > 0);
-        // 頭の結合の印つきでセルを割る: [.N+][M+]|中身
+    }
+
+    // **セルは流れで並びます**(本家の作法。2026-08-18 に直した)。
+    // 1行に1セルずつ書いても、桁の数で行に切り分けられます。前は
+    // 「1行 = 1行」だったので、そう書いた表が縦1列に潰れていました。
+    // 桁の数は**最初の行のセルの数**で決めます(本家は `cols=` があれば
+    // それを見ますが、うちは塊の属性をまだ読みません)
+    let mut cells: Vec<Cellbox> = Vec::new();
+    let mut 最初の行の桁 = 0usize;
+    for (li, l) in 繋いだ.iter().enumerate() {
         let mut restv: &str = l;
+        let mut この行の桁 = 0usize;
         while !restv.is_empty() {
             let (vspan, after_v) = if let Some(r) = restv.strip_prefix('.') {
                 let (n, r2) = take_num(r)?;
-                let r3 = r2
-                    .strip_prefix('+')
-                    .ok_or("縦結合は .N+ の形")?;
+                let r3 = r2.strip_prefix('+').ok_or("縦結合は .N+ の形")?;
                 (n, r3)
             } else {
                 (0u8, restv)
@@ -1180,7 +1212,11 @@ fn parse_table_lines(
                 Ok((n, r2)) if r2.starts_with('+') => (n, &r2[1..]),
                 _ => (0u8, after_v),
             };
-            let body = after_h
+            // **本家のセルの指定を読み飛ばします**(`h|` 見出し・`^|` 中央・
+            // `a|` AsciiDoc として組む など)。うちが効かせるのは結合だけで、
+            // 残りは字にせず、指定として捨てます
+            let after_spec = 指定を飛ばす(after_h);
+            let body = after_spec
                 .strip_prefix('|')
                 .ok_or_else(|| format!("表の行はセルごとに | で始める: {l}"))?;
             let end = next_cell_start(body);
@@ -1188,18 +1224,128 @@ fn parse_table_lines(
             let mut cb = Cellbox::default();
             cb.col_span = hspan;
             cb.v_merge = if vspan > 1 { VMerge::Start } else { VMerge::None };
-            if vspan > 1 {
-                vstarts.push((row.iter().map(|c: &Cellbox| c.span()).sum::<usize>(), vspan - 1));
-            }
-            let mut p = Paragraph::default();
-            p.runs = parse_inline(cell_text.trim(), doc, fresh_note)?;
-            cb.paragraphs = vec![p];
-            row.push(cb);
+            // 縦結合の残り行数は、後で桁に切るときに使う
+            cb.paragraphs = vec![Paragraph {
+                runs: parse_inline(cell_text.trim(), doc, fresh_note)?,
+                line_spacing: 1.0,
+                // 縦結合の行数を持ち回る場所が無いので、印だけ立てて
+                // 下の切り分けで数える(`.N+` は N-1 行ぶん下に伸びる)
+                indent: if vspan > 1 { vspan - 1 } else { 0 },
+                ..Default::default()
+            }];
+            この行の桁 += cb.span();
+            cells.push(cb);
             restv = restn;
         }
+        if li == 0 {
+            最初の行の桁 = この行の桁;
+        }
+    }
+    let ncols = 最初の行の桁.max(1);
+
+    // 桁の数で行に切る。縦結合が下の行の桁を占めるぶんも数える
+    let mut vstarts: Vec<(usize, u8)> = Vec::new(); // (桁, 残り行数)
+    let mut it = cells.into_iter().peekable();
+    while it.peek().is_some() || !vstarts.is_empty() {
+        let mut row: Vec<Cellbox> = Vec::new();
+        let mut 桁 = 0usize;
+        vstarts.sort_by_key(|x| x.0);
+        let pending = vstarts.clone();
+        let mut 次のvstarts: Vec<(usize, u8)> = Vec::new();
+        for (col, 残り) in pending {
+            // 上から伸びてきた分を、その桁に置く
+            while 桁 < col {
+                match it.next() {
+                    Some(c) => {
+                        桁 += c.span();
+                        row.push(c);
+                    }
+                    None => break,
+                }
+            }
+            let mut cb = Cellbox::default();
+            cb.v_merge = VMerge::Continue;
+            row.push(cb);
+            桁 += 1;
+            if 残り > 1 {
+                次のvstarts.push((col, 残り - 1));
+            }
+        }
+        while 桁 < ncols {
+            let Some(c) = it.next() else { break };
+            let s = c.span();
+            let 縦 = c.paragraphs.first().map(|p| p.indent).unwrap_or(0);
+            if 縦 > 0 {
+                次のvstarts.push((桁, 縦));
+            }
+            桁 += s;
+            row.push(c);
+        }
+        if row.is_empty() {
+            break;
+        }
+        // 持ち回りに使った indent を消す(段落の字下げではない)
+        for c in &mut row {
+            for p in &mut c.paragraphs {
+                p.indent = 0;
+            }
+        }
         t.rows.push(row);
+        vstarts = 次のvstarts;
     }
     Ok(t)
+}
+
+/// `[.名前]#` の形か(うちの文字のスタイルの書き方)
+fn 字のスタイルに見える(s: &str) -> bool {
+    let Some(rest) = s.strip_prefix("[.") else { return false };
+    let Some(k) = rest.find(']') else { return false };
+    !rest[..k].is_empty() && rest[k + 1..].starts_with('#')
+}
+
+/// 行を継ぐときの継ぎ目。**日本語どうしは空白を入れず、欧文は入れます。**
+///
+/// AsciiDoc は続く行を1つの段落にします。日本語の文を行で折ったときに空白が
+/// 入ると語の間が空いて見え、英語の文で空白を入れないと語がくっつきます
+/// (2026-08-18、本家の手引きを読ませて `CSS.The build` が出た)。
+fn 継ぎ目(前: &str, 後: &str) -> &'static str {
+    let a = 前.chars().next_back();
+    let b = 後.chars().next();
+    let 和字 = |c: Option<char>| {
+        c.is_some_and(|c| {
+            matches!(c as u32,
+                0x3000..=0x303F   // 約物
+                | 0x3040..=0x30FF // かな
+                | 0x4E00..=0x9FFF // 漢字
+                | 0xFF00..=0xFFEF // 全角
+            )
+        })
+    };
+    if 和字(a) || 和字(b) { "" } else { " " }
+}
+
+/// セルの指定(揃え・見出し・種類)を読み飛ばす。`|` の手前まで返す。
+///
+/// 本家の形は `[N*][N+][.N+][<^>][a-z]|`。うちが効かせるのは結合(`N+`・`.N+`)
+/// だけで、残りは**指定として捨てます**(字にはしません)。
+fn 指定を飛ばす(s: &str) -> &str {
+    let b = s.as_bytes();
+    let mut i = 0;
+    while i < b.len() {
+        match b[i] {
+            b'<' | b'^' | b'>' | b'.' | b'*' | b'+' => i += 1,
+            b'0'..=b'9' => i += 1,
+            // 種類は1字(a=AsciiDoc・h=見出し・m=等幅・s=太字・e=斜体・l=そのまま・d=既定)
+            c if c.is_ascii_lowercase() && b.get(i + 1) == Some(&b'|') => i += 1,
+            _ => break,
+        }
+    }
+    &s[i..]
+}
+
+/// その行がセルの指定つきで始まるか(`h|` `^|` `2+|` など)
+fn セルの指定つき(l: &str) -> bool {
+    指定を飛ばす(l).starts_with('|') && !l.starts_with('|')
 }
 
 /// 次のセルの `|`(結合の頭書きも考慮)の位置。無ければ末尾
@@ -1214,21 +1360,15 @@ fn next_cell_start(s: &str) -> usize {
         if b[i] == b'|' {
             return i;
         }
-        // `.2+|` / `3+|` の頭書きの前で切る
-        let mut j = i;
-        if b[j] == b'.' {
-            j += 1;
-        }
-        let d0 = j;
-        while j < b.len() && b[j].is_ascii_digit() {
-            j += 1;
-        }
-        if j > d0 && j < b.len() && b[j] == b'+' && j + 1 < b.len() && b[j + 1] == b'|' {
+        // **指定つきの頭**(`h|` `^|` `2+|` `.2+|`)。空白の後ろにあるときだけ
+        // 指定と見ます — 字の途中の `a|` を頭と読まないためです
+        if (i == 0 || b[i - 1] == b' ') && b[i] != b' ' && 指定を飛ばす(&s[i..]).starts_with('|')
+        {
             return i;
         }
         i += s[i..].chars().next().map(|c| c.len_utf8()).unwrap_or(1);
     }
-    s.len()
+    b.len()
 }
 
 fn take_num(s: &str) -> Result<(u8, &str), String> {
@@ -1310,8 +1450,11 @@ mod tests {
     #[test]
     fn 文字単位のスタイルが往復する() {
         往復("ここは[.注意]#気をつける#ところ。\n");
-        // 普通の文の `[.` は逃がして残す
-        往復("配列は \\[.5] と書く。\n");
+        // **普通の文の `[.` は逃がしません**(2026-08-18)。逃がすのは
+        // `[.名前]#` の形だけです。本家には `[.path]_径路_` のような役割の
+        // 書き方があり、一律に逃がすと `\\` が入って別物になります
+        往復("配列は [.5] と書く。\n");
+        往復("径路は [.path]_data/x_ です。\n");
     }
 
     #[test]
