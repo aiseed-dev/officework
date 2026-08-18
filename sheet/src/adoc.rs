@@ -466,4 +466,21 @@ mod tests {
         assert_eq!(値(&b, 0, "B3"), "0.5", "0.5 まで字にしてしまった");
     }
 
+    /// **折返しのセルが往復する**(2026-08-19)。中に改行のあるセルは
+    /// `a|` で書かれ、段落の切れ目が残る
+    #[test]
+    fn 折返しのセルが往復する() {
+        let mut b = Book::new();
+        b.sheets.clear();
+        let mut s = Sheet::new("覚え");
+        s.set(Pos::parse("A1").unwrap(), Cell::input("一行目\n二行目"));
+        s.set(Pos::parse("B1").unwrap(), Cell::input("ふつう"));
+        b.sheets.push(s);
+        let src = write(&b);
+        assert!(src.contains("a|一行目"), "折返しのセルが a| になっていない:\n{src}");
+        let (戻り, _) = parse(&src).expect("読めない");
+        assert_eq!(値(&戻り, 0, "A1"), "一行目\n二行目", "段落の切れ目が潰れた");
+        assert_eq!(値(&戻り, 0, "B1"), "ふつう");
+    }
+
 }
