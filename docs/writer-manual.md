@@ -600,7 +600,9 @@ Without it they stay identical — whoever adds the file decides.
 後の空き = 8
 ```
 
-A style takes **twelve keys, and that is all**. We do not add more.
+A style takes twelve keys today. **More can be added when they are needed**, as
+long as every path they travel is in place — otherwise you get a key that is
+written but does nothing.
 
 | Applies to characters | Applies to paragraphs |
 |---|---|

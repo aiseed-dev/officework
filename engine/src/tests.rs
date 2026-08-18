@@ -2013,6 +2013,16 @@ mod indent_tests {
         assert_eq!(th2.style("本文").unwrap().color.as_deref(), Some("#C0392B"));
     }
 
+    /// **字下げは Web にも出る。** テンプレートの鍵は、通る道が全部揃って
+    /// いないと「効かない」だけが残ります(2026-08-18、条件を当てて見つけた —
+    /// 字下げは紙には出るのに CSS に出ていませんでした)。
+    #[test]
+    fn 字下げはcssにも出る() {
+        let th = theme::parse("[スタイル.本文]\n字下げ = 1\n").unwrap();
+        let css = crate::html_write::css(&th, false);
+        assert!(css.contains("text-indent:1em"), "CSS に字下げが出ていない:\n{css}");
+    }
+
     /// 書いた物を読み直すと同じになる(テンプレートの往復)。
     #[test]
     fn 字下げは往復する() {

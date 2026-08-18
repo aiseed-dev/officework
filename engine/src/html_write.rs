@@ -329,6 +329,10 @@ fn css_rule(sel: &str, d: &StyleDef) -> String {
     if let Some(ls) = d.line_spacing {
         v.push(format!("line-height:{ls}"));
     }
+    // 1行目の字下げ。**全角の文字数**なので em で出す(字の大きさに付いて回る)
+    if let Some(f) = d.first_line_chars {
+        v.push(format!("text-indent:{f}em"));
+    }
     if v.is_empty() {
         return String::new();
     }
