@@ -24,8 +24,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 # 見る文書。利用者が読むものだけ
 TARGETS = [
     "README.adoc", "README.ja.adoc", "CLAUDE.md",
-    "docs/*manual*.adoc", "docs/from-excel*.md", "docs/engine*.md",
-    "docs/mac-signing.ja.adoc", "packaging/README.ja.adoc", "pysheet/README.md",
+    "docs/*manual*.adoc", "docs/from-excel*.adoc", "docs/engine*.adoc",
+    "docs/mac-signing.ja.adoc", "packaging/README.ja.md", "pysheet/README.md",
     "sample/README.md",
 ]
 

@@ -38,10 +38,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCS = [
     "README.adoc",
     "README.ja.adoc",
-    "docs/*-manual*.md",
-    "docs/from-excel*.md",
-    "docs/engine*.md",
-    "docs/python-manual*.md",
+    "docs/*-manual*.adoc",
+    "docs/from-excel*.adoc",
+    "docs/engine*.adoc",
+    "docs/python-manual*.adoc",
     "templates/README.md",
     "sample/README.md",
 ]
