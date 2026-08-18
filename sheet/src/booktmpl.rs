@@ -352,9 +352,30 @@ fn 列の番号(s: &str) -> Option<u32> {
     Pos::parse(&format!("{s}1")).map(|p| p.col)
 }
 
-/// このブックの隣にあるテンプレートの径路(`テンプレート.adoc`)。
-pub fn path_for(book: &std::path::Path) -> std::path::PathBuf {
-    book.parent().unwrap_or(std::path::Path::new(".")).join("テンプレート.adoc")
+/// このブックのフォルダのテンプレートを探す。
+///
+/// 名前の決めは SEKKEI「ファイルの名前 — 二重の拡張子で種類を言う」
+/// (2026-08-18 発注者)。*見た目の元は `名前.tmpl.adoc`* です。
+///
+/// **フォルダの既定は `.tmpl.adoc` が1枚ならそれ。** 何枚もあるときは
+/// どれを使うか決められないので `None` を返します(黙って1枚目を選ばない —
+/// 書き出し先ごとに `web.tmpl.adoc` `print.tmpl.adoc` と分ける使い方が
+/// あるので、選ぶのは人の仕事です)。
+pub fn find_for(book: &std::path::Path) -> Option<std::path::PathBuf> {
+    let dir = book.parent().unwrap_or(std::path::Path::new("."));
+    let mut 候補: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+        .ok()?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.ends_with(".tmpl.adoc")))
+        .collect();
+    候補.sort();
+    (候補.len() == 1).then(|| 候補.remove(0))
+}
+
+/// このブックのフォルダに**新しく置く**テンプレートの径路。
+/// 既定の名前は `既定.tmpl.adoc` です。
+pub fn default_path(book: &std::path::Path) -> std::path::PathBuf {
+    book.parent().unwrap_or(std::path::Path::new(".")).join("既定.tmpl.adoc")
 }
 
 /// 見た目を落とさずに済むよう、`Sheet` から見た目だけを消す。
