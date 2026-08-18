@@ -1017,6 +1017,138 @@ fn 区切りか(t: &str, 印: &str) -> bool {
 }
 
 
+/// **1つのファイルに入っている文書を全部読む**(2026-08-19 発注者)。
+///
+/// 同時に送る請求書の原稿をまとめて置く、といった使い方のためです。
+/// *1枚ずつが独立した文書*で、部や章のような「1つの文書の一部」ではありません。
+///
+/// 切れ目は `= 題` です。新しい印は足していません — いまも1枚の文書は
+/// `= 題` から始まるので、*それが何度も出てきたらその数だけ文書がある*、
+/// というだけの決めです。
+///
+/// 最初の `= 題` より前にある行(`:doctype: book` などの属性)は、
+/// 1枚目の文書の物になります。`:doctype: book` は[`write_many`]が付ける
+/// 印なので、読むときに落とします(二重に付かないようにするため)。
+pub fn parse_many(src: &str) -> Result<Vec<Document>, String> {
+    let 塊 = 文書に切る(src);
+    let mut out = Vec::with_capacity(塊.len());
+    for s in 塊 {
+        out.push(parse(&s)?);
+    }
+    Ok(out)
+}
+
+/// [`parse_many`] の帳簿つき。読めなかった書き方を数えて返します。
+pub fn parse_many_full(src: &str) -> Result<(Vec<Document>, Vec<String>), String> {
+    let mut docs = Vec::new();
+    let mut 帳簿 = Vec::new();
+    for s in 文書に切る(src) {
+        let (d, r) = parse_full(&s)?;
+        docs.push(d);
+        for x in r {
+            if !帳簿.contains(&x) {
+                帳簿.push(x);
+            }
+        }
+    }
+    Ok((docs, 帳簿))
+}
+
+/// 何枚もの文書を1つのファイルの字にする。
+///
+/// 2枚以上あるときは頭に `:doctype: book` を付けます。本家はこれが無いと
+/// 2枚目の `= 題` を誤りとして扱います(2026-08-19 に確かめました)。
+///
+/// **名前の無い文書には番号で名前を付けます**(`文書 2`)。名前が無いと
+/// 読み直したときに切れ目が分からず、画面のタブにも出せないためです。
+pub fn write_many(docs: &[Document]) -> String {
+    if docs.len() <= 1 {
+        return docs.first().map(write).unwrap_or_default();
+    }
+    let mut out = String::from(":doctype: book
+
+");
+    for (i, d) in docs.iter().enumerate() {
+        let mut s = write(d);
+        if !題がある(d) {
+            s = format!("= 文書 {}
+{}", i + 1, s);
+        }
+        out.push_str(s.trim_end());
+        out.push_str("
+
+");
+    }
+    out
+}
+
+fn 題がある(d: &Document) -> bool {
+    matches!(d.blocks.first(), Some(Block::Para(p)) if p.style == ParaStyle::Title)
+        || !d.props.title.is_empty()
+}
+
+/// その行が文書の切れ目(`= 題`)か。行頭にあることが要ります。
+fn 文書の題か(l: &str) -> bool {
+    l.starts_with("= ") && l.len() > 2
+}
+
+/// 字を文書ごとに切る。
+///
+/// **塊の中の `= ` では切りません。** 例の塊(`====`)や字のまま出す塊
+/// (`....`)、表(`|===`)の中に `= 題` と書いてあっても、それは中身です。
+fn 文書に切る(src: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut cur = String::new();
+    // いま開いている塊の印(None なら塊の外)
+    let mut 開いた: Option<String> = None;
+    let mut 題を見た = false;
+    for line in src.split('\n') {
+        let t = line.trim_end();
+        let 中身 = t.trim();
+        match &開いた {
+            Some(印) => {
+                if 区切りか(中身, 印) {
+                    開いた = None;
+                }
+            }
+            None => {
+                if 中身 == "|===" || 中身 == "____" {
+                    開いた = Some(中身.to_string());
+                } else if let Some((印, _)) = DELIMITED.iter().find(|(d, _)| 区切りか(中身, d)) {
+                    開いた = Some((*印).to_string());
+                } else if 文書の題か(t) {
+                    // **2枚目からが切れ目。** 1枚目の題より前は属性なので、
+                    // 切ると空の文書ができてしまいます
+                    if 題を見た {
+                        out.push(std::mem::take(&mut cur));
+                    }
+                    題を見た = true;
+                }
+            }
+        }
+        // `:doctype: book` は write_many が付ける印なので持ち越しません
+        if 中身 != ":doctype: book" {
+            cur.push_str(line);
+            cur.push('\n');
+        }
+    }
+    out.push(cur);
+    // 中身の無い塊(末尾の空行だけ)は文書として数えません
+    out.retain(|s| !s.trim().is_empty());
+    // **頭の空行を落とします。** `= 題` が1行目に来ないと、読み手が
+    // 文書の題として取らず、字のまま本文に落ちます(`:doctype: book` を
+    // 外した跡の空行で実際に踏みました)
+    for s in out.iter_mut() {
+        while s.starts_with('\n') {
+            s.remove(0);
+        }
+    }
+    if out.is_empty() {
+        out.push(String::new());
+    }
+    out
+}
+
 /// AsciiDoc(部分集合)→ 模型。**意味だけが入る** — 見た目の欄は触らない。
 /// 形が壊れていれば Err、うちが扱わない書き方は [`parse_full`] の帳簿に出る
 pub fn parse(src: &str) -> Result<Document, String> {
