@@ -556,6 +556,10 @@ pub(crate) fn vspan_of(t: &Table, ri: usize, col: usize) -> u8 {
 }
 
 fn write_table(out: &mut String, t: &Table, doc: &Document) {
+    // 表の題(`.名前`)。表の名前になるので、桁の指定より前に書く
+    if let Some(名) = &t.title {
+        out.push_str(&format!(".{名}\n"));
+    }
     // 桁の割合(`[cols="1,3"]`)。表の直前の行として書く
     if !t.col_ratio.is_empty() {
         let 数: Vec<String> = t
@@ -1168,6 +1172,25 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                     if let Some(比) = cols_of(prev.raw_adoc.as_deref().unwrap_or("")) {
                         t.col_ratio = 比;
                         doc.blocks.pop();
+                    }
+                }
+            }
+            // **直前の `.題` も表の物です**(2026-08-18)。表の名前になるので、
+            // 原文のまま持ち越すのをやめて表に入れます
+            if let Some(Block::Para(prev)) = doc.blocks.last() {
+                if prev.style_id.as_deref() == Some("塊の題") {
+                    let 題: String = prev.runs.iter().map(|r| r.text.as_str()).collect();
+                    if let Some(名) = 題.trim().strip_prefix('.') {
+                        t.title = Some(名.to_string());
+                        doc.blocks.pop();
+                        // **読めたので帳簿から下げます。** 表の題は取り込んだ
+                        // ので、「読めなかった」と言うと嘘になります
+                        if let Some(n) = 帳簿.get_mut("塊の題(.題)") {
+                            *n -= 1;
+                            if *n == 0 {
+                                帳簿.remove("塊の題(.題)");
+                            }
+                        }
                     }
                 }
             }
@@ -1932,6 +1955,23 @@ mod tests {
     fn 利用者の名前を付けた段落は何行でも書ける() {
         // 註記とラベル付きリストだけが1行で1つ。名前つきの段落は普通の段落
         往復("[.強調の囲み]\n一つ目です。\n二つ目です。\n");
+    }
+
+    /// **表の題は表の物**(2026-08-18)。calc のシート名になり、式の中では
+    /// 表の名前になる(`=SUM(売上台帳[金額])`)
+    #[test]
+    fn 表の題が表に入って往復する() {
+        往復(".売上台帳\n|===\n|品名 |金額\n\n|ペン |100\n|===\n");
+        let (doc, 帳簿) = parse_full(".売上台帳\n|===\n|品名 |金額\n\n|ペン |100\n|===\n")
+            .expect("読めない");
+        let t = doc.tables().next().expect("表が無い");
+        assert_eq!(t.title.as_deref(), Some("売上台帳"));
+        assert!(t.header_row, "見出しの行が落ちた");
+        // **取り込んだので帳簿には出さない**(出すと嘘になる)
+        assert!(!帳簿.iter().any(|x| x.contains("塊の題")), "{帳簿:?}");
+        // 表と関係のない `.題` は、いままでどおり原文のまま持ち越す
+        let (_, 帳簿2) = parse_full(".ただの題\n\n本文。\n").expect("読めない");
+        assert!(帳簿2.iter().any(|x| x.contains("塊の題")), "{帳簿2:?}");
     }
 
     #[test]

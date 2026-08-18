@@ -1973,6 +1973,8 @@ pub(super) fn parse_document_rels(
                                 col_ratio: Vec::new(),
                                 // docx の見出しの行(w:tblHeader)はまだ読まない
                                 header_row: false,
+                                // docx の表は題を持たない
+                                title: None,
                                 style: b.style,
                                 align: b.align,
                                 fixed_layout: b.fixed_layout,

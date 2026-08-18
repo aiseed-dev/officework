@@ -535,6 +535,12 @@ pub struct Table {
     /// 表の置き方(docx の tblPr の `w:jc`)。None は指定なし(左)。
     /// 使うのは Left / Center / Right だけ(表の置き方に両端揃えは無い)
     pub align: Option<Align>,
+    /// **表の題**(AsciiDoc の `.題`)。2026-08-18。
+    ///
+    /// calc のシート名になり、式の中では*表の名前*になる
+    /// (`=SUM(売上台帳[金額])`)。HTML では `caption`。
+    /// docx は表に題を持たないので、書き出しでは落ちる
+    pub title: Option<String>,
     /// **1行目が見出しの行か。** AsciiDoc は「1行目の後ろに空行」で表します
     /// (2026-08-18)。HTML では `thead` になります。docx から読んだ表は
     /// いまのところ false です

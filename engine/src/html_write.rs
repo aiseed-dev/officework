@@ -456,6 +456,10 @@ fn build(doc: &Document) -> (String, Ctx) {
             if let Block::Table(t) = b {
                 close(&mut o, &mut list);
                 o.push_str("<table>\n");
+                // 表の題は `caption`(本家と同じ)
+                if let Some(名) = &t.title {
+                    o.push_str(&format!("  <caption>{}</caption>\n", esc(名)));
+                }
                 // **桁の指定**(`[cols="1,3"]`)。Web では割合でそのまま書けます
                 if !t.col_ratio.is_empty() {
                     let 和: f32 = t.col_ratio.iter().sum();
