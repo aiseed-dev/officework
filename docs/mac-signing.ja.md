@@ -4,7 +4,7 @@
 落として**そのまま開ける**(「右クリック→開く」が要らなくなる)。
 
 出す形は **Developer ID の直配布**で、Mac App Store ではない。理由は
-[docs/sekkei/ayumi.ja.md](sekkei/ayumi.ja.md) の配布の節(gpui が GPL の
+[docs/sekkei/ayumi.ja.adoc](sekkei/ayumi.ja.adoc) の配布の節(gpui が GPL の
 3クレートを必須で引くので、Apple のストアの規約と衝突する)。
 
 ---

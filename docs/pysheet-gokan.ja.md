@@ -2,7 +2,7 @@
 
 3つのライブラリの中核クラスの公開メンバー **324 個**を、officework
 (pysheet: sheet / calc / doc)と突き合わせた在庫台帳。設計(なぜこの方針か)は
-[docs/sekkei/python.ja.md](sekkei/python.ja.md) の「上位互換は API とテストの
+[docs/sekkei/python.ja.adoc](sekkei/python.ja.adoc) の「上位互換は API とテストの
 蒸留で作る」を見よ。**ここは在庫台帳 — 片づけたら行頭に ✔ を付ける。**
 
 棚卸しの相手: openpyxl 3.1.5 / xlwings 0.36.14 / python-docx 1.2.0

@@ -8,7 +8,7 @@
 
 ## どこを見るか
 
-**三帳簿の「使い方」だけ**(README とマニュアル)。設計(SEKKEI.md と
+**三帳簿の「使い方」だけ**(README とマニュアル)。設計(SEKKEI.adoc と
 docs/sekkei/)は**見ない** — あちらは「古い節は消さず『↑を改めた』で重ねる」
 のが規則で、廃止された言い回しが経緯として残るのが正しい姿だから。
 使い方の帳簿は逆で、「できることだけ書く」(docs/README.ja.md 規則3)。
@@ -34,7 +34,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-# 使い方の帳簿(glob)。設計(SEKKEI.md / docs/sekkei/)は対象外 — 経緯を残す場所
+# 使い方の帳簿(glob)。設計(SEKKEI.adoc / docs/sekkei/)は対象外 — 経緯を残す場所
 DOCS = [
     "README.adoc",
     "README.ja.adoc",
@@ -52,7 +52,7 @@ SUNSET = [
     (
         re.compile(r"@save"),
         re.compile(r"廃止|もう無い|使えません|gone|removed|no longer|refus"),
-        "2026-08-09 廃止(ブック搭載)。正: docs/sekkei/python.ja.md「↑をさらに狭めて」",
+        "2026-08-09 廃止(ブック搭載)。正: docs/sekkei/python.ja.adoc「↑をさらに狭めて」",
     ),
     (
         re.compile(r"ブックに載せ|ブックに搭載|載せて持ち運"),

@@ -17,36 +17,36 @@ They are *separate apps*, not one giant suite.
 
 [cols="1,1,1"]
 |===
-||writer|calc
-|Open / save|docx (parts we don't understand are preserved as-is)|xlsx (same)
-|Japanese input (IME), undo|○|○
-|Character formatting|bold, italic, underline, strikethrough, color, highlight, super/subscript, size, font (*applies to the selection only*)|bold, italic, underline, strikethrough, color, fill
-|Paragraphs|alignment, bulleted/numbered lists (with levels), indent, line spacing, page break, shading and borders, drop caps|—
-|*First-class Japanese*|*vertical writing, ruby (furigana), distributed justification* (Text Direction toggles horizontal/vertical)|text orientation (vertical headings)
-|Form fields (content controls)|○ (text fields, dropdowns, checkboxes — build a form, protect it, hand it out)|equivalent via data validation and checkboxes
-|Headings and TOC|○ (TOC and table of figures with page numbers)|—
-|Header / footer|○ (page number, page count, date)|—
-|Tables|○ (reads/writes merged cells, edit inside cells)|(that's the whole app)
-|Images|insert PNG, JPEG, *SVG (converted at high resolution)*. Shapes/charts are drawn by Python and pasted|insert PNG, JPEG. Shapes, SmartArt, text art, equations (TeX), sparklines, symbols, checkboxes. Chart buttons are backed by matplotlib
-|Comments|○ (per paragraph)|○
-|Track changes|○ (saved as real Word tracked changes)|—
-|Bookmarks, watermark, page color, columns|○|—
-|Drawing (pen, highlighter, eraser)|○ (saved as SVG pictures; also shapes in docx)|—
-|Formulas|equations survive a round trip byte for byte (they are carried, not edited)|arithmetic and functions (about 185, incl. dynamic arrays and legacy CSE arrays), recalculation, circular-reference detection, *=PY* (write your own functions in Python)
-|Sheets|—|multiple sheets, freeze panes, filter, slicer, sort, grouping and subtotals
-|Pivot tables|—|○ (backed by polars; the definition is stored in the workbook so it can refresh)
-|Solver / goal seek|—|○ (simplex LP, backed by scipy)
-|Protection, encryption, signing|○ (it *opens* an encrypted docx; applying encryption lives in calc)|○ (read-only, AES, Ed25519 side-file signature)
-|Chat, version history|○|○ (no server — plain files in a shared folder)
-|Conditional formatting, data validation|—|○ (round-trips through xlsx)
-|Links, defined names, paste special|—|○
-|Python (instead of macros)|macros run .py in a sandbox (`d` = python-docx document); code is never stored in the document|.py files in plugins — procedures via `@name`, cell functions like `=double(A1)` or `=PY`; never stored in the workbook
-|Print settings|paper, orientation, margins, columns — *and a document whose paper changes partway* (portrait and landscape sections in one file, on screen and in the PDF)|paper (incl. JIS B), orientation, margins, print area
-|PDF|○ (headers/footers, watermark, ink and all)|○ (borders, fills, follows print settings)
-|Find and replace|○|○
-|Cross-references to bookmarks|○ (Word REF/PAGEREF fields)|—
-|Hyphenation (Latin text)|○ (same patterns as TeX)|—
-|Proofreading|○|—
+| |writer |calc
+|Open / save |docx (parts we don't understand are preserved as-is) |xlsx (same)
+|Japanese input (IME), undo |○ |○
+|Character formatting |bold, italic, underline, strikethrough, color, highlight, super/subscript, size, font (*applies to the selection only*) |bold, italic, underline, strikethrough, color, fill
+|Paragraphs |alignment, bulleted/numbered lists (with levels), indent, line spacing, page break, shading and borders, drop caps |—
+|*First-class Japanese* |*vertical writing, ruby (furigana), distributed justification* (Text Direction toggles horizontal/vertical) |text orientation (vertical headings)
+|Form fields (content controls) |○ (text fields, dropdowns, checkboxes — build a form, protect it, hand it out) |equivalent via data validation and checkboxes
+|Headings and TOC |○ (TOC and table of figures with page numbers) |—
+|Header / footer |○ (page number, page count, date) |—
+|Tables |○ (reads/writes merged cells, edit inside cells) |(that's the whole app)
+|Images |insert PNG, JPEG, *SVG (converted at high resolution)*. Shapes/charts are drawn by Python and pasted |insert PNG, JPEG. Shapes, SmartArt, text art, equations (TeX), sparklines, symbols, checkboxes. Chart buttons are backed by matplotlib
+|Comments |○ (per paragraph) |○
+|Track changes |○ (saved as real Word tracked changes) |—
+|Bookmarks, watermark, page color, columns |○ |—
+|Drawing (pen, highlighter, eraser) |○ (saved as SVG pictures; also shapes in docx) |—
+|Formulas |equations survive a round trip byte for byte (they are carried, not edited) |arithmetic and functions (about 185, incl. dynamic arrays and legacy CSE arrays), recalculation, circular-reference detection, *=PY* (write your own functions in Python)
+|Sheets |— |multiple sheets, freeze panes, filter, slicer, sort, grouping and subtotals
+|Pivot tables |— |○ (backed by polars; the definition is stored in the workbook so it can refresh)
+|Solver / goal seek |— |○ (simplex LP, backed by scipy)
+|Protection, encryption, signing |○ (it *opens* an encrypted docx; applying encryption lives in calc) |○ (read-only, AES, Ed25519 side-file signature)
+|Chat, version history |○ |○ (no server — plain files in a shared folder)
+|Conditional formatting, data validation |— |○ (round-trips through xlsx)
+|Links, defined names, paste special |— |○
+|Python (instead of macros) |macros run .py in a sandbox (`d` = python-docx document); code is never stored in the document |.py files in plugins — procedures via `@name`, cell functions like `=double(A1)` or `=PY`; never stored in the workbook
+|Print settings |paper, orientation, margins, columns — *and a document whose paper changes partway* (portrait and landscape sections in one file, on screen and in the PDF) |paper (incl. JIS B), orientation, margins, print area
+|PDF |○ (headers/footers, watermark, ink and all) |○ (borders, fills, follows print settings)
+|Find and replace |○ |○
+|Cross-references to bookmarks |○ (Word REF/PAGEREF fields) |—
+|Hyphenation (Latin text) |○ (same patterns as TeX) |—
+|Proofreading |○ |—
 |===
 
 The ribbon layout follows Euro-Office, so people who switch don't have to relearn where things are. *Commands that don't work yet are shown grayed out* — we never make something look usable when it isn't.
@@ -85,10 +85,10 @@ macOS and Windows need nothing extra.
 
 [cols="1,1,1"]
 |===
-||file|state
-|Linux|`.deb`, or `.tar.gz` to just unpack|built and checked here
-|macOS|`.dmg`|signing and notarization are set up, *not yet run end to end*
-|Windows|`setup.exe`|installs without administrator rights. Unsigned, so SmartScreen will ask — _More info → Run anyway_. A Microsoft Store listing is meant to replace that
+| |file |state
+|Linux |`.deb`, or `.tar.gz` to just unpack |built and checked here
+|macOS |`.dmg` |signing and notarization are set up, *not yet run end to end*
+|Windows |`setup.exe` |installs without administrator rights. Unsigned, so SmartScreen will ask — _More info → Run anyway_. A Microsoft Store listing is meant to replace that
 |===
 
 *From source* — see below.
@@ -297,4 +297,4 @@ Everything else on both ribbons works.
 
 Both figures are checked on every push against the ribbon tables themselves, so this line cannot quietly go stale — which is exactly what it had done: it said zero for months while calc showed nine.
 
-Design decisions are recorded in `SEKKEI.md` (Japanese), history and open items in `HIKITSUGI.md` (Japanese), and there are ready-to-open samples in `sample/`.
+Design decisions are recorded in `SEKKEI.adoc` (Japanese), history and open items in `HIKITSUGI.md` (Japanese), and there are ready-to-open samples in `sample/`.

@@ -86,13 +86,13 @@ Python を使わない人のパソコンには作りません。
 
 [cols="1,1,1"]
 |===
-|場所|書き方|最初から使える変数
-|セルの関数(UDF)|`=倍(A1)` — plugins の `def 倍(x)` を呼ぶ|引数が値で渡る(下記)
-|手続き|`@モジュール` / `@モジュール.関数`|自分で `xw.Book.caller()` を呼ぶ
-|外(Jupyter など)|`from officework import calc as xw`|同上
-|calc: データ > Python(一行 / .py)|パネルに直接書く|`b` = ブック、`s` = いまのシート
-|calc / writer: マクロタブ|—|calc は `b`/`s`、*writer は `d` = python-docx の文書*
-|writer: ページの Python(HTML)|—|`form` = 記入欄の名前→値の辞書
+|場所 |書き方 |最初から使える変数
+|セルの関数(UDF) |`=倍(A1)` — plugins の `def 倍(x)` を呼ぶ |引数が値で渡る(下記)
+|手続き |`@モジュール` / `@モジュール.関数` |自分で `xw.Book.caller()` を呼ぶ
+|外(Jupyter など) |`from officework import calc as xw` |同上
+|calc: データ > Python(一行 / .py) |パネルに直接書く |`b` = ブック、`s` = いまのシート
+|calc / writer: マクロタブ |— |calc は `b`/`s`、*writer は `d` = python-docx の文書*
+|writer: ページの Python(HTML) |— |`form` = 記入欄の名前→値の辞書
 |===
 
 *手続きと外からのコードは、動いている calc をそのまま操る*(一時ファイルの複製ではない — 記事の言う「ファイルではなく Excel そのものを操作する」)。
@@ -286,7 +286,7 @@ unsupported は「読めなかった」の帳簿であって「捨てた」の�
 == 他のライブラリの書き方でも動く — openpyxl・xlwings・python-docx
 
 いま持っているコードも、覚えている書き方も、そのまま使えます。
-**API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.md)で、在庫は台帳 link:pysheet-gokan.ja.md[docs/pysheet-gokan.ja.md] — 3ライブラリの中核 324 メンバーを1件ずつ判定してある(できる物・作る物・作らない物とその理由)。
+**API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.adoc)で、在庫は台帳 link:pysheet-gokan.ja.md[docs/pysheet-gokan.ja.md] — 3ライブラリの中核 324 メンバーを1件ずつ判定してある(できる物・作る物・作らない物とその理由)。
 ここに書くのは**いま動くものだけ**で、全部この機械で動かして確かめています。
 
 書式をそのまま保つことと、式を計算し直すことは、どの書き方をしても効きます。

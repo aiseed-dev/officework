@@ -30,8 +30,8 @@ ADOC = ROOT / "engine/src/adoc.rs"
 
 # 表の見出し行(この行の下から表が始まる)。**手引きは AsciiDoc です**
 # (2026-08-18 に .md から移した)ので、表は `|===` で囲まれた形
-HEAD_JA = "|したいこと|本文の書き方|リボンのボタン|Web の形(HTML)"
-HEAD_EN = "|What you want|Type this|Ribbon button|On the web (HTML)"
+HEAD_JA = "|したいこと |本文の書き方 |リボンのボタン |Web の形(HTML)"
+HEAD_EN = "|What you want |Type this |Ribbon button |On the web (HTML)"
 
 
 def rows(path, head):

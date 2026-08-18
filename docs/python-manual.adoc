@@ -28,13 +28,13 @@ Both cell functions live in `~/.config/officework/funcs/*.py`, procedures in `~/
 
 [cols="1,1,1"]
 |===
-|Place|How you write it|Bindings
-|Cell function (UDF)|`=double(A1)` — calls `def double(x)` in a plugin|arguments passed as values (below)
-|Procedure|`@module` / `@module.func`|call `xw.Book.caller()` yourself
-|Outside (Jupyter, …)|`from officework import calc as xw`|same
-|calc: Data > Python (one-liner / .py)|typed into the panel|`b` = workbook, `s` = current sheet
-|calc / writer: macros, plugins|—|calc: `b`/`s`; *writer: `d` = python-docx Document*
-|writer: in-page Python (HTML)|—|`form` = dict of field name → value
+|Place |How you write it |Bindings
+|Cell function (UDF) |`=double(A1)` — calls `def double(x)` in a plugin |arguments passed as values (below)
+|Procedure |`@module` / `@module.func` |call `xw.Book.caller()` yourself
+|Outside (Jupyter, …) |`from officework import calc as xw` |same
+|calc: Data > Python (one-liner / .py) |typed into the panel |`b` = workbook, `s` = current sheet
+|calc / writer: macros, plugins |— |calc: `b`/`s`; *writer: `d` = python-docx Document*
+|writer: in-page Python (HTML) |— |`form` = dict of field name → value
 |===
 
 *Procedures and outside code drive the running calc directly* — not a temporary copy (this is the article's "a library that drives Excel itself, not files").
@@ -222,7 +222,7 @@ Existing equations do not appear in the body text (they are carried through verb
 == Writing in vocabularies you already know — openpyxl, xlwings, python-docx
 
 You don't have to throw away your existing code or the vocabulary in your head.
-The policy is *copy the API and the tests, never the implementation* (docs/sekkei/python.ja.md); the inventory is the ledger link:pysheet-gokan.ja.md[docs/pysheet-gokan.ja.md] — all 324 core members of the three libraries, judged one by one (what works, what we will build, what we won't and why).
+The policy is *copy the API and the tests, never the implementation* (docs/sekkei/python.ja.adoc); the inventory is the ledger link:pysheet-gokan.ja.md[docs/pysheet-gokan.ja.md] — all 324 core members of the three libraries, judged one by one (what works, what we will build, what we won't and why).
 Everything below works today and was measured on this machine.
 
 And the two things the originals can't give you — untouched formatting and recalculation — come along whichever vocabulary you write in.

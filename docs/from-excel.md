@@ -213,14 +213,14 @@ Excel's answer is Power Query and Copilot connectors — have your core business
 | From Database | Different | There is no GUI connector. A procedure in plugins queries the database with polars or the like. Drivers live in your own Python environment |
 | From Another Workbook | Different | Data tab > "External link" imports a whole sheet from another xlsx **as values** (formulas become values; the source workbook's name goes into the sheet name) |
 | Live external references (=[Book1.xlsx]…) and Edit Links | By design | So that no form ever goes out with broken or stale references (a deliberate trade-off recorded in [the ledger](guide-tsukiawase-2.ja.md)). If you want current numbers, import again |
-| Shaping data in the Power Query Editor | Different | You write the shaping in polars (Python) — the code itself is the written procedure. There is no M language and no recorded list of steps ([design](sekkei/python.ja.md)) |
+| Shaping data in the Power Query Editor | Different | You write the shaping in polars (Python) — the code itself is the written procedure. There is no M language and no recorded list of steps ([design](sekkei/python.ja.adoc)) |
 | Refresh All | Different | Re-run the plugins procedure with `@name` (it keeps a record of what was already imported, so nothing is duplicated). **Open-means-run does not exist here** — refreshing is always an explicit human action |
 | Text to Columns | Same | On the Data tab. A simplified version that splits on one delimiter (there is no three-step wizard and no fixed-width mode) |
 | Combine from Folder | Different | Write it with polars in a plugins procedure (no sample is shipped — the assumption is that you or an AI writes it) |
 | Importing tables from PDF | Not yet | For officework, PDF is the exit that printing goes out through (not on the ledger yet — a candidate for it) |
 | Importing XML | Not yet | The wizard handles CSV and text only (noted on the ledger). If you need it now, use a plugins procedure |
 | From Jupyter, or existing pandas/xlwings work | Same | Change one line: `from officework import calc as xw`. The only channel is a socket inside this machine (no TCP port is opened) |
-| Copilot connectors | By design | AI and data ingestion are not bundled together — there is no cloud-indexing mechanism here at all ([design](sekkei/ayumi.ja.md): native first) |
+| Copilot connectors | By design | AI and data ingestion are not bundled together — there is no cloud-indexing mechanism here at all ([design](sekkei/ayumi.ja.adoc): native first) |
 
 ## Linked data types (Stocks, Geography)
 
@@ -495,7 +495,7 @@ Excel's answer is the cloud. **officework's answer is a shared folder** — whoe
 | Excel's name | Mark | How it works here |
 |---|---|---|
 | Share it by putting it on OneDrive | Different | Put the workbook in a shared folder |
-| Real-time co-authoring | By design | We run no server ([design](sekkei/ayumi.ja.md), native-first). What we have instead is an exclusive lock — whoever opens the file first writes, everyone after reads |
+| Real-time co-authoring | By design | We run no server ([design](sekkei/ayumi.ja.adoc), native-first). What we have instead is an exclusive lock — whoever opens the file first writes, everyone after reads |
 | "So-and-so is editing" | Same | A .~lock file, the same as LibreOffice. It names the person, and later arrivals are stopped from overwriting. Once the first person has gone, take the edit right back with Co-authoring mode |
 | Cell comments | Same | Round-trip as commentsN.xml, and Excel shows them |
 | Replies, threads, Resolved | Not yet | A comment is one string on one cell (an open item on the ledger) |
@@ -504,14 +504,14 @@ Excel's answer is the cloud. **officework's answer is a shared folder** — whoe
 | Version history | Different | Every overwrite-save keeps a copy in .jo-history, nine generations deep. Restoring is your own save — nothing is written back silently |
 | Track Changes (the review record) | Different | Co-authoring > Track Changes turns recording on and off (**implemented 2026-08-08**). Rather than picking up operations one at a time, it records **the difference from the moment recording started**, written down when you stop (the same shape as in writer). Who, when, which cell, from what to what. Press it again and the list appears; pick an entry and it jumps to that place. **It is not an undo feature** — for that, Ctrl+Z or the version history. The record goes into a part of the xlsx that is ours alone, and **Excel does not read it** |
 | AutoSave | By design | It presupposes saving to the cloud. Ctrl+S is the basic move; unsaved changes show on the status bar, and you are asked on exit |
-| Allow Edit Ranges, Protect Workbook | By design | The buttons are greyed out, holding the place only (see the protection section of the [design](sekkei/calc.ja.md)). Protection is done with sheet protection |
+| Allow Edit Ranges, Protect Workbook | By design | The buttons are greyed out, holding the place only (see the protection section of the [design](sekkei/calc.ja.adoc)). Protection is done with sheet protection |
 | Sheet View (a filtered view just for you) | Not yet | Since there is no simultaneous editing, the collision it solves rarely comes up in the first place (an open item on the ledger) |
 | Handing it over read-only | Different | Make the sheet read-only from the Protect tab (round-trips as sheetProtection). We do not build view-only live sharing |
 
 ## Macros and automation (VBA → Python)
 
 - VBA is **deliberately absent** — we are not importing the thirty-year-old
-  "open = execute" hole ([design](sekkei/python.ja.md)). Python takes the job:
+  "open = execute" hole ([design](sekkei/python.ja.adoc)). Python takes the job:
   [Python manual](python-manual.md)
 - **The only thing a workbook may carry is a =PY function.** Procedures run
   only from .py files you placed in `~/.config/officework/plugins/` yourself —
@@ -520,7 +520,7 @@ Excel's answer is the cloud. **officework's answer is a shared folder** — whoe
 | Excel's name | Mark | How it works here |
 |---|---|---|
 | Record Macro | Different | There is no record button. Ask the AI in plain language for the Python and try it in the sandbox (the manual carries a copy-paste briefing block). Once it satisfies you, move it into plugins and call it with `@name` from then on |
-| VBA and the Visual Basic Editor | By design | See above ([design](sekkei/python.ja.md)) |
+| VBA and the Visual Basic Editor | By design | See above ([design](sekkei/python.ja.adoc)) |
 | The VBA you already have in .xlsm files | Different | Extract with olevba → hand it to the AI together with the briefing to get Python → check the answers against the same inputs. There is no way to open an .xlsm directly either |
 | Macro security settings (the three choices, the yellow bar) | By design | Nothing runs by itself and every run is a person's explicit action, so the moment that would ask you to choose never arrives |
 | Workbook_Open / Auto_Open | By design | Open = execute does not exist — the first safety principle of this software |
@@ -611,7 +611,7 @@ Three jobs come before handing a workbook to someone else: look for mistakes, fl
 | Saving a workbook as a template (.xltx) | Different | A template here is an ordinary xlsx: put it in a shared folder such as `templates/` and copy it. There is no ceremony of changing formats, and the save filter offers only xlsx and CSV. Saving in XLTX format itself is held back (on the ledger) |
 | Creating a new workbook from a template (personal templates) | Not yet | The File page has a grayed "Create from template" button holding the place. Pressing it does nothing. Today's path is to copy a template from a shared folder yourself and open it (not on the ledger yet — a backlog candidate) |
 | Building formatting, formulas, and validation into a template and distributing it | Same | Because a template is a real workbook, borders, fills, column widths, formulas, data validation, print title rows, and bundled =PY functions all travel intact. The samples are the three ledgers in `templates/` (in the inquiry ledger, the status column is a three-choice validation list and H2 is a =PY that tallies the statuses) |
-| The online template gallery | By design | We keep no stash of templates on someone else's server — no account, no server, and everything works with no network at all ([design](sekkei/ayumi.ja.md)). The gallery's role is filled by the bundled `templates/` (real workbooks, on your machine or in a shared folder) |
+| The online template gallery | By design | We keep no stash of templates on someone else's server — no account, no server, and everything works with no network at all ([design](sekkei/ayumi.ja.adoc)). The gallery's role is filled by the bundled `templates/` (real workbooks, on your machine or in a shared folder) |
 | Changing the defaults for new workbooks via a default template (XLSTART) | Not yet | New workbooks are always plain, and there is no way to swap in different default formatting or layout. `~/.config/officework` holds only settings, keys, recent files and the Python folders (funcs, ribbon, plugins, records). If you want different defaults, start from a copy of a template (not on the ledger yet — a backlog candidate) |
 | Saving as CSV (comma separated) | Same | "Export to CSV" on the File page, or pick CSV in "Save As". UTF-8 (BOM) + CRLF, the shape Excel opens without garbling, values from the current sheet only. What can't go in (formulas, formatting, other sheets) is named in the status bar, and the file you're working on stays the xlsx — the same line Excel's own CSV save draws |
 | Choosing the CSV encoding and delimiter / tab-separated (.txt) | Not yet | Export is a single path: UTF-8 (BOM) + comma + CRLF, with nothing to choose. Older systems that want Shift-JIS or tabs can't be served yet. The import side does have an encoding-and-delimiter wizard, so the open item is the export side only (on the ledger) |
@@ -625,7 +625,7 @@ Three jobs come before handing a workbook to someone else: look for mistakes, fl
 | Protect Sheet | Different | It makes the sheet read-only (the same button releases it; the tab gets a 🔒). **No password is set — and we don't pretend to set one.** sheetProtection round-trips, so Excel sees the sheet as protected too |
 | Allowing edits to only some cells (unlocking cells) | Not yet | Protection covers a whole sheet at once, nothing finer (on the ledger) |
 | The checkboxes for permitted operations | Not yet | Open on the ledger |
-| Allow Users to Edit Ranges | By design | We run on sheet protection plus an exclusive lock rather than fine-grained permissions ([design](sekkei/calc.ja.md)). The button is gray, holding the place |
+| Allow Users to Edit Ranges | By design | We run on sheet protection plus an exclusive lock rather than fine-grained permissions ([design](sekkei/calc.ja.adoc)). The button is gray, holding the place |
 | Protect Workbook (structure) | By design | Same as above |
 | Encrypting a workbook with a password | Same | AES-256 (Agile). **Cross-verified against real Excel.** Clear the field and press Enter to remove it |
 | Opening a password-protected file | Same | Both Standard (2007) and Agile (2013+) are readable. Forget the password and it stays closed — there is no back door |
@@ -636,7 +636,7 @@ Three jobs come before handing a workbook to someone else: look for mistakes, fl
 | Worrying about macro viruses | Different | No automatic execution, plus **workbooks carry no code**. A file you receive contains nothing that could run, so "someone else's code runs the moment you open it" cannot happen by construction |
 | Recommend read-only, Mark as Final | Not yet | The nearest paths are sheet protection and the exclusive lock (not on the ledger yet — a backlog candidate) |
 | The sheet-protection password is unknown | Different | We never look at passwords, so protection applied in Excel comes off with the same one-button press. Sheet protection was always about preventing slips — **if you need a safe, encrypt** |
-| Protected View (the warning for files from the internet) | By design | There is nothing that opens and executes to begin with ([design](sekkei/python.ja.md)). Parts we can't read appear in the report shown when the file opens |
+| Protected View (the warning for files from the internet) | By design | There is nothing that opens and executes to begin with ([design](sekkei/python.ja.adoc)). Parts we can't read appear in the report shown when the file opens |
 
 ## Settings, customization, add-ins
 

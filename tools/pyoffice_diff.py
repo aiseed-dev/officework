@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """genoffice のサイドカーと officework のエンジンに同じ xlsx を通し、答えを比べる。
 
-**実装から入らないための道具**(SEKKEI docs/sekkei/pyoffice.ja.md)。
+**実装から入らないための道具**(SEKKEI docs/sekkei/pyoffice.ja.adoc)。
 向こうの答えを正解表として、うちのエンジンに何が足りないかを数で出す。
 **うちの検査にもなる** — 実物の様式を何十枚も通すので、こちらの穴も落ちる。
 

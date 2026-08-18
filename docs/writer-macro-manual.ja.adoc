@@ -52,11 +52,11 @@ d          # 文書              import docx / docx.Document(...) / d.save(...)
 
 [cols="1,1"]
 |===
-|関数|はたらき
-|`fill(名前, 値)`|その名前の欄**すべて**に書く(2枚目に同じ欄がある様式のため)
-|`fill_one(名前, 値)`|最初の一つだけに書く
-|`extract(名前)`|欄の値を読む
-|`fields()`|(名前, 値) の一覧 — 様式のデータ台帳
+|関数 |はたらき
+|`fill(名前, 値)` |その名前の欄**すべて**に書く(2枚目に同じ欄がある様式のため)
+|`fill_one(名前, 値)` |最初の一つだけに書く
+|`extract(名前)` |欄の値を読む
+|`fields()` |(名前, 値) の一覧 — 様式のデータ台帳
 |===
 
 どれも**無い名前ははっきり断ります** — 打ち間違いが黙った空振りになることはありません。
@@ -85,9 +85,9 @@ for name, value in fields():
 
 [cols="1,1"]
 |===
-|関数|はたらき
-|`render(辞書)`|雛形に辞書を差し込む。結果がそのまま保存される
-|`tpl_fields()`|差し込み口の名前一覧 — 雛形の仕様書
+|関数 |はたらき
+|`render(辞書)` |雛形に辞書を差し込む。結果がそのまま保存される
+|`tpl_fields()` |差し込み口の名前一覧 — 雛形の仕様書
 |===
 
 [source,python]
@@ -105,10 +105,10 @@ print("差し込みました")
 
 [cols="1,1"]
 |===
-|品名|数量
-|`{%tr for m in 明細 %}`|
-|`{{m.品名}}`|`{{m.数量}}`
-|`{%tr endfor %}`|
+|品名 |数量
+|`{%tr for m in 明細 %}` |
+|`{{m.品名}}` |`{{m.数量}}`
+|`{%tr endfor %}` |
 |===
 
 実際に雛形を壊すのは次の2つです(編集で `{{ }}` が中で割れるのは大抵無害 — docxtpl が自力で繋ぎ、writer も開くときに繋ぎます):
@@ -125,13 +125,13 @@ print("差し込みました")
 
   ます — 1,920 セルの罫線帳票で、下の形なら *91ms*、`cell(i, j)` の  ループだと **12.7秒**でした:
 
-  python   for tb in d.tables:       for row in tb.rows:           for c in row.cells:               ...   
+  python   for tb in d.tables:       for row in tb.rows:           for c in row.cells:               ...
 
 * *書式を保って差し替える。* `c.text = "…"` は run の書式を潰します。
 
   最初の run に書くのが安全です:
 
-  python   p = cell.paragraphs[0]   if p.runs:       p.runs[0].text = "山田太郎"       for r in p.runs[1:]:           r.text = ""   else:       p.add\_run("山田太郎")   
+  python   p = cell.paragraphs[0]   if p.runs:       p.runs[0].text = "山田太郎"       for r in p.runs[1:]:           r.text = ""   else:       p.add\_run("山田太郎")
 
 == サンドボックス(サンドボックス)
 
@@ -157,10 +157,10 @@ print("差し込みました")
 
 [cols="1,1"]
 |===
-|表示|意味
-|`python-docx がありません`|`pip install python-docx`(.venv があればそちらへ)
-|`docxtpl がありません`|`pip install docxtpl` — `render`/`tpl_fields` のときだけ要る
-|`記入欄「X」が見つかりません`|X という名前の欄が無い — フォームタブ「名前」で付けるか、`fields()` で確かめる
-|`雛形が壊れています: …`|雛形の書き方 — `{%tr %}` の行の置き方と全角の `{{ }}` を確かめる
-|`マクロ: <エラーの最後の行>`|スクリプトが例外で止まった — 文書は変わっていません
+|表示 |意味
+|`python-docx がありません` |`pip install python-docx`(.venv があればそちらへ)
+|`docxtpl がありません` |`pip install docxtpl` — `render`/`tpl_fields` のときだけ要る
+|`記入欄「X」が見つかりません` |X という名前の欄が無い — フォームタブ「名前」で付けるか、`fields()` で確かめる
+|`雛形が壊れています: …` |雛形の書き方 — `{%tr %}` の行の置き方と全角の `{{ }}` を確かめる
+|`マクロ: <エラーの最後の行>` |スクリプトが例外で止まった — 文書は変わっていません
 |===

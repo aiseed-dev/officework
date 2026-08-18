@@ -12,10 +12,10 @@ Three different things:
 
 [cols="1,1"]
 |===
-||What it does
-|*Display*|Everything in the file you opened *is shown* — including blocks whose meaning we don't know; their characters still appear
-|*Editing*|What you can edit visually is *a subset* (the 27 rows in "What to write, which button, what comes out"). Ruby and form fields are our own extensions
-|*Saving*|The source you opened *is not damaged*. Blocks we don't know are written back exactly as they were
+| |What it does
+|*Display* |Everything in the file you opened *is shown* — including blocks whose meaning we don't know; their characters still appear
+|*Editing* |What you can edit visually is *a subset* (the 27 rows in "What to write, which button, what comes out"). Ruby and form fields are our own extensions
+|*Saving* |The source you opened *is not damaged*. Blocks we don't know are written back exactly as they were
 |===
 
 Blocks whose meaning we don't know (admonitions `NOTE:`, delimited blocks `----`, `include::` and so on) *are visible but not editable*.
@@ -81,19 +81,19 @@ Tab order: *File / Home / Insert / Draw / Layout / References / Forms / Header &
 
 [cols="1,1"]
 |===
-|Action|Keys
-|Move|↑ ↓ ← → (visual lines). By word: Ctrl+←→
-|Line start / end|Home / End (Home twice = paragraph start)
-|Document start / end|Ctrl+Home / Ctrl+End
-|Select|Shift+arrows, Ctrl+A
-|Undo / redo|Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y too)
-|Copy / cut / paste|Ctrl+C / Ctrl+X / Ctrl+V
-|Find / replace|Ctrl+F / Ctrl+H
-|Open / save|Ctrl+O / Ctrl+S
-|Indent / list level|Tab / Shift+Tab (inside a table: next cell)
-|Context menu|Menu key / Shift+F10
-|Close dialog, put tool away|Esc
-|Quit|Ctrl+Q (asks if there are unsaved changes)
+|Action |Keys
+|Move |↑ ↓ ← → (visual lines). By word: Ctrl+←→
+|Line start / end |Home / End (Home twice = paragraph start)
+|Document start / end |Ctrl+Home / Ctrl+End
+|Select |Shift+arrows, Ctrl+A
+|Undo / redo |Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y too)
+|Copy / cut / paste |Ctrl+C / Ctrl+X / Ctrl+V
+|Find / replace |Ctrl+F / Ctrl+H
+|Open / save |Ctrl+O / Ctrl+S
+|Indent / list level |Tab / Shift+Tab (inside a table: next cell)
+|Context menu |Menu key / Shift+F10
+|Close dialog, put tool away |Esc
+|Quit |Ctrl+Q (asks if there are unsaved changes)
 |===
 
 Uncommitted IME text appears underlined in the body and becomes one undo step when committed.
@@ -108,63 +108,63 @@ You can rebind in settings.toml: `key.bold = "alt-b"` replaces the default keys 
 
 [cols="1,1"]
 |===
-|Key|Action
-|Backspace|Delete backwards (on a cell: clear it)
-|Delete|Delete forwards (on a cell: clear it)
-|←|Move left
-|→|Move right
-|Shift+←|Extend selection left
-|Shift+→|Extend selection right
-|Ctrl+←|Word left (calc: to the data edge)
-|Ctrl+→|Word right (calc: to the data edge)
-|Ctrl+Shift+←|Extend selection a word left (calc: to the edge)
-|Ctrl+Shift+→|Extend selection a word right (calc: to the edge)
-|PageUp|Page up
-|PageDown|Page down
-|Ctrl+F / Ctrl+H|Find and replace
-|Ctrl+B|Bold
-|Ctrl+I|Italic
-|Ctrl+U|Underline
-|Ctrl+5|Strikethrough
-|Ctrl+P|Print (to PDF)
-|F11|Toggle full screen
-|Ctrl+Shift+S / F12|Save as
-|Ctrl+0|Zoom to 100%
-|F1|Help
-|Ctrl+;|Insert today's date
-|Ctrl+:|Insert the current time
-|Ctrl+Home|To the beginning
-|Ctrl+End|To the end
-|Shift+↑|Extend selection up
-|Shift+↓|Extend selection down
-|Ctrl+A|Select all
-|Home|To the start of the line/row
-|End|To the end of the line/row
-|Enter|Confirm and move down / new line
-|↑|Move up
-|↓|Move down
-|Tab|Move right / indent
-|Shift+Tab|Move left / outdent
-|Ctrl+Z|Undo
-|Ctrl+Shift+Z / Ctrl+Y|Redo
-|Ctrl+S|Save
-|Ctrl+O|Open
-|Ctrl+C|Copy
-|Ctrl+X|Cut
-|Ctrl+V|Paste
-|Ctrl+Q|Quit
-|Menu / Shift+F10|Context menu
-|Ctrl+= / Ctrl+Shift+=|Bigger UI text
-|Ctrl+-|Smaller UI text
-|Ctrl+K|Hyperlink
-|Esc|Cancel / close
-|Ctrl+E|Align centre
-|Ctrl+L|Align left
-|Ctrl+R|Align right
-|Ctrl+J|Justify
-|Ctrl+Enter|Page break
-|Ctrl+]|Bigger font
-|Ctrl+[|Smaller font
+|Key |Action
+|Backspace |Delete backwards (on a cell: clear it)
+|Delete |Delete forwards (on a cell: clear it)
+|← |Move left
+|→ |Move right
+|Shift+← |Extend selection left
+|Shift+→ |Extend selection right
+|Ctrl+← |Word left (calc: to the data edge)
+|Ctrl+→ |Word right (calc: to the data edge)
+|Ctrl+Shift+← |Extend selection a word left (calc: to the edge)
+|Ctrl+Shift+→ |Extend selection a word right (calc: to the edge)
+|PageUp |Page up
+|PageDown |Page down
+|Ctrl+F / Ctrl+H |Find and replace
+|Ctrl+B |Bold
+|Ctrl+I |Italic
+|Ctrl+U |Underline
+|Ctrl+5 |Strikethrough
+|Ctrl+P |Print (to PDF)
+|F11 |Toggle full screen
+|Ctrl+Shift+S / F12 |Save as
+|Ctrl+0 |Zoom to 100%
+|F1 |Help
+|Ctrl+; |Insert today's date
+|Ctrl+: |Insert the current time
+|Ctrl+Home |To the beginning
+|Ctrl+End |To the end
+|Shift+↑ |Extend selection up
+|Shift+↓ |Extend selection down
+|Ctrl+A |Select all
+|Home |To the start of the line/row
+|End |To the end of the line/row
+|Enter |Confirm and move down / new line
+|↑ |Move up
+|↓ |Move down
+|Tab |Move right / indent
+|Shift+Tab |Move left / outdent
+|Ctrl+Z |Undo
+|Ctrl+Shift+Z / Ctrl+Y |Redo
+|Ctrl+S |Save
+|Ctrl+O |Open
+|Ctrl+C |Copy
+|Ctrl+X |Cut
+|Ctrl+V |Paste
+|Ctrl+Q |Quit
+|Menu / Shift+F10 |Context menu
+|Ctrl+= / Ctrl+Shift+= |Bigger UI text
+|Ctrl+- |Smaller UI text
+|Ctrl+K |Hyperlink
+|Esc |Cancel / close
+|Ctrl+E |Align centre
+|Ctrl+L |Align left
+|Ctrl+R |Align right
+|Ctrl+J |Justify
+|Ctrl+Enter |Page break
+|Ctrl+] |Bigger font
+|Ctrl+[ |Smaller font
 |===
 
 <!-- keys:gen:end -->
@@ -460,11 +460,11 @@ writer handles two kinds. *Which one you have open changes what you can do.*
 
 [cols="1,1,1"]
 |===
-||Native (.adoc)|Compatible (.docx)
-|Content|*meaning only* (headings, emphasis, quotes, tables…)|the look is in the text
-|Look|a *template* (a .toml next to it)|the text itself
-|Direct formatting|*blocked* → name it and it becomes a style|works as before
-|Saving|.adoc (meaning only)|.docx (original parts kept)
+| |Native (.adoc) |Compatible (.docx)
+|Content |*meaning only* (headings, emphasis, quotes, tables…) |the look is in the text
+|Look |a *template* (a .toml next to it) |the text itself
+|Direct formatting |*blocked* → name it and it becomes a style |works as before
+|Saving |.adoc (meaning only) |.docx (original parts kept)
 |===
 
 *A docx you were sent behaves exactly as before.* Nothing changes for it.
@@ -516,39 +516,39 @@ One thing per row, shown three ways: how you type it in the text, which ribbon b
 
 [cols="1,1,1,1"]
 |===
-|What you want|Type this|Ribbon button|On the web (HTML)
-|Title|`= Title`|Styles in the right panel > 表題|`<h1 class="title">`
-|Heading 1|`== Heading`|Home > Paragraph style > Heading 1|`<h2>`
-|Heading 2|`=== Heading`|Home > Paragraph style > Heading 2|`<h3>`
-|Heading 3|`==== Heading`|Home > Paragraph style > Heading 3|`<h4>`
-|Body text|just type it|Home > Paragraph style > Normal|`<p>`
-|Quote|wrap in `____`|Styles in the right panel > Quote|`<blockquote>`
-|Bullets|start with `* `|Home > Bullets|`<ul>` and `<li>`
-|Numbering|start with `. `|Home > Numbering|`<ol>` and `<li>`
-|Bold|`*bold*`|Home > Bold|`<strong>`
-|Italic|`_italic_`|Home > Italic|`<em>`
-|Superscript|`x^2^`|Home > Superscript|`<sup>`
-|Subscript|`H~2~O`|Home > Subscript|`<sub>`
-|Ruby (furigana)|`ruby:漢字[かんじ]`|Home > Ruby|`<ruby>` and `<rt>`
-|Style (paragraph)|`[.name]` on the line above|Styles in the right panel|`class="st-name"`
-|Style (characters)|`[.name]#text#`|Styles in the right panel|`<span class="st-name">`
-|Hyperlink|`https://example.jp[label]`|(no button yet)|`<a href="…">`
-|Footnote|`footnote:[the note]`|References > Footnote|a number linked to a list at the end
-|Bookmark|`[[name]]` on the line above|References > Bookmarks|`id="name"` on the paragraph
-|Cross-reference|`<<name>>`|References > Cross-reference|`<a href="#name">`
-|Table|wrap in `\|===`, cells after `\|`|Insert > Table|`<table>` and `<td>`
-|Merge cells across|`2+\|`|(no button yet)|`colspan="2"`
-|Merge cells down|`.2+\|`|(no button yet)|`rowspan="2"`
-|Picture|a paragraph of just `image::images/fig1.png[]`|Insert > Picture|`<img>`
-|Equation|a paragraph of just `stem:[x^2]`|Insert > Equation|`<img>` (the source stays with it)
-|Page break|`<<<`|Insert > Page break|breaks only when printed
-|Form field|`field:name[label,kind]`|Forms > Text field|`<input>` `<select>` `<textarea>`
-|Heading 4, 5|`=====` `======`|Home > Paragraph style|`<h5>` `<h6>`
-|Monospace|`` ``text`` ``|Right panel > Styles > 等幅|`<code>`
-|Description list|`term:: value`|Right panel > Styles > 説明のリスト|`<dl>` `<dt>` `<dd>`
-|Admonition|`NOTE: text`|Right panel > Styles > 註記|`<p class="st-註記">`
-|Listing block|wrap in `----`|(written in the text)|`<pre>`
-|Table column spec|`[cols="1,3"]`|(written in the text)|`<colgroup>`
+|What you want |Type this |Ribbon button |On the web (HTML)
+|Title |`= Title` |Styles in the right panel > 表題 |`<h1 class="title">`
+|Heading |`== Heading` |Home > Paragraph style > Heading |`<h2>`
+|Heading |`=== Heading` |Home > Paragraph style > Heading |`<h3>`
+|Heading |`==== Heading` |Home > Paragraph style > Heading |`<h4>`
+|Body text |just type it |Home > Paragraph style > Normal |`<p>`
+|Quote |wrap in `____` |Styles in the right panel > Quote |`<blockquote>`
+|Bullets |start with `* ` |Home > Bullets |`<ul>` and `<li>`
+|Numbering |start with `. ` |Home > Numbering |`<ol>` and `<li>`
+|Bold |`*bold*` |Home > Bold |`<strong>`
+|Italic |`_italic_` |Home > Italic |`<em>`
+|Superscript |`x^2^` |Home > Superscript |`<sup>`
+|Subscript |`H~2~O` |Home > Subscript |`<sub>`
+|Ruby (furigana) |`ruby:漢字[かんじ]` |Home > Ruby |`<ruby>` and `<rt>`
+|Style (paragraph) |`[.name]` on the line above |Styles in the right panel |`class="st-name"`
+|Style (characters) |`[.name]#text#` |Styles in the right panel |`<span class="st-name">`
+|Hyperlink |`https://example.jp[label]` |(no button yet) |`<a href="…">`
+|Footnote |`footnote:[the note]` |References > Footnote |a number linked to a list at the end
+|Bookmark |`[[name]]` on the line above |References > Bookmarks |`id="name"` on the paragraph
+|Cross-reference |`<<name>>` |References > Cross-reference |`<a href="#name">`
+|Table |wrap in `\|===`, cells after `\|` |Insert > Table |`<table>` and `<td>`
+|Merge cells across |`2+\|` |(no button yet) |`colspan="2"`
+|Merge cells down |`.2+\|` |(no button yet) |`rowspan="2"`
+|Picture |a paragraph of just `image::images/fig1.png[]` |Insert > Picture |`<img>`
+|Equation |a paragraph of just `stem:[x^2]` |Insert > Equation |`<img>` (the source stays with it)
+|Page break |`<<<` |Insert > Page break |breaks only when printed
+|Form field |`field:name[label,kind]` |Forms > Text field |`<input>` `<select>` `<textarea>`
+|Heading 4, |`=====` `======` |Home > Paragraph style |`<h5>` `<h6>`
+|Monospace |`` ``text`` `` |Right panel > Styles > 等幅 |`<code>`
+|Description list |`term:: value` |Right panel > Styles > 説明のリスト |`<dl>` `<dt>` `<dd>`
+|Admonition |`NOTE: text` |Right panel > Styles > 註記 |`<p class="st-註記">`
+|Listing block |wrap in `----` |(written in the text) |`<pre>`
+|Table column spec |`[cols="1,3"]` |(written in the text) |`<colgroup>`
 |===
 
 *What you do not write in the text.* Underline, strikethrough, font colour, highlight colour, font, font size, line spacing, alignment and borders — and the *page dressing* (header, footer, watermark, page colour, vertical writing) — go in the template, not in the text.
@@ -582,9 +582,9 @@ Documents in that folder use it without naming it.
 
 [cols="1,1,1"]
 |===
-|How|What you write|What is used
-|One per folder (usual)|nothing|`テンプレート.toml` in the same folder
-|Per document|`:template: house-style` at the top|`house-style.toml`, looked for *next to the document → `~/.config/officework/templates/`*
+|How |What you write |What is used
+|One per folder (usual) |nothing |`テンプレート.toml` in the same folder
+|Per document |`:template: house-style` at the top |`house-style.toml`, looked for *next to the document → `~/.config/officework/templates/`*
 |===
 
 *What is written wins*, so a `:template:` line takes precedence.
@@ -649,10 +649,10 @@ Just put one format file per destination.
 
 [cols="1,1"]
 |===
-|Destination|File used
-|Screen and saving|`テンプレート.toml`
-|Export for the web (HTML)|`テンプレート-web.toml`
-|Print (PDF)|`テンプレート-印刷.toml`
+|Destination |File used
+|Screen and saving |`テンプレート.toml`
+|Export for the web (HTML) |`テンプレート-web.toml`
+|Print (PDF) |`テンプレート-印刷.toml`
 |===
 
 *They never mix.* Exactly one is in effect at a time, falling back to``テンプレート.toml`` when the file for that destination is absent.
@@ -691,8 +691,8 @@ A style takes twelve keys today. *More can be added when they are needed*, as lo
 
 [cols="1,1"]
 |===
-|Applies to characters|Applies to paragraphs
-|size, font, bold, italic, underline, colour|background, alignment, first-line indent, space before, space after, line spacing
+|Applies to characters |Applies to paragraphs
+|size, font, bold, italic, underline, colour |background, alignment, first-line indent, space before, space after, line spacing
 |===
 
 *Formatting nests three deep.* `[文書]` sets the base font and size, a paragraph style sits on top of it, and a character style (`[.name]#text#`) is innermost and wins.

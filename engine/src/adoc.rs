@@ -573,6 +573,9 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
     }
     out.push_str("|===\n");
     for (ri, row) in t.rows.iter().enumerate() {
+        // この行にもうセルを書いたか(縦の結合の続きは書かないので、
+        // 番号ではなく実際に書いたかで見ます)
+        let mut 書いた = false;
         for (k, cell) in row.iter().enumerate() {
             match cell.v_merge {
                 VMerge::Continue => {
@@ -590,6 +593,13 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
             if cell.span() > 1 {
                 out.push_str(&format!("{}+", cell.span()));
             }
+            // **セルの間に空白を1つ置きます**(2026-08-18)。詰めて書くと、
+            // 前のセルの終わりの `8*` が「8回くり返す」の指定として読まれ、
+            // 表が崩れます(本家で確かめました)
+            if 書いた {
+                out.push(' ');
+            }
+            書いた = true;
             out.push('|');
             let text: String = cell
                 .paragraphs
@@ -1859,7 +1869,7 @@ mod tests {
 
     #[test]
     fn 表の桁の指定が往復する() {
-        往復("[cols=\"1,3\"]\n|===\n|狭い|広い\n|あ|い\n|===\n");
+        往復("[cols=\"1,3\"]\n|===\n|狭い |広い\n|あ |い\n|===\n");
         let doc = parse("[cols=\"1,3\"]\n|===\n|あ|い\n|===\n").unwrap();
         let t = doc.tables().next().unwrap();
         assert_eq!(t.col_ratio, vec![1.0, 3.0]);
@@ -1958,7 +1968,7 @@ mod tests {
 
     #[test]
     fn 表が結合ごと往復する() {
-        往復("|===\n|品|数\n2+|合計だけの行\n|===\n");
+        往復("|===\n|品 |数\n2+|合計だけの行\n|===\n");
     }
 
     #[test]

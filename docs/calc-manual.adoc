@@ -45,20 +45,20 @@ Freeze panes, sheet visibility (unhide/hide sheets), and the interface theme als
 
 [cols="1,1"]
 |===
-|Action|Keys
-|Move|↑ ↓ ← → / Enter (down) / Tab (right) / Shift+Tab (left)
-|Select range|Shift+arrows
-|First / last cell|Ctrl+Home / Ctrl+End
-|Page up / down|PageUp / PageDown
-|Select all|Ctrl+A
-|Undo / redo|Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y too)
-|Copy / cut / paste|Ctrl+C / Ctrl+X / Ctrl+V
-|*Paste values only*|Ctrl+Shift+V (formulas become their computed values)
-|Find / replace|Ctrl+F / Ctrl+H
-|Open / save|Ctrl+O / Ctrl+S
-|Context menu|Menu key / Shift+F10
-|Cancel / close|Esc
-|Quit|Ctrl+Q
+|Action |Keys
+|Move |↑ ↓ ← → / Enter (down) / Tab (right) / Shift+Tab (left)
+|Select range |Shift+arrows
+|First / last cell |Ctrl+Home / Ctrl+End
+|Page up / down |PageUp / PageDown
+|Select all |Ctrl+A
+|Undo / redo |Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y too)
+|Copy / cut / paste |Ctrl+C / Ctrl+X / Ctrl+V
+|*Paste values only* |Ctrl+Shift+V (formulas become their computed values)
+|Find / replace |Ctrl+F / Ctrl+H
+|Open / save |Ctrl+O / Ctrl+S
+|Context menu |Menu key / Shift+F10
+|Cancel / close |Esc
+|Quit |Ctrl+Q
 |===
 
 === All keys
@@ -71,84 +71,84 @@ You can rebind in settings.toml: `key.bold = "alt-b"` replaces the default keys 
 
 [cols="1,1"]
 |===
-|Key|Action
-|Backspace|Delete backwards (on a cell: clear it)
-|Delete|Delete forwards (on a cell: clear it)
-|←|Move left
-|→|Move right
-|Shift+←|Extend selection left
-|Shift+→|Extend selection right
-|Ctrl+←|Word left (calc: to the data edge)
-|Ctrl+→|Word right (calc: to the data edge)
-|Ctrl+Shift+←|Extend selection a word left (calc: to the edge)
-|Ctrl+Shift+→|Extend selection a word right (calc: to the edge)
-|PageUp|Page up
-|PageDown|Page down
-|Ctrl+F / Ctrl+H|Find and replace
-|Ctrl+B|Bold
-|Ctrl+I|Italic
-|Ctrl+U|Underline
-|Ctrl+5|Strikethrough
-|Ctrl+P|Print (to PDF)
-|F11|Toggle full screen
-|Ctrl+Shift+S / F12|Save as
-|Ctrl+0|Zoom to 100%
-|F1|Help
-|Ctrl+;|Insert today's date
-|Ctrl+:|Insert the current time
-|Ctrl+Home|To the beginning
-|Ctrl+End|To the end
-|Shift+↑|Extend selection up
-|Shift+↓|Extend selection down
-|Ctrl+A|Select all
-|Home|To the start of the line/row
-|End|To the end of the line/row
-|Enter|Confirm and move down / new line
-|↑|Move up
-|↓|Move down
-|Tab|Move right / indent
-|Shift+Tab|Move left / outdent
-|Ctrl+Z|Undo
-|Ctrl+Shift+Z / Ctrl+Y|Redo
-|Ctrl+S|Save
-|Ctrl+O|Open
-|Ctrl+C|Copy
-|Ctrl+X|Cut
-|Ctrl+V|Paste
-|Ctrl+Q|Quit
-|Menu / Shift+F10|Context menu
-|Ctrl+= / Ctrl+Shift+=|Bigger UI text
-|Ctrl+-|Smaller UI text
-|Ctrl+K|Hyperlink
-|Esc|Cancel / close
-|Ctrl+↑|To the data edge (up)
-|Ctrl+↓|To the data edge (down)
-|Ctrl+Shift+↑|Extend selection to the edge (up)
-|Ctrl+Shift+↓|Extend selection to the edge (down)
-|F2|Edit the cell
-|Shift+F3|Insert function
-|Ctrl+Shift+%|Percent format
-|Ctrl+E|Flash fill
-|Ctrl+Shift+V|Paste values only
-|Ctrl+Shift+Enter|Legacy array formula (CSE)
-|F9|Recalculate the whole book
-|Shift+F9|Recalculate this sheet
-|Alt+Enter|New line inside the cell
-|Alt+PageUp / Ctrl+PageUp|Previous sheet
-|Alt+PageDown / Ctrl+PageDown|Next sheet
-|F4|Cycle $ in the reference
-|Alt+S|Slicer multi-select (while open)
-|Alt+C|Clear the slicer filter (while open)
-|Ctrl+1|Cell format
-|Ctrl+Space|Select the column
-|Shift+Space|Select the row
-|Alt+=|AutoSum
-|Ctrl+D|Fill down
-|Ctrl+R|Fill right
-|Ctrl+G / F5|Go to (focus the name box)
-|Ctrl+Shift+L|Toggle the filter
-|Ctrl+T|Make a table
-|Shift+F2|Comment
+|Key |Action
+|Backspace |Delete backwards (on a cell: clear it)
+|Delete |Delete forwards (on a cell: clear it)
+|← |Move left
+|→ |Move right
+|Shift+← |Extend selection left
+|Shift+→ |Extend selection right
+|Ctrl+← |Word left (calc: to the data edge)
+|Ctrl+→ |Word right (calc: to the data edge)
+|Ctrl+Shift+← |Extend selection a word left (calc: to the edge)
+|Ctrl+Shift+→ |Extend selection a word right (calc: to the edge)
+|PageUp |Page up
+|PageDown |Page down
+|Ctrl+F / Ctrl+H |Find and replace
+|Ctrl+B |Bold
+|Ctrl+I |Italic
+|Ctrl+U |Underline
+|Ctrl+5 |Strikethrough
+|Ctrl+P |Print (to PDF)
+|F11 |Toggle full screen
+|Ctrl+Shift+S / F12 |Save as
+|Ctrl+0 |Zoom to 100%
+|F1 |Help
+|Ctrl+; |Insert today's date
+|Ctrl+: |Insert the current time
+|Ctrl+Home |To the beginning
+|Ctrl+End |To the end
+|Shift+↑ |Extend selection up
+|Shift+↓ |Extend selection down
+|Ctrl+A |Select all
+|Home |To the start of the line/row
+|End |To the end of the line/row
+|Enter |Confirm and move down / new line
+|↑ |Move up
+|↓ |Move down
+|Tab |Move right / indent
+|Shift+Tab |Move left / outdent
+|Ctrl+Z |Undo
+|Ctrl+Shift+Z / Ctrl+Y |Redo
+|Ctrl+S |Save
+|Ctrl+O |Open
+|Ctrl+C |Copy
+|Ctrl+X |Cut
+|Ctrl+V |Paste
+|Ctrl+Q |Quit
+|Menu / Shift+F10 |Context menu
+|Ctrl+= / Ctrl+Shift+= |Bigger UI text
+|Ctrl+- |Smaller UI text
+|Ctrl+K |Hyperlink
+|Esc |Cancel / close
+|Ctrl+↑ |To the data edge (up)
+|Ctrl+↓ |To the data edge (down)
+|Ctrl+Shift+↑ |Extend selection to the edge (up)
+|Ctrl+Shift+↓ |Extend selection to the edge (down)
+|F2 |Edit the cell
+|Shift+F3 |Insert function
+|Ctrl+Shift+% |Percent format
+|Ctrl+E |Flash fill
+|Ctrl+Shift+V |Paste values only
+|Ctrl+Shift+Enter |Legacy array formula (CSE)
+|F9 |Recalculate the whole book
+|Shift+F9 |Recalculate this sheet
+|Alt+Enter |New line inside the cell
+|Alt+PageUp / Ctrl+PageUp |Previous sheet
+|Alt+PageDown / Ctrl+PageDown |Next sheet
+|F4 |Cycle $ in the reference
+|Alt+S |Slicer multi-select (while open)
+|Alt+C |Clear the slicer filter (while open)
+|Ctrl+1 |Cell format
+|Ctrl+Space |Select the column
+|Shift+Space |Select the row
+|Alt+= |AutoSum
+|Ctrl+D |Fill down
+|Ctrl+R |Fill right
+|Ctrl+G / F5 |Go to (focus the name box)
+|Ctrl+Shift+L |Toggle the filter
+|Ctrl+T |Make a table
+|Shift+F2 |Comment
 |===
 
 <!-- keys:gen:end -->
@@ -181,17 +181,17 @@ By category:
 
 [cols="1,1"]
 |===
-|Category|Functions
-|Aggregation|SUM, AVERAGE, COUNT, COUNTA, COUNTBLANK, MIN, MAX, SUMIF, *SUMIFS*, COUNTIF, *COUNTIFS*, AVERAGEIF(S), MINIFS, MAXIFS, *SUBTOTAL*, AGGREGATE, SUMPRODUCT, SUMSQ, AVERAGEA, MAXA, MINA
-|Math|ABS, MOD, QUOTIENT, POWER, SQRT, INT, ROUND(UP/DOWN), TRUNC, CEILING(.MATH), FLOOR(.MATH), MROUND, EVEN, ODD, SIGN, PRODUCT, FACT, COMBIN, PERMUT, GCD, LCM, PI, SIN…ATAN2, SINH…TANH, EXP, LN, LOG, LOG10, DEGREES, RADIANS, RAND, RANDBETWEEN
-|Statistics|MEDIAN, MODE, STDEV(P), VAR(P) (and .S/.P names), PERCENTILE, QUARTILE, LARGE, SMALL, RANK(.EQ/.AVG), CORREL, SLOPE, INTERCEPT, FORECAST
-|Finance|PMT, PV, FV, NPER, *NPV, IRR, RATE* (IRR and RATE are iterative)
-|Date & time|TODAY, NOW, DATE, DATEVALUE, YEAR, MONTH, DAY, WEEKDAY, TIME, HOUR, MINUTE, SECOND, EDATE, EOMONTH, DATEDIF, WORKDAY, NETWORKDAYS, DAYS, DAYS360, YEARFRAC, WEEKNUM, ISOWEEKNUM
-|Text|LEN, LEFT, RIGHT, MID, TRIM, UPPER, LOWER, PROPER, EXACT, CLEAN, CONCATENATE/CONCAT, *TEXT*, SUBSTITUTE, FIND, SEARCH, VALUE, NUMBERVALUE, TEXTJOIN, REPT, FIXED, YEN, CHAR/UNICHAR, CODE/UNICODE
-|Japanese|*LENB, LEFTB, RIGHTB, MIDB* (full-width = 2, matching Excel's Japanese locale), *ASC, JIS* (full/half-width conversion), *DATESTRING* (Japanese era dates), *PHONETIC* (furigana — reads the rPh data in the xlsx)
-|Logic & info|IF, IFS, SWITCH, CHOOSE, AND, OR, NOT, IFERROR, IFNA, NA, IS… (BLANK/ERROR/ERR/NA/NUMBER/TEXT/NONTEXT/LOGICAL/EVEN/ODD), T, N, TYPE
-|Lookup|VLOOKUP, HLOOKUP, *XLOOKUP*, LOOKUP, INDEX, MATCH, ROW(S), COLUMN(S), ADDRESS, HYPERLINK, *OFFSET, INDIRECT* (including `'Sheet name'!A1` across sheets)
-|Dynamic arrays|*FILTER, SORT, UNIQUE, SEQUENCE, TRANSPOSE* — results spill into neighboring cells; blocked cells give `#SPILL!`. They also combine with operators (`=SEQUENCE(3)+1`) and nest into aggregates (`=SUM(FILTER(…))`)
+|Category |Functions
+|Aggregation |SUM, AVERAGE, COUNT, COUNTA, COUNTBLANK, MIN, MAX, SUMIF, *SUMIFS*, COUNTIF, *COUNTIFS*, AVERAGEIF(S), MINIFS, MAXIFS, *SUBTOTAL*, AGGREGATE, SUMPRODUCT, SUMSQ, AVERAGEA, MAXA, MINA
+|Math |ABS, MOD, QUOTIENT, POWER, SQRT, INT, ROUND(UP/DOWN), TRUNC, CEILING(.MATH), FLOOR(.MATH), MROUND, EVEN, ODD, SIGN, PRODUCT, FACT, COMBIN, PERMUT, GCD, LCM, PI, SIN…ATAN2, SINH…TANH, EXP, LN, LOG, LOG10, DEGREES, RADIANS, RAND, RANDBETWEEN
+|Statistics |MEDIAN, MODE, STDEV(P), VAR(P) (and .S/.P names), PERCENTILE, QUARTILE, LARGE, SMALL, RANK(.EQ/.AVG), CORREL, SLOPE, INTERCEPT, FORECAST
+|Finance |PMT, PV, FV, NPER, *NPV, IRR, RATE* (IRR and RATE are iterative)
+|Date & time |TODAY, NOW, DATE, DATEVALUE, YEAR, MONTH, DAY, WEEKDAY, TIME, HOUR, MINUTE, SECOND, EDATE, EOMONTH, DATEDIF, WORKDAY, NETWORKDAYS, DAYS, DAYS360, YEARFRAC, WEEKNUM, ISOWEEKNUM
+|Text |LEN, LEFT, RIGHT, MID, TRIM, UPPER, LOWER, PROPER, EXACT, CLEAN, CONCATENATE/CONCAT, *TEXT*, SUBSTITUTE, FIND, SEARCH, VALUE, NUMBERVALUE, TEXTJOIN, REPT, FIXED, YEN, CHAR/UNICHAR, CODE/UNICODE
+|Japanese |*LENB, LEFTB, RIGHTB, MIDB* (full-width = 2, matching Excel's Japanese locale), *ASC, JIS* (full/half-width conversion), *DATESTRING* (Japanese era dates), *PHONETIC* (furigana — reads the rPh data in the xlsx)
+|Logic & info |IF, IFS, SWITCH, CHOOSE, AND, OR, NOT, IFERROR, IFNA, NA, IS… (BLANK/ERROR/ERR/NA/NUMBER/TEXT/NONTEXT/LOGICAL/EVEN/ODD), T, N, TYPE
+|Lookup |VLOOKUP, HLOOKUP, *XLOOKUP*, LOOKUP, INDEX, MATCH, ROW(S), COLUMN(S), ADDRESS, HYPERLINK, *OFFSET, INDIRECT* (including `'Sheet name'!A1` across sheets)
+|Dynamic arrays |*FILTER, SORT, UNIQUE, SEQUENCE, TRANSPOSE* — results spill into neighboring cells; blocked cells give `#SPILL!`. They also combine with operators (`=SEQUENCE(3)+1`) and nest into aggregates (`=SUM(FILTER(…))`)
 |===
 
 Errors (`#N/A` etc.) propagate from arguments to the formula.
@@ -584,11 +584,11 @@ The risk is not the same:
 
 [cols="1,1,1"]
 |===
-||Function (funcs)|Macro (plugins)
-|Called by|a *formula* (`=with_tax(A1)`)|a *person* (picked from a list)
-|Runs when|every open, every recalc|only when pressed
-|On whose judgement|a formula left in a cell — its author need not be present|whoever is there
-|Arguments|values only|the whole workbook
+| |Function (funcs) |Macro (plugins)
+|Called by |a *formula* (`=with_tax(A1)`) |a *person* (picked from a list)
+|Runs when |every open, every recalc |only when pressed
+|On whose judgement |a formula left in a cell — its author need not be present |whoever is there
+|Arguments |values only |the whole workbook
 |===
 
 **What is left in a formula keeps running without anyone pressing anything. **So the folders are split, and "callable from a formula" now means "put in funcs".
@@ -679,14 +679,14 @@ s["A30"] = "Nihon Funen Co., Ltd."   # value only; formatting is left alone
 
 [cols="1,1"]
 |===
-|What you type|What happens
-|`@module`|run `~/.config/officework/plugins/module.py` top to bottom
-|`@module.func`|call just that function in that .py
-|`@edit name`|*open that .py for editing inside calc* (creates a starter file if missing)
-|`@list` (or `@`)|the .py files in funcs and plugins, and the defs inside them
-|`@計算`|compute cell functions by hand (normally automatic, so rarely needed)
-|`@export name`|extract code embedded in an *old* workbook to a .py (never runs it)
-|`@del name`|drop code embedded in an old workbook
+|What you type |What happens
+|`@module` |run `~/.config/officework/plugins/module.py` top to bottom
+|`@module.func` |call just that function in that .py
+|`@edit name` |*open that .py for editing inside calc* (creates a starter file if missing)
+|`@list` (or `@`) |the .py files in funcs and plugins, and the defs inside them
+|`@計算` |compute cell functions by hand (normally automatic, so rarely needed)
+|`@export name` |extract code embedded in an *old* workbook to a .py (never runs it)
+|`@del name` |drop code embedded in an old workbook
 |===
 
 `@name net` is gone (with no sandbox there is no network distinction).
@@ -797,14 +797,14 @@ What is written is not the name of the command but *the result it produced*:
 
 [cols="1,1"]
 |===
-|what you did|the line you get
-|select A1|`s["A1"].select()`
-|bold|`s["A1"].font.bold = True`
-|centre|`s["A1"].align = "center"`
-|percent|`s["A1"].number_format = "0%"`
-|sort / clear / paste|`s["A1:B3"].value = [[…], […]]`
-|change the margins|`s.set_page_setup(margins_mm=(10, 10, 10, 10))`
-|press a macro you put on the ribbon|`xw.run_macro("month_end")`
+|what you did |the line you get
+|select A1 |`s["A1"].select()`
+|bold |`s["A1"].font.bold = True`
+|centre |`s["A1"].align = "center"`
+|percent |`s["A1"].number_format = "0%"`
+|sort / clear / paste |`s["A1:B3"].value = [[…], […]]`
+|change the margins |`s.set_page_setup(margins_mm=(10, 10, 10, 10))`
+|press a macro you put on the ribbon |`xw.run_macro("month_end")`
 |===
 
 *For on/off commands the resulting state is written, not the number of presses.* Pressing bold twice gives you `= True` then `= False`.
@@ -861,11 +861,11 @@ New files show up within about a second; no restart.
 
 [cols="1,1,1"]
 |===
-|Folder|Called by|Runs when
-|`funcs/`|a *formula* (`=with_tax(A1)`)|every open, every recalc
-|`ribbon/`|a *ribbon button*|only when pressed
-|`plugins/`|*picked from a list* (`@name`)|only when picked
-|`records/`|— (just stored)|*never*
+|Folder |Called by |Runs when
+|`funcs/` |a *formula* (`=with_tax(A1)`) |every open, every recalc
+|`ribbon/` |a *ribbon button* |only when pressed
+|`plugins/` |*picked from a list* (`@name`) |only when picked
+|`records/` |— (just stored) |*never*
 |===
 
 `records/` is where *recordings land* (Macros > Record actions).
@@ -893,10 +893,10 @@ Three paths run Python:
 
 [cols="1,1"]
 |===
-|Path|What runs
-|Macros > List, and `@name(...)` in a cell|*only .py from the folder*
-|Data > Python (typing)|*what you just typed*; no file is read
-|Left panel conversation > Apply|*what the AI wrote, that you read and pressed*
+|Path |What runs
+|Macros > List, and `@name(...)` in a cell |*only .py from the folder*
+|Data > Python (typing) |*what you just typed*; no file is read
+|Left panel conversation > Apply |*what the AI wrote, that you read and pressed*
 |===
 
 Every one starts with a person choosing, typing, or pressing. *Workbooks never carry code* — opening one never runs anything.
@@ -963,10 +963,10 @@ Columns that don't fit the paper are cut (the status   bar says so)
 
 [cols="1,1"]
 |===
-|Tab|Grayed out
-|Layout|Bring forward, Send backward, Align, Group, Merge shapes
-|Protect|Protect workbook, Protect range
-|View|Normal, Page-break preview
+|Tab |Grayed out
+|Layout |Bring forward, Send backward, Align, Group, Merge shapes
+|Protect |Protect workbook, Protect range
+|View |Normal, Page-break preview
 |===
 
 Everything else on the ribbon works.
@@ -976,9 +976,9 @@ The following work differently here, or are delegated to Python:
 
 [cols="1,1"]
 |===
-|Grayed elsewhere / different|Our way
-|Forecasting, statistics|polars, statsmodels
-|Macros (VBA)|*deliberately absent*; plugins written in Python take the role (code stays out of the workbook)
+|Grayed elsewhere / different |Our way
+|Forecasting, statistics |polars, statsmodels
+|Macros (VBA) |*deliberately absent*; plugins written in Python take the role (code stays out of the workbook)
 |===
 
 We also don't create *reference links* to external workbooks (values are imported instead) — no forms that break when a link dies.
