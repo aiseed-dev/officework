@@ -2,7 +2,8 @@
 
 _日本語版(secondary): link:writer-manual.ja.adoc[writer-manual.ja.adoc]_
 
-*This manual describes writer 0.2.0-alpha.* Anything not yet in the released 0.1.0-alpha is marked *(coming in 0.2.0-alpha)*.
+*This manual describes writer 0.1.0-alpha*, the version we ship today.
+Anything not in it yet is marked *(coming in 0.2.0)*.
 Those parts describe what we are building, not what ships today.
 
 *A visual editor for AsciiDoc.* You edit your source (.adoc) as it looks.
@@ -26,7 +27,7 @@ Edit those in a text editor.
 There are four destinations: screen, PDF, HTML and docx.
 The screen is one of them, so you can write on paper or in a plain flowing view.
 
-*docx is the delivery format.* You can open it, read it, print it and turn it into adoc, but *it is not edited and saved as docx* (coming in 0.2.0-alpha).
+*docx is the delivery format.* You can open it, read it, print it and turn it into adoc, but *it is not edited and saved as docx* (coming in 0.2.0).
 Edit in adoc, hand over in docx.
 
 From Python you can still edit a docx and write it back (`from officework import doc`); only the screen stops doing it.
@@ -863,7 +864,7 @@ If the folder   holds a `テンプレート-docx.toml`, docx exports use that fo
 
   saves the adoc, not the docx
 
-* A docx you opened *is not edited and saved back* (coming in 0.2.0-alpha).
+* A docx you opened *is not edited and saved back* (coming in 0.2.0).
 
   Press "turn into adoc" first, then export to docx
 
