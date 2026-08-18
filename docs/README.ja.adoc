@@ -1,0 +1,88 @@
+= docs の見取り図 — 三帳簿と、マニュアルの管理
+
+2026-08-08 起こし(発注者「マニュアルの管理も考え始めないと」)。
+
+== 三帳簿 — 混ぜない
+
+[cols="1,1,1"]
+|===
+|帳簿 |問い |場所
+
+|*設計* |なぜそう作るか(決定と経緯) |link:../SEKKEI.adoc[SEKKEI.adoc](憲法)+ link:sekkei/[sekkei/](7部屋)
+|*在庫* |どこまでできているか |link:guide-tsukiawase-2.ja.adoc[guide-tsukiawase-2.ja.adoc](台帳 — 直したら ✔)
+|*使い方* |どうやるか |このフォルダの \*-manual(下の一覧)
+|===
+
+同じ話を二つの帳簿に書かない。
+使い方に「なぜ」が要るときは一行で言い、続きは設計へのリンクにする。
+
+== マニュアルの一覧
+
+[cols="1,1"]
+|===
+|冊子 |読む人
+
+|link:calc-manual.ja.adoc[calc-manual.ja.adoc] / link:calc-manual.adoc[.md] |calc を使う人(ボタンと作法)
+|link:writer-manual.ja.adoc[writer-manual.ja.adoc] / link:writer-manual.adoc[.md] |writer を使う人
+|link:python-manual.ja.adoc[python-manual.ja.adoc] / link:python-manual.adoc[.md] |コードを書く人(範囲⇄配列・AI との共働)
+|link:writer-macro-manual.ja.adoc[writer-macro-manual.ja.adoc] / link:writer-macro-manual.adoc[.md] |writer のマクロ(記入欄・雛形)
+|link:from-excel.ja.adoc[from-excel.ja.adoc] / link:from-excel.adoc[.md] |*Excel から乗り換える人*(課題→ここでの道)
+|link:../templates/README.adoc[templates/]・link:../sample/README.adoc[sample/] |実例で覚える人
+|===
+
+言語は**英語版が正本(primary)、日本語版が副** — 各冊子の頭にそう書いてある(世界に配る前提。
+日本語は発注者と国内の一次読者のため常に併走)。
+
+== 記事(articles/)— 三帳簿にもマニュアルにも入らない
+
+link:articles/[articles/] は**公開用の書き物**の置き場。
+マニュアルではないので、下の管理の規則は掛からない:
+
+* *その時点の事実と見立てを残すもの。* 挙動が変わっても遡って直さない
+
+  (直すのはマニュアルの方)。
+日付が中身の一部
+
+* 発注者の一人称で書く。「これから作る」にも触れてよい(規則3の外)
+* 各ファイルの頭に、その旨の注記が HTML コメントで入っている
+
+[cols="1,1"]
+|===
+|記事 |中身
+
+|link:articles/excel-python-sonogo-2026.ja.adoc[excel-python-sonogo-2026.ja.adoc] |Qiita「ExcelにPythonが搭載?」の8年後の続編。Python in Excel がクラウド実行で来たこと、コードをファイルの外に置く設計、xlwings との書き味の比較(実測つき)
+|===
+
+== 管理の規則
+
+. *嘘は欠落より悪い。* 挙動を変えるコミットは、**同じ回で**マニュアルの
+
+   該当箇所も直す(2026-08-08 の「手続きはブックから動かない」で   calc/python の手引きと templates/sample の README が一斉に嘘になった —    この規則はその反省)
+
+. **新機能の追記は遅れてよい**が、遅れは下の「追随待ち」に一行で控える。
+
+   黙って古いままにしない
+
+. *できることだけ書く*(リボンの灰色と同じ方針)。「〜できます(予定)」は
+
+   書かない
+
+. 両言語とも直すのが原則。急ぐときは正本(英語)を先に直し、
+
+   日本語は追随待ちに載せる — どちらか一方だけが直っている状態を   規則の外に置かない
+
+. 実測で書く(python-manual の流儀 — 「全部この機械で実測してある」を守る)
+. *蒸留の作法*(2026-08-08 発注者「Excel のマニュアルを蒸留して」):
+
+   本家(Excel)のヘルプは**課題の並びの教師** — 使う人が知っている仕事の   一覧として構成だけ借り、*文章は写さない*(vendor を挙動の教師にした   台帳と同じ流儀)。
+成果物は from-excel(課題→ここでの道/やらない理由)
+
+== 追随待ち(直したら消す)
+
+* calc-manual(ja/en): 2026-08-07〜08 の突き合わせ分の総ざらい —
+
+  条件付き書式の第2版(バー・スケール・アイコン)、ピボットの絞り込みと  グループ化、スパークライン3種、テキスト取り込みウィザード、R1C1、  反復計算などが「挿入」「データ」節にまだ薄い(図形と @コマンドは  2026-08-08 に追随済み)
+
+* from-excel: 第3稿+英語版(2026-08-08 — 本家ヘルプの領域を一巡。課題は計 471 件)。
+
+  残りは本文の「在庫候補」印を台帳へ移す整理だけ

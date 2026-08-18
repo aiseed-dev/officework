@@ -87,6 +87,7 @@ Python を使わない人のパソコンには作りません。
 [cols="1,1,1"]
 |===
 |場所 |書き方 |最初から使える変数
+
 |セルの関数(UDF) |`=倍(A1)` — plugins の `def 倍(x)` を呼ぶ |引数が値で渡る(下記)
 |手続き |`@モジュール` / `@モジュール.関数` |自分で `xw.Book.caller()` を呼ぶ
 |外(Jupyter など) |`from officework import calc as xw` |同上
@@ -286,7 +287,7 @@ unsupported は「読めなかった」の帳簿であって「捨てた」の�
 == 他のライブラリの書き方でも動く — openpyxl・xlwings・python-docx
 
 いま持っているコードも、覚えている書き方も、そのまま使えます。
-**API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.adoc)で、在庫は台帳 link:pysheet-gokan.ja.md[docs/pysheet-gokan.ja.md] — 3ライブラリの中核 324 メンバーを1件ずつ判定してある(できる物・作る物・作らない物とその理由)。
+**API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.adoc)で、在庫は台帳 link:pysheet-gokan.ja.adoc[docs/pysheet-gokan.ja.adoc] — 3ライブラリの中核 324 メンバーを1件ずつ判定してある(できる物・作る物・作らない物とその理由)。
 ここに書くのは**いま動くものだけ**で、全部この機械で動かして確かめています。
 
 書式をそのまま保つことと、式を計算し直すことは、どの書き方をしても効きます。
@@ -344,7 +345,7 @@ wb.add_named_style(...)                       # セルのスタイル(名前付�
 ----
 
 データの入力規則・名前付き範囲・グループ化・画像(`add_image`)・ヘッダー/フッター(奇数・偶数・先頭ページの別まで)・1904 日付システム・`move_range`(数式の参照が付いて動く)も同じ流儀で。
-*何がどこまであるかは対応表を見てください*(link:pysheet-gokan.ja.md[pysheet-gokan.ja.md] — 324 件に判定と理由)。
+*何がどこまであるかは対応表を見てください*(link:pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] — 324 件に判定と理由)。
 
 === xlwings の書き方(officework.calc — 動いている calc を操る)
 
@@ -423,7 +424,7 @@ p.runs[0].font.name                  # .name でも引ける(書体が run に�
 
 書く方も一通りそろっています — `d.add_heading(字, level)`(1〜3。
 0=Title は持たないので正直に断る)、`d.add_paragraph(字, style=)`、`d.add_picture`、`d.add_section()`、`d.add_table(rows, cols)`、`d.styles.add_style`、`p.add_comment(字)`(段落単位)、`d.core_properties`。
-在庫の全量と判定の理由は台帳(link:pysheet-gokan.ja.md[pysheet-gokan.ja.md])に。
+在庫の全量と判定の理由は台帳(link:pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc])に。
 
 == 帳票を作る — 雛形にデータを流し込む
 
@@ -669,7 +670,7 @@ AI が書く → 検分(J 列は空きか・net 不要)→ 実行 → 結果を�
 == 実例(そのまま読める見本)
 
 **エンジンだけ(pip install officework — アプリ不要)。
-**6本とも実際に動かしてから置いてあります(結果の数字は sample/README.md に):
+**6本とも実際に動かしてから置いてあります(結果の数字は sample/README.adoc に):
 
 * link:../sample/差し込み.py[sample/差し込み.py] — 見積書に宛名と数量を差し込む。
 

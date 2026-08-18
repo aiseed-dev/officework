@@ -25,7 +25,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 TARGETS = [
     "README.adoc", "README.ja.adoc", "CLAUDE.md",
     "docs/*manual*.adoc", "docs/from-excel*.md", "docs/engine*.md",
-    "docs/mac-signing.ja.md", "packaging/README.ja.md", "pysheet/README.md",
+    "docs/mac-signing.ja.adoc", "packaging/README.ja.adoc", "pysheet/README.md",
     "sample/README.md",
 ]
 
@@ -67,7 +67,7 @@ ALLOW = {"CLAUDE.md", "tools/kotoba_check.py"}
 
 # 語ごとの見逃し。**その文書では正しい日本語**なので拾いません
 # (mac-signing は最初から最後まで署名の鍵の話です)
-ALLOW_WORD = {"鍵": {"docs/mac-signing.ja.md"}}
+ALLOW_WORD = {"鍵": {"docs/mac-signing.ja.adoc"}}
 
 
 def files():

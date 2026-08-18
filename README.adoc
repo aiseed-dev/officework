@@ -18,6 +18,7 @@ They are *separate apps*, not one giant suite.
 [cols="1,1,1"]
 |===
 | |writer |calc
+
 |Open / save |docx (parts we don't understand are preserved as-is) |xlsx (same)
 |Japanese input (IME), undo |○ |○
 |Character formatting |bold, italic, underline, strikethrough, color, highlight, super/subscript, size, font (*applies to the selection only*) |bold, italic, underline, strikethrough, color, fill
@@ -31,12 +32,12 @@ They are *separate apps*, not one giant suite.
 |Comments |○ (per paragraph) |○
 |Track changes |○ (saved as real Word tracked changes) |—
 |Bookmarks, watermark, page color, columns |○ |—
-|Drawing (pen, highlighter, eraser) |○ (saved as SVG pictures; also shapes in docx) |—
+|Drawing (pen, highlighter, eraser) |○ (becomes shapes in docx) |—
 |Formulas |equations survive a round trip byte for byte (they are carried, not edited) |arithmetic and functions (about 185, incl. dynamic arrays and legacy CSE arrays), recalculation, circular-reference detection, *=PY* (write your own functions in Python)
 |Sheets |— |multiple sheets, freeze panes, filter, slicer, sort, grouping and subtotals
 |Pivot tables |— |○ (backed by polars; the definition is stored in the workbook so it can refresh)
 |Solver / goal seek |— |○ (simplex LP, backed by scipy)
-|Protection, encryption, signing |○ (it *opens* an encrypted docx; applying encryption lives in calc) |○ (read-only, AES, Ed25519 side-file signature)
+|Protection, encryption, signing |○ |○ (read-only, AES, Ed25519 side-file signature)
 |Chat, version history |○ |○ (no server — plain files in a shared folder)
 |Conditional formatting, data validation |— |○ (round-trips through xlsx)
 |Links, defined names, paste special |— |○
@@ -86,6 +87,7 @@ macOS and Windows need nothing extra.
 [cols="1,1,1"]
 |===
 | |file |state
+
 |Linux |`.deb`, or `.tar.gz` to just unpack |built and checked here
 |macOS |`.dmg` |signing and notarization are set up, *not yet run end to end*
 |Windows |`setup.exe` |installs without administrator rights. Unsigned, so SmartScreen will ask — _More info → Run anyway_. A Microsoft Store listing is meant to replace that
@@ -188,7 +190,7 @@ $ pip install "officework[mcp]"   # then register `officework-mcp` with your cli
 It embeds in other applications too.
 Since 2026-08-10 the engine can stand in for the xlsx helper inside https://github.com/genspark-ai/genoffice[genoffice], an Electron spreadsheet, with no patch to genoffice at all — one environment variable.
 Eleven of the twelve commands are officework's, including saving; genoffice still decides what a save should change, and `.xls` import is the one thing not implemented.
-See link:docs/engine.md[the engine page] for the recipe and for exactly what is and is not replaced.
+See link:docs/engine.adoc[the engine page] for the recipe and for exactly what is and is not replaced.
 
 Unlike openpyxl, values can be inserted while *borders, merged cells, column widths, and shapes stay intact*.
 
@@ -297,4 +299,4 @@ Everything else on both ribbons works.
 
 Both figures are checked on every push against the ribbon tables themselves, so this line cannot quietly go stale — which is exactly what it had done: it said zero for months while calc showed nine.
 
-Design decisions are recorded in `SEKKEI.adoc` (Japanese), history and open items in `HIKITSUGI.md` (Japanese), and there are ready-to-open samples in `sample/`.
+Design decisions are recorded in `SEKKEI.adoc` (Japanese), history and open items in `HIKITSUGI.adoc` (Japanese), and there are ready-to-open samples in `sample/`.

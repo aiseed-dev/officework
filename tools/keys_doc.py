@@ -160,22 +160,29 @@ def table_for(app: str, lang: str) -> str:
     missing = [a for a in order if a not in DESC]
     if missing:
         sys.exit(f"説明の無い操作があります(tools/keys_doc.py の DESC に足してください): {missing}")
-    head = "| キー | 操作 |\n|---|---|" if lang == "ja" else "| Key | Action |\n|---|---|"
-    lines = [head]
+    # **手引きは AsciiDoc です**(2026-08-18 に .md から移した)。表は
+    # `|===` で囲み、セルの間に空白を1つ置く(詰めると前のセルの終わりが
+    # 桁の指定として読まれる)
+    見出し = "|キー |操作" if lang == "ja" else "|Key |Action"
+    lines = ['[cols="1,1"]', "|===", 見出し, ""]
     for a in order:
         desc = DESC[a][0 if lang == "ja" else 1]
-        lines.append(f"| {' / '.join(keys[a])} | {desc} |")
+        lines.append(f"|{' / '.join(keys[a])} |{desc}")
+    lines.append("|===")
+    # 表の後ろに空行を1つ。**書き出しの正規形に合わせる**ためです
+    # (engine の `adoc::write` が表の後ろに空行を置きます)
+    lines.append("")
     return "\n".join(lines)
 
 
-MARK_S = "<!-- keys:gen:start"
-MARK_E = "<!-- keys:gen:end -->"
+MARK_S = "// keys:gen:start"
+MARK_E = "// keys:gen:end"
 
 TARGETS = [
-    ("docs/calc-manual.ja.md", "calc", "ja"),
-    ("docs/calc-manual.md", "calc", "en"),
-    ("docs/writer-manual.ja.md", "writer", "ja"),
-    ("docs/writer-manual.md", "writer", "en"),
+    ("docs/calc-manual.ja.adoc", "calc", "ja"),
+    ("docs/calc-manual.adoc", "calc", "en"),
+    ("docs/writer-manual.ja.adoc", "writer", "ja"),
+    ("docs/writer-manual.adoc", "writer", "en"),
 ]
 
 

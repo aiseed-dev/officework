@@ -46,6 +46,7 @@ Freeze panes, sheet visibility (unhide/hide sheets), and the interface theme als
 [cols="1,1"]
 |===
 |Action |Keys
+
 |Move |↑ ↓ ← → / Enter (down) / Tab (right) / Shift+Tab (left)
 |Select range |Shift+arrows
 |First / last cell |Ctrl+Home / Ctrl+End
@@ -67,11 +68,11 @@ The table above covers just the basics.
 Every live binding is listed below (generated from the binding table — hand-written lists always drift).
 You can rebind in settings.toml: `key.bold = "alt-b"` replaces the default keys for that action (separate several with commas, unbind with an empty string `""`; unreadable lines are reported in the status bar at startup; action names are the English names below).
 
-<!-- keys:gen:start (rewritten by tools/keys\_doc.py --write) -->
-
+// keys:gen:start (rewritten by tools/keys\_doc.py --write)
 [cols="1,1"]
 |===
 |Key |Action
+
 |Backspace |Delete backwards (on a cell: clear it)
 |Delete |Delete forwards (on a cell: clear it)
 |← |Move left
@@ -151,7 +152,7 @@ You can rebind in settings.toml: `key.bold = "alt-b"` replaces the default keys 
 |Shift+F2 |Comment
 |===
 
-<!-- keys:gen:end -->
+// keys:gen:end
 
 === Mouse
 
@@ -182,6 +183,7 @@ By category:
 [cols="1,1"]
 |===
 |Category |Functions
+
 |Aggregation |SUM, AVERAGE, COUNT, COUNTA, COUNTBLANK, MIN, MAX, SUMIF, *SUMIFS*, COUNTIF, *COUNTIFS*, AVERAGEIF(S), MINIFS, MAXIFS, *SUBTOTAL*, AGGREGATE, SUMPRODUCT, SUMSQ, AVERAGEA, MAXA, MINA
 |Math |ABS, MOD, QUOTIENT, POWER, SQRT, INT, ROUND(UP/DOWN), TRUNC, CEILING(.MATH), FLOOR(.MATH), MROUND, EVEN, ODD, SIGN, PRODUCT, FACT, COMBIN, PERMUT, GCD, LCM, PI, SIN…ATAN2, SINH…TANH, EXP, LN, LOG, LOG10, DEGREES, RADIANS, RAND, RANDBETWEEN
 |Statistics |MEDIAN, MODE, STDEV(P), VAR(P) (and .S/.P names), PERCENTILE, QUARTILE, LARGE, SMALL, RANK(.EQ/.AVG), CORREL, SLOPE, INTERCEPT, FORECAST
@@ -585,6 +587,7 @@ The risk is not the same:
 [cols="1,1,1"]
 |===
 | |Function (funcs) |Macro (plugins)
+
 |Called by |a *formula* (`=with_tax(A1)`) |a *person* (picked from a list)
 |Runs when |every open, every recalc |only when pressed
 |On whose judgement |a formula left in a cell — its author need not be present |whoever is there
@@ -680,6 +683,7 @@ s["A30"] = "Nihon Funen Co., Ltd."   # value only; formatting is left alone
 [cols="1,1"]
 |===
 |What you type |What happens
+
 |`@module` |run `~/.config/officework/plugins/module.py` top to bottom
 |`@module.func` |call just that function in that .py
 |`@edit name` |*open that .py for editing inside calc* (creates a starter file if missing)
@@ -798,6 +802,7 @@ What is written is not the name of the command but *the result it produced*:
 [cols="1,1"]
 |===
 |what you did |the line you get
+
 |select A1 |`s["A1"].select()`
 |bold |`s["A1"].font.bold = True`
 |centre |`s["A1"].align = "center"`
@@ -862,6 +867,7 @@ New files show up within about a second; no restart.
 [cols="1,1,1"]
 |===
 |Folder |Called by |Runs when
+
 |`funcs/` |a *formula* (`=with_tax(A1)`) |every open, every recalc
 |`ribbon/` |a *ribbon button* |only when pressed
 |`plugins/` |*picked from a list* (`@name`) |only when picked
@@ -894,6 +900,7 @@ Three paths run Python:
 [cols="1,1"]
 |===
 |Path |What runs
+
 |Macros > List, and `@name(...)` in a cell |*only .py from the folder*
 |Data > Python (typing) |*what you just typed*; no file is read
 |Left panel conversation > Apply |*what the AI wrote, that you read and pressed*
@@ -964,6 +971,7 @@ Columns that don't fit the paper are cut (the status   bar says so)
 [cols="1,1"]
 |===
 |Tab |Grayed out
+
 |Layout |Bring forward, Send backward, Align, Group, Merge shapes
 |Protect |Protect workbook, Protect range
 |View |Normal, Page-break preview
@@ -977,6 +985,7 @@ The following work differently here, or are delegated to Python:
 [cols="1,1"]
 |===
 |Grayed elsewhere / different |Our way
+
 |Forecasting, statistics |polars, statsmodels
 |Macros (VBA) |*deliberately absent*; plugins written in Python take the role (code stays out of the workbook)
 |===

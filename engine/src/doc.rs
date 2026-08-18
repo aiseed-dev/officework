@@ -535,6 +535,10 @@ pub struct Table {
     /// 表の置き方(docx の tblPr の `w:jc`)。None は指定なし(左)。
     /// 使うのは Left / Center / Right だけ(表の置き方に両端揃えは無い)
     pub align: Option<Align>,
+    /// **1行目が見出しの行か。** AsciiDoc は「1行目の後ろに空行」で表します
+    /// (2026-08-18)。HTML では `thead` になります。docx から読んだ表は
+    /// いまのところ false です
+    pub header_row: bool,
     /// 列幅を固定する(docx の `w:tblLayout w:type="fixed"`)。
     /// **裏返しで持つ** — docx の既定は autofit(要素なし)なので、
     /// `Default` の false がそのまま「autofit」になる

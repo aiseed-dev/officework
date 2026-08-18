@@ -52,6 +52,7 @@ Real Japanese forms repeat the same label (様式1 has 住所/商号 three times
 [cols="1,1"]
 |===
 |Function |Does
+
 |`fill(name, value)` |writes *every* field with that name (a form often repeats a field on page 2)
 |`fill_one(name, value)` |writes only the first one
 |`extract(name)` |reads a field's value
@@ -85,6 +86,7 @@ Anyone can type `{{顧客名}}` into the document in writer or Word; the docxtpl
 [cols="1,1"]
 |===
 |Function |Does
+
 |`render(context)` |fills the template with a dict; the result becomes the saved document
 |`tpl_fields()` |list of placeholder names — the template's spec sheet
 |===
@@ -104,6 +106,7 @@ Repeating table rows use `{%tr %}` tags. *Each tag takes a whole table row *— 
 [cols="1,1"]
 |===
 |品名 |数量
+
 |`{%tr for m in 明細 %}` |
 |`{{m.品名}}` |`{{m.数量}}`
 |`{%tr endfor %}` |
@@ -123,14 +126,14 @@ Two rules from real measurements:
 
   call — on a 1,920-cell ruled form the loop below takes *91 ms* where the   `cell(i, j)` version takes *12.7 s*:
 
-  python   for tb in d.tables:       for row in tb.rows:           for c in row.cells:               ...
+  python   for tb in d.tables:       for row in tb.rows:           for c in row.cells:               ...   
 
 * *Preserve formatting when replacing text.* `c.text = "…"` resets the run
 
   formatting.
 Write into the first run instead:
 
-  python   p = cell.paragraphs[0]   if p.runs:       p.runs[0].text = "山田太郎"       for r in p.runs[1:]:           r.text = ""   else:       p.add\_run("山田太郎")
+  python   p = cell.paragraphs[0]   if p.runs:       p.runs[0].text = "山田太郎"       for r in p.runs[1:]:           r.text = ""   else:       p.add\_run("山田太郎")   
 
 == The sandbox
 
@@ -157,6 +160,7 @@ Read it before running — that is the whole safety model, and it is the same on
 [cols="1,1"]
 |===
 |Message |Meaning
+
 |`python-docx がありません` |`pip install python-docx` (into `.venv` if present)
 |`docxtpl がありません` |`pip install docxtpl` — only needed for `render`/`tpl_fields`
 |`記入欄「X」が見つかりません` |no field named X — set names via Forms tab > Name, or check `fields()`

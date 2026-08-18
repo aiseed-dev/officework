@@ -69,6 +69,7 @@ Excel の書き方と同じ)。
 [cols="1,1"]
 |===
 |操作 |キー
+
 |セル移動 |↑ ↓ ← → / Enter(下へ)/ Tab(右へ)
 |範囲選択 |Shift+矢印
 |先頭 / 末尾へ |Ctrl+Home / Ctrl+End
@@ -92,11 +93,11 @@ Excel の書き方と同じ)。
 読めない行は起動時に状態行で言います。
 操作名は下の表の英語名)。
 
-<!-- keys:gen:start(この間は tools/keys\_doc.py --write が書く) -->
-
+// keys:gen:start(この間は tools/keys\_doc.py --write が書く)
 [cols="1,1"]
 |===
 |キー |操作
+
 |Backspace |1つ消す(セルの上では中身を消す)
 |Delete |1つ消す(セルの上では中身を消す)
 |← |左へ
@@ -176,7 +177,7 @@ Excel の書き方と同じ)。
 |Shift+F2 |コメント
 |===
 
-<!-- keys:gen:end -->
+// keys:gen:end
 
 === マウス
 
@@ -218,6 +219,7 @@ Del は選んだ分まとめて削除
 [cols="1,1"]
 |===
 |分類 |関数
+
 |集計 |SUM, AVERAGE, COUNT, COUNTA, COUNTBLANK, MIN, MAX, SUMIF, *SUMIFS*, COUNTIF, *COUNTIFS*, AVERAGEIF(S), MINIFS, MAXIFS, *SUBTOTAL*, AGGREGATE, SUMPRODUCT, SUMSQ, AVERAGEA, MAXA, MINA
 |数学 |ABS, MOD, QUOTIENT, POWER, SQRT, INT, ROUND(UP/DOWN), TRUNC, CEILING(.MATH), FLOOR(.MATH), MROUND, EVEN, ODD, SIGN, PRODUCT, FACT, COMBIN, PERMUT, GCD, LCM, PI, SIN〜ATAN2, SINH〜TANH, EXP, LN, LOG, LOG10, DEGREES, RADIANS, RAND, RANDBETWEEN
 |統計 |MEDIAN, MODE, STDEV(P), VAR(P)(.S/.P の新名も), PERCENTILE, QUARTILE, LARGE, SMALL, RANK(.EQ/.AVG), CORREL, SLOPE, INTERCEPT, FORECAST
@@ -696,6 +698,7 @@ calc は自分の居場所を `sys.path` に足して  `from officework import s
 [cols="1,1,1"]
 |===
 | |関数(funcs) |マクロ(plugins)
+
 |呼ぶ人 |*式*(`=税込(A1)`) |*人*(一覧から選ぶ)
 |いつ走る |ブックを開くたび・再計算のたび |押したときだけ
 |誰の判断で |セルに残った式(書いた本人が居なくてもよい) |そのときの人
@@ -788,6 +791,7 @@ s["A30"] = "日本フネン株式会社"        # 書式は据え置きで値だ
 [cols="1,1"]
 |===
 |打つもの |動き
+
 |`@モジュール` |`~/.config/officework/plugins/モジュール.py` を上から下まで走らせる
 |`@モジュール.関数` |その .py の関数だけを呼ぶ
 |`@edit 名前` |*その .py を calc の中で開いて編集する*(無ければ下書きを作る)
@@ -909,6 +913,7 @@ s["A30"] = "日本フネン株式会社"        # 書式は据え置きで値だ
 [cols="1,1"]
 |===
 |したこと |残る行
+
 |A1 を選ぶ |`s["A1"].select()`
 |太字 |`s["A1"].font.bold = True`
 |中央揃え |`s["A1"].align = "center"`
@@ -973,6 +978,7 @@ s["A1"].value = "締めました"
 [cols="1,1,1"]
 |===
 |置き場 |呼ぶ人 |いつ走る
+
 |`funcs/` |*式*(`=税込(A1)`) |開くたび・再計算のたび
 |`ribbon/` |*リボンのボタン* |押したときだけ
 |`plugins/` |*一覧から人が選ぶ*(`@名前`) |選んだときだけ
@@ -1006,6 +1012,7 @@ Python が走る道は、これで3つです:
 [cols="1,1"]
 |===
 |道 |何が走るか
+
 |マクロ > 一覧、セルの `@名前(...)` |*置き場の .py だけ*
 |データ > Python(打ち込む) |*その場で打った字*。ファイルは読みません
 |左パネルの会話 > 入れる |*AI が書いて、あなたが読んで押したスクリプト*
@@ -1073,6 +1080,7 @@ Excel の署名欄に出る方式ではない — 改ざん検知と名前の証
 [cols="1,1"]
 |===
 |タブ |グレー表示
+
 |レイアウト |前面ヘ移動・背面ヘ移動・配置・グループ化・図形を結合
 |保護 |ブックを保護する・範囲を保護する
 |表示 |標準・改ページ プレビュー
@@ -1085,6 +1093,7 @@ Excel の署名欄に出る方式ではない — 改ざん検知と名前の証
 [cols="1,1"]
 |===
 |本家にあるもの |いまのやり方
+
 |予測・統計 |polars、statsmodels
 |マクロ(VBA) |*作らない方針*。plugins の Python が担う(コードはブックに入らない)
 |===

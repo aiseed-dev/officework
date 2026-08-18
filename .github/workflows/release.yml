@@ -108,7 +108,7 @@ jobs:
         # 署名の秘密が無ければ**署名せずに包む**。その .dmg は名前に
         # `-unsigned` が付くので、取り違えて「署名つき」と言って配ることは
         # 起きない(発注者が手元の Mac で署名する道もあるため、
-        # ここで落とさない — docs/mac-signing.ja.md)
+        # ここで落とさない — docs/mac-signing.ja.adoc)
         env:
           MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
           MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
@@ -162,7 +162,7 @@ jobs:
           tar xzf py.tar.gz -C "$D"
           "$D/python/python.exe" -m pip install --quiet officework || true
           cp -r sample/plugins "$D/"
-          cp packaging/README.ja.md "$D/はじめに.md"
+          cp packaging/README.ja.adoc "$D/はじめに.md"
       - name: 入れ物を作る(Inno Setup)
         # **zip をやめた**(発注者 2026-08-17)。スタートメニュー・
         # アンインストール・関連付けが zip では作れない。

@@ -25,6 +25,7 @@
 [cols="1,1"]
 |===
 |移行できない理由 |現在地
+
 |Word / Excel の資産が崩れる |*骨格は済* — 書式は据え置き(理解しない部品は原文持ち越し)。実物様式で検査
 |VBA の台帳が動かない |*置き換えで受ける* — Python in Calc(サンドボックスつき・開く=実行なし)。VBA 互換はやらない: 危険ごと持ち込まないため。*移し替えは AI メニューの仕事*(第1号 — 下の節)
 |罫線帳票と JIS 用紙が組めない |済 — kumihan(JIS X 4051)・用紙 B は JIS・印刷範囲・改ページ・タイトル行
@@ -336,6 +337,7 @@ kumihan が縦書き・ルビを持てば  同じ品質が Chrome なしで出�
 [cols="1,1"]
 |===
 |pykobo |office での姿
+
 |執筆+ルビ・傍点の付与 |writer(K4 ②ルビ・圏点。付与の裏はふりがなの資産)
 |組版プレビュー(washi / Chrome) |*プレビューという概念ごと消える* — writer は画面=紙
 |印刷・PDF |paper(Chrome 不要)
@@ -598,7 +600,7 @@ caged\_python に一本化、  作業場も ~/.var/app/$ID/sandbox 下へ変わ�
 * manifest の試作・desktop・metainfo・*実証項目*(サンドボックスが本当に効くか、
 
   rfd がポータルで開くか、GPUI が dri で描けるか等)は packaging/flatpak/。
-*実機で通るまで「対応」とは言わない* — flatpak-builder のある機械で  README.ja.md の順に実証してから
+*実機で通るまで「対応」とは言わない* — flatpak-builder のある機械で  README.ja.adoc の順に実証してから
 
 * runtime は GNOME(python3 が最初から居る = 同梱 Python の器)。
 
@@ -631,6 +633,7 @@ officework は AI 支援で書いており、全コミットに Co-Authored-By �
 [cols="1,1,1"]
 |===
 |的 |形 |理由
+
 |*Linux* |*.deb + AppImage を直配布* |Flathub は AI の方針で出せない
 |*Mac* |公証済み *.dmg* 直配布 |免許(AGPL と App Store の EULA)
 |*Windows* |*Microsoft Store + .msi* |Store は AI の方針が無く AGPL も明文で可
@@ -713,7 +716,7 @@ Apple はここが違う。
 === 署名と公証を通した(2026-08-17)
 
 上の「署名の細部」で分かっていた事を、そのまま ``packaging/macos/sign.sh``にした。
-手順書は link:../mac-signing.ja.md[docs/mac-signing.ja.md]。
+手順書は link:../mac-signing.ja.adoc[docs/mac-signing.ja.adoc]。
 
 *順番に意味がある*: 中の Mach-O → `.app` → *`.app` を公証して券を貼る*→ `.dmg` を作る → `.dmg` を署名 → `.dmg` を公証して券を貼る。
 `.app` にも貼るのは、利用者が `.dmg` から出した後に**繋がっていなくても**開けるようにするため(貼っていないと初回に問い合わせが要る)。
@@ -951,6 +954,7 @@ Flet でランチャーが載るなら、*Kotlin / Swift の殻は「電話で�
 [cols="1,1,1"]
 |===
 |的 |主 |足し前
+
 |Python を持っている人(全 OS) |*PyPI / conda-forge* — 署名不要・実物確認済み |—
 |Linux |同上 |.deb / tar.gz(Python 同梱)。Flathub は AI の方針で出せない
 |macOS |同上 |公証済み .dmg。Mac App Store は *gpui の殻では不可・Swift の殻でなら可*
@@ -981,9 +985,9 @@ MS の答えは組織のデータをクラウドに索引させて AI と束ね�
 * *蒸留の作法*: 本家ヘルプは構成(課題の並び)だけが教師。文章は写さない
 
   (vendor を挙動の教師にした台帳と同じ流儀)。
-規則は docs/README.ja.md
+規則は docs/README.ja.adoc
 
-* 第一稿 = docs/from-excel.ja.md(2026-08-08。⏳ 印が残り)。本家ヘルプ
+* 第一稿 = docs/from-excel.ja.adoc(2026-08-08。⏳ 印が残り)。本家ヘルプ
 
   全節との突き合わせは第2便の型(調査ワークフロー)で回せる — 発注者と  相談して発注
 

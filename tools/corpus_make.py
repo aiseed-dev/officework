@@ -16,7 +16,7 @@
     python3 tools/corpus_make.py --out DIR
     python3 tools/corpus_make.py --no-lo          # LibreOffice の焼き直しを飛ばす
 
-**現物は repo に置かない**(docs/corpus.ja.md)。この道具があれば作り直せる。
+**現物は repo に置かない**(docs/corpus.ja.adoc)。この道具があれば作り直せる。
 """
 
 import argparse

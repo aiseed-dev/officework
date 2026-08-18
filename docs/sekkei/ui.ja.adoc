@@ -180,8 +180,8 @@ EDID が嘘をつく機械(プロジェクタ・テレビ・仮想画面で 0mm 
 * *openpyxl はファイルしか触れず画面が無かった。xlwings は Excel と*
 
   Windows が要った。
+* officework は自前の画面を持つので、Python から  呼べば画面が出て、そこを操れる — ここが売り*
 
-* officework は自前の画面を持つので、Python から  呼べば画面が出て、そこを操れる — ここが売り
 * *calc に残るのは「操作の記録」だけ*。手で操作すると Python の行として
 
   記録され、台本の下書きになる(何を書けばいいか分かる)
@@ -211,6 +211,7 @@ EDID が嘘をつく機械(プロジェクタ・テレビ・仮想画面で 0mm 
 [cols="1,1"]
 |===
 |群 |穴
+
 |文字の書式 |incfont / decfont / strikeout / subscript
 |揃え |top / middle / bottom / wrap / align-just / align-dist / direction
 |数の書式 |percents / comma / digit-inc / digit-dec

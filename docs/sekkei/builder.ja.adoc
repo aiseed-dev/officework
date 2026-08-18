@@ -20,6 +20,7 @@
 [cols="1,1"]
 |===
 | |
+
 |名前 |*builder*
 |作るもの |Web サイト・アプリ(画像・映像も同じ名前の下)
 |模型 |*セルに分割する* — だから `sheet` の模型でよい
@@ -109,6 +110,7 @@ Flet には機械が読める型録があり(`get_api`)、**「見つからな�
 [cols="1,1,1"]
 |===
 |基本 |officework にある物 |Flet で言うと
+
 |*文章* |段落・ラン・文字書式(`kumihan`) |`Text` `Markdown` `Divider`
 |*フォーム* |記入欄(writer のコンテンツコントロール)、入力規則とチェックボックス(calc)、`html.rs` の `Form` / `Field` |`TextField` `Dropdown` `Checkbox` `RadioGroup` `Switch` `DatePicker` `Button`
 |*データの表示* |セル・表・結合・書式(`sheet`) |`DataTable` `ListView` `ListTile`

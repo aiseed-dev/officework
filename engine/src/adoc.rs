@@ -610,6 +610,9 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
             out.push_str(&text);
         }
         out.push('\n');
+        if ri == 0 && t.header_row {
+            out.push('\n'); // 見出しの行の印
+        }
     }
     out.push_str("|===\n\n");
 }
@@ -1136,20 +1139,27 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         if l == "|===" {
             let mut rows: Vec<&str> = Vec::new();
             let mut closed = false;
+            // **1行目の後ろの空行が「見出しの行」の印**(AsciiDoc の作法)
+            let mut 見出しの行 = false;
             for (_, tl) in lines.by_ref() {
                 let tl = tl.trim_end();
                 if tl == "|===" {
                     closed = true;
                     break;
                 }
-                if !tl.is_empty() {
-                    rows.push(tl);
+                if tl.is_empty() {
+                    if rows.len() == 1 {
+                        見出しの行 = true;
+                    }
+                    continue;
                 }
+                rows.push(tl);
             }
             if !closed {
                 return Err(format!("{} 行目: |=== が閉じていません", ln + 1));
             }
             let mut t = parse_table_lines(&rows, &mut doc, &mut fresh_note)?;
+            t.header_row = 見出しの行;
             // **直前の `[cols="1,3"]` は表の物です**(2026-08-18)。原文のまま
             // 持ち越した段落として残っているので、取り込んで消します。
             // 残したままだと、書くときに二重に出ます

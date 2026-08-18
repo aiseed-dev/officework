@@ -23,7 +23,7 @@
 
 *出自*: 発注者が 2018-12-24 に書いた記事「https://qiita.com/yniji/items/b38bc312e860027108ac[ExcelにPythonが搭載?その後 — xlwings を使おう]」。
 Microsoft の「Excel に Python」は実現せず、記事は xlwings で**「Excel から Python を利用する」ことを「メインの使い方」**と呼び、マクロと UDF(動的配列で複数セルへ)を勧めた。
-officework はその答え合わせ — 8年後に自分の calc へ本搭載した(python.ja.adoc「UDF とスピル」、続編は docs/articles/excel-python-sonogo-2026.ja.md)。
+officework はその答え合わせ — 8年後に自分の calc へ本搭載した(python.ja.adoc「UDF とスピル」、続編は docs/articles/excel-python-sonogo-2026.ja.adoc)。
 
 以下の各節(2本のアプリ・ネイティブファースト…)は目的ではなく**手段の決め**として読む。
 
@@ -91,6 +91,7 @@ GPUI は Apache-2.0 で公開されており、その土台の上に建てられ
 [cols="1,1,1"]
 |===
 |Zed |office |状態
+
 |rope / text system |*kumihan*(組版エンジン: 文書モデル + JIS X 4051 行組み) |K0 実装中
 |GPUI(GPU UI) |GPUI 採用が第一候補(代替: wgpu + vello/parley 系) |K1 で可否検証
 |tree-sitter / LSP |OOXML 読み書き(docx⇄自前モデル) |K3
@@ -140,6 +141,7 @@ GPUI は Apache-2.0 で公開されており、その土台の上に建てられ
 [cols="1,1,1,1"]
 |===
 |層 |問い |いまの実体 |足りない物
+
 |*模型* |何であるか |kumihan(doc)・sheet・ooxml・lang |—
 |*見え* |どう見えるか |kumihan::layout(紙面)、*sheet::look(格子。2026-08-14)* |—(数値書式は `sheet::model::format_value` で前から共有。罫線は「解決」が無く読むだけなので、写しではなく描き方の違い)
 |*写し先* |どこへ出すか |paper(PDF)、calc/writer の view.rs(画面) |Web / Flet 宣言(builder のとき。*paper と対の新クレート* — calc にも sheet にも入れない)
@@ -211,11 +213,12 @@ CI にも入れた)。
 [cols="1,1,1"]
 |===
 |呼び出し |回数 |意味
-|`cx.notify()` | |模型が変わった、描き直せ
-|`cx.spawn()` | |後で走らせる
-|`cx.background_executor()` | |別の糸で走らせる
-|`cx.read_from_clipboard()` | |貼り付け元を読む
-|`cx.focus_handle()` | |焦点
+
+|`cx.notify()` |39 |模型が変わった、描き直せ
+|`cx.spawn()` |14 |後で走らせる
+|`cx.background_executor()` |12 |別の糸で走らせる
+|`cx.read_from_clipboard()` |1 |貼り付け元を読む
+|`cx.focus_handle()` |1 |焦点
 |===
 
 `cmds.rs` は 3,618 行で gpui の参照が**1つ**(`run_cmd` の``cx: &mut Context<Self>``)しかない。
@@ -260,7 +263,8 @@ OSS の Office 互換エンジンから**蒸留**して、それらの**上位�
 [cols="1,1"]
 |===
 |取る |具体
-|*課題の並び* |機能の一覧・ヘルプの目次(構成だけ借り、文章は写さない — docs/README.ja.md の蒸留の作法のまま)
+
+|*課題の並び* |機能の一覧・ヘルプの目次(構成だけ借り、文章は写さない — docs/README.ja.adoc の蒸留の作法のまま)
 |*挙動* |既定値・端の場合・式の意味(観察でよい)
 |*試験と実物* |相手の試験一式・実物の資料。*免許を見る — 本体と別のことが多い*
 |~~実装~~ |ソースコードは**写さない**(↑の原則のまま)
@@ -289,6 +293,7 @@ MPL-2.0 / Apache-2.0 / MIT / LGPL からは片道で取り込める。
 [cols="1,1,1,1"]
 |===
 | |物差し |見ていなかったもの |結果
+
 |docx の節 |PDF の**ページの大きさ**が正しいか |*字がその紙の中にあるか* |向きの違うページで字が紙の外へ 87mm 出ていた
 |xlsx の突き合わせ |両側の**セルの中身**が一致するか |道具が「中身の無いセルは**両側で**飛ばす」と決めていた |**罫線だけのセル**が落ちているのを構造的に見られなかった
 |===
@@ -321,7 +326,7 @@ xlsx では突き合わせとは別に**向こうの試験**(契約を見る道�
 
    速さのための正しい判断でも、**そこが盲点になったと明記**しておく
 
-*同じ日に4件出ている。* 上の2件のほかに、鍵割り当ての検査・文言の門番・clippy と試験の**対象クレートの並び**(calc・writer・ui が門番の外に居る)が同じ形だった — 数え上げは link:HIKITSUGI.md[HIKITSUGI.md] にある。
+*同じ日に4件出ている。* 上の2件のほかに、鍵割り当ての検査・文言の門番・clippy と試験の**対象クレートの並び**(calc・writer・ui が門番の外に居る)が同じ形だった — 数え上げは link:HIKITSUGI.adoc[HIKITSUGI.adoc] にある。
 そちらは「*検査はあるが、検査が見ている場所が本番とずれている*」という言い方をしていて、こちらの「物差しが見ないと決めた所」と同じことを指している。
 **4件なら型ではなく、この repo の癖**として扱う。
 
@@ -337,6 +342,7 @@ xlsx では突き合わせとは別に**向こうの試験**(契約を見る道�
 [cols="1,1"]
 |===
 |部屋 |中身
+
 |link:docs/sekkei/calc.ja.adoc[docs/sekkei/calc.ja.adoc] |calc: 5つの直し・本家ガイド突き合わせ(台帳の使い方)・calc/src の部屋割り
 |link:docs/sekkei/writer.ja.adoc[docs/sekkei/writer.ja.adoc] |writer: 編集モデル(run)・挿入系・変更履歴・HTML・灰色ゼロ・保護
 |link:docs/sekkei/python.ja.adoc[docs/sekkei/python.ja.adoc] |Python: ブックはコードを運ばない(2026-08-09)・plugins と UDF・officework 連携(部屋の中に経緯ごと残る)
@@ -365,7 +371,7 @@ xlsx では突き合わせとは別に**向こうの試験**(契約を見る道�
 
 . 実装の在庫(何ができていないか)は台帳
 
-   link:docs/guide-tsukiawase-2.ja.md[docs/guide-tsukiawase-2.ja.md]、   使い方は**マニュアル**(docs/\*-manual.ja.md — 管理の規則は   link:docs/README.ja.md[docs/README.ja.md])。
+   link:docs/guide-tsukiawase-2.ja.adoc[docs/guide-tsukiawase-2.ja.adoc]、   使い方は**マニュアル**(docs/\*-manual.ja.md — 管理の規則は   link:docs/README.ja.adoc[docs/README.ja.adoc])。
 設計(なぜ)・在庫(どこまで)・使い方(どうやる)の三帳簿を混ぜない
 
 . *方針を廃止する回で、`tools/sunset_check.py` の表にも語を足す。*

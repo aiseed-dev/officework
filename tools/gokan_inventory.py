@@ -1,6 +1,6 @@
 """openpyxl・xlwings・python-docx の公開 API の棚卸し。
 
-docs/pysheet-gokan.ja.md(互換台帳)の生データを採る道具。
+docs/pysheet-gokan.ja.adoc(互換台帳)の生データを採る道具。
 3つが .venv に入っている前提(pip install openpyxl xlwings python-docx)。
 
     .venv/bin/python tools/gokan_inventory.py inventory.json

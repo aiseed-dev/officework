@@ -7,8 +7,8 @@
 しているもので*殻が違うだけ*なので、別製品の名前を作ると実態より大きく
 見えます。`pyoffice` はこの文書の中の*作業中の呼び名*として残します。
 
-外向きの説明は link:../engine.md[`docs/engine.md`](正本)と
-link:../engine.ja.md[`docs/engine.ja.md`]。ここは判断の記録です。
+外向きの説明は link:../engine.adoc[`docs/engine.adoc`](正本)と
+link:../engine.ja.adoc[`docs/engine.ja.adoc`]。ここは判断の記録です。
 ====
 
 2026-08-09 発注者確定。
@@ -17,6 +17,7 @@ link:../engine.ja.md[`docs/engine.ja.md`]。ここは判断の記録です。
 [cols="1,1,1"]
 |===
 | |officework |pyoffice
+
 |殻 |GPUI(ネイティブ)。いま作っているもの |https://github.com/genspark-ai/genoffice[genoffice](Electron)
 |中身 |*共通の officework エンジン*(`sheet`) |同じ
 |===
@@ -57,6 +58,7 @@ officework の `sheet` は**モデルを持って自分で書き戻す**作り(`
 [cols="1,1,1"]
 |===
 |組 |コマンド |扱い
+
 |*エンジンの仕事* |`open` `read_range` `read_formula_cells` `read_media` `recalc_cells` |*`sheet` に差し替える*(ここが本題)
 |セッションの世話 |`close` `cancel` |そのまま(`sheet::Book` を id で持つだけ)
 |*ZIP の配管* |`archive_manifest` `read_entries` `scan_entries` `save_archive` `convert_workbook` |*触らない*。エンジンの仕事ではない
@@ -134,6 +136,7 @@ officework 側も同じ仕組みを用意する
 [cols="1,1,1"]
 |===
 |向こうが返す欄 |officework |
+
 |結合・列幅・行高・アウトライン・隠し行列・表・コメント・リンク・条件付き書式・入力規則・名前の定義・耳の色・隠しシート・保護・RTL |*ある* |そのまま出せる
 |*固定枠*(`freeze`) |*ある*(2026-08-09 に足した) |`Sheet::freeze` = `FreezePane { frozen_rows, frozen_columns }`。**向こうと同じ形**にしてあるので、欄を並べ替えずに出せる
 |リッチテキストの run / スパークライン / グラフの系列 |無い |「返す中身が違う」の組。正直に潰すか、向こうの実装を残す
@@ -281,7 +284,7 @@ A/B の切り替えのために書こうとしていたものが、*向こうに
 
 . ~~他人が書いた xlsx を集める~~ *第1便 10 枚を通した(2026-08-09)*。
 
-   目録と結果は link:../corpus.ja.md[docs/corpus.ja.md]。
+   目録と結果は link:../corpus.ja.adoc[docs/corpus.ja.adoc]。
 *下の節*
 
 . *`sheet` を直に使う書き出しを Rust で作る* — 書式・罫線・条件付き書式・
@@ -298,7 +301,7 @@ Python の窓は太らせない
 
 発注者 2026-08-09:「*国は csv に移した物が多いので、日銀などの外郭から取るとよい。統計局の過去のデータもよい*」。
 日銀の資金循環統計と統計局の家計調査から 10 枚。
-目録は link:../corpus.ja.md[docs/corpus.ja.md] (*現物は repo に置かない* — 免許と個人情報。
+目録は link:../corpus.ja.adoc[docs/corpus.ja.adoc] (*現物は repo に置かない* — 免許と個人情報。
 目録から取り直す)。
 
 *うちが書いた 9 枚では 664 セル全部一致していたのに、他人の物を通したとたんに 10 枚中 8 枚で落ちた。* 56,487 セルを比べた結果。
@@ -321,7 +324,7 @@ officework は   `phonetics` に別に持っていて正しい。
 *2026-08-09 に直した* — `r:id` を rels で解き、`<sheet>` の並びを   ブックの並びにする。
 *書き出しにも同じ穴があった*(部品を並び順に   振り直すのに、原本の rels と宣言をそのまま持ち越していた)。
 3枚とも   取り違えの差が消え、往復しても中身が動かない。
-詳しくは   link:../corpus.ja.md[corpus.ja.md] の「シートの取り違えを直した後」
+詳しくは   link:../corpus.ja.adoc[corpus.ja.adoc] の「シートの取り違えを直した後」
 
 *設計への効き。*
 
@@ -381,6 +384,7 @@ officework は   `phonetics` に別に持っていて正しい。
 [cols="1,1"]
 |===
 |欄 |どうする
+
 |`styles` / `dxfStyles` と `cells.styleIndex` |*次の便。* `CellFormat` から索引表を組み直す。設計は要らない、手を動かすだけ
 |`cells.rich` |モデルが持たない。潰すか断るかの決めが先(「埋まっていない穴」1)
 |`visuals` / `sparklines` / `pivotTables` |当面向こうの実装を残す
@@ -439,7 +443,8 @@ pyoffice の都合で calc の見た目を変える話になるので、*別の�
 *打ち直しで表示形式を落とさない*(calc の掟)。
 
 素の突き合わせは一致した。
-`=SUM` `=IF` `=TEXT` `=ROUND` `=LEN` `=CONCATENATE `=MAX` は文字列まで同じ。*そのうえで2件、うちの欠陥が出た。*
+`=SUM` `=IF` `=TEXT` `=ROUND` `=LEN` `=CONCATENATE ``=MAX` は文字列まで同じ。
+*そのうえで2件、うちの欠陥が出た。*
 
 === 1. 文字を数として扱ってしまう [大]
 
@@ -481,11 +486,12 @@ niche なので急がないが、**「向こうに合わせる」を目標にす
 [cols="1,1,1"]
 |===
 |差 |件数 |正体
+
 |罫線の色 |47,444 |`<color indexed="64"/>` = *自動*。色ではない。両方とも黒に描く
-|*罫線の色(青)* | |*うちの欠陥だった → 直した*
+|*罫線の色(青)* |*73* |*うちの欠陥だった → 直した*
 |表示形式 |10,061 |向こうが `_)` を空白に潰す。*うちが正しい*
-|横位置 | |`centerContinuous` / `distributed` / 既定の `general`
-|縦位置 | |既定の `bottom` を明示するか省くか。1件だけ `distributed`
+|横位置 |908 |`centerContinuous` / `distributed` / 既定の `general`
+|縦位置 |172 |既定の `bottom` を明示するか省くか。1件だけ `distributed`
 |===
 
 === 見つけた欠陥 — *罫線だけ `indexed` を読んでいなかった* [中]
@@ -528,6 +534,7 @@ niche なので急がないが、**「向こうに合わせる」を目標にす
 [cols="1,1,1"]
 |===
 | |どこから |日銀 `bojsjfy` sheet7
+
 |向こう |`<dimension>` の**申告* |71
 |うち(以前) |**中身のあるセル**の最大 |70
 |===
@@ -598,6 +605,7 @@ corpus では **59 枚のシートで申告と実際が食い違って**いた(�
 [cols="1,1"]
 |===
 |ファイル |書式の違うセル(前 → 後)
+
 |`bojsjfy` |11326 → 11319
 |`bojsjpre` |11340 → 11333
 |`stat_fies_t2` |386 → *289*
@@ -695,6 +703,7 @@ Rust は翻訳の結果を ZIP に当てるだけで、xlsx を1行も書かな�
 [cols="1,1,1"]
 |===
 | |向こう |うち
+
 |何を渡すか |*操作 20 種の一覧* |*ブック1つ*
 |誰が xlsx を書くか |TypeScript |Rust
 |原本の扱い |触らない部品は圧縮のまま丸写し |理解しない部品を持ち越す
@@ -779,9 +788,10 @@ Node を 24 に上げて共有の genoffice に `npm ci` し、`tsx` で``saveWo
 [cols="1,1,1"]
 |===
 |帳面 |触れた部品 |消した部品
-|bojsjfy / bojsjlong / lo\_manysheets | |0
-|make\_furniture / make\_cond | |0
-|stat\_fies\_t2 | |1(`calcChain.xml` — 正しい)
+
+|bojsjfy / bojsjlong / lo\_manysheets |2 |0
+|make\_furniture / make\_cond |1 |0
+|stat\_fies\_t2 |4 |1(`calcChain.xml` — 正しい)
 |===
 
 *結論を確定する。段3(書き)はやらない。* 「証拠が無い」ではなく**「測って、壊さないことを確かめた」**に変わった。
@@ -840,6 +850,7 @@ Node を 24 に上げて共有の genoffice に `npm ci` し、`tsx` で``saveWo
 [cols="1,1"]
 |===
 |直した所 |何が違ったか
+
 |`bold` `italic` `underline` `strikethrough` `wrapText` `diagonalUp` `diagonalDown` |*偽でも必ず出す。* 向こうは `z.boolean()` で検査。省くと `undefined`
 |`entryCount` |`null` にしていた。**ZIP を数えれば済む話**で、持てない物と持とうとしなかった物を混同していた
 |`columnWidths[].width` |無いときに `null` を入れていた。契約は**省く**(`skip_serializing_if`)
@@ -902,6 +913,7 @@ ironcalc がその2つを持たないので、**ファイルのキャッシュ�
 [cols="1,1"]
 |===
 |落ちている試験 |中身
+
 |`CELL("filename")` |↑ 実装が要る。回避しない
 |ピボットの範囲 |`xNotFilled` に挙げた未実装
 |sparse な範囲・書式・テーマ色 |まだ見ていない
@@ -915,6 +927,7 @@ ironcalc がその2つを持たないので、**ファイルのキャッシュ�
 [cols="1,1"]
 |===
 |直した所 |何が違ったか
+
 |`xNotFilled` を `read_range` から外す |あちらの schema は `strict()` で、*知らない欄があると撥ねる*(`open` は `passthrough()` なので通っていた)。*足した欄が害になる所がある*
 |列の幅を**範囲でまとめる* |原本の `<col min="2" max="3"/>` は範囲。1列ずつ返すと数が合わない
 |色を *`#RRGGBB`* に |向こうは `format!("#{value}")`。`tabColor`・`fontColor`・`fillColor`・罫線の色
@@ -941,6 +954,7 @@ ironcalc がその2つを持たないので、**ファイルのキャッシュ�
 [cols="1,1"]
 |===
 | |扱い
+
 |`CELL("filename")` |*回避しない。* 実装する(評価器に径路を渡す)。別の仕事
 |ピボットの範囲 |未実装。`xNotFilled` に挙げてある
 |書式・テーマ色 の2件 |細かい欄の詰めが残っている。*中身は合っている*
@@ -972,6 +986,7 @@ ironcalc がその2つを持たないので、**ファイルのキャッシュ�
 [cols="1,1,1"]
 |===
 | |中身 |判定
+
 |`<effectLst/>` |theme の**空の効果**。中に読む物が無い |無害
 |`<v/>` |式のキャッシュ値が**空**。読む物が無い |無害
 |`<t/>`(xlsx) |*空の共有文字列*。索引がずれれば全部の字が1つずつずれるので実測した — *ずれていない*(`bojsjmatu.xlsx` で向こうと文字が一致) |無害
@@ -1013,6 +1028,7 @@ ironcalc がこの関数を持たないので、誤りになったセルを省�
 [cols="1,1"]
 |===
 | |扱い
+
 |*形の不一致*(zod が撥ねる) |*全部直す。* 契約であって好みではない
 |*中身の不一致* |*1件ずつ見る。* どちらが正しいかを実物で決める
 |===
@@ -1029,6 +1045,7 @@ ironcalc がこの関数を持たないので、誤りになったセルを省�
 [cols="1,1"]
 |===
 | |正体
+
 |`CELL("filename")` |*落ちたままが正しい*(うちが正しく計算する)
 |ピボットの範囲 |*持っていない機能*。うちの `pivots` は独自部品で、Excel の `pivotTable` ではない。corpus 35 枚に実物が1つも無い。*作らない*
 |書式2件 |`dxf` の太字・文字色を落としている。*本物の欠陥*(fork へ回した)
@@ -1050,6 +1067,7 @@ ironcalc がこの関数を持たないので、誤りになったセルを省�
 [cols="1,1"]
 |===
 |症状 |正体
+
 |*開いても何も起きない* |`xNotFilled` / `xUnsupported` を答えに添えていた。`workbook:select` は `strict()`
 |*列幅は変わるが文字が来ない* |`rows[].outlineLevel: 0`(契約は 1 以上か省く)。`open` は通り `read_range` だけ撥ねられていた
 |*罫線が出ない* |*書式だけのセルを省いていた*。`見積書.xlsx` で枠が 12 個消える
@@ -1108,7 +1126,7 @@ ironcalc がこの関数を持たないので、誤りになったセルを省�
 
 === 動かし方(次に試す人へ)
 
-    cd ~/dev/genoffice     export PATH="$HOME/.local/node/bin:$PATH"        # Node 24     cp apps/sheets/native/xlsx-engine/target/release/xlsx-sidecar /tmp/genoffice-orig-sidecar     XLSX\\\_SIDECAR\\\_PATH=~/dev/officework/target/release/xlsx-sidecar \\     GENOFFICE\_SIDECAR=/tmp/genoffice-orig-sidecar \\       npm run dev -w @genoffice/sheets
+    cd ~/dev/genoffice     export PATH="$HOME/.local/node/bin:$PATH"        # Node 24     cp apps/sheets/native/xlsx-engine/target/release/xlsx-sidecar /tmp/genoffice-orig-sidecar     XLSX\_SIDECAR\_PATH=~/dev/officework/target/release/xlsx-sidecar \\     GENOFFICE\_SIDECAR=/tmp/genoffice-orig-sidecar \\       npm run dev -w @genoffice/sheets
 
 *控えを取ってから転送先をそちらへ向ける。* 向けないと自分自身を指して無限に呼び合う。
 `npm ci` が要る(node\_modules は 1.2G)。
@@ -1141,6 +1159,7 @@ openpyxl を入れずに xlsx を直に組んでいる。
 [cols="1,1,1"]
 |===
 | | |
+
 |開く |`open` / `read_range` |文字・罫線・結合・書式
 |計算 |`recalc_cells` |*`sheet::calc`*
 |保存 |`save_archive` |向こうへ転送
@@ -1163,7 +1182,7 @@ genoffice の側に連絡を取らない。
 *通信の言葉は、向こうが誰にも断らずに変えられる。* 交渉相手がいないので、壊れたら気付いて追うしかない。
 だから:
 
-* *確かめた commit を書き留める*(`fd33934`。engine.md に明記した)
+* *確かめた commit を書き留める*(`fd33934`。engine.adoc に明記した)
 * *取り込んだら3段を回してから信用する* — 突き合わせ・向こうの試験・実機
 * 幸い、*通信の言葉はアプリより遥かにゆっくり動く*。2026-08-10 の7 commit・
 
@@ -1189,7 +1208,7 @@ genoffice の側に連絡を取らない。
 
 *「officework と officework エンジン」のまま*(上の注記)。
 独自路線だからといって genoffice との関係を隠す理由も、誇る理由も無い。
-`docs/engine.md` は事実だけ書いてある — 何を差し替え、何を転送し、何を再配布していないか。
+`docs/engine.adoc` は事実だけ書いてある — 何を差し替え、何を転送し、何を再配布していないか。
 
 == 段3をやる — *配管を自前で持つ*(2026-08-10 発注者確定)
 
@@ -1201,6 +1220,7 @@ genoffice の側に連絡を取らない。
 [cols="1,1,1"]
 |===
 |コマンド |中身 |難しさ
+
 |`archive_manifest` |部品の一覧 `{name, crc32, compressedSize, uncompressedSize}` |*易*
 |`read_entries` |名前で指した部品を `outputDir` へ出し、置いた径路を返す |*易*
 |`scan_entries` |名前で指した部品に文字列が入っているか |*易*
@@ -1258,6 +1278,7 @@ sharedStrings.xml は**触られてすらいない**       (touchedEntries は w
 [cols="1,1,1"]
 |===
 | |出現 |
+
 |*図・画像* |*3枚(12%)* |`visuals: []`。*黙って消える*
 |グラフ |0枚 |未実装
 |スパークライン |0枚 |未実装
@@ -1297,14 +1318,14 @@ CI はサイドカーを**組んで lint はしていたが、試験は走らせ
 
 === 何が古くなるか — *相手は動く*
 
-`docs/engine.md` は「*fd33934(2026-08-10)で確かめた*」と書いてある。
+`docs/engine.adoc` は「*fd33934(2026-08-10)で確かめた*」と書いてある。
 上流に連絡しないと決めたので、*向こうは誰にも断らずに通信の言葉を変えられる。*
 
 再開する人は:
 
 . 新しい genoffice を取り込む
 . *3段を回してから信用する* — 突き合わせ・向こうの試験・実機
-. `docs/engine.md` の commit を書き替える
+. `docs/engine.adoc` の commit を書き替える
 
 *「動いていたはず」で再開しないこと。* 2026-08-10 の7 commit・28,896 行では向こうの Rust は1ファイルも変わらなかったが、それは**運が良かった記録**であって約束ではない。
 

@@ -1971,6 +1971,8 @@ pub(super) fn parse_document_rels(
                                 col_mm: b.col_mm,
                                 // docx は幅を mm で持つので、割合は空のまま
                                 col_ratio: Vec::new(),
+                                // docx の見出しの行(w:tblHeader)はまだ読まない
+                                header_row: false,
                                 style: b.style,
                                 align: b.align,
                                 fixed_layout: b.fixed_layout,

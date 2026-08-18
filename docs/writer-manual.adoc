@@ -13,6 +13,7 @@ Three different things:
 [cols="1,1"]
 |===
 | |What it does
+
 |*Display* |Everything in the file you opened *is shown* — including blocks whose meaning we don't know; their characters still appear
 |*Editing* |What you can edit visually is *a subset* (the 27 rows in "What to write, which button, what comes out"). Ruby and form fields are our own extensions
 |*Saving* |The source you opened *is not damaged*. Blocks we don't know are written back exactly as they were
@@ -82,6 +83,7 @@ Tab order: *File / Home / Insert / Draw / Layout / References / Forms / Header &
 [cols="1,1"]
 |===
 |Action |Keys
+
 |Move |↑ ↓ ← → (visual lines). By word: Ctrl+←→
 |Line start / end |Home / End (Home twice = paragraph start)
 |Document start / end |Ctrl+Home / Ctrl+End
@@ -104,11 +106,11 @@ New features (ruby, vertical writing, …) are all reachable from buttons — th
 Every live binding is listed below (generated from the binding table).
 You can rebind in settings.toml: `key.bold = "alt-b"` replaces the default keys for that action (separate several with commas, unbind with an empty string `""`; unreadable lines are reported in the status bar at startup; action names are the English names below).
 
-<!-- keys:gen:start (rewritten by tools/keys\_doc.py --write) -->
-
+// keys:gen:start (rewritten by tools/keys\_doc.py --write)
 [cols="1,1"]
 |===
 |Key |Action
+
 |Backspace |Delete backwards (on a cell: clear it)
 |Delete |Delete forwards (on a cell: clear it)
 |← |Move left
@@ -167,7 +169,7 @@ You can rebind in settings.toml: `key.bold = "alt-b"` replaces the default keys 
 |Ctrl+[ |Smaller font
 |===
 
-<!-- keys:gen:end -->
+// keys:gen:end
 
 == Character formatting (Home)
 
@@ -461,6 +463,7 @@ writer handles two kinds. *Which one you have open changes what you can do.*
 [cols="1,1,1"]
 |===
 | |Native (.adoc) |Compatible (.docx)
+
 |Content |*meaning only* (headings, emphasis, quotes, tables…) |the look is in the text
 |Look |a *template* (a .toml next to it) |the text itself
 |Direct formatting |*blocked* → name it and it becomes a style |works as before
@@ -517,10 +520,11 @@ One thing per row, shown three ways: how you type it in the text, which ribbon b
 [cols="1,1,1,1"]
 |===
 |What you want |Type this |Ribbon button |On the web (HTML)
+
 |Title |`= Title` |Styles in the right panel > 表題 |`<h1 class="title">`
-|Heading |`== Heading` |Home > Paragraph style > Heading |`<h2>`
-|Heading |`=== Heading` |Home > Paragraph style > Heading |`<h3>`
-|Heading |`==== Heading` |Home > Paragraph style > Heading |`<h4>`
+|Heading 1 |`== Heading` |Home > Paragraph style > Heading 1 |`<h2>`
+|Heading 2 |`=== Heading` |Home > Paragraph style > Heading 2 |`<h3>`
+|Heading 3 |`==== Heading` |Home > Paragraph style > Heading 3 |`<h4>`
 |Body text |just type it |Home > Paragraph style > Normal |`<p>`
 |Quote |wrap in `____` |Styles in the right panel > Quote |`<blockquote>`
 |Bullets |start with `* ` |Home > Bullets |`<ul>` and `<li>`
@@ -543,7 +547,7 @@ One thing per row, shown three ways: how you type it in the text, which ribbon b
 |Equation |a paragraph of just `stem:[x^2]` |Insert > Equation |`<img>` (the source stays with it)
 |Page break |`<<<` |Insert > Page break |breaks only when printed
 |Form field |`field:name[label,kind]` |Forms > Text field |`<input>` `<select>` `<textarea>`
-|Heading 4, |`=====` `======` |Home > Paragraph style |`<h5>` `<h6>`
+|Heading 4, 5 |`=====` `======` |Home > Paragraph style |`<h5>` `<h6>`
 |Monospace |`` ``text`` `` |Right panel > Styles > 等幅 |`<code>`
 |Description list |`term:: value` |Right panel > Styles > 説明のリスト |`<dl>` `<dt>` `<dd>`
 |Admonition |`NOTE: text` |Right panel > Styles > 註記 |`<p class="st-註記">`
@@ -583,6 +587,7 @@ Documents in that folder use it without naming it.
 [cols="1,1,1"]
 |===
 |How |What you write |What is used
+
 |One per folder (usual) |nothing |`テンプレート.toml` in the same folder
 |Per document |`:template: house-style` at the top |`house-style.toml`, looked for *next to the document → `~/.config/officework/templates/`*
 |===
@@ -650,6 +655,7 @@ Just put one format file per destination.
 [cols="1,1"]
 |===
 |Destination |File used
+
 |Screen and saving |`テンプレート.toml`
 |Export for the web (HTML) |`テンプレート-web.toml`
 |Print (PDF) |`テンプレート-印刷.toml`
@@ -692,6 +698,7 @@ A style takes twelve keys today. *More can be added when they are needed*, as lo
 [cols="1,1"]
 |===
 |Applies to characters |Applies to paragraphs
+
 |size, font, bold, italic, underline, colour |background, alignment, first-line indent, space before, space after, line spacing
 |===
 

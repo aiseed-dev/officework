@@ -62,7 +62,7 @@ calc のセルに打ってみてください:
 
 天気予報(`@天気`)と家計簿(`@家計簿`)の見本もありますが、こちらは
 手続きなので calc の中から呼びます。家計簿は AI が要ります(詳しくは
-`share/officework/plugins/README.ja.md`)。
+`share/officework/plugins/README.ja.adoc`)。
 
 ## 動かないとき
 

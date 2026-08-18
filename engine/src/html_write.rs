@@ -468,6 +468,10 @@ fn build(doc: &Document) -> (String, Ctx) {
                     }
                 }
                 for (ri, row) in t.rows.iter().enumerate() {
+                    // 見出しの行は `thead` に入れます(Web の作法)
+                    if t.header_row && ri == 0 {
+                        o.push_str("  <thead>\n");
+                    }
                     o.push_str("  <tr>");
                     for (k, cell) in row.iter().enumerate() {
                         // 結合の数え方は adoc の書き出しと同じ関数を使います
@@ -490,9 +494,14 @@ fn build(doc: &Document) -> (String, Ctx) {
                             .map(|q| runs_html(&q.runs, doc, &mut ctx))
                             .collect::<Vec<_>>()
                             .join("<br>");
-                        o.push_str(&format!("<td{at}>{inner}</td>"));
+                        // 見出しの行のセルは `th`(読み上げも検索も見出しとして扱う)
+                        let 札 = if t.header_row && ri == 0 { "th" } else { "td" };
+                        o.push_str(&format!("<{札}{at}>{inner}</{札}>"));
                     }
                     o.push_str("</tr>\n");
+                    if t.header_row && ri == 0 {
+                        o.push_str("  </thead>\n");
+                    }
                 }
                 o.push_str("</table>\n");
             }
