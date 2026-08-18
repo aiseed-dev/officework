@@ -1106,12 +1106,12 @@ mod append_tests {
         assert!(h1.2.bold);
         // cellXfs(セルの書式)の方は今までどおり別に読める
         assert_eq!(parse(xml, &[]).len(), 1, "cellXfs の読みを壊した");
-        // markdown 側の引き当て: 型紙が既定に勝つ
-        let h = crate::markdown::heading_of(&named, 1).expect("引けない");
+        // cellmark 側の引き当て: 型紙が既定に勝つ
+        let h = crate::cellmark::heading_of(&named, 1).expect("引けない");
         assert!((h.scale - 2.0).abs() < 0.01, "22pt / 11pt = 2.0 のはず: {}", h.scale);
         // 型紙が持っていない段は既定に落ちる
-        let h3 = crate::markdown::heading_of(&named, 3).expect("既定に落ちない");
-        assert!((h3.scale - crate::markdown::DEFAULT_HEADINGS[2].scale).abs() < 0.01);
+        let h3 = crate::cellmark::heading_of(&named, 3).expect("既定に落ちない");
+        assert!((h3.scale - crate::cellmark::DEFAULT_HEADINGS[2].scale).abs() < 0.01);
     }
 
     const ORIG: &str = r#"<?xml version="1.0"?><styleSheet xmlns="x"><fonts count="1"><font><sz val="11"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf></cellXfs></styleSheet>"#;

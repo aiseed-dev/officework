@@ -1031,10 +1031,10 @@ impl Render for Calc {
                     // (`**太字**` の 4 文字ぶん広く見積もらない)。カーソルの
                     // セルは打ち直せるように生の文字のまま
                     let md = (p != self.cursor)
-                        .then(|| sheet::markdown::parse(&t1))
+                        .then(|| sheet::cellmark::parse(&t1))
                         .flatten();
                     let measured = match &md {
-                        Some(l) => sheet::markdown::plain(l),
+                        Some(l) => sheet::cellmark::plain(l),
                         None => t1.clone(),
                     };
                     let size = cell_font_px(f.size_c, self.zoom);
@@ -1674,7 +1674,7 @@ impl Render for Calc {
                         row = row.child(d.justify_center().child(SharedString::from(shown)));
                     }
                 } else if let Some(md) = (!sel && !is_num && !is_err)
-                    .then(|| sheet::markdown::parse(&shown))
+                    .then(|| sheet::cellmark::parse(&shown))
                     .flatten()
                 {
                     // 文字列のセルはマークダウンとして描く(セルが持つのは平文の
@@ -6055,16 +6055,16 @@ impl Render for Calc {
 }
 
 /// マークダウンとして読んだセルの中身を描く。
-/// **セルが持つのは平文のまま** — ここは見せ方だけ(sheet::markdown の口上を参照)。
+/// **セルが持つのは平文のまま** — ここは見せ方だけ(sheet::cellmark の口上を参照)。
 /// 一行なら横に並べ、複数行(見出し・箇条書き)なら縦に積む。
 pub(crate) fn md_body(
-    lines: &[sheet::markdown::Line],
+    lines: &[sheet::cellmark::Line],
     zoom: f32,
     wrap: bool,
     named: &[(String, Option<u32>, sheet::model::CellFormat)],
 ) -> gpui::AnyElement {
     use gpui::prelude::*;
-    use sheet::markdown::Block;
+    use sheet::cellmark::Block;
     let mut col = div().flex().flex_col().items_start();
     for l in lines {
         let mut line = div().flex().flex_row().items_baseline();
@@ -6072,9 +6072,9 @@ pub(crate) fn md_body(
             line = line.flex_wrap();
         }
         match l.block {
-            // 見出しの大きさは markdown::HEADINGS が正(行の高さも同じ表を見る)
+            // 見出しの大きさは cellmark::HEADINGS が正(行の高さも同じ表を見る)
             Block::Heading(n) => {
-                if let Some(h) = sheet::markdown::heading_of(named, n) {
+                if let Some(h) = sheet::cellmark::heading_of(named, n) {
                     line = line.text_size(px(zoom * 12.5 * h.scale));
                     if h.bold {
                         line = line.font_weight(gpui::FontWeight::BOLD);

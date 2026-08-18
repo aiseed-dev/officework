@@ -142,7 +142,7 @@ impl Host for Calc {
         // いま出ているシートのときだけ — 他のシートの行は触らない
         if si == self.active {
             for p in written {
-                self.fit_row_to_markdown(*p);
+                self.fit_row_to_cellmark(*p);
             }
         }
     }

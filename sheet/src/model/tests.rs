@@ -1101,3 +1101,41 @@ mod preset_shape_tests {
         }
     }
 }
+
+/// **`=` の後ろに空白があれば式にしない**(2026-08-19 発注者確定)。
+///
+/// `= 大` はセルの見出し(`cellmark`)で、`=SUM(A1)` は式。決めは
+/// `kumihan::adoc::is_formula_cell` の1つだけを見る — 打ち込みと
+/// `.adoc` の読み書きで**同じ字が同じ意味**になる
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod 式と字の見分け {
+    use crate::model::{Cell, Value};
+
+    #[test]
+    fn 空白の無い等号は式() {
+        assert_eq!(Cell::input("=SUM(A1:A3)").formula.as_deref(), Some("SUM(A1:A3)"));
+        assert_eq!(Cell::input("=A1*B1").formula.as_deref(), Some("A1*B1"));
+        assert_eq!(Cell::input("=-1").formula.as_deref(), Some("-1"));
+    }
+
+    #[test]
+    fn 空白のある等号は字() {
+        let c = Cell::input("= 大");
+        assert_eq!(c.formula, None, "見出しを式にした");
+        assert_eq!(c.value, Value::Text("= 大".into()));
+
+        // 見出しの段(=== 小)も同じ
+        assert_eq!(Cell::input("=== 小").formula, None);
+        // Excel 風の `= 1+2` は式にならない(承知の上の割り切り)
+        assert_eq!(Cell::input("= 1+2").formula, None);
+    }
+
+    /// `=` 1文字だけは式ではない(ただの字)
+    #[test]
+    fn 等号だけは字() {
+        let c = Cell::input("=");
+        assert_eq!(c.formula, None);
+        assert_eq!(c.value, Value::Text("=".into()));
+    }
+}

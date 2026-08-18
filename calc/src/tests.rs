@@ -3332,7 +3332,7 @@ mod udf_tests {
     fn 見出しを打つと行が広がる(cx: &mut gpui::TestAppContext) {
         // 2026-08-09 発注者:「## 等 h1, h2, h3 の指定をした場合は、セルの高さも
         // 変更して。あらかじめ書式を決めておくといいですね」
-        // 大きさの表は sheet::markdown::HEADINGS が正(画面の文字と同じ所を見る)
+        // 大きさの表は sheet::cellmark::HEADINGS が正(画面の文字と同じ所を見る)
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             let base = 15.0_f32;
@@ -3346,9 +3346,9 @@ mod udf_tests {
             assert!(this.commit());
             assert_eq!(h(this, 0), base, "見出しでないのに行が動いた");
 
-            // # は一番大きく、### に向かって小さくなる
+            // = は一番大きく、=== に向かって小さくなる
             let mut heights = Vec::new();
-            for (r, text) in [(1u32, "# 大"), (2, "## 中"), (3, "### 小")] {
+            for (r, text) in [(1u32, "= 大"), (2, "== 中"), (3, "=== 小")] {
                 this.cursor = Pos::new(r, 0);
                 this.input = Editor::new(text);
                 assert!(this.commit());
@@ -3361,7 +3361,7 @@ mod udf_tests {
                 "見出しの段で高さが並んでいない: {heights:?}"
             );
             // 既定のとおりか(画面の文字と同じ所を見ていること)
-            assert!((heights[0] - base * sheet::markdown::DEFAULT_HEADINGS[0].scale).abs() < 0.01);
+            assert!((heights[0] - base * sheet::cellmark::DEFAULT_HEADINGS[0].scale).abs() < 0.01);
 
             // **型紙が正**: ブックに名前付きスタイル「見出し 1」があれば
             // そちらが勝つ(2026-08-09 発注者「テンプレートに設定できませんか?」)
@@ -3370,7 +3370,7 @@ mod udf_tests {
             big.bold = true;
             this.book.named_styles.push(("見出し 1".into(), Some(16), big));
             this.cursor = Pos::new(8, 0);
-            this.input = Editor::new("# 型紙で決めた大きさ");
+            this.input = Editor::new("= 型紙で決めた大きさ");
             assert!(this.commit());
             assert!(
                 (h(this, 8) - base * 2.0).abs() < 0.01,
@@ -3381,7 +3381,7 @@ mod udf_tests {
             // **狭めはしない** — 手で決めた高さを打ち直しで壊さない
             this.sheet_mut().row_height.insert(5, 60.0);
             this.cursor = Pos::new(5, 0);
-            this.input = Editor::new("### 小");
+            this.input = Editor::new("=== 小");
             assert!(this.commit());
             assert_eq!(h(this, 5), 60.0, "手で決めた行の高さを縮めてしまった");
         });

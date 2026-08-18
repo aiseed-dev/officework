@@ -2277,7 +2277,7 @@ impl Calc {
         // 保護で戻された物は台本に入れない(走らせて同じにならない物を書かない)
         self.rec_set(cur, &text);
         self.sheet_mut().set(cur, cell);
-        self.fit_row_to_markdown(cur);
+        self.fit_row_to_cellmark(cur);
         // 計算方法が手動なら待たされない(F9 / Shift+F9 で手回し)。
         // 今までは常に再計算していて「手動」が効いていなかった
         self.recalc_if_auto();
@@ -2288,10 +2288,10 @@ impl Calc {
     }
 
     /// 見出し(`# `)を打ったセルの行を、その大きさに合うまで**広げる**。
-    /// 大きさの表は `sheet::markdown::HEADINGS` が正(画面の文字と同じ所を見る)。
+    /// 大きさの表は `sheet::cellmark::HEADINGS` が正(画面の文字と同じ所を見る)。
     /// **狭めはしない** — 手で決めた行の高さを打ち直しで壊さないため
     /// (見出しを消したら、行の高さは手で戻す)。
-    pub(crate) fn fit_row_to_markdown(&mut self, at: Pos) {
+    pub(crate) fn fit_row_to_cellmark(&mut self, at: Pos) {
         let Some(text) = self
             .sheet()
             .get(at)
@@ -2302,8 +2302,8 @@ impl Calc {
         else {
             return;
         };
-        let Some(md) = sheet::markdown::parse(&text) else { return };
-        if !md.iter().any(|l| matches!(l.block, sheet::markdown::Block::Heading(_))) {
+        let Some(md) = sheet::cellmark::parse(&text) else { return };
+        if !md.iter().any(|l| matches!(l.block, sheet::cellmark::Block::Heading(_))) {
             return; // 見出しが無ければ高さは触らない
         }
         // 折り返しの無いセルは1行に畳んで描くので、要るのは一番高い行のぶんだけ
@@ -2311,10 +2311,10 @@ impl Calc {
         let base = 15.0; // xlsx の既定の行の高さ(pt)
         let named = self.book.named_styles.clone();
         let want = if wrap {
-            sheet::markdown::wanted_height_pt(&md, base, &named)
+            sheet::cellmark::wanted_height_pt(&md, base, &named)
         } else {
             md.iter()
-                .map(|l| sheet::markdown::line_scale(l, &named))
+                .map(|l| sheet::cellmark::line_scale(l, &named))
                 .fold(1.0, f32::max)
                 * base
         };

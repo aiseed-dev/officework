@@ -4027,14 +4027,14 @@ impl Calc {
                         if t.is_empty() {
                             continue;
                         }
-                        let md = sheet::markdown::parse(&t);
+                        let md = sheet::cellmark::parse(&t);
                         let scale = match &md {
                             Some(l) if cell.fmt.wrap => {
-                                sheet::markdown::wanted_height_pt(l, 15.0, &named) / 15.0
+                                sheet::cellmark::wanted_height_pt(l, 15.0, &named) / 15.0
                             }
                             Some(l) => l
                                 .iter()
-                                .map(|x| sheet::markdown::line_scale(x, &named))
+                                .map(|x| sheet::cellmark::line_scale(x, &named))
                                 .fold(1.0, f32::max),
                             None => 1.0,
                         };

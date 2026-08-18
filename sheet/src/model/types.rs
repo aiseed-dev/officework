@@ -571,9 +571,19 @@ impl Cell {
         }
     }
 
+    /// 打ち込まれた字をセルにする。
+    ///
+    /// **`=` の後ろに空白があれば式にしません**(2026-08-19 発注者確定)。
+    /// `= 大` はセルの見出し(`cellmark`)、`=SUM(A1)` は式です。
+    /// 見分ける決めは `kumihan::adoc::is_formula_cell` の1つだけを見ます —
+    /// 打ち込みと `.adoc` の読み書きで**同じ字が同じ意味**になります。
+    ///
+    /// *失う物。* Excel 風の `= 1+2`(`=` の後ろに空白を置いた式)は
+    /// 式ではなく字になります。
     pub fn input(s: &str) -> Cell {
         let t = s.trim();
-        if let Some(f) = t.strip_prefix('=') {
+        if kumihan::adoc::is_formula_cell(t) {
+            let f = t.strip_prefix('=').unwrap_or(t);
             return Cell { formula: Some(f.to_string()), value: Value::Empty, fmt: Default::default() };
         }
         if t.is_empty() {

@@ -207,10 +207,9 @@ fn to_sheet(t: &Table, nth: usize) -> Sheet {
             if cell.trim().is_empty() {
                 continue;
             }
-            // **式でない字を式にしない。** `= 見出し` のように `=` で始まる
-            // だけの字は、`Cell::input` に渡すと式として取られてしまう。
-            // 式かどうかの決めは読み手と同じ物を使う(2箇所に書かない)
-            let v = if !kumihan::adoc::is_formula_cell(cell) && 字のままにする(cell) {
+            // `=` で始まるだけの字(`= 見出し`)は `Cell::input` が字として
+            // 受けます(2026-08-19 から決めが1つになりました)
+            let v = if 字のままにする(cell) {
                 Cell { formula: None, value: Value::Text(cell.trim().to_string()), fmt: Default::default() }
             } else {
                 Cell::input(cell)
@@ -242,13 +241,8 @@ fn to_sheet(t: &Table, nth: usize) -> Sheet {
 /// 実物 16 冊で測ったところ、5 冊がこれに当たりました(2026-08-19)。
 ///
 /// 見分け方は「0 の次が数字なら番号」です。`0.5` や `0` は数のままにします。
-///
-/// `=` で始まるだけの字(`= 見出し`)も、式ではないので字のままにします。
 fn 字のままにする(s: &str) -> bool {
     let t = s.trim();
-    if t.starts_with('=') {
-        return true; // 式は上で分けてある = ここに来るのは式でない `=` の字
-    }
     // 頭が 0 で、次も数字 → 番号(0001・007)
     t.len() > 1 && t.starts_with('0') && t.as_bytes().get(1).is_some_and(|c| c.is_ascii_digit())
 }
