@@ -12,17 +12,9 @@ Everything was measured on a real machine.
 Both cell functions live in `~/.config/officework/funcs/*.py`, procedures in `~/.config/officework/plugins/*.py`, and *a workbook you receive contains no code at all*.
 
 * You receive a sheet (data). *You do the processing with your own code*
-* So `xl/joPython.xml` (workbook-borne code) is *gone*. Code in an old
-
-  workbook is shown but never run, and disappears on save (the open report   says so; `@export name` extracts it to a .py)
-
-* Since the code is only ever your own, *no sandbox (bubblewrap) is applied*,
-
-  and the `@name net` distinction is gone
-
-* Decorators (`@xw.func`, `@xw.ret`) are unnecessary too — *write a plain*
-
-  `def`
+* So `xl/joPython.xml` (workbook-borne code) is *gone*. Code in an old workbook is shown but never run, and disappears on save (the open report says so; `@export name` extracts it to a .py)
+* Since the code is only ever your own, *no sandbox (bubblewrap) is applied*, and the `@name net` distinction is gone
+* Decorators (`@xw.func`, `@xw.ret`) are unnecessary too — *write a plain `def`*
 
 == Where Python runs, and what is bound
 
@@ -80,13 +72,8 @@ s["A1"] = date(2026, 8, 5)  # datetime.date/datetime/time → Excel serial numbe
 s["A1"] = None     #        clear
 ----
 
-* *Formatting is preserved* — writing a value never touches borders, merges,
-
-  or number formats
-
-* Empty cells read back as *None or ""* (never-touched cells are None; ""
-
-  appears when *the original file stored an empty string* — assigning   `s["A1"] = ""` yourself is the same as clearing, and reads back None.   Both are falsy, so `if s["A1"]:` usually suffices; to be precise use   `s["A1"] in (None, "")`)
+* *Formatting is preserved* — writing a value never touches borders, merges, or number formats
+* Empty cells read back as *None or ""* (never-touched cells are None; "" appears when *the original file stored an empty string* — assigning `s["A1"] = ""` yourself is the same as clearing, and reads back None. Both are falsy, so `if s["A1"]:` usually suffices; to be precise use `s["A1"] in (None, "")`)
 
 === Ranges as arrays — the main topic
 
@@ -247,21 +234,10 @@ wb.remove(ws2)                        # the last sheet can't be removed (it says
 wb.save("out.xlsx")
 ----
 
-* `ws.cell(50, 1)` returns a *reference-only Cell* even where nothing
-
-  exists yet (value is None; assign and it lands there — the openpyxl feel)
-
-* `insert_rows` / `delete_rows` / `insert_cols` / `delete_cols` take
-
-  `amount=`; `merged_cell_ranges` and `freeze_panes` work too
-
-* *our own idiom stays alive*: `ws["A1"]` still returns the *value*
-
-  (openpyxl returns a Cell — that is the one deliberate difference;   use `cell()` when you want a Cell)
-
-* interop is proven with the original's own eyes: openpyxl reads what we
-
-  write — *including the computed values* it cannot produce itself
+* `ws.cell(50, 1)` returns a *reference-only Cell* even where nothing exists yet (value is None; assign and it lands there — the openpyxl feel)
+* `insert_rows` / `delete_rows` / `insert_cols` / `delete_cols` take `amount=`; `merged_cell_ranges` and `freeze_panes` work too
+* *our own idiom stays alive*: `ws["A1"]` still returns the *value *(openpyxl returns a Cell — that is the one deliberate difference; use `cell()` when you want a Cell)
+* interop is proven with the original's own eyes: openpyxl reads what we write — *including the computed values* it cannot produce itself
 
 Formatting and print setup also speak openpyxl:
 
@@ -368,22 +344,10 @@ svg = tex.to_svg(r"\frac{a+b}{2}")    # bytes; glyphs become outlines, no font n
 png, w_mm, h_mm = tex.to_png(r"\sqrt{x^2+y^2}", size_pt=11)  # this one goes into documents
 ----
 
-* A formula it cannot set raises *`tex.Muri`* with the reason — never a
-
-  silent empty picture
-
-* mathtext handles a *subset* of LaTeX. `\begin{matrix}`-style environments
-
-  are bent into `\substack` (*columns do not align* — with TeX they do)
-
-* `from_sympy()` builds LaTeX from a SymPy expression, but *SymPy rewrites*
-
-  the formula** (`(a+b)/2` → `a/2 + b/2`).
-If you need it verbatim, pass LaTeX*
-
-* Inserting an equation in writer (Insert > Equation) stores *the picture*
-
-  and the LaTeX source as a pair** in the docx — Word shows the picture,   officework reopens it as an editable formula.*
+* A formula it cannot set raises *`tex.Muri`* with the reason — never a silent empty picture
+* mathtext handles a *subset* of LaTeX. `\begin{matrix}`-style environments are bent into `\substack` (*columns do not align* — with TeX they do)
+* `from_sympy()` builds LaTeX from a SymPy expression, but *SymPy rewrites the formula* (`(a+b)/2` → `a/2 + b/2`). If you need it verbatim, pass LaTeX
+* Inserting an equation in writer (Insert > Equation) stores *the picture and the LaTeX source as a pair* in the docx — Word shows the picture, officework reopens it as an editable formula.
 
 == Cell functions (UDFs) and arrays
 
@@ -394,24 +358,11 @@ Write a plain `def` in `~/.config/officework/funcs/tools.py` and it is callable 
 ----
 
 * Function names *may be Japanese* (`=集計(A1:B10)`)
-* Range arguments arrive at your `def` as *row × column 2-D lists* of values
-
-  (a single cell is a scalar)
-
-* Return values: scalar → into the cell / *1-D list → spills downward* /
-
-  *2-D list → spills down-right*.
-If the target area holds someone's data,   it stops with `#SPILL!` (nothing is overwritten)
-
-* *When the arguments change it recomputes in the background* (no need to
-
-  press `@計算`); the work runs off the main thread in one batch and is   written back as a single step
-
+* Range arguments arrive at your `def` as *row × column 2-D lists* of values (a single cell is a scalar)
+* Return values: scalar → into the cell / *1-D list → spills downward* / *2-D list → spills down-right*. If the target area holds someone's data, it stops with `#SPILL!` (nothing is overwritten)
+* *When the arguments change it recomputes in the background* (no need to press `@計算`); the work runs off the main thread in one batch and is written back as a single step
 * Built-in names (SUM and friends) win; a `def` with the same name is skipped
-* Only when the same name exists in two .py files do you qualify it:
-
-  `=tools.aggregate(…)`
-
+* Only when the same name exists in two .py files do you qualify it: `=tools.aggregate(…)`
 * The older form `=PY("aggregate", …)` still works
 
 [source,python]
@@ -447,19 +398,11 @@ form["total"] = qty * 150
 
 == The execution environment
 
-* *No sandbox is applied.* Plugins are code you
-
-  installed yourself, so files and the network work normally.   The `@name net` distinction is gone (typing it says so)
-
-* Time-limited (procedures 60 s, cell functions 30 s); overruns are killed
-
-  and reported
-
+* *No sandbox is applied.* Plugins are code you installed yourself, so files and the network work normally. The `@name net` distinction is gone (typing it says so)
+* Time-limited (procedures 60 s, cell functions 30 s); overruns are killed and reported
 * Libraries installed on the machine (polars, scipy, matplotlib, …) work
 * `print` output appears in the status bar (report progress and counts there)
-* The Data > Python one-liner and the writer side still run on a copy
-
-  (sandboxed if a sandbox is available)
+* The Data > Python one-liner and the writer side still run on a copy (sandboxed if a sandbox is available)
 
 == Writing with an AI — a collaboration guide
 
@@ -523,9 +466,7 @@ So *reading it before you install it* is the only gate:
 
 . *Where does it write* (does it touch columns/rows you must not lose?)
 . *What does it delete* (None assignments, row removals?)
-. *What does it do outside* (network, file reads/writes — is the
-
-   destination the one you intended?)
+. *What does it do outside* (network, file reads/writes — is the destination the one you intended?)
 
 The remaining safety net is undo: however many cells a procedure writes, *one Ctrl+Z* returns you to the state before it ran.
 So the right way to try things is *run it, look at the result, undo if you don't like it*.
@@ -553,10 +494,7 @@ That loop is the basic form of the collaboration.
 
 **Engine only (pip install officework — no app needed). **All six were run in that folder before being written down (sample/README.adoc quotes the outputs):
 
-* link:../sample/差し込み.py[sample/差し込み.py] — fill the quote form; formats
-
-  survive, formulas recalculate through to the total
-
+* link:../sample/差し込み.py[sample/差し込み.py] — fill the quote form; formats survive, formulas recalculate through to the total
 * link:../sample/量産.py[sample/量産.py] — three quotes from one template
 * link:../sample/集計.py[sample/集計.py] — bulk read with `values()`, totals by category
 * link:../sample/差し替え.py[sample/差し替え.py] — docx `replace()` that keeps run formatting
@@ -565,14 +503,6 @@ That loop is the basic form of the collaboration.
 
 *Working with the app (plugins procedures).*
 
-* link:../templates/README.adoc[templates/] — an inquiry ledger (CSV intake with
-
-  `@取り込み`, status aggregation with =PY) and more
-
-* link:../sample/README.adoc[sample/注文書.xlsx] — swapping in a product master
-
-  (`@更新`) and sending JSON (`@送信`)
-
-* link:../sample/README.adoc[sample/受注台帳.xlsx] — incremental intake that
-
-  avoids duplicates with a watermark cell (K2)
+* link:../templates/README.adoc[templates/] — an inquiry ledger (CSV intake with `@取り込み`, status aggregation with =PY) and more
+* link:../sample/README.adoc[sample/注文書.xlsx] — swapping in a product master (`@更新`) and sending JSON (`@送信`)
+* link:../sample/README.adoc[sample/受注台帳.xlsx] — incremental intake that avoids duplicates with a watermark cell (K2)

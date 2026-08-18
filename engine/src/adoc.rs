@@ -1245,6 +1245,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         if !継ぐ {
             継続の強調 = 強調の状態::default();
         }
+        // 継ぐ行の頭の空白は落とします(続きの印であって、字ではありません)
+        let body = if 継ぐ { body.trim_start() } else { body };
         p.runs = parse_inline_続き(body, &mut doc, &mut fresh_note, &mut 継続の強調)?;
         // **続く行は同じ段落に継ぐ**(AsciiDoc の作法)。段落の切れ目は空行で、
         // 行の折り返しではありません。80 桁で折った普通の AsciiDoc を開くと、
@@ -1257,9 +1259,12 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         // 利用者が付けた名前(`[.強調の囲み]`)は別です。**普通の段落と同じで、
         // 何行にもわたって書けます**(2026-08-18 に見本を揃えたとき、
         // 2行目が別の段落になって気づきました)
-        直前も本文 = p.list == ListKind::None
-            && p.raw_adoc.is_none()
-            && !p.style_id.as_deref().is_some_and(一行で1つ);
+        // **箇条書きの項目にも、続きの行は継ぎます。** AsciiDoc では
+        // 空行までが1つの項目です(2026-08-18 に設計文書を読み返して
+        // 見つけました — 続きの行が別の段落になり、字下げの塊に化けて
+        // いました)
+        直前も本文 =
+            p.raw_adoc.is_none() && !p.style_id.as_deref().is_some_and(一行で1つ);
         if 継ぐ {
             if let Some(Block::Para(前)) = doc.blocks.last_mut() {
                 let 継 = 継ぎ目(

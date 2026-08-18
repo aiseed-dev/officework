@@ -107,18 +107,9 @@ security find-identity -v -p codesigning
 Xcode が入っていない機械ではこちら。
 
 . キーチェーンアクセスを開く(`open -a "Keychain Access"`)
-. メニュー *キーチェーンアクセス → 証明書アシスタント →*
-
-   認証局に証明書を要求…
-
-. メールと通称を入れ、**ディスクに保存**と**鍵ペア情報を指定**にチェック。
-
-   鍵は *2048 ビット・RSA*
-
-. <https://developer.apple.com/account/resources/certificates/list> で
-
-   *＋* → *Developer ID Application* → 3 のファイルを上げる
-
+. メニュー *キーチェーンアクセス → 証明書アシスタント →認証局に証明書を要求…*
+. メールと通称を入れ、**ディスクに保存**と**鍵ペア情報を指定**にチェック。鍵は *2048 ビット・RSA*
+. <https://developer.apple.com/account/resources/certificates/list> で**＋** → *Developer ID Application* → 3 のファイルを上げる
 . 出来た `.cer` を落として**ダブルクリック**(鍵束に入る)
 
 '''
@@ -207,19 +198,13 @@ packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Issuer ID>
 
 . 証明書があるか確かめる(2枚以上なら**どれを使うか聞く**)
 . `.p12` に書き出す(*合言葉を2回聞かれる* — 自分で決める物)
-. base64 にして `gh` で GitHub の Secrets へ入れる。
-
-   *値は画面にもクリップボードにも出ない*
-
+. base64 にして `gh` で GitHub の Secrets へ入れる。*値は画面にもクリップボードにも出ない*
 . 入った名前だけを一覧で見せる
 
 要る物:
 
 * *GitHub CLI* — `brew install gh && gh auth login`
-* A の証明書と、B の `.p8` と *Issuer ID*
-
-  (*Key ID は要らない* — `.p8` のファイル名から読む。
-名前を変えてしまったなら3つ目に書く)
+* A の証明書と、B の `.p8` と *Issuer ID *(*Key ID は要らない* — `.p8` のファイル名から読む。名前を変えてしまったなら3つ目に書く)
 
 [NOTE]
 ====
@@ -294,10 +279,7 @@ GitHub の macOS の機械が、手元と**同じスクリプト**(link:../packa
 押す前に:
 
 * 「下書きのまま置く」は**既定で入**。そのままでよい
-* *「macOS だけ組む」に入れる* — 署名を試すだけなら Linux と Windows を
-
-  組む意味が無い(そのぶん20分ほど短くなる)。
-出来た `.dmg` は  走行ページの *Artifacts* から落とす
+* *「macOS だけ組む」に入れる* — 署名を試すだけなら Linux と Windows を組む意味が無い(そのぶん20分ほど短くなる)。出来た `.dmg` は走行ページの *Artifacts* から落とす
 
 *初回は 20〜40 分*(macOS だけなら 15〜25 分)。
 GPUI を一から組むため。
@@ -371,15 +353,12 @@ xattr -p com.apple.quarantine ~/Downloads/officework-*.dmg
 **間違って公開した / 名前が変な Release になったとき**も、消せば済む。
 **Release とタグは別物**なので、2つとも消す。
 
-. *Release を消す* —
-
-   <https://github.com/aiseed-dev/officework/releases> でその Release を   開き、右上の *ゴミ箱*(Delete)
-
+. *Release を消す* — <https://github.com/aiseed-dev/officework/releases> でその Release を開き、右上の *ゴミ箱*(Delete)
 . *タグを消す* — Release を消してもタグは残る。普通の git でよい:
 
-   sh    git push origin :refs/tags/<名前>    
+   sh git push origin :refs/tags/<名前>
 
-   画面からなら <https://github.com/aiseed-dev/officework/tags> の   その行の *…* → *Delete tag*
+   画面からなら <https://github.com/aiseed-dev/officework/tags> のその行の *…* → *Delete tag*
 
 [NOTE]
 ====
@@ -454,10 +433,7 @@ MAC_SIGN_IDENTITY=<40桁> MAC_NOTARY_PROFILE=officework packaging/make-macos.sh
 *証明書はあるが、対になる秘密鍵がこの Mac に無い。* 証明書だけ落として入れても署名はできない(鍵が本体で、証明書はその身分証)。
 別の Mac で作った・OS を入れ直した、のどれか。
 
-. *鍵を持っている Mac から `.p12` をもらう*(末尾「手で入れる」の1の手順で書き出した物)。
-
-   もらったら**ダブルクリックで入れる**だけ
-
+. *鍵を持っている Mac から `.p12` をもらう*(末尾「手で入れる」の1の手順で書き出した物)。もらったら**ダブルクリックで入れる**だけ
 . *新しく作る*(下の「証明書を作り直す」)
 
 === 証明書を作り直す
@@ -571,19 +547,9 @@ openssl pkcs12 -in Certificates.p12 -info -nokeys -noout -passin stdin
 
 画面から辿るなら:
 
-. リポジトリの上のタブで *Settings*
-
-   (**アカウント**の Settings ではない。
-リポジトリの名前の下に並ぶ方)
-
-. 左の柱の *Secrets and variables* → *Actions*
-
-   (Codespaces / Dependabot もあるが、*Actions* を選ぶ)
-
-. *Repository secrets* の側の緑の *New repository secret*
-
-   (*Environment secrets* ではない)
-
+. リポジトリの上のタブで *Settings *(**アカウント**の Settings ではない。リポジトリの名前の下に並ぶ方)
+. 左の柱の *Secrets and variables* → *Actions *(Codespaces / Dependabot もあるが、*Actions* を選ぶ)
+. *Repository secrets* の側の緑の *New repository secret *(*Environment secrets* ではない)
 . *Name* に `MAC_CERT_P12`、*Secret* に中身を貼って *Add secret*
 . 残りの4つ(または5つ)も同じように足す
 
@@ -621,25 +587,11 @@ base64 -i AuthKey_XXXX.p8  | pbcopy          # MAC_API_KEY_P8
 
 == 何を署名しているか(読む人のために)
 
-* *同梱 Python の Mach-O は全部が対象*。`python3`・`libpython3.x.dylib`・
-
-  `lib-dynload/*.so`・pip で入れた拡張 — 1つでも漏れると公証が落ちる
-
-* *`.py` は対象外*。Mach-O ではないので、利用者が置いたマクロを走らせる
-
-  こと自体は署名の話にならない(設計の芯を曲げずに済む)
-
-* 権利(entitlements)は
-
-  link:../packaging/macos/entitlements.plist[packaging/macos/entitlements.plist]   の**2つだけ**。
-`pip install` した拡張を読めるようにする物と、ctypes の物。
-App Sandbox は入れない(直配布では要らず、入れると  `~/.config/officework/` が読めなくなる)
+* *同梱 Python の Mach-O は全部が対象*。`python3`・`libpython3.x.dylib`・`lib-dynload/*.so`・pip で入れた拡張 — 1つでも漏れると公証が落ちる
+* *`.py` は対象外*。Mach-O ではないので、利用者が置いたマクロを走らせること自体は署名の話にならない(設計の芯を曲げずに済む)
+* 権利(entitlements)はlink:../packaging/macos/entitlements.plist[packaging/macos/entitlements.plist]の**2つだけ**。`pip install` した拡張を読めるようにする物と、ctypes の物。App Sandbox は入れない(直配布では要らず、入れると``~/.config/officework/`` が読めなくなる)
 
 == まだしていないこと
 
-* *Intel(x86\_64)の .dmg は出していない。* `make-macos.sh` は**走っている*
-
-  Mac の的**で組む(Apple Silicon なら arm64)。
-両方出すなら2台で回すか、  universal に組む工事が要る*
-
+* *Intel(x86\_64)の .dmg は出していない。* `make-macos.sh` は**走っているMac の的**で組む(Apple Silicon なら arm64)。両方出すなら2台で回すか、universal に組む工事が要る
 * *Windows の署名*(SmartScreen)は別の話。証明書の種類も出し方も違う

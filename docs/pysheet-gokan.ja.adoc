@@ -320,35 +320,10 @@ App クラスは作らない(下記)。
 
 == 消し込みの順番(2026-08-12 当方の見立て)
 
-. ✔ *互換層の一括*(済 2026-08-12)— openpyxl の口は pysheet/officework/sheet.py
-
-   (新設。
-\_sheet を包む純 Python — エンジン無傷)、xlwings の算術は calc.py、   python-docx の口は \_doc.py(再輸出から包みに変えた)。
-適合検査は   pysheet/test\_gokan.py — *書きは本家と同じ手順を並べて動かし、結果そのものを   突き合わせる*(うちが書いた xlsx を openpyxl が読める・計算済みの値まで見える、   うちが書いた docx を python-docx が読める、まで)。
-python\_smoke.rs が回す。
-当時の残り3件も**済**(2026-08-13 に実測して確認): merge\_cells(家の作法で   結合)・create\_sheet の index 引数(move\_sheet が入った)・   Range の options に polars(読み書き両方向)
-
-. *足すの背骨*(102 件のうち実務で頻出の物から)— *前半済 2026-08-12*:
-
-   merge の書き(家の作法を sheet::model::ops へ移してアプリと共有)・   freeze\_panes・シートの複製/削除/改名(改名は参照が追随 — rename\_sheet\_refs を   sheet::model::refs へ移してアプリと共有)/並べ替え。
-*後半も大方済(2026-08-12)*: add\_image(oneCellAnchor・images の読みつき)・   add\_table/add\_row/add\_column(docx。
-ooxml の tblGrid の穴も塞いだ)・   options の polars(読み書き両方向)。
-*橋の背骨も済(2026-08-12 夕)*: ops::handle に 15 語彙   (calculate / selection / select / activate\_sheet / status / to\_pdf /    copy\_sheet / delete\_sheet / merges / merge / unmerge / merge\_area /    clear / clear\_contents / end)、Host に画面側の口(calc/src/rpc.rs。
-シートの複製・削除は耳のメニューと同じ関数を picks.rs から切り出して共有)。
-calc.py の対応する口ごと**実機の calc で検査済み** —    tools/hashi\_check.py(ribbon\_sweep.py と対)。
-追って freeze / sheet\_visible も同日に(語彙は 17 に)。
-*橋も済(2026-08-13)*: 当時の残り(Book.close・Book.to\_pdf(束ね)・   Sheet.autofit / pictures / tables / names / page\_setup・Range.insert / delete・   細目(note・hyperlink・group / ungroup・has\_array / formula\_array・   height / width / left / top・name / table))を全部入れ、語彙は 45 ほどに。
-どれも実機の calc で確かめてある。
-
+. ✔ *互換層の一括*(済 2026-08-12)— openpyxl の口は pysheet/officework/sheet.py (新設。\_sheet を包む純 Python — エンジン無傷)、xlwings の算術は calc.py、python-docx の口は \_doc.py(再輸出から包みに変えた)。適合検査はpysheet/test\_gokan.py — *書きは本家と同じ手順を並べて動かし、結果そのものを突き合わせる*(うちが書いた xlsx を openpyxl が読める・計算済みの値まで見える、うちが書いた docx を python-docx が読める、まで)。python\_smoke.rs が回す。当時の残り3件も**済**(2026-08-13 に実測して確認): merge\_cells(家の作法で結合)・create\_sheet の index 引数(move\_sheet が入った)・Range の options に polars(読み書き両方向)
+. *足すの背骨*(102 件のうち実務で頻出の物から)— *前半済 2026-08-12*: merge の書き(家の作法を sheet::model::ops へ移してアプリと共有)・freeze\_panes・シートの複製/削除/改名(改名は参照が追随 — rename\_sheet\_refs をsheet::model::refs へ移してアプリと共有)/並べ替え。*後半も大方済(2026-08-12)*: add\_image(oneCellAnchor・images の読みつき)・add\_table/add\_row/add\_column(docx。ooxml の tblGrid の穴も塞いだ)・options の polars(読み書き両方向)。*橋の背骨も済(2026-08-12 夕)*: ops::handle に 15 語彙(calculate / selection / select / activate\_sheet / status / to\_pdf / copy\_sheet / delete\_sheet / merges / merge / unmerge / merge\_area / clear / clear\_contents / end)、Host に画面側の口(calc/src/rpc.rs。シートの複製・削除は耳のメニューと同じ関数を picks.rs から切り出して共有)。calc.py の対応する口ごと**実機の calc で検査済み** — tools/hashi\_check.py(ribbon\_sweep.py と対)。追って freeze / sheet\_visible も同日に(語彙は 17 に)。*橋も済(2026-08-13)*: 当時の残り(Book.close・Book.to\_pdf(束ね)・Sheet.autofit / pictures / tables / names / page\_setup・Range.insert / delete・細目(note・hyperlink・group / ungroup・has\_array / formula\_array・height / width / left / top・name / table))を全部入れ、語彙は 45 ほどに。どれも実機の calc で確かめてある。
 . ✔ *書式の読み書き*(足す(書式)24 件)— エンジンの fmt に Python から書く道。合否は相手の定義どおり動くか(済 2026-08-12〜13)
-. ✔ *適合テストの移植*(済 2026-08-13)— *本家のテストは配り物に入っていない*
-
-   (openpyxl は sdist にも無く、公式の置き場も外から引けなかった)。
-入っていたのは   python-docx の**受け入れ仕様** `features/*.feature` 67本 — Gherkin で   「利用者から見た約束」が書いてある。
-こちらの方が移植の的として上等だった   (向こうの単体試験は内部の XML を見るものが多く、うちの作りには当たらない)。
-その約束をうちの口で確かめる `pysheet/test_shiyou.py` を起こし、   python\_smoke.rs の走行に繋いだ。
-出所は NOTICE.md。
-openpyxl の側は**本家を実際に動かして突き合わせる** `test_gokan.py` が   その役をしている(向こうの試験を写すより強い — 実物の xlsx で照合する)。
+. ✔ *適合テストの移植*(済 2026-08-13)— *本家のテストは配り物に入っていない*(openpyxl は sdist にも無く、公式の置き場も外から引けなかった)。入っていたのはpython-docx の**受け入れ仕様** `features/*.feature` 67本 — Gherkin で「利用者から見た約束」が書いてある。こちらの方が移植の的として上等だった(向こうの単体試験は内部の XML を見るものが多く、うちの作りには当たらない)。その約束をうちの口で確かめる `pysheet/test_shiyou.py` を起こし、python\_smoke.rs の走行に繋いだ。出所は NOTICE.md。openpyxl の側は**本家を実際に動かして突き合わせる** `test_gokan.py` がその役をしている(向こうの試験を写すより強い — 実物の xlsx で照合する)。
 
 === 本家の定義とずれている所(2026-08-13、受け入れ仕様に照らして測った)
 

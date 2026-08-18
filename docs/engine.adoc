@@ -84,22 +84,10 @@ Their Rust helper was untouched by the seven commits that landed on 2026-08-10, 
 
 == How far it has been checked
 
-* *Cross-check against genoffice's own helper* over 26 real workbooks (Bank of
-
-  Japan flow-of-funds, Statistics Bureau household survey, and others): values,   formulas, merges, extents and cell formats compared field by field.
-
-* *genoffice's own test suite*, run against the engine with nothing forwarded:
-
-  16 of 21.
-Of the five, one is a chart fixture we do not parse; the rest are   decisions — pivot-table output ranges we do not model, a style table numbered   by the original `cellXfs` index where we renumber, and a test asserting that   `CELL("filename")` _fails_, which ours answers correctly.
-
-* *The application itself*, opened and driven by hand: text, borders, merges,
-
-  cell formats, recalculation down three levels of dependency, Save As, and a   workbook carrying a logo, a stamp and a shape — all three drawn.
-
-* *Byte fidelity on save*, checked from outside: three real workbooks through
-
-  genoffice's save path, every untouched entry identical in CRC32 _and _  compressed size, order preserved.
+* *Cross-check against genoffice's own helper* over 26 real workbooks (Bank of Japan flow-of-funds, Statistics Bureau household survey, and others): values, formulas, merges, extents and cell formats compared field by field.
+* *genoffice's own test suite*, run against the engine with nothing forwarded: 16 of 21. Of the five, one is a chart fixture we do not parse; the rest are decisions — pivot-table output ranges we do not model, a style table numbered by the original `cellXfs` index where we renumber, and a test asserting that `CELL("filename")` _fails_, which ours answers correctly.
+* *The application itself*, opened and driven by hand: text, borders, merges, cell formats, recalculation down three levels of dependency, Save As, and a workbook carrying a logo, a stamp and a shape — all three drawn.
+* *Byte fidelity on save*, checked from outside: three real workbooks through genoffice's save path, every untouched entry identical in CRC32 __and __compressed size, order preserved.
 
 Each tier caught defects the one above it could not.
 The cross-check cannot see a simplification taught to both sides; a test suite whose schema is `passthrough()` cannot see a field the running application rejects with `strict()`.

@@ -2,8 +2,7 @@
 
 _日本語版(secondary): link:writer-manual.ja.adoc[writer-manual.ja.adoc]_
 
-*This manual describes writer 0.1.0-alpha*, the version we ship today.
-Anything not in it yet is marked *(coming in 0.2.0)*.
+*This manual describes writer 0.2.0-alpha.* Anything not yet in the released 0.1.0-alpha is marked *(coming in 0.2.0-alpha)*.
 Those parts describe what we are building, not what ships today.
 
 *A visual editor for AsciiDoc.* You edit your source (.adoc) as it looks.
@@ -27,7 +26,7 @@ Edit those in a text editor.
 There are four destinations: screen, PDF, HTML and docx.
 The screen is one of them, so you can write on paper or in a plain flowing view.
 
-*docx is the delivery format.* You can open it, read it, print it and turn it into adoc, but *it is not edited and saved as docx* (coming in 0.2.0).
+*docx is the delivery format.* You can open it, read it, print it and turn it into adoc, but *it is not edited and saved as docx* (coming in 0.2.0-alpha).
 Edit in adoc, hand over in docx.
 
 From Python you can still edit a docx and write it back (`from officework import doc`); only the screen stops doing it.
@@ -37,18 +36,9 @@ You can still *open* a password-protected docx.
 
 Three promises:
 
-* *The source you opened is not damaged.* Markup whose meaning we don't know
-
-  still comes back character for character.
-When you open a docx, its styles,   shapes and parts we don't understand are carried over from the original file
-
-* *Every operation is one undo away.* Keystrokes, IME commits, pastes, a single
-
-  ink stroke, a color-scheme change — all come back with one Ctrl+Z
-
-* *Nothing is dropped silently.* Anything we can't read, or that would be lost
-
-  on save, is listed in the report and mentioned in the status bar
+* *The source you opened is not damaged.* Markup whose meaning we don't know still comes back character for character. When you open a docx, its styles, shapes and parts we don't understand are carried over from the original file
+* *Every operation is one undo away.* Keystrokes, IME commits, pastes, a single ink stroke, a color-scheme change — all come back with one Ctrl+Z
+* *Nothing is dropped silently.* Anything we can't read, or that would be lost on save, is listed in the report and mentioned in the status bar
 
 Try the samples in link:../sample/README.adoc[sample/] — especially `sample/writer/01〜05` (Japanese typesetting, vertical writing, an application form, a monthly report, a feature tour) and `06_書き方の見本.adoc`, which puts every marking from the table below on one page.
 
@@ -68,14 +58,9 @@ Install `fonts-noto-cjk` or `fonts-ipaexfont`, or set `OFFICE_FONT=…`.
 
 The window frame follows the desktop-app convention. *Row 1*: save, print, undo, redo, and the document name (unsaved changes show a `*`; this row is also the window drag handle). *Row 2*: tabs on a white strip (the current tab is underlined; the 🔍 at the right edge is find & replace). *Bottom edge*: the status bar — page n/m, character count (character, not word, count — matching how Japanese documents are measured), status messages, proofreading, zoom.
 
-* *The File tab is a full-page view* — a menu on the left (New, Open, Open URL,
-
-  12 recent files, Save, Save As, Print, Protect, Properties, Open file location,   Quit) and "Document info" on the right (statistics plus docx properties =   author, title, and so on; click a field and type — it goes into docProps and   is visible in Word)
-
+* *The File tab is a full-page view* — a menu on the left (New, Open, Open URL, 12 recent files, Save, Save As, Print, Protect, Properties, Open file location, Quit) and "Document info" on the right (statistics plus docx properties = author, title, and so on; click a field and type — it goes into docProps and is visible in Word)
 * *Left panel* (View tab): headings / comments / search — click to jump
-* *Right panel* (View tab): settings board for character, paragraph, and page —
-
-  the buttons are the same actions as the ribbon; active toggles are tinted
+* *Right panel* (View tab): settings board for character, paragraph, and page — the buttons are the same actions as the ribbon; active toggles are tinted
 
 Tab order: *File / Home / Insert / Draw / Layout / References / Forms / Header & Footer / Collaboration / Protection / View / Macros*.
 
@@ -184,14 +169,8 @@ Denden-markdown `{漢字|かんじ}` in .md files is also read.
 
 == Paragraph formatting (Home)
 
-* Alignment: left, center, right, justified, and *distributed* — unlike
-
-  justified, it spreads spacing *through the last line* (the shape used for   labels that must fill the column in Japanese forms; stored as `w:jc distribute`)
-
-* Bulleted and numbered lists (levels via Tab / Shift+Tab), indent, line spacing
-
-  (1.0→1.5→2.0), page-break-before, background color, borders, drop caps
-
+* Alignment: left, center, right, justified, and *distributed* — unlike justified, it spreads spacing *through the last line* (the shape used for labels that must fill the column in Japanese forms; stored as `w:jc distribute`)
+* Bulleted and numbered lists (levels via Tab / Shift+Tab), indent, line spacing (1.0→1.5→2.0), page-break-before, background color, borders, drop caps
 * Toggle display of hidden characters
 
 == Vertical writing (Home > Text Direction)
@@ -206,60 +185,26 @@ Sample: `sample/writer/02_縦書きの手紙.docx`.
 
 == Headings, TOC, bookmarks, cross-references (References)
 
-* *Headings*: Home > paragraph styles (or References > Add Text to cycle
-
-  body → heading 1 → 2 → 3)
-
-* *TOC / table of figures*: page numbers are computed with *the same layout*
-
-  as print (PDF)*, so they can't disagree with the paper. After edits, press   Update to rebuild. Stored in docx as static text*
-
+* *Headings*: Home > paragraph styles (or References > Add Text to cycle body → heading 1 → 2 → 3)
+* *TOC / table of figures*: page numbers are computed with *the same layout as print (PDF)*, so they can't disagree with the paper. After edits, press Update to rebuild. Stored in docx as static text
 * *Captions*: "図 N" below the paragraph, numbered automatically
-* *Bookmarks*: add/remove/jump from a dialog. *Cross-references* insert a
-
-  bookmark's text or page number into the body (shown with a light shade =   computed value; stored as REF / PAGEREF fields, so Word can recalculate them)
+* *Bookmarks*: add/remove/jump from a dialog. *Cross-references* insert a bookmark's text or page number into the body (shown with a light shade = computed value; stored as REF / PAGEREF fields, so Word can recalculate them)
 
 == Forms (form fields / content controls)
 
 Ten kinds on the Forms tab: *text, combo box, dropdown, checkbox, radio, picture, e-mail, phone, composite, signature*.
 
-* Fields appear as light boxes; typing inside them works normally (the content
-
-  stays part of the field)
-
-* Checkboxes toggle ☐⇄☑ with the same button (or the space key). Combo/dropdown
-
-  choices are set comma-separated in a dialog; the same button cycles candidates
-
-* Stored as `w:sdt` (content controls) and opens in Word. Our own kinds
-
-  (e-mail, phone, composite, signature) are tagged `jo:*`
-
-* *Combined with Protection > Protect this becomes a distributable form* —
-
-  hand out a read-only document where only the fields accept input.
-Sample:   `sample/writer/03_申込書.docx`
+* Fields appear as light boxes; typing inside them works normally (the content stays part of the field)
+* Checkboxes toggle ☐⇄☑ with the same button (or the space key). Combo/dropdown choices are set comma-separated in a dialog; the same button cycles candidates
+* Stored as `w:sdt` (content controls) and opens in Word. Our own kinds (e-mail, phone, composite, signature) are tagged `jo:*`
+* *Combined with Protection > Protect this becomes a distributable form* — hand out a read-only document where only the fields accept input. Sample: `sample/writer/03_申込書.docx`
 
 == Tables, images, insert
 
-* *Tables*: Insert > Table (3×3). Edit inside cells, Tab to the next cell.
-
-  Tables with merged cells are read, displayed, saved, and printed (no UI to   create new merges yet)
-
-* *Images*: PNG, JPEG, SVG (SVG is converted to a high-resolution PNG).
-
-  Saved as proper docx parts, visible in Word
-
-* *Shapes, SmartArt (9 layouts), charts, text art*:
-
-  behind the buttons Python (matplotlib etc.) draws the picture and pastes it   as an image
-
-* *Equations*: Insert > Equation opens a small panel — *type LaTeX and*
-
-  press Enter** (e.g. `\frac{a+b}{2}`).
-Python typesets it: with TeX   installed it typesets there (matrix columns align), otherwise matplotlib.   **The picture and the LaTeX source go into the docx as a pair**, so Word   shows the picture and writer reopens it as an editable formula.
-A formula   it cannot set is refused with the reason*
-
+* *Tables*: Insert > Table (3×3). Edit inside cells, Tab to the next cell. Tables with merged cells are read, displayed, saved, and printed (no UI to create new merges yet)
+* *Images*: PNG, JPEG, SVG (SVG is converted to a high-resolution PNG). Saved as proper docx parts, visible in Word
+* *Shapes, SmartArt (9 layouts), charts, text art*: behind the buttons Python (matplotlib etc.) draws the picture and pastes it as an image
+* *Equations*: Insert > Equation opens a small panel — *type LaTeX and press Enter* (e.g. `\frac{a+b}{2}`). Python typesets it: with TeX installed it typesets there (matrix columns align), otherwise matplotlib. *The picture and the LaTeX source go into the docx as a pair*, so Word shows the picture and writer reopens it as an editable formula. A formula it cannot set is refused with the reason
 * *Text box*: a 1×1 table (text inside a frame)
 * *Text from file*: inserts .txt / .md / .docx
 
@@ -277,15 +222,8 @@ The status line says how many pictures were made.
 
 == Layout
 
-* Paper (A4→B5→A3), orientation, margins (20/12/30mm), columns (1→2→3),
-
-  line numbers, page color, watermark (light diagonal text, visible in Word),   hyphenation (Latin text broken at syllables)
-
-* *Color scheme*: cycles through six (standard, indigo, green, dark red,
-
-  indigo+unbleached paper, ink+gray paper).
-Heading color and page color change   as a pair, and the *actual color values are written*, so Word shows the same   colors without needing theme parts.
-One Ctrl+Z restores
+* Paper (A4→B5→A3), orientation, margins (20/12/30mm), columns (1→2→3), line numbers, page color, watermark (light diagonal text, visible in Word), hyphenation (Latin text broken at syllables)
+* *Color scheme*: cycles through six (standard, indigo, green, dark red, indigo+unbleached paper, ink+gray paper). Heading color and page color change as a pair, and the *actual color values are written*, so Word shows the same colors without needing theme parts. One Ctrl+Z restores
 
 == Header & footer
 
@@ -297,75 +235,28 @@ The date is inserted as *fixed text* at insertion time (not a field that changes
 
 *Read, fill in, and print web documents in writer.*
 
-* *Open*: an .html file, or File > *Open URL* (http/https). Headings,
-
-  paragraphs, lists, tables, images, ruby, and forms are typeset onto the page —   unreadable elements go to the report.
-Links are followed *only within the   origin host*
-
-* *JavaScript is never executed* (it is skipped and noted in the report).
-
-  Pages that require JS won't work — and the app says so
-
-* *Filling and submitting*: form fields (input / select / textarea) become
-
-  form fields; submit is a plain GET / POST round trip.
-The response becomes   a page again
-
-* *In-page Python* (`<script type="py">`) is *never run on open*. It runs
-
-  only on explicit command, inside the same sandbox as Python in Calc
-
-* Opened HTML can be saved as docx and printed as PDF (we don't save HTML —
-
-  compatibility stops at the format boundary)
-
-* Acceptance samples: `sample/html/` (01〜10); a live counterpart is the catalog
-
-  and order form from `python3 sample/catalog_server.py`
+* *Open*: an .html file, or File > *Open URL* (http/https). Headings, paragraphs, lists, tables, images, ruby, and forms are typeset onto the page — unreadable elements go to the report. Links are followed *only within the origin host*
+* *JavaScript is never executed* (it is skipped and noted in the report). Pages that require JS won't work — and the app says so
+* *Filling and submitting*: form fields (input / select / textarea) become form fields; submit is a plain GET / POST round trip. The response becomes a page again
+* *In-page Python* (`<script type="py">`) is *never run on open*. It runs only on explicit command, inside the same sandbox as Python in Calc
+* Opened HTML can be saved as docx and printed as PDF (we don't save HTML — compatibility stops at the format boundary)
+* Acceptance samples: `sample/html/` (01〜10); a live counterpart is the catalog and order form from `python3 sample/catalog_server.py`
 
 == Collaboration tab — no server, everything through files
 
 Tools that work on a document in a shared folder:
 
-* *Collaboration mode*: checks who holds the lock (`.~lock.document.docx#`),
-
-  by name; if the previous holder has left, takes over editing rights.
-While   someone else holds it, overwrite-save is blocked (first come, first served;   later arrivals read — an honest arrangement)
-
-* *Comments*: add/remove/toggle per paragraph (docx comments.xml; Word shows
-
-  them as balloons)
-
-* *Track changes*: start/stop recording. While recording, changed paragraphs
-
-  get an orange bar in the margin. *On save* they become real Word tracked   changes (insertions/deletions with author).
-Saving finalizes the recording   (the app tells you so)
-
-* *Chat*: appends named messages to a file next to the document
-
-  (`document.docx.chat.txt`).
-Not live — messages passed through files
-
-* *Version history*: every overwrite-save keeps a copy under `.jo-history/`
-
-  (9 generations).
-Selecting one opens it as an *untitled copy* — to restore,   save it yourself under the same name (nothing is written back silently)
+* *Collaboration mode*: checks who holds the lock (`.~lock.document.docx#`), by name; if the previous holder has left, takes over editing rights. While someone else holds it, overwrite-save is blocked (first come, first served; later arrivals read — an honest arrangement)
+* *Comments*: add/remove/toggle per paragraph (docx comments.xml; Word shows them as balloons)
+* *Track changes*: start/stop recording. While recording, changed paragraphs get an orange bar in the margin. *On save* they become real Word tracked changes (insertions/deletions with author). Saving finalizes the recording (the app tells you so)
+* *Chat*: appends named messages to a file next to the document (`document.docx.chat.txt`). Not live — messages passed through files
+* *Version history*: every overwrite-save keeps a copy under `.jo-history/ `(9 generations). Selecting one opens it as an *untitled copy* — to restore, save it yourself under the same name (nothing is written back silently)
 
 == Protection tab
 
-* *Protect*: read-only toggle (round-trips docx documentProtection — Word
-
-  shows it as protected too). *No password, and no pretend-password.* The   effect is real: typing and every document-changing button are blocked;   viewing, printing, and searching still work
-
-* *Encrypting is not offered.* What writer saves is adoc, which is not a zip,
-
-  so there is nothing to wrap.
-A password-protected docx still *opens*: writer   asks for the password (Agile AES-256 and the older AES-128 both work,   cross-verified against msoffcrypto-tool)
-
-* *Digital signature*: a signature file next to the document
-
-  (`document.docx.sig`, Ed25519; the key is auto-generated at   `~/.config/officework/sign.key`).
-Tamper detection plus a name — it is not the   scheme that fills Word's signature line (and says so)
+* *Protect*: read-only toggle (round-trips docx documentProtection — Word shows it as protected too). *No password, and no pretend-password.* The effect is real: typing and every document-changing button are blocked; viewing, printing, and searching still work
+* *Encrypting is not offered.* What writer saves is adoc, which is not a zip, so there is nothing to wrap. A password-protected docx still *opens*: writer asks for the password (Agile AES-256 and the older AES-128 both work, cross-verified against msoffcrypto-tool)
+* *Digital signature*: a signature file next to the document (`document.docx.sig`, Ed25519; the key is auto-generated at `~/.config/officework/sign.key`). Tamper detection plus a name — it is not the scheme that fills Word's signature line (and says so)
 
 == View tab
 
@@ -385,24 +276,11 @@ The panels *take space* — they never cover the page.
 
 *It follows where you are.* If the cursor is inside a table, the table face comes first; if the paragraph holds an equation or a picture, that face does (the Text / Paragraph / Page faces stay below — you still want bold inside a table).
 
-* *Table* (when inside one): shows rows × columns and where you are, plus
-
-  *row above / row below / delete row / column left / column right / delete   column*. *Added 2026-08-15* — until then writer could only drop a 3×3   table at the end, with no way to add a row.
-The last row and column are never   deleted (deleting the whole table is a separate action)
-
-* *Equation* (when the paragraph holds one): shows the LaTeX source; "Edit
-
-  the equation" loads that source into the box. *You never retype it*
-
-* *Picture* (when the paragraph holds one): its size in mm, and smaller /
-
-  bigger
-
+* *Table* (when inside one): shows rows × columns and where you are, plus *row above / row below / delete row / column left / column right / delete column*. *Added 2026-08-15* — until then writer could only drop a 3×3 table at the end, with no way to add a row. The last row and column are never deleted (deleting the whole table is a separate action)
+* *Equation* (when the paragraph holds one): shows the LaTeX source; "Edit the equation" loads that source into the box. *You never retype it*
+* *Picture* (when the paragraph holds one): its size in mm, and smaller / bigger
 * *Text*: bold, italic, underline, strike, size, font, colour, clear
-* *Paragraph*: alignment, line spacing, indent, bullets, numbering,
-
-  background, box
-
+* *Paragraph*: alignment, line spacing, indent, bullets, numbering, background, box
 * *Page*: orientation, paper, margins, columns, vertical writing
 
 The panel *takes space* (it never covers the page) and scrolls if its contents grow.
@@ -413,23 +291,14 @@ The panel *takes space* (it never covers the page) and scrolls if its contents g
 
 Open it with *View tab > Navigation* (left panel), then the *AI* ear.
 
-* *The selection is what you are asking about* (with nothing selected, the
-
-  whole document)
-
-* *Revised text is shown before it goes in.* Press Apply and it replaces the
-
-  selection, or is inserted after the cursor if nothing is selected.
-Either way   *one Ctrl+Z* undoes it
-
+* *The selection is what you are asking about* (with nothing selected, the whole document)
+* *Revised text is shown before it goes in.* Press Apply and it replaces the selection, or is inserted after the cursor if nothing is selected. Either way *one Ctrl+Z* undoes it
 * Requests that don't change the text (advice on wording) are simply answered
 
 *Two things stayed on the ribbon* — work the conversation cannot do:
 
 * *Home > Furigana* — what goes in is ruby _formatting_, not plain text
-* *Plugins > Write a macro* — it puts a .py in the plugins folder
-
-  (never run automatically; read it, then run it yourself)
+* *Plugins > Write a macro* — it puts a .py in the plugins folder (never run automatically; read it, then run it yourself)
 
 *Choosing the destination* lives in File > Advanced settings, "AI destination".
 Unavailable destinations *say why on the spot*.
@@ -444,18 +313,12 @@ Headless tools: `office-spell document.txt` (exit code 0=clean 1=findings 2=unre
 
 == Macros tab
 
-* *List*: the .py files in `~/.config/officework/plugins`; pick one to run it
-
-  (in the sandbox).
-Extensions like Aozora annotations or EPUB go here   Picking one runs *Python in a sandbox* (bubblewrap) on a copy of the   document; the result lands as one undo step.
-The script gets `d` = the   python-docx Document. *Code is never stored in the document* (no executable   content in docx — the policy differs from xlsx because python-docx already   exists as public infrastructure)
+* *List*: the .py files in `~/.config/officework/plugins`; pick one to run it (in the sandbox). Extensions like Aozora annotations or EPUB go here Picking one runs *Python in a sandbox* (bubblewrap) on a copy of the document; the result lands as one undo step. The script gets `d` = the python-docx Document. *Code is never stored in the document* (no executable content in docx — the policy differs from xlsx because python-docx already exists as public infrastructure)
 
 *Only .py files in the folder can be launched.* The button that ran a .py from anywhere is gone.
 A file you were given goes into the folder first, then you pick it from the list — *that step is the gate*.
 
-* *Writing macros* — named fields (`fill`/`extract`), templates (`render`),
-
-  speed rules, and the AI button: see the   link:writer-macro-manual.adoc[writer macro manual]
+* *Writing macros* — named fields (`fill`/`extract`), templates (`render`), speed rules, and the AI button: see the link:writer-macro-manual.adoc[writer macro manual]
 
 == Two kinds of document — meaning only, and the docx you were sent
 
@@ -776,15 +639,8 @@ Slides (one section per sheet):
 跨ぎ = false      # a paragraph never crosses a sheet
 ----
 
-* Every section starts a fresh sheet, so the level-1 heading becomes the title
-
-  of that sheet
-
-* `跨ぎ = false` moves a paragraph that straddles a sheet boundary onto the
-
-  next sheet whole.
-A paragraph too tall for one sheet is left where it is
-
+* Every section starts a fresh sheet, so the level-1 heading becomes the title of that sheet
+* `跨ぎ = false` moves a paragraph that straddles a sheet boundary onto the next sheet whole. A paragraph too tall for one sheet is left where it is
 * To see them one sheet at a time: View > *Print layout*
 * *You do not need PowerPoint* — slides are just another template
 
@@ -809,14 +665,8 @@ It pulls the direct formatting out of a docx, groups similar looks into styles a
 Distilled — 1 style, 15 paragraphs. The look moved into the template
 ====
 
-* *It is lossy, so it is an explicit step.* Until you press it, the docx stays
-
-  a docx (original parts included)
-
-* Anything that does not fit a paragraph's look (one word in a different colour)
-
-  is dropped, and *the count is reported* — no pretending nothing was lost.   Emphasis, footnotes, links and ruby survive
-
+* *It is lossy, so it is an explicit step.* Until you press it, the docx stays a docx (original parts included)
+* Anything that does not fit a paragraph's look (one word in a different colour) is dropped, and *the count is reported* — no pretending nothing was lost. Emphasis, footnotes, links and ruby survive
 * Afterwards the document is native and saves as .adoc
 
 == Searching a folder
@@ -826,10 +676,7 @@ File > *Search a folder* walks a folder and searches many files at once.
 * *It reads inside .docx too* — no need to convert to txt first
 * Plain text (.txt / .md / .adoc / .py / .csv …) as well
 * Narrow by name with `*.txt` (`;` for several)
-* The folder defaults to the one holding the open document (or the last one you
-
-  chose)
-
+* The folder defaults to the one holding the open document (or the last one you chose)
 * Hidden folders are skipped; if there is too much it stops early *and says so*
 
 Hits are grouped per file with line numbers.
@@ -838,40 +685,14 @@ It opens only when you press *Load* below — so you look first, and a misclick 
 
 == Printing (PDF) and saving
 
-* File > Print writes a PDF. Real header/footer numbers, watermark, page color,
-
-  ink, and vertical writing all carry over
-
-* *Screen and paper can be the same, or different.* Add
-
-  `テンプレート-印刷.toml` and paper gets its own look; without it, what you see   is what is printed
-
-* *Anything counted is counted on paper.* Page numbers in the table of
-
-  contents, the table of figures and cross-references, and the page count in   headers, all follow the _printed_ pages, however many pages the screen shows.   A "page 3" in the contents is always page 3 on paper
-
-* *Ctrl+S saves adoc* (blocked if someone else holds the lock). Only the text is
-
-  written; the formatting stays in the template
-
-* *docx is produced by "export".* The template's formatting is written as docx
-
-  style definitions, so Word shows it, and editing a style in Word still changes   every place that uses it.
-Nothing is baked into the text itself.
-If the folder   holds a `テンプレート-docx.toml`, docx exports use that format instead
-
-* Exporting *does not move where your source is saved.* Ctrl+S afterwards still
-
-  saves the adoc, not the docx
-
-* A docx you opened *is not edited and saved back* (coming in 0.2.0).
-
-  Press "turn into adoc" first, then export to docx
-
-* (until 0.2.0-alpha) Ctrl+S saves docx. Body, tables,
-
-  images, and headers are written back; parts we don't understand are carried   over from the original file.
-Elements we couldn't read are noted as   "preserved on save"
+* File > Print writes a PDF. Real header/footer numbers, watermark, page color, ink, and vertical writing all carry over
+* *Screen and paper can be the same, or different.* Add``テンプレート-印刷.toml`` and paper gets its own look; without it, what you see is what is printed
+* *Anything counted is counted on paper.* Page numbers in the table of contents, the table of figures and cross-references, and the page count in headers, all follow the _printed_ pages, however many pages the screen shows. A "page 3" in the contents is always page 3 on paper
+* *Ctrl+S saves adoc* (blocked if someone else holds the lock). Only the text is written; the formatting stays in the template
+* *docx is produced by "export".* The template's formatting is written as docx style definitions, so Word shows it, and editing a style in Word still changes every place that uses it. Nothing is baked into the text itself. If the folder holds a `テンプレート-docx.toml`, docx exports use that format instead
+* Exporting *does not move where your source is saved.* Ctrl+S afterwards still saves the adoc, not the docx
+* A docx you opened *is not edited and saved back* (coming in 0.2.0-alpha). Press "turn into adoc" first, then export to docx
+* (until 0.2.0-alpha) Ctrl+S saves docx. Body, tables, images, and headers are written back; parts we don't understand are carried over from the original file. Elements we couldn't read are noted as "preserved on save"
 
 == No more gray
 

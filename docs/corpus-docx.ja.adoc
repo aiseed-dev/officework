@@ -1,4 +1,4 @@
-= 他人が書いた docx の目録(pydoc\\\_diff の突き合わせ用)
+= 他人が書いた docx の目録(pydoc\\\\\\\_diff の突き合わせ用)
 
 `docs/corpus.ja.adoc`(xlsx)の作法をそのまま docx に当てた物。
 *現物はこの repo に置かない。* 置き場は `~/docx-corpus/`(既定)。
@@ -22,19 +22,19 @@ repo に入れたら消せない)。
 
 === 作り方(取り直す)
 
-    mkdir -p ~/docx-corpus && cd ~/docx-corpus     cat > src.md <<'EOF'     # 数式の見本
+    mkdir -p ~/docx-corpus && cd ~/docx-corpus cat > src.md <<'EOF' # 数式の見本
 
     インラインの数式 $a^2 + b^2 = c^2$ を含む段落です。
 
     独立した数式:
 
-    $$int\_{0}^{\\infty} e^{-x^2},dx = frac{sqrt{pi}}{2}$$
+    $$int\_{0}^{\\\\infty} e^{-x^2},dx = frac{sqrt{pi}}{2}$$
 
     分数と根号: $frac{-b pm sqrt{b^2-4ac}}{2a}$
 
     行列:
 
-    $$begin{pmatrix} a & b \\ c & d end{pmatrix}$$     EOF     # 1枚目 — pandoc が直に書く OMML     pandoc src.md -o pandoc-math.docx     # 2枚目 — それを LibreOffice に通し、**向こうの書き手**に書き直させる    mkdir -p t && cp pandoc-math.docx t/conv.docx     soffice --headless --convert-to odt  --outdir t  t/conv.docx     soffice --headless --convert-to 'docx:MS Word 2007 XML' --outdir t2 t/conv.odt     cp t2/conv.docx libreoffice-math.docx && rm -rf t t2
+    $$begin{pmatrix} a & b \\ c & d end{pmatrix}$$ EOF # 1枚目 — pandoc が直に書く OMML pandoc src.md -o pandoc-math.docx # 2枚目 — それを LibreOffice に通し、**向こうの書き手**に書き直させるmkdir -p t && cp pandoc-math.docx t/conv.docx soffice --headless --convert-to odt  --outdir t  t/conv.docx soffice --headless --convert-to 'docx:MS Word 2007 XML' --outdir t2 t/conv.odt cp t2/conv.docx libreoffice-math.docx && rm -rf t t2
 
 === *この2枚の限界を先に書いておく*
 
@@ -50,19 +50,12 @@ Word 本体の1枚が入れば、また別の癖が出る見込み。
 数式を原文で持ち越す仕事(`carry_math`)で、**自分で書いた文書では永久に出ない形**が2つ出た。
 どちらも「書き手が違う」ことでしか見つからない:
 
-. *`xmlns:m` の置き場が書き手で違う。*
-
-   pandoc は root の `<w:document>` に宣言し、`<m:oMath>` は裸で書く。
-LibreOffice は root に宣言せず、**`<m:oMath xmlns:m="…">` と要素側に**書く。
-持ち越すときに宣言を足す作りだと、後者では属性が二重になって XML が壊れる
-
-. *`xml:space="preserve"`。* LibreOffice の `<m:t>` はこれを書く。
-
-   `xml:` は XML の定めで最初から結びついていて宣言してはいけないのに、   「解決できない接頭辞」と数えていたので、*数式が4つとも丸ごと落ちていた*
+. **`xmlns:m` の置き場が書き手で違う。**pandoc は root の `<w:document>` に宣言し、`<m:oMath>` は裸で書く。LibreOffice は root に宣言せず、**`<m:oMath xmlns:m="…">` と要素側に**書く。持ち越すときに宣言を足す作りだと、後者では属性が二重になって XML が壊れる
+. *`xml:space="preserve"`。* LibreOffice の `<m:t>` はこれを書く。`xml:` は XML の定めで最初から結びついていて宣言してはいけないのに、「解決できない接頭辞」と数えていたので、*数式が4つとも丸ごと落ちていた*
 
 == 通し方
 
-    cd ~/dev/officework     export PATH="$HOME/.local/node/bin:$PATH"          # node 24     export GENOFFICE=~/dev/genoffice                   # 向こうの木(tsx が要る)     OFFICEWORK\_PYTHON=<.so を置いた木の python> \\       python3 tools/pydoc\_diff.py --roundtrip --corpus ~/docx-corpus
+    cd ~/dev/officework export PATH="$HOME/.local/node/bin:$PATH"          # node 24 export GENOFFICE=~/dev/genoffice                   # 向こうの木(tsx が要る) OFFICEWORK\_PYTHON=<.so を置いた木の python> \\ python3 tools/pydoc\_diff.py --roundtrip --corpus ~/docx-corpus
 
 == 第2便(2026-08-10。4枚。節と脚注)
 
@@ -82,7 +75,7 @@ LibreOffice は root に宣言せず、**`<m:oMath xmlns:m="…">` と要素側�
 docx は `footnotes.xml` と `endnotes.xml` を**別々に番号付けする**ので、両方を含む文書では *id が必ず衝突する*。
 この1枚の実物がまさにそれで:
 
-    本文の印        脚注 id=2 / 文末 id=2 / 脚注 id=3 / 文末 id=3     footnotes.xml   0 1 2 3     endnotes.xml    0 1 2 3      ← 同じ番号
+    本文の印        脚注 id=2 / 文末 id=2 / 脚注 id=3 / 文末 id=3 footnotes.xml   0 1 2 3 endnotes.xml    0 1 2 3      ← 同じ番号
 
 *集めていた2枚に文末脚注が入っていなかったので、試験も突き合わせも緑のままだった。* 直す前のコードにこの1枚を通すと、文末脚注の印に**脚注の文章**が出る(確認済み)。
 SEKKEI.adoc の「緑は『正しい』ではなく『この物差しでは差が出ない』」がそのまま当たる。
@@ -92,9 +85,9 @@ SEKKEI.adoc の「緑は『正しい』ではなく『この物差しでは差�
 節・脚注・両方入りは、*flat ODF(.fodt)を書いて LibreOffice に通す*。
 pandoc は文末脚注を書き出せず、LibreOffice も docx を素通しすると節を落とすことがあるので、この経路がいちばん確実だった。
 
-    # 脚注(pandoc → LibreOffice の2枚)     pandoc fn-src.md -o pandoc-fn.docx        # 本文に [^a] 形式の脚注    mkdir -p t && cp pandoc-fn.docx t/c.docx     soffice --headless --convert-to odt --outdir t t/c.docx     soffice --headless --convert-to 'docx:MS Word 2007 XML' --outdir t2 t/c.odt     cp t2/c.docx lo-fn.docx && rm -rf t t2
+    # 脚注(pandoc → LibreOffice の2枚) pandoc fn-src.md -o pandoc-fn.docx        # 本文に [^a] 形式の脚注mkdir -p t && cp pandoc-fn.docx t/c.docx soffice --headless --convert-to odt --outdir t t/c.docx soffice --headless --convert-to 'docx:MS Word 2007 XML' --outdir t2 t/c.odt cp t2/c.docx lo-fn.docx && rm -rf t t2
 
-    # 節(縦→横)と、脚注+文末脚注の同居は .fodt から    soffice --headless --convert-to 'docx:MS Word 2007 XML' --outdir . lo-twosect.fodt     soffice --headless --convert-to 'docx:MS Word 2007 XML' --outdir . both-notes.fodt
+    # 節(縦→横)と、脚注+文末脚注の同居は .fodt からsoffice --headless --convert-to 'docx:MS Word 2007 XML' --outdir . lo-twosect.fodt soffice --headless --convert-to 'docx:MS Word 2007 XML' --outdir . both-notes.fodt
 
 `.fodt` の原本も同じ置き場に残してある(`lo-twosect.fodt`・`both-notes.fodt`)。
 *節の切り替えは、段落様式に `style:master-page-name` を付けた「名前付きの様式」でないと LibreOffice が拾わない* — 自動様式に付けても落ちる。
@@ -113,11 +106,7 @@ pandoc は文末脚注を書き出せず、LibreOffice も docx を素通しす�
 **継ぎ目を見るための1枚:
 
 * 節が2つ(*縦 → 横*)
-* *それぞれの節に脚注*(ここが継ぎ目 — 脚注の高さは本文の底を上げ、
-
-  節ごとに紙の高さが違う。
-どちらも `paginate_full` の同じ輪の中)
-
+* *それぞれの節に脚注*(ここが継ぎ目 — 脚注の高さは本文の底を上げ、節ごとに紙の高さが違う。どちらも `paginate_full` の同じ輪の中)
 * 文末脚注も1つ(置き場が違うことの確認)
 
     soffice --headless --convert-to 'docx:MS Word 2007 XML' --outdir . all3.fodt

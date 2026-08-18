@@ -11,18 +11,9 @@ Documents never carry executable code: opening a file never runs anything.
 
 Three ways:
 
-. *Macros tab > List* — pick a `.py` from the folder. The script body is your code
-
-   only (see the contract below).
-
-. *Macros tab > List* — every `.py` in
-
-   `~/.config/officework/plugins/` is listed; click one to run it in the same    sandbox.
-
-. *Macros tab > Write a macro* — describe what you want; the model writes a
-
-   script into the plugins folder (`aiスクリプトN.py`).
-It is *never run    automatically* — read it, then run it from the plugins list.
+. *Macros tab > List* — pick a `.py` from the folder. The script body is your code only (see the contract below).
+. *Macros tab > List* — every `.py` in `~/.config/officework/plugins/` is listed; click one to run it in the same sandbox.
+. *Macros tab > Write a macro* — describe what you want; the model writes a script into the plugins folder (`aiスクリプトN.py`). It is *never run automatically* — read it, then run it from the plugins list.
 
 == The contract
 
@@ -35,14 +26,8 @@ d          # the document      import docx / docx.Document(...) / d.save(...)
 ----
 
 * *`d`* is a python-docx `Document` (the full python-docx API works on it).
-* *`print()`* — the last printed line appears in the status bar. End with a
-
-  one-line report of what you did.
-
-* *Refuse with `raise SystemExit("reason")`* when the request cannot be done
-
-  safely.
-The message is shown to the user; the document stays untouched.   Never fail silently.
+* *`print()`* — the last printed line appears in the status bar. End with a one-line report of what you did.
+* *Refuse with `raise SystemExit("reason")`* when the request cannot be done safely. The message is shown to the user; the document stays untouched. Never fail silently.
 
 == Named fields — the backbone of forms
 
@@ -122,18 +107,8 @@ Pitfalls that actually break templates (run-splitting mostly does not — docxtp
 Everything python-docx offers works on `d`: `d.paragraphs`, `d.tables`, `d.sections`, styles, and so on.
 Two rules from real measurements:
 
-* *Walk tables by rows.* `tb.cell(i, j)` rebuilds the merge grid on every
-
-  call — on a 1,920-cell ruled form the loop below takes *91 ms* where the   `cell(i, j)` version takes *12.7 s*:
-
-  python   for tb in d.tables:       for row in tb.rows:           for c in row.cells:               ...   
-
-* *Preserve formatting when replacing text.* `c.text = "…"` resets the run
-
-  formatting.
-Write into the first run instead:
-
-  python   p = cell.paragraphs[0]   if p.runs:       p.runs[0].text = "山田太郎"       for r in p.runs[1:]:           r.text = ""   else:       p.add\_run("山田太郎")   
+* *Walk tables by rows.* `tb.cell(i, j)` rebuilds the merge grid on every call — on a 1,920-cell ruled form the loop below takes *91 ms* where the `cell(i, j)` version takes *12.7 s*: python for tb in d.tables: for row in tb.rows: for c in row.cells: ...
+* *Preserve formatting when replacing text.* `c.text = "…"` resets the run formatting. Write into the first run instead: python p = cell.paragraphs[0] if p.runs: p.runs[0].text = "山田太郎" for r in p.runs[1:]: r.text = "" else: p.add\_run("山田太郎")
 
 == The sandbox
 
@@ -141,13 +116,8 @@ Macros run inside bubblewrap: *no network*, the *home folder appears empty*, and
 The project `.venv` (python-docx, docxtpl, polars, …) is available.
 Practical consequences:
 
-* You cannot read `~/名簿.csv` from a macro. Bring data in as literals in the
-
-  script, as a `render()` context, or from the document itself.
-
-* Mass mail-merge over a ledger belongs in *calc's Python* (which binds the
-
-  workbook) — writer macros edit the one open document.
+* You cannot read `~/名簿.csv` from a macro. Bring data in as literals in the script, as a `render()` context, or from the document itself.
+* Mass mail-merge over a ledger belongs in *calc's Python* (which binds the workbook) — writer macros edit the one open document.
 
 == Letting the AI write it
 

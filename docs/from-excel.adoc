@@ -570,14 +570,8 @@ See "Shared folders and exclusive locks" in the link:calc-manual.adoc[calc manua
 
 == Macros and automation (VBA → Python)
 
-* VBA is *deliberately absent* — we are not importing the thirty-year-old
-
-  "open = execute" hole (link:sekkei/python.ja.adoc[design]).
-Python takes the job:   link:python-manual.adoc[Python manual]
-
-* *The only thing a workbook may carry is a =PY function.* Procedures run
-
-  only from .py files you placed in `~/.config/officework/plugins/` yourself —   a received file can never become the origin of execution (settled 2026-08-08)
+* VBA is *deliberately absent* — we are not importing the thirty-year-old "open = execute" hole (link:sekkei/python.ja.adoc[design]). Python takes the job: link:python-manual.adoc[Python manual]
+* *The only thing a workbook may carry is a =PY function.* Procedures run only from .py files you placed in `~/.config/officework/plugins/` yourself — a received file can never become the origin of execution (settled 2026-08-08)
 
 [cols="1,1,1"]
 |===
@@ -838,11 +832,5 @@ The 18 uncovered areas listed in the second draft were all filled in the third �
 
 What remains is not missing sections but *outstanding content*, and it lives in three places:
 
-* *The implementation backlog* = link:guide-tsukiawase-2.ja.adoc[the ledger].
-
-  What this draft's comparison turned up (Consolidate, the data model, the   Analysis ToolPak function families, FREQUENCY and LINEST, custom lists, form   controls, sheet groups, document inspection, creating a workbook from a   template, screen reader support, and more) is marked "a backlog candidate"   inline in the text, so moving those onto the ledger is the next tidying pass
-
-* *Thin sections* — "Entering data and formatting" is still mostly number
-
-  formats and merging.
-The finer points of cell formatting were split out into   "Cell formatting basics", so the two should eventually be merged
+* *The implementation backlog* = link:guide-tsukiawase-2.ja.adoc[the ledger]. What this draft's comparison turned up (Consolidate, the data model, the Analysis ToolPak function families, FREQUENCY and LINEST, custom lists, form controls, sheet groups, document inspection, creating a workbook from a template, screen reader support, and more) is marked "a backlog candidate" inline in the text, so moving those onto the ledger is the next tidying pass
+* *Thin sections* — "Entering data and formatting" is still mostly number formats and merging. The finer points of cell formatting were split out into "Cell formatting basics", so the two should eventually be merged
