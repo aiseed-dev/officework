@@ -554,6 +554,13 @@ impl Writer {
             Some(c) => kumihan::theme::apply_forms(c, &self.tmpl),
             None => Vec::new(),
         };
+        // **表の式を計算して、見せる字にします**(2026-08-19)。
+        // 写しの上だけで置き換えるので、保存されるのは `=SUM(…)` の式のまま
+        // です(式が正本)。式が1つも無ければ写しも作りません
+        if ops::table::has_formula(composed.as_ref().unwrap_or(&self.doc)) {
+            let c = composed.get_or_insert_with(|| self.doc.clone());
+            ops::table::fill(c);
+        }
         let 組 = if self.native { self.tmpl.setting } else { Default::default() };
         // **ページの飾りは合成の写しから取ります**(2026-08-18)。
         // テンプレートに書いたヘッダー・透かし・縦書きが画面と紙に出ます。

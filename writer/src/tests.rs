@@ -2805,3 +2805,66 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+/// **文章の中の表でセル関数が使える**(2026-08-19、エンジンの統一 3段目)。
+///
+/// 画面には答えが出て、`self.doc`(意味の正本)には式が残る。
+/// 保存されるのは意味だけ、という決めをここで縛る
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod 表の式 {
+    use crate::*;
+
+    fn 台帳のある文書() -> Document {
+        let cell = |s: &str| kumihan::Cellbox {
+            paragraphs: Document::plain(s).paragraphs().cloned().collect(),
+            ..Default::default()
+        };
+        let mut d = Document::plain("売上のまとめ");
+        d.blocks.push(kumihan::Block::Table(kumihan::Table {
+            rows: vec![
+                vec![cell("品名"), cell("金額")],
+                vec![cell("机"), cell("1200")],
+                vec![cell("椅子"), cell("800")],
+                vec![cell("合計"), cell("=SUM(B2:B3)")],
+            ],
+            header_row: true,
+            ..Default::default()
+        }));
+        d
+    }
+
+    /// 組んだ紙面に**答えの字**が出ていること(式の字ではなく)
+    #[gpui::test]
+    fn 画面に答えが出る(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.doc = 台帳のある文書();
+            this.relayout();
+
+            let 字: String = this.page.lines.iter().flat_map(|l| l.cells.iter().map(|c| c.ch)).collect();
+            assert!(字.contains("2000"), "答えが紙面に出ていない: {字}");
+            assert!(!字.contains("SUM"), "式の字がそのまま出ている: {字}");
+        });
+    }
+
+    /// **正本は式のまま。** 画面に答えを出しても、保存される意味は変わらない
+    #[gpui::test]
+    fn 正本は式のまま(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.doc = 台帳のある文書();
+            this.relayout();
+
+            let t = this.doc.tables().next().expect("表が消えた");
+            assert_eq!(
+                kumihan::paras_text(&t.rows[3][1].paragraphs),
+                "=SUM(B2:B3)",
+                "正本まで答えで塗り潰した"
+            );
+            // 書き出す adoc にも式が残る
+            let src = kumihan::adoc::write(&this.doc);
+            assert!(src.contains("=SUM(B2:B3)"), "保存の字に式が残っていない:\n{src}");
+        });
+    }
+}

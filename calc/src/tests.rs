@@ -6669,3 +6669,90 @@ mod web_export_tests {
     }
 
 }
+
+/// **ブックを `.adoc` で保存して開き直せる**(2026-08-19、エンジンの統一 4段目)。
+///
+/// ユーザーが実際に使えるのは、開く・保存の窓に載ってからです。
+/// ここは「窓から呼ばれる所」を通して往復させます
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod adoc_の開く保存 {
+    use crate::*;
+
+    #[gpui::test]
+    fn 保存して開き直すと式と値が戻る(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("jo-adoc-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("売上台帳.adoc");
+
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.book.sheets[0].name = "売上台帳".into();
+            for (a1, v) in [
+                ("A1", "品名"), ("B1", "金額"),
+                ("A2", "机"), ("B2", "1200"),
+                ("A3", "椅子"), ("B3", "800"),
+                ("A4", "合計"), ("B4", "=SUM(B2:B3)"),
+            ] {
+                this.book.sheets[0].set(Pos::parse(a1).unwrap(), sheet::Cell::input(v));
+            }
+            // **字として入っている伝票番号**(xlsx から読むとこの形)。
+            // 打ち込みの `001` は Excel と同じく数の 1 になるので、
+            // ここは字のセルを直に置いて往復を見る
+            this.book.sheets[0].set(
+                Pos::parse("C2").unwrap(),
+                sheet::Cell {
+                    formula: None,
+                    value: sheet::Value::Text("001".into()),
+                    fmt: Default::default(),
+                },
+            );
+            sheet::recalc_all(&mut this.book);
+            this.save_to(p.clone());
+        });
+
+        // 書けた字は式のまま(値を焼き付けていない)
+        let src = std::fs::read_to_string(&p).expect("書けていない");
+        assert!(src.contains("=SUM(B2:B3)"), "式が値になっている:\n{src}");
+        assert!(src.contains(".売上台帳"), "シート名が表の題になっていない:\n{src}");
+
+        // 開き直す
+        let d = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        d.update(cx, |this, _cx| {
+            this.open(p.clone());
+            let g = |a1: &str| this.book.sheets[0].value(Pos::parse(a1).unwrap()).display();
+            assert_eq!(this.book.sheets[0].name, "売上台帳");
+            assert_eq!(g("B2"), "1200");
+            // 式は読んだ所で計算し直される
+            assert_eq!(g("B4"), "2000", "式が生きていない");
+            assert_eq!(
+                this.book.sheets[0].get(Pos::parse("B4").unwrap()).unwrap().formula.as_deref(),
+                Some("SUM(B2:B3)")
+            );
+            // 頭に 0 の付いた番号が数に化けない
+            assert_eq!(g("C2"), "001", "伝票番号が数に化けた");
+            assert_eq!(this.path.as_deref(), Some(p.as_path()));
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 載らない物は**黙って落とさず**、帳簿に出す
+    #[gpui::test]
+    fn 載らない物を帳簿に出す(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("jo-adoc2-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("様式.adoc");
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("あ"));
+            this.book.sheets[0].col_width.insert(0, 30.0);
+            this.save_to(p.clone());
+            assert!(
+                this.notes.iter().any(|n| n.contains("列の幅")),
+                "落とした物を言っていない: {:?}",
+                this.notes
+            );
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

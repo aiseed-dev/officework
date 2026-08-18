@@ -39,6 +39,50 @@ pub fn display(t: &Table) -> Vec<Vec<String>> {
     values(t).iter().map(|row| row.iter().map(|v| v.display()).collect()).collect()
 }
 
+/// 文書の中に**式の入った表**があるか。
+///
+/// 写しを作る前の見極めに使います(式が無ければ写しも計算も要りません)。
+pub fn has_formula(doc: &kumihan::Document) -> bool {
+    doc.blocks.iter().any(|b| match b {
+        kumihan::Block::Table(t) => t
+            .rows
+            .iter()
+            .flatten()
+            .any(|c| kumihan::adoc::is_formula_cell(&kumihan::paras_text(&c.paragraphs))),
+        _ => false,
+    })
+}
+
+/// 文書の中の表の式を計算して、**見せる字に置き換える**。返すのは直した升の数。
+///
+/// **写しの上で呼んでください。** 元の文書は式のまま残します — 式が正本で、
+/// 答えは見せるときに作る、が決めです(SEKKEI「エンジンの統一」3段目)。
+///
+/// 式でない升は触りません。太字などの書式を持った升を、答えの字で
+/// 塗り潰さないためです。
+pub fn fill(doc: &mut kumihan::Document) -> usize {
+    let mut 直した = 0;
+    for b in doc.blocks.iter_mut() {
+        let kumihan::Block::Table(t) = b else { continue };
+        let 値 = values(t);
+        for (r, row) in t.rows.iter_mut().enumerate() {
+            // 格子の桁。結合した升はそのぶん進みます
+            let mut c = 0usize;
+            for cell in row.iter_mut() {
+                let 幅 = cell.span();
+                if kumihan::adoc::is_formula_cell(&kumihan::paras_text(&cell.paragraphs)) {
+                    if let Some(v) = 値.get(r).and_then(|x| x.get(c)) {
+                        kumihan::set_paras_text(&mut cell.paragraphs, &v.display());
+                        直した += 1;
+                    }
+                }
+                c += 幅;
+            }
+        }
+    }
+    直した
+}
+
 /// 文書の表を、計算のためのシートに写す。
 ///
 /// 題が付いていれば**表の名前**にもするので、`=SUM(売上台帳[金額])` の
@@ -164,5 +208,59 @@ mod tests {
         let d = display(&t);
         assert_eq!(d[0], vec!["見出し", ""], "結合の右は空で埋まる");
         assert_eq!(d[2][1], "30");
+    }
+}
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod 写しに答えを入れる {
+    use super::*;
+    use kumihan::{Block, Cellbox, Document, Table};
+
+    fn 文書() -> Document {
+        let cell = |s: &str| Cellbox {
+            paragraphs: Document::plain(s).paragraphs().cloned().collect(),
+            ..Default::default()
+        };
+        let mut d = Document::plain("本文");
+        d.blocks.push(Block::Table(Table {
+            rows: vec![
+                vec![cell("品名"), cell("金額")],
+                vec![cell("机"), cell("1200")],
+                vec![cell("椅子"), cell("800")],
+                vec![cell("計"), cell("=SUM(B2:B3)")],
+            ],
+            header_row: true,
+            ..Default::default()
+        }));
+        d
+    }
+
+    #[test]
+    fn 式のある表を見つける() {
+        assert!(has_formula(&文書()));
+        assert!(!has_formula(&Document::plain("式の無い文書")));
+    }
+
+    /// **式の升だけ答えの字になる。** ほかの升は触らない
+    #[test]
+    fn 式の升だけ差し替わる() {
+        let mut d = 文書();
+        assert_eq!(fill(&mut d), 1, "直した升の数が合わない");
+        let t = d.blocks.iter().find_map(|b| if let Block::Table(t) = b { Some(t) } else { None }).unwrap();
+        assert_eq!(kumihan::paras_text(&t.rows[3][1].paragraphs), "2000");
+        // 式でない升はそのまま
+        assert_eq!(kumihan::paras_text(&t.rows[1][1].paragraphs), "1200");
+        assert_eq!(kumihan::paras_text(&t.rows[0][0].paragraphs), "品名");
+    }
+
+    /// **元の文書は式のまま。** 差し替えるのは写しだけ
+    #[test]
+    fn 元は式のまま() {
+        let 元 = 文書();
+        let mut 写し = 元.clone();
+        fill(&mut 写し);
+        let t = 元.blocks.iter().find_map(|b| if let Block::Table(t) = b { Some(t) } else { None }).unwrap();
+        assert_eq!(kumihan::paras_text(&t.rows[3][1].paragraphs), "=SUM(B2:B3)", "元まで書き替えた");
     }
 }

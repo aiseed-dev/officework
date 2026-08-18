@@ -1265,6 +1265,15 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                     if let Some(比) = cols_of(prev.raw_adoc.as_deref().unwrap_or("")) {
                         t.col_ratio = 比;
                         doc.blocks.pop();
+                        // **読めたので帳簿から下げます**(2026-08-19、表の題と
+                        // 同じ作法)。桁の割合は表に取り込んだので、
+                        // 「読み飛ばした」と言うと嘘になります
+                        if let Some(n) = 帳簿.get_mut("塊の指定([…])") {
+                            *n -= 1;
+                            if *n == 0 {
+                                帳簿.remove("塊の指定([…])");
+                            }
+                        }
                     }
                 }
             }

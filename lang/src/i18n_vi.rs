@@ -1856,4 +1856,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("式から呼べる関数はまだありません({} に .py を置いてください)", "Chưa có hàm nào gọi được từ công thức (hãy đặt .py vào {})"),
     ("式から呼ぶ関数は {} に移してください(plugins は人が押すマクロの置き場になりました)", "Hãy chuyển các hàm gọi từ công thức sang {} (plugins nay là chỗ của macro chạy bằng tay)"),
     ("置き場が作れません: {}", "Không tạo được chỗ để: {}"),
+    ("開けません: 文字の並びが UTF-8 ではありません", "Không mở được: văn bản không phải UTF-8"),
+    ("(式のまま。見た目は載りません)", " (giữ nguyên công thức; hình thức không được lưu)"),
 ];

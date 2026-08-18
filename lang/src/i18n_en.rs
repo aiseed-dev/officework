@@ -1869,4 +1869,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("式から呼べる関数はまだありません({} に .py を置いてください)", "No functions can be called from formulas yet (put a .py in {})"),
     ("式から呼ぶ関数は {} に移してください(plugins は人が押すマクロの置き場になりました)", "Move functions you call from formulas into {} (plugins is now the folder for macros you run by hand)"),
     ("置き場が作れません: {}", "Cannot create the folder: {}"),
+    ("開けません: 文字の並びが UTF-8 ではありません", "Cannot open: the text is not UTF-8"),
+    ("(式のまま。見た目は載りません)", " (formulas kept; appearance is not saved)"),
 ];

@@ -173,7 +173,7 @@ impl Calc {
             .path
             .extension()
             .and_then(|x| x.to_str())
-            .is_some_and(|e| e.eq_ignore_ascii_case("xlsx"));
+            .is_some_and(|e| e.eq_ignore_ascii_case("xlsx") || e.eq_ignore_ascii_case("adoc"));
         if !ok {
             self.status = ui::tf!(
                 "{} は calc では開けません(表ではない — writer で開いてください)",
@@ -238,6 +238,11 @@ impl Calc {
                 return;
             }
         };
+        // **`.adoc` は字のファイル**なので、zip の道は通らない
+        if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc")) {
+            self.open_adoc(p, bytes);
+            return;
+        }
         if ooxml::crypt::is_encrypted(&bytes) {
             // パネルでパスワードを聞き、Enter が続きをやる
             self.pw_pending = Some(p);
@@ -258,18 +263,57 @@ impl Calc {
         match sheet::xlsx::read(std::io::Cursor::new(bytes)) {
             Ok((mut book, rep)) => {
                 sheet::recalc_all(&mut book);
-                self.notes = rep
+                let notes = rep
                     .unsupported
                     .iter()
                     .map(|(n, c)| SharedString::from(format!("{n} × {c}")))
                     .collect();
-                self.status = format!(
+                let status = format!(
                     "{} シート / {} セル — {}",
                     rep.sheets,
                     rep.cells,
                     p.file_name().unwrap_or_default().to_string_lossy()
-                )
-                .into();
+                );
+                self.adopt_book(p, book, notes, status);
+            }
+            Err(e) => self.status = ui::tf!("開けません: {}", e).into(),
+        }
+    }
+
+    /// **`.adoc` のブックを読み込む**(2026-08-19)。
+    ///
+    /// 値は持たないので、読んだ所で計算し直します(式が正本)。
+    /// 読めなかった物は帳簿に出します。
+    pub(crate) fn open_adoc(&mut self, p: PathBuf, bytes: Vec<u8>) {
+        self.encrypt_pw = None;
+        let src = match String::from_utf8(bytes) {
+            Ok(s) => s,
+            Err(_) => {
+                self.status = ui::t!("開けません: 文字の並びが UTF-8 ではありません").into();
+                return;
+            }
+        };
+        match sheet::adoc::parse(&src) {
+            Ok((book, report)) => {
+                let notes = report.iter().map(|r| SharedString::from(r.clone())).collect();
+                let status = format!(
+                    "{} シート — {}",
+                    book.sheets.len(),
+                    p.file_name().unwrap_or_default().to_string_lossy()
+                );
+                self.adopt_book(p, book, notes, status);
+            }
+            Err(e) => self.status = ui::tf!("開けません: {}", e).into(),
+        }
+    }
+
+    /// 読み終えたブックを画面に据える。**xlsx と adoc の共通の続き** —
+    /// 片方だけ直して食い違うのを防ぐため、1本にしてあります。
+    fn adopt_book(&mut self, p: PathBuf, book: sheet::Book, notes: Vec<SharedString>, status: String) {
+        {
+            {
+                self.notes = notes;
+                self.status = status.into();
                 self.book = book;
                 // 計算方法はファイルの指定に従う(開いたときは上の一度きりの
                 // 計算で値を見せ、以後の編集では勝手に回さない)
@@ -298,7 +342,6 @@ impl Calc {
                 self.set_path(Some(p));
                 self.sync_input();
             }
-            Err(e) => self.status = ui::tf!("開けません: {}", e).into(),
         }
     }
 
@@ -326,7 +369,9 @@ impl Calc {
             .filter(|o| o.status.success())
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
             .unwrap_or_else(|| "0".into());
-        let _ = std::fs::copy(p, dir.join(format!("{stamp}.xlsx")));
+        // 控えの拡張子は**元と同じ**(.adoc のブックを .xlsx と名乗らない)
+        let ext = p.extension().and_then(|x| x.to_str()).unwrap_or("xlsx");
+        let _ = std::fs::copy(p, dir.join(format!("{stamp}.{ext}")));
         if let Ok(rd) = std::fs::read_dir(&dir) {
             let mut old: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
             old.sort();
@@ -640,6 +685,8 @@ impl Calc {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
                 .add_filter("Excelブック", &["xlsx"])
+                // **ブックの正本(AsciiDoc)**。式のまま字で持つ形
+                .add_filter("officework のブック", &["adoc"])
                 // 型紙(XLTX)。中身は xlsx と同じで、開くと「新規」になる
                 .add_filter("Excel の型紙", &["xltx"])
                 .add_filter("CSV(いまのシートの値だけ)", &["csv"])
@@ -929,7 +976,11 @@ impl Calc {
     /// メインスレッドで開くと画面ごと固まる(終了確認と同じ作法)。
     pub(crate) fn open_dialog(&mut self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
-            rfd::FileDialog::new().add_filter("Excelブック", &["xlsx"]).pick_file()
+            rfd::FileDialog::new()
+                .add_filter("ブック", &["xlsx", "adoc"])
+                .add_filter("Excelブック", &["xlsx"])
+                .add_filter("officework のブック", &["adoc"])
+                .pick_file()
         });
         cx.spawn(async move |this, cx| {
             let r = ask.await;
@@ -1267,13 +1318,28 @@ impl Calc {
         self.freeze_into_book();
         // 原本の部品(図形・テーマ・印刷設定)を持ち越す。読み終えてから書く。
         // 暗号化されていた原本は解いた平文を渡す
+        // **`.adoc` を開いていたら原本は渡さない** — 字のファイルは xlsx の
+        // 部品を持っていないので、zip として読ませると保存が落ちます
+        let 元は字 = self
+            .path
+            .as_ref()
+            .is_some_and(|q| q.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc")));
         let original: Option<std::io::Cursor<Vec<u8>>> =
-            self.original_plain().map(std::io::Cursor::new);
+            if 元は字 { None } else { self.original_plain().map(std::io::Cursor::new) };
+        let 字で書く = p.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc"));
         // 上書きの前に、直前の中身をバージョン履歴に控える
         if p.exists() {
             self.keep_version(&p);
         }
-        let saved = if let Some(pw) = self.encrypt_pw.clone() {
+        let saved = if 字で書く {
+            // **ブックの正本を `.adoc` で書く**(2026-08-19)。値は書かず、
+            // 式のまま出します。載らない物は下で帳簿に出します
+            let src = sheet::adoc::write(&self.book);
+            kumihan::atomic::save(&p, |mut f| {
+                use std::io::Write as _;
+                f.write_all(src.as_bytes()).map_err(|e| e.to_string())
+            })
+        } else if let Some(pw) = self.encrypt_pw.clone() {
             // 暗号化は zip 丸ごとが単位 — 一度メモリへ書いてから包む。
             // Agile 方式(AES-256。Excel 2013+ の既定)で書く — 本物と相互
             // 検証済み。読みは Standard(2007)も Agile も両方できる
@@ -1310,9 +1376,16 @@ impl Calc {
                     ui::t!("(暗号化)")
                 } else if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("xltx")) {
                     ui::t!("(型紙 — 開くと新しいブックになります)")
+                } else if 字で書く {
+                    ui::t!("(式のまま。見た目は載りません)")
                 } else {
                     ""
                 };
+                // **載らなかった物を黙って落とさない。** 帳簿に出します
+                if 字で書く {
+                    self.notes =
+                        sheet::adoc::write_report(&self.book).into_iter().map(SharedString::from).collect();
+                }
                 self.status = ui::tf!("保存しました — {}{}", p.file_name().unwrap_or_default().to_string_lossy(), enc_note)
                 .into();
                 self.acquire_lock(&p);
