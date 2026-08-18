@@ -100,6 +100,19 @@ pub struct Theme {
     /// **どこへ送るかも見た目と同じくテンプレートの持ち物**です — 同じ
     /// 記入用紙を、試験の宛先と本番の宛先で使い分けられます
     pub submit: Option<Submit>,
+    /// ページの飾り(`[ページ]` の中)。**ページの飾りは見た目なので
+    /// テンプレートの持ち物です**(2026-08-18)。前は文書の側にしか無く、
+    /// adoc で保存すると消えていました。
+    ///
+    /// ヘッダーとフッターの中では `{ページ}` と `{ページ数}` がその頁の
+    /// 数字になります。
+    pub header: Option<String>,
+    pub footer: Option<String>,
+    pub watermark: Option<String>,
+    /// ページの色 `RRGGBB`
+    pub page_color: Option<String>,
+    /// 縦書き(右の列から左へ)
+    pub vertical: bool,
     pub styles: Vec<StyleDef>,
 }
 
@@ -353,6 +366,12 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                         (p.left_mm, p.right_mm, p.top_mm, p.bottom_mm) = (m, m, m, m);
                     }
                     "段組み" | "columns" => p.columns = n(v)? as u8,
+                    // ページの飾り。**見た目なのでテンプレートの持ち物**
+                    "ヘッダー" | "header" => th.header = Some(s(v)?),
+                    "フッター" | "footer" => th.footer = Some(s(v)?),
+                    "透かし" | "watermark" => th.watermark = Some(s(v)?),
+                    "ページの色" | "page_color" => th.page_color = Some(s(v)?),
+                    "縦書き" | "vertical" => th.vertical = b(v)?,
                     _ => return Err(format!("{} 行目: [ページ] の知らない鍵: {k}", ln + 1)),
                 }
             }
@@ -423,24 +442,51 @@ pub fn write(th: &Theme) -> String {
         }
         s.push('\n');
     }
-    if let Some(p) = &th.page {
+    // **ページの飾りだけのテンプレートもある**ので、用紙が無くても節を出す
+    let 飾りあり = th.header.is_some()
+        || th.footer.is_some()
+        || th.watermark.is_some()
+        || th.page_color.is_some()
+        || th.vertical;
+    if th.page.is_some() || 飾りあり {
         s.push_str("[ページ]\n");
-        let paper = match (p.w_mm, p.h_mm) {
+        let 既定 = crate::doc::PageSetup::default();
+        let p = th.page.as_ref().unwrap_or(&既定);
+        let paper = if th.page.is_none() { None } else { match (p.w_mm, p.h_mm) {
             (297.0, 210.0) => Some("A4横"),
             (297.0, 420.0) => Some("A3"),
             (182.0, 257.0) => Some("B5"),
             (210.0, 297.0) => Some("A4"),
             _ => None,
-        };
+        }};
         if let Some(k) = paper {
             s.push_str(&format!("用紙 = {k:?}\n"));
         }
         // 4辺が同じときだけ「余白」で書ける(違う値は今の器が持てない)
-        if p.left_mm == p.right_mm && p.left_mm == p.top_mm && p.left_mm == p.bottom_mm {
+        if th.page.is_some()
+            && p.left_mm == p.right_mm
+            && p.left_mm == p.top_mm
+            && p.left_mm == p.bottom_mm
+        {
             s.push_str(&format!("余白 = {}\n", num(p.left_mm)));
         }
         if p.columns > 1 {
             s.push_str(&format!("段組み = {}\n", p.columns));
+        }
+        if let Some(h) = &th.header {
+            s.push_str(&format!("ヘッダー = {h:?}\n"));
+        }
+        if let Some(f) = &th.footer {
+            s.push_str(&format!("フッター = {f:?}\n"));
+        }
+        if let Some(w) = &th.watermark {
+            s.push_str(&format!("透かし = {w:?}\n"));
+        }
+        if let Some(c) = &th.page_color {
+            s.push_str(&format!("ページの色 = {c:?}\n"));
+        }
+        if th.vertical {
+            s.push_str("縦書き = true\n");
         }
         s.push('\n');
     }
@@ -515,6 +561,24 @@ fn num(v: f32) -> String {
 /// `size_pt: None` の意味論と同じ)。ネイティブ文書は見た目の欄が常に
 /// 空なので全部テンプレートから来るが、互換の文書に掛けても直接書式を
 /// 潰さない。
+/// テンプレートに書いたヘッダー・フッターの字 → 段落。
+///
+/// `{ページ}` と `{ページ数}` は、その頁の数字になる印に変えます
+/// (docx の PAGE / NUMPAGES と同じ物)。
+fn 飾りの段落(s: &str) -> crate::doc::Paragraph {
+    let text = s
+        .replace("{ページ数}", &crate::doc::PAGES_MARK.to_string())
+        .replace("{ページ}", &crate::doc::PAGE_MARK.to_string());
+    let mut p = crate::doc::Paragraph { line_spacing: 1.0, ..Default::default() };
+    p.runs.push(crate::doc::Run {
+        text,
+        size_pt: None,
+        font: None,
+        fmt: Default::default(),
+    });
+    p
+}
+
 pub fn compose(doc: &Document, theme: &Theme) -> Document {
     let mut out = doc.clone();
     if out.font.is_none() {
@@ -525,6 +589,28 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
     }
     if out.page.is_none() {
         out.page = theme.page;
+    }
+    // **ページの飾りはテンプレートが持ちます**(2026-08-18)。文書が自分で
+    // 持っていれば(docx から来た文書)そちらが勝ちます — 受け取った物を
+    // 黙って別の見た目にしないためです
+    if out.header.paragraphs.is_empty() {
+        if let Some(h) = &theme.header {
+            out.header.paragraphs = vec![飾りの段落(h)];
+        }
+    }
+    if out.footer.paragraphs.is_empty() {
+        if let Some(f) = &theme.footer {
+            out.footer.paragraphs = vec![飾りの段落(f)];
+        }
+    }
+    if out.watermark.is_none() {
+        out.watermark = theme.watermark.clone();
+    }
+    if out.page_color.is_none() {
+        out.page_color = theme.page_color.clone();
+    }
+    if theme.vertical {
+        out.vertical = true;
     }
     for block in &mut out.blocks {
         let crate::doc::Block::Para(para) = block else { continue };

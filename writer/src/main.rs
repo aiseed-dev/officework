@@ -370,6 +370,12 @@ struct Writer {
     page_tops: Vec<f32>,
     /// 頁ごとの紙。**紙(PDF)と同じ物を使う** — 画面と印刷で食い違わない
     page_papers: Vec<paper::Paper>,
+    /// **合成の写しから取ったページの飾り**(ヘッダー, フッター)。
+    /// テンプレートが持つ物と、文書が持つ物(docx 由来)の合成の結果。
+    /// `doc` は意味だけのままなので、飾りはここを見る(2026-08-18)
+    dress_hf: (kumihan::HeadFoot, kumihan::HeadFoot),
+    /// 同じく(透かし, ページの色)
+    dress_page: (Option<String>, Option<String>),
     /// 記入欄の選択肢を聞くパネル(コンボ・ドロップダウンを挿すとき)
     sd_open: bool,
     sd_ed: Editor,

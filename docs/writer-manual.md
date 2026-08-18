@@ -495,8 +495,10 @@ thing** — typing it by hand and pressing the button give the same result.
 | Form field | `field:name[label,kind]` | Forms > Text field | `<input>` `<select>` `<textarea>` |
 
 **What you do not write in the text.** Underline, strikethrough, font colour,
-highlight colour, font, font size, line spacing, alignment and borders go in the
-template, not in the text. Pressing those ribbon buttons opens the Styles face on
+highlight colour, font, font size, line spacing, alignment and borders — and the
+**page dressing** (header, footer, watermark, page colour, vertical writing) — go
+in the template, not in the text. In a header or footer, `{ページ}` and
+`{ページ数}` become the page number and the page count. Pressing those ribbon buttons opens the Styles face on
 the right. On the web they become CSS.
 
 **The title is the first line of the text.** `= Title` is drawn on screen and on
@@ -581,6 +583,11 @@ Without it they stay identical — whoever adds the file decides.
 [ページ]
 用紙 = "A4"
 余白 = 25
+ヘッダー = "社内資料"
+フッター = "- {ページ} / {ページ数} -"
+透かし = "社外秘"
+ページの色 = "FFFDF5"
+縦書き = false
 
 [スタイル.本文]
 字下げ = 1          # indent the first line by one character
@@ -593,7 +600,7 @@ Without it they stay identical — whoever adds the file decides.
 後の空き = 8
 ```
 
-There are **twelve keys, and that is all**. We do not add more.
+A style takes **twelve keys, and that is all**. We do not add more.
 
 | Applies to characters | Applies to paragraphs |
 |---|---|

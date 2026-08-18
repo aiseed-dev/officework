@@ -1154,7 +1154,7 @@ impl Render for Writer {
 
         // 紙。スクロールは紙ごと上へずらすだけ(中身は全部この容器の子)。
         // ページの色は文書の設定(紙も同じ色に塗られる)
-        let paper_bg = match self.doc.page_color.as_deref() {
+        let paper_bg = match self.dress_page.1.as_deref() {
             Some(c) => gpui::Rgba { r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0 },
             None => gpui::Rgba { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },
         };
@@ -1313,7 +1313,7 @@ impl Render for Writer {
         }
 
         // 透かし。1字ずつ対角線に沿って置く(画面の近似。紙は回転した字)
-        if let Some(text) = self.doc.watermark.as_deref().filter(|t| !t.is_empty()) {
+        if let Some(text) = self.dress_page.0.as_deref().filter(|t| !t.is_empty()) {
             let n = text.chars().count().max(1) as f32;
             let wpt = (520.0 / n).clamp(36.0, 120.0);
             let em_mm = wpt * 25.4 / 72.0;

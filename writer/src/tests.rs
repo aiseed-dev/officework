@@ -2578,6 +2578,37 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **ページの飾りはテンプレートが持てる**(2026-08-18)。
+    /// ヘッダー・フッター・透かし・ページの色・縦書きを adoc の文書に付けられます。
+    #[gpui::test]
+    fn テンプレートのページの飾りが効く(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-kazari-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(
+            dir.join("テンプレート.toml"),
+            "[ページ]\nヘッダー = \"社内資料\"\nフッター = \"- {ページ} -\"\n\
+             透かし = \"社外秘\"\nページの色 = \"FFFDF5\"\n",
+        )
+        .unwrap();
+        let doc = dir.join("報告.adoc");
+        std::fs::write(&doc, "本文です。\n").unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(doc.clone());
+            // 飾りは画面に出る
+            let h: String = this.header_lines.iter()
+                .flat_map(|l| l.cells.iter()).map(|c| c.ch).collect();
+            assert!(h.contains("社内資料"), "ヘッダーが出ていない: {h:?}");
+            assert_eq!(this.dress_page.0.as_deref(), Some("社外秘"), "透かしが効いていない");
+            assert_eq!(this.dress_page.1.as_deref(), Some("FFFDF5"), "ページの色が効いていない");
+            // **本文は意味だけのまま**(保存に漏れない)
+            assert!(this.doc.header.paragraphs.is_empty(), "本文に飾りが入った");
+            assert!(this.doc.watermark.is_none(), "本文に透かしが入った");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// **書き出し先ごとにテンプレートを持てる。** 混ぜないので、一度に効くのは
     /// 1枚のまま(発注者 2026-08-18「表示用、印刷用、Web用、アプリ用と複数の
     /// テンプレートを持つのも悪くないのでは」)。

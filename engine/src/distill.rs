@@ -110,6 +110,21 @@ impl Look {
     }
 }
 
+/// ヘッダー・フッターの段落の並び → 1行の字(テンプレートに書く形)。
+/// ページ番号の印は `{ページ}` `{ページ数}` に書き換える
+fn 一行(hf: &crate::doc::HeadFoot) -> Option<String> {
+    let s: String = hf
+        .paragraphs
+        .iter()
+        .flat_map(|p| p.runs.iter())
+        .map(|r| r.text.as_str())
+        .collect::<Vec<_>>()
+        .join("")
+        .replace(crate::doc::PAGE_MARK, "{ページ}")
+        .replace(crate::doc::PAGES_MARK, "{ページ数}");
+    (!s.trim().is_empty()).then_some(s)
+}
+
 /// 蒸留の結果の報告。**落ちた物を数える** — 何も失っていないと嘘をつかない
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Report {
@@ -177,7 +192,15 @@ pub fn distill(doc: &Document) -> (Document, Theme, Report) {
         size_pt: base.size_c.map(|c| c as f32 / 100.0),
         page: doc.page,
         styles: Vec::new(),
-            submit: None,
+        submit: None,
+        // **ページの飾りもテンプレートへ移す**(2026-08-18)。docx を分けた
+        // ときに、透かしやページの色が消えないようにする。ヘッダーと
+        // フッターは段落の並びなので、字だけを取って1行にする
+        header: 一行(&doc.header),
+        footer: 一行(&doc.footer),
+        watermark: doc.watermark.clone(),
+        page_color: doc.page_color.clone(),
+        vertical: doc.vertical,
     };
     // 並びは文書に出てくる順(読む人が追える)
     let mut seen: Vec<&Look> = Vec::new();

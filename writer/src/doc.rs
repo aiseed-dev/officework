@@ -208,6 +208,8 @@ impl Writer {
             paged: false,
             page_tops: vec![0.0],
             page_papers: Vec::new(),
+            dress_hf: Default::default(),
+            dress_page: (None, None),
             header_lines: Vec::new(),
             footer_lines: Vec::new(),
             font_name: kumihan::font::for_document(None)
@@ -544,7 +546,14 @@ impl Writer {
         // 何度か組み直すので、写しは**書ける形**で持つ
         let mut composed = self.native.then(|| kumihan::theme::compose(&self.doc, &self.tmpl));
         let 組 = if self.native { self.tmpl.setting } else { Default::default() };
-        let 姿 = Look { pg: self.pg, vertical: self.doc.vertical, 組, view_w_px: self.view_w_px };
+        // **ページの飾りは合成の写しから取ります**(2026-08-18)。
+        // テンプレートに書いたヘッダー・透かし・縦書きが画面と紙に出ます。
+        // `self.doc` は意味だけのまま(保存に漏れない)
+        let 飾り = composed.as_ref().unwrap_or(&self.doc);
+        self.dress_hf = (飾り.header.clone(), 飾り.footer.clone());
+        self.dress_page = (飾り.watermark.clone(), 飾り.page_color.clone());
+        let 縦 = 飾り.vertical;
+        let 姿 = Look { pg: self.pg, vertical: 縦, 組, view_w_px: self.view_w_px };
         self.page = 姿.lay_once(composed.as_ref().unwrap_or(&self.doc), &m);
         self.refresh_hf();
         // **跨がない**(発表)。折った結果を見て、境をまたいだ段落があれば
@@ -861,11 +870,12 @@ impl Writer {
             kumihan::fold_pages(&mut self.page, &self.pg, &offs, &sts, 2, PAGE_GAP_MM);
         }
         let total = self.total_pages();
+        // 飾りは合成の写しから(テンプレートのヘッダーもここに入っている)
         self.header_lines =
-            kumihan::layout_hf(&self.doc.header, &m, &self.pg, LINE_MM, 1, total, false,
+            kumihan::layout_hf(&self.dress_hf.0, &m, &self.pg, LINE_MM, 1, total, false,
                                self.doc.base_pt());
         self.footer_lines =
-            kumihan::layout_hf(&self.doc.footer, &m, &self.pg, LINE_MM, 1, total, true,
+            kumihan::layout_hf(&self.dress_hf.1, &m, &self.pg, LINE_MM, 1, total, true,
                                self.doc.base_pt());
     }
 

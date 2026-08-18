@@ -442,7 +442,8 @@ impl Writer {
         // (テンプレート-印刷.toml)。無ければ画面の紙面がそのまま紙になります
         let 印刷用 = self.print_layout();
         let 印刷で = 印刷用.as_ref().map(|(_, _, t)| t.clone());
-        let (hdr, ftr) = (self.doc.header.clone(), self.doc.footer.clone());
+        // 飾りは合成の写しから(テンプレートの分も入っている)
+        let (hdr, ftr) = self.dress_hf.clone();
         let pg = 印刷用.as_ref().map(|(_, pg, _)| *pg).unwrap_or(self.pg);
         let sheet = 印刷用.as_ref().map(|(s, _, _)| s).unwrap_or(&self.page);
         // **ヘッダーのページ数も紙で数えます**(画面の枚数ではありません)
@@ -462,8 +463,8 @@ impl Writer {
         let base_pt = self.doc.base_pt();
         // ページの色と透かしは紙にも(画面と紙の一致)
         let dress = paper::PageDress {
-            bg: self.doc.page_color.as_deref().map(|c| (hex(c, 0), hex(c, 1), hex(c, 2))),
-            watermark: self.doc.watermark.clone(),
+            bg: self.dress_page.1.as_deref().map(|c| (hex(c, 0), hex(c, 1), hex(c, 2))),
+            watermark: self.dress_page.0.clone(),
             ink: self.doc.ink.clone(),
         };
         let r = kumihan::atomic::save(p, |f| {
