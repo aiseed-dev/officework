@@ -437,6 +437,15 @@ Call it from a cell like any other function. *No decorator, no registration*:
 * The older form `=PY("double", A1)` still works
 * *Formulas > Python functions* lists what is in funcs; picking one opens that .py in the editor
 
+*Do not call an AI from a cell function.* Formulas run on every recalculation: put one in ten thousand rows and it runs ten thousand times, and the answer changes each time you reopen the file.
+You cannot see how often it ran.
+
+*Call the AI from a macro instead.* It runs once, when you press the button, and the result lands in the cell as an ordinary value.
+It does not drift after that, and one undo takes it back.
+
+This holds for a model running on your own machine too.
+The cost and the "my text left the building" worry go away; the drift and the invisible run count do not.
+
 === Procedures (what replaces macros)
 
 `~/.config/officework/plugins/inbox.py`:

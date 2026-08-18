@@ -505,6 +505,10 @@ def 集計(r, 上限, 種別):        # r = [[行1列1, 行1列2], [行2列1, �
     return [[row[0], row[1]] for row in hit]   # 2次元 → スピル
 ----
 
+*セル関数から AI を呼ばないでください。* 式は再計算のたびに走るので、答えが揺れ、何回走ったかも見えません。
+AI はマクロ(`ribbon/` か `plugins/`)から呼び、結果を普通の値としてセルに置きます。
+手元で動くモデルでも同じです。
+
 == writer のマクロ(d = python-docx)
 
 *専用の手引き: link:writer-macro-manual.ja.adoc[writer-macro-manual.ja.adoc]* —名前つき記入欄(`fill` / `extract` / `fields`)、雛形(`render` / `tpl_fields`、docxtpl)、サンドボックスの中身、AI にコードを書かせる話まで。
