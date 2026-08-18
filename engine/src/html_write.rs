@@ -128,7 +128,12 @@ fn run_html(r: &Run, doc: &Document, ctx: &mut Ctx) -> String {
     }
     let mut s = esc(&r.text);
     if let Some(name) = &r.fmt.style_id {
-        s = format!("<span class=\"{}\">{s}</span>", class_of(name));
+        // 等幅は `code`。Web で意味のある札があるものは、その札で出します
+        s = if name == crate::adoc::MONO {
+            format!("<code>{s}</code>")
+        } else {
+            format!("<span class=\"{}\">{s}</span>", class_of(name))
+        };
     }
     if r.fmt.superscript {
         s = format!("<sup>{s}</sup>");
@@ -421,6 +426,8 @@ fn build(doc: &Document) -> (String, Ctx) {
     let mut ctx = Ctx::default();
     // 箇条書きは連続する段落をまとめます(HTML の ul / ol は入れ物なので)
     let mut list: Option<ListKind> = None;
+    // ラベル付きリスト(`dl`)の途中か
+    let mut dl中 = false;
     // 目次の行が続いている間(nav で包む)
     let mut 目次中 = false;
     let 題名あり = !doc.props.title.is_empty();
@@ -447,6 +454,17 @@ fn build(doc: &Document) -> (String, Ctx) {
             if let Block::Table(t) = b {
                 close(&mut o, &mut list);
                 o.push_str("<table>\n");
+                // **桁の指定**(`[cols="1,3"]`)。Web では割合でそのまま書けます
+                if !t.col_ratio.is_empty() {
+                    let 和: f32 = t.col_ratio.iter().sum();
+                    if 和 > 0.0 {
+                        o.push_str("  <colgroup>");
+                        for v in &t.col_ratio {
+                            o.push_str(&format!("<col style=\"width:{:.1}%\">", v / 和 * 100.0));
+                        }
+                        o.push_str("</colgroup>\n");
+                    }
+                }
                 for (ri, row) in t.rows.iter().enumerate() {
                     o.push_str("  <tr>");
                     for (k, cell) in row.iter().enumerate() {
@@ -496,6 +514,28 @@ fn build(doc: &Document) -> (String, Ctx) {
             o.push_str(if 目次の行 { "<nav class=\"toc\">\n" } else { "</nav>\n" });
             目次中 = 目次の行;
         }
+        // **ラベル付きリスト**(`項目:: 値`)は `dl` / `dt` / `dd` に。
+        // 続いている間は1つの `dl` にまとめます(2026-08-18)
+        if p.style_id.as_deref() == Some("説明のリスト") {
+            let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            if let Some((項, 値)) = 字.split_once(":: ") {
+                close(&mut o, &mut list);
+                if !dl中 {
+                    o.push_str("<dl>\n");
+                    dl中 = true;
+                }
+                o.push_str(&format!(
+                    "  <dt>{}</dt><dd>{}</dd>\n",
+                    esc(項.trim()),
+                    esc(値.trim())
+                ));
+                continue;
+            }
+        }
+        if dl中 {
+            o.push_str("</dl>\n");
+            dl中 = false;
+        }
         close(&mut o, &mut list);
         let tag = tag_of(p.style, 題名あり);
         // class は**スタイルの名前と改ページ**の2つが入ります
@@ -530,6 +570,9 @@ fn build(doc: &Document) -> (String, Ctx) {
             .map(|b| format!("<span id=\"{}\"></span>", esc(b)))
             .collect();
         o.push_str(&format!("<{tag}{id}{cls}>{余り}{inner}</{tag}>\n"));
+    }
+    if dl中 {
+        o.push_str("</dl>\n");
     }
     close(&mut o, &mut list);
     if 目次中 {

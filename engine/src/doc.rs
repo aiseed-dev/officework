@@ -521,6 +521,13 @@ pub struct Table {
     pub rows: Vec<Vec<Cellbox>>,
     /// 列の幅(mm)。docx の `w:gridCol`。空なら等分
     pub col_mm: Vec<f32>,
+    /// **列の幅の割合**(AsciiDoc の `[cols="1,3"]`)。2026-08-18。
+    ///
+    /// adoc は幅を mm で言わず、比で言います。紙の幅が決まって初めて mm に
+    /// なるので、比のまま持ち、テンプレートを合成するとき
+    /// ([`crate::theme::compose_page`])に `col_mm` へ直します。
+    /// docx から読んだ表は mm を持っているので、こちらは空です
+    pub col_ratio: Vec<f32>,
     /// 表のスタイルの**名前だけ**(docx の `w:tblStyle w:val`)。
     /// 定義(styles.xml)は持たない主義のまま — 名前を運んで返すだけ。
     /// 読めた名前を書きで落とすと様式が崩れるので、往復のために持つ

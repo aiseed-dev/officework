@@ -190,6 +190,25 @@ pub const DEFAULT_TOML: &str = r#"# officework の既定のテンプレート
 太字 = true
 背景色 = "FFF6E0"
 
+# 註記の仲間(TIP: / IMPORTANT: / WARNING: / CAUTION:)。
+# 印ごとに別のスタイルなので、色を分けられます
+[スタイル.ヒント]
+太字 = true
+背景色 = "E8F6EC"
+
+[スタイル.重要]
+太字 = true
+背景色 = "FFF0F0"
+
+[スタイル.警告]
+太字 = true
+色 = "9C2B2B"
+背景色 = "FFF0F0"
+
+[スタイル.注意]
+太字 = true
+背景色 = "FFF6E0"
+
 [スタイル.塊の区切り]
 色 = "8A8A8A"
 
@@ -636,6 +655,21 @@ pub fn compose_page(out: &mut Document, theme: &Theme) {
     if theme.vertical {
         out.vertical = true;
     }
+    // **桁の割合を mm に直します**(2026-08-18)。adoc は幅を比で言うので、
+    // 紙の幅が決まるここで初めて mm になります。docx から読んだ表は
+    // すでに mm を持っているので、割合は空で素通りします
+    let 行長 = out.page.map(|p| p.measure_mm()).unwrap_or(170.0);
+    for b in &mut out.blocks {
+        let Block::Table(t) = b else { continue };
+        if t.col_ratio.is_empty() {
+            continue;
+        }
+        let 和: f32 = t.col_ratio.iter().sum();
+        if 和 <= 0.0 {
+            continue;
+        }
+        t.col_mm = t.col_ratio.iter().map(|v| v / 和 * 行長).collect();
+    }
 }
 
 pub fn compose(doc: &Document, theme: &Theme) -> Document {
@@ -800,16 +834,19 @@ mod tests {
     #[test]
     fn 文字のスタイルは段落のより内側で勝つ() {
         let mut th = default_theme();
+        // **既定のテンプレートに無い名前を使います。** 「注意」は
+        // 2026-08-18 に註記の仲間として既定に入ったので、同じ名前だと
+        // 既定の方が先に見つかり、この試験の意味が消えます
         th.styles.push(StyleDef {
-            name: "注意".into(),
+            name: "強め".into(),
             color: Some("C7433F".into()),
             size_pt: Some(14.0),
             ..Default::default()
         });
         let mut d = 意味だけの文書();
         if let crate::doc::Block::Para(p) = &mut d.blocks[0] {
-            // 見出し1(16pt)の中の1語だけ「注意」
-            p.runs[0].fmt.style_id = Some("注意".into());
+            // 見出し1(16pt)の中の1語だけ「強め」
+            p.runs[0].fmt.style_id = Some("強め".into());
         }
         let out = compose(&d, &th);
         let ps: Vec<&Paragraph> = out.paragraphs().collect();

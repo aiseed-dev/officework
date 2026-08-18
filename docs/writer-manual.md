@@ -516,10 +516,10 @@ thing** — typing it by hand and pressing the button give the same result.
 | Form field | `field:name[label,kind]` | Forms > Text field | `<input>` `<select>` `<textarea>` |
 | Heading 4, 5 | `=====` `======` | Home > Paragraph style | `<h5>` `<h6>` |
 | Monospace | `` `text` `` | Right panel > Styles > 等幅 | `<code>` |
-| Description list | `term:: value` | (coming in 0.2.0-alpha) | `<dl>` `<dt>` `<dd>` |
-| Admonition | `NOTE: text` | (coming in 0.2.0-alpha) | `<div class="註記">` |
+| Description list | `term:: value` | Right panel > Styles > 説明のリスト | `<dl>` `<dt>` `<dd>` |
+| Admonition | `NOTE: text` | Right panel > Styles > 註記 | `<p class="st-註記">` |
 | Listing block | wrap in `----` | (coming in 0.2.0-alpha) | `<pre>` |
-| Table column spec | `[cols="1,3"]` | (coming in 0.2.0-alpha) | `<colgroup>` |
+| Table column spec | `[cols="1,3"]` | (written in the text) | `<colgroup>` |
 
 **What you do not write in the text.** Underline, strikethrough, font colour,
 highlight colour, font, font size, line spacing, alignment and borders — and the

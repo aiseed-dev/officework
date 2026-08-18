@@ -99,11 +99,16 @@ pub fn write(doc: &Document) -> String {
                     out.push_str("____\n");
                     quote_open = true;
                 }
-                // 同じ種類のリストが続く間は空行を挟まない(1つのリスト)
-                let tight = p.list != ListKind::None
+                // 同じ種類のリストが続く間は空行を挟まない(1つのリスト)。
+                // ラベル付きリスト(`項目:: 値`)も同じ — 空行を入れると
+                // 1つの一覧が2つに割れます(2026-08-18)
+                let 説明 = p.style_id.as_deref() == Some("説明のリスト");
+                let tight = (p.list != ListKind::None || 説明)
                     && matches!(
                         doc.blocks.get(bi + 1),
-                        Some(Block::Para(q)) if q.list == p.list
+                        Some(Block::Para(q))
+                            if q.list == p.list
+                                && (q.style_id.as_deref() == Some("説明のリスト")) == 説明
                     );
                 write_para(&mut out, p, doc, quote_open || tight);
             }
@@ -147,6 +152,23 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
     // 書いていなかったので、右パネルで着せた名前が保存で黙って消えていた
     // (実機で見つけた — 試験は合成しか見ていなかった)
     if let Some(n) = &p.style_id {
+        // ラベル付きリストは字に `::` が入っているので、名前は書かない
+        if n == "説明のリスト" {
+            out.push_str(&runs_text(&p.runs, doc));
+            out.push('\n');
+            if !in_quote {
+                out.push('\n');
+            }
+            return;
+        }
+        // 註記は本家の印で書く(`[.註記]` ではなく `NOTE: `)
+        if let Some(印) = 註記の印(n) {
+            out.push_str(印);
+            out.push(' ');
+            out.push_str(&runs_text(&p.runs, doc));
+            out.push_str("\n\n");
+            return;
+        }
         out.push_str(&format!("[.{n}]\n"));
     }
     // この段落が画像だけなら image:: のブロックで
@@ -358,6 +380,21 @@ pub(crate) fn vspan_of(t: &Table, ri: usize, col: usize) -> u8 {
 }
 
 fn write_table(out: &mut String, t: &Table, doc: &Document) {
+    // 桁の割合(`[cols="1,3"]`)。表の直前の行として書く
+    if !t.col_ratio.is_empty() {
+        let 数: Vec<String> = t
+            .col_ratio
+            .iter()
+            .map(|v| {
+                if (v - v.round()).abs() < 0.001 {
+                    format!("{}", *v as i64)
+                } else {
+                    format!("{v}")
+                }
+            })
+            .collect();
+        out.push_str(&format!("[cols=\"{}\"]\n", 数.join(",")));
+    }
     out.push_str("|===\n");
     for (ri, row) in t.rows.iter().enumerate() {
         for (k, cell) in row.iter().enumerate() {
@@ -581,12 +618,6 @@ fn 次が空行<'a, I: Iterator<Item = (usize, &'a str)>>(
 fn 本家だけの書き方(l: &str) -> Option<(&'static str, &'static str)> {
     let t = l.trim_end();
     let ts = t.trim_start();
-    // 註記(asciidoctor の ADMONITION_STYLES)
-    for 印 in ADMONITION {
-        if ts.starts_with(印) && ts[印.len()..].starts_with(' ') {
-            return Some(("註記(NOTE: など)", "註記"));
-        }
-    }
     // 塊の区切り(DELIMITED_BLOCKS)。**うちが意味を知っている物は除く** —
     // 引用(____)と表(|===)は編集できます
     for (印, 名) in DELIMITED {
@@ -606,12 +637,6 @@ fn 本家だけの書き方(l: &str) -> Option<(&'static str, &'static str)> {
     }
     if ts.starts_with("//") {
         return Some(("覚え書きの行(//)", "覚え書き"));
-    }
-    // 説明のリスト(用語:: 説明)。マクロ(名前:的[…])と紛れないよう `:: ` を見る
-    if let Some(i) = ts.find(":: ") {
-        if i > 0 && !ts[..i].contains(' ') && !ts[..i].contains('[') {
-            return Some(("説明のリスト(用語:: 説明)", "説明のリスト"));
-        }
     }
     // 塊の題(.題)。箇条書きの `. ` とは違う
     if ts.starts_with('.') && !ts.starts_with(". ") && ts.len() > 1 && !ts.starts_with("..") {
@@ -650,6 +675,40 @@ pub const MONO: &str = "等幅";
 
 /// 註記の頭(asciidoctor の `ADMONITION_STYLES`)
 const ADMONITION: &[&str] = &["NOTE:", "TIP:", "IMPORTANT:", "WARNING:", "CAUTION:"];
+
+/// 註記の段落のスタイル名。**並びは [`ADMONITION`] と同じ**(印ごとに別の
+/// スタイルにするので、テンプレートで色を分けられます)。2026-08-18。
+///
+/// どれなのかを字に残さないので、本文を直しても印は壊れません
+const 註記のスタイル: &[&str] = &["註記", "ヒント", "重要", "警告", "注意"];
+
+/// ラベル付きリストの行か(`項目:: 値`)。
+/// マクロ(`名前:対象[…]`)と紛れないよう `:: ` を見ます
+fn ラベル付きか(l: &str) -> bool {
+    let ts = l.trim_start();
+    match ts.find(":: ") {
+        Some(i) => i > 0 && !ts[..i].contains(' ') && !ts[..i].contains('['),
+        None => false,
+    }
+}
+
+/// その行が註記なら (スタイル名, 中身) を返す
+fn 註記か(l: &str) -> Option<(&'static str, &str)> {
+    let ts = l.trim_start();
+    for (i, 印) in ADMONITION.iter().enumerate() {
+        if let Some(rest) = ts.strip_prefix(印) {
+            if let Some(body) = rest.strip_prefix(' ') {
+                return Some((註記のスタイル[i], body));
+            }
+        }
+    }
+    None
+}
+
+/// スタイル名から註記の印を引く(書くとき)
+fn 註記の印(name: &str) -> Option<&'static str> {
+    註記のスタイル.iter().position(|n| *n == name).map(|i| ADMONITION[i])
+}
 
 /// 塊の区切り(asciidoctor の `DELIMITED_BLOCKS`)。**うちが意味を知っている
 /// `____`(引用)と `|===`(表)は入れません。**
@@ -876,7 +935,18 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             if !closed {
                 return Err(format!("{} 行目: |=== が閉じていません", ln + 1));
             }
-            let t = parse_table_lines(&rows, &mut doc, &mut fresh_note)?;
+            let mut t = parse_table_lines(&rows, &mut doc, &mut fresh_note)?;
+            // **直前の `[cols="1,3"]` は表の物です**(2026-08-18)。原文のまま
+            // 持ち越した段落として残っているので、取り込んで消します。
+            // 残したままだと、書くときに二重に出ます
+            if let Some(Block::Para(prev)) = doc.blocks.last() {
+                if prev.style_id.as_deref() == Some("指定の行") {
+                    if let Some(比) = cols_of(prev.raw_adoc.as_deref().unwrap_or("")) {
+                        t.col_ratio = 比;
+                        doc.blocks.pop();
+                    }
+                }
+            }
             doc.blocks.push(Block::Table(t));
             continue;
         }
@@ -915,6 +985,16 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             let (n, text) = rest;
             p.style = ParaStyle::Heading(n);
             text
+        } else if let Some((名, text)) = 註記か(l) {
+            // 註記(`NOTE: 文`)。**印は字に残しません** — どれなのかは
+            // 段落のスタイルが持ちます(2026-08-18)
+            p.style_id = Some(名.to_string());
+            text
+        } else if ラベル付きか(l) {
+            // ラベル付きリスト(`項目:: 値`)。**`::` は字のまま残します** —
+            // 画面で項目も値も直せて、書き戻しもそのままです(2026-08-18)
+            p.style_id = Some("説明のリスト".to_string());
+            l
         } else if let Some(rest) = l.strip_prefix("* ") {
             p.list = ListKind::Bullet;
             rest
@@ -939,7 +1019,10 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             && p.bookmarks.is_empty()
             && p.style_id.is_none()
             && !p.page_break_before;
-        直前も本文 = p.list == ListKind::None && p.raw_adoc.is_none();
+        // **スタイル名の付いた段落には次の行を継ぎません。** 註記や
+        // ラベル付きリストは1行で1つなので、続く行を呑むと形が壊れます
+        直前も本文 =
+            p.list == ListKind::None && p.raw_adoc.is_none() && p.style_id.is_none();
         if 継ぐ {
             if let Some(Block::Para(前)) = doc.blocks.last_mut() {
                 let 継 = 継ぎ目(
@@ -989,6 +1072,31 @@ fn heading_of(l: &str) -> Option<(u8, &str)> {
         }
     }
     None
+}
+
+/// `[cols="1,3"]` の行から桁の割合を読む。読めなければ `None`。
+///
+/// 本家には `cols="1,2,3"`(比)のほかに `cols="3*"`(同じ幅を3つ)や
+/// `cols="<,^,>"`(揃え)もあります。**うちが読むのは比だけ**で、それ以外の
+/// 指定が混じっていたら手を出しません(半分だけ効かせると、書いた人は
+/// 何が効いたのか分からなくなります)
+fn cols_of(line: &str) -> Option<Vec<f32>> {
+    let inner = line.trim().strip_prefix('[')?.strip_suffix(']')?;
+    let v = inner.trim().strip_prefix("cols=")?.trim();
+    let v = v.strip_prefix('"').and_then(|s| s.strip_suffix('"')).unwrap_or(v);
+    // `3*` は「同じ幅を3つ」
+    if let Some(n) = v.strip_suffix('*').and_then(|s| s.trim().parse::<usize>().ok()) {
+        return (1..=8).contains(&n).then(|| vec![1.0; n]);
+    }
+    let mut out = Vec::new();
+    for part in v.split(',') {
+        let p = part.trim();
+        if p.is_empty() {
+            return None;
+        }
+        out.push(p.parse::<f32>().ok().filter(|x| *x > 0.0)?);
+    }
+    (!out.is_empty() && out.len() <= 16).then_some(out)
 }
 
 /// `path[attrs]` を (path, attrs) に割る
@@ -1426,6 +1534,64 @@ mod tests {
         let doc = parse(src).expect(src);
         let back = write(&doc);
         assert_eq!(back, src, "往復で崩れた");
+    }
+
+    /// **編集できるようにした書き方**(2026-08-18)。原文のまま持ち越すのを
+    /// やめ、意味として読んで書き戻す形にしたので、往復で崩れないことを見る
+    #[test]
+    fn 見出し4と5が往復する() {
+        往復("= 題\n\n===== 四段目\n\n====== 五段目\n");
+        let doc = parse("===== 四段目\n").unwrap();
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.style, ParaStyle::Heading(4));
+        assert_eq!(p.runs[0].text, "四段目", "印が字に残っている");
+    }
+
+    #[test]
+    fn 等幅が往復する() {
+        往復("`等幅の字`と普通の字。\n");
+        let doc = parse("`等幅の字`と普通の字。\n").unwrap();
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.runs[0].fmt.style_id.as_deref(), Some(MONO));
+        assert_eq!(p.runs[0].text, "等幅の字", "印が字に残っている");
+        // **対でない印は書式にしない** — 後ろが全部等幅になるのを防ぐ
+        let doc = parse("7`は素数ではありません。\n").unwrap();
+        let p = doc.paragraphs().next().unwrap();
+        assert!(p.runs.iter().all(|r| r.fmt.style_id.is_none()), "片方だけの ` を書式にした");
+    }
+
+    #[test]
+    fn 註記が往復する() {
+        往復("NOTE: 気をつけて。\n\nWARNING: 危ない。\n\nTIP: こつです。\n");
+        let doc = parse("WARNING: 危ない。\n").unwrap();
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.style_id.as_deref(), Some("警告"));
+        assert_eq!(p.runs[0].text, "危ない。", "印が字に残っている");
+    }
+
+    #[test]
+    fn ラベル付きリストが往復する() {
+        // 続いている間は空行で割らない(1つの一覧)
+        往復("項目:: その説明\n別の項目:: 別の説明\n");
+        let doc = parse("項目:: その説明\n").unwrap();
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.style_id.as_deref(), Some("説明のリスト"));
+    }
+
+    #[test]
+    fn 表の桁の指定が往復する() {
+        往復("[cols=\"1,3\"]\n|===\n|狭い|広い\n|あ|い\n|===\n");
+        let doc = parse("[cols=\"1,3\"]\n|===\n|あ|い\n|===\n").unwrap();
+        let t = doc.tables().next().unwrap();
+        assert_eq!(t.col_ratio, vec![1.0, 3.0]);
+        // 比のまま持つ。mm になるのはテンプレートを合成するとき
+        assert!(t.col_mm.is_empty(), "読んだ時点で mm を決めてしまった");
+    }
+
+    #[test]
+    fn 塊の指定の行は次の塊から離れない() {
+        // 前は空行が入り、指定が塊に掛からなくなっていた
+        往復("[source,python]\n----\nprint(1)\n----\n");
     }
 
     #[test]
