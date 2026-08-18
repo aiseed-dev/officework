@@ -152,6 +152,15 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
     // 書いていなかったので、右パネルで着せた名前が保存で黙って消えていた
     // (実機で見つけた — 試験は合成しか見ていなかった)
     if let Some(n) = &p.style_id {
+        // **塊の中は字のまま1行で書きます。** 行の中の書き方として
+        // 読んでいないので、書くときも印を付けません。空行もそのまま
+        if n == "塊の中" {
+            for r in &p.runs {
+                out.push_str(&r.text);
+            }
+            out.push('\n');
+            return;
+        }
         // ラベル付きリストは字に `::` が入っているので、名前は書かない
         if n == "説明のリスト" {
             out.push_str(&runs_text(&p.runs, doc));
@@ -867,16 +876,12 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                     let 印 = l.trim_end().to_string();
                     while let Some((_, l2)) = lines.next() {
                         let 閉じ = l2.trim_end() == 印;
-                        if !l2.trim().is_empty() {
-                            // 塊の**中身**は区切りとは別の役割にする(中身は
-                            // 読む物なので、区切りのように薄くしない)
-                            let 中 = !閉じ;
+                        if 閉じ {
+                            // 閉じの印。後ろの空行も原文に含めて持ち越す
                             let 空行 = 空(&mut lines);
                             let mut q = Paragraph {
                                 line_spacing: 1.0,
-                                style_id: Some(
-                                    if 中 { "塊の中" } else { "塊の区切り" }.to_string(),
-                                ),
+                                style_id: Some("塊の区切り".to_string()),
                                 raw_adoc: Some(if 空行 {
                                     format!("{}\n", l2.trim_end())
                                 } else {
@@ -891,10 +896,24 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                                 fmt: CharFormat::default(),
                             });
                             doc.blocks.push(Block::Para(q));
-                        }
-                        if 閉じ {
                             break;
                         }
+                        // **塊の中身は画面で直せます**(2026-08-18)。
+                        // 原文のまま持ち越すのをやめ、普通の段落にしました。
+                        // 字は読んだまま入れます — 塊の中の `*` は太字の印では
+                        // ないので、行の中の書き方として読んではいけません。
+                        // 空行も1つの段落として残します(前は落ちていました)
+                        doc.blocks.push(Block::Para(Paragraph {
+                            line_spacing: 1.0,
+                            style_id: Some("塊の中".to_string()),
+                            runs: vec![Run {
+                                text: l2.trim_end().to_string(),
+                                size_pt: None,
+                                font: None,
+                                fmt: CharFormat::default(),
+                            }],
+                            ..Default::default()
+                        }));
                     }
                 }
                 continue;
@@ -1592,6 +1611,20 @@ mod tests {
     fn 塊の指定の行は次の塊から離れない() {
         // 前は空行が入り、指定が塊に掛からなくなっていた
         往復("[source,python]\n----\nprint(1)\n----\n");
+    }
+
+    #[test]
+    fn コードの塊の中身が直せる() {
+        // 塊の中の `*` は太字の印ではない。空行も残る
+        往復("[source,python]\n----\nprint(\"*ほし*\")\n\nprint(1)\n----\n");
+        let doc = parse("----\nprint(1)\n----\n").unwrap();
+        let 中: Vec<&Paragraph> = doc
+            .paragraphs()
+            .filter(|p| p.style_id.as_deref() == Some("塊の中"))
+            .collect();
+        assert_eq!(中.len(), 1);
+        assert!(中[0].raw_adoc.is_none(), "字のまま持っていて直せない");
+        assert_eq!(中[0].runs[0].text, "print(1)");
     }
 
     #[test]

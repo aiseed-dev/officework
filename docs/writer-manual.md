@@ -518,7 +518,7 @@ thing** — typing it by hand and pressing the button give the same result.
 | Monospace | `` `text` `` | Right panel > Styles > 等幅 | `<code>` |
 | Description list | `term:: value` | Right panel > Styles > 説明のリスト | `<dl>` `<dt>` `<dd>` |
 | Admonition | `NOTE: text` | Right panel > Styles > 註記 | `<p class="st-註記">` |
-| Listing block | wrap in `----` | (coming in 0.2.0-alpha) | `<pre>` |
+| Listing block | wrap in `----` | (written in the text) | `<pre>` |
 | Table column spec | `[cols="1,3"]` | (written in the text) | `<colgroup>` |
 
 **What you do not write in the text.** Underline, strikethrough, font colour,

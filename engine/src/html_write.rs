@@ -428,6 +428,8 @@ fn build(doc: &Document) -> (String, Ctx) {
     let mut list: Option<ListKind> = None;
     // ラベル付きリスト(`dl`)の途中か
     let mut dl中 = false;
+    // コードの塊(`pre`)の途中か
+    let mut pre中 = false;
     // 目次の行が続いている間(nav で包む)
     let mut 目次中 = false;
     let 題名あり = !doc.props.title.is_empty();
@@ -514,6 +516,29 @@ fn build(doc: &Document) -> (String, Ctx) {
             o.push_str(if 目次の行 { "<nav class=\"toc\">\n" } else { "</nav>\n" });
             目次中 = 目次の行;
         }
+        // **コードの塊は `pre` にします**(2026-08-18)。
+        // `----` と `[source,python]` の行は、ここからここまでがコードだと
+        // いう印です。文章ではないので、ページには出しません
+        let 名 = p.style_id.as_deref();
+        if 名 == Some("塊の中") {
+            close(&mut o, &mut list);
+            if !pre中 {
+                o.push_str("<pre><code>");
+                pre中 = true;
+            } else {
+                o.push('\n');
+            }
+            let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            o.push_str(&esc(&字));
+            continue;
+        }
+        if pre中 {
+            o.push_str("</code></pre>\n");
+            pre中 = false;
+        }
+        if 名 == Some("塊の区切り") || 名 == Some("指定の行") {
+            continue;
+        }
         // **ラベル付きリスト**(`項目:: 値`)は `dl` / `dt` / `dd` に。
         // 続いている間は1つの `dl` にまとめます(2026-08-18)
         if p.style_id.as_deref() == Some("説明のリスト") {
@@ -570,6 +595,9 @@ fn build(doc: &Document) -> (String, Ctx) {
             .map(|b| format!("<span id=\"{}\"></span>", esc(b)))
             .collect();
         o.push_str(&format!("<{tag}{id}{cls}>{余り}{inner}</{tag}>\n"));
+    }
+    if pre中 {
+        o.push_str("</code></pre>\n");
     }
     if dl中 {
         o.push_str("</dl>\n");
