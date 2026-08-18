@@ -14,7 +14,7 @@
 ピボットのボタンの裏では matplotlib・polars が働きます。VBA の代わりは
 これです:
 
-- `writer` — **AsciiDoc の視覚エディタ**。原稿(.adoc)を見たまま直し、画面・PDF・HTML・docx に出す。docx を開いて直して返すこともできる([手引き](docs/writer-manual.ja.md))
+- `writer` — **AsciiDoc の視覚エディタ**。原稿(.adoc)を見たまま直し、画面・PDF・HTML・docx に出す。docx は受け渡しの形式で、開いて見る・adoc にすることはできる([手引き](docs/writer-manual.ja.md))
 - `calc` — xlsx を開いて、直して、保存する。式も計算する([手引き](docs/calc-manual.ja.md))
 
 **別々のアプリ**です。1つの巨大なスイートにしていません。

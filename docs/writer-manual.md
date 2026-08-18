@@ -2,6 +2,10 @@
 
 *日本語版(secondary): [writer-manual.ja.md](writer-manual.ja.md)*
 
+**This manual describes writer 0.2.0-alpha.** Anything not yet in the released
+0.1.0-alpha is marked **(coming in 0.2.0-alpha)**. Those parts describe what we
+are building, not what ships today.
+
 **A visual editor for AsciiDoc.** You edit your source (.adoc) as it looks. It is
 not a replacement for a processor such as Asciidoctor — it is a tool for writing
 the source.
@@ -21,13 +25,21 @@ one and type, and the app says so instead. Edit those in a text editor.
 There are four destinations: screen, PDF, HTML and docx. The screen is one of
 them, so you can write on paper or in a plain flowing view.
 
-docx still opens, edits and saves as before — **docx is now one of the
-converters**. **Ribbon: 118/118 — every button works (zero grayed out).**
+**docx is the delivery format.** You can open it, read it, print it and turn it
+into adoc, but **it is not edited and saved as docx** (coming in 0.2.0-alpha).
+Edit in adoc, hand over in docx.
+
+From Python you can still edit a docx and write it back
+(`from officework import doc`); only the screen stops doing it.
+
+**Ribbon: 117 — every button works (zero grayed out).** The button that wraps a
+docx in a password is gone (coming in 0.2.0-alpha).
 
 Three promises:
 
-- **Formatting is preserved.** Styles, shapes, and parts we don't understand
-  survive a save untouched (carried over from the original file)
+- **The source you opened is not damaged.** Markup whose meaning we don't know
+  still comes back character for character. When you open a docx, its styles,
+  shapes and parts we don't understand are carried over from the original file
 - **Every operation is one undo away.** Keystrokes, IME commits, pastes, a single
   ink stroke, a color-scheme change — all come back with one Ctrl+Z
 - **Nothing is dropped silently.** Anything we can't read, or that would be lost
@@ -493,6 +505,12 @@ thing** — typing it by hand and pressing the button give the same result.
 | Equation | a paragraph of just `stem:[x^2]` | Insert > Equation | `<img>` (the source stays with it) |
 | Page break | `<<<` | Insert > Page break | breaks only when printed |
 | Form field | `field:name[label,kind]` | Forms > Text field | `<input>` `<select>` `<textarea>` |
+| Heading 4, 5 | `=====` `======` | (coming in 0.2.0-alpha) | `<h5>` `<h6>` |
+| Monospace | `` `text` `` | (coming in 0.2.0-alpha) | `<code>` |
+| Description list | `term:: value` | (coming in 0.2.0-alpha) | `<dl>` `<dt>` `<dd>` |
+| Admonition | `NOTE: text` | (coming in 0.2.0-alpha) | `<div class="註記">` |
+| Listing block | wrap in `----` | (coming in 0.2.0-alpha) | `<pre>` |
+| Table column spec | `[cols="1,3"]` | (coming in 0.2.0-alpha) | `<colgroup>` |
 
 **What you do not write in the text.** Underline, strikethrough, font colour,
 highlight colour, font, font size, line spacing, alignment and borders — and the
@@ -554,6 +572,37 @@ at it as paper, or write in a plain flowing view. Put this in the folder's
 Widen the window and the lines get longer; no page breaks appear. **Not one
 character of the text changes** — printing still lays it out on A4 through the
 print format.
+
+### Building a form grid (coming in 0.2.0-alpha)
+
+Japanese office forms (applications, approval sheets) are grids of labelled
+boxes. Do not write them as a table in the text. **The content is a description
+list; the grid lives in the template.**
+
+Text:
+
+```asciidoc
+申請日:: 2026年8月18日
+部署:: 総務課
+氏名:: 山田太郎
+```
+
+Template:
+
+```toml
+[様式.申請書]
+行 = [
+  { 升 = ["申請日"],        幅 = [30, 70] },
+  { 升 = ["部署", "氏名"] },
+]
+```
+
+The same text becomes a grid on screen and on paper, a table on the web, and a
+table in docx. **Content and boxes are matched by name**, never by order — with
+order, adding one item shifts everything.
+
+**An item with no box, or a box with no item, is reported.** Silently dropping
+them produces a form with empty fields.
 
 ### A different format per destination
 
@@ -729,7 +778,14 @@ surroundings below without opening anything**. It opens only when you press
   contents, the table of figures and cross-references, and the page count in
   headers, all follow the *printed* pages, however many pages the screen shows.
   A "page 3" in the contents is always page 3 on paper
-- Ctrl+S saves docx (blocked if someone else holds the lock). Body, tables,
+- **Ctrl+S saves adoc** (blocked if someone else holds the lock). Only the text is
+  written; the formatting stays in the template
+- **docx is produced by "export"** (coming in 0.2.0-alpha). The template's
+  formatting is written as docx styles, so Word shows it, and editing a style in
+  Word still changes every place that uses it
+- A docx you opened **is not edited and saved back** (coming in 0.2.0-alpha).
+  Press "turn into adoc" first, then export to docx
+- (until 0.2.0-alpha) Ctrl+S saves docx. Body, tables,
   images, and headers are written back; parts we don't understand are carried
   over from the original file. Elements we couldn't read are noted as
   "preserved on save"

@@ -48,6 +48,10 @@ DOCS = {
 
 # 灰色の話をしている行か
 MENTIONS = re.compile(r"グレー|gray|grey", re.I)
+# **これから入る分の印。** 手引きが次の版を先に説明するときに付ける
+# (例: 「リボンは 117 — 全部のボタンが動く(0.2.0-alpha で入ります)」)
+MADA = re.compile(r"で入ります|coming in ")
+
 # その行が数を主張しているか(「ゼロ」「zero」「no grayed」も 0 の主張)
 ZERO_WORDS = re.compile(r"ゼロ|\bzero\b|\bno\b", re.I)
 
@@ -77,6 +81,12 @@ def main() -> int:
         want = {gray[a] for a in apps}
         for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
             if not MENTIONS.search(line):
+                continue
+            # **これから入る分の印がある行は、いまの主張ではない。**
+            # 手引きは「次の版の説明」を先に書くことがある(2026-08-18 発注者
+            # 「バージョンを決めて手引きを先に全部直せというのは、悪くはない
+            # のでは」)。印のある行は、その版が出るまで数を見ない
+            if MADA.search(line):
                 continue
             # **灰色という語のすぐ近くの数だけを見る。** 行に数があれば
             # 全部主張だと見なすと、「All 114 ribbon commands work. The gray
