@@ -1065,22 +1065,24 @@ pub fn write_many(docs: &[Document]) -> String {
     if docs.len() <= 1 {
         return docs.first().map(write).unwrap_or_default();
     }
-    let mut out = String::from(":doctype: book
-
-");
+    let mut out = String::new();
     for (i, d) in docs.iter().enumerate() {
         let mut s = write(d);
         if !題がある(d) {
-            s = format!("= 文書 {}
-{}", i + 1, s);
+            s = format!("= 文書 {}\n{}", i + 1, s);
         }
+        // **`[discrete]` を付けます。** これが無いと本家が「部には節が要る」と
+        // 警告します(2026-08-19 発注者「警告が出ないように考えろ」)
+        out.push_str(文書の印);
+        out.push('\n');
         out.push_str(s.trim_end());
-        out.push_str("
-
-");
+        out.push_str("\n\n");
     }
     out
 }
+
+/// 文書の切れ目に付ける印。本家の「節ではない見出し」の書き方です。
+const 文書の印: &str = "[discrete]";
 
 fn 題がある(d: &Document) -> bool {
     matches!(d.blocks.first(), Some(Block::Para(p)) if p.style == ParaStyle::Title)
@@ -1097,12 +1099,15 @@ fn 文書の題か(l: &str) -> bool {
 /// **塊の中の `= ` では切りません。** 例の塊(`====`)や字のまま出す塊
 /// (`....`)、表(`|===`)の中に `= 題` と書いてあっても、それは中身です。
 fn 文書に切る(src: &str) -> Vec<String> {
+    let 行: Vec<&str> = src.split('\n').collect();
     let mut out: Vec<String> = Vec::new();
     let mut cur = String::new();
     // いま開いている塊の印(None なら塊の外)
     let mut 開いた: Option<String> = None;
     let mut 題を見た = false;
-    for line in src.split('\n') {
+    let mut i = 0usize;
+    while i < 行.len() {
+        let line = 行[i];
         let t = line.trim_end();
         let 中身 = t.trim();
         match &開いた {
@@ -1116,9 +1121,17 @@ fn 文書に切る(src: &str) -> Vec<String> {
                     開いた = Some(中身.to_string());
                 } else if let Some((印, _)) = DELIMITED.iter().find(|(d, _)| 区切りか(中身, d)) {
                     開いた = Some((*印).to_string());
+                } else if 中身 == 文書の印 && 次は題(&行, i) {
+                    // **切れ目の印。** 印そのものは持ち越しません
+                    if 題を見た {
+                        out.push(std::mem::take(&mut cur));
+                    }
+                    題を見た = true;
+                    i += 1;
+                    continue;
                 } else if 文書の題か(t) {
-                    // **2枚目からが切れ目。** 1枚目の題より前は属性なので、
-                    // 切ると空の文書ができてしまいます
+                    // 印の無い `= 題` でも切ります(手で書いたファイル)。
+                    // **2枚目からが切れ目** — 1枚目の題より前は属性です
                     if 題を見た {
                         out.push(std::mem::take(&mut cur));
                     }
@@ -1126,18 +1139,15 @@ fn 文書に切る(src: &str) -> Vec<String> {
                 }
             }
         }
-        // `:doctype: book` は write_many が付ける印なので持ち越しません
-        if 中身 != ":doctype: book" {
-            cur.push_str(line);
-            cur.push('\n');
-        }
+        cur.push_str(line);
+        cur.push('\n');
+        i += 1;
     }
     out.push(cur);
     // 中身の無い塊(末尾の空行だけ)は文書として数えません
     out.retain(|s| !s.trim().is_empty());
     // **頭の空行を落とします。** `= 題` が1行目に来ないと、読み手が
-    // 文書の題として取らず、字のまま本文に落ちます(`:doctype: book` を
-    // 外した跡の空行で実際に踏みました)
+    // 文書の題として取らず、字のまま本文に落ちます
     for s in out.iter_mut() {
         while s.starts_with('\n') {
             s.remove(0);
@@ -1147,6 +1157,14 @@ fn 文書に切る(src: &str) -> Vec<String> {
         out.push(String::new());
     }
     out
+}
+
+/// `[discrete]` の次(空行は飛ばす)が `= 題` か。
+fn 次は題(行: &[&str], at: usize) -> bool {
+    行[at + 1..]
+        .iter()
+        .find(|l| !l.trim().is_empty())
+        .is_some_and(|l| 文書の題か(l.trim_end()))
 }
 
 /// AsciiDoc(部分集合)→ 模型。**意味だけが入る** — 見た目の欄は触らない。

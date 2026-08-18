@@ -15,8 +15,7 @@ fn 本文(d: &kumihan::Document) -> String {
 
 #[test]
 fn 請求書を3枚まとめて読める() {
-    let src = ":doctype: book\n\n\
-              = 請求書 山田商店\n\n金額 12,000 円\n\n\
+    let src = "= 請求書 山田商店\n\n金額 12,000 円\n\n\
               = 請求書 鈴木工業\n\n金額 8,400 円\n\n\
               = 請求書 佐藤商会\n\n金額 3,300 円\n";
     let docs = adoc::parse_many(src).expect("読めない");
@@ -40,8 +39,7 @@ fn 一枚だけならいままでどおり() {
 /// **塊の中の `= ` では切らない。** ここを間違えると文書が壊れる
 #[test]
 fn 塊の中の等号では切らない() {
-    let src = ":doctype: book\n\n\
-              = 手引き\n\n\
+    let src = "= 手引き\n\n\
               書き方の例です。\n\n\
               ....\n= これは中身\n本文\n....\n\n\
               = 次の文書\n\n二枚目。\n";
@@ -54,8 +52,7 @@ fn 塊の中の等号では切らない() {
 /// 表の中の `= ` でも切らない(式のセルは `=` で始まる)
 #[test]
 fn 表の中の等号では切らない() {
-    let src = ":doctype: book\n\n\
-              = 明細\n\n\
+    let src = "= 明細\n\n\
               |===\n|品名 |金額\n\n|机 |=B2*2\n|===\n\n\
               = 次\n\n二枚目。\n";
     let docs = adoc::parse_many(src).expect("読めない");
@@ -64,10 +61,10 @@ fn 表の中の等号では切らない() {
 
 #[test]
 fn 書いて読むと戻る() {
-    let src = ":doctype: book\n\n= 甲\n\nあ。\n\n= 乙\n\nい。\n";
+    let src = "= 甲\n\nあ。\n\n= 乙\n\nい。\n";
     let docs = adoc::parse_many(src).expect("読めない");
     let out = adoc::write_many(&docs);
-    assert!(out.starts_with(":doctype: book"), "本家の印が無い:\n{out}");
+    assert!(out.starts_with("[discrete]"), "切れ目の印が無い:\n{out}");
     let 戻り = adoc::parse_many(&out).expect("読み直せない");
     assert_eq!(戻り.len(), 2);
     assert_eq!(題(&戻り[0]), "甲");
@@ -87,11 +84,49 @@ fn 一枚のときは印を付けない() {
 /// 名前の無い文書には番号で名前を付ける(タブに出すため)
 #[test]
 fn 名前が無ければ番号を付ける() {
-    let docs = adoc::parse_many(":doctype: book\n\n= 甲\n\nあ。\n").expect("読めない");
+    let docs = adoc::parse_many("= 甲\n\nあ。\n").expect("読めない");
     let mut two = docs.clone();
     two.push(adoc::parse("名前のない本文。\n").expect("読めない"));
     let out = adoc::write_many(&two);
     assert!(out.contains("= 文書 2"), "名前が付いていない:\n{out}");
     let 戻り = adoc::parse_many(&out).expect("読み直せない");
     assert_eq!(戻り.len(), 2, "名前が無いと切れ目が分からなくなる");
+}
+
+/// **本家が警告を出さない字で書く**(2026-08-19 発注者「警告が出ないように
+/// 考えろ」)。`= 題` を並べると「部には節が要る」と言われるので、
+/// 節ではない見出し(`[discrete]`)にする
+#[test]
+fn 書く字に切れ目の印が付く() {
+    let docs = adoc::parse_many("= 甲\n\nあ。\n\n= 乙\n\nい。\n").expect("読めない");
+    assert_eq!(docs.len(), 2);
+    let out = adoc::write_many(&docs);
+    assert!(out.contains("[discrete]\n= 甲"), "切れ目の印が無い:\n{out}");
+    assert!(out.contains("[discrete]\n= 乙"), "切れ目の印が無い:\n{out}");
+    // doctype は要らない(印だけで足りる)
+    assert!(!out.contains(":doctype:"), "要らない属性が付いた:\n{out}");
+    // 読み直せる
+    let 戻り = adoc::parse_many(&out).expect("読み直せない");
+    assert_eq!(戻り.len(), 2);
+    assert_eq!(題(&戻り[0]), "甲");
+    assert_eq!(題(&戻り[1]), "乙");
+}
+
+/// 印は本文に漏れない
+#[test]
+fn 切れ目の印は本文に残らない() {
+    let src = "[discrete]\n= 甲\n\nあ。\n\n[discrete]\n= 乙\n\nい。\n";
+    let docs = adoc::parse_many(src).expect("読めない");
+    assert_eq!(docs.len(), 2);
+    for d in &docs {
+        assert!(!本文(d).contains("discrete"), "印が本文に残った: {:?}", 本文(d));
+    }
+    assert_eq!(題(&docs[1]), "乙");
+}
+
+/// 印の無い `= 題` でも切れる(手で書いたファイル)
+#[test]
+fn 印が無くても切れる() {
+    let docs = adoc::parse_many("= 甲\n\nあ。\n\n= 乙\n\nい。\n").expect("読めない");
+    assert_eq!(docs.len(), 2, "印が無いと切れない");
 }
