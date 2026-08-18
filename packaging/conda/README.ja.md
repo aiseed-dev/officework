@@ -99,5 +99,12 @@ maintainer は awoni。PR の作者が awoni 本人なら同意のコメント�
   リストを検分していて発見 — CI より先に見つかった)。license_file が
   見つからずビルドが落ちる形。recipe は**第二の source** でタグの LICENSE を
   取り、根に置いて解決(sha256 で釘付け)。リポジトリ側は pysheet/LICENSE を
-  置いたので **0.4.0 からは sdist が `pysheet/LICENSE` を運ぶ** — その版から
-  第二の source を消し、`license_file: pysheet/LICENSE` に切り替えられる
+  置いたので、**次に sdist が上がる版からは LICENSE を運ぶ** — その版から
+  第二の source を消し、`license_file: LICENSE` に切り替えられる
+- **0.4.0 には sdist が無い**(2026-08-17)。上げようとした回が
+  `License-File` の食い違いで 400 になり、wheel 3つだけが上がった。直した後に
+  タグ `v0.4.0` から回し直したが、**タグから回すとそのタグの時点の仕掛けが
+  使われる** — 直し(`skip-existing`)はタグの 28 分後に入ったので中に無く、
+  既にある wheel の重複で止まって sdist まで届かなかった。
+  **タグを動かすと 0.4.0 の中身が wheel と食い違う**ので、次の版(0.5.0)で
+  揃えて出す
