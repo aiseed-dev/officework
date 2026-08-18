@@ -5,6 +5,8 @@
 //! 「開く=実行」という攻撃経路を最初から持たない
 //! (aiseed-migration-kit DESIGN.md §5 と同じ思想)。
 
+/// ブック ⇄ AsciiDoc(ブックの正本を .adoc にする)
+pub mod adoc;
 pub mod calc;
 pub mod datetime_names;
 /// 値を引ける表 — 式の計算が表に求める面はこれだけ

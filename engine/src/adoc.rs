@@ -528,6 +528,22 @@ fn field_src(s: &crate::doc::Sdt) -> String {
     o
 }
 
+/// **このセルの字は式か。**
+///
+/// 表計算の式(`=SUM(B2:B4)`)は、セルの中の書き方(太字・斜体)として
+/// 読んではいけません。`=A2*B2*C2` の `*B2*` を太字と読むと、印が消えて
+/// `A2B2C2` という別の式になり、**黙って `#NAME?` に化けます**
+/// (2026-08-19 に実際に踏みました)。
+///
+/// セルの中の見出し(`= 見出し` `== 見出し`)と見分けるのは**空白**です。
+/// 式は `=` の後ろに空白を置きません。
+///
+/// 読みと書きの両方がこの1つの決めを見ます — 2箇所に書くと必ずずれます。
+pub fn is_formula_cell(s: &str) -> bool {
+    let t = s.trim_start();
+    t.len() > 1 && t.starts_with('=') && !t.trim_start_matches('=').starts_with(' ')
+}
+
 /// そのセルの格子の列(左のセルの span の和)
 pub(crate) fn grid_col(row: &[Cellbox], k: usize) -> usize {
     row[..k].iter().map(|c| c.span()).sum()
@@ -605,12 +621,23 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
             }
             書いた = true;
             out.push('|');
-            let text: String = cell
+            // **式は字のまま出します。** `=C2*150` の `*` を逃がすと
+            // `=C2\*150` になり、設計の見本とも本家の見え方とも違います
+            let raw: String = cell
                 .paragraphs
                 .iter()
-                .map(|p| runs_text(&p.runs, doc))
+                .map(|p| p.runs.iter().map(|r| r.text.as_str()).collect::<String>())
                 .collect::<Vec<_>>()
                 .join(" ");
+            let text = if is_formula_cell(&raw) {
+                raw
+            } else {
+                cell.paragraphs
+                    .iter()
+                    .map(|p| runs_text(&p.runs, doc))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            };
             out.push_str(&text);
         }
         out.push('\n');
@@ -1696,8 +1723,14 @@ fn parse_table_lines(
             cb.col_span = hspan;
             cb.v_merge = if vspan > 1 { VMerge::Start } else { VMerge::None };
             // 縦結合の残り行数は、後で桁に切るときに使う
+            // **式は字のまま取ります**(太字の印として読まない)
+            let 字 = cell_text.trim();
             cb.paragraphs = vec![Paragraph {
-                runs: parse_inline(cell_text.trim(), doc, fresh_note)?,
+                runs: if is_formula_cell(字) {
+                    vec![Run { text: 字.to_string(), size_pt: None, font: None, fmt: CharFormat::default() }]
+                } else {
+                    parse_inline(字, doc, fresh_note)?
+                },
                 line_spacing: 1.0,
                 // 縦結合の行数を持ち回る場所が無いので、印だけ立てて
                 // 下の切り分けで数える(`.N+` は N-1 行ぶん下に伸びる)

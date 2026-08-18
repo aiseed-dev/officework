@@ -5554,6 +5554,7 @@ dependencies = [
 name = "sheet"
 version = "0.0.1"
 dependencies = [
+ "kumihan",
  "quick-xml 0.36.2",
  "zip",
 ]

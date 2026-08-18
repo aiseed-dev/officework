@@ -1,0 +1,89 @@
+//! **実物のブックで adoc の往復を測る。**
+//!
+//! 作り物の表ではなく `sample/*.xlsx` を読んで、adoc に書き、読み戻して、
+//! **値がそのまま戻るか**を1枚ずつ見ます。往復が緑でも「見える物が合って
+//! いる」とは言えないので、セルの値を1つずつ突き合わせます。
+
+use sheet::model::Pos;
+
+/// 値の並びを取り出す(比べるため)
+fn 値の表(b: &sheet::Book) -> Vec<(String, Vec<(u32, u32, String)>)> {
+    b.sheets
+        .iter()
+        .map(|s| {
+            let (rows, cols) = s.extent();
+            let mut v = Vec::new();
+            for r in 0..rows {
+                for c in 0..cols {
+                    let d = s.value(Pos::new(r, c)).display();
+                    if !d.is_empty() {
+                        v.push((r, c, d));
+                    }
+                }
+            }
+            (s.name.clone(), v)
+        })
+        .collect()
+}
+
+#[test]
+fn 実物のブックがadocを往復する() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("sample");
+    let mut 見た = 0;
+    let mut 合った = 0;
+    let mut 報告 = Vec::new();
+
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        eprintln!("sample が無いので飛ばす: {}", dir.display());
+        return;
+    };
+    let mut paths: Vec<_> = entries
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "xlsx"))
+        .collect();
+    paths.sort();
+
+    for p in paths {
+        let Ok(f) = std::fs::File::open(&p) else { continue };
+        let Ok((元, _)) = sheet::xlsx::read(std::io::BufReader::new(f)) else { continue };
+        見た += 1;
+        let 名 = p.file_name().unwrap().to_string_lossy().to_string();
+
+        let src = sheet::adoc::write(&元);
+        let (戻り, _) = sheet::adoc::parse(&src).expect("adoc が読めない");
+
+        let a = 値の表(&元);
+        let b = 値の表(&戻り);
+        if a == b {
+            合った += 1;
+        } else {
+            let 枚 = a.len().min(b.len());
+            let mut 差 = Vec::new();
+            for i in 0..枚 {
+                if a[i] != b[i] {
+                    let ちがい = a[i].1.iter().zip(b[i].1.iter()).filter(|(x, y)| x != y).take(2).collect::<Vec<_>>();
+                    差.push(format!("{} 元{}件→戻{}件 例{:?}", a[i].0, a[i].1.len(), b[i].1.len(), ちがい));
+                }
+            }
+            報告.push(format!("{名}: シート {}→{} / {}", a.len(), b.len(), 差.join(" | ")));
+        }
+    }
+
+    println!("実物 {見た} 冊のうち {合った} 冊が値まで往復した");
+    for r in &報告 {
+        println!("  ちがい: {r}");
+    }
+    assert!(見た > 0, "実物を1冊も読めていない");
+    assert_eq!(合った, 見た, "値が往復しないブックがある:\n  {}", 報告.join("\n  "));
+}
+
+/// **画像は黙って落とさない。** 3 MB のブックが 1 KB の adoc になるので、
+/// 言わないと消えたことに気づけない(2026-08-19 に実物で見つけた)
+#[test]
+fn 画像は数えて返す() {
+    let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("sample").join("写真の台帳.xlsx");
+    let Ok(f) = std::fs::File::open(&p) else { return };
+    let (b, _) = sheet::xlsx::read(std::io::BufReader::new(f)).expect("読めない");
+    let r = sheet::adoc::write_report(&b);
+    assert!(r.iter().any(|x| x.contains("画像")), "画像を黙って落とした: {r:?}");
+}
