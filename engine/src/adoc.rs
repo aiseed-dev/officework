@@ -528,6 +528,14 @@ fn field_src(s: &crate::doc::Sdt) -> String {
     o
 }
 
+/// 表の中の空行の印。`a|`(AsciiDoc として組むセル)の中では**段落の
+/// 切れ目**になります。本文に出ない字なので、中身と紛れません。
+const 表の空行: &str = "\u{0}";
+
+/// 空の段落の書き方(本家の作法)。空行を並べても1つの切れ目にまとまるので、
+/// **何行あったか**を残すにはこれを置きます。
+const 空の段落: &str = "{empty}";
+
 /// **このセルの字は式か。**
 ///
 /// 表計算の式(`=SUM(B2:B4)`)は、セルの中の書き方(太字・斜体)として
@@ -576,6 +584,15 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
     if let Some(名) = &t.title {
         out.push_str(&format!(".{名}\n"));
     }
+    // **`a|` のセルがあるときは桁の数を必ず書きます。** 中身が次の行に
+    // 続くので、読むときに「最初の行のセルの数」では桁を数えられません
+    let 複数段落あり = t.rows.iter().flatten().any(|c| c.paragraphs.len() > 1);
+    if t.col_ratio.is_empty() && 複数段落あり {
+        let 桁: usize = t.rows.first().map(|r| r.iter().map(|c| c.span()).sum()).unwrap_or(0);
+        if 桁 > 0 {
+            out.push_str(&format!("[cols=\"{}\"]\n", vec!["1"; 桁].join(",")));
+        }
+    }
     // 桁の割合(`[cols="1,3"]`)。表の直前の行として書く
     if !t.col_ratio.is_empty() {
         let 数: Vec<String> = t
@@ -596,30 +613,43 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
         // この行にもうセルを書いたか(縦の結合の続きは書かないので、
         // 番号ではなく実際に書いたかで見ます)
         let mut 書いた = false;
+        // 直前のセルが複数段落だったか(次のセルを行頭から始めるため)
+        let mut 前が複数 = false;
         for (k, cell) in row.iter().enumerate() {
-            match cell.v_merge {
-                VMerge::Continue => {
-                    // 縦結合の続き = セルを書かない(頭の .N+ が占める)
-                    continue;
+            // 縦結合の続き = セルを書かない(頭の .N+ が占める)
+            if matches!(cell.v_merge, VMerge::Continue) {
+                continue;
+            }
+            // **セルの間に空白を1つ置きます**(2026-08-18)。詰めて書くと、
+            // 前のセルの終わりの `8*` が「8回くり返す」の指定として読まれ、
+            // 表が崩れます(本家で確かめました)。
+            //
+            // **区切りは結合の頭書きより先に書きます**(2026-08-19 に直した)。
+            // 逆にすると `6+` が前のセルの字の末尾にくっつき、区切りの空白が
+            // その後ろに来るので、読むときに指定として読めません。行の
+            // 2つ目から先の結合が**黙って消えて**いました
+            let 複数の段落 = cell.paragraphs.len() > 1;
+            if 書いた {
+                // 前のセルが複数段落なら、行を変えて次のセルを始めます
+                out.push(if 前が複数 { '\n' } else { ' ' });
+            }
+            書いた = true;
+            前が複数 = 複数の段落;
+            if let VMerge::Start = cell.v_merge {
+                let n = vspan_of(t, ri, grid_col(row, k));
+                if n > 1 {
+                    out.push_str(&format!(".{n}+"));
                 }
-                VMerge::Start => {
-                    let n = vspan_of(t, ri, grid_col(row, k));
-                    if n > 1 {
-                        out.push_str(&format!(".{n}+"));
-                    }
-                }
-                VMerge::None => {}
             }
             if cell.span() > 1 {
                 out.push_str(&format!("{}+", cell.span()));
             }
-            // **セルの間に空白を1つ置きます**(2026-08-18)。詰めて書くと、
-            // 前のセルの終わりの `8*` が「8回くり返す」の指定として読まれ、
-            // 表が崩れます(本家で確かめました)
-            if 書いた {
-                out.push(' ');
+            // **段落が2つ以上のセルは `a|`** にします(本家の作法)。
+            // 素のセルは中身を1段落として組むので、詰めて書くと段落の
+            // 切れ目が消えます(実物の様式で 63 升が当たりました)
+            if 複数の段落 {
+                out.push('a');
             }
-            書いた = true;
             out.push('|');
             // **式は字のまま出します。** `=C2*150` の `*` を逃がすと
             // `=C2\*150` になり、設計の見本とも本家の見え方とも違います
@@ -632,11 +662,19 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
             let text = if is_formula_cell(&raw) {
                 raw
             } else {
-                cell.paragraphs
-                    .iter()
-                    .map(|p| runs_text(&p.runs, doc))
-                    .collect::<Vec<_>>()
-                    .join(" ")
+                let mut 段落 = cell.paragraphs.iter().map(|p| runs_text(&p.runs, doc)).collect::<Vec<_>>();
+                // **空の段落は `{empty}` で書きます**(本家の書き方)。
+                // 空行を並べても本家は1つの切れ目にまとめるので、様式の
+                // 「書き込む余白」が何行あったかが消えてしまいます
+                if 複数の段落 {
+                    for p in 段落.iter_mut() {
+                        if p.trim().is_empty() {
+                            *p = 空の段落.to_string();
+                        }
+                    }
+                }
+                // 複数段落は空行で区切ります(`a|` の中身の作法)
+                段落.join(if 複数の段落 { "\n\n" } else { " " })
             };
             out.push_str(&text);
         }
@@ -1172,24 +1210,52 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             let mut closed = false;
             // **1行目の後ろの空行が「見出しの行」の印**(AsciiDoc の作法)
             let mut 見出しの行 = false;
+            // 空行を見た時点で本当の行が何行あったか(印の行は数えません)
+            let mut 実の行 = 0usize;
+            // いま `a|` のセルの中にいるか(続きの行では持ち越します)
+            let mut a中 = false;
             for (_, tl) in lines.by_ref() {
-                let tl = tl.trim_end();
+                // **末尾は半角の空きだけ落とします。** 全角の空白(U+3000)は
+                // 日本語の様式では字下げなので、落とすと見た目が変わります
+                let tl = tl.trim_end_matches([' ', '\t', '\r']);
                 if tl == "|===" {
                     closed = true;
                     break;
                 }
                 if tl.is_empty() {
-                    if rows.len() == 1 {
+                    // 1行目の後ろの空行は**見出しの印**(今までどおり)。
+                    // ただし `a|` のセルの中の空行は段落の切れ目なので、
+                    // 見出しの印と取り違えません
+                    if 実の行 == 1 && !a中 {
                         見出しの行 = true;
+                        continue;
+                    }
+                    // それ以外の空行は `a|` のセルの中の段落の切れ目かも
+                    // しれないので、印として残して後で見分けます
+                    if 実の行 > 0 {
+                        rows.push(表の空行);
                     }
                     continue;
+                }
+                実の行 += 1;
+                // セルの頭がある行だけ、種類を取り直します
+                if let Some(a) = セルの種類(tl) {
+                    a中 = a;
                 }
                 rows.push(tl);
             }
             if !closed {
                 return Err(format!("{} 行目: |=== が閉じていません", ln + 1));
             }
-            let mut t = parse_table_lines(&rows, &mut doc, &mut fresh_note)?;
+            // **桁の数は先に `[cols=]` から取ります。** `a|` のセルは中身が
+            // 次の行に続くので、「最初の行のセルの数」では数えられません
+            let 桁の指定 = match doc.blocks.last() {
+                Some(Block::Para(prev)) if prev.style_id.as_deref() == Some("指定の行") => {
+                    cols_of(prev.raw_adoc.as_deref().unwrap_or("")).map(|比| 比.len())
+                }
+                _ => None,
+            };
+            let mut t = parse_table_lines(&rows, &mut doc, &mut fresh_note, 桁の指定)?;
             t.header_row = 見出しの行;
             // **直前の `[cols="1,3"]` は表の物です**(2026-08-18)。原文のまま
             // 持ち越した段落として残っているので、取り込んで消します。
@@ -1671,6 +1737,7 @@ fn parse_table_lines(
     rows_src: &[&str],
     doc: &mut Document,
     fresh_note: &mut usize,
+    桁の指定: Option<usize>,
 ) -> Result<Table, String> {
     let mut t = Table::default();
     // **セルの中身は次の行に続きます**(本家の作法。2026-08-18 に直した)。
@@ -1679,12 +1746,27 @@ fn parse_table_lines(
     // でした
     let mut 繋いだ: Vec<String> = Vec::new();
     for l in rows_src {
+        // **空行は `a|` のセルの中だけ段落の切れ目にします。**
+        // ほかの空行は今までどおり捨てます(表の見た目のための空行なので)
+        if *l == 表の空行 {
+            if let Some(前) = 繋いだ.last_mut() {
+                if 最後のセルがadoc(前) && !前.ends_with("\n\n") {
+                    前.push_str("\n\n");
+                }
+            }
+            continue;
+        }
         let 頭 = l.trim_start();
         if 繋いだ.is_empty() || 頭.starts_with('|') || セルの指定つき(頭) {
             繋いだ.push((*l).to_string());
         } else if let Some(前) = 繋いだ.last_mut() {
-            前.push_str(継ぎ目(前, 頭));
-            前.push_str(頭);
+            // 続きの行。**全角の空白は字下げなので残します**
+            let 続き = 端を落とす(l);
+            // 段落の切れ目の直後は、字を継ぎ足す空白を入れません
+            if !前.ends_with("\n\n") {
+                前.push_str(継ぎ目(前, 続き));
+            }
+            前.push_str(続き);
         }
     }
 
@@ -1714,6 +1796,9 @@ fn parse_table_lines(
             // `a|` AsciiDoc として組む など)。うちが効かせるのは結合だけで、
             // 残りは字にせず、指定として捨てます
             let after_spec = 指定を飛ばす(after_h);
+            // `a|` は「中を AsciiDoc として組む」= **段落を複数持てる**セル。
+            // 実物の様式では 395 升のうち 63 升がこれに当たります(2026-08-19)
+            let asciidoc_cell = after_h[..after_h.len() - after_spec.len()].contains('a');
             let body = after_spec
                 .strip_prefix('|')
                 .ok_or_else(|| format!("表の行はセルごとに | で始める: {l}"))?;
@@ -1724,19 +1809,39 @@ fn parse_table_lines(
             cb.v_merge = if vspan > 1 { VMerge::Start } else { VMerge::None };
             // 縦結合の残り行数は、後で桁に切るときに使う
             // **式は字のまま取ります**(太字の印として読まない)
-            let 字 = cell_text.trim();
-            cb.paragraphs = vec![Paragraph {
-                runs: if is_formula_cell(字) {
-                    vec![Run { text: 字.to_string(), size_pt: None, font: None, fmt: CharFormat::default() }]
-                } else {
-                    parse_inline(字, doc, fresh_note)?
-                },
-                line_spacing: 1.0,
-                // 縦結合の行数を持ち回る場所が無いので、印だけ立てて
-                // 下の切り分けで数える(`.N+` は N-1 行ぶん下に伸びる)
-                indent: if vspan > 1 { vspan - 1 } else { 0 },
-                ..Default::default()
-            }];
+            // **空の段落も残します。** 様式のセルは、書き込む余白として
+            // 空の段落を持っていることがあります(実物で 59 升)。
+            // 末尾の改行がその段落を表すので、分ける前には落としません
+            let 生 = cell_text.trim_matches(|c: char| c == ' ' || c == '\t' || c == '\r');
+            let 段落の字: Vec<&str> = if asciidoc_cell && 生.contains("\n\n") {
+                生.split("\n\n").map(端を落とす).collect()
+            } else {
+                vec![端を落とす(cell_text)]
+            };
+            let mut paras = Vec::with_capacity(段落の字.len());
+            for p in 段落の字 {
+                paras.push(Paragraph {
+                    // `{empty}` は**空の段落**(書いた側と同じ決め)
+                    runs: if p == 空の段落 {
+                        Vec::new()
+                    } else if is_formula_cell(p) {
+                        vec![Run { text: p.to_string(), size_pt: None, font: None, fmt: CharFormat::default() }]
+                    } else {
+                        parse_inline(p, doc, fresh_note)?
+                    },
+                    line_spacing: 1.0,
+                    ..Default::default()
+                });
+            }
+            // 縦結合の行数を持ち回る場所が無いので、印だけ立てて
+            // 下の切り分けで数える(`.N+` は N-1 行ぶん下に伸びる)。
+            // **頭の段落にだけ**立てます
+            if vspan > 1 {
+                if let Some(p) = paras.first_mut() {
+                    p.indent = vspan - 1;
+                }
+            }
+            cb.paragraphs = paras;
             この行の桁 += cb.span();
             cells.push(cb);
             restv = restn;
@@ -1745,7 +1850,7 @@ fn parse_table_lines(
             最初の行の桁 = この行の桁;
         }
     }
-    let ncols = 最初の行の桁.max(1);
+    let ncols = 桁の指定.filter(|n| *n > 0).unwrap_or(最初の行の桁).max(1);
 
     // 桁の数で行に切る。縦結合が下の行の桁を占めるぶんも数える
     let mut vstarts: Vec<(usize, u8)> = Vec::new(); // (桁, 残り行数)
@@ -1847,6 +1952,55 @@ fn 指定を飛ばす(s: &str) -> &str {
     &s[i..]
 }
 
+/// 前後の**半角の空き**だけを落とす。
+///
+/// `trim` は全角の空白(U+3000)まで落とします。日本語の様式では行頭の
+/// 全角空白が**字下げ**なので、落とすと見た目が変わります
+/// (実物の様式で2升が当たりました。2026-08-19)。
+fn 端を落とす(s: &str) -> &str {
+    s.trim_matches(|c: char| c == ' ' || c == '\t' || c == '\r' || c == '\n')
+}
+
+/// その行の**最後のセル**が `a|`(AsciiDoc として組む)か。
+///
+/// 空行を段落の切れ目として残すのは、このセルの中だけです。表の見た目を
+/// 整えるための空行まで段落にすると、ふつうの表が崩れます。
+fn 最後のセルがadoc(s: &str) -> bool {
+    セルの種類(s).unwrap_or(false)
+}
+
+/// その行の最後のセルが `a|` か。**セルの頭が1つも無ければ `None`**
+/// (前の行の続きなので、呼ぶ側は前の判断をそのまま持ち越します)。
+fn セルの種類(s: &str) -> Option<bool> {
+    let b = s.as_bytes();
+    let mut i = 0usize;
+    let mut a = None;
+    while i < b.len() {
+        if b[i] == b'\\' {
+            i += 2;
+            continue;
+        }
+        if b[i] == b'|' {
+            a = Some(false); // 指定なしのセル
+            i += 1;
+            continue;
+        }
+        // 指定つきの頭(`a|` `h|` `2+|`)。空白か行頭の後ろだけ見ます
+        if (i == 0 || b[i - 1] == b' ' || b[i - 1] == b'\n') && b[i] != b' ' {
+            let rest = &s[i..];
+            let after = 指定を飛ばす(rest);
+            if after.starts_with('|') {
+                let 指定 = &rest[..rest.len() - after.len()];
+                a = Some(指定.contains('a'));
+                i += 指定.len() + 1;
+                continue;
+            }
+        }
+        i += s[i..].chars().next().map(|c| c.len_utf8()).unwrap_or(1);
+    }
+    a
+}
+
 /// その行がセルの指定つきで始まるか(`h|` `^|` `2+|` など)
 fn セルの指定つき(l: &str) -> bool {
     指定を飛ばす(l).starts_with('|') && !l.starts_with('|')
@@ -1866,7 +2020,10 @@ fn next_cell_start(s: &str) -> usize {
         }
         // **指定つきの頭**(`h|` `^|` `2+|` `.2+|`)。空白の後ろにあるときだけ
         // 指定と見ます — 字の途中の `a|` を頭と読まないためです
-        if (i == 0 || b[i - 1] == b' ') && b[i] != b' ' && 指定を飛ばす(&s[i..]).starts_with('|')
+        // 段落の切れ目(`a|` のセルの中)の後ろも行頭として見ます
+        if (i == 0 || b[i - 1] == b' ' || b[i - 1] == b'\n')
+            && b[i] != b' '
+            && 指定を飛ばす(&s[i..]).starts_with('|')
         {
             return i;
         }
