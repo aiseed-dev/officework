@@ -417,6 +417,8 @@ fn build(doc: &Document) -> (String, Ctx) {
     let mut ctx = Ctx::default();
     // 箇条書きは連続する段落をまとめます(HTML の ul / ol は入れ物なので)
     let mut list: Option<ListKind> = None;
+    // 目次の行が続いている間(nav で包む)
+    let mut 目次中 = false;
     let 題名あり = !doc.props.title.is_empty();
     let close = |o: &mut String, list: &mut Option<ListKind>| {
         match list.take() {
@@ -482,12 +484,23 @@ fn build(doc: &Document) -> (String, Ctx) {
             o.push_str(&format!("  <li>{inner}</li>\n"));
             continue;
         }
+        // **目次は nav にまとめます**(2026-08-18)。前は普通の段落として
+        // 並んでいたので、Web では本文と見分けが付きませんでした。
+        // 中身は作り直した静的な字です(ページ番号は紙のもの)
+        let 目次の行 = matches!(p.style, ParaStyle::Toc(_) | ParaStyle::Tof);
+        if 目次の行 != 目次中 {
+            o.push_str(if 目次の行 { "<nav class=\"toc\">\n" } else { "</nav>\n" });
+            目次中 = 目次の行;
+        }
         close(&mut o, &mut list);
         let tag = tag_of(p.style, 題名あり);
         // class は**スタイルの名前と改ページ**の2つが入ります
         let mut cls: Vec<String> = Vec::new();
         if p.style == ParaStyle::Title {
             cls.push("title".into());
+        }
+        if let ParaStyle::Toc(n) = p.style {
+            cls.push(format!("toc{n}"));
         }
         if let Some(n) = &p.style_id {
             cls.push(class_of(n));
@@ -515,6 +528,9 @@ fn build(doc: &Document) -> (String, Ctx) {
         o.push_str(&format!("<{tag}{id}{cls}>{余り}{inner}</{tag}>\n"));
     }
     close(&mut o, &mut list);
+    if 目次中 {
+        o.push_str("</nav>\n");
+    }
     // 脚注は最後に並べます。番号から本文へ戻れるようにします
     if !ctx.notes.is_empty() {
         o.push_str("<ol class=\"footnotes\">\n");

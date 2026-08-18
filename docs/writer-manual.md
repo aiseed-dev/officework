@@ -508,9 +508,10 @@ look comes from the template style named 表題.
 source (LaTeX). Typesetting is done by Python — with TeX if it is installed,
 otherwise matplotlib. If an equation cannot be set, you are told how many failed.
 
-**What appears nowhere yet.** Tables of contents and tables of figures are rebuilt
-wherever the document goes, so they are not in the text. Comments, ink and tracked
-changes are docx-only features.
+**What is not in the text.** Tables of contents and tables of figures are text
+produced when you press the button (there is no markup for them). Exported to the
+web they are wrapped in a `nav`. Comments, ink and tracked changes are docx-only
+features.
 
 When you put a picture in, an `images` folder appears next to the text and the
 picture goes in it. The text only points at the file, so **keep the text and

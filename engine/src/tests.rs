@@ -2456,6 +2456,34 @@ mod html_write_tests {
         assert!(!page.html.contains("base64"), "画像を埋め込んだ");
     }
 
+    /// **目次は nav にまとめます**(2026-08-18)。前は普通の段落として並び、
+    /// Web では本文と見分けが付きませんでした。
+    #[test]
+    fn 目次はnavにまとまる() {
+        use crate::doc::{Document, Paragraph, ParaStyle, Run};
+        let mut d = Document::default();
+        let mut 行 = |style: ParaStyle, text: &str| {
+            let mut p = Paragraph { style, line_spacing: 1.0, ..Default::default() };
+            p.runs.push(Run {
+                text: text.into(),
+                size_pt: None,
+                font: None,
+                fmt: Default::default(),
+            });
+            d.push_para(p);
+        };
+        行(ParaStyle::Toc(1), "はじめに … 1");
+        行(ParaStyle::Toc(2), "その1 … 2");
+        行(ParaStyle::Body, "本文です。");
+        let h = html_write::body(&d);
+        assert_eq!(h.matches("<nav class=\"toc\">").count(), 1, "nav が1つでない:\n{h}");
+        assert_eq!(h.matches("</nav>").count(), 1, "nav の閉じが1つでない:\n{h}");
+        assert!(h.contains("class=\"toc1\""), "段の深さが class に出ていない:\n{h}");
+        // 本文は nav の外
+        let 後 = h.split("</nav>").nth(1).unwrap_or("");
+        assert!(後.contains("本文です。"), "本文が nav の中に入った:\n{h}");
+    }
+
     /// 逃がし忘れると、本文の `<` でページが壊れます。
     #[test]
     fn 記号を逃がす() {
