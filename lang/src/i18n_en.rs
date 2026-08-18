@@ -45,6 +45,8 @@ pub const TABLE: &[(&str, &str)] = &[
 ("大きさはテンプレートで決めます。「{}」の大きさを変えるには {} を直してください", "Sizes are decided by the template. To change the size of \"{}\", edit {}"),
 ("{} — うちで扱わない書き方があります: {}", "{} — it uses markup we do not handle: {}"),
 ("{} に保存しました。このフォルダの書式({})を使います", "Saved to {}. It uses this folder's format ({})"),
+("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です", "Exported to {} (turned {} into style definitions). The source stays in the adoc"),
+("いまの書式", "the format in use"),
 ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Created this folder's format at {}. Documents in the same folder will use it"),
 ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "the built-in default (to use {} in this folder, rename it to {} or put :template: at the top of the text)"),
 ("{}(数式 {} 個が組めませんでした)", "{} ({} equations could not be typeset)"),

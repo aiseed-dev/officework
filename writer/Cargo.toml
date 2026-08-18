@@ -29,5 +29,7 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392
 rfd = "0.14"
 
 [dev-dependencies]
-# 釦を全部おす試験のため(GUI は起こさない)
+# 書き出した docx の中の部品を、試験で直に見るため
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# ボタンを全部おす試験のため(GUI は起こさない)
 gpui = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23", features = ["test-support"] }

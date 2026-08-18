@@ -1954,6 +1954,48 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **adoc から docx を書き出すと、テンプレートがスタイル定義になる**
+    /// (2026-08-18)。本文の側には見た目を焼き付けない。
+    /// 書き出しなので、原稿の保存先は adoc のままにする —
+    /// docx に移ると、次の Ctrl+S が原稿ではなく docx を上書きする
+    #[gpui::test]
+    fn docxの書き出しはテンプレートを通す(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-dtmpl-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let adoc = dir.join("見本.adoc");
+        std::fs::write(&adoc, "= 題\n\n== 節\n\n本文です。\n").unwrap();
+        let docx = dir.join("見本.docx");
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(adoc.clone());
+            assert!(this.native, "ネイティブとして開いていない");
+            this.save_to(docx.clone());
+
+            // 原稿の保存先は動かない
+            assert_eq!(this.path.as_deref(), Some(adoc.as_path()),
+                       "書き出しで保存先が docx に移った: {}", this.status);
+
+            let bytes = std::fs::read(&docx).unwrap();
+            let 部品 = |name: &str| {
+                let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes.clone())).unwrap();
+                let mut f = z.by_name(name).unwrap();
+                let mut s = String::new();
+                std::io::Read::read_to_string(&mut f, &mut s).unwrap();
+                s
+            };
+            // 既定のテンプレートの見出し1 は 16pt の太字
+            let styles = 部品("word/styles.xml");
+            assert!(styles.contains(r#"w:styleId="Heading1""#), "見出しの定義が無い");
+            assert!(styles.contains(r#"<w:sz w:val="32"/>"#), "16pt が定義に入らない");
+            // 本文は名乗るだけ
+            let body = 部品("word/document.xml");
+            assert!(body.contains(r#"w:val="Heading1""#), "pStyle が無い");
+            assert!(!body.contains(r#"<w:sz w:val="32"/>"#), "本文に大きさが焼き付いた");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// 開いた直後に「変更あり」の印が付かない(付くと、触っていないのに
     /// 保存を促されて、上書きの事故に繋がる)
     #[gpui::test]

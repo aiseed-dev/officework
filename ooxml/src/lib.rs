@@ -26,7 +26,7 @@ mod read;
 mod write;
 
 pub use read::{ink_anchor_run, ink_anchor_xml, parse_document_with, parse_document_xml, read, Report};
-pub use write::{write, write_document_parts, write_document_xml, write_with};
+pub use write::{write, write_document_parts, write_document_xml, write_with, write_with_theme};
 
 #[cfg(test)]
 mod tests;

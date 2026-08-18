@@ -42,6 +42,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("大きさはテンプレートで決めます。「{}」の大きさを変えるには {} を直してください", "Les tailles sont décidées par le modèle. Pour changer la taille de « {} », modifiez {}"),
     ("{} — うちで扱わない書き方があります: {}", "{} — il utilise un balisage que nous ne traitons pas : {}"),
     ("{} に保存しました。このフォルダの書式({})を使います", "Enregistré dans {}. Il utilise la mise en forme de ce dossier ({})"),
+    ("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です", "Exporté vers {} ({} est devenu des définitions de style). La source reste dans l'adoc"),
+    ("いまの書式", "le format actuel"),
     ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Mise en forme de ce dossier créée dans {}. Les documents du même dossier l'utiliseront"),
     ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "la valeur par défaut fournie (pour utiliser {} dans ce dossier, renommez-le en {} ou écrivez :template: en tête du texte)"),
     ("{}(数式 {} 個が組めませんでした)", "{} ({} formules n'ont pas pu être composées)"),

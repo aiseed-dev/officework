@@ -704,8 +704,15 @@ impl Writer {
     /// 保存用の写し。筆(ペン)を、そのページに載っている段落の控えへ
     /// 図形(自由曲線)として差し込む。モデル本体は触らない —
     /// 保存のたびに増えないように、写しに差す。
-    pub(crate) fn doc_for_save(&self) -> Document {
+    /// `tmpl` を渡すと、そのテンプレートの**ページの飾り**(用紙・ヘッダー・
+    /// フッター・透かし・ページの色・縦書き)を写しに入れます。段落の書式は
+    /// 入れません — そちらは `styles.xml` が持ちます
+    /// (`ooxml::write_with_theme` と対になっています)。
+    pub(crate) fn doc_for_save(&self, tmpl: Option<&kumihan::theme::Theme>) -> Document {
         let mut doc = self.doc.clone();
+        if let Some(th) = tmpl {
+            kumihan::theme::compose_page(&mut doc, th);
+        }
         // 相互参照は保存の写しで計算し直す(docx のキャッシュを新しく保つ。
         // 画面の平文はそのまま — 見えている値の更新は「参照を更新」で)
         doc.refresh_fields(|name, page| self.ref_value(name, page));
@@ -1000,7 +1007,7 @@ impl Writer {
         // 複製は保存と同じ道で作る(原本の部品も持ち越す。暗号化は解いて)
         let original: Option<std::io::Cursor<Vec<u8>>> =
             self.original_plain().map(std::io::Cursor::new);
-        let doc_out = self.doc_for_save();
+        let doc_out = self.doc_for_save(None);
         let w = std::fs::File::create(&in_d)
             .map_err(|e| e.to_string())
             .and_then(|f| ooxml::write_with(&doc_out, original, std::io::BufWriter::new(f)));
@@ -2969,7 +2976,19 @@ impl Writer {
         // 上書き保存では読み終えてから書く(同じファイルを同時に開かない)
         let original: Option<std::io::Cursor<Vec<u8>>> =
             self.original_plain().map(std::io::Cursor::new);
-        let doc_out = self.doc_for_save();
+        // **ネイティブ文書(.adoc)を docx で書き出すときは、テンプレートを
+        // 通します**(2026-08-18)。本文は意味だけ、見た目は styles.xml、と
+        // いう分け方をそのまま docx に移す。`テンプレート-docx.toml` が
+        // あればそちらを使う(書き出し先ごとの書式)。
+        // 受け取った docx を保存し直すときは渡さない — 相手のスタイル定義を
+        // こちらのテンプレートで上書きしないため
+        let (docx_tmpl, tmpl_at) = if self.native {
+            let (th, at) = self.template_for("docx");
+            (Some(th), at)
+        } else {
+            (None, None)
+        };
+        let doc_out = self.doc_for_save(docx_tmpl.as_ref());
         // バージョン履歴: 上書きの前に、いままでの中身を控えとして残す
         if p.exists() {
             self.keep_version(&p);
@@ -2977,7 +2996,8 @@ impl Writer {
         let saved = if let Some(pw) = self.encrypt_pw.clone() {
             // 暗号化は zip 丸ごとが単位 — 一度メモリへ書いてから包む
             let mut plain = Vec::new();
-            ooxml::write_with(&doc_out, original, std::io::Cursor::new(&mut plain))
+            ooxml::write_with_theme(
+                &doc_out, original, docx_tmpl.as_ref(), std::io::Cursor::new(&mut plain))
                 .and_then(|_| ooxml::crypt::encrypt(&plain, &pw))
                 .and_then(|enc| {
                     kumihan::atomic::save(&p, |mut f| {
@@ -2987,7 +3007,8 @@ impl Writer {
                 })
         } else {
             kumihan::atomic::save(&p, |f| {
-                ooxml::write_with(&doc_out, original, std::io::BufWriter::new(f))
+                ooxml::write_with_theme(
+                    &doc_out, original, docx_tmpl.as_ref(), std::io::BufWriter::new(f))
             })
         };
         match saved {
@@ -3000,14 +3021,28 @@ impl Writer {
                 };
                 let enc_note =
                     if self.encrypt_pw.is_some() { ui::t!("(暗号化)") } else { "" };
-                self.status = ui::tf!("保存しました — {}{}{}", p.file_name().unwrap_or_default().to_string_lossy(), enc_note, caveat)
-                .into();
-                // 保存先のロックを取り直す(別の名前で保存したときは
-                // 新しいファイルの側を守る。同じ名前なら実質そのまま)
-                self.acquire_lock(&p);
+                let 名 = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                // **ネイティブ文書から作った docx は、渡すための形です。**
+                // 見た目はスタイル定義の側に入っているので、この writer で
+                // 開き直しても直接書式は付いていません。そこを黙らない
+                self.status = if docx_tmpl.is_some() {
+                    let 元 = tmpl_at.unwrap_or_else(|| ui::t!("いまの書式").to_string());
+                    ui::tf!("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です",
+                            名, 元).into()
+                } else {
+                    ui::tf!("保存しました — {}{}{}", 名, enc_note, caveat).into()
+                };
+                // **ネイティブ文書からの docx は「書き出し」です。**
+                // 原稿は adoc の側にあるので、保存先を docx へ移しません —
+                // 移すと、次の Ctrl+S が adoc ではなく docx を上書きします
+                if docx_tmpl.is_none() {
+                    // 保存先のロックを取り直す(別の名前で保存したときは
+                    // 新しいファイルの側を守る。同じ名前なら実質そのまま)
+                    self.acquire_lock(&p);
+                    self.path = Some(p.clone());
+                    self.dirty = false;
+                }
                 Self::note_recent(&p);
-                self.path = Some(p);
-                self.dirty = false;
             }
             Err(e) => self.status = ui::tf!("保存できません: {}", e).into(),
         }

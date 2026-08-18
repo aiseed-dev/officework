@@ -42,6 +42,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("大きさはテンプレートで決めます。「{}」の大きさを変えるには {} を直してください", "Ukuran ditentukan templat. Untuk mengubah ukuran \"{}\", sunting {}"),
     ("{} — うちで扱わない書き方があります: {}", "{} — memakai markup yang tidak kami tangani: {}"),
     ("{} に保存しました。このフォルダの書式({})を使います", "Disimpan ke {}. Menggunakan format folder ini ({})"),
+    ("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です", "Diekspor ke {} ({} dijadikan definisi gaya). Naskah tetap di adoc"),
+    ("いまの書式", "format yang dipakai"),
     ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Format folder ini dibuat di {}. Dokumen di folder yang sama akan memakainya"),
     ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "bawaan aplikasi (untuk memakai {} di folder ini, ganti namanya menjadi {} atau tulis :template: di awal teks)"),
     ("{}(数式 {} 個が組めませんでした)", "{} ({} rumus tidak dapat disusun)"),

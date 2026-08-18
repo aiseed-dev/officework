@@ -42,6 +42,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("大きさはテンプレートで決めます。「{}」の大きさを変えるには {} を直してください", "Cỡ chữ do mẫu quyết định. Muốn đổi cỡ của «{}», hãy sửa {}"),
     ("{} — うちで扱わない書き方があります: {}", "{} — có cú pháp chúng tôi không xử lý: {}"),
     ("{} に保存しました。このフォルダの書式({})を使います", "Đã lưu vào {}. Dùng định dạng của thư mục này ({})"),
+    ("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です", "Đã xuất ra {} ({} trở thành định nghĩa kiểu). Bản gốc vẫn ở adoc"),
+    ("いまの書式", "định dạng đang dùng"),
     ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Đã tạo định dạng của thư mục này tại {}. Các tài liệu cùng thư mục sẽ dùng nó"),
     ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "mặc định đi kèm (muốn dùng {} trong thư mục này, hãy đổi tên thành {} hoặc viết :template: ở đầu nội dung)"),
     ("{}(数式 {} 個が組めませんでした)", "{} (không dựng được {} công thức)"),

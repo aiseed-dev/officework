@@ -178,6 +178,10 @@ pub const DEFAULT_TOML: &str = r#"# officework の既定のテンプレート
 大きさ = 11.5
 太字 = true
 
+[スタイル.引用]
+斜体 = true
+色 = "444444"
+
 # **本家の AsciiDoc の書き方の見た目。** うちでは編集できませんが、
 # 開いたときに「そういう塊だ」と分かるように既定を置きます
 [スタイル.註記]
@@ -579,8 +583,13 @@ fn 飾りの段落(s: &str) -> crate::doc::Paragraph {
     p
 }
 
-pub fn compose(doc: &Document, theme: &Theme) -> Document {
-    let mut out = doc.clone();
+/// **文書ぜんたいに掛かる分だけ**テンプレートを合成する。
+/// 書体・字の大きさ・用紙・ヘッダー・フッター・透かし・ページの色・縦書き。
+///
+/// 段落の書式は入れません。docx で書き出すときは、段落の見た目を
+/// `styles.xml` の側が持つので、こちらだけを合成します
+/// (`ooxml::write_with_theme` と対になっています)。
+pub fn compose_page(out: &mut Document, theme: &Theme) {
     if out.font.is_none() {
         out.font = theme.font.clone();
     }
@@ -612,6 +621,11 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
     if theme.vertical {
         out.vertical = true;
     }
+}
+
+pub fn compose(doc: &Document, theme: &Theme) -> Document {
+    let mut out = doc.clone();
+    compose_page(&mut out, theme);
     for block in &mut out.blocks {
         let crate::doc::Block::Para(para) = block else { continue };
         // 名指しのスタイル(style_id)が役割の固定名より勝つ —

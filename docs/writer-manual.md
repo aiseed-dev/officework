@@ -795,9 +795,12 @@ surroundings below without opening anything**. It opens only when you press
   A "page 3" in the contents is always page 3 on paper
 - **Ctrl+S saves adoc** (blocked if someone else holds the lock). Only the text is
   written; the formatting stays in the template
-- **docx is produced by "export"** (coming in 0.2.0-alpha). The template's
-  formatting is written as docx styles, so Word shows it, and editing a style in
-  Word still changes every place that uses it
+- **docx is produced by "export".** The template's formatting is written as docx
+  style definitions, so Word shows it, and editing a style in Word still changes
+  every place that uses it. Nothing is baked into the text itself. If the folder
+  holds a `テンプレート-docx.toml`, docx exports use that format instead
+- Exporting **does not move where your source is saved.** Ctrl+S afterwards still
+  saves the adoc, not the docx
 - A docx you opened **is not edited and saved back** (coming in 0.2.0-alpha).
   Press "turn into adoc" first, then export to docx
 - (until 0.2.0-alpha) Ctrl+S saves docx. Body, tables,

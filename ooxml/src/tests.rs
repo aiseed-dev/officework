@@ -2469,3 +2469,80 @@ mod add_note_tests {
         assert!(!ct.contains("footnotes.xml"), "要らない宣言が入った: {ct}");
     }
 }
+
+/// **テンプレートを docx に通す**(2026-08-18)。本文には見た目を焼き付けず、
+/// `styles.xml` の側にスタイル定義として入れる。
+#[cfg(test)]
+mod テンプレートを通す {
+    use super::*;
+    use kumihan::{Block, Document, Paragraph, ParaStyle, Run};
+
+    fn 見出しの文書() -> Document {
+        let mut d = Document::plain("本文です");
+        d.blocks.push(Block::Para(Paragraph {
+            style: ParaStyle::Heading(1),
+            runs: vec![Run { text: "章の題".into(), size_pt: None, font: None,
+                             fmt: Default::default() }],
+            ..Default::default()
+        }));
+        d.blocks.push(Block::Para(Paragraph {
+            style_id: Some("註記".into()),
+            runs: vec![Run { text: "気をつけて".into(), size_pt: None, font: None,
+                             fmt: Default::default() }],
+            ..Default::default()
+        }));
+        d
+    }
+
+    fn 書き出す(th: Option<&kumihan::theme::Theme>) -> Vec<u8> {
+        let mut out = Vec::new();
+        crate::write_with_theme(&見出しの文書(), None::<Cursor<Vec<u8>>>, th,
+                                Cursor::new(&mut out)).unwrap();
+        out
+    }
+
+    fn 部品(zipbytes: &[u8], name: &str) -> Option<String> {
+        let mut z = zip::ZipArchive::new(Cursor::new(zipbytes.to_vec())).ok()?;
+        let mut f = z.by_name(name).ok()?;
+        let mut s = String::new();
+        f.read_to_string(&mut s).ok()?;
+        Some(s)
+    }
+
+    #[test]
+    fn 見出しの見た目がスタイル定義に入る() {
+        let th = kumihan::theme::default_theme();
+        let s = 部品(&書き出す(Some(&th)), "word/styles.xml").unwrap();
+        // 既定のテンプレートの「見出し1」は 16pt の太字
+        assert!(s.contains(r#"w:styleId="Heading1""#), "見出し1 が Heading1 にならない: {s}");
+        assert!(s.contains(r#"<w:sz w:val="32"/>"#), "16pt が入らない: {s}");
+        assert!(s.contains(r#"<w:outlineLvl w:val="0"/>"#), "見出しの段が入らない: {s}");
+        // Word の組み込みと同じ物だと見てもらうための名前
+        assert!(s.contains(r#"<w:name w:val="heading 1"/>"#), "組み込みの名前でない: {s}");
+    }
+
+    #[test]
+    fn 利用者の名前はそのままスタイルの名前になる() {
+        let th = kumihan::theme::default_theme();
+        let s = 部品(&書き出す(Some(&th)), "word/styles.xml").unwrap();
+        // 「註記」は本家 AsciiDoc の書き方。役割の固定名ではないので日本語のまま
+        assert!(s.contains(r#"w:styleId="註記""#), "註記 が styleId にならない: {s}");
+        assert!(s.contains(r#"w:fill="FFF6E0""#), "註記の背景色が入らない: {s}");
+    }
+
+    #[test]
+    fn 本文には見た目を焼き付けない() {
+        let th = kumihan::theme::default_theme();
+        let d = 部品(&書き出す(Some(&th)), "word/document.xml").unwrap();
+        // 見出しは pStyle で名乗るだけ。大きさも太字も本文の側には出さない
+        assert!(d.contains(r#"w:val="Heading1""#), "pStyle が無い: {d}");
+        assert!(!d.contains(r#"<w:sz w:val="32"/>"#), "本文に大きさが焼き付いた: {d}");
+    }
+
+    #[test]
+    fn 渡さなければ今までどおり() {
+        let s = 部品(&書き出す(None), "word/styles.xml").unwrap();
+        assert!(s.contains(r#"w:styleId="Heading1""#));
+        assert!(!s.contains("註記"), "テンプレート抜きなのに入った: {s}");
+    }
+}

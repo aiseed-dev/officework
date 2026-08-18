@@ -27,9 +27,189 @@ pub(super) const W_NS: &str = "http://schemas.openxmlformats.org/wordprocessingm
 /// 見た目は最小(太字と大きさ)だけ — スタイル定義は持たない主義のまま、
 /// 読み手への名乗りのためだけに置く
 pub(super) const STYLES_MIN: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/><w:szCs w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:style></w:styles>"#;
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:sz w:val="40"/><w:szCs w:val="40"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:rPr><w:i/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/><w:szCs w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:style></w:styles>"#;
 
 pub(super) const RNS_DOC: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+
+/// テンプレートのスタイル名を、docx の styleId にする。
+///
+/// 役割の決まった5つだけ Word の組み込みに寄せる。**読み手(Word・
+/// python-docx・LibreOffice)が「見出し」として扱うのは styleId が
+/// `Heading1` などのときだけ**なので、ここを日本語の名前のままにすると、
+/// 見出しが本文として読まれて目次にも出ない。
+/// 利用者が新しく作った名前は、そのまま styleId にする(日本語でも通る)。
+fn style_id_of(name: &str) -> String {
+    match name {
+        "本文" => "Normal".into(),
+        "表題" => "Title".into(),
+        "引用" => "Quote".into(),
+        _ => match name.strip_prefix("見出し").and_then(|n| n.parse::<u8>().ok()) {
+            Some(n) if (1..=9).contains(&n) => format!("Heading{n}"),
+            _ => name.to_string(),
+        },
+    }
+}
+
+/// 読み手に見せるスタイルの名前。組み込みの分は Word の英語の名前でないと
+/// 「組み込みの見出し」と同じ物だと見てもらえない
+fn style_name_of(name: &str, id: &str) -> String {
+    match id {
+        "Normal" => "Normal".into(),
+        "Title" => "Title".into(),
+        "Quote" => "Quote".into(),
+        _ => match id.strip_prefix("Heading") {
+            Some(n) => format!("heading {n}"),
+            None => name.to_string(),
+        },
+    }
+}
+
+/// テンプレート(`Theme`)から docx の `styles.xml` を作る。
+///
+/// **これが「テンプレートを docx に通す」の本体です**(2026-08-18)。
+/// 本文の側には見た目を焼き付けません — HTML の書き出しが本文と CSS に
+/// 分かれるのと同じ形で、docx でも本文と styles.xml に分かれます。
+/// 受け取った人は Word のスタイルの一覧から見た目を変えられます。
+fn styles_from_theme(theme: &kumihan::theme::Theme) -> String {
+    let mut s = format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:styles xmlns:w=\"{W_NS}\">"
+    );
+    // 文書の既定(書体と大きさ)。テンプレートの `[文書]` の分
+    let mut dd = String::new();
+    if let Some(f) = &theme.font {
+        let f = esc(f);
+        dd.push_str(&format!(
+            r#"<w:rFonts w:ascii="{f}" w:hAnsi="{f}" w:eastAsia="{f}" w:cs="{f}"/>"#
+        ));
+    }
+    if let Some(pt) = theme.size_pt {
+        let half = (pt * 2.0).round() as i64;
+        dd.push_str(&format!(r#"<w:sz w:val="{half}"/><w:szCs w:val="{half}"/>"#));
+    }
+    if !dd.is_empty() {
+        s.push_str(&format!(
+            "<w:docDefaults><w:rPrDefault><w:rPr>{dd}</w:rPr></w:rPrDefault></w:docDefaults>"
+        ));
+    }
+    // Normal は必ず要る(既定の段落スタイル)。テンプレートに「本文」が
+    // あればその中身で、無ければ空で
+    s.push_str(
+        r#"<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/>"#,
+    );
+    if let Some(d) = theme.styles.iter().find(|d| d.name == "本文") {
+        s.push_str(&style_body_xml(d, None));
+    }
+    s.push_str("</w:style>");
+    for d in &theme.styles {
+        if d.name == "本文" {
+            continue;
+        }
+        let id = style_id_of(&d.name);
+        let name = style_name_of(&d.name, &id);
+        // 見出しは outlineLvl を付ける。目次と見出しの折り畳みがこれを見る
+        let lvl = id
+            .strip_prefix("Heading")
+            .and_then(|n| n.parse::<u8>().ok())
+            .map(|n| n - 1);
+        s.push_str(&format!(
+            r#"<w:style w:type="paragraph" w:styleId="{}"><w:name w:val="{}"/><w:basedOn w:val="Normal"/>"#,
+            esc(&id),
+            esc(&name),
+        ));
+        s.push_str(&style_body_xml(d, lvl));
+        s.push_str("</w:style>");
+    }
+    // **本文が名乗る styleId は、定義が無くても置きます。**
+    // 定義が無いと読み手は Normal に落とすので、引用や見出しが本文と同じに
+    // 見えます(2026-08-18 に python-docx で確かめて見つけました)。
+    // テンプレートが何も言っていないスタイルなので中身は空 — 名乗りだけです
+    for (id, name, lvl) in [
+        ("Title", "Title", None),
+        ("Quote", "Quote", None),
+        ("Heading1", "heading 1", Some(0u8)),
+        ("Heading2", "heading 2", Some(1)),
+        ("Heading3", "heading 3", Some(2)),
+    ] {
+        if s.contains(&format!(r#"w:styleId="{id}""#)) {
+            continue;
+        }
+        let outline = lvl
+            .map(|n| format!(r#"<w:pPr><w:outlineLvl w:val="{n}"/></w:pPr>"#))
+            .unwrap_or_default();
+        s.push_str(&format!(
+            r#"<w:style w:type="paragraph" w:styleId="{id}"><w:name w:val="{name}"/><w:basedOn w:val="Normal"/>{outline}</w:style>"#
+        ));
+    }
+    s.push_str("</w:styles>");
+    s
+}
+
+/// スタイル1つの中身(`w:pPr` と `w:rPr`)。並びはスキーマの順
+fn style_body_xml(d: &kumihan::theme::StyleDef, outline: Option<u8>) -> String {
+    let mut p = String::new();
+    if let Some(sh) = &d.shade {
+        p.push_str(&format!(
+            r#"<w:shd w:val="clear" w:color="auto" w:fill="{}"/>"#,
+            esc(sh)
+        ));
+    }
+    let mut sp = String::new();
+    if d.space_before_pt > 0.0 {
+        sp.push_str(&format!(r#" w:before="{}""#, (d.space_before_pt * 20.0).round() as i64));
+    }
+    if d.space_after_pt > 0.0 {
+        sp.push_str(&format!(r#" w:after="{}""#, (d.space_after_pt * 20.0).round() as i64));
+    }
+    if let Some(ls) = d.line_spacing.filter(|v| *v > 0.0) {
+        sp.push_str(&format!(r#" w:line="{}" w:lineRule="auto""#, (ls * 240.0).round() as i64));
+    }
+    if !sp.is_empty() {
+        p.push_str(&format!("<w:spacing{sp}/>"));
+    }
+    // 1行目の字下げ。**全角の文字数 × 字の大きさ** を twips に
+    if let Some(ch) = d.first_line_chars.filter(|c| *c > 0.0) {
+        let pt = d.size_pt.unwrap_or(10.5);
+        let tw = (ch * pt * 20.0).round() as i64;
+        p.push_str(&format!(r#"<w:ind w:firstLine="{tw}"/>"#));
+    }
+    if let Some(a) = d.align {
+        p.push_str(&format!(r#"<w:jc w:val="{}"/>"#, a.as_docx()));
+    }
+    if let Some(n) = outline {
+        p.push_str(&format!(r#"<w:outlineLvl w:val="{n}"/>"#));
+    }
+    let mut r = String::new();
+    if let Some(f) = &d.font {
+        let f = esc(f);
+        r.push_str(&format!(
+            r#"<w:rFonts w:ascii="{f}" w:hAnsi="{f}" w:eastAsia="{f}" w:cs="{f}"/>"#
+        ));
+    }
+    if d.bold {
+        r.push_str("<w:b/>");
+    }
+    if d.italic {
+        r.push_str("<w:i/>");
+    }
+    if let Some(c) = &d.color {
+        r.push_str(&format!(r#"<w:color w:val="{}"/>"#, esc(c)));
+    }
+    if let Some(pt) = d.size_pt {
+        let half = (pt * 2.0).round() as i64;
+        r.push_str(&format!(r#"<w:sz w:val="{half}"/><w:szCs w:val="{half}"/>"#));
+    }
+    if d.underline {
+        r.push_str(r#"<w:u w:val="single"/>"#);
+    }
+    let mut out = String::new();
+    if !p.is_empty() {
+        out.push_str(&format!("<w:pPr>{p}</w:pPr>"));
+    }
+    if !r.is_empty() {
+        out.push_str(&format!("<w:rPr>{r}</w:rPr>"));
+    }
+    out
+}
 
 /// 文書を document.xml の本体にする。
 pub fn write_document_xml(doc: &Document) -> String {
@@ -888,6 +1068,22 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     original: Option<R>,
     dst: W,
 ) -> Result<(), String> {
+    write_with_theme(doc, original, None, dst)
+}
+
+/// テンプレートつきで保存する。`theme` を渡すと、その中身から
+/// `word/styles.xml` を作って入れる(渡さなければ今までどおり)。
+///
+/// **ネイティブ文書(.adoc)を docx で書き出すときに使います。** 本文は
+/// 意味だけ、見た目はスタイル定義、という分け方をそのまま docx に移した
+/// 形です。受け取った docx を保存し直すときは渡しません — 相手の
+/// スタイル定義を、こちらのテンプレートで上書きしないためです。
+pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
+    doc: &Document,
+    original: Option<R>,
+    theme: Option<&kumihan::theme::Theme>,
+    dst: W,
+) -> Result<(), String> {
     let mut zip = zip::ZipWriter::new(dst);
     let opts: zip::write::FileOptions<'_, ()> =
         zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
@@ -954,7 +1150,12 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 if name == "word/document.xml" {
                     continue;
                 }
+                // テンプレートを渡されたときは、原本のスタイル定義を
+                // 持ち越さずこちらで作り直す(下の styles_from_theme)
                 if name == "word/styles.xml" {
+                    if theme.is_some() {
+                        continue;
+                    }
                     orig_has_styles = true; // 原本の定義を持ち越す(下で作らない)
                 }
                 let mut buf = Vec::new();
@@ -1133,10 +1334,14 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         zip.write_all(cx.as_bytes()).map_err(|e| e.to_string())?;
     }
 
-    // まっさらの文書には最小のスタイル定義を入れる(STYLES_MIN の注のとおり)。
+    // スタイル定義。テンプレートがあればそこから作り、無ければ最小の物を
+    // 入れる(STYLES_MIN の注のとおり)。
     // このアプリで足したスタイルはその後ろに追記する
     if !orig_has_styles {
-        let mut s = STYLES_MIN.to_string();
+        let mut s = match theme {
+            Some(t) => styles_from_theme(t),
+            None => STYLES_MIN.to_string(),
+        };
         let add = styles_new_xml(doc, &s);
         if let Some(pnt) = s.rfind("</w:styles>") {
             s.insert_str(pnt, &add);
