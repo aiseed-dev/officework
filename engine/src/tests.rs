@@ -2350,6 +2350,22 @@ mod html_write_tests {
 
     /// **記入欄は form になる**(アプリビルダーの土台)。
     #[test]
+    /// **ラベル付きリストの値に入れた記入欄が消えない**(2026-08-18)。
+    /// 申込用紙は「氏名:: field:氏名[お名前]」の形で書くので、ここが
+    /// 落ちると用紙が空になる
+    #[test]
+    fn ラベル付きリストの値の記入欄が残る() {
+        let (doc, _) = crate::adoc::parse_full(
+            "= 申込\n\n氏名:: field:氏名[お名前]\n人数:: field:人数[人数]\n",
+        )
+        .expect("読めない");
+        let html = crate::html_write::body(&doc);
+        assert!(html.contains("<dl>"), "ラベル付きリストになっていない: {html}");
+        assert!(html.contains("name=\"氏名\""), "記入欄が消えた: {html}");
+        assert!(html.contains("name=\"人数\""), "記入欄が消えた: {html}");
+        assert_eq!(crate::html_write::fields(&doc).len(), 2);
+    }
+
     fn 記入欄がformになる() {
         use crate::doc::{CharFormat, Document, Paragraph, Run, Sdt, SdtKind};
         let mut d = Document::default();

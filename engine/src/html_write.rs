@@ -552,17 +552,38 @@ fn build(doc: &Document) -> (String, Ctx) {
         // 続いている間は1つの `dl` にまとめます(2026-08-18)
         if p.style_id.as_deref() == Some("説明のリスト") {
             let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
-            if let Some((項, 値)) = 字.split_once(":: ") {
+            if let Some((項, _)) = 字.split_once(":: ") {
                 close(&mut o, &mut list);
                 if !dl中 {
                     o.push_str("<dl>\n");
                     dl中 = true;
                 }
-                o.push_str(&format!(
-                    "  <dt>{}</dt><dd>{}</dd>\n",
-                    esc(項.trim()),
-                    esc(値.trim())
-                ));
+                // **値の側は run のまま出します**(2026-08-18)。字だけを
+                // 取ると、記入欄・リンク・ルビが消えます(申込用紙を
+                // 通して見つけました)
+                let 切れ目 = 項.len() + ":: ".len();
+                let mut 値の並び: Vec<Run> = Vec::new();
+                let mut at = 0usize;
+                for r in &p.runs {
+                    let 終 = at + r.text.len();
+                    // **字を持たない run(記入欄・脚注)を落とさない。**
+                    // 長さで切ると、切れ目にぴったり座っている物が消えます
+                    if 終 <= 切れ目 && at < 切れ目 {
+                        at = 終;
+                        continue;
+                    }
+                    let mut r2 = r.clone();
+                    if at < 切れ目 {
+                        r2.text = r.text[切れ目 - at..].to_string();
+                    }
+                    値の並び.push(r2);
+                    at = 終;
+                }
+                if let Some(first) = 値の並び.first_mut() {
+                    first.text = first.text.trim_start().to_string();
+                }
+                let 値 = runs_html(&値の並び, doc, &mut ctx);
+                o.push_str(&format!("  <dt>{}</dt><dd>{}</dd>\n", esc(項.trim()), 値));
                 continue;
             }
         }
