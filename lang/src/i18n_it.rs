@@ -1483,6 +1483,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("見出し1", "Titolo 1"),
     ("見出し2", "Titolo 2"),
     ("見出し3", "Titolo 3"),
+    ("見出し4", "Titolo 4"),
+    ("見出し5", "Titolo 5"),
     ("辞書", "dizionario"),
     ("モデル", "modello"),
     ("切り取り", "Taglia"),

@@ -1483,6 +1483,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("見出し1", "Judul 1"),
     ("見出し2", "Judul 2"),
     ("見出し3", "Judul 3"),
+    ("見出し4", "Judul 4"),
+    ("見出し5", "Judul 5"),
     ("辞書", "kamus"),
     ("モデル", "model"),
     ("切り取り", "Potong"),

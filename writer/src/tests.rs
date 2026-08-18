@@ -1992,6 +1992,30 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// **見出し4・5 をボタンから掛けられる**(2026-08-18)。
+    /// 掛けた段落は adoc で `=====` `======` になる
+    #[gpui::test]
+    fn 見出し4と5を掛けて保存できる(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-h45-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("見本.adoc");
+        std::fs::write(&path, "= 題\n\n一つ目です。\n\n二つ目です。\n").unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(path.clone());
+            // 「一つ目です。」の中にカーソルを置いて見出し4に
+            let at = this.doc.body_text().find("一つ目").expect("本文が無い");
+            this.ed.move_to(at + 3, false);
+            this.set_para_style(4);
+            this.save_to(path.clone());
+            let back = std::fs::read_to_string(&path).unwrap();
+            assert!(back.contains("===== 一つ目です。"), "見出し4 にならない:\n{back}");
+            assert!(back.contains("二つ目です。"), "他の段落が変わった:\n{back}");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// 筆を絵にしても、**本文の字は1文字も変わらない**
     #[gpui::test]
     fn 筆を絵にしても本文は変わらない(cx: &mut gpui::TestAppContext) {

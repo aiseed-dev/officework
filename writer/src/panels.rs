@@ -969,7 +969,8 @@ impl Writer {
                     SharedString::from(ui::tf!("いまの段落: {}", 着ている.clone())),
                 ));
                 // 役割のスタイル(段落そのものの意味)は先に、名前つきは後に
-                let mut names: Vec<String> = ["本文", "表題", "見出し1", "見出し2", "見出し3", "引用"]
+                let mut names: Vec<String> =
+                    ["本文", "表題", "見出し1", "見出し2", "見出し3", "見出し4", "見出し5", "引用"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect();
@@ -1571,6 +1572,10 @@ impl Writer {
                 (1, ui::t!("見出し1"), 16.0, true),
                 (2, ui::t!("見出し2"), 14.0, true),
                 (3, ui::t!("見出し3"), 12.5, true),
+                // 見出し4・5 は 2026-08-18 に足しました(AsciiDoc の
+                // `=====` `======` と同じ段です)
+                (4, ui::t!("見出し4"), 12.0, true),
+                (5, ui::t!("見出し5"), 11.5, true),
             ] {
                 let mut item = div()
                     .id(SharedString::from(format!("style-{n}")))

@@ -372,7 +372,8 @@ pub enum ParaStyle {
     /// 画面で直せて、紙にも Web にも出ます。`props.title` にも同じ字が入り、
     /// docx の文書の情報として往復します
     Title,
-    /// 見出し(1〜3)。docx の Heading1〜3 / outlineLvl
+    /// 見出し(1〜5)。docx の Heading1〜5 / outlineLvl。
+    /// AsciiDoc では `==`(1段)から `======`(5段)まで
     Heading(u8),
     /// 目次の行(1〜3)。docx の TOC1〜3(このアプリが目次を作った印)
     Toc(u8),

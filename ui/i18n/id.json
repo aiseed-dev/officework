@@ -5841,1934 +5841,1942 @@
  },
  {
   "i": 1460,
-  "t": "kamus"
+  "t": "Judul 4"
  },
  {
   "i": 1461,
-  "t": "model"
+  "t": "Judul 5"
  },
  {
   "i": 1462,
-  "t": "Potong"
+  "t": "kamus"
  },
  {
   "i": 1463,
-  "t": "Salin"
+  "t": "model"
  },
  {
   "i": 1464,
-  "t": "Tempel"
+  "t": "Potong"
  },
  {
   "i": 1465,
-  "t": "Pilih kata"
+  "t": "Salin"
  },
  {
   "i": 1466,
-  "t": "Pilih baris"
+  "t": "Tempel"
  },
  {
   "i": 1467,
-  "t": "Pilih semua"
+  "t": "Pilih kata"
  },
  {
   "i": 1468,
-  "t": "Rata kiri"
+  "t": "Pilih baris"
  },
  {
   "i": 1469,
-  "t": "Rata tengah"
+  "t": "Pilih semua"
  },
  {
   "i": 1470,
-  "t": "Rata kanan"
+  "t": "Rata kiri"
  },
  {
   "i": 1471,
-  "t": "Rata kiri-kanan"
+  "t": "Rata tengah"
  },
  {
   "i": 1472,
-  "t": "Cari dan ganti"
+  "t": "Rata kanan"
  },
  {
   "i": 1473,
-  "t": "Hitung karakter"
+  "t": "Rata kiri-kanan"
  },
  {
   "i": 1474,
-  "t": "Mata uang (simbolnya milik lembar; letaknya mengikuti bahasa antarmuka)"
+  "t": "Cari dan ganti"
  },
  {
   "i": 1475,
-  "t": "Mata uang diatur ke \"{}\" (kode: {})"
+  "t": "Hitung karakter"
  },
  {
   "i": 1476,
-  "t": "Yen (¥)"
+  "t": "Mata uang (simbolnya milik lembar; letaknya mengikuti bahasa antarmuka)"
  },
  {
   "i": 1477,
-  "t": "Dolar ($)"
+  "t": "Mata uang diatur ke \"{}\" (kode: {})"
  },
  {
   "i": 1478,
-  "t": "Euro (€)"
+  "t": "Yen (¥)"
  },
  {
   "i": 1479,
-  "t": "Pound (£)"
+  "t": "Dolar ($)"
  },
  {
   "i": 1480,
-  "t": "Won (₩)"
+  "t": "Euro (€)"
  },
  {
   "i": 1481,
-  "t": "Yuan (¥)"
+  "t": "Pound (£)"
  },
  {
   "i": 1482,
-  "t": "Tanpa simbol"
+  "t": "Won (₩)"
  },
  {
   "i": 1483,
-  "t": "Mata uang…"
+  "t": "Yuan (¥)"
  },
  {
   "i": 1484,
-  "t": "Bentuk tanggal (pilihan Anda tercatat dalam berkas)"
+  "t": "Tanpa simbol"
  },
  {
   "i": 1485,
-  "t": "Bentuk tanggal diatur ke \"{}\" (kode: {})"
+  "t": "Mata uang…"
  },
  {
   "i": 1486,
-  "t": "Tanggal pendek"
+  "t": "Bentuk tanggal (pilihan Anda tercatat dalam berkas)"
  },
  {
   "i": 1487,
-  "t": "Tanggal panjang"
+  "t": "Bentuk tanggal diatur ke \"{}\" (kode: {})"
  },
  {
   "i": 1488,
-  "t": "Bulan dan tahun"
+  "t": "Tanggal pendek"
  },
  {
   "i": 1489,
-  "t": "Hanya hari"
+  "t": "Tanggal panjang"
  },
  {
   "i": 1490,
-  "t": "Tanggal…"
+  "t": "Bulan dan tahun"
  },
  {
   "i": 1491,
-  "t": "Pilih rentang persegi yang memuat nilai masukan dan rumusnya (lebih besar dari 2 baris 2 kolom)"
+  "t": "Hanya hari"
  },
  {
   "i": 1492,
-  "t": "Dengan dua variabel, pojok {} harus berupa rumus"
+  "t": "Tanggal…"
  },
  {
   "i": 1493,
-  "t": "Ketik sel masukannya (contoh: B2)"
+  "t": "Pilih rentang persegi yang memuat nilai masukan dan rumusnya (lebih besar dari 2 baris 2 kolom)"
  },
  {
   "i": 1494,
-  "t": "Tidak ada tempat yang perlu diisi (rumus di baris atas, nilai masukan di kolom kiri; dengan dua variabel, rumusnya di pojok)"
+  "t": "Dengan dua variabel, pojok {} harus berupa rumus"
  },
  {
   "i": 1495,
-  "t": "Tabel data: {} jawaban sudah diisi ({}. Ini nilai saat ini, jadi jalankan lagi kalau masukannya diubah)"
+  "t": "Ketik sel masukannya (contoh: B2)"
  },
  {
   "i": 1496,
-  "t": "Dua variabel"
+  "t": "Tidak ada tempat yang perlu diisi (rumus di baris atas, nilai masukan di kolom kiri; dengan dua variabel, rumusnya di pojok)"
  },
  {
   "i": 1497,
-  "t": "Satu variabel"
+  "t": "Tabel data: {} jawaban sudah diisi ({}. Ini nilai saat ini, jadi jalankan lagi kalau masukannya diubah)"
  },
  {
   "i": 1498,
-  "t": "Baru saja dibuka (tunggu sebentar sampai jendelanya muncul)"
+  "t": "Dua variabel"
  },
  {
   "i": 1499,
-  "t": "Tidak bisa membuka (xdg-open tidak ada): {}"
+  "t": "Satu variabel"
  },
  {
   "i": 1500,
-  "t": "Angka"
+  "t": "Baru saja dibuka (tunggu sebentar sampai jendelanya muncul)"
  },
  {
   "i": 1501,
-  "t": "Ya"
+  "t": "Tidak bisa membuka (xdg-open tidak ada): {}"
  },
  {
   "i": 1502,
-  "t": "Tidak"
+  "t": "Angka"
  },
  {
   "i": 1503,
-  "t": "Ya/Tidak"
+  "t": "Ya"
  },
  {
   "i": 1504,
-  "t": "Properti khusus"
+  "t": "Tidak"
  },
  {
   "i": 1505,
-  "t": "Tambah properti"
+  "t": "Ya/Tidak"
  },
  {
   "i": 1506,
-  "t": "+ Tambah penulis"
+  "t": "Properti khusus"
  },
  {
   "i": 1507,
-  "t": "Tambah penulis — satu nama"
+  "t": "Tambah properti"
  },
  {
   "i": 1508,
-  "t": "Penulis ditambahkan (masuk ke xlsx saat disimpan)"
+  "t": "+ Tambah penulis"
  },
  {
   "i": 1509,
-  "t": "Penulis \"{}\" dihapus"
+  "t": "Tambah penulis — satu nama"
  },
  {
   "i": 1510,
-  "t": "\"{}\" sudah termasuk penulis"
+  "t": "Penulis ditambahkan (masuk ke xlsx saat disimpan)"
  },
  {
   "i": 1511,
-  "t": "Tambah properti 1/3 — nama"
+  "t": "Penulis \"{}\" dihapus"
  },
  {
   "i": 1512,
-  "t": "Tambah properti 2/3 — tipe (teks / angka / tanggal / ya-tidak. Enter kosong = teks)"
+  "t": "\"{}\" sudah termasuk penulis"
  },
  {
   "i": 1513,
-  "t": "Tambah properti 3/3 — nilai {}"
+  "t": "Tambah properti 1/3 — nama"
  },
  {
   "i": 1514,
-  "t": "Nama kosong (tidak ada yang ditambahkan)"
+  "t": "Tambah properti 2/3 — tipe (teks / angka / tanggal / ya-tidak. Enter kosong = teks)"
  },
  {
   "i": 1515,
-  "t": "\"{}\" tidak terbaca sebagai angka (tidak ada yang ditambahkan)"
+  "t": "Tambah properti 3/3 — nilai {}"
  },
  {
   "i": 1516,
-  "t": "Properti \"{}\" dicatat (masuk ke xlsx saat disimpan)"
+  "t": "Nama kosong (tidak ada yang ditambahkan)"
  },
  {
   "i": 1517,
-  "t": "Properti \"{}\" dihapus"
+  "t": "\"{}\" tidak terbaca sebagai angka (tidak ada yang ditambahkan)"
  },
  {
   "i": 1518,
-  "t": "Buku kerja ditutup (sekarang buku kerja baru)"
+  "t": "Properti \"{}\" dicatat (masuk ke xlsx saat disimpan)"
  },
  {
   "i": 1519,
-  "t": "Tidak ada yang dicetak (semua lembar tersembunyi)"
+  "t": "Properti \"{}\" dihapus"
  },
  {
   "i": 1520,
-  "t": "Kategori bentuk"
+  "t": "Buku kerja ditutup (sekarang buku kerja baru)"
  },
  {
   "i": 1521,
-  "t": "Bentuk dasar"
+  "t": "Tidak ada yang dicetak (semua lembar tersembunyi)"
  },
  {
   "i": 1522,
-  "t": "Panah blok"
+  "t": "Kategori bentuk"
  },
  {
   "i": 1523,
-  "t": "Bentuk persamaan"
+  "t": "Bentuk dasar"
  },
  {
   "i": 1524,
-  "t": "Diagram alir"
+  "t": "Panah blok"
  },
  {
   "i": 1525,
-  "t": "Bintang dan pita"
+  "t": "Bentuk persamaan"
  },
  {
   "i": 1526,
-  "t": "Balon teks"
+  "t": "Diagram alir"
  },
  {
   "i": 1527,
-  "t": "Terapkan pola…"
+  "t": "Bintang dan pita"
  },
  {
   "i": 1528,
-  "t": "Gradasi…"
+  "t": "Balon teks"
  },
  {
   "i": 1529,
-  "t": "Warna latar pola…"
+  "t": "Terapkan pola…"
  },
  {
   "i": 1530,
-  "t": "Gradasi"
+  "t": "Gradasi…"
  },
  {
   "i": 1531,
-  "t": "Pola"
+  "t": "Warna latar pola…"
  },
  {
   "i": 1532,
-  "t": "Sel ini tidak berpola (pilih dulu di \"Terapkan pola\")"
+  "t": "Gradasi"
  },
  {
   "i": 1533,
-  "t": "Pola diatur ke \"{}\" (latar depan memakai warna isian saat ini; ubah latarnya di \"Warna latar pola\")"
+  "t": "Pola"
  },
  {
   "i": 1534,
-  "t": "Gradasi diatur ke \"{}\" (dari warna isian saat ini ke putih)"
+  "t": "Sel ini tidak berpola (pilih dulu di \"Terapkan pola\")"
  },
  {
   "i": 1535,
-  "t": "Latar pola kembali putih"
+  "t": "Pola diatur ke \"{}\" (latar depan memakai warna isian saat ini; ubah latarnya di \"Warna latar pola\")"
  },
  {
   "i": 1536,
-  "t": "Latar pola diatur ke {}"
+  "t": "Gradasi diatur ke \"{}\" (dari warna isian saat ini ke putih)"
  },
  {
   "i": 1537,
-  "t": "Segitiga"
+  "t": "Latar pola kembali putih"
  },
  {
   "i": 1538,
-  "t": "Segitiga siku-siku"
+  "t": "Latar pola diatur ke {}"
  },
  {
   "i": 1539,
-  "t": "Jajaran genjang"
+  "t": "Segitiga"
  },
  {
   "i": 1540,
-  "t": "Trapesium"
+  "t": "Segitiga siku-siku"
  },
  {
   "i": 1541,
-  "t": "Segi lima"
+  "t": "Jajaran genjang"
  },
  {
   "i": 1542,
-  "t": "Segi enam"
+  "t": "Trapesium"
  },
  {
   "i": 1543,
-  "t": "Segi delapan"
+  "t": "Segi lima"
  },
  {
   "i": 1544,
-  "t": "Salib"
+  "t": "Segi enam"
  },
  {
   "i": 1545,
-  "t": "Panah kiri"
+  "t": "Segi delapan"
  },
  {
   "i": 1546,
-  "t": "Panah atas"
+  "t": "Salib"
  },
  {
   "i": 1547,
-  "t": "Panah bawah"
+  "t": "Panah kiri"
  },
  {
   "i": 1548,
-  "t": "Panah kiri-kanan"
+  "t": "Panah atas"
  },
  {
   "i": 1549,
-  "t": "Panah atas-bawah"
+  "t": "Panah bawah"
  },
  {
   "i": 1550,
-  "t": "Tanda tambah"
+  "t": "Panah kiri-kanan"
  },
  {
   "i": 1551,
-  "t": "Tanda kurang"
+  "t": "Panah atas-bawah"
  },
  {
   "i": 1552,
-  "t": "Tanda kali"
+  "t": "Tanda tambah"
  },
  {
   "i": 1553,
-  "t": "Tanda sama dengan"
+  "t": "Tanda kurang"
  },
  {
   "i": 1554,
-  "t": "Tanda tidak sama dengan"
+  "t": "Tanda kali"
  },
  {
   "i": 1555,
-  "t": "Proses"
+  "t": "Tanda sama dengan"
  },
  {
   "i": 1556,
-  "t": "Keputusan"
+  "t": "Tanda tidak sama dengan"
  },
  {
   "i": 1557,
-  "t": "Terminator"
+  "t": "Proses"
  },
  {
   "i": 1558,
-  "t": "Dokumen"
+  "t": "Keputusan"
  },
  {
   "i": 1559,
-  "t": "Konektor"
+  "t": "Terminator"
  },
  {
   "i": 1560,
-  "t": "Bintang 4 sudut"
+  "t": "Dokumen"
  },
  {
   "i": 1561,
-  "t": "Bintang 5 sudut"
+  "t": "Konektor"
  },
  {
   "i": 1562,
-  "t": "Bintang 6 sudut"
+  "t": "Bintang 4 sudut"
  },
  {
   "i": 1563,
-  "t": "Bintang 8 sudut"
+  "t": "Bintang 5 sudut"
  },
  {
   "i": 1564,
-  "t": "Balon persegi"
+  "t": "Bintang 6 sudut"
  },
  {
   "i": 1565,
-  "t": "Balon oval"
+  "t": "Bintang 8 sudut"
  },
  {
   "i": 1566,
-  "t": "Arsir 6,25%"
+  "t": "Balon persegi"
  },
  {
   "i": 1567,
-  "t": "Arsir 12,5%"
+  "t": "Balon oval"
  },
  {
   "i": 1568,
-  "t": "Arsir 25%"
+  "t": "Arsir 6,25%"
  },
  {
   "i": 1569,
-  "t": "Arsir 50%"
+  "t": "Arsir 12,5%"
  },
  {
   "i": 1570,
-  "t": "Garis diagonal"
+  "t": "Arsir 25%"
  },
  {
   "i": 1571,
-  "t": "Papan catur"
+  "t": "Arsir 50%"
  },
  {
   "i": 1572,
-  "t": "Mendatar (kiri ke kanan)"
+  "t": "Garis diagonal"
  },
  {
   "i": 1573,
-  "t": "Tegak (atas ke bawah)"
+  "t": "Papan catur"
  },
  {
   "i": 1574,
-  "t": "Diagonal (kiri atas ke kanan bawah)"
+  "t": "Mendatar (kiri ke kanan)"
  },
  {
   "i": 1575,
-  "t": "Diagonal (kiri bawah ke kanan atas)"
+  "t": "Tegak (atas ke bawah)"
  },
  {
   "i": 1576,
-  "t": "Warna latar pola — enam digit heksadesimal RRGGBB (mis. FFFFFF. Enter kosong = putih)"
+  "t": "Diagonal (kiri atas ke kanan bawah)"
  },
  {
   "i": 1577,
-  "t": "Teks di dalam"
+  "t": "Diagonal (kiri bawah ke kanan atas)"
  },
  {
   "i": 1578,
-  "t": "Perataan"
+  "t": "Warna latar pola — enam digit heksadesimal RRGGBB (mis. FFFFFF. Enter kosong = putih)"
  },
  {
   "i": 1579,
-  "t": "Perataan teks diubah"
+  "t": "Teks di dalam"
  },
  {
   "i": 1580,
-  "t": "Posisi tegak"
+  "t": "Perataan"
  },
  {
   "i": 1581,
-  "t": "Posisi tegak teks diubah"
+  "t": "Perataan teks diubah"
  },
  {
   "i": 1582,
-  "t": "•"
+  "t": "Posisi tegak"
  },
  {
   "i": 1583,
-  "t": "1."
+  "t": "Posisi tegak teks diubah"
  },
  {
   "i": 1584,
-  "t": "Daftar diubah"
+  "t": "•"
  },
  {
   "i": 1585,
-  "t": "Efek"
+  "t": "1."
  },
  {
   "i": 1586,
-  "t": "Tulisan tegak dialihkan"
+  "t": "Daftar diubah"
  },
  {
   "i": 1587,
-  "t": "Coret"
+  "t": "Efek"
  },
  {
   "i": 1588,
-  "t": "Coret dialihkan"
+  "t": "Tulisan tegak dialihkan"
  },
  {
   "i": 1589,
-  "t": "Superskrip"
+  "t": "Coret"
  },
  {
   "i": 1590,
-  "t": "Superskrip dialihkan"
+  "t": "Coret dialihkan"
  },
  {
   "i": 1591,
-  "t": "Subskrip"
+  "t": "Superskrip"
  },
  {
   "i": 1592,
-  "t": "Sel ini tidak punya komentar"
+  "t": "Superskrip dialihkan"
  },
  {
   "i": 1593,
-  "t": "Ditandai selesai"
+  "t": "Subskrip"
  },
  {
   "i": 1594,
-  "t": "Tanda selesai dihapus"
+  "t": "Sel ini tidak punya komentar"
  },
  {
   "i": 1595,
-  "t": "Balasan kosong (tidak ada yang ditambahkan)"
+  "t": "Ditandai selesai"
  },
  {
   "i": 1596,
-  "t": "Membalas komentar di {} (tersimpan saat disimpan)"
+  "t": "Tanda selesai dihapus"
  },
  {
   "i": 1597,
-  "t": "Tambah balasan — masuk ke akhir utas ini"
+  "t": "Balasan kosong (tidak ada yang ditambahkan)"
  },
  {
   "i": 1598,
-  "t": "Penanda titik"
+  "t": "Membalas komentar di {} (tersimpan saat disimpan)"
  },
  {
   "i": 1599,
-  "t": "Penanda"
+  "t": "Tambah balasan — masuk ke akhir utas ini"
  },
  {
   "i": 1600,
-  "t": "Tertinggi"
+  "t": "Penanda titik"
  },
  {
   "i": 1601,
-  "t": "Terendah"
+  "t": "Penanda"
  },
  {
   "i": 1602,
-  "t": "Pertama"
+  "t": "Tertinggi"
  },
  {
   "i": 1603,
-  "t": "Terakhir"
+  "t": "Terendah"
  },
  {
   "i": 1604,
-  "t": "Penanda diubah"
+  "t": "Pertama"
  },
  {
   "i": 1605,
-  "t": "Tidak ada penanganan sel kosong atau sumbu bersama (garis ini membekukan angka saat disisipkan)"
+  "t": "Terakhir"
  },
  {
   "i": 1606,
-  "t": "Rumus disembunyikan (tidak muncul di bilah rumus; nilainya tetap terlihat)"
+  "t": "Penanda diubah"
  },
  {
   "i": 1607,
-  "t": "Ditandai untuk menyembunyikan rumus (berlaku setelah lembar dilindungi)"
+  "t": "Tidak ada penanganan sel kosong atau sumbu bersama (garis ini membekukan angka saat disisipkan)"
  },
  {
   "i": 1608,
-  "t": "Rumus tidak lagi disembunyikan"
+  "t": "Rumus disembunyikan (tidak muncul di bilah rumus; nilainya tetap terlihat)"
  },
  {
   "i": 1609,
-  "t": "(rumus disembunyikan)"
+  "t": "Ditandai untuk menyembunyikan rumus (berlaku setelah lembar dilindungi)"
  },
  {
   "i": 1610,
-  "t": "Keluar dari penyuntingan titik"
+  "t": "Rumus tidak lagi disembunyikan"
  },
  {
   "i": 1611,
-  "t": "Bentuk ini tidak punya titik sudut (untuk garis dan bentuk bebas)"
+  "t": "(rumus disembunyikan)"
  },
  {
   "i": 1612,
-  "t": "Penyuntingan titik: seret titik / Ctrl+klik untuk menambah atau menghapus / klik ganda untuk ganti sudut dan lengkung"
+  "t": "Keluar dari penyuntingan titik"
  },
  {
   "i": 1613,
-  "t": "Tidak bisa kurang lagi (garis perlu dua titik)"
+  "t": "Bentuk ini tidak punya titik sudut (untuk garis dan bentuk bebas)"
  },
  {
   "i": 1614,
-  "t": "Satu titik sudut dihapus"
+  "t": "Penyuntingan titik: seret titik / Ctrl+klik untuk menambah atau menghapus / klik ganda untuk ganti sudut dan lengkung"
  },
  {
   "i": 1615,
-  "t": "Satu titik sudut ditambahkan"
+  "t": "Tidak bisa kurang lagi (garis perlu dua titik)"
  },
  {
   "i": 1616,
-  "t": "Titik ini jadi sudut"
+  "t": "Satu titik sudut dihapus"
  },
  {
   "i": 1617,
-  "t": "Titik ini jadi melengkung"
+  "t": "Satu titik sudut ditambahkan"
  },
  {
   "i": 1618,
-  "t": "Titik dipegang (Ctrl+klik untuk menambah/menghapus)"
+  "t": "Titik ini jadi sudut"
  },
  {
   "i": 1619,
-  "t": "Bentuk bebas (dari titik)"
+  "t": "Titik ini jadi melengkung"
  },
  {
   "i": 1620,
-  "t": "Pilih dua bentuk (Ctrl+klik untuk menambah)"
+  "t": "Titik dipegang (Ctrl+klik untuk menambah/menghapus)"
  },
  {
   "i": 1621,
-  "t": "Bentuk ini tidak bisa digabung (garis luarnya tidak bisa diambil sebagai titik)"
+  "t": "Bentuk bebas (dari titik)"
  },
  {
   "i": 1622,
-  "t": "Tidak ada yang tersisa — keduanya tidak bertumpuk"
+  "t": "Pilih dua bentuk (Ctrl+klik untuk menambah)"
  },
  {
   "i": 1623,
-  "t": "Gabung"
+  "t": "Bentuk ini tidak bisa digabung (garis luarnya tidak bisa diambil sebagai titik)"
  },
  {
   "i": 1624,
-  "t": "Iris"
+  "t": "Tidak ada yang tersisa — keduanya tidak bertumpuk"
  },
  {
   "i": 1625,
-  "t": "Kurangi"
+  "t": "Gabung"
  },
  {
   "i": 1626,
-  "t": "{} selesai (diubah jadi garis luar, jadi bentuk asli dan putarannya tidak bisa dikembalikan)"
+  "t": "Iris"
  },
  {
   "i": 1627,
-  "t": "Nama “{}” = {} (hanya di lembar ini)"
+  "t": "Kurangi"
  },
  {
   "i": 1628,
-  "t": "Nama “{}” = {} (dari lembar mana pun)"
+  "t": "{} selesai (diubah jadi garis luar, jadi bentuk asli dan putarannya tidak bisa dikembalikan)"
  },
  {
   "i": 1629,
-  "t": "Lingkup nama “{}” = {}"
+  "t": "Nama “{}” = {} (hanya di lembar ini)"
  },
  {
   "i": 1630,
-  "t": "Seluruh buku kerja (dari lembar mana pun)"
+  "t": "Nama “{}” = {} (dari lembar mana pun)"
  },
  {
   "i": 1631,
-  "t": "Hanya lembar ini"
+  "t": "Lingkup nama “{}” = {}"
  },
  {
   "i": 1632,
-  "t": "Tampilkan daftar komentar"
+  "t": "Seluruh buku kerja (dari lembar mana pun)"
  },
  {
   "i": 1633,
-  "t": "Tutup daftar komentar"
+  "t": "Hanya lembar ini"
  },
  {
   "i": 1634,
-  "t": "Tampilkan catatan pada sel"
+  "t": "Tampilkan daftar komentar"
  },
  {
   "i": 1635,
-  "t": "Sembunyikan catatan pada sel"
+  "t": "Tutup daftar komentar"
  },
  {
   "i": 1636,
-  "t": "Komentar pada sel ini ({})"
+  "t": "Tampilkan catatan pada sel"
  },
  {
   "i": 1637,
-  "t": "Komentar saya"
+  "t": "Sembunyikan catatan pada sel"
  },
  {
   "i": 1638,
-  "t": "Semua komentar ({} di seluruh buku kerja)"
+  "t": "Komentar pada sel ini ({})"
  },
  {
   "i": 1639,
-  "t": "Pilih seberapa jauh yang dihapus (semuanya bisa dibatalkan dengan Ctrl+Z)"
+  "t": "Komentar saya"
  },
  {
   "i": 1640,
-  "t": "Daftar komentar dibuka (seluruh buku kerja; klik satu baris untuk melompat ke tempatnya)"
+  "t": "Semua komentar ({} di seluruh buku kerja)"
  },
  {
   "i": 1641,
-  "t": "Daftar komentar ditutup"
+  "t": "Pilih seberapa jauh yang dihapus (semuanya bisa dibatalkan dengan Ctrl+Z)"
  },
  {
   "i": 1642,
-  "t": "Anda tetap tanpa nama (komentar yang Anda tulis mulai sekarang tidak mencantumkan nama)"
+  "t": "Daftar komentar dibuka (seluruh buku kerja; klik satu baris untuk melompat ke tempatnya)"
  },
  {
   "i": 1643,
-  "t": "Komentar yang Anda tulis mulai sekarang akan ditandatangani “{}” (yang sudah ditulis tidak berubah)"
+  "t": "Daftar komentar ditutup"
  },
  {
   "i": 1644,
-  "t": "Komentar pada {} dihapus (Ctrl+Z mengembalikannya)"
+  "t": "Anda tetap tanpa nama (komentar yang Anda tulis mulai sekarang tidak mencantumkan nama)"
  },
  {
   "i": 1645,
-  "t": "Tanda tangan belum ditetapkan (isi “Tanda tangan komentar” di pengaturan lanjutan agar Anda bisa menghapus hanya komentar Anda sendiri)"
+  "t": "Komentar yang Anda tulis mulai sekarang akan ditandatangani “{}” (yang sudah ditulis tidak berubah)"
  },
  {
   "i": 1646,
-  "t": "Tidak ada komentar dari {}"
+  "t": "Komentar pada {} dihapus (Ctrl+Z mengembalikannya)"
  },
  {
   "i": 1647,
-  "t": "Menghapus {} tulisan Anda sendiri ({} utas terhapus seluruhnya). Balasan orang lain tetap dipertahankan. Ctrl+Z mengembalikannya"
+  "t": "Tanda tangan belum ditetapkan (isi “Tanda tangan komentar” di pengaturan lanjutan agar Anda bisa menghapus hanya komentar Anda sendiri)"
  },
  {
   "i": 1648,
-  "t": "Buku kerja ini tidak memiliki komentar"
+  "t": "Tidak ada komentar dari {}"
  },
  {
   "i": 1649,
-  "t": "Menghapus seluruh {} komentar di buku kerja ini (Ctrl+Z mengembalikannya)"
+  "t": "Menghapus {} tulisan Anda sendiri ({} utas terhapus seluruhnya). Balasan orang lain tetap dipertahankan. Ctrl+Z mengembalikannya"
  },
  {
   "i": 1650,
-  "t": "Tempat"
+  "t": "Buku kerja ini tidak memiliki komentar"
  },
  {
   "i": 1651,
-  "t": "Penulis"
+  "t": "Menghapus seluruh {} komentar di buku kerja ini (Ctrl+Z mengembalikannya)"
  },
  {
   "i": 1652,
-  "t": "Status"
+  "t": "Tempat"
  },
  {
   "i": 1653,
-  "t": "Tanda tangan komentar"
+  "t": "Penulis"
  },
  {
   "i": 1654,
-  "t": "Tanda tangan komentar — nama yang ditinggalkan (Enter kosong = tanpa nama)"
+  "t": "Status"
  },
  {
   "i": 1655,
-  "t": "(tanpa nama)"
+  "t": "Tanda tangan komentar"
  },
  {
   "i": 1656,
-  "t": "{} komentar"
+  "t": "Tanda tangan komentar — nama yang ditinggalkan (Enter kosong = tanpa nama)"
  },
  {
   "i": 1657,
-  "t": "Diurutkan menurut {}"
+  "t": "(tanpa nama)"
  },
  {
   "i": 1658,
-  "t": "Buku kerja ini tidak memiliki komentar (tambahkan lewat “Tambah komentar” pada menu klik kanan)"
+  "t": "{} komentar"
  },
  {
   "i": 1659,
-  "t": "{} balasan"
+  "t": "Diurutkan menurut {}"
  },
  {
   "i": 1660,
-  "t": "✓ Terselesaikan"
+  "t": "Buku kerja ini tidak memiliki komentar (tambahkan lewat “Tambah komentar” pada menu klik kanan)"
  },
  {
   "i": 1661,
-  "t": "Pilih kolom untuk slicer (sebanyak yang Anda mau; tekan ☑ untuk menutupnya; tampilan saja, datanya tidak berubah)"
+  "t": "{} balasan"
  },
  {
   "i": 1662,
-  "t": "Slicer kolom {} ditutup"
+  "t": "✓ Terselesaikan"
  },
  {
   "i": 1663,
-  "t": "Pengaturan slicer"
+  "t": "Pilih kolom untuk slicer (sebanyak yang Anda mau; tekan ☑ untuk menutupnya; tampilan saja, datanya tidak berubah)"
  },
  {
   "i": 1664,
-  "t": "Tinggi"
+  "t": "Slicer kolom {} ditutup"
  },
  {
   "i": 1665,
-  "t": "Kunci rasio"
+  "t": "Pengaturan slicer"
  },
  {
   "i": 1666,
-  "t": "Aktif"
+  "t": "Tinggi"
  },
  {
   "i": 1667,
-  "t": "Kolom tombol"
+  "t": "Kunci rasio"
  },
  {
   "i": 1668,
-  "t": "Posisi"
+  "t": "Aktif"
  },
  {
   "i": 1669,
-  "t": "Otomatis (dari kanan)"
+  "t": "Kolom tombol"
  },
  {
   "i": 1670,
-  "t": "Kembalikan ke posisi otomatis"
+  "t": "Posisi"
  },
  {
   "i": 1671,
-  "t": "Posisi dikembalikan ke otomatis (dari kanan)"
+  "t": "Otomatis (dari kanan)"
  },
  {
   "i": 1672,
-  "t": "Ukuran: {}×{}px"
+  "t": "Kembalikan ke posisi otomatis"
  },
  {
   "i": 1673,
-  "t": "Tarik untuk memindahkan (gunakan “Kembalikan ke posisi otomatis” di pengaturan untuk mengembalikannya ke barisan)"
+  "t": "Posisi dikembalikan ke otomatis (dari kanan)"
  },
  {
   "i": 1674,
-  "t": "Tarik judulnya untuk memindahkan. Ukuran dan posisi hanya mengubah tampilan; data yang tersimpan tidak berubah"
+  "t": "Ukuran: {}×{}px"
  },
  {
   "i": 1675,
-  "t": "Koreksi otomatis matematika"
+  "t": "Tarik untuk memindahkan (gunakan “Kembalikan ke posisi otomatis” di pengaturan untuk mengembalikannya ke barisan)"
  },
  {
   "i": 1676,
-  "t": "Aktif (ketik \\alpha menjadi α)"
+  "t": "Tarik judulnya untuk memindahkan. Ukuran dan posisi hanya mengubah tampilan; data yang tersimpan tidak berubah"
  },
  {
   "i": 1677,
-  "t": "Koreksi otomatis matematika: aktif (simbol muncul saat Anda mengetik pemisah; Backspace mengembalikan ejaannya)"
+  "t": "Koreksi otomatis matematika"
  },
  {
   "i": 1678,
-  "t": "Koreksi otomatis matematika: nonaktif (yang Anda ketik tetap seperti itu)"
+  "t": "Aktif (ketik \\alpha menjadi α)"
  },
  {
   "i": 1679,
-  "t": "{} diubah menjadi simbol (Backspace mengembalikan ejaannya)"
+  "t": "Koreksi otomatis matematika: aktif (simbol muncul saat Anda mengetik pemisah; Backspace mengembalikan ejaannya)"
  },
  {
   "i": 1680,
-  "t": "Tips tombol: ketik satu huruf untuk memilih tab, lalu satu lagi untuk menekan tombol (Esc untuk berhenti)"
+  "t": "Koreksi otomatis matematika: nonaktif (yang Anda ketik tetap seperti itu)"
  },
  {
   "i": 1681,
-  "t": "Tips tombol ditutup"
+  "t": "{} diubah menjadi simbol (Backspace mengembalikan ejaannya)"
  },
  {
   "i": 1682,
-  "t": "Tab {} (ketik satu huruf untuk menekan tombol; Esc untuk berhenti)"
+  "t": "Tips tombol: ketik satu huruf untuk memilih tab, lalu satu lagi untuk menekan tombol (Esc untuk berhenti)"
  },
  {
   "i": 1683,
-  "t": "Huruf itu tidak ada (“{}”)"
+  "t": "Tips tombol ditutup"
  },
  {
   "i": 1684,
-  "t": "Kolom dipilih (Shift+Spasi untuk baris)"
+  "t": "Tab {} (ketik satu huruf untuk menekan tombol; Esc untuk berhenti)"
  },
  {
   "i": 1685,
-  "t": "Baris dipilih (Ctrl+Spasi untuk kolom)"
+  "t": "Huruf itu tidak ada (“{}”)"
  },
  {
   "i": 1686,
-  "t": "key.{} di pengaturan menyebut aksi yang tidak dikenal"
+  "t": "Kolom dipilih (Shift+Spasi untuk baris)"
  },
  {
   "i": 1687,
-  "t": "Pintasan untuk key.{} di pengaturan tidak terbaca: {}"
+  "t": "Baris dipilih (Ctrl+Spasi untuk kolom)"
  },
  {
   "i": 1688,
-  "t": "Pintasan {} diperebutkan oleh {} dan {} ({} yang menang)"
+  "t": "key.{} di pengaturan menyebut aksi yang tidak dikenal"
  },
  {
   "i": 1689,
-  "t": "Ada perubahan yang belum disimpan — Ctrl+S untuk menyimpan, Esc sekali lagi untuk membuang dan menutup"
+  "t": "Pintasan untuk key.{} di pengaturan tidak terbaca: {}"
  },
  {
   "i": 1690,
-  "t": "Ctrl+S simpan (fungsi sel dihitung ulang saat disimpan) / Esc tutup / Tab indentasi"
+  "t": "Pintasan {} diperebutkan oleh {} dan {} ({} yang menang)"
  },
  {
   "i": 1691,
-  "t": "Ketik untuk menyaring"
+  "t": "Ada perubahan yang belum disimpan — Ctrl+S untuk menyimpan, Esc sekali lagi untuk membuang dan menutup"
  },
  {
   "i": 1692,
-  "t": "Tidak ada di daftar (tekan Enter untuk memakai apa adanya)"
+  "t": "Ctrl+S simpan (fungsi sel dihitung ulang saat disimpan) / Esc tutup / Tab indentasi"
  },
  {
   "i": 1693,
-  "t": "Baris pertama (tidak ada baris di atas untuk disalin)"
+  "t": "Ketik untuk menyaring"
  },
  {
   "i": 1694,
-  "t": "Kolom A (tidak ada kolom di kiri untuk disalin)"
+  "t": "Tidak ada di daftar (tekan Enter untuk memakai apa adanya)"
  },
  {
   "i": 1695,
-  "t": "Seret ke bawah atau kanan untuk menyalin (klik dua kali: sepanjang kolom tetangga)"
+  "t": "Baris pertama (tidak ada baris di atas untuk disalin)"
  },
  {
   "i": 1696,
-  "t": "Tidak ada kolom tetangga sebagai acuan panjang (kiri dan kanan kosong)"
+  "t": "Kolom A (tidak ada kolom di kiri untuk disalin)"
  },
  {
   "i": 1697,
-  "t": "{} disalin ke {}"
+  "t": "Seret ke bawah atau kanan untuk menyalin (klik dua kali: sepanjang kolom tetangga)"
  },
  {
   "i": 1698,
-  "t": "{} sel ditempel (beserta formatnya)"
+  "t": "Tidak ada kolom tetangga sebagai acuan panjang (kiri dan kanan kosong)"
  },
  {
   "i": 1699,
-  "t": "{} sel ditempel (teks dari aplikasi lain, format dibiarkan)"
+  "t": "{} disalin ke {}"
  },
  {
   "i": 1700,
-  "t": "Seluruh lembar dipilih"
+  "t": "{} sel ditempel (beserta formatnya)"
  },
  {
   "i": 1701,
-  "t": "Kolom {} dipilih (seluruh kolom)"
+  "t": "{} sel ditempel (teks dari aplikasi lain, format dibiarkan)"
  },
  {
   "i": 1702,
-  "t": "Kolom {}–{} dipilih (seluruh kolom)"
+  "t": "Seluruh lembar dipilih"
  },
  {
   "i": 1703,
-  "t": "Baris {} dipilih (seluruh baris)"
+  "t": "Kolom {} dipilih (seluruh kolom)"
  },
  {
   "i": 1704,
-  "t": "Baris {}–{} dipilih (seluruh baris)"
+  "t": "Kolom {}–{} dipilih (seluruh kolom)"
  },
  {
   "i": 1705,
-  "t": "Disimpan ke {} (teks polos)"
+  "t": "Baris {} dipilih (seluruh baris)"
  },
  {
   "i": 1706,
-  "t": "{} ({} baris) — dibuka sebagai teks polos; akan disimpan sebagai teks polos juga"
+  "t": "Baris {}–{} dipilih (seluruh baris)"
  },
  {
   "i": 1707,
-  "t": "Makro dan teks polos"
+  "t": "Disimpan ke {} (teks polos)"
  },
  {
   "i": 1708,
-  "t": "Tidak bisa membuat: {}"
+  "t": "{} ({} baris) — dibuka sebagai teks polos; akan disimpan sebagai teks polos juga"
  },
  {
   "i": 1709,
-  "t": "{} dibuat dan dibuka di {} (simpan, lalu bisa dipanggil dari sel)"
+  "t": "Makro dan teks polos"
  },
  {
   "i": 1710,
-  "t": "{} dibuat tetapi tidak bisa dibuka: {}"
+  "t": "Tidak bisa membuat: {}"
  },
  {
   "i": 1711,
-  "t": "{} dibuka di {}"
+  "t": "{} dibuat dan dibuka di {} (simpan, lalu bisa dipanggil dari sel)"
  },
  {
   "i": 1712,
-  "t": "Perekaman dimulai. Yang Anda lakukan menjadi Python (tekan lagi untuk berhenti)"
+  "t": "{} dibuat tetapi tidak bisa dibuka: {}"
  },
  {
   "i": 1713,
-  "t": "Rekaman ditulis ke {} ({} baris) — dibuka di {}"
+  "t": "{} dibuka di {}"
  },
  {
   "i": 1714,
-  "t": "Rekaman ditulis ke {} ({} baris)"
+  "t": "Perekaman dimulai. Yang Anda lakukan menjadi Python (tekan lagi untuk berhenti)"
  },
  {
   "i": 1715,
-  "t": "Tidak bisa menulis rekaman: {}"
+  "t": "Rekaman ditulis ke {} ({} baris) — dibuka di {}"
  },
  {
   "i": 1716,
-  "t": "Tujuan AI"
+  "t": "Rekaman ditulis ke {} ({} baris)"
  },
  {
   "i": 1717,
-  "t": "Bisa dipakai sekarang"
+  "t": "Tidak bisa menulis rekaman: {}"
  },
  {
   "i": 1718,
-  "t": "Model AI (JO_AI_MODEL)"
+  "t": "Tujuan AI"
  },
  {
   "i": 1719,
-  "t": "(bawaan tujuan)"
+  "t": "Bisa dipakai sekarang"
  },
  {
   "i": 1720,
-  "t": "Bisa dipakai"
+  "t": "Model AI (JO_AI_MODEL)"
  },
  {
   "i": 1721,
-  "t": "Belum diketahui sampai dicoba (menyambung ke tujuan di bawah)"
+  "t": "(bawaan tujuan)"
  },
  {
   "i": 1722,
-  "t": "Panel kiri (Tanya AI) dibuka"
+  "t": "Bisa dipakai"
  },
  {
   "i": 1723,
-  "t": "Panel kiri ditutup"
+  "t": "Belum diketahui sampai dicoba (menyambung ke tujuan di bawah)"
  },
  {
   "i": 1724,
-  "t": "Panel kanan (Pengaturan sel) dibuka"
+  "t": "Panel kiri (Tanya AI) dibuka"
  },
  {
   "i": 1725,
-  "t": "Panel kanan ditutup"
+  "t": "Panel kiri ditutup"
  },
  {
   "i": 1726,
-  "t": "Percakapan"
+  "t": "Panel kanan (Pengaturan sel) dibuka"
  },
  {
   "i": 1727,
-  "t": "Pengaturan sel"
+  "t": "Panel kanan ditutup"
  },
  {
   "i": 1728,
-  "t": "Bungkus teks"
+  "t": "Percakapan"
  },
  {
   "i": 1729,
-  "t": "Format angka"
+  "t": "Pengaturan sel"
  },
  {
   "i": 1730,
-  "t": "Pemisah ribuan"
- },
- {
-  "i": 1731,
-  "t": "Kode barang (0000)"
- },
- {
-  "i": 1732,
-  "t": "Pena garis tepi"
- },
- {
-  "i": 1733,
-  "t": "Tipis"
- },
- {
-  "i": 1734,
-  "t": "Tebal"
- },
- {
-  "i": 1735,
-  "t": "Ganda"
- },
- {
-  "i": 1736,
-  "t": "Tempat menarik garis (bisa ditekan berkali-kali)"
- },
- {
-  "i": 1737,
-  "t": "Hapus"
- },
- {
-  "i": 1738,
-  "t": "Tanya AI"
- },
- {
-  "i": 1739,
-  "t": "Terapkan"
- },
- {
-  "i": 1740,
-  "t": "Usulan dibuang (tidak ada yang diubah)"
- },
- {
-  "i": 1741,
-  "t": "Tekan di sini untuk menulis; Enter mengirim"
- },
- {
-  "i": 1742,
-  "t": "Kirim"
- },
- {
-  "i": 1743,
-  "t": "Sedang berpikir…"
- },
- {
-  "i": 1744,
-  "t": "Sekarang: {}"
- },
- {
-  "i": 1745,
-  "t": "Kembali ke lembar (panel percakapan tetap terbuka)"
- },
- {
-  "i": 1746,
-  "t": "Beginilah perubahannya."
- },
- {
-  "i": 1747,
-  "t": "Usulan sudah siap (baca di panel kiri, lalu tekan Terapkan)"
- },
- {
-  "i": 1748,
-  "t": "Sudah dijawab (panel kiri)"
- },
- {
-  "i": 1749,
-  "t": "Format angka dikembalikan ke Umum"
- },
- {
-  "i": 1750,
-  "t": "Tidak ada yang ditanyakan"
- },
- {
-  "i": 1751,
-  "t": "Skrip sedang berjalan (mohon tunggu sampai selesai)"
- },
- {
-  "i": 1752,
-  "t": "Menjalankan usulan…"
- },
- {
-  "i": 1753,
-  "t": "Sudah diterapkan."
- },
- {
-  "i": 1754,
-  "t": "Usulan diterapkan (Ctrl+Z membatalkannya)"
- },
- {
-  "i": 1755,
-  "t": "Format angka disetel ke {}"
- },
- {
-  "i": 1756,
-  "t": "Usulan diterapkan: {} (Ctrl+Z membatalkannya)"
- },
- {
-  "i": 1757,
-  "t": "Skrip gagal: {}"
- },
- {
-  "i": 1758,
-  "t": "Skrip tidak berjalan: {}"
- },
- {
-  "i": 1759,
-  "t": "Teks perbaikan sudah siap (baca di panel kiri, lalu tekan Terapkan)"
- },
- {
-  "i": 1760,
-  "t": "Bagian yang dipilih diganti (Ctrl+Z membatalkannya)"
- },
- {
-  "i": 1761,
-  "t": "Disisipkan setelah kursor (Ctrl+Z membatalkannya)"
- },
- {
-  "i": 1762,
-  "t": "Kembali ke naskah (panel percakapan tetap terbuka)"
- },
- {
-  "i": 1763,
-  "t": "Teks yang akan dimasukkan (tidak masuk sampai ditekan)"
- },
- {
-  "i": 1764,
-  "t": "Teks dibuang (tidak ada yang diubah)"
- },
- {
-  "i": 1765,
-  "t": "AI"
- },
- {
-  "i": 1766,
-  "t": "Indentasi"
- },
- {
-  "i": 1767,
-  "t": "Indentasi disetel ke {}"
- },
- {
-  "i": 1768,
-  "t": "Indentasi tidak bisa lebih sempit lagi"
- },
- {
-  "i": 1769,
-  "t": "Indentasi tidak bisa lebih lebar lagi"
- },
- {
-  "i": 1770,
-  "t": "Arah teks"
- },
- {
-  "i": 1771,
-  "t": "Arah teks disetel ke {}"
- },
- {
-  "i": 1772,
-  "t": "Format bersyarat"
- },
- {
-  "i": 1773,
-  "t": "Negatif merah"
- },
- {
-  "i": 1774,
-  "t": "Duplikat"
- },
- {
-  "i": 1775,
-  "t": "Unik"
- },
- {
-  "i": 1776,
-  "t": "Skala warna"
- },
- {
-  "i": 1777,
-  "t": "Ikon"
- },
- {
-  "i": 1778,
-  "t": "Tabel"
- },
- {
-  "i": 1779,
-  "t": "{} baris × {} kolom — sekarang baris {}, kolom {}"
- },
- {
-  "i": 1780,
-  "t": "Baris di atas"
- },
- {
-  "i": 1781,
-  "t": "Baris di bawah"
- },
- {
-  "i": 1782,
-  "t": "Hapus baris"
- },
- {
-  "i": 1783,
-  "t": "Kolom kiri"
- },
- {
-  "i": 1784,
-  "t": "Kolom kanan"
- },
- {
-  "i": 1785,
-  "t": "Hapus kolom"
- },
- {
-  "i": 1786,
-  "t": "Baris ditambahkan di atas"
- },
- {
-  "i": 1787,
-  "t": "Baris ditambahkan di bawah"
- },
- {
-  "i": 1788,
-  "t": "Kolom ditambahkan di kiri"
- },
- {
-  "i": 1789,
-  "t": "Kolom ditambahkan di kanan"
- },
- {
-  "i": 1790,
-  "t": "Baris dihapus (Ctrl+Z membatalkannya)"
- },
- {
-  "i": 1791,
-  "t": "Kolom dihapus (Ctrl+Z membatalkannya)"
- },
- {
-  "i": 1792,
-  "t": "Baris terakhir tidak bisa dihapus (menghapus seluruh tabel adalah tindakan lain)"
- },
- {
-  "i": 1793,
-  "t": "Kolom terakhir tidak bisa dihapus (menghapus seluruh tabel adalah tindakan lain)"
- },
- {
-  "i": 1794,
-  "t": "Rumus"
- },
- {
-  "i": 1795,
-  "t": "Ubah rumus"
- },
- {
-  "i": 1796,
-  "t": "Mengubah rumus (Enter menyusun ulang, Esc membatalkan)"
- },
- {
-  "i": 1797,
-  "t": "Tidak ada gambar di paragraf ini"
- },
- {
-  "i": 1798,
-  "t": "Gambar diperkecil"
- },
- {
-  "i": 1799,
-  "t": "Gambar diperbesar"
- },
- {
-  "i": 1800,
-  "t": "{:.0}×{:.0}mm"
- },
- {
-  "i": 1801,
-  "t": "Susunan"
- },
- {
-  "i": 1802,
-  "t": "Bawa ke depan"
- },
- {
-  "i": 1803,
-  "t": "Maju satu"
- },
- {
-  "i": 1804,
-  "t": "Mundur satu"
- },
- {
-  "i": 1805,
-  "t": "Kirim ke belakang"
- },
- {
-  "i": 1806,
-  "t": "Putar ke kiri"
- },
- {
-  "i": 1807,
-  "t": "Putar ke kanan"
- },
- {
-  "i": 1808,
-  "t": "Balik mendatar"
- },
- {
-  "i": 1809,
-  "t": "Balik tegak"
- },
- {
-  "i": 1810,
-  "t": "Lainnya"
- },
- {
-  "i": 1811,
-  "t": "Sebuah bentuk terpilih"
- },
- {
-  "i": 1812,
-  "t": "Sebuah gambar terpilih"
- },
- {
-  "i": 1813,
-  "t": "Tidak ada bentuk atau gambar yang terpilih (klik salah satunya di lembar)"
- },
- {
-  "i": 1814,
-  "t": "Halaman — pengaturan seluruh dokumen"
- },
- {
-  "i": 1815,
-  "t": "Header dan footer"
- },
- {
-  "i": 1816,
-  "t": "Ubah"
- },
- {
-  "i": 1817,
-  "t": "Tanda air"
- },
- {
-  "i": 1818,
-  "t": "Warna halaman"
- },
- {
-  "i": 1819,
-  "t": "Anda bisa bertanya tentang rentang yang dipilih. Kalau sesuatu akan mengubah lembar, Anda melihat dulu apa yang akan dilakukan — tidak ada yang berubah sampai Anda menekan."
- },
- {
-  "i": 1820,
-  "t": "mis. urutkan dari penjualan terbesar / warnai 5 teratas / tambahkan baris total"
- },
- {
-  "i": 1821,
-  "t": "Usulan perubahan (tidak terjadi apa-apa sampai Anda menekan)"
- },
- {
-  "i": 1822,
-  "t": "Anda bisa bertanya tentang bagian yang dipilih. Kalau teks akan ditulis ulang, Anda melihat dulu teks barunya — tidak ada yang masuk sampai Anda menekan."
- },
- {
-  "i": 1823,
-  "t": "mis. buat paragraf ini lebih sopan / setengah panjangnya / beri tahu kalau terdengar kaku"
- },
- {
-  "i": 1824,
-  "t": "Menampilkan komentar (sebagai balon pada sel)"
- },
- {
-  "i": 1825,
-  "t": "Tujuan model lokal"
- },
- {
-  "i": 1826,
-  "t": "tetap di mesin ini"
- },
- {
-  "i": 1827,
-  "t": "keluar dari mesin ini"
- },
- {
-  "i": 1828,
-  "t": "Cara menetapkan tujuan"
- },
- {
-  "i": 1829,
-  "t": "ai_url / ai_model di settings.toml (variabel lingkungan OFFICE_URL menang)"
- },
- {
-  "i": 1830,
-  "t": "Percakapan baru"
- },
- {
-  "i": 1831,
-  "t": "Memulai percakapan baru (lembar tidak disentuh)"
- },
- {
-  "i": 1832,
-  "t": "Minta diperbaiki"
- },
- {
-  "i": 1833,
-  "t": "Biarkan saja"
- },
- {
-  "i": 1834,
-  "t": "Gagal. {}"
- },
- {
-  "i": 1835,
-  "t": "Sudah diterapkan. {}"
- },
- {
-  "i": 1836,
-  "t": "Tujuan: {} (tekan untuk mengganti)"
- },
- {
-  "i": 1837,
-  "t": "Skrip sebelumnya gagal. Baca kesalahannya dan berikan skrip yang sudah diperbaiki.\n\n[Kesalahan]\n{}\n\n[Skrip yang gagal]\n{}"
- },
- {
-  "i": 1838,
-  "t": "Anda bisa menulis =nama(...) di sel. Pilih salah satu untuk membukanya di editor"
- },
- {
-  "i": 1839,
-  "t": "Belum ada fungsi yang bisa dipanggil dari rumus (taruh .py di {})"
- },
- {
-  "i": 1840,
-  "t": "Pindahkan fungsi yang dipanggil dari rumus ke {} (plugins kini folder makro yang dijalankan dengan tangan)"
- },
- {
-  "i": 1841,
-  "t": "Tidak bisa membuat folder: {}"
- },
- {
-  "i": 1842,
-  "t": "Fungsi Python"
- },
- {
-  "i": 1843,
-  "t": "Makro pita"
- },
- {
-  "i": 1844,
-  "t": "Salin format"
- },
- {
-  "i": 1845,
-  "t": "Gaya"
- },
- {
-  "i": 1846,
-  "t": "Daftar bidang"
- },
- {
-  "i": 1847,
-  "t": "Perbesar teks layar"
- },
- {
-  "i": 1848,
-  "t": "Perkecil teks layar"
- },
- {
-  "i": 1849,
-  "t": "AI"
- },
- {
-  "i": 1850,
-  "t": "Cetak"
- },
- {
-  "i": 1851,
-  "t": "Tata letak cetak"
- },
- {
-  "i": 1852,
-  "t": "Tujuan"
- },
- {
-  "i": 1853,
-  "t": "Ringkas"
- },
- {
-  "i": 1854,
-  "t": "Tulis ulang"
- },
- {
-  "i": 1855,
-  "t": "Lebih sopan"
- },
- {
-  "i": 1856,
-  "t": "Lebih sederhana"
- },
- {
-  "i": 1857,
-  "t": "Terjemahkan"
- },
- {
-  "i": 1858,
-  "t": "Furigana"
- },
- {
-  "i": 1859,
-  "t": "Lanjutkan"
- },
- {
-  "i": 1860,
-  "t": "Jadi tabel"
- },
- {
-  "i": 1861,
-  "t": "Minta"
- },
- {
-  "i": 1862,
-  "t": "Ruby"
- },
- {
-  "i": 1863,
-  "t": "Vertikal"
- },
- {
-  "i": 1864,
-  "t": "Arah teks"
- },
- {
-  "i": 1865,
-  "t": "Terdistribusi"
- },
- {
-  "i": 1866,
-  "t": "Sisipkan keterangan"
- },
- {
-  "i": 1867,
-  "t": "Buka URL"
- },
- {
-  "i": 1868,
-  "t": "Indeks"
- },
- {
-  "i": 1869,
-  "t": "Catatan Aozora"
- },
- {
-  "i": 1870,
-  "t": "Notasi Denden"
- },
- {
-  "i": 1871,
-  "t": "Lacak perubahan"
- },
- {
-  "i": 1872,
-  "t": "Tampilkan perubahan"
- },
- {
-  "i": 1873,
-  "t": "Pemeriksaan"
- },
- {
-  "i": 1874,
-  "t": "Karakter"
- },
- {
-  "i": 1875,
-  "t": "Periksa ejaan"
- },
- {
-  "i": 1876,
-  "t": "Tesaurus"
- },
- {
-  "i": 1877,
-  "t": "Salah konversi"
- },
- {
-  "i": 1878,
-  "t": "Inkonsistensi"
- },
- {
-  "i": 1879,
-  "t": "Subtotal"
- },
- {
-  "i": 1880,
-  "t": "Kalkulasi"
- },
- {
-  "i": 1881,
-  "t": "Teks kanan-ke-kiri"
- },
- {
-  "i": 1882,
-  "t": "Arah lembar kerja"
- },
- {
-  "i": 1883,
-  "t": "Python"
- },
- {
-  "i": 1884,
-  "t": "Kotak centang"
- },
- {
-  "i": 1885,
-  "t": "Tautan eksternal"
- },
- {
-  "i": 1886,
-  "t": "Grafik yang disarankan"
- },
- {
-  "i": 1887,
-  "t": "Mode pengeditan bersama"
- },
- {
-  "i": 1888,
-  "t": "Riwayat versi"
- },
- {
-  "i": 1889,
-  "t": "Obrolan"
- },
- {
-  "i": 1890,
-  "t": "Lindungi"
- },
- {
-  "i": 1891,
-  "t": "Enkripsi"
- },
- {
-  "i": 1892,
-  "t": "Tambahkan tanda tangan digital"
- },
- {
-  "i": 1893,
-  "t": "Makro"
- },
- {
-  "i": 1894,
-  "t": "Kelola plugin"
- },
- {
-  "i": 1895,
-  "t": "Tampilkan nol"
- },
- {
-  "i": 1896,
-  "t": "Zoom ke 100%"
- },
- {
-  "i": 1897,
-  "t": "Tema antarmuka"
- },
- {
-  "i": 1898,
-  "t": "Jendela pantauan"
- },
- {
-  "i": 1899,
-  "t": "JumlahOtomatis"
- },
- {
-  "i": 1900,
-  "t": "Rekam tindakan"
- },
- {
-  "i": 1901,
-  "t": "Hapus komentar"
- },
- {
-  "i": 1902,
-  "t": "Solver"
- },
- {
-  "i": 1903,
-  "t": "Teks ke data"
- },
- {
-  "i": 1904,
-  "t": "Hapus panah"
- },
- {
-  "i": 1905,
-  "t": "Isi"
- },
- {
-  "i": 1906,
-  "t": "Bersihkan filter"
- },
- {
-  "i": 1907,
-  "t": "Tulis makro"
- },
- {
-  "i": 1908,
-  "t": "Teks ke kolom"
- },
- {
-  "i": 1909,
-  "t": "Keterangan"
- },
- {
-  "i": 1910,
-  "t": "Daftar gambar"
- },
- {
-  "i": 1911,
-  "t": "Perbarui daftar gambar"
- },
- {
-  "i": 1912,
-  "t": "Tautan eksternal (impor sebagai nilai)"
- },
- {
-  "i": 1913,
-  "t": "Matematika & Trigonometri"
- },
- {
-  "i": 1914,
-  "t": "Tampilkan rumus"
- },
- {
-  "i": 1915,
-  "t": "Arah teks (kanan-ke-kiri)"
- },
- {
-  "i": 1916,
-  "t": "Teks"
- },
- {
-  "i": 1917,
-  "t": "Tanggal & Waktu"
- },
- {
-  "i": 1918,
-  "t": "Baru digunakan"
- },
- {
-  "i": 1919,
-  "t": "Cetak garis kisi"
- },
- {
-  "i": 1920,
-  "t": "Perbarui daftar isi"
- },
- {
-  "i": 1921,
-  "t": "Kolom berpita"
- },
- {
-  "i": 1922,
-  "t": "Cetak judul"
- },
- {
-  "i": 1923,
-  "t": "Sembunyikan rincian"
- },
- {
-  "i": 1924,
-  "t": "Hapus duplikat"
- },
- {
-  "i": 1925,
-  "t": "Sisipkan fungsi"
- },
- {
-  "i": 1926,
-  "t": "Format CSV"
- },
- {
-  "i": 1927,
-  "t": "Kunci sel"
- },
- {
-  "i": 1928,
-  "t": "Tabel data"
- },
- {
-  "i": 1929,
-  "t": "Isi menurut contoh"
- },
- {
-  "i": 1930,
-  "t": "Daftar"
- },
- {
-  "i": 1931,
-  "t": "Tempel nama"
- },
- {
-  "i": 1932,
-  "t": "Pemulihan"
- },
- {
-  "i": 1933,
   "t": "Bungkus teks"
  },
  {
+  "i": 1731,
+  "t": "Format angka"
+ },
+ {
+  "i": 1732,
+  "t": "Pemisah ribuan"
+ },
+ {
+  "i": 1733,
+  "t": "Kode barang (0000)"
+ },
+ {
+  "i": 1734,
+  "t": "Pena garis tepi"
+ },
+ {
+  "i": 1735,
+  "t": "Tipis"
+ },
+ {
+  "i": 1736,
+  "t": "Tebal"
+ },
+ {
+  "i": 1737,
+  "t": "Ganda"
+ },
+ {
+  "i": 1738,
+  "t": "Tempat menarik garis (bisa ditekan berkali-kali)"
+ },
+ {
+  "i": 1739,
+  "t": "Hapus"
+ },
+ {
+  "i": 1740,
+  "t": "Tanya AI"
+ },
+ {
+  "i": 1741,
+  "t": "Terapkan"
+ },
+ {
+  "i": 1742,
+  "t": "Usulan dibuang (tidak ada yang diubah)"
+ },
+ {
+  "i": 1743,
+  "t": "Tekan di sini untuk menulis; Enter mengirim"
+ },
+ {
+  "i": 1744,
+  "t": "Kirim"
+ },
+ {
+  "i": 1745,
+  "t": "Sedang berpikir…"
+ },
+ {
+  "i": 1746,
+  "t": "Sekarang: {}"
+ },
+ {
+  "i": 1747,
+  "t": "Kembali ke lembar (panel percakapan tetap terbuka)"
+ },
+ {
+  "i": 1748,
+  "t": "Beginilah perubahannya."
+ },
+ {
+  "i": 1749,
+  "t": "Usulan sudah siap (baca di panel kiri, lalu tekan Terapkan)"
+ },
+ {
+  "i": 1750,
+  "t": "Sudah dijawab (panel kiri)"
+ },
+ {
+  "i": 1751,
+  "t": "Format angka dikembalikan ke Umum"
+ },
+ {
+  "i": 1752,
+  "t": "Tidak ada yang ditanyakan"
+ },
+ {
+  "i": 1753,
+  "t": "Skrip sedang berjalan (mohon tunggu sampai selesai)"
+ },
+ {
+  "i": 1754,
+  "t": "Menjalankan usulan…"
+ },
+ {
+  "i": 1755,
+  "t": "Sudah diterapkan."
+ },
+ {
+  "i": 1756,
+  "t": "Usulan diterapkan (Ctrl+Z membatalkannya)"
+ },
+ {
+  "i": 1757,
+  "t": "Format angka disetel ke {}"
+ },
+ {
+  "i": 1758,
+  "t": "Usulan diterapkan: {} (Ctrl+Z membatalkannya)"
+ },
+ {
+  "i": 1759,
+  "t": "Skrip gagal: {}"
+ },
+ {
+  "i": 1760,
+  "t": "Skrip tidak berjalan: {}"
+ },
+ {
+  "i": 1761,
+  "t": "Teks perbaikan sudah siap (baca di panel kiri, lalu tekan Terapkan)"
+ },
+ {
+  "i": 1762,
+  "t": "Bagian yang dipilih diganti (Ctrl+Z membatalkannya)"
+ },
+ {
+  "i": 1763,
+  "t": "Disisipkan setelah kursor (Ctrl+Z membatalkannya)"
+ },
+ {
+  "i": 1764,
+  "t": "Kembali ke naskah (panel percakapan tetap terbuka)"
+ },
+ {
+  "i": 1765,
+  "t": "Teks yang akan dimasukkan (tidak masuk sampai ditekan)"
+ },
+ {
+  "i": 1766,
+  "t": "Teks dibuang (tidak ada yang diubah)"
+ },
+ {
+  "i": 1767,
+  "t": "AI"
+ },
+ {
+  "i": 1768,
+  "t": "Indentasi"
+ },
+ {
+  "i": 1769,
+  "t": "Indentasi disetel ke {}"
+ },
+ {
+  "i": 1770,
+  "t": "Indentasi tidak bisa lebih sempit lagi"
+ },
+ {
+  "i": 1771,
+  "t": "Indentasi tidak bisa lebih lebar lagi"
+ },
+ {
+  "i": 1772,
+  "t": "Arah teks"
+ },
+ {
+  "i": 1773,
+  "t": "Arah teks disetel ke {}"
+ },
+ {
+  "i": 1774,
+  "t": "Format bersyarat"
+ },
+ {
+  "i": 1775,
+  "t": "Negatif merah"
+ },
+ {
+  "i": 1776,
+  "t": "Duplikat"
+ },
+ {
+  "i": 1777,
+  "t": "Unik"
+ },
+ {
+  "i": 1778,
+  "t": "Skala warna"
+ },
+ {
+  "i": 1779,
+  "t": "Ikon"
+ },
+ {
+  "i": 1780,
+  "t": "Tabel"
+ },
+ {
+  "i": 1781,
+  "t": "{} baris × {} kolom — sekarang baris {}, kolom {}"
+ },
+ {
+  "i": 1782,
+  "t": "Baris di atas"
+ },
+ {
+  "i": 1783,
+  "t": "Baris di bawah"
+ },
+ {
+  "i": 1784,
+  "t": "Hapus baris"
+ },
+ {
+  "i": 1785,
+  "t": "Kolom kiri"
+ },
+ {
+  "i": 1786,
+  "t": "Kolom kanan"
+ },
+ {
+  "i": 1787,
+  "t": "Hapus kolom"
+ },
+ {
+  "i": 1788,
+  "t": "Baris ditambahkan di atas"
+ },
+ {
+  "i": 1789,
+  "t": "Baris ditambahkan di bawah"
+ },
+ {
+  "i": 1790,
+  "t": "Kolom ditambahkan di kiri"
+ },
+ {
+  "i": 1791,
+  "t": "Kolom ditambahkan di kanan"
+ },
+ {
+  "i": 1792,
+  "t": "Baris dihapus (Ctrl+Z membatalkannya)"
+ },
+ {
+  "i": 1793,
+  "t": "Kolom dihapus (Ctrl+Z membatalkannya)"
+ },
+ {
+  "i": 1794,
+  "t": "Baris terakhir tidak bisa dihapus (menghapus seluruh tabel adalah tindakan lain)"
+ },
+ {
+  "i": 1795,
+  "t": "Kolom terakhir tidak bisa dihapus (menghapus seluruh tabel adalah tindakan lain)"
+ },
+ {
+  "i": 1796,
+  "t": "Rumus"
+ },
+ {
+  "i": 1797,
+  "t": "Ubah rumus"
+ },
+ {
+  "i": 1798,
+  "t": "Mengubah rumus (Enter menyusun ulang, Esc membatalkan)"
+ },
+ {
+  "i": 1799,
+  "t": "Tidak ada gambar di paragraf ini"
+ },
+ {
+  "i": 1800,
+  "t": "Gambar diperkecil"
+ },
+ {
+  "i": 1801,
+  "t": "Gambar diperbesar"
+ },
+ {
+  "i": 1802,
+  "t": "{:.0}×{:.0}mm"
+ },
+ {
+  "i": 1803,
+  "t": "Susunan"
+ },
+ {
+  "i": 1804,
+  "t": "Bawa ke depan"
+ },
+ {
+  "i": 1805,
+  "t": "Maju satu"
+ },
+ {
+  "i": 1806,
+  "t": "Mundur satu"
+ },
+ {
+  "i": 1807,
+  "t": "Kirim ke belakang"
+ },
+ {
+  "i": 1808,
+  "t": "Putar ke kiri"
+ },
+ {
+  "i": 1809,
+  "t": "Putar ke kanan"
+ },
+ {
+  "i": 1810,
+  "t": "Balik mendatar"
+ },
+ {
+  "i": 1811,
+  "t": "Balik tegak"
+ },
+ {
+  "i": 1812,
+  "t": "Lainnya"
+ },
+ {
+  "i": 1813,
+  "t": "Sebuah bentuk terpilih"
+ },
+ {
+  "i": 1814,
+  "t": "Sebuah gambar terpilih"
+ },
+ {
+  "i": 1815,
+  "t": "Tidak ada bentuk atau gambar yang terpilih (klik salah satunya di lembar)"
+ },
+ {
+  "i": 1816,
+  "t": "Halaman — pengaturan seluruh dokumen"
+ },
+ {
+  "i": 1817,
+  "t": "Header dan footer"
+ },
+ {
+  "i": 1818,
+  "t": "Ubah"
+ },
+ {
+  "i": 1819,
+  "t": "Tanda air"
+ },
+ {
+  "i": 1820,
+  "t": "Warna halaman"
+ },
+ {
+  "i": 1821,
+  "t": "Anda bisa bertanya tentang rentang yang dipilih. Kalau sesuatu akan mengubah lembar, Anda melihat dulu apa yang akan dilakukan — tidak ada yang berubah sampai Anda menekan."
+ },
+ {
+  "i": 1822,
+  "t": "mis. urutkan dari penjualan terbesar / warnai 5 teratas / tambahkan baris total"
+ },
+ {
+  "i": 1823,
+  "t": "Usulan perubahan (tidak terjadi apa-apa sampai Anda menekan)"
+ },
+ {
+  "i": 1824,
+  "t": "Anda bisa bertanya tentang bagian yang dipilih. Kalau teks akan ditulis ulang, Anda melihat dulu teks barunya — tidak ada yang masuk sampai Anda menekan."
+ },
+ {
+  "i": 1825,
+  "t": "mis. buat paragraf ini lebih sopan / setengah panjangnya / beri tahu kalau terdengar kaku"
+ },
+ {
+  "i": 1826,
+  "t": "Menampilkan komentar (sebagai balon pada sel)"
+ },
+ {
+  "i": 1827,
+  "t": "Tujuan model lokal"
+ },
+ {
+  "i": 1828,
+  "t": "tetap di mesin ini"
+ },
+ {
+  "i": 1829,
+  "t": "keluar dari mesin ini"
+ },
+ {
+  "i": 1830,
+  "t": "Cara menetapkan tujuan"
+ },
+ {
+  "i": 1831,
+  "t": "ai_url / ai_model di settings.toml (variabel lingkungan OFFICE_URL menang)"
+ },
+ {
+  "i": 1832,
+  "t": "Percakapan baru"
+ },
+ {
+  "i": 1833,
+  "t": "Memulai percakapan baru (lembar tidak disentuh)"
+ },
+ {
+  "i": 1834,
+  "t": "Minta diperbaiki"
+ },
+ {
+  "i": 1835,
+  "t": "Biarkan saja"
+ },
+ {
+  "i": 1836,
+  "t": "Gagal. {}"
+ },
+ {
+  "i": 1837,
+  "t": "Sudah diterapkan. {}"
+ },
+ {
+  "i": 1838,
+  "t": "Tujuan: {} (tekan untuk mengganti)"
+ },
+ {
+  "i": 1839,
+  "t": "Skrip sebelumnya gagal. Baca kesalahannya dan berikan skrip yang sudah diperbaiki.\n\n[Kesalahan]\n{}\n\n[Skrip yang gagal]\n{}"
+ },
+ {
+  "i": 1840,
+  "t": "Anda bisa menulis =nama(...) di sel. Pilih salah satu untuk membukanya di editor"
+ },
+ {
+  "i": 1841,
+  "t": "Belum ada fungsi yang bisa dipanggil dari rumus (taruh .py di {})"
+ },
+ {
+  "i": 1842,
+  "t": "Pindahkan fungsi yang dipanggil dari rumus ke {} (plugins kini folder makro yang dijalankan dengan tangan)"
+ },
+ {
+  "i": 1843,
+  "t": "Tidak bisa membuat folder: {}"
+ },
+ {
+  "i": 1844,
+  "t": "Fungsi Python"
+ },
+ {
+  "i": 1845,
+  "t": "Makro pita"
+ },
+ {
+  "i": 1846,
+  "t": "Salin format"
+ },
+ {
+  "i": 1847,
+  "t": "Gaya"
+ },
+ {
+  "i": 1848,
+  "t": "Daftar bidang"
+ },
+ {
+  "i": 1849,
+  "t": "Perbesar teks layar"
+ },
+ {
+  "i": 1850,
+  "t": "Perkecil teks layar"
+ },
+ {
+  "i": 1851,
+  "t": "AI"
+ },
+ {
+  "i": 1852,
+  "t": "Cetak"
+ },
+ {
+  "i": 1853,
+  "t": "Tata letak cetak"
+ },
+ {
+  "i": 1854,
+  "t": "Tujuan"
+ },
+ {
+  "i": 1855,
+  "t": "Ringkas"
+ },
+ {
+  "i": 1856,
+  "t": "Tulis ulang"
+ },
+ {
+  "i": 1857,
+  "t": "Lebih sopan"
+ },
+ {
+  "i": 1858,
+  "t": "Lebih sederhana"
+ },
+ {
+  "i": 1859,
+  "t": "Terjemahkan"
+ },
+ {
+  "i": 1860,
+  "t": "Furigana"
+ },
+ {
+  "i": 1861,
+  "t": "Lanjutkan"
+ },
+ {
+  "i": 1862,
+  "t": "Jadi tabel"
+ },
+ {
+  "i": 1863,
+  "t": "Minta"
+ },
+ {
+  "i": 1864,
+  "t": "Ruby"
+ },
+ {
+  "i": 1865,
+  "t": "Vertikal"
+ },
+ {
+  "i": 1866,
+  "t": "Arah teks"
+ },
+ {
+  "i": 1867,
+  "t": "Terdistribusi"
+ },
+ {
+  "i": 1868,
+  "t": "Sisipkan keterangan"
+ },
+ {
+  "i": 1869,
+  "t": "Buka URL"
+ },
+ {
+  "i": 1870,
+  "t": "Indeks"
+ },
+ {
+  "i": 1871,
+  "t": "Catatan Aozora"
+ },
+ {
+  "i": 1872,
+  "t": "Notasi Denden"
+ },
+ {
+  "i": 1873,
+  "t": "Lacak perubahan"
+ },
+ {
+  "i": 1874,
+  "t": "Tampilkan perubahan"
+ },
+ {
+  "i": 1875,
+  "t": "Pemeriksaan"
+ },
+ {
+  "i": 1876,
+  "t": "Karakter"
+ },
+ {
+  "i": 1877,
+  "t": "Periksa ejaan"
+ },
+ {
+  "i": 1878,
+  "t": "Tesaurus"
+ },
+ {
+  "i": 1879,
+  "t": "Salah konversi"
+ },
+ {
+  "i": 1880,
+  "t": "Inkonsistensi"
+ },
+ {
+  "i": 1881,
+  "t": "Subtotal"
+ },
+ {
+  "i": 1882,
+  "t": "Kalkulasi"
+ },
+ {
+  "i": 1883,
+  "t": "Teks kanan-ke-kiri"
+ },
+ {
+  "i": 1884,
+  "t": "Arah lembar kerja"
+ },
+ {
+  "i": 1885,
+  "t": "Python"
+ },
+ {
+  "i": 1886,
+  "t": "Kotak centang"
+ },
+ {
+  "i": 1887,
+  "t": "Tautan eksternal"
+ },
+ {
+  "i": 1888,
+  "t": "Grafik yang disarankan"
+ },
+ {
+  "i": 1889,
+  "t": "Mode pengeditan bersama"
+ },
+ {
+  "i": 1890,
+  "t": "Riwayat versi"
+ },
+ {
+  "i": 1891,
+  "t": "Obrolan"
+ },
+ {
+  "i": 1892,
+  "t": "Lindungi"
+ },
+ {
+  "i": 1893,
+  "t": "Enkripsi"
+ },
+ {
+  "i": 1894,
+  "t": "Tambahkan tanda tangan digital"
+ },
+ {
+  "i": 1895,
+  "t": "Makro"
+ },
+ {
+  "i": 1896,
+  "t": "Kelola plugin"
+ },
+ {
+  "i": 1897,
+  "t": "Tampilkan nol"
+ },
+ {
+  "i": 1898,
+  "t": "Zoom ke 100%"
+ },
+ {
+  "i": 1899,
+  "t": "Tema antarmuka"
+ },
+ {
+  "i": 1900,
+  "t": "Jendela pantauan"
+ },
+ {
+  "i": 1901,
+  "t": "JumlahOtomatis"
+ },
+ {
+  "i": 1902,
+  "t": "Rekam tindakan"
+ },
+ {
+  "i": 1903,
+  "t": "Hapus komentar"
+ },
+ {
+  "i": 1904,
+  "t": "Solver"
+ },
+ {
+  "i": 1905,
+  "t": "Teks ke data"
+ },
+ {
+  "i": 1906,
+  "t": "Hapus panah"
+ },
+ {
+  "i": 1907,
+  "t": "Isi"
+ },
+ {
+  "i": 1908,
+  "t": "Bersihkan filter"
+ },
+ {
+  "i": 1909,
+  "t": "Tulis makro"
+ },
+ {
+  "i": 1910,
+  "t": "Teks ke kolom"
+ },
+ {
+  "i": 1911,
+  "t": "Keterangan"
+ },
+ {
+  "i": 1912,
+  "t": "Daftar gambar"
+ },
+ {
+  "i": 1913,
+  "t": "Perbarui daftar gambar"
+ },
+ {
+  "i": 1914,
+  "t": "Tautan eksternal (impor sebagai nilai)"
+ },
+ {
+  "i": 1915,
+  "t": "Matematika & Trigonometri"
+ },
+ {
+  "i": 1916,
+  "t": "Tampilkan rumus"
+ },
+ {
+  "i": 1917,
+  "t": "Arah teks (kanan-ke-kiri)"
+ },
+ {
+  "i": 1918,
+  "t": "Teks"
+ },
+ {
+  "i": 1919,
+  "t": "Tanggal & Waktu"
+ },
+ {
+  "i": 1920,
+  "t": "Baru digunakan"
+ },
+ {
+  "i": 1921,
+  "t": "Cetak garis kisi"
+ },
+ {
+  "i": 1922,
+  "t": "Perbarui daftar isi"
+ },
+ {
+  "i": 1923,
+  "t": "Kolom berpita"
+ },
+ {
+  "i": 1924,
+  "t": "Cetak judul"
+ },
+ {
+  "i": 1925,
+  "t": "Sembunyikan rincian"
+ },
+ {
+  "i": 1926,
+  "t": "Hapus duplikat"
+ },
+ {
+  "i": 1927,
+  "t": "Sisipkan fungsi"
+ },
+ {
+  "i": 1928,
+  "t": "Format CSV"
+ },
+ {
+  "i": 1929,
+  "t": "Kunci sel"
+ },
+ {
+  "i": 1930,
+  "t": "Tabel data"
+ },
+ {
+  "i": 1931,
+  "t": "Isi menurut contoh"
+ },
+ {
+  "i": 1932,
+  "t": "Daftar"
+ },
+ {
+  "i": 1933,
+  "t": "Tempel nama"
+ },
+ {
   "i": 1934,
-  "t": "Selang salinan"
+  "t": "Pemulihan"
  },
  {
   "i": 1935,
-  "t": ".py baru"
+  "t": "Bungkus teks"
  },
  {
   "i": 1936,
-  "t": "Tambah rentang"
+  "t": "Selang salinan"
  },
  {
   "i": 1937,
-  "t": "Muatkan ke kertas"
+  "t": ".py baru"
  },
  {
   "i": 1938,
-  "t": "Batas kertas"
+  "t": "Tambah rentang"
  },
  {
   "i": 1939,
-  "t": "Buka folder plugins"
+  "t": "Muatkan ke kertas"
  },
  {
   "i": 1940,
-  "t": "Jenis perhitungan"
+  "t": "Batas kertas"
  },
  {
   "i": 1941,
-  "t": "Tindakan yang diizinkan"
+  "t": "Buka folder plugins"
  },
  {
   "i": 1942,
+  "t": "Jenis perhitungan"
+ },
+ {
+  "i": 1943,
+  "t": "Tindakan yang diizinkan"
+ },
+ {
+  "i": 1944,
   "t": "Sarankan hanya-baca"
  }
 ]

@@ -220,7 +220,11 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
         }
         // **文字単位のスタイル**(2026-08-16)。AsciiDoc の役割の書き方
         // `[.名前]#字#`。段落のスタイルと同じ表(テンプレート)を引く
-        let (open, close) = match &r.fmt.style_id {
+        let (open, close) = match r.fmt.style_id.as_deref() {
+            // **等幅は本家の印で書きます**(2026-08-18)。`[.等幅]#字#` と
+            // 書いても意味は同じですが、他の処理系や GitHub では字がそのまま
+            // 出てしまいます。本家にある書き方はそちらに寄せる決まりです
+            Some(MONO) => ("`".to_string(), "`"),
             Some(n) => (format!("[.{n}]#"), "#"),
             None => (String::new(), ""),
         };
@@ -597,9 +601,6 @@ fn 本家だけの書き方(l: &str) -> Option<(&'static str, &'static str)> {
     if ts.starts_with("include::") {
         return Some(("取り込み(include::)", "取り込み"));
     }
-    if ts.starts_with("=====") {
-        return Some(("4段より深い見出し", "見出し4"));
-    }
     if ts.starts_with("* [x]") || ts.starts_with("* [ ]") || ts.starts_with("- [x]") {
         return Some(("チェックの箇条書き", "チェック"));
     }
@@ -616,6 +617,23 @@ fn 本家だけの書き方(l: &str) -> Option<(&'static str, &'static str)> {
     if ts.starts_with('.') && !ts.starts_with(". ") && ts.len() > 1 && !ts.starts_with("..") {
         return Some(("塊の題(.題)", "塊の題"));
     }
+    // **塊の指定の行**(`[source,python]` `[cols="1,3"]` `[quote, 誰]` など)。
+    // 次の塊に掛かる行なので、**続きの行と離してはいけません**。前は普通の
+    // 段落として読んでいたので、保存で `[source,python]` と `----` の間に
+    // 空行が入り、指定が塊に掛からなくなっていました(2026-08-18 に
+    // 実際に往復させて見つけました)。
+    //
+    // **`[[しおり]]` と `[.スタイル名]` は除きます** — こちらが意味を
+    // 知っている書き方で、この関数より後ろで読まれます(2026-08-18 に
+    // しおりを飲み込んで試験が落ちました)
+    if ts.starts_with('[')
+        && ts.ends_with(']')
+        && ts.len() > 2
+        && !ts.starts_with("[[")
+        && !ts.starts_with("[.")
+    {
+        return Some(("塊の指定([…])", "指定の行"));
+    }
     // 属性の参照 {名前}。うちの差し込みは {{名前}} なので、二重は数えない
     let b = ts.as_bytes();
     for (i, c) in ts.char_indices() {
@@ -626,6 +644,9 @@ fn 本家だけの書き方(l: &str) -> Option<(&'static str, &'static str)> {
     }
     None
 }
+
+/// **等幅の字のスタイル名。** 読む側と書く側で同じ名前を使うための1箇所
+pub const MONO: &str = "等幅";
 
 /// 註記の頭(asciidoctor の `ADMONITION_STYLES`)
 const ADMONITION: &[&str] = &["NOTE:", "TIP:", "IMPORTANT:", "WARNING:", "CAUTION:"];
@@ -956,8 +977,12 @@ fn base_para(
 }
 
 /// `== 見出し` → (1, "見出し")。`=` の数 − 1 が水準(1〜3)
+/// 見出しの行か。返るのは(段, 字)。
+///
+/// **段は5まで**(2026-08-18)。AsciiDoc の `=` は表題で、`==` から見出しが
+/// 始まるので、`======` が見出し5です。本家はここまでしかありません
 fn heading_of(l: &str) -> Option<(u8, &str)> {
-    for n in (1..=3u8).rev() {
+    for n in (1..=5u8).rev() {
         let mark = "=".repeat(n as usize + 1) + " ";
         if let Some(rest) = l.strip_prefix(&mark) {
             return Some((n, rest));
@@ -987,13 +1012,19 @@ fn parse_inline(
     let mut cur = String::new();
     let mut bold = false;
     let mut italic = false;
-    let flush = |runs: &mut Vec<Run>, cur: &mut String, bold: bool, italic: bool| {
+    // **等幅**(`` `字` ``)。字のスタイルとして持つので、見た目はテンプレートの
+    // `[スタイル.等幅]` が決めます(2026-08-18)
+    let mut mono = false;
+    let flush = |runs: &mut Vec<Run>, cur: &mut String, bold: bool, italic: bool, mono: bool| {
         if cur.is_empty() {
             return;
         }
         let mut fmt = CharFormat::default();
         fmt.bold = bold;
         fmt.italic = italic;
+        if mono {
+            fmt.style_id = Some(MONO.to_string());
+        }
         runs.push(Run { text: std::mem::take(cur), size_pt: None, font: None, fmt });
     };
     let mut i = 0usize; // バイト
@@ -1007,14 +1038,22 @@ fn parse_inline(
             }
         }
         if rest.starts_with('*') {
-            flush(&mut runs, &mut cur, bold, italic);
+            flush(&mut runs, &mut cur, bold, italic, mono);
             bold = !bold;
             i += 1;
             continue;
         }
         if rest.starts_with('_') {
-            flush(&mut runs, &mut cur, bold, italic);
+            flush(&mut runs, &mut cur, bold, italic, mono);
             italic = !italic;
+            i += 1;
+            continue;
+        }
+        // 等幅。**対になっているときだけ**受けます — 片方だけの `
+        // (「7`」のような字)を書式の印だと読むと、後ろが全部等幅になります
+        if rest.starts_with('`') && (mono || rest[1..].contains('`')) {
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            mono = !mono;
             i += 1;
             continue;
         }
@@ -1024,7 +1063,7 @@ fn parse_inline(
                 if !name.is_empty() && !name.contains(['[', ']', '#', ' ']) {
                     let body = &after[rb + 2..];
                     if let Some(end) = body.find('#') {
-                        flush(&mut runs, &mut cur, bold, italic);
+                        flush(&mut runs, &mut cur, bold, italic, mono);
                         let mut fmt = CharFormat::default();
                         fmt.bold = bold;
                         fmt.italic = italic;
@@ -1045,7 +1084,7 @@ fn parse_inline(
             let up = rest.starts_with('^');
             let close = if up { '^' } else { '~' };
             if let Some(end) = rest[1..].find(close) {
-                flush(&mut runs, &mut cur, bold, italic);
+                flush(&mut runs, &mut cur, bold, italic, mono);
                 let mut fmt = CharFormat::default();
                 fmt.bold = bold;
                 fmt.italic = italic;
@@ -1063,7 +1102,7 @@ fn parse_inline(
         }
         if let Some(after) = rest.strip_prefix("<<") {
             if let Some(end) = after.find(">>") {
-                flush(&mut runs, &mut cur, bold, italic);
+                flush(&mut runs, &mut cur, bold, italic, mono);
                 let name = after[..end].to_string();
                 let mut fmt = CharFormat::default();
                 fmt.bold = bold;
@@ -1076,7 +1115,7 @@ fn parse_inline(
         }
         if let Some(after) = rest.strip_prefix("footnote:[") {
             let end = after.find(']').ok_or("footnote:[ が閉じていません")?;
-            flush(&mut runs, &mut cur, bold, italic);
+            flush(&mut runs, &mut cur, bold, italic, mono);
             *fresh_note += 1;
             let id = format!("adoc{fresh_note}");
             let mut np = Paragraph::default();
@@ -1107,7 +1146,7 @@ fn parse_inline(
         if let Some(after) = rest.strip_prefix("field:") {
             if let Some(open) = after.find('[') {
                 if let Some(close) = after[open..].find(']') {
-                    flush(&mut runs, &mut cur, bold, italic);
+                    flush(&mut runs, &mut cur, bold, italic, mono);
                     let tag = after[..open].to_string();
                     let 中 = &after[open + 1..open + close];
                     let (alias, kind, items) = parse_field(中);
@@ -1122,7 +1161,7 @@ fn parse_inline(
         if let Some(after) = rest.strip_prefix("ruby:") {
             if let Some(open) = after.find('[') {
                 if let Some(close) = after[open..].find(']') {
-                    flush(&mut runs, &mut cur, bold, italic);
+                    flush(&mut runs, &mut cur, bold, italic, mono);
                     let mut fmt = CharFormat::default();
                     fmt.bold = bold;
                     fmt.italic = italic;
@@ -1143,7 +1182,7 @@ fn parse_inline(
                 if let Some(close) = rest[open..].find(']') {
                     let url = &rest[..open];
                     if !url.contains(' ') {
-                        flush(&mut runs, &mut cur, bold, italic);
+                        flush(&mut runs, &mut cur, bold, italic, mono);
                         let mut fmt = CharFormat::default();
                         fmt.bold = bold;
                         fmt.italic = italic;
@@ -1164,7 +1203,7 @@ fn parse_inline(
         cur.push(c);
         i += c.len_utf8();
     }
-    flush(&mut runs, &mut cur, bold, italic);
+    flush(&mut runs, &mut cur, bold, italic, mono);
     Ok(runs)
 }
 

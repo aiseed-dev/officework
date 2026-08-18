@@ -685,14 +685,18 @@ impl Writer {
         self.status = ui::tf!("しおり「{}」を付けました(保存で docx に入ります)", name).into();
     }
 
-    /// 段落のスタイル。0 = 標準、1〜3 = 見出し。
-    /// 見た目は直接書式で付ける(互換モードの作法のまま)が、**数字の正本は
-    /// 既定のテンプレート**(kumihan::theme::DEFAULT_TOML。2026-08-16)。
-    /// 焼き付ける値と合成が出す値がずれたら、段階Cの移行で見た目が変わる
+    /// 段落のスタイル。0 = 標準、1〜5 = 見出し。
+    ///
+    /// **ネイティブ文書(.adoc)には見た目を焼き付けません**(2026-08-18)。
+    /// 見出しの大きさと太さはテンプレートが持っているので、本文に入れると
+    /// 保存した adoc が `===== *見出し*` のように太字の印つきになります。
+    /// docx を開いているときは今までどおり直接書式で付けます — そちらは
+    /// テンプレートを持たないためです
     pub(crate) fn set_para_style(&mut self, n: u8) {
         self.checkpoint(false); // 段落の様式
+        let 焼く = !self.native;
         let (pt, bold) = match n {
-            1..=3 => {
+            1..=5 => {
                 let th = kumihan::theme::default_theme();
                 let def = th.style(&format!("見出し{n}"));
                 (def.and_then(|d| d.size_pt), def.map(|d| d.bold).unwrap_or(true))
@@ -708,8 +712,10 @@ impl Writer {
                 kumihan::ParaStyle::Heading(n)
             };
         });
-        self.size_set(pt);
-        self.toggle(move |f| f.bold = bold);
+        if 焼く {
+            self.size_set(pt);
+            self.toggle(move |f| f.bold = bold);
+        }
         self.status = match n {
             0 => ui::t!("標準の段落にしました").into(),
             n => ui::tf!("見出し{} にしました(参考資料 > 目次 の材料になります)", n).into(),

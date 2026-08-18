@@ -2789,6 +2789,8 @@ impl Writer {
             "見出し1" => Some(kumihan::ParaStyle::Heading(1)),
             "見出し2" => Some(kumihan::ParaStyle::Heading(2)),
             "見出し3" => Some(kumihan::ParaStyle::Heading(3)),
+            "見出し4" => Some(kumihan::ParaStyle::Heading(4)),
+            "見出し5" => Some(kumihan::ParaStyle::Heading(5)),
             "引用" => Some(kumihan::ParaStyle::Quote),
             _ => None,
         };

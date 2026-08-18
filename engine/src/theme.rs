@@ -147,7 +147,9 @@ impl Theme {
             ParaStyle::Quote => Some("引用"),
             ParaStyle::Heading(1) => Some("見出し1"),
             ParaStyle::Heading(2) => Some("見出し2"),
-            ParaStyle::Heading(_) => Some("見出し3"),
+            ParaStyle::Heading(3) => Some("見出し3"),
+            ParaStyle::Heading(4) => Some("見出し4"),
+            ParaStyle::Heading(_) => Some("見出し5"),
             // 目次・図表目次の行は「目次の更新」が作る物 — テンプレートの
             // スタイルでは(まだ)着せ替えない
             ParaStyle::Toc(_) | ParaStyle::Tof => None,
@@ -194,6 +196,10 @@ pub const DEFAULT_TOML: &str = r#"# officework の既定のテンプレート
 [スタイル.塊の中]
 書体 = "Noto Sans Mono CJK JP"
 
+# 行の中の等幅(`字`)。塊の中と同じ書体にします
+[スタイル.等幅]
+書体 = "Noto Sans Mono CJK JP"
+
 [スタイル.塊の題]
 太字 = true
 色 = "444444"
@@ -211,6 +217,15 @@ pub const DEFAULT_TOML: &str = r#"# officework の既定のテンプレート
 [スタイル.見出し4]
 大きさ = 11
 太字 = true
+
+[スタイル.見出し5]
+大きさ = 10.5
+太字 = true
+
+# 塊に掛かる指定の行([source,python] など)。うちでは編集できませんが、
+# 掛かっている塊が分かるように薄く出します
+[スタイル.指定の行]
+色 = "8A8A8A"
 
 [スタイル.横の区切り線]
 色 = "8A8A8A"

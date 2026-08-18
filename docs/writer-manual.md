@@ -514,8 +514,8 @@ thing** — typing it by hand and pressing the button give the same result.
 | Equation | a paragraph of just `stem:[x^2]` | Insert > Equation | `<img>` (the source stays with it) |
 | Page break | `<<<` | Insert > Page break | breaks only when printed |
 | Form field | `field:name[label,kind]` | Forms > Text field | `<input>` `<select>` `<textarea>` |
-| Heading 4, 5 | `=====` `======` | (coming in 0.2.0-alpha) | `<h5>` `<h6>` |
-| Monospace | `` `text` `` | (coming in 0.2.0-alpha) | `<code>` |
+| Heading 4, 5 | `=====` `======` | Home > Paragraph style | `<h5>` `<h6>` |
+| Monospace | `` `text` `` | Right panel > Styles > 等幅 | `<code>` |
 | Description list | `term:: value` | (coming in 0.2.0-alpha) | `<dl>` `<dt>` `<dd>` |
 | Admonition | `NOTE: text` | (coming in 0.2.0-alpha) | `<div class="註記">` |
 | Listing block | wrap in `----` | (coming in 0.2.0-alpha) | `<pre>` |
