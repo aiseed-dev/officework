@@ -582,15 +582,18 @@ Widen the window and the lines get longer; no page breaks appear. **Not one
 character of the text changes** — printing still lays it out on A4 through the
 print format.
 
-### Building a form grid (coming in 0.2.0-alpha)
+### Building a form grid
 
 Japanese office forms (applications, approval sheets) are grids of labelled
 boxes. Do not write them as a table in the text. **The content is a description
 list; the grid lives in the template.**
 
-Text:
+Name the form at the top of the text.
 
 ```asciidoc
+= 休暇申請書
+:様式: 申請書
+
 申請日:: 2026年8月18日
 部署:: 総務課
 氏名:: 山田太郎
@@ -611,7 +614,12 @@ table in docx. **Content and boxes are matched by name**, never by order — wit
 order, adding one item shifts everything.
 
 **An item with no box, or a box with no item, is reported.** Silently dropping
-them produces a form with empty fields.
+them produces a form with empty fields. You see it in the status line when the
+document opens.
+
+`幅` is a percentage. One box becomes two frames — the item's name and its
+value — so above, the name takes 30 percent and the value 70. Leave it out and
+the frames in that row are split evenly.
 
 ### A different format per destination
 

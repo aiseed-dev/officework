@@ -186,6 +186,7 @@ impl Writer {
             eq_ed: Editor::new(""),
             encrypt_pw: None,
             ink_svg_count: 0,
+            form_notes: Vec::new(),
             pw_open: false,
             pw_ed: Editor::new(""),
             pw_pending: None,
@@ -546,6 +547,13 @@ impl Writer {
         // 発表(跨がない)のときだけ、写しに改ページの印を足しながら
         // 何度か組み直すので、写しは**書ける形**で持つ
         let mut composed = self.native.then(|| kumihan::theme::compose(&self.doc, &self.tmpl));
+        // **様式(升目)は写しの側で組みます**(2026-08-18)。本文は
+        // `項目:: 値` のまま残るので、保存しても升目は本文に漏れません。
+        // 対応の付かない項目と埋まらない升は、ここで受け取って状態行に出します
+        self.form_notes = match composed.as_mut() {
+            Some(c) => kumihan::theme::apply_forms(c, &self.tmpl),
+            None => Vec::new(),
+        };
         let 組 = if self.native { self.tmpl.setting } else { Default::default() };
         // **ページの飾りは合成の写しから取ります**(2026-08-18)。
         // テンプレートに書いたヘッダー・透かし・縦書きが画面と紙に出ます。
@@ -773,6 +781,8 @@ impl Writer {
         let mut doc = self.doc.clone();
         if let Some(th) = tmpl {
             kumihan::theme::compose_page(&mut doc, th);
+            // **様式(升目)は docx にも出します。** 画面と同じ表になります
+            kumihan::theme::apply_forms(&mut doc, th);
         }
         // 相互参照は保存の写しで計算し直す(docx のキャッシュを新しく保つ。
         // 画面の平文はそのまま — 見えている値の更新は「参照を更新」で)
@@ -1007,6 +1017,13 @@ impl Writer {
         } else {
             Some(bytes)
         }
+    }
+
+    /// **様式(升目)で言うことがあれば、状態行に出します。**
+    /// 対応の付かない項目と埋まらない升を黙って落とすと、空欄の申請書が
+    /// できあがります(2026-08-18)
+    pub(crate) fn form_status(&self) -> Option<String> {
+        (!self.form_notes.is_empty()).then(|| self.form_notes.join("・"))
     }
 
     /// 読み取り専用の保護が掛かっているか(保護タブの「保護」で入切)
@@ -2225,6 +2242,11 @@ impl Writer {
         if !帳簿.is_empty() {
             self.status = ui::tf!("{} — うちで扱わない書き方があります: {}",
                                   self.status.clone(), 帳簿.join("・")).into();
+        }
+        // **様式の食い違いは開いたときに言います。** 印刷してから気づくのでは
+        // 遅いので、升目を組んだその場で出します
+        if let Some(言うこと) = self.form_status() {
+            self.status = ui::tf!("{} — 様式: {}", self.status.clone(), 言うこと).into();
         }
     }
 

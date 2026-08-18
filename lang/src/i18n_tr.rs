@@ -41,6 +41,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ここは AsciiDoc の塊です。うちでは編集できません(原文のまま保存します)", "Bu, işlemediğimiz bir AsciiDoc bloğu. Burada düzenlenemez (olduğu gibi kaydedilir)"),
     ("大きさはテンプレートで決めます。「{}」の大きさを変えるには {} を直してください", "Boyutları şablon belirler. \"{}\" boyutunu değiştirmek için {} dosyasını düzenleyin"),
     ("{} — うちで扱わない書き方があります: {}", "{} — işlemediğimiz biçimlendirme var: {}"),
+    ("{} — 様式: {}", "{} — form: {}"),
     ("{} に保存しました。このフォルダの書式({})を使います", "{} konumuna kaydedildi. Bu klasörün biçimini ({}) kullanıyor"),
     ("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です", "{} olarak dışa aktarıldı ({} stil tanımlarına dönüştü). Kaynak adoc tarafında kalır"),
     ("いまの書式", "kullanılan biçim"),

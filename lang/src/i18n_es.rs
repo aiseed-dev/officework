@@ -41,6 +41,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ここは AsciiDoc の塊です。うちでは編集できません(原文のまま保存します)", "Este es un bloque de AsciiDoc que no admitimos. No se puede editar aquí (se guarda tal cual)"),
     ("大きさはテンプレートで決めます。「{}」の大きさを変えるには {} を直してください", "Los tamaños los decide la plantilla. Para cambiar el tamaño de «{}», edite {}"),
     ("{} — うちで扱わない書き方があります: {}", "{} — usa marcado que no admitimos: {}"),
+    ("{} — 様式: {}", "{} — formulario: {}"),
     ("{} に保存しました。このフォルダの書式({})を使います", "Guardado en {}. Usa el formato de esta carpeta ({})"),
     ("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です", "Exportado a {} (se convirtió {} en definiciones de estilo). El original queda en el adoc"),
     ("いまの書式", "el formato actual"),

@@ -41,6 +41,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ここは AsciiDoc の塊です。うちでは編集できません(原文のまま保存します)", "Ini blok AsciiDoc yang tidak kami tangani. Tidak bisa disunting di sini (disimpan apa adanya)"),
     ("大きさはテンプレートで決めます。「{}」の大きさを変えるには {} を直してください", "Ukuran ditentukan templat. Untuk mengubah ukuran \"{}\", sunting {}"),
     ("{} — うちで扱わない書き方があります: {}", "{} — memakai markup yang tidak kami tangani: {}"),
+    ("{} — 様式: {}", "{} — formulir: {}"),
     ("{} に保存しました。このフォルダの書式({})を使います", "Disimpan ke {}. Menggunakan format folder ini ({})"),
     ("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です", "Diekspor ke {} ({} dijadikan definisi gaya). Naskah tetap di adoc"),
     ("いまの書式", "format yang dipakai"),

@@ -885,6 +885,153 @@ pub fn compose_page(out: &mut Document, theme: &Theme) {
     }
 }
 
+/// **本文のラベル付きリストを、様式(升目)の表にします**(2026-08-18)。
+///
+/// 文書の頭に `:様式: 申請書` と書き、テンプレートに `[様式.申請書]` が
+/// あるときだけ効きます。中身(`項目:: 値`)と升の結び付けは**名前で取ります**
+/// — 順番で取ると、項目を1つ足しただけで全部ずれます。
+///
+/// 返りは利用者に見せる言葉です。**対応の付かない項目と、埋まらない升は
+/// 必ず言います**。黙って落とすと、空欄の申請書ができあがります。
+pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
+    let Some(名) = out
+        .attrs
+        .iter()
+        .find(|(k, _)| k == "様式" || k == "form")
+        .map(|(_, v)| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+    else {
+        return Vec::new();
+    };
+    let Some(form) = theme.forms.iter().find(|f| f.name == 名) else {
+        return vec![format!("様式「{名}」がテンプレートにありません")];
+    };
+
+    // 本文のラベル付きリストを集める(名前 → 値)。並びは書いた順
+    let mut 項目: Vec<(String, String)> = Vec::new();
+    let mut 元の場所: Vec<usize> = Vec::new();
+    for (i, b) in out.blocks.iter().enumerate() {
+        let Block::Para(p) = b else { continue };
+        if p.style_id.as_deref() != Some("説明のリスト") {
+            continue;
+        }
+        let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+        if let Some((名, 値)) = 字.split_once(":: ") {
+            項目.push((名.trim().to_string(), 値.trim().to_string()));
+            元の場所.push(i);
+        }
+    }
+    if 元の場所.is_empty() {
+        return vec![format!("様式「{名}」を使う本文がありません(`項目:: 値` で書きます)")];
+    }
+
+    // 升目を組む。1つの升は「項目の名前」と「値」の2つのセットになります
+    let mut 使った: Vec<String> = Vec::new();
+    let mut 言うこと: Vec<String> = Vec::new();
+    // **升目は 100 桁の格子**で組みます(2026-08-18)。
+    //
+    // 行ごとに升の数が違うのが様式の普通の姿です(1行目は1つ、2行目は2つ)。
+    // 表の桁は1組しか持てないので、100 の格子を敷いて、各セルが占める桁数で
+    // 幅を表します。100 は百分率と同じなので、`幅 = [30, 70]` がそのまま
+    // 30 桁と 70 桁になります
+    const 格子: u16 = 100;
+    let mut rows: Vec<Vec<crate::doc::Cellbox>> = Vec::new();
+    for r in &form.rows {
+        let mut 中身: Vec<(String, String)> = Vec::new();
+        for c in &r.cells {
+            let 値 = 項目.iter().find(|(n, _)| n == c).map(|(_, v)| v.clone());
+            if 値.is_none() {
+                言うこと.push(format!("升「{c}」に入れる項目が本文にありません"));
+            } else {
+                使った.push(c.clone());
+            }
+            中身.push((c.clone(), 値.unwrap_or_default()));
+        }
+        // この行のセルの数(名前と値で2つずつ)
+        let n = 中身.len() * 2;
+        let 幅 = 桁を割る(&r.widths, n, 格子);
+        let mut row = Vec::new();
+        for (i, (名, 値)) in 中身.iter().enumerate() {
+            row.push(升幅(名, 幅[i * 2]));
+            row.push(升幅(値, 幅[i * 2 + 1]));
+        }
+        rows.push(row);
+    }
+    // 格子はぜんぶ同じ幅(1%)。幅はセルの占める桁数で表しています
+    let 比: Vec<f32> = Vec::new();
+    for (n, _) in &項目 {
+        if !使った.contains(n) {
+            言うこと.push(format!("項目「{n}」に対応する升が様式にありません"));
+        }
+    }
+
+    // 表に置き換える。**ラベル付きリストは消します**(二重に出さないため)
+    let 差し込む先 = 元の場所[0];
+    let t = crate::doc::Table { rows, col_ratio: 比, ..Default::default() };
+    for i in 元の場所.iter().rev() {
+        out.blocks.remove(*i);
+    }
+    out.blocks.insert(差し込む先, Block::Table(t));
+    言うこと
+}
+
+/// **幅の指定を、格子の桁数に割ります。**
+///
+/// `幅` が無ければ等分します。数が足りない・多いときは、書いた分だけ使って
+/// 残りを等分します。合計は必ず格子の数にします(端数は最後の升に寄せます)
+fn 桁を割る(幅: &[f32], n: usize, 格子: u16) -> Vec<u8> {
+    if n == 0 {
+        return Vec::new();
+    }
+    let mut w: Vec<f32> = (0..n)
+        .map(|i| 幅.get(i).copied().filter(|x| *x > 0.0).unwrap_or(0.0))
+        .collect();
+    // 書いていない分は、残りを等分する
+    let 書いた: f32 = w.iter().sum();
+    let 空き = w.iter().filter(|x| **x <= 0.0).count();
+    if 空き > 0 {
+        let 残り = (格子 as f32 - 書いた).max(空き as f32);
+        for x in w.iter_mut().filter(|x| **x <= 0.0) {
+            *x = 残り / 空き as f32;
+        }
+    }
+    let 和: f32 = w.iter().sum();
+    let mut out: Vec<u8> = w
+        .iter()
+        .map(|x| ((x / 和 * 格子 as f32).round() as i64).clamp(1, 255) as u8)
+        .collect();
+    // 端数で合計がずれるので、最後の升で帳尻を合わせます
+    let 差 = 格子 as i64 - out.iter().map(|x| *x as i64).sum::<i64>();
+    if let Some(last) = out.last_mut() {
+        *last = (*last as i64 + 差).clamp(1, 255) as u8;
+    }
+    out
+}
+
+/// 升1つ(字と、占める桁数)
+fn 升幅(字: &str, 桁: u8) -> crate::doc::Cellbox {
+    let mut c = 升(字);
+    c.col_span = 桁;
+    c
+}
+
+/// 升1つ(字を1つ入れたセル)
+fn 升(字: &str) -> crate::doc::Cellbox {
+    crate::doc::Cellbox {
+        paragraphs: vec![crate::doc::Paragraph {
+            line_spacing: 1.0,
+            runs: vec![crate::doc::Run {
+                text: 字.to_string(),
+                size_pt: None,
+                font: None,
+                fmt: Default::default(),
+            }],
+            ..Default::default()
+        }],
+        ..Default::default()
+    }
+}
+
 pub fn compose(doc: &Document, theme: &Theme) -> Document {
     let mut out = doc.clone();
     compose_page(&mut out, theme);
@@ -1017,6 +1164,62 @@ mod tests {
         assert_eq!(th.forms[0].rows[0].cells, vec!["あ"]);
         // 囲みの中の `升 =` は字なので触らない
         assert_eq!(キーを囲む("\"升 = 1\""), "\"升 = 1\"");
+    }
+
+    fn 申請書() -> (Document, Theme) {
+        let (doc, _) = crate::adoc::parse_full(
+            "= 休暇申請書\n:様式: 申請書\n\n申請日:: 8月18日\n部署:: 総務課\n氏名:: 山田太郎\n",
+        )
+        .expect("本文が読めない");
+        let th = parse(
+            "[様式.申請書]\n行 = [\n  { 升 = [\"申請日\"], 幅 = [30, 70] },\n  { 升 = [\"部署\", \"氏名\"] },\n]\n",
+        )
+        .expect("様式が読めない");
+        (doc, th)
+    }
+
+    #[test]
+    fn 様式は本文と名前で結ぶ() {
+        let (mut doc, th) = 申請書();
+        let 言うこと = apply_forms(&mut doc, &th);
+        assert!(言うこと.is_empty(), "何か言われた: {言うこと:?}");
+        let t = doc.tables().next().expect("升目にならない");
+        assert_eq!(t.rows.len(), 2);
+        // 1つの升は「名前」と「値」の2つ。幅は 100 桁の格子で表す
+        let 字 = |c: &crate::doc::Cellbox| -> String {
+            c.paragraphs.iter().flat_map(|p| p.runs.iter()).map(|r| r.text.as_str()).collect()
+        };
+        assert_eq!(字(&t.rows[0][0]), "申請日");
+        assert_eq!(字(&t.rows[0][1]), "8月18日");
+        assert_eq!(t.rows[0][0].span(), 30, "幅の指定が効いていない");
+        assert_eq!(t.rows[0][1].span(), 70);
+        // 幅を書いていない行は等分(4つで 100)
+        assert_eq!(t.rows[1].iter().map(|c| c.span()).sum::<usize>(), 100);
+        // **本文は `項目:: 値` のまま残らない**(升目に置き換わる)
+        assert!(
+            !doc.paragraphs().any(|p| p.style_id.as_deref() == Some("説明のリスト")),
+            "ラベル付きリストが二重に残った"
+        );
+    }
+
+    #[test]
+    fn 対応の付かない項目と埋まらない升は言う() {
+        let (_, th) = 申請書();
+        let (mut doc, _) = crate::adoc::parse_full(
+            "= 題\n:様式: 申請書\n\n申請日:: 8月18日\n電話:: 03-0000-0000\n",
+        )
+        .unwrap();
+        let 言うこと = apply_forms(&mut doc, &th);
+        assert!(言うこと.iter().any(|s| s.contains("升「部署」")), "{言うこと:?}");
+        assert!(言うこと.iter().any(|s| s.contains("項目「電話」")), "{言うこと:?}");
+    }
+
+    #[test]
+    fn 様式の名前が無ければ何もしない() {
+        let (_, th) = 申請書();
+        let (mut doc, _) = crate::adoc::parse_full("= 題\n\n項目:: 値\n").unwrap();
+        assert!(apply_forms(&mut doc, &th).is_empty());
+        assert!(doc.tables().next().is_none(), "様式と言っていないのに升目にした");
     }
 
     #[test]
