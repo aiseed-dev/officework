@@ -17,6 +17,9 @@
 
 use std::path::PathBuf;
 
+/// 文書の中の表で、セル関数を使う(SEKKEI「エンジンの統一」3段目)
+pub mod table;
+
 /// ソケットの置き場所。`$XDG_RUNTIME_DIR/officework/<app>.sock`。
 /// AF_UNIX の径路は 108 字までなので、長すぎるときは
 /// `/tmp/officework-UID/<app>.sock` へ落とす(Python 側も同じ規則)。

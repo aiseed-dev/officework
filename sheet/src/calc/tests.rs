@@ -2002,66 +2002,80 @@ mod cell_filename_tests {
 
 /// **シート以外の表でも式が動く**(SEKKEI「エンジンの統一」2段目)。
 ///
-/// 式の計算は `Sheet` ではなく「値を引ける表」を受けるようになった。
-/// ここでは文書の中の表に当たる `CellsGrid` を渡して、同じ答えが
-/// 出ることを確かめる
+/// 式の計算は `Sheet` ではなく [`Grid`](crate::grid::Grid)(値を引ける表)を
+/// 受けるようになった。ここでは**この試験だけの表**を書いて渡し、
+/// `Sheet` でなくても同じ答えが出ることを確かめる。
+///
+/// 製品の中で `Grid` を実装しているのは、いまのところ `Sheet` だけ。
+/// 文書の表の計算は `ops::table` がシートに写して行う(道を1本にするため)
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod 文書の表で計算する {
+mod シート以外の表でも計算する {
     use crate::calc::eval_in;
-    use crate::grid::CellsGrid;
-    use crate::model::{Pos, Value};
+    use crate::grid::Grid;
+    use crate::model::{Pos, TableDef, Value};
 
-    fn 売上台帳() -> CellsGrid {
-        let rows = vec![
-            vec!["品名".to_string(), "金額".to_string()],
-            vec!["机".to_string(), "1200".to_string()],
-            vec!["椅子".to_string(), "800".to_string()],
-            vec!["棚".to_string(), "500".to_string()],
-        ];
-        CellsGrid::from_text_rows("売上台帳", rows, true)
+    /// 九九の表。**升目の値を式で答える**だけの、いちばん小さい表。
+    /// 中身を持たなくても計算に載ることを示す
+    struct 九九 {
+        defs: Vec<TableDef>,
     }
 
-    /// 番地の参照と範囲。見出しが1行目なので金額は B2:B4
+    impl 九九 {
+        fn new() -> 九九 {
+            // 1行目を見出しにして、構造化参照も通ることを見る
+            九九 {
+                defs: vec![TableDef {
+                    name: "九九".into(),
+                    a: Pos::new(0, 0),
+                    b: Pos::new(9, 9),
+                    header: true,
+                    ..Default::default()
+                }],
+            }
+        }
+    }
+
+    impl Grid for 九九 {
+        fn name(&self) -> &str {
+            "九九"
+        }
+        fn value(&self, p: Pos) -> Value {
+            // 見出しの行は列の名前、それ以外は掛け算の答え
+            if p.row == 0 {
+                return Value::Text(format!("{}の段", p.col + 1));
+            }
+            Value::Number(((p.row + 1) * (p.col + 1)) as f64)
+        }
+        fn tables(&self) -> &[TableDef] {
+            &self.defs
+        }
+    }
+
+    /// 番地の参照と範囲。B2 は 2×2 = 4
     #[test]
-    fn 番地で足せる() {
-        let g = 売上台帳();
-        assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(B2:B4)"), Value::Number(2500.0));
-        assert_eq!(eval_in(&g, Pos::new(0, 0), "=B2*2"), Value::Number(2400.0));
+    fn 番地で引ける() {
+        let g = 九九::new();
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=B2"), Value::Number(4.0));
+        // B2:B4 = 4, 6, 8
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(B2:B4)"), Value::Number(18.0));
     }
 
-    /// **構造化参照。** 表の題が名前になり、見出しの字で列を引く。
-    /// これが 3 段目「writer でセル関数が使える」の土台
+    /// **構造化参照。** 表の名前と見出しの字で列を引く
     #[test]
-    fn 表の名前と見出しで足せる() {
-        let g = 売上台帳();
-        assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(売上台帳[金額])"), Value::Number(2500.0));
-        assert_eq!(eval_in(&g, Pos::new(0, 0), "=MAX(売上台帳[金額])"), Value::Number(1200.0));
-        assert_eq!(eval_in(&g, Pos::new(0, 0), "=COUNT(売上台帳[金額])"), Value::Number(3.0));
+    fn 表の名前と見出しで引ける() {
+        let g = 九九::new();
+        // 「3の段」= C 列の本体(2行目〜10行目)= 6,9,12,…,30
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(九九[3の段])"), Value::Number(162.0));
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=MAX(九九[3の段])"), Value::Number(30.0));
     }
 
-    /// 字は字のまま、数は数。`1,234` を数と読み違えない
+    /// 既定のまま置いた物は既定どおり — ふりがなも隠した行も無い
     #[test]
-    fn 字と数を見分ける() {
-        let rows = vec![vec!["1200".to_string(), "1,200".to_string(), "TRUE".to_string(), String::new()]];
-        let g = CellsGrid::from_text_rows("表", rows, false);
-        assert_eq!(g_value(&g, 0, 0), Value::Number(1200.0));
-        assert_eq!(g_value(&g, 0, 1), Value::Text("1,200".into()));
-        assert_eq!(g_value(&g, 0, 2), Value::Bool(true));
-        assert_eq!(g_value(&g, 0, 3), Value::Empty);
-    }
-
-    fn g_value(g: &CellsGrid, row: u32, col: u32) -> Value {
-        use crate::grid::Grid;
-        g.value(Pos::new(row, col))
-    }
-
-    /// 表の外の参照は空。**#REF! にはしない** — 表が小さいだけで、
-    /// 参照そのものは成り立っている(シートと同じ扱い)
-    #[test]
-    fn 表の外は空欄() {
-        let g = 売上台帳();
-        assert_eq!(eval_in(&g, Pos::new(0, 0), "=Z99"), Value::Empty);
-        assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(B2:B99)"), Value::Number(2500.0));
+    fn 持たない物は既定のまま() {
+        let g = 九九::new();
+        assert!(!g.any_row_hidden());
+        assert!(!g.row_hidden(3));
+        assert_eq!(g.phonetic(Pos::new(1, 1)), None);
     }
 }

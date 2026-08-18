@@ -551,6 +551,35 @@ pub struct Table {
     pub fixed_layout: bool,
 }
 
+impl Table {
+    /// 表の中身を**字の並び**にする(行優先)。
+    ///
+    /// 式の計算に載せるための形です。計算する側(`ops::table`)は
+    /// `kumihan` を知らないままで済み、`kumihan` は `sheet` を知らないまま
+    /// で済みます(SEKKEI「エンジンの統一」2段目の決め)。
+    ///
+    /// **結合したセルは、左上に字を置いて残りを空にします。**
+    /// そうしないと結合の右にある列が1つずつずれ、見出しで引く
+    /// 構造化参照(`売上台帳[金額]`)が別の列を指してしまいます。
+    /// 表計算の結合セルも同じ持ち方です。
+    pub fn text_rows(&self) -> Vec<Vec<String>> {
+        self.rows
+            .iter()
+            .map(|row| {
+                let mut out = Vec::new();
+                for c in row {
+                    out.push(paras_text(&c.paragraphs));
+                    // 結合で余分に占める格子の分だけ空を足す
+                    for _ in 1..c.span() {
+                        out.push(String::new());
+                    }
+                }
+                out
+            })
+            .collect()
+    }
+}
+
 /// 文書の中身は、段落か表。順序を保つ。
 #[derive(Debug, Clone)]
 pub enum Block {
