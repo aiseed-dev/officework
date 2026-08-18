@@ -2348,8 +2348,6 @@ mod html_write_tests {
         assert_eq!(adoc::write(&d), src, "往復していない");
     }
 
-    /// **記入欄は form になる**(アプリビルダーの土台)。
-    #[test]
     /// **ラベル付きリストの値に入れた記入欄が消えない**(2026-08-18)。
     /// 申込用紙は「氏名:: field:氏名[お名前]」の形で書くので、ここが
     /// 落ちると用紙が空になる
@@ -2366,6 +2364,8 @@ mod html_write_tests {
         assert_eq!(crate::html_write::fields(&doc).len(), 2);
     }
 
+    /// **記入欄は form になる**(アプリビルダーの土台)。
+    #[test]
     fn 記入欄がformになる() {
         use crate::doc::{CharFormat, Document, Paragraph, Run, Sdt, SdtKind};
         let mut d = Document::default();
