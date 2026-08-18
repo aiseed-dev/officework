@@ -1,0 +1,322 @@
+= officework
+
+_元は英語版(link:README.adoc[README.adoc])です。こちらは日本語訳です。_
+
+**Python で Office の仕事を自動化する — それがこのソフトの一番の目的です。
+**エンジンは `pip install officework` で単体で入ります: xlsx / docx を書式ごと壊さずに読み書きし、openpyxl・python-docx・xlwings の書き味を継いでいます。
+その上に *手元で動く Word と Excel* が載ります —自動化の結果を目で確かめ、手で仕上げ、起動中のブックを Python から直に操る場所です。
+
+二番目の目的はその逆向き — *Office から Python を使う*。
+セルの式``=倍(A1)`` が自作の Python 関数を呼んで結果がスピルで広がり、グラフやピボットのボタンの裏では matplotlib・polars が働きます。
+VBA の代わりはこれです:
+
+* `writer` — *AsciiDoc の視覚エディタ*。原稿(.adoc)を見たまま直し、画面・PDF・HTML・docx に出す。docx は受け渡しの形式で、開いて見る・adoc にすることはできる(link:docs/writer-manual.ja.md[手引き])
+* `calc` — xlsx を開いて、直して、保存する。式も計算する(link:docs/calc-manual.ja.md[手引き])
+
+**別々のアプリ**です。
+1つの巨大なスイートにしていません。
+
+== いま出来ること
+
+[cols="1,1,1"]
+|===
+||writer|calc
+|開く・保存|docx(触っていない部品はそのまま残す — 開いて保存しても壊れない)|xlsx(同)
+|日本語入力(IME)・undo|○|○
+|文字書式|太字・斜体・下線・取り消し線・色・蛍光ペン・上付き下付き・大きさ・書体(*選択した文字だけに効く*)|太字・斜体・下線・取り消し線・色・塗り
+|段落|揃え・箇条書き(レベル付き)・インデント・行間・改ページ・背景と囲み枠・ドロップキャップ|—
+|*日本語一級*|*縦書き・ルビ・均等割付*(テキスト方向で縦横を切り替え)|文字の向き(縦の見出し)
+|記入欄(コンテンツコントロール)|○(記入欄・ドロップダウン・チェック — 申込書を作って、保護して配れる)|入力規則とチェックボックスで同等
+|見出しと目次|○(目次・図表目次はページ番号つき)|—
+|ヘッダー・フッター|○(ページ番号・ページ数・日付)|—
+|表|○(セル結合ごと読み書き・セルの中で編集)|(それが本体)
+|画像|挿入○(PNG・JPEG・*SVG は高精細に変換*)。図形・グラフは Python で描いて貼る|挿入○(PNG・JPEG)。図形・SmartArt・テキストアート・方程式(TeX)・スパークライン・記号・チェックボックス。グラフのボタンの裏は matplotlib
+|コメント|○(段落単位)|○
+|変更履歴|○(保存で Word の変更履歴になる)|—
+|しおり・透かし・ページ色・段組み|○|—
+|描画(ペン・蛍光ペン・消しゴム)|○(保存で SVG の画像になり、docx では図形にもなる)|—
+|式|数式は原文のまま往復する(*壊さない*。編集はしない)|四則と関数(約185。動的配列と昔ながらの配列数式も)・再計算・循環の検出・*=PY*(Python で書く自作関数)
+|シート|—|複数シート・枠の固定・フィルター・スライサー・並べ替え・グループ化と小計
+|ピボットテーブル|—|○(裏方 polars。定義をブックに控えて更新できる)
+|ソルバー・ゴールシーク|—|○(単体法 LP。裏方 scipy)
+|保護・暗号化・署名|○(暗号化された docx を*開く*ことはできる。掛けるのは calc の側)|○(読み取り専用・AES・Ed25519 の署名ファイル)
+|チャット・バージョン履歴|○|○(サーバー無し — 共有フォルダのファイル越し)
+|条件付き書式・入力規則|—|○(xlsx 往復つき)
+|リンク・名前の定義・形式を選択して貼り付け|—|○
+|Python(マクロの代わり)|.py のマクロをサンドボックスの中で実行(書き方は python-docx そのまま)。文書には載せない|自作の関数・手続きを .py で置き、セルから `=関数名(…)`、パネルから `@名前` で呼ぶ。ブックには載せない
+|印刷の設定|用紙・向き・余白・段組み — *途中で紙が変わる文書も*(縦と横の節が1つのファイルに混ざっていても、画面でも PDF でも)|用紙(JIS の B も)・向き・余白・印刷範囲
+|PDF|○(ヘッダー・フッター・透かし・ペンごと)|○(罫線・塗り・印刷設定に従う)
+|検索と置換|○|○
+|しおりへの相互参照|○(Word の REF/PAGEREF フィールド)|—
+|欧文のハイフネーション|○(TeX と同じ分綴パターン)|—
+|校正|○|—
+|===
+
+リボンの並びは Euro-Office に合わせてあります(乗り換える人が場所を覚え直さずに済むように)。
+*まだ出来ていないコマンドはグレー表示で並んでいます* — できないものを、できるように見せません。
+
+**VBA 型のマクロはありません。
+ブックはコードを運びません。
+**表は .xlsx に、コードは .py に — 別々のファイルです。
+自作のコードは``~/.config/officework/plugins/`` に .py で置きます。
+手続きなら `@名前` で実行、関数なら `=倍(A1)` のような普通の式でセルから呼べます(関数名は日本語でもかまいません)。
+受け取ったブックにコードは入っていないので、**「開いた瞬間に他人のコードが走る」という事故が、仕組みの上で起きません。
+**詳しくは link:docs/calc-manual.ja.md[calc の手引き]。
+
+== 手に入れる
+
+やりたいことに応じて3つの道があります。
+
+*PyPI から。* これが主な配り方で、*0.4.0 からはアプリも一緒に入ります*。
+
+[source,console]
+----
+$ pip install officework      # エンジン・橋・MCP、そしてアプリ2本
+$ officework-calc             # 画面のある表計算が立ち上がる
+$ officework-writer
+----
+
+wheel は Linux と Windows で約 36MB(mac は2つの CPU 分が入るのでもう少し大きくなります)。
+*この道がいちばん手間がかかりません* — pip が置いたファイルには mac の quarantine も Windows の Mark of the Web も付かないので、Gatekeeper も SmartScreen も出ません。
+Python の同梱も要りません。
+
+[NOTE]
+====
+*Linux だけ、機械の側に要る物があります*(pip では入れられません):
+`sudo apt install libxkbcommon0 libxkbcommon-x11-0 libxcb1 libxcb-xkb1 libfontconfig1 fonts-noto-cjk`
+足りなければ `officework-calc` がその場で名前を挙げて教えます。
+mac と Windows は素で動きます。
+====
+
+*インストーラ — まだ公開していません。* 包む仕組みは出来ていて、出来上がるのはこの3つです(どれも Python 3.14 を同梱)。
+ただしまだリリースしていません。
+
+[cols="1,1,1"]
+|===
+||ファイル|いまの状態
+|Linux|`.deb`、または展開するだけの `.tar.gz`|手元で作って中身を確認済み
+|macOS|`.dmg`|署名と公証の準備は済み。*通しではまだ動かしていません*
+|Windows|`setup.exe`|管理者権限なしで入ります。署名はまだなので SmartScreen が出ます(*詳細情報 → 実行*)。落ち着いたら Microsoft ストアから
+|===
+
+*ソースから組む* — 下の「組む」へ。
+
+== 自分で足した物の置き場
+
+足す物は全部この1つのフォルダに入ります。
+どの OS でも同じ場所です(Windows は `%USERPROFILE%\.config\officework`)。
+
+----
+~/.config/officework/
+├── funcs/         セルから呼ぶ関数:  =倍(A1)
+├── ribbon/        リボンのボタンになるマクロ
+├── plugins/       一覧から選ぶマクロ
+├── records/       記録した操作(下書き。そのままでは走りません)
+├── .venv/         足したパッケージ(matplotlib、polars など)
+└── settings.toml  言語、キーの割り当て
+----
+
+このフォルダを VS Code で開けば、エディタが `.venv` を自分で見つけます。
+マクロとパッケージを同じ場所にしているのはそのためです。
+パッケージが足りないときは、アプリがそのままコピーできるコマンドを表示します。
+
+== 組む
+
+必要なもの: Rust(1.80以降)、日本語のフォント、Linux なら Wayland か X11。
+
+Debian/Ubuntu では、ビルドに次のパッケージも要ります(CI と同じ一覧):
+
+[source,bash]
+----
+sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev \
+  libxcb-xkb-dev libfontconfig1-dev cmake clang pkg-config
+----
+
+[source,bash]
+----
+cargo build --release
+
+./target/release/writer            # 空で開く
+./target/release/writer sample/報告書.docx   # 同梱のサンプル(中身は架空)
+./target/release/calc  sample/見積書.xlsx
+----
+
+初回のビルドは、画面ライブラリ GPUI(Zed エディタと同じもの)を取ってきて組むので時間がかかります。
+2回目からは速くなります。
+
+=== フォント
+
+*同梱していません。* 書体は文書側の設定なので、docx/xlsx に書かれている書体名をこの機械に入っているフォントから探します。
+見つからなければ、日本語を表示できる別のフォントで代用します。
+
+[source,bash]
+----
+OFFICE_FONT=/path/to/font.ttf ./target/release/writer   # 明示して指定する
+----
+
+`fonts-noto-cjk` か `fonts-ipaexfont` が入っていれば動きます。
+
+=== 校正(writer のレビュー > 校正)
+
+英語の綴りは辞書だけで見ます(`/usr/share/dict/words` など)。
+日本語の誤変換・表記ゆれは辞書では見つからないので、**手元で動くAI モデル**に聞きます。
+宛先はこう指定します:
+
+[source,bash]
+----
+OFFICE_HOST=127.0.0.1 OFFICE_PORT=8000 OFFICE_MODEL=... ./target/release/writer
+----
+
+OpenAI 互換の API(`/v1/chat/completions`)を話すサーバーなら何でも構いません。
+*繋がらなければ「校正できません」と出ます* —黙って「指摘なし」にはしません。
+
+校正はコマンドラインからも単体で使えます:
+
+[source,bash]
+----
+cargo run --release --bin office-spell -- 文書.txt
+cargo run --release --bin office-spell -- --furigana 原稿.txt
+----
+
+== Python との分業
+
+**見ながら整える仕事はアプリ、データを作る・絵を描く仕事は Python。
+**グラフ・SmartArt・方程式・ピボット・ソルバーまでボタンがありますが、裏で働くのは Python(matplotlib・polars・scipy)です。
+込み入った分析はそのまま polars・statsmodels で。
+
+*エンジンだけなら PyPI から入ります。アプリは要りません。*
+
+[source,console]
+----
+$ pip install officework
+----
+
+**MCP サーバ**も付いています。
+AI に、動いているアプリを操らせられます:
+
+[source,console]
+----
+$ pip install "officework[mcp]"   # あとは officework-mcp を AI 側に登録する
+----
+
+読み書き・書式・自動調整・保存の8つだけを渡します。
+同じ橋を使うので決まりも同じ — このパソコンの中だけで、TCP は開きません。
+
+*別のアプリの中にも入ります。* Electron 製の表計算link:https://github.com/genspark-ai/genoffice[genoffice] は、xlsx の読み書きを別プロセスの助手に任せる作りです。
+その助手をこのエンジンに差し替えられます — *genoffice 側のコードは1行も変えず*、環境変数を1つ設定するだけ。
+12 あるコマンドのうち 11 を officework が受け持ちます(保存も含む。
+`.xls` の取り込みだけ未実装)。
+手順と「何を差し替えて、何を差し替えていないか」はlink:docs/engine.ja.md[エンジンの説明]へ。
+
+openpyxl と違い、罫線・結合・列幅・図形を保ったまま値を差し込めます。
+
+[source,python]
+----
+from officework import sheet
+
+b = sheet.Book.open("様式7.xlsx")
+b["提案見積書"]["A30"] = "日本フネン株式会社"   # 書式はそのまま残る
+b.save("out.xlsx")
+print(b.unsupported)   # 読めなかった部品の一覧(空なら全部読めた)
+----
+
+docx も同じです。
+python-docx は理解できない部品を書き直してしまいますが、こちらは原本を正として変えた所だけ書き戻すので、様式・ヘッダー・図形・変更履歴が壊れません。
+
+[source,python]
+----
+from officework import doc
+
+d = doc.Doc.open("報告書.docx")
+print(d.unsupported)               # 読めなかった部品の一覧(空なら全部読めた)
+d.replace("旧社名", "新社名")       # 段落の中の書式はそのまま
+d.fill("宛先", "日本フネン株式会社") # 名前つき記入欄に差し込む(writer で付けた名前)
+d[3].text = "差し替え"              # 見出しの段は見出しのまま、寄せも1行目の字下げも残る
+print(d.tables[0][1][2].text)      # 表・行・セル
+d.save("out.docx")
+----
+
+帳票に差し込むなら `replace()` を使ってください。
+文字ごとの書式(太字・色など)を残したまま置き換えるので、太字の項目名の隣に普通の値が入る形が崩れません。
+`.text` への代入は段落を丸ごと書き替える大づかみな道具で、文字の書式は段落の先頭のものに揃います。
+
+起動中の calc を外から操ることもできます(こちらは calc を起動しておく必要があります):
+
+[source,python]
+----
+from officework import calc as xw   # xlwings 流の Book / Range
+----
+
+コードを書く人向けの説明は link:docs/python-manual.ja.md[Python の手引き] にあります —*範囲⇄配列のやり取り*(values() と1セルずつの書き込み)、=PY の2次元リストとスピル、writer マクロの `d`、サンドボックスの中の約束、まで、実際に動かして確かめた内容つきです。
+
+== 構成
+
+----
+engine/   kumihan — 組版の核(行組み・禁則・字幅・紙面の座標)
+ooxml/    docx の読み書き
+sheet/    xlsx の読み書き、式の計算、書式(styles.xml)
+ops/      ブックの操作の言葉(開く・読む・書く — Python もアプリも同じ意味で使う)
+pyrun/    Python を実行する仕組み(サンドボックス・時間制限)
+lang/     言語ごとの処理(訳の表・校正・ふりがな)。画面なしで動く
+paper/    紙面を PDF へ写す
+ui/       gpui との結線(入力・IME・リボン)
+writer/   docx のアプリ
+calc/     xlsx のアプリ
+pysheet/  Python から使う部分(pip install officework → officework.sheet / officework.doc)
+sidecar/  genoffice に載せるときの別プロセス
+----
+
+**画面も紙も、同じ紙面を別の面に写すだけ**です。
+だから画面と印刷が食い違いません。
+
+== 各国語版
+
+*画面の言語は実行時に切り替えられます。* 14言語を同梱: ja(既定)・en・de・es・fr・id・it・ko・pt・ru・tr・vi・zh・zh-tw。
+
+[source,bash]
+----
+OFFICE_LANG=en ./target/release/writer      # 一時的な上書き
+# 恒久には ~/.config/officework/settings.toml に:
+#   language = "en"
+----
+
+*画面全体が切り替わります* — リボンも、ステータスバーの文言も、ダイアログも。
+どの言語も**全部の文言が訳されています** — 訳に欠けのある言語は、そもそも登録できない作りです。
+
+訳の数をここに書かないのはわざとです。
+*数は増え続けるので、書けば古くなります。* 代わりに `cargo test` の中に検査があり(`lang/tests/i18n_soroi.rs`)、英語に未訳が無いこと・使われなくなった訳が残っていないこと・**13言語が同じキーを持つこと**を毎回確かめます。
+前はこの検査を手で実行する決まりだったので誰も実行せず、未訳が173句まで溜まっていました — **思い出して実行する検査は、検査ではありません。
+**設定ページもあります: ファイル > 詳細設定 で、いまの言語・書体・校正の宛先・Python の経路が見え、言語を順に切り替えられます(次の起動から反映)。
+
+標準のリボンの語は Euro-Office 本家の訳から、残りの文言は Claude による機械翻訳で、言語ごとに Microsoft Office の用語に合わせてあります。
+en と ja は目を通してあります —*ほかの言語は、母語話者の校閲を歓迎します。*
+
+言語を足すのは1コマンドです — `ui/gen_lang.py` が訳すべき文の一覧(`ui/i18n/keys.json`、番号つきの ja/en 対訳)を出し、訳を``ui/i18n/<locale>.json`` で受け取って、表の生成から登録までやります。
+訳に欠けや不備のある言語は登録を断ります:
+
+[source,bash]
+----
+python3 ui/gen_lang.py --todo     # 材料を出す
+python3 ui/gen_lang.py nl         # ui/i18n/nl.json から生成・登録
+python3 ui/gen_lang.py --check    # 登録済み全言語を検査
+----
+
+言語ごとの癖(組版・校正のやり方)は `lang` クレートの `Language` にまとめてあります。
+新しい言語の癖は、これを1つ実装すれば済みます。
+
+== ライセンス
+
+*AGPL-3.0-or-later*(`LICENSE`)。
+同梱・派生しているものの由来は `NOTICE.md`。
+
+== いまの進み
+
+リボンのボタンのグレー表示は *writer 0 個・calc 9 個*(2026-08-10)。
+9個の内訳は、レイアウトの図形の重なり順・配置・グループ化・結合、保護のブック/範囲の保護、表示の標準/改ページ プレビュー。
+*それ以外は両方とも全部動きます。*
+
+どちらの数もリボンの表そのものと突き合わせて毎回の push で確かめています。
+*黙って古くなることはもうありません* — 実際それが起きていました。
+画面は9個を灰色で出していたのに、ここは何か月も「ゼロ」と言っていました。
+
+設計と判断の記録は `SEKKEI.md`、経緯と残件は `HIKITSUGI.md`、試せる見本は``sample/``(手引きから辿れます)。

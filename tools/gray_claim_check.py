@@ -38,8 +38,8 @@ FLOOR = 60
 
 # 文書 → その文書が語っているアプリ
 DOCS = {
-    "README.md": ("writer", "calc"),
-    "README.ja.md": ("writer", "calc"),
+    "README.adoc": ("writer", "calc"),
+    "README.ja.adoc": ("writer", "calc"),
     "docs/calc-manual.md": ("calc",),
     "docs/calc-manual.ja.md": ("calc",),
     "docs/writer-manual.md": ("writer",),

@@ -256,15 +256,31 @@ fn 文で切る(s: &str) -> Vec<String> {
     let mut 今 = String::new();
     let mut 深さ = 0i32;
     let mut 等幅 = false;
+    // **強調の途中では切りません**(2026-08-18)。`*太字。*` の中で切ると
+    // 印が片方だけの行になり、次に開いたとき別の意味になります
+    // (README を自分のエンジンに通して見つけました)
+    let mut 太字 = false;
+    let mut 斜体 = false;
+    let mut 逃し = false;
     for (i, c) in b.iter().enumerate() {
         今.push(*c);
+        if 逃し {
+            逃し = false;
+            continue;
+        }
         match c {
+            '\\' => {
+                逃し = true; // `\*` は字の `*`
+                continue;
+            }
             '`' => 等幅 = !等幅,
             '[' if !等幅 => 深さ += 1,
             ']' if !等幅 => 深さ = (深さ - 1).max(0),
+            '*' if !等幅 && 深さ == 0 => 太字 = !太字,
+            '_' if !等幅 && 深さ == 0 => 斜体 = !斜体,
             _ => {}
         }
-        if 深さ > 0 || 等幅 {
+        if 深さ > 0 || 等幅 || 太字 || 斜体 {
             continue;
         }
         let 切る = match c {
@@ -297,12 +313,31 @@ fn 文で切る(s: &str) -> Vec<String> {
         .collect()
 }
 
+/// この run の**次に来る字**(囲みの外の字を見るため)
+fn 次の字(runs: &[Run], ri: usize) -> Option<char> {
+    runs.get(ri + 1).and_then(|x| x.text.chars().next())
+}
+
 /// run の並び → インラインの印つきの1行
 fn runs_text(runs: &[Run], doc: &Document) -> String {
     let mut s = String::new();
     let mut bold = false;
     let mut italic = false;
-    for r in runs {
+    // いま開いている囲みの印の数(閉じるときに同じ数にする)
+    let mut 太字は二重 = false;
+    let mut 斜体は二重 = false;
+    // **強調の印を1つにするか2つにするかは、囲みの外の字で決まります。**
+    // 開くときと閉じるときで数が違うと対にならないので、**開く前に
+    // 閉じた先まで見て**、1つの囲みで同じ数に決めます(2026-08-18)
+    let 二重にするか = |前: Option<char>, 始め: usize, 太: bool| -> bool {
+        let 終わり = runs[始め..]
+            .iter()
+            .position(|x| if 太 { !x.fmt.bold } else { !x.fmt.italic })
+            .map(|k| 始め + k);
+        let 後 = 終わり.and_then(|k| runs.get(k)).and_then(|x| x.text.chars().next());
+        前.is_some_and(|c| c.is_alphanumeric()) || 後.is_some_and(|c| c.is_alphanumeric())
+    };
+    for (ri, r) in runs.iter().enumerate() {
         // 脚注の印(字を持たない run)
         if let Some(fr) = &r.fmt.footnote {
             if let Some(fnote) = doc.footnotes.iter().find(|f| f.id == fr.id && f.endnote == fr.endnote) {
@@ -322,13 +357,29 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             s.push_str(&format!("<<{}>>", f.name));
             continue;
         }
-        // 強調の開閉(正規形: 閉じ忘れは write 側では起きない — run の境で必ず対にする)
+        // 強調の開閉(正規形: 閉じ忘れは write 側では起きない — run の境で必ず対にする)。
+        //
+        // **隣が字なら二重の印にします**(2026-08-18)。本家 AsciiDoc は
+        // `*字*` の外側が字だと強調として読みません(`*太字*続き` はそのまま
+        // アスタリスクが出ます)。README を本家に通して分かりました
         if r.fmt.bold != bold {
-            s.push('*');
+            let 二重 = if r.fmt.bold {
+                二重にするか(s.chars().last(), ri, true)
+            } else {
+                太字は二重
+            };
+            s.push_str(if 二重 { "**" } else { "*" });
+            太字は二重 = 二重;
             bold = r.fmt.bold;
         }
         if r.fmt.italic != italic {
-            s.push('_');
+            let 二重 = if r.fmt.italic {
+                二重にするか(s.chars().last(), ri, false)
+            } else {
+                斜体は二重
+            };
+            s.push_str(if 二重 { "__" } else { "_" });
+            斜体は二重 = 二重;
             italic = r.fmt.italic;
         }
         // 上付き・下付きは**意味**(x² / H₂O)。AsciiDoc の標準の印
@@ -345,17 +396,38 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             // **等幅は本家の印で書きます**(2026-08-18)。`[.等幅]#字#` と
             // 書いても意味は同じですが、他の処理系や GitHub では字がそのまま
             // 出てしまいます。本家にある書き方はそちらに寄せる決まりです
-            Some(MONO) => ("`".to_string(), "`"),
+            // **前後が字なら二重の印。** 本家は `字\`等幅\`字` を等幅として
+            // 読みません(2026-08-18 に本家で確かめました)
+            Some(MONO) => {
+                let 前 = s.chars().last();
+                let 後 = 次の字(runs, ri);
+                let 字か = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric());
+                if 字か(前) || 字か(後) {
+                    ("``".to_string(), "``")
+                } else {
+                    ("`".to_string(), "`")
+                }
+            }
             Some(n) => (format!("[.{n}]#"), "#"),
             None => (String::new(), ""),
         };
+        let 等幅 = r.fmt.style_id.as_deref() == Some(MONO);
         s.push_str(&open);
         if let Some(sdt) = &r.fmt.sdt {
             s.push_str(&field_src(sdt));
         } else if let Some(ruby) = &r.fmt.ruby {
             s.push_str(&format!("ruby:{}[{}]", esc(&r.text), ruby));
         } else if let Some(url) = &r.fmt.link {
-            s.push_str(&format!("{url}[{}]", esc(&r.text)));
+            // **前が字なら `link:` を付けます。** 本家は `表計算https://…[名]` を
+            // リンクとして読みません(2026-08-18 に本家で確かめました)
+            let 頭 = if s.chars().last().is_some_and(|c| c.is_alphanumeric()) {
+                "link:"
+            } else {
+                ""
+            };
+            s.push_str(&format!("{頭}{url}[{}]", esc(&r.text)));
+        } else if 等幅 {
+            s.push_str(&r.text); // 等幅の中は字のまま
         } else {
             s.push_str(&esc(&r.text));
         }
@@ -381,7 +453,12 @@ fn esc(t: &str) -> String {
     let mut s = String::with_capacity(t.len());
     let mut it = t.char_indices().peekable();
     while let Some((i, c)) = it.next() {
-        if c == '*' || c == '_' || c == '^' || c == '~' || c == '\\' {
+        // `~` と `^` は**後ろに相手がいるときだけ**逃がします。
+        // 相手がいないのに逃がすと、`\~/.config` のように**バックスラッシュが
+        // そのまま読者に見えます**(2026-08-18 に README を本家へ通して
+        // 見つけました)
+        let 対がある = |c: char| t[i + c.len_utf8()..].contains(c);
+        if c == '*' || c == '_' || c == '\\' || ((c == '^' || c == '~') && 対がある(c)) {
             s.push('\\');
         }
         // **`[.名前]#` の形だけ逃がす** — 文字スタイルの書き出しと紛れるのは
@@ -866,6 +943,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     let mut doc = Document::default();
     let mut lines = src.lines().enumerate().peekable();
     let mut pending_bookmarks: Vec<String> = Vec::new();
+    let mut 継続の強調 = 強調の状態::default();
     let mut pending_break = false;
     let mut pending_style: Option<String> = None;
     let mut in_quote = false;
@@ -1122,18 +1200,23 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         if in_quote {
             p.style = ParaStyle::Quote;
         }
-        p.runs = parse_inline(body, &mut doc, &mut fresh_note)?;
-        // **続く行は同じ段落に継ぐ**(AsciiDoc の作法)。段落の切れ目は空行で、
-        // 行の折り返しではありません。80 桁で折った普通の AsciiDoc を開くと、
-        // 前は行ごとにバラバラの段落になり、保存で空行が入って構造が変わって
-        // いました(2026-08-18)。**継ぎ目に空白は入れません** — 日本語の文を
-        // 行で折っても語が割れないようにするためです
+        // **継ぐかどうかは、字を読む前に決まります**(見出しか・箇条書きか・
+        // 名前つきか)。継ぐなら強調の状態も持ち越します
         let 継ぐ = 直前も本文
             && p.style == ParaStyle::Body
             && p.list == ListKind::None
             && p.bookmarks.is_empty()
             && p.style_id.is_none()
             && !p.page_break_before;
+        if !継ぐ {
+            継続の強調 = 強調の状態::default();
+        }
+        p.runs = parse_inline_続き(body, &mut doc, &mut fresh_note, &mut 継続の強調)?;
+        // **続く行は同じ段落に継ぐ**(AsciiDoc の作法)。段落の切れ目は空行で、
+        // 行の折り返しではありません。80 桁で折った普通の AsciiDoc を開くと、
+        // 前は行ごとにバラバラの段落になり、保存で空行が入って構造が変わって
+        // いました(2026-08-18)。**継ぎ目に空白は入れません** — 日本語の文を
+        // 行で折っても語が割れないようにするためです
         // **1行で1つと決まっている段落には、次の行を継ぎません。**
         // 註記(`NOTE: 文`)とラベル付きリスト(`項目:: 値`)がそれです。
         //
@@ -1231,18 +1314,40 @@ fn split_macro_target(s: &str) -> Option<(&str, &str)> {
 ///
 /// **添字は全部バイトで数える。** 字数と混ぜると、日本語の後ろの字が
 /// 食われる(最初の版で `の続き` が消えた — find の返りはバイト)
+/// **行をまたぐ強調の状態。**
+///
+/// 本家は段落まるごとを1つとして読むので、`**太字` で始まり次の行の
+/// `太字**` で閉じる書き方が通ります。行ごとに読み直すと、片方だけの印に
+/// なって字が壊れます(2026-08-18 に README を通して見つけました)。
+#[derive(Debug, Clone, Copy, Default)]
+pub struct 強調の状態 {
+    bold: bool,
+    italic: bool,
+    mono: bool,
+}
+
 fn parse_inline(
     text: &str,
     doc: &mut Document,
     fresh_note: &mut usize,
 ) -> Result<Vec<Run>, String> {
+    let mut 状態 = 強調の状態::default();
+    parse_inline_続き(text, doc, fresh_note, &mut 状態)
+}
+
+fn parse_inline_続き(
+    text: &str,
+    doc: &mut Document,
+    fresh_note: &mut usize,
+     状態: &mut 強調の状態,
+) -> Result<Vec<Run>, String> {
     let mut runs: Vec<Run> = Vec::new();
     let mut cur = String::new();
-    let mut bold = false;
-    let mut italic = false;
+    let mut bold = 状態.bold;
+    let mut italic = 状態.italic;
     // **等幅**(`` `字` ``)。字のスタイルとして持つので、見た目はテンプレートの
     // `[スタイル.等幅]` が決めます(2026-08-18)
-    let mut mono = false;
+    let mut mono = 状態.mono;
     let flush = |runs: &mut Vec<Run>, cur: &mut String, bold: bool, italic: bool, mono: bool| {
         if cur.is_empty() {
             return;
@@ -1258,6 +1363,23 @@ fn parse_inline(
     let mut i = 0usize; // バイト
     while i < text.len() {
         let rest = &text[i..];
+        // **等幅の中は字のままです**(2026-08-18)。閉じの印だけを探します。
+        // 中の `_` を斜体の印として読むと、`i18n_soroi.rs` のような名前が
+        // 壊れます。`\` も字なので、径路の `%USERPROFILE%\.config` が
+        // 消えないようにします
+        if mono {
+            let 閉じ = if rest.starts_with("``") { 2 } else if rest.starts_with('`') { 1 } else { 0 };
+            if 閉じ > 0 {
+                flush(&mut runs, &mut cur, bold, italic, mono);
+                mono = false;
+                i += 閉じ;
+                continue;
+            }
+            let c = rest.chars().next().expect("空でない");
+            cur.push(c);
+            i += c.len_utf8();
+            continue;
+        }
         if let Some(after) = rest.strip_prefix('\\') {
             if let Some(c) = after.chars().next() {
                 cur.push(c);
@@ -1265,16 +1387,36 @@ fn parse_inline(
                 continue;
             }
         }
+        // **二重の印**(`**字**`)。前後が字のときは本家がこちらを求めます
+        if rest.starts_with("**") {
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            bold = !bold;
+            i += 2;
+            continue;
+        }
         if rest.starts_with('*') {
             flush(&mut runs, &mut cur, bold, italic, mono);
             bold = !bold;
             i += 1;
             continue;
         }
+        if rest.starts_with("__") {
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            italic = !italic;
+            i += 2;
+            continue;
+        }
         if rest.starts_with('_') {
             flush(&mut runs, &mut cur, bold, italic, mono);
             italic = !italic;
             i += 1;
+            continue;
+        }
+        // 二重の印(``字``)。前後が字のときは本家がこちらを求めます
+        if rest.starts_with("``") && (mono || rest[2..].contains("``")) {
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            mono = !mono;
+            i += 2;
             continue;
         }
         // 等幅。**対になっているときだけ**受けます — 片方だけの `
@@ -1432,6 +1574,7 @@ fn parse_inline(
         i += c.len_utf8();
     }
     flush(&mut runs, &mut cur, bold, italic, mono);
+    *状態 = 強調の状態 { bold, italic, mono };
     Ok(runs)
 }
 
@@ -1669,7 +1812,9 @@ mod tests {
 
     #[test]
     fn 等幅が往復する() {
-        往復("`等幅の字`と普通の字。\n");
+        // 後ろが字なので二重の印(本家は `\`字\`と` を等幅として読まない)
+        往復("``等幅の字``と普通の字。\n");
+        往復("等幅は `これ` です。\n");
         let doc = parse("`等幅の字`と普通の字。\n").unwrap();
         let p = doc.paragraphs().next().unwrap();
         assert_eq!(p.runs[0].fmt.style_id.as_deref(), Some(MONO));
@@ -1771,7 +1916,9 @@ mod tests {
 
     #[test]
     fn 強調と引用が往復する() {
-        往復("*要点*だけ_斜めに_言う。\n\n____\n引用の文。\n____\n");
+        // **囲みの外が字なので二重の印。** 本家は `*要点*だけ` を強調として
+        // 読まない(2026-08-18 に本家で確かめた)
+        往復("**要点**だけ__斜めに__言う。\n\n____\n引用の文。\n____\n");
     }
 
     #[test]

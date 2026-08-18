@@ -36,8 +36,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # 使い方の帳簿(glob)。設計(SEKKEI.md / docs/sekkei/)は対象外 — 経緯を残す場所
 DOCS = [
-    "README.md",
-    "README.ja.md",
+    "README.adoc",
+    "README.ja.adoc",
     "docs/*-manual*.md",
     "docs/from-excel*.md",
     "docs/engine*.md",

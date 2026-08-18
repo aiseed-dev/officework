@@ -1932,7 +1932,7 @@ mod marker_tests {
         let dir = std::env::temp_dir().join(format!("writer-adoc-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
-        let src = "= 月次報告\n\n== まとめ\n\n*要点*だけ書く。\n";
+        let src = "= 月次報告\n\n== まとめ\n\n**要点**だけ書く。\n";
         std::fs::write(&path, src).unwrap();
 
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
