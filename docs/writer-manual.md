@@ -745,17 +745,13 @@ asciidoctor). Put a document written in writer into a repository and it is
 readable without exporting anything. The same goes for naming your readme
 `README.adoc`.
 
-Two things to watch for.
-
-1. **Your template has no effect.** The look is GitHub's. If you need your own
-   colours and fonts, export HTML and put that on GitHub Pages or similar.
-2. **Our own syntax shows up as literal text.** Ruby annotation
-   `ruby:漢字[かんじ]` and form fields `field:氏名[お名前]` are not part of
-   AsciiDoc proper, so GitHub does not drop them — the reader sees
-   "ruby:漢字[かんじ]" on the page. Avoid them in documents meant for GitHub.
+**Your template has no effect.** The look is GitHub's. If you need your own
+colours and fonts, export HTML and put that on GitHub Pages or similar.
 
 Everything that is real AsciiDoc — headings, tables, lists, footnotes,
-cross references, `image::`, `stem:` — comes out as you would expect.
+cross references, `image::`, `stem:` — comes out as you would expect. Our own
+syntax, ruby annotation `ruby:` and form fields `field:`, shows up as literal
+text, but you are unlikely to be showing that kind of document on GitHub.
 
 ## Reducing a docx to meaning (distilling)
 
