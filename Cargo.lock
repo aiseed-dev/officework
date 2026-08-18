@@ -7693,6 +7693,7 @@ dependencies = [
  "ui",
  "webpki-roots 0.26.11",
  "winresource",
+ "zip",
 ]
 
 [[package]]
