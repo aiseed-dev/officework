@@ -200,11 +200,101 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
         _ => String::new(),
     };
     out.push_str(&head);
-    out.push_str(&runs_text(&p.runs, doc));
+    let 字 = runs_text(&p.runs, doc);
+    // **一文一行で書きます**(2026-08-18)。git の差分が文ごとになるので、
+    // 1文直したときに何を直したのか読めます。読むときは続く行を1つの段落に
+    // 継ぐので、開き直すと元の1段落に戻ります。
+    //
+    // 切るのは**普通の本文の段落だけ**です。見出しと箇条書きは、続く行が
+    // 別の段落になってしまうので切りません
+    let 切ってよい = head.is_empty() && p.style == ParaStyle::Body;
+    if 切ってよい {
+        out.push_str(&文で切る(&字).join("\n"));
+    } else {
+        out.push_str(&字);
+    }
     out.push('\n');
     if !in_quote {
         out.push('\n');
     }
+}
+
+/// **その `.` は略語の点か。**
+///
+/// 「Dr. Smith」の `.` の後ろは空白と大文字ですが、文の終わりではありません。
+/// 頭文字1文字(`J. R. R.`)も同じです。ここで切ると、1つの名前が2行に
+/// 割れます(2026-08-18 に見本で見つけました)。
+fn 略語の後(前: &[char]) -> bool {
+    let 語: String = 前
+        .iter()
+        .rev()
+        .take_while(|c| c.is_ascii_alphabetic())
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
+    if 語.len() == 1 {
+        return true; // 頭文字
+    }
+    const 略語: &[&str] = &[
+        "Dr", "Mr", "Mrs", "Ms", "Prof", "Sr", "Jr", "St", "vs", "etc", "Fig", "No", "Vol",
+        "Inc", "Ltd", "Co", "Corp", "Ave", "Rd", "approx", "cf", "al",
+    ];
+    略語.iter().any(|x| x.eq_ignore_ascii_case(&語))
+}
+
+/// **1つの段落を、文ごとの行に切ります。**
+///
+/// 切るのは `。` `!` `?` の後ろです。欧文の `.` は、後ろが**空白と大文字**の
+/// ときだけ切ります(`Dr.` や `example.com` で切らないため)。
+///
+/// `[…]` の中と `` ` `` で囲んだ中では切りません。脚注(`footnote:[…]`)の
+/// 文にも `。` が入るので、そこで切ると書き方が壊れます。
+fn 文で切る(s: &str) -> Vec<String> {
+    let b: Vec<char> = s.chars().collect();
+    let mut out: Vec<String> = Vec::new();
+    let mut 今 = String::new();
+    let mut 深さ = 0i32;
+    let mut 等幅 = false;
+    for (i, c) in b.iter().enumerate() {
+        今.push(*c);
+        match c {
+            '`' => 等幅 = !等幅,
+            '[' if !等幅 => 深さ += 1,
+            ']' if !等幅 => 深さ = (深さ - 1).max(0),
+            _ => {}
+        }
+        if 深さ > 0 || 等幅 {
+            continue;
+        }
+        let 切る = match c {
+            '。' | '！' | '？' => true,
+            '.' => {
+                matches!(
+                    (b.get(i + 1), b.get(i + 2)),
+                    (Some(' '), Some(次)) if 次.is_ascii_uppercase()
+                ) && !略語の後(&b[..i])
+            }
+            _ => false,
+        };
+        // 行末の `.` の後ろの空白は落とす(次の行の頭には要らない)
+        if 切る && i + 1 < b.len() {
+            out.push(std::mem::take(&mut 今));
+            if b.get(i + 1) == Some(&' ') {
+                // 欧文の切れ目。空白は捨てて、読むときに継ぎ目で足し直す
+            }
+        }
+    }
+    if !今.is_empty() {
+        out.push(今);
+    }
+    // **2行目からの頭の空白だけ**落とします(欧文の切れ目のぶん)。
+    // 1行目の空白は書いた人の字なので残します
+    out.into_iter()
+        .enumerate()
+        .map(|(i, x)| if i == 0 { x } else { x.trim_start().to_string() })
+        .filter(|x| !x.is_empty())
+        .collect()
 }
 
 /// run の並び → インラインの印つきの1行
@@ -691,6 +781,12 @@ const ADMONITION: &[&str] = &["NOTE:", "TIP:", "IMPORTANT:", "WARNING:", "CAUTIO
 /// どれなのかを字に残さないので、本文を直しても印は壊れません
 const 註記のスタイル: &[&str] = &["註記", "ヒント", "重要", "警告", "注意"];
 
+/// **1行で1つと決まっている段落のスタイル名か。**
+/// 註記とラベル付きリストは、続く行を呑むと形が壊れます
+fn 一行で1つ(name: &str) -> bool {
+    name == "説明のリスト" || 註記の印(name).is_some()
+}
+
 /// ラベル付きリストの行か(`項目:: 値`)。
 /// マクロ(`名前:対象[…]`)と紛れないよう `:: ` を見ます
 fn ラベル付きか(l: &str) -> bool {
@@ -1038,10 +1134,15 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             && p.bookmarks.is_empty()
             && p.style_id.is_none()
             && !p.page_break_before;
-        // **スタイル名の付いた段落には次の行を継ぎません。** 註記や
-        // ラベル付きリストは1行で1つなので、続く行を呑むと形が壊れます
-        直前も本文 =
-            p.list == ListKind::None && p.raw_adoc.is_none() && p.style_id.is_none();
+        // **1行で1つと決まっている段落には、次の行を継ぎません。**
+        // 註記(`NOTE: 文`)とラベル付きリスト(`項目:: 値`)がそれです。
+        //
+        // 利用者が付けた名前(`[.強調の囲み]`)は別です。**普通の段落と同じで、
+        // 何行にもわたって書けます**(2026-08-18 に見本を揃えたとき、
+        // 2行目が別の段落になって気づきました)
+        直前も本文 = p.list == ListKind::None
+            && p.raw_adoc.is_none()
+            && !p.style_id.as_deref().is_some_and(一行で1つ);
         if 継ぐ {
             if let Some(Block::Para(前)) = doc.blocks.last_mut() {
                 let 継 = 継ぎ目(
@@ -1611,6 +1712,42 @@ mod tests {
     fn 塊の指定の行は次の塊から離れない() {
         // 前は空行が入り、指定が塊に掛からなくなっていた
         往復("[source,python]\n----\nprint(1)\n----\n");
+    }
+
+    /// **一文一行**(2026-08-18)。git の差分が文ごとになる
+    #[test]
+    fn 本文は一文一行で書く() {
+        let doc = parse("一つ目です。二つ目です。\n").unwrap();
+        assert_eq!(write(&doc), "一つ目です。\n二つ目です。\n");
+        // 読むと1つの段落に戻る(和字の継ぎ目に空白は入れない)
+        往復("一つ目です。\n二つ目です。\n");
+    }
+
+    #[test]
+    fn 欧文は空白と大文字のときだけ切る() {
+        // 略語と頭文字では切らない
+        往復("Dr. Smith went home.\nThe next one starts here.\n");
+        let doc = parse("See example.com/a.b for more.\n").unwrap();
+        assert_eq!(write(&doc), "See example.com/a.b for more.\n");
+    }
+
+    #[test]
+    fn 囲みの中では切らない() {
+        // 脚注の中の `。` と、等幅の中の `。`
+        往復("脚注つきです。\nfootnote:[注の中の文。切りません]続きです。\n");
+        往復("`コードの中。切りません` と 普通の文。\n");
+    }
+
+    #[test]
+    fn 見出しと箇条書きは切らない() {
+        // 切ると、続く行が別の段落になってしまう
+        往復("== 見出し。二文目。\n\n* 一つ。二つ。\n");
+    }
+
+    #[test]
+    fn 利用者の名前を付けた段落は何行でも書ける() {
+        // 註記とラベル付きリストだけが1行で1つ。名前つきの段落は普通の段落
+        往復("[.強調の囲み]\n一つ目です。\n二つ目です。\n");
     }
 
     #[test]

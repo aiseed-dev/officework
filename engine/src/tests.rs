@@ -2408,7 +2408,7 @@ mod html_write_tests {
     fn adocに書けるものはhtmlにも出る() {
         let src = "= 題\n\n\
                    [[しるし]]\n== 章\n\n\
-                   本文と<<しるし>>への参照。footnote:[注の文章]\n\n\
+                   本文と<<しるし>>への参照。\nfootnote:[注の文章]\n\n\
                    <<<\n\n\
                    改ページの後。\n\n\
                    image::images/図1.png[]\n\n\

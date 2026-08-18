@@ -480,6 +480,22 @@ Sales *rose* against last month.footnote:[Tokyo and Osaka combined]
 
 The full list of markings is in the next section.
 
+### Saving tidies up the line breaks
+
+When writer saves, it puts **one sentence on one line**. Sentences end at `。`,
+`!` or `?`; in English it only breaks after a `.` followed by a space and a
+capital letter (never inside `Dr. Smith` or `example.com/a.b`).
+
+The point is the diff. Change one sentence and git shows that one sentence. With
+a whole paragraph on a single line, you cannot see what changed.
+
+Opening joins the lines back into one paragraph, so **nothing looks different on
+screen**.
+
+**Open an .adoc from somewhere else and save it, and the line breaks change.**
+Not a character of the text changes, but the diff will be large. To compare the
+content, look at the opened document rather than at the file before and after.
+
 ### What to write, which button, what comes out
 
 One thing per row, shown three ways: how you type it in the text, which ribbon
