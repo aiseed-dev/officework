@@ -1940,10 +1940,12 @@ mod marker_tests {
             assert!(this.native, "ネイティブとして開いていない: {}", this.status);
             assert_eq!(this.doc.props.title, "月次報告");
             let ps: Vec<_> = this.doc.paragraphs().collect();
-            assert_eq!(ps[0].style, kumihan::ParaStyle::Heading(1));
+            // **表題も本文の段落**(2026-08-18)。見出しはその次
+            assert_eq!(ps[0].style, kumihan::ParaStyle::Title);
+            assert_eq!(ps[1].style, kumihan::ParaStyle::Heading(1));
             // **意味だけ** — 見た目は本文に入らない(見出しの 16pt は
             // テンプレートの側で、合成のときに乗る)
-            assert_eq!(ps[0].runs[0].size_pt, None, "本文に見た目が焼き付いた");
+            assert_eq!(ps[1].runs[0].size_pt, None, "本文に見た目が焼き付いた");
 
             this.save_to(path.clone());
             let back = std::fs::read_to_string(&path).unwrap();
@@ -1977,7 +1979,7 @@ mod marker_tests {
         let dir = std::env::temp_dir().join(format!("writer-c2-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
-        std::fs::write(&path, "= 題\n:template: 見本の型\n\n本文の字。\n").unwrap();
+        std::fs::write(&path, ":template: 見本の型\n\n本文の字。\n").unwrap();
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.open(path.clone());
@@ -2132,7 +2134,7 @@ mod marker_tests {
         let dir = std::env::temp_dir().join(format!("writer-toggle-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
-        std::fs::write(&path, "= 題\n:template: 見本の型\n\nここは大事なところ。\n").unwrap();
+        std::fs::write(&path, ":template: 見本の型\n\nここは大事なところ。\n").unwrap();
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.open(path.clone());
@@ -2173,7 +2175,7 @@ mod marker_tests {
         let dir = std::env::temp_dir().join(format!("writer-char-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
-        std::fs::write(&path, "= 題\n:template: 見本の型\n\nここは大事なところ。\n").unwrap();
+        std::fs::write(&path, ":template: 見本の型\n\nここは大事なところ。\n").unwrap();
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.open(path.clone());
@@ -2351,7 +2353,9 @@ mod marker_tests {
             this.open(dir.join("話.adoc"));
             assert!(this.tmpl.setting.per_section(), "組み方が読めていない: {}", this.status);
             assert!(this.tmpl.setting.keep, "跨がないが読めていない");
-            assert_eq!(this.total_pages(), 3, "節ごとに1枚になっていない");
+            // **1枚目は表題**(2026-08-18 に表題が本文の段落になった)。
+            // 発表なら題の枚があるのが普通の形です。節は3つなので合わせて4枚
+            assert_eq!(this.total_pages(), 4, "表題の枚 + 節ごとに1枚になっていない");
 
             // **見出しと本文が同じ枚に載る。** 枚数だけ合っていても、
             // 見出しだけの枚と本文だけの枚に割れていたら発表にならない
@@ -2364,9 +2368,10 @@ mod marker_tests {
                 let (p, _) = this.page_of_roll(line.y_mm);
                 枚[p].extend(line.cells.iter().map(|c| c.ch));
             }
+            assert!(枚[0].contains("題"), "1枚目が表題でない: {枚:?}");
             for (i, 節) in ["ひとつめ", "ふたつめ", "みっつめ"].iter().enumerate() {
-                assert!(枚[i].contains(節), "{}枚目に見出し「{節}」が無い: {枚:?}", i + 1);
-                assert!(枚[i].contains("短い本文。"), "{}枚目に本文が無い: {枚:?}", i + 1);
+                assert!(枚[i + 1].contains(節), "{}枚目に見出し「{節}」が無い: {枚:?}", i + 2);
+                assert!(枚[i + 1].contains("短い本文。"), "{}枚目に本文が無い: {枚:?}", i + 2);
             }
         });
         let _ = std::fs::remove_dir_all(&dir);

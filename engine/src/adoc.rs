@@ -48,7 +48,14 @@ pub fn write(doc: &Document) -> String {
     // 頭(題名と属性)。**属性は読んだ順に返します** — 並べ替えると、
     // 書いた人の差分が「全部変わった」に見えます
     let mut head = String::new();
-    if !doc.props.title.is_empty() {
+    // 表題は本文の先頭の段落(ParaStyle::Title)から出します。段落が無く
+    // 文書の情報にだけ題名があるとき(docx から来た文書など)はそちらから
+    let 題の段落 = matches!(doc.blocks.first(), Some(Block::Para(p)) if p.style == ParaStyle::Title);
+    if 題の段落 {
+        if let Some(Block::Para(p)) = doc.blocks.first() {
+            head.push_str(&format!("= {}\n", runs_text(&p.runs, doc)));
+        }
+    } else if !doc.props.title.is_empty() {
         head.push_str(&format!("= {}\n", doc.props.title));
     }
     let 名 = |k: &str| k == "template" || k == "テンプレート";
@@ -69,6 +76,9 @@ pub fn write(doc: &Document) -> String {
     }
     let mut quote_open = false;
     for (bi, b) in doc.blocks.iter().enumerate() {
+        if bi == 0 && 題の段落 {
+            continue; // 頭で書いた
+        }
         match b {
             Block::Para(p) => {
                 let is_quote = p.style == ParaStyle::Quote;
@@ -673,7 +683,18 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     while let Some((_, line)) = lines.peek().copied() {
         let l = line.trim_end();
         if !head_done && doc.props.title.is_empty() && l.starts_with("= ") {
-            doc.props.title = l[2..].trim().to_string();
+            let 題 = l[2..].trim().to_string();
+            // **表題は本文の段落にもする**(2026-08-18)。文書の情報にしか
+            // 入れないと紙面に出ず、開いた人には題名が消えて見えます。
+            // `props.title` にも同じ字を入れて、docx の文書の情報と往復します
+            doc.props.title = 題.clone();
+            let mut p = Paragraph {
+                style: ParaStyle::Title,
+                line_spacing: 1.0,
+                ..Default::default()
+            };
+            p.runs.push(Run { text: 題, size_pt: None, font: None, fmt: CharFormat::default() });
+            doc.blocks.push(Block::Para(p));
             lines.next();
             continue;
         }

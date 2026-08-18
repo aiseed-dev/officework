@@ -2023,6 +2023,45 @@ mod indent_tests {
 }
 
 #[cfg(test)]
+mod title_tests {
+    use crate::{adoc, html_write, theme};
+
+    /// **表題が紙面に出る。** 2026-08-18 まで文書の情報にしか入らず、
+    /// 開くと題名が消えて見えていました。
+    #[test]
+    fn 表題は本文の段落になる() {
+        let src = "= 月次報告\n:template: 型\n\n== まとめ\n\n本文です。\n";
+        let d = adoc::parse(src).expect("読めない");
+        assert_eq!(adoc::write(&d), src, "往復していない");
+        // 文書の情報にも入る(docx の往復に要る)
+        assert_eq!(d.props.title, "月次報告");
+        // 本文の先頭の段落にもなる
+        let ps: Vec<_> = d.paragraphs().collect();
+        assert_eq!(ps[0].style, crate::doc::ParaStyle::Title);
+        assert_eq!(ps[0].runs[0].text, "月次報告");
+        // テンプレートの「表題」が当たる(既定は 20pt の太字)
+        let c = theme::compose(&d, &theme::default_theme());
+        let t = c.paragraphs().next().unwrap();
+        assert_eq!(t.runs[0].size_pt, Some(20.0), "表題に書式が当たらない");
+        assert!(t.runs[0].fmt.bold);
+        // HTML では h1.title(2回出ない)
+        let h = html_write::body(&d);
+        assert_eq!(h.matches("<h1").count(), 1, "h1 が2つある:\n{h}");
+        assert!(h.contains("<h1 class=\"title\">月次報告</h1>"), "{h}");
+    }
+
+    /// docx から来た文書(表題の段落が無く、文書の情報にだけ題名がある)でも
+    /// HTML には題名が出る。
+    #[test]
+    fn 情報にだけある題名も出る() {
+        let mut d = crate::doc::Document::plain("本文だけ。");
+        d.props.title = "受け取った文書".into();
+        let h = html_write::body(&d);
+        assert!(h.contains("<h1 class=\"title\">受け取った文書</h1>"), "{h}");
+    }
+}
+
+#[cfg(test)]
 mod adoc_notes_tests {
     use crate::adoc;
 

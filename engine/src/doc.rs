@@ -365,6 +365,13 @@ pub enum ListKind {
 pub enum ParaStyle {
     #[default]
     Body,
+    /// **文書の表題**(AsciiDoc の `= 題`、docx の Title)。
+    ///
+    /// 2026-08-18 まで表題は [`CoreProps::title`] にしか入らず、**紙面には
+    /// 出ませんでした**(開くと題名が消えて見える)。本文の段落にしたので、
+    /// 画面で直せて、紙にも Web にも出ます。`props.title` にも同じ字が入り、
+    /// docx の文書の情報として往復します
+    Title,
     /// 見出し(1〜3)。docx の Heading1〜3 / outlineLvl
     Heading(u8),
     /// 目次の行(1〜3)。docx の TOC1〜3(このアプリが目次を作った印)

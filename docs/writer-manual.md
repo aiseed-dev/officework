@@ -467,7 +467,7 @@ thing** — typing it by hand and pressing the button give the same result.
 
 | What you want | Type this | Ribbon button | On the web (HTML) |
 |---|---|---|---|
-| Title | `= Title` | File > Info, the Title box | `<h1 class="title">` |
+| Title | `= Title` | Styles in the right panel > 表題 | `<h1 class="title">` |
 | Heading 1 | `== Heading` | Home > Paragraph style > Heading 1 | `<h2>` |
 | Heading 2 | `=== Heading` | Home > Paragraph style > Heading 2 | `<h3>` |
 | Heading 3 | `==== Heading` | Home > Paragraph style > Heading 3 | `<h4>` |
@@ -499,10 +499,10 @@ highlight colour, font, font size, line spacing, alignment and borders go in the
 template, not in the text. Pressing those ribbon buttons opens the Styles face on
 the right. On the web they become CSS.
 
-**The title does not appear on the page.** `= Title` becomes the document title
-(File > Info, the Title box). It becomes a top-level heading when you export to the
-web, but it is not drawn on screen or on paper. If you want it on paper, write the
-first line as Heading 1.
+**The title is the first line of the text.** `= Title` is drawn on screen and on
+paper, and you edit it in place. The same text also goes into the document title
+(File > Info), so Word shows it in the document properties of a saved docx. Its
+look comes from the template style named 表題.
 
 **Equations are typeset when the document is opened.** The text only carries the
 source (LaTeX). Typesetting is done by Python — with TeX if it is installed,

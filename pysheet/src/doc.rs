@@ -1210,6 +1210,7 @@ impl PyParagraph {
                     .unwrap_or_else(|| id.clone()),
                 None => "body".to_string(),
             },
+            kumihan::ParaStyle::Title => "title".to_string(),
             kumihan::ParaStyle::Heading(n) => format!("heading{n}"),
             kumihan::ParaStyle::Toc(n) => format!("toc{n}"),
             kumihan::ParaStyle::Tof => "tof".to_string(),

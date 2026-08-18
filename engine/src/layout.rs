@@ -355,6 +355,8 @@ pub(super) const CELL_PAD: f32 = 1.4;
 /// 見出しの前後の空きも入れていない(段の送りに関わるので別便)
 pub(super) fn head_scale(style: ParaStyle) -> f32 {
     match style {
+        // 文書の表題。見出し1 より大きい(テンプレートが言えばそちらが勝つ)
+        ParaStyle::Title => 1.8,
         ParaStyle::Heading(1) => 1.5,
         ParaStyle::Heading(2) => 1.35,
         ParaStyle::Heading(3) => 1.2,

@@ -280,6 +280,7 @@ fn tag_of(style: ParaStyle, 題名あり: bool) -> &'static str {
             _ => "h6",
         },
         ParaStyle::Quote => "blockquote",
+        ParaStyle::Title => "h1",
         _ => "p",
     }
 }
@@ -425,7 +426,13 @@ fn build(doc: &Document) -> (String, Ctx) {
         };
     };
 
-    if 題名あり {
+    // 表題の段落(ParaStyle::Title)があればそれが出ます。段落が無く文書の
+    // 情報にだけ題名があるとき(docx から来た文書など)はここで出します
+    let 題の段落 = doc
+        .blocks
+        .iter()
+        .any(|b| matches!(b, Block::Para(p) if p.style == ParaStyle::Title));
+    if 題名あり && !題の段落 {
         o.push_str(&format!("<h1 class=\"title\">{}</h1>\n", esc(&doc.props.title)));
     }
     for b in &doc.blocks {
@@ -479,6 +486,9 @@ fn build(doc: &Document) -> (String, Ctx) {
         let tag = tag_of(p.style, 題名あり);
         // class は**スタイルの名前と改ページ**の2つが入ります
         let mut cls: Vec<String> = Vec::new();
+        if p.style == ParaStyle::Title {
+            cls.push("title".into());
+        }
         if let Some(n) = &p.style_id {
             cls.push(class_of(n));
         }

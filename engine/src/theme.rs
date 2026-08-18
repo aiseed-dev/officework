@@ -130,6 +130,7 @@ impl Theme {
     pub fn role_name(style: ParaStyle) -> Option<&'static str> {
         match style {
             ParaStyle::Body => Some("本文"),
+            ParaStyle::Title => Some("表題"),
             ParaStyle::Quote => Some("引用"),
             ParaStyle::Heading(1) => Some("見出し1"),
             ParaStyle::Heading(2) => Some("見出し2"),
@@ -147,6 +148,11 @@ impl Theme {
 /// なる(段階Aの門番)。TOML の字で持つのは、**形式そのものを毎回
 /// 通す**ため — 同梱だけ Rust の直書きだと、読み手の穴に気づけない
 pub const DEFAULT_TOML: &str = r#"# officework の既定のテンプレート
+[スタイル.表題]
+大きさ = 20
+太字 = true
+後の空き = 10
+
 [スタイル.見出し1]
 大きさ = 16
 太字 = true

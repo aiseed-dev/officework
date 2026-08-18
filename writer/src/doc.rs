@@ -2741,6 +2741,7 @@ impl Writer {
         let sel = self.ed.selection();
         let role = match name {
             "本文" => Some(kumihan::ParaStyle::Body),
+            "表題" => Some(kumihan::ParaStyle::Title),
             "見出し1" => Some(kumihan::ParaStyle::Heading(1)),
             "見出し2" => Some(kumihan::ParaStyle::Heading(2)),
             "見出し3" => Some(kumihan::ParaStyle::Heading(3)),

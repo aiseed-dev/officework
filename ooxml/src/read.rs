@@ -996,6 +996,7 @@ pub(super) fn style_of(val: &str) -> ParaStyle {
         "toc2" => ParaStyle::Toc(2),
         "toc3" => ParaStyle::Toc(3),
         "quote" | "blockquote" | "引用" | "引用文" => ParaStyle::Quote,
+        "title" | "表題" => ParaStyle::Title,
         _ => ParaStyle::Body,
     }
 }
