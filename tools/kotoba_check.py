@@ -51,6 +51,10 @@ WORDS = [
     (r"錨", "アンカー"),
     (r"生成器", "生成スクリプト"),
     (r"家訓", "方針"),
+    # **設定やキーボードの「キー」を「鍵」と書かない**(2026-08-18 発注者)。
+    # 暗号の鍵(公開鍵・秘密鍵・鍵ファイル)と、錠前の意味の「鍵ではありません」は
+    # 普通の日本語なので拾わない
+    (r"(?<!公開)(?<!秘密)(?<!署名の)(?<!打)鍵(?!ファイル)(?!ではありません)(?!束)(?!盤)", "キー"),
     # 形がはっきりしているものだけ拾う
     (r"別便|この便|次の便|同じ便", "回、作業"),
     (r"[のる]口(?=[はをにがで、。\s])", "API、ソケット、入り口"),
@@ -60,6 +64,10 @@ WORDS = [
 
 # この文書自体は、言い換えの表を載せているので見逃します
 ALLOW = {"CLAUDE.md", "tools/kotoba_check.py"}
+
+# 語ごとの見逃し。**その文書では正しい日本語**なので拾いません
+# (mac-signing は最初から最後まで署名の鍵の話です)
+ALLOW_WORD = {"鍵": {"docs/mac-signing.ja.md"}}
 
 
 def files():
@@ -78,6 +86,8 @@ def main():
         for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
             for pat, better in WORDS:
                 m = re.search(pat, line)
+                if m and rel in ALLOW_WORD.get(m.group(0), set()):
+                    continue
                 if m:
                     hits.append((rel, n, m.group(0), better, line.strip()[:60]))
     if hits:

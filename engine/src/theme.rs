@@ -7,8 +7,8 @@
 //!
 //! - 形は TOML の部分集合。**読み手は自前**(settings.toml・rpc の JSON と
 //!   同じ流儀 — 依存を増やさない)。節 `[スタイル.見出し1]` と
-//!   `鍵 = 値`(文字列・数・真偽)だけで、入れ子の表や配列は受けない
-//! - 鍵は**日本語と英語の両方**を受ける(リボンの名乗り `札`/`label` と
+//!   `キー = 値`(文字列・数・真偽)だけで、入れ子の表や配列は受けない
+//! - キーは**日本語と英語の両方**を受ける(リボンの名乗り `札`/`label` と
 //!   同じ前例)。AI が生成する成果物なので、どちらで書かれても読める
 //! - [`compose`] が意味だけの [`Document`] の**写し**に書式を流し込む。
 //!   一方通行 — 写しから意味を推測して戻すことはしない
@@ -222,7 +222,7 @@ pub fn default_theme() -> Theme {
 }
 
 /// TOML(部分集合)からテンプレートを読む。
-/// 知らない節・知らない鍵は**黙って捨てずに** Err で言う — テンプレートは
+/// 知らない節・知らないキーは**黙って捨てずに** Err で言う — テンプレートは
 /// 人と AI が書く物で、綴りの間違いに黙ると「効かない」だけが残る
 /// 行の後ろの覚え書き(`#` から行末まで)を落とす。囲みの中の `#` は残す。
 fn strip_note(line: &str) -> &str {
@@ -280,7 +280,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
             continue;
         }
         let Some((k, v)) = line.split_once('=') else {
-            return Err(format!("{} 行目: 「鍵 = 値」の形ではありません: {line}", ln + 1));
+            return Err(format!("{} 行目: 「キー = 値」の形ではありません: {line}", ln + 1));
         };
         let (k, v) = (k.trim(), v.trim());
         let s = |v: &str| -> Result<String, String> {
@@ -300,7 +300,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
             }
         };
         match &cur {
-            None => return Err(format!("{} 行目: 節の外に鍵があります: {k}", ln + 1)),
+            None => return Err(format!("{} 行目: 節の外にキーがあります: {k}", ln + 1)),
             Some(Sec::Submit) => {
                 let v2 = s(v)?;
                 let sub = th.submit.get_or_insert_with(Default::default);
@@ -314,7 +314,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                         sub.method = m;
                     }
                     "ボタン" | "label" => sub.label = v2,
-                    _ => return Err(format!("{} 行目: [送り先] の知らない鍵: {k}", ln + 1)),
+                    _ => return Err(format!("{} 行目: [送り先] の知らないキー: {k}", ln + 1)),
                 }
             }
             Some(Sec::Setting) => match k {
@@ -342,12 +342,12 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                     // **裏返して読む** — 「跨ぎ = false」が「跨がない」
                     th.setting.keep = !b(v)?;
                 }
-                _ => return Err(format!("{} 行目: [組み方] の知らない鍵: {k}", ln + 1)),
+                _ => return Err(format!("{} 行目: [組み方] の知らないキー: {k}", ln + 1)),
             },
             Some(Sec::Doc) => match k {
                 "書体" | "font" => th.font = Some(s(v)?),
                 "大きさ" | "size" => th.size_pt = Some(n(v)?),
-                _ => return Err(format!("{} 行目: [文書] の知らない鍵: {k}", ln + 1)),
+                _ => return Err(format!("{} 行目: [文書] の知らないキー: {k}", ln + 1)),
             },
             Some(Sec::Page) => {
                 let p = th.page.get_or_insert_with(PageSetup::default);
@@ -372,7 +372,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                     "透かし" | "watermark" => th.watermark = Some(s(v)?),
                     "ページの色" | "page_color" => th.page_color = Some(s(v)?),
                     "縦書き" | "vertical" => th.vertical = b(v)?,
-                    _ => return Err(format!("{} 行目: [ページ] の知らない鍵: {k}", ln + 1)),
+                    _ => return Err(format!("{} 行目: [ページ] の知らないキー: {k}", ln + 1)),
                 }
             }
             Some(Sec::Style(i)) => {
@@ -404,7 +404,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                     // 1行目の字下げ。**全角の文字数で書く** — 「1字下げ」と
                     // 言うとおりに書けるのが大事で、pt や mm では言い直しになる
                     "字下げ" | "first_line" => d.first_line_chars = Some(n(v)?.max(0.0)),
-                    _ => return Err(format!("{} 行目: [スタイル] の知らない鍵: {k}", ln + 1)),
+                    _ => return Err(format!("{} 行目: [スタイル] の知らないキー: {k}", ln + 1)),
                 }
             }
         }
@@ -413,7 +413,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
 }
 
 /// テンプレート → TOML(正規形)。**AI と人が読み書きする物**なので、
-/// 鍵は日本語で書き、並びは [`parse`] が読む順に揃える。
+/// キーは日本語で書き、並びは [`parse`] が読む順に揃える。
 /// 門番は `parse(write(x)) == x`(往復)
 pub fn write(th: &Theme) -> String {
     let mut s = String::new();
@@ -790,14 +790,14 @@ mod tests {
     }
 
     #[test]
-    fn 知らない鍵は黙らない() {
+    fn 知らないキーは黙らない() {
         assert!(parse("[スタイル.x]\n大きき = 16\n").is_err(), "綴りの間違いに黙ると「効かない」だけが残る");
         assert!(parse("[謎の節]\n").is_err());
-        assert!(parse("大きさ = 16\n").is_err(), "節の外の鍵");
+        assert!(parse("大きさ = 16\n").is_err(), "節の外のキー");
     }
 
     #[test]
-    fn 日本語と英語の鍵を同じに読む() {
+    fn 日本語と英語のキーを同じに読む() {
         let ja = parse("[スタイル.見出し1]\n大きさ = 16\n太字 = true\n").unwrap();
         let en = parse("[style.見出し1]\nsize = 16\nbold = true\n").unwrap();
         assert_eq!(ja, en);
