@@ -7,6 +7,7 @@ description = "日本語の行組み(JIS X 4051 の禁則)を実フォントの�
 
 [dependencies]
 hyphenation = { version = "0.8", features = ["embed_en-us"] }
+toml_edit = { version = "0.25.13", default-features = false, features = ["parse"] }
 ttf-parser = "0.20"
 
 [dev-dependencies]

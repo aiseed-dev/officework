@@ -192,6 +192,8 @@ pub fn distill(doc: &Document) -> (Document, Theme, Report) {
         size_pt: base.size_c.map(|c| c as f32 / 100.0),
         page: doc.page,
         styles: Vec::new(),
+        // 様式は docx から起こしません(枠は人が決める物です)
+        forms: Vec::new(),
         submit: None,
         // **ページの飾りもテンプレートへ移す**(2026-08-18)。docx を分けた
         // ときに、透かしやページの色が消えないようにする。ヘッダーと

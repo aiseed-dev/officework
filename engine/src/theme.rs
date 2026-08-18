@@ -114,6 +114,26 @@ pub struct Theme {
     /// 縦書き(右の列から左へ)
     pub vertical: bool,
     pub styles: Vec<StyleDef>,
+    /// **様式(升目)**。申請書のような枠の書類の形です(2026-08-18)。
+    /// 中身は本文のラベル付きリスト(`項目:: 値`)が持ち、ここは枠だけを
+    /// 持ちます。結び付けは名前で取ります
+    pub forms: Vec<Form>,
+}
+
+/// 様式(升目)1つ。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Form {
+    pub name: String,
+    pub rows: Vec<FormRow>,
+}
+
+/// 様式の1行。`升` に項目の名前を並べ、`幅` があれば桁の比になります。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct FormRow {
+    /// この行に並べる項目の名前
+    pub cells: Vec<String>,
+    /// 桁の幅の比。空なら等分
+    pub widths: Vec<f32>,
 }
 
 /// 記入した内容の送り先。
@@ -275,6 +295,108 @@ fn strip_note(line: &str) -> &str {
     line
 }
 
+/// **1つの読み単位にまとめた行**を返します。返りは(元の行番号, 中身)。
+///
+/// 覚え書き(`#` から行末)を落とし、空行を捨てます。値が `[` や `{` で
+/// 開いたまま行が終わったら、閉じるまで次の行を繋ぎます — 様式の升目は
+/// 配列で書くので、1つの値が何行にもまたがります(2026-08-18)。
+fn 論理行(src: &str) -> Vec<(usize, String)> {
+    let mut out: Vec<(usize, String)> = Vec::new();
+    let mut 続き: Option<(usize, String)> = None;
+    for (ln, raw) in src.lines().enumerate() {
+        let line = strip_note(raw).trim();
+        if line.is_empty() && 続き.is_none() {
+            continue;
+        }
+        match &mut 続き {
+            Some((_, s)) => {
+                s.push(' ');
+                s.push_str(line);
+            }
+            None => 続き = Some((ln, line.to_string())),
+        }
+        let (開始, s) = 続き.as_ref().expect("いま入れた");
+        if 釣り合う(s) {
+            out.push((*開始, s.clone()));
+            続き = None;
+        }
+    }
+    if let Some(x) = 続き {
+        out.push(x); // 閉じていない — 値を読むところで指摘が出ます
+    }
+    out
+}
+
+/// `[` `{` と `]` `}` の数が釣り合っているか(囲みの中の字は数えません)
+fn 釣り合う(s: &str) -> bool {
+    let mut 深さ = 0i32;
+    let mut 囲み = false;
+    for c in s.chars() {
+        match c {
+            '"' => 囲み = !囲み,
+            '[' | '{' if !囲み => 深さ += 1,
+            ']' | '}' if !囲み => 深さ -= 1,
+            _ => {}
+        }
+    }
+    深さ <= 0
+}
+
+/// **日本語のキーを `"…"` で囲んでから**ライブラリに渡します。
+///
+/// TOML の決まりでは、囲まないキーに使えるのは英数字と `-` `_` だけです。
+/// うちのテンプレートはキーも日本語なので、そのままでは読んでもらえません
+/// (2026-08-18 に実際に通して分かりました)。**書き方は変えません** —
+/// 渡す直前にここで囲みます。
+///
+/// 直すのは `{ 升 = […] }` のような値の中のキーだけです。囲みの中
+/// (`"…"`)は字なので触りません。
+fn キーを囲む(v: &str) -> String {
+    let b: Vec<char> = v.chars().collect();
+    let mut out = String::new();
+    let mut i = 0usize;
+    let mut 囲み = false;
+    while i < b.len() {
+        let c = b[i];
+        if c == '"' {
+            囲み = !囲み;
+            out.push(c);
+            i += 1;
+            continue;
+        }
+        if 囲み || !(c.is_alphanumeric() && !c.is_ascii()) {
+            out.push(c);
+            i += 1;
+            continue;
+        }
+        // 日本語で始まる語。後ろが `=` ならキーなので囲む
+        let mut j = i;
+        while j < b.len() && (b[j].is_alphanumeric() || b[j] == '_' || b[j] == '-') {
+            j += 1;
+        }
+        let mut k = j;
+        while k < b.len() && b[k] == ' ' {
+            k += 1;
+        }
+        let 語: String = b[i..j].iter().collect();
+        if k < b.len() && b[k] == '=' {
+            out.push('"');
+            out.push_str(&語);
+            out.push('"');
+        } else {
+            out.push_str(&語);
+        }
+        i = j;
+    }
+    out
+}
+
+/// ライブラリの指摘は何行にもなるので、1行にまとめます。
+/// 出すのは最初の1文だけで、場所はこちらの「N 行目」で言います
+fn 一行に(s: &str) -> String {
+    s.lines().next().unwrap_or("").trim().to_string()
+}
+
 pub fn parse(src: &str) -> Result<Theme, String> {
     let mut th = Theme::default();
     // いま居る節。None = 頭(節の外)
@@ -284,17 +406,11 @@ pub fn parse(src: &str) -> Result<Theme, String> {
         Doc,
         Page,
         Style(usize),
+        Form(usize),
     }
     let mut cur: Option<Sec> = None;
-    for (ln, raw) in src.lines().enumerate() {
-        // **行の後ろの覚え書き(#)を落とす。** TOML の普通の書き方で、
-        // 落とさないと `横幅 = "可変"  # 窓の幅で組む` が読めません
-        // (2026-08-18。手引きに書いた見本がそのまま落ちて気づきました)。
-        // `"` の中の # は字なので数えます
-        let line = strip_note(raw).trim();
-        if line.is_empty() {
-            continue;
-        }
+    for (ln, line) in 論理行(src) {
+        let line = line.as_str();
         if let Some(name) = line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
             let name = name.trim();
             cur = Some(if name == "送り先" || name.eq_ignore_ascii_case("submit") {
@@ -312,6 +428,12 @@ pub fn parse(src: &str) -> Result<Theme, String> {
             {
                 th.styles.push(StyleDef { name: sn.trim().to_string(), ..Default::default() });
                 Sec::Style(th.styles.len() - 1)
+            } else if let Some(fname) = name
+                .strip_prefix("様式.")
+                .or_else(|| name.strip_prefix("form."))
+            {
+                th.forms.push(Form { name: fname.trim().to_string(), rows: Vec::new() });
+                Sec::Form(th.forms.len() - 1)
             } else {
                 return Err(format!("{} 行目: 知らない節 [{name}](文書 / ページ / スタイル.名前)", ln + 1));
             });
@@ -321,21 +443,32 @@ pub fn parse(src: &str) -> Result<Theme, String> {
             return Err(format!("{} 行目: 「キー = 値」の形ではありません: {line}", ln + 1));
         };
         let (k, v) = (k.trim(), v.trim());
+        // **値の文法はライブラリに読ませます**(2026-08-18)。文字列の
+        // 中の \" や、配列・`{ }` の入れ子まで自分で読むと、不具合の方が
+        // 多くなります。節とキーの読みはこちらに残します — TOML の素の
+        // キーは英数字だけと決まっていて、日本語のキーが通らないためです
+        let 値 = |v: &str| -> Result<toml_edit::Value, String> {
+            キーを囲む(v)
+                .parse::<toml_edit::Value>()
+                .map_err(|e| format!("{} 行目: 値が読めません: {}", ln + 1, 一行に(&e.to_string())))
+        };
         let s = |v: &str| -> Result<String, String> {
-            v.strip_prefix('"')
-                .and_then(|x| x.strip_suffix('"'))
+            値(v)?
+                .as_str()
                 .map(|x| x.to_string())
-                .ok_or_else(|| format!("{} 行目: 文字列は \"…\" で囲む: {v}", ln + 1))
+                .ok_or_else(|| format!("{} 行目: 文字列は \"…\" で囲みます: {v}", ln + 1))
         };
         let n = |v: &str| -> Result<f32, String> {
-            v.parse::<f32>().map_err(|_| format!("{} 行目: 数が読めません: {v}", ln + 1))
+            let x = 値(v)?;
+            x.as_float()
+                .map(|f| f as f32)
+                .or_else(|| x.as_integer().map(|f| f as f32))
+                .ok_or_else(|| format!("{} 行目: 数で書いてください: {v}", ln + 1))
         };
         let b = |v: &str| -> Result<bool, String> {
-            match v {
-                "true" => Ok(true),
-                "false" => Ok(false),
-                _ => Err(format!("{} 行目: true か false: {v}", ln + 1)),
-            }
+            値(v)?
+                .as_bool()
+                .ok_or_else(|| format!("{} 行目: true か false で書いてください: {v}", ln + 1))
         };
         match &cur {
             None => return Err(format!("{} 行目: 節の外にキーがあります: {k}", ln + 1)),
@@ -445,9 +578,75 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                     _ => return Err(format!("{} 行目: [スタイル] の知らないキー: {k}", ln + 1)),
                 }
             }
+            Some(Sec::Form(i)) => {
+                let 名 = th.forms[*i].name.clone();
+                match k {
+                    "行" | "rows" => th.forms[*i].rows = 升目を読む(&値(v)?, &名, ln)?,
+                    _ => return Err(format!("{} 行目: [様式.{名}] の知らないキー: {k}", ln + 1)),
+                }
+            }
+        }
+    }
+    for f in &th.forms {
+        if f.rows.is_empty() {
+            return Err(format!("[様式.{}] に 行 がありません", f.name));
         }
     }
     Ok(th)
+}
+
+/// 様式の `行 = [ { 升 = […], 幅 = […] }, … ]` を読む。
+fn 升目を読む(v: &toml_edit::Value, 名: &str, ln: usize) -> Result<Vec<FormRow>, String> {
+    let 何行目 = |i: usize| format!("{} 行目: [様式.{名}] の {} 行目", ln + 1, i + 1);
+    let Some(配列) = v.as_array() else {
+        return Err(format!("{} 行目: [様式.{名}] の 行 は配列で書いてください", ln + 1));
+    };
+    let mut out = Vec::new();
+    for (i, 行) in 配列.iter().enumerate() {
+        let Some(tbl) = 行.as_inline_table() else {
+            return Err(format!(
+                "{}は {{ 升 = [\"項目の名前\"] }} の形で書いてください",
+                何行目(i)
+            ));
+        };
+        let mut r = FormRow::default();
+        for (k, v) in tbl.iter() {
+            match k {
+                "升" | "cells" => {
+                    let Some(a) = v.as_array() else {
+                        return Err(format!("{}の 升 は配列で書いてください", 何行目(i)));
+                    };
+                    for c in a.iter() {
+                        let Some(s) = c.as_str() else {
+                            return Err(format!(
+                                "{}の 升 には項目の名前を \"…\" で書いてください",
+                                何行目(i)
+                            ));
+                        };
+                        r.cells.push(s.to_string());
+                    }
+                }
+                "幅" | "widths" => {
+                    let Some(a) = v.as_array() else {
+                        return Err(format!("{}の 幅 は配列で書いてください", 何行目(i)));
+                    };
+                    for c in a.iter() {
+                        let n = c
+                            .as_float()
+                            .or_else(|| c.as_integer().map(|x| x as f64))
+                            .ok_or_else(|| format!("{}の 幅 は数で書いてください", 何行目(i)))?;
+                        r.widths.push(n as f32);
+                    }
+                }
+                _ => return Err(format!("{}の知らないキー: {k}", 何行目(i))),
+            }
+        }
+        if r.cells.is_empty() {
+            return Err(format!("{}に 升 がありません", 何行目(i)));
+        }
+        out.push(r);
+    }
+    Ok(out)
 }
 
 /// テンプレート → TOML(正規形)。**AI と人が読み書きする物**なので、
@@ -527,6 +726,20 @@ pub fn write(th: &Theme) -> String {
             s.push_str("縦書き = true\n");
         }
         s.push('\n');
+    }
+    // 様式(升目)。**行の並びが意味そのもの**なので、書いた順に出します
+    for f in &th.forms {
+        s.push_str(&format!("[様式.{}]\n行 = [\n", f.name));
+        for r in &f.rows {
+            let 升: Vec<String> = r.cells.iter().map(|c| format!("\"{c}\"")).collect();
+            s.push_str(&format!("  {{ 升 = [{}]", 升.join(", ")));
+            if !r.widths.is_empty() {
+                let 幅: Vec<String> = r.widths.iter().map(|w| num(*w)).collect();
+                s.push_str(&format!(", 幅 = [{}]", 幅.join(", ")));
+            }
+            s.push_str(" },\n");
+        }
+        s.push_str("]\n\n");
     }
     for d in &th.styles {
         s.push_str(&format!("[スタイル.{}]\n", d.name));
@@ -780,6 +993,40 @@ mod tests {
         b.runs.push(Run { text: "本文の字。".into(), size_pt: None, font: None, fmt: Default::default() });
         d.blocks = vec![crate::doc::Block::Para(h), crate::doc::Block::Para(b)];
         d
+    }
+
+    /// **様式(升目)**(2026-08-18)。中身は本文が持ち、枠だけをここに置く
+    #[test]
+    fn 様式が読めて往復する() {
+        let src = "[様式.申請書]\n行 = [\n  { 升 = [\"申請日\"], 幅 = [30, 70] },\n  { 升 = [\"部署\", \"氏名\"] },\n]\n";
+        let th = parse(src).expect("読めない");
+        assert_eq!(th.forms.len(), 1);
+        assert_eq!(th.forms[0].name, "申請書");
+        assert_eq!(th.forms[0].rows.len(), 2);
+        assert_eq!(th.forms[0].rows[0].cells, vec!["申請日"]);
+        assert_eq!(th.forms[0].rows[0].widths, vec![30.0, 70.0]);
+        assert_eq!(th.forms[0].rows[1].cells, vec!["部署", "氏名"]);
+        assert_eq!(write(&th), src, "往復で崩れた");
+    }
+
+    /// 値の文法はライブラリが読む。**日本語のキーは囲んでから渡す** —
+    /// TOML の決まりでは、囲まないキーは英数字だけだから
+    #[test]
+    fn 日本語のキーの値が読める() {
+        let th = parse("[様式.甲]\n行 = [{ 升 = [\"あ\"] }]\n").expect("読めない");
+        assert_eq!(th.forms[0].rows[0].cells, vec!["あ"]);
+        // 囲みの中の `升 =` は字なので触らない
+        assert_eq!(キーを囲む("\"升 = 1\""), "\"升 = 1\"");
+    }
+
+    #[test]
+    fn 様式の間違いは日本語で言う() {
+        let e = parse("[様式.甲]\n行 = 1\n").unwrap_err();
+        assert!(e.contains("配列で書いてください"), "{e}");
+        let e = parse("[様式.甲]\n").unwrap_err();
+        assert!(e.contains("行 がありません"), "{e}");
+        let e = parse("[様式.甲]\n行 = [{ 枡 = [\"あ\"] }]\n").unwrap_err();
+        assert!(e.contains("知らないキー"), "{e}");
     }
 
     #[test]
