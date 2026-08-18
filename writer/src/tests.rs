@@ -1785,7 +1785,8 @@ mod marker_tests {
                 this.eq_open = false;
                 this.chat_open = false;
             }
-            assert!(seen >= 12, "小窓が開いた命令が {seen} 件しかない — 見張りになっていない");
+            // 11 件。暗号化を掛けるボタンを 2026-08-18 に外して1つ減った
+            assert!(seen >= 11, "小窓が開いた命令が {seen} 件しかない — 見張りになっていない");
         });
     }
 
@@ -1950,6 +1951,72 @@ mod marker_tests {
             this.save_to(path.clone());
             let back = std::fs::read_to_string(&path).unwrap();
             assert_eq!(back, src, "保存で意味が崩れた");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **手描きの線は adoc の保存で SVG の絵になる**(2026-08-18)。
+    /// 前は黙って消えていた。独自の書き方を足さず `image::` で置く
+    #[gpui::test]
+    fn 筆はadocの保存でsvgになる(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-ink-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("筆の見本.adoc");
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.set_doc(Document::plain("本文です。"));
+            this.native = true;
+            this.run_cmd("pen", cx);
+            this.ink_begin(10.0, 10.0);
+            this.ink_move(20.0, 18.0);
+            this.ink_move(30.0, 12.0);
+            this.ink_end();
+            assert!(!this.doc.ink.is_empty(), "筆が残らない");
+
+            this.save_to(path.clone());
+            assert!(this.doc.ink.is_empty(), "保存しても筆が模型に残っている");
+
+            let svg = dir.join("images/筆1.svg");
+            assert!(svg.is_file(), "SVG が作られない: {}", this.status);
+            let 中身 = std::fs::read_to_string(&svg).unwrap();
+            assert!(中身.starts_with("<svg "), "SVG の形でない: {中身}");
+            assert!(中身.contains("stroke=\"#1C3B52\""), "ペンの色が入らない: {中身}");
+
+            // 本文は image:: で指す(独自の書き方を足していない)
+            let adoc = std::fs::read_to_string(&path).unwrap();
+            assert!(adoc.contains("image::images/筆1.svg[]"), "image:: が無い: {adoc}");
+            // **黙って変えない** — 状態行で言う
+            assert!(this.status.contains("SVG"), "状態行が言っていない: {}", this.status);
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 筆を絵にしても、**本文の字は1文字も変わらない**
+    #[gpui::test]
+    fn 筆を絵にしても本文は変わらない(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-ink2-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("見本.adoc");
+        let src = "= 題\n\n一つ目の段落です。\n\n二つ目の段落です。\n\n三つ目の段落です。\n";
+        std::fs::write(&path, src).unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.open(path.clone());
+            this.run_cmd("pen", cx);
+            this.ink_begin(30.0, 120.0);
+            this.ink_move(60.0, 130.0);
+            this.ink_end();
+            this.save_to(path.clone());
+            let back = std::fs::read_to_string(&path).unwrap();
+            let 字 = |s: &str| s.replace("\n", "").replace(" ", "");
+            let 絵ぬき: String = back
+                .lines()
+                .filter(|l| !l.starts_with("image::"))
+                .collect::<Vec<_>>()
+                .join("\n");
+            assert_eq!(字(&絵ぬき), 字(src), "本文が変わった:\n{back}");
         });
         let _ = std::fs::remove_dir_all(&dir);
     }

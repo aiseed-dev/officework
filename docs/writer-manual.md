@@ -33,7 +33,7 @@ From Python you can still edit a docx and write it back
 (`from officework import doc`); only the screen stops doing it.
 
 **Ribbon: 117 — every button works (zero grayed out).** The button that wraps a
-docx in a password is gone (coming in 0.2.0-alpha).
+docx in a password is gone. You can still **open** a password-protected docx.
 
 Three promises:
 
@@ -258,6 +258,15 @@ Drag on the page. Strokes are **anchored to the page** (editing the body doesn't
 move them); one stroke is one undo step. In docx they become freeform shapes,
 visible in Word.
 
+**Strokes are saved as SVG pictures.** They go into an `images` folder beside
+your text and the text points at them with `image::`, so they come out in HTML,
+PDF and docx alike, and you can delete them later as pictures. They used to
+survive only in docx and vanished on an adoc save.
+
+Once saved, **a stroke becomes a picture in the flow of the text.** It lands
+just after the paragraph it was drawn below; its left-right position on the
+page is not kept. The status line says how many pictures were made.
+
 ## Layout
 
 - Paper (A4→B5→A3), orientation, margins (20/12/30mm), columns (1→2→3),
@@ -321,10 +330,10 @@ Tools that work on a document in a shared folder:
   shows it as protected too). **No password, and no pretend-password.** The
   effect is real: typing and every document-changing button are blocked;
   viewing, printing, and searching still work
-- **Encrypt**: set a password and the next save is wrapped in AES
-  (**Agile = AES-256, the Word 2013+ default**; opening also accepts the older
-  AES-128). Opens in Word / LibreOffice. Clear the field and press Enter to
-  remove. Cross-verified against msoffcrypto-tool
+- **Encrypting is not offered.** What writer saves is adoc, which is not a zip,
+  so there is nothing to wrap. A password-protected docx still **opens**: writer
+  asks for the password (Agile AES-256 and the older AES-128 both work,
+  cross-verified against msoffcrypto-tool)
 - **Digital signature**: a signature file next to the document
   (`document.docx.sig`, Ed25519; the key is auto-generated at
   `~/.config/officework/sign.key`). Tamper detection plus a name — it is not the
@@ -810,7 +819,7 @@ surroundings below without opening anything**. It opens only when you press
 
 ## No more gray
 
-All 118 ribbon commands work. The gray of "don't make it look usable when it
+All 117 ribbon commands work. The gray of "don't make it look usable when it
 isn't" reached **zero** in writer. The remaining honest limits are
 noted in each section above (first-version vertical writing, per-change
 accept/reject for tracked changes, no UI yet for creating cell merges).

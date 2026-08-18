@@ -150,6 +150,33 @@ class W:
         self.d.sync()
         time.sleep(wait)
 
+    def key_ctrl(self, name, wait=1.2):
+        """Ctrl+英字を押す(Ctrl+S など)。
+
+        **生の fake_input を自分で並べないでください**(2026-08-18)。
+        修飾キーを自前で押し下げたまま `key()` を挟むと、間に別の字が
+        混ざります。実際、Ctrl+S のつもりで「ha」や「i」が本文に入り、
+        保存された adoc が壊れました — アプリの不具合と読み違えて半日
+        溶かしかけました。ここに1つだけ道を置きます。
+        """
+        if not self.has_focus():
+            self.take_focus()
+        time.sleep(0.3)
+        ctrl = self.d.keysym_to_keycode(XK.string_to_keysym("Control_L"))
+        kc = self.d.keysym_to_keycode(XK.string_to_keysym(name))
+        xtest.fake_input(self.d, X.KeyPress, ctrl)
+        self.d.sync()
+        time.sleep(0.12)
+        xtest.fake_input(self.d, X.KeyPress, kc)
+        self.d.sync()
+        time.sleep(0.12)
+        xtest.fake_input(self.d, X.KeyRelease, kc)
+        self.d.sync()
+        time.sleep(0.12)
+        xtest.fake_input(self.d, X.KeyRelease, ctrl)
+        self.d.sync()
+        time.sleep(wait)
+
     def ui(self, tries=20, want_boxes=True):
         """いまの画面の様子(段・ボタンの箱・状態行)。**writer が描いた
         ものを読む** — 目分量で座標を当てない。

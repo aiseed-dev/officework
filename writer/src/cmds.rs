@@ -19,7 +19,7 @@ impl Writer {
     /// 「すぐ効く」— 無印で、ここにも入れない
     pub(crate) const DIALOG_IDS: &'static [&'static str] = &[
         "replace", "watermark", "bookmarks", "co-addcomment", "co-history",
-        "co-chat", "plug-manage", "prot-encrypt", "form-combo",
+        "co-chat", "plug-manage", "form-combo",
         "form-dropdown", "form-name", "ruby", "insequation",
     ];
 
@@ -97,7 +97,7 @@ impl Writer {
             "open", "save", "pdf", "zoom-in", "zoom-out", "ruler", "darkmode",
             "line-numbers", "hidenchars", "selectall", "spell", "wordcount",
             "co-showcomment", "replace", "prot-doc", "coauth-mode",
-            "co-history", "co-chat", "prot-encrypt", "prot-sign", "copy",
+            "co-history", "co-chat", "prot-sign", "copy",
         ];
         if self.protected() && !READONLY_OK.contains(&id) {
             self.status =
@@ -844,23 +844,10 @@ impl Writer {
                     .into();
                 }
             }
-            // 暗号化。パスワードを決めると、保存で ECMA-376 Standard
-            // (AES-128)の複合ファイルに包む。空 Enter で解除
-            "prot-encrypt" => {
-                if self.pw_open {
-                    self.pw_open = false;
-                    return;
-                }
-                self.pw_pending = None;
-                self.pw_open = true;
-                self.pw_ed = Editor::new("");
-                self.status = if self.encrypt_pw.is_some() {
-                    ui::t!("暗号化は入っています。新しいパスワードを打って Enter\
-                    (空のまま Enter で暗号化をやめる)").into()
-                } else {
-                    ui::t!("暗号化: パスワードを打って Enter(AES-256。次の保存から)").into()
-                };
-            }
+            // **暗号化を掛けるボタンは無い**(2026-08-18 発注者「暗号化は、
+            // 開くだけ残す」)。writer が保存するのは adoc で、zip では
+            // ないので包めない。パスワード付きの docx を開く道は
+            // `pw_commit` の側に残っている
             // デジタル署名。**隣の .sig への添え書き**(Ed25519)。
             // Word の署名欄には出ない独自方式 — そう言って出す。
             // 有効なら報告だけ、無効・未署名なら(作り直して)署名する

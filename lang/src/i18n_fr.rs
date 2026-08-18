@@ -44,6 +44,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} に保存しました。このフォルダの書式({})を使います", "Enregistré dans {}. Il utilise la mise en forme de ce dossier ({})"),
     ("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です", "Exporté vers {} ({} est devenu des définitions de style). La source reste dans l'adoc"),
     ("いまの書式", "le format actuel"),
+    ("{} に保存しました。手描きの線は SVG の絵 {} 枚にして本文に置きました", "Enregistré dans {}. Vos traits sont devenus {} image(s) SVG dans le texte"),
     ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Mise en forme de ce dossier créée dans {}. Les documents du même dossier l'utiliseront"),
     ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "la valeur par défaut fournie (pour utiliser {} dans ce dossier, renommez-le en {} ou écrivez :template: en tête du texte)"),
     ("{}(数式 {} 個が組めませんでした)", "{} ({} formules n'ont pas pu être composées)"),

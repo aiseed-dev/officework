@@ -44,6 +44,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} に保存しました。このフォルダの書式({})を使います", "{} konumuna kaydedildi. Bu klasörün biçimini ({}) kullanıyor"),
     ("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です", "{} olarak dışa aktarıldı ({} stil tanımlarına dönüştü). Kaynak adoc tarafında kalır"),
     ("いまの書式", "kullanılan biçim"),
+    ("{} に保存しました。手描きの線は SVG の絵 {} 枚にして本文に置きました", "{} olarak kaydedildi. Çizgileriniz metnin içinde {} SVG resmine dönüştü"),
     ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Bu klasörün biçimi {} konumunda oluşturuldu. Aynı klasördeki belgeler bunu kullanır"),
     ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "uygulamayla gelen varsayılan (bu klasördeki {} dosyasını kullanmak için adını {} yapın ya da metnin başına :template: yazın)"),
     ("{}(数式 {} 個が組めませんでした)", "{} ({} formül dizilemedi)"),

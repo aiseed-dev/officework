@@ -491,9 +491,8 @@ pub fn dropped(doc: &Document) -> Vec<&'static str> {
     if doc.page.map(|p| p.columns > 1).unwrap_or(false) {
         足す("段組み");
     }
-    if !doc.ink.is_empty() {
-        足す("手描きの線");
-    }
+    // 手描きの線は保存で SVG の絵になります(writer の `ink_to_images`)。
+    // 消えないので、ここでは数えません
     // **表の中の段落も見ます。** 事務の様式は中身が表の中にあるので、
     // 本文だけ見ると「何も落ちません」と嘘を言うことになります
     let 表の中 = doc.blocks.iter().filter_map(|b| match b {

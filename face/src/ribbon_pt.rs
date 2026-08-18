@@ -129,7 +129,6 @@ pub const WRITER: &[Tab] = &[
         c("co-history", "Histórico de versões", "co-history"),
     ]},
     Tab { name: "Proteção", cmds: &[
-        c("prot-encrypt", "Encriptar", "prot-encrypt"),
         c("prot-sign", "Adicionar assinatura digital", "prot-sign"),
         c("prot-doc", "Proteção", "prot-doc"),
     ]},

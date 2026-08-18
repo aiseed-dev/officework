@@ -523,6 +523,13 @@ def tabs_of(app, prefix):
         if key == "collaboration" and app == "documenteditor":
             # 変更履歴は本家どおりバージョン履歴の手前
             cmds = cmds[:-1] + [("track-changes", "変更履歴")] + cmds[-1:]
+        # **writer では暗号化を掛けるボタンを出さない**(2026-08-18 発注者
+        # 「暗号化は、開くだけ残す」)。writer が保存するのは adoc で、
+        # zip ではないので包めない。パスワード付きの docx を**開く**道は
+        # 残っているので、無くなるのはボタン1つだけ。calc は docx ならぬ
+        # xlsx を保存するのでそのまま
+        if key == "protect" and app == "documenteditor":
+            cmds = [c for c in cmds if c[0] != "prot-encrypt"]
         name = TAB_NAME_KEYS[key]
         entry = (name, [c for c, _ in cmds])
         for c, label in cmds:

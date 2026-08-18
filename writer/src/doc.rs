@@ -185,6 +185,7 @@ impl Writer {
             eq_open: false,
             eq_ed: Editor::new(""),
             encrypt_pw: None,
+            ink_svg_count: 0,
             pw_open: false,
             pw_ed: Editor::new(""),
             pw_pending: None,
@@ -704,6 +705,66 @@ impl Writer {
     /// 保存用の写し。筆(ペン)を、そのページに載っている段落の控えへ
     /// 図形(自由曲線)として差し込む。モデル本体は触らない —
     /// 保存のたびに増えないように、写しに差す。
+    /// **その高さ(巻物の座標、mm)に居る段落**の通し番号。
+    /// 筆の線を本文のどこに結びつけるかを決めるのに使います
+    fn para_at_y(&self, y_mm: f32) -> usize {
+        let mut starts: Vec<usize> = Vec::new();
+        let mut at = 0usize;
+        for p in self.doc.paragraphs() {
+            starts.push(at);
+            at += p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
+        }
+        let Some(l) = self
+            .page
+            .lines
+            .iter()
+            .filter(|l| l.from_body && l.y_mm <= y_mm)
+            .next_back()
+        else {
+            return 0;
+        };
+        starts.iter().rposition(|s| *s <= l.byte0).unwrap_or(0)
+    }
+
+    /// **ページ → そのページに最初に載る段落**の対応。返りは
+    /// (ページ番号(0始まり) → 段落の通し番号, 段落の通し番号 → ブロックの番号)。
+    ///
+    /// 筆(手描きの線)はページの座標で持っているので、本文のどこに
+    /// 結びつけるかを決めるのにこれが要ります。docx の図形と adoc の画像で
+    /// 同じ答えを使います
+    fn page_head_paras(
+        &self,
+        doc: &Document,
+    ) -> (std::collections::BTreeMap<usize, usize>, Vec<usize>) {
+        let (pages, _) = paper::paginate(&self.page, paper::Paper {
+            width_mm: self.pg.w_mm,
+            height_mm: self.pg.h_mm,
+            margin_mm: self.pg.left_mm,
+        });
+        let mut starts: Vec<usize> = Vec::new();
+        let mut at = 0usize;
+        for p in doc.paragraphs() {
+            starts.push(at);
+            at += p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
+        }
+        let mut page_para: std::collections::BTreeMap<usize, usize> = Default::default();
+        for (l, pg) in self.page.lines.iter().zip(&pages) {
+            if !l.from_body {
+                continue;
+            }
+            let pi = starts.iter().rposition(|s| *s <= l.byte0).unwrap_or(0);
+            page_para.entry(pg - 1).or_insert(pi);
+        }
+        let para_block_idx: Vec<usize> = doc
+            .blocks
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| matches!(b, kumihan::Block::Para(_)))
+            .map(|(i, _)| i)
+            .collect();
+        (page_para, para_block_idx)
+    }
+
     /// `tmpl` を渡すと、そのテンプレートの**ページの飾り**(用紙・ヘッダー・
     /// フッター・透かし・ページの色・縦書き)を写しに入れます。段落の書式は
     /// 入れません — そちらは `styles.xml` が持ちます
@@ -788,33 +849,7 @@ impl Writer {
         if doc.ink.is_empty() {
             return doc;
         }
-        let (pages, _) = paper::paginate(&self.page, paper::Paper {
-            width_mm: self.pg.w_mm,
-            height_mm: self.pg.h_mm,
-            margin_mm: self.pg.left_mm,
-        });
-        // ページ → そのページに最初に載る段落(通し番号)
-        let mut starts: Vec<usize> = Vec::new();
-        let mut at = 0usize;
-        for p in doc.paragraphs() {
-            starts.push(at);
-            at += p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
-        }
-        let mut page_para: std::collections::BTreeMap<usize, usize> = Default::default();
-        for (l, pg) in self.page.lines.iter().zip(&pages) {
-            if !l.from_body {
-                continue;
-            }
-            let pi = starts.iter().rposition(|s| *s <= l.byte0).unwrap_or(0);
-            page_para.entry(pg - 1).or_insert(pi);
-        }
-        let para_block_idx: Vec<usize> = doc
-            .blocks
-            .iter()
-            .enumerate()
-            .filter(|(_, b)| matches!(b, kumihan::Block::Para(_)))
-            .map(|(i, _)| i)
-            .collect();
+        let (page_para, para_block_idx) = self.page_head_paras(&doc);
         let ink = std::mem::take(&mut doc.ink);
         for (i, st) in ink.iter().enumerate() {
             let pi = page_para.get(&st.page).copied().unwrap_or(0);
@@ -957,16 +992,9 @@ impl Writer {
                 }
             }
         } else {
+            // **こちらから暗号化を掛ける道はありません**(2026-08-18)。
+            // このパネルが開くのは、暗号化された docx を開くときだけです
             self.pw_open = false;
-            if pw.is_empty() {
-                self.encrypt_pw = None;
-                self.status = ui::t!("暗号化しません(次の保存から普通の docx)").into();
-            } else {
-                self.encrypt_pw = Some(pw);
-                self.dirty = true;
-                self.status = ui::t!("次の保存から、このパスワードで暗号化します\
-                               (AES-128。Word や LibreOffice でも開けます)").into();
-            }
         }
     }
 
@@ -1982,7 +2010,6 @@ impl Writer {
             "track-changes" => self.track,
             "co-showcomment" => self.show_comments,
             "prot-doc" => self.doc.protection.is_some(),
-            "prot-encrypt" => self.encrypt_pw.is_some(),
             _ => false,
         }
     }
@@ -2811,8 +2838,103 @@ impl Writer {
     }
 
     /// ネイティブ文書として保存する(.adoc)。**意味だけを書く**
+    /// **筆(手描きの線)を SVG の絵にして本文に置きます**(2026-08-18)。
+    ///
+    /// ネイティブ文書(.adoc)は手描きの線を持てません。前は保存で黙って
+    /// 消えていました。いまは、そのページの線をまとめて1枚の SVG にし、
+    /// `image::` の段落としてそのページの先頭の段落の後ろに入れます。
+    /// 独自の書き方を1つも足さずに済み、HTML にも PDF にも docx にも
+    /// 画像として乗り、後から段落ごと消せます。
+    ///
+    /// **紙の上の位置は残りません。** 線は本文の流れの中の絵になります。
+    /// 返りは作った絵の枚数(呼ぶ側が状態行で言います)。
+    fn ink_to_images(&mut self, dir: &std::path::Path) -> Result<usize, String> {
+        if self.doc.ink.is_empty() {
+            return Ok(0);
+        }
+        let (_, para_block_idx) = self.page_head_paras(&self.doc.clone());
+        // ページごとにまとめる。線の順は引いた順のまま
+        let mut 頁ごと: std::collections::BTreeMap<usize, Vec<kumihan::Stroke>> =
+            Default::default();
+        for st in std::mem::take(&mut self.doc.ink) {
+            頁ごと.entry(st.page).or_default().push(st);
+        }
+        // すでに使われている名前を避ける
+        let mut 使った: Vec<String> = Vec::new();
+        for b in &self.doc.blocks {
+            if let kumihan::Block::Para(p) = b {
+                for im in p.images.iter().chain(p.images_new.iter()) {
+                    if let Some(s) = &im.src {
+                        使った.push(s.clone());
+                    }
+                }
+            }
+        }
+        // **後ろのページから入れます。** 前から入れるとブロックの番号がずれます
+        let mut 枚 = 0usize;
+        for (page, strokes) in 頁ごと.iter().rev() {
+            let refs: Vec<&kumihan::Stroke> = strokes.iter().collect();
+            let Some((svg, w_mm, h_mm)) = kumihan::strokes_to_svg(&refs) else { continue };
+            // 画面に出すための写し(SVG のままでは gpui が描けません)
+            let png = match ui::svg_to_png(svg.as_bytes(), 3.0) {
+                Ok((png, _, _)) => png,
+                Err(e) => return Err(e),
+            };
+            let mut n = page + 1;
+            let rel = loop {
+                let rel = format!("images/筆{n}.svg");
+                if !使った.contains(&rel) {
+                    break rel;
+                }
+                n += 1;
+            };
+            使った.push(rel.clone());
+            let to = dir.join(&rel);
+            if let Some(d) = to.parent() {
+                std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+            }
+            std::fs::write(&to, svg.as_bytes()).map_err(|e| e.to_string())?;
+            let im = kumihan::InlineImage {
+                bytes: std::sync::Arc::new(png),
+                w_mm,
+                h_mm,
+                tex: None,
+                src: Some(rel), // 実体はもう置いたので、名前付けの対象にしない
+            };
+            let para = kumihan::Block::Para(kumihan::Paragraph {
+                images_new: vec![im],
+                ..Default::default()
+            });
+            // **線を引いた高さの、すぐ上の段落に付けます。** ページの先頭に
+            // 付けると、紙の下に引いた線が本文の頭へ跳びます
+            // (2026-08-18 に実機で見つけました)
+            let 上端 = strokes
+                .iter()
+                .filter_map(|s| s.bbox().map(|b| b.1))
+                .fold(f32::INFINITY, f32::min);
+            let oy = self
+                .page_offsets
+                .get(*page)
+                .copied()
+                .unwrap_or(*page as f32 * self.pg.h_mm);
+            let pi = self.para_at_y(上端 + oy);
+            match para_block_idx.get(pi).copied() {
+                Some(bi) if bi + 1 <= self.doc.blocks.len() => {
+                    self.doc.blocks.insert(bi + 1, para)
+                }
+                _ => self.doc.blocks.push(para),
+            }
+            枚 += 1;
+        }
+        Ok(枚)
+    }
+
     pub(crate) fn save_adoc_to(&mut self, p: &std::path::Path) -> Result<(), String> {
         self.flush_target();
+        // **筆は先に絵にします。** 画像の名前付けより前にやらないと、
+        // 作った絵が名前の無い画像として二重に扱われます
+        let dir0 = p.parent().unwrap_or(std::path::Path::new("."));
+        self.ink_svg_count = self.ink_to_images(dir0)?;
         // **画像に径路を与えてから書きます。** adoc は画像を `image::径路[]` で
         // 指すので、径路の無い画像(docx 由来・画面から挿した物)は書けません。
         // 名前を付けて本文の隣に置きます
@@ -2940,7 +3062,18 @@ impl Writer {
                     // 入れた文書だけ違う見た目のままだと辻褄が合いません
                     let 着替えた = self.adopt_folder_template(&p);
                     let 名 = p.file_name().unwrap_or_default().to_string_lossy().to_string();
-                    self.status = if let Some(at) = 着替えた {
+                    // **筆を絵にしたら、画面を組み直します。** 模型では
+                    // 段落が1つ増えているので、組み直さないと線も絵も
+                    // 見えなくなります(2026-08-18 に実機で見つけました)
+                    if self.ink_svg_count > 0 {
+                        self.relayout();
+                    }
+                    // **必ず言います。** 紙の上の位置は残らず、本文の流れの
+                    // 中の絵になるので、黙ると「消えた」に見えます
+                    self.status = if self.ink_svg_count > 0 {
+                        ui::tf!("{} に保存しました。手描きの線は SVG の絵 {} 枚にして本文に置きました",
+                                名, self.ink_svg_count).into()
+                    } else if let Some(at) = 着替えた {
                         ui::tf!("{} に保存しました。このフォルダの書式({})を使います", 名, at).into()
                     } else if 落ちる.is_empty() {
                         ui::tf!("{} に保存しました(本文だけ — 書式はテンプレートの側)", 名).into()

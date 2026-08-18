@@ -429,6 +429,8 @@ struct Writer {
     ink_cur: Option<kumihan::Stroke>,
     /// 筆の取り消しの控え(1操作 = 1枚)
     ink_undo: Vec<Vec<kumihan::Stroke>>,
+    /// 直前の adoc 保存で、筆を何枚の絵にしたか(状態行で言うため)
+    ink_svg_count: usize,
     /// ページの繰り上げ量(紙と同じ折り方)。筆のページ⇔巻物の変換に使う
     page_offsets: Vec<f32>,
     /// 各ページに**載る最初の行の y**(巻物の座標。1枚目は -∞)。

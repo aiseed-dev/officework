@@ -281,9 +281,11 @@ impl Render for Writer {
             ("‖", None), ("track-changes", Some("変更履歴")), ("‖", None),
             ("co-history", Some("バージョン履歴")),
         ]];
+        // **暗号化を掛けるボタンは置きません**(2026-08-18 発注者「暗号化は、
+        // 開くだけ残す」)。writer が保存するのは adoc で、zip ではないので
+        // 包めません。パスワード付きの docx を開く道は残っています
         const PROT_ROWS: &[&[LItem]] = &[&[
-            ("prot-encrypt", Some("暗号化")), ("prot-sign", Some("署名")),
-            ("prot-doc", Some("保護")),
+            ("prot-sign", Some("署名")), ("prot-doc", Some("保護")),
         ]];
         // 表示は本家どおり2段(発注者の画像 2026-08-04)
         const VIEW_ROWS: &[&[LItem]] = &[

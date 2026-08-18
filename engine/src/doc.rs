@@ -717,6 +717,73 @@ pub struct Stroke {
     pub points: Vec<(f32, f32)>,
 }
 
+impl Stroke {
+    /// 筆の通り道の外接する四角(mm)。`(x0, y0, x1, y1)`
+    pub fn bbox(&self) -> Option<(f32, f32, f32, f32)> {
+        let mut it = self.points.iter();
+        let (x, y) = it.next()?;
+        let (mut x0, mut y0, mut x1, mut y1) = (*x, *y, *x, *y);
+        for (x, y) in it {
+            x0 = x0.min(*x);
+            y0 = y0.min(*y);
+            x1 = x1.max(*x);
+            y1 = y1.max(*y);
+        }
+        Some((x0, y0, x1, y1))
+    }
+}
+
+/// **筆の線を SVG にする**(2026-08-18)。
+///
+/// ネイティブ文書(.adoc)は手描きの線を持てないので、保存のときに絵に
+/// します。`image::` で置けば、HTML にも PDF にも docx にも画像として乗り、
+/// 後から消せます。独自の書き方を1つも足さずに済むのが選んだ理由です。
+///
+/// 座標は mm。返るのは(SVG の字, 幅 mm, 高さ mm)で、線が1本も無ければ
+/// `None`。太さと色は画面の筆と同じです(ペン 0.45mm の濃紺、蛍光ペン
+/// 3mm の薄い黄)。
+pub fn strokes_to_svg(strokes: &[&Stroke]) -> Option<(String, f32, f32)> {
+    // 外接する四角。線の太さのぶんだけ外へ広げる(端が切れないように)
+    let mut bb: Option<(f32, f32, f32, f32)> = None;
+    for st in strokes {
+        let Some((ax, ay, bx, by)) = st.bbox() else { continue };
+        let 半 = if st.highlighter { 1.5 } else { 0.25 };
+        let (ax, ay, bx, by) = (ax - 半, ay - 半, bx + 半, by + 半);
+        bb = Some(match bb {
+            None => (ax, ay, bx, by),
+            Some((x0, y0, x1, y1)) => (x0.min(ax), y0.min(ay), x1.max(bx), y1.max(by)),
+        });
+    }
+    let (x0, y0, x1, y1) = bb?;
+    let (w, h) = ((x1 - x0).max(1.0), (y1 - y0).max(1.0));
+    let mut s = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w:.2}mm\" height=\"{h:.2}mm\" \
+viewBox=\"0 0 {w:.2} {h:.2}\">"
+    );
+    for st in strokes {
+        if st.points.is_empty() {
+            continue;
+        }
+        let mut d = String::new();
+        for (i, (x, y)) in st.points.iter().enumerate() {
+            let 印 = if i == 0 { 'M' } else { 'L' };
+            d.push_str(&format!("{印}{:.2} {:.2} ", x - x0, y - y0));
+        }
+        let (色, 太さ, 透け) = if st.highlighter {
+            ("#FFE65A", 3.0, 0.35)
+        } else {
+            ("#1C3B52", 0.45, 1.0)
+        };
+        s.push_str(&format!(
+            "<path d=\"{}\" fill=\"none\" stroke=\"{色}\" stroke-width=\"{太さ}\" \
+stroke-opacity=\"{透け}\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
+            d.trim_end()
+        ));
+    }
+    s.push_str("</svg>");
+    Some((s, w, h))
+}
+
 /// ヘッダー・フッター(1節ぶん)。
 ///
 /// **paragraphs が空 = 持っていない(または編集できない)。**

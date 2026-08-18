@@ -459,7 +459,8 @@ impl Writer {
             Some(d)
         };
 
-        // パスワードのパネル(伏せ字。開く時と暗号化を決める時の両方)
+        // パスワードのパネル(伏せ字)。**開くときだけ出ます** —
+        // 暗号化を掛けるボタンは 2026-08-18 に外しました
         let pw_panel = if !self.pw_open {
             None
         } else {
@@ -471,11 +472,7 @@ impl Writer {
                 "●".repeat(before),
                 "●".repeat(total - before)
             );
-            let title = if self.pw_pending.is_some() {
-                ui::t!("パスワード — この文書は暗号化されています")
-            } else {
-                ui::t!("暗号化 — パスワードを決めて Enter(空で解除。Esc で取りやめ)")
-            };
+            let title = ui::t!("パスワード — この文書は暗号化されています");
             Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(380.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))

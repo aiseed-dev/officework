@@ -44,6 +44,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{} に保存しました。このフォルダの書式({})を使います", "Disimpan ke {}. Menggunakan format folder ini ({})"),
     ("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です", "Diekspor ke {} ({} dijadikan definisi gaya). Naskah tetap di adoc"),
     ("いまの書式", "format yang dipakai"),
+    ("{} に保存しました。手描きの線は SVG の絵 {} 枚にして本文に置きました", "Disimpan ke {}. Coretan Anda menjadi {} gambar SVG di dalam teks"),
     ("このフォルダの書式を {} に作りました。同じフォルダの文書はこれを使います", "Format folder ini dibuat di {}. Dokumen di folder yang sama akan memakainya"),
     ("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)", "bawaan aplikasi (untuk memakai {} di folder ini, ganti namanya menjadi {} atau tulis :template: di awal teks)"),
     ("{}(数式 {} 個が組めませんでした)", "{} ({} rumus tidak dapat disusun)"),
