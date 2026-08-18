@@ -7,6 +7,8 @@
 
 pub mod calc;
 pub mod datetime_names;
+/// 値を引ける表 — 式の計算が表に求める面はこれだけ
+pub mod grid;
 /// 表のセルの**見え**を決める(画面と紙が同じ答えを得るための1本)
 pub mod look;
 pub mod markdown;

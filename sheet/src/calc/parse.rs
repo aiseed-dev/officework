@@ -4,7 +4,8 @@
 
 use std::collections::HashMap;
 
-use crate::model::{Pos, Sheet, Value};
+use crate::grid::Grid;
+use crate::model::{Pos, Value};
 
 use super::funcs::*;
 
@@ -266,13 +267,13 @@ pub(super) fn lex(src: &str) -> Result<Vec<Tok>, String> {
 pub(super) struct P<'a> {
     pub(super) t: &'a [Tok],
     pub(super) i: usize,
-    pub(super) sheet: &'a Sheet,
+    pub(super) sheet: &'a dyn Grid,
     pub(super) resolved: &'a HashMap<Pos, Value>,
     /// いま計算しているセル。ROW()/COLUMN()(引数なし)が使う
     pub(super) at: Pos,
     /// 同じブックの他のシート(読み取りだけ)。INDIRECT("別の表!A1") が引く。
     /// recalc(1枚だけ)では空 — そのときの別シート参照は #REF!
-    pub(super) others: &'a [&'a Sheet],
+    pub(super) others: &'a [&'a dyn Grid],
     /// 自分がブックの何枚目か。**others は「自分より前」+「自分より後」の
     /// 並びなので、これが無いとブックの並び順を復元できない**(串刺し集計が使う)
     pub(super) sheet_at: usize,
@@ -348,7 +349,7 @@ impl<'a> P<'a> {
         let mut v = Vec::new();
         for r in r0..=r1 {
             // 101〜111 の SUBTOTAL/AGGREGATE のときだけ、隠した行は数に入れない
-            if skip && self.sheet.row_hidden.contains(&r) {
+            if skip && self.sheet.row_hidden(r) {
                 continue;
             }
             for c in c0..=c1 {
@@ -511,10 +512,10 @@ impl<'a> P<'a> {
     /// `INDIRECT("Sheet2!A1")` の両方がここを通る(道を1本にする)。
     /// 自分のシート名なら普通の範囲、知らない名前と1枚だけの計算では #REF!
     pub(super) fn sheet_ans(&self, name: &str, a: Pos, z: Pos) -> RefAns {
-        if name == self.sheet.name {
+        if name == self.sheet.name() {
             return RefAns::At(a, z);
         }
-        match self.others.iter().find(|s| s.name == name) {
+        match self.others.iter().find(|s| s.name() == name) {
             // 別のシートの値は**その時の値**を写す(位置では持ち帰れない)
             Some(other) => {
                 let cols = a.col.abs_diff(z.col) + 1;
@@ -569,19 +570,16 @@ impl<'a> P<'a> {
             p.row >= t.a.row && p.row <= t.b.row && p.col >= t.a.col && p.col <= t.b.col
         };
         let t = match tbl {
-            Some(n) => self.sheet.tables.iter().find(|t| t.name == n)?,
-            None => self.sheet.tables.iter().find(|t| inside(t, self.at))?,
+            Some(n) => self.sheet.tables().iter().find(|t| t.name == n)?,
+            None => self.sheet.tables().iter().find(|t| inside(t, self.at))?,
         };
         if !t.header {
             return None; // 見出しが無ければ列を名前で引けない
         }
-        let c = (t.a.col..=t.b.col).find(|c| {
-            self.sheet
-                .get(Pos::new(t.a.row, *c))
-                .map(|x| x.value.display())
-                .unwrap_or_default()
-                == col
-        })?;
+        // 見出しの字で列を引く。**中身の無いセルは空文字**なので、
+        // `value` の答えをそのまま比べれば足ります(`Value::Empty` の
+        // `display` は空文字です)
+        let c = (t.a.col..=t.b.col).find(|c| self.sheet.value(Pos::new(t.a.row, *c)).display() == col)?;
         if this_row {
             // いまの行の同じ列。表の外や見出しの行なら引けない
             if self.at.row <= t.a.row || self.at.row > t.b.row {
@@ -598,9 +596,9 @@ impl<'a> P<'a> {
     /// ブックの並び順のシート一覧(自分を含む)。串刺し集計が使う —
     /// others は「自分より前」+「自分より後」の並びなので、
     /// sheet_at の所へ自分を挿し戻せば元の順になる
-    pub(super) fn sheets_in_order(&self) -> Vec<&Sheet> {
+    pub(super) fn sheets_in_order(&self) -> Vec<&'a dyn Grid> {
         let k = self.sheet_at.min(self.others.len());
-        let mut v: Vec<&Sheet> = Vec::with_capacity(self.others.len() + 1);
+        let mut v: Vec<&'a dyn Grid> = Vec::with_capacity(self.others.len() + 1);
         v.extend(self.others[..k].iter().copied());
         v.push(self.sheet);
         v.extend(self.others[k..].iter().copied());
@@ -612,8 +610,8 @@ impl<'a> P<'a> {
     pub(super) fn sheet3_ans(&self, from: &str, to: &str, a: Pos, z: Pos) -> RefAns {
         let all = self.sheets_in_order();
         let (Some(i), Some(j)) = (
-            all.iter().position(|s| s.name == from),
-            all.iter().position(|s| s.name == to),
+            all.iter().position(|s| s.name() == from),
+            all.iter().position(|s| s.name() == to),
         ) else {
             return RefAns::Bad(Value::Error("#REF!".into()));
         };
@@ -625,7 +623,7 @@ impl<'a> P<'a> {
                 for c in a.col.min(z.col)..=a.col.max(z.col) {
                     let p = Pos::new(r, c);
                     // 自分のシートは計算途中の値(resolved)を見る
-                    vals.push(if sh.name == self.sheet.name {
+                    vals.push(if sh.name() == self.sheet.name() {
                         self.cell(p)
                     } else {
                         sh.value(p)
@@ -802,7 +800,7 @@ impl<'a> P<'a> {
                             for r in a.row.min(z.row)..=a.row.max(z.row) {
                                 for c in a.col.min(z.col)..=a.col.max(z.col) {
                                     let p = Pos::new(r, c);
-                                    match self.sheet.phonetics.get(&p) {
+                                    match self.sheet.phonetic(p) {
                                         Some(ruby) => out.push_str(ruby),
                                         None => out.push_str(&self.cell(p).display()),
                                     }
@@ -830,10 +828,7 @@ impl<'a> P<'a> {
                             if kind != "filename" {
                                 return Ok(Value::Error("#NAME?".into()));
                             }
-                            return Ok(Value::Text(cell_filename(
-                                self.book_path,
-                                &self.sheet.name,
-                            )));
+                            return Ok(Value::Text(cell_filename(self.book_path, self.sheet.name())));
                         }
                         // LET(名前, 値, [名前, 値]…, 式) — 名前を束ねてから
                         // 最後の式を計算する。値は**先に計算して**束ねるので、
@@ -852,7 +847,7 @@ impl<'a> P<'a> {
                             let save = self.i;
                             let args = self.args()?;
                             let n = args.first().map(|g| g.first().as_number()).unwrap_or(0.0);
-                            if n > 100.0 && !self.sheet.row_hidden.is_empty() {
+                            if n > 100.0 && self.sheet.any_row_hidden() {
                                 self.i = save;
                                 self.skip_hidden.set(true);
                                 let again = self.args();

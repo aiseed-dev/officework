@@ -33,8 +33,8 @@ pub use funcs::{date_serial_at, excel_epoch};
 pub(crate) use funcs::{civil_from_days, era_of, weekday0};
 pub use parse::cell_filename;
 pub use run::{
-    deps, eval_once, eval_py_call, is_py_formula, is_udf_name, py_cell_stamp, recalc, recalc_all, recalc_book,
-    set_udf_names, PyArg,
+    deps, eval_in, eval_once, eval_py_call, is_py_formula, is_udf_name, py_cell_stamp, recalc, recalc_all,
+    recalc_book, set_udf_names, PyArg,
 };
 
 #[cfg(test)]

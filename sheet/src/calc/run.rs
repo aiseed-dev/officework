@@ -4,6 +4,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::grid::Grid;
 use crate::model::{Cell, Pos, Sheet, Value};
 
 use super::funcs::*;
@@ -194,15 +195,30 @@ pub fn is_py_formula(f: &str) -> bool {
 /// 相対参照のずらしは呼ぶ側の仕事(`model::offset_refs`)
 pub fn eval_once(sheet: &Sheet, at: Pos, formula: &str) -> Value {
     let f = formula.trim();
+    // 名前の定義はシートだけが持つので、ここで先に式へ展開しておく
     let f = expand_names(f.strip_prefix('=').unwrap_or(f), &sheet.names);
+    eval_in(sheet, at, &f)
+}
+
+/// **値を引ける表なら何でも**、式を1つ計算する。
+///
+/// `eval_once` のシートに縛られない形です。文書の中の表
+/// ([`crate::grid::CellsGrid`])を渡せば、`=SUM(売上台帳[金額])` が
+/// 文章の中でも動きます(SEKKEI「エンジンの統一」3段目)。
+///
+/// **他の表は引けません**(`others` が空)。`別表!A1` は #REF! です。
+/// 名前の定義も展開しません — 使う側が要るなら先に展開してください。
+pub fn eval_in(grid: &dyn Grid, at: Pos, formula: &str) -> Value {
+    let f = formula.trim();
+    let f = f.strip_prefix('=').unwrap_or(f);
     // 途中結果の控えは無い(この式は表の依存の輪に入っていない)。
     // セルの値は表に入っている確定値をそのまま読む
     let resolved: HashMap<Pos, Value> = HashMap::new();
-    let Ok(toks) = lex(&f) else { return Value::Error("#ERROR!".into()) };
+    let Ok(toks) = lex(f) else { return Value::Error("#ERROR!".into()) };
     let mut p = P {
         t: &toks,
         i: 0,
-        sheet,
+        sheet: grid,
         resolved: &resolved,
         at,
         others: &[],
@@ -242,7 +258,8 @@ pub fn recalc_book(book: &mut crate::Book, target: usize) {
     let d1904 = book.date1904;
     let (left, rest) = book.sheets.split_at_mut(target);
     let (tgt, right) = rest.split_first_mut().expect("上で確かめた");
-    let others: Vec<&Sheet> = left.iter().chain(right.iter()).collect();
+    // `&Sheet` から `&dyn Grid` へ — 式の計算が見る面だけに絞る
+    let others: Vec<&dyn Grid> = left.iter().map(|s| s as &dyn Grid).chain(right.iter().map(|s| s as &dyn Grid)).collect();
     match iter {
         Some((count, delta)) => {
             // 反復計算: 循環は前回の値で埋めて、変化が delta 以下に
@@ -351,7 +368,7 @@ pub(super) fn stamp_py(sheet: &mut Sheet) {
     sheet.py_stamp = h.finish() | 1;
 }
 
-pub(super) fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_path: &str, date1904: bool) {
+pub(super) fn recalc_impl(sheet: &mut Sheet, others: &[&dyn Grid], at: usize, book_path: &str, date1904: bool) {
     // OFFSET/INDIRECT(計算で決まる参照)とスピルは、1回の走査では依存の順が
     // 読めないことがある — そのときだけ、値が動かなくなるまで回す(上限つき。
     // RAND/NOW 入りの式は毎回変わるので、比較からは外している)
@@ -382,7 +399,7 @@ pub(super) fn recalc_impl(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_
 }
 
 /// 再計算の1周。値が動いたら true(まだ安定していないかもしれない)
-pub(super) fn recalc_pass(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_path: &str, date1904: bool) -> bool {
+pub(super) fn recalc_pass(sheet: &mut Sheet, others: &[&dyn Grid], at: usize, book_path: &str, date1904: bool) -> bool {
     recalc_pass_iter(sheet, others, at, false, book_path, date1904).0
 }
 
@@ -390,7 +407,7 @@ pub(super) fn recalc_pass(sheet: &mut Sheet, others: &[&Sheet], at: usize, book_
 /// せず**前回の値**で埋める。返りは (動いたか, 数の最大変化量)
 pub(super) fn recalc_pass_iter(
     sheet: &mut Sheet,
-    others: &[&Sheet],
+    others: &[&dyn Grid],
     at: usize,
     iter_mode: bool,
     book_path: &str,
@@ -466,7 +483,7 @@ pub(super) fn recalc_pass_iter(
         p: Pos,
         map: &HashMap<Pos, String>,
         sheet: &Sheet,
-        others: &[&Sheet],
+        others: &[&dyn Grid],
         at: usize,
         book_path: &str,
     date1904: bool,
@@ -713,7 +730,7 @@ pub(super) fn is_array_formula(f: &str) -> bool {
 /// =SEQUENCE(3)+1 のように演算子と組み合わせた式も、要素ごとに計算される
 pub(super) fn eval_array(
     sheet: &Sheet,
-    others: &[&Sheet],
+    others: &[&dyn Grid],
     sheet_at: usize,
     f: &str,
     at: Pos,

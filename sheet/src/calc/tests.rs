@@ -1999,3 +1999,69 @@ mod cell_filename_tests {
         );
     }
 }
+
+/// **シート以外の表でも式が動く**(SEKKEI「エンジンの統一」2段目)。
+///
+/// 式の計算は `Sheet` ではなく「値を引ける表」を受けるようになった。
+/// ここでは文書の中の表に当たる `CellsGrid` を渡して、同じ答えが
+/// 出ることを確かめる
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod 文書の表で計算する {
+    use crate::calc::eval_in;
+    use crate::grid::CellsGrid;
+    use crate::model::{Pos, Value};
+
+    fn 売上台帳() -> CellsGrid {
+        let rows = vec![
+            vec!["品名".to_string(), "金額".to_string()],
+            vec!["机".to_string(), "1200".to_string()],
+            vec!["椅子".to_string(), "800".to_string()],
+            vec!["棚".to_string(), "500".to_string()],
+        ];
+        CellsGrid::from_text_rows("売上台帳", rows, true)
+    }
+
+    /// 番地の参照と範囲。見出しが1行目なので金額は B2:B4
+    #[test]
+    fn 番地で足せる() {
+        let g = 売上台帳();
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(B2:B4)"), Value::Number(2500.0));
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=B2*2"), Value::Number(2400.0));
+    }
+
+    /// **構造化参照。** 表の題が名前になり、見出しの字で列を引く。
+    /// これが 3 段目「writer でセル関数が使える」の土台
+    #[test]
+    fn 表の名前と見出しで足せる() {
+        let g = 売上台帳();
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(売上台帳[金額])"), Value::Number(2500.0));
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=MAX(売上台帳[金額])"), Value::Number(1200.0));
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=COUNT(売上台帳[金額])"), Value::Number(3.0));
+    }
+
+    /// 字は字のまま、数は数。`1,234` を数と読み違えない
+    #[test]
+    fn 字と数を見分ける() {
+        let rows = vec![vec!["1200".to_string(), "1,200".to_string(), "TRUE".to_string(), String::new()]];
+        let g = CellsGrid::from_text_rows("表", rows, false);
+        assert_eq!(g_value(&g, 0, 0), Value::Number(1200.0));
+        assert_eq!(g_value(&g, 0, 1), Value::Text("1,200".into()));
+        assert_eq!(g_value(&g, 0, 2), Value::Bool(true));
+        assert_eq!(g_value(&g, 0, 3), Value::Empty);
+    }
+
+    fn g_value(g: &CellsGrid, row: u32, col: u32) -> Value {
+        use crate::grid::Grid;
+        g.value(Pos::new(row, col))
+    }
+
+    /// 表の外の参照は空。**#REF! にはしない** — 表が小さいだけで、
+    /// 参照そのものは成り立っている(シートと同じ扱い)
+    #[test]
+    fn 表の外は空欄() {
+        let g = 売上台帳();
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=Z99"), Value::Empty);
+        assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(B2:B99)"), Value::Number(2500.0));
+    }
+}
