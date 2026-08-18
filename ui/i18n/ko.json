@@ -3880,10 +3880,6 @@
   "t": "확대·축소를 100%로 되돌렸습니다"
  },
  {
-  "i": 970,
-  "t": "안내서: docs/calc-manual.ja.md(영어는 calc-manual.md). Python은 python-manual.ja.md"
- },
- {
   "i": 971,
   "t": "지금 시각을 가져오지 못했습니다"
  },
@@ -4570,10 +4566,6 @@
  {
   "i": 1142,
   "t": "그림자를 지웠습니다"
- },
- {
-  "i": 1143,
-  "t": "안내서: docs/writer-manual.ja.md(영어는 writer-manual.md). Python은 writer-macro-manual.ja.md"
  },
  {
   "i": 1144,

@@ -23,14 +23,15 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-JA = ROOT / "docs/writer-manual.ja.md"
-EN = ROOT / "docs/writer-manual.md"
+JA = ROOT / "docs/writer-manual.ja.adoc"
+EN = ROOT / "docs/writer-manual.adoc"
 RIBBON = ROOT / "face/src/ribbon.rs"
 ADOC = ROOT / "engine/src/adoc.rs"
 
-# 表の見出し行(この行の下から表が始まる)
-HEAD_JA = "| したいこと | 本文の書き方 | リボンのボタン | Web の形(HTML) |"
-HEAD_EN = "| What you want | Type this | Ribbon button | On the web (HTML) |"
+# 表の見出し行(この行の下から表が始まる)。**手引きは AsciiDoc です**
+# (2026-08-18 に .md から移した)ので、表は `|===` で囲まれた形
+HEAD_JA = "|したいこと|本文の書き方|リボンのボタン|Web の形(HTML)"
+HEAD_EN = "|What you want|Type this|Ribbon button|On the web (HTML)"
 
 
 def rows(path, head):
@@ -40,11 +41,13 @@ def rows(path, head):
         sys.exit(f"{path} に「書き方の一覧」の表がありません(見出しの行が変わった?)")
     after = text.split(head, 1)[1].splitlines()
     out = []
-    for line in after[1:]:  # 1行目は |---|---| の区切り
+    for line in after:
+        if line.startswith("|==="):
+            break  # 表の終わり
         if not line.startswith("|"):
-            break
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        # 表の中の `\|` は「棒そのもの」なので、割ったあとで戻す
+            continue  # 表の中の空行
+        # 表の中の `\|` は「棒そのもの」なので、そこでは割らない
+        cells = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
         out.append(cells)
     if len(out) < 20:
         sys.exit(f"{path} の表が {len(out)} 行しかありません(表の取り方が壊れた?)")

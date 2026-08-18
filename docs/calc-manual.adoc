@@ -1,0 +1,984 @@
+= calc manual
+
+_日本語版(secondary): link:calc-manual.ja.adoc[calc-manual.ja.adoc]_
+
+A spreadsheet app that opens, edits, and saves xlsx — and calculates formulas.
+
+This manual describes *only what works today*.
+Commands shown grayed out on the ribbon are unimplemented and cannot be pressed (we never make something look usable when it isn't).
+Grayed-out items and their Python alternatives are listed link:#not-implemented-gray-and-alternatives[at the end].
+
+Three promises:
+
+* *Formatting is preserved.* Borders, merged cells, column widths, shapes, and
+
+  themes of an opened form survive a save (parts we don't understand are carried   over from the original file)
+
+* *Every operation is one undo away.* When in doubt, Ctrl+Z
+* *Nothing is dropped silently.* Anything we can't read, or that would be lost
+
+  on save, is mentioned in the status bar
+
+== Starting
+
+[source,bash]
+----
+./target/release/calc              # opens empty
+./target/release/calc 帳票.xlsx    # open a file
+----
+
+Without a Japanese font the app won't start (install `fonts-noto-cjk` or `fonts-ipaexfont`, or set `OFFICE_FONT=/path/to/font.ttf`).
+
+== The screen
+
+The window frame follows the desktop-app convention. *Row 1*: save, print, undo, redo, and the workbook name (unsaved changes show `*`; drag this row to move the window). *Row 2*: tabs on a white strip (current tab has a green underline; 🔍 at the right edge is find & replace).
+The button band is a single row of icon buttons like the original (major buttons are labeled; hovering shows the name in the status bar; only Home has two rows). *The File tab is a full-page view* — a menu on the left (New, Open, Recent, Save, Save As, Print, Protect, Properties, Open file location, Quit) and "Workbook info" on the right (statistics plus xlsx properties = author, title, etc. *Click a field, type, Enter to record* — saved into docProps, visible in Excel). "Recent" keeps 12 entries.
+Tab order matches Euro-Office: *File / Home / Insert / Draw / Layout / Formulas / Data / Pivot Table / Table Design / Collaboration / Protection / View / Plugins* (all the original tabs). *Interface theme* (View tab) darkens the surroundings — *cells stay white* (screen and paper must agree). *Bottom edge*: the status bar — sheet tabs, results/warnings/errors, and when a range is selected its *sum, average, and count* update live (like Excel's status bar).
+Protected sheets get a 🔒 on their tab.
+
+*View tab* (matching the original desktop app): zoom (50–200%; cells and text scale together — paper is unaffected), formula bar on/off, gridlines, headings (row numbers and column letters; hide them for a clean table look), show zeros (hides zero values — *display only; the value stays 0* and formulas still see it).
+Freeze panes, sheet visibility (unhide/hide sheets), and the interface theme also live here.
+
+== Basics
+
+=== Keys
+
+[cols="1,1"]
+|===
+|Action|Keys
+|Move|↑ ↓ ← → / Enter (down) / Tab (right) / Shift+Tab (left)
+|Select range|Shift+arrows
+|First / last cell|Ctrl+Home / Ctrl+End
+|Page up / down|PageUp / PageDown
+|Select all|Ctrl+A
+|Undo / redo|Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y too)
+|Copy / cut / paste|Ctrl+C / Ctrl+X / Ctrl+V
+|*Paste values only*|Ctrl+Shift+V (formulas become their computed values)
+|Find / replace|Ctrl+F / Ctrl+H
+|Open / save|Ctrl+O / Ctrl+S
+|Context menu|Menu key / Shift+F10
+|Cancel / close|Esc
+|Quit|Ctrl+Q
+|===
+
+=== All keys
+
+The table above covers just the basics.
+Every live binding is listed below (generated from the binding table — hand-written lists always drift).
+You can rebind in settings.toml: `key.bold = "alt-b"` replaces the default keys for that action (separate several with commas, unbind with an empty string `""`; unreadable lines are reported in the status bar at startup; action names are the English names below).
+
+<!-- keys:gen:start (rewritten by tools/keys\_doc.py --write) -->
+
+[cols="1,1"]
+|===
+|Key|Action
+|Backspace|Delete backwards (on a cell: clear it)
+|Delete|Delete forwards (on a cell: clear it)
+|←|Move left
+|→|Move right
+|Shift+←|Extend selection left
+|Shift+→|Extend selection right
+|Ctrl+←|Word left (calc: to the data edge)
+|Ctrl+→|Word right (calc: to the data edge)
+|Ctrl+Shift+←|Extend selection a word left (calc: to the edge)
+|Ctrl+Shift+→|Extend selection a word right (calc: to the edge)
+|PageUp|Page up
+|PageDown|Page down
+|Ctrl+F / Ctrl+H|Find and replace
+|Ctrl+B|Bold
+|Ctrl+I|Italic
+|Ctrl+U|Underline
+|Ctrl+5|Strikethrough
+|Ctrl+P|Print (to PDF)
+|F11|Toggle full screen
+|Ctrl+Shift+S / F12|Save as
+|Ctrl+0|Zoom to 100%
+|F1|Help
+|Ctrl+;|Insert today's date
+|Ctrl+:|Insert the current time
+|Ctrl+Home|To the beginning
+|Ctrl+End|To the end
+|Shift+↑|Extend selection up
+|Shift+↓|Extend selection down
+|Ctrl+A|Select all
+|Home|To the start of the line/row
+|End|To the end of the line/row
+|Enter|Confirm and move down / new line
+|↑|Move up
+|↓|Move down
+|Tab|Move right / indent
+|Shift+Tab|Move left / outdent
+|Ctrl+Z|Undo
+|Ctrl+Shift+Z / Ctrl+Y|Redo
+|Ctrl+S|Save
+|Ctrl+O|Open
+|Ctrl+C|Copy
+|Ctrl+X|Cut
+|Ctrl+V|Paste
+|Ctrl+Q|Quit
+|Menu / Shift+F10|Context menu
+|Ctrl+= / Ctrl+Shift+=|Bigger UI text
+|Ctrl+-|Smaller UI text
+|Ctrl+K|Hyperlink
+|Esc|Cancel / close
+|Ctrl+↑|To the data edge (up)
+|Ctrl+↓|To the data edge (down)
+|Ctrl+Shift+↑|Extend selection to the edge (up)
+|Ctrl+Shift+↓|Extend selection to the edge (down)
+|F2|Edit the cell
+|Shift+F3|Insert function
+|Ctrl+Shift+%|Percent format
+|Ctrl+E|Flash fill
+|Ctrl+Shift+V|Paste values only
+|Ctrl+Shift+Enter|Legacy array formula (CSE)
+|F9|Recalculate the whole book
+|Shift+F9|Recalculate this sheet
+|Alt+Enter|New line inside the cell
+|Alt+PageUp / Ctrl+PageUp|Previous sheet
+|Alt+PageDown / Ctrl+PageDown|Next sheet
+|F4|Cycle $ in the reference
+|Alt+S|Slicer multi-select (while open)
+|Alt+C|Clear the slicer filter (while open)
+|Ctrl+1|Cell format
+|Ctrl+Space|Select the column
+|Shift+Space|Select the row
+|Alt+=|AutoSum
+|Ctrl+D|Fill down
+|Ctrl+R|Fill right
+|Ctrl+G / F5|Go to (focus the name box)
+|Ctrl+Shift+L|Toggle the filter
+|Ctrl+T|Make a table
+|Shift+F2|Comment
+|===
+
+<!-- keys:gen:end -->
+
+=== Mouse
+
+* Click to select, drag to select a range, Shift+click to extend from the anchor
+* Click a row number or column letter to select the whole row/column
+* Drag the boundary between headings to resize columns/rows
+* Ctrl+click opens hyperlinks
+* Drag shapes to move them; the bottom-right corner resizes; *drag the circle*
+
+  above the frame to rotate** (Shift snaps to 15°).
+Selecting a shape opens a   settings panel on the right (fill/line color, line width, opacity,   rotate/flip, shadow). **Ctrl+click selects several shapes** → right-click →   Align (2+) / Distribute (3+).
+The right-click menu also has cut/copy/paste,   arrange (front/back) and save-as-SVG; Del deletes the whole selection*
+
+== Formulas and functions
+
+Start with `=` for a formula.
+Arithmetic (`+ - * /`), comparisons (`= <> > >= < <=`), ranges (`A1:B3`), absolute references (`$A$1`), and defined names all work.
+Editing triggers recalculation; circular references are detected and reported (never silent).
+
+*Cross-sheet references*: write `=Sheet2!B2` directly (ranges too: `=SUM(Sheet2!B1:B5)`; quote names containing spaces or symbols: `='Q1 actuals'!B2`).
+An unknown sheet name gives *#REF!* — it is never silently read as the current sheet.
+Cross-sheet values are *copied as of that moment*, so edit the source and recalculate (F9) to catch up.
+Renaming a sheet rewrites `oldname!` inside formulas (but *not inside strings* such as `INDIRECT("oldname!A1")` — quoted text is left alone).
+
+*About 185 functions* are implemented (including modern aliases).
+By category:
+
+[cols="1,1"]
+|===
+|Category|Functions
+|Aggregation|SUM, AVERAGE, COUNT, COUNTA, COUNTBLANK, MIN, MAX, SUMIF, *SUMIFS*, COUNTIF, *COUNTIFS*, AVERAGEIF(S), MINIFS, MAXIFS, *SUBTOTAL*, AGGREGATE, SUMPRODUCT, SUMSQ, AVERAGEA, MAXA, MINA
+|Math|ABS, MOD, QUOTIENT, POWER, SQRT, INT, ROUND(UP/DOWN), TRUNC, CEILING(.MATH), FLOOR(.MATH), MROUND, EVEN, ODD, SIGN, PRODUCT, FACT, COMBIN, PERMUT, GCD, LCM, PI, SIN…ATAN2, SINH…TANH, EXP, LN, LOG, LOG10, DEGREES, RADIANS, RAND, RANDBETWEEN
+|Statistics|MEDIAN, MODE, STDEV(P), VAR(P) (and .S/.P names), PERCENTILE, QUARTILE, LARGE, SMALL, RANK(.EQ/.AVG), CORREL, SLOPE, INTERCEPT, FORECAST
+|Finance|PMT, PV, FV, NPER, *NPV, IRR, RATE* (IRR and RATE are iterative)
+|Date & time|TODAY, NOW, DATE, DATEVALUE, YEAR, MONTH, DAY, WEEKDAY, TIME, HOUR, MINUTE, SECOND, EDATE, EOMONTH, DATEDIF, WORKDAY, NETWORKDAYS, DAYS, DAYS360, YEARFRAC, WEEKNUM, ISOWEEKNUM
+|Text|LEN, LEFT, RIGHT, MID, TRIM, UPPER, LOWER, PROPER, EXACT, CLEAN, CONCATENATE/CONCAT, *TEXT*, SUBSTITUTE, FIND, SEARCH, VALUE, NUMBERVALUE, TEXTJOIN, REPT, FIXED, YEN, CHAR/UNICHAR, CODE/UNICODE
+|Japanese|*LENB, LEFTB, RIGHTB, MIDB* (full-width = 2, matching Excel's Japanese locale), *ASC, JIS* (full/half-width conversion), *DATESTRING* (Japanese era dates), *PHONETIC* (furigana — reads the rPh data in the xlsx)
+|Logic & info|IF, IFS, SWITCH, CHOOSE, AND, OR, NOT, IFERROR, IFNA, NA, IS… (BLANK/ERROR/ERR/NA/NUMBER/TEXT/NONTEXT/LOGICAL/EVEN/ODD), T, N, TYPE
+|Lookup|VLOOKUP, HLOOKUP, *XLOOKUP*, LOOKUP, INDEX, MATCH, ROW(S), COLUMN(S), ADDRESS, HYPERLINK, *OFFSET, INDIRECT* (including `'Sheet name'!A1` across sheets)
+|Dynamic arrays|*FILTER, SORT, UNIQUE, SEQUENCE, TRANSPOSE* — results spill into neighboring cells; blocked cells give `#SPILL!`. They also combine with operators (`=SEQUENCE(3)+1`) and nest into aggregates (`=SUM(FILTER(…))`)
+|===
+
+Errors (`#N/A` etc.) propagate from arguments to the formula.
+IFERROR catches an error in its first argument, and IF never trips over the error in the branch it didn't take (`=IFERROR(VLOOKUP(…),"")` turns "not found" into a blank).
+Unknown function names return *#NAME?* — the app never silently computes 0.
+
+On top of these, *`=PY(…)` lets you write your own functions in Python* — see link:#writing-cell-functions-in-python-py-udf[the Python section].
+
+Formula-tab tools: AutoSum, *Insert Function* (category → function), function lists by category, *calculation mode* (automatic ⇔ manual; manual avoids waiting on big sheets), *watch window* (pins formula cells and shows their values in the bottom band), name manager, trace precedents/dependents (the cells light up; "remove arrows" clears), show formulas.
+
+*Defined names*: select a range, then "Define Name" (Home or Formulas).
+Names are alphanumeric plus `_` (must not look like a cell reference) and can be used in formulas.
+
+== Formatting
+
+* Text: bold, italic, underline, strikethrough, *subscript*, color, font, size
+* *The font box is a combo*: clicking opens the list positioned at the current
+
+  font.
+Type to filter (matches both Japanese and English names), ↑↓ to move,   Enter to confirm, Esc to close.
+Each entry is *drawn in its own font*, and   *recently used fonts* appear at the top.
+A font name not in the list can be   typed and confirmed as-is (the font list shows *this machine's fonts*)
+
+* *The size box is also a combo*: the list holds the 17 steps from 6 to 72pt.
+
+  Typing a free value rounds *silently* to 4–409pt in 0.5pt steps (rounding   applies to on-screen input only — an odd size made elsewhere round-trips   unchanged). *Grow/shrink* (+/−) walks the list one step at a time (an odd   size snaps to the neighbouring list value; it stops at the ends)
+
+* Cells: fill, borders (each side independently), horizontal and vertical
+
+  alignment (including *justified*), wrap, *text orientation* (each press:   vertical → stacked → back; for the vertical headings of Japanese forms)
+
+* *Right-to-left text* (Home): characters in a cell run right to left —
+
+  for Japanese right-to-left horizontal writing (old signboards); Latin bidi is   out of scope
+
+* *Sheet direction* (Layout): columns run right to left
+* *Cell styles* (Home): heading, title, good/bad/neutral, note, calculation,
+
+  currency, percent — one click applies the set (Ctrl+Z undoes)
+
+* *Theme colors*: modern Excel stores colors as "theme slot + tint". We read
+
+  and resolve them, so *colors don't disappear*.
+Switching the *color scheme *  (Layout: Office / warm / cool / ink) updates every cell that uses theme colors
+
+* Number formats: thousands separator, more/fewer decimals, %, currency
+* Merged cells (hidden values are not destroyed)
+* *Conditional formatting*: greater/less/equal rules changing text color or
+
+  fill (cellIs type; round-trips through xlsx)
+
+* *Data validation* (Data tab): list type. Choices are inline (`甲,乙,丙`) or
+
+  a range reference (`=D2:D5` — edit the referenced cells and the choices   follow).
+Invalid input doesn't enter the cell; Esc restores.
+Rules we can't   resolve (references to another sheet, etc.) don't block input (we don't warn   on what we can't check).
+Non-list rule types are reported as unreadable
+
+* *Table design* (Table Design tab): tools applied to the selection one step
+
+  at a time — header-row band, banded rows/columns, first/last column bold,   *total row* (adds a =SUM row below; it's a formula, so it follows edits;   refuses if something is already below), filter buttons.
+Tables are stored as   named *table objects*, so "Convert to range" (removes the table; band   formatting and formulas stay — like Excel) and "Resize table" (type a new   range like A1:C9) also work.
+Saved as real xlsx tables, visible in Excel.   To apply everything at once, use Insert > Table
+
+== Sheets and data
+
+* *Multiple sheets*: add, delete, rename, switch
+* *Freeze panes* (View): freezes rows above and columns left of the cursor;
+
+  press again to release
+
+* *Filter*: filter by cell value (display only; data unchanged). One step to clear
+* *Sort*: by column, ascending/descending. The header row stays put
+* *Remove duplicates* (Data): shows the count before deleting
+* *Text to data* (Data): pours CSV/TSV in at the cursor. Encoding (including
+
+  CP932) and delimiter are auto-detected
+
+* *External links* (Data): imports another workbook's values *as values*.
+
+  No live links — we don't create forms that break when a link dies
+
+* *Goal seek* (Data)
+* *Solver* (Data): the same "Solver parameters" dialog as ONLYOFFICE —
+
+  target cell (max/min/value), variable cells (a range or comma-separated, up to   64), constraints (cell / <= = >= / number or cell), then "Solve".
+The method   is *simplex LP* (backed by scipy).
+Coefficients are measured on a copy of   the sheet, and *nonlinear problems are refused* (as in the original).   The solution lands in the variable cells; one Ctrl+Z restores
+
+* *Subtotals* (Data): select a table with headings and it asks for the
+
+  grouping column (e.g. department) → columns to total (empty Enter = every   numeric column).
+Inserts "〜 小計" (=SUM) rows per group and a grand total at   the end, and groups *only the detail rows*. *Collapse to show just the   subtotals and grand total.* They're formulas, so edits flow through.
+Sort   first to bring groups together (as in Excel).
+All of it is one Ctrl+Z
+
+* *Grouping* (Data): drag across row headings, then "Group". *Hide detail*
+
+  collapses, *Show detail* expands (with no selection, the group containing   the cursor).
+Works on columns too.
+Grouping again deepens the nesting (up to   7).
+Depth and collapsed state round-trip through xlsx outlineLevel / hidden,   so Excel shows a normal outline.
+Collapsed rows/columns don't print (PDF)   either.
+Unlike filtering this *persists in the file* — a collapsed ledger   stays collapsed for the next person.
+The heading of the row just after a   group shows a *+/− button*; click to collapse or expand (like Excel's   outline margin)
+
+* *Pivot tables* (Pivot Table tab): select a table with headings and press
+
+  Insert; it asks for row headings (multiple allowed) → column headings   (optional) → value and aggregation (sum/average/count/max/min). polars does   the aggregation and the result is placed *as values* in the empty space to   the right of the source (further right if occupied — nothing is overwritten   silently).
+The definition is stored in the workbook (custom part   xl/joPivot.xml), so when the source changes, put the cursor on the pivot and   press *Refresh* (Refresh All does the whole workbook). *Grand totals *  (rows, and columns if you spread by column), *subtotals*, *blank rows *  (with 2+ row headings), and *report layout* (tabular ⇔ compact) toggle and   re-place on each press. *Select* selects the whole pivot.
+Every operation   re-aggregates from the source data with polars, so even averages in the grand   total are correct (not averages of averages).
+Each is one Ctrl+Z.   If Excel re-saves the file the definition part disappears — the pivot then   can't refresh and becomes a plain table of values (honest degradation)
+
+* *Comments*: one per cell. Empty + Enter deletes. Saved into the xlsx
+
+== Insert
+
+* *Table*: creates a bordered table frame with a header row in one go
+* *Images*: PNG / JPEG. Shapes (rectangle, rounded, ellipse, arrow, diamond,
+
+  line — text inside works too), symbols, text boxes, sparklines
+
+* *Chart / recommended chart*: matplotlib draws the selected range and floats
+
+  it on the sheet as an image (first column = labels, remaining columns =   series; a heading row becomes series names).
+Japanese fonts are registered   from the machine so no tofu.
+If Python is missing, the status bar explains   what to install
+
+* *SmartArt*: pick a category (list / process / cycle / hierarchy /
+
+  relationship / matrix / pyramid) then a layout.
+Categories, order, and names   match Euro-Office.
+What's inserted is *a group of shapes*, so each shape   can be selected, Enter to edit text, drag to move, Del to delete — and the   whole thing is one Ctrl+Z. Saved to xlsx as ordinary shapes (Excel shows   them as shapes; they are not native SmartArt parts — in exchange, any tool   can open and edit them).
+The list shows *only layouts this method can build*
+
+* *Text art*: decorative text — drawn bold with an outline and floated as an
+
+  image (matplotlib, same pipeline as equations)
+
+* Draw tab *pen / highlighter / eraser*: press to arm the tool, drag over the
+
+  grid to draw (pen: thin black; highlighter: wide translucent yellow).
+The   eraser removes *one stroke at a time*.
+Press the button again or Esc to   return to cell operations.
+Strokes are saved as *ordinary polyline shapes*,   so Excel shows them, Ctrl+Z steps back stroke by stroke, and they print (PDF)
+
+* *Checkbox*: placed on an empty cell it becomes ☑/☐ and *toggles with the*
+
+  space key** (the value is TRUE/FALSE — usable from formulas: `=E4`,   `=COUNTIF(E:E,TRUE)`).
+Any TRUE/FALSE cell displays as ☑/☐.
+Occupied cells   are refused.
+Excel shows the TRUE/FALSE values*
+
+* *Slicer*: a panel listing the values of the cursor's column as buttons;
+
+  press one to filter to those rows (≡ multi-select, ✕ clear, Esc close).   Like filtering, *display only* — the saved data doesn't change
+
+* *Equation*: mathematical typesetting (separate from cell formulas — nothing
+
+  is computed).
+Type TeX (`\frac{a}{b}`, `\sum_{i=1}^n i^2`) and matplotlib's   mathtext renders it as an image.
+Unreadable input is refused with a message
+
+* *Hyperlink*: right-click or Insert tab. Empty + Enter removes
+
+== The side panels (View tab)
+
+**Right = settings for what you have selected, left = who you are talking to. **Both *stay open*; the grid just gets narrower (they never cover it).
+
+*A rail of icons runs down the outer edge* of each panel; pressing one switches the face (left: Ask the AI / Comments, right: Cell settings / Shapes and pictures).
+Hover an icon to see its name. *Choosing Comments collapses the left panel to the rail* — comments show as balloons on the cells, so no panel body is needed and the sheet gets the space back.
+
+=== Right panel, "Cell settings"
+
+Things that used to be scattered across dialogs and drop-downs, on one sheet.
+The point is that *it keeps working while open* — borders especially: pick a pen once and draw in place after place.
+
+* *Text*: bold / italic / underline
+* *Alignment*: left / centre / right / wrap
+* *Number format*: General / currency / thousands / percent / item code
+
+  (0000) / date (the rest is still in the drop-down)
+
+* *Borders*: a *pen* (thin, medium, thick, dashed, double) and *where to*
+
+  draw** (grid, outline, top/bottom/left/right, erase) — **two axes**.
+We don't   carry the stamped presets: choose a pen, then press a place*
+
+* *Fill*: swatches you press directly (patterns and gradients stay in the
+
+  drop-down)
+
+* *Indent*: − and + by one step. *This is the first way to apply it* — the
+
+  xlsx round-trip has worked for a while, but nothing could set it
+
+* *Text orientation*: none / 45° / 90° / stacked vertical
+* *Conditional formatting*: only the rules that *need no value from you*
+
+  (negative in red, duplicates, unique, above/below average, data bars, colour   scale, icons, clear).
+Rules that need typing ("greater than …") stay in the   drop-down
+
+=== Left panel, "Ask the AI"
+
+See the next section.
+
+== Drive calc from your own AI (MCP)
+
+There is a *path that runs the other way*: instead of calc calling an AI, *the AI you already use* (Claude Code, Claude Desktop — anything that speaks MCP) uses calc as a tool.
+
+----
+pip install "officework[mcp]"
+----
+
+Register `officework-mcp` with your MCP client, then you can say:
+
+[NOTE]
+====
+"Sum column B of the open sheet and put the total below it. Bold the header."
+====
+
+*calc must be running*; if it isn't, the tools say so rather than failing silently.
+
+Only eight tools are exposed: book info / used range / read values / read formulas / write values / apply formatting / autofit / save.
+
+* *No tool runs arbitrary code.* One "run this Python" tool would let the
+
+  model do anything, well past what you agreed to
+
+* There is no tool to open a file — you decide what is open, in calc
+* Saving happens only when asked; nothing is overwritten on its own
+
+On this path, *the AI quota is between you and the AI product you chose*; officework just offers spreadsheet tools.
+
+== AI — talk to it in the left panel
+
+*On 2026-08-15 the AI tab was removed.* Its ten buttons (summarize, rewrite, make polite, …) were replaced by *a conversation in the left panel* — you can just type "sort this table by sales", and you can ask for things no button could express ("turn this into a table with date and amount columns").
+
+Open it with *View tab > Left panel*.
+
+* *The selected range is what you are asking about* (with nothing selected,
+
+  the request still goes through — some questions need no range)
+
+* *Requests that change the sheet come back as an officework Python script.*
+
+  *Nothing runs until you press.* Read it, then press Apply.
+What it did is   *one Ctrl+Z* away
+
+* Requests that don't change the sheet (what does this mean, write me one
+
+  formula) are simply answered
+
+* *The conversation continues* (2026-08-16). "Now sort that ascending
+
+  instead" works — the last three exchanges are sent along
+
+* *If it fails, press "Ask it to fix this".* When a script fails, the error
+
+  appears in the conversation and one press asks for a corrected script.
+Run,   fail, fix — as many rounds as you need
+
+* *"New conversation"* clears the thread (the sheet is untouched)
+* *The destination* can be switched right under the input box
+
+A script is the form the model writes most accurately (the xlwings/openpyxl shape) and — more importantly — *the form a person can check*.
+
+*Choosing the destination* moved to File > Advanced settings, "AI destination".
+Each press cycles local model → *Claude Agent* → *OpenAI Codex* → Claude (API).
+
+* *Claude Agent* — through Anthropic's Agent SDK. `pip install
+
+  claude-agent-sdk` is all you need (the SDK bundles its own executable)
+
+* *OpenAI Codex* — runs the local `codex` (`npm i -g @openai/codex`). It
+
+  uses whatever credentials that CLI already holds, so a ChatGPT plan works.   Install it and sign in once with `codex` first
+
+* *Claude (API)* — calls the API directly; no Python required
+
+*The two Claude destinations need `ANTHROPIC_API_KEY`.* Anthropic does not allow third-party products to offer claude.ai login or rate limits without prior approval, so those two use API-key authentication only.
+
+Unavailable destinations *say why on the spot*.
+
+=== Run one server for your group (one key for everyone)
+
+*The "local model" destination is yours to point anywhere.* Stand up one server for the group and have everyone point at it: one place to manage keys, one bill.
+What runs behind it — a local model, a relay to some API — is the operator's call; officework only speaks the *OpenAI-compatible* endpoint.
+
+One line in `~/.config/officework/settings.toml`:
+
+[source,toml]
+----
+ai_url = "https://ai.example.org/v1/chat/completions"
+ai_model = "gpt-oss-120b"
+----
+
+* *`https://` turns on encryption.* Don't send documents off the machine in
+
+  the clear (`http://` is for 127.0.0.1 only)
+
+* If the server needs a key, put it in the *`OFFICE_API_KEY` environment*
+
+  variable** (never in the settings file or a document)*
+
+* `OFFICE_URL` overrides it for one run
+* The current destination, and whether it leaves the machine, are shown on the
+
+  *Local model destination* row of this screen
+
+Common ports: Ollama `11434`, llama.cpp server `8080`, LM Studio `1234` — all on `/v1/chat/completions`.
+
+If the destination can't be reached the app says so (it never silently returns nothing). *Keys are never stored in the workbook.*
+
+== Cell text is Markdown
+
+Text cells are *drawn as Markdown*.
+The cell holds plain text; the markup is interpreted only at draw time.
+
+----
+This is **bold**            → This is bold
+*italic* ~~strike~~ `mono`
+see [here](https://…)       → a blue underlined link
+# Heading   ## Sub   ### Small
+- bullet    1. numbered
+----
+
+* *No editor for formatting part of a cell is needed* — you get formatting by
+
+  typing, and the formula bar and Python always see the same plain text
+
+* *It is written to xlsx as plain text*. A round trip can never garble it
+
+  (Excel shows the markers literally — honest degradation)
+
+* *The selected cell shows the raw text* so you can retype it
+* To stack headings and bullets vertically, turn on *wrap* for the cell
+
+  (without wrap, newlines still collapse to spaces as before)
+
+* Japanese typefaces have no italic face, so `*italic*` does not slant in
+
+  Japanese (the markers are still removed).
+Latin text slants
+
+* *Heading sizes come from the template* — the workbook's named cell styles
+
+  "Heading 1 / 2 / 3".
+Define them in a .xltx and every workbook made from it   follows (editing them in Excel carries over too).
+Without them the defaults   are 1.6 / 1.35 / 1.15× and bold. *Typing a heading grows the row* (it never   shrinks one)
+
+*Where the line is drawn so tables survive*: if nothing reads as markup, nothing happens. `2*3*4` (multiplication), `-100`, `1.5`, `2026-08-09`, and `name*` (an unpaired marker) all render exactly as before.
+The rule is that a delimiter pair whose content is only digits is not treated as markup.
+
+== Python — instead of macros
+
+The programmer's reference (ranges ⇄ arrays, the API, =PY arguments and return values) is the link:python-manual.adoc[Python manual].
+This section is the operations side.
+
+*There are no VBA-style macros* — and no mechanism for putting code inside a document at all.
+Think of it as VS Code and Excel merged: the sheet is an .xlsx, the code is a .py, and they are separate files.
+
+* What people exchange is *data only*. A workbook you receive contains no code
+* Cell functions live in `~/.config/officework/funcs/*.py`, procedures (macros)
+
+  in `~/.config/officework/plugins/*.py` — installed once per machine
+
+* So "opening a file runs someone else's code" cannot happen by construction
+* Because the code is only ever your own, *no sandbox is applied* — the same
+
+  treatment as running a script from VS Code
+
+=== Setup
+
+* Python is found as `JO_PYTHON` → `.venv/bin/python` → `python3`
+* Put the `officework` package *next to the calc executable*, or install it
+
+  with `pip install officework`. calc adds its own directory to `sys.path` and   does `from officework import sheet`, so what has to be there is the   `officework/` package directory — not a bare `.so`.
+To build it from this   tree: `maturin build -m pysheet/Cargo.toml --release` and install the wheel
+
+* Two folders (create them if missing):
+** `~/.config/officework/funcs/` — *functions called from cell formulas* (UDFs)
+** `~/.config/officework/plugins/` — *macros a person runs by hand*
+
+=== Why the folder was split in two (2026-08-16)
+
+There used to be one.
+Which meant *a macro's helper functions were also callable from the sheet* — a `def helper():` you wrote for one macro could be reached with `=helper()`.
+The risk is not the same:
+
+[cols="1,1,1"]
+|===
+||Function (funcs)|Macro (plugins)
+|Called by|a *formula* (`=with_tax(A1)`)|a *person* (picked from a list)
+|Runs when|every open, every recalc|only when pressed
+|On whose judgement|a formula left in a cell — its author need not be present|whoever is there
+|Arguments|values only|the whole workbook
+|===
+
+**What is left in a formula keeps running without anyone pressing anything. **So the folders are split, and "callable from a formula" now means "put in funcs".
+
+If you already keep functions in plugins, move them to funcs (if funcs is empty while plugins has .py files, calc says so at startup).
+
+=== Writing cell functions in Python
+
+Just write a plain `def` in `~/.config/officework/funcs/tools.py`:
+
+[source,python]
+----
+def double(x):
+    return x * 2
+
+def grid(table):
+    return [[v * 10 for v in row] for row in table]
+----
+
+Call it from a cell like any other function. *No decorator, no registration*:
+
+----
+=double(A1)          → 42 (when A1 is 21)
+=grid(A1:B2)         → spills 2×2 down-right
+----
+
+* Function names *may be Japanese* (`=集計(A1:B9)`)
+* *When the arguments change, it recomputes in the background* — you do not
+
+  press `@計算`.
+The work runs off the main thread in one batch and is written   back as a single step once every answer is in
+
+* Arguments are passed as *current values* (ranges as row×column 2-D lists)
+* A 2-D return value *spills* down-right (1-D spills down). If the target
+
+  area holds someone's data or formulas, it stops with `#SPILL!` — nothing is   overwritten.
+When a result shrinks, the leftover area is cleared
+
+* Built-in names (SUM and friends) win; a `def` with the same name is skipped
+* Only when the same name exists in two .py files do you qualify it:
+
+  `=tools.double(A1)`
+
+* Edit the .py and calc notices, then recomputes
+* A cell not yet computed shows `#PY?`. Excel shows `#NAME?` (saved values
+
+  remain visible until Excel recalculates)
+
+* The older form `=PY("double", A1)` still works
+* *Formulas > Python functions* lists what is in funcs; picking one opens that
+
+  .py in the editor
+
+=== Procedures (what replaces macros)
+
+`~/.config/officework/plugins/inbox.py`:
+
+[source,python]
+----
+from officework import calc as xw
+
+def paste():
+    s = xw.Book.caller().sheets.active
+    s["A1"].value = [["received", "name"], ["2026-08-09", "Yamada"]]
+----
+
+Type `@inbox.paste` in the Data > Python field to run it.
+It drives *the running workbook directly* (not a temporary copy).
+However many cells it writes, *one Ctrl+Z* returns you to the state before the procedure.
+
+=== Running a line of code (Data > Python)
+
+`b` = the book, `s` = the current sheet, are bound.
+
+[source,python]
+----
+s["A30"] = "Nihon Funen Co., Ltd."   # value only; formatting is left alone
+----
+
+* Press Enter on an empty field to pick a .py file instead
+* This one runs *on a copy* — a failure leaves the sheet untouched, and a
+
+  success is applied as *a single step* (one Ctrl+Z even across sheets)
+
+* Everything installed on the machine (polars, scipy, …) is available
+
+=== @ commands
+
+[cols="1,1"]
+|===
+|What you type|What happens
+|`@module`|run `~/.config/officework/plugins/module.py` top to bottom
+|`@module.func`|call just that function in that .py
+|`@edit name`|*open that .py for editing inside calc* (creates a starter file if missing)
+|`@list` (or `@`)|the .py files in funcs and plugins, and the defs inside them
+|`@計算`|compute cell functions by hand (normally automatic, so rarely needed)
+|`@export name`|extract code embedded in an *old* workbook to a .py (never runs it)
+|`@del name`|drop code embedded in an old workbook
+|===
+
+`@name net` is gone (with no sandbox there is no network distinction).
+Typing it says so.
+
+=== Editing a .py inside calc
+
+Type `@edit tools` and `tools.py` opens over the sheet (from plugins if it is there, otherwise from funcs).
+If it does not exist yet you get a starter file with one function in it.
+
+* Line numbers, and colouring for `def` names, keywords, strings and comments
+* *Ctrl+S saves, and the cell functions recompute right away* — change a
+
+  function, save, and watch the sheet move
+
+* Enter carries the previous line's indent (one level deeper after `:`). Tab
+
+  inserts four spaces (indentation is syntax in Python, so never a tab character)
+
+* Home toggles between the first non-blank character and the start of the line
+* Esc closes. *If there are unsaved edits it refuses once* (press Esc again to
+
+  discard and close)
+
+* While it is open, Ctrl+A / Ctrl+Z / Ctrl+C / Ctrl+V act on the *code*, not
+
+  the sheet
+
+=== Opening an old workbook
+
+If a workbook carries code in the old form (`xl/joPython.xml`), the report says so.
+It *cannot be run, and disappears on save* — `@export name` writes it to a .py so you can read it and install it into plugins yourself.
+That review is the only gate.
+
+=== Time limits
+
+60 seconds for a procedure, 30 for a cell function.
+Past that it is stopped and says so, so a runaway loop never ties up the app.
+
+== Shared folders and locking
+
+On open, the app checks `.~lock.filename#` in the same place LibreOffice does.
+
+* If someone holds it, *their name is shown* and *overwrite-save is*
+
+  blocked** (Save As still works).
+This prevents the "two people open it, last   save wins" accident*
+
+* Otherwise our lock is placed, and removed when closing or moving to another
+
+  file
+
+== Collaboration tab and plugins
+
+No server.
+Everything works *through files* (i.e. in a shared folder):
+
+* *Collaboration mode*: shows who currently holds editing rights (the lock);
+
+  if they've left, takes over
+
+* *Add / remove / show comments*: per cell. Hiding doesn't delete
+* *Chat*: appends named messages to the file next to the workbook
+
+  (`name.xlsx.chat.txt`).
+Not live — messages passed through files
+
+* *Version history*: every overwrite-save keeps a copy under
+
+  `.jo-history/name/timestamp.xlsx` (9 generations).
+Picking one opens it as   an *untitled copy* — to restore, save it under the original name yourself   (nothing is written back silently)
+
+== Searching a folder (2026-08-17)
+
+File > *Search a folder* walks a folder and searches many files at once.
+
+* *It reads inside .xlsx too* (the cell text) — you can see which workbook
+
+  holds what without opening any of them
+
+* Plain text (.txt / .md / .csv / .py …) as well
+* Narrow by name with `*.xlsx` (`;` for several)
+* The folder defaults to the one holding the open workbook (or the last one you
+
+  chose)
+
+* Hidden folders are skipped; if there is too much it stops early *and says so*
+
+Hits are grouped per file with line numbers (for .xlsx, one row per sheet row under the sheet name).
+Picking one *shows it below without opening anything*; it opens when you press *Load*.
+
+*calc can only open spreadsheets.* If a plain text file matches, it says so and points you at writer rather than failing with a broken message.
+
+== Macros tab
+
+*Folded into one tab on 2026-08-16.* It used to be split between "Python" and "Plugins", listing the same folder of .py files two different ways.
+
+* *Record actions*: what you do by hand accumulates as Python lines; stop and
+
+  it lands in `~/.config/officework/records/` as a .py. *It contains only the   record* — no line that opens a workbook (which workbook to apply it to is   yours to decide)
+
+=== What a recording contains (2026-08-16)
+
+*While recording, a red "● Recording, N lines" sits in the bottom bar.* Click it to stop.
+The Record actions button turns red too.
+
+What is written is not the name of the command but *the result it produced*:
+
+[cols="1,1"]
+|===
+|what you did|the line you get
+|select A1|`s["A1"].select()`
+|bold|`s["A1"].font.bold = True`
+|centre|`s["A1"].align = "center"`
+|percent|`s["A1"].number_format = "0%"`
+|sort / clear / paste|`s["A1:B3"].value = [[…], […]]`
+|change the margins|`s.set_page_setup(margins_mm=(10, 10, 10, 10))`
+|press a macro you put on the ribbon|`xw.run_macro("month_end")`
+|===
+
+*For on/off commands the resulting state is written, not the number of presses.* Pressing bold twice gives you `= True` then `= False`.
+The margin button cycles, and what lands in the recording is the millimetres it ended on.
+
+A selection line is inserted *just before something else is recorded*, and only when the selection changed (writing one per arrow key would drown the recording).
+
+=== Operations that cannot be written yet
+
+Borders, shapes and charts have no Python entry point yet.
+They leave
+
+    # この操作はまだ Python で書けません: テキストボックスを挿入する(instext)
+
+in the recording. *Nothing is dropped silently.* That line is the to-do list for the Python API.
+The same note appears when only part of a format change could be written — a macro that runs halfway is worse than one that does not run at all.
+
+* *New .py*: create a script in the folder and open it
+* *List*: the .py files in `~/.config/officework/plugins`; *picking one runs*
+
+  it**.
+To edit one, use "Open the folder" or `@edit name`*
+
+* *File > Macros* opens the same list (where the original puts it)
+* *Open the folder*: opens `~/.config/officework/plugins` in your file manager
+
+The folder is still named `plugins` — renaming it would strand files people have already put there.
+Only the words on screen changed.
+
+=== Putting a macro on the ribbon (2026-08-16)
+
+*A .py in `~/.config/officework/ribbon/` that declares itself becomes a ribbon button.* Macros tab > "Ribbon macros" shows what is currently there.
+
+[source,python]
+----
+ribbon = {"label": "Month end", "icon": "py-run", "tab": "マクロ"}
+
+from officework import calc as xw
+s = xw.Book.attach().sheets.active
+s["A1"].value = "closed"
+----
+
+You do not have to write it by hand — Macros > "Ribbon macros" has *Create an example*, which writes a working .py into the folder and opens it.
+
+* *label* — the text on the button. It is *not translated* (they are your words)
+* *icon* — an icon name; an unknown name falls back to the default
+* *tab* — which tab to appear on (the ja tab name). Defaults to the Macros tab
+
+The declaration is *read, never run* — your code runs when the button is pressed.
+A .py that does not declare itself does not become a button.
+New files show up within about a second; no restart.
+
+=== The three folders
+
+[cols="1,1,1"]
+|===
+|Folder|Called by|Runs when
+|`funcs/`|a *formula* (`=with_tax(A1)`)|every open, every recalc
+|`ribbon/`|a *ribbon button*|only when pressed
+|`plugins/`|*picked from a list* (`@name`)|only when picked
+|`records/`|— (just stored)|*never*
+|===
+
+`records/` is where *recordings land* (Macros > Record actions).
+A recording is a draft: it does not appear in the list and does not run.
+Read it, fix it, and when you are happy with it move it to `plugins/` or `ribbon/`.
+
+Pivot tables, charts and the solver are the *built-in side* (polars and matplotlib underneath).
+They appear further down the same list as "Built in: chart (read only)"; picking one opens a copy so you can read it.
+
+*Their contract is different, though.* A built-in script takes a spec (JSON) and returns an answer; it *never touches the workbook* — calc reads the range and hands it over.
+Your macro does the opposite: when pressed, it drives the live workbook.
+So copying a built-in script into the folder will not make it run the same way.
+They are there to be read, not to be used as a template.
+
+=== Only .py files in the folder can be launched
+
+*Macros launched from calc must live in `~/.config/officework/plugins `*(2026-08-16).
+There used to be a "From a file" button, and pressing Enter on an empty Data > Python prompt did the same thing.
+Both are closed.
+
+A .py you were given goes *into the folder first*, then you pick it from the list. *That extra step is the gate* — read it before you put it there.
+It is plain Python; reading it tells you what it does.
+
+Three paths run Python:
+
+[cols="1,1"]
+|===
+|Path|What runs
+|Macros > List, and `@name(...)` in a cell|*only .py from the folder*
+|Data > Python (typing)|*what you just typed*; no file is read
+|Left panel conversation > Apply|*what the AI wrote, that you read and pressed*
+|===
+
+Every one starts with a person choosing, typing, or pressing. *Workbooks never carry code* — opening one never runs anything.
+
+== Protection tab
+
+* *Protect*: makes the current sheet read-only (edits are blocked; same
+
+  button to release). *No password, and no pretend-password.* Round-trips   xlsx sheetProtection, so Excel shows the sheet as protected too
+
+* *Encrypt*: set a password and the next save is wrapped in *AES-256*
+
+  (Agile, the Excel 2013+ default)**.
+Opens in Excel and LibreOffice.
+Clear   the field and press Enter to stop encrypting.
+Opening prompts for the   password (masked). **Reading accepts both Agile and the older AES-128   (2007 Standard)
+
+* *Add digital signature*: a signature file next to the workbook
+
+  (`name.xlsx.sig`, Ed25519).
+Press once: if a valid signature exists it   reports; if missing or the content changed, it (re-)signs.
+Not the scheme   that appears in Excel's signature line — tamper detection plus a name
+
+== Print and PDF
+
+Configure on the Layout tab, then File > Print writes a PDF.
+
+* Paper: A4 / A3 / B4 / B5 / A5. *B sizes are JIS* (matching Japanese
+
+  office forms)
+
+* Orientation, margins (default 20mm / narrow 10mm / wide 30mm), scale
+
+  (100→90→80→70→50%)
+
+* Print area (select and set; press again to clear), page breaks, repeated
+
+  title rows, print gridlines, print headings (row numbers / column letters)
+
+* These are saved into the xlsx (by patching the original attributes — ones we
+
+  don't understand are not deleted), so Excel opens with the same print setup
+
+* The PDF carries values, formatting, borders, fills, and the shapes/images
+
+  inserted by this app.
+Columns that don't fit the paper are cut (the status   bar says so)
+
+== Saving
+
+* Ctrl+S overwrites (blocked if someone else holds the lock). If unnamed, a
+
+  dialog asks
+
+* Original parts (charts, shapes, themes, XML we don't understand) are
+
+  *carried over as-is*
+
+* Unsaved changes show in the status bar, and quitting asks "save and quit?"
+
+== Not implemented (gray) and alternatives
+
+*9 grayed-out ribbon buttons.* They are:
+
+[cols="1,1"]
+|===
+|Tab|Grayed out
+|Layout|Bring forward, Send backward, Align, Group, Merge shapes
+|Protect|Protect workbook, Protect range
+|View|Normal, Page-break preview
+|===
+
+Everything else on the ribbon works.
+The count is checked against the ribbon table on every push; this section previously claimed zero and had been wrong for months.
+
+The following work differently here, or are delegated to Python:
+
+[cols="1,1"]
+|===
+|Grayed elsewhere / different|Our way
+|Forecasting, statistics|polars, statsmodels
+|Macros (VBA)|*deliberately absent*; plugins written in Python take the role (code stays out of the workbook)
+|===
+
+We also don't create *reference links* to external workbooks (values are imported instead) — no forms that break when a link dies.

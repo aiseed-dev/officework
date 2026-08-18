@@ -3880,10 +3880,6 @@
   "t": "Zoom wieder auf 100%"
  },
  {
-  "i": 970,
-  "t": "Handbuch: docs/calc-manual.ja.md (auf Englisch calc-manual.md). Für Python python-manual.ja.md"
- },
- {
   "i": 971,
   "t": "Die aktuelle Uhrzeit war nicht zu bekommen"
  },
@@ -4570,10 +4566,6 @@
  {
   "i": 1142,
   "t": "Schatten entfernt"
- },
- {
-  "i": 1143,
-  "t": "Handbuch: docs/writer-manual.ja.md (auf Englisch writer-manual.md). Für Python writer-macro-manual.ja.md"
  },
  {
   "i": 1144,

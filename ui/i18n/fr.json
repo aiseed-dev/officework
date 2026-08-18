@@ -3880,10 +3880,6 @@
   "t": "Zoom remis à 100 %"
  },
  {
-  "i": 970,
-  "t": "Guide : docs/calc-manual.ja.md (en anglais : calc-manual.md). Pour Python : python-manual.ja.md"
- },
- {
   "i": 971,
   "t": "Impossible d'obtenir l'heure actuelle"
  },
@@ -4570,10 +4566,6 @@
  {
   "i": 1142,
   "t": "Ombre enlevée"
- },
- {
-  "i": 1143,
-  "t": "Guide : docs/writer-manual.ja.md (en anglais : writer-manual.md). Pour Python : writer-macro-manual.ja.md"
  },
  {
   "i": 1144,

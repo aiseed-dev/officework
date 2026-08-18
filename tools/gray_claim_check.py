@@ -40,10 +40,10 @@ FLOOR = 60
 DOCS = {
     "README.adoc": ("writer", "calc"),
     "README.ja.adoc": ("writer", "calc"),
-    "docs/calc-manual.md": ("calc",),
-    "docs/calc-manual.ja.md": ("calc",),
-    "docs/writer-manual.md": ("writer",),
-    "docs/writer-manual.ja.md": ("writer",),
+    "docs/calc-manual.adoc": ("calc",),
+    "docs/calc-manual.ja.adoc": ("calc",),
+    "docs/writer-manual.adoc": ("writer",),
+    "docs/writer-manual.ja.adoc": ("writer",),
 }
 
 # 灰色の話をしている行か

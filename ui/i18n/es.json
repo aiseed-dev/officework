@@ -3880,10 +3880,6 @@
   "t": "El zoom volvió al 100%"
  },
  {
-  "i": 970,
-  "t": "Guía: docs/calc-manual.ja.md (en inglés, calc-manual.md). Para Python, python-manual.ja.md"
- },
- {
   "i": 971,
   "t": "No se pudo obtener la hora actual"
  },
@@ -4570,10 +4566,6 @@
  {
   "i": 1142,
   "t": "Se le quitó la sombra"
- },
- {
-  "i": 1143,
-  "t": "Guía: docs/writer-manual.ja.md (en inglés, writer-manual.md). Para Python, writer-macro-manual.ja.md"
  },
  {
   "i": 1144,

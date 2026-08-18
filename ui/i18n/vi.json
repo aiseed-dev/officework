@@ -3880,10 +3880,6 @@
   "t": "Đã đưa mức phóng về 100%"
  },
  {
-  "i": 970,
-  "t": "Hướng dẫn: docs/calc-manual.ja.md (bản tiếng Anh là calc-manual.md). Python thì xem python-manual.ja.md"
- },
- {
   "i": 971,
   "t": "Không lấy được giờ hiện tại"
  },
@@ -4570,10 +4566,6 @@
  {
   "i": 1142,
   "t": "Đã bỏ bóng"
- },
- {
-  "i": 1143,
-  "t": "Hướng dẫn: docs/writer-manual.ja.md (bản tiếng Anh là writer-manual.md). Python thì xem writer-macro-manual.ja.md"
  },
  {
   "i": 1144,

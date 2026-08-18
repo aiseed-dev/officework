@@ -3880,10 +3880,6 @@
   "t": "Zoom dikembalikan ke 100%"
  },
  {
-  "i": 970,
-  "t": "Panduan: docs/calc-manual.ja.md (versi Inggris calc-manual.md). Untuk Python: python-manual.ja.md"
- },
- {
   "i": 971,
   "t": "Waktu saat ini tidak bisa diambil"
  },
@@ -4570,10 +4566,6 @@
  {
   "i": 1142,
   "t": "Bayangan dihapus"
- },
- {
-  "i": 1143,
-  "t": "Panduan: docs/writer-manual.ja.md (versi Inggris writer-manual.md). Untuk Python: writer-macro-manual.ja.md"
  },
  {
   "i": 1144,

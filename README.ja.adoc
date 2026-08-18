@@ -10,8 +10,8 @@ _元は英語版(link:README.adoc[README.adoc])です。こちらは日本語訳
 セルの式``=倍(A1)`` が自作の Python 関数を呼んで結果がスピルで広がり、グラフやピボットのボタンの裏では matplotlib・polars が働きます。
 VBA の代わりはこれです:
 
-* `writer` — *AsciiDoc の視覚エディタ*。原稿(.adoc)を見たまま直し、画面・PDF・HTML・docx に出す。docx は受け渡しの形式で、開いて見る・adoc にすることはできる(link:docs/writer-manual.ja.md[手引き])
-* `calc` — xlsx を開いて、直して、保存する。式も計算する(link:docs/calc-manual.ja.md[手引き])
+* `writer` — *AsciiDoc の視覚エディタ*。原稿(.adoc)を見たまま直し、画面・PDF・HTML・docx に出す。docx は受け渡しの形式で、開いて見る・adoc にすることはできる(link:docs/writer-manual.ja.adoc[手引き])
+* `calc` — xlsx を開いて、直して、保存する。式も計算する(link:docs/calc-manual.ja.adoc[手引き])
 
 **別々のアプリ**です。
 1つの巨大なスイートにしていません。
@@ -61,7 +61,7 @@ VBA の代わりはこれです:
 自作のコードは``~/.config/officework/plugins/`` に .py で置きます。
 手続きなら `@名前` で実行、関数なら `=倍(A1)` のような普通の式でセルから呼べます(関数名は日本語でもかまいません)。
 受け取ったブックにコードは入っていないので、**「開いた瞬間に他人のコードが走る」という事故が、仕組みの上で起きません。
-**詳しくは link:docs/calc-manual.ja.md[calc の手引き]。
+**詳しくは link:docs/calc-manual.ja.adoc[calc の手引き]。
 
 == 手に入れる
 
@@ -247,7 +247,7 @@ d.save("out.docx")
 from officework import calc as xw   # xlwings 流の Book / Range
 ----
 
-コードを書く人向けの説明は link:docs/python-manual.ja.md[Python の手引き] にあります —*範囲⇄配列のやり取り*(values() と1セルずつの書き込み)、=PY の2次元リストとスピル、writer マクロの `d`、サンドボックスの中の約束、まで、実際に動かして確かめた内容つきです。
+コードを書く人向けの説明は link:docs/python-manual.ja.adoc[Python の手引き] にあります —*範囲⇄配列のやり取り*(values() と1セルずつの書き込み)、=PY の2次元リストとスピル、writer マクロの `d`、サンドボックスの中の約束、まで、実際に動かして確かめた内容つきです。
 
 == 構成
 

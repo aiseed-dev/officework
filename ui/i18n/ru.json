@@ -3880,10 +3880,6 @@
   "t": "Масштаб вернули к 100%"
  },
  {
-  "i": 970,
-  "t": "Руководство: docs/calc-manual.ja.md (по-английски — calc-manual.md). Про Python — python-manual.ja.md"
- },
- {
   "i": 971,
   "t": "Не удалось узнать текущее время"
  },
@@ -4570,10 +4566,6 @@
  {
   "i": 1142,
   "t": "Тень убрана"
- },
- {
-  "i": 1143,
-  "t": "Руководство: docs/writer-manual.ja.md (по-английски — writer-manual.md). Про Python — writer-macro-manual.ja.md"
  },
  {
   "i": 1144,

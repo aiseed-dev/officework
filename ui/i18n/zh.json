@@ -3880,10 +3880,6 @@
   "t": "已把缩放调回 100%"
  },
  {
-  "i": 970,
-  "t": "说明书：docs/calc-manual.ja.md（英文的是 calc-manual.md）。Python 的在 python-manual.ja.md"
- },
- {
   "i": 971,
   "t": "取不到现在的时间"
  },
@@ -4570,10 +4566,6 @@
  {
   "i": 1142,
   "t": "已去掉阴影"
- },
- {
-  "i": 1143,
-  "t": "说明书：docs/writer-manual.ja.md（英文的是 writer-manual.md）。Python 的在 writer-macro-manual.ja.md"
  },
  {
   "i": 1144,

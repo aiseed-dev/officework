@@ -1,0 +1,872 @@
+= writer manual
+
+_日本語版(secondary): link:writer-manual.ja.adoc[writer-manual.ja.adoc]_
+
+*This manual describes writer 0.2.0-alpha.* Anything not yet in the released 0.1.0-alpha is marked *(coming in 0.2.0-alpha)*.
+Those parts describe what we are building, not what ships today.
+
+*A visual editor for AsciiDoc.* You edit your source (.adoc) as it looks.
+It is not a replacement for a processor such as Asciidoctor — it is a tool for writing the source.
+
+Three different things:
+
+[cols="1,1"]
+|===
+||What it does
+|*Display*|Everything in the file you opened *is shown* — including blocks whose meaning we don't know; their characters still appear
+|*Editing*|What you can edit visually is *a subset* (the 27 rows in "What to write, which button, what comes out"). Ruby and form fields are our own extensions
+|*Saving*|The source you opened *is not damaged*. Blocks we don't know are written back exactly as they were
+|===
+
+Blocks whose meaning we don't know (admonitions `NOTE:`, delimited blocks `----`, `include::` and so on) *are visible but not editable*.
+Put the caret in one and type, and the app says so instead.
+Edit those in a text editor.
+
+There are four destinations: screen, PDF, HTML and docx.
+The screen is one of them, so you can write on paper or in a plain flowing view.
+
+*docx is the delivery format.* You can open it, read it, print it and turn it into adoc, but *it is not edited and saved as docx* (coming in 0.2.0-alpha).
+Edit in adoc, hand over in docx.
+
+From Python you can still edit a docx and write it back (`from officework import doc`); only the screen stops doing it.
+
+*Ribbon: 117 — every button works (zero grayed out).* The button that wraps a docx in a password is gone.
+You can still *open* a password-protected docx.
+
+Three promises:
+
+* *The source you opened is not damaged.* Markup whose meaning we don't know
+
+  still comes back character for character.
+When you open a docx, its styles,   shapes and parts we don't understand are carried over from the original file
+
+* *Every operation is one undo away.* Keystrokes, IME commits, pastes, a single
+
+  ink stroke, a color-scheme change — all come back with one Ctrl+Z
+
+* *Nothing is dropped silently.* Anything we can't read, or that would be lost
+
+  on save, is listed in the report and mentioned in the status bar
+
+Try the samples in link:../sample/README.adoc[sample/] — especially `sample/writer/01〜05` (Japanese typesetting, vertical writing, an application form, a monthly report, a feature tour) and `06_書き方の見本.adoc`, which puts every marking from the table below on one page.
+
+== Starting
+
+[source,bash]
+----
+./target/release/writer                          # opens empty
+./target/release/writer sample/報告書.docx
+./target/release/writer sample/writer/02_縦書きの手紙.docx
+----
+
+If the machine has no Japanese font, the app stops and says so (instead of showing tofu boxes).
+Install `fonts-noto-cjk` or `fonts-ipaexfont`, or set `OFFICE_FONT=…`.
+
+== The screen
+
+The window frame follows the desktop-app convention. *Row 1*: save, print, undo, redo, and the document name (unsaved changes show a `*`; this row is also the window drag handle). *Row 2*: tabs on a white strip (the current tab is underlined; the 🔍 at the right edge is find & replace). *Bottom edge*: the status bar — page n/m, character count (character, not word, count — matching how Japanese documents are measured), status messages, proofreading, zoom.
+
+* *The File tab is a full-page view* — a menu on the left (New, Open, Open URL,
+
+  12 recent files, Save, Save As, Print, Protect, Properties, Open file location,   Quit) and "Document info" on the right (statistics plus docx properties =   author, title, and so on; click a field and type — it goes into docProps and   is visible in Word)
+
+* *Left panel* (View tab): headings / comments / search — click to jump
+* *Right panel* (View tab): settings board for character, paragraph, and page —
+
+  the buttons are the same actions as the ribbon; active toggles are tinted
+
+Tab order: *File / Home / Insert / Draw / Layout / References / Forms / Header & Footer / Collaboration / Protection / View / Macros*.
+
+== Basic keys
+
+[cols="1,1"]
+|===
+|Action|Keys
+|Move|↑ ↓ ← → (visual lines). By word: Ctrl+←→
+|Line start / end|Home / End (Home twice = paragraph start)
+|Document start / end|Ctrl+Home / Ctrl+End
+|Select|Shift+arrows, Ctrl+A
+|Undo / redo|Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y too)
+|Copy / cut / paste|Ctrl+C / Ctrl+X / Ctrl+V
+|Find / replace|Ctrl+F / Ctrl+H
+|Open / save|Ctrl+O / Ctrl+S
+|Indent / list level|Tab / Shift+Tab (inside a table: next cell)
+|Context menu|Menu key / Shift+F10
+|Close dialog, put tool away|Esc
+|Quit|Ctrl+Q (asks if there are unsaved changes)
+|===
+
+Uncommitted IME text appears underlined in the body and becomes one undo step when committed.
+New features (ruby, vertical writing, …) are all reachable from buttons — there are no new shortcuts to memorize.
+
+=== All keys
+
+Every live binding is listed below (generated from the binding table).
+You can rebind in settings.toml: `key.bold = "alt-b"` replaces the default keys for that action (separate several with commas, unbind with an empty string `""`; unreadable lines are reported in the status bar at startup; action names are the English names below).
+
+<!-- keys:gen:start (rewritten by tools/keys\_doc.py --write) -->
+
+[cols="1,1"]
+|===
+|Key|Action
+|Backspace|Delete backwards (on a cell: clear it)
+|Delete|Delete forwards (on a cell: clear it)
+|←|Move left
+|→|Move right
+|Shift+←|Extend selection left
+|Shift+→|Extend selection right
+|Ctrl+←|Word left (calc: to the data edge)
+|Ctrl+→|Word right (calc: to the data edge)
+|Ctrl+Shift+←|Extend selection a word left (calc: to the edge)
+|Ctrl+Shift+→|Extend selection a word right (calc: to the edge)
+|PageUp|Page up
+|PageDown|Page down
+|Ctrl+F / Ctrl+H|Find and replace
+|Ctrl+B|Bold
+|Ctrl+I|Italic
+|Ctrl+U|Underline
+|Ctrl+5|Strikethrough
+|Ctrl+P|Print (to PDF)
+|F11|Toggle full screen
+|Ctrl+Shift+S / F12|Save as
+|Ctrl+0|Zoom to 100%
+|F1|Help
+|Ctrl+;|Insert today's date
+|Ctrl+:|Insert the current time
+|Ctrl+Home|To the beginning
+|Ctrl+End|To the end
+|Shift+↑|Extend selection up
+|Shift+↓|Extend selection down
+|Ctrl+A|Select all
+|Home|To the start of the line/row
+|End|To the end of the line/row
+|Enter|Confirm and move down / new line
+|↑|Move up
+|↓|Move down
+|Tab|Move right / indent
+|Shift+Tab|Move left / outdent
+|Ctrl+Z|Undo
+|Ctrl+Shift+Z / Ctrl+Y|Redo
+|Ctrl+S|Save
+|Ctrl+O|Open
+|Ctrl+C|Copy
+|Ctrl+X|Cut
+|Ctrl+V|Paste
+|Ctrl+Q|Quit
+|Menu / Shift+F10|Context menu
+|Ctrl+= / Ctrl+Shift+=|Bigger UI text
+|Ctrl+-|Smaller UI text
+|Ctrl+K|Hyperlink
+|Esc|Cancel / close
+|Ctrl+E|Align centre
+|Ctrl+L|Align left
+|Ctrl+R|Align right
+|Ctrl+J|Justify
+|Ctrl+Enter|Page break
+|Ctrl+]|Bigger font
+|Ctrl+[|Smaller font
+|===
+
+<!-- keys:gen:end -->
+
+== Character formatting (Home)
+
+*Applies to the selected text only* (with no selection, to the whole paragraph).
+Bold, italic, underline, strikethrough, super/subscript, text color, highlight, font (from this machine's font list), size, change case, clear formatting.
+
+*Ruby (furigana)*: select text, Home > Ruby, type the reading in the dialog (empty removes it).
+It is set at half size above the base text; if the reading is longer than the base, spacing is distributed.
+Stored as `w:ruby` in docx and visible in Word / LibreOffice.
+Denden-markdown `{漢字|かんじ}` in .md files is also read.
+
+== Paragraph formatting (Home)
+
+* Alignment: left, center, right, justified, and *distributed* — unlike
+
+  justified, it spreads spacing *through the last line* (the shape used for   labels that must fill the column in Japanese forms; stored as `w:jc distribute`)
+
+* Bulleted and numbered lists (levels via Tab / Shift+Tab), indent, line spacing
+
+  (1.0→1.5→2.0), page-break-before, background color, borders, drop caps
+
+* Toggle display of hidden characters
+
+== Vertical writing (Home > Text Direction)
+
+Each press toggles horizontal/vertical.
+Text flows top-to-bottom, columns right-to-left; punctuation, brackets, and long-vowel marks switch to their vertical forms, and ruby works vertically too.
+Stored as ``textDirection tbRl ``in sectPr; verified to open in LibreOffice.
+
+Honest first-version limits: tables and multi-column layout stay horizontal; Latin letters and digits are stacked one per line (no rotated run yet); explicit page breaks fold into column breaks.
+Not combined with facing-pages view.
+Sample: `sample/writer/02_縦書きの手紙.docx`.
+
+== Headings, TOC, bookmarks, cross-references (References)
+
+* *Headings*: Home > paragraph styles (or References > Add Text to cycle
+
+  body → heading 1 → 2 → 3)
+
+* *TOC / table of figures*: page numbers are computed with *the same layout*
+
+  as print (PDF)*, so they can't disagree with the paper. After edits, press   Update to rebuild. Stored in docx as static text*
+
+* *Captions*: "図 N" below the paragraph, numbered automatically
+* *Bookmarks*: add/remove/jump from a dialog. *Cross-references* insert a
+
+  bookmark's text or page number into the body (shown with a light shade =   computed value; stored as REF / PAGEREF fields, so Word can recalculate them)
+
+== Forms (form fields / content controls)
+
+Ten kinds on the Forms tab: *text, combo box, dropdown, checkbox, radio, picture, e-mail, phone, composite, signature*.
+
+* Fields appear as light boxes; typing inside them works normally (the content
+
+  stays part of the field)
+
+* Checkboxes toggle ☐⇄☑ with the same button (or the space key). Combo/dropdown
+
+  choices are set comma-separated in a dialog; the same button cycles candidates
+
+* Stored as `w:sdt` (content controls) and opens in Word. Our own kinds
+
+  (e-mail, phone, composite, signature) are tagged `jo:*`
+
+* *Combined with Protection > Protect this becomes a distributable form* —
+
+  hand out a read-only document where only the fields accept input.
+Sample:   `sample/writer/03_申込書.docx`
+
+== Tables, images, insert
+
+* *Tables*: Insert > Table (3×3). Edit inside cells, Tab to the next cell.
+
+  Tables with merged cells are read, displayed, saved, and printed (no UI to   create new merges yet)
+
+* *Images*: PNG, JPEG, SVG (SVG is converted to a high-resolution PNG).
+
+  Saved as proper docx parts, visible in Word
+
+* *Shapes, SmartArt (9 layouts), charts, text art*:
+
+  behind the buttons Python (matplotlib etc.) draws the picture and pastes it   as an image
+
+* *Equations*: Insert > Equation opens a small panel — *type LaTeX and*
+
+  press Enter** (e.g. `\frac{a+b}{2}`).
+Python typesets it: with TeX   installed it typesets there (matrix columns align), otherwise matplotlib.   **The picture and the LaTeX source go into the docx as a pair**, so Word   shows the picture and writer reopens it as an editable formula.
+A formula   it cannot set is refused with the reason*
+
+* *Text box*: a 1×1 table (text inside a frame)
+* *Text from file*: inserts .txt / .md / .docx
+
+== Drawing (pen, highlighter, eraser)
+
+Drag on the page.
+Strokes are *anchored to the page* (editing the body doesn't move them); one stroke is one undo step.
+In docx they become freeform shapes, visible in Word.
+
+*Strokes are saved as SVG pictures.* They go into an `images` folder beside your text and the text points at them with `image::`, so they come out in HTML, PDF and docx alike, and you can delete them later as pictures.
+They used to survive only in docx and vanished on an adoc save.
+
+Once saved, *a stroke becomes a picture in the flow of the text.* It lands just after the paragraph it was drawn below; its left-right position on the page is not kept.
+The status line says how many pictures were made.
+
+== Layout
+
+* Paper (A4→B5→A3), orientation, margins (20/12/30mm), columns (1→2→3),
+
+  line numbers, page color, watermark (light diagonal text, visible in Word),   hyphenation (Latin text broken at syllables)
+
+* *Color scheme*: cycles through six (standard, indigo, green, dark red,
+
+  indigo+unbleached paper, ink+gray paper).
+Heading color and page color change   as a pair, and the *actual color values are written*, so Word shows the same   colors without needing theme parts.
+One Ctrl+Z restores
+
+== Header & footer
+
+Edited in a dialog (shared by all pages).
+Page number and page count go in as placeholders and become real numbers on paper (PDF).
+The date is inserted as *fixed text* at insertion time (not a field that changes every time the file is opened — a classic source of clerical accidents).
+
+== HTML — reading and filling in, without JavaScript
+
+*Read, fill in, and print web documents in writer.*
+
+* *Open*: an .html file, or File > *Open URL* (http/https). Headings,
+
+  paragraphs, lists, tables, images, ruby, and forms are typeset onto the page —   unreadable elements go to the report.
+Links are followed *only within the   origin host*
+
+* *JavaScript is never executed* (it is skipped and noted in the report).
+
+  Pages that require JS won't work — and the app says so
+
+* *Filling and submitting*: form fields (input / select / textarea) become
+
+  form fields; submit is a plain GET / POST round trip.
+The response becomes   a page again
+
+* *In-page Python* (`<script type="py">`) is *never run on open*. It runs
+
+  only on explicit command, inside the same sandbox as Python in Calc
+
+* Opened HTML can be saved as docx and printed as PDF (we don't save HTML —
+
+  compatibility stops at the format boundary)
+
+* Acceptance samples: `sample/html/` (01〜10); a live counterpart is the catalog
+
+  and order form from `python3 sample/catalog_server.py`
+
+== Collaboration tab — no server, everything through files
+
+Tools that work on a document in a shared folder:
+
+* *Collaboration mode*: checks who holds the lock (`.~lock.document.docx#`),
+
+  by name; if the previous holder has left, takes over editing rights.
+While   someone else holds it, overwrite-save is blocked (first come, first served;   later arrivals read — an honest arrangement)
+
+* *Comments*: add/remove/toggle per paragraph (docx comments.xml; Word shows
+
+  them as balloons)
+
+* *Track changes*: start/stop recording. While recording, changed paragraphs
+
+  get an orange bar in the margin. *On save* they become real Word tracked   changes (insertions/deletions with author).
+Saving finalizes the recording   (the app tells you so)
+
+* *Chat*: appends named messages to a file next to the document
+
+  (`document.docx.chat.txt`).
+Not live — messages passed through files
+
+* *Version history*: every overwrite-save keeps a copy under `.jo-history/`
+
+  (9 generations).
+Selecting one opens it as an *untitled copy* — to restore,   save it yourself under the same name (nothing is written back silently)
+
+== Protection tab
+
+* *Protect*: read-only toggle (round-trips docx documentProtection — Word
+
+  shows it as protected too). *No password, and no pretend-password.* The   effect is real: typing and every document-changing button are blocked;   viewing, printing, and searching still work
+
+* *Encrypting is not offered.* What writer saves is adoc, which is not a zip,
+
+  so there is nothing to wrap.
+A password-protected docx still *opens*: writer   asks for the password (Agile AES-256 and the older AES-128 both work,   cross-verified against msoffcrypto-tool)
+
+* *Digital signature*: a signature file next to the document
+
+  (`document.docx.sig`, Ed25519; the key is auto-generated at   `~/.config/officework/sign.key`).
+Tamper detection plus a name — it is not the   scheme that fills Word's signature line (and says so)
+
+== View tab
+
+Navigation (left panel), fit page / fit width / 100% / zoom in / out, *print layout (sheets stacked one page at a time — the view where a document whose sections change paper size shows the difference; the editing view stays one continuous scroll)*, *multiple pages (spread — screen only; printing stays one page per sheet)*, dark mode (surroundings darken, paper stays white), ruler (mm), toolbar / status bar / side panel toggles.
+
+== The side panels and their icon rails
+
+A rail of icons runs down the outer edge of each panel; pressing one switches the face:
+
+* *Left*: headings / comments / search / AI
+* *Right*: settings (where you are) / page (whole-document settings)
+
+Hover an icon to see its name.
+The panels *take space* — they never cover the page.
+
+== Right panel, "Settings — fix where you are"
+
+*It follows where you are.* If the cursor is inside a table, the table face comes first; if the paragraph holds an equation or a picture, that face does (the Text / Paragraph / Page faces stay below — you still want bold inside a table).
+
+* *Table* (when inside one): shows rows × columns and where you are, plus
+
+  *row above / row below / delete row / column left / column right / delete   column*. *Added 2026-08-15* — until then writer could only drop a 3×3   table at the end, with no way to add a row.
+The last row and column are never   deleted (deleting the whole table is a separate action)
+
+* *Equation* (when the paragraph holds one): shows the LaTeX source; "Edit
+
+  the equation" loads that source into the box. *You never retype it*
+
+* *Picture* (when the paragraph holds one): its size in mm, and smaller /
+
+  bigger
+
+* *Text*: bold, italic, underline, strike, size, font, colour, clear
+* *Paragraph*: alignment, line spacing, indent, bullets, numbering,
+
+  background, box
+
+* *Page*: orientation, paper, margins, columns, vertical writing
+
+The panel *takes space* (it never covers the page) and scrolls if its contents grow.
+
+== AI — talk to it in the left panel
+
+*On 2026-08-15 the AI tab was removed.* Its eleven buttons (summarize, rewrite, make polite, …) were replaced by *a conversation in the left panel* — you can just type "make this paragraph polite", and you can ask for things no button could express.
+
+Open it with *View tab > Navigation* (left panel), then the *AI* ear.
+
+* *The selection is what you are asking about* (with nothing selected, the
+
+  whole document)
+
+* *Revised text is shown before it goes in.* Press Apply and it replaces the
+
+  selection, or is inserted after the cursor if nothing is selected.
+Either way   *one Ctrl+Z* undoes it
+
+* Requests that don't change the text (advice on wording) are simply answered
+
+*Two things stayed on the ribbon* — work the conversation cannot do:
+
+* *Home > Furigana* — what goes in is ruby _formatting_, not plain text
+* *Plugins > Write a macro* — it puts a .py in the plugins folder
+
+  (never run automatically; read it, then run it yourself)
+
+*Choosing the destination* lives in File > Advanced settings, "AI destination".
+Unavailable destinations *say why on the spot*.
+
+== Proofreading (review)
+
+English spelling via the machine's dictionary; Japanese misconversions (以外/意外) and inconsistent spellings via a *local model* (OpenAI-compatible endpoint, `OFFICE_HOST` / `OFFICE_PORT` / `OFFICE_MODEL`; nothing leaves your network).
+Model hallucinations are filtered, and *if the model can't be reached the app says "can't proofread"* — never a silent "no issues".
+Automatic furigana uses the same model assets (readings chosen in context, based on measurements of 561 ambiguous-reading words).
+
+Headless tools: `office-spell document.txt` (exit code 0=clean 1=findings 2=unreadable 3=incomplete), `--furigana`, `--washi`.
+
+== Macros tab
+
+* *List*: the .py files in `~/.config/officework/plugins`; pick one to run it
+
+  (in the sandbox).
+Extensions like Aozora annotations or EPUB go here   Picking one runs *Python in a sandbox* (bubblewrap) on a copy of the   document; the result lands as one undo step.
+The script gets `d` = the   python-docx Document. *Code is never stored in the document* (no executable   content in docx — the policy differs from xlsx because python-docx already   exists as public infrastructure)
+
+*Only .py files in the folder can be launched.* The button that ran a .py from anywhere is gone.
+A file you were given goes into the folder first, then you pick it from the list — *that step is the gate*.
+
+* *Writing macros* — named fields (`fill`/`extract`), templates (`render`),
+
+  speed rules, and the AI button: see the   link:writer-macro-manual.adoc[writer macro manual]
+
+== Two kinds of document — meaning only, and the docx you were sent
+
+writer handles two kinds. *Which one you have open changes what you can do.*
+
+[cols="1,1,1"]
+|===
+||Native (.adoc)|Compatible (.docx)
+|Content|*meaning only* (headings, emphasis, quotes, tables…)|the look is in the text
+|Look|a *template* (a .toml next to it)|the text itself
+|Direct formatting|*blocked* → name it and it becomes a style|works as before
+|Saving|.adoc (meaning only)|.docx (original parts kept)
+|===
+
+*A docx you were sent behaves exactly as before.* Nothing changes for it.
+
+=== Why the split
+
+Word had styles too, but direct formatting (make _this_ line bold 12pt) was just as easy, so nobody used styles and documents sank into a swamp of formatting. *The design prevents it*: in a native document, naming a look is _easier_ than applying it directly.
+
+== Native documents (.adoc)
+
+File > Open, pick a `.adoc`.
+It is plain text:
+
+[source,asciidoc]
+----
+= Monthly report
+:template: house-style
+
+== Summary
+
+Sales *rose* against last month.footnote:[Tokyo and Osaka combined]
+
+* Tokyo
+* Osaka
+----
+
+* `= Title` and `:template: name` at the top
+* *Not one bit of look goes in.* Size, colour and typeface live in the template
+
+The full list of markings is in the next section.
+
+=== Saving tidies up the line breaks
+
+When writer saves, it puts *one sentence on one line*.
+Sentences end at `。`, `!` or `?`; in English it only breaks after a `.` followed by a space and a capital letter (never inside `Dr. Smith` or `example.com/a.b`).
+
+The point is the diff.
+Change one sentence and git shows that one sentence.
+With a whole paragraph on a single line, you cannot see what changed.
+
+Opening joins the lines back into one paragraph, so *nothing looks different on screen*.
+
+**Open an .adoc from somewhere else and save it, and the line breaks change. **Not a character of the text changes, but the diff will be large.
+To compare the content, look at the opened document rather than at the file before and after.
+
+=== What to write, which button, what comes out
+
+One thing per row, shown three ways: how you type it in the text, which ribbon button does the same, and what it becomes on the web. *All three mean the same thing* — typing it by hand and pressing the button give the same result.
+
+[cols="1,1,1,1"]
+|===
+|What you want|Type this|Ribbon button|On the web (HTML)
+|Title|`= Title`|Styles in the right panel > 表題|`<h1 class="title">`
+|Heading 1|`== Heading`|Home > Paragraph style > Heading 1|`<h2>`
+|Heading 2|`=== Heading`|Home > Paragraph style > Heading 2|`<h3>`
+|Heading 3|`==== Heading`|Home > Paragraph style > Heading 3|`<h4>`
+|Body text|just type it|Home > Paragraph style > Normal|`<p>`
+|Quote|wrap in `____`|Styles in the right panel > Quote|`<blockquote>`
+|Bullets|start with `* `|Home > Bullets|`<ul>` and `<li>`
+|Numbering|start with `. `|Home > Numbering|`<ol>` and `<li>`
+|Bold|`*bold*`|Home > Bold|`<strong>`
+|Italic|`_italic_`|Home > Italic|`<em>`
+|Superscript|`x^2^`|Home > Superscript|`<sup>`
+|Subscript|`H~2~O`|Home > Subscript|`<sub>`
+|Ruby (furigana)|`ruby:漢字[かんじ]`|Home > Ruby|`<ruby>` and `<rt>`
+|Style (paragraph)|`[.name]` on the line above|Styles in the right panel|`class="st-name"`
+|Style (characters)|`[.name]#text#`|Styles in the right panel|`<span class="st-name">`
+|Hyperlink|`https://example.jp[label]`|(no button yet)|`<a href="…">`
+|Footnote|`footnote:[the note]`|References > Footnote|a number linked to a list at the end
+|Bookmark|`[[name]]` on the line above|References > Bookmarks|`id="name"` on the paragraph
+|Cross-reference|`<<name>>`|References > Cross-reference|`<a href="#name">`
+|Table|wrap in `\|===`, cells after `\|`|Insert > Table|`<table>` and `<td>`
+|Merge cells across|`2+\|`|(no button yet)|`colspan="2"`
+|Merge cells down|`.2+\|`|(no button yet)|`rowspan="2"`
+|Picture|a paragraph of just `image::images/fig1.png[]`|Insert > Picture|`<img>`
+|Equation|a paragraph of just `stem:[x^2]`|Insert > Equation|`<img>` (the source stays with it)
+|Page break|`<<<`|Insert > Page break|breaks only when printed
+|Form field|`field:name[label,kind]`|Forms > Text field|`<input>` `<select>` `<textarea>`
+|Heading 4, 5|`=====` `======`|Home > Paragraph style|`<h5>` `<h6>`
+|Monospace|`` ``text`` ``|Right panel > Styles > 等幅|`<code>`
+|Description list|`term:: value`|Right panel > Styles > 説明のリスト|`<dl>` `<dt>` `<dd>`
+|Admonition|`NOTE: text`|Right panel > Styles > 註記|`<p class="st-註記">`
+|Listing block|wrap in `----`|(written in the text)|`<pre>`
+|Table column spec|`[cols="1,3"]`|(written in the text)|`<colgroup>`
+|===
+
+*What you do not write in the text.* Underline, strikethrough, font colour, highlight colour, font, font size, line spacing, alignment and borders — and the *page dressing* (header, footer, watermark, page colour, vertical writing) — go in the template, not in the text.
+In a header or footer, `{ページ}` and `{ページ数}` become the page number and the page count.
+Pressing those ribbon buttons opens the Styles face on the right.
+On the web they become CSS.
+
+*The title is the first line of the text.* `= Title` is drawn on screen and on paper, and you edit it in place.
+The same text also goes into the document title (File > Info), so Word shows it in the document properties of a saved docx.
+Its look comes from the template style named 表題.
+
+*Equations are typeset when the document is opened.* The text only carries the source (LaTeX).
+Typesetting is done by Python — with TeX if it is installed, otherwise matplotlib.
+If an equation cannot be set, you are told how many failed.
+
+*What is not in the text.* Tables of contents and tables of figures are text produced when you press the button (there is no markup for them).
+Exported to the web they are wrapped in a `nav`.
+Comments, ink and tracked changes are docx-only features.
+
+When you put a picture in, an `images` folder appears next to the text and the picture goes in it.
+The text only points at the file, so *keep the text and `images` together* when you move the document.
+
+A form field is a one-line text box unless you say otherwise.
+The other kinds are``複数行`` (multi-line), `チェック` (checkbox), `日付` (date), `メール` (e-mail),`電話` (phone), `画像` (picture), `署名` (signature), `選ぶ:A|B` (pick one) and``打てる選ぶ:A|B`` (pick or type).
+Fields added with a button all get the same name per kind, so if you add more than one, rename them with *Forms > Name* — that name is what the receiving side sees.
+
+=== The template (where the look lives)
+
+Put *one format file per folder*.
+Documents in that folder use it without naming it.
+
+[cols="1,1,1"]
+|===
+|How|What you write|What is used
+|One per folder (usual)|nothing|`テンプレート.toml` in the same folder
+|Per document|`:template: house-style` at the top|`house-style.toml`, looked for *next to the document → `~/.config/officework/templates/`*
+|===
+
+*What is written wins*, so a `:template:` line takes precedence.
+With neither, the built-in default is used.
+
+=== Turning the screen into a writing view
+
+An adoc document is *something you write*, not a picture of paper.
+You can look at it as paper, or write in a plain flowing view.
+Put this in the folder's``テンプレート.toml``:
+
+[source,toml]
+----
+[組み方]
+横幅 = "可変"     # use the window width, not the paper width
+区切り = "なし"   # do not break into pages
+----
+
+Widen the window and the lines get longer; no page breaks appear. *Not one character of the text changes* — printing still lays it out on A4 through the print format.
+
+=== Building a form grid
+
+Japanese office forms (applications, approval sheets) are grids of labelled boxes.
+Do not write them as a table in the text. *The content is a description list; the grid lives in the template.*
+
+Name the form at the top of the text.
+
+[source,asciidoc]
+----
+= 休暇申請書
+:様式: 申請書
+
+申請日:: 2026年8月18日
+部署:: 総務課
+氏名:: 山田太郎
+----
+
+Template:
+
+[source,toml]
+----
+[様式.申請書]
+行 = [
+  { 升 = ["申請日"],        幅 = [30, 70] },
+  { 升 = ["部署", "氏名"] },
+]
+----
+
+The same text becomes a grid on screen and on paper, a table on the web, and a table in docx. *Content and boxes are matched by name*, never by order — with order, adding one item shifts everything.
+
+*An item with no box, or a box with no item, is reported.* Silently dropping them produces a form with empty fields.
+You see it in the status line when the document opens.
+
+`幅` is a percentage.
+One box becomes two frames — the item's name and its value — so above, the name takes 30 percent and the value 70.
+Leave it out and the frames in that row are split evenly.
+
+=== A different format per destination
+
+The same text can look different on screen, on the web, and on paper.
+Just put one format file per destination.
+
+[cols="1,1"]
+|===
+|Destination|File used
+|Screen and saving|`テンプレート.toml`
+|Export for the web (HTML)|`テンプレート-web.toml`
+|Print (PDF)|`テンプレート-印刷.toml`
+|===
+
+*They never mix.* Exactly one is in effect at a time, falling back to``テンプレート.toml`` when the file for that destination is absent.
+The status bar says which one was used.
+
+*An app is the same road as the web*: put `[送り先]` in ``テンプレート-web.toml ``and the fields become a form that submits.
+
+Adding `テンプレート-印刷.toml` **makes paper look different from the screen. **Without it they stay identical — whoever adds the file decides.
+
+[source,toml]
+----
+[文書]
+大きさ = 11
+
+[ページ]
+用紙 = "A4"
+余白 = 25
+ヘッダー = "社内資料"
+フッター = "- {ページ} / {ページ数} -"
+透かし = "社外秘"
+ページの色 = "FFFDF5"
+縦書き = false
+
+[スタイル.本文]
+字下げ = 1          # indent the first line by one character
+行間 = 1.5
+
+[スタイル.見出し1]
+大きさ = 20
+太字 = true
+色 = "1B6E3C"
+後の空き = 8
+----
+
+A style takes twelve keys today. *More can be added when they are needed*, as long as every path they travel is in place — otherwise you get a key that is written but does nothing.
+
+[cols="1,1"]
+|===
+|Applies to characters|Applies to paragraphs
+|size, font, bold, italic, underline, colour|background, alignment, first-line indent, space before, space after, line spacing
+|===
+
+*Formatting nests three deep.* `[文書]` sets the base font and size, a paragraph style sits on top of it, and a character style (`[.name]#text#`) is innermost and wins.
+There is no "based on another style" (Word's basedOn) — with a chain of inheritance, nobody can say where a colour came from.
+
+Keys are accepted in Japanese or English (`size`, `bold`, `color`, `[style.…]`).
+
+*The easiest way to get one is to ask the AI* ("make it look like a government form", "like an internal report").
+It is text, so the AI can write it and you can read the diff.
+
+A broken template *says what is wrong* and falls back to the built-in default — falling back silently would leave you no way to fix it.
+
+==== A template you were given is never overwritten
+
+A template is made and handed out by *the person who decides the look* — a government form, a house style, a journal's layout all belong to that person, not to whoever writes the text.
+
+When you change a format, it is always written *next to the document you have open*.
+If the template came from somewhere else (``~/.config/officework/templates/ ``or the built-in default), you get:
+
+[NOTE]
+====
+Made a copy for this document only at /…/house-style.toml. The
+/home/…/templates/house-style.toml you were given is unchanged
+====
+
+*From then on, this document follows the copy.* Updates to the original will not reach it, so if the look itself needs fixing, ask the person who maintains the original.
+
+=== When you want to change the look
+
+Pressing size, typeface, colour, highlight, underline or strikethrough does not apply anything.
+Instead you get
+
+[NOTE]
+====
+*New style — give this look a name*
+What it applies: size 11pt
+`[ Large text ]` [Confirm (Enter)]
+====
+
+Name it and the style goes *into the template*, so every place with that name changes at once.
+The AI suggests the name (without it you get a draft name).
+
+* *With text selected it applies to the text; without, to the paragraph*
+* A character style is saved as `[.name]#text#`
+* Emphasis, superscript and subscript are *meaning, so they are not blocked*
+
+=== The Styles face in the right panel
+
+View > Right panel → the third icon on the rail.
+It shows the style this paragraph wears and the ones you can pick.
+Picking changes it; the size buttons edit *the template*, so everywhere with that style changes together.
+
+=== Laying out for the web, or as slides
+
+One extra section in the template lays *the same body* out differently.
+You edit only the template; the body (.adoc) does not change by a single character.
+
+The web (one continuous flow):
+
+[source,toml]
+----
+[組み方]
+横幅 = "可変"     # follow the window, not the paper
+区切り = "なし"   # do not fold into pages
+----
+
+Slides (one section per sheet):
+
+[source,toml]
+----
+[組み方]
+区切り = "節"     # a new sheet at every level-1 heading (== …)
+跨ぎ = false      # a paragraph never crosses a sheet
+----
+
+* Every section starts a fresh sheet, so the level-1 heading becomes the title
+
+  of that sheet
+
+* `跨ぎ = false` moves a paragraph that straddles a sheet boundary onto the
+
+  next sheet whole.
+A paragraph too tall for one sheet is left where it is
+
+* To see them one sheet at a time: View > *Print layout*
+* *You do not need PowerPoint* — slides are just another template
+
+=== GitHub renders it as it is
+
+GitHub renders `.adoc`, `.asciidoc` and `.asc` files directly (it runs asciidoctor).
+Put a document written in writer into a repository and it is readable without exporting anything.
+The same goes for naming your readme `README.adoc`.
+
+*Your template has no effect.* The look is GitHub's. If you need your own colours and fonts, export HTML and put that on GitHub Pages or similar.
+
+Everything that is real AsciiDoc — headings, tables, lists, footnotes, cross references, `image::`, `stem:` — comes out as you would expect.
+Our own syntax, ruby annotation `ruby:` and form fields `field:`, shows up as literal text, but you are unlikely to be showing that kind of document on GitHub.
+
+== Reducing a docx to meaning (distilling)
+
+File > *Reduce to meaning (distil)*.
+It pulls the direct formatting out of a docx, groups similar looks into styles and moves them into a template.
+
+[NOTE]
+====
+Distilled — 1 style, 15 paragraphs. The look moved into the template
+====
+
+* *It is lossy, so it is an explicit step.* Until you press it, the docx stays
+
+  a docx (original parts included)
+
+* Anything that does not fit a paragraph's look (one word in a different colour)
+
+  is dropped, and *the count is reported* — no pretending nothing was lost.   Emphasis, footnotes, links and ruby survive
+
+* Afterwards the document is native and saves as .adoc
+
+== Searching a folder
+
+File > *Search a folder* walks a folder and searches many files at once.
+
+* *It reads inside .docx too* — no need to convert to txt first
+* Plain text (.txt / .md / .adoc / .py / .csv …) as well
+* Narrow by name with `*.txt` (`;` for several)
+* The folder defaults to the one holding the open document (or the last one you
+
+  chose)
+
+* Hidden folders are skipped; if there is too much it stops early *and says so*
+
+Hits are grouped per file with line numbers.
+Picking one *shows its surroundings below without opening anything*.
+It opens only when you press *Load* below — so you look first, and a misclick never swaps your document.
+
+== Printing (PDF) and saving
+
+* File > Print writes a PDF. Real header/footer numbers, watermark, page color,
+
+  ink, and vertical writing all carry over
+
+* *Screen and paper can be the same, or different.* Add
+
+  `テンプレート-印刷.toml` and paper gets its own look; without it, what you see   is what is printed
+
+* *Anything counted is counted on paper.* Page numbers in the table of
+
+  contents, the table of figures and cross-references, and the page count in   headers, all follow the _printed_ pages, however many pages the screen shows.   A "page 3" in the contents is always page 3 on paper
+
+* *Ctrl+S saves adoc* (blocked if someone else holds the lock). Only the text is
+
+  written; the formatting stays in the template
+
+* *docx is produced by "export".* The template's formatting is written as docx
+
+  style definitions, so Word shows it, and editing a style in Word still changes   every place that uses it.
+Nothing is baked into the text itself.
+If the folder   holds a `テンプレート-docx.toml`, docx exports use that format instead
+
+* Exporting *does not move where your source is saved.* Ctrl+S afterwards still
+
+  saves the adoc, not the docx
+
+* A docx you opened *is not edited and saved back* (coming in 0.2.0-alpha).
+
+  Press "turn into adoc" first, then export to docx
+
+* (until 0.2.0-alpha) Ctrl+S saves docx. Body, tables,
+
+  images, and headers are written back; parts we don't understand are carried   over from the original file.
+Elements we couldn't read are noted as   "preserved on save"
+
+== No more gray
+
+All 117 ribbon commands work.
+The gray of "don't make it look usable when it isn't" reached *zero* in writer.
+The remaining honest limits are noted in each section above (first-version vertical writing, per-change accept/reject for tracked changes, no UI yet for creating cell merges).

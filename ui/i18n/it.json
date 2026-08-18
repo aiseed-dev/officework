@@ -3880,10 +3880,6 @@
   "t": "Zoom riportato al 100%"
  },
  {
-  "i": 970,
-  "t": "Guida: docs/calc-manual.ja.md (in inglese calc-manual.md). Per Python python-manual.ja.md"
- },
- {
   "i": 971,
   "t": "Impossibile leggere l'ora attuale"
  },
@@ -4570,10 +4566,6 @@
  {
   "i": 1142,
   "t": "Ombra rimossa"
- },
- {
-  "i": 1143,
-  "t": "Guida: docs/writer-manual.ja.md (in inglese writer-manual.md). Per Python writer-macro-manual.ja.md"
  },
  {
   "i": 1144,

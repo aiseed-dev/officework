@@ -8,8 +8,8 @@ On top of it sit *Word and Excel that run on your machine* — where you watch t
 The second purpose points the other way — *using Python from Office*: a cell formula like `=double(A1)` calls your own Python function and the result spills, and the chart and pivot buttons are backed by matplotlib and polars.
 This is what replaces VBA:
 
-* `writer` — *a visual editor for AsciiDoc*: edit your source (.adoc) as it looks, and put it out as screen, PDF, HTML or docx. docx is the delivery format — you can open one and turn it into adoc (link:docs/writer-manual.md[manual])
-* `calc` — opens, edits, and saves xlsx. Calculates formulas (link:docs/calc-manual.md[manual])
+* `writer` — *a visual editor for AsciiDoc*: edit your source (.adoc) as it looks, and put it out as screen, PDF, HTML or docx. docx is the delivery format — you can open one and turn it into adoc (link:docs/writer-manual.adoc[manual])
+* `calc` — opens, edits, and saves xlsx. Calculates formulas (link:docs/calc-manual.adoc[manual])
 
 They are *separate apps*, not one giant suite.
 
@@ -54,7 +54,7 @@ The ribbon layout follows Euro-Office, so people who switch don't have to relear
 *There are no VBA-style macros, and workbooks never carry code.* Sheets live in .xlsx, code lives in .py — separate files.
 Procedures and user functions go in `~/.config/officework/plugins/`; run a procedure with `@name`, and call a function from a cell like any other (`=double(A1)`), or write one inline with `=PY(…)`.
 A workbook you receive contains no code, so the "open = execute" attack path does not exist here.
-See the link:docs/calc-manual.md[calc manual].
+See the link:docs/calc-manual.adoc[calc manual].
 
 == Getting it
 
@@ -228,7 +228,7 @@ That one does need the app.
 from officework import calc as xw   # Book / Range, in the style of xlwings
 ----
 
-The reference for programmers is the link:docs/python-manual.md[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` binding in writer macros, and what the sandbox allows.
+The reference for programmers is the link:docs/python-manual.adoc[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` binding in writer macros, and what the sandbox allows.
 All verified on a real machine.
 
 == Layout

@@ -786,7 +786,7 @@ impl Calc {
     /// その道を状態行で示す(嘘の「ヘルプ画面」を出すより確か)
     pub(crate) fn a_help(&mut self, _: &ui::Help, _: &mut Window, cx: &mut Context<Self>) {
         self.status = ui::t!(
-            "手引き: docs/calc-manual.ja.md(英語は calc-manual.md)。Python は python-manual.ja.md"
+            "手引き: docs/calc-manual.ja.adoc(英語は calc-manual.adoc)。Python は python-manual.ja.adoc"
         )
         .into();
         cx.notify();

@@ -195,8 +195,8 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
     }
     let head = match (p.style, p.list) {
         (ParaStyle::Heading(n), _) => "=".repeat(n as usize + 1) + " ",
-        (_, ListKind::Bullet) => "* ".into(),
-        (_, ListKind::Number) => ". ".into(),
+        (_, ListKind::Bullet) => "*".repeat(p.indent as usize + 1) + " ",
+        (_, ListKind::Number) => ".".repeat(p.indent as usize + 1) + " ",
         _ => String::new(),
     };
     out.push_str(&head);
@@ -864,6 +864,17 @@ fn 一行で1つ(name: &str) -> bool {
     name == "説明のリスト" || 註記の印(name).is_some()
 }
 
+/// 箇条書きの行か。返るのは(段, 中身)。段は 0 から。
+/// AsciiDoc は印の数が段です(`*` が1段目、`**` が2段目)
+fn 箇条書きか(l: &str, 印: char) -> Option<(u8, &str)> {
+    let n = l.chars().take_while(|c| *c == 印).count();
+    if n == 0 || n > 5 {
+        return None;
+    }
+    let rest = l[n..].strip_prefix(' ')?;
+    Some(((n - 1) as u8, rest))
+}
+
 /// ラベル付きリストの行か(`項目:: 値`)。
 /// マクロ(`名前:対象[…]`)と紛れないよう `:: ` を見ます
 fn ラベル付きか(l: &str) -> bool {
@@ -1188,11 +1199,14 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             // 画面で項目も値も直せて、書き戻しもそのままです(2026-08-18)
             p.style_id = Some("説明のリスト".to_string());
             l
-        } else if let Some(rest) = l.strip_prefix("* ") {
+        } else if let Some((段, rest)) = 箇条書きか(l, '*') {
+            // **入れ子の箇条書き**(`**` `***`)。AsciiDoc は印の数が段です
             p.list = ListKind::Bullet;
+            p.indent = 段;
             rest
-        } else if let Some(rest) = l.strip_prefix(". ") {
+        } else if let Some((段, rest)) = 箇条書きか(l, '.') {
             p.list = ListKind::Number;
+            p.indent = 段;
             rest
         } else {
             l
@@ -1893,6 +1907,17 @@ mod tests {
     fn 利用者の名前を付けた段落は何行でも書ける() {
         // 註記とラベル付きリストだけが1行で1つ。名前つきの段落は普通の段落
         往復("[.強調の囲み]\n一つ目です。\n二つ目です。\n");
+    }
+
+    #[test]
+    fn 入れ子の箇条書きが往復する() {
+        往復("* 一段目\n** 二段目\n*** 三段目\n* また一段目\n");
+        往復(". 一つ目\n.. 中の一つ目\n");
+        let doc = parse("** 二段目\n").unwrap();
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.list, ListKind::Bullet);
+        assert_eq!(p.indent, 1);
+        assert_eq!(p.runs[0].text, "二段目");
     }
 
     #[test]
