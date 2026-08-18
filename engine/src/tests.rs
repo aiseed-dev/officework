@@ -2062,6 +2062,46 @@ mod title_tests {
 }
 
 #[cfg(test)]
+mod fill_honke_tests {
+    use crate::{adoc, fill};
+
+    /// **差し込みは本家の `{名前}` で書けます**(2026-08-18)。
+    /// AsciiDoc は属性の参照を `{名前}` と書くので、そちらに寄せました。
+    /// 前からの `{{名前}}` も受け続けます(手引きと見本がその形で出ています)。
+    #[test]
+    fn 差し込みは本家の書き方でも書ける() {
+        for src in ["請求先: {宛名} 様\n", "請求先: {{宛名}} 様\n"] {
+            let d = adoc::parse(src).expect("読めない");
+            let mut data = fill::Data::new();
+            data.set("宛名", "山田太郎");
+            let (out, rep) = fill::fill(&d, &data);
+            let 字: String = out
+                .paragraphs()
+                .flat_map(|p| p.runs.iter())
+                .map(|r| r.text.as_str())
+                .collect();
+            assert_eq!(字, "請求先: 山田太郎 様", "差し込めていない: {src:?}");
+            assert!(rep.unknown.is_empty(), "分からない名前が出た: {rep:?}");
+        }
+    }
+
+    /// **普通の文の中括弧は差し込みの穴にしません。** 名前に空白が入る物は
+    /// 穴ではない、と見ます(`{ x + y }` のような字を巻き込まないため)。
+    #[test]
+    fn 空白の入った中括弧は穴にしない() {
+        let d = adoc::parse("式は { x + y } です。\n").expect("読めない");
+        let (out, rep) = fill::fill(&d, &fill::Data::new());
+        let 字: String = out
+            .paragraphs()
+            .flat_map(|p| p.runs.iter())
+            .map(|r| r.text.as_str())
+            .collect();
+        assert_eq!(字, "式は { x + y } です。");
+        assert!(rep.unknown.is_empty(), "普通の文を穴と見た: {rep:?}");
+    }
+}
+
+#[cfg(test)]
 mod adoc_honke_tests {
     use crate::adoc;
 
