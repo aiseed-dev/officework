@@ -7,6 +7,8 @@
 
 /// ブック ⇄ AsciiDoc(ブックの正本を .adoc にする)
 pub mod adoc;
+/// ブックの見た目(テンプレート)
+pub mod booktmpl;
 pub mod calc;
 pub mod datetime_names;
 /// 値を引ける表 — 式の計算が表に求める面はこれだけ
