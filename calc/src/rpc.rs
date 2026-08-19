@@ -14,72 +14,21 @@
 
 use crate::*;
 use ops::{Host, J, Jobj};
-use std::io::{BufRead, Write};
-use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
-
-pub(crate) struct RpcReq {
-    pub line: String,
-    pub reply: Sender<String>,
-}
-
-pub(crate) type RpcQueue = Arc<Mutex<Vec<RpcReq>>>;
 
 /// 口を開く。聞き取りのスレッドを立て、メインスレッドに泵を付ける。
 pub(crate) fn start(view: gpui::Entity<Calc>, cx: &mut gpui::App) {
-    let queue: RpcQueue = Arc::new(Mutex::new(Vec::new()));
-    let path = ops::sock_path("calc");
-    if let Some(dir) = path.parent() {
-        let _ = std::fs::create_dir_all(dir);
+    // **ソケットの世話は ops に1本**(2026-08-19)。writer も同じ物を使います
+    let queue: ops::Queue = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    if !ops::listen("calc", queue.clone()) {
+        return;
     }
-    let _ = std::fs::remove_file(&path); // 前回の残骸
-    let listener = match std::os::unix::net::UnixListener::bind(&path) {
-        Ok(l) => l,
-        Err(e) => {
-            // 口が開けなくてもアプリは動く(黙らず標準エラーにだけ言う)
-            eprintln!("officework の口が開けません: {e}");
-            return;
-        }
-    };
-    let q = queue.clone();
-    std::thread::spawn(move || {
-        for conn in listener.incoming() {
-            let Ok(conn) = conn else { continue };
-            let q = q.clone();
-            std::thread::spawn(move || {
-                let mut w = match conn.try_clone() {
-                    Ok(c) => c,
-                    Err(_) => return,
-                };
-                let r = std::io::BufReader::new(conn);
-                for line in r.lines() {
-                    let Ok(line) = line else { break };
-                    if line.trim().is_empty() {
-                        continue;
-                    }
-                    let (tx, rx) = std::sync::mpsc::channel();
-                    q.lock().unwrap().push(RpcReq { line, reply: tx });
-                    // メインスレッドが捌くのを待つ(泵は 30ms 刻み。5秒で諦める)
-                    let resp = rx
-                        .recv_timeout(std::time::Duration::from_secs(5))
-                        .unwrap_or_else(|_| {
-                            r#"{"err":"calc が応じません(忙しいか、閉じかけ)"}"#.into()
-                        });
-                    if w.write_all(resp.as_bytes()).is_err() {
-                        break;
-                    }
-                    let _ = w.write_all(b"\n");
-                }
-            });
-        }
-    });
     // 泵: 30ms ごとに溜まった要求をメインスレッドで捌く
     cx.spawn(async move |cx| {
         loop {
             cx.background_executor()
                 .timer(std::time::Duration::from_millis(30))
                 .await;
-            let reqs: Vec<RpcReq> = std::mem::take(&mut *queue.lock().unwrap());
+            let reqs: Vec<ops::Req> = std::mem::take(&mut *queue.lock().expect("受け口の錠"));
             if reqs.is_empty() {
                 continue;
             }
@@ -375,8 +324,14 @@ impl Host for Calc {
                     self.ui_scale
                 );
                 Some(format!(
-                    "{{\"ok\":true,\"tab\":{},\"cur\":{},\"pick\":{},\"open\":{},\"toggles\":{toggles},\"status\":{},\"dirty\":{},\"edits\":{}}}",
+                    "{{\"ok\":true,\"tab\":{},\"right_open\":{},\"right_face\":{},\"left_open\":{},\"cur\":{},\"pick\":{},\"open\":{},\"toggles\":{toggles},\"status\":{},\"dirty\":{},\"edits\":{}}}",
                     self.tab,
+                    // **パネルの姿も出す**(2026-08-19)。無いと、点検の道具は
+                    // 右パネルが開いたかどうかを絵から当てるしかなく、
+                    // 実際に外して別の物を開いた
+                    self.right_open,
+                    self.right_face,
+                    self.left_open,
                     // いまのセル。**点検の道具が「押した所に当たったか」を
                     // 確かめられるようにする** — 当たっていない打鍵を
                     // 「効かない鍵」と数えた(2026-08-10)

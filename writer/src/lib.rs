@@ -912,6 +912,8 @@ mod panels;
 pub(crate) use panels::Panels;
 mod doc;
 mod keys;
+/// 受け口(JSON 1行)。`officework` からも捌き手を呼びます
+pub mod rpc;
 mod text;
 
 #[cfg(test)]
@@ -951,6 +953,9 @@ pub fn run() {
             move |window, cx| {
                 let view = cx.new(|cx| Writer::new(arg2.clone(), cx));
                 window.focus(&view.focus_handle(cx), cx);
+                // **受け口を開く**(2026-08-19)。calc と同じ形で、Python や
+                // AI の道具から文書を操れます
+                rpc::start(view.clone(), cx);
                 // 動かす・伸ばすたびに控える — 閉じる経路が何本あっても漏れない。
                 // 全画面は控えない(次も全画面で開くと出口が分かりにくい)
                 view.update(cx, |_, cx| {

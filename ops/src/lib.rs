@@ -1849,3 +1849,69 @@ fn target(h: &impl Host, o: &Jobj) -> Result<(usize, sheet::Pos, sheet::Pos), St
     };
     Ok((si, a, b))
 }
+
+// ---- 受け口(AF_UNIX)の世話 ------------------------------------------------
+//
+// **ソケットを開いて行を積む所は、どのアプリでも同じ**なので1本にします
+// (2026-08-19 発注者「calc が rpc に対応しているのであれば、writer でも
+// 使えるようにして」)。捌くのはアプリの主スレッドの仕事なので、そちらは
+// 各アプリに残します — gpui の型を持ち込まないためです。
+
+/// 受け口に来た1要求。答えは `reply` へ返します。
+pub struct Req {
+    pub line: String,
+    pub reply: std::sync::mpsc::Sender<String>,
+}
+
+/// 溜まった要求。アプリの主スレッドが取り出して捌きます。
+pub type Queue = std::sync::Arc<std::sync::Mutex<Vec<Req>>>;
+
+/// **受け口を開く。** 開けたら真。
+///
+/// 開けなくてもアプリは動きます(黙らず標準エラーにだけ言います)。
+/// `app` は名乗りで、`$XDG_RUNTIME_DIR/officework/<app>.sock` になります。
+#[cfg(unix)]
+pub fn listen(app: &'static str, queue: Queue) -> bool {
+    use std::io::{BufRead as _, Write as _};
+    let path = sock_path(app);
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let _ = std::fs::remove_file(&path); // 前回の残骸
+    let listener = match std::os::unix::net::UnixListener::bind(&path) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("officework の受け口が開けません({app}): {e}");
+            return false;
+        }
+    };
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(conn) = conn else { continue };
+            let q = queue.clone();
+            std::thread::spawn(move || {
+                let Ok(mut w) = conn.try_clone() else { return };
+                let r = std::io::BufReader::new(conn);
+                for line in r.lines() {
+                    let Ok(line) = line else { break };
+                    if line.trim().is_empty() {
+                        continue;
+                    }
+                    let (tx, rx) = std::sync::mpsc::channel();
+                    q.lock().expect("受け口の錠").push(Req { line, reply: tx });
+                    // 主スレッドが捌くのを待つ(5秒で諦める)
+                    let resp = rx
+                        .recv_timeout(std::time::Duration::from_secs(5))
+                        .unwrap_or_else(|_| {
+                            format!("{{\"err\":\"{app} が応じません(忙しいか、閉じかけ)\"}}")
+                        });
+                    if w.write_all(resp.as_bytes()).is_err() {
+                        break;
+                    }
+                    let _ = w.write_all(b"\n");
+                }
+            });
+        }
+    });
+    true
+}

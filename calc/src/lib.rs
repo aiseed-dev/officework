@@ -48,7 +48,8 @@ mod picks;
 // Windows ではこの受け口ごと開かない — ops が cfg(unix) で学んだのと同じ線
 // (0.2.0 で Windows の wheel を壊した教訓)
 #[cfg(unix)]
-mod rpc;
+/// 受け口(JSON 1行)。捌き手の本体は ops::handle
+pub mod rpc;
 mod cmds;
 mod panels;
 mod view;

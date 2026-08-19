@@ -15,6 +15,12 @@ use gpui::{
 };
 use gpui_platform::application;
 
+/// `{"cmd":"open","path":"…"}` の道を取り出す(浅い読み)。
+fn 開くファイル(line: &str) -> Option<String> {
+    let o = ops::Jobj::parse(line)?;
+    (o.str("cmd")? == "open").then(|| o.str("path"))?
+}
+
 /// いま見せている編集画面。
 enum Shown {
     /// 文章(`.adoc` `.docx` …)
@@ -71,6 +77,86 @@ impl Office {
     }
 }
 
+impl Office {
+    /// **受け口を開く**(2026-08-19)。名前は `officework` の1つです。
+    ///
+    /// 来た要求は*いま見せている画面*へ渡します。表を見ているなら表の動詞、
+    /// 文章を見ているなら文章の動詞が効きます。どちらを見ているかは
+    /// `{"cmd":"ping"}` の答えの `showing` で分かります。
+    fn 受け口(view: gpui::Entity<Office>, cx: &mut App) {
+        let queue: ops::Queue = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        if !ops::listen("officework", queue.clone()) {
+            return;
+        }
+        cx.spawn(async move |cx| {
+            loop {
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(30))
+                    .await;
+                let reqs: Vec<ops::Req> =
+                    std::mem::take(&mut *queue.lock().expect("受け口の錠"));
+                if reqs.is_empty() {
+                    continue;
+                }
+                let _ = view.update(cx, |this, cx| {
+                    for req in reqs {
+                        let resp = this.捌く(&req.line, cx);
+                        let _ = req.reply.send(resp);
+                    }
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
+    }
+
+    /// 1要求を、いま見せている画面へ渡す。
+    fn 捌く(&mut self, line: &str, cx: &mut Context<Self>) -> String {
+        // `ping` だけはここで答える(どちらを見ているかを言うため)
+        if line.contains("\"ping\"") {
+            let showing = match &self.shown {
+                Shown::Doc(_) => "doc",
+                Shown::Sheet(_) => "sheet",
+            };
+            return format!(
+                "{{\"ok\":true,\"app\":\"officework\",\"showing\":\"{showing}\",\"version\":\"{}\"}}",
+                env!("CARGO_PKG_VERSION")
+            );
+        }
+        // **`open` は名前で振り分けます**(2026-08-19)。渡された物が表なら
+        // 表の画面に、文書なら文章の画面にしてから開きます。ここを通さないと
+        // 「表を開いたのに紙面が出る」ことになります(実際に踏みました)
+        if let Some(p) = 開くファイル(line) {
+            let 表 = ui::folder::kind_of(
+                &std::path::Path::new(&p)
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default(),
+            )
+            .is_sheet();
+            let いま表 = matches!(self.shown, Shown::Sheet(_));
+            if 表 != いま表 {
+                self.見せる(std::path::PathBuf::from(&p), 表, cx);
+                return "{\"ok\":true}".into();
+            }
+        }
+        match &self.shown {
+            Shown::Doc(v) => v.update(cx, |w, _| writer::rpc::handle(w, line)),
+            Shown::Sheet(v) => v.update(cx, |c, _| ops::handle(c, line)),
+        }
+    }
+
+    /// 画面を作り直して、そのファイルを見せる。
+    fn 見せる(&mut self, p: std::path::PathBuf, 表: bool, cx: &mut Context<Self>) {
+        self.shown = if 表 {
+            Shown::Sheet(cx.new(|cx| calc::Calc::new(Some(p), cx)))
+        } else {
+            Shown::Doc(cx.new(|cx| writer::Writer::new(Some(p), cx)))
+        };
+        cx.notify();
+    }
+}
+
 impl Render for Office {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // **持ち替えの頼みは描く前に見ます。** 見落とすと、押しても何も
@@ -115,6 +201,8 @@ fn main() {
                     Shown::Doc(v) => window.focus(&v.focus_handle(cx), cx),
                     Shown::Sheet(v) => window.focus(&v.focus_handle(cx), cx),
                 });
+                // **受け口を開く。** 名前は officework の1つ
+                Office::受け口(view.clone(), cx);
                 view.update(cx, |_, cx| {
                     cx.observe_window_bounds(window, |_, window, _| {
                         let wb = window.window_bounds();
