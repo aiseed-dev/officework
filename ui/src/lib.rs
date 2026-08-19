@@ -299,6 +299,28 @@ pub fn open_outside(target: &str) -> Opened {
 /// 呼ぶと Windows で動かないし、スレッドを塞ぐ(引き継ぎの残件でもある)。
 /// **calc と writer が共に使う** — 暦の算法を2箇所に持たない。
 /// 暦は civil-from-days の素直な算法(1970-01-01 起点)
+/// **言語を次のものへ回す**(統合の段8。2026-08-20)。
+///
+/// 返すのは画面に出す報せ。**環境変数が立っているときは、そちらが優先**
+/// なのでそう言います — 黙って効いたふりをしません。
+///
+/// 前は writer と calc に**同じ 25 行**が写してありました。設定は1箇所、
+/// という決め(2026-08-19 発注者)の一番はっきりした分です。
+pub fn cycle_language() -> String {
+    let cur = settings::get("language").unwrap_or_else(|| "ja".into());
+    let all = languages();
+    let i = all.iter().position(|l| **l == cur).unwrap_or(0);
+    let next = all[(i + 1) % all.len()];
+    settings::set("language", next);
+    // **その場で効かせます**(2026-08-19 発注者「言語はいつでも変更できる
+    // ようにして」)
+    if set_language(next) {
+        crate::t!("言語を変えました").to_string()
+    } else {
+        crate::t!("言語を控えました(環境変数 OFFICE_LANG があるので、そちらが優先です)").to_string()
+    }
+}
+
 pub fn now_stamp() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

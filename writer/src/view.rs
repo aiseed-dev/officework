@@ -890,24 +890,9 @@ impl Render for Writer {
                             // `pt` と `pt-br` は札のままでは見分けられない
                             .child(SharedString::from(
                                 ui::language_label(&lang_now).to_string()))
+                            // 中身は ui::cycle_language の1本(段8)
                             .on_click(cx.listener(|this, _, _, cx| {
-                                let cur = ui::settings::get("language")
-                                    .unwrap_or_else(|| "ja".into());
-                                let all = ui::languages();
-                                let i = all.iter().position(|l| **l == cur).unwrap_or(0);
-                                let next = all[(i + 1) % all.len()];
-                                ui::settings::set("language", next);
-                                // **その場で効かせます**(2026-08-19 発注者
-                                // 「言語はいつでも変更できるようにして」)。
-                                // 環境変数が立っているときは、そちらが優先
-                                // なのでそう言います — 黙って効いたふりを
-                                // しません
-                                let 効いた = ui::set_language(next);
-                                this.status = if 効いた {
-                                    ui::t!("言語を変えました").into()
-                                } else {
-                                    ui::t!("言語を控えました(環境変数 OFFICE_LANG があるので、そちらが優先です)").into()
-                                };
+                                this.status = ui::cycle_language().into();
                                 cx.notify()
                             }))))
                     // ── AI ────────────────────────────────────────────
