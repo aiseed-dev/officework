@@ -10,7 +10,7 @@ The four are each made independent:
 * *Data* — documents are AsciiDoc (`.adoc`), and spreadsheets can live in the same plain-text form (`.sheet.adoc`). Any tool can read them, and diffs work. xlsx / docx are read and written as delivery formats, without breaking their formatting
 * *Templates* — the look of a document is separated from its text. The same text takes a different shape just by swapping the template
 * *Python* — code is never stored in a workbook or a document. Drop a `.py` file and call it from a cell formula like `=double(A1)`, a ribbon button, or the macro list. This is what replaces VBA — and the "open = execute" attack path does not exist
-* *AI* — over MCP, an AI can drive the running app from outside
+* *AI* — no AI is tied in. Anything that speaks the OpenAI-compatible API can be connected, including a model on your own machine. You consult the AI from the app, and the AI in turn can drive the running app from outside, over MCP
 
 The engine also installs on its own (`pip install officework`): it reads and writes xlsx and docx without breaking their formatting, in the idiom of openpyxl, python-docx and xlwings.
 You watch the result, finish it by hand, and drive a live workbook from Python.
