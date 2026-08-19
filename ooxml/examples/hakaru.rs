@@ -128,8 +128,9 @@ fn strip(s: &str) -> String {
     body.push_str(rest);
     // style と script の中身
     for 札 in ["style", "script", "title"] {
-        loop {
-            let Some(i) = body.to_lowercase().find(&format!("<{札}")) else { break };
+        while let Some(i) = body.to_lowercase().find(&format!("<{札}")) {
+            // 閉じ札が無ければ**そこで止める**(開いた札だけを消すと、
+            // 中身が本文に紛れ込む)
             let Some(j) = body.to_lowercase()[i..].find(&format!("</{札}>")) else { break };
             body.replace_range(i..i + j + 札.len() + 3, "");
         }

@@ -540,12 +540,10 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let para_eff: &Paragraph = owned_rest.as_ref().unwrap_or(para);
                 let measure = (measure - cap_shift).max(em);
                 let first_mm = first_line_mm(para_eff);
-                let mut 何行目 = 0usize;
-                for mut cells in break_para(para_eff, m, measure, marker.as_deref(),
-                                            doc.hyphenate, &mut note_no, base) {
+                for (何行目, mut cells) in break_para(para_eff, m, measure, marker.as_deref(),
+                                            doc.hyphenate, &mut note_no, base).into_iter().enumerate() {
                     // 1行目だけ字下げのぶん右へ(行長は組み手が縮めている)
                     let 字下げ = if 何行目 == 0 { first_mm } else { 0.0 };
-                    何行目 += 1;
                     // 頭の1字を除いたぶん、バイト位置を戻す
                     if cap_len > 0 {
                         for c in &mut cells {

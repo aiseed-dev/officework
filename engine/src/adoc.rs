@@ -451,8 +451,7 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
 /// 本文の字の中の印を逃がす。逃がすのは**行の中で意味を持つ印だけ**
 fn esc(t: &str) -> String {
     let mut s = String::with_capacity(t.len());
-    let mut it = t.char_indices().peekable();
-    while let Some((i, c)) = it.next() {
+    for (i, c) in t.char_indices() {
         // `~` と `^` は**後ろに相手がいるときだけ**逃がします。
         // 相手がいないのに逃がすと、`\~/.config` のように**バックスラッシュが
         // そのまま読者に見えます**(2026-08-18 に README を本家へ通して
