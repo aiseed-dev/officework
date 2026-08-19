@@ -316,7 +316,7 @@ impl Render for Calc {
             static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
             eprintln!("render #{}", N.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         }
-        // ---- 画面の額縁(デスクトップ版の形。writer と同じ構成) ----
+        // ---- 画面の組み立て(デスクトップ版の形。writer と同じ構成) ----
         // 1段目 = クイックアクセス+ブック名(この行が窓の取っ手)。
         // 表計算の色は緑(デスクトップ版の app 色分けと同じ)。
         // 2段目 = 白地のタブ+現在地の緑の下線。右端に 🔍。

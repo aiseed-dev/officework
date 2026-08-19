@@ -53,7 +53,7 @@ impl Render for Writer {
         let th_gray_fg = if dk { rgb(0x565D64) } else { rgb(0xB6BDC4) };
         let th_status = if dk { rgb(0x9AA5AE) } else { rgb(0x66707A) };
         let th_desk = if dk { rgb(0x191C1F) } else { rgb(0x63686D) };
-        // デスクトップ版の額縁: 1段目がクイックアクセス+文書名(=取っ手)、
+        // デスクトップ版の画面の組み立て: 1行目がクイックアクセス+文書名(=取っ手)、
         // 2段目が下線つきのタブ(現在地は青い下線)、3段目がリボンのボタン
         let th_top_bg = if dk { rgb(0x1B1E21) } else { rgb(0xF1F3F5) };
         let th_top_fg = if dk { rgb(0xCFD6DC) } else { rgb(0x444B52) };
