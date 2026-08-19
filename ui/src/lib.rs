@@ -13,6 +13,8 @@
 pub use lang::ja::{furigana, proof};
 pub use lang::{check, spell, Language, Target};
 pub use lang::model::Endpoint;
+/// 共通の命令(同じ id は同じ場所で捌く)
+pub mod appcmd;
 pub use lang::ai;
 pub use lang::i18n::{language, language_label, languages, set_language, tr, trf};
 

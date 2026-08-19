@@ -30,6 +30,18 @@ fn py_cell(c: Option<&sheet::Cell>) -> String {
     }
 }
 
+
+/// 共通の命令(`ui::appcmd`)が触る面。**欄はここから増やさない** —
+/// 命令を1つ移すたびに、あちらの trait と一緒に1つずつ増やす
+impl ui::appcmd::Screen for Calc {
+    fn zoom_mut(&mut self) -> &mut f32 {
+        &mut self.zoom
+    }
+    fn say(&mut self, msg: String) {
+        self.status = msg.into();
+    }
+}
+
 impl Calc {
     /// run_cmd が処理できる id。**リボンの ready はこの表の中に限る**
     /// (試験で突き合わせる。合っていないボタンは「押せるのに何もしない」嘘になる)
@@ -837,6 +849,11 @@ impl Calc {
         // 残り、次に開いた一覧の見出しに前の説明が出ていた**(書体の一覧に
         // 「ピボット 1/4 …」が出た。2026-08-08 実機で見つけた)
         self.pick_note = None;
+        // **共通の命令は1本の捌き手へ**(2026-08-19)。同じ id の腕を
+        // ここに残すと死ぬので、移したら消す
+        if ui::appcmd::run(self, id) {
+            return;
+        }
         if self.sheet().protected && !Self::PROTECTED_OK.contains(&id) {
             // **一律に断らない。** 保護のときに何を許すかはシートごとに
             // 決められる(Excel の「許可する操作」)。許した分は通す
@@ -2283,18 +2300,6 @@ impl Calc {
             // (発注者「いまの AI のボタンは全部要らない」)ので、この命令は
             // 詳細設定の「AI の宛先」からだけ呼ばれる。9つの動詞は左パネルの
             // 会話に譲った — ボタンでは作れない頼み方も打てば通る
-            "ai-where" => {
-                let next = ui::ai::backend().next();
-                ui::ai::set_backend(next);
-                self.status = match ui::ai::ready(next) {
-                    Ok(_) => format!("AI の宛先: {}(覚えました)", next.label()).into(),
-                    Err(e) => format!(
-                        "AI の宛先: {} — ただし今は使えません: {e}",
-                        next.label()
-                    )
-                    .into(),
-                };
-            }
             // 配色の変更(テーマ色の組を入れ替える)。テーマ由来の色を
             // 使っているセルは、色がそのまま追従する
             "colorschemas" => {
@@ -2373,14 +2378,6 @@ impl Calc {
                     ui::t!("セルの中を右横書きにしました(1字ずつ右から。昔の看板の書き方)").into();
             }
             // 表示タブ(本家のデスクトップ版に合わせる)。どれも見え方だけ
-            "zoom-in" => {
-                self.zoom = (self.zoom + 0.1).min(2.0);
-                self.status = ui::tf!("ズーム {}%", (self.zoom * 100.0).round() as i32).into();
-            }
-            "zoom-out" => {
-                self.zoom = (self.zoom - 0.1).max(0.5);
-                self.status = ui::tf!("ズーム {}%", (self.zoom * 100.0).round() as i32).into();
-            }
             // 画面の文字の大きさ(リボン・数式バー・メニュー・状態行まで全部)。
             // 格子のズームとは別。設定に覚えて、次回も同じ大きさで開く
             "ui-bigger" | "ui-smaller" => {

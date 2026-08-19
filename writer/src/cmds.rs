@@ -3,6 +3,18 @@
 
 use crate::*;
 
+
+/// 共通の命令(`ui::appcmd`)が触る面。**欄はここから増やさない** —
+/// 命令を1つ移すたびに、あちらの trait と一緒に1つずつ増やす
+impl ui::appcmd::Screen for Writer {
+    fn zoom_mut(&mut self) -> &mut f32 {
+        &mut self.zoom
+    }
+    fn say(&mut self, msg: String) {
+        self.status = msg.into();
+    }
+}
+
 impl Writer {
     /// **一覧が開くボタン。** リボンは ▾ を添える。押すと候補の一覧
     /// (パネル)が出て、選んで終わる。腕の目印: font_list / size_list /
@@ -102,6 +114,11 @@ impl Writer {
         if self.protected() && !READONLY_OK.contains(&id) {
             self.status =
                 ui::t!("読み取り専用で保護されています(保護タブの「保護」で解除できます)").into();
+            return;
+        }
+        // **共通の命令は1本の捌き手へ**(2026-08-19)。同じ id の腕を
+        // ここに残すと死ぬので、移したら消す
+        if ui::appcmd::run(self, id) {
             return;
         }
         match id {
@@ -448,7 +465,6 @@ impl Writer {
                 }
             }
             // 画面の倍率。50〜200%。紙は変わらない
-            "zoom-in" => self.zoom = (self.zoom + 0.1).min(2.0),
             // 見え方だけの切り替え(文書は変わらない)
             "hidenchars" => self.show_marks = !self.show_marks,
             // 一覧パネル(フォント・大きさ)。選ぶのはパネルの中
@@ -1064,17 +1080,6 @@ impl Writer {
             }
             // ---- AI(モデルに任せる変換と生成の道具箱)----
             // 宛先は人が選ぶ。押すたびに 手元 → Claude Agent → Claude(API)
-            "ai-where" => {
-                let now = ui::ai::backend();
-                let next = now.next();
-                ui::ai::set_backend(next);
-                let ok = ui::ai::ready(next);
-                self.status = match ok {
-                    Ok(_) => ui::tf!("AI の宛先: {}(覚えました)", next.label()).into(),
-                    Err(e) => ui::tf!("AI の宛先: {} — ただし今は使えません: {}", next.label(), e)
-                    .into(),
-                };
-            }
             // **ふりがなだけ残す。** 会話が入れるのは素の字で、ルビの
             // 書式は付けられない — ここは AI タブを廃したあとも要る仕事
             // (置き場はホームの「ルビ」の隣。2026-08-15)
@@ -1163,7 +1168,6 @@ impl Writer {
                     "".into()
                 };
             }
-            "zoom-out" => self.zoom = (self.zoom - 0.1).max(0.5),
             "linespace" => self.para(|p| {
                 p.line_spacing = match p.spacing() {
                     s if s < 1.25 => 1.5,
