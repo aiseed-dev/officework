@@ -46,7 +46,13 @@ pub(crate) fn row<T>(
 
 /// 一覧の項を [`ui::item!`] の組から作る(鍵はそのまま、見出しは訳)。
 ///
-///     self.pick = Some((menu(&[ui::item!(…), ui::item!(…)]), at));
+/// ```text
+/// self.pick = Some((menu(&[ui::item!(…), ui::item!(…)]), at));
+/// ```
+///
+/// 字下げの塊は Rust の見本として組まれるので、`text` と名乗ります
+/// (2026-08-19 に calc をライブラリへ切り出したら doc-test が動き出し、
+/// 説明用の `…` が読めずに落ちました)。
 pub(crate) fn menu(items: &[(&str, &str)]) -> Vec<(String, String)> {
     items.iter().map(|(k, l)| (k.to_string(), l.to_string())).collect()
 }

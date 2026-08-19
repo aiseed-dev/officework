@@ -78,7 +78,7 @@ impl Look {
 }
 
 impl Writer {
-    pub(crate) fn new(path: Option<PathBuf>, cx: &mut Context<Self>) -> Writer {
+    pub fn new(path: Option<PathBuf>, cx: &mut Context<Self>) -> Writer {
         let mut w = Writer {
             focus: cx.focus_handle(),
             doc: Document::default(),

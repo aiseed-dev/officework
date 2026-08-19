@@ -1,0 +1,20 @@
+[package]
+name = "officework"   # 1つになったアプリ(2026-08-19 発注者「バイナリは officework にする」)
+version = "0.1.0-alpha"
+edition.workspace = true
+license.workspace = true
+description = "officework — フォルダを開いて、文章も表も同じウィンドウで編集する"
+
+[[bin]]
+name = "officework"
+path = "src/main.rs"
+
+[dependencies]
+# 2つの編集画面。どちらもライブラリとして持つ(2026-08-19 に切り出した)
+writer = { path = "../writer" }
+calc = { path = "../calc" }
+ui = { path = "../ui" }
+ops = { path = "../ops" }
+# GPUI は crates.io に無いので、版を固定して zed から直に取る(writer / calc と同じ版)
+gpui = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23", features = ["wayland", "x11"] }

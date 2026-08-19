@@ -3,7 +3,7 @@
 use crate::*;
 
 impl Calc {
-    pub(crate) fn new(path: Option<PathBuf>, cx: &mut Context<Self>) -> Calc {
+    pub fn new(path: Option<PathBuf>, cx: &mut Context<Self>) -> Calc {
         let mut c = Calc {
             focus: cx.focus_handle(),
             book: Book::new(),

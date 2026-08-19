@@ -9,6 +9,14 @@ license.workspace = true
 [build-dependencies]
 winresource = "0.1"
 
+[lib]
+name = "calc"
+path = "src/lib.rs"
+
+[[bin]]
+name = "calc"
+path = "src/main.rs"
+
 [dependencies]
 sheet = { path = "../sheet" }
 pyrun = { path = "../pyrun" }
