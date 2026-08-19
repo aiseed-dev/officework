@@ -1976,7 +1976,7 @@ impl Render for Writer {
         };
 
         div().size_full().flex().flex_col().bg(th_desk)
-            .key_context("jo_edit")
+            .key_context("jo_doc")
             .track_focus(&self.focus)
             .on_action(cx.listener(Writer::backspace))
             .on_action(cx.listener(Writer::delete))

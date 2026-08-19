@@ -679,7 +679,7 @@ pub fn run() {
         // 設定ファイルに書いた AI の宛先を環境変数へ移す(起動に一度)。
         // **環境変数が先** — その場の上書きは触らない
         ui::settings::ai_env_from_settings();
-        cx.bind_keys(ui::bindings_for("calc", "jo_edit"));
+        cx.bind_keys(ui::bindings_for("calc", "jo_sheet"));
         // **JO_KEYLOG=1 で打鍵と行き先を書き出す。** 「鍵が束縛に届いた」と
         // 「受け口が動いた」は別物で、前者だけ見て入れたつもりになると
         // キーの嘘になる(2026-08-10 に7つやった)。ここで見えるのは前者

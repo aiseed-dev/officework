@@ -5745,7 +5745,7 @@ impl Render for Calc {
 
         let me: Entity<Calc> = cx.entity();
         div().size_full().flex().flex_col().bg(rgb(0xF3F5F7)).relative()
-            .key_context("jo_edit")
+            .key_context("jo_sheet")
             .track_focus(&self.focus)
             // **Alt を単独で押して離したらキーヒント**(本家と同じ作法)。
             // 押した時に旗を立て、離した時にまだ立っていれば出す — Alt+S の

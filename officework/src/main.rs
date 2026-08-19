@@ -520,9 +520,19 @@ fn main() {
             .add_fonts(vec![std::borrow::Cow::Borrowed(ops::font_data())])
             .expect("フォント登録");
         ui::settings::ai_env_from_settings();
-        // **割り当ては両方を入れます。** 文章と表で同じキーが違う意味を
-        // 持つ物はないので、重ねても食い違いません
-        cx.bind_keys(ui::bindings_for("writer", "jo_edit"));
+        // **割り当ては文脈で分けて、両方を入れます**(統合の段5)。
+        //
+        // 前は writer の表だけを `jo_edit` の1文脈に入れていました。そのため
+        // **表の画面で calc 専用の 31 鍵が1つも効かず**(Alt+Enter のセル内改行、
+        // Alt+S / Alt+C のスライサー、Ctrl+1 など)、しかも意味の食い違う鍵が
+        // 2つありました — `Ctrl+E`(表=フラッシュフィル / 文章=中央揃え)と
+        // `Ctrl+R`(表=右へコピー / 文章=右揃え)。
+        //
+        // **1文脈に混ぜると、この2つはどちらかが必ず負けます。** 文脈を分ければ
+        // 同じ鍵が画面ごとに別の意味を持てます。編集画面は自分の文脈だけを
+        // 名乗るので、いま見ているタブの側の割り当てが効きます
+        cx.bind_keys(ui::bindings_for("writer", "jo_doc"));
+        cx.bind_keys(ui::bindings_for("calc", "jo_sheet"));
         let saved = ui::winstate::load("officework");
         let bounds = match saved {
             Some(st) => Bounds::new(gpui::point(px(st.x), px(st.y)), size(px(st.w), px(st.h))),

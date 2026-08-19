@@ -1002,7 +1002,7 @@ pub fn run() {
         // 設定ファイルに書いた AI の宛先を環境変数へ移す(起動に一度)。
         // **環境変数が先** — その場の上書きは触らない
         ui::settings::ai_env_from_settings();
-        cx.bind_keys(ui::bindings_for("writer", "jo_edit"));
+        cx.bind_keys(ui::bindings_for("writer", "jo_doc"));
         // 前に閉じたときの姿で開く。控えが無ければ既定の大きさで中央に
         let saved = ui::winstate::load("writer");
         let bounds = match saved {
