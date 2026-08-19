@@ -618,10 +618,10 @@ impl Calc {
         })
     }
 
-    /// 集計の面をセルに書く。種別で見た目を付ける(h=見出しの帯、
+    /// 集計の面をセルに書く。種別で見た目を付ける(h=見出し行の色、
     /// s=小計 t=総計は太字、t は上罫線も)。
     /// tot_col = 右端が総計の列(装いを効かせる)。本家のピボットの見た目
-    /// (濃い見出し帯・太字の総計)に寄せる — 出力そのものがピボットだと分かる
+    /// (濃い見出し行・太字の総計)に寄せる — 出力そのものがピボットだと分かる
     pub(crate) fn place_pivot_grid(
         &mut self,
         si: usize,
@@ -647,7 +647,7 @@ impl Calc {
                 let mut cell = self.book.sheets[si].get(p).cloned().unwrap_or_default();
                 match k {
                     'l' | 'h' => {
-                        // 見出しの帯(スタイルの色)
+                        // 見出し行の色(スタイルの色)
                         cell.fmt.bold = true;
                         cell.fmt.fill = Some(head_bg.into());
                         cell.fmt.color = Some(head_fg.into());

@@ -6,11 +6,11 @@ impl Focusable for Calc {
     fn focus_handle(&self, _cx: &App) -> FocusHandle { self.focus.clone() }
 }
 
-/// はみ出しの帯の置き場を決める(純粋な計算 — 試験はここを見る)。
+/// はみ出して見せる所を決める(純粋な計算 — 試験はここを見る)。
 ///
 /// - `x0`/`w`: セルの左端と幅、`need`: 文字に要る幅
 /// - `left_ext`/`right_ext`: 左右へ伸ばせた幅
-/// - 返り: (帯の左端, 帯の幅)
+/// - 返り: (左端, 幅)
 ///
 /// 中央は**セルの中心を軸に**置く。左右で伸ばせた量が違えば、
 /// 足りない側の分だけ反対へ寄る(伸ばせる範囲で頭打ち)
@@ -323,7 +323,7 @@ impl Render for Calc {
         // 下端 = ステータスバー(シートのタブ+状態の文言+選択の生きた値)
         let (ready, all) = ribbon::progress(ribbon::calc_tabs());
         // 画面の明暗(インターフェイステーマ)。**セルは白のまま** —
-        // 暗くするのは周り(帯・タブ・ボタン・見出し)だけ
+        // 暗くするのは周り(リボン・タブ・ボタン・見出し)だけ
         let dk = self.dark;
         let th_bar = if dk { rgb(0x14432A) } else { rgb(0x1B6E3C) };
         let th_band = if dk { rgb(0x1B1E21) } else { rgb(0xFFFFFF) };
@@ -447,7 +447,7 @@ impl Render for Calc {
         }
         // 札の見た目(黒地に白。名札と同じ)
         let badge = move |h: &str, us: f32| {
-            // 右肩に。**上へはみ出さない**(段の札が上の帯に掛かって読めない)
+            // 右肩に。**上へはみ出さない**(段の札が上のタブの行に掛かって読めない)
             div().absolute().top(px(0.0)).right(px(-2.0))
                 .px_0p5().rounded_sm()
                 .bg(rgb(0x2B2F33)).text_color(rgb(0xF2F5F7))
@@ -533,7 +533,7 @@ impl Render for Calc {
                     })))
                 .child("🔍"));
 
-        // ボタンの帯: 本家のデスクトップ版の一段の絵ボタン(writer の写し)。
+        // リボンのボタン: 本家のデスクトップ版の一段の絵ボタン(writer の写し)。
         // 主要なボタンは名札つきの大ボタン、他は絵だけ(乗ると名前が下のステータス
         // バーへ)。絵の無いボタンは小さな文字のボタン。ホームだけ2段(ボタンが多い)
         const BIG: &[(&str, &str)] = &[
@@ -704,7 +704,7 @@ impl Render for Calc {
             // 小窓中(dlg_open)も同じ描き方 — ready でないボタンと同じ扱い
             let locked = on_pivot && Calc::PIVOT_LOCKED.contains(&cmd.id);
             // **記録中は「操作を記録」のボタンを赤く**(発注者 2026-08-16
-            // 「記録中は、それがわかるようにして」)。下の帯の印と二重にする —
+            // 「記録中は、それがわかるようにして」)。下のステータスバーの印と二重にする —
             // 押した所を見ている目と、画面全体を見ている目は別
             let recording = cmd.id == "rec-toggle" && rec_on;
             let fg = if recording {
@@ -875,7 +875,7 @@ impl Render for Calc {
             cmds = cmds.child(row);
         }
         let bar = if self.tab == 0 {
-            // ファイルの全面ページはボタンの帯を持たない(本家の形)
+            // ファイルの全面ページはリボンのボタンを持たない(本家の形)
             div().flex().flex_col().child(top).child(tabs)
         } else {
             div().flex().flex_col().child(top).child(tabs).child(cmds)
@@ -1136,7 +1136,7 @@ impl Render for Calc {
                     spill_from.insert(p);
                     // 置き場の計算は spill_band(純関数 — 試験が数で見る)。
                     // **左端を left_ext ぶん一律に引くのは誤り**だった —
-                    // 描く帯は文字の幅しかないので中心が左へずれる(2026-08-14)
+                    // 描く下地は文字の幅しかないので中心が左へずれる(2026-08-14)
                     let right_ext = avail - w - left_ext;
                     let (lx, wd) = spill_band(x0, w, need, left_ext, right_ext, both, to_left);
                     let lx = lx.max(HEAD_W);
@@ -1231,7 +1231,7 @@ impl Render for Calc {
                 } else {
                     col_name(c)
                 }))
-                // 右端の帯は幅を変える取っ手(カーソル形状の誘いだけ。
+                // 右端の細い所は幅を変える取っ手(カーソル形状の誘いだけ。
                 // 当たり判定は InputSink の窓レベルで size_grip_at がやる)
                 .relative().children((std::env::var_os("JO_NO_STRIPS").is_none()).then(|| {
                     div().absolute()
@@ -1260,7 +1260,7 @@ impl Render for Calc {
                     .text_size(px(us * 11.5))
                     .text_color(if row_on { rgb(0x1B6E3C) } else if filtered_blue { rgb(0x1B6EC2) } else if dk { rgb(0x9AA5AE) } else { rgb(0x66707A) })
                     .child(SharedString::from((r + 1).to_string()))
-                    // 下端の帯は高さを変える取っ手(列見出しの右端と同じ仕掛け)
+                    // 下端の細い所は高さを変える取っ手(列見出しの右端と同じ仕掛け)
                     .relative().children((std::env::var_os("JO_NO_STRIPS").is_none()).then(|| {
                         div().absolute()
                             .left(px(0.0)).bottom(px(-GRIP)).w_full().h(px(GRIP * 2.0))
@@ -1476,7 +1476,7 @@ impl Render for Calc {
                 // border_color は div の**全辺に1色**なので使わない —
                 // 使うと、外枠の上辺だけのセルで右・下の灰色の格子線まで
                 // 黒くなり、外枠が格子に化ける(発注者報告)。
-                // 辺ごとに細い帯を重ねて描く
+                // 辺ごとに細い線を重ねて描く
                 let ink = rgb(0x1B1B1B);
                 if f.borders.any() && in_merge.is_none() {
                     d = d.relative();
@@ -1507,7 +1507,7 @@ impl Render for Calc {
                             return vec![solid(0.0, 1.0), solid(2.0, 1.0)];
                         }
                         if e.style.dashed() {
-                            // 破線: 1px の破線の帯を太さぶん重ねる
+                            // 破線: 1px の破線を太さぶん重ねる
                             return (0..w.round() as i32)
                                 .map(|i| {
                                     let b = div().absolute();
@@ -1537,7 +1537,7 @@ impl Render for Calc {
                 // border_t_2 + border_color は使わない — border_color は div の
                 // **全辺**に効くので、縁のセルの薄い格子線(右・下)まで緑に
                 // 塗り替わり、選択の中に線が走って見える(発注者報告 2026-08-08)。
-                // 辺ごとの帯を重ねて描く(罫線 edge_bars と同じ作法)
+                // 辺ごとの線を重ねて描く(罫線 edge_bars と同じ作法)
                 if self.anchor.is_some() {
                     if in_range {
                         let g = rgb(0x1B6E3C);
@@ -2823,7 +2823,7 @@ impl Render for Calc {
 
         // ---- 固定した枠の境目(表示タブの「固定した枠に影を付ける」) ----
         // 見た目だけ。マウスは受けない。本家の作法: 影あり=固定の開始
-        // 位置にひかえめな緑の線+薄い影の帯、影なし=灰色の線だけ
+        // 位置にひかえめな緑の線+薄い影、影なし=灰色の線だけ
         let freeze_shadow: Vec<gpui::AnyElement> = {
             let mut bands = Vec::new();
             if let Some(f) = self.frozen {
@@ -2972,7 +2972,7 @@ impl Render for Calc {
                     // あり、relative() は置き場の指定を打ち消して重ね描きごと
                     // 流してしまう(2026-08-14 発注者報告「中央に来ない」の正体。
                     // カーソルが乗っている時だけ if 枝を通って正しく見えていた)。
-                    // absolute の親でも、中の帯の absolute はそのまま効く
+                    // absolute の親でも、中の absolute はそのまま効く
                     let bs = &f.borders;
                     let bar = |horiz: bool, start: bool, e: sheet::model::Edge| {
                         let col = e.color.map(rgb).unwrap_or(rgb(0x1B1B1B));
@@ -4831,7 +4831,7 @@ impl Render for Calc {
 
         // ---- スライサーの設定(⚙ で出る) ----
         // 本家は右のサイドバー(SlicerSettings)。こちらは図形の設定と同じ
-        // 「板の隣に出す」形にした — 右の帯を常設しない造りなので
+        // 「板の隣に出す」形にした — 右のパネルを常設しない造りなので
         let slicer_cfg_panel = if self.slicer_cfg {
             self.slicers.get(slicer_sel).map(|sl| {
                 let si = slicer_sel;
@@ -5696,7 +5696,7 @@ impl Render for Calc {
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
                     .flex().flex_row().items_center().gap_2()
                     .text_size(px(us * 12.5))
-                    // 選んでいる項は帯で示す(↑↓・Enter の相手が目で分かる)
+                    // 選んでいる項は下地の色で示す(↑↓・Enter の相手が目で分かる)
                     .when(on, |s| s.bg(rgb(0xEAF5EE)))
                     // 「→ 」は次の段へ進むボタン — 並びの項目と見分ける
                     .text_color(if v.starts_with("→ ") { rgb(0x1B6E3C) } else { rgb(0x1B1B1B) })

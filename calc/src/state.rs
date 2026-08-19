@@ -965,7 +965,7 @@ impl Calc {
     }
 
     /// 格子の中の位置(px、格子領域の左上原点)からセルを逆算する。
-    /// 見出しの帯の上なら None。
+    /// 見出しの行の上なら None。
     pub(crate) fn cell_at(&self, x: f32, y: f32) -> Option<Pos> {
         if x < self.head_w() || y < self.head_h() {
             return None;
@@ -1020,7 +1020,7 @@ impl Calc {
         };
     }
 
-    /// 見出しの帯の上の、列幅・行高の取っ手(境界 ±GRIP px)。Some((列か, 番号))。
+    /// 見出しの行の上の、列幅・行高の取っ手(境界 ±GRIP px)。Some((列か, 番号))。
     /// 描画・cell_at と同じ並び(固定・窓・絞り込み)を使う —
     /// ずれると別の境界を掴んでしまう。
     pub(crate) fn size_grip_at(&self, x: f32, y: f32) -> Option<(bool, u32)> {

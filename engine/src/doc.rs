@@ -439,7 +439,7 @@ pub struct Paragraph {
     /// (2026-08-15 に見出しの詰まり方を直すとき見つけた)。
     pub space_before_pt: f32,
     pub space_after_pt: f32,
-    /// 段落の背景色 `RRGGBB`(docx の w:shd)。見出しの帯に使われる
+    /// 段落の背景色 `RRGGBB`(docx の w:shd)。見出しの背景色に使われる
     pub shade: Option<String>,
     /// 段落を枠で囲む(docx の w:pBdr)。囲みの注意書きに使われる
     pub boxed: bool,

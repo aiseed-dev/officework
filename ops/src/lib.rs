@@ -726,7 +726,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 .collect();
             format!("{{\"ok\":true,\"tables\":{}}}", J::A(items).to_json())
         }
-        // 表のデザイン(見出しの帯・縞々・最初と最後の列)。**画面のボタンと
+        // 表のデザイン(見出し行の色・縞模様・最初と最後の列)。**画面のボタンと
         // 同じ実装**(sheet::tabledesign)を呼ぶ — 記録した行がそのまま走る
         "table_style" => {
             let (si, a, b) = match target(h, &o) {

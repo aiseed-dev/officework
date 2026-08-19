@@ -36,7 +36,7 @@ impl Render for Writer {
 
         // ---- リボン(Euro-Office に名前と並びを合わせる) ----
         // **タブの行そのものが窓の取っ手**(掴んで移動・二度押しで最大化)。
-        // 空きの帯だけを取っ手にすると、タブが多い窓では幅がゼロになり
+        // 空いている所だけを取っ手にすると、タブが多い窓では幅がゼロになり
         // 掴む場所が無くなる(踏んで直した)。ボタンの類いは stop_propagation で
         // 取っ手より先に効く
         let (ready, all) = ribbon::progress(ribbon::writer_tabs());
@@ -54,7 +54,7 @@ impl Render for Writer {
         let th_status = if dk { rgb(0x9AA5AE) } else { rgb(0x66707A) };
         let th_desk = if dk { rgb(0x191C1F) } else { rgb(0x63686D) };
         // デスクトップ版の額縁: 1段目がクイックアクセス+文書名(=取っ手)、
-        // 2段目が下線つきのタブ(現在地は青い下線)、3段目がボタンの帯
+        // 2段目が下線つきのタブ(現在地は青い下線)、3段目がリボンのボタン
         let th_top_bg = if dk { rgb(0x1B1E21) } else { rgb(0xF1F3F5) };
         let th_top_fg = if dk { rgb(0xCFD6DC) } else { rgb(0x444B52) };
         let th_qa_hover = if dk { rgb(0x2C333A) } else { rgb(0xE2E6EA) };
@@ -595,7 +595,7 @@ impl Render for Writer {
         }
         let bar = if self.tab == 0 || !self.show_toolbar {
             // ファイルのページ(本家の File メニュー)と、畳んだツールバーは
-            // ボタンの帯を持たない(タブは残る — 押せば中身へ行ける)
+            // リボンのボタンを持たない(タブは残る — 押せば中身へ行ける)
             div().flex().flex_col().child(top).child(tabs)
         } else {
             div().flex().flex_col().child(top).child(tabs).child(cmds)
@@ -1334,7 +1334,7 @@ impl Render for Writer {
                 .bg(rgb(0x444B52)));
         }
 
-        // 段落の背景色と囲み枠。行の帯として敷く(文字より下に来るよう先に描く)
+        // 段落の背景色と囲み枠。行の下地として敷く(文字より下に来るよう先に描く)
         {
             let mut deco: Vec<(std::ops::Range<usize>, Option<String>, bool)> = Vec::new();
             let mut at = 0usize;
@@ -1498,7 +1498,7 @@ impl Render for Writer {
                 continue;
             }
             if self.page.vertical {
-                // 縦書き: 列の x に1字ずつ正立で置く。選択は縦の帯、
+                // 縦書き: 列の x に1字ずつ正立で置く。選択は縦の下地、
                 // キャレットは横棒(変換下線は初版では出さない)
                 let colx = self.page.vert_x.get(li).copied().unwrap_or(0.0);
                 let mine = match self.target {

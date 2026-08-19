@@ -281,7 +281,7 @@ impl Writer {
                 what.push(ui::tf!("色 #{}", c.clone()).to_string());
             }
             if let Some(c) = &d.shade {
-                what.push(ui::tf!("帯 #{}", c.clone()).to_string());
+                what.push(ui::tf!("背景色 #{}", c.clone()).to_string());
             }
             div().absolute().left(px(16.0)).top(px(8.0)).w(px(400.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
