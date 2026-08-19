@@ -342,28 +342,31 @@ Common ports: Ollama `11434`, llama.cpp server `8080`, LM Studio `1234` — all 
 
 If the destination can't be reached the app says so (it never silently returns nothing). *Keys are never stored in the workbook.*
 
-== Cell text is Markdown
+== Cell text is AsciiDoc
 
-Text cells are *drawn as Markdown*.
+Text cells are *drawn as AsciiDoc* — the same markup as the writer body, so there is only one syntax to learn.
 The cell holds plain text; the markup is interpreted only at draw time.
 
 ----
-This is **bold**            → This is bold
-*italic* ~~strike~~ `mono`
-see [here](https://…)       → a blue underlined link
-# Heading   ## Sub   ### Small
-- bullet    1. numbered
+This is **bold**                      → This is bold
+__italic__ ``mono`` [.line-through]##strike##
+see https://…[here]                   → a blue underlined link
+= Heading   == Sub   === Small
+* bullet    . numbered (no numbers written — they count up as you go)
 ----
 
+* *The ribbon buttons work too.* Bold and italic buttons format the whole cell; type the markup directly when you want to change only *part* of a cell
+* *Doubled markers are the reliable form.* Single markers (`*bold*`) only work at word boundaries, so they do nothing inside Japanese text, which has no spaces between words (`this is *bold*` works in Latin text)
+* An `=` with *no space after it* is a formula (`=SUM(A1)`); with a space it is a cell heading (`= Big`)
 * *No editor for formatting part of a cell is needed* — you get formatting by typing, and the formula bar and Python always see the same plain text
 * *It is written to xlsx as plain text*. A round trip can never garble it (Excel shows the markers literally — honest degradation)
 * *The selected cell shows the raw text* so you can retype it
 * To stack headings and bullets vertically, turn on *wrap* for the cell (without wrap, newlines still collapse to spaces as before)
-* Japanese typefaces have no italic face, so `*italic*` does not slant in Japanese (the markers are still removed). Latin text slants
+* Japanese typefaces have no italic face, so `__italic__` does not slant in Japanese (the markers are still removed). Latin text slants
 * *Heading sizes come from the template* — the workbook's named cell styles "Heading 1 / 2 / 3". Define them in a .xltx and every workbook made from it follows (editing them in Excel carries over too). Without them the defaults are 1.6 / 1.35 / 1.15× and bold. *Typing a heading grows the row* (it never shrinks one)
 
-*Where the line is drawn so tables survive*: if nothing reads as markup, nothing happens. `2*3*4` (multiplication), `-100`, `1.5`, `2026-08-09`, and `name*` (an unpaired marker) all render exactly as before.
-The rule is that a delimiter pair whose content is only digits is not treated as markup.
+*Where the line is drawn so tables survive*: if nothing reads as markup, nothing happens. `2*3*4` (multiplication), `2**10` (a power), `ABC_001` (a name), `-100`, `1.5`, `2026-08-09`, and `name*` (an unpaired marker) all render exactly as before.
+Markers inside a word, and delimiter pairs whose content is only digits, are not treated as markup.
 
 == Python — instead of macros
 

@@ -5,22 +5,25 @@
 //! なったので、セルの中も同じ書き方にしました。**印が変わるだけで、
 //! できることは変わりません。**
 //!
-//! [cols="1,1,1"]
+//! [cols="1,1"]
 //! |===
-//! |できること |いままで(md) |これから(AsciiDoc)
+//! |できること |書き方
 //!
-//! |太字 |`**字**` |`*字*`
-//! |斜体 |`*字*` |`_字_`
-//! |取り消し線 |`~~字~~` |`[.line-through]#字#`
-//! |等幅 |`` `字` `` |同じ
-//! |リンク |`[字](URL)` |`URL[字]`
-//! |見出し 1〜3 |`# ` |`= ` `== ` `=== `
-//! |箇条書き |`- ` |`* `
-//! |番号つき |`1. ` |`. `
+//! |太字 |`**字**`
+//! |斜体 |`__字__`
+//! |取り消し線 |`[.line-through]##字##`
+//! |等幅 |```` ``字`` ````
+//! |リンク |`URL[字]`(前後に空白)
+//! |見出し 1〜3 |`= ` `== ` `=== `
+//! |箇条書き |`* `
+//! |番号つき |`. `(番号は書かない)
 //! |===
 //!
-//! **囲みの印は「語の外」だけ**(本家の constrained formatting)。
+//! **二重の印はどこでも効きます。** 一重(`*字*`)は本家と同じく
+//! 「語の外」だけで効くので、語の間に空白の無い日本語の文中では
+//! 二重が要ります(2026-08-19 に本家へ通して確かめました)。
 //! `A_1_B` という名前や `2*3*4` という掛け算は書式に化けません。
+//! 二重でも、中身が数字だけ(`2**3**4`)なら書式にしません。
 //!
 //! **セルが持つのは平文のまま。** 書式は文字の中に記号として書かれていて、
 //! 画面に描くときだけ解釈する。だから
@@ -236,18 +239,64 @@ fn inline(s: &str) -> Vec<Span> {
     let mut plain = String::new();
     let mut i = 0;
     while i < b.len() {
-        // 取り消し線 `[.line-through]#字#`
+        // 取り消し線 `[.line-through]##字##`(二重 — 日本語の文中で効く形)と
+        // `[.line-through]#字#`(一重 — 語の外だけ。英語向け)
         if b[i] == '[' && b[i..].starts_with(&取り消し線.chars().collect::<Vec<_>>()[..]) {
-            let from = i + 取り消し線.chars().count();
-            if let Some(end) = b[from..].iter().position(|c| *c == '#') {
+            let mut from = i + 取り消し線.chars().count();
+            let 二重 = b.get(from) == Some(&'#');
+            if 二重 {
+                from += 1;
+            }
+            let 閉じ = if 二重 {
+                b[from..].windows(2).position(|w| w == ['#', '#'])
+            } else {
+                b[from..].iter().position(|c| *c == '#')
+            };
+            if let Some(end) = 閉じ {
                 if end > 0 {
                     push(&mut out, &mut plain);
                     let text: String = b[from..from + end].iter().collect();
                     out.push(Span { text, strike: true, ..Default::default() });
-                    i = from + end + 1;
+                    i = from + end + if 二重 { 2 } else { 1 };
                     continue;
                 }
             }
+        }
+        // **二重の印**(`**太字**` `__斜体__` ``` ``等幅`` ```)。
+        // 本家では一重は「語の外」だけで効き、日本語には語の間の空白が
+        // 無いので、**文中では二重が要ります**(2026-08-19 発注者の指摘で
+        // 本家に通して確かめた — 一重は字のまま、二重だけ効いた)
+        let 二重印: [(char, fn(&mut Span)); 3] = [
+            ('*', (|s: &mut Span| s.bold = true) as fn(&mut Span)),
+            ('_', |s: &mut Span| s.italic = true),
+            ('`', |s: &mut Span| s.mono = true),
+        ];
+        let mut hit2 = false;
+        for (m, set) in 二重印 {
+            if !(b[i] == m && b.get(i + 1) == Some(&m)) {
+                continue;
+            }
+            let from = i + 2;
+            let Some(end) = b[from..].windows(2).position(|w| w == [m, m]) else { continue };
+            if end == 0 {
+                continue; // 中身が空(`****`)
+            }
+            let inner: String = b[from..from + end].iter().collect();
+            // **数字だけなら書式にしない**(表を壊さない線引き)。
+            // `2**3**4` を太字にすると、Python 流の冪の字が黙って化ける
+            if inner.chars().all(|c| c.is_ascii_digit() || c == '.') {
+                continue;
+            }
+            push(&mut out, &mut plain);
+            let mut sp = Span { text: inner, ..Default::default() };
+            set(&mut sp);
+            out.push(sp);
+            i = from + end + 2;
+            hit2 = true;
+            break;
+        }
+        if hit2 {
+            continue;
         }
         // リンク `URL[字]`
         if let Some((label, url, next)) = link_at(&b, i) {
@@ -331,7 +380,14 @@ fn 囲みを読む(b: &[char], at: usize, mark: char) -> Option<(String, usize)>
         if b[j] == mark {
             // 閉じの印: 前が空白でなく、後ろが語の外
             if j > from && !b[j - 1].is_whitespace() && 区切り(b.get(j + 1)) {
-                return Some((b[from..j].iter().collect(), j + 1));
+                let inner: String = b[from..j].iter().collect();
+                // **数字だけなら書式にしない**(表を壊さない線引き)。
+                // `2**3**4` の開きの2つ目の `*` が、一重として `*3*` を
+                // 掴んでいた(2026-08-19 に試験で見つけた)
+                if inner.chars().all(|c| c.is_ascii_digit() || c == '.') {
+                    return None;
+                }
+                return Some((inner, j + 1));
             }
         }
         j += 1;
@@ -400,6 +456,28 @@ mod tests {
         // これで日本語の中の印が効く(下の試験)。裏返しに、日本語の間に
         // `_` を挟んだ名前は斜体になる — 分かっていて残す穴
         assert!(parse("売上_合計_表").is_some(), "この穴は分かっている");
+    }
+
+    /// **日本語の文中は二重の印**(2026-08-19 発注者の指摘)。
+    /// 一重は本家で字のまま出るので、確実なのは二重
+    #[test]
+    fn 二重の印は文中で効く() {
+        let s = one("これは**太字**です");
+        assert_eq!(s.len(), 3);
+        assert_eq!(s[1].text, "太字");
+        assert!(s[1].bold);
+        assert!(one("これは__斜体__です")[1].italic);
+        assert!(one("値は``x``です")[1].mono);
+        let t = one("これは[.line-through]##取消##です");
+        assert!(t[1].strike, "{t:?}");
+        assert_eq!(t[1].text, "取消");
+    }
+
+    /// 二重でも、中身が数字だけなら書式にしない(`2**3**4` は冪の字)
+    #[test]
+    fn 数字だけの二重は書式にしない() {
+        assert!(parse("2**3**4").is_none(), "冪の字が太字に化けた");
+        assert!(parse("x = 2**10").is_none(), "閉じの無い二重が化けた");
     }
 
     #[test]
