@@ -19,7 +19,7 @@
 //!
 //! 外から見える名前はここに集めてある。呼ぶ側は `sheet::calc::…` のまま。
 
-mod funcs;
+pub mod funcs;
 mod parse;
 mod run;
 

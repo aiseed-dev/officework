@@ -23,5 +23,6 @@ pub mod tabledesign;
 pub mod theme;
 pub mod xlsx;
 
+pub use calc::funcs::civil_from_days;
 pub use calc::{recalc, recalc_all, recalc_book};
 pub use model::{Book, Cell, Pos, Sheet, Value};

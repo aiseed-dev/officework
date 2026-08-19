@@ -4178,13 +4178,7 @@ impl Calc {
                 if text.is_empty() {
                     self.status = ui::t!("何も書き残しませんでした").into();
                 } else if let Some(cp) = self.chat_path() {
-                    let stamp = std::process::Command::new("date")
-                        .arg("+%Y-%m-%d %H:%M")
-                        .output()
-                        .ok()
-                        .filter(|o| o.status.success())
-                        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-                        .unwrap_or_default();
+                    let stamp = ui::now_stamp();
                     let line = format!("[{stamp}] {}: {text}\n", lock_identity());
                     use std::io::Write as _;
                     let r = std::fs::OpenOptions::new()

@@ -18,6 +18,8 @@
 use std::path::PathBuf;
 
 /// 文書の中の表で、セル関数を使う(SEKKEI「エンジンの統一」3段目)
+/// 上書きの前の控え(バージョン履歴)。writer と calc で1本
+pub mod history;
 pub mod table;
 
 /// ソケットの置き場所。`$XDG_RUNTIME_DIR/officework/<app>.sock`。

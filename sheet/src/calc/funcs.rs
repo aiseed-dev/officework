@@ -310,7 +310,7 @@ pub(super) fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
 }
 
 /// 1970-01-01 からの日数 → 暦(y,m,d)。
-pub(crate) fn civil_from_days(z: i64) -> (i64, i64, i64) {
+pub fn civil_from_days(z: i64) -> (i64, i64, i64) {
     let z = z + 719468;
     let era = if z >= 0 { z } else { z - 146096 } / 146097;
     let doe = z - era * 146097;

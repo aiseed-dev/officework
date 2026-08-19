@@ -345,76 +345,15 @@ impl Calc {
         }
     }
 
-    /// 上書きの前に、直前の中身を控えとして残す(最大9世代)。writer と
-    /// 同じ作法: 同じフォルダの .jo-history/<ファイル名>/<日時>.xlsx。
-    /// 名前は**その中身を保存した日時**(mtime)— いつの姿かが分かる。
+    /// 上書きの前に、いまの中身を控える(最大9世代)。**中身は `ops::history`**
+    /// — writer と calc で同じ物を使います
     pub(crate) fn keep_version(&self, p: &std::path::Path) {
-        let Some(name) = p.file_name().map(|n| n.to_string_lossy().to_string()) else {
-            return;
-        };
-        let dir = p
-            .parent()
-            .unwrap_or(std::path::Path::new("."))
-            .join(".jo-history")
-            .join(&name);
-        if std::fs::create_dir_all(&dir).is_err() {
-            return; // 控えられなくても保存は止めない
-        }
-        let stamp = std::process::Command::new("date")
-            .arg("-r")
-            .arg(p)
-            .arg("+%Y%m%d-%H%M%S")
-            .output()
-            .ok()
-            .filter(|o| o.status.success())
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-            .unwrap_or_else(|| "0".into());
-        // 控えの拡張子は**元と同じ**(.adoc のブックを .xlsx と名乗らない)
-        let ext = p.extension().and_then(|x| x.to_str()).unwrap_or("xlsx");
-        let _ = std::fs::copy(p, dir.join(format!("{stamp}.{ext}")));
-        if let Ok(rd) = std::fs::read_dir(&dir) {
-            let mut old: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
-            old.sort();
-            while old.len() > 9 {
-                let _ = std::fs::remove_file(old.remove(0));
-            }
-        }
+        ops::history::keep(p);
     }
 
     /// 控えの一覧(新しい順)。(表示名, パス)
     pub(crate) fn versions(&self) -> Vec<(String, PathBuf)> {
-        let Some(p) = &self.path else { return Vec::new() };
-        let Some(name) = p.file_name().map(|n| n.to_string_lossy().to_string()) else {
-            return Vec::new();
-        };
-        let dir = p
-            .parent()
-            .unwrap_or(std::path::Path::new("."))
-            .join(".jo-history")
-            .join(&name);
-        let Ok(rd) = std::fs::read_dir(&dir) else { return Vec::new() };
-        let mut v: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
-        v.sort();
-        v.reverse();
-        v.into_iter()
-            .map(|q| {
-                let stem = q
-                    .file_stem()
-                    .map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_default();
-                // 20260804-183012 → 2026-08-04 18:30
-                let disp = if stem.len() >= 13 && stem.is_ascii() {
-                    format!(
-                        "{}-{}-{} {}:{}",
-                        &stem[0..4], &stem[4..6], &stem[6..8], &stem[9..11], &stem[11..13]
-                    )
-                } else {
-                    stem
-                };
-                let kb = std::fs::metadata(&q).map(|m| m.len() / 1024).unwrap_or(0);
-                (format!("{disp}({kb} KB)"), q)
-            })
-            .collect()
+        ops::history::list(self.path.as_deref())
     }
 
     /// 控えを開く。いまのファイルは動かさず、**名無しの複製**として読む
