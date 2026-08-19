@@ -84,6 +84,7 @@ impl Writer {
             doc: Document::default(),
             docs: Vec::new(),
             doc_at: 0,
+            hand_off: None,
             files: Vec::new(),
             file_at: 0,
             ed: Editor::new(""),

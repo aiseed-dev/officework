@@ -1100,11 +1100,12 @@ impl Writer {
                                 .child(ui::t!("(空のフォルダです)")));
                         }
                         for (i, e) in 一覧.into_iter().take(200).enumerate() {
-                            // **writer が開けるのは文書だけ**です。表は
-                            // 一覧に出しますが、まだ押せません(画面を
-                            // 切り替える仕組みは「画面を1つにする」4段目)。
-                            // できないことを、できるように見せない
-                            let 開ける = e.kind.is_doc();
+                            // 文書はここで開き、表は `officework` に渡して
+                            // **同じウィンドウで表の画面に持ち替えます**
+                            // (2026-08-19 発注者「calc のファイルが表示される
+                            // ようにして」)。どちらも押せます
+                            let 開ける = e.kind.can_open();
+                            let 表だ = e.kind.is_sheet();
                             let 道 = e.path.clone();
                             let 札 = e.kind.label().to_string();
                             let いま = self.path.as_deref() == Some(e.path.as_path());
@@ -1124,10 +1125,16 @@ impl Writer {
                                 行 = 行.cursor_pointer()
                                     .hover(move |s| s.bg(th_btn_hover))
                                     .on_click(cx.listener(move |t, _, _, cx| {
-                                        // **新しいタブで開きます**(2026-08-19)。
-                                        // 開いている物は閉じません
-                                        t.open_in_tab(道.clone());
                                         t.remember_folder();
+                                        if 表だ {
+                                            // 表は officework に渡す(同じ
+                                            // ウィンドウで表の画面になります)
+                                            t.hand_off = Some(道.clone());
+                                        } else {
+                                            // **新しいタブで開きます**。
+                                            // 開いている物は閉じません
+                                            t.open_in_tab(道.clone());
+                                        }
                                         cx.notify()
                                     }));
                             }

@@ -459,7 +459,25 @@ impl Render for Calc {
         let dlg_open = self.dialog_open();
         let mut tabs = div().flex().flex_row().items_end().gap_1()
             .px_2().bg(th_band);
-        for (i, tb) in ribbon::calc_tabs().iter().enumerate() {
+        // **段は 15 段を同じ並びで出します**(2026-08-19 発注者「使わない
+        // 場合には灰色にすればいいでしょう」)。表に無い段(参考資料・
+        // フォーム)は灰色で、押せません。並びが動かないので、文章の画面と
+        // 行き来しても段を探し直さずに済みます
+        for (位置, (名, _, 表の段)) in ribbon::merged_tabs().into_iter().enumerate() {
+            let Some(i) = 表の段 else {
+                // この画面には無い段。**灰色で出す**(未実装の釦と同じ描き方)
+                tabs = tabs.child(div()
+                    .id(SharedString::from(format!("tab{位置}")))
+                    .px_2p5().pt_1p5()
+                    .text_size(px(us * 12.0))
+                    .text_color(th_gray)
+                    .flex().flex_col().items_center().gap_1()
+                    .child(名)
+                    .child(div().h(px(2.0)).w_full()));
+                continue;
+            };
+            let tb = &ribbon::calc_tabs()[i];
+            // 文脈タブ(ピボット・表のデザイン)は、出る条件が揃うまで出さない
             if ctx_hidden(tb) {
                 continue;
             }

@@ -651,7 +651,7 @@ impl CalcAi {
 
 /// **アプリを起動する。** `main.rs` はこれを呼ぶだけです
 /// (2026-08-19 に切り出しました。1つのウィンドウに表と文章の両方を
-/// 載せるには、殻ではなくライブラリである必要があります)。
+/// 載せるには、バイナリではなくライブラリである必要があります)。
 pub fn run() {
     let arg = std::env::args().nth(1).map(PathBuf::from);
     application().with_assets(ui::Icons).run(move |cx: &mut App| {

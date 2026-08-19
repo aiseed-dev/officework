@@ -53,6 +53,58 @@ pub fn calc_tabs() -> &'static [Tab] {
         .unwrap_or(CALC)
 }
 
+/// **段の並びを1本にする**(SEKKEI「画面を1つにする」5段目、2026-08-19
+/// 発注者「5段目は、整理だけで済むはずです。使わない場合には灰色にすれば
+/// いいでしょう」)。
+///
+/// 文章の段は 11、表の段は 13、合わせて **15 段**(共通が 9 段)です。
+/// どちらの画面でも 15 段を同じ並びで出し、*その画面に無い段は灰色*に
+/// します。並びが動かないので、画面が変わっても段を探し直さずに済みます。
+///
+/// 返すのは `(見出し, 文章の段番号, 表の段番号)` です。番号が `None` の
+/// ところが、その画面には無い段です。
+///
+/// **見出しは訳された表から取ります。** 段の名前は言語ごとに変わるので、
+/// 名前で突き合わせることはできません — *並びの番号で組みます*。
+pub fn merged_tabs() -> Vec<(&'static str, Option<usize>, Option<usize>)> {
+    let w = writer_tabs();
+    let c = calc_tabs();
+    TAB_PAIRS
+        .iter()
+        .map(|(wi, ci)| {
+            // 見出しはある方から取る(どちらも訳された表)
+            let 名 = wi
+                .and_then(|i| w.get(i).map(|t| t.name))
+                .or_else(|| ci.and_then(|i| c.get(i).map(|t| t.name)))
+                .unwrap_or("");
+            (名, *wi, *ci)
+        })
+        .collect()
+}
+
+/// 段の組 `(文章の段番号, 表の段番号)`。**言語を見ません。**
+///
+/// 言語を引く道(`writer_tabs`)は1プロセスに一度きりの初期化を通るので、
+/// 試験からはこちらを見ます(2026-08-19 に、言語の試験を巻き込んで
+/// 落としました)。
+pub const TAB_PAIRS: &[(Option<usize>, Option<usize>)] = &[
+        (Some(0), Some(0)),   // ファイル
+        (Some(1), Some(1)),   // ホーム
+        (Some(2), Some(2)),   // 挿入
+        (Some(3), Some(3)),   // 描画
+        (Some(4), Some(4)),   // レイアウト
+        (Some(5), None),      // 参考資料(文章だけ)
+        (Some(6), None),      // フォーム(文章だけ)
+        (None, Some(5)),      // 数式(表だけ)
+        (None, Some(6)),      // データ(表だけ)
+        (None, Some(8)),      // ピボットテーブル(表だけ)
+        (None, Some(9)),      // 表のデザイン(表だけ)
+        (Some(7), Some(10)),  // 共同編集
+        (Some(8), Some(11)),  // 保護
+        (Some(9), Some(12)),  // 表示
+        (Some(10), Some(7)),  // マクロ
+];
+
 pub struct Tab {
     pub name: &'static str,
     pub cmds: &'static [Cmd],
@@ -721,4 +773,3 @@ mod tests {
         }
     }
 }
-

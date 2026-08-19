@@ -45,11 +45,32 @@ impl Office {
     }
 }
 
+impl Office {
+    /// **持ち替えの頼みを受け取る**(2026-08-19 発注者「calc のファイルが
+    /// 表示されるようにして」)。
+    ///
+    /// 文章の画面で表を押されたら、*同じウィンドウで*表の画面に持ち替えます。
+    /// 別のアプリを起こすわけではありません。
+    fn 持ち替え(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let 頼み = match &self.shown {
+            Shown::Doc(v) => v.update(cx, |w, _| w.hand_off.take()),
+            Shown::Sheet(_) => None,
+        };
+        let Some(p) = 頼み else { return };
+        let v = cx.new(|cx| calc::Calc::new(Some(p), cx));
+        window.focus(&v.focus_handle(cx), cx);
+        self.shown = Shown::Sheet(v);
+        cx.notify();
+    }
+}
+
 impl Render for Office {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        // いまは選んだ編集画面をそのまま出します。ファイルのタブと
-        // フォルダの一覧は、それぞれの編集画面が持っているものを使います
-        // (1つに寄せるのは5段目「リボンの段選び」と一緒にやります)
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // **持ち替えの頼みは描く前に見ます。** 見落とすと、押しても何も
+        // 起きないように見えます
+        self.持ち替え(window, cx);
+        // 選んだ編集画面をそのまま出します。ファイルのタブとフォルダの
+        // 一覧は、それぞれの編集画面が持っているものを使います
         div().size_full().child(match &self.shown {
             Shown::Doc(v) => v.clone().into_any_element(),
             Shown::Sheet(v) => v.clone().into_any_element(),

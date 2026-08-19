@@ -187,6 +187,12 @@ pub struct Writer {
     docs: Vec<Document>,
     /// いま見ている文書は何枚目か
     doc_at: usize,
+    /// **この画面では開けないファイルを頼まれた**(2026-08-19)。
+    ///
+    /// 一覧で表を押されたときにここへ入れます。`officework` が毎回見て、
+    /// 表の画面に持ち替えます。*同じウィンドウに表が出る*ための受け渡しで、
+    /// 別のアプリを起こすわけではありません。
+    pub hand_off: Option<PathBuf>,
     /// **開いている他のファイル**(2026-08-19)。いま見ている物は
     /// `Writer` の欄にあり、ここの `file_at` 番目は空の置き場です
     files: Vec<OpenFile>,
@@ -913,7 +919,7 @@ mod tests;
 
 /// **アプリを起動する。** `main.rs` はこれを呼ぶだけです
 /// (2026-08-19 に切り出しました。1つのウィンドウに表と文章の両方を
-/// 載せるには、殻ではなくライブラリである必要があります)。
+/// 載せるには、バイナリではなくライブラリである必要があります)。
 pub fn run() {
     let arg = std::env::args().nth(1).map(PathBuf::from);
     application().with_assets(ui::Icons).run(move |cx: &mut App| {

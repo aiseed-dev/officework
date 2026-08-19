@@ -144,7 +144,24 @@ impl Render for Writer {
         };
         let mut tabs = div().flex().flex_row().items_end().gap_1()
             .px_2().bg(th_tab_on_bg);
-        for (i, tb) in ribbon::writer_tabs().iter().enumerate() {
+        // **段は 15 段を同じ並びで出します**(2026-08-19 発注者「使わない
+        // 場合には灰色にすればいいでしょう」)。文章に無い段(数式・データ・
+        // ピボット・表のデザイン)は灰色で、押せません。並びが動かないので、
+        // 表の画面と行き来しても段を探し直さずに済みます
+        for (位置, (名, 文章の段, _)) in ribbon::merged_tabs().into_iter().enumerate() {
+            let Some(i) = 文章の段 else {
+                // この画面には無い段。**灰色で出す**(未実装の釦と同じ描き方)
+                tabs = tabs.child(div()
+                    .id(SharedString::from(format!("tab{位置}")))
+                    .px_2p5().pt_1p5()
+                    .text_size(px(12.0))
+                    .text_color(th_gray_fg)
+                    .flex().flex_col().items_center().gap_1()
+                    .child(名)
+                    .child(div().h(px(2.0)).w_full()));
+                continue;
+            };
+            let tb = &ribbon::writer_tabs()[i];
             let on = i == self.tab;
             tabs = tabs.child(div()
                 .id(SharedString::from(format!("tab{i}")))
