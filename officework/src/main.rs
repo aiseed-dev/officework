@@ -116,6 +116,42 @@ impl Pane {
         }
     }
 
+    /// いま選んでいるリボンの段が、**揃えた並びで何番目か**。
+    /// 番号は画面ごとに違う(文章に無い段があるため)ので、
+    /// 持ち越すときは**揃えた並びの位置**に直してから渡します。
+    fn 段の位置(&self, cx: &App) -> Option<usize> {
+        let 並び = ui::tabs::merged();
+        match self {
+            Pane::Doc(v) => {
+                let i = v.read(cx).ribbon_tab();
+                並び.iter().position(|s| s.doc == Some(i))
+            }
+            Pane::Sheet(v) => {
+                let i = v.read(cx).ribbon_tab();
+                並び.iter().position(|s| s.sheet == Some(i))
+            }
+        }
+    }
+
+    /// 揃えた並びの位置で段を選ぶ。**この画面に無い段なら動かしません** —
+    /// 無理に近くの段へ寄せると、押していないのに別の段が開いて見えます。
+    fn 段を合わせる(&self, 位置: usize, cx: &mut App) {
+        let 並び = ui::tabs::merged();
+        let Some(slot) = 並び.get(位置) else { return };
+        match self {
+            Pane::Doc(v) => {
+                if let Some(i) = slot.doc {
+                    v.update(cx, |w, _| w.set_ribbon_tab(i));
+                }
+            }
+            Pane::Sheet(v) => {
+                if let Some(i) = slot.sheet {
+                    v.update(cx, |c, _| c.set_ribbon_tab(i));
+                }
+            }
+        }
+    }
+
     fn focus(&self, cx: &App) -> gpui::FocusHandle {
         match self {
             Pane::Doc(v) => v.focus_handle(cx),
@@ -150,7 +186,7 @@ impl Office {
                 });
             }
             let at = 前.at.min(tabs.len().saturating_sub(1));
-            let mut o = Office { tabs, at, 焦点を移す: true };
+            let o = Office { tabs, at, 焦点を移す: true };
             // **黙って減らさない。** 開けなかった数は状態行で言います
             if *落ちた > 0 {
                 o.言う(&ui::tf!("前回開いていた {} 件が見つかりませんでした", 落ちた.to_string()), cx);
@@ -280,6 +316,9 @@ impl Office {
     /// **焦点は描くときに移します。** ここは受け口からも呼ばれ、そちらには
     /// `Window` がありません。窓を持っている `render` に1回だけ任せます
     fn タブで開く(&mut self, p: std::path::PathBuf, cx: &mut Context<Self>) {
+        // **いま見ている段を控えてから移ります**(段6)。移った先で同じ段を
+        // 開き直すので、ホームを見たまま文書と表を行き来できます
+        let 段 = self.見ている().段の位置(cx);
         if let Some(i) = self.tabs.iter().position(|t| t.道(cx).as_deref() == Some(p.as_path())) {
             self.at = i;
         } else {
@@ -290,6 +329,9 @@ impl Office {
             };
             self.tabs.push(pane);
             self.at = self.tabs.len() - 1;
+        }
+        if let Some(位置) = 段 {
+            self.見ている().段を合わせる(位置, cx);
         }
         self.焦点を移す = true;
         self.姿を控える(cx);
@@ -475,7 +517,11 @@ impl Render for Office {
                         .text_color(if on { 字 } else { 薄字 })
                         .child(gpui::SharedString::from(札))
                         .on_click(cx.listener(move |this, _, _, cx| {
+                            let 段 = this.見ている().段の位置(cx);
                             this.at = i;
+                            if let Some(位置) = 段 {
+                                this.見ている().段を合わせる(位置, cx);
+                            }
                             this.焦点を移す = true;
                             this.姿を控える(cx);
                             cx.notify()

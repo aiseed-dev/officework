@@ -521,6 +521,18 @@ impl Writer {
         self.embedded = true;
     }
 
+    /// **いま選んでいるリボンの段**(`officework` が画面をまたいで持ち越す)。
+    pub fn ribbon_tab(&self) -> usize {
+        self.tab
+    }
+
+    /// リボンの段を選ぶ。**この画面に無い段は動かしません**。
+    pub fn set_ribbon_tab(&mut self, i: usize) {
+        if i < ribbon::writer_tabs().len() {
+            self.tab = i;
+        }
+    }
+
     /// 画面が暗い側か(`officework` がタブの行の色を合わせるのに使う)。
     pub fn is_dark(&self) -> bool {
         self.dark
