@@ -17,26 +17,27 @@ You watch the result, finish it by hand, and drive a live workbook from Python.
 
 The app is *one binary, officework*.
 You open a folder and edit documents and spreadsheets in tabs of the same window.
-Which of the two editors opens a file is decided by its name:
+The two editors inside have names: *writer* for documents, *calc* for spreadsheets.
+Which one opens a file is decided by its name:
 
-* documents (`name.adoc`) — *a visual editor for AsciiDoc*: edit your source as it looks, and put it out as screen, PDF, HTML or docx. docx is the delivery format — you can open one and turn it into adoc (link:docs/writer-manual.adoc[document manual])
-* spreadsheets (`name.sheet.adoc`) — a spreadsheet that calculates formulas. It opens, edits and saves xlsx too (link:docs/calc-manual.adoc[spreadsheet manual])
+* *writer* (documents — `name.adoc`) — a visual editor for AsciiDoc: edit your source as it looks, and put it out as screen, PDF, HTML or docx. docx is the delivery format — you can open one and turn it into adoc (link:docs/writer-manual.adoc[writer manual])
+* *calc* (spreadsheets — `name.sheet.adoc`) — a spreadsheet that calculates formulas. It opens, edits and saves xlsx too (link:docs/calc-manual.adoc[calc manual])
 
 Close and reopen, and the folder, files and tabs from last time come back.
 
 == What works today
 
-The highlights only — the full list lives in the link:docs/writer-manual.adoc[document manual] and the link:docs/calc-manual.adoc[spreadsheet manual], which describe only what works today.
+The highlights only — the full list lives in the link:docs/writer-manual.adoc[writer manual] and the link:docs/calc-manual.adoc[calc manual], which describe only what works today.
 
-* *Documents* — Japanese typesetting up to vertical writing, ruby (furigana) and distributed justification. Form fields (build a form, protect it, hand it out), TOC, track changes, comments, drawing, printing where the paper changes partway, PDF. A docx survives open-and-save
-* *Spreadsheets* — about 185 functions (incl. dynamic arrays), recalculation with circular-reference detection, multiple sheets, pivot tables, conditional formatting, data validation, charts (backed by matplotlib), a solver, protection and encryption, PDF. An xlsx survives too
+* *writer (documents)* — Japanese typesetting up to vertical writing, ruby (furigana) and distributed justification. Form fields (build a form, protect it, hand it out), TOC, track changes, comments, drawing, printing where the paper changes partway, PDF. A docx survives open-and-save
+* *calc (spreadsheets)* — about 185 functions (incl. dynamic arrays), recalculation with circular-reference detection, multiple sheets, pivot tables, conditional formatting, data validation, charts (backed by matplotlib), a solver, protection and encryption, PDF. An xlsx survives too
 
 The ribbon layout follows Euro-Office, so people who switch don't have to relearn where things are. *Commands that don't work yet are shown grayed out* — we never make something look usable when it isn't.
 
 *There are no VBA-style macros, and workbooks never carry code.* Workbooks (.sheet.adoc / .xlsx) hold data only, code lives in .py — separate files.
 Procedures and user functions go in `~/.config/officework/plugins/`; run a procedure with `@name`, and call a function from a cell like any other (`=double(A1)`), or write one inline with `=PY(…)`.
 A workbook you receive contains no code, so the "open = execute" attack path does not exist here.
-See the link:docs/calc-manual.adoc[spreadsheet manual].
+See the link:docs/calc-manual.adoc[calc manual].
 
 == Getting it
 
@@ -132,7 +133,7 @@ OFFICE_FONT=/path/to/font.ttf ./target/release/officework   # explicit override
 
 Having `fonts-noto-cjk` or `fonts-ipaexfont` installed is enough.
 
-=== Proofreading (documents: Review > Proofread)
+=== Proofreading (writer: Review > Proofread)
 
 English spelling is checked against a dictionary (`/usr/share/dict/words` etc.).
 Japanese misconversions and inconsistent spellings can't be caught by a dictionary, so we ask a local model.
@@ -197,7 +198,7 @@ from officework import doc
 d = doc.Doc.open("report.docx")
 print(d.unsupported)               # the list of parts it couldn't read (empty = everything was read)
 d.replace("Old Name Ltd.", "New Name Ltd.")   # formatting inside the paragraph is left alone
-d.fill("customer", "Nihon Funen K.K.")  # fill a named form field (named in the document editor)
+d.fill("customer", "Nihon Funen K.K.")  # fill a named form field (named in writer)
 d[3].text = "replaced"             # the heading stays a heading; alignment and first-line indent survive
 print(d.tables[0][1][2].text)      # table, row, cell
 d.save("out.docx")
@@ -206,7 +207,7 @@ d.save("out.docx")
 `replace()` is the one to reach for when filling in a form: it keeps each run's formatting, so a bold field label next to a plain value stays that way.
 Assigning to `.text` replaces the whole paragraph and gives it the first run's formatting.
 
-To drive a running spreadsheet from the outside, use the bridge instead.
+To drive a running calc from the outside, use the bridge instead.
 That one does need the app.
 
 [source,python]
@@ -214,7 +215,7 @@ That one does need the app.
 from officework import calc as xw   # Book / Range, in the style of xlwings
 ----
 
-The reference for programmers is the link:docs/python-manual.adoc[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` variable in document macros, and what the sandbox allows.
+The reference for programmers is the link:docs/python-manual.adoc[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` variable in writer macros, and what the sandbox allows.
 All verified on a real machine.
 
 == Layout
@@ -279,10 +280,10 @@ Origins of bundled and derived material are listed in `NOTICE.md`.
 
 == Status
 
-Ribbon buttons: *documents 0 grayed out, spreadsheets 9* (2026-08-10).
+Ribbon buttons: *writer 0 grayed out, calc 9* (2026-08-10).
 The nine are shape ordering, alignment, grouping and merging on the Layout tab, protecting a workbook or a range on Protect, and the normal and page-break views on View.
 Everything else on both ribbons works.
 
-Both figures are checked on every push against the ribbon tables themselves, so this line cannot quietly go stale — which is exactly what it had done: it said zero for months while the spreadsheet ribbon showed nine.
+Both figures are checked on every push against the ribbon tables themselves, so this line cannot quietly go stale — which is exactly what it had done: it said zero for months while calc showed nine.
 
 Design decisions are recorded in `SEKKEI.adoc` (Japanese), history and open items in `HIKITSUGI.adoc` (Japanese), and there are ready-to-open samples in `sample/`.
