@@ -94,6 +94,8 @@ def keys_from(path):
     # `face` は `ui` に依存しない(絵を描かない層)ので、`lang::i18n::tr(…)` と
     # 直に呼ぶ。前置きを揃えてから走査する — 揃えないと face の札が
     # 見えないままになる。**lang/tests/i18n_soroi.rs の走査と揃えること**
+    # **`trf` を先に**(`tr(` を先に直すと `trf(` は素通りする)
+    src = src.replace("lang::i18n::trf(", "ui::tf!(")
     src = src.replace("lang::i18n::tr(", "ui::t!(")
     out = []
     # `ui::item!("…")` は一覧の項の鍵(訳すのは見出しだけ)。t!/tf! と同じ鍵。

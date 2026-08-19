@@ -136,6 +136,8 @@ fn keys_in(src: &str) -> Vec<String> {
         .replace("crate::item!(", "ui::item!(")
         // `face` は `ui` に依存しない(絵を描かない層)ので `lang::i18n::tr`
         // と直に呼ぶ。揃えないと face の札が見えないままになる
+        // **`trf` を先に**(`tr(` を先に直すと `trf(` は素通りする)
+        .replace("lang::i18n::trf(", "ui::tf!(")
         .replace("lang::i18n::tr(", "ui::t!(");
     let src: &str = &owned;
     let b = src.as_bytes();

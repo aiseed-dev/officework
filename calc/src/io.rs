@@ -112,21 +112,8 @@ impl Calc {
         let (hits, tally) = ui::search::walk(&dir, &q);
         self.fd_hits = hits;
         self.fd_tally = tally;
-        let mut s = ui::tf!(
-            "{} 件のファイルに {} 件(見たのは {} 件 / {})",
-            tally.matched.to_string(),
-            tally.hits.to_string(),
-            tally.looked.to_string(),
-            ui::search::human_size(tally.bytes)
-        )
-        .to_string();
-        if tally.unread > 0 {
-            s.push_str(&ui::tf!(" — 読めなかった {} 件", tally.unread.to_string()));
-        }
-        if tally.cut {
-            s.push_str(ui::t!(" — 多いので途中で止めました"));
-        }
-        self.status = s.into();
+        // 報せは ui::search の1本(writer と calc で同じ文)
+        self.status = ui::search::tally_message(&tally).into();
     }
 
     /// 当たりを1つ選ぶ。**開かない** — 下に前後を見せるだけ

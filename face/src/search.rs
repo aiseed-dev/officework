@@ -151,6 +151,24 @@ fn skip_dir(name: &str) -> bool {
 ///
 /// **辿る順は名前の順**(同じ場所を2回探せば同じ並びになる — 読む人が
 /// 迷わない)。
+/// **探した結果の報せ**(writer と calc で同じ文)。
+///
+/// *打ち切りも読めなかった数も言います* — 全部見たように見せません。
+/// 前は両方のアプリに同じ 15 行が写してありました(2026-08-20 に1本に)。
+pub fn tally_message(t: &Tally) -> String {
+    let mut s = lang::i18n::trf(
+        "{} 件のファイルに {} 件(見たのは {} 件 / {})",
+        &[&t.matched, &t.hits, &t.looked, &human_size(t.bytes)],
+    );
+    if t.unread > 0 {
+        s.push_str(&lang::i18n::trf(" — 読めなかった {} 件", &[&t.unread]));
+    }
+    if t.cut {
+        s.push_str(lang::i18n::tr(" — 多いので途中で止めました"));
+    }
+    s
+}
+
 pub fn walk(root: &Path, q: &Query) -> (Vec<FileHits>, Tally) {
     let mut out: Vec<FileHits> = Vec::new();
     let mut t = Tally::default();
