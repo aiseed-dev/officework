@@ -36,38 +36,48 @@ fn from_file(key: &str) -> Option<String> {
     None
 }
 
-static LANG: OnceLock<String> = OnceLock::new();
+/// いまの言語。**いつでも変えられます**(2026-08-19 発注者「言語は設定で
+/// いつでも変更できるようにして」)。
+///
+/// 前は1プロセス1回で固まっていて、設定で選んでも*次の起動まで効きません*
+/// でした。読み書きできる錠に替えたので、選んだその場で変わります。
+static LANG: std::sync::RwLock<Option<&'static str>> = std::sync::RwLock::new(None);
 
 /// 画面の言語。**文言が揃った言語だけ**を受ける(登録簿 i18n_tables が正)。
 /// 優先順: [`set_language`] の注入 > 環境変数 OFFICE_LANG > settings.toml > 既定 ja
 pub fn language() -> &'static str {
-    LANG.get_or_init(|| {
-        let raw = std::env::var("OFFICE_LANG")
-            .ok()
-            .filter(|s| !s.is_empty())
-            .or_else(|| from_file("language"))
-            .unwrap_or_default();
-        if crate::i18n_tables::LANGS.contains(&raw.as_str()) {
-            raw
-        } else {
-            "ja".into()
-        }
-    })
+    if let Some(l) = *LANG.read().expect("言語の錠") {
+        return l;
+    }
+    let raw = std::env::var("OFFICE_LANG")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| from_file("language"))
+        .unwrap_or_default();
+    let l = 静かな札(&raw).unwrap_or("ja");
+    *LANG.write().expect("言語の錠") = Some(l);
+    l
+}
+
+/// 札を、表に載っている `&'static str` に直す。無ければ `None`。
+fn 静かな札(tag: &str) -> Option<&'static str> {
+    if tag == "ja" {
+        return Some("ja");
+    }
+    crate::i18n_tables::LANGS.iter().find(|x| **x == tag).copied()
 }
 
 /// 言語を外から注ぐ — settings.toml を持たない的(スマホの Swift / Kotlin の
 /// 画面、WASM)のため。ファイルを読む代わりに、アプリが OS の言語設定を
 /// ここへ渡す。
 ///
-/// **起動の最初に1回。** 一度 [`language`] が走ると値は固まるので、
-/// その後は効かず false を返す(黙って効いたふりをしない)。
-/// 知らない札も false — 黙って ja に落とさない。呼ばなければ今までどおり
-/// (環境変数 → settings.toml → ja)なので、デスクトップは何も変わらない
+/// **いつ呼んでも効きます**(2026-08-19)。設定で選び直したときもここを
+/// 通します。知らない札は false — 黙って ja に落としません。
+/// 呼ばなければ今までどおり(環境変数 → settings.toml → ja)です。
 pub fn set_language(tag: &str) -> bool {
-    if tag != "ja" && !crate::i18n_tables::LANGS.contains(&tag) {
-        return false;
-    }
-    LANG.set(tag.to_string()).is_ok()
+    let Some(l) = 静かな札(tag) else { return false };
+    *LANG.write().expect("言語の錠") = Some(l);
+    true
 }
 
 /// 選べる言語(ja + 表の揃った言語)。設定ページの巡回もこれを見る
@@ -109,12 +119,22 @@ pub fn language_label(tag: &str) -> &str {
     }
 }
 
+/// いまの言語の対訳表。**言語ごとに作って取っておきます。**
+///
+/// 前は1つだけ作って固めていたので、言語を変えても前の表を見ていました。
+/// 言語は 14 個で頭打ちなので、作った表はそのまま置いておきます
+/// (`Box::leak`)。
 fn lang_map() -> Option<&'static HashMap<&'static str, &'static str>> {
-    static MAP: OnceLock<Option<HashMap<&'static str, &'static str>>> = OnceLock::new();
-    MAP.get_or_init(|| {
-        crate::i18n_tables::table(language()).map(|t| t.iter().copied().collect())
+    type 表 = HashMap<&'static str, &'static str>;
+    static 作った: OnceLock<std::sync::Mutex<HashMap<&'static str, Option<&'static 表>>>> =
+        OnceLock::new();
+    let 箱 = 作った.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
+    let l = language();
+    let mut 箱 = 箱.lock().expect("対訳表の錠");
+    *箱.entry(l).or_insert_with(|| {
+        crate::i18n_tables::table(l)
+            .map(|t| &*Box::leak(Box::new(t.iter().copied().collect::<表>())))
     })
-    .as_ref()
 }
 
 /// 文をいまの言語で。表に無い文は ja のまま(嘘の翻訳を作らない)

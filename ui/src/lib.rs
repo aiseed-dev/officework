@@ -14,7 +14,7 @@ pub use lang::ja::{furigana, proof};
 pub use lang::{check, spell, Language, Target};
 pub use lang::model::Endpoint;
 pub use lang::ai;
-pub use lang::i18n::{language, language_label, languages, tr, trf};
+pub use lang::i18n::{language, language_label, languages, set_language, tr, trf};
 
 /// 画面の文言(そのままの文)。ja の文が鍵 — ja では何も変わらない
 #[macro_export]

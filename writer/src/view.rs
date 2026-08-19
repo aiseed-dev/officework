@@ -1057,7 +1057,17 @@ impl Render for Writer {
                                 let i = all.iter().position(|l| **l == cur).unwrap_or(0);
                                 let next = all[(i + 1) % all.len()];
                                 ui::settings::set("language", next);
-                                this.status = ui::t!("言語を控えました(次の起動から効きます。環境変数 OFFICE_LANG があればそちらが優先)").into();
+                                // **その場で効かせます**(2026-08-19 発注者
+                                // 「言語はいつでも変更できるようにして」)。
+                                // 環境変数が立っているときは、そちらが優先
+                                // なのでそう言います — 黙って効いたふりを
+                                // しません
+                                let 効いた = ui::set_language(next);
+                                this.status = if 効いた {
+                                    ui::t!("言語を変えました").into()
+                                } else {
+                                    ui::t!("言語を控えました(環境変数 OFFICE_LANG があるので、そちらが優先です)").into()
+                                };
                                 cx.notify()
                             }))))
                     // ── AI ────────────────────────────────────────────
