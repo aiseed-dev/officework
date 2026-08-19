@@ -2868,3 +2868,83 @@ mod 表の式 {
         });
     }
 }
+
+/// **1つのファイルに文書を何枚も**(2026-08-19 発注者「同時に送付する
+/// 請求書の原稿をまとめて保存する場合につかいます」)。
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod 請求書をまとめる {
+    use crate::*;
+
+    fn 三枚() -> String {
+        "[discrete]\n= 請求書 山田商店\n\n金額 12,000 円\n\n\
+         [discrete]\n= 請求書 鈴木工業\n\n金額 8,400 円\n\n\
+         [discrete]\n= 請求書 佐藤商会\n\n金額 3,300 円\n".into()
+    }
+
+    #[gpui::test]
+    fn 三枚を開いて行き来できる(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("jo-many-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("請求書.adoc");
+        std::fs::write(&p, 三枚()).unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.open(p.clone());
+            assert_eq!(this.doc_count(), 3, "文書の枚数が合わない");
+            assert_eq!(this.doc_name(0), "請求書 山田商店");
+            assert_eq!(this.doc_name(2), "請求書 佐藤商会");
+            // いまは1枚目
+            assert!(this.doc.body_text().contains("12,000"), "{:?}", this.doc.body_text());
+
+            // 3枚目へ行く
+            this.show_doc(2);
+            assert_eq!(this.doc_at, 2);
+            assert!(this.doc.body_text().contains("3,300"), "{:?}", this.doc.body_text());
+            // 戻る
+            this.show_doc(0);
+            assert!(this.doc.body_text().contains("12,000"));
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **保存すると3枚とも残る。** 見ていない文書を落とさない
+    #[gpui::test]
+    fn 保存で三枚とも残る(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("jo-many2-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("請求書.adoc");
+        std::fs::write(&p, 三枚()).unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.open(p.clone());
+            this.show_doc(1); // 2枚目を見ている状態で保存
+            let 並び = this.docs_for_save();
+            assert_eq!(並び.len(), 3, "保存の並びが3枚でない");
+            assert_eq!(並び[0].props.title, "請求書 山田商店");
+            assert_eq!(並び[1].props.title, "請求書 鈴木工業");
+            assert_eq!(並び[2].props.title, "請求書 佐藤商会");
+            // いま見ている2枚目の中身が入っていること
+            assert!(並び[1].body_text().contains("8,400"));
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 1枚だけのファイルは耳を出さない(何も選べない耳は邪魔)
+    #[gpui::test]
+    fn 一枚なら耳は出ない(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("jo-many3-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("報告.adoc");
+        std::fs::write(&p, "= 報告書\n\n本文です。\n").unwrap();
+
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.open(p.clone());
+            assert_eq!(this.doc_count(), 1, "1枚のはずが {} 枚", this.doc_count());
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

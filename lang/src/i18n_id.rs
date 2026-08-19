@@ -1861,4 +1861,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("ファイル — フォルダの中身", "Berkas — isi folder"),
     ("フォルダを開いていません(ファイル > 開く)", "Tidak ada folder yang terbuka (Berkas > Buka)"),
     ("(空のフォルダです)", "(folder kosong)"),
+    ("文書 {}", "Dokumen {}"),
+    ("{}(文書 {} 枚)", "{} ({} dokumen)"),
 ];

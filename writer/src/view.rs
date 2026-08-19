@@ -583,6 +583,30 @@ impl Render for Writer {
             div().flex().flex_col().child(top).child(tabs).child(cmds)
         };
 
+        // ---- 文書の耳(1つのファイルに何枚も入っているとき) ----
+        //
+        // **calc のシートの耳と同じ位置・同じ動き**にしてあります
+        // (2026-08-19)。表の画面と文章の画面で、下の耳の意味が揃います。
+        // 1枚しか入っていないときは出しません — 何も選べない耳は邪魔です
+        let docs_bar = (self.doc_count() > 1).then(|| {
+            let mut bar = div().flex().flex_row().items_center().gap_1()
+                .px_3().py_1().bg(rgb(0xF1F3F5))
+                .border_t_1().border_color(rgb(0xD5DBE0));
+            for i in 0..self.doc_count() {
+                let on = i == self.doc_at;
+                bar = bar.child(div()
+                    .id(SharedString::from(format!("doc{i}")))
+                    .px_3().py_1().rounded_sm().cursor_pointer()
+                    .bg(if on { rgb(0xFFFFFF) } else { rgb(0xEFF2F4) })
+                    .border_1().border_color(if on { rgb(0x1B6E3C) } else { rgb(0xD5DBE0) })
+                    .text_size(px(11.5))
+                    .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x4A5560) })
+                    .child(SharedString::from(self.doc_name(i)))
+                    .on_click(cx.listener(move |t, _, _, cx| { t.show_doc(i); cx.notify() })));
+            }
+            bar
+        });
+
         // ---- 下のステータスバー(デスクトップ版: ページ・文字数・ズーム) ----
         let total_pages = self.page_offsets.len().max(1);
         let cur_page = self
@@ -2042,6 +2066,8 @@ impl Render for Writer {
                     .children(menu))
                 .children(rp_panel)
             })
+            // **文書の耳はステータスバーの上**(calc のシートの耳と同じ位置)
+            .children(docs_bar)
             .children(self.show_statusbar.then_some(statusbar))
             // 窓の縁のつかみ(最後に描く = 最初にマウスを受ける)。
             // GNOME の Wayland は外枠を付けないので、これが無いと

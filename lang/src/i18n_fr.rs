@@ -1861,4 +1861,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("ファイル — フォルダの中身", "Fichiers — contenu du dossier"),
     ("フォルダを開いていません(ファイル > 開く)", "Aucun dossier ouvert (Fichier > Ouvrir)"),
     ("(空のフォルダです)", "(le dossier est vide)"),
+    ("文書 {}", "Document {}"),
+    ("{}(文書 {} 枚)", "{} ({} documents)"),
 ];

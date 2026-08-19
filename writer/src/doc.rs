@@ -82,6 +82,8 @@ impl Writer {
         let mut w = Writer {
             focus: cx.focus_handle(),
             doc: Document::default(),
+            docs: Vec::new(),
+            doc_at: 0,
             ed: Editor::new(""),
             page: Page::default(),
             path: None,
@@ -2205,7 +2207,9 @@ impl Writer {
     /// テンプレートが持つ(SEKKEI「本文とテンプレートを分ける」)。
     pub(crate) fn open_adoc(&mut self, p: &std::path::Path, bytes: &[u8]) {
         let text = String::from_utf8_lossy(bytes).replace("\r\n", "\n");
-        let (doc, 帳簿) = match kumihan::adoc::parse_full(&text) {
+        // **1つのファイルに文書が何枚も入っていることがあります**
+        // (同時に送る請求書の原稿など。2026-08-19)。`= 題` で切れています
+        let (mut 文書たち, 帳簿) = match kumihan::adoc::parse_many_full(&text) {
             Ok(d) => d,
             Err(e) => {
                 // **読めない所は言う。** 黙って本文に化けさせない
@@ -2213,6 +2217,8 @@ impl Writer {
                 return;
             }
         };
+        let doc = 文書たち.first().cloned().unwrap_or_default();
+        let 枚数 = 文書たち.len();
         self.target = Target::Body;
         self.hf_edit = None;
         self.track = false;
@@ -2229,6 +2235,14 @@ impl Writer {
         // 用紙はテンプレートが持つ(本文は持たない)
         self.pg = self.tmpl.page.unwrap_or_default();
         self.set_doc(doc);
+        // 2枚目からは控えへ。0 番は置き場(いま `doc` にあります)
+        if 枚数 > 1 {
+            文書たち[0] = kumihan::Document::default();
+            self.docs = std::mem::take(&mut 文書たち);
+        } else {
+            self.docs.clear();
+        }
+        self.doc_at = 0;
         self.adopt_font();
         self.path = Some(p.to_path_buf());
         // **数式は開いたときに組みます。** 本文が持っているのは LaTeX の原文
@@ -2242,6 +2256,10 @@ impl Writer {
             言い分
         )
         .into();
+        if 枚数 > 1 {
+            self.status =
+                ui::tf!("{}(文書 {} 枚)", self.status.clone(), 枚数.to_string()).into();
+        }
         if 組めない > 0 {
             self.status =
                 ui::tf!("{}(数式 {} 個が組めませんでした)", self.status.clone(), 組めない).into();
@@ -2495,6 +2513,64 @@ impl Writer {
     ///
     /// 開いている文書の隣は**当たり前の出発点**で、そこから始められないと
     /// 「場所を選ぶ」を毎回押すことになる(2026-08-17)
+    /// このファイルに入っている文書の枚数。
+    pub(crate) fn doc_count(&self) -> usize {
+        self.docs.len().max(1)
+    }
+
+    /// 何枚目かの文書の名前(下のタブに出します)。
+    pub(crate) fn doc_name(&self, i: usize) -> String {
+        let 題 = if i == self.doc_at {
+            self.doc.props.title.clone()
+        } else {
+            self.docs.get(i).map(|d| d.props.title.clone()).unwrap_or_default()
+        };
+        if 題.trim().is_empty() {
+            ui::tf!("文書 {}", (i + 1).to_string()).to_string()
+        } else {
+            題
+        }
+    }
+
+    /// 見る文書を替える。
+    ///
+    /// いま見ている物を控えへ戻し、行き先を取り出します。
+    /// **編集中の字は先に本文へ戻します** — 戻さないと打ちかけが消えます。
+    pub(crate) fn show_doc(&mut self, i: usize) {
+        if i == self.doc_at || i >= self.docs.len() {
+            return;
+        }
+        self.flush_target();
+        // いま見ている物を置き場へ戻し、行き先と入れ替える
+        std::mem::swap(&mut self.doc, &mut self.docs[self.doc_at]);
+        self.doc_at = i;
+        std::mem::swap(&mut self.doc, &mut self.docs[i]);
+        self.ed = Editor::new(&self.doc.body_text());
+        self.lay();
+    }
+
+    /// 読み込んだ文書の並びを受け取る(`= 題` で切れている物)。
+    pub(crate) fn set_docs(&mut self, mut docs: Vec<Document>) {
+        if docs.is_empty() {
+            docs.push(Document::default());
+        }
+        self.doc = docs[0].clone();
+        // 0 番目は置き場(いま `doc` にあるので中身は要らない)
+        docs[0] = Document::default();
+        self.docs = docs;
+        self.doc_at = 0;
+    }
+
+    /// 保存するときの並び(いま見ている物を戻した形)。
+    pub(crate) fn docs_for_save(&self) -> Vec<Document> {
+        if self.docs.len() <= 1 {
+            return vec![self.doc.clone()];
+        }
+        let mut v = self.docs.clone();
+        v[self.doc_at] = self.doc.clone();
+        v
+    }
+
     /// **いま開いているフォルダ。** 右パネルのファイル一覧が並べる場所です。
     ///
     /// 開いているファイルの親を使います。まだ何も開いていなければ、
@@ -2996,7 +3072,14 @@ impl Writer {
             }
             std::fs::write(&to, bytes.as_slice()).map_err(|e| e.to_string())?;
         }
-        std::fs::write(p, kumihan::adoc::write(&self.doc)).map_err(|e| e.to_string())
+        // **文書が何枚も入っていれば、全部書きます**(2026-08-19)。
+        // いま見ている物を控えへ戻した並びを渡します
+        let 字 = if self.docs.len() > 1 {
+            kumihan::adoc::write_many(&self.docs_for_save())
+        } else {
+            kumihan::adoc::write(&self.doc)
+        };
+        std::fs::write(p, 字).map_err(|e| e.to_string())
     }
 
     /// 素の文字として保存する(.py / .txt / .md)。段落を改行でつなぐ

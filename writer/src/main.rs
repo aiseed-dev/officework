@@ -178,6 +178,15 @@ enum Target {
 struct Writer {
     focus: FocusHandle,
     doc: Document,
+    /// **1つのファイルに入っている他の文書**(2026-08-19 発注者「同時に
+    /// 送付する請求書の原稿をまとめて保存する」)。
+    ///
+    /// いま見ている物は `doc` にあり、ここの `doc_at` 番目は空の置き場に
+    /// なっています。切り替えるときに入れ替えます — こうすると `self.doc`
+    /// を見ている 166 箇所をそのまま残せます
+    docs: Vec<Document>,
+    /// いま見ている文書は何枚目か
+    doc_at: usize,
     ed: Editor,
     page: Page,
     path: Option<PathBuf>,

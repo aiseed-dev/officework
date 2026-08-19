@@ -1861,4 +1861,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("ファイル — フォルダの中身", "Dosyalar — klasörün içeriği"),
     ("フォルダを開いていません(ファイル > 開く)", "Açık klasör yok (Dosya > Aç)"),
     ("(空のフォルダです)", "(klasör boş)"),
+    ("文書 {}", "Belge {}"),
+    ("{}(文書 {} 枚)", "{} ({} belge)"),
 ];
