@@ -21,6 +21,18 @@ fn 開くファイル(line: &str) -> Option<String> {
     (o.str("cmd")? == "open").then(|| o.str("path"))?
 }
 
+/// **宛先の道**(`open` 以外の命令に付いた `path`。統合の段10)。
+///
+/// 道具(MCP・Python の橋)が「開いてから操作する」を1往復でできるように
+/// します。付いていなければ、いま見ているタブが相手です。
+fn 宛先(line: &str) -> Option<String> {
+    let o = ops::Jobj::parse(line)?;
+    if o.str("cmd")? == "open" {
+        return None;
+    }
+    o.str("path")
+}
+
 /// **起動したときに何を開くか**(SEKKEI「残りの実施方針」A-1)。
 ///
 /// エディタ(VS Code・Zed)と同じで、*ふだんはフォルダを開きます*。
@@ -392,7 +404,31 @@ impl Office {
             self.タブで開く(std::path::PathBuf::from(&p), cx);
             return "{\"ok\":true}".into();
         }
-        match self.見ている() {
+        // **宛先の指定があれば、そのタブへ渡します**(段10)。
+        // *見ているタブは動かしません* — 道具が裏で触っただけなのに画面が
+        // 飛ぶと、人の作業を邪魔します。開いていなければ**開いてから**渡します
+        let 相手 = match 宛先(line) {
+            None => self.at,
+            Some(p) => {
+                let p = std::path::PathBuf::from(&p);
+                match self.tabs.iter().position(|t| t.道(cx).as_deref() == Some(p.as_path())) {
+                    Some(i) => i,
+                    None => {
+                        if !p.is_file() {
+                            return ops::err("そのファイルは見つかりません");
+                        }
+                        let 元 = self.at;
+                        self.タブで開く(p, cx);
+                        let i = self.at;
+                        // 開くだけ。**見ているタブは戻します**
+                        self.at = 元;
+                        self.焦点を移す = false;
+                        i
+                    }
+                }
+            }
+        };
+        match &self.tabs[相手] {
             Pane::Doc(v) => v.update(cx, |w, _| writer::rpc::handle(w, line)),
             Pane::Sheet(v) => v.update(cx, |c, _| ops::handle(c, line)),
         }
