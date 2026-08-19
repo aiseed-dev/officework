@@ -1875,4 +1875,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("表「{}」を普通の範囲に戻しました(見出し行の色や縞模様の書式と式はそのまま残ります)", "\"{}\" tablosu yeniden normal bir aralık oldu (başlık rengi, şeritler, biçimlendirme ve formüller korunur)"),
     ("1行目を見出し行に", "Başlık satırı"),
     ("背景色 #{}", "Dolgu #{}"),
+    ("書きかけがあります(先に保存してください): {}", "Kaydedilmemiş değişiklikler var (önce kaydedin): {}"),
 ];

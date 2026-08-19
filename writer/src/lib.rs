@@ -515,6 +515,12 @@ impl Writer {
         self.embedded = true;
     }
 
+    /// **いま開いているファイルの道**(`officework` がタブを引き当てるのに使う)。
+    /// まだ名前が無ければ `None` です。
+    pub fn opened_path(&self) -> Option<&std::path::Path> {
+        self.path.as_deref()
+    }
+
     /// **この文書を開く**(`officework` が頼む口。統合の段1)。
     ///
     /// いまは writer の中のタブで開きます。段2 でタブの持ち主が officework に

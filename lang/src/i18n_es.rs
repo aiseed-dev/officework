@@ -1875,4 +1875,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("表「{}」を普通の範囲に戻しました(見出し行の色や縞模様の書式と式はそのまま残ります)", "La tabla «{}» vuelve a ser un rango normal (el color del encabezado, las bandas, el formato y las fórmulas se conservan)"),
     ("1行目を見出し行に", "Fila de encabezado"),
     ("背景色 #{}", "Sombreado #{}"),
+    ("書きかけがあります(先に保存してください): {}", "Hay cambios sin guardar (guárdelos primero): {}"),
 ];

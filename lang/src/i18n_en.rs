@@ -1888,4 +1888,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("表「{}」を普通の範囲に戻しました(見出し行の色や縞模様の書式と式はそのまま残ります)", "Table \"{}\" is a plain range again (the header colour, banded rows, formatting and formulas all stay)"),
     ("1行目を見出し行に", "Header row"),
     ("背景色 #{}", "shading #{}"),
+    ("書きかけがあります(先に保存してください): {}", "There are unsaved changes (save them first): {}"),
 ];

@@ -21,6 +21,12 @@ impl Calc {
         self.embedded = true;
     }
 
+    /// **いま開いているファイルの道**(`officework` がタブを引き当てるのに使う)。
+    /// まだ名前が無ければ `None` です。
+    pub fn opened_path(&self) -> Option<&std::path::Path> {
+        self.path.as_deref()
+    }
+
     /// **このブックを開く**(`officework` が頼む口。統合の段1)。
     pub fn open_path(&mut self, p: PathBuf) {
         self.open(p);

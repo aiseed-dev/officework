@@ -72,17 +72,51 @@ fn 覚える(path: Option<&std::path::Path>) {
     }
 }
 
-/// いま見せている編集画面。
-enum Shown {
+/// 開いているファイル1枚ぶん。**タブ1つ = ファイル1つ = 編集画面1つ**
+/// (SEKKEI「writer と calc を officework に統合する」段2)。
+enum Pane {
     /// 文章(`.adoc` `.docx` …)
     Doc(Entity<writer::Writer>),
     /// 表(`.sheet.adoc` `.xlsx`)
     Sheet(Entity<calc::Calc>),
 }
 
-/// アプリの本体。**選ぶだけ**で、編集の中身は持ちません。
+impl Pane {
+    /// この画面が開いているファイルの道。
+    fn 道(&self, cx: &App) -> Option<std::path::PathBuf> {
+        match self {
+            Pane::Doc(v) => v.read(cx).opened_path().map(|p| p.to_path_buf()),
+            Pane::Sheet(v) => v.read(cx).opened_path().map(|p| p.to_path_buf()),
+        }
+    }
+
+    /// 書きかけがあるか。
+    fn 書きかけ(&self, cx: &App) -> bool {
+        match self {
+            Pane::Doc(v) => v.read(cx).has_unsaved(),
+            Pane::Sheet(v) => v.read(cx).has_unsaved(),
+        }
+    }
+
+    fn focus(&self, cx: &App) -> gpui::FocusHandle {
+        match self {
+            Pane::Doc(v) => v.focus_handle(cx),
+            Pane::Sheet(v) => v.focus_handle(cx),
+        }
+    }
+}
+
+/// アプリの本体。**開いた物を並べて持つだけ**で、編集の中身は持ちません。
+///
+/// 段2 で「1つだけ見せて、持ち替えは作り直し」をやめました。
+/// *作り直さないので書きかけは消えません* — 持ち替えの断りもここで外しています。
 struct Office {
-    shown: Shown,
+    /// 開いている物(タブの並び)
+    tabs: Vec<Pane>,
+    /// いま見ているのは何枚目か
+    at: usize,
+    /// 次に描くときに焦点を移すか(受け口には `Window` が無いため)
+    焦点を移す: bool,
 }
 
 impl Office {
@@ -93,60 +127,76 @@ impl Office {
         };
         // 開いたファイルのフォルダを覚えます(次の起動でここが開きます)
         覚える(path.as_deref());
-        let shown = if path.as_deref().is_some_and(表か) {
-            let c = cx.new(|cx| calc::Calc::new(path, cx));
-            // **埋め込みの印**(統合の段1)。一覧のクリックが officework 経由になります
-            c.update(cx, |c, _| c.set_embedded());
-            Shown::Sheet(c)
+        let pane = if path.as_deref().is_some_and(表か) {
+            Pane::Sheet(作る表(path, cx))
         } else {
-            let w = cx.new(|cx| writer::Writer::new(path, cx));
-            w.update(cx, |w, _| w.set_embedded());
+            let w = 作る文書(path, cx);
             // フォルダで始めるときは、一覧を開いた姿にします
             if let Start::Folder(d) = start {
                 w.update(cx, |w, _| w.show_folder(d));
             }
-            Shown::Doc(w)
+            Pane::Doc(w)
         };
-        Office { shown }
+        Office { tabs: vec![pane], at: 0, 焦点を移す: false }
     }
+}
+
+/// 表の編集画面を作る。**埋め込みの印は必ず立てる** —
+/// 立て忘れると、その画面だけ一覧のクリックを自分で握ります
+fn 作る表(path: Option<std::path::PathBuf>, cx: &mut Context<Office>) -> Entity<calc::Calc> {
+    let c = cx.new(|cx| calc::Calc::new(path, cx));
+    c.update(cx, |c, _| c.set_embedded());
+    c
+}
+
+/// 文章の編集画面を作る(同上)。
+fn 作る文書(path: Option<std::path::PathBuf>, cx: &mut Context<Office>) -> Entity<writer::Writer> {
+    let w = cx.new(|cx| writer::Writer::new(path, cx));
+    w.update(cx, |w, _| w.set_embedded());
+    w
 }
 
 impl Office {
     /// **「このファイルを開いてほしい」を受け取る**(統合の段1)。
     ///
     /// 埋め込みの編集画面は、一覧を押されると**種類を問わず** `open_request`
-    /// に置きます。ここが名前で行き先を決めます — 同じ種類ならその画面に
-    /// そのまま開かせ、違う種類なら持ち替えます。
+    /// に置きます。ここが受け取って、タブとして開きます。
     ///
-    /// **持ち替えはいまのところ画面ごと作り直します。** だから書きかけが
-    /// あると消えるので断ります。段2 でタブの持ち主が officework に移ると
-    /// 作り直しが無くなり、**この断りは要らなくなります**。
-    fn 開く頼み(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let 頼み = match &self.shown {
-            Shown::Doc(v) => v.update(cx, |w, _| w.open_request.take()),
-            Shown::Sheet(v) => v.update(cx, |c, _| c.open_request.take()),
+    /// **もう画面を作り直しません**(段2)。すでに開いているファイルなら
+    /// そのタブへ行き、無ければ新しいタブを足すだけです。書きかけは
+    /// タブの中に生きたまま残るので、**持ち替えの断りは要らなくなりました**。
+    fn 開く頼み(&mut self, cx: &mut Context<Self>) {
+        let 頼み = match self.見ている() {
+            Pane::Doc(v) => v.update(cx, |w, _| w.open_request.take()),
+            Pane::Sheet(v) => v.update(cx, |c, _| c.open_request.take()),
         };
         let Some(p) = 頼み else { return };
-        let いま表 = matches!(self.shown, Shown::Sheet(_));
-        // 同じ種類なら、その画面がそのまま開きます(持ち替えではない)
-        if 表か(&p) == いま表 {
-            match &self.shown {
-                Shown::Doc(v) => v.update(cx, |w, _| w.open_path(p)),
-                Shown::Sheet(v) => v.update(cx, |c, _| c.open_path(p)),
-            }
-            cx.notify();
-            return;
+        self.タブで開く(p, cx);
+    }
+
+    /// いま見ているタブ。
+    fn 見ている(&self) -> &Pane {
+        &self.tabs[self.at.min(self.tabs.len() - 1)]
+    }
+
+    /// **タブとして開く。** すでに開いていればそのタブへ移るだけです —
+    /// 同じファイルを二重に開くと、どちらを保存したのか分からなくなります。
+    /// **焦点は描くときに移します。** ここは受け口からも呼ばれ、そちらには
+    /// `Window` がありません。窓を持っている `render` に1回だけ任せます
+    fn タブで開く(&mut self, p: std::path::PathBuf, cx: &mut Context<Self>) {
+        覚える(Some(&p));
+        if let Some(i) = self.tabs.iter().position(|t| t.道(cx).as_deref() == Some(p.as_path())) {
+            self.at = i;
+        } else {
+            let pane = if 表か(&p) {
+                Pane::Sheet(作る表(Some(p), cx))
+            } else {
+                Pane::Doc(作る文書(Some(p), cx))
+            };
+            self.tabs.push(pane);
+            self.at = self.tabs.len() - 1;
         }
-        if self.書きかけがある(cx) {
-            self.言う(ui::t!("書きかけがあります(先に保存してください)"), cx);
-            cx.notify();
-            return;
-        }
-        self.見せる(p, !いま表, cx);
-        match &self.shown {
-            Shown::Doc(v) => window.focus(&v.focus_handle(cx), cx),
-            Shown::Sheet(v) => window.focus(&v.focus_handle(cx), cx),
-        }
+        self.焦点を移す = true;
         cx.notify();
     }
 }
@@ -188,47 +238,42 @@ impl Office {
     fn 捌く(&mut self, line: &str, cx: &mut Context<Self>) -> String {
         // `ping` だけはここで答える(どちらを見ているかを言うため)
         if line.contains("\"ping\"") {
-            let showing = match &self.shown {
-                Shown::Doc(_) => "doc",
-                Shown::Sheet(_) => "sheet",
+            let showing = match self.見ている() {
+                Pane::Doc(_) => "doc",
+                Pane::Sheet(_) => "sheet",
             };
             return format!(
                 "{{\"ok\":true,\"app\":\"officework\",\"showing\":\"{showing}\",\"version\":\"{}\"}}",
                 env!("CARGO_PKG_VERSION")
             );
         }
-        // **`open` は名前で振り分けます**(2026-08-19)。渡された物が表なら
-        // 表の画面に、文書なら文章の画面にしてから開きます。ここを通さないと
-        // 「表を開いたのに紙面が出る」ことになります(実際に踏みました)
+        // **`open` はタブとして開きます**(段2)。名前で行き先の画面が
+        // 決まり、すでに開いていればそのタブへ移ります。**断りません** —
+        // 画面を作り直さないので、書きかけは消えません
         if let Some(p) = 開くファイル(line) {
-            let 表 = 表か(std::path::Path::new(&p));
-            let いま表 = matches!(self.shown, Shown::Sheet(_));
-            if 表 != いま表 {
-                // **持ち替えは画面ごと作り直す**ので、書きかけがあると消える。
-                // 受け口から来た `open` でも同じ — 断り方は writer の rpc と
-                // 揃える(向こうも「書きかけがあります」で止める)
-                if self.書きかけがある(cx) {
-                    // **窓にも言う。** 断りを頼んだ側にだけ返すと、画面を見て
-                    // いる人には「押したのに何も起きない」に見える
-                    self.言う(ui::t!("書きかけがあります(先に保存してください)"), cx);
-                    return ops::err("書きかけがあります(先に保存してください)");
-                }
-                self.見せる(std::path::PathBuf::from(&p), 表, cx);
-                return "{\"ok\":true}".into();
-            }
+            self.タブで開く(std::path::PathBuf::from(&p), cx);
+            return "{\"ok\":true}".into();
         }
-        match &self.shown {
-            Shown::Doc(v) => v.update(cx, |w, _| writer::rpc::handle(w, line)),
-            Shown::Sheet(v) => v.update(cx, |c, _| ops::handle(c, line)),
+        match self.見ている() {
+            Pane::Doc(v) => v.update(cx, |w, _| writer::rpc::handle(w, line)),
+            Pane::Sheet(v) => v.update(cx, |c, _| ops::handle(c, line)),
         }
     }
 
-    /// いま見せている画面に書きかけがあるか。
-    fn 書きかけがある(&self, cx: &mut Context<Self>) -> bool {
-        match &self.shown {
-            Shown::Doc(v) => v.read(cx).has_unsaved(),
-            Shown::Sheet(v) => v.read(cx).has_unsaved(),
-        }
+    /// **書きかけのあるタブの名前。** 閉じるときに、どれが残っているかを言います。
+    /// 数だけ言われても、どれを保存すればよいのか分かりません。
+    fn 書きかけの名前(&self, cx: &App) -> Vec<String> {
+        self.tabs
+            .iter()
+            .filter(|t| t.書きかけ(cx))
+            .map(|t| match t.道(cx) {
+                Some(p) => {
+                    let n = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                    ui::folder::display_name(&n, ui::folder::kind_of(&n))
+                }
+                None => ui::t!("(名前なし)").to_string(),
+            })
+            .collect()
     }
 
     /// **フォルダを選んでもらう**(覚えている物が無い初回)。
@@ -246,7 +291,7 @@ impl Office {
             let r = ask.await;
             let _ = this.update(cx, |this, cx| {
                 if let Some(d) = r {
-                    if let Shown::Doc(v) = &this.shown {
+                    if let Pane::Doc(v) = this.見ている() {
                         v.update(cx, |w, _| w.show_folder(d));
                     }
                 }
@@ -256,28 +301,12 @@ impl Office {
         .detach();
     }
 
-    /// いま見せている画面の状態行に出す。
+    /// いま見ているタブの状態行に出す。
     fn 言う(&self, msg: &str, cx: &mut Context<Self>) {
-        match &self.shown {
-            Shown::Doc(v) => v.update(cx, |w, _| w.say(msg.to_string())),
-            Shown::Sheet(v) => v.update(cx, |c, _| c.say(msg.to_string())),
+        match self.見ている() {
+            Pane::Doc(v) => v.update(cx, |w, _| w.say(msg.to_string())),
+            Pane::Sheet(v) => v.update(cx, |c, _| c.say(msg.to_string())),
         }
-    }
-
-    /// 画面を作り直して、そのファイルを見せる。
-    fn 見せる(&mut self, p: std::path::PathBuf, 表: bool, cx: &mut Context<Self>) {
-        // **作った画面には必ず埋め込みの印を立てます。** 立て忘れると、
-        // その画面だけ一覧のクリックを自分で握って持ち替えが効かなくなります
-        self.shown = if 表 {
-            let c = cx.new(|cx| calc::Calc::new(Some(p), cx));
-            c.update(cx, |c, _| c.set_embedded());
-            Shown::Sheet(c)
-        } else {
-            let w = cx.new(|cx| writer::Writer::new(Some(p), cx));
-            w.update(cx, |w, _| w.set_embedded());
-            Shown::Doc(w)
-        };
-        cx.notify();
     }
 }
 
@@ -285,12 +314,17 @@ impl Render for Office {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // **開く頼みは描く前に見ます。** 見落とすと、押しても何も
         // 起きないように見えます
-        self.開く頼み(window, cx);
-        // 選んだ編集画面をそのまま出します。ファイルのタブとフォルダの
-        // 一覧は、それぞれの編集画面が持っているものを使います
-        div().size_full().child(match &self.shown {
-            Shown::Doc(v) => v.clone().into_any_element(),
-            Shown::Sheet(v) => v.clone().into_any_element(),
+        self.開く頼み(cx);
+        // タブを替えた回だけ焦点を移します(受け口から替わった分もここで拾う)
+        if self.焦点を移す {
+            self.焦点を移す = false;
+            window.focus(&self.見ている().focus(cx), cx);
+        }
+        // いま見ているタブをそのまま出します。上のタブの行は段2の続きで
+        // ここに足します(いまは編集画面が持っている物がそのまま出ます)
+        div().size_full().child(match self.見ている() {
+            Pane::Doc(v) => v.clone().into_any_element(),
+            Pane::Sheet(v) => v.clone().into_any_element(),
         })
     }
 }
@@ -324,12 +358,36 @@ fn main() {
             move |window, cx| {
                 let view = cx.new(|cx| Office::new(start2.clone(), cx));
                 // 焦点は中の編集画面へ渡します
-                view.update(cx, |this, cx| match &this.shown {
-                    Shown::Doc(v) => window.focus(&v.focus_handle(cx), cx),
-                    Shown::Sheet(v) => window.focus(&v.focus_handle(cx), cx),
+                view.update(cx, |this, cx| {
+                    window.focus(&this.見ている().focus(cx), cx)
                 });
                 // **受け口を開く。** 名前は officework の1つ
                 Office::受け口(view.clone(), cx);
+                // **閉じるときは全部のタブに聞きます。**
+                //
+                // ここは今まで**誰も見ていませんでした** — 終了確認は writer と
+                // calc がそれぞれの `main` で結んでいて、officework の窓には
+                // 付いていなかったのです。タブを持てるようになった以上、
+                // 黙って閉じると**裏のタブの書きかけまで一度に消えます**。
+                //
+                // いまは「書きかけがあるなら閉じない」と断るだけです。
+                // 保存するか捨てるかを選ばせる確認は段3 で作ります
+                let v = view.clone();
+                window.on_window_should_close(cx, move |_, cx| {
+                    v.update(cx, |this, cx| {
+                        let 残り: Vec<String> = this.書きかけの名前(cx);
+                        if 残り.is_empty() {
+                            return true;
+                        }
+                        this.言う(
+                            &ui::tf!("書きかけがあります(先に保存してください): {}",
+                                     残り.join(" / ")),
+                            cx,
+                        );
+                        cx.notify();
+                        false
+                    })
+                });
                 // 覚えているフォルダが無ければ、**窓が出てから**選んでもらう
                 if matches!(start2, Start::AskFolder) {
                     view.update(cx, |this, cx| this.フォルダを聞く(cx));
