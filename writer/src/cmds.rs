@@ -1214,3 +1214,105 @@ impl Writer {
         cx.notify();
     }
 }
+
+impl Writer {
+    /// **ファイルのページに並ぶ物**(統合の段8 の1)。
+    ///
+    /// 17 個は calc と同じ id・同じ意味で、`URLを開く`・`データを差し込む`・
+    /// `adoc 形式にする` が文章の画面だけの物です。
+    /// **次の段で officework がこの表を読んでページを描きます。**
+    pub fn file_menu(&self) -> Vec<ui::filemenu::Item> {
+        use ui::filemenu::Item as I;
+        vec![
+            I::new("f-back", ui::t!("‹ 戻る")),
+            I::new("f-new", ui::t!("新規作成")).gap(),
+            I::new("f-tpl", ui::t!("テンプレートから作成")).grey(),
+            I::new("f-open", ui::t!("開く")),
+            I::new("f-url", ui::t!("URLを開く")),
+            I::new("f-recent", ui::t!("最近開いた")).on(self.file_view == 1),
+            I::new("f-find", ui::t!("フォルダから探す")).on(self.file_view == 3),
+            I::new("f-save", ui::t!("保存")).gap(),
+            I::new("f-saveas", ui::t!("名前を付けて保存")),
+            I::new("f-print", ui::t!("印刷")),
+            I::new("f-merge", ui::t!("データを差し込む(CSV)")),
+            I::new("f-html", ui::t!("Web の形で書き出す(HTML)")),
+            I::new("f-protect", ui::t!("保護する")),
+            // **非可逆なので明示の1手**(開いただけでは何も起きない)。
+            // もう adoc なら押せない
+            {
+                let i = I::new("f-distill", ui::t!("adoc 形式にする(本文と書式を分ける)"));
+                if self.native { i.grey() } else { i }
+            },
+            I::new("f-info", ui::t!("詳細情報")).gap().on(self.file_view == 0),
+            I::new("f-place", ui::t!("ファイルの場所を開く")),
+            I::new("f-quit", ui::t!("終了")).gap(),
+            I::new("f-opts", ui::t!("詳細設定")).tail().on(self.file_view == 2),
+            I::new("f-help", ui::t!("ヘルプ")).grey().tail(),
+            I::new("f-req", ui::t!("機能のリクエスト")).grey().tail(),
+        ]
+    }
+
+    /// **ファイルのページの項目を捌く**(統合の段8 の1)。
+    ///
+    /// 前は画面の中のその場の閉包でした。1つの `match` に集めたので、
+    /// **officework から id を渡して呼べます**(次の段)。
+    pub fn file_menu_click(&mut self, id: &str, cx: &mut Context<Self>) {
+        match id {
+            "f-back" => self.tab = self.prev_tab,
+            "f-new" => {
+                if self.new_doc() {
+                    self.tab = self.prev_tab;
+                }
+            }
+            "f-open" => {
+                self.tab = self.prev_tab;
+                self.open_dialog(cx);
+            }
+            "f-url" => {
+                self.tab = self.prev_tab;
+                self.url_open = true;
+                self.url_ed = Editor::new("http://127.0.0.1:8765/");
+                self.status =
+                    ui::t!("URL を打って Enter(JS なしの閲覧と記入。http のみ)").into();
+            }
+            "f-recent" => self.file_view = 1,
+            "f-find" => self.file_view = 3,
+            "f-save" => self.save(false, cx),
+            "f-saveas" => self.save_as(cx),
+            "f-print" => self.save_pdf(cx),
+            "f-merge" => self.merge_csv(cx),
+            "f-html" => self.save_html(cx),
+            "f-protect" => {
+                if let Some(i) = ribbon::WRITER.iter().position(|t| t.name == "保護") {
+                    self.tab = i;
+                }
+            }
+            "f-distill" => {
+                self.tab = self.prev_tab;
+                self.distill_now();
+            }
+            "f-info" => self.file_view = 0,
+            "f-place" => {
+                match self.path.as_ref().and_then(|p| p.parent()) {
+                    Some(dir) => {
+                        let d = dir.display().to_string();
+                        self.status = match ui::open_outside(&d) {
+                            ui::Opened::Yes => ui::tf!("開きます: {}", d).into(),
+                            ui::Opened::JustNow => ui::t!(
+                                "さっき開きました(窓が出るまで少し待ってください)")
+                            .into(),
+                            ui::Opened::Failed => {
+                                ui::tf!("開けません(xdg-open がありません): {}", d).into()
+                            }
+                        };
+                    }
+                    None => self.status = ui::t!("まだファイルになっていません").into(),
+                }
+            }
+            "f-quit" => self.request_quit(cx),
+            "f-opts" => self.file_view = 2,
+            // 灰色の項目(押せない)は何もしない
+            _ => {}
+        }
+    }
+}

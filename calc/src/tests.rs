@@ -6905,3 +6905,61 @@ mod find_scope_tests {
         });
     }
 }
+
+#[cfg(test)]
+mod file_menu_tests {
+    use crate::*;
+
+    /// **並びと押せるかを縛る**(統合の段8 の1)。
+    ///
+    /// この段は「閉包を `match` に移すだけで見た目は変わらない」もの。
+    /// 写真より試験のほうが確実に押さえられる — 並び・id・灰色が
+    /// 変わっていないことがそのまま条件だから
+    #[gpui::test]
+    fn ファイルの項目の並びと押せるかが変わらない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            let 品 = this.file_menu();
+            let ids: Vec<&str> = 品.iter().map(|i| i.id).collect();
+            assert_eq!(ids, vec![
+                "f-back", "f-new", "f-tpl", "f-open", "f-recent", "f-find",
+                "f-save", "f-saveas", "f-print", "f-csv", "f-html", "f-protect",
+                "f-macro", "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req",
+            ]);
+            // 押せないのは3つ(まだ無い物)
+            let 灰: Vec<&str> = 品.iter().filter(|i| !i.ready).map(|i| i.id).collect();
+            assert_eq!(灰, vec!["f-tpl", "f-help", "f-req"]);
+            // 下へ寄せるのは3つ
+            let 下: Vec<&str> = 品.iter().filter(|i| i.tail).map(|i| i.id).collect();
+            assert_eq!(下, vec!["f-opts", "f-help", "f-req"]);
+        });
+    }
+
+    /// **選んでいる面の項目が塗られる**(右に何を出しているかが分かる)
+    #[gpui::test]
+    fn 出している面の項目に印が付く(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.file_menu_click("f-recent", cx);
+            let 品 = this.file_menu();
+            let on: Vec<&str> = 品.iter().filter(|i| i.on).map(|i| i.id).collect();
+            assert_eq!(on, vec!["f-recent"], "最近開いたに印が付かない");
+            this.file_menu_click("f-opts", cx);
+            let 品 = this.file_menu();
+            let on: Vec<&str> = 品.iter().filter(|i| i.on).map(|i| i.id).collect();
+            assert_eq!(on, vec!["f-opts"], "詳細設定に印が付かない");
+        });
+    }
+
+    /// **知らない id で落ちない。** 灰色の項目を押しても何も起きない
+    #[gpui::test]
+    fn 知らない項目は何もしない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let 前 = this.file_view;
+            this.file_menu_click("f-tpl", cx);
+            this.file_menu_click("知らない", cx);
+            assert_eq!(this.file_view, 前);
+        });
+    }
+}

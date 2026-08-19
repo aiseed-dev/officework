@@ -3829,7 +3829,7 @@ impl Render for Calc {
             let gray = rgb(0xB6BDC4);
             let fg = rgb(0x444B52);
             let dim = rgb(0x66707A);
-            let mk = |id: &'static str, label: &'static str, ready: bool| {
+            let mk = |id: &'static str, label: SharedString, ready: bool| {
                 let d = div().id(id).px_4().py_1p5().text_size(px(us * 13.0));
                 if ready {
                     d.text_color(fg).cursor_pointer().hover(move |s| s.bg(item_bg))
@@ -3838,138 +3838,27 @@ impl Render for Calc {
                 }
                 .child(label)
             };
-            let sb = div().w(px(280.0)).bg(rgb(0xF1F3F5))
+            // **項目は表から**(統合の段8 の1)。押し先も1つの `match` に
+            // 集めたので、次の段で officework がこの表を読んで描けます
+            let mut sb = div().w(px(280.0)).bg(rgb(0xF1F3F5))
                 .border_r_1().border_color(rgb(0xE1E6EA))
-                .flex().flex_col().py_2()
-                .child(mk("f-back", ui::t!("‹ 戻る"), true).on_click(cx.listener(|this, _, _, cx| {
-                    this.tab = this.prev_tab;
-                    cx.notify()
-                })))
-                .child(div().h(px(10.0)))
-                .child(mk("f-new", ui::t!("新規作成"), true).on_click(cx.listener(|this, _, _, cx| {
-                    if this.new_book() {
-                        this.tab = this.prev_tab;
-                    }
-                    cx.notify()
-                })))
-                .child(mk("f-tpl", ui::t!("テンプレートから作成"), false))
-                .child(mk("f-open", ui::t!("開く"), true).on_click(cx.listener(|this, _, _, cx| {
-                    this.tab = this.prev_tab;
-                    this.open_dialog(cx);
-                    cx.notify()
-                })))
-                .child({
-                    let d = mk("f-recent", ui::t!("最近開いた"), true).on_click(cx.listener(
-                        |this, _, _, cx| {
-                            this.file_view = 1;
-                            cx.notify()
-                        }));
-                    if self.file_view == 1 { d.bg(item_bg) } else { d }
-                })
-                // **フォルダから探す**(2026-08-17 発注者。SFIND の写真)
-                .child({
-                    let d = mk("f-find", ui::t!("フォルダから探す"), true).on_click(cx.listener(
-                        |this, _, _, cx| {
-                            this.file_view = 3;
-                            cx.notify()
-                        }));
-                    if self.file_view == 3 { d.bg(item_bg) } else { d }
-                })
-                .child(div().h(px(10.0)))
-                .child(mk("f-save", ui::t!("保存"), true).on_click(cx.listener(|this, _, _, cx| {
-                    this.save(false, cx);
-                    cx.notify()
-                })))
-                .child(mk("f-saveas", ui::t!("名前を付けて保存"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.save_as(cx);
+                .flex().flex_col().py_2();
+            let 品 = self.file_menu();
+            let 下寄せの頭 = 品.iter().position(|x| x.tail);
+            for (k, it) in 品.iter().enumerate() {
+                if Some(k) == 下寄せの頭 {
+                    sb = sb.child(div().flex_1());
+                } else if it.gap {
+                    sb = sb.child(div().h(px(10.0)));
+                }
+                let id = it.id;
+                let d = mk(id, SharedString::from(it.label.clone()), it.ready).on_click(
+                    cx.listener(move |this, _, _, cx| {
+                        this.file_menu_click(id, cx);
                         cx.notify()
-                    })))
-                .child(mk("f-print", ui::t!("印刷"), true).on_click(cx.listener(|this, _, _, cx| {
-                    this.run_cmd("pdf", cx);
-                    cx.notify()
-                })))
-                .child(mk("f-csv", ui::t!("CSV に書き出す"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.export_csv_dialog(cx);
-                        cx.notify()
-                    })))
-                // **Web の頁に書き出す**(発注者 2026-08-15)。台帳を正本にして
-                // 頁を作る仕事は Python の台本でやってきたが、1枚の表を1枚の
-                // 頁にするだけなら**アプリから直に出せたほうが早い** —
-                // Python を持っていない人にも届く
-                .child(mk("f-html", ui::t!("Web に書き出す"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.export_html_dialog(cx);
-                        cx.notify()
-                    })))
-                .child(mk("f-protect", ui::t!("保護する"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        if let Some(i) =
-                            ribbon::CALC.iter().position(|t| t.name == "保護")
-                        {
-                            this.prev_tab = i;
-                            this.tab = i;
-                        }
-                        cx.notify()
-                    })))
-                // **マクロ**(2026-08-16 発注者「決めた置き場に置いたマクロは、
-                // ファイルメニュのマクロから実行できるようにする」)。本家の
-                // File > マクロと同じ場所。押すと置き場の一覧が出て、選ぶと走る
-                .child(mk("f-macro", ui::t!("マクロ"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        if let Some(i) = ribbon::CALC.iter().position(|t| t.name == "マクロ") {
-                            this.prev_tab = i;
-                            this.tab = i;
-                        }
-                        this.run_cmd("py-list", cx);
-                        cx.notify()
-                    })))
-                .child(div().h(px(10.0)))
-                .child({
-                    let d = mk("f-info", ui::t!("詳細情報"), true).on_click(cx.listener(
-                        |this, _, _, cx| {
-                            this.file_view = 0;
-                            cx.notify()
-                        }));
-                    if self.file_view == 0 { d.bg(item_bg) } else { d }
-                })
-                .child(mk("f-place", ui::t!("ファイルの場所を開く"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        match this.path.as_ref().and_then(|p| p.parent()) {
-                            Some(dir) => {
-                                this.status = match ui::open_outside(&dir.display().to_string()) {
-                                    ui::Opened::Yes => ui::tf!("開きます: {}",
-                                        dir.display().to_string()).into(),
-                                    ui::Opened::JustNow => ui::t!(
-                                        "さっき開きました(窓が出るまで少し待ってください)").into(),
-                                    ui::Opened::Failed => ui::tf!(
-                                        "開けません(xdg-open がありません): {}",
-                                        dir.display().to_string()).into(),
-                                };
-                            }
-                            None => {
-                                this.status = ui::t!("まだファイルになっていません").into();
-                            }
-                        }
-                        cx.notify()
-                    })))
-                .child(div().h(px(10.0)))
-                .child(mk("f-quit", ui::t!("終了"), true).on_click(cx.listener(|this, _, _, cx| {
-                    this.request_quit(cx);
-                    cx.notify()
-                })))
-                .child(div().flex_1())
-                .child({
-                    let d = mk("f-opts", ui::t!("詳細設定"), true).on_click(cx.listener(
-                        |this, _, _, cx| {
-                            this.file_view = 2;
-                            cx.notify()
-                        }));
-                    if self.file_view == 2 { d.bg(item_bg) } else { d }
-                })
-                .child(mk("f-help", ui::t!("ヘルプ"), false))
-                .child(mk("f-req", ui::t!("機能のリクエスト"), false));
+                    }));
+                sb = sb.child(if it.on { d.bg(item_bg) } else { d });
+            }
             // **巻けるようにする。** カスタムプロパティは何件でも増える —
             // 巻けないと、足した先から「プロパティを追加」が画面の外へ出て
             // 押せなくなる(2026-08-13、実機で下端が切れているのを見た)

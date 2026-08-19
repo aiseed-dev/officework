@@ -3042,3 +3042,51 @@ mod ファイルを何枚も開く {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+#[cfg(test)]
+mod file_menu_tests {
+    use crate::*;
+
+    /// **並びと押せるかを縛る**(統合の段8 の1)。calc の同じ試験と対。
+    #[gpui::test]
+    fn ファイルの項目の並びと押せるかが変わらない(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let 品 = this.file_menu();
+            let ids: Vec<&str> = 品.iter().map(|i| i.id).collect();
+            assert_eq!(ids, vec![
+                "f-back", "f-new", "f-tpl", "f-open", "f-url", "f-recent", "f-find",
+                "f-save", "f-saveas", "f-print", "f-merge", "f-html", "f-protect",
+                "f-distill", "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req",
+            ]);
+            let 下: Vec<&str> = 品.iter().filter(|i| i.tail).map(|i| i.id).collect();
+            assert_eq!(下, vec!["f-opts", "f-help", "f-req"]);
+        });
+    }
+
+    /// **17 個は表の画面と同じ id。** ここがずれると officework が
+    /// 1枚のページを描けない(段8 の2)
+    #[gpui::test]
+    fn 共通の項目は表と同じ番号(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let 文章: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();
+            for id in ["f-back", "f-new", "f-tpl", "f-open", "f-recent", "f-find",
+                       "f-save", "f-saveas", "f-print", "f-html", "f-protect",
+                       "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req"] {
+                assert!(文章.contains(&id), "共通のはずの {id} が無い");
+            }
+        });
+    }
+
+    #[gpui::test]
+    fn 出している面の項目に印が付く(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.file_menu_click("f-recent", cx);
+            let on: Vec<&str> =
+                this.file_menu().iter().filter(|i| i.on).map(|i| i.id).collect();
+            assert_eq!(on, vec!["f-recent"]);
+        });
+    }
+}

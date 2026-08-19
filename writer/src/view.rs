@@ -694,7 +694,7 @@ impl Render for Writer {
             // **ファイルの面の項目も場所を控える**(2026-08-17。点検の道具が
             // 座標を当てずに押せるように。リボンのボタンと同じ形)
             let boxes = self.btn_box.clone();
-            let mk = move |id: &'static str, label: &'static str, ready: bool| {
+            let mk = move |id: &'static str, label: SharedString, ready: bool| {
                 let rec = boxes.clone();
                 // **控えは最初の子に**(calc の mark と同じ形)。最後に置くと
                 // 流れの中で label の下に置かれ、**1項目ぶん下の箱**を控えて
@@ -729,142 +729,27 @@ impl Render for Writer {
                 }
                 .child(label)
             };
-            let sb = div().w(px(280.0)).bg(th_top_bg)
+            // **項目は表から**(統合の段8 の1)。押し先も1つの `match` に
+            // 集めたので、次の段で officework がこの表を読んで描けます
+            let mut sb = div().w(px(280.0)).bg(th_top_bg)
                 .border_r_1().border_color(th_cmd_border)
-                .flex().flex_col().py_2()
-                .child(mk("f-back", ui::t!("‹ 戻る"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.tab = this.prev_tab;
+                .flex().flex_col().py_2();
+            let 品 = self.file_menu();
+            let 下寄せの頭 = 品.iter().position(|x| x.tail);
+            for (k, it) in 品.iter().enumerate() {
+                if Some(k) == 下寄せの頭 {
+                    sb = sb.child(div().flex_1());
+                } else if it.gap {
+                    sb = sb.child(div().h(px(10.0)));
+                }
+                let id = it.id;
+                let d = mk(id, SharedString::from(it.label.clone()), it.ready).on_click(
+                    cx.listener(move |this, _, _, cx| {
+                        this.file_menu_click(id, cx);
                         cx.notify()
-                    })))
-                .child(div().h(px(10.0)))
-                .child(mk("f-new", ui::t!("新規作成"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        if this.new_doc() {
-                            this.tab = this.prev_tab;
-                        }
-                        cx.notify()
-                    })))
-                .child(mk("f-tpl", ui::t!("テンプレートから作成"), false))
-                .child(mk("f-open", ui::t!("開く"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.tab = this.prev_tab;
-                        this.open_dialog(cx);
-                        cx.notify()
-                    })))
-                .child(mk("f-url", ui::t!("URLを開く"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.tab = this.prev_tab;
-                        this.url_open = true;
-                        this.url_ed = Editor::new("http://127.0.0.1:8765/");
-                        this.status =
-                            ui::t!("URL を打って Enter(JS なしの閲覧と記入。http のみ)").into();
-                        cx.notify()
-                    })))
-                .child(mk("f-recent", ui::t!("最近開いた"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.file_view = 1;
-                        cx.notify()
-                    })))
-                // **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
-                // 複数のファイルを串刺しで探し、選ぶと下に見え、
-                // 下の「読み込み」で初めて開く
-                .child(mk("f-find", ui::t!("フォルダから探す"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.file_view = 3;
-                        cx.notify()
-                    })))
-                .child(div().h(px(10.0)))
-                .child(mk("f-save", ui::t!("保存"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.save(false, cx);
-                        cx.notify()
-                    })))
-                .child(mk("f-saveas", ui::t!("名前を付けて保存"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.save_as(cx);
-                        cx.notify()
-                    })))
-                .child(mk("f-print", ui::t!("印刷"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.save_pdf(cx);
-                        cx.notify()
-                    })))
-                .child(mk("f-merge", ui::t!("データを差し込む(CSV)"), true).on_click(
-                    cx.listener(|this, _, _, cx| {
-                        this.merge_csv(cx);
-                        cx.notify()
-                    })))
-                .child(mk("f-html", ui::t!("Web の形で書き出す(HTML)"), true).on_click(
-                    cx.listener(|this, _, _, cx| {
-                        this.save_html(cx);
-                        cx.notify()
-                    })))
-                .child(mk("f-protect", ui::t!("保護する"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        if let Some(i) =
-                            ribbon::WRITER.iter().position(|t| t.name == "保護")
-                        {
-                            this.tab = i;
-                        }
-                        cx.notify()
-                    })))
-                // **adoc 形式にする**(2026-08-16。SEKKEI 段階D)。受け取った docx を
-                // 意味だけ+テンプレートに変える。**非可逆なので明示の1手** —
-                // 開いただけでは何も起きない
-                .child(mk("f-distill", ui::t!("adoc 形式にする(本文と書式を分ける)"), !self.native).on_click(
-                    cx.listener(|this, _, _, cx| {
-                        this.tab = this.prev_tab;
-                        this.distill_now();
-                        cx.notify()
-                    }),
-                ))
-                .child(div().h(px(10.0)))
-                .child({
-                    let d = mk("f-info", ui::t!("詳細情報"), true).on_click(cx.listener(
-                        |this, _, _, cx| {
-                            this.file_view = 0;
-                            cx.notify()
-                        }));
-                    if self.file_view == 0 { d.bg(item_bg) } else { d }
-                })
-                .child(mk("f-place", ui::t!("ファイルの場所を開く"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        match this.path.as_ref().and_then(|p| p.parent()) {
-                            Some(dir) => {
-                                this.status = match ui::open_outside(&dir.display().to_string()) {
-                                    ui::Opened::Yes => ui::tf!("開きます: {}",
-                                        dir.display().to_string()).into(),
-                                    ui::Opened::JustNow => ui::t!(
-                                        "さっき開きました(窓が出るまで少し待ってください)").into(),
-                                    ui::Opened::Failed => ui::tf!(
-                                        "開けません(xdg-open がありません): {}",
-                                        dir.display().to_string()).into(),
-                                };
-                            }
-                            None => {
-                                this.status = ui::t!("まだファイルになっていません").into();
-                            }
-                        }
-                        cx.notify()
-                    })))
-                .child(div().h(px(10.0)))
-                .child(mk("f-quit", ui::t!("終了"), true).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.request_quit(cx);
-                        cx.notify()
-                    })))
-                .child(div().flex_1())
-                .child({
-                    let d = mk("f-opts", ui::t!("詳細設定"), true).on_click(cx.listener(
-                        |this, _, _, cx| {
-                            this.file_view = 2;
-                            cx.notify()
-                        }));
-                    if self.file_view == 2 { d.bg(item_bg) } else { d }
-                })
-                .child(mk("f-help", ui::t!("ヘルプ"), false))
-                .child(mk("f-req", ui::t!("機能のリクエスト"), false));
+                    }));
+                sb = sb.child(if it.on { d.bg(item_bg) } else { d });
+            }
 
             let mut pane = div().flex_1().bg(th_cmd_bg).p_8()
                 .flex().flex_col().gap_3().text_size(px(12.5))
