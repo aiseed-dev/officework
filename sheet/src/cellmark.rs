@@ -191,6 +191,34 @@ pub fn plain(lines: &[Line]) -> String {
     out
 }
 
+/// **選んだ字を印で囲む(もう囲んであれば外す)。**
+///
+/// リボンの太字・斜体・取り消しのボタンが、セルの編集中に使います
+/// (2026-08-19 発注者「セルの中の一部を選択してリボンのボタンをつかえば
+/// いいのでは」)。書き方を覚えなくても、選んで押せば印が入ります。
+///
+/// 返りは(置き換える範囲, 置き換え後の字, 置き換え後に選び直す範囲)。
+/// 範囲はバイト位置で、選択は Editor の選択(文字の境目に揃っている)を
+/// そのまま受け取ります。
+pub fn toggle_wrap(
+    text: &str,
+    sel: std::ops::Range<usize>,
+    open: &str,
+    close: &str,
+) -> (std::ops::Range<usize>, String, std::ops::Range<usize>) {
+    let inner = &text[sel.clone()];
+    // すでに囲んであれば外す(同じボタンで行き来できるように)
+    if text[..sel.start].ends_with(open) && text[sel.end..].starts_with(close) {
+        let from = sel.start - open.len();
+        let to = sel.end + close.len();
+        return (from..to, inner.to_string(), from..from + inner.len());
+    }
+    // 囲む。選び直すのは中身(続けて別のボタンも押せるように)
+    let rep = format!("{open}{inner}{close}");
+    let s = sel.start + open.len();
+    (sel.clone(), rep, s..s + inner.len())
+}
+
 /// 行頭の印を読んで、種類と残りの文字を返す。
 ///
 /// 番号つきの番号はここでは決めません(AsciiDoc は番号を書かないので、
@@ -542,6 +570,37 @@ mod tests {
         assert_eq!(l[1].block, Block::Bullet(0));
         assert!(l[1].spans[0].bold);
         assert_eq!(l[2].spans[1].link.as_deref(), Some("https://x"));
+    }
+
+    /// **選んで押すと印が入り、もう一度で外れる**(リボンのボタンの中身)
+    #[test]
+    fn 選んだ字を囲んで外せる() {
+        let t = "これは太字です";
+        let sel = 9..15; // 「太字」
+        let (r, rep, s2) = toggle_wrap(t, sel, "**", "**");
+        assert_eq!(r, 9..15);
+        assert_eq!(rep, "**太字**");
+        let t2 = format!("{}{}{}", &t[..r.start], rep, &t[r.end..]);
+        assert_eq!(t2, "これは**太字**です");
+        assert_eq!(&t2[s2.clone()], "太字", "選び直しがずれた");
+
+        // もう一度 → 外れる
+        let (r3, rep3, s3) = toggle_wrap(&t2, s2, "**", "**");
+        let t3 = format!("{}{}{}", &t2[..r3.start], rep3, &t2[r3.end..]);
+        assert_eq!(t3, "これは太字です");
+        assert_eq!(&t3[s3], "太字");
+    }
+
+    /// 取り消し線のように開きと閉じが違う印でも往復できる
+    #[test]
+    fn 開きと閉じが違う印も往復する() {
+        let t = "予定は中止です";
+        let (r, rep, s2) = toggle_wrap(t, 9..15, "[.line-through]##", "##");
+        let t2 = format!("{}{}{}", &t[..r.start], rep, &t[r.end..]);
+        assert_eq!(t2, "予定は[.line-through]##中止##です");
+        let (r3, rep3, _) = toggle_wrap(&t2, s2, "[.line-through]##", "##");
+        let t3 = format!("{}{}{}", &t2[..r3.start], rep3, &t2[r3.end..]);
+        assert_eq!(t3, "予定は中止です");
     }
 
     /// 印を外した見た目の字(幅の見積りに使う)

@@ -6756,3 +6756,64 @@ mod adoc_の開く保存 {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+/// **編集中に字を選んでボタンを押すと印が入る**(2026-08-19 発注者
+/// 「セルの中の一部を選択してリボンのボタンをつかえばいいのでは」)。
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod 選んで押すと印が入る {
+    use crate::*;
+
+    #[gpui::test]
+    fn 太字の印が入り_もう一度で外れる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.input = Editor::new("これは太字です");
+            this.input.move_to(9, false);
+            this.input.move_to(15, true); // 「太字」を選ぶ
+            this.run_cmd("bold", cx);
+            assert_eq!(this.input.text(), "これは**太字**です");
+            // セルの書式は変わっていない(印を入れただけ)
+            assert!(!this.sheet().get(this.cursor).map(|x| x.fmt.bold).unwrap_or(false));
+            // 選び直された中身にもう一度 → 外れる
+            this.run_cmd("bold", cx);
+            assert_eq!(this.input.text(), "これは太字です");
+        });
+    }
+
+    /// 選んでいなければ今までどおりセル全体の書式
+    #[gpui::test]
+    fn 選んでいなければセル全体(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.run_cmd("bold", cx);
+            assert!(this.sheet().get(this.cursor).map(|x| x.fmt.bold).unwrap_or(false));
+        });
+    }
+
+    /// **式の中では印を入れない。** `*` を足すと式そのものが変わる
+    #[gpui::test]
+    fn 式の中では入れない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.input = Editor::new("=SUM(A1:A3)");
+            this.input.move_to(1, false);
+            this.input.move_to(4, true); // SUM を選ぶ
+            this.run_cmd("bold", cx);
+            assert_eq!(this.input.text(), "=SUM(A1:A3)", "式に印が入った");
+        });
+    }
+
+    /// 取り消し線も同じ(開きと閉じが違う印)
+    #[gpui::test]
+    fn 取り消し線も入る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.input = Editor::new("予定は中止です");
+            this.input.move_to(9, false);
+            this.input.move_to(15, true);
+            this.run_cmd("strikeout", cx);
+            assert_eq!(this.input.text(), "予定は[.line-through]##中止##です");
+        });
+    }
+}

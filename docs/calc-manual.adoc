@@ -355,10 +355,10 @@ see https://…[here]                   → a blue underlined link
 * bullet    . numbered (no numbers written — they count up as you go)
 ----
 
-* *The ribbon buttons work too.* Bold and italic buttons format the whole cell; type the markup directly when you want to change only *part* of a cell
+* *The ribbon buttons are enough.* Press with nothing selected to format the whole cell; *select text while editing and press* to format just that text (the markers are inserted; press again to remove them). Typing the markers yourself does the same
 * *Doubled markers are the reliable form.* Single markers (`*bold*`) only work at word boundaries, so they do nothing inside Japanese text, which has no spaces between words (`this is *bold*` works in Latin text)
 * An `=` with *no space after it* is a formula (`=SUM(A1)`); with a space it is a cell heading (`= Big`)
-* *No editor for formatting part of a cell is needed* — you get formatting by typing, and the formula bar and Python always see the same plain text
+* The cell always holds plain text — the formula bar and Python see it as is, markers included
 * *It is written to xlsx as plain text*. A round trip can never garble it (Excel shows the markers literally — honest degradation)
 * *The selected cell shows the raw text* so you can retype it
 * To stack headings and bullets vertically, turn on *wrap* for the cell (without wrap, newlines still collapse to spaces as before)

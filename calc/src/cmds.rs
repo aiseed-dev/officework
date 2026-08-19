@@ -777,6 +777,33 @@ impl Calc {
     /// (`edits` が増えた)のに記録が伸びていなければ、それが穴。
     /// この形なら Python の口が増えたとき註が自然に消え、**一覧を手で
     /// 保つ必要がない**(手で保つ表は必ず遅れて嘘になる)。
+    /// **編集中の選択を印で囲む(もう囲んであれば外す)。** 捌いたら真。
+    ///
+    /// 式(`=` で始まり空白なし)の中では何もしません — 式の字を太字に
+    /// する意味が無く、`*` を足すと式そのものが変わってしまいます。
+    pub(crate) fn wrap_marks(&mut self, open: &str, close: &str) -> bool {
+        if !self.editing() {
+            return false;
+        }
+        let sel = self.input.selection();
+        if sel.is_empty() {
+            return false;
+        }
+        let text = self.input.text().to_string();
+        if kumihan::adoc::is_formula_cell(&text) {
+            return false;
+        }
+        let (at, rep, select) = sheet::cellmark::toggle_wrap(&text, sel, open, close);
+        // 置き換える範囲を選び直してから挿す(Editor の insert は選択を置き換える)
+        self.input.move_to(at.start, false);
+        self.input.move_to(at.end, true);
+        self.input.insert(&rep);
+        // 中身を選び直す(続けて別の印も押せるように)
+        self.input.move_to(select.start, false);
+        self.input.move_to(select.end, true);
+        true
+    }
+
     pub(crate) fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
         // 操作の記録(始めていれば)。**押す前に取る** — 掛けた後の姿を
         // 書くので、いまの状態から次の姿を組み立てる
@@ -923,10 +950,28 @@ impl Calc {
                 self.brush = Some(f);
                 self.status = ui::t!("書式を持ちました — 次に押したセル(選択)に塗ります(Esc でやめる)").into();
             }
-            "bold" => self.fmt(|f| f.bold = !f.bold),
-            "italic" => self.fmt(|f| f.italic = !f.italic),
+            // **編集中に字を選んでいれば、印を入れます**(2026-08-19 発注者
+            // 「セルの中の一部を選択してリボンのボタンをつかえばいいのでは」)。
+            // 書き方(**太字**)を覚えなくても、選んで押せば付きます。
+            // もう一度押せば外れます。選んでいなければ今までどおりセル全体
+            "bold" => {
+                if !self.wrap_marks("**", "**") {
+                    self.fmt(|f| f.bold = !f.bold)
+                }
+            }
+            "italic" => {
+                if !self.wrap_marks("__", "__") {
+                    self.fmt(|f| f.italic = !f.italic)
+                }
+            }
+            // 下線はセルの中の書き方に無い(AsciiDoc に印が無い)ので、
+            // いつでもセル全体
             "underline" => self.fmt(|f| f.underline = !f.underline),
-            "strikeout" => self.fmt(|f| f.strike = !f.strike),
+            "strikeout" => {
+                if !self.wrap_marks("[.line-through]##", "##") {
+                    self.fmt(|f| f.strike = !f.strike)
+                }
+            }
             // 縦の揃えと折り返し
             "top" => self.fmt(|f| f.valign = sheet::model::VAlign::Top),
             "middle" => self.fmt(|f| f.valign = sheet::model::VAlign::Middle),
