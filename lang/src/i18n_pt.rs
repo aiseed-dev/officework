@@ -1878,4 +1878,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("書きかけがあります(先に保存してください): {}", "Há alterações por guardar (guarde-as primeiro): {}"),
     ("最後の1枚は閉じません", "O último fica aberto"),
     ("{} に書きかけがあります(先に保存してください)", "{} tem alterações por guardar (guarde-as primeiro)"),
+    ("開ける物", "Ficheiros que pode abrir"),
+    ("officework の文書と表", "Documentos e folhas do officework"),
 ];

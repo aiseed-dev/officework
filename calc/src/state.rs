@@ -219,6 +219,7 @@ impl Calc {
             left_face: 0,
             right_face: 0,
             open_request: None,
+            open_dialog_request: false,
             embedded: false,
             tool: None,
             ink_cur: None,

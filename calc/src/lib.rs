@@ -429,6 +429,9 @@ pub struct Calc {
     ///
     /// **`embedded` が立っているときは種類を問わず全部ここに入ります。**
     pub open_request: Option<PathBuf>,
+    /// **「開く」の窓を出してほしい**(統合の段3)。
+    /// 埋め込みのときは Ctrl+O を自分で捌かず、ここに立てます
+    pub open_dialog_request: bool,
     /// **`officework` の中に埋め込まれているか**(2026-08-19。統合の段1)。
     /// 立っていると、一覧のクリックは自分で開かず `open_request` に置きます。
     /// 単体で起動したときは寝ているので、**単体の calc は変わりません**。

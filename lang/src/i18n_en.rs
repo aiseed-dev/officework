@@ -1891,4 +1891,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("書きかけがあります(先に保存してください): {}", "There are unsaved changes (save them first): {}"),
     ("最後の1枚は閉じません", "The last one stays open"),
     ("{} に書きかけがあります(先に保存してください)", "{} has unsaved changes (save it first)"),
+    ("開ける物", "Files you can open"),
+    ("officework の文書と表", "officework documents and spreadsheets"),
 ];

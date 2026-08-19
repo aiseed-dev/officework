@@ -185,12 +185,52 @@ impl Office {
     /// そのタブへ行き、無ければ新しいタブを足すだけです。書きかけは
     /// タブの中に生きたまま残るので、**持ち替えの断りは要らなくなりました**。
     fn 開く頼み(&mut self, cx: &mut Context<Self>) {
+        // 「開く」の窓を出してほしい(Ctrl+O。統合の段3)
+        let 窓を出す = match self.見ている() {
+            Pane::Doc(v) => v.update(cx, |w, _| std::mem::take(&mut w.open_dialog_request)),
+            Pane::Sheet(v) => v.update(cx, |c, _| std::mem::take(&mut c.open_dialog_request)),
+        };
+        if 窓を出す {
+            self.開く窓(cx);
+        }
         let 頼み = match self.見ている() {
             Pane::Doc(v) => v.update(cx, |w, _| w.open_request.take()),
             Pane::Sheet(v) => v.update(cx, |c, _| c.open_request.take()),
         };
         let Some(p) = 頼み else { return };
         self.タブで開く(p, cx);
+    }
+
+    /// **開くファイルを選ぶ窓**(統合の段3)。
+    ///
+    /// 文章も表も同じ窓から選べます — *どちらの画面で開くかは名前が決める*ので、
+    /// 選ぶ側で種類を絞る理由がありません。前は編集画面ごとに窓があり、
+    /// 文章の画面からは表が選べませんでした。
+    ///
+    /// `rfd` は同期なので**別の糸**で開きます(主の糸で呼ぶと画面が止まります)。
+    fn 開く窓(&self, cx: &mut Context<Self>) {
+        let dir = ui::settings::get("folder").map(std::path::PathBuf::from);
+        let ask = cx.background_executor().spawn(async move {
+            let mut d = rfd::FileDialog::new()
+                .add_filter(ui::t!("開ける物"), &["adoc", "docx", "xlsx", "xltx"])
+                .add_filter(ui::t!("officework の文書と表"), &["adoc"])
+                .add_filter("Word (.docx)", &["docx"])
+                .add_filter("Excel (.xlsx)", &["xlsx"]);
+            if let Some(d0) = dir.filter(|p| p.is_dir()) {
+                d = d.set_directory(d0);
+            }
+            d.pick_file()
+        });
+        cx.spawn(async move |this, cx| {
+            let r = ask.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(p) = r {
+                    this.タブで開く(p, cx);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
     }
 
     /// いま見ているタブ。

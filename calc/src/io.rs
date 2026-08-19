@@ -986,7 +986,14 @@ impl Calc {
         self.save(false, cx); cx.notify();
     }
     pub(crate) fn a_open(&mut self, _: &ui::Open, _: &mut Window, cx: &mut Context<Self>) {
-        self.open_dialog(cx); cx.notify();
+        // **埋め込みなら officework に出してもらいます**(統合の段3)。
+        // 開く物の種類で画面が決まるので、選ぶ窓は持ち主が出すのが筋です
+        if self.embedded {
+            self.open_dialog_request = true;
+        } else {
+            self.open_dialog(cx);
+        }
+        cx.notify();
     }
 
     /// 開くファイルを選ぶ。**ダイアログは別のスレッド** — rfd は同期で、

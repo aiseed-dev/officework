@@ -873,7 +873,12 @@ impl Writer {
     }
 
     pub(crate) fn do_open(&mut self, _: &ui::Open, _: &mut Window, cx: &mut Context<Self>) {
-        self.open_dialog(cx);
+        // **埋め込みなら officework に出してもらいます**(統合の段3)
+        if self.embedded {
+            self.open_dialog_request = true;
+        } else {
+            self.open_dialog(cx);
+        }
         cx.notify();
     }
 
