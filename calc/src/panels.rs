@@ -97,7 +97,64 @@ impl Calc {
                 .flex_1().min_w(px(0.0)).h_full().overflow_y_scroll()
                 .p_2()
                 .flex().flex_col().gap_0p5();
-            if 面 == 1 {
+            if 面 == 2 {
+                // ── フォルダの中身 ───────────────────────────────
+                //
+                // **文章の画面と同じ物**(2026-08-19)。表を押せばここで開き、
+                // 文書を押せば officework が受け取って文章の画面にします。
+                // これで表と文章を行き来できます
+                d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
+                    .text_color(fg).child(ui::t!("ファイル — フォルダの中身").to_string()));
+                match self.folder() {
+                    None => {
+                        d = d.child(div().text_size(px(us * 11.0)).text_color(薄)
+                            .child(ui::t!("フォルダを開いていません(ファイル > 開く)").to_string()));
+                    }
+                    Some(dir) => {
+                        let 名 = dir.file_name().map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_else(|| dir.display().to_string());
+                        d = d.child(div().text_size(px(us * 10.5)).text_color(薄)
+                            .child(SharedString::from(名)));
+                        let 一覧 = ui::folder::list(&dir);
+                        if 一覧.is_empty() {
+                            d = d.child(div().text_size(px(us * 11.0)).text_color(薄)
+                                .child(ui::t!("(空のフォルダです)").to_string()));
+                        }
+                        for (i, e) in 一覧.into_iter().take(200).enumerate() {
+                            let 開ける = e.kind.can_open();
+                            let 文書だ = e.kind.is_doc();
+                            let 道 = e.path.clone();
+                            let 札 = e.kind.label().to_string();
+                            let いま = self.path.as_deref() == Some(e.path.as_path());
+                            let mut 行 = div()
+                                .id(SharedString::from(format!("fl-{i}")))
+                                .px_1().py_0p5().rounded_sm()
+                                .flex().flex_row().items_center().gap_1()
+                                .bg(if いま { line } else { gpui::transparent_black().into() })
+                                .child(div().flex_1().min_w(px(0.0)).text_size(px(us * 11.5))
+                                    .text_color(if 開ける { fg } else { 薄 })
+                                    .child(SharedString::from(e.name.clone())))
+                                .child(div().flex_none().text_size(px(us * 9.0)).text_color(薄)
+                                    .child(SharedString::from(札)));
+                            if 開ける {
+                                行 = 行.cursor_pointer()
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.remember_folder();
+                                        if 文書だ {
+                                            // 文書は officework に渡す(同じ
+                                            // ウィンドウで文章の画面になります)
+                                            this.hand_off = Some(道.clone());
+                                        } else {
+                                            this.open(道.clone());
+                                        }
+                                        cx.notify()
+                                    }));
+                            }
+                            d = d.child(行);
+                        }
+                    }
+                }
+            } else if 面 == 1 {
                 // ── 図形と画像 ───────────────────────────────────
                 d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(fg).child(ui::t!("図形と画像").to_string()));
@@ -335,7 +392,10 @@ impl Calc {
                 .child(柱釦("rf-cell", "cell-format", ui::t!("セルの設定").to_string(), 面 == 0)
                     .on_click(cx.listener(|this, _, _, cx| { this.right_face = 0; cx.notify() })))
                 .child(柱釦("rf-shape", "insshape", ui::t!("図形と画像").to_string(), 面 == 1)
-                    .on_click(cx.listener(|this, _, _, cx| { this.right_face = 1; cx.notify() })));
+                    .on_click(cx.listener(|this, _, _, cx| { this.right_face = 1; cx.notify() })))
+                // **フォルダの中身**(2026-08-19)。文章の画面と同じ物
+                .child(柱釦("rf-files", "py-folder", ui::t!("ファイル — フォルダの中身").to_string(), 面 == 2)
+                    .on_click(cx.listener(|this, _, _, cx| { this.right_face = 2; cx.notify() })));
             Some(div()
                 .flex_none().w(px((W + RAIL) * us)).h_full()
                 .m_1().rounded_sm().bg(bg)

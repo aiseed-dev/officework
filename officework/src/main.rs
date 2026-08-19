@@ -49,17 +49,24 @@ impl Office {
     /// **持ち替えの頼みを受け取る**(2026-08-19 発注者「calc のファイルが
     /// 表示されるようにして」)。
     ///
-    /// 文章の画面で表を押されたら、*同じウィンドウで*表の画面に持ち替えます。
+    /// 文章の画面で表を押されたら表の画面に、表の画面で文書を押されたら
+    /// 文章の画面に、*同じウィンドウで*持ち替えます。
     /// 別のアプリを起こすわけではありません。
     fn 持ち替え(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let 頼み = match &self.shown {
-            Shown::Doc(v) => v.update(cx, |w, _| w.hand_off.take()),
-            Shown::Sheet(_) => None,
-        };
-        let Some(p) = 頼み else { return };
-        let v = cx.new(|cx| calc::Calc::new(Some(p), cx));
-        window.focus(&v.focus_handle(cx), cx);
-        self.shown = Shown::Sheet(v);
+        match &self.shown {
+            Shown::Doc(v) => {
+                let Some(p) = v.update(cx, |w, _| w.hand_off.take()) else { return };
+                let n = cx.new(|cx| calc::Calc::new(Some(p), cx));
+                window.focus(&n.focus_handle(cx), cx);
+                self.shown = Shown::Sheet(n);
+            }
+            Shown::Sheet(v) => {
+                let Some(p) = v.update(cx, |c, _| c.hand_off.take()) else { return };
+                let n = cx.new(|cx| writer::Writer::new(Some(p), cx));
+                window.focus(&n.focus_handle(cx), cx);
+                self.shown = Shown::Doc(n);
+            }
+        }
         cx.notify();
     }
 }

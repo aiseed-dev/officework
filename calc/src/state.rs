@@ -3,6 +3,22 @@
 use crate::*;
 
 impl Calc {
+    /// **いま開いているフォルダ。** 右パネルのファイル一覧が並べる場所です。
+    /// 開いているブックの親を使い、無ければ前に使ったフォルダです。
+    pub(crate) fn folder(&self) -> Option<PathBuf> {
+        if let Some(p) = self.path.as_ref().and_then(|p| p.parent()) {
+            return Some(p.to_path_buf());
+        }
+        ui::settings::get("folder").map(PathBuf::from).filter(|p| p.is_dir())
+    }
+
+    /// フォルダを覚える(次に起動したときここを開きます)。
+    pub(crate) fn remember_folder(&self) {
+        if let Some(d) = self.folder() {
+            ui::settings::set("folder", &d.display().to_string());
+        }
+    }
+
     pub fn new(path: Option<PathBuf>, cx: &mut Context<Self>) -> Calc {
         let mut c = Calc {
             focus: cx.focus_handle(),
@@ -168,6 +184,7 @@ impl Calc {
             chat_err: None,
             left_face: 0,
             right_face: 0,
+            hand_off: None,
             tool: None,
             ink_cur: None,
         };
