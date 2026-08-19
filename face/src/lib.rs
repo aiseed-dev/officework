@@ -77,6 +77,8 @@ pub mod ribbon_zh_tw;
 // gen_lang:end
 
 pub mod ribbon_tables;
+/// 最近使ったファイル(文章と表で1つの一覧)
+pub mod recent;
 /// 前回の姿(開いていたフォルダ・ファイル・見ていたタブ)
 pub mod session;
 pub mod settings;

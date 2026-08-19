@@ -1155,30 +1155,14 @@ impl Writer {
         .detach();
     }
 
-    /// 最近開いた・保存した文書の控え(~/.config/officework/recent-writer.txt)
-    pub(crate) fn recent_file() -> PathBuf {
-        pyrun::config_dir().join("recent-writer.txt")
-    }
-
+    /// 最近使ったファイルは **face::recent の1つの一覧**(統合の段8)。
+    /// 文章と表で分けません — 使う人から見ればファイルはファイルです
     pub(crate) fn note_recent(p: &std::path::Path) {
-        let rf = Self::recent_file();
-        if let Some(dir) = rf.parent() {
-            let _ = std::fs::create_dir_all(dir);
-        }
-        let mut list: Vec<String> = std::fs::read_to_string(&rf)
-            .map(|s| s.lines().map(str::to_string).collect())
-            .unwrap_or_default();
-        let me = p.to_string_lossy().to_string();
-        list.retain(|x| *x != me);
-        list.insert(0, me);
-        list.truncate(12);
-        let _ = std::fs::write(&rf, list.join("\n"));
+        ui::recent::note(p);
     }
 
     pub(crate) fn recent_list() -> Vec<PathBuf> {
-        std::fs::read_to_string(Self::recent_file())
-            .map(|s| s.lines().map(PathBuf::from).filter(|p| p.exists()).collect())
-            .unwrap_or_default()
+        ui::recent::list()
     }
 
     /// 新しい文書。未保存の変更があるときは作らない(黙って捨てない)。
