@@ -54,6 +54,14 @@ fn 起動の形(arg: Option<std::path::PathBuf>) -> Start {
     }
 }
 
+/// **その名前は表か。** 中身は見ません(SEKKEI「画面を1つにする」)。
+/// 起動・受け口・一覧のクリックの**3つとも同じ判定を通す**ための1箇所です。
+fn 表か(p: &std::path::Path) -> bool {
+    p.file_name()
+        .map(|n| ui::folder::kind_of(&n.to_string_lossy()))
+        .is_some_and(|k| k.is_sheet())
+}
+
 /// 開いたファイルのフォルダを覚える(次の起動でここが開きます)。
 ///
 /// 関連付けからファイルを開いた回も覚えます — *使った場所が次に開く場所*で、
@@ -83,19 +91,16 @@ impl Office {
             Start::File(p) => Some(p.clone()),
             Start::Folder(_) | Start::AskFolder => None,
         };
-        // **名前で決めます。** 中身は見ません(SEKKEI「画面を1つにする」)
-        let 表か = path
-            .as_ref()
-            .and_then(|p| p.file_name())
-            .map(|n| ui::folder::kind_of(&n.to_string_lossy()))
-            .is_some_and(|k| k.is_sheet());
-        let shown = if 表か {
-            // 開いたファイルのフォルダを覚えます(次の起動でここが開きます)
-            覚える(path.as_deref());
-            Shown::Sheet(cx.new(|cx| calc::Calc::new(path, cx)))
+        // 開いたファイルのフォルダを覚えます(次の起動でここが開きます)
+        覚える(path.as_deref());
+        let shown = if path.as_deref().is_some_and(表か) {
+            let c = cx.new(|cx| calc::Calc::new(path, cx));
+            // **埋め込みの印**(統合の段1)。一覧のクリックが officework 経由になります
+            c.update(cx, |c, _| c.set_embedded());
+            Shown::Sheet(c)
         } else {
-            覚える(path.as_deref());
             let w = cx.new(|cx| writer::Writer::new(path, cx));
+            w.update(cx, |w, _| w.set_embedded());
             // フォルダで始めるときは、一覧を開いた姿にします
             if let Start::Folder(d) = start {
                 w.update(cx, |w, _| w.show_folder(d));
@@ -107,48 +112,40 @@ impl Office {
 }
 
 impl Office {
-    /// **持ち替えの頼みを受け取る**(2026-08-19 発注者「calc のファイルが
-    /// 表示されるようにして」)。
+    /// **「このファイルを開いてほしい」を受け取る**(統合の段1)。
     ///
-    /// 文章の画面で表を押されたら表の画面に、表の画面で文書を押されたら
-    /// 文章の画面に、*同じウィンドウで*持ち替えます。
-    /// 別のアプリを起こすわけではありません。
-    /// **持ち替えは画面ごと作り直します。** だから書きかけがあると消えます —
-    /// 断るのはそのためです(writer のタブを閉じるときと同じ作法)。
-    fn 持ち替え(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    /// 埋め込みの編集画面は、一覧を押されると**種類を問わず** `open_request`
+    /// に置きます。ここが名前で行き先を決めます — 同じ種類ならその画面に
+    /// そのまま開かせ、違う種類なら持ち替えます。
+    ///
+    /// **持ち替えはいまのところ画面ごと作り直します。** だから書きかけが
+    /// あると消えるので断ります。段2 でタブの持ち主が officework に移ると
+    /// 作り直しが無くなり、**この断りは要らなくなります**。
+    fn 開く頼み(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let 頼み = match &self.shown {
+            Shown::Doc(v) => v.update(cx, |w, _| w.open_request.take()),
+            Shown::Sheet(v) => v.update(cx, |c, _| c.open_request.take()),
+        };
+        let Some(p) = 頼み else { return };
+        let いま表 = matches!(self.shown, Shown::Sheet(_));
+        // 同じ種類なら、その画面がそのまま開きます(持ち替えではない)
+        if 表か(&p) == いま表 {
+            match &self.shown {
+                Shown::Doc(v) => v.update(cx, |w, _| w.open_path(p)),
+                Shown::Sheet(v) => v.update(cx, |c, _| c.open_path(p)),
+            }
+            cx.notify();
+            return;
+        }
+        if self.書きかけがある(cx) {
+            self.言う(ui::t!("書きかけがあります(先に保存してください)"), cx);
+            cx.notify();
+            return;
+        }
+        self.見せる(p, !いま表, cx);
         match &self.shown {
-            Shown::Doc(v) => {
-                let Some(p) = v.update(cx, |w, _| w.hand_off.take()) else { return };
-                if v.update(cx, |w, _| {
-                    let 書きかけ = w.has_unsaved();
-                    if 書きかけ {
-                        w.say(ui::t!("書きかけがあります(先に保存してください)"));
-                    }
-                    書きかけ
-                }) {
-                    cx.notify();
-                    return;
-                }
-                let n = cx.new(|cx| calc::Calc::new(Some(p), cx));
-                window.focus(&n.focus_handle(cx), cx);
-                self.shown = Shown::Sheet(n);
-            }
-            Shown::Sheet(v) => {
-                let Some(p) = v.update(cx, |c, _| c.hand_off.take()) else { return };
-                if v.update(cx, |c, _| {
-                    let 書きかけ = c.has_unsaved();
-                    if 書きかけ {
-                        c.say(ui::t!("書きかけがあります(先に保存してください)"));
-                    }
-                    書きかけ
-                }) {
-                    cx.notify();
-                    return;
-                }
-                let n = cx.new(|cx| writer::Writer::new(Some(p), cx));
-                window.focus(&n.focus_handle(cx), cx);
-                self.shown = Shown::Doc(n);
-            }
+            Shown::Doc(v) => window.focus(&v.focus_handle(cx), cx),
+            Shown::Sheet(v) => window.focus(&v.focus_handle(cx), cx),
         }
         cx.notify();
     }
@@ -204,13 +201,7 @@ impl Office {
         // 表の画面に、文書なら文章の画面にしてから開きます。ここを通さないと
         // 「表を開いたのに紙面が出る」ことになります(実際に踏みました)
         if let Some(p) = 開くファイル(line) {
-            let 表 = ui::folder::kind_of(
-                &std::path::Path::new(&p)
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_default(),
-            )
-            .is_sheet();
+            let 表 = 表か(std::path::Path::new(&p));
             let いま表 = matches!(self.shown, Shown::Sheet(_));
             if 表 != いま表 {
                 // **持ち替えは画面ごと作り直す**ので、書きかけがあると消える。
@@ -275,10 +266,16 @@ impl Office {
 
     /// 画面を作り直して、そのファイルを見せる。
     fn 見せる(&mut self, p: std::path::PathBuf, 表: bool, cx: &mut Context<Self>) {
+        // **作った画面には必ず埋め込みの印を立てます。** 立て忘れると、
+        // その画面だけ一覧のクリックを自分で握って持ち替えが効かなくなります
         self.shown = if 表 {
-            Shown::Sheet(cx.new(|cx| calc::Calc::new(Some(p), cx)))
+            let c = cx.new(|cx| calc::Calc::new(Some(p), cx));
+            c.update(cx, |c, _| c.set_embedded());
+            Shown::Sheet(c)
         } else {
-            Shown::Doc(cx.new(|cx| writer::Writer::new(Some(p), cx)))
+            let w = cx.new(|cx| writer::Writer::new(Some(p), cx));
+            w.update(cx, |w, _| w.set_embedded());
+            Shown::Doc(w)
         };
         cx.notify();
     }
@@ -286,9 +283,9 @@ impl Office {
 
 impl Render for Office {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // **持ち替えの頼みは描く前に見ます。** 見落とすと、押しても何も
+        // **開く頼みは描く前に見ます。** 見落とすと、押しても何も
         // 起きないように見えます
-        self.持ち替え(window, cx);
+        self.開く頼み(window, cx);
         // 選んだ編集画面をそのまま出します。ファイルのタブとフォルダの
         // 一覧は、それぞれの編集画面が持っているものを使います
         div().size_full().child(match &self.shown {

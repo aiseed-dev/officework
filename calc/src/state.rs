@@ -14,6 +14,18 @@ impl Calc {
         self.status = msg.into();
     }
 
+    /// **`officework` の中に埋め込まれたと伝える**(統合の段1)。
+    ///
+    /// これを立てると、一覧のクリックは自分で開かず `open_request` に置きます。
+    pub fn set_embedded(&mut self) {
+        self.embedded = true;
+    }
+
+    /// **このブックを開く**(`officework` が頼む口。統合の段1)。
+    pub fn open_path(&mut self, p: PathBuf) {
+        self.open(p);
+    }
+
     /// **いま開いているフォルダ。** 右パネルのファイル一覧が並べる場所です。
     /// 開いているブックの親を使い、無ければ前に使ったフォルダです。
     pub(crate) fn folder(&self) -> Option<PathBuf> {
@@ -195,7 +207,8 @@ impl Calc {
             chat_err: None,
             left_face: 0,
             right_face: 0,
-            hand_off: None,
+            open_request: None,
+            embedded: false,
             tool: None,
             ink_cur: None,
         };

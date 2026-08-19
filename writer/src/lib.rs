@@ -187,12 +187,22 @@ pub struct Writer {
     docs: Vec<Document>,
     /// いま見ている文書は何枚目か
     doc_at: usize,
-    /// **この画面では開けないファイルを頼まれた**(2026-08-19)。
+    /// **このファイルを開いてほしい**(2026-08-19。統合の段1)。
     ///
-    /// 一覧で表を押されたときにここへ入れます。`officework` が毎回見て、
-    /// 表の画面に持ち替えます。*同じウィンドウに表が出る*ための受け渡しで、
+    /// 一覧でファイルを押されたときにここへ入れます。`officework` が毎回見て、
+    /// 名前で行き先を決めて開きます。*同じウィンドウで開く*ための受け渡しで、
     /// 別のアプリを起こすわけではありません。
-    pub hand_off: Option<PathBuf>,
+    ///
+    /// **`embedded` が立っているときは種類を問わず全部ここに入ります。**
+    /// 前は「表だけ渡し、文書は自分で開く」と半分ずつ持っていましたが、
+    /// 開く物の持ち主が officework になったので、頼み方を1本にしました。
+    pub open_request: Option<PathBuf>,
+    /// **`officework` の中に埋め込まれているか**(2026-08-19。統合の段1)。
+    ///
+    /// 立っていると、一覧のクリックは自分で開かず `open_request` に置きます。
+    /// 単体で起動したときは寝ているので、今までどおり自分で開きます —
+    /// **単体の writer の振る舞いは変わりません**。
+    embedded: bool,
     /// **開いている他のファイル**(2026-08-19)。いま見ている物は
     /// `Writer` の欄にあり、ここの `file_at` 番目は空の置き場です
     files: Vec<OpenFile>,
@@ -496,6 +506,21 @@ impl Writer {
     /// 状態行に出す(持ち替えを断った理由を言うため)。
     pub fn say(&mut self, msg: impl Into<gpui::SharedString>) {
         self.status = msg.into();
+    }
+
+    /// **`officework` の中に埋め込まれたと伝える**(統合の段1)。
+    ///
+    /// これを立てると、一覧のクリックは自分で開かず `open_request` に置きます。
+    pub fn set_embedded(&mut self) {
+        self.embedded = true;
+    }
+
+    /// **この文書を開く**(`officework` が頼む口。統合の段1)。
+    ///
+    /// いまは writer の中のタブで開きます。段2 でタブの持ち主が officework に
+    /// 移ったら、ここは「いま見ている物を差し替える」だけになります。
+    pub fn open_path(&mut self, p: PathBuf) {
+        self.open_in_tab(p);
     }
 
     /// **フォルダを開いた姿にする**(`officework` の起動。SEKKEI「A-1」)。

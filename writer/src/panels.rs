@@ -1126,12 +1126,13 @@ impl Writer {
                                     .hover(move |s| s.bg(th_btn_hover))
                                     .on_click(cx.listener(move |t, _, _, cx| {
                                         t.remember_folder();
-                                        if 表だ {
-                                            // 表は officework に渡す(同じ
-                                            // ウィンドウで表の画面になります)
-                                            t.hand_off = Some(道.clone());
+                                        // **埋め込みなら種類を問わず officework に頼む**
+                                        // (統合の段1)。開く物の持ち主が向こうに
+                                        // 移ったので、半分ずつ自分で開くのをやめました
+                                        if t.embedded || 表だ {
+                                            t.open_request = Some(道.clone());
                                         } else {
-                                            // **新しいタブで開きます**。
+                                            // 単体のとき。**新しいタブで開きます**。
                                             // 開いている物は閉じません
                                             t.open_in_tab(道.clone());
                                         }

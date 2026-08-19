@@ -140,10 +140,12 @@ impl Calc {
                                 行 = 行.cursor_pointer()
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.remember_folder();
-                                        if 文書だ {
-                                            // 文書は officework に渡す(同じ
-                                            // ウィンドウで文章の画面になります)
-                                            this.hand_off = Some(道.clone());
+                                        // **埋め込みなら種類を問わず officework に頼む**
+                                        // (統合の段1)。開く物の持ち主が向こうに
+                                        // 移ったので、半分ずつ自分で開くのをやめました。
+                                        // 単体で動いているときは今までどおり自分で開きます
+                                        if this.embedded || 文書だ {
+                                            this.open_request = Some(道.clone());
                                         } else {
                                             this.open(道.clone());
                                         }
