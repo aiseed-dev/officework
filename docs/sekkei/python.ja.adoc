@@ -276,7 +276,7 @@ plugins の .py は何も名乗らなくてよい(一覧に名前が出て人が
 writer 側の API(文書・記入欄・差し込み)は今後 officework.writer として増やす。
 
 * *ソケット*: calc が起動時にユニックスソケットを開く(calc/src/rpc.rs)。径路は `$XDG_RUNTIME_DIR/jo-office/calc.sock`、AF\_UNIX の 108 字上限を超えるときは `/tmp/jo-office-UID/`(Python 側と同じ規則)。*この機械の中だけ* — TCP は開かない(ネイティブファースト)
-* *スレッドの作法*: ソケットのスレッドは状態に触らない。要求を溜め、GPUI の泵が30ms ごとにメインスレッドで捌く(答えは要求ごとの mpsc で返す。5秒で諦める)
+* *スレッドの作法*: ソケットのスレッドは状態に触らない。要求を溜め、GPUI の側が 30ms ごとにメインスレッドで捌く(答えは要求ごとの mpsc で返す。5秒で諦める)
 * *語彙*(JSON 1行ずつ): ping / book\_info / new / open / save / get / get\_formula / set / expand。set は 1回=1手(Ctrl+Z)・書式は据え置き・保護中は断る。new/open は未保存の変更があれば断る(黙って捨てない)
 * *JSON は自前の浅い読み書き*(rpc.rs 内)— 依存を増やさない(crypt と同じ流儀)。語彙が浅いので足りる
 * *Python 側*: pysheet/officework/(純 Python、依存なし。pandas は使う時だけ)。 .venv には officework.pth で結線(コピーしない — 常に最新)

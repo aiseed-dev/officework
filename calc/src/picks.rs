@@ -3016,7 +3016,7 @@ impl Calc {
             || self.shape_sel.take().is_some()
             || self.img_sel.take().is_some()
         {
-            // 一覧・パネルを閉じたら意味づけも戻す(耳のメニューの狙い先も)
+            // 一覧・パネルを閉じたら意味づけも戻す(タブのメニューの狙い先も)
             self.pick_kind = "value";
             self.pick_note = None;
             self.sheet_menu_at = None;
@@ -4487,8 +4487,8 @@ impl Calc {
         self.switch_sheet(self.book.sheets.len() - 1);
     }
 
-    /// 耳の右クリックメニュー(本家「シートの管理」の並び)。
-    /// 出す場所は耳に近い左下 — パネルを遠くに出さない(終了確認と同じ判断)
+    /// タブの右クリックメニュー(本家「シートの管理」の並び)。
+    /// 出す場所はタブに近い左下 — パネルを遠くに出さない(終了確認と同じ判断)
     pub(crate) fn open_sheet_menu(&mut self, i: usize) {
         self.sheet_menu_at = Some(i);
         self.pick_kind = "sheet-menu";
@@ -4530,7 +4530,7 @@ impl Calc {
         self.dirty = true;
     }
 
-    /// シートを削除する(耳のメニューと橋(rpc)の共有 — 同じ作法で断る)。
+    /// シートを削除する(タブのメニューと橋(rpc)の共有 — 同じ作法で断る)。
     /// 返りは消したシートの名前。undo は消える(sheets_restructured)。
     pub(crate) fn delete_sheet_at(&mut self, t: usize) -> Result<String, String> {
         if t >= self.book.sheets.len() {
@@ -4575,7 +4575,7 @@ impl Calc {
         Ok(name)
     }
 
-    /// シートを複製する(耳のメニューと橋(rpc)の共有)。写しは元の右隣に
+    /// シートを複製する(タブのメニューと橋(rpc)の共有)。写しは元の右隣に
     /// 入り、そこへ移る。名前は省略なら「名前 (2)」の流儀、指定ならシート名の
     /// 決まり(31字・: \\ / ? * [ ] 不可・重複不可)で検査。返りは写しの名前。
     pub(crate) fn copy_sheet_at(&mut self, t: usize, name: Option<&str>) -> Result<String, String> {
@@ -4623,7 +4623,7 @@ impl Calc {
         Ok(new_name)
     }
 
-    /// シートを隠す・戻す(耳のメニューと橋(rpc)の共有)。
+    /// シートを隠す・戻す(タブのメニューと橋(rpc)の共有)。
     /// 最後の見えている1枚は隠せない。隠したのがいまのシートなら見える所へ移る。
     pub(crate) fn set_sheet_hidden(&mut self, t: usize, hidden: bool) -> Result<(), String> {
         if t >= self.book.sheets.len() {
@@ -4648,7 +4648,7 @@ impl Calc {
         Ok(())
     }
 
-    /// 耳のメニューの実行。t = メニューが指しているシート
+    /// タブのメニューの実行。t = メニューが指しているシート
     pub(crate) fn sheet_menu_action(&mut self, v: &str) {
         let Some(t) = self.sheet_menu_at else { return };
         if t >= self.book.sheets.len() {
@@ -4756,7 +4756,7 @@ impl Calc {
                     return; // 2段目の一覧へ(pick_kind を戻さない)
                 }
             }
-            // 耳から保護を掛け外し。**そのシートを開いてから**掛ける —
+            // シートのタブから保護を掛け外し。**そのシートを開いてから**掛ける —
             // いま見ているのと違うシートに黙って掛けない
             "シートを保護" | "保護を解除" => {
                 if t < self.book.sheets.len() {
@@ -4800,7 +4800,7 @@ impl Calc {
         self.sheet_menu_at = None;
     }
 
-    /// 耳の色の決定(タブの色の2段目)
+    /// シート見出しの色の決定(タブの色の2段目)
     pub(crate) fn set_tab_color(&mut self, v: &str) {
         let Some(t) = self.sheet_menu_at.take() else { return };
         if t >= self.book.sheets.len() {
@@ -4817,15 +4817,15 @@ impl Calc {
             "灰" => (Some("FF7F7F7F"), ui::t!("灰")),
             _ => (None, ""),
         };
-        // 1手で戻せる(耳の色もシートの中身 — checkpoint と同じ作法で番号つき)
+        // 1手で戻せる(シート見出しの色もシートの中身 — checkpoint と同じ作法で番号つき)
         self.undo_stack.push(vec![(t, self.book.sheets[t].clone())]);
         self.redo_stack.clear();
         self.book.sheets[t].tab_color = hex.map(|h| h.to_string());
         self.dirty = true;
         self.status = if hex.is_some() {
-            ui::tf!("耳の色を{}にしました(保存で xlsx にも残ります)", label).into()
+            ui::tf!("シート見出しの色を{}にしました(保存で xlsx にも残ります)", label).into()
         } else {
-            ui::t!("耳の色を消しました").into()
+            ui::t!("シート見出しの色を消しました").into()
         };
     }
 }

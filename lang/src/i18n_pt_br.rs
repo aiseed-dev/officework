@@ -663,8 +663,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("シート「{}」を動かしました", "Planilha \"{}\" movida"),
     ("シート「{}」を隠しました(「再表示」で戻せます。保存で xlsx にも残ります)", "Planilha \"{}\" ocultada (recuperável em \"Reexibir\"; ao salvar, permanece no xlsx)"),
     ("隠したシートはありません", "Não há planilhas ocultas"),
-    ("耳の色を{}にしました(保存で xlsx にも残ります)", "Cor da guia definida como {} (ao salvar, permanece no xlsx)"),
-    ("耳の色を消しました", "Cor da guia removida"),
+    ("シート見出しの色を{}にしました(保存で xlsx にも残ります)", "Cor da guia definida como {} (ao salvar, permanece no xlsx)"),
+    ("シート見出しの色を消しました", "Cor da guia removida"),
     ("関数を挿入: 打って絞り込み、↑↓で選んで Enter(Esc で取消)", "Inserir função: digite para filtrar, ↑↓ para escolher, Enter (Esc para cancelar)"),
     ("名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。\
                          知らない名前は選択に付きます", "Caixa de nome: vai para uma referência (B12), um intervalo (A1:C9) ou um nome. Um nome desconhecido é atribuído à seleção"),

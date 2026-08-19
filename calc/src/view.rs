@@ -320,10 +320,10 @@ impl Render for Calc {
         // 1段目 = クイックアクセス+ブック名(この行が窓の取っ手)。
         // 表計算の色は緑(デスクトップ版の app 色分けと同じ)。
         // 2段目 = 白地のタブ+現在地の緑の下線。右端に 🔍。
-        // 下端 = ステータスバー(シートの耳+状態の文言+選択の生きた値)
+        // 下端 = ステータスバー(シートのタブ+状態の文言+選択の生きた値)
         let (ready, all) = ribbon::progress(ribbon::calc_tabs());
         // 画面の明暗(インターフェイステーマ)。**セルは白のまま** —
-        // 暗くするのは周り(帯・タブ・ボタン・見出し・耳)だけ
+        // 暗くするのは周り(帯・タブ・ボタン・見出し)だけ
         let dk = self.dark;
         let th_bar = if dk { rgb(0x14432A) } else { rgb(0x1B6E3C) };
         let th_band = if dk { rgb(0x1B1E21) } else { rgb(0xFFFFFF) };
@@ -1888,16 +1888,16 @@ impl Render for Calc {
             }
         }
 
-        // ---- シートの耳(Excel と同じく下に置く) ----
+        // ---- シートのタブ(Excel と同じく下に置く) ----
         let mut sheets_bar = div().flex().flex_row().items_center().gap_1()
             .px_3().py_1().bg(th_head)
             .border_t_1().border_color(rgb(0xD5DBE0));
         for (i, s) in self.book.sheets.iter().enumerate() {
             if s.hidden {
-                continue; // 隠したシートは耳に出さない(表示タブで戻す)
+                continue; // 隠したシートはタブに出さない(表示タブで戻す)
             }
             let on = i == self.active;
-            // 耳の色(xlsx の tabColor)。活きている耳は白のまま、色は縁に出す
+            // タブの色(xlsx の tabColor)。選んでいるタブは白のまま、色は縁に出す
             let tabc = s.tab_color.as_deref().and_then(|h| {
                 let h6 = h.get(h.len().saturating_sub(6)..)?;
                 h6.chars().all(|c| c.is_ascii_hexdigit()).then(|| hex(h6))
@@ -1944,7 +1944,7 @@ impl Render for Calc {
                             cx.notify();
                         }
                     }))
-                // 右クリックで耳のメニュー(挿入・削除・名前の変更・…)
+                // 右クリックでタブのメニュー(挿入・削除・名前の変更・…)
                 .on_mouse_down(gpui::MouseButton::Right, cx.listener(
                     move |this, _, _, cx| {
                         cx.stop_propagation();
@@ -6074,7 +6074,7 @@ impl Render for Calc {
             // 面の中にいると `overflow_hidden` で切られ、リボンから開いた
             // 一覧が必ず面の上端に出ていた(発注者「テキスト表示のすぐ下に
             // 出したほうがいい」)。根なら面より上にも出せる。
-            // 座標は窓のもの(面の原点を足してある)。**耳や状態行より後に
+            // 座標は窓のもの(面の原点を足してある)。**シートのタブや状態行より後に
             // 置く** — 後に描く=手前なので、下の方で開いた一覧が隠れない
             .children(border_palette)
             .children(pick_panel)

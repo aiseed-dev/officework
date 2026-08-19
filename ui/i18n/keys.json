@@ -3231,12 +3231,12 @@
  },
  {
   "i": 646,
-  "ja": "耳の色を{}にしました(保存で xlsx にも残ります)",
+  "ja": "シート見出しの色を{}にしました(保存で xlsx にも残ります)",
   "en": "Tab colour set to {} (kept in the xlsx on save)"
  },
  {
   "i": 647,
-  "ja": "耳の色を消しました",
+  "ja": "シート見出しの色を消しました",
   "en": "Tab colour removed"
  },
  {

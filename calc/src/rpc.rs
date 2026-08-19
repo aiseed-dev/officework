@@ -5,24 +5,24 @@
 //! ユニックスソケット `$XDG_RUNTIME_DIR/officework/calc.sock` に JSON を
 //! 1行ずつ。**この機械の中だけ**(TCP は開かない — ネイティブファースト)。
 //!
-//! スレッドの作法: ソケットのスレッドは状態に触らない。要求を溜め、GPUI の泵(ポンプ)が
+//! スレッドの作法: ソケットのスレッドは状態に触らない。要求を溜め、GPUI の側が
 //! 30ms ごとにメインスレッドで捌いて答えを返す(Editor 系と同じ「主で触る」を守る)。
 //!
 //! **命令の意味は ops へ移した**(SEKKEI「操作の言葉を1本に」段A。2026-08-12)。
-//! ここに残るのは calc にしか無い物: ソケットと泵(gpui)、Host の実装
+//! ここに残るのは calc にしか無い物: ソケットと汲み取り(gpui)、Host の実装
 //! (undo の節目・状態行・行の高さ合わせ)、点検用の ribbon / ui_state。
 
 use crate::*;
 use ops::{Host, J, Jobj};
 
-/// 口を開く。聞き取りのスレッドを立て、メインスレッドに泵を付ける。
+/// 口を開く。聞き取りのスレッドを立て、メインスレッドに 30ms の汲み取りを付ける。
 pub(crate) fn start(view: gpui::Entity<Calc>, cx: &mut gpui::App) {
     // **ソケットの世話は ops に1本**(2026-08-19)。writer も同じ物を使います
     let queue: ops::Queue = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     if !ops::listen("calc", queue.clone()) {
         return;
     }
-    // 泵: 30ms ごとに溜まった要求をメインスレッドで捌く
+    // 30ms ごとに溜まった要求をメインスレッドで捌く
     cx.spawn(async move |cx| {
         loop {
             cx.background_executor()

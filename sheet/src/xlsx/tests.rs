@@ -2863,7 +2863,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 耳の色が往復する() {
+    fn シート見出しの色が往復する() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].tab_color = Some("FFC00000".into());
@@ -2874,7 +2874,7 @@ mod script_roundtrip_tests {
         assert_eq!(
             back.sheets[0].tab_color.as_deref(),
             Some("FFC00000"),
-            "耳の色が往復しない"
+            "シート見出しの色が往復しない"
         );
     }
 

@@ -2932,9 +2932,9 @@ mod 請求書をまとめる {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// 1枚だけのファイルは耳を出さない(何も選べない耳は邪魔)
+    /// 1枚だけのファイルはタブを出さない(何も選べないタブは邪魔)
     #[gpui::test]
-    fn 一枚なら耳は出ない(cx: &mut gpui::TestAppContext) {
+    fn 一枚ならタブは出ない(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("jo-many3-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("報告.adoc");

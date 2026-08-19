@@ -663,8 +663,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("シート「{}」を動かしました", "Lembar \"{}\" dipindahkan"),
     ("シート「{}」を隠しました(「再表示」で戻せます。保存で xlsx にも残ります)", "Lembar \"{}\" disembunyikan (kembalikan lewat \"Tampilkan\". Ikut tersimpan di xlsx saat menyimpan)"),
     ("隠したシートはありません", "Tidak ada lembar yang tersembunyi"),
-    ("耳の色を{}にしました(保存で xlsx にも残ります)", "Warna tab diubah menjadi {} (ikut tersimpan di xlsx saat menyimpan)"),
-    ("耳の色を消しました", "Warna tab dihapus"),
+    ("シート見出しの色を{}にしました(保存で xlsx にも残ります)", "Warna tab diubah menjadi {} (ikut tersimpan di xlsx saat menyimpan)"),
+    ("シート見出しの色を消しました", "Warna tab dihapus"),
     ("関数を挿入: 打って絞り込み、↑↓で選んで Enter(Esc で取消)", "Sisipkan fungsi: ketik untuk menyaring, pilih dengan ↑↓ lalu Enter (Esc untuk batal)"),
     ("名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。\
                          知らない名前は選択に付きます", "Kotak nama: pindah dengan alamat sel (B12), rentang (A1:C9), atau nama. Nama yang belum dikenal akan diberikan ke seleksi"),

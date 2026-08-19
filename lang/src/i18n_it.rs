@@ -663,8 +663,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("シート「{}」を動かしました", "Foglio \"{}\" spostato"),
     ("シート「{}」を隠しました(「再表示」で戻せます。保存で xlsx にも残ります)", "Foglio \"{}\" nascosto (recuperabile con \"Scopri\"; con il salvataggio resta nel file xlsx)"),
     ("隠したシートはありません", "Nessun foglio nascosto"),
-    ("耳の色を{}にしました(保存で xlsx にも残ります)", "Colore linguetta impostato su {} (con il salvataggio resta nel file xlsx)"),
-    ("耳の色を消しました", "Colore linguetta rimosso"),
+    ("シート見出しの色を{}にしました(保存で xlsx にも残ります)", "Colore linguetta impostato su {} (con il salvataggio resta nel file xlsx)"),
+    ("シート見出しの色を消しました", "Colore linguetta rimosso"),
     ("関数を挿入: 打って絞り込み、↑↓で選んで Enter(Esc で取消)", "Inserisci funzione: digitare per filtrare, ↑↓ per scegliere, Enter (Esc per annullare)"),
     ("名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。\
                          知らない名前は選択に付きます", "Casella Nome: passa a un riferimento (B12), un intervallo (A1:C9) o un nome. Un nome sconosciuto viene assegnato alla selezione"),

@@ -663,8 +663,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("シート「{}」を動かしました", "\"{}\" sayfası taşındı"),
     ("シート「{}」を隠しました(「再表示」で戻せます。保存で xlsx にも残ります)", "\"{}\" sayfası gizlendi (\"Göster\" ile geri getirebilirsiniz. Kaydedince xlsx'te de kalır)"),
     ("隠したシートはありません", "Gizli sayfa yok"),
-    ("耳の色を{}にしました(保存で xlsx にも残ります)", "Sekme rengi {} yapıldı (kaydedince xlsx'te de kalır)"),
-    ("耳の色を消しました", "Sekme rengi kaldırıldı"),
+    ("シート見出しの色を{}にしました(保存で xlsx にも残ります)", "Sekme rengi {} yapıldı (kaydedince xlsx'te de kalır)"),
+    ("シート見出しの色を消しました", "Sekme rengi kaldırıldı"),
     ("関数を挿入: 打って絞り込み、↑↓で選んで Enter(Esc で取消)", "İşlev ekle: yazarak daraltın, ↑↓ ile seçip Enter (Esc ile iptal)"),
     ("名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。\
                          知らない名前は選択に付きます", "Ad kutusu: hücre adresi (B12), aralık (A1:C9) veya adla gidin. Bilinmeyen ad, seçime atanır"),

@@ -663,8 +663,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("シート「{}」を動かしました", "Đã di chuyển trang tính \"{}\""),
     ("シート「{}」を隠しました(「再表示」で戻せます。保存で xlsx にも残ります)", "Đã ẩn trang tính \"{}\" (khôi phục bằng \"Hiện lại\". Khi lưu sẽ được giữ trong xlsx)"),
     ("隠したシートはありません", "Không có trang tính nào bị ẩn"),
-    ("耳の色を{}にしました(保存で xlsx にも残ります)", "Đã đổi màu tab thành {} (khi lưu sẽ được giữ trong xlsx)"),
-    ("耳の色を消しました", "Đã xóa màu tab"),
+    ("シート見出しの色を{}にしました(保存で xlsx にも残ります)", "Đã đổi màu tab thành {} (khi lưu sẽ được giữ trong xlsx)"),
+    ("シート見出しの色を消しました", "Đã xóa màu tab"),
     ("関数を挿入: 打って絞り込み、↑↓で選んで Enter(Esc で取消)", "Chèn hàm: gõ để lọc, chọn bằng ↑↓ rồi Enter (Esc để hủy)"),
     ("名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。\
                          知らない名前は選択に付きます", "Hộp tên: di chuyển theo địa chỉ ô (B12), vùng (A1:C9) hoặc tên. Tên chưa được biết sẽ được gán cho vùng chọn"),

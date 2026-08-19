@@ -666,8 +666,8 @@ pub const TABLE: &[(&str, &str)] = &[
 ("シート「{}」を動かしました", "Moved sheet \"{}\""),
 ("シート「{}」を隠しました(「再表示」で戻せます。保存で xlsx にも残ります)", "Hid sheet \"{}\" (Unhide brings it back; kept in the xlsx on save)"),
 ("隠したシートはありません", "No hidden sheets"),
-("耳の色を{}にしました(保存で xlsx にも残ります)", "Tab colour set to {} (kept in the xlsx on save)"),
-("耳の色を消しました", "Tab colour removed"),
+("シート見出しの色を{}にしました(保存で xlsx にも残ります)", "Tab colour set to {} (kept in the xlsx on save)"),
+("シート見出しの色を消しました", "Tab colour removed"),
 ("関数を挿入: 打って絞り込み、↑↓で選んで Enter(Esc で取消)", "Insert function: type to filter, ↑↓ to choose, Enter to insert (Esc to cancel)"),
 ("名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。\
                          知らない名前は選択に付きます", "Name box: go to a cell (B12), a range (A1:C9) or a name. An unknown name is assigned to the selection"),

@@ -3929,12 +3929,12 @@ mod tab_zoom_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 耳の品書きは保護の今の状態で言い分を変える(cx: &mut gpui::TestAppContext) {
+    fn タブの品書きは保護の今の状態で言い分を変える(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 掛かっていなければ「シートを保護」
             this.open_sheet_menu(0);
-            let (items, _) = this.pick.clone().expect("耳の品書きが出ない");
+            let (items, _) = this.pick.clone().expect("タブの品書きが出ない");
             assert!(items.iter().any(|(k, _)| k == "シートを保護"), "{items:?}");
             assert!(!items.iter().any(|(k, _)| k == "保護を解除"));
 
@@ -5063,22 +5063,22 @@ mod fnhelp_tests {
 
     /// **分類の綴りが3箇所で揃っていること。**
     ///
-    /// 分類の名前は `FN_GROUPS`(耳の並び)・`funcs.rs` の `group`(絞り込みの
+    /// 分類の名前は `FN_GROUPS`(タブの並び)・`funcs.rs` の `group`(絞り込みの
     /// 照合)・`fn_group_cmd`(族の一覧を開くコマンド)の3箇所で使う。
-    /// どれか1つの綴りがずれても**画面は出る** — 耳を押しても何も絞られない、
+    /// どれか1つの綴りがずれても**画面は出る** — タブを押しても何も絞られない、
     /// あるいは黙って別の一覧が開くだけで、誰も落ちない。
     /// 2026-08-11 に「日付」を「日付・時刻」へ広げたとき、この形で
     /// `picks.rs` だけが取り残されていた。
     #[test]
     fn 関数の分類の綴りが揃っている() {
         use std::collections::BTreeSet;
-        let 耳: BTreeSet<&str> = FN_GROUPS.iter().skip(1).copied().collect();
+        let タブ: BTreeSet<&str> = FN_GROUPS.iter().skip(1).copied().collect();
         let 表: BTreeSet<&str> = crate::funcs::FUNCS.iter().map(|f| f.group).collect();
-        assert_eq!(耳, 表, "耳の並びと funcs.rs の分類が食い違っています");
+        assert_eq!(タブ, 表, "タブの並びと funcs.rs の分類が食い違っています");
 
         // 族の一覧を開くコマンド。**既定に落ちてよいのはこの2つだけ**
         let 既定でよい = ["検索/行列", "情報"];
-        for g in &耳 {
+        for g in &タブ {
             let id = util::fn_group_cmd(g);
             if 既定でよい.contains(g) {
                 assert_eq!(id, "fn-lookup", "{g}");
@@ -5091,10 +5091,10 @@ mod fnhelp_tests {
         }
     }
 
-    /// **どの言語でも、分類の耳が9つとも別の語になること。**
+    /// **どの言語でも、分類のタブが9つとも別の語になること。**
     /// 同じ語が2つ並ぶと、押す人には区別がつかない
     #[test]
-    fn 分類の耳が重ならない() {
+    fn 分類のタブが重ならない() {
         let mut seen = std::collections::HashMap::new();
         for g in FN_GROUPS {
             let label = util::fn_group_label(g);

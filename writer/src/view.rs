@@ -638,11 +638,11 @@ impl Render for Writer {
             bar
         });
 
-        // ---- 文書の耳(1つのファイルに何枚も入っているとき) ----
+        // ---- 文書のタブ(1つのファイルに何枚も入っているとき) ----
         //
-        // **calc のシートの耳と同じ位置・同じ動き**にしてあります
-        // (2026-08-19)。表の画面と文章の画面で、下の耳の意味が揃います。
-        // 1枚しか入っていないときは出しません — 何も選べない耳は邪魔です
+        // **calc のシートのタブと同じ位置・同じ動き**にしてあります
+        // (2026-08-19)。表の画面と文章の画面で、下のタブの意味が揃います。
+        // 1枚しか入っていないときは出しません — 何も選べないタブは邪魔です
         let docs_bar = (self.doc_count() > 1).then(|| {
             let mut bar = div().flex().flex_row().items_center().gap_1()
                 .px_3().py_1().bg(rgb(0xF1F3F5))
@@ -2133,7 +2133,7 @@ impl Render for Writer {
                     .children(menu))
                 .children(rp_panel)
             })
-            // **文書の耳はステータスバーの上**(calc のシートの耳と同じ位置)
+            // **文書のタブはステータスバーの上**(calc のシートのタブと同じ位置)
             .children(docs_bar)
             .children(self.show_statusbar.then_some(statusbar))
             // 窓の縁のつかみ(最後に描く = 最初にマウスを受ける)。

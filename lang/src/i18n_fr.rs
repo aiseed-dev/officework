@@ -663,8 +663,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("シート「{}」を動かしました", "Feuille \"{}\" déplacée"),
     ("シート「{}」を隠しました(「再表示」で戻せます。保存で xlsx にも残ります)", "Feuille \"{}\" masquée (récupérable via \"Afficher\" ; conservée dans le xlsx à l'enregistrement)"),
     ("隠したシートはありません", "Aucune feuille masquée"),
-    ("耳の色を{}にしました(保存で xlsx にも残ります)", "Couleur d'onglet définie sur {} (conservée dans le xlsx à l'enregistrement)"),
-    ("耳の色を消しました", "Couleur d'onglet supprimée"),
+    ("シート見出しの色を{}にしました(保存で xlsx にも残ります)", "Couleur d'onglet définie sur {} (conservée dans le xlsx à l'enregistrement)"),
+    ("シート見出しの色を消しました", "Couleur d'onglet supprimée"),
     ("関数を挿入: 打って絞り込み、↑↓で選んで Enter(Esc で取消)", "Insérer une fonction : saisir pour filtrer, ↑↓ pour choisir, Enter (Esc pour annuler)"),
     ("名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。\
                          知らない名前は選択に付きます", "Zone Nom : accès par référence (B12), plage (A1:C9) ou nom. Un nom inconnu est attribué à la sélection"),

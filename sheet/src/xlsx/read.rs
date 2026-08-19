@@ -1248,7 +1248,7 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                 // 子を持たない sheetView はこちら(Start 側にも同じ組がある)
                 b"sheetView" => sheet_view(&e, &mut sh),
                 b"pane" if !in_custom_view => pane(&e, &mut sh),
-                // 耳(タブ)の色。rgb 指定だけ拾う(theme 指定は色に解けない)
+                // シート見出し(タブ)の色。rgb 指定だけ拾う(theme 指定は色に解けない)
                 b"tabColor" => {
                     sh.tab_color = attr(&e, "rgb");
                 }

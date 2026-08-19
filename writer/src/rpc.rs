@@ -29,7 +29,7 @@ pub(crate) fn start(view: gpui::Entity<Writer>, cx: &mut gpui::App) {
     if !ops::listen("writer", queue.clone()) {
         return;
     }
-    // 泵: 30ms ごとに溜まった要求を主スレッドで捌く(calc と同じ刻み)
+    // 30ms ごとに溜まった要求を主スレッドで捌く(calc と同じ刻み)
     cx.spawn(async move |cx| {
         loop {
             cx.background_executor()

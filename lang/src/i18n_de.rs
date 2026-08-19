@@ -663,8 +663,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("シート「{}」を動かしました", "Blatt „{}“ verschoben"),
     ("シート「{}」を隠しました(「再表示」で戻せます。保存で xlsx にも残ります)", "Blatt „{}“ ausgeblendet (über „Einblenden“ wiederherstellbar; bleibt beim Speichern in der xlsx erhalten)"),
     ("隠したシートはありません", "Keine ausgeblendeten Blätter"),
-    ("耳の色を{}にしました(保存で xlsx にも残ります)", "Registerfarbe auf {} gesetzt (bleibt beim Speichern in der xlsx erhalten)"),
-    ("耳の色を消しました", "Registerfarbe entfernt"),
+    ("シート見出しの色を{}にしました(保存で xlsx にも残ります)", "Registerfarbe auf {} gesetzt (bleibt beim Speichern in der xlsx erhalten)"),
+    ("シート見出しの色を消しました", "Registerfarbe entfernt"),
     ("関数を挿入: 打って絞り込み、↑↓で選んで Enter(Esc で取消)", "Funktion einfügen: tippen zum Filtern, mit ↑↓ wählen, Enter (Esc = abbrechen)"),
     ("名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。\
                          知らない名前は選択に付きます", "Namenfeld: Sprung zu Zelle (B12), Bereich (A1:C9) oder Name. Ein unbekannter Name wird der Auswahl zugewiesen"),

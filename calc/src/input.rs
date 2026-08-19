@@ -834,7 +834,7 @@ impl Calc {
         self.hop_sheet(1, cx);
     }
     pub(crate) fn hop_sheet(&mut self, d: i32, cx: &mut Context<Self>) {
-        // 隠したシートは飛ばす(耳に出ていないものへ行かない)
+        // 隠したシートは飛ばす(タブに出ていないものへ行かない)
         let n = self.book.sheets.len();
         let mut i = self.active as i32;
         for _ in 0..n {

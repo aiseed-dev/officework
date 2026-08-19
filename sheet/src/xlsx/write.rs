@@ -1538,7 +1538,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         ws.push_attribute(("xmlns", NS));
         ws.push_attribute(("xmlns:r", RNS));
         w.write_event(Event::Start(ws)).unwrap();
-        // 耳(タブ)の色。schema では worksheet の先頭(sheetPr)
+        // シート見出し(タブ)の色。schema では worksheet の先頭(sheetPr)
         if let Some(c) = &sh.tab_color {
             w.write_event(Event::Start(BytesStart::new("sheetPr"))).unwrap();
             let mut tc = BytesStart::new("tabColor");
