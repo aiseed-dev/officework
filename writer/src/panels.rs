@@ -1082,65 +1082,37 @@ impl Writer {
                 // **フォルダの中身**(2026-08-19 発注者)。選ぶと開きます。
                 // 種類はファイルの名前で決まります(二重の拡張子)
                 self.rp_drawn.set(3);
-                match self.folder() {
-                    None => {
-                        d = d.child(div().text_size(px(11.0)).text_color(th_status)
-                            .child(ui::t!("フォルダを開いていません(ファイル > 開く)")));
+                // **一覧は ui::filelist の1本**(統合の段7)。表の画面と同じ姿。
+                // 押したときの行き先だけがアプリの物
+                let look = ui::filelist::Look {
+                    fg: th_top_fg, dim: th_status, hover: th_btn_hover, scale: 1.0,
+                };
+                let dir = self.folder();
+                d = d.child(ui::filelist::header(&look, dir.as_deref()));
+                if let Some(dir) = dir.as_deref() {
+                    let 一覧 = ui::filelist::entries(dir);
+                    if 一覧.is_empty() {
+                        d = d.child(ui::filelist::empty(&look));
                     }
-                    Some(dir) => {
-                        // **フォルダの名前だけ**を出します。長い径路を全部
-                        // 出すと3行に折り返して、一覧の場所を食います
-                        let 名 = dir.file_name().map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_else(|| dir.display().to_string());
-                        d = d.child(div().text_size(px(10.5)).text_color(th_status)
-                            .child(SharedString::from(名)));
-                        let 一覧 = ui::folder::list(&dir);
-                        if 一覧.is_empty() {
-                            d = d.child(div().text_size(px(11.0)).text_color(th_status)
-                                .child(ui::t!("(空のフォルダです)")));
+                    for (i, e) in 一覧.into_iter().enumerate() {
+                        let 開ける = e.kind.can_open();
+                        let 表だ = e.kind.is_sheet();
+                        let 道 = e.path.clone();
+                        let いま = self.path.as_deref() == Some(e.path.as_path());
+                        let mut 行 = ui::filelist::row(&look, i, &e, いま);
+                        if 開ける {
+                            行 = 行.on_click(cx.listener(move |t, _, _, cx| {
+                                t.remember_folder();
+                                // **埋め込みなら種類を問わず officework に頼む**(段1)
+                                if t.embedded || 表だ {
+                                    t.open_request = Some(道.clone());
+                                } else {
+                                    t.open_in_tab(道.clone());
+                                }
+                                cx.notify()
+                            }));
                         }
-                        for (i, e) in 一覧.into_iter().take(200).enumerate() {
-                            // 文書はここで開き、表は `officework` に渡して
-                            // **同じウィンドウで表の画面に持ち替えます**
-                            // (2026-08-19 発注者「calc のファイルが表示される
-                            // ようにして」)。どちらも押せます
-                            let 開ける = e.kind.can_open();
-                            let 表だ = e.kind.is_sheet();
-                            let 道 = e.path.clone();
-                            let 札 = e.kind.label().to_string();
-                            let いま = self.path.as_deref() == Some(e.path.as_path());
-                            let mut 行 = div()
-                                .id(SharedString::from(format!("fl-{i}")))
-                                .px_1().py_0p5().rounded_sm()
-                                .flex().flex_row().items_center().gap_1()
-                                .bg(if いま { th_btn_hover } else { gpui::transparent_black().into() })
-                                .child(div().flex_1().min_w(px(0.0)).text_size(px(11.5))
-                                    .text_color(if 開ける { th_top_fg } else { th_status })
-                                    .child(SharedString::from(e.name.clone())))
-                                .child(div().flex_none().text_size(px(9.0)).text_color(th_status)
-                                    .child(SharedString::from(札)));
-                            // **開けない物は押せません。** できないことを、
-                            // できるように見せない
-                            if 開ける {
-                                行 = 行.cursor_pointer()
-                                    .hover(move |s| s.bg(th_btn_hover))
-                                    .on_click(cx.listener(move |t, _, _, cx| {
-                                        t.remember_folder();
-                                        // **埋め込みなら種類を問わず officework に頼む**
-                                        // (統合の段1)。開く物の持ち主が向こうに
-                                        // 移ったので、半分ずつ自分で開くのをやめました
-                                        if t.embedded || 表だ {
-                                            t.open_request = Some(道.clone());
-                                        } else {
-                                            // 単体のとき。**新しいタブで開きます**。
-                                            // 開いている物は閉じません
-                                            t.open_in_tab(道.clone());
-                                        }
-                                        cx.notify()
-                                    }));
-                            }
-                            d = d.child(行);
-                        }
+                        d = d.child(行);
                     }
                 }
                 let 柱d = 柱()

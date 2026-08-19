@@ -105,55 +105,37 @@ impl Calc {
                 // これで表と文章を行き来できます
                 d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(fg).child(ui::t!("ファイル — フォルダの中身").to_string()));
-                match self.folder() {
-                    None => {
-                        d = d.child(div().text_size(px(us * 11.0)).text_color(薄)
-                            .child(ui::t!("フォルダを開いていません(ファイル > 開く)").to_string()));
+                // **一覧は ui::filelist の1本**(統合の段7)。文章の画面と同じ姿。
+                // 押したときの行き先だけがアプリの物
+                let look = ui::filelist::Look {
+                    fg, dim: 薄, hover: line, scale: us,
+                };
+                let dir = self.folder();
+                d = d.child(ui::filelist::header(&look, dir.as_deref()));
+                if let Some(dir) = dir.as_deref() {
+                    let 一覧 = ui::filelist::entries(dir);
+                    if 一覧.is_empty() {
+                        d = d.child(ui::filelist::empty(&look));
                     }
-                    Some(dir) => {
-                        let 名 = dir.file_name().map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_else(|| dir.display().to_string());
-                        d = d.child(div().text_size(px(us * 10.5)).text_color(薄)
-                            .child(SharedString::from(名)));
-                        let 一覧 = ui::folder::list(&dir);
-                        if 一覧.is_empty() {
-                            d = d.child(div().text_size(px(us * 11.0)).text_color(薄)
-                                .child(ui::t!("(空のフォルダです)").to_string()));
+                    for (i, e) in 一覧.into_iter().enumerate() {
+                        let 開ける = e.kind.can_open();
+                        let 文書だ = e.kind.is_doc();
+                        let 道 = e.path.clone();
+                        let いま = self.path.as_deref() == Some(e.path.as_path());
+                        let mut 行 = ui::filelist::row(&look, i, &e, いま);
+                        if 開ける {
+                            行 = 行.on_click(cx.listener(move |this, _, _, cx| {
+                                this.remember_folder();
+                                // **埋め込みなら種類を問わず officework に頼む**(段1)
+                                if this.embedded || 文書だ {
+                                    this.open_request = Some(道.clone());
+                                } else {
+                                    this.open(道.clone());
+                                }
+                                cx.notify()
+                            }));
                         }
-                        for (i, e) in 一覧.into_iter().take(200).enumerate() {
-                            let 開ける = e.kind.can_open();
-                            let 文書だ = e.kind.is_doc();
-                            let 道 = e.path.clone();
-                            let 札 = e.kind.label().to_string();
-                            let いま = self.path.as_deref() == Some(e.path.as_path());
-                            let mut 行 = div()
-                                .id(SharedString::from(format!("fl-{i}")))
-                                .px_1().py_0p5().rounded_sm()
-                                .flex().flex_row().items_center().gap_1()
-                                .bg(if いま { line } else { gpui::transparent_black().into() })
-                                .child(div().flex_1().min_w(px(0.0)).text_size(px(us * 11.5))
-                                    .text_color(if 開ける { fg } else { 薄 })
-                                    .child(SharedString::from(e.name.clone())))
-                                .child(div().flex_none().text_size(px(us * 9.0)).text_color(薄)
-                                    .child(SharedString::from(札)));
-                            if 開ける {
-                                行 = 行.cursor_pointer()
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.remember_folder();
-                                        // **埋め込みなら種類を問わず officework に頼む**
-                                        // (統合の段1)。開く物の持ち主が向こうに
-                                        // 移ったので、半分ずつ自分で開くのをやめました。
-                                        // 単体で動いているときは今までどおり自分で開きます
-                                        if this.embedded || 文書だ {
-                                            this.open_request = Some(道.clone());
-                                        } else {
-                                            this.open(道.clone());
-                                        }
-                                        cx.notify()
-                                    }));
-                            }
-                            d = d.child(行);
-                        }
+                        d = d.child(行);
                     }
                 }
             } else if 面 == 1 {
