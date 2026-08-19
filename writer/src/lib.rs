@@ -498,6 +498,20 @@ impl Writer {
         self.status = msg.into();
     }
 
+    /// **フォルダを開いた姿にする**(`officework` の起動。SEKKEI「A-1」)。
+    ///
+    /// ファイルは開きません。右のパネルにそのフォルダの中身を出すだけで、
+    /// 何を開くかは使う人が選びます — *フォルダを開くとは、そういうこと*です
+    /// (エディタと同じ形。SEKKEI「アプリはフォルダを開く形にする」)。
+    pub fn show_folder(&mut self, dir: std::path::PathBuf) {
+        ui::settings::set("folder", &dir.display().to_string());
+        self.rp_open = true;
+        self.rp_tab = 3; // フォルダの中身
+        self.status = ui::tf!("{} を開きました(右の一覧から選んでください)",
+                              dir.display().to_string())
+            .into();
+    }
+
     /// 打った分を取り消して、文書の字に戻す(保護と、編集できない塊で使う)
     pub(crate) fn undo_typing(&mut self) {
         self.ed.clear_marked();

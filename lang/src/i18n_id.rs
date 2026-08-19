@@ -1868,4 +1868,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} を開いています", "Menampilkan {}"),
     ("書きかけがあります(先に保存してください)", "Ada perubahan yang belum disimpan (simpan dulu)"),
     ("{} で保存しました(表は二重の拡張子で名前を付けます)", "Disimpan sebagai {} (lembar sebar dinamai dengan ekstensi ganda)"),
+    ("フォルダ", "Folder"),
+    ("文書", "Dokumen"),
+    ("見た目", "Tampilan"),
+    ("様式", "Formulir"),
+    ("officework — 開くフォルダを選んでください", "officework — pilih folder untuk dibuka"),
+    ("{} を開きました(右の一覧から選んでください)", "{} dibuka (pilih berkas dari daftar di kanan)"),
 ];

@@ -22,9 +22,15 @@ ROOT = Path(__file__).resolve().parent.parent
 # 見ていない鍵の訳は「使われていない訳」に数えられる — つまり門番が
 # **生きている訳 135 句を消せ**と言っていた(2026-08-10 に気づいた)。
 # 部屋が増えたら足す、ではなく、**glob で全部見る**
+#
+# **クレートが増えたときも同じ穴が開く**(2026-08-19)。`officework` と
+# `face` が後からできたのに、この一覧は3つのままだった。officework の
+# 「フォルダを選ぶ画面」の題と face のファイル一覧の札(フォルダ・文書・
+# 見た目・様式)が**門番の目の外**にあり、13言語で日本語のまま出ていた。
+# 画面の字を持つクレートは全部ここに入れる
 SOURCES = sorted(
     p
-    for d in ("calc/src", "writer/src", "ui/src")
+    for d in ("calc/src", "writer/src", "ui/src", "face/src", "officework/src")
     for p in (ROOT / d).glob("*.rs")
     if p.name != "tests.rs"
 )
@@ -85,6 +91,10 @@ def strip_tests(src):
 def keys_from(path):
     src = open(path, encoding="utf-8").read()
     src = strip_tests(src)
+    # `face` は `ui` に依存しない(絵を描かない層)ので、`lang::i18n::tr(…)` と
+    # 直に呼ぶ。前置きを揃えてから走査する — 揃えないと face の札が
+    # 見えないままになる。**lang/tests/i18n_soroi.rs の走査と揃えること**
+    src = src.replace("lang::i18n::tr(", "ui::t!(")
     out = []
     # `ui::item!("…")` は一覧の項の鍵(訳すのは見出しだけ)。t!/tf! と同じ鍵。
     # **lang/tests/i18n_soroi.rs の走査と揃えること** — 片方だけ知っていると、

@@ -1868,4 +1868,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} を開いています", "{} gösteriliyor"),
     ("書きかけがあります(先に保存してください)", "Kaydedilmemiş değişiklikler var (önce kaydedin)"),
     ("{} で保存しました(表は二重の拡張子で名前を付けます)", "{} olarak kaydedildi (tablolar çift uzantıyla adlandırılır)"),
+    ("フォルダ", "Klasör"),
+    ("文書", "Belge"),
+    ("見た目", "Görünüm"),
+    ("様式", "Form"),
+    ("officework — 開くフォルダを選んでください", "officework — açmak için bir klasör seçin"),
+    ("{} を開きました(右の一覧から選んでください)", "{} açıldı (sağdaki listeden bir dosya seçin)"),
 ];

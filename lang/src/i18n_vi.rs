@@ -1868,4 +1868,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} を開いています", "Đang hiển thị {}"),
     ("書きかけがあります(先に保存してください)", "Có thay đổi chưa lưu (hãy lưu trước)"),
     ("{} で保存しました(表は二重の拡張子で名前を付けます)", "Đã lưu thành {} (bảng tính được đặt tên với phần mở rộng kép)"),
+    ("フォルダ", "Thư mục"),
+    ("文書", "Tài liệu"),
+    ("見た目", "Giao diện"),
+    ("様式", "Biểu mẫu"),
+    ("officework — 開くフォルダを選んでください", "officework — hãy chọn thư mục để mở"),
+    ("{} を開きました(右の一覧から選んでください)", "Đã mở {} (hãy chọn tệp trong danh sách bên phải)"),
 ];

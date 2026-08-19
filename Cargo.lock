@@ -4040,6 +4040,7 @@ dependencies = [
  "gpui",
  "gpui_platform",
  "ops",
+ "rfd",
  "ui",
  "writer",
 ]

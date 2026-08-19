@@ -21,6 +21,49 @@ fn 開くファイル(line: &str) -> Option<String> {
     (o.str("cmd")? == "open").then(|| o.str("path"))?
 }
 
+/// **起動したときに何を開くか**(SEKKEI「残りの実施方針」A-1)。
+///
+/// エディタ(VS Code・Zed)と同じで、*ふだんはフォルダを開きます*。
+/// ファイルを名指しで渡す起動も残します — 関連付けから来るときの形です。
+#[derive(Clone)]
+enum Start {
+    /// 引数で渡されたファイル
+    File(std::path::PathBuf),
+    /// フォルダ(中身の一覧を出す。ファイルは開かない)
+    Folder(std::path::PathBuf),
+    /// 覚えているフォルダが無い。**窓を出してから**選んでもらう
+    AskFolder,
+}
+
+/// 起動の形を決める。**引数 → 前回のフォルダ → 選んでもらう**の順。
+///
+/// **選ぶ画面はここでは開きません。** `rfd` は同期で、返るまで戻って
+/// きません。窓を作る前にこれを呼ぶと、答えが返らないときに*窓が1つも
+/// 無いまま固まります* — 使う人からはアプリが起動しないのと同じです
+/// (2026-08-19 に実際にそうなりました)。窓を出してから別の糸で聞きます。
+fn 起動の形(arg: Option<std::path::PathBuf>) -> Start {
+    if let Some(p) = arg {
+        return Start::File(p);
+    }
+    match ui::settings::get("folder")
+        .map(std::path::PathBuf::from)
+        .filter(|p| p.is_dir())
+    {
+        Some(d) => Start::Folder(d),
+        None => Start::AskFolder,
+    }
+}
+
+/// 開いたファイルのフォルダを覚える(次の起動でここが開きます)。
+///
+/// 関連付けからファイルを開いた回も覚えます — *使った場所が次に開く場所*で、
+/// 一度も一覧を触っていない人でも「前回のフォルダ」が育ちます。
+fn 覚える(path: Option<&std::path::Path>) {
+    if let Some(d) = path.and_then(|p| p.parent()).filter(|d| d.is_dir()) {
+        ui::settings::set("folder", &d.display().to_string());
+    }
+}
+
 /// いま見せている編集画面。
 enum Shown {
     /// 文章(`.adoc` `.docx` …)
@@ -35,7 +78,11 @@ struct Office {
 }
 
 impl Office {
-    fn new(path: Option<std::path::PathBuf>, cx: &mut Context<Self>) -> Office {
+    fn new(start: Start, cx: &mut Context<Self>) -> Office {
+        let path = match &start {
+            Start::File(p) => Some(p.clone()),
+            Start::Folder(_) | Start::AskFolder => None,
+        };
         // **名前で決めます。** 中身は見ません(SEKKEI「画面を1つにする」)
         let 表か = path
             .as_ref()
@@ -43,9 +90,17 @@ impl Office {
             .map(|n| ui::folder::kind_of(&n.to_string_lossy()))
             .is_some_and(|k| k.is_sheet());
         let shown = if 表か {
+            // 開いたファイルのフォルダを覚えます(次の起動でここが開きます)
+            覚える(path.as_deref());
             Shown::Sheet(cx.new(|cx| calc::Calc::new(path, cx)))
         } else {
-            Shown::Doc(cx.new(|cx| writer::Writer::new(path, cx)))
+            覚える(path.as_deref());
+            let w = cx.new(|cx| writer::Writer::new(path, cx));
+            // フォルダで始めるときは、一覧を開いた姿にします
+            if let Start::Folder(d) = start {
+                w.update(cx, |w, _| w.show_folder(d));
+            }
+            Shown::Doc(w)
         };
         Office { shown }
     }
@@ -185,6 +240,31 @@ impl Office {
         }
     }
 
+    /// **フォルダを選んでもらう**(覚えている物が無い初回)。
+    ///
+    /// 窓が出てから別の糸で聞きます。`rfd` は同期なので主の糸では呼べません
+    /// (呼ぶと、答えが返るまで画面が描かれません)。やめたときは何もしません —
+    /// *空の文書のまま*で、ファイルの「開く」からいつでも始められます。
+    fn フォルダを聞く(&self, cx: &mut Context<Self>) {
+        let ask = cx.background_executor().spawn(async {
+            rfd::FileDialog::new()
+                .set_title(ui::t!("officework — 開くフォルダを選んでください"))
+                .pick_folder()
+        });
+        cx.spawn(async move |this, cx| {
+            let r = ask.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(d) = r {
+                    if let Shown::Doc(v) = &this.shown {
+                        v.update(cx, |w, _| w.show_folder(d));
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     /// いま見せている画面の状態行に出す。
     fn 言う(&self, msg: &str, cx: &mut Context<Self>) {
         match &self.shown {
@@ -220,6 +300,9 @@ impl Render for Office {
 
 fn main() {
     let arg = std::env::args().nth(1).map(std::path::PathBuf::from);
+    // **窓を開ける前に決めます。** 「フォルダを選ぶ画面」は同期で開くので、
+    // GPUI が動き出す前に済ませます(主の糸を塞ぐ相手がまだいません)
+    let start = 起動の形(arg);
     application().with_assets(ui::Icons).run(move |cx: &mut App| {
         cx.text_system()
             .add_fonts(vec![std::borrow::Cow::Borrowed(ops::font_data())])
@@ -238,11 +321,11 @@ fn main() {
         } else {
             WindowBounds::Windowed(bounds)
         };
-        let arg2 = arg.clone();
+        let start2 = start.clone();
         cx.open_window(
             WindowOptions { window_bounds: Some(wb), ..Default::default() },
             move |window, cx| {
-                let view = cx.new(|cx| Office::new(arg2.clone(), cx));
+                let view = cx.new(|cx| Office::new(start2.clone(), cx));
                 // 焦点は中の編集画面へ渡します
                 view.update(cx, |this, cx| match &this.shown {
                     Shown::Doc(v) => window.focus(&v.focus_handle(cx), cx),
@@ -250,6 +333,10 @@ fn main() {
                 });
                 // **受け口を開く。** 名前は officework の1つ
                 Office::受け口(view.clone(), cx);
+                // 覚えているフォルダが無ければ、**窓が出てから**選んでもらう
+                if matches!(start2, Start::AskFolder) {
+                    view.update(cx, |this, cx| this.フォルダを聞く(cx));
+                }
                 view.update(cx, |_, cx| {
                     cx.observe_window_bounds(window, |_, window, _| {
                         let wb = window.window_bounds();

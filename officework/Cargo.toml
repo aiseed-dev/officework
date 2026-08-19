@@ -15,6 +15,8 @@ writer = { path = "../writer" }
 calc = { path = "../calc" }
 ui = { path = "../ui" }
 ops = { path = "../ops" }
+# 起動のときの「フォルダを選ぶ画面」だけに使う(writer / calc と同じ版)
+rfd = "0.14"
 # GPUI は crates.io に無いので、版を固定して zed から直に取る(writer / calc と同じ版)
 gpui = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23", features = ["wayland", "x11"] }

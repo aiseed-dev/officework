@@ -1868,4 +1868,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} を開いています", "Mostrando {}"),
     ("書きかけがあります(先に保存してください)", "Há alterações não salvas (salve primeiro)"),
     ("{} で保存しました(表は二重の拡張子で名前を付けます)", "Salvo como {} (as planilhas usam uma extensão dupla)"),
+    ("フォルダ", "Pasta"),
+    ("文書", "Documento"),
+    ("見た目", "Aparência"),
+    ("様式", "Formulário"),
+    ("officework — 開くフォルダを選んでください", "officework — escolha uma pasta para abrir"),
+    ("{} を開きました(右の一覧から選んでください)", "{} aberto (escolha um arquivo na lista à direita)"),
 ];

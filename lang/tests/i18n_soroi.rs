@@ -133,7 +133,10 @@ fn keys_in(src: &str) -> Vec<String> {
     let owned = owned
         .replace("crate::tf!(", "ui::tf!(")
         .replace("crate::t!(", "ui::t!(")
-        .replace("crate::item!(", "ui::item!(");
+        .replace("crate::item!(", "ui::item!(")
+        // `face` は `ui` に依存しない(絵を描かない層)ので `lang::i18n::tr`
+        // と直に呼ぶ。揃えないと face の札が見えないままになる
+        .replace("lang::i18n::tr(", "ui::t!(");
     let src: &str = &owned;
     let b = src.as_bytes();
     let mut out = Vec::new();
@@ -175,7 +178,10 @@ fn keys_in(src: &str) -> Vec<String> {
 /// 門番の目の外にあった(2026-08-10)
 fn app_keys() -> BTreeSet<String> {
     let mut out = BTreeSet::new();
-    for dir in ["calc/src", "writer/src", "ui/src"] {
+    // **クレートが増えたときも同じ穴が開く**(2026-08-19)。officework と
+    // face が後からできたのに一覧は3つのままで、13言語で日本語のまま
+    // 出ていた札があった。画面の字を持つクレートは全部ここに入れる
+    for dir in ["calc/src", "writer/src", "ui/src", "face/src", "officework/src"] {
         let d = root().join(dir);
         let mut files: Vec<PathBuf> = std::fs::read_dir(&d)
             .unwrap_or_else(|e| panic!("{} が読めません: {e}", d.display()))
