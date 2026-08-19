@@ -33,6 +33,40 @@ fn py_cell(c: Option<&sheet::Cell>) -> String {
 
 /// 共通の命令(`ui::appcmd`)が触る面。**欄はここから増やさない** —
 /// 命令を1つ移すたびに、あちらの trait と一緒に1つずつ増やす
+/// ファイルのページの共通の腕が触る面(統合の段8 の3)。
+impl ui::filemenu::FileScreen for Calc {
+    fn tab_to_prev(&mut self) {
+        self.tab = self.prev_tab;
+    }
+    fn set_file_view(&mut self, v: u8) {
+        self.file_view = v;
+    }
+    fn opened(&self) -> Option<std::path::PathBuf> {
+        self.path.clone()
+    }
+    fn new_file(&mut self) -> bool {
+        self.new_book()
+    }
+    fn open_dialog_now(&mut self, cx: &mut Context<Self>) {
+        self.open_dialog(cx);
+    }
+    fn save_now(&mut self, cx: &mut Context<Self>) {
+        self.save(false, cx);
+    }
+    fn save_as_now(&mut self, cx: &mut Context<Self>) {
+        self.save_as(cx);
+    }
+    fn quit_now(&mut self, cx: &mut Context<Self>) {
+        self.request_quit(cx);
+    }
+    fn goto_tab_named(&mut self, name: &str) {
+        if let Some(i) = ribbon::CALC.iter().position(|t| t.name == name) {
+            self.prev_tab = i;
+            self.tab = i;
+        }
+    }
+}
+
 impl ui::appcmd::Screen for Calc {
     fn zoom_mut(&mut self) -> &mut f32 {
         &mut self.zoom
@@ -4136,30 +4170,16 @@ impl Calc {
     /// 前は画面の中のその場の閉包でした。1つの `match` に集めたので、
     /// **officework から id を渡して呼べます**(次の段)。
     pub fn file_menu_click(&mut self, id: &str, cx: &mut Context<Self>) {
+        // **共通の腕は ui::filemenu が先に取ります**(段8 の3)。
+        // 同じ id の腕をここに残すと向こうが先に取るので、残した腕は死にます
+        if ui::filemenu::run(self, id) || ui::filemenu::run_cx(self, id, cx) {
+            cx.notify();
+            return;
+        }
         match id {
-            "f-back" => self.tab = self.prev_tab,
-            "f-new" => {
-                if self.new_book() {
-                    self.tab = self.prev_tab;
-                }
-            }
-            "f-open" => {
-                self.tab = self.prev_tab;
-                self.open_dialog(cx);
-            }
-            "f-recent" => self.file_view = 1,
-            "f-find" => self.file_view = 3,
-            "f-save" => self.save(false, cx),
-            "f-saveas" => self.save_as(cx),
             "f-print" => self.run_cmd("pdf", cx),
             "f-csv" => self.export_csv_dialog(cx),
             "f-html" => self.export_html_dialog(cx),
-            "f-protect" => {
-                if let Some(i) = ribbon::CALC.iter().position(|t| t.name == "保護") {
-                    self.prev_tab = i;
-                    self.tab = i;
-                }
-            }
             "f-macro" => {
                 if let Some(i) = ribbon::CALC.iter().position(|t| t.name == "マクロ") {
                     self.prev_tab = i;
@@ -4167,26 +4187,6 @@ impl Calc {
                 }
                 self.run_cmd("py-list", cx);
             }
-            "f-info" => self.file_view = 0,
-            "f-place" => {
-                match self.path.as_ref().and_then(|p| p.parent()) {
-                    Some(dir) => {
-                        let d = dir.display().to_string();
-                        self.status = match ui::open_outside(&d) {
-                            ui::Opened::Yes => ui::tf!("開きます: {}", d).into(),
-                            ui::Opened::JustNow => ui::t!(
-                                "さっき開きました(窓が出るまで少し待ってください)")
-                            .into(),
-                            ui::Opened::Failed => {
-                                ui::tf!("開けません(xdg-open がありません): {}", d).into()
-                            }
-                        };
-                    }
-                    None => self.status = ui::t!("まだファイルになっていません").into(),
-                }
-            }
-            "f-quit" => self.request_quit(cx),
-            "f-opts" => self.file_view = 2,
             _ => {}
         }
     }

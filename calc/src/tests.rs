@@ -6951,6 +6951,41 @@ mod file_menu_tests {
         });
     }
 
+    /// **共通へ移した腕が今までどおり効く**(統合の段8 の3)。
+    ///
+    /// 12 個の腕が writer と calc に**中身まで同じ**で写してあったので
+    /// `ui::filemenu` へ寄せた。寄せたあとも同じことが起きるかを縛る —
+    /// 写しを消すときに一番危ないのは「消しただけで繋ぎ忘れる」こと
+    #[gpui::test]
+    fn 共通へ移した腕が効く(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            // ‹ 戻る は来る前の段へ
+            this.prev_tab = 3;
+            this.tab = 0;
+            this.file_menu_click("f-back", cx);
+            assert_eq!(this.tab, 3, "戻るが効かない");
+            // 右の面を替える4つ
+            for (id, v) in [("f-info", 0u8), ("f-recent", 1), ("f-opts", 2), ("f-find", 3)] {
+                this.file_menu_click(id, cx);
+                assert_eq!(this.file_view, v, "{id} で面が替わらない");
+            }
+            // 保護する は名前で段を引く
+            this.file_menu_click("f-protect", cx);
+            assert_eq!(ui::ribbon::CALC[this.tab].name, "保護", "保護の段へ行かない");
+        });
+    }
+
+    /// **まだ名前が無いときは、そう言う**(黙って何も起きないのが一番分からない)
+    #[gpui::test]
+    fn 置き場を開くは名前が無ければ断る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.file_menu_click("f-place", cx);
+            assert!(this.status.contains("まだファイル"), "断りが出ない: {}", this.status);
+        });
+    }
+
     /// **知らない id で落ちない。** 灰色の項目を押しても何も起きない
     #[gpui::test]
     fn 知らない項目は何もしない(cx: &mut gpui::TestAppContext) {
