@@ -3,6 +3,17 @@
 use crate::*;
 
 impl Calc {
+    /// **書きかけがあるか**(`officework` が持ち替えの前に聞きます)。
+    /// ブックは1冊なので、この画面の `dirty` がそのまま答えです
+    pub fn has_unsaved(&self) -> bool {
+        self.dirty
+    }
+
+    /// 状態行に出す(持ち替えを断った理由を言うため)。
+    pub fn say(&mut self, msg: impl Into<gpui::SharedString>) {
+        self.status = msg.into();
+    }
+
     /// **いま開いているフォルダ。** 右パネルのファイル一覧が並べる場所です。
     /// 開いているブックの親を使い、無ければ前に使ったフォルダです。
     pub(crate) fn folder(&self) -> Option<PathBuf> {

@@ -484,6 +484,20 @@ pub struct Writer {
 }
 
 impl Writer {
+    /// **書きかけがあるか**(`officework` が持ち替えの前に聞きます)。
+    ///
+    /// *開いている全部のタブを見ます。* 持ち替えは画面ごと作り直すので、
+    /// 裏のタブの書きかけも一緒に消えます — いま見ている物だけを見ると、
+    /// 「保存したのに消えた」が起きます
+    pub fn has_unsaved(&self) -> bool {
+        self.dirty || (0..self.files.len()).any(|i| self.file_dirty(i))
+    }
+
+    /// 状態行に出す(持ち替えを断った理由を言うため)。
+    pub fn say(&mut self, msg: impl Into<gpui::SharedString>) {
+        self.status = msg.into();
+    }
+
     /// 打った分を取り消して、文書の字に戻す(保護と、編集できない塊で使う)
     pub(crate) fn undo_typing(&mut self) {
         self.ed.clear_marked();

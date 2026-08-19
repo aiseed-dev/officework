@@ -58,16 +58,38 @@ impl Office {
     /// 文章の画面で表を押されたら表の画面に、表の画面で文書を押されたら
     /// 文章の画面に、*同じウィンドウで*持ち替えます。
     /// 別のアプリを起こすわけではありません。
+    /// **持ち替えは画面ごと作り直します。** だから書きかけがあると消えます —
+    /// 断るのはそのためです(writer のタブを閉じるときと同じ作法)。
     fn 持ち替え(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         match &self.shown {
             Shown::Doc(v) => {
                 let Some(p) = v.update(cx, |w, _| w.hand_off.take()) else { return };
+                if v.update(cx, |w, _| {
+                    let 書きかけ = w.has_unsaved();
+                    if 書きかけ {
+                        w.say(ui::t!("書きかけがあります(先に保存してください)"));
+                    }
+                    書きかけ
+                }) {
+                    cx.notify();
+                    return;
+                }
                 let n = cx.new(|cx| calc::Calc::new(Some(p), cx));
                 window.focus(&n.focus_handle(cx), cx);
                 self.shown = Shown::Sheet(n);
             }
             Shown::Sheet(v) => {
                 let Some(p) = v.update(cx, |c, _| c.hand_off.take()) else { return };
+                if v.update(cx, |c, _| {
+                    let 書きかけ = c.has_unsaved();
+                    if 書きかけ {
+                        c.say(ui::t!("書きかけがあります(先に保存してください)"));
+                    }
+                    書きかけ
+                }) {
+                    cx.notify();
+                    return;
+                }
                 let n = cx.new(|cx| writer::Writer::new(Some(p), cx));
                 window.focus(&n.focus_handle(cx), cx);
                 self.shown = Shown::Doc(n);
@@ -136,6 +158,15 @@ impl Office {
             .is_sheet();
             let いま表 = matches!(self.shown, Shown::Sheet(_));
             if 表 != いま表 {
+                // **持ち替えは画面ごと作り直す**ので、書きかけがあると消える。
+                // 受け口から来た `open` でも同じ — 断り方は writer の rpc と
+                // 揃える(向こうも「書きかけがあります」で止める)
+                if self.書きかけがある(cx) {
+                    // **窓にも言う。** 断りを頼んだ側にだけ返すと、画面を見て
+                    // いる人には「押したのに何も起きない」に見える
+                    self.言う(ui::t!("書きかけがあります(先に保存してください)"), cx);
+                    return ops::err("書きかけがあります(先に保存してください)");
+                }
                 self.見せる(std::path::PathBuf::from(&p), 表, cx);
                 return "{\"ok\":true}".into();
             }
@@ -143,6 +174,22 @@ impl Office {
         match &self.shown {
             Shown::Doc(v) => v.update(cx, |w, _| writer::rpc::handle(w, line)),
             Shown::Sheet(v) => v.update(cx, |c, _| ops::handle(c, line)),
+        }
+    }
+
+    /// いま見せている画面に書きかけがあるか。
+    fn 書きかけがある(&self, cx: &mut Context<Self>) -> bool {
+        match &self.shown {
+            Shown::Doc(v) => v.read(cx).has_unsaved(),
+            Shown::Sheet(v) => v.read(cx).has_unsaved(),
+        }
+    }
+
+    /// いま見せている画面の状態行に出す。
+    fn 言う(&self, msg: &str, cx: &mut Context<Self>) {
+        match &self.shown {
+            Shown::Doc(v) => v.update(cx, |w, _| w.say(msg.to_string())),
+            Shown::Sheet(v) => v.update(cx, |c, _| c.say(msg.to_string())),
         }
     }
 
