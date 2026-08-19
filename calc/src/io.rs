@@ -684,9 +684,10 @@ impl Calc {
     pub(crate) fn save_as(&mut self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
-                .add_filter("Excelブック", &["xlsx"])
-                // **ブックの正本(AsciiDoc)**。式のまま字で持つ形
+                // **ブックの正本(AsciiDoc)を先頭に。** 窓が既定で選ぶのが
+                // ここなので、並びがそのまま既定の形になる
                 .add_filter("officework のブック", &["adoc"])
+                .add_filter("Excelブック", &["xlsx"])
                 // 型紙(XLTX)。中身は xlsx と同じで、開くと「新規」になる
                 .add_filter("Excel の型紙", &["xltx"])
                 .add_filter("CSV(いまのシートの値だけ)", &["csv"])
@@ -695,12 +696,28 @@ impl Calc {
         cx.spawn(async move |this, cx| {
             let r = ask.await;
             let _ = this.update(cx, |this, cx| {
-                if let Some(mut p) = r {
-                    if p.extension().is_none() {
-                        p.set_extension("xlsx");
-                    }
+                if let Some(p) = r {
+                    let 打った名 = p.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
+                    // **拡張子を打たなかったら正本(`.sheet.adoc`)。**
+                    // 前は `.xlsx` に落ちていて、名前の決め(2026-08-18)と
+                    // 食い違っていた
+                    let 字で書く = p.extension().is_none()
+                        || p.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc"));
                     if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("csv")) {
                         this.write_csv(&p);
+                    } else if 字で書く {
+                        // **表の名前に揃える。** `売上台帳` や `売上台帳.adoc` の
+                        // まま書くと、一覧が「文書」と読んでしまう
+                        let p = face::folder::as_sheet_adoc(&p);
+                        let 直した名 =
+                            p.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
+                        this.save_to(p);
+                        // **黙って名前を変えない。** 変えたときは状態行で言う
+                        if 直した名 != 打った名 {
+                            this.status =
+                                ui::tf!("{} で保存しました(表は二重の拡張子で名前を付けます)", 直した名)
+                                    .into();
+                        }
                     } else {
                         this.save_to(p);
                     }

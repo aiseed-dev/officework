@@ -1867,4 +1867,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("(名前なし)", "(senza nome)"),
     ("{} を開いています", "Visualizzazione di {}"),
     ("書きかけがあります(先に保存してください)", "Ci sono modifiche non salvate (salvale prima)"),
+    ("{} で保存しました(表は二重の拡張子で名前を付けます)", "Salvato come {} (i fogli di calcolo usano una doppia estensione)"),
 ];

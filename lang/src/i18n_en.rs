@@ -1880,4 +1880,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("(名前なし)", "(unnamed)"),
     ("{} を開いています", "Now showing {}"),
     ("書きかけがあります(先に保存してください)", "There are unsaved changes (save it first)"),
+    ("{} で保存しました(表は二重の拡張子で名前を付けます)", "Saved as {} (spreadsheets are named with a double extension)"),
 ];

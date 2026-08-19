@@ -124,6 +124,41 @@ pub fn display_name(file_name: &str, kind: Kind) -> String {
     }
 }
 
+/// **保存するときのブックの名前。** [`kind_of`] の逆向きです。
+///
+/// 保存の窓は使う人が名前を打つので、`売上台帳` とも `売上台帳.adoc` とも
+/// 打たれます。どちらもそのまま書くと、`kind_of` は「文書」と読みます —
+/// **保存した表が一覧で文書に化ける**(2026-08-19 の引き継ぎに実害として
+/// 挙がっていた件)。ここを通して `名前.sheet.adoc` に揃えます。
+///
+/// 種類を決めるのが `kind_of` の1箇所なら、種類に合う名前を作るのも
+/// 1箇所であるべきです。**片方だけ直すと、また食い違います。**
+///
+/// `.xlsx` のような別の形式は**触りません** — 呼ぶ側が「AsciiDoc で書く」と
+/// 決めたときにだけ通してください。
+pub fn as_sheet_adoc(path: &Path) -> PathBuf {
+    let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+        return path.to_path_buf();
+    };
+    let lower = name.to_ascii_lowercase();
+    if lower.ends_with(".sheet.adoc") {
+        return path.to_path_buf();
+    }
+    // `.adoc` で終わるなら、その `.adoc` を二重の拡張子に差し替える。
+    // `.tmpl.adoc` `.form.adoc` もここに入る — **表は見た目の元でも様式でも
+    // ない**ので、ブックとして保存する以上は表の名前にします
+    let stem = for_suffix(&lower, name, ".tmpl.adoc")
+        .or_else(|| for_suffix(&lower, name, ".form.adoc"))
+        .or_else(|| for_suffix(&lower, name, ".adoc"))
+        .unwrap_or(name);
+    path.with_file_name(format!("{stem}.sheet.adoc"))
+}
+
+/// 末尾が合えば、それを落とした頭を返す(合わなければ `None`)
+fn for_suffix<'a>(lower: &str, name: &'a str, suffix: &str) -> Option<&'a str> {
+    lower.ends_with(suffix).then(|| &name[..name.len() - suffix.len()])
+}
+
 /// フォルダの中身を並べる。
 ///
 /// *並びは「フォルダが先、次に名前順」*です。隠しファイル(`.` で始まる)と
@@ -188,6 +223,42 @@ mod tests {
         assert_eq!(display_name("既定.tmpl.adoc", Kind::Tmpl), "既定");
         // 受け渡しの形は拡張子を残す(元の形が分かるほうがよい)
         assert_eq!(display_name("送付状.docx", Kind::DocX), "送付状.docx");
+    }
+
+    /// 保存の名前は `kind_of` が表と読める形になる。**この2つは対**
+    #[test]
+    fn 保存の名前は表の形になる() {
+        let n = |s: &str| {
+            as_sheet_adoc(Path::new(s)).file_name().unwrap().to_str().unwrap().to_string()
+        };
+        // 拡張子を打たなかったとき
+        assert_eq!(n("売上台帳"), "売上台帳.sheet.adoc");
+        // `.adoc` とだけ打ったとき(**これが実害の出ていた道**)
+        assert_eq!(n("売上台帳.adoc"), "売上台帳.sheet.adoc");
+        // もう表の形なら触らない
+        assert_eq!(n("売上台帳.sheet.adoc"), "売上台帳.sheet.adoc");
+        // 表は見た目の元でも様式でもない
+        assert_eq!(n("売上台帳.tmpl.adoc"), "売上台帳.sheet.adoc");
+        assert_eq!(n("売上台帳.form.adoc"), "売上台帳.sheet.adoc");
+        // 大文字でも同じ
+        assert_eq!(n("売上台帳.ADOC"), "売上台帳.sheet.adoc");
+        // 名前に点があっても頭を落とさない
+        assert_eq!(n("2026.08 売上"), "2026.08 売上.sheet.adoc");
+        // 置き場は動かさない
+        assert_eq!(as_sheet_adoc(Path::new("/tmp/帳簿/売上.adoc")),
+                   Path::new("/tmp/帳簿/売上.sheet.adoc"));
+    }
+
+    /// **付けた名前を `kind_of` が表と読む。** ここが対でないと化ける
+    #[test]
+    fn 保存の名前と種類の判定が対になっている() {
+        for s in ["売上台帳", "売上台帳.adoc", "売上台帳.sheet.adoc", "2026.08 売上"] {
+            let made = as_sheet_adoc(Path::new(s));
+            let name = made.file_name().unwrap().to_str().unwrap();
+            assert_eq!(kind_of(name), Kind::Sheet, "{s} → {name} が表と読めない");
+            assert_eq!(display_name(name, Kind::Sheet), s.trim_end_matches(".adoc")
+                .trim_end_matches(".sheet"), "{s} の見せ名");
+        }
     }
 
     /// **`.sheet.adoc` を文書と間違えない。** どちらも `.adoc` で終わる
