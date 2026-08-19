@@ -233,6 +233,18 @@ d.save("out.docx")
 from officework import calc as xw   # xlwings 流の Book / Range
 ----
 
+橋は Python の専用ではありません。
+アプリはソケット(`$XDG_RUNTIME_DIR/officework/officework.sock`)を開いていて、JSON を1行書くと JSON を1行返します。
+JSON を書ければ、どの言語のどのアプリからでも繋げます — MCP サーバもこのソケットの客の1つです。
+任意のコードを走らせる命令は置いていません。
+いまは Linux と macOS で開きます。
+
+[source,console]
+----
+$ echo '{"cmd":"ping"}' | nc -q 1 -U $XDG_RUNTIME_DIR/officework/officework.sock
+{"ok":true,"app":"officework","showing":"doc","version":"0.1.0-alpha"}
+----
+
 コードを書く人向けの説明は link:docs/python-manual.ja.adoc[Python の手引き] にあります —*範囲⇄配列のやり取り*(values() と1セルずつの書き込み)、=PY の2次元リストとスピル、writer マクロの `d`、サンドボックスの中の約束、まで、実際に動かして確かめた内容つきです。
 
 == 構成

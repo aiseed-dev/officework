@@ -215,6 +215,18 @@ That one does need the app.
 from officework import calc as xw   # Book / Range, in the style of xlwings
 ----
 
+The bridge is not Python-only.
+The app opens a socket (`$XDG_RUNTIME_DIR/officework/officework.sock`): write one line of JSON, get one line back.
+Anything that can write JSON can connect, whatever the language — the MCP server is just one more client of this socket.
+There is no verb that runs arbitrary code.
+For now it opens on Linux and macOS.
+
+[source,console]
+----
+$ echo '{"cmd":"ping"}' | nc -q 1 -U $XDG_RUNTIME_DIR/officework/officework.sock
+{"ok":true,"app":"officework","showing":"doc","version":"0.1.0-alpha"}
+----
+
 The reference for programmers is the link:docs/python-manual.adoc[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` variable in writer macros, and what the sandbox allows.
 All verified on a real machine.
 
