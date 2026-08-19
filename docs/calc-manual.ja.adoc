@@ -2,7 +2,8 @@
 
 _元は英語版(link:calc-manual.adoc[calc-manual.adoc])です。こちらは日本語訳です。_
 
-xlsx を開いて、直して、保存する表計算アプリ。
+officework の表の編集画面の手引き。
+ブック(.sheet.adoc)も xlsx も開いて、直して、保存する。
 式も計算する。
 
 このマニュアルには**いま動くことだけ**を書く。
@@ -19,8 +20,8 @@ xlsx を開いて、直して、保存する表計算アプリ。
 
 [source,bash]
 ----
-./target/release/calc              # 空で開く
-./target/release/calc 帳票.xlsx    # ファイルを指定して開く
+./target/release/officework            # 前回の姿で開く(初回はフォルダを選ぶ)
+./target/release/officework 帳票.xlsx  # ファイルを指定して開く
 ----
 
 日本語フォントが機械に無いと起動しない(`fonts-noto-cjk` か``fonts-ipaexfont`` を入れる。

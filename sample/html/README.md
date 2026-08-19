@@ -41,14 +41,14 @@ python3 sample/catalog_server.py     # 127.0.0.1:8765
   宣言 → UTF-8 として妥当か → CP932 → どれでもなければ正直に断る。
   CP932(Windows-31J)で読むこと — ①髙﨑㈱ が純正 Shift_JIS には無い
 
-07 の form 束縛(`form` 辞書の出入り)の書き戻しの作法は実装時に確定する。
+07 の `form` 変数(辞書の出入り)の書き戻しの作法は実装時に確定する。
 ページ側は「`form["金額"]` に代入すれば紙面の同名欄に戻る」を仮置きしている。
 
 ## 開き方(実装後)
 
 ```bash
-./target/release/writer sample/html/01_bunsho.html
+./target/release/officework sample/html/01_bunsho.html
 ```
 
 ブラウザでも同じものが見える(06・07 はサーバー経由で):
-どのページも writer とブラウザで**同じ文書**に見えることが受入の物差し。
+どのページも officework とブラウザで**同じ文書**に見えることが受入の基準。

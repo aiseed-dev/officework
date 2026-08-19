@@ -2,7 +2,8 @@
 
 _日本語版(secondary): link:calc-manual.ja.adoc[calc-manual.ja.adoc]_
 
-A spreadsheet app that opens, edits, and saves xlsx — and calculates formulas.
+The manual for officework's spreadsheet editor.
+It opens, edits, and saves workbooks (.sheet.adoc) and xlsx — and calculates formulas.
 
 This manual describes *only what works today*.
 Commands shown grayed out on the ribbon are unimplemented and cannot be pressed (we never make something look usable when it isn't).
@@ -18,8 +19,8 @@ Three promises:
 
 [source,bash]
 ----
-./target/release/calc              # opens empty
-./target/release/calc 帳票.xlsx    # open a file
+./target/release/officework            # opens where you left off (asks for a folder the first time)
+./target/release/officework 帳票.xlsx  # open a file
 ----
 
 Without a Japanese font the app won't start (install `fonts-noto-cjk` or `fonts-ipaexfont`, or set `OFFICE_FONT=/path/to/font.ttf`).

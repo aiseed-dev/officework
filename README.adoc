@@ -2,24 +2,37 @@
 
 _日本語版(secondary): link:README.ja.adoc[README.ja.adoc]_
 
-**Automating Office work with Python — that is what this software is for. **The engine installs on its own (`pip install officework`): it reads and writes xlsx and docx without breaking their formatting, in the idiom of openpyxl, python-docx and xlwings.
-On top of it sit *Word and Excel that run on your machine* — where you watch the result, finish it by hand, and drive a live workbook from Python.
+Microsoft's Excel and Word are a closed world: the data, the look and the code are all locked inside one file.
+officework unpicks that — it is an Office that **sets data, templates, Python and AI free**.
 
-The second purpose points the other way — *using Python from Office*: a cell formula like `=double(A1)` calls your own Python function and the result spills, and the chart and pivot buttons are backed by matplotlib and polars.
-This is what replaces VBA:
+The four are each made independent:
 
-* `writer` — *a visual editor for AsciiDoc*: edit your source (.adoc) as it looks, and put it out as screen, PDF, HTML or docx. docx is the delivery format — you can open one and turn it into adoc (link:docs/writer-manual.adoc[manual])
-* `calc` — opens, edits, and saves xlsx. Calculates formulas (link:docs/calc-manual.adoc[manual])
+* *Data* — documents are AsciiDoc (`.adoc`), and spreadsheets can live in the same plain-text form (`.sheet.adoc`). Any tool can read them, and diffs work. xlsx / docx are read and written as delivery formats, without breaking their formatting
+* *Templates* — the look of a document is separated from its text. The same text takes a different shape just by swapping the template
+* *Python* — code is never stored in a workbook or a document. Drop a `.py` file and call it from a cell formula like `=double(A1)`, a ribbon button, or the macro list. This is what replaces VBA — and the "open = execute" attack path does not exist
+* *AI* — over MCP, an AI can drive the running app from outside
 
-They are *separate apps*, not one giant suite.
+The engine also installs on its own (`pip install officework`): it reads and writes xlsx and docx without breaking their formatting, in the idiom of openpyxl, python-docx and xlwings.
+You watch the result, finish it by hand, and drive a live workbook from Python.
+
+The app is *one binary, officework*.
+You open a folder and edit documents and spreadsheets in tabs of the same window.
+Which of the two editors opens a file is decided by its name:
+
+* documents (`name.adoc`) — *a visual editor for AsciiDoc*: edit your source as it looks, and put it out as screen, PDF, HTML or docx. docx is the delivery format — you can open one and turn it into adoc (link:docs/writer-manual.adoc[document manual])
+* spreadsheets (`name.sheet.adoc`) — a spreadsheet that calculates formulas. It opens, edits and saves xlsx too (link:docs/calc-manual.adoc[spreadsheet manual])
+
+Close and reopen, and the folder, files and tabs from last time come back.
 
 == What works today
 
+"Document" and "spreadsheet" in the table are the two editors inside officework.
+
 [cols="1,1,1"]
 |===
-| |writer |calc
+| |document |spreadsheet
 
-|Open / save |docx (parts we don't understand are preserved as-is) |xlsx (same)
+|Open / save |adoc and docx (parts we don't understand are preserved as-is) |sheet.adoc and xlsx (same)
 |Japanese input (IME), undo |○ |○
 |Character formatting |bold, italic, underline, strikethrough, color, highlight, super/subscript, size, font (*applies to the selection only*) |bold, italic, underline, strikethrough, color, fill
 |Paragraphs |alignment, bulleted/numbered lists (with levels), indent, line spacing, page break, shading and borders, drop caps |—
@@ -34,7 +47,7 @@ They are *separate apps*, not one giant suite.
 |Bookmarks, watermark, page color, columns |○ |—
 |Drawing (pen, highlighter, eraser) |○ (becomes shapes in docx) |—
 |Formulas |equations survive a round trip byte for byte (they are carried, not edited) |arithmetic and functions (about 185, incl. dynamic arrays and legacy CSE arrays), recalculation, circular-reference detection, *=PY* (write your own functions in Python)
-|Sheets |— |multiple sheets, freeze panes, filter, slicer, sort, grouping and subtotals
+|Sheets / multiple drafts |one .adoc can hold several documents (e.g. the invoices you send out together) |multiple sheets, freeze panes, filter, slicer, sort, grouping and subtotals
 |Pivot tables |— |○ (backed by polars; the definition is stored in the workbook so it can refresh)
 |Solver / goal seek |— |○ (simplex LP, backed by scipy)
 |Protection, encryption, signing |○ |○ (read-only, AES, Ed25519 side-file signature)
@@ -52,23 +65,24 @@ They are *separate apps*, not one giant suite.
 
 The ribbon layout follows Euro-Office, so people who switch don't have to relearn where things are. *Commands that don't work yet are shown grayed out* — we never make something look usable when it isn't.
 
-*There are no VBA-style macros, and workbooks never carry code.* Sheets live in .xlsx, code lives in .py — separate files.
+*There are no VBA-style macros, and workbooks never carry code.* Workbooks (.sheet.adoc / .xlsx) hold data only, code lives in .py — separate files.
 Procedures and user functions go in `~/.config/officework/plugins/`; run a procedure with `@name`, and call a function from a cell like any other (`=double(A1)`), or write one inline with `=PY(…)`.
 A workbook you receive contains no code, so the "open = execute" attack path does not exist here.
-See the link:docs/calc-manual.adoc[calc manual].
+See the link:docs/calc-manual.adoc[spreadsheet manual].
 
 == Getting it
 
 Three ways in, depending on what you want.
 
-*From PyPI* — the main channel, and from 0.4.0 it brings the apps as well.
+*From PyPI* — the main channel, and from 0.4.0 it brings the app as well.
 
 [source,console]
 ----
-$ pip install officework      # engine, bridge, MCP server — and both apps
-$ officework-calc             # a spreadsheet with a window
-$ officework-writer
+$ pip install officework      # engine, bridge, MCP server — and the app
+$ officework                  # opens the folder and files from last time
 ----
+
+Wheels up to 0.4 split the app into two commands, `officework-calc` and `officework-writer`.
 
 The wheel is around 36 MB (larger on macOS, which is universal).
 This is the least troublesome route: a file pip put on your disk carries neither macOS's quarantine flag nor Windows' Mark of the Web, so Gatekeeper and SmartScreen never ask, and no bundled Python is needed.
@@ -78,7 +92,7 @@ This is the least troublesome route: a file pip put on your disk carries neither
 *On Linux only, a few system libraries are needed* — pip cannot install
 those: `sudo apt install libxkbcommon0 libxkbcommon-x11-0 libxcb1
 libxcb-xkb1 libfontconfig1 fonts-noto-cjk`. If any are missing,
-`officework-calc` names them instead of failing silently.
+`officework` names them instead of failing silently.
 macOS and Windows need nothing extra.
 ====
 
@@ -129,10 +143,12 @@ sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev \
 ----
 cargo build --release
 
-./target/release/writer            # opens empty
-./target/release/writer sample/報告書.docx   # bundled sample (all contents fictitious)
-./target/release/calc  sample/見積書.xlsx
+./target/release/officework                    # opens where you left off (asks for a folder the first time)
+./target/release/officework sample/報告書.docx  # bundled sample (all contents fictitious)
+./target/release/officework sample/見積書.xlsx  # spreadsheets open in the same app
 ----
+
+Standalone `writer` and `calc` binaries are still built for development, but only officework is distributed.
 
 The first build takes a while because it fetches GPUI (from zed).
 
@@ -143,19 +159,19 @@ If a name is missing we fall back to a font that can typeset Japanese.
 
 [source,bash]
 ----
-OFFICE_FONT=/path/to/font.ttf ./target/release/writer   # explicit override
+OFFICE_FONT=/path/to/font.ttf ./target/release/officework   # explicit override
 ----
 
 Having `fonts-noto-cjk` or `fonts-ipaexfont` installed is enough.
 
-=== Proofreading (writer: Review > Proofread)
+=== Proofreading (documents: Review > Proofread)
 
 English spelling is checked against a dictionary (`/usr/share/dict/words` etc.).
 Japanese misconversions and inconsistent spellings can't be caught by a dictionary, so we ask a local model.
 
 [source,bash]
 ----
-OFFICE_HOST=127.0.0.1 OFFICE_PORT=8000 OFFICE_MODEL=... ./target/release/writer
+OFFICE_HOST=127.0.0.1 OFFICE_PORT=8000 OFFICE_MODEL=... ./target/release/officework
 ----
 
 Anything that speaks the OpenAI-compatible `/v1/chat/completions` works. *If it can't connect, the app says "can't proofread"* — it never silently reports "no issues found".
@@ -213,7 +229,7 @@ from officework import doc
 d = doc.Doc.open("report.docx")
 print(d.unsupported)               # the list of parts it couldn't read (empty = everything was read)
 d.replace("Old Name Ltd.", "New Name Ltd.")   # formatting inside the paragraph is left alone
-d.fill("customer", "Nihon Funen K.K.")  # fill a named form field (named in writer)
+d.fill("customer", "Nihon Funen K.K.")  # fill a named form field (named in the document editor)
 d[3].text = "replaced"             # the heading stays a heading; alignment and first-line indent survive
 print(d.tables[0][1][2].text)      # table, row, cell
 d.save("out.docx")
@@ -222,7 +238,7 @@ d.save("out.docx")
 `replace()` is the one to reach for when filling in a form: it keeps each run's formatting, so a bold field label next to a plain value stays that way.
 Assigning to `.text` replaces the whole paragraph and gives it the first run's formatting.
 
-To drive a running calc from the outside, use the bridge instead.
+To drive a running spreadsheet from the outside, use the bridge instead.
 That one does need the app.
 
 [source,python]
@@ -230,24 +246,26 @@ That one does need the app.
 from officework import calc as xw   # Book / Range, in the style of xlwings
 ----
 
-The reference for programmers is the link:docs/python-manual.adoc[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` binding in writer macros, and what the sandbox allows.
+The reference for programmers is the link:docs/python-manual.adoc[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` variable in document macros, and what the sandbox allows.
 All verified on a real machine.
 
 == Layout
 
 ----
-engine/   kumihan — typesetting core (line breaking, kinsoku, glyph widths, page geometry)
-ooxml/    docx reading and writing
-sheet/    xlsx reading and writing, formula engine, styles (styles.xml)
-ops/      the verbs of a workbook (open, read, write — same meaning for Python and the apps)
-pyrun/    the machinery that runs Python (sandbox, time limits)
-lang/     language-specific logic; knows nothing about gpui, runs headless
-paper/    projects the page onto PDF
-ui/       glue to gpui (input, IME, ribbon)
-writer/   the docx app
-calc/     the xlsx app
-pysheet/  Python bindings (pip install officework -> officework.sheet, officework.doc)
-sidecar/  the separate process that rides inside genoffice
+engine/     kumihan — typesetting core (line breaking, kinsoku, glyph widths, page geometry)
+ooxml/      docx reading and writing
+sheet/      xlsx reading and writing, formula engine, styles (styles.xml)
+ops/        the verbs of a workbook and the sockets (open, read, write — same meaning for Python and the app)
+pyrun/      the machinery that runs Python (sandbox, time limits)
+lang/       language-specific logic; knows nothing about gpui, runs headless
+paper/      projects the page onto PDF
+face/       screen parts that do no drawing (file listing, last session)
+ui/         glue to gpui (input, IME, ribbon)
+writer/     the document editor
+calc/       the spreadsheet editor
+officework/ the app itself (tabs, and the housing for the two editors)
+pysheet/    Python bindings (pip install officework -> officework.sheet, officework.doc)
+sidecar/    the separate process that rides inside genoffice
 ----
 
 *The screen and the paper are the same page projected onto different surfaces*, which is why display and print never disagree.
@@ -258,7 +276,7 @@ sidecar/  the separate process that rides inside genoffice
 
 [source,bash]
 ----
-OFFICE_LANG=en ./target/release/writer      # temporary override
+OFFICE_LANG=en ./target/release/officework      # temporary override
 # or persistently, in ~/.config/officework/settings.toml:
 #   language = "en"
 ----
@@ -270,7 +288,7 @@ The exact number is deliberately not written here: it only grows, so writing it 
 The guarantee lives in `cargo test` instead (`lang/tests/i18n_soroi.rs`), which checks on every run that English has no untranslated phrase, that no dead translations remain, and that all 13 tables carry the same keys.
 It used to be a script someone had to remember to run, so nobody ran it and 173 phrases went missing — *a script you have to remember is not a check.*
 
-There is also a settings page: File > Advanced settings shows the current language, font, proofreading endpoint, and Python path, and cycles through the languages (applies on next start).
+There is also a settings page: File > Advanced settings shows the current language, font, proofreading endpoint, and Python path, and cycles through the languages (the screen switches the moment you pick one).
 
 Standard ribbon labels come from Euro-Office's own locale files; the remaining phrases were machine-translated (by Claude, within the flat-rate subscription) following Microsoft Office terminology per language. en and ja are reviewed; *review by native speakers of the other languages is very welcome.*
 
@@ -293,10 +311,10 @@ Origins of bundled and derived material are listed in `NOTICE.md`.
 
 == Status
 
-Ribbon buttons: *writer 0 grayed out, calc 9* (2026-08-10).
+Ribbon buttons: *documents 0 grayed out, spreadsheets 9* (2026-08-10).
 The nine are shape ordering, alignment, grouping and merging on the Layout tab, protecting a workbook or a range on Protect, and the normal and page-break views on View.
 Everything else on both ribbons works.
 
-Both figures are checked on every push against the ribbon tables themselves, so this line cannot quietly go stale — which is exactly what it had done: it said zero for months while calc showed nine.
+Both figures are checked on every push against the ribbon tables themselves, so this line cannot quietly go stale — which is exactly what it had done: it said zero for months while the spreadsheet ribbon showed nine.
 
 Design decisions are recorded in `SEKKEI.adoc` (Japanese), history and open items in `HIKITSUGI.adoc` (Japanese), and there are ready-to-open samples in `sample/`.

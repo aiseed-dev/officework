@@ -5,6 +5,7 @@ _元は英語版(link:writer-manual.adoc[writer-manual.adoc])です。こちら�
 *この手引きは writer 0.2.0-alpha について書いています。* いま配っている0.1.0-alpha にまだ入っていない所には**(0.2.0-alpha で入ります)**と印を付けています。
 印の付いた説明は、これからそう作る、という意味です。
 
+officework の文書の編集画面の手引き。
 *AsciiDoc の視覚エディタです。* 原稿(.adoc)を見たまま直せます。
 処理系(asciidoctor など)の代わりではありません — 原稿を書くための道具です。
 
@@ -42,15 +43,15 @@ Python から使うときは今までどおり docx を直して返せます(`fr
 * *どの操作も1手で戻せる。* 打鍵も IME の確定も貼り付けもペンの1本も配色の変更も、Ctrl+Z 一回で戻る
 * *黙って落とさない。* 読めないもの・保存で失われるものはレポートとステータスバーで言う
 
-試せる見本が link:../sample/README.adoc[sample/] にある — 特に``sample/writer/01〜05``(日本語の組版・縦書き・申込書・月次報告・道具くらべ)と``06_書き方の見本.adoc``(下の「書き方の一覧」を1枚にしたもの)。
+試せる見本が link:../sample/README.md[sample/] にある — 特に``sample/writer/01〜05``(日本語の組版・縦書き・申込書・月次報告・道具くらべ)と``06_書き方の見本.adoc``(下の「書き方の一覧」を1枚にしたもの)。
 
 == 起動
 
 [source,bash]
 ----
-./target/release/writer                          # 空で開く
-./target/release/writer sample/報告書.docx
-./target/release/writer sample/writer/02_縦書きの手紙.docx
+./target/release/officework                      # 前回の姿で開く(初回はフォルダを選ぶ)
+./target/release/officework sample/報告書.docx
+./target/release/officework sample/writer/02_縦書きの手紙.docx
 ----
 
 日本語フォントが機械に無いと、理由を言って止まる(豆腐を見せない)。
