@@ -77,6 +77,8 @@ pub mod ribbon_zh_tw;
 // gen_lang:end
 
 pub mod ribbon_tables;
+/// 前回の姿(開いていたフォルダ・ファイル・見ていたタブ)
+pub mod session;
 pub mod settings;
 pub mod winstate;
 

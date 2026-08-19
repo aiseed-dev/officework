@@ -1880,4 +1880,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} に書きかけがあります(先に保存してください)", "{} kaydedilmemiş değişiklikler içeriyor (önce kaydedin)"),
     ("開ける物", "Açabileceğiniz dosyalar"),
     ("officework の文書と表", "officework belgeleri ve tabloları"),
+    ("前回開いていた {} 件が見つかりませんでした", "Daha önce açık olan {} dosya bulunamadı"),
 ];

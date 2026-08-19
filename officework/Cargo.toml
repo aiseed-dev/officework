@@ -15,6 +15,8 @@ writer = { path = "../writer" }
 calc = { path = "../calc" }
 ui = { path = "../ui" }
 ops = { path = "../ops" }
+# 絵を描かない層。前回の姿(session)とファイルの種類(folder)がここ
+face = { path = "../face" }
 # 起動のときの「フォルダを選ぶ画面」だけに使う(writer / calc と同じ版)
 rfd = "0.14"
 # GPUI は crates.io に無いので、版を固定して zed から直に取る(writer / calc と同じ版)

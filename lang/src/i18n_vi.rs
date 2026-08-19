@@ -1880,4 +1880,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} に書きかけがあります(先に保存してください)", "{} có thay đổi chưa lưu (hãy lưu trước)"),
     ("開ける物", "Tệp có thể mở"),
     ("officework の文書と表", "Tài liệu và bảng tính officework"),
+    ("前回開いていた {} 件が見つかりませんでした", "Không tìm thấy {} tệp đã mở lần trước"),
 ];

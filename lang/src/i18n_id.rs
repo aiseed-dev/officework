@@ -1880,4 +1880,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} に書きかけがあります(先に保存してください)", "{} punya perubahan yang belum disimpan (simpan dulu)"),
     ("開ける物", "Berkas yang bisa dibuka"),
     ("officework の文書と表", "Dokumen dan lembar officework"),
+    ("前回開いていた {} 件が見つかりませんでした", "{} berkas yang sebelumnya terbuka tidak ditemukan"),
 ];

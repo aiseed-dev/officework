@@ -2712,6 +2712,12 @@ impl Writer {
 
     /// フォルダを覚える(次に起動したときここを開きます)。
     pub(crate) fn remember_folder(&self) {
+        // **埋め込みのときは書きません**(統合の段4)。開いていた場所を
+        // 覚えるのは officework の `session.txt` の仕事になりました。
+        // 両方が書くと、食い違ったときにどちらが正しいか誰にも言えません
+        if self.embedded {
+            return;
+        }
         if let Some(d) = self.folder() {
             ui::settings::set("folder", &d.display().to_string());
         }

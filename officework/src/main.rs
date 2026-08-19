@@ -31,11 +31,17 @@ enum Start {
     File(std::path::PathBuf),
     /// フォルダ(中身の一覧を出す。ファイルは開かない)
     Folder(std::path::PathBuf),
+    /// **前回の姿**(開いていたファイルの並びと、見ていたタブ)。
+    /// 2つ目は開けなくなっていた数 — 黙って減らさないので画面で言います
+    Before(face::session::Session, usize),
     /// 覚えているフォルダが無い。**窓を出してから**選んでもらう
     AskFolder,
 }
 
-/// 起動の形を決める。**引数 → 前回のフォルダ → 選んでもらう**の順。
+/// 起動の形を決める。**引数 → 前回の姿 → 選んでもらう**の順。
+///
+/// 引数つき(関連付けから1つのファイルを開く形)は**そのファイルだけ**を
+/// 開きます — 「これを見たい」と言われたときに他の物まで開くと邪魔です。
 ///
 /// **選ぶ画面はここでは開きません。** `rfd` は同期で、返るまで戻って
 /// きません。窓を作る前にこれを呼ぶと、答えが返らないときに*窓が1つも
@@ -45,10 +51,13 @@ fn 起動の形(arg: Option<std::path::PathBuf>) -> Start {
     if let Some(p) = arg {
         return Start::File(p);
     }
-    match ui::settings::get("folder")
-        .map(std::path::PathBuf::from)
-        .filter(|p| p.is_dir())
-    {
+    // **前の版から上げた人の「前回のフォルダ」も拾います**(1回だけ)
+    let 前 = face::session::引き継ぐ(ui::settings::get("folder"));
+    let (前, 落ちた) = face::session::prune(&前);
+    if !前.files.is_empty() {
+        return Start::Before(前, 落ちた);
+    }
+    match 前.folder {
         Some(d) => Start::Folder(d),
         None => Start::AskFolder,
     }
@@ -60,16 +69,6 @@ fn 表か(p: &std::path::Path) -> bool {
     p.file_name()
         .map(|n| ui::folder::kind_of(&n.to_string_lossy()))
         .is_some_and(|k| k.is_sheet())
-}
-
-/// 開いたファイルのフォルダを覚える(次の起動でここが開きます)。
-///
-/// 関連付けからファイルを開いた回も覚えます — *使った場所が次に開く場所*で、
-/// 一度も一覧を触っていない人でも「前回のフォルダ」が育ちます。
-fn 覚える(path: Option<&std::path::Path>) {
-    if let Some(d) = path.and_then(|p| p.parent()).filter(|d| d.is_dir()) {
-        ui::settings::set("folder", &d.display().to_string());
-    }
 }
 
 /// 開いているファイル1枚ぶん。**タブ1つ = ファイル1つ = 編集画面1つ**
@@ -140,12 +139,31 @@ struct Office {
 
 impl Office {
     fn new(start: Start, cx: &mut Context<Self>) -> Office {
+        // **前回の姿で始める**(段4)。開いていた並びをそのまま作り直します
+        if let Start::Before(前, 落ちた) = &start {
+            let mut tabs: Vec<Pane> = Vec::new();
+            for f in &前.files {
+                tabs.push(if 表か(f) {
+                    Pane::Sheet(作る表(Some(f.clone()), cx))
+                } else {
+                    Pane::Doc(作る文書(Some(f.clone()), cx))
+                });
+            }
+            let at = 前.at.min(tabs.len().saturating_sub(1));
+            let mut o = Office { tabs, at, 焦点を移す: true };
+            // **黙って減らさない。** 開けなかった数は状態行で言います
+            if *落ちた > 0 {
+                o.言う(&ui::tf!("前回開いていた {} 件が見つかりませんでした", 落ちた.to_string()), cx);
+                // **控えも今の姿に直します。** 直さないと、消えたファイルが
+                // 記録に残り続け、開くたびに同じ数を報せることになります
+                o.姿を控える(cx);
+            }
+            return o;
+        }
         let path = match &start {
             Start::File(p) => Some(p.clone()),
-            Start::Folder(_) | Start::AskFolder => None,
+            Start::Folder(_) | Start::AskFolder | Start::Before(..) => None,
         };
-        // 開いたファイルのフォルダを覚えます(次の起動でここが開きます)
-        覚える(path.as_deref());
         let pane = if path.as_deref().is_some_and(表か) {
             Pane::Sheet(作る表(path, cx))
         } else {
@@ -209,7 +227,12 @@ impl Office {
     ///
     /// `rfd` は同期なので**別の糸**で開きます(主の糸で呼ぶと画面が止まります)。
     fn 開く窓(&self, cx: &mut Context<Self>) {
-        let dir = ui::settings::get("folder").map(std::path::PathBuf::from);
+        // 開き始める場所は**いま見ているタブの隣**(無ければ前回の姿のフォルダ)
+        let dir = self
+            .見ている()
+            .道(cx)
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+            .or_else(|| face::session::load().folder);
         let ask = cx.background_executor().spawn(async move {
             let mut d = rfd::FileDialog::new()
                 .add_filter(ui::t!("開ける物"), &["adoc", "docx", "xlsx", "xltx"])
@@ -233,6 +256,20 @@ impl Office {
         .detach();
     }
 
+    /// **いまの姿を控える。** タブを開く・閉じる・切り替えるたびに呼びます —
+    /// 終了のときだけ書くと、落ちたときに前回の姿が残りません。
+    fn 姿を控える(&self, cx: &App) {
+        let files: Vec<std::path::PathBuf> =
+            self.tabs.iter().filter_map(|t| t.道(cx)).collect();
+        // フォルダは、いま見ているファイルの親(無ければ最初のタブの親)
+        let folder = self
+            .見ている()
+            .道(cx)
+            .or_else(|| files.first().cloned())
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+        face::session::save(&face::session::of(folder.as_deref(), &files, self.at));
+    }
+
     /// いま見ているタブ。
     fn 見ている(&self) -> &Pane {
         &self.tabs[self.at.min(self.tabs.len() - 1)]
@@ -243,7 +280,6 @@ impl Office {
     /// **焦点は描くときに移します。** ここは受け口からも呼ばれ、そちらには
     /// `Window` がありません。窓を持っている `render` に1回だけ任せます
     fn タブで開く(&mut self, p: std::path::PathBuf, cx: &mut Context<Self>) {
-        覚える(Some(&p));
         if let Some(i) = self.tabs.iter().position(|t| t.道(cx).as_deref() == Some(p.as_path())) {
             self.at = i;
         } else {
@@ -256,6 +292,7 @@ impl Office {
             self.at = self.tabs.len() - 1;
         }
         self.焦点を移す = true;
+        self.姿を控える(cx);
         cx.notify();
     }
 }
@@ -344,6 +381,7 @@ impl Office {
             self.at -= 1;
         }
         self.焦点を移す = true;
+        self.姿を控える(cx);
         cx.notify();
     }
 
@@ -439,6 +477,7 @@ impl Render for Office {
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.at = i;
                             this.焦点を移す = true;
+                            this.姿を控える(cx);
                             cx.notify()
                         })),
                 );

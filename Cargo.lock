@@ -4037,6 +4037,7 @@ name = "officework"
 version = "0.1.0-alpha"
 dependencies = [
  "calc",
+ "face",
  "gpui",
  "gpui_platform",
  "ops",

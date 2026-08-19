@@ -1880,4 +1880,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} に書きかけがあります(先に保存してください)", "{} tem alterações não salvas (salve-as primeiro)"),
     ("開ける物", "Arquivos que você pode abrir"),
     ("officework の文書と表", "Documentos e planilhas do officework"),
+    ("前回開いていた {} 件が見つかりませんでした", "Não foi possível encontrar {} arquivo(s) que você tinha aberto"),
 ];
