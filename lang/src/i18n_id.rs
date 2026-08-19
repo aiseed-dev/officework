@@ -1863,4 +1863,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("(空のフォルダです)", "(folder kosong)"),
     ("文書 {}", "Dokumen {}"),
     ("{}(文書 {} 枚)", "{} ({} dokumen)"),
+    ("(名前なし)", "(tanpa nama)"),
+    ("{} を開いています", "Menampilkan {}"),
+    ("書きかけがあります(先に保存してください)", "Ada perubahan yang belum disimpan (simpan dulu)"),
 ];

@@ -1124,7 +1124,9 @@ impl Writer {
                                 行 = 行.cursor_pointer()
                                     .hover(move |s| s.bg(th_btn_hover))
                                     .on_click(cx.listener(move |t, _, _, cx| {
-                                        t.open(道.clone());
+                                        // **新しいタブで開きます**(2026-08-19)。
+                                        // 開いている物は閉じません
+                                        t.open_in_tab(道.clone());
                                         t.remember_folder();
                                         cx.notify()
                                     }));

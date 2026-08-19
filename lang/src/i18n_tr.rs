@@ -1863,4 +1863,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("(空のフォルダです)", "(klasör boş)"),
     ("文書 {}", "Belge {}"),
     ("{}(文書 {} 枚)", "{} ({} belge)"),
+    ("(名前なし)", "(adsız)"),
+    ("{} を開いています", "{} gösteriliyor"),
+    ("書きかけがあります(先に保存してください)", "Kaydedilmemiş değişiklikler var (önce kaydedin)"),
 ];

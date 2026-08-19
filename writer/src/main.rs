@@ -187,6 +187,11 @@ struct Writer {
     docs: Vec<Document>,
     /// いま見ている文書は何枚目か
     doc_at: usize,
+    /// **開いている他のファイル**(2026-08-19)。いま見ている物は
+    /// `Writer` の欄にあり、ここの `file_at` 番目は空の置き場です
+    files: Vec<OpenFile>,
+    /// いま見ているファイルは何枚目か
+    file_at: usize,
     ed: Editor,
     page: Page,
     path: Option<PathBuf>,
@@ -679,6 +684,49 @@ impl HasEditor for Writer {
     }
 }
 
+
+/// **開いているファイル1つぶんの持ち物**(2026-08-19 発注者「Zed と同じ
+/// ように複数ファイルを開くことができるようにして」)。
+///
+/// いま見ているファイルの分は `Writer` の欄にそのまま入っていて、ここの
+/// `file_at` 番目は空の置き場です。切り替えるときに入れ替えます —
+/// 文書の耳(`docs`)と同じ作法で、`self.doc` を見ている所を書き替えずに
+/// 済みます。
+pub(crate) struct OpenFile {
+    doc: Document,
+    docs: Vec<Document>,
+    doc_at: usize,
+    ed: Editor,
+    path: Option<PathBuf>,
+    dirty: bool,
+    undo_stack: Vec<Snapshot>,
+    redo_stack: Vec<Snapshot>,
+    scroll_mm: f32,
+    native: bool,
+    tmpl: kumihan::theme::Theme,
+    tmpl_path: Option<PathBuf>,
+    notes: Vec<SharedString>,
+}
+
+impl Default for OpenFile {
+    fn default() -> Self {
+        OpenFile {
+            doc: Document::default(),
+            docs: Vec::new(),
+            doc_at: 0,
+            ed: Editor::new(""),
+            path: None,
+            dirty: false,
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+            scroll_mm: 0.0,
+            native: false,
+            tmpl: kumihan::theme::default_theme(),
+            tmpl_path: None,
+            notes: Vec::new(),
+        }
+    }
+}
 
 /// 取り消しの控え1枚。**文書と平文とカーソルを揃えて持つ** —
 /// 別々に戻すと、文書と画面の言うことが食い違う。

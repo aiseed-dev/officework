@@ -1876,4 +1876,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("(空のフォルダです)", "(the folder is empty)"),
     ("文書 {}", "Document {}"),
     ("{}(文書 {} 枚)", "{} ({} documents)"),
+    ("(名前なし)", "(unnamed)"),
+    ("{} を開いています", "Now showing {}"),
+    ("書きかけがあります(先に保存してください)", "There are unsaved changes (save it first)"),
 ];

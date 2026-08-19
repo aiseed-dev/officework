@@ -2948,3 +2948,97 @@ mod 請求書をまとめる {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+/// **ファイルを何枚も開く**(2026-08-19 発注者「Zed と同じように複数
+/// ファイルを開くことができるようにして」)。
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod ファイルを何枚も開く {
+    use crate::*;
+
+    /// 試験ごとに**別のフォルダ**を作ります。同じ名前にすると、片方の
+    /// 後片づけがもう片方の足元を消します(2026-08-19 に踏みました)
+    fn 場所(名: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("jo-tabs-{}-{名}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        for (n, body) in [("甲.adoc", "= 甲\n\nあ。\n"), ("乙.adoc", "= 乙\n\nい。\n")] {
+            std::fs::write(dir.join(n), body).unwrap();
+        }
+        dir
+    }
+
+    #[gpui::test]
+    fn 二枚開いて行き来できる(cx: &mut gpui::TestAppContext) {
+        let dir = 場所("go");
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.open(dir.join("甲.adoc"));
+            assert_eq!(this.file_count(), 1, "1枚目はタブを増やさない");
+
+            this.open_in_tab(dir.join("乙.adoc"));
+            assert_eq!(this.file_count(), 2);
+            assert_eq!(this.file_at, 1);
+            assert_eq!(this.file_name(0), "甲");
+            assert_eq!(this.file_name(1), "乙");
+            assert!(this.doc.body_text().contains("い。"), "{:?}", this.doc.body_text());
+
+            // 1枚目へ戻る
+            this.show_file(0);
+            assert!(this.doc.body_text().contains("あ。"), "{:?}", this.doc.body_text());
+            assert_eq!(this.path.as_deref(), Some(dir.join("甲.adoc").as_path()));
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **同じファイルを二重に開かない。** どちらを保存したのか分からなくなる
+    #[gpui::test]
+    fn 同じファイルは二重に開かない(cx: &mut gpui::TestAppContext) {
+        let dir = 場所("nijuu");
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.open(dir.join("甲.adoc"));
+            this.open_in_tab(dir.join("乙.adoc"));
+            this.open_in_tab(dir.join("甲.adoc"));
+            assert_eq!(this.file_count(), 2, "二重に開いた");
+            assert_eq!(this.file_at, 0, "先に開いていたタブへ行っていない");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **書きかけのタブは閉じない。** 黙って捨てない
+    #[gpui::test]
+    fn 書きかけのタブは閉じない(cx: &mut gpui::TestAppContext) {
+        let dir = 場所("kakikake");
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.open(dir.join("甲.adoc"));
+            this.open_in_tab(dir.join("乙.adoc"));
+            this.dirty = true;
+            assert!(!this.close_file(1), "書きかけなのに閉じた");
+            assert_eq!(this.file_count(), 2);
+            // 書きかけでなければ閉じる
+            this.dirty = false;
+            assert!(this.close_file(1));
+            assert_eq!(this.file_count(), 1);
+            assert!(this.doc.body_text().contains("あ。"), "残った側が違う");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// タブごとに**別の書きかけの印**を持つ
+    #[gpui::test]
+    fn 書きかけの印はタブごと(cx: &mut gpui::TestAppContext) {
+        let dir = 場所("shirushi");
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.open(dir.join("甲.adoc"));
+            this.open_in_tab(dir.join("乙.adoc"));
+            this.dirty = true; // 乙 が書きかけ
+            this.show_file(0);
+            assert!(!this.dirty, "甲 まで書きかけになった");
+            assert!(this.file_dirty(1), "乙 の書きかけが消えた");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

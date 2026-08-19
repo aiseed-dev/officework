@@ -84,6 +84,8 @@ impl Writer {
             doc: Document::default(),
             docs: Vec::new(),
             doc_at: 0,
+            files: Vec::new(),
+            file_at: 0,
             ed: Editor::new(""),
             page: Page::default(),
             path: None,
@@ -2513,6 +2515,142 @@ impl Writer {
     ///
     /// 開いている文書の隣は**当たり前の出発点**で、そこから始められないと
     /// 「場所を選ぶ」を毎回押すことになる(2026-08-17)
+    /// 開いているファイルの枚数。
+    pub(crate) fn file_count(&self) -> usize {
+        self.files.len().max(1)
+    }
+
+    /// 何枚目かのファイルの名前(上のタブに出します)。
+    pub(crate) fn file_name(&self, i: usize) -> String {
+        let 道 = if i == self.file_at {
+            self.path.clone()
+        } else {
+            self.files.get(i).and_then(|f| f.path.clone())
+        };
+        match 道 {
+            Some(p) => {
+                let n = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                ui::folder::display_name(&n, ui::folder::kind_of(&n))
+            }
+            None => ui::t!("(名前なし)").to_string(),
+        }
+    }
+
+    /// 何枚目かのファイルに書きかけがあるか(タブに印を出します)。
+    pub(crate) fn file_dirty(&self, i: usize) -> bool {
+        if i == self.file_at { self.dirty } else { self.files.get(i).is_some_and(|f| f.dirty) }
+    }
+
+    /// いま見ているファイルの持ち物を取り出す(入れ替えのため)。
+    fn take_open(&mut self) -> OpenFile {
+        OpenFile {
+            doc: std::mem::take(&mut self.doc),
+            docs: std::mem::take(&mut self.docs),
+            doc_at: self.doc_at,
+            ed: std::mem::replace(&mut self.ed, Editor::new("")),
+            path: self.path.take(),
+            dirty: self.dirty,
+            undo_stack: std::mem::take(&mut self.undo_stack),
+            redo_stack: std::mem::take(&mut self.redo_stack),
+            scroll_mm: self.scroll_mm,
+            native: self.native,
+            tmpl: std::mem::replace(&mut self.tmpl, kumihan::theme::default_theme()),
+            tmpl_path: self.tmpl_path.take(),
+            notes: std::mem::take(&mut self.notes),
+        }
+    }
+
+    /// 取り出した持ち物を据える。
+    fn put_open(&mut self, f: OpenFile) {
+        self.doc = f.doc;
+        self.docs = f.docs;
+        self.doc_at = f.doc_at;
+        self.ed = f.ed;
+        self.path = f.path;
+        self.dirty = f.dirty;
+        self.undo_stack = f.undo_stack;
+        self.redo_stack = f.redo_stack;
+        self.scroll_mm = f.scroll_mm;
+        self.native = f.native;
+        self.tmpl = f.tmpl;
+        self.tmpl_path = f.tmpl_path;
+        self.notes = f.notes;
+    }
+
+    /// 見るファイルを替える。
+    pub(crate) fn show_file(&mut self, i: usize) {
+        if i == self.file_at || i >= self.files.len() {
+            return;
+        }
+        self.flush_target();
+        self.target = Target::Body;
+        self.hf_edit = None;
+        let now = self.take_open();
+        self.files[self.file_at] = now;
+        self.file_at = i;
+        let next = std::mem::take(&mut self.files[i]);
+        self.put_open(next);
+        self.adopt_font();
+        self.lay();
+        self.status = ui::tf!(
+            "{} を開いています",
+            self.path.as_ref().map(|p| p.file_name().unwrap_or_default().to_string_lossy().to_string())
+                .unwrap_or_default()
+        )
+        .into();
+    }
+
+    /// **新しいタブでファイルを開く**(2026-08-19)。
+    ///
+    /// 既に開いているファイルなら、そのタブへ行くだけです — 同じファイルを
+    /// 二重に開くと、どちらを保存したのか分からなくなります。
+    pub(crate) fn open_in_tab(&mut self, p: PathBuf) {
+        // もう開いているか
+        if self.path.as_deref() == Some(p.as_path()) {
+            return;
+        }
+        if let Some(i) = self.files.iter().position(|f| f.path.as_deref() == Some(p.as_path())) {
+            self.show_file(i);
+            return;
+        }
+        // 1枚目のときは、いまの場所を並びに登録してから足す
+        if self.files.is_empty() {
+            let now = self.take_open();
+            self.files.push(now);
+            self.file_at = 0;
+        } else {
+            let now = self.take_open();
+            self.files[self.file_at] = now;
+        }
+        self.files.push(OpenFile::default());
+        self.file_at = self.files.len() - 1;
+        let fresh = std::mem::take(&mut self.files[self.file_at]);
+        self.put_open(fresh);
+        self.open(p);
+    }
+
+    /// タブを閉じる。**書きかけがあるときは閉じません**(黙って捨てない)。
+    pub(crate) fn close_file(&mut self, i: usize) -> bool {
+        if self.files.len() <= 1 || i >= self.files.len() {
+            return false;
+        }
+        let 書きかけ = self.file_dirty(i);
+        if 書きかけ {
+            self.status = ui::t!("書きかけがあります(先に保存してください)").into();
+            return false;
+        }
+        if i == self.file_at {
+            // いま見ている物を閉じる — 隣へ移ってから外す
+            let 行き先 = if i + 1 < self.files.len() { i + 1 } else { i - 1 };
+            self.show_file(行き先);
+        }
+        self.files.remove(i);
+        if self.file_at > i {
+            self.file_at -= 1;
+        }
+        true
+    }
+
     /// このファイルに入っている文書の枚数。
     pub(crate) fn doc_count(&self) -> usize {
         self.docs.len().max(1)

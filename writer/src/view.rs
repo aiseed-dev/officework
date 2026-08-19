@@ -583,6 +583,43 @@ impl Render for Writer {
             div().flex().flex_col().child(top).child(tabs).child(cmds)
         };
 
+        // ---- ファイルのタブ(何枚も開いているとき) ----
+        //
+        // **Zed と同じように何枚も開いて行き来します**(2026-08-19 発注者)。
+        // 1枚しか開いていないときは出しません
+        let files_bar = (self.file_count() > 1).then(|| {
+            let mut bar = div().flex().flex_row().items_center().gap_1()
+                .px_2().py_0p5().bg(th_top_bg)
+                .border_b_1().border_color(th_cmd_border);
+            for i in 0..self.file_count() {
+                let on = i == self.file_at;
+                let 書きかけ = self.file_dirty(i);
+                let mut 札 = self.file_name(i);
+                if 書きかけ {
+                    // **書きかけの印。** 閉じる前に気づけるように
+                    札.push('*');
+                }
+                bar = bar.child(div()
+                    .id(SharedString::from(format!("file{i}")))
+                    .px_2p5().py_0p5().rounded_sm().cursor_pointer()
+                    .bg(if on { rgb(0xFFFFFF) } else { gpui::transparent_black().into() })
+                    .border_1().border_color(if on { th_cmd_border } else { gpui::transparent_black().into() })
+                    .text_size(px(11.5))
+                    .text_color(if on { th_top_fg } else { th_status })
+                    .child(SharedString::from(札))
+                    .on_click(cx.listener(move |t, _, _, cx| { t.show_file(i); cx.notify() })));
+                // 閉じる(×)。書きかけがあるときは断ります
+                bar = bar.child(div()
+                    .id(SharedString::from(format!("filex{i}")))
+                    .px_1().rounded_sm().cursor_pointer()
+                    .text_size(px(11.0)).text_color(th_status)
+                    .hover(move |s| s.bg(th_qa_hover))
+                    .child("×")
+                    .on_click(cx.listener(move |t, _, _, cx| { t.close_file(i); cx.notify() })));
+            }
+            bar
+        });
+
         // ---- 文書の耳(1つのファイルに何枚も入っているとき) ----
         //
         // **calc のシートの耳と同じ位置・同じ動き**にしてあります
@@ -1968,6 +2005,8 @@ impl Render for Writer {
             .on_action(cx.listener(Writer::do_font_bigger))
             .on_action(cx.listener(Writer::do_font_smaller))
             .child(bar)
+            // **ファイルのタブはリボンのすぐ下**(Zed と同じ位置)
+            .children(files_bar)
             .child(if let Some(fp) = filepage {
                 fp
             } else {

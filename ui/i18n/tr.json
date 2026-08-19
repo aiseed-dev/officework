@@ -7365,406 +7365,418 @@
  },
  {
   "i": 1841,
-  "t": "Python işlevleri"
+  "t": "(adsız)"
  },
  {
   "i": 1842,
-  "t": "Şerit makroları"
+  "t": "{} gösteriliyor"
  },
  {
   "i": 1843,
-  "t": "Biçim boyacısı"
+  "t": "Kaydedilmemiş değişiklikler var (önce kaydedin)"
  },
  {
   "i": 1844,
-  "t": "Stil"
+  "t": "Python işlevleri"
  },
  {
   "i": 1845,
-  "t": "Alan listesi"
+  "t": "Şerit makroları"
  },
  {
   "i": 1846,
-  "t": "Ekran yazısını büyüt"
+  "t": "Biçim boyacısı"
  },
  {
   "i": 1847,
-  "t": "Ekran yazısını küçült"
+  "t": "Stil"
  },
  {
   "i": 1848,
-  "t": "YZ"
+  "t": "Alan listesi"
  },
  {
   "i": 1849,
-  "t": "Yazdır"
+  "t": "Ekran yazısını büyüt"
  },
  {
   "i": 1850,
-  "t": "Yazdırma düzeni"
+  "t": "Ekran yazısını küçült"
  },
  {
   "i": 1851,
-  "t": "Hedef"
+  "t": "YZ"
  },
  {
   "i": 1852,
-  "t": "Özetle"
+  "t": "Yazdır"
  },
  {
   "i": 1853,
-  "t": "Yeniden yaz"
+  "t": "Yazdırma düzeni"
  },
  {
   "i": 1854,
-  "t": "Daha kibar"
+  "t": "Hedef"
  },
  {
   "i": 1855,
-  "t": "Sadeleştir"
+  "t": "Özetle"
  },
  {
   "i": 1856,
-  "t": "Çevir"
+  "t": "Yeniden yaz"
  },
  {
   "i": 1857,
-  "t": "furigana"
+  "t": "Daha kibar"
  },
  {
   "i": 1858,
-  "t": "Devamını yaz"
+  "t": "Sadeleştir"
  },
  {
   "i": 1859,
-  "t": "Tabloya çevir"
+  "t": "Çevir"
  },
  {
   "i": 1860,
-  "t": "Sor"
+  "t": "furigana"
  },
  {
   "i": 1861,
-  "t": "Ruby"
+  "t": "Devamını yaz"
  },
  {
   "i": 1862,
-  "t": "Dikey"
+  "t": "Tabloya çevir"
  },
  {
   "i": 1863,
-  "t": "Metin yönü"
+  "t": "Sor"
  },
  {
   "i": 1864,
-  "t": "Dağıtılmış"
+  "t": "Ruby"
  },
  {
   "i": 1865,
-  "t": "Resim yazısı ekle"
+  "t": "Dikey"
  },
  {
   "i": 1866,
-  "t": "URL aç"
+  "t": "Metin yönü"
  },
  {
   "i": 1867,
-  "t": "Dizin"
+  "t": "Dağıtılmış"
  },
  {
   "i": 1868,
-  "t": "Aozora notları"
+  "t": "Resim yazısı ekle"
  },
  {
   "i": 1869,
-  "t": "Denden işaretlemesi"
+  "t": "URL aç"
  },
  {
   "i": 1870,
-  "t": "Değişiklikleri izle"
+  "t": "Dizin"
  },
  {
   "i": 1871,
-  "t": "Değişiklikleri göster"
+  "t": "Aozora notları"
  },
  {
   "i": 1872,
-  "t": "Düzeltme"
+  "t": "Denden işaretlemesi"
  },
  {
   "i": 1873,
-  "t": "Karakter"
+  "t": "Değişiklikleri izle"
  },
  {
   "i": 1874,
-  "t": "Yazım denetimi"
+  "t": "Değişiklikleri göster"
  },
  {
   "i": 1875,
-  "t": "Eş anlamlılar sözlüğü"
+  "t": "Düzeltme"
  },
  {
   "i": 1876,
-  "t": "Hatalı dönüştürme"
+  "t": "Karakter"
  },
  {
   "i": 1877,
-  "t": "Yazım tutarsızlığı"
+  "t": "Yazım denetimi"
  },
  {
   "i": 1878,
-  "t": "Ara toplamlar"
+  "t": "Eş anlamlılar sözlüğü"
  },
  {
   "i": 1879,
-  "t": "Hesaplama"
+  "t": "Hatalı dönüştürme"
  },
  {
   "i": 1880,
-  "t": "Sağdan sola metin"
+  "t": "Yazım tutarsızlığı"
  },
  {
   "i": 1881,
-  "t": "Sayfa yönü"
+  "t": "Ara toplamlar"
  },
  {
   "i": 1882,
-  "t": "Python"
+  "t": "Hesaplama"
  },
  {
   "i": 1883,
-  "t": "Onay kutusu"
+  "t": "Sağdan sola metin"
  },
  {
   "i": 1884,
-  "t": "Dış bağlantılar"
+  "t": "Sayfa yönü"
  },
  {
   "i": 1885,
-  "t": "Önerilen grafik"
+  "t": "Python"
  },
  {
   "i": 1886,
-  "t": "Birlikte düzenleme modu"
+  "t": "Onay kutusu"
  },
  {
   "i": 1887,
-  "t": "Sürüm geçmişi"
+  "t": "Dış bağlantılar"
  },
  {
   "i": 1888,
-  "t": "Sohbet"
+  "t": "Önerilen grafik"
  },
  {
   "i": 1889,
-  "t": "Koru"
+  "t": "Birlikte düzenleme modu"
  },
  {
   "i": 1890,
-  "t": "Şifrele"
+  "t": "Sürüm geçmişi"
  },
  {
   "i": 1891,
-  "t": "Dijital imza ekle"
+  "t": "Sohbet"
  },
  {
   "i": 1892,
-  "t": "Makrolar"
+  "t": "Koru"
  },
  {
   "i": 1893,
-  "t": "Eklentileri yönet"
+  "t": "Şifrele"
  },
  {
   "i": 1894,
-  "t": "Sıfırları göster"
+  "t": "Dijital imza ekle"
  },
  {
   "i": 1895,
-  "t": "%100'e yakınlaştır"
+  "t": "Makrolar"
  },
  {
   "i": 1896,
-  "t": "Arayüz teması"
+  "t": "Eklentileri yönet"
  },
  {
   "i": 1897,
-  "t": "Gözcü penceresi"
+  "t": "Sıfırları göster"
  },
  {
   "i": 1898,
-  "t": "Otomatik Toplam"
+  "t": "%100'e yakınlaştır"
  },
  {
   "i": 1899,
-  "t": "İşlemleri kaydet"
+  "t": "Arayüz teması"
  },
  {
   "i": 1900,
-  "t": "Açıklamayı sil"
+  "t": "Gözcü penceresi"
  },
  {
   "i": 1901,
-  "t": "Çözücü"
+  "t": "Otomatik Toplam"
  },
  {
   "i": 1902,
-  "t": "Metinden veri"
+  "t": "İşlemleri kaydet"
  },
  {
   "i": 1903,
-  "t": "Okları kaldır"
+  "t": "Açıklamayı sil"
  },
  {
   "i": 1904,
-  "t": "Doldur"
+  "t": "Çözücü"
  },
  {
   "i": 1905,
-  "t": "Filtreyi temizle"
+  "t": "Metinden veri"
  },
  {
   "i": 1906,
-  "t": "Makro yaz"
+  "t": "Okları kaldır"
  },
  {
   "i": 1907,
-  "t": "Metni sütunlara dönüştür"
+  "t": "Doldur"
  },
  {
   "i": 1908,
-  "t": "Resim yazısı"
+  "t": "Filtreyi temizle"
  },
  {
   "i": 1909,
-  "t": "Şekiller tablosu"
+  "t": "Makro yaz"
  },
  {
   "i": 1910,
-  "t": "Şekiller tablosunu güncelle"
+  "t": "Metni sütunlara dönüştür"
  },
  {
   "i": 1911,
-  "t": "Dış bağlantılar (değer olarak al)"
+  "t": "Resim yazısı"
  },
  {
   "i": 1912,
-  "t": "Matematik ve Trigonometri"
+  "t": "Şekiller tablosu"
  },
  {
   "i": 1913,
-  "t": "Formülleri göster"
+  "t": "Şekiller tablosunu güncelle"
  },
  {
   "i": 1914,
-  "t": "Metin yönü (sağdan sola)"
+  "t": "Dış bağlantılar (değer olarak al)"
  },
  {
   "i": 1915,
-  "t": "Metin işlevleri"
+  "t": "Matematik ve Trigonometri"
  },
  {
   "i": 1916,
-  "t": "Tarih ve Saat"
+  "t": "Formülleri göster"
  },
  {
   "i": 1917,
-  "t": "Son kullanılan işlevler"
+  "t": "Metin yönü (sağdan sola)"
  },
  {
   "i": 1918,
-  "t": "Kılavuz çizgileri de yazdır"
+  "t": "Metin işlevleri"
  },
  {
   "i": 1919,
-  "t": "İçindekiler tablosunu güncelle"
+  "t": "Tarih ve Saat"
  },
  {
   "i": 1920,
-  "t": "Şeritli sütunlar"
+  "t": "Son kullanılan işlevler"
  },
  {
   "i": 1921,
-  "t": "Başlıkları da yazdır"
+  "t": "Kılavuz çizgileri de yazdır"
  },
  {
   "i": 1922,
-  "t": "Ayrıntıyı gizle"
+  "t": "İçindekiler tablosunu güncelle"
  },
  {
   "i": 1923,
-  "t": "Yinelenenleri kaldır"
+  "t": "Şeritli sütunlar"
  },
  {
   "i": 1924,
-  "t": "İşlev ekle"
+  "t": "Başlıkları da yazdır"
  },
  {
   "i": 1925,
-  "t": "CSV biçimi"
+  "t": "Ayrıntıyı gizle"
  },
  {
   "i": 1926,
-  "t": "Hücre kilidi"
+  "t": "Yinelenenleri kaldır"
  },
  {
   "i": 1927,
-  "t": "Veri tablosu"
+  "t": "İşlev ekle"
  },
  {
   "i": 1928,
-  "t": "Hızlı doldurma"
+  "t": "CSV biçimi"
  },
  {
   "i": 1929,
-  "t": "Liste"
+  "t": "Hücre kilidi"
  },
  {
   "i": 1930,
-  "t": "Ad yapıştır"
+  "t": "Veri tablosu"
  },
  {
   "i": 1931,
-  "t": "Kurtarma"
+  "t": "Hızlı doldurma"
  },
  {
   "i": 1932,
-  "t": "Metni kaydır"
+  "t": "Liste"
  },
  {
   "i": 1933,
-  "t": "Yedek aralığı"
+  "t": "Ad yapıştır"
  },
  {
   "i": 1934,
-  "t": "Yeni .py"
+  "t": "Kurtarma"
  },
  {
   "i": 1935,
-  "t": "Aralık ekle"
+  "t": "Metni kaydır"
  },
  {
   "i": 1936,
-  "t": "Kâğıda sığdır"
+  "t": "Yedek aralığı"
  },
  {
   "i": 1937,
-  "t": "Sayfa sonları"
+  "t": "Yeni .py"
  },
  {
   "i": 1938,
-  "t": "Klasörü aç"
+  "t": "Aralık ekle"
  },
  {
   "i": 1939,
-  "t": "Hesaplama türü"
+  "t": "Kâğıda sığdır"
  },
  {
   "i": 1940,
-  "t": "İzin verilen işlemler"
+  "t": "Sayfa sonları"
  },
  {
   "i": 1941,
+  "t": "Klasörü aç"
+ },
+ {
+  "i": 1942,
+  "t": "Hesaplama türü"
+ },
+ {
+  "i": 1943,
+  "t": "İzin verilen işlemler"
+ },
+ {
+  "i": 1944,
   "t": "Salt okunur öner"
  }
 ]
