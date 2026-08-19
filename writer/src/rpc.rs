@@ -78,7 +78,7 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
                 w.dirty,
                 w.doc_count(),
                 w.doc_at,
-                q(&w.status.to_string())
+                q(&w.status)
             ))
         }
         // **本文を読む。** いま見ている文書の分だけ(何枚目かは status)
@@ -126,7 +126,7 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
             let Some(p) = p else { return ops::err("保存先がありません") };
             w.save_to(p);
             if w.dirty {
-                ops::err(&w.status.to_string())
+                ops::err(&w.status)
             } else {
                 ok("")
             }

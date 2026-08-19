@@ -387,7 +387,7 @@ impl Writer {
             let to = dir.join(rel);
             let ok = to
                 .parent()
-                .map(|d| std::fs::create_dir_all(d))
+                .map(std::fs::create_dir_all)
                 .unwrap_or(Ok(()))
                 .and_then(|()| std::fs::write(&to, bytes.as_slice()));
             if ok.is_err() {

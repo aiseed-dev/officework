@@ -738,8 +738,7 @@ impl Writer {
             .page
             .lines
             .iter()
-            .filter(|l| l.from_body && l.y_mm <= y_mm)
-            .next_back()
+            .rfind(|l| l.from_body && l.y_mm <= y_mm)
         else {
             return 0;
         };
@@ -2688,18 +2687,6 @@ impl Writer {
         self.lay();
     }
 
-    /// 読み込んだ文書の並びを受け取る(`= 題` で切れている物)。
-    pub(crate) fn set_docs(&mut self, mut docs: Vec<Document>) {
-        if docs.is_empty() {
-            docs.push(Document::default());
-        }
-        self.doc = docs[0].clone();
-        // 0 番目は置き場(いま `doc` にあるので中身は要らない)
-        docs[0] = Document::default();
-        self.docs = docs;
-        self.doc_at = 0;
-    }
-
     /// 保存するときの並び(いま見ている物を戻した形)。
     pub(crate) fn docs_for_save(&self) -> Vec<Document> {
         if self.docs.len() <= 1 {
@@ -3183,7 +3170,7 @@ impl Writer {
                 .unwrap_or(*page as f32 * self.pg.h_mm);
             let pi = self.para_at_y(上端 + oy);
             match para_block_idx.get(pi).copied() {
-                Some(bi) if bi + 1 <= self.doc.blocks.len() => {
+                Some(bi) if bi < self.doc.blocks.len() => {
                     self.doc.blocks.insert(bi + 1, para)
                 }
                 _ => self.doc.blocks.push(para),
