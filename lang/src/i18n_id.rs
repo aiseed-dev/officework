@@ -1858,4 +1858,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("置き場が作れません: {}", "Tidak bisa membuat folder: {}"),
     ("開けません: 文字の並びが UTF-8 ではありません", "Tidak dapat membuka: teks bukan UTF-8"),
     ("(式のまま。見た目は載りません)", " (rumus dipertahankan; tampilan tidak disimpan)"),
+    ("ファイル — フォルダの中身", "Berkas — isi folder"),
+    ("フォルダを開いていません(ファイル > 開く)", "Tidak ada folder yang terbuka (Berkas > Buka)"),
+    ("(空のフォルダです)", "(folder kosong)"),
 ];

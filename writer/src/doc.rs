@@ -2495,6 +2495,24 @@ impl Writer {
     ///
     /// 開いている文書の隣は**当たり前の出発点**で、そこから始められないと
     /// 「場所を選ぶ」を毎回押すことになる(2026-08-17)
+    /// **いま開いているフォルダ。** 右パネルのファイル一覧が並べる場所です。
+    ///
+    /// 開いているファイルの親を使います。まだ何も開いていなければ、
+    /// 前に使ったフォルダ(`settings.toml` の `folder`)です。
+    pub(crate) fn folder(&self) -> Option<PathBuf> {
+        if let Some(p) = self.path.as_ref().and_then(|p| p.parent()) {
+            return Some(p.to_path_buf());
+        }
+        ui::settings::get("folder").map(PathBuf::from).filter(|p| p.is_dir())
+    }
+
+    /// フォルダを覚える(次に起動したときここを開きます)。
+    pub(crate) fn remember_folder(&self) {
+        if let Some(d) = self.folder() {
+            ui::settings::set("folder", &d.display().to_string());
+        }
+    }
+
     pub(crate) fn find_dir(&self) -> Option<PathBuf> {
         if let Some(d) = &self.fd_dir {
             return Some(d.clone());

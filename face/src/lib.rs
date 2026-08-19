@@ -32,6 +32,8 @@
 //!   こちらが持つのは**SVG の字面**だけで、これは持ち運べる
 
 pub mod combo;
+/// フォルダの中身を並べる(名前で種類が決まる)
+pub mod folder;
 pub mod funcs;
 // gen_funcs:begin(この間は calc/gen_funcs.py が生成する — 手で書かない)
 pub mod funcs_de;

@@ -1858,4 +1858,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("置き場が作れません: {}", "Impossibile creare la cartella: {}"),
     ("開けません: 文字の並びが UTF-8 ではありません", "Impossibile aprire: il testo non è UTF-8"),
     ("(式のまま。見た目は載りません)", " (formule mantenute; l'aspetto non viene salvato)"),
+    ("ファイル — フォルダの中身", "File — contenuto della cartella"),
+    ("フォルダを開いていません(ファイル > 開く)", "Nessuna cartella aperta (File > Apri)"),
+    ("(空のフォルダです)", "(la cartella è vuota)"),
 ];

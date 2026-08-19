@@ -587,6 +587,7 @@ impl Writer {
                 "rf-here" => "@rf-here",
                 "rf-page" => "@rf-page",
                 "rf-style" => "@rf-style",
+                "rf-files" => "@rf-files",
                 "nf-head" => "@nf-head",
                 "nf-cmt" => "@nf-cmt",
                 "nf-find" => "@nf-find",
@@ -908,6 +909,7 @@ impl Writer {
                     .child(match 面 {
                         1 => ui::t!("ページ — 文書ぜんぶの決め"),
                         2 => ui::t!("スタイル — テンプレートを直す"),
+                        3 => ui::t!("ファイル — フォルダの中身"),
                         _ => ui::t!("設定 — いる場所を直す"),
                     }));
             // **ページは「いる場所」ではない。** 文書ぜんぶに掛かる決めなので、
@@ -942,7 +944,11 @@ impl Writer {
                     .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
                     .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), true).on_click(
-                        cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })));
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
+                    // **フォルダのファイル一覧**(2026-08-19 発注者
+                    // 「フォルダー内のファイル一覧を右パネルに表示」)
+                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("ファイル — フォルダの中身").to_string(), false).on_click(
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
                     .m_1().rounded_sm().bg(panel_bg)
@@ -1059,13 +1065,87 @@ impl Writer {
                     .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
                     .child(柱釦("rf-style".into(), "styles", ui::t!("スタイル — テンプレートを直す").to_string(), true).on_click(
-                        cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() })));
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() })))
+                    // **フォルダのファイル一覧**(2026-08-19 発注者
+                    // 「フォルダー内のファイル一覧を右パネルに表示」)
+                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("ファイル — フォルダの中身").to_string(), false).on_click(
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
                     .m_1().rounded_sm().bg(panel_bg)
                     .border_1().border_color(th_cmd_border)
                     .flex().flex_row()
                     .child(d)
+                    .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
+                    .child(柱d));
+            } else if 面 == 3 {
+                // **フォルダの中身**(2026-08-19 発注者)。選ぶと開きます。
+                // 種類はファイルの名前で決まります(二重の拡張子)
+                self.rp_drawn.set(3);
+                match self.folder() {
+                    None => {
+                        d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                            .child(ui::t!("フォルダを開いていません(ファイル > 開く)")));
+                    }
+                    Some(dir) => {
+                        // **フォルダの名前だけ**を出します。長い径路を全部
+                        // 出すと3行に折り返して、一覧の場所を食います
+                        let 名 = dir.file_name().map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_else(|| dir.display().to_string());
+                        d = d.child(div().text_size(px(10.5)).text_color(th_status)
+                            .child(SharedString::from(名)));
+                        let 一覧 = ui::folder::list(&dir);
+                        if 一覧.is_empty() {
+                            d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                                .child(ui::t!("(空のフォルダです)")));
+                        }
+                        for (i, e) in 一覧.into_iter().take(200).enumerate() {
+                            // **writer が開けるのは文書だけ**です。表は
+                            // 一覧に出しますが、まだ押せません(画面を
+                            // 切り替える仕組みは「画面を1つにする」4段目)。
+                            // できないことを、できるように見せない
+                            let 開ける = e.kind.is_doc();
+                            let 道 = e.path.clone();
+                            let 札 = e.kind.label().to_string();
+                            let いま = self.path.as_deref() == Some(e.path.as_path());
+                            let mut 行 = div()
+                                .id(SharedString::from(format!("fl-{i}")))
+                                .px_1().py_0p5().rounded_sm()
+                                .flex().flex_row().items_center().gap_1()
+                                .bg(if いま { th_btn_hover } else { gpui::transparent_black().into() })
+                                .child(div().flex_1().min_w(px(0.0)).text_size(px(11.5))
+                                    .text_color(if 開ける { th_top_fg } else { th_status })
+                                    .child(SharedString::from(e.name.clone())))
+                                .child(div().flex_none().text_size(px(9.0)).text_color(th_status)
+                                    .child(SharedString::from(札)));
+                            // **開けない物は押せません。** できないことを、
+                            // できるように見せない
+                            if 開ける {
+                                行 = 行.cursor_pointer()
+                                    .hover(move |s| s.bg(th_btn_hover))
+                                    .on_click(cx.listener(move |t, _, _, cx| {
+                                        t.open(道.clone());
+                                        t.remember_folder();
+                                        cx.notify()
+                                    }));
+                            }
+                            d = d.child(行);
+                        }
+                    }
+                }
+                let 柱d = 柱()
+                    .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), false).on_click(
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
+                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), false).on_click(
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
+                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("ファイル — フォルダの中身").to_string(), true).on_click(
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
+                return_rp = Some(div()
+                    .flex_none().w(px(230.0 + RAIL)).h_full()
+                    .m_1().rounded_sm().bg(panel_bg)
+                    .border_1().border_color(th_cmd_border)
+                    .flex().flex_row()
+                    .child(d.overflow_y_scroll())
                     .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
                     .child(柱d));
             } else {
@@ -1232,7 +1312,10 @@ impl Writer {
                 .children(self.native.then(|| {
                     柱釦("rf-style".into(), "styles", ui::t!("スタイル — テンプレートを直す").to_string(), 面 == 2)
                         .on_click(cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() }))
-                }));
+                }))
+                // **フォルダのファイル一覧**(2026-08-19)
+                .child(柱釦("rf-files".into(), "py-folder", ui::t!("ファイル — フォルダの中身").to_string(), false).on_click(
+                    cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
             return_rp = Some(div()
                 .flex_none().w(px(230.0 + RAIL)).h_full()
                 .m_1().rounded_sm().bg(panel_bg)

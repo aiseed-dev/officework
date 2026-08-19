@@ -67,7 +67,7 @@ pub mod pyedit;
 // **新しく「何があるか」の表を足すときは face の側へ。** こちらに書くと
 // gpui に縛られ、Kotlin / Swift の殻から読めなくなる
 pub use face::{
-    combo, icons, ribbon, ribbon_de, ribbon_en, ribbon_es, ribbon_fr, ribbon_id, ribbon_it,
+    combo, folder, icons, ribbon, ribbon_de, ribbon_en, ribbon_es, ribbon_fr, ribbon_id, ribbon_it,
     ribbon_ko, ribbon_pt, ribbon_pt_br, ribbon_ru, ribbon_tables, ribbon_tr, ribbon_vi, ribbon_zh,
     ribbon_zh_tw, search, settings, winstate,
 };
