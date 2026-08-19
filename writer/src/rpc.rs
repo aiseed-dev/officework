@@ -15,7 +15,7 @@
 //! {"cmd":"text"}            → 本文(平文)
 //! {"cmd":"set_text","text":"…"} → 本文を差し替える
 //! {"cmd":"fields"}          → 記入欄の名前の一覧
-//! {"cmd":"fill","values":{"氏名":"山田"}} → 記入欄に入れる
+//! {"cmd":"fill_one","name":"氏名","value":"山田"} → 記入欄に1つ入れる
 //! {"cmd":"open","path":"…"} / {"cmd":"save","path":"…"}
 //! {"cmd":"to_pdf","path":"…"}
 //! ....

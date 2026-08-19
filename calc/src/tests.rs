@@ -6817,3 +6817,37 @@ mod 選んで押すと印が入る {
         });
     }
 }
+
+/// **暗号を黙って外さない**(2026-08-19 の見直しで見つけた穴)。
+///
+/// パスワード付きで開いたブックを `.sheet.adoc` で保存すると、前は平文の
+/// まま書いていた — 守ったつもりのブックが誰でも読める字になる。断る。
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod 暗号化と字の保存 {
+    use crate::*;
+
+    #[gpui::test]
+    fn 暗号化したまま字では保存できない(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("jo-enc-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("守る.sheet.adoc");
+
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("秘密"));
+            this.encrypt_pw = Some("aikotoba".into());
+            this.save_to(p.clone());
+            assert!(!p.exists(), "断らずに書いた(暗号が外れて平文で出た)");
+            assert!(
+                this.status.contains("暗号化したまま保存できません"),
+                "断った理由を言っていない: {}",
+                this.status
+            );
+            // 暗号化の指定そのものは残っている(xlsx で保存し直せる)
+            assert!(this.encrypt_pw.is_some());
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

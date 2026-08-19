@@ -1887,4 +1887,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("様式", "Form"),
     ("officework — 開くフォルダを選んでください", "officework — choose a folder to open"),
     ("{} を開きました(右の一覧から選んでください)", "Opened {} (pick a file from the list on the right)"),
+("AsciiDoc は字のままのファイルなので、暗号化したまま保存できません(暗号化を外すか、xlsx で保存してください)", "AsciiDoc is a plain-text file, so it cannot be saved while encrypted (remove the encryption, or save as xlsx)"),
 ];

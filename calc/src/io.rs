@@ -1349,13 +1349,21 @@ impl Calc {
             self.keep_version(&p);
         }
         let saved = if 字で書く {
-            // **ブックの正本を `.adoc` で書く**(2026-08-19)。値は書かず、
-            // 式のまま出します。載らない物は下で帳簿に出します
-            let src = sheet::adoc::write(&self.book);
-            kumihan::atomic::save(&p, |mut f| {
-                use std::io::Write as _;
-                f.write_all(src.as_bytes()).map_err(|e| e.to_string())
-            })
+            if self.encrypt_pw.is_some() {
+                // **暗号を黙って外さない。** AsciiDoc は字のままのファイル
+                // なので暗号化して書けない。前はここで平文のまま書いていて、
+                // パスワードで守ったつもりのブックが誰でも読める字になった
+                // (2026-08-19 の見直しで気づいた)
+                Err(ui::t!("AsciiDoc は字のままのファイルなので、暗号化したまま保存できません(暗号化を外すか、xlsx で保存してください)").to_string())
+            } else {
+                // **ブックの正本を `.adoc` で書く**(2026-08-19)。値は書かず、
+                // 式のまま出します。載らない物は下で帳簿に出します
+                let src = sheet::adoc::write(&self.book);
+                kumihan::atomic::save(&p, |mut f| {
+                    use std::io::Write as _;
+                    f.write_all(src.as_bytes()).map_err(|e| e.to_string())
+                })
+            }
         } else if let Some(pw) = self.encrypt_pw.clone() {
             // 暗号化は zip 丸ごとが単位 — 一度メモリへ書いてから包む。
             // Agile 方式(AES-256。Excel 2013+ の既定)で書く — 本物と相互

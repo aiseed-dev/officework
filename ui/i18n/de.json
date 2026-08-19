@@ -7409,406 +7409,410 @@
  },
  {
   "i": 1852,
-  "t": "Python-Funktionen"
+  "t": "AsciiDoc ist eine Klartextdatei und kann nicht verschlüsselt gespeichert werden (Verschlüsselung entfernen oder als xlsx speichern)"
  },
  {
   "i": 1853,
-  "t": "Menüband-Makros"
+  "t": "Python-Funktionen"
  },
  {
   "i": 1854,
-  "t": "Format übertragen"
+  "t": "Menüband-Makros"
  },
  {
   "i": 1855,
-  "t": "Typ"
+  "t": "Format übertragen"
  },
  {
   "i": 1856,
-  "t": "Feldliste"
+  "t": "Typ"
  },
  {
   "i": 1857,
-  "t": "Oberflächentext größer"
+  "t": "Feldliste"
  },
  {
   "i": 1858,
-  "t": "Oberflächentext kleiner"
+  "t": "Oberflächentext größer"
  },
  {
   "i": 1859,
-  "t": "KI"
+  "t": "Oberflächentext kleiner"
  },
  {
   "i": 1860,
-  "t": "Drucken"
+  "t": "KI"
  },
  {
   "i": 1861,
-  "t": "Drucklayout"
+  "t": "Drucken"
  },
  {
   "i": 1862,
-  "t": "Ziel"
+  "t": "Drucklayout"
  },
  {
   "i": 1863,
-  "t": "Zusammenfassen"
+  "t": "Ziel"
  },
  {
   "i": 1864,
-  "t": "Umschreiben"
+  "t": "Zusammenfassen"
  },
  {
   "i": 1865,
-  "t": "Höflicher"
+  "t": "Umschreiben"
  },
  {
   "i": 1866,
-  "t": "Einfacher"
+  "t": "Höflicher"
  },
  {
   "i": 1867,
-  "t": "Übersetzen"
+  "t": "Einfacher"
  },
  {
   "i": 1868,
-  "t": "Furigana"
+  "t": "Übersetzen"
  },
  {
   "i": 1869,
-  "t": "Fortsetzen"
+  "t": "Furigana"
  },
  {
   "i": 1870,
-  "t": "In Tabelle"
+  "t": "Fortsetzen"
  },
  {
   "i": 1871,
-  "t": "Anfragen"
+  "t": "In Tabelle"
  },
  {
   "i": 1872,
-  "t": "Ruby"
+  "t": "Anfragen"
  },
  {
   "i": 1873,
-  "t": "Vertikal"
+  "t": "Ruby"
  },
  {
   "i": 1874,
-  "t": "Textrichtung"
+  "t": "Vertikal"
  },
  {
   "i": 1875,
-  "t": "Verteilt"
+  "t": "Textrichtung"
  },
  {
   "i": 1876,
-  "t": "Beschriftung einfügen"
+  "t": "Verteilt"
  },
  {
   "i": 1877,
-  "t": "URL öffnen"
+  "t": "Beschriftung einfügen"
  },
  {
   "i": 1878,
-  "t": "Index"
+  "t": "URL öffnen"
  },
  {
   "i": 1879,
-  "t": "Aozora-Anmerkungen"
+  "t": "Index"
  },
  {
   "i": 1880,
-  "t": "Denden-Markup"
+  "t": "Aozora-Anmerkungen"
  },
  {
   "i": 1881,
-  "t": "Änderungen nachverfolgen"
+  "t": "Denden-Markup"
  },
  {
   "i": 1882,
-  "t": "Änderungen anzeigen"
+  "t": "Änderungen nachverfolgen"
  },
  {
   "i": 1883,
-  "t": "Korrektur"
+  "t": "Änderungen anzeigen"
  },
  {
   "i": 1884,
-  "t": "Zeichen"
+  "t": "Korrektur"
  },
  {
   "i": 1885,
-  "t": "Rechtschreibprüfung"
+  "t": "Zeichen"
  },
  {
   "i": 1886,
-  "t": "Thesaurus"
+  "t": "Rechtschreibprüfung"
  },
  {
   "i": 1887,
-  "t": "Fehlkonvertierung"
+  "t": "Thesaurus"
  },
  {
   "i": 1888,
-  "t": "Uneinheitliche Schreibung"
+  "t": "Fehlkonvertierung"
  },
  {
   "i": 1889,
-  "t": "Teilergebnisse"
+  "t": "Uneinheitliche Schreibung"
  },
  {
   "i": 1890,
-  "t": "Berechnung"
+  "t": "Teilergebnisse"
  },
  {
   "i": 1891,
-  "t": "Rechts-nach-links-Text"
+  "t": "Berechnung"
  },
  {
   "i": 1892,
-  "t": "Blattrichtung"
+  "t": "Rechts-nach-links-Text"
  },
  {
   "i": 1893,
-  "t": "Python"
+  "t": "Blattrichtung"
  },
  {
   "i": 1894,
-  "t": "Kontrollkästchen"
+  "t": "Python"
  },
  {
   "i": 1895,
-  "t": "Externe Verknüpfungen"
+  "t": "Kontrollkästchen"
  },
  {
   "i": 1896,
-  "t": "Empfohlene Diagramme"
+  "t": "Externe Verknüpfungen"
  },
  {
   "i": 1897,
-  "t": "Co-Bearbeitung"
+  "t": "Empfohlene Diagramme"
  },
  {
   "i": 1898,
-  "t": "Versionsverlauf"
+  "t": "Co-Bearbeitung"
  },
  {
   "i": 1899,
-  "t": "Chat"
+  "t": "Versionsverlauf"
  },
  {
   "i": 1900,
-  "t": "Schützen"
+  "t": "Chat"
  },
  {
   "i": 1901,
-  "t": "Verschlüsseln"
+  "t": "Schützen"
  },
  {
   "i": 1902,
-  "t": "Digitale Signatur hinzufügen"
+  "t": "Verschlüsseln"
  },
  {
   "i": 1903,
-  "t": "Makros"
+  "t": "Digitale Signatur hinzufügen"
  },
  {
   "i": 1904,
-  "t": "Plugins verwalten"
+  "t": "Makros"
  },
  {
   "i": 1905,
-  "t": "Nullen anzeigen"
+  "t": "Plugins verwalten"
  },
  {
   "i": 1906,
-  "t": "Auf 100 % zoomen"
+  "t": "Nullen anzeigen"
  },
  {
   "i": 1907,
-  "t": "Oberflächendesign"
+  "t": "Auf 100 % zoomen"
  },
  {
   "i": 1908,
-  "t": "Überwachungsfenster"
+  "t": "Oberflächendesign"
  },
  {
   "i": 1909,
-  "t": "AutoSumme"
+  "t": "Überwachungsfenster"
  },
  {
   "i": 1910,
-  "t": "Aktionen aufzeichnen"
+  "t": "AutoSumme"
  },
  {
   "i": 1911,
-  "t": "Kommentar löschen"
+  "t": "Aktionen aufzeichnen"
  },
  {
   "i": 1912,
-  "t": "Solver"
+  "t": "Kommentar löschen"
  },
  {
   "i": 1913,
-  "t": "Text zu Daten"
+  "t": "Solver"
  },
  {
   "i": 1914,
-  "t": "Pfeile entfernen"
+  "t": "Text zu Daten"
  },
  {
   "i": 1915,
-  "t": "Ausfüllen"
+  "t": "Pfeile entfernen"
  },
  {
   "i": 1916,
-  "t": "Filter löschen"
+  "t": "Ausfüllen"
  },
  {
   "i": 1917,
-  "t": "Makro schreiben"
+  "t": "Filter löschen"
  },
  {
   "i": 1918,
-  "t": "Text in Spalten"
+  "t": "Makro schreiben"
  },
  {
   "i": 1919,
-  "t": "Beschriftung"
+  "t": "Text in Spalten"
  },
  {
   "i": 1920,
-  "t": "Abbildungsverzeichnis"
+  "t": "Beschriftung"
  },
  {
   "i": 1921,
-  "t": "Abbildungsverzeichnis aktualisieren"
+  "t": "Abbildungsverzeichnis"
  },
  {
   "i": 1922,
-  "t": "Externe Verknüpfungen (als Werte einlesen)"
+  "t": "Abbildungsverzeichnis aktualisieren"
  },
  {
   "i": 1923,
-  "t": "Math. u. Trigonom."
+  "t": "Externe Verknüpfungen (als Werte einlesen)"
  },
  {
   "i": 1924,
-  "t": "Formeln anzeigen"
+  "t": "Math. u. Trigonom."
  },
  {
   "i": 1925,
-  "t": "Textrichtung (rechts nach links)"
+  "t": "Formeln anzeigen"
  },
  {
   "i": 1926,
-  "t": "Text"
+  "t": "Textrichtung (rechts nach links)"
  },
  {
   "i": 1927,
-  "t": "Datum u. Uhrzeit"
+  "t": "Text"
  },
  {
   "i": 1928,
-  "t": "Zuletzt verwendet"
+  "t": "Datum u. Uhrzeit"
  },
  {
   "i": 1929,
-  "t": "Gitternetzlinien drucken"
+  "t": "Zuletzt verwendet"
  },
  {
   "i": 1930,
-  "t": "Inhaltsverzeichnis aktualisieren"
+  "t": "Gitternetzlinien drucken"
  },
  {
   "i": 1931,
-  "t": "Gebänderte Spalten"
+  "t": "Inhaltsverzeichnis aktualisieren"
  },
  {
   "i": 1932,
-  "t": "Überschriften drucken"
+  "t": "Gebänderte Spalten"
  },
  {
   "i": 1933,
-  "t": "Detail ausblenden"
+  "t": "Überschriften drucken"
  },
  {
   "i": 1934,
-  "t": "Duplikate entfernen"
+  "t": "Detail ausblenden"
  },
  {
   "i": 1935,
-  "t": "Funktion einfügen"
+  "t": "Duplikate entfernen"
  },
  {
   "i": 1936,
-  "t": "CSV-Format"
+  "t": "Funktion einfügen"
  },
  {
   "i": 1937,
-  "t": "Zelle sperren"
+  "t": "CSV-Format"
  },
  {
   "i": 1938,
-  "t": "Datentabelle"
+  "t": "Zelle sperren"
  },
  {
   "i": 1939,
-  "t": "Musterfüllung"
+  "t": "Datentabelle"
  },
  {
   "i": 1940,
-  "t": "Liste"
+  "t": "Musterfüllung"
  },
  {
   "i": 1941,
-  "t": "Namen einfügen"
+  "t": "Liste"
  },
  {
   "i": 1942,
-  "t": "Wiederherstellen"
+  "t": "Namen einfügen"
  },
  {
   "i": 1943,
-  "t": "Text umbrechen"
+  "t": "Wiederherstellen"
  },
  {
   "i": 1944,
-  "t": "Sicherungsintervall"
+  "t": "Text umbrechen"
  },
  {
   "i": 1945,
-  "t": "Neue .py"
+  "t": "Sicherungsintervall"
  },
  {
   "i": 1946,
-  "t": "Bereich hinzufügen"
+  "t": "Neue .py"
  },
  {
   "i": 1947,
-  "t": "Aufs Blatt einpassen"
+  "t": "Bereich hinzufügen"
  },
  {
   "i": 1948,
-  "t": "Blattgrenzen"
+  "t": "Aufs Blatt einpassen"
  },
  {
   "i": 1949,
-  "t": "Ordner öffnen"
+  "t": "Blattgrenzen"
  },
  {
   "i": 1950,
-  "t": "Berechnungsart"
+  "t": "Ordner öffnen"
  },
  {
   "i": 1951,
-  "t": "Erlaubte Aktionen"
+  "t": "Berechnungsart"
  },
  {
   "i": 1952,
+  "t": "Erlaubte Aktionen"
+ },
+ {
+  "i": 1953,
   "t": "Schreibschutz empfehlen"
  }
 ]

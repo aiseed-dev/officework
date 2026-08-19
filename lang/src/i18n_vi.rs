@@ -1874,4 +1874,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("様式", "Biểu mẫu"),
     ("officework — 開くフォルダを選んでください", "officework — hãy chọn thư mục để mở"),
     ("{} を開きました(右の一覧から選んでください)", "Đã mở {} (hãy chọn tệp trong danh sách bên phải)"),
+    ("AsciiDoc は字のままのファイルなので、暗号化したまま保存できません(暗号化を外すか、xlsx で保存してください)", "AsciiDoc là tệp văn bản thuần nên không thể lưu khi đang mã hoá (bỏ mã hoá, hoặc lưu thành xlsx)"),
 ];
