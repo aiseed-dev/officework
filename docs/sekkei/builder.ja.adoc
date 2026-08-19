@@ -10,7 +10,7 @@
 2026-08-11 発注者確定。
 *名前は `builder`。*
 
-    officework   writer(docx)・calc(xlsx)   ← いまのまま守るbuilder      Web サイト・アプリ          ← 新しい殻
+    officework   writer(docx)・calc(xlsx)   ← いまのまま守るbuilder      Web サイト・アプリ          ← 新しいアプリ
 
 **writer と calc は現状に近いまま**にする(発注者確定)。
 後から「calc に組み込めば早い」という誘惑が必ず来るので、先に書いておく — *組み込まない。*

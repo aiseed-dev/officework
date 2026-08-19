@@ -59,17 +59,17 @@ macro_rules! item {
 
 pub mod pyedit;
 
-// **絵を描かない物は face に移した**(2026-08-15。発注者「GPUI の殻を
+// **絵を描かない物は face に移した**(2026-08-15。発注者「GPUI のアプリを
 // kotlin と swift で書く」)。ここで丸ごと再公開しているので、呼ぶ側は
 // 今までどおり `ui::ribbon` / `ui::settings` で届く — 移しても
 // アプリ側は1行も変えていない。
 //
 // **新しく「何があるか」の表を足すときは face の側へ。** こちらに書くと
-// gpui に縛られ、Kotlin / Swift の殻から読めなくなる
+// gpui に縛られ、Kotlin / Swift のアプリから読めなくなる
 pub use face::{
     combo, folder, icons, ribbon, ribbon_de, ribbon_en, ribbon_es, ribbon_fr, ribbon_id, ribbon_it,
     ribbon_ko, ribbon_pt, ribbon_pt_br, ribbon_ru, ribbon_tables, ribbon_tr, ribbon_vi, ribbon_zh,
-    ribbon_zh_tw, search, settings, winstate,
+    ribbon_zh_tw, search, settings, tabs, winstate,
 };
 pub use face::keys::{
     compose_keys, default_keys, KeyWarn, KEYS_CALC, KEYS_COMMON, KEYS_WRITER,
@@ -445,9 +445,9 @@ pub fn bindings_for(app: &str, context: &'static str) -> Vec<KeyBinding> {
         // 名前が操作として実在するか(束縛を1本試作して確かめる —
         // 操作の一覧を二重に持たないため)
         &|n| make_binding("ctrl-a", n, context).is_some(),
-        // **鍵の書き方が読めるか。ここが gpui の殻である証**(2026-08-15)。
-        // face::compose_keys は判定を持たず、殻から受け取る — Kotlin /
-        // Swift の殻はそれぞれの読み手を渡す
+        // **鍵の書き方が読めるか。ここが gpui のアプリである証**(2026-08-15)。
+        // face::compose_keys は判定を持たず、アプリから受け取る — Kotlin /
+        // Swift のアプリはそれぞれの読み手を渡す
         &|part| gpui::Keystroke::parse(part).is_ok(),
     );
     let out = rows

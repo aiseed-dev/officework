@@ -463,8 +463,9 @@ impl Render for Calc {
         // 場合には灰色にすればいいでしょう」)。表に無い段(参考資料・
         // フォーム)は灰色で、押せません。並びが動かないので、文章の画面と
         // 行き来しても段を探し直さずに済みます
-        for (位置, (名, _, 表の段)) in ribbon::merged_tabs().into_iter().enumerate() {
-            let Some(i) = 表の段 else {
+        for (位置, 段) in ui::tabs::merged().into_iter().enumerate() {
+            let 名 = 段.name;
+            let Some(i) = 段.sheet else {
                 // この画面には無い段。**灰色で出す**(未実装の釦と同じ描き方)
                 tabs = tabs.child(div()
                     .id(SharedString::from(format!("tab{位置}")))

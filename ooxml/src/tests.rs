@@ -810,7 +810,7 @@ mod anchor_tests {
         assert_eq!(p.anchors.len(), 1, "控えの数が合わない: {:?}", p.anchors);
         let out = crate::write_document_xml(&doc);
         assert_eq!(out.matches("<m:oMath>").count(), 1, "数式が二重に出た: {out}");
-        assert_eq!(out.matches("<m:oMathPara ").count(), 1, "独立の殻が消えたか二重: {out}");
+        assert_eq!(out.matches("<m:oMathPara ").count(), 1, "独立の外側の要素が消えたか二重: {out}");
         // 書き手の root は xmlns:m を宣言しないので、控えが自分で持つ必要がある
         assert!(!out.contains("<w:document") || out.matches("xmlns:m=").count() == 1,
             "名前空間の宣言が足りないか二重: {out}");

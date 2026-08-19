@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 LANGDIR = ROOT / "vendor/web-apps/apps/spreadsheeteditor/main/resources/formula-lang"
 # **関数の表は face(gpui を持たない層)にある。** 2026-08-15 に
 # calc/src から移した — 名前も分類も説明も絵を描かない物で、
-# Kotlin / Swift の殻も同じ表を読む
+# Kotlin / Swift のアプリも同じ表を読む
 SRCDIR = ROOT / "face/src"
 
 # こちらの札 → 本家の綴り。**この置き場では pt が欧州**

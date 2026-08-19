@@ -5,8 +5,8 @@
 //!
 //! # なぜ別のクレートなのか
 //!
-//! 発注者 2026-08-15「**GPUI の殻を kotlin と swift で書く**」。殻が増える
-//! なら、殻でない物が殻の外に出ていないと、同じ表と同じ命令を殻の数だけ
+//! 発注者 2026-08-15「**GPUI のアプリを kotlin と swift で書く**」。アプリが増える
+//! なら、アプリでない物がアプリの外に出ていないと、同じ表と同じ命令をアプリの数だけ
 //! 書き直すことになり、必ずずれる。
 //!
 //! **ここに gpui が入っていないことは cargo が保証する。** `Cargo.toml` の
@@ -26,8 +26,8 @@
 //!
 //! - `bindings_for` — gpui の `KeyBinding` を組み立てるので `ui` に残る。
 //!   芯の [`compose_keys`] だけがこちらに来ていて、**鍵が読めるかどうかの
-//!   判定は引数で受け取る**(gpui の殻は `gpui::Keystroke::parse` を渡し、
-//!   Kotlin / Swift の殻はそれぞれの読み手を渡す)
+//!   判定は引数で受け取る**(gpui のアプリは `gpui::Keystroke::parse` を渡し、
+//!   Kotlin / Swift のアプリはそれぞれの読み手を渡す)
 //! - `icons` の SVG を絵にする所 — `ui::svg_to_png`(resvg)は `ui` に残る。
 //!   こちらが持つのは**SVG の字面**だけで、これは持ち運べる
 
@@ -55,6 +55,8 @@ pub mod funcs_tables;
 pub mod icons;
 pub mod keys;
 pub mod ribbon;
+/// 文章と表のリボンの段を突き合わせる(生成物ではない手書きの場所)
+pub mod tabs;
 pub mod search;
 
 // gen_lang:begin(この間は ui/gen_lang.py が生成する — 手で書かない)
@@ -103,8 +105,8 @@ mod kabe {
             assert!(
                 !matches!(name, "gpui" | "resvg" | "tiny-skia" | "usvg" | "winit" | "wgpu"),
                 "face に描画のクレート `{name}` を入れてはいけません。\n\
-                 ここは Kotlin / Swift の殻からも読む層で、gpui を引いた瞬間に\n\
-                 その値打ちが消えます(発注者 2026-08-15「GPUI の殻を kotlin と\n\
+                 ここは Kotlin / Swift のアプリからも読む層で、gpui を引いた瞬間に\n\
+                 その値打ちが消えます(発注者 2026-08-15「GPUI のアプリを kotlin と\n\
                  swift で書く」)。描く物は ui / calc / writer の側へ。"
             );
         }

@@ -4,7 +4,7 @@
 ====
 *名前は「pyoffice」で出しません*(2026-08-10 発注者確定)。外へ出すのは
 *officework* と *officework エンジン*だけ。中身は officework が読み書き
-しているもので*殻が違うだけ*なので、別製品の名前を作ると実態より大きく
+しているもので*画面が違うだけ*なので、別製品の名前を作ると実態より大きく
 見えます。`pyoffice` はこの文書の中の*作業中の呼び名*として残します。
 
 外向きの説明は link:../engine.adoc[`docs/engine.adoc`](正本)と
@@ -18,7 +18,7 @@ link:../engine.ja.adoc[`docs/engine.ja.adoc`]。ここは判断の記録です�
 |===
 | |officework |pyoffice
 
-|殻 |GPUI(ネイティブ)。いま作っているもの |https://github.com/genspark-ai/genoffice[genoffice](Electron)
+|アプリ |GPUI(ネイティブ)。いま作っているもの |https://github.com/genspark-ai/genoffice[genoffice](Electron)
 |中身 |*共通の officework エンジン*(`sheet`) |同じ
 |===
 
@@ -1029,7 +1029,7 @@ genoffice の側に連絡を取らない。
 
 * 向こうの `save_archive` の形が変わって追随が要るとき
 * genoffice 抜きで**エンジン単体を配りたく**なったとき
-* 段3 を欲しがる別の殻が出てきたとき
+* 段3 を欲しがる別のアプリが出てきたとき
 
 *どれも今日は起きていない。* 起きるまで測って待つ ── これは前の判断と同じ理屈で、変わったのは「いつか要る」と分かったことだけ。
 

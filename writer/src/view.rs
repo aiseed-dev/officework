@@ -148,8 +148,9 @@ impl Render for Writer {
         // 場合には灰色にすればいいでしょう」)。文章に無い段(数式・データ・
         // ピボット・表のデザイン)は灰色で、押せません。並びが動かないので、
         // 表の画面と行き来しても段を探し直さずに済みます
-        for (位置, (名, 文章の段, _)) in ribbon::merged_tabs().into_iter().enumerate() {
-            let Some(i) = 文章の段 else {
+        for (位置, 段) in ui::tabs::merged().into_iter().enumerate() {
+            let 名 = 段.name;
+            let Some(i) = 段.doc else {
                 // この画面には無い段。**灰色で出す**(未実装の釦と同じ描き方)
                 tabs = tabs.child(div()
                     .id(SharedString::from(format!("tab{位置}")))

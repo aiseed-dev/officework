@@ -417,7 +417,7 @@ pub(super) fn ns_attrs(
 /// 原文が使う接頭辞(`wp14:` など)の宣言を付けた `<w:r>` に包む。
 /// 解決できない接頭辞があれば None(壊れた XML を書かないため)。
 pub(super) fn wrap_with_ns(raw: &str, decls: &std::collections::BTreeMap<String, String>) -> Option<String> {
-    // 包む `<w:r>` は新しく建てる殻なので、原文の自前宣言は内側に残る。
+    // 包む `<w:r>` は新しく建てる外側の要素なので、原文の自前宣言は内側に残る。
     // よって skip_self は立てない(内と外で同じ接頭辞を宣言しても壊れない)
     let attrs = ns_attrs(raw, decls, false)?;
     Some(format!("<w:r{attrs}>{raw}</w:r>"))
@@ -1516,7 +1516,7 @@ pub(super) fn parse_document_rels(
                             last_pos = end;
                         }
                     }
-                    // 記入欄(コンテンツコントロール)。殻を読んで、
+                    // 記入欄(コンテンツコントロール)。外側の要素を読んで、
                     // 中の run に印を付ける(中身は普通の本文として読む)
                     b"sdt" => {
                         sdt_depth += 1;

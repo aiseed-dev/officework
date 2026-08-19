@@ -27,7 +27,7 @@ pub(crate) use sheet::{recalc, recalc_book, Book, Cell, Pos, Value};
 pub(crate) use ui::{handler, ribbon, HasEditor};
 
 // **関数の表は face へ移した**(2026-08-15)。名前も分類も説明も
-// 絵を描かない物で、Kotlin / Swift の殻も同じ表を読む。ここで
+// 絵を描かない物で、Kotlin / Swift のアプリも同じ表を読む。ここで
 // 再公開しているので crate::funcs の呼び出しは今までどおり
 // **calc が使うのは funcs だけ。** 14言語の表は face の中で
 // funcs_tables が引くので、並べると使われない再公開になる
