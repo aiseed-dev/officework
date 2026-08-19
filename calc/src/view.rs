@@ -3263,6 +3263,41 @@ impl Render for Calc {
                                     cx.notify()
                                 })))
                     }))
+                // **探す範囲**(2026-08-20 発注者「検索には3種類必要です」)。
+                // このシート / このファイル / フォルダ。フォルダ全体は別の道
+                // (データタブの「フォルダから探す」)なので、そう案内する
+                .when(*kind == "find", |d| {
+                    let 釦 = |id: &'static str, 札: &str, on: bool| {
+                        div().id(id)
+                            .px_2p5().py_0p5().rounded_sm().cursor_pointer()
+                            .border_1()
+                            .border_color(if on { rgb(0x1B6E3C) } else { rgb(0xC6CDD3) })
+                            .bg(if on { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
+                            .text_size(px(us * 11.0))
+                            .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x66707A) })
+                            .child(SharedString::from(札.to_string()))
+                    };
+                    let 全体 = self.find_book;
+                    d.child(div().mt_1p5().flex().flex_row().items_center().gap_1()
+                        .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
+                            .child(ui::t!("探す範囲")))
+                        .child(釦("sc-sheet", ui::t!("このシート"), !全体)
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(
+                                |this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.find_book = false;
+                                    cx.notify()
+                                })))
+                        .child(釦("sc-book", ui::t!("このファイル"), 全体)
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(
+                                |this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.find_book = true;
+                                    cx.notify()
+                                })))
+                        .child(div().text_size(px(us * 10.0)).text_color(rgb(0x8A939B))
+                            .child(ui::t!("フォルダ全体はデータタブの「フォルダから探す」"))))
+                })
                 .child(div().mt_1().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                     .child(match *kind {
                         "name" => "Enter で決定 / Esc で取消。定義した名前は式の中で使えます(=単価*2)",

@@ -86,6 +86,7 @@ impl Writer {
             doc_at: 0,
             open_request: None,
             open_dialog_request: false,
+            find_file: false,
             embedded: false,
             files: Vec::new(),
             file_at: 0,

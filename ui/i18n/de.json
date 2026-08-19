@@ -7437,406 +7437,450 @@
  },
  {
   "i": 1859,
-  "t": "Python-Funktionen"
+  "t": "„{}“ ist nicht in dieser Datei"
  },
  {
   "i": 1860,
-  "t": "Menüband-Makros"
+  "t": "„{}“ ist nicht auf diesem Blatt (mit „Diese Datei“ werden auch die anderen Blätter durchsucht)"
  },
  {
   "i": 1861,
-  "t": "Format übertragen"
+  "t": "„{}“: {} {} ({} in dieser Datei)"
  },
  {
   "i": 1862,
-  "t": "Typ"
+  "t": "„{}“: {} ({} auf diesem Blatt)"
  },
  {
   "i": 1863,
-  "t": "Feldliste"
+  "t": "Suchen in"
  },
  {
   "i": 1864,
-  "t": "Oberflächentext größer"
+  "t": "Dieses Blatt"
  },
  {
   "i": 1865,
-  "t": "Oberflächentext kleiner"
+  "t": "Diese Datei"
  },
  {
   "i": 1866,
-  "t": "KI"
+  "t": "Für den ganzen Ordner „Ordner durchsuchen“ auf der Registerkarte Daten"
  },
  {
   "i": 1867,
-  "t": "Drucken"
+  "t": "„{}“: Dokument {}"
  },
  {
   "i": 1868,
-  "t": "Drucklayout"
+  "t": "„{}“ ist nicht in diesem Dokument (mit „Diese Datei“ werden auch die anderen Dokumente durchsucht)"
  },
  {
   "i": 1869,
-  "t": "Ziel"
+  "t": "Dieses Dokument"
  },
  {
   "i": 1870,
-  "t": "Zusammenfassen"
+  "t": "Python-Funktionen"
  },
  {
   "i": 1871,
-  "t": "Umschreiben"
+  "t": "Menüband-Makros"
  },
  {
   "i": 1872,
-  "t": "Höflicher"
+  "t": "Format übertragen"
  },
  {
   "i": 1873,
-  "t": "Einfacher"
+  "t": "Typ"
  },
  {
   "i": 1874,
-  "t": "Übersetzen"
+  "t": "Feldliste"
  },
  {
   "i": 1875,
-  "t": "Furigana"
+  "t": "Oberflächentext größer"
  },
  {
   "i": 1876,
-  "t": "Fortsetzen"
+  "t": "Oberflächentext kleiner"
  },
  {
   "i": 1877,
-  "t": "In Tabelle"
+  "t": "KI"
  },
  {
   "i": 1878,
-  "t": "Anfragen"
+  "t": "Drucken"
  },
  {
   "i": 1879,
-  "t": "Ruby"
+  "t": "Drucklayout"
  },
  {
   "i": 1880,
-  "t": "Vertikal"
+  "t": "Ziel"
  },
  {
   "i": 1881,
-  "t": "Textrichtung"
+  "t": "Zusammenfassen"
  },
  {
   "i": 1882,
-  "t": "Verteilt"
+  "t": "Umschreiben"
  },
  {
   "i": 1883,
-  "t": "Beschriftung einfügen"
+  "t": "Höflicher"
  },
  {
   "i": 1884,
-  "t": "URL öffnen"
+  "t": "Einfacher"
  },
  {
   "i": 1885,
-  "t": "Index"
+  "t": "Übersetzen"
  },
  {
   "i": 1886,
-  "t": "Aozora-Anmerkungen"
+  "t": "Furigana"
  },
  {
   "i": 1887,
-  "t": "Denden-Markup"
+  "t": "Fortsetzen"
  },
  {
   "i": 1888,
-  "t": "Änderungen nachverfolgen"
+  "t": "In Tabelle"
  },
  {
   "i": 1889,
-  "t": "Änderungen anzeigen"
+  "t": "Anfragen"
  },
  {
   "i": 1890,
-  "t": "Korrektur"
+  "t": "Ruby"
  },
  {
   "i": 1891,
-  "t": "Zeichen"
+  "t": "Vertikal"
  },
  {
   "i": 1892,
-  "t": "Rechtschreibprüfung"
+  "t": "Textrichtung"
  },
  {
   "i": 1893,
-  "t": "Thesaurus"
+  "t": "Verteilt"
  },
  {
   "i": 1894,
-  "t": "Fehlkonvertierung"
+  "t": "Beschriftung einfügen"
  },
  {
   "i": 1895,
-  "t": "Uneinheitliche Schreibung"
+  "t": "URL öffnen"
  },
  {
   "i": 1896,
-  "t": "Teilergebnisse"
+  "t": "Index"
  },
  {
   "i": 1897,
-  "t": "Berechnung"
+  "t": "Aozora-Anmerkungen"
  },
  {
   "i": 1898,
-  "t": "Rechts-nach-links-Text"
+  "t": "Denden-Markup"
  },
  {
   "i": 1899,
-  "t": "Blattrichtung"
+  "t": "Änderungen nachverfolgen"
  },
  {
   "i": 1900,
-  "t": "Python"
+  "t": "Änderungen anzeigen"
  },
  {
   "i": 1901,
-  "t": "Kontrollkästchen"
+  "t": "Korrektur"
  },
  {
   "i": 1902,
-  "t": "Externe Verknüpfungen"
+  "t": "Zeichen"
  },
  {
   "i": 1903,
-  "t": "Empfohlene Diagramme"
+  "t": "Rechtschreibprüfung"
  },
  {
   "i": 1904,
-  "t": "Co-Bearbeitung"
+  "t": "Thesaurus"
  },
  {
   "i": 1905,
-  "t": "Versionsverlauf"
+  "t": "Fehlkonvertierung"
  },
  {
   "i": 1906,
-  "t": "Chat"
+  "t": "Uneinheitliche Schreibung"
  },
  {
   "i": 1907,
-  "t": "Schützen"
+  "t": "Teilergebnisse"
  },
  {
   "i": 1908,
-  "t": "Verschlüsseln"
+  "t": "Berechnung"
  },
  {
   "i": 1909,
-  "t": "Digitale Signatur hinzufügen"
+  "t": "Rechts-nach-links-Text"
  },
  {
   "i": 1910,
-  "t": "Makros"
+  "t": "Blattrichtung"
  },
  {
   "i": 1911,
-  "t": "Plugins verwalten"
+  "t": "Python"
  },
  {
   "i": 1912,
-  "t": "Nullen anzeigen"
+  "t": "Kontrollkästchen"
  },
  {
   "i": 1913,
-  "t": "Auf 100 % zoomen"
+  "t": "Externe Verknüpfungen"
  },
  {
   "i": 1914,
-  "t": "Oberflächendesign"
+  "t": "Empfohlene Diagramme"
  },
  {
   "i": 1915,
-  "t": "Überwachungsfenster"
+  "t": "Co-Bearbeitung"
  },
  {
   "i": 1916,
-  "t": "AutoSumme"
+  "t": "Versionsverlauf"
  },
  {
   "i": 1917,
-  "t": "Aktionen aufzeichnen"
+  "t": "Chat"
  },
  {
   "i": 1918,
-  "t": "Kommentar löschen"
+  "t": "Schützen"
  },
  {
   "i": 1919,
-  "t": "Solver"
+  "t": "Verschlüsseln"
  },
  {
   "i": 1920,
-  "t": "Text zu Daten"
+  "t": "Digitale Signatur hinzufügen"
  },
  {
   "i": 1921,
-  "t": "Pfeile entfernen"
+  "t": "Makros"
  },
  {
   "i": 1922,
-  "t": "Ausfüllen"
+  "t": "Plugins verwalten"
  },
  {
   "i": 1923,
-  "t": "Filter löschen"
+  "t": "Nullen anzeigen"
  },
  {
   "i": 1924,
-  "t": "Makro schreiben"
+  "t": "Auf 100 % zoomen"
  },
  {
   "i": 1925,
-  "t": "Text in Spalten"
+  "t": "Oberflächendesign"
  },
  {
   "i": 1926,
-  "t": "Beschriftung"
+  "t": "Überwachungsfenster"
  },
  {
   "i": 1927,
-  "t": "Abbildungsverzeichnis"
+  "t": "AutoSumme"
  },
  {
   "i": 1928,
-  "t": "Abbildungsverzeichnis aktualisieren"
+  "t": "Aktionen aufzeichnen"
  },
  {
   "i": 1929,
-  "t": "Externe Verknüpfungen (als Werte einlesen)"
+  "t": "Kommentar löschen"
  },
  {
   "i": 1930,
-  "t": "Math. u. Trigonom."
+  "t": "Solver"
  },
  {
   "i": 1931,
-  "t": "Formeln anzeigen"
+  "t": "Text zu Daten"
  },
  {
   "i": 1932,
-  "t": "Textrichtung (rechts nach links)"
+  "t": "Pfeile entfernen"
  },
  {
   "i": 1933,
-  "t": "Text"
+  "t": "Ausfüllen"
  },
  {
   "i": 1934,
-  "t": "Datum u. Uhrzeit"
+  "t": "Filter löschen"
  },
  {
   "i": 1935,
-  "t": "Zuletzt verwendet"
+  "t": "Makro schreiben"
  },
  {
   "i": 1936,
-  "t": "Gitternetzlinien drucken"
+  "t": "Text in Spalten"
  },
  {
   "i": 1937,
-  "t": "Inhaltsverzeichnis aktualisieren"
+  "t": "Beschriftung"
  },
  {
   "i": 1938,
-  "t": "Gebänderte Spalten"
+  "t": "Abbildungsverzeichnis"
  },
  {
   "i": 1939,
-  "t": "Überschriften drucken"
+  "t": "Abbildungsverzeichnis aktualisieren"
  },
  {
   "i": 1940,
-  "t": "Detail ausblenden"
+  "t": "Externe Verknüpfungen (als Werte einlesen)"
  },
  {
   "i": 1941,
-  "t": "Duplikate entfernen"
+  "t": "Math. u. Trigonom."
  },
  {
   "i": 1942,
-  "t": "Funktion einfügen"
+  "t": "Formeln anzeigen"
  },
  {
   "i": 1943,
-  "t": "CSV-Format"
+  "t": "Textrichtung (rechts nach links)"
  },
  {
   "i": 1944,
-  "t": "Zelle sperren"
+  "t": "Text"
  },
  {
   "i": 1945,
-  "t": "Datentabelle"
+  "t": "Datum u. Uhrzeit"
  },
  {
   "i": 1946,
-  "t": "Musterfüllung"
+  "t": "Zuletzt verwendet"
  },
  {
   "i": 1947,
-  "t": "Liste"
+  "t": "Gitternetzlinien drucken"
  },
  {
   "i": 1948,
-  "t": "Namen einfügen"
+  "t": "Inhaltsverzeichnis aktualisieren"
  },
  {
   "i": 1949,
-  "t": "Wiederherstellen"
+  "t": "Gebänderte Spalten"
  },
  {
   "i": 1950,
-  "t": "Text umbrechen"
+  "t": "Überschriften drucken"
  },
  {
   "i": 1951,
-  "t": "Sicherungsintervall"
+  "t": "Detail ausblenden"
  },
  {
   "i": 1952,
-  "t": "Neue .py"
+  "t": "Duplikate entfernen"
  },
  {
   "i": 1953,
-  "t": "Bereich hinzufügen"
+  "t": "Funktion einfügen"
  },
  {
   "i": 1954,
-  "t": "Aufs Blatt einpassen"
+  "t": "CSV-Format"
  },
  {
   "i": 1955,
-  "t": "Blattgrenzen"
+  "t": "Zelle sperren"
  },
  {
   "i": 1956,
-  "t": "Ordner öffnen"
+  "t": "Datentabelle"
  },
  {
   "i": 1957,
-  "t": "Berechnungsart"
+  "t": "Musterfüllung"
  },
  {
   "i": 1958,
-  "t": "Erlaubte Aktionen"
+  "t": "Liste"
  },
  {
   "i": 1959,
+  "t": "Namen einfügen"
+ },
+ {
+  "i": 1960,
+  "t": "Wiederherstellen"
+ },
+ {
+  "i": 1961,
+  "t": "Text umbrechen"
+ },
+ {
+  "i": 1962,
+  "t": "Sicherungsintervall"
+ },
+ {
+  "i": 1963,
+  "t": "Neue .py"
+ },
+ {
+  "i": 1964,
+  "t": "Bereich hinzufügen"
+ },
+ {
+  "i": 1965,
+  "t": "Aufs Blatt einpassen"
+ },
+ {
+  "i": 1966,
+  "t": "Blattgrenzen"
+ },
+ {
+  "i": 1967,
+  "t": "Ordner öffnen"
+ },
+ {
+  "i": 1968,
+  "t": "Berechnungsart"
+ },
+ {
+  "i": 1969,
+  "t": "Erlaubte Aktionen"
+ },
+ {
+  "i": 1970,
   "t": "Schreibschutz empfehlen"
  }
 ]

@@ -82,6 +82,18 @@ impl Writer {
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
                     .child(SharedString::from(label.to_string()))
             };
+            // 範囲の選び。**選んでいる物は塗る**(押せる物と見分けが付くように)
+            let 範囲釦 = |id: &'static str, label: &str, on: bool| {
+                div().id(id)
+                    .px_2p5().py_0p5().rounded_sm()
+                    .border_1()
+                    .border_color(if on { rgb(0x1B6E3C) } else { rgb(0xC6CDD3) })
+                    .bg(if on { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
+                    .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x66707A) })
+                    .text_size(px(11.0)).cursor_pointer()
+                    .hover(|s| s.bg(rgb(0xEAF5EE)))
+                    .child(SharedString::from(label.to_string()))
+            };
             Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(430.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
@@ -92,6 +104,23 @@ impl Writer {
                 .child(field(ui::t!("置換後"), &self.repl_ed, self.find_field == 1)
                     .id("find-r").cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| { this.find_field = 1; cx.notify() })))
+                // **探す範囲**(2026-08-20 発注者「検索には3種類必要です」)。
+                // この文書 / このファイル / フォルダ。**「シート」とは呼ばない** —
+                // 文章の画面の言葉は「文書」です
+                .child(div().flex().flex_row().items_center().gap_2()
+                    .child(div().text_size(px(11.0)).text_color(rgb(0x66707A))
+                        .child(ui::t!("探す範囲")))
+                    .child(範囲釦("sc-doc", ui::t!("この文書"), !self.find_file)
+                        .on_click(cx.listener(|t, _, _, cx| { t.find_file = false; cx.notify() })))
+                    .child(範囲釦("sc-file", ui::t!("このファイル"), self.find_file)
+                        .on_click(cx.listener(|t, _, _, cx| { t.find_file = true; cx.notify() })))
+                    .child(範囲釦("sc-dir", ui::t!("フォルダ"), false)
+                        .on_click(cx.listener(|t, _, _, cx| {
+                            // フォルダ全体はファイルのページの「フォルダから探す」
+                            t.tab = 0;
+                            t.file_view = 2;
+                            cx.notify()
+                        }))))
                 .child(div().flex().flex_row().gap_2()
                     .child(btn("f-next", ui::t!("次へ (Enter)"))
                         .on_click(cx.listener(|this, _, _, cx| { this.find_next(); cx.notify() })))

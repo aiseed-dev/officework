@@ -540,33 +540,90 @@ impl Calc {
         true
     }
 
-    /// 「次を検索」。いまのセルの次(行→列の順)から探し、末尾まで行ったら
-    /// 頭に戻る。式の中の文字も探す(editable = 打った通りの姿)。
-    pub(crate) fn find_next(&mut self, term: &str) {
-        let hits: Vec<Pos> = self
-            .sheet()
-            .cells
+    /// あるシートの中の当たり(行→列の順)。式の中の文字も探す
+    /// (`editable` = 打った通りの姿)。
+    fn 当たり(sh: &sheet::Sheet, term: &str) -> Vec<Pos> {
+        sh.cells
             .iter()
             .filter(|(_, c)| c.editable().contains(term) || c.value.display().contains(term))
             .map(|(p, _)| *p)
-            .collect();
-        if hits.is_empty() {
-            self.status = ui::tf!("「{}」は見つかりません", term).into();
+            .collect()
+    }
+
+    /// 「次を検索」。いまのセルの次から探し、末尾まで行ったら頭に戻る。
+    ///
+    /// **範囲は3つ**(2026-08-20 発注者)。ここは*このシート*と*このファイル*を
+    /// 受け持ちます(フォルダ全体は `find_in_folder`)。
+    ///
+    /// *このファイル*のときは、いまのシートを見終えたら次のシートへ回り、
+    /// **見つかったシートへ切り替えてから**カーソルを合わせます —
+    /// 「3件見つかりました」と言って動かないのは、見つけていないのと同じです。
+    pub(crate) fn find_next(&mut self, term: &str) {
+        let ブック全体 = self.find_book;
+        let 枚数 = self.book.sheets.len();
+        // いまのシートから始めて、ファイル全体なら後ろのシートへ回る
+        let 見る順: Vec<usize> = if ブック全体 {
+            (0..枚数).map(|k| (self.active + k) % 枚数).collect()
+        } else {
+            vec![self.active]
+        };
+        let 総数: usize =
+            見る順.iter().map(|i| Self::当たり(&self.book.sheets[*i], term).len()).sum();
+        if 総数 == 0 {
+            self.status = if ブック全体 {
+                ui::tf!("「{}」はこのファイルにありません", term).into()
+            } else {
+                ui::tf!("「{}」はこのシートにありません(範囲を「このファイル」にすると他のシートも探します)", term).into()
+            };
+            self.find_term = Some(term.to_string());
             return;
         }
-        let cur = self.cursor;
-        let next = hits.iter().find(|p| **p > cur).copied().unwrap_or(hits[0]);
-        self.anchor = None;
-        self.cursor = next;
-        self.follow();
-        self.sync_input();
-        self.status = format!(
-            "「{term}」: {}({} カ所)。もう一度「置き換え」で次へ",
-            next.a1(),
-            hits.len()
-        )
-        .into();
-        // 次回のパネルの初期値に残す(続けて探すのが検索の常)
+        for (k, &i) in 見る順.iter().enumerate() {
+            let hits = Self::当たり(&self.book.sheets[i], term);
+            if hits.is_empty() {
+                continue;
+            }
+            // いまのシートの続きからだけ「次」を探す。回った先は頭から
+            let next = if k == 0 {
+                let cur = self.cursor;
+                match hits.iter().find(|p| **p > cur).copied() {
+                    Some(p) => Some(p),
+                    // このシートは見終えた。ファイル全体なら次のシートへ
+                    None if ブック全体 && 見る順.len() > 1 => None,
+                    None => Some(hits[0]),
+                }
+            } else {
+                Some(hits[0])
+            };
+            let Some(next) = next else { continue };
+            if i != self.active {
+                self.active = i;
+                self.sheet_ui.clear();
+            }
+            self.anchor = None;
+            self.cursor = next;
+            self.follow();
+            self.sync_input();
+            self.status = if ブック全体 {
+                ui::tf!("「{}」: {} の {}(このファイルに {} カ所)",
+                        term, self.book.sheets[i].name.clone(), next.a1(), 総数.to_string())
+                    .into()
+            } else {
+                ui::tf!("「{}」: {}(このシートに {} カ所)", term, next.a1(), 総数.to_string())
+                    .into()
+            };
+            self.find_term = Some(term.to_string());
+            return;
+        }
+        // 全部見終えて戻ってきた = 先頭の当たりへ
+        let i = 見る順[0];
+        let hits = Self::当たり(&self.book.sheets[i], term);
+        if let Some(&first) = hits.first() {
+            self.active = i;
+            self.cursor = first;
+            self.follow();
+            self.sync_input();
+        }
         self.find_term = Some(term.to_string());
     }
 

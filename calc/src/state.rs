@@ -238,6 +238,7 @@ impl Calc {
             right_face: 0,
             open_request: None,
             open_dialog_request: false,
+            find_book: false,
             embedded: false,
             tool: None,
             ink_cur: None,

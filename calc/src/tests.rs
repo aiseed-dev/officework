@@ -6851,3 +6851,57 @@ mod 暗号化と字の保存 {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+#[cfg(test)]
+mod find_scope_tests {
+    use crate::*;
+
+    /// **検索の範囲は3つ**(2026-08-20 発注者)。ここは「このシート」と
+    /// 「このファイル」の2つ — フォルダ全体は `find_in_folder` の受け持ち。
+    ///
+    /// 入れた理由: ブックは複数のシートを持てるのに、検索は**いまのシートしか
+    /// 見ていなかった**。使う人からは「有るはずの物が見つからない」という
+    /// 一番たちの悪い外れ方になる
+    #[gpui::test]
+    fn ファイル全体なら他のシートも探して連れて行く(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.book.sheets.push(sheet::Sheet::new("Sheet2"));
+            // 探す言葉は **2枚目にだけ** 置く
+            this.book.sheets[1].set(Pos::new(3, 1), Cell::input("みかん"));
+            this.active = 0;
+            this.cursor = Pos::new(0, 0);
+
+            // このシートだけ → 見つからない。**他のシートがあることを言う**
+            this.find_book = false;
+            this.find_next("みかん");
+            assert_eq!(this.active, 0, "シートが動いた");
+            assert!(this.status.contains("このシート"), "案内が出ない: {}", this.status);
+
+            // このファイル → 2枚目へ連れて行く
+            this.find_book = true;
+            this.find_next("みかん");
+            assert_eq!(this.active, 1, "見つけたシートへ移らない: {}", this.status);
+            assert_eq!(this.cursor, Pos::new(3, 1), "カーソルが当たりに来ない");
+        });
+    }
+
+    /// 同じシートの中では今までどおり(次の当たりへ回る)
+    #[gpui::test]
+    fn このシートだけなら中で回る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.sheet_mut().set(Pos::new(1, 0), Cell::input("りんご"));
+            this.sheet_mut().set(Pos::new(5, 0), Cell::input("りんご"));
+            this.find_book = false;
+            this.cursor = Pos::new(0, 0);
+            this.find_next("りんご");
+            assert_eq!(this.cursor, Pos::new(1, 0));
+            this.find_next("りんご");
+            assert_eq!(this.cursor, Pos::new(5, 0), "次の当たりへ行かない");
+            // 末尾まで行ったら頭へ戻る
+            this.find_next("りんご");
+            assert_eq!(this.cursor, Pos::new(1, 0), "一周しない");
+        });
+    }
+}

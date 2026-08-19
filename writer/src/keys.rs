@@ -129,6 +129,13 @@ impl Writer {
     }
 
     /// 次の一致を選ぶ(カーソルの後ろから。末尾まで無ければ頭から一周)。
+    ///
+    /// **範囲は3つ**(2026-08-20 発注者)。ここは*この文書*と*このファイル*を
+    /// 受け持ちます(フォルダ全体は `find_in_folder`)。
+    ///
+    /// *このファイル*のときは、いまの文書を見終えたら次の文書へ回り、
+    /// **見つかった文書へ切り替えてから**選びます — 「見つかりました」と
+    /// 言って動かないのは、見つけていないのと同じです。
     pub(crate) fn find_next(&mut self) {
         let term = self.find_ed.text().to_string();
         if term.is_empty() {
@@ -137,17 +144,38 @@ impl Writer {
         }
         let text = self.ed.text().to_string();
         let from = self.ed.selection().end;
-        let hit = text[from..]
-            .find(&term)
-            .map(|i| from + i)
-            .or_else(|| text.find(&term));
+        let hit = text[from..].find(&term).map(|i| from + i);
+        // いまの文書の続きに無い。**ファイル全体なら次の文書へ回る**
+        if hit.is_none() && self.find_file && self.doc_count() > 1 {
+            let 枚数 = self.doc_count();
+            for k in 1..枚数 {
+                let i = (self.doc_at + k) % 枚数;
+                let 中身 = if i == self.doc_at {
+                    self.doc.body_text()
+                } else {
+                    self.docs[i].body_text()
+                };
+                if let Some(at) = 中身.find(&term) {
+                    self.show_doc(i);
+                    self.ed.move_to(at, false);
+                    self.ed.move_to(at + term.len(), true);
+                    self.status =
+                        ui::tf!("「{}」: {} 枚目の文書", term, (i + 1).to_string()).into();
+                    return;
+                }
+            }
+        }
+        let hit = hit.or_else(|| text.find(&term));
         match hit {
             Some(i) => {
                 self.ed.move_to(i, false);
                 self.ed.move_to(i + term.len(), true);
                 self.status = "".into();
             }
-            None => self.status = ui::tf!("「{}」は見つかりません", term).into(),
+            None if self.find_file => {
+                self.status = ui::tf!("「{}」はこのファイルにありません", term).into()
+            }
+            None => self.status = ui::tf!("「{}」はこの文書にありません(範囲を「このファイル」にすると他の文書も探します)", term).into(),
         }
     }
 
