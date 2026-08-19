@@ -98,6 +98,25 @@ impl Pane {
         }
     }
 
+    /// 画面が暗い側か(タブの行の色を下の編集画面に合わせる)。
+    fn 暗いか(&self, cx: &App) -> bool {
+        match self {
+            Pane::Doc(v) => v.read(cx).is_dark(),
+            Pane::Sheet(v) => v.read(cx).is_dark(),
+        }
+    }
+
+    /// タブに出す名前。**二重の拡張子は落とします**(一覧と同じ見せ方)。
+    fn 名(&self, cx: &App) -> String {
+        match self.道(cx) {
+            Some(p) => {
+                let n = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                ui::folder::display_name(&n, ui::folder::kind_of(&n))
+            }
+            None => ui::t!("(名前なし)").to_string(),
+        }
+    }
+
     fn focus(&self, cx: &App) -> gpui::FocusHandle {
         match self {
             Pane::Doc(v) => v.focus_handle(cx),
@@ -263,17 +282,29 @@ impl Office {
     /// **書きかけのあるタブの名前。** 閉じるときに、どれが残っているかを言います。
     /// 数だけ言われても、どれを保存すればよいのか分かりません。
     fn 書きかけの名前(&self, cx: &App) -> Vec<String> {
-        self.tabs
-            .iter()
-            .filter(|t| t.書きかけ(cx))
-            .map(|t| match t.道(cx) {
-                Some(p) => {
-                    let n = p.file_name().unwrap_or_default().to_string_lossy().to_string();
-                    ui::folder::display_name(&n, ui::folder::kind_of(&n))
-                }
-                None => ui::t!("(名前なし)").to_string(),
-            })
-            .collect()
+        self.tabs.iter().filter(|t| t.書きかけ(cx)).map(|t| t.名(cx)).collect()
+    }
+
+    /// **タブを閉じる。** 書きかけがあるときは閉じません(黙って捨てない)。
+    /// 最後の1枚は閉じません — 何も出ていない窓は、使う人には壊れて見えます。
+    fn タブを閉じる(&mut self, i: usize, cx: &mut Context<Self>) {
+        if self.tabs.len() <= 1 || i >= self.tabs.len() {
+            self.言う(ui::t!("最後の1枚は閉じません"), cx);
+            return;
+        }
+        if self.tabs[i].書きかけ(cx) {
+            let 名 = self.tabs[i].名(cx);
+            self.言う(&ui::tf!("{} に書きかけがあります(先に保存してください)", 名), cx);
+            return;
+        }
+        self.tabs.remove(i);
+        if self.at >= self.tabs.len() {
+            self.at = self.tabs.len() - 1;
+        } else if self.at > i {
+            self.at -= 1;
+        }
+        self.焦点を移す = true;
+        cx.notify();
     }
 
     /// **フォルダを選んでもらう**(覚えている物が無い初回)。
@@ -320,12 +351,83 @@ impl Render for Office {
             self.焦点を移す = false;
             window.focus(&self.見ている().focus(cx), cx);
         }
-        // いま見ているタブをそのまま出します。上のタブの行は段2の続きで
-        // ここに足します(いまは編集画面が持っている物がそのまま出ます)
-        div().size_full().child(match self.見ている() {
-            Pane::Doc(v) => v.clone().into_any_element(),
-            Pane::Sheet(v) => v.clone().into_any_element(),
-        })
+        // ---- タブの行(段2)----
+        //
+        // **文書も表も同じ並びに出ます。** 前は writer の中にタブがあり、
+        // 文書しか並びませんでした。持ち主が officework になったので、
+        // 種類を問わず1本に並びます。
+        //
+        // 1枚しか開いていないときは出しません — 何も選べない行は邪魔です
+        // (writer が前からそうしている作法に揃えます)。
+        let dk = self.見ている().暗いか(cx);
+        let 地 = if dk { gpui::rgb(0x1B1E21) } else { gpui::rgb(0xF1F3F5) };
+        let 線 = if dk { gpui::rgb(0x33383D) } else { gpui::rgb(0xE1E6EA) };
+        let 字 = if dk { gpui::rgb(0xCFD6DC) } else { gpui::rgb(0x444B52) };
+        let 薄字 = if dk { gpui::rgb(0x9AA5AE) } else { gpui::rgb(0x66707A) };
+        let 選 = if dk { gpui::rgb(0x22262A) } else { gpui::rgb(0xFFFFFF) };
+        let tabs = (self.tabs.len() > 1).then(|| {
+            let mut row = div()
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap_1()
+                .px_2()
+                .py_0p5()
+                .bg(地)
+                .border_b_1()
+                .border_color(線);
+            for i in 0..self.tabs.len() {
+                let on = i == self.at;
+                let mut 札 = self.tabs[i].名(cx);
+                if self.tabs[i].書きかけ(cx) {
+                    // **書きかけの印。** 閉じる前に気づけるように
+                    札.push('*');
+                }
+                row = row.child(
+                    div()
+                        .id(gpui::SharedString::from(format!("tab{i}")))
+                        .px_2p5()
+                        .py_0p5()
+                        .rounded_sm()
+                        .cursor_pointer()
+                        .bg(if on { 選 } else { gpui::transparent_black().into() })
+                        .border_1()
+                        .border_color(if on { 線 } else { gpui::transparent_black().into() })
+                        .text_size(px(11.5))
+                        .text_color(if on { 字 } else { 薄字 })
+                        .child(gpui::SharedString::from(札))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.at = i;
+                            this.焦点を移す = true;
+                            cx.notify()
+                        })),
+                );
+                row = row.child(
+                    div()
+                        .id(gpui::SharedString::from(format!("tabx{i}")))
+                        .px_1()
+                        .rounded_sm()
+                        .cursor_pointer()
+                        .text_size(px(11.0))
+                        .text_color(薄字)
+                        .child("×")
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.タブを閉じる(i, cx);
+                            cx.notify()
+                        })),
+                );
+            }
+            row
+        });
+        div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .children(tabs)
+            .child(div().flex_1().min_h(px(0.0)).child(match self.見ている() {
+                Pane::Doc(v) => v.clone().into_any_element(),
+                Pane::Sheet(v) => v.clone().into_any_element(),
+            }))
     }
 }
 

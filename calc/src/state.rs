@@ -21,6 +21,11 @@ impl Calc {
         self.embedded = true;
     }
 
+    /// 画面が暗い側か(`officework` がタブの行の色を合わせるのに使う)。
+    pub fn is_dark(&self) -> bool {
+        self.dark
+    }
+
     /// **いま開いているファイルの道**(`officework` がタブを引き当てるのに使う)。
     /// まだ名前が無ければ `None` です。
     pub fn opened_path(&self) -> Option<&std::path::Path> {

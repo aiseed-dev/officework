@@ -1876,4 +1876,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("1行目を見出し行に", "Ligne d'en-tête"),
     ("背景色 #{}", "Fond #{}"),
     ("書きかけがあります(先に保存してください): {}", "Des modifications ne sont pas enregistrées (enregistrez-les d'abord) : {}"),
+    ("最後の1枚は閉じません", "Le dernier reste ouvert"),
+    ("{} に書きかけがあります(先に保存してください)", "{} contient des modifications non enregistrées (enregistrez-les d'abord)"),
 ];

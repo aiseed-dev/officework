@@ -1876,4 +1876,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("1行目を見出し行に", "Başlık satırı"),
     ("背景色 #{}", "Dolgu #{}"),
     ("書きかけがあります(先に保存してください): {}", "Kaydedilmemiş değişiklikler var (önce kaydedin): {}"),
+    ("最後の1枚は閉じません", "Sonuncusu açık kalır"),
+    ("{} に書きかけがあります(先に保存してください)", "{} kaydedilmemiş değişiklikler içeriyor (önce kaydedin)"),
 ];

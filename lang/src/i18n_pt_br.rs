@@ -1876,4 +1876,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("1行目を見出し行に", "Linha de cabeçalho"),
     ("背景色 #{}", "Sombreamento #{}"),
     ("書きかけがあります(先に保存してください): {}", "Há alterações não salvas (salve-as primeiro): {}"),
+    ("最後の1枚は閉じません", "O último fica aberto"),
+    ("{} に書きかけがあります(先に保存してください)", "{} tem alterações não salvas (salve-as primeiro)"),
 ];
