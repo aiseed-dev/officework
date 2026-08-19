@@ -364,6 +364,13 @@ Sales *rose* against last month.footnote:[Tokyo and Osaka combined]
 
 The full list of markings is in the next section.
 
+=== Several documents in one file
+
+One `.adoc` can hold several documents — for keeping together the invoice drafts you send out at the same time.
+The separator is `= Title`: if the title line appears more than once, that is how many documents the file holds.
+Open a file with two or more and a row of document tabs appears at the bottom of the screen (same place and same behaviour as the sheet tabs in a spreadsheet).
+In find & replace, pick the scope "this file" and the search moves on to the next document when it finishes the current one.
+
 === Saving tidies up the line breaks
 
 When writer saves, it puts *one sentence on one line*.

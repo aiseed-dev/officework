@@ -26,42 +26,10 @@ Close and reopen, and the folder, files and tabs from last time come back.
 
 == What works today
 
-"Document" and "spreadsheet" in the table are the two editors inside officework.
+The highlights only — the full list lives in the link:docs/writer-manual.adoc[document manual] and the link:docs/calc-manual.adoc[spreadsheet manual], which describe only what works today.
 
-[cols="1,1,1"]
-|===
-| |document |spreadsheet
-
-|Open / save |adoc and docx (parts we don't understand are preserved as-is) |sheet.adoc and xlsx (same)
-|Japanese input (IME), undo |○ |○
-|Character formatting |bold, italic, underline, strikethrough, color, highlight, super/subscript, size, font (*applies to the selection only*) |bold, italic, underline, strikethrough, color, fill
-|Paragraphs |alignment, bulleted/numbered lists (with levels), indent, line spacing, page break, shading and borders, drop caps |—
-|*First-class Japanese* |*vertical writing, ruby (furigana), distributed justification* (Text Direction toggles horizontal/vertical) |text orientation (vertical headings)
-|Form fields (content controls) |○ (text fields, dropdowns, checkboxes — build a form, protect it, hand it out) |equivalent via data validation and checkboxes
-|Headings and TOC |○ (TOC and table of figures with page numbers) |—
-|Header / footer |○ (page number, page count, date) |—
-|Tables |○ (reads/writes merged cells, edit inside cells) |(that's the whole app)
-|Images |insert PNG, JPEG, *SVG (converted at high resolution)*. Shapes/charts are drawn by Python and pasted |insert PNG, JPEG. Shapes, SmartArt, text art, equations (TeX), sparklines, symbols, checkboxes. Chart buttons are backed by matplotlib
-|Comments |○ (per paragraph) |○
-|Track changes |○ (saved as real Word tracked changes) |—
-|Bookmarks, watermark, page color, columns |○ |—
-|Drawing (pen, highlighter, eraser) |○ (becomes shapes in docx) |—
-|Formulas |equations survive a round trip byte for byte (they are carried, not edited) |arithmetic and functions (about 185, incl. dynamic arrays and legacy CSE arrays), recalculation, circular-reference detection, *=PY* (write your own functions in Python)
-|Sheets / multiple drafts |one .adoc can hold several documents (e.g. the invoices you send out together) |multiple sheets, freeze panes, filter, slicer, sort, grouping and subtotals
-|Pivot tables |— |○ (backed by polars; the definition is stored in the workbook so it can refresh)
-|Solver / goal seek |— |○ (simplex LP, backed by scipy)
-|Protection, encryption, signing |○ |○ (read-only, AES, Ed25519 side-file signature)
-|Chat, version history |○ |○ (no server — plain files in a shared folder)
-|Conditional formatting, data validation |— |○ (round-trips through xlsx)
-|Links, defined names, paste special |— |○
-|Python (instead of macros) |macros run .py in a sandbox (`d` = python-docx document); code is never stored in the document |.py files in plugins — procedures via `@name`, cell functions like `=double(A1)` or `=PY`; never stored in the workbook
-|Print settings |paper, orientation, margins, columns — *and a document whose paper changes partway* (portrait and landscape sections in one file, on screen and in the PDF) |paper (incl. JIS B), orientation, margins, print area
-|PDF |○ (headers/footers, watermark, ink and all) |○ (borders, fills, follows print settings)
-|Find and replace |○ |○
-|Cross-references to bookmarks |○ (Word REF/PAGEREF fields) |—
-|Hyphenation (Latin text) |○ (same patterns as TeX) |—
-|Proofreading |○ |—
-|===
+* *Documents* — Japanese typesetting up to vertical writing, ruby (furigana) and distributed justification. Form fields (build a form, protect it, hand it out), TOC, track changes, comments, drawing, printing where the paper changes partway, PDF. A docx survives open-and-save
+* *Spreadsheets* — about 185 functions (incl. dynamic arrays), recalculation with circular-reference detection, multiple sheets, pivot tables, conditional formatting, data validation, charts (backed by matplotlib), a solver, protection and encryption, PDF. An xlsx survives too
 
 The ribbon layout follows Euro-Office, so people who switch don't have to relearn where things are. *Commands that don't work yet are shown grayed out* — we never make something look usable when it isn't.
 
