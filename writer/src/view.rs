@@ -11,10 +11,6 @@ use crate::*;
 const CARET_TOP: f32 = 0.53;
 const CARET_H: f32 = 1.00;
 
-const TAB_IDS: &[&str] = &[
-    "@tab0", "@tab1", "@tab2", "@tab3", "@tab4", "@tab5",
-    "@tab6", "@tab7", "@tab8", "@tab9", "@tab10", "@tab11", "@tab12",
-];
 
 impl Render for Writer {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -142,85 +138,44 @@ impl Render for Writer {
                 None
             }
         };
-        let mut tabs = div().flex().flex_row().items_end().gap_1()
-            .px_2().bg(th_tab_on_bg);
-        // **段は 15 段を同じ並びで出します**(2026-08-19 発注者「使わない
-        // 場合には灰色にすればいいでしょう」)。文章に無い段(数式・データ・
-        // ピボット・表のデザイン)は灰色で、押せません。並びが動かないので、
-        // 表の画面と行き来しても段を探し直さずに済みます
-        for (位置, 段) in ui::tabs::merged().into_iter().enumerate() {
-            let 名 = 段.name;
-            let Some(i) = 段.doc else {
-                // この画面には無い段。**灰色で出す**(未実装の釦と同じ描き方)
-                tabs = tabs.child(div()
-                    .id(SharedString::from(format!("tab{位置}")))
-                    .px_2p5().pt_1p5()
-                    .text_size(px(12.0))
-                    .text_color(th_gray_fg)
-                    .flex().flex_col().items_center().gap_1()
-                    .child(名)
-                    .child(div().h(px(2.0)).w_full()));
-                continue;
-            };
-            let tb = &ribbon::writer_tabs()[i];
-            let on = i == self.tab;
-            tabs = tabs.child(div()
-                .id(SharedString::from(format!("tab{i}")))
-                .px_2p5().pt_1p5()
-                .text_size(px(12.0))
-                // 小窓中はタブも灰色・無反応(未実装のボタンと同じ描き方)
-                .text_color(if dlg_open { th_gray_fg }
-                    else if on { th_tab_on_fg } else { th_tab_idle })
-                .font_weight(if on { gpui::FontWeight::BOLD } else { gpui::FontWeight::NORMAL })
-                .when(!dlg_open, |d| d.cursor_pointer()
-                    .hover(move |s| s.text_color(th_tab_on_fg))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        // タブ切替でも開いている一覧は畳む(他を押したら閉じる)
-                        this.close_menus();
-                        if i == 0 && this.tab != 0 {
-                            this.prev_tab = this.tab;
-                            this.file_view = 0;
-                            this.file_field = None;
-                        }
-                        this.tab = i;
-                        cx.notify()
-                    })))
-                .flex().flex_col().items_center().gap_1()
-                // **段の箱も控える**(id は calc と同じ `@tabN`)。
-                // 点検の道具が段を名前で切り替えられるように
-                .relative()
-                .child({
-                    let rec = self.btn_box.clone();
-                    let key: &'static str = TAB_IDS[i.min(TAB_IDS.len() - 1)];
-                    gpui::canvas(
-                        move |b: gpui::Bounds<gpui::Pixels>, _, _| {
-                            rec.borrow_mut().insert(key, (
-                                f32::from(b.origin.x),
-                                f32::from(b.origin.y),
-                                f32::from(b.size.width),
-                                f32::from(b.size.height),
-                            ));
-                        },
-                        |_, _: (), _, _| {},
-                    )
-                    .absolute()
-                    .size_full()
-                })
-                .child(tb.name)
-                // 現在地の青い下線(デスクトップ版の形)
-                .child(div().h(px(2.5)).w_full().rounded_sm()
-                    .bg(if on { th_btn } else { th_tab_on_bg })));
-        }
-        tabs = tabs.child(div().flex_1())
-            .child(div().id("tab-find").px_2().pb_1().text_size(px(12.0))
-                .text_color(th_tab_idle)
-                .when(!dlg_open, |d| d.cursor_pointer()
-                    .hover(move |s| s.text_color(th_tab_on_fg))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.run_from_ribbon("replace", cx);
-                        cx.notify()
-                    })))
-                .child("🔍"));
+        // ---- リボンのタブの行(実装は ui::tabrow に1本。統合の段6の後半)----
+        let tabs = ui::tabrow::build(
+            cx,
+            ui::tabrow::Side::Doc,
+            self.tab,
+            1.0,
+            dlg_open,
+            ui::tabrow::Look {
+                row_bg: th_tab_on_bg,
+                grey: th_gray_fg,
+                on_fg: th_tab_on_fg,
+                idle_fg: th_tab_idle,
+                hover_fg: th_tab_on_fg,
+                find_fg: th_tab_idle,
+                underline_on: th_btn,
+                ctx_fg: th_gray_fg,
+                ctx_bg: th_tab_on_bg,
+            },
+            self.btn_box.clone(),
+            |_| false,
+            |_| false,
+            |_| None,
+            |this: &mut Writer, i, cx| {
+                // タブ切替でも開いている一覧は畳む(他を押したら閉じる)
+                this.close_menus();
+                if i == 0 && this.tab != 0 {
+                    this.prev_tab = this.tab;
+                    this.file_view = 0;
+                    this.file_field = None;
+                }
+                this.tab = i;
+                cx.notify()
+            },
+            |this: &mut Writer, cx| {
+                this.run_from_ribbon("replace", cx);
+                cx.notify()
+            },
+        );
 
         let mut cmds = div().flex().flex_col().gap_0p5()
             .px_3().py_1().bg(th_cmd_bg)

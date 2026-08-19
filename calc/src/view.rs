@@ -418,19 +418,6 @@ impl Render for Calc {
                 self.prev_tab
             };
         }
-        // 段の見出しの場所を「@tab<番号>」という名前で控える。点検の道具が
-        // 目分量でなく本当の座標を押せるようにする
-        let tab_boxes = self.btn_box.clone();
-        let mark_tab = move |i: usize| {
-            let rec = tab_boxes.clone();
-            let key: &'static str = Box::leak(format!("@tab{i}").into_boxed_str());
-            gpui::canvas(move |b: gpui::Bounds<gpui::Pixels>, _, _| {
-                rec.borrow_mut().insert(key, (
-                    f32::from(b.origin.x), f32::from(b.origin.y),
-                    f32::from(b.size.width), f32::from(b.size.height),
-                ));
-            }, |_, _: (), _, _| {}).absolute().size_full()
-        };
         // ---- Alt のキーヒントの札(2026-08-13、台帳の残件⑤) ----
         // **札はタブとボタンの中に描く。** 座標を控えて上に重ねる手もあるが、
         // `btn_box` は描き始めに空にする(前の段の場所が残らないように)ので、
@@ -457,81 +444,50 @@ impl Render for Calc {
         // 小窓(…)が開いている間はリボン全体 — タブの切替も — を無効にする。
         // 一覧(▾)は外を押せば閉じる作りなので対象外
         let dlg_open = self.dialog_open();
-        let mut tabs = div().flex().flex_row().items_end().gap_1()
-            .px_2().bg(th_band);
-        // **段は 15 段を同じ並びで出します**(2026-08-19 発注者「使わない
-        // 場合には灰色にすればいいでしょう」)。表に無い段(参考資料・
-        // フォーム)は灰色で、押せません。並びが動かないので、文章の画面と
-        // 行き来しても段を探し直さずに済みます
-        for (位置, 段) in ui::tabs::merged().into_iter().enumerate() {
-            let 名 = 段.name;
-            let Some(i) = 段.sheet else {
-                // この画面には無い段。**灰色で出す**(未実装の釦と同じ描き方)
-                tabs = tabs.child(div()
-                    .id(SharedString::from(format!("tab{位置}")))
-                    .px_2p5().pt_1p5()
-                    .text_size(px(us * 12.0))
-                    .text_color(th_gray)
-                    .flex().flex_col().items_center().gap_1()
-                    .child(名)
-                    .child(div().h(px(2.0)).w_full()));
-                continue;
-            };
-            let tb = &ribbon::calc_tabs()[i];
-            // 文脈タブ(ピボット・表のデザイン)は、出る条件が揃うまで出さない
-            if ctx_hidden(tb) {
-                continue;
-            }
-            let on = i == self.tab;
-            // 文脈タブ(ピボット・表のデザイン)は色を付けて目に留める —
-            // 出たり消えたりするものは、出た瞬間に分からないと意味がない
-            let is_ctx = tb.cmds.iter()
-                .any(|c| c.id == "pivot-layout" || c.id == "td-header");
-            tabs = tabs.child(div()
-                .id(SharedString::from(format!("tab{i}")))
-                // 段の見出しも場所を控える(点検の道具が正確に押せるように)
-                .relative().child(mark_tab(i))
-                // Alt のキーヒントの札(出ているときだけ)
-                .children(hint_tab.get(&i).map(|h| badge(h, us)))
-                .px_2p5().pt_1p5()
-                .when(is_ctx, |d| d.bg(rgb(0xF3EDFB)).rounded_t_md())
-                .text_size(px(us * 12.0))
-                // 小窓中はタブも灰色・無反応(ready でないボタンと同じ描き方)
-                .text_color(if dlg_open { th_gray }
-                    else if is_ctx { rgb(0x8A63C9) }
-                    else if on { rgb(0x2E8B57) } else { th_fg })
-                .font_weight(if on { gpui::FontWeight::BOLD } else { gpui::FontWeight::NORMAL })
-                .when(!dlg_open, |d| d.cursor_pointer()
-                    .hover(|s| s.text_color(rgb(0x1B6E3C)))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        // タブ切替でも開いている一覧は畳む(他を押したら閉じる)
-                        this.close_menus();
-                        if this.tab != 0 {
-                            this.prev_tab = this.tab;
-                        }
-                        this.tab = i;
-                        cx.notify()
-                    })))
-                .flex().flex_col().items_center().gap_1()
-                .child(tb.name)
-                // 現在地の緑の下線(デスクトップ版の形)
-                .child(div().h(px(2.5)).w_full().rounded_sm()
-                    .bg(if on && is_ctx { rgb(0x8A63C9) }
-                        else if on { rgb(0x2E8B57) }
-                        else if is_ctx { rgb(0xF3EDFB) }
-                        else { th_band })));
-        }
-        tabs = tabs.child(div().flex_1())
-            .child(div().id("tab-find").px_2().pb_1().text_size(px(us * 12.0))
-                .text_color(rgb(0x555E66))
-                .when(!dlg_open, |d| d.cursor_pointer()
-                    .hover(|s| s.text_color(rgb(0x1B6E3C)))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.close_menus();
-                        this.run_cmd("replace", cx);
-                        cx.notify()
-                    })))
-                .child("🔍"));
+        // ---- リボンのタブの行(実装は ui::tabrow に1本。統合の段6の後半)----
+        let tabs = ui::tabrow::build(
+            cx,
+            ui::tabrow::Side::Sheet,
+            self.tab,
+            us,
+            dlg_open,
+            ui::tabrow::Look {
+                row_bg: th_band,
+                grey: th_gray,
+                on_fg: rgb(0x2E8B57),
+                idle_fg: th_fg,
+                hover_fg: rgb(0x1B6E3C),
+                find_fg: rgb(0x555E66),
+                underline_on: rgb(0x2E8B57),
+                ctx_fg: rgb(0x8A63C9),
+                ctx_bg: rgb(0xF3EDFB),
+            },
+            self.btn_box.clone(),
+            |i| ctx_hidden(&ribbon::calc_tabs()[i]),
+            |i| {
+                // 文脈タブ(ピボット・表のデザイン)は色を付けて目に留める —
+                // 出たり消えたりする物は、出た瞬間に分からないと意味がない
+                ribbon::calc_tabs()[i]
+                    .cmds
+                    .iter()
+                    .any(|c| c.id == "pivot-layout" || c.id == "td-header")
+            },
+            |i| hint_tab.get(&i).cloned(),
+            |this: &mut Calc, i, cx| {
+                // タブ切替でも開いている一覧は畳む(他を押したら閉じる)
+                this.close_menus();
+                if this.tab != 0 {
+                    this.prev_tab = this.tab;
+                }
+                this.tab = i;
+                cx.notify()
+            },
+            |this: &mut Calc, cx| {
+                this.close_menus();
+                this.run_cmd("replace", cx);
+                cx.notify()
+            },
+        );
 
         // リボンのボタン: 本家のデスクトップ版の一段の絵ボタン(writer の写し)。
         // 主要なボタンは名札つきの大ボタン、他は絵だけ(乗ると名前が下のステータス
