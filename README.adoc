@@ -70,6 +70,17 @@ officework carries no VBA compatibility, so it could settle both at once.
 * Workbooks and documents never carry code. Nothing equivalent to VBA exists, so the "open = execute" accident cannot happen by construction
 * Python runs on your machine. Code lives outside the workbook as `.py` files and runs in a sandbox (it cannot reach the network or roam your files). Called from cell formulas like `=double(A1)` or from buttons — and the data never leaves the machine
 
+=== "final_v2_fixed(2).xlsx" — you cannot use git
+
+Software developers have had a tool for keeping history (git) for nearly thirty years.
+Who changed what, and when — all of it recorded, any old version restorable.
+Office files cannot use it: they are compressed blobs whose differences cannot be read.
+So offices around the world still manage versions by filename — "final", "fixed", "(2)" — to this day.
+
+officework's documents and workbooks are plain text, so git just works.
+writer even saves one sentence per line, so *a diff shows exactly the sentence you changed*.
+And if you never install git, you lose nothing — plain-text files can join a history at any time, past versions and all.
+
 == What works today
 
 The highlights only — the full list lives in the link:docs/writer-manual.adoc[writer manual] and the link:docs/calc-manual.adoc[calc manual], which describe only what works today.
