@@ -210,7 +210,7 @@ pub const CALC: &[Tab] = &[
         c("digit-inc", "增加小數位數", "digit-inc"),
         c("cell-ins", "插入儲存格", "cell-ins"),
         c("cell-del", "刪除儲存格", "cell-del"),
-        c("cell-format", "儲存格樣式", "cell-format"),
+        c("cell-format", "格式化儲存格", "cell-format"),
         c("condformat", "條件格式設定", "condformat"),
         c("table-tpl", "插入表格", "table-tpl"),
         c("cell-styles", "儲存格樣式", "styles"),

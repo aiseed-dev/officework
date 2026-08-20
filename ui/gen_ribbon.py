@@ -269,7 +269,9 @@ LABEL = {
     "currency": "tipDigStyleCurrency", "percents": "tipDigStylePercent",
     "comma": "tipDigStyleComma", "digit-dec": "tipDecDecimal",
     "digit-inc": "tipIncDecimal", "cell-ins": "tipInsertOpt",
-    "cell-del": "tipDeleteOpt", "cell-format": "tipCellStyle",
+    # `cell-format` はここに置かない。`tipCellStyle` から引いていたのが
+    # 「セルのスタイル」が2つ並んだ原因です(言い換えの表に移しました)
+    "cell-del": "tipDeleteOpt",
     "condformat": "tipCondFormat", "table-tpl": "tipInsertTable",
     # 数式
     "additional-formula": None, "autosum": None, "recent": None,
@@ -321,6 +323,18 @@ LABEL = {
         # Align middle / Align center と分かれているのに、日本語はどちらも
         # 「中央揃え」で、ホームに同じ札のボタンが2つ並んでいました
         "middle": "上下中央揃え",
+        # **こちらの引き間違い**(2026-08-21)。`cell-format`(書式設定の
+        # 小窓を開く)を、`styles`(見た目の一覧)と同じ本家の語
+        # `tipCellStyle` から引いていたので、ホームに「セルのスタイル」が
+        # 2つ並んでいました。全部の言語に出ていました。
+        #
+        # 本家の語(`SSE.Views.DocumentHolder.txtCellFormat`)は日本語が
+        # 「セルをフォーマットする」で、Excel の言葉ではありません。
+        # Excel に合わせて「セルの書式設定」にします。14 言語の訳は本家の
+        # 同じ鍵から取り、ベトナム語だけ本家に訳が無いので
+        # LibreOffice の公式ベトナム語から取りました
+        # (gen_ribbon_locale.py の OVERRIDES に註つきで書いてあります)
+        "cell-format": "セルの書式設定",
     },
 }
 

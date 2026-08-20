@@ -210,7 +210,7 @@ pub const CALC: &[Tab] = &[
         c("digit-inc", "Ondalık Arttır", "digit-inc"),
         c("cell-ins", "Hücre Ekle", "cell-ins"),
         c("cell-del", "Hücre Sil", "cell-del"),
-        c("cell-format", "Hücre Stili", "cell-format"),
+        c("cell-format", "Hücreleri biçimlendir", "cell-format"),
         c("condformat", "Koşullu biçimlendirme", "condformat"),
         c("table-tpl", "Tablo ekle", "table-tpl"),
         c("cell-styles", "Hücre Stili", "styles"),

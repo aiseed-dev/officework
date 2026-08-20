@@ -210,7 +210,7 @@ pub const CALC: &[Tab] = &[
         c("digit-inc", "Tambah desimal", "digit-inc"),
         c("cell-ins", "Sisipkan sel", "cell-ins"),
         c("cell-del", "Hapus Sel", "cell-del"),
-        c("cell-format", "Gaya Sel", "cell-format"),
+        c("cell-format", "Format sel", "cell-format"),
         c("condformat", "Format bersyarat", "condformat"),
         c("table-tpl", "Sisipkan Tabel", "table-tpl"),
         c("cell-styles", "Gaya Sel", "styles"),

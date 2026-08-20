@@ -210,7 +210,7 @@ pub const CALC: &[Tab] = &[
         c("digit-inc", "Tăng thập phân", "digit-inc"),
         c("cell-ins", "Chèn ô", "cell-ins"),
         c("cell-del", "Xóa Ô", "cell-del"),
-        c("cell-format", "Kiểu ô", "cell-format"),
+        c("cell-format", "Định dạng ô", "cell-format"),
         c("condformat", "Định dạng có điều kiện", "condformat"),
         c("table-tpl", "Chèn bảng", "table-tpl"),
         c("cell-styles", "Kiểu ô", "styles"),

@@ -29,6 +29,10 @@ RIBBON = Path(__file__).resolve().parent.parent / "face/src/ribbon.rs"
 # このスクリプトは止まる — その語をここに足してから出し直す
 OVERRIDES = {
     "en": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        "セルの書式設定": "Format cells",
         "上下中央揃え": "Align middle",
         # 式から呼べる Python の関数の一覧(2026-08-16。本家に無い)
         "Python の関数": "Python functions",
@@ -145,6 +149,10 @@ OVERRIDES = {
     },
     # vendor のロケールに無い語の穴埋め(gen_lang.py が材料の訳と併用する)
     "zh-tw": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        "セルの書式設定": "格式化儲存格",
         "上下中央揃え": "置於中央對齊",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Python 函式",
@@ -236,6 +244,10 @@ OVERRIDES = {
         "宛先": "目的地",
 },
     "it": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        "セルの書式設定": "Formatta celle",
         "上下中央揃え": "Allinea in mezzo",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Funzioni Python",
@@ -330,6 +342,11 @@ OVERRIDES = {
         "小計": "Subtotali",
 },
     "tr": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        # 本家の右クリックメニューに訳が無いので、保護の小窓の語
+        "セルの書式設定": "Hücreleri biçimlendir",
         "上下中央揃え": "Ortaya hizala",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Python işlevleri",
@@ -442,6 +459,11 @@ OVERRIDES = {
         "小計": "Ara toplamlar",
 },
     "id": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        # 本家の右クリックメニューに訳が無いので、保護の小窓の語
+        "セルの書式設定": "Format sel",
         "上下中央揃え": "Rata di tengah",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Fungsi Python",
@@ -544,6 +566,16 @@ OVERRIDES = {
         "小計": "Subtotal",
 },
     "vi": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        # **本家に訳が無い言語**(2026-08-21)。ベトナム語のファイルは
+        # 5294 語中 1662 語しか埋まっておらず、Format cells 系の鍵は
+        # どれも空でした。LibreOffice の公式ベトナム語
+        # (source/vi/sc/messages.po の "Format Cells")から取りました。
+        # 同じ所の "Cell Style" = Kiểu ô は本家のベトナム語と一致するので、
+        # 言葉づかいは揃っています
+        "セルの書式設定": "Định dạng ô",
         "上下中央揃え": "Căn giữa",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Hàm Python",
@@ -715,6 +747,10 @@ OVERRIDES = {
         "操作を記録": "Ghi lại thao tác",
 },
     "de": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        "セルの書式設定": "Zellen formatieren",
         "上下中央揃え": "Mittig ausrichten",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Python-Funktionen",
@@ -803,6 +839,10 @@ OVERRIDES = {
         "小計": "Teilergebnisse",
 },
     "es": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        "セルの書式設定": "Dar formato a celdas",
         "上下中央揃え": "Alinear al medio",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Funciones de Python",
@@ -889,6 +929,10 @@ OVERRIDES = {
         "宛先": "Destino",
 },
     "fr": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        "セルの書式設定": "Format des cellules",
         "上下中央揃え": "Aligner au centre",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Fonctions Python",
@@ -975,6 +1019,10 @@ OVERRIDES = {
         "宛先": "Destination",
 },
     "pt-br": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        "セルの書式設定": "Formatar celulas",
         "上下中央揃え": "Alinhar ao meio",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Funções Python",
@@ -1071,6 +1119,11 @@ OVERRIDES = {
         "読み取り専用を勧める": "Sugerir só de leitura",
 },
     "pt": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        # 本家の右クリックメニューに訳が無いので、保護の小窓の語
+        "セルの書式設定": "Formatar células",
         "上下中央揃え": "Alinhar ao meio",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Funções Python",
@@ -1194,6 +1247,10 @@ OVERRIDES = {
         "画面の文字を小さく": "Diminuir o texto do ecrã",
 },
     "ru": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        "セルの書式設定": "Форматировать ячейки",
         "上下中央揃え": "Выровнять по середине",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Функции Python",
@@ -1282,6 +1339,10 @@ OVERRIDES = {
         "暗号化する": "Зашифровать",
 },
     "ko": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        "セルの書式設定": "셀 서식",
         "上下中央揃え": "중간 정렬",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Python 함수",
@@ -1370,6 +1431,10 @@ OVERRIDES = {
         "操作を記録": "동작 기록",
 },
     "zh": {
+        # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
+        # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
+        # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
+        "セルの書式設定": "单元格格式",
         "上下中央揃え": "居中对齐",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Python 函数",

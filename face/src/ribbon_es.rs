@@ -210,7 +210,7 @@ pub const CALC: &[Tab] = &[
         c("digit-inc", "Aumentar decimales", "digit-inc"),
         c("cell-ins", "Insertar celdas", "cell-ins"),
         c("cell-del", "Eliminar celdas", "cell-del"),
-        c("cell-format", "Estilo de celda", "cell-format"),
+        c("cell-format", "Dar formato a celdas", "cell-format"),
         c("condformat", "Formato condicional", "condformat"),
         c("table-tpl", "Insertar tabla", "table-tpl"),
         c("cell-styles", "Estilo de celda", "styles"),

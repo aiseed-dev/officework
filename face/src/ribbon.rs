@@ -381,7 +381,7 @@ pub const CALC: &[Tab] = &[
         c("digit-inc", "小数点以下の表示桁数を増やす", "digit-inc"),
         c("cell-ins", "セルを挿入", "cell-ins"),
         c("cell-del", "セルを削除", "cell-del"),
-        c("cell-format", "セルのスタイル", "cell-format"),
+        c("cell-format", "セルの書式設定", "cell-format"),
         c("condformat", "条件付き書式", "condformat"),
         c("table-tpl", "表の挿入", "table-tpl"),
         c("cell-styles", "セルのスタイル", "styles"),

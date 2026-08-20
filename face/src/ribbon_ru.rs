@@ -210,7 +210,7 @@ pub const CALC: &[Tab] = &[
         c("digit-inc", "Увеличить разрядность", "digit-inc"),
         c("cell-ins", "Вставить ячейки", "cell-ins"),
         c("cell-del", "Удалить ячейки", "cell-del"),
-        c("cell-format", "Стиль ячейки", "cell-format"),
+        c("cell-format", "Форматировать ячейки", "cell-format"),
         c("condformat", "Условное форматирование", "condformat"),
         c("table-tpl", "Вставить таблицу", "table-tpl"),
         c("cell-styles", "Стиль ячейки", "styles"),

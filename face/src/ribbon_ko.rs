@@ -210,7 +210,7 @@ pub const CALC: &[Tab] = &[
         c("digit-inc", "자리수 늘림", "digit-inc"),
         c("cell-ins", "셀 삽입", "cell-ins"),
         c("cell-del", "셀 삭제", "cell-del"),
-        c("cell-format", "셀 스타일", "cell-format"),
+        c("cell-format", "셀 서식", "cell-format"),
         c("condformat", "조건부 서식", "condformat"),
         c("table-tpl", "표 삽입", "table-tpl"),
         c("cell-styles", "셀 스타일", "styles"),
