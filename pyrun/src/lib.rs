@@ -192,43 +192,50 @@ pub fn pip_hint(pkg: &str) -> String {
     }
 }
 
-/// リボンに出るマクロの名乗り。
+/// リボンに出るマクロの宣言。
 pub struct RibbonDecl {
     /// .py の名前(= 走らせるモジュール名)
     pub module: String,
-    /// ボタンに出す札。**訳さない** — 利用者自身の言葉
+    /// ボタンに出すラベル。**訳しません** — 利用者自身の言葉です
     pub label: String,
-    /// 絵の名前(icons の slot)。無い名前なら呼ぶ側が既定に落とす
+    /// アイコンの名前(icons の slot)。無い名前なら呼ぶ側が既定に落とす
     pub icon: String,
-    /// どの段に出すか(既定は「マクロ」)
+    /// どのタブに出すか(既定は「マクロ」)
     pub tab: String,
 }
 
-/// 置き場の .py から名乗りを読む。**Python は走らせない** — [`def_names`] と
-/// 同じで行を読むだけ(名乗りを読むために利用者のコードを走らせたら、
+/// 置き場の .py から宣言を読む。**Python は走らせない** — [`def_names`] と
+/// 同じで行を読むだけ(宣言を読むために利用者のコードを走らせたら、
 /// 「押したときだけ走る」が嘘になる)。
 ///
-/// 名乗りの形は素の Python の辞書1つ:
+/// 宣言の形は普通の Python の辞書1つです:
 ///
 /// ```python
-/// リボン = {"札": "月次の締め", "絵": "py-list", "段": "マクロ"}
+/// リボン = {"ラベル": "月次の締め", "アイコン": "py-list", "タブ": "マクロ"}
 /// ```
 ///
-/// 英語の綴り(`ribbon` / `label` / `icon` / `tab`)も受ける。名乗りの無い
-/// .py はリボンに出ない(置き忘れをボタンにしない)。
+/// キーは英語の綴り(`ribbon` / `label` / `icon` / `tab`)でも書けます。
+///
+/// **前の書き方も動きます。** はじめは「札」「絵」「段」というキーでしたが、
+/// 普通の言葉ではないので言い換えました(2026-08-21)。既に書いた .py が
+/// 動かなくなると困るので、古いキーも読み続けます。
+///
+/// 宣言の無い .py はリボンに出ない(置き忘れをボタンにしない)。
 pub fn ribbon_decls(dir: &std::path::Path) -> Vec<RibbonDecl> {
     modules_in(dir)
         .into_iter()
         .filter_map(|m| {
             let src = std::fs::read_to_string(dir.join(format!("{m}.py"))).ok()?;
             let kv = decl_dict(&src)?;
-            let get = |a: &str, b: &str| {
-                kv.iter().find(|(k, _)| k == a || k == b).map(|(_, v)| v.clone())
+            let get = |names: &[&str]| {
+                kv.iter()
+                    .find(|(k, _)| names.contains(&k.as_str()))
+                    .map(|(_, v)| v.clone())
             };
             Some(RibbonDecl {
-                label: get("札", "label").unwrap_or_else(|| m.clone()),
-                icon: get("絵", "icon").unwrap_or_default(),
-                tab: get("段", "tab").unwrap_or_else(|| "マクロ".into()),
+                label: get(&["ラベル", "label", "札"]).unwrap_or_else(|| m.clone()),
+                icon: get(&["アイコン", "icon", "絵"]).unwrap_or_default(),
+                tab: get(&["タブ", "tab", "段"]).unwrap_or_else(|| "マクロ".into()),
                 module: m,
             })
         })
@@ -1181,7 +1188,48 @@ mod cage_tests {
         assert_eq!(v[0].module, "締め");
         assert_eq!(v[0].label, "月次の締め");
         assert_eq!(v[0].tab, "マクロ", "段は既定でマクロ");
-        assert_eq!(v[0].icon, "", "絵は空 — 既定に落とすのは呼ぶ側(icons を知らない)");
+        assert_eq!(v[0].icon, "", "アイコンは空 — 既定に落とすのは呼ぶ側(icons を知らない)");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn リボンの宣言は普通の言葉のキーでも古いキーでも読める() {
+        // 「札・絵・段」は普通の言葉ではないので「ラベル・アイコン・タブ」に
+        // 言い換えました(2026-08-21)。**既に書いた .py が動かなくなると
+        // 困る**ので、古いキーも読み続けます
+        let d = std::env::temp_dir().join(format!("owtest-ribbon2-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(
+            d.join("新しい.py"),
+            "リボン = {\"ラベル\": \"月次\", \"アイコン\": \"py-run\", \"タブ\": \"経理\"}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            d.join("古い.py"),
+            "リボン = {\"札\": \"年次\", \"絵\": \"py-list\", \"段\": \"経理\"}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            d.join("英語.py"),
+            "リボン = {\"label\": \"Monthly\", \"icon\": \"py-run\", \"tab\": \"Books\"}\n",
+        )
+        .unwrap();
+        let mut v = ribbon_decls(&d);
+        v.sort_by(|a, b| a.module.cmp(&b.module));
+        let 見た: Vec<_> = v
+            .iter()
+            .map(|r| (r.label.as_str(), r.icon.as_str(), r.tab.as_str()))
+            .collect();
+        assert_eq!(
+            見た,
+            vec![
+                ("年次", "py-list", "経理"),   // 古い.py(札・絵・段)
+                ("月次", "py-run", "経理"),    // 新しい.py(ラベル・アイコン・タブ)
+                ("Monthly", "py-run", "Books"), // 英語.py
+            ],
+            "3つの書き方が同じように読めます"
+        );
         let _ = std::fs::remove_dir_all(&d);
     }
 
