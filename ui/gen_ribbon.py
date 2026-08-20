@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """`ribbon.rs` を Euro-Office の現物から生成する。
 
-**いまはまだ回して上書きしないでください**(2026-08-20)。
-24 タブのうち 18 は実物と一致しますが、6 タブに差が残っています。
-上書きすると、実物に出ている灰色のボタンが 9 個消えます。
-残りの中身は SEKKEI「B-1 の続き」に書いてあります。
+**実物と一致しています**(2026-08-21。24 タブ・314 ボタン)。
+`tools/ribbon_gen_check.py` が見張っていて、離れたら止まります。
+
+*ただし上書きは勧めません。* 実物の表には決めの理由が註として書いて
+あります(「ホームの Σ はオート SUM」など 40 行あまり)。上書きすると
+消えるので、**離れていないことを検査で確かめる**形にしています。
 
 
 **手で要約しない。** タブの並びもボタンの並びも
@@ -215,6 +217,11 @@ DROP_TABS: set = set()
 # slot の id → ja.json の鍵の末尾(tip か cap)。
 # 現物の id と鍵名は綴りが違うので、ここだけは対応表が要る。
 LABEL = {
+    # 図形まわり(2026-08-21)。`slot-img-` と `slot-shapes-` を拾うように
+    # したので、札の鍵も要る
+    "img-movefrwd": "capImgForward", "img-movebkwd": "capImgBackward",
+    "img-align": "capImgAlign", "img-group": "capImgGroup",
+    "shapes-merge": "capShapesMerge",
     # 常時
     "save": "tipSave", "print": "tipPrint", "copy": "tipCopy", "paste": "tipPaste",
     "undo": "tipUndo", "redo": "tipRedo", "cut": "tipCut", "copystyle": "tipCopyStyle",
@@ -279,6 +286,49 @@ LABEL = {
 
 # ja.json に鍵が無い(アイコンだけ・別画面)ものの日本語名。
 # **現物に出ている語をそのまま使う。** 勝手な言い換えをしない。
+# **本家の語を言い換えた分**(2026-08-21)。
+#
+# 本家の札が短すぎて何をする物か分からない、または本家に札が無くて
+# 欄の名前がそのまま出てしまう物です。**日本の事務の言葉に寄せます。**
+#
+# `FALLBACK` は「本家に札が無いとき」に使う表で、こちらは「札はあるが
+# 言い換える」表です。分けているのは、*本家に無いのか、あえて変えたのか*を
+# 後から読めるようにするためです。
+言い換え = {
+    # 両方で同じ言い方をする物
+    "*": {
+        "img-align": "配置",                # 本家「整列」— 表の側に合わせる
+        "img-group": "グループ化",          # 本家「グループ」— 動作なので動詞に
+        "inscheckbox": "チェックボックス",  # 本家は札が無い
+        "instextart": "テキストアートの挿入",
+        "print-gridlines": "枠線も印刷",
+        "print-headings": "見出しも印刷",
+        "data-external-links": "外部リンク(値で取り込む)",  # 何が起きるかを足す
+        "show-gridlines": "枠線表示",       # 本家「グリッド線」— Excel の言葉
+    },
+    # **同じ欄でも、アプリで言い方が変わる物。** 文章は段落、表はセルが
+    # 相手なので、同じ「スタイル」でも指す物が違います
+    "documenteditor": {
+        "direction": "テキスト方向",
+        "styles": "段落のスタイル",
+    },
+    "spreadsheeteditor": {
+        "direction": "文字の向き(右横書き)",
+        "styles": "セルのスタイル",
+        # 表が守るのはシート。文章は文書なので「保護」のまま
+        "prot-doc": "シートを保護する",
+    },
+}
+
+# **アプリごとに違う絵**(2026-08-21)。同じ欄でも、表と文章で描いてある
+# 物が違うので、絵の名前を差し替えます
+絵の差し替え = {
+    "spreadsheeteditor": {
+        "insimage": "insimage-c",     # 表の画像の絵(文章のとは別に描いてある)
+        "prot-doc": "protect-sheet",  # シートを守る絵
+    },
+}
+
 FALLBACK = {
     "bold": "太字", "italic": "斜体", "underline": "下線",
     "strikeout": "取り消し線", "superscript": "上付き", "subscript": "下付き",
@@ -328,13 +378,22 @@ def tab_names(app, prefix):
 
 
 def label_of(app_loc, prefix, slot):
+    # 言い換えが先。**本家に札があっても、こちらを使う**
+    app = "documenteditor" if prefix == "DE" else "spreadsheeteditor"
+    for 表 in (言い換え[app], 言い換え["*"]):
+        if slot in 表:
+            return 表[slot]
     key = LABEL.get(slot)
     if key:
         for who in ("Toolbar", "ViewTab", "HeaderFooterTab"):
             full = f"{prefix}.Views.{who}.{key}"
             if full in app_loc:
                 # tip は説明文のことがある。最初の読点までを名前にする
-                return re.split(r"[。<（(]", app_loc[full])[0].strip()
+                # **見えない空白を落とす。** 本家の語には幅ゼロの空白(U+200B)が
+                # 混ざっていることがあり、そのまま持つと実物と字面が合いません
+                # (2026-08-21 に「折り返して全体を表示する」で出た)
+                字 = re.split(r"[。<（(]", app_loc[full])[0]
+                return 字.replace("\u200b", "").replace("\ufeff", "").strip()
     if slot in FALLBACK:
         return FALLBACK[slot]
     if slot in DYN_LABELS:
@@ -448,6 +507,16 @@ TAB_NAME_KEYS = {"draw": "Draw", "headerfooter": "HeaderFooter",
                  "macros": "マクロ"}
 
 
+# **絵の実体がまだ無いボタン。** 本家には在りますが、うちに絵が無いので
+# 出しません(出すと face の試験が止まります — 実体の無い絵は増やさない)。
+# 絵を描いて icons.rs に足したら、ここから外せば出ます
+絵が無い = {"img-wrapping"}
+
+# **入切のボタン**(本家の欄にも在る物)。押すと入/切が変わります。
+# うちが足した分は EXTRA_CMDS の書き方の欄で指します
+入切 = {"formula-bar", "show-headings", "show-zeros"}
+
+
 def tabs_of(app, prefix):
     tpl = (ROOT / app / "main/app/template/Toolbar.template").read_text(encoding="utf-8")
     loc = locale(app)
@@ -461,8 +530,16 @@ def tabs_of(app, prefix):
         tab, body = parts[i], parts[i + 1]
         if tab in DROP_TABS:
             continue
+        # **img と shapes も拾う**(2026-08-21)。図形まわりのボタンが
+        # この種類で、拾っていなかったので表から丸ごと落ちていた。
+        #
+        # *この2つは前置きを残します*(`img-group` のように)。落とすと
+        # `group`(データタブのグループ化)と名前がぶつかって、灰色のはずの
+        # ボタンが押せる形になります(2026-08-21 に実際に出た)
         slots = list(dict.fromkeys(
-            re.findall(r'id="slot-(?:btn|field|chk|cmb)-([a-z0-9-]+)"', body)))
+            a or b for a, b in re.findall(
+                r'id="slot-(?:(?:btn|field|chk|cmb)-([a-z0-9-]+)'
+                r'|((?:img|shapes)-[a-z0-9-]+))"', body)))
         # 「区切り」は class 注入(btn-slot.btn-pagebreak)なので id では拾えない。
         # Euro-Office の挿入タブでは空白ページの隣にある
         if tab == "ins" and app == "documenteditor" and "blankpage" in slots:
@@ -563,6 +640,8 @@ def tabs_of(app, prefix):
         out.insert(at, entry)
     else:
         out.append(entry)
+    # 絵の実体が無い物は落とす(理由は上の表)
+    out = [(n, [i for i in ids if i not in 絵が無い]) for (n, ids) in out]
     return out, loc
 
 
@@ -581,7 +660,9 @@ DYN_ICONS = {}
 #    4個しかない)。**うちは小窓を持たない作り**なので、タブに直接置く
 # 3. 本当にうち独自(ふりがな・Python の関数・画面の文字を大きく/小さく)
 #
-# 形は (タブ, どのボタンの後ろに置くか, id, 見出し, 絵)。後ろが None なら先頭。
+# 形は (タブ, どのボタンの後ろに置くか, id, 見出し, 絵, 書き方)。
+# 後ろが None なら先頭。書き方は c=押す / t=入切 / x=灰色 / xt=灰色の入切 /
+# xm=灰色の切り替え(標準 / 改ページ プレビュー)。
 # **上から順に効く**ので、続けて足すときは直前に足した物を指します。
 #
 # *置き場所を持たせた理由*(2026-08-20 発注者「生成スクリプトを修正しないと
@@ -592,76 +673,119 @@ DYN_ICONS = {}
 # この一覧は手で書いていません。素の出力と実物を突き合わせて機械に出させました。
 EXTRA_CMDS = {
     "writer": [
-        ("ホーム", 'ruby', "ai-furigana", "ふりがな", "ai-furigana"),
-        ("参考資料", 'crossref', "footnote", "脚注", "footnote"),
-        ("表示", None, "nav", "ナビゲーション", "nav"),
-        ("表示", 'nav', "fit-page", "ページに合わせる", "fit-page"),
-        ("表示", 'fit-page', "fit-width", "幅に合わせる", "fit-width"),
-        ("表示", 'fit-width', "zoom100", "100%に拡大する", "zoom100"),
-        ("表示", 'zoom-out', "printview", "印刷レイアウト", "printview"),
-        ("表示", 'printview', "multipage", "複数ページ", "multipage"),
-        ("表示", 'ruler', "show-toolbar", "ツールバーを常に表示する", "show-toolbar"),
-        ("表示", 'show-toolbar', "show-statusbar", "ステータスバー", "show-statusbar"),
-        ("表示", 'show-statusbar', "show-left", "左パネル", "show-left"),
-        ("表示", 'show-left', "show-right", "右パネル", "show-right"),
+        ("ホーム", 'ruby', "ai-furigana", "ふりがな", "ai-furigana", "c"),
+        ("参考資料", 'crossref', "footnote", "脚注", "footnote", "c"),
+        ("表示", None, "nav", "ナビゲーション", "nav", "t"),
+        ("表示", 'nav', "fit-page", "ページに合わせる", "fit-page", "c"),
+        ("表示", 'fit-page', "fit-width", "幅に合わせる", "fit-width", "c"),
+        ("表示", 'fit-width', "zoom100", "100%に拡大する", "zoom100", "c"),
+        ("表示", 'zoom-out', "printview", "印刷レイアウト", "printview", "c"),
+        ("表示", 'printview', "multipage", "複数ページ", "multipage", "c"),
+        ("表示", 'ruler', "show-toolbar", "ツールバーを常に表示する", "show-toolbar", "t"),
+        ("表示", 'show-toolbar', "show-statusbar", "ステータスバー", "show-statusbar", "t"),
+        ("表示", 'show-statusbar', "show-left", "左パネル", "show-left", "t"),
+        ("表示", 'show-left', "show-right", "右パネル", "show-right", "t"),
     ],
     "calc": [
         # コピー・切り取り・貼り付けは、本家ではタブの外(全タブ共通の場所)。
         # Excel と同じくホームの先頭に置く
-        ("ホーム", None, "copy", "コピー", "copy"),
-        ("ホーム", 'copy', "cut", "切り取り", "cut"),
-        ("ホーム", 'cut', "paste", "貼り付け", "paste"),
-        ("ホーム", 'paste', "copystyle", "書式のコピー", "copystyle"),
-        ("ホーム", 'text-orient', "align-left", "左揃え", "align-left"),
-        ("ホーム", 'align-center', "align-right", "右揃え", "align-right"),
-        ("ホーム", 'align-just', "align-dist", "均等割付", "align-dist"),
-        ("ホーム", 'direction', "sum", "オートSUM", "autosum"),
-        ("ホーム", 'clear', "sort-desc", "降順並べ替え", "sortdesc"),
-        ("ホーム", 'sort-desc', "sort-asc", "昇順並べ替え", "sortasc"),
-        ("挿入", None, "pivot-insert", "ピボットテーブルを挿入", "add-pivot"),
-        ("挿入", 'inssparkline', "addcomment", "コメント", "ins-comment"),
-        ("挿入", 'instextart', "editheader", "ヘッダー/フッター", "editheader"),
-        ("描画", None, "draw-select", "選択", "select-tool"),
-        ("レイアウト", 'pagebreak', "editheader", "ヘッダー/フッター", "editheader"),
+        ("ホーム", None, "copy", "コピー", "copy", "c"),
+        ("ホーム", 'copy', "cut", "切り取り", "cut", "c"),
+        ("ホーム", 'cut', "paste", "貼り付け", "paste", "c"),
+        ("ホーム", 'paste', "copystyle", "書式のコピー", "copystyle", "c"),
+        ("ホーム", 'text-orient', "align-left", "左揃え", "align-left", "c"),
+        ("ホーム", 'align-center', "align-right", "右揃え", "align-right", "c"),
+        ("ホーム", 'align-just', "align-dist", "均等割付", "align-dist", "c"),
+        ("ホーム", 'direction', "sum", "オートSUM", "autosum", "c"),
+        ("ホーム", 'clear', "sort-desc", "降順並べ替え", "sortdesc", "c"),
+        ("ホーム", 'sort-desc', "sort-asc", "昇順並べ替え", "sortasc", "c"),
+        ("挿入", None, "pivot-insert", "ピボットテーブルを挿入", "add-pivot", "c"),
+        ("挿入", 'inssparkline', "addcomment", "コメント", "ins-comment", "c"),
+        ("挿入", 'instextart', "editheader", "ヘッダー/フッター", "editheader", "c"),
+        ("描画", None, "draw-select", "選択", "select-tool", "c"),
+        ("レイアウト", 'pagebreak', "editheader", "ヘッダー/フッター", "editheader", "c"),
         # 本家では「拡大縮小印刷」の中の選択肢。うちは小窓を持たないので
         # レイアウトタブに独立したボタンで出す
-        ("レイアウト", 'scale', "fit-pages", "紙に収める", "fit-pages"),
-        ("レイアウト", 'fit-pages', "printarea-add", "範囲を足す", "printarea-add"),
-        ("レイアウト", 'printarea-add', "show-breaks", "紙の切れ目", "show-breaks"),
-        ("数式", 'insert-function', "func-list", "Python の関数", "py-list"),
-        ("数式", 'defname', "paste-name", "名前を貼り付け", "paste-name"),
-        ("データ", 'clear-filter', "sort-desc", "降順並べ替え", "sortdesc"),
-        ("データ", 'sort-desc', "sort-asc", "昇順並べ替え", "sortasc"),
+        ("レイアウト", 'scale', "fit-pages", "紙に収める", "fit-pages", "c"),
+        ("レイアウト", 'fit-pages', "printarea-add", "範囲を足す", "printarea-add", "c"),
+        ("レイアウト", 'printarea-add', "show-breaks", "紙の切れ目", "show-breaks", "c"),
+        ("数式", 'insert-function', "func-list", "Python の関数", "py-list", "c"),
+        ("数式", 'defname', "paste-name", "名前を貼り付け", "paste-name", "c"),
+        ("データ", 'clear-filter', "sort-desc", "降順並べ替え", "sortdesc", "c"),
+        ("データ", 'sort-desc', "sort-asc", "昇順並べ替え", "sortasc", "c"),
         # 小計は本家のデータタブに無いが、グループ化を「畳むと合計が残る」
         # 形で使うために置く(Excel の データ > 小計 に相当。発注者指摘)
-        ("データ", 'hide-details', "subtotal", "小計", "subtotal"),
-        ("データ", 'subtotal', "datatable", "データテーブル", "datatable"),
-        ("データ", 'datatable', "python", "Python", "python"),
-        ("データ", 'python', "csv-kind", "CSV の形", "csv-kind"),
-        ("データ", 'csv-kind', "flash-fill", "フラッシュフィル", "flash-fill"),
-        ("ピボットテーブル", 'pivot-insert', "pivot-fields", "フィールドリスト", "pivot-fields"),
+        ("データ", 'hide-details', "subtotal", "小計", "subtotal", "c"),
+        ("データ", 'subtotal', "datatable", "データテーブル", "datatable", "c"),
+        ("データ", 'datatable', "python", "Python", "python", "c"),
+        ("データ", 'python', "csv-kind", "CSV の形", "csv-kind", "c"),
+        ("データ", 'csv-kind', "flash-fill", "フラッシュフィル", "flash-fill", "c"),
+        ("ピボットテーブル", 'pivot-insert', "pivot-fields", "フィールドリスト", "pivot-fields", "c"),
         # 本家は値フィールドの設定の中にある「計算の種類」。うちは指図が
         # 集計の名前ひとつなので、タブに独立したボタンとして置く
-        ("ピボットテーブル", 'pivot-blank', "pivot-showas", "計算の種類", "pivot-showas"),
-        ("ピボットテーブル", 'pivot-layout', "pivot-style", "スタイル", "pivot-style"),
+        ("ピボットテーブル", 'pivot-blank', "pivot-showas", "計算の種類", "pivot-showas", "c"),
+        ("ピボットテーブル", 'pivot-layout', "pivot-style", "スタイル", "pivot-style", "c"),
         # 本家では「セルの書式設定 > 保護」タブと「シートの保護」小窓の中。
         # うちは小窓を持たない作りなので、保護タブに独立したボタンで出す
-        ("保護", 'prot-sign', "cell-lock", "セルのロック", "cell-lock"),
-        ("保護", 'cell-lock', "prot-allow", "許可する操作", "prot-allow"),
-        ("保護", 'prot-allow', "recover", "復旧", "recover"),
-        ("保護", 'recover', "recover-every", "控えの間隔", "recover-every"),
-        ("保護", 'recover-every', "read-only-rec", "読み取り専用を勧める", "read-only-rec"),
-        ("表示", 'sheet-view', "zoom-in", "拡大", "zoom-in"),
-        ("表示", 'zoom-in', "zoom-out", "縮小", "zoom-out"),
-        ("表示", 'zoom-out', "ui-bigger", "画面の文字を大きく", "ui-bigger"),
-        ("表示", 'ui-bigger', "ui-smaller", "画面の文字を小さく", "ui-smaller"),
-        ("表示", 'ui-smaller', "theme", "インターフェイステーマ", "theme"),
-        ("表示", 'freeze', "formula-bar", "数式バー", "formula-bar"),
-        ("表示", 'show-headings', "show-zeros", "0を表示する", "show-zeros"),
-        ("表示", 'show-zeros', "show-left", "左パネル", "show-left"),
-        ("表示", 'show-left', "show-right", "右パネル", "show-right"),
+        # 本家に無い灰色。**まだ押せないが性格は分かる** — どちらも入切
+        ("保護", 'prot-encrypt', "", "ブックを保護する", "protect-workbook", "xt"),
+        ("保護", 'prot-doc', "", "範囲を保護する", "protect-range", "xt"),
+        ("保護", 'prot-sign', "cell-lock", "セルのロック", "cell-lock", "c"),
+        ("保護", 'cell-lock', "prot-allow", "許可する操作", "prot-allow", "c"),
+        ("保護", 'prot-allow', "recover", "復旧", "recover", "c"),
+        ("保護", 'recover', "recover-every", "控えの間隔", "recover-every", "c"),
+        ("保護", 'recover-every', "read-only-rec", "読み取り専用を勧める", "read-only-rec", "c"),
+        # 表示の切り替え(どれか1つ)。入切とは性格が違う
+        ("表示", 'sheet-view', "", "標準", "view-normal", "xm"),
+        ("表示", 'view-normal', "", "改ページ プレビュー", "view-pagebreak", "xm"),
+        ("表示", 'sheet-view', "zoom-in", "拡大", "zoom-in", "c"),
+        ("表示", 'zoom-in', "zoom-out", "縮小", "zoom-out", "c"),
+        ("表示", 'zoom-out', "ui-bigger", "画面の文字を大きく", "ui-bigger", "c"),
+        ("表示", 'ui-bigger', "ui-smaller", "画面の文字を小さく", "ui-smaller", "c"),
+        ("表示", 'ui-smaller', "theme", "インターフェイステーマ", "theme", "c"),
+        ("表示", 'freeze', "formula-bar", "数式バー", "formula-bar", "t"),
+        ("表示", 'show-headings', "show-zeros", "0を表示する", "show-zeros", "t"),
+        ("表示", 'show-zeros', "show-left", "左パネル", "show-left", "t"),
+        ("表示", 'show-left', "show-right", "右パネル", "show-right", "t"),
     ],
 }
+
+
+# **本家と場所を変えたボタン**(2026-08-21)。
+#
+# `EXTRA_CMDS` は「足す」だけで、本家に在る物を動かせません。実物では
+# いくつか動かしてあるので、その分をここに書きます。
+#
+# 形は (アプリ, タブ, 動かす id, どの後ろへ)。後ろが None なら先頭。
+# **理由を1つずつ書きます** — 本家の並びを崩すのは例外なので、
+# 「なんとなく」で増やさないためです。
+並べ替え = [
+    # 暗い明るいは目盛りより先。表示の切り替えの仲間として並べる
+    ("documenteditor", "表示", "darkmode", "multipage"),
+    # 並べ替えの3つを続ける(昇順・降順・ユーザー設定)。本家は
+    # ユーザー設定だけが離れていて、続けて使う物が3箇所に散る
+    ("spreadsheeteditor", "データ", "custom-sort", "sort-asc"),
+    # 表示の切り替え(標準/改ページ)をいちばん前へ。まず「どの見え方か」を
+    # 選び、そのあと拡大や枠の固定を触る順にする
+    ("spreadsheeteditor", "表示", "freeze", "theme"),
+    ("spreadsheeteditor", "表示", "formula-bar", "freeze"),
+    # 表示の切り替えは、シートの見え方のすぐ後ろ
+    ("spreadsheeteditor", "表示", "view-normal", "sheet-view"),
+    ("spreadsheeteditor", "表示", "view-pagebreak", "view-normal"),
+    # 絞り込みは並べ替えの隣(続けて使う)。本家は離れている
+    ("spreadsheeteditor", "ホーム", "setfilter", "sort-asc"),
+    ("spreadsheeteditor", "ホーム", "clear-filter", "setfilter"),
+    # ブックの保護は暗号化の次。範囲の保護はその次で、細かい方へ降りる順
+    ("spreadsheeteditor", "保護", "prot-doc", "protect-workbook"),
+    ("spreadsheeteditor", "保護", "protect-range", "prot-doc"),
+]
+
+# **本家に在るが、うちでは別のタブに置いた物。**
+# 二重に出さないよう、元のタブからは外します
+外す = [
+    # 関数の挿入は数式タブが持ち場。ホームにも欄があるが出さない
+    ("spreadsheeteditor", "ホーム", "insert-function"),
+]
 
 
 def emit():
@@ -679,25 +803,55 @@ def emit():
             rows = []
             for s in slots:
                 lab = label_of(loc, prefix, s).replace('"', "'")
-                # 絵は本家の名前がそのまま鍵。本家に無いボタンだけ別に決める
-                icon = DYN_ICONS.get(s, s)
-                rows.append((ready.get(s), lab, icon))
+                # 絵は本家の名前がそのまま鍵。本家に無いボタンだけ別に決める。
+                # アプリで絵が違う物は差し替える
+                icon = 絵の差し替え.get(app, {}).get(s) or DYN_ICONS.get(s, s)
+                cid = ready.get(s)
+                # **同じ命令を1つのタブに二度出さない。** 本家の欄が2つ
+                # (`smartpicker` と `insrecommend`)同じ命令に結ばれていて、
+                # 挿入タブに同じボタンが2回出ていました(2026-08-21)
+                if cid is not None and any(r[0] == cid for r in rows):
+                    continue
+                rows.append((cid, lab, icon, "t" if cid in 入切 else "c"))
             # **置き場所つきで差し込む。** どのボタンの後ろに置くかを
             # 指しておかないと、足した分が全部タブの末尾へ寄ります
             # (コピーがホームの一番後ろへ行く)
-            for (_tab, after, cid, clab, cicon) in [e for e in extras if e[0] == name]:
-                item = (cid, clab, cicon)
+            for (_tab, after, cid, clab, cicon, ckind) in [e for e in extras if e[0] == name]:
+                # 灰色は id を持たない(`x("札","絵")` の2引数)
+                item = (None if ckind.startswith("x") else cid, clab, cicon, ckind)
                 if after is None:
                     rows.insert(0, item)
                 else:
-                    k = next((i + 1 for i, r in enumerate(rows) if r[0] == after), len(rows))
+                    # 目印は id か絵。**灰色は id を持たない**ので、絵で指せる
+                    # ようにしておかないと、灰色の後ろに置けません
+                    k = next((i + 1 for i, r in enumerate(rows)
+                              if r[0] == after or r[2] == after), len(rows))
                     rows.insert(k, item)
+            # 別のタブに置いた物を外す
+            for (ap, tb, gid) in 外す:
+                if ap == app and tb == name:
+                    rows = [r for r in rows if r[0] != gid]
+            # 場所を変えた物を動かす
+            for (ap, tb, mid, after) in 並べ替え:
+                if ap != app or tb != name:
+                    continue
+                hit = next((r for r in rows if r[0] == mid or r[2] == mid), None)
+                if hit is None:
+                    continue
+                rows.remove(hit)
+                k = 0 if after is None else next(
+                    (i + 1 for i, r in enumerate(rows) if r[0] == after or r[2] == after),
+                    len(rows))
+                rows.insert(k, hit)
             print(f'    Tab {{ name: "{name}", cmds: &[')
-            for cid, lab, icon in rows:
+            for cid, lab, icon, kind in rows:
                 if cid is None:
-                    print(f'        x("{lab}", "{icon}"),')
+                    # 灰色は id を持たない。書き方(x / xt / xm)が性格を表す
+                    k = kind if kind.startswith("x") else "x"
+                    print(f'        {k}("{lab}", "{icon}"),')
                 else:
-                    print(f'        c("{cid}", "{lab}", "{icon}"),')
+                    k = kind if kind in ("c", "t") else "c"
+                    print(f'        {k}("{cid}", "{lab}", "{icon}"),')
             print("    ]},")
         print("];")
         print()
@@ -712,7 +866,7 @@ HEAD = '''//! リボン(タブ+コマンド)。**Euro-Office の現物から生�
 //! だから「Euro-Office と全く同じか」は台本を回し直せば確かめられる。
 //!
 //! ```text
-//! python3 ui/gen_ribbon.py ja > face/src/ribbon.rs
+//! python3 ui/gen_ribbon.py ja > ui/src/ribbon.rs
 //! ```
 //!
 //! **全部入れる**(2026-08-04 発注者確定で改訂。以前は共同編集・保護・
@@ -725,6 +879,23 @@ HEAD = '''//! リボン(タブ+コマンド)。**Euro-Office の現物から生�
 //! 未実装は灰色で残す。並びを Euro-Office に合わせたまま、
 //! 「今どこまで出来ているか」がそのまま画面に出る。
 
+/// ボタンの性格(2026-08-21 発注者「押せるボタンだけでなくトグルボタンを
+/// 作って」)。**押した後どうなるかが違う**ので、描き方も変わります。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Kind {
+    /// 押すと1回きりの働きをします(既定)。押した後は元の見た目に戻ります
+    Push,
+    /// **入っているか切れているか**があります(数式バー・0を表示する・
+    /// 左パネル)。入っている間は押された形で出すので、*見れば分かります*
+    Toggle,
+    /// **いくつかのうち1つだけが入ります**(標準 / 改ページ プレビュー)。
+    ///
+    /// 入切とは性格が違います(2026-08-21 発注者「改ページ プレビューは、
+    /// 性格がちがうのでは」)。入切は互いに関わりませんが、こちらは
+    /// *どれか1つが必ず入っていて、別のを押すと前のが切れます*。
+    Mode,
+}
+
 /// 1つのコマンド。`ready=false` は未実装(押せない灰色)。
 /// `icon` は Euro-Office の slot 名で、埋め込んだアイコン(icons.rs)を引く鍵。
 #[derive(Clone, Copy)]
@@ -733,18 +904,132 @@ pub struct Cmd {
     pub label: &'static str,
     pub icon: &'static str,
     pub ready: bool,
+    pub kind: Kind,
 }
 
-const fn c(id: &'static str, label: &'static str, icon: &'static str) -> Cmd {
-    Cmd { id, label, icon, ready: true }
+/// 押すボタン(押せる)
+pub(crate) const fn c(id: &'static str, label: &'static str, icon: &'static str) -> Cmd {
+    Cmd { id, label, icon, ready: true, kind: Kind::Push }
 }
-const fn x(label: &'static str, icon: &'static str) -> Cmd {
-    Cmd { id: "", label, icon, ready: false }
+/// 入切のボタン(押せる)。画面は今の状態を押された形で見せます
+pub(crate) const fn t(id: &'static str, label: &'static str, icon: &'static str) -> Cmd {
+    Cmd { id, label, icon, ready: true, kind: Kind::Toggle }
+}
+/// 押すボタン(まだ押せない灰色)
+#[allow(dead_code)] // 灰色ゼロの今は未使用だが、ロケール表の生成が使う形
+pub(crate) const fn x(label: &'static str, icon: &'static str) -> Cmd {
+    Cmd { id: "", label, icon, ready: false, kind: Kind::Push }
+}
+/// 入切のボタン(まだ押せない灰色)
+#[allow(dead_code)]
+pub(crate) const fn xt(label: &'static str, icon: &'static str) -> Cmd {
+    Cmd { id: "", label, icon, ready: false, kind: Kind::Toggle }
+}
+/// 表示の切り替え(まだ押せない灰色)
+#[allow(dead_code)]
+pub(crate) const fn xm(label: &'static str, icon: &'static str) -> Cmd {
+    Cmd { id: "", label, icon, ready: false, kind: Kind::Mode }
+}
+
+/// いまの言語のリボン。**語だけが違う** — id・並び・ready・icon は
+/// どの言語でも ja(WRITER/CALC)と同一(下の試験が保証)。
+/// 内部の論理(タブ名の照合など)は ja の表で書いてよい —
+/// 添字がそのまま対応する
+pub fn writer_tabs() -> &'static [Tab] {
+    crate::ribbon_tables::tabs(crate::settings::language())
+        .map(|(w, _)| w)
+        .unwrap_or(WRITER)
+}
+
+pub fn calc_tabs() -> &'static [Tab] {
+    crate::ribbon_tables::tabs(crate::settings::language())
+        .map(|(_, c)| c)
+        .unwrap_or(CALC)
 }
 
 pub struct Tab {
     pub name: &'static str,
     pub cmds: &'static [Cmd],
+}
+
+// ---- 利用者が足したボタン -------------------------------------------------
+//
+// **静的な表(CALC/WRITER)には入れない。** 14言語をボタン単位で突き合わせる
+// 門番(tools/ribbon_locale_check.py)が「言語ごとに数が違う」と言い出す。
+// 利用者の札は利用者自身の言葉なので、そもそも訳さない — 対訳の表にも
+// 入れない(2026-08-16 発注者「システム定義とユーザー定義に分ける」)。
+
+/// 利用者のボタンの id の頭。押されたら `~/.config/officework/ribbon/<名前>.py`
+/// を走らせる、という約束
+pub const USER_PREFIX: &str = "py:";
+
+/// 名乗りに絵が無い(または知らない絵の名前だった)ときの既定
+const USER_ICON: &str = "py-run";
+
+/// 利用者のボタン1つ — ボタンと、出る段(ja の段名)
+pub struct UserBtn {
+    pub cmd: Cmd,
+    pub tab: &'static str,
+}
+
+type Shape = Vec<(String, u64, std::time::SystemTime)>;
+static USER: std::sync::RwLock<Option<(Shape, &'static [UserBtn])>> =
+    std::sync::RwLock::new(None);
+
+/// 利用者が `~/.config/officework/ribbon` に置いたマクロのボタン。
+///
+/// **描くたびに置き場を読まない。** 画面は1秒に何十回も組み直されるので、
+/// 走査は [`refresh_user_cmds`] が姿の変わったときだけ行う(UDF の見張りと
+/// 同じ形)。ここは控えを返すだけ。
+pub fn user_btns() -> &'static [UserBtn] {
+    if let Ok(g) = USER.read() {
+        if let Some((_, c)) = g.as_ref() {
+            return c;
+        }
+    }
+    refresh_user_cmds();
+    USER.read().ok().and_then(|g| g.as_ref().map(|(_, c)| *c)).unwrap_or(&[])
+}
+
+/// その段に出る利用者のボタン。段は**ja の段名**で照合する — 表の内部の
+/// 照合が ja なのと同じ(添字も名前も言語で動かない)
+pub fn user_cmds_for(tab_ja: &str) -> Vec<&'static Cmd> {
+    user_btns().iter().filter(|b| b.tab == tab_ja).map(|b| &b.cmd).collect()
+}
+
+/// 置き場の姿が変わっていればボタンを作り直す。返りは作り直したか。
+///
+/// 作った札と id は `&'static` として漏らす(`Box::leak`)。静的な表と同じ型で
+/// 扱えるようにするため — 漏れるのは**置き場を書き換えた回数**だけで、
+/// 1回あたり数十バイト。描くたびに漏れる作りではない。
+pub fn refresh_user_cmds() -> bool {
+    let dir = pyrun::ribbon_dir();
+    let now = pyrun::shape_in(&dir);
+    let Ok(mut g) = USER.write() else { return false };
+    if g.as_ref().map(|(s, _)| s) == Some(&now) {
+        return false;
+    }
+    let btns: Vec<UserBtn> = pyrun::ribbon_decls(&dir)
+        .into_iter()
+        .map(|d| {
+            let icon =
+                if crate::icons::find(&d.icon).is_some() { d.icon } else { USER_ICON.into() };
+            UserBtn {
+                cmd: Cmd {
+                    id: Box::leak(format!("{USER_PREFIX}{}", d.module).into_boxed_str()),
+                    label: Box::leak(d.label.into_boxed_str()),
+                    icon: Box::leak(icon.into_boxed_str()),
+                    ready: true,
+                    // 利用者のマクロは押すボタン。入切にしたければ .py の側で
+                    // 状態を持つことになるので、いまは押す形だけ
+                    kind: Kind::Push,
+                },
+                tab: Box::leak(d.tab.into_boxed_str()),
+            }
+        })
+        .collect();
+    *g = Some((now, Box::leak(btns.into_boxed_slice())));
+    true
 }
 '''
 
@@ -759,21 +1044,132 @@ pub fn progress(tabs: &[Tab]) -> (usize, usize) {
 mod tests {
     use super::*;
 
+
+    /// **どのボタンにも実体のアイコンがある。**
+    ///
+    /// アイコンは [`crate::icons::find`] が引ける物しか出せない。表に足し忘れると
+    /// **ボタンだけが無地で出る** — 押せるし配線もされているので、
+    /// 配線の試験(`wiring_tests`)も文言の門番も素通りする。
+    ///
+    /// **描く側と同じ口(`find`)で引く。** 表は `ICONS` と `OWN_ICONS` の
+    /// 二枚あり、片方だけ見ると「無い」と誤って数える(最初それで
+    /// 数を間違えた)。
+    ///
+    /// **いま欠けている物は下に並べて許してある。** 全部描くまで赤には
+    /// できないが、**これ以上増やさない**ための止め木になる。
+    /// 描いたら一覧から外す(外し忘れも落ちる)。
+    /// 2026-08-13 に数えて 77 件。すべて calc の持ち場
+    /// **実体の無いアイコン**の一覧。ここに載っている id は無地のボタンで出る。
+    /// 2026-08-13 に 77 個ぜんぶ描いたので空。**増えても減っても試験が落ちる**
+    /// (下の2つの assert が両方向で見ている)。
+    const アイコンの無いボタン: &[&str] = &[];
+
+    #[test]
+    fn 実体の無いアイコンを増やさない() {
+        let mut missing: Vec<&str> = Vec::new();
+        for tabs in [WRITER, CALC] {
+            for t in tabs {
+                for cmd in t.cmds {
+                    if cmd.icon.is_empty() {
+                        continue;
+                    }
+                    if crate::icons::find(cmd.icon).is_none() && !missing.contains(&cmd.icon) {
+                        missing.push(cmd.icon);
+                    }
+                }
+            }
+        }
+        let 新しい: Vec<&&str> =
+            missing.iter().filter(|m| !アイコンの無いボタン.contains(m)).collect();
+        assert!(新しい.is_empty(),
+            "実体の無いアイコンが増えた: {新しい:?}(絵を描いて icons.rs に足す)");
+        let 直った: Vec<&&str> =
+            アイコンの無いボタン.iter().filter(|a| !missing.contains(a)).collect();
+        assert!(直った.is_empty(),
+            "アイコンができているのに一覧に残っている: {直った:?}(一覧から外す)");
+    }
+
+    #[test]
+    fn 各言語の表は語だけが違う() {
+        // id・並び・ready・icon が ja と一致しない表は配線が壊れる —
+        // ここで固定する(語は違ってよい。空の語は出さない)
+        let mut pairs: Vec<(&[Tab], &[Tab])> = Vec::new();
+        for l in lang::i18n::languages() {
+            if l == "ja" {
+                continue;
+            }
+            let (w, c) = crate::ribbon_tables::tabs(l)
+                .unwrap_or_else(|| panic!("言語 {l} のリボンの表が無い(登録簿のずれ)"));
+            pairs.push((WRITER, w));
+            pairs.push((CALC, c));
+        }
+        for (ja, other) in pairs {
+            assert_eq!(ja.len(), other.len(), "タブの数が違う");
+            for (a, b) in ja.iter().zip(other) {
+                assert!(!b.name.is_empty(), "タブ名が空");
+                assert_eq!(a.cmds.len(), b.cmds.len(), "「{}」のボタンの数が違う", a.name);
+                for (x, y) in a.cmds.iter().zip(b.cmds) {
+                    assert_eq!(x.id, y.id, "id がずれた(配線が壊れる)");
+                    assert_eq!(x.icon, y.icon, "「{}」の icon が違う", x.id);
+                    assert_eq!(x.ready, y.ready, "「{}」の ready が違う", x.id);
+                    assert!(!y.label.is_empty(), "「{}」の語が空", x.id);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn 段の中でボタンの鍵が重ならない() {
+        // 画面はボタン1つ1つに gpui の鍵を与える。**段の中で鍵が重なると、
+        // 後のボタンの押下が拾われない** — ボタンは出るのに押しても何も
+        // 起きない、という形で出る(2026-08-16 実機で踏んだ。鍵が絵の名前
+        // だったころ、利用者のマクロが rec-toggle と同じ py-run を名乗った)。
+        // 鍵は id(灰色は札)なので、ここが一意ならあの症状は起きない
+        for (app, tabs) in [("writer", WRITER), ("calc", CALC)] {
+            for tab in tabs {
+                let mut seen: Vec<&str> = Vec::new();
+                for c in tab.cmds {
+                    let k = if c.id.is_empty() { c.label } else { c.id };
+                    assert!(!seen.contains(&k), "{app} の「{}」で鍵が重なった: {k}", tab.name);
+                    seen.push(k);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn 利用者のボタンは静的な表に混ざらない() {
+        // 14言語を突き合わせる門番は静的な表を数える。利用者の札は
+        // 利用者自身の言葉で、訳もしない — 表に混ぜたら数が合わなくなる
+        for tabs in [WRITER, CALC] {
+            for tab in tabs {
+                for c in tab.cmds {
+                    assert!(
+                        !c.id.starts_with(USER_PREFIX),
+                        "静的な表に利用者の id が混ざっている: {}",
+                        c.id
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn 本家のタブが全部ある() {
         // 発注者確定(2026-08-04): メニューは制限しない。実装しないものも
         // 場所は本家どおり(灰色)。タブごと消すことはしない
         for tabs in [WRITER, CALC] {
-            for want in ["共同編集", "保護", "プラグイン"] {
+            // **「プラグイン」は「マクロ」に改名した**(2026-08-16 発注者
+            // 「プラグインはマクロだけでいいのでは」)。本家に同じ段はあるが、
+            // 使う人の言葉に寄せた — 段を消したのではなく名を替えた
+            for want in ["共同編集", "保護", "マクロ"] {
                 assert!(
                     tabs.iter().any(|t| t.name == want),
                     "タブが無い: {want}"
                 );
             }
         }
-        for want in ["フォーム"] {
-            assert!(WRITER.iter().any(|t| t.name == want), "writer にタブが無い: {want}");
-        }
+        assert!(WRITER.iter().any(|t| t.name == "フォーム"), "writer にタブが無い: フォーム");
         for want in ["ピボットテーブル", "表のデザイン"] {
             assert!(CALC.iter().any(|t| t.name == want), "calc にタブが無い: {want}");
         }
