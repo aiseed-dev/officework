@@ -58,9 +58,10 @@ Even VBA could close the "open = execute" path by moving its source out of the f
 But that alone would not make it safe.
 VBA can call anything in Windows, so wherever the code lives, once it runs it can do anything.
 Safety needs both: code outside the file, and limits on what it may do when it runs.
-Microsoft does neither.
+But limit it, and the existing macros — written on the assumption they can call anything — stop working.
+As long as compatibility must be kept, Microsoft cannot close this hole.
 
-officework settled both at once.
+officework carries no VBA compatibility, so it could settle both at once.
 
 * Workbooks and documents never carry code. Nothing equivalent to VBA exists, so the "open = execute" accident cannot happen by construction
 * Python runs on your machine. Code lives outside the workbook as `.py` files and runs in a sandbox (it cannot reach the network or roam your files). Called from cell formulas like `=double(A1)` or from buttons — and the data never leaves the machine
