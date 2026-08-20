@@ -29,6 +29,7 @@ RIBBON = Path(__file__).resolve().parent.parent / "face/src/ribbon.rs"
 # このスクリプトは止まる — その語をここに足してから出し直す
 OVERRIDES = {
     "en": {
+        "上下中央揃え": "Align middle",
         # 式から呼べる Python の関数の一覧(2026-08-16。本家に無い)
         "Python の関数": "Python functions",
         # リボンに出るマクロの一覧(2026-08-16。本家に無い)
@@ -144,6 +145,7 @@ OVERRIDES = {
     },
     # vendor のロケールに無い語の穴埋め(gen_lang.py が材料の訳と併用する)
     "zh-tw": {
+        "上下中央揃え": "置於中央對齊",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Python 函式",
         # リボンに出るマクロの一覧(本家に無い)
@@ -234,6 +236,7 @@ OVERRIDES = {
         "宛先": "目的地",
 },
     "it": {
+        "上下中央揃え": "Allinea in mezzo",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Funzioni Python",
         # リボンに出るマクロの一覧(本家に無い)
@@ -327,6 +330,7 @@ OVERRIDES = {
         "小計": "Subtotali",
 },
     "tr": {
+        "上下中央揃え": "Ortaya hizala",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Python işlevleri",
         # リボンに出るマクロの一覧(本家に無い)
@@ -438,6 +442,7 @@ OVERRIDES = {
         "小計": "Ara toplamlar",
 },
     "id": {
+        "上下中央揃え": "Rata di tengah",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Fungsi Python",
         # リボンに出るマクロの一覧(本家に無い)
@@ -539,6 +544,7 @@ OVERRIDES = {
         "小計": "Subtotal",
 },
     "vi": {
+        "上下中央揃え": "Căn giữa",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Hàm Python",
         # リボンに出るマクロの一覧(本家に無い)
@@ -709,6 +715,7 @@ OVERRIDES = {
         "操作を記録": "Ghi lại thao tác",
 },
     "de": {
+        "上下中央揃え": "Mittig ausrichten",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Python-Funktionen",
         # リボンに出るマクロの一覧(本家に無い)
@@ -796,6 +803,7 @@ OVERRIDES = {
         "小計": "Teilergebnisse",
 },
     "es": {
+        "上下中央揃え": "Alinear al medio",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Funciones de Python",
         # リボンに出るマクロの一覧(本家に無い)
@@ -881,6 +889,7 @@ OVERRIDES = {
         "宛先": "Destino",
 },
     "fr": {
+        "上下中央揃え": "Aligner au centre",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Fonctions Python",
         # リボンに出るマクロの一覧(本家に無い)
@@ -966,6 +975,7 @@ OVERRIDES = {
         "宛先": "Destination",
 },
     "pt-br": {
+        "上下中央揃え": "Alinhar ao meio",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Funções Python",
         # リボンに出るマクロの一覧(本家に無い)
@@ -1061,6 +1071,7 @@ OVERRIDES = {
         "読み取り専用を勧める": "Sugerir só de leitura",
 },
     "pt": {
+        "上下中央揃え": "Alinhar ao meio",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Funções Python",
         # リボンに出るマクロの一覧(本家に無い)
@@ -1183,6 +1194,7 @@ OVERRIDES = {
         "画面の文字を小さく": "Diminuir o texto do ecrã",
 },
     "ru": {
+        "上下中央揃え": "Выровнять по середине",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Функции Python",
         # リボンに出るマクロの一覧(本家に無い)
@@ -1270,6 +1282,7 @@ OVERRIDES = {
         "暗号化する": "Зашифровать",
 },
     "ko": {
+        "上下中央揃え": "중간 정렬",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Python 함수",
         # リボンに出るマクロの一覧(本家に無い)
@@ -1357,6 +1370,7 @@ OVERRIDES = {
         "操作を記録": "동작 기록",
 },
     "zh": {
+        "上下中央揃え": "居中对齐",
         # 式から呼べる Python の関数の一覧(本家に無い)
         "Python の関数": "Python 函数",
         # リボンに出るマクロの一覧(本家に無い)

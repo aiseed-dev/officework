@@ -266,7 +266,7 @@ impl Writer {
         "edit-header", "edit-footer", "pagenum",
         "parastyle", "toc", "toc-update", "numpages", "datetime",
         "multilevels", "darkmode", "text-from-file", "add-text", "line-numbers",
-        "insshape", "inssmartart", "inschart", "smartpicker", "instextart",
+        "insshape", "inssmartart", "inschart", "instextart",
         "insequation", "instext", "pagecolor", "comment", "watermark", "bookmarks",
         "caption", "tof", "tof-update", "columns",
         "pen", "highlighter", "eraser", "track-changes", "dropcap", "hyphenation",

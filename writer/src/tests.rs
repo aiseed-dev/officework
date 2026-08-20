@@ -98,7 +98,7 @@ mod menu_run_tests {
     /// (踏んで確かめた。実機での確認に回す)
     pub(super) const DIALOG: &[&str] = &[
         "open", "save", "pdf", "plug-macros", "insimage", "text-from-file",
-        "insshape", "inssmartart", "inschart", "smartpicker", "instextart",
+        "insshape", "inssmartart", "inschart", "instextart",
         "insequation",
     ];
 

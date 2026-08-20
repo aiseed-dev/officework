@@ -361,7 +361,7 @@ impl Writer {
                 self.status =
                     ui::t!("数式: LaTeX を打って Enter(例: \\frac{a+b}{2})").into();
             }
-            "insimage" | "insshape" | "inssmartart" | "inschart" | "smartpicker"
+            "insimage" | "insshape" | "inssmartart" | "inschart"
             | "instextart" => {
                 if id != "insimage" {
                     self.status =

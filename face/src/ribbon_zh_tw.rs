@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, t, x, xm, xt, Tab};
+use super::ribbon::{c, t, x, xt, xm, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "檔案", cmds: &[
@@ -65,7 +65,6 @@ pub const WRITER: &[Tab] = &[
         c("insshape", "插入形狀", "insshape"),
         c("inssmartart", "插入SmartArt", "inssmartart"),
         c("inschart", "插入圖表", "inschart"),
-        c("smartpicker", "插入圖表", "smartpicker"),
         c("instext", "插入文字方塊", "instext"),
         c("instextart", "插入藝術文字", "instextart"),
         c("dropcap", "插入首字下沉", "dropcap"),
@@ -184,7 +183,7 @@ pub const CALC: &[Tab] = &[
         c("fillparag", "填充顏色", "fillparag"),
         c("borders", "邊框", "borders"),
         c("top", "靠上對齊", "top"),
-        c("middle", "置中", "middle"),
+        c("middle", "置於中央對齊", "middle"),
         c("bottom", "對齊底部", "bottom"),
         c("wrap", "自動換列", "wrap"),
         c("text-orient", "頁面方向", "text-orient"),

@@ -220,7 +220,7 @@ impl Render for Writer {
             ("blankpage", Some("空白ページ")), ("pagebreak", Some("区切り")),
             ("‖", None), ("instable", Some("表")), ("‖", None),
             ("insimage", Some("画像")), ("insshape", Some("図形")),
-            ("inssmartart", None), ("inschart", None), ("smartpicker", None),
+            ("inssmartart", None), ("inschart", None),
             ("‖", None), ("instext", None), ("instextart", None),
             ("dropcap", None), ("text-from-file", None), ("‖", None),
             ("edit-header", None), ("edit-footer", None), ("pagenum", None),
