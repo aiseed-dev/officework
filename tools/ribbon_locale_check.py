@@ -108,6 +108,45 @@ def same_words(locales: list[str]) -> int:
     return bad
 
 
+def duplicate_labels(locales: list[str]) -> int:
+    """**同じタブに同じラベルのボタンが2つ無いこと。**
+
+    2026-08-21、表のホームに「セルのスタイル」が2つ並んでいました。
+    書式設定の小窓を開くボタンと、見た目の一覧を開くボタンです。
+    生成スクリプトが両方を本家の同じ語から引いていたのが原因で、
+    日本語だけでなく全部の言語に出ていました。
+
+    同じ日に、これを数えて**別に5件**見つかりました。
+
+    * トルコ語「表の挿入」と「グラフを挿入」— 本家の誤訳
+    * ロシア語・中国語・ポルトガル語(ブラジル)の
+      「印刷タイトル」と「見出しも印刷」— 上書き表の訳が重なっていた
+    * 中国語(簡体)の「ルビ」と「ふりがな」— 上書き表で同じ語にしていた
+
+    どれも日本語には出ないので、日本語だけ見ていては気づけません。
+    ボタンがアイコンだけのときラベルは吹き出しにしか出ないので、
+    画面を見ていても見落とします。だから機械で数えます。
+    """
+    bad = 0
+    for loc in ["ja"] + locales:
+        name = "ribbon.rs" if loc == "ja" else f"ribbon_{loc}.rs"
+        for table in ("CALC", "WRITER"):
+            for tab in _tables(UI / name)[table]:
+                見た: dict[str, list[str]] = {}
+                for c in tab.cmds:
+                    見た.setdefault(c.label, []).append(c.id or c.icon)
+                for label, who in 見た.items():
+                    if len(who) > 1:
+                        print(
+                            f"::error::{loc} {table}/{tab.name}: "
+                            f"{label!r} というラベルのボタンが {len(who)} 個あります "
+                            f"({' と '.join(who)})。"
+                            "押すまでどちらか分かりません"
+                        )
+                        bad = 1
+    return bad
+
+
 def main() -> int:
     locales = sorted(
         p.stem[len("ribbon_"):]
@@ -151,6 +190,10 @@ def main() -> int:
         if not bad:
             print(f"{table}: {len(locales)} 言語とも ja と同じ骨組み(ボタン {len(ja)} 件)")
     bad |= same_words(locales)
+    dup = duplicate_labels(locales)
+    bad |= dup
+    if not dup:
+        print(f"ラベルの重複: ja と {len(locales)} 言語とも、同じタブに同じラベルはありません")
     if not bad:
         print(f"語の重なり: {len(locales)} 言語とも別の語で出来ています")
     return bad

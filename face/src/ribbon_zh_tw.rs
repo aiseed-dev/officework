@@ -256,7 +256,7 @@ pub const CALC: &[Tab] = &[
         c("printtitles", "列印標題", "printtitles"),
         c("rtl-sheet", "切換工作表方向，使第一列位於右側", "rtl-sheet"),
         c("print-gridlines", "列印格線", "print-gridlines"),
-        c("print-headings", "列印標題", "print-headings"),
+        c("print-headings", "列印列標和欄標", "print-headings"),
         x("向前移動", "img-movefrwd"),
         x("向後發送", "img-movebkwd"),
         x("對齊", "img-align"),

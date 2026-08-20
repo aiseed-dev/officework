@@ -256,7 +256,7 @@ pub const CALC: &[Tab] = &[
         c("printtitles", "Печатать заголовки", "printtitles"),
         c("rtl-sheet", "Переключить направление листа, чтобы первый столбец был справа", "rtl-sheet"),
         c("print-gridlines", "Печатать сетку", "print-gridlines"),
-        c("print-headings", "Печатать заголовки", "print-headings"),
+        c("print-headings", "Печатать заголовки строк и столбцов", "print-headings"),
         x("Перенести вперед", "img-movefrwd"),
         x("Перенести назад", "img-movebkwd"),
         x("Выравнивание", "img-align"),

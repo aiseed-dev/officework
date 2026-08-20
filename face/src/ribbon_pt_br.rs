@@ -256,7 +256,7 @@ pub const CALC: &[Tab] = &[
         c("printtitles", "Imprimir títulos", "printtitles"),
         c("rtl-sheet", "Altere a direção da folha de modo que a primeira coluna fique no lado direito", "rtl-sheet"),
         c("print-gridlines", "Imprimir linhas de grade", "print-gridlines"),
-        c("print-headings", "Imprimir títulos", "print-headings"),
+        c("print-headings", "Imprimir cabeçalhos de linhas e colunas", "print-headings"),
         x("Trazer para frente", "img-movefrwd"),
         x("Enviar para trás", "img-movebkwd"),
         x("Alinhamento", "img-align"),
