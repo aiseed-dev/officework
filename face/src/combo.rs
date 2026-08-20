@@ -29,6 +29,25 @@ pub const SIZES: &[f32] = &[
     72.0,
 ];
 
+/// **一覧に「この文書の標準の大きさ」を差し込む**(2026-08-20 発注者
+/// 「日本語は 10.5 を選択できるように」→「テンプレートで対応するのがいい」)。
+///
+/// 言語では分けません。文書の標準はテンプレートが決め(既定は 10.5pt —
+/// `kumihan::DEFAULT_PT`)、その値が並びに無ければ足して出します。
+/// 日本語の既定テンプレートの文書では 10.5 が一覧に出て、+/− も止まります。
+/// 一覧と +/− は必ず同じ並びを見ます(食い違うと、一覧で選べた値に
+/// +/− が止まりません)。
+pub fn sizes_with(standard: Option<f32>) -> Vec<f32> {
+    let mut v: Vec<f32> = SIZES.to_vec();
+    if let Some(s) = standard {
+        if !v.iter().any(|&x| (x - s).abs() < 0.05) {
+            v.push(s);
+            v.sort_by(|a, b| a.partial_cmp(b).expect("大きさに NaN は来ない"));
+        }
+    }
+    v
+}
+
 /// 大きさの自由入力を**画面の入り口でだけ**丸める境。
 /// 模型(sheet)と Python の口には掛けない — よそで作った 2pt は 2pt のまま往復する。
 pub const SIZE_MIN: f32 = 4.0;
@@ -66,7 +85,7 @@ pub fn round_size(pt: f32) -> f32 {
     (clamped / SIZE_STEP).round() * SIZE_STEP
 }
 
-/// +/−(incfont/decfont)。一覧([`SIZES`])の値を**1段ずつ**辿る。
+/// +/−(incfont/decfont)。渡した一覧の値を**1段ずつ**辿る。
 ///
 /// - `up=true` で1つ大きい一覧値へ、`false` で1つ小さい一覧値へ
 /// - 半端な値(一覧に無い値)は、動く向きの**隣の一覧値へ寄る**
@@ -74,23 +93,26 @@ pub fn round_size(pt: f32) -> f32 {
 /// - 端では止まる(72 で大きくしても 72、6 で小さくしても 6)
 ///
 /// 本家もこう動く — ±1pt は我流の間違いだった(ui.ja.md の基準の節)。
-pub fn step_size(cur: f32, up: bool) -> f32 {
+/// アプリは [`sizes_with`](文書の標準入り)の並びを渡す。
+pub fn step_size_in(list: &[f32], cur: f32, up: bool) -> f32 {
     if up {
         // 今より大きい最初の一覧値。無ければ(=最大以上)今のまま
-        SIZES
-            .iter()
-            .copied()
-            .find(|&s| s > cur + f32::EPSILON)
-            .unwrap_or(cur)
+        list.iter().copied().find(|&s| s > cur + f32::EPSILON).unwrap_or(cur)
     } else {
         // 今より小さい最後の一覧値。無ければ(=最小以下)今のまま
-        SIZES
-            .iter()
-            .rev()
-            .copied()
-            .find(|&s| s < cur - f32::EPSILON)
-            .unwrap_or(cur)
+        list.iter().rev().copied().find(|&s| s < cur - f32::EPSILON).unwrap_or(cur)
     }
+}
+
+/// [`step_size_in`] の [`SIZES`] 版。標準の差し込みが要らない所と試験が使う。
+pub fn step_size(cur: f32, up: bool) -> f32 {
+    step_size_in(SIZES, cur, up)
+}
+
+/// [`sizes_with`] の並びを1段辿る。値だけ持ち込めばよいので、
+/// `Copy` が要るクロージャ(writer の `size()`)からも呼べる。
+pub fn step_size_with(standard: Option<f32>, cur: f32, up: bool) -> f32 {
+    step_size_in(&sizes_with(standard), cur, up)
 }
 
 /// 一覧を開いたときに**今の値の位置**を出す。合致が無ければ 0(先頭)。
@@ -186,6 +208,30 @@ mod tests {
         // 最小より小さい半端でも止まる
         assert_eq!(step_size(5.0, false), 5.0);
         assert_eq!(step_size(5.0, true), 6.0);
+    }
+
+    #[test]
+    fn 文書の標準を一覧に差し込む() {
+        // 既定テンプレート(10.5)の文書では 10.5 が並びに入る。場所は 10 と 11 の間
+        let v = sizes_with(Some(10.5));
+        let i = v.iter().position(|&x| x == 10.5).expect("10.5 が入る");
+        assert_eq!(v[i - 1], 10.0);
+        assert_eq!(v[i + 1], 11.0);
+        assert_eq!(v.len(), SIZES.len() + 1);
+        // 並びに既にある値なら足さない
+        assert_eq!(sizes_with(Some(11.0)), SIZES.to_vec());
+        // 指定なしなら Excel の並びのまま
+        assert_eq!(sizes_with(None), SIZES.to_vec());
+    }
+
+    #[test]
+    fn 差し込んだ標準にもプラスマイナスが止まる() {
+        let v = sizes_with(Some(10.5));
+        assert_eq!(step_size_in(&v, 10.0, true), 10.5);
+        assert_eq!(step_size_in(&v, 10.5, true), 11.0);
+        assert_eq!(step_size_in(&v, 11.0, false), 10.5);
+        // 差し込みが無ければ 10 の次は 11(今までどおり)
+        assert_eq!(step_size_in(SIZES, 10.0, true), 11.0);
     }
 
     #[test]

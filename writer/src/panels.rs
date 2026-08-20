@@ -1630,12 +1630,15 @@ impl Writer {
                 .p_2().rounded_md().bg(gpui::white())
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_row().flex_wrap().gap_1();
-            for pt in [8.0f32, 9.0, 10.0, 10.5, 11.0, 12.0, 14.0, 16.0, 18.0, 22.0, 26.0, 36.0] {
+            // 並びは共通の表+文書の標準(テンプレートの大きさ。既定 10.5)。
+            // 前は writer 独自の12個で、+/−(共通の表を辿る)と食い違っていた
+            let 標準 = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+            for pt in ui::combo::sizes_with(Some(標準)) {
                 d = d.child(div()
                     .id(SharedString::from(format!("pt-{pt}")))
                     .px_2().py_1().rounded_sm().text_size(px(12.0))
                     .cursor_pointer().hover(|s| s.bg(rgb(0xEAF2F7)))
-                    .child(SharedString::from(format!("{pt}")))
+                    .child(SharedString::from(ui::combo::size_label(pt)))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         let sel = this.ed.selection();
                         this.flush_target();

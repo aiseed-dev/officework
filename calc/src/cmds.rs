@@ -1428,13 +1428,15 @@ impl Calc {
                     self.open_combo("font", vals, at, &cur);
                 }
             }
-            // 大きさ: 一覧は今の17個のまま。自由入力(打った数)は
-            // 4〜409pt・0.5 刻みに黙って丸める。丸めは画面の入力だけ(apply_pick)
+            // 大きさ: 一覧は共通の表(sizes_with)。ブックの標準は見た目の元
+            // (booktmpl)が繋がったら差し込む — いまは指定なしで Excel の並び。
+            // 自由入力(打った数)は 4〜409pt・0.5 刻みに黙って丸める。
+            // 丸めは画面の入力だけ(apply_pick)
             "fontsize" => {
                 let at = self.pop_anchor();
                 let cur = ui::combo::size_label(self.cur_size_pt());
                 let vals: Vec<(String, String)> =
-                    plain(ui::combo::SIZES.iter().map(|p| ui::combo::size_label(*p)));
+                    plain(ui::combo::sizes_with(None).into_iter().map(ui::combo::size_label));
                 self.open_combo("size", vals, at, &cur);
             }
             // データタブ: Python 裏方と道具

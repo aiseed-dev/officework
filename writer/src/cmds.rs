@@ -283,10 +283,18 @@ impl Writer {
                     }
                 }
             }
-            // 文字の大きさの +/−。**一覧の値を1段ずつ辿る**(±1pt ではない —
-            // calc と同じ ui::combo の判断。半端は隣の一覧値へ寄り、端で止まる)
-            "incfont" => self.size(|s| ui::combo::step_size(s, true)),
-            "decfont" => self.size(|s| ui::combo::step_size(s, false)),
+            // 文字の大きさの +/−。**一覧と同じ並びを1段ずつ辿る**(±1pt では
+            // ない — calc と同じ ui::combo の判断。半端は隣の一覧値へ寄り、端で
+            // 止まる)。並びには文書の標準(テンプレートの大きさ。既定 10.5)を
+            // 差し込む — 一覧で選べる値には +/− も止まる
+            "incfont" => {
+                let 標準 = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+                self.size(move |s| ui::combo::step_size_with(Some(標準), s, true))
+            }
+            "decfont" => {
+                let 標準 = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+                self.size(move |s| ui::combo::step_size_with(Some(標準), s, false))
+            }
             // 印刷・PDF。**組み直さない** — 画面と同じ紙面をそのまま写す
             "pdf" => self.save_pdf(cx),
             // 文字色。押すたびに 赤 → 青 → 黒(解除)と回す。
