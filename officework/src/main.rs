@@ -602,8 +602,39 @@ impl Render for Office {
     }
 }
 
+/// **すでに動いている本体があれば、そちらで開いて終わる**(段11)。
+///
+/// 開けたら真。ファイルの管理画面から2枚目を開いたときに、窓がもう1つ
+/// 立つのではなく**タブが1枚増える**のが、統合した後の正しい姿です。
+///
+/// 引数が無いときは何もしません — 名前を渡されずに呼ばれたのは
+/// 「新しく始めたい」ということなので、動いている窓を前に出しても
+/// 頼んだことになりません。
+///
+/// **Windows では受け口を作らない決め**なので、ここも通りません。
+/// その OS では今までどおり窓が増えます。
+#[cfg(unix)]
+fn 動いている本体に渡す(arg: Option<&std::path::Path>) -> bool {
+    let Some(p) = arg else { return false };
+    let Ok(p) = p.canonicalize() else { return false };
+    let 頼み = format!("{{\"cmd\":\"open\",\"path\":{}}}", format!("\"{}\"", ops::jesc(&p.to_string_lossy())));
+    match ops::ask("officework", &頼み) {
+        Some(返事) if 返事.contains("\"ok\":true") => true,
+        _ => false,
+    }
+}
+
+#[cfg(not(unix))]
+fn 動いている本体に渡す(_arg: Option<&std::path::Path>) -> bool {
+    false
+}
+
 fn main() {
     let arg = std::env::args().nth(1).map(std::path::PathBuf::from);
+    // **2つ目は窓を増やさず、動いている方のタブにします**(段11)
+    if 動いている本体に渡す(arg.as_deref()) {
+        return;
+    }
     // **窓を開ける前に決めます。** 「フォルダを選ぶ画面」は同期で開くので、
     // GPUI が動き出す前に済ませます(主の糸を塞ぐ相手がまだいません)
     let start = 起動の形(arg);

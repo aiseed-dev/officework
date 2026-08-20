@@ -1877,13 +1877,54 @@ pub type Queue = std::sync::Arc<std::sync::Mutex<Vec<Req>>>;
 /// 移植待ちではなく決めです — 聞き続ける物を、使い道を決めないまま
 /// 増やしません。
 #[cfg(unix)]
+/// **すでに動いている本体に話しかける**(2026-08-20)。
+///
+/// 返事の1行を返します。誰も居なければ `None` です。
+///
+/// # なぜ要るか — ファイルの関連付け
+///
+/// 統合してからは「タブ1つ = ファイル1つ」です。ファイルの管理画面で
+/// 2枚目を開いたときに**窓がもう1つ立つ**と、その形が崩れます。
+/// 開いている本体に渡して、タブとして開くのが正しい姿です。
+///
+/// 待つのは 500 ミリ秒までです。相手が居るのに黙っている(固まっている)
+/// ときに、こちらまで止まらないためです。
+#[cfg(unix)]
+pub fn ask(app: &str, line: &str) -> Option<String> {
+    use std::io::{BufRead as _, Write as _};
+    let mut c = std::os::unix::net::UnixStream::connect(sock_path(app)).ok()?;
+    let 待つ = Some(std::time::Duration::from_millis(500));
+    let _ = c.set_read_timeout(待つ);
+    let _ = c.set_write_timeout(待つ);
+    c.write_all(line.as_bytes()).ok()?;
+    c.write_all(b"\n").ok()?;
+    c.flush().ok()?;
+    let mut 返事 = String::new();
+    std::io::BufReader::new(c).read_line(&mut 返事).ok()?;
+    let 返事 = 返事.trim().to_string();
+    if 返事.is_empty() {
+        return None;
+    }
+    Some(返事)
+}
+
 pub fn listen(app: &'static str, queue: Queue) -> bool {
     use std::io::{BufRead as _, Write as _};
     let path = sock_path(app);
     if let Some(dir) = path.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    let _ = std::fs::remove_file(&path); // 前回の残骸
+    // **動いている本体の受け口を取り上げません**(2026-08-20 に見つけた)。
+    // 前は残骸かどうかを見ずに消していたので、2つ目を起こすと1つ目の
+    // 受け口が黙って自分に移り、道具の話し相手が入れ替わっていました。
+    // *話しかけてみて、返事があれば生きている*ので、そのままにします
+    if path.exists() {
+        if ask(app, "{\"cmd\":\"ping\"}").is_some() {
+            eprintln!("officework はすでに動いています({app})。受け口はそのままにします");
+            return false;
+        }
+        let _ = std::fs::remove_file(&path); // 返事が無い = 前回の残骸
+    }
     let listener = match std::os::unix::net::UnixListener::bind(&path) {
         Ok(l) => l,
         Err(e) => {
