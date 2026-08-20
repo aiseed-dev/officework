@@ -585,6 +585,8 @@ impl Writer {
             return;
         }
         if self.font_list || self.size_list || self.symbols || self.style_list {
+            self.font_filter = None;
+            self.pick_sel = 0;
             self.font_list = false;
             self.size_list = false;
             self.symbols = false;
@@ -707,12 +709,45 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn up(&mut self, _: &ui::Up, _: &mut Window, cx: &mut Context<Self>) {
+        if self.一覧を送る(false) {
+            cx.notify();
+            return;
+        }
         self.move_line(false, false);
         cx.notify();
     }
     pub(crate) fn down(&mut self, _: &ui::Down, _: &mut Window, cx: &mut Context<Self>) {
+        if self.一覧を送る(true) {
+            cx.notify();
+            return;
+        }
         self.move_line(true, false);
         cx.notify();
+    }
+
+    /// **一覧が開いていれば ↑↓ は選択を送る**(手順2)。送ったら真。
+    /// 表の画面と同じ作法で、端では止まります(巡回しません — どちらが
+    /// 端かが分からなくなるため)。
+    pub(crate) fn 一覧を送る(&mut self, 下へ: bool) -> bool {
+        let kind = if self.font_list {
+            "fontname"
+        } else if self.size_list {
+            "fontsize"
+        } else if self.style_list {
+            "parastyle"
+        } else {
+            return false;
+        };
+        let n = self.一覧の数(kind);
+        if n == 0 {
+            return true;
+        }
+        self.pick_sel = if 下へ {
+            (self.pick_sel + 1).min(n - 1)
+        } else {
+            self.pick_sel.saturating_sub(1)
+        };
+        true
     }
     pub(crate) fn select_up(&mut self, _: &ui::SelectUp, _: &mut Window, cx: &mut Context<Self>) {
         self.move_line(false, true);
@@ -735,6 +770,11 @@ impl Writer {
         // 左パネルの会話の Enter = 送る(焦点はそのまま — 続けて書ける)
         if self.ai_chat_focus {
             self.ai_chat_send(cx);
+            cx.notify();
+            return;
+        }
+        // **一覧が開いていれば Enter は選択に決める**(手順2)
+        if self.一覧を決める(cx) {
             cx.notify();
             return;
         }

@@ -1672,6 +1672,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("列の幅と用紙は「{}」の持ち物です(このファイルには書きません)", "Sütun genişlikleri ve sayfa yapısı “{}” dosyasına aittir (bu dosyaya yazılmaz)"),
     ("列の幅と用紙を「{}」に書き出しました(次に開くとき当たります)", "Sütun genişlikleri ve sayfa yapısı “{}” dosyasına yazıldı (bir sonraki açılışta geçerli olur)"),
     ("見た目のテンプレートが書けません: {}", "Görünüm şablonu yazılamıyor: {}"),
+    ("その名前の書体はありません", "Bu adda bir yazı tipi yok"),
     ("(名乗らない)", "(adsız)"),
     ("コメント {} 件", "{} yorum"),
     ("{} の順に並べました", "{} ölçütüne göre sıralandı"),

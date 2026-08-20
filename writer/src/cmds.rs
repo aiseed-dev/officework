@@ -510,8 +510,21 @@ impl Writer {
             // 見え方だけの切り替え(文書は変わらない)
             "hidenchars" => self.show_marks = !self.show_marks,
             // 一覧パネル(フォント・大きさ)。選ぶのはパネルの中
-            "fontname" => { self.font_list = !self.font_list; self.size_list = false;
-                            self.style_list = false; }
+            "fontname" => {
+                self.font_list = !self.font_list;
+                self.size_list = false;
+                self.style_list = false;
+                // **絞り込みの欄を開く**(手順2)。数で切らない代わりです
+                self.font_filter = self.font_list.then(|| Editor::new(""));
+                // **開いたときは今の書体の位置に居る**(表の画面と同じ)。
+                // 一覧の頭に飛ぶと、今どれなのかが分からなくなります
+                self.pick_sel = if self.font_list {
+                    let 今 = self.font_name.to_string();
+                    self.一覧の中身("fontname").iter().position(|(k, _)| *k == 今).unwrap_or(0)
+                } else {
+                    0
+                };
+            }
             // 用紙。向き / サイズ / 余白(選ぶ小窓は無いが、回して選べる)
             "pageorient" => self.set_page(|pg| {
                 std::mem::swap(&mut pg.w_mm, &mut pg.h_mm);

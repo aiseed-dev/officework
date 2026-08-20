@@ -1672,6 +1672,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("列の幅と用紙は「{}」の持ち物です(このファイルには書きません)", "Độ rộng cột và thiết lập trang thuộc về “{}” (không ghi vào tệp này)"),
     ("列の幅と用紙を「{}」に書き出しました(次に開くとき当たります)", "Đã ghi độ rộng cột và thiết lập trang vào “{}” (có hiệu lực ở lần mở sau)"),
     ("見た目のテンプレートが書けません: {}", "Không ghi được mẫu trình bày: {}"),
+    ("その名前の書体はありません", "Không có phông chữ nào mang tên đó"),
     ("(名乗らない)", "(ẩn danh)"),
     ("コメント {} 件", "{} chú thích"),
     ("{} の順に並べました", "Đã sắp xếp theo {}"),

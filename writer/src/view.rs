@@ -324,8 +324,30 @@ impl Render for Writer {
                         } else {
                             size_disp.clone()
                         };
+                        // **この欄も場所を控える**(2026-08-20)。一覧を
+                        // ボタンの真下に出すのに要ります。前は控えていな
+                        // かったので、点検の道具も座標を目分量で当てる
+                        // しかありませんでした
+                        let mark = {
+                            let rec = self.btn_box.clone();
+                            gpui::canvas(
+                                move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                                    rec.borrow_mut().insert(cid, (
+                                        f32::from(b.origin.x),
+                                        f32::from(b.origin.y),
+                                        f32::from(b.size.width),
+                                        f32::from(b.size.height),
+                                    ));
+                                },
+                                |_, _: (), _, _| {},
+                            )
+                            .absolute()
+                            .size_full()
+                        };
                         row = row.child(div()
                             .id(SharedString::from(format!("h-{cid}")))
+                            .relative()
+                            .child(mark)
                             .flex().flex_row().items_center().gap_1()
                             .px_2().h(px(26.0))
                             .w(px(if cid == "fontname" { 150.0 } else { 56.0 }))
@@ -1451,6 +1473,10 @@ impl Render for Writer {
         };
 
         div().size_full().flex().flex_col().bg(th_desk)
+            // **一覧は窓の根に置きます**(2026-08-20。手順2)。編集の面の
+            // 中に置くとリボンの高さぶん下から始まるので、押したボタンの
+            // 真下に出せません。表の画面が 2026-08-15 に通った道と同じです
+            .relative()
             .key_context("jo_doc")
             .track_focus(&self.focus)
             .on_action(cx.listener(Writer::backspace))
@@ -1549,9 +1575,6 @@ impl Render for Writer {
                     .children(url_panel)
                     .children(fm_panel)
                     .children(lk_panel)
-                    .children(font_panel)
-                    .children(size_panel)
-                    .children(style_panel)
                     .children(symbol_panel)
                     .children(proof_panel)
                     // 終了確認のパネル(窓の中の中央。rfd はスクリーン中央に出て遠い)
@@ -1614,6 +1637,12 @@ impl Render for Writer {
             // 窓の縁のつかみ(最後に描く = 最初にマウスを受ける)。
             // GNOME の Wayland は外枠を付けないので、これが無いと
             // 大きさを変えられない(calc と共通 — ui::resize_edges)
+            // **一覧はいちばん最後に描きます。** 先に描くとリボンが上から
+            // 塗ってしまい、真下に出したはずの一覧が隠れます
+            // (2026-08-20 に実際にそうなった)
+            .children(font_panel)
+            .children(size_panel)
+            .children(style_panel)
             .children(ui::resize_edges(window))
     }
 }

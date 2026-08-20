@@ -1672,6 +1672,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("列の幅と用紙は「{}」の持ち物です(このファイルには書きません)", "Spaltenbreiten und Seiteneinrichtung gehören zu „{}“ (nicht in diese Datei geschrieben)"),
     ("列の幅と用紙を「{}」に書き出しました(次に開くとき当たります)", "Spaltenbreiten und Seiteneinrichtung in „{}“ geschrieben (wirkt beim nächsten Öffnen)"),
     ("見た目のテンプレートが書けません: {}", "Layoutvorlage kann nicht geschrieben werden: {}"),
+    ("その名前の書体はありません", "Es gibt keine Schriftart mit diesem Namen"),
     ("(名乗らない)", "(anonym)"),
     ("コメント {} 件", "{} Kommentare"),
     ("{} の順に並べました", "Nach {} sortiert"),

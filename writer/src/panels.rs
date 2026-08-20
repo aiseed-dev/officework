@@ -32,9 +32,10 @@ pub(crate) struct Panels {
     pub eq_panel: Option<gpui::Div>,
     pub plug_panel: Option<gpui::Div>,
     pub xr_panel: Option<gpui::Div>,
-    pub font_panel: Option<gpui::Div>,
-    pub size_panel: Option<gpui::Div>,
-    pub style_panel: Option<gpui::Div>,
+    /// 一覧は3つとも `ui::picklist` が描きます(窓の根へ置きます)
+    pub font_panel: Option<gpui::Stateful<gpui::Div>>,
+    pub size_panel: Option<gpui::Stateful<gpui::Div>>,
+    pub style_panel: Option<gpui::Stateful<gpui::Div>>,
     pub symbol_panel: Option<gpui::Div>,
     pub proof_panel: Option<gpui::Div>,
 }
@@ -1580,119 +1581,19 @@ impl Writer {
         };
 
         // フォントの一覧。この機械にある日本語の書体だけ
-        let font_panel = if !self.font_list {
-            None
-        } else {
-            let names: Vec<String> = kumihan::font::list()
-                .iter()
-                .filter(|f| f.japanese && f.regular)
-                .map(|f| f.name.clone())
-                .take(24)
-                .collect();
-            let mut d = div().absolute().left(px(16.0)).top(px(8.0)).w(px(280.0))
-                .p_2().rounded_md().bg(gpui::white())
-                .border_1().border_color(rgb(0xC6CDD3))
-                .flex().flex_col().gap_0p5()
-                .child(div().text_size(px(10.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("書体(選んだ段落に掛かる)")));
-            for name in names {
-                let shown = SharedString::from(name.clone());
-                let is_current = self.font_name.as_ref() == name.as_str();
-                d = d.child(div()
-                    .id(SharedString::from(format!("font-{name}")))
-                    .px_2().py_0p5().rounded_sm()
-                    .text_size(px(12.5))
-                    .font_family(shown.clone())
-                    .bg(if is_current { rgb(0xEAF5EE) } else { rgb(0xFFFFFF) })
-                    .cursor_pointer()
-                    .hover(|s| s.bg(rgb(0xEAF2F7)))
-                    .child(shown)
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        let n = name.clone();
-                        let sel = this.ed.selection();
-                        this.flush_target();
-                        this.doc.apply_font(sel, Some(n.clone()));
-                        this.dirty = true;
-                        this.relayout_keep();
-                        this.font_list = false;
-                        this.status = ui::tf!("書体を「{}」に", n).into();
-                        cx.notify();
-                    })));
-            }
-            Some(d)
-        };
-
-        // 大きさの一覧
-        let size_panel = if !self.size_list {
-            None
-        } else {
-            let mut d = div().absolute().left(px(16.0)).top(px(8.0)).w(px(200.0))
-                .p_2().rounded_md().bg(gpui::white())
-                .border_1().border_color(rgb(0xC6CDD3))
-                .flex().flex_row().flex_wrap().gap_1();
-            // 並びは共通の表+文書の標準(テンプレートの大きさ。既定 10.5)。
-            // 前は writer 独自の12個で、+/−(共通の表を辿る)と食い違っていた
-            let 標準 = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
-            for pt in ui::combo::sizes_with(Some(標準)) {
-                d = d.child(div()
-                    .id(SharedString::from(format!("pt-{pt}")))
-                    .px_2().py_1().rounded_sm().text_size(px(12.0))
-                    .cursor_pointer().hover(|s| s.bg(rgb(0xEAF2F7)))
-                    .child(SharedString::from(ui::combo::size_label(pt)))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        let sel = this.ed.selection();
-                        this.flush_target();
-                        this.doc.apply_size(sel, move |_| pt);
-                        this.dirty = true;
-                        this.relayout_keep();
-                        this.size_list = false;
-                        this.status = ui::tf!("大きさを {}pt に", pt).into();
-                        cx.notify();
-                    })));
-            }
-            Some(d)
-        };
-
-        // 段落のスタイルの一覧(標準・見出し1〜3)
-        let style_panel = if !self.style_list {
-            None
-        } else {
-            let mut d = div().absolute().left(px(16.0)).top(px(8.0)).w(px(240.0))
-                .p_2().rounded_md().bg(gpui::white())
-                .border_1().border_color(rgb(0xC6CDD3))
-                .flex().flex_col().gap_0p5()
-                .child(div().text_size(px(10.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("段落のスタイル(選んだ段落に掛かる)")));
-            // 照合は番号(set_para_style)。名前は見せる字だけなので訳してよい
-            for (n, label, pt, bold) in [
-                (0u8, ui::t!("標準"), 12.5f32, false),
-                (1, ui::t!("見出し1"), 16.0, true),
-                (2, ui::t!("見出し2"), 14.0, true),
-                (3, ui::t!("見出し3"), 12.5, true),
-                // 見出し4・5 は 2026-08-18 に足しました(AsciiDoc の
-                // `=====` `======` と同じ段です)
-                (4, ui::t!("見出し4"), 12.0, true),
-                (5, ui::t!("見出し5"), 11.5, true),
-            ] {
-                let mut item = div()
-                    .id(SharedString::from(format!("style-{n}")))
-                    .px_2().py_0p5().rounded_sm()
-                    .text_size(px(pt))
-                    .cursor_pointer()
-                    .hover(|s| s.bg(rgb(0xEAF2F7)))
-                    .child(label)
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.set_para_style(n);
-                        this.style_list = false;
-                        cx.notify();
-                    }));
-                if bold {
-                    item = item.font_weight(gpui::FontWeight::BOLD);
-                }
-                d = d.child(item);
-            }
-            Some(d)
-        };
+        // **一覧は3つとも ui::picklist が描きます**(2026-08-20。SEKKEI
+        // 「リボンのドロップダウンを1つの仕組みにする」の手順2)。
+        //
+        // 前は3つそれぞれが自前で描いていて、出る場所も左上の決め打ち
+        // (left 16 / top 8)でした。押したボタンの真下に出す決め
+        // (2026-08-15 発注者)が表の画面にしか効いていませんでした。
+        //
+        // *置き場も変えます。* この層は編集の面の中にいたので、リボンの
+        // 高さぶん下から始まっていました。窓の根へ移して、ボタンの箱
+        // (`btn_box`。窓の座標)をそのまま使えるようにします
+        let font_panel = self.font_list.then(|| self.一覧を描く("fontname", cx));
+        let size_panel = self.size_list.then(|| self.一覧を描く("fontsize", cx));
+        let style_panel = self.style_list.then(|| self.一覧を描く("parastyle", cx));
 
         // 記号の一覧。事務の書類で使うものだけ(飾りの絵文字は入れない)
         let symbol_panel = if !self.symbols {
@@ -1759,5 +1660,171 @@ impl Writer {
             lk_panel, ai_panel, sd_panel, rb_panel, eq_panel, plug_panel, xr_panel,
             font_panel, size_panel, style_panel, symbol_panel, proof_panel,
         }
+    }
+
+    /// **一覧の中身**(鍵, 見出し)。鍵で引き当て、見出しを画面に出します。
+    pub(crate) fn 一覧の中身(&self, kind: &str) -> Vec<(String, String)> {
+        match kind {
+            "fontname" => {
+                // **数で切りません**(2026-08-20)。前は先頭 24 件で切っていて、
+                // 25 件目からは選べませんでした。代わりに絞り込みを付けます
+                let q = self.font_filter.as_ref().map(|e| e.text().to_string()).unwrap_or_default();
+                kumihan::font::list()
+                    .iter()
+                    .filter(|f| f.japanese && f.regular)
+                    .map(|f| f.name.clone())
+                    .filter(|n| q.is_empty() || n.to_lowercase().contains(&q.to_lowercase()))
+                    .map(|n| (n.clone(), n))
+                    .collect()
+            }
+            "fontsize" => {
+                // 並びは共通の表+この文書の標準(テンプレートの大きさ。既定 10.5)。
+                // 前は writer 独自の12個で、+/−(共通の表を辿る)と食い違って
+                // いました — 一覧で 10.5 を選べるのに + を押すと 11 に飛びました
+                let 標準 = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+                ui::combo::sizes_with(Some(標準))
+                    .into_iter()
+                    .map(|pt| (pt.to_string(), ui::combo::size_label(pt)))
+                    .collect()
+            }
+            // 照合は番号(`set_para_style`)。見出しは訳してよい字です
+            _ => (0u8..=5)
+                .map(|n| {
+                    let label = match n {
+                        0 => ui::t!("標準"),
+                        1 => ui::t!("見出し1"),
+                        2 => ui::t!("見出し2"),
+                        3 => ui::t!("見出し3"),
+                        4 => ui::t!("見出し4"),
+                        _ => ui::t!("見出し5"),
+                    };
+                    (n.to_string(), label.to_string())
+                })
+                .collect(),
+        }
+    }
+
+    /// **一覧を描く**(手順2)。位置は押したボタンの真下です。
+    fn 一覧を描く(
+        &self,
+        kind: &'static str,
+        cx: &mut gpui::Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let items = self.一覧の中身(kind);
+        // ボタンの箱は窓の座標で控えてあります(`btn_box`)。まだ描いて
+        // いなければ左上へ逃がします — 黙って消えるよりは出すほうがよい
+        let (bx, by, bw, bh) = self.btn_box.borrow().get(kind).copied().unwrap_or((16.0, 8.0, 0.0, 0.0));
+        let want_h = items.len() as f32 * 26.0 + if kind == "fontname" { 40.0 } else { 0.0 } + 12.0;
+        let (up, at, max_h) = ui::combo::pop_place(by, by + bh, want_h, self.view_h_px);
+        let x = ui::combo::pop_x(bx, self.view_w_px);
+        let 幅 = match kind {
+            "fontname" => ui::picklist::Width::Range(200.0, ui::combo::POP_W),
+            "fontsize" => ui::picklist::Width::Range(bw.max(96.0), 140.0),
+            _ => ui::picklist::Width::Range(bw.max(160.0), 240.0),
+        };
+        let filter = self.font_filter.as_ref().map(|ed| {
+            let mut t = ed.text().to_string();
+            let cur = ed.cursor().min(t.len());
+            t.insert(cur, '|');
+            (t, ed.text().is_empty())
+        });
+        let 書体で描く = kind == "fontname";
+        ui::picklist::panel(
+            &ui::picklist::Look {
+                bg: gpui::rgb(0xFFFFFF),
+                border: gpui::rgb(0xC6CDD3),
+                fg: gpui::rgb(0x1B1B1B),
+                dim: gpui::rgb(0x66707A),
+                ghost: gpui::rgb(0x9AA3AB),
+                hover: gpui::rgb(0xEAF2F7),
+                accent: gpui::rgb(0x165E83),
+                // **文章の画面は倍率を掛けません**(2026-08-20 発注者。
+                // 画面の文字の大きさは基本的に変えない決め)
+                scale: 1.0,
+            },
+            &ui::picklist::Place { x, at, up, max_h, width: 幅 },
+            // **何に掛かるかを頭に出します。** 前の版が出していた案内で、
+            // 「選んだ所だけ」なのか「段落ぜんぶ」なのかは、押す前に
+            // 分かっていないと困ります
+            match kind {
+                "fontname" => Some(ui::t!("書体(選んだ段落に掛かる)").into()),
+                "parastyle" => Some(ui::t!("段落のスタイル(選んだ段落に掛かる)").into()),
+                _ => None,
+            },
+            filter,
+            &items,
+            self.pick_sel,
+            move |key: &str| ui::picklist::Deco {
+                swatch: None,
+                font: 書体で描く.then(|| key.to_string()),
+            },
+            cx,
+            move |this: &mut Writer, key, cx| this.一覧を選ぶ(kind, key, cx),
+        )
+    }
+
+    /// 一覧の項を選んだ。**閉じるのもここ**です。
+    fn 一覧を選ぶ(&mut self, kind: &str, key: &str, cx: &mut gpui::Context<Self>) {
+        self.font_list = false;
+        self.size_list = false;
+        self.style_list = false;
+        self.font_filter = None;
+        self.pick_sel = 0;
+        match kind {
+            "fontname" => {
+                let sel = self.ed.selection();
+                self.flush_target();
+                self.doc.apply_font(sel, Some(key.to_string()));
+                self.dirty = true;
+                self.relayout_keep();
+                self.status = ui::tf!("書体を「{}」に", key).into();
+            }
+            "fontsize" => {
+                let Ok(pt) = key.parse::<f32>() else { return };
+                let sel = self.ed.selection();
+                self.flush_target();
+                self.doc.apply_size(sel, move |_| pt);
+                self.dirty = true;
+                self.relayout_keep();
+                self.status = ui::tf!("大きさを {}pt に", pt).into();
+            }
+            _ => {
+                if let Ok(n) = key.parse::<u8>() {
+                    self.set_para_style(n);
+                }
+            }
+        }
+        cx.notify();
+    }
+
+    /// 一覧の件数(↑↓ の端を決めるのに使います)。
+    pub(crate) fn 一覧の数(&self, kind: &str) -> usize {
+        self.一覧の中身(kind).len()
+    }
+
+    /// **Enter で今選んでいる項に決める**(手順2)。決めたら真。
+    pub(crate) fn 一覧を決める(&mut self, cx: &mut gpui::Context<Self>) -> bool {
+        let kind = if self.font_list {
+            "fontname"
+        } else if self.size_list {
+            "fontsize"
+        } else if self.style_list {
+            "parastyle"
+        } else {
+            return false;
+        };
+        let items = self.一覧の中身(kind);
+        match items.get(self.pick_sel) {
+            Some((key, _)) => {
+                let key = key.clone();
+                self.一覧を選ぶ(kind, &key, cx);
+            }
+            // 絞り込んで1つも残らなかったとき。**黙って閉じません** —
+            // 打った字が悪いのか、そういう書体が無いのかが分かるように
+            None => {
+                self.status = ui::t!("その名前の書体はありません").into();
+            }
+        }
+        true
     }
 }

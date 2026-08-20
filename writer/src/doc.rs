@@ -147,6 +147,8 @@ impl Writer {
             repl_ed: Editor::new(""),
             hf_edit: None,
             hf_ed: Editor::new(""),
+            pick_sel: 0,
+            font_filter: None,
             cmt_name_edit: false,
             cmt_name_ed: Editor::new(""),
             cmt_edit: false,

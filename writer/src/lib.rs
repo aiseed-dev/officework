@@ -258,6 +258,11 @@ pub struct Writer {
     /// コメントの印と一覧を見せるか(見え方だけ)
     show_comments: bool,
     /// フォントの一覧を出しているか
+    /// **一覧の中で選んでいる位置**(↑↓ の相手)。表の画面と同じ持ち方です
+    pick_sel: usize,
+    /// **書体の一覧の絞り込み。** 打つほど減ります。表の画面に前からある形で、
+    /// これが無いと 24 件で切るしかありませんでした(25件目から選べない)
+    font_filter: Option<Editor>,
     font_list: bool,
     /// 大きさの一覧を出しているか
     size_list: bool,
@@ -611,7 +616,10 @@ impl HasEditor for Writer {
     fn editor(&mut self) -> &mut Editor {
         // 置換・ヘッダーのパネルが開いている間、入力(IME含む)はそちらへ入る。
         // 別の入力部品を作らず、同じ Editor と結線を使い回す
-        if self.pw_open {
+        // 書体の一覧が開いている間、打鍵は絞り込みの欄へ流します
+        if let Some(f) = self.font_filter.as_mut() {
+            f
+        } else if self.pw_open {
             &mut self.pw_ed
         } else if self.file_field.is_some() {
             &mut self.prop_ed
@@ -680,7 +688,9 @@ impl HasEditor for Writer {
             ui::tf!("{} を記号に替えました(Backspace で綴りに戻ります)", was).into();
     }
     fn editor_ref(&self) -> &Editor {
-        if self.pw_open {
+        if let Some(f) = self.font_filter.as_ref() {
+            f
+        } else if self.pw_open {
             &self.pw_ed
         } else if self.file_field.is_some() {
             &self.prop_ed
@@ -878,6 +888,9 @@ impl Writer {
             || self.hf_edit.is_some()
             || self.cmt_edit
             || self.cmt_name_edit
+            || self.font_list
+            || self.size_list
+            || self.style_list
             || self.wm_edit
             || self.bm_open
             || self.url_open

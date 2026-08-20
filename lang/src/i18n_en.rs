@@ -1675,6 +1675,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("列の幅と用紙は「{}」の持ち物です(このファイルには書きません)", "Column widths and page setup belong to \"{}\" (not written to this file)"),
     ("列の幅と用紙を「{}」に書き出しました(次に開くとき当たります)", "Wrote column widths and page setup to \"{}\" (applied next time you open it)"),
     ("見た目のテンプレートが書けません: {}", "Cannot write the layout template: {}"),
+    ("その名前の書体はありません", "There is no font with that name"),
     ("(名乗らない)", "(anonymous)"),
     ("コメント {} 件", "{} comments"),
     ("{} の順に並べました", "Sorted by {}"),

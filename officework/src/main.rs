@@ -22,17 +22,26 @@ fn 開くファイル(line: &str) -> Option<String> {
     (o.str("cmd")? == "open").then(|| o.str("path"))?
 }
 
-/// **宛先の道**(`open` 以外の命令に付いた `path`。統合の段10)。
+/// **宛先の道**(命令に付いた `path`。統合の段10)。
 ///
 /// 道具(MCP・Python の橋)が「開いてから操作する」を1往復でできるように
 /// します。付いていなければ、いま見ているタブが相手です。
+///
+/// # `path` が宛先ではない命令
+///
+/// `open` は**開く相手**、`save` と `to_pdf` は**書き出す先**です。
+/// ここで宛先と読むと、その道が丸ごと壊れます — 実際に壊れていました
+/// (2026-08-20)。`{"cmd":"save","path":"新しい名前.docx"}` が
+/// 「新しい名前.docx のタブを探す」になり、まだ無いので
+/// 「そのファイルは見つかりません」で断られていました。
+/// **名前を付けて保存が道具から使えない**状態です。
 #[cfg(unix)]
 fn 宛先(line: &str) -> Option<String> {
     let o = ops::Jobj::parse(line)?;
-    if o.str("cmd")? == "open" {
-        return None;
+    match o.str("cmd")?.as_str() {
+        "open" | "save" | "to_pdf" => None,
+        _ => o.str("path"),
     }
-    o.str("path")
 }
 
 /// **起動したときに何を開くか**(SEKKEI「残りの実施方針」A-1)。
