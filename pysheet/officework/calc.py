@@ -221,6 +221,22 @@ class Range:
         info = _call("book_info")
         return Sheet(info["sheets"][info["active"]])
 
+    def __iter__(self):
+        """**1つずつのセルを順に返す。** VBA の `For Each cell In Selection`
+        に当たる書き方で、乗り換える人が最初に探す形です(2026-08-20 発注者)。
+
+            for cell in xw.selection():
+                cell.offset(0, 1).value = "済"
+
+        並びは**左から右、上から下**(Excel と同じ)。
+        """
+        for r in range(self._r0, self._r1 + 1):
+            for c in range(self._c0, self._c1 + 1):
+                yield self._make(r, c, r, c)
+
+    def __len__(self):
+        return self.size
+
     @property
     def rows(self):
         return [self._make(r, self._c0, r, self._c1)
@@ -1457,6 +1473,20 @@ _app = _App()
 def load(convert=None, index=True, header=True):
     """いま選んでいる範囲を DataFrame に(xlwings の xw.load と同じ入り方)。"""
     return Book.attach().load(convert=convert, index=index, header=header)
+
+
+def selection():
+    """**いま画面で選んでいる範囲。**
+
+    VBA の `Selection` に当たる入り口です(2026-08-20 発注者)。前は
+    `Book.attach().selection` と書くしかなく、マクロを書く人には遠すぎました。
+
+        from officework import calc as xw
+
+        for cell in xw.selection():
+            cell.offset(0, 1).value = "済"
+    """
+    return Book.attach().selection
 
 
 def ping():
