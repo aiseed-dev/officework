@@ -1522,7 +1522,7 @@ writer では「この文書 / このファイル / フォルダ」。
 
 === C. 受け口と AI の続き
 
-. *Python の橋に officework を教える。* `officework/__init__.py` の `sock_path(app)` は calc / writer を見る。1つになったアプリ(officework.sock)も探すようにする
+. [.line-through]#*Python の橋に officework を教える。*# **済**(beacec2a)。`app_name()` が `officework.sock` を先に見て、単体の `calc.sock` が動いていればそちらへ繋ぎます — 手元で単体を試している人の邪魔をしないためです。**配りを1本にした回に、壊れることに気づいて直しました** — calc を配らなくなるので、そのままなら `from officework import calc as xw` が丸ごと使えなくなっていました
 . *MCP に文書の道具を足す。* いまの MCP は表だけ。writer の受け口(text / set_text / fields / fill_one / to_pdf)を同じ作法で包む。**任意のコードを走らせる道具は置かない**(決め)
 
 === D. エンジンの在庫(台帳・第3便 13 件 — 常設の持ち場)
