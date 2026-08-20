@@ -1892,4 +1892,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」はこの文書にありません(範囲を「このファイル」にすると他の文書も探します)", "\"{}\" bu belgede yok (diğer belgelerde de aramak için \"Bu dosya\" seçin)"),
     ("この文書", "Bu belge"),
     ("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)", "Ekran artık koyu (kâğıt ve hücreler beyaz kalır — ekran ile baskı uyuşsun diye)"),
+    ("反復計算: 入(最大 {} 回 / 変化量 {})", "Yinelemeli hesaplama: açık (en çok {} geçiş / değişim {} altında)"),
+    ("反復計算: 切(循環参照は印で言います)", "Yinelemeli hesaplama: kapalı (döngüsel başvurular işaretlenir)"),
+    ("入(最大 {} 回)", "Açık (en çok {} geçiş)"),
 ];

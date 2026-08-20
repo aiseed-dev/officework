@@ -18,15 +18,29 @@
 
 use kumihan::Table;
 use sheet::model::TableDef;
-use sheet::{recalc, Cell, Pos, Sheet, Value};
+use sheet::{recalc_book, Book, Cell, Pos, Sheet, Value};
 
 /// 表の中の式を計算して、**値の並び**を返す(行優先)。
 ///
 /// 式でないセルは、字がそのまま値になります(数に読めれば数)。
 /// 並びの形は [`Table::text_rows`] と同じなので、行と列で引けます。
 pub fn values(t: &Table) -> Vec<Vec<Value>> {
+    values_with(t, None)
+}
+
+/// 表の中の式を計算する。**反復計算の設定つき**(2026-08-20 発注者
+/// 「双方でできるようにしたいです」)。
+///
+/// `iter` は (最大の回数, 変化量) — `None` なら反復しません。表の計算は
+/// `recalc_book` を通ります。**反復を読むのは Book の側**なので、
+/// 裸のシートに `recalc` を掛けていたときは設定が効きませんでした。
+///
+/// *文書の表の反復は「アプリの設定」です。* ブックは xlsx の `calcPr` に
+/// 持って往復しますが、`.adoc` の文書にはその置き場がありません。
+/// 循環参照は**表の中で閉じている**ので、文書ごとに変える意味も薄いと見ました。
+pub fn values_with(t: &Table, iter: Option<(u32, f64)>) -> Vec<Vec<Value>> {
     let text = t.text_rows();
-    let sheet = to_sheet(t, &text);
+    let sheet = to_sheet_with(t, &text, iter);
     text.iter()
         .enumerate()
         .map(|(r, row)| (0..row.len()).map(|c| sheet.value(Pos::new(r as u32, c as u32))).collect())
@@ -36,7 +50,12 @@ pub fn values(t: &Table) -> Vec<Vec<Value>> {
 /// 表の中の式を計算して、**見せる字**を返す(行優先)。
 /// 画面・HTML・紙は、これを表の中身として描きます。
 pub fn display(t: &Table) -> Vec<Vec<String>> {
-    values(t).iter().map(|row| row.iter().map(|v| v.display()).collect()).collect()
+    display_with(t, None)
+}
+
+/// 見せる字(反復計算の設定つき)。
+pub fn display_with(t: &Table, iter: Option<(u32, f64)>) -> Vec<Vec<String>> {
+    values_with(t, iter).iter().map(|row| row.iter().map(|v| v.display()).collect()).collect()
 }
 
 /// 文書の中に**式の入った表**があるか。
@@ -61,6 +80,11 @@ pub fn has_formula(doc: &kumihan::Document) -> bool {
 /// 式でない升は触りません。太字などの書式を持った升を、答えの字で
 /// 塗り潰さないためです。
 pub fn fill(doc: &mut kumihan::Document) -> usize {
+    fill_with(doc, None)
+}
+
+/// 写しに答えを入れる(反復計算の設定つき)。
+pub fn fill_with(doc: &mut kumihan::Document, iter: Option<(u32, f64)>) -> usize {
     let mut 直した = 0;
     for b in doc.blocks.iter_mut() {
         let kumihan::Block::Table(t) = b else { continue };
@@ -88,7 +112,7 @@ pub fn fill(doc: &mut kumihan::Document) -> usize {
 /// 題が付いていれば**表の名前**にもするので、`=SUM(売上台帳[金額])` の
 /// ような構造化参照が使えます。範囲は表全体で、見出しの行があるかは
 /// `header_row` がそのまま伝わります。
-fn to_sheet(t: &Table, text: &[Vec<String>]) -> Sheet {
+fn to_sheet_with(t: &Table, text: &[Vec<String>], iter: Option<(u32, f64)>) -> Sheet {
     let name = t.title.clone().unwrap_or_default();
     let mut s = Sheet::new(&name);
     let mut cols = 0usize;
@@ -110,8 +134,13 @@ fn to_sheet(t: &Table, text: &[Vec<String>]) -> Sheet {
             ..Default::default()
         });
     }
-    recalc(&mut s);
-    s
+    // **Book の道を通す。** 反復計算の設定を読むのは Book の側で、
+    // 裸のシートに `recalc` を掛けると設定が落ちます(2026-08-20)
+    let mut b = Book::new();
+    b.calc_iter = iter;
+    b.sheets[0] = s;
+    recalc_book(&mut b, 0);
+    b.sheets.remove(0)
 }
 
 #[cfg(test)]
@@ -120,7 +149,33 @@ mod tests {
     use super::*;
     use kumihan::{Cellbox, Document, Table};
 
-    /// 字の並びから表を作る(試験の下ごしらえ)
+    /// **反復計算が文書の表でも効く**(2026-08-20 発注者「双方でできるように
+    /// したいです」)。
+    ///
+    /// 前は裸のシートに `recalc` を掛けていて、**反復の設定を読むのは Book の
+    /// 側**なので効きませんでした。表計算では設定できるのに文書の表ではできない、
+    /// という食い違いでした。
+    #[test]
+    fn 反復計算は設定したときだけ効く() {
+        // A1 = B1 + 1、B1 = A1 — そのままでは循環参照
+        let t = 表("", false, &[&["=B1+1", "=A1"]]);
+        // 設定なし: 循環参照の印が出る(いままでどおり)
+        let 素 = display(&t);
+        assert!(素[0][0].contains('#'), "循環参照の印が出ていない: {素:?}");
+        // 反復あり: 落ち着いた値になる
+        let 反復 = display_with(&t, Some((100, 1e-9)));
+        assert!(!反復[0][0].contains('#'), "反復しても印のまま: {反復:?}");
+    }
+
+    /// **設定を渡さない道は今までどおり。** 既定で反復しないのは
+    /// Excel と同じで、循環参照は黙って値にせず印で言う
+    #[test]
+    fn 既定は反復しない() {
+        let t = 表("", false, &[&["=B1+1", "=A1"]]);
+        assert_eq!(display(&t), display_with(&t, None), "既定が変わった");
+    }
+
+    /// 字の並びから表を作る(試験の下ごしらえ)    /// 字の並びから表を作る(試験の下ごしらえ)
     fn 表(title: &str, header: bool, rows: &[&[&str]]) -> Table {
         Table {
             rows: rows

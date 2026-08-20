@@ -1892,4 +1892,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」はこの文書にありません(範囲を「このファイル」にすると他の文書も探します)", "Không có \"{}\" trong tài liệu này (chọn \"Tệp này\" để tìm cả các tài liệu khác)"),
     ("この文書", "Tài liệu này"),
     ("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)", "Màn hình đã tối (giấy và ô vẫn trắng — để màn hình và bản in khớp nhau)"),
+    ("反復計算: 入(最大 {} 回 / 変化量 {})", "Tính lặp: bật (tối đa {} lượt / thay đổi dưới {})"),
+    ("反復計算: 切(循環参照は印で言います)", "Tính lặp: tắt (tham chiếu vòng được đánh dấu)"),
+    ("入(最大 {} 回)", "Bật (tối đa {} lượt)"),
 ];

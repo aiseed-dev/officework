@@ -914,6 +914,26 @@ impl Render for Writer {
                                 this.run_cmd("darkmode", cx);
                                 cx.notify()
                             }))))
+                    // **反復計算**(2026-08-20 発注者「双方でできるように
+                    // したいです」)。文書の表もセル関数を持つので、循環参照を
+                    // 回して解く道は表計算と同じに要る。器はアプリの設定 —
+                    // `.adoc` の文書には xlsx の `calcPr` に当たる置き場が無い
+                    .child(div().flex().flex_row().items_center().gap_2()
+                        .child(div().w(px(200.0)).text_color(th_status)
+                            .child(ui::t!("反復計算(循環参照)")))
+                        .child(div().id("set-iter")
+                            .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                            .child(match ui::calc_iter_setting() {
+                                Some((n, _)) => ui::tf!("入(最大 {} 回)", n),
+                                None => ui::t!("切").to_string(),
+                            })
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                let (_, msg) =
+                                    ui::toggle_calc_iter(ui::calc_iter_setting(), !cfg!(test));
+                                this.status = msg.into();
+                                this.lay();
+                                cx.notify()
+                            }))))
                     // **数学オートコレクト**(2026-08-20 発注者「双方でできる
                     // ようにしたいです」)。仕掛けは前から共通で、表だけが
                     // 名乗り出ていた。器も表と同じ1つの綴りを見る

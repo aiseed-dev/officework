@@ -1892,4 +1892,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」はこの文書にありません(範囲を「このファイル」にすると他の文書も探します)", "« {} » n'est pas dans ce document (choisissez « Ce fichier » pour chercher aussi dans les autres documents)"),
     ("この文書", "Ce document"),
     ("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)", "L'écran est maintenant sombre (le papier et les cellules restent blancs, pour que l'écran et l'impression concordent)"),
+    ("反復計算: 入(最大 {} 回 / 変化量 {})", "Calcul itératif : activé (jusqu'à {} passes / variation inférieure à {})"),
+    ("反復計算: 切(循環参照は印で言います)", "Calcul itératif : désactivé (les références circulaires sont signalées)"),
+    ("入(最大 {} 回)", "Activé (jusqu'à {} passes)"),
 ];

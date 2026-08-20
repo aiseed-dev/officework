@@ -7481,406 +7481,418 @@
  },
  {
   "i": 1870,
-  "t": "Funciones de Python"
+  "t": "Cálculo iterativo: activado (hasta {} pasadas / cambio menor que {})"
  },
  {
   "i": 1871,
-  "t": "Macros de la cinta"
+  "t": "Cálculo iterativo: desactivado (las referencias circulares se marcan)"
  },
  {
   "i": 1872,
-  "t": "Copiar formato"
+  "t": "Activado (hasta {} pasadas)"
  },
  {
   "i": 1873,
-  "t": "Estilo"
+  "t": "Funciones de Python"
  },
  {
   "i": 1874,
-  "t": "Lista de campos"
+  "t": "Macros de la cinta"
  },
  {
   "i": 1875,
-  "t": "Agrandar texto de la pantalla"
+  "t": "Copiar formato"
  },
  {
   "i": 1876,
-  "t": "Reducir texto de la pantalla"
+  "t": "Estilo"
  },
  {
   "i": 1877,
-  "t": "IA"
+  "t": "Lista de campos"
  },
  {
   "i": 1878,
-  "t": "Imprimir"
+  "t": "Agrandar texto de la pantalla"
  },
  {
   "i": 1879,
-  "t": "Diseño de impresión"
+  "t": "Reducir texto de la pantalla"
  },
  {
   "i": 1880,
-  "t": "Destino"
+  "t": "IA"
  },
  {
   "i": 1881,
-  "t": "Resumir"
+  "t": "Imprimir"
  },
  {
   "i": 1882,
-  "t": "Reescribir"
+  "t": "Diseño de impresión"
  },
  {
   "i": 1883,
-  "t": "Más formal"
+  "t": "Destino"
  },
  {
   "i": 1884,
-  "t": "Más sencillo"
+  "t": "Resumir"
  },
  {
   "i": 1885,
-  "t": "Traducir"
+  "t": "Reescribir"
  },
  {
   "i": 1886,
-  "t": "Furigana"
+  "t": "Más formal"
  },
  {
   "i": 1887,
-  "t": "Continuar"
+  "t": "Más sencillo"
  },
  {
   "i": 1888,
-  "t": "A tabla"
+  "t": "Traducir"
  },
  {
   "i": 1889,
-  "t": "Pedir"
+  "t": "Furigana"
  },
  {
   "i": 1890,
-  "t": "Ruby"
+  "t": "Continuar"
  },
  {
   "i": 1891,
-  "t": "Vertical"
+  "t": "A tabla"
  },
  {
   "i": 1892,
-  "t": "Dirección del texto"
+  "t": "Pedir"
  },
  {
   "i": 1893,
-  "t": "Distribuido"
+  "t": "Ruby"
  },
  {
   "i": 1894,
-  "t": "Insertar título"
+  "t": "Vertical"
  },
  {
   "i": 1895,
-  "t": "Abrir URL"
+  "t": "Dirección del texto"
  },
  {
   "i": 1896,
-  "t": "Índice"
+  "t": "Distribuido"
  },
  {
   "i": 1897,
-  "t": "Notas de Aozora"
+  "t": "Insertar título"
  },
  {
   "i": 1898,
-  "t": "Notación Denden"
+  "t": "Abrir URL"
  },
  {
   "i": 1899,
-  "t": "Control de cambios"
+  "t": "Índice"
  },
  {
   "i": 1900,
-  "t": "Mostrar cambios"
+  "t": "Notas de Aozora"
  },
  {
   "i": 1901,
-  "t": "Corrección"
+  "t": "Notación Denden"
  },
  {
   "i": 1902,
-  "t": "Caracteres"
+  "t": "Control de cambios"
  },
  {
   "i": 1903,
-  "t": "Revisión ortográfica"
+  "t": "Mostrar cambios"
  },
  {
   "i": 1904,
-  "t": "Sinónimos"
+  "t": "Corrección"
  },
  {
   "i": 1905,
-  "t": "Errores de conversión"
+  "t": "Caracteres"
  },
  {
   "i": 1906,
-  "t": "Incoherencias"
+  "t": "Revisión ortográfica"
  },
  {
   "i": 1907,
-  "t": "Subtotales"
+  "t": "Sinónimos"
  },
  {
   "i": 1908,
-  "t": "Cálculo"
+  "t": "Errores de conversión"
  },
  {
   "i": 1909,
-  "t": "Texto de derecha a izquierda"
+  "t": "Incoherencias"
  },
  {
   "i": 1910,
-  "t": "Dirección de la hoja"
+  "t": "Subtotales"
  },
  {
   "i": 1911,
-  "t": "Python"
+  "t": "Cálculo"
  },
  {
   "i": 1912,
-  "t": "Casilla"
- },
- {
-  "i": 1913,
-  "t": "Vínculos externos"
- },
- {
-  "i": 1914,
-  "t": "Gráfico recomendado"
- },
- {
-  "i": 1915,
-  "t": "Modo de coedición"
- },
- {
-  "i": 1916,
-  "t": "Historial de versiones"
- },
- {
-  "i": 1917,
-  "t": "Chat"
- },
- {
-  "i": 1918,
-  "t": "Proteger"
- },
- {
-  "i": 1919,
-  "t": "Cifrar"
- },
- {
-  "i": 1920,
-  "t": "Agregar firma digital"
- },
- {
-  "i": 1921,
-  "t": "Macros"
- },
- {
-  "i": 1922,
-  "t": "Administrar complementos"
- },
- {
-  "i": 1923,
-  "t": "Mostrar ceros"
- },
- {
-  "i": 1924,
-  "t": "Zoom al 100%"
- },
- {
-  "i": 1925,
-  "t": "Tema de la interfaz"
- },
- {
-  "i": 1926,
-  "t": "Ventana Inspección"
- },
- {
-  "i": 1927,
-  "t": "Autosuma"
- },
- {
-  "i": 1928,
-  "t": "Grabar acciones"
- },
- {
-  "i": 1929,
-  "t": "Eliminar comentario"
- },
- {
-  "i": 1930,
-  "t": "Solver"
- },
- {
-  "i": 1931,
-  "t": "Texto a datos"
- },
- {
-  "i": 1932,
-  "t": "Quitar flechas"
- },
- {
-  "i": 1933,
-  "t": "Rellenar"
- },
- {
-  "i": 1934,
-  "t": "Borrar filtro"
- },
- {
-  "i": 1935,
-  "t": "Escribir macro"
- },
- {
-  "i": 1936,
-  "t": "Texto en columnas"
- },
- {
-  "i": 1937,
-  "t": "Título"
- },
- {
-  "i": 1938,
-  "t": "Tabla de ilustraciones"
- },
- {
-  "i": 1939,
-  "t": "Actualizar tabla de ilustraciones"
- },
- {
-  "i": 1940,
-  "t": "Vínculos externos (importar como valores)"
- },
- {
-  "i": 1941,
-  "t": "Matemáticas y trigonometría"
- },
- {
-  "i": 1942,
-  "t": "Mostrar fórmulas"
- },
- {
-  "i": 1943,
   "t": "Texto de derecha a izquierda"
  },
  {
+  "i": 1913,
+  "t": "Dirección de la hoja"
+ },
+ {
+  "i": 1914,
+  "t": "Python"
+ },
+ {
+  "i": 1915,
+  "t": "Casilla"
+ },
+ {
+  "i": 1916,
+  "t": "Vínculos externos"
+ },
+ {
+  "i": 1917,
+  "t": "Gráfico recomendado"
+ },
+ {
+  "i": 1918,
+  "t": "Modo de coedición"
+ },
+ {
+  "i": 1919,
+  "t": "Historial de versiones"
+ },
+ {
+  "i": 1920,
+  "t": "Chat"
+ },
+ {
+  "i": 1921,
+  "t": "Proteger"
+ },
+ {
+  "i": 1922,
+  "t": "Cifrar"
+ },
+ {
+  "i": 1923,
+  "t": "Agregar firma digital"
+ },
+ {
+  "i": 1924,
+  "t": "Macros"
+ },
+ {
+  "i": 1925,
+  "t": "Administrar complementos"
+ },
+ {
+  "i": 1926,
+  "t": "Mostrar ceros"
+ },
+ {
+  "i": 1927,
+  "t": "Zoom al 100%"
+ },
+ {
+  "i": 1928,
+  "t": "Tema de la interfaz"
+ },
+ {
+  "i": 1929,
+  "t": "Ventana Inspección"
+ },
+ {
+  "i": 1930,
+  "t": "Autosuma"
+ },
+ {
+  "i": 1931,
+  "t": "Grabar acciones"
+ },
+ {
+  "i": 1932,
+  "t": "Eliminar comentario"
+ },
+ {
+  "i": 1933,
+  "t": "Solver"
+ },
+ {
+  "i": 1934,
+  "t": "Texto a datos"
+ },
+ {
+  "i": 1935,
+  "t": "Quitar flechas"
+ },
+ {
+  "i": 1936,
+  "t": "Rellenar"
+ },
+ {
+  "i": 1937,
+  "t": "Borrar filtro"
+ },
+ {
+  "i": 1938,
+  "t": "Escribir macro"
+ },
+ {
+  "i": 1939,
+  "t": "Texto en columnas"
+ },
+ {
+  "i": 1940,
+  "t": "Título"
+ },
+ {
+  "i": 1941,
+  "t": "Tabla de ilustraciones"
+ },
+ {
+  "i": 1942,
+  "t": "Actualizar tabla de ilustraciones"
+ },
+ {
+  "i": 1943,
+  "t": "Vínculos externos (importar como valores)"
+ },
+ {
   "i": 1944,
-  "t": "Texto"
+  "t": "Matemáticas y trigonometría"
  },
  {
   "i": 1945,
-  "t": "Fecha y hora"
+  "t": "Mostrar fórmulas"
  },
  {
   "i": 1946,
-  "t": "Usadas recientemente"
+  "t": "Texto de derecha a izquierda"
  },
  {
   "i": 1947,
-  "t": "Imprimir líneas de cuadrícula"
+  "t": "Texto"
  },
  {
   "i": 1948,
-  "t": "Actualizar tabla de contenido"
+  "t": "Fecha y hora"
  },
  {
   "i": 1949,
-  "t": "Columnas con bandas"
+  "t": "Usadas recientemente"
  },
  {
   "i": 1950,
-  "t": "Imprimir encabezados"
+  "t": "Imprimir líneas de cuadrícula"
  },
  {
   "i": 1951,
-  "t": "Ocultar detalle"
+  "t": "Actualizar tabla de contenido"
  },
  {
   "i": 1952,
-  "t": "Quitar duplicados"
+  "t": "Columnas con bandas"
  },
  {
   "i": 1953,
-  "t": "Insertar función"
+  "t": "Imprimir encabezados"
  },
  {
   "i": 1954,
-  "t": "Formato CSV"
+  "t": "Ocultar detalle"
  },
  {
   "i": 1955,
-  "t": "Bloquear celda"
+  "t": "Quitar duplicados"
  },
  {
   "i": 1956,
-  "t": "Tabla de datos"
+  "t": "Insertar función"
  },
  {
   "i": 1957,
-  "t": "Relleno rápido"
+  "t": "Formato CSV"
  },
  {
   "i": 1958,
-  "t": "Lista"
+  "t": "Bloquear celda"
  },
  {
   "i": 1959,
-  "t": "Pegar nombre"
+  "t": "Tabla de datos"
  },
  {
   "i": 1960,
-  "t": "Recuperar"
+  "t": "Relleno rápido"
  },
  {
   "i": 1961,
-  "t": "Ajustar texto"
+  "t": "Lista"
  },
  {
   "i": 1962,
-  "t": "Intervalo de copias"
+  "t": "Pegar nombre"
  },
  {
   "i": 1963,
-  "t": "Nuevo .py"
+  "t": "Recuperar"
  },
  {
   "i": 1964,
-  "t": "Añadir rango"
+  "t": "Ajustar texto"
  },
  {
   "i": 1965,
-  "t": "Ajustar al papel"
+  "t": "Intervalo de copias"
  },
  {
   "i": 1966,
-  "t": "Cortes del papel"
+  "t": "Nuevo .py"
  },
  {
   "i": 1967,
-  "t": "Abrir carpeta"
+  "t": "Añadir rango"
  },
  {
   "i": 1968,
-  "t": "Tipo de cálculo"
+  "t": "Ajustar al papel"
  },
  {
   "i": 1969,
-  "t": "Operaciones permitidas"
+  "t": "Cortes del papel"
  },
  {
   "i": 1970,
+  "t": "Abrir carpeta"
+ },
+ {
+  "i": 1971,
+  "t": "Tipo de cálculo"
+ },
+ {
+  "i": 1972,
+  "t": "Operaciones permitidas"
+ },
+ {
+  "i": 1973,
   "t": "Sugerir solo lectura"
  }
 ]

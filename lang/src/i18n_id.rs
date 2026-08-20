@@ -1892,4 +1892,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」はこの文書にありません(範囲を「このファイル」にすると他の文書も探します)", "\"{}\" tidak ada di dokumen ini (pilih \"Berkas ini\" untuk mencari di dokumen lain juga)"),
     ("この文書", "Dokumen ini"),
     ("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)", "Layar kini gelap (kertas dan sel tetap putih agar layar dan cetakan sama)"),
+    ("反復計算: 入(最大 {} 回 / 変化量 {})", "Perhitungan iteratif: aktif (hingga {} putaran / perubahan di bawah {})"),
+    ("反復計算: 切(循環参照は印で言います)", "Perhitungan iteratif: mati (referensi melingkar ditandai)"),
+    ("入(最大 {} 回)", "Aktif (hingga {} putaran)"),
 ];

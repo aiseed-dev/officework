@@ -1892,4 +1892,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」はこの文書にありません(範囲を「このファイル」にすると他の文書も探します)", "„{}“ ist nicht in diesem Dokument (mit „Diese Datei“ werden auch die anderen Dokumente durchsucht)"),
     ("この文書", "Dieses Dokument"),
     ("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)", "Bildschirm ist jetzt dunkel (Papier und Zellen bleiben weiß — so stimmen Bildschirm und Druck überein)"),
+    ("反復計算: 入(最大 {} 回 / 変化量 {})", "Iterative Berechnung: ein (bis zu {} Durchläufe / Änderung unter {})"),
+    ("反復計算: 切(循環参照は印で言います)", "Iterative Berechnung: aus (Zirkelbezüge werden markiert)"),
+    ("入(最大 {} 回)", "Ein (bis zu {} Durchläufe)"),
 ];

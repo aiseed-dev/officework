@@ -573,7 +573,7 @@ impl Writer {
         // です(式が正本)。式が1つも無ければ写しも作りません
         if ops::table::has_formula(composed.as_ref().unwrap_or(&self.doc)) {
             let c = composed.get_or_insert_with(|| self.doc.clone());
-            ops::table::fill(c);
+            ops::table::fill_with(c, ui::calc_iter_setting());
         }
         let 組 = if self.native { self.tmpl.setting } else { Default::default() };
         // **ページの飾りは合成の写しから取ります**(2026-08-18)。
@@ -818,7 +818,7 @@ impl Writer {
         // 開き直しても式は戻りません(値になっています)。
         // 式が無ければ写しも作りません(いまの組みと同じ倹約)
         if ops::table::has_formula(&doc) {
-            ops::table::fill(&mut doc);
+            ops::table::fill_with(&mut doc, ui::calc_iter_setting());
         }
         // 変更履歴: 記録開始時点との差分を印の字にする(ooxml が w:ins/w:del に)
         if self.track {

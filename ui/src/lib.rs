@@ -425,6 +425,41 @@ pub fn dark_at_start() -> bool {
     settings::get("theme").is_some_and(|v| v == "dark")
 }
 
+/// **反復計算の設定**(`settings.toml` の `calc_iter`)。
+///
+/// 返すのは (最大の回数, 変化量)。切っていれば `None`。
+/// 表計算はブックの `calcPr` に持って xlsx と往復しますが、**文書の表には
+/// その置き場がない**ので、文章の側はアプリの設定に置きます
+/// (循環参照は表の中で閉じているので、文書ごとに変える意味も薄いと見た)。
+pub fn calc_iter_setting() -> Option<(u32, f64)> {
+    let v = settings::get("calc_iter")?;
+    let v = v.trim();
+    if v.is_empty() || v == "0" {
+        return None;
+    }
+    // 「回数,変化量」。片方だけでも読む(既定は 100 と 0.001 — 表計算と同じ)
+    let mut it = v.split(',');
+    let n = it.next().and_then(|x| x.trim().parse::<u32>().ok()).unwrap_or(100);
+    let d = it.next().and_then(|x| x.trim().parse::<f64>().ok()).unwrap_or(0.001);
+    Some((n, d))
+}
+
+/// 反復計算を入切する。`persist` は呼ぶ側が `!cfg!(test)` を渡します。
+pub fn toggle_calc_iter(cur: Option<(u32, f64)>, persist: bool) -> (Option<(u32, f64)>, String) {
+    let next = if cur.is_some() { None } else { Some((100u32, 0.001f64)) };
+    if persist {
+        settings::set("calc_iter", &match next {
+            Some((n, d)) => format!("{n},{d}"),
+            None => "0".to_string(),
+        });
+    }
+    let msg = match next {
+        Some((n, d)) => crate::tf!("反復計算: 入(最大 {} 回 / 変化量 {})", n, d).to_string(),
+        None => crate::t!("反復計算: 切(循環参照は印で言います)").to_string(),
+    };
+    (next, msg)
+}
+
 pub fn now_stamp() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
