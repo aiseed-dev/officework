@@ -675,7 +675,16 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
                 // 複数段落は空行で区切ります(`a|` の中身の作法)
                 段落.join(if 複数の段落 { "\n\n" } else { " " })
             };
-            out.push_str(&text);
+            // **縦棒は逃がします**(2026-08-20 に見つけた)。逃がさないと
+            // 中身の `|` が次のセルの頭と読まれ、**1つの升が2つに割れて
+            // 行がずれます**。`|===` を含む升なら表そのものが途中で
+            // 終わります。読む側は前から `\|` を飛ばしていたので、
+            // 足りなかったのは書く側だけです。
+            //
+            // *式も逃がします。* `="A|B"` のような升があるためです。
+            // `*` を逃がさない決め(下の `is_formula_cell` の枝)とは別で、
+            // `|` は升の切れ目そのものなので、逃がさないと形が壊れます
+            out.push_str(&text.replace('|', "\\|"));
         }
         out.push('\n');
         if ri == 0 && t.header_row {
@@ -1983,7 +1992,16 @@ fn parse_table_lines(
                     runs: if p == 空の段落 {
                         Vec::new()
                     } else if is_formula_cell(p) {
-                        vec![Run { text: p.to_string(), size_pt: None, font: None, fmt: CharFormat::default() }]
+                        // **式は字のまま取ります**(太字の印として読まない)。
+                        // ただし逃がした縦棒だけは戻します — 書く側が
+                        // `="A|B"` を `="A\|B"` にするので、そのままだと
+                        // 逆斜線が式の中に残ります(2026-08-20)
+                        vec![Run {
+                            text: p.replace("\\|", "|"),
+                            size_pt: None,
+                            font: None,
+                            fmt: CharFormat::default(),
+                        }]
                     } else {
                         parse_inline(p, doc, fresh_note)?
                     },

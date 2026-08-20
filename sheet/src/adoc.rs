@@ -477,4 +477,47 @@ mod tests {
         assert_eq!(値(&戻り, 0, "B1"), "ふつう");
     }
 
+    /// **升の中の縦棒で行が割れない**(2026-08-20 に見つけた)。
+    ///
+    /// `|` は升の切れ目そのものです。逃がさずに書くと、`A|B` の1升が
+    /// 2升に割れて**その行から右がずれます**。`|===` を含む升なら、
+    /// 表がそこで終わったことになって残りが消えます。
+    ///
+    /// 読む側は前から `\|` を飛ばしていたので、足りなかったのは
+    /// 書く側だけでした。**保存で中身が壊れる**種類の欠陥です。
+    #[test]
+    fn 升の中の縦棒で行が割れない() {
+        for 中身 in ["A|B", "|見出し\n|中身", "|===\nおしまい", "|"] {
+            let mut b = Book::new();
+            b.sheets.clear();
+            let mut s = Sheet::new("覚え");
+            s.set(Pos::parse("A1").unwrap(), Cell::input(中身));
+            s.set(Pos::parse("B1").unwrap(), Cell::input("番人"));
+            b.sheets.push(s);
+            let src = write(&b);
+            let (戻り, _) = parse(&src).expect("読めない");
+            assert_eq!(値(&戻り, 0, "A1"), 中身, "中身が戻らない:\n{src}");
+            assert_eq!(値(&戻り, 0, "B1"), "番人", "隣の升まで壊れた:\n{src}");
+        }
+    }
+
+    /// **式の中の縦棒も往復する。** 式は字のまま書く決めですが、`|` だけは
+    /// 逃がします(升の切れ目なので)。読む側で戻さないと、逆斜線が式に残ります
+    #[test]
+    fn 式の中の縦棒も往復する() {
+        let mut b = Book::new();
+        b.sheets.clear();
+        let mut s = Sheet::new("覚え");
+        s.set(Pos::parse("A1").unwrap(), Cell::input("=\"A|B\""));
+        s.set(Pos::parse("B1").unwrap(), Cell::input("番人"));
+        b.sheets.push(s);
+        let src = write(&b);
+        let (戻り, _) = parse(&src).expect("読めない");
+        let f = 戻り.sheets[0].get(Pos::parse("A1").unwrap()).and_then(|c| c.formula.clone());
+        // 式は頭の `=` を落として持ちます(`Cell::input` の決め)
+        assert_eq!(f.as_deref(), Some("\"A|B\""), "式が戻らない:\n{src}");
+        assert_eq!(値(&戻り, 0, "A1"), "A|B", "答えが違う");
+        assert_eq!(値(&戻り, 0, "B1"), "番人");
+    }
+
 }
