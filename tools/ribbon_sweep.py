@@ -130,7 +130,15 @@ class App:
         self.home = os.path.join(self.run_dir, "home")
         os.makedirs(os.path.join(self.home, ".config", "office"), exist_ok=True)
         env["HOME"] = self.home
-        env.setdefault("DISPLAY", ":2")
+        # **点検用の画面を必ず使う**(2026-08-20)。`setdefault` だと、
+        # デスクトップから走らせたときに既にある `DISPLAY=:0` が勝ち、
+        # **発注者の画面に窓が出て、合成した打鍵と押しがそちらへ飛びます**。
+        # 実際に踏みました — 日本語入力が動いている画面だったので、
+        # 送った打鍵が変換されて別の字になりました。
+        # 別の画面を使いたいときは SWEEP_DISPLAY で名指ししてください
+        env["DISPLAY"] = os.environ.get("SWEEP_DISPLAY", ":2")
+        # 打鍵を変換させない(ASCII はこれで通る。2026-08-15 の踏み跡)
+        env.setdefault("XMODIFIERS", "@im=none")
         self.env = env
         self.log = open(os.path.join(self.run_dir, "calc.log"), "w+")
         self.proc = subprocess.Popen([CALC], env=env, stdout=self.log, stderr=self.log)

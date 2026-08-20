@@ -65,6 +65,7 @@ macro_rules! item {
     };
 }
 
+pub mod picklist;
 pub mod pyedit;
 
 // **絵を描かない物は face に移した**(2026-08-15。発注者「GPUI のアプリを
