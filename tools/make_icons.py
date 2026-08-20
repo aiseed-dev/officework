@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """アプリの絵を SVG 1枚から、配る形へ**全部起こす**。
 
-正本は `packaging/icons/officework-{calc,writer}.svg` の2枚だけ。ここから
+正本は `packaging/icons/officework{,-calc,-writer}.svg` の3枚だけ。ここから
 
     packaging/icons/hicolor/<寸法>/officework-<app>.png   Linux(.deb / .tar.gz)
     packaging/icons/officework-<app>.ico                  Windows
@@ -28,7 +28,9 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ICONS = ROOT / "packaging/icons"
-APPS = ["calc", "writer"]
+# **配る絵は officework の1枚**(SEKKEI 段11)。calc と writer の絵は、
+# 単体のバイナリが開発と試験の道具として残るので、そのまま置いておきます
+APPS = ["officework", "officework-calc", "officework-writer"]
 
 # Linux の hicolor に置く寸法。48 と 256 は要(ランチャーと設定画面)
 PNG_SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512]
@@ -40,14 +42,14 @@ ICNS_TYPES = [(b"ic07", 128), (b"ic08", 256), (b"ic09", 512),
 
 
 def png_path(app, size):
-    return ICONS / "hicolor" / f"{size}x{size}" / f"officework-{app}.png"
+    return ICONS / "hicolor" / f"{size}x{size}" / f"{app}.png"
 
 
 def render(app, size, out):
     out.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         ["inkscape", "-w", str(size), "-h", str(size), "-o", str(out),
-         str(ICONS / f"officework-{app}.svg")],
+         str(ICONS / f"{app}.svg")],
         check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
 
@@ -69,21 +71,21 @@ def write_icns(pngs, out):
 def check():
     missing = []
     for app in APPS:
-        if not (ICONS / f"officework-{app}.svg").exists():
-            missing.append(f"officework-{app}.svg(正本)")
+        if not (ICONS / f"{app}.svg").exists():
+            missing.append(f"{app}.svg(正本)")
         for size in PNG_SIZES:
             if not png_path(app, size).exists():
                 missing.append(png_path(app, size).relative_to(ROOT).as_posix())
         for ext in ("ico", "icns"):
-            p = ICONS / f"officework-{app}.{ext}"
+            p = ICONS / f"{app}.{ext}"
             if not p.exists():
                 missing.append(p.relative_to(ROOT).as_posix())
 
-    # `.desktop` が名指しする絵が実在するか(**ここが本題**)
+    # `.desktop` が名指しする絵が実在するか(**ここが本題**)。
+    # 配るのは officework の1枚だけなので、見張るのもそれだけです
     sh = (ROOT / "packaging/make-linux.sh").read_text(encoding="utf-8")
-    for app in APPS:
-        if f"Icon=officework-$app" not in sh and f"Icon=officework-{app}" not in sh:
-            missing.append(f"make-linux.sh が officework-{app} を指していない")
+    if "Icon=officework" not in sh:
+        missing.append("make-linux.sh が officework の絵を指していない")
 
     if missing:
         print(f"**アプリの絵が {len(missing)} 件足りません。**")
@@ -115,13 +117,13 @@ def main():
             render(app, size, png_path(app, size))
         # Windows(.ico)— PIL が複数の寸法を1つに詰める
         Image.open(png_path(app, 512)).save(
-            ICONS / f"officework-{app}.ico",
+            ICONS / f"{app}.ico",
             sizes=[(s, s) for s in ICO_SIZES],
         )
         # macOS(.icns)
         pngs = {s: png_path(app, s).read_bytes() for s in {n for _, n in ICNS_TYPES}}
-        write_icns(pngs, ICONS / f"officework-{app}.icns")
-        print(f"officework-{app}: PNG {len(PNG_SIZES)} 枚 + .ico + .icns")
+        write_icns(pngs, ICONS / f"{app}.icns")
+        print(f"{app}: PNG {len(PNG_SIZES)} 枚 + .ico + .icns")
     return check()
 
 

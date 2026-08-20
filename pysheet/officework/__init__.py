@@ -3,7 +3,7 @@
 
     from officework import sheet      # エンジン: xlsx。アプリは要らない
     from officework import doc        # エンジン: docx。アプリは要らない
-    from officework import calc as xw # 橋: 動いている calc を操る
+    from officework import calc as xw # 橋: 動いている officework を操る
 
 **エンジン**は Rust(pyo3)。原本を正として、変えた所だけ書き戻すので、
 罫線・結合・列幅・図形が openpyxl のように壊れない。docx も同じで、
@@ -11,7 +11,7 @@
 `unsupported` に出る(黙って落とさない)。pptx のエンジンも
 同じ名前空間に足す予定(officework.slide)。
 
-**橋**は純 Python。アプリごとのソケット($XDG_RUNTIME_DIR/officework/<app>.sock、
+**橋**は純 Python。ソケット($XDG_RUNTIME_DIR/officework/officework.sock、
 径路が AF_UNIX の 108 字上限を超えるときは /tmp/officework-UID/)へ
 JSON を1行ずつ。**この機械の中だけ**で、ネットには出ない。
 
@@ -73,6 +73,26 @@ def sock_path(app):
     return os.path.join(
         "/tmp", "officework-{}".format(os.getuid()), app + ".sock"
     )
+
+
+def app_name(単体="calc"):
+    """**橋の話し相手の名前。**
+
+    配るのは `officework` の1本です(SEKKEI 段11)。ただし calc と writer の
+    単体は開発と試験の道具として残るので、**そちらが動いていればそちらへ
+    繋ぎます** — 手元で単体を起こして試している人の邪魔をしないためです。
+
+    どちらも動いていなければ `officework` を返します(起こす相手)。
+    """
+    if os.name == "nt":
+        return "officework"
+    for 名 in ("officework", 単体):
+        try:
+            if os.path.exists(sock_path(名)):
+                return 名
+        except OfficeworkError:
+            break
+    return "officework"
 
 
 def _find_app(app):

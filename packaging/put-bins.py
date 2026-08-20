@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""組んだ calc / writer を wheel に載せる場所へ置く。
+"""組んだ officework を wheel に載せる場所へ置く。
 
-    cargo build --release -p calc -p writer
+    cargo build --release -p officework
     python3 packaging/put-bins.py
     cd pysheet && maturin build --release
 
+**配るのは officework 1本**(2026-08-19 発注者確定。SEKKEI 段11)。
+calc と writer の単体は開発と試験の道具として残しますが、配りません。
+1本になったぶん wheel は小さくなります。
+
 **strip する。** 実測(2026-08-15)で calc は 60.5MB → strip 44.1MB →
-wheel の中(zip)で 16.3MB。2本で約 32MB なので PyPI の 100MB に収まる。
+wheel の中(zip)で 16.3MB。PyPI の 100MB に収まります。
 
 なぜ PyPI で配るのか: **署名が要らない**。mac の Gatekeeper も Windows の
 SmartScreen も「ブラウザで落とした物」に付く印(quarantine / Mark of the
@@ -30,7 +34,7 @@ for _s in (sys.stdout, sys.stderr):
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEST = ROOT / "pysheet" / "officework" / "bin"
-APPS = ("calc", "writer")
+APPS = ("officework",)
 
 
 def main():
@@ -42,7 +46,7 @@ def main():
         if not src.exists():
             sys.exit(
                 f"{src} がありません。先に組んでください:\n"
-                f"  cargo build --release -p calc -p writer"
+                f"  cargo build --release -p officework"
             )
         dst = DEST / (app + exe_suffix)
         shutil.copy2(src, dst)

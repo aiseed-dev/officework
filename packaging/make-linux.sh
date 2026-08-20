@@ -16,7 +16,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VER=$(grep -m1 '^version' calc/Cargo.toml | cut -d'"' -f2)
+VER=$(grep -m1 '^version' officework/Cargo.toml | cut -d'"' -f2)
 PY_VER="3.14.6"
 PY_TAG="20260610"
 ARCH="x86_64"
@@ -29,12 +29,14 @@ echo "== officework ${VER} を包みます(Python 同梱: $([ $WITH_PY = 1 ] && 
 
 # ---- 1. 組む ----------------------------------------------------------------
 echo "-- cargo build --release"
-cargo build --release -p calc -p writer
+cargo build --release -p officework
 
 # ---- 2. 中身を並べる --------------------------------------------------------
 rm -rf "$OUT/$NAME"
 mkdir -p "$OUT/$NAME"/{bin,share/officework}
-cp target/release/calc target/release/writer "$OUT/$NAME/bin/"
+# **配るのは officework 1本**(2026-08-19 発注者確定。SEKKEI 段11)。
+# calc と writer の単体は開発と試験の道具として残しますが、包みません
+cp target/release/officework "$OUT/$NAME/bin/"
 cp -r sample/plugins "$OUT/$NAME/share/officework/"
 cp docs/calc-manual.ja.md docs/writer-manual.ja.md docs/python-manual.ja.md \
    "$OUT/$NAME/share/officework/" 2>/dev/null || true
@@ -58,16 +60,13 @@ if [ $WITH_PY = 1 ]; then
 fi
 
 # ---- 4. 起動の台本(どこに置いても動く)-------------------------------------
-for app in calc writer; do
-  cat > "$OUT/$NAME/$app" <<'SH'
+cat > "$OUT/$NAME/officework" <<'SH'
 #!/usr/bin/env bash
 # どこに置いても動くように、自分の居場所から実行ファイルを引く
 here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
-exec "$here/bin/APPNAME" "$@"
+exec "$here/bin/officework" "$@"
 SH
-  sed -i "s/APPNAME/$app/" "$OUT/$NAME/$app"
-  chmod +x "$OUT/$NAME/$app"
-done
+chmod +x "$OUT/$NAME/officework"
 
 # ---- 5. tar.gz --------------------------------------------------------------
 echo "-- tar.gz を作ります"
@@ -79,9 +78,7 @@ DEB="$OUT/deb"
 rm -rf "$DEB"
 mkdir -p "$DEB/DEBIAN" "$DEB/opt/officework" "$DEB/usr/bin" "$DEB/usr/share/applications"
 cp -r "$OUT/$NAME/." "$DEB/opt/officework/"
-for app in calc writer; do
-  ln -sf "/opt/officework/$app" "$DEB/usr/bin/officework-$app"
-done
+ln -sf "/opt/officework/officework" "$DEB/usr/bin/officework"
 cat > "$DEB/DEBIAN/control" <<CTRL
 Package: officework
 Version: ${VER}
@@ -96,32 +93,69 @@ Description: officework — 表計算と文書(Python でマクロが書ける)
  .py を ~/.config/officework/funcs に置くと、セルから日本語の関数として
  呼べます。ブックはコードを運ばないので「開く=実行」がありません。
 CTRL
-for app in calc writer; do
-  cat > "$DEB/usr/share/applications/officework-$app.desktop" <<DESK
+# ---- .desktop は1枚 ---------------------------------------------------------
+#
+# **開ける物を全部並べます**(SEKKEI 段11)。うちの形(`.adoc` `.sheet.adoc`)と、
+# 受け渡しの2つ(`.docx` `.xlsx`)です。`.adoc` には決まった MIME 型が無いので
+# `text/x-asciidoc` を使います(asciidoctor の界隈で通っている名前)。
+#
+# 表か文章かは**名前で決まります**(`.sheet.adoc` は表)。窓は1つで、
+# ファイルはタブとして開きます — 2枚目を渡されても窓は増えません
+cat > "$DEB/usr/share/applications/officework.desktop" <<DESK
 [Desktop Entry]
 Type=Application
-Name=officework $app
-Comment=$([ "$app" = calc ] && echo "表計算(xlsx)" || echo "文書(docx)")
-Exec=/opt/officework/$app %f
-Icon=officework-$app
-Categories=Office;$([ "$app" = calc ] && echo "Spreadsheet;" || echo "WordProcessor;")
-MimeType=$([ "$app" = calc ] \
-  && echo "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;" \
-  || echo "application/vnd.openxmlformats-officedocument.wordprocessingml.document;")
+Name=officework
+Comment=表計算と文書
+Exec=/opt/officework/officework %f
+Icon=officework
+Terminal=false
+Categories=Office;Spreadsheet;WordProcessor;
+MimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.openxmlformats-officedocument.wordprocessingml.document;text/x-asciidoc;
 DESK
-  # **絵も一緒に入れる。** `.desktop` が Icon= で名指ししているのに絵が
-  # 無ければ、ランチャーで無地の四角になる(2026-08-17 のアルファの
-  # 棚卸しまで、まさにその状態だった)。正本は packaging/icons の SVG 1枚で、
-  # 配る形は tools/make_icons.py が起こしてコミットしてある
-  for s in 16 22 24 32 48 64 128 256 512; do
-    d="$DEB/usr/share/icons/hicolor/${s}x${s}/apps"
-    mkdir -p "$d"
-    cp "packaging/icons/hicolor/${s}x${s}/officework-$app.png" "$d/"
-  done
-  mkdir -p "$DEB/usr/share/icons/hicolor/scalable/apps"
-  cp "packaging/icons/officework-$app.svg" \
-     "$DEB/usr/share/icons/hicolor/scalable/apps/"
+
+# **うちの形の MIME 型を機械に教えます。** `text/x-asciidoc` を知らない
+# 機械では `.adoc` を渡しても officework が候補に出ません
+mkdir -p "$DEB/usr/share/mime/packages"
+cat > "$DEB/usr/share/mime/packages/officework.xml" <<MIME
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/x-asciidoc">
+    <comment>AsciiDoc</comment>
+    <comment xml:lang="ja">AsciiDoc の文書</comment>
+    <glob pattern="*.adoc"/>
+    <glob pattern="*.sheet.adoc"/>
+    <glob pattern="*.tmpl.adoc"/>
+    <glob pattern="*.form.adoc"/>
+    <sub-class-of type="text/plain"/>
+  </mime-type>
+</mime-info>
+MIME
+
+# **絵も一緒に入れる。** `.desktop` が Icon= で名指ししているのに絵が
+# 無ければ、ランチャーで無地の四角になる(2026-08-17 のアルファの
+# 棚卸しまで、まさにその状態だった)。正本は packaging/icons の SVG 1枚で、
+# 配る形は tools/make_icons.py が起こしてコミットしてある
+for s in 16 22 24 32 48 64 128 256 512; do
+  d="$DEB/usr/share/icons/hicolor/${s}x${s}/apps"
+  mkdir -p "$d"
+  cp "packaging/icons/hicolor/${s}x${s}/officework.png" "$d/"
 done
+mkdir -p "$DEB/usr/share/icons/hicolor/scalable/apps"
+cp packaging/icons/officework.svg "$DEB/usr/share/icons/hicolor/scalable/apps/"
+
+# **入れた後に機械へ知らせます。** これが無いと、絵も関連付けも
+# 次のログインまで効きません
+mkdir -p "$DEB/DEBIAN"
+cat > "$DEB/DEBIAN/postinst" <<'POST'
+#!/bin/sh
+set -e
+update-mime-database /usr/share/mime >/dev/null 2>&1 || true
+update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
+POST
+chmod 755 "$DEB/DEBIAN/postinst"
+cp "$DEB/DEBIAN/postinst" "$DEB/DEBIAN/postrm"
+
 dpkg-deb --build --root-owner-group "$DEB" "$OUT/officework_${VER}_amd64.deb" > /dev/null
 
 # ---- 7. 報せ ----------------------------------------------------------------
@@ -130,5 +164,5 @@ echo "== できました"
 ls -lh "$OUT"/*.tar.gz "$OUT"/*.deb | awk '{print "  ", $9, $5}'
 echo
 echo "試し方(どちらでも):"
-echo "  tar xzf $OUT/${NAME}.tar.gz && ./${NAME}/calc"
-echo "  sudo dpkg -i $OUT/officework_${VER}_amd64.deb && officework-calc"
+echo "  tar xzf $OUT/${NAME}.tar.gz && ./${NAME}/officework"
+echo "  sudo dpkg -i $OUT/officework_${VER}_amd64.deb && officework"

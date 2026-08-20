@@ -51,14 +51,14 @@ pandas = ["pandas"]
 mcp = ["mcp"]
 
 # **アプリの起動の口**(2026-08-15 発注者「配布も PyPI と conda-forge だけで
-# 問題ないかも」)。pip で入れると `officework-calc` / `officework-writer` が
-# 使える。**署名の要らない道** — mac の公証も Windows の SmartScreen も
+# 問題ないかも」)。pip で入れると `officework` が使える。**署名の要らない道** — mac の公証も Windows の SmartScreen も
 # 「ブラウザで落とした物」に付く印が引き金で、pip が入れた物には付かない。
 # Python 同梱も要らない(入れる人は Python を持っている)
 [project.scripts]
+# **入り口は officework の1つ**(2026-08-19 発注者確定。SEKKEI 段11)。
+# 表も文章も同じ窓のタブで開くので、コマンドを2つに分ける理由が
+# なくなりました。officework-calc / officework-writer は外しました
 officework = "officework.app:main"
-officework-calc = "officework.app:calc"
-officework-writer = "officework.app:writer"
 # MCP の受け口(標準入出力で話す)。`pip install "officework[mcp]"` が要る
 officework-mcp = "officework.mcp:main"
 

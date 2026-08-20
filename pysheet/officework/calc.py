@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""officework.calc — 動いている calc を Jupyter/Python から操る(xlwings 流)。
+"""officework.calc — 動いている officework を Jupyter/Python から操る(xlwings 流)。
 
 使い方(xlwings の import を1行差し替えるだけ):
 
@@ -18,14 +18,16 @@
 
 import os
 
-from . import OfficeworkError, call as _shared_call, launch as _launch
+from . import OfficeworkError, app_name as _相手, call as _shared_call, launch as _launch
 
 JoofficeError = OfficeworkError  # 旧名との互換
 JocalcError = OfficeworkError
 
 
 def _call(cmd, **kw):
-    return _shared_call("calc", cmd, **kw)
+    # **話し相手は officework**(段11 で配りが1本になった)。単体の calc が
+    # 動いていればそちらへ繋ぎます — 手元で試している人の邪魔をしない
+    return _shared_call(_相手(), cmd, **kw)
 
 def _col_name(n):
     # 0 → A, 25 → Z, 26 → AA
@@ -1202,7 +1204,7 @@ class Book:
 
     def __init__(self, path=None, launch=True):
         if launch:
-            _launch("calc", path)      # 動いていれば何もしない
+            _launch(_相手(), path)      # 動いていれば何もしない
         if path is not None:
             info = _call("book_info")
             if info.get("path") != os.path.abspath(path):
