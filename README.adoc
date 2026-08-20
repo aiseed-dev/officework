@@ -25,7 +25,9 @@ Which one opens a file is decided by its name:
 
 Close and reopen, and the folder, files and tabs from last time come back.
 
-== Why we built this — confidential files and AI
+== Why we built this
+
+=== Confidential files and AI
 
 Built-in enterprise AI such as Microsoft 365 Copilot answers by first searching everything the company has — mail, documents, meetings, chat (the mechanism called RAG).
 Its safety rests on one claim: the AI respects existing access rights.
@@ -43,7 +45,20 @@ officework is designed the other way around.
 
 * The AI sees only the folder and files you have open. No company-wide index is built
 * You choose which AI to connect. Pick a model on your own machine, and the data never leaves it
-* Workbooks and documents carry data only — never code
+
+=== Python in Excel, and the VBA that stayed
+
+The other reason is Python in Excel.
+Microsoft, too, chose Python as the new way to script a spreadsheet.
+But that Python runs in Microsoft's cloud, not on your machine: every time the formula computes, the cells it reads are sent outside.
+And VBA is still there.
+The "open = execute" path that macro viruses have used — known for decades — stays open for compatibility's sake.
+Adding a new road while leaving the old hole open does not make things safe.
+
+officework settled both at once.
+
+* Workbooks and documents never carry code. Nothing equivalent to VBA exists, so the "open = execute" accident cannot happen by construction
+* Python runs on your machine. Code lives outside the workbook as `.py` files, called from cell formulas like `=double(A1)` or from buttons. The data never leaves the machine
 
 == What works today
 
