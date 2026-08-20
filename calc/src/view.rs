@@ -3964,17 +3964,11 @@ impl Render for Calc {
                             } else {
                                 ui::t!("切")
                             })
+                            // 判断は ui::toggle_math_autocorrect の1本(文章と共通)
                             .on_click(cx.listener(|this, _, _, cx| {
-                                this.autocorrect = !this.autocorrect;
-                                ui::settings::set(
-                                    "math_autocorrect",
-                                    if this.autocorrect { "1" } else { "0" },
-                                );
-                                this.status = if this.autocorrect {
-                                    ui::t!("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)").into()
-                                } else {
-                                    ui::t!("数学オートコレクト: 切(打った綴りのまま残ります)").into()
-                                };
+                                let (on, msg) = ui::toggle_math_autocorrect(this.autocorrect);
+                                this.autocorrect = on;
+                                this.status = msg.into();
                                 cx.notify()
                             }))))
                     // ── AI ────────────────────────────────────────────

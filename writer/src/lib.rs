@@ -211,6 +211,9 @@ pub struct Writer {
     /// **検索の範囲**(2026-08-20 発注者「検索には3種類必要です」)。
     /// 偽=この文書だけ / 真=このファイル(中の全部の文書)。
     /// フォルダ全体は別の道(`find_in_folder`)です
+    /// **数学オートコレクト**(`\alpha` → α)を掛けるか。
+    /// 器は settings.toml の `math_autocorrect`(calc と同じ1つの綴り)
+    autocorrect: bool,
     find_file: bool,
     embedded: bool,
     /// **開いている他のファイル**(2026-08-19)。いま見ている物は
@@ -646,6 +649,29 @@ impl HasEditor for Writer {
     }
     fn before_edit(&mut self, typing: bool) {
         self.checkpoint(typing);
+    }
+    /// **数学オートコレクト**(`\alpha` → α)。2026-08-20 発注者
+    /// 「双方でできるようにしたいです」。
+    ///
+    /// 仕掛けは前から `ui::handler` の共通の物で、**calc だけが名乗り出て**
+    /// いました。文章のほうが数式の綴りを打つ場面は多いくらいです。
+    ///
+    /// 掛けない場所は calc と同じ考え方で、**本文と表のセルだけ**に掛けます —
+    /// 検索の欄や名前の欄で勝手に替わると、探せない・付けられないになります。
+    fn math_autocorrect(&self) -> bool {
+        self.autocorrect
+            && !self.find_open
+            && !self.pw_open
+            && !self.bm_open
+            && !self.url_open
+            && self.file_field.is_none()
+            && self.fm_field.is_none()
+            // 数式の小窓は **TeX の綴りをそのまま渡す**(置き換えたら式が壊れる)
+            && !self.eq_open
+    }
+    fn on_autocorrect(&mut self, was: &str) {
+        self.status =
+            ui::tf!("{} を記号に替えました(Backspace で綴りに戻ります)", was).into();
     }
     fn editor_ref(&self) -> &Editor {
         if self.pw_open {

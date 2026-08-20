@@ -86,6 +86,11 @@ impl Writer {
             doc_at: 0,
             open_request: None,
             open_dialog_request: false,
+            // 器は settings.toml。書いていなければ入(綴りは "0" で切)。
+            // **calc と同じ綴りを見ます** — 片方で切ったらもう片方でも切れる
+            autocorrect: ui::settings::get("math_autocorrect")
+                .map(|v| v != "0")
+                .unwrap_or(true),
             find_file: false,
             embedded: false,
             files: Vec::new(),

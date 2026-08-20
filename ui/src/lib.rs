@@ -321,6 +321,22 @@ pub fn cycle_language() -> String {
     }
 }
 
+/// **数学オートコレクトを入切する**(2026-08-20 発注者「双方でできるように
+/// したいです」)。器は `settings.toml` の `math_autocorrect` の1つで、
+/// **文章でも表でも同じ綴りを見ます** — 片方で切ったらもう片方でも切れます。
+///
+/// 返すのは (新しい状態, 画面に出す報せ)。
+pub fn toggle_math_autocorrect(cur: bool) -> (bool, String) {
+    let next = !cur;
+    settings::set("math_autocorrect", if next { "1" } else { "0" });
+    let msg = if next {
+        crate::t!("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)")
+    } else {
+        crate::t!("数学オートコレクト: 切(打った綴りのまま残ります)")
+    };
+    (next, msg.to_string())
+}
+
 pub fn now_stamp() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

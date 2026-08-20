@@ -895,6 +895,25 @@ impl Render for Writer {
                                 this.status = ui::cycle_language().into();
                                 cx.notify()
                             }))))
+                    // **数学オートコレクト**(2026-08-20 発注者「双方でできる
+                    // ようにしたいです」)。仕掛けは前から共通で、表だけが
+                    // 名乗り出ていた。器も表と同じ1つの綴りを見る
+                    .child(div().flex().flex_row().items_center().gap_2()
+                        .child(div().w(px(200.0)).text_color(th_status)
+                            .child(ui::t!("数学オートコレクト")))
+                        .child(div().id("set-autocorrect")
+                            .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                            .child(if self.autocorrect {
+                                ui::t!("入(\\alpha と打つと α)")
+                            } else {
+                                ui::t!("切")
+                            })
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                let (on, msg) = ui::toggle_math_autocorrect(this.autocorrect);
+                                this.autocorrect = on;
+                                this.status = msg.into();
+                                cx.notify()
+                            }))))
                     // ── AI ────────────────────────────────────────────
                     // **宛先を覚えるのはここ**(発注者 2026-08-15
                     // 「AI の設定を設定メニューに追加して」)。calc と同じ形

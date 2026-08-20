@@ -3090,3 +3090,51 @@ mod file_menu_tests {
         });
     }
 }
+
+#[cfg(test)]
+mod autocorrect_tests {
+    use crate::*;
+
+    /// **数学オートコレクトは文章でも効く**(2026-08-20 発注者「双方でできる
+    /// ようにしたいです」)。仕掛けは前から `ui::handler` の共通の物で、
+    /// 表だけが名乗り出ていた
+    #[gpui::test]
+    fn 本文で綴りが記号に替わる(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            assert!(this.autocorrect, "既定で入になっていない");
+            assert!(ui::HasEditor::math_autocorrect(this), "本文で掛からない");
+        });
+    }
+
+    /// **掛けない所**。検索の欄で替わると探せなくなり、数式の小窓で替わると
+    /// TeX の綴りが壊れる
+    #[gpui::test]
+    fn 探す欄と数式の小窓では掛からない(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.find_open = true;
+            assert!(!ui::HasEditor::math_autocorrect(this), "探す欄で掛かる");
+            this.find_open = false;
+            this.eq_open = true;
+            assert!(!ui::HasEditor::math_autocorrect(this), "数式の小窓で掛かる");
+        });
+    }
+
+    /// **器は表と同じ1つの綴り**(`math_autocorrect`)。
+    ///
+    /// *入切そのものは試験しません。* `ui::toggle_math_autocorrect` は
+    /// `settings.toml` に書くので、試験から呼ぶと**発注者の本物の設定を
+    /// 書き換えます**(2026-08-20 に実際にやった)。ここでは
+    /// 「読む側が表と同じ綴りを見ている」ことだけを確かめます
+    #[gpui::test]
+    fn 器は表と同じ綴り(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            // 設定が無いときの既定は「入」(表と同じ)
+            let 器 = ui::settings::get("math_autocorrect");
+            let 期待 = 器.map(|v| v != "0").unwrap_or(true);
+            assert_eq!(this.autocorrect, 期待, "表と違う既定になっている");
+        });
+    }
+}
