@@ -54,6 +54,8 @@ But that Python runs in Microsoft's cloud, not on your machine: every time the f
 And VBA is still there.
 The "open = execute" path that macro viruses have used — known for decades — stays open for compatibility's sake.
 Adding a new road while leaving the old hole open does not make things safe.
+Even VBA could be closed by moving its source out of the file.
+Microsoft does not do it.
 
 officework settled both at once.
 
