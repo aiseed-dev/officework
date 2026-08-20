@@ -20,7 +20,9 @@ def check(cond, msg):
 
 
 pong = xw.ping()
-check(pong.get("app") == "calc", f"ping の名乗り: {pong}")
+# **名乗りは2つある。** 統合してからは officework の1本が主で、calc は
+# 開発と試験のときだけ単体で起こします。橋は動いているほうへ繋ぎます
+check(pong.get("app") in ("officework", "calc"), f"ping の名乗り: {pong}")
 check(pong.get("version", "") != "", "ping に version が無い")
 
 # 新しいブックに付く(未保存の変更が残っていたら、そのまま付く)

@@ -401,6 +401,109 @@ p.runs[0].font.name                  # .name でも引ける(書体が run に�
 0=Title は持たないので正直に断る)、`d.add_paragraph(字, style=)`、`d.add_picture`、`d.add_section()`、`d.add_table(rows, cols)`、`d.styles.add_style`、`p.add_comment(字)`(段落単位)、`d.core_properties`。
 在庫の全量と判定の理由は台帳(link:pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc])に。
 
+== 選んだ範囲に同じ処理をする(Excel の Selection)
+
+Excel のマクロでいちばんよく書く形です。「選んでからボタンを押す」という
+手順は同じで、書き方だけが Python になります。
+
+=== 選んだ範囲を受け取る
+
+[source,python]
+----
+from officework import calc as xw
+
+for cell in xw.selection():
+    cell.offset(0, 1).value = "済"
+----
+
+`xw.selection()` が、いま画面で選んでいる範囲です。
+`for` で回すと**セルが1つずつ**返ります(左から右、上から下)。
+`offset(行, 列)` は隣のセルで、`offset(0, 1)` なら1つ右です。
+
+=== よく使う3つ
+
+.選んだセルの隣に印を書く
+[source,python]
+----
+from officework import calc as xw
+
+for cell in xw.selection():
+    cell.offset(0, 1).value = "済"
+----
+
+.選んだセルを黄色くして太字にする
+[source,python]
+----
+from officework import calc as xw
+
+r = xw.selection()
+r.color = (255, 255, 0)
+r.font.bold = True
+----
+
+塗りは範囲にまとめて掛かるので、`for` で回す必要はありません。
+
+.選んだ数を1.1倍して隣の列に書く
+[source,python]
+----
+from officework import calc as xw
+
+for cell in xw.selection():
+    v = cell.value
+    if isinstance(v, (int, float)):
+        cell.offset(0, 1).value = round(v * 1.1, 1)
+----
+
+数でないセルは飛ばします。見出しの行を一緒に選んでも壊れません。
+
+何回セルを書いても、**元に戻す(Ctrl+Z)は1回**で処理の前に戻ります。
+
+=== リボンのボタンにする
+
+`~/.config/officework/ribbon/` に `.py` を置くと、**リボンのボタンになります**。
+ファイルの先頭で名乗ってください。
+
+[source,python]
+----
+リボン = {"札": "選択の隣に済を書く", "段": "マクロ"}
+
+from officework import calc as xw
+
+for cell in xw.selection():
+    cell.offset(0, 1).value = "済"
+----
+
+* `札` — ボタンに出す言葉です
+* `段` — 置くタブです。省くとマクロタブに入ります
+
+ボタンは**そのタブの最後**に並びます。もとからあるボタンの位置は動きません。
+
+=== 気をつけること — 上から下まで走ります
+
+置いた `.py` は、**読み込まれたときに上から下まで実行されます**。
+
+[source,python]
+----
+# これは動きません(呼ばれないため)
+def main():
+    for cell in xw.selection():
+        cell.value = "済"
+----
+
+`def` で包むと、その中身は呼ばれません。ボタンを押しても何も起きず、
+「実行しました」とだけ出ます。上の例のように**そのまま書いて**ください。
+まとめたいときは、書いたあとに自分で呼びます。
+
+[source,python]
+----
+def 印をつける():
+    for cell in xw.selection():
+        cell.offset(0, 1).value = "済"
+
+
+印をつける()      # ← これが要ります
+----
+
 == 帳票を作る — 雛形にデータを流し込む
 
 請求書や納品書は、頭と足は決まっていて**明細の行数だけがデータで決まります**。

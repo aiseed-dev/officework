@@ -581,6 +581,7 @@ Excel の答えはクラウド。
 |===
 |Excel での呼び名 |印 |ここでの道
 
+|選択したセルへの一括処理(For Each cell In Selection) |同じ |`for cell in xw.selection():` と書きます。`offset(0, 1)` が隣のセル、塗りと太字は範囲にまとめて掛けられます(link:python-manual.ja.adoc[Python の手引き]の「選んだ範囲に同じ処理をする」)
 |マクロの記録 |違う形 |記録ボタンは無い。日本語で AI に頼んで Python を書かせ、サンドボックスで試す(申し送りのコピペ枠が手引きに)。納得したら plugins へ、以後 @名前
 |VBA・Visual Basic Editor |作らない |上記(link:sekkei/python.ja.adoc[設計])
 |.xlsm の VBA 資産 |違う形 |olevba で取り出し → AI に申し送りと渡して Python へ → 同じ入力で答え合わせ。.xlsm を直接開く口も無い
@@ -588,7 +589,7 @@ Excel の答えはクラウド。
 |Workbook\_Open / Auto\_Open |作らない |開く=実行は存在しない — このソフトの安全の第一原則
 |Worksheet\_Change 等のイベント |作らない |入力規則・条件付き書式+明示の @名前・@計算 で組む
 |個人用マクロブック(PERSONAL.XLSB) |違う形 |`~/.config/officework/plugins/` がその置き場 — どのブックからでも @名前
-|ボタン・図形にマクロ割り当て |作らない |「押した=実行」を帳票に仕込む口は作らない(場所は灰色で確保)
+|ボタン・図形にマクロ割り当て |違う形 |*図形やブックには仕込めません* — 受け取ったファイルが実行の起点になる形は作りません。代わりに**リボンにボタンを置けます**: `~/.config/officework/ribbon/` に `.py` を置き、先頭で `リボン = {"札": "月次の締め"}` と名乗ると、マクロタブのボタンになります(link:python-manual.ja.adoc[Python の手引き])。置けるのはその機械を使う人だけです
 |自作のワークシート関数(Function) |違う形 |`~/.config/officework/plugins/*.py` に普通に `def` を書き、`=関数名(…)` と呼ぶ(名前は日本語でよい)。2次元の返り値は右下へスピル。*ブックにコードは入らない*
 |Office スクリプト+Power Automate |違う形 |予定実行はエンジン(`officework.sheet`)を cron 等から普通の Python として回す
 |MsgBox・InputBox・ユーザーフォーム |違う形 |窓は出さない。print はステータスバーへ、入力は帳票のセル+入力規則 — 帳票そのものが UI
