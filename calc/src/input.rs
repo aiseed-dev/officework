@@ -688,6 +688,8 @@ impl Calc {
             a.focus = a.focus.saturating_sub(1);
         } else if let Some(d) = &mut self.fn_dlg {
             d.sel = d.sel.saturating_sub(1);
+        } else if self.dv_menu_move(false) {
+            // 入力規則の小窓のドロップダウン(手順3)
         } else if self.pick_filtering() {
             self.pick_move(false);
         } else {
@@ -703,6 +705,8 @@ impl Calc {
         } else if let Some(d) = &mut self.fn_dlg {
             let n = fn_filtered(d.search.text(), d.group).len();
             d.sel = (d.sel + 1).min(n.saturating_sub(1));
+        } else if self.dv_menu_move(true) {
+            // 入力規則の小窓のドロップダウン(手順3)
         } else if self.pick_filtering() {
             self.pick_move(true);
         } else {
@@ -1005,6 +1009,12 @@ impl Calc {
             return;
         }
         if self.dv_dlg.is_some() {
+            // **ドロップダウンが開いていれば、まずそれに決める**(手順3)。
+            // 開いたまま Enter で小窓ごと閉じると、選んだつもりが入りません
+            if self.dv_menu_enter() {
+                cx.notify();
+                return;
+            }
             // 入力規則のパネルの Enter = OK(本家と同じ)
             self.dv_ok(cx);
             return;

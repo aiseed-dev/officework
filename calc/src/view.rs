@@ -3378,32 +3378,49 @@ impl Render for Calc {
                     }))
             };
             // 開いた選択肢。mid=1 許可 / 2 データ / 3 スタイル
+            //
+            // **描くのは ui::picklist**(2026-08-20。SEKKEI の手順3)。
+            // リボンの一覧と同じ見た目・同じキー操作にします。
+            // *流れの中に置きます*(`None`)— 小窓の中で下に伸びる形なので、
+            // 浮かせると小窓の縁で切れます
             let options = |mid: u8, items: Vec<String>, cx: &mut Context<Self>| {
-                let mut list = div().flex().flex_col()
-                    .border_1().border_color(rgb(0x1B6E3C)).rounded_sm().bg(rgb(0xFFFFFF));
-                for (i, name) in items.into_iter().enumerate() {
-                    let picked = match mid { 1 => kindi, 2 => opi, _ => styl } == i;
-                    list = list.child(
-                        div().id(SharedString::from(format!("dv-o{mid}-{i}")))
-                            .px_2().py_1().text_size(px(us * 12.0)).cursor_pointer()
-                            .bg(if picked { rgb(0xEAF5EE) } else { rgb(0xFFFFFF) })
-                            .hover(|s| s.bg(rgb(0xDDEEE4)))
-                            .child(SharedString::from(name))
-                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
-                                cx.stop_propagation();
-                                if let Some(d) = &mut this.dv_dlg {
-                                    match mid {
-                                        1 => d.kind = i,
-                                        2 => d.op = i,
-                                        _ => d.err_style = i,
-                                    }
-                                    d.menu = 0;
-                                }
-                                cx.notify();
-                            })),
-                    );
-                }
-                list
+                let 並び: Vec<(String, String)> =
+                    items.into_iter().enumerate().map(|(i, n)| (i.to_string(), n)).collect();
+                let sel = match mid {
+                    1 => kindi,
+                    2 => opi,
+                    _ => styl,
+                };
+                ui::picklist::panel(
+                    &ui::picklist::Look {
+                        bg: rgb(0xFFFFFF),
+                        border: rgb(0x1B6E3C),
+                        fg: rgb(0x1B1B1B),
+                        dim: rgb(0x66707A),
+                        ghost: rgb(0x9AA3AB),
+                        hover: rgb(0xEAF5EE),
+                        accent: rgb(0x1B6E3C),
+                        scale: us,
+                    },
+                    None,
+                    None,
+                    None,
+                    &並び,
+                    sel,
+                    |_| ui::picklist::Deco::default(),
+                    cx,
+                    move |this: &mut Calc, key, _| {
+                        let Ok(i) = key.parse::<usize>() else { return };
+                        if let Some(d) = &mut this.dv_dlg {
+                            match mid {
+                                1 => d.kind = i,
+                                2 => d.op = i,
+                                _ => d.err_style = i,
+                            }
+                            d.menu = 0;
+                        }
+                    },
+                )
             };
             // ☑ の行。which: 1=空白を無視 2=同じ設定の他のセルにも
             let check = |which: u8, on: bool, text: String, cx: &mut Context<Self>| {
@@ -5037,7 +5054,7 @@ impl Render for Calc {
                     accent: rgb(0x1B6E3C),
                     scale: us,
                 },
-                &ui::picklist::Place { x: wx, at, up, max_h, width },
+                Some(&ui::picklist::Place { x: wx, at, up, max_h, width }),
                 self.pick_note.clone(),
                 filter,
                 &vals,

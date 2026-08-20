@@ -97,7 +97,7 @@ pub struct Deco {
 #[allow(clippy::too_many_arguments)]
 pub fn panel<V: gpui::Render>(
     look: &Look,
-    place: &Place,
+    place: Option<&Place>,
     note: Option<SharedString>,
     filter: Option<(String, bool)>,
     items: &[(String, String)],
@@ -107,16 +107,24 @@ pub fn panel<V: gpui::Render>(
     on_pick: impl Fn(&mut V, &str, &mut gpui::Context<V>) + Clone + 'static,
 ) -> Stateful<Div> {
     let s = look.scale;
-    let mut p = div().id("pick-list").absolute().left(px(place.x));
-    // 上に開くときは**下辺を開く元に合わせます**(中身が短くても隙間を
-    // 空けない)ので bottom で置きます。下に開くときは top です
-    p = if place.up { p.bottom(px(place.at)) } else { p.top(px(place.at)) };
-    p = match place.width {
-        Width::Fixed(w) => p.w(px(w)),
-        Width::Range(lo, hi) => p.min_w(px(lo)).max_w(px(hi)),
-    };
+    let mut p = div().id("pick-list");
+    // **`None` は流れの中に置きます。** 小窓の中のドロップダウンは、
+    // 開くと下に伸びる形です。浮かせると小窓の縁で切れます
+    match place {
+        Some(pl) => {
+            p = p.absolute().left(px(pl.x));
+            // 上に開くときは**下辺を開く元に合わせます**(中身が短くても
+            // 隙間を空けない)ので bottom で置きます。下に開くときは top です
+            p = if pl.up { p.bottom(px(pl.at)) } else { p.top(px(pl.at)) };
+            p = match pl.width {
+                Width::Fixed(w) => p.w(px(w)),
+                Width::Range(lo, hi) => p.min_w(px(lo)).max_w(px(hi)),
+            };
+            p = p.max_h(px(pl.max_h.max(160.0)));
+        }
+        None => p = p.w_full(),
+    }
     let mut p = p
-        .max_h(px(place.max_h.max(160.0)))
         .overflow_y_scroll()
         .p_1()
         .rounded_md()

@@ -2719,6 +2719,46 @@ impl Calc {
 
     /// 「データの入力規則」の OK。選択の範囲に規則を掛ける(重なる規則は
     /// 入れ替え)。読めない条件はパネルを開いたまま言い返す
+    /// **入力規則の小窓のドロップダウンを鍵で動かす**(2026-08-20。手順3)。
+    ///
+    /// 前はマウスでしか選べませんでした。リボンの一覧は前から ↑↓・Enter・
+    /// Esc で完結するので、小窓だけ取り残されていました。
+    ///
+    /// 開いているドロップダウンの選択を1つ送ります。動かしたら真。
+    pub(crate) fn dv_menu_move(&mut self, 下へ: bool) -> bool {
+        let Some(d) = &mut self.dv_dlg else { return false };
+        let n = match d.menu {
+            1 => crate::util::dv_kinds().len(),
+            2 => crate::util::dv_ops().len(),
+            3 => crate::util::dv_styles().len(),
+            _ => return false,
+        };
+        let 今 = match d.menu {
+            1 => &mut d.kind,
+            2 => &mut d.op,
+            _ => &mut d.err_style,
+        };
+        // 端では止めます(巡回しません — どちらが端か分からなくなるため)
+        *今 = if 下へ { (*今 + 1).min(n - 1) } else { 今.saturating_sub(1) };
+        true
+    }
+
+    /// **開いているドロップダウンを Enter で閉じる**(選んだ物はもう入っている)。
+    /// 閉じたら真。
+    pub(crate) fn dv_menu_enter(&mut self) -> bool {
+        let Some(d) = &mut self.dv_dlg else { return false };
+        if d.menu == 0 {
+            return false;
+        }
+        d.menu = 0;
+        true
+    }
+
+    /// **Esc で閉じるのはドロップダウンだけ**(小窓は残す)。閉じたら真。
+    pub(crate) fn dv_menu_esc(&mut self) -> bool {
+        self.dv_menu_enter()
+    }
+
     pub(crate) fn dv_ok(&mut self, cx: &mut Context<Self>) {
         let Some(mut d) = self.dv_dlg.take() else { return };
         let f = |i: usize| -> String { d.eds[i].text().trim().to_string() };
@@ -2919,6 +2959,12 @@ impl Calc {
     }
 
     pub(crate) fn a_cancel(&mut self, _: &ui::Cancel, _: &mut Window, cx: &mut Context<Self>) {
+        // **開いているドロップダウンだけ閉じる**(小窓は残す。手順3)。
+        // Esc で小窓ごと消えると、打ち込んだ設定まで捨てることになります
+        if self.dv_menu_esc() {
+            cx.notify();
+            return;
+        }
         // .py の編集面。書きかけがあれば一度断る(黙って捨てない)
         if self.py_edit.is_some() {
             self.close_py_edit();

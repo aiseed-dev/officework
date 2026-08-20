@@ -1742,7 +1742,7 @@ impl Writer {
                 // 画面の文字の大きさは基本的に変えない決め)
                 scale: 1.0,
             },
-            &ui::picklist::Place { x, at, up, max_h, width: 幅 },
+            Some(&ui::picklist::Place { x, at, up, max_h, width: 幅 }),
             // **何に掛かるかを頭に出します。** 前の版が出していた案内で、
             // 「選んだ所だけ」なのか「段落ぜんぶ」なのかは、押す前に
             // 分かっていないと困ります
