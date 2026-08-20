@@ -28,13 +28,18 @@ Close and reopen, and the folder, files and tabs from last time come back.
 == Why we built this — confidential files and AI
 
 Built-in enterprise AI such as Microsoft 365 Copilot answers by first searching everything the company has — mail, documents, meetings, chat (the mechanism called RAG).
-The AI respects existing access rights, but in a real company those rights have decayed over the years: confidential files sit in places that technically anyone can read, buried too deep for anyone to find.
-Until now, not being found was the de facto protection.
-Cross-searching AI removes it.
-Unless the company keeps auditing permissions, labeling secrets, blocking leaks and watching logs, material people should not see starts appearing in summaries.
-In short, with company-wide RAG the management cannot keep up, and secrets cannot be handled with confidence.
+Its safety rests on one claim: the AI respects existing access rights.
+
+That premise is wrong.
+A person's mailbox receives all kinds of information from all kinds of people.
+How much of it may be passed on, and to whom, is a judgment the person who knows the content makes case by case.
+That judgment cannot be written down in advance as machine permissions.
+So an AI that cross-searches the whole company on the strength of permissions will mix material people should not see into its summaries.
+Vendors answer with permission audits, sensitivity labels and monitoring — but that is the same premise restated: that the judgment can be captured in settings.
+Secrets cannot be handled with confidence in this shape.
 
 officework is designed the other way around.
+*You choose, each time, what the AI gets to see.*
 
 * The AI sees only the folder and files you have open. No company-wide index is built
 * You choose which AI to connect. Pick a model on your own machine, and the data never leaves it
