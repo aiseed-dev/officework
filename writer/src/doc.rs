@@ -807,6 +807,19 @@ impl Writer {
         // 相互参照は保存の写しで計算し直す(docx のキャッシュを新しく保つ。
         // 画面の平文はそのまま — 見えている値の更新は「参照を更新」で)
         doc.refresh_fields(|name, page| self.ref_value(name, page));
+        // **表の式は docx へ値で焼く**(2026-08-20 発注者。SEKKEI「3段目」)。
+        //
+        // いままで docx には `=SUM(B2:B4)` の字がそのまま出ていました。
+        // Word で開いた相手には**答えでなく式が見えます** — 画面・HTML・紙は
+        // 写しの値を見せているので、docx だけが素通しでずれていました。
+        //
+        // **`.adoc` の正本は式のまま**です(この写しの上でだけ焼く)。
+        // docx は受け渡しの形式で、往復の正本ではありません — docx にした物を
+        // 開き直しても式は戻りません(値になっています)。
+        // 式が無ければ写しも作りません(いまの組みと同じ倹約)
+        if ops::table::has_formula(&doc) {
+            ops::table::fill(&mut doc);
+        }
         // 変更履歴: 記録開始時点との差分を印の字にする(ooxml が w:ins/w:del に)
         if self.track {
             if let Some(base) = &self.track_base {

@@ -3159,3 +3159,78 @@ mod autocorrect_tests {
         });
     }
 }
+
+#[cfg(test)]
+mod docx_formula_tests {
+    use crate::*;
+
+    /// **docx には値を焼く**(2026-08-20 発注者。SEKKEI「エンジンの統一」3段目)。
+    ///
+    /// 前は `=SUM(B2:B4)` の字がそのまま docx に出ていた。Word で開いた相手には
+    /// **答えでなく式が見える**。画面・HTML・紙は写しの値を見せているので、
+    /// docx だけが素通しでずれていた。
+    ///
+    /// 確かめ方はメモのとおり2つ — docx 側が値であること、`.adoc` の正本は
+    /// 式のままであること。
+    #[gpui::test]
+    fn 式は値で出て正本は式のまま(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            // 2 と 3 の表に =SUM(A1:B1)
+            let cell = |x: &str| kumihan::Cellbox {
+                paragraphs: Document::plain(x).paragraphs().cloned().collect(),
+                ..Default::default()
+            };
+            this.doc.blocks.push(kumihan::Block::Table(kumihan::Table {
+                rows: vec![vec![cell("2"), cell("3"), cell("=SUM(A1:B1)")]],
+                ..Default::default()
+            }));
+
+            let 出 = this.doc_for_save(None);
+            let 字 = |d: &kumihan::Document| -> Vec<String> {
+                d.blocks
+                    .iter()
+                    .filter_map(|b| match b {
+                        kumihan::Block::Table(t) => Some(t.clone()),
+                        _ => None,
+                    })
+                    .flat_map(|t| {
+                        t.rows
+                            .into_iter()
+                            .flatten()
+                            .map(|c| kumihan::paras_text(&c.paragraphs))
+                            .collect::<Vec<_>>()
+                    })
+                    .collect()
+            };
+            // docx へ出す写しは**値**
+            assert!(字(&出).contains(&"5".to_string()), "docx に値が焼けていない: {:?}", 字(&出));
+            // **正本は式のまま**(開き直せばまた計算される)
+            assert!(
+                字(&this.doc).iter().any(|x| x.starts_with("=SUM")),
+                "正本の式が消えた: {:?}",
+                字(&this.doc)
+            );
+        });
+    }
+
+    /// 式が無ければ写しも作らない(倹約)。触っていないことを字で見る
+    #[gpui::test]
+    fn 式が無ければ表を触らない(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let cell = |x: &str| kumihan::Cellbox {
+                paragraphs: Document::plain(x).paragraphs().cloned().collect(),
+                ..Default::default()
+            };
+            this.doc.blocks.push(kumihan::Block::Table(kumihan::Table {
+                rows: vec![vec![cell("りんご"), cell("100")]],
+                ..Default::default()
+            }));
+            assert!(!ops::table::has_formula(&this.doc), "式が無いのに有ると言う");
+            let 出 = this.doc_for_save(None);
+            let ある = 出.blocks.iter().any(|b| matches!(b, kumihan::Block::Table(_)));
+            assert!(ある, "表が消えた");
+        });
+    }
+}
