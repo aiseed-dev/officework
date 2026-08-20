@@ -281,8 +281,40 @@ impl Calc {
             }
         };
         match sheet::adoc::parse(&src) {
-            Ok((book, report)) => {
-                let notes = report.iter().map(|r| SharedString::from(r.clone())).collect();
+            Ok((mut book, report)) => {
+                let mut notes: Vec<SharedString> =
+                    report.iter().map(|r| SharedString::from(r.clone())).collect();
+                // **見た目はテンプレートが決めます**(E群。SEKKEI 4段目)。
+                // `.adoc` のブックは意味だけを持ちます — 列の幅・行の高さ・
+                // 用紙の設定はここで当てます。
+                //
+                // *同じフォルダに `.tmpl.adoc` が1枚のときだけ*当てます。
+                // 何枚もあるときは選ぶのが人の仕事なので、`find_for` が
+                // None を返します(黙って1枚目を選ばない)。
+                //
+                // **当てたことは言います。** 開いただけで列の幅が変わるので、
+                // 黙っていると「なぜこの幅なのか」が分かりません
+                if let Some(tp) = sheet::booktmpl::find_for(&p) {
+                    match std::fs::read_to_string(&tp)
+                        .map_err(|e| e.to_string())
+                        .and_then(|t| sheet::booktmpl::parse(&t))
+                    {
+                        Ok(theme) => {
+                            sheet::booktmpl::apply(&theme, &mut book);
+                            notes.push(SharedString::from(ui::tf!(
+                                "見た目のテンプレートを当てました: {}",
+                                tp.file_name().unwrap_or_default().to_string_lossy()
+                            )));
+                        }
+                        // **読めなくてもブックは開きます。** 見た目が当たらない
+                        // だけで、中身は読めています
+                        Err(e) => notes.push(SharedString::from(ui::tf!(
+                            "見た目のテンプレートが読めません({}): {}",
+                            tp.file_name().unwrap_or_default().to_string_lossy(),
+                            e
+                        ))),
+                    }
+                }
                 let status = format!(
                     "{} シート — {}",
                     book.sheets.len(),
@@ -291,6 +323,47 @@ impl Calc {
                 self.adopt_book(p, book, notes, status);
             }
             Err(e) => self.status = ui::tf!("開けません: {}", e).into(),
+        }
+    }
+
+    /// **見た目をテンプレートへ出す**(E群。2026-08-20)。
+    ///
+    /// 出したときだけ、その旨の1行を返します。
+    ///
+    /// *すでにテンプレートが1枚あるときは何もしません。* 配られた物は
+    /// 書き替えない決めです(2026-08-18 発注者)。その代わり、見た目が
+    /// そちらの持ち物であることを言います。
+    ///
+    /// *見た目が何も無いときも作りません。* 空のテンプレートを置いても
+    /// フォルダが散らかるだけです。
+    fn 見た目をテンプレートへ(&self, book: &std::path::Path) -> Option<String> {
+        let theme = sheet::booktmpl::from_book(&self.book);
+        if theme.is_empty() {
+            return None;
+        }
+        if let Some(tp) = sheet::booktmpl::find_for(book) {
+            return Some(
+                ui::tf!(
+                    "列の幅と用紙は「{}」の持ち物です(このファイルには書きません)",
+                    tp.file_name().unwrap_or_default().to_string_lossy()
+                )
+                .to_string(),
+            );
+        }
+        let tp = sheet::booktmpl::default_path(book);
+        let src = sheet::booktmpl::write(&theme);
+        match kumihan::atomic::save(&tp, |mut f| {
+            use std::io::Write as _;
+            f.write_all(src.as_bytes()).map_err(|e| e.to_string())
+        }) {
+            Ok(_) => Some(
+                ui::tf!(
+                    "列の幅と用紙を「{}」に書き出しました(次に開くとき当たります)",
+                    tp.file_name().unwrap_or_default().to_string_lossy()
+                )
+                .to_string(),
+            ),
+            Err(e) => Some(ui::tf!("見た目のテンプレートが書けません: {}", e).to_string()),
         }
     }
 
@@ -1328,6 +1401,17 @@ impl Calc {
                 if 字で書く {
                     self.notes =
                         sheet::adoc::write_report(&self.book).into_iter().map(SharedString::from).collect();
+                    // **見た目の行き先を作ります**(E群)。`.adoc` のブックは
+                    // 意味だけを持つので、列の幅・行の高さ・用紙はここで
+                    // テンプレートへ出します。出さないと、保存して開き直す
+                    // たびに幅が既定へ戻ります。
+                    //
+                    // **すでにある物は書き替えません**(2026-08-18 発注者
+                    // 「テンプレートの持ち主は指示する人」)。1枚あるなら、
+                    // 見た目はそちらの持ち物です
+                    if let Some(m) = self.見た目をテンプレートへ(&p) {
+                        self.notes.push(SharedString::from(m));
+                    }
                 }
                 self.status = ui::tf!("保存しました — {}{}", p.file_name().unwrap_or_default().to_string_lossy(), enc_note)
                 .into();

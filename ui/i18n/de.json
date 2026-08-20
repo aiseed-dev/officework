@@ -6581,1326 +6581,1346 @@
  },
  {
   "i": 1645,
-  "t": "(anonym)"
+  "t": "Layoutvorlage angewendet: {}"
  },
  {
   "i": 1646,
-  "t": "{} Kommentare"
+  "t": "Layoutvorlage nicht lesbar ({}): {}"
  },
  {
   "i": 1647,
-  "t": "Nach {} sortiert"
+  "t": "Spaltenbreiten und Seiteneinrichtung gehören zu „{}“ (nicht in diese Datei geschrieben)"
  },
  {
   "i": 1648,
-  "t": "Diese Arbeitsmappe enthält keine Kommentare (mit „Kommentar hinzufügen“ im Rechtsklickmenü hinzufügen)"
+  "t": "Spaltenbreiten und Seiteneinrichtung in „{}“ geschrieben (wirkt beim nächsten Öffnen)"
  },
  {
   "i": 1649,
-  "t": "{} Antworten"
+  "t": "Layoutvorlage kann nicht geschrieben werden: {}"
  },
  {
   "i": 1650,
-  "t": "✓ Gelöst"
+  "t": "(anonym)"
  },
  {
   "i": 1651,
-  "t": "Spalten für Datenschnitte wählen (beliebig viele; ein ☑ antippen schließt ihn; nur die Anzeige, die Daten bleiben unverändert)"
+  "t": "{} Kommentare"
  },
  {
   "i": 1652,
-  "t": "Datenschnitt für Spalte {} geschlossen"
+  "t": "Nach {} sortiert"
  },
  {
   "i": 1653,
-  "t": "Datenschnitt-Einstellungen"
+  "t": "Diese Arbeitsmappe enthält keine Kommentare (mit „Kommentar hinzufügen“ im Rechtsklickmenü hinzufügen)"
  },
  {
   "i": 1654,
-  "t": "Höhe"
+  "t": "{} Antworten"
  },
  {
   "i": 1655,
-  "t": "Seitenverhältnis"
+  "t": "✓ Gelöst"
  },
  {
   "i": 1656,
-  "t": "Ein"
+  "t": "Spalten für Datenschnitte wählen (beliebig viele; ein ☑ antippen schließt ihn; nur die Anzeige, die Daten bleiben unverändert)"
  },
  {
   "i": 1657,
-  "t": "Schaltflächenspalten"
+  "t": "Datenschnitt für Spalte {} geschlossen"
  },
  {
   "i": 1658,
-  "t": "Position"
+  "t": "Datenschnitt-Einstellungen"
  },
  {
   "i": 1659,
-  "t": "Automatisch (von rechts)"
+  "t": "Höhe"
  },
  {
   "i": 1660,
-  "t": "Position wieder automatisch"
+  "t": "Seitenverhältnis"
  },
  {
   "i": 1661,
-  "t": "Position wieder automatisch (von rechts)"
+  "t": "Ein"
  },
  {
   "i": 1662,
-  "t": "Größe: {}×{}px"
+  "t": "Schaltflächenspalten"
  },
  {
   "i": 1663,
-  "t": "Zum Verschieben ziehen (mit „Position wieder automatisch“ in den Einstellungen kehrt er in die Reihe zurück)"
+  "t": "Position"
  },
  {
   "i": 1664,
-  "t": "Zum Verschieben die Überschrift ziehen. Größe und Position ändern nur die Ansicht; die gespeicherten Daten bleiben gleich"
+  "t": "Automatisch (von rechts)"
  },
  {
   "i": 1665,
-  "t": "Mathe-Autokorrektur"
+  "t": "Position wieder automatisch"
  },
  {
   "i": 1666,
-  "t": "Ein (\\alpha tippen ergibt α)"
+  "t": "Position wieder automatisch (von rechts)"
  },
  {
   "i": 1667,
-  "t": "Mathe-Autokorrektur: ein (bei einem Trennzeichen erscheint das Symbol; mit Backspace kommt die Schreibweise zurück)"
+  "t": "Größe: {}×{}px"
  },
  {
   "i": 1668,
-  "t": "Mathe-Autokorrektur: aus (das Getippte bleibt so stehen)"
+  "t": "Zum Verschieben ziehen (mit „Position wieder automatisch“ in den Einstellungen kehrt er in die Reihe zurück)"
  },
  {
   "i": 1669,
-  "t": "{} in ein Symbol umgewandelt (mit Backspace kommt die Schreibweise zurück)"
+  "t": "Zum Verschieben die Überschrift ziehen. Größe und Position ändern nur die Ansicht; die gespeicherten Daten bleiben gleich"
  },
  {
   "i": 1670,
-  "t": "Zugriffstasten: Ein Buchstabe wählt eine Registerkarte, der nächste drückt eine Schaltfläche (Esc beendet)"
+  "t": "Mathe-Autokorrektur"
  },
  {
   "i": 1671,
-  "t": "Zugriffstasten ausgeblendet"
+  "t": "Ein (\\alpha tippen ergibt α)"
  },
  {
   "i": 1672,
-  "t": "Registerkarte {} (ein Buchstabe drückt eine Schaltfläche; Esc beendet)"
+  "t": "Mathe-Autokorrektur: ein (bei einem Trennzeichen erscheint das Symbol; mit Backspace kommt die Schreibweise zurück)"
  },
  {
   "i": 1673,
-  "t": "Diesen Buchstaben gibt es nicht („{}“)"
+  "t": "Mathe-Autokorrektur: aus (das Getippte bleibt so stehen)"
  },
  {
   "i": 1674,
-  "t": "Spalte ausgewählt (Shift+Leertaste für die Zeile)"
+  "t": "{} in ein Symbol umgewandelt (mit Backspace kommt die Schreibweise zurück)"
  },
  {
   "i": 1675,
-  "t": "Zeile ausgewählt (Ctrl+Leertaste für die Spalte)"
+  "t": "Zugriffstasten: Ein Buchstabe wählt eine Registerkarte, der nächste drückt eine Schaltfläche (Esc beendet)"
  },
  {
   "i": 1676,
-  "t": "key.{} in den Einstellungen nennt eine unbekannte Aktion"
+  "t": "Zugriffstasten ausgeblendet"
  },
  {
   "i": 1677,
-  "t": "Das Tastenkürzel für key.{} in den Einstellungen ist nicht lesbar: {}"
+  "t": "Registerkarte {} (ein Buchstabe drückt eine Schaltfläche; Esc beendet)"
  },
  {
   "i": 1678,
-  "t": "Kürzel {} wird von {} und {} beansprucht ({} gewinnt)"
+  "t": "Diesen Buchstaben gibt es nicht („{}“)"
  },
  {
   "i": 1679,
-  "t": "Ungespeicherte Änderungen — Ctrl+S zum Speichern, nochmals Esc zum Verwerfen und Schließen"
+  "t": "Spalte ausgewählt (Shift+Leertaste für die Zeile)"
  },
  {
   "i": 1680,
-  "t": "Ctrl+S speichern (beim Speichern rechnen die Zellfunktionen neu) / Esc schließen / Tab einrücken"
+  "t": "Zeile ausgewählt (Ctrl+Leertaste für die Spalte)"
  },
  {
   "i": 1681,
-  "t": "Zum Filtern tippen"
+  "t": "key.{} in den Einstellungen nennt eine unbekannte Aktion"
  },
  {
   "i": 1682,
-  "t": "Nicht in der Liste (mit Enter wie eingegeben übernehmen)"
+  "t": "Das Tastenkürzel für key.{} in den Einstellungen ist nicht lesbar: {}"
  },
  {
   "i": 1683,
-  "t": "Erste Zeile (keine Zeile darüber zum Kopieren)"
+  "t": "Kürzel {} wird von {} und {} beansprucht ({} gewinnt)"
  },
  {
   "i": 1684,
-  "t": "Spalte A (keine Spalte links zum Kopieren)"
+  "t": "Ungespeicherte Änderungen — Ctrl+S zum Speichern, nochmals Esc zum Verwerfen und Schließen"
  },
  {
   "i": 1685,
-  "t": "Nach unten oder rechts ziehen zum Kopieren (Doppelklick: bis zur Länge der Nachbarspalte)"
+  "t": "Ctrl+S speichern (beim Speichern rechnen die Zellfunktionen neu) / Esc schließen / Tab einrücken"
  },
  {
   "i": 1686,
-  "t": "Keine Nachbarspalte als Längenmaß (links und rechts leer)"
+  "t": "Zum Filtern tippen"
  },
  {
   "i": 1687,
-  "t": "{} nach {} kopiert"
+  "t": "Nicht in der Liste (mit Enter wie eingegeben übernehmen)"
  },
  {
   "i": 1688,
-  "t": "{} Zellen eingefügt (auch die Formatierung)"
+  "t": "Erste Zeile (keine Zeile darüber zum Kopieren)"
  },
  {
   "i": 1689,
-  "t": "{} Zellen eingefügt (Text aus einer anderen App — Formatierung bleibt)"
+  "t": "Spalte A (keine Spalte links zum Kopieren)"
  },
  {
   "i": 1690,
-  "t": "Ganzes Blatt ausgewählt"
+  "t": "Nach unten oder rechts ziehen zum Kopieren (Doppelklick: bis zur Länge der Nachbarspalte)"
  },
  {
   "i": 1691,
-  "t": "Spalte {} ausgewählt (ganze Spalte)"
+  "t": "Keine Nachbarspalte als Längenmaß (links und rechts leer)"
  },
  {
   "i": 1692,
-  "t": "Spalten {}–{} ausgewählt (ganze Spalten)"
+  "t": "{} nach {} kopiert"
  },
  {
   "i": 1693,
-  "t": "Zeile {} ausgewählt (ganze Zeile)"
+  "t": "{} Zellen eingefügt (auch die Formatierung)"
  },
  {
   "i": 1694,
-  "t": "Zeilen {}–{} ausgewählt (ganze Zeilen)"
+  "t": "{} Zellen eingefügt (Text aus einer anderen App — Formatierung bleibt)"
  },
  {
   "i": 1695,
-  "t": "In {} gespeichert (Klartext)"
+  "t": "Ganzes Blatt ausgewählt"
  },
  {
   "i": 1696,
-  "t": "{} ({} Zeilen) — als Klartext geöffnet; wird auch als Klartext gespeichert"
+  "t": "Spalte {} ausgewählt (ganze Spalte)"
  },
  {
   "i": 1697,
-  "t": "Makros und Klartext"
+  "t": "Spalten {}–{} ausgewählt (ganze Spalten)"
  },
  {
   "i": 1698,
-  "t": "Kann nicht erstellt werden: {}"
+  "t": "Zeile {} ausgewählt (ganze Zeile)"
  },
  {
   "i": 1699,
-  "t": "{} erstellt und in {} geöffnet (speichern, dann aus einer Zelle aufrufbar)"
+  "t": "Zeilen {}–{} ausgewählt (ganze Zeilen)"
  },
  {
   "i": 1700,
-  "t": "{} wurde erstellt, lässt sich aber nicht öffnen: {}"
+  "t": "In {} gespeichert (Klartext)"
  },
  {
   "i": 1701,
-  "t": "{} in {} geöffnet"
+  "t": "{} ({} Zeilen) — als Klartext geöffnet; wird auch als Klartext gespeichert"
  },
  {
   "i": 1702,
-  "t": "Aufzeichnung gestartet. Was Sie tun, wird zu Python (nochmals drücken zum Beenden)"
+  "t": "Makros und Klartext"
  },
  {
   "i": 1703,
-  "t": "Aufzeichnung in {} geschrieben ({} Zeilen) — wird in {} geöffnet"
+  "t": "Kann nicht erstellt werden: {}"
  },
  {
   "i": 1704,
-  "t": "Aufzeichnung in {} geschrieben ({} Zeilen)"
+  "t": "{} erstellt und in {} geöffnet (speichern, dann aus einer Zelle aufrufbar)"
  },
  {
   "i": 1705,
-  "t": "Aufzeichnung kann nicht geschrieben werden: {}"
+  "t": "{} wurde erstellt, lässt sich aber nicht öffnen: {}"
  },
  {
   "i": 1706,
-  "t": "KI-Ziel"
+  "t": "{} in {} geöffnet"
  },
  {
   "i": 1707,
-  "t": "Jetzt verfügbar"
+  "t": "Aufzeichnung gestartet. Was Sie tun, wird zu Python (nochmals drücken zum Beenden)"
  },
  {
   "i": 1708,
-  "t": "KI-Modell (JO_AI_MODEL)"
+  "t": "Aufzeichnung in {} geschrieben ({} Zeilen) — wird in {} geöffnet"
  },
  {
   "i": 1709,
-  "t": "(Standard des Ziels)"
+  "t": "Aufzeichnung in {} geschrieben ({} Zeilen)"
  },
  {
   "i": 1710,
-  "t": "Verfügbar"
+  "t": "Aufzeichnung kann nicht geschrieben werden: {}"
  },
  {
   "i": 1711,
-  "t": "Erst beim Fragen bekannt (verbindet sich mit dem Ziel unten)"
+  "t": "KI-Ziel"
  },
  {
   "i": 1712,
-  "t": "Linkes Panel (KI fragen) geöffnet"
+  "t": "Jetzt verfügbar"
  },
  {
   "i": 1713,
-  "t": "Linkes Panel geschlossen"
+  "t": "KI-Modell (JO_AI_MODEL)"
  },
  {
   "i": 1714,
-  "t": "Rechtes Panel (Zelleinstellungen) geöffnet"
+  "t": "(Standard des Ziels)"
  },
  {
   "i": 1715,
-  "t": "Rechtes Panel geschlossen"
+  "t": "Verfügbar"
  },
  {
   "i": 1716,
-  "t": "Gespräch"
+  "t": "Erst beim Fragen bekannt (verbindet sich mit dem Ziel unten)"
  },
  {
   "i": 1717,
-  "t": "Zelleinstellungen"
+  "t": "Linkes Panel (KI fragen) geöffnet"
  },
  {
   "i": 1718,
-  "t": "Umbrechen"
+  "t": "Linkes Panel geschlossen"
  },
  {
   "i": 1719,
-  "t": "Zahlenformat"
+  "t": "Rechtes Panel (Zelleinstellungen) geöffnet"
  },
  {
   "i": 1720,
-  "t": "Tausendertrennzeichen"
+  "t": "Rechtes Panel geschlossen"
  },
  {
   "i": 1721,
-  "t": "Artikelnummer (0000)"
+  "t": "Gespräch"
  },
  {
   "i": 1722,
-  "t": "Rahmenstift"
+  "t": "Zelleinstellungen"
  },
  {
   "i": 1723,
-  "t": "Dünn"
+  "t": "Umbrechen"
  },
  {
   "i": 1724,
-  "t": "Dick"
+  "t": "Zahlenformat"
  },
  {
   "i": 1725,
-  "t": "Doppelt"
+  "t": "Tausendertrennzeichen"
  },
  {
   "i": 1726,
-  "t": "Wohin zeichnen (mehrfach klickbar)"
+  "t": "Artikelnummer (0000)"
  },
  {
   "i": 1727,
-  "t": "Löschen"
+  "t": "Rahmenstift"
  },
  {
   "i": 1728,
-  "t": "KI fragen"
+  "t": "Dünn"
  },
  {
   "i": 1729,
-  "t": "Übernehmen"
+  "t": "Dick"
  },
  {
   "i": 1730,
-  "t": "Vorschlag verworfen (nichts geändert)"
+  "t": "Doppelt"
  },
  {
   "i": 1731,
-  "t": "Hier klicken und tippen; Enter sendet"
+  "t": "Wohin zeichnen (mehrfach klickbar)"
  },
  {
   "i": 1732,
-  "t": "Senden"
+  "t": "Löschen"
  },
  {
   "i": 1733,
-  "t": "Denkt nach…"
+  "t": "KI fragen"
  },
  {
   "i": 1734,
-  "t": "Jetzt: {}"
+  "t": "Übernehmen"
  },
  {
   "i": 1735,
-  "t": "Zurück zur Tabelle (das Gesprächspanel bleibt offen)"
+  "t": "Vorschlag verworfen (nichts geändert)"
  },
  {
   "i": 1736,
-  "t": "So wird es geändert."
+  "t": "Hier klicken und tippen; Enter sendet"
  },
  {
   "i": 1737,
-  "t": "Ein Vorschlag ist fertig (im linken Panel lesen, dann Übernehmen)"
+  "t": "Senden"
  },
  {
   "i": 1738,
-  "t": "Geantwortet (linkes Panel)"
+  "t": "Denkt nach…"
  },
  {
   "i": 1739,
-  "t": "Zahlenformat auf Standard zurückgesetzt"
+  "t": "Jetzt: {}"
  },
  {
   "i": 1740,
-  "t": "Keine Frage eingegeben"
+  "t": "Zurück zur Tabelle (das Gesprächspanel bleibt offen)"
  },
  {
   "i": 1741,
-  "t": "Ein Skript läuft (bitte warten, bis es fertig ist)"
+  "t": "So wird es geändert."
  },
  {
   "i": 1742,
-  "t": "Vorschlag wird ausgeführt…"
+  "t": "Ein Vorschlag ist fertig (im linken Panel lesen, dann Übernehmen)"
  },
  {
   "i": 1743,
-  "t": "Übernommen."
+  "t": "Geantwortet (linkes Panel)"
  },
  {
   "i": 1744,
-  "t": "Vorschlag übernommen (Strg+Z macht es rückgängig)"
+  "t": "Zahlenformat auf Standard zurückgesetzt"
  },
  {
   "i": 1745,
-  "t": "Zahlenformat auf {} gesetzt"
+  "t": "Keine Frage eingegeben"
  },
  {
   "i": 1746,
-  "t": "Vorschlag übernommen: {} (Strg+Z macht es rückgängig)"
+  "t": "Ein Skript läuft (bitte warten, bis es fertig ist)"
  },
  {
   "i": 1747,
-  "t": "Das Skript ist fehlgeschlagen: {}"
+  "t": "Vorschlag wird ausgeführt…"
  },
  {
   "i": 1748,
-  "t": "Das Skript lief nicht: {}"
+  "t": "Übernommen."
  },
  {
   "i": 1749,
-  "t": "Der überarbeitete Text ist fertig (im linken Panel lesen, dann Übernehmen)"
+  "t": "Vorschlag übernommen (Strg+Z macht es rückgängig)"
  },
  {
   "i": 1750,
-  "t": "Auswahl ersetzt (Strg+Z macht es rückgängig)"
+  "t": "Zahlenformat auf {} gesetzt"
  },
  {
   "i": 1751,
-  "t": "Hinter dem Cursor eingefügt (Strg+Z macht es rückgängig)"
+  "t": "Vorschlag übernommen: {} (Strg+Z macht es rückgängig)"
  },
  {
   "i": 1752,
-  "t": "Zurück zum Text (das Gesprächspanel bleibt offen)"
+  "t": "Das Skript ist fehlgeschlagen: {}"
  },
  {
   "i": 1753,
-  "t": "Einzufügender Text (erst auf Knopfdruck)"
+  "t": "Das Skript lief nicht: {}"
  },
  {
   "i": 1754,
-  "t": "Text verworfen (nichts geändert)"
+  "t": "Der überarbeitete Text ist fertig (im linken Panel lesen, dann Übernehmen)"
  },
  {
   "i": 1755,
-  "t": "KI"
+  "t": "Auswahl ersetzt (Strg+Z macht es rückgängig)"
  },
  {
   "i": 1756,
-  "t": "Einzug"
+  "t": "Hinter dem Cursor eingefügt (Strg+Z macht es rückgängig)"
  },
  {
   "i": 1757,
-  "t": "Einzug auf {} gesetzt"
+  "t": "Zurück zum Text (das Gesprächspanel bleibt offen)"
  },
  {
   "i": 1758,
-  "t": "Der Einzug kann nicht schmaler werden"
+  "t": "Einzufügender Text (erst auf Knopfdruck)"
  },
  {
   "i": 1759,
-  "t": "Der Einzug kann nicht breiter werden"
+  "t": "Text verworfen (nichts geändert)"
  },
  {
   "i": 1760,
-  "t": "Textausrichtung"
- },
- {
-  "i": 1761,
-  "t": "Textausrichtung auf {} gesetzt"
- },
- {
-  "i": 1762,
-  "t": "Bedingte Formatierung"
- },
- {
-  "i": 1763,
-  "t": "Negative rot"
- },
- {
-  "i": 1764,
-  "t": "Duplikate"
- },
- {
-  "i": 1765,
-  "t": "Eindeutige"
- },
- {
-  "i": 1766,
-  "t": "Farbskala"
- },
- {
-  "i": 1767,
-  "t": "Symbole"
- },
- {
-  "i": 1768,
-  "t": "Tabelle"
- },
- {
-  "i": 1769,
-  "t": "{} Zeilen × {} Spalten — jetzt Zeile {}, Spalte {}"
- },
- {
-  "i": 1770,
-  "t": "Zeile darüber"
- },
- {
-  "i": 1771,
-  "t": "Zeile darunter"
- },
- {
-  "i": 1772,
-  "t": "Zeile löschen"
- },
- {
-  "i": 1773,
-  "t": "Spalte links"
- },
- {
-  "i": 1774,
-  "t": "Spalte rechts"
- },
- {
-  "i": 1775,
-  "t": "Spalte löschen"
- },
- {
-  "i": 1776,
-  "t": "Zeile darüber eingefügt"
- },
- {
-  "i": 1777,
-  "t": "Zeile darunter eingefügt"
- },
- {
-  "i": 1778,
-  "t": "Spalte links eingefügt"
- },
- {
-  "i": 1779,
-  "t": "Spalte rechts eingefügt"
- },
- {
-  "i": 1780,
-  "t": "Zeile gelöscht (Strg+Z macht es rückgängig)"
- },
- {
-  "i": 1781,
-  "t": "Spalte gelöscht (Strg+Z macht es rückgängig)"
- },
- {
-  "i": 1782,
-  "t": "Die letzte Zeile kann nicht gelöscht werden (die ganze Tabelle zu löschen ist eine andere Aktion)"
- },
- {
-  "i": 1783,
-  "t": "Die letzte Spalte kann nicht gelöscht werden (die ganze Tabelle zu löschen ist eine andere Aktion)"
- },
- {
-  "i": 1784,
-  "t": "Formel"
- },
- {
-  "i": 1785,
-  "t": "Formel bearbeiten"
- },
- {
-  "i": 1786,
-  "t": "Formel wird bearbeitet (Enter setzt neu, Esc bricht ab)"
- },
- {
-  "i": 1787,
-  "t": "In diesem Absatz ist kein Bild"
- },
- {
-  "i": 1788,
-  "t": "Bild verkleinert"
- },
- {
-  "i": 1789,
-  "t": "Bild vergrößert"
- },
- {
-  "i": 1790,
-  "t": "{:.0}×{:.0}mm"
- },
- {
-  "i": 1791,
-  "t": "Anordnung"
- },
- {
-  "i": 1792,
-  "t": "In den Vordergrund"
- },
- {
-  "i": 1793,
-  "t": "Eine Ebene nach vorne"
- },
- {
-  "i": 1794,
-  "t": "Eine Ebene nach hinten"
- },
- {
-  "i": 1795,
-  "t": "In den Hintergrund"
- },
- {
-  "i": 1796,
-  "t": "Nach links drehen"
- },
- {
-  "i": 1797,
-  "t": "Nach rechts drehen"
- },
- {
-  "i": 1798,
-  "t": "Horizontal spiegeln"
- },
- {
-  "i": 1799,
-  "t": "Vertikal spiegeln"
- },
- {
-  "i": 1800,
-  "t": "Sonstiges"
- },
- {
-  "i": 1801,
-  "t": "Eine Form ist ausgewählt"
- },
- {
-  "i": 1802,
-  "t": "Ein Bild ist ausgewählt"
- },
- {
-  "i": 1803,
-  "t": "Es ist weder eine Form noch ein Bild ausgewählt (klicken Sie eines auf dem Blatt an)"
- },
- {
-  "i": 1804,
-  "t": "Seite — Einstellungen für das ganze Dokument"
- },
- {
-  "i": 1805,
-  "t": "Kopf- und Fußzeile"
- },
- {
-  "i": 1806,
-  "t": "Bearbeiten"
- },
- {
-  "i": 1807,
-  "t": "Wasserzeichen"
- },
- {
-  "i": 1808,
-  "t": "Seitenfarbe"
- },
- {
-  "i": 1809,
-  "t": "Sie können zum markierten Bereich Fragen stellen. Wenn etwas die Tabelle ändern würde, sehen Sie zuerst, was passieren soll — bis Sie drücken, ändert sich nichts."
- },
- {
-  "i": 1810,
-  "t": "z. B. nach Umsatz absteigend sortieren / die Top 5 einfärben / eine Summenzeile hinzufügen"
- },
- {
-  "i": 1811,
-  "t": "Änderungsvorschlag (bis Sie drücken, passiert nichts)"
- },
- {
-  "i": 1812,
-  "t": "Sie können zur Auswahl Fragen stellen. Wenn Text neu geschrieben würde, sehen Sie den neuen Text zuerst — bis Sie drücken, kommt nichts hinein."
- },
- {
-  "i": 1813,
-  "t": "z. B. diesen Absatz höflicher machen / halb so lang / sag mir, ob es steif klingt"
- },
- {
-  "i": 1814,
-  "t": "Kommentare werden angezeigt (als Zellsprechblasen)"
- },
- {
-  "i": 1815,
-  "t": "Ziel des lokalen Modells"
- },
- {
-  "i": 1816,
-  "t": "bleibt auf diesem Rechner"
- },
- {
-  "i": 1817,
-  "t": "verlässt diesen Rechner"
- },
- {
-  "i": 1818,
-  "t": "So wird das Ziel gesetzt"
- },
- {
-  "i": 1819,
-  "t": "ai_url / ai_model in settings.toml (die Umgebungsvariable OFFICE_URL hat Vorrang)"
- },
- {
-  "i": 1820,
-  "t": "Neues Gespräch"
- },
- {
-  "i": 1821,
-  "t": "Neues Gespräch begonnen (die Tabelle blieb unberührt)"
- },
- {
-  "i": 1822,
-  "t": "Bitte um Korrektur"
- },
- {
-  "i": 1823,
-  "t": "So lassen"
- },
- {
-  "i": 1824,
-  "t": "Fehlgeschlagen. {}"
- },
- {
-  "i": 1825,
-  "t": "Übernommen. {}"
- },
- {
-  "i": 1826,
-  "t": "Ziel: {} (zum Wechseln drücken)"
- },
- {
-  "i": 1827,
-  "t": "Das vorherige Skript ist fehlgeschlagen. Lies den Fehler und gib mir ein korrigiertes Skript.\n\n[Fehler]\n{}\n\n[Fehlgeschlagenes Skript]\n{}"
- },
- {
-  "i": 1828,
-  "t": "Sie können =Name(...) in eine Zelle schreiben. Auswählen öffnet die Datei im Editor"
- },
- {
-  "i": 1829,
-  "t": "Noch können keine Funktionen aus Formeln aufgerufen werden (legen Sie eine .py in {} ab)"
- },
- {
-  "i": 1830,
-  "t": "Verschieben Sie Funktionen, die Sie aus Formeln aufrufen, nach {} (plugins ist jetzt der Ordner für Makros, die Sie von Hand starten)"
- },
- {
-  "i": 1831,
-  "t": "Der Ordner kann nicht angelegt werden: {}"
- },
- {
-  "i": 1832,
-  "t": "Kann nicht geöffnet werden: Der Text ist nicht UTF-8"
- },
- {
-  "i": 1833,
-  "t": " (Formeln bleiben erhalten; das Aussehen wird nicht gespeichert)"
- },
- {
-  "i": 1834,
-  "t": "Dateien — Inhalt des Ordners"
- },
- {
-  "i": 1835,
-  "t": "Kein Ordner geöffnet (Datei > Öffnen)"
- },
- {
-  "i": 1836,
-  "t": "(der Ordner ist leer)"
- },
- {
-  "i": 1837,
-  "t": "Dokument {}"
- },
- {
-  "i": 1838,
-  "t": "{} ({} Dokumente)"
- },
- {
-  "i": 1839,
-  "t": "(ohne Namen)"
- },
- {
-  "i": 1840,
-  "t": "{} wird angezeigt"
- },
- {
-  "i": 1841,
-  "t": "Es gibt ungespeicherte Änderungen (bitte zuerst speichern)"
- },
- {
-  "i": 1842,
-  "t": "Als {} gespeichert (Tabellen werden mit doppelter Dateiendung benannt)"
- },
- {
-  "i": 1843,
-  "t": "Ordner"
- },
- {
-  "i": 1844,
-  "t": "Dokument"
- },
- {
-  "i": 1845,
-  "t": "Design"
- },
- {
-  "i": 1846,
-  "t": "Formular"
- },
- {
-  "i": 1847,
-  "t": "officework — Ordner zum Öffnen wählen"
- },
- {
-  "i": 1848,
-  "t": "{} geöffnet (Datei rechts in der Liste wählen)"
- },
- {
-  "i": 1849,
-  "t": "AsciiDoc ist eine Klartextdatei und kann nicht verschlüsselt gespeichert werden (Verschlüsselung entfernen oder als xlsx speichern)"
- },
- {
-  "i": 1850,
-  "t": "{}:{} in eine Tabelle umgewandelt (farbige Kopfzeile und gestreifte Zeilen; Sie können sie wieder in einen Bereich umwandeln oder ihre Größe ändern — Strg+Z macht es rückgängig)"
- },
- {
-  "i": 1851,
-  "t": "Die Tabelle „{}“ ist wieder ein normaler Bereich (Kopfzeilenfarbe, Streifen, Formatierung und Formeln bleiben erhalten)"
- },
- {
-  "i": 1852,
-  "t": "Kopfzeile"
- },
- {
-  "i": 1853,
-  "t": "Hintergrund #{}"
- },
- {
-  "i": 1854,
-  "t": "Es gibt ungespeicherte Änderungen (bitte zuerst speichern): {}"
- },
- {
-  "i": 1855,
-  "t": "Das letzte bleibt geöffnet"
- },
- {
-  "i": 1856,
-  "t": "{} hat ungespeicherte Änderungen (bitte zuerst speichern)"
- },
- {
-  "i": 1857,
-  "t": "Öffenbare Dateien"
- },
- {
-  "i": 1858,
-  "t": "officework-Dokumente und -Tabellen"
- },
- {
-  "i": 1859,
-  "t": "{} zuvor geöffnete Datei(en) wurden nicht gefunden"
- },
- {
-  "i": 1860,
-  "t": "„{}“ ist nicht in dieser Datei"
- },
- {
-  "i": 1861,
-  "t": "„{}“ ist nicht auf diesem Blatt (mit „Diese Datei“ werden auch die anderen Blätter durchsucht)"
- },
- {
-  "i": 1862,
-  "t": "„{}“: {} {} ({} in dieser Datei)"
- },
- {
-  "i": 1863,
-  "t": "„{}“: {} ({} auf diesem Blatt)"
- },
- {
-  "i": 1864,
-  "t": "Suchen in"
- },
- {
-  "i": 1865,
-  "t": "Dieses Blatt"
- },
- {
-  "i": 1866,
-  "t": "Diese Datei"
- },
- {
-  "i": 1867,
-  "t": "Für den ganzen Ordner „Ordner durchsuchen“ auf der Registerkarte Daten"
- },
- {
-  "i": 1868,
-  "t": "„{}“: Dokument {}"
- },
- {
-  "i": 1869,
-  "t": "„{}“ ist nicht in diesem Dokument (mit „Diese Datei“ werden auch die anderen Dokumente durchsucht)"
- },
- {
-  "i": 1870,
-  "t": "Dieses Dokument"
- },
- {
-  "i": 1871,
-  "t": "Bildschirm ist jetzt dunkel (Papier und Zellen bleiben weiß — so stimmen Bildschirm und Druck überein)"
- },
- {
-  "i": 1872,
-  "t": "Iterative Berechnung: ein (bis zu {} Durchläufe / Änderung unter {})"
- },
- {
-  "i": 1873,
-  "t": "Iterative Berechnung: aus (Zirkelbezüge werden markiert)"
- },
- {
-  "i": 1874,
-  "t": "Ein (bis zu {} Durchläufe)"
- },
- {
-  "i": 1875,
-  "t": "Python-Funktionen"
- },
- {
-  "i": 1876,
-  "t": "Menüband-Makros"
- },
- {
-  "i": 1877,
-  "t": "Format übertragen"
- },
- {
-  "i": 1878,
-  "t": "Typ"
- },
- {
-  "i": 1879,
-  "t": "Feldliste"
- },
- {
-  "i": 1880,
-  "t": "Oberflächentext größer"
- },
- {
-  "i": 1881,
-  "t": "Oberflächentext kleiner"
- },
- {
-  "i": 1882,
   "t": "KI"
  },
  {
+  "i": 1761,
+  "t": "Einzug"
+ },
+ {
+  "i": 1762,
+  "t": "Einzug auf {} gesetzt"
+ },
+ {
+  "i": 1763,
+  "t": "Der Einzug kann nicht schmaler werden"
+ },
+ {
+  "i": 1764,
+  "t": "Der Einzug kann nicht breiter werden"
+ },
+ {
+  "i": 1765,
+  "t": "Textausrichtung"
+ },
+ {
+  "i": 1766,
+  "t": "Textausrichtung auf {} gesetzt"
+ },
+ {
+  "i": 1767,
+  "t": "Bedingte Formatierung"
+ },
+ {
+  "i": 1768,
+  "t": "Negative rot"
+ },
+ {
+  "i": 1769,
+  "t": "Duplikate"
+ },
+ {
+  "i": 1770,
+  "t": "Eindeutige"
+ },
+ {
+  "i": 1771,
+  "t": "Farbskala"
+ },
+ {
+  "i": 1772,
+  "t": "Symbole"
+ },
+ {
+  "i": 1773,
+  "t": "Tabelle"
+ },
+ {
+  "i": 1774,
+  "t": "{} Zeilen × {} Spalten — jetzt Zeile {}, Spalte {}"
+ },
+ {
+  "i": 1775,
+  "t": "Zeile darüber"
+ },
+ {
+  "i": 1776,
+  "t": "Zeile darunter"
+ },
+ {
+  "i": 1777,
+  "t": "Zeile löschen"
+ },
+ {
+  "i": 1778,
+  "t": "Spalte links"
+ },
+ {
+  "i": 1779,
+  "t": "Spalte rechts"
+ },
+ {
+  "i": 1780,
+  "t": "Spalte löschen"
+ },
+ {
+  "i": 1781,
+  "t": "Zeile darüber eingefügt"
+ },
+ {
+  "i": 1782,
+  "t": "Zeile darunter eingefügt"
+ },
+ {
+  "i": 1783,
+  "t": "Spalte links eingefügt"
+ },
+ {
+  "i": 1784,
+  "t": "Spalte rechts eingefügt"
+ },
+ {
+  "i": 1785,
+  "t": "Zeile gelöscht (Strg+Z macht es rückgängig)"
+ },
+ {
+  "i": 1786,
+  "t": "Spalte gelöscht (Strg+Z macht es rückgängig)"
+ },
+ {
+  "i": 1787,
+  "t": "Die letzte Zeile kann nicht gelöscht werden (die ganze Tabelle zu löschen ist eine andere Aktion)"
+ },
+ {
+  "i": 1788,
+  "t": "Die letzte Spalte kann nicht gelöscht werden (die ganze Tabelle zu löschen ist eine andere Aktion)"
+ },
+ {
+  "i": 1789,
+  "t": "Formel"
+ },
+ {
+  "i": 1790,
+  "t": "Formel bearbeiten"
+ },
+ {
+  "i": 1791,
+  "t": "Formel wird bearbeitet (Enter setzt neu, Esc bricht ab)"
+ },
+ {
+  "i": 1792,
+  "t": "In diesem Absatz ist kein Bild"
+ },
+ {
+  "i": 1793,
+  "t": "Bild verkleinert"
+ },
+ {
+  "i": 1794,
+  "t": "Bild vergrößert"
+ },
+ {
+  "i": 1795,
+  "t": "{:.0}×{:.0}mm"
+ },
+ {
+  "i": 1796,
+  "t": "Anordnung"
+ },
+ {
+  "i": 1797,
+  "t": "In den Vordergrund"
+ },
+ {
+  "i": 1798,
+  "t": "Eine Ebene nach vorne"
+ },
+ {
+  "i": 1799,
+  "t": "Eine Ebene nach hinten"
+ },
+ {
+  "i": 1800,
+  "t": "In den Hintergrund"
+ },
+ {
+  "i": 1801,
+  "t": "Nach links drehen"
+ },
+ {
+  "i": 1802,
+  "t": "Nach rechts drehen"
+ },
+ {
+  "i": 1803,
+  "t": "Horizontal spiegeln"
+ },
+ {
+  "i": 1804,
+  "t": "Vertikal spiegeln"
+ },
+ {
+  "i": 1805,
+  "t": "Sonstiges"
+ },
+ {
+  "i": 1806,
+  "t": "Eine Form ist ausgewählt"
+ },
+ {
+  "i": 1807,
+  "t": "Ein Bild ist ausgewählt"
+ },
+ {
+  "i": 1808,
+  "t": "Es ist weder eine Form noch ein Bild ausgewählt (klicken Sie eines auf dem Blatt an)"
+ },
+ {
+  "i": 1809,
+  "t": "Seite — Einstellungen für das ganze Dokument"
+ },
+ {
+  "i": 1810,
+  "t": "Kopf- und Fußzeile"
+ },
+ {
+  "i": 1811,
+  "t": "Bearbeiten"
+ },
+ {
+  "i": 1812,
+  "t": "Wasserzeichen"
+ },
+ {
+  "i": 1813,
+  "t": "Seitenfarbe"
+ },
+ {
+  "i": 1814,
+  "t": "Sie können zum markierten Bereich Fragen stellen. Wenn etwas die Tabelle ändern würde, sehen Sie zuerst, was passieren soll — bis Sie drücken, ändert sich nichts."
+ },
+ {
+  "i": 1815,
+  "t": "z. B. nach Umsatz absteigend sortieren / die Top 5 einfärben / eine Summenzeile hinzufügen"
+ },
+ {
+  "i": 1816,
+  "t": "Änderungsvorschlag (bis Sie drücken, passiert nichts)"
+ },
+ {
+  "i": 1817,
+  "t": "Sie können zur Auswahl Fragen stellen. Wenn Text neu geschrieben würde, sehen Sie den neuen Text zuerst — bis Sie drücken, kommt nichts hinein."
+ },
+ {
+  "i": 1818,
+  "t": "z. B. diesen Absatz höflicher machen / halb so lang / sag mir, ob es steif klingt"
+ },
+ {
+  "i": 1819,
+  "t": "Kommentare werden angezeigt (als Zellsprechblasen)"
+ },
+ {
+  "i": 1820,
+  "t": "Ziel des lokalen Modells"
+ },
+ {
+  "i": 1821,
+  "t": "bleibt auf diesem Rechner"
+ },
+ {
+  "i": 1822,
+  "t": "verlässt diesen Rechner"
+ },
+ {
+  "i": 1823,
+  "t": "So wird das Ziel gesetzt"
+ },
+ {
+  "i": 1824,
+  "t": "ai_url / ai_model in settings.toml (die Umgebungsvariable OFFICE_URL hat Vorrang)"
+ },
+ {
+  "i": 1825,
+  "t": "Neues Gespräch"
+ },
+ {
+  "i": 1826,
+  "t": "Neues Gespräch begonnen (die Tabelle blieb unberührt)"
+ },
+ {
+  "i": 1827,
+  "t": "Bitte um Korrektur"
+ },
+ {
+  "i": 1828,
+  "t": "So lassen"
+ },
+ {
+  "i": 1829,
+  "t": "Fehlgeschlagen. {}"
+ },
+ {
+  "i": 1830,
+  "t": "Übernommen. {}"
+ },
+ {
+  "i": 1831,
+  "t": "Ziel: {} (zum Wechseln drücken)"
+ },
+ {
+  "i": 1832,
+  "t": "Das vorherige Skript ist fehlgeschlagen. Lies den Fehler und gib mir ein korrigiertes Skript.\n\n[Fehler]\n{}\n\n[Fehlgeschlagenes Skript]\n{}"
+ },
+ {
+  "i": 1833,
+  "t": "Sie können =Name(...) in eine Zelle schreiben. Auswählen öffnet die Datei im Editor"
+ },
+ {
+  "i": 1834,
+  "t": "Noch können keine Funktionen aus Formeln aufgerufen werden (legen Sie eine .py in {} ab)"
+ },
+ {
+  "i": 1835,
+  "t": "Verschieben Sie Funktionen, die Sie aus Formeln aufrufen, nach {} (plugins ist jetzt der Ordner für Makros, die Sie von Hand starten)"
+ },
+ {
+  "i": 1836,
+  "t": "Der Ordner kann nicht angelegt werden: {}"
+ },
+ {
+  "i": 1837,
+  "t": "Kann nicht geöffnet werden: Der Text ist nicht UTF-8"
+ },
+ {
+  "i": 1838,
+  "t": " (Formeln bleiben erhalten; das Aussehen wird nicht gespeichert)"
+ },
+ {
+  "i": 1839,
+  "t": "Dateien — Inhalt des Ordners"
+ },
+ {
+  "i": 1840,
+  "t": "Kein Ordner geöffnet (Datei > Öffnen)"
+ },
+ {
+  "i": 1841,
+  "t": "(der Ordner ist leer)"
+ },
+ {
+  "i": 1842,
+  "t": "Dokument {}"
+ },
+ {
+  "i": 1843,
+  "t": "{} ({} Dokumente)"
+ },
+ {
+  "i": 1844,
+  "t": "(ohne Namen)"
+ },
+ {
+  "i": 1845,
+  "t": "{} wird angezeigt"
+ },
+ {
+  "i": 1846,
+  "t": "Es gibt ungespeicherte Änderungen (bitte zuerst speichern)"
+ },
+ {
+  "i": 1847,
+  "t": "Als {} gespeichert (Tabellen werden mit doppelter Dateiendung benannt)"
+ },
+ {
+  "i": 1848,
+  "t": "Ordner"
+ },
+ {
+  "i": 1849,
+  "t": "Dokument"
+ },
+ {
+  "i": 1850,
+  "t": "Design"
+ },
+ {
+  "i": 1851,
+  "t": "Formular"
+ },
+ {
+  "i": 1852,
+  "t": "officework — Ordner zum Öffnen wählen"
+ },
+ {
+  "i": 1853,
+  "t": "{} geöffnet (Datei rechts in der Liste wählen)"
+ },
+ {
+  "i": 1854,
+  "t": "AsciiDoc ist eine Klartextdatei und kann nicht verschlüsselt gespeichert werden (Verschlüsselung entfernen oder als xlsx speichern)"
+ },
+ {
+  "i": 1855,
+  "t": "{}:{} in eine Tabelle umgewandelt (farbige Kopfzeile und gestreifte Zeilen; Sie können sie wieder in einen Bereich umwandeln oder ihre Größe ändern — Strg+Z macht es rückgängig)"
+ },
+ {
+  "i": 1856,
+  "t": "Die Tabelle „{}“ ist wieder ein normaler Bereich (Kopfzeilenfarbe, Streifen, Formatierung und Formeln bleiben erhalten)"
+ },
+ {
+  "i": 1857,
+  "t": "Kopfzeile"
+ },
+ {
+  "i": 1858,
+  "t": "Hintergrund #{}"
+ },
+ {
+  "i": 1859,
+  "t": "Es gibt ungespeicherte Änderungen (bitte zuerst speichern): {}"
+ },
+ {
+  "i": 1860,
+  "t": "Das letzte bleibt geöffnet"
+ },
+ {
+  "i": 1861,
+  "t": "{} hat ungespeicherte Änderungen (bitte zuerst speichern)"
+ },
+ {
+  "i": 1862,
+  "t": "Öffenbare Dateien"
+ },
+ {
+  "i": 1863,
+  "t": "officework-Dokumente und -Tabellen"
+ },
+ {
+  "i": 1864,
+  "t": "{} zuvor geöffnete Datei(en) wurden nicht gefunden"
+ },
+ {
+  "i": 1865,
+  "t": "„{}“ ist nicht in dieser Datei"
+ },
+ {
+  "i": 1866,
+  "t": "„{}“ ist nicht auf diesem Blatt (mit „Diese Datei“ werden auch die anderen Blätter durchsucht)"
+ },
+ {
+  "i": 1867,
+  "t": "„{}“: {} {} ({} in dieser Datei)"
+ },
+ {
+  "i": 1868,
+  "t": "„{}“: {} ({} auf diesem Blatt)"
+ },
+ {
+  "i": 1869,
+  "t": "Suchen in"
+ },
+ {
+  "i": 1870,
+  "t": "Dieses Blatt"
+ },
+ {
+  "i": 1871,
+  "t": "Diese Datei"
+ },
+ {
+  "i": 1872,
+  "t": "Für den ganzen Ordner „Ordner durchsuchen“ auf der Registerkarte Daten"
+ },
+ {
+  "i": 1873,
+  "t": "„{}“: Dokument {}"
+ },
+ {
+  "i": 1874,
+  "t": "„{}“ ist nicht in diesem Dokument (mit „Diese Datei“ werden auch die anderen Dokumente durchsucht)"
+ },
+ {
+  "i": 1875,
+  "t": "Dieses Dokument"
+ },
+ {
+  "i": 1876,
+  "t": "Bildschirm ist jetzt dunkel (Papier und Zellen bleiben weiß — so stimmen Bildschirm und Druck überein)"
+ },
+ {
+  "i": 1877,
+  "t": "Iterative Berechnung: ein (bis zu {} Durchläufe / Änderung unter {})"
+ },
+ {
+  "i": 1878,
+  "t": "Iterative Berechnung: aus (Zirkelbezüge werden markiert)"
+ },
+ {
+  "i": 1879,
+  "t": "Ein (bis zu {} Durchläufe)"
+ },
+ {
+  "i": 1880,
+  "t": "Python-Funktionen"
+ },
+ {
+  "i": 1881,
+  "t": "Menüband-Makros"
+ },
+ {
+  "i": 1882,
+  "t": "Format übertragen"
+ },
+ {
   "i": 1883,
-  "t": "Drucken"
+  "t": "Typ"
  },
  {
   "i": 1884,
-  "t": "Drucklayout"
+  "t": "Feldliste"
  },
  {
   "i": 1885,
-  "t": "Ziel"
+  "t": "Oberflächentext größer"
  },
  {
   "i": 1886,
-  "t": "Zusammenfassen"
+  "t": "Oberflächentext kleiner"
  },
  {
   "i": 1887,
-  "t": "Umschreiben"
+  "t": "KI"
  },
  {
   "i": 1888,
-  "t": "Höflicher"
+  "t": "Drucken"
  },
  {
   "i": 1889,
-  "t": "Einfacher"
+  "t": "Drucklayout"
  },
  {
   "i": 1890,
-  "t": "Übersetzen"
+  "t": "Ziel"
  },
  {
   "i": 1891,
-  "t": "Furigana"
+  "t": "Zusammenfassen"
  },
  {
   "i": 1892,
-  "t": "Fortsetzen"
+  "t": "Umschreiben"
  },
  {
   "i": 1893,
-  "t": "In Tabelle"
+  "t": "Höflicher"
  },
  {
   "i": 1894,
-  "t": "Anfragen"
+  "t": "Einfacher"
  },
  {
   "i": 1895,
-  "t": "Ruby"
+  "t": "Übersetzen"
  },
  {
   "i": 1896,
-  "t": "Vertikal"
+  "t": "Furigana"
  },
  {
   "i": 1897,
-  "t": "Textrichtung"
+  "t": "Fortsetzen"
  },
  {
   "i": 1898,
-  "t": "Verteilt"
+  "t": "In Tabelle"
  },
  {
   "i": 1899,
-  "t": "Beschriftung einfügen"
+  "t": "Anfragen"
  },
  {
   "i": 1900,
-  "t": "URL öffnen"
+  "t": "Ruby"
  },
  {
   "i": 1901,
-  "t": "Index"
+  "t": "Vertikal"
  },
  {
   "i": 1902,
-  "t": "Aozora-Anmerkungen"
+  "t": "Textrichtung"
  },
  {
   "i": 1903,
-  "t": "Denden-Markup"
+  "t": "Verteilt"
  },
  {
   "i": 1904,
-  "t": "Änderungen nachverfolgen"
+  "t": "Beschriftung einfügen"
  },
  {
   "i": 1905,
-  "t": "Änderungen anzeigen"
+  "t": "URL öffnen"
  },
  {
   "i": 1906,
-  "t": "Korrektur"
+  "t": "Index"
  },
  {
   "i": 1907,
-  "t": "Zeichen"
+  "t": "Aozora-Anmerkungen"
  },
  {
   "i": 1908,
-  "t": "Rechtschreibprüfung"
+  "t": "Denden-Markup"
  },
  {
   "i": 1909,
-  "t": "Thesaurus"
+  "t": "Änderungen nachverfolgen"
  },
  {
   "i": 1910,
-  "t": "Fehlkonvertierung"
+  "t": "Änderungen anzeigen"
  },
  {
   "i": 1911,
-  "t": "Uneinheitliche Schreibung"
+  "t": "Korrektur"
  },
  {
   "i": 1912,
-  "t": "Teilergebnisse"
+  "t": "Zeichen"
  },
  {
   "i": 1913,
-  "t": "Berechnung"
+  "t": "Rechtschreibprüfung"
  },
  {
   "i": 1914,
-  "t": "Rechts-nach-links-Text"
+  "t": "Thesaurus"
  },
  {
   "i": 1915,
-  "t": "Blattrichtung"
+  "t": "Fehlkonvertierung"
  },
  {
   "i": 1916,
-  "t": "Python"
+  "t": "Uneinheitliche Schreibung"
  },
  {
   "i": 1917,
-  "t": "Kontrollkästchen"
+  "t": "Teilergebnisse"
  },
  {
   "i": 1918,
-  "t": "Externe Verknüpfungen"
+  "t": "Berechnung"
  },
  {
   "i": 1919,
-  "t": "Empfohlene Diagramme"
+  "t": "Rechts-nach-links-Text"
  },
  {
   "i": 1920,
-  "t": "Co-Bearbeitung"
+  "t": "Blattrichtung"
  },
  {
   "i": 1921,
-  "t": "Versionsverlauf"
+  "t": "Python"
  },
  {
   "i": 1922,
-  "t": "Chat"
+  "t": "Kontrollkästchen"
  },
  {
   "i": 1923,
-  "t": "Schützen"
+  "t": "Externe Verknüpfungen"
  },
  {
   "i": 1924,
-  "t": "Verschlüsseln"
+  "t": "Empfohlene Diagramme"
  },
  {
   "i": 1925,
-  "t": "Digitale Signatur hinzufügen"
+  "t": "Co-Bearbeitung"
  },
  {
   "i": 1926,
-  "t": "Makros"
+  "t": "Versionsverlauf"
  },
  {
   "i": 1927,
-  "t": "Plugins verwalten"
+  "t": "Chat"
  },
  {
   "i": 1928,
-  "t": "Nullen anzeigen"
+  "t": "Schützen"
  },
  {
   "i": 1929,
-  "t": "Auf 100 % zoomen"
+  "t": "Verschlüsseln"
  },
  {
   "i": 1930,
-  "t": "Oberflächendesign"
+  "t": "Digitale Signatur hinzufügen"
  },
  {
   "i": 1931,
-  "t": "Überwachungsfenster"
+  "t": "Makros"
  },
  {
   "i": 1932,
-  "t": "AutoSumme"
+  "t": "Plugins verwalten"
  },
  {
   "i": 1933,
-  "t": "Aktionen aufzeichnen"
+  "t": "Nullen anzeigen"
  },
  {
   "i": 1934,
-  "t": "Kommentar löschen"
+  "t": "Auf 100 % zoomen"
  },
  {
   "i": 1935,
-  "t": "Solver"
+  "t": "Oberflächendesign"
  },
  {
   "i": 1936,
-  "t": "Text zu Daten"
+  "t": "Überwachungsfenster"
  },
  {
   "i": 1937,
-  "t": "Pfeile entfernen"
+  "t": "AutoSumme"
  },
  {
   "i": 1938,
-  "t": "Ausfüllen"
+  "t": "Aktionen aufzeichnen"
  },
  {
   "i": 1939,
-  "t": "Filter löschen"
+  "t": "Kommentar löschen"
  },
  {
   "i": 1940,
-  "t": "Makro schreiben"
+  "t": "Solver"
  },
  {
   "i": 1941,
-  "t": "Text in Spalten"
+  "t": "Text zu Daten"
  },
  {
   "i": 1942,
-  "t": "Beschriftung"
+  "t": "Pfeile entfernen"
  },
  {
   "i": 1943,
-  "t": "Abbildungsverzeichnis"
+  "t": "Ausfüllen"
  },
  {
   "i": 1944,
-  "t": "Abbildungsverzeichnis aktualisieren"
+  "t": "Filter löschen"
  },
  {
   "i": 1945,
-  "t": "Externe Verknüpfungen (als Werte einlesen)"
+  "t": "Makro schreiben"
  },
  {
   "i": 1946,
-  "t": "Math. u. Trigonom."
+  "t": "Text in Spalten"
  },
  {
   "i": 1947,
-  "t": "Formeln anzeigen"
+  "t": "Beschriftung"
  },
  {
   "i": 1948,
-  "t": "Textrichtung (rechts nach links)"
+  "t": "Abbildungsverzeichnis"
  },
  {
   "i": 1949,
-  "t": "Text"
+  "t": "Abbildungsverzeichnis aktualisieren"
  },
  {
   "i": 1950,
-  "t": "Datum u. Uhrzeit"
+  "t": "Externe Verknüpfungen (als Werte einlesen)"
  },
  {
   "i": 1951,
-  "t": "Zuletzt verwendet"
+  "t": "Math. u. Trigonom."
  },
  {
   "i": 1952,
-  "t": "Gitternetzlinien drucken"
+  "t": "Formeln anzeigen"
  },
  {
   "i": 1953,
-  "t": "Inhaltsverzeichnis aktualisieren"
+  "t": "Textrichtung (rechts nach links)"
  },
  {
   "i": 1954,
-  "t": "Gebänderte Spalten"
+  "t": "Text"
  },
  {
   "i": 1955,
-  "t": "Überschriften drucken"
+  "t": "Datum u. Uhrzeit"
  },
  {
   "i": 1956,
-  "t": "Detail ausblenden"
+  "t": "Zuletzt verwendet"
  },
  {
   "i": 1957,
-  "t": "Duplikate entfernen"
+  "t": "Gitternetzlinien drucken"
  },
  {
   "i": 1958,
-  "t": "Funktion einfügen"
+  "t": "Inhaltsverzeichnis aktualisieren"
  },
  {
   "i": 1959,
-  "t": "CSV-Format"
+  "t": "Gebänderte Spalten"
  },
  {
   "i": 1960,
-  "t": "Zelle sperren"
+  "t": "Überschriften drucken"
  },
  {
   "i": 1961,
-  "t": "Datentabelle"
+  "t": "Detail ausblenden"
  },
  {
   "i": 1962,
-  "t": "Musterfüllung"
+  "t": "Duplikate entfernen"
  },
  {
   "i": 1963,
-  "t": "Liste"
+  "t": "Funktion einfügen"
  },
  {
   "i": 1964,
-  "t": "Namen einfügen"
+  "t": "CSV-Format"
  },
  {
   "i": 1965,
-  "t": "Wiederherstellen"
+  "t": "Zelle sperren"
  },
  {
   "i": 1966,
-  "t": "Text umbrechen"
+  "t": "Datentabelle"
  },
  {
   "i": 1967,
-  "t": "Sicherungsintervall"
+  "t": "Musterfüllung"
  },
  {
   "i": 1968,
-  "t": "Neue .py"
+  "t": "Liste"
  },
  {
   "i": 1969,
-  "t": "Bereich hinzufügen"
+  "t": "Namen einfügen"
  },
  {
   "i": 1970,
-  "t": "Aufs Blatt einpassen"
+  "t": "Wiederherstellen"
  },
  {
   "i": 1971,
-  "t": "Blattgrenzen"
+  "t": "Text umbrechen"
  },
  {
   "i": 1972,
-  "t": "Ordner öffnen"
+  "t": "Sicherungsintervall"
  },
  {
   "i": 1973,
-  "t": "Berechnungsart"
+  "t": "Neue .py"
  },
  {
   "i": 1974,
-  "t": "Erlaubte Aktionen"
+  "t": "Bereich hinzufügen"
  },
  {
   "i": 1975,
+  "t": "Aufs Blatt einpassen"
+ },
+ {
+  "i": 1976,
+  "t": "Blattgrenzen"
+ },
+ {
+  "i": 1977,
+  "t": "Ordner öffnen"
+ },
+ {
+  "i": 1978,
+  "t": "Berechnungsart"
+ },
+ {
+  "i": 1979,
+  "t": "Erlaubte Aktionen"
+ },
+ {
+  "i": 1980,
   "t": "Schreibschutz empfehlen"
  }
 ]

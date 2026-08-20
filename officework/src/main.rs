@@ -617,11 +617,9 @@ impl Render for Office {
 fn 動いている本体に渡す(arg: Option<&std::path::Path>) -> bool {
     let Some(p) = arg else { return false };
     let Ok(p) = p.canonicalize() else { return false };
-    let 頼み = format!("{{\"cmd\":\"open\",\"path\":{}}}", format!("\"{}\"", ops::jesc(&p.to_string_lossy())));
-    match ops::ask("officework", &頼み) {
-        Some(返事) if 返事.contains("\"ok\":true") => true,
-        _ => false,
-    }
+    let 頼み =
+        format!("{{\"cmd\":\"open\",\"path\":\"{}\"}}", ops::jesc(&p.to_string_lossy()));
+    ops::ask("officework", &頼み).is_some_and(|返事| 返事.contains("\"ok\":true"))
 }
 
 #[cfg(not(unix))]
