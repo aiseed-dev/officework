@@ -335,7 +335,11 @@ mod menu_run_tests {
     }
 
     /// AI は**宛先が使えないときに正直に断る**(黙って空にしない)。
-    /// 実際にモデルへ繋ぐ試験はしない(手元に居るとは限らないので)
+    /// 実際にモデルへ繋ぐ試験はしない(手元に居るとは限らないので)。
+    ///
+    /// **ふりがなでは見られなくなりました**(2026-08-20)。辞書で振るように
+    /// したので、宛先が無くてもふりがなは通ります。残っている AI の仕事は
+    /// マクロを書く分だけなので、そちらで見ます
     #[gpui::test]
     fn aiは宛先が無ければ理由を言う(cx: &mut gpui::TestAppContext) {
         let _ai = AI_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
@@ -345,14 +349,35 @@ mod menu_run_tests {
         if ui::ai::ready(ui::ai::Backend::ClaudeApi).is_err() {
             w.update(cx, |this, cx| {
                 this.set_doc(Document::plain("本文です。"));
-                // **ai-summary は 2026-08-15 に廃した**(AI タブごと)。
-                // 残っている ai-furigana で同じ断りを見る
-                this.run_cmd("ai-furigana", cx);
+                this.ai_go(crate::AiJob::Macro("並べ替える".into()), cx);
                 let st = this.status.to_string();
                 assert!(st.starts_with("AI:"), "断りの言葉が出ない: {st}");
                 assert!(!this.ai_busy, "断ったのに考え中のまま");
             });
         }
+        ui::ai::set_backend(keep);
+    }
+
+    /// **ふりがなは辞書で振る**(2026-08-20 発注者「取り敢えずは辞書で」)。
+    /// 宛先が無くても通り、外にも出ません。
+    /// 辞書の無い機械では、いままでどおりモデルに回ります(その場合は飛ばす)
+    #[gpui::test]
+    fn ふりがなは宛先が無くても辞書で振れる(cx: &mut gpui::TestAppContext) {
+        if !ui::dict::available() {
+            return;
+        }
+        let _ai = AI_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let keep = ui::ai::backend();
+        ui::ai::set_backend(ui::ai::Backend::ClaudeApi);
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.set_doc(Document::plain("路地を歩く。"));
+            this.run_cmd("ai-furigana", cx);
+            let st = this.status.to_string();
+            assert!(st.contains("ふりがな"), "ふりがなの報せが出ない: {st}");
+            assert!(!st.starts_with("AI:"), "辞書があるのにモデルへ回った: {st}");
+            assert!(!this.ai_busy, "辞書なのに考え中のまま");
+        });
         ui::ai::set_backend(keep);
     }
 

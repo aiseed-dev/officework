@@ -1779,6 +1779,65 @@ impl Writer {
             ui::tf!("AI の{}を入れました(Ctrl+Z で1手で戻せます)", label).into();
     }
 
+    /// **辞書でふりがなを振る**(2026-08-20 発注者「取り敢えずは辞書で」)。
+    ///
+    /// 振れたら真。辞書が無ければ偽を返し、呼ぶ側がモデルに回します。
+    ///
+    /// *外に出ません。待ちもありません。* 選んだ所(選んでいなければ本文
+    /// ぜんぶ)の漢字の語に、辞書の読みを当てます。
+    ///
+    /// **読みが割れる語は数えて言います。** 辞書は1位を返しますが、それが
+    /// 正しいとは限りません(人気《にんき/ひとけ》)。黙って確定せずに
+    /// 「何箇所は読みが割れている」と伝えます — 直すのは人の仕事です。
+    pub(crate) fn furigana_by_dict(&mut self) -> bool {
+        if !ui::dict::available() {
+            return false;
+        }
+        let sel = self.ed.selection();
+        let 全文 = self.ed.text().to_string();
+        let (start, 対象) = if sel.is_empty() {
+            (0usize, 全文.as_str())
+        } else {
+            (sel.start, &全文[sel.clone()])
+        };
+        let 候補 = ui::dict::ruby_targets(対象);
+        if 候補.is_empty() {
+            self.status = ui::t!("ふりがなを振る漢字の語がありません").into();
+            return true;
+        }
+        let mut n = 0usize;
+        let mut 割れた = 0usize;
+        for s in &候補 {
+            let Some(yomi) = s.readings.first() else { continue };
+            // **読みが語と同じなら振りません**(ひらがなの語に振っても無駄)
+            if yomi == &s.base {
+                continue;
+            }
+            if s.readings.len() > 1 {
+                割れた += 1;
+            }
+            let at = start + s.at;
+            let r = at..at + s.base.len();
+            let y = yomi.clone();
+            self.doc.apply_char_format(r, move |f| f.ruby = Some(y.clone()));
+            n += 1;
+        }
+        self.dirty = true;
+        self.relayout_keep();
+        self.status = if 割れた > 0 {
+            ui::tf!(
+                "ふりがなを {} 箇所に振りました。うち {} 箇所は読みが割れます(確かめてください。Ctrl+Z で1手で戻せます)",
+                n.to_string(),
+                割れた.to_string()
+            )
+            .into()
+        } else {
+            ui::tf!("ふりがなを {} 箇所に振りました(Ctrl+Z で1手で戻せます)", n.to_string())
+                .into()
+        };
+        true
+    }
+
     /// 会話を送る。**答えは文書でなくパネルへ**返る(AiJob::Chat)
     pub(crate) fn ai_chat_send(&mut self, cx: &mut Context<Self>) {
         let q = self.ai_chat_in.text().trim().to_string();

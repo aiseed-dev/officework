@@ -78,14 +78,20 @@ pub fn candidates(context: &str, targets: &[Target]) -> Vec<Suggestion> {
     if targets.is_empty() || context.is_empty() || !available() {
         return Vec::new();
     }
-    let parses = analyze(context);
-    if parses.is_empty() {
+    let 行ごと = analyze_all(context);
+    if 行ごと.is_empty() {
         return Vec::new();
     }
     targets
         .iter()
         .map(|t| {
             let mut readings: Vec<String> = Vec::new();
+            // その語が居る行の解析だけを見ます
+            let parses: &[Parse] = 行ごと
+                .iter()
+                .find(|ps| ps.first().is_some_and(|p| p.iter().any(|(a, _, _)| *a == t.at)))
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]);
             for (k, p) in parses.iter().enumerate() {
                 // **2本目からは、語がまるごと1つで取れたときだけ採ります。**
                 // 下位の解析は*語の分かれ方*が違うだけで、辞書が持つ別の
@@ -103,8 +109,82 @@ pub fn candidates(context: &str, targets: &[Target]) -> Vec<Suggestion> {
         .collect()
 }
 
-/// 本文を N 通りに解析します。**1本も取れなければ空**を返します。
-fn analyze(context: &str) -> Vec<Parse> {
+/// 行ごとに解析して、**本文全体での位置**に直します。
+///
+/// 返すのは「解析の並び」の並び — 行ごとに N 本ぶんです。
+fn analyze_all(context: &str) -> Vec<Vec<Parse>> {
+    let mut out = Vec::new();
+    let mut 行頭 = 0usize;
+    for line in context.split('\n') {
+        if !line.trim().is_empty() {
+            let mut ps = analyze_line(line);
+            for p in ps.iter_mut() {
+                for t in p.iter_mut() {
+                    t.0 += 行頭;
+                }
+            }
+            out.push(ps);
+        }
+        行頭 += line.len() + 1; // 改行のぶん
+    }
+    out
+}
+
+/// 漢字を含むか。**ふりがなを振る相手を選ぶのに使います。**
+///
+/// ひらがな・カタカナ・英数字だけの語には振りません。
+pub fn has_kanji(s: &str) -> bool {
+    s.chars().any(|c| {
+        let o = c as u32;
+        // CJK 統合漢字と拡張A、それに互換漢字。々(踊り字)も漢字の扱い
+        (0x4E00..=0x9FFF).contains(&o)
+            || (0x3400..=0x4DBF).contains(&o)
+            || (0xF900..=0xFAFF).contains(&o)
+            || o == 0x3005
+    })
+}
+
+/// **本文の中の、ふりがなを振れる語を全部拾う。**
+///
+/// 返すのは `(位置, 語, 読みの候補)` で、候補が2つ以上ある語は
+/// *読みが割れています* — そこがモデルに訊く相手です。
+///
+/// 読みが語と同じ(ひらがなの語など)物と、漢字を含まない物は外します。
+pub fn ruby_targets(context: &str) -> Vec<Suggestion> {
+    if context.is_empty() || !available() {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for parses in analyze_all(context) {
+        let Some(first) = parses.first() else { continue };
+        for (at, surf, yomi) in first {
+            if !has_kanji(surf) || yomi.is_empty() {
+                continue;
+            }
+            let mut readings = vec![yomi.clone()];
+            // 2本目からは、同じ位置に**同じ表層で**別の読みが立つときだけ足します
+            for p in parses.iter().skip(1) {
+                if let Some((_, s2, y2)) = p.iter().find(|(a, _, _)| a == at) {
+                    if s2 == surf && !y2.is_empty() && !readings.contains(y2) {
+                        readings.push(y2.clone());
+                    }
+                }
+            }
+            out.push(Suggestion { base: surf.clone(), at: *at, readings });
+        }
+    }
+    out
+}
+
+/// **1行**を N 通りに解析します。位置はその行の中の位置です。
+///
+/// *行ごとに呼びます。* mecab は行を1つの文として扱うので、改行を含む字を
+/// そのまま渡すと行の数だけ解析が出て、位置も行ごとに0へ戻ります。
+/// まとめて渡して数で切り分けようとして失敗しました(2026-08-20)—
+/// `-N` は「最大N個」で、行によって本数が変わるため境が分かりません。
+/// **実機で見て気づきました**: 見出しと本文の2行の文書で、見出しにだけ
+/// ふりがなが付きました
+fn analyze_line(context: &str) -> Vec<Parse> {
     let mut cmd = std::process::Command::new("mecab");
     if let Some(d) = dic() {
         cmd.arg("-d").arg(d);
@@ -249,6 +329,64 @@ mod tests {
         }
         let s = candidates("路地を歩く", &[Target { base: "路地".into(), at: 0 }]);
         assert_eq!(s[0].readings, vec!["ろじ".to_string()], "{:?}", s[0].readings);
+    }
+
+    #[test]
+    fn 漢字を含むかを見分ける() {
+        assert!(has_kanji("報告書"));
+        assert!(has_kanji("行った"));
+        assert!(has_kanji("人々"));
+        assert!(!has_kanji("ひらがな"));
+        assert!(!has_kanji("カタカナ"));
+        assert!(!has_kanji("ABC123"));
+        assert!(!has_kanji("、。"));
+    }
+
+    /// **振る相手を拾う。** 漢字を含む語だけが出て、割れる語は候補が複数
+    #[test]
+    fn 振る相手を拾う() {
+        if !辞書があるか() {
+            return;
+        }
+        let v = ruby_targets("人気のない路地を歩く");
+        let 語: Vec<&str> = v.iter().map(|s| s.base.as_str()).collect();
+        assert!(語.contains(&"人気"), "{語:?}");
+        assert!(語.contains(&"路地"), "{語:?}");
+        // ひらがなだけの語(の・ない・を)は入らない
+        assert!(!語.contains(&"の"), "{語:?}");
+        let 人気 = v.iter().find(|s| s.base == "人気").expect("人気 が無い");
+        assert!(人気.readings.len() >= 2, "割れているのに候補が1つ: {:?}", 人気.readings);
+        let 路地 = v.iter().find(|s| s.base == "路地").expect("路地 が無い");
+        assert_eq!(路地.readings, vec!["ろじ".to_string()]);
+    }
+
+    /// **改行をまたいでも位置がずれない**(2026-08-20 に実機で踏んだ)。
+    ///
+    /// mecab は行を1つの文として扱います。まとめて渡していたので、
+    /// 見出しと本文の2行の文書では**見出しにだけ**ふりがなが付き、
+    /// 位置も行ごとに0へ戻っていました。
+    #[test]
+    fn 改行をまたいでも位置が合う() {
+        if !辞書があるか() {
+            return;
+        }
+        let 本文 = "報告書\n人気のない路地を歩く";
+        let v = ruby_targets(本文);
+        let 語: Vec<&str> = v.iter().map(|s| s.base.as_str()).collect();
+        // 見出しは「報告」+「書」に切れます(辞書の切り方。誤りではない)
+        assert!(語.contains(&"報告"), "1行目が拾えていない: {語:?}");
+        assert!(語.contains(&"人気"), "2行目が拾えていない: {語:?}");
+        assert!(語.contains(&"路地"), "2行目が拾えていない: {語:?}");
+        // **位置が本文の中の位置になっているか。** 切り出して語と合うかで見る
+        for s in &v {
+            assert_eq!(
+                &本文[s.at..s.at + s.base.len()],
+                s.base,
+                "位置がずれている: {} が {} を指している",
+                s.base,
+                &本文[s.at..s.at + s.base.len()]
+            );
+        }
     }
 
     /// 位置で指すので、同じ語が二度出ても別々に答えられます

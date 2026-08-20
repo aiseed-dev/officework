@@ -10,7 +10,7 @@
 
 /// 日本語まわりの中身は `kotoba` にある(gpui を知らない層)。
 /// ここから再輸出して、アプリ側の呼び出しは変えない。
-pub use lang::ja::{furigana, proof};
+pub use lang::ja::{dict, furigana, proof};
 pub use lang::{check, spell, Language, Target};
 pub use lang::model::Endpoint;
 /// 共通の命令(同じ id は同じ場所で捌く)

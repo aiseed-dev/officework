@@ -1673,6 +1673,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("列の幅と用紙を「{}」に書き出しました(次に開くとき当たります)", "Đã ghi độ rộng cột và thiết lập trang vào “{}” (có hiệu lực ở lần mở sau)"),
     ("見た目のテンプレートが書けません: {}", "Không ghi được mẫu trình bày: {}"),
     ("その名前の書体はありません", "Không có phông chữ nào mang tên đó"),
+    ("ふりがなを振る漢字の語がありません", "Không có từ Hán tự nào để thêm cách đọc"),
+    ("ふりがなを {} 箇所に振りました。うち {} 箇所は読みが割れます(確かめてください。Ctrl+Z で1手で戻せます)", "Đã thêm cách đọc ở {} chỗ; {} trong số đó có nhiều cách đọc (xin kiểm tra. Ctrl+Z hoàn tác một lần)"),
     ("(名乗らない)", "(ẩn danh)"),
     ("コメント {} 件", "{} chú thích"),
     ("{} の順に並べました", "Đã sắp xếp theo {}"),

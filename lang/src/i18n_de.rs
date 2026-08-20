@@ -1673,6 +1673,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("列の幅と用紙を「{}」に書き出しました(次に開くとき当たります)", "Spaltenbreiten und Seiteneinrichtung in „{}“ geschrieben (wirkt beim nächsten Öffnen)"),
     ("見た目のテンプレートが書けません: {}", "Layoutvorlage kann nicht geschrieben werden: {}"),
     ("その名前の書体はありません", "Es gibt keine Schriftart mit diesem Namen"),
+    ("ふりがなを振る漢字の語がありません", "Es gibt keine Kanji-Wörter, die eine Lesehilfe brauchen"),
+    ("ふりがなを {} 箇所に振りました。うち {} 箇所は読みが割れます(確かめてください。Ctrl+Z で1手で戻せます)", "Lesehilfen an {} Stellen hinzugefügt; {} davon haben mehrere mögliche Lesungen (bitte prüfen. Strg+Z macht es in einem Schritt rückgängig)"),
     ("(名乗らない)", "(anonym)"),
     ("コメント {} 件", "{} Kommentare"),
     ("{} の順に並べました", "Nach {} sortiert"),
