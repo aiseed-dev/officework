@@ -3121,6 +3121,27 @@ mod autocorrect_tests {
         });
     }
 
+    /// **画面の明暗も双方でできる**(2026-08-20 発注者)。
+    ///
+    /// 文章は `dark` の欄を前から持っていたのに**設定に行が無く、控えても
+    /// いなかった**ので、開き直すと明るさが戻っていた。表と同じ器
+    /// (`theme`)を見る。
+    ///
+    /// *控えるかどうかは呼ぶ側が渡す* — `cfg!(test)` はクレートごとに
+    /// 決まるので、`ui` の中で見ても**アプリの試験中は偽**になり、
+    /// 本物の `settings.toml` を書き換えてしまう(2026-08-20 に実際にやった)
+    #[gpui::test]
+    fn 明暗は表と同じ器を見る(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            assert_eq!(this.dark, ui::dark_at_start(), "起動のときに器を見ていない");
+            // **控えない**で入切だけを見る(本物の設定に触らない)
+            let (on, msg) = ui::toggle_dark(this.dark, false);
+            assert_ne!(on, this.dark, "入切が効かない");
+            assert!(!msg.is_empty(), "何をしたか言っていない");
+        });
+    }
+
     /// **器は表と同じ1つの綴り**(`math_autocorrect`)。
     ///
     /// *入切そのものは試験しません。* `ui::toggle_math_autocorrect` は

@@ -222,7 +222,7 @@ impl Calc {
             csv_kind: "UTF-8(BOM付き)・カンマ",
             recent_symbols: Vec::new(),
             recent_fonts: Vec::new(),
-            dark: ui::settings::get("theme").as_deref() == Some("dark"),
+            dark: ui::dark_at_start(),
             auto_calc: true,
             watch: Vec::new(),
             ai_busy: false,

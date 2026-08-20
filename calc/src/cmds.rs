@@ -2396,16 +2396,10 @@ impl Calc {
             }
             // インターフェイステーマ(画面の明暗)。**セルは白のまま**
             "theme" => {
-                self.dark = !self.dark;
-                // 次の起動も同じ明暗で(設定に覚える)
-                if !cfg!(test) {
-                    ui::settings::set("theme", if self.dark { "dark" } else { "light" });
-                }
-                self.status = if self.dark {
-                    ui::t!("画面を暗くしました(セルは白のまま — 画面と紙の一致を守る)").into()
-                } else {
-                    ui::t!("画面を明るくしました").into()
-                };
+                // 判断は ui::toggle_dark の1本(文章と共通)
+                let (on, msg) = ui::toggle_dark(self.dark, !cfg!(test));
+                self.dark = on;
+                self.status = msg.into();
             }
             // 範囲に変換する(表オブジェクトを外す。**書式と式は残る**)
             "td-torange" => {

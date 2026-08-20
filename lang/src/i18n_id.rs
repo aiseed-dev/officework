@@ -453,7 +453,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ペン: 表の上をドラッグで描く(もう一度押すか Esc で戻る)", "Pena: seret di atas kisi untuk menggambar (tekan lagi atau Esc untuk kembali)"),
     ("蛍光ペン: ドラッグで引く(セルの上に薄く乗る)", "Penyorot: seret untuk menandai (warna tipis di atas sel)"),
     ("配色の変更: 選ぶとテーマ色が入れ替わります", "Skema warna: pilih satu untuk menukar warna tema"),
-    ("画面を暗くしました(セルは白のまま — 画面と紙の一致を守る)", "Layar digelapkan (sel tetap putih — layar dan kertas harus sama)"),
     ("画面を明るくしました", "Layar kembali terang"),
     ("表の中にカーソルを置いてください(表のない範囲は「表の挿入」で表にできます)", "Letakkan kursor di dalam tabel (Sisipkan > Tabel mengubah rentang menjadi tabel)"),
     ("表の中にカーソルを置いてください", "Letakkan kursor di dalam tabel"),
@@ -1892,4 +1891,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」: {} 枚目の文書", "\"{}\": dokumen {}"),
     ("「{}」はこの文書にありません(範囲を「このファイル」にすると他の文書も探します)", "\"{}\" tidak ada di dokumen ini (pilih \"Berkas ini\" untuk mencari di dokumen lain juga)"),
     ("この文書", "Dokumen ini"),
+    ("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)", "Layar kini gelap (kertas dan sel tetap putih agar layar dan cetakan sama)"),
 ];

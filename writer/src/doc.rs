@@ -117,7 +117,8 @@ impl Writer {
             font_list: false,
             size_list: false,
             style_list: false,
-            dark: false,
+            // 次の起動も同じ明暗で(表と同じ器)
+            dark: ui::dark_at_start(),
             image_cache: Default::default(),
             font_bytes: std::sync::Arc::new(font_data().to_vec()),
             pg: kumihan::PageSetup::default(),

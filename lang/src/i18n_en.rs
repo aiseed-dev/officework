@@ -456,7 +456,6 @@ pub const TABLE: &[(&str, &str)] = &[
 ("ペン: 表の上をドラッグで描く(もう一度押すか Esc で戻る)", "Pen: drag over the grid to draw (press again or Esc to put it away)"),
 ("蛍光ペン: ドラッグで引く(セルの上に薄く乗る)", "Highlighter: drag to mark (a light band over the cells)"),
 ("配色の変更: 選ぶとテーマ色が入れ替わります", "Colour scheme: pick one to swap the theme colours"),
-("画面を暗くしました(セルは白のまま — 画面と紙の一致を守る)", "Screen darkened (cells stay white — screen and paper must agree)"),
 ("画面を明るくしました", "Screen back to light"),
 ("表の中にカーソルを置いてください(表のない範囲は「表の挿入」で表にできます)", "Put the cursor inside a table (Insert > Table turns a range into one)"),
 ("表の中にカーソルを置いてください", "Put the cursor inside a table"),
@@ -1905,4 +1904,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」: {} 枚目の文書", "\"{}\": document {}"),
     ("「{}」はこの文書にありません(範囲を「このファイル」にすると他の文書も探します)", "\"{}\" is not in this document (choose \"This file\" to search the other documents too)"),
     ("この文書", "This document"),
+    ("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)", "Screen is dark now (paper and cells stay white — so screen and print agree)"),
 ];

@@ -453,7 +453,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ペン: 表の上をドラッグで描く(もう一度押すか Esc で戻る)", "Bút: kéo trên bảng để vẽ (nhấn lần nữa hoặc Esc để cất)"),
     ("蛍光ペン: ドラッグで引く(セルの上に薄く乗る)", "Bút dạ quang: kéo để tô (một dải màu nhạt phủ trên ô)"),
     ("配色の変更: 選ぶとテーマ色が入れ替わります", "Đổi bộ màu: chọn để hoán đổi màu chủ đề"),
-    ("画面を暗くしました(セルは白のまま — 画面と紙の一致を守る)", "Đã làm tối màn hình (ô vẫn trắng — giữ màn hình khớp với giấy)"),
     ("画面を明るくしました", "Đã làm sáng màn hình trở lại"),
     ("表の中にカーソルを置いてください(表のない範囲は「表の挿入」で表にできます)", "Hãy đặt con trỏ vào trong bảng (vùng chưa là bảng có thể chuyển bằng Chèn > Bảng)"),
     ("表の中にカーソルを置いてください", "Hãy đặt con trỏ vào trong bảng"),
@@ -1892,4 +1891,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」: {} 枚目の文書", "\"{}\": tài liệu thứ {}"),
     ("「{}」はこの文書にありません(範囲を「このファイル」にすると他の文書も探します)", "Không có \"{}\" trong tài liệu này (chọn \"Tệp này\" để tìm cả các tài liệu khác)"),
     ("この文書", "Tài liệu này"),
+    ("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)", "Màn hình đã tối (giấy và ô vẫn trắng — để màn hình và bản in khớp nhau)"),
 ];

@@ -3869,6 +3869,13 @@ impl Render for Calc {
                 // 詳細設定 — 器は ~/.config/officework/settings.toml
                 // (SEKKEI「設定 — 器と言語」。環境変数が一時上書きで優先)
                 let lang_now = ui::settings::get("language").unwrap_or_else(|| "ja".into());
+                // 見出しが String の版(ui::env_rows が返す形)
+                let row_owned = |label: String, value: String| {
+                    div().flex().flex_row().items_center().gap_2()
+                        .child(div().w(px(us * 200.0)).text_color(dim)
+                            .child(SharedString::from(label)))
+                        .child(div().child(SharedString::from(value)))
+                };
                 let row = |label: &'static str, value: String| {
                     div().flex().flex_row().items_center().gap_2()
                         .child(div().w(px(us * 200.0)).text_color(dim).child(label))
@@ -3966,7 +3973,7 @@ impl Render for Calc {
                             })
                             // 判断は ui::toggle_math_autocorrect の1本(文章と共通)
                             .on_click(cx.listener(|this, _, _, cx| {
-                                let (on, msg) = ui::toggle_math_autocorrect(this.autocorrect);
+                                let (on, msg) = ui::toggle_math_autocorrect(this.autocorrect, !cfg!(test));
                                 this.autocorrect = on;
                                 this.status = msg.into();
                                 cx.notify()
@@ -3991,44 +3998,13 @@ impl Render for Calc {
                     // しない)。鍵そのものは出さない — 有る無しだけ。
                     // **手元のモデルだけは「使えます」と言わない** — 繋がるか
                     // 確かめずに言えば嘘になる(宛先は下の「校正の宛先」)
-                    .child(row(ui::t!("いま使えるか"), {
-                        let b = ui::ai::backend();
-                        match ui::ai::ready(b) {
-                            _ if b == ui::ai::Backend::Local =>
-                                ui::t!("頼んでみるまで分かりません(下の宛先へ繋ぎます)").to_string(),
-                            Ok(()) => ui::t!("使えます").to_string(),
-                            Err(e) => e,
-                        }
-                    }))
-                    .child(row(ui::t!("AI のモデル(JO_AI_MODEL)"),
-                        std::env::var("JO_AI_MODEL")
-                            .unwrap_or_else(|_| ui::t!("(宛先の既定)").into())))
-                    .child(div().h(px(10.0)))
-                    .child(row(ui::t!("書体(OFFICE_FONT)"),
-                        std::env::var("OFFICE_FONT")
-                            .unwrap_or_else(|_| ui::t!("(文書に従う)").into())))
-                    // **手元のモデルと校正の宛先。** 会のサーバーへ向けられる
-                    // ので(2026-08-15)、外に出るかどうかもここに出す —
-                    // 「外に出ない」は宛先を変えたら嘘になる
-                    .child(row(ui::t!("手元のモデルの宛先"), {
-                        let ep = ui::Endpoint::default();
-                        format!(
-                            "{}({})",
-                            ep.shown(),
-                            if ep.is_local() {
-                                ui::t!("この機械の中だけ")
-                            } else {
-                                ui::t!("外へ出ます")
-                            }
-                        )
-                    }))
-                    .child(row(ui::t!("宛先の決め方"),
-                        ui::t!("settings.toml の ai_url / ai_model(環境変数 OFFICE_URL が優先)")
-                            .to_string()))
-                    .child(row(ui::t!("Python の経路"),
-                        std::env::var("JO_PYTHON")
-                            .unwrap_or_else(|_| ui::t!("(自動: .venv → python3)").into())))
-                    .child(row(ui::t!("名前(ロック・チャット・署名)"), lock_identity()))
+                    // **見るだけの7行は ui::env_rows の1本**(2026-08-20)。
+                    // 前は writer と calc に同じ物が写してあった
+                    .children(
+                        ui::env_rows(&lock_identity())
+                            .into_iter()
+                            .map(|(k, v)| row_owned(k, v)),
+                    )
                     // コメントに書き残す名乗り。**機械の名前とは別**にする —
                     // user@host は錠の相手を見分けるための綴りで、
                     // 帳票に残す名前ではない。決めていなければ名乗らない

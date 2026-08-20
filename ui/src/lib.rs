@@ -326,15 +326,103 @@ pub fn cycle_language() -> String {
 /// **文章でも表でも同じ綴りを見ます** — 片方で切ったらもう片方でも切れます。
 ///
 /// 返すのは (新しい状態, 画面に出す報せ)。
-pub fn toggle_math_autocorrect(cur: bool) -> (bool, String) {
+/// `persist` は**呼ぶ側が `!cfg!(test)` を渡します**。
+/// `cfg!(test)` はクレートごとに決まるので、ここで見ても
+/// アプリの試験中は偽になり、**本物の `settings.toml` を書き換えます**
+/// (2026-08-20 に実際にやった。calc の `theme` は前からこの守りがあった)。
+pub fn toggle_math_autocorrect(cur: bool, persist: bool) -> (bool, String) {
     let next = !cur;
-    settings::set("math_autocorrect", if next { "1" } else { "0" });
+    if persist {
+        settings::set("math_autocorrect", if next { "1" } else { "0" });
+    }
     let msg = if next {
         crate::t!("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)")
     } else {
         crate::t!("数学オートコレクト: 切(打った綴りのまま残ります)")
     };
     (next, msg.to_string())
+}
+
+/// **設定の面の「見るだけ」の行**(2026-08-20 発注者「双方でできるように
+/// したいです」)。
+///
+/// 環境変数と宛先の**いまの姿を見せるだけ**で、押しても変わりません。
+/// 前は writer と calc に**同じ7行がそのまま写して**ありました。
+///
+/// 返すのは (見出し, いまの値)。並べ方と色は画面の物なので、
+/// ここでは決めません。
+///
+/// `identity` は名乗り(ロック・チャット・署名)。`ops` の物なので**呼ぶ側が
+/// 渡します** — `ui` は `ops` に依存しません(層の向きを崩さない)。
+pub fn env_rows(identity: &str) -> Vec<(String, String)> {
+    let 宛先 = {
+        let ep = Endpoint::default();
+        format!(
+            "{}({})",
+            ep.shown(),
+            if ep.is_local() { crate::t!("この機械の中だけ") } else { crate::t!("外へ出ます") }
+        )
+    };
+    // **使えないなら理由を出す**(押してみるまで分からない、にしない)。
+    // 鍵そのものは出しません — 有る無しだけ。
+    // **手元のモデルだけは「使えます」と言わない** — 繋がるか確かめずに
+    // 言えば嘘になります
+    let 使えるか = {
+        let b = ai::backend();
+        match ai::ready(b) {
+            _ if b == ai::Backend::Local => {
+                crate::t!("頼んでみるまで分かりません(下の宛先へ繋ぎます)").to_string()
+            }
+            Ok(()) => crate::t!("使えます").to_string(),
+            Err(e) => e,
+        }
+    };
+    vec![
+        (crate::t!("いま使えるか").to_string(), 使えるか),
+        (
+            crate::t!("AI のモデル(JO_AI_MODEL)").to_string(),
+            std::env::var("JO_AI_MODEL").unwrap_or_else(|_| crate::t!("(宛先の既定)").into()),
+        ),
+        (
+            crate::t!("書体(OFFICE_FONT)").to_string(),
+            std::env::var("OFFICE_FONT").unwrap_or_else(|_| crate::t!("(文書に従う)").into()),
+        ),
+        (crate::t!("手元のモデルの宛先").to_string(), 宛先),
+        (
+            crate::t!("宛先の決め方").to_string(),
+            crate::t!("settings.toml の ai_url / ai_model(環境変数 OFFICE_URL が優先)").to_string(),
+        ),
+        (
+            crate::t!("Python の経路").to_string(),
+            std::env::var("JO_PYTHON")
+                .unwrap_or_else(|_| crate::t!("(自動: .venv → python3)").into()),
+        ),
+        (crate::t!("名前(ロック・チャット・署名)").to_string(), identity.to_string()),
+    ]
+}
+
+/// **画面の明暗を入切する**(2026-08-20 発注者「双方でできるようにしたいです」)。
+///
+/// **紙とセルは白のまま** — 暗くするのは中身の周り(リボン・タブ・見出し)だけ。
+/// 画面と紙の一致を守るためです。
+///
+/// `persist` は `toggle_math_autocorrect` と同じ理由で呼ぶ側が渡します。
+pub fn toggle_dark(cur: bool, persist: bool) -> (bool, String) {
+    let next = !cur;
+    if persist {
+        settings::set("theme", if next { "dark" } else { "light" });
+    }
+    let msg = if next {
+        crate::t!("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)")
+    } else {
+        crate::t!("画面を明るくしました")
+    };
+    (next, msg.to_string())
+}
+
+/// 起動のときの明暗(`settings.toml` の `theme`)。既定は明るい。
+pub fn dark_at_start() -> bool {
+    settings::get("theme").is_some_and(|v| v == "dark")
 }
 
 pub fn now_stamp() -> String {

@@ -453,7 +453,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("ペン: 表の上をドラッグで描く(もう一度押すか Esc で戻る)", "Kalem: tablo üzerinde sürükleyerek çizin (tekrar basınca veya Esc ile kapanır)"),
     ("蛍光ペン: ドラッグで引く(セルの上に薄く乗る)", "Fosforlu kalem: sürükleyerek işaretleyin (hücrelerin üzerinde açık renkli bir bant)"),
     ("配色の変更: 選ぶとテーマ色が入れ替わります", "Renk düzeni: seçince tema renkleri değişir"),
-    ("画面を暗くしました(セルは白のまま — 画面と紙の一致を守る)", "Ekran karartıldı (hücreler beyaz kalır — ekran ile kâğıt uyumu korunur)"),
     ("画面を明るくしました", "Ekran yeniden aydınlatıldı"),
     ("表の中にカーソルを置いてください(表のない範囲は「表の挿入」で表にできます)", "İmleci bir tablonun içine koyun (Ekle > Tablo, aralığı tabloya çevirir)"),
     ("表の中にカーソルを置いてください", "İmleci bir tablonun içine koyun"),
@@ -1892,4 +1891,5 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("「{}」: {} 枚目の文書", "\"{}\": {}. belge"),
     ("「{}」はこの文書にありません(範囲を「このファイル」にすると他の文書も探します)", "\"{}\" bu belgede yok (diğer belgelerde de aramak için \"Bu dosya\" seçin)"),
     ("この文書", "Bu belge"),
+    ("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)", "Ekran artık koyu (kâğıt ve hücreler beyaz kalır — ekran ile baskı uyuşsun diye)"),
 ];

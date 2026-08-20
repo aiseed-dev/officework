@@ -600,7 +600,14 @@ impl Writer {
             }
             "ruler" => self.ruler = !self.ruler,
             // ダークモード。**紙は白いまま**(画面と紙の一致)。周りだけ暗くする
-            "darkmode" => self.dark = !self.dark,
+            // ダークモード。**紙は白いまま**(画面と紙の一致)。周りだけ暗くする。
+            // 判断と控えは ui::toggle_dark の1本(表と共通) — 前は控えて
+            // いなかったので、開き直すと明るさが戻っていた
+            "darkmode" => {
+                let (on, msg) = ui::toggle_dark(self.dark, !cfg!(test));
+                self.dark = on;
+                self.status = msg.into();
+            }
             // 変更履歴。記録中の編集は、保存で Word の w:ins / w:del になる
             "track-changes" => {
                 self.flush_target();
