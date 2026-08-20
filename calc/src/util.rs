@@ -1349,10 +1349,35 @@ impl TableStyle {
 pub(crate) fn cell_styles() -> Vec<(&'static str, &'static str, fn(&mut CellFormat))> {
     let f: Vec<(&'static str, &'static str, fn(&mut CellFormat))> = vec![
     row(ui::item!("標準"), |f| *f = CellFormat::default()),
-    row(ui::item!("見出し"), |f| {
+    // **見出しは4段**(2026-08-20 発注者「Excel が 見出し1〜4 を持つので
+    // あれば、そうしていいのでは」)。前は1段だけで、章と節を書き分け
+    // られませんでした。
+    //
+    // *色は Excel の写しではありません。* いまの見出しが使っていた緑
+    // (画面の帯の色)のまま、段が下がるほど字を小さく、線を細くします。
+    // 「MS がそうだから」は理由にしない決めです
+    row(ui::item!("見出し1"), |f| {
         f.bold = true;
+        f.size_c = Some(1400);
+        f.color = Some("1B6E3C".into());
+        f.fill = Some("D5E8DC".into());
+        f.borders.bottom = sheet::model::Edge::line(sheet::model::BStyle::Medium, None);
+    }),
+    row(ui::item!("見出し2"), |f| {
+        f.bold = true;
+        f.size_c = Some(1200);
+        f.color = Some("1B6E3C".into());
         f.fill = Some("D5E8DC".into());
         f.borders.bottom = sheet::model::Edge::THIN;
+    }),
+    row(ui::item!("見出し3"), |f| {
+        f.bold = true;
+        f.color = Some("1B6E3C".into());
+        f.borders.bottom = sheet::model::Edge::THIN;
+    }),
+    row(ui::item!("見出し4"), |f| {
+        f.bold = true;
+        f.color = Some("1B6E3C".into());
     }),
     row(ui::item!("表題"), |f| {
         f.bold = true;
