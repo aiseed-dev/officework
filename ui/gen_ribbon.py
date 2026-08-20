@@ -394,15 +394,18 @@ COMMON_TAIL = {
     "plugins": [
         ("plug-macros", "マクロ"), ("plug-manage", "プラグインの管理"),
     ],
-    # AI タブ(2026-08-04 発注者確定)。**モデルに任せる変換と生成の道具箱**。
-    # 校正はレビューに置いたまま(言語の普通の機能なので)
-    "ai": [
-        ("ai-where", "宛先"), ("ai-summary", "要約"), ("ai-rewrite", "書き直す"),
-        ("ai-polite", "敬語にする"), ("ai-plain", "やさしく"),
-        ("ai-translate", "翻訳"), ("ai-furigana", "ふりがな"),
-        ("ai-continue", "続きを書く"), ("ai-table", "表にする"),
-        ("ai-ask", "頼む"), ("ai-macro", "マクロを書く"),
-    ],
+    # **AI の段は作りません**(2026-08-20 発注者「AI については、固定的にしか
+    # できないボタンを使わないでやりたい。だから、メニューは削除して。
+    # 左パネルをつかう」)。
+    #
+    # 前は「要約」「敬語にする」「翻訳」…と11個のボタンを並べる形でした。
+    # 決まった変換しかできず、少し違うことを頼む道がありません。
+    # 頼みごとは左パネルの会話で受けます — そちらは自由な文で言えて、
+    # 返ってきた案を人が見てから入れられます。
+    #
+    # *この段は画面には出ていませんでした。* `face/src/ribbon.rs` からは
+    # 「リボンの整理」(dba89891)で既に消えていて、生成スクリプトにだけ
+    # 残っていました。再生成すると復活する状態だったので、ここで断ちます。
 }
 
 DYNAMIC = {
@@ -429,7 +432,6 @@ DYNAMIC = {
 TAB_NAME_KEYS = {"draw": "Draw", "headerfooter": "HeaderFooter",
                  "review": "Review", "view": "View",
                  "collaboration": "共同編集", "protect": "保護",
-                 "ai": "AI",
                  "plugins": "プラグイン"}
 
 
@@ -518,7 +520,6 @@ def tabs_of(app, prefix):
         ("collaboration", COMMON_TAIL["collaboration"]),
         ("protect", COMMON_TAIL["protect"]),
         ("plugins", COMMON_TAIL["plugins"]),
-        ("ai", COMMON_TAIL["ai"]),
     ]:
         if key == "collaboration" and app == "documenteditor":
             # 変更履歴は本家どおりバージョン履歴の手前
@@ -535,7 +536,7 @@ def tabs_of(app, prefix):
         for c, label in cmds:
             DYN_LABELS[c] = label
         view_at = next((i for i, (n, _) in enumerate(out) if n == "表示"), len(out))
-        if key in ("plugins", "ai"):
+        if key == "plugins":
             out.append(entry)
         else:
             out.insert(view_at, entry)
