@@ -59,7 +59,11 @@ But that alone would not make it safe.
 VBA can call anything in Windows, so wherever the code lives, once it runs it can do anything.
 Safety needs both: code outside the file, and limits on what it may do when it runs.
 But limit it, and the existing macros — written on the assumption they can call anything — stop working.
-As long as compatibility must be kept, Microsoft cannot close this hole.
+As long as compatibility had to be kept, this hole could not be closed.
+Now, though, there is AI.
+Old VBA macros are exactly the kind of thing an AI can rewrite into a new form.
+Compatibility is no longer a reason the hole cannot be closed.
+Microsoft is simply not doing the work.
 
 officework carries no VBA compatibility, so it could settle both at once.
 
