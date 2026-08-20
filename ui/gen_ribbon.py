@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """`ribbon.rs` を Euro-Office の現物から生成する。
 
+**いまはまだ回して上書きしないでください**(2026-08-20)。
+24 タブのうち 18 は実物と一致しますが、6 タブに差が残っています。
+上書きすると、実物に出ている灰色のボタンが 9 個消えます。
+残りの中身は SEKKEI「B-1 の続き」に書いてあります。
+
+
 **手で要約しない。** タブの並びもボタンの並びも
 `vendor/web-apps/apps/*/main/app/template/Toolbar.template` の順そのまま、
 名前は同じ app の `locale/ja.json` から引く。
@@ -155,6 +161,8 @@ READY = {
         "py-edit": "py-edit", "py-new": "py-new", "py-run": "py-run",
         "py-list": "py-list", "py-line": "py-line", "py-calc": "py-calc",
         "py-folder": "py-folder",
+        # マクロのタブで使う2つ(本家に無い。絵は DYN_ICONS で決める)
+        "rec-toggle": "rec-toggle", "ribbon-list": "ribbon-list",
         "prot-doc": "prot-doc", "prot-encrypt": "prot-encrypt",
         "prot-sign": "prot-sign",
         "cell-lock": "cell-lock", "prot-allow": "prot-allow",
@@ -366,17 +374,6 @@ APP_TABS = {
             ("td-filter", "フィルタのボタン"), ("td-remdup", "重複データを削除"),
             ("td-torange", "範囲に変換する"), ("td-resize", "テーブルのサイズ変更"),
         ]),
-        # Python は本家に無いタブ。**このソフトの芯なので独立させる**
-        # (2026-08-09 発注者「python をメインのメニューに追加してきちんとやれ」)。
-        # データタブのボタン1個に埋もれていて、@edit と打たないと .py を
-        # 編集できなかった — 日本語の名前は IME を挟むので Enter が変換に
-        # 食われる。**打たずに選べる**ようにするのがこのタブの目的
-        ("Python", "データ", [
-            ("py-edit", "関数を編集"), ("py-new", "新しい .py"),
-            ("py-run", "手続きを実行"), ("py-list", "一覧"),
-            ("py-line", "一行のコード"), ("py-calc", "計算し直す"),
-            ("py-folder", "置き場を開く"),
-        ]),
     ],
 }
 
@@ -391,9 +388,25 @@ COMMON_TAIL = {
         ("prot-encrypt", "暗号化する"), ("prot-sign", "デジタル署名を追加"),
         ("prot-doc", "保護"),
     ],
-    "plugins": [
-        ("plug-macros", "マクロ"), ("plug-manage", "プラグインの管理"),
-    ],
+    # **マクロのタブ**(本家のプラグインの位置)。
+    #
+    # 本家の「プラグイン」と、うちが足していた「Python」「AI」を1つに畳んだ
+    # 形です(「リボンの整理」dba89891)。**再生成でバラバラに戻さない** —
+    # 畳んだのは後からの決めで、こちらが新しい。
+    # 中身はアプリごとに違うので、名前だけ共通で中身は分けます
+    "macros": {
+        "documenteditor": [
+            ("plug-manage", "一覧", "plug-manage"),
+            ("ai-macro", "マクロを書く", "ai-macro"),
+        ],
+        "spreadsheeteditor": [
+            ("rec-toggle", "操作を記録", "py-run"),
+            ("py-new", "新しい .py", "py-new"),
+            ("py-list", "一覧", "py-list"),
+            ("ribbon-list", "リボンのマクロ", "py-line"),
+            ("py-folder", "置き場を開く", "py-folder"),
+        ],
+    },
     # **AI の段は作りません**(2026-08-20 発注者「AI については、固定的にしか
     # できないボタンを使わないでやりたい。だから、メニューは削除して。
     # 左パネルをつかう」)。
@@ -432,7 +445,7 @@ DYNAMIC = {
 TAB_NAME_KEYS = {"draw": "Draw", "headerfooter": "HeaderFooter",
                  "review": "Review", "view": "View",
                  "collaboration": "共同編集", "protect": "保護",
-                 "plugins": "プラグイン"}
+                 "macros": "マクロ"}
 
 
 def tabs_of(app, prefix):
@@ -515,11 +528,10 @@ def tabs_of(app, prefix):
             DYN_LABELS[c] = label
         at = next((i + 1 for i, (n, _) in enumerate(out) if n == after), len(out))
         out.insert(at, entry)
-    # 全部入れる: 共同編集・保護は表示の前、プラグインは末尾(本家の並び)
+    # 全部入れる: 共同編集・保護は表示の前、マクロは末尾(本家の並び)
     for key, cmds in [
         ("collaboration", COMMON_TAIL["collaboration"]),
         ("protect", COMMON_TAIL["protect"]),
-        ("plugins", COMMON_TAIL["plugins"]),
     ]:
         if key == "collaboration" and app == "documenteditor":
             # 変更履歴は本家どおりバージョン履歴の手前
@@ -536,46 +548,119 @@ def tabs_of(app, prefix):
         for c, label in cmds:
             DYN_LABELS[c] = label
         view_at = next((i for i, (n, _) in enumerate(out) if n == "表示"), len(out))
-        if key == "plugins":
-            out.append(entry)
-        else:
-            out.insert(view_at, entry)
+        out.insert(view_at, entry)
+
+    # マクロのタブは末尾。**絵も名前もここで決まる**(本家に無いので)
+    macros = COMMON_TAIL["macros"][app]
+    for cid, label, icon in macros:
+        DYN_LABELS[cid] = label
+        DYN_ICONS[cid] = icon
+    entry = (TAB_NAME_KEYS["macros"], [cid for cid, _, _ in macros])
+    # **置き場所はアプリごと。** 表は「データ」の後ろ(Python のタブが居た所)、
+    # 文章は末尾(プラグインのタブが居た所)。畳んだときの位置をそのまま継ぎます
+    if app == "spreadsheeteditor":
+        at = next((i + 1 for i, (n, _) in enumerate(out) if n == "データ"), len(out))
+        out.insert(at, entry)
+    else:
+        out.append(entry)
     return out, loc
 
 
 # 動的タブのボタン名(ja.json に鍵が無いものの既定)
 DYN_LABELS = {}
+# 同じく絵。本家に無いボタンは絵の名前もこちらで決める
+DYN_ICONS = {}
 
 
-# 独自のボタン(Euro-Office に無いがこちらが足すもの)。タブの末尾に置く。
-# 並びは本家のまま、増えた分だけ後ろ — 乗り換えの人の目当ては崩さない
+# **本家と置き場所が違うボタン**(2026-08-20 に数え直した。全 56 個)。
+#
+# どれも普通の事務の機能で、勝手に増やした物ではありません。多い理由は3つ。
+#
+# 1. 本家ではタブの外にある(コピー・切り取り・貼り付け)
+# 2. 本家はメニューや小窓の中にある(表示まわりのほとんど。本家の表示タブは
+#    4個しかない)。**うちは小窓を持たない作り**なので、タブに直接置く
+# 3. 本当にうち独自(ふりがな・Python の関数・画面の文字を大きく/小さく)
+#
+# 形は (タブ, どのボタンの後ろに置くか, id, 見出し, 絵)。後ろが None なら先頭。
+# **上から順に効く**ので、続けて足すときは直前に足した物を指します。
+#
+# *置き場所を持たせた理由*(2026-08-20 発注者「生成スクリプトを修正しないと
+# ダメでしょう」)。前は「タブの末尾に足す」形だけでした。それだと再生成した
+# ときにコピーがホームの一番後ろへ動きます。**並びは本家のまま**という
+# 2026-08-08 からの決めを、スクリプトの都合で崩さないための欄です。
+#
+# この一覧は手で書いていません。素の出力と実物を突き合わせて機械に出させました。
 EXTRA_CMDS = {
-    "calc": {
-        # 小計は本家のデータタブに無いが、グループ化を「畳むと合計が残る」
-        # 形で使うために置く(Excel の データ > 小計 に相当。発注者指摘)
-        # 本家は値フィールドの設定の中にある「計算の種類」。うちは指図が
-        # 集計の名前ひとつなので、タブに独立したボタンとして置く
-        "ピボットテーブル": [("pivot-showas", "計算の種類", "pivot-showas")],
-        "数式": [("paste-name", "名前を貼り付け", "paste-name")],
-        # 本家では「セルの書式設定 > 保護」タブと「シートの保護」小窓の中。
-        # うちは小窓を持たない作りなので、保護タブに独立したボタンで出す
-        "保護": [("cell-lock", "セルのロック", "cell-lock"),
-                 ("prot-allow", "許可する操作", "prot-allow"),
-                 # 自動復旧。本家は詳細設定の中だが、うちは小窓を持たない
-                 ("recover", "復旧", "recover"),
-                 ("recover-every", "控えの間隔", "recover-every"),
-                 ("read-only-rec", "読み取り専用を勧める", "read-only-rec")],
-        "データ": [("subtotal", "小計", "subtotal"),
-                   ("datatable", "データテーブル", "datatable"),
-                   ("python", "Python", "python"),
-                   ("csv-kind", "CSV の形", "csv-kind"),
-                   ("flash-fill", "フラッシュフィル", "flash-fill")],
+    "writer": [
+        ("ホーム", 'ruby', "ai-furigana", "ふりがな", "ai-furigana"),
+        ("参考資料", 'crossref', "footnote", "脚注", "footnote"),
+        ("表示", None, "nav", "ナビゲーション", "nav"),
+        ("表示", 'nav', "fit-page", "ページに合わせる", "fit-page"),
+        ("表示", 'fit-page', "fit-width", "幅に合わせる", "fit-width"),
+        ("表示", 'fit-width', "zoom100", "100%に拡大する", "zoom100"),
+        ("表示", 'zoom-out', "printview", "印刷レイアウト", "printview"),
+        ("表示", 'printview', "multipage", "複数ページ", "multipage"),
+        ("表示", 'ruler', "show-toolbar", "ツールバーを常に表示する", "show-toolbar"),
+        ("表示", 'show-toolbar', "show-statusbar", "ステータスバー", "show-statusbar"),
+        ("表示", 'show-statusbar', "show-left", "左パネル", "show-left"),
+        ("表示", 'show-left', "show-right", "右パネル", "show-right"),
+    ],
+    "calc": [
+        # コピー・切り取り・貼り付けは、本家ではタブの外(全タブ共通の場所)。
+        # Excel と同じくホームの先頭に置く
+        ("ホーム", None, "copy", "コピー", "copy"),
+        ("ホーム", 'copy', "cut", "切り取り", "cut"),
+        ("ホーム", 'cut', "paste", "貼り付け", "paste"),
+        ("ホーム", 'paste', "copystyle", "書式のコピー", "copystyle"),
+        ("ホーム", 'text-orient', "align-left", "左揃え", "align-left"),
+        ("ホーム", 'align-center', "align-right", "右揃え", "align-right"),
+        ("ホーム", 'align-just', "align-dist", "均等割付", "align-dist"),
+        ("ホーム", 'direction', "sum", "オートSUM", "autosum"),
+        ("ホーム", 'clear', "sort-desc", "降順並べ替え", "sortdesc"),
+        ("ホーム", 'sort-desc', "sort-asc", "昇順並べ替え", "sortasc"),
+        ("挿入", None, "pivot-insert", "ピボットテーブルを挿入", "add-pivot"),
+        ("挿入", 'inssparkline', "addcomment", "コメント", "ins-comment"),
+        ("挿入", 'instextart', "editheader", "ヘッダー/フッター", "editheader"),
+        ("描画", None, "draw-select", "選択", "select-tool"),
+        ("レイアウト", 'pagebreak', "editheader", "ヘッダー/フッター", "editheader"),
         # 本家では「拡大縮小印刷」の中の選択肢。うちは小窓を持たないので
         # レイアウトタブに独立したボタンで出す
-        "レイアウト": [("fit-pages", "紙に収める", "fit-pages"),
-                       ("printarea-add", "範囲を足す", "printarea-add"),
-                       ("show-breaks", "紙の切れ目", "show-breaks")],
-    },
+        ("レイアウト", 'scale', "fit-pages", "紙に収める", "fit-pages"),
+        ("レイアウト", 'fit-pages', "printarea-add", "範囲を足す", "printarea-add"),
+        ("レイアウト", 'printarea-add', "show-breaks", "紙の切れ目", "show-breaks"),
+        ("数式", 'insert-function', "func-list", "Python の関数", "py-list"),
+        ("数式", 'defname', "paste-name", "名前を貼り付け", "paste-name"),
+        ("データ", 'clear-filter', "sort-desc", "降順並べ替え", "sortdesc"),
+        ("データ", 'sort-desc', "sort-asc", "昇順並べ替え", "sortasc"),
+        # 小計は本家のデータタブに無いが、グループ化を「畳むと合計が残る」
+        # 形で使うために置く(Excel の データ > 小計 に相当。発注者指摘)
+        ("データ", 'hide-details', "subtotal", "小計", "subtotal"),
+        ("データ", 'subtotal', "datatable", "データテーブル", "datatable"),
+        ("データ", 'datatable', "python", "Python", "python"),
+        ("データ", 'python', "csv-kind", "CSV の形", "csv-kind"),
+        ("データ", 'csv-kind', "flash-fill", "フラッシュフィル", "flash-fill"),
+        ("ピボットテーブル", 'pivot-insert', "pivot-fields", "フィールドリスト", "pivot-fields"),
+        # 本家は値フィールドの設定の中にある「計算の種類」。うちは指図が
+        # 集計の名前ひとつなので、タブに独立したボタンとして置く
+        ("ピボットテーブル", 'pivot-blank', "pivot-showas", "計算の種類", "pivot-showas"),
+        ("ピボットテーブル", 'pivot-layout', "pivot-style", "スタイル", "pivot-style"),
+        # 本家では「セルの書式設定 > 保護」タブと「シートの保護」小窓の中。
+        # うちは小窓を持たない作りなので、保護タブに独立したボタンで出す
+        ("保護", 'prot-sign', "cell-lock", "セルのロック", "cell-lock"),
+        ("保護", 'cell-lock', "prot-allow", "許可する操作", "prot-allow"),
+        ("保護", 'prot-allow', "recover", "復旧", "recover"),
+        ("保護", 'recover', "recover-every", "控えの間隔", "recover-every"),
+        ("保護", 'recover-every', "read-only-rec", "読み取り専用を勧める", "read-only-rec"),
+        ("表示", 'sheet-view', "zoom-in", "拡大", "zoom-in"),
+        ("表示", 'zoom-in', "zoom-out", "縮小", "zoom-out"),
+        ("表示", 'zoom-out', "ui-bigger", "画面の文字を大きく", "ui-bigger"),
+        ("表示", 'ui-bigger', "ui-smaller", "画面の文字を小さく", "ui-smaller"),
+        ("表示", 'ui-smaller', "theme", "インターフェイステーマ", "theme"),
+        ("表示", 'freeze', "formula-bar", "数式バー", "formula-bar"),
+        ("表示", 'show-headings', "show-zeros", "0を表示する", "show-zeros"),
+        ("表示", 'show-zeros', "show-left", "左パネル", "show-left"),
+        ("表示", 'show-left', "show-right", "右パネル", "show-right"),
+    ],
 }
 
 
@@ -587,18 +672,32 @@ def emit():
     ]:
         tabs, loc = tabs_of(app, prefix)
         ready = READY[which]
-        extras = EXTRA_CMDS.get(which, {})
+        extras = EXTRA_CMDS.get(which, [])
         print(f"pub const {konst}: &[Tab] = &[")
         for name, slots in tabs:
-            print(f'    Tab {{ name: "{name}", cmds: &[')
+            # 本家の並びをそのまま行にする。押せない物は灰色の行
+            rows = []
             for s in slots:
                 lab = label_of(loc, prefix, s).replace('"', "'")
-                if s in ready:
-                    print(f'        c("{ready[s]}", "{lab}", "{s}"),')
+                # 絵は本家の名前がそのまま鍵。本家に無いボタンだけ別に決める
+                icon = DYN_ICONS.get(s, s)
+                rows.append((ready.get(s), lab, icon))
+            # **置き場所つきで差し込む。** どのボタンの後ろに置くかを
+            # 指しておかないと、足した分が全部タブの末尾へ寄ります
+            # (コピーがホームの一番後ろへ行く)
+            for (_tab, after, cid, clab, cicon) in [e for e in extras if e[0] == name]:
+                item = (cid, clab, cicon)
+                if after is None:
+                    rows.insert(0, item)
                 else:
-                    print(f'        x("{lab}", "{s}"),')
-            for (cid, clab, cicon) in extras.get(name, []):
-                print(f'        c("{cid}", "{clab}", "{cicon}"),')
+                    k = next((i + 1 for i, r in enumerate(rows) if r[0] == after), len(rows))
+                    rows.insert(k, item)
+            print(f'    Tab {{ name: "{name}", cmds: &[')
+            for cid, lab, icon in rows:
+                if cid is None:
+                    print(f'        x("{lab}", "{icon}"),')
+                else:
+                    print(f'        c("{cid}", "{lab}", "{icon}"),')
             print("    ]},")
         print("];")
         print()
