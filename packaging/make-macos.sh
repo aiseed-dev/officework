@@ -26,7 +26,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VER=$(grep -m1 '^version' calc/Cargo.toml | cut -d'"' -f2)
+VER=$(grep -m1 '^version' officework/Cargo.toml | cut -d'"' -f2)
 PY_VER="3.14.6"
 PY_TAG="20260610"
 OUT="packaging/out"
@@ -56,34 +56,59 @@ if [ $SIGN = 1 ]; then
 fi
 
 # ---- 1. 組む ----------------------------------------------------------------
-cargo build --release -p calc -p writer
+cargo build --release -p officework
 
 # ---- 2. .app を作る ---------------------------------------------------------
 rm -rf "$DIST"
 mkdir -p "$DIST"
-for app in calc writer; do
-  APP="$DIST/officework $app.app"
-  mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-  cp "target/release/$app" "$APP/Contents/MacOS/"
-  cp "packaging/icons/officework-$app.icns" "$APP/Contents/Resources/"
-  cat > "$APP/Contents/Info.plist" <<PLIST
+# **配るのは officework 1本**(2026-08-19 発注者確定。SEKKEI 段11)
+APP="$DIST/officework.app"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp target/release/officework "$APP/Contents/MacOS/"
+cp packaging/icons/officework.icns "$APP/Contents/Resources/"
+# **開ける物を名乗る**(CFBundleDocumentTypes)。前は1つも名乗っていなかったので、
+# Finder の「このアプリケーションで開く」に officework が出ませんでした。
+#
+# `LSHandlerRank` は `Alternate` にします。**xlsx と docx の既定を横取りしない** —
+# 入れただけで Excel と Word の関連付けが変わると、使う人が驚きます。
+# うちの形(`.adoc`)だけ `Owner` で名乗ります
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>officework $app</string>
-  <key>CFBundleExecutable</key><string>$app</string>
-  <key>CFBundleIdentifier</key><string>io.github.aiseed-dev.officework.$app</string>
+  <key>CFBundleName</key><string>officework</string>
+  <key>CFBundleExecutable</key><string>officework</string>
+  <key>CFBundleIdentifier</key><string>io.github.aiseed-dev.officework</string>
   <key>CFBundleShortVersionString</key><string>$VER</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleIconFile</key><string>officework-$app.icns</string>
+  <key>CFBundleIconFile</key><string>officework.icns</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key><string>AsciiDoc</string>
+      <key>CFBundleTypeRole</key><string>Editor</string>
+      <key>LSHandlerRank</key><string>Owner</string>
+      <key>LSItemContentTypes</key><array><string>public.plain-text</string></array>
+      <key>CFBundleTypeExtensions</key><array><string>adoc</string></array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>Excel のブック</string>
+      <key>CFBundleTypeRole</key><string>Editor</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>CFBundleTypeExtensions</key><array><string>xlsx</string></array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>Word の文書</string>
+      <key>CFBundleTypeRole</key><string>Editor</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>CFBundleTypeExtensions</key><array><string>docx</string></array>
+    </dict>
+  </array>
 </dict></plist>
 PLIST
-done
 
 # ---- 3. Python を同梱する ---------------------------------------------------
-# calc の中に1つだけ置き、writer からも見えるようにする。
-#
 # **Resources に置きます。** Contents/MacOS の下にディレクトリを置くと、
 # codesign がそれを入れ子のアプリだと解釈して
 # 「bundle format unrecognized, invalid, or unsuitable」で止まります
@@ -93,9 +118,9 @@ done
 # Contents 全体を歩いて行います。
 PY_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PY_TAG}/cpython-${PY_VER}%2B${PY_TAG}-${PY_ARCH}-install_only_stripped.tar.gz"
 curl -fsSL -o "$OUT/py.tar.gz" "$PY_URL"
-tar xzf "$OUT/py.tar.gz" -C "$DIST/officework calc.app/Contents/Resources"
+tar xzf "$OUT/py.tar.gz" -C "$APP/Contents/Resources"
 rm -f "$OUT/py.tar.gz"
-"$DIST/officework calc.app/Contents/Resources/python/bin/python3" -m pip install --quiet officework || true
+"$APP/Contents/Resources/python/bin/python3" -m pip install --quiet officework || true
 
 cp -r sample/plugins "$DIST/"
 cp packaging/README.ja.md "$DIST/はじめに.md"

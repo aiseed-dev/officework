@@ -1,4 +1,4 @@
-# アプリ(calc / writer)を包んで Releases に置く。
+# アプリ(officework)を包んで Releases に置く。
 #
 # 出し方: `app-v0.1.0-alpha` のようなタグを押す。手で回すこともできる
 # (Actions の画面から。draft を外さなければ下書きのまま置かれる)。
@@ -66,19 +66,21 @@ jobs:
         # 置かれた物・デスクトップの項目・アイコンを見て、消えることも見る
         run: |
           sudo dpkg -i packaging/out/officework_*_amd64.deb
-          for f in /opt/officework/calc /opt/officework/writer \
-                   /usr/share/applications/officework-calc.desktop \
-                   /usr/share/icons/hicolor/48x48/apps/officework-calc.png; do
+          for f in /opt/officework/officework /opt/officework/bin/officework \
+                   /usr/bin/officework \
+                   /usr/share/applications/officework.desktop \
+                   /usr/share/mime/packages/officework.xml \
+                   /usr/share/icons/hicolor/48x48/apps/officework.png; do
             [ -e "$f" ] || { echo "入っていません: $f"; exit 1; }
             echo "  入った: $f"
           done
           # デスクトップの項目が壊れていないか(desktop-file-validate があれば)
           if command -v desktop-file-validate > /dev/null; then
-            desktop-file-validate /usr/share/applications/officework-calc.desktop
+            desktop-file-validate /usr/share/applications/officework.desktop
             echo "  デスクトップの項目は正しい形です"
           fi
           sudo dpkg -r officework
-          [ -e /opt/officework/calc ] && { echo "消えていません"; exit 1; }
+          [ -e /opt/officework/officework ] && { echo "消えていません"; exit 1; }
           echo "  消えました"
       - uses: actions/upload-artifact@v4
         with:
@@ -148,15 +150,15 @@ jobs:
         # ここはもう初見ではない(それまでは「タグを押して初めて試される」
         # 状態だった — アルファの棚卸しで見つけて的に足した)。
         # .exe への絵の焼き込みは build.rs(winresource)がやる
-        run: cargo build --release -p calc -p writer
+        run: cargo build --release -p officework
       - name: 中身をそろえる
         shell: bash
         run: |
-          VER=$(grep -m1 '^version' calc/Cargo.toml | cut -d'"' -f2)
+          VER=$(grep -m1 '^version' officework/Cargo.toml | cut -d'"' -f2)
           echo "VER=$VER" >> "$GITHUB_ENV"
           D="packaging/out/windows"
           mkdir -p "$D"
-          cp target/release/calc.exe target/release/writer.exe "$D/"
+          cp target/release/officework.exe "$D/"
           curl -fsSL -o py.tar.gz \
             "https://github.com/astral-sh/python-build-standalone/releases/download/${PY_TAG}/cpython-${PY_VER}%2B${PY_TAG}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
           tar xzf py.tar.gz -C "$D"
@@ -192,20 +194,20 @@ jobs:
             -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
 
           $app = "$env:LOCALAPPDATA\Programs\officework"
-          foreach ($f in @("calc.exe", "writer.exe", "python\python.exe")) {
+          foreach ($f in @("officework.exe", "python\python.exe")) {
             if (-not (Test-Path "$app\$f")) { throw "入っていません: $f" }
             $mb = [math]::Round((Get-Item "$app\$f").Length / 1MB, 1)
             Write-Host "  入った: $f ($mb MB)"
           }
           $menu = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\officework"
-          if (-not (Test-Path "$menu\officework calc.lnk")) {
+          if (-not (Test-Path "$menu\officework.lnk")) {
             throw "スタートメニューに出ていません"
           }
           Write-Host "  スタートメニューに出ました"
 
           # 窓が開くかは当てにならないので、結果を書き出すだけ
           try {
-            $p = Start-Process "$app\calc.exe" -PassThru
+            $p = Start-Process "$app\officework.exe" -PassThru
             Start-Sleep -Seconds 8
             if ($p.HasExited) {
               Write-Host "起動: すぐ終了しました(終了コード $($p.ExitCode))"
@@ -222,7 +224,7 @@ jobs:
           Start-Process -FilePath $un.FullName `
             -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
           Start-Sleep -Seconds 3
-          if (Test-Path "$app\calc.exe") { throw "消えていません" }
+          if (Test-Path "$app\officework.exe") { throw "消えていません" }
           Write-Host "  消えました"
       - uses: actions/upload-artifact@v4
         with:
@@ -249,7 +251,7 @@ jobs:
         # 説明文は「署名と公証つき」と言うので、そのまま公開すると嘘になる
         id: meta
         run: |
-          VER=$(grep -m1 '^version' calc/Cargo.toml | cut -d'"' -f2)
+          VER=$(grep -m1 '^version' officework/Cargo.toml | cut -d'"' -f2)
           if [ "${GITHUB_REF#refs/tags/}" != "$GITHUB_REF" ]; then
             echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           else

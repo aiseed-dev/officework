@@ -4,18 +4,19 @@
 # 決め:
 # - runtime は GNOME(python3 が最初から居る — 同梱 Python の器)。
 #   freedesktop 素のままだと Python を1から積むことになる
-# - 檻: アプリの中からは bwrap の入れ子が動かないので、calc は
-#   /.flatpak-info を見て flatpak-spawn --sandbox に切り替える(py.rs の
-#   cage_kind)。そのために --talk-name=org.freedesktop.Flatpak が要る
-# - 外側(この finish-args)は道具が働ける広さ、内側(flatpak-spawn の檻)が
-#   他所から来たコードを縛る — 二層で役割が違う
+# - サンドボックス: アプリの中からは bwrap の入れ子が動かないので、
+#   officework は /.flatpak-info を見て flatpak-spawn --sandbox に
+#   切り替えます(py.rs の cage_kind)。そのために
+#   --talk-name=org.freedesktop.Flatpak が要ります
+# - 外側(この finish-args)は道具が働ける広さ、内側(flatpak-spawn の
+#   サンドボックス)が他所から来たコードを縛ります — 二層で役割が違います
 app-id: io.github.aiseed_dev.officework
 runtime: org.gnome.Platform
 runtime-version: '47'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
-command: calc
+command: officework
 finish-args:
   - --socket=wayland
   - --socket=fallback-x11
@@ -44,17 +45,18 @@ modules:
     build-commands:
       # ビルド中は網が無い: cargo-sources.json(flatpak-cargo-generator で
       # 生成)が vendor を差し込む前提。--offline で組む
-      - cargo --offline build --release -p calc -p writer
+      # **配るのは officework 1本**(SEKKEI 段11)
+      - cargo --offline build --release -p officework
       - cargo --offline build --release -p pysheet --features extension-module
-      - install -Dm755 target/release/calc /app/bin/calc
-      - install -Dm755 target/release/writer /app/bin/writer
+      - install -Dm755 target/release/officework /app/bin/officework
       # office_sheet.so は実行ファイルの隣(calc/src/py.rs の so_dir)
       - install -Dm644 target/release/liboffice_sheet.so /app/bin/office_sheet.so
       - install -Dm644 packaging/flatpak/io.github.aiseed_dev.officework.desktop
         /app/share/applications/io.github.aiseed_dev.officework.desktop
       - install -Dm644 packaging/flatpak/io.github.aiseed_dev.officework.metainfo.xml
         /app/share/metainfo/io.github.aiseed_dev.officework.metainfo.xml
-      # アイコンはまだ無い(README の手順 5)。Flathub 申請には必須
+      - install -Dm644 packaging/icons/officework.svg
+        /app/share/icons/hicolor/scalable/apps/io.github.aiseed_dev.officework.svg
     sources:
       - type: dir
         path: ../..

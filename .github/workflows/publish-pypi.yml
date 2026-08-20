@@ -92,7 +92,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev libxcb-xkb-dev \
             libfontconfig1-dev cmake clang pkg-config
-      - name: アプリを組む(calc / writer)
+      - name: アプリを組む(officework)
         # **wheel にアプリも入れる**(発注者 2026-08-17「画面も動くようにして」)。
         # pip で入れた物には mac の quarantine も Windows の Mark of the Web も
         # 付かないので、**署名が要らない配り方**になる。
@@ -104,16 +104,14 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = "macOS" ]; then
             rustup target add aarch64-apple-darwin x86_64-apple-darwin
-            cargo build --release -p calc -p writer --target aarch64-apple-darwin
-            cargo build --release -p calc -p writer --target x86_64-apple-darwin
+            cargo build --release -p officework --target aarch64-apple-darwin
+            cargo build --release -p officework --target x86_64-apple-darwin
             mkdir -p target/release
-            for a in calc writer; do
-              lipo -create -output "target/release/$a" \
-                "target/aarch64-apple-darwin/release/$a" \
-                "target/x86_64-apple-darwin/release/$a"
-            done
+            lipo -create -output target/release/officework \
+              target/aarch64-apple-darwin/release/officework \
+              target/x86_64-apple-darwin/release/officework
           else
-            cargo build --release -p calc -p writer
+            cargo build --release -p officework
           fi
           python3 packaging/put-bins.py
       - name: wheel を組む
@@ -157,21 +155,21 @@ jobs:
           PYEOF
           # **画面も入っているか。** 起こすと窓が開いてしまうので、
           # 実行ファイルが在って動くことだけ見る(--version は窓を開かない)
-          BIN=kensho-venv/bin/officework-calc
-          [ -f "$BIN" ] || BIN=kensho-venv/Scripts/officework-calc.exe
-          [ -f "$BIN" ] || { echo "officework-calc が入っていません"; exit 1; }
+          BIN=kensho-venv/bin/officework
+          [ -f "$BIN" ] || BIN=kensho-venv/Scripts/officework.exe
+          [ -f "$BIN" ] || { echo "officework のコマンドが入っていません"; exit 1; }
           "$PY" - <<'PYEOF'
           import pathlib, sys, officework
           # **同梱された場所だけを見る。** app._exe() は見つからなければ
           # 手元のリポジトリの target/release も探すので、CI では
           # wheel に入っていなくても通ってしまう(偽の合格)
           bin_dir = pathlib.Path(officework.__file__).parent / "bin"
-          for a in ("calc", "writer"):
-              exe = bin_dir / (a + (".exe" if sys.platform == "win32" else ""))
-              assert exe.exists(), f"wheel に {a} が入っていません: {exe}"
-              size = exe.stat().st_size
-              assert size > 5_000_000, f"{a} が小さすぎます({size} バイト)"
-              print(f"画面も入っている: {a} {size/1e6:.0f}MB")
+          a = "officework"
+          exe = bin_dir / (a + (".exe" if sys.platform == "win32" else ""))
+          assert exe.exists(), f"wheel に {a} が入っていません: {exe}"
+          size = exe.stat().st_size
+          assert size > 5_000_000, f"{a} が小さすぎます({size} バイト)"
+          print(f"画面も入っている: {a} {size/1e6:.0f}MB")
           PYEOF
       - uses: actions/upload-artifact@v5
         with:

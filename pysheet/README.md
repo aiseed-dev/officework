@@ -74,17 +74,20 @@ The tools it exposes are deliberately few: `book_info`, `used_range`,
 `read_range`, `read_formulas`, `write_range`, `set_format`, `autofit`, `save`.
 Reading a range gives values; `read_formulas` gives the formulas behind them.
 
-## The apps come with it too
+## The app comes with it too
 
 ```console
-$ officework-calc report.xlsx
-$ officework-writer report.docx
+$ officework report.xlsx
+$ officework report.docx
 ```
 
-**Since 0.4.0 the wheel carries the two apps** (around 36 MB on Linux and
-Windows; more for the universal macOS wheel, which holds both architectures), so
-`pip install officework` is all it takes to get a spreadsheet and a word
-processor with a window. They are the same binaries the installers ship.
+**The wheel carries the app** (around 20 MB on Linux and Windows; more for the
+universal macOS wheel, which holds both architectures), so `pip install
+officework` is all it takes to get a spreadsheet and a word processor with a
+window. It is the same binary the installers ship.
+
+Spreadsheets and documents open as tabs of one window. Passing a second file
+adds a tab rather than opening another window.
 
 This is the least troublesome way to get them: a file that pip put on your
 disk carries neither macOS's quarantine flag nor Windows' Mark of the Web, so
@@ -94,7 +97,7 @@ already have one.
 If you would rather point at a build of your own:
 
 ```console
-$ OFFICEWORK_CALC=/path/to/calc officework-calc report.xlsx
+$ OFFICEWORK_OFFICEWORK=/path/to/officework officework report.xlsx
 ```
 
 ## Your old vocabulary still works
