@@ -78,6 +78,9 @@ Office files cannot use it: they are compressed blobs whose differences cannot b
 So offices around the world still manage versions by filename — "final", "fixed", "(2)" — to this day.
 
 officework's documents and workbooks are plain text, so git just works.
+This is *not a conversion* like "save as CSV" — the very file you edit is what goes into history. There is no exported copy to go stale, and no formulas flattened into values.
+There is no encoding trap either.
+Windows CSV is still code page 932 with CRLF line endings — mojibake and noisy diffs the moment it meets the git world (UTF-8 and LF) — while officework files are *always UTF-8 with LF* (and files with stray CRLF still open).
 writer even saves one sentence per line, so *a diff shows exactly the sentence you changed*.
 And if you never install git, you lose nothing — plain-text files can join a history at any time, past versions and all.
 
