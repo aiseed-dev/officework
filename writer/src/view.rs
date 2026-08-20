@@ -169,6 +169,11 @@ impl Render for Writer {
                     this.file_field = None;
                 }
                 this.tab = i;
+                // **置き場を見直す**(~/.config/officework/ribbon)。
+                // .py を足したのに次に起こすまでボタンが出ない、では手が
+                // 止まります。表は定期的に見ていますが、文章は打鍵ごとに
+                // 置き場を stat したくないので、タブを替えた時に見ます
+                ribbon::refresh_user_cmds();
                 cx.notify()
             },
             |this: &mut Writer, cx| {
@@ -520,6 +525,43 @@ impl Render for Writer {
                             }));
                     }
                     row = row.child(b);
+                }
+                cmds = cmds.child(row);
+            }
+            // **利用者が置いたマクロのボタンを、後ろに足す**
+            // (~/.config/officework/ribbon。2026-08-20 発注者「ユーザーが
+            // 生成したボタン用のマクロをその後ろにおくコードが必要」)。
+            //
+            // *文章の画面には1つも出ていませんでした。* 表には前からあり
+            // ましたが、文章はどのタブも並びの表を通るので、表に載っていない
+            // ボタンは描かれません。同じ置き場を見ているのに、片方だけ
+            // 使えない状態でした。
+            //
+            // **組み込みの後ろ**に置きます — 並びが日によって変わらないよう、
+            // 置き場の物は必ず後ろです
+            let 利用者 = ribbon::user_cmds_for(ribbon::WRITER[self.tab].name);
+            if !利用者.is_empty() {
+                let mut row = div().flex().flex_row().flex_wrap().gap_1().items_center().py_1();
+                for cmd in 利用者 {
+                    let id = cmd.id;
+                    row = row.child(
+                        div()
+                            .id(SharedString::from(cmd.id))
+                            .px_3()
+                            .py_1()
+                            .rounded_md()
+                            .text_size(px(12.0))
+                            .text_color(if dlg_open { th_gray_fg } else { th_top_fg })
+                            .when(!dlg_open, |d| {
+                                d.cursor_pointer().hover(move |s| s.bg(th_btn_hover)).on_click(
+                                    cx.listener(move |this, _, _, cx| {
+                                        this.run_from_ribbon(id, cx);
+                                        cx.notify()
+                                    }),
+                                )
+                            })
+                            .child(SharedString::from(cmd.label)),
+                    );
                 }
                 cmds = cmds.child(row);
             }
