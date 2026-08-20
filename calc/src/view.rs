@@ -663,6 +663,10 @@ impl Render for Calc {
             // 「記録中は、それがわかるようにして」)。下のステータスバーの印と二重にする —
             // 押した所を見ている目と、画面全体を見ている目は別
             let recording = cmd.id == "rec-toggle" && rec_on;
+            // **入切のボタンは、入っている間ずっと押された形。**
+            // 記録中のボタンだけ前から赤くしていましたが、同じ考えを
+            // 入切の全部に広げます(2026-08-21 発注者)
+            let 入 = cmd.kind == ribbon::Kind::Toggle && self.入っているか(cmd.id);
             let fg = if recording {
                 rgb(0xC7433F)
             } else if cmd.ready && !locked && !dlg_open {
@@ -676,6 +680,8 @@ impl Render for Calc {
                 // 開くボタンは名札の横に小さな印(▾=一覧 / …=小窓)
                 let mut b = div().id(key.clone())
                     .px_2().h(px(us * 46.0)).rounded_sm()
+                    // 入っている入切のボタンは地を敷いて、押された形に見せる
+                    .when(入, |d| d.bg(th_btn_hover))
                     .flex().flex_col().items_center().justify_center().gap_1()
                     .on_hover(hoverable)
                     .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
@@ -705,6 +711,7 @@ impl Render for Calc {
             }
             let mut b = div().id(key.clone())
                 .h(px(us * 26.0)).rounded_sm()
+                .when(入, |d| d.bg(th_btn_hover))
                 .flex().items_center().justify_center()
                 .on_hover(hoverable)
                 .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())

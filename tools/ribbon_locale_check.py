@@ -51,13 +51,17 @@ def _tables(path: pathlib.Path):
     return ribbon_parse.tables_or_die(path)
 
 
-def buttons(path: pathlib.Path, table: str) -> list[tuple[str, str, bool]]:
-    """(id, icon, ready) を順に。
+def buttons(path: pathlib.Path, table: str) -> list[tuple[str, str, str]]:
+    """(id, icon, 書き方)を順に。
 
     **灰色も印だけ積む** — 数だけ合っていて並びがずれる、を見逃さないため。
+
+    書き方(`c` 押す / `t` 入切 / `x` `xt` `xm` の灰色)も見ます。
+    ボタンの性格は語ではないので、**どの言語でも同じ**でなければなりません
+    (2026-08-21 に入切を足したとき、片方の言語だけ押す形のまま、が起きうる)。
     """
     return [
-        (c.id, c.icon, True) if c.ready else ("", "", False)
+        (c.id, c.icon, c.kind) if c.ready else ("", "", c.kind)
         for tab in _tables(path)[table]
         for c in tab.cmds
     ]

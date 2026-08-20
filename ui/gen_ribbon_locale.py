@@ -1516,7 +1516,7 @@ def main():
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{{c, x, Tab}};
+use super::ribbon::{{{{取り込み}}}};
 """)
     def q(s):
         """Rust のリテラルに戻す。解析器は逃げを解いた素の字を渡してくる"""
@@ -1530,11 +1530,15 @@ use super::ribbon::{{c, x, Tab}};
         for tab in tabs_of[const]:
             out.append(f'    Tab {{ name: "{q(tr(tab.name, m))}", cmds: &[')
             for cmd in tab.cmds:
+                # **書き方の名前をそのまま写す**(c / t / x / xt / xm)。
+                # ボタンの性格は語ではないので、どの言語でも同じです
                 if cmd.ready:
                     out.append(
-                        f'        c("{q(cmd.id)}", "{q(tr(cmd.label, m))}", "{q(cmd.icon)}"),')
+                        f'        {cmd.kind}("{q(cmd.id)}", "{q(tr(cmd.label, m))}",'
+                        f' "{q(cmd.icon)}"),')
                 else:
-                    out.append(f'        x("{q(tr(cmd.label, m))}", "{q(cmd.icon)}"),')
+                    out.append(
+                        f'        {cmd.kind}("{q(tr(cmd.label, m))}", "{q(cmd.icon)}"),')
             out.append("    ]},")
         out.append("];\n")
 
@@ -1551,7 +1555,12 @@ use super::ribbon::{{c, x, Tab}};
             "— 黙って米国綴りに戻さないため、ここで止めます")
     for a, b in sorted(set(respelled)):
         print(f"  綴り直し: {a} → {b}", file=sys.stderr)
-    print("\n".join(out))
+    # **使った書き方だけを取り込む。** 使わない物を書くと警告になり、
+    # clippy の門(-D warnings)で止まります
+    本文 = "\n".join(out)
+    使った = [k for k in ("c", "t", "x", "xt", "xm")
+              if re.search(rf"^\s*{k}\(", 本文, re.M)]
+    print(本文.replace("{取り込み}", ", ".join(使った + ["Tab"])))
 
 
 if __name__ == "__main__":

@@ -22,6 +22,22 @@ impl Calc {
     }
 
     /// **いま選んでいるリボンの段**(`officework` が画面をまたいで持ち越す)。
+    /// **入切のボタンが、いま入っているか**(2026-08-21 発注者
+    /// 「押せるボタンだけでなくトグルボタンを作って」)。
+    ///
+    /// 入っている物は押された形で描きます。*見れば分かる*ようにするためで、
+    /// 押してみないと分からない、をやめます。
+    pub(crate) fn 入っているか(&self, id: &str) -> bool {
+        match id {
+            "formula-bar" => self.show_formula_bar,
+            "show-zeros" => self.show_zeros,
+            "show-headings" => self.show_headers,
+            "show-left" => self.left_open,
+            "show-right" => self.right_open,
+            _ => false,
+        }
+    }
+
     pub fn ribbon_tab(&self) -> usize {
         self.tab
     }

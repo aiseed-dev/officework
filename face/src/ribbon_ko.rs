@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, x, Tab};
+use super::ribbon::{c, t, x, xm, xt, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "파일", cmds: &[
@@ -138,7 +138,7 @@ pub const WRITER: &[Tab] = &[
         c("prot-doc", "보호", "prot-doc"),
     ]},
     Tab { name: "보기", cmds: &[
-        c("nav", "내비게이션", "nav"),
+        t("nav", "내비게이션", "nav"),
         c("fit-page", "페이지에 맞춤", "fit-page"),
         c("fit-width", "너비에 맞춤", "fit-width"),
         c("zoom100", "100%로 확대", "zoom100"),
@@ -148,10 +148,10 @@ pub const WRITER: &[Tab] = &[
         c("multipage", "여러 페이지", "multipage"),
         c("darkmode", "다크 모드", "darkmode"),
         c("ruler", "자", "ruler"),
-        c("show-toolbar", "항상 도구 모음 표시", "show-toolbar"),
-        c("show-statusbar", "상태 바", "show-statusbar"),
-        c("show-left", "왼쪽 패널", "show-left"),
-        c("show-right", "오른쪽 패널", "show-right"),
+        t("show-toolbar", "항상 도구 모음 표시", "show-toolbar"),
+        t("show-statusbar", "상태 바", "show-statusbar"),
+        t("show-left", "왼쪽 패널", "show-left"),
+        t("show-right", "오른쪽 패널", "show-right"),
     ]},
     Tab { name: "매크로", cmds: &[
         c("plug-manage", "목록", "plug-manage"),
@@ -351,9 +351,9 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "보호", cmds: &[
         c("prot-encrypt", "암호화", "prot-encrypt"),
-        x("통합 문서 보호", "protect-workbook"),
+        xt("통합 문서 보호", "protect-workbook"),
         c("prot-doc", "시트 보호", "protect-sheet"),
-        x("보호 범위", "protect-range"),
+        xt("보호 범위", "protect-range"),
         c("prot-sign", "디지털 서명 추가", "prot-sign"),
         c("cell-lock", "셀 잠금", "cell-lock"),
         c("prot-allow", "허용할 동작", "prot-allow"),
@@ -363,20 +363,20 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "보기", cmds: &[
         c("sheet-view", "시트보기", "sheet-view"),
-        x("일반", "view-normal"),
-        x("페이지 나누기 미리보기", "view-pagebreak"),
+        xm("일반", "view-normal"),
+        xm("페이지 나누기 미리보기", "view-pagebreak"),
         c("zoom-in", "확대", "zoom-in"),
         c("zoom-out", "축소", "zoom-out"),
         c("ui-bigger", "화면 글자 크게", "ui-bigger"),
         c("ui-smaller", "화면 글자 작게", "ui-smaller"),
         c("theme", "인터페이스 테마", "theme"),
         c("freeze", "창 고정", "freeze"),
-        c("formula-bar", "수식 입력줄", "formula-bar"),
+        t("formula-bar", "수식 입력줄", "formula-bar"),
         c("show-gridlines", "눈금선", "show-gridlines"),
-        c("show-headings", "제목", "show-headings"),
-        c("show-zeros", "0 표시", "show-zeros"),
-        c("show-left", "왼쪽 패널", "show-left"),
-        c("show-right", "오른쪽 패널", "show-right"),
+        t("show-headings", "제목", "show-headings"),
+        t("show-zeros", "0 표시", "show-zeros"),
+        t("show-left", "왼쪽 패널", "show-left"),
+        t("show-right", "오른쪽 패널", "show-right"),
     ]},
 ];
 

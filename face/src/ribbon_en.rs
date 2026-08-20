@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, x, Tab};
+use super::ribbon::{c, t, x, xm, xt, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "File", cmds: &[
@@ -138,7 +138,7 @@ pub const WRITER: &[Tab] = &[
         c("prot-doc", "Protection", "prot-doc"),
     ]},
     Tab { name: "View", cmds: &[
-        c("nav", "Navigation", "nav"),
+        t("nav", "Navigation", "nav"),
         c("fit-page", "Fit to page", "fit-page"),
         c("fit-width", "Fit to width", "fit-width"),
         c("zoom100", "Zoom to 100%", "zoom100"),
@@ -148,10 +148,10 @@ pub const WRITER: &[Tab] = &[
         c("multipage", "Multiple pages", "multipage"),
         c("darkmode", "Dark mode", "darkmode"),
         c("ruler", "Rulers", "ruler"),
-        c("show-toolbar", "Always Show Toolbar", "show-toolbar"),
-        c("show-statusbar", "Status Bar", "show-statusbar"),
-        c("show-left", "Left Panel", "show-left"),
-        c("show-right", "Right Panel", "show-right"),
+        t("show-toolbar", "Always Show Toolbar", "show-toolbar"),
+        t("show-statusbar", "Status Bar", "show-statusbar"),
+        t("show-left", "Left Panel", "show-left"),
+        t("show-right", "Right Panel", "show-right"),
     ]},
     Tab { name: "Macros", cmds: &[
         c("plug-manage", "List", "plug-manage"),
@@ -351,9 +351,9 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Protection", cmds: &[
         c("prot-encrypt", "Encrypt", "prot-encrypt"),
-        x("Protect workbook", "protect-workbook"),
+        xt("Protect workbook", "protect-workbook"),
         c("prot-doc", "Protect sheet", "protect-sheet"),
-        x("Protect Range", "protect-range"),
+        xt("Protect Range", "protect-range"),
         c("prot-sign", "Add digital signature", "prot-sign"),
         c("cell-lock", "Cell lock", "cell-lock"),
         c("prot-allow", "Allowed actions", "prot-allow"),
@@ -363,20 +363,20 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "View", cmds: &[
         c("sheet-view", "Sheet View", "sheet-view"),
-        x("Normal", "view-normal"),
-        x("Page Break Preview", "view-pagebreak"),
+        xm("Normal", "view-normal"),
+        xm("Page Break Preview", "view-pagebreak"),
         c("zoom-in", "Zoom in", "zoom-in"),
         c("zoom-out", "Zoom out", "zoom-out"),
         c("ui-bigger", "Bigger UI text", "ui-bigger"),
         c("ui-smaller", "Smaller UI text", "ui-smaller"),
         c("theme", "Interface theme", "theme"),
         c("freeze", "Freeze panes", "freeze"),
-        c("formula-bar", "Formula Bar", "formula-bar"),
+        t("formula-bar", "Formula Bar", "formula-bar"),
         c("show-gridlines", "Gridlines", "show-gridlines"),
-        c("show-headings", "Headings", "show-headings"),
-        c("show-zeros", "Show zeros", "show-zeros"),
-        c("show-left", "Left Panel", "show-left"),
-        c("show-right", "Right Panel", "show-right"),
+        t("show-headings", "Headings", "show-headings"),
+        t("show-zeros", "Show zeros", "show-zeros"),
+        t("show-left", "Left Panel", "show-left"),
+        t("show-right", "Right Panel", "show-right"),
     ]},
 ];
 

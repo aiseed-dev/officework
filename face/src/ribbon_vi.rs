@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, x, Tab};
+use super::ribbon::{c, t, x, xm, xt, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "File", cmds: &[
@@ -138,7 +138,7 @@ pub const WRITER: &[Tab] = &[
         c("prot-doc", "Bảo vệ", "prot-doc"),
     ]},
     Tab { name: "Hiển thị", cmds: &[
-        c("nav", "Dẫn hướng", "nav"),
+        t("nav", "Dẫn hướng", "nav"),
         c("fit-page", "Vừa với trang", "fit-page"),
         c("fit-width", "Vừa với Chiều rộng", "fit-width"),
         c("zoom100", "Thu phóng về 100%", "zoom100"),
@@ -148,10 +148,10 @@ pub const WRITER: &[Tab] = &[
         c("multipage", "Nhiều trang", "multipage"),
         c("darkmode", "Chế độ tối", "darkmode"),
         c("ruler", "Thước", "ruler"),
-        c("show-toolbar", "Luôn hiện thanh công cụ", "show-toolbar"),
-        c("show-statusbar", "Thanh trạng thái", "show-statusbar"),
-        c("show-left", "Bảng bên trái", "show-left"),
-        c("show-right", "Bảng bên phải", "show-right"),
+        t("show-toolbar", "Luôn hiện thanh công cụ", "show-toolbar"),
+        t("show-statusbar", "Thanh trạng thái", "show-statusbar"),
+        t("show-left", "Bảng bên trái", "show-left"),
+        t("show-right", "Bảng bên phải", "show-right"),
     ]},
     Tab { name: "Macro", cmds: &[
         c("plug-manage", "Danh sách", "plug-manage"),
@@ -351,9 +351,9 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Bảo vệ", cmds: &[
         c("prot-encrypt", "Mã hóa", "prot-encrypt"),
-        x("Bảo vệ sổ làm việc", "protect-workbook"),
+        xt("Bảo vệ sổ làm việc", "protect-workbook"),
         c("prot-doc", "Bảo vệ trang tính", "protect-sheet"),
-        x("Bảo vệ phạm vi", "protect-range"),
+        xt("Bảo vệ phạm vi", "protect-range"),
         c("prot-sign", "Thêm chữ ký số", "prot-sign"),
         c("cell-lock", "Khoá ô", "cell-lock"),
         c("prot-allow", "Thao tác được phép", "prot-allow"),
@@ -363,20 +363,20 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Hiển thị", cmds: &[
         c("sheet-view", "Hiện trang tính", "sheet-view"),
-        x("Thường", "view-normal"),
-        x("Xem trước ngắt trang", "view-pagebreak"),
+        xm("Thường", "view-normal"),
+        xm("Xem trước ngắt trang", "view-pagebreak"),
         c("zoom-in", "Phóng to", "zoom-in"),
         c("zoom-out", "Thu nhỏ", "zoom-out"),
         c("ui-bigger", "Phóng to chữ màn hình", "ui-bigger"),
         c("ui-smaller", "Thu nhỏ chữ màn hình", "ui-smaller"),
         c("theme", "Chủ đề giao diện", "theme"),
         c("freeze", "Cố định ngăn", "freeze"),
-        c("formula-bar", "Thanh công thức", "formula-bar"),
+        t("formula-bar", "Thanh công thức", "formula-bar"),
         c("show-gridlines", "Đường lưới", "show-gridlines"),
-        c("show-headings", "Tiêu đề", "show-headings"),
-        c("show-zeros", "Hiển thị số 0", "show-zeros"),
-        c("show-left", "Bảng bên trái", "show-left"),
-        c("show-right", "Bảng bên phải", "show-right"),
+        t("show-headings", "Tiêu đề", "show-headings"),
+        t("show-zeros", "Hiển thị số 0", "show-zeros"),
+        t("show-left", "Bảng bên trái", "show-left"),
+        t("show-right", "Bảng bên phải", "show-right"),
     ]},
 ];
 

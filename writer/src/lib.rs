@@ -538,6 +538,18 @@ impl Writer {
     }
 
     /// **いま選んでいるリボンの段**(`officework` が画面をまたいで持ち越す)。
+    /// **入切のボタンが、いま入っているか**(2026-08-21 発注者
+    /// 「押せるボタンだけでなくトグルボタンを作って」)。表の画面と同じ形です。
+    pub(crate) fn 入っているか(&self, id: &str) -> bool {
+        match id {
+            "show-toolbar" => self.show_toolbar,
+            "show-statusbar" => self.show_statusbar,
+            "nav" | "show-left" => self.nav_open,
+            "show-right" => self.rp_open,
+            _ => false,
+        }
+    }
+
     pub fn ribbon_tab(&self) -> usize {
         self.tab
     }

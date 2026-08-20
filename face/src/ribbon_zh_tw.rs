@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, x, Tab};
+use super::ribbon::{c, t, x, xm, xt, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "檔案", cmds: &[
@@ -138,7 +138,7 @@ pub const WRITER: &[Tab] = &[
         c("prot-doc", "保護", "prot-doc"),
     ]},
     Tab { name: "檢視", cmds: &[
-        c("nav", "導覽", "nav"),
+        t("nav", "導覽", "nav"),
         c("fit-page", "縮放至整頁", "fit-page"),
         c("fit-width", "縮放至頁面寬度", "fit-width"),
         c("zoom100", "縮放至 100%", "zoom100"),
@@ -148,10 +148,10 @@ pub const WRITER: &[Tab] = &[
         c("multipage", "多頁", "multipage"),
         c("darkmode", "深色模式", "darkmode"),
         c("ruler", "尺規", "ruler"),
-        c("show-toolbar", "顯示工具列", "show-toolbar"),
-        c("show-statusbar", "狀態列", "show-statusbar"),
-        c("show-left", "左側面板", "show-left"),
-        c("show-right", "右側面板", "show-right"),
+        t("show-toolbar", "顯示工具列", "show-toolbar"),
+        t("show-statusbar", "狀態列", "show-statusbar"),
+        t("show-left", "左側面板", "show-left"),
+        t("show-right", "右側面板", "show-right"),
     ]},
     Tab { name: "巨集", cmds: &[
         c("plug-manage", "清單", "plug-manage"),
@@ -351,9 +351,9 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "保護", cmds: &[
         c("prot-encrypt", "加密", "prot-encrypt"),
-        x("保護工作簿", "protect-workbook"),
+        xt("保護工作簿", "protect-workbook"),
         c("prot-doc", "保護工作表", "protect-sheet"),
-        x("保護範圍", "protect-range"),
+        xt("保護範圍", "protect-range"),
         c("prot-sign", "新增數位簽章", "prot-sign"),
         c("cell-lock", "鎖定儲存格", "cell-lock"),
         c("prot-allow", "允許的操作", "prot-allow"),
@@ -363,20 +363,20 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "檢視", cmds: &[
         c("sheet-view", "工作表檢視", "sheet-view"),
-        x("一般", "view-normal"),
-        x("分頁預覽", "view-pagebreak"),
+        xm("一般", "view-normal"),
+        xm("分頁預覽", "view-pagebreak"),
         c("zoom-in", "放大", "zoom-in"),
         c("zoom-out", "縮小", "zoom-out"),
         c("ui-bigger", "放大介面文字", "ui-bigger"),
         c("ui-smaller", "縮小介面文字", "ui-smaller"),
         c("theme", "介面佈景主題", "theme"),
         c("freeze", "凍結窗格", "freeze"),
-        c("formula-bar", "公式欄", "formula-bar"),
+        t("formula-bar", "公式欄", "formula-bar"),
         c("show-gridlines", "網格線", "show-gridlines"),
-        c("show-headings", "標題", "show-headings"),
-        c("show-zeros", "顯示 0", "show-zeros"),
-        c("show-left", "左側面板", "show-left"),
-        c("show-right", "右側面板", "show-right"),
+        t("show-headings", "標題", "show-headings"),
+        t("show-zeros", "顯示 0", "show-zeros"),
+        t("show-left", "左側面板", "show-left"),
+        t("show-right", "右側面板", "show-right"),
     ]},
 ];
 

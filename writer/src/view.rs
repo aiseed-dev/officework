@@ -386,6 +386,9 @@ impl Render for Writer {
                         continue;
                     };
                     let label = cmd.label;
+                    // **入切のボタンは、入っている間ずっと押された形**
+                    // (2026-08-21 発注者)。押してみないと分からない、をやめる
+                    let 入 = cmd.kind == ribbon::Kind::Toggle && self.入っているか(cmd.id);
                     // 名札の短い形は ja 向け — 他の言語では表の語を使う
                     let big = if ui::settings::language() == "ja" {
                         big
@@ -437,6 +440,7 @@ impl Render for Writer {
                         let mut b = div()
                             .id(SharedString::from(format!("h-{icon}")))
                             .px_2().h(px(48.0)).rounded_sm()
+                            .when(入, |d| d.bg(th_btn_hover))
                             .flex().flex_col().items_center().justify_center()
                             .gap_1()
                             .on_hover(hoverable)
@@ -479,6 +483,7 @@ impl Render for Writer {
                     let mut b = div()
                         .id(SharedString::from(format!("h-{icon}")))
                         .h(px(26.0)).rounded_sm()
+                        .when(入, |d| d.bg(th_btn_hover))
                         .flex().items_center().justify_center()
                         .on_hover(hoverable)
                         .tooltip(move |_, cx| cx.new(|_| Tip(label.into())).into())

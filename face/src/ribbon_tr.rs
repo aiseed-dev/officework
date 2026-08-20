@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, x, Tab};
+use super::ribbon::{c, t, x, xm, xt, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "Dosya", cmds: &[
@@ -138,7 +138,7 @@ pub const WRITER: &[Tab] = &[
         c("prot-doc", "Koruma", "prot-doc"),
     ]},
     Tab { name: "Görüntüle", cmds: &[
-        c("nav", "Gezinti", "nav"),
+        t("nav", "Gezinti", "nav"),
         c("fit-page", "Sayfaya Sığdır", "fit-page"),
         c("fit-width", "Genişliğe Sığdır", "fit-width"),
         c("zoom100", "%100'e yakınlaştır", "zoom100"),
@@ -148,10 +148,10 @@ pub const WRITER: &[Tab] = &[
         c("multipage", "Çoklu sayfa", "multipage"),
         c("darkmode", "Karanlık mod", "darkmode"),
         c("ruler", "Cetveller", "ruler"),
-        c("show-toolbar", "Her zaman araç çubuğunu göster", "show-toolbar"),
-        c("show-statusbar", "Durum Çubuğu", "show-statusbar"),
-        c("show-left", "Sol Panel", "show-left"),
-        c("show-right", "Sağ Panel", "show-right"),
+        t("show-toolbar", "Her zaman araç çubuğunu göster", "show-toolbar"),
+        t("show-statusbar", "Durum Çubuğu", "show-statusbar"),
+        t("show-left", "Sol Panel", "show-left"),
+        t("show-right", "Sağ Panel", "show-right"),
     ]},
     Tab { name: "Makrolar", cmds: &[
         c("plug-manage", "Liste", "plug-manage"),
@@ -351,9 +351,9 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Koruma", cmds: &[
         c("prot-encrypt", "Şifrele", "prot-encrypt"),
-        x("Çalışma Kitabını Koru", "protect-workbook"),
+        xt("Çalışma Kitabını Koru", "protect-workbook"),
         c("prot-doc", "Sayfayı Koruyun", "protect-sheet"),
-        x("Aralığı koru", "protect-range"),
+        xt("Aralığı koru", "protect-range"),
         c("prot-sign", "Dijital imza ekle", "prot-sign"),
         c("cell-lock", "Hücre kilidi", "cell-lock"),
         c("prot-allow", "İzin verilen işlemler", "prot-allow"),
@@ -363,20 +363,20 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Görüntüle", cmds: &[
         c("sheet-view", "Sayfa Görünümü", "sheet-view"),
-        x("Normal", "view-normal"),
-        x("Sayfa Sonu Önizlemesi", "view-pagebreak"),
+        xm("Normal", "view-normal"),
+        xm("Sayfa Sonu Önizlemesi", "view-pagebreak"),
         c("zoom-in", "Yakınlaştır", "zoom-in"),
         c("zoom-out", "Uzaklaştır", "zoom-out"),
         c("ui-bigger", "Ekran yazısını büyüt", "ui-bigger"),
         c("ui-smaller", "Ekran yazısını küçült", "ui-smaller"),
         c("theme", "Arayüz teması", "theme"),
         c("freeze", "Parçaları Dondur", "freeze"),
-        c("formula-bar", "Formül çubuğu", "formula-bar"),
+        t("formula-bar", "Formül çubuğu", "formula-bar"),
         c("show-gridlines", "Gridlines", "show-gridlines"),
-        c("show-headings", "Başlıklar", "show-headings"),
-        c("show-zeros", "Sıfırları göster", "show-zeros"),
-        c("show-left", "Sol Panel", "show-left"),
-        c("show-right", "Sağ Panel", "show-right"),
+        t("show-headings", "Başlıklar", "show-headings"),
+        t("show-zeros", "Sıfırları göster", "show-zeros"),
+        t("show-left", "Sol Panel", "show-left"),
+        t("show-right", "Sağ Panel", "show-right"),
     ]},
 ];
 

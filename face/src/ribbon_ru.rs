@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, x, Tab};
+use super::ribbon::{c, t, x, xm, xt, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "Файл", cmds: &[
@@ -138,7 +138,7 @@ pub const WRITER: &[Tab] = &[
         c("prot-doc", "Защита", "prot-doc"),
     ]},
     Tab { name: "Показать", cmds: &[
-        c("nav", "Навигация", "nav"),
+        t("nav", "Навигация", "nav"),
         c("fit-page", "По размеру страницы", "fit-page"),
         c("fit-width", "По ширине", "fit-width"),
         c("zoom100", "Масштаб 100%", "zoom100"),
@@ -148,10 +148,10 @@ pub const WRITER: &[Tab] = &[
         c("multipage", "Несколько страниц", "multipage"),
         c("darkmode", "Темный режим", "darkmode"),
         c("ruler", "Линейки", "ruler"),
-        c("show-toolbar", "Всегда показывать панель инструментов", "show-toolbar"),
-        c("show-statusbar", "Строка состояния", "show-statusbar"),
-        c("show-left", "Левая панель", "show-left"),
-        c("show-right", "Правая панель", "show-right"),
+        t("show-toolbar", "Всегда показывать панель инструментов", "show-toolbar"),
+        t("show-statusbar", "Строка состояния", "show-statusbar"),
+        t("show-left", "Левая панель", "show-left"),
+        t("show-right", "Правая панель", "show-right"),
     ]},
     Tab { name: "Макросы", cmds: &[
         c("plug-manage", "Список", "plug-manage"),
@@ -351,9 +351,9 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Защита", cmds: &[
         c("prot-encrypt", "Зашифровать", "prot-encrypt"),
-        x("Защитить книгу", "protect-workbook"),
+        xt("Защитить книгу", "protect-workbook"),
         c("prot-doc", "Защитить лист", "protect-sheet"),
-        x("Защитить диапазон", "protect-range"),
+        xt("Защитить диапазон", "protect-range"),
         c("prot-sign", "Добавить цифровую подпись", "prot-sign"),
         c("cell-lock", "Блокировка ячейки", "cell-lock"),
         c("prot-allow", "Разрешённые действия", "prot-allow"),
@@ -363,20 +363,20 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Показать", cmds: &[
         c("sheet-view", "Представление листа", "sheet-view"),
-        x("Обычные", "view-normal"),
-        x("Страничный режим", "view-pagebreak"),
+        xm("Обычные", "view-normal"),
+        xm("Страничный режим", "view-pagebreak"),
         c("zoom-in", "Увеличить", "zoom-in"),
         c("zoom-out", "Уменьшить", "zoom-out"),
         c("ui-bigger", "Крупнее текст интерфейса", "ui-bigger"),
         c("ui-smaller", "Мельче текст интерфейса", "ui-smaller"),
         c("theme", "Тема интерфейса", "theme"),
         c("freeze", "Закрепить области", "freeze"),
-        c("formula-bar", "Строка формул", "formula-bar"),
+        t("formula-bar", "Строка формул", "formula-bar"),
         c("show-gridlines", "Линии сетки", "show-gridlines"),
-        c("show-headings", "Заголовки", "show-headings"),
-        c("show-zeros", "Показывать нули", "show-zeros"),
-        c("show-left", "Левая панель", "show-left"),
-        c("show-right", "Правая панель", "show-right"),
+        t("show-headings", "Заголовки", "show-headings"),
+        t("show-zeros", "Показывать нули", "show-zeros"),
+        t("show-left", "Левая панель", "show-left"),
+        t("show-right", "Правая панель", "show-right"),
     ]},
 ];
 

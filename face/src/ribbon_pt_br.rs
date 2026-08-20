@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, x, Tab};
+use super::ribbon::{c, t, x, xm, xt, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "Arquivo", cmds: &[
@@ -138,7 +138,7 @@ pub const WRITER: &[Tab] = &[
         c("prot-doc", "Proteção", "prot-doc"),
     ]},
     Tab { name: "Exibir", cmds: &[
-        c("nav", "Navegação", "nav"),
+        t("nav", "Navegação", "nav"),
         c("fit-page", "Ajustar a página", "fit-page"),
         c("fit-width", "Ajustar largura", "fit-width"),
         c("zoom100", "Zoom de 100%", "zoom100"),
@@ -148,10 +148,10 @@ pub const WRITER: &[Tab] = &[
         c("multipage", "Múltiplas páginas", "multipage"),
         c("darkmode", "Modo escuro", "darkmode"),
         c("ruler", "Regras", "ruler"),
-        c("show-toolbar", "Sempre mostrar a barra de ferramentas", "show-toolbar"),
-        c("show-statusbar", "Barra de status", "show-statusbar"),
-        c("show-left", "Painel esquerdo", "show-left"),
-        c("show-right", "Painel direito", "show-right"),
+        t("show-toolbar", "Sempre mostrar a barra de ferramentas", "show-toolbar"),
+        t("show-statusbar", "Barra de status", "show-statusbar"),
+        t("show-left", "Painel esquerdo", "show-left"),
+        t("show-right", "Painel direito", "show-right"),
     ]},
     Tab { name: "Macros", cmds: &[
         c("plug-manage", "Lista", "plug-manage"),
@@ -351,9 +351,9 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Proteção", cmds: &[
         c("prot-encrypt", "Criptografar", "prot-encrypt"),
-        x("Proteger a pasta de trabalho", "protect-workbook"),
+        xt("Proteger a pasta de trabalho", "protect-workbook"),
         c("prot-doc", "Proteger folha", "protect-sheet"),
-        x("Proteger Intervalo", "protect-range"),
+        xt("Proteger Intervalo", "protect-range"),
         c("prot-sign", "Adicionar assinatura digital", "prot-sign"),
         c("cell-lock", "Bloquear célula", "cell-lock"),
         c("prot-allow", "Operações permitidas", "prot-allow"),
@@ -363,20 +363,20 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Exibir", cmds: &[
         c("sheet-view", "Visualização de folha", "sheet-view"),
-        x("Normal", "view-normal"),
-        x("Visualização de quebra de página", "view-pagebreak"),
+        xm("Normal", "view-normal"),
+        xm("Visualização de quebra de página", "view-pagebreak"),
         c("zoom-in", "Ampliar", "zoom-in"),
         c("zoom-out", "Reduzir", "zoom-out"),
         c("ui-bigger", "Aumentar texto da tela", "ui-bigger"),
         c("ui-smaller", "Diminuir texto da tela", "ui-smaller"),
         c("theme", "Tema da interface", "theme"),
         c("freeze", "Congelar painéis", "freeze"),
-        c("formula-bar", "Barra de fórmula", "formula-bar"),
+        t("formula-bar", "Barra de fórmula", "formula-bar"),
         c("show-gridlines", "Gridlines", "show-gridlines"),
-        c("show-headings", "Títulos", "show-headings"),
-        c("show-zeros", "Mostrar zeros", "show-zeros"),
-        c("show-left", "Painel esquerdo", "show-left"),
-        c("show-right", "Painel direito", "show-right"),
+        t("show-headings", "Títulos", "show-headings"),
+        t("show-zeros", "Mostrar zeros", "show-zeros"),
+        t("show-left", "Painel esquerdo", "show-left"),
+        t("show-right", "Painel direito", "show-right"),
     ]},
 ];
 

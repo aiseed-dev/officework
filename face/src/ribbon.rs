@@ -19,6 +19,23 @@
 //! 未実装は灰色で残す。並びを Euro-Office に合わせたまま、
 //! 「今どこまで出来ているか」がそのまま画面に出る。
 
+/// ボタンの性格(2026-08-21 発注者「押せるボタンだけでなくトグルボタンを
+/// 作って」)。**押した後どうなるかが違う**ので、描き方も変わります。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Kind {
+    /// 押すと1回きりの働きをします(既定)。押した後は元の見た目に戻ります
+    Push,
+    /// **入っているか切れているか**があります(数式バー・0を表示する・
+    /// 左パネル)。入っている間は押された形で出すので、*見れば分かります*
+    Toggle,
+    /// **いくつかのうち1つだけが入ります**(標準 / 改ページ プレビュー)。
+    ///
+    /// 入切とは性格が違います(2026-08-21 発注者「改ページ プレビューは、
+    /// 性格がちがうのでは」)。入切は互いに関わりませんが、こちらは
+    /// *どれか1つが必ず入っていて、別のを押すと前のが切れます*。
+    Mode,
+}
+
 /// 1つのコマンド。`ready=false` は未実装(押せない灰色)。
 /// `icon` は Euro-Office の slot 名で、埋め込んだアイコン(icons.rs)を引く鍵。
 #[derive(Clone, Copy)]
@@ -27,14 +44,31 @@ pub struct Cmd {
     pub label: &'static str,
     pub icon: &'static str,
     pub ready: bool,
+    pub kind: Kind,
 }
 
+/// 押すボタン(押せる)
 pub(crate) const fn c(id: &'static str, label: &'static str, icon: &'static str) -> Cmd {
-    Cmd { id, label, icon, ready: true }
+    Cmd { id, label, icon, ready: true, kind: Kind::Push }
 }
+/// 入切のボタン(押せる)。画面は今の状態を押された形で見せます
+pub(crate) const fn t(id: &'static str, label: &'static str, icon: &'static str) -> Cmd {
+    Cmd { id, label, icon, ready: true, kind: Kind::Toggle }
+}
+/// 押すボタン(まだ押せない灰色)
 #[allow(dead_code)] // 灰色ゼロの今は未使用だが、ロケール表の生成が使う形
 pub(crate) const fn x(label: &'static str, icon: &'static str) -> Cmd {
-    Cmd { id: "", label, icon, ready: false }
+    Cmd { id: "", label, icon, ready: false, kind: Kind::Push }
+}
+/// 入切のボタン(まだ押せない灰色)
+#[allow(dead_code)]
+pub(crate) const fn xt(label: &'static str, icon: &'static str) -> Cmd {
+    Cmd { id: "", label, icon, ready: false, kind: Kind::Toggle }
+}
+/// 表示の切り替え(まだ押せない灰色)
+#[allow(dead_code)]
+pub(crate) const fn xm(label: &'static str, icon: &'static str) -> Cmd {
+    Cmd { id: "", label, icon, ready: false, kind: Kind::Mode }
 }
 
 /// いまの言語のリボン。**語だけが違う** — id・並び・ready・icon は
@@ -126,6 +160,9 @@ pub fn refresh_user_cmds() -> bool {
                     label: Box::leak(d.label.into_boxed_str()),
                     icon: Box::leak(icon.into_boxed_str()),
                     ready: true,
+                    // 利用者のマクロは押すボタン。入切にしたければ .py の側で
+                    // 状態を持つことになるので、いまは押す形だけ
+                    kind: Kind::Push,
                 },
                 tab: Box::leak(d.tab.into_boxed_str()),
             }
@@ -267,7 +304,7 @@ pub const WRITER: &[Tab] = &[
         c("prot-doc", "保護", "prot-doc"),
     ]},
     Tab { name: "表示", cmds: &[
-        c("nav", "ナビゲーション", "nav"),
+        t("nav", "ナビゲーション", "nav"),
         c("fit-page", "ページに合わせる", "fit-page"),
         c("fit-width", "幅に合わせる", "fit-width"),
         c("zoom100", "100%に拡大する", "zoom100"),
@@ -277,10 +314,10 @@ pub const WRITER: &[Tab] = &[
         c("multipage", "複数ページ", "multipage"),
         c("darkmode", "ダークモード", "darkmode"),
         c("ruler", "ルーラー", "ruler"),
-        c("show-toolbar", "ツールバーを常に表示する", "show-toolbar"),
-        c("show-statusbar", "ステータスバー", "show-statusbar"),
-        c("show-left", "左パネル", "show-left"),
-        c("show-right", "右パネル", "show-right"),
+        t("show-toolbar", "ツールバーを常に表示する", "show-toolbar"),
+        t("show-statusbar", "ステータスバー", "show-statusbar"),
+        t("show-left", "左パネル", "show-left"),
+        t("show-right", "右パネル", "show-right"),
     ]},
     // calc と同じく**マクロの段**へ(2026-08-16)。「一覧」は置き場の
     // .py、「ファイルから」は置き場の外の .py
@@ -515,9 +552,9 @@ pub const CALC: &[Tab] = &[
         // 本家 SSE の並び: 暗号化 / ブック / シート / 範囲。
         // ブックと範囲は未実装(灰)。署名は本家に無いこちらのボタン — 末尾
         c("prot-encrypt", "暗号化する", "prot-encrypt"),
-        x("ブックを保護する", "protect-workbook"),
+        xt("ブックを保護する", "protect-workbook"),
         c("prot-doc", "シートを保護する", "protect-sheet"),
-        x("範囲を保護する", "protect-range"),
+        xt("範囲を保護する", "protect-range"),
         c("prot-sign", "デジタル署名を追加", "prot-sign"),
         c("cell-lock", "セルのロック", "cell-lock"),
         c("prot-allow", "許可する操作", "prot-allow"),
@@ -527,22 +564,22 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "表示", cmds: &[
         c("sheet-view", "シートの表示", "sheet-view"),
-        x("標準", "view-normal"),
-        x("改ページ プレビュー", "view-pagebreak"),
+        xm("標準", "view-normal"),
+        xm("改ページ プレビュー", "view-pagebreak"),
         c("zoom-in", "拡大", "zoom-in"),
         c("zoom-out", "縮小", "zoom-out"),
         c("ui-bigger", "画面の文字を大きく", "ui-bigger"),
         c("ui-smaller", "画面の文字を小さく", "ui-smaller"),
         c("theme", "インターフェイステーマ", "theme"),
         c("freeze", "ウィンドウ枠の固定", "freeze"),
-        c("formula-bar", "数式バー", "formula-bar"),
+        t("formula-bar", "数式バー", "formula-bar"),
         c("show-gridlines", "枠線表示", "show-gridlines"),
-        c("show-headings", "見出し", "show-headings"),
-        c("show-zeros", "0を表示する", "show-zeros"),
+        t("show-headings", "見出し", "show-headings"),
+        t("show-zeros", "0を表示する", "show-zeros"),
         // **左右のパネル**(2026-08-15 発注者)。writer の表示タブと同じ
         // id・同じ札 — 訳が既にあるので新しい鍵は増えない
-        c("show-left", "左パネル", "show-left"),
-        c("show-right", "右パネル", "show-right"),
+        t("show-left", "左パネル", "show-left"),
+        t("show-right", "右パネル", "show-right"),
     ]},
 ];
 

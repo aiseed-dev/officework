@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, x, Tab};
+use super::ribbon::{c, t, x, xm, xt, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "File", cmds: &[
@@ -138,7 +138,7 @@ pub const WRITER: &[Tab] = &[
         c("prot-doc", "Proteksi", "prot-doc"),
     ]},
     Tab { name: "Lihat", cmds: &[
-        c("nav", "Navigasi", "nav"),
+        t("nav", "Navigasi", "nav"),
         c("fit-page", "Sesuaikan Halaman", "fit-page"),
         c("fit-width", "Sesuaikan Lebar", "fit-width"),
         c("zoom100", "Zoom ke 100%", "zoom100"),
@@ -148,10 +148,10 @@ pub const WRITER: &[Tab] = &[
         c("multipage", "Gandakan halaman", "multipage"),
         c("darkmode", "Mode gelap", "darkmode"),
         c("ruler", "Penggaris", "ruler"),
-        c("show-toolbar", "Selalu Tampilkan Bilah Alat", "show-toolbar"),
-        c("show-statusbar", "Bar Status", "show-statusbar"),
-        c("show-left", "Panel Kiri", "show-left"),
-        c("show-right", "Panel Kanan", "show-right"),
+        t("show-toolbar", "Selalu Tampilkan Bilah Alat", "show-toolbar"),
+        t("show-statusbar", "Bar Status", "show-statusbar"),
+        t("show-left", "Panel Kiri", "show-left"),
+        t("show-right", "Panel Kanan", "show-right"),
     ]},
     Tab { name: "Makro", cmds: &[
         c("plug-manage", "Daftar", "plug-manage"),
@@ -351,9 +351,9 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Proteksi", cmds: &[
         c("prot-encrypt", "Enkripsi", "prot-encrypt"),
-        x("Proteksi workbook", "protect-workbook"),
+        xt("Proteksi workbook", "protect-workbook"),
         c("prot-doc", "Proteksi Sheet", "protect-sheet"),
-        x("Proteksi Rentang", "protect-range"),
+        xt("Proteksi Rentang", "protect-range"),
         c("prot-sign", "Tambahkan tanda tangan digital", "prot-sign"),
         c("cell-lock", "Kunci sel", "cell-lock"),
         c("prot-allow", "Tindakan yang diizinkan", "prot-allow"),
@@ -363,20 +363,20 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Lihat", cmds: &[
         c("sheet-view", "Tampilan sheet", "sheet-view"),
-        x("Normal", "view-normal"),
-        x("Pratinjau Jeda Halaman", "view-pagebreak"),
+        xm("Normal", "view-normal"),
+        xm("Pratinjau Jeda Halaman", "view-pagebreak"),
         c("zoom-in", "Perbesar", "zoom-in"),
         c("zoom-out", "Perkecil", "zoom-out"),
         c("ui-bigger", "Perbesar teks layar", "ui-bigger"),
         c("ui-smaller", "Perkecil teks layar", "ui-smaller"),
         c("theme", "Tema antarmuka", "theme"),
         c("freeze", "Freeze Panes", "freeze"),
-        c("formula-bar", "Bar formula", "formula-bar"),
+        t("formula-bar", "Bar formula", "formula-bar"),
         c("show-gridlines", "Garis Grid", "show-gridlines"),
-        c("show-headings", "Tajuk", "show-headings"),
-        c("show-zeros", "Tampilkan nol", "show-zeros"),
-        c("show-left", "Panel Kiri", "show-left"),
-        c("show-right", "Panel Kanan", "show-right"),
+        t("show-headings", "Tajuk", "show-headings"),
+        t("show-zeros", "Tampilkan nol", "show-zeros"),
+        t("show-left", "Panel Kiri", "show-left"),
+        t("show-right", "Panel Kanan", "show-right"),
     ]},
 ];
 
