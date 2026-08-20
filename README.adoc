@@ -25,6 +25,21 @@ Which one opens a file is decided by its name:
 
 Close and reopen, and the folder, files and tabs from last time come back.
 
+== Why we built this — confidential files and AI
+
+Built-in enterprise AI such as Microsoft 365 Copilot answers by first searching everything the company has — mail, documents, meetings, chat (the mechanism called RAG).
+The AI respects existing access rights, but in a real company those rights have decayed over the years: confidential files sit in places that technically anyone can read, buried too deep for anyone to find.
+Until now, not being found was the de facto protection.
+Cross-searching AI removes it.
+Unless the company keeps auditing permissions, labeling secrets, blocking leaks and watching logs, material people should not see starts appearing in summaries.
+In short, with company-wide RAG the management cannot keep up, and secrets cannot be handled with confidence.
+
+officework is designed the other way around.
+
+* The AI sees only the folder and files you have open. No company-wide index is built
+* You choose which AI to connect. Pick a model on your own machine, and the data never leaves it
+* Workbooks and documents carry data only — never code
+
 == What works today
 
 The highlights only — the full list lives in the link:docs/writer-manual.adoc[writer manual] and the link:docs/calc-manual.adoc[calc manual], which describe only what works today.
