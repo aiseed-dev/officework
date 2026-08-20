@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- officework(配る1本のアプリ)の絵。
+       板は writer の青 #165E83 と calc の緑 #1B6E3C の2色 — 新しい色は
+       決めない(それぞれの画面が実際に使っている色)。白い紙は1枚で、
+       上が文書の行(青)、下が表の格子(緑)。
+       「文章も表も同じウィンドウ」をそのまま絵にする。 -->
+  <title>officework</title>
+  <defs>
+    <clipPath id="bg"><rect width="64" height="64" rx="14"/></clipPath>
+    <clipPath id="tbl"><rect x="20" y="32" width="24" height="14" rx="1.5"/></clipPath>
+  </defs>
+  <g clip-path="url(#bg)">
+    <rect width="64" height="64" fill="#165E83"/>
+    <path d="M64 0L64 64L0 64Z" fill="#1B6E3C"/>
+  </g>
+  <rect x="14" y="11" width="36" height="42" rx="3" fill="#FFFFFF"/>
+  <!-- 文書の行(writer の青): 見出しと本文 -->
+  <g fill="#165E83">
+    <rect x="20" y="17" width="17" height="4" rx="2"/>
+    <rect x="20" y="25" width="24" height="3" rx="1.5"/>
+  </g>
+  <!-- 表(calc の緑): 見出しの帯と格子 -->
+  <g clip-path="url(#tbl)">
+    <rect x="20" y="32" width="24" height="14" fill="#FFFFFF"/>
+    <rect x="20" y="32" width="24" height="4.5" fill="#1B6E3C"/>
+    <g stroke="#1B6E3C" stroke-width="1.8">
+      <path d="M32 32v14"/>
+      <path d="M20 41.2h24"/>
+    </g>
+  </g>
+  <rect x="20" y="32" width="24" height="14" rx="1.5" fill="none" stroke="#1B6E3C" stroke-width="1.8"/>
+</svg>
