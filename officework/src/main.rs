@@ -743,3 +743,48 @@ fn main() {
         cx.activate(true);
     });
 }
+
+#[cfg(all(test, unix))]
+#[allow(non_snake_case)]
+mod tests {
+    use super::*;
+
+    /// **`path` が宛先になる命令とならない命令**(2026-08-20 に壊れていた)。
+    ///
+    /// `save` の `path` は書き出す先です。宛先と読むと「その名前のタブを
+    /// 探す」になり、まだ無いので断られます — 名前を付けて保存が道具から
+    /// 使えなくなります。
+    #[test]
+    fn 保存先の道を宛先と読まない() {
+        for cmd in ["open", "save", "to_pdf"] {
+            let line = format!("{{\"cmd\":\"{cmd}\",\"path\":\"/tmp/新しい名前.docx\"}}");
+            assert_eq!(宛先(&line), None, "{cmd} の path を宛先と読んでいる");
+        }
+    }
+
+    /// 操作の命令に付いた `path` は、いままでどおり宛先です(段10)。
+    #[test]
+    fn 操作の命令の道は宛先() {
+        let line = "{\"cmd\":\"get\",\"path\":\"/tmp/台帳.sheet.adoc\",\"a1\":\"A1\"}";
+        assert_eq!(宛先(line), Some("/tmp/台帳.sheet.adoc".to_string()));
+        // 付いていなければ、いま見ているタブが相手
+        assert_eq!(宛先("{\"cmd\":\"get\",\"a1\":\"A1\"}"), None);
+    }
+
+    /// `open` の道は「開く相手」として別の口が拾います。
+    #[test]
+    fn 開く命令の道は開く相手() {
+        let line = "{\"cmd\":\"open\",\"path\":\"/tmp/台帳.sheet.adoc\"}";
+        assert_eq!(開くファイル(line).as_deref(), Some("/tmp/台帳.sheet.adoc"));
+        assert_eq!(開くファイル("{\"cmd\":\"get\",\"a1\":\"A1\"}"), None);
+    }
+
+    /// **名前で行き先の画面が決まる**(中身は見ません)。
+    #[test]
+    fn 名前で表か文章かを決める() {
+        assert!(表か(std::path::Path::new("/tmp/台帳.sheet.adoc")));
+        assert!(表か(std::path::Path::new("/tmp/台帳.xlsx")));
+        assert!(!表か(std::path::Path::new("/tmp/報告書.adoc")));
+        assert!(!表か(std::path::Path::new("/tmp/報告書.docx")));
+    }
+}
