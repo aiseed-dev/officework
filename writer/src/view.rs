@@ -914,6 +914,25 @@ impl Render for Writer {
                                 this.run_cmd("darkmode", cx);
                                 cx.notify()
                             }))))
+                    // **コメントの名乗り**(2026-08-20 発注者「双方でできる
+                    // ようにしたいです」)。器は表と同じ `user_name`。
+                    // **未設定なら名乗りません** — 機械のユーザー名は使わない
+                    .child(div().flex().flex_row().items_center().gap_2()
+                        .child(div().w(px(200.0)).text_color(th_status)
+                            .child(ui::t!("コメントの名乗り")))
+                        .child(div().id("set-username")
+                            .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                            .child(SharedString::from({
+                                let a = ui::comment_author();
+                                if a.is_empty() { ui::t!("(名乗らない)").to_string() } else { a }
+                            }))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.cmt_name_edit = true;
+                                this.cmt_name_ed = Editor::new(&ui::comment_author());
+                                this.status =
+                                    ui::t!("名乗りを打って Enter(空にすると名乗りません)").into();
+                                cx.notify()
+                            }))))
                     // **反復計算**(2026-08-20 発注者「双方でできるように
                     // したいです」)。文書の表もセル関数を持つので、循環参照を
                     // 回して解く道は表計算と同じに要る。器はアプリの設定 —

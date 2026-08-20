@@ -513,6 +513,12 @@ impl Writer {
             cx.notify();
             return;
         }
+        if self.cmt_name_edit {
+            self.cmt_name_edit = false;
+            self.status = "".into();
+            cx.notify();
+            return;
+        }
         if self.cmt_edit {
             self.cmt_edit = false;
             self.status = "".into();
@@ -734,6 +740,19 @@ impl Writer {
         }
         if self.pw_open {
             self.pw_commit();
+            cx.notify();
+            return;
+        }
+        // **名乗りを決める**(詳細設定)。空にすると名乗りません
+        if self.cmt_name_edit {
+            let 名 = self.cmt_name_ed.text().trim().to_string();
+            ui::settings::set("user_name", &名);
+            self.cmt_name_edit = false;
+            self.status = if 名.is_empty() {
+                ui::t!("コメントに名乗りません").into()
+            } else {
+                ui::tf!("これから「{}」で名乗ります", 名).into()
+            };
             cx.notify();
             return;
         }

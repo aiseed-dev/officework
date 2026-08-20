@@ -460,6 +460,33 @@ pub fn toggle_calc_iter(cur: Option<(u32, f64)>, persist: bool) -> (Option<(u32,
     (next, msg)
 }
 
+/// **画面の文字の大きさの倍率**(`settings.toml` の `ui_scale`)。
+///
+/// 既定は 1.0。0.8〜1.5 の外は丸めます。設定していなければ 1.0 です。
+///
+/// *どこに効くか* — 表(calc)の画面と、officework が自分で描く物
+/// (ファイルのタブの行)です。**文章(writer)の本文には効きません。**
+/// 本文の大きさは文書のスタイルが決めることで、画面の設定で動かすと
+/// 印刷した紙と画面が食い違うためです(2026-08-20 発注者)。
+pub fn ui_scale() -> f32 {
+    settings::get("ui_scale")
+        .and_then(|v| v.parse::<f32>().ok())
+        .map(|v| v.clamp(0.8, 1.5))
+        .unwrap_or(1.0)
+}
+
+/// **コメントに残す名乗り**(`settings.toml` の `user_name`)。
+///
+/// 設定していなければ**空 = 名乗りません**。設定の画面が「(名乗らない)」と
+/// 出している以上、そう振る舞うのが約束です。
+///
+/// *機械のユーザー名(`$USER`)は使いません。* 文章の側は前まで `$USER` を
+/// 黙って入れていて、**配った docx に OS の利用者名が乗って**いました
+/// (2026-08-20 に気づいた)。名乗るかどうかは人が決めることです。
+pub fn comment_author() -> String {
+    settings::get("user_name").map(|s| s.trim().to_string()).unwrap_or_default()
+}
+
 pub fn now_stamp() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

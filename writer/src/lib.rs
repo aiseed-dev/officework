@@ -329,6 +329,10 @@ pub struct Writer {
     hf_edit: Option<bool>,
     hf_ed: Editor,
     /// コメントのパネル(開いている間、打鍵はここに入る)と、付け先の段落番号
+    /// **名乗りを打っている最中か**(詳細設定の「コメントの名乗り」)。
+    /// 器は `settings.toml` の `user_name` で、表と同じ
+    cmt_name_edit: bool,
+    cmt_name_ed: Editor,
     cmt_edit: bool,
     cmt_ed: Editor,
     cmt_para: usize,
@@ -615,6 +619,8 @@ impl HasEditor for Writer {
             if self.find_field == 0 { &mut self.find_ed } else { &mut self.repl_ed }
         } else if self.hf_edit.is_some() {
             &mut self.hf_ed
+        } else if self.cmt_name_edit {
+            &mut self.cmt_name_ed
         } else if self.cmt_edit {
             &mut self.cmt_ed
         } else if self.wm_edit {
@@ -682,6 +688,8 @@ impl HasEditor for Writer {
             if self.find_field == 0 { &self.find_ed } else { &self.repl_ed }
         } else if self.hf_edit.is_some() {
             &self.hf_ed
+        } else if self.cmt_name_edit {
+            &self.cmt_name_ed
         } else if self.cmt_edit {
             &self.cmt_ed
         } else if self.wm_edit {
@@ -773,7 +781,10 @@ impl HasEditor for Writer {
         if self.cmt_edit {
             // コメントのパネル。空にすると外れる(1つ目のコメントを編集する)
             let text = self.cmt_ed.text().to_string();
-            let author = std::env::var("USER").unwrap_or_else(|_| ui::t!("私").into());
+            // **名乗りは設定から**(表と同じ器)。設定していなければ空 =
+            // 名乗らない。前は `$USER` を黙って入れていて、配った docx に
+            // OS の利用者名が乗っていた(2026-08-20)
+            let author = ui::comment_author();
             let pi = self.cmt_para;
             let mut i = 0usize;
             for b in &mut self.doc.blocks {
@@ -866,6 +877,7 @@ impl Writer {
             || self.find_open
             || self.hf_edit.is_some()
             || self.cmt_edit
+            || self.cmt_name_edit
             || self.wm_edit
             || self.bm_open
             || self.url_open

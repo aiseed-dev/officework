@@ -179,10 +179,7 @@ impl Calc {
             auto_filter: None,
             filter_panel: None,
             dv_dlg: None,
-            ui_scale: ui::settings::get("ui_scale")
-                .and_then(|v| v.parse::<f32>().ok())
-                .map(|v| v.clamp(0.8, 1.5))
-                .unwrap_or(1.0),
+            ui_scale: ui::ui_scale(),
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             sheet_ui: Vec::new(),

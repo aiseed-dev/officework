@@ -3350,7 +3350,7 @@ impl Calc {
                 };
                 // 名乗りは共同編集の名前を使う。無ければ空のまま —
                 // **「不明」のような名前を作らない**
-                let who = ui::settings::get("user_name").unwrap_or_default();
+                let who = ui::comment_author();
                 th.entries.push(sheet::model::CommentEntry { who, when: String::new(), text: t });
                 self.dirty = true;
                 self.status =

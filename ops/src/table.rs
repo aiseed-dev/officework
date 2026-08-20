@@ -88,7 +88,7 @@ pub fn fill_with(doc: &mut kumihan::Document, iter: Option<(u32, f64)>) -> usize
     let mut 直した = 0;
     for b in doc.blocks.iter_mut() {
         let kumihan::Block::Table(t) = b else { continue };
-        let 値 = values(t);
+        let 値 = values_with(t, iter);
         for (r, row) in t.rows.iter_mut().enumerate() {
             // 格子の桁。結合した升はそのぶん進みます
             let mut c = 0usize;
@@ -167,6 +167,28 @@ mod tests {
         assert!(!反復[0][0].contains('#'), "反復しても印のまま: {反復:?}");
     }
 
+    /// **写しに答えを入れる道でも反復が効く。**
+    ///
+    /// `display_with` だけ試験して安心していたら、`fill_with` が受け取った
+    /// 設定を捨てて `values` を呼んでいました(2026-08-20 に見つけた)。
+    /// 保存する docx はこちらの道を通るので、**画面では落ち着いた値なのに
+    /// 配ったファイルは循環参照の印**という食い違いが出ていました
+    #[test]
+    fn 写しに入れる道でも反復が効く() {
+        let mut d = kumihan::Document::default();
+        d.blocks.push(kumihan::Block::Table(表("", false, &[&["=B1+1", "=A1"]])));
+        let mut 反復 = d.clone();
+        fill_with(&mut 反復, Some((100, 1e-9)));
+        let kumihan::Block::Table(t) = &反復.blocks[0] else { panic!() };
+        let 出 = kumihan::paras_text(&t.rows[0][0].paragraphs);
+        assert!(!出.contains('#'), "写しの道に反復が効いていない: {出:?}");
+        // 設定なしはいままでどおり印
+        let mut 素 = d.clone();
+        fill_with(&mut 素, None);
+        let kumihan::Block::Table(t) = &素.blocks[0] else { panic!() };
+        assert!(kumihan::paras_text(&t.rows[0][0].paragraphs).contains('#'), "既定が変わった");
+    }
+
     /// **設定を渡さない道は今までどおり。** 既定で反復しないのは
     /// Excel と同じで、循環参照は黙って値にせず印で言う
     #[test]
@@ -175,7 +197,7 @@ mod tests {
         assert_eq!(display(&t), display_with(&t, None), "既定が変わった");
     }
 
-    /// 字の並びから表を作る(試験の下ごしらえ)    /// 字の並びから表を作る(試験の下ごしらえ)
+    /// 字の並びから表を作る(試験の下ごしらえ)
     fn 表(title: &str, header: bool, rows: &[&[&str]]) -> Table {
         Table {
             rows: rows

@@ -538,6 +538,10 @@ impl Render for Office {
                 .bg(地)
                 .border_b_1()
                 .border_color(線);
+            // **文字の大きさの設定を、ここでも読む**(2026-08-20 発注者)。
+            // 表の画面だけ大きくなって、その上のタブの行が元のままだと
+            // 揃いません
+            let 倍 = ui::ui_scale();
             for i in 0..self.tabs.len() {
                 let on = i == self.at;
                 let mut 札 = self.tabs[i].名(cx);
@@ -555,7 +559,7 @@ impl Render for Office {
                         .bg(if on { 選 } else { gpui::transparent_black().into() })
                         .border_1()
                         .border_color(if on { 線 } else { gpui::transparent_black().into() })
-                        .text_size(px(11.5))
+                        .text_size(px(倍 * 11.5))
                         .text_color(if on { 字 } else { 薄字 })
                         .child(gpui::SharedString::from(札))
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -575,7 +579,7 @@ impl Render for Office {
                         .px_1()
                         .rounded_sm()
                         .cursor_pointer()
-                        .text_size(px(11.0))
+                        .text_size(px(倍 * 11.0))
                         .text_color(薄字)
                         .child("×")
                         .on_click(cx.listener(move |this, _, _, cx| {
