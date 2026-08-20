@@ -196,6 +196,71 @@ pub fn run_cx<S: FileScreen + Sized + 'static>(
     }
 }
 
+
+// ---- 右の面 ------------------------------------------------------------
+
+/// 右の面の色。**画面のテーマから受け取ります**(ここでは決めない)。
+pub struct PaneLook {
+    pub fg: gpui::Rgba,
+    pub dim: gpui::Rgba,
+    pub hover: gpui::Rgba,
+    /// 画面の拡大率(表は `us` を掛ける。文章は 1.0)
+    pub scale: f32,
+}
+
+/// 面の見出し。
+pub fn pane_title(look: &PaneLook, t: &str) -> gpui::Div {
+    use gpui::prelude::*;
+    gpui::div()
+        .text_size(gpui::px(look.scale * 16.0))
+        .font_weight(gpui::FontWeight::BOLD)
+        .text_color(look.fg)
+        .child(gpui::SharedString::from(t.to_string()))
+}
+
+/// 「最近開いた」が空のときの一言。
+pub fn recent_empty(look: &PaneLook) -> gpui::Div {
+    use gpui::prelude::*;
+    gpui::div()
+        .text_color(look.dim)
+        .child(crate::t!("(まだありません。開く・保存すると残ります)"))
+}
+
+/// 「最近開いた」の1行(名前と、その置き場)。
+///
+/// **押す結び付けは付いていません** — 呼ぶ側が `.on_click(cx.listener(…))`
+/// を足します(`ui::filelist::row` と同じ作法)。
+pub fn recent_row(look: &PaneLook, i: usize, p: &std::path::Path) -> gpui::Stateful<gpui::Div> {
+    use gpui::prelude::*;
+    let s = look.scale;
+    let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    let dir = p.parent().map(|d| d.to_string_lossy().to_string()).unwrap_or_default();
+    let hover = look.hover;
+    gpui::div()
+        .id(gpui::SharedString::from(format!("recent-{i}")))
+        .px_2()
+        .py_1()
+        .rounded_sm()
+        .cursor_pointer()
+        .hover(move |st| st.bg(hover))
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap_2()
+        .child(
+            gpui::div()
+                .text_size(gpui::px(s * 13.0))
+                .text_color(look.fg)
+                .child(gpui::SharedString::from(name)),
+        )
+        .child(
+            gpui::div()
+                .text_size(gpui::px(s * 11.0))
+                .text_color(look.dim)
+                .child(gpui::SharedString::from(dir)),
+        )
+}
+
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod tests {

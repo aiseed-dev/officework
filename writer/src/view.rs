@@ -951,30 +951,18 @@ impl Render for Writer {
                             .unwrap_or_else(|_| ui::t!("(自動: .venv → python3)").into())))
                     .child(row(ui::t!("名前(ロック・チャット・署名)"), lock_identity()));
             } else if self.file_view == 1 {
-                pane = pane.child(div().text_size(px(16.0))
-                    .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("最近開いた")));
+                // **最近開いたの面は ui::filemenu の1本**(段8 の3)。
+                // 押したときの行き先だけがアプリの物
+                let look = ui::filemenu::PaneLook {
+                    fg: th_top_fg, dim: th_status, hover: item_bg, scale: 1.0,
+                };
+                pane = pane.child(ui::filemenu::pane_title(&look, ui::t!("最近開いた")));
                 let list = Self::recent_list();
                 if list.is_empty() {
-                    pane = pane.child(div().text_color(th_status)
-                        .child(ui::t!("(まだありません。開く・保存すると残ります)")));
+                    pane = pane.child(ui::filemenu::recent_empty(&look));
                 }
                 for (i, q) in list.into_iter().enumerate() {
-                    let name = q.file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_default();
-                    let dir = q.parent()
-                        .map(|d| d.to_string_lossy().to_string())
-                        .unwrap_or_default();
-                    pane = pane.child(div()
-                        .id(SharedString::from(format!("recent-{i}")))
-                        .px_2().py_1().rounded_sm().cursor_pointer()
-                        .hover(move |s| s.bg(item_bg))
-                        .flex().flex_row().items_center().gap_2()
-                        .child(div().text_size(px(13.0))
-                            .child(SharedString::from(name)))
-                        .child(div().text_size(px(11.0)).text_color(th_status)
-                            .child(SharedString::from(dir)))
+                    pane = pane.child(ui::filemenu::recent_row(&look, i, &q)
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.tab = this.prev_tab;
                             this.open(q.clone());
