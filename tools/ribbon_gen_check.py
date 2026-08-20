@@ -81,6 +81,48 @@ def main() -> int:
         return 1
     n = sum(len(t.cmds) for 表 in ("WRITER", "CALC") for t in real[表])
     print(f"生成スクリプトは実物を再現できます(タブ {len(real['WRITER']) + len(real['CALC'])}・ボタン {n})")
+
+    # **14 言語の表も作り直せるか。** ja だけ作り直せても、他が手で
+    # 直されたままなら、次に足したボタンでまた食い違います
+    sys.path.insert(0, str(ROOT / "ui"))
+    import locales  # noqa: E402
+
+    悪い = []
+    for loc in ["en"] + [t for t in locales.TAGS if t != "en"]:
+        r = subprocess.run(
+            [sys.executable, str(ROOT / "ui" / "gen_ribbon_locale.py"), loc],
+            capture_output=True, text=True, cwd=ROOT, timeout=600,
+        )
+        if r.returncode != 0:
+            悪い.append(f"{loc}: 作り直せません\n  " + r.stderr.strip()[-300:])
+            continue
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".rs", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(r.stdout)
+            t2 = pathlib.Path(f.name)
+        try:
+            g2 = R.tables_or_die(t2)
+        finally:
+            t2.unlink(missing_ok=True)
+        c2 = R.tables_or_die(ROOT / "face" / "src" / f"ribbon_{loc.replace('-', '_')}.rs")
+        d = [
+            f"{表}/{t3.name}: 生成 {x.label!r} / 実物 {y.label!r}"
+            for 表 in ("WRITER", "CALC")
+            for t3, t4 in zip(g2[表], c2[表])
+            for x, y in zip(t3.cmds, t4.cmds)
+            if (x.kind, x.id, x.label, x.icon) != (y.kind, y.id, y.label, y.icon)
+        ]
+        if d:
+            悪い.append(f"{loc}: {len(d)} 行ちがう\n  " + "\n  ".join(d[:4]))
+    if 悪い:
+        print("::error::言語の表が作り直せません(または作り直すと違う物になります)")
+        for b in 悪い:
+            print(b)
+        print()
+        print("訳が足りないときは ui/gen_ribbon_locale.py の OVERRIDES に足します")
+        return 1
+    print(f"{len(locales.TAGS) + 1} 言語の表も作り直せます")
     return 0
 
 

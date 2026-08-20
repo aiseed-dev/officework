@@ -144,6 +144,10 @@ OVERRIDES = {
     },
     # vendor のロケールに無い語の穴埋め(gen_lang.py が材料の訳と併用する)
     "zh-tw": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Python 函式",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "功能區的巨集",
         "操作を記録": "記錄操作",
         # 本家の台湾語は「尋找和引用」— **引用は大陸の言い方**。
         # こちらの台湾語の材料は 參照 26 回・引用 0 回で、台湾の Excel も
@@ -230,6 +234,10 @@ OVERRIDES = {
         "宛先": "目的地",
 },
     "it": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Funzioni Python",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "Macro della barra",
         "操作を記録": "Registra azioni",
         "書式のコピー": "Copia formato",
         "スタイル": "Stile",
@@ -319,6 +327,10 @@ OVERRIDES = {
         "小計": "Subtotali",
 },
     "tr": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Python işlevleri",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "Şerit makroları",
         "操作を記録": "İşlemleri kaydet",
         "書式のコピー": "Biçim boyacısı",
         "スタイル": "Stil",
@@ -426,6 +438,10 @@ OVERRIDES = {
         "小計": "Ara toplamlar",
 },
     "id": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Fungsi Python",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "Makro pita",
         "操作を記録": "Rekam tindakan",
         "書式のコピー": "Salin format",
         "スタイル": "Gaya",
@@ -523,6 +539,10 @@ OVERRIDES = {
         "小計": "Subtotal",
 },
     "vi": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Hàm Python",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "Macro ruy-băng",
         "操作を記録": "Ghi thao tác",
         "書式のコピー": "Sao chép định dạng",
         "スタイル": "Kiểu",
@@ -689,6 +709,10 @@ OVERRIDES = {
         "操作を記録": "Ghi lại thao tác",
 },
     "de": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Python-Funktionen",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "Menüband-Makros",
         "操作を記録": "Aktionen aufzeichnen",
         "書式のコピー": "Format übertragen",
         "スタイル": "Stil",
@@ -772,6 +796,10 @@ OVERRIDES = {
         "小計": "Teilergebnisse",
 },
     "es": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Funciones de Python",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "Macros de la cinta",
         "操作を記録": "Grabar acciones",
         "書式のコピー": "Copiar formato",
         "スタイル": "Estilo",
@@ -853,6 +881,10 @@ OVERRIDES = {
         "宛先": "Destino",
 },
     "fr": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Fonctions Python",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "Macros du ruban",
         "操作を記録": "Enregistrer les actions",
         "書式のコピー": "Copier le format",
         "スタイル": "Style",
@@ -934,6 +966,10 @@ OVERRIDES = {
         "宛先": "Destination",
 },
     "pt-br": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Funções Python",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "Macros da faixa",
         "操作を記録": "Gravar ações",
         # ブラジル**だけ**を分ける札(2026-08-11 発注者)
         # 本家のブラジル語そのものが誤っていた3語。ブラジル語としても
@@ -1025,6 +1061,10 @@ OVERRIDES = {
         "読み取り専用を勧める": "Sugerir só de leitura",
 },
     "pt": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Funções Python",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "Macros do friso",
         "操作を記録": "Gravar ações",
         # **本家の欧州ファイル(pt-pt.json)は薄い。** 21 語は訳が無く、
         # 2 語はブラジル語が紛れていた("Estilo de porcentagem"、
@@ -1143,6 +1183,10 @@ OVERRIDES = {
         "画面の文字を小さく": "Diminuir o texto do ecrã",
 },
     "ru": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Функции Python",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "Макросы ленты",
         "操作を記録": "Записать действия",
         "書式のコピー": "Формат по образцу",
         "スタイル": "Стиль",
@@ -1226,6 +1270,10 @@ OVERRIDES = {
         "暗号化する": "Зашифровать",
 },
     "ko": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Python 함수",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "리본 매크로",
         "操作を記録": "조작 기록",
         "書式のコピー": "서식 복사",
         "スタイル": "스타일",
@@ -1309,6 +1357,10 @@ OVERRIDES = {
         "操作を記録": "동작 기록",
 },
     "zh": {
+        # 式から呼べる Python の関数の一覧(本家に無い)
+        "Python の関数": "Python 函数",
+        # リボンに出るマクロの一覧(本家に無い)
+        "リボンのマクロ": "功能区的宏",
         "操作を記録": "记录操作",
         "書式のコピー": "格式刷",
         "スタイル": "样式",
