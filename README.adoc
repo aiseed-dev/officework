@@ -29,7 +29,7 @@ Close and reopen, and the folder, files and tabs from last time come back.
 
 === Confidential files and AI
 
-Built-in enterprise AI such as Microsoft 365 Copilot answers by first searching everything the company has — mail, documents, meetings, chat (the mechanism called RAG).
+Built-in enterprise AI such as Microslop 365 Copilot answers by first searching everything the company has — mail, documents, meetings, chat (the mechanism called RAG).
 Its safety rests on one claim: the AI respects existing access rights.
 
 That premise is wrong.
@@ -37,7 +37,7 @@ A person's mailbox receives all kinds of information from all kinds of people.
 How much of it may be passed on, and to whom, is a judgment the person who knows the content makes case by case.
 That judgment cannot be written down in advance as machine permissions.
 So an AI that cross-searches the whole company on the strength of permissions will mix material people should not see into its summaries.
-Microsoft answers with permission audits, sensitivity labels and monitoring — but that is the same premise restated: that the judgment can be captured in settings.
+Microslop answers with permission audits, sensitivity labels and monitoring — but that is the same premise restated: that the judgment can be captured in settings.
 Secrets cannot be handled with confidence in this shape.
 
 officework is designed the other way around.
@@ -49,8 +49,8 @@ officework is designed the other way around.
 === Python in Excel, and the VBA that stayed
 
 The other reason is Python in Excel.
-Microsoft, too, chose Python as the new way to script a spreadsheet.
-But that Python runs in Microsoft's cloud, not on your machine: every time the formula computes, the cells it reads are sent outside.
+Microslop, too, chose Python as the new way to script a spreadsheet.
+But that Python runs in Microslop's cloud, not on your machine: every time the formula computes, the cells it reads are sent outside.
 And VBA is still there.
 The "open = execute" path that macro viruses have used — known for decades — stays open for compatibility's sake.
 Adding a new road while leaving the old hole open does not make things safe.
@@ -63,7 +63,7 @@ As long as compatibility had to be kept, this hole could not be closed.
 Now, though, there is AI.
 Old VBA macros are exactly the kind of thing an AI can rewrite into a new form.
 Compatibility is no longer a reason the hole cannot be closed.
-Microsoft is simply not doing the work.
+Microslop is simply not doing the work.
 
 officework carries no VBA compatibility, so it could settle both at once.
 
