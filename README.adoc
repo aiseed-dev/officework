@@ -351,7 +351,7 @@ Origins of bundled and derived material are listed in `NOTICE.md`.
 
 == Status
 
-Ribbon buttons: *writer 0 grayed out, calc 9* (2026-08-10).
+Ribbon buttons: *writer 5 grayed out, calc 9* — shape tools and view switches on both sides.
 The nine are shape ordering, alignment, grouping and merging on the Layout tab, protecting a workbook or a range on Protect, and the normal and page-break views on View.
 Everything else on both ribbons works.
 

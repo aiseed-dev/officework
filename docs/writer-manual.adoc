@@ -32,7 +32,7 @@ Edit in adoc, hand over in docx.
 
 From Python you can still edit a docx and write it back (`from officework import doc`); only the screen stops doing it.
 
-*Ribbon: 117 — every button works (zero grayed out).* The button that wraps a docx in a password is gone.
+*Ribbon: 117 — every clickable button works (the only gray ones are the five shape tools).* The button that wraps a docx in a password is gone.
 You can still *open* a password-protected docx.
 
 Three promises:
@@ -702,8 +702,13 @@ It opens only when you press *Load* below — so you look first, and a misclick 
 * A docx you opened *is not edited and saved back* (coming in 0.2.0-alpha). Press "turn into adoc" first, then export to docx
 * (until 0.2.0-alpha) Ctrl+S saves docx. Body, tables, images, and headers are written back; parts we don't understand are carried over from the original file. Elements we couldn't read are noted as "preserved on save"
 
-== No more gray
+== Only five buttons are gray
 
 All 117 ribbon commands work.
-The gray of "don't make it look usable when it isn't" reached *zero* in writer.
+The only grayed-out buttons are the *five shape tools* on the Layout tab —
+bring forward, send backward, align, group, and merge shapes.
+Shapes are not in yet, so the buttons hold their place without being clickable.
+
+That is "don't make it look usable when it isn't": a gray button does nothing
+when you press it. The spreadsheet side works the same way.
 The remaining honest limits are noted in each section above (first-version vertical writing, per-change accept/reject for tracked changes, no UI yet for creating cell merges).

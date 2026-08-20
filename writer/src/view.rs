@@ -237,6 +237,11 @@ impl Render for Writer {
             ("pagemargins", Some("余白")), ("pageorient", Some("向き")),
             ("pagesize", Some("サイズ")), ("columns", Some("段組み")),
             ("‖", None), ("line-numbers", None), ("hyphenation", None),
+            // 図形まわりの5つ。**まだ押せません**(図形そのものが入っていない)。
+            // 表の側と同じ扱いで、場所だけ取ります(2026-08-21 発注者
+            // 「calc と同じようにして」)。灰色は絵の名前で引きます
+            ("‖", None), ("img-movefrwd", None), ("img-movebkwd", None),
+            ("img-align", None), ("img-group", None), ("shapes-merge", None),
             ("‖", None), ("watermark", None), ("pagecolor", None),
             ("‖", None), ("colorschemas", None),
         ]];

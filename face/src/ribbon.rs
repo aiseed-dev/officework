@@ -214,6 +214,17 @@ pub const WRITER: &[Tab] = &[
         c("columns", "列の挿入", "columns"),
         c("line-numbers", "行番号を表示する", "line-numbers"),
         c("hyphenation", "ハイフン設定の変更", "hyphenation"),
+        // 図形まわり。本家の並びのとおりで、表の側と同じ扱い
+        // (2026-08-21 発注者「calc と同じようにして」)。
+        //
+        // **本家にはもう1つ「折り返し」があります**(`img-wrapping`)。
+        // 絵の実体がまだ無いので入れていません — 表の側にも無いボタンで、
+        // 絵を描いて icons.rs に足せば、ここに1行足すだけで出ます
+        x("前面ヘ移動", "img-movefrwd"),
+        x("背面ヘ移動", "img-movebkwd"),
+        x("配置", "img-align"),
+        x("グループ化", "img-group"),
+        x("図形を結合", "shapes-merge"),
         c("watermark", "透かしを編集する", "watermark"),
         c("pagecolor", "ページ色の変更", "pagecolor"),
         c("colorschemas", "配色の変更", "colorschemas"),
