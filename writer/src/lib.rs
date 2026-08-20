@@ -1031,6 +1031,7 @@ mod py;
 pub(crate) use py::*;
 mod util;
 pub(crate) use util::*;
+mod filepage;
 mod view;
 mod panels;
 pub(crate) use panels::Panels;

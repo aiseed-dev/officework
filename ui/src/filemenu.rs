@@ -197,6 +197,103 @@ pub fn run_cx<S: FileScreen + Sized + 'static>(
 }
 
 
+// ---- 左の列 ------------------------------------------------------------
+
+/// 左の列の色。**画面のテーマから受け取ります**(ここでは決めない)。
+pub struct SideLook {
+    /// 列の地
+    pub bg: gpui::Rgba,
+    /// 右端の線
+    pub border: gpui::Rgba,
+    /// 押せる項目の字
+    pub fg: gpui::Rgba,
+    /// 押せない項目の字
+    pub gray: gpui::Rgba,
+    /// 乗ったとき・いま出している面の地
+    pub hover: gpui::Rgba,
+    /// 画面の拡大率(表は `us` を掛ける。文章は 1.0)
+    pub scale: f32,
+}
+
+/// 場所の控え(点検の道具が座標を当てずに押せるように)。
+pub type Boxes =
+    std::rc::Rc<std::cell::RefCell<std::collections::HashMap<&'static str, (f32, f32, f32, f32)>>>;
+
+/// **左の列を描く**(統合の段8 の本体。2026-08-20)。
+///
+/// 項目の並びは `file_menu()` が、押したときの中身は `file_menu_click()` が
+/// 持ちます。ここが持つのは*並べ方と見た目*だけです。
+///
+/// 呼ぶ側が3つあります — 文章の画面、表の画面、そして officework です。
+/// 前は同じ 40 行が2箇所に写してあり、片方だけ直る型でした。
+///
+/// `boxes` を渡すと、項目1つずつの位置を控えます。渡さなければ控えません。
+pub fn sidebar<V: gpui::Render>(
+    look: &SideLook,
+    items: &[Item],
+    boxes: Option<Boxes>,
+    cx: &mut gpui::Context<V>,
+    on: impl Fn(&mut V, &'static str, &mut gpui::Context<V>) + Clone + 'static,
+) -> gpui::Div {
+    use gpui::prelude::*;
+    use gpui::{div, px, SharedString};
+    let s = look.scale;
+    let (fg, gray, hover) = (look.fg, look.gray, look.hover);
+    let mut sb = div()
+        .w(px(280.0))
+        .bg(look.bg)
+        .border_r_1()
+        .border_color(look.border)
+        .flex()
+        .flex_col()
+        .py_2();
+    let 下寄せの頭 = items.iter().position(|x| x.tail);
+    for (k, it) in items.iter().enumerate() {
+        if Some(k) == 下寄せの頭 {
+            sb = sb.child(div().flex_1());
+        } else if it.gap {
+            sb = sb.child(div().h(px(10.0)));
+        }
+        let id = it.id;
+        let mut d = div().id(id).px_4().py_1p5().text_size(px(s * 13.0));
+        // **控えは最初の子に。** 最後に置くと流れの中で見出しの下に入り、
+        // *1項目ぶん下の箱*を控えます(2026-08-17 に実際に踏んだ)
+        if let Some(bx) = boxes.clone() {
+            d = d.relative().child(
+                gpui::canvas(
+                    move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                        bx.borrow_mut().insert(
+                            id,
+                            (
+                                f32::from(b.origin.x),
+                                f32::from(b.origin.y),
+                                f32::from(b.size.width),
+                                f32::from(b.size.height),
+                            ),
+                        );
+                    },
+                    |_, _: (), _, _| {},
+                )
+                .absolute()
+                .size_full(),
+            );
+        }
+        let d = if it.ready {
+            d.text_color(fg).cursor_pointer().hover(move |st| st.bg(hover))
+        } else {
+            d.text_color(gray)
+        }
+        .child(SharedString::from(it.label.clone()));
+        let on = on.clone();
+        let d = d.on_click(cx.listener(move |v, _, _, cx| {
+            on(v, id, cx);
+            cx.notify()
+        }));
+        sb = sb.child(if it.on { d.bg(hover) } else { d });
+    }
+    sb
+}
+
 // ---- 右の面 ------------------------------------------------------------
 
 /// 右の面の色。**画面のテーマから受け取ります**(ここでは決めない)。

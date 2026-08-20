@@ -52,6 +52,7 @@ mod picks;
 pub mod rpc;
 mod cmds;
 mod panels;
+mod filepage;
 mod view;
 mod input;
 mod objects;
