@@ -1872,6 +1872,10 @@ pub type Queue = std::sync::Arc<std::sync::Mutex<Vec<Req>>>;
 ///
 /// 開けなくてもアプリは動きます(黙らず標準エラーにだけ言います)。
 /// `app` は名乗りで、`$XDG_RUNTIME_DIR/officework/<app>.sock` になります。
+///
+/// **Windows では作りません(2026-08-20 発注者)。** `#[cfg(unix)]` は
+/// 移植待ちではなく決めです — 聞き続ける物を、使い道を決めないまま
+/// 増やしません。
 #[cfg(unix)]
 pub fn listen(app: &'static str, queue: Queue) -> bool {
     use std::io::{BufRead as _, Write as _};

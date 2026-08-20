@@ -56,6 +56,15 @@ JocalcError = OfficeworkError
 
 
 def sock_path(app):
+    # **Windows ではアプリはソケットを作らない**(2026-08-20 発注者の決め)。
+    # ここで理由を言って断る — 黙って進むと AF_UNIX が無いという
+    # 分かりにくいエラーで落ちる
+    if os.name == "nt":
+        raise OfficeworkError(
+            "Windows ではアプリのソケットを作らないので、橋(officework.calc)は"
+            "使えません。エンジン(officework.sheet / officework.doc)は"
+            "そのまま使えます"
+        )
     base = os.environ.get("XDG_RUNTIME_DIR")
     if base:
         p = os.path.join(base, "officework", app + ".sock")

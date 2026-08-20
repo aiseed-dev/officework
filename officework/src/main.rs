@@ -16,6 +16,7 @@ use gpui::{
 use gpui_platform::application;
 
 /// `{"cmd":"open","path":"…"}` の道を取り出す(浅い読み)。
+#[cfg(unix)]
 fn 開くファイル(line: &str) -> Option<String> {
     let o = ops::Jobj::parse(line)?;
     (o.str("cmd")? == "open").then(|| o.str("path"))?
@@ -25,6 +26,7 @@ fn 開くファイル(line: &str) -> Option<String> {
 ///
 /// 道具(MCP・Python の橋)が「開いてから操作する」を1往復でできるように
 /// します。付いていなければ、いま見ているタブが相手です。
+#[cfg(unix)]
 fn 宛先(line: &str) -> Option<String> {
     let o = ops::Jobj::parse(line)?;
     if o.str("cmd")? == "open" {
@@ -357,6 +359,9 @@ impl Office {
     /// 来た要求は*いま見せている画面*へ渡します。表を見ているなら表の動詞、
     /// 文章を見ているなら文章の動詞が効きます。どちらを見ているかは
     /// `{"cmd":"ping"}` の答えの `showing` で分かります。
+    ///
+    /// **Windows では作りません**(2026-08-20 発注者。ops::listen の注記)。
+    #[cfg(unix)]
     fn 受け口(view: gpui::Entity<Office>, cx: &mut App) {
         let queue: ops::Queue = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         if !ops::listen("officework", queue.clone()) {
@@ -372,7 +377,7 @@ impl Office {
                 if reqs.is_empty() {
                     continue;
                 }
-                let _ = view.update(cx, |this, cx| {
+                view.update(cx, |this, cx| {
                     for req in reqs {
                         let resp = this.捌く(&req.line, cx);
                         let _ = req.reply.send(resp);
@@ -385,6 +390,7 @@ impl Office {
     }
 
     /// 1要求を、いま見せている画面へ渡す。
+    #[cfg(unix)]
     fn 捌く(&mut self, line: &str, cx: &mut Context<Self>) -> String {
         // `ping` だけはここで答える(どちらを見ているかを言うため)
         if line.contains("\"ping\"") {
@@ -634,7 +640,10 @@ fn main() {
                 view.update(cx, |this, cx| {
                     window.focus(&this.見ている().focus(cx), cx)
                 });
-                // **受け口を開く。** 名前は officework の1つ
+                // **受け口を開く。** 名前は officework の1つ。
+                // Windows ではソケットを作らない(決め — SEKKEI「受け口は
+                // writer にも」の節)
+                #[cfg(unix)]
                 Office::受け口(view.clone(), cx);
                 // **閉じるときは全部のタブに聞きます。**
                 //
