@@ -94,6 +94,13 @@ pub trait FileScreen: crate::appcmd::Screen {
         Self: Sized;
     /// 名前の付いた段へ移る(「保護」など)
     fn goto_tab_named(&mut self, name: &str);
+
+    /// ファイルのページに**保護の一覧**を持っているか。持っていれば自分で
+    /// その面へ切り替えて真を返します。持っていなければ偽で、リボンの
+    /// 保護タブへ飛びます
+    fn protect_page(&mut self) -> bool {
+        false
+    }
 }
 
 /// **共通の腕を捌く。** 捌いたら真、アプリの番なら偽。
@@ -195,7 +202,11 @@ pub fn run_cx<S: FileScreen + Sized + 'static>(
             true
         }
         "f-protect" => {
-            s.goto_tab_named("保護");
+            // 表の側はファイルのページに保護の一覧を持っています。文章の側は
+            // まだ無いので、リボンの保護タブへ飛ばします
+            if !s.protect_page() {
+                s.goto_tab_named("保護");
+            }
             true
         }
         _ => false,

@@ -3225,7 +3225,8 @@ impl Render for Calc {
                 "prop-desc" => ui::t!("ブックの情報 — コメント").to_string(),
                 "textart" => ui::t!("テキストアート — 飾り文字にする文字を打つ").to_string(),
                 "pw-open" => ui::t!("暗号化されたブック — パスワード").to_string(),
-                "pw-set" => ui::t!("暗号化 — パスワード(空にして Enter で暗号化をやめる)").to_string(),
+                "pw-set" => ui::t!("暗号化 1/2 — パスワード(空にして Enter で暗号化をやめる)").to_string(),
+                "pw-set2" => ui::t!("暗号化 2/2 — 同じパスワードをもう一度").to_string(),
                 "sheet-rename" => ui::t!("シートの名前の変更").to_string(),
                 "sort-by" => ui::t!("並べ替え — 基準を左から強い順に(例: 金額 降順, 品名)").to_string(),
                 "numfmt-custom" => ui::t!("数値の書式コード(例: #,##0.00 / yyyy/m/d。空 Enter = 一般)").to_string(),
@@ -3262,7 +3263,7 @@ impl Render for Calc {
             // 伏せる欄かどうか。**伏せたまま打ち間違えると気づけない**ので、
             // 目のボタンで一時的に見せられる(2026-08-13、台帳
             // 「パスワード表示/非表示アイコン」)。小窓を開くたび伏せ字に戻る
-            let is_pw = matches!(*kind, "pw-open" | "pw-set");
+            let is_pw = matches!(*kind, "pw-open" | "pw-set" | "pw-set2");
             let mut text = if is_pw && !self.pw_show {
                 "●".repeat(raw.chars().count())
             } else {
@@ -3351,6 +3352,7 @@ impl Render for Calc {
                         "textart" => "太字+縁取り(calc の緑)で描いて、画像としてシートに浮かべます",
                         "pw-open" => "間違えると開けません(パネルは残ります)。Esc で開くのをやめる",
                         "pw-set" => "次の保存から AES-128 で包みます。Excel や LibreOffice でも開けます",
+                        "pw-set2" => "打ち間違えたパスワードで包むと、そのファイルは誰にも開けません。だから2回聞きます",
                         "subtotal-by" => "使える見出しは下の状態行に出ています。並べ替えてから使うと区切りがまとまります",
                         "subtotal-vals" => "空のまま Enter = 数の列全部に入れます。畳んでも小計と総計は残ります",
                         "pivot-rows" | "pivot-cols" => "使える見出しは下の状態行に出ています。Enter で次へ / Esc で取消",
@@ -3909,7 +3911,9 @@ impl Render for Calc {
                     scale: us,
                 },
                 &self.file_menu(),
-                None,
+                // 箱を控える。**点検の道具が座標を当てずに押せる**ように
+                // (2026-08-21。リボンの側は前から控えていた)
+                Some(self.btn_box.clone()),
                 cx,
                 |this: &mut Calc, id, cx| this.file_menu_click(id, cx),
             );

@@ -363,7 +363,7 @@ pub const CALC: &[Tab] = &[
         c("prot-allow", "Operações permitidas", "prot-allow"),
         c("recover", "Recuperar", "recover"),
         c("recover-every", "Intervalo das cópias", "recover-every"),
-        c("read-only-rec", "Sugerir só de leitura", "read-only-rec"),
+        c("read-only-rec", "Sugerir só leitura", "read-only-rec"),
     ]},
     Tab { name: "Mostrar", cmds: &[
         c("sheet-view", "Vista de folha", "sheet-view"),

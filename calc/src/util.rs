@@ -1207,6 +1207,18 @@ pub(crate) fn protect_allow_label(key: &str) -> String {
         .unwrap_or_else(|| key.to_string())
 }
 
+/// 許す操作の要約 — 「14 のうち 3 つを許しています」。
+/// ファイルのページの保護の面に出します。全部の名前を並べると1行に入りません
+pub(crate) fn protect_allow_summary(a: &sheet::model::ProtectAllow) -> String {
+    let items = a.items();
+    let on = items.iter().filter(|(_, v)| *v).count();
+    if on == 0 {
+        ui::t!("何も許していません").to_string()
+    } else {
+        ui::tf!("{} のうち {} つを許しています", items.len(), on).to_string()
+    }
+}
+
 /// 配色(テーマ色の組)の見出し。**中身は sheet 側**([`sheet::theme::SCHEMES`])。
 /// 鍵はそちらの名前そのもの。並びが食い違わないことは tests.rs が見張る
 pub(crate) fn color_schemes() -> Vec<(&'static str, &'static str)> {

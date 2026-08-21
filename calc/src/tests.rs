@@ -2791,6 +2791,62 @@ mod recalc_tests {
         });
     }
 
+    /// **暗号化のパスワードは2回聞く**(2026-08-21 の D群)。
+    ///
+    /// 打ち間違えたパスワードで包むと、そのファイルは誰にも開けません。
+    /// 元に戻す手がないので、ここだけは確かめます。
+    #[gpui::test]
+    fn 暗号化のパスワードは二度打って合わないと掛からない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.run_cmd("prot-encrypt", cx);
+            assert_eq!(this.prompt.as_ref().map(|(k, _)| *k), Some("pw-set"));
+
+            // 1回目。まだ掛からない
+            this.prompt = Some(("pw-set", Editor::new("あいことば")));
+            this.finish_prompt(cx);
+            assert!(this.encrypt_pw.is_none(), "1回で掛かってしまった");
+            assert_eq!(this.prompt.as_ref().map(|(k, _)| *k), Some("pw-set2"), "2回目を聞かない");
+
+            // 違う値。**前の設定は触らない**
+            this.prompt = Some(("pw-set2", Editor::new("あいことは")));
+            this.finish_prompt(cx);
+            assert!(this.encrypt_pw.is_none(), "違うのに掛かった");
+            assert!(this.status.contains("違います"), "{}", this.status);
+            assert!(this.pw_first.is_none(), "1回目が残っている");
+
+            // 同じ値なら掛かる
+            this.run_cmd("prot-encrypt", cx);
+            this.prompt = Some(("pw-set", Editor::new("あいことば")));
+            this.finish_prompt(cx);
+            // 2回目の欄は app が開いています。その欄に同じ字を入れて決める
+            let (k, _) = this.prompt.take().expect("2回目の欄が無い");
+            this.prompt = Some((k, Editor::new("あいことば")));
+            this.finish_prompt(cx);
+            assert_eq!(this.encrypt_pw.as_deref(), Some("あいことば"));
+
+            // 空 Enter は解除。こちらは1回で済ませる(間違えても壊れない)
+            this.run_cmd("prot-encrypt", cx);
+            this.finish_prompt(cx);
+            assert!(this.encrypt_pw.is_none(), "空で解けない");
+            assert!(this.prompt.is_none(), "空なのに2回目を聞いた");
+        });
+    }
+
+    /// **ファイルのページの保護の面**(2026-08-21 の D群)。
+    /// 左の列の「保護する」は、前はリボンの保護タブへ飛ぶだけでした。
+    #[gpui::test]
+    fn ファイルのページに保護の面が出る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.tab = 0;
+            this.file_view = 0;
+            this.file_menu_click("f-protect", cx);
+            assert_eq!(this.file_view, 5, "保護の面へ行かない");
+            assert_eq!(this.tab, 0, "リボンのタブへ飛んでしまった");
+        });
+    }
+
     /// **ウィンドウの分割**(2026-08-21 の D群)。
     ///
     /// 固定と同時には立ちません。帯が二重になって、どちらの線か分からなく
@@ -7221,9 +7277,12 @@ mod file_menu_tests {
                 this.file_menu_click(id, cx);
                 assert_eq!(this.file_view, v, "{id} で面が替わらない");
             }
-            // 保護する は名前で段を引く
+            // 保護する は**ファイルのページの保護の面**へ(2026-08-21)。
+            // 前はリボンの保護タブへ飛んでいた。文章の側はいまも飛びます
+            let 前の段 = this.tab;
             this.file_menu_click("f-protect", cx);
-            assert_eq!(ui::ribbon::CALC[this.tab].name, "保護", "保護の段へ行かない");
+            assert_eq!(this.file_view, 5, "保護の面へ行かない");
+            assert_eq!(this.tab, 前の段, "リボンのタブへ飛んでしまった");
         });
     }
 

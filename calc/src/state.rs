@@ -198,6 +198,7 @@ impl Calc {
             pick_paths: Vec::new(),
             encrypt_pw: None,
             pw_pending: None,
+            pw_first: None,
             goal: None,
             py_spills: Default::default(),
             udf_stamp: Default::default(),

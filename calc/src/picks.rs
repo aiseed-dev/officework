@@ -3035,6 +3035,7 @@ impl Calc {
         self.border_pal = None;
 
         self.pw_pending = None; // パスワード待ちも Esc でやめる(開かない)
+        self.pw_first = None; // 初回の控えも捨てる(途中でやめたら残さない)
         // 入力規則のパネル: 開いたドロップダウン → パネル、の順で閉じる
         if let Some(d) = &mut self.dv_dlg {
             if d.menu != 0 {
@@ -4165,15 +4166,31 @@ impl Calc {
                     }
                 }
             }
+            // **2回聞きます**(2026-08-21 の D群)。打ち間違えたパスワードで
+            // 包むと、そのファイルは誰にも開けません。元に戻す手がありません
             "pw-set" => {
                 if text.is_empty() {
+                    self.pw_first = None;
                     self.encrypt_pw = None;
                     self.status = ui::t!("暗号化しません(次の保存から普通の xlsx)").into();
                 } else {
-                    self.encrypt_pw = Some(text);
+                    self.pw_first = Some(text);
+                    self.pw_show = false;
+                    self.prompt = Some(("pw-set2", Editor::new("")));
+                    self.status = ui::t!("確かめます。同じパスワードをもう一度打って Enter").into();
+                }
+            }
+            "pw-set2" => {
+                let 初回 = self.pw_first.take();
+                if 初回.as_deref() == Some(text.as_str()) {
+                    self.encrypt_pw = 初回;
                     self.dirty = true;
                     self.status =
                         ui::t!("次の保存から、このパスワードで暗号化します(AES-128。Excel や LibreOffice でも開けます)").into();
+                } else {
+                    // **前の設定は触りません。** 半端に掛かった状態を作らない
+                    self.status =
+                        ui::t!("2回のパスワードが違います(暗号化は変えていません。もう一度どうぞ)").into();
                 }
             }
             "equation" => {

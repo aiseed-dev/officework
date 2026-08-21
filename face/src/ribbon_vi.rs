@@ -363,7 +363,7 @@ pub const CALC: &[Tab] = &[
         c("prot-allow", "Thao tác được phép", "prot-allow"),
         c("recover", "Khôi phục", "recover"),
         c("recover-every", "Tần suất sao lưu", "recover-every"),
-        c("read-only-rec", "Gợi ý chỉ đọc", "read-only-rec"),
+        c("read-only-rec", "Khuyên chỉ đọc", "read-only-rec"),
     ]},
     Tab { name: "Hiển thị", cmds: &[
         c("sheet-view", "Hiện trang tính", "sheet-view"),

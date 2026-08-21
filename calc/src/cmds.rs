@@ -41,6 +41,10 @@ impl ui::filemenu::FileScreen for Calc {
     fn set_file_view(&mut self, v: u8) {
         self.file_view = v;
     }
+    fn protect_page(&mut self) -> bool {
+        self.file_view = 5;
+        true
+    }
     fn opened(&self) -> Option<std::path::PathBuf> {
         self.path.clone()
     }
@@ -4207,7 +4211,7 @@ impl Calc {
             I::new("f-print", ui::t!("印刷")),
             I::new("f-csv", ui::t!("CSV に書き出す")),
             I::new("f-html", ui::t!("Web に書き出す")),
-            I::new("f-protect", ui::t!("保護する")),
+            I::new("f-protect", ui::t!("保護する")).on(self.file_view == 5),
             I::new("f-macro", ui::t!("マクロ")),
             I::new("f-info", ui::t!("詳細情報")).gap().on(self.file_view == 0),
             I::new("f-place", ui::t!("ファイルの場所を開く")),

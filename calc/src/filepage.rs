@@ -286,7 +286,7 @@ impl Calc {
                         cx.notify()
                     })));
             }
-        } else {
+        } else if self.file_view != 5 {
             // 統計(生きた値)とブックの情報(docProps/core.xml から)
             let sheets_n = self.book.sheets.len();
             let mut cells_n = 0usize;
@@ -454,6 +454,99 @@ impl Calc {
                 })));
             pane = pane.child(div().text_size(px(us * 11.5)).text_color(dim)
                 .child(ui::t!("欄を押して打ち、Enter で控える(保存で xlsx の情報に入ります)")));
+        }
+        if self.file_view == 5 {
+            // **保護の一覧**(2026-08-21 の D群)。前は左の列の「保護する」を
+            // 押すとリボンの保護タブへ飛ぶだけで、いま何が掛かっているのかは
+            // どこにも出ていませんでした。Excel のファイルタブと同じく、
+            // **今の状態を並べて、そこから変えられる**形にします
+            // ボタンは**自分の場所を控えます**。控えが無いと、点検の道具は
+            // 座標を当てるしかありません(2026-08-21 にソルバーで踏んだ型)
+            let boxes = self.btn_box.clone();
+            let 行 = move |label: SharedString, state: SharedString, on: bool,
+                      btn: SharedString, id: &'static str, cmd: &'static str,
+                      cx: &mut Context<Self>| {
+                let rec = boxes.clone();
+                let 控え = gpui::canvas(move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                    rec.borrow_mut().insert(id, (
+                        f32::from(b.origin.x), f32::from(b.origin.y),
+                        f32::from(b.size.width), f32::from(b.size.height),
+                    ));
+                }, |_, _: (), _, _| {}).absolute().size_full();
+                div().flex().flex_row().items_center().gap_2()
+                    .child(div().w(px(us * 190.0)).text_color(dim).child(label))
+                    .child(div().w(px(us * 250.0))
+                        .text_color(if on { rgb(0x37A16C) } else { gray })
+                        .child(state))
+                    .child(div().id(id).relative()
+                        .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                        .hover(move |s| s.bg(rgb(0xD3D9DE)))
+                        .child(控え)
+                        .child(btn)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            // ファイルのページからは編集の画面へ戻してから走らせる。
+                            // 小窓やパネルはこちらの面には出ません
+                            this.tab = this.prev_tab;
+                            this.file_view = 0;
+                            this.run_cmd(cmd, cx);
+                            cx.notify()
+                        })))
+            };
+            let sh = self.sheet().name.clone();
+            let 保護中 = self.sheet().protected;
+            let 暗号 = self.encrypt_pw.is_some();
+            let 勧め = self.book.read_only_rec;
+            pane = pane
+                .child(div().text_size(px(us * 16.0))
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .child(ui::t!("ブックの保護")))
+                .child(div().text_color(dim)
+                    .child(ui::t!("いま掛かっているものです。押すと編集の画面に戻って続きを聞きます")))
+                .child(div().h(px(6.0)))
+                .child(行(ui::t!("パスワードで暗号化").into(),
+                    if 暗号 {
+                        ui::t!("入っています(次の保存から)").into()
+                    } else {
+                        ui::t!("掛かっていません").into()
+                    },
+                    暗号,
+                    if 暗号 { ui::t!("変える・やめる") } else { ui::t!("パスワードを決める") }.into(),
+                    "f-prot-encrypt", "prot-encrypt", cx))
+                .child(行(ui::t!("シートの保護").into(),
+                    if 保護中 {
+                        ui::tf!("「{}」は保護されています", sh).into()
+                    } else {
+                        ui::tf!("「{}」は保護されていません", sh).into()
+                    },
+                    保護中,
+                    if 保護中 { ui::t!("保護をやめる") } else { ui::t!("このシートを保護する") }.into(),
+                    "f-prot-doc", "prot-doc", cx))
+                .child(行(ui::t!("保護中に許す操作").into(),
+                    SharedString::from(crate::util::protect_allow_summary(
+                        &self.sheet().protect_allow)),
+                    false,
+                    ui::t!("選ぶ").into(), "f-prot-allow", "prot-allow", cx))
+                .child(行(ui::t!("読み取り専用を勧める").into(),
+                    if 勧め {
+                        ui::t!("勧めます(鍵ではありません)").into()
+                    } else {
+                        ui::t!("勧めていません").into()
+                    },
+                    勧め,
+                    if 勧め { ui::t!("やめる") } else { ui::t!("勧める") }.into(),
+                    "f-prot-ro", "read-only-rec", cx))
+                .child(行(ui::t!("デジタル署名").into(),
+                    match self.path.as_deref() {
+                        Some(p) if ops::sig_path_for(p).exists() =>
+                            ui::t!("隣に署名のファイルがあります").into(),
+                        Some(_) => ui::t!("署名していません").into(),
+                        None => ui::t!("まだファイルになっていません").into(),
+                    },
+                    self.path.as_deref().is_some_and(|p| ops::sig_path_for(p).exists()),
+                    ui::t!("署名する・確かめる").into(), "f-prot-sign", "prot-sign", cx))
+                .child(div().h(px(6.0)))
+                .child(div().text_size(px(us * 11.5)).text_color(dim)
+                    .child(ui::t!("シートの保護と読み取り専用の勧めは、鍵ではありません。外そうと思えば外せます。掛けた振りはしません")));
         }
         pane
     }

@@ -363,7 +363,7 @@ pub const CALC: &[Tab] = &[
         c("prot-allow", "İzin verilen işlemler", "prot-allow"),
         c("recover", "Kurtarma", "recover"),
         c("recover-every", "Yedek aralığı", "recover-every"),
-        c("read-only-rec", "Salt okunur öner", "read-only-rec"),
+        c("read-only-rec", "Salt okunuru öner", "read-only-rec"),
     ]},
     Tab { name: "Görüntüle", cmds: &[
         c("sheet-view", "Sayfa Görünümü", "sheet-view"),
