@@ -7537,418 +7537,534 @@
  },
  {
   "i": 1884,
-  "t": "Orientación"
+  "t": "{}: se han resaltado {} celdas precedentes (bórrelas con Quitar flechas)"
  },
  {
   "i": 1885,
-  "t": "Dar formato a celdas"
+  "t": "{}: se han resaltado {} celdas dependientes (bórrelas con Quitar flechas)"
  },
  {
   "i": 1886,
-  "t": "Alinear al medio"
+  "t": "Se ha desprotegido la hoja \"{}\" (ya puede editarla; el cambio se conserva en el xlsx al guardar)"
  },
  {
   "i": 1887,
-  "t": "Funciones de Python"
+  "t": "Se ha protegido la hoja \"{}\" (solo se pueden editar las celdas desbloqueadas; use Acciones permitidas para relajarlo; el mismo botón lo libera. No se pone contraseña, y tampoco fingimos ponerla)"
  },
  {
   "i": 1888,
-  "t": "Macros de la cinta"
+  "t": "Usted ({}) tiene el bloqueo de escritura. Quien abre el libro primero puede escribir; los demás solo leen (el bloqueo es un archivo .~lock)"
  },
  {
   "i": 1889,
-  "t": "Copiar formato"
+  "t": "Se han colocado {} casillas (cámbielas con la barra espaciadora; Excel las muestra como VERDADERO/FALSO{})"
  },
  {
   "i": 1890,
-  "t": "Estilo"
+  "t": "Se ha ocultado la hoja \"{}\" (el mismo botón la devuelve; el cambio se conserva en el xlsx al guardar)"
  },
  {
   "i": 1891,
-  "t": "Lista de campos"
+  "t": "Se vigilan {} celdas (sus valores aparecen en la barra de estado; púlselo otra vez para vaciar la lista)"
  },
  {
   "i": 1892,
-  "t": "Agrandar texto de la pantalla"
+  "t": "¿Por qué columna agrupar? Elija un encabezado: {}"
  },
  {
   "i": 1893,
-  "t": "Reducir texto de la pantalla"
+  "t": "Se han importado {} hojas como valores (no se mantienen vínculos)"
  },
  {
   "i": 1894,
-  "t": "IA"
+  "t": "Se ha añadido {}:{} al área de impresión ({} áreas en total; cada área se imprime en su propia hoja)"
  },
  {
   "i": 1895,
-  "t": "Imprimir"
+  "t": "Las filas {}–{} se repiten en la parte superior de cada página (púlselo sin selección para quitarlo)"
  },
  {
   "i": 1896,
-  "t": "Diseño de impresión"
+  "t": "{} hojas / {} celdas — {}"
  },
  {
   "i": 1897,
-  "t": "Destino"
+  "t": "{} hojas — {}"
  },
  {
   "i": 1898,
-  "t": "Resumen"
+  "t": "{} — **{} lo tiene abierto**. No se puede guardar encima (use Guardar como)"
  },
  {
   "i": 1899,
-  "t": "Reescribir"
+  "t": "Se ha colocado la imagen en {} (entra en el xlsx al guardar)"
  },
  {
   "i": 1900,
-  "t": "Más formal"
+  "t": "Se ha añadido un vínculo en {} (Ctrl+clic para abrirlo)"
  },
  {
   "i": 1901,
-  "t": "Más sencillo"
+  "t": "Se ha colocado el gráfico en {} (entra en el xlsx al guardar)"
  },
  {
   "i": 1902,
-  "t": "Traducción"
+  "t": "Se ha colocado {} ({} de {}) en {} — los valores de ahora. La pestaña Tabla dinámica está abierta (actualizar, totales generales, subtotales y diseño están ahí; Ctrl+Z lo deshace)"
  },
  {
   "i": 1903,
-  "t": "Furigana"
+  "t": "Tabla dinámica actualizada ({} — los valores de ahora; Ctrl+Z lo deshace)"
  },
  {
   "i": 1904,
-  "t": "Continuar"
+  "t": "Funciones: se han calculado {} celdas; {} han dado #¡DESBORDAMIENTO! (ya hay datos donde iría el resultado)"
  },
  {
   "i": 1905,
-  "t": "A tabla"
+  "t": "Funciones: se han calculado {} celdas (Ctrl+Z lo deshace)"
  },
  {
   "i": 1906,
-  "t": "Pedir"
+  "t": "Se ha colocado {} en {} (como imagen; entra en el xlsx al guardar; Ctrl+Z lo deshace en un paso)"
  },
  {
   "i": 1907,
-  "t": "Ruby"
+  "t": "Ecuación"
  },
  {
   "i": 1908,
-  "t": "Vertical"
+  "t": "Arte de texto"
  },
  {
   "i": 1909,
-  "t": "Dirección del texto"
+  "t": "Se ha colocado {} en {} ({} formas; seleccione una forma y pulse Entrar para escribir, arrastre para mover; Ctrl+Z las deshace todas en un paso)"
  },
  {
   "i": 1910,
-  "t": "Distribuido"
+  "t": "Resuelto: {} = {} (se han reescrito {} celdas de variables; Ctrl+Z lo deshace en un paso)"
  },
  {
   "i": 1911,
-  "t": "Insertar título"
+  "t": "Con {} = {}, {} pasa a ser {} (Ctrl+Z lo deshace)"
  },
  {
   "i": 1912,
-  "t": "Abrir URL"
+  "t": "No se ha encontrado solución ({} puede no afectar a {})"
  },
  {
   "i": 1913,
-  "t": "Índice"
+  "t": "Orientación"
  },
  {
   "i": 1914,
-  "t": "Notas de Aozora"
+  "t": "Dar formato a celdas"
  },
  {
   "i": 1915,
-  "t": "Notación Denden"
+  "t": "Alinear al medio"
  },
  {
   "i": 1916,
-  "t": "Control de cambios"
+  "t": "Funciones de Python"
  },
  {
   "i": 1917,
-  "t": "Mostrar cambios"
+  "t": "Macros de la cinta"
  },
  {
   "i": 1918,
-  "t": "Corrección"
+  "t": "Copiar formato"
  },
  {
   "i": 1919,
-  "t": "Caracteres"
+  "t": "Estilo"
  },
  {
   "i": 1920,
-  "t": "Revisión ortográfica"
+  "t": "Lista de campos"
  },
  {
   "i": 1921,
-  "t": "Sinónimos"
+  "t": "Agrandar texto de la pantalla"
  },
  {
   "i": 1922,
-  "t": "Errores de conversión"
+  "t": "Reducir texto de la pantalla"
  },
  {
   "i": 1923,
-  "t": "Incoherencias"
+  "t": "IA"
  },
  {
   "i": 1924,
-  "t": "Subtotales"
+  "t": "Imprimir"
  },
  {
   "i": 1925,
-  "t": "Cálculo"
+  "t": "Diseño de impresión"
  },
  {
   "i": 1926,
-  "t": "Texto de derecha a izquierda"
+  "t": "Destino"
  },
  {
   "i": 1927,
-  "t": "Dirección de la hoja"
+  "t": "Resumen"
  },
  {
   "i": 1928,
-  "t": "Python"
+  "t": "Reescribir"
  },
  {
   "i": 1929,
-  "t": "Casilla"
+  "t": "Más formal"
  },
  {
   "i": 1930,
-  "t": "Vínculos externos"
+  "t": "Más sencillo"
  },
  {
   "i": 1931,
-  "t": "Gráfico recomendado"
+  "t": "Traducción"
  },
  {
   "i": 1932,
-  "t": "Modo de coedición"
+  "t": "Furigana"
  },
  {
   "i": 1933,
-  "t": "Historial de versiones"
+  "t": "Continuar"
  },
  {
   "i": 1934,
-  "t": "Chat"
+  "t": "A tabla"
  },
  {
   "i": 1935,
-  "t": "Proteger"
+  "t": "Pedir"
  },
  {
   "i": 1936,
-  "t": "Cifrar"
+  "t": "Ruby"
  },
  {
   "i": 1937,
-  "t": "Agregar firma digital"
+  "t": "Vertical"
  },
  {
   "i": 1938,
-  "t": "Macros"
+  "t": "Dirección del texto"
  },
  {
   "i": 1939,
-  "t": "Administrar complementos"
+  "t": "Distribuido"
  },
  {
   "i": 1940,
-  "t": "Mostrar ceros"
+  "t": "Insertar título"
  },
  {
   "i": 1941,
-  "t": "Zoom al 100%"
+  "t": "Abrir URL"
  },
  {
   "i": 1942,
-  "t": "Tema de la interfaz"
+  "t": "Índice"
  },
  {
   "i": 1943,
-  "t": "Ventana Inspección"
+  "t": "Notas de Aozora"
  },
  {
   "i": 1944,
-  "t": "Autosuma"
+  "t": "Notación Denden"
  },
  {
   "i": 1945,
-  "t": "Grabar acciones"
+  "t": "Control de cambios"
  },
  {
   "i": 1946,
-  "t": "Eliminar comentario"
+  "t": "Mostrar cambios"
  },
  {
   "i": 1947,
-  "t": "Solver"
+  "t": "Corrección"
  },
  {
   "i": 1948,
-  "t": "Texto a datos"
+  "t": "Caracteres"
  },
  {
   "i": 1949,
-  "t": "Quitar flechas"
+  "t": "Revisión ortográfica"
  },
  {
   "i": 1950,
-  "t": "Rellenar"
+  "t": "Sinónimos"
  },
  {
   "i": 1951,
-  "t": "Borrar filtro"
+  "t": "Errores de conversión"
  },
  {
   "i": 1952,
-  "t": "Escribir macro"
+  "t": "Incoherencias"
  },
  {
   "i": 1953,
-  "t": "Texto en columnas"
+  "t": "Subtotales"
  },
  {
   "i": 1954,
-  "t": "Título"
+  "t": "Cálculo"
  },
  {
   "i": 1955,
-  "t": "Tabla de ilustraciones"
- },
- {
-  "i": 1956,
-  "t": "Actualizar tabla de ilustraciones"
- },
- {
-  "i": 1957,
-  "t": "Vínculos externos (importar como valores)"
- },
- {
-  "i": 1958,
-  "t": "Matemáticas y trigonometría"
- },
- {
-  "i": 1959,
-  "t": "Mostrar fórmulas"
- },
- {
-  "i": 1960,
   "t": "Texto de derecha a izquierda"
  },
  {
+  "i": 1956,
+  "t": "Dirección de la hoja"
+ },
+ {
+  "i": 1957,
+  "t": "Python"
+ },
+ {
+  "i": 1958,
+  "t": "Casilla"
+ },
+ {
+  "i": 1959,
+  "t": "Vínculos externos"
+ },
+ {
+  "i": 1960,
+  "t": "Gráfico recomendado"
+ },
+ {
   "i": 1961,
-  "t": "Texto"
+  "t": "Modo de coedición"
  },
  {
   "i": 1962,
-  "t": "Fecha y hora"
+  "t": "Historial de versiones"
  },
  {
   "i": 1963,
-  "t": "Usadas recientemente"
+  "t": "Chat"
  },
  {
   "i": 1964,
-  "t": "Imprimir líneas de cuadrícula"
+  "t": "Proteger"
  },
  {
   "i": 1965,
-  "t": "Actualizar tabla de contenido"
+  "t": "Cifrar"
  },
  {
   "i": 1966,
-  "t": "Columnas con bandas"
+  "t": "Agregar firma digital"
  },
  {
   "i": 1967,
-  "t": "Imprimir encabezados"
+  "t": "Macros"
  },
  {
   "i": 1968,
-  "t": "Ocultar detalle"
+  "t": "Administrar complementos"
  },
  {
   "i": 1969,
-  "t": "Quitar duplicados"
+  "t": "Mostrar ceros"
  },
  {
   "i": 1970,
-  "t": "Insertar función"
+  "t": "Zoom al 100%"
  },
  {
   "i": 1971,
-  "t": "Formato CSV"
+  "t": "Tema de la interfaz"
  },
  {
   "i": 1972,
-  "t": "Bloquear celda"
+  "t": "Ventana Inspección"
  },
  {
   "i": 1973,
-  "t": "Tabla de datos"
+  "t": "Autosuma"
  },
  {
   "i": 1974,
-  "t": "Relleno rápido"
+  "t": "Grabar acciones"
  },
  {
   "i": 1975,
-  "t": "Lista"
+  "t": "Eliminar comentario"
  },
  {
   "i": 1976,
-  "t": "Pegar nombre"
+  "t": "Solver"
  },
  {
   "i": 1977,
-  "t": "Recuperar"
+  "t": "Texto a datos"
  },
  {
   "i": 1978,
-  "t": "Ajustar texto"
+  "t": "Quitar flechas"
  },
  {
   "i": 1979,
-  "t": "Intervalo de copias"
+  "t": "Rellenar"
  },
  {
   "i": 1980,
-  "t": "Nuevo .py"
+  "t": "Borrar filtro"
  },
  {
   "i": 1981,
-  "t": "Añadir rango"
+  "t": "Escribir macro"
  },
  {
   "i": 1982,
-  "t": "Ajustar al papel"
+  "t": "Texto en columnas"
  },
  {
   "i": 1983,
-  "t": "Cortes del papel"
+  "t": "Título"
  },
  {
   "i": 1984,
-  "t": "Abrir carpeta"
+  "t": "Tabla de ilustraciones"
  },
  {
   "i": 1985,
-  "t": "Tipo de cálculo"
+  "t": "Actualizar tabla de ilustraciones"
  },
  {
   "i": 1986,
-  "t": "Operaciones permitidas"
+  "t": "Vínculos externos (importar como valores)"
  },
  {
   "i": 1987,
+  "t": "Matemáticas y trigonometría"
+ },
+ {
+  "i": 1988,
+  "t": "Mostrar fórmulas"
+ },
+ {
+  "i": 1989,
+  "t": "Texto de derecha a izquierda"
+ },
+ {
+  "i": 1990,
+  "t": "Texto"
+ },
+ {
+  "i": 1991,
+  "t": "Fecha y hora"
+ },
+ {
+  "i": 1992,
+  "t": "Usadas recientemente"
+ },
+ {
+  "i": 1993,
+  "t": "Imprimir líneas de cuadrícula"
+ },
+ {
+  "i": 1994,
+  "t": "Actualizar tabla de contenido"
+ },
+ {
+  "i": 1995,
+  "t": "Columnas con bandas"
+ },
+ {
+  "i": 1996,
+  "t": "Imprimir encabezados"
+ },
+ {
+  "i": 1997,
+  "t": "Ocultar detalle"
+ },
+ {
+  "i": 1998,
+  "t": "Quitar duplicados"
+ },
+ {
+  "i": 1999,
+  "t": "Insertar función"
+ },
+ {
+  "i": 2000,
+  "t": "Formato CSV"
+ },
+ {
+  "i": 2001,
+  "t": "Bloquear celda"
+ },
+ {
+  "i": 2002,
+  "t": "Tabla de datos"
+ },
+ {
+  "i": 2003,
+  "t": "Relleno rápido"
+ },
+ {
+  "i": 2004,
+  "t": "Lista"
+ },
+ {
+  "i": 2005,
+  "t": "Pegar nombre"
+ },
+ {
+  "i": 2006,
+  "t": "Recuperar"
+ },
+ {
+  "i": 2007,
+  "t": "Ajustar texto"
+ },
+ {
+  "i": 2008,
+  "t": "Intervalo de copias"
+ },
+ {
+  "i": 2009,
+  "t": "Nuevo .py"
+ },
+ {
+  "i": 2010,
+  "t": "Añadir rango"
+ },
+ {
+  "i": 2011,
+  "t": "Ajustar al papel"
+ },
+ {
+  "i": 2012,
+  "t": "Cortes del papel"
+ },
+ {
+  "i": 2013,
+  "t": "Abrir carpeta"
+ },
+ {
+  "i": 2014,
+  "t": "Tipo de cálculo"
+ },
+ {
+  "i": 2015,
+  "t": "Operaciones permitidas"
+ },
+ {
+  "i": 2016,
   "t": "Sugerir solo lectura"
  }
 ]

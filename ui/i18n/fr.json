@@ -7537,418 +7537,534 @@
  },
  {
   "i": 1884,
-  "t": "Orientation"
+  "t": "{} : {} cellules antécédentes mises en évidence (effacez-les avec Supprimer les flèches)"
  },
  {
   "i": 1885,
-  "t": "Format des cellules"
+  "t": "{} : {} cellules dépendantes mises en évidence (effacez-les avec Supprimer les flèches)"
  },
  {
   "i": 1886,
-  "t": "Aligner au centre"
+  "t": "Feuille « {} » déprotégée (vous pouvez la modifier ; la modification est conservée dans le xlsx à l'enregistrement)"
  },
  {
   "i": 1887,
-  "t": "Fonctions Python"
+  "t": "Feuille « {} » protégée (seules les cellules déverrouillées sont modifiables ; assouplissez avec Actions autorisées ; le même bouton la libère. Aucun mot de passe n'est posé — et nous ne faisons pas semblant)"
  },
  {
   "i": 1888,
-  "t": "Macros du ruban"
+  "t": "Vous ({}) détenez le verrou d'écriture. Le premier à ouvrir le classeur peut écrire ; les suivants ne font que lire (le verrou est un fichier .~lock)"
  },
  {
   "i": 1889,
-  "t": "Copier le format"
+  "t": "{} cases à cocher placées (basculez avec la barre d'espace ; Excel les affiche comme VRAI/FAUX{})"
  },
  {
   "i": 1890,
-  "t": "Style"
+  "t": "Feuille « {} » masquée (le même bouton la ramène ; la modification est conservée dans le xlsx à l'enregistrement)"
  },
  {
   "i": 1891,
-  "t": "Liste des champs"
+  "t": "{} cellules surveillées (leurs valeurs s'affichent dans la barre d'état ; appuyez à nouveau pour vider la liste)"
  },
  {
   "i": 1892,
-  "t": "Agrandir le texte de l'écran"
+  "t": "Grouper par quelle colonne ? Choisissez un en-tête : {}"
  },
  {
   "i": 1893,
-  "t": "Réduire le texte de l'écran"
+  "t": "{} feuilles importées comme valeurs (aucun lien n'est conservé)"
  },
  {
   "i": 1894,
-  "t": "IA"
+  "t": "{}:{} ajouté à la zone d'impression ({} zones au total ; chaque zone s'imprime sur sa propre feuille)"
  },
  {
   "i": 1895,
-  "t": "Imprimer"
+  "t": "Les lignes {} à {} se répètent en haut de chaque page (appuyez sans sélection pour annuler)"
  },
  {
   "i": 1896,
-  "t": "Mise en page"
+  "t": "{} feuilles / {} cellules — {}"
  },
  {
   "i": 1897,
-  "t": "Destination"
+  "t": "{} feuilles — {}"
  },
  {
   "i": 1898,
-  "t": "Résumé"
+  "t": "{} — **{} l'a ouvert**. Impossible d'enregistrer par-dessus (utilisez Enregistrer sous)"
  },
  {
   "i": 1899,
-  "t": "Réécrire"
+  "t": "Image placée en {} (elle entre dans le xlsx à l'enregistrement)"
  },
  {
   "i": 1900,
-  "t": "Plus formel"
+  "t": "Lien ajouté en {} (Ctrl+clic pour l'ouvrir)"
  },
  {
   "i": 1901,
-  "t": "Plus simple"
+  "t": "Graphique placé en {} (il entre dans le xlsx à l'enregistrement)"
  },
  {
   "i": 1902,
-  "t": "Traduction"
+  "t": "{} ({} de {}) placé en {} — les valeurs de maintenant. L'onglet Tableau croisé dynamique est ouvert (actualisation, totaux généraux, sous-totaux et disposition s'y trouvent ; Ctrl+Z annule)"
  },
  {
   "i": 1903,
-  "t": "Furigana"
+  "t": "Tableau croisé actualisé ({} — les valeurs de maintenant ; Ctrl+Z annule)"
  },
  {
   "i": 1904,
-  "t": "Continuer"
+  "t": "Fonctions : {} cellules calculées ; {} ont donné #PROPAGATION! (des données occupent déjà la zone de résultat)"
  },
  {
   "i": 1905,
-  "t": "En tableau"
+  "t": "Fonctions : {} cellules calculées (Ctrl+Z annule)"
  },
  {
   "i": 1906,
-  "t": "Demander"
+  "t": "{} placé en {} (comme image ; il entre dans le xlsx à l'enregistrement ; Ctrl+Z annule en une seule fois)"
  },
  {
   "i": 1907,
-  "t": "Ruby"
+  "t": "Équation"
  },
  {
   "i": 1908,
-  "t": "Vertical"
+  "t": "Texte décoratif"
  },
  {
   "i": 1909,
-  "t": "Orientation du texte"
+  "t": "{} placé en {} ({} formes ; sélectionnez une forme et appuyez sur Entrée pour écrire, faites glisser pour déplacer ; Ctrl+Z les annule toutes en une seule fois)"
  },
  {
   "i": 1910,
-  "t": "Réparti"
+  "t": "Résolu : {} = {} ({} cellules variables ont été réécrites ; Ctrl+Z annule en une seule fois)"
  },
  {
   "i": 1911,
-  "t": "Insérer une légende"
+  "t": "Avec {} = {}, {} devient {} (Ctrl+Z annule)"
  },
  {
   "i": 1912,
-  "t": "Ouvrir une URL"
+  "t": "Aucune solution trouvée ({} n'influe peut-être pas sur {})"
  },
  {
   "i": 1913,
-  "t": "Index"
+  "t": "Orientation"
  },
  {
   "i": 1914,
-  "t": "Notes Aozora"
+  "t": "Format des cellules"
  },
  {
   "i": 1915,
-  "t": "Notation Denden"
+  "t": "Aligner au centre"
  },
  {
   "i": 1916,
-  "t": "Suivi des modifications"
+  "t": "Fonctions Python"
  },
  {
   "i": 1917,
-  "t": "Afficher les modifications"
+  "t": "Macros du ruban"
  },
  {
   "i": 1918,
-  "t": "Correction"
+  "t": "Copier le format"
  },
  {
   "i": 1919,
-  "t": "Caractères"
+  "t": "Style"
  },
  {
   "i": 1920,
-  "t": "Vérification orthographique"
+  "t": "Liste des champs"
  },
  {
   "i": 1921,
-  "t": "Dictionnaire des synonymes"
+  "t": "Agrandir le texte de l'écran"
  },
  {
   "i": 1922,
-  "t": "Erreurs de conversion"
+  "t": "Réduire le texte de l'écran"
  },
  {
   "i": 1923,
-  "t": "Incohérences de graphie"
+  "t": "IA"
  },
  {
   "i": 1924,
-  "t": "Sous-totaux"
+  "t": "Imprimer"
  },
  {
   "i": 1925,
-  "t": "Mode de calcul"
+  "t": "Mise en page"
  },
  {
   "i": 1926,
-  "t": "Texte de droite à gauche"
+  "t": "Destination"
  },
  {
   "i": 1927,
-  "t": "Sens de la feuille"
+  "t": "Résumé"
  },
  {
   "i": 1928,
-  "t": "Python"
+  "t": "Réécrire"
  },
  {
   "i": 1929,
-  "t": "Case à cocher"
+  "t": "Plus formel"
  },
  {
   "i": 1930,
-  "t": "Liens externes"
+  "t": "Plus simple"
  },
  {
   "i": 1931,
-  "t": "Graphique recommandé"
+  "t": "Traduction"
  },
  {
   "i": 1932,
-  "t": "Mode coédition"
+  "t": "Furigana"
  },
  {
   "i": 1933,
-  "t": "Historique des versions"
+  "t": "Continuer"
  },
  {
   "i": 1934,
-  "t": "Discussion"
+  "t": "En tableau"
  },
  {
   "i": 1935,
-  "t": "Protéger"
+  "t": "Demander"
  },
  {
   "i": 1936,
-  "t": "Chiffrer"
+  "t": "Ruby"
  },
  {
   "i": 1937,
-  "t": "Ajouter une signature numérique"
+  "t": "Vertical"
  },
  {
   "i": 1938,
-  "t": "Macros"
+  "t": "Orientation du texte"
  },
  {
   "i": 1939,
-  "t": "Gérer les plugins"
+  "t": "Réparti"
  },
  {
   "i": 1940,
-  "t": "Afficher les zéros"
+  "t": "Insérer une légende"
  },
  {
   "i": 1941,
-  "t": "Zoom à 100 %"
+  "t": "Ouvrir une URL"
  },
  {
   "i": 1942,
-  "t": "Thème de l'interface"
+  "t": "Index"
  },
  {
   "i": 1943,
-  "t": "Fenêtre Espion"
+  "t": "Notes Aozora"
  },
  {
   "i": 1944,
-  "t": "Somme automatique"
+  "t": "Notation Denden"
  },
  {
   "i": 1945,
-  "t": "Enregistrer les actions"
+  "t": "Suivi des modifications"
  },
  {
   "i": 1946,
-  "t": "Supprimer le commentaire"
+  "t": "Afficher les modifications"
  },
  {
   "i": 1947,
-  "t": "Solveur"
+  "t": "Correction"
  },
  {
   "i": 1948,
-  "t": "Texte en données"
+  "t": "Caractères"
  },
  {
   "i": 1949,
-  "t": "Supprimer les flèches"
+  "t": "Vérification orthographique"
  },
  {
   "i": 1950,
-  "t": "Recopier"
+  "t": "Dictionnaire des synonymes"
  },
  {
   "i": 1951,
-  "t": "Effacer le filtre"
+  "t": "Erreurs de conversion"
  },
  {
   "i": 1952,
-  "t": "Écrire une macro"
+  "t": "Incohérences de graphie"
  },
  {
   "i": 1953,
-  "t": "Convertir"
+  "t": "Sous-totaux"
  },
  {
   "i": 1954,
-  "t": "Légende"
+  "t": "Mode de calcul"
  },
  {
   "i": 1955,
-  "t": "Table des illustrations"
+  "t": "Texte de droite à gauche"
  },
  {
   "i": 1956,
-  "t": "Mettre à jour la table des illustrations"
+  "t": "Sens de la feuille"
  },
  {
   "i": 1957,
-  "t": "Liens externes (importer en valeurs)"
+  "t": "Python"
  },
  {
   "i": 1958,
-  "t": "Maths et trigonométrie"
+  "t": "Case à cocher"
  },
  {
   "i": 1959,
-  "t": "Afficher les formules"
+  "t": "Liens externes"
  },
  {
   "i": 1960,
-  "t": "Sens du texte (droite à gauche)"
+  "t": "Graphique recommandé"
  },
  {
   "i": 1961,
-  "t": "Texte"
+  "t": "Mode coédition"
  },
  {
   "i": 1962,
-  "t": "Date et heure"
+  "t": "Historique des versions"
  },
  {
   "i": 1963,
-  "t": "Récemment utilisées"
+  "t": "Discussion"
  },
  {
   "i": 1964,
-  "t": "Imprimer le quadrillage"
+  "t": "Protéger"
  },
  {
   "i": 1965,
-  "t": "Mettre à jour la table des matières"
+  "t": "Chiffrer"
  },
  {
   "i": 1966,
-  "t": "Colonnes à bandes"
+  "t": "Ajouter une signature numérique"
  },
  {
   "i": 1967,
-  "t": "Imprimer les en-têtes"
+  "t": "Macros"
  },
  {
   "i": 1968,
-  "t": "Masquer le détail"
+  "t": "Gérer les plugins"
  },
  {
   "i": 1969,
-  "t": "Supprimer les doublons"
+  "t": "Afficher les zéros"
  },
  {
   "i": 1970,
-  "t": "Insérer une fonction"
+  "t": "Zoom à 100 %"
  },
  {
   "i": 1971,
-  "t": "Format CSV"
+  "t": "Thème de l'interface"
  },
  {
   "i": 1972,
-  "t": "Verrouiller la cellule"
+  "t": "Fenêtre Espion"
  },
  {
   "i": 1973,
-  "t": "Table de données"
+  "t": "Somme automatique"
  },
  {
   "i": 1974,
-  "t": "Remplissage instantané"
+  "t": "Enregistrer les actions"
  },
  {
   "i": 1975,
-  "t": "Liste"
+  "t": "Supprimer le commentaire"
  },
  {
   "i": 1976,
-  "t": "Coller un nom"
+  "t": "Solveur"
  },
  {
   "i": 1977,
-  "t": "Récupérer"
+  "t": "Texte en données"
  },
  {
   "i": 1978,
-  "t": "Renvoyer à la ligne"
+  "t": "Supprimer les flèches"
  },
  {
   "i": 1979,
-  "t": "Intervalle des copies"
+  "t": "Recopier"
  },
  {
   "i": 1980,
-  "t": "Nouveau .py"
+  "t": "Effacer le filtre"
  },
  {
   "i": 1981,
-  "t": "Ajouter la plage"
+  "t": "Écrire une macro"
  },
  {
   "i": 1982,
-  "t": "Ajuster au papier"
+  "t": "Convertir"
  },
  {
   "i": 1983,
-  "t": "Sauts de page"
+  "t": "Légende"
  },
  {
   "i": 1984,
-  "t": "Ouvrir le dossier"
+  "t": "Table des illustrations"
  },
  {
   "i": 1985,
-  "t": "Type de calcul"
+  "t": "Mettre à jour la table des illustrations"
  },
  {
   "i": 1986,
-  "t": "Actions permises"
+  "t": "Liens externes (importer en valeurs)"
  },
  {
   "i": 1987,
+  "t": "Maths et trigonométrie"
+ },
+ {
+  "i": 1988,
+  "t": "Afficher les formules"
+ },
+ {
+  "i": 1989,
+  "t": "Sens du texte (droite à gauche)"
+ },
+ {
+  "i": 1990,
+  "t": "Texte"
+ },
+ {
+  "i": 1991,
+  "t": "Date et heure"
+ },
+ {
+  "i": 1992,
+  "t": "Récemment utilisées"
+ },
+ {
+  "i": 1993,
+  "t": "Imprimer le quadrillage"
+ },
+ {
+  "i": 1994,
+  "t": "Mettre à jour la table des matières"
+ },
+ {
+  "i": 1995,
+  "t": "Colonnes à bandes"
+ },
+ {
+  "i": 1996,
+  "t": "Imprimer les en-têtes"
+ },
+ {
+  "i": 1997,
+  "t": "Masquer le détail"
+ },
+ {
+  "i": 1998,
+  "t": "Supprimer les doublons"
+ },
+ {
+  "i": 1999,
+  "t": "Insérer une fonction"
+ },
+ {
+  "i": 2000,
+  "t": "Format CSV"
+ },
+ {
+  "i": 2001,
+  "t": "Verrouiller la cellule"
+ },
+ {
+  "i": 2002,
+  "t": "Table de données"
+ },
+ {
+  "i": 2003,
+  "t": "Remplissage instantané"
+ },
+ {
+  "i": 2004,
+  "t": "Liste"
+ },
+ {
+  "i": 2005,
+  "t": "Coller un nom"
+ },
+ {
+  "i": 2006,
+  "t": "Récupérer"
+ },
+ {
+  "i": 2007,
+  "t": "Renvoyer à la ligne"
+ },
+ {
+  "i": 2008,
+  "t": "Intervalle des copies"
+ },
+ {
+  "i": 2009,
+  "t": "Nouveau .py"
+ },
+ {
+  "i": 2010,
+  "t": "Ajouter la plage"
+ },
+ {
+  "i": 2011,
+  "t": "Ajuster au papier"
+ },
+ {
+  "i": 2012,
+  "t": "Sauts de page"
+ },
+ {
+  "i": 2013,
+  "t": "Ouvrir le dossier"
+ },
+ {
+  "i": 2014,
+  "t": "Type de calcul"
+ },
+ {
+  "i": 2015,
+  "t": "Actions permises"
+ },
+ {
+  "i": 2016,
   "t": "Suggérer la lecture seule"
  }
 ]

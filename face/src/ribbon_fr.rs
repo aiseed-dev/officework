@@ -275,7 +275,7 @@ pub const CALC: &[Tab] = &[
         c("fn-text", "Texte", "text"),
         c("fn-datetime", "Date et heure", "datetime"),
         c("fn-lookup", "Recherche et référence", "lookup"),
-        c("fn-math", "Math et trigonométrie", "math"),
+        c("fn-math", "Maths et trigonométrie", "math"),
         c("fn-more", "Plus de fonctions", "more"),
         c("defname", "Gestionnaire de noms", "named-range-huge"),
         c("paste-name", "Coller un nom", "paste-name"),

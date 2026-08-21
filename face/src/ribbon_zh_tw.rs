@@ -272,7 +272,7 @@ pub const CALC: &[Tab] = &[
         c("fn-recent", "最近使用的函數", "recent"),
         c("fn-financial", "財務", "financial"),
         c("fn-logical", "邏輯", "logical"),
-        c("fn-text", "文字操作", "text"),
+        c("fn-text", "文字", "text"),
         c("fn-datetime", "日期與時間", "datetime"),
         c("fn-lookup", "查閱與參照", "lookup"),
         c("fn-math", "數學與三角函數", "math"),

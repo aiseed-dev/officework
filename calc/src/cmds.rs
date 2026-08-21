@@ -1463,7 +1463,7 @@ impl Calc {
                 if deps.is_empty() {
                     self.status = ui::t!("このセルの式は他のセルを参照していません").into();
                 } else {
-                    self.status = format!(
+                    self.status = ui::tf!(
                         "{} の参照元 {} セルを光らせました(トレース矢印の削除で消す)",
                         self.cursor.a1(),
                         deps.len()
@@ -1489,7 +1489,7 @@ impl Calc {
                 if dependents.is_empty() {
                     self.status = ui::tf!("{} を参照している式はありません", me.a1()).into();
                 } else {
-                    self.status = format!(
+                    self.status = ui::tf!(
                         "{} の参照先 {} セルを光らせました(トレース矢印の削除で消す)",
                         me.a1(),
                         dependents.len()
@@ -1569,16 +1569,18 @@ impl Calc {
                 if self.sheet().protected {
                     self.sheet_mut().protected = false;
                     self.dirty = true;
-                    self.status = format!(
-                        "シート「{name}」の保護を外しました(編集できます。保存で xlsx にも残ります)"
+                    self.status = ui::tf!(
+                        "シート「{}」の保護を外しました(編集できます。保存で xlsx にも残ります)",
+                        name
                     )
                     .into();
                 } else {
                     self.commit();
                     self.sheet_mut().protected = true;
                     self.dirty = true;
-                    self.status = format!(
-                        "シート「{name}」を保護しました(ロックを外したセルだけ書けます。「許可する操作」で緩められます。同じボタンで解除。パスワードは掛けません — 掛けた振りもしません)"
+                    self.status = ui::tf!(
+                        "シート「{}」を保護しました(ロックを外したセルだけ書けます。「許可する操作」で緩められます。同じボタンで解除。パスワードは掛けません — 掛けた振りもしません)",
+                        name
                     )
                     .into();
                 }
@@ -1705,7 +1707,7 @@ impl Calc {
                 }
                 Some(p) => {
                     if self.my_lock.is_some() {
-                        self.status = format!(
+                        self.status = ui::tf!(
                             "編集権はこちら({})にあります。同じブックは先に開いた人が書け、後の人は読むだけになります(錠は .~lock ファイル)",
                             lock_identity()
                         )
@@ -2045,9 +2047,10 @@ impl Calc {
                     } else {
                         String::new()
                     };
-                    self.status = format!(
-                        "チェックボックスを {} 個置きました(空白キーで切替。Excel では TRUE/FALSE で見えます{skip_note})",
-                        empties.len()
+                    self.status = ui::tf!(
+                        "チェックボックスを {} 個置きました(空白キーで切替。Excel では TRUE/FALSE で見えます{})",
+                        empties.len(),
+                        skip_note
                     )
                     .into();
                 }
@@ -2261,8 +2264,9 @@ impl Calc {
                             self.switch_sheet(i);
                         }
                         self.dirty = true;
-                        self.status = format!(
-                            "シート「{n}」を隠しました(同じボタンで戻せます。保存で xlsx にも残ります)"
+                        self.status = ui::tf!(
+                            "シート「{}」を隠しました(同じボタンで戻せます。保存で xlsx にも残ります)",
+                            n
                         )
                         .into();
                     }
@@ -2297,8 +2301,9 @@ impl Calc {
                     self.watch.clear();
                     self.status = ui::t!("見張りを空にしました").into();
                 } else {
-                    self.status = format!(
-                        "{n} 個を見張ります(値は下のステータスバーに出ます。もう一度押すと空に)"
+                    self.status = ui::tf!(
+                        "{} 個を見張ります(値は下のステータスバーに出ます。もう一度押すと空に)",
+                        n
                     )
                     .into();
                 }
@@ -2459,7 +2464,7 @@ impl Calc {
                                 if v.is_empty() { col_name(c) } else { v }
                             })
                             .collect();
-                        self.status = format!(
+                        self.status = ui::tf!(
                             "何の区切りで集めるか(見出しを1つ): {}",
                             headers.join(" / ")
                         )
@@ -3034,8 +3039,9 @@ impl Calc {
                                     n += 1;
                                 }
                                 this.dirty = true;
-                                this.status = format!(
-                                    "{n} シートを値として取り込みました(リンクは張りません)"
+                                this.status = ui::tf!(
+                                    "{} シートを値として取り込みました(リンクは張りません)",
+                                    n
                                 )
                                 .into();
                             }
@@ -3135,7 +3141,7 @@ impl Calc {
                         sh.print_areas.push(range);
                         let n = sh.print_areas.len();
                         self.dirty = true;
-                        self.status = format!(
+                        self.status = ui::tf!(
                             "印刷範囲に {}:{} を足しました(全 {} 域。域ごとに別の紙に刷ります)",
                             range.0.a1(),
                             range.1.a1(),
@@ -3413,7 +3419,7 @@ impl Calc {
                     let (a, b) = self.sel_rect();
                     self.sheet_mut().print_title_rows = Some((a.row, b.row));
                     self.dirty = true;
-                    self.status = format!(
+                    self.status = ui::tf!(
                         "{}〜{} 行を各ページの頭で繰り返します(選択なしで押すと解除)",
                         a.row + 1,
                         b.row + 1

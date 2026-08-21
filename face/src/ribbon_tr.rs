@@ -272,7 +272,7 @@ pub const CALC: &[Tab] = &[
         c("fn-recent", "Son kullanılan işlevler", "recent"),
         c("fn-financial", "Finansal", "financial"),
         c("fn-logical", "Mantıksal", "logical"),
-        c("fn-text", "Metin işlevleri", "text"),
+        c("fn-text", "Metin", "text"),
         c("fn-datetime", "Tarih ve Saat", "datetime"),
         c("fn-lookup", "Arama ve Referans", "lookup"),
         c("fn-math", "Matematik ve Trigonometri", "math"),

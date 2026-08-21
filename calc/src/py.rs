@@ -546,7 +546,7 @@ impl Calc {
                             data,
                         });
                         this.dirty = true;
-                        this.status = format!(
+                        this.status = ui::tf!(
                             "グラフを {} に置きました(保存で xlsx に入ります)",
                             at.a1()
                         )
@@ -800,8 +800,11 @@ impl Calc {
                                         .last()
                                         .map(|d| d.name.clone())
                                         .unwrap_or_default();
-                                    this.status = format!(
-                                        "{pname}({value} の {agg})を {} に置きました — その時の値。ピボットテーブルのタブが開いています(更新・総計・小計・レイアウトはここ。Ctrl+Z で戻せます)",
+                                    this.status = ui::tf!(
+                                        "{}({} の {})を {} に置きました — その時の値。ピボットテーブルのタブが開いています(更新・総計・小計・レイアウトはここ。Ctrl+Z で戻せます)",
+                                        pname,
+                                        value,
+                                        agg,
                                         at.a1()
                                     )
                                     .into();
@@ -847,7 +850,7 @@ impl Calc {
                                     this.book.pivots[pi] = def;
                                     this.dirty = true;
                                     this.sync_input();
-                                    this.status = format!(
+                                    this.status = ui::tf!(
                                         "ピボットを更新しました({} — その時の値。Ctrl+Z で戻せます)",
                                         dest.a1()
                                     )
@@ -1252,14 +1255,16 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                         }
                         this.sync_input();
                         if conflicts > 0 {
-                            this.status = format!(
-                                "関数: {total} セルを計算、{conflicts} 件は #SPILL!(展開先に他のデータ)"
+                            this.status = ui::tf!(
+                                "関数: {} セルを計算、{} 件は #SPILL!(展開先に他のデータ)",
+                                total,
+                                conflicts
                             )
                             .into();
                         } else if !auto {
                             this.dirty = true;
                             this.status =
-                                format!("関数: {total} セルを計算しました(Ctrl+Z で戻せます)").into();
+                                ui::tf!("関数: {} セルを計算しました(Ctrl+Z で戻せます)", total).into();
                         }
                     }
                     Err(e) => this.status = e.into(),
@@ -1613,9 +1618,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                             data,
                         });
                         this.dirty = true;
-                        this.status = format!(
+                        this.status = ui::tf!(
                             "{} を {} に置きました(画像。保存で xlsx に入ります。Ctrl+Z で1手)",
-                            if name == "eq" { "方程式" } else { "テキストアート" },
+                            // **中の語も訳を通す。** ここだけ素の字だと、
+                            // 文は訳されるのに「方程式」が日本語で残ります
+                            if name == "eq" { ui::t!("方程式") } else { ui::t!("テキストアート") },
                             at.a1()
                         )
                         .into();
@@ -1736,9 +1743,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             });
         }
         self.dirty = true;
-        self.status = format!(
-            "{name} を {} に置きました({n} 個の図形。図形を選んで Enter で文字、ドラッグで移動。全部まとめて Ctrl+Z で1手)",
-            at.a1()
+        self.status = ui::tf!(
+            "{} を {} に置きました({} 個の図形。図形を選んで Enter で文字、ドラッグで移動。全部まとめて Ctrl+Z で1手)",
+            name,
+            at.a1(),
+            n
         )
         .into();
     }
@@ -1946,9 +1955,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                                 .get(target)
                                 .map(|c| c.value.display())
                                 .unwrap_or_default();
-                            this.status = format!(
-                                "解を求めました: {} = {got}(変数 {} 個を書き換え。Ctrl+Z で1手)",
+                            this.status = ui::tf!(
+                                "解を求めました: {} = {}(変数 {} 個を書き換え。Ctrl+Z で1手)",
                                 target.a1(),
+                                got,
                                 xs.len()
                             )
                             .into();
@@ -1981,15 +1991,17 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                 recalc_book(&mut self.book, self.active);
                 self.dirty = true;
                 self.sync_input();
-                self.status = format!(
-                    "{} = {x} で {} が {goal} になります(Ctrl+Z で戻せます)",
+                self.status = ui::tf!(
+                    "{} = {} で {} が {} になります(Ctrl+Z で戻せます)",
                     var.a1(),
-                    target.a1()
+                    x,
+                    target.a1(),
+                    goal
                 )
                 .into();
             }
             None => {
-                self.status = format!(
+                self.status = ui::tf!(
                     "見つかりません({} が {} に効いていないかもしれません)",
                     var.a1(),
                     target.a1()

@@ -4374,7 +4374,7 @@ impl Calc {
                     self.book.sheets[self.active].links.insert(p, text);
                     self.dirty = true;
                     self.status =
-                        format!("{} にリンクを付けました(Ctrl+クリックで開く)", p.a1()).into();
+                        ui::tf!("{} にリンクを付けました(Ctrl+クリックで開く)", p.a1()).into();
                     // 続けて表示テキスト(セルに見せる文字)。本家のリンク設定の欄と同じ
                     let cur = self.sheet().get(p).map(|c| c.value.display()).unwrap_or_default();
                     self.prompt = Some(("link-text", Editor::new(&cur)));

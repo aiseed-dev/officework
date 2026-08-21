@@ -262,7 +262,7 @@ impl Calc {
                     .iter()
                     .map(|(n, c)| SharedString::from(format!("{n} × {c}")))
                     .collect();
-                let status = format!(
+                let status = ui::tf!(
                     "{} シート / {} セル — {}",
                     rep.sheets,
                     rep.cells,
@@ -322,7 +322,7 @@ impl Calc {
                         ))),
                     }
                 }
-                let status = format!(
+                let status = ui::tf!(
                     "{} シート — {}",
                     book.sheets.len(),
                     p.file_name().unwrap_or_default().to_string_lossy()
@@ -399,9 +399,10 @@ impl Calc {
                 self.clip_range = None;
                 self.acquire_lock(&p);
                 if let Some(who) = self.locked_by.clone() {
-                    self.status = format!(
-                        "{} — **{who} が開いています**。上書き保存はできません(名前を付けて保存へ)",
-                        self.status
+                    self.status = ui::tf!(
+                        "{} — **{} が開いています**。上書き保存はできません(名前を付けて保存へ)",
+                        self.status,
+                        who
                     )
                     .into();
                 }
@@ -1084,7 +1085,7 @@ impl Calc {
                                     data,
                                 });
                                 this.dirty = true;
-                                this.status = format!(
+                                this.status = ui::tf!(
                                     "画像を {} に置きました(保存で xlsx に入ります)",
                                     at.a1()
                                 )
