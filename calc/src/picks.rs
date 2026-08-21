@@ -1145,6 +1145,24 @@ impl Calc {
                 self.pivot_flt = None;
                 self.spawn_pivot(nd, Some(pi), cx);
             }
+            // レポートの接続。押すたびに入切して、一覧は開いたまま
+            "slicer-refs" => {
+                let name = v.to_string();
+                let あった = self.book.pivots.iter().any(|d| d.name == name);
+                if あった {
+                    if let Some(sl) = self.slicers.get_mut(self.slicer_sel) {
+                        if let Some(i) = sl.pivots.iter().position(|x| *x == name) {
+                            sl.pivots.remove(i);
+                        } else {
+                            sl.pivots.push(name);
+                        }
+                    }
+                    // 繋いだ(外した)その場で、いまの絞りを合わせる
+                    self.slicer_push_to_pivots(self.slicer_sel, cx);
+                }
+                self.slicer_refs_pick();
+                return;
+            }
             // おすすめを1つ選んだ。**ここで初めて作ります**
             "pivot-suggest" => {
                 if v.starts_with("自分で選ぶ") {
@@ -2551,6 +2569,112 @@ impl Calc {
         items.push((del.clone(), del));
         self.pick_note = Some(ui::t!("重複の削除 — 比べる列(クリックで入切)").into());
         self.pick_kind = "dedup-pick";
+        self.pick = Some((items, at));
+    }
+
+    /// **スライサーの絞りを、繋いだピボットへ押し出す**(レポートの接続。
+    /// 2026-08-21 の D群)。
+    ///
+    /// ピボットの絞りは「隠す値」で持っています。スライサーは逆に「選んだ値」
+    /// なので、**その列に実際にある値から選んだ分を引いて**隠す値にします。
+    /// 空の選択は素通しなので、隠す値も空にします。
+    ///
+    /// 見出しの字が繋いだピボットに無ければ、その1枚は飛ばします。元の表を
+    /// 差し替えた後などに起こります — 黙って全部隠したピボットを作らないためです。
+    pub(crate) fn slicer_push_to_pivots(&mut self, si: usize, cx: &mut Context<Self>) {
+        let Some(sl) = self.slicers.get(si) else { return };
+        if sl.pivots.is_empty() {
+            return;
+        }
+        let col = sl.col;
+        let sel = sl.sel.clone();
+        let names = sl.pivots.clone();
+        let 見出し = self
+            .sheet()
+            .get(Pos::new(0, col))
+            .map(|c| c.value.display())
+            .unwrap_or_default();
+        if 見出し.is_empty() {
+            return;
+        }
+        let mut 押した = 0usize;
+        for name in names {
+            let Some(pi) = self.book.pivots.iter().position(|d| d.name == name) else { continue };
+            // その見出しをピボットが使っていなければ触らない
+            let 使っている = {
+                let d = &self.book.pivots[pi];
+                d.rows_sel.contains(&見出し) || d.cols_sel.contains(&見出し)
+            };
+            if !使っている {
+                continue;
+            }
+            // **値はピボットの元の表から集めます。** シート全体から集めると、
+            // ピボットを置いた先の空欄まで「(空白)」として拾います
+            // (2026-08-21 に試験で出ました)
+            let (a, b) = self.book.pivots[pi].src;
+            let Some(si2) = self.book.sheets.iter().position(|x| x.name == self.book.pivots[pi].sheet)
+            else {
+                continue;
+            };
+            let sh = &self.book.sheets[si2];
+            let Some(c2) = (a.col..=b.col).find(|&c| {
+                sh.get(Pos::new(a.row, c)).map(|x| x.value.display()).unwrap_or_default() == 見出し
+            }) else {
+                continue;
+            };
+            let mut すべて: Vec<String> = (a.row + 1..=b.row)
+                .map(|r| match sh.get(Pos::new(r, c2)).map(|x| x.value.display()) {
+                    Some(v) if !v.is_empty() => v,
+                    _ => ui::t!("(空白)").to_string(),
+                })
+                .collect();
+            すべて.sort();
+            すべて.dedup();
+            let 隠す: Vec<String> = if sel.is_empty() {
+                Vec::new()
+            } else {
+                すべて.into_iter().filter(|v| !sel.contains(v)).collect()
+            };
+            let d = &mut self.book.pivots[pi];
+            d.hide.retain(|(f, _)| *f != 見出し);
+            if !隠す.is_empty() {
+                d.hide.push((見出し.clone(), 隠す));
+            }
+            let nd = d.clone();
+            self.spawn_pivot(nd, Some(pi), cx);
+            押した += 1;
+        }
+        if 押した > 0 {
+            self.status = ui::tf!("つないだピボット {} 枚も同じ絞りにしました", 押した).into();
+        }
+    }
+
+    /// **レポートの接続** — このスライサーをどのピボットにつなぐかを選ぶ一覧。
+    pub(crate) fn slicer_refs_pick(&mut self) {
+        let Some(sl) = self.slicers.get(self.slicer_sel) else {
+            self.status = ui::t!("先にスライサーを選んでください").into();
+            return;
+        };
+        if self.book.pivots.is_empty() {
+            self.status =
+                ui::t!("このブックにピボットテーブルがありません(先に1枚作ってください)").into();
+            return;
+        }
+        let 繋ぎ = sl.pivots.clone();
+        let at = self.pop_anchor();
+        // 鍵はピボットの名前。印は見出しにだけ付ける(照合は鍵で)
+        let items: Vec<(String, String)> = self
+            .book
+            .pivots
+            .iter()
+            .map(|d| {
+                let on = 繋ぎ.contains(&d.name);
+                (d.name.clone(), format!("{} {}", if on { "☑" } else { "☐" }, d.name))
+            })
+            .collect();
+        self.pick_note =
+            Some(ui::t!("このスライサーで絞ると、つないだピボットも同じ絞りになります").into());
+        self.pick_kind = "slicer-refs";
         self.pick = Some((items, at));
     }
 

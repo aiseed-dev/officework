@@ -1849,6 +1849,10 @@ pub(crate) struct Slicer {
     pub(crate) style: usize,
     /// 置き場所(格子の面の px の左上)。`None` = 右から順に自動で並べる
     pub(crate) at: Option<(f32, f32)>,
+    /// **つないだピボットの名前**(レポートの接続。2026-08-21 の D群)。
+    /// 空 = どのピボットにも繋がっていません。繋いだピボットは、この
+    /// スライサーを押すたびに同じ絞りで作り直します
+    pub(crate) pivots: Vec<String>,
 }
 
 /// 板の既定の大きさ。**幅は前からの 190px**(変えると、いま開いている
@@ -1867,6 +1871,7 @@ impl Default for Slicer {
             w: SLICER_W,
             h: SLICER_H,
             ratio: false,
+            pivots: Vec::new(),
             cols: 1,
             style: 0,
             at: None,

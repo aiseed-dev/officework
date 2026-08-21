@@ -4260,6 +4260,8 @@ impl Render for Calc {
                                 .into()
                             };
                         }
+                        // つないだピボットにも同じ絞りを掛ける(レポートの接続)
+                        this.slicer_push_to_pivots(si, cx);
                         cx.notify();
                     })));
             }
@@ -4410,6 +4412,27 @@ impl Render for Calc {
                         this.status = ui::t!("位置を自動(右から順)に戻しました").into();
                         cx.notify();
                     })));
+                // **レポートの接続**(2026-08-21 の D群)。つないだピボットは
+                // このスライサーを押すたびに同じ絞りで作り直します
+                let 繋ぎ数 = self.slicers.get(si).map(|x| x.pivots.len()).unwrap_or(0);
+                p = p.child(div().flex().flex_col().gap_0p5()
+                    .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
+                        .child(ui::t!("レポートの接続")))
+                    .child(div().id("sl-refs")
+                        .px_2().py_0p5().rounded_sm().border_1().border_color(rgb(0xC6CDD3))
+                        .bg(rgb(0xFFFFFF)).cursor_pointer().text_size(px(us * 12.0))
+                        .hover(|s| s.bg(rgb(0xEAF5EE)))
+                        .child(SharedString::from(if 繋ぎ数 == 0 {
+                            ui::t!("つないでいません").to_string()
+                        } else {
+                            ui::tf!("{} 枚につないでいます", 繋ぎ数).to_string()
+                        }))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            this.slicer_sel = si;
+                            this.slicer_refs_pick();
+                            cx.notify();
+                        }))));
                 p = p.child(div().text_size(px(us * 10.5)).text_color(rgb(0x6B7680))
                     .child(ui::t!("見出しを引くと動きます。大きさも位置も見え方だけで、保存される中身は変わりません")));
                 p

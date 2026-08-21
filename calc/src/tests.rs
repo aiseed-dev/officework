@@ -2794,6 +2794,74 @@ mod recalc_tests {
         });
     }
 
+    /// **レポートの接続**(2026-08-21 の D群)。
+    ///
+    /// スライサーは「選んだ値」、ピボットは「隠す値」で絞ります。向きが逆なので、
+    /// 引き算を間違えると**選んだ値だけが消える**という真逆の絵になります。
+    #[gpui::test]
+    async fn スライサーの絞りが繋いだピボットへ届く(cx: &mut gpui::TestAppContext) {
+        if !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../.venv/bin/python")
+            .exists()
+        {
+            eprintln!("skip: .venv が無い(polars の端到端は飛ばす)");
+            return;
+        }
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (a1, v) in [
+                ("A1", "区分"), ("B1", "金額"),
+                ("A2", "筆記具"), ("B2", "100"),
+                ("A3", "紙製品"), ("B3", "200"),
+                ("A4", "文具"), ("B4", "50"),
+            ] {
+                this.cursor = Pos::parse(a1).unwrap();
+                this.sync_input();
+                this.input.insert(v);
+                assert!(this.commit());
+            }
+            this.anchor = None;
+            this.cursor = Pos::parse("A2").unwrap();
+            this.sync_input();
+            this.run_cmd("pivot-insert", cx);
+            this.apply_pick("#0", cx);
+        });
+        cx.executor().advance_clock(std::time::Duration::from_secs(30));
+        cx.run_until_parked();
+        c.update(cx, |this, cx| {
+            assert_eq!(this.book.pivots.len(), 1, "ピボットが建たない: {}", this.status);
+            let 名 = this.book.pivots[0].name.clone();
+            // 区分の列に板を1枚。まだ繋いでいない
+            this.slicers.push(crate::util::Slicer { col: 0, ..Default::default() });
+            this.slicer_sel = 0;
+            this.slicers[0].sel.insert("筆記具".into());
+            this.slicer_push_to_pivots(0, cx);
+            assert!(this.book.pivots[0].hide.is_empty(), "繋いでいないのに絞った");
+
+            // 繋ぐ
+            this.pick_kind = "slicer-refs";
+            this.apply_pick(&名, cx);
+            assert_eq!(this.slicers[0].pivots, vec![名.clone()], "繋がらない");
+            let h = &this.book.pivots[0].hide;
+            assert_eq!(h.len(), 1, "隠す値が入らない: {h:?}");
+            assert_eq!(h[0].0, "区分");
+            let mut 隠し = h[0].1.clone();
+            隠し.sort();
+            // **選んだ「筆記具」は隠さない。**残りを隠す
+            assert_eq!(隠し, vec!["文具".to_string(), "紙製品".to_string()], "向きが逆");
+
+            // 絞りを解くと、隠す値も空に戻る
+            this.slicers[0].sel.clear();
+            this.slicer_push_to_pivots(0, cx);
+            assert!(this.book.pivots[0].hide.is_empty(), "素通しに戻らない");
+
+            // もう一度押すと外れる
+            this.pick_kind = "slicer-refs";
+            this.apply_pick(&名, cx);
+            assert!(this.slicers[0].pivots.is_empty(), "外れない");
+        });
+    }
+
     /// **おすすめのピボット**(2026-08-21 の D群)。
     ///
     /// 決め方は純関数なので、ここで直に確かめます。同じ表からは毎回同じ
