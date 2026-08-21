@@ -1340,6 +1340,36 @@ mod validation_roundtrip_tests {
     use crate::model::{Cell, Validation};
 
     #[test]
+    fn シナリオが往復する() {
+        let mut b = Book::new();
+        b.sheets[0].scenarios.push(crate::model::Scenario {
+            name: "強気".into(),
+            cells: vec![
+                (Pos::parse("B2").unwrap(), "120".into()),
+                (Pos::parse("B3").unwrap(), "0.08".into()),
+            ],
+            comment: "単価を上げた場合".into(),
+        });
+        b.sheets[0].scenarios.push(crate::model::Scenario {
+            name: "弱気".into(),
+            cells: vec![(Pos::parse("B2").unwrap(), "90".into())],
+            comment: String::new(),
+        });
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let (back, _) = read(buf).expect("読めない");
+        let sc = &back.sheets[0].scenarios;
+        assert_eq!(sc.len(), 2, "シナリオが往復しない: {sc:?}");
+        assert_eq!(sc[0].name, "強気");
+        assert_eq!(sc[0].comment, "単価を上げた場合");
+        assert_eq!(sc[0].cells.len(), 2);
+        assert_eq!(sc[0].cells[0], (Pos::parse("B2").unwrap(), "120".to_string()));
+        assert_eq!(sc[1].name, "弱気");
+        assert_eq!(sc[1].comment, "", "覚え書きが無いのに何か入った");
+    }
+
+    #[test]
     fn 入力規則が往復する() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("D2").unwrap(), Cell::input("東京"));

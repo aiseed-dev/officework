@@ -2794,6 +2794,81 @@ mod recalc_tests {
         });
     }
 
+    /// **シナリオ**(2026-08-21 の D群)。入力セルの組に名前を付けて切り替える。
+    ///
+    /// 式のセルを控えないことを見ます。式を字で書き戻すと、当てた瞬間に
+    /// 比べる先の式が消えます。
+    #[gpui::test]
+    fn シナリオは値だけを控えて書き戻す(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (a1, v) in [("A1", "100"), ("A2", "0.08"), ("A3", "=A1*A2")] {
+                this.cursor = Pos::parse(a1).unwrap();
+                this.sync_input();
+                this.input.insert(v);
+                assert!(this.commit());
+            }
+            // まだ1つも無い
+            this.run_cmd("scenario", cx);
+            assert_eq!(this.pick_kind, "scenario");
+            assert!(this.sheet().scenarios.is_empty());
+
+            // A1:A3 を選んで控える。**式の A3 は入らない**
+            this.cursor = Pos::parse("A1").unwrap();
+            this.anchor = Some(Pos::parse("A3").unwrap());
+            this.apply_pick("→ 新しいシナリオ(選んだセルのいまの値)…", cx);
+            assert_eq!(this.prompt.as_ref().map(|(k, _)| *k), Some("scenario-name"));
+            this.prompt = Some(("scenario-name", Editor::new("強気")));
+            this.finish_prompt(cx);
+            let sc = this.sheet().scenarios.clone();
+            assert_eq!(sc.len(), 1, "控えられない");
+            assert_eq!(sc[0].name, "強気");
+            assert_eq!(sc[0].cells.len(), 2, "式まで控えた: {:?}", sc[0].cells);
+            assert!(
+                !sc[0].cells.iter().any(|(p, _)| *p == Pos::parse("A3").unwrap()),
+                "式のセルが入った"
+            );
+
+            // 値を変えてもう1つ控える
+            for (a1, v) in [("A1", "90")] {
+                this.cursor = Pos::parse(a1).unwrap();
+                this.sync_input();
+                this.input.insert(v);
+                assert!(this.commit());
+            }
+            this.cursor = Pos::parse("A1").unwrap();
+            this.anchor = Some(Pos::parse("A2").unwrap());
+            this.prompt = Some(("scenario-name", Editor::new("弱気")));
+            this.finish_prompt(cx);
+            assert_eq!(this.sheet().scenarios.len(), 2);
+
+            // 「強気」を当てると A1 が 100 に戻り、A3 の式は残る
+            this.pick_kind = "scenario";
+            this.apply_pick("強気", cx);
+            assert_eq!(
+                this.sheet().get(Pos::parse("A1").unwrap()).map(|c| c.value.display()),
+                Some("100".to_string()),
+                "書き戻されない"
+            );
+            assert!(
+                this.sheet().get(Pos::parse("A3").unwrap()).and_then(|c| c.formula.clone()).is_some(),
+                "式が消えた"
+            );
+            assert!(this.status.contains("当てました"), "{}", this.status);
+
+            // 同じ名前は控え直し(増えない)
+            this.prompt = Some(("scenario-name", Editor::new("強気")));
+            this.finish_prompt(cx);
+            assert_eq!(this.sheet().scenarios.len(), 2, "同じ名前で増えた");
+
+            // 消す
+            this.pick_kind = "scenario-del";
+            this.apply_pick("弱気", cx);
+            assert_eq!(this.sheet().scenarios.len(), 1);
+            assert_eq!(this.sheet().scenarios[0].name, "強気");
+        });
+    }
+
     /// **レポートの接続**(2026-08-21 の D群)。
     ///
     /// スライサーは「選んだ値」、ピボットは「隠す値」で絞ります。向きが逆なので、

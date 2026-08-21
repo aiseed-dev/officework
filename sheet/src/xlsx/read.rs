@@ -2054,6 +2054,43 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 buf.clear();
             }
         }
+        // シナリオ(入力セルの組に名前を付けたもの)。名前・覚え書き・
+        // 入力セルの位置と値をそのまま持つ
+        {
+            let mut r = Reader::from_str(&s);
+            let mut buf = Vec::new();
+            let mut cur: Option<crate::model::Scenario> = None;
+            loop {
+                match r.read_event_into(&mut buf) {
+                    Ok(Event::Eof) | Err(_) => break,
+                    Ok(Event::Start(e)) if local(e.name().as_ref()) == b"scenario" => {
+                        cur = Some(crate::model::Scenario {
+                            name: attr(&e, "name").unwrap_or_default(),
+                            cells: Vec::new(),
+                            comment: attr(&e, "comment").unwrap_or_default(),
+                        });
+                    }
+                    Ok(Event::Start(e)) | Ok(Event::Empty(e))
+                        if local(e.name().as_ref()) == b"inputCells" =>
+                    {
+                        if let (Some(sc), Some(p)) =
+                            (cur.as_mut(), attr(&e, "r").and_then(|v| Pos::parse(&v)))
+                        {
+                            sc.cells.push((p, attr(&e, "val").unwrap_or_default()));
+                        }
+                    }
+                    Ok(Event::End(e)) if local(e.name().as_ref()) == b"scenario" => {
+                        if let Some(sc) = cur.take() {
+                            if !sc.name.is_empty() {
+                                sh.scenarios.push(sc);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+                buf.clear();
+            }
+        }
         // ハイパーリンク。r:id の付いた外部URLだけ理解し、文書内の場所は報告
         {
             let mut r = Reader::from_str(&s);

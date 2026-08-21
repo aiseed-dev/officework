@@ -1145,6 +1145,61 @@ impl Calc {
                 self.pivot_flt = None;
                 self.spawn_pivot(nd, Some(pi), cx);
             }
+            // シナリオ。名前を押すとその値を書き戻す
+            "scenario" => {
+                if v.starts_with("→ 新しいシナリオ") {
+                    let (a, b) = self.sel_rect();
+                    let n = (b.row - a.row + 1) as usize * (b.col - a.col + 1) as usize;
+                    if n > 64 {
+                        self.status = ui::t!(
+                            "選んだセルが多すぎます(64 まで。変えて比べたいセルだけを選んでください)"
+                        )
+                        .into();
+                        return;
+                    }
+                    self.prompt = Some(("scenario-name", Editor::new("")));
+                    self.status =
+                        ui::tf!("シナリオの名前を打って Enter(いま選んでいる {} セルの値を控えます)", n)
+                            .into();
+                    return;
+                }
+                if v.starts_with("→ シナリオを削除") {
+                    let at = self.pop_anchor();
+                    let items: Vec<(String, String)> = self
+                        .sheet()
+                        .scenarios
+                        .iter()
+                        .map(|s| (s.name.clone(), s.name.clone()))
+                        .collect();
+                    self.pick_note = Some(ui::t!("消すシナリオを選んでください").into());
+                    self.pick_kind = "scenario-del";
+                    self.pick = Some((items, at));
+                    return;
+                }
+                let name = v.to_string();
+                let Some(sc) = self.sheet().scenarios.iter().find(|s| s.name == name).cloned()
+                else {
+                    return;
+                };
+                self.checkpoint();
+                for (p, val) in &sc.cells {
+                    self.sheet_mut().set(*p, sheet::Cell::input(val));
+                }
+                crate::recalc_book(&mut self.book, self.active);
+                self.dirty = true;
+                self.status =
+                    ui::tf!("シナリオ「{}」を当てました({} セル。Ctrl+Z で戻せます)", name, sc.cells.len())
+                        .into();
+            }
+            "scenario-del" => {
+                let name = v.to_string();
+                let 前 = self.sheet().scenarios.len();
+                self.sheet_mut().scenarios.retain(|s| s.name != name);
+                if self.sheet().scenarios.len() < 前 {
+                    self.dirty = true;
+                    self.status = ui::tf!("シナリオ「{}」を消しました", name).into();
+                }
+            }
             // レポートの接続。押すたびに入切して、一覧は開いたまま
             "slicer-refs" => {
                 let name = v.to_string();
@@ -4372,6 +4427,54 @@ impl Calc {
                     self.status =
                         ui::t!("2回のパスワードが違います(暗号化は変えていません。もう一度どうぞ)").into();
                 }
+            }
+            // シナリオの名前。**いま選んでいるセルの値をそのまま控えます**
+            "scenario-name" => {
+                let name = text.trim().to_string();
+                if name.is_empty() {
+                    self.status = ui::t!("名前が空です(何も作りませんでした)").into();
+                    return;
+                }
+                let (a, b) = self.sel_rect();
+                let mut cells: Vec<(Pos, String)> = Vec::new();
+                for r in a.row..=b.row {
+                    for c in a.col..=b.col {
+                        let p = Pos::new(r, c);
+                        // **式のセルは入れません。** 式を字で書き戻すと、
+                        // 当てた瞬間に式が消えます(比べる先が壊れる)
+                        let cell = self.sheet().get(p);
+                        if cell.is_some_and(|x| x.formula.is_some()) {
+                            continue;
+                        }
+                        let v = cell.map(|x| x.value.display()).unwrap_or_default();
+                        if !v.is_empty() {
+                            cells.push((p, v));
+                        }
+                    }
+                }
+                if cells.is_empty() {
+                    self.status = ui::t!(
+                        "選んだところに控える値がありません(式のセルは入れません — 当てると式が消えるため)"
+                    )
+                    .into();
+                    return;
+                }
+                let 何セル = cells.len();
+                let 前 = self.sheet().scenarios.len();
+                self.sheet_mut().scenarios.retain(|s| s.name != name);
+                let 上書き = self.sheet().scenarios.len() < 前;
+                self.sheet_mut().scenarios.push(sheet::model::Scenario {
+                    name: name.clone(),
+                    cells,
+                    comment: String::new(),
+                });
+                self.dirty = true;
+                self.status = if 上書き {
+                    ui::tf!("シナリオ「{}」を控え直しました({} セル)", name, 何セル).into()
+                } else {
+                    ui::tf!("シナリオ「{}」を控えました({} セル。保存で xlsx にも残ります)", name, 何セル)
+                        .into()
+                };
             }
             "equation" => {
                 if text.is_empty() {

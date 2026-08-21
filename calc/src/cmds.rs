@@ -103,7 +103,7 @@ impl Calc {
         "fill-num", "freeze", "show-formulas", "show-gridlines",
         "fn-math", "fn-text", "fn-logical", "fn-recent",
         "sum", "average", "count", "max", "min",
-        "data-validation", "dv-mark", "condformat", "defname", "split",
+        "data-validation", "dv-mark", "condformat", "defname", "split", "scenario",
         "pageorient", "pagesize", "pagemargins", "printarea",
         "inschart", "insimage", "inshyperlink", "replace",
         "changecase", "format", "cell-format", "fontname", "fontsize",
@@ -319,7 +319,7 @@ impl Calc {
         "borders",
         "merge", "prot-allow", "co-history", "py-list",
         "insslicer", "edit-header", "paste-name", "csv-kind", "defname",
-        "currency",
+        "currency", "scenario",
     ];
 
     /// **小窓が開くボタン。** リボンは … を添える(メニュー項目末尾の
@@ -3681,6 +3681,32 @@ impl Calc {
                     ui::t!("名前の管理 — 名前を選ぶと 移動/打ち直し/削除。式の中で使えます").into(),
                 );
                 self.pick_kind = "names-pick";
+                self.pick = Some((items, at));
+            }
+            // シナリオ(入力セルの組に名前を付けて、切り替えて比べる)。
+            // **値を書き戻すだけ**で、式も書式も触りません。1手で戻せます
+            "scenario" => {
+                self.commit();
+                let at = self.pop_anchor();
+                let mut items: Vec<(String, String)> = self
+                    .sheet()
+                    .scenarios
+                    .iter()
+                    .map(|s| {
+                        let n = s.cells.len();
+                        (s.name.clone(), ui::tf!("{}({} セル)", s.name.clone(), n).to_string())
+                    })
+                    .collect();
+                items.extend(menu(&[ui::item!("→ 新しいシナリオ(選んだセルのいまの値)…")]));
+                if !self.sheet().scenarios.is_empty() {
+                    items.extend(menu(&[ui::item!("→ シナリオを削除…")]));
+                }
+                self.pick_note = Some(if self.sheet().scenarios.is_empty() {
+                    ui::t!("まだ1つもありません。変えて比べたいセルを選んでから作ってください").into()
+                } else {
+                    ui::t!("押すとその値をセルに書き戻します(Ctrl+Z で戻せます)").into()
+                });
+                self.pick_kind = "scenario";
                 self.pick = Some((items, at));
             }
             // ウィンドウの分割。固定と似ていますが、**上と左の帯も動きます** —

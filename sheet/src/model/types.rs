@@ -712,6 +712,9 @@ pub struct Sheet {
     pub cond: Vec<CondRule>,
     /// データの入力規則(list だけ)。xlsx の dataValidations と往復する
     pub validations: Vec<Validation>,
+    /// シナリオ(入力セルの組に名前を付けて、切り替えて比べる)。
+    /// xlsx の `scenarios` と往復する
+    pub scenarios: Vec<Scenario>,
     /// 印刷の向き(xlsx の pageSetup orientation="landscape")。
     /// **読むだけ** — 保存は原文持ち越しが正。PDF がこれに従う
     pub landscape: bool,
@@ -1626,6 +1629,22 @@ pub struct SheetImage {
     pub height_px: f32,
     /// 絵の実体(PNG / JPEG)
     pub data: Vec<u8>,
+}
+
+/// シナリオ(入力セルの組に名前を付けて、切り替えて比べる)。
+///
+/// 「単価を 100 にしたとき」「120 にしたとき」を名前で持っておき、押すと
+/// その値をセルに書き戻します。**書き戻すだけ**で、式や書式は触りません。
+///
+/// 値は**打った姿の字**で持ちます。xlsx の `inputCells` も字なので、
+/// そのまま往復します。
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Scenario {
+    pub name: String,
+    /// 入力セルとその値。並びは xlsx に出てきた順
+    pub cells: Vec<(Pos, String)>,
+    /// 覚え書き(xlsx の comment)。空なら書きません
+    pub comment: String,
 }
 
 /// データの入力規則(list だけ)。「この範囲は、この候補から選ぶ」。

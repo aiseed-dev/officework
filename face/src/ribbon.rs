@@ -479,6 +479,7 @@ pub const CALC: &[Tab] = &[
         c("data-validation", "データの入力規則", "data-validation"),
         t("dv-mark", "無効データのマーク", "dv-mark"),
         c("goal-seek", "ゴールシーク", "goal-seek"),
+        c("scenario", "シナリオ", "scenario"),
         c("solver", "ソルバー", "solver"),
         c("group", "グループ化", "group"),
         c("ungroup", "グループ解除", "ungroup"),

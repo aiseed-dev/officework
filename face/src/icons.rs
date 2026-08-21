@@ -36,6 +36,7 @@ pub static ICONS: &[(&str, &[u8])] = &[
     ("data-validation", include_bytes!("../icons/data-validation.svg")),
     ("dv-mark", include_bytes!("../icons/dv-mark.svg")),
     ("split", include_bytes!("../icons/split.svg")),
+    ("scenario", include_bytes!("../icons/scenario.svg")),
     ("datetime", include_bytes!("../icons/datetime.svg")),
     ("decfont", include_bytes!("../icons/decfont.svg")),
     ("decoffset", include_bytes!("../icons/decoffset.svg")),

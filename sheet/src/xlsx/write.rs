@@ -1777,6 +1777,33 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             }
             w.write_event(Event::Empty(pr)).unwrap();
         }
+        // シナリオ。**作法どおり sheetProtection の後・mergeCells の前**。
+        // `current` と `show` は「いま出しているのはどれか」で、こちらは
+        // シナリオを当てても覚えないので 0 のままにします
+        if !sh.scenarios.is_empty() {
+            let mut sc = BytesStart::new("scenarios");
+            sc.push_attribute(("current", "0"));
+            sc.push_attribute(("show", "0"));
+            w.write_event(Event::Start(sc)).unwrap();
+            for s2 in &sh.scenarios {
+                let mut e = BytesStart::new("scenario");
+                e.push_attribute(("name", s2.name.as_str()));
+                e.push_attribute(("locked", "0"));
+                e.push_attribute(("count", s2.cells.len().to_string().as_str()));
+                if !s2.comment.is_empty() {
+                    e.push_attribute(("comment", s2.comment.as_str()));
+                }
+                w.write_event(Event::Start(e)).unwrap();
+                for (p, v) in &s2.cells {
+                    let mut c = BytesStart::new("inputCells");
+                    c.push_attribute(("r", p.a1().as_str()));
+                    c.push_attribute(("val", v.as_str()));
+                    w.write_event(Event::Empty(c)).unwrap();
+                }
+                w.write_event(Event::End(BytesEnd::new("scenario"))).unwrap();
+            }
+            w.write_event(Event::End(BytesEnd::new("scenarios"))).unwrap();
+        }
         // 結合を返す。読めたのに書かないと、開いて保存しただけで帳票が壊れる
         if !sh.merges.is_empty() {
             let mut mc = BytesStart::new("mergeCells");

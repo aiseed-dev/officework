@@ -301,6 +301,7 @@ pub const CALC: &[Tab] = &[
         c("data-validation", "資料驗證", "data-validation"),
         t("dv-mark", "圈選無效資料", "dv-mark"),
         c("goal-seek", "單變數求解", "goal-seek"),
+        c("scenario", "分析藍本", "scenario"),
         c("solver", "規劃求解", "solver"),
         c("group", "分組", "group"),
         c("ungroup", "取消分組", "ungroup"),

@@ -53,6 +53,7 @@ OVERRIDES = {
         # 本家にこの機能そのものがないので、語もこちらで用意します
         "無効データのマーク": "Circle invalid data",
         "分割": "Split",
+        "シナリオ": "Scenario",
         # タブ
         "AI": "AI",
         # ファイル
