@@ -291,6 +291,40 @@ impl Writer {
                         cx.notify()
                     })));
             }
+        } else if self.file_view == 4 {
+            // **前に保存できずに終わった控え**(2026-08-21 の B-3)。
+            //
+            // 見せ方は「最近開いた」と同じです。押すと**控えの方**を開き、
+            // 道は持たせません — そのまま上書き保存して原本を潰さないため。
+            // 中身を確かめてから「名前を付けて保存」する形です(表と同じ作法)。
+            let look = ui::filemenu::PaneLook {
+                fg: th_top_fg, dim: th_status, hover: item_bg, scale: us,
+            };
+            pane = pane.child(ui::filemenu::pane_title(&look, ui::t!("復旧")));
+            let list = ops::stale_recovers("adoc");
+            if list.is_empty() {
+                pane = pane.child(ui::filemenu::recent_empty(&look));
+            }
+            for (i, (名, 道)) in list.into_iter().enumerate() {
+                let 名2 = 名.clone();
+                pane = pane.child(
+                    ui::filemenu::recent_row(&look, i, std::path::Path::new(&名))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.tab = this.prev_tab;
+                            this.open(道.clone());
+                            // **控えを原本と取り違えないよう、道は持たせない**
+                            this.path = None;
+                            this.dirty = true;
+                            this.status = ui::tf!(
+                                "控えを開きました(元は {})。中身を確かめて「名前を付けて保存」して\
+                                 ください — このまま上書きはしません",
+                                名2.clone()
+                            )
+                            .into();
+                            cx.notify()
+                        })),
+                );
+            }
         } else {
             let text = self.doc.body_text();
             let words = text.split_whitespace().count();

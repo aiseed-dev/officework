@@ -1935,6 +1935,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} を {} に置きました({} 個の図形。図形を選んで Enter で文字、ドラッグで移動。全部まとめて Ctrl+Z で1手)", "{} placé en {} ({} formes ; sélectionnez une forme et appuyez sur Entrée pour écrire, faites glisser pour déplacer ; Ctrl+Z les annule toutes en une seule fois)"),
     ("解を求めました: {} = {}(変数 {} 個を書き換え。Ctrl+Z で1手)", "Résolu : {} = {} ({} cellules variables ont été réécrites ; Ctrl+Z annule en une seule fois)"),
     ("{} = {} で {} が {} になります(Ctrl+Z で戻せます)", "Avec {} = {}, {} devient {} (Ctrl+Z annule)"),
-    ("前に保存できずに終わった控えが {} 件あります({} — 「開く」で開けます)", "Il y a {} copies de récupération d'une session terminée sans enregistrement ({} — ouvrez-les avec Ouvrir)"),
+    ("前に保存できずに終わった控えが {} 件あります(ファイルタブの「復旧」で開けます)", "Il y a {} copies de récupération d'une session terminée sans enregistrement (ouvrez-les depuis Récupérer dans l'onglet Fichier)"),
+    ("復旧", "Récupérer"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Aucune solution trouvée ({} n'influe peut-être pas sur {})"),
 ];

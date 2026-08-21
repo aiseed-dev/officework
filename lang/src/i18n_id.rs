@@ -1935,6 +1935,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} を {} に置きました({} 個の図形。図形を選んで Enter で文字、ドラッグで移動。全部まとめて Ctrl+Z で1手)", "{} ditempatkan di {} ({} bentuk; pilih sebuah bentuk lalu tekan Enter untuk mengetik, seret untuk memindahkan; Ctrl+Z membatalkan semuanya dalam satu langkah)"),
     ("解を求めました: {} = {}(変数 {} 個を書き換え。Ctrl+Z で1手)", "Terpecahkan: {} = {} ({} sel variabel ditulis ulang; Ctrl+Z membatalkannya dalam satu langkah)"),
     ("{} = {} で {} が {} になります(Ctrl+Z で戻せます)", "Dengan {} = {}, {} menjadi {} (Ctrl+Z membatalkannya)"),
-    ("前に保存できずに終わった控えが {} 件あります({} — 「開く」で開けます)", "Ada {} salinan pemulihan dari sesi yang berakhir tanpa disimpan ({} — buka dengan Buka)"),
+    ("前に保存できずに終わった控えが {} 件あります(ファイルタブの「復旧」で開けます)", "Ada {} salinan pemulihan dari sesi yang berakhir tanpa disimpan (buka lewat Pulihkan di tab Berkas)"),
+    ("復旧", "Pemulihan"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Solusi tidak ditemukan ({} mungkin tidak berpengaruh pada {})"),
 ];

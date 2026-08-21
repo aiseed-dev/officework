@@ -1935,6 +1935,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} を {} に置きました({} 個の図形。図形を選んで Enter で文字、ドラッグで移動。全部まとめて Ctrl+Z で1手)", "Đã đặt {} tại {} ({} hình; chọn một hình rồi nhấn Enter để gõ chữ, kéo để di chuyển; Ctrl+Z hoàn tác tất cả trong một bước)"),
     ("解を求めました: {} = {}(変数 {} 個を書き換え。Ctrl+Z で1手)", "Đã giải: {} = {} (đã ghi lại {} ô biến; Ctrl+Z hoàn tác trong một bước)"),
     ("{} = {} で {} が {} になります(Ctrl+Z で戻せます)", "Với {} = {} thì {} thành {} (Ctrl+Z hoàn tác)"),
-    ("前に保存できずに終わった控えが {} 件あります({} — 「開く」で開けます)", "Có {} bản khôi phục từ phiên kết thúc mà chưa lưu ({} — mở bằng Mở)"),
+    ("前に保存できずに終わった控えが {} 件あります(ファイルタブの「復旧」で開けます)", "Có {} bản khôi phục từ phiên kết thúc mà chưa lưu (mở từ Khôi phục trên thẻ Tệp)"),
+    ("復旧", "Khôi phục"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Không tìm thấy lời giải ({} có thể không ảnh hưởng đến {})"),
 ];

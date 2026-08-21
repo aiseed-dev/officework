@@ -339,12 +339,10 @@ impl Office {
         // 案内します。こちらが後から上書きすると、その案内が消えます。
         let 残り = ops::stale_recovers("adoc").len();
         if 残り > 0 {
-            let 道 = ops::recover_dir().display().to_string();
             view.update(cx, |o: &mut Office, cx| {
                 let 文 = ui::tf!(
-                    "前に保存できずに終わった控えが {} 件あります({} — 「開く」で開けます)",
-                    残り,
-                    道
+                    "前に保存できずに終わった控えが {} 件あります(ファイルタブの「復旧」で開けます)",
+                    残り
                 )
                 .to_string();
                 match &o.tabs[o.at] {

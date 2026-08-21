@@ -7649,426 +7649,430 @@
  },
  {
   "i": 1912,
-  "t": "Có {} bản khôi phục từ phiên kết thúc mà chưa lưu ({} — mở bằng Mở)"
+  "t": "Có {} bản khôi phục từ phiên kết thúc mà chưa lưu (mở từ Khôi phục trên thẻ Tệp)"
  },
  {
   "i": 1913,
-  "t": "Không tìm thấy lời giải ({} có thể không ảnh hưởng đến {})"
- },
- {
-  "i": 1914,
-  "t": "Hướng"
- },
- {
-  "i": 1915,
-  "t": "Định dạng ô"
- },
- {
-  "i": 1916,
-  "t": "Căn giữa"
- },
- {
-  "i": 1917,
-  "t": "Hàm Python"
- },
- {
-  "i": 1918,
-  "t": "Macro ruy-băng"
- },
- {
-  "i": 1919,
-  "t": "Sao chép định dạng"
- },
- {
-  "i": 1920,
-  "t": "Kiểu"
- },
- {
-  "i": 1921,
-  "t": "Danh sách trường"
- },
- {
-  "i": 1922,
-  "t": "Phóng to chữ màn hình"
- },
- {
-  "i": 1923,
-  "t": "Thu nhỏ chữ màn hình"
- },
- {
-  "i": 1924,
-  "t": "AI"
- },
- {
-  "i": 1925,
-  "t": "In"
- },
- {
-  "i": 1926,
-  "t": "Bố cục in"
- },
- {
-  "i": 1927,
-  "t": "Đích"
- },
- {
-  "i": 1928,
-  "t": "bản tóm tắt"
- },
- {
-  "i": 1929,
-  "t": "Viết lại"
- },
- {
-  "i": 1930,
-  "t": "Lịch sự hơn"
- },
- {
-  "i": 1931,
-  "t": "Dễ hiểu hơn"
- },
- {
-  "i": 1932,
-  "t": "bản dịch"
- },
- {
-  "i": 1933,
-  "t": "furigana"
- },
- {
-  "i": 1934,
-  "t": "Viết tiếp"
- },
- {
-  "i": 1935,
-  "t": "Thành bảng"
- },
- {
-  "i": 1936,
-  "t": "Yêu cầu"
- },
- {
-  "i": 1937,
-  "t": "Ruby"
- },
- {
-  "i": 1938,
-  "t": "Viết dọc"
- },
- {
-  "i": 1939,
-  "t": "Hướng văn bản"
- },
- {
-  "i": 1940,
-  "t": "Phân bố đều"
- },
- {
-  "i": 1941,
-  "t": "Chèn chú thích hình/bảng"
- },
- {
-  "i": 1942,
-  "t": "Mở URL"
- },
- {
-  "i": 1943,
-  "t": "Chỉ mục"
- },
- {
-  "i": 1944,
-  "t": "Ghi chú Aozora"
- },
- {
-  "i": 1945,
-  "t": "Cú pháp Denden"
- },
- {
-  "i": 1946,
-  "t": "Ghi lại thay đổi"
- },
- {
-  "i": 1947,
-  "t": "Hiển thị thay đổi"
- },
- {
-  "i": 1948,
-  "t": "Kiểm lỗi"
- },
- {
-  "i": 1949,
-  "t": "Ký tự"
- },
- {
-  "i": 1950,
-  "t": "Kiểm tra chính tả"
- },
- {
-  "i": 1951,
-  "t": "Từ điển đồng nghĩa"
- },
- {
-  "i": 1952,
-  "t": "Chuyển đổi sai"
- },
- {
-  "i": 1953,
-  "t": "Viết không thống nhất"
- },
- {
-  "i": 1954,
-  "t": "Tổng phụ"
- },
- {
-  "i": 1955,
-  "t": "Cách tính"
- },
- {
-  "i": 1956,
-  "t": "Chữ phải sang trái"
- },
- {
-  "i": 1957,
-  "t": "Hướng trang tính"
- },
- {
-  "i": 1958,
-  "t": "Python"
- },
- {
-  "i": 1959,
-  "t": "Hộp kiểm"
- },
- {
-  "i": 1960,
-  "t": "Liên kết ngoài"
- },
- {
-  "i": 1961,
-  "t": "Biểu đồ đề xuất"
- },
- {
-  "i": 1962,
-  "t": "Chế độ đồng soạn thảo"
- },
- {
-  "i": 1963,
-  "t": "Lịch sử phiên bản"
- },
- {
-  "i": 1964,
-  "t": "Trò chuyện"
- },
- {
-  "i": 1965,
-  "t": "Bảo vệ"
- },
- {
-  "i": 1966,
-  "t": "Mã hóa"
- },
- {
-  "i": 1967,
-  "t": "Thêm chữ ký số"
- },
- {
-  "i": 1968,
-  "t": "Macro"
- },
- {
-  "i": 1969,
-  "t": "Quản lý plugin"
- },
- {
-  "i": 1970,
-  "t": "Hiển thị số 0"
- },
- {
-  "i": 1971,
-  "t": "Thu phóng về 100%"
- },
- {
-  "i": 1972,
-  "t": "Chủ đề giao diện"
- },
- {
-  "i": 1973,
-  "t": "Cửa sổ theo dõi"
- },
- {
-  "i": 1974,
-  "t": "AutoSum"
- },
- {
-  "i": 1975,
-  "t": "Ghi lại thao tác"
- },
- {
-  "i": 1976,
-  "t": "Xóa nhận xét"
- },
- {
-  "i": 1977,
-  "t": "Solver"
- },
- {
-  "i": 1978,
-  "t": "Văn bản thành dữ liệu"
- },
- {
-  "i": 1979,
-  "t": "Xóa mũi tên truy vết"
- },
- {
-  "i": 1980,
-  "t": "Điền"
- },
- {
-  "i": 1981,
-  "t": "Bỏ lọc"
- },
- {
-  "i": 1982,
-  "t": "Viết macro"
- },
- {
-  "i": 1983,
-  "t": "Tách cột"
- },
- {
-  "i": 1984,
-  "t": "Chú thích hình/bảng"
- },
- {
-  "i": 1985,
-  "t": "Mục lục hình/bảng"
- },
- {
-  "i": 1986,
-  "t": "Cập nhật mục lục hình/bảng"
- },
- {
-  "i": 1987,
-  "t": "Liên kết ngoài (nhập theo giá trị)"
- },
- {
-  "i": 1988,
-  "t": "Toán & Lượng giác"
- },
- {
-  "i": 1989,
-  "t": "Hiển thị công thức"
- },
- {
-  "i": 1990,
-  "t": "Hướng chữ (phải sang trái)"
- },
- {
-  "i": 1991,
-  "t": "Văn bản"
- },
- {
-  "i": 1992,
-  "t": "Ngày & Giờ"
- },
- {
-  "i": 1993,
-  "t": "Dùng gần đây"
- },
- {
-  "i": 1994,
-  "t": "In cả đường lưới"
- },
- {
-  "i": 1995,
-  "t": "Cập nhật mục lục"
- },
- {
-  "i": 1996,
-  "t": "Cột sọc xen kẽ"
- },
- {
-  "i": 1997,
-  "t": "In cả tiêu đề"
- },
- {
-  "i": 1998,
-  "t": "Ẩn chi tiết"
- },
- {
-  "i": 1999,
-  "t": "Xóa trùng lặp"
- },
- {
-  "i": 2000,
-  "t": "Chèn hàm"
- },
- {
-  "i": 2001,
-  "t": "Dạng CSV"
- },
- {
-  "i": 2002,
-  "t": "Khoá ô"
- },
- {
-  "i": 2003,
-  "t": "Bảng dữ liệu"
- },
- {
-  "i": 2004,
-  "t": "Điền nhanh"
- },
- {
-  "i": 2005,
-  "t": "Danh sách"
- },
- {
-  "i": 2006,
-  "t": "Dán tên"
- },
- {
-  "i": 2007,
   "t": "Khôi phục"
  },
  {
+  "i": 1914,
+  "t": "Không tìm thấy lời giải ({} có thể không ảnh hưởng đến {})"
+ },
+ {
+  "i": 1915,
+  "t": "Hướng"
+ },
+ {
+  "i": 1916,
+  "t": "Định dạng ô"
+ },
+ {
+  "i": 1917,
+  "t": "Căn giữa"
+ },
+ {
+  "i": 1918,
+  "t": "Hàm Python"
+ },
+ {
+  "i": 1919,
+  "t": "Macro ruy-băng"
+ },
+ {
+  "i": 1920,
+  "t": "Sao chép định dạng"
+ },
+ {
+  "i": 1921,
+  "t": "Kiểu"
+ },
+ {
+  "i": 1922,
+  "t": "Danh sách trường"
+ },
+ {
+  "i": 1923,
+  "t": "Phóng to chữ màn hình"
+ },
+ {
+  "i": 1924,
+  "t": "Thu nhỏ chữ màn hình"
+ },
+ {
+  "i": 1925,
+  "t": "AI"
+ },
+ {
+  "i": 1926,
+  "t": "In"
+ },
+ {
+  "i": 1927,
+  "t": "Bố cục in"
+ },
+ {
+  "i": 1928,
+  "t": "Đích"
+ },
+ {
+  "i": 1929,
+  "t": "bản tóm tắt"
+ },
+ {
+  "i": 1930,
+  "t": "Viết lại"
+ },
+ {
+  "i": 1931,
+  "t": "Lịch sự hơn"
+ },
+ {
+  "i": 1932,
+  "t": "Dễ hiểu hơn"
+ },
+ {
+  "i": 1933,
+  "t": "bản dịch"
+ },
+ {
+  "i": 1934,
+  "t": "furigana"
+ },
+ {
+  "i": 1935,
+  "t": "Viết tiếp"
+ },
+ {
+  "i": 1936,
+  "t": "Thành bảng"
+ },
+ {
+  "i": 1937,
+  "t": "Yêu cầu"
+ },
+ {
+  "i": 1938,
+  "t": "Ruby"
+ },
+ {
+  "i": 1939,
+  "t": "Viết dọc"
+ },
+ {
+  "i": 1940,
+  "t": "Hướng văn bản"
+ },
+ {
+  "i": 1941,
+  "t": "Phân bố đều"
+ },
+ {
+  "i": 1942,
+  "t": "Chèn chú thích hình/bảng"
+ },
+ {
+  "i": 1943,
+  "t": "Mở URL"
+ },
+ {
+  "i": 1944,
+  "t": "Chỉ mục"
+ },
+ {
+  "i": 1945,
+  "t": "Ghi chú Aozora"
+ },
+ {
+  "i": 1946,
+  "t": "Cú pháp Denden"
+ },
+ {
+  "i": 1947,
+  "t": "Ghi lại thay đổi"
+ },
+ {
+  "i": 1948,
+  "t": "Hiển thị thay đổi"
+ },
+ {
+  "i": 1949,
+  "t": "Kiểm lỗi"
+ },
+ {
+  "i": 1950,
+  "t": "Ký tự"
+ },
+ {
+  "i": 1951,
+  "t": "Kiểm tra chính tả"
+ },
+ {
+  "i": 1952,
+  "t": "Từ điển đồng nghĩa"
+ },
+ {
+  "i": 1953,
+  "t": "Chuyển đổi sai"
+ },
+ {
+  "i": 1954,
+  "t": "Viết không thống nhất"
+ },
+ {
+  "i": 1955,
+  "t": "Tổng phụ"
+ },
+ {
+  "i": 1956,
+  "t": "Cách tính"
+ },
+ {
+  "i": 1957,
+  "t": "Chữ phải sang trái"
+ },
+ {
+  "i": 1958,
+  "t": "Hướng trang tính"
+ },
+ {
+  "i": 1959,
+  "t": "Python"
+ },
+ {
+  "i": 1960,
+  "t": "Hộp kiểm"
+ },
+ {
+  "i": 1961,
+  "t": "Liên kết ngoài"
+ },
+ {
+  "i": 1962,
+  "t": "Biểu đồ đề xuất"
+ },
+ {
+  "i": 1963,
+  "t": "Chế độ đồng soạn thảo"
+ },
+ {
+  "i": 1964,
+  "t": "Lịch sử phiên bản"
+ },
+ {
+  "i": 1965,
+  "t": "Trò chuyện"
+ },
+ {
+  "i": 1966,
+  "t": "Bảo vệ"
+ },
+ {
+  "i": 1967,
+  "t": "Mã hóa"
+ },
+ {
+  "i": 1968,
+  "t": "Thêm chữ ký số"
+ },
+ {
+  "i": 1969,
+  "t": "Macro"
+ },
+ {
+  "i": 1970,
+  "t": "Quản lý plugin"
+ },
+ {
+  "i": 1971,
+  "t": "Hiển thị số 0"
+ },
+ {
+  "i": 1972,
+  "t": "Thu phóng về 100%"
+ },
+ {
+  "i": 1973,
+  "t": "Chủ đề giao diện"
+ },
+ {
+  "i": 1974,
+  "t": "Cửa sổ theo dõi"
+ },
+ {
+  "i": 1975,
+  "t": "AutoSum"
+ },
+ {
+  "i": 1976,
+  "t": "Ghi lại thao tác"
+ },
+ {
+  "i": 1977,
+  "t": "Xóa nhận xét"
+ },
+ {
+  "i": 1978,
+  "t": "Solver"
+ },
+ {
+  "i": 1979,
+  "t": "Văn bản thành dữ liệu"
+ },
+ {
+  "i": 1980,
+  "t": "Xóa mũi tên truy vết"
+ },
+ {
+  "i": 1981,
+  "t": "Điền"
+ },
+ {
+  "i": 1982,
+  "t": "Bỏ lọc"
+ },
+ {
+  "i": 1983,
+  "t": "Viết macro"
+ },
+ {
+  "i": 1984,
+  "t": "Tách cột"
+ },
+ {
+  "i": 1985,
+  "t": "Chú thích hình/bảng"
+ },
+ {
+  "i": 1986,
+  "t": "Mục lục hình/bảng"
+ },
+ {
+  "i": 1987,
+  "t": "Cập nhật mục lục hình/bảng"
+ },
+ {
+  "i": 1988,
+  "t": "Liên kết ngoài (nhập theo giá trị)"
+ },
+ {
+  "i": 1989,
+  "t": "Toán & Lượng giác"
+ },
+ {
+  "i": 1990,
+  "t": "Hiển thị công thức"
+ },
+ {
+  "i": 1991,
+  "t": "Hướng chữ (phải sang trái)"
+ },
+ {
+  "i": 1992,
+  "t": "Văn bản"
+ },
+ {
+  "i": 1993,
+  "t": "Ngày & Giờ"
+ },
+ {
+  "i": 1994,
+  "t": "Dùng gần đây"
+ },
+ {
+  "i": 1995,
+  "t": "In cả đường lưới"
+ },
+ {
+  "i": 1996,
+  "t": "Cập nhật mục lục"
+ },
+ {
+  "i": 1997,
+  "t": "Cột sọc xen kẽ"
+ },
+ {
+  "i": 1998,
+  "t": "In cả tiêu đề"
+ },
+ {
+  "i": 1999,
+  "t": "Ẩn chi tiết"
+ },
+ {
+  "i": 2000,
+  "t": "Xóa trùng lặp"
+ },
+ {
+  "i": 2001,
+  "t": "Chèn hàm"
+ },
+ {
+  "i": 2002,
+  "t": "Dạng CSV"
+ },
+ {
+  "i": 2003,
+  "t": "Khoá ô"
+ },
+ {
+  "i": 2004,
+  "t": "Bảng dữ liệu"
+ },
+ {
+  "i": 2005,
+  "t": "Điền nhanh"
+ },
+ {
+  "i": 2006,
+  "t": "Danh sách"
+ },
+ {
+  "i": 2007,
+  "t": "Dán tên"
+ },
+ {
   "i": 2008,
-  "t": "Ngắt dòng trong ô"
+  "t": "Khôi phục"
  },
  {
   "i": 2009,
-  "t": "Tần suất sao lưu"
+  "t": "Ngắt dòng trong ô"
  },
  {
   "i": 2010,
-  "t": "Tệp .py mới"
+  "t": "Tần suất sao lưu"
  },
  {
   "i": 2011,
-  "t": "Thêm vào vùng in"
+  "t": "Tệp .py mới"
  },
  {
   "i": 2012,
-  "t": "Thu vừa tờ giấy"
+  "t": "Thêm vào vùng in"
  },
  {
   "i": 2013,
-  "t": "Chỗ hết tờ giấy"
+  "t": "Thu vừa tờ giấy"
  },
  {
   "i": 2014,
-  "t": "Mở thư mục"
+  "t": "Chỗ hết tờ giấy"
  },
  {
   "i": 2015,
-  "t": "Cách hiện giá trị"
+  "t": "Mở thư mục"
  },
  {
   "i": 2016,
-  "t": "Thao tác được phép"
+  "t": "Cách hiện giá trị"
  },
  {
   "i": 2017,
+  "t": "Thao tác được phép"
+ },
+ {
+  "i": 2018,
   "t": "Gợi ý chỉ đọc"
  }
 ]

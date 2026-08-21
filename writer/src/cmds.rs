@@ -1267,6 +1267,12 @@ impl Writer {
             I::new("f-url", ui::t!("URLを開く")),
             I::new("f-recent", ui::t!("最近開いた")).on(self.file_view == 1),
             I::new("f-find", ui::t!("フォルダから探す")).on(self.file_view == 3),
+            // **前に落ちた跡から開き直す**(2026-08-21 の B-3)。控えが
+            // 無いときは灰色にします — 押しても何も無い、をやめるためです
+            {
+                let i = I::new("f-recover", ui::t!("復旧")).on(self.file_view == 4);
+                if ops::stale_recovers("adoc").is_empty() { i.grey() } else { i }
+            },
             I::new("f-save", ui::t!("保存")).gap(),
             I::new("f-saveas", ui::t!("名前を付けて保存")),
             I::new("f-print", ui::t!("印刷")),

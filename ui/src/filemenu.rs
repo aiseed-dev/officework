@@ -127,6 +127,12 @@ pub fn run(s: &mut impl FileScreen, id: &str) -> bool {
             s.set_file_view(3);
             true
         }
+        // **前に保存できずに終わった控えの一覧**(2026-08-21 の B-3)。
+        // 中身はアプリが描きます — ここは面を切り替えるだけです
+        "f-recover" => {
+            s.set_file_view(4);
+            true
+        }
         // ファイルの置き場をデスクトップの道具で開く。**まだ名前が無ければ
         // そう言う** — 黙って何も起きないのが一番分からない
         "f-place" => {

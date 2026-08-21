@@ -7649,426 +7649,430 @@
  },
  {
   "i": 1912,
-  "t": "Ada {} salinan pemulihan dari sesi yang berakhir tanpa disimpan ({} — buka dengan Buka)"
+  "t": "Ada {} salinan pemulihan dari sesi yang berakhir tanpa disimpan (buka lewat Pulihkan di tab Berkas)"
  },
  {
   "i": 1913,
-  "t": "Solusi tidak ditemukan ({} mungkin tidak berpengaruh pada {})"
- },
- {
-  "i": 1914,
-  "t": "Orientasi"
- },
- {
-  "i": 1915,
-  "t": "Format sel"
- },
- {
-  "i": 1916,
-  "t": "Rata di tengah"
- },
- {
-  "i": 1917,
-  "t": "Fungsi Python"
- },
- {
-  "i": 1918,
-  "t": "Makro pita"
- },
- {
-  "i": 1919,
-  "t": "Salin format"
- },
- {
-  "i": 1920,
-  "t": "Gaya"
- },
- {
-  "i": 1921,
-  "t": "Daftar bidang"
- },
- {
-  "i": 1922,
-  "t": "Perbesar teks layar"
- },
- {
-  "i": 1923,
-  "t": "Perkecil teks layar"
- },
- {
-  "i": 1924,
-  "t": "AI"
- },
- {
-  "i": 1925,
-  "t": "Cetak"
- },
- {
-  "i": 1926,
-  "t": "Tata letak cetak"
- },
- {
-  "i": 1927,
-  "t": "Tujuan"
- },
- {
-  "i": 1928,
-  "t": "Peringkasan"
- },
- {
-  "i": 1929,
-  "t": "Tulis ulang"
- },
- {
-  "i": 1930,
-  "t": "Lebih sopan"
- },
- {
-  "i": 1931,
-  "t": "Lebih sederhana"
- },
- {
-  "i": 1932,
-  "t": "Penerjemahan"
- },
- {
-  "i": 1933,
-  "t": "Furigana"
- },
- {
-  "i": 1934,
-  "t": "Lanjutkan"
- },
- {
-  "i": 1935,
-  "t": "Jadi tabel"
- },
- {
-  "i": 1936,
-  "t": "Minta"
- },
- {
-  "i": 1937,
-  "t": "Ruby"
- },
- {
-  "i": 1938,
-  "t": "Vertikal"
- },
- {
-  "i": 1939,
-  "t": "Arah teks"
- },
- {
-  "i": 1940,
-  "t": "Terdistribusi"
- },
- {
-  "i": 1941,
-  "t": "Sisipkan keterangan"
- },
- {
-  "i": 1942,
-  "t": "Buka URL"
- },
- {
-  "i": 1943,
-  "t": "Indeks"
- },
- {
-  "i": 1944,
-  "t": "Catatan Aozora"
- },
- {
-  "i": 1945,
-  "t": "Notasi Denden"
- },
- {
-  "i": 1946,
-  "t": "Lacak perubahan"
- },
- {
-  "i": 1947,
-  "t": "Tampilkan perubahan"
- },
- {
-  "i": 1948,
-  "t": "Pemeriksaan"
- },
- {
-  "i": 1949,
-  "t": "Karakter"
- },
- {
-  "i": 1950,
-  "t": "Periksa ejaan"
- },
- {
-  "i": 1951,
-  "t": "Tesaurus"
- },
- {
-  "i": 1952,
-  "t": "Salah konversi"
- },
- {
-  "i": 1953,
-  "t": "Inkonsistensi"
- },
- {
-  "i": 1954,
-  "t": "Subtotal"
- },
- {
-  "i": 1955,
-  "t": "Kalkulasi"
- },
- {
-  "i": 1956,
-  "t": "Teks kanan-ke-kiri"
- },
- {
-  "i": 1957,
-  "t": "Arah lembar kerja"
- },
- {
-  "i": 1958,
-  "t": "Python"
- },
- {
-  "i": 1959,
-  "t": "Kotak centang"
- },
- {
-  "i": 1960,
-  "t": "Tautan eksternal"
- },
- {
-  "i": 1961,
-  "t": "Grafik yang disarankan"
- },
- {
-  "i": 1962,
-  "t": "Mode pengeditan bersama"
- },
- {
-  "i": 1963,
-  "t": "Riwayat versi"
- },
- {
-  "i": 1964,
-  "t": "Obrolan"
- },
- {
-  "i": 1965,
-  "t": "Lindungi"
- },
- {
-  "i": 1966,
-  "t": "Enkripsi"
- },
- {
-  "i": 1967,
-  "t": "Tambahkan tanda tangan digital"
- },
- {
-  "i": 1968,
-  "t": "Makro"
- },
- {
-  "i": 1969,
-  "t": "Kelola plugin"
- },
- {
-  "i": 1970,
-  "t": "Tampilkan nol"
- },
- {
-  "i": 1971,
-  "t": "Zoom ke 100%"
- },
- {
-  "i": 1972,
-  "t": "Tema antarmuka"
- },
- {
-  "i": 1973,
-  "t": "Jendela pantauan"
- },
- {
-  "i": 1974,
-  "t": "JumlahOtomatis"
- },
- {
-  "i": 1975,
-  "t": "Rekam tindakan"
- },
- {
-  "i": 1976,
-  "t": "Hapus komentar"
- },
- {
-  "i": 1977,
-  "t": "Solver"
- },
- {
-  "i": 1978,
-  "t": "Teks ke data"
- },
- {
-  "i": 1979,
-  "t": "Hapus panah"
- },
- {
-  "i": 1980,
-  "t": "Isi"
- },
- {
-  "i": 1981,
-  "t": "Bersihkan filter"
- },
- {
-  "i": 1982,
-  "t": "Tulis makro"
- },
- {
-  "i": 1983,
-  "t": "Teks ke kolom"
- },
- {
-  "i": 1984,
-  "t": "Keterangan"
- },
- {
-  "i": 1985,
-  "t": "Daftar gambar"
- },
- {
-  "i": 1986,
-  "t": "Perbarui daftar gambar"
- },
- {
-  "i": 1987,
-  "t": "Tautan eksternal (impor sebagai nilai)"
- },
- {
-  "i": 1988,
-  "t": "Matematika & Trigonometri"
- },
- {
-  "i": 1989,
-  "t": "Tampilkan rumus"
- },
- {
-  "i": 1990,
-  "t": "Arah teks (kanan-ke-kiri)"
- },
- {
-  "i": 1991,
-  "t": "Teks"
- },
- {
-  "i": 1992,
-  "t": "Tanggal & Waktu"
- },
- {
-  "i": 1993,
-  "t": "Baru digunakan"
- },
- {
-  "i": 1994,
-  "t": "Cetak garis kisi"
- },
- {
-  "i": 1995,
-  "t": "Perbarui daftar isi"
- },
- {
-  "i": 1996,
-  "t": "Kolom berpita"
- },
- {
-  "i": 1997,
-  "t": "Cetak judul"
- },
- {
-  "i": 1998,
-  "t": "Sembunyikan rincian"
- },
- {
-  "i": 1999,
-  "t": "Hapus duplikat"
- },
- {
-  "i": 2000,
-  "t": "Sisipkan fungsi"
- },
- {
-  "i": 2001,
-  "t": "Format CSV"
- },
- {
-  "i": 2002,
-  "t": "Kunci sel"
- },
- {
-  "i": 2003,
-  "t": "Tabel data"
- },
- {
-  "i": 2004,
-  "t": "Isi menurut contoh"
- },
- {
-  "i": 2005,
-  "t": "Daftar"
- },
- {
-  "i": 2006,
-  "t": "Tempel nama"
- },
- {
-  "i": 2007,
   "t": "Pemulihan"
  },
  {
+  "i": 1914,
+  "t": "Solusi tidak ditemukan ({} mungkin tidak berpengaruh pada {})"
+ },
+ {
+  "i": 1915,
+  "t": "Orientasi"
+ },
+ {
+  "i": 1916,
+  "t": "Format sel"
+ },
+ {
+  "i": 1917,
+  "t": "Rata di tengah"
+ },
+ {
+  "i": 1918,
+  "t": "Fungsi Python"
+ },
+ {
+  "i": 1919,
+  "t": "Makro pita"
+ },
+ {
+  "i": 1920,
+  "t": "Salin format"
+ },
+ {
+  "i": 1921,
+  "t": "Gaya"
+ },
+ {
+  "i": 1922,
+  "t": "Daftar bidang"
+ },
+ {
+  "i": 1923,
+  "t": "Perbesar teks layar"
+ },
+ {
+  "i": 1924,
+  "t": "Perkecil teks layar"
+ },
+ {
+  "i": 1925,
+  "t": "AI"
+ },
+ {
+  "i": 1926,
+  "t": "Cetak"
+ },
+ {
+  "i": 1927,
+  "t": "Tata letak cetak"
+ },
+ {
+  "i": 1928,
+  "t": "Tujuan"
+ },
+ {
+  "i": 1929,
+  "t": "Peringkasan"
+ },
+ {
+  "i": 1930,
+  "t": "Tulis ulang"
+ },
+ {
+  "i": 1931,
+  "t": "Lebih sopan"
+ },
+ {
+  "i": 1932,
+  "t": "Lebih sederhana"
+ },
+ {
+  "i": 1933,
+  "t": "Penerjemahan"
+ },
+ {
+  "i": 1934,
+  "t": "Furigana"
+ },
+ {
+  "i": 1935,
+  "t": "Lanjutkan"
+ },
+ {
+  "i": 1936,
+  "t": "Jadi tabel"
+ },
+ {
+  "i": 1937,
+  "t": "Minta"
+ },
+ {
+  "i": 1938,
+  "t": "Ruby"
+ },
+ {
+  "i": 1939,
+  "t": "Vertikal"
+ },
+ {
+  "i": 1940,
+  "t": "Arah teks"
+ },
+ {
+  "i": 1941,
+  "t": "Terdistribusi"
+ },
+ {
+  "i": 1942,
+  "t": "Sisipkan keterangan"
+ },
+ {
+  "i": 1943,
+  "t": "Buka URL"
+ },
+ {
+  "i": 1944,
+  "t": "Indeks"
+ },
+ {
+  "i": 1945,
+  "t": "Catatan Aozora"
+ },
+ {
+  "i": 1946,
+  "t": "Notasi Denden"
+ },
+ {
+  "i": 1947,
+  "t": "Lacak perubahan"
+ },
+ {
+  "i": 1948,
+  "t": "Tampilkan perubahan"
+ },
+ {
+  "i": 1949,
+  "t": "Pemeriksaan"
+ },
+ {
+  "i": 1950,
+  "t": "Karakter"
+ },
+ {
+  "i": 1951,
+  "t": "Periksa ejaan"
+ },
+ {
+  "i": 1952,
+  "t": "Tesaurus"
+ },
+ {
+  "i": 1953,
+  "t": "Salah konversi"
+ },
+ {
+  "i": 1954,
+  "t": "Inkonsistensi"
+ },
+ {
+  "i": 1955,
+  "t": "Subtotal"
+ },
+ {
+  "i": 1956,
+  "t": "Kalkulasi"
+ },
+ {
+  "i": 1957,
+  "t": "Teks kanan-ke-kiri"
+ },
+ {
+  "i": 1958,
+  "t": "Arah lembar kerja"
+ },
+ {
+  "i": 1959,
+  "t": "Python"
+ },
+ {
+  "i": 1960,
+  "t": "Kotak centang"
+ },
+ {
+  "i": 1961,
+  "t": "Tautan eksternal"
+ },
+ {
+  "i": 1962,
+  "t": "Grafik yang disarankan"
+ },
+ {
+  "i": 1963,
+  "t": "Mode pengeditan bersama"
+ },
+ {
+  "i": 1964,
+  "t": "Riwayat versi"
+ },
+ {
+  "i": 1965,
+  "t": "Obrolan"
+ },
+ {
+  "i": 1966,
+  "t": "Lindungi"
+ },
+ {
+  "i": 1967,
+  "t": "Enkripsi"
+ },
+ {
+  "i": 1968,
+  "t": "Tambahkan tanda tangan digital"
+ },
+ {
+  "i": 1969,
+  "t": "Makro"
+ },
+ {
+  "i": 1970,
+  "t": "Kelola plugin"
+ },
+ {
+  "i": 1971,
+  "t": "Tampilkan nol"
+ },
+ {
+  "i": 1972,
+  "t": "Zoom ke 100%"
+ },
+ {
+  "i": 1973,
+  "t": "Tema antarmuka"
+ },
+ {
+  "i": 1974,
+  "t": "Jendela pantauan"
+ },
+ {
+  "i": 1975,
+  "t": "JumlahOtomatis"
+ },
+ {
+  "i": 1976,
+  "t": "Rekam tindakan"
+ },
+ {
+  "i": 1977,
+  "t": "Hapus komentar"
+ },
+ {
+  "i": 1978,
+  "t": "Solver"
+ },
+ {
+  "i": 1979,
+  "t": "Teks ke data"
+ },
+ {
+  "i": 1980,
+  "t": "Hapus panah"
+ },
+ {
+  "i": 1981,
+  "t": "Isi"
+ },
+ {
+  "i": 1982,
+  "t": "Bersihkan filter"
+ },
+ {
+  "i": 1983,
+  "t": "Tulis makro"
+ },
+ {
+  "i": 1984,
+  "t": "Teks ke kolom"
+ },
+ {
+  "i": 1985,
+  "t": "Keterangan"
+ },
+ {
+  "i": 1986,
+  "t": "Daftar gambar"
+ },
+ {
+  "i": 1987,
+  "t": "Perbarui daftar gambar"
+ },
+ {
+  "i": 1988,
+  "t": "Tautan eksternal (impor sebagai nilai)"
+ },
+ {
+  "i": 1989,
+  "t": "Matematika & Trigonometri"
+ },
+ {
+  "i": 1990,
+  "t": "Tampilkan rumus"
+ },
+ {
+  "i": 1991,
+  "t": "Arah teks (kanan-ke-kiri)"
+ },
+ {
+  "i": 1992,
+  "t": "Teks"
+ },
+ {
+  "i": 1993,
+  "t": "Tanggal & Waktu"
+ },
+ {
+  "i": 1994,
+  "t": "Baru digunakan"
+ },
+ {
+  "i": 1995,
+  "t": "Cetak garis kisi"
+ },
+ {
+  "i": 1996,
+  "t": "Perbarui daftar isi"
+ },
+ {
+  "i": 1997,
+  "t": "Kolom berpita"
+ },
+ {
+  "i": 1998,
+  "t": "Cetak judul"
+ },
+ {
+  "i": 1999,
+  "t": "Sembunyikan rincian"
+ },
+ {
+  "i": 2000,
+  "t": "Hapus duplikat"
+ },
+ {
+  "i": 2001,
+  "t": "Sisipkan fungsi"
+ },
+ {
+  "i": 2002,
+  "t": "Format CSV"
+ },
+ {
+  "i": 2003,
+  "t": "Kunci sel"
+ },
+ {
+  "i": 2004,
+  "t": "Tabel data"
+ },
+ {
+  "i": 2005,
+  "t": "Isi menurut contoh"
+ },
+ {
+  "i": 2006,
+  "t": "Daftar"
+ },
+ {
+  "i": 2007,
+  "t": "Tempel nama"
+ },
+ {
   "i": 2008,
-  "t": "Bungkus teks"
+  "t": "Pemulihan"
  },
  {
   "i": 2009,
-  "t": "Selang salinan"
+  "t": "Bungkus teks"
  },
  {
   "i": 2010,
-  "t": ".py baru"
+  "t": "Selang salinan"
  },
  {
   "i": 2011,
-  "t": "Tambah rentang"
+  "t": ".py baru"
  },
  {
   "i": 2012,
-  "t": "Muatkan ke kertas"
+  "t": "Tambah rentang"
  },
  {
   "i": 2013,
-  "t": "Batas kertas"
+  "t": "Muatkan ke kertas"
  },
  {
   "i": 2014,
-  "t": "Buka folder plugins"
+  "t": "Batas kertas"
  },
  {
   "i": 2015,
-  "t": "Jenis perhitungan"
+  "t": "Buka folder plugins"
  },
  {
   "i": 2016,
-  "t": "Tindakan yang diizinkan"
+  "t": "Jenis perhitungan"
  },
  {
   "i": 2017,
+  "t": "Tindakan yang diizinkan"
+ },
+ {
+  "i": 2018,
   "t": "Sarankan hanya-baca"
  }
 ]

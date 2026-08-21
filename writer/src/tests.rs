@@ -3081,6 +3081,9 @@ mod file_menu_tests {
             let ids: Vec<&str> = 品.iter().map(|i| i.id).collect();
             assert_eq!(ids, vec![
                 "f-back", "f-new", "f-tpl", "f-open", "f-url", "f-recent", "f-find",
+                // **前に落ちた跡から開き直す**(2026-08-21 の B-3)。
+                // 控えが無ければ灰色(押しても何も無い、をやめる)
+                "f-recover",
                 "f-save", "f-saveas", "f-print", "f-merge", "f-html", "f-protect",
                 "f-distill", "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req",
             ]);
