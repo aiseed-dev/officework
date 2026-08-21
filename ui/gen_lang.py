@@ -266,13 +266,16 @@ def generate(loc):
     body += ["];", ""]
     (ROOT / f"lang/src/i18n_{m}.rs").write_text("\n".join(body), encoding="utf-8")
 
-    # リボン(標準のボタンは vendor、独自のボタンは材料の訳)
-    # 材料の訳 + スクリプトに書いた穴埋め(vendor のロケールに無い語)を併用
-    extra = grl.OVERRIDES.get(loc, {})
-    grl.OVERRIDES[loc] = {
-        **extra,
-        **{r["ja"]: got[r["i"]] for r in mat if r["kind"] == "ribbon"},
-    }
+    # リボン(標準のボタンは vendor、独自のボタンは材料の訳)。
+    #
+    # **重ねるのは gen_ribbon_locale.py の側でやります**(2026-08-21)。
+    # 前はここで `OVERRIDES` に材料の訳を重ねていたので、あちらを単独で
+    # 回したときと**違う物が出ていました**。`ribbon_gen_check.py` は単独で
+    # 回すので、`OVERRIDES` だけ直すと食い違い、`ui/i18n` だけ直すと
+    # こちらが勝つ、という取り合いになっていました(同じ日に2回踏んだ)。
+    #
+    # いまは `grl.i18n_の訳()` が `ui/i18n/<言語>.json` を直に読みます。
+    # ここは呼ぶだけです。
     old_argv = sys.argv
     import io
     from contextlib import redirect_stdout
