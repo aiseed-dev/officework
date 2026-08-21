@@ -9571,526 +9571,536 @@
  },
  {
   "i": 1914,
+  "ja": "絞り込みは掛かっていません",
+  "en": "No filter is applied"
+ },
+ {
+  "i": 1915,
+  "ja": "トレースの矢印は出ていません",
+  "en": "No trace arrows are showing"
+ },
+ {
+  "i": 1916,
   "ja": "見つかりません({} が {} に効いていないかもしれません)",
   "en": "No solution found ({} may not affect {})"
  },
  {
-  "i": 1915,
+  "i": 1917,
   "ja": "方向",
   "en": "Orientation"
  },
  {
-  "i": 1916,
+  "i": 1918,
   "ja": "セルの書式設定",
   "en": "Format cells"
  },
  {
-  "i": 1917,
+  "i": 1919,
   "ja": "上下中央揃え",
   "en": "Align middle"
  },
  {
-  "i": 1918,
+  "i": 1920,
   "ja": "Python の関数",
   "en": "Python functions"
  },
  {
-  "i": 1919,
+  "i": 1921,
   "ja": "リボンのマクロ",
   "en": "Ribbon macros"
  },
  {
-  "i": 1920,
+  "i": 1922,
   "ja": "書式のコピー",
   "en": "Format painter"
  },
  {
-  "i": 1921,
+  "i": 1923,
   "ja": "スタイル",
   "en": "Style"
  },
  {
-  "i": 1922,
+  "i": 1924,
   "ja": "フィールドリスト",
   "en": "Field list"
  },
  {
-  "i": 1923,
+  "i": 1925,
   "ja": "画面の文字を大きく",
   "en": "Bigger UI text"
  },
  {
-  "i": 1924,
+  "i": 1926,
   "ja": "画面の文字を小さく",
   "en": "Smaller UI text"
  },
  {
-  "i": 1925,
+  "i": 1927,
   "ja": "AI",
   "en": "AI"
  },
  {
-  "i": 1926,
+  "i": 1928,
   "ja": "印刷",
   "en": "Print"
  },
  {
-  "i": 1927,
+  "i": 1929,
   "ja": "印刷レイアウト",
   "en": "Print layout"
  },
  {
-  "i": 1928,
+  "i": 1930,
   "ja": "宛先",
   "en": "Destination"
  },
  {
-  "i": 1929,
+  "i": 1931,
   "ja": "要約",
   "en": "Summarize"
  },
  {
-  "i": 1930,
+  "i": 1932,
   "ja": "書き直す",
   "en": "Rewrite"
  },
  {
-  "i": 1931,
+  "i": 1933,
   "ja": "敬語にする",
   "en": "Politer"
  },
  {
-  "i": 1932,
+  "i": 1934,
   "ja": "やさしく",
   "en": "Plainer"
  },
  {
-  "i": 1933,
+  "i": 1935,
   "ja": "翻訳",
   "en": "Translate"
  },
  {
-  "i": 1934,
+  "i": 1936,
   "ja": "ふりがな",
   "en": "Furigana"
  },
  {
-  "i": 1935,
+  "i": 1937,
   "ja": "続きを書く",
   "en": "Continue"
  },
  {
-  "i": 1936,
+  "i": 1938,
   "ja": "表にする",
   "en": "To table"
  },
  {
-  "i": 1937,
+  "i": 1939,
   "ja": "頼む",
   "en": "Ask"
  },
  {
-  "i": 1938,
+  "i": 1940,
   "ja": "ルビ",
   "en": "Ruby"
  },
  {
-  "i": 1939,
+  "i": 1941,
   "ja": "縦書き",
   "en": "Vertical text"
  },
  {
-  "i": 1940,
+  "i": 1942,
   "ja": "テキスト方向",
   "en": "Text direction"
  },
  {
-  "i": 1941,
+  "i": 1943,
   "ja": "均等割付",
   "en": "Distributed"
  },
  {
-  "i": 1942,
+  "i": 1944,
   "ja": "図表番号の挿入",
   "en": "Insert caption"
  },
  {
-  "i": 1943,
+  "i": 1945,
   "ja": "URL を開く",
   "en": "Open URL"
  },
  {
-  "i": 1944,
+  "i": 1946,
   "ja": "洋子さんの索引",
   "en": "Index"
  },
  {
-  "i": 1945,
+  "i": 1947,
   "ja": "青空文庫の注記",
   "en": "Aozora notes"
  },
  {
-  "i": 1946,
+  "i": 1948,
   "ja": "でんでん記法",
   "en": "Denden markup"
  },
  {
-  "i": 1947,
+  "i": 1949,
   "ja": "履歴の記録",
   "en": "Track changes"
  },
  {
-  "i": 1948,
+  "i": 1950,
   "ja": "変更履歴の表示",
   "en": "Show changes"
  },
  {
-  "i": 1949,
+  "i": 1951,
   "ja": "校正",
   "en": "Proofread"
  },
  {
-  "i": 1950,
+  "i": 1952,
   "ja": "文字数",
   "en": "Character count"
  },
  {
-  "i": 1951,
+  "i": 1953,
   "ja": "スペルチェック",
   "en": "Spell check"
  },
  {
-  "i": 1952,
+  "i": 1954,
   "ja": "類語辞典",
   "en": "Thesaurus"
  },
  {
-  "i": 1953,
+  "i": 1955,
   "ja": "誤変換",
   "en": "Misconversion"
  },
  {
-  "i": 1954,
+  "i": 1956,
   "ja": "表記ゆれ",
   "en": "Inconsistency"
  },
  {
-  "i": 1955,
+  "i": 1957,
   "ja": "小計",
   "en": "Subtotal"
  },
  {
-  "i": 1956,
+  "i": 1958,
   "ja": "計算方法",
   "en": "Calculation"
  },
  {
-  "i": 1957,
+  "i": 1959,
   "ja": "右横書き",
   "en": "Right-to-left text"
  },
  {
-  "i": 1958,
+  "i": 1960,
   "ja": "シートの方向",
   "en": "Sheet direction"
  },
  {
-  "i": 1959,
+  "i": 1961,
   "ja": "Python",
   "en": "Python"
  },
  {
-  "i": 1960,
+  "i": 1962,
   "ja": "チェックボックス",
   "en": "Checkbox"
  },
  {
-  "i": 1961,
+  "i": 1963,
   "ja": "外部リンク",
   "en": "External links"
  },
  {
-  "i": 1962,
+  "i": 1964,
   "ja": "推奨チャート",
   "en": "Recommended chart"
  },
  {
-  "i": 1963,
+  "i": 1965,
   "ja": "共同編集モード",
   "en": "Co-editing mode"
  },
  {
-  "i": 1964,
+  "i": 1966,
   "ja": "バージョン履歴",
   "en": "Version history"
  },
  {
-  "i": 1965,
+  "i": 1967,
   "ja": "チャット",
   "en": "Chat"
  },
  {
-  "i": 1966,
+  "i": 1968,
   "ja": "保護する",
   "en": "Protect"
  },
  {
-  "i": 1967,
+  "i": 1969,
   "ja": "暗号化する",
   "en": "Encrypt"
  },
  {
-  "i": 1968,
+  "i": 1970,
   "ja": "デジタル署名を追加",
   "en": "Add digital signature"
  },
  {
-  "i": 1969,
+  "i": 1971,
   "ja": "マクロ",
   "en": "Macros"
  },
  {
-  "i": 1970,
+  "i": 1972,
   "ja": "プラグインの管理",
   "en": "Manage plugins"
  },
  {
-  "i": 1971,
+  "i": 1973,
   "ja": "0を表示する",
   "en": "Show zeros"
  },
  {
-  "i": 1972,
+  "i": 1974,
   "ja": "100%に拡大する",
   "en": "Zoom to 100%"
  },
  {
-  "i": 1973,
+  "i": 1975,
   "ja": "インターフェイステーマ",
   "en": "Interface theme"
  },
  {
-  "i": 1974,
+  "i": 1976,
   "ja": "ウォッチウィンドウ",
   "en": "Watch window"
  },
  {
-  "i": 1975,
+  "i": 1977,
   "ja": "オートSUM",
   "en": "AutoSum"
  },
  {
-  "i": 1976,
+  "i": 1978,
   "ja": "操作を記録",
   "en": "Record actions"
  },
  {
-  "i": 1977,
+  "i": 1979,
   "ja": "コメントを削除",
   "en": "Delete comment"
  },
  {
-  "i": 1978,
+  "i": 1980,
   "ja": "ソルバー",
   "en": "Solver"
  },
  {
-  "i": 1979,
+  "i": 1981,
   "ja": "テキストからデータ",
   "en": "Text to data"
  },
  {
-  "i": 1980,
+  "i": 1982,
   "ja": "トレース矢印の削除",
   "en": "Remove arrows"
  },
  {
-  "i": 1981,
+  "i": 1983,
   "ja": "フィル",
   "en": "Fill"
  },
  {
-  "i": 1982,
+  "i": 1984,
   "ja": "フィルターを解除",
   "en": "Clear filter"
  },
  {
-  "i": 1983,
+  "i": 1985,
   "ja": "マクロを書く",
   "en": "Write macro"
  },
  {
-  "i": 1984,
+  "i": 1986,
   "ja": "区切り位置",
   "en": "Text to columns"
  },
  {
-  "i": 1985,
+  "i": 1987,
   "ja": "図表番号",
   "en": "Caption"
  },
  {
-  "i": 1986,
+  "i": 1988,
   "ja": "図表目次",
   "en": "Table of figures"
  },
  {
-  "i": 1987,
+  "i": 1989,
   "ja": "図表目次の更新",
   "en": "Update table of figures"
  },
  {
-  "i": 1988,
+  "i": 1990,
   "ja": "外部リンク(値で取り込む)",
   "en": "External links (import as values)"
  },
  {
-  "i": 1989,
+  "i": 1991,
   "ja": "数学/三角",
   "en": "Math & Trig"
  },
  {
-  "i": 1990,
+  "i": 1992,
   "ja": "数式の表示",
   "en": "Show formulas"
  },
  {
-  "i": 1991,
+  "i": 1993,
   "ja": "文字の向き(右横書き)",
   "en": "Right-to-left text"
  },
  {
-  "i": 1992,
+  "i": 1994,
   "ja": "文字列操作",
   "en": "Text"
  },
  {
-  "i": 1993,
+  "i": 1995,
   "ja": "日付/時刻",
   "en": "Date & Time"
  },
  {
-  "i": 1994,
+  "i": 1996,
   "ja": "最近使った関数",
   "en": "Recently used"
  },
  {
-  "i": 1995,
+  "i": 1997,
   "ja": "枠線も印刷",
   "en": "Print gridlines"
  },
  {
-  "i": 1996,
+  "i": 1998,
   "ja": "目次の更新",
   "en": "Update table of contents"
  },
  {
-  "i": 1997,
+  "i": 1999,
   "ja": "縞模様の列",
   "en": "Banded columns"
  },
  {
-  "i": 1998,
+  "i": 2000,
   "ja": "見出しも印刷",
   "en": "Print headings"
  },
  {
-  "i": 1999,
+  "i": 2001,
   "ja": "詳細の非表示",
   "en": "Hide detail"
  },
  {
-  "i": 2000,
+  "i": 2002,
   "ja": "重複の削除",
   "en": "Remove duplicates"
  },
  {
-  "i": 2001,
+  "i": 2003,
   "ja": "関数の挿入",
   "en": "Insert function"
  },
  {
-  "i": 2002,
+  "i": 2004,
   "ja": "CSV の形",
   "en": "CSV format"
  },
  {
-  "i": 2003,
+  "i": 2005,
   "ja": "セルのロック",
   "en": "Cell lock"
  },
  {
-  "i": 2004,
+  "i": 2006,
   "ja": "データテーブル",
   "en": "Data table"
  },
  {
-  "i": 2005,
+  "i": 2007,
   "ja": "フラッシュフィル",
   "en": "Fill by example"
  },
  {
-  "i": 2006,
+  "i": 2008,
   "ja": "一覧",
   "en": "List"
  },
  {
-  "i": 2007,
+  "i": 2009,
   "ja": "名前を貼り付け",
   "en": "Paste name"
  },
  {
-  "i": 2008,
+  "i": 2010,
   "ja": "復旧",
   "en": "Recover"
  },
  {
-  "i": 2009,
+  "i": 2011,
   "ja": "折り返して全体を表示する",
   "en": "Wrap text"
  },
  {
-  "i": 2010,
+  "i": 2012,
   "ja": "控えの間隔",
   "en": "Backup interval"
  },
  {
-  "i": 2011,
+  "i": 2013,
   "ja": "新しい .py",
   "en": "New .py"
  },
  {
-  "i": 2012,
+  "i": 2014,
   "ja": "範囲を足す",
   "en": "Add to area"
  },
  {
-  "i": 2013,
+  "i": 2015,
   "ja": "紙に収める",
   "en": "Fit to paper"
  },
  {
-  "i": 2014,
+  "i": 2016,
   "ja": "紙の切れ目",
   "en": "Page breaks"
  },
  {
-  "i": 2015,
+  "i": 2017,
   "ja": "置き場を開く",
   "en": "Open folder"
  },
  {
-  "i": 2016,
+  "i": 2018,
   "ja": "計算の種類",
   "en": "Show values as"
  },
  {
-  "i": 2017,
+  "i": 2019,
   "ja": "許可する操作",
   "en": "Allowed actions"
  },
  {
-  "i": 2018,
+  "i": 2020,
   "ja": "読み取り専用を勧める",
   "en": "Suggest read-only"
  }

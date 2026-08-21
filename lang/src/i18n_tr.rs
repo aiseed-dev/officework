@@ -1937,5 +1937,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} = {} で {} が {} になります(Ctrl+Z で戻せます)", "{} = {} olduğunda {} değeri {} olur (Ctrl+Z geri alır)"),
     ("前に保存できずに終わった控えが {} 件あります(ファイルタブの「復旧」で開けます)", "Kaydedilmeden biten bir oturumdan {} kurtarma kopyası var (Dosya sekmesindeki Kurtar ile açabilirsiniz)"),
     ("復旧", "Kurtarma"),
+    ("絞り込みは掛かっていません", "Uygulanmış bir filtre yok"),
+    ("トレースの矢印は出ていません", "Görünen izleme oku yok"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Çözüm bulunamadı ({} değeri {} üzerinde etkili olmayabilir)"),
 ];

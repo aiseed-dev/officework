@@ -1267,6 +1267,13 @@ impl Calc {
                 }
             }
             "clear-filter" => {
+                // **掛かっていないのに「解きました」と言わない**
+                // (2026-08-21 の B-5)。灰色にするからには、押したときの
+                // 返事も本当のことを言います
+                if self.auto_filter.is_none() {
+                    self.status = ui::t!("絞り込みは掛かっていません").into();
+                    return;
+                }
                 self.auto_filter = None;
                 self.filter_panel = None;
                 self.status = ui::t!("絞り込みを解きました").into();
@@ -1502,6 +1509,10 @@ impl Calc {
                 }
             }
             "remove-arrows" => {
+                if self.trace.is_empty() {
+                    self.status = ui::t!("トレースの矢印は出ていません").into();
+                    return;
+                }
                 self.trace.clear();
                 self.status = ui::t!("トレースを消しました").into();
             }

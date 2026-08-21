@@ -1937,5 +1937,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} = {} で {} が {} になります(Ctrl+Z で戻せます)", "Với {} = {} thì {} thành {} (Ctrl+Z hoàn tác)"),
     ("前に保存できずに終わった控えが {} 件あります(ファイルタブの「復旧」で開けます)", "Có {} bản khôi phục từ phiên kết thúc mà chưa lưu (mở từ Khôi phục trên thẻ Tệp)"),
     ("復旧", "Khôi phục"),
+    ("絞り込みは掛かっていません", "Chưa áp dụng bộ lọc nào"),
+    ("トレースの矢印は出ていません", "Không có mũi tên dò nào đang hiện"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Không tìm thấy lời giải ({} có thể không ảnh hưởng đến {})"),
 ];

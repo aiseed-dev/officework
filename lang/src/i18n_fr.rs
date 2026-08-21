@@ -1937,5 +1937,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} = {} で {} が {} になります(Ctrl+Z で戻せます)", "Avec {} = {}, {} devient {} (Ctrl+Z annule)"),
     ("前に保存できずに終わった控えが {} 件あります(ファイルタブの「復旧」で開けます)", "Il y a {} copies de récupération d'une session terminée sans enregistrement (ouvrez-les depuis Récupérer dans l'onglet Fichier)"),
     ("復旧", "Récupérer"),
+    ("絞り込みは掛かっていません", "Aucun filtre n'est appliqué"),
+    ("トレースの矢印は出ていません", "Aucune flèche d'audit n'est affichée"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Aucune solution trouvée ({} n'influe peut-être pas sur {})"),
 ];

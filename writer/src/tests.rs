@@ -3072,6 +3072,22 @@ mod ファイルを何枚も開く {
 mod file_menu_tests {
     use crate::*;
 
+    /// **いま押せるかが、状況で変わる**(2026-08-21 の B-5)。表の同じ試験と対。
+    #[gpui::test]
+    fn 押せるかは状況で変わる(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            // 目次を入れていなければ「目次の更新」は押せない
+            assert!(!this.押せるか("toc-update"), "目次が無いのに押せる");
+            // 見出しを立ててから目次を入れると押せる
+            this.set_doc(kumihan::adoc::parse("= 題\n\n== 第1章\n\n本文。\n").expect("読めない"));
+            this.run_cmd("toc", cx);
+            assert!(this.押せるか("toc-update"), "目次を入れたのに押せない");
+            // コメントの削除は、いまの段落にコメントが付いているときだけ
+            assert!(!this.押せるか("co-delcomment"), "コメントが無いのに押せる");
+        });
+    }
+
     /// **並びと押せるかを縛る**(統合の段8 の1)。calc の同じ試験と対。
     #[gpui::test]
     fn ファイルの項目の並びと押せるかが変わらない(cx: &mut gpui::TestAppContext) {

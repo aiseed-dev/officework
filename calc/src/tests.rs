@@ -6910,6 +6910,38 @@ mod find_scope_tests {
 mod file_menu_tests {
     use crate::*;
 
+    /// **いま押せるかが、状況で変わる**(2026-08-21 の B-5)。
+    ///
+    /// 灰色にするからには、押したときの返事も本当のことを言います。
+    /// *「解除」は張ってあれば押せます* — 行が隠れているかではありません
+    /// (`filter_active()` を流用して間違え、上の一巡りの試験に捕まりました)。
+    #[gpui::test]
+    fn 押せるかは状況で変わる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            // 何も張っていなければ「フィルターを解除」は押せない
+            assert!(!this.押せるか("clear-filter"), "張っていないのに押せる");
+            this.run_cmd("clear-filter", cx);
+            assert!(
+                this.status.contains("掛かっていません"),
+                "嘘の返事: {}",
+                this.status
+            );
+            // 張れば押せる(**行が隠れていなくても**)
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("見出し"));
+            this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("1"));
+            this.run_cmd("setfilter", cx);
+            assert!(this.押せるか("clear-filter"), "張ったのに押せない");
+
+            // トレースの矢印も同じ形
+            assert!(!this.押せるか("remove-arrows"), "矢印が無いのに押せる");
+            this.run_cmd("remove-arrows", cx);
+            assert!(this.status.contains("出ていません"), "嘘の返事: {}", this.status);
+            this.trace = vec![(Pos::new(0, 0), true)];
+            assert!(this.押せるか("remove-arrows"), "矢印があるのに押せない");
+        });
+    }
+
     /// **並びと押せるかを縛る**(統合の段8 の1)。
     ///
     /// この段は「閉包を `match` に移すだけで見た目は変わらない」もの。

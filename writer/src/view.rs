@@ -435,7 +435,9 @@ impl Render for Writer {
                         // 名札つきの大ボタン(絵の下に短い名前。本家の言い方)。
                         // 開くボタンは名札の横に小さな印。小窓中は灰色・無反応
                         let on = cmd.ready && self.toggled(cmd.id);
-                        let fg = if !cmd.ready || dlg_open {
+                        // **いまの状況で意味が無いボタンも灰色に**
+                        // (2026-08-21 の B-5)。押す前に見て分かるように
+                        let fg = if !cmd.ready || dlg_open || !self.押せるか(cmd.id) {
                             th_gray_fg
                         } else if on {
                             th_btn

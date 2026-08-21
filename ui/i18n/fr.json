@@ -7657,422 +7657,430 @@
  },
  {
   "i": 1914,
-  "t": "Aucune solution trouvée ({} n'influe peut-être pas sur {})"
+  "t": "Aucun filtre n'est appliqué"
  },
  {
   "i": 1915,
-  "t": "Orientation"
+  "t": "Aucune flèche d'audit n'est affichée"
  },
  {
   "i": 1916,
-  "t": "Format des cellules"
+  "t": "Aucune solution trouvée ({} n'influe peut-être pas sur {})"
  },
  {
   "i": 1917,
-  "t": "Aligner au centre"
+  "t": "Orientation"
  },
  {
   "i": 1918,
-  "t": "Fonctions Python"
+  "t": "Format des cellules"
  },
  {
   "i": 1919,
-  "t": "Macros du ruban"
+  "t": "Aligner au centre"
  },
  {
   "i": 1920,
-  "t": "Copier le format"
+  "t": "Fonctions Python"
  },
  {
   "i": 1921,
-  "t": "Style"
+  "t": "Macros du ruban"
  },
  {
   "i": 1922,
-  "t": "Liste des champs"
+  "t": "Copier le format"
  },
  {
   "i": 1923,
-  "t": "Agrandir le texte de l'écran"
+  "t": "Style"
  },
  {
   "i": 1924,
-  "t": "Réduire le texte de l'écran"
+  "t": "Liste des champs"
  },
  {
   "i": 1925,
-  "t": "IA"
+  "t": "Agrandir le texte de l'écran"
  },
  {
   "i": 1926,
-  "t": "Imprimer"
+  "t": "Réduire le texte de l'écran"
  },
  {
   "i": 1927,
-  "t": "Mise en page"
+  "t": "IA"
  },
  {
   "i": 1928,
-  "t": "Destination"
+  "t": "Imprimer"
  },
  {
   "i": 1929,
-  "t": "Résumé"
+  "t": "Mise en page"
  },
  {
   "i": 1930,
-  "t": "Réécrire"
+  "t": "Destination"
  },
  {
   "i": 1931,
-  "t": "Plus formel"
+  "t": "Résumé"
  },
  {
   "i": 1932,
-  "t": "Plus simple"
+  "t": "Réécrire"
  },
  {
   "i": 1933,
-  "t": "Traduction"
+  "t": "Plus formel"
  },
  {
   "i": 1934,
-  "t": "Furigana"
+  "t": "Plus simple"
  },
  {
   "i": 1935,
-  "t": "Continuer"
+  "t": "Traduction"
  },
  {
   "i": 1936,
-  "t": "En tableau"
+  "t": "Furigana"
  },
  {
   "i": 1937,
-  "t": "Demander"
+  "t": "Continuer"
  },
  {
   "i": 1938,
-  "t": "Ruby"
+  "t": "En tableau"
  },
  {
   "i": 1939,
-  "t": "Vertical"
+  "t": "Demander"
  },
  {
   "i": 1940,
-  "t": "Orientation du texte"
+  "t": "Ruby"
  },
  {
   "i": 1941,
-  "t": "Réparti"
+  "t": "Vertical"
  },
  {
   "i": 1942,
-  "t": "Insérer une légende"
+  "t": "Orientation du texte"
  },
  {
   "i": 1943,
-  "t": "Ouvrir une URL"
+  "t": "Réparti"
  },
  {
   "i": 1944,
-  "t": "Index"
+  "t": "Insérer une légende"
  },
  {
   "i": 1945,
-  "t": "Notes Aozora"
+  "t": "Ouvrir une URL"
  },
  {
   "i": 1946,
-  "t": "Notation Denden"
+  "t": "Index"
  },
  {
   "i": 1947,
-  "t": "Suivi des modifications"
+  "t": "Notes Aozora"
  },
  {
   "i": 1948,
-  "t": "Afficher les modifications"
+  "t": "Notation Denden"
  },
  {
   "i": 1949,
-  "t": "Correction"
+  "t": "Suivi des modifications"
  },
  {
   "i": 1950,
-  "t": "Caractères"
+  "t": "Afficher les modifications"
  },
  {
   "i": 1951,
-  "t": "Vérification orthographique"
+  "t": "Correction"
  },
  {
   "i": 1952,
-  "t": "Dictionnaire des synonymes"
+  "t": "Caractères"
  },
  {
   "i": 1953,
-  "t": "Erreurs de conversion"
+  "t": "Vérification orthographique"
  },
  {
   "i": 1954,
-  "t": "Incohérences de graphie"
+  "t": "Dictionnaire des synonymes"
  },
  {
   "i": 1955,
-  "t": "Sous-totaux"
+  "t": "Erreurs de conversion"
  },
  {
   "i": 1956,
-  "t": "Mode de calcul"
+  "t": "Incohérences de graphie"
  },
  {
   "i": 1957,
-  "t": "Texte de droite à gauche"
+  "t": "Sous-totaux"
  },
  {
   "i": 1958,
-  "t": "Sens de la feuille"
+  "t": "Mode de calcul"
  },
  {
   "i": 1959,
-  "t": "Python"
+  "t": "Texte de droite à gauche"
  },
  {
   "i": 1960,
-  "t": "Case à cocher"
+  "t": "Sens de la feuille"
  },
  {
   "i": 1961,
-  "t": "Liens externes"
+  "t": "Python"
  },
  {
   "i": 1962,
-  "t": "Graphique recommandé"
+  "t": "Case à cocher"
  },
  {
   "i": 1963,
-  "t": "Mode coédition"
+  "t": "Liens externes"
  },
  {
   "i": 1964,
-  "t": "Historique des versions"
+  "t": "Graphique recommandé"
  },
  {
   "i": 1965,
-  "t": "Discussion"
+  "t": "Mode coédition"
  },
  {
   "i": 1966,
-  "t": "Protéger"
+  "t": "Historique des versions"
  },
  {
   "i": 1967,
-  "t": "Chiffrer"
+  "t": "Discussion"
  },
  {
   "i": 1968,
-  "t": "Ajouter une signature numérique"
+  "t": "Protéger"
  },
  {
   "i": 1969,
-  "t": "Macros"
+  "t": "Chiffrer"
  },
  {
   "i": 1970,
-  "t": "Gérer les plugins"
+  "t": "Ajouter une signature numérique"
  },
  {
   "i": 1971,
-  "t": "Afficher les zéros"
+  "t": "Macros"
  },
  {
   "i": 1972,
-  "t": "Zoom à 100 %"
+  "t": "Gérer les plugins"
  },
  {
   "i": 1973,
-  "t": "Thème de l'interface"
+  "t": "Afficher les zéros"
  },
  {
   "i": 1974,
-  "t": "Fenêtre Espion"
+  "t": "Zoom à 100 %"
  },
  {
   "i": 1975,
-  "t": "Somme automatique"
+  "t": "Thème de l'interface"
  },
  {
   "i": 1976,
-  "t": "Enregistrer les actions"
+  "t": "Fenêtre Espion"
  },
  {
   "i": 1977,
-  "t": "Supprimer le commentaire"
+  "t": "Somme automatique"
  },
  {
   "i": 1978,
-  "t": "Solveur"
+  "t": "Enregistrer les actions"
  },
  {
   "i": 1979,
-  "t": "Texte en données"
+  "t": "Supprimer le commentaire"
  },
  {
   "i": 1980,
-  "t": "Supprimer les flèches"
+  "t": "Solveur"
  },
  {
   "i": 1981,
-  "t": "Recopier"
+  "t": "Texte en données"
  },
  {
   "i": 1982,
-  "t": "Effacer le filtre"
+  "t": "Supprimer les flèches"
  },
  {
   "i": 1983,
-  "t": "Écrire une macro"
+  "t": "Recopier"
  },
  {
   "i": 1984,
-  "t": "Convertir"
+  "t": "Effacer le filtre"
  },
  {
   "i": 1985,
-  "t": "Légende"
+  "t": "Écrire une macro"
  },
  {
   "i": 1986,
-  "t": "Table des illustrations"
+  "t": "Convertir"
  },
  {
   "i": 1987,
-  "t": "Mettre à jour la table des illustrations"
+  "t": "Légende"
  },
  {
   "i": 1988,
-  "t": "Liens externes (importer en valeurs)"
+  "t": "Table des illustrations"
  },
  {
   "i": 1989,
-  "t": "Maths et trigonométrie"
+  "t": "Mettre à jour la table des illustrations"
  },
  {
   "i": 1990,
-  "t": "Afficher les formules"
+  "t": "Liens externes (importer en valeurs)"
  },
  {
   "i": 1991,
-  "t": "Sens du texte (droite à gauche)"
+  "t": "Maths et trigonométrie"
  },
  {
   "i": 1992,
-  "t": "Texte"
+  "t": "Afficher les formules"
  },
  {
   "i": 1993,
-  "t": "Date et heure"
+  "t": "Sens du texte (droite à gauche)"
  },
  {
   "i": 1994,
-  "t": "Récemment utilisées"
+  "t": "Texte"
  },
  {
   "i": 1995,
-  "t": "Imprimer le quadrillage"
+  "t": "Date et heure"
  },
  {
   "i": 1996,
-  "t": "Mettre à jour la table des matières"
+  "t": "Récemment utilisées"
  },
  {
   "i": 1997,
-  "t": "Colonnes à bandes"
+  "t": "Imprimer le quadrillage"
  },
  {
   "i": 1998,
-  "t": "Imprimer les en-têtes"
+  "t": "Mettre à jour la table des matières"
  },
  {
   "i": 1999,
-  "t": "Masquer le détail"
+  "t": "Colonnes à bandes"
  },
  {
   "i": 2000,
-  "t": "Supprimer les doublons"
+  "t": "Imprimer les en-têtes"
  },
  {
   "i": 2001,
-  "t": "Insérer une fonction"
+  "t": "Masquer le détail"
  },
  {
   "i": 2002,
-  "t": "Format CSV"
+  "t": "Supprimer les doublons"
  },
  {
   "i": 2003,
-  "t": "Verrouiller la cellule"
+  "t": "Insérer une fonction"
  },
  {
   "i": 2004,
-  "t": "Table de données"
+  "t": "Format CSV"
  },
  {
   "i": 2005,
-  "t": "Remplissage instantané"
+  "t": "Verrouiller la cellule"
  },
  {
   "i": 2006,
-  "t": "Liste"
+  "t": "Table de données"
  },
  {
   "i": 2007,
-  "t": "Coller un nom"
+  "t": "Remplissage instantané"
  },
  {
   "i": 2008,
-  "t": "Récupérer"
+  "t": "Liste"
  },
  {
   "i": 2009,
-  "t": "Renvoyer à la ligne"
+  "t": "Coller un nom"
  },
  {
   "i": 2010,
-  "t": "Intervalle des copies"
+  "t": "Récupérer"
  },
  {
   "i": 2011,
-  "t": "Nouveau .py"
+  "t": "Renvoyer à la ligne"
  },
  {
   "i": 2012,
-  "t": "Ajouter la plage"
+  "t": "Intervalle des copies"
  },
  {
   "i": 2013,
-  "t": "Ajuster au papier"
+  "t": "Nouveau .py"
  },
  {
   "i": 2014,
-  "t": "Sauts de page"
+  "t": "Ajouter la plage"
  },
  {
   "i": 2015,
-  "t": "Ouvrir le dossier"
+  "t": "Ajuster au papier"
  },
  {
   "i": 2016,
-  "t": "Type de calcul"
+  "t": "Sauts de page"
  },
  {
   "i": 2017,
-  "t": "Actions permises"
+  "t": "Ouvrir le dossier"
  },
  {
   "i": 2018,
+  "t": "Type de calcul"
+ },
+ {
+  "i": 2019,
+  "t": "Actions permises"
+ },
+ {
+  "i": 2020,
   "t": "Suggérer la lecture seule"
  }
 ]

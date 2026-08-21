@@ -1937,5 +1937,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} = {} で {} が {} になります(Ctrl+Z で戻せます)", "Dengan {} = {}, {} menjadi {} (Ctrl+Z membatalkannya)"),
     ("前に保存できずに終わった控えが {} 件あります(ファイルタブの「復旧」で開けます)", "Ada {} salinan pemulihan dari sesi yang berakhir tanpa disimpan (buka lewat Pulihkan di tab Berkas)"),
     ("復旧", "Pemulihan"),
+    ("絞り込みは掛かっていません", "Tidak ada filter yang diterapkan"),
+    ("トレースの矢印は出ていません", "Tidak ada panah pelacak yang tampil"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Solusi tidak ditemukan ({} mungkin tidak berpengaruh pada {})"),
 ];
