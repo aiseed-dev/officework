@@ -1410,7 +1410,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("罫線を消す", "Nessun bordo"),
     ("ロックされたセルの選択", "Selezione celle bloccate"),
     ("ロックされていないセルの選択", "Selezione celle sbloccate"),
-    ("セルの書式設定", "Formattazione celle"),
+    ("セルの書式設定", "Formatta celle"),
     ("列の書式設定", "Formattazione colonne"),
     ("行の書式設定", "Formattazione righe"),
     ("列の挿入", "Inserimento colonne"),

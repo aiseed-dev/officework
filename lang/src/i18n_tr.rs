@@ -1410,7 +1410,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("罫線を消す", "Kenarlık yok"),
     ("ロックされたセルの選択", "Kilitli hücreleri seçme"),
     ("ロックされていないセルの選択", "Kilitli olmayan hücreleri seçme"),
-    ("セルの書式設定", "Hücreleri biçimlendirme"),
+    ("セルの書式設定", "Hücreleri biçimlendir"),
     ("列の書式設定", "Sütunları biçimlendirme"),
     ("行の書式設定", "Satırları biçimlendirme"),
     ("列の挿入", "Sütun ekleme"),
