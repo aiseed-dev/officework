@@ -1189,7 +1189,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("フッター右", "Altbilgi sağ"),
     ("全部消す", "Tümünü sil"),
     ("総計", "Genel toplamlar"),
-    ("小計", "Alt toplamlar"),
+    ("小計", "Ara toplamlar"),
     ("空行", "Boş satırlar"),
     ("コンパクト形式", "Sıkışık biçim"),
     ("{}を{}にして置き直します…", "{} = {} — yeniden oluşturuluyor…"),

@@ -28,7 +28,7 @@ pub const WRITER: &[Tab] = &[
         c("decfont", "Giảm cỡ chữ", "decfont"),
         c("changecase", "Đổi chữ hoa/thường", "changecase"),
         c("ruby", "Ruby", "ruby"),
-        c("ai-furigana", "furigana", "ai-furigana"),
+        c("ai-furigana", "Furigana", "ai-furigana"),
         c("bold", "Đậm", "bold"),
         c("italic", "Nghiêng", "italic"),
         c("underline", "Gạch chân", "underline"),
