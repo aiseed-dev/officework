@@ -773,6 +773,10 @@ EXTRA_CMDS = {
         ("ピボットテーブル", 'pivot-insert', "pivot-fields", "フィールドリスト", "pivot-fields", "c"),
         # 本家は値フィールドの設定の中にある「計算の種類」。うちは指図が
         # 集計の名前ひとつなので、タブに独立したボタンとして置く
+        # **元の表を差し替える**(2026-08-21 の D群)。本家に無いボタンですが、
+        # 語は本家の `PivotSettingsAdvanced.textDataSource` にあるので、
+        # 訳は全言語ともそこから引けます(「データソース」)
+        ("ピボットテーブル", 'pivot-refresh-all', "pivot-source", "データソース", "pivot-source", "c"),
         ("ピボットテーブル", 'pivot-blank', "pivot-showas", "計算の種類", "pivot-showas", "c"),
         ("ピボットテーブル", 'pivot-layout', "pivot-style", "スタイル", "pivot-style", "c"),
         # 本家では「セルの書式設定 > 保護」タブと「シートの保護」小窓の中。

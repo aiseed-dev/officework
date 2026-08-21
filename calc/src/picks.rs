@@ -3643,6 +3643,78 @@ impl Calc {
                     at,
                 ));
             }
+            // **ピボットの元の表の差し替え**(2026-08-21 の D群)
+            "pivot-src" => {
+                let Some(i) = self.pivot_at(self.cursor) else {
+                    self.status = ui::t!("ピボットの上にカーソルを置いてください").into();
+                    return;
+                };
+                // `Sheet1!A1:C20` か `A1:C20`(いまのシート)
+                let (名, 範囲) = match text.rsplit_once('!') {
+                    Some((s0, r)) => (s0.trim().to_string(), r.trim().to_string()),
+                    None => (self.sheet().name.clone(), text.trim().to_string()),
+                };
+                let Some((a0, b0)) = 範囲.split_once(':') else {
+                    self.status = ui::t!("範囲は A1:C20 の形で打ってください").into();
+                    return;
+                };
+                let (Some(a0), Some(b0)) = (
+                    Pos::parse(&a0.replace('$', "").to_uppercase()),
+                    Pos::parse(&b0.replace('$', "").to_uppercase()),
+                ) else {
+                    self.status = ui::tf!("範囲が読めません: {}", 範囲).into();
+                    return;
+                };
+                let Some(si) = self.book.sheets.iter().position(|s| s.name == 名) else {
+                    self.status = ui::tf!("シート「{}」がありません", 名).into();
+                    return;
+                };
+                if b0.row <= a0.row {
+                    self.status = ui::t!("見出しの下にデータの行が要ります").into();
+                    return;
+                }
+                // **いま使っている見出しが新しい範囲にあるか。** 無ければ
+                // 作り直しても空になります — 黙って空にせず、先に言います
+                let 見出し: Vec<String> = (a0.col..=b0.col)
+                    .map(|c| {
+                        self.book.sheets[si]
+                            .get(Pos::new(a0.row, c))
+                            .map(|x| x.value.display())
+                            .unwrap_or_default()
+                    })
+                    .collect();
+                let d = self.book.pivots[i].clone();
+                let 要る: Vec<&String> = d
+                    .rows_sel
+                    .iter()
+                    .chain(d.cols_sel.iter())
+                    .chain(std::iter::once(&d.value))
+                    .filter(|h| !h.is_empty())
+                    .collect();
+                let 無い: Vec<String> =
+                    要る.iter().filter(|h| !見出し.contains(h)).map(|h| h.to_string()).collect();
+                if !無い.is_empty() {
+                    self.status = ui::tf!(
+                        "新しい範囲に見出しがありません: {}(いまのピボットが使っています)",
+                        無い.join("・")
+                    )
+                    .into();
+                    return;
+                }
+                self.checkpoint();
+                self.book.pivots[i].sheet = 名.clone();
+                self.book.pivots[i].src = (a0, b0);
+                let d = self.book.pivots[i].clone();
+                self.dirty = true;
+                self.status = ui::tf!(
+                    "元の表を {}!{}:{} に差し替えました(作り直します)",
+                    名,
+                    a0.a1(),
+                    b0.a1()
+                )
+                .into();
+                self.spawn_pivot(d, Some(i), cx);
+            }
             "comment" => {
                 let p = self.cursor;
                 if text.is_empty() {

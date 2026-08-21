@@ -2781,6 +2781,82 @@ mod recalc_tests {
         });
     }
 
+    /// **元の表を差し替える**(2026-08-21 の D群)。
+    ///
+    /// 断る所も見ます — 読めない範囲・無いシート・**いま使っている見出しが
+    /// 新しい範囲に無い**とき。最後のは黙って空のピボットになるのが一番悪い
+    /// ので、先に言って止めます。
+    #[gpui::test]
+    fn ピボットの元の表を差し替える(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let name = this.sheet().name.clone();
+            // A1:B3 と A5:B7。見出しは同じ
+            for (a1, v) in [
+                ("A1", "店"), ("B1", "額"), ("A2", "東"), ("B2", "10"),
+                ("A3", "西"), ("B3", "20"),
+                ("A5", "店"), ("B5", "額"), ("A6", "東"), ("B6", "100"),
+                ("A7", "西"), ("B7", "200"),
+            ] {
+                let p = Pos::parse(a1).unwrap();
+                this.book.sheets[0].set(p, sheet::Cell::input(v));
+            }
+            this.book.pivots.push(sheet::model::PivotDef {
+                sheet: name.clone(),
+                src: (Pos::parse("A1").unwrap(), Pos::parse("B3").unwrap()),
+                rows_sel: vec!["店".into()],
+                cols_sel: vec![],
+                value: "額".into(),
+                agg: "合計".into(),
+                totals: true,
+                subtotals: false,
+                blank_rows: false,
+                compact: true,
+                dest: Pos::parse("D1").unwrap(),
+                size: (3, 2),
+                hide: Vec::new(),
+                style: String::new(),
+                name: "ピボットテーブル1".into(),
+                vfilter: None,
+                group_by: Vec::new(),
+                show_as: String::new(),
+                sort: String::new(),
+            });
+            this.cursor = Pos::parse("D2").unwrap();
+            this.anchor = None;
+
+            // 押すと、いまの範囲が入った欄が出る
+            this.run_cmd("pivot-source", cx);
+            let Some((kind, ed)) = this.prompt.clone() else { panic!("欄が出ない") };
+            assert_eq!(kind, "pivot-src");
+            assert_eq!(ed.text(), format!("{name}!A1:B3"), "いまの範囲が入っていない");
+
+            // 読めない範囲は断る(**差し替えない**)
+            this.prompt = Some(("pivot-src", Editor::new("ほげ")));
+            this.finish_prompt(cx);
+            assert_eq!(this.book.pivots[0].src.1, Pos::parse("B3").unwrap(), "断ったのに変わった");
+            assert!(this.status.contains("A1:C20"), "言い方が違う: {}", this.status);
+
+            // 無いシートも断る
+            this.prompt = Some(("pivot-src", Editor::new("無いシート!A5:B7")));
+            this.finish_prompt(cx);
+            assert!(this.status.contains("ありません"), "{}", this.status);
+
+            // **見出しが無い範囲**も断る(B 列だけ = 「店」が無い)
+            this.prompt = Some(("pivot-src", Editor::new(&format!("{name}!B1:B3"))));
+            this.finish_prompt(cx);
+            assert!(this.status.contains("店"), "使っている見出しを言わない: {}", this.status);
+            assert_eq!(this.book.pivots[0].src.0, Pos::parse("A1").unwrap(), "断ったのに変わった");
+
+            // 下の表へ差し替える
+            this.prompt = Some(("pivot-src", Editor::new(&format!("{name}!A5:B7"))));
+            this.finish_prompt(cx);
+            assert_eq!(this.book.pivots[0].src.0, Pos::parse("A5").unwrap(), "差し替わっていない");
+            assert_eq!(this.book.pivots[0].src.1, Pos::parse("B7").unwrap());
+            assert!(this.dirty, "書きかけの印が付かない");
+        });
+    }
+
     #[gpui::test]
     fn ピボットの上では表を壊す操作を締める(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));

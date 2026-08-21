@@ -323,6 +323,7 @@ pub const CALC: &[Tab] = &[
         c("pivot-fields", "Danh sách trường", "pivot-fields"),
         c("pivot-refresh", "Làm mới", "pivot-refresh"),
         c("pivot-refresh-all", "Làm mới tất cả", "pivot-refresh-all"),
+        c("pivot-source", "Nguồn dữ liệu", "pivot-source"),
         c("pivot-select", "Chọn", "pivot-select"),
         c("pivot-totals", "Tổng chung", "pivot-totals"),
         c("pivot-subtotals", "Tổng phụ", "pivot-subtotals"),

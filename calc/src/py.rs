@@ -206,6 +206,23 @@ pub(crate) fn run_with_timeout(
     })
 }
 
+/// **1回ごとの作業場**(2026-08-21)。
+///
+/// 前は `jo-<種類>-<プロセス番号>` の1つを使い回していました。**同時に
+/// 2つ走ると同じファイルを取り合います** — 「すべて更新」は開いている
+/// ピボットを全部いっぺんに走らせるので、片方の答えがもう片方に入り、
+/// *黙って値が壊れます*。試験を1本足したときに実際に出ました
+/// (筆記具の合計 150 のはずが、隣の試験の 300 になった)。
+///
+/// 番号は増えるだけの数え札です。時刻や乱数は使いません — 同じ入力から
+/// 同じ物が出る方が、後から追いかけやすいためです。
+pub(crate) fn 作業場(name: &str) -> std::path::PathBuf {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static 番: AtomicU64 = AtomicU64::new(0);
+    let n = 番.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir().join(format!("jo-{name}-{}-{n}", std::process::id()))
+}
+
 pub(crate) struct ImportPend {
     pub path: std::path::PathBuf,
     /// IMPORT_ENCS の添字
@@ -478,7 +495,7 @@ impl Calc {
         }
         // JSON は手で組む(依存を増やさない。文字列は最小の逃がし)
         let esc = |t: &str| t.replace('\\', "\\\\").replace('"', "\\\"");
-        let dir = std::env::temp_dir().join(format!("jo-chart-{}", std::process::id()));
+        let dir = 作業場("chart");
         let _ = std::fs::create_dir_all(&dir);
         let out = dir.join("chart.png");
         let font = kumihan::font::for_document(None)
@@ -705,7 +722,7 @@ impl Calc {
             })
             .collect();
         let json = pivot_spec_json(&headers, &data, &def);
-        let dir = std::env::temp_dir().join(format!("jo-pivot-{}", std::process::id()));
+        let dir = 作業場("pivot");
         self.status = ui::tf!("{} の {} を集めています…", def.value, def.agg).into();
         let task = cx.background_executor().spawn(async move {
             let _ = std::fs::create_dir_all(&dir);
@@ -1444,7 +1461,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             },
         );
         let job = cx.background_executor().spawn(async move {
-            let dir = std::env::temp_dir().join(format!("jo-csv-{}", std::process::id()));
+            let dir = 作業場("csv");
             let _ = std::fs::create_dir_all(&dir);
             // csv.py という名前は標準ライブラリの csv を隠してしまう(踏んだ)
             let py_path = dir.join("jo_csv.py");
@@ -1565,7 +1582,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ) {
         let esc = |t: &str| t.replace('\\', "\\\\").replace('"', "\\\"");
         let dir =
-            std::env::temp_dir().join(format!("jo-{name}-{}", std::process::id()));
+            作業場(name);
         let out = dir.join("eq.png");
         let font = kumihan::font::for_document(None)
             .ok()
@@ -1936,7 +1953,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             bounds
         );
         let 整数あり = int_of.iter().any(|v| *v == 1);
-        let dir = std::env::temp_dir().join(format!("jo-solver-{}", std::process::id()));
+        let dir = 作業場("solver");
         self.status = if 整数あり {
             ui::t!("解を探しています…(整数計画。分枝限定)").into()
         } else {

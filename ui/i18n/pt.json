@@ -7669,434 +7669,462 @@
  },
  {
   "i": 1917,
-  "t": "Escreva primeiro o lado esquerdo da restrição"
+  "t": "Escreva o intervalo de origem e prima Enter (p. ex. Sheet1!A1:C20; inclua a linha de cabeçalhos)"
  },
  {
   "i": 1918,
-  "t": "A procurar uma solução… (programa inteiro, ramificação e limitação)"
+  "t": "Coloque o cursor na tabela dinâmica que quer reapontar"
  },
  {
   "i": 1919,
-  "t": "{} não é uma célula de variável (inteiro e binário só se aplicam a células de variáveis)"
+  "t": "Escreva o intervalo na forma A1:C20"
  },
  {
   "i": 1920,
-  "t": "Não foi encontrada solução ({} pode não influir em {})"
+  "t": "Não é possível ler o intervalo: {}"
  },
  {
   "i": 1921,
-  "t": "Orientação"
+  "t": "Não existe a folha “{}”"
  },
  {
   "i": 1922,
-  "t": "Formatar células"
+  "t": "O novo intervalo não tem estes cabeçalhos: {} (a tabela dinâmica usa-os)"
  },
  {
   "i": 1923,
-  "t": "Alinhar ao meio"
+  "t": "Tabela de origem apontada para {}!{}:{} (a reconstruir)"
  },
  {
   "i": 1924,
-  "t": "Funções Python"
+  "t": "Escreva primeiro o lado esquerdo da restrição"
  },
  {
   "i": 1925,
-  "t": "Macros do friso"
+  "t": "A procurar uma solução… (programa inteiro, ramificação e limitação)"
  },
  {
   "i": 1926,
-  "t": "Copiar formato"
+  "t": "{} não é uma célula de variável (inteiro e binário só se aplicam a células de variáveis)"
  },
  {
   "i": 1927,
-  "t": "Estilo"
+  "t": "Não foi encontrada solução ({} pode não influir em {})"
  },
  {
   "i": 1928,
-  "t": "Lista de campos"
+  "t": "Orientação"
  },
  {
   "i": 1929,
-  "t": "Aumentar o texto do ecrã"
+  "t": "Formatar células"
  },
  {
   "i": 1930,
-  "t": "Diminuir o texto do ecrã"
+  "t": "Alinhar ao meio"
  },
  {
   "i": 1931,
-  "t": "IA"
+  "t": "Funções Python"
  },
  {
   "i": 1932,
-  "t": "Imprimir"
+  "t": "Macros do friso"
  },
  {
   "i": 1933,
-  "t": "Esquema de impressão"
+  "t": "Copiar formato"
  },
  {
   "i": 1934,
-  "t": "Destino"
+  "t": "Estilo"
  },
  {
   "i": 1935,
-  "t": "Resumir"
+  "t": "Lista de campos"
  },
  {
   "i": 1936,
-  "t": "Reescrever"
+  "t": "Aumentar o texto do ecrã"
  },
  {
   "i": 1937,
-  "t": "Mais formal"
+  "t": "Diminuir o texto do ecrã"
  },
  {
   "i": 1938,
-  "t": "Mais simples"
+  "t": "IA"
  },
  {
   "i": 1939,
-  "t": "Traduzir"
+  "t": "Imprimir"
  },
  {
   "i": 1940,
-  "t": "Furigana"
+  "t": "Esquema de impressão"
  },
  {
   "i": 1941,
-  "t": "Continuar a escrever"
+  "t": "Destino"
  },
  {
   "i": 1942,
-  "t": "Converter em tabela"
+  "t": "Resumir"
  },
  {
   "i": 1943,
-  "t": "Pedir"
+  "t": "Reescrever"
  },
  {
   "i": 1944,
-  "t": "Ruby"
+  "t": "Mais formal"
  },
  {
   "i": 1945,
-  "t": "Vertical"
+  "t": "Mais simples"
  },
  {
   "i": 1946,
-  "t": "Direção do texto"
+  "t": "Traduzir"
  },
  {
   "i": 1947,
-  "t": "Distribuído"
+  "t": "Furigana"
  },
  {
   "i": 1948,
-  "t": "Inserir legenda"
+  "t": "Continuar a escrever"
  },
  {
   "i": 1949,
-  "t": "Abrir URL"
+  "t": "Converter em tabela"
  },
  {
   "i": 1950,
-  "t": "Índice remissivo"
+  "t": "Pedir"
  },
  {
   "i": 1951,
-  "t": "Notas do Aozora"
+  "t": "Ruby"
  },
  {
   "i": 1952,
-  "t": "Marcação Denden"
+  "t": "Vertical"
  },
  {
   "i": 1953,
-  "t": "Registar alterações"
+  "t": "Direção do texto"
  },
  {
   "i": 1954,
-  "t": "Mostrar as alterações"
+  "t": "Distribuído"
  },
  {
   "i": 1955,
-  "t": "Revisão"
+  "t": "Inserir legenda"
  },
  {
   "i": 1956,
-  "t": "Caracteres"
+  "t": "Abrir URL"
  },
  {
   "i": 1957,
-  "t": "Verificação ortográfica"
+  "t": "Índice remissivo"
  },
  {
   "i": 1958,
-  "t": "Dicionário de sinónimos"
+  "t": "Notas do Aozora"
  },
  {
   "i": 1959,
-  "t": "Conversão errada"
+  "t": "Marcação Denden"
  },
  {
   "i": 1960,
-  "t": "Grafia inconsistente"
+  "t": "Registar alterações"
  },
  {
   "i": 1961,
-  "t": "Subtotais"
+  "t": "Mostrar as alterações"
  },
  {
   "i": 1962,
-  "t": "Método de cálculo"
+  "t": "Revisão"
  },
  {
   "i": 1963,
-  "t": "Texto da direita para a esquerda"
+  "t": "Caracteres"
  },
  {
   "i": 1964,
-  "t": "Direção da folha"
+  "t": "Verificação ortográfica"
  },
  {
   "i": 1965,
-  "t": "Python"
+  "t": "Dicionário de sinónimos"
  },
  {
   "i": 1966,
-  "t": "Caixa de verificação"
+  "t": "Conversão errada"
  },
  {
   "i": 1967,
-  "t": "Ligações externas"
+  "t": "Grafia inconsistente"
  },
  {
   "i": 1968,
-  "t": "Gráfico recomendado"
+  "t": "Subtotais"
  },
  {
   "i": 1969,
-  "t": "Modo de coedição"
+  "t": "Método de cálculo"
  },
  {
   "i": 1970,
-  "t": "Histórico de versões"
+  "t": "Texto da direita para a esquerda"
  },
  {
   "i": 1971,
-  "t": "Conversa"
+  "t": "Direção da folha"
  },
  {
   "i": 1972,
-  "t": "Proteger"
+  "t": "Python"
  },
  {
   "i": 1973,
-  "t": "Encriptar"
+  "t": "Caixa de verificação"
  },
  {
   "i": 1974,
-  "t": "Adicionar assinatura digital"
+  "t": "Ligações externas"
  },
  {
   "i": 1975,
-  "t": "Macros"
+  "t": "Gráfico recomendado"
  },
  {
   "i": 1976,
-  "t": "Gerir plugins"
+  "t": "Modo de coedição"
  },
  {
   "i": 1977,
-  "t": "Mostrar zeros"
+  "t": "Histórico de versões"
  },
  {
   "i": 1978,
-  "t": "Ampliar para 100%"
+  "t": "Conversa"
  },
  {
   "i": 1979,
-  "t": "Tema da interface"
+  "t": "Proteger"
  },
  {
   "i": 1980,
-  "t": "Janela de inspeção"
+  "t": "Encriptar"
  },
  {
   "i": 1981,
-  "t": "Soma automática"
+  "t": "Adicionar assinatura digital"
  },
  {
   "i": 1982,
-  "t": "Gravar ações"
+  "t": "Macros"
  },
  {
   "i": 1983,
-  "t": "Eliminar comentário"
+  "t": "Gerir plugins"
  },
  {
   "i": 1984,
-  "t": "Solver"
+  "t": "Mostrar zeros"
  },
  {
   "i": 1985,
-  "t": "Dados a partir de texto"
+  "t": "Ampliar para 100%"
  },
  {
   "i": 1986,
-  "t": "Remover setas"
+  "t": "Tema da interface"
  },
  {
   "i": 1987,
-  "t": "Preencher"
+  "t": "Janela de inspeção"
  },
  {
   "i": 1988,
-  "t": "Limpar filtro"
+  "t": "Soma automática"
  },
  {
   "i": 1989,
-  "t": "Escrever macro"
+  "t": "Gravar ações"
  },
  {
   "i": 1990,
-  "t": "Texto para colunas"
+  "t": "Eliminar comentário"
  },
  {
   "i": 1991,
-  "t": "Legenda"
+  "t": "Solver"
  },
  {
   "i": 1992,
-  "t": "Índice de ilustrações"
+  "t": "Dados a partir de texto"
  },
  {
   "i": 1993,
-  "t": "Atualizar o índice de ilustrações"
+  "t": "Remover setas"
  },
  {
   "i": 1994,
-  "t": "Ligações externas (importar como valores)"
+  "t": "Preencher"
  },
  {
   "i": 1995,
-  "t": "Matemática e trigonometria"
+  "t": "Limpar filtro"
  },
  {
   "i": 1996,
-  "t": "Mostrar fórmulas"
+  "t": "Escrever macro"
  },
  {
   "i": 1997,
-  "t": "Direção do texto (da direita para a esquerda)"
+  "t": "Texto para colunas"
  },
  {
   "i": 1998,
-  "t": "Texto"
+  "t": "Legenda"
  },
  {
   "i": 1999,
-  "t": "Data e hora"
+  "t": "Índice de ilustrações"
  },
  {
   "i": 2000,
-  "t": "Funções recentes"
+  "t": "Atualizar o índice de ilustrações"
  },
  {
   "i": 2001,
-  "t": "Imprimir também as linhas de grelha"
+  "t": "Ligações externas (importar como valores)"
  },
  {
   "i": 2002,
-  "t": "Atualizar o índice"
+  "t": "Matemática e trigonometria"
  },
  {
   "i": 2003,
-  "t": "Colunas às riscas"
+  "t": "Mostrar fórmulas"
  },
  {
   "i": 2004,
-  "t": "Imprimir também os cabeçalhos"
+  "t": "Direção do texto (da direita para a esquerda)"
  },
  {
   "i": 2005,
-  "t": "Ocultar detalhes"
+  "t": "Texto"
  },
  {
   "i": 2006,
-  "t": "Remover duplicados"
+  "t": "Data e hora"
  },
  {
   "i": 2007,
-  "t": "Inserir função"
+  "t": "Funções recentes"
  },
  {
   "i": 2008,
-  "t": "Formato CSV"
+  "t": "Imprimir também as linhas de grelha"
  },
  {
   "i": 2009,
-  "t": "Bloquear célula"
+  "t": "Atualizar o índice"
  },
  {
   "i": 2010,
-  "t": "Tabela de dados"
+  "t": "Colunas às riscas"
  },
  {
   "i": 2011,
-  "t": "Preencher pelo exemplo"
+  "t": "Imprimir também os cabeçalhos"
  },
  {
   "i": 2012,
-  "t": "Lista"
+  "t": "Ocultar detalhes"
  },
  {
   "i": 2013,
-  "t": "Colar nome"
+  "t": "Remover duplicados"
  },
  {
   "i": 2014,
-  "t": "Recuperar"
+  "t": "Inserir função"
  },
  {
   "i": 2015,
-  "t": "Moldar o texto"
+  "t": "Formato CSV"
  },
  {
   "i": 2016,
-  "t": "Intervalo das cópias"
+  "t": "Bloquear célula"
  },
  {
   "i": 2017,
-  "t": "Novo .py"
+  "t": "Tabela de dados"
  },
  {
   "i": 2018,
-  "t": "Acrescentar intervalo"
+  "t": "Preencher pelo exemplo"
  },
  {
   "i": 2019,
-  "t": "Ajustar ao papel"
+  "t": "Lista"
  },
  {
   "i": 2020,
-  "t": "Quebras de página"
+  "t": "Colar nome"
  },
  {
   "i": 2021,
-  "t": "Abrir a pasta"
+  "t": "Recuperar"
  },
  {
   "i": 2022,
-  "t": "Mostrar os valores como"
+  "t": "Moldar o texto"
  },
  {
   "i": 2023,
-  "t": "Operações permitidas"
+  "t": "Intervalo das cópias"
  },
  {
   "i": 2024,
+  "t": "Novo .py"
+ },
+ {
+  "i": 2025,
+  "t": "Acrescentar intervalo"
+ },
+ {
+  "i": 2026,
+  "t": "Ajustar ao papel"
+ },
+ {
+  "i": 2027,
+  "t": "Quebras de página"
+ },
+ {
+  "i": 2028,
+  "t": "Abrir a pasta"
+ },
+ {
+  "i": 2029,
+  "t": "Mostrar os valores como"
+ },
+ {
+  "i": 2030,
+  "t": "Operações permitidas"
+ },
+ {
+  "i": 2031,
   "t": "Sugerir só de leitura"
  }
 ]

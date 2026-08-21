@@ -323,6 +323,7 @@ pub const CALC: &[Tab] = &[
         c("pivot-fields", "Alan listesi", "pivot-fields"),
         c("pivot-refresh", "Yenile", "pivot-refresh"),
         c("pivot-refresh-all", "Tümünü yenile", "pivot-refresh-all"),
+        c("pivot-source", "Veri kaynağı", "pivot-source"),
         c("pivot-select", "Seç", "pivot-select"),
         c("pivot-totals", "Genel Toplamlar", "pivot-totals"),
         c("pivot-subtotals", "Ara toplamlar", "pivot-subtotals"),

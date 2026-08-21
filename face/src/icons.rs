@@ -180,6 +180,7 @@ pub static OWN_ICONS: &[(&str, &[u8])] = &[
     ("pivot-insert", include_bytes!("../icons/pivot-insert.svg")),
     ("pivot-layout", include_bytes!("../icons/pivot-layout.svg")),
     ("pivot-refresh", include_bytes!("../icons/pivot-refresh.svg")),
+    ("pivot-source", include_bytes!("../icons/pivot-source.svg")),
     ("pivot-refresh-all", include_bytes!("../icons/pivot-refresh-all.svg")),
     ("pivot-select", include_bytes!("../icons/pivot-select.svg")),
     ("pivot-showas", include_bytes!("../icons/pivot-showas.svg")),

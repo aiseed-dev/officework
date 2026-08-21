@@ -109,7 +109,7 @@ impl Calc {
         "insshape", "instext", "inssparkline", "python", "co-addcomment",
         "trace-prec", "trace-dep", "remove-arrows", "insrecommend",
         "instable", "table-tpl", "inssymbol", "pivot-insert", "pivot-fields",
-        "pivot-refresh", "pivot-refresh-all", "pivot-select",
+        "pivot-refresh", "pivot-refresh-all", "pivot-source", "pivot-select",
         "pivot-totals", "pivot-subtotals", "pivot-blank", "pivot-layout", "pivot-style",
         "pivot-showas", "datatable", "track-changes",
         "td-header", "td-total", "td-band-row", "td-band-col",
@@ -2622,6 +2622,30 @@ impl Calc {
             }
             // ピボットの手入れ: どれも「指図を直して置き直す」だけ。
             // 対象はカーソルの下のピボット(指図はブックに控えてある)
+            // **ピボットの元の表を差し替える**(2026-08-21 の D群)。
+            //
+            // カーソルをピボットに置いて押すと、いまの範囲が入った欄が出ます。
+            // 直して Enter で差し替え、そのまま作り直します。
+            // *Excel の「データソースの変更」と同じ入り口です。*
+            "pivot-source" => {
+                self.commit();
+                match self.pivot_at(self.cursor) {
+                    Some(i) => {
+                        let d = &self.book.pivots[i];
+                        // シートの名前も添える(別のシートの表も指せます)
+                        let 今 = format!("{}!{}:{}", d.sheet, d.src.0.a1(), d.src.1.a1());
+                        self.prompt = Some(("pivot-src", Editor::new(&今)));
+                        self.status = ui::t!(
+                            "元の表の範囲を打って Enter(例: Sheet1!A1:C20。見出しの行を含めます)"
+                        )
+                        .into();
+                    }
+                    None => {
+                        self.status =
+                            ui::t!("差し替えたいピボットの上にカーソルを置いてください").into();
+                    }
+                }
+            }
             "pivot-refresh" => {
                 self.commit();
                 match self.pivot_at(self.cursor) {
