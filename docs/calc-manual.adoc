@@ -284,9 +284,19 @@ Register `officework-mcp` with your MCP client, then you can say:
 "Sum column B of the open sheet and put the total below it. Bold the header."
 ====
 
-*calc must be running*; if it isn't, the tools say so rather than failing silently.
+*officework must be running*; if it isn't, the tools say so rather than failing silently.
 
-Only eight tools are exposed: book info / used range / read values / read formulas / write values / apply formatting / autofit / save.
+Eight spreadsheet tools are exposed: book info / used range / read values / read formulas / write values / apply formatting / autofit / save.
+
+*There are document tools too* (seven, all starting with `doc_`).
+
+[NOTE]
+====
+"Set the name to Yamada Taro and the address to Matsuyama in the application form, then export it as PDF."
+====
+
+Document info / read body text / replace body text / list content controls / list merge fields / fill merge fields / export PDF.
+If you call a document tool while a spreadsheet is in front, the tools say so.
 
 * *No tool runs arbitrary code.* One "run this Python" tool would let the model do anything, well past what you agreed to
 * There is no tool to open a file — you decide what is open, in calc
