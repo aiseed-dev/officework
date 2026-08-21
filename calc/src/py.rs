@@ -223,6 +223,7 @@ pub(crate) fn 作業場(name: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("jo-{name}-{}-{n}", std::process::id()))
 }
 
+#[derive(Clone)]
 pub(crate) struct ImportPend {
     pub path: std::path::PathBuf,
     /// IMPORT_ENCS の添字
@@ -236,6 +237,12 @@ pub(crate) struct ImportPend {
     pub grid: Vec<Vec<String>>,
     /// Python が実際に使った(文字コード, 区切り)— 自動のときの報告
     pub used: (String, String),
+    /// **PDF から取った表**(ページ番号, 取り方, 升目)。空 = PDF ではない。
+    /// 取り方は「罫線」か「文字の位置」で、**そのまま画面に出します** —
+    /// 推し量って取った表を、正確に取れた表と同じ顔で出さないためです
+    pub pdf: Vec<(u32, String, Vec<Vec<String>>)>,
+    /// いま見ている表(`pdf` の添字)
+    pub pdf_at: usize,
 }
 
 /// 文字コードの選択肢(鍵, 見せる名前, Python に渡す名前)。
@@ -1426,7 +1433,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             .background_executor()
             .spawn(async {
                 rfd::FileDialog::new()
-                    .add_filter("テキストのデータ", &["csv", "tsv", "txt"])
+                    .add_filter("テキストのデータ・PDF", &["csv", "tsv", "txt", "pdf"])
                     .pick_file()
             });
         cx.spawn(async move |this, cx| {
@@ -1440,6 +1447,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                     dest: this.cursor,
                     grid: Vec::new(),
                     used: (String::new(), String::new()),
+                    pdf: Vec::new(),
+                    pdf_at: 0,
                 });
                 this.import_reparse(cx);
             });
@@ -1450,6 +1459,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     /// いまの設定(文字コード・区切り)でファイルを読み直し、パネルを出し直す。
     pub(crate) fn import_reparse(&mut self, cx: &mut Context<Self>) {
         let Some(pend) = &self.import_pend else { return };
+        // PDF は別の道。文字コードも区切りも関わりません
+        if pend.path.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")) {
+            self.pdf_reparse(cx);
+            return;
+        }
         let (path, enc, delim) = (
             pend.path.clone(),
             import_encs()[pend.enc].2.to_string(),
@@ -1516,6 +1530,76 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     }
 
     /// 取り込みウィザードのパネルを(いまの下ごしらえから)組む。
+    /// **PDF から表を取り出す**(2026-08-21 の D群)。
+    ///
+    /// PDF に「表」という構造はありません。字と、その座標と、線だけです。
+    /// 罫線があればそれで切り、無ければ文字の位置から推し量ります。
+    /// **どちらで取ったかは画面に出します** — 推し量って取った表を、
+    /// 正確に取れた表と同じ顔で出すと、ずれたまま気づけません。
+    pub(crate) fn pdf_reparse(&mut self, cx: &mut Context<Self>) {
+        let Some(pend) = &self.import_pend else { return };
+        let path = pend.path.clone();
+        self.status = ui::t!("PDF から表を探しています…").into();
+        let job = cx.background_executor().spawn(async move {
+            let dir = 作業場("pdf");
+            let _ = std::fs::create_dir_all(&dir);
+            let py_path = dir.join("jo_pdf.py");
+            if std::fs::write(&py_path, pyrun::PDF_TABLE_PY).is_err() {
+                return Err(ui::t!("一時ファイルが書けません").to_string());
+            }
+            let o = std::process::Command::new(find_python())
+                .arg(&py_path)
+                .arg(&path)
+                .output();
+            match o {
+                Ok(o) if o.status.success() => Ok(String::from_utf8_lossy(&o.stdout).to_string()),
+                Ok(o) => {
+                    let err = String::from_utf8_lossy(&o.stderr);
+                    let last =
+                        err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("原因不明");
+                    Err(if err.contains("No module named") {
+                        ui::tf!(
+                            "PDF を読む道具(pdfplumber)がありません。次で入ります:\n  {}",
+                            pyrun::pip_hint("pdfplumber")
+                        )
+                        .to_string()
+                    } else {
+                        ui::tf!("PDF が読めません: {}", last).to_string()
+                    })
+                }
+                Err(e) => Err(ui::tf!("Python が起動できません: {}", e).to_string()),
+            }
+        });
+        cx.spawn(async move |this, cx| {
+            let r = job.await;
+            let _ = this.update(cx, |this, cx| {
+                match r {
+                    Ok(raw) => {
+                        let tables = parse_pdf_tables(&raw);
+                        if tables.is_empty() {
+                            this.import_pend = None;
+                            this.status = ui::t!(
+                                "この PDF に表は見つかりませんでした(絵として貼られた表は読めません)"
+                            )
+                            .into();
+                        } else if let Some(p) = &mut this.import_pend {
+                            p.pdf_at = 0;
+                            p.grid = tables[0].2.clone();
+                            p.pdf = tables;
+                            this.import_pick();
+                        }
+                    }
+                    Err(e) => {
+                        this.import_pend = None;
+                        this.status = e.into();
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     pub(crate) fn import_pick(&mut self) {
         let Some(pend) = &self.import_pend else { return };
         let mut items: Vec<String> = Vec::new();
@@ -1541,8 +1625,31 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         } else {
             delims[pend.delim].1.to_string()
         };
-        items.push(format!("{}: {}", ui::t!("文字コード"), enc_label));
-        items.push(format!("{}: {}", ui::t!("区切り"), delim_label));
+        if pend.pdf.is_empty() {
+            items.push(format!("{}: {}", ui::t!("文字コード"), enc_label));
+            items.push(format!("{}: {}", ui::t!("区切り"), delim_label));
+        } else {
+            // PDF は文字コードも区切りも関わりません。代わりに
+            // **どの表か**と、**どうやって取ったか**を出します
+            let (page, how, _) = &pend.pdf[pend.pdf_at.min(pend.pdf.len() - 1)];
+            items.push(format!(
+                "{}: {}",
+                ui::t!("表"),
+                ui::tf!("{} / {} 枚目({} ページ)", pend.pdf_at + 1, pend.pdf.len(), page)
+            ));
+            // **台本は鍵だけを返します。**画面の字はここで訳します —
+            // 台本が日本語を返すと、13言語で日本語が出ます
+            let how_label = if how == "lines" {
+                ui::t!("罫線から")
+            } else {
+                ui::t!("文字の位置から(推し量り)")
+            };
+            items.push(format!("{}: {}", ui::t!("取り方"), how_label));
+            if how == "text" {
+                items.push(ui::t!("※ 罫線が無いので推し量りました。桁のずれを確かめてください")
+                    .to_string());
+            }
+        }
         items.push(format!("{}: {}", ui::t!("置き場所"), pend.dest.a1()));
         // プレビュー(先頭3行。長ければ詰める)
         for (i, row) in pend.grid.iter().take(3).enumerate() {
@@ -2167,4 +2274,27 @@ impl Calc {
         )
         .into();
     }
+}
+
+/// PDF の台本の返しを (ページ, 取り方, 升目) の並びにする。
+///
+/// 形は台本と揃えた区切り文字づけです。**読めない物が来たら空を返します** —
+/// 半端に読めた表を出すと、そこから数字がずれます。
+pub(crate) fn parse_pdf_tables(raw: &str) -> Vec<(u32, String, Vec<Vec<String>>)> {
+    let raw = raw.trim_end_matches(['\n', '\r']);
+    if raw.is_empty() {
+        return Vec::new();
+    }
+    raw.split('\u{1d}')
+        .filter_map(|t| {
+            let (head, body) = t.split_once('\u{1e}')?;
+            let (page, how) = head.split_once('\u{1f}')?;
+            let page: u32 = page.trim().parse().ok()?;
+            let rows: Vec<Vec<String>> = body
+                .split('\u{1e}')
+                .map(|r| r.split('\u{1f}').map(|c| c.to_string()).collect())
+                .collect();
+            (!rows.is_empty()).then_some((page, how.to_string(), rows))
+        })
+        .collect()
 }

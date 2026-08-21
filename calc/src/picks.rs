@@ -1053,6 +1053,18 @@ impl Calc {
                     .into();
                     return;
                 }
+                // PDF: 表を次のものへ回す
+                let table_head = format!("{}: ", ui::t!("表"));
+                if v.starts_with(&table_head) {
+                    if let Some(p) = &mut self.import_pend {
+                        if !p.pdf.is_empty() {
+                            p.pdf_at = (p.pdf_at + 1) % p.pdf.len();
+                            p.grid = p.pdf[p.pdf_at].2.clone();
+                        }
+                    }
+                    self.import_pick();
+                    return;
+                }
                 let enc_head = format!("{}: ", ui::t!("文字コード"));
                 let delim_head = format!("{}: ", ui::t!("区切り"));
                 let dest_head = format!("{}: ", ui::t!("置き場所"));

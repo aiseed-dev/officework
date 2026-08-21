@@ -26,7 +26,7 @@
 * cargo が PATH に無い機械なら `export PATH="$HOME/.cargo/bin:$PATH"`。そもそも rustup ごと無い機械もある — その場合は user レベルの導入で足りる(`curl https://sh.rustup.rs | sh -s -- -y`。sudo 不要。2026-08-03 に実施済み)
 * `.cargo/config.toml` と `.linklibs/` は**この機械固有**(libxkbcommon-x11 の開発リンク回避)。別の機械では不要か、作り直しが要る。作り直しは2手: `.linklibs/libxkbcommon-x11.so` → 実行時の `.so.0` へ symlink、`.cargo/config.toml` に `rustflags = ["-L", "<絶対パス>/.linklibs"]`
 * 実物の様式(検査の材料)は``/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/`` にある。*無い環境ではテストは黙って飛ぶ*(失敗はしない)。可能ならコピーして持つ
-* Python 検証は miniforge の `.venv`(polars / python-docx / docxtpl)。無ければ``conda create -p .venv python polars python-docx`` + `pip install docxtpl `(docxtpl は conda-forge に無いことがあるので pip で)
+* Python 検証は miniforge の `.venv`(polars / python-docx / docxtpl / pdfplumber)。無ければ``conda create -p .venv python polars python-docx`` + `pip install docxtpl pdfplumber`(docxtpl は conda-forge に無いことがあるので pip で。pdfplumber は PDF の表の取り込みに使う)
 
 == 画面まわりの直しは実機で見る(2026-08-08 発注者指摘)
 

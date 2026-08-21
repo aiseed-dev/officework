@@ -7665,722 +7665,758 @@
  },
  {
   "i": 1916,
-  "t": "{} ({} celdas)"
+  "t": "Buscando tablas en el PDF…"
  },
  {
   "i": 1917,
-  "t": "→ Escenario nuevo (los valores actuales de las celdas seleccionadas)…"
+  "t": "Falta la herramienta que lee PDF (pdfplumber). Instálela con:\n  {}"
  },
  {
   "i": 1918,
-  "t": "→ Eliminar un escenario…"
+  "t": "No se puede leer el PDF: {}"
  },
  {
   "i": 1919,
-  "t": "Todavía no hay ninguno. Seleccione las celdas que quiera variar y luego cree uno"
+  "t": "No se encontró ninguna tabla en este PDF (una tabla pegada como imagen no se puede leer)"
  },
  {
   "i": 1920,
-  "t": "Al pulsar uno, sus valores se escriben en las celdas (Ctrl+Z lo deshace)"
+  "t": "{} de {} (página {})"
  },
  {
   "i": 1921,
-  "t": "Hay demasiadas celdas seleccionadas (64 como máximo; seleccione solo las que quiera variar)"
+  "t": "De las líneas"
  },
  {
   "i": 1922,
-  "t": "Escriba un nombre para el escenario y pulse Entrar (se guardan los valores de las {} celdas seleccionadas)"
+  "t": "De la posición del texto (una estimación)"
  },
  {
   "i": 1923,
-  "t": "Elija el escenario que quiere eliminar"
+  "t": "Cómo se encontró"
  },
  {
   "i": 1924,
-  "t": "Se aplicó el escenario «{}» ({} celdas; Ctrl+Z lo deshace)"
+  "t": "Aviso: no había líneas, así que es una estimación. Compruebe que las columnas cuadran"
  },
  {
   "i": 1925,
-  "t": "Se eliminó el escenario «{}»"
+  "t": "{} ({} celdas)"
  },
  {
   "i": 1926,
-  "t": "El nombre está vacío (no se creó nada)"
+  "t": "→ Escenario nuevo (los valores actuales de las celdas seleccionadas)…"
  },
  {
   "i": 1927,
-  "t": "No hay valores que guardar en la selección (las celdas con fórmula se dejan fuera: al aplicarlo se perdería la fórmula)"
+  "t": "→ Eliminar un escenario…"
  },
  {
   "i": 1928,
-  "t": "El escenario «{}» se volvió a guardar ({} celdas)"
+  "t": "Todavía no hay ninguno. Seleccione las celdas que quiera variar y luego cree uno"
  },
  {
   "i": 1929,
-  "t": "Se guardó el escenario «{}» ({} celdas; al guardar también queda en el xlsx)"
+  "t": "Al pulsar uno, sus valores se escriben en las celdas (Ctrl+Z lo deshace)"
  },
  {
   "i": 1930,
-  "t": "Se filtraron igual {} tablas dinámicas conectadas"
+  "t": "Hay demasiadas celdas seleccionadas (64 como máximo; seleccione solo las que quiera variar)"
  },
  {
   "i": 1931,
-  "t": "Seleccione primero una segmentación"
+  "t": "Escriba un nombre para el escenario y pulse Entrar (se guardan los valores de las {} celdas seleccionadas)"
  },
  {
   "i": 1932,
-  "t": "Este libro no tiene ninguna tabla dinámica (cree una primero)"
+  "t": "Elija el escenario que quiere eliminar"
  },
  {
   "i": 1933,
-  "t": "Al filtrar con esta segmentación, las tablas dinámicas conectadas se filtran igual"
+  "t": "Se aplicó el escenario «{}» ({} celdas; Ctrl+Z lo deshace)"
  },
  {
   "i": 1934,
-  "t": "Conexiones de informe"
+  "t": "Se eliminó el escenario «{}»"
  },
  {
   "i": 1935,
-  "t": "Sin conectar"
+  "t": "El nombre está vacío (no se creó nada)"
  },
  {
   "i": 1936,
-  "t": "Conectada a {}"
+  "t": "No hay valores que guardar en la selección (las celdas con fórmula se dejan fuera: al aplicarlo se perdería la fórmula)"
  },
  {
   "i": 1937,
-  "t": "Elija un diseño sugerido (también puede elegir los campos usted mismo)"
+  "t": "El escenario «{}» se volvió a guardar ({} celdas)"
  },
  {
   "i": 1938,
-  "t": "Elegir los campos yo mismo (filas, luego columnas, luego valores)"
+  "t": "Se guardó el escenario «{}» ({} celdas; al guardar también queda en el xlsx)"
  },
  {
   "i": 1939,
-  "t": "Diseños que su tabla permite. No se crea nada hasta que pulse uno"
+  "t": "Se filtraron igual {} tablas dinámicas conectadas"
  },
  {
   "i": 1940,
-  "t": "Filas: {} / Columnas: {} / {} de {}"
+  "t": "Seleccione primero una segmentación"
  },
  {
   "i": 1941,
-  "t": "Filas: {} / {} de {}"
+  "t": "Este libro no tiene ninguna tabla dinámica (cree una primero)"
  },
  {
   "i": 1942,
-  "t": "Proteger libro"
+  "t": "Al filtrar con esta segmentación, las tablas dinámicas conectadas se filtran igual"
  },
  {
   "i": 1943,
-  "t": "Esto es lo que está en vigor. Al pulsar vuelve a la hoja y pregunta el resto"
+  "t": "Conexiones de informe"
  },
  {
   "i": 1944,
-  "t": "Cifrar con contraseña"
+  "t": "Sin conectar"
  },
  {
   "i": 1945,
-  "t": "Activado (desde el próximo guardado)"
+  "t": "Conectada a {}"
  },
  {
   "i": 1946,
-  "t": "Sin establecer"
+  "t": "Elija un diseño sugerido (también puede elegir los campos usted mismo)"
  },
  {
   "i": 1947,
-  "t": "Cambiar o quitar"
+  "t": "Elegir los campos yo mismo (filas, luego columnas, luego valores)"
  },
  {
   "i": 1948,
-  "t": "Establecer una contraseña"
+  "t": "Diseños que su tabla permite. No se crea nada hasta que pulse uno"
  },
  {
   "i": 1949,
-  "t": "Proteger hoja"
+  "t": "Filas: {} / Columnas: {} / {} de {}"
  },
  {
   "i": 1950,
-  "t": "«{}» está protegida"
+  "t": "Filas: {} / {} de {}"
  },
  {
   "i": 1951,
-  "t": "«{}» no está protegida"
+  "t": "Proteger libro"
  },
  {
   "i": 1952,
-  "t": "Desproteger"
+  "t": "Esto es lo que está en vigor. Al pulsar vuelve a la hoja y pregunta el resto"
  },
  {
   "i": 1953,
-  "t": "Proteger esta hoja"
+  "t": "Cifrar con contraseña"
  },
  {
   "i": 1954,
-  "t": "Permitido mientras está protegida"
+  "t": "Activado (desde el próximo guardado)"
  },
  {
   "i": 1955,
-  "t": "Elegir"
+  "t": "Sin establecer"
  },
  {
   "i": 1956,
-  "t": "Sugerir solo lectura"
+  "t": "Cambiar o quitar"
  },
  {
   "i": 1957,
-  "t": "Se recomienda (no es un bloqueo)"
+  "t": "Establecer una contraseña"
  },
  {
   "i": 1958,
-  "t": "No se recomienda"
+  "t": "Proteger hoja"
  },
  {
   "i": 1959,
-  "t": "Recomendar"
+  "t": "«{}» está protegida"
  },
  {
   "i": 1960,
-  "t": "Firma digital"
+  "t": "«{}» no está protegida"
  },
  {
   "i": 1961,
-  "t": "Hay un archivo de firma al lado"
+  "t": "Desproteger"
  },
  {
   "i": 1962,
-  "t": "Sin firmar"
+  "t": "Proteger esta hoja"
  },
  {
   "i": 1963,
-  "t": "Firmar o comprobar"
+  "t": "Permitido mientras está protegida"
  },
  {
   "i": 1964,
-  "t": "La protección de la hoja y la recomendación de solo lectura no son bloqueos. Quien quiera puede quitarlas. No fingimos lo contrario"
+  "t": "Elegir"
  },
  {
   "i": 1965,
-  "t": "Vamos a comprobarlo. Escriba la misma contraseña otra vez y pulse Entrar"
+  "t": "Sugerir solo lectura"
  },
  {
   "i": 1966,
-  "t": "Las dos contraseñas no coinciden (el cifrado no ha cambiado; inténtelo de nuevo)"
+  "t": "Se recomienda (no es un bloqueo)"
  },
  {
   "i": 1967,
-  "t": "No se permite nada"
+  "t": "No se recomienda"
  },
  {
   "i": 1968,
-  "t": "{} de {} permitidas"
+  "t": "Recomendar"
  },
  {
   "i": 1969,
-  "t": "Cifrado 1/2 — contraseña (déjela vacía y pulse Entrar para quitar el cifrado)"
+  "t": "Firma digital"
  },
  {
   "i": 1970,
-  "t": "Cifrado 2/2 — la misma contraseña otra vez"
+  "t": "Hay un archivo de firma al lado"
  },
  {
   "i": 1971,
-  "t": "Se quitó la división"
+  "t": "Sin firmar"
  },
  {
   "i": 1972,
-  "t": "Sitúe el cursor donde quiere dividir (se divide por encima y a la izquierda del cursor)"
+  "t": "Firmar o comprobar"
  },
  {
   "i": 1973,
-  "t": "Dividido (la rueda desplaza la parte sobre la que está el puntero)"
+  "t": "La protección de la hoja y la recomendación de solo lectura no son bloqueos. Quien quiera puede quitarlas. No fingimos lo contrario"
  },
  {
   "i": 1974,
-  "t": "Se han marcado {} celdas (púlselo otra vez para quitarlas)"
+  "t": "Vamos a comprobarlo. Escriba la misma contraseña otra vez y pulse Entrar"
  },
  {
   "i": 1975,
-  "t": "Esta hoja no tiene reglas de validación (añádalas con Validación de datos en la pestaña Datos)"
+  "t": "Las dos contraseñas no coinciden (el cifrado no ha cambiado; inténtelo de nuevo)"
  },
  {
   "i": 1976,
-  "t": "Ningún valor incumple las reglas de validación"
+  "t": "No se permite nada"
  },
  {
   "i": 1977,
-  "t": "Marcas quitadas"
+  "t": "{} de {} permitidas"
  },
  {
   "i": 1978,
-  "t": "Escriba el rango de origen y pulse Entrar (p. ej. Sheet1!A1:C20; incluya la fila de encabezados)"
+  "t": "Cifrado 1/2 — contraseña (déjela vacía y pulse Entrar para quitar el cifrado)"
  },
  {
   "i": 1979,
-  "t": "Sitúe el cursor en la tabla dinámica que quiere reapuntar"
+  "t": "Cifrado 2/2 — la misma contraseña otra vez"
  },
  {
   "i": 1980,
-  "t": "Escriba el rango con la forma A1:C20"
+  "t": "Se quitó la división"
  },
  {
   "i": 1981,
-  "t": "No se puede leer el rango: {}"
+  "t": "Sitúe el cursor donde quiere dividir (se divide por encima y a la izquierda del cursor)"
  },
  {
   "i": 1982,
-  "t": "No existe la hoja “{}”"
+  "t": "Dividido (la rueda desplaza la parte sobre la que está el puntero)"
  },
  {
   "i": 1983,
-  "t": "El nuevo rango no tiene estos encabezados: {} (la tabla dinámica los usa)"
+  "t": "Se han marcado {} celdas (púlselo otra vez para quitarlas)"
  },
  {
   "i": 1984,
-  "t": "Tabla de origen cambiada a {}!{}:{} (se está reconstruyendo)"
+  "t": "Esta hoja no tiene reglas de validación (añádalas con Validación de datos en la pestaña Datos)"
  },
  {
   "i": 1985,
-  "t": "Escriba primero el lado izquierdo de la restricción"
+  "t": "Ningún valor incumple las reglas de validación"
  },
  {
   "i": 1986,
-  "t": "Buscando una solución… (programa entero, ramificación y acotación)"
+  "t": "Marcas quitadas"
  },
  {
   "i": 1987,
-  "t": "{} no es una celda de variable (entero y binario solo se aplican a celdas de variables)"
+  "t": "Escriba el rango de origen y pulse Entrar (p. ej. Sheet1!A1:C20; incluya la fila de encabezados)"
  },
  {
   "i": 1988,
-  "t": "No se ha encontrado solución ({} puede no afectar a {})"
+  "t": "Sitúe el cursor en la tabla dinámica que quiere reapuntar"
  },
  {
   "i": 1989,
-  "t": "Orientación"
+  "t": "Escriba el rango con la forma A1:C20"
  },
  {
   "i": 1990,
-  "t": "Dar formato a celdas"
+  "t": "No se puede leer el rango: {}"
  },
  {
   "i": 1991,
-  "t": "Alinear al medio"
+  "t": "No existe la hoja “{}”"
  },
  {
   "i": 1992,
-  "t": "Funciones de Python"
+  "t": "El nuevo rango no tiene estos encabezados: {} (la tabla dinámica los usa)"
  },
  {
   "i": 1993,
-  "t": "Macros de la cinta"
+  "t": "Tabla de origen cambiada a {}!{}:{} (se está reconstruyendo)"
  },
  {
   "i": 1994,
-  "t": "Copiar formato"
+  "t": "Escriba primero el lado izquierdo de la restricción"
  },
  {
   "i": 1995,
-  "t": "Estilo"
+  "t": "Buscando una solución… (programa entero, ramificación y acotación)"
  },
  {
   "i": 1996,
-  "t": "Lista de campos"
+  "t": "{} no es una celda de variable (entero y binario solo se aplican a celdas de variables)"
  },
  {
   "i": 1997,
-  "t": "Agrandar texto de la pantalla"
+  "t": "No se ha encontrado solución ({} puede no afectar a {})"
  },
  {
   "i": 1998,
-  "t": "Reducir texto de la pantalla"
+  "t": "Orientación"
  },
  {
   "i": 1999,
-  "t": "Rodear con un círculo los datos no válidos"
+  "t": "Dar formato a celdas"
  },
  {
   "i": 2000,
-  "t": "Dividir ventana"
+  "t": "Alinear al medio"
  },
  {
   "i": 2001,
-  "t": "Escenario"
+  "t": "Funciones de Python"
  },
  {
   "i": 2002,
-  "t": "IA"
+  "t": "Macros de la cinta"
  },
  {
   "i": 2003,
-  "t": "Imprimir"
+  "t": "Copiar formato"
  },
  {
   "i": 2004,
-  "t": "Diseño de impresión"
+  "t": "Estilo"
  },
  {
   "i": 2005,
-  "t": "Destino"
+  "t": "Lista de campos"
  },
  {
   "i": 2006,
-  "t": "Resumen"
+  "t": "Agrandar texto de la pantalla"
  },
  {
   "i": 2007,
-  "t": "Reescribir"
+  "t": "Reducir texto de la pantalla"
  },
  {
   "i": 2008,
-  "t": "Más formal"
+  "t": "Rodear con un círculo los datos no válidos"
  },
  {
   "i": 2009,
-  "t": "Más sencillo"
+  "t": "Dividir ventana"
  },
  {
   "i": 2010,
-  "t": "Traducción"
+  "t": "Escenario"
  },
  {
   "i": 2011,
-  "t": "Furigana"
+  "t": "IA"
  },
  {
   "i": 2012,
-  "t": "Continuar"
+  "t": "Imprimir"
  },
  {
   "i": 2013,
-  "t": "A tabla"
+  "t": "Diseño de impresión"
  },
  {
   "i": 2014,
-  "t": "Pedir"
+  "t": "Destino"
  },
  {
   "i": 2015,
-  "t": "Ruby"
+  "t": "Resumen"
  },
  {
   "i": 2016,
-  "t": "Vertical"
+  "t": "Reescribir"
  },
  {
   "i": 2017,
-  "t": "Dirección del texto"
+  "t": "Más formal"
  },
  {
   "i": 2018,
-  "t": "Distribuido"
+  "t": "Más sencillo"
  },
  {
   "i": 2019,
-  "t": "Insertar título"
+  "t": "Traducción"
  },
  {
   "i": 2020,
-  "t": "Abrir URL"
+  "t": "Furigana"
  },
  {
   "i": 2021,
-  "t": "Índice"
+  "t": "Continuar"
  },
  {
   "i": 2022,
-  "t": "Notas de Aozora"
+  "t": "A tabla"
  },
  {
   "i": 2023,
-  "t": "Notación Denden"
+  "t": "Pedir"
  },
  {
   "i": 2024,
-  "t": "Control de cambios"
+  "t": "Ruby"
  },
  {
   "i": 2025,
-  "t": "Mostrar cambios"
+  "t": "Vertical"
  },
  {
   "i": 2026,
-  "t": "Corrección"
+  "t": "Dirección del texto"
  },
  {
   "i": 2027,
-  "t": "Caracteres"
+  "t": "Distribuido"
  },
  {
   "i": 2028,
-  "t": "Revisión ortográfica"
+  "t": "Insertar título"
  },
  {
   "i": 2029,
-  "t": "Sinónimos"
+  "t": "Abrir URL"
  },
  {
   "i": 2030,
-  "t": "Errores de conversión"
+  "t": "Índice"
  },
  {
   "i": 2031,
-  "t": "Incoherencias"
+  "t": "Notas de Aozora"
  },
  {
   "i": 2032,
-  "t": "Subtotales"
+  "t": "Notación Denden"
  },
  {
   "i": 2033,
-  "t": "Cálculo"
+  "t": "Control de cambios"
  },
  {
   "i": 2034,
-  "t": "Texto de derecha a izquierda"
+  "t": "Mostrar cambios"
  },
  {
   "i": 2035,
-  "t": "Dirección de la hoja"
+  "t": "Corrección"
  },
  {
   "i": 2036,
-  "t": "Python"
+  "t": "Caracteres"
  },
  {
   "i": 2037,
-  "t": "Casilla"
+  "t": "Revisión ortográfica"
  },
  {
   "i": 2038,
-  "t": "Vínculos externos"
+  "t": "Sinónimos"
  },
  {
   "i": 2039,
-  "t": "Gráfico recomendado"
+  "t": "Errores de conversión"
  },
  {
   "i": 2040,
-  "t": "Modo de coedición"
+  "t": "Incoherencias"
  },
  {
   "i": 2041,
-  "t": "Historial de versiones"
+  "t": "Subtotales"
  },
  {
   "i": 2042,
-  "t": "Chat"
+  "t": "Cálculo"
  },
  {
   "i": 2043,
-  "t": "Proteger"
- },
- {
-  "i": 2044,
-  "t": "Cifrar"
- },
- {
-  "i": 2045,
-  "t": "Agregar firma digital"
- },
- {
-  "i": 2046,
-  "t": "Macros"
- },
- {
-  "i": 2047,
-  "t": "Administrar complementos"
- },
- {
-  "i": 2048,
-  "t": "Mostrar ceros"
- },
- {
-  "i": 2049,
-  "t": "Zoom al 100%"
- },
- {
-  "i": 2050,
-  "t": "Tema de la interfaz"
- },
- {
-  "i": 2051,
-  "t": "Ventana Inspección"
- },
- {
-  "i": 2052,
-  "t": "Autosuma"
- },
- {
-  "i": 2053,
-  "t": "Grabar acciones"
- },
- {
-  "i": 2054,
-  "t": "Eliminar comentario"
- },
- {
-  "i": 2055,
-  "t": "Solver"
- },
- {
-  "i": 2056,
-  "t": "Texto a datos"
- },
- {
-  "i": 2057,
-  "t": "Quitar flechas"
- },
- {
-  "i": 2058,
-  "t": "Rellenar"
- },
- {
-  "i": 2059,
-  "t": "Borrar filtro"
- },
- {
-  "i": 2060,
-  "t": "Escribir macro"
- },
- {
-  "i": 2061,
-  "t": "Texto en columnas"
- },
- {
-  "i": 2062,
-  "t": "Título"
- },
- {
-  "i": 2063,
-  "t": "Tabla de ilustraciones"
- },
- {
-  "i": 2064,
-  "t": "Actualizar tabla de ilustraciones"
- },
- {
-  "i": 2065,
-  "t": "Vínculos externos (importar como valores)"
- },
- {
-  "i": 2066,
-  "t": "Matemáticas y trigonometría"
- },
- {
-  "i": 2067,
-  "t": "Mostrar fórmulas"
- },
- {
-  "i": 2068,
   "t": "Texto de derecha a izquierda"
  },
  {
+  "i": 2044,
+  "t": "Dirección de la hoja"
+ },
+ {
+  "i": 2045,
+  "t": "Python"
+ },
+ {
+  "i": 2046,
+  "t": "Casilla"
+ },
+ {
+  "i": 2047,
+  "t": "Vínculos externos"
+ },
+ {
+  "i": 2048,
+  "t": "Gráfico recomendado"
+ },
+ {
+  "i": 2049,
+  "t": "Modo de coedición"
+ },
+ {
+  "i": 2050,
+  "t": "Historial de versiones"
+ },
+ {
+  "i": 2051,
+  "t": "Chat"
+ },
+ {
+  "i": 2052,
+  "t": "Proteger"
+ },
+ {
+  "i": 2053,
+  "t": "Cifrar"
+ },
+ {
+  "i": 2054,
+  "t": "Agregar firma digital"
+ },
+ {
+  "i": 2055,
+  "t": "Macros"
+ },
+ {
+  "i": 2056,
+  "t": "Administrar complementos"
+ },
+ {
+  "i": 2057,
+  "t": "Mostrar ceros"
+ },
+ {
+  "i": 2058,
+  "t": "Zoom al 100%"
+ },
+ {
+  "i": 2059,
+  "t": "Tema de la interfaz"
+ },
+ {
+  "i": 2060,
+  "t": "Ventana Inspección"
+ },
+ {
+  "i": 2061,
+  "t": "Autosuma"
+ },
+ {
+  "i": 2062,
+  "t": "Grabar acciones"
+ },
+ {
+  "i": 2063,
+  "t": "Eliminar comentario"
+ },
+ {
+  "i": 2064,
+  "t": "Solver"
+ },
+ {
+  "i": 2065,
+  "t": "Texto a datos"
+ },
+ {
+  "i": 2066,
+  "t": "Quitar flechas"
+ },
+ {
+  "i": 2067,
+  "t": "Rellenar"
+ },
+ {
+  "i": 2068,
+  "t": "Borrar filtro"
+ },
+ {
   "i": 2069,
-  "t": "Texto"
+  "t": "Escribir macro"
  },
  {
   "i": 2070,
-  "t": "Fecha y hora"
+  "t": "Texto en columnas"
  },
  {
   "i": 2071,
-  "t": "Usadas recientemente"
+  "t": "Título"
  },
  {
   "i": 2072,
-  "t": "Imprimir líneas de cuadrícula"
+  "t": "Tabla de ilustraciones"
  },
  {
   "i": 2073,
-  "t": "Actualizar tabla de contenido"
+  "t": "Actualizar tabla de ilustraciones"
  },
  {
   "i": 2074,
-  "t": "Columnas con bandas"
+  "t": "Vínculos externos (importar como valores)"
  },
  {
   "i": 2075,
-  "t": "Imprimir encabezados"
+  "t": "Matemáticas y trigonometría"
  },
  {
   "i": 2076,
-  "t": "Ocultar detalle"
+  "t": "Mostrar fórmulas"
  },
  {
   "i": 2077,
-  "t": "Quitar duplicados"
+  "t": "Texto de derecha a izquierda"
  },
  {
   "i": 2078,
-  "t": "Insertar función"
+  "t": "Texto"
  },
  {
   "i": 2079,
-  "t": "Formato CSV"
+  "t": "Fecha y hora"
  },
  {
   "i": 2080,
-  "t": "Bloquear celda"
+  "t": "Usadas recientemente"
  },
  {
   "i": 2081,
-  "t": "Tabla de datos"
+  "t": "Imprimir líneas de cuadrícula"
  },
  {
   "i": 2082,
-  "t": "Relleno rápido"
+  "t": "Actualizar tabla de contenido"
  },
  {
   "i": 2083,
-  "t": "Lista"
+  "t": "Columnas con bandas"
  },
  {
   "i": 2084,
-  "t": "Pegar nombre"
+  "t": "Imprimir encabezados"
  },
  {
   "i": 2085,
-  "t": "Recuperar"
+  "t": "Ocultar detalle"
  },
  {
   "i": 2086,
-  "t": "Ajustar texto"
+  "t": "Quitar duplicados"
  },
  {
   "i": 2087,
-  "t": "Intervalo de copias"
+  "t": "Insertar función"
  },
  {
   "i": 2088,
-  "t": "Nuevo .py"
+  "t": "Formato CSV"
  },
  {
   "i": 2089,
-  "t": "Añadir rango"
+  "t": "Bloquear celda"
  },
  {
   "i": 2090,
-  "t": "Ajustar al papel"
+  "t": "Tabla de datos"
  },
  {
   "i": 2091,
-  "t": "Cortes del papel"
+  "t": "Relleno rápido"
  },
  {
   "i": 2092,
-  "t": "Abrir carpeta"
+  "t": "Lista"
  },
  {
   "i": 2093,
-  "t": "Tipo de cálculo"
+  "t": "Pegar nombre"
  },
  {
   "i": 2094,
-  "t": "Operaciones permitidas"
+  "t": "Recuperar"
  },
  {
   "i": 2095,
+  "t": "Ajustar texto"
+ },
+ {
+  "i": 2096,
+  "t": "Intervalo de copias"
+ },
+ {
+  "i": 2097,
+  "t": "Nuevo .py"
+ },
+ {
+  "i": 2098,
+  "t": "Añadir rango"
+ },
+ {
+  "i": 2099,
+  "t": "Ajustar al papel"
+ },
+ {
+  "i": 2100,
+  "t": "Cortes del papel"
+ },
+ {
+  "i": 2101,
+  "t": "Abrir carpeta"
+ },
+ {
+  "i": 2102,
+  "t": "Tipo de cálculo"
+ },
+ {
+  "i": 2103,
+  "t": "Operaciones permitidas"
+ },
+ {
+  "i": 2104,
   "t": "Sugerir solo lectura"
  }
 ]

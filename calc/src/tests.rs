@@ -1583,6 +1583,8 @@ mod pivot_tests {
                     vec!["鉛筆".into(), "100".into()],
                 ],
                 used: ("utf-8-sig".into(), ",".into()),
+                pdf: Vec::new(),
+                pdf_at: 0,
             });
             this.import_pick();
             assert_eq!(this.pick_kind, "csv-import-pick");
@@ -2792,6 +2794,91 @@ mod recalc_tests {
             this.apply_pick("結合の解除", cx);
             assert_eq!(this.sheet().merges.len(), 2, "解除で消えない");
         });
+    }
+
+    /// **PDF の取り込みのパネル**(2026-08-21 の D群)。
+    ///
+    /// 推し量って取った表を、正確に取れた表と同じ顔で出さないことを見ます。
+    #[gpui::test]
+    fn pdfの取り込みは取り方を画面に出す(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            let 表 = |how: &str| {
+                vec![(
+                    1u32,
+                    how.to_string(),
+                    vec![
+                        vec!["品名".to_string(), "金額".to_string()],
+                        vec!["鉛筆".to_string(), "100".to_string()],
+                    ],
+                )]
+            };
+            let mut pend = crate::py::ImportPend {
+                path: std::path::PathBuf::from("見本.pdf"),
+                enc: 0,
+                delim: 0,
+                custom: String::new(),
+                dest: Pos::new(0, 0),
+                grid: 表("lines")[0].2.clone(),
+                used: (String::new(), String::new()),
+                pdf: 表("lines"),
+                pdf_at: 0,
+            };
+            this.import_pend = Some(pend.clone());
+            this.import_pick();
+            let 行: Vec<String> =
+                this.pick.as_ref().unwrap().0.iter().map(|(_, l)| l.clone()).collect();
+            let 全部 = 行.join("\n");
+            assert!(全部.contains("罫線から"), "取り方が出ない: {全部}");
+            assert!(!全部.contains("文字コード"), "PDF なのに文字コードが出た: {全部}");
+            assert!(!全部.contains("区切り"), "PDF なのに区切りが出た: {全部}");
+            assert!(!全部.contains("推し量りました"), "罫線なのに断りが出た: {全部}");
+
+            // 文字の位置から取ったときは**必ず断りを出す**
+            pend.pdf = 表("text");
+            this.import_pend = Some(pend);
+            this.import_pick();
+            let 全部: String = this
+                .pick
+                .as_ref()
+                .unwrap()
+                .0
+                .iter()
+                .map(|(_, l)| l.clone())
+                .collect::<Vec<_>>()
+                .join("\n");
+            assert!(全部.contains("推し量り"), "断りが出ない: {全部}");
+            assert!(全部.contains("桁のずれ"), "何を確かめるかを言っていない: {全部}");
+        });
+    }
+
+    /// **PDF の表の読み取り**(2026-08-21 の D群)。
+    ///
+    /// 半端に読めた表を出すと、そこから数字が黙ってずれます。読めない物が
+    /// 来たら空を返すことを見ます。
+    #[test]
+    fn pdfの表は読めた分だけを返す() {
+        use crate::py::parse_pdf_tables;
+        // 2枚。1枚目は罫線、2枚目は文字の位置から
+        let raw = concat!(
+            "1\u{1f}罫線\u{1e}品名\u{1f}金額\u{1e}鉛筆\u{1f}100",
+            "\u{1d}",
+            "2\u{1f}文字の位置\u{1e}区分\u{1f}数\u{1e}甲\u{1f}3"
+        );
+        let t = parse_pdf_tables(raw);
+        assert_eq!(t.len(), 2, "{t:?}");
+        assert_eq!(t[0].0, 1);
+        assert_eq!(t[0].1, "罫線");
+        assert_eq!(t[0].2, vec![vec!["品名", "金額"], vec!["鉛筆", "100"]]);
+        assert_eq!(t[1].1, "文字の位置", "取り方が混ざった");
+        assert_eq!(t[1].2[1], vec!["甲", "3"]);
+
+        // 読めない物は空。**嘘の表を出さない**
+        assert!(parse_pdf_tables("").is_empty());
+        assert!(parse_pdf_tables("なにか壊れた出力").is_empty(), "頭の無い物を読んだ");
+        assert!(parse_pdf_tables("x\u{1f}罫線\u{1e}a").is_empty(), "ページ番号が数でないのに読んだ");
+        // 末尾の改行は落とす(台本が改行を付けても1枚のまま)
+        assert_eq!(parse_pdf_tables("1\u{1f}罫線\u{1e}a\u{1f}b\n").len(), 1);
     }
 
     /// **シナリオ**(2026-08-21 の D群)。入力セルの組に名前を付けて切り替える。

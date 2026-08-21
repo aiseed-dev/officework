@@ -1954,6 +1954,17 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("絞り込みは掛かっていません", "No filter is applied"),
     ("トレースの矢印は出ていません", "No trace arrows are showing"),
     ("バイナリ", "Binary"),
+    ("PDF から表を探しています…", "Looking for tables in the PDF…"),
+    ("PDF を読む道具(pdfplumber)がありません。次で入ります:
+  {}", "The tool that reads PDFs (pdfplumber) is missing. Install it with:
+  {}"),
+    ("PDF が読めません: {}", "Cannot read the PDF: {}"),
+    ("この PDF に表は見つかりませんでした(絵として貼られた表は読めません)", "No table was found in this PDF (a table pasted as a picture cannot be read)"),
+    ("{} / {} 枚目({} ページ)", "{} of {} (page {})"),
+    ("罫線から", "From the ruling lines"),
+    ("文字の位置から(推し量り)", "From the text positions (a guess)"),
+    ("取り方", "How it was found"),
+    ("※ 罫線が無いので推し量りました。桁のずれを確かめてください", "Note: there were no ruling lines, so this is a guess. Check that the columns line up"),
     ("{}({} セル)", "{} ({} cells)"),
     ("→ 新しいシナリオ(選んだセルのいまの値)…", "→ New scenario (the current values of the selected cells)…"),
     ("→ シナリオを削除…", "→ Delete a scenario…"),

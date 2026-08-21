@@ -831,6 +831,71 @@ sys.stdout.write("\x1f".join("%.12g" % v for v in out))
 
 /// ピボットの台本(polars)。指図は JSON、答えは CSV 取り込みと同じ
 /// 区切りの印(\x1e 行 / \x1f 欄)で返す。
+/// **PDF の表を取り出す。**
+///
+/// PDF に「表」という構造はありません。あるのは字と、字の置かれた座標と、
+/// 線だけです。だから表は**推し量る**ことになります。外すと、数字が黙って
+/// 隣の桁へずれます。そこでこの台本は、
+///
+/// * まず**罫線で**切ります(`lines`)。線が引いてある表はこれで正確に取れます
+/// * 線が無ければ**文字の位置で**切ります(`text`)
+/// * **どちらで取ったかを必ず返します**(`lines` か `text`)。呼ぶ側は
+///   それを訳して画面に出します。台本は鍵だけを返し、画面の字は作りません
+///
+/// 返すのは JSON で、ページごと・表ごとの升目です。**この台本は何も書き
+/// 込みません** — 人が見て、押してから流し込みます。
+pub const PDF_TABLE_PY: &str = r#"
+import sys
+import pdfplumber
+
+path = sys.argv[1]
+out = []
+with pdfplumber.open(path) as pdf:
+    for pno, page in enumerate(pdf.pages, start=1):
+        # 罫線で切る。線の引いてある表はこれが正確
+        found = []
+        for how, settings in (
+            ("lines", {"vertical_strategy": "lines", "horizontal_strategy": "lines"}),
+            ("text", {"vertical_strategy": "text", "horizontal_strategy": "text"}),
+        ):
+            try:
+                tables = page.extract_tables(settings)
+            except Exception:
+                tables = []
+            # 1行1列しかないものは表ではない(ただの段落)
+            tables = [t for t in tables if t and len(t) > 1 and max(len(r) for r in t) > 1]
+            if tables:
+                found = [(how, t) for t in tables]
+                break
+        for how, t in found:
+            grid = [["" if c is None else str(c).replace("\n", " ").strip() for c in row]
+                    for row in t]
+            # 空だけの行は落とす。文字の位置で切ると、行の隙間が1行として
+            # 出てくることがある(実物で見た)。**中身のある行は落としません**
+            grid = [r for r in grid if any(c for c in r)]
+            if len(grid) < 2:
+                continue
+            w = max(len(r) for r in grid)
+            for r in grid:
+                r.extend([""] * (w - len(r)))
+            # 右端の空だけの列も落とす(同じ理由)
+            while w > 1 and all(r[w - 1] == "" for r in grid):
+                for r in grid:
+                    r.pop()
+                w -= 1
+            out.append({"page": pno, "how": how, "rows": grid})
+
+# 返しは区切り文字づけ(この形はこちらで決めたもの。JSON は要らない)
+#   表と表 = \x1d / 見出しと中身 = \x1e / 行と行 = \x1e / 升と升 = \x1f
+#   各表の頭は  ページ番号 \x1f 取り方(lines / text)
+parts = []
+for t in out:
+    head = str(t["page"]) + "\x1f" + t["how"]
+    body = "\x1e".join("\x1f".join(r) for r in t["rows"])
+    parts.append(head + "\x1e" + body)
+sys.stdout.write("\x1d".join(parts))
+"#;
+
 pub const PIVOT_PY: &str = r#"
 import json, sys
 import polars as pl
@@ -1063,6 +1128,7 @@ sys.stdout.buffer.write("\x1e".join(lines).encode("utf-8"))
 pub const BUNDLED: &[(&str, &str)] = &[
     ("chart", CHART_PY),
     ("pivot", PIVOT_PY),
+    ("pdf_table", PDF_TABLE_PY),
     ("solver", SOLVER_PY),
     ("csv", CSV_PY),
     ("equation", EQ_PY),
