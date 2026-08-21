@@ -1558,7 +1558,6 @@ impl Calc {
                                 if v.is_empty() { col_name(c) } else { v }
                             })
                             .collect();
-                        self.status = ui::t!("行に並べる見出しをクリックで選ぶ(複数可)。選んだら「決定」").into();
                         self.pivot_pend = Some(PivotPend {
                             a,
                             b,
@@ -1568,7 +1567,15 @@ impl Calc {
                             val_sel: String::new(),
                             replace: None,
                         });
-                        self.pivot_pick("pivot-rows-pick");
+                        // **おすすめを先に並べます**(2026-08-09 発注者確定の
+                        // 方針: 先回りして作らず、候補を出して人が選ぶ)。
+                        // 候補が1つも無ければ、これまでどおり行の選択から
+                        if self.pivot_suggest_pick() {
+                            self.status = ui::t!("おすすめの形を選ぶ(自分で選ぶこともできます)").into();
+                        } else {
+                            self.status = ui::t!("行に並べる見出しをクリックで選ぶ(複数可)。選んだら「決定」").into();
+                            self.pivot_pick("pivot-rows-pick");
+                        }
                     }
                 } else {
                     // **理由を言う。** clippy の指摘を直したとき、ここを丸ごと

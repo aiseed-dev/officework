@@ -82,6 +82,8 @@ pub struct Calc {
     goal: Option<(Pos, f64)>,
     /// ピボットの聞き取りの途中経過(元の範囲・見出し・決めた欄)
     pivot_pend: Option<PivotPend>,
+    /// いま並べているおすすめのピボットの候補。押された番号で引きます
+    pivot_suggests: Vec<crate::util::PivotSuggest>,
     /// 小計の聞き取りの途中経過(同じ形の控えを使い回す)
     sub_pend: Option<PivotPend>,
     /// 並べ替えの「拡張しますか」の聞き取り中(昇順か)。Esc でやめる

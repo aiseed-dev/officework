@@ -1145,6 +1145,24 @@ impl Calc {
                 self.pivot_flt = None;
                 self.spawn_pivot(nd, Some(pi), cx);
             }
+            // おすすめを1つ選んだ。**ここで初めて作ります**
+            "pivot-suggest" => {
+                if v.starts_with("自分で選ぶ") {
+                    self.status =
+                        ui::t!("行に並べる見出しをクリックで選ぶ(複数可)。選んだら「決定」").into();
+                    self.pivot_pick("pivot-rows-pick");
+                    return;
+                }
+                let Some(i) = v.strip_prefix('#').and_then(|x| x.parse::<usize>().ok()) else {
+                    return;
+                };
+                let Some(sg) = self.pivot_suggests.get(i).cloned() else { return };
+                let Some(mut pend) = self.pivot_pend.take() else { return };
+                pend.rows_sel = sg.rows_sel;
+                pend.cols_sel = sg.cols_sel;
+                let value = sg.value;
+                self.insert_pivot(pend, value, sg.agg, cx);
+            }
             "pivot-rows-pick" => {
                 if v == "→ 決定(列の選択へ)" {
                     let ok = self
@@ -2534,6 +2552,44 @@ impl Calc {
         self.pick_note = Some(ui::t!("重複の削除 — 比べる列(クリックで入切)").into());
         self.pick_kind = "dedup-pick";
         self.pick = Some((items, at));
+    }
+
+    /// **おすすめのピボットを並べる。**候補が1つでもあれば真を返します。
+    ///
+    /// 候補の作り方は `util::pivot_suggestions` に純関数で置いてあります。
+    /// 乱数も学習も使いません — 同じ表からは毎回同じ候補が出ます。
+    pub(crate) fn pivot_suggest_pick(&mut self) -> bool {
+        let Some(pend) = &self.pivot_pend else { return false };
+        let (a, b) = (pend.a, pend.b);
+        let headers = pend.headers.clone();
+        let sh = self.sheet();
+        let cols: Vec<Vec<String>> = (a.col..=b.col)
+            .map(|c| {
+                (a.row + 1..=b.row)
+                    .map(|r| {
+                        sh.get(Pos::new(r, c)).map(|x| x.value.display()).unwrap_or_default()
+                    })
+                    .collect()
+            })
+            .collect();
+        let 候補 = crate::util::pivot_suggestions(&headers, &cols);
+        if 候補.is_empty() {
+            return false;
+        }
+        let at = self.pop_anchor();
+        // 鍵は番号。見出しの字は帳票の中身なので、鍵にすると訳の照合に紛れます
+        let mut items: Vec<(String, String)> = 候補
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (format!("#{i}"), crate::util::pivot_suggest_label(s)))
+            .collect();
+        items.extend(menu(&[ui::item!("自分で選ぶ(行 → 列 → 値 の順に聞きます)")]));
+        self.pivot_suggests = 候補;
+        self.pick_note =
+            Some(ui::t!("元の表から作れる形です。押すまで何も作りません").into());
+        self.pick_kind = "pivot-suggest";
+        self.pick = Some((items, at));
+        true
     }
 
     pub(crate) fn pivot_pick(&mut self, kind: &'static str) {

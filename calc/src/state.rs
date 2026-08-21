@@ -152,6 +152,7 @@ impl Calc {
             img_cache: Default::default(),
             find_term: None,
             pivot_pend: None,
+            pivot_suggests: Vec::new(),
             sub_pend: None,
             sort_pend: None,
             pick_note: None,

@@ -985,6 +985,9 @@ mod pivot_tests {
             this.cursor = Pos::parse("B2").unwrap();
             this.sync_input();
             this.run_cmd("pivot-insert", cx);
+            // まず**おすすめ**が並びます(2026-08-21)。自分で選ぶ道もそこから
+            assert_eq!(this.pick_kind, "pivot-suggest", "おすすめの一覧が開かない");
+            this.apply_pick("自分で選ぶ(行 → 列 → 値 の順に聞きます)", cx);
             assert_eq!(this.pick_kind, "pivot-rows-pick", "カーソルだけで行の一覧が開かない");
             // 見出しを選ばず決定 → 言い返されて一覧のまま
             this.apply_pick("→ 決定(列の選択へ)", cx);
@@ -2791,6 +2794,74 @@ mod recalc_tests {
         });
     }
 
+    /// **おすすめのピボット**(2026-08-21 の D群)。
+    ///
+    /// 決め方は純関数なので、ここで直に確かめます。同じ表からは毎回同じ
+    /// 候補が出ます — 乱数も学習も使っていません。
+    #[test]
+    fn おすすめのピボットは種類の少ない列を行にする() {
+        let headers = vec![
+            "伝票番号".to_string(),
+            "店".to_string(),
+            "区分".to_string(),
+            "金額".to_string(),
+        ];
+        let cols = vec![
+            // 1行に1つ。まとめても意味が無いので候補にしない
+            (1..=8).map(|i| format!("A{i}")).collect::<Vec<_>>(),
+            ["東", "西", "東", "西", "東", "西", "東", "西"]
+                .iter().map(|s| s.to_string()).collect(),
+            ["食品", "食品", "衣料", "衣料", "食品", "衣料", "食品", "衣料"]
+                .iter().map(|s| s.to_string()).collect(),
+            (1..=8).map(|i| format!("{}", i * 100)).collect(),
+        ];
+        let out = crate::util::pivot_suggestions(&headers, &cols);
+        assert!(!out.is_empty(), "候補が出ない");
+        assert!(out.len() <= 6, "候補が多すぎる: {}", out.len());
+        assert!(
+            !out.iter().any(|s| s.rows_sel.contains(&"伝票番号".to_string())),
+            "1行に1つの列を行にした: {out:?}"
+        );
+        assert!(
+            out.iter().all(|s| s.value != "店" || s.agg == "個数"),
+            "数でない列を合計しようとした: {out:?}"
+        );
+        let 先頭 = &out[0];
+        assert_eq!(先頭.value, "金額", "数の列を値にしていない");
+        assert_eq!(先頭.agg, "合計");
+        assert!(
+            先頭.rows_sel == vec!["店".to_string()] || 先頭.rows_sel == vec!["区分".to_string()],
+            "{先頭:?}"
+        );
+        // 縦横に広げる形が1つは出る
+        assert!(out.iter().any(|s| !s.cols_sel.is_empty()), "列に広げる形が出ない: {out:?}");
+        // 件数の形も出る
+        assert!(out.iter().any(|s| s.agg == "個数"), "件数の形が出ない: {out:?}");
+        // 同じ表からは毎回同じ
+        assert_eq!(out, crate::util::pivot_suggestions(&headers, &cols));
+    }
+
+    /// 数の列が無くても、件数なら数えられます。
+    #[test]
+    fn 数の列が無ければ件数だけを勧める() {
+        let headers = vec!["店".to_string(), "区分".to_string()];
+        let cols = vec![
+            ["東", "西", "東", "西"].iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+            ["食品", "食品", "衣料", "衣料"].iter().map(|s| s.to_string()).collect(),
+        ];
+        let out = crate::util::pivot_suggestions(&headers, &cols);
+        assert!(!out.is_empty(), "候補が出ない");
+        assert!(out.iter().all(|s| s.agg == "個数"), "数が無いのに合計を勧めた: {out:?}");
+    }
+
+    /// 見出しだけで中身が無ければ、勧めるものはありません。
+    #[test]
+    fn 中身が無ければ勧めない() {
+        let headers = vec!["店".to_string()];
+        assert!(crate::util::pivot_suggestions(&headers, &[vec![]]).is_empty());
+        assert!(crate::util::pivot_suggestions(&headers, &[]).is_empty());
+    }
+
     /// **暗号化のパスワードは2回聞く**(2026-08-21 の D群)。
     ///
     /// 打ち間違えたパスワードで包むと、そのファイルは誰にも開けません。
@@ -3776,6 +3847,52 @@ mod pivot_e2e_tests {
 
     /// 実物の python+polars で端から端まで(挿入 → 置かれる → pivot_at →
     /// ピボット上のロック)。.venv が見つからない環境では飛ばす
+    /// **おすすめを押すだけでピボットが建つ**(2026-08-21 の D群)。
+    /// 候補の決め方は純関数の試験で見ています。ここは配線を見ます。
+    #[gpui::test]
+    async fn おすすめを選ぶとその形でピボットが建つ(cx: &mut gpui::TestAppContext) {
+        if !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../.venv/bin/python")
+            .exists()
+        {
+            eprintln!("skip: .venv が無い(polars の端到端は飛ばす)");
+            return;
+        }
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (a1, v) in [
+                ("A1", "区分"), ("B1", "金額"),
+                ("A2", "筆記具"), ("B2", "100"),
+                ("A3", "紙製品"), ("B3", "200"),
+                ("A4", "筆記具"), ("B4", "50"),
+            ] {
+                this.cursor = Pos::parse(a1).unwrap();
+                this.sync_input();
+                this.input.insert(v);
+                assert!(this.commit());
+            }
+            this.anchor = None;
+            this.cursor = Pos::parse("A2").unwrap();
+            this.sync_input();
+            this.run_cmd("pivot-insert", cx);
+            assert_eq!(this.pick_kind, "pivot-suggest");
+            let 先頭 = this.pivot_suggests[0].clone();
+            assert_eq!(先頭.rows_sel, vec!["区分".to_string()]);
+            assert_eq!(先頭.value, "金額");
+            this.apply_pick("#0", cx);
+        });
+        cx.executor().advance_clock(std::time::Duration::from_secs(30));
+        cx.run_until_parked();
+        c.update(cx, |this, _cx| {
+            assert_eq!(this.book.pivots.len(), 1, "建たない: {}", this.status);
+            let d = &this.book.pivots[0];
+            assert_eq!(d.rows_sel, vec!["区分".to_string()]);
+            assert_eq!(d.value, "金額");
+            assert_eq!(d.agg, "合計");
+            assert!(d.size.0 > 0, "大きさが入らない");
+        });
+    }
+
     #[gpui::test]
     async fn ピボットは挿入から締めまで通しで効く(cx: &mut gpui::TestAppContext) {
         if !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -3802,6 +3919,7 @@ mod pivot_e2e_tests {
             this.cursor = Pos::parse("B2").unwrap();
             this.sync_input();
             this.run_cmd("pivot-insert", cx);
+            this.apply_pick("自分で選ぶ(行 → 列 → 値 の順に聞きます)", cx);
             this.apply_pick("☐ 区分", cx);
             this.apply_pick("→ 決定(列の選択へ)", cx);
             this.apply_pick("→ 決定(列は無しでもよい)", cx);

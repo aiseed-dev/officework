@@ -7665,614 +7665,634 @@
  },
  {
   "i": 1916,
-  "t": "Arbeitsmappe schützen"
+  "t": "Vorgeschlagene Anordnung wählen (Sie können die Felder auch selbst wählen)"
  },
  {
   "i": 1917,
-  "t": "Das ist der aktuelle Stand. Ein Klick kehrt zur Tabelle zurück und fragt den Rest ab"
+  "t": "Felder selbst wählen (erst Zeilen, dann Spalten, dann Werte)"
  },
  {
   "i": 1918,
-  "t": "Mit Kennwort verschlüsseln"
+  "t": "Anordnungen, die Ihre Tabelle hergibt. Es wird nichts gebaut, bis Sie eine drücken"
  },
  {
   "i": 1919,
-  "t": "Ein (ab dem nächsten Speichern)"
+  "t": "Zeilen: {} / Spalten: {} / {} von {}"
  },
  {
   "i": 1920,
-  "t": "Nicht gesetzt"
+  "t": "Zeilen: {} / {} von {}"
  },
  {
   "i": 1921,
-  "t": "Ändern oder entfernen"
+  "t": "Arbeitsmappe schützen"
  },
  {
   "i": 1922,
-  "t": "Kennwort festlegen"
+  "t": "Das ist der aktuelle Stand. Ein Klick kehrt zur Tabelle zurück und fragt den Rest ab"
  },
  {
   "i": 1923,
-  "t": "Blatt schützen"
+  "t": "Mit Kennwort verschlüsseln"
  },
  {
   "i": 1924,
-  "t": "„{}“ ist geschützt"
+  "t": "Ein (ab dem nächsten Speichern)"
  },
  {
   "i": 1925,
-  "t": "„{}“ ist nicht geschützt"
+  "t": "Nicht gesetzt"
  },
  {
   "i": 1926,
-  "t": "Schutz aufheben"
+  "t": "Ändern oder entfernen"
  },
  {
   "i": 1927,
-  "t": "Dieses Blatt schützen"
+  "t": "Kennwort festlegen"
  },
  {
   "i": 1928,
-  "t": "Bei Schutz erlaubt"
+  "t": "Blatt schützen"
  },
  {
   "i": 1929,
-  "t": "Auswählen"
+  "t": "„{}“ ist geschützt"
  },
  {
   "i": 1930,
-  "t": "Schreibschutz empfehlen"
+  "t": "„{}“ ist nicht geschützt"
  },
  {
   "i": 1931,
-  "t": "Empfohlen (das ist kein Schloss)"
+  "t": "Schutz aufheben"
  },
  {
   "i": 1932,
-  "t": "Nicht empfohlen"
+  "t": "Dieses Blatt schützen"
  },
  {
   "i": 1933,
-  "t": "Empfehlen"
+  "t": "Bei Schutz erlaubt"
  },
  {
   "i": 1934,
-  "t": "Digitale Signatur"
+  "t": "Auswählen"
  },
  {
   "i": 1935,
-  "t": "Daneben liegt eine Signaturdatei"
+  "t": "Schreibschutz empfehlen"
  },
  {
   "i": 1936,
-  "t": "Nicht signiert"
+  "t": "Empfohlen (das ist kein Schloss)"
  },
  {
   "i": 1937,
-  "t": "Signieren oder prüfen"
+  "t": "Nicht empfohlen"
  },
  {
   "i": 1938,
-  "t": "Blattschutz und die Schreibschutz-Empfehlung sind keine Schlösser. Wer will, kann sie entfernen. Wir tun nicht so, als wäre es anders"
+  "t": "Empfehlen"
  },
  {
   "i": 1939,
-  "t": "Zur Kontrolle: Geben Sie dasselbe Kennwort noch einmal ein und drücken Sie die Eingabetaste"
+  "t": "Digitale Signatur"
  },
  {
   "i": 1940,
-  "t": "Die beiden Kennwörter sind verschieden (die Verschlüsselung bleibt unverändert; bitte noch einmal)"
+  "t": "Daneben liegt eine Signaturdatei"
  },
  {
   "i": 1941,
-  "t": "Nichts ist erlaubt"
+  "t": "Nicht signiert"
  },
  {
   "i": 1942,
-  "t": "{} von {} erlaubt"
+  "t": "Signieren oder prüfen"
  },
  {
   "i": 1943,
-  "t": "Verschlüsselung 1/2 — Kennwort (leer lassen und Eingabetaste drücken, um die Verschlüsselung zu entfernen)"
+  "t": "Blattschutz und die Schreibschutz-Empfehlung sind keine Schlösser. Wer will, kann sie entfernen. Wir tun nicht so, als wäre es anders"
  },
  {
   "i": 1944,
-  "t": "Verschlüsselung 2/2 — dasselbe Kennwort noch einmal"
+  "t": "Zur Kontrolle: Geben Sie dasselbe Kennwort noch einmal ein und drücken Sie die Eingabetaste"
  },
  {
   "i": 1945,
-  "t": "Teilung aufgehoben"
+  "t": "Die beiden Kennwörter sind verschieden (die Verschlüsselung bleibt unverändert; bitte noch einmal)"
  },
  {
   "i": 1946,
-  "t": "Setzen Sie den Cursor an die Stelle, an der geteilt werden soll (geteilt wird oberhalb und links vom Cursor)"
+  "t": "Nichts ist erlaubt"
  },
  {
   "i": 1947,
-  "t": "Geteilt (das Mausrad scrollt den Teil, über dem der Zeiger steht)"
+  "t": "{} von {} erlaubt"
  },
  {
   "i": 1948,
-  "t": "{} Zellen markiert (nochmal drücken zum Löschen)"
+  "t": "Verschlüsselung 1/2 — Kennwort (leer lassen und Eingabetaste drücken, um die Verschlüsselung zu entfernen)"
  },
  {
   "i": 1949,
-  "t": "Dieses Blatt hat keine Gültigkeitsregeln (auf der Registerkarte Daten mit Datenüberprüfung anlegen)"
+  "t": "Verschlüsselung 2/2 — dasselbe Kennwort noch einmal"
  },
  {
   "i": 1950,
-  "t": "Keine Werte verstoßen gegen die Gültigkeitsregeln"
+  "t": "Teilung aufgehoben"
  },
  {
   "i": 1951,
-  "t": "Markierungen gelöscht"
+  "t": "Setzen Sie den Cursor an die Stelle, an der geteilt werden soll (geteilt wird oberhalb und links vom Cursor)"
  },
  {
   "i": 1952,
-  "t": "Geben Sie den Quellbereich ein und drücken Sie die Eingabetaste (z. B. Sheet1!A1:C20; Kopfzeile einschließen)"
+  "t": "Geteilt (das Mausrad scrollt den Teil, über dem der Zeiger steht)"
  },
  {
   "i": 1953,
-  "t": "Setzen Sie den Cursor in die PivotTable, die Sie umstellen möchten"
+  "t": "{} Zellen markiert (nochmal drücken zum Löschen)"
  },
  {
   "i": 1954,
-  "t": "Schreiben Sie den Bereich wie A1:C20"
+  "t": "Dieses Blatt hat keine Gültigkeitsregeln (auf der Registerkarte Daten mit Datenüberprüfung anlegen)"
  },
  {
   "i": 1955,
-  "t": "Der Bereich ist nicht lesbar: {}"
+  "t": "Keine Werte verstoßen gegen die Gültigkeitsregeln"
  },
  {
   "i": 1956,
-  "t": "Es gibt kein Blatt “{}”"
+  "t": "Markierungen gelöscht"
  },
  {
   "i": 1957,
-  "t": "Im neuen Bereich fehlen diese Überschriften: {} (die PivotTable verwendet sie)"
+  "t": "Geben Sie den Quellbereich ein und drücken Sie die Eingabetaste (z. B. Sheet1!A1:C20; Kopfzeile einschließen)"
  },
  {
   "i": 1958,
-  "t": "Quelltabelle auf {}!{}:{} umgestellt (wird neu aufgebaut)"
+  "t": "Setzen Sie den Cursor in die PivotTable, die Sie umstellen möchten"
  },
  {
   "i": 1959,
-  "t": "Geben Sie zuerst die linke Seite der Bedingung ein"
+  "t": "Schreiben Sie den Bereich wie A1:C20"
  },
  {
   "i": 1960,
-  "t": "Es wird eine Lösung gesucht… (ganzzahliges Programm, Branch and Bound)"
+  "t": "Der Bereich ist nicht lesbar: {}"
  },
  {
   "i": 1961,
-  "t": "{} ist keine Variablenzelle (ganzzahlig und binär gehen nur auf Variablenzellen)"
+  "t": "Es gibt kein Blatt “{}”"
  },
  {
   "i": 1962,
-  "t": "Keine Lösung gefunden ({} wirkt sich möglicherweise nicht auf {} aus)"
+  "t": "Im neuen Bereich fehlen diese Überschriften: {} (die PivotTable verwendet sie)"
  },
  {
   "i": 1963,
-  "t": "Orientierung"
+  "t": "Quelltabelle auf {}!{}:{} umgestellt (wird neu aufgebaut)"
  },
  {
   "i": 1964,
-  "t": "Zellen formatieren"
+  "t": "Geben Sie zuerst die linke Seite der Bedingung ein"
  },
  {
   "i": 1965,
-  "t": "Mittig ausrichten"
+  "t": "Es wird eine Lösung gesucht… (ganzzahliges Programm, Branch and Bound)"
  },
  {
   "i": 1966,
-  "t": "Python-Funktionen"
+  "t": "{} ist keine Variablenzelle (ganzzahlig und binär gehen nur auf Variablenzellen)"
  },
  {
   "i": 1967,
-  "t": "Menüband-Makros"
+  "t": "Keine Lösung gefunden ({} wirkt sich möglicherweise nicht auf {} aus)"
  },
  {
   "i": 1968,
-  "t": "Format übertragen"
+  "t": "Orientierung"
  },
  {
   "i": 1969,
-  "t": "Formatvorlage"
+  "t": "Zellen formatieren"
  },
  {
   "i": 1970,
-  "t": "Feldliste"
+  "t": "Mittig ausrichten"
  },
  {
   "i": 1971,
-  "t": "Oberflächentext größer"
+  "t": "Python-Funktionen"
  },
  {
   "i": 1972,
-  "t": "Oberflächentext kleiner"
+  "t": "Menüband-Makros"
  },
  {
   "i": 1973,
-  "t": "Ungültige Daten einkreisen"
+  "t": "Format übertragen"
  },
  {
   "i": 1974,
-  "t": "Fenster teilen"
+  "t": "Formatvorlage"
  },
  {
   "i": 1975,
-  "t": "KI"
+  "t": "Feldliste"
  },
  {
   "i": 1976,
-  "t": "Drucken"
+  "t": "Oberflächentext größer"
  },
  {
   "i": 1977,
-  "t": "Drucklayout"
+  "t": "Oberflächentext kleiner"
  },
  {
   "i": 1978,
-  "t": "Ziel"
+  "t": "Ungültige Daten einkreisen"
  },
  {
   "i": 1979,
-  "t": "Zusammenfassung"
+  "t": "Fenster teilen"
  },
  {
   "i": 1980,
-  "t": "Umschreiben"
+  "t": "KI"
  },
  {
   "i": 1981,
-  "t": "Höflicher"
+  "t": "Drucken"
  },
  {
   "i": 1982,
-  "t": "Einfacher"
+  "t": "Drucklayout"
  },
  {
   "i": 1983,
-  "t": "Übersetzung"
+  "t": "Ziel"
  },
  {
   "i": 1984,
-  "t": "Furigana"
+  "t": "Zusammenfassung"
  },
  {
   "i": 1985,
-  "t": "Fortsetzen"
+  "t": "Umschreiben"
  },
  {
   "i": 1986,
-  "t": "In Tabelle"
+  "t": "Höflicher"
  },
  {
   "i": 1987,
-  "t": "Anfragen"
+  "t": "Einfacher"
  },
  {
   "i": 1988,
-  "t": "Ruby"
+  "t": "Übersetzung"
  },
  {
   "i": 1989,
-  "t": "Vertikal"
+  "t": "Furigana"
  },
  {
   "i": 1990,
-  "t": "Textrichtung"
+  "t": "Fortsetzen"
  },
  {
   "i": 1991,
-  "t": "Verteilt"
+  "t": "In Tabelle"
  },
  {
   "i": 1992,
-  "t": "Beschriftung einfügen"
+  "t": "Anfragen"
  },
  {
   "i": 1993,
-  "t": "URL öffnen"
+  "t": "Ruby"
  },
  {
   "i": 1994,
-  "t": "Index"
+  "t": "Vertikal"
  },
  {
   "i": 1995,
-  "t": "Aozora-Anmerkungen"
+  "t": "Textrichtung"
  },
  {
   "i": 1996,
-  "t": "Denden-Markup"
+  "t": "Verteilt"
  },
  {
   "i": 1997,
-  "t": "Änderungen nachverfolgen"
+  "t": "Beschriftung einfügen"
  },
  {
   "i": 1998,
-  "t": "Änderungen anzeigen"
+  "t": "URL öffnen"
  },
  {
   "i": 1999,
-  "t": "Korrektur"
+  "t": "Index"
  },
  {
   "i": 2000,
-  "t": "Zeichen"
+  "t": "Aozora-Anmerkungen"
  },
  {
   "i": 2001,
-  "t": "Rechtschreibprüfung"
+  "t": "Denden-Markup"
  },
  {
   "i": 2002,
-  "t": "Thesaurus"
+  "t": "Änderungen nachverfolgen"
  },
  {
   "i": 2003,
-  "t": "Fehlkonvertierung"
+  "t": "Änderungen anzeigen"
  },
  {
   "i": 2004,
-  "t": "Uneinheitliche Schreibung"
+  "t": "Korrektur"
  },
  {
   "i": 2005,
-  "t": "Teilergebnisse"
+  "t": "Zeichen"
  },
  {
   "i": 2006,
-  "t": "Berechnung"
+  "t": "Rechtschreibprüfung"
  },
  {
   "i": 2007,
-  "t": "Rechts-nach-links-Text"
+  "t": "Thesaurus"
  },
  {
   "i": 2008,
-  "t": "Blattrichtung"
+  "t": "Fehlkonvertierung"
  },
  {
   "i": 2009,
-  "t": "Python"
+  "t": "Uneinheitliche Schreibung"
  },
  {
   "i": 2010,
-  "t": "Kontrollkästchen"
+  "t": "Teilergebnisse"
  },
  {
   "i": 2011,
-  "t": "Externe Verknüpfungen"
+  "t": "Berechnung"
  },
  {
   "i": 2012,
-  "t": "Empfohlene Diagramme"
+  "t": "Rechts-nach-links-Text"
  },
  {
   "i": 2013,
-  "t": "Co-Bearbeitung"
+  "t": "Blattrichtung"
  },
  {
   "i": 2014,
-  "t": "Versionsverlauf"
+  "t": "Python"
  },
  {
   "i": 2015,
-  "t": "Chat"
+  "t": "Kontrollkästchen"
  },
  {
   "i": 2016,
-  "t": "Schützen"
+  "t": "Externe Verknüpfungen"
  },
  {
   "i": 2017,
-  "t": "Verschlüsseln"
+  "t": "Empfohlene Diagramme"
  },
  {
   "i": 2018,
-  "t": "Digitale Signatur hinzufügen"
+  "t": "Co-Bearbeitung"
  },
  {
   "i": 2019,
-  "t": "Makros"
+  "t": "Versionsverlauf"
  },
  {
   "i": 2020,
-  "t": "Plugins verwalten"
+  "t": "Chat"
  },
  {
   "i": 2021,
-  "t": "Nullen anzeigen"
+  "t": "Schützen"
  },
  {
   "i": 2022,
-  "t": "Auf 100 % zoomen"
+  "t": "Verschlüsseln"
  },
  {
   "i": 2023,
-  "t": "Oberflächendesign"
+  "t": "Digitale Signatur hinzufügen"
  },
  {
   "i": 2024,
-  "t": "Überwachungsfenster"
+  "t": "Makros"
  },
  {
   "i": 2025,
-  "t": "AutoSumme"
+  "t": "Plugins verwalten"
  },
  {
   "i": 2026,
-  "t": "Aktionen aufzeichnen"
+  "t": "Nullen anzeigen"
  },
  {
   "i": 2027,
-  "t": "Kommentar löschen"
+  "t": "Auf 100 % zoomen"
  },
  {
   "i": 2028,
-  "t": "Solver"
+  "t": "Oberflächendesign"
  },
  {
   "i": 2029,
-  "t": "Text zu Daten"
+  "t": "Überwachungsfenster"
  },
  {
   "i": 2030,
-  "t": "Pfeile entfernen"
+  "t": "AutoSumme"
  },
  {
   "i": 2031,
-  "t": "Ausfüllen"
+  "t": "Aktionen aufzeichnen"
  },
  {
   "i": 2032,
-  "t": "Filter löschen"
+  "t": "Kommentar löschen"
  },
  {
   "i": 2033,
-  "t": "Makro schreiben"
+  "t": "Solver"
  },
  {
   "i": 2034,
-  "t": "Text in Spalten"
+  "t": "Text zu Daten"
  },
  {
   "i": 2035,
-  "t": "Beschriftung"
+  "t": "Pfeile entfernen"
  },
  {
   "i": 2036,
-  "t": "Abbildungsverzeichnis"
+  "t": "Ausfüllen"
  },
  {
   "i": 2037,
-  "t": "Abbildungsverzeichnis aktualisieren"
+  "t": "Filter löschen"
  },
  {
   "i": 2038,
-  "t": "Externe Verknüpfungen (als Werte einlesen)"
+  "t": "Makro schreiben"
  },
  {
   "i": 2039,
-  "t": "Mathematik/Trigonometrie"
+  "t": "Text in Spalten"
  },
  {
   "i": 2040,
-  "t": "Formeln anzeigen"
+  "t": "Beschriftung"
  },
  {
   "i": 2041,
-  "t": "Textrichtung (rechts nach links)"
+  "t": "Abbildungsverzeichnis"
  },
  {
   "i": 2042,
-  "t": "Text"
+  "t": "Abbildungsverzeichnis aktualisieren"
  },
  {
   "i": 2043,
-  "t": "Datum/Uhrzeit"
+  "t": "Externe Verknüpfungen (als Werte einlesen)"
  },
  {
   "i": 2044,
-  "t": "Zuletzt verwendet"
+  "t": "Mathematik/Trigonometrie"
  },
  {
   "i": 2045,
-  "t": "Gitternetzlinien drucken"
+  "t": "Formeln anzeigen"
  },
  {
   "i": 2046,
-  "t": "Inhaltsverzeichnis aktualisieren"
+  "t": "Textrichtung (rechts nach links)"
  },
  {
   "i": 2047,
-  "t": "Gebänderte Spalten"
+  "t": "Text"
  },
  {
   "i": 2048,
-  "t": "Überschriften drucken"
+  "t": "Datum/Uhrzeit"
  },
  {
   "i": 2049,
-  "t": "Detail ausblenden"
+  "t": "Zuletzt verwendet"
  },
  {
   "i": 2050,
-  "t": "Duplikate entfernen"
+  "t": "Gitternetzlinien drucken"
  },
  {
   "i": 2051,
-  "t": "Funktion einfügen"
+  "t": "Inhaltsverzeichnis aktualisieren"
  },
  {
   "i": 2052,
-  "t": "CSV-Format"
+  "t": "Gebänderte Spalten"
  },
  {
   "i": 2053,
-  "t": "Zelle sperren"
+  "t": "Überschriften drucken"
  },
  {
   "i": 2054,
-  "t": "Datentabelle"
+  "t": "Detail ausblenden"
  },
  {
   "i": 2055,
-  "t": "Musterfüllung"
+  "t": "Duplikate entfernen"
  },
  {
   "i": 2056,
-  "t": "Liste"
+  "t": "Funktion einfügen"
  },
  {
   "i": 2057,
-  "t": "Namen einfügen"
+  "t": "CSV-Format"
  },
  {
   "i": 2058,
-  "t": "Wiederherstellen"
+  "t": "Zelle sperren"
  },
  {
   "i": 2059,
-  "t": "Text umbrechen"
+  "t": "Datentabelle"
  },
  {
   "i": 2060,
-  "t": "Sicherungsintervall"
+  "t": "Musterfüllung"
  },
  {
   "i": 2061,
-  "t": "Neue .py"
+  "t": "Liste"
  },
  {
   "i": 2062,
-  "t": "Bereich hinzufügen"
+  "t": "Namen einfügen"
  },
  {
   "i": 2063,
-  "t": "Aufs Blatt einpassen"
+  "t": "Wiederherstellen"
  },
  {
   "i": 2064,
-  "t": "Blattgrenzen"
+  "t": "Text umbrechen"
  },
  {
   "i": 2065,
-  "t": "Ordner öffnen"
+  "t": "Sicherungsintervall"
  },
  {
   "i": 2066,
-  "t": "Berechnungsart"
+  "t": "Neue .py"
  },
  {
   "i": 2067,
-  "t": "Erlaubte Aktionen"
+  "t": "Bereich hinzufügen"
  },
  {
   "i": 2068,
+  "t": "Aufs Blatt einpassen"
+ },
+ {
+  "i": 2069,
+  "t": "Blattgrenzen"
+ },
+ {
+  "i": 2070,
+  "t": "Ordner öffnen"
+ },
+ {
+  "i": 2071,
+  "t": "Berechnungsart"
+ },
+ {
+  "i": 2072,
+  "t": "Erlaubte Aktionen"
+ },
+ {
+  "i": 2073,
   "t": "Schreibschutz empfehlen"
  }
 ]

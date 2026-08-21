@@ -722,6 +722,143 @@ pub(crate) fn pivot_aggs() -> Vec<(&'static str, &'static str)> {
 }
 
 
+/// おすすめのピボットの1つ。
+///
+/// **こちらから作りはしません。** 候補を並べて、人が選んで、人が押します
+/// (2026-08-09 発注者確定の方針)。
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct PivotSuggest {
+    pub rows_sel: Vec<String>,
+    pub cols_sel: Vec<String>,
+    pub value: String,
+    pub agg: &'static str,
+}
+
+/// 列の中身が数として読めるか。**6割を超えたら数の列**とみなします。
+/// 全部でなくてよいのは、実物の表には「-」や「未定」が混ざるためです
+fn 数の列(vals: &[String]) -> bool {
+    let 中身: Vec<&String> = vals.iter().filter(|v| !v.trim().is_empty()).collect();
+    if 中身.is_empty() {
+        return false;
+    }
+    let 数 = 中身
+        .iter()
+        .filter(|v| v.replace([',', ' ', '\u{a0}'], "").parse::<f64>().is_ok())
+        .count();
+    数 * 10 >= 中身.len() * 6
+}
+
+/// 空でない値の種類の数。
+fn 種類の数(vals: &[String]) -> usize {
+    let mut v: Vec<&str> = vals.iter().map(|x| x.trim()).filter(|x| !x.is_empty()).collect();
+    v.sort_unstable();
+    v.dedup();
+    v.len()
+}
+
+/// **おすすめのピボットの形**(2026-08-21 の D群)。
+///
+/// `cols[i]` は `headers[i]` の列の中身(見出しの行は含めません)です。
+/// 決め方は次のとおりで、乱数も学習も使いません。同じ表からは毎回同じ
+/// 候補が出ます。
+///
+/// * 数の列 → 値の候補
+/// * 数でなく、種類が2つ以上で、行数の半分以下(または12以下)の列 → 行の候補。
+///   1行に1つしかない列(伝票番号や氏名)は、まとめても意味がないので外します
+/// * 行の候補のうち種類が8つ以下のもの → 列の候補
+///
+/// 候補は種類の少ない順・左の列からの順で、6つまで返します。
+pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec<PivotSuggest> {
+    let n = cols.first().map(|c| c.len()).unwrap_or(0);
+    if n == 0 || headers.len() != cols.len() {
+        return Vec::new();
+    }
+    let 上限 = (n / 2).max(12);
+    let mut 行候補: Vec<(usize, usize)> = Vec::new(); // (種類, 列)
+    let mut 値候補: Vec<usize> = Vec::new();
+    for (i, c) in cols.iter().enumerate() {
+        if headers[i].trim().is_empty() {
+            continue;
+        }
+        if 数の列(c) {
+            値候補.push(i);
+        } else {
+            let k = 種類の数(c);
+            if (2..=上限).contains(&k) {
+                行候補.push((k, i));
+            }
+        }
+    }
+    行候補.sort_unstable();
+    let mut out: Vec<PivotSuggest> = Vec::new();
+    let mut 足す = |s: PivotSuggest, out: &mut Vec<PivotSuggest>| {
+        if !out.contains(&s) && out.len() < 6 {
+            out.push(s);
+        }
+    };
+    for &(_, r) in 行候補.iter().take(2) {
+        for &v in 値候補.iter().take(2) {
+            足す(
+                PivotSuggest {
+                    rows_sel: vec![headers[r].clone()],
+                    cols_sel: Vec::new(),
+                    value: headers[v].clone(),
+                    agg: "合計",
+                },
+                &mut out,
+            );
+        }
+    }
+    // 2つの見出しで縦横に広げる形。列は種類の少ないものだけ
+    if let (Some(&(_, r)), Some(&v)) = (行候補.first(), 値候補.first()) {
+        if let Some(&(_, c)) = 行候補.iter().find(|&&(k, i)| i != r && k <= 8) {
+            足す(
+                PivotSuggest {
+                    rows_sel: vec![headers[r].clone()],
+                    cols_sel: vec![headers[c].clone()],
+                    value: headers[v].clone(),
+                    agg: "合計",
+                },
+                &mut out,
+            );
+        }
+    }
+    // 数の列が1つも無くても、件数なら数えられます
+    if let Some(&(_, r)) = 行候補.first() {
+        足す(
+            PivotSuggest {
+                rows_sel: vec![headers[r].clone()],
+                cols_sel: Vec::new(),
+                value: headers[r].clone(),
+                agg: "個数",
+            },
+            &mut out,
+        );
+    }
+    out
+}
+
+/// おすすめの1つを、人が読める1行にします。
+pub(crate) fn pivot_suggest_label(s: &PivotSuggest) -> String {
+    let agg = pivot_aggs()
+        .iter()
+        .find(|(k, _)| *k == s.agg)
+        .map(|(_, l)| (*l).to_string())
+        .unwrap_or_else(|| s.agg.to_string());
+    match s.cols_sel.first() {
+        Some(c) => ui::tf!(
+            "行: {} / 列: {} / 値: {} の{}",
+            s.rows_sel.join("・"),
+            c.clone(),
+            s.value.clone(),
+            agg
+        )
+        .to_string(),
+        None => ui::tf!("行: {} / 値: {} の{}", s.rows_sel.join("・"), s.value.clone(), agg)
+            .to_string(),
+    }
+}
+
 /// ピボットの指図を JSON にする(手で組む — グラフと同じ割り切り)。
 pub(crate) fn pivot_spec_json(headers: &[String], rows: &[Vec<String>], d: &sheet::model::PivotDef) -> String {
     let esc = |t: &str| t.replace('\\', "\\\\").replace('"', "\\\"");
