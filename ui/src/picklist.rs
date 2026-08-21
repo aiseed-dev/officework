@@ -3,7 +3,8 @@
 //!
 //! 表の画面には約40種類の一覧が1つの仕組みで載っていて、押したボタンの
 //! 真下に出る・打つと絞れる・↑↓/Enter/Esc が効く、まで揃っています。
-//! 文章の画面の4つ(書体・大きさ・段落スタイル・記号)は以前のままです。
+//! 文章の画面の4つ(書体・大きさ・段落スタイル・記号)も乗りました
+//! (2026-08-21。記号は升の並び — `Place::grid`)。
 //!
 //! *ここは描くところだけ*です。どこに出すか(`face::combo` の `pop_under`
 //! など)と、開いているか・選択・絞り込みの字は**呼ぶ側が持ちます**。
@@ -63,6 +64,11 @@ pub struct Place {
     /// 幅。`Fixed` はセルから開いた一覧(その列に合わせる)、
     /// `Range` はリボンから開いた一覧(中身に合わせる)
     pub width: Width,
+    /// **升の並びで出す**(記号などのパレット。手順4 の最初の一歩)。
+    /// 値は升の一辺(倍率を掛ける前)。`None` なら今までどおり縦の一覧。
+    /// 升は見出しの字をそのまま真ん中に置き、絞り込み・色見本・書体の
+    /// 細工は使いません(それが要る一覧は縦のままにします)
+    pub grid: Option<f32>,
 }
 
 /// 一覧の幅の決め方。
@@ -185,9 +191,46 @@ pub fn panel<V: gpui::Render>(
         );
     }
 
+    // 升の並び(パレット)か、縦の一覧か。同じ器で並べ方だけ変えます
+    let grid = place.and_then(|pl| pl.grid);
+    let mut list = if grid.is_some() {
+        div().flex().flex_row().flex_wrap().gap_1()
+    } else {
+        div().flex().flex_col()
+    };
     for (i, (key, label)) in items.iter().enumerate() {
-        let d = deco(key);
         let on = i == sel; // ↑↓ の選択(絞り込み後の並びの添字)
+        if let Some(g) = grid {
+            let hover = look.hover;
+            let key = key.clone();
+            let on_pick = on_pick.clone();
+            list = list.child(
+                div()
+                    .id(SharedString::from(format!("pk{i}")))
+                    .w(px(s * g))
+                    .h(px(s * g))
+                    .rounded_sm()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .cursor_pointer()
+                    .text_size(px(s * 15.0))
+                    .text_color(look.fg)
+                    .hover(move |st| st.bg(hover))
+                    .when(on, |st| st.bg(look.hover))
+                    .child(SharedString::from(label.clone()))
+                    .on_mouse_down(
+                        gpui::MouseButton::Left,
+                        cx.listener(move |v, _, _, cx| {
+                            cx.stop_propagation();
+                            on_pick(v, &key, cx);
+                            cx.notify();
+                        }),
+                    ),
+            );
+            continue;
+        }
+        let d = deco(key);
         // 「→ 」は次の段へ進むボタン — 並びの項目と見分けます
         let 進む = key.starts_with("→ ");
         let (hover, border) = (look.hover, look.border);
@@ -223,7 +266,7 @@ pub fn panel<V: gpui::Render>(
         }
         let key = key.clone();
         let on_pick = on_pick.clone();
-        p = p.child(row.child(SharedString::from(label.clone())).on_mouse_down(
+        list = list.child(row.child(SharedString::from(label.clone())).on_mouse_down(
             gpui::MouseButton::Left,
             cx.listener(move |v, _, _, cx| {
                 cx.stop_propagation();
@@ -232,5 +275,5 @@ pub fn panel<V: gpui::Render>(
             }),
         ));
     }
-    p
+    p.child(list)
 }

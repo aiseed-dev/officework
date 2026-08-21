@@ -5065,7 +5065,7 @@ impl Render for Calc {
                     accent: rgb(0x1B6E3C),
                     scale: us,
                 },
-                Some(&ui::picklist::Place { x: wx, at, up, max_h, width }),
+                Some(&ui::picklist::Place { x: wx, at, up, max_h, width, grid: None }),
                 self.pick_note.clone(),
                 filter,
                 &vals,

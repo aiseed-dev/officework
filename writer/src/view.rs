@@ -1634,7 +1634,6 @@ impl Render for Writer {
                     .children(url_panel)
                     .children(fm_panel)
                     .children(lk_panel)
-                    .children(symbol_panel)
                     .children(proof_panel)
                     // 終了確認のパネル(窓の中の中央。rfd はスクリーン中央に出て遠い)
                     .children(self.quit_ask.then(|| {
@@ -1702,6 +1701,7 @@ impl Render for Writer {
             .children(font_panel)
             .children(size_panel)
             .children(style_panel)
+            .children(symbol_panel)
             .children(ui::resize_edges(window))
     }
 }

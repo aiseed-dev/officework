@@ -32,11 +32,12 @@ pub(crate) struct Panels {
     pub eq_panel: Option<gpui::Div>,
     pub plug_panel: Option<gpui::Div>,
     pub xr_panel: Option<gpui::Div>,
-    /// 一覧は3つとも `ui::picklist` が描きます(窓の根へ置きます)
+    /// 一覧は4つとも `ui::picklist` が描きます(窓の根へ置きます。
+    /// 記号は升の並び)
     pub font_panel: Option<gpui::Stateful<gpui::Div>>,
     pub size_panel: Option<gpui::Stateful<gpui::Div>>,
     pub style_panel: Option<gpui::Stateful<gpui::Div>>,
-    pub symbol_panel: Option<gpui::Div>,
+    pub symbol_panel: Option<gpui::Stateful<gpui::Div>>,
     pub proof_panel: Option<gpui::Div>,
 }
 
@@ -1596,36 +1597,9 @@ impl Writer {
         let size_panel = self.size_list.then(|| self.一覧を描く("fontsize", cx));
         let style_panel = self.style_list.then(|| self.一覧を描く("parastyle", cx));
 
-        // 記号の一覧。事務の書類で使うものだけ(飾りの絵文字は入れない)
-        let symbol_panel = if !self.symbols {
-            None
-        } else {
-            const SYMS: &[&str] = &[
-                "〒", "※", "→", "←", "↑", "↓", "℃", "±", "×", "÷",
-                "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩",
-                "㈱", "㈲", "№", "〆", "〜", "…", "・", "「", "」", "『",
-                "』", "【", "】", "○", "●", "◎", "△", "▲", "□", "■",
-            ];
-            let mut d = div().absolute().right(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 340.0))
-                .p_2().rounded_md().bg(gpui::white())
-                .border_1().border_color(rgb(0xC6CDD3))
-                .flex().flex_row().flex_wrap().gap_1();
-            for s in SYMS {
-                d = d.child(div()
-                    .id(SharedString::from(format!("sym-{s}")))
-                    .w(px(us * 28.0)).h(px(us * 28.0)).rounded_sm()
-                    .flex().items_center().justify_center()
-                    .text_size(px(us * 15.0)).cursor_pointer()
-                    .hover(|st| st.bg(rgb(0xEAF2F7)))
-                    .child(SharedString::from(*s))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.ed.insert(s);
-                        this.on_edited();
-                        cx.notify();
-                    })));
-            }
-            Some(d)
-        };
+        // 記号の一覧。**3つの一覧と同じ仕組み**(ui::picklist)で、升の並びで
+        // 出します(2026-08-21。前は右上に固定の自前の格子でした)
+        let symbol_panel = self.symbols.then(|| self.一覧を描く("inssymbol", cx));
 
         // 校正の指摘
         let proof_panel = if self.proof.is_empty() && self.proof_msg.is_empty() {
@@ -1666,6 +1640,17 @@ impl Writer {
     /// **一覧の中身**(鍵, 見出し)。鍵で引き当て、見出しを画面に出します。
     pub(crate) fn 一覧の中身(&self, kind: &str) -> Vec<(String, String)> {
         match kind {
+            // 記号。事務の書類で使うものだけ(飾りの絵文字は入れない)。
+            // 鍵=字そのもの — 訳す物ではありません
+            "inssymbol" => [
+                "〒", "※", "→", "←", "↑", "↓", "℃", "±", "×", "÷",
+                "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩",
+                "㈱", "㈲", "№", "〆", "〜", "…", "・", "「", "」", "『",
+                "』", "【", "】", "○", "●", "◎", "△", "▲", "□", "■",
+            ]
+            .iter()
+            .map(|s| (s.to_string(), s.to_string()))
+            .collect(),
             "fontname" => {
                 // **数で切りません**(2026-08-20)。前は先頭 24 件で切っていて、
                 // 25 件目からは選べませんでした。代わりに絞り込みを付けます
@@ -1716,12 +1701,25 @@ impl Writer {
         // ボタンの箱は窓の座標で控えてあります(`btn_box`)。まだ描いて
         // いなければ左上へ逃がします — 黙って消えるよりは出すほうがよい
         let (bx, by, bw, bh) = self.btn_box.borrow().get(kind).copied().unwrap_or((16.0, 8.0, 0.0, 0.0));
-        let want_h = items.len() as f32 * 26.0 + if kind == "fontname" { 40.0 } else { 0.0 } + 12.0;
+        // 記号は升の並び(1行10升)なので、高さは行の数で見積もります
+        let want_h = if kind == "inssymbol" {
+            (items.len() as f32 / 10.0).ceil() * 32.0 + 16.0
+        } else {
+            items.len() as f32 * 26.0 + if kind == "fontname" { 40.0 } else { 0.0 } + 12.0
+        };
+        // 10升 × 28 + 升の間(9×4)+ 内側の余白ぶん
+        const SYM_W: f32 = 334.0;
         let (up, at, max_h) = ui::combo::pop_place(by, by + bh, want_h, self.view_h_px);
-        let x = ui::combo::pop_x(bx, self.view_w_px);
+        // 記号は幅が分かっているので、右端で切れないよう幅ごと寄せます
+        let x = if kind == "inssymbol" {
+            ui::combo::pop_x_w(bx, self.view_w_px, SYM_W)
+        } else {
+            ui::combo::pop_x(bx, self.view_w_px)
+        };
         let 幅 = match kind {
             "fontname" => ui::picklist::Width::Range(200.0, ui::combo::POP_W),
             "fontsize" => ui::picklist::Width::Range(bw.max(96.0), 140.0),
+            "inssymbol" => ui::picklist::Width::Fixed(SYM_W),
             _ => ui::picklist::Width::Range(bw.max(160.0), 240.0),
         };
         let filter = self.font_filter.as_ref().map(|ed| {
@@ -1744,7 +1742,14 @@ impl Writer {
                 // 画面の文字の大きさは基本的に変えない決め)
                 scale: us,
             },
-            Some(&ui::picklist::Place { x, at, up, max_h, width: 幅 }),
+            Some(&ui::picklist::Place {
+                x,
+                at,
+                up,
+                max_h,
+                width: 幅,
+                grid: (kind == "inssymbol").then_some(28.0),
+            }),
             // **何に掛かるかを頭に出します。** 前の版が出していた案内で、
             // 「選んだ所だけ」なのか「段落ぜんぶ」なのかは、押す前に
             // 分かっていないと困ります
@@ -1767,6 +1772,13 @@ impl Writer {
 
     /// 一覧の項を選んだ。**閉じるのもここ**です。
     fn 一覧を選ぶ(&mut self, kind: &str, key: &str, cx: &mut gpui::Context<Self>) {
+        // 記号は**閉じません** — 続けて何個も入れる使い方(前からの形)を
+        // 保ちます。閉じるのは Esc か、他のボタンを押したとき(close_menus)
+        if kind == "inssymbol" {
+            self.ed.insert(key);
+            self.on_edited();
+            return;
+        }
         self.font_list = false;
         self.size_list = false;
         self.style_list = false;

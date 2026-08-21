@@ -468,7 +468,10 @@ impl Writer {
                 self.status = ui::t!("3×3 の表を末尾に入れました(セルをクリックで編集)").into();
             }
             // 記号の一覧(押すと出る/消える)
-            "inssymbol" => self.symbols = !self.symbols,
+            "inssymbol" => {
+                self.symbols = !self.symbols;
+                self.pick_sel = 0;
+            }
             // ファイルからのテキスト。カーソルの位置に差し込む(undo の1手)
             "text-from-file" => {
                 let ask = cx.background_executor().spawn(async {
