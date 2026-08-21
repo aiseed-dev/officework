@@ -806,6 +806,9 @@ EXTRA_CMDS = {
         # **文章と同じ命令**(2026-08-21 の B-2)。中身は1文字も違わないので
         # id と札を揃えました。絵はアプリごとに別のまま(どちらも明暗の絵)
         ("表示", 'ui-smaller', "darkmode", "ダークモード", "theme", "t"),
+        # ウィンドウの分割。本家に無いので、Excel の「分割」に合わせて足す。
+        # 分割している間は押された形にしたいので、書き方は t(入切)
+        ("表示", 'freeze', "split", "分割", "split", "t"),
         ("表示", 'freeze', "formula-bar", "数式バー", "formula-bar", "t"),
         ("表示", 'show-headings', "show-zeros", "0を表示する", "show-zeros", "t"),
         ("表示", 'show-zeros', "show-left", "左パネル", "show-left", "t"),
@@ -832,6 +835,7 @@ EXTRA_CMDS = {
     # 選び、そのあと拡大や枠の固定を触る順にする
     ("spreadsheeteditor", "表示", "freeze", "darkmode"),
     ("spreadsheeteditor", "表示", "formula-bar", "freeze"),
+    ("spreadsheeteditor", "表示", "split", "freeze"),
     # 表示の切り替えは、シートの見え方のすぐ後ろ
     ("spreadsheeteditor", "表示", "view-normal", "sheet-view"),
     ("spreadsheeteditor", "表示", "view-pagebreak", "view-normal"),

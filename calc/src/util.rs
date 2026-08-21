@@ -138,24 +138,33 @@ pub(crate) use face::combo::{pop_at_click, pop_place, pop_under, POP_MIN_W, POP_
 #[cfg(test)]
 pub(crate) use face::combo::pop_x;
 
-/// 描く行の並び。固定行は常に頭に、残りは窓から。
-pub(crate) fn grid_rows(frozen: Option<Pos>, view: Pos, n: u32) -> Vec<u32> {
-    let f = frozen.map(|p| p.row).unwrap_or(0);
-    let mut out: Vec<u32> = (0..f.min(n)).collect();
-    let start = view.row.max(f);
+/// 描く行の並び。上の帯を頭に、残りは窓から。
+///
+/// `top` は帯の (行数, 先頭行) です。固定の帯は先頭行が 0 で、分割の帯は
+/// 動きます。帯が無いときは `None`。
+///
+/// 固定は同じ行を二度出しません。分割は出します — **同じ場所の上と下を
+/// 見比べる**のが分割の使い道なので、重なりを止めると用を成しません。
+pub(crate) fn grid_rows(top: Option<(u32, u32)>, view: Pos, n: u32) -> Vec<u32> {
+    let (f, s) = top.unwrap_or((0, 0));
+    let f = f.min(n);
+    let mut out: Vec<u32> = (s..s + f).collect();
+    let start = if s == 0 { view.row.max(f) } else { view.row };
     while (out.len() as u32) < n {
-        let next = start + out.len() as u32 - f.min(n);
+        let next = start + out.len() as u32 - f;
         out.push(next);
     }
     out
 }
 
-pub(crate) fn grid_cols(frozen: Option<Pos>, view: Pos, n: u32) -> Vec<u32> {
-    let f = frozen.map(|p| p.col).unwrap_or(0);
-    let mut out: Vec<u32> = (0..f.min(n)).collect();
-    let start = view.col.max(f);
+/// 描く列の並び。grid_rows と同じ役割です。
+pub(crate) fn grid_cols(top: Option<(u32, u32)>, view: Pos, n: u32) -> Vec<u32> {
+    let (f, s) = top.unwrap_or((0, 0));
+    let f = f.min(n);
+    let mut out: Vec<u32> = (s..s + f).collect();
+    let start = if s == 0 { view.col.max(f) } else { view.col };
     while (out.len() as u32) < n {
-        let next = start + out.len() as u32 - f.min(n);
+        let next = start + out.len() as u32 - f;
         out.push(next);
     }
     out

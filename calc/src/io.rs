@@ -388,6 +388,7 @@ impl Calc {
                 self.active = 0;
                 self.cursor = Pos::new(0, 0);
                 self.view = Pos::new(0, 0);
+                self.split = None;
                 self.anchor = None;
                 self.frozen = None;
                 self.auto_filter = None;
@@ -459,6 +460,7 @@ impl Calc {
                 self.active = 0;
                 self.cursor = Pos::new(0, 0);
                 self.view = Pos::new(0, 0);
+                self.split = None;
                 self.anchor = None;
                 self.frozen = None;
                 self.auto_filter = None;
@@ -614,6 +616,7 @@ impl Calc {
         self.active = 0;
         self.cursor = Pos::new(0, 0);
         self.view = Pos::new(0, 0);
+        self.split = None;
         self.anchor = None;
         self.frozen = None;
         self.auto_filter = None;

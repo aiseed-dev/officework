@@ -376,6 +376,7 @@ pub const CALC: &[Tab] = &[
         c("ui-smaller", "화면 글자 작게", "ui-smaller"),
         t("darkmode", "다크 모드", "theme"),
         c("freeze", "창 고정", "freeze"),
+        t("split", "창 분할", "split"),
         t("formula-bar", "수식 입력줄", "formula-bar"),
         c("show-gridlines", "눈금선", "show-gridlines"),
         t("show-headings", "제목", "show-headings"),

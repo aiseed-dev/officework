@@ -577,6 +577,7 @@ pub const CALC: &[Tab] = &[
         c("ui-smaller", "画面の文字を小さく", "ui-smaller"),
         t("darkmode", "ダークモード", "theme"),
         c("freeze", "ウィンドウ枠の固定", "freeze"),
+        t("split", "分割", "split"),
         t("formula-bar", "数式バー", "formula-bar"),
         c("show-gridlines", "枠線表示", "show-gridlines"),
         t("show-headings", "見出し", "show-headings"),

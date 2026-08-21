@@ -376,6 +376,7 @@ pub const CALC: &[Tab] = &[
         c("ui-smaller", "Мельче текст интерфейса", "ui-smaller"),
         t("darkmode", "Темный режим", "theme"),
         c("freeze", "Закрепить области", "freeze"),
+        t("split", "Разделить окно", "split"),
         t("formula-bar", "Строка формул", "formula-bar"),
         c("show-gridlines", "Линии сетки", "show-gridlines"),
         t("show-headings", "Заголовки", "show-headings"),

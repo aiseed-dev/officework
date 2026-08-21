@@ -615,10 +615,12 @@ impl Calc {
                         self.status = ui::t!("固定を解きました").into();
                     }
                     "最上行の固定" => {
+                        self.split = None;
                         self.frozen = Some(Pos::new(1, 0));
                         self.status = ui::t!("最上行を固定しました").into();
                     }
                     "最初の列の固定" => {
+                        self.split = None;
                         self.frozen = Some(Pos::new(0, 1));
                         self.status = ui::t!("最初の列を固定しました").into();
                     }
@@ -635,6 +637,8 @@ impl Calc {
                         if self.cursor.row == 0 && self.cursor.col == 0 {
                             self.status = ui::t!("固定する位置にカーソルを置いてください(その上と左が留まります)").into();
                         } else {
+                            // 固定と分割は同時に立てません(帯が二重になります)
+                            self.split = None;
                             self.frozen = Some(self.cursor);
                             self.status = ui::tf!("{}行 {}列を固定しました", self.cursor.row, self.cursor.col).into();
                         }

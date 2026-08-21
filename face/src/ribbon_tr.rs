@@ -376,6 +376,7 @@ pub const CALC: &[Tab] = &[
         c("ui-smaller", "Ekran yazısını küçült", "ui-smaller"),
         t("darkmode", "Karanlık mod", "theme"),
         c("freeze", "Parçaları Dondur", "freeze"),
+        t("split", "Pencereyi böl", "split"),
         t("formula-bar", "Formül çubuğu", "formula-bar"),
         c("show-gridlines", "Gridlines", "show-gridlines"),
         t("show-headings", "Başlıklar", "show-headings"),

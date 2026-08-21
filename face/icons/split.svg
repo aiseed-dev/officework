@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" fill="none" id="btn-split">
+    <rect x="4.5" y="5.5" width="19" height="17" rx="1.5" class="icon-stroke-gray-primary"/>
+    <path d="M4.5 14h19" class="icon-stroke-blue" stroke-width="2"/>
+    <path d="M14 5.5v17" class="icon-stroke-blue" stroke-width="2"/>
+</svg>

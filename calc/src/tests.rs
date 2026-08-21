@@ -7,10 +7,10 @@ mod freeze_tests {
     #[test]
     fn 固定した行は窓が動いても頭に残る() {
         // 見出し行(0)を固定して、窓が10行目に居ても 0 行目が出る
-        let rows = grid_rows(Some(Pos::new(1, 1)), Pos::new(10, 5), 5);
+        let rows = grid_rows(Some((1, 0)), Pos::new(10, 5), 5);
         assert_eq!(rows[0], 0, "固定した見出しが消えた: {rows:?}");
         assert_eq!(rows[1], 10, "続きが窓から始まっていない: {rows:?}");
-        let cols = grid_cols(Some(Pos::new(1, 1)), Pos::new(10, 5), 4);
+        let cols = grid_cols(Some((1, 0)), Pos::new(10, 5), 4);
         assert_eq!(cols, vec![0, 5, 6, 7], "{cols:?}");
     }
 
@@ -22,10 +22,20 @@ mod freeze_tests {
     #[test]
     fn 窓が固定の中に居ても重複しない() {
         // 窓が先頭にあるとき、固定行と窓の行が二重に出ない
-        let rows = grid_rows(Some(Pos::new(2, 0)), Pos::new(0, 0), 5);
+        let rows = grid_rows(Some((2, 0)), Pos::new(0, 0), 5);
         let mut sorted = rows.clone();
         sorted.dedup();
         assert_eq!(rows.len(), sorted.len(), "行が二重に出た: {rows:?}");
+    }
+
+    #[test]
+    fn 分割の帯は動かせて重なってもよい() {
+        // 帯は 5 行目から 2 行(5, 6)。下は 20 行目から
+        let rows = grid_rows(Some((2, 5)), Pos::new(20, 0), 5);
+        assert_eq!(rows, vec![5, 6, 20, 21, 22], "{rows:?}");
+        // 下を上へ戻すと同じ行が二度出る — 見比べるための形なので、これでよい
+        let rows = grid_rows(Some((2, 5)), Pos::new(5, 0), 4);
+        assert_eq!(rows, vec![5, 6, 5, 6], "{rows:?}");
     }
 
     #[gpui::test]
@@ -2778,6 +2788,52 @@ mod recalc_tests {
             this.run_cmd("merge", cx);
             this.apply_pick("結合の解除", cx);
             assert_eq!(this.sheet().merges.len(), 2, "解除で消えない");
+        });
+    }
+
+    /// **ウィンドウの分割**(2026-08-21 の D群)。
+    ///
+    /// 固定と同時には立ちません。帯が二重になって、どちらの線か分からなく
+    /// なるためです。
+    #[gpui::test]
+    fn 分割は固定と入れ替わる(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            // 画面の左上そのものでは分けようがない
+            this.cursor = Pos::new(0, 0);
+            this.view = Pos::new(0, 0);
+            this.run_cmd("split", cx);
+            assert!(this.split.is_none());
+            assert!(this.status.contains("分ける場所"), "{}", this.status);
+
+            // 先に固定しておく
+            this.frozen = Some(Pos::new(1, 0));
+            this.cursor = Pos::new(6, 1);
+            this.run_cmd("split", cx);
+            assert_eq!(this.split, Some(Pos::new(6, 1)), "分割の帯が違う");
+            assert!(this.frozen.is_none(), "固定が残っている");
+            assert_eq!(this.split_view, Pos::new(0, 0), "帯の先頭が違う");
+            assert_eq!(this.view, Pos::new(6, 1), "下の窓がカーソルから始まっていない");
+            assert!(this.入っているか("split"), "押された形にならない");
+            // 帯は上の帯を返す(固定ではなく分割)
+            assert_eq!(this.上の帯(), Some((6, 0)));
+            assert_eq!(this.左の帯(), Some((1, 0)));
+
+            // 逆向き。固定を入れると分割が外れる
+            this.pick_kind = "freeze";
+            this.cursor = Pos::new(3, 2);
+            this.apply_pick("いまの位置で固定(上と左が留まる)", cx);
+            assert!(this.split.is_none(), "分割が残っている");
+            assert_eq!(this.frozen, Some(Pos::new(3, 2)));
+
+            // もう一度押すと分割をやめる
+            this.cursor = Pos::new(6, 1);
+            this.view = Pos::new(0, 0);
+            this.run_cmd("split", cx);
+            assert!(this.split.is_some());
+            this.run_cmd("split", cx);
+            assert!(this.split.is_none(), "やめられない");
+            assert!(this.status.contains("やめました"), "{}", this.status);
         });
     }
 

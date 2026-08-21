@@ -99,7 +99,7 @@ impl Calc {
         "fill-num", "freeze", "show-formulas", "show-gridlines",
         "fn-math", "fn-text", "fn-logical", "fn-recent",
         "sum", "average", "count", "max", "min",
-        "data-validation", "dv-mark", "condformat", "defname",
+        "data-validation", "dv-mark", "condformat", "defname", "split",
         "pageorient", "pagesize", "pagemargins", "printarea",
         "inschart", "insimage", "inshyperlink", "replace",
         "changecase", "format", "cell-format", "fontname", "fontsize",
@@ -3671,6 +3671,35 @@ impl Calc {
                 );
                 self.pick_kind = "names-pick";
                 self.pick = Some((items, at));
+            }
+            // ウィンドウの分割。固定と似ていますが、**上と左の帯も動きます** —
+            // 離れた2か所を並べて見比べるための操作です。カーソルの左上で
+            // 分かれるのは Excel と同じ。もう一度押すと元に戻ります
+            "split" => {
+                if self.split.is_some() {
+                    self.split = None;
+                    self.status = ui::t!("分割をやめました").into();
+                } else {
+                    let r = self.cursor.row.saturating_sub(self.view.row);
+                    let c = self.cursor.col.saturating_sub(self.view.col);
+                    if r == 0 && c == 0 {
+                        // 画面の左上そのものでは、分ける場所がありません
+                        self.status = ui::t!(
+                            "分ける場所にカーソルを置いてください(カーソルの上と左で分かれます)"
+                        )
+                        .into();
+                    } else {
+                        // 固定と分割は同時に立てません(帯が二重になります)
+                        self.frozen = None;
+                        self.split = Some(Pos::new(r, c));
+                        self.split_view = self.view;
+                        self.view = self.cursor;
+                        self.status = ui::t!(
+                            "分割しました(下と右はホイールで、上と左はその上でホイールを回すと動きます)"
+                        )
+                        .into();
+                    }
+                }
             }
             // ウィンドウ枠の固定。本家はドロップダウンで「最上行」「最初の列」を
             // 個別に選べる — トグルだけの形をやめ、一覧から選ぶ

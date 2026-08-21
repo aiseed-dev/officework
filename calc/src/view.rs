@@ -2806,6 +2806,20 @@ impl Render for Calc {
         // 位置にひかえめな緑の線+薄い影、影なし=灰色の線だけ
         let freeze_shadow: Vec<gpui::AnyElement> = {
             let mut bands = Vec::new();
+            // 分割の仕切り。固定の線より太い灰色の帯にして、**動かせる境目**と
+            // 留まっている境目を見分けられるようにする
+            {
+                let (上, 左, _) = self.分割の境目();
+                let 仕切り = rgb(0x9AA5AE);
+                if let Some(y) = 上 {
+                    bands.push(div().absolute().left(px(0.0)).top(px(y - 2.0))
+                        .w_full().h(px(4.0)).bg(仕切り).into_any_element());
+                }
+                if let Some(x) = 左 {
+                    bands.push(div().absolute().left(px(x - 2.0)).top(px(0.0))
+                        .w(px(4.0)).h_full().bg(仕切り).into_any_element());
+                }
+            }
             if let Some(f) = self.frozen {
                 let c0 = self.visible_cols().first().copied().unwrap_or(0);
                 let r0 = self.visible_rows().first().copied().unwrap_or(0);
@@ -5254,8 +5268,22 @@ impl Render for Calc {
                        this.wheel.0 -= dr as f32;
                        this.wheel.1 -= dc as f32;
                        if dr != 0 || dc != 0 {
-                           this.view.row = (this.view.row as i32 + dr).clamp(0, 9999) as u32;
-                           this.view.col = (this.view.col as i32 + dc).clamp(0, 255) as u32;
+                           // 分割しているときは、**指している側**を動かす。
+                           // 上の帯の上でホイールを回せば上の帯が動く(Excel と同じ)
+                           let (上, 左, 右寄せ) = this.分割の境目();
+                           let (mx, my) = {
+                               let (bx, by, _, _) = this.pane_box.get();
+                               (f32::from(e.position.x) - bx, f32::from(e.position.y) - by)
+                           };
+                           let 帯の上 = 上.is_some_and(|y| my < y)
+                               || 左.is_some_and(|x| if 右寄せ { mx > x } else { mx < x });
+                           let 先 = if 帯の上 {
+                               &mut this.split_view
+                           } else {
+                               &mut this.view
+                           };
+                           先.row = (先.row as i32 + dr).clamp(0, 9999) as u32;
+                           先.col = (先.col as i32 + dc).clamp(0, 255) as u32;
                            cx.notify();
                        }
                    }))

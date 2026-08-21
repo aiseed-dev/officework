@@ -83,6 +83,8 @@ impl Calc {
             "show-right" => self.right_open,
             // 印が付いている間は押された形(2026-08-21 の D群)
             "dv-mark" => !self.dv_marks.is_empty(),
+            // 分割している間は押された形(2026-08-21 の D群)
+            "split" => self.split.is_some(),
             "darkmode" => self.dark,
             _ => false,
         }
@@ -242,6 +244,8 @@ impl Calc {
             view: Pos::new(0, 0),
             frozen: None,
             freeze_shadow: false,
+            split: None,
+            split_view: Pos::new(0, 0),
             auto_filter: None,
             filter_panel: None,
             dv_dlg: None,
@@ -1009,6 +1013,23 @@ impl Calc {
         self.cols_fit_in(self.view_w_px - HEAD_W - 24.0)
     }
 
+    /// 画面の上の帯 — (行数, 先頭行)。分割していればそちら、していなければ固定。
+    /// **両方は同時に立ちません**(片方を入れるともう片方を外します)
+    pub(crate) fn 上の帯(&self) -> Option<(u32, u32)> {
+        match self.split {
+            Some(s) => Some((s.row, self.split_view.row)),
+            None => self.frozen.map(|f| (f.row, 0)),
+        }
+    }
+
+    /// 画面の左の帯 — (列数, 先頭列)。上の帯と同じ役割です。
+    pub(crate) fn 左の帯(&self) -> Option<(u32, u32)> {
+        match self.split {
+            Some(s) => Some((s.col, self.split_view.col)),
+            None => self.frozen.map(|f| (f.col, 0)),
+        }
+    }
+
     pub(crate) fn visible_rows(&self) -> Vec<u32> {
         let hidden = &self.sheet().row_hidden;
         let fit = self.rows_fit();
@@ -1033,7 +1054,7 @@ impl Calc {
         } else {
             // 畳んだ行のぶん多めに見て、画面の行数まで詰める
             let extra = hidden.len() as u32;
-            grid_rows(self.frozen, self.view, fit + extra)
+            grid_rows(self.上の帯(), self.view, fit + extra)
                 .into_iter()
                 .filter(|r| !hidden.contains(r))
                 .take(fit as usize)
@@ -1046,7 +1067,7 @@ impl Calc {
         let hidden = &self.sheet().col_hidden;
         let extra = hidden.len() as u32;
         let fit = self.cols_fit();
-        let mut v: Vec<u32> = grid_cols(self.frozen, self.view, fit + extra)
+        let mut v: Vec<u32> = grid_cols(self.左の帯(), self.view, fit + extra)
             .into_iter()
             .filter(|c| !hidden.contains(c))
             .take(fit as usize)
@@ -1781,6 +1802,30 @@ impl Calc {
         let a = self.merge_of(a).map(|(ma, _)| ma).unwrap_or(a);
         let b = self.merge_of(b).map(|(_, mb)| mb).unwrap_or(b);
         (a, b)
+    }
+
+    /// 分割の仕切りの位置 — (上の帯の下端 y, 帯どうしの境目 x, 帯が右か)。
+    /// 格子の面の左上からの px です。分割していなければどちらも None。
+    ///
+    /// `range_px` は使いません。分割では**同じ行が二度出ることがある**ので、
+    /// 行番号で引くと最初の1つを拾ってしまい、線が別の場所に出ます。
+    /// ここは並びの何番目かで数えます。
+    ///
+    /// 右から左のシートは列の並びが逆になるので、帯は右側に来ます。
+    pub(crate) fn 分割の境目(&self) -> (Option<f32>, Option<f32>, bool) {
+        let Some(sp) = self.split else { return (None, None, false) };
+        let rtl = self.sheet().rtl;
+        let y = (sp.row > 0).then(|| {
+            let rows = self.visible_rows();
+            ROW_H + rows.iter().take(sp.row as usize).map(|&r| self.row_px(r)).sum::<f32>()
+        });
+        let x = (sp.col > 0).then(|| {
+            let cols = self.visible_cols();
+            let 手前 = if rtl { cols.len().saturating_sub(sp.col as usize) } else { 0 };
+            let n = if rtl { 手前 } else { sp.col as usize };
+            HEAD_W + cols.iter().take(n).map(|&c| self.col_px(c)).sum::<f32>()
+        });
+        (y, x, rtl)
     }
 
     pub(crate) fn range_px(&self, a: Pos, b: Pos) -> Option<(f32, f32, f32, f32)> {
