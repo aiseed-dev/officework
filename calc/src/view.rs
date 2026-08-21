@@ -4070,11 +4070,10 @@ impl Render for Calc {
             let hidden = &self.sheet().row_hidden;
             let src: Vec<(String, bool)> = (1..rows)
                 .map(|r| {
-                    let v = self
-                        .sheet()
-                        .get(Pos::new(r, col))
-                        .map(|c| c.value.display())
-                        .unwrap_or_default();
+                    // **粒(月・四半期・年)を通した呼び名。** 並べる札と
+                    // 絞る判定が同じ物を見るように、1本にまとめてあります
+                    let v = self.slicer_value(sl, r);
+                    let v = if v == ui::t!("(空白)") { String::new() } else { v };
                     let others = self
                         .slicers
                         .iter()
@@ -4412,6 +4411,23 @@ impl Render for Calc {
                         this.status = ui::t!("位置を自動(右から順)に戻しました").into();
                         cx.notify();
                     })));
+                // **日付の単位**(タイムライン。2026-08-22 の D群)。
+                // 日付の列を月・四半期・年の束にまとめて並べます
+                let 粒 = self.slicers.get(si).map(|x| x.grain.clone()).unwrap_or_default();
+                let 粒札 = crate::util::slicer_grain_label(&粒);
+                p = p.child(div().flex().flex_row().items_center().gap_1()
+                    .child(lab(ui::t!("日付の単位").to_string()))
+                    .child(div().id("sl-grain")
+                        .px_2().py_0p5().rounded_sm().border_1().border_color(rgb(0xC6CDD3))
+                        .bg(rgb(0xFFFFFF)).cursor_pointer().text_size(px(us * 12.0))
+                        .hover(|s| s.bg(rgb(0xEAF5EE)))
+                        .child(SharedString::from(粒札))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            this.slicer_sel = si;
+                            this.slicer_cycle_grain(cx);
+                            cx.notify();
+                        }))));
                 // **レポートの接続**(2026-08-21 の D群)。つないだピボットは
                 // このスライサーを押すたびに同じ絞りで作り直します
                 let 繋ぎ数 = self.slicers.get(si).map(|x| x.pivots.len()).unwrap_or(0);

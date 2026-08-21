@@ -1939,6 +1939,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("絞り込みは掛かっていません", "Chưa áp dụng bộ lọc nào"),
     ("トレースの矢印は出ていません", "Không có mũi tên dò nào đang hiện"),
     ("バイナリ", "Nhị phân"),
+    ("値そのもので並べます(絞りは解きました)", "Liệt kê chính các giá trị (đã bỏ lọc)"),
+    ("日付を{}でまとめて並べます(絞りは解きました)", "Gộp ngày theo {} (đã bỏ lọc)"),
+    ("日付ではありません", "Không phải ngày"),
+    ("値そのもの", "Chính các giá trị"),
+    ("日付の単位", "Đơn vị ngày"),
     ("PDF から表を探しています…", "Đang tìm bảng trong PDF…"),
     ("PDF を読む道具(pdfplumber)がありません。次で入ります:
   {}", "Thiếu công cụ đọc PDF (pdfplumber). Cài bằng:\n  {}"),

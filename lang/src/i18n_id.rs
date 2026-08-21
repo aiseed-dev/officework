@@ -1939,6 +1939,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("絞り込みは掛かっていません", "Tidak ada filter yang diterapkan"),
     ("トレースの矢印は出ていません", "Tidak ada panah pelacak yang tampil"),
     ("バイナリ", "Biner"),
+    ("値そのもので並べます(絞りは解きました)", "Menampilkan nilainya sendiri (saringan dilepas)"),
+    ("日付を{}でまとめて並べます(絞りは解きました)", "Mengelompokkan tanggal menurut {} (saringan dilepas)"),
+    ("日付ではありません", "Bukan tanggal"),
+    ("値そのもの", "Nilainya sendiri"),
+    ("日付の単位", "Satuan tanggal"),
     ("PDF から表を探しています…", "Mencari tabel di PDF…"),
     ("PDF を読む道具(pdfplumber)がありません。次で入ります:
   {}", "Alat untuk membaca PDF (pdfplumber) tidak ada. Pasang dengan:\n  {}"),

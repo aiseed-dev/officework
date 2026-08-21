@@ -2655,6 +2655,7 @@ impl Calc {
         }
         let col = sl.col;
         let sel = sl.sel.clone();
+        let grain = sl.grain.clone();
         let names = sl.pivots.clone();
         let 見出し = self
             .sheet()
@@ -2689,6 +2690,8 @@ impl Calc {
             }) else {
                 continue;
             };
+            // ピボットの絞りは**生の値**で持ちます。粒(月・四半期・年)で
+            // まとめているときは、選んだ束に入らない生の値を全部隠します
             let mut すべて: Vec<String> = (a.row + 1..=b.row)
                 .map(|r| match sh.get(Pos::new(r, c2)).map(|x| x.value.display()) {
                     Some(v) if !v.is_empty() => v,
@@ -2699,8 +2702,20 @@ impl Calc {
             すべて.dedup();
             let 隠す: Vec<String> = if sel.is_empty() {
                 Vec::new()
-            } else {
+            } else if grain.is_empty() {
                 すべて.into_iter().filter(|v| !sel.contains(v)).collect()
+            } else {
+                let d1904 = self.book.date1904;
+                すべて
+                    .into_iter()
+                    .filter(|v| {
+                        let n = v.parse::<f64>().ok();
+                        match crate::util::date_bucket(n, v, &grain, d1904) {
+                            Some(b) => !sel.contains(&b),
+                            None => true, // 日付として読めない行は隠す
+                        }
+                    })
+                    .collect()
             };
             let d = &mut self.book.pivots[pi];
             d.hide.retain(|(f, _)| *f != 見出し);
@@ -2714,6 +2729,31 @@ impl Calc {
         if 押した > 0 {
             self.status = ui::tf!("つないだピボット {} 枚も同じ絞りにしました", 押した).into();
         }
+    }
+
+    /// **日付の単位を次のものへ回す**(タイムライン)。
+    ///
+    /// 粒が変わると札の意味が変わるので、**選びは捨てます** — 「2026-08」を
+    /// 選んだまま年に切り替えると、どの札にも当たらず全部消えます。
+    pub(crate) fn slicer_cycle_grain(&mut self, cx: &mut Context<Self>) {
+        // 順繰り: 値そのもの → 月 → 四半期 → 年 → 値そのもの
+        let grains = crate::util::slicer_grains();
+        let Some(sl) = self.slicers.get_mut(self.slicer_sel) else { return };
+        let 次 = match grains.iter().position(|(k, _)| *k == sl.grain) {
+            Some(i) if i + 1 < grains.len() => grains[i + 1].0,
+            Some(_) => "",
+            None => grains[0].0,
+        };
+        let k = 次;
+        sl.grain = k.to_string();
+        sl.sel.clear();
+        let 粒 = crate::util::slicer_grain_label(k);
+        self.status = if k.is_empty() {
+            ui::t!("値そのもので並べます(絞りは解きました)").into()
+        } else {
+            ui::tf!("日付を{}でまとめて並べます(絞りは解きました)", 粒).into()
+        };
+        self.slicer_push_to_pivots(self.slicer_sel, cx);
     }
 
     /// **レポートの接続** — このスライサーをどのピボットにつなぐかを選ぶ一覧。

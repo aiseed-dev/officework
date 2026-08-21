@@ -772,18 +772,43 @@ impl Calc {
         self.slicers.iter().all(|sl| self.slicer_keeps_one(sl, r))
     }
 
-    /// 板1枚ぶんの判定([`Self::slicer_keeps`] の中身)
+    /// スライサー1枚ぶんの判定([`Self::slicer_keeps`] の中身)
     pub(crate) fn slicer_keeps_one(&self, sl: &Slicer, r: u32) -> bool {
         if sl.sel.is_empty() {
             return true;
         }
-        let v = self
-            .sheet()
-            .get(Pos::new(r, sl.col))
-            .map(|c| c.value.display())
-            .unwrap_or_default();
-        let v = if v.is_empty() { ui::t!("(空白)").to_string() } else { v };
-        sl.sel.contains(&v)
+        sl.sel.contains(&self.slicer_value(sl, r))
+    }
+
+    /// **そのスライサーがこの行をどう呼ぶか。**
+    ///
+    /// 粒(月・四半期・年)が入っていれば束の札、入っていなければ値そのものです。
+    /// 並べるとき・絞るとき・ピボットへ押し出すときの**3か所ともここを通します** —
+    /// 別々に書くと、並んでいる札を押しても何も絞られない、が起きます。
+    pub(crate) fn slicer_value(&self, sl: &Slicer, r: u32) -> String {
+        let cell = self.sheet().get(Pos::new(r, sl.col));
+        let text = cell.map(|c| c.value.display()).unwrap_or_default();
+        // **空は粒に関わらず「空白」。** ピボットを右に置くとシートの広さが
+        // そちらまで伸びるので、日付の列の下に空の行ができます。これを
+        // 「日付ではありません」の束にすると、実際には無い札が並びます
+        // (2026-08-22 実機で見た)
+        if text.trim().is_empty() {
+            return ui::t!("(空白)").to_string();
+        }
+        if !sl.grain.is_empty() {
+            let serial = cell.and_then(|c| match &c.value {
+                sheet::Value::Number(n) => Some(*n),
+                _ => None,
+            });
+            if let Some(b) =
+                crate::util::date_bucket(serial, &text, &sl.grain, self.book.date1904)
+            {
+                return b;
+            }
+            // 日付として読めない行。**どこかの束へ勝手に入れません**
+            return ui::t!("日付ではありません").to_string();
+        }
+        if text.is_empty() { ui::t!("(空白)").to_string() } else { text }
     }
 
     // ---- Alt のキーヒント(2026-08-13、台帳「Alt キーヒント」)----

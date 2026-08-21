@@ -1939,6 +1939,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("絞り込みは掛かっていません", "Uygulanmış bir filtre yok"),
     ("トレースの矢印は出ていません", "Görünen izleme oku yok"),
     ("バイナリ", "İkili"),
+    ("値そのもので並べます(絞りは解きました)", "Değerlerin kendisi listeleniyor (süzgeç kaldırıldı)"),
+    ("日付を{}でまとめて並べます(絞りは解きました)", "Tarihler {} olarak gruplanıyor (süzgeç kaldırıldı)"),
+    ("日付ではありません", "Tarih değil"),
+    ("値そのもの", "Değerlerin kendisi"),
+    ("日付の単位", "Tarih birimi"),
     ("PDF から表を探しています…", "PDF'te tablo aranıyor…"),
     ("PDF を読む道具(pdfplumber)がありません。次で入ります:
   {}", "PDF okuyan araç (pdfplumber) yok. Şununla kurulur:\n  {}"),

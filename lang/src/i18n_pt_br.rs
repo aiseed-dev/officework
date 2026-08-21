@@ -1939,6 +1939,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("絞り込みは掛かっていません", "Não há nenhum filtro aplicado"),
     ("トレースの矢印は出ていません", "Não estão sendo mostradas setas de rastreamento"),
     ("バイナリ", "Binário"),
+    ("値そのもので並べます(絞りは解きました)", "Listando os próprios valores (o filtro foi removido)"),
+    ("日付を{}でまとめて並べます(絞りは解きました)", "Agrupando as datas por {} (o filtro foi removido)"),
+    ("日付ではありません", "Não é uma data"),
+    ("値そのもの", "Os próprios valores"),
+    ("日付の単位", "Unidade de data"),
     ("PDF から表を探しています…", "Procurando tabelas no PDF…"),
     ("PDF を読む道具(pdfplumber)がありません。次で入ります:
   {}", "Falta a ferramenta que lê PDF (pdfplumber). Instale-a com:\n  {}"),

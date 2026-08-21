@@ -27,10 +27,12 @@ mod run;
 // 呼ぶ側に知らせない — 置き場を変えても `sheet::calc::…` は変わらない
 pub use funcs::date_serial;
 pub use funcs::{date_serial_at, excel_epoch};
+// 日付の粒でまとめる(タイムライン)に要る。通し番号 → 年月日
+pub use funcs::civil_from_days;
 // crate の中だけで使う物は、外へは出さない(割る前と同じ見え方)。
 // EXCEL_EPOCH_DAYS は 1904 対応(6acc71a)で excel_epoch(date1904) に
 // 置き換わり、再輸出の使い手が消えた
-pub(crate) use funcs::{civil_from_days, era_of, weekday0};
+pub(crate) use funcs::{era_of, weekday0};
 pub use parse::cell_filename;
 pub use run::{
     deps, eval_in, eval_once, eval_py_call, is_py_formula, is_udf_name, py_cell_stamp, recalc, recalc_all,

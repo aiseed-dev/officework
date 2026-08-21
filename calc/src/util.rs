@@ -722,6 +722,69 @@ pub(crate) fn pivot_aggs() -> Vec<(&'static str, &'static str)> {
 }
 
 
+/// **日付の粒でまとめたときの札**(タイムライン。2026-08-22 の D群)。
+///
+/// `serial` は通し番号(セルが数のとき)、`text` は画面に出ている字です。
+/// どちらからも日付が読めなければ `None` を返します。**日付でない行を
+/// 勝手にどこかの束へ入れません** — 入れると、無関係な行が一緒に消えます。
+///
+/// 札の形はピボットの日付のグループ化(`PIVOT_PY`)と揃えてあります。
+/// 揃っていないと、同じ月を指しているのに別の字になります。
+pub(crate) fn date_bucket(
+    serial: Option<f64>,
+    text: &str,
+    grain: &str,
+    date1904: bool,
+) -> Option<String> {
+    if grain.is_empty() {
+        return None;
+    }
+    let (y, m, _d) = match serial {
+        // 通し番号。1 未満は時刻だけの値なので日付として扱わない
+        Some(n) if n >= 1.0 => {
+            let ep = sheet::calc::excel_epoch(date1904);
+            let (y, m, d) = sheet::calc::civil_from_days(n.floor() as i64 - ep);
+            (y, m, d)
+        }
+        _ => {
+            let t = text.trim();
+            let sep = if t.contains('-') { '-' } else { '/' };
+            let mut it = t.split(sep);
+            let y: i64 = it.next()?.trim().parse().ok()?;
+            let m: i64 = it.next()?.trim().parse().ok()?;
+            let d: i64 = it.next().unwrap_or("1").trim().parse().unwrap_or(1);
+            if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
+                return None;
+            }
+            (y, m, d)
+        }
+    };
+    Some(match grain {
+        "年" => format!("{y}年"),
+        "四半期" => format!("{}年Q{}", y, (m + 2) / 3),
+        // 月は `2026-08`。ピボットの %Y-%m と同じ
+        _ => format!("{y}-{m:02}"),
+    })
+}
+
+/// 日付の粒の選択肢。**空(値そのもの)はここに入れません** —
+/// 鍵と見出しが違う組は `ui::item!` に載らないので、呼ぶ側で別に書きます
+pub(crate) fn slicer_grains() -> Vec<(&'static str, &'static str)> {
+    vec![ui::item!("月"), ui::item!("四半期"), ui::item!("年")]
+}
+
+/// 粒の見出し。空なら「値そのもの」
+pub(crate) fn slicer_grain_label(grain: &str) -> String {
+    if grain.is_empty() {
+        return ui::t!("値そのもの").to_string();
+    }
+    slicer_grains()
+        .iter()
+        .find(|(k, _)| *k == grain)
+        .map(|(_, l)| ui::tr(l).to_string())
+        .unwrap_or_else(|| grain.to_string())
+}
+
 /// おすすめのピボットの1つ。
 ///
 /// **こちらから作りはしません。** 候補を並べて、人が選んで、人が押します
@@ -1849,6 +1912,9 @@ pub(crate) struct Slicer {
     pub(crate) style: usize,
     /// 置き場所(格子の面の px の左上)。`None` = 右から順に自動で並べる
     pub(crate) at: Option<(f32, f32)>,
+    /// **日付の粒**(タイムライン。2026-08-22 の D群)。空 = 値そのもの。
+    /// 「月」「四半期」「年」を入れると、日付の列を束にまとめて並べます
+    pub(crate) grain: String,
     /// **つないだピボットの名前**(レポートの接続。2026-08-21 の D群)。
     /// 空 = どのピボットにも繋がっていません。繋いだピボットは、この
     /// スライサーを押すたびに同じ絞りで作り直します
@@ -1871,6 +1937,7 @@ impl Default for Slicer {
             w: SLICER_W,
             h: SLICER_H,
             ratio: false,
+            grain: String::new(),
             pivots: Vec::new(),
             cols: 1,
             style: 0,

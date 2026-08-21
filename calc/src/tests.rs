@@ -2796,6 +2796,72 @@ mod recalc_tests {
         });
     }
 
+    /// **日付の粒**(タイムライン。2026-08-22 の D群)。
+    ///
+    /// 札はピボットの日付のグループ化と同じ形にします。揃っていないと、
+    /// 同じ月を指しているのに別の字になります。
+    #[test]
+    fn 日付の束はピボットと同じ札になる() {
+        use crate::util::date_bucket;
+        // 通し番号(1899-12-30 起点)。2026-08-22 は 46256
+        let n = Some(46256.0);
+        assert_eq!(date_bucket(n, "", "年", false).as_deref(), Some("2026年"));
+        assert_eq!(date_bucket(n, "", "四半期", false).as_deref(), Some("2026年Q3"));
+        assert_eq!(date_bucket(n, "", "月", false).as_deref(), Some("2026-08"));
+        // 字からも読む(- でも / でも)
+        assert_eq!(date_bucket(None, "2026-01-05", "四半期", false).as_deref(), Some("2026年Q1"));
+        assert_eq!(date_bucket(None, "2026/12/31", "四半期", false).as_deref(), Some("2026年Q4"));
+        assert_eq!(date_bucket(None, "2026/3", "月", false).as_deref(), Some("2026-03"));
+        // 日付でない物はどの束にも入れない
+        assert_eq!(date_bucket(None, "筆記具", "月", false), None);
+        assert_eq!(date_bucket(None, "2026-13-01", "月", false), None, "13月を通した");
+        assert_eq!(date_bucket(Some(0.5), "", "月", false), None, "時刻だけを日付にした");
+        // 粒が空なら束にしない
+        assert_eq!(date_bucket(n, "", "", false), None);
+    }
+
+    /// **タイムライン**(2026-08-22 の D群)。日付の列を束で絞る。
+    #[gpui::test]
+    fn 日付の粒で絞ると束ごと消える(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (a1, v) in [
+                ("A1", "日付"), ("B1", "金額"),
+                ("A2", "2026-07-05"), ("B2", "100"),
+                ("A3", "2026-08-10"), ("B3", "200"),
+                ("A4", "2026-08-20"), ("B4", "300"),
+                ("A5", "筆記具"), ("B5", "400"),
+            ] {
+                this.cursor = Pos::parse(a1).unwrap();
+                this.sync_input();
+                this.input.insert(v);
+                assert!(this.commit());
+            }
+            this.slicers.push(crate::util::Slicer { col: 0, ..Default::default() });
+            this.slicer_sel = 0;
+            // 粒を「月」へ(値そのもの → 月)
+            this.slicer_cycle_grain(cx);
+            assert_eq!(this.slicers[0].grain, "月");
+            assert_eq!(this.slicer_value(&this.slicers[0], 2), "2026-08");
+            assert_eq!(this.slicer_value(&this.slicers[0], 1), "2026-07");
+            // 日付でない行は、どの束にも入れない
+            assert_eq!(this.slicer_value(&this.slicers[0], 4), "日付ではありません");
+
+            // 2026-08 を選ぶと 8月の2行だけ残る
+            this.slicers[0].sel.insert("2026-08".into());
+            assert!(!this.slicer_keeps_one(&this.slicers[0], 1), "7月が残った");
+            assert!(this.slicer_keeps_one(&this.slicers[0], 2), "8月が消えた");
+            assert!(this.slicer_keeps_one(&this.slicers[0], 3), "8月が消えた");
+            assert!(!this.slicer_keeps_one(&this.slicers[0], 4), "日付でない行が残った");
+
+            // 粒を変えると**選びは捨てる**(札の意味が変わるため)
+            this.slicer_cycle_grain(cx);
+            assert_eq!(this.slicers[0].grain, "四半期");
+            assert!(this.slicers[0].sel.is_empty(), "古い選びが残った");
+            assert_eq!(this.slicer_value(&this.slicers[0], 1), "2026年Q3");
+        });
+    }
+
     /// **PDF の取り込みのパネル**(2026-08-21 の D群)。
     ///
     /// 推し量って取った表を、正確に取れた表と同じ顔で出さないことを見ます。
