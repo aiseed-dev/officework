@@ -3,20 +3,27 @@
 
 // 排他ロック・署名の鍵・16進は ops(calc と writer で1本。2026-08-12 段A)。
 // 訳の要る文言だけ、ここで包む(calc 側と同文 — ずれてよいのは言葉だけ)
-pub(crate) use ops::{lock_identity, lock_path_for, sig_path_for, to_hex, unhex};
+// 16進と .sig の道の組み立ては、署名の中身ごと ops へ移りました
+// (2026-08-21)。ここから使う物だけ残します
+pub(crate) use ops::{lock_identity, lock_path_for};
 
 /// 先客のロックを読む(あれば名乗りを返す)。自分自身のロックは先客と見ない。
 pub(crate) fn foreign_lock(p: &std::path::Path) -> Option<String> {
     ops::foreign_lock(p, ui::t!("誰か"))
 }
 
-/// 署名の鍵を読む。無ければ作る(本体は ops — ここは文言の包み)
-pub(crate) fn load_or_make_key() -> Result<ed25519_dalek::SigningKey, String> {
-    ops::load_or_make_key().map_err(|e| match e {
+/// 鍵が用意できなかった理由を、その言語の文で言う(本体は ops)。
+///
+/// **鍵を読む所そのものは ops の1本**です(2026-08-21 に署名の中身も
+/// そちらへ移しました)。ここに残るのは訳の要る文言だけで、置き場を
+/// アプリ側にするのは、訳の走査が `calc/src` `writer/src` `ui/src` しか
+/// 見ないからです。
+pub(crate) fn key_err_msg(e: ops::KeyErr) -> String {
+    match e {
         ops::KeyErr::Corrupt => ui::t!("鍵ファイルが壊れています(~/.config/officework/sign.key)").to_string(),
         ops::KeyErr::NoRandom(e) => ui::tf!("乱数が取れません: {}", e).to_string(),
         ops::KeyErr::CantStore(e) => ui::tf!("鍵が置けません: {}", e).to_string(),
-    })
+    }
 }
 
 /// 小さな HTTP(http と https。公開 Web も見える — 発注者 2026-08-04)。

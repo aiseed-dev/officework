@@ -1826,6 +1826,76 @@ pub fn load_or_make_key() -> Result<ed25519_dalek::SigningKey, KeyErr> {
     Ok(ed25519_dalek::SigningKey::from_bytes(&seed))
 }
 
+/// 署名を検めた/添えた結果。**文言はここでは作らない**([`KeyErr`] と同じ型)
+#[derive(Debug)]
+pub enum Signed {
+    /// 既にある署名が有効だった。中身は署名した人の名乗り
+    Verified(String),
+    /// 署名して添えた。中身は添えたファイルの名前
+    Wrote(String),
+}
+
+/// 署名がうまくいかなかった理由。**文言はここでは作らない**
+#[derive(Debug)]
+pub enum SignErr {
+    /// 署名するファイルが読めない
+    Read(std::io::Error),
+    /// 添え書きが置けない
+    Write(std::io::Error),
+    /// 鍵が用意できない
+    Key(KeyErr),
+}
+
+/// **隣の `.sig` で署名する・検める。**
+///
+/// 押すたびにこの1本を通ります。既にある署名が有効なら検めた結果を返し、
+/// 無い・壊れている・中身が変わっているなら署名し直して添えます。
+///
+/// # なぜここにあるのか(2026-08-21)
+///
+/// 前は calc と writer が**同じ 40 行を別々に持って**いました。写しは
+/// ずれます — 実際、表の側だけ2つの文言が `ui::tf!` ではなく `format!` に
+/// なっていて、**14 言語で日本語がそのまま出て**いました。設計が
+/// `ai-where` で挙げたのと同じ形です。
+///
+/// 中身をここに1本にして、**文言だけをアプリに残しました**。文言を
+/// 残すのは、訳の走査(`ui/gen_i18n.py`)が `calc/src` `writer/src`
+/// `ui/src` しか見ないからです。ここに置くと生きている訳が
+/// 「使われていない」と数えられます。
+pub fn sign_or_verify(path: &std::path::Path) -> Result<Signed, SignErr> {
+    use ed25519_dalek::{Signer as _, Verifier as _};
+    let bytes = std::fs::read(path).map_err(SignErr::Read)?;
+    let sp = sig_path_for(path);
+    // 既にある署名を検める
+    if let Ok(txt) = std::fs::read_to_string(&sp) {
+        let field = |k: &str| -> Option<String> {
+            txt.lines().find(|l| l.starts_with(k)).map(|l| l[k.len()..].trim().to_string())
+        };
+        let ok = (|| -> Option<(String, bool)> {
+            let signer = field("signer:")?;
+            let vk: [u8; 32] = unhex(&field("pubkey:")?)?.try_into().ok()?;
+            let sg: [u8; 64] = unhex(&field("sig:")?)?.try_into().ok()?;
+            let vk = ed25519_dalek::VerifyingKey::from_bytes(&vk).ok()?;
+            let sig = ed25519_dalek::Signature::from_bytes(&sg);
+            Some((signer, vk.verify(&bytes, &sig).is_ok()))
+        })();
+        if let Some((signer, true)) = ok {
+            return Ok(Signed::Verified(signer));
+        }
+    }
+    // 無い・壊れている・中身が変わった → 署名し(直し)て添える
+    let key = load_or_make_key().map_err(SignErr::Key)?;
+    let sig = key.sign(&bytes);
+    let txt = format!(
+        "office-sign v1\nsigner: {}\npubkey: {}\nsig: {}\n",
+        lock_identity(),
+        to_hex(key.verifying_key().as_bytes()),
+        to_hex(&sig.to_bytes())
+    );
+    std::fs::write(&sp, txt).map_err(SignErr::Write)?;
+    Ok(Signed::Wrote(sp.file_name().unwrap_or_default().to_string_lossy().into_owned()))
+}
+
 /// 要求のシート(名前。省略はいまのシート)を添字に。
 fn sheet_index(h: &impl Host, o: &Jobj) -> Result<usize, String> {
     match o.str("sheet") {
@@ -1961,4 +2031,56 @@ pub fn listen(app: &'static str, queue: Queue) -> bool {
         }
     });
     true
+}
+
+#[cfg(test)]
+mod sign_tests {
+    use super::*;
+
+    /// 署名して、もう一度押したら検められること。**中身を書き替えたら
+    /// 検めが落ちる**ことも見る(落ちなければ署名の意味がありません)
+    #[test]
+    fn 署名してから検める() {
+        // 鍵の置き場は HOME の下。試験どうしがぶつからないよう別の家にする
+        let 家 = std::env::temp_dir().join(format!("ops-sign-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&家);
+        std::fs::create_dir_all(&家).unwrap();
+        let 元 = std::env::var_os("HOME");
+        unsafe { std::env::set_var("HOME", &家) };
+
+        let f = 家.join("報告書.adoc");
+        std::fs::write(&f, "= 報告書\n\n本文です。\n").unwrap();
+
+        // 1回目 — 署名を添える
+        match sign_or_verify(&f) {
+            Ok(Signed::Wrote(name)) => assert!(name.ends_with(".sig"), "添え書きの名前: {name}"),
+            他 => panic!("1回目は署名するはず: {他:?}"),
+        }
+        assert!(sig_path_for(&f).exists(), "隣に .sig が置かれる");
+
+        // 2回目 — 中身が同じなら検められる
+        match sign_or_verify(&f) {
+            Ok(Signed::Verified(who)) => assert_eq!(who, lock_identity()),
+            他 => panic!("2回目は検めるはず: {他:?}"),
+        }
+
+        // 中身を書き替えたら検めが落ち、署名し直す
+        std::fs::write(&f, "= 報告書\n\n書き替えました。\n").unwrap();
+        match sign_or_verify(&f) {
+            Ok(Signed::Wrote(_)) => {}
+            他 => panic!("中身が変わったら署名し直すはず: {他:?}"),
+        }
+
+        // 無いファイルは読めないと言う(黙って成功にしない)
+        match sign_or_verify(&家.join("ありません.adoc")) {
+            Err(SignErr::Read(_)) => {}
+            他 => panic!("読めないと言うはず: {他:?}"),
+        }
+
+        match 元 {
+            Some(v) => unsafe { std::env::set_var("HOME", v) },
+            None => unsafe { std::env::remove_var("HOME") },
+        }
+        let _ = std::fs::remove_dir_all(&家);
+    }
 }

@@ -220,6 +220,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("署名は有効です — {} が署名した時のままの中身です", "Chữ ký hợp lệ — nội dung không thay đổi kể từ khi {} ký"),
     ("署名しました — 隣の {} に添え書き(独自方式。\
                                      Word の署名欄には出ません。もう一度押すと検めます)", "Đã ký — ghi vào {} cạnh tệp (cách thức riêng; không hiện trong dòng chữ ký của Word. Nhấn lần nữa để kiểm chứng)"),
+    ("署名しました — 隣の {} に添え書き(独自方式。\
+                         Excel の署名欄には出ません。もう一度押すと検めます)", "Đã ký — ghi vào {} cạnh tệp (cách thức riêng; không hiện trong dòng chữ ký của Excel. Nhấn lần nữa để kiểm chứng)"),
     ("署名が置けません: {}", "Không ghi được chữ ký: {}"),
     ("署名できません: {}", "Không ký được: {}"),
     ("選択がありません", "Chưa chọn gì"),

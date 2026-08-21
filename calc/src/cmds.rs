@@ -1665,7 +1665,9 @@ impl Calc {
             // Excel の署名欄には出ない独自方式 — そう言って出す。
             // 有効なら報告だけ、無効・未署名なら(作り直して)署名する
             "prot-sign" => {
-                use ed25519_dalek::{Signer as _, Verifier as _};
+                // **署名の中身は ops に1本**(2026-08-21)。前は同じ 40 行を
+                // writer と2つ持っていて、しかも下の2つの文言が `format!` の
+                // ままで、14 言語で日本語が出ていました
                 let Some(p) = self.path.clone() else {
                     self.status =
                         ui::t!("まだファイルになっていません(先に保存してください)").into();
@@ -1676,62 +1678,23 @@ impl Calc {
                         ui::t!("未保存の変更があります。保存してから署名してください").into();
                     return;
                 }
-                let bytes = match std::fs::read(&p) {
-                    Ok(b) => b,
-                    Err(e) => {
-                        self.status = ui::tf!("読めません: {}", e).into();
-                        return;
+                self.status = match ops::sign_or_verify(&p) {
+                    Ok(ops::Signed::Verified(signer)) => {
+                        ui::tf!("署名は有効です — {} が署名した時のままの中身です", signer)
                     }
-                };
-                let sp = sig_path_for(&p);
-                // 既にある署名を検める
-                if let Ok(txt) = std::fs::read_to_string(&sp) {
-                    let field = |k: &str| -> Option<String> {
-                        txt.lines()
-                            .find(|l| l.starts_with(k))
-                            .map(|l| l[k.len()..].trim().to_string())
-                    };
-                    let ok = (|| -> Option<(String, bool)> {
-                        let signer = field("signer:")?;
-                        let vk: [u8; 32] = unhex(&field("pubkey:")?)?.try_into().ok()?;
-                        let sg: [u8; 64] = unhex(&field("sig:")?)?.try_into().ok()?;
-                        let vk = ed25519_dalek::VerifyingKey::from_bytes(&vk).ok()?;
-                        let sig = ed25519_dalek::Signature::from_bytes(&sg);
-                        Some((signer, vk.verify(&bytes, &sig).is_ok()))
-                    })();
-                    if let Some((signer, true)) = ok {
-                        self.status = format!(
-                            "署名は有効です — {signer} が署名した時のままの中身です"
-                        )
-                        .into();
-                        return;
+                    // 文章とは別の文です(理由は writer/src/cmds.rs の註)
+                    Ok(ops::Signed::Wrote(name)) => ui::tf!(
+                        "署名しました — 隣の {} に添え書き(独自方式。\
+                         Excel の署名欄には出ません。もう一度押すと検めます)",
+                        name
+                    ),
+                    Err(ops::SignErr::Read(e)) => ui::tf!("読めません: {}", e),
+                    Err(ops::SignErr::Write(e)) => ui::tf!("署名が置けません: {}", e),
+                    Err(ops::SignErr::Key(e)) => {
+                        ui::tf!("署名できません: {}", key_err_msg(e))
                     }
                 }
-                // 無い・壊れている・中身が変わった → 署名し(直し)て添える
-                match load_or_make_key() {
-                    Ok(key) => {
-                        let sig = key.sign(&bytes);
-                        let txt = format!(
-                            "office-sign v1\nsigner: {}\npubkey: {}\nsig: {}\n",
-                            lock_identity(),
-                            to_hex(key.verifying_key().as_bytes()),
-                            to_hex(&sig.to_bytes())
-                        );
-                        match std::fs::write(&sp, txt) {
-                            Ok(_) => {
-                                self.status = format!(
-                                    "署名しました — 隣の {} に添え書き(独自方式。Excel の署名欄には出ません。もう一度押すと検めます)",
-                                    sp.file_name().unwrap_or_default().to_string_lossy()
-                                )
-                                .into();
-                            }
-                            Err(e) => {
-                                self.status = ui::tf!("署名が置けません: {}", e).into();
-                            }
-                        }
-                    }
-                    Err(e) => self.status = ui::tf!("署名できません: {}", e).into(),
-                }
+                .into();
             }
             // 共同編集モード。実体はファイルの錠(.~lock)による早い者勝ちの
             // 編集権。押すと錠の今を確かめ、先客が去っていれば取り直す

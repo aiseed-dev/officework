@@ -220,6 +220,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("署名は有効です — {} が署名した時のままの中身です", "La firma è valida — il contenuto è quello di quando {} ha firmato"),
     ("署名しました — 隣の {} に添え書き(独自方式。\
                                      Word の署名欄には出ません。もう一度押すと検めます)", "Firmato — annotato in {} accanto al file (schema proprio; non compare nella riga della firma di Word. Premere di nuovo per verificare)"),
+    ("署名しました — 隣の {} に添え書き(独自方式。\
+                         Excel の署名欄には出ません。もう一度押すと検めます)", "Firmato — annotato in {} accanto al file (schema proprio; non compare nella riga della firma di Excel. Premere di nuovo per verificare)"),
     ("署名が置けません: {}", "Impossibile scrivere la firma: {}"),
     ("署名できません: {}", "Impossibile firmare: {}"),
     ("選択がありません", "Nessuna selezione"),

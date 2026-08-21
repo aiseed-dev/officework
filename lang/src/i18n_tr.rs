@@ -220,6 +220,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("署名は有効です — {} が署名した時のままの中身です", "İmza geçerli — içerik, {} imzaladığından beri değişmemiş"),
     ("署名しました — 隣の {} に添え書き(独自方式。\
                                      Word の署名欄には出ません。もう一度押すと検めます)", "İmzalandı — dosyanın yanındaki {} içine yazıldı (kendi yöntemimiz; Word'ün imza satırında görünmez. Yeniden basınca doğrular)"),
+    ("署名しました — 隣の {} に添え書き(独自方式。\
+                         Excel の署名欄には出ません。もう一度押すと検めます)", "İmzalandı — dosyanın yanındaki {} içine yazıldı (kendi yöntemimiz; Excel'in imza satırında görünmez. Yeniden basınca doğrular)"),
     ("署名が置けません: {}", "İmza yazılamıyor: {}"),
     ("署名できません: {}", "İmzalanamıyor: {}"),
     ("選択がありません", "Seçim yok"),
