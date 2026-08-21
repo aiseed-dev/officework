@@ -836,6 +836,49 @@ mod solver_tests {
         assert!(xs[0].abs() < 1e-6 && (xs[1] - 4.0).abs() < 1e-6,
                 "最適解が違う: {xs:?}");
     }
+
+    /// **整数とバイナリの制約が効く**(2026-08-21 の D群)。
+    ///
+    /// 同じ問題を3通りで解いて、答えが変わることを見ます。
+    /// *連続なら端数が出る* — そこが整数で丸まるかどうかが要点です。
+    #[test]
+    fn 整数とバイナリの制約が効く() {
+        let py = ["../.venv/bin/python", ".venv/bin/python"]
+            .iter()
+            .map(std::path::PathBuf::from)
+            .find(|p| p.exists());
+        let Some(py) = py else { return };
+        let dir = std::env::temp_dir().join(format!("jo-solver-int-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let py_path = dir.join("solver.py");
+        std::fs::write(&py_path, SOLVER_PY).unwrap();
+        // max x+y  s.t. 2x+y<=10.5, x+3y<=12.5, x,y>=0
+        let 解く = |ints: &str, bounds: &str| -> Vec<f64> {
+            let spec = format!(
+                "{{\"c\":[-1,-1],\"aub\":[[2,1],[1,3]],\"bub\":[10.5,12.5],\
+                 \"aeq\":[],\"beq\":[],\"nonneg\":true,\
+                 \"integrality\":[{ints}],\"bounds\":[{bounds}]}}"
+            );
+            let jp = dir.join("solver.json");
+            std::fs::write(&jp, spec).unwrap();
+            let o = std::process::Command::new(&py).arg(&py_path).arg(&jp).output().unwrap();
+            assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+            String::from_utf8_lossy(&o.stdout)
+                .split('\u{1f}')
+                .filter_map(|v| v.trim().parse().ok())
+                .collect()
+        };
+        // 連続だと端数が出る
+        let 連続 = 解く("0,0", "[0,null],[0,null]");
+        assert!(連続.iter().any(|v| (v - v.round()).abs() > 1e-6), "端数が出ない: {連続:?}");
+        // 整数にすると丸まる(**丸めて返すので、そのままセルに置ける**)
+        let 整数 = 解く("1,1", "[0,null],[0,null]");
+        assert!(整数.iter().all(|v| (v - v.round()).abs() < 1e-9), "整数でない: {整数:?}");
+        assert!(整数.iter().any(|v| *v > 1.5), "枠が無いのに小さすぎる: {整数:?}");
+        // バイナリは 0 か 1 だけ
+        let 二値 = 解く("1,1", "[0,1],[0,1]");
+        assert!(二値.iter().all(|v| *v == 0.0 || *v == 1.0), "0/1 でない: {二値:?}");
+    }
 }
 
 #[cfg(test)]

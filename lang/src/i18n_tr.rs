@@ -1939,5 +1939,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("復旧", "Kurtarma"),
     ("絞り込みは掛かっていません", "Uygulanmış bir filtre yok"),
     ("トレースの矢印は出ていません", "Görünen izleme oku yok"),
+    ("バイナリ", "İkili"),
+    ("制約の左辺を先に打ってください", "Önce kısıtın sol tarafını yazın"),
+    ("解を探しています…(整数計画。分枝限定)", "Çözüm aranıyor… (tamsayı programı, dallandır ve sınırla)"),
+    ("{} は変数セルではありません(整数・バイナリは変数セルにだけ付けられます)", "{} bir değişken hücresi değil (tamsayı ve ikili yalnızca değişken hücrelerine konur)"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Çözüm bulunamadı ({} değeri {} üzerinde etkili olmayabilir)"),
 ];

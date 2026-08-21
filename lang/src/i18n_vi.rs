@@ -1939,5 +1939,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("復旧", "Khôi phục"),
     ("絞り込みは掛かっていません", "Chưa áp dụng bộ lọc nào"),
     ("トレースの矢印は出ていません", "Không có mũi tên dò nào đang hiện"),
+    ("バイナリ", "Nhị phân"),
+    ("制約の左辺を先に打ってください", "Hãy nhập vế trái của ràng buộc trước"),
+    ("解を探しています…(整数計画。分枝限定)", "Đang tìm lời giải… (quy hoạch nguyên, nhánh và cận)"),
+    ("{} は変数セルではありません(整数・バイナリは変数セルにだけ付けられます)", "{} không phải ô biến (số nguyên và nhị phân chỉ đặt được cho ô biến)"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Không tìm thấy lời giải ({} có thể không ảnh hưởng đến {})"),
 ];

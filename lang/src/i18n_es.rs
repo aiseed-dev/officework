@@ -1939,5 +1939,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("復旧", "Recuperar"),
     ("絞り込みは掛かっていません", "No hay ningún filtro aplicado"),
     ("トレースの矢印は出ていません", "No se muestran flechas de rastreo"),
+    ("バイナリ", "Binario"),
+    ("制約の左辺を先に打ってください", "Escriba primero el lado izquierdo de la restricción"),
+    ("解を探しています…(整数計画。分枝限定)", "Buscando una solución… (programa entero, ramificación y acotación)"),
+    ("{} は変数セルではありません(整数・バイナリは変数セルにだけ付けられます)", "{} no es una celda de variable (entero y binario solo se aplican a celdas de variables)"),
     ("見つかりません({} が {} に効いていないかもしれません)", "No se ha encontrado solución ({} puede no afectar a {})"),
 ];

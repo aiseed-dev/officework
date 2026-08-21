@@ -1939,5 +1939,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("復旧", "Pemulihan"),
     ("絞り込みは掛かっていません", "Tidak ada filter yang diterapkan"),
     ("トレースの矢印は出ていません", "Tidak ada panah pelacak yang tampil"),
+    ("バイナリ", "Biner"),
+    ("制約の左辺を先に打ってください", "Ketik dulu ruas kiri kendala"),
+    ("解を探しています…(整数計画。分枝限定)", "Mencari solusi… (program bilangan bulat, branch and bound)"),
+    ("{} は変数セルではありません(整数・バイナリは変数セルにだけ付けられます)", "{} bukan sel variabel (bilangan bulat dan biner hanya untuk sel variabel)"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Solusi tidak ditemukan ({} mungkin tidak berpengaruh pada {})"),
 ];

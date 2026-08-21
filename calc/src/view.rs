@@ -3745,14 +3745,18 @@ impl Render for Calc {
                 .child(label("制約条件付き(左辺セル / 記号 / 右辺の数かセル)"))
                 .child(div().flex().flex_row().items_center().gap_1()
                     .child(field("sv-conl", 3, show(&sv.con_l, focus == 3), cx))
-                    .child(div().id("sv-op").px_2().py_1().rounded_sm().border_1()
+                    .child(div().id("sv-op").relative().px_2().py_1().rounded_sm().border_1()
                         .border_color(rgb(0xC6CDD3)).text_size(px(us * 12.0))
                         .cursor_pointer().hover(|s| s.bg(rgb(0xEAF5EE)))
-                        .child(SOLVER_OPS[sv.con_op])
+                        // **場所を控える**(2026-08-21)。リボンのボタンと同じ形です。
+                        // 控えが無いと、点検の道具は座標を当てるしかありません —
+                        // 実際に当て損ねて、押せているのかどうか分からなくなりました
+                        .child(mark("sv-op"))
+                        .child(crate::util::solver_op_label(sv.con_op))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             if let Some(sv) = &mut this.solver {
-                                sv.con_op = (sv.con_op + 1) % 3;
+                                sv.con_op = (sv.con_op + 1) % SOLVER_OPS.len();
                             }
                             cx.notify();
                         })))
@@ -3765,9 +3769,15 @@ impl Render for Calc {
                                 let (l, r) =
                                     (sv.con_l.text().trim().to_string(),
                                      sv.con_r.text().trim().to_string());
-                                if l.is_empty() || r.is_empty() {
-                                    this.status =
-                                        ui::t!("制約の左辺と右辺を先に打ってください").into();
+                                // **整数・バイナリは右辺を取りません**
+                                // (2026-08-21)。左辺だけで足せます
+                                let 要る = crate::util::solver_op_needs_rhs(sv.con_op);
+                                if l.is_empty() || (要る && r.is_empty()) {
+                                    this.status = if 要る {
+                                        ui::t!("制約の左辺と右辺を先に打ってください").into()
+                                    } else {
+                                        ui::t!("制約の左辺を先に打ってください").into()
+                                    };
                                 } else {
                                     sv.cons.push((l, SOLVER_OPS[sv.con_op], r));
                                     sv.con_l = Editor::new("");
@@ -3785,7 +3795,11 @@ impl Render for Calc {
                                     let (l, r) =
                                         (sv.con_l.text().trim().to_string(),
                                          sv.con_r.text().trim().to_string());
-                                    if !l.is_empty() && !r.is_empty() && i < sv.cons.len() {
+                                    let 要る = crate::util::solver_op_needs_rhs(sv.con_op);
+                                    if !l.is_empty()
+                                        && (!要る || !r.is_empty())
+                                        && i < sv.cons.len()
+                                    {
                                         sv.cons[i] = (l, SOLVER_OPS[sv.con_op], r);
                                     }
                                 }

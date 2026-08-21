@@ -513,7 +513,29 @@ impl Solver {
     }
 }
 
-pub(crate) const SOLVER_OPS: [&str; 3] = ["<=", "=", ">="];
+/// ソルバーの制約の記号。**後ろの2つは右辺を取りません**
+/// (2026-08-21 の D群「ソルバーの整数・バイナリ制約」)。
+///
+/// Excel と同じ形で、`$B$2:$B$4` `整数` のように左辺だけを書きます。
+/// バイナリは 0 か 1 — 整数に 0〜1 の枠を足した物です。
+///
+/// *記号は訳しません。* `<=` などと同じ欄に並ぶ印で、画面では
+/// `SOLVER_OP_LABELS` の語を出します。
+pub(crate) const SOLVER_OPS: [&str; 5] = ["<=", "=", ">=", "int", "bin"];
+
+/// 記号を画面に出すときの語(`int` と `bin` だけ言葉にする)
+pub(crate) fn solver_op_label(i: usize) -> String {
+    match i {
+        3 => ui::t!("整数").to_string(),
+        4 => ui::t!("バイナリ").to_string(),
+        _ => SOLVER_OPS[i.min(2)].to_string(),
+    }
+}
+
+/// 右辺が要る記号か(整数・バイナリは要らない)
+pub(crate) fn solver_op_needs_rhs(i: usize) -> bool {
+    i < 3
+}
 
 /// 「データの入力規則」のパネル(本家の3タブのダイアログと同じ形 —
 /// 設定 / メッセージを入力 / エラー警告、OK・キャンセル)。

@@ -802,18 +802,31 @@ from scipy.optimize import linprog
 spec = json.load(open(sys.argv[1], encoding="utf-8"))
 n = len(spec["c"])
 lo = 0 if spec["nonneg"] else None
+# 枠は変数ごと。無ければ従来どおり(非負なら 0 から)
+bounds = [tuple(b) for b in spec.get("bounds") or []] or [(lo, None)] * n
+# 整数の印(0=普通 1=整数)。全部 0 なら渡さない — 素の LP のままにする
+integrality = spec.get("integrality") or []
+kw = {}
+if any(integrality):
+    # **HiGHS の分枝限定**(scipy 1.9 以降)。バイナリは 0〜1 の枠つきの整数
+    kw["integrality"] = integrality
 r = linprog(
     c=spec["c"],
     A_ub=spec["aub"] or None,
     b_ub=spec["bub"] or None,
     A_eq=spec["aeq"] or None,
     b_eq=spec["beq"] or None,
-    bounds=[(lo, None)] * n,
+    bounds=bounds,
     method="highs",
+    **kw,
 )
 if not r.success:
     sys.exit("解がありません: " + str(r.message))
-sys.stdout.write("\x1f".join("%.12g" % v for v in r.x))
+# **整数の答えは丸めて返す。** 分枝限定は 3.0000000001 のような値を返す
+# ことがあり、そのままセルに置くと「整数にしたのに整数でない」に見えます
+out = [round(v) if i < len(integrality) and integrality[i] else v
+       for i, v in enumerate(r.x)]
+sys.stdout.write("\x1f".join("%.12g" % v for v in out))
 "#;
 
 /// ピボットの台本(polars)。指図は JSON、答えは CSV 取り込みと同じ

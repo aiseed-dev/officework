@@ -1780,14 +1780,40 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         } else {
             0.0
         };
-        // 制約: (セル, op, 右辺の数)。左辺は範囲なら1セルずつの行になる
+        // 制約: (セル, op, 右辺の数)。左辺は範囲なら1セルずつの行になる。
+        //
+        // **整数・バイナリはここに積みません**(2026-08-21)。あれは
+        // 「この変数は整数」という*変数の性質*で、不等式の行ではないからです。
+        // HiGHS の `integrality` と `bounds` に渡します。
         let mut rows: Vec<(Pos, usize, f64)> = Vec::new();
+        // 変数ごとの整数の印(0=普通 1=整数)と、バイナリかどうか
+        let mut int_of: Vec<u8> = vec![0; vars.len()];
+        let mut bin_of: Vec<bool> = vec![false; vars.len()];
         for (l, op, r) in &sv.cons {
             let Some(cells) = parse_cell_list(l, 256) else {
                 self.status = ui::tf!("制約の左辺が読めません: {}", l).into();
                 return;
             };
             let opi = SOLVER_OPS.iter().position(|o| o == op).unwrap_or(0);
+            if opi >= 3 {
+                // **左辺は変数セルでなければなりません。** 変数でないセルを
+                // 整数にしても、動かす先がないので意味がありません
+                for p in &cells {
+                    let Some(vi) = vars.iter().position(|v| v == p) else {
+                        self.status = ui::tf!(
+                            "{} は変数セルではありません(整数・バイナリは変数セルにだけ付けられます)",
+                            p.a1()
+                        )
+                        .into();
+                        return;
+                    };
+                    int_of[vi] = 1;
+                    if opi == 4 {
+                        bin_of[vi] = true;
+                    }
+                }
+                continue;
+            }
             // 右辺: 数か、セルの今の値
             let rhs = match r.trim().parse::<f64>() {
                 Ok(v) => v,
@@ -1888,17 +1914,34 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         let mat = |m: &[Vec<f64>]| {
             m.iter().map(|r| format!("[{}]", arr(r))).collect::<Vec<_>>().join(",")
         };
+        // **整数の印と枠**(2026-08-21)。バイナリは 0〜1 の枠つきの整数です。
+        // 枠は変数ごとに [下, 上] で渡し、`null` は「制限なし」です
+        let ints = int_of.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(",");
+        let lo = if sv.nonneg { "0" } else { "null" };
+        let bounds = bin_of
+            .iter()
+            .map(|b| if *b { "[0,1]".to_string() } else { format!("[{lo},null]") })
+            .collect::<Vec<_>>()
+            .join(",");
         let json = format!(
-            "{{\"c\":[{}],\"aub\":[{}],\"bub\":[{}],\"aeq\":[{}],\"beq\":[{}],\"nonneg\":{}}}",
+            "{{\"c\":[{}],\"aub\":[{}],\"bub\":[{}],\"aeq\":[{}],\"beq\":[{}],\
+             \"nonneg\":{},\"integrality\":[{}],\"bounds\":[{}]}}",
             arr(&c),
             mat(&aub),
             arr(&bub),
             mat(&aeq),
             arr(&beq),
-            sv.nonneg
+            sv.nonneg,
+            ints,
+            bounds
         );
+        let 整数あり = int_of.iter().any(|v| *v == 1);
         let dir = std::env::temp_dir().join(format!("jo-solver-{}", std::process::id()));
-        self.status = ui::t!("解を探しています…(単体法 LP)").into();
+        self.status = if 整数あり {
+            ui::t!("解を探しています…(整数計画。分枝限定)").into()
+        } else {
+            ui::t!("解を探しています…(単体法 LP)").into()
+        };
         let task = cx.background_executor().spawn(async move {
             let _ = std::fs::create_dir_all(&dir);
             let json_path = dir.join("solver.json");

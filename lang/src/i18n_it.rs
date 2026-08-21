@@ -1939,5 +1939,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("復旧", "Ripristino"),
     ("絞り込みは掛かっていません", "Non è applicato alcun filtro"),
     ("トレースの矢印は出ていません", "Non sono visualizzate frecce di traccia"),
+    ("バイナリ", "Binario"),
+    ("制約の左辺を先に打ってください", "Digita prima il membro sinistro del vincolo"),
+    ("解を探しています…(整数計画。分枝限定)", "Ricerca di una soluzione… (programma intero, branch and bound)"),
+    ("{} は変数セルではありません(整数・バイナリは変数セルにだけ付けられます)", "{} non è una cella variabile (intero e binario valgono solo per le celle variabili)"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Nessuna soluzione trovata ({} potrebbe non influire su {})"),
 ];
