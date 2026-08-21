@@ -2520,7 +2520,7 @@ mod recalc_tests {
     fn ヘッダーとフッターをパネルから入れて消す(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.run_cmd("editheader", cx);
+            this.run_cmd("edit-header", cx);
             assert_eq!(this.pick_kind, "hf-pick", "一覧が開かない");
             this.apply_pick("ヘッダー中", cx);
             assert!(this.prompt.is_some(), "パネルが開かない");
@@ -2528,7 +2528,7 @@ mod recalc_tests {
             this.finish_prompt(cx);
             assert_eq!(this.sheet().header.as_deref(), Some("&C月次売上"));
             // フッター右に頁(既存の値が一覧に見える)
-            this.run_cmd("editheader", cx);
+            this.run_cmd("edit-header", cx);
             {
                 let (items, _) = this.pick.as_ref().unwrap();
                 // 鍵は欄の名前だけ。打った値は見出しにだけ付く
@@ -2542,7 +2542,7 @@ mod recalc_tests {
             this.finish_prompt(cx);
             assert_eq!(this.sheet().footer.as_deref(), Some("&R&P / &N"));
             // 全部消す
-            this.run_cmd("editheader", cx);
+            this.run_cmd("edit-header", cx);
             this.apply_pick("全部消す", cx);
             assert!(this.sheet().header.is_none() && this.sheet().footer.is_none());
         });

@@ -559,7 +559,7 @@ impl Render for Calc {
             ("rem-duplicates", "重複"), ("td-torange", "範囲へ"),
             ("td-resize", "サイズ"), ("sheet-view", "表示"),
             ("ui-bigger", "字を大"), ("ui-smaller", "字を小"),
-            ("theme", "テーマ"), ("freeze", "固定"),
+            ("darkmode", "ダークモード"), ("freeze", "固定"),
             ("show-gridlines", "枠線"), ("show-headings", "見出し"),
             ("show-zeros", "0表示"),
         ];
@@ -2154,7 +2154,7 @@ impl Render for Calc {
                 ("filter", "フィルター", "", true, true),
                 ("reapply", "再適用", "", self.filter_active(), false),
                 ("", "", "", false, false),
-                ("addcomment", "コメントを追加", "", true, false),
+                ("co-addcomment", "コメントを追加", "", true, false),
                 // 返信と解決は**コメントが付いているセルでだけ**押せる。
                 // 無いセルで灰色に見えるのが正しい(できないものを、
                 // できるように見せない)

@@ -34,6 +34,7 @@ impl Calc {
             "show-headings" => self.show_headers,
             "show-left" => self.left_open,
             "show-right" => self.right_open,
+            "darkmode" => self.dark,
             _ => false,
         }
     }

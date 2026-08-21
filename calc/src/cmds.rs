@@ -71,6 +71,9 @@ impl ui::appcmd::Screen for Calc {
     fn zoom_mut(&mut self) -> &mut f32 {
         &mut self.zoom
     }
+    fn dark_mut(&mut self) -> &mut bool {
+        &mut self.dark
+    }
     fn say(&mut self, msg: String) {
         self.status = msg.into();
     }
@@ -100,7 +103,7 @@ impl Calc {
         "fn-datetime", "fn-lookup", "fn-financial", "fn-more",
         "scale", "pagebreak", "fit-pages", "printarea-add", "show-breaks", "printtitles", "print-gridlines", "print-headings",
         "data-from-text", "text-column", "goal-seek", "data-external-links",
-        "insshape", "instext", "inssparkline", "python", "addcomment",
+        "insshape", "instext", "inssparkline", "python", "co-addcomment",
         "trace-prec", "trace-dep", "remove-arrows", "insrecommend",
         "instable", "table-tpl", "inssymbol", "pivot-insert", "pivot-fields",
         "pivot-refresh", "pivot-refresh-all", "pivot-select",
@@ -120,9 +123,9 @@ impl Calc {
         "show-left", "show-right",
         "subscript", "align-just", "align-dist", "text-orient", "calc-mode",
         "td-torange", "td-resize", "rtl-sheet", "direction",
-        "colorschemas", "theme",
+        "colorschemas", "darkmode",
         "ai-where",
-        "insert-function", "cell-styles", "sheet-view", "watch", "editheader",
+        "insert-function", "cell-styles", "sheet-view", "watch", "edit-header",
         "cell-lock", "prot-allow", "recover", "recover-every", "csv-kind",
         "autofit-col", "autofit-row", "paste-name", "flash-fill",
         "read-only-rec",
@@ -308,7 +311,7 @@ impl Calc {
         // 格子パレット(border_pal)。真下に落ちるので ▾ の側
         "borders",
         "merge", "prot-allow", "co-history", "py-list",
-        "insslicer", "editheader", "paste-name", "csv-kind", "defname",
+        "insslicer", "edit-header", "paste-name", "csv-kind", "defname",
         "currency",
     ];
 
@@ -323,7 +326,7 @@ impl Calc {
         "insert-function", "cell-format", "data-validation", "custom-sort",
         "python", "prot-encrypt", "co-chat", "instext", "insequation",
         "td-resize", "subtotal", "datatable",
-        "addcomment", "text-column", "goal-seek", "replace", "inshyperlink",
+        "co-addcomment", "text-column", "goal-seek", "replace", "inshyperlink",
         "solver",
     ];
 
@@ -2395,12 +2398,6 @@ impl Calc {
                 self.status = ui::t!("配色の変更: 選ぶとテーマ色が入れ替わります").into();
             }
             // インターフェイステーマ(画面の明暗)。**セルは白のまま**
-            "theme" => {
-                // 判断は ui::toggle_dark の1本(文章と共通)
-                let (on, msg) = ui::toggle_dark(self.dark, !cfg!(test));
-                self.dark = on;
-                self.status = msg.into();
-            }
             // 範囲に変換する(表オブジェクトを外す。**書式と式は残る**)
             "td-torange" => {
                 self.commit();
@@ -2817,7 +2814,7 @@ impl Calc {
                 }
             }
             // 印刷のヘッダー/フッター(&P=頁 &N=総頁。紙と PDF に出る)
-            "editheader" => {
+            "edit-header" | "editheader" => {
                 self.commit();
                 let at = self.pop_anchor();
                 let (hl, hc, hr) =
@@ -3017,7 +3014,8 @@ impl Calc {
                 self.pick_note = Some(ui::t!("記号(組を選ぶと一字ずつ出ます)").into());
                 self.pick = Some((items, at));
             }
-            "addcomment" => {
+            // 文章と同じ id。表は挿入タブと共同編集タブの両方から呼びます
+            "co-addcomment" | "addcomment" => {
                 self.commit();
                 let cur = self
                     .sheet()

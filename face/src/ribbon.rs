@@ -311,7 +311,7 @@ pub const WRITER: &[Tab] = &[
         c("zoom-out", "縮小", "zoom-out"),
         c("printview", "印刷レイアウト", "printview"),
         c("multipage", "複数ページ", "multipage"),
-        c("darkmode", "ダークモード", "darkmode"),
+        t("darkmode", "ダークモード", "darkmode"),
         c("ruler", "ルーラー", "ruler"),
         t("show-toolbar", "ツールバーを常に表示する", "show-toolbar"),
         t("show-statusbar", "ステータスバー", "show-statusbar"),
@@ -321,7 +321,7 @@ pub const WRITER: &[Tab] = &[
     // calc と同じく**マクロの段**へ(2026-08-16)。「一覧」は置き場の
     // .py、「ファイルから」は置き場の外の .py
     Tab { name: "マクロ", cmds: &[
-        c("plug-manage", "一覧", "plug-manage"),
+        c("py-list", "一覧", "plug-manage"),
         c("ai-macro", "マクロを書く", "ai-macro"),
     ]},
 ];
@@ -398,7 +398,7 @@ pub const CALC: &[Tab] = &[
         c("insrecommend", "推奨チャートを挿入", "insrecommend"),
         c("inschart", "グラフを挿入", "inschart"),
         c("inssparkline", "スパークラインを挿入する", "inssparkline"),
-        c("addcomment", "コメント", "ins-comment"),
+        c("co-addcomment", "コメント", "ins-comment"),
         // ここに c("insrecommend", "グラフを挿入", "smartpicker") が居た
         // (2026-08-16 に外した)。id は上の「推奨チャートを挿入」と同じ、
         // 札は上の「グラフを挿入」と同じで、**押すと推奨チャートが出る**。
@@ -407,7 +407,7 @@ pub const CALC: &[Tab] = &[
         c("insslicer", "スライサーを挿入", "insslicer"),
         c("instext", "テキストボックスを挿入する", "instext"),
         c("instextart", "テキストアートの挿入", "instextart"),
-        c("editheader", "ヘッダー/フッター", "editheader"),
+        c("edit-header", "ヘッダー/フッター", "editheader"),
         c("insequation", "方程式を挿入", "insequation"),
         c("inssymbol", "記号を挿入", "inssymbol"),
     ]},
@@ -423,7 +423,7 @@ pub const CALC: &[Tab] = &[
         c("pagesize", "ページのサイズ", "pagesize"),
         c("printarea", "印刷範囲", "printarea"),
         c("pagebreak", "印刷物で次のページを開始する位置に改行を追加する", "pagebreak"),
-        c("editheader", "ヘッダー/フッター", "editheader"),
+        c("edit-header", "ヘッダー/フッター", "editheader"),
         c("scale", "拡大縮小印刷", "scale"),
         c("fit-pages", "紙に収める", "fit-pages"),
         c("printarea-add", "範囲を足す", "printarea-add"),
@@ -541,7 +541,7 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "共同編集", cmds: &[
         c("coauth-mode", "共同編集モード", "coauth-mode"),
-        c("addcomment", "コメントを追加", "co-addcomment"),
+        c("co-addcomment", "コメントを追加", "co-addcomment"),
         c("co-delcomment", "コメントを削除", "co-delcomment"),
         c("co-showcomment", "コメントの表示", "co-showcomment"),
         c("co-chat", "チャット", "co-chat"),
@@ -569,7 +569,7 @@ pub const CALC: &[Tab] = &[
         c("zoom-out", "縮小", "zoom-out"),
         c("ui-bigger", "画面の文字を大きく", "ui-bigger"),
         c("ui-smaller", "画面の文字を小さく", "ui-smaller"),
-        c("theme", "インターフェイステーマ", "theme"),
+        t("darkmode", "ダークモード", "theme"),
         c("freeze", "ウィンドウ枠の固定", "freeze"),
         t("formula-bar", "数式バー", "formula-bar"),
         c("show-gridlines", "枠線表示", "show-gridlines"),

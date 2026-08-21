@@ -64,7 +64,7 @@ impl Calc {
                         .bg(item_bg)
                         .child(if self.dark { ui::t!("暗い") } else { ui::t!("明るい") })
                         .on_click(cx.listener(|this, _, _, cx| {
-                            this.run_cmd("theme", cx);
+                            this.run_cmd("darkmode", cx);
                             cx.notify()
                         }))))
                 .child(div().flex().flex_row().items_center().gap_2()

@@ -1341,7 +1341,7 @@ impl Calc {
     }
     /// Shift+F2 = コメント
     pub(crate) fn a_add_comment(&mut self, _: &ui::AddComment, _: &mut Window, cx: &mut Context<Self>) {
-        self.run_cmd("addcomment", cx);
+        self.run_cmd("co-addcomment", cx);
         cx.notify();
     }
     /// Ctrl+Shift+L = フィルタの付け外し(setfilter 自体が切替の作り)

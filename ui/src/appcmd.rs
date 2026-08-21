@@ -25,6 +25,8 @@
 pub trait Screen {
     /// 画面の倍率(1.0 が 100%)
     fn zoom_mut(&mut self) -> &mut f32;
+    /// 画面が暗い側か
+    fn dark_mut(&mut self) -> &mut bool;
     /// 状態の行へ1文
     fn say(&mut self, msg: String);
 }
@@ -60,6 +62,20 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
             s.say(msg.to_string());
             true
         }
+        // 画面の明暗。**2つのアプリで中身が1文字も違いませんでした**
+        // (2026-08-21 の B-2)。文章は `darkmode`、表は `theme` という
+        // 別の id で、どちらも `toggle_dark` を呼ぶだけだったので、
+        // id を `darkmode` に揃えてここへ移しました。
+        //
+        // `persist` を偽にするのは試験のときだけです。実際に
+        // `settings.toml` を書き替えてしまうと、試験が発注者の設定を壊します。
+        "darkmode" | "theme" => {
+            let cur = *s.dark_mut();
+            let (on, msg) = crate::toggle_dark(cur, !cfg!(test));
+            *s.dark_mut() = on;
+            s.say(msg);
+            true
+        }
         _ => false,
     }
 }
@@ -68,13 +84,18 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
 mod tests {
     use super::*;
 
+    #[derive(Default)]
     struct Fake {
         zoom: f32,
+        dark: bool,
         said: Vec<String>,
     }
     impl Screen for Fake {
         fn zoom_mut(&mut self) -> &mut f32 {
             &mut self.zoom
+        }
+        fn dark_mut(&mut self) -> &mut bool {
+            &mut self.dark
         }
         fn say(&mut self, msg: String) {
             self.said.push(msg);
@@ -83,7 +104,7 @@ mod tests {
 
     #[test]
     fn 拡大は2倍で止まる() {
-        let mut f = Fake { zoom: 1.9, said: vec![] };
+        let mut f = Fake { zoom: 1.9, ..Default::default() };
         assert!(run(&mut f, "zoom-in"));
         assert!(run(&mut f, "zoom-in"));
         assert!((f.zoom - 2.0).abs() < 1e-6, "2倍を超えた: {}", f.zoom);
@@ -92,16 +113,37 @@ mod tests {
 
     #[test]
     fn 縮小は半分で止まる() {
-        let mut f = Fake { zoom: 0.6, said: vec![] };
+        let mut f = Fake { zoom: 0.6, ..Default::default() };
         assert!(run(&mut f, "zoom-out"));
         assert!(run(&mut f, "zoom-out"));
         assert!((f.zoom - 0.5).abs() < 1e-6, "半分を下回った: {}", f.zoom);
     }
 
+    /// 画面の明暗は押すたびに入れ替わります。**2つのアプリで同じ腕**なので、
+    /// ここが1本で正しければ両方が正しくなります(2026-08-21 の B-2)
+    #[test]
+    fn 画面の明暗は押すたびに入れ替わる() {
+        let mut f = Fake::default();
+        assert!(run(&mut f, "darkmode"));
+        assert!(f.dark, "1回目で暗くなる");
+        assert!(run(&mut f, "darkmode"));
+        assert!(!f.dark, "2回目で明るくなる");
+        assert_eq!(f.said.len(), 2, "どちらも状態の行で言う: {:?}", f.said);
+    }
+
+    /// 表が使っていた古い id も受けます。rpc・MCP・Python から
+    /// `theme` を送る人がいるので、黙って壊しません
+    #[test]
+    fn 表の古い_id_も受ける() {
+        let mut f = Fake::default();
+        assert!(run(&mut f, "theme"));
+        assert!(f.dark);
+    }
+
     /// 知らない id は触らない(アプリの番)
     #[test]
     fn 知らない命令は断る() {
-        let mut f = Fake { zoom: 1.0, said: vec![] };
+        let mut f = Fake { zoom: 1.0, ..Default::default() };
         assert!(!run(&mut f, "bold"));
         assert!((f.zoom - 1.0).abs() < 1e-6);
         assert!(f.said.is_empty());

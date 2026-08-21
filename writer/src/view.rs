@@ -293,7 +293,7 @@ impl Render for Writer {
         // **マクロを書く**(AI)もここ — 置き場に .py を置く仕事で、
         // 会話では代われない(2026-08-15、AI タブの廃止で移した)
         const PLUG_ROWS: &[&[LItem]] = &[&[
-            ("plug-manage", Some("一覧")),
+            ("py-list", Some("一覧")),
             ("ai-macro", Some("マクロを書く")),
         ]];
         let rows: Option<&[&[LItem]]> = match ribbon::WRITER[self.tab].name {

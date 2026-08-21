@@ -1844,7 +1844,7 @@ impl Calc {
                     ui::t!("解決済みを取り消しました").into()
                 };
             }
-            "addcomment" => {
+            "co-addcomment" => {
                 self.commit();
                 // 打ち直すのは**筋の頭の文**(返信は別の口で足す)
                 let cur = self

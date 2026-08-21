@@ -155,7 +155,7 @@ READY = {
         "inssmartart": "inssmartart", "insequation": "insequation",
         "insslicer": "insslicer", "inscheckbox": "inscheckbox",
         "instextart": "instextart",
-        "inssparkline": "inssparkline", "co-addcomment": "addcomment",
+        "inssparkline": "inssparkline", "co-addcomment": "co-addcomment",
         "coauth-mode": "coauth-mode", "co-delcomment": "co-delcomment",
         "co-showcomment": "co-showcomment", "co-chat": "co-chat",
         "co-history": "co-history",
@@ -473,7 +473,7 @@ COMMON_TAIL = {
     # 中身はアプリごとに違うので、名前だけ共通で中身は分けます
     "macros": {
         "documenteditor": [
-            ("plug-manage", "一覧", "plug-manage"),
+            ("py-list", "一覧", "plug-manage"),
             ("ai-macro", "マクロを書く", "ai-macro"),
         ],
         "spreadsheeteditor": [
@@ -532,7 +532,10 @@ TAB_NAME_KEYS = {"draw": "Draw", "headerfooter": "HeaderFooter",
 
 # **入切のボタン**(本家の欄にも在る物)。押すと入/切が変わります。
 # うちが足した分は EXTRA_CMDS の書き方の欄で指します
-入切 = {"formula-bar", "show-headings", "show-zeros"}
+入切 = {"formula-bar", "show-headings", "show-zeros",
+        # 画面の明暗。**入っている間は押された形**にします。
+        # 表の側は EXTRA_CMDS で足しているので、そちらの書き方の欄が効きます
+        "darkmode"}
 
 
 def tabs_of(app, prefix):
@@ -718,10 +721,10 @@ EXTRA_CMDS = {
         ("ホーム", 'clear', "sort-desc", "降順並べ替え", "sortdesc", "c"),
         ("ホーム", 'sort-desc', "sort-asc", "昇順並べ替え", "sortasc", "c"),
         ("挿入", None, "pivot-insert", "ピボットテーブルを挿入", "add-pivot", "c"),
-        ("挿入", 'inssparkline', "addcomment", "コメント", "ins-comment", "c"),
-        ("挿入", 'instextart', "editheader", "ヘッダー/フッター", "editheader", "c"),
+        ("挿入", 'inssparkline', "co-addcomment", "コメント", "ins-comment", "c"),
+        ("挿入", 'instextart', "edit-header", "ヘッダー/フッター", "editheader", "c"),
         ("描画", None, "draw-select", "選択", "select-tool", "c"),
-        ("レイアウト", 'pagebreak', "editheader", "ヘッダー/フッター", "editheader", "c"),
+        ("レイアウト", 'pagebreak', "edit-header", "ヘッダー/フッター", "editheader", "c"),
         # 本家では「拡大縮小印刷」の中の選択肢。うちは小窓を持たないので
         # レイアウトタブに独立したボタンで出す
         ("レイアウト", 'scale', "fit-pages", "紙に収める", "fit-pages", "c"),
@@ -760,7 +763,9 @@ EXTRA_CMDS = {
         ("表示", 'zoom-in', "zoom-out", "縮小", "zoom-out", "c"),
         ("表示", 'zoom-out', "ui-bigger", "画面の文字を大きく", "ui-bigger", "c"),
         ("表示", 'ui-bigger', "ui-smaller", "画面の文字を小さく", "ui-smaller", "c"),
-        ("表示", 'ui-smaller', "theme", "インターフェイステーマ", "theme", "c"),
+        # **文章と同じ命令**(2026-08-21 の B-2)。中身は1文字も違わないので
+        # id と札を揃えました。絵はアプリごとに別のまま(どちらも明暗の絵)
+        ("表示", 'ui-smaller', "darkmode", "ダークモード", "theme", "t"),
         ("表示", 'freeze', "formula-bar", "数式バー", "formula-bar", "t"),
         ("表示", 'show-headings', "show-zeros", "0を表示する", "show-zeros", "t"),
         ("表示", 'show-zeros', "show-left", "左パネル", "show-left", "t"),
@@ -785,7 +790,7 @@ EXTRA_CMDS = {
     ("spreadsheeteditor", "データ", "custom-sort", "sort-asc"),
     # 表示の切り替え(標準/改ページ)をいちばん前へ。まず「どの見え方か」を
     # 選び、そのあと拡大や枠の固定を触る順にする
-    ("spreadsheeteditor", "表示", "freeze", "theme"),
+    ("spreadsheeteditor", "表示", "freeze", "darkmode"),
     ("spreadsheeteditor", "表示", "formula-bar", "freeze"),
     # 表示の切り替えは、シートの見え方のすぐ後ろ
     ("spreadsheeteditor", "表示", "view-normal", "sheet-view"),

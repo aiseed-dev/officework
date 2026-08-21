@@ -44,6 +44,9 @@ impl ui::appcmd::Screen for Writer {
     fn zoom_mut(&mut self) -> &mut f32 {
         &mut self.zoom
     }
+    fn dark_mut(&mut self) -> &mut bool {
+        &mut self.dark
+    }
     fn say(&mut self, msg: String) {
         self.status = msg.into();
     }
@@ -65,7 +68,7 @@ impl Writer {
     /// 「すぐ効く」— 無印で、ここにも入れない
     pub(crate) const DIALOG_IDS: &'static [&'static str] = &[
         "replace", "watermark", "bookmarks", "co-addcomment", "co-history",
-        "co-chat", "plug-manage", "form-combo",
+        "co-chat", "py-list", "form-combo",
         "form-dropdown", "form-name", "ruby", "insequation",
     ];
 
@@ -616,11 +619,6 @@ impl Writer {
             // ダークモード。**紙は白いまま**(画面と紙の一致)。周りだけ暗くする。
             // 判断と控えは ui::toggle_dark の1本(表と共通) — 前は控えて
             // いなかったので、開き直すと明るさが戻っていた
-            "darkmode" => {
-                let (on, msg) = ui::toggle_dark(self.dark, !cfg!(test));
-                self.dark = on;
-                self.status = msg.into();
-            }
             // 変更履歴。記録中の編集は、保存で Word の w:ins / w:del になる
             "track-changes" => {
                 self.flush_target();
@@ -911,7 +909,8 @@ impl Writer {
                         ui::t!("チャット: 打って Enter で書き残す(文書の隣の .chat.txt)").into();
                 }
             }
-            "plug-manage" => {
+            // 表と同じ id(表は py-new / py-list / py-folder で揃っています)
+            "py-list" | "plug-manage" => {
                 self.plug_open = !self.plug_open;
                 if self.plug_open {
                     self.hist_open = false;

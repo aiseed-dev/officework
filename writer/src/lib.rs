@@ -546,6 +546,7 @@ impl Writer {
             "show-statusbar" => self.show_statusbar,
             "nav" | "show-left" => self.nav_open,
             "show-right" => self.rp_open,
+            "darkmode" => self.dark,
             _ => false,
         }
     }
