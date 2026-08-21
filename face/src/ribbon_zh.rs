@@ -154,6 +154,7 @@ pub const WRITER: &[Tab] = &[
     ]},
     Tab { name: "宏", cmds: &[
         c("py-list", "列表", "plug-manage"),
+        c("py-folder", "打开文件夹", "py-folder"),
         c("ai-macro", "编写宏", "ai-macro"),
     ]},
 ];
@@ -366,6 +367,7 @@ pub const CALC: &[Tab] = &[
         xm("分页预览", "view-pagebreak"),
         c("zoom-in", "放大", "zoom-in"),
         c("zoom-out", "缩小", "zoom-out"),
+        c("zoom100", "缩放到 100%", "zoom100"),
         c("ui-bigger", "放大界面文字", "ui-bigger"),
         c("ui-smaller", "缩小界面文字", "ui-smaller"),
         t("darkmode", "深色模式", "theme"),

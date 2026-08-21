@@ -1214,10 +1214,6 @@ impl Writer {
             }
             "fit-page" => self.fit_zoom(false),
             "fit-width" => self.fit_zoom(true),
-            "zoom100" => {
-                self.zoom = 1.0;
-                self.status = ui::t!("100% に戻しました").into();
-            }
             "show-toolbar" => {
                 self.show_toolbar = !self.show_toolbar;
                 self.status = if self.show_toolbar {

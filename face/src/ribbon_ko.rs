@@ -154,6 +154,7 @@ pub const WRITER: &[Tab] = &[
     ]},
     Tab { name: "매크로", cmds: &[
         c("py-list", "목록", "plug-manage"),
+        c("py-folder", "폴더 열기", "py-folder"),
         c("ai-macro", "매크로 작성", "ai-macro"),
     ]},
 ];
@@ -366,6 +367,7 @@ pub const CALC: &[Tab] = &[
         xm("페이지 나누기 미리보기", "view-pagebreak"),
         c("zoom-in", "확대", "zoom-in"),
         c("zoom-out", "축소", "zoom-out"),
+        c("zoom100", "100%로 확대", "zoom100"),
         c("ui-bigger", "화면 글자 크게", "ui-bigger"),
         c("ui-smaller", "화면 글자 작게", "ui-smaller"),
         t("darkmode", "다크 모드", "theme"),

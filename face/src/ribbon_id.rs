@@ -154,6 +154,7 @@ pub const WRITER: &[Tab] = &[
     ]},
     Tab { name: "Makro", cmds: &[
         c("py-list", "Daftar", "plug-manage"),
+        c("py-folder", "Buka folder plugins", "py-folder"),
         c("ai-macro", "Tulis makro", "ai-macro"),
     ]},
 ];
@@ -366,6 +367,7 @@ pub const CALC: &[Tab] = &[
         xm("Pratinjau Jeda Halaman", "view-pagebreak"),
         c("zoom-in", "Perbesar", "zoom-in"),
         c("zoom-out", "Perkecil", "zoom-out"),
+        c("zoom100", "Zoom ke 100%", "zoom100"),
         c("ui-bigger", "Perbesar teks layar", "ui-bigger"),
         c("ui-smaller", "Perkecil teks layar", "ui-smaller"),
         t("darkmode", "Mode gelap", "theme"),

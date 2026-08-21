@@ -62,6 +62,32 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
             s.say(msg.to_string());
             true
         }
+        // 倍率を 100% に戻す。文章にしか無かったので表にも足しました
+        // (2026-08-21 の B-3)。上の拡大・縮小と対になる命令です
+        "zoom100" => {
+            *s.zoom_mut() = 1.0;
+            s.say(crate::t!("100% に戻しました").to_string());
+            true
+        }
+        // マクロの置き場をファイル管理で開く。**表にしか無かった**ので
+        // 文章にも足しました(2026-08-21 の B-3)。置き場は `pyrun` の1本で、
+        // どちらのアプリから開いても同じ場所です
+        "py-folder" => {
+            let dir = crate::pyedit::plugins_dir();
+            let _ = std::fs::create_dir_all(&dir);
+            let 道 = dir.display().to_string();
+            let msg = match crate::open_outside(&道) {
+                crate::Opened::Yes => crate::tf!("開きます: {}", 道),
+                crate::Opened::JustNow => {
+                    crate::t!("さっき開きました(窓が出るまで少し待ってください)").into()
+                }
+                crate::Opened::Failed => {
+                    crate::tf!("開けません(xdg-open がありません): {}", 道)
+                }
+            };
+            s.say(msg.to_string());
+            true
+        }
         // 画面の明暗。**2つのアプリで中身が1文字も違いませんでした**
         // (2026-08-21 の B-2)。文章は `darkmode`、表は `theme` という
         // 別の id で、どちらも `toggle_dark` を呼ぶだけだったので、
@@ -138,6 +164,16 @@ mod tests {
         let mut f = Fake::default();
         assert!(run(&mut f, "theme"));
         assert!(f.dark);
+    }
+
+    /// 100% に戻すのは、拡大・縮小と対の命令です。**文章にしかありません
+    /// でした**(2026-08-21 の B-3)。ここへ移して表にもボタンを足しました
+    #[test]
+    fn 百パーセントに戻す() {
+        let mut f = Fake { zoom: 1.7, ..Default::default() };
+        assert!(run(&mut f, "zoom100"));
+        assert!((f.zoom - 1.0).abs() < 1e-6, "1.0 にならない: {}", f.zoom);
+        assert!(!f.said.is_empty(), "状態の行で言う");
     }
 
     /// 知らない id は触らない(アプリの番)

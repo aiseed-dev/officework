@@ -154,6 +154,7 @@ pub const WRITER: &[Tab] = &[
     ]},
     Tab { name: "巨集", cmds: &[
         c("py-list", "清單", "plug-manage"),
+        c("py-folder", "開啟資料夾", "py-folder"),
         c("ai-macro", "撰寫巨集", "ai-macro"),
     ]},
 ];
@@ -366,6 +367,7 @@ pub const CALC: &[Tab] = &[
         xm("分頁預覽", "view-pagebreak"),
         c("zoom-in", "放大", "zoom-in"),
         c("zoom-out", "縮小", "zoom-out"),
+        c("zoom100", "縮放至 100%", "zoom100"),
         c("ui-bigger", "放大介面文字", "ui-bigger"),
         c("ui-smaller", "縮小介面文字", "ui-smaller"),
         t("darkmode", "深色模式", "theme"),

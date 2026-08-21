@@ -294,6 +294,7 @@ impl Render for Writer {
         // 会話では代われない(2026-08-15、AI タブの廃止で移した)
         const PLUG_ROWS: &[&[LItem]] = &[&[
             ("py-list", Some("一覧")),
+            ("py-folder", Some("置き場を開く")),
             ("ai-macro", Some("マクロを書く")),
         ]];
         let rows: Option<&[&[LItem]]> = match ribbon::WRITER[self.tab].name {

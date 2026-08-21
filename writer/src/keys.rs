@@ -272,7 +272,7 @@ impl Writer {
         "pen", "highlighter", "eraser", "track-changes", "dropcap", "hyphenation",
         "crossref", "co-addcomment", "co-delcomment", "co-showcomment",
         "prot-doc", "coauth-mode", "co-history", "co-chat",
-        "py-list", "prot-sign",
+        "py-list", "py-folder", "prot-sign",
         "copy", "cut", "paste",
     ];
 

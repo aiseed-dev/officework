@@ -118,7 +118,7 @@ impl Calc {
         // Python タブ(2026-08-09)
         "rec-toggle", "py-new", "py-list", "py-folder", "func-list", "ribbon-list",
         "prot-doc", "prot-encrypt", "prot-sign",
-        "zoom-in", "zoom-out", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
+        "zoom-in", "zoom-out", "zoom100", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
         // 左右のパネル(2026-08-15)
         "show-left", "show-right",
         "subscript", "align-just", "align-dist", "text-orient", "calc-mode",
@@ -2041,22 +2041,6 @@ impl Calc {
             }
             "py-calc" => {
                 self.run_py_calc(cx);
-            }
-            "py-folder" => {
-                let dir = plugins_dir();
-                let _ = std::fs::create_dir_all(&dir);
-                self.status = match ui::open_outside(&dir.display().to_string()) {
-                    ui::Opened::Yes => {
-                        ui::tf!("開きます: {}", dir.display().to_string()).into()
-                    }
-                    ui::Opened::JustNow => {
-                        ui::t!("さっき開きました(窓が出るまで少し待ってください)").into()
-                    }
-                    ui::Opened::Failed => {
-                        ui::tf!("開けません(xdg-open がありません): {}",
-                            dir.display().to_string()).into()
-                    }
-                };
             }
             // チェックボックス(セルの部品)。空のセルに FALSE を置くと
             // ☑/☐ で見え、空白キーで切り替わる(Excel では TRUE/FALSE の値)

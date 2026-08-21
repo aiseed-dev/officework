@@ -154,6 +154,7 @@ pub const WRITER: &[Tab] = &[
     ]},
     Tab { name: "Makros", cmds: &[
         c("py-list", "Liste", "plug-manage"),
+        c("py-folder", "Ordner öffnen", "py-folder"),
         c("ai-macro", "Makro schreiben", "ai-macro"),
     ]},
 ];
@@ -366,6 +367,7 @@ pub const CALC: &[Tab] = &[
         xm("Seitenumbruch-Vorschau", "view-pagebreak"),
         c("zoom-in", "Vergrößern", "zoom-in"),
         c("zoom-out", "Verkleinern", "zoom-out"),
+        c("zoom100", "Auf 100 % zoomen", "zoom100"),
         c("ui-bigger", "Oberflächentext größer", "ui-bigger"),
         c("ui-smaller", "Oberflächentext kleiner", "ui-smaller"),
         t("darkmode", "Dunkelmodus", "theme"),

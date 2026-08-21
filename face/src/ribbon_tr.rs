@@ -154,6 +154,7 @@ pub const WRITER: &[Tab] = &[
     ]},
     Tab { name: "Makrolar", cmds: &[
         c("py-list", "Liste", "plug-manage"),
+        c("py-folder", "Klasörü aç", "py-folder"),
         c("ai-macro", "Makro yaz", "ai-macro"),
     ]},
 ];
@@ -366,6 +367,7 @@ pub const CALC: &[Tab] = &[
         xm("Sayfa Sonu Önizlemesi", "view-pagebreak"),
         c("zoom-in", "Yakınlaştır", "zoom-in"),
         c("zoom-out", "Uzaklaştır", "zoom-out"),
+        c("zoom100", "%100'e yakınlaştır", "zoom100"),
         c("ui-bigger", "Ekran yazısını büyüt", "ui-bigger"),
         c("ui-smaller", "Ekran yazısını küçült", "ui-smaller"),
         t("darkmode", "Karanlık mod", "theme"),

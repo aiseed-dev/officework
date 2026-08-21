@@ -495,6 +495,9 @@ COMMON_TAIL = {
     "macros": {
         "documenteditor": [
             ("py-list", "一覧", "plug-manage"),
+            # **表にしか無かった**ので文章にも足しました(2026-08-21 の B-3)。
+            # 置き場は pyrun の1本で、どちらから開いても同じ場所です
+            ("py-folder", "置き場を開く", "py-folder"),
             ("ai-macro", "マクロを書く", "ai-macro"),
         ],
         "spreadsheeteditor": [
@@ -782,7 +785,10 @@ EXTRA_CMDS = {
         ("表示", 'view-normal', "", "改ページ プレビュー", "view-pagebreak", "xm"),
         ("表示", 'sheet-view', "zoom-in", "拡大", "zoom-in", "c"),
         ("表示", 'zoom-in', "zoom-out", "縮小", "zoom-out", "c"),
-        ("表示", 'zoom-out', "ui-bigger", "画面の文字を大きく", "ui-bigger", "c"),
+        # **文章にしか無かった**ので表にも足しました(2026-08-21 の B-3)。
+        # 拡大・縮小と対になる命令で、中身は `ui::appcmd` に1本あります
+        ("表示", 'zoom-out', "zoom100", "100%に拡大する", "zoom100", "c"),
+        ("表示", 'zoom100', "ui-bigger", "画面の文字を大きく", "ui-bigger", "c"),
         ("表示", 'ui-bigger', "ui-smaller", "画面の文字を小さく", "ui-smaller", "c"),
         # **文章と同じ命令**(2026-08-21 の B-2)。中身は1文字も違わないので
         # id と札を揃えました。絵はアプリごとに別のまま(どちらも明暗の絵)

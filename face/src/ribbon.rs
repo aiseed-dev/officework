@@ -322,6 +322,7 @@ pub const WRITER: &[Tab] = &[
     // .py、「ファイルから」は置き場の外の .py
     Tab { name: "マクロ", cmds: &[
         c("py-list", "一覧", "plug-manage"),
+        c("py-folder", "置き場を開く", "py-folder"),
         c("ai-macro", "マクロを書く", "ai-macro"),
     ]},
 ];
@@ -567,6 +568,7 @@ pub const CALC: &[Tab] = &[
         xm("改ページ プレビュー", "view-pagebreak"),
         c("zoom-in", "拡大", "zoom-in"),
         c("zoom-out", "縮小", "zoom-out"),
+        c("zoom100", "100%に拡大する", "zoom100"),
         c("ui-bigger", "画面の文字を大きく", "ui-bigger"),
         c("ui-smaller", "画面の文字を小さく", "ui-smaller"),
         t("darkmode", "ダークモード", "theme"),
