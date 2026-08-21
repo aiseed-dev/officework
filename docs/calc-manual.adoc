@@ -589,7 +589,7 @@ A selection line is inserted *just before something else is recorded*, and only 
 Borders, shapes and charts have no Python entry point yet.
 They leave
 
-    # この操作はまだ Python で書けません: テキストボックスを挿入する(instext)
+    # この操作はまだ Python で書けません: Insert text box (instext)
 
 in the recording. *Nothing is dropped silently.* That line is the to-do list for the Python API.
 The same note appears when only part of a format change could be written — a macro that runs halfway is worse than one that does not run at all.

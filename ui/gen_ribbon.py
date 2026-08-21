@@ -256,7 +256,11 @@ LABEL = {
     "line-numbers": "tipLineNumbers", "hyphenation": "tipHyphenation",
     "watermark": "tipWatermark", "pagecolor": "tipPageColor",
     "colorschemas": "tipColorSchemas", "printarea": "tipPrintArea",
-    "pagebreak": "tipPageBreak", "scale": "tipScale",
+    # `pagebreak` はここに置きません。`tipPageBreak` は**説明文**で、
+    # 「印刷物で次のページを開始する位置に改行を追加する」がそのまま
+    # ラベルになっていました。FALLBACK の「区切り」を使います
+    # (本家のボタンの見出しも Breaks / 区切りです)
+    "scale": "tipScale",
     "printtitles": "tipPrintTitles", "rtl-sheet": "tipRtlSheet",
     # 参考資料
     "add-text": None, "contents-update": None, "bookmarks": None,
@@ -272,7 +276,11 @@ LABEL = {
     # `cell-format` はここに置かない。`tipCellStyle` から引いていたのが
     # 「セルのスタイル」が2つ並んだ原因です(言い換えの表に移しました)
     "cell-del": "tipDeleteOpt",
-    "condformat": "tipCondFormat", "table-tpl": "tipInsertTable",
+    "condformat": "tipCondFormat",
+    # **本家の別の鍵を引いていました**(2026-08-21)。`instable`(表の挿入)と
+    # 同じ `tipInsertTable` だったので、ホームと挿入に「表の挿入」が2つ
+    # 出ていました。本家のボタンの見出しは `txtTableTemplate` です
+    "table-tpl": "txtTableTemplate",
     # 数式
     "additional-formula": None, "autosum": None, "recent": None,
     "financial": None, "logical": None, "text": None, "datetime": None,
@@ -323,6 +331,19 @@ LABEL = {
         # Align middle / Align center と分かれているのに、日本語はどちらも
         # 「中央揃え」で、ホームに同じ札のボタンが2つ並んでいました
         "middle": "上下中央揃え",
+        # **本家の日本語だけが曖昧**(同じ形が3つありました)。
+        #
+        # `text-orient` はセルの中の文字を回すボタンです。本家の英語は
+        # Orientation、ページの向き(`pageorient`)は Page orientation と
+        # 分かれているのに、日本語はどちらも「印刷の向き」でした。
+        # Excel のホームの言い方に合わせて「方向」にします
+        # (訳は 15 言語とも OVERRIDES に本家の語を書いてあります)
+        "text-orient": "方向",
+        # 本家の日本語は「表の枠線」ですが、セルに引く線なので Excel は
+        # 「罫線」です。文章の側は本家も「罫線」でした
+        "borders": "罫線",
+        # 文章の側は「テキストボックスの挿入」。同じ物なので言い方を揃えます
+        "instext": "テキストボックスの挿入",
         # **こちらの引き間違い**(2026-08-21)。`cell-format`(書式設定の
         # 小窓を開く)を、`styles`(見た目の一覧)と同じ本家の語
         # `tipCellStyle` から引いていたので、ホームに「セルのスタイル」が

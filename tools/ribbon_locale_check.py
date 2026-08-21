@@ -147,6 +147,71 @@ def duplicate_labels(locales: list[str]) -> int:
     return bad
 
 
+# **同じラベルなのに id が違ってよい物**(2026-08-21 の B-2)。
+#
+# 文章と表は本家の別々のアプリから写したので、同じ働きのボタンに別の id が
+# 付いていました。4組を揃えましたが、*ラベルが同じでも別の働き*の物が
+# 残ります。それをここに理由つきで書きます。表に無い組が出たら止まります。
+#
+# 揃えるかどうかは**処理を読んで決めます**。ラベルだけで数えると間違えます
+# (実際、2026-08-21 に私がチェックボックスと日付/時刻を「同じ物」と数えて
+# いました)。
+別の働き = {
+    "チェックボックス": (
+        {"form-checkbox"}, {"inscheckbox"},
+        "文章は文書の入力欄(記入欄の仲間)、表は選んだセルに TRUE/FALSE を書く",
+    ),
+    "日付/時刻": (
+        {"datetime"}, {"fn-datetime"},
+        "文章は今日の日付を差し込む、表は日付の関数の一覧を出す",
+    ),
+}
+
+
+def cross_app_ids() -> int:
+    """**同じラベルなら同じ id**(理由を書いた物を除く)。
+
+    同じ働きのボタンに別の id が付いていると、rpc・MCP・Python から
+    アプリごとに違う名前で呼ぶことになります。押した先も別々に書くことに
+    なるので、**写しがずれます**(`ai-where` が実際にずれていました)。
+    """
+    t = _tables(UI / "ribbon.rs")
+
+    def 集める(表: str) -> dict[str, set[str]]:
+        d: dict[str, set[str]] = {}
+        for tab in t[表]:
+            for c in tab.cmds:
+                if c.id:
+                    d.setdefault(c.label, set()).add(c.id)
+        return d
+
+    w, c = 集める("WRITER"), 集める("CALC")
+    bad = 0
+    見た = set()
+    for label in sorted(set(w) & set(c)):
+        if w[label] == c[label]:
+            continue
+        exc = 別の働き.get(label)
+        if exc and exc[0] == w[label] and exc[1] == c[label]:
+            見た.add(label)
+            continue
+        print(
+            f"::error::{label!r} が、文章では {sorted(w[label])}・"
+            f"表では {sorted(c[label])} という別の id です。"
+            "同じ働きなら id を揃えてください。別の働きなら "
+            "tools/ribbon_locale_check.py の 別の働き に理由を書いてください"
+        )
+        bad = 1
+    余り = set(別の働き) - 見た
+    if 余り:
+        print(
+            f"::error::別の働き に書いてあるのに、いま食い違っていない組があります: "
+            f"{sorted(余り)}。直したのなら表からも消してください"
+        )
+        bad = 1
+    return bad
+
+
 def main() -> int:
     locales = sorted(
         p.stem[len("ribbon_"):]
@@ -194,6 +259,13 @@ def main() -> int:
     bad |= dup
     if not dup:
         print(f"ラベルの重複: ja と {len(locales)} 言語とも、同じタブに同じラベルはありません")
+    cross = cross_app_ids()
+    bad |= cross
+    if not cross:
+        print(
+            "アプリをまたぐ id: 同じラベルのボタンは同じ id です"
+            f"(別の働きだと書いてある物が {len(別の働き)} 組)"
+        )
     if not bad:
         print(f"語の重なり: {len(locales)} 言語とも別の語で出来ています")
     return bad
