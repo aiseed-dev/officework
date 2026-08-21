@@ -329,7 +329,7 @@ docx には sectPr の``textDirection tbRl`` で入り、LibreOffice で開け�
 **置き場の外の .py を選ぶ口は閉じました。
 外から受け取った物は、置き場に置いてから一覧で選びます —**置く手が1つ挟まる**のが門です。
 
-* *マクロの書き方* — 名前つき記入欄(`fill`/`extract`)・雛形(`render`)・速さの作法・AI に書かせるボタンはlink:writer-macro-manual.ja.adoc[writer マクロの手引き]に
+* *マクロの書き方* — 名前つき記入欄(`fill`/`extract`)・雛形(`render`)・速さの作法・AI に書かせる話はlink:macro-manual.ja.adoc[マクロの手引き]に
 
 == 文書は2種 — adoc 形式と、受け取った docx
 

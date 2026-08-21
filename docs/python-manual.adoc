@@ -378,7 +378,7 @@ The same holds for a model running on your own machine.
 
 == writer macros (d = python-docx)
 
-*Full manual: link:writer-macro-manual.adoc[writer-macro-manual.adoc]* — named fields (`fill` / `extract` / `fields`), templates (`render` / `tpl_fields`, docxtpl), the sandbox, and letting the AI write the script.
+*Full manual: link:macro-manual.adoc[macro-manual.adoc]* — named fields (`fill` / `extract` / `fields`), templates (`render` / `tpl_fields`, docxtpl), selection macros for the spreadsheet, the sandbox, and having an AI write the script.
 
 [source,python]
 ----

@@ -319,7 +319,7 @@ Headless tools: `office-spell document.txt` (exit code 0=clean 1=findings 2=unre
 *Only .py files in the folder can be launched.* The button that ran a .py from anywhere is gone.
 A file you were given goes into the folder first, then you pick it from the list — *that step is the gate*.
 
-* *Writing macros* — named fields (`fill`/`extract`), templates (`render`), speed rules, and the AI button: see the link:writer-macro-manual.adoc[writer macro manual]
+* *Writing macros* — named fields (`fill`/`extract`), templates (`render`), speed rules, and having an AI write one: see the link:macro-manual.adoc[macro manual]
 
 == Two kinds of document — meaning only, and the docx you were sent
 

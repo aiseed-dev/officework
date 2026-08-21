@@ -1,0 +1,164 @@
+= officework macro manual (Python)
+
+_日本語版(secondary): link:macro-manual.ja.adoc[macro-manual.ja.adoc]_
+
+An officework macro is a Python script placed in a folder. Three rules cover everything:
+
+* *Code stays outside the file.* No workbook or document ever carries code. Opening a file you received executes nothing
+* *The app is not where macros are written.* They are written by an AI (see "Having an AI write one") or in an editor such as VS Code. officework is where they run
+* *A person places them, a person runs them.* Drop a `.py` into a folder, run it from the list or a button. It runs inside a sandbox
+
+== Three folders
+
+All under `~/.config/officework/` (`%USERPROFILE%\.config\officework` on Windows).
+
+[cols="1,2,2"]
+|===
+|Folder |What it becomes |How it is used
+
+|`funcs/` |Functions called from cells |as an ordinary formula: `=double(A1)`
+|`ribbon/` |Ribbon buttons |declare at the top of the file (below)
+|`plugins/` |Macros picked from a list |Macro tab > List
+|===
+
+To become a ribbon button, a file declares itself at the top:
+
+[source,python]
+----
+リボン = {"ラベル": "Monthly closing", "アイコン": "py-run", "タブ": "マクロ"}
+----
+
+The button appears after the built-in buttons on the declared tab (the order never changes day to day).
+Files written with the previous key names still load.
+
+== Spreadsheet macros — routine work on the selection
+
+Spreadsheet macros talk to the running app over the bridge (`officework.calc`, in the style of xlwings).
+The basic shape is *acting on the current selection* — the same entry point as VBA's `Selection`.
+
+Append "(done)" to every selected cell:
+
+[source,python]
+----
+# ~/.config/officework/ribbon/mark_done.py
+リボン = {"ラベル": "Mark done", "タブ": "マクロ"}
+from officework import calc as xw
+
+r = xw.selection()          # the range selected on screen
+for c in r:                 # cell by cell
+    if c.value:
+        c.value = f"{c.value} (done)"
+print(f"marked {len(r.value)} rows")
+----
+
+Make the selection yellow and bold:
+
+[source,python]
+----
+r = xw.selection()
+r.color = (255, 255, 0)     # fill
+r.font.bold = True
+----
+
+Write 1.1 × the value into the next column:
+
+[source,python]
+----
+r = xw.selection()
+r.offset(0, 1).value = [[x * 1.1 for x in row] for row in r.value]
+----
+
+Two habits:
+
+* *For large ranges, read and write whole with `r.value`.* Cell-by-cell means one bridge round trip per cell — thousands of rows will keep you waiting. Read, rebuild, write is the fast shape
+* *Refuse anything you cannot or should not do with `raise SystemExit("reason")`.* The reason is shown on screen; never fail silently
+
+The full bridge surface (`Range` formatting, sheets, saving, …) is in the link:python-manual.adoc[Python manual].
+
+== Document macros — form fields and templates
+
+A document macro edits *a copy of the open document* inside the sandbox, using python-docx.
+On success the edited copy is read back and *one Ctrl+Z* undoes the whole thing.
+On failure the document is untouched.
+
+These are provided — do not write them yourself:
+
+[source,python]
+----
+# provided:                   do not write:
+d          # the document     import docx / docx.Document(...) / d.save(...)
+----
+
+The last `print()` line appears in the status bar. Reporting what you did in one line is good manners.
+
+=== Named form fields — the backbone of forms
+
+First name the fields: insert them on the Form tab, put the caret inside, press "Name".
+The name is stored in the docx `w:tag`, so it survives round trips with Word.
+When a form repeats the same label, distinguish with sectioned names like `rep.address` / `partner1.address`.
+
+[cols="1,1"]
+|===
+|Function |What it does
+
+|`fill(name, value)` |writes into *every* field of that name (forms repeat fields on page 2)
+|`fill_one(name, value)` |writes into the first one only
+|`extract(name)` |reads a field's value
+|`fields()` |list of (name, value) — the form as a data ledger
+|===
+
+All of them *refuse loudly on an unknown name* — a typo never becomes a silent no-op.
+
+*Never scan for a label's text and write into the neighbouring cell* — merged cells return the same cell twice, distributed justification inserts spaces into labels, and repeated labels hit the wrong target. Names exist so you never have to.
+
+=== Templates — mass-produced one-way documents
+
+For write-and-send documents (notices, contracts, cover letters), use a `{{placeholder}}` template instead of form fields.
+
+[cols="1,1"]
+|===
+|Function |What it does
+
+|`render(dict)` |fills the template; the result becomes the document
+|`tpl_fields()` |list of placeholder names — the template's specification
+|===
+
+Repeat detail rows with `{%tr %}` on its own row.
+Only two things actually break a template: putting `{%tr %}` on the same row as the detail, and full-width `{{ }}` typed by the IME (a placeholder split across runs by editing is usually harmless — it is rejoined on open).
+
+=== Using python-docx directly
+
+Everything is available — `d.paragraphs`, `d.tables`, `d.sections`. Two habits, measured on real files:
+
+* *Walk tables by rows.* `tb.cell(i, j)` rebuilds the merge grid on every call — on a 1,920-cell form, `for row in tb.rows: for c in row.cells:` took 91 ms, a `cell(i, j)` loop took 12.7 s
+* *Replace text without destroying formatting.* `c.text = "…"` flattens run formatting; writing into the first run is the safe way
+
+== Having an AI write one
+
+There is no macro-writing screen inside the app (that is a decision). There are two roads:
+
+* *Ask the chat in the left panel.* "Write a macro that appends (done) to the selected cells" — the code comes back in a block; you place it in the folder as a `.py` yourself and run it from the list
+* *Ask an outside AI (such as Claude).* Connected over MCP, the AI can read the open document's field names and the sheet's contents by itself before writing
+
+Neither runs anything by itself. Reading, placing and pressing are done by a person — the machine writes, the person reads, the sandbox runs it. That is the whole safety mechanism.
+
+== The sandbox
+
+Macros run inside a bubblewrap sandbox: *no network*, an empty-looking home, and the only writable place is the macro's workspace. Libraries in `.venv` (python-docx, docxtpl, polars, …) are available.
+
+* `~/customers.csv` cannot be read. Put data in the script, pass it via `render()`'s dict, or take it from the document or the sheet
+* The spreadsheet bridge (a socket that never leaves this machine) does work from inside the sandbox
+
+== When something goes wrong
+
+[cols="1,1"]
+|===
+|Message |Meaning
+
+|`cannot connect to officework` |the app is not running — start it first (`xw.Book()` starts it for you)
+|`python-docx not found` |`pip install python-docx` (into `.venv` if you have one)
+|`docxtpl not found` |`pip install docxtpl` — only needed for `render` / `tpl_fields`
+|`field "X" not found` |no field of that name — name it on the Form tab, or check with `fields()`
+|`broken template: …` |check `{%tr %}` row placement and full-width `{{ }}`
+|`macro: <last error line>` |the script raised — neither document nor workbook was changed
+|===

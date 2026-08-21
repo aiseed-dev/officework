@@ -614,7 +614,7 @@ AI はマクロ(`ribbon/` か `plugins/`)から呼び、結果を普通の値と
 
 == writer のマクロ(d = python-docx)
 
-*専用の手引き: link:writer-macro-manual.ja.adoc[writer-macro-manual.ja.adoc]* —名前つき記入欄(`fill` / `extract` / `fields`)、雛形(`render` / `tpl_fields`、docxtpl)、サンドボックスの中身、AI にコードを書かせる話まで。
+*専用の手引き: link:macro-manual.ja.adoc[macro-manual.ja.adoc]* —名前つき記入欄(`fill` / `extract` / `fields`)、雛形(`render` / `tpl_fields`、docxtpl)、表の選択に効くマクロ、サンドボックスの中身、AI に書かせる話まで。
 
 [source,python]
 ----
