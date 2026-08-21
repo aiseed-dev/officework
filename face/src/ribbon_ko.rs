@@ -146,6 +146,8 @@ pub const WRITER: &[Tab] = &[
         c("printview", "인쇄 모양", "printview"),
         c("multipage", "여러 페이지", "multipage"),
         t("darkmode", "다크 모드", "darkmode"),
+        c("ui-bigger", "화면 글자 크게", "ui-bigger"),
+        c("ui-smaller", "화면 글자 작게", "ui-smaller"),
         c("ruler", "자", "ruler"),
         t("show-toolbar", "항상 도구 모음 표시", "show-toolbar"),
         t("show-statusbar", "상태 바", "show-statusbar"),

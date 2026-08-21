@@ -312,6 +312,8 @@ pub const WRITER: &[Tab] = &[
         c("printview", "印刷レイアウト", "printview"),
         c("multipage", "複数ページ", "multipage"),
         t("darkmode", "ダークモード", "darkmode"),
+        c("ui-bigger", "画面の文字を大きく", "ui-bigger"),
+        c("ui-smaller", "画面の文字を小さく", "ui-smaller"),
         c("ruler", "ルーラー", "ruler"),
         t("show-toolbar", "ツールバーを常に表示する", "show-toolbar"),
         t("show-statusbar", "ステータスバー", "show-statusbar"),

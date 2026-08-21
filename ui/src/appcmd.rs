@@ -27,6 +27,8 @@ pub trait Screen {
     fn zoom_mut(&mut self) -> &mut f32;
     /// 画面が暗い側か
     fn dark_mut(&mut self) -> &mut bool;
+    /// 画面の文字の大きさ(1.0 が 100%)。**紙やセルの大きさとは別**
+    fn ui_scale_mut(&mut self) -> &mut f32;
     /// 状態の行へ1文
     fn say(&mut self, msg: String);
 }
@@ -88,6 +90,25 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
             s.say(msg.to_string());
             true
         }
+        // 画面の文字の大きさ。**文章にはボタンがありませんでした**
+        // (2026-08-21 発注者「双方でできるようにしたいです」)。表の腕が
+        // そのままアプリに依らない形だったので、ここへ移して両方から使います。
+        //
+        // 紙やセルの大きさは変わりません — あちらは拡大・縮小の話です。
+        "ui-bigger" | "ui-smaller" => {
+            let step = if id == "ui-bigger" { 0.1 } else { -0.1 };
+            let s2 = s.ui_scale_mut();
+            // 上限は 150% — これ以上はパネルや欄の設えが崩れる(発注者 2026-08-07)
+            *s2 = (((*s2 + step) * 10.0).round() / 10.0).clamp(0.8, 1.5);
+            let pct = (*s2 * 100.0).round() as i32;
+            // 試験では書かない(実利用者の settings.toml を汚さない)
+            if !cfg!(test) {
+                crate::settings::set("ui_scale", &format!("{:.1}", pct as f32 / 100.0));
+            }
+            let msg = crate::tf!("画面の文字の大きさ {}%(次回もこの大きさで開きます)", pct);
+            s.say(msg.to_string());
+            true
+        }
         // 画面の明暗。**2つのアプリで中身が1文字も違いませんでした**
         // (2026-08-21 の B-2)。文章は `darkmode`、表は `theme` という
         // 別の id で、どちらも `toggle_dark` を呼ぶだけだったので、
@@ -114,6 +135,7 @@ mod tests {
     struct Fake {
         zoom: f32,
         dark: bool,
+        ui_scale: f32,
         said: Vec<String>,
     }
     impl Screen for Fake {
@@ -122,6 +144,9 @@ mod tests {
         }
         fn dark_mut(&mut self) -> &mut bool {
             &mut self.dark
+        }
+        fn ui_scale_mut(&mut self) -> &mut f32 {
+            &mut self.ui_scale
         }
         fn say(&mut self, msg: String) {
             self.said.push(msg);

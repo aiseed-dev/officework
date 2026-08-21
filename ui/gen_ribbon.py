@@ -726,6 +726,11 @@ EXTRA_CMDS = {
         ("表示", 'fit-width', "zoom100", "100%に拡大する", "zoom100", "c"),
         ("表示", 'zoom-out', "printview", "印刷レイアウト", "printview", "c"),
         ("表示", 'printview', "multipage", "複数ページ", "multipage", "c"),
+        # **表にしかありませんでした**(2026-08-21 発注者「双方でできるように
+        # したいです」)。中身は ui::appcmd に1本あります。ダークモードの
+        # 隣に置くのは、表と同じ並びにするためです
+        ("表示", 'multipage', "ui-bigger", "画面の文字を大きく", "ui-bigger", "c"),
+        ("表示", 'ui-bigger', "ui-smaller", "画面の文字を小さく", "ui-smaller", "c"),
         ("表示", 'ruler', "show-toolbar", "ツールバーを常に表示する", "show-toolbar", "t"),
         ("表示", 'show-toolbar', "show-statusbar", "ステータスバー", "show-statusbar", "t"),
         ("表示", 'show-statusbar', "show-left", "左パネル", "show-left", "t"),

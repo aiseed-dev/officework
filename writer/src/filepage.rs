@@ -18,6 +18,7 @@ impl Writer {
     /// 単体で動くときは `render` が左の列と並べます。officework に
     /// 埋め込まれているときは officework が呼びます。
     pub fn file_pane(&mut self, cx: &mut Context<Self>) -> gpui::Div {
+        let us = self.ui_scale;
         let dk = self.dark;
         let th_cmd_bg = if dk { rgb(0x22262A) } else { rgb(0xFFFFFF) };
         let th_cmd_border = if dk { rgb(0x33383D) } else { rgb(0xE1E6EA) };
@@ -32,7 +33,7 @@ impl Writer {
         let total_pages = self.page_offsets.len().max(1);
         let nchars = self.doc.body_text().chars().filter(|c| !c.is_whitespace()).count();
         let mut pane = div().flex_1().bg(th_cmd_bg).p_8()
-            .flex().flex_col().gap_3().text_size(px(12.5))
+            .flex().flex_col().gap_3().text_size(px(us * 12.5))
             .text_color(th_top_fg);
         if self.file_view == 3 {
             // **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
@@ -48,19 +49,19 @@ impl Writer {
                     .border_1()
                     .border_color(if this.fd_field == i { th_btn } else { th_cmd_border })
                     .bg(gpui::white())
-                    .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                    .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(if s.is_empty() { ph.to_string() } else { s }))
                     .on_click(cx.listener(move |t, _, _, cx| { t.fd_field = i; cx.notify() }))
             };
             let 押し = |id: &'static str, 札: SharedString| {
                 div().id(id).px_3().py_1().rounded_sm().cursor_pointer()
                     .border_1().border_color(th_btn).text_color(th_btn)
-                    .text_size(px(12.0))
+                    .text_size(px(us * 12.0))
                     .hover(move |s| s.bg(th_btn_hover))
                     .child(札)
             };
             pane = pane
-                .child(div().text_size(px(16.0)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 16.0)).font_weight(gpui::FontWeight::BOLD)
                     .child(ui::t!("フォルダから探す")))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(欄(self, 0, &self.fd_term, 280.0, "探す字"))
@@ -69,17 +70,17 @@ impl Writer {
                         cx.listener(|t, _, _, cx| { t.find_dir_dialog(cx); cx.notify() })))
                     .child(押し("fd-go", ui::t!("探す (Enter)").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.find_in_folder(); cx.notify() }))))
-                .child(div().text_size(px(11.5)).text_color(th_status)
+                .child(div().text_size(px(us * 11.5)).text_color(th_status)
                     .child(SharedString::from(match self.find_dir() {
                         Some(d) => ui::tf!("場所: {}", d.display()).to_string(),
                         None => ui::t!("場所がまだ決まっていません(「場所を選ぶ」)").to_string(),
                     })));
             // 当たりの一覧(ファイルごとに見出し + 行番号つきの行)
             let mut 一覧 = div().id("fd-list")
-                .flex_none().h(px(320.0)).overflow_y_scroll()
+                .flex_none().h(px(us * 320.0)).overflow_y_scroll()
                 .p_2().rounded_sm().bg(gpui::white())
                 .border_1().border_color(th_cmd_border)
-                .flex().flex_col().gap_0p5().text_size(px(12.0));
+                .flex().flex_col().gap_0p5().text_size(px(us * 12.0));
             if self.fd_hits.is_empty() {
                 一覧 = 一覧.child(div().text_color(th_status)
                     .child(ui::t!("(まだ探していません)")));
@@ -132,13 +133,13 @@ impl Writer {
             pane = pane.child(div().flex().flex_row().items_center().gap_2()
                 .child(押し("fd-load", ui::t!("読み込み").into()).on_click(
                     cx.listener(|t, _, _, cx| { t.find_load(); cx.notify() })))
-                .child(div().text_size(px(11.5)).text_color(th_status)
+                .child(div().text_size(px(us * 11.5)).text_color(th_status)
                     .child(ui::t!("選んだ当たりの文書を開いて、その場所へ移ります"))));
             pane = pane.child(div().id("fd-peek")
-                .flex_1().min_h(px(120.0)).overflow_y_scroll()
+                .flex_1().min_h(px(us * 120.0)).overflow_y_scroll()
                 .p_2().rounded_sm().bg(gpui::white())
                 .border_1().border_color(th_cmd_border)
-                .text_size(px(12.0)).font_family(crate::doc::MONO)
+                .text_size(px(us * 12.0)).font_family(crate::doc::MONO)
                 .child(SharedString::from(if self.fd_peek.is_empty() {
                     ui::t!("(当たりを選ぶと、ここに前後が出ます)").to_string()
                 } else {
@@ -151,19 +152,19 @@ impl Writer {
             // 見出しが String の版(ui::env_rows が返す形)
             let row_owned = |label: String, value: String| {
                 div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(200.0)).text_color(th_status)
+                    .child(div().w(px(us * 200.0)).text_color(th_status)
                         .child(SharedString::from(label)))
                     .child(div().child(SharedString::from(value)))
             };
             pane = pane
-                .child(div().text_size(px(16.0))
+                .child(div().text_size(px(us * 16.0))
                     .font_weight(gpui::FontWeight::BOLD)
                     .child(ui::t!("詳細設定")))
                 .child(div().text_color(th_status).child(SharedString::from(
                     ui::tf!("置き場: {}", ui::settings::path().display()))))
-                .child(div().h(px(6.0)))
+                .child(div().h(px(us * 6.0)))
                 .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(200.0)).text_color(th_status)
+                    .child(div().w(px(us * 200.0)).text_color(th_status)
                         .child(ui::t!("言語(リボンと文言)")))
                     .child(div().id("set-lang")
                         .px_3().py_1().rounded_sm().cursor_pointer()
@@ -180,7 +181,7 @@ impl Writer {
                 // **画面の明暗**(2026-08-20 発注者「双方でできるように
                 // したいです」)。**紙は白いまま** — 暗くするのは周りだけ
                 .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(200.0)).text_color(th_status)
+                    .child(div().w(px(us * 200.0)).text_color(th_status)
                         .child(ui::t!("画面の明暗(テーマ)")))
                     .child(div().id("set-theme")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
@@ -193,7 +194,7 @@ impl Writer {
                 // ようにしたいです」)。器は表と同じ `user_name`。
                 // **未設定なら名乗りません** — 機械のユーザー名は使わない
                 .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(200.0)).text_color(th_status)
+                    .child(div().w(px(us * 200.0)).text_color(th_status)
                         .child(ui::t!("コメントの名乗り")))
                     .child(div().id("set-username")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
@@ -213,7 +214,7 @@ impl Writer {
                 // 回して解く道は表計算と同じに要る。器はアプリの設定 —
                 // `.adoc` の文書には xlsx の `calcPr` に当たる置き場が無い
                 .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(200.0)).text_color(th_status)
+                    .child(div().w(px(us * 200.0)).text_color(th_status)
                         .child(ui::t!("反復計算(循環参照)")))
                     .child(div().id("set-iter")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
@@ -232,7 +233,7 @@ impl Writer {
                 // ようにしたいです」)。仕掛けは前から共通で、表だけが
                 // 名乗り出ていた。器も表と同じ1つの綴りを見る
                 .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(200.0)).text_color(th_status)
+                    .child(div().w(px(us * 200.0)).text_color(th_status)
                         .child(ui::t!("数学オートコレクト")))
                     .child(div().id("set-autocorrect")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
@@ -250,9 +251,9 @@ impl Writer {
                 // ── AI ────────────────────────────────────────────
                 // **宛先を覚えるのはここ**(発注者 2026-08-15
                 // 「AI の設定を設定メニューに追加して」)。calc と同じ形
-                .child(div().h(px(10.0)))
+                .child(div().h(px(us * 10.0)))
                 .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(200.0)).text_color(th_status)
+                    .child(div().w(px(us * 200.0)).text_color(th_status)
                         .child(ui::t!("AI の宛先")))
                     .child(div().id("set-ai")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
@@ -275,7 +276,7 @@ impl Writer {
             // **最近開いたの面は ui::filemenu の1本**(段8 の3)。
             // 押したときの行き先だけがアプリの物
             let look = ui::filemenu::PaneLook {
-                fg: th_top_fg, dim: th_status, hover: item_bg, scale: 1.0,
+                fg: th_top_fg, dim: th_status, hover: item_bg, scale: us,
             };
             pane = pane.child(ui::filemenu::pane_title(&look, ui::t!("最近開いた")));
             let list = Self::recent_list();
@@ -295,10 +296,10 @@ impl Writer {
             let words = text.split_whitespace().count();
             let chars_all = text.chars().filter(|c| *c != '\n').count();
             let paras = self.doc.paragraphs().count();
-            pane = pane.child(div().text_size(px(16.0))
+            pane = pane.child(div().text_size(px(us * 16.0))
                 .font_weight(gpui::FontWeight::BOLD)
                 .child(ui::t!("文書の情報")))
-                .child(div().text_size(px(13.5))
+                .child(div().text_size(px(us * 13.5))
                     .font_weight(gpui::FontWeight::BOLD)
                     .child(ui::t!("統計")));
             for (k, v) in [
@@ -309,11 +310,11 @@ impl Writer {
                 (ui::t!("文字数 (スペースを含む)"), chars_all),
             ] {
                 pane = pane.child(div().flex().flex_row()
-                    .child(div().w(px(220.0)).text_color(th_status).child(k))
+                    .child(div().w(px(us * 220.0)).text_color(th_status).child(k))
                     .child(SharedString::from(format!("{v}"))));
             }
-            pane = pane.child(div().h(px(6.0)))
-                .child(div().text_size(px(13.5))
+            pane = pane.child(div().h(px(us * 6.0)))
+                .child(div().text_size(px(us * 13.5))
                     .font_weight(gpui::FontWeight::BOLD)
                     .child(ui::t!("プロパティ")));
             let pr = self.doc.props.clone();
@@ -336,10 +337,10 @@ impl Writer {
                 };
                 let empty = !editing && v.is_empty();
                 pane = pane.child(div().flex().flex_row().items_center()
-                    .child(div().w(px(220.0)).text_color(th_status).child(k))
+                    .child(div().w(px(us * 220.0)).text_color(th_status).child(k))
                     .child(div()
                         .id(SharedString::from(format!("prop-{i}")))
-                        .w(px(320.0)).px_2().py_1().rounded_sm()
+                        .w(px(us * 320.0)).px_2().py_1().rounded_sm()
                         .border_1()
                         .border_color(if editing {
                             rgb(0x1B6E3C)
@@ -367,7 +368,7 @@ impl Writer {
                             cx.notify()
                         }))));
             }
-            pane = pane.child(div().text_size(px(11.5)).text_color(th_status)
+            pane = pane.child(div().text_size(px(us * 11.5)).text_color(th_status)
                 .child(ui::t!("欄を押して打ち、Enter で控える(保存で docx の情報に入ります)")));
         }
         pane

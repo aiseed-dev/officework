@@ -146,6 +146,8 @@ pub const WRITER: &[Tab] = &[
         c("printview", "Yazdırma düzeni", "printview"),
         c("multipage", "Çoklu sayfa", "multipage"),
         t("darkmode", "Karanlık mod", "darkmode"),
+        c("ui-bigger", "Ekran yazısını büyüt", "ui-bigger"),
+        c("ui-smaller", "Ekran yazısını küçült", "ui-smaller"),
         c("ruler", "Cetveller", "ruler"),
         t("show-toolbar", "Her zaman araç çubuğunu göster", "show-toolbar"),
         t("show-statusbar", "Durum Çubuğu", "show-statusbar"),

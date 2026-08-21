@@ -146,6 +146,8 @@ pub const WRITER: &[Tab] = &[
         c("printview", "Bố cục in", "printview"),
         c("multipage", "Nhiều trang", "multipage"),
         t("darkmode", "Chế độ tối", "darkmode"),
+        c("ui-bigger", "Phóng to chữ màn hình", "ui-bigger"),
+        c("ui-smaller", "Thu nhỏ chữ màn hình", "ui-smaller"),
         c("ruler", "Thước", "ruler"),
         t("show-toolbar", "Luôn hiện thanh công cụ", "show-toolbar"),
         t("show-statusbar", "Thanh trạng thái", "show-statusbar"),

@@ -146,6 +146,8 @@ pub const WRITER: &[Tab] = &[
         c("printview", "Tata letak cetak", "printview"),
         c("multipage", "Gandakan halaman", "multipage"),
         t("darkmode", "Mode gelap", "darkmode"),
+        c("ui-bigger", "Perbesar teks layar", "ui-bigger"),
+        c("ui-smaller", "Perkecil teks layar", "ui-smaller"),
         c("ruler", "Penggaris", "ruler"),
         t("show-toolbar", "Selalu Tampilkan Bilah Alat", "show-toolbar"),
         t("show-statusbar", "Bar Status", "show-statusbar"),

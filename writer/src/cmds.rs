@@ -47,6 +47,9 @@ impl ui::appcmd::Screen for Writer {
     fn dark_mut(&mut self) -> &mut bool {
         &mut self.dark
     }
+    fn ui_scale_mut(&mut self) -> &mut f32 {
+        &mut self.ui_scale
+    }
     fn say(&mut self, msg: String) {
         self.status = msg.into();
     }

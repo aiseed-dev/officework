@@ -14,6 +14,7 @@ const CARET_H: f32 = 1.00;
 
 impl Render for Writer {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let us = self.ui_scale;
         let me: Entity<Writer> = cx.entity();
         // 画面の倍率(紙のミリは変えず、画素への写像だけ変える)
         let pxmm = PX_PER_MM * self.zoom;
@@ -59,7 +60,7 @@ impl Render for Writer {
                 .hover(move |s| s.bg(th_qa_hover))
                 .child(gpui::svg()
                     .path(SharedString::from(format!("icons/{icon}.svg")))
-                    .size(px(15.0)).text_color(th_top_fg))
+                    .size(px(us * 15.0)).text_color(th_top_fg))
                 .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
         };
         let title = self
@@ -69,7 +70,7 @@ impl Render for Writer {
             .unwrap_or_else(|| ui::t!("無題のドキュメント").into());
         let winbtn = |id: &'static str, label: &'static str| {
             div().id(id).px_2p5().py_1().rounded_sm()
-                .text_size(px(12.0)).text_color(th_top_fg)
+                .text_size(px(us * 12.0)).text_color(th_top_fg)
                 .cursor_pointer()
                 .hover(move |s| if id == "close" { s.bg(rgb(0xC0392B)).text_color(rgb(0xFFFFFF)) }
                                 else { s.bg(rgb(0x2C7DA6)).text_color(rgb(0xFFFFFF)) })
@@ -103,14 +104,14 @@ impl Render for Writer {
                 cx.notify()
             })))
             .child(div().flex_1())
-            .child(div().text_size(px(12.5)).text_color(th_top_fg)
+            .child(div().text_size(px(us * 12.5)).text_color(th_top_fg)
                 .whitespace_nowrap().overflow_hidden()
                 .child(SharedString::from(format!(
                     "{}{title}",
                     if self.dirty { "*" } else { "" }
                 ))))
             .child(div().flex_1())
-            .child(div().pr_2().text_size(px(10.5))
+            .child(div().pr_2().text_size(px(us * 10.5))
                 .text_color(if dk { rgb(0x6E7982) } else { rgb(0x8A949D) })
                 .child(SharedString::from(ui::tf!("writer — 実装済み {}/{}", ready, all))))
             .child(winbtn("min", "─").on_click(cx.listener(|_, _, window, _| {
@@ -143,7 +144,7 @@ impl Render for Writer {
             cx,
             ui::tabrow::Side::Doc,
             self.tab,
-            1.0,
+            us,
             dlg_open,
             ui::tabrow::Look {
                 row_bg: th_tab_on_bg,
@@ -276,7 +277,10 @@ impl Render for Writer {
                 ("nav", Some("ナビゲーション")), ("‖", None),
                 ("fit-page", Some("ページに合わせる")),
                 ("zoom100", Some("100%に拡大する")), ("zoom-in", None),
-                ("‖", None), ("darkmode", None), ("ruler", None),
+                ("‖", None), ("darkmode", None),
+                // **表にしかありませんでした**(2026-08-21 発注者)
+                ("ui-bigger", None), ("ui-smaller", None),
+                ("ruler", None),
                 ("‖", None), ("show-toolbar", None), ("show-left", None),
             ],
             &[
@@ -322,7 +326,7 @@ impl Render for Writer {
                 let mut row = div().flex().flex_row().items_center().gap_0p5();
                 for &(id, big) in *ids {
                     if id == "‖" {
-                        row = row.child(div().w(px(1.0))
+                        row = row.child(div().w(px(us * 1.0))
                             .h(px(if tall { 40.0 } else { 22.0 }))
                             .bg(th_cmd_border).mx_1());
                         continue;
@@ -360,10 +364,10 @@ impl Render for Writer {
                             .relative()
                             .child(mark)
                             .flex().flex_row().items_center().gap_1()
-                            .px_2().h(px(26.0))
+                            .px_2().h(px(us * 26.0))
                             .w(px(if cid == "fontname" { 150.0 } else { 56.0 }))
                             .rounded_sm().border_1().border_color(th_cmd_border)
-                            .text_size(px(12.0))
+                            .text_size(px(us * 12.0))
                             // 小窓中は欄も灰色・無反応(リボン全体を無効にする約束)
                             .text_color(if dlg_open { th_gray_fg } else { th_top_fg })
                             .when(!dlg_open, |d| d.cursor_pointer()
@@ -374,7 +378,7 @@ impl Render for Writer {
                                 })))
                             .child(div().flex_1().whitespace_nowrap()
                                 .overflow_hidden().child(SharedString::from(text)))
-                            .child(div().text_size(px(9.0)).text_color(th_tab_idle)
+                            .child(div().text_size(px(us * 9.0)).text_color(th_tab_idle)
                                 .child("▼")));
                         continue;
                     }
@@ -440,7 +444,7 @@ impl Render for Writer {
                         };
                         let mut b = div()
                             .id(SharedString::from(format!("h-{icon}")))
-                            .px_2().h(px(48.0)).rounded_sm()
+                            .px_2().h(px(us * 48.0)).rounded_sm()
                             .when(入, |d| d.bg(th_btn_hover))
                             .flex().flex_col().items_center().justify_center()
                             .gap_1()
@@ -449,19 +453,19 @@ impl Render for Writer {
                             // 発注者)。下のステータスバーにも名前は出ますが、
                             // マウスから遠くて気づきません。gpui の既定の
                             // 待ち時間は 500 ミリ秒で、待たされる感じがあります
-                            .tooltip(move |_, cx| cx.new(|_| Tip(label.into())).into())
+                            .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
                             .tooltip_show_delay(std::time::Duration::from_millis(150))
                             .children(has_icon.then(|| {
                                 gpui::svg()
                                     .path(SharedString::from(format!("icons/{icon}.svg")))
-                                    .size(px(20.0))
+                                    .size(px(us * 20.0))
                                     .text_color(fg)
                             }))
                             .child(div().flex().flex_row().items_center().gap_0p5()
-                                .text_size(px(10.5)).text_color(fg)
+                                .text_size(px(us * 10.5)).text_color(fg)
                                 .child(short)
                                 .children(marker.map(|m| div()
-                                    .text_size(px(8.0)).text_color(th_tab_idle)
+                                    .text_size(px(us * 8.0)).text_color(th_tab_idle)
                                     .child(m))));
                         if on {
                             b = b.bg(th_btn_hover).border_1().border_color(th_btn);
@@ -483,15 +487,15 @@ impl Render for Writer {
                     let usable = cmd.ready && !dlg_open;
                     let mut b = div()
                         .id(SharedString::from(format!("h-{icon}")))
-                        .h(px(26.0)).rounded_sm()
+                        .h(px(us * 26.0)).rounded_sm()
                         .when(入, |d| d.bg(th_btn_hover))
                         .flex().items_center().justify_center()
                         .on_hover(hoverable)
-                        .tooltip(move |_, cx| cx.new(|_| Tip(label.into())).into())
+                        .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
                         .tooltip_show_delay(std::time::Duration::from_millis(150));
                     b = if has_icon {
                         // 印つきは幅を固定しない(印のぶん広がる)
-                        if marker.is_some() { b.px_0p5() } else { b.w(px(26.0)) }
+                        if marker.is_some() { b.px_0p5() } else { b.w(px(us * 26.0)) }
                     } else {
                         b.px_1p5()
                     };
@@ -510,20 +514,20 @@ impl Render for Writer {
                         .children(has_icon.then(|| {
                             gpui::svg()
                                 .path(SharedString::from(format!("icons/{icon}.svg")))
-                                .size(px(18.0))
+                                .size(px(us * 18.0))
                                 .text_color(icon_fg)
                         }))
                         .children(has_icon.then_some(marker).flatten().map(|m| {
                             // 開く印(▾=一覧 / …=小窓)
-                            div().text_size(px(8.0)).text_color(th_tab_idle).child(m)
+                            div().text_size(px(us * 8.0)).text_color(th_tab_idle).child(m)
                         }))
                         .children((!has_icon).then(|| {
-                            div().text_size(px(10.5))
+                            div().text_size(px(us * 10.5))
                                 .text_color(if usable { th_btn } else { th_gray_fg })
                                 .flex().flex_row().items_center().gap_0p5()
                                 .child(label)
                                 .children(marker.map(|m| div()
-                                    .text_size(px(8.0)).text_color(th_tab_idle)
+                                    .text_size(px(us * 8.0)).text_color(th_tab_idle)
                                     .child(m)))
                         }));
                     if usable {
@@ -561,7 +565,7 @@ impl Render for Writer {
                             .px_3()
                             .py_1()
                             .rounded_md()
-                            .text_size(px(12.0))
+                            .text_size(px(us * 12.0))
                             .text_color(if dlg_open { th_gray_fg } else { th_top_fg })
                             .when(!dlg_open, |d| {
                                 d.cursor_pointer().hover(move |s| s.bg(th_btn_hover)).on_click(
@@ -586,19 +590,19 @@ impl Render for Writer {
                         .id(SharedString::from(cmd.id))
                         .px_3().py_1().rounded_md()
                         .border_1().border_color(th_btn).text_color(th_btn)
-                        .text_size(px(12.0)).cursor_pointer()
+                        .text_size(px(us * 12.0)).cursor_pointer()
                         .hover(move |s| s.bg(th_btn_hover))
                         .flex().flex_row().items_center().gap_1()
                         .children(ui::icons::find(cmd.icon).map(|_| {
                             gpui::svg()
                                 .path(SharedString::from(format!("icons/{}.svg", cmd.icon)))
-                                .size(px(15.0))
+                                .size(px(us * 15.0))
                                 .text_color(th_btn)
                         }))
                         .child(cmd.label)
                         // 開く印(▾=一覧 / …=小窓)
                         .children(marker_of(cmd.id).map(|m| div()
-                            .text_size(px(9.0)).text_color(th_tab_idle)
+                            .text_size(px(us * 9.0)).text_color(th_tab_idle)
                             .child(m)))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.run_from_ribbon(id, cx); cx.notify()
@@ -607,17 +611,17 @@ impl Render for Writer {
                     // 未実装(と小窓中)。押せるように見せない
                     row = row.child(div().px_3().py_1().rounded_md()
                         .border_1().border_color(th_gray_border)
-                        .text_color(th_gray_fg).text_size(px(12.0))
+                        .text_color(th_gray_fg).text_size(px(us * 12.0))
                         .flex().flex_row().items_center().gap_1()
                         .children(ui::icons::find(cmd.icon).map(|_| {
                             gpui::svg()
                                 .path(SharedString::from(format!("icons/{}.svg", cmd.icon)))
-                                .size(px(15.0))
+                                .size(px(us * 15.0))
                                 .text_color(th_gray_fg)
                         }))
                         .child(cmd.label)
                         .children(marker_of(cmd.id).map(|m| div()
-                            .text_size(px(9.0)).text_color(th_tab_idle)
+                            .text_size(px(us * 9.0)).text_color(th_tab_idle)
                             .child(m))));
                 }
             }
@@ -652,7 +656,7 @@ impl Render for Writer {
                     .px_2p5().py_0p5().rounded_sm().cursor_pointer()
                     .bg(if on { rgb(0xFFFFFF) } else { gpui::transparent_black().into() })
                     .border_1().border_color(if on { th_cmd_border } else { gpui::transparent_black().into() })
-                    .text_size(px(11.5))
+                    .text_size(px(us * 11.5))
                     .text_color(if on { th_top_fg } else { th_status })
                     .child(SharedString::from(札))
                     .on_click(cx.listener(move |t, _, _, cx| { t.show_file(i); cx.notify() })));
@@ -660,7 +664,7 @@ impl Render for Writer {
                 bar = bar.child(div()
                     .id(SharedString::from(format!("filex{i}")))
                     .px_1().rounded_sm().cursor_pointer()
-                    .text_size(px(11.0)).text_color(th_status)
+                    .text_size(px(us * 11.0)).text_color(th_status)
                     .hover(move |s| s.bg(th_qa_hover))
                     .child("×")
                     .on_click(cx.listener(move |t, _, _, cx| { t.close_file(i); cx.notify() })));
@@ -684,7 +688,7 @@ impl Render for Writer {
                     .px_3().py_1().rounded_sm().cursor_pointer()
                     .bg(if on { rgb(0xFFFFFF) } else { rgb(0xEFF2F4) })
                     .border_1().border_color(if on { rgb(0x1B6E3C) } else { rgb(0xD5DBE0) })
-                    .text_size(px(11.5))
+                    .text_size(px(us * 11.5))
                     .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x4A5560) })
                     .child(SharedString::from(self.doc_name(i)))
                     .on_click(cx.listener(move |t, _, _, cx| { t.show_doc(i); cx.notify() })));
@@ -708,14 +712,14 @@ impl Render for Writer {
             .count();
         let sb_btn = |id: &'static str, label: &'static str| {
             div().id(id).px_1p5().py_0p5().rounded_sm().cursor_pointer()
-                .text_size(px(11.5)).text_color(th_top_fg)
+                .text_size(px(us * 11.5)).text_color(th_top_fg)
                 .hover(move |s| s.bg(th_qa_hover))
                 .child(label)
         };
         let statusbar = div().flex().flex_row().items_center().gap_3()
             .px_3().py_0p5().bg(th_top_bg)
             .border_t_1().border_color(th_cmd_border)
-            .text_size(px(11.0)).text_color(th_status)
+            .text_size(px(us * 11.0)).text_color(th_status)
             .child(SharedString::from(ui::tf!("{}/{} ページ", cur_page, total_pages)))
             .child(SharedString::from(ui::tf!("文字数 {}", nchars)))
             // **いまどちらの形式か。** 形式によって出来ることが違います
@@ -749,7 +753,7 @@ impl Render for Writer {
                 cx.notify()
             })))
             .child(div().id("sb-zoom").px_1().rounded_sm().cursor_pointer()
-                .text_size(px(11.5)).text_color(th_top_fg)
+                .text_size(px(us * 11.5)).text_color(th_top_fg)
                 .hover(move |s| s.bg(th_qa_hover))
                 .child(SharedString::from(ui::tf!("ズーム{}%", (self.zoom * 100.0).round() as i32)))
                 .on_click(cx.listener(|this, _, _, cx| {
@@ -777,7 +781,7 @@ impl Render for Writer {
                     fg: th_top_fg,
                     gray: th_gray_fg,
                     hover: item_bg,
-                    scale: 1.0,
+                    scale: us,
                 },
                 &self.file_menu(),
                 Some(self.btn_box.clone()),
@@ -1479,21 +1483,21 @@ impl Render for Writer {
             let win_w = f32::from(window.viewport_size().width);
             let mx = mx.min((win_w - 28.0 - 230.0).max(0.0));
             let my = my.min((self.view_h_px - h_est).max(0.0));
-            let mut m = div().absolute().left(px(mx)).top(px(my)).w(px(220.0))
+            let mut m = div().absolute().left(px(mx)).top(px(my)).w(px(us * 220.0))
                 .p_1().rounded_md().bg(rgb(0xFFFFFF))
                 .border_1().border_color(rgb(0xC6CDD3)).shadow_lg()
                 .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation());
             for (i, (id, label, hint, ready)) in entries.into_iter().enumerate() {
                 if id.is_empty() && label.is_empty() {
-                    m = m.child(div().h(px(1.0)).my_1().bg(rgb(0xE1E6EA)));
+                    m = m.child(div().h(px(us * 1.0)).my_1().bg(rgb(0xE1E6EA)));
                     continue;
                 }
                 if !ready {
                     m = m.child(div()
                         .flex().flex_row().items_center().justify_between().gap_4()
                         .px_3().py_1()
-                        .child(div().text_size(px(12.5)).text_color(rgb(0xB6BDC4)).child(label))
-                        .child(div().text_size(px(10.5)).text_color(rgb(0xD5DBE0)).child(hint)));
+                        .child(div().text_size(px(us * 12.5)).text_color(rgb(0xB6BDC4)).child(label))
+                        .child(div().text_size(px(us * 10.5)).text_color(rgb(0xD5DBE0)).child(hint)));
                     continue;
                 }
                 m = m.child(div()
@@ -1501,8 +1505,8 @@ impl Render for Writer {
                     .flex().flex_row().items_center().justify_between().gap_4()
                     .px_3().py_1().rounded_sm().cursor_pointer()
                     .hover(|s| s.bg(rgb(0xEAF2F7)))
-                    .child(div().text_size(px(12.5)).text_color(rgb(0x1B1B1B)).child(label))
-                    .child(div().text_size(px(10.5)).text_color(rgb(0x9AA5AE)).child(hint))
+                    .child(div().text_size(px(us * 12.5)).text_color(rgb(0x1B1B1B)).child(label))
+                    .child(div().text_size(px(us * 10.5)).text_color(rgb(0x9AA5AE)).child(hint))
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                         move |this, _, window, cx| {
                             cx.stop_propagation();
@@ -1513,13 +1517,13 @@ impl Render for Writer {
         });
 
         let notes = if self.notes.is_empty() { None } else {
-            let mut n = div().absolute().right(px(16.0)).top(px(14.0)).w(px(270.0))
+            let mut n = div().absolute().right(px(us * 16.0)).top(px(us * 14.0)).w(px(us * 270.0))
                 .p_3().rounded_md().bg(rgb(0xFFF6E6))
                 .border_1().border_color(rgb(0xE8D5A8))
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                        .text_color(rgb(0x8A4B00)).child(ui::t!("この版で読み飛ばしたもの")));
             for x in &self.notes {
-                n = n.child(div().text_size(px(11.0)).text_color(rgb(0x8A4B00))
+                n = n.child(div().text_size(px(us * 11.0)).text_color(rgb(0x8A4B00))
                             .child(x.clone()));
             }
             Some(n)
@@ -1598,7 +1602,7 @@ impl Render for Writer {
                 // 紙が縮まず、右のパネルが枠の外へ押し出されて消える)
                 div().flex_1().overflow_hidden().flex().flex_row()
                 .children(nav_panel)
-                .child(div().flex_1().min_w(px(0.0)).relative().overflow_hidden()
+                .child(div().flex_1().min_w(px(us * 0.0)).relative().overflow_hidden()
                     .on_scroll_wheel(cx.listener(|this, e: &gpui::ScrollWheelEvent, _, cx| {
                         // 上に回すと delta は正 → 紙は頭の方へ戻る
                         let dy = match e.delta {
@@ -1633,7 +1637,7 @@ impl Render for Writer {
                     // 終了確認のパネル(窓の中の中央。rfd はスクリーン中央に出て遠い)
                     .children(self.quit_ask.then(|| {
                         let btn = |id: &'static str, label: String, primary: bool| {
-                            div().id(id).px_3().py_1().rounded_sm().text_size(px(12.5))
+                            div().id(id).px_3().py_1().rounded_sm().text_size(px(us * 12.5))
                                 .border_1()
                                 .border_color(if primary { rgb(0x165E83) } else { rgb(0xC6CDD3) })
                                 .bg(if primary { rgb(0x165E83) } else { rgb(0xFFFFFF) })
@@ -1642,17 +1646,17 @@ impl Render for Writer {
                                 .child(SharedString::from(label))
                         };
                         div().absolute().inset_0().flex().items_center().justify_center()
-                            .child(div().w(px(420.0)).p_3().rounded_md().bg(rgb(0xF7F9FA))
+                            .child(div().w(px(us * 420.0)).p_3().rounded_md().bg(rgb(0xF7F9FA))
                                 .border_1().border_color(rgb(0x165E83)).shadow_lg()
                                 .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| {
                                     cx.stop_propagation()
                                 })
                                 .flex().flex_col().gap_2()
-                                .child(div().text_size(px(13.0))
+                                .child(div().text_size(px(us * 13.0))
                                     .font_weight(gpui::FontWeight::BOLD)
                                     .text_color(rgb(0x165E83))
                                     .child(ui::t!("保存していない変更があります")))
-                                .child(div().text_size(px(12.0))
+                                .child(div().text_size(px(us * 12.0))
                                     .child(ui::t!(
                                         "保存して終了しますか?(Enter = 保存して終了 / Esc = やめる)")))
                                 .child(div().flex().flex_row().gap_2().justify_center()
@@ -1703,12 +1707,14 @@ impl Render for Writer {
 /// ホバーで出す小さな札。**絵だけの釦には要る** — 左右のパネルの柱は
 /// アイコンしか出さないので、これが無いと何の面か分からない(2026-08-15)。
 /// calc の `Tip` と同じ作り(2例から抽象は作らない — 部屋が別々のまま)
-pub(crate) struct Tip(pub(crate) SharedString);
+pub(crate) struct Tip(pub(crate) SharedString, pub(crate) f32);
 impl gpui::Render for Tip {
     fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl gpui::IntoElement {
+        // 2つ目は画面の文字の大きさ(2026-08-21)。表の `Tip` と同じ形です
+        let us = self.1;
         div().px_2().py_1().rounded_md()
             .bg(gpui::rgb(0x2B2F33)).text_color(gpui::rgb(0xF2F5F7))
-            .text_size(px(11.0))
+            .text_size(px(us * 11.0))
             .border_1().border_color(gpui::rgb(0x14161A))
             .shadow_md()
             .child(self.0.clone())

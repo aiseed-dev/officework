@@ -265,7 +265,7 @@ impl Writer {
         "pageorient", "pagesize", "pagemargins",
         "edit-header", "edit-footer", "pagenum",
         "parastyle", "toc", "toc-update", "numpages", "datetime",
-        "multilevels", "darkmode", "text-from-file", "add-text", "line-numbers",
+        "multilevels", "darkmode", "ui-bigger", "ui-smaller", "text-from-file", "add-text", "line-numbers",
         "insshape", "inssmartart", "inschart", "instextart",
         "insequation", "instext", "pagecolor", "comment", "watermark", "bookmarks",
         "caption", "tof", "tof-update", "columns",

@@ -53,6 +53,7 @@ impl Writer {
         th_top_fg: gpui::Rgba,
         cx: &mut Context<Self>,
     ) -> Panels {
+        let us = self.ui_scale;
         // 置換のパネル
         let find_panel = if !self.find_open {
             None
@@ -65,13 +66,13 @@ impl Writer {
                     s.insert(cur, '|');
                 }
                 div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(64.0)).text_size(px(11.5))
+                    .child(div().w(px(us * 64.0)).text_size(px(us * 11.5))
                         .text_color(rgb(0x66707A)).child(SharedString::from(label.to_string())))
                     .child(div().flex_1().px_2().py_1().rounded_sm()
                         .border_1()
                         .border_color(if active { rgb(0x1B6E3C) } else { rgb(0xC6CDD3) })
                         .bg(gpui::white())
-                        .text_size(px(12.5))
+                        .text_size(px(us * 12.5))
                         .whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(s)))
             };
@@ -79,7 +80,7 @@ impl Writer {
                 div().id(SharedString::from(id.to_string()))
                     .px_2p5().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
-                    .text_size(px(11.5)).cursor_pointer()
+                    .text_size(px(us * 11.5)).cursor_pointer()
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
                     .child(SharedString::from(label.to_string()))
             };
@@ -91,11 +92,11 @@ impl Writer {
                     .border_color(if on { rgb(0x1B6E3C) } else { rgb(0xC6CDD3) })
                     .bg(if on { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
                     .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x66707A) })
-                    .text_size(px(11.0)).cursor_pointer()
+                    .text_size(px(us * 11.0)).cursor_pointer()
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
                     .child(SharedString::from(label.to_string()))
             };
-            Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(430.0))
+            Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 430.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
@@ -109,7 +110,7 @@ impl Writer {
                 // この文書 / このファイル / フォルダ。**「シート」とは呼ばない** —
                 // 文章の画面の言葉は「文書」です
                 .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().text_size(px(11.0)).text_color(rgb(0x66707A))
+                    .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
                         .child(ui::t!("探す範囲")))
                     .child(範囲釦("sc-doc", ui::t!("この文書"), !self.find_file)
                         .on_click(cx.listener(|t, _, _, cx| { t.find_file = false; cx.notify() })))
@@ -151,22 +152,22 @@ impl Writer {
                 div().id(SharedString::from(id.to_string()))
                     .px_2p5().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
-                    .text_size(px(11.5)).cursor_pointer()
+                    .text_size(px(us * 11.5)).cursor_pointer()
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
                     .child(SharedString::from(label.to_string()))
             };
             let mut field = div().flex_1().px_2().py_1().rounded_sm()
                 .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
-                .text_size(px(12.5)).flex().flex_col();
+                .text_size(px(us * 12.5)).flex().flex_col();
             for ln in shown.split('\n') {
                 field = field.child(div().whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(ln.to_string())));
             }
-            div().absolute().left(px(16.0)).top(px(8.0)).w(px(430.0))
+            div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 430.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(SharedString::from(ui::tf!("{}の編集 — 全ページ共通", title))))
                 .child(field)
@@ -204,14 +205,14 @@ impl Writer {
                 }
             }
             found.map(|cs| {
-                let mut d = div().absolute().left(px(16.0)).bottom(px(16.0)).w(px(300.0))
+                let mut d = div().absolute().left(px(us * 16.0)).bottom(px(us * 16.0)).w(px(us * 300.0))
                     .p_3().rounded_md().bg(rgb(0xFFF6E6))
                     .border_1().border_color(rgb(0xE8D5A8))
-                    .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                    .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x8A4B00))
                         .child(ui::t!("この段落のコメント(レビュー > コメント で編集)")));
                 for (author, text) in cs {
-                    d = d.child(div().mt_1p5().text_size(px(11.5)).text_color(rgb(0x5A4A28))
+                    d = d.child(div().mt_1p5().text_size(px(us * 11.5)).text_color(rgb(0x5A4A28))
                         .child(SharedString::from(format!("{author}: {text}"))));
                 }
                 d
@@ -223,16 +224,16 @@ impl Writer {
             t.insert(cur, '|');
             let mut field = div().flex_1().px_2().py_1().rounded_sm()
                 .border_1().border_color(rgb(0xE08A00)).bg(gpui::white())
-                .text_size(px(12.5)).flex().flex_col();
+                .text_size(px(us * 12.5)).flex().flex_col();
             for ln in t.split('\n') {
                 field = field.child(div().whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(ln.to_string())));
             }
-            Some(div().absolute().left(px(16.0)).bottom(px(16.0)).w(px(360.0))
+            Some(div().absolute().left(px(us * 16.0)).bottom(px(us * 16.0)).w(px(us * 360.0))
                 .p_3().rounded_md().bg(rgb(0xFFF6E6))
                 .border_1().border_color(rgb(0xE8D5A8))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x8A4B00))
                     .child(ui::t!("コメント — 空にして閉じると外れる")))
                 .child(field)
@@ -240,7 +241,7 @@ impl Writer {
                     .child(div().flex_1())
                     .child(div().id("cmt-close").px_2p5().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x8A4B00)).text_color(rgb(0x8A4B00))
-                        .text_size(px(11.5)).cursor_pointer()
+                        .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xF7ECD8)))
                         .child(ui::t!("閉じる (Esc)"))
                         .on_click(cx.listener(|this, _, _, cx| {
@@ -257,22 +258,22 @@ impl Writer {
             let mut t = self.wm_ed.text().to_string();
             let cur = self.wm_ed.cursor().min(t.len());
             t.insert(cur, '|');
-            Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(360.0))
+            Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 360.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("透かし — 空にして閉じると外れる")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x165E83)).bg(gpui::white())
-                    .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                    .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
                 .child(div().flex().flex_row()
                     .child(div().flex_1())
                     .child(div().id("wm-close").px_2p5().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x165E83)).text_color(rgb(0x165E83))
-                        .text_size(px(11.5)).cursor_pointer()
+                        .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF2F7)))
                         .child(ui::t!("閉じる (Esc)"))
                         .on_click(cx.listener(|this, _, _, cx| {
@@ -313,30 +314,30 @@ impl Writer {
             if let Some(c) = &d.shade {
                 what.push(ui::tf!("背景色 #{}", c.clone()).to_string());
             }
-            div().absolute().left(px(16.0)).top(px(8.0)).w(px(400.0))
+            div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 400.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("スタイルの新設 — 見た目に名前を付けます")))
-                .child(div().text_size(px(11.0)).text_color(rgb(0x66707A))
+                .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
                     .child(SharedString::from(ui::tf!("掛けるもの: {}", what.join("・")))))
                 .child(div().flex().flex_row().gap_2().items_center()
                     .child(div().flex_1().px_2().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
-                        .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                        .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(t)))
                     .child(div().id("style-ok").px_2p5().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
-                        .text_size(px(11.5)).cursor_pointer()
+                        .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
                         .child(ui::t!("決める (Enter)"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.style_commit();
                             cx.notify()
                         }))))
-                .child(div().text_size(px(11.0)).text_color(rgb(0x66707A))
+                .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
                     .child(ui::t!("同じ名前があれば置き換えます。テンプレートに入るので、同じスタイルの所が一度に変わります")))
         });
 
@@ -356,21 +357,21 @@ impl Writer {
                 }
                 at += len + 1;
             }
-            let mut d = div().absolute().left(px(16.0)).top(px(8.0)).w(px(340.0))
+            let mut d = div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 340.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("しおり — 名前を打って追加。押すとそこへ移る")))
                 .child(div().flex().flex_row().gap_2().items_center()
                     .child(div().flex_1().px_2().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
-                        .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                        .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(t)))
                     .child(div().id("bm-add").px_2p5().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
-                        .text_size(px(11.5)).cursor_pointer()
+                        .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
                         .child(ui::t!("追加 (Enter)"))
                         .on_click(cx.listener(|this, _, _, cx| {
@@ -378,7 +379,7 @@ impl Writer {
                             cx.notify()
                         }))));
             if items.is_empty() {
-                d = d.child(div().text_size(px(11.5)).text_color(rgb(0x66707A))
+                d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
                     .child(ui::t!("(まだしおりはありません)")));
             }
             for (i, (name, b0)) in items.into_iter().enumerate() {
@@ -387,7 +388,7 @@ impl Writer {
                     .child(div()
                         .id(SharedString::from(format!("bm-{i}")))
                         .flex_1().px_2().py_0p5().rounded_sm()
-                        .text_size(px(12.5)).cursor_pointer()
+                        .text_size(px(us * 12.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF2F7)))
                         .child(SharedString::from(name.clone()))
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -400,7 +401,7 @@ impl Writer {
                     .child(div()
                         .id(SharedString::from(format!("bmx-{i}")))
                         .px_1p5().py_0p5().rounded_sm()
-                        .text_size(px(11.5)).text_color(rgb(0x9AA5AE)).cursor_pointer()
+                        .text_size(px(us * 11.5)).text_color(rgb(0x9AA5AE)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xF6E5E2)).text_color(rgb(0xC0392B)))
                         .child("✕")
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -422,22 +423,22 @@ impl Writer {
             None
         } else {
             let items = self.versions();
-            let mut d = div().absolute().left(px(16.0)).top(px(8.0)).w(px(360.0))
+            let mut d = div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 360.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("バージョン履歴 — 上書き保存のたびの控え(9世代まで)")));
             if items.is_empty() {
-                d = d.child(div().text_size(px(11.5)).text_color(rgb(0x66707A))
+                d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
                     .child(ui::t!("(まだ控えはありません。上書き保存すると増えます)")));
             }
             for (i, (disp, q)) in items.into_iter().enumerate() {
                 d = d.child(div()
                     .id(SharedString::from(format!("hist-{i}")))
                     .px_2().py_0p5().rounded_sm()
-                    .text_size(px(12.5)).cursor_pointer()
+                    .text_size(px(us * 12.5)).cursor_pointer()
                     .hover(|s| s.bg(rgb(0xEAF2F7)))
                     .child(SharedString::from(disp))
                     .on_click(cx.listener(move |this, _, _, cx| {
@@ -456,30 +457,30 @@ impl Writer {
             let cur = self.chat_ed.cursor().min(t.len());
             t.insert(cur, '|');
             let lines = self.chat_lines();
-            let mut d = div().absolute().left(px(16.0)).top(px(8.0)).w(px(420.0))
+            let mut d = div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 420.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("チャット — 文書の隣の申し送り帳(.chat.txt)")));
             if lines.is_empty() {
-                d = d.child(div().text_size(px(11.5)).text_color(rgb(0x66707A))
+                d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
                     .child(ui::t!("(まだ書き込みはありません)")));
             }
             for l in lines {
-                d = d.child(div().text_size(px(12.0))
+                d = d.child(div().text_size(px(us * 12.0))
                     .whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(l)));
             }
             d = d.child(div().flex().flex_row().gap_2().items_center()
                 .child(div().flex_1().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
-                    .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                    .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
                 .child(div().id("chat-send").px_2p5().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
-                    .text_size(px(11.5)).cursor_pointer()
+                    .text_size(px(us * 11.5)).cursor_pointer()
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
                     .child(ui::t!("送信 (Enter)"))
                     .on_click(cx.listener(|this, _, _, cx| {
@@ -503,18 +504,18 @@ impl Writer {
                 "●".repeat(total - before)
             );
             let title = ui::t!("パスワード — この文書は暗号化されています");
-            Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(380.0))
+            Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 380.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(SharedString::from(title.to_string())))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
-                    .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                    .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(masked)))
-                .child(div().text_size(px(10.5)).text_color(rgb(0x66707A))
+                .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                     .child(ui::t!("方式は ECMA-376 Agile(AES-256)。\
                             Word や LibreOffice でも開けます。\
                             パスワードを忘れると誰にも開けません"))))
@@ -527,16 +528,16 @@ impl Writer {
             let mut t = self.url_ed.text().to_string();
             let cur = self.url_ed.cursor().min(t.len());
             t.insert(cur, '|');
-            Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(460.0))
+            Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 460.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("URL を開く — Enter で取りに行く(JS は実行しません)")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
-                    .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                    .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t))))
         };
 
@@ -545,11 +546,11 @@ impl Writer {
             None
         } else {
             let fm = self.html_forms[0].clone();
-            let mut d = div().absolute().right(px(16.0)).top(px(8.0)).w(px(340.0))
+            let mut d = div().absolute().right(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 340.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("記入 — 欄を押して打ち、Enter で控え、送信で送る")));
             for (i, f) in fm.fields.iter().enumerate() {
@@ -572,7 +573,7 @@ impl Writer {
                 };
                 let val = f.value.clone();
                 d = d.child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(90.0)).text_size(px(11.5))
+                    .child(div().w(px(us * 90.0)).text_size(px(us * 11.5))
                         .text_color(rgb(0x66707A))
                         .whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(format!("{}{hint}", f.name))))
@@ -582,7 +583,7 @@ impl Writer {
                         .border_1()
                         .border_color(if editing { rgb(0x1B6E3C) } else { rgb(0xC6CDD3) })
                         .bg(gpui::white())
-                        .text_size(px(12.5)).cursor_pointer()
+                        .text_size(px(us * 12.5)).cursor_pointer()
                         .whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(shown))
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -594,7 +595,7 @@ impl Writer {
             d = d.child(div().flex().flex_row().gap_2()
                 .child(div().id("fm-send").px_3().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
-                    .text_size(px(12.0)).cursor_pointer()
+                    .text_size(px(us * 12.0)).cursor_pointer()
                     .hover(|st| st.bg(rgb(0xEAF5EE)))
                     .child(ui::tf!("送信({} {})", fm.method.to_uppercase(), fm.action))
                     .on_click(cx.listener(|this, _, _, cx| {
@@ -645,11 +646,11 @@ impl Writer {
                 .border_1()
                 .border_color(if on { th_btn } else { gpui::transparent_black().into() })
                 .hover(move |s| s.bg(th_btn_hover))
-                .tooltip(move |_, cx| cx.new(|_| crate::view::Tip(札.clone().into())).into())
+                .tooltip(move |_, cx| cx.new(|_| crate::view::Tip(札.clone().into(), us)).into())
                 .tooltip_show_delay(std::time::Duration::from_millis(150))
                 .child(gpui::svg()
                     .path(SharedString::from(format!("icons/{icon}.svg")))
-                    .size(px(18.0))
+                    .size(px(us * 18.0))
                     .text_color(if on { th_btn } else { th_status }))
         };
 
@@ -659,7 +660,7 @@ impl Writer {
         } else {
             let panel_bg = if dk { rgb(0x1B1E21) } else { rgb(0xF1F3F5) };
             let mut d = div()
-                .flex_1().min_w(px(0.0)).h_full().overflow_hidden()
+                .flex_1().min_w(px(us * 0.0)).h_full().overflow_hidden()
                 .p_2()
                 .flex().flex_col().gap_1();
             // **面の切り替えは外側の柱へ移した**(発注者 2026-08-15
@@ -672,7 +673,7 @@ impl Writer {
                 0 => {
                     let heads = self.headings();
                     if heads.is_empty() {
-                        d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                        d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                             .child(ui::t!("(見出しがありません。ホーム > 段落のスタイルで)")));
                     }
                     for (i, (lv, text, byte)) in heads.into_iter().take(40).enumerate() {
@@ -680,7 +681,7 @@ impl Writer {
                         d = d.child(div()
                             .id(SharedString::from(format!("nav-{i}")))
                             .px_2().py_0p5().rounded_sm().cursor_pointer()
-                            .text_size(px(12.0)).text_color(th_top_fg)
+                            .text_size(px(us * 12.0)).text_color(th_top_fg)
                             .whitespace_nowrap().overflow_hidden()
                             .hover(|st| st.bg(th_btn_hover))
                             .child(SharedString::from(format!(
@@ -707,7 +708,7 @@ impl Writer {
                         at += len + 1;
                     }
                     if items.is_empty() {
-                        d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                        d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                             .child(ui::t!("(コメントはありません)")));
                     }
                     for (i, (_, who, text, byte)) in items.into_iter().take(30).enumerate() {
@@ -718,9 +719,9 @@ impl Writer {
                             .bg(if dk { rgb(0x22262A) } else { rgb(0xFFFFFF) })
                             .hover(|st| st.bg(th_btn_hover))
                             .flex().flex_col()
-                            .child(div().text_size(px(10.5)).text_color(th_status)
+                            .child(div().text_size(px(us * 10.5)).text_color(th_status)
                                 .child(SharedString::from(who)))
-                            .child(div().text_size(px(11.5)).text_color(th_top_fg)
+                            .child(div().text_size(px(us * 11.5)).text_color(th_top_fg)
                                 .whitespace_nowrap().overflow_hidden()
                                 .child(SharedString::from(text)))
                             .on_click(cx.listener(move |this, _, _, cx| {
@@ -739,7 +740,7 @@ impl Writer {
                         .px_2().py_1().rounded_sm().cursor_pointer()
                         .border_1().border_color(rgb(0x1B6E3C))
                         .bg(if dk { rgb(0x22262A) } else { rgb(0xFFFFFF) })
-                        .text_size(px(12.0)).text_color(th_top_fg)
+                        .text_size(px(us * 12.0)).text_color(th_top_fg)
                         .whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(if term.is_empty() {
                             ui::t!("(検索のパネルで語を打つ → ここに出ます)").to_string()
@@ -763,7 +764,7 @@ impl Writer {
                             d = d.child(div()
                                 .id(SharedString::from(format!("navf-{i}")))
                                 .px_2().py_0p5().rounded_sm().cursor_pointer()
-                                .text_size(px(11.5)).text_color(th_top_fg)
+                                .text_size(px(us * 11.5)).text_color(th_top_fg)
                                 .whitespace_nowrap().overflow_hidden()
                                 .hover(|st| st.bg(th_btn_hover))
                                 .child(SharedString::from(line))
@@ -775,7 +776,7 @@ impl Writer {
                                 })));
                         }
                         if hits == 0 {
-                            d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                            d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                                 .child(ui::t!("(見つかりません)")));
                         }
                     }
@@ -789,38 +790,38 @@ impl Writer {
                     let 釦 = move |id: &'static str, label: String, 効き: bool| {
                         div().id(SharedString::from(id))
                             .px_2().py_0p5().rounded_sm().cursor_pointer()
-                            .text_size(px(11.5))
+                            .text_size(px(us * 11.5))
                             .text_color(if 効き { th_top_fg } else { th_status })
                             .border_1()
                             .border_color(if 効き { 主 } else { th_cmd_border })
                             .hover(move |st| st.bg(th_btn_hover))
                             .child(SharedString::from(label))
                     };
-                    d = d.child(div().text_size(px(10.5)).text_color(th_status).child(
+                    d = d.child(div().text_size(px(us * 10.5)).text_color(th_status).child(
                         ui::t!("選んだところについて聞けます。文を直すときは、\
                                 直した文を先に見せます — 押すまで入りません。").to_string()));
                     let mut 会話 = div().id("ai-chat-log").flex().flex_col().gap_1().mt_1()
-                        .flex_1().min_h(px(0.0)).overflow_y_scroll();
+                        .flex_1().min_h(px(us * 0.0)).overflow_y_scroll();
                     if self.ai_chat_log.is_empty() {
-                        会話 = 会話.child(div().text_size(px(11.0)).text_color(th_status)
+                        会話 = 会話.child(div().text_size(px(us * 11.0)).text_color(th_status)
                             .child(ui::t!("例: この段落を敬語にして / 半分の長さに \
                                            / 言い方が硬くないか見て").to_string()));
                     }
                     for (自分, 字) in &self.ai_chat_log {
-                        会話 = 会話.child(div().text_size(px(11.5))
+                        会話 = 会話.child(div().text_size(px(us * 11.5))
                             .text_color(if *自分 { 主 } else { th_top_fg })
                             .child(format!("{} {}", if *自分 { "▸" } else { "◂" }, 字)));
                     }
                     d = d.child(会話);
                     if let Some(plan) = self.ai_chat_plan.clone() {
-                        d = d.child(div().text_size(px(10.5)).text_color(th_status).mt_1()
+                        d = d.child(div().text_size(px(us * 10.5)).text_color(th_status).mt_1()
                             .child(ui::t!("入れる文(押すまで入りません)").to_string()));
                         d = d.child(div().id("ai-chat-plan")
-                            .max_h(px(160.0)).overflow_y_scroll()
+                            .max_h(px(us * 160.0)).overflow_y_scroll()
                             .p_1().rounded_sm()
                             .bg(if dk { rgb(0x14171A) } else { rgb(0xFFFFFF) })
                             .border_1().border_color(th_cmd_border)
-                            .text_size(px(11.0)).text_color(th_top_fg)
+                            .text_size(px(us * 11.0)).text_color(th_top_fg)
                             .children(plan.lines().map(|l| div().child(l.to_string()))));
                         d = d.child(div().flex().flex_row().gap_1().mt_1()
                             .child(釦("ai-chat-run", ui::t!("入れる").to_string(), true)
@@ -842,7 +843,7 @@ impl Writer {
                         .bg(if dk { rgb(0x14171A) } else { rgb(0xFFFFFF) })
                         .border_1()
                         .border_color(if self.ai_chat_focus { 主 } else { th_cmd_border })
-                        .text_size(px(11.5)).text_color(th_top_fg)
+                        .text_size(px(us * 11.5)).text_color(th_top_fg)
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.ai_chat_focus = true;
                             cx.notify()
@@ -868,7 +869,7 @@ impl Writer {
                             cx.notify()
                         })));
                     if self.ai_busy {
-                        r = r.child(div().text_size(px(10.5)).text_color(th_status)
+                        r = r.child(div().text_size(px(us * 10.5)).text_color(th_status)
                             .child(ui::t!("考えています…").to_string()));
                     }
                     d = d.child(r);
@@ -889,7 +890,7 @@ impl Writer {
                 .border_1().border_color(th_cmd_border)
                 .flex().flex_row()
                 .child(柱d)
-                .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
+                .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))
                 .child(d))
         };
 
@@ -903,7 +904,7 @@ impl Writer {
             let f = self.doc.char_format_at(self.ed.selection());
             let size_now = self.doc.size_at(self.ed.selection()).unwrap_or(SIZE_PT);
             let head = |t: &'static str| {
-                div().text_size(px(11.0)).font_weight(gpui::FontWeight::BOLD)
+                div().text_size(px(us * 11.0)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83)).mt_1().child(t)
             };
             // 小さなボタン(押すと run_cmd。入っていれば色が付く)
@@ -918,7 +919,7 @@ impl Writer {
                     .border_1()
                     .border_color(if on { th_btn } else { th_cmd_border })
                     .bg(if on { th_btn_hover } else { gpui::transparent_black().into() })
-                    .text_size(px(11.5))
+                    .text_size(px(us * 11.5))
                     .text_color(if on { th_btn } else { th_top_fg })
                     .hover(move |st| st.bg(th_btn_hover))
                     .child(label)
@@ -931,10 +932,10 @@ impl Writer {
             self.rp_drawn.set(9);
             let return_rp;
             let mut d = div().id("rp-panel")
-                .flex_1().min_w(px(0.0)).h_full().overflow_y_scroll()
+                .flex_1().min_w(px(us * 0.0)).h_full().overflow_y_scroll()
                 .p_2()
                 .flex().flex_col().gap_1()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(match 面 {
                         1 => ui::t!("ページ — 文書ぜんぶの決め"),
@@ -947,7 +948,7 @@ impl Writer {
             // 操作を変更できるように」)
             if 面 == 1 {
                 self.rp_drawn.set(1);
-                d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                     .child(SharedString::from(ui::tf!("{:.0}×{:.0}mm / 余白 {:.0}mm / {}段{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!(" / 縦書き") } else { "" }))));
                 d = d.child(row()
                     .child(btn(self, "pageorient", ui::t!("向き").into()).on_click(cx.listener(
@@ -985,7 +986,7 @@ impl Writer {
                     .border_1().border_color(th_cmd_border)
                     .flex().flex_row()
                     .child(d)
-                    .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
+                    .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))
                     .child(柱d));
             } else if 面 == 2 {
                 self.rp_drawn.set(2);
@@ -1001,7 +1002,7 @@ impl Writer {
                         })
                     })
                     .unwrap_or_else(|| ui::t!("本文").to_string());
-                d = d.child(div().text_size(px(11.0)).text_color(th_status).child(
+                d = d.child(div().text_size(px(us * 11.0)).text_color(th_status).child(
                     SharedString::from(ui::tf!("いまの段落: {}", 着ている.clone())),
                 ));
                 // 役割のスタイル(段落そのものの意味)は先に、名前つきは後に
@@ -1023,7 +1024,7 @@ impl Writer {
                         .id("rp-st-none")
                         .px_2().py_0p5().rounded_sm().cursor_pointer()
                         .border_1().border_color(th_cmd_border)
-                        .text_size(px(11.5)).text_color(th_status)
+                        .text_size(px(us * 11.5)).text_color(th_status)
                         .hover(move |st| st.bg(th_btn_hover))
                         .child(SharedString::from(ui::t!("なし").to_string()))
                         .on_click(cx.listener(|t, _, _, cx| {
@@ -1041,7 +1042,7 @@ impl Writer {
                             .border_1()
                             .border_color(if on { th_btn } else { th_cmd_border })
                             .bg(if on { th_btn_hover } else { gpui::transparent_black().into() })
-                            .text_size(px(11.5))
+                            .text_size(px(us * 11.5))
                             .text_color(if on { th_btn } else { th_top_fg })
                             .hover(move |st| st.bg(th_btn_hover))
                             .child(SharedString::from(name.clone()))
@@ -1074,7 +1075,7 @@ impl Writer {
                         w.push(ui::tf!("色 #{}", c.clone()).to_string());
                     }
                     d = d.child(head(ui::t!("このスタイルの中身")));
-                    d = d.child(div().text_size(px(11.0)).text_color(th_status).child(
+                    d = d.child(div().text_size(px(us * 11.0)).text_color(th_status).child(
                         SharedString::from(if w.is_empty() {
                             ui::t!("(文書の既定のまま)").to_string()
                         } else {
@@ -1087,7 +1088,7 @@ impl Writer {
                         .child(btn(self, "st-smaller", ui::t!("字を小さく").into()).on_click(
                             cx.listener(|t, _, _, cx| { t.tweak_style(-1); cx.notify() }))));
                 }
-                d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                     .child(ui::t!("直すとテンプレートが変わり、同じスタイルの所が一度に変わります")));
                 let 柱d = 柱()
                     .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), false).on_click(
@@ -1106,7 +1107,7 @@ impl Writer {
                     .border_1().border_color(th_cmd_border)
                     .flex().flex_row()
                     .child(d)
-                    .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
+                    .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))
                     .child(柱d));
             } else if 面 == 3 {
                 // **フォルダの中身**(2026-08-19 発注者)。選ぶと開きます。
@@ -1115,7 +1116,7 @@ impl Writer {
                 // **一覧は ui::filelist の1本**(統合の段7)。表の画面と同じ姿。
                 // 押したときの行き先だけがアプリの物
                 let look = ui::filelist::Look {
-                    fg: th_top_fg, dim: th_status, hover: th_btn_hover, scale: 1.0,
+                    fg: th_top_fg, dim: th_status, hover: th_btn_hover, scale: us,
                 };
                 let dir = self.folder();
                 d = d.child(ui::filelist::header(&look, dir.as_deref()));
@@ -1158,7 +1159,7 @@ impl Writer {
                     .border_1().border_color(th_cmd_border)
                     .flex().flex_row()
                     .child(d.overflow_y_scroll())
-                    .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
+                    .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))
                     .child(柱d));
             } else {
 
@@ -1168,7 +1169,7 @@ impl Writer {
             // 出すだけで下の面も残す — 表の中でも字は太字にしたい
             if let Some((_, 行, 列, 行数, 列数)) = self.cursor_table() {
                 d = d.child(head(ui::t!("表")));
-                d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                     .child(SharedString::from(ui::tf!(
                         "{}行 × {}列 — いま {}行目 {}列目", 行数, 列数, 行 + 1, 列 + 1))));
                 d = d.child(row()
@@ -1196,7 +1197,7 @@ impl Writer {
                 if let Some(im) = 式.first() {
                     let tex = im.tex.clone().unwrap_or_default();
                     d = d.child(head(ui::t!("数式")));
-                    d = d.child(div().text_size(px(10.5)).text_color(th_status)
+                    d = d.child(div().text_size(px(us * 10.5)).text_color(th_status)
                         .child(SharedString::from(tex.clone())));
                     d = d.child(row().child(
                         btn(self, "eq-edit", ui::t!("式を直す").into()).on_click(
@@ -1209,7 +1210,7 @@ impl Writer {
                             }))));
                 } else if let Some(im) = 絵.first() {
                     d = d.child(head(ui::t!("画像")));
-                    d = d.child(div().text_size(px(11.0)).text_color(th_status)
+                    d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                         .child(SharedString::from(
                             ui::tf!("{:.0}×{:.0}mm", im.w_mm, im.h_mm))));
                     d = d.child(row()
@@ -1232,7 +1233,7 @@ impl Writer {
                     .child(btn(self, "strikeout", ui::t!("取消").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("strikeout", cx); cx.notify() }))))
                 .child(row()
-                    .child(div().text_size(px(11.0)).text_color(th_status)
+                    .child(div().text_size(px(us * 11.0)).text_color(th_status)
                         .child(SharedString::from(ui::tf!("大きさ {} pt / 書体 {}", if size_now.fract() == 0.0 {
                                 format!("{}", size_now as i32)
                             } else {
@@ -1248,11 +1249,11 @@ impl Writer {
                     .child(btn(self, "clearstyle", ui::t!("書式を消す").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("clearstyle", cx); cx.notify() }))));
             if f.field.is_some() {
-                d = d.child(div().text_size(px(10.5)).text_color(th_status)
+                d = d.child(div().text_size(px(us * 10.5)).text_color(th_status)
                     .child(ui::t!("(ここは相互参照。更新は 参考資料 > 相互参照)")));
             }
             if let Some(rt) = &f.ruby {
-                d = d.child(div().text_size(px(10.5)).text_color(th_status)
+                d = d.child(div().text_size(px(us * 10.5)).text_color(th_status)
                     .child(SharedString::from(ui::tf!("ルビ「{}」", rt))));
             }
 
@@ -1276,7 +1277,7 @@ impl Writer {
                             .border_1()
                             .border_color(if on { th_btn } else { th_cmd_border })
                             .bg(if on { th_btn_hover } else { gpui::transparent_black().into() })
-                            .text_size(px(11.5))
+                            .text_size(px(us * 11.5))
                             .text_color(if on { th_btn } else { th_top_fg })
                             .hover(move |st| st.bg(th_btn_hover))
                             .child(label)
@@ -1286,7 +1287,7 @@ impl Writer {
                             }))
                     })))
                 .child(row()
-                    .child(div().text_size(px(11.0)).text_color(th_status)
+                    .child(div().text_size(px(us * 11.0)).text_color(th_status)
                         .child(SharedString::from(ui::tf!("行間 {:.2} / 字下げ {}", ls, ind)))))
                 .child(row()
                     .child(btn(self, "linespace", ui::t!("行間").into()).on_click(cx.listener(
@@ -1334,7 +1335,7 @@ impl Writer {
                 .border_1().border_color(th_cmd_border)
                 .flex().flex_row()
                 .child(d)
-                .child(div().flex_none().w(px(1.0)).h_full().bg(th_cmd_border))
+                .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))
                 .child(柱d));
             }
             return_rp
@@ -1344,12 +1345,12 @@ impl Writer {
         let lk_panel = if !self.lk_open || self.html_links.is_empty() {
             None
         } else {
-            let mut d = div().absolute().right(px(16.0)).bottom(px(8.0)).w(px(340.0))
-                .max_h(px(300.0)).overflow_hidden()
+            let mut d = div().absolute().right(px(us * 16.0)).bottom(px(us * 8.0)).w(px(us * 340.0))
+                .max_h(px(us * 300.0)).overflow_hidden()
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_1()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(SharedString::from(ui::tf!("リンク({}件。押すと辿る。Esc で閉じる)", self.html_links.len()))));
             for (i, (href, text)) in self.html_links.iter().take(16).enumerate() {
@@ -1357,7 +1358,7 @@ impl Writer {
                 d = d.child(div()
                     .id(SharedString::from(format!("lk-{i}")))
                     .px_2().py_0p5().rounded_sm().cursor_pointer()
-                    .text_size(px(12.0)).text_color(rgb(0x165E83))
+                    .text_size(px(us * 12.0)).text_color(rgb(0x165E83))
                     .whitespace_nowrap().overflow_hidden()
                     .hover(|st| st.bg(rgb(0xEAF2F7)))
                     .child(SharedString::from(text.clone()))
@@ -1367,7 +1368,7 @@ impl Writer {
                     })));
             }
             if self.html_links.len() > 16 {
-                d = d.child(div().text_size(px(10.5)).text_color(rgb(0x66707A))
+                d = d.child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                     .child(SharedString::from(ui::tf!("(あと {} 件は出していません)", self.html_links.len() - 16))));
             }
             Some(d)
@@ -1380,18 +1381,18 @@ impl Writer {
             let mut t = self.ai_ed.text().to_string();
             let cur = self.ai_ed.cursor().min(t.len());
             t.insert(cur, '|');
-            Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(460.0))
+            Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 460.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(SharedString::from(ui::tf!("{} — 宛先 {}(Esc で取りやめ)", if self.ai_macro { ui::t!("AI にマクロ台本を頼む") } else { ui::t!("AI に頼む") }, ui::ai::backend().label()))))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(rgb(0xFFFFFF))
-                    .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                    .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
-                .child(div().text_size(px(10.5)).text_color(rgb(0x66707A))
+                .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                     .child(if self.ai_macro {
                         ui::t!("台本はプラグイン置き場に置くだけです。読んで確かめてから\
                          一覧で実行してください(自動では走りません)")
@@ -1407,11 +1408,11 @@ impl Writer {
             let mut t = self.sd_ed.text().to_string();
             let cur = self.sd_ed.cursor().min(t.len());
             t.insert(cur, '|');
-            Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(400.0))
+            Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 400.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(SharedString::from(if self.sd_naming {
                         ui::t!("記入欄の名前 — 打って Enter(例: 氏名。\
@@ -1421,7 +1422,7 @@ impl Writer {
                     })))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(rgb(0xFFFFFF))
-                    .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                    .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t))))
         };
 
@@ -1432,16 +1433,16 @@ impl Writer {
             let mut t = self.rb_ed.text().to_string();
             let cur = self.rb_ed.cursor().min(t.len());
             t.insert(cur, '|');
-            Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(360.0))
+            Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 360.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("ルビ — 読みを打って Enter(空で外す。Esc で取りやめ)")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
-                    .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                    .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t))))
         };
 
@@ -1453,18 +1454,18 @@ impl Writer {
             let mut t = self.eq_ed.text().to_string();
             let cur = self.eq_ed.cursor().min(t.len());
             t.insert(cur, '|');
-            Some(div().absolute().left(px(16.0)).top(px(8.0)).w(px(460.0))
+            Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 460.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("数式 — LaTeX を打って Enter(Esc で取りやめ)")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
-                    .text_size(px(12.5)).whitespace_nowrap().overflow_hidden()
+                    .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
-                .child(div().text_size(px(10.5)).text_color(rgb(0x60707C))
+                .child(div().text_size(px(us * 10.5)).text_color(rgb(0x60707C))
                     .child(ui::t!("例: \\frac{a+b}{2} / \\sqrt{x^2+y^2}"))))
         };
 
@@ -1483,17 +1484,17 @@ impl Writer {
                 })
                 .unwrap_or_default();
             items.sort();
-            let mut d = div().absolute().left(px(16.0)).top(px(8.0)).w(px(420.0))
+            let mut d = div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 420.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(ui::t!("プラグイン — 押すとサンドボックス(bubblewrap)の中で実行")))
-                .child(div().text_size(px(11.0)).text_color(rgb(0x66707A))
+                .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
                     .child(SharedString::from(ui::tf!("置き場: {}", dir.display()))));
             if items.is_empty() {
-                d = d.child(div().text_size(px(11.5)).text_color(rgb(0x66707A))
+                d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
                     .child(ui::t!("(まだありません。置き場に .py を置いてください。\
                             台本の d が python-docx の文書、fill(名前, 値)・\
                             extract(名前)・fields() で記入欄の出し入れ)")));
@@ -1506,7 +1507,7 @@ impl Writer {
                 d = d.child(div()
                     .id(SharedString::from(format!("plug-{i}")))
                     .px_2().py_0p5().rounded_sm()
-                    .text_size(px(12.5)).cursor_pointer()
+                    .text_size(px(us * 12.5)).cursor_pointer()
                     .hover(|s| s.bg(rgb(0xEAF2F7)))
                     .child(SharedString::from(name))
                     .on_click(cx.listener(move |this, _, _, cx| {
@@ -1527,18 +1528,18 @@ impl Writer {
                 .paragraphs()
                 .flat_map(|p| p.bookmarks.iter().cloned())
                 .collect();
-            let mut d = div().absolute().left(px(16.0)).top(px(8.0)).w(px(360.0))
+            let mut d = div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 360.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
                 .child(div().flex().flex_row().items_center()
-                    .child(div().flex_1().text_size(px(11.5))
+                    .child(div().flex_1().text_size(px(us * 11.5))
                         .font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x165E83))
                         .child(ui::t!("相互参照 — しおりの文字かページ番号を挿す")))
                     .child(div().id("xr-refresh").px_2().py_0p5().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
-                        .text_size(px(11.0)).cursor_pointer()
+                        .text_size(px(us * 11.0)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
                         .child(ui::t!("参照を更新"))
                         .on_click(cx.listener(|this, _, _, cx| {
@@ -1546,20 +1547,20 @@ impl Writer {
                             cx.notify()
                         }))));
             if names.is_empty() {
-                d = d.child(div().text_size(px(11.5)).text_color(rgb(0x66707A))
+                d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
                     .child(ui::t!("(しおりがありません。参考資料 > ブックマークで付けてください)")));
             }
             for (i, name) in names.into_iter().enumerate() {
                 let n1 = name.clone();
                 let n2 = name.clone();
                 d = d.child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().flex_1().text_size(px(12.5))
+                    .child(div().flex_1().text_size(px(us * 12.5))
                         .whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(name)))
                     .child(div().id(SharedString::from(format!("xrt-{i}")))
                         .px_2().py_0p5().rounded_sm()
                         .border_1().border_color(rgb(0x165E83)).text_color(rgb(0x165E83))
-                        .text_size(px(11.0)).cursor_pointer()
+                        .text_size(px(us * 11.0)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF2F7)))
                         .child(ui::t!("文字"))
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -1569,7 +1570,7 @@ impl Writer {
                     .child(div().id(SharedString::from(format!("xrp-{i}")))
                         .px_2().py_0p5().rounded_sm()
                         .border_1().border_color(rgb(0x165E83)).text_color(rgb(0x165E83))
-                        .text_size(px(11.0)).cursor_pointer()
+                        .text_size(px(us * 11.0)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF2F7)))
                         .child(ui::t!("ページ"))
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -1605,16 +1606,16 @@ impl Writer {
                 "㈱", "㈲", "№", "〆", "〜", "…", "・", "「", "」", "『",
                 "』", "【", "】", "○", "●", "◎", "△", "▲", "□", "■",
             ];
-            let mut d = div().absolute().right(px(16.0)).top(px(8.0)).w(px(340.0))
+            let mut d = div().absolute().right(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 340.0))
                 .p_2().rounded_md().bg(gpui::white())
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_row().flex_wrap().gap_1();
             for s in SYMS {
                 d = d.child(div()
                     .id(SharedString::from(format!("sym-{s}")))
-                    .w(px(28.0)).h(px(28.0)).rounded_sm()
+                    .w(px(us * 28.0)).h(px(us * 28.0)).rounded_sm()
                     .flex().items_center().justify_center()
-                    .text_size(px(15.0)).cursor_pointer()
+                    .text_size(px(us * 15.0)).cursor_pointer()
                     .hover(|st| st.bg(rgb(0xEAF2F7)))
                     .child(SharedString::from(*s))
                     .on_click(cx.listener(move |this, _, _, cx| {
@@ -1630,10 +1631,10 @@ impl Writer {
         let proof_panel = if self.proof.is_empty() && self.proof_msg.is_empty() {
             None
         } else {
-            let mut d = div().absolute().right(px(16.0)).bottom(px(16.0)).w(px(300.0))
+            let mut d = div().absolute().right(px(us * 16.0)).bottom(px(us * 16.0)).w(px(us * 300.0))
                 .p_3().rounded_md().bg(gpui::white())
                 .border_1().border_color(rgb(0xC6CDD3))
-                .child(div().text_size(px(11.5)).font_weight(gpui::FontWeight::BOLD)
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                        .text_color(rgb(0x165E83))
                        .child(SharedString::from(ui::tf!("校正 — {}", self.proof_msg))));
             for n in &self.proof {
@@ -1647,7 +1648,7 @@ impl Writer {
                 } else {
                     n.candidates.join(" / ")
                 };
-                d = d.child(div().mt_1p5().text_size(px(11.5))
+                d = d.child(div().mt_1p5().text_size(px(us * 11.5))
                     .child(SharedString::from(
                         ui::tf!("{} → {}  ({}・{})", n.found, cand, n.kind.label(), tool))));
             }
@@ -1710,6 +1711,7 @@ impl Writer {
         kind: &'static str,
         cx: &mut gpui::Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
+        let us = self.ui_scale;
         let items = self.一覧の中身(kind);
         // ボタンの箱は窓の座標で控えてあります(`btn_box`)。まだ描いて
         // いなければ左上へ逃がします — 黙って消えるよりは出すほうがよい
@@ -1740,7 +1742,7 @@ impl Writer {
                 accent: gpui::rgb(0x165E83),
                 // **文章の画面は倍率を掛けません**(2026-08-20 発注者。
                 // 画面の文字の大きさは基本的に変えない決め)
-                scale: 1.0,
+                scale: us,
             },
             Some(&ui::picklist::Place { x, at, up, max_h, width: 幅 }),
             // **何に掛かるかを頭に出します。** 前の版が出していた案内で、

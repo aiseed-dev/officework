@@ -74,6 +74,9 @@ impl ui::appcmd::Screen for Calc {
     fn dark_mut(&mut self) -> &mut bool {
         &mut self.dark
     }
+    fn ui_scale_mut(&mut self) -> &mut f32 {
+        &mut self.ui_scale
+    }
     fn say(&mut self, msg: String) {
         self.status = msg.into();
     }
@@ -2404,21 +2407,6 @@ impl Calc {
             // 表示タブ(本家のデスクトップ版に合わせる)。どれも見え方だけ
             // 画面の文字の大きさ(リボン・数式バー・メニュー・状態行まで全部)。
             // 格子のズームとは別。設定に覚えて、次回も同じ大きさで開く
-            "ui-bigger" | "ui-smaller" => {
-                let step = if id == "ui-bigger" { 0.1 } else { -0.1 };
-                self.ui_scale = ((self.ui_scale + step) * 10.0).round() / 10.0;
-                // 上限は 150% — これ以上はパネルや欄の設えが崩れる(発注者 2026-08-07)
-                self.ui_scale = self.ui_scale.clamp(0.8, 1.5);
-                // 試験では書かない(実利用者の settings.toml を汚さない)
-                if !cfg!(test) {
-                    ui::settings::set("ui_scale", &format!("{:.1}", self.ui_scale));
-                }
-                self.status = ui::tf!(
-                    "画面の文字の大きさ {}%(次回もこの大きさで開きます)",
-                    (self.ui_scale * 100.0).round() as i32
-                )
-                .into();
-            }
             "formula-bar" => {
                 self.show_formula_bar = !self.show_formula_bar;
                 self.status = if self.show_formula_bar {

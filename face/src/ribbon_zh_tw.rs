@@ -146,6 +146,8 @@ pub const WRITER: &[Tab] = &[
         c("printview", "整頁模式", "printview"),
         c("multipage", "多頁", "multipage"),
         t("darkmode", "深色模式", "darkmode"),
+        c("ui-bigger", "放大介面文字", "ui-bigger"),
+        c("ui-smaller", "縮小介面文字", "ui-smaller"),
         c("ruler", "尺規", "ruler"),
         t("show-toolbar", "顯示工具列", "show-toolbar"),
         t("show-statusbar", "狀態列", "show-statusbar"),
