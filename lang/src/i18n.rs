@@ -208,3 +208,98 @@ mod tests {
         assert_eq!(tr("この文は表に無い(試験用)"), "この文は表に無い(試験用)");
     }
 }
+
+/// 言語の決め方の試験。**`LANG` の控えを触るのでここに置きます**
+/// (2026-08-21)。
+///
+/// 前は `face/src/settings.rs` に「環境変数で en になる」の試験があり、
+/// *その試験プロセスで最初に `language()` を呼ぶのがそこ*であることに
+/// 頼っていました。だから `face/src/tabs.rs` の4本は `#[ignore]` を付けて
+/// 単独で回していました — 先に `language()` を呼ぶと控えが埋まって、
+/// あちらが落ちるからです。
+///
+/// 控えを直に触れるここへ移したので、順番の縛りが要らなくなりました。
+#[cfg(test)]
+mod 言語の決め方 {
+    use super::*;
+
+    /// **この節の試験は直列に回します。** 言語の控えも `OFFICE_LANG` も
+    /// プロセスで1つなので、同時に走ると取り合って落ちます
+    /// (2026-08-21 に実際に落ちました)。錠を試験の頭で取り、
+    /// 終わりまで持ちます。
+    ///
+    /// 毒された錠は中身を取り出して使います — 1本落ちたせいで
+    /// 残りが「錠が毒された」で落ちると、本当の原因が見えなくなります。
+    static 錠: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn 順番に() -> std::sync::MutexGuard<'static, ()> {
+        錠.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// 控えを空にしてから、環境変数を立てて引き直す。
+    /// **必ず元に戻します**(呼ぶ側が錠を持っている前提)
+    fn 引き直す(raw: Option<&str>) -> &'static str {
+        let 元env = std::env::var_os("OFFICE_LANG");
+        let 元lang = *LANG.read().expect("言語の錠");
+        unsafe {
+            match raw {
+                Some(v) => std::env::set_var("OFFICE_LANG", v),
+                None => std::env::remove_var("OFFICE_LANG"),
+            }
+        }
+        *LANG.write().expect("言語の錠") = None;
+        let got = language();
+        *LANG.write().expect("言語の錠") = 元lang;
+        unsafe {
+            match 元env {
+                Some(v) => std::env::set_var("OFFICE_LANG", v),
+                None => std::env::remove_var("OFFICE_LANG"),
+            }
+        }
+        got
+    }
+
+    /// 環境変数で選べる
+    #[test]
+    fn 環境変数で選べる() {
+        let _錠 = 順番に();
+        assert_eq!(引き直す(Some("en")), "en");
+        assert_eq!(引き直す(Some("fr")), "fr", "fr は文言が揃っています");
+        assert_eq!(引き直す(Some("ja")), "ja");
+    }
+
+    /// **知らない札は ja に落ちる。** 文言の無い言語を名乗りません。
+    ///
+    /// 前はこの試験が自分で書いた `match` を検べていて、本物を1度も
+    /// 通していませんでした。おまけに「fr は文言が無い」と書いてあり、
+    /// *主張そのものが古く*なっていました(いまは揃っています)。
+    #[test]
+    fn 知らない札はjaに落ちる() {
+        let _錠 = 順番に();
+        assert_eq!(引き直す(Some("xx")), "ja");
+        assert_eq!(引き直す(Some("")), "ja");
+        assert_eq!(引き直す(None), "ja", "何も無ければ既定は ja");
+    }
+
+    /// 揃っている言語は全部受ける(表と食い違わない)
+    #[test]
+    fn 揃っている言語は全部受ける() {
+        let _錠 = 順番に();
+        for l in crate::i18n_tables::LANGS {
+            assert_eq!(引き直す(Some(l)), *l, "{l} が受けられない");
+        }
+    }
+
+    /// [`set_language`] はいつ呼んでも効く(2026-08-19 の決め)
+    #[test]
+    fn 注いだ言語はいつでも効く() {
+        let _錠 = 順番に();
+        let 元 = *LANG.read().expect("言語の錠");
+        assert!(set_language("de"));
+        assert_eq!(language(), "de");
+        assert!(set_language("ja"));
+        assert_eq!(language(), "ja");
+        assert!(!set_language("xx"), "知らない札は断る");
+        *LANG.write().expect("言語の錠") = 元;
+    }
+}

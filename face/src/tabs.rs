@@ -71,15 +71,14 @@ fn レイアウトの次(out: &[Slot]) -> usize {
 mod tests {
     use super::*;
 
-    // **言語を引く道は、この試験の中でしか呼びません。**
-    // `ribbon::writer_tabs()` は1プロセスに一度きりの初期化を通るので、
-    // `settings` の言語の試験より先に呼ぶとあちらを落とします
-    // (2026-08-19 に実際に落としました)。だからこの試験は
-    // `cargo test -p face tabs::` のように**単独で**回します。
+    // **前は単独で回していました**(2026-08-21 に直しました)。
+    // `ribbon::writer_tabs()` は言語の控えを埋めるので、環境変数から
+    // 言語を決める試験より先に走ると、あちらを落としていました。
+    // その試験を `lang::i18n`(控えを直に触れる場所)へ移したので、
+    // 順番の縛りが要らなくなり、`#[ignore]` を外しました。
 
     /// 段の数。文章 11 + 表 13 のうち共通が 9 で、合わせて 15
     #[test]
-    #[ignore = "言語の初期化を先に触るので、単独で回す(cargo test -p face tabs:: -- --ignored)"]
     fn 十五段になる() {
         let m = merged();
         assert_eq!(m.len(), 15, "段の数が合わない: {:?}", m.iter().map(|s| s.name).collect::<Vec<_>>());
@@ -88,21 +87,28 @@ mod tests {
         assert_eq!(m.iter().filter(|s| s.doc.is_some() && s.sheet.is_some()).count(), 9);
     }
 
-    /// **共通の段は文字が一致する。** ここが崩れると突き合わせが効かない
+    /// **共通の段は文字が一致する。** ここが崩れると突き合わせが効かない。
+    ///
+    /// *日本語の段名で検べません*(2026-08-21)。言語はいつでも替えられる
+    /// ので、「ホームがある」と書くと言語を替える試験と取り合います。
+    /// 代わりに**両方の表の同じ場所を突き合わせます** — どの言語でも
+    /// 成り立つ言い方です。
     #[test]
-    #[ignore = "言語の初期化を先に触るので、単独で回す"]
     fn 共通の段は名前が一致する() {
         let m = merged();
-        let 共通: Vec<&str> =
-            m.iter().filter(|s| s.doc.is_some() && s.sheet.is_some()).map(|s| s.name).collect();
-        assert!(共通.contains(&"ホーム"), "{共通:?}");
-        assert!(共通.contains(&"表示"), "{共通:?}");
-        assert_eq!(共通.len(), 9, "{共通:?}");
+        let 共通: Vec<&Slot> =
+            m.iter().filter(|s| s.doc.is_some() && s.sheet.is_some()).collect();
+        assert_eq!(共通.len(), 9, "{:?}", 共通.iter().map(|s| s.name).collect::<Vec<_>>());
+        for s in 共通 {
+            let d = ribbon::writer_tabs()[s.doc.expect("文章の段")].name;
+            let c = ribbon::calc_tabs()[s.sheet.expect("表の段")].name;
+            assert_eq!(d, c, "共通の段なのに名前が違う");
+            assert_eq!(s.name, d, "まとめた表の名前が元と違う");
+        }
     }
 
     /// **元の段が1つ残らず出る。** 抜けると押せない段ができる
     #[test]
-    #[ignore = "言語の初期化を先に触るので、単独で回す"]
     fn 元の段が全部出る() {
         let m = merged();
         let mut d: Vec<usize> = m.iter().filter_map(|s| s.doc).collect();
@@ -115,7 +121,6 @@ mod tests {
 
     /// 文章の並びは動かない(使う人が覚えた場所を変えない)
     #[test]
-    #[ignore = "言語の初期化を先に触るので、単独で回す"]
     fn 文章の並びは動かない() {
         let m = merged();
         for (i, _) in ribbon::writer_tabs().iter().enumerate().take(5) {

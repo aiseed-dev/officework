@@ -125,25 +125,28 @@ pub fn language() -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    /// **言語を替えると、リボンの表も替わる。**
+    ///
+    /// 前はここで `OFFICE_LANG` を立てて `language()` を呼び、*この試験
+    /// プロセスで最初に呼ぶのがここである*ことに頼っていました。だから
+    /// `tabs.rs` の4本は `#[ignore]` を付けて単独で回すことになっていました。
+    ///
+    /// いまは `set_language` がいつ呼んでも効くので(2026-08-19 の決め)、
+    /// 順番に頼らずに書けます。環境変数から決める所そのものは
+    /// `lang::i18n` の「言語の決め方」で検べています — 控えを直に触れる
+    /// のはあちらだけなので、置き場を分けました。
+    ///
+    /// **必ず ja に戻します。** 戻さないと、後から走る試験が別の言語で
+    /// 表を引いて落ちます。
     #[test]
-    fn 環境変数でenの表が選ばれる() {
-        // OnceLock は1プロセス1回 — この試験プロセスで最初に language() を
-        // 呼ぶのはここ(他の試験は表を直接見る)。旗を立ててから引く
-        std::env::set_var("OFFICE_LANG", "en");
+    fn 言語を替えるとリボンの語も替わる() {
+        assert!(lang::i18n::set_language("en"));
         assert_eq!(super::language(), "en");
         assert_eq!(crate::ribbon::writer_tabs()[1].name, "Home");
         assert_eq!(crate::ribbon::calc_tabs()[1].name, "Home");
-    }
 
-    #[test]
-    fn 知らない言語はjaに落ちる() {
-        // language() は一度きり(OnceLock)なので、判定の芯だけ検査する
-        let pick = |raw: &str| match raw {
-            "en" => "en",
-            _ => "ja",
-        };
-        assert_eq!(pick("en"), "en");
-        assert_eq!(pick("fr"), "ja", "文言の無い言語を名乗らない");
-        assert_eq!(pick(""), "ja");
+        assert!(lang::i18n::set_language("ja"));
+        assert_eq!(crate::ribbon::writer_tabs()[1].name, "ホーム");
+        assert_eq!(crate::ribbon::calc_tabs()[1].name, "ホーム");
     }
 }

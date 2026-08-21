@@ -167,7 +167,7 @@ GNOME のスクリーンショット D-Bus は拒否される。
 
 * *`face/src/ribbon.rs` は生成物*(「手で書かない」と先頭に明記)。対応表をそこに書くと次の生成で消える。段の突き合わせは `face/src/tabs.rs`(手で書く場所)に置いてあり、*対応は書かず走るたびに表から作る*
 * *生成器と `ribbon.rs` は既にずれている。* 再生成すると段の数が変わる(Python・プラグイン・AI の段が手で足されている)。**B 群はこのずれを解くのが先行条件**
-* *`cargo test -p face tabs:: -- --ignored` は単独で回す。* 言語の初期化を先に触るので、まとめて走らせると `settings` の言語の試験を落とす。言語がいつでも変えられるようになったので、この縛りは根拠を失っている(E-2 で外せるはず)
+* [.line-through]#*`cargo test -p face tabs:: -- --ignored` は単独で回す。*# **済**(2026-08-21)。`#[ignore]` は4本とも外れ、`cargo test -p face` でまとめて回ります。環境変数から言語を決める試験は `lang::i18n`(控えを直に触れる場所)へ移し、段の名前を検べる試験は日本語に頼らない書き方にしました
 * *calc の `ui_state` に `right_open` / `right_face` / `left_open` を足した。* これが無い間、実機の点検で当て推量に押して検索の窓とセル編集を開いた。**calc の画面を触るときは rpc で状態を見てから押す**
 * *writer は `OFFICEWORK_UI_DUMP` に状態を書く*(`tools/writer_shot.py`)。`officework` は中身が writer なので、実行ファイルを差し替えれば同じ道具で駆動できる
 
