@@ -240,8 +240,14 @@ impl Office {
 /// 表の編集画面を作る。**埋め込みの印は必ず立てる** —
 /// 立て忘れると、その画面だけ一覧のクリックを自分で握ります
 fn 作る表(path: Option<std::path::PathBuf>, cx: &mut Context<Office>) -> Entity<calc::Calc> {
+    // **`funcs/*.py` を先に読み直す。** ブックを開く前に揃っていないと、
+    // `=集計(A1)` が UDF だと分からず `#NAME?` になります
+    // (2026-08-21。前は統合アプリで UDF が1つも効きませんでした)
+    calc::refresh_udfs_if_changed();
     let c = cx.new(|cx| calc::Calc::new(path, cx));
     c.update(cx, |c, _| c.set_embedded());
+    // 置き場が変われば計算し直す見張り。**表を1つ作るたびに**始めます
+    calc::start_udf_watch(c.clone(), cx);
     c
 }
 

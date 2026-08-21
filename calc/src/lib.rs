@@ -673,6 +673,24 @@ impl CalcAi {
 /// **アプリを起動する。** `main.rs` はこれを呼ぶだけです
 /// (2026-08-19 に切り出しました。1つのウィンドウに表と文章の両方を
 /// 載せるには、バイナリではなくライブラリである必要があります)。
+/// **式から呼ぶ Python の関数(`funcs/*.py`)を読み直す。**
+///
+/// 置き場が変わっていれば真を返します。ブックを開く前に呼ばないと、
+/// `=集計(A1)` が UDF だと分からず `#NAME?` になります。
+///
+/// *統合アプリが呼びます* — 前はここの `run()` の中でだけ呼んでいて、
+/// **配っている officework では UDF が1つも効きませんでした**
+/// (2026-08-21 に実機で確かめた)。
+pub fn refresh_udfs_if_changed() -> bool {
+    crate::py::refresh_udfs_if_changed()
+}
+
+/// **`funcs/*.py` の見張りを始める。** 置き場が変われば計算し直します。
+/// 表の画面を1つ作るたびに呼びます
+pub fn start_udf_watch(view: Entity<Calc>, cx: &mut gpui::App) {
+    crate::py::start_udf_watch(view, cx);
+}
+
 pub fn run() {
     let arg = std::env::args().nth(1).map(PathBuf::from);
     application().with_assets(ui::Icons).run(move |cx: &mut App| {

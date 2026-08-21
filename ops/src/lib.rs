@@ -2109,6 +2109,20 @@ pub fn listen(app: &'static str, queue: Queue) -> bool {
     true
 }
 
+/// **`HOME` を触る試験を直列に回すための錠**(2026-08-21)。
+///
+/// 鍵の置き場も控えの置き場も `HOME` の下です。同時に走ると別の試験が
+/// 立てた `HOME` を見て落ちます(実際に落ちました)。毒された錠は中身を
+/// 取り出して使います — 1本落ちたせいで残りが「錠が毒された」で落ちると、
+/// 本当の原因が見えなくなります。
+#[cfg(test)]
+static 家の錠: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+#[cfg(test)]
+fn 家を独り占め() -> std::sync::MutexGuard<'static, ()> {
+    家の錠.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 #[cfg(test)]
 mod sign_tests {
     use super::*;
@@ -2117,6 +2131,7 @@ mod sign_tests {
     /// 検めが落ちる**ことも見る(落ちなければ署名の意味がありません)
     #[test]
     fn 署名してから検める() {
+        let _家 = 家を独り占め();
         // 鍵の置き場は HOME の下。試験どうしがぶつからないよう別の家にする
         let 家 = std::env::temp_dir().join(format!("ops-sign-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&家);
@@ -2172,6 +2187,7 @@ mod recover_tests {
     /// 混ざると表の画面に文書の控えが出て、開けません。
     #[test]
     fn 控えの道と一覧() {
+        let _家 = 家を独り占め();
         let 家 = std::env::temp_dir().join(format!("ops-rec-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&家);
         std::fs::create_dir_all(&家).unwrap();
