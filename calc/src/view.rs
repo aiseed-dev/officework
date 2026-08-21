@@ -1600,6 +1600,19 @@ impl Render for Calc {
                         .top(px(1.0)).right(px(1.0))
                         .w(px(6.0)).h(px(6.0)).rounded_sm().bg(rgb(0xC00000)));
                 }
+                // **入力規則に合っていないセルは赤い枠で囲む**(2026-08-21 の
+                // D群)。本家は楕円だが、格子の上では四角の方が「このセル」が
+                // はっきりする。印は押したときだけ付き、もう一度押すと消える
+                if self.dv_marks.iter().any(|(s, q)| *s == self.active && *q == p) {
+                    d = d.relative().child(
+                        div()
+                            .absolute()
+                            .inset_0()
+                            .border_2()
+                            .border_color(rgb(0xC7433F))
+                            .rounded_sm(),
+                    );
+                }
                 // 入力規則のあるセルを選ぶと右下に ▾。押すと候補の一覧が
                 // 開く(本家と同じ。右クリック → ドロップダウンからでも可)
                 if sel && self.sheet().validation_at(p).is_some_and(|v| !v.hide_arrow) {

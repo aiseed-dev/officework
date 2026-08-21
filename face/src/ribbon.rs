@@ -477,6 +477,7 @@ pub const CALC: &[Tab] = &[
         c("text-column", "区切り位置", "text-column"),
         c("rem-duplicates", "重複の削除", "rem-duplicates"),
         c("data-validation", "データの入力規則", "data-validation"),
+        t("dv-mark", "無効データのマーク", "dv-mark"),
         c("goal-seek", "ゴールシーク", "goal-seek"),
         c("solver", "ソルバー", "solver"),
         c("group", "グループ化", "group"),

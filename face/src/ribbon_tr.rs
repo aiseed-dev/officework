@@ -299,6 +299,7 @@ pub const CALC: &[Tab] = &[
         c("text-column", "Metni sütunlara dönüştür", "text-column"),
         c("rem-duplicates", "Yinelenenleri kaldır", "rem-duplicates"),
         c("data-validation", "Veri doğrulama", "data-validation"),
+        t("dv-mark", "Geçersiz verileri daire içine al", "dv-mark"),
         c("goal-seek", "Hedef Ara", "goal-seek"),
         c("solver", "Çözücü", "solver"),
         c("group", "Grup", "group"),

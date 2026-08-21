@@ -7669,462 +7669,482 @@
  },
  {
   "i": 1917,
-  "t": "Nhập vùng nguồn rồi nhấn Enter (ví dụ Sheet1!A1:C20; gồm cả dòng tiêu đề)"
+  "t": "Đã đánh dấu {} ô (nhấn lần nữa để xóa)"
  },
  {
   "i": 1918,
-  "t": "Hãy đặt con trỏ vào PivotTable cần đổi nguồn"
+  "t": "Trang tính này chưa có quy tắc kiểm tra (thêm bằng Kiểm tra dữ liệu ở thẻ Dữ liệu)"
  },
  {
   "i": 1919,
-  "t": "Hãy viết vùng theo dạng A1:C20"
+  "t": "Không có giá trị nào vi phạm quy tắc kiểm tra"
  },
  {
   "i": 1920,
-  "t": "Không đọc được vùng: {}"
+  "t": "Đã xóa dấu"
  },
  {
   "i": 1921,
-  "t": "Không có trang tính “{}”"
+  "t": "Nhập vùng nguồn rồi nhấn Enter (ví dụ Sheet1!A1:C20; gồm cả dòng tiêu đề)"
  },
  {
   "i": 1922,
-  "t": "Vùng mới không có các tiêu đề: {} (PivotTable đang dùng)"
+  "t": "Hãy đặt con trỏ vào PivotTable cần đổi nguồn"
  },
  {
   "i": 1923,
-  "t": "Đã đổi bảng nguồn sang {}!{}:{} (đang dựng lại)"
+  "t": "Hãy viết vùng theo dạng A1:C20"
  },
  {
   "i": 1924,
-  "t": "Hãy nhập vế trái của ràng buộc trước"
+  "t": "Không đọc được vùng: {}"
  },
  {
   "i": 1925,
-  "t": "Đang tìm lời giải… (quy hoạch nguyên, nhánh và cận)"
+  "t": "Không có trang tính “{}”"
  },
  {
   "i": 1926,
-  "t": "{} không phải ô biến (số nguyên và nhị phân chỉ đặt được cho ô biến)"
+  "t": "Vùng mới không có các tiêu đề: {} (PivotTable đang dùng)"
  },
  {
   "i": 1927,
-  "t": "Không tìm thấy lời giải ({} có thể không ảnh hưởng đến {})"
+  "t": "Đã đổi bảng nguồn sang {}!{}:{} (đang dựng lại)"
  },
  {
   "i": 1928,
-  "t": "Hướng"
+  "t": "Hãy nhập vế trái của ràng buộc trước"
  },
  {
   "i": 1929,
-  "t": "Định dạng ô"
+  "t": "Đang tìm lời giải… (quy hoạch nguyên, nhánh và cận)"
  },
  {
   "i": 1930,
-  "t": "Căn giữa"
+  "t": "{} không phải ô biến (số nguyên và nhị phân chỉ đặt được cho ô biến)"
  },
  {
   "i": 1931,
-  "t": "Hàm Python"
+  "t": "Không tìm thấy lời giải ({} có thể không ảnh hưởng đến {})"
  },
  {
   "i": 1932,
-  "t": "Macro ruy-băng"
+  "t": "Hướng"
  },
  {
   "i": 1933,
-  "t": "Sao chép định dạng"
+  "t": "Định dạng ô"
  },
  {
   "i": 1934,
-  "t": "Kiểu"
+  "t": "Căn giữa"
  },
  {
   "i": 1935,
-  "t": "Danh sách trường"
+  "t": "Hàm Python"
  },
  {
   "i": 1936,
-  "t": "Phóng to chữ màn hình"
+  "t": "Macro ruy-băng"
  },
  {
   "i": 1937,
-  "t": "Thu nhỏ chữ màn hình"
+  "t": "Sao chép định dạng"
  },
  {
   "i": 1938,
-  "t": "AI"
+  "t": "Kiểu"
  },
  {
   "i": 1939,
-  "t": "In"
+  "t": "Danh sách trường"
  },
  {
   "i": 1940,
-  "t": "Bố cục in"
+  "t": "Phóng to chữ màn hình"
  },
  {
   "i": 1941,
-  "t": "Đích"
+  "t": "Thu nhỏ chữ màn hình"
  },
  {
   "i": 1942,
-  "t": "bản tóm tắt"
+  "t": "Khoanh dữ liệu không hợp lệ"
  },
  {
   "i": 1943,
-  "t": "Viết lại"
+  "t": "AI"
  },
  {
   "i": 1944,
-  "t": "Lịch sự hơn"
+  "t": "In"
  },
  {
   "i": 1945,
-  "t": "Dễ hiểu hơn"
+  "t": "Bố cục in"
  },
  {
   "i": 1946,
-  "t": "bản dịch"
+  "t": "Đích"
  },
  {
   "i": 1947,
-  "t": "Furigana"
+  "t": "bản tóm tắt"
  },
  {
   "i": 1948,
-  "t": "Viết tiếp"
+  "t": "Viết lại"
  },
  {
   "i": 1949,
-  "t": "Thành bảng"
+  "t": "Lịch sự hơn"
  },
  {
   "i": 1950,
-  "t": "Yêu cầu"
+  "t": "Dễ hiểu hơn"
  },
  {
   "i": 1951,
-  "t": "Ruby"
+  "t": "bản dịch"
  },
  {
   "i": 1952,
-  "t": "Viết dọc"
+  "t": "Furigana"
  },
  {
   "i": 1953,
-  "t": "Hướng văn bản"
+  "t": "Viết tiếp"
  },
  {
   "i": 1954,
-  "t": "Phân bố đều"
+  "t": "Thành bảng"
  },
  {
   "i": 1955,
-  "t": "Chèn chú thích hình/bảng"
+  "t": "Yêu cầu"
  },
  {
   "i": 1956,
-  "t": "Mở URL"
+  "t": "Ruby"
  },
  {
   "i": 1957,
-  "t": "Chỉ mục"
+  "t": "Viết dọc"
  },
  {
   "i": 1958,
-  "t": "Ghi chú Aozora"
+  "t": "Hướng văn bản"
  },
  {
   "i": 1959,
-  "t": "Cú pháp Denden"
+  "t": "Phân bố đều"
  },
  {
   "i": 1960,
-  "t": "Ghi lại thay đổi"
+  "t": "Chèn chú thích hình/bảng"
  },
  {
   "i": 1961,
-  "t": "Hiển thị thay đổi"
+  "t": "Mở URL"
  },
  {
   "i": 1962,
-  "t": "Kiểm lỗi"
+  "t": "Chỉ mục"
  },
  {
   "i": 1963,
-  "t": "Ký tự"
+  "t": "Ghi chú Aozora"
  },
  {
   "i": 1964,
-  "t": "Kiểm tra chính tả"
+  "t": "Cú pháp Denden"
  },
  {
   "i": 1965,
-  "t": "Từ điển đồng nghĩa"
+  "t": "Ghi lại thay đổi"
  },
  {
   "i": 1966,
-  "t": "Chuyển đổi sai"
+  "t": "Hiển thị thay đổi"
  },
  {
   "i": 1967,
-  "t": "Viết không thống nhất"
+  "t": "Kiểm lỗi"
  },
  {
   "i": 1968,
-  "t": "Tổng phụ"
+  "t": "Ký tự"
  },
  {
   "i": 1969,
-  "t": "Cách tính"
+  "t": "Kiểm tra chính tả"
  },
  {
   "i": 1970,
-  "t": "Chữ phải sang trái"
+  "t": "Từ điển đồng nghĩa"
  },
  {
   "i": 1971,
-  "t": "Hướng trang tính"
+  "t": "Chuyển đổi sai"
  },
  {
   "i": 1972,
-  "t": "Python"
+  "t": "Viết không thống nhất"
  },
  {
   "i": 1973,
-  "t": "Hộp kiểm"
+  "t": "Tổng phụ"
  },
  {
   "i": 1974,
-  "t": "Liên kết ngoài"
+  "t": "Cách tính"
  },
  {
   "i": 1975,
-  "t": "Biểu đồ đề xuất"
+  "t": "Chữ phải sang trái"
  },
  {
   "i": 1976,
-  "t": "Chế độ đồng soạn thảo"
+  "t": "Hướng trang tính"
  },
  {
   "i": 1977,
-  "t": "Lịch sử phiên bản"
+  "t": "Python"
  },
  {
   "i": 1978,
-  "t": "Trò chuyện"
+  "t": "Hộp kiểm"
  },
  {
   "i": 1979,
-  "t": "Bảo vệ"
+  "t": "Liên kết ngoài"
  },
  {
   "i": 1980,
-  "t": "Mã hóa"
+  "t": "Biểu đồ đề xuất"
  },
  {
   "i": 1981,
-  "t": "Thêm chữ ký số"
+  "t": "Chế độ đồng soạn thảo"
  },
  {
   "i": 1982,
-  "t": "Macro"
+  "t": "Lịch sử phiên bản"
  },
  {
   "i": 1983,
-  "t": "Quản lý plugin"
+  "t": "Trò chuyện"
  },
  {
   "i": 1984,
-  "t": "Hiển thị số 0"
+  "t": "Bảo vệ"
  },
  {
   "i": 1985,
-  "t": "Thu phóng về 100%"
+  "t": "Mã hóa"
  },
  {
   "i": 1986,
-  "t": "Chủ đề giao diện"
+  "t": "Thêm chữ ký số"
  },
  {
   "i": 1987,
-  "t": "Cửa sổ theo dõi"
+  "t": "Macro"
  },
  {
   "i": 1988,
-  "t": "AutoSum"
+  "t": "Quản lý plugin"
  },
  {
   "i": 1989,
-  "t": "Ghi lại thao tác"
+  "t": "Hiển thị số 0"
  },
  {
   "i": 1990,
-  "t": "Xóa nhận xét"
+  "t": "Thu phóng về 100%"
  },
  {
   "i": 1991,
-  "t": "Solver"
+  "t": "Chủ đề giao diện"
  },
  {
   "i": 1992,
-  "t": "Văn bản thành dữ liệu"
+  "t": "Cửa sổ theo dõi"
  },
  {
   "i": 1993,
-  "t": "Xóa mũi tên truy vết"
+  "t": "AutoSum"
  },
  {
   "i": 1994,
-  "t": "Điền"
+  "t": "Ghi lại thao tác"
  },
  {
   "i": 1995,
-  "t": "Bỏ lọc"
+  "t": "Xóa nhận xét"
  },
  {
   "i": 1996,
-  "t": "Viết macro"
+  "t": "Solver"
  },
  {
   "i": 1997,
-  "t": "Tách cột"
+  "t": "Văn bản thành dữ liệu"
  },
  {
   "i": 1998,
-  "t": "Chú thích hình/bảng"
+  "t": "Xóa mũi tên truy vết"
  },
  {
   "i": 1999,
-  "t": "Mục lục hình/bảng"
+  "t": "Điền"
  },
  {
   "i": 2000,
-  "t": "Cập nhật mục lục hình/bảng"
+  "t": "Bỏ lọc"
  },
  {
   "i": 2001,
-  "t": "Liên kết ngoài (nhập theo giá trị)"
+  "t": "Viết macro"
  },
  {
   "i": 2002,
-  "t": "Toán & Lượng giác"
+  "t": "Tách cột"
  },
  {
   "i": 2003,
-  "t": "Hiển thị công thức"
+  "t": "Chú thích hình/bảng"
  },
  {
   "i": 2004,
-  "t": "Hướng chữ (phải sang trái)"
+  "t": "Mục lục hình/bảng"
  },
  {
   "i": 2005,
-  "t": "Văn bản"
+  "t": "Cập nhật mục lục hình/bảng"
  },
  {
   "i": 2006,
-  "t": "Ngày & Giờ"
+  "t": "Liên kết ngoài (nhập theo giá trị)"
  },
  {
   "i": 2007,
-  "t": "Dùng gần đây"
+  "t": "Toán & Lượng giác"
  },
  {
   "i": 2008,
-  "t": "In cả đường lưới"
+  "t": "Hiển thị công thức"
  },
  {
   "i": 2009,
-  "t": "Cập nhật mục lục"
+  "t": "Hướng chữ (phải sang trái)"
  },
  {
   "i": 2010,
-  "t": "Cột sọc xen kẽ"
+  "t": "Văn bản"
  },
  {
   "i": 2011,
-  "t": "In cả tiêu đề"
+  "t": "Ngày & Giờ"
  },
  {
   "i": 2012,
-  "t": "Ẩn chi tiết"
+  "t": "Dùng gần đây"
  },
  {
   "i": 2013,
-  "t": "Xóa trùng lặp"
+  "t": "In cả đường lưới"
  },
  {
   "i": 2014,
-  "t": "Chèn hàm"
+  "t": "Cập nhật mục lục"
  },
  {
   "i": 2015,
-  "t": "Dạng CSV"
+  "t": "Cột sọc xen kẽ"
  },
  {
   "i": 2016,
-  "t": "Khoá ô"
+  "t": "In cả tiêu đề"
  },
  {
   "i": 2017,
-  "t": "Bảng dữ liệu"
+  "t": "Ẩn chi tiết"
  },
  {
   "i": 2018,
-  "t": "Điền nhanh"
+  "t": "Xóa trùng lặp"
  },
  {
   "i": 2019,
-  "t": "Danh sách"
+  "t": "Chèn hàm"
  },
  {
   "i": 2020,
-  "t": "Dán tên"
+  "t": "Dạng CSV"
  },
  {
   "i": 2021,
-  "t": "Khôi phục"
+  "t": "Khoá ô"
  },
  {
   "i": 2022,
-  "t": "Ngắt dòng trong ô"
+  "t": "Bảng dữ liệu"
  },
  {
   "i": 2023,
-  "t": "Tần suất sao lưu"
+  "t": "Điền nhanh"
  },
  {
   "i": 2024,
-  "t": "Tệp .py mới"
+  "t": "Danh sách"
  },
  {
   "i": 2025,
-  "t": "Thêm vào vùng in"
+  "t": "Dán tên"
  },
  {
   "i": 2026,
-  "t": "Thu vừa tờ giấy"
+  "t": "Khôi phục"
  },
  {
   "i": 2027,
-  "t": "Chỗ hết tờ giấy"
+  "t": "Ngắt dòng trong ô"
  },
  {
   "i": 2028,
-  "t": "Mở thư mục"
+  "t": "Tần suất sao lưu"
  },
  {
   "i": 2029,
-  "t": "Cách hiện giá trị"
+  "t": "Tệp .py mới"
  },
  {
   "i": 2030,
-  "t": "Thao tác được phép"
+  "t": "Thêm vào vùng in"
  },
  {
   "i": 2031,
+  "t": "Thu vừa tờ giấy"
+ },
+ {
+  "i": 2032,
+  "t": "Chỗ hết tờ giấy"
+ },
+ {
+  "i": 2033,
+  "t": "Mở thư mục"
+ },
+ {
+  "i": 2034,
+  "t": "Cách hiện giá trị"
+ },
+ {
+  "i": 2035,
+  "t": "Thao tác được phép"
+ },
+ {
+  "i": 2036,
   "t": "Gợi ý chỉ đọc"
  }
 ]

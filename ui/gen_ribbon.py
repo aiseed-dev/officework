@@ -761,6 +761,10 @@ EXTRA_CMDS = {
         ("レイアウト", 'printarea-add', "show-breaks", "紙の切れ目", "show-breaks", "c"),
         ("数式", 'insert-function', "func-list", "Python の関数", "py-list", "c"),
         ("数式", 'defname', "paste-name", "名前を貼り付け", "paste-name", "c"),
+        # **入力規則に合っていない値を洗い出す**(2026-08-21 の D群)。
+        # 本家に無い機能なので、絵も語もこちらで用意しました。
+        # 入切の形です — もう一度押すと印が消えます
+        ("データ", 'data-validation', "dv-mark", "無効データのマーク", "dv-mark", "t"),
         ("データ", 'clear-filter', "sort-desc", "降順並べ替え", "sortdesc", "c"),
         ("データ", 'sort-desc', "sort-asc", "昇順並べ替え", "sortasc", "c"),
         # 小計は本家のデータタブに無いが、グループ化を「畳むと合計が残る」

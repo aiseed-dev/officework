@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" fill="none" id="btn-dv-mark">
+    <path d="M15.5 8.5h-10a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h10m0 4h-10a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h10" class="icon-stroke-gray-primary"/>
+    <ellipse cx="19" cy="11" rx="6.5" ry="4.5" class="icon-stroke-red"/>
+    <ellipse cx="19" cy="19" rx="6.5" ry="4.5" class="icon-stroke-red"/>
+</svg>

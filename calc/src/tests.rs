@@ -2781,6 +2781,50 @@ mod recalc_tests {
         });
     }
 
+    /// **入力規則に合っていない値を洗い出す**(2026-08-21 の D群)。
+    ///
+    /// 規則は*これから打つ字*を堰き止めますが、**先に入っていた値**は
+    /// 素通りします。そこを見つけるのがこのボタンです。
+    #[gpui::test]
+    fn 入力規則に合わない値へ印が付く(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            // 規則が無ければ、そう言う(黙って何も起きないのをやめる)
+            this.run_cmd("dv-mark", cx);
+            assert!(this.status.contains("入力規則はありません"), "{}", this.status);
+            assert!(this.dv_marks.is_empty());
+
+            // A1:A4 に「甲/乙」だけを許す規則。丙と丁は合わない
+            for (i, v) in ["甲", "丙", "乙", "丁"].iter().enumerate() {
+                this.book.sheets[0].set(Pos::new(i as u32, 0), sheet::Cell::input(v));
+            }
+            this.book.sheets[0].validations.push(sheet::model::Validation::list(
+                (Pos::new(0, 0), Pos::new(3, 0)),
+                "\"甲,乙\"".into(),
+            ));
+
+            this.run_cmd("dv-mark", cx);
+            assert_eq!(this.dv_marks.len(), 2, "印の数が違う: {:?}", this.dv_marks);
+            let 位置: Vec<Pos> = this.dv_marks.iter().map(|(_, p)| *p).collect();
+            assert!(位置.contains(&Pos::new(1, 0)), "丙 に印が無い: {位置:?}");
+            assert!(位置.contains(&Pos::new(3, 0)), "丁 に印が無い: {位置:?}");
+            assert!(this.押せるか("dv-mark"), "印が付いている");
+            assert!(this.入っているか("dv-mark"), "押された形にならない");
+
+            // もう一度押すと消える
+            this.run_cmd("dv-mark", cx);
+            assert!(this.dv_marks.is_empty(), "消えない");
+            assert!(this.status.contains("消しました"), "{}", this.status);
+
+            // 全部合っていれば「ありません」と言う
+            this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("甲"));
+            this.book.sheets[0].set(Pos::new(3, 0), sheet::Cell::input("乙"));
+            this.run_cmd("dv-mark", cx);
+            assert!(this.dv_marks.is_empty());
+            assert!(this.status.contains("合わない値はありません"), "{}", this.status);
+        });
+    }
+
     /// **元の表を差し替える**(2026-08-21 の D群)。
     ///
     /// 断る所も見ます — 読めない範囲・無いシート・**いま使っている見出しが

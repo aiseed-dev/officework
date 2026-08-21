@@ -299,6 +299,7 @@ pub const CALC: &[Tab] = &[
         c("text-column", "텍스트 나누기", "text-column"),
         c("rem-duplicates", "중복된 항목 제거", "rem-duplicates"),
         c("data-validation", "데이터 유효성", "data-validation"),
+        t("dv-mark", "잘못된 데이터에 표시", "dv-mark"),
         c("goal-seek", "목표값 찾기", "goal-seek"),
         c("solver", "해 찾기", "solver"),
         c("group", "그룹", "group"),

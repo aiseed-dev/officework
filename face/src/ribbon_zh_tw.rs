@@ -299,6 +299,7 @@ pub const CALC: &[Tab] = &[
         c("text-column", "資料剖析", "text-column"),
         c("rem-duplicates", "移除重複", "rem-duplicates"),
         c("data-validation", "資料驗證", "data-validation"),
+        t("dv-mark", "圈選無效資料", "dv-mark"),
         c("goal-seek", "單變數求解", "goal-seek"),
         c("solver", "規劃求解", "solver"),
         c("group", "分組", "group"),

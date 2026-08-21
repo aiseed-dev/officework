@@ -299,6 +299,7 @@ pub const CALC: &[Tab] = &[
         c("text-column", "分列", "text-column"),
         c("rem-duplicates", "删除重复项", "rem-duplicates"),
         c("data-validation", "数据验证", "data-validation"),
+        t("dv-mark", "圈释无效数据", "dv-mark"),
         c("goal-seek", "单变量求解", "goal-seek"),
         c("solver", "规划求解", "solver"),
         c("group", "组", "group"),

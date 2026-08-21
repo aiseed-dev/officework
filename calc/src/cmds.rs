@@ -99,7 +99,7 @@ impl Calc {
         "fill-num", "freeze", "show-formulas", "show-gridlines",
         "fn-math", "fn-text", "fn-logical", "fn-recent",
         "sum", "average", "count", "max", "min",
-        "data-validation", "condformat", "defname",
+        "data-validation", "dv-mark", "condformat", "defname",
         "pageorient", "pagesize", "pagemargins", "printarea",
         "inschart", "insimage", "inshyperlink", "replace",
         "changecase", "format", "cell-format", "fontname", "fontsize",
@@ -3577,6 +3577,59 @@ impl Calc {
             // データの入力規則。選んだ範囲に候補を付ける(パネルで受ける)
             // データの入力規則。本家は 設定/入力メッセージ/エラーアラートの
             // 3タブのダイアログ — calc は種類の一覧 → 聞き取りのパネルの2段
+            // **入力規則に合っていない値を洗い出す**(2026-08-21 の D群)。
+            //
+            // 規則は*これから打つ字*を堰き止めますが、**先に入っていた値**や
+            // 貼り付けで入った値は素通りします。押すと今の値を全部見て、
+            // 合っていないセルを丸で囲みます。もう一度押すと消えます。
+            //
+            // *判定は `Validation::passes` の1本*(打つときと同じ物)。
+            // ここで別の判定を書くと、「打てるのに印が付く」が起きます。
+            "dv-mark" => {
+                self.commit();
+                if !self.dv_marks.is_empty() {
+                    self.dv_marks.clear();
+                    self.status = ui::t!("印を消しました").into();
+                    cx.notify();
+                    return;
+                }
+                let si = self.active;
+                let sh = &self.book.sheets[si];
+                if sh.validations.is_empty() {
+                    self.status =
+                        ui::t!("このシートに入力規則はありません(データタブの「データの入力規則」で付けます)")
+                            .into();
+                    cx.notify();
+                    return;
+                }
+                let mut 見つけた: Vec<(usize, Pos)> = Vec::new();
+                for v in &sh.validations {
+                    let (a, b) = v.range;
+                    for r in a.row..=b.row {
+                        for c in a.col..=b.col {
+                            let p = Pos::new(r, c);
+                            let 字 = sh.get(p).map(|x| x.value.display()).unwrap_or_default();
+                            // 空欄は規則の `allow_blank` に従う(打つときと同じ)
+                            if 字.is_empty() {
+                                if !v.allow_blank {
+                                    見つけた.push((si, p));
+                                }
+                                continue;
+                            }
+                            if !v.passes(sh, &字) {
+                                見つけた.push((si, p));
+                            }
+                        }
+                    }
+                }
+                let n = 見つけた.len();
+                self.dv_marks = 見つけた;
+                self.status = if n == 0 {
+                    ui::t!("入力規則に合わない値はありません").into()
+                } else {
+                    ui::tf!("{} 個に印を付けました(もう一度押すと消えます)", n).into()
+                };
+            }
             "data-validation" => {
                 self.commit();
                 // 本家の3タブのダイアログと同じ形のパネル(発注者 2026-08-07)

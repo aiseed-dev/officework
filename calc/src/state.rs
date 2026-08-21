@@ -81,6 +81,8 @@ impl Calc {
             "show-headings" => self.show_headers,
             "show-left" => self.left_open,
             "show-right" => self.right_open,
+            // 印が付いている間は押された形(2026-08-21 の D群)
+            "dv-mark" => !self.dv_marks.is_empty(),
             "darkmode" => self.dark,
             _ => false,
         }
@@ -286,6 +288,7 @@ impl Calc {
             dark: ui::dark_at_start(),
             auto_calc: true,
             watch: Vec::new(),
+            dv_marks: Vec::new(),
             ai_busy: false,
             left_open: false,
             right_open: false,

@@ -299,6 +299,7 @@ pub const CALC: &[Tab] = &[
         c("text-column", "Teks ke kolom", "text-column"),
         c("rem-duplicates", "Hapus duplikat", "rem-duplicates"),
         c("data-validation", "Validasi data", "data-validation"),
+        t("dv-mark", "Lingkari data tidak valid", "dv-mark"),
         c("goal-seek", "Pencarian Tujuan", "goal-seek"),
         c("solver", "Solver", "solver"),
         c("group", "Grup", "group"),
