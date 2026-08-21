@@ -5164,12 +5164,20 @@ impl Render for Calc {
         });
 
         let notes = if self.notes.is_empty() { None } else {
-            let mut n = div().px_4().py_2().bg(rgb(0xFFF6E6))
-                .border_t_1().border_color(rgb(0xE8D5A8))
+            // 拾い集めたブックは**別の見出しと色**にします。読み飛ばしと
+            // 拾い集めは重さが違います(2026-08-22。台帳「開いて修復」)
+            let (bg, edge, fg, 見出し) = if self.salvaged {
+                (0xFDECEA, 0xE9B0A8, 0x8A2A1B,
+                 ui::t!("この帳票は拾い集めたものです(読み取り専用 — 上書きはできません)"))
+            } else {
+                (0xFFF6E6, 0xE8D5A8, 0x8A4B00, ui::t!("この版で読み飛ばしたもの"))
+            };
+            let mut n = div().px_4().py_2().bg(rgb(bg))
+                .border_t_1().border_color(rgb(edge))
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
-                       .text_color(rgb(0x8A4B00)).child(ui::t!("この版で読み飛ばしたもの")));
+                       .text_color(rgb(fg)).child(見出し));
             for x in &self.notes {
-                n = n.child(div().text_size(px(us * 11.0)).text_color(rgb(0x8A4B00))
+                n = n.child(div().text_size(px(us * 11.0)).text_color(rgb(fg))
                             .child(x.clone()));
             }
             Some(n)

@@ -254,6 +254,8 @@ impl Calc {
         // 前のブックのパスワードを引きずらない(暗号化して開いた時だけ
         // パネルの続きが後から入れ直す)
         self.encrypt_pw = None;
+        // 読めなかったときに拾い直すので、中身は控えておきます
+        let bytes2 = bytes.clone();
         match sheet::xlsx::read(std::io::Cursor::new(bytes)) {
             Ok((mut book, rep)) => {
                 sheet::recalc_all(&mut book);
@@ -270,8 +272,33 @@ impl Calc {
                 );
                 self.adopt_book(p, book, notes, status);
             }
-            Err(e) => self.status = ui::tf!("開けません: {}", e).into(),
+            // **読めなかった。**「開けません」で終わらせず、拾う道と
+            // 控えを並べます(2026-08-09 発注者確定「拾う。ただし必ず言い、
+            // 上書きは禁じる」)
+            Err(e) => self.offer_repair(p, bytes2, &e),
         }
+    }
+
+    /// **壊れたブックの逃げ道を並べる**(開いて修復。2026-08-22)。
+    ///
+    /// 控えがあれば**先にそちらを勧めます** — 9世代の控えは、拾い集めた
+    /// 穴あきより確実です。拾うのはその後の手段です。
+    pub(crate) fn offer_repair(&mut self, p: PathBuf, bytes: Vec<u8>, why: &str) {
+        let 控え = ops::history::list(Some(&p));
+        let mut items: Vec<(String, String)> = 控え
+            .iter()
+            .map(|(name, _)| (name.clone(), ui::tf!("控えから開く: {}", name.clone()).to_string()))
+            .collect();
+        items.extend(crate::util::menu(&[ui::item!("→ 壊れたまま拾って開く(読み取り専用)")]));
+        self.repair_pend = Some((p, bytes));
+        self.pick_note = Some(if 控え.is_empty() {
+            ui::t!("控えはありません。拾えた部品だけで開きます(上書きはできません)").into()
+        } else {
+            ui::t!("控えの方が確実です。拾うのはその後の手段です").into()
+        });
+        self.pick_kind = "repair";
+        self.pick = Some((items, (60.0, 120.0)));
+        self.status = ui::tf!("このファイルは読めません: {}", why).into();
     }
 
     /// **`.adoc` のブックを読み込む**(2026-08-19)。
@@ -376,9 +403,32 @@ impl Calc {
 
     /// 読み終えたブックを画面に据える。**xlsx と adoc の共通の続き** —
     /// 片方だけ直して食い違うのを防ぐため、1本にしてあります。
+    /// **拾い集めたブックを受け取る**(開いて修復)。
+    ///
+    /// 普通に開いたときと違うのは2つだけです — 上書きを断る旗を立てることと、
+    /// **画面の下の帯に「拾い集めたもの」と出し続ける**ことです。状態行は
+    /// 次の操作で流れるので、そこだけでは足りません。
+    pub(crate) fn adopt_salvaged(
+        &mut self,
+        p: PathBuf,
+        book: sheet::Book,
+        notes: Vec<SharedString>,
+        status: String,
+    ) {
+        self.adopt_book(p, book, notes, status);
+        self.salvaged = true;
+        // 拾った物は元のファイルの写しではありません。**錠は取りません** —
+        // 読むだけなので、他の人の作業を止める理由がありません
+        self.release_lock();
+    }
+
     fn adopt_book(&mut self, p: PathBuf, book: sheet::Book, notes: Vec<SharedString>, status: String) {
         {
             {
+                // **旗はここで下ろします。** 別のブックを開いたら、拾い集めた
+                // ブックではありません(adopt_salvaged は後から立て直します)
+                self.salvaged = false;
+                self.repair_pend = None;
                 self.notes = notes;
                 self.status = status.into();
                 self.book = book;
@@ -1251,6 +1301,17 @@ impl Calc {
     /// `then_quit` なら保存が済んだときだけ終了する — 書きかけを黙って捨てない。
     pub(crate) fn save(&mut self, then_quit: bool, cx: &mut Context<Self>) {
         self.commit();
+        // **拾い集めたブックで元のファイルを上書きしません**(2026-08-09
+        // 発注者確定)。いちばん怖い事故は、穴が空いたのに気づかないまま
+        // 元の壊れたファイルを上書きすることです。そうなるともう戻せません。
+        // 名前を付けて保存はできます — そちらは別のファイルです
+        if self.salvaged {
+            self.status = ui::t!(
+                "拾い集めたブックなので上書きしません。名前を付けて保存してください(元のファイルは触りません)"
+            )
+            .into();
+            return;
+        }
         if let Some(p) = self.path.clone() {
             if self.locked_by.is_some() {
                 // 先客の作業を後勝ちで潰さない。別の名前でなら保存できる
@@ -1302,8 +1363,13 @@ impl Calc {
             .path
             .as_ref()
             .is_some_and(|q| q.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc")));
-        let original: Option<std::io::Cursor<Vec<u8>>> =
-            if 元は字 { None } else { self.original_plain().map(std::io::Cursor::new) };
+        // **拾い集めたブックでは原本を渡しません。** 原本は壊れた zip なので、
+        // そこから部品を持ち越そうとすると保存ごと落ちます(2026-08-22)
+        let original: Option<std::io::Cursor<Vec<u8>>> = if 元は字 || self.salvaged {
+            None
+        } else {
+            self.original_plain().map(std::io::Cursor::new)
+        };
         let 字で書く = p.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc"));
         // 上書きの前に、直前の中身をバージョン履歴に控える
         if p.exists() {
@@ -1357,6 +1423,12 @@ impl Calc {
         };
         match saved {
             Ok(_) => {
+                // **書けたら旗を下ろします。** 新しいファイルは穴あきの
+                // 元ファイルではないので、これ以降は上書きできます
+                if self.salvaged {
+                    self.salvaged = false;
+                    self.notes.clear();
+                }
                 // 文に差し込む添え書きも画面の文言 — 訳さないと日本語だけ残る
                 let enc_note = if self.encrypt_pw.is_some() {
                     ui::t!("(暗号化)")

@@ -200,6 +200,8 @@ impl Calc {
             encrypt_pw: None,
             pw_pending: None,
             pw_first: None,
+            salvaged: false,
+            repair_pend: None,
             goal: None,
             py_spills: Default::default(),
             udf_stamp: Default::default(),

@@ -1339,6 +1339,73 @@ mod validation_roundtrip_tests {
     use super::*;
     use crate::model::{Cell, Validation};
 
+    /// **壊れた xlsx から拾う**(2026-08-22。台帳「開いて修復」)。
+    ///
+    /// 中央目録が読めなくても、局所ヘッダから部品を拾えることを見ます。
+    /// 拾えなかった部品は**黙って落とさず名前を並べる**ことも見ます。
+    #[test]
+    fn 中央目録が壊れていても拾える() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("品名"));
+        b.sheets[0].set(Pos::parse("A2").unwrap(), Cell::input("鉛筆"));
+        b.sheets[0].set(Pos::parse("B2").unwrap(), Cell::input("100"));
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let 元 = buf.into_inner();
+
+        // 普通の読み手はこれを開けない状態にする — 末尾(中央目録)を落とす
+        let 壊れ = &元[..元.len() - 40];
+        assert!(read(Cursor::new(壊れ.to_vec())).is_err(), "壊れていない");
+
+        let s = crate::xlsx::salvage(壊れ);
+        assert!(s.any(), "1つも拾えない: {:?}", s.lost);
+        assert!(
+            s.kept.iter().any(|n| n.contains("sheet1.xml")),
+            "本体を拾えていない: {:?}",
+            s.kept
+        );
+        let (back, _) = read(Cursor::new(s.bytes)).expect("拾った物が読めない");
+        assert_eq!(
+            back.sheets[0].get(Pos::parse("A2").unwrap()).map(|c| c.value.display()),
+            Some("鉛筆".to_string()),
+            "中身が拾えていない"
+        );
+    }
+
+    /// 部品の中身が化けていたら、**その部品だけを捨てて名前を控える**。
+    #[test]
+    fn 化けた部品は捨てて名前を控える() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("あ"));
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let mut raw = buf.into_inner();
+        // sharedStrings の中身のどこかを塗り潰す(名前は残す)
+        let 印 = b"xl/sharedStrings.xml";
+        let at = raw.windows(印.len()).position(|w| w == 印).expect("見つからない");
+        for i in at + 印.len() + 8..at + 印.len() + 40 {
+            if i < raw.len() {
+                raw[i] = 0xFF;
+            }
+        }
+        let s = crate::xlsx::salvage(&raw);
+        // 他の部品は拾えている
+        assert!(s.kept.iter().any(|n| n.contains("workbook.xml")), "{:?}", s.kept);
+        // 捨てた物があるなら、名前が出ている
+        for (n, why) in &s.lost {
+            assert!(!n.is_empty(), "名前の無い報せがある");
+            assert!(!why.is_empty(), "理由の無い報せがある");
+        }
+    }
+
+    /// 何も拾えない物を渡しても、**慌てず「拾えません」と言う**。
+    #[test]
+    fn zipでない物からは何も拾わない() {
+        let s = crate::xlsx::salvage(b"this is not a zip at all");
+        assert!(!s.any(), "拾えないはずの物から拾った");
+        assert!(s.kept.is_empty());
+    }
+
     #[test]
     fn シナリオが往復する() {
         let mut b = Book::new();

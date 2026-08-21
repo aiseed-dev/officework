@@ -246,6 +246,15 @@ impl Host for Calc {
         Ok(())
     }
     fn save(&mut self, p: std::path::PathBuf) -> Result<(), String> {
+        // **拾い集めたブックで元のファイルを上書きしない**(2026-08-22)。
+        // 画面の「保存」だけを塞いでも、こちらの口が空いていたら同じ事故が
+        // 起きます。別の名前でなら書けます
+        if self.salvaged && self.path.as_deref() == Some(p.as_path()) {
+            return Err(ui::t!(
+                "拾い集めたブックなので上書きしません。名前を付けて保存してください(元のファイルは触りません)"
+            )
+            .to_string());
+        }
         self.save_to(p);
         Ok(())
     }

@@ -11,9 +11,12 @@
 //! ここに集めてある。呼ぶ側は `sheet::xlsx::…` のまま変わらない。
 
 mod read;
+/// 壊れた zip から拾う(開いて修復)
+mod repair;
 mod write;
 
 pub use read::{read, Report};
+pub use repair::{salvage, Salvage};
 pub use write::{to_template, write, write_with};
 
 #[cfg(test)]

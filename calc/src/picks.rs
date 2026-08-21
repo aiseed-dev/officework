@@ -1157,6 +1157,58 @@ impl Calc {
                 self.pivot_flt = None;
                 self.spawn_pivot(nd, Some(pi), cx);
             }
+            // **壊れたブックの逃げ道**(開いて修復。2026-08-22)
+            "repair" => {
+                let Some((path, bytes)) = self.repair_pend.take() else { return };
+                if !v.starts_with("→ ") {
+                    // 控えから開く。**元のファイルは触りません**
+                    let 控え = ops::history::list(Some(&path));
+                    if let Some((_, q)) = 控え.into_iter().find(|(n, _)| *n == v) {
+                        self.open_version(&q);
+                    }
+                    return;
+                }
+                let s = sheet::xlsx::salvage(&bytes);
+                if !s.any() {
+                    self.status =
+                        ui::t!("拾えた部品がありません(zip として読める所がありませんでした)").into();
+                    return;
+                }
+                match sheet::xlsx::read(std::io::Cursor::new(s.bytes)) {
+                    Ok((mut book, _rep)) => {
+                        sheet::recalc_all(&mut book);
+                        // **読めなかった部品を一件ずつ並べます。**
+                        // 「修復しました」だけでは、どこに穴が空いたか分かりません
+                        let mut notes: Vec<gpui::SharedString> = s
+                            .lost
+                            .iter()
+                            .map(|(n, why)| {
+                                gpui::SharedString::from(
+                                    ui::tf!("{} が読めませんでした({})", n.clone(), why.clone())
+                                        .to_string(),
+                                )
+                            })
+                            .collect();
+                        if notes.is_empty() {
+                            notes.push(gpui::SharedString::from(
+                                ui::t!("部品はすべて拾えました(zip の目録だけが壊れていました)")
+                                    .to_string(),
+                            ));
+                        }
+                        let status = ui::tf!(
+                            "{} の部品を拾って開きました({} 件は拾えませんでした)。上書きはできません",
+                            s.kept.len(),
+                            s.lost.len()
+                        )
+                        .to_string();
+                        self.adopt_salvaged(path, book, notes, status);
+                    }
+                    Err(e) => {
+                        self.status =
+                            ui::tf!("拾えた部品だけでも開けません: {}", e).into()
+                    }
+                }
+            }
             // シナリオ。名前を押すとその値を書き戻す
             "scenario" => {
                 if v.starts_with("→ 新しいシナリオ") {

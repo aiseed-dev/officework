@@ -5568,6 +5568,7 @@ dependencies = [
 name = "sheet"
 version = "0.0.1"
 dependencies = [
+ "flate2",
  "kumihan",
  "quick-xml 0.36.2",
  "zip",

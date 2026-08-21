@@ -2796,6 +2796,67 @@ mod recalc_tests {
         });
     }
 
+    /// **開いて修復**(2026-08-22。台帳の [中])。
+    ///
+    /// 発注者が 2026-08-09 に決めた4つを、そのまま見ます。
+    /// 読めた部品だけで開く・読めなかった部品を一件ずつ並べる・
+    /// 上書きを断る・画面に出し続ける。
+    #[gpui::test]
+    fn 壊れたブックは拾って開くが上書きを断る(cx: &mut gpui::TestAppContext) {
+        // 中身のあるブックを書いて、末尾(中央目録)を落とす
+        let mut b = sheet::Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("品名"));
+        b.sheets[0].set(Pos::parse("A2").unwrap(), sheet::Cell::input("鉛筆"));
+        let mut buf = std::io::Cursor::new(Vec::new());
+        sheet::xlsx::write(&b, &mut buf).expect("書けない");
+        let 壊れ = {
+            let v = buf.into_inner();
+            v[..v.len() - 40].to_vec()
+        };
+        let dir = std::env::temp_dir().join(format!("jo-repair-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("壊れた.xlsx");
+        std::fs::write(&path, &壊れ).expect("置けない");
+
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.open(path.clone());
+            // **「開けません」で終わらせない。**逃げ道の一覧が出る
+            assert_eq!(this.pick_kind, "repair", "逃げ道が出ない: {}", this.status);
+            assert!(this.repair_pend.is_some(), "拾う材料を控えていない");
+
+            this.apply_pick("→ 壊れたまま拾って開く(読み取り専用)", cx);
+            // 読めた部品だけで開けている
+            assert_eq!(
+                this.sheet().get(Pos::parse("A2").unwrap()).map(|c| c.value.display()),
+                Some("鉛筆".to_string()),
+                "拾えていない: {}",
+                this.status
+            );
+            // 拾い集めた旗が立ち、画面の帯に出続ける
+            assert!(this.salvaged, "旗が立たない");
+            assert!(!this.notes.is_empty(), "帯に何も出ない");
+
+            // **上書きは断る。**元の壊れたファイルは触らない
+            let 前 = std::fs::read(&path).expect("読めない");
+            this.save(false, cx);
+            assert!(this.status.contains("上書きしません"), "{}", this.status);
+            assert_eq!(std::fs::read(&path).expect("読めない"), 前, "元のファイルを書き替えた");
+
+            // **rpc の口も同じように断る。**画面だけ塞いでも意味がない
+            let r = ops::Host::save(this, path.clone());
+            assert!(r.is_err(), "口から上書きできてしまった");
+            assert_eq!(std::fs::read(&path).expect("読めない"), 前, "口から書き替えた");
+
+            // 名前を付けて保存できれば旗は下りる
+            let 別 = dir.join("拾った.xlsx");
+            this.save_to(別.clone());
+            assert!(別.exists(), "保存できない: {}", this.status);
+            assert!(!this.salvaged, "保存しても旗が下りない");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// **日付の粒**(タイムライン。2026-08-22 の D群)。
     ///
     /// 札はピボットの日付のグループ化と同じ形にします。揃っていないと、
