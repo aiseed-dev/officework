@@ -62,7 +62,14 @@ pub fn build<V: 'static>(
     on_pick: impl Fn(&mut V, usize, &mut Context<V>) + Copy + 'static,
     on_find: impl Fn(&mut V, &mut Context<V>) + Copy + 'static,
 ) -> Div {
-    let mut row = div().flex().flex_row().items_end().gap_1().px_2().bg(look.row_bg);
+    // **入りきらないときは折り返します**(2026-08-21)。
+    //
+    // 文章の画面は 100% で既に 1012 画素あり、120% にすると窓(1100)を
+    // 超えて、表示タブに手が届かなくなりました。文字を大きくするのは
+    // 「小さくて読めない」からなので、タブだけ小さいままにする道は取れません。
+    // 押せない段が出るくらいなら、行が2段になる方がましです。
+    let mut row =
+        div().flex().flex_row().flex_wrap().items_end().gap_1().px_2().bg(look.row_bg);
     for (位置, 段) in tabs::merged().into_iter().enumerate() {
         let 名 = 段.name;
         let idx = match side {
