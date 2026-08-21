@@ -1826,6 +1826,82 @@ pub fn load_or_make_key() -> Result<ed25519_dalek::SigningKey, KeyErr> {
     Ok(ed25519_dalek::SigningKey::from_bytes(&seed))
 }
 
+/// **自動復旧の控えの置き場。** `~/.config/officework/recover/`。
+///
+/// 本家(ローカルの Excel / Word)と同じ考え方で、**開いているファイルを
+/// 勝手に上書きしない**。落ちたとき・電源が切れたときに失う分を減らす
+/// ための別の控えで、無事に保存できたら消します。上書きしてしまうと
+/// 「保存していないつもりの変更」が原本に入り、Ctrl+Z でも戻せません
+/// — 帳票では取り返しがつきません。
+///
+/// **表と文章で同じ置き場です**(2026-08-21)。前は表にしか無く、
+/// 道の作り方も表の中に閉じていました。文章にも要るので出しました。
+pub fn recover_dir() -> PathBuf {
+    pyrun::config_dir().join("recover")
+}
+
+/// いまの文書・ブックの控えの道。名前は**元の道から作る**ので、同じ
+/// ファイルを開き直したときに同じ控えを指します。
+///
+/// `ext` は控えの拡張子です(表は `xlsx`、文章は `adoc`)。同じ場所に
+/// 両方が並ぶので、種類は拡張子で見分けます。
+pub fn recover_path_for(orig: Option<&std::path::Path>, ext: &str, 無題: &str) -> PathBuf {
+    let key = match orig {
+        Some(p) => {
+            // 道をそのまま名前にはできないので、道の hash と見える名前
+            let mut h: u64 = 1469598103934665603;
+            for b in p.to_string_lossy().as_bytes() {
+                h ^= *b as u64;
+                h = h.wrapping_mul(1099511628211);
+            }
+            let stem = p
+                .file_stem()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| "doc".into());
+            format!("{stem}-{h:016x}")
+        }
+        None => 無題.to_string(),
+    };
+    recover_dir().join(format!("{key}.{ext}"))
+}
+
+/// 無事に保存できたら控えは要りません(消し忘れると次の起動で
+/// 「落ちた後です」と嘘を言います)
+pub fn drop_recover(orig: Option<&std::path::Path>, ext: &str, 無題: &str) {
+    let p = recover_path_for(orig, ext, 無題);
+    let _ = std::fs::remove_file(&p);
+    let _ = std::fs::remove_file(p.with_extension("path"));
+}
+
+/// 起動のときに残っている控え(前回落ちた跡)。`(見える名前, 控えの道)`。
+///
+/// `ext` で種類を絞ります — 表の画面に文章の控えを出しても開けません。
+pub fn stale_recovers(ext: &str) -> Vec<(String, PathBuf)> {
+    let Ok(rd) = std::fs::read_dir(recover_dir()) else { return Vec::new() };
+    let mut out = Vec::new();
+    for e in rd.flatten() {
+        let p = e.path();
+        if p.extension().and_then(|x| x.to_str()) != Some(ext) {
+            continue;
+        }
+        let orig = std::fs::read_to_string(p.with_extension("path")).ok();
+        let name = orig.unwrap_or_else(|| {
+            p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default()
+        });
+        out.push((name, p));
+    }
+    out.sort();
+    out
+}
+
+/// 控えの隣に「元はどのファイルか」を書き添えます。復旧のときに
+/// 「どのファイルの控えか」を言うためです
+pub fn note_recover_origin(控え: &std::path::Path, orig: Option<&std::path::Path>) {
+    if let Some(o) = orig {
+        let _ = std::fs::write(控え.with_extension("path"), o.to_string_lossy().as_bytes());
+    }
+}
+
 /// 署名を検めた/添えた結果。**文言はここでは作らない**([`KeyErr`] と同じ型)
 #[derive(Debug)]
 pub enum Signed {
@@ -2076,6 +2152,62 @@ mod sign_tests {
             Err(SignErr::Read(_)) => {}
             他 => panic!("読めないと言うはず: {他:?}"),
         }
+
+        match 元 {
+            Some(v) => unsafe { std::env::set_var("HOME", v) },
+            None => unsafe { std::env::remove_var("HOME") },
+        }
+        let _ = std::fs::remove_dir_all(&家);
+    }
+}
+
+#[cfg(test)]
+mod recover_tests {
+    use super::*;
+
+    /// **控えの道は元のファイルごとに決まる。** 同じファイルを開き直したら
+    /// 同じ控えを指し、別のファイルなら別の控えになります。
+    ///
+    /// 種類は拡張子で見分けます — 同じ置き場に表と文章の控えが並ぶので、
+    /// 混ざると表の画面に文書の控えが出て、開けません。
+    #[test]
+    fn 控えの道と一覧() {
+        let 家 = std::env::temp_dir().join(format!("ops-rec-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&家);
+        std::fs::create_dir_all(&家).unwrap();
+        let 元 = std::env::var_os("HOME");
+        unsafe { std::env::set_var("HOME", &家) };
+
+        let a = std::path::Path::new("/tmp/報告書.adoc");
+        let b = std::path::Path::new("/tmp/別の報告書.adoc");
+        assert_eq!(recover_path_for(Some(a), "adoc", "無題"), recover_path_for(Some(a), "adoc", "無題"));
+        assert_ne!(recover_path_for(Some(a), "adoc", "無題"), recover_path_for(Some(b), "adoc", "無題"));
+        // 名前の無い文書は決まった名前(開き直しても同じ控えを指す)
+        assert!(recover_path_for(None, "adoc", "未保存の文書")
+            .to_string_lossy()
+            .contains("未保存の文書"));
+
+        // 控えを2つ置く(文章と表を1つずつ)
+        let 文 = recover_path_for(Some(a), "adoc", "無題");
+        std::fs::create_dir_all(文.parent().unwrap()).unwrap();
+        std::fs::write(&文, "= 報告書\n").unwrap();
+        note_recover_origin(&文, Some(a));
+        let 表 = recover_path_for(Some(a), "xlsx", "無題");
+        std::fs::write(&表, b"PK").unwrap();
+
+        // **拡張子で分かれる**(表の画面に文書の控えを出さない)
+        let 文一覧 = stale_recovers("adoc");
+        assert_eq!(文一覧.len(), 1, "{文一覧:?}");
+        assert_eq!(文一覧[0].0, a.to_string_lossy(), "元の道を添えて見せる");
+        assert_eq!(stale_recovers("xlsx").len(), 1);
+
+        // 保存できたら消す。**添え書きも消える**(消し忘れると次の起動で
+        // 「落ちた後です」と嘘を言う)
+        drop_recover(Some(a), "adoc", "無題");
+        assert!(!文.exists(), "控えが残っている");
+        assert!(!文.with_extension("path").exists(), "添え書きが残っている");
+        assert_eq!(stale_recovers("adoc").len(), 0);
+        assert_eq!(stale_recovers("xlsx").len(), 1, "表の控えは消さない");
 
         match 元 {
             Some(v) => unsafe { std::env::set_var("HOME", v) },

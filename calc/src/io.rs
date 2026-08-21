@@ -534,35 +534,10 @@ impl Calc {
         })
     }
 
-    /// **自動復旧の控えの置き場。** `~/.config/officework/recover/`。
-    ///
-    /// 本家(ローカルの Excel)と同じ考え方で、**開いているファイルを
-    /// 勝手に上書きしない**。落ちたとき・電源が切れたときに失う分を
-    /// 減らすための別の控えで、無事に保存できたら消す。
-    /// 上書きしてしまうと「保存していないつもりの変更」が原本に入り、
-    /// Ctrl+Z でも戻せない — 帳票では取り返しがつかない。
-    pub(crate) fn recover_dir() -> PathBuf {
-        pyrun::config_dir().join("recover")
-    }
-
-    /// いまのブックの控えの道。名前は**元の道から作る**ので、同じ
-    /// ファイルを開き直したときに同じ控えを指す
+    /// **控えの置き場と道は `ops` に1本**(2026-08-21)。文章にも要る
+    /// ので出しました。ここは呼び出し側を変えないための包みです
     pub(crate) fn recover_path_for(orig: Option<&std::path::Path>) -> PathBuf {
-        let key = match orig {
-            Some(p) => {
-                // 道をそのまま名前にはできないので、道の hash と見える名前
-                let mut h: u64 = 1469598103934665603;
-                for b in p.to_string_lossy().as_bytes() {
-                    h ^= *b as u64;
-                    h = h.wrapping_mul(1099511628211);
-                }
-                let stem = p.file_stem().map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "book".into());
-                format!("{stem}-{h:016x}")
-            }
-            None => "未保存のブック".into(),
-        };
-        Self::recover_dir().join(format!("{key}.xlsx"))
+        ops::recover_path_for(orig, "xlsx", "未保存のブック")
     }
 
     /// 自動復旧の控えを書く。**中身を写してから別スレッドで書く** —
@@ -604,28 +579,12 @@ impl Calc {
     /// 無事に保存できたら控えは要らない(消し忘れると次の起動で
     /// 「落ちた後です」と嘘を言う)
     pub(crate) fn drop_recover(&self) {
-        let p = Self::recover_path_for(self.path.as_deref());
-        let _ = std::fs::remove_file(&p);
-        let _ = std::fs::remove_file(p.with_extension("path"));
+        ops::drop_recover(self.path.as_deref(), "xlsx", "未保存のブック");
     }
 
     /// 起動のときに残っている控え(前回落ちた跡)。(見える名前, 控えの道)
     pub(crate) fn stale_recovers() -> Vec<(String, PathBuf)> {
-        let Ok(rd) = std::fs::read_dir(Self::recover_dir()) else { return Vec::new() };
-        let mut out = Vec::new();
-        for e in rd.flatten() {
-            let p = e.path();
-            if p.extension().and_then(|x| x.to_str()) != Some("xlsx") {
-                continue;
-            }
-            let orig = std::fs::read_to_string(p.with_extension("path")).ok();
-            let name = orig.unwrap_or_else(|| {
-                p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default()
-            });
-            out.push((name, p));
-        }
-        out.sort();
-        out
+        ops::stale_recovers("xlsx")
     }
 
     /// 最近開いた・保存したブックの控え(writer と同じ作法)

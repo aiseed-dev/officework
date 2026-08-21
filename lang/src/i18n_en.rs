@@ -1950,5 +1950,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} を {} に置きました({} 個の図形。図形を選んで Enter で文字、ドラッグで移動。全部まとめて Ctrl+Z で1手)", "Placed {} at {} ({} shapes; select a shape and press Enter to type, drag to move; Ctrl+Z undoes them all in one step)"),
     ("解を求めました: {} = {}(変数 {} 個を書き換え。Ctrl+Z で1手)", "Solved: {} = {} ({} variable cells were rewritten; Ctrl+Z undoes it in one step)"),
     ("{} = {} で {} が {} になります(Ctrl+Z で戻せます)", "With {} = {}, {} becomes {} (Ctrl+Z undoes it)"),
+    ("前に保存できずに終わった控えが {} 件あります({} — 「開く」で開けます)", "There are {} auto-recovery copies from a session that ended without saving ({} — open them with Open)"),
     ("見つかりません({} が {} に効いていないかもしれません)", "No solution found ({} may not affect {})"),
 ];

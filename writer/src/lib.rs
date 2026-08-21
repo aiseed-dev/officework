@@ -270,6 +270,11 @@ pub struct Writer {
     style_list: bool,
     /// ダークモード(紙以外を暗く。文書は変わらない)
     dark: bool,
+    /// **自動復旧の控えを取る間隔(秒)。** 0 なら取りません
+    /// (2026-08-21 の B-3。表にしかありませんでした)
+    pub(crate) recover_secs: u64,
+    /// 最後に控えを取った時刻
+    pub(crate) recover_at: std::time::Instant,
     /// **画面の文字の大きさ**(2026-08-21 発注者「双方でできるように
     /// したいです」)。リボン・タブの行・状態行・パネル・ファイルのページ
     /// が追従します。**紙は変わりません** — 紙の大きさは `zoom` の話で、
@@ -526,6 +531,28 @@ impl Writer {
     /// *開いている全部のタブを見ます。* 持ち替えは画面ごと作り直すので、
     /// 裏のタブの書きかけも一緒に消えます — いま見ている物だけを見ると、
     /// 「保存したのに消えた」が起きます
+    /// **控えを取る頃合いか**(2026-08-21)。統合アプリが全部のタブを
+    /// 見て回るので、判定はここに出します。
+    ///
+    /// *前は見張りが `run()` の中にありました* — 単体を起こしたときしか
+    /// 動かず、**配っている officework では控えが1つも取れていません
+    /// でした**(実機で確かめた)。
+    pub fn recover_due(&self) -> bool {
+        self.recover_secs > 0
+            && self.dirty
+            && self.recover_at.elapsed().as_secs() >= self.recover_secs
+    }
+
+    /// 見に行く間隔(控えの間隔より細かく。ただし毎秒は回さない)
+    pub fn recover_poll(&self) -> u64 {
+        self.recover_secs.clamp(5, 30)
+    }
+
+    /// 控えを取る(原本は上書きしません)
+    pub fn take_recover(&mut self, cx: &mut Context<Self>) {
+        self.write_recover(cx);
+    }
+
     pub fn has_unsaved(&self) -> bool {
         self.dirty || (0..self.files.len()).any(|i| self.file_dirty(i))
     }
@@ -1116,6 +1143,31 @@ pub fn run() {
                 // AI の道具から文書を操れます(Windows ではソケットを作らない)
                 #[cfg(unix)]
                 rpc::start(view.clone(), cx);
+                // **自動復旧の控えを取る見張り**(2026-08-21 の B-3)。
+                // 表と同じ形です。原本は上書きしません
+                {
+                    let v = view.clone();
+                    cx.spawn(async move |cx| {
+                        loop {
+                            // 見に行く間隔は控えの間隔より細かく(短い設定を
+                            // 待たせない)。ただし毎秒は回さない
+                            let poll =
+                                v.update(cx, |w: &mut Writer, _| w.recover_secs.clamp(5, 30));
+                            cx.background_executor()
+                                .timer(std::time::Duration::from_secs(poll))
+                                .await;
+                            let due = v.update(cx, |w: &mut Writer, _| {
+                                w.recover_secs > 0
+                                    && w.dirty
+                                    && w.recover_at.elapsed().as_secs() >= w.recover_secs
+                            });
+                            if due {
+                                v.update(cx, |w: &mut Writer, cx| w.write_recover(cx));
+                            }
+                        }
+                    })
+                    .detach();
+                }
                 // 動かす・伸ばすたびに控える — 閉じる経路が何本あっても漏れない。
                 // 全画面は控えない(次も全画面で開くと出口が分かりにくい)
                 view.update(cx, |_, cx| {

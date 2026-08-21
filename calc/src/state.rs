@@ -5,6 +5,28 @@ use crate::*;
 impl Calc {
     /// **書きかけがあるか**(`officework` が持ち替えの前に聞きます)。
     /// ブックは1冊なので、この画面の `dirty` がそのまま答えです
+    /// **控えを取る頃合いか**(2026-08-21)。統合アプリが全部のタブを
+    /// 見て回るので、判定はここに出します。
+    ///
+    /// *前は見張りが `run()` の中にありました* — 単体を起こしたときしか
+    /// 動かず、**配っている officework では控えが1つも取れていません
+    /// でした**(実機で確かめた)。
+    pub fn recover_due(&self) -> bool {
+        self.recover_secs > 0
+            && self.dirty
+            && self.recover_at.elapsed().as_secs() >= self.recover_secs
+    }
+
+    /// 見に行く間隔(控えの間隔より細かく。ただし毎秒は回さない)
+    pub fn recover_poll(&self) -> u64 {
+        self.recover_secs.clamp(5, 30)
+    }
+
+    /// 控えを取る(原本は上書きしません)
+    pub fn take_recover(&mut self, cx: &mut Context<Self>) {
+        self.write_recover(cx);
+    }
+
     pub fn has_unsaved(&self) -> bool {
         self.dirty
     }

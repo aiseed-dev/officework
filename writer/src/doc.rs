@@ -120,6 +120,12 @@ impl Writer {
             // 次の起動も同じ明暗で(表と同じ器)
             dark: ui::dark_at_start(),
             ui_scale: ui::ui_scale(),
+            // 既定は5分ごと(表と同じ)。試験は環境変数で縮める
+            recover_secs: std::env::var("JO_RECOVER_SECS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(300),
+            recover_at: std::time::Instant::now(),
             image_cache: Default::default(),
             font_bytes: std::sync::Arc::new(font_data().to_vec()),
             pg: kumihan::PageSetup::default(),
@@ -3204,6 +3210,52 @@ impl Writer {
         std::fs::write(p, 字).map_err(|e| e.to_string())
     }
 
+    /// **自動復旧の控えを書く**(2026-08-21 の B-3)。
+    ///
+    /// 中身を写してから別スレッドで書きます — 長い文書で画面が止まらない
+    /// ように。うまくいったことは言いません(数分ごとに出ては邪魔なので、
+    /// しくじったときだけ言います)。
+    ///
+    /// **原本は触りません。** 落ちたときに失う分を減らすための別の控えです。
+    pub(crate) fn write_recover(&mut self, cx: &mut Context<Self>) {
+        self.flush_target();
+        let dst = crate::io::控えの道(self.path.as_deref());
+        // 何枚も入っているファイルなら全部。保存と同じ形にします
+        let 字 = if self.docs.len() > 1 {
+            kumihan::adoc::write_many(&self.docs_for_save())
+        } else {
+            kumihan::adoc::write(&self.doc)
+        };
+        let orig = self.path.clone();
+        let task = cx.background_executor().spawn(async move {
+            if let Some(d) = dst.parent() {
+                std::fs::create_dir_all(d).ok()?;
+            }
+            std::fs::write(&dst, 字).ok()?;
+            ops::note_recover_origin(&dst, orig.as_deref());
+            Some(())
+        });
+        cx.spawn(async move |this, cx| {
+            let ok = task.await.is_some();
+            let _ = this.update(cx, |w: &mut Writer, _| {
+                w.recover_at = std::time::Instant::now();
+                if !ok {
+                    // **黙って諦めない。** 控えが取れていないことは言う
+                    w.status =
+                        ui::t!("自動復旧の控えが書けません(保存先の権限を確かめてください)")
+                            .into();
+                }
+            });
+        })
+        .detach();
+    }
+
+    /// 無事に保存できたら控えは要りません(消し忘れると次の起動で
+    /// 「落ちた後です」と嘘を言います)
+    pub(crate) fn drop_recover(&self) {
+        ops::drop_recover(self.path.as_deref(), "adoc", "未保存の文書");
+    }
+
     /// 素の文字として保存する(.py / .txt / .md)。段落を改行でつなぐ
     pub(crate) fn save_text_to(&mut self, p: &std::path::Path) -> Result<(), String> {
         self.flush_target();
@@ -3348,6 +3400,7 @@ impl Writer {
                 Ok(()) => {
                     self.path = Some(p.clone());
                     self.dirty = false;
+                    self.drop_recover();
                     self.status = ui::tf!(
                         "{} に保存しました(素の文字)",
                         p.file_name().unwrap_or_default().to_string_lossy()
@@ -3428,6 +3481,7 @@ impl Writer {
                     self.acquire_lock(&p);
                     self.path = Some(p.clone());
                     self.dirty = false;
+                    self.drop_recover();
                 }
                 Self::note_recent(&p);
             }

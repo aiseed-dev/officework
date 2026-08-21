@@ -1935,5 +1935,6 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{} を {} に置きました({} 個の図形。図形を選んで Enter で文字、ドラッグで移動。全部まとめて Ctrl+Z で1手)", "{} {} konumuna yerleştirildi ({} şekil; bir şekli seçip Enter'a basarak yazın, sürükleyerek taşıyın; Ctrl+Z hepsini tek adımda geri alır)"),
     ("解を求めました: {} = {}(変数 {} 個を書き換え。Ctrl+Z で1手)", "Çözüldü: {} = {} ({} değişken hücre yeniden yazıldı; Ctrl+Z tek adımda geri alır)"),
     ("{} = {} で {} が {} になります(Ctrl+Z で戻せます)", "{} = {} olduğunda {} değeri {} olur (Ctrl+Z geri alır)"),
+    ("前に保存できずに終わった控えが {} 件あります({} — 「開く」で開けます)", "Kaydedilmeden biten bir oturumdan {} kurtarma kopyası var ({} — Aç ile açabilirsiniz)"),
     ("見つかりません({} が {} に効いていないかもしれません)", "Çözüm bulunamadı ({} değeri {} üzerinde etkili olmayabilir)"),
 ];

@@ -315,6 +315,83 @@ impl Office {
         .detach();
     }
 
+    /// **自動復旧の控えを取る見張り**(2026-08-21)。
+    ///
+    /// 開いている全部のタブを見て、頃合いのものだけ控えます。原本は
+    /// 上書きしません — 落ちたときに失う分を減らすための別の控えです。
+    ///
+    /// 間隔は各タブが持ちます(`控えの間隔` のボタン)。見に行く間隔は
+    /// いちばん短いタブに合わせます — 短く設定したタブを待たせないためです。
+    fn 控えの見張り(view: gpui::Entity<Office>, cx: &mut App) {
+        // **前に落ちた跡があれば、開いたときに言います。**
+        //
+        // 控えは普通のファイル(.adoc)なので「開く」でそのまま開けます。
+        // 黙っていると、取ってあることに気づかれません。
+        //
+        // *表の控え(.xlsx)はここでは言いません* — 表の画面が起きるときに
+        // 自分で言い、しかも「保護タブの隣の『復旧』で開けます」と場所まで
+        // 案内します。こちらが後から上書きすると、その案内が消えます。
+        let 残り = ops::stale_recovers("adoc").len();
+        if 残り > 0 {
+            let 道 = ops::recover_dir().display().to_string();
+            view.update(cx, |o: &mut Office, cx| {
+                let 文 = ui::tf!(
+                    "前に保存できずに終わった控えが {} 件あります({} — 「開く」で開けます)",
+                    残り,
+                    道
+                )
+                .to_string();
+                match &o.tabs[o.at] {
+                    Pane::Doc(v) => v.update(cx, |w, _| w.say(文)),
+                    Pane::Sheet(v) => v.update(cx, |c, _| c.say(文)),
+                }
+            });
+        }
+        cx.spawn(async move |cx| {
+            loop {
+                let poll = view.update(cx, |o: &mut Office, cx| {
+                    o.tabs
+                        .iter()
+                        .map(|t| match t {
+                            Pane::Doc(v) => v.read(cx).recover_poll(),
+                            Pane::Sheet(v) => v.read(cx).recover_poll(),
+                        })
+                        .min()
+                        .unwrap_or(30)
+                });
+                cx.background_executor()
+                    .timer(std::time::Duration::from_secs(poll))
+                    .await;
+                view.update(cx, |o: &mut Office, cx| {
+                    // **借りを先に終える。** タブを更新する間は o を借りられない
+                    let 文: Vec<_> = o
+                        .tabs
+                        .iter()
+                        .filter_map(|t| match t {
+                            Pane::Doc(v) if v.read(cx).recover_due() => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let 表: Vec<_> = o
+                        .tabs
+                        .iter()
+                        .filter_map(|t| match t {
+                            Pane::Sheet(v) if v.read(cx).recover_due() => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    for v in 文 {
+                        v.update(cx, |w, cx| w.take_recover(cx));
+                    }
+                    for v in 表 {
+                        v.update(cx, |c, cx| c.take_recover(cx));
+                    }
+                });
+            }
+        })
+        .detach();
+    }
+
     /// **いまの姿を控える。** タブを開く・閉じる・切り替えるたびに呼びます —
     /// 終了のときだけ書くと、落ちたときに前回の姿が残りません。
     fn 姿を控える(&self, cx: &App) {
@@ -687,6 +764,16 @@ fn main() {
                 // writer にも」の節)
                 #[cfg(unix)]
                 Office::受け口(view.clone(), cx);
+                // **自動復旧の控えを取る見張り**(2026-08-21)。
+                //
+                // *この仕組みは配っているアプリで死んでいました。* 見張りは
+                // `calc::run()` と `writer::run()` の中にあり、単体を起こした
+                // ときしか動きません。統合してから officework が主になった
+                // のに、こちらへは移していませんでした — 実機で確かめたら
+                // 表も文章も控えが1つも取れていませんでした。
+                //
+                // **全部のタブを見ます。** 裏のタブの書きかけも守ります。
+                Office::控えの見張り(view.clone(), cx);
                 // **閉じるときは全部のタブに聞きます。**
                 //
                 // ここは今まで**誰も見ていませんでした** — 終了確認は writer と
