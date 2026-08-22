@@ -2439,3 +2439,19 @@ Word と表が別のアプリだったから、結合セルで文書を書く形
 * 見せる名前と技術の名前は分ける: 製品名 aiseed office(題・.desktop・README・リリース)/ 技術の名前 officework(実行ファイル・ソケット・`~/.config/officework`・pip・import)は変えない
 * 版は別々に歩く: aiseed office 0.1.0、officework(wheel)0.4 → 0.5。手引きの「(0.2.0-alpha で入ります)」の印は「次の版で入ります」に言い換える(番号で約束しない)
 * crate の分け直し(sheet の中の xlsx と adoc の分離など)は**今はしない** — 位置づけの決めだけ。必要が出たときに測ってから
+
+=== 将来の方向 — 部品化(2026-08-21 発注者)
+
+発注者「将来的には、pyasciidoc と pywashi の rust 版を作って、aiseed office をコンポーネント化していくのがいい」。
+
+aiseed office を、名前を持った部品の組み立てにしていく方向です。
+
+* **pyasciidoc の Rust 版** — CJK 対応の adoc パーサ。いまの `kumihan::adoc` がその種
+* **pywashi の Rust 版** — 日本語の組版(禁則・ルビ・字幅)。いまの `kumihan` の組版と `lang` のふりがながその種(「pywashi の Rust 版ができるといい」2026-08-04 の意向の続き)
+* **officework** — docx / xlsx の交換(決め済み)
+* **aiseed office** — 部品の組み立て(アプリ)
+
+要点は2つ。
+
+. **golden fixtures を Python 版と Rust 版で共有する。** pyasciidoc の金の試験に aiseed office の吐いた実物の adoc を足し、同じ試験を両実装に通す — 記法の解釈が割れない仕組みを、文書でなく試験で持つ(CJK の強調の食い違いはこれで塞ぐ)
+. **分けるのは必要が出てから。** crates.io と同じ時期(0.2.0 の後、口が固まってから)。いまは kumihan の中の持ち場割りをこの線に沿わせておくだけでよい
