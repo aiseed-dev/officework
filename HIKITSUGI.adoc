@@ -169,7 +169,7 @@ GNOME のスクリーンショット D-Bus は拒否される。
 * *生成器と `ribbon.rs` は既にずれている。* 再生成すると段の数が変わる(Python・プラグイン・AI の段が手で足されている)。**B 群はこのずれを解くのが先行条件**
 * [.line-through]#*`cargo test -p face tabs:: -- --ignored` は単独で回す。*# **済**(2026-08-21)。`#[ignore]` は4本とも外れ、`cargo test -p face` でまとめて回ります。環境変数から言語を決める試験は `lang::i18n`(控えを直に触れる場所)へ移し、段の名前を検べる試験は日本語に頼らない書き方にしました
 * *calc の `ui_state` に `right_open` / `right_face` / `left_open` を足した。* これが無い間、実機の点検で当て推量に押して検索の窓とセル編集を開いた。**calc の画面を触るときは rpc で状態を見てから押す**
-* *writer は `OFFICEWORK_UI_DUMP` に状態を書く*(`tools/writer_shot.py`)。`officework` は中身が writer なので、実行ファイルを差し替えれば同じ道具で駆動できる
+* *writer は `OFFICEWORK_UI_DUMP` に状態を書く*(`tools/writer_shot.py`)。統合した `officework` を駆動するのは `tools/office_shot.py`(2026-08-22)。rpc で状態を聞き、リボンのボタンを **id で**押し、一覧の項目も押せる。**文書の側が前に出ていると箱は取れない**ので、そのときは言って止まる(rpc は表の側の口。文書は writer_shot の持ち場)
 
 === 確かめていない事(そのまま引き継ぐ)
 
