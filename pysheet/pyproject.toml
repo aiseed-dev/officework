@@ -50,10 +50,10 @@ pandas = ["pandas"]
 # 背負わせない
 mcp = ["mcp"]
 
-# **アプリの起動の口**(2026-08-15 発注者「配布も PyPI と conda-forge だけで
-# 問題ないかも」)。pip で入れると `officework` が使える。**署名の要らない道** — mac の公証も Windows の SmartScreen も
-# 「ブラウザで落とした物」に付く印が引き金で、pip が入れた物には付かない。
-# Python 同梱も要らない(入れる人は Python を持っている)
+# **アプリを起こす口**。`officework` と打つと、機械に入っている
+# aiseed office を探して起こします。**実行ファイルはこの wheel には
+# 入っていません**(2026-08-21。SEKKEI「wheel からアプリを外す」) —
+# 入っていなければ、入れ方を言って終わります
 [project.scripts]
 # **入り口は officework の1つ**(2026-08-19 発注者確定。SEKKEI 段11)。
 # 表も文章も同じ窓のタブで開くので、コマンドを2つに分ける理由が
@@ -82,8 +82,13 @@ features = ["pyo3/extension-module"]
 #     ソース木を触ったかで中身が変わる。実際 0.0.1 は 314 が2本、0.1.0 は
 #     312 と 314 が3本入っていた(2026-08-10 に手元の wheel で確認)
 exclude = ["**/__pycache__/**"]
-# **アプリの実行ファイルは officework/bin/ に置いて配る**(2026-08-15)。
-# 置くのは組む前で、CI がやる(packaging/put-bins.py)。手元で maturin を
-# 回すときは無くてよい — その場合 app.py が target/release/ を見に行く。
-# .gitignore に入れてあるので、git には入らない
-include = ["officework/bin/*"]
+# **アプリの実行ファイルは配りません**(2026-08-21 発注者。SEKKEI
+# 「officework の wheel からアプリを外す」)。2026-08-15 の同梱の決めを
+# 覆したものです。
+#
+# 発注者「officework に画面をいれたのは間違い。ファイルだけに戻したい」。
+# この wheel は **docx / xlsx のファイル操作エンジン**で、名前と中身が
+# 一致します。同梱をやめたので 36MB から数 MB に戻ります。
+#
+# 画面は **aiseed office** の名で別に配ります(deb / tar.gz / dmg /
+# setup.exe / Flatpak)。`officework` の口はそちらを探して起こすだけです

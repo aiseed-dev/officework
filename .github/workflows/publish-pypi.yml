@@ -81,39 +81,8 @@ jobs:
           # **失敗した回でも組んだ物を残す。** 既定では job が失敗すると
           # 保存しないので、組み立ての後ろの段で落ちるたびに、次の回も
           # 一から組み直しになる(2026-08-17、Windows が 12分14秒かけて
-          # 組んだ後に put-bins.py の1行で落ち、その結果が捨てられた)
+          # 組んだ後、その次の1行で落ちて結果が捨てられた)
           cache-on-failure: "true"
-      - name: 画面を組むのに要る物(Linux だけ)
-        # 組み上がったバイナリの ldd から起こした一覧(ci.yml と同じ)。
-        # libfontconfig1-dev は ldd に出ないが、組むときに要る
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev libxcb-xkb-dev \
-            libfontconfig1-dev cmake clang pkg-config
-      - name: アプリを組む(officework)
-        # **wheel にアプリも入れる**(発注者 2026-08-17「画面も動くようにして」)。
-        # pip で入れた物には mac の quarantine も Windows の Mark of the Web も
-        # 付かないので、**署名が要らない配り方**になる。
-        #
-        # mac は wheel が universal2 なので、アプリも両方の的で組んで lipo で
-        # 1つにする。**この横断の組み立ては一度も走っていない** — ここが
-        # 落ちたら、mac だけ的ごとの wheel に分ける
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            rustup target add aarch64-apple-darwin x86_64-apple-darwin
-            cargo build --release -p officework --target aarch64-apple-darwin
-            cargo build --release -p officework --target x86_64-apple-darwin
-            mkdir -p target/release
-            lipo -create -output target/release/officework \
-              target/aarch64-apple-darwin/release/officework \
-              target/x86_64-apple-darwin/release/officework
-          else
-            cargo build --release -p officework
-          fi
-          python3 packaging/put-bins.py
       - name: wheel を組む
         uses: PyO3/maturin-action@v1
         with:

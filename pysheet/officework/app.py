@@ -11,13 +11,17 @@
 表も文書も同じ窓のタブで開くので、コマンドを2つに分ける理由が
 なくなりました。calc と writer の単体は開発と試験の道具として残ります。
 
-**pip で配るのが主な道**(2026-08-15 発注者)。署名も公証も要りません —
-mac の Gatekeeper も Windows の SmartScreen も「ブラウザで落とした物」に
-付く印が引き金で、pip が入れた物には付かないためです。Python 同梱も
-要りません(pip で入れる人は Python を持っています)。
+**実行ファイルはこの wheel に入っていません**(2026-08-21 発注者。SEKKEI
+「officework の wheel からアプリを外す」)。2026-08-15 の同梱の決めを
+覆したものです。発注者「officework に画面をいれたのは間違い。ファイルだけに
+戻したい」。
 
-実行ファイルは wheel の中(`officework/bin/`)に入っています。手元の木で
-開発しているときは `target/release/` からも探します。
+pip の `officework` は、**機械に入っている aiseed office を探して起こす**
+だけの口です。入っていなければ、入れ方を言って終わります。
+
+画面(aiseed office)は deb / tar.gz / dmg / setup.exe / Flatpak で配ります。
+実行ファイルの名前は `officework` のままです — 見せる名前と技術の名前を
+分ける決め(SEKKEI「名前の三角形」)。
 """
 
 import os
@@ -37,27 +41,41 @@ MIMES = (
 
 
 def _exe(app=APP):
-    """実行ファイルを探す。wheel の中 → 環境変数 → 手元の木 → PATH"""
+    """機械に入っているアプリを探す。環境変数 → 手元の木 → PATH。
+
+    **wheel の中は見ません**(2026-08-21)。同梱をやめたので、そこには
+    ありません。見に行くと「あるはずの所に無い」という遠回りな失敗の仕方に
+    なります。
+    """
     import shutil
 
     name = app + (".exe" if sys.platform == "win32" else "")
     here = os.path.dirname(os.path.abspath(__file__))
-    # (1) wheel に同梱した物
-    p = os.path.join(here, "bin", name)
-    if os.path.exists(p):
-        return p
-    # (2) 名指し(開発中・別の場所に置いた場合)
+    # (1) 名指し(別の場所に入れた場合・開発中)
     env = os.environ.get("OFFICEWORK_" + app.upper())
     if env and os.path.exists(env):
         return env
-    # (3) 手元の木(officework をソースから触っているとき)
+    # (2) 手元の木(officework をソースから触っているとき)
     for up in range(2, 6):
         root = os.path.abspath(os.path.join(here, *([".."] * up)))
         p = os.path.join(root, "target", "release", name)
         if os.path.exists(p):
             return p
-    # (4) PATH
+    # (3) PATH(deb / dmg / setup.exe / Flatpak で入れた物はここに出ます)
     return shutil.which(name)
+
+
+# **入れ方**。無いものを「無い」とだけ言って終わらせません
+_HOWTO = (
+    "画面(aiseed office)がこの機械に入っていません。\n"
+    "この pip の荷物は docx / xlsx のファイル操作エンジンで、\n"
+    "画面は別に配っています:\n"
+    "  https://github.com/aiseed-dev/officework/releases\n"
+    "  (Linux は .deb / Flatpak、mac は .dmg、Windows は setup.exe)\n\n"
+    "別の場所に入れてあるなら、OFFICEWORK_OFFICEWORK に径路を入れてください。\n\n"
+    "ファイルを触るだけなら画面は要りません:\n"
+    "    from officework import sheet, doc"
+)
 
 
 # **画面が要る物**。wheel には入れられない(pip はシステムの共有ライブラリを
@@ -89,11 +107,7 @@ def _missing_libs(exe):
 def _run(argv):
     exe = _exe()
     if not exe:
-        sys.exit(
-            "officework の実行ファイルが見つかりません。\n"
-            "この wheel には入っていない形かもしれません — "
-            "OFFICEWORK_OFFICEWORK に径路を入れてください"
-        )
+        sys.exit(_HOWTO)
     lack = _missing_libs(exe)
     if lack:
         sys.exit(
@@ -123,7 +137,7 @@ def install_desktop():
         return 1
     exe = _exe()
     if not exe:
-        sys.exit("実行ファイルが見つかりません")
+        sys.exit(_HOWTO)
     share = os.path.expanduser("~/.local/share/applications")
     os.makedirs(share, exist_ok=True)
     path = os.path.join(share, "officework.desktop")

@@ -100,7 +100,8 @@ def _find_app(app):
     (発注者 2026-08-15「主従が逆転」)。
 
     探し方は `officework.app` の1本に集める — 2箇所に書くと必ずずれる
-    (実際、wheel に同梱した実行ファイルをこちらが見ていなかった)。
+    (実際、wheel に同梱していた頃、その実行ファイルをこちらが見て
+    いなかった)。
     """
     from .app import _exe
 
@@ -110,8 +111,11 @@ def _find_app(app):
 def launch(app, path=None, wait=20.0):
     """アプリを起こして、繋がるまで待つ。既に動いていれば何もしない。
 
-    **openpyxl は画面を持たなかった。** officework は自前の画面があるので、
+    **openpyxl は画面を持たなかった。** aiseed office は画面があるので、
     Python から呼べば**画面が出て、そこを操れる**(発注者 2026-08-15)。
+
+    画面は**この荷物には入っていません**(2026-08-21)。機械に入っている
+    物を探して起こします。無ければ入れ方を言います。
     """
     import subprocess
     import time
@@ -124,12 +128,11 @@ def launch(app, path=None, wait=20.0):
             pass                  # 死んだソケットが残っているだけ
     exe = _find_app(app)
     if not exe:
-        raise OfficeworkError(
-            "{} の実行ファイルが見つかりません。"
-            "OFFICEWORK_{} に径路を入れるか、PATH に置いてください".format(
-                app, app.upper()
-            )
-        )
+        # **入れ方まで言います**(2026-08-21)。画面は別の荷物になったので、
+        # 「見つかりません」だけでは、どこから取ればいいか分かりません
+        from .app import _HOWTO
+
+        raise OfficeworkError(_HOWTO)
     args = [exe] + ([os.path.abspath(path)] if path else [])
     subprocess.Popen(
         args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
