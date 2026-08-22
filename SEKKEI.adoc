@@ -2421,3 +2421,21 @@ Word と表が別のアプリだったから、結合セルで文書を書く形
 * 最初の客は「openpyxl で罫線が消え、python-docx で様式が崩れて困っている人」— import 1行の差し替えで入れる。敷居が一番低い入り口
 * 導入の道筋: エンジン → 橋 → アプリ → 台帳と様式の運用、の段。エンジンは部品であると同時に**入り口の商品**
 * crates.io(Rust の棚)への公開は 0.2.0 の後 — 口が固まってから、crate 名(kumihan はそのまま・他は接頭辞)を決めて。それまで Rust からは git 依存で使える
+
+== 名前の三角形 — aiseed office・kumihan・officework(2026-08-21 発注者)
+
+発注者「アプリは aiseed office 0.1.0 で公開。officework は docx, xlsx 用のファイル操作エンジンとして残す」「aiseed office のエンジンは adoc の上に構築するので、docx, xlsx 用のエンジンとは別物。aiseed office は docx, xlsx との交換が重要で、その時に officework を使うという位置づけ」。
+
+[cols="1,2,2"]
+|===
+|名前 |なにか |位置づけ
+
+|*aiseed office* |アプリ(0.1.0 で公開) |正本は adoc の世界。文書・ブック・テンプレート・式が字のまま
+|*kumihan* |adoc の核(組版・文書の模型) |aiseed office の土台
+|*officework* |docx / xlsx の交換エンジン(PyPI 0.4 系を継続) |aiseed office が Microsoft の世界と出会う国境で働く。単体でも「openpyxl / python-docx の置き換え」という自立した商品
+|===
+
+* 「直すのは adoc、渡すのは docx」の**渡す側の担当者が officework** — コードが既にしている分担の命名
+* 見せる名前と技術の名前は分ける: 製品名 aiseed office(題・.desktop・README・リリース)/ 技術の名前 officework(実行ファイル・ソケット・`~/.config/officework`・pip・import)は変えない
+* 版は別々に歩く: aiseed office 0.1.0、officework(wheel)0.4 → 0.5。手引きの「(0.2.0-alpha で入ります)」の印は「次の版で入ります」に言い換える(番号で約束しない)
+* crate の分け直し(sheet の中の xlsx と adoc の分離など)は**今はしない** — 位置づけの決めだけ。必要が出たときに測ってから
