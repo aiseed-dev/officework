@@ -375,17 +375,14 @@ impl<'a> P<'a> {
                     ">=" => a >= b,
                     _ => return Err(format!("比較演算子が不正: {op}")),
                 },
+                // **数は1本の基準で比べる**(2026-08-22)。前はここで
+                // `=` と `<>` だけを甘くしていたので、`=0.1+0.2=0.3` と
+                // `=(0.1+0.2)>0.3` が同時に真になっていました
                 _ => {
-                    let (a, b) = (lhs.as_number(), rhs.as_number());
-                    match op.as_str() {
-                        "=" => (a - b).abs() < f64::EPSILON,
-                        "<>" => (a - b).abs() >= f64::EPSILON,
-                        "<" => a < b,
-                        ">" => a > b,
-                        "<=" => a <= b,
-                        ">=" => a >= b,
-                        _ => return Err(format!("比較演算子が不正: {op}")),
+                    if !matches!(op.as_str(), "=" | "<>" | "<" | ">" | "<=" | ">=") {
+                        return Err(format!("比較演算子が不正: {op}"));
                     }
+                    ord_holds(op.as_str(), cmp_num(lhs.as_number(), rhs.as_number()))
                 }
             };
             return Ok(Value::Bool(r));

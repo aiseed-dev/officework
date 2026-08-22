@@ -247,6 +247,53 @@ impl AP<'_, '_> {
 
 /// 比較の中身。文字同士は文字として、それ以外は数として比べる
 /// (式の比較と、範囲の要素ごとの比較が同じ規則を通る)
+/// **数の比べ方。6つの記号がみな、この1本で比べます**(2026-08-22)。
+///
+/// 二進の小数には刻みがあり、`0.1+0.2` は `0.3` にぴたりと一致しません
+/// (差は 5.55e-17)。そこを甘く見ないと、事務の式が思ったとおりに
+/// 動きません。
+///
+/// **前は `=` と `<>` だけが甘く、`<` `>` `<=` `>=` は厳密でした。**
+/// そのため `=0.1+0.2=0.3` も `=(0.1+0.2)>0.3` も真という、同時には
+/// 成り立たないはずの答えが出ていました。数を比べる道を1本にして
+/// 揃えます。
+///
+/// **甘さは相対です。** 前は `f64::EPSILON`(約 2.2e-16)を差にそのまま
+/// 当てていました。これは 1 のあたりでしか意味を持たず、
+///
+/// * 小さい数では甘すぎる — `1e-18` と `9e-18` が等しいと答えていました
+///   (9倍違います)
+/// * 大きい数では厳しすぎる — `1e10` のあたりでは刻みが 2e-6 もあるのに、
+///   2.2e-16 しか許しません
+///
+/// 大きい方に合わせて 1 刻みぶんだけ許します。両方 0 なら差も 0 なので、
+/// そのまま等しくなります。
+pub(super) fn cmp_num(a: f64, b: f64) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    if a.is_nan() || b.is_nan() {
+        return Ordering::Equal; // 比べようがない。呼ぶ側が先に弾く
+    }
+    let 許し = f64::EPSILON * a.abs().max(b.abs());
+    if (a - b).abs() <= 許し {
+        return Ordering::Equal;
+    }
+    if a < b { Ordering::Less } else { Ordering::Greater }
+}
+
+/// 記号と並び順から真偽を出す。`cmp_num` と組で使います。
+pub(super) fn ord_holds(op: &str, o: std::cmp::Ordering) -> bool {
+    use std::cmp::Ordering::*;
+    match op {
+        "=" => o == Equal,
+        "<>" => o != Equal,
+        "<" => o == Less,
+        ">" => o == Greater,
+        "<=" => o != Greater,
+        ">=" => o != Less,
+        _ => false,
+    }
+}
+
 pub(super) fn cmp_values(op: &str, lhs: &Value, rhs: &Value) -> bool {
     match (lhs, rhs) {
         (Value::Text(a), Value::Text(b)) => match op {
@@ -257,38 +304,25 @@ pub(super) fn cmp_values(op: &str, lhs: &Value, rhs: &Value) -> bool {
             "<=" => a <= b,
             _ => a >= b,
         },
-        _ => {
-            let (a, b) = (lhs.as_number(), rhs.as_number());
-            match op {
-                "=" => a == b,
-                "<>" => a != b,
-                "<" => a < b,
-                ">" => a > b,
-                "<=" => a <= b,
-                _ => a >= b,
-            }
-        }
+        // **数は1本の基準で比べる**(cmp_num)。ここだけ厳密にしていると、
+        // 式の中の比較と関数の中の比較で答えが割れます
+        _ => ord_holds(op, cmp_num(lhs.as_number(), rhs.as_number())),
     }
 }
 
 /// SUMIF / COUNTIF の条件合わせ。数は数として、文字は文字として比べる。
 pub(super) fn matches_cond(v: &Value, cond: &Value) -> bool {
     match cond {
-        Value::Number(n) => (v.as_number() - n).abs() < f64::EPSILON,
+        Value::Number(n) => cmp_num(v.as_number(), *n) == std::cmp::Ordering::Equal,
         Value::Text(s) => {
             // ">100" のような書き方に応える
             let t = s.trim();
-            for (op, f) in [
-                (">=", (|a: f64, b: f64| a >= b) as fn(f64, f64) -> bool),
-                ("<=", |a, b| a <= b),
-                ("<>", |a, b| (a - b).abs() >= f64::EPSILON),
-                (">", |a, b| a > b),
-                ("<", |a, b| a < b),
-                ("=", |a, b| (a - b).abs() < f64::EPSILON),
-            ] {
+            // **記号の長い順に見る**(">=" を ">" と読み違えない)。
+            // 比べ方は式の中と同じ1本(cmp_num)
+            for op in [">=", "<=", "<>", ">", "<", "="] {
                 if let Some(rest) = t.strip_prefix(op) {
                     if let Ok(n) = rest.trim().parse::<f64>() {
-                        return !v.is_empty() && f(v.as_number(), n);
+                        return !v.is_empty() && ord_holds(op, cmp_num(v.as_number(), n));
                     }
                 }
             }
