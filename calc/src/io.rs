@@ -432,6 +432,14 @@ impl Calc {
                 self.notes = notes;
                 self.status = status.into();
                 self.book = book;
+                // **最終版の札は開いたときに言わないと意味がありません。**
+                // 鍵ではないので、伝わらなければ何もしていないのと同じです
+                if self.final_mark() {
+                    self.status = ui::t!(
+                        "このブックは最終版とされています(鍵ではありません — 直せます。ファイルタブの「保護する」で外せます)"
+                    )
+                    .into();
+                }
                 // 計算方法はファイルの指定に従う(開いたときは上の一度きりの
                 // 計算で値を見せ、以後の編集では勝手に回さない)
                 self.auto_calc = !self.book.calc_manual;

@@ -104,6 +104,7 @@ impl Calc {
         "fn-math", "fn-text", "fn-logical", "fn-recent",
         "sum", "average", "count", "max", "min",
         "data-validation", "dv-mark", "condformat", "defname", "split", "scenario",
+        "final-mark",
         "pageorient", "pagesize", "pagemargins", "printarea",
         "inschart", "insimage", "inshyperlink", "replace",
         "changecase", "format", "cell-format", "fontname", "fontsize",
@@ -3682,6 +3683,12 @@ impl Calc {
                 );
                 self.pick_kind = "names-pick";
                 self.pick = Some((items, at));
+            }
+            // 最終版の札。**鍵ではありません** — 読み取り専用の勧めと同じ扱いで、
+            // 開いた人に「もう直さないでください」と伝えるだけです
+            "final-mark" => {
+                self.commit();
+                self.toggle_final_mark();
             }
             // シナリオ(入力セルの組に名前を付けて、切り替えて比べる)。
             // **値を書き戻すだけ**で、式も書式も触りません。1手で戻せます

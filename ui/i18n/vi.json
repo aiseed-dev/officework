@@ -7665,826 +7665,858 @@
  },
  {
   "i": 1916,
-  "t": "Mở một bản đã giữ: {}"
+  "t": "Bản cuối"
  },
  {
   "i": 1917,
-  "t": "→ Vớt những gì đọc được rồi mở (chỉ đọc)"
+  "t": "Đã đánh dấu là bản cuối (đây không phải khoá)"
  },
  {
   "i": 1918,
-  "t": "Không có bản nào được giữ. Chỉ mở bằng các phần vớt được (không ghi đè được)"
+  "t": "Chưa đánh dấu"
  },
  {
   "i": 1919,
-  "t": "Bản đã giữ chắc chắn hơn. Vớt là cách sau đó"
+  "t": "Bỏ dấu"
  },
  {
   "i": 1920,
-  "t": "Không đọc được tệp này: {}"
+  "t": "Đánh dấu là bản cuối"
  },
  {
   "i": 1921,
-  "t": "Bảng tính này được vớt lại nên sẽ không ghi đè. Hãy dùng Lưu thành (tệp gốc không bị đụng tới)"
+  "t": "Bảng tính này được đánh dấu là bản cuối (đây không phải khoá — bạn vẫn sửa được; hãy bỏ dấu ở «Bảo vệ» trong thẻ Tệp)"
  },
  {
   "i": 1922,
-  "t": "Không vớt được gì cả (không chỗ nào đọc được như zip)"
+  "t": "Đã bỏ dấu bản cuối"
  },
  {
   "i": 1923,
-  "t": "Không đọc được {} ({})"
+  "t": "Đã đánh dấu là bản cuối (đây không phải khoá — bạn vẫn sửa được; lưu thì còn trong xlsx)"
  },
  {
   "i": 1924,
-  "t": "Đã vớt được toàn bộ các phần (chỉ mục lục của zip bị hỏng)"
+  "t": "Mở một bản đã giữ: {}"
  },
  {
   "i": 1925,
-  "t": "Đã mở với {} phần vớt được ({} phần không vớt được). Không ghi đè được"
+  "t": "→ Vớt những gì đọc được rồi mở (chỉ đọc)"
  },
  {
   "i": 1926,
-  "t": "Ngay cả với các phần vớt được cũng không mở nổi: {}"
+  "t": "Không có bản nào được giữ. Chỉ mở bằng các phần vớt được (không ghi đè được)"
  },
  {
   "i": 1927,
-  "t": "Bảng tính này được chắp lại từ một tệp hỏng (chỉ đọc — không ghi đè được)"
+  "t": "Bản đã giữ chắc chắn hơn. Vớt là cách sau đó"
  },
  {
   "i": 1928,
-  "t": "Liệt kê chính các giá trị (đã bỏ lọc)"
+  "t": "Không đọc được tệp này: {}"
  },
  {
   "i": 1929,
-  "t": "Gộp ngày theo {} (đã bỏ lọc)"
+  "t": "Bảng tính này được vớt lại nên sẽ không ghi đè. Hãy dùng Lưu thành (tệp gốc không bị đụng tới)"
  },
  {
   "i": 1930,
-  "t": "Không phải ngày"
+  "t": "Không vớt được gì cả (không chỗ nào đọc được như zip)"
  },
  {
   "i": 1931,
-  "t": "Chính các giá trị"
+  "t": "Không đọc được {} ({})"
  },
  {
   "i": 1932,
-  "t": "Đơn vị ngày"
+  "t": "Đã vớt được toàn bộ các phần (chỉ mục lục của zip bị hỏng)"
  },
  {
   "i": 1933,
-  "t": "Đang tìm bảng trong PDF…"
+  "t": "Đã mở với {} phần vớt được ({} phần không vớt được). Không ghi đè được"
  },
  {
   "i": 1934,
-  "t": "Thiếu công cụ đọc PDF (pdfplumber). Cài bằng:\n  {}"
+  "t": "Ngay cả với các phần vớt được cũng không mở nổi: {}"
  },
  {
   "i": 1935,
-  "t": "Không đọc được PDF: {}"
+  "t": "Bảng tính này được chắp lại từ một tệp hỏng (chỉ đọc — không ghi đè được)"
  },
  {
   "i": 1936,
-  "t": "Không tìm thấy bảng nào trong PDF này (bảng dán dưới dạng ảnh thì không đọc được)"
+  "t": "Liệt kê chính các giá trị (đã bỏ lọc)"
  },
  {
   "i": 1937,
-  "t": "{} / {} (trang {})"
+  "t": "Gộp ngày theo {} (đã bỏ lọc)"
  },
  {
   "i": 1938,
-  "t": "Từ đường kẻ"
+  "t": "Không phải ngày"
  },
  {
   "i": 1939,
-  "t": "Từ vị trí chữ (phỏng đoán)"
+  "t": "Chính các giá trị"
  },
  {
   "i": 1940,
-  "t": "Cách tìm ra"
+  "t": "Đơn vị ngày"
  },
  {
   "i": 1941,
-  "t": "Lưu ý: không có đường kẻ nên đây là phỏng đoán. Hãy kiểm tra các cột có lệch không"
+  "t": "Đang tìm bảng trong PDF…"
  },
  {
   "i": 1942,
-  "t": "{} ({} ô)"
+  "t": "Thiếu công cụ đọc PDF (pdfplumber). Cài bằng:\n  {}"
  },
  {
   "i": 1943,
-  "t": "→ Kịch bản mới (giá trị hiện tại của các ô đang chọn)…"
+  "t": "Không đọc được PDF: {}"
  },
  {
   "i": 1944,
-  "t": "→ Xoá một kịch bản…"
+  "t": "Không tìm thấy bảng nào trong PDF này (bảng dán dưới dạng ảnh thì không đọc được)"
  },
  {
   "i": 1945,
-  "t": "Chưa có cái nào. Hãy chọn những ô muốn thay đổi để so sánh, rồi tạo một cái"
+  "t": "{} / {} (trang {})"
  },
  {
   "i": 1946,
-  "t": "Nhấn vào một cái sẽ ghi các giá trị của nó trở lại các ô (Ctrl+Z hoàn tác)"
+  "t": "Từ đường kẻ"
  },
  {
   "i": 1947,
-  "t": "Chọn quá nhiều ô (tối đa 64; chỉ chọn những ô muốn thay đổi)"
+  "t": "Từ vị trí chữ (phỏng đoán)"
  },
  {
   "i": 1948,
-  "t": "Hãy gõ tên kịch bản rồi nhấn Enter (giá trị của {} ô đang chọn sẽ được giữ lại)"
+  "t": "Cách tìm ra"
  },
  {
   "i": 1949,
-  "t": "Hãy chọn kịch bản cần xoá"
+  "t": "Lưu ý: không có đường kẻ nên đây là phỏng đoán. Hãy kiểm tra các cột có lệch không"
  },
  {
   "i": 1950,
-  "t": "Đã áp dụng kịch bản “{}” ({} ô; Ctrl+Z hoàn tác)"
+  "t": "{} ({} ô)"
  },
  {
   "i": 1951,
-  "t": "Đã xoá kịch bản “{}”"
+  "t": "→ Kịch bản mới (giá trị hiện tại của các ô đang chọn)…"
  },
  {
   "i": 1952,
-  "t": "Tên trống (chưa tạo gì cả)"
+  "t": "→ Xoá một kịch bản…"
  },
  {
   "i": 1953,
-  "t": "Trong vùng chọn không có giá trị nào để giữ (ô công thức không được lấy — áp dụng sẽ làm mất công thức)"
+  "t": "Chưa có cái nào. Hãy chọn những ô muốn thay đổi để so sánh, rồi tạo một cái"
  },
  {
   "i": 1954,
-  "t": "Đã giữ lại kịch bản “{}” lần nữa ({} ô)"
+  "t": "Nhấn vào một cái sẽ ghi các giá trị của nó trở lại các ô (Ctrl+Z hoàn tác)"
  },
  {
   "i": 1955,
-  "t": "Đã giữ kịch bản “{}” ({} ô; lưu thì cũng còn trong xlsx)"
+  "t": "Chọn quá nhiều ô (tối đa 64; chỉ chọn những ô muốn thay đổi)"
  },
  {
   "i": 1956,
-  "t": "{} PivotTable đã nối cũng được lọc như vậy"
+  "t": "Hãy gõ tên kịch bản rồi nhấn Enter (giá trị của {} ô đang chọn sẽ được giữ lại)"
  },
  {
   "i": 1957,
-  "t": "Hãy chọn một slicer trước"
+  "t": "Hãy chọn kịch bản cần xoá"
  },
  {
   "i": 1958,
-  "t": "Bảng tính này chưa có PivotTable nào (hãy tạo một cái trước)"
+  "t": "Đã áp dụng kịch bản “{}” ({} ô; Ctrl+Z hoàn tác)"
  },
  {
   "i": 1959,
-  "t": "Lọc bằng slicer này thì các PivotTable đã nối cũng được lọc như vậy"
+  "t": "Đã xoá kịch bản “{}”"
  },
  {
   "i": 1960,
-  "t": "Kết nối báo cáo"
+  "t": "Tên trống (chưa tạo gì cả)"
  },
  {
   "i": 1961,
-  "t": "Chưa nối"
+  "t": "Trong vùng chọn không có giá trị nào để giữ (ô công thức không được lấy — áp dụng sẽ làm mất công thức)"
  },
  {
   "i": 1962,
-  "t": "Đã nối với {}"
+  "t": "Đã giữ lại kịch bản “{}” lần nữa ({} ô)"
  },
  {
   "i": 1963,
-  "t": "Hãy chọn một dạng gợi ý (bạn cũng có thể tự chọn các trường)"
+  "t": "Đã giữ kịch bản “{}” ({} ô; lưu thì cũng còn trong xlsx)"
  },
  {
   "i": 1964,
-  "t": "Tự chọn (hỏi lần lượt hàng → cột → giá trị)"
+  "t": "{} PivotTable đã nối cũng được lọc như vậy"
  },
  {
   "i": 1965,
-  "t": "Các dạng có thể dựng từ bảng của bạn. Chưa nhấn thì chưa tạo gì cả"
+  "t": "Hãy chọn một slicer trước"
  },
  {
   "i": 1966,
-  "t": "Hàng: {} / Cột: {} / {} của {}"
+  "t": "Bảng tính này chưa có PivotTable nào (hãy tạo một cái trước)"
  },
  {
   "i": 1967,
-  "t": "Hàng: {} / {} của {}"
+  "t": "Lọc bằng slicer này thì các PivotTable đã nối cũng được lọc như vậy"
  },
  {
   "i": 1968,
-  "t": "Bảo vệ bảng tính"
+  "t": "Kết nối báo cáo"
  },
  {
   "i": 1969,
-  "t": "Đây là những gì đang có hiệu lực. Nhấn vào sẽ quay lại trang tính và hỏi phần còn lại"
+  "t": "Chưa nối"
  },
  {
   "i": 1970,
-  "t": "Mã hoá bằng mật khẩu"
+  "t": "Đã nối với {}"
  },
  {
   "i": 1971,
-  "t": "Đang bật (từ lần lưu sau)"
+  "t": "Hãy chọn một dạng gợi ý (bạn cũng có thể tự chọn các trường)"
  },
  {
   "i": 1972,
-  "t": "Chưa đặt"
+  "t": "Tự chọn (hỏi lần lượt hàng → cột → giá trị)"
  },
  {
   "i": 1973,
-  "t": "Đổi hoặc bỏ"
+  "t": "Các dạng có thể dựng từ bảng của bạn. Chưa nhấn thì chưa tạo gì cả"
  },
  {
   "i": 1974,
-  "t": "Đặt mật khẩu"
+  "t": "Hàng: {} / Cột: {} / {} của {}"
  },
  {
   "i": 1975,
-  "t": "Bảo vệ trang tính"
+  "t": "Hàng: {} / {} của {}"
  },
  {
   "i": 1976,
-  "t": "“{}” đang được bảo vệ"
+  "t": "Bảo vệ bảng tính"
  },
  {
   "i": 1977,
-  "t": "“{}” chưa được bảo vệ"
+  "t": "Đây là những gì đang có hiệu lực. Nhấn vào sẽ quay lại trang tính và hỏi phần còn lại"
  },
  {
   "i": 1978,
-  "t": "Bỏ bảo vệ"
+  "t": "Mã hoá bằng mật khẩu"
  },
  {
   "i": 1979,
-  "t": "Bảo vệ trang tính này"
+  "t": "Đang bật (từ lần lưu sau)"
  },
  {
   "i": 1980,
-  "t": "Được phép khi đang bảo vệ"
+  "t": "Chưa đặt"
  },
  {
   "i": 1981,
-  "t": "Chọn"
+  "t": "Đổi hoặc bỏ"
  },
  {
   "i": 1982,
-  "t": "Khuyên chỉ đọc"
+  "t": "Đặt mật khẩu"
  },
  {
   "i": 1983,
-  "t": "Có khuyến nghị (đây không phải khoá)"
+  "t": "Bảo vệ trang tính"
  },
  {
   "i": 1984,
-  "t": "Không khuyến nghị"
+  "t": "“{}” đang được bảo vệ"
  },
  {
   "i": 1985,
-  "t": "Khuyến nghị"
+  "t": "“{}” chưa được bảo vệ"
  },
  {
   "i": 1986,
-  "t": "Chữ ký số"
+  "t": "Bỏ bảo vệ"
  },
  {
   "i": 1987,
-  "t": "Bên cạnh có tệp chữ ký"
+  "t": "Bảo vệ trang tính này"
  },
  {
   "i": 1988,
-  "t": "Chưa ký"
+  "t": "Được phép khi đang bảo vệ"
  },
  {
   "i": 1989,
-  "t": "Ký hoặc kiểm tra"
+  "t": "Chọn"
  },
  {
   "i": 1990,
-  "t": "Bảo vệ trang tính và khuyến nghị chỉ đọc không phải là khoá. Ai muốn gỡ đều gỡ được. Chúng tôi không giả vờ ngược lại"
+  "t": "Khuyên chỉ đọc"
  },
  {
   "i": 1991,
-  "t": "Kiểm tra lại. Hãy gõ đúng mật khẩu đó một lần nữa rồi nhấn Enter"
+  "t": "Có khuyến nghị (đây không phải khoá)"
  },
  {
   "i": 1992,
-  "t": "Hai mật khẩu khác nhau (mã hoá không thay đổi; xin thử lại)"
+  "t": "Không khuyến nghị"
  },
  {
   "i": 1993,
-  "t": "Không cho phép gì cả"
+  "t": "Khuyến nghị"
  },
  {
   "i": 1994,
-  "t": "Cho phép {} trong {}"
+  "t": "Chữ ký số"
  },
  {
   "i": 1995,
-  "t": "Mã hoá 1/2 — mật khẩu (để trống rồi nhấn Enter để bỏ mã hoá)"
+  "t": "Bên cạnh có tệp chữ ký"
  },
  {
   "i": 1996,
-  "t": "Mã hoá 2/2 — nhập lại đúng mật khẩu đó"
+  "t": "Chưa ký"
  },
  {
   "i": 1997,
-  "t": "Đã bỏ phân chia"
+  "t": "Ký hoặc kiểm tra"
  },
  {
   "i": 1998,
-  "t": "Hãy đặt con trỏ vào chỗ cần chia (chia ở phía trên và bên trái con trỏ)"
+  "t": "Bảo vệ trang tính và khuyến nghị chỉ đọc không phải là khoá. Ai muốn gỡ đều gỡ được. Chúng tôi không giả vờ ngược lại"
  },
  {
   "i": 1999,
-  "t": "Đã chia (con lăn cuộn phần đang có con trỏ)"
+  "t": "Kiểm tra lại. Hãy gõ đúng mật khẩu đó một lần nữa rồi nhấn Enter"
  },
  {
   "i": 2000,
-  "t": "Đã đánh dấu {} ô (nhấn lần nữa để xóa)"
+  "t": "Hai mật khẩu khác nhau (mã hoá không thay đổi; xin thử lại)"
  },
  {
   "i": 2001,
-  "t": "Trang tính này chưa có quy tắc kiểm tra (thêm bằng Kiểm tra dữ liệu ở thẻ Dữ liệu)"
+  "t": "Không cho phép gì cả"
  },
  {
   "i": 2002,
-  "t": "Không có giá trị nào vi phạm quy tắc kiểm tra"
+  "t": "Cho phép {} trong {}"
  },
  {
   "i": 2003,
-  "t": "Đã xóa dấu"
+  "t": "Mã hoá 1/2 — mật khẩu (để trống rồi nhấn Enter để bỏ mã hoá)"
  },
  {
   "i": 2004,
-  "t": "Nhập vùng nguồn rồi nhấn Enter (ví dụ Sheet1!A1:C20; gồm cả dòng tiêu đề)"
+  "t": "Mã hoá 2/2 — nhập lại đúng mật khẩu đó"
  },
  {
   "i": 2005,
-  "t": "Hãy đặt con trỏ vào PivotTable cần đổi nguồn"
+  "t": "Đã bỏ phân chia"
  },
  {
   "i": 2006,
-  "t": "Hãy viết vùng theo dạng A1:C20"
+  "t": "Hãy đặt con trỏ vào chỗ cần chia (chia ở phía trên và bên trái con trỏ)"
  },
  {
   "i": 2007,
-  "t": "Không đọc được vùng: {}"
+  "t": "Đã chia (con lăn cuộn phần đang có con trỏ)"
  },
  {
   "i": 2008,
-  "t": "Không có trang tính “{}”"
+  "t": "Đã đánh dấu {} ô (nhấn lần nữa để xóa)"
  },
  {
   "i": 2009,
-  "t": "Vùng mới không có các tiêu đề: {} (PivotTable đang dùng)"
+  "t": "Trang tính này chưa có quy tắc kiểm tra (thêm bằng Kiểm tra dữ liệu ở thẻ Dữ liệu)"
  },
  {
   "i": 2010,
-  "t": "Đã đổi bảng nguồn sang {}!{}:{} (đang dựng lại)"
+  "t": "Không có giá trị nào vi phạm quy tắc kiểm tra"
  },
  {
   "i": 2011,
-  "t": "Hãy nhập vế trái của ràng buộc trước"
+  "t": "Đã xóa dấu"
  },
  {
   "i": 2012,
-  "t": "Đang tìm lời giải… (quy hoạch nguyên, nhánh và cận)"
+  "t": "Nhập vùng nguồn rồi nhấn Enter (ví dụ Sheet1!A1:C20; gồm cả dòng tiêu đề)"
  },
  {
   "i": 2013,
-  "t": "{} không phải ô biến (số nguyên và nhị phân chỉ đặt được cho ô biến)"
+  "t": "Hãy đặt con trỏ vào PivotTable cần đổi nguồn"
  },
  {
   "i": 2014,
-  "t": "Không tìm thấy lời giải ({} có thể không ảnh hưởng đến {})"
+  "t": "Hãy viết vùng theo dạng A1:C20"
  },
  {
   "i": 2015,
-  "t": "Hướng"
+  "t": "Không đọc được vùng: {}"
  },
  {
   "i": 2016,
-  "t": "Định dạng ô"
+  "t": "Không có trang tính “{}”"
  },
  {
   "i": 2017,
-  "t": "Căn giữa"
+  "t": "Vùng mới không có các tiêu đề: {} (PivotTable đang dùng)"
  },
  {
   "i": 2018,
-  "t": "Hàm Python"
+  "t": "Đã đổi bảng nguồn sang {}!{}:{} (đang dựng lại)"
  },
  {
   "i": 2019,
-  "t": "Macro ruy-băng"
+  "t": "Hãy nhập vế trái của ràng buộc trước"
  },
  {
   "i": 2020,
-  "t": "Sao chép định dạng"
+  "t": "Đang tìm lời giải… (quy hoạch nguyên, nhánh và cận)"
  },
  {
   "i": 2021,
-  "t": "Kiểu"
+  "t": "{} không phải ô biến (số nguyên và nhị phân chỉ đặt được cho ô biến)"
  },
  {
   "i": 2022,
-  "t": "Danh sách trường"
+  "t": "Không tìm thấy lời giải ({} có thể không ảnh hưởng đến {})"
  },
  {
   "i": 2023,
-  "t": "Phóng to chữ màn hình"
+  "t": "Hướng"
  },
  {
   "i": 2024,
-  "t": "Thu nhỏ chữ màn hình"
+  "t": "Định dạng ô"
  },
  {
   "i": 2025,
-  "t": "Khoanh dữ liệu không hợp lệ"
+  "t": "Căn giữa"
  },
  {
   "i": 2026,
-  "t": "Phân chia cửa sổ"
+  "t": "Hàm Python"
  },
  {
   "i": 2027,
-  "t": "Kịch bản"
+  "t": "Macro ruy-băng"
  },
  {
   "i": 2028,
-  "t": "AI"
+  "t": "Sao chép định dạng"
  },
  {
   "i": 2029,
-  "t": "In"
+  "t": "Kiểu"
  },
  {
   "i": 2030,
-  "t": "Bố cục in"
+  "t": "Danh sách trường"
  },
  {
   "i": 2031,
-  "t": "Đích"
+  "t": "Phóng to chữ màn hình"
  },
  {
   "i": 2032,
-  "t": "bản tóm tắt"
+  "t": "Thu nhỏ chữ màn hình"
  },
  {
   "i": 2033,
-  "t": "Viết lại"
+  "t": "Khoanh dữ liệu không hợp lệ"
  },
  {
   "i": 2034,
-  "t": "Lịch sự hơn"
+  "t": "Phân chia cửa sổ"
  },
  {
   "i": 2035,
-  "t": "Dễ hiểu hơn"
+  "t": "Kịch bản"
  },
  {
   "i": 2036,
-  "t": "bản dịch"
+  "t": "AI"
  },
  {
   "i": 2037,
-  "t": "Furigana"
+  "t": "In"
  },
  {
   "i": 2038,
-  "t": "Viết tiếp"
+  "t": "Bố cục in"
  },
  {
   "i": 2039,
-  "t": "Thành bảng"
+  "t": "Đích"
  },
  {
   "i": 2040,
-  "t": "Yêu cầu"
+  "t": "bản tóm tắt"
  },
  {
   "i": 2041,
-  "t": "Ruby"
+  "t": "Viết lại"
  },
  {
   "i": 2042,
-  "t": "Viết dọc"
+  "t": "Lịch sự hơn"
  },
  {
   "i": 2043,
-  "t": "Hướng văn bản"
+  "t": "Dễ hiểu hơn"
  },
  {
   "i": 2044,
-  "t": "Phân bố đều"
+  "t": "bản dịch"
  },
  {
   "i": 2045,
-  "t": "Chèn chú thích hình/bảng"
+  "t": "Furigana"
  },
  {
   "i": 2046,
-  "t": "Mở URL"
+  "t": "Viết tiếp"
  },
  {
   "i": 2047,
-  "t": "Chỉ mục"
+  "t": "Thành bảng"
  },
  {
   "i": 2048,
-  "t": "Ghi chú Aozora"
+  "t": "Yêu cầu"
  },
  {
   "i": 2049,
-  "t": "Cú pháp Denden"
+  "t": "Ruby"
  },
  {
   "i": 2050,
-  "t": "Ghi lại thay đổi"
+  "t": "Viết dọc"
  },
  {
   "i": 2051,
-  "t": "Hiển thị thay đổi"
+  "t": "Hướng văn bản"
  },
  {
   "i": 2052,
-  "t": "Kiểm lỗi"
+  "t": "Phân bố đều"
  },
  {
   "i": 2053,
-  "t": "Ký tự"
+  "t": "Chèn chú thích hình/bảng"
  },
  {
   "i": 2054,
-  "t": "Kiểm tra chính tả"
+  "t": "Mở URL"
  },
  {
   "i": 2055,
-  "t": "Từ điển đồng nghĩa"
+  "t": "Chỉ mục"
  },
  {
   "i": 2056,
-  "t": "Chuyển đổi sai"
+  "t": "Ghi chú Aozora"
  },
  {
   "i": 2057,
-  "t": "Viết không thống nhất"
+  "t": "Cú pháp Denden"
  },
  {
   "i": 2058,
-  "t": "Tổng phụ"
+  "t": "Ghi lại thay đổi"
  },
  {
   "i": 2059,
-  "t": "Cách tính"
+  "t": "Hiển thị thay đổi"
  },
  {
   "i": 2060,
-  "t": "Chữ phải sang trái"
+  "t": "Kiểm lỗi"
  },
  {
   "i": 2061,
-  "t": "Hướng trang tính"
+  "t": "Ký tự"
  },
  {
   "i": 2062,
-  "t": "Python"
+  "t": "Kiểm tra chính tả"
  },
  {
   "i": 2063,
-  "t": "Hộp kiểm"
+  "t": "Từ điển đồng nghĩa"
  },
  {
   "i": 2064,
-  "t": "Liên kết ngoài"
+  "t": "Chuyển đổi sai"
  },
  {
   "i": 2065,
-  "t": "Biểu đồ đề xuất"
+  "t": "Viết không thống nhất"
  },
  {
   "i": 2066,
-  "t": "Chế độ đồng soạn thảo"
+  "t": "Tổng phụ"
  },
  {
   "i": 2067,
-  "t": "Lịch sử phiên bản"
+  "t": "Cách tính"
  },
  {
   "i": 2068,
-  "t": "Trò chuyện"
+  "t": "Chữ phải sang trái"
  },
  {
   "i": 2069,
-  "t": "Bảo vệ"
+  "t": "Hướng trang tính"
  },
  {
   "i": 2070,
-  "t": "Mã hóa"
+  "t": "Python"
  },
  {
   "i": 2071,
-  "t": "Thêm chữ ký số"
+  "t": "Hộp kiểm"
  },
  {
   "i": 2072,
-  "t": "Macro"
+  "t": "Liên kết ngoài"
  },
  {
   "i": 2073,
-  "t": "Quản lý plugin"
+  "t": "Biểu đồ đề xuất"
  },
  {
   "i": 2074,
-  "t": "Hiển thị số 0"
+  "t": "Chế độ đồng soạn thảo"
  },
  {
   "i": 2075,
-  "t": "Thu phóng về 100%"
+  "t": "Lịch sử phiên bản"
  },
  {
   "i": 2076,
-  "t": "Chủ đề giao diện"
+  "t": "Trò chuyện"
  },
  {
   "i": 2077,
-  "t": "Cửa sổ theo dõi"
+  "t": "Bảo vệ"
  },
  {
   "i": 2078,
-  "t": "AutoSum"
+  "t": "Mã hóa"
  },
  {
   "i": 2079,
-  "t": "Ghi lại thao tác"
+  "t": "Thêm chữ ký số"
  },
  {
   "i": 2080,
-  "t": "Xóa nhận xét"
+  "t": "Macro"
  },
  {
   "i": 2081,
-  "t": "Solver"
+  "t": "Quản lý plugin"
  },
  {
   "i": 2082,
-  "t": "Văn bản thành dữ liệu"
+  "t": "Hiển thị số 0"
  },
  {
   "i": 2083,
-  "t": "Xóa mũi tên truy vết"
+  "t": "Thu phóng về 100%"
  },
  {
   "i": 2084,
-  "t": "Điền"
+  "t": "Chủ đề giao diện"
  },
  {
   "i": 2085,
-  "t": "Bỏ lọc"
+  "t": "Cửa sổ theo dõi"
  },
  {
   "i": 2086,
-  "t": "Viết macro"
+  "t": "AutoSum"
  },
  {
   "i": 2087,
-  "t": "Tách cột"
+  "t": "Ghi lại thao tác"
  },
  {
   "i": 2088,
-  "t": "Chú thích hình/bảng"
+  "t": "Xóa nhận xét"
  },
  {
   "i": 2089,
-  "t": "Mục lục hình/bảng"
+  "t": "Solver"
  },
  {
   "i": 2090,
-  "t": "Cập nhật mục lục hình/bảng"
+  "t": "Văn bản thành dữ liệu"
  },
  {
   "i": 2091,
-  "t": "Liên kết ngoài (nhập theo giá trị)"
+  "t": "Xóa mũi tên truy vết"
  },
  {
   "i": 2092,
-  "t": "Toán & Lượng giác"
+  "t": "Điền"
  },
  {
   "i": 2093,
-  "t": "Hiển thị công thức"
+  "t": "Bỏ lọc"
  },
  {
   "i": 2094,
-  "t": "Hướng chữ (phải sang trái)"
+  "t": "Viết macro"
  },
  {
   "i": 2095,
-  "t": "Văn bản"
+  "t": "Tách cột"
  },
  {
   "i": 2096,
-  "t": "Ngày & Giờ"
+  "t": "Chú thích hình/bảng"
  },
  {
   "i": 2097,
-  "t": "Dùng gần đây"
+  "t": "Mục lục hình/bảng"
  },
  {
   "i": 2098,
-  "t": "In cả đường lưới"
+  "t": "Cập nhật mục lục hình/bảng"
  },
  {
   "i": 2099,
-  "t": "Cập nhật mục lục"
+  "t": "Liên kết ngoài (nhập theo giá trị)"
  },
  {
   "i": 2100,
-  "t": "Cột sọc xen kẽ"
+  "t": "Toán & Lượng giác"
  },
  {
   "i": 2101,
-  "t": "In cả tiêu đề"
+  "t": "Hiển thị công thức"
  },
  {
   "i": 2102,
-  "t": "Ẩn chi tiết"
+  "t": "Hướng chữ (phải sang trái)"
  },
  {
   "i": 2103,
-  "t": "Xóa trùng lặp"
+  "t": "Văn bản"
  },
  {
   "i": 2104,
-  "t": "Chèn hàm"
+  "t": "Ngày & Giờ"
  },
  {
   "i": 2105,
-  "t": "Dạng CSV"
+  "t": "Dùng gần đây"
  },
  {
   "i": 2106,
-  "t": "Khoá ô"
+  "t": "In cả đường lưới"
  },
  {
   "i": 2107,
-  "t": "Bảng dữ liệu"
+  "t": "Cập nhật mục lục"
  },
  {
   "i": 2108,
-  "t": "Điền nhanh"
+  "t": "Cột sọc xen kẽ"
  },
  {
   "i": 2109,
-  "t": "Danh sách"
+  "t": "In cả tiêu đề"
  },
  {
   "i": 2110,
-  "t": "Dán tên"
+  "t": "Ẩn chi tiết"
  },
  {
   "i": 2111,
-  "t": "Khôi phục"
+  "t": "Xóa trùng lặp"
  },
  {
   "i": 2112,
-  "t": "Ngắt dòng trong ô"
+  "t": "Chèn hàm"
  },
  {
   "i": 2113,
-  "t": "Tần suất sao lưu"
+  "t": "Dạng CSV"
  },
  {
   "i": 2114,
-  "t": "Tệp .py mới"
+  "t": "Khoá ô"
  },
  {
   "i": 2115,
-  "t": "Thêm vào vùng in"
+  "t": "Bảng dữ liệu"
  },
  {
   "i": 2116,
-  "t": "Thu vừa tờ giấy"
+  "t": "Điền nhanh"
  },
  {
   "i": 2117,
-  "t": "Chỗ hết tờ giấy"
+  "t": "Danh sách"
  },
  {
   "i": 2118,
-  "t": "Mở thư mục"
+  "t": "Dán tên"
  },
  {
   "i": 2119,
-  "t": "Cách hiện giá trị"
+  "t": "Khôi phục"
  },
  {
   "i": 2120,
-  "t": "Thao tác được phép"
+  "t": "Ngắt dòng trong ô"
  },
  {
   "i": 2121,
+  "t": "Tần suất sao lưu"
+ },
+ {
+  "i": 2122,
+  "t": "Tệp .py mới"
+ },
+ {
+  "i": 2123,
+  "t": "Thêm vào vùng in"
+ },
+ {
+  "i": 2124,
+  "t": "Thu vừa tờ giấy"
+ },
+ {
+  "i": 2125,
+  "t": "Chỗ hết tờ giấy"
+ },
+ {
+  "i": 2126,
+  "t": "Mở thư mục"
+ },
+ {
+  "i": 2127,
+  "t": "Cách hiện giá trị"
+ },
+ {
+  "i": 2128,
+  "t": "Thao tác được phép"
+ },
+ {
+  "i": 2129,
   "t": "Khuyên chỉ đọc"
  }
 ]

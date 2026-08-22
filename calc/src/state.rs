@@ -1042,6 +1042,37 @@ impl Calc {
         self.cols_fit_in(self.view_w_px - HEAD_W - 24.0)
     }
 
+    /// **最終版の札が付いているか**(2026-08-22。台帳の [小])。
+    ///
+    /// Excel と同じく `docProps/custom.xml` の `_MarkAsFinal` を見ます。
+    /// **鍵ではありません** — 開いた人に「もう直さないでください」と伝える
+    /// お願いです。掛けた振りはしません。
+    pub(crate) fn final_mark(&self) -> bool {
+        self.book.props.custom.iter().any(|p| {
+            p.name == "_MarkAsFinal" && matches!(p.value, sheet::model::CustomVal::Bool(true))
+        })
+    }
+
+    /// 最終版の札を入切する。
+    pub(crate) fn toggle_final_mark(&mut self) {
+        let 前 = self.final_mark();
+        self.book.props.custom.retain(|p| p.name != "_MarkAsFinal");
+        if !前 {
+            self.book.props.custom.push(sheet::model::CustomProp {
+                name: "_MarkAsFinal".into(),
+                value: sheet::model::CustomVal::Bool(true),
+                link: None,
+            });
+        }
+        self.dirty = true;
+        self.status = if 前 {
+            ui::t!("最終版の札を外しました").into()
+        } else {
+            ui::t!("最終版の札を付けました(鍵ではありません — 直せます。保存で xlsx に残ります)")
+                .into()
+        };
+    }
+
     /// 画面の上の帯 — (行数, 先頭行)。分割していればそちら、していなければ固定。
     /// **両方は同時に立ちません**(片方を入れるともう片方を外します)
     pub(crate) fn 上の帯(&self) -> Option<(u32, u32)> {

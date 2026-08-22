@@ -535,6 +535,15 @@ impl Calc {
                     勧め,
                     if 勧め { ui::t!("やめる") } else { ui::t!("勧める") }.into(),
                     "f-prot-ro", "read-only-rec", cx))
+                .child(行(ui::t!("最終版").into(),
+                    if self.final_mark() {
+                        ui::t!("最終版です(鍵ではありません)").into()
+                    } else {
+                        ui::t!("札はありません").into()
+                    },
+                    self.final_mark(),
+                    if self.final_mark() { ui::t!("札を外す") } else { ui::t!("最終版にする") }.into(),
+                    "f-prot-final", "final-mark", cx))
                 .child(行(ui::t!("デジタル署名").into(),
                     match self.path.as_deref() {
                         Some(p) if ops::sig_path_for(p).exists() =>

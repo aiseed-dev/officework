@@ -2796,6 +2796,43 @@ mod recalc_tests {
         });
     }
 
+    /// **最終版の札**(2026-08-22。台帳の [小])。
+    ///
+    /// 2026-08-09 には「作らない」と決まっていました。理由は
+    /// `docProps/custom.xml` という部品・宣言・関係の3か所を足す必要があり、
+    /// **保存で消える札を作る方が害が大きい**というものです。
+    /// その後カスタムプロパティが往復するようになったので、理由が消えました。
+    /// ここではその**往復すること**を見ます。
+    #[gpui::test]
+    fn 最終版の札はxlsxに残る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            assert!(!this.final_mark(), "はじめから付いている");
+            this.run_cmd("final-mark", cx);
+            assert!(this.final_mark(), "付かない");
+            assert!(this.status.contains("鍵ではありません"), "{}", this.status);
+
+            // xlsx へ書いて読み戻す
+            let mut buf = std::io::Cursor::new(Vec::new());
+            sheet::xlsx::write(&this.book, &mut buf).expect("書けない");
+            buf.set_position(0);
+            let (back, _) = sheet::xlsx::read(buf).expect("読めない");
+            assert!(
+                back.props.custom.iter().any(|p| p.name == "_MarkAsFinal"),
+                "保存で消えた: {:?}",
+                back.props.custom
+            );
+
+            // もう一度押すと外れる
+            this.run_cmd("final-mark", cx);
+            assert!(!this.final_mark(), "外れない");
+            assert!(
+                !this.book.props.custom.iter().any(|p| p.name == "_MarkAsFinal"),
+                "外したのに残っている"
+            );
+        });
+    }
+
     /// **開いて修復**(2026-08-22。台帳の [中])。
     ///
     /// 発注者が 2026-08-09 に決めた4つを、そのまま見ます。
