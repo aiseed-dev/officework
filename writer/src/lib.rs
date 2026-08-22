@@ -247,8 +247,6 @@ pub struct Writer {
     view_h_px: f32,
     /// いま編集しているもの。**Editor は常にこの対象の文章を持つ**
     target: Target,
-    /// 記号の一覧を出しているか
-    symbols: bool,
     /// 編集記号(段落記号・空白)を見せるか
     show_marks: bool,
     /// ルーラー(mm の目盛り)を見せるか
@@ -257,17 +255,21 @@ pub struct Writer {
     line_numbers: bool,
     /// コメントの印と一覧を見せるか(見え方だけ)
     show_comments: bool,
-    /// フォントの一覧を出しているか
+    /// **いま開いている一覧**(2026-08-22 に旗4つから1つにしました)。
+    ///
+    /// 中身は `一覧を描く` に渡す鍵そのもの — `"fontname"` / `"fontsize"` /
+    /// `"parastyle"` / `"inssymbol"`。`None` なら何も開いていません。
+    ///
+    /// 前は `font_list` / `size_list` / `style_list` / `symbols` の4つの
+    /// bool でした。**同時に2つは立たない**のに4つあったので、開くたびに
+    /// 残り3つを倒す行が要り、53 か所に散っていました。1つにすると
+    /// 「倒し忘れ」がそもそも書けません。
+    open_list: Option<&'static str>,
     /// **一覧の中で選んでいる位置**(↑↓ の相手)。表の画面と同じ持ち方です
     pick_sel: usize,
     /// **書体の一覧の絞り込み。** 打つほど減ります。表の画面に前からある形で、
     /// これが無いと 24 件で切るしかありませんでした(25件目から選べない)
     font_filter: Option<Editor>,
-    font_list: bool,
-    /// 大きさの一覧を出しているか
-    size_list: bool,
-    /// 段落のスタイルの一覧を出しているか
-    style_list: bool,
     /// ダークモード(紙以外を暗く。文書は変わらない)
     dark: bool,
     /// **自動復旧の控えを取る間隔(秒)。** 0 なら取りません
@@ -957,9 +959,7 @@ impl Writer {
             || self.hf_edit.is_some()
             || self.cmt_edit
             || self.cmt_name_edit
-            || self.font_list
-            || self.size_list
-            || self.style_list
+            || self.open_list.is_some()
             || self.wm_edit
             || self.bm_open
             || self.url_open

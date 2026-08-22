@@ -106,6 +106,35 @@ mod menu_run_tests {
     /// 保存と復元が交錯して稀に落ちるので、同時には走らせない
     static AI_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
+    /// **4つの一覧が開いて畳める**(2026-08-22 に旗4つを鍵1つにした)。
+    ///
+    /// 前は bool が4つあり、開くたびに残り3つを倒す行が要りました。
+    /// 1つにしたので「倒し忘れ」が書けません。それを見ます。
+    #[gpui::test]
+    fn 一覧は多くて1つしか開かない(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            // **意味だけの文書では書体と大きさは押せません**(look_guard。
+            // スタイルの一覧へ案内する道になっています)。互換の文書にして
+            // から見ます — ここで見たいのは一覧の開け閉めだけです
+            this.native = false;
+            for id in ["fontname", "fontsize", "parastyle", "inssymbol"] {
+                this.run_cmd(id, cx);
+                assert_eq!(this.open_list, Some(id), "{id} が開かない");
+                // もう一度押すと畳む(トグル)
+                this.run_cmd(id, cx);
+                assert_eq!(this.open_list, None, "{id} がトグルで畳めない");
+            }
+            // **別の一覧を押したら、前のは畳まれる**
+            this.run_cmd("fontname", cx);
+            this.run_cmd("parastyle", cx);
+            assert_eq!(this.open_list, Some("parastyle"), "乗り換えられない");
+            // 一覧でないボタンを押したら畳む
+            this.run_cmd("bold", cx);
+            assert_eq!(this.open_list, None, "他のボタンで畳まれない");
+        });
+    }
+
     #[gpui::test]
     fn 全部のボタンが落ちずに通る(cx: &mut gpui::TestAppContext) {
         let _ai = AI_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
@@ -284,7 +313,7 @@ mod menu_run_tests {
                 "見出しにならない"
             );
             this.run_cmd("parastyle", cx);
-            assert!(this.style_list, "段落のスタイルの一覧が開かない");
+            assert_eq!(this.open_list, Some("parastyle"), "段落のスタイルの一覧が開かない");
             this.run_cmd("parastyle", cx);
             this.run_cmd("toc", cx);
             assert!(
@@ -1791,9 +1820,9 @@ mod marker_tests {
                 if this.dialog_open() {
                     seen += 1;
                 }
-                // 一覧の側の旗が立ったら、それは … でなく ▾ の仲間
+                // 一覧が開いたら、それは … でなく ▾ の仲間
                 assert!(
-                    !this.font_list && !this.size_list && !this.style_list && !this.symbols,
+                    this.open_list.is_none(),
                     "{id}(…)が一覧を開いた — MENU_IDS の側では"
                 );
                 // 次の id のために全部畳む
@@ -1826,9 +1855,9 @@ mod marker_tests {
             this.set_doc(Document::plain("本文の字。"));
             this.ed.select_all();
             this.run_cmd("fontsize", cx);
-            assert!(this.size_list, "fontsize の一覧が開いていない(前提が崩れた)");
+            assert_eq!(this.open_list, Some("fontsize"), "fontsize の一覧が開いていない(前提が崩れた)");
             this.run_from_ribbon("bold", cx);
-            assert!(!this.size_list, "他のボタンを押しても一覧が畳まれない");
+            assert!(this.open_list.is_none(), "他のボタンを押しても一覧が畳まれない");
             assert!(
                 this.doc.char_format_at(this.ed.selection()).bold,
                 "畳んだだけで太字が効いていない — 押した操作はそのまま効く約束"

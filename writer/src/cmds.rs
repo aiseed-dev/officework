@@ -57,8 +57,7 @@ impl ui::appcmd::Screen for Writer {
 
 impl Writer {
     /// **一覧が開くボタン。** リボンは ▾ を添える。押すと候補の一覧
-    /// (パネル)が出て、選んで終わる。腕の目印: font_list / size_list /
-    /// style_list / symbols を立てる物だけ
+    /// (パネル)が出て、選んで終わる。腕の目印: `open_list` を立てる物だけ
     pub(crate) const MENU_IDS: &'static [&'static str] = &[
         "fontname", "fontsize", "parastyle", "inssymbol",
     ];
@@ -97,10 +96,7 @@ impl Writer {
     /// 開いている一覧(▾ の側)を畳む。**他のボタンやタブを押したら閉じ、
     /// 押した操作はそのまま効く**約束(発注者 2026-08-14)
     pub(crate) fn close_menus(&mut self) {
-        self.font_list = false;
-        self.size_list = false;
-        self.style_list = false;
-        self.symbols = false;
+        self.open_list = None;
     }
 
     /// リボンのボタンから命令を出す。**小窓中は何も通さない** — 描画の
@@ -117,17 +113,10 @@ impl Writer {
         // 一覧(▾)は**他を押したら閉じ、押した操作はそのまま効く**
         // (発注者 2026-08-14)。自分のボタンだけは畳まない — トグル
         // (もう一度押すと閉じる)の動きを壊さないため
-        if id != "fontname" {
-            self.font_list = false;
-        }
-        if id != "fontsize" {
-            self.size_list = false;
-        }
-        if id != "parastyle" {
-            self.style_list = false;
-        }
-        if id != "inssymbol" {
-            self.symbols = false;
+        // 自分のボタンだけは畳まない — トグル(もう一度押すと閉じる)の
+        // 動きを壊さないため。**旗が1つなので、この判断も1行です**
+        if self.open_list != Some(id) {
+            self.open_list = None;
         }
         // **ネイティブ文書では見た目を直に変えさせない**(2026-08-16)。
         // 名前を付けてスタイルにする道へ寄せる — Word の失敗
@@ -469,7 +458,7 @@ impl Writer {
             }
             // 記号の一覧(押すと出る/消える)
             "inssymbol" => {
-                self.symbols = !self.symbols;
+                self.open_list = (self.open_list != Some("inssymbol")).then_some("inssymbol");
                 self.pick_sel = 0;
             }
             // ファイルからのテキスト。カーソルの位置に差し込む(undo の1手)
@@ -520,14 +509,13 @@ impl Writer {
             "hidenchars" => self.show_marks = !self.show_marks,
             // 一覧パネル(フォント・大きさ)。選ぶのはパネルの中
             "fontname" => {
-                self.font_list = !self.font_list;
-                self.size_list = false;
-                self.style_list = false;
+                let 開く = self.open_list != Some("fontname");
+                self.open_list = 開く.then_some("fontname");
                 // **絞り込みの欄を開く**(手順2)。数で切らない代わりです
-                self.font_filter = self.font_list.then(|| Editor::new(""));
+                self.font_filter = 開く.then(|| Editor::new(""));
                 // **開いたときは今の書体の位置に居る**(表の画面と同じ)。
                 // 一覧の頭に飛ぶと、今どれなのかが分からなくなります
-                self.pick_sel = if self.font_list {
+                self.pick_sel = if 開く {
                     let 今 = self.font_name.to_string();
                     self.一覧の中身("fontname").iter().position(|(k, _)| *k == 今).unwrap_or(0)
                 } else {
@@ -568,11 +556,9 @@ impl Writer {
                 pg.top_mm = next;
                 pg.bottom_mm = next;
             }),
-            "fontsize" => { self.size_list = !self.size_list; self.font_list = false;
-                            self.style_list = false; }
+            "fontsize" => self.open_list = (self.open_list != Some("fontsize")).then_some("fontsize"),
             // 段落のスタイルの一覧(標準・見出し1〜3)
-            "parastyle" => { self.style_list = !self.style_list;
-                             self.font_list = false; self.size_list = false; }
+            "parastyle" => self.open_list = (self.open_list != Some("parastyle")).then_some("parastyle"),
             // 目次。挿す・挿し直すは同じ道(Toc の印の連続を置き換える)
             "toc" | "toc-update" => self.make_toc(),
             // 図表目次も同じ作法(Tof の印)

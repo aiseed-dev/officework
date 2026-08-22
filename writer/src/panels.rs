@@ -1593,13 +1593,18 @@ impl Writer {
         // *置き場も変えます。* この層は編集の面の中にいたので、リボンの
         // 高さぶん下から始まっていました。窓の根へ移して、ボタンの箱
         // (`btn_box`。窓の座標)をそのまま使えるようにします
-        let font_panel = self.font_list.then(|| self.一覧を描く("fontname", cx));
-        let size_panel = self.size_list.then(|| self.一覧を描く("fontsize", cx));
-        let style_panel = self.style_list.then(|| self.一覧を描く("parastyle", cx));
+        // **開いているのは多くて1つ。**鍵をそのまま渡します(2026-08-22)
+        let font_panel = (self.open_list == Some("fontname"))
+            .then(|| self.一覧を描く("fontname", cx));
+        let size_panel = (self.open_list == Some("fontsize"))
+            .then(|| self.一覧を描く("fontsize", cx));
+        let style_panel = (self.open_list == Some("parastyle"))
+            .then(|| self.一覧を描く("parastyle", cx));
 
         // 記号の一覧。**3つの一覧と同じ仕組み**(ui::picklist)で、升の並びで
         // 出します(2026-08-21。前は右上に固定の自前の格子でした)
-        let symbol_panel = self.symbols.then(|| self.一覧を描く("inssymbol", cx));
+        let symbol_panel = (self.open_list == Some("inssymbol"))
+            .then(|| self.一覧を描く("inssymbol", cx));
 
         // 校正の指摘
         let proof_panel = if self.proof.is_empty() && self.proof_msg.is_empty() {
@@ -1779,9 +1784,7 @@ impl Writer {
             self.on_edited();
             return;
         }
-        self.font_list = false;
-        self.size_list = false;
-        self.style_list = false;
+        self.open_list = None;
         self.font_filter = None;
         self.pick_sel = 0;
         match kind {
@@ -1818,14 +1821,10 @@ impl Writer {
 
     /// **Enter で今選んでいる項に決める**(手順2)。決めたら真。
     pub(crate) fn 一覧を決める(&mut self, cx: &mut gpui::Context<Self>) -> bool {
-        let kind = if self.font_list {
-            "fontname"
-        } else if self.size_list {
-            "fontsize"
-        } else if self.style_list {
-            "parastyle"
-        } else {
-            return false;
+        // **記号は Enter で決めません**(続けて何個も入れる形なので)
+        let kind = match self.open_list {
+            Some(k) if k != "inssymbol" => k,
+            _ => return false,
         };
         let items = self.一覧の中身(kind);
         match items.get(self.pick_sel) {

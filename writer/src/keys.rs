@@ -584,13 +584,10 @@ impl Writer {
             cx.notify();
             return;
         }
-        if self.font_list || self.size_list || self.symbols || self.style_list {
+        if self.open_list.is_some() {
             self.font_filter = None;
             self.pick_sel = 0;
-            self.font_list = false;
-            self.size_list = false;
-            self.symbols = false;
-            self.style_list = false;
+            self.open_list = None;
             cx.notify();
         }
     }
@@ -729,14 +726,11 @@ impl Writer {
     /// 表の画面と同じ作法で、端では止まります(巡回しません — どちらが
     /// 端かが分からなくなるため)。
     pub(crate) fn 一覧を送る(&mut self, 下へ: bool) -> bool {
-        let kind = if self.font_list {
-            "fontname"
-        } else if self.size_list {
-            "fontsize"
-        } else if self.style_list {
-            "parastyle"
-        } else {
-            return false;
+        // **記号の一覧は ↑↓ で送りません**(升の並びなので、行の中を
+        // 動くのと段を動くのが別物になります。前からの形を保ちます)
+        let kind = match self.open_list {
+            Some(k) if k != "inssymbol" => k,
+            _ => return false,
         };
         let n = self.一覧の数(kind);
         if n == 0 {
