@@ -302,6 +302,7 @@ pub const CALC: &[Tab] = &[
         t("dv-mark", "Cerchia dati non validi", "dv-mark"),
         c("goal-seek", "Goal seek", "goal-seek"),
         c("scenario", "Scenario", "scenario"),
+        c("forecast", "Foglio di previsione", "forecast"),
         c("solver", "Risolutore", "solver"),
         c("group", "Raggruppa", "group"),
         c("ungroup", "Separa", "ungroup"),

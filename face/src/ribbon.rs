@@ -480,6 +480,7 @@ pub const CALC: &[Tab] = &[
         t("dv-mark", "無効データのマーク", "dv-mark"),
         c("goal-seek", "ゴールシーク", "goal-seek"),
         c("scenario", "シナリオ", "scenario"),
+        c("forecast", "予測シート", "forecast"),
         c("solver", "ソルバー", "solver"),
         c("group", "グループ化", "group"),
         c("ungroup", "グループ解除", "ungroup"),

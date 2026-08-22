@@ -2796,6 +2796,83 @@ mod recalc_tests {
         });
     }
 
+    /// **予測シート**(2026-08-22。台帳の [大])。
+    ///
+    /// 中身は Python(指数平滑)なので、ここは**配線**を見ます。
+    /// 統計の当たり具合は台本の側で見ています。
+    #[gpui::test]
+    async fn 予測シートは新しいシートに実績と予測を並べる(cx: &mut gpui::TestAppContext) {
+        if !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../.venv/bin/python")
+            .exists()
+        {
+            eprintln!("skip: .venv が無い(端到端は飛ばす)");
+            return;
+        }
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.cursor = Pos::parse("A1").unwrap();
+            this.sync_input();
+            this.input.insert("月");
+            assert!(this.commit());
+            this.cursor = Pos::parse("B1").unwrap();
+            this.sync_input();
+            this.input.insert("売上");
+            assert!(this.commit());
+            // 上り坂+季節(12期)。24 期ぶん
+            for t in 0..24u32 {
+                let v = 100.0 + 3.0 * t as f64
+                    + 20.0 * ((t as f64) * std::f64::consts::TAU / 12.0).sin();
+                this.cursor = Pos::new(t + 1, 0);
+                this.sync_input();
+                this.input.insert(&format!("m{t}"));
+                assert!(this.commit());
+                this.cursor = Pos::new(t + 1, 1);
+                this.sync_input();
+                this.input.insert(&format!("{v:.3}"));
+                assert!(this.commit());
+            }
+            this.anchor = None;
+            this.cursor = Pos::parse("A1").unwrap();
+            this.run_cmd("forecast", cx);
+            assert_eq!(this.prompt.as_ref().map(|(k, _)| *k), Some("forecast-h"));
+            this.prompt = Some(("forecast-h", Editor::new("6")));
+            this.finish_prompt(cx);
+        });
+        cx.executor().advance_clock(std::time::Duration::from_secs(60));
+        cx.run_until_parked();
+        c.update(cx, |this, _cx| {
+            assert_eq!(this.book.sheets.len(), 2, "新しいシートが増えない: {}", this.status);
+            let sh = &this.book.sheets[1];
+            assert_eq!(sh.name, "予測");
+            // 見出しの5列
+            for (c, t) in [(0u32, "期"), (1, "売上"), (2, "予測"), (3, "下限"), (4, "上限")] {
+                assert_eq!(
+                    sh.get(Pos::new(0, c)).map(|x| x.value.display()),
+                    Some(t.to_string()),
+                    "{c} 列の見出しが違う"
+                );
+            }
+            // 実績 24 行 + 予測 6 行
+            let 予測1 = sh.get(Pos::new(25, 2)).map(|x| x.value.as_number()).unwrap_or(0.0);
+            assert!(予測1 > 0.0, "予測が入らない");
+            // 上り坂+季節なので、24期目の次は 100+3*24=172 のあたり
+            assert!((150.0..200.0).contains(&予測1), "予測が外れすぎ: {予測1}");
+            // 下限 < 予測 < 上限
+            let lo = sh.get(Pos::new(25, 3)).map(|x| x.value.as_number()).unwrap_or(0.0);
+            let up = sh.get(Pos::new(25, 4)).map(|x| x.value.as_number()).unwrap_or(0.0);
+            assert!(lo <= 予測1 && 予測1 <= up, "区間が予測を挟んでいない: {lo} {予測1} {up}");
+            // **約束ではないと、シートに書いてある。**状態行はこの後グラフの
+            // 報せで流れるので、そこだけでは伝わらない
+            let 断り = sh
+                .get(Pos::new(32, 0))
+                .map(|x| x.value.display())
+                .unwrap_or_default();
+            assert!(断り.contains("約束ではありません"), "断りがシートに無い: {断り:?}");
+            assert!(断り.contains("季節"), "季節を言っていない: {断り:?}");
+        });
+    }
+
     /// **最終版の札**(2026-08-22。台帳の [小])。
     ///
     /// 2026-08-09 には「作らない」と決まっていました。理由は

@@ -469,6 +469,17 @@ impl Calc {
     /// 1列目が項目名、残りの列が系列(先頭行が文字なら系列名)。
     /// Python は別のスレッドで回す(メインスレッドを塞がない — ダイアログと同じ作法)。
     pub(crate) fn insert_chart(&mut self, a: Pos, b: Pos, cx: &mut Context<Self>) {
+        self.insert_chart_kind(a, b, "bar", cx);
+    }
+
+    /// 種類を指して差し込む。予測シートは折れ線を使います
+    pub(crate) fn insert_chart_kind(
+        &mut self,
+        a: Pos,
+        b: Pos,
+        kind: &'static str,
+        cx: &mut Context<Self>,
+    ) {
         let sh = self.sheet();
         // 先頭行が見出しか(項目列以外に文字があるか)
         let header = (a.col + 1..=b.col).any(|c| {
@@ -491,8 +502,14 @@ impl Calc {
             } else {
                 col_name(c)
             };
-            let values: Vec<f64> = (r0..=b.row)
-                .map(|r| sh.get(Pos::new(r, c)).map(|x| x.value.as_number()).unwrap_or(0.0))
+            let values: Vec<Option<f64>> = (r0..=b.row)
+                .map(|r| match sh.get(Pos::new(r, c)) {
+                    // **空は空のまま渡す**(折れ線が谷にならないように)。
+                    // 棒のときは 0 として描かれます
+                    None => None,
+                    Some(x) if matches!(x.value, sheet::Value::Empty) => None,
+                    Some(x) => Some(x.value.as_number()),
+                })
                 .collect();
             series.push((name, values));
         }
@@ -519,14 +536,21 @@ impl Calc {
                     format!(
                         "{{\"name\":\"{}\",\"values\":[{}]}}",
                         esc(n),
-                        vs.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(",")
+                        vs.iter()
+                            .map(|v: &Option<f64>| match v {
+                                Some(x) => x.to_string(),
+                                None => "null".into(),
+                            })
+                            .collect::<Vec<_>>()
+                            .join(",")
                     )
                 })
                 .collect::<Vec<_>>()
                 .join(","),
         );
         json.push_str(&format!(
-            "],\"font\":\"{}\",\"out\":\"{}\"}}",
+            "],\"kind\":\"{}\",\"font\":\"{}\",\"out\":\"{}\"}}",
+            kind,
             esc(&font),
             esc(&out.to_string_lossy())
         ));
@@ -1530,6 +1554,186 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     }
 
     /// 取り込みウィザードのパネルを(いまの下ごしらえから)組む。
+    /// 予測の答えを新しいシートに置く。
+    ///
+    /// 形は Excel と同じで、**実績の行と予測の行を分けます**。境目の1点だけは
+    /// 両方に入れます — 分けたままだと折れ線が切れて見えるためです。
+    fn forecast_place(
+        &mut self,
+        raw: &str,
+        labels: Vec<String>,
+        values: Vec<f64>,
+        見出し: String,
+        cx: &mut Context<Self>,
+    ) {
+        let 数 = |k: &str| -> Vec<f64> {
+            raw.split_once(&format!("\"{k}\":["))
+                .and_then(|(_, r)| r.split_once(']'))
+                .map(|(body, _)| body.split(',').filter_map(|x| x.trim().parse().ok()).collect())
+                .unwrap_or_default()
+        };
+        let 一つ = |k: &str| -> f64 {
+            raw.split_once(&format!("\"{k}\":"))
+                .and_then(|(_, r)| {
+                    let t: String =
+                        r.chars().take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-' || *c == 'e').collect();
+                    t.parse().ok()
+                })
+                .unwrap_or(0.0)
+        };
+        let (fc, lo, up) = (数("forecast"), 数("lower"), 数("upper"));
+        if fc.is_empty() {
+            self.status = ui::t!("予測の答えが読めません").into();
+            return;
+        }
+        let season = 一つ("season") as u32;
+        let sigma = 一つ("sigma");
+        self.checkpoint();
+        let name = crate::util::unique_sheet_name_for(&self.book, &ui::t!("予測").to_string());
+        let mut sh = sheet::Sheet::new(&name);
+        let 実 = if 見出し.is_empty() { ui::t!("実績").to_string() } else { 見出し };
+        for (c, t) in [
+            (0u32, ui::t!("期").to_string()),
+            (1, 実),
+            (2, ui::t!("予測").to_string()),
+            (3, ui::t!("下限").to_string()),
+            (4, ui::t!("上限").to_string()),
+        ] {
+            sh.set(Pos::new(0, c), sheet::Cell::input(&t));
+        }
+        let n = values.len();
+        for (i, v) in values.iter().enumerate() {
+            sh.set(Pos::new(i as u32 + 1, 0), sheet::Cell::input(&labels[i]));
+            sh.set(Pos::new(i as u32 + 1, 1), sheet::Cell::input(&v.to_string()));
+        }
+        // 境目。**最後の実績を予測の列にも置く**(線を繋ぐため)
+        sh.set(Pos::new(n as u32, 2), sheet::Cell::input(&values[n - 1].to_string()));
+        for (j, v) in fc.iter().enumerate() {
+            let r = (n + j + 1) as u32;
+            sh.set(Pos::new(r, 0), sheet::Cell::input(&ui::tf!("予測{}", j + 1)));
+            sh.set(Pos::new(r, 2), sheet::Cell::input(&format!("{v:.2}")));
+            sh.set(Pos::new(r, 3), sheet::Cell::input(&format!("{:.2}", lo[j])));
+            sh.set(Pos::new(r, 4), sheet::Cell::input(&format!("{:.2}", up[j])));
+        }
+        // **断りはシートに残します。**状態行はこの後グラフの報せで流れるので、
+        // そこだけに書くと、区間の意味が誰にも伝わりません
+        let 季 = if season > 1 {
+            ui::tf!("季節 {} 期(自動で選びました)", season).to_string()
+        } else {
+            ui::t!("季節は見つかりませんでした").to_string()
+        };
+        let 断り = ui::tf!(
+            "{} 期先まで予測しました。{}。区間は 95% の見込みで、約束ではありません(誤差の目安 {:.1})",
+            fc.len(),
+            季.clone(),
+            sigma
+        )
+        .to_string();
+        sh.set(Pos::new((n + fc.len() + 2) as u32, 0), sheet::Cell::input(&断り));
+        self.book.sheets.push(sh);
+        let si = self.book.sheets.len() - 1;
+        self.switch_sheet(si);
+        self.dirty = true;
+        self.anchor = Some(Pos::new((n + fc.len()) as u32, 4));
+        self.cursor = Pos::new(0, 0);
+        self.insert_chart_kind(Pos::new(0, 0), Pos::new((n + fc.len()) as u32, 4), "line", cx);
+        self.anchor = None;
+        self.status = 断り.into();
+    }
+
+    /// **予測シート**(2026-08-22。台帳の [大])。
+    ///
+    /// 選んだ範囲の**いちばん右の数の列**を実績とし、その左の列をラベルに
+    /// します。指数平滑で先を出し、新しいシートに 実績・予測・下限・上限 を
+    /// 並べて、折れ線のグラフを添えます。
+    ///
+    /// **区間は見込みであって約束ではありません。**そう状態行で言います。
+    pub(crate) fn forecast_run(&mut self, h: usize, cx: &mut Context<Self>) {
+        let (a, b) = if self.anchor.is_some() {
+            self.sel_rect()
+        } else {
+            let (rows, cols) = self.sheet().extent();
+            if rows < 5 || cols == 0 {
+                self.status =
+                    ui::t!("予測するには、見出しの下に4行以上の数が要ります").into();
+                return;
+            }
+            (Pos::new(0, 0), Pos::new(rows - 1, cols - 1))
+        };
+        // 数の列を右から探す。ラベルはその左の列(無ければ番号)
+        let sh = self.sheet();
+        let 数の列 = (a.col..=b.col).rev().find(|&c| {
+            (a.row + 1..=b.row)
+                .filter(|&r| matches!(sh.get(Pos::new(r, c)).map(|x| &x.value), Some(sheet::Value::Number(_))))
+                .count()
+                >= 4
+        });
+        let Some(vc) = 数の列 else {
+            self.status = ui::t!("数の列が見つかりません(4つ以上の数が要ります)").into();
+            return;
+        };
+        let lc = (vc > a.col).then(|| vc - 1);
+        let mut labels: Vec<String> = Vec::new();
+        let mut values: Vec<f64> = Vec::new();
+        for r in a.row + 1..=b.row {
+            let Some(sheet::Value::Number(v)) = sh.get(Pos::new(r, vc)).map(|x| x.value.clone())
+            else {
+                continue;
+            };
+            labels.push(match lc {
+                Some(c) => sh.get(Pos::new(r, c)).map(|x| x.value.display()).unwrap_or_default(),
+                None => (values.len() + 1).to_string(),
+            });
+            values.push(v);
+        }
+        if values.len() < 4 {
+            self.status = ui::t!("予測するには4つ以上の数が要ります").into();
+            return;
+        }
+        let 見出し = sh.get(Pos::new(a.row, vc)).map(|x| x.value.display()).unwrap_or_default();
+        let json = format!(
+            "{{\"values\":[{}],\"horizon\":{},\"conf\":0.95,\"season\":0}}",
+            values.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(","),
+            h
+        );
+        self.status = ui::t!("予測しています…").into();
+        let task = cx.background_executor().spawn(async move {
+            let dir = 作業場("forecast");
+            let _ = std::fs::create_dir_all(&dir);
+            let jp = dir.join("spec.json");
+            let pp = dir.join("jo_forecast.py");
+            std::fs::write(&jp, json).map_err(|e| e.to_string())?;
+            std::fs::write(&pp, pyrun::FORECAST_PY).map_err(|e| e.to_string())?;
+            let o = std::process::Command::new(find_python())
+                .arg(&pp)
+                .arg(&jp)
+                .output()
+                .map_err(|e| ui::tf!("Python が起動できません: {}", e).to_string())?;
+            if !o.status.success() {
+                let err = String::from_utf8_lossy(&o.stderr);
+                let last = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("原因不明");
+                return Err(if err.contains("No module named") {
+                    ui::tf!("予測に要る道具がありません。次で入ります:\n  {}",
+                            pyrun::pip_hint("numpy scipy")).to_string()
+                } else {
+                    ui::tf!("予測できません: {}", last).to_string()
+                });
+            }
+            Ok(String::from_utf8_lossy(&o.stdout).to_string())
+        });
+        cx.spawn(async move |this, cx| {
+            let r = task.await;
+            let _ = this.update(cx, |this, cx| {
+                match r {
+                    Ok(raw) => this.forecast_place(&raw, labels, values, 見出し, cx),
+                    Err(e) => this.status = e.into(),
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     /// **PDF から表を取り出す**(2026-08-21 の D群)。
     ///
     /// PDF に「表」という構造はありません。字と、その座標と、線だけです。

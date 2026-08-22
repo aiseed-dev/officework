@@ -219,6 +219,21 @@ pub(crate) struct SizeDrag {
 }
 
 /// 使われていないシート名(Sheet2, Sheet3, …)。
+/// 好きな頭で始まる、まだ無いシート名。「予測」「予測2」…
+pub(crate) fn unique_sheet_name_for(book: &Book, head: &str) -> String {
+    if !book.sheets.iter().any(|s| s.name == head) {
+        return head.to_string();
+    }
+    let mut n = 2;
+    loop {
+        let name = format!("{head}{n}");
+        if !book.sheets.iter().any(|s| s.name == name) {
+            return name;
+        }
+        n += 1;
+    }
+}
+
 pub(crate) fn unique_sheet_name(book: &Book) -> String {
     let mut n = book.sheets.len() + 1;
     loop {

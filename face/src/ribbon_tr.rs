@@ -302,6 +302,7 @@ pub const CALC: &[Tab] = &[
         t("dv-mark", "Geçersiz verileri daire içine al", "dv-mark"),
         c("goal-seek", "Hedef Ara", "goal-seek"),
         c("scenario", "Senaryo", "scenario"),
+        c("forecast", "Tahmin sayfası", "forecast"),
         c("solver", "Çözücü", "solver"),
         c("group", "Grup", "group"),
         c("ungroup", "Gruptan çıkar", "ungroup"),

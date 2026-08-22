@@ -696,10 +696,26 @@ series = spec["series"] or [{"name": "", "values": [0] * len(labels)}]
 n = len(series)
 w = 0.8 / n
 fig, ax = plt.subplots(figsize=(6.4, 4.0))
+# 種類は指図から。無ければ棒(これまでどおり)
+kind = spec.get("kind", "bar")
 for i, s in enumerate(series):
-    ax.bar(x + (i - (n - 1) / 2) * w, s["values"], w, label=s["name"])
+    if kind == "line":
+        # **空の所は線を切る。**予測シートは実績と予測を別の列に置くので、
+        # 0 として繋ぐと谷ができる
+        ys = [float("nan") if v is None else v for v in s["values"]]
+        ax.plot(x, ys, marker="", label=s["name"])
+    else:
+        ax.bar(x + (i - (n - 1) / 2) * w, s["values"], w, label=s["name"])
 ax.set_xticks(x)
 ax.set_xticklabels(labels)
+# 目盛りが多いときは間引いて傾ける。全部まっすぐ出すと重なって読めない
+if len(labels) > 10:
+    step = (len(labels) + 9) // 10
+    for k, t in enumerate(ax.get_xticklabels()):
+        t.set_visible(k % step == 0)
+    for t in ax.get_xticklabels():
+        t.set_rotation(45)
+        t.set_ha("right")
 if n > 1:
     ax.legend()
 fig.tight_layout()
@@ -831,6 +847,129 @@ sys.stdout.write("\x1f".join("%.12g" % v for v in out))
 
 /// ピボットの台本(polars)。指図は JSON、答えは CSV 取り込みと同じ
 /// 区切りの印(\x1e 行 / \x1f 欄)で返す。
+/// **予測シートの中身**(2026-08-22。台帳の [大])。
+///
+/// 加法の Holt-Winters(指数平滑)です。水準・傾き・季節の3つを、
+/// 1期先の誤差で少しずつ直しながら進みます。α・β・γ は当てはまりが
+/// いちばん良くなる所を scipy が探します。
+///
+/// **季節の長さは自動で選びます。**ただし2つの条件を付けました。
+///
+/// * 3周期ぶん無い長さは試さない(2周期では、たまたま似た形が2度出ただけの
+///   ものを季節と呼んでしまいます)
+/// * 季節の振れが雑音の2倍に届かないなら季節としない(ただの上り坂+雑音に
+///   季節 3 を見つけたので足しました)
+///
+/// 区間は ETS(A,A,A) の分散の式から出します。**見込みであって約束では
+/// ありません** — 呼ぶ側はそう言って出します。
+pub const FORECAST_PY: &str = r#"
+import json, sys
+import numpy as np
+from scipy.optimize import minimize
+from scipy.stats import norm
+
+spec = json.load(open(sys.argv[1], encoding="utf-8"))
+y = np.asarray(spec["values"], dtype=float)
+h = int(spec.get("horizon", 6))
+conf = float(spec.get("conf", 0.95))
+want_m = int(spec.get("season", 0))
+n = len(y)
+
+def 組む(y, m, a, b, g):
+    """加法の Holt-Winters。返しは (1期先の予測の列, 最後の水準, 傾き, 季節)"""
+    if m > 1:
+        mu = float(y[:m].mean())
+        tr = (float(y[m:2 * m].mean()) - mu) / m if n >= 2 * m else 0.0
+        # **季節の初期値から傾きを抜く。**抜かないと、1周期の中の上り坂まで
+        # 季節だと思い込み、当てはまりが悪くなる(見本の SSE が 2744 → 0.0)
+        sea = [float(y[i] - (mu + (i - (m - 1) / 2) * tr)) for i in range(m)]
+        lvl = mu - ((m - 1) / 2 + 1) * tr
+    else:
+        lvl, tr, sea = y[0], (y[1] - y[0]) if n > 1 else 0.0, [0.0]
+    fit = []
+    for t in range(n):
+        s = sea[t % m] if m > 1 else 0.0
+        f = lvl + tr + s
+        fit.append(f)
+        e = y[t] - f
+        lvl2 = lvl + tr + a * e
+        tr = tr + a * b * e
+        if m > 1:
+            sea[t % m] = s + g * e
+        lvl = lvl2
+    return np.asarray(fit), lvl, tr, sea
+
+def sse(p, y, m):
+    a, b, g = p
+    fit, _, _, _ = 組む(y, m, a, b, g)
+    r = y - fit
+    v = float(np.sum(r * r))
+    return v if np.isfinite(v) else 1e18
+
+def 合わせる(y, m):
+    best = None
+    for start in ((0.3, 0.1, 0.1), (0.6, 0.05, 0.3), (0.05, 0.01, 0.5)):
+        r = minimize(sse, start, args=(y, m), method="L-BFGS-B",
+                     bounds=[(1e-4, 0.999)] * 3)
+        if best is None or r.fun < best.fun:
+            best = r
+    a, b, g = best.x
+    fit, lvl, tr, sea = 組む(y, m, a, b, g)
+    k = 3 + (m if m > 1 else 1)
+    s2 = float(best.fun) / max(n - k, 1)
+    # AICc。季節を増やすほど当てはまるので、罰を付けて選ぶ
+    ll = -0.5 * n * (np.log(2 * np.pi * max(s2, 1e-12)) + 1)
+    aic = -2 * ll + 2 * k
+    aicc = aic + (2 * k * (k + 1) / (n - k - 1)) if n - k - 1 > 0 else aic + 1e6
+    return dict(m=m, a=a, b=b, g=g, fit=fit, lvl=lvl, tr=tr, sea=sea, s2=s2, aicc=aicc)
+
+# 季節の長さを選ぶ。**2周期ぶん無ければその長さは試さない**
+# **3周期ぶん無い長さは試さない。**2周期では、たまたま似た形が2度出ただけの
+# ものを季節と呼んでしまう
+候補 = [1]
+if want_m > 1:
+    候補 = [want_m] if n >= 2 * want_m else [1]
+elif want_m == 0:
+    候補 += [m for m in range(2, min(n // 3, 24) + 1)]
+結果 = [合わせる(y, m) for m in 候補]
+無季節 = 結果[0]
+季節あり = [r for r in 結果[1:]]
+best = 無季節
+if 季節あり:
+    c = min(季節あり, key=lambda r: r["aicc"])
+    # **はっきり良いときだけ季節を採る。**AICc が 2 以上良ければ「はっきり」
+    # (統計の慣例)。僅差なら季節なしに倒す — 無い季節を見つける方が害が大きい
+    # **季節の振れが雑音より大きいこと**も条件にする。AICc だけだと、
+    # ただの上り坂+雑音に季節 3 を見つけてしまう(実際に踏んだ)。
+    # 振れ幅が残差の2倍に届かないなら、それは季節ではなく雑音
+    振れ = max(c["sea"]) - min(c["sea"])
+    if c["aicc"] < 無季節["aicc"] - 2.0 and 振れ >= 2 * np.sqrt(c["s2"]):
+        best = c
+m, a, b, g = best["m"], best["a"], best["b"], best["g"]
+lvl, tr, sea = best["lvl"], best["tr"], best["sea"]
+
+fc, lo, up = [], [], []
+z = float(norm.ppf(0.5 + conf / 2))
+cum = 0.0
+for j in range(1, h + 1):
+    s = sea[(n + j - 1) % m] if m > 1 else 0.0
+    v = lvl + j * tr + s
+    fc.append(float(v))
+    if j > 1:
+        c = a * (1 + (j - 1) * b) + (g if (m > 1 and (j - 1) % m == 0) else 0.0)
+        cum += c * c
+    sd = np.sqrt(best["s2"] * (1 + cum))
+    lo.append(float(v - z * sd))
+    up.append(float(v + z * sd))
+
+print(json.dumps({
+    "ok": True, "season": m, "alpha": a, "beta": b, "gamma": g,
+    "sigma": float(np.sqrt(best["s2"])),
+    "fit": [float(x) for x in best["fit"]],
+    "forecast": fc, "lower": lo, "upper": up,
+}, ensure_ascii=False, separators=(",", ":")))
+"#;
+
 /// **PDF の表を取り出す。**
 ///
 /// PDF に「表」という構造はありません。あるのは字と、字の置かれた座標と、
@@ -1129,6 +1268,7 @@ pub const BUNDLED: &[(&str, &str)] = &[
     ("chart", CHART_PY),
     ("pivot", PIVOT_PY),
     ("pdf_table", PDF_TABLE_PY),
+    ("forecast", FORECAST_PY),
     ("solver", SOLVER_PY),
     ("csv", CSV_PY),
     ("equation", EQ_PY),

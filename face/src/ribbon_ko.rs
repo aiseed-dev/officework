@@ -302,6 +302,7 @@ pub const CALC: &[Tab] = &[
         t("dv-mark", "잘못된 데이터에 표시", "dv-mark"),
         c("goal-seek", "목표값 찾기", "goal-seek"),
         c("scenario", "시나리오", "scenario"),
+        c("forecast", "예측 시트", "forecast"),
         c("solver", "해 찾기", "solver"),
         c("group", "그룹", "group"),
         c("ungroup", "그룹 해제", "ungroup"),

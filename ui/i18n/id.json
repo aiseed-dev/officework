@@ -7665,858 +7665,930 @@
  },
  {
   "i": 1916,
-  "t": "Final"
+  "t": "Berapa periode ke depan? (ketik angka lalu tekan Enter; kosong = 6)"
  },
  {
   "i": 1917,
-  "t": "Ditandai final (ini bukan kunci)"
+  "t": "Hasil ramalan tidak terbaca"
  },
  {
   "i": 1918,
-  "t": "Belum ditandai"
+  "t": "Ramalan"
  },
  {
   "i": 1919,
-  "t": "Lepas tandanya"
+  "t": "Aktual"
  },
  {
   "i": 1920,
-  "t": "Tandai sebagai final"
+  "t": "Periode"
  },
  {
   "i": 1921,
-  "t": "Buku kerja ini ditandai final (ini bukan kunci — Anda masih bisa mengubahnya; lepas tandanya di «Lindungi» pada tab Berkas)"
+  "t": "Batas bawah"
  },
  {
   "i": 1922,
-  "t": "Tanda final dilepas"
+  "t": "Batas atas"
  },
  {
   "i": 1923,
-  "t": "Ditandai final (ini bukan kunci — Anda masih bisa mengubahnya; menyimpan akan menaruhnya di xlsx)"
+  "t": "Ramalan {}"
  },
  {
   "i": 1924,
-  "t": "Buka salinan simpanan: {}"
+  "t": "Musim {} periode (ditemukan sendiri)"
  },
  {
   "i": 1925,
-  "t": "→ Selamatkan yang bisa dibaca lalu buka (hanya-baca)"
+  "t": "Tidak ada musim yang ditemukan"
  },
  {
   "i": 1926,
-  "t": "Tidak ada salinan simpanan. Dibuka hanya dengan bagian yang berhasil diselamatkan (tidak bisa menimpa)"
+  "t": "Meramalkan {} periode ke depan. {}. Selangnya adalah perkiraan 95%, bukan janji (galat khas {:.1})"
  },
  {
   "i": 1927,
-  "t": "Salinan simpanan lebih pasti. Menyelamatkan adalah jalan terakhir"
+  "t": "Untuk meramal perlu setidaknya 4 baris angka di bawah judul"
  },
  {
   "i": 1928,
-  "t": "Berkas ini tidak terbaca: {}"
+  "t": "Tidak ada kolom angka yang ditemukan (perlu setidaknya 4 angka)"
  },
  {
   "i": 1929,
-  "t": "Buku kerja ini hasil penyelamatan, jadi tidak akan menimpa. Pakai Simpan Sebagai (berkas asli tidak disentuh)"
+  "t": "Untuk meramal perlu setidaknya 4 angka"
  },
  {
   "i": 1930,
-  "t": "Tidak ada yang bisa diselamatkan (tidak ada bagian yang terbaca sebagai zip)"
+  "t": "Sedang meramal…"
  },
  {
   "i": 1931,
-  "t": "{} tidak terbaca ({})"
+  "t": "Alat yang diperlukan ramalan tidak ada. Pasang dengan:\n  {}"
  },
  {
   "i": 1932,
-  "t": "Semua bagian berhasil diselamatkan (hanya daftar isi zip yang rusak)"
+  "t": "Tidak bisa meramal: {}"
  },
  {
   "i": 1933,
-  "t": "Dibuka dengan {} bagian yang diselamatkan ({} tidak bisa). Tidak bisa menimpa"
+  "t": "Final"
  },
  {
   "i": 1934,
-  "t": "Tetap tidak bisa dibuka meski dengan bagian yang diselamatkan: {}"
+  "t": "Ditandai final (ini bukan kunci)"
  },
  {
   "i": 1935,
-  "t": "Buku kerja ini disusun dari berkas yang rusak (hanya-baca — tidak bisa menimpa)"
+  "t": "Belum ditandai"
  },
  {
   "i": 1936,
-  "t": "Menampilkan nilainya sendiri (saringan dilepas)"
+  "t": "Lepas tandanya"
  },
  {
   "i": 1937,
-  "t": "Mengelompokkan tanggal menurut {} (saringan dilepas)"
+  "t": "Tandai sebagai final"
  },
  {
   "i": 1938,
-  "t": "Bukan tanggal"
+  "t": "Buku kerja ini ditandai final (ini bukan kunci — Anda masih bisa mengubahnya; lepas tandanya di «Lindungi» pada tab Berkas)"
  },
  {
   "i": 1939,
-  "t": "Nilainya sendiri"
+  "t": "Tanda final dilepas"
  },
  {
   "i": 1940,
-  "t": "Satuan tanggal"
+  "t": "Ditandai final (ini bukan kunci — Anda masih bisa mengubahnya; menyimpan akan menaruhnya di xlsx)"
  },
  {
   "i": 1941,
-  "t": "Mencari tabel di PDF…"
+  "t": "Buka salinan simpanan: {}"
  },
  {
   "i": 1942,
-  "t": "Alat untuk membaca PDF (pdfplumber) tidak ada. Pasang dengan:\n  {}"
+  "t": "→ Selamatkan yang bisa dibaca lalu buka (hanya-baca)"
  },
  {
   "i": 1943,
-  "t": "PDF tidak terbaca: {}"
+  "t": "Tidak ada salinan simpanan. Dibuka hanya dengan bagian yang berhasil diselamatkan (tidak bisa menimpa)"
  },
  {
   "i": 1944,
-  "t": "Tidak ada tabel yang ditemukan di PDF ini (tabel yang ditempel sebagai gambar tidak bisa dibaca)"
+  "t": "Salinan simpanan lebih pasti. Menyelamatkan adalah jalan terakhir"
  },
  {
   "i": 1945,
-  "t": "{} dari {} (halaman {})"
+  "t": "Berkas ini tidak terbaca: {}"
  },
  {
   "i": 1946,
-  "t": "Dari garis"
+  "t": "Buku kerja ini hasil penyelamatan, jadi tidak akan menimpa. Pakai Simpan Sebagai (berkas asli tidak disentuh)"
  },
  {
   "i": 1947,
-  "t": "Dari posisi teks (perkiraan)"
+  "t": "Tidak ada yang bisa diselamatkan (tidak ada bagian yang terbaca sebagai zip)"
  },
  {
   "i": 1948,
-  "t": "Cara menemukannya"
+  "t": "{} tidak terbaca ({})"
  },
  {
   "i": 1949,
-  "t": "Catatan: tidak ada garis, jadi ini perkiraan. Periksa apakah kolomnya sejajar"
+  "t": "Semua bagian berhasil diselamatkan (hanya daftar isi zip yang rusak)"
  },
  {
   "i": 1950,
-  "t": "{} ({} sel)"
+  "t": "Dibuka dengan {} bagian yang diselamatkan ({} tidak bisa). Tidak bisa menimpa"
  },
  {
   "i": 1951,
-  "t": "→ Skenario baru (nilai sel terpilih saat ini)…"
+  "t": "Tetap tidak bisa dibuka meski dengan bagian yang diselamatkan: {}"
  },
  {
   "i": 1952,
-  "t": "→ Hapus sebuah skenario…"
+  "t": "Buku kerja ini disusun dari berkas yang rusak (hanya-baca — tidak bisa menimpa)"
  },
  {
   "i": 1953,
-  "t": "Belum ada satu pun. Pilih sel yang ingin diubah-ubah, lalu buat satu"
+  "t": "Menampilkan nilainya sendiri (saringan dilepas)"
  },
  {
   "i": 1954,
-  "t": "Menekan salah satunya menulis kembali nilainya ke sel (Ctrl+Z membatalkan)"
+  "t": "Mengelompokkan tanggal menurut {} (saringan dilepas)"
  },
  {
   "i": 1955,
-  "t": "Terlalu banyak sel dipilih (maksimal 64; pilih hanya sel yang ingin diubah-ubah)"
+  "t": "Bukan tanggal"
  },
  {
   "i": 1956,
-  "t": "Ketik nama skenario lalu tekan Enter (nilai {} sel terpilih akan disimpan)"
+  "t": "Nilainya sendiri"
  },
  {
   "i": 1957,
-  "t": "Pilih skenario yang akan dihapus"
+  "t": "Satuan tanggal"
  },
  {
   "i": 1958,
-  "t": "Skenario “{}” diterapkan ({} sel; Ctrl+Z membatalkan)"
+  "t": "Mencari tabel di PDF…"
  },
  {
   "i": 1959,
-  "t": "Skenario “{}” dihapus"
+  "t": "Alat untuk membaca PDF (pdfplumber) tidak ada. Pasang dengan:\n  {}"
  },
  {
   "i": 1960,
-  "t": "Namanya kosong (tidak ada yang dibuat)"
+  "t": "PDF tidak terbaca: {}"
  },
  {
   "i": 1961,
-  "t": "Tidak ada nilai yang bisa disimpan di bagian yang dipilih (sel rumus tidak diikutkan — menerapkannya akan menghapus rumus)"
+  "t": "Tidak ada tabel yang ditemukan di PDF ini (tabel yang ditempel sebagai gambar tidak bisa dibaca)"
  },
  {
   "i": 1962,
-  "t": "Skenario “{}” disimpan ulang ({} sel)"
+  "t": "{} dari {} (halaman {})"
  },
  {
   "i": 1963,
-  "t": "Skenario “{}” disimpan ({} sel; menyimpan juga menaruhnya di xlsx)"
+  "t": "Dari garis"
  },
  {
   "i": 1964,
-  "t": "{} PivotTable yang terhubung ikut disaring sama"
+  "t": "Dari posisi teks (perkiraan)"
  },
  {
   "i": 1965,
-  "t": "Pilih pemotong data terlebih dahulu"
+  "t": "Cara menemukannya"
  },
  {
   "i": 1966,
-  "t": "Buku kerja ini tidak punya PivotTable (buat satu dulu)"
+  "t": "Catatan: tidak ada garis, jadi ini perkiraan. Periksa apakah kolomnya sejajar"
  },
  {
   "i": 1967,
-  "t": "Menyaring dengan pemotong data ini juga menyaring PivotTable yang terhubung"
+  "t": "{} ({} sel)"
  },
  {
   "i": 1968,
-  "t": "Koneksi laporan"
+  "t": "→ Skenario baru (nilai sel terpilih saat ini)…"
  },
  {
   "i": 1969,
-  "t": "Belum terhubung"
+  "t": "→ Hapus sebuah skenario…"
  },
  {
   "i": 1970,
-  "t": "Terhubung ke {}"
+  "t": "Belum ada satu pun. Pilih sel yang ingin diubah-ubah, lalu buat satu"
  },
  {
   "i": 1971,
-  "t": "Pilih tata letak yang disarankan (Anda juga bisa memilih sendiri bidangnya)"
+  "t": "Menekan salah satunya menulis kembali nilainya ke sel (Ctrl+Z membatalkan)"
  },
  {
   "i": 1972,
-  "t": "Pilih sendiri bidangnya (baris, lalu kolom, lalu nilai)"
+  "t": "Terlalu banyak sel dipilih (maksimal 64; pilih hanya sel yang ingin diubah-ubah)"
  },
  {
   "i": 1973,
-  "t": "Tata letak yang bisa dibuat dari tabel Anda. Tidak ada yang dibuat sampai Anda menekan salah satu"
+  "t": "Ketik nama skenario lalu tekan Enter (nilai {} sel terpilih akan disimpan)"
  },
  {
   "i": 1974,
-  "t": "Baris: {} / Kolom: {} / {} dari {}"
+  "t": "Pilih skenario yang akan dihapus"
  },
  {
   "i": 1975,
-  "t": "Baris: {} / {} dari {}"
+  "t": "Skenario “{}” diterapkan ({} sel; Ctrl+Z membatalkan)"
  },
  {
   "i": 1976,
-  "t": "Lindungi buku kerja"
+  "t": "Skenario “{}” dihapus"
  },
  {
   "i": 1977,
-  "t": "Inilah yang sedang berlaku. Menekan tombol akan kembali ke lembar dan menanyakan sisanya"
+  "t": "Namanya kosong (tidak ada yang dibuat)"
  },
  {
   "i": 1978,
-  "t": "Enkripsi dengan kata sandi"
+  "t": "Tidak ada nilai yang bisa disimpan di bagian yang dipilih (sel rumus tidak diikutkan — menerapkannya akan menghapus rumus)"
  },
  {
   "i": 1979,
-  "t": "Aktif (mulai penyimpanan berikutnya)"
+  "t": "Skenario “{}” disimpan ulang ({} sel)"
  },
  {
   "i": 1980,
-  "t": "Belum diatur"
+  "t": "Skenario “{}” disimpan ({} sel; menyimpan juga menaruhnya di xlsx)"
  },
  {
   "i": 1981,
-  "t": "Ubah atau hapus"
+  "t": "{} PivotTable yang terhubung ikut disaring sama"
  },
  {
   "i": 1982,
-  "t": "Tentukan kata sandi"
+  "t": "Pilih pemotong data terlebih dahulu"
  },
  {
   "i": 1983,
-  "t": "Lindungi lembar"
+  "t": "Buku kerja ini tidak punya PivotTable (buat satu dulu)"
  },
  {
   "i": 1984,
-  "t": "“{}” dilindungi"
+  "t": "Menyaring dengan pemotong data ini juga menyaring PivotTable yang terhubung"
  },
  {
   "i": 1985,
-  "t": "“{}” tidak dilindungi"
+  "t": "Koneksi laporan"
  },
  {
   "i": 1986,
-  "t": "Lepas perlindungan"
+  "t": "Belum terhubung"
  },
  {
   "i": 1987,
-  "t": "Lindungi lembar ini"
+  "t": "Terhubung ke {}"
  },
  {
   "i": 1988,
-  "t": "Diizinkan saat dilindungi"
+  "t": "Pilih tata letak yang disarankan (Anda juga bisa memilih sendiri bidangnya)"
  },
  {
   "i": 1989,
-  "t": "Pilih"
+  "t": "Pilih sendiri bidangnya (baris, lalu kolom, lalu nilai)"
  },
  {
   "i": 1990,
-  "t": "Sarankan hanya-baca"
+  "t": "Tata letak yang bisa dibuat dari tabel Anda. Tidak ada yang dibuat sampai Anda menekan salah satu"
  },
  {
   "i": 1991,
-  "t": "Disarankan (ini bukan kunci)"
+  "t": "Baris: {} / Kolom: {} / {} dari {}"
  },
  {
   "i": 1992,
-  "t": "Tidak disarankan"
+  "t": "Baris: {} / {} dari {}"
  },
  {
   "i": 1993,
-  "t": "Sarankan"
+  "t": "Lindungi buku kerja"
  },
  {
   "i": 1994,
-  "t": "Tanda tangan digital"
+  "t": "Inilah yang sedang berlaku. Menekan tombol akan kembali ke lembar dan menanyakan sisanya"
  },
  {
   "i": 1995,
-  "t": "Ada berkas tanda tangan di sebelahnya"
+  "t": "Enkripsi dengan kata sandi"
  },
  {
   "i": 1996,
-  "t": "Belum ditandatangani"
+  "t": "Aktif (mulai penyimpanan berikutnya)"
  },
  {
   "i": 1997,
-  "t": "Tanda tangani atau periksa"
+  "t": "Belum diatur"
  },
  {
   "i": 1998,
-  "t": "Perlindungan lembar dan saran hanya-baca bukan kunci. Siapa pun yang mau bisa melepasnya. Kami tidak berpura-pura sebaliknya"
+  "t": "Ubah atau hapus"
  },
  {
   "i": 1999,
-  "t": "Mari kita periksa. Ketik kata sandi yang sama sekali lagi lalu tekan Enter"
+  "t": "Tentukan kata sandi"
  },
  {
   "i": 2000,
-  "t": "Kedua kata sandi berbeda (enkripsi tidak diubah; silakan coba lagi)"
+  "t": "Lindungi lembar"
  },
  {
   "i": 2001,
-  "t": "Tidak ada yang diizinkan"
+  "t": "“{}” dilindungi"
  },
  {
   "i": 2002,
-  "t": "{} dari {} diizinkan"
+  "t": "“{}” tidak dilindungi"
  },
  {
   "i": 2003,
-  "t": "Enkripsi 1/2 — kata sandi (kosongkan lalu tekan Enter untuk melepas enkripsi)"
+  "t": "Lepas perlindungan"
  },
  {
   "i": 2004,
-  "t": "Enkripsi 2/2 — kata sandi yang sama sekali lagi"
+  "t": "Lindungi lembar ini"
  },
  {
   "i": 2005,
-  "t": "Pembelahan dihapus"
+  "t": "Diizinkan saat dilindungi"
  },
  {
   "i": 2006,
-  "t": "Letakkan kursor di tempat yang ingin dibelah (pembelahan terjadi di atas dan di kiri kursor)"
+  "t": "Pilih"
  },
  {
   "i": 2007,
-  "t": "Dibelah (roda tetikus menggulir bagian yang ditunjuk penunjuk)"
+  "t": "Sarankan hanya-baca"
  },
  {
   "i": 2008,
-  "t": "{} sel ditandai (tekan lagi untuk menghapus)"
+  "t": "Disarankan (ini bukan kunci)"
  },
  {
   "i": 2009,
-  "t": "Lembar ini tidak punya aturan validasi (tambahkan lewat Validasi data di tab Data)"
+  "t": "Tidak disarankan"
  },
  {
   "i": 2010,
-  "t": "Tidak ada nilai yang melanggar aturan validasi"
+  "t": "Sarankan"
  },
  {
   "i": 2011,
-  "t": "Tanda dihapus"
+  "t": "Tanda tangan digital"
  },
  {
   "i": 2012,
-  "t": "Ketik rentang sumber lalu tekan Enter (mis. Sheet1!A1:C20; sertakan baris judul)"
+  "t": "Ada berkas tanda tangan di sebelahnya"
  },
  {
   "i": 2013,
-  "t": "Letakkan kursor pada PivotTable yang ingin dialihkan"
+  "t": "Belum ditandatangani"
  },
  {
   "i": 2014,
-  "t": "Tulis rentang dalam bentuk A1:C20"
+  "t": "Tanda tangani atau periksa"
  },
  {
   "i": 2015,
-  "t": "Rentang tidak terbaca: {}"
+  "t": "Perlindungan lembar dan saran hanya-baca bukan kunci. Siapa pun yang mau bisa melepasnya. Kami tidak berpura-pura sebaliknya"
  },
  {
   "i": 2016,
-  "t": "Tidak ada lembar “{}”"
+  "t": "Mari kita periksa. Ketik kata sandi yang sama sekali lagi lalu tekan Enter"
  },
  {
   "i": 2017,
-  "t": "Rentang baru tidak punya judul ini: {} (PivotTable memakainya)"
+  "t": "Kedua kata sandi berbeda (enkripsi tidak diubah; silakan coba lagi)"
  },
  {
   "i": 2018,
-  "t": "Tabel sumber dialihkan ke {}!{}:{} (sedang dibangun ulang)"
+  "t": "Tidak ada yang diizinkan"
  },
  {
   "i": 2019,
-  "t": "Ketik dulu ruas kiri kendala"
+  "t": "{} dari {} diizinkan"
  },
  {
   "i": 2020,
-  "t": "Mencari solusi… (program bilangan bulat, branch and bound)"
+  "t": "Enkripsi 1/2 — kata sandi (kosongkan lalu tekan Enter untuk melepas enkripsi)"
  },
  {
   "i": 2021,
-  "t": "{} bukan sel variabel (bilangan bulat dan biner hanya untuk sel variabel)"
+  "t": "Enkripsi 2/2 — kata sandi yang sama sekali lagi"
  },
  {
   "i": 2022,
-  "t": "Solusi tidak ditemukan ({} mungkin tidak berpengaruh pada {})"
+  "t": "Pembelahan dihapus"
  },
  {
   "i": 2023,
-  "t": "Orientasi"
+  "t": "Letakkan kursor di tempat yang ingin dibelah (pembelahan terjadi di atas dan di kiri kursor)"
  },
  {
   "i": 2024,
-  "t": "Format sel"
+  "t": "Dibelah (roda tetikus menggulir bagian yang ditunjuk penunjuk)"
  },
  {
   "i": 2025,
-  "t": "Rata di tengah"
+  "t": "{} sel ditandai (tekan lagi untuk menghapus)"
  },
  {
   "i": 2026,
-  "t": "Fungsi Python"
+  "t": "Lembar ini tidak punya aturan validasi (tambahkan lewat Validasi data di tab Data)"
  },
  {
   "i": 2027,
-  "t": "Makro pita"
+  "t": "Tidak ada nilai yang melanggar aturan validasi"
  },
  {
   "i": 2028,
-  "t": "Salin format"
+  "t": "Tanda dihapus"
  },
  {
   "i": 2029,
-  "t": "Gaya"
+  "t": "Ketik rentang sumber lalu tekan Enter (mis. Sheet1!A1:C20; sertakan baris judul)"
  },
  {
   "i": 2030,
-  "t": "Daftar bidang"
+  "t": "Letakkan kursor pada PivotTable yang ingin dialihkan"
  },
  {
   "i": 2031,
-  "t": "Perbesar teks layar"
+  "t": "Tulis rentang dalam bentuk A1:C20"
  },
  {
   "i": 2032,
-  "t": "Perkecil teks layar"
+  "t": "Rentang tidak terbaca: {}"
  },
  {
   "i": 2033,
-  "t": "Lingkari data tidak valid"
+  "t": "Tidak ada lembar “{}”"
  },
  {
   "i": 2034,
-  "t": "Belah jendela"
+  "t": "Rentang baru tidak punya judul ini: {} (PivotTable memakainya)"
  },
  {
   "i": 2035,
-  "t": "Skenario"
+  "t": "Tabel sumber dialihkan ke {}!{}:{} (sedang dibangun ulang)"
  },
  {
   "i": 2036,
-  "t": "AI"
+  "t": "Ketik dulu ruas kiri kendala"
  },
  {
   "i": 2037,
-  "t": "Cetak"
+  "t": "Mencari solusi… (program bilangan bulat, branch and bound)"
  },
  {
   "i": 2038,
-  "t": "Tata letak cetak"
+  "t": "{} bukan sel variabel (bilangan bulat dan biner hanya untuk sel variabel)"
  },
  {
   "i": 2039,
-  "t": "Tujuan"
+  "t": "Solusi tidak ditemukan ({} mungkin tidak berpengaruh pada {})"
  },
  {
   "i": 2040,
-  "t": "Peringkasan"
+  "t": "Orientasi"
  },
  {
   "i": 2041,
-  "t": "Tulis ulang"
+  "t": "Format sel"
  },
  {
   "i": 2042,
-  "t": "Lebih sopan"
+  "t": "Rata di tengah"
  },
  {
   "i": 2043,
-  "t": "Lebih sederhana"
+  "t": "Fungsi Python"
  },
  {
   "i": 2044,
-  "t": "Penerjemahan"
+  "t": "Makro pita"
  },
  {
   "i": 2045,
-  "t": "Furigana"
+  "t": "Salin format"
  },
  {
   "i": 2046,
-  "t": "Lanjutkan"
+  "t": "Gaya"
  },
  {
   "i": 2047,
-  "t": "Jadi tabel"
+  "t": "Daftar bidang"
  },
  {
   "i": 2048,
-  "t": "Minta"
+  "t": "Perbesar teks layar"
  },
  {
   "i": 2049,
-  "t": "Ruby"
+  "t": "Perkecil teks layar"
  },
  {
   "i": 2050,
-  "t": "Vertikal"
+  "t": "Lingkari data tidak valid"
  },
  {
   "i": 2051,
-  "t": "Arah teks"
+  "t": "Belah jendela"
  },
  {
   "i": 2052,
-  "t": "Terdistribusi"
+  "t": "Skenario"
  },
  {
   "i": 2053,
-  "t": "Sisipkan keterangan"
+  "t": "Lembar ramalan"
  },
  {
   "i": 2054,
-  "t": "Buka URL"
+  "t": "AI"
  },
  {
   "i": 2055,
-  "t": "Indeks"
+  "t": "Cetak"
  },
  {
   "i": 2056,
-  "t": "Catatan Aozora"
+  "t": "Tata letak cetak"
  },
  {
   "i": 2057,
-  "t": "Notasi Denden"
+  "t": "Tujuan"
  },
  {
   "i": 2058,
-  "t": "Lacak perubahan"
+  "t": "Peringkasan"
  },
  {
   "i": 2059,
-  "t": "Tampilkan perubahan"
+  "t": "Tulis ulang"
  },
  {
   "i": 2060,
-  "t": "Pemeriksaan"
+  "t": "Lebih sopan"
  },
  {
   "i": 2061,
-  "t": "Karakter"
+  "t": "Lebih sederhana"
  },
  {
   "i": 2062,
-  "t": "Periksa ejaan"
+  "t": "Penerjemahan"
  },
  {
   "i": 2063,
-  "t": "Tesaurus"
+  "t": "Furigana"
  },
  {
   "i": 2064,
-  "t": "Salah konversi"
+  "t": "Lanjutkan"
  },
  {
   "i": 2065,
-  "t": "Inkonsistensi"
+  "t": "Jadi tabel"
  },
  {
   "i": 2066,
-  "t": "Subtotal"
+  "t": "Minta"
  },
  {
   "i": 2067,
-  "t": "Kalkulasi"
+  "t": "Ruby"
  },
  {
   "i": 2068,
-  "t": "Teks kanan-ke-kiri"
+  "t": "Vertikal"
  },
  {
   "i": 2069,
-  "t": "Arah lembar kerja"
+  "t": "Arah teks"
  },
  {
   "i": 2070,
-  "t": "Python"
+  "t": "Terdistribusi"
  },
  {
   "i": 2071,
-  "t": "Kotak centang"
+  "t": "Sisipkan keterangan"
  },
  {
   "i": 2072,
-  "t": "Tautan eksternal"
+  "t": "Buka URL"
  },
  {
   "i": 2073,
-  "t": "Grafik yang disarankan"
+  "t": "Indeks"
  },
  {
   "i": 2074,
-  "t": "Mode pengeditan bersama"
+  "t": "Catatan Aozora"
  },
  {
   "i": 2075,
-  "t": "Riwayat versi"
+  "t": "Notasi Denden"
  },
  {
   "i": 2076,
-  "t": "Obrolan"
+  "t": "Lacak perubahan"
  },
  {
   "i": 2077,
-  "t": "Lindungi"
+  "t": "Tampilkan perubahan"
  },
  {
   "i": 2078,
-  "t": "Enkripsi"
+  "t": "Pemeriksaan"
  },
  {
   "i": 2079,
-  "t": "Tambahkan tanda tangan digital"
+  "t": "Karakter"
  },
  {
   "i": 2080,
-  "t": "Makro"
+  "t": "Periksa ejaan"
  },
  {
   "i": 2081,
-  "t": "Kelola plugin"
+  "t": "Tesaurus"
  },
  {
   "i": 2082,
-  "t": "Tampilkan nol"
+  "t": "Salah konversi"
  },
  {
   "i": 2083,
-  "t": "Zoom ke 100%"
+  "t": "Inkonsistensi"
  },
  {
   "i": 2084,
-  "t": "Tema antarmuka"
+  "t": "Subtotal"
  },
  {
   "i": 2085,
-  "t": "Jendela pantauan"
+  "t": "Kalkulasi"
  },
  {
   "i": 2086,
-  "t": "JumlahOtomatis"
+  "t": "Teks kanan-ke-kiri"
  },
  {
   "i": 2087,
-  "t": "Rekam tindakan"
+  "t": "Arah lembar kerja"
  },
  {
   "i": 2088,
-  "t": "Hapus komentar"
+  "t": "Python"
  },
  {
   "i": 2089,
-  "t": "Solver"
+  "t": "Kotak centang"
  },
  {
   "i": 2090,
-  "t": "Teks ke data"
+  "t": "Tautan eksternal"
  },
  {
   "i": 2091,
-  "t": "Hapus panah"
+  "t": "Grafik yang disarankan"
  },
  {
   "i": 2092,
-  "t": "Isi"
+  "t": "Mode pengeditan bersama"
  },
  {
   "i": 2093,
-  "t": "Bersihkan filter"
+  "t": "Riwayat versi"
  },
  {
   "i": 2094,
-  "t": "Tulis makro"
+  "t": "Obrolan"
  },
  {
   "i": 2095,
-  "t": "Teks ke kolom"
+  "t": "Lindungi"
  },
  {
   "i": 2096,
-  "t": "Keterangan"
+  "t": "Enkripsi"
  },
  {
   "i": 2097,
-  "t": "Daftar gambar"
+  "t": "Tambahkan tanda tangan digital"
  },
  {
   "i": 2098,
-  "t": "Perbarui daftar gambar"
+  "t": "Makro"
  },
  {
   "i": 2099,
-  "t": "Tautan eksternal (impor sebagai nilai)"
+  "t": "Kelola plugin"
  },
  {
   "i": 2100,
-  "t": "Matematika & Trigonometri"
+  "t": "Tampilkan nol"
  },
  {
   "i": 2101,
-  "t": "Tampilkan rumus"
+  "t": "Zoom ke 100%"
  },
  {
   "i": 2102,
-  "t": "Arah teks (kanan-ke-kiri)"
+  "t": "Tema antarmuka"
  },
  {
   "i": 2103,
-  "t": "Teks"
+  "t": "Jendela pantauan"
  },
  {
   "i": 2104,
-  "t": "Tanggal & Waktu"
+  "t": "JumlahOtomatis"
  },
  {
   "i": 2105,
-  "t": "Baru digunakan"
+  "t": "Rekam tindakan"
  },
  {
   "i": 2106,
-  "t": "Cetak garis kisi"
+  "t": "Hapus komentar"
  },
  {
   "i": 2107,
-  "t": "Perbarui daftar isi"
+  "t": "Solver"
  },
  {
   "i": 2108,
-  "t": "Kolom berpita"
+  "t": "Teks ke data"
  },
  {
   "i": 2109,
-  "t": "Cetak judul"
+  "t": "Hapus panah"
  },
  {
   "i": 2110,
-  "t": "Sembunyikan rincian"
+  "t": "Isi"
  },
  {
   "i": 2111,
-  "t": "Hapus duplikat"
+  "t": "Bersihkan filter"
  },
  {
   "i": 2112,
-  "t": "Sisipkan fungsi"
+  "t": "Tulis makro"
  },
  {
   "i": 2113,
-  "t": "Format CSV"
+  "t": "Teks ke kolom"
  },
  {
   "i": 2114,
-  "t": "Kunci sel"
+  "t": "Keterangan"
  },
  {
   "i": 2115,
-  "t": "Tabel data"
+  "t": "Daftar gambar"
  },
  {
   "i": 2116,
-  "t": "Isi menurut contoh"
+  "t": "Perbarui daftar gambar"
  },
  {
   "i": 2117,
-  "t": "Daftar"
+  "t": "Tautan eksternal (impor sebagai nilai)"
  },
  {
   "i": 2118,
-  "t": "Tempel nama"
+  "t": "Matematika & Trigonometri"
  },
  {
   "i": 2119,
-  "t": "Pemulihan"
+  "t": "Tampilkan rumus"
  },
  {
   "i": 2120,
-  "t": "Bungkus teks"
+  "t": "Arah teks (kanan-ke-kiri)"
  },
  {
   "i": 2121,
-  "t": "Selang salinan"
+  "t": "Teks"
  },
  {
   "i": 2122,
-  "t": ".py baru"
+  "t": "Tanggal & Waktu"
  },
  {
   "i": 2123,
-  "t": "Tambah rentang"
+  "t": "Baru digunakan"
  },
  {
   "i": 2124,
-  "t": "Muatkan ke kertas"
+  "t": "Cetak garis kisi"
  },
  {
   "i": 2125,
-  "t": "Batas kertas"
+  "t": "Perbarui daftar isi"
  },
  {
   "i": 2126,
-  "t": "Buka folder plugins"
+  "t": "Kolom berpita"
  },
  {
   "i": 2127,
-  "t": "Jenis perhitungan"
+  "t": "Cetak judul"
  },
  {
   "i": 2128,
-  "t": "Tindakan yang diizinkan"
+  "t": "Sembunyikan rincian"
  },
  {
   "i": 2129,
+  "t": "Hapus duplikat"
+ },
+ {
+  "i": 2130,
+  "t": "Sisipkan fungsi"
+ },
+ {
+  "i": 2131,
+  "t": "Format CSV"
+ },
+ {
+  "i": 2132,
+  "t": "Kunci sel"
+ },
+ {
+  "i": 2133,
+  "t": "Tabel data"
+ },
+ {
+  "i": 2134,
+  "t": "Isi menurut contoh"
+ },
+ {
+  "i": 2135,
+  "t": "Daftar"
+ },
+ {
+  "i": 2136,
+  "t": "Tempel nama"
+ },
+ {
+  "i": 2137,
+  "t": "Pemulihan"
+ },
+ {
+  "i": 2138,
+  "t": "Bungkus teks"
+ },
+ {
+  "i": 2139,
+  "t": "Selang salinan"
+ },
+ {
+  "i": 2140,
+  "t": ".py baru"
+ },
+ {
+  "i": 2141,
+  "t": "Tambah rentang"
+ },
+ {
+  "i": 2142,
+  "t": "Muatkan ke kertas"
+ },
+ {
+  "i": 2143,
+  "t": "Batas kertas"
+ },
+ {
+  "i": 2144,
+  "t": "Buka folder plugins"
+ },
+ {
+  "i": 2145,
+  "t": "Jenis perhitungan"
+ },
+ {
+  "i": 2146,
+  "t": "Tindakan yang diizinkan"
+ },
+ {
+  "i": 2147,
   "t": "Sarankan hanya-baca"
  }
 ]

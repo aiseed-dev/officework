@@ -4532,6 +4532,11 @@ impl Calc {
                         ui::t!("2回のパスワードが違います(暗号化は変えていません。もう一度どうぞ)").into();
                 }
             }
+            // 予測シート — 何期先まで
+            "forecast-h" => {
+                let h = text.trim().parse::<usize>().unwrap_or(6).clamp(1, 60);
+                self.forecast_run(h, cx);
+            }
             // シナリオの名前。**いま選んでいるセルの値をそのまま控えます**
             "scenario-name" => {
                 let name = text.trim().to_string();

@@ -808,6 +808,10 @@ EXTRA_CMDS = {
         ("表示", 'ui-smaller', "darkmode", "ダークモード", "theme", "t"),
         # シナリオ。本家に無い。語は LibreOffice の `Scenario`(14 言語ある)
         ("データ", 'goal-seek', "scenario", "シナリオ", "scenario", "c"),
+        # 予測シート。本家にも LibreOffice にも当たる語が無い。
+        # 語は Excel の「予測シート」で、13 言語はこちらで訳した
+        # (2026-08-21「レポートの接続」と同じ扱い)
+        ("データ", 'scenario', "forecast", "予測シート", "forecast", "c"),
         # ウィンドウの分割。本家に無いので、Excel の「分割」に合わせて足す。
         # 分割している間は押された形にしたいので、書き方は t(入切)
         ("表示", 'freeze', "split", "分割", "split", "t"),

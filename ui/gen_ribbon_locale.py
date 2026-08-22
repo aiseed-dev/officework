@@ -54,6 +54,7 @@ OVERRIDES = {
         "無効データのマーク": "Circle invalid data",
         "分割": "Split",
         "シナリオ": "Scenario",
+        "予測シート": "Forecast Sheet",
         # タブ
         "AI": "AI",
         # ファイル

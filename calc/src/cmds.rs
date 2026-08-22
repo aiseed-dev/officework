@@ -104,7 +104,7 @@ impl Calc {
         "fn-math", "fn-text", "fn-logical", "fn-recent",
         "sum", "average", "count", "max", "min",
         "data-validation", "dv-mark", "condformat", "defname", "split", "scenario",
-        "final-mark",
+        "final-mark", "forecast",
         "pageorient", "pagesize", "pagemargins", "printarea",
         "inschart", "insimage", "inshyperlink", "replace",
         "changecase", "format", "cell-format", "fontname", "fontsize",
@@ -333,7 +333,7 @@ impl Calc {
     pub(crate) const DIALOG_IDS: &'static [&'static str] = &[
         "insert-function", "cell-format", "data-validation", "custom-sort",
         "python", "prot-encrypt", "co-chat", "instext", "insequation",
-        "td-resize", "subtotal", "datatable",
+        "td-resize", "subtotal", "datatable", "forecast",
         "co-addcomment", "text-column", "goal-seek", "replace", "inshyperlink",
         "solver",
     ];
@@ -3683,6 +3683,13 @@ impl Calc {
                 );
                 self.pick_kind = "names-pick";
                 self.pick = Some((items, at));
+            }
+            // 予測シート。指数平滑で先を出し、新しいシートに置く
+            "forecast" => {
+                self.commit();
+                self.prompt = Some(("forecast-h", Editor::new("6")));
+                self.status =
+                    ui::t!("何期先まで予測しますか(数を打って Enter。空 Enter = 6 期)").into();
             }
             // 最終版の札。**鍵ではありません** — 読み取り専用の勧めと同じ扱いで、
             // 開いた人に「もう直さないでください」と伝えるだけです
