@@ -2377,6 +2377,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                                 src: (a, b),
                                 rows_sel: Vec::new(),
                                 cols_sel: Vec::new(),
+                                chart_at: attr(&e, "chart").and_then(|d| Pos::parse(&d)),
                                 value: attr_un(&e, "value").unwrap_or_default(),
                                 agg: attr_un(&e, "agg").unwrap_or_else(|| "合計".into()),
                                 totals: attr(&e, "totals").as_deref() == Some("1"),

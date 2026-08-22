@@ -554,7 +554,8 @@ impl Calc {
             esc(&font),
             esc(&out.to_string_lossy())
         ));
-        let at = Pos::new(a.row, b.col + 1);
+        // 置き場が指してあればそこへ(ピボットグラフ)。無ければ範囲の右隣
+        let at = self.chart_dest.take().unwrap_or_else(|| Pos::new(a.row, b.col + 1));
         self.status = ui::t!("グラフを描いています…").into();
         let task = cx.background_executor().spawn(async move {
             let json_path = dir.join("chart.json");
@@ -633,6 +634,8 @@ impl Calc {
             dest: keep.as_ref().map(|d| d.dest).unwrap_or(pend.a), // 仮 — 置くときに決める
             size: keep.as_ref().map(|d| d.size).unwrap_or((0, 0)),
             hide: keep.as_ref().map(|d| d.hide.clone()).unwrap_or_default(),
+            // 組み替えでも図は据え置く(付けた図が消えない)
+            chart_at: keep.as_ref().and_then(|d| d.chart_at),
             style: keep.as_ref().map(|d| d.style.clone()).unwrap_or_default(),
             vfilter: keep.as_ref().and_then(|d| d.vfilter.clone()),
             group_by: keep.as_ref().map(|d| d.group_by.clone()).unwrap_or_default(),
@@ -827,6 +830,8 @@ impl Calc {
                                     let (value, agg) = (def.value.clone(), def.agg.clone());
                                     this.book.pivots.push(def);
                                     this.dirty = true;
+                                    let pi = this.book.pivots.len() - 1;
+                                    this.pivot_chart_redraw(pi, cx);
                                     // カーソルを置いた集計へ移し、ピボットテーブルの
                                     // タブを開く(本家の showPivotTab と同じ)。
                                     // 文脈タブに気づかないままにしない
@@ -897,6 +902,10 @@ impl Calc {
                                     recalc_book(&mut this.book, si);
                                     this.book.pivots[pi] = def;
                                     this.dirty = true;
+                                    // **図もここで描き直します。**ピボットが
+                                    // 変わったのに図が古いままだと、同じ画面に
+                                    // 食い違う2つの数字が並びます
+                                    this.pivot_chart_redraw(pi, cx);
                                     this.sync_input();
                                     this.status = ui::tf!(
                                         "ピボットを更新しました({} — その時の値。Ctrl+Z で戻せます)",
@@ -1639,6 +1648,35 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         self.insert_chart_kind(Pos::new(0, 0), Pos::new((n + fc.len()) as u32, 4), "line", cx);
         self.anchor = None;
         self.status = 断り.into();
+    }
+
+    /// **ピボットに連動する図を描き直す**(ピボットグラフ。2026-08-22)。
+    ///
+    /// 指図に置き場(`chart_at`)が入っているときだけ働きます。ピボットを
+    /// 置き直すたびに呼ばれるので、**図がピボットに遅れません** — 遅れると、
+    /// 同じ画面に食い違う2つの数字が並びます。
+    pub(crate) fn pivot_chart_redraw(&mut self, pi: usize, cx: &mut Context<Self>) {
+        let Some(d) = self.book.pivots.get(pi).cloned() else { return };
+        let Some(at) = d.chart_at else { return };
+        let Some(si) = self.book.sheets.iter().position(|s| s.name == d.sheet) else { return };
+        if self.active != si {
+            return; // 別のシートを見ている間は描かない(絵は開いたときに追いつく)
+        }
+        // 古い図を外す。**同じ場所に重ねない**
+        self.book.sheets[si].images_new.retain(|im| im.at != at);
+        // **総計は図に入れません。**入れると、総計の棒だけが飛び抜けて、
+        // 他の棒が潰れて読めなくなります(実機で見た)
+        let 総計行 = u32::from(d.totals);
+        let 総計列 = u32::from(d.totals && !d.cols_sel.is_empty());
+        let 行 = d.size.0.saturating_sub(総計行);
+        let 列 = d.size.1.saturating_sub(総計列);
+        if 行 < 2 || 列 < 2 {
+            return;
+        }
+        let a = d.dest;
+        let b = Pos::new(d.dest.row + 行 - 1, d.dest.col + 列 - 1);
+        self.chart_dest = Some(at);
+        self.insert_chart_kind(a, b, "bar", cx);
     }
 
     /// **予測シート**(2026-08-22。台帳の [大])。

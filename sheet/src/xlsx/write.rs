@@ -1376,7 +1376,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         );
         for d in &book.pivots {
             px.push_str(&format!(
-                "<pivot sheet=\"{}\" src=\"{}:{}\" dest=\"{}\" h=\"{}\" w=\"{}\" value=\"{}\" agg=\"{}\" totals=\"{}\" subtotals=\"{}\" blank=\"{}\" compact=\"{}\" style=\"{}\" name=\"{}\">",
+                "<pivot sheet=\"{}\" src=\"{}:{}\" dest=\"{}\" h=\"{}\" w=\"{}\" value=\"{}\" agg=\"{}\" totals=\"{}\" subtotals=\"{}\" blank=\"{}\" compact=\"{}\" style=\"{}\" name=\"{}\" chart=\"{}\">",
                 esc(&d.sheet),
                 d.src.0.a1(),
                 d.src.1.a1(),
@@ -1391,6 +1391,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 d.compact as u8,
                 esc(&d.style),
                 esc(&d.name),
+                d.chart_at.map(|p| p.a1()).unwrap_or_default(),
             ));
             for r in &d.rows_sel {
                 px.push_str(&format!("<r>{}</r>", esc(r)));

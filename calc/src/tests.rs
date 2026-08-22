@@ -1037,6 +1037,7 @@ mod pivot_tests {
             subtotals: false,
             blank_rows: false,
             compact: false,
+            chart_at: None,
             dest: Pos::new(0, 0),
             size: (0, 0),
             hide: Vec::new(),
@@ -2796,6 +2797,81 @@ mod recalc_tests {
         });
     }
 
+    /// **ピボットグラフ**(2026-08-22。台帳の [大])。
+    ///
+    /// 図はピボットの写しです。**ピボットを作り直すたびに描き直す**ことを
+    /// 見ます。遅れると、同じ画面に食い違う2つの数字が並びます。
+    #[gpui::test]
+    async fn ピボットグラフはピボットに連れて描き直る(cx: &mut gpui::TestAppContext) {
+        if !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../.venv/bin/python")
+            .exists()
+        {
+            eprintln!("skip: .venv が無い(端到端は飛ばす)");
+            return;
+        }
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (a1, v) in [
+                ("A1", "区分"), ("B1", "金額"),
+                ("A2", "筆記具"), ("B2", "100"),
+                ("A3", "紙製品"), ("B3", "200"),
+                ("A4", "文具"), ("B4", "50"),
+            ] {
+                this.cursor = Pos::parse(a1).unwrap();
+                this.sync_input();
+                this.input.insert(v);
+                assert!(this.commit());
+            }
+            this.anchor = None;
+            this.cursor = Pos::parse("A2").unwrap();
+            this.sync_input();
+            this.run_cmd("pivot-insert", cx);
+            this.apply_pick("#0", cx);
+        });
+        cx.executor().advance_clock(std::time::Duration::from_secs(30));
+        cx.run_until_parked();
+        c.update(cx, |this, cx| {
+            assert_eq!(this.book.pivots.len(), 1, "ピボットが建たない: {}", this.status);
+            // ピボットの上にカーソルを置いて図を付ける
+            this.cursor = this.book.pivots[0].dest;
+            this.run_cmd("pivot-chart", cx);
+            assert!(this.book.pivots[0].chart_at.is_some(), "図の置き場が入らない");
+        });
+        cx.executor().advance_clock(std::time::Duration::from_secs(60));
+        cx.run_until_parked();
+        let 一枚目 = c.update(cx, |this, _cx| {
+            let at = this.book.pivots[0].chart_at.unwrap();
+            let im = this.sheet().images_new.iter().find(|im| im.at == at);
+            assert!(im.is_some(), "図が置かれない: {}", this.status);
+            im.unwrap().data.len()
+        });
+        // 元の表を変えて更新すると、図も描き直る
+        c.update(cx, |this, cx| {
+            this.active = 0;
+            this.cursor = Pos::parse("B2").unwrap();
+            this.sync_input();
+            this.input.insert("9999");
+            assert!(this.commit());
+            this.cursor = this.book.pivots[0].dest;
+            this.run_cmd("pivot-refresh", cx);
+        });
+        cx.executor().advance_clock(std::time::Duration::from_secs(60));
+        cx.run_until_parked();
+        c.update(cx, |this, _cx| {
+            let at = this.book.pivots[0].chart_at.unwrap();
+            let im = this.sheet().images_new.iter().find(|im| im.at == at);
+            assert!(im.is_some(), "更新したら図が消えた");
+            // **同じ場所に1枚だけ**(重ねない)
+            assert_eq!(
+                this.sheet().images_new.iter().filter(|im| im.at == at).count(),
+                1,
+                "図が重なった"
+            );
+            assert_ne!(im.unwrap().data.len(), 一枚目, "図が古いまま(描き直っていない)");
+        });
+    }
+
     /// **予測シート**(2026-08-22。台帳の [大])。
     ///
     /// 中身は Python(指数平滑)なので、ここは**配線**を見ます。
@@ -3510,6 +3586,7 @@ mod recalc_tests {
                 subtotals: false,
                 blank_rows: false,
                 compact: true,
+                chart_at: None,
                 dest: Pos::parse("D1").unwrap(),
                 size: (3, 2),
                 hide: Vec::new(),
@@ -3571,6 +3648,7 @@ mod recalc_tests {
                 subtotals: false,
                 blank_rows: false,
                 compact: true,
+                chart_at: None,
                 dest: Pos::parse("D1").unwrap(),
                 size: (3, 2), // D1:E3 に置いてある体
                 hide: Vec::new(),

@@ -201,6 +201,7 @@ impl Calc {
             pw_pending: None,
             pw_first: None,
             salvaged: false,
+            chart_dest: None,
             repair_pend: None,
             goal: None,
             py_spills: Default::default(),

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" fill="none" id="btn-pivot-chart">
+    <path d="M3.5 21.5v-14M3.5 21.5h9" class="icon-stroke-gray-primary"/>
+    <path d="M6 19v-4M9 19v-7" class="icon-stroke-blue" stroke-width="2"/>
+    <rect x="15.5" y="7.5" width="9" height="14" rx="1" class="icon-stroke-gray-primary"/>
+    <path d="M15.5 11.5h9M20 11.5v10" class="icon-stroke-gray-primary"/>
+    <path d="M12.5 10.5h3" class="icon-stroke-red" stroke-dasharray="2 2"/>
+</svg>

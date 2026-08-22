@@ -55,6 +55,7 @@ OVERRIDES = {
         "分割": "Split",
         "シナリオ": "Scenario",
         "予測シート": "Forecast Sheet",
+        "ピボットグラフ": "PivotChart",
         # タブ
         "AI": "AI",
         # ファイル

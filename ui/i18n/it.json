@@ -7665,930 +7665,942 @@
  },
  {
   "i": 1916,
-  "t": "Quanti periodi in avanti? (digita un numero e premi Invio; vuoto = 6)"
+  "t": "Il grafico pivot è stato tolto"
  },
  {
   "i": 1917,
-  "t": "Il risultato della previsione non si riesce a leggere"
+  "t": "Grafico pivot messo in {} (aggiornando la tabella pivot viene ridisegnato; lo stesso pulsante lo toglie)"
  },
  {
   "i": 1918,
-  "t": "Previsione"
+  "t": "Quanti periodi in avanti? (digita un numero e premi Invio; vuoto = 6)"
  },
  {
   "i": 1919,
-  "t": "Effettivo"
+  "t": "Il risultato della previsione non si riesce a leggere"
  },
  {
   "i": 1920,
-  "t": "Periodo"
+  "t": "Previsione"
  },
  {
   "i": 1921,
-  "t": "Limite inferiore"
+  "t": "Effettivo"
  },
  {
   "i": 1922,
-  "t": "Limite superiore"
+  "t": "Periodo"
  },
  {
   "i": 1923,
-  "t": "Previsione {}"
+  "t": "Limite inferiore"
  },
  {
   "i": 1924,
-  "t": "Stagione di {} periodi (trovata da sola)"
+  "t": "Limite superiore"
  },
  {
   "i": 1925,
-  "t": "Non è stata trovata nessuna stagione"
+  "t": "Previsione {}"
  },
  {
   "i": 1926,
-  "t": "Previsione su {} periodi. {}. L'intervallo è un'attesa al 95%, non una promessa (errore tipico {:.1})"
+  "t": "Stagione di {} periodi (trovata da sola)"
  },
  {
   "i": 1927,
-  "t": "Per la previsione servono almeno 4 righe di numeri sotto l'intestazione"
+  "t": "Non è stata trovata nessuna stagione"
  },
  {
   "i": 1928,
-  "t": "Nessuna colonna di numeri trovata (ne servono almeno 4)"
+  "t": "Previsione su {} periodi. {}. L'intervallo è un'attesa al 95%, non una promessa (errore tipico {:.1})"
  },
  {
   "i": 1929,
-  "t": "Per la previsione servono almeno 4 numeri"
+  "t": "Per la previsione servono almeno 4 righe di numeri sotto l'intestazione"
  },
  {
   "i": 1930,
-  "t": "Sto prevedendo…"
+  "t": "Nessuna colonna di numeri trovata (ne servono almeno 4)"
  },
  {
   "i": 1931,
-  "t": "Mancano gli strumenti che servono alla previsione. Installali con:\n  {}"
+  "t": "Per la previsione servono almeno 4 numeri"
  },
  {
   "i": 1932,
-  "t": "Non riesco a prevedere: {}"
+  "t": "Sto prevedendo…"
  },
  {
   "i": 1933,
-  "t": "Finale"
+  "t": "Mancano gli strumenti che servono alla previsione. Installali con:\n  {}"
  },
  {
   "i": 1934,
-  "t": "Contrassegnato come finale (non è un blocco)"
+  "t": "Non riesco a prevedere: {}"
  },
  {
   "i": 1935,
-  "t": "Non contrassegnato"
+  "t": "Finale"
  },
  {
   "i": 1936,
-  "t": "Togli il contrassegno"
+  "t": "Contrassegnato come finale (non è un blocco)"
  },
  {
   "i": 1937,
-  "t": "Contrassegna come finale"
+  "t": "Non contrassegnato"
  },
  {
   "i": 1938,
-  "t": "Questa cartella di lavoro è contrassegnata come finale (non è un blocco: puoi ancora modificarla; togli il contrassegno da «Proteggi» nella scheda File)"
+  "t": "Togli il contrassegno"
  },
  {
   "i": 1939,
-  "t": "Il contrassegno «finale» è stato tolto"
+  "t": "Contrassegna come finale"
  },
  {
   "i": 1940,
-  "t": "Contrassegnato come finale (non è un blocco: puoi ancora modificarla; salvando resta nell'xlsx)"
+  "t": "Questa cartella di lavoro è contrassegnata come finale (non è un blocco: puoi ancora modificarla; togli il contrassegno da «Proteggi» nella scheda File)"
  },
  {
   "i": 1941,
-  "t": "Apri una copia conservata: {}"
+  "t": "Il contrassegno «finale» è stato tolto"
  },
  {
   "i": 1942,
-  "t": "→ Recupera ciò che si riesce a leggere e aprilo (sola lettura)"
+  "t": "Contrassegnato come finale (non è un blocco: puoi ancora modificarla; salvando resta nell'xlsx)"
  },
  {
   "i": 1943,
-  "t": "Non ci sono copie conservate. Si apre solo con le parti recuperate (non puoi sovrascrivere)"
+  "t": "Apri una copia conservata: {}"
  },
  {
   "i": 1944,
-  "t": "Una copia conservata è più sicura. Il recupero è il ripiego"
+  "t": "→ Recupera ciò che si riesce a leggere e aprilo (sola lettura)"
  },
  {
   "i": 1945,
-  "t": "Questo file non si riesce a leggere: {}"
+  "t": "Non ci sono copie conservate. Si apre solo con le parti recuperate (non puoi sovrascrivere)"
  },
  {
   "i": 1946,
-  "t": "Questa cartella di lavoro è stata recuperata, quindi non sovrascrive. Usa Salva con nome (il file originale non viene toccato)"
+  "t": "Una copia conservata è più sicura. Il recupero è il ripiego"
  },
  {
   "i": 1947,
-  "t": "Non si è potuto recuperare nulla (nessuna parte si legge come zip)"
+  "t": "Questo file non si riesce a leggere: {}"
  },
  {
   "i": 1948,
-  "t": "Non si è riusciti a leggere {} ({})"
+  "t": "Questa cartella di lavoro è stata recuperata, quindi non sovrascrive. Usa Salva con nome (il file originale non viene toccato)"
  },
  {
   "i": 1949,
-  "t": "Tutte le parti sono state recuperate (era danneggiato solo l'indice dello zip)"
+  "t": "Non si è potuto recuperare nulla (nessuna parte si legge come zip)"
  },
  {
   "i": 1950,
-  "t": "Aperto con {} parti recuperate ({} non recuperabili). Non puoi sovrascrivere"
+  "t": "Non si è riusciti a leggere {} ({})"
  },
  {
   "i": 1951,
-  "t": "Non si apre nemmeno con le parti recuperate: {}"
+  "t": "Tutte le parti sono state recuperate (era danneggiato solo l'indice dello zip)"
  },
  {
   "i": 1952,
-  "t": "Questa cartella di lavoro è stata messa insieme da un file danneggiato (sola lettura — non puoi sovrascrivere)"
+  "t": "Aperto con {} parti recuperate ({} non recuperabili). Non puoi sovrascrivere"
  },
  {
   "i": 1953,
-  "t": "Elenco i valori stessi (il filtro è stato tolto)"
+  "t": "Non si apre nemmeno con le parti recuperate: {}"
  },
  {
   "i": 1954,
-  "t": "Raggruppo le date per {} (il filtro è stato tolto)"
+  "t": "Questa cartella di lavoro è stata messa insieme da un file danneggiato (sola lettura — non puoi sovrascrivere)"
  },
  {
   "i": 1955,
-  "t": "Non è una data"
+  "t": "Elenco i valori stessi (il filtro è stato tolto)"
  },
  {
   "i": 1956,
-  "t": "I valori stessi"
+  "t": "Raggruppo le date per {} (il filtro è stato tolto)"
  },
  {
   "i": 1957,
-  "t": "Unità di data"
+  "t": "Non è una data"
  },
  {
   "i": 1958,
-  "t": "Cerco tabelle nel PDF…"
+  "t": "I valori stessi"
  },
  {
   "i": 1959,
-  "t": "Manca lo strumento che legge i PDF (pdfplumber). Installalo con:\n  {}"
+  "t": "Unità di data"
  },
  {
   "i": 1960,
-  "t": "Non riesco a leggere il PDF: {}"
+  "t": "Cerco tabelle nel PDF…"
  },
  {
   "i": 1961,
-  "t": "In questo PDF non è stata trovata nessuna tabella (una tabella incollata come immagine non si può leggere)"
+  "t": "Manca lo strumento che legge i PDF (pdfplumber). Installalo con:\n  {}"
  },
  {
   "i": 1962,
-  "t": "{} di {} (pagina {})"
+  "t": "Non riesco a leggere il PDF: {}"
  },
  {
   "i": 1963,
-  "t": "Dalle linee"
+  "t": "In questo PDF non è stata trovata nessuna tabella (una tabella incollata come immagine non si può leggere)"
  },
  {
   "i": 1964,
-  "t": "Dalla posizione del testo (una stima)"
+  "t": "{} di {} (pagina {})"
  },
  {
   "i": 1965,
-  "t": "Come è stata trovata"
+  "t": "Dalle linee"
  },
  {
   "i": 1966,
-  "t": "Nota: non c'erano linee, quindi è una stima. Controlla che le colonne siano allineate"
+  "t": "Dalla posizione del testo (una stima)"
  },
  {
   "i": 1967,
-  "t": "{} ({} celle)"
+  "t": "Come è stata trovata"
  },
  {
   "i": 1968,
-  "t": "→ Nuovo scenario (i valori attuali delle celle selezionate)…"
+  "t": "Nota: non c'erano linee, quindi è una stima. Controlla che le colonne siano allineate"
  },
  {
   "i": 1969,
-  "t": "→ Elimina uno scenario…"
+  "t": "{} ({} celle)"
  },
  {
   "i": 1970,
-  "t": "Non ce n'è ancora nessuno. Seleziona le celle da far variare, poi creane uno"
+  "t": "→ Nuovo scenario (i valori attuali delle celle selezionate)…"
  },
  {
   "i": 1971,
-  "t": "Premendone uno, i suoi valori vengono riscritti nelle celle (Ctrl+Z annulla)"
+  "t": "→ Elimina uno scenario…"
  },
  {
   "i": 1972,
-  "t": "Troppe celle selezionate (al massimo 64; seleziona solo quelle da far variare)"
+  "t": "Non ce n'è ancora nessuno. Seleziona le celle da far variare, poi creane uno"
  },
  {
   "i": 1973,
-  "t": "Digita un nome per lo scenario e premi Invio (vengono conservati i valori delle {} celle selezionate)"
+  "t": "Premendone uno, i suoi valori vengono riscritti nelle celle (Ctrl+Z annulla)"
  },
  {
   "i": 1974,
-  "t": "Scegli lo scenario da eliminare"
+  "t": "Troppe celle selezionate (al massimo 64; seleziona solo quelle da far variare)"
  },
  {
   "i": 1975,
-  "t": "Scenario «{}» applicato ({} celle; Ctrl+Z annulla)"
+  "t": "Digita un nome per lo scenario e premi Invio (vengono conservati i valori delle {} celle selezionate)"
  },
  {
   "i": 1976,
-  "t": "Scenario «{}» eliminato"
+  "t": "Scegli lo scenario da eliminare"
  },
  {
   "i": 1977,
-  "t": "Il nome è vuoto (non è stato creato nulla)"
+  "t": "Scenario «{}» applicato ({} celle; Ctrl+Z annulla)"
  },
  {
   "i": 1978,
-  "t": "Nella selezione non ci sono valori da conservare (le celle con formula restano fuori: applicandolo la formula sparirebbe)"
+  "t": "Scenario «{}» eliminato"
  },
  {
   "i": 1979,
-  "t": "Scenario «{}» conservato di nuovo ({} celle)"
+  "t": "Il nome è vuoto (non è stato creato nulla)"
  },
  {
   "i": 1980,
-  "t": "Scenario «{}» conservato ({} celle; salvando resta anche nell'xlsx)"
+  "t": "Nella selezione non ci sono valori da conservare (le celle con formula restano fuori: applicandolo la formula sparirebbe)"
  },
  {
   "i": 1981,
-  "t": "{} tabelle pivot collegate sono state filtrate allo stesso modo"
+  "t": "Scenario «{}» conservato di nuovo ({} celle)"
  },
  {
   "i": 1982,
-  "t": "Seleziona prima un filtro dati"
+  "t": "Scenario «{}» conservato ({} celle; salvando resta anche nell'xlsx)"
  },
  {
   "i": 1983,
-  "t": "Questa cartella di lavoro non ha tabelle pivot (creane una prima)"
+  "t": "{} tabelle pivot collegate sono state filtrate allo stesso modo"
  },
  {
   "i": 1984,
-  "t": "Filtrando con questo filtro dati, anche le tabelle pivot collegate vengono filtrate allo stesso modo"
+  "t": "Seleziona prima un filtro dati"
  },
  {
   "i": 1985,
-  "t": "Connessioni report"
+  "t": "Questa cartella di lavoro non ha tabelle pivot (creane una prima)"
  },
  {
   "i": 1986,
-  "t": "Non collegato"
+  "t": "Filtrando con questo filtro dati, anche le tabelle pivot collegate vengono filtrate allo stesso modo"
  },
  {
   "i": 1987,
-  "t": "Collegato a {}"
+  "t": "Connessioni report"
  },
  {
   "i": 1988,
-  "t": "Scegli una disposizione consigliata (puoi anche scegliere i campi da solo)"
+  "t": "Non collegato"
  },
  {
   "i": 1989,
-  "t": "Scelgo io i campi (prima le righe, poi le colonne, poi i valori)"
+  "t": "Collegato a {}"
  },
  {
   "i": 1990,
-  "t": "Disposizioni che la tua tabella consente. Non viene creato nulla finché non ne premi una"
+  "t": "Scegli una disposizione consigliata (puoi anche scegliere i campi da solo)"
  },
  {
   "i": 1991,
-  "t": "Righe: {} / Colonne: {} / {} di {}"
+  "t": "Scelgo io i campi (prima le righe, poi le colonne, poi i valori)"
  },
  {
   "i": 1992,
-  "t": "Righe: {} / {} di {}"
+  "t": "Disposizioni che la tua tabella consente. Non viene creato nulla finché non ne premi una"
  },
  {
   "i": 1993,
-  "t": "Proteggi cartella di lavoro"
+  "t": "Righe: {} / Colonne: {} / {} di {}"
  },
  {
   "i": 1994,
-  "t": "Questo è ciò che è in vigore. Premendo si torna al foglio e viene chiesto il resto"
+  "t": "Righe: {} / {} di {}"
  },
  {
   "i": 1995,
-  "t": "Cifra con password"
+  "t": "Proteggi cartella di lavoro"
  },
  {
   "i": 1996,
-  "t": "Attivo (dal prossimo salvataggio)"
+  "t": "Questo è ciò che è in vigore. Premendo si torna al foglio e viene chiesto il resto"
  },
  {
   "i": 1997,
-  "t": "Non impostato"
+  "t": "Cifra con password"
  },
  {
   "i": 1998,
-  "t": "Cambia o togli"
+  "t": "Attivo (dal prossimo salvataggio)"
  },
  {
   "i": 1999,
-  "t": "Imposta una password"
+  "t": "Non impostato"
  },
  {
   "i": 2000,
-  "t": "Proteggi foglio"
+  "t": "Cambia o togli"
  },
  {
   "i": 2001,
-  "t": "«{}» è protetto"
+  "t": "Imposta una password"
  },
  {
   "i": 2002,
-  "t": "«{}» non è protetto"
+  "t": "Proteggi foglio"
  },
  {
   "i": 2003,
-  "t": "Togli la protezione"
+  "t": "«{}» è protetto"
  },
  {
   "i": 2004,
-  "t": "Proteggi questo foglio"
+  "t": "«{}» non è protetto"
  },
  {
   "i": 2005,
-  "t": "Consentito durante la protezione"
+  "t": "Togli la protezione"
  },
  {
   "i": 2006,
-  "t": "Scegli"
+  "t": "Proteggi questo foglio"
  },
  {
   "i": 2007,
-  "t": "Consiglia sola lettura"
+  "t": "Consentito durante la protezione"
  },
  {
   "i": 2008,
-  "t": "Consigliato (non è un blocco)"
+  "t": "Scegli"
  },
  {
   "i": 2009,
-  "t": "Non consigliato"
+  "t": "Consiglia sola lettura"
  },
  {
   "i": 2010,
-  "t": "Consiglia"
+  "t": "Consigliato (non è un blocco)"
  },
  {
   "i": 2011,
-  "t": "Firma digitale"
+  "t": "Non consigliato"
  },
  {
   "i": 2012,
-  "t": "Accanto c'è un file di firma"
+  "t": "Consiglia"
  },
  {
   "i": 2013,
-  "t": "Non firmato"
+  "t": "Firma digitale"
  },
  {
   "i": 2014,
-  "t": "Firma o verifica"
+  "t": "Accanto c'è un file di firma"
  },
  {
   "i": 2015,
-  "t": "La protezione del foglio e il consiglio di sola lettura non sono blocchi. Chi vuole può toglierli. Non facciamo finta del contrario"
+  "t": "Non firmato"
  },
  {
   "i": 2016,
-  "t": "Controlliamo. Digita di nuovo la stessa password e premi Invio"
+  "t": "Firma o verifica"
  },
  {
   "i": 2017,
-  "t": "Le due password sono diverse (la cifratura non è cambiata; riprova)"
+  "t": "La protezione del foglio e il consiglio di sola lettura non sono blocchi. Chi vuole può toglierli. Non facciamo finta del contrario"
  },
  {
   "i": 2018,
-  "t": "Non è consentito nulla"
+  "t": "Controlliamo. Digita di nuovo la stessa password e premi Invio"
  },
  {
   "i": 2019,
-  "t": "{} su {} consentite"
+  "t": "Le due password sono diverse (la cifratura non è cambiata; riprova)"
  },
  {
   "i": 2020,
-  "t": "Cifratura 1/2 — password (lasciala vuota e premi Invio per togliere la cifratura)"
+  "t": "Non è consentito nulla"
  },
  {
   "i": 2021,
-  "t": "Cifratura 2/2 — la stessa password"
+  "t": "{} su {} consentite"
  },
  {
   "i": 2022,
-  "t": "Divisione rimossa"
+  "t": "Cifratura 1/2 — password (lasciala vuota e premi Invio per togliere la cifratura)"
  },
  {
   "i": 2023,
-  "t": "Posiziona il cursore dove vuoi dividere (la divisione avviene sopra e a sinistra del cursore)"
+  "t": "Cifratura 2/2 — la stessa password"
  },
  {
   "i": 2024,
-  "t": "Diviso (la rotellina scorre la parte su cui si trova il puntatore)"
+  "t": "Divisione rimossa"
  },
  {
   "i": 2025,
-  "t": "Contrassegnate {} celle (premi di nuovo per togliere)"
+  "t": "Posiziona il cursore dove vuoi dividere (la divisione avviene sopra e a sinistra del cursore)"
  },
  {
   "i": 2026,
-  "t": "Questo foglio non ha regole di convalida (aggiungile con Convalida dati nella scheda Dati)"
+  "t": "Diviso (la rotellina scorre la parte su cui si trova il puntatore)"
  },
  {
   "i": 2027,
-  "t": "Nessun valore viola le regole di convalida"
+  "t": "Contrassegnate {} celle (premi di nuovo per togliere)"
  },
  {
   "i": 2028,
-  "t": "Contrassegni tolti"
+  "t": "Questo foglio non ha regole di convalida (aggiungile con Convalida dati nella scheda Dati)"
  },
  {
   "i": 2029,
-  "t": "Digita l'intervallo di origine e premi Invio (es. Sheet1!A1:C20; includi la riga di intestazione)"
+  "t": "Nessun valore viola le regole di convalida"
  },
  {
   "i": 2030,
-  "t": "Posiziona il cursore nella tabella pivot da riorientare"
+  "t": "Contrassegni tolti"
  },
  {
   "i": 2031,
-  "t": "Scrivi l'intervallo nella forma A1:C20"
+  "t": "Digita l'intervallo di origine e premi Invio (es. Sheet1!A1:C20; includi la riga di intestazione)"
  },
  {
   "i": 2032,
-  "t": "Non riesco a leggere l'intervallo: {}"
+  "t": "Posiziona il cursore nella tabella pivot da riorientare"
  },
  {
   "i": 2033,
-  "t": "Il foglio “{}” non esiste"
+  "t": "Scrivi l'intervallo nella forma A1:C20"
  },
  {
   "i": 2034,
-  "t": "Il nuovo intervallo non ha queste intestazioni: {} (la tabella pivot le usa)"
+  "t": "Non riesco a leggere l'intervallo: {}"
  },
  {
   "i": 2035,
-  "t": "Tabella di origine spostata su {}!{}:{} (ricostruzione in corso)"
+  "t": "Il foglio “{}” non esiste"
  },
  {
   "i": 2036,
-  "t": "Digita prima il membro sinistro del vincolo"
+  "t": "Il nuovo intervallo non ha queste intestazioni: {} (la tabella pivot le usa)"
  },
  {
   "i": 2037,
-  "t": "Ricerca di una soluzione… (programma intero, branch and bound)"
+  "t": "Tabella di origine spostata su {}!{}:{} (ricostruzione in corso)"
  },
  {
   "i": 2038,
-  "t": "{} non è una cella variabile (intero e binario valgono solo per le celle variabili)"
+  "t": "Digita prima il membro sinistro del vincolo"
  },
  {
   "i": 2039,
-  "t": "Nessuna soluzione trovata ({} potrebbe non influire su {})"
+  "t": "Ricerca di una soluzione… (programma intero, branch and bound)"
  },
  {
   "i": 2040,
-  "t": "Orientamento"
+  "t": "{} non è una cella variabile (intero e binario valgono solo per le celle variabili)"
  },
  {
   "i": 2041,
-  "t": "Formatta celle"
+  "t": "Nessuna soluzione trovata ({} potrebbe non influire su {})"
  },
  {
   "i": 2042,
-  "t": "Allinea in mezzo"
+  "t": "Orientamento"
  },
  {
   "i": 2043,
-  "t": "Funzioni Python"
+  "t": "Formatta celle"
  },
  {
   "i": 2044,
-  "t": "Macro della barra"
+  "t": "Allinea in mezzo"
  },
  {
   "i": 2045,
-  "t": "Copia formato"
+  "t": "Funzioni Python"
  },
  {
   "i": 2046,
-  "t": "Stile"
+  "t": "Macro della barra"
  },
  {
   "i": 2047,
-  "t": "Elenco campi"
+  "t": "Copia formato"
  },
  {
   "i": 2048,
-  "t": "Ingrandisci testo dello schermo"
+  "t": "Stile"
  },
  {
   "i": 2049,
-  "t": "Riduci testo dello schermo"
+  "t": "Elenco campi"
  },
  {
   "i": 2050,
-  "t": "Cerchia dati non validi"
+  "t": "Ingrandisci testo dello schermo"
  },
  {
   "i": 2051,
-  "t": "Dividi finestra"
+  "t": "Riduci testo dello schermo"
  },
  {
   "i": 2052,
-  "t": "Scenario"
+  "t": "Cerchia dati non validi"
  },
  {
   "i": 2053,
-  "t": "Foglio di previsione"
+  "t": "Dividi finestra"
  },
  {
   "i": 2054,
-  "t": "AI"
+  "t": "Scenario"
  },
  {
   "i": 2055,
-  "t": "Stampa"
+  "t": "Foglio di previsione"
  },
  {
   "i": 2056,
-  "t": "Layout di stampa"
+  "t": "Grafico pivot"
  },
  {
   "i": 2057,
-  "t": "Destinazione"
+  "t": "AI"
  },
  {
   "i": 2058,
-  "t": "Riassunto"
+  "t": "Stampa"
  },
  {
   "i": 2059,
-  "t": "Riscrivi"
+  "t": "Layout di stampa"
  },
  {
   "i": 2060,
-  "t": "Più formale"
+  "t": "Destinazione"
  },
  {
   "i": 2061,
-  "t": "Più semplice"
+  "t": "Riassunto"
  },
  {
   "i": 2062,
-  "t": "Traduzione"
+  "t": "Riscrivi"
  },
  {
   "i": 2063,
-  "t": "Furigana"
+  "t": "Più formale"
  },
  {
   "i": 2064,
-  "t": "Continua"
+  "t": "Più semplice"
  },
  {
   "i": 2065,
-  "t": "In tabella"
+  "t": "Traduzione"
  },
  {
   "i": 2066,
-  "t": "Chiedi"
+  "t": "Furigana"
  },
  {
   "i": 2067,
-  "t": "Ruby"
+  "t": "Continua"
  },
  {
   "i": 2068,
-  "t": "Verticale"
+  "t": "In tabella"
  },
  {
   "i": 2069,
-  "t": "Direzione del testo"
+  "t": "Chiedi"
  },
  {
   "i": 2070,
-  "t": "Distribuito"
+  "t": "Ruby"
  },
  {
   "i": 2071,
-  "t": "Inserisci didascalia"
+  "t": "Verticale"
  },
  {
   "i": 2072,
-  "t": "Apri URL"
+  "t": "Direzione del testo"
  },
  {
   "i": 2073,
-  "t": "Indice"
+  "t": "Distribuito"
  },
  {
   "i": 2074,
-  "t": "Note Aozora"
+  "t": "Inserisci didascalia"
  },
  {
   "i": 2075,
-  "t": "Notazione Denden"
+  "t": "Apri URL"
  },
  {
   "i": 2076,
-  "t": "Revisioni"
+  "t": "Indice"
  },
  {
   "i": 2077,
-  "t": "Mostra revisioni"
+  "t": "Note Aozora"
  },
  {
   "i": 2078,
-  "t": "Correzione"
+  "t": "Notazione Denden"
  },
  {
   "i": 2079,
-  "t": "Caratteri"
+  "t": "Revisioni"
  },
  {
   "i": 2080,
-  "t": "Controllo ortografia"
+  "t": "Mostra revisioni"
  },
  {
   "i": 2081,
-  "t": "Thesaurus"
+  "t": "Correzione"
  },
  {
   "i": 2082,
-  "t": "Errori di conversione"
+  "t": "Caratteri"
  },
  {
   "i": 2083,
-  "t": "Incoerenze di grafia"
+  "t": "Controllo ortografia"
  },
  {
   "i": 2084,
-  "t": "Subtotali"
+  "t": "Thesaurus"
  },
  {
   "i": 2085,
-  "t": "Calcolo"
+  "t": "Errori di conversione"
  },
  {
   "i": 2086,
-  "t": "Testo da destra a sinistra"
+  "t": "Incoerenze di grafia"
  },
  {
   "i": 2087,
-  "t": "Direzione del foglio"
+  "t": "Subtotali"
  },
  {
   "i": 2088,
-  "t": "Python"
+  "t": "Calcolo"
  },
  {
   "i": 2089,
-  "t": "Casella di controllo"
+  "t": "Testo da destra a sinistra"
  },
  {
   "i": 2090,
-  "t": "Collegamenti esterni"
+  "t": "Direzione del foglio"
  },
  {
   "i": 2091,
-  "t": "Grafico consigliato"
+  "t": "Python"
  },
  {
   "i": 2092,
-  "t": "Modalità collaborativa"
+  "t": "Casella di controllo"
  },
  {
   "i": 2093,
-  "t": "Cronologia versioni"
+  "t": "Collegamenti esterni"
  },
  {
   "i": 2094,
-  "t": "Chat"
+  "t": "Grafico consigliato"
  },
  {
   "i": 2095,
-  "t": "Proteggi"
+  "t": "Modalità collaborativa"
  },
  {
   "i": 2096,
-  "t": "Crittografa"
+  "t": "Cronologia versioni"
  },
  {
   "i": 2097,
-  "t": "Aggiungi firma digitale"
+  "t": "Chat"
  },
  {
   "i": 2098,
-  "t": "Macro"
+  "t": "Proteggi"
  },
  {
   "i": 2099,
-  "t": "Gestione plugin"
+  "t": "Crittografa"
  },
  {
   "i": 2100,
-  "t": "Mostra zeri"
+  "t": "Aggiungi firma digitale"
  },
  {
   "i": 2101,
-  "t": "Zoom al 100%"
+  "t": "Macro"
  },
  {
   "i": 2102,
-  "t": "Tema dell'interfaccia"
+  "t": "Gestione plugin"
  },
  {
   "i": 2103,
-  "t": "Finestra controllo celle"
+  "t": "Mostra zeri"
  },
  {
   "i": 2104,
-  "t": "Somma automatica"
+  "t": "Zoom al 100%"
  },
  {
   "i": 2105,
-  "t": "Registra azioni"
+  "t": "Tema dell'interfaccia"
  },
  {
   "i": 2106,
-  "t": "Elimina commento"
+  "t": "Finestra controllo celle"
  },
  {
   "i": 2107,
-  "t": "Risolutore"
+  "t": "Somma automatica"
  },
  {
   "i": 2108,
-  "t": "Da testo a dati"
+  "t": "Registra azioni"
  },
  {
   "i": 2109,
-  "t": "Rimuovi frecce"
+  "t": "Elimina commento"
  },
  {
   "i": 2110,
-  "t": "Riempimento"
+  "t": "Risolutore"
  },
  {
   "i": 2111,
-  "t": "Cancella filtro"
+  "t": "Da testo a dati"
  },
  {
   "i": 2112,
-  "t": "Scrivi macro"
+  "t": "Rimuovi frecce"
  },
  {
   "i": 2113,
-  "t": "Testo in colonne"
+  "t": "Riempimento"
  },
  {
   "i": 2114,
-  "t": "Didascalia"
+  "t": "Cancella filtro"
  },
  {
   "i": 2115,
-  "t": "Indice delle figure"
+  "t": "Scrivi macro"
  },
  {
   "i": 2116,
-  "t": "Aggiorna indice delle figure"
+  "t": "Testo in colonne"
  },
  {
   "i": 2117,
-  "t": "Collegamenti esterni (importa come valori)"
+  "t": "Didascalia"
  },
  {
   "i": 2118,
-  "t": "Matematica e trigonometria"
+  "t": "Indice delle figure"
  },
  {
   "i": 2119,
-  "t": "Mostra formule"
+  "t": "Aggiorna indice delle figure"
  },
  {
   "i": 2120,
-  "t": "Orientamento del testo (da destra a sinistra)"
+  "t": "Collegamenti esterni (importa come valori)"
  },
  {
   "i": 2121,
-  "t": "Testo"
+  "t": "Matematica e trigonometria"
  },
  {
   "i": 2122,
-  "t": "Data e ora"
+  "t": "Mostra formule"
  },
  {
   "i": 2123,
-  "t": "Usate di recente"
+  "t": "Orientamento del testo (da destra a sinistra)"
  },
  {
   "i": 2124,
-  "t": "Stampa griglia"
+  "t": "Testo"
  },
  {
   "i": 2125,
-  "t": "Aggiorna sommario"
+  "t": "Data e ora"
  },
  {
   "i": 2126,
-  "t": "Colonne alternate"
+  "t": "Usate di recente"
  },
  {
   "i": 2127,
-  "t": "Stampa intestazioni"
+  "t": "Stampa griglia"
  },
  {
   "i": 2128,
-  "t": "Nascondi dettaglio"
+  "t": "Aggiorna sommario"
  },
  {
   "i": 2129,
-  "t": "Rimuovi duplicati"
+  "t": "Colonne alternate"
  },
  {
   "i": 2130,
-  "t": "Inserisci funzione"
+  "t": "Stampa intestazioni"
  },
  {
   "i": 2131,
-  "t": "Formato CSV"
+  "t": "Nascondi dettaglio"
  },
  {
   "i": 2132,
-  "t": "Blocca cella"
+  "t": "Rimuovi duplicati"
  },
  {
   "i": 2133,
-  "t": "Tabella dati"
+  "t": "Inserisci funzione"
  },
  {
   "i": 2134,
-  "t": "Riempimento rapido"
+  "t": "Formato CSV"
  },
  {
   "i": 2135,
-  "t": "Elenco"
+  "t": "Blocca cella"
  },
  {
   "i": 2136,
-  "t": "Incolla nome"
+  "t": "Tabella dati"
  },
  {
   "i": 2137,
-  "t": "Ripristino"
+  "t": "Riempimento rapido"
  },
  {
   "i": 2138,
-  "t": "Testo a capo"
+  "t": "Elenco"
  },
  {
   "i": 2139,
-  "t": "Intervallo copie"
+  "t": "Incolla nome"
  },
  {
   "i": 2140,
-  "t": "Nuovo .py"
+  "t": "Ripristino"
  },
  {
   "i": 2141,
-  "t": "Aggiungi intervallo"
+  "t": "Testo a capo"
  },
  {
   "i": 2142,
-  "t": "Adatta alla pagina"
+  "t": "Intervallo copie"
  },
  {
   "i": 2143,
-  "t": "Fine pagina"
+  "t": "Nuovo .py"
  },
  {
   "i": 2144,
-  "t": "Apri cartella"
+  "t": "Aggiungi intervallo"
  },
  {
   "i": 2145,
-  "t": "Tipo di calcolo"
+  "t": "Adatta alla pagina"
  },
  {
   "i": 2146,
-  "t": "Operazioni consentite"
+  "t": "Fine pagina"
  },
  {
   "i": 2147,
+  "t": "Apri cartella"
+ },
+ {
+  "i": 2148,
+  "t": "Tipo di calcolo"
+ },
+ {
+  "i": 2149,
+  "t": "Operazioni consentite"
+ },
+ {
+  "i": 2150,
   "t": "Consiglia sola lettura"
  }
 ]

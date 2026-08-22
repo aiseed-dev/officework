@@ -1939,6 +1939,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("絞り込みは掛かっていません", "Chưa áp dụng bộ lọc nào"),
     ("トレースの矢印は出ていません", "Không có mũi tên dò nào đang hiện"),
     ("バイナリ", "Nhị phân"),
+    ("ピボットグラフを外しました", "Đã bỏ PivotChart"),
+    ("ピボットグラフを {} に置きました(ピボットを更新すると図も描き直します。同じボタンで外せます)", "Đã đặt PivotChart ở {} (làm mới PivotTable thì hình cũng được vẽ lại; cùng nút đó để bỏ)"),
     ("何期先まで予測しますか(数を打って Enter。空 Enter = 6 期)", "Dự báo bao nhiêu kỳ tới? (gõ một số rồi nhấn Enter; để trống = 6)"),
     ("予測の答えが読めません", "Không đọc được kết quả dự báo"),
     ("予測", "Dự báo"),

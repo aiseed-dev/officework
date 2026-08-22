@@ -1939,6 +1939,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("絞り込みは掛かっていません", "Aucun filtre n'est appliqué"),
     ("トレースの矢印は出ていません", "Aucune flèche d'audit n'est affichée"),
     ("バイナリ", "Binaire"),
+    ("ピボットグラフを外しました", "Le graphique croisé a été retiré"),
+    ("ピボットグラフを {} に置きました(ピボットを更新すると図も描き直します。同じボタンで外せます)", "Graphique croisé placé en {} (l'actualisation du tableau croisé le redessine ; le même bouton le retire)"),
     ("何期先まで予測しますか(数を打って Enter。空 Enter = 6 期)", "Combien de périodes à l'avance ? (saisissez un nombre et appuyez sur Entrée ; vide = 6)"),
     ("予測の答えが読めません", "Le résultat de la prévision ne peut pas être lu"),
     ("予測", "Prévision"),

@@ -327,6 +327,7 @@ pub const CALC: &[Tab] = &[
         c("pivot-refresh", "업데이트", "pivot-refresh"),
         c("pivot-refresh-all", "모두 업데이트", "pivot-refresh-all"),
         c("pivot-source", "데이터 소스", "pivot-source"),
+        c("pivot-chart", "피벗 차트", "pivot-chart"),
         c("pivot-select", "선택", "pivot-select"),
         c("pivot-totals", "총합계", "pivot-totals"),
         c("pivot-subtotals", "부분합", "pivot-subtotals"),

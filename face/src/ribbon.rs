@@ -526,6 +526,7 @@ pub const CALC: &[Tab] = &[
         c("pivot-refresh", "更新", "pivot-refresh"),
         c("pivot-refresh-all", "すべて更新", "pivot-refresh-all"),
         c("pivot-source", "データソース", "pivot-source"),
+        c("pivot-chart", "ピボットグラフ", "pivot-chart"),
         c("pivot-select", "選択する", "pivot-select"),
         c("pivot-totals", "総計", "pivot-totals"),
         c("pivot-subtotals", "小計", "pivot-subtotals"),

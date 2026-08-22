@@ -38,6 +38,7 @@ pub static ICONS: &[(&str, &[u8])] = &[
     ("split", include_bytes!("../icons/split.svg")),
     ("scenario", include_bytes!("../icons/scenario.svg")),
     ("forecast", include_bytes!("../icons/forecast.svg")),
+    ("pivot-chart", include_bytes!("../icons/pivot-chart.svg")),
     ("datetime", include_bytes!("../icons/datetime.svg")),
     ("decfont", include_bytes!("../icons/decfont.svg")),
     ("decoffset", include_bytes!("../icons/decoffset.svg")),

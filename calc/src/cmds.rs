@@ -104,7 +104,7 @@ impl Calc {
         "fn-math", "fn-text", "fn-logical", "fn-recent",
         "sum", "average", "count", "max", "min",
         "data-validation", "dv-mark", "condformat", "defname", "split", "scenario",
-        "final-mark", "forecast",
+        "final-mark", "forecast", "pivot-chart",
         "pageorient", "pagesize", "pagemargins", "printarea",
         "inschart", "insimage", "inshyperlink", "replace",
         "changecase", "format", "cell-format", "fontname", "fontsize",
@@ -114,7 +114,7 @@ impl Calc {
         "insshape", "instext", "inssparkline", "python", "co-addcomment",
         "trace-prec", "trace-dep", "remove-arrows", "insrecommend",
         "instable", "table-tpl", "inssymbol", "pivot-insert", "pivot-fields",
-        "pivot-refresh", "pivot-refresh-all", "pivot-source", "pivot-select",
+        "pivot-refresh", "pivot-refresh-all", "pivot-source", "pivot-select", "pivot-chart",
         "pivot-totals", "pivot-subtotals", "pivot-blank", "pivot-layout", "pivot-style",
         "pivot-showas", "datatable", "track-changes",
         "td-header", "td-total", "td-band-row", "td-band-col",
@@ -3683,6 +3683,37 @@ impl Calc {
                 );
                 self.pick_kind = "names-pick";
                 self.pick = Some((items, at));
+            }
+            // ピボットグラフ。**ピボットに連動する図** — ピボットを作り直す
+            // たびに描き直します。図だけが古いまま残ることがありません
+            "pivot-chart" => {
+                self.commit();
+                let Some(pi) = self.pivot_at(self.cursor) else {
+                    self.status =
+                        ui::t!("ピボットの上にカーソルを置いてください").into();
+                    return;
+                };
+                let d = self.book.pivots[pi].clone();
+                if d.chart_at.is_some() {
+                    // もう1枚増やさない。**同じピボットの図は1枚**です
+                    let at = d.chart_at.unwrap();
+                    let si = self.active;
+                    self.book.sheets[si].images_new.retain(|im| im.at != at);
+                    self.book.pivots[pi].chart_at = None;
+                    self.dirty = true;
+                    self.status = ui::t!("ピボットグラフを外しました").into();
+                    return;
+                }
+                // 置き場はピボットの下(表と重ならない所)
+                let at = Pos::new(d.dest.row + d.size.0 + 1, d.dest.col);
+                self.book.pivots[pi].chart_at = Some(at);
+                self.dirty = true;
+                self.pivot_chart_redraw(pi, cx);
+                self.status = ui::tf!(
+                    "ピボットグラフを {} に置きました(ピボットを更新すると図も描き直します。同じボタンで外せます)",
+                    at.a1()
+                )
+                .into();
             }
             // 予測シート。指数平滑で先を出し、新しいシートに置く
             "forecast" => {

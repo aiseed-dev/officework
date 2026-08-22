@@ -327,6 +327,7 @@ pub const CALC: &[Tab] = &[
         c("pivot-refresh", "Aggiorna", "pivot-refresh"),
         c("pivot-refresh-all", "Aggiorna tutto", "pivot-refresh-all"),
         c("pivot-source", "Origine dati", "pivot-source"),
+        c("pivot-chart", "Grafico pivot", "pivot-chart"),
         c("pivot-select", "Seleziona", "pivot-select"),
         c("pivot-totals", "Totale complessivo", "pivot-totals"),
         c("pivot-subtotals", "Subtotali", "pivot-subtotals"),

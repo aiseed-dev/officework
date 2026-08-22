@@ -1954,6 +1954,8 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("絞り込みは掛かっていません", "No filter is applied"),
     ("トレースの矢印は出ていません", "No trace arrows are showing"),
     ("バイナリ", "Binary"),
+    ("ピボットグラフを外しました", "The PivotChart was removed"),
+    ("ピボットグラフを {} に置きました(ピボットを更新すると図も描き直します。同じボタンで外せます)", "PivotChart placed at {} (refreshing the PivotTable redraws it too; the same button removes it)"),
     ("何期先まで予測しますか(数を打って Enter。空 Enter = 6 期)", "How many periods ahead? (type a number and press Enter; empty Enter = 6)"),
     ("予測の答えが読めません", "The forecast result cannot be read"),
     ("予測", "Forecast"),
