@@ -1,39 +1,30 @@
 #!/usr/bin/env python3
-"""**同じ日本語には同じ訳**(2026-08-21)。
+"""**同じ日本語は1つの番号**(2026-08-22)。
 
 officework の訳の材料は `ui/i18n/keys.json` で、番号がついています。
-ところが**同じ日本語が2つの番号を持つ**ことがあります。材料が2つの
-出どころから来ているためです。
+材料は2つの出どころから来ます。
 
 * 文言 — `lang/src/i18n_en.rs`(`ui::t!` や `ui::item!` で使う語)
 * リボンの語 — `ui/gen_ribbon_locale.py` の `OVERRIDES`(本家に無いボタンの語)
 
-日本語では1つの語なのに、番号が別なので**訳を別々に書けてしまいます**。
-実際、2026-08-21 に「セルの書式設定」がリボンと保護の設定の一覧で
-別の語になっている言語が8つありました(スペイン語なら
-`Dar formato a celdas` と `Aplicar formato a celdas`)。
-利用者から見れば同じ機能の名前なので、揃っていないと探せません。
+同じ日本語が両方に載ることがあります。**番号を分けると訳も分かれます。**
+2026-08-21 に「セルの書式設定」がリボンと保護の設定の一覧で別の語に
+なっている言語が8つありました(スペイン語なら `Dar formato a celdas` と
+`Aplicar formato a celdas`)。利用者から見れば同じ機能の名前なので、
+揃っていないと探せません。
 
-## 直し方
+## 見張るものが変わりました(2026-08-22)
 
-どちらの語を使うかは、**本家に載っている方**を採ります
-(2026-08-21 の決め「訳は本家から取る」)。両方載っている・
-どちらも載っていないときは人が決めます。決めた語を
-`ui/i18n/<言語>.json` の**両方の番号**に書いてください。
+前はこの検査が「2つの番号の訳が揃っているか」を見て、人が揃えていました。
+15 組ありました。いまは `ui/gen_lang.py` の `material()` が**同じ日本語を
+1つの番号にまとめます**。揃えるより、分かれない方が確実です。
 
-## まだ揃っていない組
+だからこの検査は「**重なりが1つも無いこと**」を見ます。重なりが出たら、
+`material()` のまとめが効いていないということです。
 
-`未決` に書きます。**いまは空です**(2026-08-21 に 17 件を片付けました)。
-
-決め方は2段です。
-
-1. **本家に載っている方**を採る(2026-08-21 の決め「訳は本家から取る」)
-2. 本家で決まらないときは**リボンの語**を採る — 利用者がボタンで読む
-   名前なので、案内の文もその名前で呼ぶのが筋です
-
-例外は、リボンの語が明らかに誤りのときです。ドイツ語の「スタイル」は
-`Typ`(種類)でした。略語(`Math. u. Trigonom.`)も、吹き出しに出る語で
-幅の制約が無いので、全部書く形に寄せました。
+英語が食い違うときはリボンの語を採ります — 利用者がボタンで読む名前なので、
+案内の文もその名前で呼ぶのが筋です。まとめるのは `material()` の仕事で、
+ここは結果を見るだけです。
 
 ## 使い方
 
@@ -47,68 +38,47 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "ui"))
 import locales  # noqa: E402
 
-# **本家では決まらなかった組**(2026-08-21)。どちらの語も本家に載って
-# いる、または両方とも載っていないので、機械では選べません。
-#
-# 鍵は日本語、値はまだ食い違っている言語です。決まったら消してください。
-未決: dict[str, set[str]] = {}
-
 
 def main() -> int:
     keys = json.loads((ROOT / "ui/i18n/keys.json").read_text(encoding="utf-8"))
+    if len(keys) < 500:
+        # **読めなくなったら落ちる。** 静かに緑になるのが一番悪い
+        print(f"::error::材料が {len(keys)} 句しかありません(keys.json の形が変わった?)")
+        return 1
+
     組: dict[str, list[int]] = {}
     for k in keys:
         組.setdefault(k["ja"], []).append(k["i"])
     重 = {w: v for w, v in 組.items() if len(v) > 1}
-    if len(重) < 5:
-        # **読めなくなったら落ちる。** 静かに緑になるのが一番悪い
-        print(f"::error::同じ原文の組が {len(重)} 件しかありません(材料の形が変わった?)")
+    if 重:
+        for w, idx in sorted(重.items()):
+            print(
+                f"::error::{w!r} が {len(idx)} つの番号を持っています(番号 {idx})。"
+                "ui/gen_lang.py の material() が同じ日本語を1つにまとめるはずです"
+            )
         return 1
 
+    # 番号が1つでも、**訳が空のままでは意味がありません。**
+    # 13 言語ぶん埋まっているかもここで見ます
     locs = [t for t in locales.TAGS if t != "en"]
-    訳 = {}
+    足りない: list[str] = []
     for loc in locs:
         p = ROOT / "ui/i18n" / f"{loc}.json"
-        訳[loc] = {
-            x["i"]: x.get("t")
+        訳 = {
+            x["i"]
             for x in json.loads(p.read_text(encoding="utf-8"))
-            if isinstance(x, dict)
+            if isinstance(x, dict) and x.get("t")
         }
+        欠け = len(keys) - len(訳 & {k["i"] for k in keys})
+        if 欠け:
+            足りない.append(f"{loc}: {欠け} 句")
+    if 足りない:
+        print("::error::訳の空きがあります: " + " / ".join(足りない))
+        print("  ui/gen_lang.py --todo で鍵を出し、ui/i18n/<言語>.json に書いてください")
+        return 1
 
-    bad = 0
-    見た: dict[str, set[str]] = {}
-    for w, idx in sorted(重.items()):
-        for loc in locs:
-            v = {訳[loc].get(i) for i in idx if 訳[loc].get(i)}
-            if len(v) <= 1:
-                continue
-            見た.setdefault(w, set()).add(loc)
-            if loc in 未決.get(w, set()):
-                continue
-            print(
-                f"::error::{loc}: {w!r} の訳が {sorted(v)} と分かれています"
-                f"(番号 {idx})。本家に載っている方に揃えるか、"
-                "tools/i18n_onaji_go_check.py の 未決 に足してください"
-            )
-            bad = 1
-
-    # 直したのに 未決 に残っていると、次の食い違いを見逃します
-    for w, ls in 未決.items():
-        余り = ls - 見た.get(w, set())
-        if 余り:
-            print(
-                f"::error::{w!r} は {sorted(余り)} で揃っているのに 未決 に残っています。"
-                "表から消してください"
-            )
-            bad = 1
-
-    if not bad:
-        の数 = sum(len(v) for v in 未決.values())
-        print(
-            f"同じ原文の組 {len(重)} 件を {len(locs)} 言語で見ました"
-            f"(まだ揃っていないと書いてあるのは {の数} 件)"
-        )
-    return bad
+    print(f"材料 {len(keys)} 句に同じ日本語の重なりはありません({len(locs)} 言語とも訳は埋まっています)")
+    return 0
 
 
 if __name__ == "__main__":

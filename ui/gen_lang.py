@@ -96,12 +96,37 @@ def escape(s):
 
 
 def material():
-    """番号つきの材料: 文言(i18n_en の鍵順)+ こちら独自のボタンの語"""
+    """番号つきの材料: 文言(i18n_en の鍵順)+ こちら独自のボタンの語。
+
+    **同じ日本語は1つの番号にまとめます**(2026-08-22)。材料は2つの
+    出どころ(`lang/src/i18n_en.rs` と `OVERRIDES["en"]`)から来るので、
+    同じ語が両方に載ることがあります。番号を分けると訳も分かれてしまい、
+    利用者から見て同じ機能の名前が場所によって違う、が起きます
+    (2026-08-21 に「セルの書式設定」で8言語がそうなっていました)。
+
+    まとめる前は 15 組ありました。`tools/i18n_onaji_go_check.py` が
+    見張って人が揃えていましたが、**揃えるより分かれない方が確実**です。
+
+    英語が食い違うときは**リボンの語**を採ります — 利用者がボタンで読む
+    名前なので、案内の文もその名前で呼ぶのが筋です(検査の決め方の2段目)。
+    """
     rows = []
+    見た = {}
     for key, en in en_pairs():
-        rows.append({"kind": "msg", "key": key, "ja": unescape(key), "en": unescape(en)})
+        ja = unescape(key)
+        r = {"kind": "msg", "key": key, "ja": ja, "en": unescape(en)}
+        if ja in 見た:
+            continue  # i18n_en.rs の中の重なり(あれば1つ目を採る)
+        見た[ja] = r
+        rows.append(r)
     for ja, en in grl.OVERRIDES["en"].items():
-        rows.append({"kind": "ribbon", "key": None, "ja": ja, "en": en})
+        if ja in 見た:
+            # 既に文言の側にある語。**番号は増やさず、英語だけリボンの物へ**
+            見た[ja]["en"] = en
+            continue
+        r = {"kind": "ribbon", "key": None, "ja": ja, "en": en}
+        見た[ja] = r
+        rows.append(r)
     for i, r in enumerate(rows):
         r["i"] = i
     return rows
