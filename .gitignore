@@ -47,3 +47,6 @@ sample/写真の台帳.xlsx
 sample/便りの下書き/
 sample/会員申込.html
 sample/site/
+
+# 手元で組んだ wheel(配るのは CI が組んだ物)
+pysheet/dist/
