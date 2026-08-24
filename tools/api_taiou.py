@@ -6,7 +6,10 @@
 
 1行が1つの操作です。画面のボタン、`officework` の呼び方、そして本家
 (python-docx / openpyxl)の呼び方が横に並びます。
-*同じ操作を4つの言い方で引ける*ようにするのが目的です。
+
+*引くための表なので、独立した1枚に置きます*(2026-08-24 発注者
+「これが、インデックスの一つになるから、独立させないとダメでしょう」)。
+手引きの中に埋めると、引きたい人が手引きを読む羽目になります。
 
     python3 tools/api_taiou.py           # 揃っているか見る(CI の検査)
     python3 tools/api_taiou.py --write   # 手引きの節を書き直す
@@ -136,7 +139,7 @@ SHEET = {
 
 MARK_S = "// api:taiou:start"
 MARK_E = "// api:taiou:end"
-SAKI = ROOT / "docs/python-manual.ja.adoc"
+SAKI = ROOT / "docs/api-taiou.ja.adoc"
 
 
 def rows():

@@ -1,0 +1,150 @@
+= 対応表 — メニュー・API・python-docx・openpyxl
+
+引くための1枚です。同じ操作を4つの言い方で探せます。
+
+* 画面で使っている*ボタンの名前*から、プログラムの書き方を引く
+* `officework` の*呼び方*から、画面のどのボタンかを引く
+* python-docx / openpyxl の*覚えている書き方*から、こちらの書き方を引く
+
+本家の側は実際に呼んで確かめた名前です(python-docx 1.2.0 / openpyxl 3.1.5)。
+
+// api:taiou:start(この間は tools/api\_taiou.py --write が書く)
+1行が1つの操作です。画面のボタン・`officework`・本家のライブラリが横に並びます。
+空いている所(—)は、その道が無いという意味です。
+
+この節は `tools/api_taiou.py` が起こします。手で直さないでください。
+
+=== 文書(writer)
+
+[cols="1,2,3,3"]
+|===
+|タブ |ボタン |officework |python-docx
+
+|ファイル |開く |doc.Doc.open(径路) |docx.Document(径路)
+|ファイル |保存 |d.save(径路) |d.save(径路)
+|ファイル |印刷 |— |—
+|ホーム |フォント |r.font |r.font.name
+|ホーム |フォントのサイズ |r.size_pt |r.font.size
+|ホーム |フォントサイズの拡大 |r.size_pt |r.font.size
+|ホーム |フォントサイズの縮小 |r.size_pt |r.font.size
+|ホーム |ルビ |— |—
+|ホーム |太字 |r.bold |r.bold
+|ホーム |斜体 |r.italic |r.italic
+|ホーム |下線 |r.underline |r.underline
+|ホーム |取り消し線 |r.strike |r.font.strike
+|ホーム |上付き |— |r.font.superscript
+|ホーム |下付き |— |r.font.subscript
+|ホーム |フォントの色 |r.color |r.font.color.rgb
+|ホーム |スタイルのクリア |r.clear() |r.clear()
+|ホーム |箇条書き |p.style = '箇条書き' |p.style = 'List Bullet'
+|ホーム |ナンバリング |p.style = '番号付き' |p.style = 'List Number'
+|ホーム |インデントを減らす |p.paragraph_format |p.paragraph_format.left_indent
+|ホーム |インデントを増やす |p.paragraph_format |p.paragraph_format.left_indent
+|ホーム |段落の行間 |p.paragraph_format.line_spacing |p.paragraph_format.line_spacing
+|ホーム |左揃え |p.align = 'left' |p.alignment
+|ホーム |中央揃え |p.align = 'center' |p.alignment
+|ホーム |右揃え |p.align = 'right' |p.alignment
+|ホーム |両端揃え |p.align = 'justify' |p.alignment
+|ホーム |均等割付 |p.align = 'distribute' |—
+|ホーム |段落のスタイル |p.style |p.style
+|ホーム |置き換え |d.replace(前, 後) |—
+|挿入 |空白ページの挿入 |d.add_page_break() |d.add_page_break()
+|挿入 |区切り |d.add_page_break() |d.add_page_break()
+|挿入 |表の挿入 |d.add_table(行, 列) |d.add_table(行, 列)
+|挿入 |画像を挿入 |d.add_picture(径路) |d.add_picture(径路)
+|挿入 |ヘッダーの編集 |d.header |section.header
+|挿入 |フッターの編集 |d.footer |section.footer
+|挿入 |方程式を挿入 |— |—
+|挿入 |コンテンツコントロールの挿入 |d.fields() |—
+|レイアウト |余白 |d.sections[0] |section.left_margin
+|レイアウト |印刷の向き |d.sections[0] |section.orientation
+|レイアウト |ページのサイズ |d.sections[0] |section.page_width
+|参考資料 |目次 |— |—
+|参考資料 |ブックマーク |— |—
+|参考資料 |図表番号 |— |—
+|参考資料 |相互参照 |— |—
+|参考資料 |脚注 |— |—
+|フォーム |テキストフィールド |d.fill(名前, 値) |—
+|フォーム |名前 |d.fields() |—
+|共同編集 |コメントを追加 |p.add_comment(文, author=) |p.add_comment(文)
+|共同編集 |コメントの表示 |d.comments |d.comments
+|===
+
+=== 表(calc)
+
+[cols="1,2,3,3"]
+|===
+|タブ |ボタン |officework |openpyxl
+
+|ファイル |開く |sheet.Book.open(径路) |load_workbook(径路)
+|ファイル |保存 |b.save(径路) |wb.save(径路)
+|ファイル |印刷 |— |—
+|ホーム |コピー |s['A1'] = 値 |ws['A1'] = 値
+|ホーム |切り取り |s['A1'] = 値 |ws['A1'] = 値
+|ホーム |貼り付け |s['A1'] = 値 |ws['A1'] = 値
+|ホーム |フォント |c.font |c.font = Font(name=…)
+|ホーム |フォントのサイズ |c.font |c.font = Font(size=…)
+|ホーム |太字 |c.font |c.font = Font(bold=True)
+|ホーム |斜体 |c.font |c.font = Font(italic=True)
+|ホーム |下線 |c.font |c.font = Font(underline=…)
+|ホーム |フォントの色 |c.font |c.font = Font(color=…)
+|ホーム |塗りつぶしの色 |c.fill |c.fill = PatternFill(…)
+|ホーム |罫線 |c.border |c.border = Border(…)
+|ホーム |折り返して全体を表示する |c.alignment |c.alignment = Alignment(wrap_text=True)
+|ホーム |左揃え |c.alignment |c.alignment = Alignment(…)
+|ホーム |中央揃え |c.alignment |c.alignment = Alignment(…)
+|ホーム |右揃え |c.alignment |c.alignment = Alignment(…)
+|ホーム |結合して、中央に配置する |s.merge_cells('A1:B2') |ws.merge_cells('A1:B2')
+|ホーム |オートSUM |s['A1'] = '=SUM(…)' |ws['A1'] = '=SUM(…)'
+|ホーム |名前の管理 |b.create_named_range(名前, …) |wb.defined_names
+|ホーム |消去 |s['A1'] = None |ws['A1'] = None
+|ホーム |降順並べ替え |— |—
+|ホーム |昇順並べ替え |— |—
+|ホーム |フィルター |— |ws.auto_filter.ref
+|ホーム |フィルターを解除 |— |ws.auto_filter
+|ホーム |数値の書式 |c.number_format |c.number_format
+|ホーム |通貨スタイル |c.number_format |c.number_format
+|ホーム |パーセントのスタイル |c.number_format |c.number_format
+|ホーム |カンマスタイル |c.number_format |c.number_format
+|ホーム |セルを挿入 |s.insert_rows(行) |ws.insert_rows(行)
+|ホーム |セルを削除 |s.delete_rows(行) |ws.delete_rows(行)
+|ホーム |条件付き書式 |— |ws.conditional_formatting.add(…)
+|挿入 |ピボットテーブルを挿入 |— |ws.add_pivot(…)
+|挿入 |表の挿入 |s.add_table(…) |ws.add_table(…)
+|挿入 |画像を挿入 |— |ws.add_image(…)
+|挿入 |グラフを挿入 |— |ws.add_chart(…)
+|挿入 |コメント |c.comment |c.comment = Comment(…)
+|挿入 |ハイパーリンクを追加 |c.hyperlink |c.hyperlink
+|挿入 |ヘッダー/フッター |s.oddHeader |ws.oddHeader
+|レイアウト |余白 |— |ws.page_margins
+|レイアウト |印刷の向き |— |ws.page_setup.orientation
+|レイアウト |ページのサイズ |— |ws.page_setup.paperSize
+|レイアウト |印刷範囲 |s.print_area |ws.print_area
+|レイアウト |タイトルを印刷する |s.print_title_rows |ws.print_title_rows
+|レイアウト |枠線も印刷 |s.print_gridlines |ws.print_options.gridLines
+|数式 |関数の挿入 |s['A1'] = '=…' |ws['A1'] = '=…'
+|数式 |計算方法 |b.recalc() |wb.calculation
+|データ |データの入力規則 |s.add_data_validation(…) |ws.add_data_validation(…)
+|データ |グループ化 |s.row_groups |ws.column_dimensions[…].outline_level
+|データ |グループ解除 |s.row_groups |ws.column_dimensions[…].outline_level
+|データ |Python |— |—
+|保護 |暗号化する |— |wb.security
+|保護 |シートを保護する |— |ws.protection
+|表示 |ウィンドウ枠の固定 |s.freeze_panes |ws.freeze_panes
+|表示 |枠線表示 |s.show_gridlines |ws.sheet_view.showGridLines
+|===
+
+// api:taiou:end
+
+== この表に出ていないもの
+
+* *画面だけの操作* — 拡大・パネルの開閉・ダークモードなど。文書が変わらないので、プログラムから呼ぶ意味がありません
+* *まだ作っていない操作* — 画面で灰色のボタン
+* *本家にしかない書き方* — 表に無くても動くものがあります。link:pysheet-gokan.ja.adoc[互換の台帳] に全部の判定があります
+
+== 関連する手引き
+
+* link:python-manual.ja.adoc[Python の手引き] — 書き方の説明と見本
+* link:writer-manual.ja.adoc[writer の手引き] — 文書の画面。巻末に「すべての操作」
+* link:calc-manual.ja.adoc[calc の手引き] — 表の画面。巻末に「すべての操作」
+* link:pysheet-gokan.ja.adoc[互換の台帳] — 本家の全メンバーの判定
