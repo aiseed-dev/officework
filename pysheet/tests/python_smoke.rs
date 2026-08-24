@@ -46,9 +46,16 @@ fn python側から帳票を差し込める() {
 
     // この試験自体のビルドでは cdylib が出来ているとは限らないので、組む。
     // (外の cargo のビルドは終わっているので、ここで cargo を呼んでも詰まらない)
+    //
+    // **extension-module を付ける — 配る wheel と同じ組み方**(2026-08-24)。
+    // 素の組み方だと .so が libpython に直接リンクされ、mac では
+    // 「組んだときの Python」と「読むときの Python」が実行時を二重に持ち、
+    // import の初期化でネイティブに落ちる(traceback も出ない)。CI の mac が
+    // これで3回赤かった。extension-module なら libpython に繋がず、
+    // 読み手の Python の記号に付くので、この形は起きない
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
     let status = Command::new(env!("CARGO"))
-        .args(["build", "-p", "pysheet"])
+        .args(["build", "-p", "pysheet", "--features", "extension-module"])
         .current_dir(root)
         .status()
         .expect("cargo を呼べない");
@@ -96,9 +103,15 @@ fn python側から帳票を差し込める() {
 
     // **先に名乗らせる。** どの Python で、どの _sheet を読んだか。
     // status() は子の出力を素通しにするので、CI で落ちたときも
-    // この2行(と import の失敗の理由)がそのままログに出る
+    // この2行(と import の失敗の理由)がそのままログに出る。
+    // -u はバッファを切る(ネイティブに落ちると print がバッファごと消え、
+    // 何も出ないまま死ぬ — mac の赤がその形だった)。-X faulthandler は
+    // ネイティブに落ちたときに、どこで落ちたかを stderr に書き出す
     let 名乗り = Command::new(py)
         .args([
+            "-u",
+            "-X",
+            "faulthandler",
             "-c",
             "import sys\n\
              print('python', sys.version.split()[0], sys.executable)\n\
@@ -122,6 +135,7 @@ fn python側から帳票を差し込める() {
         )
         .expect("スクリプトを写せない");
         let out = Command::new(py)
+            .args(["-u", "-X", "faulthandler"])
             .arg(stage.join(script))
             .output()
             .unwrap_or_else(|e| panic!("{py} を回せない: {e}"));
