@@ -100,28 +100,26 @@ See the link:docs/calc-manual.adoc[calc manual].
 
 == Getting it
 
-Three ways in, depending on what you want.
+*The engine and the screen are shipped separately.* Someone who only needs the engine — driving forms from Python — should not have to carry a GUI.
 
-*From PyPI* — the main channel, and from 0.4.0 it brings the app as well.
+*The engine comes from PyPI.*
 
 [source,console]
 ----
-$ pip install officework      # engine, bridge, MCP server — and the app
-$ officework                  # opens the folder and files from last time
+$ pip install officework      # engine, bridge, MCP server. No GUI (a few MB)
 ----
 
-Wheels up to 0.4 split the app into two commands, `officework-calc` and `officework-writer`.
+That is enough to read and write xlsx and docx without breaking their formatting. The bridge that drives a running screen from Python, and the MCP server that lets an AI drive it, are in the same package.
 
-The wheel is around 36 MB (larger on macOS, which is universal).
-This is the least troublesome route: a file pip put on your disk carries neither macOS's quarantine flag nor Windows' Mark of the Web, so Gatekeeper and SmartScreen never ask, and no bundled Python is needed.
+*The screen (aiseed office) comes in the shape your machine wants* — `.deb`, `.tar.gz`, `.dmg`, `setup.exe`, Flatpak. Install one and `officework` starts it. If the engine is already installed, the bridge connects to it as is.
 
 [NOTE]
 ====
-*On Linux only, a few system libraries are needed* — pip cannot install
+*On Linux, the screen needs a few system libraries* — pip cannot install
 those: `sudo apt install libxkbcommon0 libxkbcommon-x11-0 libxcb1
 libxcb-xkb1 libfontconfig1 fonts-noto-cjk`. If any are missing,
 `officework` names them instead of failing silently.
-macOS and Windows need nothing extra.
+macOS and Windows need nothing extra, and the engine alone needs nothing anywhere.
 ====
 
 *Installers* — *not published yet.* The packaging is written and produces the files below, each with Python 3.14 bundled, but no release is out:

@@ -108,28 +108,28 @@ git を入れない人にも損はありません — 字のままのファイ�
 
 == 手に入れる
 
-やりたいことに応じて3つの道があります。
+**エンジンと画面は別々に配ります。** エンジンだけで仕事になる人(Python から帳票を扱う人)に、画面まで背負わせないためです。
 
-*PyPI から。* これが主な配り方で、*0.4.0 からはアプリも一緒に入ります*。
+*エンジンは PyPI から。*
 
 [source,console]
 ----
-$ pip install officework      # エンジン・橋・MCP、そしてアプリ
-$ officework                  # 前回のフォルダとファイルを開いて立ち上がる
+$ pip install officework      # エンジン・橋・MCP。画面は入りません(数 MB)
 ----
 
-0.4 までの wheel は、アプリが `officework-calc` / `officework-writer` の2本に分かれています。
+xlsx / docx を書式ごと壊さずに読み書きする所までは、これだけで足ります。
+動いている画面を Python から操る橋と、AI に操らせる MCP も同じ荷物に入っています。
 
-wheel は Linux と Windows で約 36MB(mac は2つの CPU 分が入るのでもう少し大きくなります)。
-*この道がいちばん手間がかかりません* — pip が置いたファイルには mac の quarantine も Windows の Mark of the Web も付かないので、Gatekeeper も SmartScreen も出ません。
-Python の同梱も要りません。
+*画面(aiseed office)は、その機械に合う形で。*
+`.deb` / `.tar.gz` / `.dmg` / `setup.exe` / Flatpak を入れると、`officework` と打って立ち上がります。
+エンジンを先に入れてあれば、橋はそのまま繋がります。
 
 [NOTE]
 ====
-*Linux だけ、機械の側に要る物があります*(pip では入れられません):
+*Linux で画面を使うときだけ、機械の側に要る物があります*:
 `sudo apt install libxkbcommon0 libxkbcommon-x11-0 libxcb1 libxcb-xkb1 libfontconfig1 fonts-noto-cjk`
 足りなければ `officework` がその場で名前を挙げて教えます。
-mac と Windows は素で動きます。
+mac と Windows は素で動きます。エンジンだけならどの機械でも要りません。
 ====
 
 *インストーラ — まだ公開していません。* 包む仕組みは出来ていて、出来上がるのはこの3つです(どれも Python 3.14 を同梱)。

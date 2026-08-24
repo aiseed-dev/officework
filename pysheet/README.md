@@ -16,8 +16,8 @@ $ pip install officework
 ```
 
 Wheels are abi3 (CPython 3.10+), so one wheel per platform covers every
-version; Linux, macOS and Windows are published. From 0.4.0 the wheel also
-carries the **apps themselves** — see below. `pandas` is imported only if you
+version; Linux, macOS and Windows are published. The wheel is **just the
+engines and the bridge** — a few MB, no GUI. `pandas` is imported only if you
 ask for it (`pip install officework[pandas]`).
 
 ## Three ways in
@@ -74,27 +74,22 @@ The tools it exposes are deliberately few: `book_info`, `used_range`,
 `read_range`, `read_formulas`, `write_range`, `set_format`, `autofit`, `save`.
 Reading a range gives values; `read_formulas` gives the formulas behind them.
 
-## The app comes with it too
+## The app is a separate download
+
+These engines are what **aiseed office** — a spreadsheet and a word processor
+with a window — uses whenever it meets the Microsoft formats. The app is
+downloaded on its own (`.deb`, `.tar.gz`, `.dmg`, `setup.exe`, Flatpak); this
+wheel does not carry it. Nothing here needs it: the engines are complete
+without a screen.
+
+If the app is installed, `officework` starts it, and the bridge above drives it:
 
 ```console
-$ officework report.xlsx
-$ officework report.docx
+$ officework report.xlsx        # opens it in aiseed office
 ```
 
-**The wheel carries the app** (around 20 MB on Linux and Windows; more for the
-universal macOS wheel, which holds both architectures), so `pip install
-officework` is all it takes to get a spreadsheet and a word processor with a
-window. It is the same binary the installers ship.
-
 Spreadsheets and documents open as tabs of one window. Passing a second file
-adds a tab rather than opening another window.
-
-This is the least troublesome way to get them: a file that pip put on your
-disk carries neither macOS's quarantine flag nor Windows' Mark of the Web, so
-Gatekeeper and SmartScreen never ask. Nor is a bundled Python needed — you
-already have one.
-
-If you would rather point at a build of your own:
+adds a tab rather than opening another window. To point at a build of your own:
 
 ```console
 $ OFFICEWORK_OFFICEWORK=/path/to/officework officework report.xlsx
