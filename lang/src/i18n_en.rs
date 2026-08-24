@@ -1116,8 +1116,10 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{}.py を保存しました(セルの関数は計算し直ります)", "Saved {}.py (cell functions will recalculate)"),
     ("書きかけがあります。Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "There are unsaved edits. Ctrl+S saves; Esc again throws them away and closes"),
     ("閉じました", "Closed"),
-    ("サンドボックスが組めません(bubblewrap か Flatpak が要ります)。\
-他所から来たかもしれないコードはサンドボックスの外では実行しません(apt install bubblewrap)", "Can't build the sandbox (bubblewrap or Flatpak is required). Code that may have come from elsewhere is not run outside the sandbox (apt install bubblewrap)"),
+    ("サンドボックスが組めません。他所から来たかもしれないコードは\
+サンドボックスの外では実行しません(apt install bubblewrap で入ります)", "Can't build the sandbox. Code that may have come from elsewhere is not run outside the sandbox (apt install bubblewrap installs it)"),
+    ("この OS にはサンドボックスがないため、他所から来たかもしれない\
+コードは実行しません。ご自分で置いたマクロは動きます", "This OS has no sandbox, so code that may have come from elsewhere is not run. Macros you installed yourself still work"),
     ("officework のエンジンがありません(pip install officework で入ります。\
 手元で組むなら cargo build -p pysheet --release --features extension-module して、\
 lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてください)", "The officework engine is missing (pip install officework installs it. To build it here, run cargo build -p pysheet --release --features extension-module and put lib_sheet.so next to calc under the name officework/_sheet.so)"),

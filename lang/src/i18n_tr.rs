@@ -1113,8 +1113,10 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{}.py を保存しました(セルの関数は計算し直ります)", "{}.py kaydedildi (hücrelerdeki işlevler yeniden hesaplanacak)"),
     ("書きかけがあります。Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Kaydedilmemiş yazı var. Ctrl+S kaydeder; bir daha Esc atar ve kapatır"),
     ("閉じました", "Kapatıldı"),
-    ("サンドボックスが組めません(bubblewrap か Flatpak が要ります)。\
-他所から来たかもしれないコードはサンドボックスの外では実行しません(apt install bubblewrap)", "Kum havuzu kurulamıyor (bubblewrap ya da Flatpak gerekli). Başka yerden gelmiş olabilecek kod, kum havuzunun dışında çalıştırılmaz (apt install bubblewrap)"),
+    ("サンドボックスが組めません。他所から来たかもしれないコードは\
+サンドボックスの外では実行しません(apt install bubblewrap で入ります)", "Kum havuzu oluşturulamıyor. Başka bir yerden gelmiş olabilecek kod, kum havuzunun dışında çalıştırılmaz (apt install bubblewrap ile kurulur)"),
+    ("この OS にはサンドボックスがないため、他所から来たかもしれない\
+コードは実行しません。ご自分で置いたマクロは動きます", "Bu işletim sisteminde kum havuzu yok, bu nedenle başka bir yerden gelmiş olabilecek kod çalıştırılmaz. Kendi kurduğunuz makrolar çalışmaya devam eder"),
     ("officework のエンジンがありません(pip install officework で入ります。\
 手元で組むなら cargo build -p pysheet --release --features extension-module して、\
 lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてください)", "officework motoru yok (pip install officework ile kurulur. Burada kendiniz derleyecekseniz cargo build -p pysheet --release --features extension-module çalıştırın, sonra lib_sheet.so dosyasını officework/_sheet.so adıyla calc dosyasının yanına koyun)"),

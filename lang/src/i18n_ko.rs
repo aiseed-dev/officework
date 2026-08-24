@@ -1113,8 +1113,10 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{}.py を保存しました(セルの関数は計算し直ります)", "{}.py를 저장했습니다(셀의 함수는 다시 계산됩니다)"),
     ("書きかけがあります。Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "쓰다 만 내용이 있습니다. Ctrl+S로 저장, Esc를 한 번 더 누르면 버리고 닫습니다"),
     ("閉じました", "닫았습니다"),
-    ("サンドボックスが組めません(bubblewrap か Flatpak が要ります)。\
-他所から来たかもしれないコードはサンドボックスの外では実行しません(apt install bubblewrap)", "샌드박스를 짤 수 없습니다(bubblewrap이나 Flatpak이 필요합니다). 다른 데서 왔을지 모르는 코드는 샌드박스 밖에서 실행하지 않습니다(apt install bubblewrap)"),
+    ("サンドボックスが組めません。他所から来たかもしれないコードは\
+サンドボックスの外では実行しません(apt install bubblewrap で入ります)", "샌드박스를 만들 수 없습니다. 외부에서 왔을 수 있는 코드는 샌드박스 밖에서 실행하지 않습니다(apt install bubblewrap으로 설치)"),
+    ("この OS にはサンドボックスがないため、他所から来たかもしれない\
+コードは実行しません。ご自分で置いたマクロは動きます", "이 운영 체제에는 샌드박스가 없으므로 외부에서 왔을 수 있는 코드는 실행하지 않습니다. 직접 설치한 매크로는 계속 작동합니다"),
     ("officework のエンジンがありません(pip install officework で入ります。\
 手元で組むなら cargo build -p pysheet --release --features extension-module して、\
 lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてください)", "officework 엔진이 없습니다(pip install officework로 들어갑니다. 손수 짜려면 cargo build -p pysheet --release --features extension-module 을 실행하고, lib_sheet.so를 officework/_sheet.so 라는 이름으로 calc 옆에 두세요)"),

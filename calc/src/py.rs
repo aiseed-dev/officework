@@ -1013,12 +1013,24 @@ impl Calc {
             let venv = std::fs::canonicalize(".venv").unwrap_or_default();
             let mut cmd = match caged_python(&py, &dir, &[venv, so_dir2], allow_net) {
                 Some(c) => c,
+                // **案内は OS で変える。** 前は3つの OS すべてに
+                // 「apt install bubblewrap」と出していましたが、macOS と
+                // Windows にこの道具はありません。直しようのない指示を
+                // 出すと、利用者は自分の操作を疑って時間を使います
                 None if sandbox => {
-                    return Err(ui::t!(
-                        "サンドボックスが組めません(bubblewrap か Flatpak が要ります)。\
-他所から来たかもしれないコードはサンドボックスの外では実行しません(apt install bubblewrap)"
-                    )
-                    .to_string());
+                    return Err(if cfg!(target_os = "linux") {
+                        ui::t!(
+                            "サンドボックスが組めません。他所から来たかもしれないコードは\
+サンドボックスの外では実行しません(apt install bubblewrap で入ります)"
+                        )
+                        .to_string()
+                    } else {
+                        ui::t!(
+                            "この OS にはサンドボックスがないため、他所から来たかもしれない\
+コードは実行しません。ご自分で置いたマクロは動きます"
+                        )
+                        .to_string()
+                    });
                 }
                 None => std::process::Command::new(&py),
             };

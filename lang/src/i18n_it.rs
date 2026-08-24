@@ -1113,8 +1113,10 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{}.py を保存しました(セルの関数は計算し直ります)", "{}.py salvato (le funzioni nelle celle si ricalcolano)"),
     ("書きかけがあります。Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "Ci sono modifiche non salvate. Ctrl+S salva; un altro Esc le butta via e chiude"),
     ("閉じました", "Chiuso"),
-    ("サンドボックスが組めません(bubblewrap か Flatpak が要ります)。\
-他所から来たかもしれないコードはサンドボックスの外では実行しません(apt install bubblewrap)", "Impossibile montare la sandbox (serve bubblewrap oppure Flatpak). Il codice che potrebbe venire da fuori non viene eseguito fuori dalla sandbox (apt install bubblewrap)"),
+    ("サンドボックスが組めません。他所から来たかもしれないコードは\
+サンドボックスの外では実行しません(apt install bubblewrap で入ります)", "Impossibile creare l'ambiente isolato. Il codice che potrebbe provenire da altrove non viene eseguito fuori dall'ambiente isolato (si installa con apt install bubblewrap)"),
+    ("この OS にはサンドボックスがないため、他所から来たかもしれない\
+コードは実行しません。ご自分で置いたマクロは動きます", "Questo sistema operativo non ha un ambiente isolato, quindi il codice che potrebbe provenire da altrove non viene eseguito. Le macro installate da te continuano a funzionare"),
     ("officework のエンジンがありません(pip install officework で入ります。\
 手元で組むなら cargo build -p pysheet --release --features extension-module して、\
 lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてください)", "Manca il motore di officework (si installa con pip install officework. Per compilarlo qui: cargo build -p pysheet --release --features extension-module, poi mettere lib_sheet.so accanto a calc con il nome officework/_sheet.so)"),

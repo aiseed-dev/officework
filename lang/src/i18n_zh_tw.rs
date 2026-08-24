@@ -1113,8 +1113,10 @@ pub const TABLE: &[(&str, &str)] = &[
     ("{}.py を保存しました(セルの関数は計算し直ります)", "已儲存 {}.py(儲存格的函式會重新計算)"),
     ("書きかけがあります。Ctrl+S で保存、もう一度 Esc で捨てて閉じる", "還有沒存下來的修改。Ctrl+S 儲存，再按一次 Esc 就丟掉並關閉"),
     ("閉じました", "已關閉"),
-    ("サンドボックスが組めません(bubblewrap か Flatpak が要ります)。\
-他所から来たかもしれないコードはサンドボックスの外では実行しません(apt install bubblewrap)", "組不出沙箱(需要 bubblewrap 或 Flatpak)。可能是從別處來的程式碼，不會在沙箱外面執行(apt install bubblewrap)"),
+    ("サンドボックスが組めません。他所から来たかもしれないコードは\
+サンドボックスの外では実行しません(apt install bubblewrap で入ります)", "無法建立沙箱。可能來自他處的程式碼不會在沙箱外執行(可用 apt install bubblewrap 安裝)"),
+    ("この OS にはサンドボックスがないため、他所から来たかもしれない\
+コードは実行しません。ご自分で置いたマクロは動きます", "此作業系統沒有沙箱，因此不會執行可能來自他處的程式碼。您自己安裝的巨集仍然可用"),
     ("officework のエンジンがありません(pip install officework で入ります。\
 手元で組むなら cargo build -p pysheet --release --features extension-module して、\
 lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてください)", "沒有 officework 的引擎(用 pip install officework 就會裝好。想在本機自己組，請執行 cargo build -p pysheet --release --features extension-module，再把 lib_sheet.so 以 officework/_sheet.so 的名稱放在 calc 旁邊)"),

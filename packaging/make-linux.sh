@@ -79,13 +79,17 @@ rm -rf "$DEB"
 mkdir -p "$DEB/DEBIAN" "$DEB/opt/officework" "$DEB/usr/bin" "$DEB/usr/share/applications"
 cp -r "$OUT/$NAME/." "$DEB/opt/officework/"
 ln -sf "/opt/officework/officework" "$DEB/usr/bin/officework"
+# **bubblewrap は Recommends ではなく Depends です**(2026-08-24 発注者)。
+# マクロのサンドボックスがこれを使います。入っていない機械では、他所から
+# 来たコードは実行を断る作りなので、機能が1つ丸ごと使えません。
+# 「入っていれば効く」だと、守りが効くかどうかが機械任せになります。
 cat > "$DEB/DEBIAN/control" <<CTRL
 Package: officework
 Version: ${VER}
 Section: office
 Priority: optional
 Architecture: amd64
-Depends: libxkbcommon0, libxkbcommon-x11-0, libxcb1, libxcb-xkb1, libfontconfig1
+Depends: libxkbcommon0, libxkbcommon-x11-0, libxcb1, libxcb-xkb1, libfontconfig1, bubblewrap
 Recommends: fonts-noto-cjk
 Maintainer: aiseed-dev <https://github.com/aiseed-dev/officework>
 Description: officework — 表計算と文書(Python でマクロが書ける)
