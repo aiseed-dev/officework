@@ -13,6 +13,10 @@ description = "officework のエンジンの Python 束縛(xlsx = sheet、docx =
 name = "_sheet"
 crate-type = ["cdylib"]
 
+[build-dependencies]
+# mac で extension-module の cdylib を組むためのリンカ指定(build.rs 参照)
+pyo3-build-config = "0.29"
+
 [dependencies]
 sheet = { path = "../sheet" }
 # 操作の言葉。gpui を知らない層なので Python からも使える(画像の寸法読みなど)

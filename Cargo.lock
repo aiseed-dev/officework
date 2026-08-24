@@ -4720,6 +4720,7 @@ dependencies = [
  "ooxml",
  "ops",
  "pyo3",
+ "pyo3-build-config",
  "sheet",
 ]
 
