@@ -84,8 +84,8 @@ pub(crate) fn track_diff(base: &[String], cur: &[String]) -> (Vec<PMark>, Vec<(u
         let at = news.last().map(|j2| j2 + 1)
             .or_else(|| ops.get(k).and_then(|o| o.1))
             .unwrap_or(m);
-        for t in pair..olds.len() {
-            deleted.push((at, olds[t]));
+        for &o in olds.iter().skip(pair) {
+            deleted.push((at, o));
         }
     }
     (marks, deleted)

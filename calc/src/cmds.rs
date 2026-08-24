@@ -3694,9 +3694,8 @@ impl Calc {
                     return;
                 };
                 let d = self.book.pivots[pi].clone();
-                if d.chart_at.is_some() {
+                if let Some(at) = d.chart_at {
                     // もう1枚増やさない。**同じピボットの図は1枚**です
-                    let at = d.chart_at.unwrap();
                     let si = self.active;
                     self.book.sheets[si].images_new.retain(|im| im.at != at);
                     self.book.pivots[pi].chart_at = None;

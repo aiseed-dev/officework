@@ -60,6 +60,17 @@ mod state;
 #[cfg(test)]
 mod tests;
 
+/// 重複の削除の下ごしらえ((列, 見出し, 使うか) の並び, 見出しの行があるか)。
+type 重複の下ごしらえ = (Vec<(u32, String, bool)>, bool);
+/// ボタンの箱の控え(id → x, y, 幅, 高さ)。点検の道具が読みます。
+type ボタンの箱 = Rc<std::cell::RefCell<HashMap<&'static str, (f32, f32, f32, f32)>>>;
+/// 掴んで動かしている物(番号, 掴んだ点, 掴んだときの左上)。
+type 掴んだ場所 = (usize, (f32, f32), (f32, f32));
+/// 上と同じで、**右下の角を掴んでいるか**(大きさを変える)が付いたもの。
+type 掴んだ場所と角 = (usize, (f32, f32), (f32, f32), bool);
+/// 開いている一覧((鍵, 見出し) の並び, 出す場所)。
+type 開いている一覧 = (Vec<(String, String)>, (f32, f32));
+
 pub struct Calc {
     focus: FocusHandle,
     book: Book,
@@ -94,7 +105,7 @@ pub struct Calc {
     /// ピボットの絞り込みの聞き取り中: (指図の番号, 見出し, 隠す値の作業用)
     pivot_flt: Option<(usize, String, std::collections::BTreeSet<String>)>,
     /// 重複の削除の下ごしらえ: (列番号, 見せる名前, 比べるか) の列と「先頭行は見出し」
-    pub(crate) dedup_pend: Option<(Vec<(u32, String, bool)>, bool)>,
+    pub(crate) dedup_pend: Option<重複の下ごしらえ>,
     /// 条件付き書式のルールの管理で選んだ規則(sheet.cond の添字)
     pub(crate) cond_pend: Option<usize>,
     /// テキスト取り込みの下ごしらえ(ウィザードのパネルが持つ)
@@ -136,7 +147,7 @@ pub struct Calc {
     pub(crate) edits: u64,
     /// リボンのボタンの場所(命令の名前 → 窓の中の x, y, 幅, 高さ)。
     /// 描くたびに書く。一覧を**押したボタンの真下**に出すのに要る
-    pub(crate) btn_box: Rc<std::cell::RefCell<HashMap<&'static str, (f32, f32, f32, f32)>>>,
+    pub(crate) btn_box: ボタンの箱,
     /// いま開いている一覧を開いたリボンのボタンの幅。**幅の決め方が変わる** —
     /// セルから開いた一覧(0.0)は列の幅に合わせるが、リボンからのものは
     /// 中身に合わせ、ボタンの幅を下限・POP_W を上限にする
@@ -177,7 +188,7 @@ pub struct Calc {
     /// **いま触っている板のもの**を出す
     slicer_cfg: bool,
     /// 板の移動(番号, つかんだ点, つかんだときの左上)
-    slicer_drag: Option<(usize, (f32, f32), (f32, f32))>,
+    slicer_drag: Option<掴んだ場所>,
     /// コメントを見せるか(共同編集タブで切替。隠しても付いたまま)
     show_comments: bool,
     /// 数学オートコレクト(`\alpha ` → `α `)を掛けるか。器は settings.toml。
@@ -226,7 +237,7 @@ pub struct Calc {
     /// 選択中の図形(shapes_new の番号)。Esc/他クリックで解除、Del で削除
     shape_sel: Option<usize>,
     /// 図形のドラッグ(番号, 掴んだ格子px, 掴んだ時のアンカーの格子px, 大きさ変更か)
-    shape_drag: Option<(usize, (f32, f32), (f32, f32), bool)>,
+    shape_drag: Option<掴んだ場所と角>,
     /// 図形の回転ドラッグ(枠の上の丸を掴んでいる間だけ Some)
     shape_rot: Option<usize>,
     /// **ポイントの編集**(頂点をつまむモード)。図形の番号。
@@ -248,7 +259,7 @@ pub struct Calc {
     track_from: Option<Vec<(String, std::collections::BTreeMap<Pos, String>)>>,
     /// 選んでいる画像(images_new の番号)。グラフもここ
     img_sel: Option<usize>,
-    img_drag: Option<(usize, (f32, f32), (f32, f32), bool)>,
+    img_drag: Option<掴んだ場所と角>,
     /// ホイールの端数(触パネルの細かい送りを捨てずに貯める)
     wheel: (f32, f32),
     /// 窓の大きさ(px)。描画のたびに実測 — **見える範囲**の計算に使う。
@@ -281,7 +292,7 @@ pub struct Calc {
     /// 色見本の引き当ても鍵で行う。見出しだけが画面の言語に訳される。
     /// 中身が値そのもの(書体名・ファイル名・シート名など)のときは
     /// [`plain`] で鍵と見出しを同じにする。
-    pick: Option<(Vec<(String, String)>, (f32, f32))>,
+    pick: Option<開いている一覧>,
     /// pick の中身の意味: "value"=セルに入れる / "font"=書体 / "size"=文字の大きさ
     pick_kind: &'static str,
     /// 絞り込みつきの一覧のときの検索欄。**Some の間はここへ打鍵が流れる**。

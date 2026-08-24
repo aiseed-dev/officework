@@ -44,6 +44,7 @@ pub(crate) struct Panels {
 impl Writer {
     /// パネルを全部組む(順番は view.rs にあった時のまま)。
     /// 色は render のテーマの束 — パネルが使う6つだけを受け取る
+    #[allow(clippy::too_many_arguments)] // 色は6つとも別物。束ねると呼ぶ側から見えない
     pub(crate) fn panels(
         &mut self,
         dk: bool,

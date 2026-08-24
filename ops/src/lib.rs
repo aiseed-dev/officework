@@ -2014,15 +2014,6 @@ pub struct Req {
 /// 溜まった要求。アプリの主スレッドが取り出して捌きます。
 pub type Queue = std::sync::Arc<std::sync::Mutex<Vec<Req>>>;
 
-/// **受け口を開く。** 開けたら真。
-///
-/// 開けなくてもアプリは動きます(黙らず標準エラーにだけ言います)。
-/// `app` は名乗りで、`$XDG_RUNTIME_DIR/officework/<app>.sock` になります。
-///
-/// **Windows では作りません(2026-08-20 発注者)。** `#[cfg(unix)]` は
-/// 移植待ちではなく決めです — 聞き続ける物を、使い道を決めないまま
-/// 増やしません。
-#[cfg(unix)]
 /// **すでに動いている本体に話しかける**(2026-08-20)。
 ///
 /// 返事の1行を返します。誰も居なければ `None` です。
@@ -2054,6 +2045,15 @@ pub fn ask(app: &str, line: &str) -> Option<String> {
     Some(返事)
 }
 
+/// **受け口を開く。** 開けたら真。
+///
+/// 開けなくてもアプリは動きます(黙らず標準エラーにだけ言います)。
+/// `app` は名乗りで、`$XDG_RUNTIME_DIR/officework/<app>.sock` になります。
+///
+/// **Windows では作りません(2026-08-20 発注者)。** `#[cfg(unix)]` は
+/// 移植待ちではなく決めです — 聞き続ける物を、使い道を決めないまま
+/// 増やしません。
+#[cfg(unix)]
 pub fn listen(app: &'static str, queue: Queue) -> bool {
     use std::io::{BufRead as _, Write as _};
     let path = sock_path(app);

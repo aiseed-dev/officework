@@ -45,12 +45,15 @@ struct Look {
     first_twips: i32,
 }
 
+/// 数えるときの鍵。(大きさ, 書体, 太字, 斜体, 下線, スタイル)
+/// — 段落の中でいちばん多い見た目を選ぶのに使います
+type 見た目の鍵 = (Option<u32>, Option<String>, bool, bool, bool, Option<String>);
+
 impl Look {
     /// 段落の見た目を読む。run は**いちばん多く使われている姿**を採る
     /// (先頭の run だと、頭に1字だけ違う書式があるときに引きずられる)
     fn of(p: &Paragraph) -> Look {
-        let mut tally: HashMap<(Option<u32>, Option<String>, bool, bool, bool, Option<String>), usize> =
-            HashMap::new();
+        let mut tally: HashMap<見た目の鍵, usize> = HashMap::new();
         for r in &p.runs {
             if r.text.is_empty() {
                 continue; // 印だけの run(脚注)は見た目を持たない
@@ -280,23 +283,22 @@ mod tests {
     use crate::doc::{CharFormat, Run};
 
     fn para(text: &str, pt: Option<f32>, bold: bool, style: ParaStyle) -> Block {
-        let mut p = Paragraph::default();
-        p.style = style;
-        let mut fmt = CharFormat::default();
-        fmt.bold = bold;
-        p.runs.push(Run { text: text.into(), size_pt: pt, font: None, fmt });
-        Block::Para(p)
+        let fmt = CharFormat { bold, ..Default::default() };
+        Block::Para(Paragraph {
+            style,
+            runs: vec![Run { text: text.into(), size_pt: pt, font: None, fmt }],
+            ..Default::default()
+        })
     }
 
     #[test]
     fn いちばん多い見た目が本文になる() {
-        let mut d = Document::default();
-        d.blocks = vec![
+        let d = Document { blocks: vec![
             para("題", Some(16.0), true, ParaStyle::Heading(1)),
             para("ふつうの段落。", Some(10.5), false, ParaStyle::Body),
             para("もうひとつ。", Some(10.5), false, ParaStyle::Body),
             para("みっつめ。", Some(10.5), false, ParaStyle::Body),
-        ];
+        ], ..Default::default() };
         let (out, th, rep) = distill(&d);
         assert_eq!(th.size_pt, Some(10.5), "本文の大きさが文書の既定にならない");
         assert_eq!(rep.styles, 1, "見出しの1つだけがスタイルになる");
@@ -314,12 +316,11 @@ mod tests {
 
     #[test]
     fn 役割の無い見た目には名前を作る() {
-        let mut d = Document::default();
-        d.blocks = vec![
+        let d = Document { blocks: vec![
             para("ふつう。", Some(10.5), false, ParaStyle::Body),
             para("ふつう2。", Some(10.5), false, ParaStyle::Body),
             para("なぜか大きい。", Some(14.0), false, ParaStyle::Body),
-        ];
+        ], ..Default::default() };
         let (out, th, _) = distill(&d);
         assert_eq!(th.styles.len(), 1);
         assert_eq!(th.styles[0].name, "見た目1");
@@ -331,16 +332,16 @@ mod tests {
     #[test]
     fn 強調は意味なので残る() {
         let mut d = Document::default();
-        let mut p = Paragraph::default();
-        let mut plain = CharFormat::default();
-        let mut strong = CharFormat::default();
-        strong.bold = true;
-        p.runs = vec![
-            Run { text: "ここは".into(), size_pt: Some(10.5), font: None, fmt: plain.clone() },
-            Run { text: "強い".into(), size_pt: Some(10.5), font: None, fmt: strong },
-            Run { text: "です。".into(), size_pt: Some(10.5), font: None, fmt: plain.clone() },
-        ];
-        plain.bold = false;
+        let plain = CharFormat::default();
+        let strong = CharFormat { bold: true, ..Default::default() };
+        let p = Paragraph {
+            runs: vec![
+                Run { text: "ここは".into(), size_pt: Some(10.5), font: None, fmt: plain.clone() },
+                Run { text: "強い".into(), size_pt: Some(10.5), font: None, fmt: strong },
+                Run { text: "です。".into(), size_pt: Some(10.5), font: None, fmt: plain },
+            ],
+            ..Default::default()
+        };
         d.blocks = vec![Block::Para(p), para("ふつう。", Some(10.5), false, ParaStyle::Body)];
         let (out, _, _) = distill(&d);
         let ps: Vec<&Paragraph> = out.paragraphs().collect();
@@ -352,11 +353,13 @@ mod tests {
     fn 落ちた物を数える() {
         // 段落の見た目は 10.5pt。1つの run だけ 20pt = 段落の鍵に収まらない
         let mut d = Document::default();
-        let mut p = Paragraph::default();
-        p.runs = vec![
-            Run { text: "ふつうの長い文。".into(), size_pt: Some(10.5), font: None, fmt: CharFormat::default() },
-            Run { text: "大".into(), size_pt: Some(20.0), font: None, fmt: CharFormat::default() },
-        ];
+        let p = Paragraph {
+            runs: vec![
+                Run { text: "ふつうの長い文。".into(), size_pt: Some(10.5), font: None, fmt: CharFormat::default() },
+                Run { text: "大".into(), size_pt: Some(20.0), font: None, fmt: CharFormat::default() },
+            ],
+            ..Default::default()
+        };
         d.blocks = vec![Block::Para(p)];
         let (_, _, rep) = distill(&d);
         assert_eq!(rep.dropped, 1, "落ちた run を数えていない");
@@ -366,12 +369,11 @@ mod tests {
     fn 蒸留した物は合成で元の見た目に戻る() {
         // **蒸留 → 合成が恒等に近いこと**(門番)。見出しの 16pt 太字が、
         // テンプレート経由で戻る
-        let mut d = Document::default();
-        d.blocks = vec![
+        let d = Document { blocks: vec![
             para("題", Some(16.0), true, ParaStyle::Heading(1)),
             para("ふつう。", Some(10.5), false, ParaStyle::Body),
             para("ふつう2。", Some(10.5), false, ParaStyle::Body),
-        ];
+        ], ..Default::default() };
         let (out, th, _) = distill(&d);
         let back = crate::theme::compose(&out, &th);
         let ps: Vec<&Paragraph> = back.paragraphs().collect();

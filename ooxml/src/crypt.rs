@@ -83,8 +83,10 @@ impl Ecb {
         }
     }
     fn enc(&self, data: &mut [u8]) {
-        for chunk in data.chunks_exact_mut(16) {
-            let b = GenericArray::from_mut_slice(chunk);
+        // `as_chunks_mut` は `chunks_exact_mut(16)` と同じ切り方です
+        // (端数は捨てる)。clippy がこちらを勧めます
+        for chunk in data.as_chunks_mut::<16>().0 {
+            let b = GenericArray::from_mut_slice(chunk.as_mut_slice());
             match self {
                 Ecb::A128(c) => c.encrypt_block(b),
                 Ecb::A192(c) => c.encrypt_block(b),
@@ -93,8 +95,8 @@ impl Ecb {
         }
     }
     fn dec(&self, data: &mut [u8]) {
-        for chunk in data.chunks_exact_mut(16) {
-            let b = GenericArray::from_mut_slice(chunk);
+        for chunk in data.as_chunks_mut::<16>().0 {
+            let b = GenericArray::from_mut_slice(chunk.as_mut_slice());
             match self {
                 Ecb::A128(c) => c.decrypt_block(b),
                 Ecb::A192(c) => c.decrypt_block(b),
@@ -337,9 +339,9 @@ fn hmac(h: Hasher, key: &[u8], msg: &[u8]) -> Vec<u8> {
 /// AES-CBC。連鎖は ECB の器(Ecb)を使って手で回す
 fn cbc_dec(ecb: &Ecb, iv: &[u8], data: &mut [u8]) {
     let mut prev = iv[..16].to_vec();
-    for chunk in data.chunks_exact_mut(16) {
+    for chunk in data.as_chunks_mut::<16>().0 {
         let cipher = chunk.to_vec();
-        ecb.dec(chunk);
+        ecb.dec(chunk.as_mut_slice());
         for (b, p) in chunk.iter_mut().zip(prev.iter()) {
             *b ^= p;
         }
@@ -349,11 +351,11 @@ fn cbc_dec(ecb: &Ecb, iv: &[u8], data: &mut [u8]) {
 
 fn cbc_enc(ecb: &Ecb, iv: &[u8], data: &mut [u8]) {
     let mut prev = iv[..16].to_vec();
-    for chunk in data.chunks_exact_mut(16) {
+    for chunk in data.as_chunks_mut::<16>().0 {
         for (b, p) in chunk.iter_mut().zip(prev.iter()) {
             *b ^= p;
         }
-        ecb.enc(chunk);
+        ecb.enc(chunk.as_mut_slice());
         prev = chunk.to_vec();
     }
 }

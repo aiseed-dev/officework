@@ -175,6 +175,12 @@ enum Target {
     Cell { table: usize, row: usize, col: usize },
 }
 
+/// ボタンの箱の控え(id → x, y, 幅, 高さ)。点検の道具が読みます。
+type ボタンの箱 =
+    std::rc::Rc<std::cell::RefCell<std::collections::HashMap<&'static str, (f32, f32, f32, f32)>>>;
+/// 一覧の当たりの控え(段, 項目, x, y, 幅, 高さ)。
+type 一覧の箱 = std::rc::Rc<std::cell::RefCell<Vec<(usize, usize, f32, f32, f32, f32)>>>;
+
 pub struct Writer {
     focus: FocusHandle,
     doc: Document,
@@ -295,7 +301,7 @@ pub struct Writer {
     /// 当てて何度も外した(2026-08-16。3回外し、外した拍子に発注者の打鍵まで
     /// 拾った)。**網は開けない** — 環境変数 `OFFICEWORK_UI_DUMP` が指す
     /// ファイルへ書き出すだけで、既定では何も起きない
-    btn_box: std::rc::Rc<std::cell::RefCell<std::collections::HashMap<&'static str, (f32, f32, f32, f32)>>>,
+    btn_box: ボタンの箱,
     /// 前に書き出した中身(同じなら書かない — 毎フレーム書くのは無駄)
     ui_dump_last: std::cell::RefCell<String>,
     /// **右パネルが実際に描いた面**(点検用。状態と食い違ったら分かる)
@@ -319,7 +325,7 @@ pub struct Writer {
     fd_busy: bool,
     /// **一覧の当たりの場所**(点検用。id は "fd-h-<ファイル>-<当たり>")。
     /// 箱の鍵は `&'static str` なので、控える数を上から数本に絞る
-    fd_box: std::rc::Rc<std::cell::RefCell<Vec<(usize, usize, f32, f32, f32, f32)>>>,
+    fd_box: 一覧の箱,
     /// **ネイティブ文書(.adoc)を開いている**(2026-08-16)。
     /// 中身は意味だけで、見た目は [`Self::theme`] が持つ。false は互換
     /// (docx)— 直接書式が本文に入っている、今までの文書

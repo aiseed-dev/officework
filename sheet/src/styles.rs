@@ -425,6 +425,9 @@ fn indexed(e: &quick_xml::events::BytesStart) -> Option<String> {
     PALETTE.get(i).map(|s| s.to_string())
 }
 
+// **引数を束ねません。** どれも別々の物で、まとめた構造体を作ると
+// 「何を渡したか」が呼ぶ側から見えなくなります
+#[allow(clippy::too_many_arguments)]
 fn resolve(
     (fid, fillid, bid, nfid): (usize, usize, usize, u32),
     fonts: &[Fnt],
@@ -863,6 +866,9 @@ fn bump_count(s: &mut String, name: &str, add: usize) {
 /// **索引は末尾に足す** — 既にある番号は動かさない(触っていないセルの
 /// 書式が原本の索引のまま書き戻る、という据え置きの土台を壊さないため)。
 #[allow(clippy::type_complexity)]
+// **引数を束ねません。** どれも別々の物で、まとめた構造体を作ると
+// 「何を渡したか」が呼ぶ側から見えなくなります
+#[allow(clippy::too_many_arguments)]
 fn named_style_parts(
     named: &[(String, CellFormat)],
     font_base: usize,

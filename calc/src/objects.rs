@@ -2,6 +2,9 @@
 
 use crate::*;
 
+/// 折れ線の束(1本 = 点の並び)。図形の当たり判定に使います。
+type 折れ線の束 = Vec<Vec<(f32, f32)>>;
+
 impl Calc {
 
     /// この格子座標に**このアプリで挿した図形**があるか(上に描かれた順 = 後勝ち)。
@@ -879,7 +882,7 @@ impl Calc {
             return;
         };
         // **輪郭を出せない形は断る。** 黙って四角で計算しない
-        let (Some(oa), Some(ob)): (Option<Vec<Vec<(f32, f32)>>>, Option<Vec<Vec<(f32, f32)>>>) = (
+        let (Some(oa), Some(ob)): (Option<折れ線の束>, Option<折れ線の束>) = (
             outline(&sa.kind, &sa.points),
             outline(&sb.kind, &sb.points),
         ) else {

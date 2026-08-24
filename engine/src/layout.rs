@@ -783,6 +783,10 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
 /// **表示専用** — 置き換えでバイト位置が変わるので、行の byte0 は編集と結ばない
 /// (ヘッダーの編集は紙面上ではなくパネルで行う)。
 /// y はページ上端からの mm、x は左余白からの mm(本文の行と同じ物差し)。
+// **引数を束ねません。** どれも別々の物で、まとめた構造体を作ると
+// 「何を渡したか」が呼ぶ側から見えなくなります(組版の位置は間違えても
+// 静かにずれるだけなので、渡す物が目に見えている方が安全です)
+#[allow(clippy::too_many_arguments)]
 pub fn layout_hf(
     hf: &HeadFoot,
     m: &Metrics,
@@ -1123,6 +1127,8 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
 ///
 /// 罫線は「格子」ではなく**結合後のセルの縁**に引く — 結合の中を
 /// 線が横切ると、様式の枠が壊れて見える。
+// 上と同じ理由で束ねません
+#[allow(clippy::too_many_arguments)]
 pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mut Sheet,
                 table_no: usize, hyphenate: bool, notes: &mut NoteCount, base: f32) -> f32 {
     // 列数は「セルの数」ではなく「セルが占める格子の数」
@@ -1220,9 +1226,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     // (ri, gc) から始まる縦結合の高さ: 同じ格子位置で Continue が続く間
     let merged_h = |ri: usize, gc: usize| -> f32 {
         let mut h = row_hs[ri];
-        for r in ri + 1..grid.len() {
+        // `row_hs` は行と同じ数(上の走査で1行ごとに1つ積む)
+        for (r, rh) in row_hs.iter().enumerate().skip(ri + 1) {
             match cover(r, gc) {
-                Some((g0, _, VMerge::Continue)) if g0 == gc => h += row_hs[r],
+                Some((g0, _, VMerge::Continue)) if g0 == gc => h += rh,
                 _ => break,
             }
         }
@@ -1264,8 +1271,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
 
     // 罫線・横: 行の境ごとに、格子を歩いて「引ける区間」を繋いで引く。
     // 縦結合の中を横切る線は引かない
-    for b in 0..=grid.len() {
-        let y = tops[b];
+    // `tops` は行より1つ多い(上端に加えて最後の下端を持つ)ので、
+    // そのまま歩けば行の境を全部通る
+    for (b, &y) in tops.iter().enumerate() {
         let mut g = 0usize;
         while g < ncols {
             // 境の下の行が Continue なら、この格子の上に線は引かない

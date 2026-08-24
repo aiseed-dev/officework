@@ -70,6 +70,9 @@ pub struct Line {
 
 /// AsciiDoc として読む。**書式が1つも無ければ None**(そのときは
 /// 今までどおり平文を1つ描くだけで済む — 普通のセルに費用を掛けない)。
+/// 印の1つ。字と、その字が囲んだ所に付ける印。
+type 印を付ける = fn(&mut Span);
+
 pub fn parse(text: &str) -> Option<Vec<Line>> {
     // 印が1つも無ければ、読むまでもない(普通のセルに費用を掛けない)
     if !text.contains(['*', '_', '`', '[', '=', '.']) {
@@ -294,7 +297,7 @@ fn inline(s: &str) -> Vec<Span> {
         // 本家では一重は「語の外」だけで効き、日本語には語の間の空白が
         // 無いので、**文中では二重が要ります**(2026-08-19 発注者の指摘で
         // 本家に通して確かめた — 一重は字のまま、二重だけ効いた)
-        let 二重印: [(char, fn(&mut Span)); 3] = [
+        let 二重印: [(char, 印を付ける); 3] = [
             ('*', (|s: &mut Span| s.bold = true) as fn(&mut Span)),
             ('_', |s: &mut Span| s.italic = true),
             ('`', |s: &mut Span| s.mono = true),
@@ -334,7 +337,7 @@ fn inline(s: &str) -> Vec<Span> {
             continue;
         }
         // *太字* / _斜体_ / `等幅`
-        let marks: [(char, fn(&mut Span)); 3] = [
+        let marks: [(char, 印を付ける); 3] = [
             ('*', (|s: &mut Span| s.bold = true) as fn(&mut Span)),
             ('_', |s: &mut Span| s.italic = true),
             ('`', |s: &mut Span| s.mono = true),

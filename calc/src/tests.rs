@@ -3234,12 +3234,10 @@ mod recalc_tests {
             );
 
             // 値を変えてもう1つ控える
-            for (a1, v) in [("A1", "90")] {
-                this.cursor = Pos::parse(a1).unwrap();
-                this.sync_input();
-                this.input.insert(v);
-                assert!(this.commit());
-            }
+            this.cursor = Pos::parse("A1").unwrap();
+            this.sync_input();
+            this.input.insert("90");
+            assert!(this.commit());
             this.cursor = Pos::parse("A1").unwrap();
             this.anchor = Some(Pos::parse("A2").unwrap());
             this.prompt = Some(("scenario-name", Editor::new("弱気")));
@@ -4260,9 +4258,11 @@ mod udf_tests {
 
             // **型紙が正**: ブックに名前付きスタイル「見出し 1」があれば
             // そちらが勝つ(2026-08-09 発注者「テンプレートに設定できませんか?」)
-            let mut big = sheet::model::CellFormat::default();
-            big.size_c = Some(2200); // 22pt = 普通の 11pt の2倍
-            big.bold = true;
+            let big = sheet::model::CellFormat {
+                size_c: Some(2200), // 22pt = 普通の 11pt の2倍
+                bold: true,
+                ..Default::default()
+            };
             this.book.named_styles.push(("見出し 1".into(), Some(16), big));
             this.cursor = Pos::new(8, 0);
             this.input = Editor::new("= 型紙で決めた大きさ");

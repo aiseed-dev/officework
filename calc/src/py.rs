@@ -3,6 +3,15 @@
 use crate::*;
 
 /// PY の引数を Python の書き方(リテラル)にする。
+/// 自前の関数の表(モジュール名 → (関数名, 説明) の並び)。
+type 自前の関数の表 = HashMap<String, Vec<(String, String)>>;
+/// シートごとの呼び出し(シート番号, (置き場, 関数名, 引数) の並び)。
+type シートごとの呼び出し = (usize, Vec<(String, String, Vec<sheet::calc::PyArg>)>);
+/// シートごとの式の呼び出し(シート番号, (置き場, 式, 関数名, 引数) の並び)。
+type シートごとの式の呼び出し = (usize, Vec<(String, String, String, Vec<sheet::calc::PyArg>)>);
+/// 差し込みの1仕事(置き場, (場所, 中身) の並び, 右下)。
+type 差し込みの仕事 = (Pos, Vec<(Pos, String)>, Pos);
+
 pub(crate) fn py_literal(v: &sheet::Value) -> String {
     match v {
         sheet::Value::Number(n) => format!("{n}"),
@@ -281,7 +290,7 @@ pub(crate) use pyrun::{def_names, plugin_outline};
 
 /// UDF の登録簿。**大文字にした関数名** → その名前を持つ (モジュール, 実際の名前)。
 /// 字句解析が ASCII を大文字にするので、こちらも大文字で引く(日本語はそのまま)。
-static UDF_MAP: std::sync::RwLock<Option<HashMap<String, Vec<(String, String)>>>> =
+static UDF_MAP: std::sync::RwLock<Option<自前の関数の表>> =
     std::sync::RwLock::new(None);
 
 /// plugins を読み直して UDF の登録簿を作り、sheet に名前を渡す。
@@ -1125,7 +1134,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     /// **サンドボックスは着せない**: 回すのは自分で plugins に置いたコードだけで、
     /// ブックから旅して来たコードではない(2026-08-09 発注者確定)。
     fn run_udfs(&mut self, auto: bool, cx: &mut Context<Self>) {
-        let mut per_sheet: Vec<(usize, Vec<(String, String, Vec<sheet::calc::PyArg>)>)> =
+        let mut per_sheet: Vec<シートごとの呼び出し> =
             Vec::new();
         // 投げたセルの控え(答えが返った時、この分だけ指紋を控える)
         let mut sent: Vec<(usize, Vec<Pos>)> = Vec::new();
@@ -1209,7 +1218,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             }
         }
         // (セル, モジュール, 関数, 引数)へ組み替える
-        let per_sheet: Vec<(usize, Vec<(String, String, String, Vec<sheet::calc::PyArg>)>)> =
+        let per_sheet: Vec<シートごとの式の呼び出し> =
             per_sheet
                 .into_iter()
                 .map(|(i, calls)| {
@@ -1598,7 +1607,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         let season = 一つ("season") as u32;
         let sigma = 一つ("sigma");
         self.checkpoint();
-        let name = crate::util::unique_sheet_name_for(&self.book, &ui::t!("予測").to_string());
+        let name = crate::util::unique_sheet_name_for(&self.book, ui::t!("予測"));
         let mut sh = sheet::Sheet::new(&name);
         let 実 = if 見出し.is_empty() { ui::t!("実績").to_string() } else { 見出し };
         for (c, t) in [
@@ -2301,7 +2310,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             ints,
             bounds
         );
-        let 整数あり = int_of.iter().any(|v| *v == 1);
+        let 整数あり = int_of.contains(&1);
         let dir = 作業場("solver");
         self.status = if 整数あり {
             ui::t!("解を探しています…(整数計画。分枝限定)").into()
@@ -2440,7 +2449,7 @@ impl Calc {
         let si = self.active;
         let two = row_in.is_some() && col_in.is_some();
         // 埋める先と、そのとき差し替える入力の組
-        let mut jobs: Vec<(Pos, Vec<(Pos, String)>, Pos)> = Vec::new();
+        let mut jobs: Vec<差し込みの仕事> = Vec::new();
         if two {
             let (ci, ri) = (col_in.unwrap(), row_in.unwrap());
             // 角(a)が式。左の列 = 列の入力、上の行 = 行の入力

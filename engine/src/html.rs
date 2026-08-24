@@ -33,9 +33,10 @@ pub fn parse(src: &str) -> (Document, Vec<String>) {
 }
 
 /// 記入欄(form)とリンクも返す版。リンクは (href, 見えている字)。
-pub fn parse_full(
-    src: &str,
-) -> (Document, Vec<String>, Vec<Form>, Vec<(String, String)>) {
+/// HTML を読んだ結果。(文書, 読めなかった物の名前, フォーム, 付いていた鍵と値)
+pub type 読んだ結果 = (Document, Vec<String>, Vec<Form>, Vec<(String, String)>);
+
+pub fn parse_full(src: &str) -> 読んだ結果 {
     let mut b = Builder::new();
     let bytes = src.as_bytes();
     let mut i = 0usize;
@@ -558,7 +559,7 @@ impl Builder {
         }
     }
 
-    fn finish(mut self) -> (Document, Vec<String>, Vec<Form>, Vec<(String, String)>) {
+    fn finish(mut self) -> 読んだ結果 {
         self.close("ruby");
         self.close("form");
         self.close("table");

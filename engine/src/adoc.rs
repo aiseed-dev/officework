@@ -1577,11 +1577,12 @@ fn base_para(
     brk: &mut bool,
     style: &mut Option<String>,
 ) -> Paragraph {
-    let mut p = Paragraph::default();
-    p.bookmarks = std::mem::take(bookmarks);
-    p.page_break_before = std::mem::take(brk);
-    p.style_id = style.take();
-    p
+    Paragraph {
+        bookmarks: std::mem::take(bookmarks),
+        page_break_before: std::mem::take(brk),
+        style_id: style.take(),
+        ..Default::default()
+    }
 }
 
 /// `== 見出し` → (1, "見出し")。`=` の数 − 1 が水準(1〜3)
@@ -1674,12 +1675,12 @@ fn parse_inline_続き(
         if cur.is_empty() {
             return;
         }
-        let mut fmt = CharFormat::default();
-        fmt.bold = bold;
-        fmt.italic = italic;
-        if mono {
-            fmt.style_id = Some(MONO.to_string());
-        }
+        let fmt = CharFormat {
+            bold,
+            italic,
+            style_id: mono.then(|| MONO.to_string()),
+            ..Default::default()
+        };
         runs.push(Run { text: std::mem::take(cur), size_pt: None, font: None, fmt });
     };
     let mut i = 0usize; // バイト
@@ -1756,10 +1757,12 @@ fn parse_inline_続き(
                     let body = &after[rb + 2..];
                     if let Some(end) = body.find('#') {
                         flush(&mut runs, &mut cur, bold, italic, mono);
-                        let mut fmt = CharFormat::default();
-                        fmt.bold = bold;
-                        fmt.italic = italic;
-                        fmt.style_id = Some(name.to_string());
+                        let fmt = CharFormat {
+                            bold,
+                            italic,
+                            style_id: Some(name.to_string()),
+                            ..Default::default()
+                        };
                         runs.push(Run {
                             text: body[..end].to_string(),
                             size_pt: None,
@@ -1777,11 +1780,13 @@ fn parse_inline_続き(
             let close = if up { '^' } else { '~' };
             if let Some(end) = rest[1..].find(close) {
                 flush(&mut runs, &mut cur, bold, italic, mono);
-                let mut fmt = CharFormat::default();
-                fmt.bold = bold;
-                fmt.italic = italic;
-                fmt.superscript = up;
-                fmt.subscript = !up;
+                let fmt = CharFormat {
+                    bold,
+                    italic,
+                    superscript: up,
+                    subscript: !up,
+                    ..Default::default()
+                };
                 runs.push(Run {
                     text: rest[1..1 + end].to_string(),
                     size_pt: None,
@@ -1796,10 +1801,12 @@ fn parse_inline_続き(
             if let Some(end) = after.find(">>") {
                 flush(&mut runs, &mut cur, bold, italic, mono);
                 let name = after[..end].to_string();
-                let mut fmt = CharFormat::default();
-                fmt.bold = bold;
-                fmt.italic = italic;
-                fmt.field = Some(RefField { name: name.clone(), page: false });
+                let fmt = CharFormat {
+                    bold,
+                    italic,
+                    field: Some(RefField { name: name.clone(), page: false }),
+                    ..Default::default()
+                };
                 runs.push(Run { text: name, size_pt: None, font: None, fmt });
                 i += 2 + end + 2;
                 continue;
@@ -1810,21 +1817,25 @@ fn parse_inline_続き(
             flush(&mut runs, &mut cur, bold, italic, mono);
             *fresh_note += 1;
             let id = format!("adoc{fresh_note}");
-            let mut np = Paragraph::default();
-            np.runs = vec![Run {
-                text: after[..end].to_string(),
-                size_pt: None,
-                font: None,
-                fmt: CharFormat::default(),
-            }];
+            let np = Paragraph {
+                runs: vec![Run {
+                    text: after[..end].to_string(),
+                    size_pt: None,
+                    font: None,
+                    fmt: CharFormat::default(),
+                }],
+                ..Default::default()
+            };
             doc.footnotes.push(Footnote {
                 id: id.clone(),
                 endnote: false,
                 paragraphs: vec![np],
                 added: true,
             });
-            let mut fmt = CharFormat::default();
-            fmt.footnote = Some(FootnoteRef { id, endnote: false });
+            let fmt = CharFormat {
+                footnote: Some(FootnoteRef { id, endnote: false }),
+                ..Default::default()
+            };
             runs.push(Run { text: String::new(), size_pt: None, font: None, fmt });
             i += "footnote:[".len() + end + 1;
             continue;
@@ -1842,8 +1853,10 @@ fn parse_inline_続き(
                     let tag = after[..open].to_string();
                     let 中 = &after[open + 1..open + close];
                     let (alias, kind, items) = parse_field(中);
-                    let mut fmt = CharFormat::default();
-                    fmt.sdt = Some(Box::new(crate::doc::Sdt { kind, alias, tag, items }));
+                    let fmt = CharFormat {
+                        sdt: Some(Box::new(crate::doc::Sdt { kind, alias, tag, items })),
+                        ..Default::default()
+                    };
                     runs.push(Run { text: String::new(), size_pt: None, font: None, fmt });
                     i += "field:".len() + open + close + 1;
                     continue;
@@ -1854,10 +1867,12 @@ fn parse_inline_続き(
             if let Some(open) = after.find('[') {
                 if let Some(close) = after[open..].find(']') {
                     flush(&mut runs, &mut cur, bold, italic, mono);
-                    let mut fmt = CharFormat::default();
-                    fmt.bold = bold;
-                    fmt.italic = italic;
-                    fmt.ruby = Some(after[open + 1..open + close].to_string());
+                    let fmt = CharFormat {
+                        bold,
+                        italic,
+                        ruby: Some(after[open + 1..open + close].to_string()),
+                        ..Default::default()
+                    };
                     runs.push(Run {
                         text: after[..open].to_string(),
                         size_pt: None,
@@ -1875,10 +1890,12 @@ fn parse_inline_続き(
                     let url = &rest[..open];
                     if !url.contains(' ') {
                         flush(&mut runs, &mut cur, bold, italic, mono);
-                        let mut fmt = CharFormat::default();
-                        fmt.bold = bold;
-                        fmt.italic = italic;
-                        fmt.link = Some(url.to_string());
+                        let fmt = CharFormat {
+                            bold,
+                            italic,
+                            link: Some(url.to_string()),
+                            ..Default::default()
+                        };
                         runs.push(Run {
                             text: rest[open + 1..open + close].to_string(),
                             size_pt: None,
@@ -1971,9 +1988,11 @@ fn parse_table_lines(
                 .ok_or_else(|| format!("表の行はセルごとに | で始める: {l}"))?;
             let end = next_cell_start(body);
             let (cell_text, restn) = body.split_at(end);
-            let mut cb = Cellbox::default();
-            cb.col_span = hspan;
-            cb.v_merge = if vspan > 1 { VMerge::Start } else { VMerge::None };
+            let mut cb = Cellbox {
+                col_span: hspan,
+                v_merge: if vspan > 1 { VMerge::Start } else { VMerge::None },
+                ..Default::default()
+            };
             // 縦結合の残り行数は、後で桁に切るときに使う
             // **式は字のまま取ります**(太字の印として読まない)
             // **空の段落も残します。** 様式のセルは、書き込む余白として
@@ -2048,9 +2067,7 @@ fn parse_table_lines(
                     None => break,
                 }
             }
-            let mut cb = Cellbox::default();
-            cb.v_merge = VMerge::Continue;
-            row.push(cb);
+            row.push(Cellbox { v_merge: VMerge::Continue, ..Default::default() });
             桁 += 1;
             if 残り > 1 {
                 次のvstarts.push((col, 残り - 1));

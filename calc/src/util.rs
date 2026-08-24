@@ -14,6 +14,9 @@ pub(crate) const LAST_COL: u32 = 255;
 /// `RRGGBB` を色にする。読めなければ黒
 /// 下地に選択の緑を混ぜる。**塗りを置き換えない** — 選択中も帳票本来の色が
 /// 透けて見える(選択を解かないと色が確かめられない、を避ける)。
+/// セルのスタイル1つ(鍵, 見出し, 掛ける手)。
+type セルのスタイル = (&'static str, &'static str, fn(&mut CellFormat));
+
 pub(crate) fn tint(base: gpui::Rgba, k: f32) -> gpui::Rgba {
     let accent = (0x1B as f32 / 255.0, 0x6E as f32 / 255.0, 0x3C as f32 / 255.0);
     gpui::Rgba {
@@ -869,7 +872,7 @@ pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec
     }
     行候補.sort_unstable();
     let mut out: Vec<PivotSuggest> = Vec::new();
-    let mut 足す = |s: PivotSuggest, out: &mut Vec<PivotSuggest>| {
+    let 足す = |s: PivotSuggest, out: &mut Vec<PivotSuggest>| {
         if !out.contains(&s) && out.len() < 6 {
             out.push(s);
         }
@@ -1521,8 +1524,8 @@ impl TableStyle {
     }
 }
 
-pub(crate) fn cell_styles() -> Vec<(&'static str, &'static str, fn(&mut CellFormat))> {
-    let f: Vec<(&'static str, &'static str, fn(&mut CellFormat))> = vec![
+pub(crate) fn cell_styles() -> Vec<セルのスタイル> {
+    let f: Vec<セルのスタイル> = vec![
     row(ui::item!("標準"), |f| *f = CellFormat::default()),
     // **見出しは4段**(2026-08-20 発注者「Excel が 見出し1〜4 を持つので
     // あれば、そうしていいのでは」)。前は1段だけで、章と節を書き分け

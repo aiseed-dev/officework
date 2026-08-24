@@ -2273,10 +2273,10 @@ pub(super) fn array_call(name: &str, args: Vec<Arg>) -> Result<Vec<Vec<Value>>, 
                 let mut out = vec![Vec::new(); h];
                 for p in parts {
                     let w = p.iter().map(|r| r.len()).max().unwrap_or(0);
-                    for i in 0..h {
+                    for (i, o) in out.iter_mut().enumerate() {
                         let mut r = p.get(i).cloned().unwrap_or_default();
                         r.resize(w, Value::Empty);
-                        out[i].extend(r);
+                        o.extend(r);
                     }
                 }
                 Ok(out)

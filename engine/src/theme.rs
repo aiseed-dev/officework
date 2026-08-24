@@ -1132,14 +1132,24 @@ mod tests {
     use crate::doc::{Paragraph, Run};
 
     fn 意味だけの文書() -> Document {
-        let mut d = Document::default();
-        let mut h = Paragraph::default();
-        h.style = ParaStyle::Heading(1);
-        h.runs.push(Run { text: "題".into(), size_pt: None, font: None, fmt: Default::default() });
-        let mut b = Paragraph::default();
-        b.runs.push(Run { text: "本文の字。".into(), size_pt: None, font: None, fmt: Default::default() });
-        d.blocks = vec![crate::doc::Block::Para(h), crate::doc::Block::Para(b)];
-        d
+        let h = Paragraph {
+            style: ParaStyle::Heading(1),
+            runs: vec![Run { text: "題".into(), size_pt: None, font: None, fmt: Default::default() }],
+            ..Default::default()
+        };
+        let b = Paragraph {
+            runs: vec![Run {
+                text: "本文の字。".into(),
+                size_pt: None,
+                font: None,
+                fmt: Default::default(),
+            }],
+            ..Default::default()
+        };
+        Document {
+            blocks: vec![crate::doc::Block::Para(h), crate::doc::Block::Para(b)],
+            ..Default::default()
+        }
     }
 
     /// **様式(升目)**(2026-08-18)。中身は本文が持ち、枠だけをここに置く

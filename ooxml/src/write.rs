@@ -224,6 +224,9 @@ pub fn write_document_parts(doc: &Document) -> (String, Vec<std::sync::Arc<Vec<u
 
 /// 本体・挿した画像・段落のコメント(参照した順)を返す。
 /// 画像の番号(rIdJO1〜)とコメントの番号(1〜)はこの順で振られる。
+// **引数を束ねません。** どれも別々の物で、まとめた構造体を作ると
+// 「何を渡したか」が呼ぶ側から見えなくなります
+#[allow(clippy::too_many_arguments)]
 pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
         imgn: &mut usize, media: &mut Vec<std::sync::Arc<Vec<u8>>>,
         cmts: &mut Vec<Comment>, bmn: &mut usize,

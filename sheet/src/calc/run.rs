@@ -479,6 +479,9 @@ pub(super) fn recalc_pass_iter(
     let mut resolved: HashMap<Pos, Value> = HashMap::new();
     let mut visiting: HashSet<Pos> = HashSet::new();
 
+    // **引数を束ねません。** どれも別々の物で、まとめた構造体を作ると
+    // 「何を渡したか」が呼ぶ側から見えなくなります
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn eval_at(
         p: Pos,
         map: &HashMap<Pos, String>,
