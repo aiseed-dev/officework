@@ -3033,10 +3033,15 @@ mod recalc_tests {
             assert!(this.status.contains("上書きしません"), "{}", this.status);
             assert_eq!(std::fs::read(&path).expect("読めない"), 前, "元のファイルを書き替えた");
 
-            // **rpc の口も同じように断る。**画面だけ塞いでも意味がない
-            let r = ops::Host::save(this, path.clone());
-            assert!(r.is_err(), "口から上書きできてしまった");
-            assert_eq!(std::fs::read(&path).expect("読めない"), 前, "口から書き替えた");
+            // **rpc の口も同じように断る。**画面だけ塞いでも意味がない。
+            // 受け口は Windows には無い(`mod rpc` ごと cfg(unix))ので、
+            // この確かめも同じ旗を付けます
+            #[cfg(unix)]
+            {
+                let r = ops::Host::save(this, path.clone());
+                assert!(r.is_err(), "口から上書きできてしまった");
+                assert_eq!(std::fs::read(&path).expect("読めない"), 前, "口から書き替えた");
+            }
 
             // 名前を付けて保存できれば旗は下りる
             let 別 = dir.join("拾った.xlsx");
