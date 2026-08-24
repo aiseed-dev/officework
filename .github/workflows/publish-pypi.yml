@@ -122,24 +122,31 @@ jobs:
           assert sheet.Book.open(out)[0]["A1"] == "検査"
           print("往復できた:", b.sheet_names)
           PYEOF
-          # **画面も入っているか。** 起こすと窓が開いてしまうので、
-          # 実行ファイルが在って動くことだけ見る(--version は窓を開かない)
+          # **画面が入っていないことを確かめる**(2026-08-21 発注者
+          # 「officework に画面をいれたのは間違い。ファイルだけに戻したい」)。
+          # 前はここで「入っていること」を見ていた。決めが裏返ったので、
+          # 見る向きも裏返す — *入っていたら落とす*。入れ忘れではなく
+          # 入り込みが事故になる
+          "$PY" - <<'PYEOF'
+          import pathlib, officework
+          bin_dir = pathlib.Path(officework.__file__).parent / "bin"
+          入った = sorted(p.name for p in bin_dir.glob("*")) if bin_dir.exists() else []
+          assert not 入った, f"wheel に実行ファイルが入っています: {入った}"
+          size = sum(f.stat().st_size for f in pathlib.Path(officework.__file__).parent.rglob("*") if f.is_file())
+          # 数 MB に戻っているはず。36MB の頃に戻っていたら気づけるように
+          assert size < 20_000_000, f"荷物が大きすぎます({size/1e6:.0f}MB)。同梱が復活していませんか"
+          print(f"画面は入っていない(荷物 {size/1e6:.1f}MB)")
+          PYEOF
+          # **入れ方の案内が出るか。** 画面が無い機械で打ったときに
+          # 「見つかりません」だけで終わらせない、が決め
           BIN=kensho-venv/bin/officework
           [ -f "$BIN" ] || BIN=kensho-venv/Scripts/officework.exe
           [ -f "$BIN" ] || { echo "officework のコマンドが入っていません"; exit 1; }
-          "$PY" - <<'PYEOF'
-          import pathlib, sys, officework
-          # **同梱された場所だけを見る。** app._exe() は見つからなければ
-          # 手元のリポジトリの target/release も探すので、CI では
-          # wheel に入っていなくても通ってしまう(偽の合格)
-          bin_dir = pathlib.Path(officework.__file__).parent / "bin"
-          a = "officework"
-          exe = bin_dir / (a + (".exe" if sys.platform == "win32" else ""))
-          assert exe.exists(), f"wheel に {a} が入っていません: {exe}"
-          size = exe.stat().st_size
-          assert size > 5_000_000, f"{a} が小さすぎます({size} バイト)"
-          print(f"画面も入っている: {a} {size/1e6:.0f}MB")
-          PYEOF
+          out=$("$BIN" 2>&1 || true)
+          case "$out" in
+            *aiseed*|*releases*) echo "案内が出た" ;;
+            *) echo "画面が無いときの案内が出ません:"; echo "$out"; exit 1 ;;
+          esac
       - uses: actions/upload-artifact@v5
         with:
           name: wheels-${{ matrix.os }}

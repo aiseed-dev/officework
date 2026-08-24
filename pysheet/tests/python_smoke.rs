@@ -2,20 +2,37 @@
 //!
 //! cdylib を組み、Python が読む名前で置いて、`test.py` を回す。
 //! **配る wheel と同じ形** — 平場ではなく officework の副モジュール。
-//! python3 が無い機械では飛ばす(無いのに失敗と言わない)。
+//! Python が無い機械では飛ばす(無いのに失敗と言わない)。
 //!
-//! **組み上がる名前も、置く名前も、的で違います**(2026-08-22 に3 OS の
-//! CI で分かった)。Linux は `lib_sheet.so`、mac は `lib_sheet.dylib`、
-//! Windows は `_sheet.dll` が出ます。置く方は Linux と mac が `.so`、
-//! Windows だけ `.pyd` です。決め打ちにすると Linux 以外で落ちます。
+//! **的ごとに違う所が3つあります**(2026-08-22 に3 OS の CI で分かった)。
+//!
+//! * 組み上がる名前 — Linux `lib_sheet.so` / mac `lib_sheet.dylib` /
+//!   Windows `_sheet.dll`(頭に `lib` が付かない)
+//! * 置く名前 — Linux と mac は `.so`、Windows は `.pyd`(CPython の作法)
+//! * Python の呼び名 — Windows に `python3` は無いことがあり、`python`
+//!   か `py` になります
+//!
+//! 名前は `rustc --target <的> --print file-names --crate-type cdylib`
+//! で確かめました(推測ではありません)。
 use std::process::Command;
 
 #[test]
 fn python側から帳票を差し込める() {
-    if Command::new("python3").arg("--version").output().is_err() {
-        eprintln!("python3 が無いので飛ばす");
+    // **Python の名前は的で違う。** Windows は `python`(と `py`)で、
+    // `python3` は無いことがあります。無い名前で呼ぶと「回せない」で
+    // 落ちるので、在る物を探します
+    let Some(py) = ["python3", "python", "py"]
+        .into_iter()
+        .find(|n| {
+            Command::new(n)
+                .arg("--version")
+                .output()
+                .is_ok_and(|o| o.status.success())
+        })
+    else {
+        eprintln!("Python が無いので飛ばす");
         return;
-    }
+    };
 
     // この試験自体のビルドでは cdylib が出来ているとは限らないので、組む。
     // (外の cargo のビルドは終わっているので、ここで cargo を呼んでも詰まらない)
@@ -27,6 +44,10 @@ fn python側から帳票を差し込める() {
         .expect("cargo を呼べない");
     assert!(status.success(), "pysheet が組めない");
 
+    // **`officework` を import できる場所を渡す。** 台本は `pysheet/` に
+    // あるので Python が勝手にそこを `sys.path` に入れますが、頼らずに
+    // 明示します。前は `target/debug/pysheet-import`(何も置いていない
+    // 空の場所)を渡していて、効いていませんでした
     // target/debug の場所は、この試験の実行ファイルから辿る
     // (target/debug/deps/xxx → target/debug)
     let exe = std::env::current_exe().expect("自分の場所が分からない");
@@ -45,9 +66,7 @@ fn python側から帳票を差し込める() {
     let so = debug.join(組んだ名);
     assert!(so.exists(), "{} が無い", so.display());
 
-    // Python の import 名に合わせて置く
-    let dir = debug.join("pysheet-import");
-    std::fs::create_dir_all(&dir).expect("作業場所を作れない");
+    // Python の import 名に合わせて置く。
     // **ソースの officework/ の隣に置く。** 一時ディレクトリに組んでも、
     // .venv の officework.pth がソースの方を先に掴むので負ける(2026-08-09 に踏んだ)。
     // 終わったら消す
@@ -71,11 +90,11 @@ fn python側から帳票を差し込める() {
     // 本家と結果を突き合わせ、居なければその節を飛ばしたと言って通る。
     // test_shiyou.py は**本家の受け入れ仕様から起こした検査**(本家が居なくても回る)
     for script in ["test.py", "test_doc.py", "test_gokan.py", "test_shiyou.py", "test_tex.py"] {
-        let out = Command::new("python3")
+        let out = Command::new(py)
             .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(script))
-            .env("PYTHONPATH", &dir)
+            .env("PYTHONPATH", pkg.parent().expect("pysheet が無い"))
             .output()
-            .expect("python3 を回せない");
+            .unwrap_or_else(|e| panic!("{py} を回せない: {e}"));
         assert!(
             out.status.success(),
             "{script} が失敗:\n--- stdout ---\n{}\n--- stderr ---\n{}",
