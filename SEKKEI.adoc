@@ -1915,7 +1915,7 @@ D はエンジン担当の常設。E-2 と E-3 は手が空いたとき、E-4 �
 Opus にやってもらう順番(0.1.0 の残り)。
 
 . **段8 の本体** — ファイルのページの描画の引っ越し(「ページごと差し替え」の節)。officework の描く物は設定の `ui_scale` を読む
-. **検査の穴** — calc・writer・ui の clippy と試験を CI に足す(`.github/` は持ち場が別なので、発注者に声を掛けてから)
+. **検査の穴** — calc・writer・ui の clippy と試験を CI に足す(`.github/` は持ち場が別なので、発注者に声を掛けてから)(**済** 2026-08-24 — 3 OS の全部の仕事が緑。pysheet の python_smoke も3 OS で回る形になった。mac は「試験の .so の組み方が wheel と違う」穴で3日赤く、extension-module + build.rs のリンカ指定で閉じた)
 . **段11 — 配布** — officework 1本・`.desktop`・関連付け・pip の `officework` の入り口(app.py と put-bins)・mac の公証の通し。Windows は署名なしのまま
 . **E群の回** — booktmpl の配線+セルのスタイルを名前で(見出し1〜4)+折返しセル(`a|`)+言語試験の `#[ignore]` 外し
 . **リボンのドロップダウンの統一** — 設計の節の4回
