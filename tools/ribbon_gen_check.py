@@ -17,6 +17,17 @@ SUM。本家のホームの Σ はそちら」「Python はブックと切り離
 * うちで意図して変えた → 生成スクリプトの表(EXTRA_CMDS・並べ替え・言い換え)に
   その意図を書く
 
+## 本家(vendor)が要ります
+
+生成スクリプトは `vendor/web-apps`(Euro-Office の現物)を読みます。
+これは追跡していないので、**置いていない機械では回せません**。
+
+    git clone --depth 1 https://github.com/ONLYOFFICE/web-apps.git vendor/web-apps
+
+無いときは**飛ばします**。ただし黙って緑にはしません — 「飛ばした」と
+言って終わります。飛ばしたことが見えないと、門番が居るつもりで居ないまま
+になります(2026-08-22。CI に本家が無く、ここで赤くなっていました)。
+
 ## 使い方
 
     python3 tools/ribbon_gen_check.py
@@ -31,7 +42,17 @@ sys.path.insert(0, str(ROOT / "tools"))
 import ribbon_parse as R  # noqa: E402
 
 
+# 本家の現物。無ければ回せません(上の口上)
+VENDOR = ROOT / "vendor" / "web-apps" / "apps"
+
+
 def main() -> int:
+    if not VENDOR.exists():
+        # **飛ばしたことを言う。**静かに緑になるのが一番悪い
+        print(f"飛ばしました: 本家の現物がありません({VENDOR})")
+        print("  この検査は vendor/web-apps を読みます。置いた機械で回してください:")
+        print("    git clone --depth 1 https://github.com/ONLYOFFICE/web-apps.git vendor/web-apps")
+        return 0
     r = subprocess.run(
         [sys.executable, str(ROOT / "ui" / "gen_ribbon.py")],
         capture_output=True, text=True, cwd=ROOT, timeout=600,
