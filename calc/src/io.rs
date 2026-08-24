@@ -1477,9 +1477,9 @@ impl Calc {
                 // 挿した絵はもう原本(いま書いたファイル)にある。次の保存で
                 // 二重に書かないよう「読んだ側」へ持ち場を移す
                 for sh in &mut self.book.sheets {
-                    let moved: Vec<_> = sh.images_new.drain(..).collect();
+                    let moved = std::mem::take(&mut sh.images_new);
                     sh.images.extend(moved);
-                    let moved: Vec<_> = sh.shapes_new.drain(..).collect();
+                    let moved = std::mem::take(&mut sh.shapes_new);
                     sh.shapes.extend(moved);
                 }
                 self.shape_sel = None;

@@ -11,7 +11,12 @@
 * 発注者は実機で GUI を触り、日本語で不具合を報告する。*1報告 = 原因究明 → 修正 → `cargo test --workspace` 緑 → clippy 緑 → `cargo build --release` → コミット*、の回転。発注者は``./target/release/{writer,calc}`` を直接起動して確かめるので、*release の組み直しを忘れると「直っていない」と見える*
 * **コミット前に clippy を回す。`cargo test` が通っても CI は落ちる。**CI は `--all-targets` で回すので、*試験の中の未使用 import* のような``cargo test`` が見ない物で赤になる(2026-08-10、条件付き書式の直しで試験に `CondLook` の未使用 import を残し、CI を全部赤にした。別のセッションに拾わせてしまった)。手元で走らせる形はこれ:
 
-      cargo clippy -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar \\ --all-targets -- -D warnings -A clippy::too\_many\_arguments \\ -A clippy::type\_complexity -A clippy::field\_reassign\_with\_default \\ -A clippy::needless\_range\_loop *この並びに calc・writer・ui は入っていない。* GUI の3つは門番の外にあり、実際に `ui/src/pyedit.rs` の未使用 import などが溜まっている。
+      cargo clippy -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops -p face -p pysheet \\ --all-targets -- -D warnings -A clippy::too\_many\_arguments \\ -A clippy::type\_complexity -A clippy::field\_reassign\_with\_default \\ -A clippy::needless\_range\_loop
+      cargo clippy -p calc -p writer -p ui -p officework \\ --all-targets -- (同じ旗)
+
+*旗を落とさないこと。* 4つの `-A` を付けずに回すと、CI が見ていない指摘まで拾います。2026-08-22 に旗なしで回し、engine・paper・sheet・writer に不要な書き換えを広げました。
+
+*手元の rustc を CI と同じ版にしておくこと。* CI は `dtolnay/rust-toolchain@stable` で、**その時点の最新**です。手元が古いと、新しい指摘が手元では出ません。2026-08-22 に手元 1.97 / CI 1.98 で、`drain_collect` が手元で見えないまま出して赤にしました。`rustup update stable` を先に回します。
 
 * *CI が走らせる試験も同じ6つ足らずしかない*(2026-08-10 に数えた):
 
