@@ -5949,7 +5949,7 @@
  },
  {
   "i": 1487,
-  "t": "Não foi possível abrir (o xdg-open não está presente): {}"
+  "t": "Não há nenhum aplicativo associado a este arquivo: {}"
  },
  {
   "i": 1488,

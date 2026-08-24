@@ -1511,7 +1511,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("2変数", "Deux variables"),
     ("1変数", "Une variable"),
     ("さっき開きました(窓が出るまで少し待ってください)", "Ouvert à l'instant (laissez un moment à la fenêtre pour apparaître)"),
-    ("開けません(xdg-open がありません): {}", "Impossible d'ouvrir (xdg-open est absent) : {}"),
+    ("開ける道具が見つかりません: {}", "Aucune application n'est associée à ce fichier : {}"),
     ("数", "Nombre"),
     ("はい", "Oui"),
     ("いいえ", "Non"),

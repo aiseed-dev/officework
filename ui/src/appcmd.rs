@@ -84,7 +84,7 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
                     crate::t!("さっき開きました(窓が出るまで少し待ってください)").into()
                 }
                 crate::Opened::Failed => {
-                    crate::tf!("開けません(xdg-open がありません): {}", 道)
+                    crate::tf!("開ける道具が見つかりません: {}", 道)
                 }
             };
             s.say(msg.to_string());

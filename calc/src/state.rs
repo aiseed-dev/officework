@@ -1570,7 +1570,7 @@ impl Calc {
                         ui::t!("さっき開きました(窓が出るまで少し待ってください)").into()
                     }
                     ui::Opened::Failed => {
-                        ui::tf!("開けません(xdg-open がありません): {}", url).into()
+                        ui::tf!("開ける道具が見つかりません: {}", url).into()
                     }
                 };
                 return;

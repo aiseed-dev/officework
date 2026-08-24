@@ -7436,8 +7436,8 @@
  },
  {
   "i": 1487,
-  "ja": "開けません(xdg-open がありません): {}",
-  "en": "Can't open (xdg-open is missing): {}"
+  "ja": "開ける道具が見つかりません: {}",
+  "en": "No application is associated with this file: {}"
  },
  {
   "i": 1488,

@@ -1511,7 +1511,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("2変数", "Hai biến"),
     ("1変数", "Một biến"),
     ("さっき開きました(窓が出るまで少し待ってください)", "Vừa mở xong (đợi một chút để cửa sổ hiện ra)"),
-    ("開けません(xdg-open がありません): {}", "Không mở được (thiếu xdg-open): {}"),
+    ("開ける道具が見つかりません: {}", "Không có ứng dụng nào được liên kết với tệp này: {}"),
     ("数", "Số"),
     ("はい", "Có"),
     ("いいえ", "Không"),

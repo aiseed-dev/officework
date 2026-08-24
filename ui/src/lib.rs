@@ -201,7 +201,7 @@ pub enum Opened {
     Yes,
     /// さっき同じ相手を開けたばかり — 渡していない(窓は来ている途中か、もうある)
     JustNow,
-    /// 渡せなかった(xdg-open が無い等)
+    /// 渡せなかった(関連付けの道具が無い等)
     Failed,
 }
 
@@ -268,13 +268,20 @@ pub fn open_for_edit(path: &str) -> Result<String, String> {
     }
 }
 
-/// フォルダや URL を外のソフトで開く(xdg-open)。**calc と writer が共に使う。**
+/// ファイル・フォルダ・URL を、**機械が結び付けている道具**で開く。
+/// calc と writer が共に使う。
 ///
 /// 素の `Command::spawn` を4箇所に散らしていたら、実機でファイルマネージャの
 /// 窓が8枚積もった(2026-08-12)。機構: GNOME Files は呼ばれるたびに
 /// **新しい窓**を開く+開くまで一拍ある+押した手応えが無い → 連打。
 /// 窓を数える手は無いので、**同じ相手は5秒に1回**だけ渡す。
 /// 子は看取る(spawn しっ放しだと zombie が積もる)
+///
+/// # 3つの OS で動きます(2026-08-24 発注者「当然、すべての OS でやる」)
+///
+/// 前は `xdg-open` の決め打ちで、**mac と Windows では何も起きませんでした**。
+/// 「一覧から押したら、その種類の道具が起きる」は全部ここに掛かっているので、
+/// 3つとも通します。
 pub fn open_outside(target: &str) -> Opened {
     use std::sync::Mutex;
     use std::time::{Duration, Instant};
@@ -285,7 +292,7 @@ pub fn open_outside(target: &str) -> Opened {
             return Opened::JustNow;
         }
     }
-    match std::process::Command::new("xdg-open").arg(target).spawn() {
+    match spawn_opener(target) {
         Ok(mut child) => {
             std::thread::spawn(move || {
                 let _ = child.wait();
@@ -293,6 +300,31 @@ pub fn open_outside(target: &str) -> Opened {
             Opened::Yes
         }
         Err(_) => Opened::Failed,
+    }
+}
+
+/// OS ごとの「関連付けで開く」道具を起こす。
+///
+/// * Linux — `xdg-open`(デスクトップの決まり)
+/// * macOS — `open`
+/// * Windows — `explorer.exe`
+///
+/// **Windows で `cmd /c start` を使いません。** `cmd` は受け取った字を
+/// もう一度自分の規則で解き直すので、`&` を含む名前のファイルで意図しない
+/// 命令になり得ます。`explorer.exe` は普通の実行ファイルなので、
+/// Rust が渡した引数がそのまま届きます(関連付けで開く動きは同じです)。
+fn spawn_opener(target: &str) -> std::io::Result<std::process::Child> {
+    std::process::Command::new(opener_name()).arg(target).spawn()
+}
+
+/// この機械で「関連付けで開く」道具の名前(試験はここを見る)。
+pub fn opener_name() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "open"
+    } else if cfg!(target_os = "windows") {
+        "explorer.exe"
+    } else {
+        "xdg-open"
     }
 }
 
@@ -827,6 +859,36 @@ mod svg_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **3つの OS すべてで関連付けの道具を持つ**(2026-08-24 発注者
+    /// 「当然、すべての OS でやる」)。前は xdg-open の決め打ちで、
+    /// mac と Windows では何も起きませんでした。
+    #[test]
+    fn 関連付けの道具は_osごとに決まる() {
+        let 名 = opener_name();
+        if cfg!(target_os = "macos") {
+            assert_eq!(名, "open");
+        } else if cfg!(target_os = "windows") {
+            // **cmd /c start は使いません。** cmd は受け取った字をもう一度
+            // 自分の規則で解き直すので、`&` を含む名前で意図しない命令に
+            // なり得ます。explorer.exe は普通の実行ファイルです
+            assert_eq!(名, "explorer.exe");
+            assert!(!名.contains("cmd"), "cmd を経由してはいけません");
+        } else {
+            assert_eq!(名, "xdg-open");
+        }
+    }
+
+    /// この機械にその道具が在ること(無ければ実機で開けない)。
+    #[test]
+    fn 関連付けの道具が機械に在る() {
+        let 名 = opener_name();
+        let 在る = std::process::Command::new(名)
+            .arg("--version")
+            .output()
+            .is_ok();
+        assert!(在る, "{名} がこの機械にありません");
+    }
 
     struct App {
         ed: Editor,

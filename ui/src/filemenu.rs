@@ -153,7 +153,7 @@ pub fn run(s: &mut impl FileScreen, id: &str) -> bool {
                                 .to_string()
                         }
                         crate::Opened::Failed => {
-                            crate::tf!("開けません(xdg-open がありません): {}", d).to_string()
+                            crate::tf!("開ける道具が見つかりません: {}", d).to_string()
                         }
                     }
                 }

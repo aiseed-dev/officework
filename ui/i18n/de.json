@@ -5949,7 +5949,7 @@
  },
  {
   "i": 1487,
-  "t": "Kann nicht geöffnet werden (xdg-open fehlt): {}"
+  "t": "Für diese Datei ist keine Anwendung zugeordnet: {}"
  },
  {
   "i": 1488,
