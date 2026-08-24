@@ -2546,3 +2546,86 @@ mod テンプレートを通す {
         assert!(!s.contains("註記"), "テンプレート抜きなのに入った: {s}");
     }
 }
+
+#[cfg(test)]
+mod default_font_tests {
+    use std::io::{Cursor, Write};
+
+    /// docDefaults を持つ最小の docx。styles と theme を差し替えられる
+    fn docx(styles: &str, theme: Option<&str>) -> Vec<u8> {
+        let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let o: zip::write::FileOptions<'_, ()> = Default::default();
+        let mut put = |n: &str, d: &[u8]| {
+            zip.start_file(n, o).unwrap();
+            zip.write_all(d).unwrap();
+        };
+        put("[Content_Types].xml", br#"<Types xmlns="ct"><Default Extension="xml" ContentType="application/xml"/></Types>"#);
+        put("_rels/.rels", br#"<Relationships xmlns="r"/>"#);
+        put("word/document.xml", r#"<w:document xmlns:w="x"><w:body><w:p><w:r><w:t>本文</w:t></w:r></w:p></w:body></w:document>"#.as_bytes());
+        put("word/styles.xml", styles.as_bytes());
+        if let Some(t) = theme {
+            put("word/theme/theme1.xml", t.as_bytes());
+        }
+        zip.finish().unwrap().into_inner()
+    }
+
+    /// python-docx の既定の形: rFonts はテーマ名だけで、直後に言語の指定が並ぶ
+    const PYDOCX_STYLES: &str = r#"<w:styles xmlns:w="x"><w:docDefaults><w:rPrDefault><w:rPr>
+        <w:rFonts w:asciiTheme="minorHAnsi" w:eastAsiaTheme="minorEastAsia" w:hAnsiTheme="minorHAnsi" w:cstheme="minorBidi"/>
+        <w:sz w:val="22"/><w:lang w:val="en-US" w:eastAsia="en-US" w:bidi="ar-SA"/>
+        </w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#;
+
+    #[test]
+    fn 言語のen_usを書体と読み違えない() {
+        // w:lang の w:eastAsia="en-US" を書体として拾っていた。
+        // theme1.xml が無ければ書体は「指定なし」— en-US ではない
+        let src = docx(PYDOCX_STYLES, None);
+        let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        assert_eq!(doc.font, None, "言語の札を書体として読んだ: {:?}", doc.font);
+    }
+
+    #[test]
+    fn テーマ名の書体はtheme1から名前に引く() {
+        let theme = r#"<a:theme xmlns:a="x"><a:fontScheme name="Office">
+            <a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface=""/></a:majorFont>
+            <a:minorFont><a:latin typeface="Calibri"/><a:ea typeface="游明朝"/></a:minorFont>
+            </a:fontScheme></a:theme>"#;
+        let src = docx(PYDOCX_STYLES, Some(theme));
+        let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        assert_eq!(doc.font.as_deref(), Some("游明朝"), "テーマの日本語書体を引けない");
+    }
+
+    #[test]
+    fn 日本語の書体はscriptの表からも引く() {
+        // Office の既定のテーマは <a:ea typeface=""/> が空で、
+        // 日本語は script="Jpan" の表で持つ(python-docx の既定がこの形)
+        let theme = r#"<a:theme xmlns:a="x"><a:fontScheme name="Office">
+            <a:minorFont><a:latin typeface="Cambria"/><a:ea typeface=""/><a:cs typeface=""/>
+            <a:font script="Jpan" typeface="ＭＳ 明朝"/>
+            </a:minorFont></a:fontScheme></a:theme>"#;
+        let src = docx(PYDOCX_STYLES, Some(theme));
+        let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        assert_eq!(doc.font.as_deref(), Some("ＭＳ 明朝"), "Jpan の表を見ていない");
+    }
+
+    #[test]
+    fn テーマの日本語書体が空なら欧文に落ちる() {
+        let theme = r#"<a:theme xmlns:a="x"><a:fontScheme name="Office">
+            <a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/></a:minorFont>
+            </a:fontScheme></a:theme>"#;
+        let src = docx(PYDOCX_STYLES, Some(theme));
+        let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        assert_eq!(doc.font.as_deref(), Some("Calibri"), "欧文の書体にも落ちない");
+    }
+
+    #[test]
+    fn 直に書いた書体は今までどおり読む() {
+        let styles = r#"<w:styles xmlns:w="x"><w:docDefaults><w:rPrDefault><w:rPr>
+            <w:rFonts w:ascii="Century" w:eastAsia="ＭＳ 明朝"/>
+            <w:lang w:val="en-US" w:eastAsia="en-US"/>
+            </w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#;
+        let src = docx(styles, None);
+        let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        assert_eq!(doc.font.as_deref(), Some("ＭＳ 明朝"), "eastAsia の直書きが読めない");
+    }
+}

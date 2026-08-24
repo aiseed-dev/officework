@@ -270,12 +270,59 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     }
     if let Some(i) = styles.find("docDefaults") {
         let head = &styles[i..(i + 600).min(styles.len())];
-        for key in ["w:eastAsia=\"", "w:ascii=\""] {
-            if let Some(j) = head.find(key) {
-                let s = j + key.len();
-                if let Some(e) = head[s..].find('"') {
-                    doc.font = Some(head[s..s + e].to_string());
-                    break;
+        // **書体は <w:rFonts> の中だけから読む。** docDefaults には
+        // <w:lang w:val="en-US" w:eastAsia="en-US"/> のような**言語**の指定も
+        // 並んでいて、頭からの文字列検索だと言語の札を書体として拾う
+        // (python-docx の既定の styles.xml で実際に踏んだ — 画面に
+        // 「書体『en-US』が無い」と出ていた)
+        let rfonts = head
+            .find("<w:rFonts")
+            .and_then(|j| head[j..].find('>').map(|e| &head[j..j + e]));
+        if let Some(tag) = rfonts {
+            for key in ["w:eastAsia=\"", "w:ascii=\""] {
+                if let Some(j) = tag.find(key) {
+                    let s = j + key.len();
+                    if let Some(e) = tag[s..].find('"') {
+                        doc.font = Some(tag[s..s + e].to_string());
+                        break;
+                    }
+                }
+            }
+            // 名前が直に無く、テーマ名(minorEastAsia など)で書いてある docx は
+            // theme1.xml の fontScheme を引いて名前にする。python-docx の既定が
+            // この形(w:asciiTheme="minorHAnsi")
+            if doc.font.is_none() && tag.contains("Theme=\"") {
+                let mut theme = String::new();
+                if let Ok(mut f) = zip.by_name("word/theme/theme1.xml") {
+                    let _ = f.read_to_string(&mut theme);
+                }
+                // 本文の既定は minor の組。major は見出し用
+                let group = if tag.contains("Theme=\"major") {
+                    "<a:majorFont>"
+                } else {
+                    "<a:minorFont>"
+                };
+                if let Some(g) = theme.find(group) {
+                    let sect = &theme[g..(g + 400).min(theme.len())];
+                    // 日本語の書体(<a:ea>)を先に。Office の既定のテーマは
+                    // <a:ea typeface=""/> が**空**で、日本語は script="Jpan" の
+                    // 表で持つ(本物の python-docx の出力で確かめた)。
+                    // どちらも無ければ欧文(<a:latin>)
+                    for key in [
+                        "<a:ea typeface=\"",
+                        "<a:font script=\"Jpan\" typeface=\"",
+                        "<a:latin typeface=\"",
+                    ] {
+                        if let Some(j) = sect.find(key) {
+                            let s = j + key.len();
+                            if let Some(e) = sect[s..].find('"') {
+                                if e > 0 {
+                                    doc.font = Some(sect[s..s + e].to_string());
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
