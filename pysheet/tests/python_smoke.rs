@@ -1,8 +1,13 @@
 //! Python 側から往復できることの検査。
 //!
-//! cdylib を組み、`officework/_sheet.so` の名前で置いて、`test.py` を回す。
+//! cdylib を組み、Python が読む名前で置いて、`test.py` を回す。
 //! **配る wheel と同じ形** — 平場ではなく officework の副モジュール。
 //! python3 が無い機械では飛ばす(無いのに失敗と言わない)。
+//!
+//! **組み上がる名前も、置く名前も、的で違います**(2026-08-22 に3 OS の
+//! CI で分かった)。Linux は `lib_sheet.so`、mac は `lib_sheet.dylib`、
+//! Windows は `_sheet.dll` が出ます。置く方は Linux と mac が `.so`、
+//! Windows だけ `.pyd` です。決め打ちにすると Linux 以外で落ちます。
 use std::process::Command;
 
 #[test]
@@ -26,7 +31,18 @@ fn python側から帳票を差し込める() {
     // (target/debug/deps/xxx → target/debug)
     let exe = std::env::current_exe().expect("自分の場所が分からない");
     let debug = exe.parent().and_then(|p| p.parent()).expect("target/debug が見つからない");
-    let so = debug.join("lib_sheet.so");
+    // **的ごとに名前が違う。** cargo が出す cdylib の名前:
+    //   Linux   lib_sheet.so
+    //   mac     lib_sheet.dylib
+    //   Windows _sheet.dll(頭に lib が付かない)
+    let 組んだ名 = if cfg!(target_os = "windows") {
+        "_sheet.dll"
+    } else if cfg!(target_os = "macos") {
+        "lib_sheet.dylib"
+    } else {
+        "lib_sheet.so"
+    };
+    let so = debug.join(組んだ名);
     assert!(so.exists(), "{} が無い", so.display());
 
     // Python の import 名に合わせて置く
@@ -36,7 +52,10 @@ fn python側から帳票を差し込める() {
     // .venv の officework.pth がソースの方を先に掴むので負ける(2026-08-09 に踏んだ)。
     // 終わったら消す
     let pkg = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/officework"));
-    let ext = pkg.join("_sheet.so");
+    // **Python が探す名前も的で違う。** Windows は `.pyd`、
+    // mac は `.dylib` ではなく `.so`(CPython の作法)
+    let 置く名 = if cfg!(target_os = "windows") { "_sheet.pyd" } else { "_sheet.so" };
+    let ext = pkg.join(置く名);
     std::fs::copy(&so, &ext).expect("置けない");
     struct Cleanup(std::path::PathBuf);
     impl Drop for Cleanup {
