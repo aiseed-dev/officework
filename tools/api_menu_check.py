@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
-"""リボンのボタンに Python から呼ぶ道があるかを、**メニューの並びのまま**出す。
+"""メニューの項目に Python から呼ぶ道があるかを、**画面の並びのまま**出す。
 
 発注者 2026-08-24「API は、メニュー(タブ)とボタンを項目にして分類したらどうか」。
 分類を新しく考えず、画面のタブとボタンをそのまま項目にします。
+
+**ファイルタブは2つの場所に分かれています**(2026-08-24 発注者「ファイルは
+重要でもっと項目があるでしょう」)。`ribbon.rs` のファイルタブは3つ
+(開く・保存・印刷)しかありません。実際のファイルタブは全面のページで、
+項目は `writer/src/cmds.rs` の `file_menu()` に 23 個あります。
+リボンだけを読むと*20 個が数から丸ごと落ちます*。だからここでは両方を読みます。
 
 `wiring_check.py` が「押せるボタンに腕があるか」を見るのと同じ形です。
 あちらは画面の中を見ますが、こちらは **Python から届くか**を見ます。
@@ -27,7 +33,7 @@ import ribbon_parse  # noqa: E402
 # ボタン id → Python の道。空文字は「まだ無い」。
 # 作らないと決めた物は "×(理由)" の形で書く
 MAP = {
-    # ファイル
+    # ファイル(リボンの行。実体は下の FILE_MENU)
     "open": "Doc.open", "save": "Doc.save", "pdf": "",
     # ホーム
     "copy": "×(選択の考えが Python に無い)", "cut": "×(同上)", "paste": "×(同上)",
@@ -87,6 +93,54 @@ MAP = {
 }
 
 
+# ファイルのページの項目 → Python の道。**項目そのものは読み取ります**
+# (下の file_menu())。ここに持つのは対応だけで、並びと見出しは元から取ります
+FILE_MAP = {
+    "f-back": "×(画面の行き来)",
+    "f-new": "Doc()",
+    "f-tpl": "",
+    "f-open": "Doc.open",
+    "f-url": "",
+    "f-recent": "×(画面が覚えている物。Python は径路を直に書く)",
+    "f-find": "×(同上)",
+    "f-recover": "",
+    "f-save": "Doc.save",
+    "f-saveas": "Doc.save",
+    "f-print": "",
+    "f-merge": "",
+    "f-html": "",
+    "f-protect": "",
+    "f-distill": "",
+    "f-info": "Doc.core_properties",
+    "f-place": "×(画面。Python は os が持つ)",
+    "f-quit": "×(画面)",
+    "f-opts": "×(アプリの設定)",
+    "f-help": "×(画面)",
+    "f-req": "×(画面)",
+}
+
+FILE_SRC = pathlib.Path(__file__).parent.parent / "writer" / "src" / "cmds.rs"
+
+
+def file_menu() -> list[tuple[str, str]]:
+    """ファイルのページの項目を `writer/src/cmds.rs` から読む。
+
+    **手で写さない。** 写すと必ずずれます(この道具を書いた日に、
+    当方が 21 個を 23 個と数え違えました)。
+    """
+    import re
+
+    src = FILE_SRC.read_text(encoding="utf-8")
+    if "fn file_menu" not in src:
+        raise SystemExit(f"{FILE_SRC}: file_menu() が見つかりません(名前が変わった?)")
+    body = src[src.index("fn file_menu") :]
+    body = body[: body.index("\n    }")]
+    items = re.findall(r'I::new\("(f-[a-z]+)",\s*ui::t!\("([^"]+)"\)\)', body)
+    if not items:
+        raise SystemExit(f"{FILE_SRC}: 項目を1つも読めません(書き方が変わった?)")
+    return items
+
+
 def 届く(v: str) -> bool:
     """道がある物だけ数える。× は作らないと決めた物、空は未実装"""
     return bool(v) and not v.startswith("×")
@@ -96,24 +150,51 @@ def main() -> int:
     adoc = "--adoc" in sys.argv
     tabs = ribbon_parse.tables_or_die()["WRITER"]
 
+    ファイル = file_menu()
+
     足りない = [c.id for t in tabs for c in t.cmds if c.id and c.id not in MAP]
+    足りない += [i for i, _ in ファイル if i not in FILE_MAP]
     if 足りない:
-        print("この表に無いボタンがあります(MAP に足してください):", file=sys.stderr)
+        print("この表に無い項目があります(MAP に足してください):", file=sys.stderr)
         for i in 足りない:
             print(f"  {i}", file=sys.stderr)
         return 1
     if "--check" in sys.argv:
-        print(f"writer の {sum(len(t.cmds) for t in tabs)} ボタンは全部この表にあります")
+        n = sum(len(t.cmds) for t in tabs) + len(ファイル)
+        print(f"writer の {n} 項目(リボン + ファイルのページ {len(ファイル)})は全部この表にあります")
         return 0
 
-    総数 = 済 = 0
+    # **ファイルのページを先に出す。** リボンのファイルタブは3つしか
+    # ありませんが、実体はこちらの一覧です(2026-08-24 発注者の指摘)
+    a = sum(1 for i, _ in ファイル if 届く(FILE_MAP[i]))
+    総数 = len(ファイル)
+    済 = a
+    if adoc:
+        print(f"==== ファイル(ページ。{len(ファイル)} 個中 {a} 個が Python から届く)\n")
+        print("リボンのファイルタブは3つですが、*実体はこの全面のページ*です。")
+        print("元は `writer/src/cmds.rs` の `file_menu()` で、この道具が読んでいます。\n")
+        print('[cols="1,1,1"]')
+        print("|===")
+        print("|項目 |id |Python\n")
+    else:
+        print(f"■ ファイル(ページ)  {a}/{len(ファイル)}")
+    for i, label in ファイル:
+        v = FILE_MAP[i] or "*無い*"
+        if adoc:
+            print(f"|{label} |`{i}` |{v}")
+        else:
+            print(f"    {label:<22} {i:<12} {v}")
+    if adoc:
+        print("|===\n")
+
     for tab in tabs:
         押せる = [c for c in tab.cmds if c.id]
         a = sum(1 for c in 押せる if 届く(MAP[c.id]))
         総数 += len(押せる)
         済 += a
         if adoc:
-            print(f"==== {tab.name}({len(押せる)} 個中 {a} 個が Python から届く)\n")
+            名 = "ファイル(リボンの行)" if tab.name == "ファイル" else tab.name
+            print(f"==== {名}({len(押せる)} 個中 {a} 個が Python から届く)\n")
             print('[cols="1,1,1"]')
             print("|===")
             print("|ボタン |id |Python\n")
