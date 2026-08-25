@@ -57,222 +57,222 @@
 
 この節は `tools/api_taiou.py` が起こします。手で直さないでください。
 
-=== ファイル
+== ファイル
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|開く |Doc / Book |✅ |Doc.open(径路) / Book.open(径路) |docx.Document(径路) |load_workbook(径路)
-|保存 |Doc / Book |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
-|印刷 |— | |— |— |—
+|image:../face/icons/open.svg[開く,16,16] 開く |Doc / Book |✅ |Doc.open(径路) / Book.open(径路) |docx.Document(径路) |load_workbook(径路)
+|image:../face/icons/save.svg[保存,16,16] 保存 |Doc / Book |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|image:../face/icons/print.svg[印刷,16,16] 印刷 |— | |— |— |—
 |===
 
-=== ホーム
+== ホーム
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|コピー |Paragraph / Cell |✅ |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
-|切り取り |Paragraph / Cell |✅ |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
-|貼り付け |Paragraph / Cell |✅ |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
-|フォント |Run / Cell |✅ |r.font / c.font |r.font.name |c.font = Font(name=…)
-|フォントのサイズ |Run / Cell |✅ |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
-|フォントサイズの拡大 |Run / Cell |✅ |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
-|フォントサイズの縮小 |Run / Cell |✅ |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
-|大文字小文字を変更 |— |✍ |r.text = r.text.upper() |— |—
-|ルビ |Run | |— |— |—
-|太字 |Run / Cell |✅ |r.bold / c.font |r.bold |c.font = Font(bold=True)
-|斜体 |Run / Cell |✅ |r.italic / c.font |r.italic |c.font = Font(italic=True)
-|下線 |Run / Cell |✅ |r.underline / c.font |r.underline |c.font = Font(underline=…)
-|取り消し線 |Run |✅ |r.strike |r.font.strike |—
-|上付き |Run | |— |r.font.superscript |—
-|下付き |Run | |— |r.font.subscript |c.font = Font(vertAlign=…)
-|フォントの色 |Run / Cell |✅ |r.color / c.font |r.font.color.rgb |c.font = Font(color=…)
-|スタイルのクリア |Run |✅ |r.clear() |r.clear() |—
-|箇条書き |Paragraph |✅ |p.style = '箇条書き' |p.style = 'List Bullet' |—
-|ナンバリング |Paragraph |✅ |p.style = '番号付き' |p.style = 'List Number' |—
-|複数レベルのリスト |Paragraph | |— |— |—
-|インデントを減らす |Paragraph |✅ |p.paragraph_format |p.paragraph_format.left_indent |—
-|インデントを増やす |Paragraph |✅ |p.paragraph_format |p.paragraph_format.left_indent |—
-|段落の行間 |Paragraph |✅ |p.paragraph_format.line_spacing |p.paragraph_format.line_spacing |—
-|左揃え |Paragraph / Cell |✅ |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
-|中央揃え |Paragraph / Cell |✅ |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
-|右揃え |Paragraph / Cell |✅ |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
-|両端揃え |Paragraph |✅ |p.align = 'justify' |p.alignment |—
-|均等割付 |Paragraph |✅ |p.align = 'distribute' |— |—
-|罫線 |Cell |✅ |c.border |— |c.border = Border(…)
-|段落のスタイル |Paragraph |✅ |p.style |p.style |—
-|置き換え |Doc |✅ |d.replace(前, 後) |— |—
-|すべて選択 |— |✍ |d.paragraphs(全部を順に回る) |— |—
-|塗りつぶしの色 |Cell |✅ |c.fill |— |c.fill = PatternFill(…)
-|折り返して全体を表示する |Cell |✅ |c.alignment |— |c.alignment = Alignment(wrap_text=True)
-|結合して、中央に配置する |Cell |✅ |(col_span / v_merge) / s.merge_cells(…) |cell.merge(…) |ws.merge_cells('A1:B2')
-|オートSUM |Cell |✅ |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
-|フィル |— |✍ |for i in range(10): s[f'A{i+2}'] = i + 1 |— |—
-|名前の管理 |Book |✅ |b.create_named_range(名前, …) |— |wb.defined_names
-|消去 |Run / Cell |✅ |r.clear() / s['A1'] = None |r.clear() |ws['A1'] = None
-|降順並べ替え |Sheet | |— |— |—
-|昇順並べ替え |Sheet | |— |— |—
-|フィルター |Sheet | |— |— |ws.auto_filter.ref
-|フィルターを解除 |Sheet | |— |— |ws.auto_filter
-|数値の書式 |Cell |✅ |c.number_format |— |c.number_format
-|通貨スタイル |Cell |✅ |c.number_format |— |c.number_format
-|パーセントのスタイル |Cell |✅ |c.number_format |— |c.number_format
-|カンマスタイル |Cell |✅ |c.number_format |— |c.number_format
-|セルを挿入 |Table / Sheet |✅ |t.add_row() / s.insert_rows(行) |t.add_row() |ws.insert_rows(行)
-|セルを削除 |Sheet |✅ |s.delete_rows(行) |— |ws.delete_rows(行)
-|条件付き書式 |Cell | |— |— |ws.conditional_formatting.add(…)
+|image:../face/icons/copy.svg[コピー,16,16] コピー |Paragraph / Cell |✅ |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
+|image:../face/icons/cut.svg[切り取り,16,16] 切り取り |Paragraph / Cell |✅ |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
+|image:../face/icons/paste.svg[貼り付け,16,16] 貼り付け |Paragraph / Cell |✅ |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
+|image:../face/icons/fontname.svg[フォント,16,16] フォント |Run / Cell |✅ |r.font / c.font |r.font.name |c.font = Font(name=…)
+|image:../face/icons/fontsize.svg[フォントのサイズ,16,16] フォントのサイズ |Run / Cell |✅ |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
+|image:../face/icons/incfont.svg[フォントサイズの拡大,16,16] フォントサイズの拡大 |Run / Cell |✅ |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
+|image:../face/icons/decfont.svg[フォントサイズの縮小,16,16] フォントサイズの縮小 |Run / Cell |✅ |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
+|image:../face/icons/changecase.svg[大文字小文字を変更,16,16] 大文字小文字を変更 |— |✍ |r.text = r.text.upper() |— |—
+|image:../face/icons/ruby.svg[ルビ,16,16] ルビ |Run | |— |— |—
+|image:../face/icons/bold.svg[太字,16,16] 太字 |Run / Cell |✅ |r.bold / c.font |r.bold |c.font = Font(bold=True)
+|image:../face/icons/italic.svg[斜体,16,16] 斜体 |Run / Cell |✅ |r.italic / c.font |r.italic |c.font = Font(italic=True)
+|image:../face/icons/underline.svg[下線,16,16] 下線 |Run / Cell |✅ |r.underline / c.font |r.underline |c.font = Font(underline=…)
+|image:../face/icons/strikeout.svg[取り消し線,16,16] 取り消し線 |Run |✅ |r.strike |r.font.strike |—
+|image:../face/icons/superscript.svg[上付き,16,16] 上付き |Run | |— |r.font.superscript |—
+|image:../face/icons/subscript.svg[下付き,16,16] 下付き |Run | |— |r.font.subscript |c.font = Font(vertAlign=…)
+|image:../face/icons/fontcolor.svg[フォントの色,16,16] フォントの色 |Run / Cell |✅ |r.color / c.font |r.font.color.rgb |c.font = Font(color=…)
+|image:../face/icons/clearstyle.svg[スタイルのクリア,16,16] スタイルのクリア |Run |✅ |r.clear() |r.clear() |—
+|image:../face/icons/markers.svg[箇条書き,16,16] 箇条書き |Paragraph |✅ |p.style = '箇条書き' |p.style = 'List Bullet' |—
+|image:../face/icons/numbering.svg[ナンバリング,16,16] ナンバリング |Paragraph |✅ |p.style = '番号付き' |p.style = 'List Number' |—
+|image:../face/icons/multilevels.svg[複数レベルのリスト,16,16] 複数レベルのリスト |Paragraph | |— |— |—
+|image:../face/icons/decoffset.svg[インデントを減らす,16,16] インデントを減らす |Paragraph |✅ |p.paragraph_format |p.paragraph_format.left_indent |—
+|image:../face/icons/incoffset.svg[インデントを増やす,16,16] インデントを増やす |Paragraph |✅ |p.paragraph_format |p.paragraph_format.left_indent |—
+|image:../face/icons/linespace.svg[段落の行間,16,16] 段落の行間 |Paragraph |✅ |p.paragraph_format.line_spacing |p.paragraph_format.line_spacing |—
+|image:../face/icons/align-left.svg[左揃え,16,16] 左揃え |Paragraph / Cell |✅ |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
+|image:../face/icons/align-center.svg[中央揃え,16,16] 中央揃え |Paragraph / Cell |✅ |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
+|image:../face/icons/align-right.svg[右揃え,16,16] 右揃え |Paragraph / Cell |✅ |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
+|image:../face/icons/align-just.svg[両端揃え,16,16] 両端揃え |Paragraph |✅ |p.align = 'justify' |p.alignment |—
+|image:../face/icons/align-dist.svg[均等割付,16,16] 均等割付 |Paragraph |✅ |p.align = 'distribute' |— |—
+|image:../face/icons/borders.svg[罫線,16,16] 罫線 |Cell |✅ |c.border |— |c.border = Border(…)
+|image:../face/icons/styles.svg[段落のスタイル,16,16] 段落のスタイル |Paragraph |✅ |p.style |p.style |—
+|image:../face/icons/replace.svg[置き換え,16,16] 置き換え |Doc |✅ |d.replace(前, 後) |— |—
+|image:../face/icons/select-all.svg[すべて選択,16,16] すべて選択 |— |✍ |d.paragraphs(全部を順に回る) |— |—
+|image:../face/icons/fillparag.svg[塗りつぶしの色,16,16] 塗りつぶしの色 |Cell |✅ |c.fill |— |c.fill = PatternFill(…)
+|image:../face/icons/wrap.svg[折り返して全体を表示する,16,16] 折り返して全体を表示する |Cell |✅ |c.alignment |— |c.alignment = Alignment(wrap_text=True)
+|image:../face/icons/merge.svg[結合して、中央に配置する,16,16] 結合して、中央に配置する |Cell |✅ |(col_span / v_merge) / s.merge_cells(…) |cell.merge(…) |ws.merge_cells('A1:B2')
+|image:../face/icons/autosum.svg[オートSUM,16,16] オートSUM |Cell |✅ |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|image:../face/icons/fill-num.svg[フィル,16,16] フィル |— |✍ |for i in range(10): s[f'A{i+2}'] = i + 1 |— |—
+|image:../face/icons/named-range.svg[名前の管理,16,16] 名前の管理 |Book |✅ |b.create_named_range(名前, …) |— |wb.defined_names
+|image:../face/icons/clear.svg[消去,16,16] 消去 |Run / Cell |✅ |r.clear() / s['A1'] = None |r.clear() |ws['A1'] = None
+|image:../face/icons/sortdesc.svg[降順並べ替え,16,16] 降順並べ替え |Sheet | |— |— |—
+|image:../face/icons/sortasc.svg[昇順並べ替え,16,16] 昇順並べ替え |Sheet | |— |— |—
+|image:../face/icons/setfilter.svg[フィルター,16,16] フィルター |Sheet | |— |— |ws.auto_filter.ref
+|image:../face/icons/clear-filter.svg[フィルターを解除,16,16] フィルターを解除 |Sheet | |— |— |ws.auto_filter
+|image:../face/icons/format.svg[数値の書式,16,16] 数値の書式 |Cell |✅ |c.number_format |— |c.number_format
+|image:../face/icons/currency.svg[通貨スタイル,16,16] 通貨スタイル |Cell |✅ |c.number_format |— |c.number_format
+|image:../face/icons/percents.svg[パーセントのスタイル,16,16] パーセントのスタイル |Cell |✅ |c.number_format |— |c.number_format
+|image:../face/icons/comma.svg[カンマスタイル,16,16] カンマスタイル |Cell |✅ |c.number_format |— |c.number_format
+|image:../face/icons/cell-ins.svg[セルを挿入,16,16] セルを挿入 |Table / Sheet |✅ |t.add_row() / s.insert_rows(行) |t.add_row() |ws.insert_rows(行)
+|image:../face/icons/cell-del.svg[セルを削除,16,16] セルを削除 |Sheet |✅ |s.delete_rows(行) |— |ws.delete_rows(行)
+|image:../face/icons/condformat.svg[条件付き書式,16,16] 条件付き書式 |Cell | |— |— |ws.conditional_formatting.add(…)
 |===
 
-=== 挿入
+== 挿入
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|空白ページの挿入 |Doc |✅ |d.add_page_break() |d.add_page_break() |—
-|区切り |Doc |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
-|表の挿入 |Doc / Sheet |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
-|画像を挿入 |Doc |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
-|グラフを挿入 |Sheet |❌ |図は Python(matplotlib)が描いて貼ります。見本で足ります(SEKKEI「見本を作って止める」) |— |ws.add_chart(…)
-|ファイルからのテキスト |— |✍ |d.add_paragraph(open('メモ.txt').read()) |— |—
-|ヘッダーの編集 |Doc / Sheet |✅ |d.header / s.oddHeader |section.header |ws.oddHeader
-|フッターの編集 |Doc |✅ |d.footer |section.footer |—
-|ページ番号 |— |✍ |(ヘッダーの `#`) |— |—
-|日付/時刻 |— |✍ |p.text = date.today().strftime('%Y年%m月%d日') |— |—
-|ページ数 |— |✍ |(ヘッダーの `##`) |— |—
-|方程式を挿入 |Doc | |— |— |—
-|記号を挿入 |— |✍ |r.text += '※'(字をそのまま打つ) |— |—
-|コンテンツコントロールの挿入 |Doc(記入欄) |✅ |d.fields() |— |—
-|ピボットテーブルを挿入 |Sheet |❌ |集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます |— |ws.add_pivot(…)
-|推奨チャートを挿入 |— |✍ |s.values() を polars に渡して選ぶ |— |—
-|コメント |Comment |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
-|ハイパーリンクを追加 |Cell |✅ |c.hyperlink |— |c.hyperlink
+|image:../face/icons/blankpage.svg[空白ページの挿入,16,16] 空白ページの挿入 |Doc |✅ |d.add_page_break() |d.add_page_break() |—
+|image:../face/icons/pagebreak.svg[区切り,16,16] 区切り |Doc |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../face/icons/instable.svg[表の挿入,16,16] 表の挿入 |Doc / Sheet |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
+|image:../face/icons/insimage.svg[画像を挿入,16,16] 画像を挿入 |Doc |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
+|image:../face/icons/inschart.svg[グラフを挿入,16,16] グラフを挿入 |Sheet |❌ |図は Python(matplotlib)が描いて貼ります。見本で足ります(SEKKEI「見本を作って止める」) |— |ws.add_chart(…)
+|image:../face/icons/text-from-file.svg[ファイルからのテキスト,16,16] ファイルからのテキスト |— |✍ |d.add_paragraph(open('メモ.txt').read()) |— |—
+|image:../face/icons/edit-header.svg[ヘッダーの編集,16,16] ヘッダーの編集 |Doc / Sheet |✅ |d.header / s.oddHeader |section.header |ws.oddHeader
+|image:../face/icons/edit-footer.svg[フッターの編集,16,16] フッターの編集 |Doc |✅ |d.footer |section.footer |—
+|image:../face/icons/pagenum.svg[ページ番号,16,16] ページ番号 |— |✍ |(ヘッダーの `#`) |— |—
+|image:../face/icons/datetime.svg[日付/時刻,16,16] 日付/時刻 |— |✍ |p.text = date.today().strftime('%Y年%m月%d日') |— |—
+|image:../face/icons/numpages.svg[ページ数,16,16] ページ数 |— |✍ |(ヘッダーの `##`) |— |—
+|image:../face/icons/insequation.svg[方程式を挿入,16,16] 方程式を挿入 |Doc | |— |— |—
+|image:../face/icons/inssymbol.svg[記号を挿入,16,16] 記号を挿入 |— |✍ |r.text += '※'(字をそのまま打つ) |— |—
+|image:../face/icons/controls.svg[コンテンツコントロールの挿入,16,16] コンテンツコントロールの挿入 |Doc(記入欄) |✅ |d.fields() |— |—
+|image:../face/icons/add-pivot.svg[ピボットテーブルを挿入,16,16] ピボットテーブルを挿入 |Sheet |❌ |集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます |— |ws.add_pivot(…)
+|image:../face/icons/insrecommend.svg[推奨チャートを挿入,16,16] 推奨チャートを挿入 |— |✍ |s.values() を polars に渡して選ぶ |— |—
+|image:../face/icons/ins-comment.svg[コメント,16,16] コメント |Comment |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|image:../face/icons/inshyperlink.svg[ハイパーリンクを追加,16,16] ハイパーリンクを追加 |Cell |✅ |c.hyperlink |— |c.hyperlink
 |===
 
-=== レイアウト
+== レイアウト
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|余白 |Section |✅ |d.sections[0] |section.left_margin |ws.page_margins
-|印刷の向き |Section |✅ |d.sections[0] |section.orientation |ws.page_setup.orientation
-|ページのサイズ |Section |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
-|印刷範囲 |Sheet |✅ |s.print_area |— |ws.print_area
-|区切り |Doc |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
-|ヘッダー/フッター |Doc / Sheet |✅ |d.header / s.oddHeader |section.header |ws.oddHeader
-|タイトルを印刷する |Sheet |✅ |s.print_title_rows |— |ws.print_title_rows
-|枠線も印刷 |Sheet |✅ |s.print_gridlines |— |ws.print_options.gridLines
+|image:../face/icons/pagemargins.svg[余白,16,16] 余白 |Section |✅ |d.sections[0] |section.left_margin |ws.page_margins
+|image:../face/icons/pageorient.svg[印刷の向き,16,16] 印刷の向き |Section |✅ |d.sections[0] |section.orientation |ws.page_setup.orientation
+|image:../face/icons/pagesize.svg[ページのサイズ,16,16] ページのサイズ |Section |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
+|image:../face/icons/printarea.svg[印刷範囲,16,16] 印刷範囲 |Sheet |✅ |s.print_area |— |ws.print_area
+|image:../face/icons/pagebreak.svg[区切り,16,16] 区切り |Doc |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../face/icons/editheader.svg[ヘッダー/フッター,16,16] ヘッダー/フッター |Doc / Sheet |✅ |d.header / s.oddHeader |section.header |ws.oddHeader
+|image:../face/icons/printtitles.svg[タイトルを印刷する,16,16] タイトルを印刷する |Sheet |✅ |s.print_title_rows |— |ws.print_title_rows
+|image:../face/icons/print-gridlines.svg[枠線も印刷,16,16] 枠線も印刷 |Sheet |✅ |s.print_gridlines |— |ws.print_options.gridLines
 |===
 
-=== 数式
+== 数式
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|関数の挿入 |Cell |✅ |s['A1'] = '=…' |— |ws['A1'] = '=…'
-|Python の関数 |— |✍ |自分の .py を書く(綴りの macros) |— |—
-|オートSUM |Cell |✅ |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
-|名前の管理 |Book |✅ |b.create_named_range(名前, …) |— |wb.defined_names
-|参照元のトレース |— |✍ |s.formula('A1') で参照を読む |— |—
-|数式の表示 |— |✍ |s.formula(場所) |— |—
-|計算方法 |Book |✅ |b.recalc() |— |wb.calculation
+|image:../face/icons/additional-formula.svg[関数の挿入,16,16] 関数の挿入 |Cell |✅ |s['A1'] = '=…' |— |ws['A1'] = '=…'
+|image:../face/icons/py-list.svg[Python の関数,16,16] Python の関数 |— |✍ |自分の .py を書く(綴りの macros) |— |—
+|image:../face/icons/autosum.svg[オートSUM,16,16] オートSUM |Cell |✅ |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|image:../face/icons/named-range-huge.svg[名前の管理,16,16] 名前の管理 |Book |✅ |b.create_named_range(名前, …) |— |wb.defined_names
+|image:../face/icons/trace-prec.svg[参照元のトレース,16,16] 参照元のトレース |— |✍ |s.formula('A1') で参照を読む |— |—
+|image:../face/icons/show-formulas.svg[数式の表示,16,16] 数式の表示 |— |✍ |s.formula(場所) |— |—
+|image:../face/icons/calculate.svg[計算方法,16,16] 計算方法 |Book |✅ |b.recalc() |— |wb.calculation
 |===
 
-=== データ
+== データ
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|テキストからデータ |— |✍ |csv モジュールで読んで s['A1'] へ |— |—
-|フィルター |Sheet | |— |— |ws.auto_filter.ref
-|フィルターを解除 |Sheet | |— |— |ws.auto_filter
-|降順並べ替え |Sheet | |— |— |—
-|昇順並べ替え |Sheet | |— |— |—
-|区切り位置 |— |✍ |s['B2'], s['C2'] = s['A2'].split(',') |— |—
-|重複の削除 |— |✍ |— |— |—
-|データの入力規則 |Sheet |✅ |s.add_data_validation(…) |— |ws.add_data_validation(…)
-|グループ化 |Sheet |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
-|グループ解除 |Sheet |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
-|小計 |— |✍ |s['A9'] = '=SUBTOTAL(9,A2:A8)' |— |—
-|CSV の形 |— |✍ |csv モジュールで読む |— |—
-|フラッシュフィル |— |✍ |s['B2'] = s['A2'].split()[0](規則を書く) |— |—
+|image:../face/icons/data-from-text.svg[テキストからデータ,16,16] テキストからデータ |— |✍ |csv モジュールで読んで s['A1'] へ |— |—
+|image:../face/icons/setfilter.svg[フィルター,16,16] フィルター |Sheet | |— |— |ws.auto_filter.ref
+|image:../face/icons/clear-filter.svg[フィルターを解除,16,16] フィルターを解除 |Sheet | |— |— |ws.auto_filter
+|image:../face/icons/sortdesc.svg[降順並べ替え,16,16] 降順並べ替え |Sheet | |— |— |—
+|image:../face/icons/sortasc.svg[昇順並べ替え,16,16] 昇順並べ替え |Sheet | |— |— |—
+|image:../face/icons/text-column.svg[区切り位置,16,16] 区切り位置 |— |✍ |s['B2'], s['C2'] = s['A2'].split(',') |— |—
+|image:../face/icons/rem-duplicates.svg[重複の削除,16,16] 重複の削除 |— |✍ |— |— |—
+|image:../face/icons/data-validation.svg[データの入力規則,16,16] データの入力規則 |Sheet |✅ |s.add_data_validation(…) |— |ws.add_data_validation(…)
+|image:../face/icons/group.svg[グループ化,16,16] グループ化 |Sheet |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
+|image:../face/icons/ungroup.svg[グループ解除,16,16] グループ解除 |Sheet |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
+|image:../face/icons/subtotal.svg[小計,16,16] 小計 |— |✍ |s['A9'] = '=SUBTOTAL(9,A2:A8)' |— |—
+|image:../face/icons/csv-kind.svg[CSV の形,16,16] CSV の形 |— |✍ |csv モジュールで読む |— |—
+|image:../face/icons/flash-fill.svg[フラッシュフィル,16,16] フラッシュフィル |— |✍ |s['B2'] = s['A2'].split()[0](規則を書く) |— |—
 |===
 
-=== ピボットテーブル
+== ピボットテーブル
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|ピボットテーブルを挿入 |Sheet |❌ |集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます |— |ws.add_pivot(…)
+|image:../face/icons/pivot-insert.svg[ピボットテーブルを挿入,16,16] ピボットテーブルを挿入 |Sheet |❌ |集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます |— |ws.add_pivot(…)
 |===
 
-=== 表のデザイン
+== 表のデザイン
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|重複データを削除 |— |✍ |見た = set() で行を選り分ける |— |—
+|image:../face/icons/td-remdup.svg[重複データを削除,16,16] 重複データを削除 |— |✍ |見た = set() で行を選り分ける |— |—
 |===
 
-=== 参考資料
+== 参考資料
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|目次 |Doc | |— |— |—
-|ブックマーク |Paragraph | |— |— |—
-|図表番号 |Paragraph | |— |— |—
-|相互参照 |Paragraph | |— |— |—
-|脚注 |Paragraph | |— |— |—
+|image:../face/icons/contents.svg[目次,16,16] 目次 |Doc | |— |— |—
+|image:../face/icons/bookmarks.svg[ブックマーク,16,16] ブックマーク |Paragraph | |— |— |—
+|image:../face/icons/caption.svg[図表番号,16,16] 図表番号 |Paragraph | |— |— |—
+|image:../face/icons/crossref.svg[相互参照,16,16] 相互参照 |Paragraph | |— |— |—
+|image:../face/icons/footnote.svg[脚注,16,16] 脚注 |Paragraph | |— |— |—
 |===
 
-=== フォーム
+== フォーム
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|テキストフィールド |Doc(記入欄) |✅ |d.fill(名前, 値) |— |—
-|名前 |Doc(記入欄) |✅ |d.fields() |— |—
+|image:../face/icons/form-text.svg[テキストフィールド,16,16] テキストフィールド |Doc(記入欄) |✅ |d.fill(名前, 値) |— |—
+|image:../face/icons/form-name.svg[名前,16,16] 名前 |Doc(記入欄) |✅ |d.fields() |— |—
 |===
 
-=== 共同編集
+== 共同編集
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|コメントを追加 |Comment |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
-|コメントの表示 |Comment |✅ |d.comments / c.comment |d.comments |c.comment
+|image:../face/icons/co-addcomment.svg[コメントを追加,16,16] コメントを追加 |Comment |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|image:../face/icons/co-showcomment.svg[コメントの表示,16,16] コメントの表示 |Comment |✅ |d.comments / c.comment |d.comments |c.comment
 |===
 
-=== 保護
+== 保護
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|保護 |Sheet | |— |— |ws.protection
-|暗号化する |Book | |— |— |wb.security
+|image:../face/icons/prot-doc.svg[保護,16,16] 保護 |Sheet | |— |— |ws.protection
+|image:../face/icons/prot-encrypt.svg[暗号化する,16,16] 暗号化する |Book | |— |— |wb.security
 |===
 
-=== 表示
+== 表示
 
 [cols="2,2,^1,3,3,3"]
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|ウィンドウ枠の固定 |Sheet |✅ |s.freeze_panes |— |ws.freeze_panes
-|枠線表示 |Sheet |✅ |s.show_gridlines |— |ws.sheet_view.showGridLines
+|image:../face/icons/freeze.svg[ウィンドウ枠の固定,16,16] ウィンドウ枠の固定 |Sheet |✅ |s.freeze_panes |— |ws.freeze_panes
+|image:../face/icons/show-gridlines.svg[枠線表示,16,16] 枠線表示 |Sheet |✅ |s.show_gridlines |— |ws.sheet_view.showGridLines
 |===
 
 // api:taiou:end

@@ -194,6 +194,32 @@ def 状態(id_: str, ow: str) -> str:
     return ""
 
 
+# アイコンの置き場(この文書から見た相対の径路)
+ICON_DIR = "../face/icons"
+
+ICONS_RS = ROOT / "face/src/icons.rs"
+
+
+def _icon_file() -> dict:
+    """**絵の名前 → ファイル名。** `icons.rs` が繋いでいる対応を読みます。
+
+    名前とファイル名が違う物があります(`insertimage` の実体は
+    `insimage.svg`)。画面は `icons.rs` を通るので出ますが、文書から
+    直に指すと届きません — 2026-08-24 にこの表で1件踏みました。
+    """
+    out = {}
+    try:
+        src = ICONS_RS.read_text(encoding="utf-8")
+    except OSError:
+        return out
+    for m in re.finditer(r'\("([a-z0-9-]+)",\s*include_bytes!\("\.\./icons/([^"]+)\.svg"\)\)', src):
+        if m.group(1) != m.group(2):
+            out[m.group(1)] = m.group(2)
+    return out
+
+
+ICON_FILE = _icon_file()
+
 MARK_S = "// api:taiou:start"
 MARK_E = "// api:taiou:end"
 SAKI = ROOT / "docs/api-taiou.ja.adoc"
@@ -214,7 +240,7 @@ def 段の並び(tabs):
 
 
 def rows():
-    """(段, ボタン, オブジェクト, 状態, officework, python-docx, openpyxl)。
+    """(段, ボタン, 絵, オブジェクト, 印, officework, python-docx, openpyxl)。
     **並びはメニューのまま**、*分類はオブジェクト*です(2026-08-24 発注者)。"""
     tabs = ribbon_parse.tables_or_die()
     並び = 段の並び(tabs)
@@ -232,7 +258,7 @@ def rows():
                 見た.add(cmd.id)
                 obj, ow, pd, op = MICHI[cmd.id]
                 _ラベルの逆引き[cmd.id] = cmd.label
-                out.append((段, cmd.label, obj, 状態(cmd.id, ow), ow, pd, op))
+                out.append((段, cmd.label, cmd.icon, obj, 状態(cmd.id, ow), ow, pd, op))
     return out
 
 
@@ -260,11 +286,13 @@ def 表() -> str:
     o.append("空いている所(—)は、その道がありません。\n")
     o.append("この節は `tools/api_taiou.py` が起こします。手で直さないでください。\n")
     いま = None
-    for 段, ラベル, obj, st, ow, pd, op in r:
+    for 段, ラベル, 絵, obj, st, ow, pd, op in r:
         if 段 != いま:
             if いま is not None:
                 o.append("|===\n")
-            o.append(f"=== {段}")
+            # **見出しは `==`。** `===` にすると本家が「段が飛んでいる」と
+            # 警告します(この節の前に `==` が無いため。2026-08-24 に実際に出た)
+            o.append(f"== {段}")
             o.append("")
             o.append('[cols="2,2,^1,3,3,3"]')
             o.append("|===")
@@ -272,7 +300,16 @@ def 表() -> str:
             いま = 段
         f = lambda x: x if x else "—"
         中 = ow if ow else (理由(ラベル, st) or "—")
-        o.append(f"|{ラベル} |{f(obj)} |{st} |{中} |{f(pd)} |{f(op)}")
+        # **絵を名前の前に出します**(2026-08-24 発注者)。画面で見ている物と
+        # 同じ絵なので、名前より先に目に入ります。径路は `face/icons` から
+        # この文書の場所への相対です
+        # **絵の名前とファイル名は、同じとは限りません。**
+        # `face/src/icons.rs` が名前とファイルを繋いでいます(例: `insertimage`
+        # の実体は `insimage.svg`)。画面はそちらを通るので出ますが、
+        # 文書から直に指すと届きません。ここで解いてから書きます
+        名 = ICON_FILE.get(絵, 絵)
+        絵札 = f"image:{ICON_DIR}/{名}.svg[{ラベル},16,16] " if 名 else ""
+        o.append(f"|{絵札}{ラベル} |{f(obj)} |{st} |{中} |{f(pd)} |{f(op)}")
     if いま is not None:
         o.append("|===\n")
     return "\n".join(o)
