@@ -291,6 +291,97 @@ impl Writer {
                         cx.notify()
                     })));
             }
+        } else if self.file_view == 5 {
+            // **書式の標準は3段**(2026-08-26 発注者)。
+            //
+            // . *文書* — その文章が自分で持つ
+            // . *綴り* — フォルダの `テンプレート.toml`
+            // . *利用者* — `~/.config/officework/テンプレート.toml`
+            //
+            // 下の段は、上が言っていないことだけを埋めます。
+            // **どこが効いているかが見えるのが要**です。ＭＳ 明朝の docx を
+            // 開いて字が代わったとき、どこを直せばよいか分からないのが
+            // 今の困りごとだからです。
+            // **重ねる前の姿を読みます。** 重ねた後を見せると、下の段の
+            // 言い分が上の段の言い分に見えて、どこを直せばよいのかが
+            // かえって分からなくなります(この画面で一度そうなりました)。
+            let 利用者の場所 =
+                ui::settings::dir().join(kumihan::theme::user_template_name());
+            let 利用者 = kumihan::theme::read_theme(&利用者の場所);
+            let 綴りの場所 = self
+                .tmpl_path
+                .clone()
+                .or_else(|| self.folder().map(|d| d.join(Self::FOLDER_TEMPLATE)));
+            let 綴り = 綴りの場所.as_deref().and_then(kumihan::theme::read_theme);
+            // **書体と大きさは言語で変わります**(2026-08-26 発注者)。
+            // その段が `[文書.en]` のような言語ごとの分を持っているときは、
+            // いまの言語の分を出します — 出さないと、画面の数字と
+            // ファイルの中身が食い違って見えます
+            let 言語 = ui::language();
+            let 言い分 = |th: Option<&kumihan::theme::Theme>| -> Option<String> {
+                let th = th?.for_language(&言語);
+                match (th.font, th.size_pt) {
+                    (Some(f), Some(s)) => Some(format!("{f} {s}pt")),
+                    (Some(f), None) => Some(f),
+                    (None, Some(s)) => Some(format!("{s}pt")),
+                    (None, None) => None,
+                }
+            };
+            let 段 = |名: &str, 値: Option<String>, 場所: Option<String>| {
+                let 値 = 値.unwrap_or_else(|| ui::t!("(言っていません)").to_string());
+                div().flex().flex_col().gap_1().pb_2()
+                    .child(div().flex().flex_row().items_center().gap_2()
+                        .child(div().w(px(us * 120.0)).text_color(th_status)
+                            .child(SharedString::from(名.to_string())))
+                        .child(div().child(SharedString::from(値))))
+                    .child(div().pl(px(us * 120.0)).text_size(px(us * 10.0))
+                        .text_color(th_status)
+                        .child(SharedString::from(
+                            場所.unwrap_or_else(|| ui::t!("(まだ作っていません)").to_string()))))
+            };
+            pane = pane
+                .child(div().text_size(px(us * 16.0))
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .child(ui::t!("書式の標準")))
+                .child(div().text_color(th_status)
+                    .child(ui::t!("上の段が言っていないことを、下の段が埋めます")))
+                .child(div().text_color(th_status).text_size(px(us * 11.0))
+                    .child(ui::tf!("いまの言語は「{}」です。書体と大きさは言語ごとに書けます", 言語)))
+                .child(div().h(px(us * 8.0)))
+                // 1段目 — この文書
+                .child(段(&ui::t!("この文書"), self.doc.font.clone(),
+                          Some(ui::t!("いま開いている文書が持つ書体").to_string())))
+                // 2段目 — 綴り
+                .child(段(&ui::t!("この綴り"),
+                          言い分(綴り.as_ref()),
+                          綴りの場所.map(|p| p.display().to_string())))
+                // 3段目 — 利用者
+                .child(段(&ui::t!("この機械の自分"),
+                          言い分(利用者.as_ref()),
+                          Some(利用者の場所.display().to_string())))
+                .child(div().h(px(us * 8.0)))
+                // **いま実際に使っている書体と大きさ**。3段を重ねた結果です
+                .child(div().flex().flex_row().items_center().gap_2()
+                    .child(div().w(px(us * 120.0)).text_color(th_status)
+                        .child(ui::t!("いま使っている")))
+                    .child(div().font_weight(gpui::FontWeight::BOLD)
+                        .child(SharedString::from(format!(
+                            "{} {}pt",
+                            self.font_name,
+                            self.base_pt()
+                        )))))
+                .child(div().h(px(us * 10.0)))
+                .child(div().text_color(th_status).child(
+                    ui::t!("書体を選ぶと、この機械の自分の標準にします(ほかの綴りにも効きます)")))
+                .child(div().id("style-user-font")
+                    .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                    .child(ui::t!("この機械の標準の書体を選ぶ"))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.tab = this.prev_tab;
+                        this.open_list = Some("user-font");
+                        this.pick_sel = 0;
+                        cx.notify()
+                    })));
         } else if self.file_view == 4 {
             // **前に保存できずに終わった控え**(2026-08-21 の B-3)。
             //

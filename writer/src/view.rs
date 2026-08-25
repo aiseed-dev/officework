@@ -315,7 +315,7 @@ impl Render for Writer {
             _ => None,
         };
         if let Some(rows) = rows {
-            let size_now = self.doc.size_at(self.ed.selection()).unwrap_or(SIZE_PT);
+            let size_now = self.size_now();
             let size_disp = if size_now.fract() == 0.0 {
                 format!("{}", size_now as i32)
             } else {
@@ -1450,7 +1450,7 @@ impl Render for Writer {
             chat_panel, pw_panel, url_panel, fm_panel, nav_panel, rp_panel,
             lk_panel, ai_panel, sd_panel, rb_panel, eq_panel, plug_panel, xr_panel,
             font_panel, size_panel, style_panel, symbol_panel, proof_panel,
-            tbl_panel, date_panel, export_panel, fl_panel,
+            tbl_panel, date_panel, export_panel, fl_panel, user_font_panel,
         } = self.panels(dk, th_btn, th_btn_hover, th_cmd_border, th_status, th_top_fg, cx);
 
         // ---- 右クリックのメニュー ----
@@ -1694,6 +1694,7 @@ impl Render for Writer {
             .children(symbol_panel)
             .children(tbl_panel)
             .children(fl_panel)
+            .children(user_font_panel)
             .children(date_panel)
             .children(export_panel)
             .children(ui::resize_edges(window))

@@ -734,6 +734,9 @@ fn main() {
         cx.text_system()
             .add_fonts(vec![std::borrow::Cow::Borrowed(ops::font_data())])
             .expect("フォント登録");
+        // **いまの言語をエンジンへ渡す**(2026-08-26)。標準の書体と
+        // 大きさは言語で変わるので、これを忘れると日本語の既定で出ます
+        ui::init_language();
         ui::settings::ai_env_from_settings();
         // **割り当ては文脈で分けて、両方を入れます**(統合の段5)。
         //

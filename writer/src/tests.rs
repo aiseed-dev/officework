@@ -3140,7 +3140,10 @@ mod file_menu_tests {
                 // **形を選んで書き出す1つの入り口**(2026-08-25)
                 "f-export",
                 "f-merge", "f-html", "f-protect",
-                "f-distill", "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req",
+                "f-distill",
+                // **書式の標準**(2026-08-26)。3段のどれが効いているかを見て直す
+                "f-style",
+                "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req",
             ]);
             let 下: Vec<&str> = 品.iter().filter(|i| i.tail).map(|i| i.id).collect();
             assert_eq!(下, vec!["f-opts", "f-help", "f-req"]);

@@ -1354,6 +1354,16 @@ impl Document {
         self.run_at(range.start).map(|r| r.pt(self.base_pt()))
     }
 
+    /// 選択範囲の字の大きさ。**下敷きの大きさを外から渡します。**
+    ///
+    /// [`size_at`](Self::size_at) は文書自身の大きさしか下敷きにできません。
+    /// テンプレートが決めた大きさは文書の中に無いので、それを見せたい所
+    /// (リボンの大きさの欄など)はこちらを使ってください。渡さないと、
+    /// 言語ごとに変えた大きさが画面に出ません(2026-08-26)。
+    pub fn size_at_with(&self, range: std::ops::Range<usize>, base: f32) -> f32 {
+        self.run_at(range.start).map(|r| r.pt(base)).unwrap_or(base)
+    }
+
     /// 選択範囲にかかる段落の性質(箇条書き・インデント・行間)を変える。
     pub fn apply_para(&mut self, range: std::ops::Range<usize>, f: impl Fn(&mut Paragraph)) {
         let target = self.para_range(range);

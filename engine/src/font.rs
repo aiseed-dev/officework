@@ -31,8 +31,74 @@ pub struct Family {
     pub index: u32,
     /// 日本語の字を持っているか
     pub japanese: bool,
+    /// 漢字を持っているか(中国語もこれで見ます)
+    pub han: bool,
+    /// ハングルを持っているか
+    pub hangul: bool,
+    /// キリル文字を持っているか
+    pub cyrillic: bool,
+    /// ラテン文字を、記号つきまで持っているか(ä é などが要る言語のため)
+    pub latin: bool,
+    /// ベトナム語の字を持っているか。ラテン文字ですが、記号が二重に付く
+    /// 字(ế など)は持っていない書体が多いので別に見ます
+    pub vietnamese: bool,
     /// 太字・斜体でない、素の書体か
     pub regular: bool,
+}
+
+impl Family {
+    /// この書体でその言語の字が組めるか。
+    pub fn covers(&self, s: Script) -> bool {
+        match s {
+            Script::Japanese => self.japanese,
+            Script::Korean => self.hangul,
+            // **簡体と繁体は字の有無では分けられません。** Noto の SC は
+            // 繁体の字も持っていますし、その逆もあります。どちらを使うかは
+            // 下の名前の一覧で決めて、ここは漢字が組めるかだけを見ます
+            Script::SimplifiedChinese | Script::TraditionalChinese => self.han,
+            Script::Cyrillic => self.cyrillic,
+            Script::Vietnamese => self.vietnamese,
+            Script::Latin => self.latin,
+        }
+    }
+}
+
+/// 標準の書体を選ぶときの、言語のまとまり。
+///
+/// **標準の書体は OS と言語で変わります**(2026-08-26 発注者)。同じ
+/// 「何も指定していない文書」でも、日本語の人には日本語の書体を、韓国語の
+/// 人にはハングルの書体を出さないと豆腐になります。OS でも変わるのは、
+/// その OS の人が見慣れた書体が違うからです(Windows は游ゴシック、
+/// Mac はヒラギノ、Linux は Noto)。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Script {
+    Japanese,
+    Korean,
+    SimplifiedChinese,
+    TraditionalChinese,
+    Cyrillic,
+    Vietnamese,
+    Latin,
+}
+
+/// 画面の言語の札から、書体を選ぶときのまとまりを決めます。
+/// 知らない札はラテン文字として扱います。
+pub fn script_of(lang: &str) -> Script {
+    match lang.split('-').next().unwrap_or(lang) {
+        "ja" => Script::Japanese,
+        "ko" => Script::Korean,
+        "zh" => {
+            // zh-tw と zh-hk は繁体、ただの zh は簡体
+            if lang.eq_ignore_ascii_case("zh-tw") || lang.eq_ignore_ascii_case("zh-hk") {
+                Script::TraditionalChinese
+            } else {
+                Script::SimplifiedChinese
+            }
+        }
+        "ru" | "uk" | "bg" | "sr" => Script::Cyrillic,
+        "vi" => Script::Vietnamese,
+        _ => Script::Latin,
+    }
 }
 
 /// 探す場所。OS ごとの標準的な置き場と、利用者の置き場。
@@ -123,10 +189,29 @@ fn read_family(data: &[u8], index: u32, path: &Path) -> Option<Family> {
     // 絞り込みで「Yu Gothic」と打っても「游ゴシック」に当てるため、副名として持つ
     let name = local.clone().or_else(|| ascii.clone())?;
     let ascii_name = ascii.unwrap_or_else(|| name.clone());
-    // 日本語を組めるか。「あ」と「日」が引ければ足りる
-    let japanese = face.glyph_index('あ').is_some() && face.glyph_index('日').is_some();
+    // どの言語の字を組めるか。**代表の1字が引ければ足りる**とみなします。
+    // 全部の字を数えると走査が重くなりますし、この判定は「標準の書体を
+    // 選ぶ」ためだけに使う物なので、それで足ります
+    let han = face.glyph_index('日').is_some();
+    let japanese = face.glyph_index('あ').is_some() && han;
+    let hangul = face.glyph_index('한').is_some();
+    let cyrillic = face.glyph_index('Ж').is_some();
+    let latin = face.glyph_index('A').is_some() && face.glyph_index('é').is_some();
+    let vietnamese = latin && face.glyph_index('ế').is_some();
     let regular = face.is_regular();
-    Some(Family { name, ascii: ascii_name, path: path.to_path_buf(), index, japanese, regular })
+    Some(Family {
+        name,
+        ascii: ascii_name,
+        path: path.to_path_buf(),
+        index,
+        japanese,
+        han,
+        hangul,
+        cyrillic,
+        latin,
+        vietnamese,
+        regular,
+    })
 }
 
 /// 名前から実体を引く。**文書が指定した書体を出すための道。**
@@ -149,51 +234,205 @@ fn norm(s: &str) -> String {
         .collect()
 }
 
+/// 書体の系統。**明朝の書類を黙ってゴシックにしない**ための区別です。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum 系統 {
+    /// 明朝・セリフ(縦横に太さの差があり、端に飾りがある)
+    明朝,
+    /// ゴシック・サンセリフ(太さが一定で、飾りが無い)
+    ゴシック,
+}
+
+/// 書体の名前から系統を読む。どちらとも読めなければ `None`。
+pub fn 系統を読む(name: &str) -> Option<系統> {
+    let 小文字 = name.to_lowercase();
+    // 名前に系統が書いてある物(明朝/ゴシック/serif/sans)を先に見ます
+    if name.contains("明朝") || 小文字.contains("mincho") || 小文字.contains("serif") {
+        // "sans serif" は "serif" を含むので、先にサンセリフを外します
+        if !小文字.contains("sans") {
+            return Some(系統::明朝);
+        }
+    }
+    if name.contains("ゴシック")
+        || 小文字.contains("gothic")
+        || 小文字.contains("sans")
+        || name.contains("メイリオ")
+        || 小文字.contains("meiryo")
+        || name.contains("黑")
+        || name.contains("黒")
+        || name.contains("고딕")
+    {
+        return Some(系統::ゴシック);
+    }
+    // 名前に書いていない物は、よく使われる書体を名指しで覚えます。
+    // Windows の docx が名乗るのはたいていこの辺りです
+    const 明朝の名: &[&str] = &[
+        "times new roman", "times", "georgia", "garamond", "book antiqua",
+        "palatino", "cambria", "constantia", "songti", "宋体", "新細明體",
+        "batang", "바탕",
+    ];
+    const ゴシックの名: &[&str] = &[
+        "arial", "helvetica", "calibri", "aptos", "segoe ui", "verdana",
+        "tahoma", "candara", "corbel", "roboto", "gulim", "굴림",
+    ];
+    if 明朝の名.iter().any(|n| 小文字.contains(n)) {
+        return Some(系統::明朝);
+    }
+    if ゴシックの名.iter().any(|n| 小文字.contains(n)) {
+        return Some(系統::ゴシック);
+    }
+    None
+}
+
 /// 無い書体の筋の通った代替。**明朝の書類を黙ってゴシックにしない。**
 ///
-/// Windows の書体(ＭＳ 明朝など)は Linux に無いのが普通なので、
-/// 系統(明朝/ゴシック)を保って置き換える。
+/// Windows の書体(ＭＳ 明朝、Times New Roman など)は Linux に無いのが
+/// 普通なので、系統(明朝/ゴシック)を保って置き換えます。
+///
+/// どの一覧から選ぶかは**画面の言語**で変わります(2026-08-26)。日本語の
+/// 一覧しか持っていなかったので、ドイツ語の画面で Times New Roman の
+/// 文書を開くと日本語の明朝になっていました。
 pub fn substitute(name: &str) -> Option<&'static Family> {
-    let mincho = name.contains("明朝") || name.to_lowercase().contains("mincho");
-    let gothic = name.contains("ゴシック")
-        || name.to_lowercase().contains("gothic")
-        || name.contains("メイリオ")
-        || name.to_lowercase().contains("meiryo");
+    let k = 系統を読む(name)?;
     // 並びは「入れた書体(IPA/Noto)→ OS の持ち物」。後半は実機の書体 —
     // Mac は Hiragino、Windows は游/メイリオ/ＭＳ が標準で、ここに無いと
     // Noto も IPA も入れていない実機で明朝がゴシックの fallback に落ちる
     // (2026-08-13、CI の3 OS 化で気づいた製品側の穴)。
     // 書体は日本語名と英語名の両方で名乗ることがあるので、両方書く
     // (resolve は空白・大小文字の揺れは吸うが、言語までは翻訳しない)
-    let candidates: &[&str] = if mincho {
-        &["IPAex明朝", "Noto Serif CJK JP", "BIZ UDP明朝", "BIZ UD明朝", "IPA P明朝", "IPA明朝",
-          "ヒラギノ明朝 ProN", "Hiragino Mincho ProN",
-          "游明朝", "游明朝体", "Yu Mincho", "ＭＳ 明朝", "MS Mincho"]
-    } else if gothic {
-        &["IPAexゴシック", "Noto Sans CJK JP", "BIZ UDPゴシック", "IPA Pゴシック",
-          "ヒラギノ角ゴシック", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
-          "游ゴシック", "Yu Gothic", "メイリオ", "Meiryo", "ＭＳ ゴシック", "MS Gothic"]
-    } else {
-        return None;
+    let candidates: &[&str] = match (script_of(&default_language()), k) {
+        (Script::Japanese, 系統::明朝) => &[
+            "IPAex明朝", "Noto Serif CJK JP", "BIZ UDP明朝", "BIZ UD明朝", "IPA P明朝", "IPA明朝",
+            "ヒラギノ明朝 ProN", "Hiragino Mincho ProN",
+            "游明朝", "游明朝体", "Yu Mincho", "ＭＳ 明朝", "MS Mincho",
+        ],
+        (Script::Japanese, 系統::ゴシック) => &[
+            "IPAexゴシック", "Noto Sans CJK JP", "BIZ UDPゴシック", "IPA Pゴシック",
+            "ヒラギノ角ゴシック", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+            "游ゴシック", "Yu Gothic", "メイリオ", "Meiryo", "ＭＳ ゴシック", "MS Gothic",
+        ],
+        (Script::Korean, 系統::明朝) => {
+            &["Noto Serif CJK KR", "NanumMyeongjo", "나눔명조", "바탕", "Batang"]
+        }
+        (Script::Korean, 系統::ゴシック) => &[
+            "Noto Sans CJK KR", "NanumGothic", "나눔고딕",
+            "Apple SD Gothic Neo", "맑은 고딕", "Malgun Gothic",
+        ],
+        (Script::SimplifiedChinese, 系統::明朝) => {
+            &["Noto Serif CJK SC", "Source Han Serif SC", "宋体", "SimSun", "STSong"]
+        }
+        (Script::SimplifiedChinese, 系統::ゴシック) => &[
+            "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei",
+            "PingFang SC", "微软雅黑", "Microsoft YaHei",
+        ],
+        (Script::TraditionalChinese, 系統::明朝) => {
+            &["Noto Serif CJK TC", "Source Han Serif TC", "新細明體", "PMingLiU"]
+        }
+        (Script::TraditionalChinese, 系統::ゴシック) => &[
+            "Noto Sans CJK TC", "Source Han Sans TC",
+            "PingFang TC", "微軟正黑體", "Microsoft JhengHei",
+        ],
+        (_, 系統::明朝) => &[
+            "Liberation Serif", "DejaVu Serif", "Noto Serif", "Nimbus Roman",
+            "Times New Roman", "Georgia", "Cambria",
+        ],
+        (_, 系統::ゴシック) => &[
+            "Liberation Sans", "DejaVu Sans", "Noto Sans", "Nimbus Sans",
+            "Helvetica Neue", "Helvetica", "Arial", "Calibri", "Segoe UI",
+        ],
     };
     candidates.iter().find_map(|c| resolve(c))
 }
 
-/// 文書が書体を指定していないとき、あるいは指定されたものが無いときに使う。
+/// 標準の書体の候補を、**この OS で見慣れた順に**並べたもの。
 ///
-/// **日本語が組めるものを選ぶ。** 英字だけのフォントに落ちると豆腐になる。
-/// 同じ「日本語が組める」でも、名前順の先頭(AR PL UMing 等)より
-/// 見慣れたものを先に。
-pub fn fallback() -> Option<&'static Family> {
-    // 後半は実機の標準書体(Mac: Hiragino、Windows: 游/メイリオ)。
-    // 無いと名前順の先頭(AR PL UMing 等)に落ちて見た目が古びる
-    for c in ["Noto Sans CJK JP", "IPAexゴシック", "BIZ UDPゴシック", "IPA Pゴシック",
-              "ヒラギノ角ゴシック", "Hiragino Sans", "游ゴシック", "Yu Gothic", "メイリオ", "Meiryo"] {
+/// 先に来た名前から探して、この機械にある最初の1つを使います。名前が
+/// 1つも当たらなければ、その言語の字が組める書体から選びます。
+///
+/// 名前を日本語と英語の両方で書いてあるのは、書体が OS の言語によって
+/// 違う名前を名乗るからです([`resolve`] は空白や大小文字の揺れは吸い
+/// ますが、名前の翻訳まではしません)。
+fn 標準の候補(s: Script) -> &'static [&'static str] {
+    #[cfg(target_os = "windows")]
+    match s {
+        Script::Japanese => &["游ゴシック", "Yu Gothic", "メイリオ", "Meiryo", "ＭＳ Ｐゴシック", "MS PGothic"],
+        Script::Korean => &["맑은 고딕", "Malgun Gothic", "굴림", "Gulim"],
+        Script::SimplifiedChinese => &["微软雅黑", "Microsoft YaHei", "宋体", "SimSun"],
+        Script::TraditionalChinese => &["微軟正黑體", "Microsoft JhengHei", "新細明體", "PMingLiU"],
+        Script::Cyrillic | Script::Vietnamese | Script::Latin => {
+            &["Calibri", "Segoe UI", "Arial", "Times New Roman"]
+        }
+    }
+    #[cfg(target_os = "macos")]
+    match s {
+        Script::Japanese => &["ヒラギノ角ゴシック", "Hiragino Sans", "Hiragino Kaku Gothic ProN"],
+        Script::Korean => &["Apple SD Gothic Neo", "애플 SD 산돌고딕 Neo", "AppleGothic"],
+        Script::SimplifiedChinese => &["PingFang SC", "苹方-简", "Heiti SC", "STHeiti"],
+        Script::TraditionalChinese => &["PingFang TC", "蘋方-繁", "Heiti TC"],
+        Script::Cyrillic | Script::Vietnamese | Script::Latin => {
+            &["Helvetica Neue", "Helvetica", "Arial", "Lucida Grande"]
+        }
+    }
+    // Linux と、その他(Android は Noto が標準で居ます)
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    match s {
+        Script::Japanese => &["Noto Sans CJK JP", "IPAexゴシック", "BIZ UDPゴシック", "IPA Pゴシック"],
+        Script::Korean => &["Noto Sans CJK KR", "NanumGothic", "나눔고딕", "UnDotum"],
+        Script::SimplifiedChinese => &["Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei"],
+        Script::TraditionalChinese => &["Noto Sans CJK TC", "Source Han Sans TC", "WenQuanYi Micro Hei"],
+        Script::Cyrillic | Script::Vietnamese | Script::Latin => {
+            &["Liberation Sans", "DejaVu Sans", "Noto Sans", "Nimbus Sans"]
+        }
+    }
+}
+
+/// **その言語の標準の書体。** 文書もテンプレートも書体を言っていないとき、
+/// これを使います。
+///
+/// 日本語の書体を決め打ちにしていた時期がありますが、それは誤りでした
+/// (2026-08-26 発注者「標準フォントは、os と言語によって変えないと
+/// いけない」)。韓国語の画面で日本語の書体を出すと、ハングルが豆腐に
+/// なります。
+pub fn default_family(lang: &str) -> Option<&'static Family> {
+    let s = script_of(lang);
+    for c in 標準の候補(s) {
         if let Some(f) = resolve(c) {
             return Some(f);
         }
     }
-    list().iter().find(|f| f.japanese)
+    // 名前で当たらないときは、**その言語の字が組める書体**から。
+    // 素の字面を先に見るのは、太字だけ入っている機械で全部太字に
+    // ならないためです
+    list()
+        .iter()
+        .find(|f| f.regular && f.covers(s))
+        .or_else(|| list().iter().find(|f| f.covers(s)))
+        // その言語の字が1つも無ければ、せめて字が出る物を返します。
+        // 豆腐にはなりますが、何も出ないよりは直す手がかりになります
+        .or_else(|| list().iter().find(|f| f.regular))
+}
+
+/// 文書が書体を指定していないとき、あるいは指定されたものが無いときに使う。
+/// 言語は [`set_default_language`] で入れた物を見ます。
+pub fn fallback() -> Option<&'static Family> {
+    default_family(&default_language())
+}
+
+/// 標準の書体を選ぶときに見る言語。既定は日本語です。
+static 言語: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
+
+/// **画面の言語をエンジンに渡す。**
+///
+/// エンジンは設定ファイルを読みません(画面にも設定にも依存しないのが
+/// このクレートの決まりです)。なので、言語を知っている側から入れます。
+/// 呼ばなければ日本語です。言語を変えたときも、もう一度呼んでください。
+pub fn set_default_language(tag: &str) {
+    *言語.write().expect("言語の錠") = Some(tag.to_string());
+}
+
+/// いまエンジンが見ている言語。
+pub fn default_language() -> String {
+    言語.read().expect("言語の錠").clone().unwrap_or_else(|| "ja".to_string())
 }
 
 /// 文書の指定を実体に結び付ける。
@@ -216,14 +455,22 @@ pub fn for_document(wanted: Option<&str>) -> Result<(&'static Family, bool), Str
 }
 
 fn missing(wanted: Option<&str>) -> String {
+    // **入れてもらう物の名前は言語で変わります。** 韓国語の人に
+    // 「fonts-ipaexfont を入れてください」と言っても直りません
+    let 入れる物 = match script_of(&default_language()) {
+        Script::Japanese => "fonts-noto-cjk か fonts-ipaexfont",
+        Script::Korean => "fonts-noto-cjk か fonts-nanum",
+        Script::SimplifiedChinese | Script::TraditionalChinese => "fonts-noto-cjk",
+        Script::Cyrillic | Script::Vietnamese | Script::Latin => {
+            "fonts-liberation か fonts-dejavu"
+        }
+    };
     match wanted {
         Some(w) => format!(
-            "書体「{w}」がこの機械にありません。代わりに使える日本語フォントも見つかりません\
-             (fonts-noto-cjk か fonts-ipaexfont を入れてください)"
+            "書体「{w}」がこの機械にありません。代わりに使える書体も見つかりません\
+             ({入れる物} を入れてください)"
         ),
-        None => "日本語のフォントが見つかりません\
-                 (fonts-noto-cjk か fonts-ipaexfont を入れてください)"
-            .into(),
+        None => format!("使える書体が見つかりません({入れる物} を入れてください)"),
     }
 }
 

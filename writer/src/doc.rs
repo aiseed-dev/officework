@@ -999,7 +999,14 @@ impl Writer {
 
     /// 文書の書体を実体に結ぶ。無ければ系統を保って代替し、**そう言う**。
     pub(crate) fn adopt_font(&mut self) {
-        let wanted = self.doc.font.clone();
+        // **文書が何も言っていなければ、テンプレートの書体を使います**
+        // (2026-08-26)。前は文書しか見ていなかったので、フォルダの
+        // テンプレートに書体を書いても画面は変わりませんでした。
+        //
+        // ここで `self.doc.font` に写さないのが大事です。写すと、文書が
+        // 自分で言っていないことを言い出して、保存したときに書体が本文へ
+        // 焼き付いてしまいます。
+        let wanted = self.doc.font.clone().or_else(|| self.tmpl.font.clone());
         match kumihan::font::for_document(wanted.as_deref()) {
             Ok((fam, exact)) => {
                 if let Ok(b) = kumihan::font::load(fam) {
@@ -2376,16 +2383,35 @@ impl Writer {
     /// ファイルがあれば、そのフォルダの文書はこれを使います。
     pub(crate) const FOLDER_TEMPLATE: &'static str = "テンプレート.toml";
 
+    /// **綴りのテンプレートが無いとき、下に敷く物**と、その呼び名。
+    ///
+    /// この機械の標準(`~/.config/officework/テンプレート.toml`)があれば
+    /// それを、無ければ同梱の既定を返します。呼び名を一緒に返すのは、
+    /// 状態の行で「同梱の既定」と言い切ってしまうと、自分で決めた標準が
+    /// 効いているのに嘘になるからです。
+    fn 標準のテンプレート() -> (kumihan::theme::Theme, String) {
+        let at = ui::settings::dir().join(kumihan::theme::user_template_name());
+        if at.exists() {
+            (Self::user_theme(), ui::t!("この機械の標準").to_string())
+        } else {
+            (kumihan::theme::default_theme(), ui::t!("同梱の既定").to_string())
+        }
+    }
+
     /// テンプレートを探して読む。返りは(テンプレート, 読んだ場所, 言い分)。
-    /// 場所が None なら同梱の既定です。
+    /// 場所が None なら、綴りのテンプレートは使っていません。
     ///
     /// 探す順:
     ///
     /// 1. 本文の頭に `:template: 名前` があれば、その名前で **隣 → 置き場**
     /// 2. 名前が無ければ、**同じフォルダの `テンプレート.toml`**
-    /// 3. どちらも無ければ同梱の既定
+    /// 3. どちらも無ければ、この機械の標準 → 同梱の既定
     ///
     /// 1が2より先なのは、**書いてあることが決まりより強い**からです。
+    ///
+    /// 見つかったテンプレートには、**この機械の標準を下に敷きます**
+    /// (2026-08-26)。綴りのテンプレートが言っていないことは、自分が
+    /// いつも使う書式で埋まります。
     fn load_template(
         &self,
         name: Option<&str>,
@@ -2397,27 +2423,39 @@ impl Writer {
                 let at = dir.join(Self::FOLDER_TEMPLATE);
                 if let Ok(src) = std::fs::read_to_string(&at) {
                     return match kumihan::theme::parse(&src) {
-                        Ok(th) => (th, Some(at.clone()), at.display().to_string()),
-                        Err(e) => (
-                            kumihan::theme::default_theme(),
-                            None,
-                            ui::tf!("{} が読めないので同梱の既定({})", at.display().to_string(), e)
-                                .to_string(),
+                        Ok(th) => (
+                            kumihan::theme::merge(
+                                th.for_current_language(),
+                                Self::user_theme(),
+                            ),
+                            Some(at.clone()),
+                            at.display().to_string(),
                         ),
+                        Err(e) => {
+                            let (th, 名) = Self::標準のテンプレート();
+                            (
+                                th,
+                                None,
+                                ui::tf!("{} が読めないので{}({})",
+                                        at.display().to_string(), 名, e).to_string(),
+                            )
+                        }
                     };
                 }
                 // **書式のファイルらしい物があるのに名前が違うときは言います。**
                 // 黙って既定で開くと、置いた人は「効かない」としか分かりません
                 if let Some(他) = 他の型(dir) {
+                    let (th, 名) = Self::標準のテンプレート();
                     return (
-                        kumihan::theme::default_theme(),
+                        th,
                         None,
-                        ui::tf!("同梱の既定(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)",
-                                他, Self::FOLDER_TEMPLATE).to_string(),
+                        ui::tf!("{}(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)",
+                                名, 他, Self::FOLDER_TEMPLATE).to_string(),
                     );
                 }
             }
-            return (kumihan::theme::default_theme(), None, ui::t!("同梱の既定").to_string());
+            let (th, 名) = Self::標準のテンプレート();
+            return (th, None, 名);
         };
         let mut cands = Vec::new();
         if let Some(dir) = doc_path.parent() {
@@ -2427,21 +2465,29 @@ impl Writer {
         for c in cands {
             let Ok(src) = std::fs::read_to_string(&c) else { continue };
             return match kumihan::theme::parse(&src) {
-                Ok(th) => (th, Some(c.clone()), c.display().to_string()),
+                Ok(th) => (
+                    kumihan::theme::merge(th.for_current_language(), Self::user_theme()),
+                    Some(c.clone()),
+                    c.display().to_string(),
+                ),
                 // **壊れたテンプレートは黙って既定に落ちない** — どこが
                 // 悪いか言わないと、直す手がかりが無い
-                Err(e) => (
-                    kumihan::theme::default_theme(),
-                    None,
-                    ui::tf!("{} が読めないので同梱の既定({})", c.display().to_string(), e)
-                        .to_string(),
-                ),
+                Err(e) => {
+                    let (th, 名) = Self::標準のテンプレート();
+                    (
+                        th,
+                        None,
+                        ui::tf!("{} が読めないので{}({})", c.display().to_string(), 名, e)
+                            .to_string(),
+                    )
+                }
             };
         }
+        let (th, 名) = Self::標準のテンプレート();
         (
-            kumihan::theme::default_theme(),
+            th,
             None,
-            ui::tf!("テンプレート「{}」が見つからないので同梱の既定", name).to_string(),
+            ui::tf!("テンプレート「{}」が見つからないので{}", name, 名).to_string(),
         )
     }
 
@@ -2454,17 +2500,105 @@ impl Writer {
     /// 名前は `テンプレート-<用途>.toml`(フォルダの決まりと同じ形)。
     /// 用途は `web` と `印刷` の2つで、画面と保存は `テンプレート.toml` です。
     /// 返りは(テンプレート, 使った場所。None は今のまま)。
+    /// **利用者の標準テンプレート**(2026-08-26 発注者
+    /// 「ユーザーとしての標準設定は、HOME/~.config/ ディレクトリにおく」)。
+    /// **いま効いている字の大きさの下敷き。**
+    ///
+    /// 文書が自分で言っていればそれ、言っていなければテンプレートの
+    /// 大きさです。テンプレートの大きさは言語で変わるので(`[文書.ko]`)、
+    /// ここを通さないと画面に 10.5pt と出たまま、紙は 10pt で組まれます。
+    pub(crate) fn base_pt(&self) -> f32 {
+        self.doc.size_pt.or(self.tmpl.size_pt).unwrap_or(crate::SIZE_PT)
+    }
+
+    /// カーソルの位置の字の大きさ(リボンの欄に出す物)。
+    pub(crate) fn size_now(&self) -> f32 {
+        self.doc.size_at_with(self.ed.selection(), self.base_pt())
+    }
+
+    pub(crate) fn user_theme() -> kumihan::theme::Theme {
+        kumihan::theme::user_theme(&ui::settings::dir())
+    }
+
+    /// **この機械の標準の書体を決める。**
+    ///
+    /// `~/.config/officework/テンプレート.toml` に書き替えます。綴りと文書が
+    /// 何も言っていないとき、ここが効きます。
+    ///
+    /// 書き先は `[文書]` ではなく **`[文書.<いまの言語>]`** です
+    /// (2026-08-26 発注者「PCやディレクトリーの標準テンプレートには、
+    /// フォントやサイズが言語によって違うことを考慮しないといけない」)。
+    /// 日本語で選んだ書体を、英語の画面に切り替えたときまで押しつけると、
+    /// ラテン文字が日本語の書体で出ます。
+    ///
+    /// 既にあるファイルは*その行だけ*直します。人が手で書いた他の設定や
+    /// 注釈を消さないためです。
+    pub(crate) fn set_user_font(&mut self, 書体: &str) {
+        let 置き場 = ui::settings::dir();
+        let at = 置き場.join(kumihan::theme::user_template_name());
+        let 元 = std::fs::read_to_string(&at).unwrap_or_default();
+        let 節 = format!("文書.{}", ui::language());
+        let 新しい = kumihan::theme::put(&元, &節, "書体", &format!("\"{書体}\""));
+        if let Err(e) = std::fs::create_dir_all(&置き場)
+            .and_then(|_| std::fs::write(&at, 新しい))
+        {
+            self.status = ui::tf!("書けません: {}", e).into();
+            return;
+        }
+        // **その場で効かせます。** 開き直さないと変わらないのでは、
+        // 選んだ結果が見えません。
+        //
+        // まだ保存していない文書には道がないので、開いている綴りの中に
+        // ある物として探します(`load_template` は親のフォルダしか見ま
+        // せんから、名前は何でもかまいません)。
+        let 道 = self
+            .path
+            .clone()
+            .or_else(|| self.folder().map(|d| d.join("まだ保存していない.adoc")));
+        if let Some(道) = 道 {
+            let (th, tp, _) = self.load_template(self.doc.template.as_deref(), &道);
+            self.tmpl = th;
+            self.tmpl_path = tp;
+        } else {
+            self.tmpl = Self::user_theme();
+        }
+        self.adopt_font();
+        self.relayout();
+        self.status = ui::tf!(
+            "この機械の {} の標準の書体を「{}」にしました({})",
+            ui::language(),
+            書体,
+            at.display()
+        )
+        .into();
+    }
+
     pub(crate) fn template_for(&self, 用途: &str) -> (kumihan::theme::Theme, Option<String>) {
         let 今 = || (self.tmpl.clone(), None);
         if !self.native {
             // 互換の文書(docx)には型紙がない。既定で出す
-            return (kumihan::theme::default_theme(), None);
+            return (Self::user_theme(), None);
         }
-        let Some(dir) = self.path.as_ref().and_then(|p| p.parent()) else { return 今() };
+        // **保存する前でも綴りの書式が効きます**(2026-08-26)。前は
+        // 保存先の親からしか探さなかったので、書いている間はずっと
+        // 別の見た目で、保存した瞬間に変わっていました
+        let Some(dir) = self
+            .path
+            .as_ref()
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+            .or_else(|| self.folder())
+        else {
+            return 今();
+        };
         let at = dir.join(format!("テンプレート-{用途}.toml"));
         let Ok(src) = std::fs::read_to_string(&at) else { return 今() };
         match kumihan::theme::parse(&src) {
-            Ok(th) => (th, Some(at.display().to_string())),
+            // **利用者の段を下に敷きます。** 綴りが言っていないことは、
+            // この機械で自分がいつも使う書式で埋まります
+            Ok(th) => (
+                kumihan::theme::merge(th.for_current_language(), Self::user_theme()),
+                Some(at.display().to_string()),
+            ),
             // **壊れていたら黙って落ちない。** どれを使ったかは呼ぶ側が言う
             Err(_) => 今(),
         }
@@ -2504,9 +2638,8 @@ impl Writer {
         if self.tmpl_path.as_deref() == Some(at.as_path()) {
             return None; // もう着ている
         }
-        let src = std::fs::read_to_string(&at).ok()?;
-        let th = kumihan::theme::parse(&src).ok()?;
-        self.tmpl = th;
+        let th = kumihan::theme::read_theme(&at)?;
+        self.tmpl = kumihan::theme::merge(th.for_current_language(), Self::user_theme());
         self.tmpl_path = Some(at.clone());
         self.pg = self.tmpl.page.unwrap_or(self.pg);
         self.relayout_keep();

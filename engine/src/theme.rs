@@ -85,6 +85,15 @@ impl Setting {
     }
 }
 
+/// その言語だけの、文書の既定。`[文書.ko]` のような節で書きます。
+///
+/// `None` は「この言語では言わない」で、`[文書]` の分がそのまま効きます。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct LangDoc {
+    pub font: Option<String>,
+    pub size_pt: Option<f32>,
+}
+
 /// テンプレート。文書の頭の `:template: 名前` が名指す実体。
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Theme {
@@ -94,6 +103,18 @@ pub struct Theme {
     pub font: Option<String>,
     /// 文書の既定の字の大きさ(`[文書]` の `大きさ`)
     pub size_pt: Option<f32>,
+    /// **言語ごとの `[文書]`**(`[文書.ko]`)。
+    ///
+    /// 発注者 2026-08-26「PCやディレクトリーの標準テンプレートには、
+    /// フォントやサイズが言語によって違うことを考慮しないといけない」。
+    ///
+    /// 書体が言語で違うのは字が無いからです。大きさも違います —
+    /// 日本語の本文は 10.5pt、英語は 11pt、ベトナム語の公文書は 13pt が
+    /// 普通で、同じ数字にすると読みにくくなります。
+    ///
+    /// 中身は (言語の札, その言語の既定)。[`for_language`](Theme::for_language)
+    /// が畳みます。
+    pub lang_docs: Vec<(String, LangDoc)>,
     /// ページ設定(`[ページ]`)。`None` はテンプレートが指定しない
     pub page: Option<PageSetup>,
     /// 記入欄の送り先(`[送り先]`)。アプリの形で書き出すときに使います。
@@ -159,6 +180,46 @@ impl Theme {
         self.styles.iter().find(|s| s.name == name)
     }
 
+    /// その言語に当たる `[文書.xx]`。
+    ///
+    /// 探し方は札そのもの(`pt-br`)が先で、無ければ言語だけ(`pt`)です。
+    /// ブラジルの分を書いてあればそちらを、書いていなければポルトガル語の
+    /// 分を使う、ということです。
+    pub fn lang_doc(&self, lang: &str) -> Option<&LangDoc> {
+        let base = lang.split('-').next().unwrap_or(lang);
+        self.lang_docs
+            .iter()
+            .find(|(t, _)| t.eq_ignore_ascii_case(lang))
+            .or_else(|| self.lang_docs.iter().find(|(t, _)| t.eq_ignore_ascii_case(base)))
+            .map(|(_, d)| d)
+    }
+
+    /// いま画面が使っている言語で畳んだ写し。
+    ///
+    /// **重ねる前に、段ごとに畳んでください。** 先に重ねると、綴りの
+    /// テンプレートが `[文書.en]` でしか大きさを言っていないとき、その
+    /// 大きさが下の段の大きさに埋められて効かなくなります。
+    pub fn for_current_language(&self) -> Theme {
+        self.for_language(&crate::font::default_language())
+    }
+
+    /// **その言語の分を畳んだ写し。**
+    ///
+    /// `[文書.ko]` に書いてあることで `[文書]` を上書きします。使う側は
+    /// これを通してから `font` と `size_pt` を見てください。
+    pub fn for_language(&self, lang: &str) -> Theme {
+        let mut th = self.clone();
+        if let Some(d) = self.lang_doc(lang) {
+            if d.font.is_some() {
+                th.font = d.font.clone();
+            }
+            if d.size_pt.is_some() {
+                th.size_pt = d.size_pt;
+            }
+        }
+        th
+    }
+
     /// 役割に対応する固定のスタイル名
     pub fn role_name(style: ParaStyle) -> Option<&'static str> {
         match style {
@@ -183,6 +244,52 @@ impl Theme {
 /// なる(段階Aの門番)。TOML の字で持つのは、**形式そのものを毎回
 /// 通す**ため — 同梱だけ Rust の直書きだと、読み手の穴に気づけない
 pub const DEFAULT_TOML: &str = r#"# officework の既定のテンプレート
+
+# **本文の大きさは言語で違います**(2026-08-26 発注者)。同じ 11pt でも、
+# 日本語は大きく見え、ベトナム語は記号が潰れます。それぞれの国で
+# 普通とされている大きさを既定にします。
+#
+# 書体はここでは決めません。機械にある物から選ぶので(kumihan::font の
+# default_family)、テンプレートに名前を書くとかえって外れます。
+[文書]
+大きさ = 10.5
+
+# 英語・ドイツ語などラテン文字の言語。Word の既定が 11pt
+[文書.en]
+大きさ = 11
+[文書.de]
+大きさ = 11
+[文書.es]
+大きさ = 11
+[文書.fr]
+大きさ = 11
+[文書.it]
+大きさ = 11
+[文書.id]
+大きさ = 11
+[文書.pt]
+大きさ = 11
+[文書.pt-br]
+大きさ = 11
+[文書.tr]
+大きさ = 11
+[文書.ru]
+大きさ = 11
+
+# ベトナム語の公文書は 13pt(声調の記号が二重に付くので、小さいと潰れます)
+[文書.vi]
+大きさ = 13
+
+# 韓国語は 10pt
+[文書.ko]
+大きさ = 10
+
+# 中国語は簡体が五号(10.5pt)、繁体は 12pt
+[文書.zh]
+大きさ = 10.5
+[文書.zh-tw]
+大きさ = 12
+
 [スタイル.表題]
 大きさ = 20
 太字 = true
@@ -276,7 +383,148 @@ pub const DEFAULT_TOML: &str = r#"# officework の既定のテンプレート
 
 /// 既定のテンプレートを読む(壊れていたらそれは不具合 — panic でよい)
 pub fn default_theme() -> Theme {
-    parse(DEFAULT_TOML).expect("同梱の既定テンプレートが読めない")
+    // **いまの言語の分まで畳んで返します。** 呼ぶ側は「同梱の既定」と
+    // 思って使うので、そこで言語を考えろというのは無理があります
+    parse(DEFAULT_TOML)
+        .expect("同梱の既定テンプレートが読めない")
+        .for_current_language()
+}
+
+/// 利用者の標準テンプレートの置き場(`~/.config/officework/テンプレート.toml`)。
+///
+/// **書式の標準は3段です**(2026-08-26 発注者)。
+///
+/// . *文書* — その文章が自分で持つ(`Document::font` など)
+/// . *綴り* — フォルダの `テンプレート.toml`
+/// . *利用者* — ここ。**この機械で自分がいつも使う書式**
+///
+/// 下の段は、上の段が言っていないことだけを埋めます。どれも言っていな
+/// ければ同梱の既定です。
+pub fn user_template_name() -> &'static str {
+    "テンプレート.toml"
+}
+
+/// テンプレートを1つ、重ねずにそのまま読む。無い・壊れているなら `None`。
+///
+/// **その段が自分で何を言っているかを見るため**に要ります。重ねた後の
+/// テンプレートでは、下の段の言い分が上の段の言い分に見えてしまいます。
+/// 「書式の標準」の画面は、どの段が効いているかを見せるのが役目なので、
+/// そこでは重ねる前を使います。
+pub fn read_theme(at: &std::path::Path) -> Option<Theme> {
+    parse(&std::fs::read_to_string(at).ok()?).ok()
+}
+
+/// テンプレートの字に、節とキーを1つ書き入れた字を返す。
+///
+/// **人が手で書いた行を残します。** 読んで組み直すと、注釈も並び順も
+/// 消えてしまいます。テンプレートは手で書く物なので、それは困ります。
+///
+/// - その節にそのキーがあれば、**その行だけ**書き替えます
+/// - 節はあってキーが無ければ、節の終わりに足します
+/// - 節が無ければ、末尾に節ごと足します
+///
+/// `値` は TOML の値としてそのまま書きます。文字列なら `"…"` で囲んだ字を
+/// 渡してください。
+pub fn put(src: &str, section: &str, key: &str, 値: &str) -> String {
+    let 行 = format!("{key} = {値}");
+    let mut out: Vec<String> = Vec::new();
+    let mut 節の中 = false;
+    let mut 済んだ = false;
+    let mut 節を見た = false;
+    for l in src.lines() {
+        let t = l.trim();
+        if let Some(name) = t.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+            // 目当ての節から出るところ。まだ書けていなければここで足す
+            if 節の中 && !済んだ {
+                out.push(行.clone());
+                済んだ = true;
+            }
+            節の中 = name.trim() == section;
+            節を見た |= 節の中;
+            out.push(l.to_string());
+            continue;
+        }
+        if 節の中 && !済んだ {
+            if let Some((k, _)) = t.split_once('=') {
+                if k.trim() == key {
+                    out.push(行.clone());
+                    済んだ = true;
+                    continue;
+                }
+            }
+        }
+        out.push(l.to_string());
+    }
+    if !済んだ {
+        if !節を見た {
+            if !out.is_empty() {
+                out.push(String::new());
+            }
+            out.push(format!("[{section}]"));
+        }
+        out.push(行);
+    }
+    let mut s = out.join("\n");
+    s.push('\n');
+    s
+}
+
+/// 利用者の標準テンプレート。無ければ同梱の既定。
+///
+/// **壊れていても落ちません。** 手で書く物なので、書き方を間違えたときに
+/// アプリが開かなくなるのは困ります。そのときは既定に落ちます。
+pub fn user_theme(config_dir: &std::path::Path) -> Theme {
+    // **段ごとに畳んでから重ねます。** 自分のテンプレートが `[文書.en]`
+    // でしか大きさを言っていなくても、英語の画面ならそれが効きます
+    let 既定 = default_theme().for_current_language();
+    match read_theme(&config_dir.join(user_template_name())) {
+        Some(th) => merge(th.for_current_language(), 既定),
+        None => 既定,
+    }
+}
+
+/// 2つのテンプレートを重ねる。**上が言っていないことだけ下から取ります**。
+pub fn merge(mut 上: Theme, 下: Theme) -> Theme {
+    if 上.font.is_none() {
+        上.font = 下.font;
+    }
+    if 上.size_pt.is_none() {
+        上.size_pt = 下.size_pt;
+    }
+    if 上.page.is_none() {
+        上.page = 下.page;
+    }
+    if 上.header.is_none() {
+        上.header = 下.header;
+    }
+    if 上.footer.is_none() {
+        上.footer = 下.footer;
+    }
+    if 上.watermark.is_none() {
+        上.watermark = 下.watermark;
+    }
+    // 言語ごとの分も**札で重ねます**。上に同じ札があればそちらが勝ち、
+    // 上が書体だけ言っているなら大きさは下から取ります
+    for (tag, d) in 下.lang_docs {
+        match 上.lang_docs.iter_mut().find(|(t, _)| *t == tag) {
+            Some((_, u)) => {
+                if u.font.is_none() {
+                    u.font = d.font;
+                }
+                if u.size_pt.is_none() {
+                    u.size_pt = d.size_pt;
+                }
+            }
+            None => 上.lang_docs.push((tag, d)),
+        }
+    }
+    // スタイルは**名前で重ねます**。上に同じ名前があればそちらが勝ちます
+    for d in 下.styles {
+        if !上.styles.iter().any(|x| x.name == d.name) {
+            上.styles.push(d);
+        }
+    }
+    上
 }
 
 /// TOML(部分集合)からテンプレートを読む。
@@ -404,6 +652,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
         Submit,
         Setting,
         Doc,
+        LangDoc(usize),
         Page,
         Style(usize),
         Form(usize),
@@ -420,6 +669,21 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                 Sec::Setting
             } else if name == "文書" || name.eq_ignore_ascii_case("document") {
                 Sec::Doc
+            } else if let Some(tag) = name
+                .strip_prefix("文書.")
+                .or_else(|| name.strip_prefix("document."))
+            {
+                // **言語ごとの [文書]**(2026-08-26)。同じ節を2回書いたら
+                // 後の行が勝つよう、既にある分に足します
+                let tag = tag.trim().to_string();
+                let i = match th.lang_docs.iter().position(|(t, _)| *t == tag) {
+                    Some(i) => i,
+                    None => {
+                        th.lang_docs.push((tag, LangDoc::default()));
+                        th.lang_docs.len() - 1
+                    }
+                };
+                Sec::LangDoc(i)
             } else if name == "ページ" || name.eq_ignore_ascii_case("page") {
                 Sec::Page
             } else if let Some(sn) = name
@@ -520,6 +784,19 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                 "大きさ" | "size" => th.size_pt = Some(n(v)?),
                 _ => return Err(format!("{} 行目: [文書] の知らないキー: {k}", ln + 1)),
             },
+            Some(Sec::LangDoc(i)) => {
+                let (tag, d) = &mut th.lang_docs[*i];
+                match k {
+                    "書体" | "font" => d.font = Some(s(v)?),
+                    "大きさ" | "size" => d.size_pt = Some(n(v)?),
+                    _ => {
+                        return Err(format!(
+                            "{} 行目: [文書.{tag}] の知らないキー: {k}(書体 / 大きさ)",
+                            ln + 1
+                        ))
+                    }
+                }
+            }
             Some(Sec::Page) => {
                 let p = th.page.get_or_insert_with(PageSetup::default);
                 match k {
@@ -675,6 +952,21 @@ pub fn write(th: &Theme) -> String {
             s.push_str(&format!("書体 = {f:?}\n"));
         }
         if let Some(n) = th.size_pt {
+            s.push_str(&format!("大きさ = {}\n", num(n)));
+        }
+        s.push('\n');
+    }
+    // **言語ごとの分も書き出します**(2026-08-26)。書かないと、保存し直した
+    // ときに言語の分が消えます
+    for (tag, d) in &th.lang_docs {
+        if d.font.is_none() && d.size_pt.is_none() {
+            continue;
+        }
+        s.push_str(&format!("[文書.{tag}]\n"));
+        if let Some(f) = &d.font {
+            s.push_str(&format!("書体 = {f:?}\n"));
+        }
+        if let Some(n) = d.size_pt {
             s.push_str(&format!("大きさ = {}\n", num(n)));
         }
         s.push('\n');
@@ -1352,6 +1644,69 @@ mod tests {
         // 既定(紙)は書かない — 空の節を増やさない
         assert_eq!(write(&Theme::default()), "");
         assert!(parse("[組み方]\n横幅 = \"なんとなく\"\n").is_err(), "知らない値に黙った");
+    }
+
+    #[test]
+    fn 言語ごとの文書の節が読めて往復する() {
+        let th = parse(
+            "[文書]\n書体 = \"IPA明朝\"\n大きさ = 10.5\n\
+             [文書.en]\n書体 = \"Liberation Serif\"\n大きさ = 11\n\
+             [文書.vi]\n大きさ = 13\n",
+        )
+        .unwrap();
+        // 日本語(言語の分が無い)は [文書] のまま
+        let ja = th.for_language("ja");
+        assert_eq!(ja.font.as_deref(), Some("IPA明朝"));
+        assert_eq!(ja.size_pt, Some(10.5));
+        // 英語は書体も大きさも上書き
+        let en = th.for_language("en");
+        assert_eq!(en.font.as_deref(), Some("Liberation Serif"));
+        assert_eq!(en.size_pt, Some(11.0));
+        // ベトナム語は大きさだけ言っているので、書体は [文書] から
+        let vi = th.for_language("vi");
+        assert_eq!(vi.font.as_deref(), Some("IPA明朝"), "言っていない分まで上書きした");
+        assert_eq!(vi.size_pt, Some(13.0));
+        // 札そのものが無ければ言語だけで引く(pt-br → pt)
+        let pt = parse("[文書.pt]\n大きさ = 11\n").unwrap();
+        assert_eq!(pt.for_language("pt-br").size_pt, Some(11.0));
+        // 書き出して読み直しても同じ
+        assert_eq!(parse(&write(&th)).unwrap(), th, "往復で言語の分が消えた:\n{}", write(&th));
+    }
+
+    #[test]
+    fn 重ねるときは言語の分も札で重なる() {
+        let 上 = parse("[文書.en]\n書体 = \"Georgia\"\n").unwrap();
+        let 下 = parse("[文書.en]\n書体 = \"Arial\"\n大きさ = 11\n[文書.ko]\n大きさ = 10\n").unwrap();
+        let m = merge(上, 下);
+        let en = m.for_language("en");
+        assert_eq!(en.font.as_deref(), Some("Georgia"), "上の書体が負けた");
+        assert_eq!(en.size_pt, Some(11.0), "上が言っていない大きさを下から取れていない");
+        assert_eq!(m.for_language("ko").size_pt, Some(10.0), "下だけにある札が消えた");
+    }
+
+    #[test]
+    fn 書き入れても手で書いた行が残る() {
+        let 元 = "# 自分で書いた注釈\n[文書]\n大きさ = 12\n\n[ページ]\n余白 = 20\n";
+        // 節はあってキーが無い — 節の終わりに足す
+        let a = put(元, "文書", "書体", "\"IPA明朝\"");
+        assert!(a.contains("# 自分で書いた注釈"), "注釈が消えた:\n{a}");
+        assert!(a.contains("余白 = 20"), "他の節が消えた:\n{a}");
+        let th = parse(&a).unwrap();
+        assert_eq!(th.font.as_deref(), Some("IPA明朝"));
+        assert_eq!(th.size_pt, Some(12.0), "元からあった大きさが消えた");
+        // 同じキーをもう一度 — 増やさずに書き替える
+        let b = put(&a, "文書", "書体", "\"IPAexゴシック\"");
+        assert_eq!(b.matches("書体 =").count(), 1, "同じキーが2行になった:\n{b}");
+        assert_eq!(parse(&b).unwrap().font.as_deref(), Some("IPAexゴシック"));
+        // 節ごと無い — 末尾に足す
+        let c = put(元, "文書.ko", "書体", "\"NanumGothic\"");
+        assert_eq!(
+            parse(&c).unwrap().for_language("ko").font.as_deref(),
+            Some("NanumGothic"),
+        );
+        // 空のファイルから
+        let d = put("", "文書.ja", "書体", "\"IPA明朝\"");
+        assert_eq!(parse(&d).unwrap().for_language("ja").font.as_deref(), Some("IPA明朝"));
     }
 
     #[test]

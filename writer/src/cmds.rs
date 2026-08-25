@@ -435,11 +435,11 @@ impl Writer {
             // 止まる)。並びには文書の標準(テンプレートの大きさ。既定 10.5)を
             // 差し込む — 一覧で選べる値には +/− も止まる
             "incfont" => {
-                let 標準 = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+                let 標準 = self.base_pt();
                 self.size(move |s| ui::combo::step_size_with(Some(標準), s, true))
             }
             "decfont" => {
-                let 標準 = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+                let 標準 = self.base_pt();
                 self.size(move |s| ui::combo::step_size_with(Some(標準), s, false))
             }
             // 印刷・PDF。**組み直さない** — 画面と同じ紙面をそのまま写す
@@ -1458,6 +1458,9 @@ impl Writer {
                 let i = I::new("f-distill", ui::t!("adoc 形式にする(本文と書式を分ける)"));
                 if self.native { i.grey() } else { i }
             },
+            // **書式の標準**(2026-08-26 発注者「スタイルを設定変更できる
+            // 画面が必要だろう」)。3段のどれが効いているかを見て直します
+            I::new("f-style", ui::t!("書式の標準")).on(self.file_view == 5),
             I::new("f-info", ui::t!("詳細情報")).gap().on(self.file_view == 0),
             I::new("f-place", ui::t!("ファイルの場所を開く")),
             I::new("f-quit", ui::t!("終了")).gap(),
@@ -1486,6 +1489,7 @@ impl Writer {
                 self.status =
                     ui::t!("URL を打って Enter(JS を動かさずに読んで、記入欄に書き込めます)").into();
             }
+            "f-style" => self.file_view = 5,
             "f-print" => self.save_pdf(cx),
             "f-export" => {
                 self.tab = self.prev_tab;

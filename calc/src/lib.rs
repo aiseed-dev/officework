@@ -759,6 +759,9 @@ pub fn run() {
         // 行の言い分は起動後に状態行へ(ui::key_warnings — 黙って捨てない)
         // 設定ファイルに書いた AI の宛先を環境変数へ移す(起動に一度)。
         // **環境変数が先** — その場の上書きは触らない
+        // **いまの言語をエンジンへ渡す**(2026-08-26)。標準の書体と
+        // 大きさは言語で変わるので、これを忘れると日本語の既定で出ます
+        ui::init_language();
         ui::settings::ai_env_from_settings();
         cx.bind_keys(ui::bindings_for("calc", "jo_sheet"));
         // **JO_KEYLOG=1 で打鍵と行き先を書き出す。** 「鍵が束縛に届いた」と

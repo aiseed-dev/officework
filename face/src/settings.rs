@@ -13,6 +13,13 @@
 
 use std::path::PathBuf;
 
+/// 設定の置き場そのもの。**利用者の標準テンプレートもここ**です
+/// (2026-08-26 発注者「ユーザーとしての標準設定は、HOME/~.config/
+/// ディレクトリにおく」)。
+pub fn dir() -> PathBuf {
+    lang::config_dir()
+}
+
 /// settings.toml の置き場(recent・sign.key の隣)
 pub fn path() -> PathBuf {
     lang::config_dir().join("settings.toml")

@@ -1206,6 +1206,9 @@ pub fn run() {
         // 共通+writer の表と、settings.toml の key.* の上書き(calc と同じ形)
         // 設定ファイルに書いた AI の宛先を環境変数へ移す(起動に一度)。
         // **環境変数が先** — その場の上書きは触らない
+        // **いまの言語をエンジンへ渡す**(2026-08-26)。標準の書体と
+        // 大きさは言語で変わるので、これを忘れると日本語の既定で出ます
+        ui::init_language();
         ui::settings::ai_env_from_settings();
         cx.bind_keys(ui::bindings_for("writer", "jo_doc"));
         // 前に閉じたときの姿で開く。控えが無ければ既定の大きさで中央に

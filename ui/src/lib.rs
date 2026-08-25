@@ -22,7 +22,31 @@ pub mod filemenu;
 pub mod filelist;
 pub mod tabrow;
 pub use lang::ai;
-pub use lang::i18n::{language, language_label, languages, set_language, tr, trf};
+pub use lang::i18n::{language, language_label, languages, tr, trf};
+
+/// **言語を、文言とエンジンの両方に効かせる。**
+///
+/// エンジン(kumihan)は標準の書体と大きさを言語で選びますが、設定
+/// ファイルは読みません — 画面にも設定にも依存しないのがあのクレートの
+/// 決まりだからです。なので、知っている側からここで入れます
+/// (2026-08-26 発注者「標準フォントは、os と言語によって変えないと
+/// いけない」)。
+///
+/// **`lang::i18n::set_language` を直に呼ばないでください。** 文言だけが
+/// 変わって、書体と大きさは前の言語のままになります。
+pub fn set_language(tag: &str) -> bool {
+    let ok = lang::i18n::set_language(tag);
+    kumihan::font::set_default_language(&language());
+    ok
+}
+
+/// 起動のときに1度、いまの言語をエンジンへ渡します。
+///
+/// [`set_language`] を通らずに言語が決まる道(環境変数 OFFICE_LANG と
+/// settings.toml)があるので、選び直さなくても効くようにします。
+pub fn init_language() {
+    kumihan::font::set_default_language(&language());
+}
 
 /// 画面の文言(そのままの文)。ja の文が鍵 — ja では何も変わらない
 #[macro_export]

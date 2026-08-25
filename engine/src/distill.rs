@@ -193,6 +193,10 @@ pub fn distill(doc: &Document) -> (Document, Theme, Report) {
         setting: Default::default(),
         font: base.font.clone(),
         size_pt: base.size_c.map(|c| c as f32 / 100.0),
+        // 言語ごとの分は起こしません。**その docx が実際に使っていた
+        // 書体と大きさ**が上に書いてあるので、言語で選び直すと元の紙面と
+        // 変わってしまいます
+        lang_docs: Vec::new(),
         page: doc.page,
         styles: Vec::new(),
         // 様式は docx から起こしません(枠は人が決める物です)

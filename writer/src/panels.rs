@@ -42,6 +42,8 @@ pub(crate) struct Panels {
     pub tbl_panel: Option<gpui::Div>,
     /// 一覧の仕事の欄(2026-08-26)
     pub fl_panel: Option<gpui::Div>,
+    /// この機械の標準の書体を選ぶ一覧(2026-08-26)
+    pub user_font_panel: Option<gpui::Stateful<gpui::Div>>,
     /// 日付の形の一覧(2026-08-25)
     pub date_panel: Option<gpui::Stateful<gpui::Div>>,
     /// 書き出す形の一覧(2026-08-25)
@@ -912,7 +914,7 @@ impl Writer {
             let (pi, _) = self.cursor_para();
             let para = self.doc.paragraphs().nth(pi).cloned();
             let f = self.doc.char_format_at(self.ed.selection());
-            let size_now = self.doc.size_at(self.ed.selection()).unwrap_or(SIZE_PT);
+            let size_now = self.size_now();
             let head = |t: &'static str| {
                 div().text_size(px(us * 11.0)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83)).mt_1().child(t)
@@ -1758,6 +1760,8 @@ impl Writer {
             .then(|| self.一覧を描く("datetime", cx));
         let export_panel = (self.open_list == Some("f-export"))
             .then(|| self.一覧を描く("f-export", cx));
+        let user_font_panel = (self.open_list == Some("user-font"))
+            .then(|| self.一覧を描く("user-font", cx));
 
         // 校正の指摘
         let proof_panel = if self.proof.is_empty() && self.proof_msg.is_empty() {
@@ -1792,7 +1796,7 @@ impl Writer {
             chat_panel, pw_panel, url_panel, fm_panel, nav_panel, rp_panel,
             lk_panel, ai_panel, sd_panel, rb_panel, eq_panel, plug_panel, xr_panel,
             font_panel, size_panel, style_panel, symbol_panel, proof_panel,
-            tbl_panel, date_panel, export_panel, fl_panel,
+            tbl_panel, date_panel, export_panel, fl_panel, user_font_panel,
         }
     }
 
@@ -1821,13 +1825,19 @@ impl Writer {
             ],
             // 日付の形。**西暦と和暦**(鍵=出す字そのもの — 訳しません)
             "datetime" => crate::cmds::日付の形(),
+            // **この機械の標準の書体**(2026-08-26)。中身は書体の一覧と同じ
+            "user-font" => self.一覧の中身("fontname"),
             "fontname" => {
                 // **数で切りません**(2026-08-20)。前は先頭 24 件で切っていて、
                 // 25 件目からは選べませんでした。代わりに絞り込みを付けます
                 let q = self.font_filter.as_ref().map(|e| e.text().to_string()).unwrap_or_default();
+                // **画面の言語の字が組める書体だけ**(2026-08-26)。前は
+                // 日本語で決め打っていたので、韓国語の画面ではハングルの
+                // 出ない書体ばかりが並んでいました
+                let 系統 = kumihan::font::script_of(&ui::language());
                 kumihan::font::list()
                     .iter()
-                    .filter(|f| f.japanese && f.regular)
+                    .filter(|f| f.covers(系統) && f.regular)
                     .map(|f| f.name.clone())
                     .filter(|n| q.is_empty() || n.to_lowercase().contains(&q.to_lowercase()))
                     .map(|n| (n.clone(), n))
@@ -1963,6 +1973,9 @@ impl Writer {
                 "pdf" => self.save_pdf(cx),
                 _ => self.export_as(cx, "txt"),
             },
+            // **この機械の標準の書体を決める**(2026-08-26 発注者
+            // 「ユーザーとしての標準設定は、HOME/~.config/ ディレクトリにおく」)
+            "user-font" => self.set_user_font(key),
             "datetime" => {
                 self.checkpoint(false); // 日付
                 if self.hf_edit.is_some() {

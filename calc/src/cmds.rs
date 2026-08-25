@@ -1462,11 +1462,13 @@ impl Calc {
                         vals.push((n.clone(), ascii));
                     }
                 }
-                for f in all.iter().filter(|f| f.japanese) {
+                // **画面の言語の字が組める書体だけ**(2026-08-26)
+                let 系統 = kumihan::font::script_of(&ui::language());
+                for f in all.iter().filter(|f| f.covers(系統)) {
                     vals.push((f.name.clone(), f.ascii.clone()));
                 }
                 if vals.is_empty() {
-                    self.status = ui::t!("日本語の書体が見つかりません").into();
+                    self.status = ui::t!("この言語の字が出る書体が見つかりません").into();
                 } else {
                     let at = self.pop_anchor();
                     let cur = self.cur_font_name();
