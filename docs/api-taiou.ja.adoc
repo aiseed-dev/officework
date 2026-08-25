@@ -136,7 +136,7 @@
 |image:../face/icons/pagebreak.svg[区切り,16,16] 区切り |Doc |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../face/icons/instable.svg[表の挿入,16,16] 表の挿入 |Doc / Sheet |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
 |image:../face/icons/insimage.svg[画像を挿入,16,16] 画像を挿入 |Doc |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
-|image:../face/icons/inschart.svg[グラフを挿入,16,16] グラフを挿入 |Sheet |❌ |図は Python(matplotlib)が描いて貼ります。見本で足ります(SEKKEI「見本を作って止める」) |— |ws.add_chart(…)
+|image:../face/icons/inschart.svg[グラフを挿入,16,16] グラフを挿入 |Sheet |❌ |図は matplotlib が描いて貼ります。見本で足ります(SEKKEI「見本を作って止める」) |— |ws.add_chart(…)
 |image:../face/icons/text-from-file.svg[ファイルからのテキスト,16,16] ファイルからのテキスト |— |✍ |d.add_paragraph(open('メモ.txt').read()) |— |—
 |image:../face/icons/edit-header.svg[ヘッダーの編集,16,16] ヘッダーの編集 |Doc / Sheet |✅ |d.header / s.oddHeader |section.header |ws.oddHeader
 |image:../face/icons/edit-footer.svg[フッターの編集,16,16] フッターの編集 |Doc |✅ |d.footer |section.footer |—
@@ -146,7 +146,7 @@
 |image:../face/icons/insequation.svg[方程式を挿入,16,16] 方程式を挿入 |Doc | |— |— |—
 |image:../face/icons/inssymbol.svg[記号を挿入,16,16] 記号を挿入 |— |✍ |r.text += '※'(字をそのまま打つ) |— |—
 |image:../face/icons/controls.svg[コンテンツコントロールの挿入,16,16] コンテンツコントロールの挿入 |Doc(記入欄) |✅ |d.fields() |— |—
-|image:../face/icons/add-pivot.svg[ピボットテーブルを挿入,16,16] ピボットテーブルを挿入 |Sheet |❌ |集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます |— |ws.add_pivot(…)
+|image:../face/icons/add-pivot.svg[ピボットテーブルを挿入,16,16] ピボットテーブルを挿入 |Sheet |❌ |集計は polars が処理します。画面のボタンから使えます |— |ws.add_pivot(…)
 |image:../face/icons/insrecommend.svg[推奨チャートを挿入,16,16] 推奨チャートを挿入 |— |✍ |s.values() を polars に渡して選ぶ |— |—
 |image:../face/icons/ins-comment.svg[コメント,16,16] コメント |Comment |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
 |image:../face/icons/inshyperlink.svg[ハイパーリンクを追加,16,16] ハイパーリンクを追加 |Cell |✅ |c.hyperlink |— |c.hyperlink
@@ -210,7 +210,7 @@
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|image:../face/icons/pivot-insert.svg[ピボットテーブルを挿入,16,16] ピボットテーブルを挿入 |Sheet |❌ |集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます |— |ws.add_pivot(…)
+|image:../face/icons/pivot-insert.svg[ピボットテーブルを挿入,16,16] ピボットテーブルを挿入 |Sheet |❌ |集計は polars が処理します。画面のボタンから使えます |— |ws.add_pivot(…)
 |===
 
 == 表のデザイン

@@ -145,8 +145,8 @@ MICHI = {
 # *ここに載せるのは、決めが記録されている物だけ*です。
 # 決めていない空欄は「未実装」— 作らないと決めたのではなく、まだ作っていません。
 TSUKURANAI = {
-    "inschart": "図は Python(matplotlib)が描いて貼ります。見本で足ります(SEKKEI「見本を作って止める」)",
-    "pivot-insert": "集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます",
+    "inschart": "図は matplotlib が描いて貼ります。見本で足ります(SEKKEI「見本を作って止める」)",
+    "pivot-insert": "集計は polars が処理します。画面のボタンから使えます",
 }
 
 
