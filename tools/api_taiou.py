@@ -178,18 +178,20 @@ KAKEBA = {
 
 
 def 状態(id_: str, ow: str) -> str:
-    """実装 / 書けば済む / 未実装 / 実装しない。
+    """印を返す(2026-08-24 発注者「実装できたら ✅、実装しないは ❌」)。
 
-    **空欄の意味を4つに分けます**(2026-08-24 発注者)。
-    「書けば済む」は*専用の口を作らないと決めた物*で、書き方をその行に出します。
+    * `✅` 実装した — 専用の呼び方があります
+    * `✍` 書けば済む — 専用の口は作りません。書き方をその行に出します
+    * `❌` 実装しない — 決めた物だけ。理由をその行に出します
+    * *空* まだ — 決めていない物。**ここが仕事の一覧**です
     """
     if ow:
-        return "実装"
+        return "✅"
     if id_ in TSUKURANAI:
-        return "実装しない"
+        return "❌"
     if id_ in KAKEBA:
-        return "書けば済む"
-    return "未実装"
+        return "✍"
+    return ""
 
 
 MARK_S = "// api:taiou:start"
@@ -239,7 +241,7 @@ _ラベルの逆引き: dict = {}
 
 def 理由(ラベル: str, st: str):
     """「実装しない」の理由。表の中で読めるようにします"""
-    if st not in ("実装しない", "書けば済む"):
+    if st not in ("❌", "✍"):
         return None
     for 表 in (TSUKURANAI, KAKEBA):
         for k, v in 表.items():
@@ -264,9 +266,9 @@ def 表() -> str:
                 o.append("|===\n")
             o.append(f"=== {段}")
             o.append("")
-            o.append('[cols="2,2,1,3,3,3"]')
+            o.append('[cols="2,2,^1,3,3,3"]')
             o.append("|===")
-            o.append("|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl\n")
+            o.append("|ボタン |オブジェクト |印 |officework |python-docx |openpyxl\n")
             いま = 段
         f = lambda x: x if x else "—"
         中 = ow if ow else (理由(ラベル, st) or "—")
