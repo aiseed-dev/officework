@@ -93,7 +93,10 @@ MICHI = {
     "clearstyle": ("Run", "r.clear()", "r.clear()", ""),
     "ruby": ("Run", "", "", ""),
     "fillparag": ("Cell", "c.fill", "", "c.fill = PatternFill(…)"),
-    "borders": ("Cell", "c.border", "", "c.border = Border(…)"),
+    # **文書とセルで掛かる相手が違います。** writer は段落を枠で囲み
+    # (p.boxed)、calc はセルに線を引きます。段落の枠にはまだ呼び方が
+    # ありません(2026-08-25 本家のマニュアルと突き合わせて分かった)
+    "borders": ("Paragraph / Cell", "c.border", "", "c.border = Border(…)"),
     "align-left": ("Paragraph / Cell", "p.align / c.alignment", "p.alignment", "c.alignment = Alignment(…)"),
     "align-center": ("Paragraph / Cell", "p.align / c.alignment", "p.alignment", "c.alignment = Alignment(…)"),
     "align-right": ("Paragraph / Cell", "p.align / c.alignment", "p.alignment", "c.alignment = Alignment(…)"),

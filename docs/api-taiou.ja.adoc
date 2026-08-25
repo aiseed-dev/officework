@@ -126,7 +126,7 @@ def 大文字にする(段落):
 |image:../face/icons/align-right.svg[右揃え,16,16] link:commands/ホーム/右揃え.adoc[右揃え] |Paragraph / Cell |✅ |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
 |image:../face/icons/align-just.svg[両端揃え,16,16] link:commands/ホーム/両端揃え.adoc[両端揃え] |Paragraph |✅ |p.align = 'justify' |p.alignment |—
 |image:../face/icons/align-dist.svg[均等割付,16,16] link:commands/ホーム/均等割付.adoc[均等割付] |Paragraph |✅ |p.align = 'distribute' |— |—
-|image:../face/icons/borders.svg[罫線,16,16] link:commands/ホーム/罫線.adoc[罫線] |Cell |✅ |c.border |— |c.border = Border(…)
+|image:../face/icons/borders.svg[罫線,16,16] link:commands/ホーム/罫線.adoc[罫線] |Paragraph / Cell |✅ |c.border |— |c.border = Border(…)
 |image:../face/icons/styles.svg[段落のスタイル,16,16] link:commands/ホーム/段落のスタイル.adoc[段落のスタイル] |Paragraph |✅ |p.style |p.style |—
 |image:../face/icons/replace.svg[置き換え,16,16] link:commands/ホーム/置き換え.adoc[置き換え] |Doc |✅ |d.replace(前, 後) |— |—
 |image:../face/icons/select-all.svg[すべて選択,16,16] link:commands/ホーム/すべて選択.adoc[すべて選択] |Doc |✍ |d.paragraphs(全部を順に回る) |— |—
