@@ -2685,4 +2685,64 @@ mod midashi_tests {
                 "H1 の行が本文と同じ高さ(重なる)");
         assert_eq!(lh_of(&p(ParaStyle::Body), &frame), 6.0, "本文の高さが変わった");
     }
+/// **塊の種類ごとに、正しい要素で出るか。**
+///
+/// 2026-08-25 まで、コード以外の塊も全部 `<pre><code>` に落ちていました。
+/// 例も傍注も註記も、Web ではコードに見えていたということです。
+/// 横の区切り線は印の字がそのまま出ていました。
+#[test]
+fn 塊は種類ごとの要素で出る() {
+    let 線 = "\u{27}\u{27}\u{27}";      // 横の区切り線の印
+    let 見本 = format!(
+        "= 題\n\nNOTE: 註記。\n\nWARNING: 警告。\n\n\
+         [source,python]\n----\nprint(1)\n----\n\n\
+         ....\n字のまま\n....\n\n====\n例。\n====\n\n\
+         ****\n傍注。\n****\n\n{線}\n");
+    let d = crate::adoc::parse(&見本).expect("読めない");
+    let h = crate::html_write::body(&d);
+    // **開きの札そのもので見ます。** `class="example"` だけ見ると、
+    // `<pre><code class="example">` でも通ってしまいます
+    for (何, 印) in [
+        ("註記", "<aside class=\"admonition note\""),
+        ("警告", "<aside class=\"admonition warning\""),
+        ("コード", "<code>"),
+        ("字のまま", "字のまま"),
+        ("例", "<div class=\"example\""),
+        ("傍注", "<aside class=\"sidebar\""),
+        ("横の区切り線", "<hr"),
+    ] {
+        assert!(h.contains(印), "{何} が {印} で出ていません:\n{h}");
+    }
+    // **`pre` はコードと字のままの2つだけ。** 例も傍注も文章です
+    assert_eq!(h.matches("<pre").count(), 2, "pre が多すぎます:\n{h}");
+    assert_eq!(h.matches("<code>").count(), 1, "コード以外まで code になっています:\n{h}");
+    // 印の字が本文に漏れていないこと
+    assert!(!h.contains("****"), "傍注の印が本文に出ています:\n{h}");
+    assert!(!h.contains("===="), "例の印が本文に出ています:\n{h}");
+}
+
+/// **CSS を外しても見た目が残るか**(2026-08-25 発注者
+/// 「CSS がなくてもフレットやフラッターのように全部指定するように」)。
+///
+/// 本文だけを他所へ貼っても、註記が註記に見える必要があります。
+#[test]
+fn 塊は見た目を自分で持つ() {
+    let d = crate::adoc::parse("= 題\n\nWARNING: 危ない。\n\n----\nprint(1)\n----\n")
+        .expect("読めない");
+    let h = crate::html_write::body(&d);
+    assert!(h.contains("border-left:4px solid"), "註記に線がありません:\n{h}");
+    assert!(h.contains("monospace"), "コードが等幅になっていません:\n{h}");
+}
+
+/// **そのまま通す塊は逃がさない。** 生の HTML を書くための塊なので、
+/// 逃がすと `<details>` のような Web の仕掛けが使えません。
+#[test]
+fn そのまま通す塊は逃がさない() {
+    let d = crate::adoc::parse(
+        "= 題\n\n++++\n<details><summary>開く</summary>中身</details>\n++++\n")
+        .expect("読めない");
+    let h = crate::html_write::body(&d);
+    assert!(h.contains("<details>"), "生の HTML が逃がされています:\n{h}");
+}
+
 }

@@ -408,6 +408,96 @@ pub fn css(th: &Theme, 題名あり: bool) -> String {
 ///
 /// **合成しません。** 見た目はテンプレートが CSS として持つので、ここは
 /// 意味だけを出します。
+/// 註記の style_id → Web の役割の名前。
+///
+/// **AsciiDoc の註記は5つ**です(`NOTE:` `TIP:` `IMPORTANT:` `WARNING:`
+/// `CAUTION:`)。docx には同じ物が無いので段落のスタイルとして往復し、
+/// Web ではまとめて `aside` に出します。
+fn 註記の種(名: &str) -> Option<&'static str> {
+    Some(match 名 {
+        "註記" | "NOTE" => "note",
+        "こつ" | "TIP" => "tip",
+        "大事" | "IMPORTANT" => "important",
+        "警告" | "WARNING" => "warning",
+        "注意" | "CAUTION" => "caution",
+        _ => return None,
+    })
+}
+
+/// 中身が段落として出る塊かどうか。
+///
+/// コードと字のままの塊は改行がそのまま意味を持つので `pre` に入れます。
+/// 例・傍注・入れ物は文章なので、段落に割ります。
+fn 中が段落(塊: Option<&str>) -> bool {
+    matches!(塊, Some("example") | Some("sidebar") | Some("open"))
+}
+
+/// 註記の色。(左の線, 下地)
+///
+/// **見た目は要素が持ちます。** CSS を外して本文だけ持ち出しても、
+/// 註記が註記に見えるようにするためです(Flet や Flutter と同じ考え方で、
+/// 上から降ってくる規則に頼りません)。`class` も付けるので、
+/// 揃えたい人はスタイルシートで上書きできます。
+fn 註記の色(種: &str) -> (&'static str, &'static str) {
+    match 種 {
+        "tip" => ("#2e7d32", "#f1f8e9"),
+        "important" => ("#6a1b9a", "#f3e5f5"),
+        "warning" => ("#ef6c00", "#fff3e0"),
+        "caution" => ("#c62828", "#ffebee"),
+        _ => ("#1565c0", "#e3f2fd"),
+    }
+}
+
+/// 註記の入れ物の見た目。左に色の線を引いて、下地を薄く敷きます。
+fn 註記の飾り(種: &str) -> String {
+    let (線, 下地) = 註記の色(種);
+    format!(
+        " style=\"border-left:4px solid {線};background:{下地};\
+         padding:.6em 1em;margin:1em 0\""
+    )
+}
+
+/// コードと字のままの塊の見た目。等幅で、折り返さずに横へ送ります。
+const CODE_STYLE: &str = " style=\"font-family:ui-monospace,SFMono-Regular,\
+    Consolas,'Noto Sans Mono',monospace;background:#f6f8fa;padding:.8em 1em;\
+    border-radius:4px;overflow-x:auto\"";
+
+/// 塊の開きの札。`[NOTE]` が前に付いていれば註記にします。
+///
+/// **見た目は札に書き込みます。** 中身だけを他所へ貼っても崩れません。
+fn 塊の開き(塊: Option<&str>, 印: Option<&str>) -> String {
+    if let Some(種) = 印.and_then(註記の種) {
+        return format!(
+            "<aside class=\"admonition {種}\" role=\"note\"{}><p style=\"margin:0\">",
+            註記の飾り(種));
+    }
+    match 塊 {
+        Some("literal") => format!("<pre{CODE_STYLE}>"),
+        Some("example") => "<div class=\"example\" style=\"border:1px solid #d0d7de;\
+             padding:.8em 1em;margin:1em 0;border-radius:4px\"><p style=\"margin:0\">".into(),
+        Some("sidebar") => "<aside class=\"sidebar\" style=\"background:#f6f8fa;\
+             padding:.8em 1em;margin:1em 0;border-radius:4px\"><p style=\"margin:0\">".into(),
+        Some("open") => "<div class=\"open\" style=\"margin:1em 0\"><p style=\"margin:0\">".into(),
+        Some("pass") => String::new(),
+        _ => format!("<pre{CODE_STYLE}><code>"),
+    }
+}
+
+/// 塊の閉じの札。開きと必ず対にします。
+fn 塊の閉じ(塊: Option<&str>, 印: Option<&str>) -> String {
+    if 印.and_then(註記の種).is_some() {
+        return "</p></aside>\n".into();
+    }
+    match 塊 {
+        Some("literal") => "</pre>\n".into(),
+        Some("example") => "</p></div>\n".into(),
+        Some("sidebar") => "</p></aside>\n".into(),
+        Some("open") => "</p></div>\n".into(),
+        Some("pass") => "\n".into(),
+        _ => "</code></pre>\n".into(),
+    }
+}
+
 pub fn body(doc: &Document) -> String {
     build(doc).0
 }
@@ -433,6 +523,13 @@ fn build(doc: &Document) -> (String, Ctx) {
     let mut dl中 = false;
     // コードの塊(`pre`)の途中か
     let mut pre中 = false;
+    // **いま開いている塊の種類。** `----` はコード、`....` は字のまま、
+    // `====` は例、`****` は傍注、`--` は入れ物です。
+    // 前は全部 `<pre><code>` に落としていたので、例も傍注も註記も
+    // コードに見えていました(2026-08-25 に実物を流して見つけました)
+    let mut 塊: Option<&'static str> = None;
+    // `[NOTE]` のように、塊の直前の指定の行が言う種類
+    let mut 次の塊の印: Option<String> = None;
     // 目次の行が続いている間(nav で包む)
     let mut 目次中 = false;
     let 題名あり = !doc.props.title.is_empty();
@@ -536,23 +633,85 @@ fn build(doc: &Document) -> (String, Ctx) {
         // `----` と `[source,python]` の行は、ここからここまでがコードだと
         // いう印です。文章ではないので、ページには出しません
         let 名 = p.style_id.as_deref();
+        // **塊の区切りを見て、種類を覚えます。** 中身の段落は種類を
+        // 持たないので、開いた印のほうから決めるしかありません
+        if 名 == Some("塊の区切り") && 塊.is_none() {
+            let 印: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            塊 = Some(match 印.trim() {
+                "...." => "literal",
+                "====" => "example",
+                "****" => "sidebar",
+                "--" | "~~~~" => "open",
+                "++++" => "pass",
+                _ => "code",
+            });
+        }
         if 名 == Some("塊の中") {
             close(&mut o, &mut list);
-            if !pre中 {
-                o.push_str("<pre><code>");
-                pre中 = true;
-            } else {
-                o.push('\n');
+            if dl中 {
+                o.push_str("</dl>\n");
+                dl中 = false;
             }
             let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
-            o.push_str(&esc(&字));
+            // **文章の塊では、空の行は段落の切れ目です。**
+            // そのまま段落にすると `<p></p>` が出ます
+            if 中が段落(塊) && 字.trim().is_empty() {
+                continue;
+            }
+            if !pre中 {
+                o.push_str(&塊の開き(塊, 次の塊の印.as_deref()));
+                pre中 = true;
+            } else {
+                o.push_str(if 中が段落(塊) { "</p>\n<p>" } else { "\n" });
+            }
+            // **そのまま通す塊だけは逃がしません。** 生の HTML を書く
+            // ための塊なので、逃がすと役に立ちません
+            if 塊 == Some("pass") {
+                o.push_str(&字);
+            } else {
+                o.push_str(&esc(&字));
+            }
             continue;
         }
         if pre中 {
-            o.push_str("</code></pre>\n");
+            o.push_str(&塊の閉じ(塊, 次の塊の印.as_deref()));
             pre中 = false;
+            塊 = None;
+            次の塊の印 = None;
         }
-        if 名 == Some("塊の区切り") || 名 == Some("指定の行") {
+        // **横の区切り線は hr です。** 前は印の字がそのまま出ていました
+        if 名 == Some("横の区切り線") {
+            close(&mut o, &mut list);
+            if dl中 {
+                o.push_str("</dl>\n");
+                dl中 = false;
+            }
+            o.push_str("<hr style=\"border:0;border-top:1px solid #d0d7de;margin:2em 0\">\n");
+            continue;
+        }
+        // **註記は aside に役割を付けます。** 前はただの段落だったので、
+        // Web では本文と見分けが付きませんでした
+        if let Some(種) = 名.and_then(註記の種) {
+            close(&mut o, &mut list);
+            if dl中 {
+                o.push_str("</dl>\n");
+                dl中 = false;
+            }
+            o.push_str(&format!(
+                "<aside class=\"admonition {種}\" role=\"note\"{}>{inner}</aside>\n",
+                註記の飾り(種)));
+            continue;
+        }
+        if 名 == Some("指定の行") {
+            // `[NOTE]` のような指定は、次の塊の種類になります
+            let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            let 中 = 字.trim().trim_start_matches('[').trim_end_matches(']');
+            if 註記の種(中).is_some() {
+                次の塊の印 = Some(中.to_string());
+            }
+            continue;
+        }
+        if 名 == Some("塊の区切り") {
             continue;
         }
         // **ラベル付きリスト**(`項目:: 値`)は `dl` / `dt` / `dd` に。
@@ -634,7 +793,7 @@ fn build(doc: &Document) -> (String, Ctx) {
         o.push_str(&format!("<{tag}{id}{cls}>{余り}{inner}</{tag}>\n"));
     }
     if pre中 {
-        o.push_str("</code></pre>\n");
+        o.push_str(&塊の閉じ(塊, 次の塊の印.as_deref()));
     }
     if dl中 {
         o.push_str("</dl>\n");
