@@ -111,8 +111,13 @@ def keys_from(path):
     return out
 
 
-def table_keys():
-    """表の各行の鍵リテラルを、リテラル走査で取り出す(複数行の鍵も)"""
+def table_pairs():
+    """表の各行を(鍵のリテラル, 訳のリテラル)で取り出す(複数行の物も)。
+
+    **表を読む道はここ1本にしてください。** 正規表現で読み直すと、行末の
+    `\\` で継いだ行が見えません。2026-08-26 に `tools/flip_i18n.py` が
+    まさにそれで、19 句を読み落としたまま「取りこぼし 0」と出していました。
+    """
     src = open(TABLE, encoding="utf-8").read()
     out = []
     i = src.find("pub const")
@@ -120,14 +125,18 @@ def table_keys():
         i = src.find('("', i)
         if i < 0:
             break
-        j, lit = literal_at(src, i + 1)
-        out.append(lit)
-        # 値のリテラルを読み飛ばす
+        j, key = literal_at(src, i + 1)
         k = src.find('"', j)
         if k < 0:
             break
-        i, _ = literal_at(src, k)
+        i, val = literal_at(src, k)
+        out.append((key, val))
     return out
+
+
+def table_keys():
+    """表の各行の鍵リテラルを、リテラル走査で取り出す(複数行の鍵も)"""
+    return [k for k, _ in table_pairs()]
 
 
 def unescape(lit):
