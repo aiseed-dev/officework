@@ -115,43 +115,59 @@ pub fn rest_note(look: &Look, 残り: usize) -> Option<Div> {
     })
 }
 
-/// 行の右に置く小さなボタン(名前を変える・消す)。
+/// 行の右に置く操作の絵(名前を変える・消す)。
 ///
-/// **押す結び付けは呼ぶ側が足します。** 何が起きるかはアプリの物です
-/// (文書を開いたまま消す、などの断りが要る)。
-pub fn row_button(look: &Look, i: usize, 印: &'static str, 名: SharedString) -> Stateful<Div> {
+/// **乗せたときだけ濃くなります。** いつも黒い字で「名前」「消す」が
+/// 並んでいると、一覧そのものが読めません(2026-08-26 発注者
+/// 「filemanager と同じユーザーインタフェースにしろ」)。
+pub fn row_button(look: &Look, i: usize, 印: &'static str, _名: SharedString) -> Stateful<Div> {
     let s = look.scale;
     let hover = look.hover;
+    let 絵 = match 印 {
+        "ren" => "icons/py-edit.svg",
+        _ => "icons/cell-del.svg",
+    };
     div()
         .id(SharedString::from(format!("fl-{印}-{i}")))
         .flex_none()
-        .px_1()
+        .p_0p5()
         .rounded_sm()
         .cursor_pointer()
-        .text_size(px(s * 11.0))
-        .text_color(look.dim)
-        .hover(move |st| st.bg(hover))
-        .child(名)
+        .opacity(0.45)
+        .hover(move |st| st.bg(hover).opacity(1.0))
+        .child(
+            gpui::svg()
+                .path(SharedString::from(絵))
+                .size(px(s * 13.0))
+                .text_color(look.fg),
+        )
 }
 
-/// 一覧の頭に置く「新しく作る」のボタン。
-pub fn make_button(look: &Look, 印: &'static str, 名: SharedString) -> Stateful<Div> {
+/// 一覧の頭に置く「新しく作る」の絵。
+pub fn make_button(look: &Look, 印: &'static str, _名: SharedString) -> Stateful<Div> {
     let s = look.scale;
     let hover = look.hover;
+    let 絵 = match 印 {
+        "folder" => "icons/py-folder.svg",
+        "sheet" => "icons/instable.svg",
+        _ => "icons/py-new.svg",
+    };
     div()
         .id(SharedString::from(format!("fl-new-{印}")))
         .flex_none()
-        .px_2()
-        .py_0p5()
+        .p_1()
         .rounded_sm()
         .cursor_pointer()
-        .text_size(px(s * 10.5))
-        .text_color(look.fg)
         .hover(move |st| st.bg(hover))
-        .child(名)
+        .child(
+            gpui::svg()
+                .path(SharedString::from(絵))
+                .size(px(s * 15.0))
+                .text_color(look.fg),
+        )
 }
 
-/// 行1つ。**押す結び付けは付いていません** — 呼ぶ側が
+/// 行1つ。/// 行1つ。**押す結び付けは付いていません** — 呼ぶ側が
 /// `.on_click(cx.listener(…))` を足します。
 ///
 /// `開ける` が偽なら指の形も乗ったときの色も付けません —
@@ -160,10 +176,8 @@ pub fn row(look: &Look, i: usize, e: &folder::Entry, いま: bool) -> Stateful<D
     let s = look.scale;
     // **フォルダも押せます**(2026-08-26)。`can_open()` は「この道具で
     // *中身を開ける*か」なので、フォルダは偽です。フォルダは開くのでは
-    // なく*中へ入る*ので、押せるかどうかは別に見ます。
-    // 足した日は `can_open()` だけを見ていて、中へ入る道を書いたのに
-    // 指の形も乗ったときの色も付かず、押しても反応しませんでした
-    let 開ける = e.kind.can_open() || e.kind == folder::Kind::Folder;
+    // なく*中へ入る*ので、押せるかどうかは別に見ます
+    let 押せる = e.kind.can_open() || e.kind == folder::Kind::Folder;
     let hover = look.hover;
     let mut 行 = div()
         .id(SharedString::from(format!("fl-{i}")))
@@ -173,25 +187,37 @@ pub fn row(look: &Look, i: usize, e: &folder::Entry, いま: bool) -> Stateful<D
         .flex()
         .flex_row()
         .items_center()
-        .gap_1()
+        .gap_2()
         .bg(if いま { look.hover } else { gpui::transparent_black().into() })
+        // **行の頭に絵。** 種類は絵で分かるので、右端に字で書きません
+        // (ファイル管理の道具の作法。2026-08-26 発注者)
+        .child(
+            gpui::svg()
+                .path(SharedString::from(icon_of(e.kind)))
+                .size(px(s * 14.0))
+                .flex_none()
+                .text_color(if 押せる { look.fg } else { look.dim }),
+        )
         .child(
             div()
                 .flex_1()
                 .min_w(px(0.0))
                 .text_size(px(s * 11.5))
-                .text_color(if 開ける { look.fg } else { look.dim })
+                .text_color(if 押せる { look.fg } else { look.dim })
                 .child(SharedString::from(e.name.clone())),
-        )
-        .child(
-            div()
-                .flex_none()
-                .text_size(px(s * 9.0))
-                .text_color(look.dim)
-                .child(SharedString::from(e.kind.label().to_string())),
         );
-    if 開ける {
+    if 押せる {
         行 = 行.cursor_pointer().hover(move |st| st.bg(hover));
     }
     行
+}
+
+/// 種類に当てる絵。**フォルダと、それ以外**を見分けられれば足ります。
+fn icon_of(k: folder::Kind) -> &'static str {
+    match k {
+        folder::Kind::Folder => "icons/py-folder.svg",
+        folder::Kind::Sheet => "icons/instable.svg",
+        folder::Kind::Doc => "icons/blankpage.svg",
+        _ => "icons/blankpage.svg",
+    }
 }
