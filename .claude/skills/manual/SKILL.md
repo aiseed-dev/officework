@@ -6,7 +6,9 @@ description: マニュアル(docs/ の手引き・docs/ja/commands/ のコマン
 # マニュアルの決まり
 
 管理するのは**利用者向けの冊子の日本語と英語の対**だけ
-(docs/*-manual と docs/ja/commands/)。英語版が正本、日本語版が副。
+(docs/ja/ と docs/en/)。英語版が正本、日本語版が副。
+文体・構成の型・例の作法は docs/sekkei/manual-kakikata.ja.adoc
+(書き方の手引き)にある — 新しい頁や冊子を書く前に読む。
 
 ## 真実 — 嘘は欠落より悪い
 
