@@ -283,7 +283,7 @@ mod menu_run_tests {
         w.update(cx, |this, cx| {
             fresh(this);
             let n0 = this.doc.paragraphs().count();
-            this.run_cmd("instable", cx);
+            this.run_cmd("instable-go", cx);
             assert_eq!(this.doc.tables().count(), 1, "表が入らない");
             this.run_cmd("blankpage", cx);
             assert!(this.doc.paragraphs().count() > n0, "空白ページが入らない");
@@ -1536,8 +1536,11 @@ mod undo_coverage_tests {
             });
         }
         // **数えておく。** 形が壊れて「どれも文書を変えない」になったら、
-        // 中身が空でも緑になってしまう
-        assert!(見た >= 40, "文書を変える命令が {見た} 件しか無い — 試験の形が壊れている");
+        // 中身が空でも緑になってしまう。
+        // **39 になったのは 2026-08-25** — 表の挿入と日付の挿入が、
+        // 押すと升や一覧が開くだけの形になり、その場では文書を変えなく
+        // なったためです(挿すのは `instable-go` と一覧から選んだとき)
+        assert!(見た >= 39, "文書を変える命令が {見た} 件しか無い — 試験の形が壊れている");
     }
 
     /// やり直しも効く(戻すだけで進めないと片道になる)
@@ -1930,7 +1933,7 @@ mod marker_tests {
     fn 表の行と列を足して消せる(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
-            this.run_cmd("instable", cx);
+            this.run_cmd("instable-go", cx);
             let (r0, c0) = {
                 let t = this.doc.tables().next().expect("表がある");
                 (t.rows.len(), t.rows[0].len())
@@ -1965,7 +1968,7 @@ mod marker_tests {
     fn 表の最後の行と列は残る(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
-            this.run_cmd("instable", cx);
+            this.run_cmd("instable-go", cx);
             this.switch_target(Target::Cell { table: 0, row: 0, col: 0 });
             for _ in 0..5 {
                 this.table_del_row();
@@ -3306,4 +3309,65 @@ mod docx_formula_tests {
             assert!(ある, "表が消えた");
         });
     }
+    #[gpui::test]
+    /// **表は行×列を選んでから挿します**(2026-08-25 発注者
+    /// 「様式の世界は表が本体なので選べるように」)。前は 3×3 固定でした。
+    fn 表の大きさを升から選べる(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            // 押すと升が開くだけ。**まだ表は入りません**
+            this.run_cmd("instable", cx);
+            assert_eq!(this.open_list, Some("instable"), "升が開いていません");
+            assert!(!this.doc.blocks.iter().any(|b| matches!(b, kumihan::Block::Table(_))),
+                    "押しただけで表が入っています");
+            // 升から 2×5 を選ぶ
+            this.一覧を選ぶ("instable", "2x5", cx);
+            let t = this.doc.blocks.iter().find_map(|b| match b {
+                kumihan::Block::Table(t) => Some(t),
+                _ => None,
+            }).expect("表が入っていません");
+            assert_eq!(t.rows.len(), 2, "行の数が選んだとおりではありません");
+            assert_eq!(t.rows[0].len(), 5, "列の数が選んだとおりではありません");
+            assert_eq!(this.open_list, None, "選んだ後も升が開いたままです");
+        });
+    }
+
+    #[gpui::test]
+    /// **日付は形式の一覧から選びます**(2026-08-25 発注者「形式の一覧は必要」)。
+    ///
+    /// 前は西暦の1つだけを固定で挿していました。事務の様式は和暦で書く
+    /// ものが多く、毎回打ち直すことになっていました。
+    /// **自動更新は作りません** — 入るのは固定の字です。
+    fn 日付は形式を選んで入る(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.run_cmd("datetime", cx);
+            assert_eq!(this.open_list, Some("datetime"), "一覧が開いていません");
+            let 形 = this.一覧の中身("datetime");
+            assert!(形.len() >= 5, "形が {} 個しかありません", 形.len());
+            // 西暦と和暦が両方あること
+            assert!(形.iter().any(|(k, _)| k.contains("年") && k.contains("月")),
+                    "西暦の形がありません: {形:?}");
+            assert!(形.iter().any(|(k, _)| k.starts_with("令和") || k.starts_with("平成")),
+                    "和暦の形がありません: {形:?}");
+            // 選ぶと本文に固定の字で入る
+            let 選ぶ = 形[0].0.clone();
+            this.一覧を選ぶ("datetime", &選ぶ, cx);
+            assert!(this.ed.text().contains(&選ぶ), "選んだ形が入っていません");
+            assert_eq!(this.open_list, None, "選んだ後も一覧が開いたままです");
+        });
+    }
+
+    /// 和暦の境目。**改元の日から新しい元号**になります
+    #[test]
+    fn 和暦は改元の日で変わる() {
+        use crate::cmds::和暦;
+        assert_eq!(和暦(2026, 8, 25), Some(("令和", "R", 8)));
+        assert_eq!(和暦(2019, 5, 1), Some(("令和", "R", 1)), "改元の当日は令和");
+        assert_eq!(和暦(2019, 4, 30), Some(("平成", "H", 31)), "改元の前日は平成");
+        assert_eq!(和暦(1989, 1, 8), Some(("平成", "H", 1)));
+        assert_eq!(和暦(1989, 1, 7), Some(("昭和", "S", 64)), "改元の前日は昭和");
+        assert_eq!(和暦(1900, 1, 1), None, "昭和より前は元号を出しません");
+    }
+
 }

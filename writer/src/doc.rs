@@ -152,6 +152,7 @@ impl Writer {
             hf_edit: None,
             hf_ed: Editor::new(""),
             pick_sel: 0,
+            table_size: (3, 3),
             font_filter: None,
             cmt_name_edit: false,
             cmt_name_ed: Editor::new(""),

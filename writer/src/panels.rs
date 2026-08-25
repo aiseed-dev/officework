@@ -1675,6 +1675,16 @@ impl Writer {
             .iter()
             .map(|s| (s.to_string(), s.to_string()))
             .collect(),
+            // 表の大きさの升。**Word と同じで、升の上を動かして選びます**。
+            // 鍵は `行x列`(訳す物ではありません)。8×8 まで — 様式の表は
+            // これで足り、足りなければ挿してから行を足せます
+            "instable" => (1..=8)
+                .flat_map(|r| (1..=8).map(move |c| {
+                    (format!("{r}x{c}"), format!("{r}×{c}"))
+                }))
+                .collect(),
+            // 日付の形。**西暦と和暦**(鍵=出す字そのもの — 訳しません)
+            "datetime" => crate::cmds::日付の形(),
             "fontname" => {
                 // **数で切りません**(2026-08-20)。前は先頭 24 件で切っていて、
                 // 25 件目からは選べませんでした。代わりに絞り込みを付けます
@@ -1733,6 +1743,7 @@ impl Writer {
         };
         // 10升 × 28 + 升の間(9×4)+ 内側の余白ぶん
         const SYM_W: f32 = 334.0;
+        const TBL_W: f32 = 232.0;   // 8 升ぶん
         let (up, at, max_h) = ui::combo::pop_place(by, by + bh, want_h, self.view_h_px);
         // 記号は幅が分かっているので、右端で切れないよう幅ごと寄せます
         let x = if kind == "inssymbol" {
@@ -1744,6 +1755,7 @@ impl Writer {
             "fontname" => ui::picklist::Width::Range(200.0, ui::combo::POP_W),
             "fontsize" => ui::picklist::Width::Range(bw.max(96.0), 140.0),
             "inssymbol" => ui::picklist::Width::Fixed(SYM_W),
+            "instable" => ui::picklist::Width::Fixed(TBL_W),
             _ => ui::picklist::Width::Range(bw.max(160.0), 240.0),
         };
         let filter = self.font_filter.as_ref().map(|ed| {
@@ -1772,7 +1784,12 @@ impl Writer {
                 up,
                 max_h,
                 width: 幅,
-                grid: (kind == "inssymbol").then_some(28.0),
+                // 升で並べる物。記号は 28px、表の大きさは 26px の角
+                grid: match kind {
+                    "inssymbol" => Some(28.0),
+                    "instable" => Some(26.0),
+                    _ => None,
+                },
             }),
             // **何に掛かるかを頭に出します。** 前の版が出していた案内で、
             // 「選んだ所だけ」なのか「段落ぜんぶ」なのかは、押す前に
@@ -1795,7 +1812,7 @@ impl Writer {
     }
 
     /// 一覧の項を選んだ。**閉じるのもここ**です。
-    fn 一覧を選ぶ(&mut self, kind: &str, key: &str, cx: &mut gpui::Context<Self>) {
+    pub(crate) fn 一覧を選ぶ(&mut self, kind: &str, key: &str, cx: &mut gpui::Context<Self>) {
         // 記号は**閉じません** — 続けて何個も入れる使い方(前からの形)を
         // 保ちます。閉じるのは Esc か、他のボタンを押したとき(close_menus)
         if kind == "inssymbol" {
@@ -1807,6 +1824,24 @@ impl Writer {
         self.font_filter = None;
         self.pick_sel = 0;
         match kind {
+            "datetime" => {
+                self.checkpoint(false); // 日付
+                if self.hf_edit.is_some() {
+                    self.hf_ed.insert(key);
+                } else {
+                    self.ed.insert(key);
+                }
+                self.on_edited();
+                self.status =
+                    ui::tf!("日付を入れました({}。固定の文字です)", key).into();
+            }
+            "instable" => {
+                let mut 数 = key.split('x').filter_map(|x| x.parse::<usize>().ok());
+                if let (Some(r), Some(c)) = (数.next(), 数.next()) {
+                    self.table_size = (r.max(1), c.max(1));
+                    self.run_cmd("instable-go", cx);
+                }
+            }
             "fontname" => {
                 let sel = self.ed.selection();
                 self.flush_target();

@@ -685,7 +685,7 @@
  },
  {
   "i": 171,
-  "t": "Tableau 3×3 ajouté à la fin (cliquez sur une cellule pour modifier)"
+  "t": "Tableau {}×{} ajouté à la fin (cliquez sur une cellule pour modifier)"
  },
  {
   "i": 172,
@@ -697,7 +697,7 @@
  },
  {
   "i": 174,
-  "t": "Date du jour insérée ({} ; texte figé)"
+  "t": "Date insérée ({} ; texte fixe)"
  },
  {
   "i": 175,

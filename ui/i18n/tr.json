@@ -685,7 +685,7 @@
  },
  {
   "i": 171,
-  "t": "Sona 3×3 tablo eklendi (düzenlemek için hücreye tıklayın)"
+  "t": "{}×{} tablo sona eklendi (düzenlemek için bir hücreye tıklayın)"
  },
  {
   "i": 172,
@@ -697,7 +697,7 @@
  },
  {
   "i": 174,
-  "t": "Bugünün tarihi eklendi ({}; sabit metin)"
+  "t": "Tarih eklendi ({}; sabit metin)"
  },
  {
   "i": 175,

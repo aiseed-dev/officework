@@ -4403,14 +4403,16 @@ impl Calc {
                     for (k, part) in t.split(&delim).enumerate() {
                         let q = Pos::new(p.row, p.col + k as u32);
                         let fmt = self.sheet().get(q).map(|c| c.fmt.clone()).unwrap_or_default();
-                        let mut cell = if part.starts_with('=') {
-                            Cell {
-                                formula: None,
-                                value: sheet::Value::Text(part.to_string()),
-                                fmt: Default::default(),
-                            }
-                        } else {
-                            Cell::input(part)
+                        // **字を割った結果は字のまま**(2026-08-25 発注者)。
+                        // `Cell::input` を通すと「090-1234-5678」を「-」で
+                        // 割った先が 90・1234・5678 になり、電話番号と
+                        // 郵便番号の頭の 0 が落ちます。割る前が字なら、
+                        // 割った後も字です — Excel のように列ごとの型を
+                        // 選ばせるのではなく、規則1つで塞ぎます
+                        let mut cell = Cell {
+                            formula: None,
+                            value: sheet::Value::Text(part.to_string()),
+                            fmt: Default::default(),
                         };
                         cell.fmt = fmt;
                         self.sheet_mut().set(q, cell);

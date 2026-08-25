@@ -856,8 +856,8 @@
  },
  {
   "i": 171,
-  "ja": "3×3 の表を末尾に入れました(セルをクリックで編集)",
-  "en": "3×3 table added at the end (click a cell to edit)"
+  "ja": "{}行×{}列の表を末尾に入れました(セルをクリックで編集)",
+  "en": "{}×{} table added at the end (click a cell to edit)"
  },
  {
   "i": 172,
@@ -871,8 +871,8 @@
  },
  {
   "i": 174,
-  "ja": "今日の日付を入れました({}。固定の文字です)",
-  "en": "Today's date inserted ({}; fixed text)"
+  "ja": "日付を入れました({}。固定の文字です)",
+  "en": "Date inserted ({}; fixed text)"
  },
  {
   "i": 175,

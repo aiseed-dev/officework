@@ -7979,4 +7979,32 @@ mod file_menu_tests {
             assert_eq!(this.file_view, 前);
         });
     }
+    #[gpui::test]
+    /// **字を割った結果は字のまま**(2026-08-25 発注者)。
+    ///
+    /// 割った先を `Cell::input` に通していたので、「090-1234-5678」を
+    /// 「-」で割ると 90・1234・5678 になり、頭の 0 が落ちていました。
+    /// 事務の様式は電話番号と郵便番号を字で持つので、これは台帳を壊します。
+    ///
+    /// 直しは列の型の指定ではなく規則1つ — *割る前が字なら、割った後も字*。
+    fn 区切り位置は頭の0を落とさない(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.sheet_mut().set(Pos::new(0, 0), sheet::Cell::input("090-1234-5678"));
+            this.sheet_mut().set(Pos::new(1, 0), sheet::Cell::input("012-0034"));
+            this.cursor = Pos::new(0, 0);
+            this.anchor = Some(Pos::new(1, 0));
+            this.prompt = Some(("split-delim", Editor::new("-")));
+            this.finish_prompt(cx);
+            let 出す = |this: &Calc, r: u32, c: u32| {
+                this.sheet().get(Pos::new(r, c)).map(|x| x.value.display()).unwrap_or_default()
+            };
+            assert_eq!(出す(this, 0, 0), "090", "頭の 0 が落ちています");
+            assert_eq!(出す(this, 0, 1), "1234");
+            assert_eq!(出す(this, 0, 2), "5678");
+            assert_eq!(出す(this, 1, 0), "012", "郵便番号の頭の 0 が落ちています");
+            assert_eq!(出す(this, 1, 1), "0034", "郵便番号の後ろの 0 が落ちています");
+        });
+    }
+
 }

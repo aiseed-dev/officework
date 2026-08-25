@@ -685,7 +685,7 @@
  },
  {
   "i": 171,
-  "t": "3×3-Tabelle am Ende eingefügt (Zelle anklicken zum Bearbeiten)"
+  "t": "Tabelle {}×{} am Ende eingefügt (zum Bearbeiten auf eine Zelle klicken)"
  },
  {
   "i": 172,
@@ -697,7 +697,7 @@
  },
  {
   "i": 174,
-  "t": "Heutiges Datum eingefügt ({}; fester Text)"
+  "t": "Datum eingefügt ({}; fester Text)"
  },
  {
   "i": 175,

@@ -685,7 +685,7 @@
  },
  {
   "i": 171,
-  "t": "Đã thêm bảng 3×3 ở cuối (bấm vào ô để sửa)"
+  "t": "Đã thêm bảng {}×{} vào cuối (nhấp vào ô để sửa)"
  },
  {
   "i": 172,
@@ -697,7 +697,7 @@
  },
  {
   "i": 174,
-  "t": "Đã chèn ngày hôm nay ({}; là chữ cố định)"
+  "t": "Đã chèn ngày ({}; văn bản cố định)"
  },
  {
   "i": 175,

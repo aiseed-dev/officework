@@ -432,7 +432,14 @@ impl Writer {
             }
             // 表の挿入。3×3 を末尾に(大きさを選ぶ小窓はまだ無い)。
             // セル編集が入っているので、挿した表はそのまま書ける
+            // **表は行×列を選んでから挿します**(2026-08-25 発注者
+            // 「様式の世界は表が本体なので選べるように」)。前は 3×3 固定でした。
+            // 升の並びは記号の一覧と同じ仕組み(`Place::grid`)
             "instable" => {
+                self.open_list = (self.open_list != Some("instable")).then_some("instable");
+                self.pick_sel = 0;
+            }
+            "instable-go" => {
                 self.checkpoint(false); // 表
                 let empty = || kumihan::Cellbox {
                     paragraphs: vec![kumihan::Paragraph {
@@ -447,14 +454,17 @@ impl Writer {
                     ..Default::default()
                 };
                 self.flush_target();
+                let (行, 列) = self.table_size;
                 self.doc.blocks.push(kumihan::Block::Table(kumihan::Table {
                     col_mm: vec![],
-                    rows: (0..3).map(|_| (0..3).map(|_| empty()).collect()).collect(),
+                    rows: (0..行).map(|_| (0..列).map(|_| empty()).collect()).collect(),
                     ..Default::default()
                 }));
                 self.dirty = true;
                 self.relayout_keep();
-                self.status = ui::t!("3×3 の表を末尾に入れました(セルをクリックで編集)").into();
+                self.status =
+                    ui::tf!("{}行×{}列の表を末尾に入れました(セルをクリックで編集)", 行, 列)
+                        .into();
             }
             // 記号の一覧(押すと出る/消える)
             "inssymbol" => {
@@ -586,25 +596,14 @@ impl Writer {
             }
             // 日付。**固定の文字**として入れる(開くたび変わるフィールドは、
             // 事務の書類では事故のもと — 提出日が勝手に変わる)
+            // **形式の一覧から選びます**(2026-08-25 発注者「形式の一覧は
+            // 必要」)。西暦と和暦の両方を出します — 事務の様式は和暦で
+            // 書くものが多く、毎回打ち直すのは手間です。
+            // **自動更新は作りません** — 印刷した日に文書の日付が変わるのは
+            // 事故の元で、固定の字が正です
             "datetime" => {
-                self.checkpoint(false); // 日付・時刻
-                let out = std::process::Command::new("date")
-                    .arg("+%Y年%-m月%-d日")
-                    .output();
-                match out {
-                    Ok(o) if o.status.success() => {
-                        let d = String::from_utf8_lossy(&o.stdout).trim().to_string();
-                        if self.hf_edit.is_some() {
-                            self.hf_ed.insert(&d);
-                        } else {
-                            self.ed.insert(&d);
-                        }
-                        self.on_edited();
-                        self.status =
-                            ui::tf!("今日の日付を入れました({}。固定の文字です)", d).into();
-                    }
-                    _ => self.status = ui::t!("日付が取れません(date コマンド)").into(),
-                }
+                self.open_list = (self.open_list != Some("datetime")).then_some("datetime");
+                self.pick_sel = 0;
             }
             "ruler" => self.ruler = !self.ruler,
             // ダークモード。**紙は白いまま**(画面と紙の一致)。周りだけ暗くする
@@ -1312,4 +1311,56 @@ impl Writer {
             _ => {}
         }
     }
+}
+
+/// 今日の日付を、形ごとの字にする。**(鍵, 出す字)** の並び。
+///
+/// 事務の様式は和暦で書くものが多いので、西暦と和暦の両方を出します
+/// (2026-08-25 発注者「形式の一覧は必要」)。
+/// **自動更新はしません** — 入るのは固定の字です。印刷した日に文書の
+/// 日付が変わるのは事故の元で、様式の世界では固定が正です。
+///
+/// 元号は令和・平成・昭和まで。それより前は西暦のまま出します
+/// (様式で使う範囲を超えるので、無理に足しません)。
+pub(crate) fn 日付の形() -> Vec<(String, String)> {
+    let out = std::process::Command::new("date").arg("+%Y %m %d").output();
+    let Ok(o) = out else { return Vec::new() };
+    if !o.status.success() {
+        return Vec::new();
+    }
+    let t = String::from_utf8_lossy(&o.stdout);
+    let mut it = t.split_whitespace().filter_map(|x| x.parse::<i32>().ok());
+    let (Some(y), Some(m), Some(d)) = (it.next(), it.next(), it.next()) else {
+        return Vec::new();
+    };
+    let 和 = 和暦(y, m, d);
+    let mut v = vec![
+        format!("{y}年{m}月{d}日"),
+        format!("{y}/{m:02}/{d:02}"),
+        format!("{y}-{m:02}-{d:02}"),
+    ];
+    if let Some((元号, 略, 年)) = 和 {
+        v.push(format!("{元号}{年}年{m}月{d}日"));
+        v.push(format!("{略}{年}.{m}.{d}"));
+    }
+    v.into_iter().map(|x| (x.clone(), x)).collect()
+}
+
+/// 西暦から元号と年を出す。(元号, 略号, 年)。範囲の外なら None
+pub(crate) fn 和暦(y: i32, m: i32, d: i32) -> Option<(&'static str, &'static str, i32)> {
+    // (始まりの年, 月, 日, 元号, 略号)
+    const 代: &[(i32, i32, i32, &str, &str)] = &[
+        (2019, 5, 1, "令和", "R"),
+        (1989, 1, 8, "平成", "H"),
+        (1926, 12, 25, "昭和", "S"),
+    ];
+    for (yy, mm, dd, 元号, 略) in 代 {
+        if (y, m, d) >= (*yy, *mm, *dd) {
+            let n = y - yy + 1;
+            // 元年は「1年」ではなく「元年」と書きますが、様式では
+            // 数で書くものも多いので数のまま出します
+            return Some((元号, 略, n));
+        }
+    }
+    None
 }

@@ -685,7 +685,7 @@
  },
  {
   "i": 171,
-  "t": "Tabela 3×3 adicionada no fim (clique numa célula para editar)"
+  "t": "Tabela {}×{} adicionada ao final (clique em uma célula para editar)"
  },
  {
   "i": 172,
@@ -697,7 +697,7 @@
  },
  {
   "i": 174,
-  "t": "Data de hoje inserida ({}; texto fixo)"
+  "t": "Data inserida ({}; texto fixo)"
  },
  {
   "i": 175,

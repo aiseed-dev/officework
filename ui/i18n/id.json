@@ -685,7 +685,7 @@
  },
  {
   "i": 171,
-  "t": "Tabel 3×3 ditambahkan di akhir (klik sel untuk mengedit)"
+  "t": "Tabel {}×{} ditambahkan di akhir (klik sel untuk mengedit)"
  },
  {
   "i": 172,
@@ -697,7 +697,7 @@
  },
  {
   "i": 174,
-  "t": "Tanggal hari ini dimasukkan ({}; teks tetap)"
+  "t": "Tanggal disisipkan ({}; teks tetap)"
  },
  {
   "i": 175,

@@ -273,6 +273,9 @@ pub struct Writer {
     open_list: Option<&'static str>,
     /// **一覧の中で選んでいる位置**(↑↓ の相手)。表の画面と同じ持ち方です
     pick_sel: usize,
+    /// 挿す表の大きさ(行, 列)。升の上を動かすと変わります。
+    /// **既定は 3×3** — 前はここが固定でした
+    table_size: (usize, usize),
     /// **書体の一覧の絞り込み。** 打つほど減ります。表の画面に前からある形で、
     /// これが無いと 24 件で切るしかありませんでした(25件目から選べない)
     font_filter: Option<Editor>,
