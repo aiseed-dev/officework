@@ -13,6 +13,20 @@
 `A / B` と2つ書いてある行は、*いま呼び方が2つある*という意味です。
 95 行のうち 21 行がこの形で、**寄せる仕事が残っている所**です。
 
+*状態の列は3つに分かれます。*
+
+[cols="1,1,3"]
+|===
+|状態 |数 |意味
+
+|*実装* |70 |いま呼べます
+|*未実装* |22 |*まだ作っていません。* 作らないと決めたのではありません
+|*実装しない* |3 |*決めた物だけ*です。理由をその行に書いてあります
+|===
+
+**「未実装」と「実装しない」を分けてあります。** 空欄1つでは、
+まだなのか、やらないのかが分かりません。
+
 * `officework` の*呼び方*を引く
 * python-docx / openpyxl の*覚えている書き方*から、こちらの書き方を引く
 * 同じ操作を、*本家の2つがどう呼んでいるか*を見比べる
@@ -36,193 +50,193 @@
 
 === ファイル
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|開く |Doc / Book |Doc.open(径路) / Book.open(径路) |docx.Document(径路) |load_workbook(径路)
-|保存 |Doc / Book |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
-|印刷 |— |— |— |—
+|開く |Doc / Book |実装 |Doc.open(径路) / Book.open(径路) |docx.Document(径路) |load_workbook(径路)
+|保存 |Doc / Book |実装 |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|印刷 |— |未実装 |— |— |—
 |===
 
 === ホーム
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|コピー |Paragraph / Cell |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
-|切り取り |Paragraph / Cell |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
-|貼り付け |Paragraph / Cell |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
-|フォント |Run / Cell |r.font / c.font |r.font.name |c.font = Font(name=…)
-|フォントのサイズ |Run / Cell |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
-|フォントサイズの拡大 |Run / Cell |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
-|フォントサイズの縮小 |Run / Cell |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
-|ルビ |Run |— |— |—
-|太字 |Run / Cell |r.bold / c.font |r.bold |c.font = Font(bold=True)
-|斜体 |Run / Cell |r.italic / c.font |r.italic |c.font = Font(italic=True)
-|下線 |Run / Cell |r.underline / c.font |r.underline |c.font = Font(underline=…)
-|取り消し線 |Run |r.strike |r.font.strike |—
-|上付き |Run |— |r.font.superscript |—
-|下付き |Run |— |r.font.subscript |c.font = Font(vertAlign=…)
-|フォントの色 |Run / Cell |r.color / c.font |r.font.color.rgb |c.font = Font(color=…)
-|スタイルのクリア |Run |r.clear() |r.clear() |—
-|箇条書き |Paragraph |p.style = '箇条書き' |p.style = 'List Bullet' |—
-|ナンバリング |Paragraph |p.style = '番号付き' |p.style = 'List Number' |—
-|複数レベルのリスト |Paragraph |— |— |—
-|インデントを減らす |Paragraph |p.paragraph_format |p.paragraph_format.left_indent |—
-|インデントを増やす |Paragraph |p.paragraph_format |p.paragraph_format.left_indent |—
-|段落の行間 |Paragraph |p.paragraph_format.line_spacing |p.paragraph_format.line_spacing |—
-|左揃え |Paragraph / Cell |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
-|中央揃え |Paragraph / Cell |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
-|右揃え |Paragraph / Cell |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
-|両端揃え |Paragraph |p.align = 'justify' |p.alignment |—
-|均等割付 |Paragraph |p.align = 'distribute' |— |—
-|罫線 |Cell |c.border |— |c.border = Border(…)
-|段落のスタイル |Paragraph |p.style |p.style |—
-|置き換え |Doc |d.replace(前, 後) |— |—
-|塗りつぶしの色 |Cell |c.fill |— |c.fill = PatternFill(…)
-|折り返して全体を表示する |Cell |c.alignment |— |c.alignment = Alignment(wrap_text=True)
-|結合して、中央に配置する |Cell |(col_span / v_merge) / s.merge_cells(…) |cell.merge(…) |ws.merge_cells('A1:B2')
-|オートSUM |Cell |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
-|名前の管理 |Book |b.create_named_range(名前, …) |— |wb.defined_names
-|消去 |Run / Cell |r.clear() / s['A1'] = None |r.clear() |ws['A1'] = None
-|降順並べ替え |Sheet |— |— |—
-|昇順並べ替え |Sheet |— |— |—
-|フィルター |Sheet |— |— |ws.auto_filter.ref
-|フィルターを解除 |Sheet |— |— |ws.auto_filter
-|数値の書式 |Cell |c.number_format |— |c.number_format
-|通貨スタイル |Cell |c.number_format |— |c.number_format
-|パーセントのスタイル |Cell |c.number_format |— |c.number_format
-|カンマスタイル |Cell |c.number_format |— |c.number_format
-|セルを挿入 |Table / Sheet |t.add_row() / s.insert_rows(行) |t.add_row() |ws.insert_rows(行)
-|セルを削除 |Sheet |s.delete_rows(行) |— |ws.delete_rows(行)
-|条件付き書式 |Cell |— |— |ws.conditional_formatting.add(…)
+|コピー |Paragraph / Cell |実装 |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
+|切り取り |Paragraph / Cell |実装 |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
+|貼り付け |Paragraph / Cell |実装 |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
+|フォント |Run / Cell |実装 |r.font / c.font |r.font.name |c.font = Font(name=…)
+|フォントのサイズ |Run / Cell |実装 |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
+|フォントサイズの拡大 |Run / Cell |実装 |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
+|フォントサイズの縮小 |Run / Cell |実装 |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
+|ルビ |Run |未実装 |— |— |—
+|太字 |Run / Cell |実装 |r.bold / c.font |r.bold |c.font = Font(bold=True)
+|斜体 |Run / Cell |実装 |r.italic / c.font |r.italic |c.font = Font(italic=True)
+|下線 |Run / Cell |実装 |r.underline / c.font |r.underline |c.font = Font(underline=…)
+|取り消し線 |Run |実装 |r.strike |r.font.strike |—
+|上付き |Run |未実装 |— |r.font.superscript |—
+|下付き |Run |未実装 |— |r.font.subscript |c.font = Font(vertAlign=…)
+|フォントの色 |Run / Cell |実装 |r.color / c.font |r.font.color.rgb |c.font = Font(color=…)
+|スタイルのクリア |Run |実装 |r.clear() |r.clear() |—
+|箇条書き |Paragraph |実装 |p.style = '箇条書き' |p.style = 'List Bullet' |—
+|ナンバリング |Paragraph |実装 |p.style = '番号付き' |p.style = 'List Number' |—
+|複数レベルのリスト |Paragraph |未実装 |— |— |—
+|インデントを減らす |Paragraph |実装 |p.paragraph_format |p.paragraph_format.left_indent |—
+|インデントを増やす |Paragraph |実装 |p.paragraph_format |p.paragraph_format.left_indent |—
+|段落の行間 |Paragraph |実装 |p.paragraph_format.line_spacing |p.paragraph_format.line_spacing |—
+|左揃え |Paragraph / Cell |実装 |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
+|中央揃え |Paragraph / Cell |実装 |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
+|右揃え |Paragraph / Cell |実装 |p.align / c.alignment |p.alignment |c.alignment = Alignment(…)
+|両端揃え |Paragraph |実装 |p.align = 'justify' |p.alignment |—
+|均等割付 |Paragraph |実装 |p.align = 'distribute' |— |—
+|罫線 |Cell |実装 |c.border |— |c.border = Border(…)
+|段落のスタイル |Paragraph |実装 |p.style |p.style |—
+|置き換え |Doc |実装 |d.replace(前, 後) |— |—
+|塗りつぶしの色 |Cell |実装 |c.fill |— |c.fill = PatternFill(…)
+|折り返して全体を表示する |Cell |実装 |c.alignment |— |c.alignment = Alignment(wrap_text=True)
+|結合して、中央に配置する |Cell |実装 |(col_span / v_merge) / s.merge_cells(…) |cell.merge(…) |ws.merge_cells('A1:B2')
+|オートSUM |Cell |実装 |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|名前の管理 |Book |実装 |b.create_named_range(名前, …) |— |wb.defined_names
+|消去 |Run / Cell |実装 |r.clear() / s['A1'] = None |r.clear() |ws['A1'] = None
+|降順並べ替え |Sheet |未実装 |— |— |—
+|昇順並べ替え |Sheet |未実装 |— |— |—
+|フィルター |Sheet |未実装 |— |— |ws.auto_filter.ref
+|フィルターを解除 |Sheet |未実装 |— |— |ws.auto_filter
+|数値の書式 |Cell |実装 |c.number_format |— |c.number_format
+|通貨スタイル |Cell |実装 |c.number_format |— |c.number_format
+|パーセントのスタイル |Cell |実装 |c.number_format |— |c.number_format
+|カンマスタイル |Cell |実装 |c.number_format |— |c.number_format
+|セルを挿入 |Table / Sheet |実装 |t.add_row() / s.insert_rows(行) |t.add_row() |ws.insert_rows(行)
+|セルを削除 |Sheet |実装 |s.delete_rows(行) |— |ws.delete_rows(行)
+|条件付き書式 |Cell |未実装 |— |— |ws.conditional_formatting.add(…)
 |===
 
 === 挿入
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|空白ページの挿入 |Doc |d.add_page_break() |d.add_page_break() |—
-|区切り |Doc |d.add_page_break() |d.add_page_break() |ws.row_breaks
-|表の挿入 |Doc / Sheet |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
-|画像を挿入 |Doc |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
-|グラフを挿入 |Sheet |— |— |ws.add_chart(…)
-|ヘッダーの編集 |Doc / Sheet |d.header / s.oddHeader |section.header |ws.oddHeader
-|フッターの編集 |Doc |d.footer |section.footer |—
-|方程式を挿入 |Doc |— |— |—
-|コンテンツコントロールの挿入 |Doc(記入欄) |d.fields() |— |—
-|ピボットテーブルを挿入 |Sheet |— |— |ws.add_pivot(…)
-|コメント |Comment |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
-|ハイパーリンクを追加 |Cell |c.hyperlink |— |c.hyperlink
+|空白ページの挿入 |Doc |実装 |d.add_page_break() |d.add_page_break() |—
+|区切り |Doc |実装 |d.add_page_break() |d.add_page_break() |ws.row_breaks
+|表の挿入 |Doc / Sheet |実装 |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
+|画像を挿入 |Doc |実装 |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
+|グラフを挿入 |Sheet |実装しない |図は Python(matplotlib)が描いて貼ります。見本で足ります(SEKKEI「見本を作って止める」) |— |ws.add_chart(…)
+|ヘッダーの編集 |Doc / Sheet |実装 |d.header / s.oddHeader |section.header |ws.oddHeader
+|フッターの編集 |Doc |実装 |d.footer |section.footer |—
+|方程式を挿入 |Doc |未実装 |— |— |—
+|コンテンツコントロールの挿入 |Doc(記入欄) |実装 |d.fields() |— |—
+|ピボットテーブルを挿入 |Sheet |実装しない |集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます |— |ws.add_pivot(…)
+|コメント |Comment |実装 |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|ハイパーリンクを追加 |Cell |実装 |c.hyperlink |— |c.hyperlink
 |===
 
 === レイアウト
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|余白 |Section |d.sections[0] |section.left_margin |ws.page_margins
-|印刷の向き |Section |d.sections[0] |section.orientation |ws.page_setup.orientation
-|ページのサイズ |Section |d.sections[0] |section.page_width |ws.page_setup.paperSize
-|印刷範囲 |Sheet |s.print_area |— |ws.print_area
-|区切り |Doc |d.add_page_break() |d.add_page_break() |ws.row_breaks
-|ヘッダー/フッター |Doc / Sheet |d.header / s.oddHeader |section.header |ws.oddHeader
-|タイトルを印刷する |Sheet |s.print_title_rows |— |ws.print_title_rows
-|枠線も印刷 |Sheet |s.print_gridlines |— |ws.print_options.gridLines
+|余白 |Section |実装 |d.sections[0] |section.left_margin |ws.page_margins
+|印刷の向き |Section |実装 |d.sections[0] |section.orientation |ws.page_setup.orientation
+|ページのサイズ |Section |実装 |d.sections[0] |section.page_width |ws.page_setup.paperSize
+|印刷範囲 |Sheet |実装 |s.print_area |— |ws.print_area
+|区切り |Doc |実装 |d.add_page_break() |d.add_page_break() |ws.row_breaks
+|ヘッダー/フッター |Doc / Sheet |実装 |d.header / s.oddHeader |section.header |ws.oddHeader
+|タイトルを印刷する |Sheet |実装 |s.print_title_rows |— |ws.print_title_rows
+|枠線も印刷 |Sheet |実装 |s.print_gridlines |— |ws.print_options.gridLines
 |===
 
 === 数式
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|関数の挿入 |Cell |s['A1'] = '=…' |— |ws['A1'] = '=…'
-|オートSUM |Cell |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
-|名前の管理 |Book |b.create_named_range(名前, …) |— |wb.defined_names
-|計算方法 |Book |b.recalc() |— |wb.calculation
+|関数の挿入 |Cell |実装 |s['A1'] = '=…' |— |ws['A1'] = '=…'
+|オートSUM |Cell |実装 |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|名前の管理 |Book |実装 |b.create_named_range(名前, …) |— |wb.defined_names
+|計算方法 |Book |実装 |b.recalc() |— |wb.calculation
 |===
 
 === データ
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|フィルター |Sheet |— |— |ws.auto_filter.ref
-|フィルターを解除 |Sheet |— |— |ws.auto_filter
-|降順並べ替え |Sheet |— |— |—
-|昇順並べ替え |Sheet |— |— |—
-|データの入力規則 |Sheet |s.add_data_validation(…) |— |ws.add_data_validation(…)
-|グループ化 |Sheet |s.row_groups |— |ws.column_dimensions[…].outline_level
-|グループ解除 |Sheet |s.row_groups |— |ws.column_dimensions[…].outline_level
+|フィルター |Sheet |未実装 |— |— |ws.auto_filter.ref
+|フィルターを解除 |Sheet |未実装 |— |— |ws.auto_filter
+|降順並べ替え |Sheet |未実装 |— |— |—
+|昇順並べ替え |Sheet |未実装 |— |— |—
+|データの入力規則 |Sheet |実装 |s.add_data_validation(…) |— |ws.add_data_validation(…)
+|グループ化 |Sheet |実装 |s.row_groups |— |ws.column_dimensions[…].outline_level
+|グループ解除 |Sheet |実装 |s.row_groups |— |ws.column_dimensions[…].outline_level
 |===
 
 === ピボットテーブル
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|ピボットテーブルを挿入 |Sheet |— |— |ws.add_pivot(…)
+|ピボットテーブルを挿入 |Sheet |実装しない |集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます |— |ws.add_pivot(…)
 |===
 
 === 参考資料
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|目次 |Doc |— |— |—
-|ブックマーク |Paragraph |— |— |—
-|図表番号 |Paragraph |— |— |—
-|相互参照 |Paragraph |— |— |—
-|脚注 |Paragraph |— |— |—
+|目次 |Doc |未実装 |— |— |—
+|ブックマーク |Paragraph |未実装 |— |— |—
+|図表番号 |Paragraph |未実装 |— |— |—
+|相互参照 |Paragraph |未実装 |— |— |—
+|脚注 |Paragraph |未実装 |— |— |—
 |===
 
 === フォーム
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|テキストフィールド |Doc(記入欄) |d.fill(名前, 値) |— |—
-|名前 |Doc(記入欄) |d.fields() |— |—
+|テキストフィールド |Doc(記入欄) |実装 |d.fill(名前, 値) |— |—
+|名前 |Doc(記入欄) |実装 |d.fields() |— |—
 |===
 
 === 共同編集
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|コメントを追加 |Comment |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
-|コメントの表示 |Comment |d.comments / c.comment |d.comments |c.comment
+|コメントを追加 |Comment |実装 |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|コメントの表示 |Comment |実装 |d.comments / c.comment |d.comments |c.comment
 |===
 
 === 保護
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|保護 |Sheet |— |— |ws.protection
-|暗号化する |Book |— |— |wb.security
+|保護 |Sheet |未実装 |— |— |ws.protection
+|暗号化する |Book |未実装 |— |— |wb.security
 |===
 
 === 表示
 
-[cols="2,2,3,3,3"]
+[cols="2,2,1,3,3,3"]
 |===
-|ボタン |オブジェクト |officework |python-docx |openpyxl
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
-|ウィンドウ枠の固定 |Sheet |s.freeze_panes |— |ws.freeze_panes
-|枠線表示 |Sheet |s.show_gridlines |— |ws.sheet_view.showGridLines
+|ウィンドウ枠の固定 |Sheet |実装 |s.freeze_panes |— |ws.freeze_panes
+|枠線表示 |Sheet |実装 |s.show_gridlines |— |ws.sheet_view.showGridLines
 |===
 
 // api:taiou:end

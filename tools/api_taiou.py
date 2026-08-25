@@ -123,6 +123,24 @@ MICHI = {
     "show-gridlines": ("Sheet", "s.show_gridlines", "", "ws.sheet_view.showGridLines"),
 }
 
+# **実装しないと決めた物**(id → 理由)。
+# *ここに載せるのは、決めが記録されている物だけ*です。
+# 決めていない空欄は「未実装」— 作らないと決めたのではなく、まだ作っていません。
+TSUKURANAI = {
+    "inschart": "図は Python(matplotlib)が描いて貼ります。見本で足ります(SEKKEI「見本を作って止める」)",
+    "pivot-insert": "集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます",
+}
+
+
+def 状態(id_: str, ow: str) -> str:
+    """実装 / 未実装 / 実装しない。**空欄の意味を分けます**(2026-08-24 発注者)"""
+    if ow:
+        return "実装"
+    if id_ in TSUKURANAI:
+        return "実装しない"
+    return "未実装"
+
+
 MARK_S = "// api:taiou:start"
 MARK_E = "// api:taiou:end"
 SAKI = ROOT / "docs/api-taiou.ja.adoc"
@@ -143,7 +161,7 @@ def 段の並び(tabs):
 
 
 def rows():
-    """(段, ボタン, オブジェクト, officework, python-docx, openpyxl)。
+    """(段, ボタン, オブジェクト, 状態, officework, python-docx, openpyxl)。
     **並びはメニューのまま**、*分類はオブジェクト*です(2026-08-24 発注者)。"""
     tabs = ribbon_parse.tables_or_die()
     並び = 段の並び(tabs)
@@ -160,8 +178,22 @@ def rows():
                     continue
                 見た.add(cmd.id)
                 obj, ow, pd, op = MICHI[cmd.id]
-                out.append((段, cmd.label, obj, ow, pd, op))
+                _ラベルの逆引き[cmd.id] = cmd.label
+                out.append((段, cmd.label, obj, 状態(cmd.id, ow), ow, pd, op))
     return out
+
+
+_ラベルの逆引き: dict = {}
+
+
+def 理由(ラベル: str, st: str):
+    """「実装しない」の理由。表の中で読めるようにします"""
+    if st != "実装しない":
+        return None
+    for k, v in TSUKURANAI.items():
+        if k in _ラベルの逆引き and _ラベルの逆引き[k] == ラベル:
+            return v
+    return None
 
 
 def 表() -> str:
@@ -174,18 +206,19 @@ def 表() -> str:
     o.append("空いている所(—)は、その道がありません。\n")
     o.append("この節は `tools/api_taiou.py` が起こします。手で直さないでください。\n")
     いま = None
-    for 段, ラベル, obj, ow, pd, op in r:
+    for 段, ラベル, obj, st, ow, pd, op in r:
         if 段 != いま:
             if いま is not None:
                 o.append("|===\n")
             o.append(f"=== {段}")
             o.append("")
-            o.append('[cols="2,2,3,3,3"]')
+            o.append('[cols="2,2,1,3,3,3"]')
             o.append("|===")
-            o.append("|ボタン |オブジェクト |officework |python-docx |openpyxl\n")
+            o.append("|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl\n")
             いま = 段
         f = lambda x: x if x else "—"
-        o.append(f"|{ラベル} |{f(obj)} |{f(ow)} |{f(pd)} |{f(op)}")
+        中 = ow if ow else (理由(ラベル, st) or "—")
+        o.append(f"|{ラベル} |{f(obj)} |{st} |{中} |{f(pd)} |{f(op)}")
     if いま is not None:
         o.append("|===\n")
     return "\n".join(o)
