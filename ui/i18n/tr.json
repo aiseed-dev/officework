@@ -5949,2602 +5949,2614 @@
  },
  {
   "i": 1487,
-  "t": "Bu dosyayla ilişkilendirilmiş bir uygulama yok: {}"
+  "t": "{} ile açıldı"
  },
  {
   "i": 1488,
-  "t": "Sayı"
+  "t": "{} sistemin seçtiği uygulamayla açılıyor"
  },
  {
   "i": 1489,
-  "t": "Evet"
+  "t": "Az önce açıldı"
  },
  {
   "i": 1490,
-  "t": "Hayır"
+  "t": "Bu dosyayla ilişkilendirilmiş bir uygulama yok: {}"
  },
  {
   "i": 1491,
-  "t": "Evet/Hayır"
+  "t": "Sayı"
  },
  {
   "i": 1492,
-  "t": "Özel özellikler"
+  "t": "Evet"
  },
  {
   "i": 1493,
-  "t": "Özellik ekle"
+  "t": "Hayır"
  },
  {
   "i": 1494,
-  "t": "+ Yazar ekle"
+  "t": "Evet/Hayır"
  },
  {
   "i": 1495,
-  "t": "Yazar ekle — bir ad"
+  "t": "Özel özellikler"
  },
  {
   "i": 1496,
-  "t": "Yazar eklendi (kaydetmede xlsx'e girer)"
+  "t": "Özellik ekle"
  },
  {
   "i": 1497,
-  "t": "«{}» yazarı çıkarıldı"
+  "t": "+ Yazar ekle"
  },
  {
   "i": 1498,
-  "t": "«{}» zaten yazarlar arasında"
+  "t": "Yazar ekle — bir ad"
  },
  {
   "i": 1499,
-  "t": "Özellik ekle 1/3 — ad"
+  "t": "Yazar eklendi (kaydetmede xlsx'e girer)"
  },
  {
   "i": 1500,
-  "t": "Özellik ekle 2/3 — tür (metin / sayı / tarih / evet-hayır. Boş Enter = metin)"
+  "t": "«{}» yazarı çıkarıldı"
  },
  {
   "i": 1501,
-  "t": "Özellik ekle 3/3 — {} değeri"
+  "t": "«{}» zaten yazarlar arasında"
  },
  {
   "i": 1502,
-  "t": "Ad boş (hiçbir şey eklenmedi)"
+  "t": "Özellik ekle 1/3 — ad"
  },
  {
   "i": 1503,
-  "t": "«{}» sayı olarak okunmuyor (hiçbir şey eklenmedi)"
+  "t": "Özellik ekle 2/3 — tür (metin / sayı / tarih / evet-hayır. Boş Enter = metin)"
  },
  {
   "i": 1504,
-  "t": "«{}» özelliği kaydedildi (kaydetmede xlsx'e girer)"
+  "t": "Özellik ekle 3/3 — {} değeri"
  },
  {
   "i": 1505,
-  "t": "«{}» özelliği çıkarıldı"
+  "t": "Ad boş (hiçbir şey eklenmedi)"
  },
  {
   "i": 1506,
-  "t": "Kitap kapatıldı (artık yeni bir kitap)"
+  "t": "«{}» sayı olarak okunmuyor (hiçbir şey eklenmedi)"
  },
  {
   "i": 1507,
-  "t": "Yazdırılacak sayfa yok (tümü gizli)"
+  "t": "«{}» özelliği kaydedildi (kaydetmede xlsx'e girer)"
  },
  {
   "i": 1508,
-  "t": "Şekil kategorisi"
+  "t": "«{}» özelliği çıkarıldı"
  },
  {
   "i": 1509,
-  "t": "Temel şekiller"
+  "t": "Kitap kapatıldı (artık yeni bir kitap)"
  },
  {
   "i": 1510,
-  "t": "Blok oklar"
+  "t": "Yazdırılacak sayfa yok (tümü gizli)"
  },
  {
   "i": 1511,
-  "t": "Denklem şekilleri"
+  "t": "Şekil kategorisi"
  },
  {
   "i": 1512,
-  "t": "Akış çizelgesi"
+  "t": "Temel şekiller"
  },
  {
   "i": 1513,
-  "t": "Yıldızlar ve şeritler"
+  "t": "Blok oklar"
  },
  {
   "i": 1514,
-  "t": "Belirtme çizgileri"
+  "t": "Denklem şekilleri"
  },
  {
   "i": 1515,
-  "t": "Desen uygula…"
+  "t": "Akış çizelgesi"
  },
  {
   "i": 1516,
-  "t": "Geçiş…"
+  "t": "Yıldızlar ve şeritler"
  },
  {
   "i": 1517,
-  "t": "Desen arka plan rengi…"
+  "t": "Belirtme çizgileri"
  },
  {
   "i": 1518,
-  "t": "Geçiş"
+  "t": "Desen uygula…"
  },
  {
   "i": 1519,
-  "t": "Desen"
+  "t": "Geçiş…"
  },
  {
   "i": 1520,
-  "t": "Bu hücrede desen yok (önce «Desen uygula» altından seçin)"
+  "t": "Desen arka plan rengi…"
  },
  {
   "i": 1521,
-  "t": "Desen «{}» yapıldı (ön plan geçerli dolgu rengidir; arka planı «Desen arka plan rengi» ile değiştirin)"
+  "t": "Geçiş"
  },
  {
   "i": 1522,
-  "t": "Geçiş «{}» yapıldı (geçerli dolgu renginden beyaza)"
+  "t": "Desen"
  },
  {
   "i": 1523,
-  "t": "Desen arka planı yeniden beyaz"
+  "t": "Bu hücrede desen yok (önce «Desen uygula» altından seçin)"
  },
  {
   "i": 1524,
-  "t": "Desen arka planı {} yapıldı"
+  "t": "Desen «{}» yapıldı (ön plan geçerli dolgu rengidir; arka planı «Desen arka plan rengi» ile değiştirin)"
  },
  {
   "i": 1525,
-  "t": "Üçgen"
+  "t": "Geçiş «{}» yapıldı (geçerli dolgu renginden beyaza)"
  },
  {
   "i": 1526,
-  "t": "Dik üçgen"
+  "t": "Desen arka planı yeniden beyaz"
  },
  {
   "i": 1527,
-  "t": "Paralelkenar"
+  "t": "Desen arka planı {} yapıldı"
  },
  {
   "i": 1528,
-  "t": "Yamuk"
+  "t": "Üçgen"
  },
  {
   "i": 1529,
-  "t": "Beşgen"
+  "t": "Dik üçgen"
  },
  {
   "i": 1530,
-  "t": "Altıgen"
+  "t": "Paralelkenar"
  },
  {
   "i": 1531,
-  "t": "Sekizgen"
+  "t": "Yamuk"
  },
  {
   "i": 1532,
-  "t": "Artı"
+  "t": "Beşgen"
  },
  {
   "i": 1533,
-  "t": "Sol ok"
+  "t": "Altıgen"
  },
  {
   "i": 1534,
-  "t": "Yukarı ok"
+  "t": "Sekizgen"
  },
  {
   "i": 1535,
-  "t": "Aşağı ok"
+  "t": "Artı"
  },
  {
   "i": 1536,
-  "t": "Sol-sağ ok"
+  "t": "Sol ok"
  },
  {
   "i": 1537,
-  "t": "Yukarı-aşağı ok"
+  "t": "Yukarı ok"
  },
  {
   "i": 1538,
-  "t": "Artı işareti"
+  "t": "Aşağı ok"
  },
  {
   "i": 1539,
-  "t": "Eksi işareti"
+  "t": "Sol-sağ ok"
  },
  {
   "i": 1540,
-  "t": "Çarpı işareti"
+  "t": "Yukarı-aşağı ok"
  },
  {
   "i": 1541,
-  "t": "Eşittir işareti"
+  "t": "Artı işareti"
  },
  {
   "i": 1542,
-  "t": "Eşit değildir işareti"
+  "t": "Eksi işareti"
  },
  {
   "i": 1543,
-  "t": "İşlem"
+  "t": "Çarpı işareti"
  },
  {
   "i": 1544,
-  "t": "Karar"
+  "t": "Eşittir işareti"
  },
  {
   "i": 1545,
-  "t": "Sonlandırıcı"
+  "t": "Eşit değildir işareti"
  },
  {
   "i": 1546,
-  "t": "Belge"
+  "t": "İşlem"
  },
  {
   "i": 1547,
-  "t": "Bağlayıcı"
+  "t": "Karar"
  },
  {
   "i": 1548,
-  "t": "4 köşeli yıldız"
+  "t": "Sonlandırıcı"
  },
  {
   "i": 1549,
-  "t": "5 köşeli yıldız"
- },
- {
-  "i": 1550,
-  "t": "6 köşeli yıldız"
- },
- {
-  "i": 1551,
-  "t": "8 köşeli yıldız"
- },
- {
-  "i": 1552,
-  "t": "Dikdörtgen belirtme çizgisi"
- },
- {
-  "i": 1553,
-  "t": "Oval belirtme çizgisi"
- },
- {
-  "i": 1554,
-  "t": "%6,25 tarama"
- },
- {
-  "i": 1555,
-  "t": "%12,5 tarama"
- },
- {
-  "i": 1556,
-  "t": "%25 tarama"
- },
- {
-  "i": 1557,
-  "t": "%50 tarama"
- },
- {
-  "i": 1558,
-  "t": "Çapraz çizgiler"
- },
- {
-  "i": 1559,
-  "t": "Dama tahtası"
- },
- {
-  "i": 1560,
-  "t": "Yatay (soldan sağa)"
- },
- {
-  "i": 1561,
-  "t": "Dikey (yukarıdan aşağıya)"
- },
- {
-  "i": 1562,
-  "t": "Çapraz (sol üstten sağ alta)"
- },
- {
-  "i": 1563,
-  "t": "Çapraz (sol alttan sağ üste)"
- },
- {
-  "i": 1564,
-  "t": "Desen arka plan rengi — altı onaltılık basamak RRGGBB (örn. FFFFFF. Boş Enter = beyaz)"
- },
- {
-  "i": 1565,
-  "t": "İçindeki metin"
- },
- {
-  "i": 1566,
-  "t": "Hizalama"
- },
- {
-  "i": 1567,
-  "t": "Metin hizalaması değişti"
- },
- {
-  "i": 1568,
-  "t": "Dikey konum"
- },
- {
-  "i": 1569,
-  "t": "Metnin dikey konumu değişti"
- },
- {
-  "i": 1570,
-  "t": "•"
- },
- {
-  "i": 1571,
-  "t": "1."
- },
- {
-  "i": 1572,
-  "t": "Liste değişti"
- },
- {
-  "i": 1573,
-  "t": "Efektler"
- },
- {
-  "i": 1574,
-  "t": "Dikey yazım değiştirildi"
- },
- {
-  "i": 1575,
-  "t": "Üstü çizili"
- },
- {
-  "i": 1576,
-  "t": "Üstü çizili değiştirildi"
- },
- {
-  "i": 1577,
-  "t": "Üst simge"
- },
- {
-  "i": 1578,
-  "t": "Üst simge değiştirildi"
- },
- {
-  "i": 1579,
-  "t": "Alt simge"
- },
- {
-  "i": 1580,
-  "t": "Bu hücrede açıklama yok"
- },
- {
-  "i": 1581,
-  "t": "Çözüldü olarak işaretlendi"
- },
- {
-  "i": 1582,
-  "t": "Çözüldü işareti kaldırıldı"
- },
- {
-  "i": 1583,
-  "t": "Yanıt boş (hiçbir şey eklenmedi)"
- },
- {
-  "i": 1584,
-  "t": "{} hücresindeki açıklamaya yanıt verildi (kaydetmede kalır)"
- },
- {
-  "i": 1585,
-  "t": "Yanıt ekle — bu dizinin sonuna eklenir"
- },
- {
-  "i": 1586,
-  "t": "Nokta işaretleri"
- },
- {
-  "i": 1587,
-  "t": "İşaretler"
- },
- {
-  "i": 1588,
-  "t": "Yüksek"
- },
- {
-  "i": 1589,
-  "t": "Düşük"
- },
- {
-  "i": 1590,
-  "t": "İlk"
- },
- {
-  "i": 1591,
-  "t": "Son"
- },
- {
-  "i": 1592,
-  "t": "İşaretler değişti"
- },
- {
-  "i": 1593,
-  "t": "Boş hücre işleme ve ortak eksen yok (bu çizgi eklendiği andaki sayıları içine almıştır)"
- },
- {
-  "i": 1594,
-  "t": "Formül gizlendi (formül çubuğunda görünmez; değer görünmeye devam eder)"
- },
- {
-  "i": 1595,
-  "t": "Formülü gizlemek için işaretlendi (sayfa korunduğunda etkili olur)"
- },
- {
-  "i": 1596,
-  "t": "Formül artık gizli değil"
- },
- {
-  "i": 1597,
-  "t": "(formül gizli)"
- },
- {
-  "i": 1598,
-  "t": "Nokta düzenlemeden çıkıldı"
- },
- {
-  "i": 1599,
-  "t": "Bu şeklin köşe noktası yok (çizgilerde ve serbest şekillerde kullanılır)"
- },
- {
-  "i": 1600,
-  "t": "Nokta düzenleme: noktayı sürükleyin / eklemek veya çıkarmak için Ctrl+tık / köşe ile eğri arasında geçiş için çift tık"
- },
- {
-  "i": 1601,
-  "t": "Daha azı olmaz (bir çizgi iki nokta ister)"
- },
- {
-  "i": 1602,
-  "t": "Bir köşe noktası çıkarıldı"
- },
- {
-  "i": 1603,
-  "t": "Bir köşe noktası eklendi"
- },
- {
-  "i": 1604,
-  "t": "Bu nokta köşe yapıldı"
- },
- {
-  "i": 1605,
-  "t": "Bu nokta yuvarlatıldı"
- },
- {
-  "i": 1606,
-  "t": "Nokta tutuldu (eklemek/çıkarmak için Ctrl+tık)"
- },
- {
-  "i": 1607,
-  "t": "Serbest şekil (noktalardan)"
- },
- {
-  "i": 1608,
-  "t": "İki şekil seçin (eklemek için Ctrl+tık)"
- },
- {
-  "i": 1609,
-  "t": "Bu şekil birleştirilemez (dış çizgisi noktalarla alınamıyor)"
- },
- {
-  "i": 1610,
-  "t": "Hiçbir şey kalmadı — üst üste gelmiyorlar"
- },
- {
-  "i": 1611,
-  "t": "Birleştir"
- },
- {
-  "i": 1612,
-  "t": "Kesiştir"
- },
- {
-  "i": 1613,
-  "t": "Çıkar"
- },
- {
-  "i": 1614,
-  "t": "{} yapıldı (dış çizgiye çevrildi; özgün şekil ve döndürme geri alınamaz)"
- },
- {
-  "i": 1615,
-  "t": "Ad «{}» = {} (yalnızca bu sayfada)"
- },
- {
-  "i": 1616,
-  "t": "Ad «{}» = {} (herhangi bir sayfadan)"
- },
- {
-  "i": 1617,
-  "t": "«{}» = {} adının kapsamı"
- },
- {
-  "i": 1618,
-  "t": "Tüm çalışma kitabı (herhangi bir sayfadan)"
- },
- {
-  "i": 1619,
-  "t": "Yalnızca bu sayfa"
- },
- {
-  "i": 1620,
-  "t": "Yorum listesini göster"
- },
- {
-  "i": 1621,
-  "t": "Yorum listesini kapat"
- },
- {
-  "i": 1622,
-  "t": "Hücrelerde notları göster"
- },
- {
-  "i": 1623,
-  "t": "Hücrelerdeki notları gizle"
- },
- {
-  "i": 1624,
-  "t": "Bu hücredeki yorum ({})"
- },
- {
-  "i": 1625,
-  "t": "Kendi yorumlarım"
- },
- {
-  "i": 1626,
-  "t": "Tüm yorumlar (çalışma kitabının tamamında {} adet)"
- },
- {
-  "i": 1627,
-  "t": "Nereye kadar silineceğini seçin (hepsi Ctrl+Z ile geri alınabilir)"
- },
- {
-  "i": 1628,
-  "t": "Yorum listesi açıldı (çalışma kitabının tamamı; bir satıra basınca oraya gidilir)"
- },
- {
-  "i": 1629,
-  "t": "Yorum listesi kapatıldı"
- },
- {
-  "i": 1630,
-  "t": "Adsız kalmayı seçtiniz (bundan sonra yazacağınız yorumlara ad eklenmez)"
- },
- {
-  "i": 1631,
-  "t": "Bundan sonra yazacağınız yorumlar “{}” adıyla imzalanacak (önceden yazılanlar değişmez)"
- },
- {
-  "i": 1632,
-  "t": "{} üzerindeki yorum kaldırıldı (Ctrl+Z ile geri alınabilir)"
- },
- {
-  "i": 1633,
-  "t": "Ad belirlenmemiş (gelişmiş ayarlardaki “Yorum imzası” alanını doldurursanız yalnızca kendi yorumlarınızı silebilirsiniz)"
- },
- {
-  "i": 1634,
-  "t": "{} tarafından yazılmış yorum yok"
- },
- {
-  "i": 1635,
-  "t": "Kendi girdilerinizden {} tanesi silindi ({} yorum dizisi tümüyle). Başkalarının yanıtları korundu. Ctrl+Z ile geri alınabilir"
- },
- {
-  "i": 1636,
-  "t": "Bu çalışma kitabında yorum yok"
- },
- {
-  "i": 1637,
-  "t": "Çalışma kitabındaki {} yorumun tamamı silindi (Ctrl+Z ile geri alınabilir)"
- },
- {
-  "i": 1638,
-  "t": "Konum"
- },
- {
-  "i": 1639,
-  "t": "Yazar"
- },
- {
-  "i": 1640,
-  "t": "Durum"
- },
- {
-  "i": 1641,
-  "t": "Yorum imzası"
- },
- {
-  "i": 1642,
-  "t": "Yorum imzası — geride bırakılacak ad (boş Enter = adsız kal)"
- },
- {
-  "i": 1643,
-  "t": "Yorumlara ad eklenmeyecek"
- },
- {
-  "i": 1644,
-  "t": "Bundan sonra yorumlar “{}” adıyla imzalanacak"
- },
- {
-  "i": 1645,
-  "t": "Bir ad yazıp Enter'a basın (boş bırakırsanız ad eklenmez)"
- },
- {
-  "i": 1646,
-  "t": "Görünüm şablonu uygulandı: {}"
- },
- {
-  "i": 1647,
-  "t": "Görünüm şablonu okunamıyor ({}): {}"
- },
- {
-  "i": 1648,
-  "t": "Sütun genişlikleri ve sayfa yapısı “{}” dosyasına aittir (bu dosyaya yazılmaz)"
- },
- {
-  "i": 1649,
-  "t": "Sütun genişlikleri ve sayfa yapısı “{}” dosyasına yazıldı (bir sonraki açılışta geçerli olur)"
- },
- {
-  "i": 1650,
-  "t": "Görünüm şablonu yazılamıyor: {}"
- },
- {
-  "i": 1651,
-  "t": "Bu adda bir yazı tipi yok"
- },
- {
-  "i": 1652,
-  "t": "Okunuş eklenecek kanji sözcüğü yok"
- },
- {
-  "i": 1653,
-  "t": "{} yere okunuş eklendi; bunlardan {} tanesinin birden fazla okunuşu var (lütfen kontrol edin. Ctrl+Z tek adımda geri alır)"
- },
- {
-  "i": 1654,
-  "t": "(adsız)"
- },
- {
-  "i": 1655,
-  "t": "{} yorum"
- },
- {
-  "i": 1656,
-  "t": "{} ölçütüne göre sıralandı"
- },
- {
-  "i": 1657,
-  "t": "Bu çalışma kitabında yorum yok (sağ tık menüsündeki “Yorum ekle” ile eklenir)"
- },
- {
-  "i": 1658,
-  "t": "{} yanıt"
- },
- {
-  "i": 1659,
-  "t": "✓ Çözüldü"
- },
- {
-  "i": 1660,
-  "t": "Dilimleyici yapılacak sütunları seçin (istediğiniz kadar; kapatmak için ☑ işaretine dokunun; yalnız görünüm, veriler değişmez)"
- },
- {
-  "i": 1661,
-  "t": "{} sütununun dilimleyicisi kapatıldı"
- },
- {
-  "i": 1662,
-  "t": "Dilimleyici ayarları"
- },
- {
-  "i": 1663,
-  "t": "Yükseklik"
- },
- {
-  "i": 1664,
-  "t": "Oranı koru"
- },
- {
-  "i": 1665,
-  "t": "Açık"
- },
- {
-  "i": 1666,
-  "t": "Düğme sütunları"
- },
- {
-  "i": 1667,
-  "t": "Konum"
- },
- {
-  "i": 1668,
-  "t": "Otomatik (sağdan sola)"
- },
- {
-  "i": 1669,
-  "t": "Otomatik konuma dön"
- },
- {
-  "i": 1670,
-  "t": "Konum otomatiğe döndürüldü (sağdan sola)"
- },
- {
-  "i": 1671,
-  "t": "Boyut: {}×{}px"
- },
- {
-  "i": 1672,
-  "t": "Taşımak için sürükleyin (ayarlardaki “Otomatik konuma dön” ile sıraya geri döner)"
- },
- {
-  "i": 1673,
-  "t": "Taşımak için başlığı sürükleyin. Boyut ve konum yalnızca görünümü değiştirir; kaydedilen veriler değişmez"
- },
- {
-  "i": 1674,
-  "t": "Matematik otomatik düzeltme"
- },
- {
-  "i": 1675,
-  "t": "Açık (\\alpha yazınca α olur)"
- },
- {
-  "i": 1676,
-  "t": "Matematik otomatik düzeltme: açık (ayırıcı yazdığınızda simge belirir; Backspace yazılışı geri getirir)"
- },
- {
-  "i": 1677,
-  "t": "Matematik otomatik düzeltme: kapalı (yazdığınız neyse öyle kalır)"
- },
- {
-  "i": 1678,
-  "t": "{} simgeye dönüştürüldü (Backspace yazılışı geri getirir)"
- },
- {
-  "i": 1679,
-  "t": "Tuş ipuçları: bir harf sekmeyi seçer, sonraki harf düğmeye basar (Esc ile çıkın)"
- },
- {
-  "i": 1680,
-  "t": "Tuş ipuçları kapatıldı"
- },
- {
-  "i": 1681,
-  "t": "{} sekmesi (bir harf düğmeye basar; Esc ile çıkın)"
- },
- {
-  "i": 1682,
-  "t": "Böyle bir harf yok (“{}”)"
- },
- {
-  "i": 1683,
-  "t": "Sütun seçildi (satır için Shift+Boşluk)"
- },
- {
-  "i": 1684,
-  "t": "Satır seçildi (sütun için Ctrl+Boşluk)"
- },
- {
-  "i": 1685,
-  "t": "Ayarlardaki key.{} bilinmeyen bir eylem adı"
- },
- {
-  "i": 1686,
-  "t": "Ayarlardaki key.{} kısayolu okunamıyor: {}"
- },
- {
-  "i": 1687,
-  "t": "{} kısayolu {} ile {} arasında çakışıyor ({} kazanır)"
- },
- {
-  "i": 1688,
-  "t": "Kaydedilmemiş değişiklikler var — kaydetmek için Ctrl+S, vazgeçip kapatmak için tekrar Esc"
- },
- {
-  "i": 1689,
-  "t": "Ctrl+S kaydet (kaydedince hücre işlevleri yeniden hesaplanır) / Esc kapat / Tab girinti"
- },
- {
-  "i": 1690,
-  "t": "Süzmek için yazın"
- },
- {
-  "i": 1691,
-  "t": "Listede yok (girildiği gibi kullanmak için Enter)"
- },
- {
-  "i": 1692,
-  "t": "İlk satır (kopyalanacak üst satır yok)"
- },
- {
-  "i": 1693,
-  "t": "A sütunu (kopyalanacak sol sütun yok)"
- },
- {
-  "i": 1694,
-  "t": "Kopyalamak için aşağı veya sağa sürükleyin (çift tıklama: komşu sütunun uzunluğu kadar)"
- },
- {
-  "i": 1695,
-  "t": "Uzunluk alınacak komşu sütun yok (iki taraf da boş)"
- },
- {
-  "i": 1696,
-  "t": "{} → {} kopyalandı"
- },
- {
-  "i": 1697,
-  "t": "{} hücre yapıştırıldı (biçim de dâhil)"
- },
- {
-  "i": 1698,
-  "t": "{} hücre yapıştırıldı (başka uygulamadan gelen yazı, biçim korundu)"
- },
- {
-  "i": 1699,
-  "t": "Sayfanın tamamı seçildi"
- },
- {
-  "i": 1700,
-  "t": "{} sütunu seçildi (sütunun tamamı)"
- },
- {
-  "i": 1701,
-  "t": "{}–{} sütunları seçildi (sütunların tamamı)"
- },
- {
-  "i": 1702,
-  "t": "{} satırı seçildi (satırın tamamı)"
- },
- {
-  "i": 1703,
-  "t": "{}–{} satırları seçildi (satırların tamamı)"
- },
- {
-  "i": 1704,
-  "t": "{} dosyasına kaydedildi (düz metin)"
- },
- {
-  "i": 1705,
-  "t": "{} ({} satır) — düz metin olarak açıldı; düz metin olarak kaydedilecek"
- },
- {
-  "i": 1706,
-  "t": "Makrolar ve düz metin"
- },
- {
-  "i": 1707,
-  "t": "Oluşturulamıyor: {}"
- },
- {
-  "i": 1708,
-  "t": "{} oluşturuldu ve {} ile açıldı (kaydedince hücreden çağırabilirsiniz)"
- },
- {
-  "i": 1709,
-  "t": "{} oluşturuldu ama açılamıyor: {}"
- },
- {
-  "i": 1710,
-  "t": "{}, {} ile açıldı"
- },
- {
-  "i": 1711,
-  "t": "Kayıt başladı. Yaptıklarınız Python satırlarına dönüşür (durdurmak için tekrar basın)"
- },
- {
-  "i": 1712,
-  "t": "Kayıt {} dosyasına yazıldı ({} satır) — {} ile açılıyor"
- },
- {
-  "i": 1713,
-  "t": "Kayıt {} dosyasına yazıldı ({} satır)"
- },
- {
-  "i": 1714,
-  "t": "Kayıt yazılamıyor: {}"
- },
- {
-  "i": 1715,
-  "t": "Yapay zekâ hedefi"
- },
- {
-  "i": 1716,
-  "t": "Şu anda kullanılabilir mi"
- },
- {
-  "i": 1717,
-  "t": "Yapay zekâ modeli (JO_AI_MODEL)"
- },
- {
-  "i": 1718,
-  "t": "(hedefin varsayılanı)"
- },
- {
-  "i": 1719,
-  "t": "Kullanılabilir"
- },
- {
-  "i": 1720,
-  "t": "Sormadan bilinmez (aşağıdaki hedefe bağlanır)"
- },
- {
-  "i": 1721,
-  "t": "Sol panel (Yapay zekâya sor) açıldı"
- },
- {
-  "i": 1722,
-  "t": "Sol panel kapatıldı"
- },
- {
-  "i": 1723,
-  "t": "Sağ panel (Hücre ayarları) açıldı"
- },
- {
-  "i": 1724,
-  "t": "Sağ panel kapatıldı"
- },
- {
-  "i": 1725,
-  "t": "Sohbet"
- },
- {
-  "i": 1726,
-  "t": "Hücre ayarları"
- },
- {
-  "i": 1727,
-  "t": "Metni kaydır"
- },
- {
-  "i": 1728,
-  "t": "Sayı biçimi"
- },
- {
-  "i": 1729,
-  "t": "Binlik ayırıcı"
- },
- {
-  "i": 1730,
-  "t": "Ürün kodu (0000)"
- },
- {
-  "i": 1731,
-  "t": "Kenarlık kalemi"
- },
- {
-  "i": 1732,
-  "t": "İnce"
- },
- {
-  "i": 1733,
-  "t": "Kalın"
- },
- {
-  "i": 1734,
-  "t": "Çift"
- },
- {
-  "i": 1735,
-  "t": "Nereye çizilecek (üst üste basılabilir)"
- },
- {
-  "i": 1736,
-  "t": "Sil"
- },
- {
-  "i": 1737,
-  "t": "Yapay zekâya sor"
- },
- {
-  "i": 1738,
-  "t": "Uygula"
- },
- {
-  "i": 1739,
-  "t": "Öneri atıldı (hiçbir şey değişmedi)"
- },
- {
-  "i": 1740,
-  "t": "Yazmak için buraya basın; Enter gönderir"
- },
- {
-  "i": 1741,
-  "t": "Gönder"
- },
- {
-  "i": 1742,
-  "t": "Düşünüyor…"
- },
- {
-  "i": 1743,
-  "t": "Şu an: {}"
- },
- {
-  "i": 1744,
-  "t": "Sayfaya dönüldü (sohbet paneli açık kalır)"
- },
- {
-  "i": 1745,
-  "t": "Değişiklik şöyle."
- },
- {
-  "i": 1746,
-  "t": "Bir öneri hazır (sol panelde okuyup Uygula'ya basın)"
- },
- {
-  "i": 1747,
-  "t": "Yanıtlandı (sol panel)"
- },
- {
-  "i": 1748,
-  "t": "Sayı biçimi Genel'e döndürüldü"
- },
- {
-  "i": 1749,
-  "t": "Sorulacak bir şey yok"
- },
- {
-  "i": 1750,
-  "t": "Bir betik çalışıyor (bitmesini bekleyin)"
- },
- {
-  "i": 1751,
-  "t": "Öneri çalıştırılıyor…"
- },
- {
-  "i": 1752,
-  "t": "Uygulandı."
- },
- {
-  "i": 1753,
-  "t": "Öneri uygulandı (Ctrl+Z geri alır)"
- },
- {
-  "i": 1754,
-  "t": "Sayı biçimi {} olarak ayarlandı"
- },
- {
-  "i": 1755,
-  "t": "Öneri uygulandı: {} (Ctrl+Z geri alır)"
- },
- {
-  "i": 1756,
-  "t": "Betik başarısız oldu: {}"
- },
- {
-  "i": 1757,
-  "t": "Betik çalışmadı: {}"
- },
- {
-  "i": 1758,
-  "t": "Düzeltilmiş metin hazır (sol panelde okuyup Uygula'ya basın)"
- },
- {
-  "i": 1759,
-  "t": "Seçim değiştirildi (Ctrl+Z geri alır)"
- },
- {
-  "i": 1760,
-  "t": "İmlecin arkasına eklendi (Ctrl+Z geri alır)"
- },
- {
-  "i": 1761,
-  "t": "Metne dönüldü (sohbet paneli açık kalır)"
- },
- {
-  "i": 1762,
-  "t": "Eklenecek metin (basılmadan girmez)"
- },
- {
-  "i": 1763,
-  "t": "Metin atıldı (hiçbir şey değişmedi)"
- },
- {
-  "i": 1764,
-  "t": "YZ"
- },
- {
-  "i": 1765,
-  "t": "Girinti"
- },
- {
-  "i": 1766,
-  "t": "Girinti {} olarak ayarlandı"
- },
- {
-  "i": 1767,
-  "t": "Girinti daha fazla daraltılamaz"
- },
- {
-  "i": 1768,
-  "t": "Girinti daha fazla genişletilemez"
- },
- {
-  "i": 1769,
-  "t": "Metin yönü"
- },
- {
-  "i": 1770,
-  "t": "Metin yönü {} olarak ayarlandı"
- },
- {
-  "i": 1771,
-  "t": "Koşullu biçimlendirme"
- },
- {
-  "i": 1772,
-  "t": "Negatifler kırmızı"
- },
- {
-  "i": 1773,
-  "t": "Yinelenenler"
- },
- {
-  "i": 1774,
-  "t": "Benzersizler"
- },
- {
-  "i": 1775,
-  "t": "Renk ölçeği"
- },
- {
-  "i": 1776,
-  "t": "Simgeler"
- },
- {
-  "i": 1777,
-  "t": "Tablo"
- },
- {
-  "i": 1778,
-  "t": "{} satır × {} sütun — şu an satır {}, sütun {}"
- },
- {
-  "i": 1779,
-  "t": "Üste satır"
- },
- {
-  "i": 1780,
-  "t": "Alta satır"
- },
- {
-  "i": 1781,
-  "t": "Satırı sil"
- },
- {
-  "i": 1782,
-  "t": "Sola sütun"
- },
- {
-  "i": 1783,
-  "t": "Sağa sütun"
- },
- {
-  "i": 1784,
-  "t": "Sütunu sil"
- },
- {
-  "i": 1785,
-  "t": "Üste satır eklendi"
- },
- {
-  "i": 1786,
-  "t": "Alta satır eklendi"
- },
- {
-  "i": 1787,
-  "t": "Sola sütun eklendi"
- },
- {
-  "i": 1788,
-  "t": "Sağa sütun eklendi"
- },
- {
-  "i": 1789,
-  "t": "Satır silindi (Ctrl+Z geri alır)"
- },
- {
-  "i": 1790,
-  "t": "Sütun silindi (Ctrl+Z geri alır)"
- },
- {
-  "i": 1791,
-  "t": "Son satır silinemez (tablonun tamamını silmek ayrı bir işlemdir)"
- },
- {
-  "i": 1792,
-  "t": "Son sütun silinemez (tablonun tamamını silmek ayrı bir işlemdir)"
- },
- {
-  "i": 1793,
-  "t": "Denklem"
- },
- {
-  "i": 1794,
-  "t": "Denklemi düzenle"
- },
- {
-  "i": 1795,
-  "t": "Denklem düzenleniyor (Enter yeniden dizer, Esc iptal eder)"
- },
- {
-  "i": 1796,
-  "t": "Bu paragrafta resim yok"
- },
- {
-  "i": 1797,
-  "t": "Resim küçültüldü"
- },
- {
-  "i": 1798,
-  "t": "Resim büyütüldü"
- },
- {
-  "i": 1799,
-  "t": "{:.0}×{:.0}mm"
- },
- {
-  "i": 1800,
-  "t": "Sıralama"
- },
- {
-  "i": 1801,
-  "t": "En öne getir"
- },
- {
-  "i": 1802,
-  "t": "Öne getir"
- },
- {
-  "i": 1803,
-  "t": "Arkaya gönder"
- },
- {
-  "i": 1804,
-  "t": "En arkaya gönder"
- },
- {
-  "i": 1805,
-  "t": "Sola döndür"
- },
- {
-  "i": 1806,
-  "t": "Sağa döndür"
- },
- {
-  "i": 1807,
-  "t": "Yatay çevir"
- },
- {
-  "i": 1808,
-  "t": "Dikey çevir"
- },
- {
-  "i": 1809,
-  "t": "Diğer"
- },
- {
-  "i": 1810,
-  "t": "Bir şekil seçili"
- },
- {
-  "i": 1811,
-  "t": "Bir resim seçili"
- },
- {
-  "i": 1812,
-  "t": "Seçili şekil veya resim yok (sayfada birine tıklayın)"
- },
- {
-  "i": 1813,
-  "t": "Sayfa — tüm belgenin ayarları"
- },
- {
-  "i": 1814,
-  "t": "Üst bilgi ve alt bilgi"
- },
- {
-  "i": 1815,
-  "t": "Düzenle"
- },
- {
-  "i": 1816,
-  "t": "Filigran"
- },
- {
-  "i": 1817,
-  "t": "Sayfa rengi"
- },
- {
-  "i": 1818,
-  "t": "Seçili aralık hakkında soru sorabilirsiniz. Sayfayı değiştirecek bir şey varsa, ne yapılacağını önce görürsünüz — siz basmadan sayfa değişmez."
- },
- {
-  "i": 1819,
-  "t": "örn. satışa göre çoktan aza sırala / ilk 5'i renklendir / toplam satırı ekle"
- },
- {
-  "i": 1820,
-  "t": "Önerilen değişiklik (siz basmadan hiçbir şey olmaz)"
- },
- {
-  "i": 1821,
-  "t": "Seçim hakkında soru sorabilirsiniz. Metin yeniden yazılacaksa, yeni metni önce görürsünüz — siz basmadan hiçbir şey girmez."
- },
- {
-  "i": 1822,
-  "t": "örn. bu paragrafı daha kibar yap / yarı uzunlukta / kulağa sert geliyor mu söyle"
- },
- {
-  "i": 1823,
-  "t": "Yorumlar gösteriliyor (hücre balonları olarak)"
- },
- {
-  "i": 1824,
-  "t": "Yerel modelin hedefi"
- },
- {
-  "i": 1825,
-  "t": "bu makinede kalır"
- },
- {
-  "i": 1826,
-  "t": "bu makineden çıkar"
- },
- {
-  "i": 1827,
-  "t": "Hedef nasıl belirlenir"
- },
- {
-  "i": 1828,
-  "t": "settings.toml içindeki ai_url / ai_model (OFFICE_URL ortam değişkeni önceliklidir)"
- },
- {
-  "i": 1829,
-  "t": "Yeni sohbet"
- },
- {
-  "i": 1830,
-  "t": "Yeni sohbet başlatıldı (sayfaya dokunulmadı)"
- },
- {
-  "i": 1831,
-  "t": "Düzeltmesini iste"
- },
- {
-  "i": 1832,
-  "t": "Böyle bırak"
- },
- {
-  "i": 1833,
-  "t": "Başarısız oldu. {}"
- },
- {
-  "i": 1834,
-  "t": "Uygulandı. {}"
- },
- {
-  "i": 1835,
-  "t": "Hedef: {} (değiştirmek için basın)"
- },
- {
-  "i": 1836,
-  "t": "Önceki betik başarısız oldu. Hatayı oku ve düzeltilmiş bir betik ver.\n\n[Hata]\n{}\n\n[Başarısız betik]\n{}"
- },
- {
-  "i": 1837,
-  "t": "Bir hücreye =ad(...) yazabilirsiniz. Birini seçmek onu bir düzenleyicide açar"
- },
- {
-  "i": 1838,
-  "t": "Formüllerden çağrılabilecek işlev henüz yok ({} içine bir .py koyun)"
- },
- {
-  "i": 1839,
-  "t": "Formüllerden çağırdığınız işlevleri {} içine taşıyın (plugins artık elle çalıştırdığınız makroların klasörü)"
- },
- {
-  "i": 1840,
-  "t": "Klasör oluşturulamıyor: {}"
- },
- {
-  "i": 1841,
-  "t": "Açılamıyor: metin UTF-8 değil"
- },
- {
-  "i": 1842,
-  "t": " (formüller korunur; görünüm kaydedilmez)"
- },
- {
-  "i": 1843,
-  "t": "Dosyalar — klasörün içeriği"
- },
- {
-  "i": 1844,
-  "t": "Açık klasör yok (Dosya > Aç)"
- },
- {
-  "i": 1845,
-  "t": "(klasör boş)"
- },
- {
-  "i": 1846,
-  "t": "Belge {}"
- },
- {
-  "i": 1847,
-  "t": "{} ({} belge)"
- },
- {
-  "i": 1848,
-  "t": "(adsız)"
- },
- {
-  "i": 1849,
-  "t": "{} gösteriliyor"
- },
- {
-  "i": 1850,
-  "t": "Kaydedilmemiş değişiklikler var (önce kaydedin)"
- },
- {
-  "i": 1851,
-  "t": "{} olarak kaydedildi (tablolar çift uzantıyla adlandırılır)"
- },
- {
-  "i": 1852,
-  "t": "Klasör"
- },
- {
-  "i": 1853,
   "t": "Belge"
  },
  {
-  "i": 1854,
-  "t": "Görünüm"
+  "i": 1550,
+  "t": "Bağlayıcı"
  },
  {
-  "i": 1855,
-  "t": "Form"
+  "i": 1551,
+  "t": "4 köşeli yıldız"
  },
  {
-  "i": 1856,
-  "t": "officework — açmak için bir klasör seçin"
+  "i": 1552,
+  "t": "5 köşeli yıldız"
  },
  {
-  "i": 1857,
-  "t": "{} açıldı (sağdaki listeden bir dosya seçin)"
+  "i": 1553,
+  "t": "6 köşeli yıldız"
  },
  {
-  "i": 1858,
-  "t": "AsciiDoc düz metin bir dosyadır, bu yüzden şifreli olarak kaydedilemez (şifrelemeyi kaldırın veya xlsx olarak kaydedin)"
+  "i": 1554,
+  "t": "8 köşeli yıldız"
  },
  {
-  "i": 1859,
-  "t": "{}:{} tabloya dönüştürüldü (başlık satırı rengi ve şeritli satırlar; yeniden aralığa çevirebilir veya boyutlandırabilirsiniz — Ctrl+Z geri alır)"
+  "i": 1555,
+  "t": "Dikdörtgen belirtme çizgisi"
  },
  {
-  "i": 1860,
-  "t": "\"{}\" tablosu yeniden normal bir aralık oldu (başlık rengi, şeritler, biçimlendirme ve formüller korunur)"
+  "i": 1556,
+  "t": "Oval belirtme çizgisi"
  },
  {
-  "i": 1861,
-  "t": "Başlık satırı"
+  "i": 1557,
+  "t": "%6,25 tarama"
  },
  {
-  "i": 1862,
-  "t": "Dolgu #{}"
+  "i": 1558,
+  "t": "%12,5 tarama"
  },
  {
-  "i": 1863,
-  "t": "Kaydedilmemiş değişiklikler var (önce kaydedin): {}"
+  "i": 1559,
+  "t": "%25 tarama"
  },
  {
-  "i": 1864,
-  "t": "Sonuncusu açık kalır"
+  "i": 1560,
+  "t": "%50 tarama"
  },
  {
-  "i": 1865,
-  "t": "{} kaydedilmemiş değişiklikler içeriyor (önce kaydedin)"
+  "i": 1561,
+  "t": "Çapraz çizgiler"
  },
  {
-  "i": 1866,
-  "t": "Açabileceğiniz dosyalar"
+  "i": 1562,
+  "t": "Dama tahtası"
  },
  {
-  "i": 1867,
-  "t": "officework belgeleri ve tabloları"
+  "i": 1563,
+  "t": "Yatay (soldan sağa)"
  },
  {
-  "i": 1868,
-  "t": "Daha önce açık olan {} dosya bulunamadı"
+  "i": 1564,
+  "t": "Dikey (yukarıdan aşağıya)"
  },
  {
-  "i": 1869,
-  "t": "\"{}\" bu dosyada yok"
+  "i": 1565,
+  "t": "Çapraz (sol üstten sağ alta)"
  },
  {
-  "i": 1870,
-  "t": "\"{}\" bu sayfada yok (diğer sayfalarda da aramak için \"Bu dosya\" seçin)"
+  "i": 1566,
+  "t": "Çapraz (sol alttan sağ üste)"
  },
  {
-  "i": 1871,
-  "t": "\"{}\": {} {} (bu dosyada {} yer)"
+  "i": 1567,
+  "t": "Desen arka plan rengi — altı onaltılık basamak RRGGBB (örn. FFFFFF. Boş Enter = beyaz)"
  },
  {
-  "i": 1872,
-  "t": "\"{}\": {} (bu sayfada {} yer)"
+  "i": 1568,
+  "t": "İçindeki metin"
  },
  {
-  "i": 1873,
-  "t": "Şurada ara"
+  "i": 1569,
+  "t": "Hizalama"
  },
  {
-  "i": 1874,
-  "t": "Bu sayfa"
+  "i": 1570,
+  "t": "Metin hizalaması değişti"
  },
  {
-  "i": 1875,
-  "t": "Bu dosya"
+  "i": 1571,
+  "t": "Dikey konum"
  },
  {
-  "i": 1876,
-  "t": "Klasörün tamamı için Veri sekmesindeki \"Klasörde ara\""
+  "i": 1572,
+  "t": "Metnin dikey konumu değişti"
  },
  {
-  "i": 1877,
-  "t": "\"{}\": {}. belge"
+  "i": 1573,
+  "t": "•"
  },
  {
-  "i": 1878,
-  "t": "\"{}\" bu belgede yok (diğer belgelerde de aramak için \"Bu dosya\" seçin)"
+  "i": 1574,
+  "t": "1."
  },
  {
-  "i": 1879,
-  "t": "Bu belge"
+  "i": 1575,
+  "t": "Liste değişti"
  },
  {
-  "i": 1880,
-  "t": "Ekran artık koyu (kâğıt ve hücreler beyaz kalır — ekran ile baskı uyuşsun diye)"
+  "i": 1576,
+  "t": "Efektler"
  },
  {
-  "i": 1881,
-  "t": "Yinelemeli hesaplama: açık (en çok {} geçiş / değişim {} altında)"
+  "i": 1577,
+  "t": "Dikey yazım değiştirildi"
  },
  {
-  "i": 1882,
-  "t": "Yinelemeli hesaplama: kapalı (döngüsel başvurular işaretlenir)"
+  "i": 1578,
+  "t": "Üstü çizili"
  },
  {
-  "i": 1883,
-  "t": "Açık (en çok {} geçiş)"
+  "i": 1579,
+  "t": "Üstü çizili değiştirildi"
  },
  {
-  "i": 1884,
-  "t": "{}: {} etkileyen hücre vurgulandı (Okları kaldır ile temizleyin)"
+  "i": 1580,
+  "t": "Üst simge"
  },
  {
-  "i": 1885,
-  "t": "{}: {} etkilenen hücre vurgulandı (Okları kaldır ile temizleyin)"
+  "i": 1581,
+  "t": "Üst simge değiştirildi"
  },
  {
-  "i": 1886,
-  "t": "\"{}\" sayfasının koruması kaldırıldı (artık düzenleyebilirsiniz; kaydedince değişiklik xlsx içinde kalır)"
+  "i": 1582,
+  "t": "Alt simge"
  },
  {
-  "i": 1887,
-  "t": "\"{}\" sayfası korundu (yalnızca kilidi açık hücreler düzenlenebilir; İzin verilen işlemler ile gevşetin; aynı düğme korumayı kaldırır. Parola konmaz — kondu gibi de yapmayız)"
+  "i": 1583,
+  "t": "Bu hücrede açıklama yok"
  },
  {
-  "i": 1888,
-  "t": "Yazma kilidi sizde ({}). Çalışma kitabını ilk açan yazabilir; sonrakiler yalnızca okur (kilit bir .~lock dosyasıdır)"
+  "i": 1584,
+  "t": "Çözüldü olarak işaretlendi"
  },
  {
-  "i": 1889,
-  "t": "{} onay kutusu yerleştirildi (boşluk tuşuyla değiştirin; Excel bunları DOĞRU/YANLIŞ olarak gösterir{})"
+  "i": 1585,
+  "t": "Çözüldü işareti kaldırıldı"
  },
  {
-  "i": 1890,
-  "t": "\"{}\" sayfası gizlendi (aynı düğme geri getirir; kaydedince değişiklik xlsx içinde kalır)"
+  "i": 1586,
+  "t": "Yanıt boş (hiçbir şey eklenmedi)"
  },
  {
-  "i": 1891,
-  "t": "{} hücre izleniyor (değerleri durum çubuğunda görünür; listeyi boşaltmak için yeniden basın)"
+  "i": 1587,
+  "t": "{} hücresindeki açıklamaya yanıt verildi (kaydetmede kalır)"
  },
  {
-  "i": 1892,
-  "t": "Hangi sütuna göre gruplanacak? Bir başlık seçin: {}"
+  "i": 1588,
+  "t": "Yanıt ekle — bu dizinin sonuna eklenir"
  },
  {
-  "i": 1893,
-  "t": "{} sayfa değer olarak alındı (bağlantı tutulmaz)"
+  "i": 1589,
+  "t": "Nokta işaretleri"
  },
  {
-  "i": 1894,
-  "t": "Yazdırma alanına {}:{} eklendi (toplam {} alan; her alan kendi sayfasına yazdırılır)"
+  "i": 1590,
+  "t": "İşaretler"
  },
  {
-  "i": 1895,
-  "t": "{}–{} satırları her sayfanın başında yinelenir (seçim yokken basınca kalkar)"
+  "i": 1591,
+  "t": "Yüksek"
  },
  {
-  "i": 1896,
-  "t": "{} sayfa / {} hücre — {}"
+  "i": 1592,
+  "t": "Düşük"
  },
  {
-  "i": 1897,
-  "t": "{} sayfa — {}"
+  "i": 1593,
+  "t": "İlk"
  },
  {
-  "i": 1898,
-  "t": "{} — **{} bu dosyayı açmış durumda**. Üzerine kaydedilemez (Farklı kaydet'i kullanın)"
+  "i": 1594,
+  "t": "Son"
  },
  {
-  "i": 1899,
-  "t": "Görüntü {} konumuna yerleştirildi (kaydedince xlsx içine girer)"
+  "i": 1595,
+  "t": "İşaretler değişti"
  },
  {
-  "i": 1900,
-  "t": "{} konumuna bağlantı eklendi (açmak için Ctrl+tıklayın)"
+  "i": 1596,
+  "t": "Boş hücre işleme ve ortak eksen yok (bu çizgi eklendiği andaki sayıları içine almıştır)"
  },
  {
-  "i": 1901,
-  "t": "Grafik {} konumuna yerleştirildi (kaydedince xlsx içine girer)"
+  "i": 1597,
+  "t": "Formül gizlendi (formül çubuğunda görünmez; değer görünmeye devam eder)"
  },
  {
-  "i": 1902,
-  "t": "{} ({} / {}) {} konumuna yerleştirildi — şu andaki değerler. PivotTable sekmesi açık (yenileme, genel toplamlar, ara toplamlar ve düzen orada; Ctrl+Z geri alır)"
+  "i": 1598,
+  "t": "Formülü gizlemek için işaretlendi (sayfa korunduğunda etkili olur)"
  },
  {
-  "i": 1903,
-  "t": "Pivot yenilendi ({} — şu andaki değerler; Ctrl+Z geri alır)"
+  "i": 1599,
+  "t": "Formül artık gizli değil"
  },
  {
-  "i": 1904,
-  "t": "İşlevler: {} hücre hesaplandı; {} tanesi #TAŞMA! verdi (sonucun taşacağı yerde zaten veri var)"
+  "i": 1600,
+  "t": "(formül gizli)"
  },
  {
-  "i": 1905,
-  "t": "İşlevler: {} hücre hesaplandı (Ctrl+Z geri alır)"
+  "i": 1601,
+  "t": "Nokta düzenlemeden çıkıldı"
  },
  {
-  "i": 1906,
-  "t": "{} {} konumuna yerleştirildi (görüntü olarak; kaydedince xlsx içine girer; Ctrl+Z tek adımda geri alır)"
+  "i": 1602,
+  "t": "Bu şeklin köşe noktası yok (çizgilerde ve serbest şekillerde kullanılır)"
  },
  {
-  "i": 1907,
-  "t": "Denklem"
+  "i": 1603,
+  "t": "Nokta düzenleme: noktayı sürükleyin / eklemek veya çıkarmak için Ctrl+tık / köşe ile eğri arasında geçiş için çift tık"
  },
  {
-  "i": 1908,
-  "t": "Metin sanatı"
+  "i": 1604,
+  "t": "Daha azı olmaz (bir çizgi iki nokta ister)"
  },
  {
-  "i": 1909,
-  "t": "{} {} konumuna yerleştirildi ({} şekil; bir şekli seçip Enter'a basarak yazın, sürükleyerek taşıyın; Ctrl+Z hepsini tek adımda geri alır)"
+  "i": 1605,
+  "t": "Bir köşe noktası çıkarıldı"
  },
  {
-  "i": 1910,
-  "t": "Çözüldü: {} = {} ({} değişken hücre yeniden yazıldı; Ctrl+Z tek adımda geri alır)"
+  "i": 1606,
+  "t": "Bir köşe noktası eklendi"
  },
  {
-  "i": 1911,
-  "t": "{} = {} olduğunda {} değeri {} olur (Ctrl+Z geri alır)"
+  "i": 1607,
+  "t": "Bu nokta köşe yapıldı"
  },
  {
-  "i": 1912,
-  "t": "Kaydedilmeden biten bir oturumdan {} kurtarma kopyası var (Dosya sekmesindeki Kurtar ile açabilirsiniz)"
+  "i": 1608,
+  "t": "Bu nokta yuvarlatıldı"
  },
  {
-  "i": 1913,
-  "t": "Kurtarma"
+  "i": 1609,
+  "t": "Nokta tutuldu (eklemek/çıkarmak için Ctrl+tık)"
  },
  {
-  "i": 1914,
-  "t": "Uygulanmış bir filtre yok"
+  "i": 1610,
+  "t": "Serbest şekil (noktalardan)"
  },
  {
-  "i": 1915,
-  "t": "Görünen izleme oku yok"
+  "i": 1611,
+  "t": "İki şekil seçin (eklemek için Ctrl+tık)"
  },
  {
-  "i": 1916,
-  "t": "İkili"
+  "i": 1612,
+  "t": "Bu şekil birleştirilemez (dış çizgisi noktalarla alınamıyor)"
  },
  {
-  "i": 1917,
-  "t": "PivotChart kaldırıldı"
+  "i": 1613,
+  "t": "Hiçbir şey kalmadı — üst üste gelmiyorlar"
  },
  {
-  "i": 1918,
-  "t": "PivotChart {} konumuna yerleştirildi (PivotTable yenilenince yeniden çizilir; aynı düğme kaldırır)"
+  "i": 1614,
+  "t": "Birleştir"
  },
  {
-  "i": 1919,
-  "t": "Kaç dönem ileri? (bir sayı yazıp Enter'a basın; boş = 6)"
+  "i": 1615,
+  "t": "Kesiştir"
  },
  {
-  "i": 1920,
-  "t": "Tahmin sonucu okunamıyor"
+  "i": 1616,
+  "t": "Çıkar"
  },
  {
-  "i": 1921,
-  "t": "Tahmin"
+  "i": 1617,
+  "t": "{} yapıldı (dış çizgiye çevrildi; özgün şekil ve döndürme geri alınamaz)"
  },
  {
-  "i": 1922,
-  "t": "Gerçekleşen"
+  "i": 1618,
+  "t": "Ad «{}» = {} (yalnızca bu sayfada)"
  },
  {
-  "i": 1923,
-  "t": "Dönem"
+  "i": 1619,
+  "t": "Ad «{}» = {} (herhangi bir sayfadan)"
  },
  {
-  "i": 1924,
-  "t": "Alt sınır"
+  "i": 1620,
+  "t": "«{}» = {} adının kapsamı"
  },
  {
-  "i": 1925,
-  "t": "Üst sınır"
+  "i": 1621,
+  "t": "Tüm çalışma kitabı (herhangi bir sayfadan)"
  },
  {
-  "i": 1926,
-  "t": "Tahmin {}"
+  "i": 1622,
+  "t": "Yalnızca bu sayfa"
  },
  {
-  "i": 1927,
-  "t": "{} dönemlik mevsim (kendiliğinden bulundu)"
+  "i": 1623,
+  "t": "Yorum listesini göster"
  },
  {
-  "i": 1928,
-  "t": "Mevsim bulunamadı"
+  "i": 1624,
+  "t": "Yorum listesini kapat"
  },
  {
-  "i": 1929,
-  "t": "{} dönem ileri tahmin edildi. {}. Aralık %95 beklentidir, söz değildir (tipik hata {:.1})"
+  "i": 1625,
+  "t": "Hücrelerde notları göster"
  },
  {
-  "i": 1930,
-  "t": "Tahmin için başlığın altında en az 4 satır sayı gerekir"
+  "i": 1626,
+  "t": "Hücrelerdeki notları gizle"
  },
  {
-  "i": 1931,
-  "t": "Sayı sütunu bulunamadı (en az 4 sayı gerekir)"
+  "i": 1627,
+  "t": "Bu hücredeki yorum ({})"
  },
  {
-  "i": 1932,
-  "t": "Tahmin için en az 4 sayı gerekir"
+  "i": 1628,
+  "t": "Kendi yorumlarım"
  },
  {
-  "i": 1933,
-  "t": "Tahmin ediliyor…"
+  "i": 1629,
+  "t": "Tüm yorumlar (çalışma kitabının tamamında {} adet)"
  },
  {
-  "i": 1934,
-  "t": "Tahmin için gereken araçlar yok. Şunlarla kurulur:\n  {}"
+  "i": 1630,
+  "t": "Nereye kadar silineceğini seçin (hepsi Ctrl+Z ile geri alınabilir)"
  },
  {
-  "i": 1935,
-  "t": "Tahmin edilemiyor: {}"
+  "i": 1631,
+  "t": "Yorum listesi açıldı (çalışma kitabının tamamı; bir satıra basınca oraya gidilir)"
  },
  {
-  "i": 1936,
-  "t": "Son sürüm"
+  "i": 1632,
+  "t": "Yorum listesi kapatıldı"
  },
  {
-  "i": 1937,
-  "t": "Son sürüm olarak işaretli (bu bir kilit değildir)"
+  "i": 1633,
+  "t": "Adsız kalmayı seçtiniz (bundan sonra yazacağınız yorumlara ad eklenmez)"
  },
  {
-  "i": 1938,
-  "t": "İşaretli değil"
+  "i": 1634,
+  "t": "Bundan sonra yazacağınız yorumlar “{}” adıyla imzalanacak (önceden yazılanlar değişmez)"
  },
  {
-  "i": 1939,
-  "t": "İşareti kaldır"
+  "i": 1635,
+  "t": "{} üzerindeki yorum kaldırıldı (Ctrl+Z ile geri alınabilir)"
  },
  {
-  "i": 1940,
-  "t": "Son sürüm olarak işaretle"
+  "i": 1636,
+  "t": "Ad belirlenmemiş (gelişmiş ayarlardaki “Yorum imzası” alanını doldurursanız yalnızca kendi yorumlarınızı silebilirsiniz)"
  },
  {
-  "i": 1941,
-  "t": "Bu çalışma kitabı son sürüm olarak işaretli (bu bir kilit değildir — hâlâ düzenleyebilirsiniz; işareti Dosya sekmesindeki «Koru» bölümünden kaldırın)"
+  "i": 1637,
+  "t": "{} tarafından yazılmış yorum yok"
  },
  {
-  "i": 1942,
-  "t": "Son sürüm işareti kaldırıldı"
+  "i": 1638,
+  "t": "Kendi girdilerinizden {} tanesi silindi ({} yorum dizisi tümüyle). Başkalarının yanıtları korundu. Ctrl+Z ile geri alınabilir"
  },
  {
-  "i": 1943,
-  "t": "Son sürüm olarak işaretlendi (bu bir kilit değildir — hâlâ düzenleyebilirsiniz; kaydedince xlsx'te kalır)"
+  "i": 1639,
+  "t": "Bu çalışma kitabında yorum yok"
  },
  {
-  "i": 1944,
-  "t": "Saklanan bir kopyayı aç: {}"
+  "i": 1640,
+  "t": "Çalışma kitabındaki {} yorumun tamamı silindi (Ctrl+Z ile geri alınabilir)"
  },
  {
-  "i": 1945,
-  "t": "→ Okunabileni kurtarıp aç (salt okunur)"
+  "i": 1641,
+  "t": "Konum"
  },
  {
-  "i": 1946,
-  "t": "Saklanan kopya yok. Yalnızca kurtarılan parçalarla açılır (üzerine yazamazsınız)"
+  "i": 1642,
+  "t": "Yazar"
  },
  {
-  "i": 1947,
-  "t": "Saklanan kopya daha kesindir. Kurtarma ondan sonraki yoldur"
+  "i": 1643,
+  "t": "Durum"
  },
  {
-  "i": 1948,
-  "t": "Bu dosya okunamıyor: {}"
+  "i": 1644,
+  "t": "Yorum imzası"
  },
  {
-  "i": 1949,
-  "t": "Bu çalışma kitabı kurtarılarak toplandı, bu yüzden üzerine yazmaz. Farklı Kaydet'i kullanın (özgün dosyaya dokunulmaz)"
+  "i": 1645,
+  "t": "Yorum imzası — geride bırakılacak ad (boş Enter = adsız kal)"
  },
  {
-  "i": 1950,
-  "t": "Hiçbir şey kurtarılamadı (hiçbir yeri zip olarak okunmuyor)"
+  "i": 1646,
+  "t": "Yorumlara ad eklenmeyecek"
  },
  {
-  "i": 1951,
-  "t": "{} okunamadı ({})"
+  "i": 1647,
+  "t": "Bundan sonra yorumlar “{}” adıyla imzalanacak"
  },
  {
-  "i": 1952,
-  "t": "Bütün parçalar kurtarıldı (yalnızca zip dizini bozuktu)"
+  "i": 1648,
+  "t": "Bir ad yazıp Enter'a basın (boş bırakırsanız ad eklenmez)"
  },
  {
-  "i": 1953,
-  "t": "{} parça kurtarılarak açıldı ({} tanesi kurtarılamadı). Üzerine yazamazsınız"
+  "i": 1649,
+  "t": "Görünüm şablonu uygulandı: {}"
  },
  {
-  "i": 1954,
-  "t": "Kurtarılan parçalarla bile açılmıyor: {}"
+  "i": 1650,
+  "t": "Görünüm şablonu okunamıyor ({}): {}"
  },
  {
-  "i": 1955,
-  "t": "Bu çalışma kitabı bozuk bir dosyadan toplanarak oluşturuldu (salt okunur — üzerine yazamazsınız)"
+  "i": 1651,
+  "t": "Sütun genişlikleri ve sayfa yapısı “{}” dosyasına aittir (bu dosyaya yazılmaz)"
  },
  {
-  "i": 1956,
-  "t": "Değerlerin kendisi listeleniyor (süzgeç kaldırıldı)"
+  "i": 1652,
+  "t": "Sütun genişlikleri ve sayfa yapısı “{}” dosyasına yazıldı (bir sonraki açılışta geçerli olur)"
  },
  {
-  "i": 1957,
-  "t": "Tarihler {} olarak gruplanıyor (süzgeç kaldırıldı)"
+  "i": 1653,
+  "t": "Görünüm şablonu yazılamıyor: {}"
  },
  {
-  "i": 1958,
-  "t": "Tarih değil"
+  "i": 1654,
+  "t": "Bu adda bir yazı tipi yok"
  },
  {
-  "i": 1959,
-  "t": "Değerlerin kendisi"
+  "i": 1655,
+  "t": "Okunuş eklenecek kanji sözcüğü yok"
  },
  {
-  "i": 1960,
-  "t": "Tarih birimi"
+  "i": 1656,
+  "t": "{} yere okunuş eklendi; bunlardan {} tanesinin birden fazla okunuşu var (lütfen kontrol edin. Ctrl+Z tek adımda geri alır)"
  },
  {
-  "i": 1961,
-  "t": "PDF'te tablo aranıyor…"
+  "i": 1657,
+  "t": "(adsız)"
  },
  {
-  "i": 1962,
-  "t": "PDF okuyan araç (pdfplumber) yok. Şununla kurulur:\n  {}"
+  "i": 1658,
+  "t": "{} yorum"
  },
  {
-  "i": 1963,
-  "t": "PDF okunamıyor: {}"
+  "i": 1659,
+  "t": "{} ölçütüne göre sıralandı"
  },
  {
-  "i": 1964,
-  "t": "Bu PDF'te tablo bulunamadı (resim olarak yapıştırılmış bir tablo okunamaz)"
+  "i": 1660,
+  "t": "Bu çalışma kitabında yorum yok (sağ tık menüsündeki “Yorum ekle” ile eklenir)"
  },
  {
-  "i": 1965,
-  "t": "{} / {} (sayfa {})"
+  "i": 1661,
+  "t": "{} yanıt"
  },
  {
-  "i": 1966,
-  "t": "Çizgilerden"
+  "i": 1662,
+  "t": "✓ Çözüldü"
  },
  {
-  "i": 1967,
-  "t": "Metin konumundan (tahmin)"
+  "i": 1663,
+  "t": "Dilimleyici yapılacak sütunları seçin (istediğiniz kadar; kapatmak için ☑ işaretine dokunun; yalnız görünüm, veriler değişmez)"
  },
  {
-  "i": 1968,
-  "t": "Nasıl bulundu"
+  "i": 1664,
+  "t": "{} sütununun dilimleyicisi kapatıldı"
  },
  {
-  "i": 1969,
-  "t": "Not: çizgi yoktu, bu yüzden bir tahmin. Sütunların kaymadığını kontrol edin"
+  "i": 1665,
+  "t": "Dilimleyici ayarları"
  },
  {
-  "i": 1970,
-  "t": "{} ({} hücre)"
+  "i": 1666,
+  "t": "Yükseklik"
  },
  {
-  "i": 1971,
-  "t": "→ Yeni senaryo (seçili hücrelerin şu anki değerleri)…"
+  "i": 1667,
+  "t": "Oranı koru"
  },
  {
-  "i": 1972,
-  "t": "→ Bir senaryo sil…"
+  "i": 1668,
+  "t": "Açık"
  },
  {
-  "i": 1973,
-  "t": "Henüz hiç yok. Değiştirip karşılaştırmak istediğiniz hücreleri seçin, sonra bir tane oluşturun"
+  "i": 1669,
+  "t": "Düğme sütunları"
  },
  {
-  "i": 1974,
-  "t": "Birine bastığınızda değerleri hücrelere geri yazılır (Ctrl+Z geri alır)"
+  "i": 1670,
+  "t": "Konum"
  },
  {
-  "i": 1975,
-  "t": "Çok fazla hücre seçildi (en fazla 64; yalnızca değiştirmek istediğiniz hücreleri seçin)"
+  "i": 1671,
+  "t": "Otomatik (sağdan sola)"
  },
  {
-  "i": 1976,
-  "t": "Senaryoya bir ad yazıp Enter'a basın (seçili {} hücrenin değerleri saklanır)"
+  "i": 1672,
+  "t": "Otomatik konuma dön"
  },
  {
-  "i": 1977,
-  "t": "Silinecek senaryoyu seçin"
+  "i": 1673,
+  "t": "Konum otomatiğe döndürüldü (sağdan sola)"
  },
  {
-  "i": 1978,
-  "t": "“{}” senaryosu uygulandı ({} hücre; Ctrl+Z geri alır)"
+  "i": 1674,
+  "t": "Boyut: {}×{}px"
  },
  {
-  "i": 1979,
-  "t": "“{}” senaryosu silindi"
+  "i": 1675,
+  "t": "Taşımak için sürükleyin (ayarlardaki “Otomatik konuma dön” ile sıraya geri döner)"
  },
  {
-  "i": 1980,
-  "t": "Ad boş (hiçbir şey oluşturulmadı)"
+  "i": 1676,
+  "t": "Taşımak için başlığı sürükleyin. Boyut ve konum yalnızca görünümü değiştirir; kaydedilen veriler değişmez"
  },
  {
-  "i": 1981,
-  "t": "Seçimde saklanacak değer yok (formül hücreleri alınmaz — uygulanırsa formül silinir)"
+  "i": 1677,
+  "t": "Matematik otomatik düzeltme"
  },
  {
-  "i": 1982,
-  "t": "“{}” senaryosu yeniden saklandı ({} hücre)"
+  "i": 1678,
+  "t": "Açık (\\alpha yazınca α olur)"
  },
  {
-  "i": 1983,
-  "t": "“{}” senaryosu saklandı ({} hücre; kaydedince xlsx'te de kalır)"
+  "i": 1679,
+  "t": "Matematik otomatik düzeltme: açık (ayırıcı yazdığınızda simge belirir; Backspace yazılışı geri getirir)"
  },
  {
-  "i": 1984,
-  "t": "Bağlı {} PivotTable de aynı şekilde süzüldü"
+  "i": 1680,
+  "t": "Matematik otomatik düzeltme: kapalı (yazdığınız neyse öyle kalır)"
  },
  {
-  "i": 1985,
-  "t": "Önce bir dilimleyici seçin"
+  "i": 1681,
+  "t": "{} simgeye dönüştürüldü (Backspace yazılışı geri getirir)"
  },
  {
-  "i": 1986,
-  "t": "Bu çalışma kitabında PivotTable yok (önce bir tane oluşturun)"
+  "i": 1682,
+  "t": "Tuş ipuçları: bir harf sekmeyi seçer, sonraki harf düğmeye basar (Esc ile çıkın)"
  },
  {
-  "i": 1987,
-  "t": "Bu dilimleyiciyle süzdüğünüzde bağlı PivotTable'lar da aynı şekilde süzülür"
+  "i": 1683,
+  "t": "Tuş ipuçları kapatıldı"
  },
  {
-  "i": 1988,
-  "t": "Rapor bağlantıları"
+  "i": 1684,
+  "t": "{} sekmesi (bir harf düğmeye basar; Esc ile çıkın)"
  },
  {
-  "i": 1989,
-  "t": "Bağlı değil"
+  "i": 1685,
+  "t": "Böyle bir harf yok (“{}”)"
  },
  {
-  "i": 1990,
-  "t": "{} tanesine bağlı"
+  "i": 1686,
+  "t": "Sütun seçildi (satır için Shift+Boşluk)"
  },
  {
-  "i": 1991,
-  "t": "Önerilen bir düzen seçin (alanları kendiniz de seçebilirsiniz)"
+  "i": 1687,
+  "t": "Satır seçildi (sütun için Ctrl+Boşluk)"
  },
  {
-  "i": 1992,
-  "t": "Alanları kendim seçeyim (önce satırlar, sonra sütunlar, sonra değerler)"
+  "i": 1688,
+  "t": "Ayarlardaki key.{} bilinmeyen bir eylem adı"
  },
  {
-  "i": 1993,
-  "t": "Tablonuzdan çıkarılabilecek düzenler. Birine basana kadar hiçbir şey oluşturulmaz"
+  "i": 1689,
+  "t": "Ayarlardaki key.{} kısayolu okunamıyor: {}"
  },
  {
-  "i": 1994,
-  "t": "Satırlar: {} / Sütunlar: {} / {} alanının {} değeri"
+  "i": 1690,
+  "t": "{} kısayolu {} ile {} arasında çakışıyor ({} kazanır)"
  },
  {
-  "i": 1995,
-  "t": "Satırlar: {} / {} alanının {} değeri"
+  "i": 1691,
+  "t": "Kaydedilmemiş değişiklikler var — kaydetmek için Ctrl+S, vazgeçip kapatmak için tekrar Esc"
  },
  {
-  "i": 1996,
-  "t": "Çalışma kitabını koru"
+  "i": 1692,
+  "t": "Ctrl+S kaydet (kaydedince hücre işlevleri yeniden hesaplanır) / Esc kapat / Tab girinti"
  },
  {
-  "i": 1997,
-  "t": "Şu anda geçerli olanlar. Bir düğmeye basınca sayfaya dönülür ve gerisi sorulur"
+  "i": 1693,
+  "t": "Süzmek için yazın"
  },
  {
-  "i": 1998,
-  "t": "Parolayla şifrele"
+  "i": 1694,
+  "t": "Listede yok (girildiği gibi kullanmak için Enter)"
  },
  {
-  "i": 1999,
-  "t": "Açık (bir sonraki kaydetmeden itibaren)"
+  "i": 1695,
+  "t": "İlk satır (kopyalanacak üst satır yok)"
  },
  {
-  "i": 2000,
-  "t": "Ayarlanmadı"
+  "i": 1696,
+  "t": "A sütunu (kopyalanacak sol sütun yok)"
  },
  {
-  "i": 2001,
-  "t": "Değiştir veya kaldır"
+  "i": 1697,
+  "t": "Kopyalamak için aşağı veya sağa sürükleyin (çift tıklama: komşu sütunun uzunluğu kadar)"
  },
  {
-  "i": 2002,
-  "t": "Bir parola belirle"
+  "i": 1698,
+  "t": "Uzunluk alınacak komşu sütun yok (iki taraf da boş)"
  },
  {
-  "i": 2003,
-  "t": "Sayfayı koru"
+  "i": 1699,
+  "t": "{} → {} kopyalandı"
  },
  {
-  "i": 2004,
-  "t": "“{}” korunuyor"
+  "i": 1700,
+  "t": "{} hücre yapıştırıldı (biçim de dâhil)"
  },
  {
-  "i": 2005,
-  "t": "“{}” korunmuyor"
+  "i": 1701,
+  "t": "{} hücre yapıştırıldı (başka uygulamadan gelen yazı, biçim korundu)"
  },
  {
-  "i": 2006,
-  "t": "Korumayı kaldır"
+  "i": 1702,
+  "t": "Sayfanın tamamı seçildi"
  },
  {
-  "i": 2007,
-  "t": "Bu sayfayı koru"
+  "i": 1703,
+  "t": "{} sütunu seçildi (sütunun tamamı)"
  },
  {
-  "i": 2008,
-  "t": "Koruma sırasında izin verilenler"
+  "i": 1704,
+  "t": "{}–{} sütunları seçildi (sütunların tamamı)"
  },
  {
-  "i": 2009,
-  "t": "Seç"
+  "i": 1705,
+  "t": "{} satırı seçildi (satırın tamamı)"
  },
  {
-  "i": 2010,
-  "t": "Salt okunuru öner"
+  "i": 1706,
+  "t": "{}–{} satırları seçildi (satırların tamamı)"
  },
  {
-  "i": 2011,
-  "t": "Öneriliyor (bu bir kilit değildir)"
+  "i": 1707,
+  "t": "{} dosyasına kaydedildi (düz metin)"
  },
  {
-  "i": 2012,
-  "t": "Önerilmiyor"
+  "i": 1708,
+  "t": "{} ({} satır) — düz metin olarak açıldı; düz metin olarak kaydedilecek"
  },
  {
-  "i": 2013,
-  "t": "Öner"
+  "i": 1709,
+  "t": "Makrolar ve düz metin"
  },
  {
-  "i": 2014,
-  "t": "Dijital imza"
+  "i": 1710,
+  "t": "Oluşturulamıyor: {}"
  },
  {
-  "i": 2015,
-  "t": "Yanında bir imza dosyası var"
+  "i": 1711,
+  "t": "{} oluşturuldu ve {} ile açıldı (kaydedince hücreden çağırabilirsiniz)"
  },
  {
-  "i": 2016,
-  "t": "İmzalanmadı"
+  "i": 1712,
+  "t": "{} oluşturuldu ama açılamıyor: {}"
  },
  {
-  "i": 2017,
-  "t": "İmzala veya doğrula"
+  "i": 1713,
+  "t": "{}, {} ile açıldı"
  },
  {
-  "i": 2018,
-  "t": "Sayfa koruması ve salt okunur önerisi kilit değildir. İsteyen kaldırabilir. Aksini iddia etmiyoruz"
+  "i": 1714,
+  "t": "Kayıt başladı. Yaptıklarınız Python satırlarına dönüşür (durdurmak için tekrar basın)"
  },
  {
-  "i": 2019,
-  "t": "Doğrulayalım. Aynı parolayı bir kez daha yazıp Enter'a basın"
+  "i": 1715,
+  "t": "Kayıt {} dosyasına yazıldı ({} satır) — {} ile açılıyor"
  },
  {
-  "i": 2020,
-  "t": "İki parola farklı (şifreleme değişmedi; lütfen tekrar deneyin)"
+  "i": 1716,
+  "t": "Kayıt {} dosyasına yazıldı ({} satır)"
  },
  {
-  "i": 2021,
-  "t": "Hiçbir şeye izin verilmiyor"
+  "i": 1717,
+  "t": "Kayıt yazılamıyor: {}"
  },
  {
-  "i": 2022,
-  "t": "{} işlemden {} tanesine izin veriliyor"
+  "i": 1718,
+  "t": "Yapay zekâ hedefi"
  },
  {
-  "i": 2023,
-  "t": "Şifreleme 1/2 — parola (boş bırakıp Enter'a basarsanız şifreleme kalkar)"
+  "i": 1719,
+  "t": "Şu anda kullanılabilir mi"
  },
  {
-  "i": 2024,
-  "t": "Şifreleme 2/2 — aynı parola bir kez daha"
+  "i": 1720,
+  "t": "Yapay zekâ modeli (JO_AI_MODEL)"
  },
  {
-  "i": 2025,
-  "t": "Bölme kaldırıldı"
+  "i": 1721,
+  "t": "(hedefin varsayılanı)"
  },
  {
-  "i": 2026,
-  "t": "Bölmek istediğiniz yere imleci koyun (imlecin üstünden ve solundan bölünür)"
+  "i": 1722,
+  "t": "Kullanılabilir"
  },
  {
-  "i": 2027,
-  "t": "Bölündü (tekerlek, işaretçinin üzerinde durduğu bölümü kaydırır)"
+  "i": 1723,
+  "t": "Sormadan bilinmez (aşağıdaki hedefe bağlanır)"
  },
  {
-  "i": 2028,
-  "t": "{} hücre işaretlendi (temizlemek için yeniden basın)"
+  "i": 1724,
+  "t": "Sol panel (Yapay zekâya sor) açıldı"
  },
  {
-  "i": 2029,
-  "t": "Bu sayfada doğrulama kuralı yok (Veri sekmesindeki Veri doğrulama ile ekleyin)"
+  "i": 1725,
+  "t": "Sol panel kapatıldı"
  },
  {
-  "i": 2030,
-  "t": "Doğrulama kurallarını çiğneyen değer yok"
+  "i": 1726,
+  "t": "Sağ panel (Hücre ayarları) açıldı"
  },
  {
-  "i": 2031,
-  "t": "İşaretler temizlendi"
+  "i": 1727,
+  "t": "Sağ panel kapatıldı"
  },
  {
-  "i": 2032,
-  "t": "Kaynak aralığı yazıp Enter'a basın (ör. Sheet1!A1:C20; başlık satırını da alın)"
- },
- {
-  "i": 2033,
-  "t": "Yeniden yönlendirmek istediğiniz PivotTable üzerine imleci koyun"
- },
- {
-  "i": 2034,
-  "t": "Aralığı A1:C20 biçiminde yazın"
- },
- {
-  "i": 2035,
-  "t": "Aralık okunamıyor: {}"
- },
- {
-  "i": 2036,
-  "t": "“{}” adlı sayfa yok"
- },
- {
-  "i": 2037,
-  "t": "Yeni aralıkta şu başlıklar yok: {} (PivotTable bunları kullanıyor)"
- },
- {
-  "i": 2038,
-  "t": "Kaynak tablo {}!{}:{} olarak değiştirildi (yeniden kuruluyor)"
- },
- {
-  "i": 2039,
-  "t": "Önce kısıtın sol tarafını yazın"
- },
- {
-  "i": 2040,
-  "t": "Çözüm aranıyor… (tamsayı programı, dallandır ve sınırla)"
- },
- {
-  "i": 2041,
-  "t": "{} bir değişken hücresi değil (tamsayı ve ikili yalnızca değişken hücrelerine konur)"
- },
- {
-  "i": 2042,
-  "t": "Çözüm bulunamadı ({} değeri {} üzerinde etkili olmayabilir)"
- },
- {
-  "i": 2043,
-  "t": "Oryantasyon"
- },
- {
-  "i": 2044,
-  "t": "Ortaya hizala"
- },
- {
-  "i": 2045,
-  "t": "Python işlevleri"
- },
- {
-  "i": 2046,
-  "t": "Şerit makroları"
- },
- {
-  "i": 2047,
-  "t": "Biçim boyacısı"
- },
- {
-  "i": 2048,
-  "t": "Alan listesi"
- },
- {
-  "i": 2049,
-  "t": "Ekran yazısını büyüt"
- },
- {
-  "i": 2050,
-  "t": "Ekran yazısını küçült"
- },
- {
-  "i": 2051,
-  "t": "Geçersiz verileri daire içine al"
- },
- {
-  "i": 2052,
-  "t": "Pencereyi böl"
- },
- {
-  "i": 2053,
-  "t": "Senaryo"
- },
- {
-  "i": 2054,
-  "t": "Tahmin sayfası"
- },
- {
-  "i": 2055,
-  "t": "PivotChart"
- },
- {
-  "i": 2056,
-  "t": "Yazdırma düzeni"
- },
- {
-  "i": 2057,
-  "t": "Hedef"
- },
- {
-  "i": 2058,
-  "t": "özet"
- },
- {
-  "i": 2059,
-  "t": "Yeniden yaz"
- },
- {
-  "i": 2060,
-  "t": "Daha kibar"
- },
- {
-  "i": 2061,
-  "t": "Sadeleştir"
- },
- {
-  "i": 2062,
-  "t": "çeviri"
- },
- {
-  "i": 2063,
-  "t": "Devamını yaz"
- },
- {
-  "i": 2064,
-  "t": "Tabloya çevir"
- },
- {
-  "i": 2065,
-  "t": "Sor"
- },
- {
-  "i": 2066,
-  "t": "Ruby"
- },
- {
-  "i": 2067,
-  "t": "Metin yönü"
- },
- {
-  "i": 2068,
-  "t": "Dağıtılmış"
- },
- {
-  "i": 2069,
-  "t": "Resim yazısı ekle"
- },
- {
-  "i": 2070,
-  "t": "URL aç"
- },
- {
-  "i": 2071,
-  "t": "Dizin"
- },
- {
-  "i": 2072,
-  "t": "Aozora notları"
- },
- {
-  "i": 2073,
-  "t": "Denden işaretlemesi"
- },
- {
-  "i": 2074,
-  "t": "Değişiklikleri izle"
- },
- {
-  "i": 2075,
-  "t": "Değişiklikleri göster"
- },
- {
-  "i": 2076,
-  "t": "Düzeltme"
- },
- {
-  "i": 2077,
-  "t": "Yazım denetimi"
- },
- {
-  "i": 2078,
-  "t": "Eş anlamlılar sözlüğü"
- },
- {
-  "i": 2079,
-  "t": "Hatalı dönüştürme"
- },
- {
-  "i": 2080,
-  "t": "Yazım tutarsızlığı"
- },
- {
-  "i": 2081,
-  "t": "Hesaplama"
- },
- {
-  "i": 2082,
-  "t": "Sağdan sola metin"
- },
- {
-  "i": 2083,
-  "t": "Sayfa yönü"
- },
- {
-  "i": 2084,
-  "t": "Python"
- },
- {
-  "i": 2085,
-  "t": "Onay kutusu"
- },
- {
-  "i": 2086,
-  "t": "Dış bağlantılar"
- },
- {
-  "i": 2087,
-  "t": "Önerilen grafik"
- },
- {
-  "i": 2088,
-  "t": "Birlikte düzenleme modu"
- },
- {
-  "i": 2089,
-  "t": "Sürüm geçmişi"
- },
- {
-  "i": 2090,
+  "i": 1728,
   "t": "Sohbet"
  },
  {
-  "i": 2091,
-  "t": "Şifrele"
+  "i": 1729,
+  "t": "Hücre ayarları"
  },
  {
-  "i": 2092,
-  "t": "Dijital imza ekle"
- },
- {
-  "i": 2093,
-  "t": "Eklentileri yönet"
- },
- {
-  "i": 2094,
-  "t": "Sıfırları göster"
- },
- {
-  "i": 2095,
-  "t": "%100'e yakınlaştır"
- },
- {
-  "i": 2096,
-  "t": "Arayüz teması"
- },
- {
-  "i": 2097,
-  "t": "Gözcü penceresi"
- },
- {
-  "i": 2098,
-  "t": "Otomatik Toplam"
- },
- {
-  "i": 2099,
-  "t": "İşlemleri kaydet"
- },
- {
-  "i": 2100,
-  "t": "Açıklamayı sil"
- },
- {
-  "i": 2101,
-  "t": "Çözücü"
- },
- {
-  "i": 2102,
-  "t": "Metinden veri"
- },
- {
-  "i": 2103,
-  "t": "Okları kaldır"
- },
- {
-  "i": 2104,
-  "t": "Doldur"
- },
- {
-  "i": 2105,
-  "t": "Filtreyi temizle"
- },
- {
-  "i": 2106,
-  "t": "Makro yaz"
- },
- {
-  "i": 2107,
-  "t": "Metni sütunlara dönüştür"
- },
- {
-  "i": 2108,
-  "t": "Resim yazısı"
- },
- {
-  "i": 2109,
-  "t": "Şekiller tablosu"
- },
- {
-  "i": 2110,
-  "t": "Şekiller tablosunu güncelle"
- },
- {
-  "i": 2111,
-  "t": "Dış bağlantılar (değer olarak al)"
- },
- {
-  "i": 2112,
-  "t": "Formülleri göster"
- },
- {
-  "i": 2113,
-  "t": "Metin yönü (sağdan sola)"
- },
- {
-  "i": 2114,
-  "t": "Son kullanılan işlevler"
- },
- {
-  "i": 2115,
-  "t": "Kılavuz çizgileri de yazdır"
- },
- {
-  "i": 2116,
-  "t": "İçindekiler tablosunu güncelle"
- },
- {
-  "i": 2117,
-  "t": "Şeritli sütunlar"
- },
- {
-  "i": 2118,
-  "t": "Başlıkları da yazdır"
- },
- {
-  "i": 2119,
-  "t": "Ayrıntıyı gizle"
- },
- {
-  "i": 2120,
-  "t": "Yinelenenleri kaldır"
- },
- {
-  "i": 2121,
-  "t": "İşlev ekle"
- },
- {
-  "i": 2122,
-  "t": "CSV biçimi"
- },
- {
-  "i": 2123,
-  "t": "Hücre kilidi"
- },
- {
-  "i": 2124,
-  "t": "Veri tablosu"
- },
- {
-  "i": 2125,
-  "t": "Hızlı doldurma"
- },
- {
-  "i": 2126,
-  "t": "Liste"
- },
- {
-  "i": 2127,
-  "t": "Ad yapıştır"
- },
- {
-  "i": 2128,
+  "i": 1730,
   "t": "Metni kaydır"
  },
  {
+  "i": 1731,
+  "t": "Sayı biçimi"
+ },
+ {
+  "i": 1732,
+  "t": "Binlik ayırıcı"
+ },
+ {
+  "i": 1733,
+  "t": "Ürün kodu (0000)"
+ },
+ {
+  "i": 1734,
+  "t": "Kenarlık kalemi"
+ },
+ {
+  "i": 1735,
+  "t": "İnce"
+ },
+ {
+  "i": 1736,
+  "t": "Kalın"
+ },
+ {
+  "i": 1737,
+  "t": "Çift"
+ },
+ {
+  "i": 1738,
+  "t": "Nereye çizilecek (üst üste basılabilir)"
+ },
+ {
+  "i": 1739,
+  "t": "Sil"
+ },
+ {
+  "i": 1740,
+  "t": "Yapay zekâya sor"
+ },
+ {
+  "i": 1741,
+  "t": "Uygula"
+ },
+ {
+  "i": 1742,
+  "t": "Öneri atıldı (hiçbir şey değişmedi)"
+ },
+ {
+  "i": 1743,
+  "t": "Yazmak için buraya basın; Enter gönderir"
+ },
+ {
+  "i": 1744,
+  "t": "Gönder"
+ },
+ {
+  "i": 1745,
+  "t": "Düşünüyor…"
+ },
+ {
+  "i": 1746,
+  "t": "Şu an: {}"
+ },
+ {
+  "i": 1747,
+  "t": "Sayfaya dönüldü (sohbet paneli açık kalır)"
+ },
+ {
+  "i": 1748,
+  "t": "Değişiklik şöyle."
+ },
+ {
+  "i": 1749,
+  "t": "Bir öneri hazır (sol panelde okuyup Uygula'ya basın)"
+ },
+ {
+  "i": 1750,
+  "t": "Yanıtlandı (sol panel)"
+ },
+ {
+  "i": 1751,
+  "t": "Sayı biçimi Genel'e döndürüldü"
+ },
+ {
+  "i": 1752,
+  "t": "Sorulacak bir şey yok"
+ },
+ {
+  "i": 1753,
+  "t": "Bir betik çalışıyor (bitmesini bekleyin)"
+ },
+ {
+  "i": 1754,
+  "t": "Öneri çalıştırılıyor…"
+ },
+ {
+  "i": 1755,
+  "t": "Uygulandı."
+ },
+ {
+  "i": 1756,
+  "t": "Öneri uygulandı (Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1757,
+  "t": "Sayı biçimi {} olarak ayarlandı"
+ },
+ {
+  "i": 1758,
+  "t": "Öneri uygulandı: {} (Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1759,
+  "t": "Betik başarısız oldu: {}"
+ },
+ {
+  "i": 1760,
+  "t": "Betik çalışmadı: {}"
+ },
+ {
+  "i": 1761,
+  "t": "Düzeltilmiş metin hazır (sol panelde okuyup Uygula'ya basın)"
+ },
+ {
+  "i": 1762,
+  "t": "Seçim değiştirildi (Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1763,
+  "t": "İmlecin arkasına eklendi (Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1764,
+  "t": "Metne dönüldü (sohbet paneli açık kalır)"
+ },
+ {
+  "i": 1765,
+  "t": "Eklenecek metin (basılmadan girmez)"
+ },
+ {
+  "i": 1766,
+  "t": "Metin atıldı (hiçbir şey değişmedi)"
+ },
+ {
+  "i": 1767,
+  "t": "YZ"
+ },
+ {
+  "i": 1768,
+  "t": "Girinti"
+ },
+ {
+  "i": 1769,
+  "t": "Girinti {} olarak ayarlandı"
+ },
+ {
+  "i": 1770,
+  "t": "Girinti daha fazla daraltılamaz"
+ },
+ {
+  "i": 1771,
+  "t": "Girinti daha fazla genişletilemez"
+ },
+ {
+  "i": 1772,
+  "t": "Metin yönü"
+ },
+ {
+  "i": 1773,
+  "t": "Metin yönü {} olarak ayarlandı"
+ },
+ {
+  "i": 1774,
+  "t": "Koşullu biçimlendirme"
+ },
+ {
+  "i": 1775,
+  "t": "Negatifler kırmızı"
+ },
+ {
+  "i": 1776,
+  "t": "Yinelenenler"
+ },
+ {
+  "i": 1777,
+  "t": "Benzersizler"
+ },
+ {
+  "i": 1778,
+  "t": "Renk ölçeği"
+ },
+ {
+  "i": 1779,
+  "t": "Simgeler"
+ },
+ {
+  "i": 1780,
+  "t": "Tablo"
+ },
+ {
+  "i": 1781,
+  "t": "{} satır × {} sütun — şu an satır {}, sütun {}"
+ },
+ {
+  "i": 1782,
+  "t": "Üste satır"
+ },
+ {
+  "i": 1783,
+  "t": "Alta satır"
+ },
+ {
+  "i": 1784,
+  "t": "Satırı sil"
+ },
+ {
+  "i": 1785,
+  "t": "Sola sütun"
+ },
+ {
+  "i": 1786,
+  "t": "Sağa sütun"
+ },
+ {
+  "i": 1787,
+  "t": "Sütunu sil"
+ },
+ {
+  "i": 1788,
+  "t": "Üste satır eklendi"
+ },
+ {
+  "i": 1789,
+  "t": "Alta satır eklendi"
+ },
+ {
+  "i": 1790,
+  "t": "Sola sütun eklendi"
+ },
+ {
+  "i": 1791,
+  "t": "Sağa sütun eklendi"
+ },
+ {
+  "i": 1792,
+  "t": "Satır silindi (Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1793,
+  "t": "Sütun silindi (Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1794,
+  "t": "Son satır silinemez (tablonun tamamını silmek ayrı bir işlemdir)"
+ },
+ {
+  "i": 1795,
+  "t": "Son sütun silinemez (tablonun tamamını silmek ayrı bir işlemdir)"
+ },
+ {
+  "i": 1796,
+  "t": "Denklem"
+ },
+ {
+  "i": 1797,
+  "t": "Denklemi düzenle"
+ },
+ {
+  "i": 1798,
+  "t": "Denklem düzenleniyor (Enter yeniden dizer, Esc iptal eder)"
+ },
+ {
+  "i": 1799,
+  "t": "Bu paragrafta resim yok"
+ },
+ {
+  "i": 1800,
+  "t": "Resim küçültüldü"
+ },
+ {
+  "i": 1801,
+  "t": "Resim büyütüldü"
+ },
+ {
+  "i": 1802,
+  "t": "{:.0}×{:.0}mm"
+ },
+ {
+  "i": 1803,
+  "t": "Sıralama"
+ },
+ {
+  "i": 1804,
+  "t": "En öne getir"
+ },
+ {
+  "i": 1805,
+  "t": "Öne getir"
+ },
+ {
+  "i": 1806,
+  "t": "Arkaya gönder"
+ },
+ {
+  "i": 1807,
+  "t": "En arkaya gönder"
+ },
+ {
+  "i": 1808,
+  "t": "Sola döndür"
+ },
+ {
+  "i": 1809,
+  "t": "Sağa döndür"
+ },
+ {
+  "i": 1810,
+  "t": "Yatay çevir"
+ },
+ {
+  "i": 1811,
+  "t": "Dikey çevir"
+ },
+ {
+  "i": 1812,
+  "t": "Diğer"
+ },
+ {
+  "i": 1813,
+  "t": "Bir şekil seçili"
+ },
+ {
+  "i": 1814,
+  "t": "Bir resim seçili"
+ },
+ {
+  "i": 1815,
+  "t": "Seçili şekil veya resim yok (sayfada birine tıklayın)"
+ },
+ {
+  "i": 1816,
+  "t": "Sayfa — tüm belgenin ayarları"
+ },
+ {
+  "i": 1817,
+  "t": "Üst bilgi ve alt bilgi"
+ },
+ {
+  "i": 1818,
+  "t": "Düzenle"
+ },
+ {
+  "i": 1819,
+  "t": "Filigran"
+ },
+ {
+  "i": 1820,
+  "t": "Sayfa rengi"
+ },
+ {
+  "i": 1821,
+  "t": "Seçili aralık hakkında soru sorabilirsiniz. Sayfayı değiştirecek bir şey varsa, ne yapılacağını önce görürsünüz — siz basmadan sayfa değişmez."
+ },
+ {
+  "i": 1822,
+  "t": "örn. satışa göre çoktan aza sırala / ilk 5'i renklendir / toplam satırı ekle"
+ },
+ {
+  "i": 1823,
+  "t": "Önerilen değişiklik (siz basmadan hiçbir şey olmaz)"
+ },
+ {
+  "i": 1824,
+  "t": "Seçim hakkında soru sorabilirsiniz. Metin yeniden yazılacaksa, yeni metni önce görürsünüz — siz basmadan hiçbir şey girmez."
+ },
+ {
+  "i": 1825,
+  "t": "örn. bu paragrafı daha kibar yap / yarı uzunlukta / kulağa sert geliyor mu söyle"
+ },
+ {
+  "i": 1826,
+  "t": "Yorumlar gösteriliyor (hücre balonları olarak)"
+ },
+ {
+  "i": 1827,
+  "t": "Yerel modelin hedefi"
+ },
+ {
+  "i": 1828,
+  "t": "bu makinede kalır"
+ },
+ {
+  "i": 1829,
+  "t": "bu makineden çıkar"
+ },
+ {
+  "i": 1830,
+  "t": "Hedef nasıl belirlenir"
+ },
+ {
+  "i": 1831,
+  "t": "settings.toml içindeki ai_url / ai_model (OFFICE_URL ortam değişkeni önceliklidir)"
+ },
+ {
+  "i": 1832,
+  "t": "Yeni sohbet"
+ },
+ {
+  "i": 1833,
+  "t": "Yeni sohbet başlatıldı (sayfaya dokunulmadı)"
+ },
+ {
+  "i": 1834,
+  "t": "Düzeltmesini iste"
+ },
+ {
+  "i": 1835,
+  "t": "Böyle bırak"
+ },
+ {
+  "i": 1836,
+  "t": "Başarısız oldu. {}"
+ },
+ {
+  "i": 1837,
+  "t": "Uygulandı. {}"
+ },
+ {
+  "i": 1838,
+  "t": "Hedef: {} (değiştirmek için basın)"
+ },
+ {
+  "i": 1839,
+  "t": "Önceki betik başarısız oldu. Hatayı oku ve düzeltilmiş bir betik ver.\n\n[Hata]\n{}\n\n[Başarısız betik]\n{}"
+ },
+ {
+  "i": 1840,
+  "t": "Bir hücreye =ad(...) yazabilirsiniz. Birini seçmek onu bir düzenleyicide açar"
+ },
+ {
+  "i": 1841,
+  "t": "Formüllerden çağrılabilecek işlev henüz yok ({} içine bir .py koyun)"
+ },
+ {
+  "i": 1842,
+  "t": "Formüllerden çağırdığınız işlevleri {} içine taşıyın (plugins artık elle çalıştırdığınız makroların klasörü)"
+ },
+ {
+  "i": 1843,
+  "t": "Klasör oluşturulamıyor: {}"
+ },
+ {
+  "i": 1844,
+  "t": "Açılamıyor: metin UTF-8 değil"
+ },
+ {
+  "i": 1845,
+  "t": " (formüller korunur; görünüm kaydedilmez)"
+ },
+ {
+  "i": 1846,
+  "t": "Dosyalar — klasörün içeriği"
+ },
+ {
+  "i": 1847,
+  "t": "Açık klasör yok (Dosya > Aç)"
+ },
+ {
+  "i": 1848,
+  "t": "(klasör boş)"
+ },
+ {
+  "i": 1849,
+  "t": "Belge {}"
+ },
+ {
+  "i": 1850,
+  "t": "{} ({} belge)"
+ },
+ {
+  "i": 1851,
+  "t": "(adsız)"
+ },
+ {
+  "i": 1852,
+  "t": "{} gösteriliyor"
+ },
+ {
+  "i": 1853,
+  "t": "Kaydedilmemiş değişiklikler var (önce kaydedin)"
+ },
+ {
+  "i": 1854,
+  "t": "{} olarak kaydedildi (tablolar çift uzantıyla adlandırılır)"
+ },
+ {
+  "i": 1855,
+  "t": "Klasör"
+ },
+ {
+  "i": 1856,
+  "t": "Belge"
+ },
+ {
+  "i": 1857,
+  "t": "Görünüm"
+ },
+ {
+  "i": 1858,
+  "t": "Form"
+ },
+ {
+  "i": 1859,
+  "t": "officework — açmak için bir klasör seçin"
+ },
+ {
+  "i": 1860,
+  "t": "{} açıldı (sağdaki listeden bir dosya seçin)"
+ },
+ {
+  "i": 1861,
+  "t": "AsciiDoc düz metin bir dosyadır, bu yüzden şifreli olarak kaydedilemez (şifrelemeyi kaldırın veya xlsx olarak kaydedin)"
+ },
+ {
+  "i": 1862,
+  "t": "{}:{} tabloya dönüştürüldü (başlık satırı rengi ve şeritli satırlar; yeniden aralığa çevirebilir veya boyutlandırabilirsiniz — Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1863,
+  "t": "\"{}\" tablosu yeniden normal bir aralık oldu (başlık rengi, şeritler, biçimlendirme ve formüller korunur)"
+ },
+ {
+  "i": 1864,
+  "t": "Başlık satırı"
+ },
+ {
+  "i": 1865,
+  "t": "Dolgu #{}"
+ },
+ {
+  "i": 1866,
+  "t": "Kaydedilmemiş değişiklikler var (önce kaydedin): {}"
+ },
+ {
+  "i": 1867,
+  "t": "Sonuncusu açık kalır"
+ },
+ {
+  "i": 1868,
+  "t": "{} kaydedilmemiş değişiklikler içeriyor (önce kaydedin)"
+ },
+ {
+  "i": 1869,
+  "t": "Açabileceğiniz dosyalar"
+ },
+ {
+  "i": 1870,
+  "t": "officework belgeleri ve tabloları"
+ },
+ {
+  "i": 1871,
+  "t": "Daha önce açık olan {} dosya bulunamadı"
+ },
+ {
+  "i": 1872,
+  "t": "\"{}\" bu dosyada yok"
+ },
+ {
+  "i": 1873,
+  "t": "\"{}\" bu sayfada yok (diğer sayfalarda da aramak için \"Bu dosya\" seçin)"
+ },
+ {
+  "i": 1874,
+  "t": "\"{}\": {} {} (bu dosyada {} yer)"
+ },
+ {
+  "i": 1875,
+  "t": "\"{}\": {} (bu sayfada {} yer)"
+ },
+ {
+  "i": 1876,
+  "t": "Şurada ara"
+ },
+ {
+  "i": 1877,
+  "t": "Bu sayfa"
+ },
+ {
+  "i": 1878,
+  "t": "Bu dosya"
+ },
+ {
+  "i": 1879,
+  "t": "Klasörün tamamı için Veri sekmesindeki \"Klasörde ara\""
+ },
+ {
+  "i": 1880,
+  "t": "\"{}\": {}. belge"
+ },
+ {
+  "i": 1881,
+  "t": "\"{}\" bu belgede yok (diğer belgelerde de aramak için \"Bu dosya\" seçin)"
+ },
+ {
+  "i": 1882,
+  "t": "Bu belge"
+ },
+ {
+  "i": 1883,
+  "t": "Ekran artık koyu (kâğıt ve hücreler beyaz kalır — ekran ile baskı uyuşsun diye)"
+ },
+ {
+  "i": 1884,
+  "t": "Yinelemeli hesaplama: açık (en çok {} geçiş / değişim {} altında)"
+ },
+ {
+  "i": 1885,
+  "t": "Yinelemeli hesaplama: kapalı (döngüsel başvurular işaretlenir)"
+ },
+ {
+  "i": 1886,
+  "t": "Açık (en çok {} geçiş)"
+ },
+ {
+  "i": 1887,
+  "t": "{}: {} etkileyen hücre vurgulandı (Okları kaldır ile temizleyin)"
+ },
+ {
+  "i": 1888,
+  "t": "{}: {} etkilenen hücre vurgulandı (Okları kaldır ile temizleyin)"
+ },
+ {
+  "i": 1889,
+  "t": "\"{}\" sayfasının koruması kaldırıldı (artık düzenleyebilirsiniz; kaydedince değişiklik xlsx içinde kalır)"
+ },
+ {
+  "i": 1890,
+  "t": "\"{}\" sayfası korundu (yalnızca kilidi açık hücreler düzenlenebilir; İzin verilen işlemler ile gevşetin; aynı düğme korumayı kaldırır. Parola konmaz — kondu gibi de yapmayız)"
+ },
+ {
+  "i": 1891,
+  "t": "Yazma kilidi sizde ({}). Çalışma kitabını ilk açan yazabilir; sonrakiler yalnızca okur (kilit bir .~lock dosyasıdır)"
+ },
+ {
+  "i": 1892,
+  "t": "{} onay kutusu yerleştirildi (boşluk tuşuyla değiştirin; Excel bunları DOĞRU/YANLIŞ olarak gösterir{})"
+ },
+ {
+  "i": 1893,
+  "t": "\"{}\" sayfası gizlendi (aynı düğme geri getirir; kaydedince değişiklik xlsx içinde kalır)"
+ },
+ {
+  "i": 1894,
+  "t": "{} hücre izleniyor (değerleri durum çubuğunda görünür; listeyi boşaltmak için yeniden basın)"
+ },
+ {
+  "i": 1895,
+  "t": "Hangi sütuna göre gruplanacak? Bir başlık seçin: {}"
+ },
+ {
+  "i": 1896,
+  "t": "{} sayfa değer olarak alındı (bağlantı tutulmaz)"
+ },
+ {
+  "i": 1897,
+  "t": "Yazdırma alanına {}:{} eklendi (toplam {} alan; her alan kendi sayfasına yazdırılır)"
+ },
+ {
+  "i": 1898,
+  "t": "{}–{} satırları her sayfanın başında yinelenir (seçim yokken basınca kalkar)"
+ },
+ {
+  "i": 1899,
+  "t": "{} sayfa / {} hücre — {}"
+ },
+ {
+  "i": 1900,
+  "t": "{} sayfa — {}"
+ },
+ {
+  "i": 1901,
+  "t": "{} — **{} bu dosyayı açmış durumda**. Üzerine kaydedilemez (Farklı kaydet'i kullanın)"
+ },
+ {
+  "i": 1902,
+  "t": "Görüntü {} konumuna yerleştirildi (kaydedince xlsx içine girer)"
+ },
+ {
+  "i": 1903,
+  "t": "{} konumuna bağlantı eklendi (açmak için Ctrl+tıklayın)"
+ },
+ {
+  "i": 1904,
+  "t": "Grafik {} konumuna yerleştirildi (kaydedince xlsx içine girer)"
+ },
+ {
+  "i": 1905,
+  "t": "{} ({} / {}) {} konumuna yerleştirildi — şu andaki değerler. PivotTable sekmesi açık (yenileme, genel toplamlar, ara toplamlar ve düzen orada; Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1906,
+  "t": "Pivot yenilendi ({} — şu andaki değerler; Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1907,
+  "t": "İşlevler: {} hücre hesaplandı; {} tanesi #TAŞMA! verdi (sonucun taşacağı yerde zaten veri var)"
+ },
+ {
+  "i": 1908,
+  "t": "İşlevler: {} hücre hesaplandı (Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1909,
+  "t": "{} {} konumuna yerleştirildi (görüntü olarak; kaydedince xlsx içine girer; Ctrl+Z tek adımda geri alır)"
+ },
+ {
+  "i": 1910,
+  "t": "Denklem"
+ },
+ {
+  "i": 1911,
+  "t": "Metin sanatı"
+ },
+ {
+  "i": 1912,
+  "t": "{} {} konumuna yerleştirildi ({} şekil; bir şekli seçip Enter'a basarak yazın, sürükleyerek taşıyın; Ctrl+Z hepsini tek adımda geri alır)"
+ },
+ {
+  "i": 1913,
+  "t": "Çözüldü: {} = {} ({} değişken hücre yeniden yazıldı; Ctrl+Z tek adımda geri alır)"
+ },
+ {
+  "i": 1914,
+  "t": "{} = {} olduğunda {} değeri {} olur (Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1915,
+  "t": "Kaydedilmeden biten bir oturumdan {} kurtarma kopyası var (Dosya sekmesindeki Kurtar ile açabilirsiniz)"
+ },
+ {
+  "i": 1916,
+  "t": "Kurtarma"
+ },
+ {
+  "i": 1917,
+  "t": "Uygulanmış bir filtre yok"
+ },
+ {
+  "i": 1918,
+  "t": "Görünen izleme oku yok"
+ },
+ {
+  "i": 1919,
+  "t": "İkili"
+ },
+ {
+  "i": 1920,
+  "t": "PivotChart kaldırıldı"
+ },
+ {
+  "i": 1921,
+  "t": "PivotChart {} konumuna yerleştirildi (PivotTable yenilenince yeniden çizilir; aynı düğme kaldırır)"
+ },
+ {
+  "i": 1922,
+  "t": "Kaç dönem ileri? (bir sayı yazıp Enter'a basın; boş = 6)"
+ },
+ {
+  "i": 1923,
+  "t": "Tahmin sonucu okunamıyor"
+ },
+ {
+  "i": 1924,
+  "t": "Tahmin"
+ },
+ {
+  "i": 1925,
+  "t": "Gerçekleşen"
+ },
+ {
+  "i": 1926,
+  "t": "Dönem"
+ },
+ {
+  "i": 1927,
+  "t": "Alt sınır"
+ },
+ {
+  "i": 1928,
+  "t": "Üst sınır"
+ },
+ {
+  "i": 1929,
+  "t": "Tahmin {}"
+ },
+ {
+  "i": 1930,
+  "t": "{} dönemlik mevsim (kendiliğinden bulundu)"
+ },
+ {
+  "i": 1931,
+  "t": "Mevsim bulunamadı"
+ },
+ {
+  "i": 1932,
+  "t": "{} dönem ileri tahmin edildi. {}. Aralık %95 beklentidir, söz değildir (tipik hata {:.1})"
+ },
+ {
+  "i": 1933,
+  "t": "Tahmin için başlığın altında en az 4 satır sayı gerekir"
+ },
+ {
+  "i": 1934,
+  "t": "Sayı sütunu bulunamadı (en az 4 sayı gerekir)"
+ },
+ {
+  "i": 1935,
+  "t": "Tahmin için en az 4 sayı gerekir"
+ },
+ {
+  "i": 1936,
+  "t": "Tahmin ediliyor…"
+ },
+ {
+  "i": 1937,
+  "t": "Tahmin için gereken araçlar yok. Şunlarla kurulur:\n  {}"
+ },
+ {
+  "i": 1938,
+  "t": "Tahmin edilemiyor: {}"
+ },
+ {
+  "i": 1939,
+  "t": "Son sürüm"
+ },
+ {
+  "i": 1940,
+  "t": "Son sürüm olarak işaretli (bu bir kilit değildir)"
+ },
+ {
+  "i": 1941,
+  "t": "İşaretli değil"
+ },
+ {
+  "i": 1942,
+  "t": "İşareti kaldır"
+ },
+ {
+  "i": 1943,
+  "t": "Son sürüm olarak işaretle"
+ },
+ {
+  "i": 1944,
+  "t": "Bu çalışma kitabı son sürüm olarak işaretli (bu bir kilit değildir — hâlâ düzenleyebilirsiniz; işareti Dosya sekmesindeki «Koru» bölümünden kaldırın)"
+ },
+ {
+  "i": 1945,
+  "t": "Son sürüm işareti kaldırıldı"
+ },
+ {
+  "i": 1946,
+  "t": "Son sürüm olarak işaretlendi (bu bir kilit değildir — hâlâ düzenleyebilirsiniz; kaydedince xlsx'te kalır)"
+ },
+ {
+  "i": 1947,
+  "t": "Saklanan bir kopyayı aç: {}"
+ },
+ {
+  "i": 1948,
+  "t": "→ Okunabileni kurtarıp aç (salt okunur)"
+ },
+ {
+  "i": 1949,
+  "t": "Saklanan kopya yok. Yalnızca kurtarılan parçalarla açılır (üzerine yazamazsınız)"
+ },
+ {
+  "i": 1950,
+  "t": "Saklanan kopya daha kesindir. Kurtarma ondan sonraki yoldur"
+ },
+ {
+  "i": 1951,
+  "t": "Bu dosya okunamıyor: {}"
+ },
+ {
+  "i": 1952,
+  "t": "Bu çalışma kitabı kurtarılarak toplandı, bu yüzden üzerine yazmaz. Farklı Kaydet'i kullanın (özgün dosyaya dokunulmaz)"
+ },
+ {
+  "i": 1953,
+  "t": "Hiçbir şey kurtarılamadı (hiçbir yeri zip olarak okunmuyor)"
+ },
+ {
+  "i": 1954,
+  "t": "{} okunamadı ({})"
+ },
+ {
+  "i": 1955,
+  "t": "Bütün parçalar kurtarıldı (yalnızca zip dizini bozuktu)"
+ },
+ {
+  "i": 1956,
+  "t": "{} parça kurtarılarak açıldı ({} tanesi kurtarılamadı). Üzerine yazamazsınız"
+ },
+ {
+  "i": 1957,
+  "t": "Kurtarılan parçalarla bile açılmıyor: {}"
+ },
+ {
+  "i": 1958,
+  "t": "Bu çalışma kitabı bozuk bir dosyadan toplanarak oluşturuldu (salt okunur — üzerine yazamazsınız)"
+ },
+ {
+  "i": 1959,
+  "t": "Değerlerin kendisi listeleniyor (süzgeç kaldırıldı)"
+ },
+ {
+  "i": 1960,
+  "t": "Tarihler {} olarak gruplanıyor (süzgeç kaldırıldı)"
+ },
+ {
+  "i": 1961,
+  "t": "Tarih değil"
+ },
+ {
+  "i": 1962,
+  "t": "Değerlerin kendisi"
+ },
+ {
+  "i": 1963,
+  "t": "Tarih birimi"
+ },
+ {
+  "i": 1964,
+  "t": "PDF'te tablo aranıyor…"
+ },
+ {
+  "i": 1965,
+  "t": "PDF okuyan araç (pdfplumber) yok. Şununla kurulur:\n  {}"
+ },
+ {
+  "i": 1966,
+  "t": "PDF okunamıyor: {}"
+ },
+ {
+  "i": 1967,
+  "t": "Bu PDF'te tablo bulunamadı (resim olarak yapıştırılmış bir tablo okunamaz)"
+ },
+ {
+  "i": 1968,
+  "t": "{} / {} (sayfa {})"
+ },
+ {
+  "i": 1969,
+  "t": "Çizgilerden"
+ },
+ {
+  "i": 1970,
+  "t": "Metin konumundan (tahmin)"
+ },
+ {
+  "i": 1971,
+  "t": "Nasıl bulundu"
+ },
+ {
+  "i": 1972,
+  "t": "Not: çizgi yoktu, bu yüzden bir tahmin. Sütunların kaymadığını kontrol edin"
+ },
+ {
+  "i": 1973,
+  "t": "{} ({} hücre)"
+ },
+ {
+  "i": 1974,
+  "t": "→ Yeni senaryo (seçili hücrelerin şu anki değerleri)…"
+ },
+ {
+  "i": 1975,
+  "t": "→ Bir senaryo sil…"
+ },
+ {
+  "i": 1976,
+  "t": "Henüz hiç yok. Değiştirip karşılaştırmak istediğiniz hücreleri seçin, sonra bir tane oluşturun"
+ },
+ {
+  "i": 1977,
+  "t": "Birine bastığınızda değerleri hücrelere geri yazılır (Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1978,
+  "t": "Çok fazla hücre seçildi (en fazla 64; yalnızca değiştirmek istediğiniz hücreleri seçin)"
+ },
+ {
+  "i": 1979,
+  "t": "Senaryoya bir ad yazıp Enter'a basın (seçili {} hücrenin değerleri saklanır)"
+ },
+ {
+  "i": 1980,
+  "t": "Silinecek senaryoyu seçin"
+ },
+ {
+  "i": 1981,
+  "t": "“{}” senaryosu uygulandı ({} hücre; Ctrl+Z geri alır)"
+ },
+ {
+  "i": 1982,
+  "t": "“{}” senaryosu silindi"
+ },
+ {
+  "i": 1983,
+  "t": "Ad boş (hiçbir şey oluşturulmadı)"
+ },
+ {
+  "i": 1984,
+  "t": "Seçimde saklanacak değer yok (formül hücreleri alınmaz — uygulanırsa formül silinir)"
+ },
+ {
+  "i": 1985,
+  "t": "“{}” senaryosu yeniden saklandı ({} hücre)"
+ },
+ {
+  "i": 1986,
+  "t": "“{}” senaryosu saklandı ({} hücre; kaydedince xlsx'te de kalır)"
+ },
+ {
+  "i": 1987,
+  "t": "Bağlı {} PivotTable de aynı şekilde süzüldü"
+ },
+ {
+  "i": 1988,
+  "t": "Önce bir dilimleyici seçin"
+ },
+ {
+  "i": 1989,
+  "t": "Bu çalışma kitabında PivotTable yok (önce bir tane oluşturun)"
+ },
+ {
+  "i": 1990,
+  "t": "Bu dilimleyiciyle süzdüğünüzde bağlı PivotTable'lar da aynı şekilde süzülür"
+ },
+ {
+  "i": 1991,
+  "t": "Rapor bağlantıları"
+ },
+ {
+  "i": 1992,
+  "t": "Bağlı değil"
+ },
+ {
+  "i": 1993,
+  "t": "{} tanesine bağlı"
+ },
+ {
+  "i": 1994,
+  "t": "Önerilen bir düzen seçin (alanları kendiniz de seçebilirsiniz)"
+ },
+ {
+  "i": 1995,
+  "t": "Alanları kendim seçeyim (önce satırlar, sonra sütunlar, sonra değerler)"
+ },
+ {
+  "i": 1996,
+  "t": "Tablonuzdan çıkarılabilecek düzenler. Birine basana kadar hiçbir şey oluşturulmaz"
+ },
+ {
+  "i": 1997,
+  "t": "Satırlar: {} / Sütunlar: {} / {} alanının {} değeri"
+ },
+ {
+  "i": 1998,
+  "t": "Satırlar: {} / {} alanının {} değeri"
+ },
+ {
+  "i": 1999,
+  "t": "Çalışma kitabını koru"
+ },
+ {
+  "i": 2000,
+  "t": "Şu anda geçerli olanlar. Bir düğmeye basınca sayfaya dönülür ve gerisi sorulur"
+ },
+ {
+  "i": 2001,
+  "t": "Parolayla şifrele"
+ },
+ {
+  "i": 2002,
+  "t": "Açık (bir sonraki kaydetmeden itibaren)"
+ },
+ {
+  "i": 2003,
+  "t": "Ayarlanmadı"
+ },
+ {
+  "i": 2004,
+  "t": "Değiştir veya kaldır"
+ },
+ {
+  "i": 2005,
+  "t": "Bir parola belirle"
+ },
+ {
+  "i": 2006,
+  "t": "Sayfayı koru"
+ },
+ {
+  "i": 2007,
+  "t": "“{}” korunuyor"
+ },
+ {
+  "i": 2008,
+  "t": "“{}” korunmuyor"
+ },
+ {
+  "i": 2009,
+  "t": "Korumayı kaldır"
+ },
+ {
+  "i": 2010,
+  "t": "Bu sayfayı koru"
+ },
+ {
+  "i": 2011,
+  "t": "Koruma sırasında izin verilenler"
+ },
+ {
+  "i": 2012,
+  "t": "Seç"
+ },
+ {
+  "i": 2013,
+  "t": "Salt okunuru öner"
+ },
+ {
+  "i": 2014,
+  "t": "Öneriliyor (bu bir kilit değildir)"
+ },
+ {
+  "i": 2015,
+  "t": "Önerilmiyor"
+ },
+ {
+  "i": 2016,
+  "t": "Öner"
+ },
+ {
+  "i": 2017,
+  "t": "Dijital imza"
+ },
+ {
+  "i": 2018,
+  "t": "Yanında bir imza dosyası var"
+ },
+ {
+  "i": 2019,
+  "t": "İmzalanmadı"
+ },
+ {
+  "i": 2020,
+  "t": "İmzala veya doğrula"
+ },
+ {
+  "i": 2021,
+  "t": "Sayfa koruması ve salt okunur önerisi kilit değildir. İsteyen kaldırabilir. Aksini iddia etmiyoruz"
+ },
+ {
+  "i": 2022,
+  "t": "Doğrulayalım. Aynı parolayı bir kez daha yazıp Enter'a basın"
+ },
+ {
+  "i": 2023,
+  "t": "İki parola farklı (şifreleme değişmedi; lütfen tekrar deneyin)"
+ },
+ {
+  "i": 2024,
+  "t": "Hiçbir şeye izin verilmiyor"
+ },
+ {
+  "i": 2025,
+  "t": "{} işlemden {} tanesine izin veriliyor"
+ },
+ {
+  "i": 2026,
+  "t": "Şifreleme 1/2 — parola (boş bırakıp Enter'a basarsanız şifreleme kalkar)"
+ },
+ {
+  "i": 2027,
+  "t": "Şifreleme 2/2 — aynı parola bir kez daha"
+ },
+ {
+  "i": 2028,
+  "t": "Bölme kaldırıldı"
+ },
+ {
+  "i": 2029,
+  "t": "Bölmek istediğiniz yere imleci koyun (imlecin üstünden ve solundan bölünür)"
+ },
+ {
+  "i": 2030,
+  "t": "Bölündü (tekerlek, işaretçinin üzerinde durduğu bölümü kaydırır)"
+ },
+ {
+  "i": 2031,
+  "t": "{} hücre işaretlendi (temizlemek için yeniden basın)"
+ },
+ {
+  "i": 2032,
+  "t": "Bu sayfada doğrulama kuralı yok (Veri sekmesindeki Veri doğrulama ile ekleyin)"
+ },
+ {
+  "i": 2033,
+  "t": "Doğrulama kurallarını çiğneyen değer yok"
+ },
+ {
+  "i": 2034,
+  "t": "İşaretler temizlendi"
+ },
+ {
+  "i": 2035,
+  "t": "Kaynak aralığı yazıp Enter'a basın (ör. Sheet1!A1:C20; başlık satırını da alın)"
+ },
+ {
+  "i": 2036,
+  "t": "Yeniden yönlendirmek istediğiniz PivotTable üzerine imleci koyun"
+ },
+ {
+  "i": 2037,
+  "t": "Aralığı A1:C20 biçiminde yazın"
+ },
+ {
+  "i": 2038,
+  "t": "Aralık okunamıyor: {}"
+ },
+ {
+  "i": 2039,
+  "t": "“{}” adlı sayfa yok"
+ },
+ {
+  "i": 2040,
+  "t": "Yeni aralıkta şu başlıklar yok: {} (PivotTable bunları kullanıyor)"
+ },
+ {
+  "i": 2041,
+  "t": "Kaynak tablo {}!{}:{} olarak değiştirildi (yeniden kuruluyor)"
+ },
+ {
+  "i": 2042,
+  "t": "Önce kısıtın sol tarafını yazın"
+ },
+ {
+  "i": 2043,
+  "t": "Çözüm aranıyor… (tamsayı programı, dallandır ve sınırla)"
+ },
+ {
+  "i": 2044,
+  "t": "{} bir değişken hücresi değil (tamsayı ve ikili yalnızca değişken hücrelerine konur)"
+ },
+ {
+  "i": 2045,
+  "t": "Çözüm bulunamadı ({} değeri {} üzerinde etkili olmayabilir)"
+ },
+ {
+  "i": 2046,
+  "t": "Oryantasyon"
+ },
+ {
+  "i": 2047,
+  "t": "Ortaya hizala"
+ },
+ {
+  "i": 2048,
+  "t": "Python işlevleri"
+ },
+ {
+  "i": 2049,
+  "t": "Şerit makroları"
+ },
+ {
+  "i": 2050,
+  "t": "Biçim boyacısı"
+ },
+ {
+  "i": 2051,
+  "t": "Alan listesi"
+ },
+ {
+  "i": 2052,
+  "t": "Ekran yazısını büyüt"
+ },
+ {
+  "i": 2053,
+  "t": "Ekran yazısını küçült"
+ },
+ {
+  "i": 2054,
+  "t": "Geçersiz verileri daire içine al"
+ },
+ {
+  "i": 2055,
+  "t": "Pencereyi böl"
+ },
+ {
+  "i": 2056,
+  "t": "Senaryo"
+ },
+ {
+  "i": 2057,
+  "t": "Tahmin sayfası"
+ },
+ {
+  "i": 2058,
+  "t": "PivotChart"
+ },
+ {
+  "i": 2059,
+  "t": "Yazdırma düzeni"
+ },
+ {
+  "i": 2060,
+  "t": "Hedef"
+ },
+ {
+  "i": 2061,
+  "t": "özet"
+ },
+ {
+  "i": 2062,
+  "t": "Yeniden yaz"
+ },
+ {
+  "i": 2063,
+  "t": "Daha kibar"
+ },
+ {
+  "i": 2064,
+  "t": "Sadeleştir"
+ },
+ {
+  "i": 2065,
+  "t": "çeviri"
+ },
+ {
+  "i": 2066,
+  "t": "Devamını yaz"
+ },
+ {
+  "i": 2067,
+  "t": "Tabloya çevir"
+ },
+ {
+  "i": 2068,
+  "t": "Sor"
+ },
+ {
+  "i": 2069,
+  "t": "Ruby"
+ },
+ {
+  "i": 2070,
+  "t": "Metin yönü"
+ },
+ {
+  "i": 2071,
+  "t": "Dağıtılmış"
+ },
+ {
+  "i": 2072,
+  "t": "Resim yazısı ekle"
+ },
+ {
+  "i": 2073,
+  "t": "URL aç"
+ },
+ {
+  "i": 2074,
+  "t": "Dizin"
+ },
+ {
+  "i": 2075,
+  "t": "Aozora notları"
+ },
+ {
+  "i": 2076,
+  "t": "Denden işaretlemesi"
+ },
+ {
+  "i": 2077,
+  "t": "Değişiklikleri izle"
+ },
+ {
+  "i": 2078,
+  "t": "Değişiklikleri göster"
+ },
+ {
+  "i": 2079,
+  "t": "Düzeltme"
+ },
+ {
+  "i": 2080,
+  "t": "Yazım denetimi"
+ },
+ {
+  "i": 2081,
+  "t": "Eş anlamlılar sözlüğü"
+ },
+ {
+  "i": 2082,
+  "t": "Hatalı dönüştürme"
+ },
+ {
+  "i": 2083,
+  "t": "Yazım tutarsızlığı"
+ },
+ {
+  "i": 2084,
+  "t": "Hesaplama"
+ },
+ {
+  "i": 2085,
+  "t": "Sağdan sola metin"
+ },
+ {
+  "i": 2086,
+  "t": "Sayfa yönü"
+ },
+ {
+  "i": 2087,
+  "t": "Python"
+ },
+ {
+  "i": 2088,
+  "t": "Onay kutusu"
+ },
+ {
+  "i": 2089,
+  "t": "Dış bağlantılar"
+ },
+ {
+  "i": 2090,
+  "t": "Önerilen grafik"
+ },
+ {
+  "i": 2091,
+  "t": "Birlikte düzenleme modu"
+ },
+ {
+  "i": 2092,
+  "t": "Sürüm geçmişi"
+ },
+ {
+  "i": 2093,
+  "t": "Sohbet"
+ },
+ {
+  "i": 2094,
+  "t": "Şifrele"
+ },
+ {
+  "i": 2095,
+  "t": "Dijital imza ekle"
+ },
+ {
+  "i": 2096,
+  "t": "Eklentileri yönet"
+ },
+ {
+  "i": 2097,
+  "t": "Sıfırları göster"
+ },
+ {
+  "i": 2098,
+  "t": "%100'e yakınlaştır"
+ },
+ {
+  "i": 2099,
+  "t": "Arayüz teması"
+ },
+ {
+  "i": 2100,
+  "t": "Gözcü penceresi"
+ },
+ {
+  "i": 2101,
+  "t": "Otomatik Toplam"
+ },
+ {
+  "i": 2102,
+  "t": "İşlemleri kaydet"
+ },
+ {
+  "i": 2103,
+  "t": "Açıklamayı sil"
+ },
+ {
+  "i": 2104,
+  "t": "Çözücü"
+ },
+ {
+  "i": 2105,
+  "t": "Metinden veri"
+ },
+ {
+  "i": 2106,
+  "t": "Okları kaldır"
+ },
+ {
+  "i": 2107,
+  "t": "Doldur"
+ },
+ {
+  "i": 2108,
+  "t": "Filtreyi temizle"
+ },
+ {
+  "i": 2109,
+  "t": "Makro yaz"
+ },
+ {
+  "i": 2110,
+  "t": "Metni sütunlara dönüştür"
+ },
+ {
+  "i": 2111,
+  "t": "Resim yazısı"
+ },
+ {
+  "i": 2112,
+  "t": "Şekiller tablosu"
+ },
+ {
+  "i": 2113,
+  "t": "Şekiller tablosunu güncelle"
+ },
+ {
+  "i": 2114,
+  "t": "Dış bağlantılar (değer olarak al)"
+ },
+ {
+  "i": 2115,
+  "t": "Formülleri göster"
+ },
+ {
+  "i": 2116,
+  "t": "Metin yönü (sağdan sola)"
+ },
+ {
+  "i": 2117,
+  "t": "Son kullanılan işlevler"
+ },
+ {
+  "i": 2118,
+  "t": "Kılavuz çizgileri de yazdır"
+ },
+ {
+  "i": 2119,
+  "t": "İçindekiler tablosunu güncelle"
+ },
+ {
+  "i": 2120,
+  "t": "Şeritli sütunlar"
+ },
+ {
+  "i": 2121,
+  "t": "Başlıkları da yazdır"
+ },
+ {
+  "i": 2122,
+  "t": "Ayrıntıyı gizle"
+ },
+ {
+  "i": 2123,
+  "t": "Yinelenenleri kaldır"
+ },
+ {
+  "i": 2124,
+  "t": "İşlev ekle"
+ },
+ {
+  "i": 2125,
+  "t": "CSV biçimi"
+ },
+ {
+  "i": 2126,
+  "t": "Hücre kilidi"
+ },
+ {
+  "i": 2127,
+  "t": "Veri tablosu"
+ },
+ {
+  "i": 2128,
+  "t": "Hızlı doldurma"
+ },
+ {
   "i": 2129,
-  "t": "Yedek aralığı"
+  "t": "Liste"
  },
  {
   "i": 2130,
-  "t": "Yeni .py"
+  "t": "Ad yapıştır"
  },
  {
   "i": 2131,
-  "t": "Aralık ekle"
+  "t": "Metni kaydır"
  },
  {
   "i": 2132,
-  "t": "Kâğıda sığdır"
+  "t": "Yedek aralığı"
  },
  {
   "i": 2133,
-  "t": "Sayfa sonları"
+  "t": "Yeni .py"
  },
  {
   "i": 2134,
-  "t": "Klasörü aç"
+  "t": "Aralık ekle"
  },
  {
   "i": 2135,
-  "t": "Hesaplama türü"
+  "t": "Kâğıda sığdır"
  },
  {
   "i": 2136,
+  "t": "Sayfa sonları"
+ },
+ {
+  "i": 2137,
+  "t": "Klasörü aç"
+ },
+ {
+  "i": 2138,
+  "t": "Hesaplama türü"
+ },
+ {
+  "i": 2139,
   "t": "İzin verilen işlemler"
  }
 ]

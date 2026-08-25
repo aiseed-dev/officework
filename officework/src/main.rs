@@ -72,7 +72,11 @@ enum Start {
 /// (2026-08-19 に実際にそうなりました)。窓を出してから別の糸で聞きます。
 fn 起動の形(arg: Option<std::path::PathBuf>) -> Start {
     if let Some(p) = arg {
-        return Start::File(p);
+        // **フォルダを渡されたら、フォルダとして開きます**(2026-08-24)。
+        // 前はファイルとして開こうとして、読めずに白紙が出ていました。
+        // 綴りはフォルダなので、`officework 仕事のフォルダ` は
+        // 「その綴りを開く」の意味です(エディタと同じ作法)
+        return if p.is_dir() { Start::Folder(p) } else { Start::File(p) };
     }
     // **前の版から上げた人の「前回のフォルダ」も拾います**(1回だけ)
     let 前 = face::session::引き継ぐ(ui::settings::get("folder"));
@@ -863,6 +867,22 @@ mod tests {
     }
 
     /// `open` の道は「開く相手」として別の口が拾います。
+    /// **フォルダを渡したらフォルダとして開く**(2026-08-24)。
+    /// 前は何を渡してもファイル扱いで、フォルダを渡すと読めずに白紙が
+    /// 出ていました。綴りはフォルダなので、ここが入口です
+    #[test]
+    fn 引数がフォルダならフォルダとして開く() {
+        let d = std::env::temp_dir().join(format!("jo-start-{}", std::process::id()));
+        std::fs::create_dir_all(&d).unwrap();
+        let f = d.join("報告書.adoc");
+        std::fs::write(&f, "= 題\n").unwrap();
+
+        assert!(matches!(起動の形(Some(d.clone())), Start::Folder(_)), "フォルダをファイル扱いした");
+        assert!(matches!(起動の形(Some(f)), Start::File(_)), "ファイルをフォルダ扱いした");
+
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
     #[test]
     fn 開く命令の道は開く相手() {
         let line = "{\"cmd\":\"open\",\"path\":\"/tmp/台帳.sheet.adoc\"}";

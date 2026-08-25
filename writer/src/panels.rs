@@ -1133,18 +1133,36 @@ impl Writer {
                         let 道 = e.path.clone();
                         let いま = self.path.as_deref() == Some(e.path.as_path());
                         let mut 行 = ui::filelist::row(&look, i, &e, いま);
-                        if 開ける {
-                            行 = 行.on_click(cx.listener(move |t, _, _, cx| {
-                                t.remember_folder();
-                                // **埋め込みなら種類を問わず officework に頼む**(段1)
-                                if t.embedded || 表だ {
-                                    t.open_request = Some(道.clone());
-                                } else {
-                                    t.open_in_tab(道.clone());
-                                }
-                                cx.notify()
-                            }));
-                        }
+                        行 = 行.on_click(cx.listener(move |t, _, _, cx| {
+                            t.remember_folder();
+                            if !開ける {
+                                // **こちらで開けない種類は、機械の関連付けに渡します**
+                                // (2026-08-24 発注者「何のツールでも使えるようにする」)。
+                                // .ipynb なら JupyterLab、.py なら決めた道具が起きます。
+                                // 断るのではなく渡すのが、綴りを預かる側の仕事です
+                                // **機械の関連付けに渡します。** `open_for_edit` は
+                                // 使いません — あれは「.py を編集する道具」の道で、
+                                // 隣の writer に落ちます。実機で押したら .ipynb が
+                                // writer で開きました(2026-08-24)。JupyterLab で
+                                // 開くべき物なので、機械の決めをそのまま使います
+                                t.status = match ui::open_outside(&道.display().to_string()) {
+                                    ui::Opened::Yes => ui::tf!("{} を機械の決めた道具で開きます",
+                                        道.file_name().unwrap_or_default().to_string_lossy().to_string()).into(),
+                                    ui::Opened::JustNow => ui::t!("いま開いたところです").into(),
+                                    ui::Opened::Failed => ui::tf!("開ける道具が見つかりません: {}",
+                                        道.display().to_string()).into(),
+                                };
+                                cx.notify();
+                                return;
+                            }
+                            // **埋め込みなら種類を問わず officework に頼む**(段1)
+                            if t.embedded || 表だ {
+                                t.open_request = Some(道.clone());
+                            } else {
+                                t.open_in_tab(道.clone());
+                            }
+                            cx.notify()
+                        }));
                         d = d.child(行);
                     }
                 }
