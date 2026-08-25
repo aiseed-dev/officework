@@ -56,9 +56,19 @@ def 一覧():
     return out
 
 
+# 状態。**手引きは実物より先に書きます**(2026-08-24 発注者)。
+# 画面の灰色のボタンと同じ考え方で、*あることは見せて、状態で言う*。
+JOTAI = {
+    "実装済み": "いま使えます",
+    "未実装": "*まだ使えません。* これから作ります",
+    "廃止予定": "*なくす予定です。* 行き先を下に書いてあります",
+}
+
 下書き = """= {ラベル}
 
 {段}にあります。
+
+*状態: {状態}* — {状態の説明}
 
 == 何をするか
 
@@ -82,7 +92,9 @@ def main() -> int:
         for 段, ラベル, 印, ow, p in 無い:
             p.parent.mkdir(parents=True, exist_ok=True)
             py = f"[source,python]\n----\n{ow}\n----" if ow else "(まだありません)"
-            p.write_text(下書き.format(ラベル=ラベル, 段=段, python=py), encoding="utf-8")
+            st = "実装済み" if 印 == "✅" else "未実装"
+            p.write_text(下書き.format(ラベル=ラベル, 段=段, python=py,
+                                       状態=st, 状態の説明=JOTAI[st]), encoding="utf-8")
         print(f"{len(無い)} 枚の下書きを作りました")
         return 0
 
@@ -103,7 +115,19 @@ def main() -> int:
         print(f"目次を書きました({len(r)} 項目)")
         return 0
 
+    # **状態ごとに数えます。** 手引きは実物より先に書くので、
+    # 「未実装」の枚数がこれから作る物の一覧になります
+    数 = {}
+    for q in sorted(SAKI.rglob("*.adoc")):
+        if q.name == "README.ja.adoc":
+            continue
+        m = re.search(r"\*状態: (実装済み|未実装|廃止予定)\*", q.read_text(encoding="utf-8"))
+        数[m.group(1) if m else "印が無い"] = 数.get(m.group(1) if m else "印が無い", 0) + 1
     print(f"手引きが要るボタン {len(r)} 枚のうち、書けているのは {len(r) - len(無い)} 枚です")
+    print("書いた手引きの状態:")
+    for k in ("実装済み", "未実装", "廃止予定", "印が無い"):
+        if 数.get(k):
+            print(f"  {k:<8} {数[k]} 枚")
     if 無い:
         print("\nまだ無いもの(段ごとの数):")
         から = {}
