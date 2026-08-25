@@ -5,14 +5,14 @@ description: マニュアル(docs/ の手引き・docs/commands/ のコマンド
 
 # マニュアルの決まり
 
-対象は利用者向けの冊子(docs/*-manual と docs/commands/)。
-何を管理するか・追随待ちの控えは docs/sekkei/manual-kanri.ja.adoc にある。
+管理するのは**利用者向けの冊子の日本語と英語の対**だけ
+(docs/*-manual と docs/commands/)。英語版が正本、日本語版が副。
 
 ## 真実 — 嘘は欠落より悪い
 
 1. **挙動を変えるコミットは、同じ回でマニュアルの該当箇所も直す。**
-   直しきれない新機能の追記は遅れてよいが、遅れは manual-kanri の
-   「追随待ち」に一行で控える。黙って古いままにしない
+   直しきれない新機能の追記は遅れてよいが、遅れは下の「追随待ち」に
+   一行で控える。黙って古いままにしない
 2. **できることだけ書く**(リボンの灰色と同じ方針)。「〜できます(予定)」は
    書かない
 3. **実測で書く。** 例のコード・数値・選択肢は、この機械で実物に当てて
@@ -67,3 +67,25 @@ ruby -I vendor/asciidoctor/lib vendor/asciidoctor/bin/asciidoctor -o /dev/null <
 
 新しい冊子を足したら、docs/README.ja.adoc の一覧と manual_uchiwa_check の
 見る対象の両方に足す。
+
+## 置き場の地図
+
+- 設計(なぜ)は SEKKEI.adoc と docs/sekkei/。実装の在庫は
+  docs/guide-tsukiawase-2.ja.adoc。どちらも作る側の資料で、利用者向けの
+  一覧(docs/README.ja.adoc)には載せない
+- docs/ に残っている corpus・engine・pysheet-gokan・mac-signing も作る側の物。
+  **ファイルの場所は動かさない** — PyPI の README など公開済みのリンクが
+  刺さっている
+- docs/articles/ は公開用の書き物で、この決まりは掛からない。その時点の
+  事実と見立てを残す物なので、挙動が変わっても遡って直さない(直すのは
+  マニュアルの方)。発注者の一人称で書く
+
+## 追随待ち(直したら消す)
+
+- 英語版がまだ無い冊子と作る順: docx-xlsx-tono-chigai → api-taiou →
+  commands/(169枚。ダイアログの節の流し込みが済んでから)
+- calc-manual(ja/en): 2026-08-07〜08 の突き合わせ分の総ざらい —
+  条件付き書式の第2版(バー・スケール・アイコン)、ピボットの絞り込みと
+  グループ化、スパークライン3種、テキスト取り込みウィザード、R1C1、
+  反復計算などが「挿入」「データ」節にまだ薄い
+- from-excel: 第3稿+英語版。残りは本文の「在庫候補」印を台帳へ移す整理だけ
