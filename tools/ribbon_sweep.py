@@ -109,6 +109,12 @@ def check_skip():
 CALC = os.path.join(ROOT, "target", "release", "calc")
 # 一覧の左端がボタンの左端からこれ以上ずれていたら「真下でない」
 X_SLACK = 4.0
+# 右端の逃げ(face::combo::pop_x)。ボタンが面の右端から POP_MIN_W を
+# 切ると、一覧は真下をあきらめて pane_w - POP_W へ寄る — 最低幅の一覧が
+# 窓からはみ出さないための決めで、ずれではない。検査も同じ式で見る
+# (2026-08-25、csv-kind をずれと誤検知した)
+POP_MIN_W = 160.0
+POP_W = 240.0
 
 
 class App:
@@ -483,7 +489,12 @@ def sweep_tab(app, tab, out, skipped):
         pick = after["pick"]
         if pick and pick != before["pick"]:
             want = bx - pane_x
-            if abs(pick["x"] - want) > X_SLACK and pick["x"] > 0:
+            pane_w = app.rpc({"cmd": "ribbon"})["pane"][2]
+            # 右端の逃げ: 真下だと最低幅の一覧がはみ出すボタンは、
+            # pane_w - POP_W へ寄るのが正(face::combo::pop_x と同じ式)
+            edge_ok = (pane_w - want) < POP_MIN_W and abs(
+                pick["x"] - max(pane_w - POP_W, 0.0)) <= X_SLACK
+            if abs(pick["x"] - want) > X_SLACK and pick["x"] > 0 and not edge_ok:
                 out.append((bid, "位置",
                             f"一覧の左端が {pick['x']:.0f}、ボタンは {want:.0f}",
                             app.shot(f"ichi-{bid}")))
