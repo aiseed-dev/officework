@@ -52,9 +52,9 @@ MICHI = {
     "open": ("Doc / Book", "Doc.open(径路) / Book.open(径路)", "docx.Document(径路)", "load_workbook(径路)"),
     "save": ("Doc / Book", "d.save(径路) / b.save(径路)", "d.save(径路)", "wb.save(径路)"),
     "pdf": ("", "", "", ""),
-    "copy": ("Paragraph / Cell", "p.text = 値 / s['A1'] = 値", "p.text = 値", "ws['A1'] = 値"),
-    "cut": ("Paragraph / Cell", "p.text = 値 / s['A1'] = 値", "p.text = 値", "ws['A1'] = 値"),
-    "paste": ("Paragraph / Cell", "p.text = 値 / s['A1'] = 値", "p.text = 値", "ws['A1'] = 値"),
+    "copy": ("どこでも", "p.text = 値 / s['A1'] = 値 / c.text = 値", "p.text = 値", "ws['A1'] = 値"),
+    "cut": ("どこでも", "p.text = 値 / s['A1'] = 値 / c.text = 値", "p.text = 値", "ws['A1'] = 値"),
+    "paste": ("どこでも", "p.text = 値 / s['A1'] = 値 / c.text = 値", "p.text = 値", "ws['A1'] = 値"),
     "clear": ("Run / Cell", "r.clear() / s['A1'] = None", "r.clear()", "ws['A1'] = None"),
     "bold": ("Run / Cell", "r.bold / c.font", "r.bold", "c.font = Font(bold=True)"),
     "italic": ("Run / Cell", "r.italic / c.font", "r.italic", "c.font = Font(italic=True)"),
@@ -243,6 +243,33 @@ def 段の並び(tabs):
     return out
 
 
+# **リボンにもファイルのページにも無い操作**(2026-08-24 発注者
+# 「左右のサイドバーやクイックアクセスツールバーにあるものも入れろ」)。
+#
+# クイックアクセスは窓の1段目、左右のパネルは表示タブから開きます。
+# *どちらもリボンの表に載っていない*ので、読むだけでは表に出てきません。
+# (段, ボタン, オブジェクト, officework, python-docx, openpyxl)
+HOKA = [
+    ("クイックアクセス", "保存", "Doc / Book", "d.save(径路) / b.save(径路)",
+     "d.save(径路)", "wb.save(径路)"),
+    ("クイックアクセス", "印刷", "Doc", "", "", ""),
+    ("クイックアクセス", "元に戻す", "", "", "", ""),
+    ("クイックアクセス", "やり直し", "", "", "", ""),
+    ("左パネル", "見出し", "Paragraph", "p.style で拾う", "p.style", ""),
+    ("左パネル", "コメント", "Comment", "d.comments", "d.comments", "c.comment"),
+    ("左パネル", "検索", "Doc", "d.find(字)", "", ""),
+    ("左パネル", "AI と相談する", "", "", "", ""),
+    ("右パネル", "設定・ページ・スタイル", "", "", "", ""),
+]
+
+# 上の物のうち、専用の口を作らないと決めた物(理由つき)
+HOKA_TSUKURANAI = {
+    "元に戻す": "画面の操作です。プログラムは保存する前の写しを持てます",
+    "やり直し": "同じく画面の操作です",
+    "AI と相談する": "画面の会話です。プログラムからは自分で AI を呼べます",
+    "設定・ページ・スタイル": "リボンと同じボタンが並びます。上の行を見てください",
+}
+
 FILE_SRC = ROOT / "writer/src/cmds.rs"
 
 # ファイルのページの項目 → (オブジェクト, officework, python-docx, openpyxl)。
@@ -312,6 +339,10 @@ def rows():
                 obj, ow, pd, op = MICHI[cmd.id]
                 _ラベルの逆引き[cmd.id] = cmd.label
                 out.append((段, cmd.label, cmd.icon, obj, 状態(cmd.id, ow), ow, pd, op))
+    for 段, ラベル, obj, ow, pd, op in HOKA:
+        印 = "✅" if ow else ("❌" if ラベル in HOKA_TSUKURANAI else "")
+        _ラベルの逆引き[ラベル] = ラベル
+        out.append((段, ラベル, "", obj, 印, ow, pd, op))
     return out
 
 
@@ -322,7 +353,7 @@ def 理由(ラベル: str, st: str):
     """「実装しない」の理由。表の中で読めるようにします"""
     if st not in ("❌", "✍"):
         return None
-    for 表 in (TSUKURANAI, KAKEBA):
+    for 表 in (TSUKURANAI, KAKEBA, HOKA_TSUKURANAI):
         for k, v in 表.items():
             if _ラベルの逆引き.get(k) == ラベル:
                 return v
@@ -382,9 +413,14 @@ def 覆い():
     # 実際の仕事は全面のページにあります)
     for i, ラベル in file_menu():
         全.setdefault(i, ("ファイル", ラベル))
-    のせた = [k for k in 全 if k in MICHI or k in FILE_MICHI]
+    # クイックアクセスと左右のパネル(リボンにもページにも無い物)
+    for 段, ラベル, *_ in HOKA:
+        全.setdefault(ラベル, (段, ラベル))
+    のせた = [k for k in 全 if k in MICHI or k in FILE_MICHI
+                or any(x[1] == k for x in HOKA)]
     return len(のせた), len(全), sorted(
-        (v[0], v[1], k) for k, v in 全.items() if k not in MICHI and k not in FILE_MICHI
+        (v[0], v[1], k) for k, v in 全.items()
+        if k not in MICHI and k not in FILE_MICHI and not any(x[1] == k for x in HOKA)
     )
 
 

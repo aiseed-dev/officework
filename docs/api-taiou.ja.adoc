@@ -8,6 +8,8 @@
 並びは画面のメニューと同じです。ファイル・ホーム・挿入…の順に並んでいるので、
 画面で押している場所を思い出して探してください。
 
+メニューの後ろに、*クイックアクセス*(窓の上の段)と*左右のパネル*(表示タブで出す)も並べてあります。
+
 == 印の読み方
 
 [cols="^1,3"]
@@ -30,6 +32,7 @@
 
 *オブジェクト*の列は、どの物に対する操作かです
 (`Doc` は文書、`Paragraph` は段落、`Run` は字、`Cell` はセル、`Sheet` はシート)。
+*どこでも*と書いてあるものは、選んでいる物を選びません — 字でも、セルでも、画像でも同じです。
 
 == 書けば API になります
 
@@ -83,9 +86,9 @@ def 大文字にする(段落):
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|image:../face/icons/copy.svg[コピー,16,16] コピー |Paragraph / Cell |✅ |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
-|image:../face/icons/cut.svg[切り取り,16,16] 切り取り |Paragraph / Cell |✅ |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
-|image:../face/icons/paste.svg[貼り付け,16,16] 貼り付け |Paragraph / Cell |✅ |p.text = 値 / s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
+|image:../face/icons/copy.svg[コピー,16,16] コピー |どこでも |✅ |p.text = 値 / s['A1'] = 値 / c.text = 値 |p.text = 値 |ws['A1'] = 値
+|image:../face/icons/cut.svg[切り取り,16,16] 切り取り |どこでも |✅ |p.text = 値 / s['A1'] = 値 / c.text = 値 |p.text = 値 |ws['A1'] = 値
+|image:../face/icons/paste.svg[貼り付け,16,16] 貼り付け |どこでも |✅ |p.text = 値 / s['A1'] = 値 / c.text = 値 |p.text = 値 |ws['A1'] = 値
 |image:../face/icons/fontname.svg[フォント,16,16] フォント |Run / Cell |✅ |r.font / c.font |r.font.name |c.font = Font(name=…)
 |image:../face/icons/fontsize.svg[フォントのサイズ,16,16] フォントのサイズ |Run / Cell |✅ |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
 |image:../face/icons/incfont.svg[フォントサイズの拡大,16,16] フォントサイズの拡大 |Run / Cell |✅ |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
@@ -282,6 +285,39 @@ def 大文字にする(段落):
 
 |image:../face/icons/freeze.svg[ウィンドウ枠の固定,16,16] ウィンドウ枠の固定 |Sheet |✅ |s.freeze_panes |— |ws.freeze_panes
 |image:../face/icons/show-gridlines.svg[枠線表示,16,16] 枠線表示 |Sheet |✅ |s.show_gridlines |— |ws.sheet_view.showGridLines
+|===
+
+== クイックアクセス
+
+[cols="2,2,^1,3,3,3"]
+|===
+|ボタン |オブジェクト |印 |officework |python-docx |openpyxl
+
+|保存 |Doc / Book |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|印刷 |Doc | |— |— |—
+|元に戻す |— |❌ |画面の操作です。プログラムは保存する前の写しを持てます |— |—
+|やり直し |— |❌ |同じく画面の操作です |— |—
+|===
+
+== 左パネル
+
+[cols="2,2,^1,3,3,3"]
+|===
+|ボタン |オブジェクト |印 |officework |python-docx |openpyxl
+
+|見出し |Paragraph |✅ |p.style で拾う |p.style |—
+|コメント |Comment |✅ |d.comments |d.comments |c.comment
+|検索 |Doc |✅ |d.find(字) |— |—
+|AI と相談する |— |❌ |画面の会話です。プログラムからは自分で AI を呼べます |— |—
+|===
+
+== 右パネル
+
+[cols="2,2,^1,3,3,3"]
+|===
+|ボタン |オブジェクト |印 |officework |python-docx |openpyxl
+
+|設定・ページ・スタイル |— |❌ |リボンと同じボタンが並びます。上の行を見てください |— |—
 |===
 
 // api:taiou:end
