@@ -1215,6 +1215,48 @@ impl Writer {
         true
     }
 
+    /// **形を決めてから保存先を聞く**(手引き
+    /// `docs/commands/ファイル/エクスポート.adoc`)。
+    ///
+    /// 「名前を付けて保存」と違って、*保存先は変わりません* — 書き出しは
+    /// 別の形に写す操作で、いま書いている文書はそのままです。
+    pub(crate) fn export_as(&mut self, cx: &mut Context<Self>, ext: &'static str) {
+        let 名 = match ext {
+            "docx" => ui::t!("Word文書"),
+            _ => ui::t!("文字だけのファイル"),
+        };
+        let もと = self.path.clone();
+        let ask = cx.background_executor().spawn(async move {
+            let mut d = rfd::FileDialog::new().add_filter(名, &[ext]);
+            if let Some(p) = もと.as_ref().and_then(|p| p.parent()) {
+                d = d.set_directory(p);
+            }
+            if let Some(n) = もと.as_ref().and_then(|p| p.file_stem()) {
+                d = d.set_file_name(format!("{}.{ext}", n.to_string_lossy()));
+            }
+            d.save_file()
+        });
+        cx.spawn(async move |this, cx| {
+            let r = ask.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(mut p) = r {
+                    if p.extension().is_none() {
+                        p.set_extension(ext);
+                    }
+                    // **書き出しの先は覚えません。** いま書いている文書の
+                    // 保存先は元のままです(保存とは別の操作)
+                    let 元の道 = this.path.clone();
+                    let 元は素 = this.native;
+                    this.save_to(p);
+                    this.path = 元の道;
+                    this.native = 元は素;
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     /// 名前を付けて保存(いつでもダイアログ。別のスレッド — rfd は同期)
     pub(crate) fn save_as(&mut self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {

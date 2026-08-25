@@ -20,6 +20,33 @@ impl ui::filemenu::FileScreen for Writer {
     fn new_file(&mut self) -> bool {
         self.new_doc()
     }
+    /// **フォルダを開き直す。** 綴りはフォルダなので、仕事を替えるとは
+    /// フォルダを替えることです(手引き `docs/commands/ファイル/フォルダーを開く.adoc`)
+    fn folder_dialog_now(&mut self, cx: &mut Context<Self>) {
+        let start = self
+            .path
+            .as_ref()
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+            .or_else(|| ui::settings::get("folder").map(std::path::PathBuf::from));
+        let ask = cx.background_executor().spawn(async move {
+            let mut d =
+                rfd::FileDialog::new().set_title(ui::t!("開くフォルダを選んでください"));
+            if let Some(s) = start.filter(|d| d.is_dir()) {
+                d = d.set_directory(s);
+            }
+            d.pick_folder()
+        });
+        cx.spawn(async move |this, cx| {
+            let r = ask.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(d) = r {
+                    this.show_folder(d);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
     fn open_dialog_now(&mut self, cx: &mut Context<Self>) {
         self.open_dialog(cx);
     }
@@ -1252,6 +1279,10 @@ impl Writer {
             I::new("f-new", ui::t!("新規作成")).gap(),
             I::new("f-tpl", ui::t!("テンプレートから作成")).grey(),
             I::new("f-open", ui::t!("開く")),
+            // **フォルダを開き直す**(2026-08-25 発注者「どうしてフォルダーを
+            // 開くがないのだ」)。綴りはフォルダなので、仕事を替えるとは
+            // フォルダを替えることです。前は起動のときにしか選べませんでした
+            I::new("f-folder", ui::t!("フォルダーを開く")),
             I::new("f-url", ui::t!("URLを開く")),
             I::new("f-recent", ui::t!("最近開いた")).on(self.file_view == 1),
             I::new("f-find", ui::t!("フォルダから探す")).on(self.file_view == 3),
@@ -1264,6 +1295,11 @@ impl Writer {
             I::new("f-save", ui::t!("保存")).gap(),
             I::new("f-saveas", ui::t!("名前を付けて保存")),
             I::new("f-print", ui::t!("印刷")),
+            // **形を選んで書き出す1つの入り口**
+            // (手引き `docs/commands/ファイル/エクスポート.adoc`)。
+            // 前は「印刷」「Web の形で書き出す」に分かれていて、
+            // どこから何が出せるのかが探しにくい形でした
+            I::new("f-export", ui::t!("エクスポート")),
             I::new("f-merge", ui::t!("データを差し込む(CSV)")),
             I::new("f-html", ui::t!("Web の形で書き出す(HTML)")),
             I::new("f-protect", ui::t!("保護する")),
@@ -1302,6 +1338,11 @@ impl Writer {
                     ui::t!("URL を打って Enter(JS を動かさずに読んで、記入欄に書き込めます)").into();
             }
             "f-print" => self.save_pdf(cx),
+            "f-export" => {
+                self.tab = self.prev_tab;
+                self.open_list = (self.open_list != Some("f-export")).then_some("f-export");
+                self.pick_sel = 0;
+            }
             "f-merge" => self.merge_csv(cx),
             "f-html" => self.save_html(cx),
             "f-distill" => {

@@ -433,6 +433,12 @@ FILE_MICHI = {
     "f-new": ("Doc / Book", "Doc() / Book()", "docx.Document()", "Workbook()"),
     "f-tpl": ("Template", "", "docx.Document(雛形)", "load_workbook(雛形)"),
     "f-open": ("Doc / Book", "Doc.open(径路) / Book.open(径路)", "docx.Document(径路)", "load_workbook(径路)"),
+    # **フォルダを開き直す**(2026-08-25 発注者「どうしてフォルダーを開くが
+    # ないのだ」)。綴りはフォルダなので、仕事を替えるとはフォルダを替えること。
+    # プログラムは径路を直に書けるので、専用の呼び方は要りません
+    "f-folder": ("", "", "", ""),
+    # **形を選んで書き出す1つの入り口**。形ごとの呼び方は save に寄せます
+    "f-export": ("Doc / Book", "d.save(径路) / b.save(径路)", "d.save(径路)", "wb.save(径路)"),
     "f-url": ("Doc", "", "", ""),
     "f-recent": ("", "", "", ""),
     "f-find": ("", "", "", ""),

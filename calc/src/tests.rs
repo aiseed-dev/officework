@@ -7901,8 +7901,14 @@ mod file_menu_tests {
             let 品 = this.file_menu();
             let ids: Vec<&str> = 品.iter().map(|i| i.id).collect();
             assert_eq!(ids, vec![
-                "f-back", "f-new", "f-tpl", "f-open", "f-recent", "f-find",
-                "f-save", "f-saveas", "f-print", "f-csv", "f-html", "f-protect",
+                "f-back", "f-new", "f-tpl", "f-open",
+                // **フォルダを開き直す**(2026-08-25)。綴りはフォルダなので、
+                // 仕事を替えるとはフォルダを替えること。前は起動時だけでした
+                "f-folder",
+                "f-recent", "f-find",
+                "f-save", "f-saveas", "f-print", "f-csv", "f-html",
+                // **形を選んで書き出す1つの入り口**(2026-08-25)
+                "f-export", "f-protect",
                 "f-macro", "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req",
             ]);
             // 押せないのは3つ(まだ無い物)
@@ -8004,6 +8010,38 @@ mod file_menu_tests {
             assert_eq!(出す(this, 0, 2), "5678");
             assert_eq!(出す(this, 1, 0), "012", "郵便番号の頭の 0 が落ちています");
             assert_eq!(出す(this, 1, 1), "0034", "郵便番号の後ろの 0 が落ちています");
+        });
+    }
+
+    #[gpui::test]
+    /// **表の画面でもフォルダを開けます**(文章の画面と同じ物)。
+    /// 手引き `docs/commands/ファイル/フォルダーを開く.adoc`
+    fn フォルダを開くと一覧が出る(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            let ids: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();
+            assert!(ids.contains(&"f-folder"), "ファイルのページに口がありません");
+            let d = std::env::temp_dir();
+            this.show_folder(d.clone());
+            assert!(this.right_open, "一覧が開いていません");
+            assert_eq!(this.right_face, 2, "フォルダの中身の面になっていません");
+            assert_eq!(pyrun::work_dir(), Some(d), "綴りが Python に伝わっていません");
+        });
+    }
+
+    #[gpui::test]
+    /// **表の画面のエクスポート**(手引きの表では xlsx・csv・html・pdf の4つ)
+    fn エクスポートは形を選ぶ(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let ids: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();
+            assert!(ids.contains(&"f-export"), "ファイルのページに口がありません");
+            // **ファイルのページのボタンは `file_menu_click`** を通ります
+            this.file_menu_click("f-export", cx);
+            let 形: Vec<String> = this.pick.as_ref().expect("一覧が開いていません")
+                .0.iter().map(|(k, _)| k.clone()).collect();
+            assert_eq!(形, vec!["xlsx", "csv", "html", "pdf"], "出せる形が表と違います");
+            assert!(!形.iter().any(|k| k == "adoc"), "adoc が書き出しに出ています");
         });
     }
 

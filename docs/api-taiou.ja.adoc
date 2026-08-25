@@ -73,6 +73,7 @@ def 大文字にする(段落):
 |link:commands/ファイル/新規作成.adoc[新規作成] |Doc / Book |✅ |Doc() / Book() |docx.Document() |Workbook()
 |link:commands/ファイル/テンプレートから作成.adoc[テンプレートから作成] |Template | |— |docx.Document(雛形) |load_workbook(雛形)
 |link:commands/ファイル/開く.adoc[開く] |Doc / Book |✅ |Doc.open(径路) / Book.open(径路) |docx.Document(径路) |load_workbook(径路)
+|link:commands/ファイル/フォルダーを開く.adoc[フォルダーを開く] |— | |— |— |—
 |link:commands/ファイル/URLを開く.adoc[URLを開く] |Doc | |— |— |—
 |link:commands/ファイル/最近開いた.adoc[最近開いた] |— | |— |— |—
 |link:commands/ファイル/フォルダから探す.adoc[フォルダから探す] |— | |— |— |—
@@ -80,6 +81,7 @@ def 大文字にする(段落):
 |link:commands/ファイル/保存.adoc[保存] |Doc / Book |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
 |link:commands/ファイル/名前を付けて保存.adoc[名前を付けて保存] |Doc / Book |✅ |d.save(別の径路) |d.save(別の径路) |wb.save(別の径路)
 |link:commands/ファイル/印刷.adoc[印刷] |Doc | |— |— |—
+|link:commands/ファイル/エクスポート.adoc[エクスポート] |Doc / Book |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
 |link:commands/ファイル/データを差し込む.adoc[データを差し込む(CSV)] |Doc |✅ |mcp.doc_merge_fields() / mcp.doc_fill(1行分) |— |—
 |link:commands/ファイル/Web の形で書き出す.adoc[Web の形で書き出す(HTML)] |Doc | |— |— |—
 |link:commands/ファイル/保護する.adoc[保護する] |Doc / Book | |— |— |wb.security
@@ -158,7 +160,7 @@ def 大文字にする(段落):
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
 |image:../face/icons/blankpage.svg[空白ページの挿入,16,16] link:commands/挿入/空白ページの挿入.adoc[空白ページの挿入] |Doc |✅ |d.add_page_break() |d.add_page_break() |—
-|image:../face/icons/pagebreak.svg[区切り,16,16] link:commands/挿入/区切り.adoc[区切り] |Doc |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../face/icons/pagebreak.svg[区切り,16,16] link:commands/レイアウト/区切り.adoc[区切り] |Doc |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../face/icons/instable.svg[表の挿入,16,16] link:commands/挿入/表の挿入.adoc[表の挿入] |Doc / Sheet |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
 |image:../face/icons/insimage.svg[画像を挿入,16,16] link:commands/挿入/画像を挿入.adoc[画像を挿入] |Doc |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
 |image:../face/icons/inschart.svg[グラフを挿入,16,16] link:commands/挿入/グラフを挿入.adoc[グラフを挿入] |Sheet | |— |— |ws.add_chart(…)
@@ -174,7 +176,7 @@ def 大文字にする(段落):
 |image:../face/icons/add-pivot.svg[ピボットテーブルを挿入,16,16] link:commands/挿入/ピボットテーブルを挿入.adoc[ピボットテーブルを挿入] |Sheet | |— |— |ws.add_pivot(…)
 |image:../face/icons/insrecommend.svg[推奨チャートを挿入,16,16] link:commands/挿入/推奨チャートを挿入.adoc[推奨チャートを挿入] |Sheet |✍ |s.values() を polars に渡して選ぶ |— |—
 |image:../face/icons/inssparkline.svg[スパークラインを挿入する,16,16] link:commands/挿入/スパークラインを挿入する.adoc[スパークラインを挿入する] |Sheet | |— |— |—
-|image:../face/icons/ins-comment.svg[コメント,16,16] link:commands/挿入/コメント.adoc[コメント] |Comment |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|image:../face/icons/ins-comment.svg[コメント,16,16] link:commands/左パネル/コメント.adoc[コメント] |Comment |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
 |image:../face/icons/inshyperlink.svg[ハイパーリンクを追加,16,16] link:commands/挿入/ハイパーリンクを追加.adoc[ハイパーリンクを追加] |Cell |✅ |c.hyperlink |— |c.hyperlink
 |image:../face/icons/insslicer.svg[スライサーを挿入,16,16] link:commands/挿入/スライサーを挿入.adoc[スライサーを挿入] |Sheet | |— |— |—
 |===
@@ -202,7 +204,7 @@ def 大文字にする(段落):
 |image:../face/icons/pagesize.svg[ページのサイズ,16,16] link:commands/レイアウト/ページのサイズ.adoc[ページのサイズ] |Section |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
 |image:../face/icons/watermark.svg[透かしを編集する,16,16] link:commands/レイアウト/透かしを編集する.adoc[透かしを編集する] |Doc | |— |— |—
 |image:../face/icons/printarea.svg[印刷範囲,16,16] link:commands/レイアウト/印刷範囲.adoc[印刷範囲] |Sheet |✅ |s.print_area |— |ws.print_area
-|image:../face/icons/pagebreak.svg[区切り,16,16] link:commands/挿入/区切り.adoc[区切り] |Doc |✅ |*挿入と同じ* — d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../face/icons/pagebreak.svg[区切り,16,16] link:commands/レイアウト/区切り.adoc[区切り] |Doc |✅ |*挿入と同じ* — d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../face/icons/editheader.svg[ヘッダー/フッター,16,16] link:commands/レイアウト/ヘッダー_フッター.adoc[ヘッダー/フッター] |Doc / Sheet |✅ |d.header / s.oddHeader |section.header |ws.oddHeader
 |image:../face/icons/fit-pages.svg[紙に収める,16,16] link:commands/レイアウト/紙に収める.adoc[紙に収める] |Sheet | |— |— |ws.page_setup.fitToWidth
 |image:../face/icons/printtitles.svg[タイトルを印刷する,16,16] link:commands/レイアウト/タイトルを印刷する.adoc[タイトルを印刷する] |Sheet |✅ |s.print_title_rows |— |ws.print_title_rows
@@ -372,7 +374,7 @@ def 大文字にする(段落):
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
 |link:commands/左パネル/見出し.adoc[見出し] |Paragraph |✅ |p.style で拾う |p.style |—
-|link:commands/挿入/コメント.adoc[コメント] |Comment |✅ |*挿入と同じ* — d.comments |d.comments |c.comment
+|link:commands/左パネル/コメント.adoc[コメント] |Comment |✅ |*挿入と同じ* — d.comments |d.comments |c.comment
 |link:commands/左パネル/検索.adoc[検索] |Doc |✅ |d.find(字) |— |—
 |AI と相談する |— |❌ |画面の会話です。プログラムからは自分で AI を呼べます |— |—
 |===

@@ -3128,11 +3128,18 @@ mod file_menu_tests {
             let 品 = this.file_menu();
             let ids: Vec<&str> = 品.iter().map(|i| i.id).collect();
             assert_eq!(ids, vec![
-                "f-back", "f-new", "f-tpl", "f-open", "f-url", "f-recent", "f-find",
+                "f-back", "f-new", "f-tpl", "f-open",
+                // **フォルダを開き直す**(2026-08-25)。綴りはフォルダなので、
+                // 仕事を替えるとはフォルダを替えること。前は起動時だけでした
+                "f-folder",
+                "f-url", "f-recent", "f-find",
                 // **前に落ちた跡から開き直す**(2026-08-21 の B-3)。
                 // 控えが無ければ灰色(押しても何も無い、をやめる)
                 "f-recover",
-                "f-save", "f-saveas", "f-print", "f-merge", "f-html", "f-protect",
+                "f-save", "f-saveas", "f-print",
+                // **形を選んで書き出す1つの入り口**(2026-08-25)
+                "f-export",
+                "f-merge", "f-html", "f-protect",
                 "f-distill", "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req",
             ]);
             let 下: Vec<&str> = 品.iter().filter(|i| i.tail).map(|i| i.id).collect();
@@ -3368,6 +3375,50 @@ mod docx_formula_tests {
         assert_eq!(和暦(1989, 1, 8), Some(("平成", "H", 1)));
         assert_eq!(和暦(1989, 1, 7), Some(("昭和", "S", 64)), "改元の前日は昭和");
         assert_eq!(和暦(1900, 1, 1), None, "昭和より前は元号を出しません");
+    }
+
+    #[gpui::test]
+    /// **フォルダを開くと、一覧にフォルダの中身が出ます**
+    /// (手引き `docs/commands/ファイル/フォルダーを開く.adoc`)。
+    ///
+    /// 2026-08-25 発注者「どうしてフォルダーを開くがないのだ」。
+    /// 前は起動のときにしか選べず、動かしている間は替えられませんでした。
+    fn フォルダを開くと一覧が出る(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            // ファイルのページに口があること
+            let ids: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();
+            assert!(ids.contains(&"f-folder"), "ファイルのページに口がありません");
+            let d = std::env::temp_dir();
+            this.show_folder(d.clone());
+            assert!(this.rp_open, "一覧が開いていません");
+            assert_eq!(this.rp_tab, 3, "フォルダの中身の面になっていません");
+            // **綴りの .venv を Python の第一候補にします**
+            assert_eq!(pyrun::work_dir(), Some(d), "綴りが Python に伝わっていません");
+        });
+    }
+
+    #[gpui::test]
+    /// **エクスポートは形を選んでから出します**
+    /// (手引き `docs/commands/ファイル/エクスポート.adoc`)。
+    ///
+    /// 前は「印刷」と「Web の形で書き出す」に分かれていて、
+    /// どこから何が出せるのかが探しにくい形でした。
+    fn エクスポートは形を選ぶ(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            let ids: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();
+            assert!(ids.contains(&"f-export"), "ファイルのページに口がありません");
+            // **ファイルのページのボタンは `file_menu_click`** を通ります
+            this.file_menu_click("f-export", cx);
+            assert_eq!(this.open_list, Some("f-export"), "形の一覧が開いていません");
+            let 形: Vec<String> =
+                this.一覧の中身("f-export").into_iter().map(|(k, _)| k).collect();
+            // **文章の節から出せるのは4つ**(手引きの表)
+            assert_eq!(形, vec!["docx", "html", "pdf", "text"], "出せる形が表と違います");
+            // **`.adoc` は出しません** — 保存の側だからです
+            assert!(!形.iter().any(|k| k == "adoc"), "adoc が書き出しに出ています");
+        });
     }
 
 }

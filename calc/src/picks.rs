@@ -344,6 +344,15 @@ impl Calc {
                 self.edit_armed = true;
                 self.status = ui::tf!("{} を式に入れました", name).into();
             }
+            // **書き出す形を選ぶ**(手引き
+            // `docs/commands/ファイル/エクスポート.adoc`)。
+            // 形ごとに、もとからある書き出しの道へ渡します
+            "f-export" => match v {
+                "xlsx" => self.run_cmd("f-saveas", cx),
+                "csv" => self.export_csv_dialog(cx),
+                "html" => self.export_html_dialog(cx),
+                _ => self.run_cmd("pdf", cx),
+            },
             "csv-kind" => {
                 // ✓ は見出しだけに付く — 鍵はそのまま引き当てられる
                 if let Some((k, l, _)) = Calc::csv_kinds().iter().find(|(k, _, _)| *k == v) {

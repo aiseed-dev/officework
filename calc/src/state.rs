@@ -119,6 +119,22 @@ impl Calc {
 
     /// **いま開いているフォルダ。** 右パネルのファイル一覧が並べる場所です。
     /// 開いているブックの親を使い、無ければ前に使ったフォルダです。
+    /// **フォルダを開く。** 文章の画面の `Writer::show_folder` と同じ物
+    /// (手引き `docs/commands/ファイル/フォルダーを開く.adoc`)。
+    ///
+    /// 綴りはフォルダなので、開くと*右の一覧にフォルダの中身*が出ます。
+    /// 綴りの `.venv` を Python の第一候補にするのも同じで、
+    /// 同じフォルダを見ている道具が同じ Python を使うようにするためです。
+    pub(crate) fn show_folder(&mut self, dir: PathBuf) {
+        ui::settings::set("folder", &dir.display().to_string());
+        pyrun::set_work_dir(Some(dir.clone()));
+        self.right_open = true;
+        self.right_face = 2; // フォルダの中身
+        self.status =
+            ui::tf!("{} を開きました(右の一覧から選んでください)", dir.display().to_string())
+                .into();
+    }
+
     pub(crate) fn folder(&self) -> Option<PathBuf> {
         if let Some(p) = self.path.as_ref().and_then(|p| p.parent()) {
             return Some(p.to_path_buf());

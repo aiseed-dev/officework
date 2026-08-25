@@ -51,6 +51,33 @@ impl ui::filemenu::FileScreen for Calc {
     fn new_file(&mut self) -> bool {
         self.new_book()
     }
+    /// **フォルダを開き直す。** 文章の画面と同じ物
+    /// (手引き `docs/commands/ファイル/フォルダーを開く.adoc`)
+    fn folder_dialog_now(&mut self, cx: &mut Context<Self>) {
+        let start = self
+            .path
+            .as_ref()
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+            .or_else(|| ui::settings::get("folder").map(std::path::PathBuf::from));
+        let ask = cx.background_executor().spawn(async move {
+            let mut d =
+                rfd::FileDialog::new().set_title(ui::t!("開くフォルダを選んでください"));
+            if let Some(s) = start.filter(|d| d.is_dir()) {
+                d = d.set_directory(s);
+            }
+            d.pick_folder()
+        });
+        cx.spawn(async move |this, cx| {
+            let r = ask.await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(d) = r {
+                    this.show_folder(d);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
     fn open_dialog_now(&mut self, cx: &mut Context<Self>) {
         self.open_dialog(cx);
     }
@@ -4281,6 +4308,8 @@ impl Calc {
             I::new("f-new", ui::t!("新規作成")).gap(),
             I::new("f-tpl", ui::t!("テンプレートから作成")).grey(),
             I::new("f-open", ui::t!("開く")),
+            // **フォルダを開き直す**(2026-08-25 発注者)。文章の画面と同じ物
+            I::new("f-folder", ui::t!("フォルダーを開く")),
             I::new("f-recent", ui::t!("最近開いた")).on(self.file_view == 1),
             I::new("f-find", ui::t!("フォルダから探す")).on(self.file_view == 3),
             I::new("f-save", ui::t!("保存")).gap(),
@@ -4288,6 +4317,9 @@ impl Calc {
             I::new("f-print", ui::t!("印刷")),
             I::new("f-csv", ui::t!("CSV に書き出す")),
             I::new("f-html", ui::t!("Web に書き出す")),
+            // **形を選んで書き出す1つの入り口**
+            // (手引き `docs/commands/ファイル/エクスポート.adoc`)
+            I::new("f-export", ui::t!("エクスポート")),
             I::new("f-protect", ui::t!("保護する")).on(self.file_view == 5),
             I::new("f-macro", ui::t!("マクロ")),
             I::new("f-info", ui::t!("詳細情報")).gap().on(self.file_view == 0),
@@ -4312,6 +4344,23 @@ impl Calc {
         match id {
             "f-print" => self.run_cmd("pdf", cx),
             "f-csv" => self.export_csv_dialog(cx),
+            "f-export" => {
+                self.tab = self.prev_tab;
+                let at = self.pop_anchor();
+                self.pick_kind = "f-export";
+                self.pick_note = Some(ui::t!("書き出す形").into());
+                // **表の節から出せるのは4つ**(手引きの表)。
+                // `.adoc` はここに出しません — 保存の側だからです
+                self.pick = Some((
+                    vec![
+                        ("xlsx".into(), ui::t!("Excel ブック(.xlsx)").to_string()),
+                        ("csv".into(), ui::t!("CSV(.csv)").to_string()),
+                        ("html".into(), ui::t!("Web ページ(.html)").to_string()),
+                        ("pdf".into(), ui::t!("PDF(.pdf)").to_string()),
+                    ],
+                    at,
+                ));
+            }
             "f-html" => self.export_html_dialog(cx),
             "f-macro" => {
                 if let Some(i) = ribbon::CALC.iter().position(|t| t.name == "マクロ") {

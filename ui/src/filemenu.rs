@@ -80,6 +80,12 @@ pub trait FileScreen: crate::appcmd::Screen {
     fn open_dialog_now(&mut self, cx: &mut gpui::Context<Self>)
     where
         Self: Sized;
+    /// **フォルダを開く窓を出す**(2026-08-25 発注者「どうしてフォルダーを
+    /// 開くがないのだ」)。綴りはフォルダなので、仕事を替えるとはフォルダを
+    /// 替えることです。前は*起動のときにしか*選べませんでした
+    fn folder_dialog_now(&mut self, cx: &mut gpui::Context<Self>)
+    where
+        Self: Sized;
     /// 上書き保存
     fn save_now(&mut self, cx: &mut gpui::Context<Self>)
     where
@@ -187,6 +193,11 @@ pub fn run_cx<S: FileScreen + Sized + 'static>(
         "f-open" => {
             s.tab_to_prev();
             s.open_dialog_now(cx);
+            true
+        }
+        "f-folder" => {
+            s.tab_to_prev();
+            s.folder_dialog_now(cx);
             true
         }
         "f-save" => {

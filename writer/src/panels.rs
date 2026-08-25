@@ -1683,6 +1683,15 @@ impl Writer {
                     (format!("{r}x{c}"), format!("{r}×{c}"))
                 }))
                 .collect(),
+            // **書き出す形。** 文章の節から出せるのは4つです
+            // (手引き `docs/commands/ファイル/エクスポート.adoc` の表)。
+            // `.adoc` はここに出しません — *保存の側*だからです
+            "f-export" => vec![
+                ("docx".into(), ui::t!("Word 文書(.docx)").to_string()),
+                ("html".into(), ui::t!("Web ページ(.html)").to_string()),
+                ("pdf".into(), ui::t!("PDF(.pdf)").to_string()),
+                ("text".into(), ui::t!("文字だけ(.txt)").to_string()),
+            ],
             // 日付の形。**西暦と和暦**(鍵=出す字そのもの — 訳しません)
             "datetime" => crate::cmds::日付の形(),
             "fontname" => {
@@ -1824,6 +1833,12 @@ impl Writer {
         self.font_filter = None;
         self.pick_sel = 0;
         match kind {
+            "f-export" => match key {
+                "docx" => self.export_as(cx, "docx"),
+                "html" => self.save_html(cx),
+                "pdf" => self.save_pdf(cx),
+                _ => self.export_as(cx, "txt"),
+            },
             "datetime" => {
                 self.checkpoint(false); // 日付
                 if self.hf_edit.is_some() {
