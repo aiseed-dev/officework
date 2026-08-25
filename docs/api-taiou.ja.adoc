@@ -11,6 +11,10 @@
 メニューの後ろに、*クイックアクセス*(窓の上の段)・*左右のパネル*(表示タブで出す)・
 *下端*(ステータスバー)も並べてあります。
 
+*右クリック*の段には、そこにしか無いものだけを並べました。
+右クリックの中身はほとんどがリボンと同じ命令なので(切り取り・コピー・太字・揃えなど)、
+それらはリボンの段で引いてください。
+
 同じボタンが2か所にあることがあります(「保存」はファイルとクイックアクセスの両方にあります)。
 *両方とも載せて*、後から出るほうに「◯◯と同じ」と書いてあります。
 画面には本当に両方あるので、隠しません。
@@ -169,6 +173,18 @@ def 大文字にする(段落):
 |image:../face/icons/inshyperlink.svg[ハイパーリンクを追加,16,16] ハイパーリンクを追加 |Cell |✅ |c.hyperlink |— |c.hyperlink
 |===
 
+== 描画
+
+[cols="2,2,^1,3,3,3"]
+|===
+|ボタン |オブジェクト |印 |officework |python-docx |openpyxl
+
+|image:../face/icons/pen.svg[ペン,16,16] ペン |— |❌ |手書きは docx だけの機能で、AsciiDoc に居場所がありません |— |—
+|image:../face/icons/highlighter.svg[蛍光ペン,16,16] 蛍光ペン |— |❌ |同じく手書きです |— |—
+|image:../face/icons/eraser.svg[消しゴム,16,16] 消しゴム |— |❌ |同じく手書きです |— |—
+|image:../face/icons/select-tool.svg[選択,16,16] 選択 |— |❌ |手書きの選択です。画面の操作です |— |—
+|===
+
 == レイアウト
 
 [cols="2,2,^1,3,3,3"]
@@ -236,7 +252,16 @@ def 大文字にする(段落):
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
+|image:../face/icons/td-header.svg[ヘッダー行,16,16] ヘッダー行 |Table | |— |— |ws.tables[…].tableStyleInfo
+|image:../face/icons/td-total.svg[合計行,16,16] 合計行 |Table | |— |— |ws.tables[…].totalsRowCount
+|image:../face/icons/td-band-row.svg[縞模様の行,16,16] 縞模様の行 |Table | |— |— |ws.tables[…].tableStyleInfo
+|image:../face/icons/td-first.svg[最初の列,16,16] 最初の列 |Table | |— |— |ws.tables[…].tableStyleInfo
+|image:../face/icons/td-last.svg[最後の列,16,16] 最後の列 |Table | |— |— |ws.tables[…].tableStyleInfo
+|image:../face/icons/td-band-col.svg[縞模様の列,16,16] 縞模様の列 |Table | |— |— |ws.tables[…].tableStyleInfo
+|image:../face/icons/td-filter.svg[フィルタのボタン,16,16] フィルタのボタン |Table | |— |— |ws.auto_filter
 |image:../face/icons/td-remdup.svg[重複データを削除,16,16] 重複データを削除 |Sheet |✍ |見た = set() で行を選り分ける |— |—
+|image:../face/icons/td-torange.svg[範囲に変換する,16,16] 範囲に変換する |Table | |— |— |del ws.tables[…]
+|image:../face/icons/td-resize.svg[テーブルのサイズ変更,16,16] テーブルのサイズ変更 |Table | |— |— |ws.tables[…].ref
 |===
 
 == 参考資料
@@ -292,6 +317,20 @@ def 大文字にする(段落):
 |image:../face/icons/show-gridlines.svg[枠線表示,16,16] 枠線表示 |Sheet |✅ |s.show_gridlines |— |ws.sheet_view.showGridLines
 |===
 
+== マクロ
+
+[cols="2,2,^1,3,3,3"]
+|===
+|ボタン |オブジェクト |印 |officework |python-docx |openpyxl
+
+|image:../face/icons/plug-manage.svg[一覧,16,16] 一覧 |— |❌ |Python を動かす側です。プログラムからは自分で書けば済みます |— |—
+|image:../face/icons/py-folder.svg[置き場を開く,16,16] 置き場を開く |— |❌ |画面の操作です。プログラムは os が持っています |— |—
+|image:../face/icons/ai-macro.svg[マクロを書く,16,16] マクロを書く |— |❌ |画面の会話です |— |—
+|image:../face/icons/py-run.svg[操作を記録,16,16] 操作を記録 |— |❌ |画面の操作を記録します。プログラムは自分で書けば済みます |— |—
+|image:../face/icons/py-new.svg[新しい .py,16,16] 新しい .py |— |❌ |同じく Python を動かす側です |— |—
+|image:../face/icons/py-line.svg[リボンのマクロ,16,16] リボンのマクロ |— |❌ |Python を動かす側です |— |—
+|===
+
 == クイックアクセス
 
 [cols="2,2,^1,3,3,3"]
@@ -338,6 +377,37 @@ def 大文字にする(段落):
 |スペル |— |❌ |画面の表示の切り替えです |— |—
 |ズーム |— |❌ |画面の表示です。文書は変わりません |— |—
 |選んだ範囲の合計・平均・個数 |Sheet |✅ |sum(…) / len(…)(値を読んで数える) |— |—
+|===
+
+== 右クリック
+
+[cols="2,2,^1,3,3,3"]
+|===
+|ボタン |オブジェクト |印 |officework |python-docx |openpyxl
+
+|語を選択 |— |❌ |画面の選択です。プログラムは字を直に切り出せます |— |—
+|行を選択 |— |❌ |同じく画面の選択です |— |—
+|文字数を数える |Doc |✅ |len(d.text) |len(d.text) |—
+|この版で読み飛ばしたもの |Doc |✅ |d.unsupported |— |wb.unsupported
+|形式を選択して貼り付け |— |❌ |画面の貼り付けです。プログラムは入れる値を自分で選べます |— |—
+|返信を追加 |Comment | |— |— |—
+|マクロの割り当て |— |❌ |図形にマクロを結び付けます。プログラムからは直に呼べます |— |—
+|画像として保存(SVG) |— |❌ |画面の書き出しです |— |—
+|===
+
+== シート見出しの右クリック
+
+[cols="2,2,^1,3,3,3"]
+|===
+|ボタン |オブジェクト |印 |officework |python-docx |openpyxl
+
+|シートの挿入 |Book |✅ |b.add_sheet(名前) |— |wb.create_sheet(名前)
+|シートの削除 |Book |✅ |b.remove(名前) |— |del wb[名前]
+|シートの名前の変更 |Sheet |✅ |s.title = 名前 |— |ws.title = 名前
+|シートのコピー |Book |✅ |b.copy_worksheet(名前) |— |wb.copy_worksheet(ws)
+|左右へ移動 |Book |✅ |b.move_sheet(名前, 位置) |— |wb.move_sheet(名前, 位置)
+|非表示・再表示 |Sheet | |— |— |ws.sheet_state
+|タブの色 |Sheet | |— |— |ws.sheet_properties.tabColor
 |===
 
 // api:taiou:end
