@@ -20,8 +20,8 @@
 
 見るのは*画面に出る字*の一覧です。
 
-* `lang/src/i18n_en.rs` の日本語の側(`ui::t!` が引く表)
-* ソースの `ui::item!(...)` と `ui::t!(...)` に直に書いてある字
+* `ui/i18n/ja.json` の訳(鍵は英語なので、一段引きます)
+* リボンの札(`face/src/ribbon.rs`)
 
 **説明の文は見ません。** 箇条書きのうち、句点で終わる物や長い物は
 選べる値ではなく説明なので外します。
@@ -29,6 +29,9 @@
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import i18n_ja  # noqa: E402  英語の鍵 → 日本語の札
 
 ROOT = Path(__file__).resolve().parent.parent
 CMDS = ROOT / "docs/ja/commands"
@@ -41,15 +44,12 @@ _説明 = re.compile(r"[。、]$|^[|=*`]|—")
 
 
 def 画面の文言() -> set:
-    出 = set(re.findall(
-        r'^\s*\("([^"]+)",\s*"',
-        (ROOT / "lang/src/i18n_en.rs").read_text(encoding="utf-8"), re.M))
-    for p in ROOT.rglob("*.rs"):
-        if any(x in p.parts for x in 除く):
-            continue
-        出 |= set(re.findall(r'ui::(?:item|t|tf)!\("((?:[^"\\]|\\.)*)"',
-                             p.read_text(encoding="utf-8", errors="replace")))
-    return 出
+    """**日本語のマニュアルと比べるので、日本語の側を集めます。**
+
+    鍵が英語になったので(2026-08-26)、ソースの字をそのまま拾っても
+    日本語の頁とは比べられません。`tools/i18n_ja.py` が一段引きます。
+    """
+    return i18n_ja.画面の日本語()
 
 
 def 頁の値():

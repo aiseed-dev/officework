@@ -4,10 +4,10 @@
 officework の訳の材料は `ui/i18n/keys.json` で、番号がついています。
 材料は2つの出どころから来ます。
 
-* 文言 — `lang/src/i18n_en.rs`(`ui::t!` や `ui::item!` で使う語)
+* 文言 — `ui::t!` や `ui::item!` で使う語
 * リボンの語 — `ui/gen_ribbon_locale.py` の `OVERRIDES`(本家に無いボタンの語)
 
-同じ日本語が両方に載ることがあります。**番号を分けると訳も分かれます。**
+同じ語が両方に載ることがあります。**番号を分けると訳も分かれます。**
 2026-08-21 に「セルの書式設定」がリボンと保護の設定の一覧で別の語に
 なっている言語が8つありました(スペイン語なら `Dar formato a celdas` と
 `Aplicar formato a celdas`)。利用者から見れば同じ機能の名前なので、
@@ -46,9 +46,11 @@ def main() -> int:
         print(f"::error::材料が {len(keys)} 句しかありません(keys.json の形が変わった?)")
         return 1
 
+    # **鍵は英語です**(2026-08-26 の移行)。前は日本語で重なりを見て
+    # いました。同じ鍵が2つの番号を持てば、訳も2つに分かれます
     組: dict[str, list[int]] = {}
     for k in keys:
-        組.setdefault(k["ja"], []).append(k["i"])
+        組.setdefault(k["key"], []).append(k["i"])
     重 = {w: v for w, v in 組.items() if len(v) > 1}
     if 重:
         for w, idx in sorted(重.items()):

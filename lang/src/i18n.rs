@@ -123,9 +123,12 @@ fn 札に直す(ロケール: &str) -> Option<&'static str> {
 }
 
 /// 札を、表に載っている `&'static str` に直す。無ければ `None`。
+///
+/// **en を名指しで受けます。** 鍵が英語なので en は対訳表を持ちません
+/// (2026-08-26)。表の登録簿だけを見ると en が落ちてしまいます。
 fn 静かな札(tag: &str) -> Option<&'static str> {
-    if tag == "ja" {
-        return Some("ja");
+    if tag == "en" {
+        return Some("en");
     }
     crate::i18n_tables::LANGS.iter().find(|x| **x == tag).copied()
 }
@@ -143,10 +146,16 @@ pub fn set_language(tag: &str) -> bool {
     true
 }
 
-/// 選べる言語(ja + 表の揃った言語)。設定ページの巡回もこれを見る
+/// 選べる言語(表の揃った言語 + en)。設定ページの巡回もこれを見る。
+///
+/// **並びは辞書順**にします。前は ja を頭に置いていましたが、鍵が英語に
+/// なって ja も表を持つ言語の1つになったので、特別扱いをやめました。
 pub fn languages() -> Vec<&'static str> {
-    let mut v = vec!["ja"];
-    v.extend_from_slice(crate::i18n_tables::LANGS);
+    let mut v: Vec<&'static str> = crate::i18n_tables::LANGS.to_vec();
+    if !v.contains(&"en") {
+        v.push("en");
+        v.sort_unstable();
+    }
     v
 }
 
@@ -205,6 +214,18 @@ pub fn tr(ja: &'static str) -> &'static str {
     match lang_map() {
         Some(m) => m.get(ja).copied().unwrap_or(ja),
         None => ja,
+    }
+}
+
+/// **実行時に決まる鍵**を引く。表に無ければ鍵をそのまま返す。
+///
+/// [`tr`] は `&'static str` しか受けません(鍵はソースに書いた文なので
+/// 普通はそれで足ります)。集計の種類のように、鍵が変数に入っている所
+/// だけこちらを使ってください(2026-08-26)。
+pub fn tr_dyn(key: &str) -> String {
+    match lang_map() {
+        Some(m) => m.get(key).map(|s| s.to_string()).unwrap_or_else(|| key.to_string()),
+        None => key.to_string(),
     }
 }
 

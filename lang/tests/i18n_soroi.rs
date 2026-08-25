@@ -204,6 +204,16 @@ fn app_keys() -> BTreeSet<String> {
     out
 }
 
+/// **鍵の一覧**(英語)。
+///
+/// 鍵が英語になったので(2026-08-26)、`en` は対訳表を持ちません。
+/// 鍵の一覧は、どの言語の表の**鍵の側**からでも取れます。日本語の表を
+/// 使うのは、それが `ui/i18n/keys.json` からそのまま生成された物で、
+/// 常に全部の鍵を持つからです。
+fn 鍵の一覧() -> BTreeSet<String> {
+    table_keys("ja")
+}
+
 /// 表の鍵。**Rust の文字列としての中身**ではなく、ソースに書かれた
 /// エスケープ済みの姿で比べる — アプリ側も同じ姿で取っているので揃う
 fn table_keys(lang: &str) -> BTreeSet<String> {
@@ -227,10 +237,11 @@ fn table_keys(lang: &str) -> BTreeSet<String> {
     out
 }
 
+/// **ソースの鍵が、鍵の一覧に全部載っている。**
 #[test]
-fn 英語の表に未訳が無い() {
+fn 鍵の一覧に載っていない鍵が無い() {
     let app = app_keys();
-    let en = table_keys("en");
+    let en = 鍵の一覧();
     let missing: Vec<&String> = app.difference(&en).collect();
     assert!(
         missing.is_empty(),
@@ -243,7 +254,7 @@ fn 英語の表に未訳が無い() {
 #[test]
 fn 使われていない訳が残っていない() {
     let app = app_keys();
-    let en = table_keys("en");
+    let en = 鍵の一覧();
     let dead: Vec<&String> = en.difference(&app).collect();
     assert!(
         dead.is_empty(),
@@ -257,11 +268,8 @@ fn 使われていない訳が残っていない() {
 /// その言語は「対応しています」と言ってよい状態ではない
 #[test]
 fn どの言語の表も同じ鍵を持つ() {
-    let en = table_keys("en");
+    let en = 鍵の一覧();
     for lang in lang::i18n_tables::LANGS {
-        if *lang == "en" {
-            continue;
-        }
         let t = table_keys(lang);
         let missing = en.difference(&t).count();
         let extra = t.difference(&en).count();
@@ -279,7 +287,7 @@ fn どの言語の表も同じ鍵を持つ() {
 #[test]
 fn 穴埋めの数が言語をまたいで揃う() {
     let holes = |s: &str| s.match_indices("{}").count();
-    let en = table_keys("en");
+    let en = 鍵の一覧();
     for lang in lang::i18n_tables::LANGS {
         let t = lang::i18n_tables::table(lang).expect("登録済み");
         for (k, v) in t {
@@ -389,18 +397,20 @@ fn 英語の表が英国綴りで揃っている() {
         ("modeling", "modelling"),
         ("defense", "defence"),
     ];
+    // **鍵の側が英語です**(2026-08-26)。前は en の対訳表の訳の側を
+    // 見ていましたが、その表は無くなりました
     let mut bad = Vec::new();
-    for (ja, en) in lang::i18n_en::TABLE {
+    for en in 鍵の一覧() {
         for w in en.split(|c: char| !c.is_ascii_alphabetic()) {
             let lower = w.to_ascii_lowercase();
             if let Some((_, brit)) = AMERICAN.iter().find(|(a, _)| *a == lower) {
-                bad.push(format!("{ja} → {en}\n      {w} は {brit} に"));
+                bad.push(format!("{en}\n      {w} は {brit} に"));
             }
         }
     }
     assert!(
         bad.is_empty(),
-        "英語の表に米国綴りが {} 件あります:\n  {}",
+        "鍵の英語に米国綴りが {} 件あります:\n  {}",
         bad.len(),
         bad.iter().take(6).cloned().collect::<Vec<_>>().join("\n  ")
     );

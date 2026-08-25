@@ -47,7 +47,7 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
             let z = s.zoom_mut();
             *z = if id == "zoom-in" { (*z + 0.1).min(2.0) } else { (*z - 0.1).max(0.5) };
             let pct = (*z * 100.0).round() as i32;
-            let msg = crate::tf!("ズーム {}%", pct);
+            let msg = crate::tf!("Zoom {}%", pct);
             s.say(msg.to_string());
             true
         }
@@ -56,9 +56,9 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
             let next = crate::ai::backend().next();
             crate::ai::set_backend(next);
             let msg = match crate::ai::ready(next) {
-                Ok(_) => crate::tf!("AI の宛先: {}(覚えました)", next.label()),
+                Ok(_) => crate::tf!("AI destination: {} (remembered)", next.label()),
                 Err(e) => {
-                    crate::tf!("AI の宛先: {} — ただし今は使えません: {}", next.label(), e)
+                    crate::tf!("AI destination: {} — but it is unavailable right now: {}", next.label(), e)
                 }
             };
             s.say(msg.to_string());
@@ -68,7 +68,7 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
         // (2026-08-21 の B-3)。上の拡大・縮小と対になる命令です
         "zoom100" => {
             *s.zoom_mut() = 1.0;
-            s.say(crate::t!("100% に戻しました").to_string());
+            s.say(crate::t!("Back to 100%").to_string());
             true
         }
         // マクロの置き場をファイル管理で開く。**表にしか無かった**ので
@@ -79,12 +79,12 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
             let _ = std::fs::create_dir_all(&dir);
             let 道 = dir.display().to_string();
             let msg = match crate::open_outside(&道) {
-                crate::Opened::Yes => crate::tf!("開きます: {}", 道),
+                crate::Opened::Yes => crate::tf!("Opening: {}", 道),
                 crate::Opened::JustNow => {
-                    crate::t!("さっき開きました(窓が出るまで少し待ってください)").into()
+                    crate::t!("Just opened it (give the window a moment to appear)").into()
                 }
                 crate::Opened::Failed => {
-                    crate::tf!("開ける道具が見つかりません: {}", 道)
+                    crate::tf!("No application is associated with this file: {}", 道)
                 }
             };
             s.say(msg.to_string());
@@ -105,7 +105,7 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
             if !cfg!(test) {
                 crate::settings::set("ui_scale", &format!("{:.1}", pct as f32 / 100.0));
             }
-            let msg = crate::tf!("画面の文字の大きさ {}%(次回もこの大きさで開きます)", pct);
+            let msg = crate::tf!("UI text size {}% (opens at this size next time too)", pct);
             s.say(msg.to_string());
             true
         }

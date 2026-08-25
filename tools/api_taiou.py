@@ -19,6 +19,9 @@
 """
 import os
 import re
+import sys as _sys
+_sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent))
+import i18n_ja  # noqa: E402  英語の鍵 → 日本語の札
 import sys
 from pathlib import Path
 
@@ -471,11 +474,18 @@ FILE_MICHI = {
 
 
 def file_menu():
-    """ファイルのページの項目を `writer/src/cmds.rs` から読みます。手で写しません。"""
+    """ファイルのページの項目を `writer/src/cmds.rs` から読みます。手で写しません。
+
+    **鍵は英語なので、日本語に直してから返します**(2026-08-26 の移行)。
+    この表は日本語のマニュアルで、手引きの頁の名前も日本語です。直さずに
+    出すと、表だけ英語になって手引きへのリンクが全部切れます — しかも
+    検査は落ちません(生成する道具なので、黙って英語の表を書きます)。
+    """
     src = FILE_SRC.read_text(encoding="utf-8")
     body = src[src.index("fn file_menu"):]
     body = body[: body.index("\n    }")]
-    return re.findall(r'I::new\("(f-[a-z]+)",\s*ui::t!\("([^"]+)"\)\)', body)
+    出 = re.findall(r'I::new\("(f-[a-z]+)",\s*ui::t!\("([^"]+)"\)\)', body)
+    return [(i, i18n_ja.日本語(鍵)) for i, 鍵 in 出]
 
 
 def rows():

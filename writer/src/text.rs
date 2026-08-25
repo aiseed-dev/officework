@@ -235,7 +235,7 @@ impl Writer {
         self.checkpoint(false); // 段落の性質(揃え・箇条書き・字下げ・行間)
         if self.protected() {
             self.status =
-                ui::t!("読み取り専用で保護されています(保護タブの「保護」で解除できます)").into();
+                ui::t!("Protected read-only (Protection tab > Protect to release)").into();
             return;
         }
         match self.target {
@@ -299,14 +299,14 @@ impl Writer {
         let gs = kumihan::fill::groups(&self.doc);
         if gs.is_empty() {
             self.status = ui::t!(
-                "差し込む所がありません。表の行に {{群.項目}} と書いてください"
+                "Nothing to merge into. Write {{group.item}} in a table row"
             )
             .into();
             return;
         }
         if gs.len() > 1 {
             // **どれに流すかは人が決めること。** 勝手に選ばない
-            self.status = ui::tf!("差し込む所が複数あります: {}", gs.join(" / ")).into();
+            self.status = ui::tf!("There is more than one place to merge into: {}", gs.join(" / ")).into();
             return;
         }
         let ask = cx.background_executor().spawn(async {
@@ -330,7 +330,7 @@ impl Writer {
         let src = match std::fs::read_to_string(path) {
             Ok(s) => s,
             Err(e) => {
-                self.status = ui::tf!("読めません: {}", e).into();
+                self.status = ui::tf!("Can't read: {}", e).into();
                 return;
             }
         };
@@ -354,7 +354,7 @@ impl Writer {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
                 .add_filter("HTML", &["html"])
-                .set_file_name(ui::t!("文書.html"))
+                .set_file_name(ui::t!("document.html"))
                 .save_file()
         });
         cx.spawn(async move |this, cx| {
@@ -376,7 +376,7 @@ impl Writer {
         let (th, 使った) = self.template_for("web");
         let page = kumihan::html_write::page(&self.doc, &th);
         if let Err(e) = std::fs::write(path, &page.html) {
-            self.status = ui::tf!("書き出せません: {}", e).into();
+            self.status = ui::tf!("Can't export it: {}", e).into();
             return;
         }
         // **画像は隣に置きます**(HTML に埋め込みません)。HTML から見た相対の
@@ -395,16 +395,16 @@ impl Writer {
             }
         }
         self.status = if 書けない > 0 {
-            ui::tf!("{} に書き出しました(画像 {} 枚が書けませんでした)",
+            ui::tf!("Exported to {} ({} image files could not be written)",
                     path.display(), 書けない).into()
         } else if let Some(t) = 使った {
             // どのテンプレートで出したかは必ず言う(黙って別の見た目にしない)
-            ui::tf!("{} に書き出しました(Web 用の書式 {} を使いました)",
+            ui::tf!("Exported to {} (using the web format {})",
                     path.display(), t).into()
         } else if page.assets.is_empty() {
-            ui::tf!("{} に書き出しました", path.display()).into()
+            ui::tf!("Exported to {}", path.display()).into()
         } else {
-            ui::tf!("{} に書き出しました(画像 {} 枚も一緒に)",
+            ui::tf!("Exported to {} (along with {} image files)",
                     path.display(), page.assets.len()).into()
         };
     }
@@ -420,7 +420,7 @@ impl Writer {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
                 .add_filter("PDF", &["pdf"])
-                .set_file_name(ui::t!("文書.pdf"))
+                .set_file_name(ui::t!("document.pdf"))
                 .save_file()
         });
         cx.spawn(async move |this, cx| {
@@ -487,11 +487,11 @@ impl Writer {
             )
         });
         self.status = match (r, 印刷で) {
-            (Ok(_), Some(t)) => ui::tf!("PDF にしました — {}(印刷用の書式 {} を使いました)",
+            (Ok(_), Some(t)) => ui::tf!("Made a PDF — {} (using the print format {})",
                                         p.file_name().unwrap_or_default().to_string_lossy(), t).into(),
-            (Ok(_), None) => ui::tf!("PDF にしました — {}",
+            (Ok(_), None) => ui::tf!("PDF written — {}",
                                      p.file_name().unwrap_or_default().to_string_lossy()).into(),
-            (Err(e), _) => ui::tf!("PDF にできません: {}", e).into(),
+            (Err(e), _) => ui::tf!("Can't write PDF: {}", e).into(),
         };
     }
 
@@ -555,7 +555,7 @@ impl Writer {
         ));
         self.dirty = true;
         self.relayout_keep();
-        self.status = ui::tf!("用紙 {:.0}×{:.0}mm / 余白 {:.0}mm{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, if self.pg.cols() > 1 { format!(" / {}段組み", self.pg.cols()) } else { String::new() })
+        self.status = ui::tf!("Paper {:.0}×{:.0}mm / margins {:.0}mm{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, if self.pg.cols() > 1 { format!(" / {}段組み", self.pg.cols()) } else { String::new() })
         .into();
     }
 
@@ -610,7 +610,7 @@ impl Writer {
         self.checkpoint(false); // 相互参照
         self.switch_target(Target::Body);
         let Some(val) = self.ref_value(name, page) else {
-            self.status = ui::tf!("しおり「{}」が見つかりません", name).into();
+            self.status = ui::tf!("Bookmark \"{}\" not found", name).into();
             return;
         };
         let start = self.ed.selection().start;
@@ -620,7 +620,7 @@ impl Writer {
             Some(kumihan::RefField { name: name.to_string(), page }),
         );
         self.relayout_keep();
-        self.status = ui::tf!("「{}」への参照を挿しました({}。参照は編集で中を触ると普通の字に戻ります)", name, if page { ui::t!("ページ番号") } else { ui::t!("しおりの文字") })
+        self.status = ui::tf!("Reference to \"{}\" inserted ({}; editing inside turns it into plain text)", name, if page { ui::t!("page number") } else { ui::t!("bookmark text") })
         .into();
     }
 
@@ -650,9 +650,9 @@ impl Writer {
             self.dirty = true;
             self.relayout_keep();
             self.status =
-                ui::tf!("参照を {} 箇所更新しました(この操作は戻せません)", n).into();
+                ui::tf!("{} references updated (this cannot be undone)", n).into();
         } else {
-            self.status = ui::t!("参照は最新です").into();
+            self.status = ui::t!("References are up to date").into();
         }
     }
 
@@ -661,11 +661,11 @@ impl Writer {
         self.checkpoint(false); // しおり
         let name = self.bm_ed.text().trim().to_string();
         if name.is_empty() {
-            self.status = ui::t!("しおりの名前を打ってから追加してください").into();
+            self.status = ui::t!("Type a bookmark name before adding").into();
             return;
         }
         if self.doc.paragraphs().any(|p| p.bookmarks.contains(&name)) {
-            self.status = ui::tf!("しおり「{}」は既にあります", name).into();
+            self.status = ui::tf!("Bookmark \"{}\" already exists", name).into();
             return;
         }
         self.switch_target(Target::Body);
@@ -682,7 +682,7 @@ impl Writer {
         }
         self.bm_ed = Editor::new("");
         self.dirty = true;
-        self.status = ui::tf!("しおり「{}」を付けました(保存で docx に入ります)", name).into();
+        self.status = ui::tf!("Bookmark \"{}\" added (goes into the docx on save)", name).into();
     }
 
     /// 段落のスタイル。0 = 標準、1〜5 = 見出し。
@@ -717,8 +717,8 @@ impl Writer {
             self.toggle(move |f| f.bold = bold);
         }
         self.status = match n {
-            0 => ui::t!("標準の段落にしました").into(),
-            n => ui::tf!("見出し{} にしました(参考資料 > 目次 の材料になります)", n).into(),
+            0 => ui::t!("Set to normal paragraph").into(),
+            n => ui::tf!("Set to heading {} (feeds References > Table of Contents)", n).into(),
         };
     }
 
@@ -768,7 +768,7 @@ impl Writer {
         }
         if heads.is_empty() {
             self.status =
-                ui::t!("見出しがありません(ホーム > 段落のスタイルで見出しを付けてください)").into();
+                ui::t!("No headings (set one via Home > paragraph styles)").into();
             return;
         }
         // 行 → ページ番号は**紙の折り方**で出します
@@ -789,7 +789,7 @@ impl Writer {
                 // 1mm の安全代 — 端数で行長を超えると折り返して目次が崩れる
                 let avail = measure - w_of(&head) - w_of(&num) - 2.0 * sp_w - 1.0;
                 let dots = (avail / dot_w).floor().max(0.0) as usize;
-                (*n, ui::tf!("{}　{}　{}", head, "…".repeat(dots), num))
+                (*n, ui::tf!("{} {} {}", head, "…".repeat(dots), num))
             })
             .collect();
 
@@ -810,9 +810,9 @@ impl Writer {
         let replaced =
             self.splice_marked(|st| matches!(st, kumihan::ParaStyle::Toc(_)), toc_paras);
         self.status = if replaced {
-            ui::tf!("目次を更新しました({} 項目)", lines.len()).into()
+            ui::tf!("Table of contents updated ({} entries)", lines.len()).into()
         } else {
-            ui::tf!("目次を入れました({} 項目。見出しを変えたら「目次の更新」)", lines.len())
+            ui::tf!("Table of contents inserted ({} entries; press Update after changing headings)", lines.len())
                 .into()
         };
     }
@@ -907,7 +907,7 @@ impl Writer {
         }
         if items.is_empty() {
             self.status =
-                ui::t!("図表番号がありません(参考資料 > 図表番号で付けてください)").into();
+                ui::t!("No captions (add them via References > Caption)").into();
             return;
         }
         let page_of = self.page_of_byte();
@@ -925,7 +925,7 @@ impl Writer {
                     style: kumihan::ParaStyle::Tof,
                     line_spacing: 1.0,
                     runs: vec![kumihan::Run {
-                        text: ui::tf!("{}　{}　{}", t, "…".repeat(dots), num),
+                        text: ui::tf!("{} {} {}", t, "…".repeat(dots), num),
                         size_pt: None,
                         font: None,
                         fmt: Default::default(),
@@ -937,9 +937,9 @@ impl Writer {
         let n = paras.len();
         let replaced = self.splice_marked(|st| st == kumihan::ParaStyle::Tof, paras);
         self.status = if replaced {
-            ui::tf!("図表目次を更新しました({} 項目)", n).into()
+            ui::tf!("Table of figures updated ({} entries)", n).into()
         } else {
-            ui::tf!("図表目次を入れました({} 項目)", n).into()
+            ui::tf!("Table of figures inserted ({} entries)", n).into()
         };
     }
 

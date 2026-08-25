@@ -59,3 +59,15 @@ AI と相談する	Ask the AI	AI と相談する
 文書	Document	
 数式	Formula	
 方程式	Equation	
+
+# 2026-08-26 追加。リボンの語(gen_ribbon_locale.py の OVERRIDES)と
+# 英語がかぶった組。Fable の調べは i18n_en.rs の中だけを見ていたので、
+# リボンとの間のかぶりが残っていた
+# 「塗り」は色見本の見出し、リボンの「フィル」は連続データ。別物
+塗り	Fill color
+# 表のデザインの状態の文に差し込む断片。リボンの札「縞模様の列」と別
+1列おきの縞々に	make columns banded
+# 同じ意味。Excel の公式用語は「関数の挿入」
+関数を挿入	Insert function	関数の挿入
+# リボンの「方向」(text-orient)と同じ意味。Excel の公式用語は「文字の向き」
+文字の向き	Text orientation	文字の向き

@@ -326,7 +326,7 @@ mod numfmt_tests {
             // 一覧から: パーセント
             this.run_cmd("format", cx);
             assert_eq!(this.pick_kind, "numfmt-pick");
-            this.apply_pick("パーセント (12.34%)", cx);
+            this.apply_pick("Percentage (12.34%)", cx);
             assert_eq!(
                 this.sheet().get(a1).unwrap().fmt.number_format.as_deref(),
                 Some("0.00%")
@@ -343,14 +343,14 @@ mod numfmt_tests {
                 assert!(this.status.contains("今の書式"), "{}", this.status);
             }
             // ✓ 付きのまま選び直しても効く(印は値ではない)
-            this.apply_pick("✓ パーセント (12.34%)", cx);
+            this.apply_pick("✓ Percentage (12.34%)", cx);
             assert_eq!(
                 this.sheet().get(a1).unwrap().fmt.number_format.as_deref(),
                 Some("0.00%")
             );
             // その他 → コード直打ち(今のコードが下敷きに入る)
             this.run_cmd("format", cx);
-            this.apply_pick("その他(書式コードを打つ)…", cx);
+            this.apply_pick("Other (type a format code)…", cx);
             let (kind, ed) = this.prompt.as_ref().expect("コードのパネルが開かない");
             assert_eq!(*kind, "numfmt-custom");
             assert_eq!(ed.text(), "0.00%", "今のコードが下敷きにならない");
@@ -362,7 +362,7 @@ mod numfmt_tests {
             );
             // 一般に戻す
             this.run_cmd("format", cx);
-            this.apply_pick("一般", cx);
+            this.apply_pick("General", cx);
             assert_eq!(this.sheet().get(a1).unwrap().fmt.number_format, None);
         });
     }
@@ -397,7 +397,7 @@ mod sort_tests {
             };
             assert_eq!(get(this, "A1"), "c", "聞く前に並べ替えられた");
             // 「選択した範囲だけ」→ A列だけ並び、B列はそのまま(ずれる)
-            this.apply_pick("選択した範囲だけ並べ替え(横の列とはずれます)", cx);
+            this.apply_pick("Sort the selection only (it will fall out of step with the neighbouring columns)", cx);
             assert_eq!(
                 (get(this, "A1"), get(this, "A2"), get(this, "A3")),
                 ("a".into(), "b".into(), "c".into())
@@ -411,7 +411,7 @@ mod sort_tests {
             // 残りが A の降順。B が行ごと付いてくる)
             this.run_cmd("sort-desc", cx);
             assert_eq!(this.pick_kind, "sort-expand");
-            this.apply_pick("拡張して並べ替え(続きの列も一緒に動く)", cx);
+            this.apply_pick("Expand the selection (the neighbouring columns move too)", cx);
             assert_eq!(get(this, "A2"), "c");
             assert_eq!(get(this, "B2"), "2", "拡張なのに行が付いてこない");
             // 横に何も無い離れ小島は、聞かずに選択だけを並べ替える
@@ -987,10 +987,10 @@ mod pivot_tests {
             this.run_cmd("pivot-insert", cx);
             // まず**おすすめ**が並びます(2026-08-21)。自分で選ぶ道もそこから
             assert_eq!(this.pick_kind, "pivot-suggest", "おすすめの一覧が開かない");
-            this.apply_pick("自分で選ぶ(行 → 列 → 値 の順に聞きます)", cx);
+            this.apply_pick("Choose the fields myself (rows, then columns, then values)", cx);
             assert_eq!(this.pick_kind, "pivot-rows-pick", "カーソルだけで行の一覧が開かない");
             // 見出しを選ばず決定 → 言い返されて一覧のまま
-            this.apply_pick("→ 決定(列の選択へ)", cx);
+            this.apply_pick("→ Next (choose the columns)", cx);
             assert_eq!(this.pick_kind, "pivot-rows-pick", "空のまま先へ進んだ");
             // クリックで入切(✓ 付きでもう一度押すと外れる)
             this.apply_pick("☐ 区分", cx);
@@ -1001,7 +1001,7 @@ mod pivot_tests {
                 let (items, _) = this.pick.as_ref().unwrap();
                 assert!(items.iter().any(|(_, l)| l == "☑ 区分"), "選んだ印が付かない: {items:?}");
             }
-            this.apply_pick("→ 決定(列の選択へ)", cx);
+            this.apply_pick("→ Next (choose the columns)", cx);
             assert_eq!(this.pick_kind, "pivot-cols-pick");
             {
                 // 行に使った見出しは列の候補に出ない
@@ -1009,7 +1009,7 @@ mod pivot_tests {
                 assert!(!items.iter().any(|(k, _)| k.contains("区分")), "{items:?}");
             }
             this.apply_pick("☐ 月", cx);
-            this.apply_pick("→ 決定(列は無しでもよい)", cx);
+            this.apply_pick("→ Done (columns are optional)", cx);
             assert_eq!(this.pick_kind, "pivot-val-pick");
             this.apply_pick("金額", cx);
             assert_eq!(this.pick_kind, "pivot-agg-pick", "集計の一覧が開かない");
@@ -1055,7 +1055,7 @@ mod pivot_tests {
         let json = pivot_spec_json(
             &["部\"署".to_string()],
             &[vec!["営\\業".to_string()]],
-            &def(&["部\"署"], &[], "部\"署", "合計"),
+            &def(&["部\"署"], &[], "部\"署", "Sum"),
         );
         assert!(json.contains("部\\\"署"), "二重引用符が逃げていない: {json}");
         assert!(json.contains("営\\\\業"), "バックスラッシュが逃げていない: {json}");
@@ -1102,10 +1102,10 @@ mod pivot_tests {
             // 場所×ペンの直交モデル(Microsoft の型スタンプは持たない —
             // 発注者確定 2026-08-08)。帳票の枠はペンを替えながら連打で組む:
             // 細で格子 → ペンを中太にして外枠 → ペンを二重にして下罫線
-            this.apply_borders("すべての罫線(格子)");
+            this.apply_borders("All borders (grid)");
             assert!(this.border_pal.is_some(), "パレットが閉じた(連打できない)");
             this.pen_style = BStyle::Medium;
-            this.apply_borders("外枠");
+            this.apply_borders("Outline");
             assert_eq!(bd(this, 0, 0).top.style, BStyle::Medium);
             assert_eq!(bd(this, 0, 0).left.style, BStyle::Medium);
             assert_eq!(bd(this, 0, 0).bottom.style, BStyle::Thin, "格子の内側が外枠で潰れた");
@@ -1113,7 +1113,7 @@ mod pivot_tests {
             assert_eq!(bd(this, 1, 1).bottom.style, BStyle::Medium);
             assert_eq!(bd(this, 1, 1).right.style, BStyle::Medium);
             this.pen_style = BStyle::Double;
-            this.apply_borders("下罫線");
+            this.apply_borders("Bottom border");
             let _ = cx;
             assert_eq!(bd(this, 1, 0).bottom.style, BStyle::Double);
             assert_eq!(bd(this, 1, 1).bottom.style, BStyle::Double);
@@ -1416,7 +1416,7 @@ mod pivot_tests {
             this.run_cmd("currency", cx);
             assert_eq!(this.pick_kind, "currency", "通貨の一覧が開かない");
             assert_eq!(f(this).number_format, None, "選ぶ前に掛かっている");
-            this.apply_pick("円 (¥)", cx);
+            this.apply_pick("Yen (¥)", cx);
             assert_eq!(f(this).number_format.as_deref(), Some("\"¥\"#,##0"));
             this.run_cmd("percents", cx);
             assert_eq!(f(this).number_format.as_deref(), Some("0%"));
@@ -1541,7 +1541,7 @@ mod pivot_tests {
             this.run_cmd("table-tpl", cx);
             assert!(this.pick.is_some(), "表のスタイルの一覧が出ない");
             assert_eq!(this.book.sheets[0].tables.len(), n, "選ぶ前に表になっている");
-            this.apply_pick("青", cx);
+            this.apply_pick("Blue", cx);
             assert_eq!(this.book.sheets[0].tables.len(), n + 1, "選んでも表にならない");
             assert_eq!(
                 this.book.sheets[0].get(Pos::new(34, 0)).map(|c| c.fmt.fill.clone()),
@@ -1970,7 +1970,7 @@ mod pivot_tests {
                     this.book.sheets[0].set(Pos::new(r as u32, cc as u32), sheet::Cell::input(v));
                 }
             }
-            let mut d = def(&["区分"], &[], "金額", "合計");
+            let mut d = def(&["区分"], &[], "金額", "Sum");
             // 試験では polars を飛ばさない: spawn_pivot はシート名で早期に
             // 止まる(指図の欄が入ることだけを確かめる)
             d.sheet = "試験では無いシート".into();
@@ -2011,7 +2011,7 @@ mod pivot_tests {
         .map(|r| r.iter().map(|s| s.to_string()).collect())
         .collect();
         // 日付を月でグループ化して合計
-        let mut d = def(&["日付"], &[], "金額", "合計");
+        let mut d = def(&["日付"], &[], "金額", "Sum");
         d.group_by.push(("日付".into(), "月".into()));
         let spec = pivot_spec_json(&headers, &rows, &d);
         let Some((g, _)) = run_py(spec) else { return };
@@ -2019,14 +2019,14 @@ mod pivot_tests {
         assert_eq!(g[2], vec!["2026-02", "30"]);
         assert_eq!(g[3], vec!["2026-04", "70"]);
         // 四半期
-        let mut d = def(&["日付"], &[], "金額", "合計");
-        d.group_by.push(("日付".into(), "四半期".into()));
+        let mut d = def(&["日付"], &[], "金額", "Sum");
+        d.group_by.push(("日付".into(), "Quarters".into()));
         let spec = pivot_spec_json(&headers, &rows, &d);
         let Some((g, _)) = run_py(spec) else { return };
         assert_eq!(g[1], vec!["2026年Q1", "180"], "四半期が効かない: {g:?}");
         assert_eq!(g[2], vec!["2026年Q2", "70"]);
         // 数の幅(金額を 50 刻みで束ね、区分を数える)
-        let mut d = def(&["金額"], &[], "区分", "個数");
+        let mut d = def(&["金額"], &[], "区分", "Count");
         d.group_by.push(("金額".into(), "幅:50".into()));
         let spec = pivot_spec_json(&headers, &rows, &d);
         let Some((g, _)) = run_py(spec) else { return };
@@ -2034,7 +2034,7 @@ mod pivot_tests {
         assert_eq!(g[2], vec![" 50〜 99", "2"], "帯の並びが数字順でない: {g:?}");
         assert_eq!(g[3], vec!["100〜149", "1"]);
         // 値のフィルター(合計 >= 70 の行だけ)+ 総計はフィルター後
-        let mut d = def(&["区分"], &[], "金額", "合計");
+        let mut d = def(&["区分"], &[], "金額", "Sum");
         d.vfilter = Some((">=".into(), 70.0));
         d.totals = true;
         let spec = pivot_spec_json(&headers, &rows, &d);
@@ -2042,7 +2042,7 @@ mod pivot_tests {
         // A=150, B=100 → 両方残る。しきい値を上げると片方だけに
         assert_eq!(g[1], vec!["A", "150"]);
         assert_eq!(g[2], vec!["B", "100"]);
-        let mut d = def(&["区分"], &[], "金額", "合計");
+        let mut d = def(&["区分"], &[], "金額", "Sum");
         d.vfilter = Some((">".into(), 120.0));
         d.totals = true;
         let spec = pivot_spec_json(&headers, &rows, &d);
@@ -2068,7 +2068,7 @@ mod pivot_tests {
         .map(|r| r.iter().map(|s| s.to_string()).collect())
         .collect();
         let 並び = |so: &str| -> Option<Vec<String>> {
-            let mut d = def(&["区分"], &[], "金額", "合計");
+            let mut d = def(&["区分"], &[], "金額", "Sum");
             d.sort = so.to_string();
             let (g, _) = run_py(pivot_spec_json(&headers, &rows, &d))?;
             Some(g.iter().skip(1).map(|r| r[0].clone()).collect())
@@ -2108,7 +2108,7 @@ mod pivot_tests {
         .map(|r| r.iter().map(|s| s.to_string()).collect())
         .collect();
         // 部署×月の合計(クロス表)
-        let spec = pivot_spec_json(&headers, &rows, &def(&["部署"], &["月"], "金額", "合計"));
+        let spec = pivot_spec_json(&headers, &rows, &def(&["部署"], &["月"], "金額", "Sum"));
         let Some((g, k)) = run_py(spec) else { return };
         // 1行目は Excel と同じ札(合計 / 金額 と、列に広げた見出し)
         assert_eq!(k[0], 'l');
@@ -2119,7 +2119,7 @@ mod pivot_tests {
         // 無い組み合わせ: 合計は 0(空の合計)。平均などは null → 空欄になる
         assert_eq!(g[3], vec!["総務", "30", "0"]);
         // 部署ごとの個数(列に広げない)— 値の列の見出しは「個数 / 金額」
-        let spec = pivot_spec_json(&headers, &rows, &def(&["部署"], &[], "金額", "個数"));
+        let spec = pivot_spec_json(&headers, &rows, &def(&["部署"], &[], "金額", "Count"));
         let Some((g, _)) = run_py(spec) else { return };
         assert_eq!(g[0], vec!["部署", "個数 / 金額"]);
         assert_eq!(g[1], vec!["営業", "3"]);
@@ -2139,7 +2139,7 @@ mod pivot_tests {
         .iter()
         .map(|r| r.iter().map(|s| s.to_string()).collect())
         .collect();
-        let mut d = def(&["部署", "係"], &["月"], "金額", "合計");
+        let mut d = def(&["部署", "係"], &["月"], "金額", "Sum");
         d.totals = true;
         d.subtotals = true;
         d.blank_rows = true;
@@ -2224,23 +2224,23 @@ mod recalc_tests {
             this.cursor = Pos::parse("B2").unwrap();
             this.run_cmd("freeze", cx);
             assert_eq!(this.pick_kind, "freeze", "固定の一覧が開かない");
-            this.apply_pick("最上行の固定", cx);
+            this.apply_pick("Freeze the top row", cx);
             assert_eq!(this.frozen, Some(Pos::new(1, 0)), "最上行が固定されない");
             this.run_cmd("freeze", cx);
-            this.apply_pick("最初の列の固定", cx);
+            this.apply_pick("Freeze the first column", cx);
             assert_eq!(this.frozen, Some(Pos::new(0, 1)), "最初の列が固定されない");
             this.run_cmd("freeze", cx);
-            this.apply_pick("いまの位置で固定(上と左が留まる)", cx);
+            this.apply_pick("Freeze at the cursor (rows above and columns left stay put)", cx);
             assert_eq!(this.frozen, Some(Pos::parse("B2").unwrap()), "いまの位置で固定されない");
             this.run_cmd("freeze", cx);
-            this.apply_pick("固定の解除", cx);
+            this.apply_pick("Unfreeze", cx);
             assert_eq!(this.frozen, None, "固定が解けない");
             // 影の入切(本家の「固定された枠に影を付ける」)。✓ 付きでも効く
             this.run_cmd("freeze", cx);
-            this.apply_pick("固定した枠に影を付ける", cx);
+            this.apply_pick("Shadow the frozen edge", cx);
             assert!(this.freeze_shadow, "影が入らない");
             this.run_cmd("freeze", cx);
-            this.apply_pick("✓ 固定した枠に影を付ける", cx);
+            this.apply_pick("✓ Shadow the frozen edge", cx);
             assert!(!this.freeze_shadow, "影が切れない");
         });
     }
@@ -2383,7 +2383,7 @@ mod recalc_tests {
             this.pick_kind = "cond-manage-pick";
             this.apply_pick("1) A1:A2 — データバー", cx);
             assert_eq!(this.pick_kind, "cond-act-pick", "2択が開かない");
-            this.apply_pick("この規則を消す", cx);
+            this.apply_pick("Delete this rule", cx);
             assert_eq!(this.book.sheets[0].cond.len(), 1, "消えていない");
             assert!(matches!(
                 this.book.sheets[0].cond[0].kind,
@@ -2457,7 +2457,8 @@ mod recalc_tests {
             // 「金額」を外す → 品名だけで比べる
             this.apply_pick("金額", cx);
             assert_eq!(this.pick_kind, "dedup-pick", "入切でパネルが閉じた");
-            this.apply_pick("→ 削除する", cx);
+            // **品書きの札は訳で出ます。** 鍵ではなく、production と同じ形で組む
+            this.apply_pick(&format!("→ {}", ui::t!("Delete")), cx);
             let s = &this.book.sheets[0];
             assert_eq!(s.get(Pos::new(1, 0)).unwrap().value.display(), "鉛筆");
             assert_eq!(s.get(Pos::new(2, 0)).unwrap().value.display(), "消しゴム");
@@ -2538,7 +2539,7 @@ mod recalc_tests {
             this.finish_prompt(cx);
             // **名前が入るのは適用範囲を選んだ後**(2026-08-13 に段が1つ増えた)
             assert!(this.sheet().names.is_empty(), "範囲を選ぶ前に入っている");
-            this.apply_pick("ブック全体(どのシートからも使う)", cx);
+            this.apply_pick("Whole workbook (use it from any sheet)", cx);
             assert_eq!(this.sheet().names, vec![sheet::model::DefinedName::new("単価表", "B2:C3")]);
             // 一覧に出る
             this.anchor = None;
@@ -2557,20 +2558,20 @@ mod recalc_tests {
             // 移動
             this.apply_pick("name:単価表", cx);
             assert_eq!(this.pick_kind, "name-act-pick");
-            this.apply_pick("そこへ移動", cx);
+            this.apply_pick("Go there", cx);
             assert_eq!(this.cursor, Pos::parse("C3").unwrap());
             assert_eq!(this.anchor, Some(Pos::parse("B2").unwrap()));
             // 打ち直し
             this.run_cmd("defname", cx);
             this.apply_pick("name:単価表", cx);
-            this.apply_pick("中身を打ち直す…", cx);
+            this.apply_pick("Retype the contents…", cx);
             this.prompt = Some(("name-range", Editor::new("B2:D9")));
             this.finish_prompt(cx);
             assert_eq!(this.sheet().names[0].range, "B2:D9");
             // 削除
             this.run_cmd("defname", cx);
             this.apply_pick("name:単価表", cx);
-            this.apply_pick("名前を消す", cx);
+            this.apply_pick("Delete the name", cx);
             assert!(this.sheet().names.is_empty(), "名前が消えない");
         });
     }
@@ -2581,7 +2582,7 @@ mod recalc_tests {
         c.update(cx, |this, cx| {
             this.run_cmd("edit-header", cx);
             assert_eq!(this.pick_kind, "hf-pick", "一覧が開かない");
-            this.apply_pick("ヘッダー中", cx);
+            this.apply_pick("Header centre", cx);
             assert!(this.prompt.is_some(), "パネルが開かない");
             this.prompt = Some(("hf-edit", Editor::new("月次売上")));
             this.finish_prompt(cx);
@@ -2592,17 +2593,17 @@ mod recalc_tests {
                 let (items, _) = this.pick.as_ref().unwrap();
                 // 鍵は欄の名前だけ。打った値は見出しにだけ付く
                 assert!(
-                    items.iter().any(|(k, l)| k == "ヘッダー中" && l == "ヘッダー中: 月次売上"),
+                    items.iter().any(|(k, l)| k == "Header centre" && l == "ヘッダー中: 月次売上"),
                     "{items:?}"
                 );
             }
-            this.apply_pick("フッター右", cx); // 鍵は欄の名前(値は見出しの側)
+            this.apply_pick("Footer right", cx); // 鍵は欄の名前(値は見出しの側)
             this.prompt = Some(("hf-edit", Editor::new("&P / &N")));
             this.finish_prompt(cx);
             assert_eq!(this.sheet().footer.as_deref(), Some("&R&P / &N"));
             // 全部消す
             this.run_cmd("edit-header", cx);
-            this.apply_pick("全部消す", cx);
+            this.apply_pick("Clear all", cx);
             assert!(this.sheet().header.is_none() && this.sheet().footer.is_none());
         });
     }
@@ -2618,7 +2619,7 @@ mod recalc_tests {
             assert!(this.commit());
             // 文字の色: その他 → RRGGBB
             this.run_cmd("fontcolor", cx);
-            this.apply_pick("その他(RRGGBB を打つ)…", cx);
+            this.apply_pick("Other (type RRGGBB)…", cx);
             this.prompt = Some(("font-color-rgb", Editor::new("00B050")));
             this.finish_prompt(cx);
             assert_eq!(
@@ -2628,7 +2629,7 @@ mod recalc_tests {
             );
             // 塗り: その他 → RRGGBB
             this.run_cmd("fillparag", cx);
-            this.apply_pick("その他(RRGGBB を打つ)…", cx);
+            this.apply_pick("Other (type RRGGBB)…", cx);
             this.prompt = Some(("fill-color-rgb", Editor::new("FFF2CC")));
             this.finish_prompt(cx);
             assert_eq!(
@@ -2638,11 +2639,11 @@ mod recalc_tests {
             // 角度: 一覧のプリセット
             this.run_cmd("text-orient", cx);
             assert_eq!(this.pick_kind, "orient-pick");
-            this.apply_pick("左上がり 45度", cx);
+            this.apply_pick("Rotate up 45°", cx);
             assert_eq!(this.sheet().get(a1).unwrap().fmt.rotation, Some(45));
             // 任意の角度(負は xlsx の encode で 90+|d|)
             this.run_cmd("text-orient", cx);
-            this.apply_pick("その他(角度を打つ)…", cx);
+            this.apply_pick("Other (type an angle)…", cx);
             this.prompt = Some(("text-angle", Editor::new("-30")));
             this.finish_prompt(cx);
             assert_eq!(
@@ -2671,15 +2672,15 @@ mod recalc_tests {
             assert!(this.border_pal.is_some(), "罫線のパレットが開かない");
             this.open_border_style_pick();
             assert_eq!(this.pick_kind, "border-style-pick");
-            this.apply_pick("中太の実線", cx);
+            this.apply_pick("Medium solid", cx);
             assert_eq!(this.pen_style, BStyle::Medium);
             this.open_border_color_pick();
-            this.apply_pick("その他(RRGGBB を打つ)…", cx);
+            this.apply_pick("Other (type RRGGBB)…", cx);
             this.prompt = Some(("border-color-rgb", Editor::new("FF0000")));
             this.finish_prompt(cx);
             assert_eq!(this.pen_color, Some(0xFF0000), "RGB 直指定が効かない");
             // 外枠を掛ける(パレットの1押しと同じ実体)
-            this.apply_borders("外枠");
+            this.apply_borders("Outline");
             let bd = |this: &Calc, p: &str| {
                 this.sheet().get(Pos::parse(p).unwrap()).unwrap().fmt.borders
             };
@@ -2691,9 +2692,9 @@ mod recalc_tests {
             let c3 = bd(this, "C3");
             assert!(c3.bottom.on && c3.right.on && !c3.top.on);
             // 格子 → 全辺。消す → 全部消える
-            this.apply_borders("すべての罫線(格子)");
+            this.apply_borders("All borders (grid)");
             assert!(bd(this, "B2").right.on && bd(this, "C3").top.on);
-            this.apply_borders("罫線を消す");
+            this.apply_borders("No border");
             // 素に戻ったセルは片づけられる(get は None)— どちらでも「無い」
             let off = |this: &Calc, p: &str| {
                 this.sheet()
@@ -2747,7 +2748,7 @@ mod recalc_tests {
             this.cursor = Pos::parse("B2").unwrap();
             this.run_cmd("merge", cx);
             assert_eq!(this.pick_kind, "merge-pick", "4択が出ない");
-            this.apply_pick("結合して中央に配置", cx);
+            this.apply_pick("Merge and centre", cx);
             assert_eq!(this.sheet().merges.len(), 1, "確認を挟まず結合されるべき");
             assert!(this.status.contains("左上以外の値は消しました"), "案内が無い: {}", this.status);
             assert!(
@@ -2776,23 +2777,23 @@ mod recalc_tests {
             this.anchor = Some(Pos::parse("A1").unwrap());
             this.cursor = Pos::parse("B2").unwrap();
             this.run_cmd("merge", cx);
-            this.apply_pick("結合して中央に配置", cx);
+            this.apply_pick("Merge and centre", cx);
             // 空の範囲も同じくそのまま
             this.anchor = Some(Pos::parse("D1").unwrap());
             this.cursor = Pos::parse("E2").unwrap();
             this.run_cmd("merge", cx);
-            this.apply_pick("結合して中央に配置", cx);
+            this.apply_pick("Merge and centre", cx);
             assert_eq!(this.sheet().merges.len(), 2);
             // 横方向: 行ごとに1本ずつ
             this.anchor = Some(Pos::parse("G1").unwrap());
             this.cursor = Pos::parse("H3").unwrap();
             this.sync_input();
             this.run_cmd("merge", cx);
-            this.apply_pick("横方向に結合(行ごと)", cx);
+            this.apply_pick("Merge across (row by row)", cx);
             assert_eq!(this.sheet().merges.len(), 5, "横方向が行ごとにならない");
             // 解除: 選択に重なる結合をまとめて外す
             this.run_cmd("merge", cx);
-            this.apply_pick("結合の解除", cx);
+            this.apply_pick("Unmerge", cx);
             assert_eq!(this.sheet().merges.len(), 2, "解除で消えない");
         });
     }
@@ -3015,7 +3016,7 @@ mod recalc_tests {
             assert_eq!(this.pick_kind, "repair", "逃げ道が出ない: {}", this.status);
             assert!(this.repair_pend.is_some(), "拾う材料を控えていない");
 
-            this.apply_pick("→ 壊れたまま拾って開く(読み取り専用)", cx);
+            this.apply_pick("→ Salvage what can be read and open it (read-only)", cx);
             // 読めた部品だけで開けている
             assert_eq!(
                 this.sheet().get(Pos::parse("A2").unwrap()).map(|c| c.value.display()),
@@ -3061,17 +3062,17 @@ mod recalc_tests {
         use crate::util::date_bucket;
         // 通し番号(1899-12-30 起点)。2026-08-22 は 46256
         let n = Some(46256.0);
-        assert_eq!(date_bucket(n, "", "年", false).as_deref(), Some("2026年"));
-        assert_eq!(date_bucket(n, "", "四半期", false).as_deref(), Some("2026年Q3"));
-        assert_eq!(date_bucket(n, "", "月", false).as_deref(), Some("2026-08"));
+        assert_eq!(date_bucket(n, "", "Years", false).as_deref(), Some("2026年"));
+        assert_eq!(date_bucket(n, "", "Quarters", false).as_deref(), Some("2026年Q3"));
+        assert_eq!(date_bucket(n, "", "Months", false).as_deref(), Some("2026-08"));
         // 字からも読む(- でも / でも)
-        assert_eq!(date_bucket(None, "2026-01-05", "四半期", false).as_deref(), Some("2026年Q1"));
-        assert_eq!(date_bucket(None, "2026/12/31", "四半期", false).as_deref(), Some("2026年Q4"));
-        assert_eq!(date_bucket(None, "2026/3", "月", false).as_deref(), Some("2026-03"));
+        assert_eq!(date_bucket(None, "2026-01-05", "Quarters", false).as_deref(), Some("2026年Q1"));
+        assert_eq!(date_bucket(None, "2026/12/31", "Quarters", false).as_deref(), Some("2026年Q4"));
+        assert_eq!(date_bucket(None, "2026/3", "Months", false).as_deref(), Some("2026-03"));
         // 日付でない物はどの束にも入れない
-        assert_eq!(date_bucket(None, "筆記具", "月", false), None);
-        assert_eq!(date_bucket(None, "2026-13-01", "月", false), None, "13月を通した");
-        assert_eq!(date_bucket(Some(0.5), "", "月", false), None, "時刻だけを日付にした");
+        assert_eq!(date_bucket(None, "筆記具", "Months", false), None);
+        assert_eq!(date_bucket(None, "2026-13-01", "Months", false), None, "13月を通した");
+        assert_eq!(date_bucket(Some(0.5), "", "Months", false), None, "時刻だけを日付にした");
         // 粒が空なら束にしない
         assert_eq!(date_bucket(n, "", "", false), None);
     }
@@ -3097,7 +3098,7 @@ mod recalc_tests {
             this.slicer_sel = 0;
             // 粒を「月」へ(値そのもの → 月)
             this.slicer_cycle_grain(cx);
-            assert_eq!(this.slicers[0].grain, "月");
+            assert_eq!(this.slicers[0].grain, "Months");
             assert_eq!(this.slicer_value(&this.slicers[0], 2), "2026-08");
             assert_eq!(this.slicer_value(&this.slicers[0], 1), "2026-07");
             // 日付でない行は、どの束にも入れない
@@ -3112,7 +3113,7 @@ mod recalc_tests {
 
             // 粒を変えると**選びは捨てる**(札の意味が変わるため)
             this.slicer_cycle_grain(cx);
-            assert_eq!(this.slicers[0].grain, "四半期");
+            assert_eq!(this.slicers[0].grain, "Quarters");
             assert!(this.slicers[0].sel.is_empty(), "古い選びが残った");
             assert_eq!(this.slicer_value(&this.slicers[0], 1), "2026年Q3");
         });
@@ -3225,7 +3226,7 @@ mod recalc_tests {
             // A1:A3 を選んで控える。**式の A3 は入らない**
             this.cursor = Pos::parse("A1").unwrap();
             this.anchor = Some(Pos::parse("A3").unwrap());
-            this.apply_pick("→ 新しいシナリオ(選んだセルのいまの値)…", cx);
+            this.apply_pick("→ New scenario (the current values of the selected cells)…", cx);
             assert_eq!(this.prompt.as_ref().map(|(k, _)| *k), Some("scenario-name"));
             this.prompt = Some(("scenario-name", Editor::new("強気")));
             this.finish_prompt(cx);
@@ -3373,12 +3374,12 @@ mod recalc_tests {
             "1行に1つの列を行にした: {out:?}"
         );
         assert!(
-            out.iter().all(|s| s.value != "店" || s.agg == "個数"),
+            out.iter().all(|s| s.value != "店" || s.agg == "Count"),
             "数でない列を合計しようとした: {out:?}"
         );
         let 先頭 = &out[0];
         assert_eq!(先頭.value, "金額", "数の列を値にしていない");
-        assert_eq!(先頭.agg, "合計");
+        assert_eq!(先頭.agg, "Sum");
         assert!(
             先頭.rows_sel == vec!["店".to_string()] || 先頭.rows_sel == vec!["区分".to_string()],
             "{先頭:?}"
@@ -3386,7 +3387,7 @@ mod recalc_tests {
         // 縦横に広げる形が1つは出る
         assert!(out.iter().any(|s| !s.cols_sel.is_empty()), "列に広げる形が出ない: {out:?}");
         // 件数の形も出る
-        assert!(out.iter().any(|s| s.agg == "個数"), "件数の形が出ない: {out:?}");
+        assert!(out.iter().any(|s| s.agg == "Count"), "件数の形が出ない: {out:?}");
         // 同じ表からは毎回同じ
         assert_eq!(out, crate::util::pivot_suggestions(&headers, &cols));
     }
@@ -3401,7 +3402,7 @@ mod recalc_tests {
         ];
         let out = crate::util::pivot_suggestions(&headers, &cols);
         assert!(!out.is_empty(), "候補が出ない");
-        assert!(out.iter().all(|s| s.agg == "個数"), "数が無いのに合計を勧めた: {out:?}");
+        assert!(out.iter().all(|s| s.agg == "Count"), "数が無いのに合計を勧めた: {out:?}");
     }
 
     /// 見出しだけで中身が無ければ、勧めるものはありません。
@@ -3499,7 +3500,7 @@ mod recalc_tests {
             // 逆向き。固定を入れると分割が外れる
             this.pick_kind = "freeze";
             this.cursor = Pos::new(3, 2);
-            this.apply_pick("いまの位置で固定(上と左が留まる)", cx);
+            this.apply_pick("Freeze at the cursor (rows above and columns left stay put)", cx);
             assert!(this.split.is_none(), "分割が残っている");
             assert_eq!(this.frozen, Some(Pos::new(3, 2)));
 
@@ -3709,12 +3710,12 @@ mod recalc_tests {
     #[test]
     fn 大文字小文字の5つの変え方() {
         let t = "hello WORLD こんにちは 3rd";
-        assert_eq!(change_case(t, "すべて大文字"), "HELLO WORLD こんにちは 3RD");
-        assert_eq!(change_case(t, "すべて小文字"), "hello world こんにちは 3rd");
-        assert_eq!(change_case(t, "文の先頭だけ大文字"), "Hello world こんにちは 3rd");
-        assert_eq!(change_case(t, "単語の先頭を大文字"), "Hello World こんにちは 3rd");
+        assert_eq!(change_case(t, "UPPERCASE"), "HELLO WORLD こんにちは 3RD");
+        assert_eq!(change_case(t, "lowercase"), "hello world こんにちは 3rd");
+        assert_eq!(change_case(t, "Sentence case"), "Hello world こんにちは 3rd");
+        assert_eq!(change_case(t, "Capitalise Each Word"), "Hello World こんにちは 3rd");
         assert_eq!(
-            change_case(t, "大文字と小文字を入れ替え"),
+            change_case(t, "tOGGLE cASE"),
             "HELLO world こんにちは 3RD"
         );
     }
@@ -4442,7 +4443,7 @@ mod pivot_e2e_tests {
             let d = &this.book.pivots[0];
             assert_eq!(d.rows_sel, vec!["区分".to_string()]);
             assert_eq!(d.value, "金額");
-            assert_eq!(d.agg, "合計");
+            assert_eq!(d.agg, "Sum");
             assert!(d.size.0 > 0, "大きさが入らない");
         });
     }
@@ -4473,12 +4474,12 @@ mod pivot_e2e_tests {
             this.cursor = Pos::parse("B2").unwrap();
             this.sync_input();
             this.run_cmd("pivot-insert", cx);
-            this.apply_pick("自分で選ぶ(行 → 列 → 値 の順に聞きます)", cx);
+            this.apply_pick("Choose the fields myself (rows, then columns, then values)", cx);
             this.apply_pick("☐ 区分", cx);
-            this.apply_pick("→ 決定(列の選択へ)", cx);
-            this.apply_pick("→ 決定(列は無しでもよい)", cx);
+            this.apply_pick("→ Next (choose the columns)", cx);
+            this.apply_pick("→ Done (columns are optional)", cx);
             this.apply_pick("金額", cx);
-            this.apply_pick("合計", cx);
+            this.apply_pick("Sum", cx);
         });
         // polars の子プロセスが返るまで(background executor を回す)
         cx.executor().advance_clock(std::time::Duration::from_secs(30));
@@ -4528,11 +4529,11 @@ mod pivot_e2e_tests {
                 assert!(items.iter().any(|(_, l)| l == "☑ 区分"), "既存の行が ✓ にならない: {items:?}");
             }
             // 月を「列」へ広げて置き直す(Excel の形 — 1行目に札が出る)
-            this.apply_pick("→ 決定(列の選択へ)", cx);
+            this.apply_pick("→ Next (choose the columns)", cx);
             this.apply_pick("☐ 月", cx);
-            this.apply_pick("→ 決定(列は無しでもよい)", cx);
+            this.apply_pick("→ Done (columns are optional)", cx);
             this.apply_pick("金額", cx);
-            this.apply_pick("合計", cx);
+            this.apply_pick("Sum", cx);
         });
         cx.executor().advance_clock(std::time::Duration::from_secs(30));
         cx.run_until_parked();
@@ -4561,7 +4562,7 @@ mod pivot_e2e_tests {
                 std::iter::once("紙製品".to_string()).collect(),
             ));
             this.pick_kind = "pivot-filter-pick";
-            this.apply_pick("→ 決定(絞り込む)", cx);
+            this.apply_pick("→ Apply (filter)", cx);
         });
         cx.executor().advance_clock(std::time::Duration::from_secs(30));
         cx.run_until_parked();
@@ -4588,13 +4589,13 @@ mod pivot_e2e_tests {
             this.sync_input();
             this.run_cmd("pivot-style", cx);
             assert_eq!(this.pick_kind, "pivot-style-pick", "スタイルの一覧が開かない");
-            this.apply_pick("緑", cx);
+            this.apply_pick("Green", cx);
         });
         cx.executor().advance_clock(std::time::Duration::from_secs(30));
         cx.run_until_parked();
         c.update(cx, |this, _| {
             let d = &this.book.pivots[0];
-            assert_eq!(d.style, "緑");
+            assert_eq!(d.style, "Green");
             let head = this.book.sheets[0].get(d.dest).unwrap().fmt.clone();
             assert_eq!(head.fill.as_deref(), Some("548235"), "緑の帯にならない");
         });
@@ -4882,19 +4883,19 @@ mod tab_zoom_tests {
             // 掛かっていなければ「シートを保護」
             this.open_sheet_menu(0);
             let (items, _) = this.pick.clone().expect("タブの品書きが出ない");
-            assert!(items.iter().any(|(k, _)| k == "シートを保護"), "{items:?}");
-            assert!(!items.iter().any(|(k, _)| k == "保護を解除"));
+            assert!(items.iter().any(|(k, _)| k == "Protect the sheet"), "{items:?}");
+            assert!(!items.iter().any(|(k, _)| k == "Unprotect the sheet"));
 
             // 押すと掛かる
-            this.apply_pick("シートを保護", cx);
+            this.apply_pick("Protect the sheet", cx);
             assert!(this.book.sheets[0].protected, "保護が掛かっていない");
             assert!(this.status.contains("保護しました"), "{}", this.status);
 
             // 掛かっていれば「保護を解除」に変わる(押すまで分からない、を避ける)
             this.open_sheet_menu(0);
             let (items, _) = this.pick.clone().unwrap();
-            assert!(items.iter().any(|(k, _)| k == "保護を解除"), "{items:?}");
-            this.apply_pick("保護を解除", cx);
+            assert!(items.iter().any(|(k, _)| k == "Unprotect the sheet"), "{items:?}");
+            this.apply_pick("Unprotect the sheet", cx);
             assert!(!this.book.sheets[0].protected, "保護が外れていない");
         });
     }
@@ -5010,12 +5011,12 @@ mod symbol_watch_tests {
             this.run_cmd("inssymbol", cx);
             let (items, _) = this.pick.clone().expect("組の一覧が出ない");
             // 鍵は `symbols:組の名`、見出しは「組の名: 字たち」
-            assert!(items.iter().any(|(k, _)| k == "symbols:帳票でよく使う"), "組が出ていない");
-            assert!(items.iter().any(|(k, _)| k.starts_with("Unicode")), "16進の口が無い");
+            assert!(items.iter().any(|(k, _)| k == "symbols:Common in business forms"), "組が出ていない");
+            assert!(items.iter().any(|(k, _)| k.starts_with("Type Unicode")), "16進の口が無い");
             assert!(!items.iter().any(|(k, _)| k == "symbols:recent"), "まだ何も使っていない");
 
             // 組を選ぶと字が一つずつ並ぶ
-            this.apply_pick("symbols:しるし", cx);
+            this.apply_pick("symbols:Marks", cx);
             let (chars, _) = this.pick.clone().expect("字の一覧が出ない");
             assert_eq!(chars[0].0, "○", "一字ずつになっていない: {chars:?}");
 
@@ -5170,7 +5171,7 @@ mod color_tests {
 
             // 「その他」を選ぶと打ち込みのパネルが開く
             this.pick_kind = "font-color";
-            this.apply_pick("その他(RRGGBB を打つ)…", cx);
+            this.apply_pick("Other (type RRGGBB)…", cx);
             assert!(this.prompt.is_some(), "打ち込みのパネルが開かない");
 
             // #付きでも大文字小文字でも通る
@@ -5280,7 +5281,7 @@ mod csv_out_tests {
             assert!(String::from_utf8_lossy(&b).contains("売上,"), "カンマ区切りでない");
 
             // Shift_JIS。**CP932 に無い字(𠮟)は落ちるので数えて言う**
-            this.csv_kind = "Shift_JIS(CP932)・カンマ";
+            this.csv_kind = "Shift_JIS (CP932), comma";
             let p2 = dir.join("sjis.csv");
             this.write_csv(&p2);
             let b2 = std::fs::read(&p2).unwrap();
@@ -5292,7 +5293,7 @@ mod csv_out_tests {
             );
 
             // タブ区切り
-            this.csv_kind = "UTF-8(BOM付き)・タブ";
+            this.csv_kind = "UTF-8 (with BOM), tab";
             let p3 = dir.join("tab.csv");
             this.write_csv(&p3);
             let t = std::fs::read_to_string(&p3).unwrap();
@@ -5932,10 +5933,10 @@ mod currency_tests {
         let by = |k: &str| {
             currencies().iter().find(|(key, _, _, _)| *key == k).map(|(_, _, s, d)| (*s, *d)).unwrap()
         };
-        assert_eq!(by("円 (¥)"), ("¥", 0));
-        assert_eq!(by("ウォン (₩)"), ("₩", 0));
-        assert_eq!(by("ドル ($)"), ("$", 2));
-        assert_eq!(by("ユーロ (€)"), ("€", 2));
+        assert_eq!(by("Yen (¥)"), ("¥", 0));
+        assert_eq!(by("Won (₩)"), ("₩", 0));
+        assert_eq!(by("Dollar ($)"), ("$", 2));
+        assert_eq!(by("Euro (€)"), ("€", 2));
     }
 
     /// 記号なしはただの桁区切り
@@ -5987,10 +5988,10 @@ mod datefmt_tests {
     fn 日付には地域が入り時刻には入らない() {
         let f = date_formats();
         let by = |k: &str| f.iter().find(|(key, _, _)| *key == k).unwrap().2.clone();
-        for k in ["短い日付", "長い日付", "年と月", "曜日だけ"] {
+        for k in ["Short date", "Long date", "Month and year", "Weekday only"] {
             assert!(by(k).starts_with("[$-"), "{k} に地域が無い: {}", by(k));
         }
-        assert_eq!(by("時刻"), "h:mm:ss", "時刻に地域は要らない");
+        assert_eq!(by("Time"), "h:mm:ss", "時刻に地域は要らない");
     }
 
     /// 日本語で動かしているので、既定は日本語の並びで出る
@@ -5998,8 +5999,8 @@ mod datefmt_tests {
     fn 日本語では日本語の日付が出る() {
         let f = date_formats();
         let label = |k: &str| f.iter().find(|(key, _, _)| *key == k).unwrap().1.clone();
-        assert!(label("長い日付").ends_with("2026年8月6日"), "{}", label("長い日付"));
-        assert!(label("曜日だけ").ends_with("木曜日"), "{}", label("曜日だけ"));
+        assert!(label("Long date").ends_with("2026年8月6日"), "{}", label("Long date"));
+        assert!(label("Weekday only").ends_with("木曜日"), "{}", label("Weekday only"));
     }
 
 }
@@ -6024,7 +6025,7 @@ mod fnhelp_tests {
         assert_eq!(タブ, 表, "タブの並びと funcs.rs の分類が食い違っています");
 
         // 族の一覧を開くコマンド。**既定に落ちてよいのはこの2つだけ**
-        let 既定でよい = ["検索/行列", "情報"];
+        let 既定でよい = ["Lookup & Reference", "Information"];
         for g in &タブ {
             let id = util::fn_group_cmd(g);
             if 既定でよい.contains(g) {
@@ -6385,8 +6386,8 @@ mod shape_gallery_tests {
     use crate::{shape_cat_label, shape_gallery, shape_kind};
 
     const CATS: &[&str] = &[
-        "基本図形", "ブロック矢印", "数式図形", "フローチャート",
-        "星とリボン", "吹き出し", "線",
+        "Basic shapes", "Block arrows", "Equation shapes", "Flowchart",
+        "Stars and ribbons", "Callouts", "Line (border)",
     ];
 
     #[test]
@@ -6428,7 +6429,7 @@ mod shape_gallery_tests {
             for (k, _) in shape_gallery(c) {
                 let (kind, _) = shape_kind(k);
                 assert!(
-                    kind != "rect" || k == "四角形",
+                    kind != "rect" || k == "Rectangle",
                     "「{k}」が引き当てから漏れて四角に落ちている",
                 );
             }
@@ -7639,7 +7640,7 @@ mod adoc_の開く保存 {
                 ("A1", "品名"), ("B1", "金額"),
                 ("A2", "机"), ("B2", "1200"),
                 ("A3", "椅子"), ("B3", "800"),
-                ("A4", "合計"), ("B4", "=SUM(B2:B3)"),
+                ("A4", "Sum"), ("B4", "=SUM(B2:B3)"),
             ] {
                 this.book.sheets[0].set(Pos::parse(a1).unwrap(), sheet::Cell::input(v));
             }

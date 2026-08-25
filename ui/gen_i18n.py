@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""画面の文言の対訳表の門番。
+"""画面の文言の鍵の門番。
 
-アプリの `ui::t!("…")` / `ui::tf!("…", …)` から**日本語の鍵**を全部抽出し、
-lang/src/i18n_en.rs の対訳表と突き合わせる。
+アプリの `ui::t!("…")` / `ui::tf!("…", …)` から**鍵**を全部抽出し、
+鍵の正本 `ui/i18n/keys.json` と突き合わせる。
 
-    python3 ui/gen_i18n.py            # 検査(未訳・不要訳があれば止まる)
-    python3 ui/gen_i18n.py --missing  # 未訳の鍵を骨組み(("鍵", ""),)で出す
+    python3 ui/gen_i18n.py            # 検査(足りない鍵・余った鍵で止まる)
+    python3 ui/gen_i18n.py --missing  # 正本に無い鍵を出す
 
-**未訳があるうちは en を名乗れない**(文言の揃った言語だけを名乗る方針)。
-新しい文言を足したら、--missing の骨組みに訳を書いて表へ足すこと。
+**鍵は英語です**(2026-08-26 の移行)。日本語は `ui/i18n/ja.json` の訳に
+なりました。新しい文言を足したら `python3 ui/gen_lang.py --todo` で
+正本に足し、各言語の訳を書いてから生成し直します。
 """
+import json
 import re
 import sys
 from pathlib import Path
@@ -34,7 +36,10 @@ SOURCES = sorted(
     for p in (ROOT / d).glob("*.rs")
     if p.name != "tests.rs"
 )
-TABLE = ROOT / "lang/src/i18n_en.rs"
+# **鍵の正本**(2026-08-26 の移行)。前は lang/src/i18n_en.rs の
+# 「日本語の鍵 → 英語」の表でした。鍵が英語になったので、対の表という物が
+# 要らなくなり、鍵の一覧だけが残りました
+KEYS = ROOT / "ui/i18n/keys.json"
 
 
 def literal_at(src, i):
@@ -112,30 +117,23 @@ def keys_from(path):
 
 
 def table_pairs():
-    """表の各行を(鍵のリテラル, 訳のリテラル)で取り出す(複数行の物も)。
+    """鍵の正本を(鍵のリテラル, 種類)で取り出す。
 
-    **表を読む道はここ1本にしてください。** 正規表現で読み直すと、行末の
+    **鍵を読む道はここ1本にしてください。** 正規表現で読み直すと、行末の
     `\\` で継いだ行が見えません。2026-08-26 に `tools/flip_i18n.py` が
     まさにそれで、19 句を読み落としたまま「取りこぼし 0」と出していました。
     """
-    src = open(TABLE, encoding="utf-8").read()
-    out = []
-    i = src.find("pub const")
-    while True:
-        i = src.find('("', i)
-        if i < 0:
-            break
-        j, key = literal_at(src, i + 1)
-        k = src.find('"', j)
-        if k < 0:
-            break
-        i, val = literal_at(src, k)
-        out.append((key, val))
-    return out
+    rows = json.loads(KEYS.read_text(encoding="utf-8"))
+    return [(escape(r["key"]), r["kind"]) for r in rows if r["kind"] == "msg"]
+
+
+def escape(s):
+    """実行時の文字列 → ソースのリテラルの姿(比べる側と揃える)"""
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n") + '"'
 
 
 def table_keys():
-    """表の各行の鍵リテラルを、リテラル走査で取り出す(複数行の鍵も)"""
+    """鍵の一覧を、ソースのリテラルの姿で"""
     return [k for k, _ in table_pairs()]
 
 

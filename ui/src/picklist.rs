@@ -174,7 +174,7 @@ pub fn panel<V: gpui::Render>(
                 .whitespace_nowrap()
                 .overflow_hidden()
                 .child(SharedString::from(if *empty {
-                    crate::t!("打つと絞り込みます").to_string()
+                    crate::t!("Type to filter").to_string()
                 } else {
                     text.clone()
                 })),
@@ -187,7 +187,7 @@ pub fn panel<V: gpui::Render>(
                 .py_1()
                 .text_size(px(s * 12.0))
                 .text_color(look.dim)
-                .child(crate::t!("一覧にありません(このまま Enter で確定)")),
+                .child(crate::t!("Not in the list (press Enter to use as typed)")),
         );
     }
 

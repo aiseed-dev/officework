@@ -9,7 +9,7 @@ pub(crate) use ops::{lock_identity, lock_path_for};
 
 /// 先客のロックを読む(あれば名乗りを返す)。自分自身のロックは先客と見ない。
 pub(crate) fn foreign_lock(p: &std::path::Path) -> Option<String> {
-    ops::foreign_lock(p, ui::t!("誰か"))
+    ops::foreign_lock(p, ui::t!("someone"))
 }
 
 /// **自動復旧の控え**(2026-08-21 の B-3)。
@@ -31,9 +31,9 @@ pub(crate) fn 控えの道(orig: Option<&std::path::Path>) -> std::path::PathBuf
 /// 見ないからです。
 pub(crate) fn key_err_msg(e: ops::KeyErr) -> String {
     match e {
-        ops::KeyErr::Corrupt => ui::t!("鍵ファイルが壊れています(~/.config/officework/sign.key)").to_string(),
-        ops::KeyErr::NoRandom(e) => ui::tf!("乱数が取れません: {}", e).to_string(),
-        ops::KeyErr::CantStore(e) => ui::tf!("鍵が置けません: {}", e).to_string(),
+        ops::KeyErr::Corrupt => ui::t!("The key file is damaged (~/.config/officework/sign.key)").to_string(),
+        ops::KeyErr::NoRandom(e) => ui::tf!("Can't get random numbers: {}", e).to_string(),
+        ops::KeyErr::CantStore(e) => ui::tf!("Can't store the key: {}", e).to_string(),
     }
 }
 
@@ -50,7 +50,7 @@ pub(crate) fn http_fetch(url: &str, body: Option<&str>) -> Result<(Vec<u8>, Stri
         } else if let Some(r) = url.strip_prefix("http://") {
             (false, r)
         } else {
-            return Err(ui::t!("http:// か https:// の URL にしてください").into());
+            return Err(ui::t!("Use an http:// or https:// URL").into());
         };
         let (hostport, path) = match rest.split_once('/') {
             Some((h, p)) => (h.to_string(), format!("/{p}")),
@@ -63,7 +63,7 @@ pub(crate) fn http_fetch(url: &str, body: Option<&str>) -> Result<(Vec<u8>, Stri
             format!("{hostport}:{}", if https { 443 } else { 80 })
         };
         let sock = std::net::TcpStream::connect(&addr)
-            .map_err(|e| ui::tf!("繋がりません({}): {}", addr, e))?;
+            .map_err(|e| ui::tf!("Can't connect ({}): {}", addr, e))?;
         sock.set_read_timeout(Some(std::time::Duration::from_secs(15))).ok();
         let req = match body {
             Some(b) => format!(
@@ -82,7 +82,7 @@ pub(crate) fn http_fetch(url: &str, body: Option<&str>) -> Result<(Vec<u8>, Stri
                 .with_root_certificates(roots)
                 .with_no_client_auth();
             let name = rustls::pki_types::ServerName::try_from(host.clone())
-                .map_err(|_| ui::tf!("ホスト名が変です: {}", host))?;
+                .map_err(|_| ui::tf!("Bad host name: {}", host))?;
             let conn = rustls::ClientConnection::new(std::sync::Arc::new(cfg), name)
                 .map_err(|e| e.to_string())?;
             Box::new(rustls::StreamOwned::new(conn, sock))
@@ -115,11 +115,11 @@ pub(crate) fn http_fetch(url: &str, body: Option<&str>) -> Result<(Vec<u8>, Stri
         let mut out = Vec::new();
         r.read_to_end(&mut out).map_err(|e| e.to_string())?;
         if !status.contains(" 200") {
-            return Err(ui::tf!("サーバーの答え: {}", status.trim()));
+            return Err(ui::tf!("Server response: {}", status.trim()));
         }
         return Ok((out, url));
     }
-    Err(ui::t!("転送が多すぎます(5回まで)").into())
+    Err(ui::t!("Too many redirects (5 max)").into())
 }
 
 trait ReadWrite: std::io::Read + std::io::Write {}

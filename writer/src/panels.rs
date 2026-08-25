@@ -112,10 +112,10 @@ impl Writer {
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(field(ui::t!("検索"), &self.find_ed, self.find_field == 0)
+                .child(field(ui::t!("Find"), &self.find_ed, self.find_field == 0)
                     .id("find-f").cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| { this.find_field = 0; cx.notify() })))
-                .child(field(ui::t!("置換後"), &self.repl_ed, self.find_field == 1)
+                .child(field(ui::t!("Replace with"), &self.repl_ed, self.find_field == 1)
                     .id("find-r").cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| { this.find_field = 1; cx.notify() })))
                 // **探す範囲**(2026-08-20 発注者「検索には3種類必要です」)。
@@ -123,12 +123,12 @@ impl Writer {
                 // 文章の画面の言葉は「文書」です
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                        .child(ui::t!("探す範囲")))
-                    .child(範囲釦("sc-doc", ui::t!("この文書"), !self.find_file)
+                        .child(ui::t!("Search in")))
+                    .child(範囲釦("sc-doc", ui::t!("This document"), !self.find_file)
                         .on_click(cx.listener(|t, _, _, cx| { t.find_file = false; cx.notify() })))
-                    .child(範囲釦("sc-file", ui::t!("このファイル"), self.find_file)
+                    .child(範囲釦("sc-file", ui::t!("This file"), self.find_file)
                         .on_click(cx.listener(|t, _, _, cx| { t.find_file = true; cx.notify() })))
-                    .child(範囲釦("sc-dir", ui::t!("フォルダ"), false)
+                    .child(範囲釦("sc-dir", ui::t!("Folder"), false)
                         .on_click(cx.listener(|t, _, _, cx| {
                             // フォルダ全体はファイルのページの「フォルダから探す」
                             t.tab = 0;
@@ -136,14 +136,14 @@ impl Writer {
                             cx.notify()
                         }))))
                 .child(div().flex().flex_row().gap_2()
-                    .child(btn("f-next", ui::t!("次へ (Enter)"))
+                    .child(btn("f-next", ui::t!("Next (Enter)"))
                         .on_click(cx.listener(|this, _, _, cx| { this.find_next(); cx.notify() })))
-                    .child(btn("f-one", ui::t!("置換"))
+                    .child(btn("f-one", ui::t!("Replace"))
                         .on_click(cx.listener(|this, _, _, cx| { this.replace_current(); cx.notify() })))
-                    .child(btn("f-all", ui::t!("すべて置換"))
+                    .child(btn("f-all", ui::t!("Replace all"))
                         .on_click(cx.listener(|this, _, _, cx| { this.replace_all(); cx.notify() })))
                     .child(div().flex_1())
-                    .child(btn("f-close", ui::t!("閉じる"))
+                    .child(btn("f-close", ui::t!("Close"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.find_open = false; cx.notify()
                         })))))
@@ -151,7 +151,7 @@ impl Writer {
 
         // ヘッダー・フッターの編集のパネル。開いている間、打鍵はここに入る
         let hf_panel = self.hf_edit.map(|footer| {
-            let title = if footer { ui::t!("フッター") } else { ui::t!("ヘッダー") };
+            let title = if footer { ui::t!("footer") } else { ui::t!("header") };
             // キャレットは | で見せる(検索のパネルと同じ割り切り)。
             // ページ番号の印は読める形で見せる
             let mut s = self.hf_ed.text().to_string();
@@ -181,16 +181,16 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(SharedString::from(ui::tf!("{}の編集 — 全ページ共通", title))))
+                    .child(SharedString::from(ui::tf!("Editing {} — shared by all pages", title))))
                 .child(field)
                 .child(div().flex().flex_row().gap_2()
-                    .child(btn("hf-num", ui::t!("ページ番号を挿入"))
+                    .child(btn("hf-num", ui::t!("Insert page number"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.run_cmd("pagenum", cx);
                             cx.notify()
                         })))
                     .child(div().flex_1())
-                    .child(btn("hf-close", ui::t!("閉じる (Esc)"))
+                    .child(btn("hf-close", ui::t!("Close (Esc)"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.hf_edit = None;
                             this.status = "".into();
@@ -222,7 +222,7 @@ impl Writer {
                     .border_1().border_color(rgb(0xE8D5A8))
                     .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x8A4B00))
-                        .child(ui::t!("この段落のコメント(レビュー > コメント で編集)")));
+                        .child(ui::t!("Comments on this paragraph (edit via Review > Comment)")));
                 for (author, text) in cs {
                     d = d.child(div().mt_1p5().text_size(px(us * 11.5)).text_color(rgb(0x5A4A28))
                         .child(SharedString::from(format!("{author}: {text}"))));
@@ -247,7 +247,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x8A4B00))
-                    .child(ui::t!("コメント — 空にして閉じると外れる")))
+                    .child(ui::t!("Comment — close empty to remove")))
                 .child(field)
                 .child(div().flex().flex_row()
                     .child(div().flex_1())
@@ -255,7 +255,7 @@ impl Writer {
                         .border_1().border_color(rgb(0x8A4B00)).text_color(rgb(0x8A4B00))
                         .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xF7ECD8)))
-                        .child(ui::t!("閉じる (Esc)"))
+                        .child(ui::t!("Close (Esc)"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.cmt_edit = false;
                             this.status = "".into();
@@ -276,7 +276,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("透かし — 空にして閉じると外れる")))
+                    .child(ui::t!("Watermark — close empty to remove")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x165E83)).bg(gpui::white())
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
@@ -287,7 +287,7 @@ impl Writer {
                         .border_1().border_color(rgb(0x165E83)).text_color(rgb(0x165E83))
                         .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF2F7)))
-                        .child(ui::t!("閉じる (Esc)"))
+                        .child(ui::t!("Close (Esc)"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.wm_edit = false;
                             this.status = "".into();
@@ -306,25 +306,25 @@ impl Writer {
             // 何を掛けるのかを人の言葉で1行に
             let mut what: Vec<String> = Vec::new();
             if let Some(s) = d.size_pt {
-                what.push(ui::tf!("大きさ {}pt", s.to_string()).to_string());
+                what.push(ui::tf!("size {}pt", s.to_string()).to_string());
             }
             if let Some(f) = &d.font {
-                what.push(ui::tf!("書体 {}", f.clone()).to_string());
+                what.push(ui::tf!("typeface {}", f.clone()).to_string());
             }
             if d.bold {
-                what.push(ui::t!("太字").to_string());
+                what.push(ui::t!("Bold").to_string());
             }
             if d.italic {
-                what.push(ui::t!("斜体").to_string());
+                what.push(ui::t!("Italic").to_string());
             }
             if d.underline {
-                what.push(ui::t!("下線").to_string());
+                what.push(ui::t!("Underline").to_string());
             }
             if let Some(c) = &d.color {
-                what.push(ui::tf!("色 #{}", c.clone()).to_string());
+                what.push(ui::tf!("colour #{}", c.clone()).to_string());
             }
             if let Some(c) = &d.shade {
-                what.push(ui::tf!("背景色 #{}", c.clone()).to_string());
+                what.push(ui::tf!("shading #{}", c.clone()).to_string());
             }
             div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 400.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
@@ -332,9 +332,9 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("スタイルの新設 — 見た目に名前を付けます")))
+                    .child(ui::t!("New style — give this look a name")))
                 .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                    .child(SharedString::from(ui::tf!("掛けるもの: {}", what.join("・")))))
+                    .child(SharedString::from(ui::tf!("What it applies: {}", what.join("•")))))
                 .child(div().flex().flex_row().gap_2().items_center()
                     .child(div().flex_1().px_2().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
@@ -344,13 +344,13 @@ impl Writer {
                         .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                         .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
-                        .child(ui::t!("決める (Enter)"))
+                        .child(ui::t!("Confirm (Enter)"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.style_commit();
                             cx.notify()
                         }))))
                 .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                    .child(ui::t!("同じ名前があれば置き換えます。テンプレートに入るので、同じスタイルの所が一度に変わります")))
+                    .child(ui::t!("An existing name is replaced. It goes into the template, so every place with that style changes at once")))
         });
 
         let bm_panel = if !self.bm_open {
@@ -375,7 +375,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("しおり — 名前を打って追加。押すとそこへ移る")))
+                    .child(ui::t!("Bookmarks — type a name and Add; click one to jump")))
                 .child(div().flex().flex_row().gap_2().items_center()
                     .child(div().flex_1().px_2().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
@@ -385,14 +385,14 @@ impl Writer {
                         .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                         .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
-                        .child(ui::t!("追加 (Enter)"))
+                        .child(ui::t!("Add (Enter)"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.bm_add();
                             cx.notify()
                         }))));
             if items.is_empty() {
                 d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("(まだしおりはありません)")));
+                    .child(ui::t!("(no bookmarks yet)")));
             }
             for (i, (name, b0)) in items.into_iter().enumerate() {
                 let name2 = name.clone();
@@ -407,7 +407,7 @@ impl Writer {
                             this.switch_target(Target::Body);
                             this.ed.move_to(b0, false);
                             this.follow_caret();
-                            this.status = ui::tf!("しおり「{}」へ移りました", name).into();
+                            this.status = ui::tf!("Jumped to bookmark \"{}\"", name).into();
                             cx.notify()
                         })))
                     .child(div()
@@ -423,7 +423,7 @@ impl Writer {
                                 }
                             }
                             this.dirty = true;
-                            this.status = ui::t!("しおりを外しました").into();
+                            this.status = ui::t!("Bookmark removed").into();
                             cx.notify()
                         }))));
             }
@@ -441,10 +441,10 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("バージョン履歴 — 上書き保存のたびの控え(9世代まで)")));
+                    .child(ui::t!("Version history — a copy per overwrite-save (up to 9)")));
             if items.is_empty() {
                 d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("(まだ控えはありません。上書き保存すると増えます)")));
+                    .child(ui::t!("(no copies yet; overwrite-saves add them)")));
             }
             for (i, (disp, q)) in items.into_iter().enumerate() {
                 d = d.child(div()
@@ -475,10 +475,10 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("チャット — 文書の隣の申し送り帳(.chat.txt)")));
+                    .child(ui::t!("Chat — the message file next to the document (.chat.txt)")));
             if lines.is_empty() {
                 d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("(まだ書き込みはありません)")));
+                    .child(ui::t!("(no messages yet)")));
             }
             for l in lines {
                 d = d.child(div().text_size(px(us * 12.0))
@@ -494,7 +494,7 @@ impl Writer {
                     .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                     .text_size(px(us * 11.5)).cursor_pointer()
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
-                    .child(ui::t!("送信 (Enter)"))
+                    .child(ui::t!("Send (Enter)"))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.chat_send();
                         cx.notify()
@@ -515,7 +515,7 @@ impl Writer {
                 "●".repeat(before),
                 "●".repeat(total - before)
             );
-            let title = ui::t!("パスワード — この文書は暗号化されています");
+            let title = ui::t!("Password — this document is encrypted");
             Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 380.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
@@ -528,9 +528,7 @@ impl Writer {
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(masked)))
                 .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("方式は ECMA-376 Agile(AES-256)。\
-                            Word や LibreOffice でも開けます。\
-                            パスワードを忘れると誰にも開けません"))))
+                    .child(ui::t!("The scheme is ECMA-376 Agile (AES-256). Opens in Word and LibreOffice. If you forget the password, nobody can open it"))))
         };
 
         // URL のパネル(JS なしの閲覧の入口)
@@ -546,7 +544,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("URL を開く — Enter で取りに行く(JS は実行しません)")))
+                    .child(ui::t!("Open URL — Enter fetches (JavaScript is never executed)")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
@@ -564,7 +562,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("記入 — 欄を押して打ち、Enter で控え、送信で送る")));
+                    .child(ui::t!("Fill in — click a field, type, Enter records, Submit sends")));
             for (i, f) in fm.fields.iter().enumerate() {
                 if f.hidden {
                     continue;
@@ -609,7 +607,7 @@ impl Writer {
                     .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                     .text_size(px(us * 12.0)).cursor_pointer()
                     .hover(|st| st.bg(rgb(0xEAF5EE)))
-                    .child(ui::tf!("送信({} {})", fm.method.to_uppercase(), fm.action))
+                    .child(ui::tf!("Submit ({} {})", fm.method.to_uppercase(), fm.action))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.fm_submit(cx);
                         cx.notify()
@@ -686,7 +684,7 @@ impl Writer {
                     let heads = self.headings();
                     if heads.is_empty() {
                         d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                            .child(ui::t!("(見出しがありません。ホーム > 段落のスタイルで)")));
+                            .child(ui::t!("(no headings; set them via Home > paragraph styles)")));
                     }
                     for (i, (lv, text, byte)) in heads.into_iter().take(40).enumerate() {
                         let b = byte;
@@ -721,7 +719,7 @@ impl Writer {
                     }
                     if items.is_empty() {
                         d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                            .child(ui::t!("(コメントはありません)")));
+                            .child(ui::t!("(no comments)")));
                     }
                     for (i, (_, who, text, byte)) in items.into_iter().take(30).enumerate() {
                         let b = byte;
@@ -755,7 +753,7 @@ impl Writer {
                         .text_size(px(us * 12.0)).text_color(th_top_fg)
                         .whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(if term.is_empty() {
-                            ui::t!("(検索のパネルで語を打つ → ここに出ます)").to_string()
+                            ui::t!("(type a term in the search dialog — results appear here)").to_string()
                         } else {
                             term.clone()
                         }))
@@ -789,7 +787,7 @@ impl Writer {
                         }
                         if hits == 0 {
                             d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                                .child(ui::t!("(見つかりません)")));
+                                .child(ui::t!("(not found)")));
                         }
                     }
                 }
@@ -810,14 +808,12 @@ impl Writer {
                             .child(SharedString::from(label))
                     };
                     d = d.child(div().text_size(px(us * 10.5)).text_color(th_status).child(
-                        ui::t!("選んだところについて聞けます。文を直すときは、\
-                                直した文を先に見せます — 押すまで入りません。").to_string()));
+                        ui::t!("You can ask about the selection. When text would be rewritten, you see the new text first — nothing goes in until you press.").to_string()));
                     let mut 会話 = div().id("ai-chat-log").flex().flex_col().gap_1().mt_1()
                         .flex_1().min_h(px(us * 0.0)).overflow_y_scroll();
                     if self.ai_chat_log.is_empty() {
                         会話 = 会話.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                            .child(ui::t!("例: この段落を敬語にして / 半分の長さに \
-                                           / 言い方が硬くないか見て").to_string()));
+                            .child(ui::t!("e.g. make this paragraph polite / half as long / tell me if it sounds stiff").to_string()));
                     }
                     for (自分, 字) in &self.ai_chat_log {
                         会話 = 会話.child(div().text_size(px(us * 11.5))
@@ -827,7 +823,7 @@ impl Writer {
                     d = d.child(会話);
                     if let Some(plan) = self.ai_chat_plan.clone() {
                         d = d.child(div().text_size(px(us * 10.5)).text_color(th_status).mt_1()
-                            .child(ui::t!("入れる文(押すまで入りません)").to_string()));
+                            .child(ui::t!("Text to insert (nothing goes in until you press)").to_string()));
                         d = d.child(div().id("ai-chat-plan")
                             .max_h(px(us * 160.0)).overflow_y_scroll()
                             .p_1().rounded_sm()
@@ -836,16 +832,16 @@ impl Writer {
                             .text_size(px(us * 11.0)).text_color(th_top_fg)
                             .children(plan.lines().map(|l| div().child(l.to_string()))));
                         d = d.child(div().flex().flex_row().gap_1().mt_1()
-                            .child(釦("ai-chat-run", ui::t!("入れる").to_string(), true)
+                            .child(釦("ai-chat-run", ui::t!("Apply").to_string(), true)
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.ai_chat_insert();
                                     cx.notify()
                                 })))
-                            .child(釦("ai-chat-drop", ui::t!("やめる").to_string(), false)
+                            .child(釦("ai-chat-drop", ui::t!("Cancel").to_string(), false)
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.ai_chat_plan = None;
                                     this.status =
-                                        ui::t!("入れる文を捨てました(何もしていません)").into();
+                                        ui::t!("Discarded the text (nothing was changed)").into();
                                     cx.notify()
                                 }))));
                     }
@@ -864,7 +860,7 @@ impl Writer {
                             if self.ai_chat_focus {
                                 "|".to_string()
                             } else {
-                                ui::t!("ここを押して書き、Enter で送る").to_string()
+                                ui::t!("Click here to type; Enter sends").to_string()
                             }
                         } else if self.ai_chat_focus {
                             let mut s = self.ai_chat_in.text().to_string();
@@ -875,24 +871,24 @@ impl Writer {
                             self.ai_chat_in.text().to_string()
                         }));
                     let mut r = div().flex().flex_row().gap_1().mt_1();
-                    r = r.child(釦("ai-chat-send", ui::t!("送る").to_string(), !self.ai_busy)
+                    r = r.child(釦("ai-chat-send", ui::t!("Send").to_string(), !self.ai_busy)
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.ai_chat_send(cx);
                             cx.notify()
                         })));
                     if self.ai_busy {
                         r = r.child(div().text_size(px(us * 10.5)).text_color(th_status)
-                            .child(ui::t!("考えています…").to_string()));
+                            .child(ui::t!("Thinking…").to_string()));
                     }
                     d = d.child(r);
                 }
             }
             let 柱d = 柱()
-                .child(柱釦("nf-head".into(), "contents", ui::t!("見出し").to_string(), self.nav_tab == 0).on_click(
+                .child(柱釦("nf-head".into(), "contents", ui::t!("Heading").to_string(), self.nav_tab == 0).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 0; cx.notify() })))
-                .child(柱釦("nf-cmt".into(), "co-showcomment", ui::t!("コメント").to_string(), self.nav_tab == 1).on_click(
+                .child(柱釦("nf-cmt".into(), "co-showcomment", ui::t!("Comment").to_string(), self.nav_tab == 1).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 1; cx.notify() })))
-                .child(柱釦("nf-find".into(), "replace", ui::t!("検索").to_string(), self.nav_tab == 2).on_click(
+                .child(柱釦("nf-find".into(), "replace", ui::t!("Find").to_string(), self.nav_tab == 2).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 2; cx.notify() })))
                 .child(柱釦("nf-ai".into(), "ai-ask", ui::t!("AI").to_string(), self.nav_tab == 3).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 3; cx.notify() })));
@@ -950,10 +946,10 @@ impl Writer {
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(match 面 {
-                        1 => ui::t!("ページ — 文書ぜんぶの決め"),
-                        2 => ui::t!("スタイル — テンプレートを直す"),
-                        3 => ui::t!("ファイル — フォルダの中身"),
-                        _ => ui::t!("設定 — いる場所を直す"),
+                        1 => ui::t!("Page — settings for the whole document"),
+                        2 => ui::t!("Styles — edit the template"),
+                        3 => ui::t!("Files — what is in the folder"),
+                        _ => ui::t!("Settings — adjust where the cursor is"),
                     }));
             // **ページは「いる場所」ではない。** 文書ぜんぶに掛かる決めなので、
             // 柱で別の面に分けた(発注者 2026-08-15「外側にアイコンをおいて
@@ -961,36 +957,36 @@ impl Writer {
             if 面 == 1 {
                 self.rp_drawn.set(1);
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                    .child(SharedString::from(ui::tf!("{:.0}×{:.0}mm / 余白 {:.0}mm / {}段{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!(" / 縦書き") } else { "" }))));
+                    .child(SharedString::from(ui::tf!("{:.0}×{:.0}mm / margins {:.0}mm / {} columns{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!(" / vertical") } else { "" }))));
                 d = d.child(row()
-                    .child(btn(self, "pageorient", ui::t!("向き").into()).on_click(cx.listener(
+                    .child(btn(self, "pageorient", ui::t!("Orientation").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pageorient", cx); cx.notify() })))
-                    .child(btn(self, "pagesize", ui::t!("用紙").into()).on_click(cx.listener(
+                    .child(btn(self, "pagesize", ui::t!("Paper").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagesize", cx); cx.notify() })))
-                    .child(btn(self, "pagemargins", ui::t!("余白").into()).on_click(cx.listener(
+                    .child(btn(self, "pagemargins", ui::t!("Margins").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagemargins", cx); cx.notify() })))
-                    .child(btn(self, "columns", ui::t!("段組み").into()).on_click(cx.listener(
+                    .child(btn(self, "columns", ui::t!("Columns").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("columns", cx); cx.notify() })))
-                    .child(btn(self, "direction", ui::t!("縦書き").into()).on_click(cx.listener(
+                    .child(btn(self, "direction", ui::t!("Vertical").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("direction", cx); cx.notify() }))));
-                d = d.child(head(ui::t!("ヘッダーとフッター")));
+                d = d.child(head(ui::t!("Header and footer")));
                 d = d.child(row()
-                    .child(btn(self, "edit-header", ui::t!("編集").into()).on_click(cx.listener(
+                    .child(btn(self, "edit-header", ui::t!("Edit").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("edit-header", cx); cx.notify() })))
-                    .child(btn(self, "pagenum", ui::t!("ページ番号").into()).on_click(cx.listener(
+                    .child(btn(self, "pagenum", ui::t!("page number").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagenum", cx); cx.notify() })))
-                    .child(btn(self, "watermark", ui::t!("透かし").into()).on_click(cx.listener(
+                    .child(btn(self, "watermark", ui::t!("Watermark").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("watermark", cx); cx.notify() })))
-                    .child(btn(self, "pagecolor", ui::t!("ページの色").into()).on_click(cx.listener(
+                    .child(btn(self, "pagecolor", ui::t!("Page colour").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagecolor", cx); cx.notify() }))));
                 let 柱d = 柱()
-                    .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), false).on_click(
+                    .child(柱釦("rf-here".into(), "format", ui::t!("Settings — adjust where the cursor is").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), true).on_click(
+                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("Page — settings for the whole document").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
                     // **フォルダのファイル一覧**(2026-08-19 発注者
                     // 「フォルダー内のファイル一覧を右パネルに表示」)
-                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("ファイル — フォルダの中身").to_string(), false).on_click(
+                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("Files — what is in the folder").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1013,13 +1009,13 @@ impl Writer {
                             kumihan::theme::Theme::role_name(p.style).map(|s| s.to_string())
                         })
                     })
-                    .unwrap_or_else(|| ui::t!("本文").to_string());
+                    .unwrap_or_else(|| ui::t!("body").to_string());
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status).child(
-                    SharedString::from(ui::tf!("いまの段落: {}", 着ている.clone())),
+                    SharedString::from(ui::tf!("This paragraph: {}", 着ている.clone())),
                 ));
                 // 役割のスタイル(段落そのものの意味)は先に、名前つきは後に
                 let mut names: Vec<String> =
-                    ["本文", "表題", "見出し1", "見出し2", "見出し3", "見出し4", "見出し5", "引用"]
+                    ["body", "Title style", "Heading 1", "Heading 2", "Heading 3", "Heading 4", "Heading 5", "引用"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect();
@@ -1038,7 +1034,7 @@ impl Writer {
                         .border_1().border_color(th_cmd_border)
                         .text_size(px(us * 11.5)).text_color(th_status)
                         .hover(move |st| st.bg(th_btn_hover))
-                        .child(SharedString::from(ui::t!("なし").to_string()))
+                        .child(SharedString::from(ui::t!("None").to_string()))
                         .on_click(cx.listener(|t, _, _, cx| {
                             t.strip_style();
                             cx.notify()
@@ -1069,49 +1065,49 @@ impl Writer {
                 if let Some(def) = self.tmpl.style(&着ている) {
                     let mut w: Vec<String> = Vec::new();
                     if let Some(s) = def.size_pt {
-                        w.push(ui::tf!("大きさ {}pt", s.to_string()).to_string());
+                        w.push(ui::tf!("size {}pt", s.to_string()).to_string());
                     }
                     if let Some(f) = &def.font {
-                        w.push(ui::tf!("書体 {}", f.clone()).to_string());
+                        w.push(ui::tf!("typeface {}", f.clone()).to_string());
                     }
                     if def.bold {
-                        w.push(ui::t!("太字").to_string());
+                        w.push(ui::t!("Bold").to_string());
                     }
                     if def.italic {
-                        w.push(ui::t!("斜体").to_string());
+                        w.push(ui::t!("Italic").to_string());
                     }
                     if def.underline {
-                        w.push(ui::t!("下線").to_string());
+                        w.push(ui::t!("Underline").to_string());
                     }
                     if let Some(c) = &def.color {
-                        w.push(ui::tf!("色 #{}", c.clone()).to_string());
+                        w.push(ui::tf!("colour #{}", c.clone()).to_string());
                     }
-                    d = d.child(head(ui::t!("このスタイルの中身")));
+                    d = d.child(head(ui::t!("What this style holds")));
                     d = d.child(div().text_size(px(us * 11.0)).text_color(th_status).child(
                         SharedString::from(if w.is_empty() {
-                            ui::t!("(文書の既定のまま)").to_string()
+                            ui::t!("(the document default)").to_string()
                         } else {
-                            w.join("・")
+                            w.join("•")
                         }),
                     ));
                     d = d.child(row()
-                        .child(btn(self, "st-bigger", ui::t!("字を大きく").into()).on_click(
+                        .child(btn(self, "st-bigger", ui::t!("Larger text").into()).on_click(
                             cx.listener(|t, _, _, cx| { t.tweak_style(1); cx.notify() })))
-                        .child(btn(self, "st-smaller", ui::t!("字を小さく").into()).on_click(
+                        .child(btn(self, "st-smaller", ui::t!("Smaller text").into()).on_click(
                             cx.listener(|t, _, _, cx| { t.tweak_style(-1); cx.notify() }))));
                 }
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                    .child(ui::t!("直すとテンプレートが変わり、同じスタイルの所が一度に変わります")));
+                    .child(ui::t!("Editing changes the template, so every place with that style changes at once")));
                 let 柱d = 柱()
-                    .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), false).on_click(
+                    .child(柱釦("rf-here".into(), "format", ui::t!("Settings — adjust where the cursor is").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), false).on_click(
+                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("Page — settings for the whole document").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
-                    .child(柱釦("rf-style".into(), "styles", ui::t!("スタイル — テンプレートを直す").to_string(), true).on_click(
+                    .child(柱釦("rf-style".into(), "styles", ui::t!("Styles — edit the template").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() })))
                     // **フォルダのファイル一覧**(2026-08-19 発注者
                     // 「フォルダー内のファイル一覧を右パネルに表示」)
-                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("ファイル — フォルダの中身").to_string(), false).on_click(
+                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("Files — what is in the folder").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1149,13 +1145,13 @@ impl Writer {
                     d = d.child(
                         div().flex().flex_row().gap_1().pb_1()
                             .child(ui::filelist::make_button(&look, "folder",
-                                ui::t!("+ フォルダ").into())
+                                ui::t!("+ Folder").into())
                                 .on_click(cx.listener(|t, _, _, cx| {
                                     t.fl_start(crate::FlJob::NewFolder);
                                     cx.notify()
                                 })))
                             .child(ui::filelist::make_button(&look, "doc",
-                                ui::t!("+ 文書").into())
+                                ui::t!("+ Document").into())
                                 .on_click(cx.listener(|t, _, _, cx| {
                                     t.fl_start(crate::FlJob::NewDoc);
                                     cx.notify()
@@ -1195,10 +1191,10 @@ impl Writer {
                                 // writer で開きました(2026-08-24)。JupyterLab で
                                 // 開くべき物なので、機械の決めをそのまま使います
                                 t.status = match ui::open_outside(&道.display().to_string()) {
-                                    ui::Opened::Yes => ui::tf!("{} を機械の決めた道具で開きます",
+                                    ui::Opened::Yes => ui::tf!("Opening {} with the application your system chose",
                                         道.file_name().unwrap_or_default().to_string_lossy().to_string()).into(),
-                                    ui::Opened::JustNow => ui::t!("いま開いたところです").into(),
-                                    ui::Opened::Failed => ui::tf!("開ける道具が見つかりません: {}",
+                                    ui::Opened::JustNow => ui::t!("Just opened it").into(),
+                                    ui::Opened::Failed => ui::tf!("No application is associated with this file: {}",
                                         道.display().to_string()).into(),
                                 };
                                 cx.notify();
@@ -1218,13 +1214,13 @@ impl Writer {
                             div().flex().flex_row().items_center().gap_1()
                                 .child(div().flex_1().min_w(px(0.0)).child(行))
                                 .child(ui::filelist::row_button(&look, i, "ren",
-                                    ui::t!("名前").into())
+                                    ui::t!("Name").into())
                                     .on_click(cx.listener(move |t, _, _, cx| {
                                         t.fl_start(crate::FlJob::Rename(道2.clone()));
                                         cx.notify()
                                     })))
                                 .child(ui::filelist::row_button(&look, i, "del",
-                                    ui::t!("消す").into())
+                                    ui::t!("Erase").into())
                                     .on_click(cx.listener(move |t, _, _, cx| {
                                         t.fl_start(crate::FlJob::Delete(道3.clone()));
                                         cx.notify()
@@ -1238,11 +1234,11 @@ impl Writer {
                     }
                 }
                 let 柱d = 柱()
-                    .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), false).on_click(
+                    .child(柱釦("rf-here".into(), "format", ui::t!("Settings — adjust where the cursor is").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), false).on_click(
+                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("Page — settings for the whole document").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
-                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("ファイル — フォルダの中身").to_string(), true).on_click(
+                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("Files — what is in the folder").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1259,23 +1255,23 @@ impl Writer {
             // (発注者 2026-08-14「選んでいる物の設定に切り替わるように」)。
             // 出すだけで下の面も残す — 表の中でも字は太字にしたい
             if let Some((_, 行, 列, 行数, 列数)) = self.cursor_table() {
-                d = d.child(head(ui::t!("表")));
+                d = d.child(head(ui::t!("Table")));
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                     .child(SharedString::from(ui::tf!(
-                        "{}行 × {}列 — いま {}行目 {}列目", 行数, 列数, 行 + 1, 列 + 1))));
+                        "{} rows × {} columns — now at row {}, column {}", 行数, 列数, 行 + 1, 列 + 1))));
                 d = d.child(row()
-                    .child(btn(self, "tb-row-up", ui::t!("上に行").into()).on_click(
+                    .child(btn(self, "tb-row-up", ui::t!("Row above").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_add_row(false); cx.notify() })))
-                    .child(btn(self, "tb-row-dn", ui::t!("下に行").into()).on_click(
+                    .child(btn(self, "tb-row-dn", ui::t!("Row below").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_add_row(true); cx.notify() })))
-                    .child(btn(self, "tb-row-del", ui::t!("行を消す").into()).on_click(
+                    .child(btn(self, "tb-row-del", ui::t!("Delete row").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_del_row(); cx.notify() }))));
                 d = d.child(row()
-                    .child(btn(self, "tb-col-l", ui::t!("左に列").into()).on_click(
+                    .child(btn(self, "tb-col-l", ui::t!("Column left").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_add_col(false); cx.notify() })))
-                    .child(btn(self, "tb-col-r", ui::t!("右に列").into()).on_click(
+                    .child(btn(self, "tb-col-r", ui::t!("Column right").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_add_col(true); cx.notify() })))
-                    .child(btn(self, "tb-col-del", ui::t!("列を消す").into()).on_click(
+                    .child(btn(self, "tb-col-del", ui::t!("Delete column").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_del_col(); cx.notify() }))));
             }
             // 数式と画像は**段落が持つ**(writer に図形の選択という状態は無い)。
@@ -1287,65 +1283,65 @@ impl Writer {
                     絵.iter().filter(|im| im.tex.is_some()).collect();
                 if let Some(im) = 式.first() {
                     let tex = im.tex.clone().unwrap_or_default();
-                    d = d.child(head(ui::t!("数式")));
+                    d = d.child(head(ui::t!("Formula")));
                     d = d.child(div().text_size(px(us * 10.5)).text_color(th_status)
                         .child(SharedString::from(tex.clone())));
                     d = d.child(row().child(
-                        btn(self, "eq-edit", ui::t!("式を直す").into()).on_click(
+                        btn(self, "eq-edit", ui::t!("Edit the equation").into()).on_click(
                             cx.listener(move |t, _, _, cx| {
                                 // 原文を欄に載せて開く。**打ち直しにしない**
                                 t.eq_ed = Editor::new(&tex);
                                 t.eq_open = true;
-                                t.status = ui::t!("式を直します(Enter で組み直し・Esc で取りやめ)").into();
+                                t.status = ui::t!("Editing the equation (Enter re-renders, Esc cancels)").into();
                                 cx.notify()
                             }))));
                 } else if let Some(im) = 絵.first() {
-                    d = d.child(head(ui::t!("画像")));
+                    d = d.child(head(ui::t!("Images")));
                     d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                         .child(SharedString::from(
                             ui::tf!("{:.0}×{:.0}mm", im.w_mm, im.h_mm))));
                     d = d.child(row()
-                        .child(btn(self, "img-small", ui::t!("小さく").into()).on_click(
+                        .child(btn(self, "img-small", ui::t!("Smaller").into()).on_click(
                             cx.listener(|t, _, _, cx| { t.image_scale(0.9); cx.notify() })))
-                        .child(btn(self, "img-big", ui::t!("大きく").into()).on_click(
+                        .child(btn(self, "img-big", ui::t!("Bigger").into()).on_click(
                             cx.listener(|t, _, _, cx| { t.image_scale(1.1); cx.notify() }))));
                 }
             }
 
             // 文字
-            d = d.child(head(ui::t!("文字")))
+            d = d.child(head(ui::t!("Character")))
                 .child(row()
-                    .child(btn(self, "bold", ui::t!("太字").into()).on_click(cx.listener(
+                    .child(btn(self, "bold", ui::t!("Bold").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("bold", cx); cx.notify() })))
-                    .child(btn(self, "italic", ui::t!("斜体").into()).on_click(cx.listener(
+                    .child(btn(self, "italic", ui::t!("Italic").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("italic", cx); cx.notify() })))
-                    .child(btn(self, "underline", ui::t!("下線").into()).on_click(cx.listener(
+                    .child(btn(self, "underline", ui::t!("Underline").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("underline", cx); cx.notify() })))
-                    .child(btn(self, "strikeout", ui::t!("取消").into()).on_click(cx.listener(
+                    .child(btn(self, "strikeout", ui::t!("Cancel").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("strikeout", cx); cx.notify() }))))
                 .child(row()
                     .child(div().text_size(px(us * 11.0)).text_color(th_status)
-                        .child(SharedString::from(ui::tf!("大きさ {} pt / 書体 {}", if size_now.fract() == 0.0 {
+                        .child(SharedString::from(ui::tf!("Size {} pt / font {}", if size_now.fract() == 0.0 {
                                 format!("{}", size_now as i32)
                             } else {
                                 format!("{size_now}")
                             }, self.font_name)))))
                 .child(row()
-                    .child(btn(self, "decfont", ui::t!("小さく").into()).on_click(cx.listener(
+                    .child(btn(self, "decfont", ui::t!("Smaller").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("decfont", cx); cx.notify() })))
-                    .child(btn(self, "incfont", ui::t!("大きく").into()).on_click(cx.listener(
+                    .child(btn(self, "incfont", ui::t!("Bigger").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("incfont", cx); cx.notify() })))
-                    .child(btn(self, "fontcolor", ui::t!("色").into()).on_click(cx.listener(
+                    .child(btn(self, "fontcolor", ui::t!("Colour").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("fontcolor", cx); cx.notify() })))
-                    .child(btn(self, "clearstyle", ui::t!("書式を消す").into()).on_click(cx.listener(
+                    .child(btn(self, "clearstyle", ui::t!("Clear formatting").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("clearstyle", cx); cx.notify() }))));
             if f.field.is_some() {
                 d = d.child(div().text_size(px(us * 10.5)).text_color(th_status)
-                    .child(ui::t!("(ここは相互参照。更新は 参考資料 > 相互参照)")));
+                    .child(ui::t!("(this is a cross-reference; update via References > Cross-reference)")));
             }
             if let Some(rt) = &f.ruby {
                 d = d.child(div().text_size(px(us * 10.5)).text_color(th_status)
-                    .child(SharedString::from(ui::tf!("ルビ「{}」", rt))));
+                    .child(SharedString::from(ui::tf!("Ruby \"{}\"", rt))));
             }
 
             // 段落
@@ -1353,14 +1349,14 @@ impl Writer {
                 Some(p) => (p.align, p.spacing(), p.indent, p.list),
                 None => (Align::Left, 1.0, 0, ListKind::None),
             };
-            d = d.child(head(ui::t!("段落")))
+            d = d.child(head(ui::t!("Paragraphs")))
                 .child(row()
                     .children([
-                        ("align-left", ui::t!("左"), Align::Left),
-                        ("align-center", ui::t!("中央"), Align::Center),
-                        ("align-right", ui::t!("右"), Align::Right),
-                        ("align-just", ui::t!("両端"), Align::Justify),
-                        ("align-dist", ui::t!("均等"), Align::Distribute),
+                        ("align-left", ui::t!("Left"), Align::Left),
+                        ("align-center", ui::t!("Centre"), Align::Center),
+                        ("align-right", ui::t!("Right"), Align::Right),
+                        ("align-just", ui::t!("Justify"), Align::Justify),
+                        ("align-dist", ui::t!("Distribute"), Align::Distribute),
                     ].map(|(id, label, a)| {
                         let on = al == a;
                         div().id(SharedString::from(format!("rp-{id}")))
@@ -1379,46 +1375,46 @@ impl Writer {
                     })))
                 .child(row()
                     .child(div().text_size(px(us * 11.0)).text_color(th_status)
-                        .child(SharedString::from(ui::tf!("行間 {:.2} / 字下げ {}", ls, ind)))))
+                        .child(SharedString::from(ui::tf!("Line spacing {:.2} / indent {}", ls, ind)))))
                 .child(row()
-                    .child(btn(self, "linespace", ui::t!("行間").into()).on_click(cx.listener(
+                    .child(btn(self, "linespace", ui::t!("Line spacing").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("linespace", cx); cx.notify() })))
-                    .child(btn(self, "decoffset", ui::t!("◂ 字下げ").into()).on_click(cx.listener(
+                    .child(btn(self, "decoffset", ui::t!("◂ Indent").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("decoffset", cx); cx.notify() })))
-                    .child(btn(self, "incoffset", ui::t!("字下げ ▸").into()).on_click(cx.listener(
+                    .child(btn(self, "incoffset", ui::t!("Indent ▸").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("incoffset", cx); cx.notify() }))))
                 .child(row()
                     // **✓ は見出しだけ** — 鍵は素のまま(calc の freeze と同じ作法)
                     .child(btn(self, "markers", {
-                        let l = ui::t!("箇条書き");
+                        let l = ui::t!("Bullets");
                         if lst == ListKind::Bullet { format!("{l} ✓").into() } else { l.into() }
                     }).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("markers", cx); cx.notify() })))
                     .child(btn(self, "numbering", {
-                        let l = ui::t!("番号");
+                        let l = ui::t!("Numbering");
                         if lst == ListKind::Number { format!("{l} ✓").into() } else { l.into() }
                     }).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("numbering", cx); cx.notify() })))
-                    .child(btn(self, "paracolor", ui::t!("背景").into()).on_click(cx.listener(
+                    .child(btn(self, "paracolor", ui::t!("Shading").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("paracolor", cx); cx.notify() })))
-                    .child(btn(self, "borders", ui::t!("囲み").into()).on_click(cx.listener(
+                    .child(btn(self, "borders", ui::t!("Borders").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("borders", cx); cx.notify() }))));
 
             // ページ
             let 柱d = 柱()
-                .child(柱釦("rf-here".into(), "format", ui::t!("設定 — いる場所を直す").to_string(), 面 == 0).on_click(
+                .child(柱釦("rf-here".into(), "format", ui::t!("Settings — adjust where the cursor is").to_string(), 面 == 0).on_click(
                     cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                .child(柱釦("rf-page".into(), "pagesize", ui::t!("ページ — 文書ぜんぶの決め").to_string(), 面 == 1).on_click(
+                .child(柱釦("rf-page".into(), "pagesize", ui::t!("Page — settings for the whole document").to_string(), 面 == 1).on_click(
                     cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
                 // **スタイルの面はネイティブ文書だけ**(2026-08-16)。互換の
                 // 文書にはテンプレートが無く、押しても見せる物が無い —
                 // できないことを、できるように見せない
                 .children(self.native.then(|| {
-                    柱釦("rf-style".into(), "styles", ui::t!("スタイル — テンプレートを直す").to_string(), 面 == 2)
+                    柱釦("rf-style".into(), "styles", ui::t!("Styles — edit the template").to_string(), 面 == 2)
                         .on_click(cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() }))
                 }))
                 // **フォルダのファイル一覧**(2026-08-19)
-                .child(柱釦("rf-files".into(), "py-folder", ui::t!("ファイル — フォルダの中身").to_string(), false).on_click(
+                .child(柱釦("rf-files".into(), "py-folder", ui::t!("Files — what is in the folder").to_string(), false).on_click(
                     cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
             return_rp = Some(div()
                 .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1443,7 +1439,7 @@ impl Writer {
                 .flex().flex_col().gap_1()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(SharedString::from(ui::tf!("リンク({}件。押すと辿る。Esc で閉じる)", self.html_links.len()))));
+                    .child(SharedString::from(ui::tf!("Links ({}; click to follow, Esc closes)", self.html_links.len()))));
             for (i, (href, text)) in self.html_links.iter().take(16).enumerate() {
                 let href2 = href.clone();
                 d = d.child(div()
@@ -1460,7 +1456,7 @@ impl Writer {
             }
             if self.html_links.len() > 16 {
                 d = d.child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
-                    .child(SharedString::from(ui::tf!("(あと {} 件は出していません)", self.html_links.len() - 16))));
+                    .child(SharedString::from(ui::tf!("({} more not shown)", self.html_links.len() - 16))));
             }
             Some(d)
         };
@@ -1478,17 +1474,16 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(SharedString::from(ui::tf!("{} — 宛先 {}(Esc で取りやめ)", if self.ai_macro { ui::t!("AI にマクロ台本を頼む") } else { ui::t!("AI に頼む") }, ui::ai::backend().label()))))
+                    .child(SharedString::from(ui::tf!("{} — destination {} (Esc cancels)", if self.ai_macro { ui::t!("Ask the AI for a macro script") } else { ui::t!("Ask the AI") }, ui::ai::backend().label()))))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(rgb(0xFFFFFF))
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
                 .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                     .child(if self.ai_macro {
-                        ui::t!("台本はプラグイン置き場に置くだけです。読んで確かめてから\
-                         一覧で実行してください(自動では走りません)")
+                        ui::t!("Scripts are only placed in the plug-in folder. Read them and check them yourself, then run them from the list (they never run on their own)")
                     } else {
-                        ui::t!("答えはカーソルの位置に入ります。Ctrl+Z で1手で戻せます")
+                        ui::t!("The answer goes in at the cursor. Ctrl+Z takes it back in one step")
                     })))
         };
 
@@ -1506,10 +1501,9 @@ impl Writer {
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(SharedString::from(if self.sd_naming {
-                        ui::t!("記入欄の名前 — 打って Enter(例: 氏名。\
-                         マクロの fill(名前, 値) が引く鍵)").to_string()
+                        ui::t!("Field name — type and press Enter (e.g. name; the key macros use with fill(name, value))").to_string()
                     } else {
-                        ui::tf!("{}の選択肢 — カンマ区切りで打って Enter(例: 赤,青,黄)", self.sd_kind.label())
+                        ui::tf!("Choices for {} — comma-separated, then Enter (e.g. red,blue,yellow)", self.sd_kind.label())
                     })))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(rgb(0xFFFFFF))
@@ -1530,7 +1524,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("ルビ — 読みを打って Enter(空で外す。Esc で取りやめ)")))
+                    .child(ui::t!("Ruby — type the reading and press Enter (empty removes; Esc cancels)")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
@@ -1551,13 +1545,13 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("数式 — LaTeX を打って Enter(Esc で取りやめ)")))
+                    .child(ui::t!("Equation — type LaTeX and press Enter (Esc to cancel)")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
                 .child(div().text_size(px(us * 10.5)).text_color(rgb(0x60707C))
-                    .child(ui::t!("例: \\frac{a+b}{2} / \\sqrt{x^2+y^2}"))))
+                    .child(ui::t!("e.g. \\frac{a+b}{2} / \\sqrt{x^2+y^2}"))))
         };
 
         // プラグインのパネル(置き場の .py 一覧。押すとサンドボックスの中で実行)
@@ -1581,14 +1575,12 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("プラグイン — 押すとサンドボックス(bubblewrap)の中で実行")))
+                    .child(ui::t!("Plugins — click to run in the sandbox (bubblewrap)")))
                 .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                    .child(SharedString::from(ui::tf!("置き場: {}", dir.display()))));
+                    .child(SharedString::from(ui::tf!("Location: {}", dir.display()))));
             if items.is_empty() {
                 d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("(まだありません。置き場に .py を置いてください。\
-                            台本の d が python-docx の文書、fill(名前, 値)・\
-                            extract(名前)・fields() で記入欄の出し入れ)")));
+                    .child(ui::t!("(none yet; put .py files in the folder. The script gets d = the python-docx Document; fill(name, value), extract(name), and fields() handle form fields)")));
             }
             for (i, q) in items.into_iter().enumerate() {
                 let name = q
@@ -1627,19 +1619,19 @@ impl Writer {
                     .child(div().flex_1().text_size(px(us * 11.5))
                         .font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x165E83))
-                        .child(ui::t!("相互参照 — しおりの文字かページ番号を挿す")))
+                        .child(ui::t!("Cross-reference — insert a bookmark's text or page number")))
                     .child(div().id("xr-refresh").px_2().py_0p5().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                         .text_size(px(us * 11.0)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
-                        .child(ui::t!("参照を更新"))
+                        .child(ui::t!("Update references"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.refresh_refs();
                             cx.notify()
                         }))));
             if names.is_empty() {
                 d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("(しおりがありません。参考資料 > ブックマークで付けてください)")));
+                    .child(ui::t!("(no bookmarks; add them via References > Bookmark)")));
             }
             for (i, name) in names.into_iter().enumerate() {
                 let n1 = name.clone();
@@ -1653,7 +1645,7 @@ impl Writer {
                         .border_1().border_color(rgb(0x165E83)).text_color(rgb(0x165E83))
                         .text_size(px(us * 11.0)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF2F7)))
-                        .child(ui::t!("文字"))
+                        .child(ui::t!("Character"))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.insert_ref(&n1, false);
                             cx.notify()
@@ -1663,7 +1655,7 @@ impl Writer {
                         .border_1().border_color(rgb(0x165E83)).text_color(rgb(0x165E83))
                         .text_size(px(us * 11.0)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF2F7)))
-                        .child(ui::t!("ページ"))
+                        .child(ui::t!("Page"))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.insert_ref(&n2, true);
                             cx.notify()
@@ -1705,10 +1697,10 @@ impl Writer {
                 use crate::FlJob as J;
                 let 消す時 = matches!(job, J::Delete(_));
                 let 見出し = match job {
-                    J::NewFolder => ui::t!("新しいフォルダの名前 — 打って Enter(Esc でやめる)").to_string(),
-                    J::NewDoc => ui::t!("新しい文書の名前 — 打って Enter(.adoc を付けます)").to_string(),
-                    J::Rename(_) => ui::t!("新しい名前 — 打って Enter(Esc でやめる)").to_string(),
-                    J::Delete(p) => ui::tf!("「{}」を消しますか — Enter で消す、Esc でやめる",
+                    J::NewFolder => ui::t!("Name for the new folder — type it and press Enter (Esc to cancel)").to_string(),
+                    J::NewDoc => ui::t!("Name for the new document — type it and press Enter (.adoc is added)").to_string(),
+                    J::Rename(_) => ui::t!("New name — type it and press Enter (Esc to cancel)").to_string(),
+                    J::Delete(p) => ui::tf!("Delete \"{}\"? — Enter to delete, Esc to cancel",
                         p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string(),
                 };
                 let mut d = div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 400.0))
@@ -1729,7 +1721,7 @@ impl Writer {
                 } else {
                     // **ごみ箱には入りません。** そう書いておきます
                     d = d.child(div().text_size(px(us * 10.5)).text_color(rgb(0xB00020))
-                        .child(ui::t!("ごみ箱には入りません。元に戻せません")));
+                        .child(ui::t!("It does not go to the trash. This cannot be undone")));
                 }
                 Some(d)
             }
@@ -1748,13 +1740,13 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("表の大きさ — 行数,列数 を打って Enter(例: 3,4。Esc で取りやめ)")))
+                    .child(ui::t!("Table size — type rows,columns and press Enter (e.g. 3,4; Esc to cancel)")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
                 .child(div().text_size(px(us * 10.5)).text_color(rgb(0x5A6672))
-                    .child(ui::t!("表の横幅は、文章が書ける幅になります(列数で等分)"))))
+                    .child(ui::t!("The table spans the text width, divided equally by the number of columns"))))
         };
         let date_panel = (self.open_list == Some("datetime"))
             .then(|| self.一覧を描く("datetime", cx));
@@ -1772,21 +1764,21 @@ impl Writer {
                 .border_1().border_color(rgb(0xC6CDD3))
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                        .text_color(rgb(0x165E83))
-                       .child(SharedString::from(ui::tf!("校正 — {}", self.proof_msg))));
+                       .child(SharedString::from(ui::tf!("Proofread — {}", self.proof_msg))));
             for n in &self.proof {
                 // どちらの道具が出したかを隠さない。辞書の指摘は GPU 無しで再現できる
                 let tool = match n.source {
-                    ui::check::Source::Dictionary => ui::t!("辞書"),
-                    ui::check::Source::Model => ui::t!("モデル"),
+                    ui::check::Source::Dictionary => ui::t!("dictionary"),
+                    ui::check::Source::Model => ui::t!("model"),
                 };
                 let cand = if n.candidates.is_empty() {
-                    ui::t!("候補なし").to_string()
+                    ui::t!("No suggestions").to_string()
                 } else {
                     n.candidates.join(" / ")
                 };
                 d = d.child(div().mt_1p5().text_size(px(us * 11.5))
                     .child(SharedString::from(
-                        ui::tf!("{} → {}  ({}・{})", n.found, cand, n.kind.label(), tool))));
+                        ui::tf!("{} → {}  ({}, {})", n.found, cand, n.kind.label(), tool))));
             }
             Some(d)
         };
@@ -1808,7 +1800,7 @@ impl Writer {
             "inssymbol" => [
                 "〒", "※", "→", "←", "↑", "↓", "℃", "±", "×", "÷",
                 "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩",
-                "㈱", "㈲", "№", "〆", "〜", "…", "・", "「", "」", "『",
+                "㈱", "㈲", "№", "〆", "〜", "…", "•", "「", "」", "『",
                 "』", "【", "】", "○", "●", "◎", "△", "▲", "□", "■",
             ]
             .iter()
@@ -1818,10 +1810,10 @@ impl Writer {
             // (手引き `docs/ja/commands/ファイル/エクスポート.adoc` の表)。
             // `.adoc` はここに出しません — *保存の側*だからです
             "f-export" => vec![
-                ("docx".into(), ui::t!("Word 文書(.docx)").to_string()),
-                ("html".into(), ui::t!("Web ページ(.html)").to_string()),
-                ("pdf".into(), ui::t!("PDF(.pdf)").to_string()),
-                ("text".into(), ui::t!("文字だけ(.txt)").to_string()),
+                ("docx".into(), ui::t!("Word document (.docx)").to_string()),
+                ("html".into(), ui::t!("Web page (.html)").to_string()),
+                ("pdf".into(), ui::t!("PDF (.pdf)").to_string()),
+                ("text".into(), ui::t!("Plain text (.txt)").to_string()),
             ],
             // 日付の形。**西暦と和暦**(鍵=出す字そのもの — 訳しません)
             "datetime" => crate::cmds::日付の形(),
@@ -1857,12 +1849,12 @@ impl Writer {
             _ => (0u8..=5)
                 .map(|n| {
                     let label = match n {
-                        0 => ui::t!("標準"),
-                        1 => ui::t!("見出し1"),
-                        2 => ui::t!("見出し2"),
-                        3 => ui::t!("見出し3"),
-                        4 => ui::t!("見出し4"),
-                        _ => ui::t!("見出し5"),
+                        0 => ui::t!("Normal"),
+                        1 => ui::t!("Heading 1"),
+                        2 => ui::t!("Heading 2"),
+                        3 => ui::t!("Heading 3"),
+                        4 => ui::t!("Heading 4"),
+                        _ => ui::t!("Heading 5"),
                     };
                     (n.to_string(), label.to_string())
                 })
@@ -1938,8 +1930,8 @@ impl Writer {
             // 「選んだ所だけ」なのか「段落ぜんぶ」なのかは、押す前に
             // 分かっていないと困ります
             match kind {
-                "fontname" => Some(ui::t!("書体(選んだ段落に掛かる)").into()),
-                "parastyle" => Some(ui::t!("段落のスタイル(選んだ段落に掛かる)").into()),
+                "fontname" => Some(ui::t!("Font (applies to the selected paragraph)").into()),
+                "parastyle" => Some(ui::t!("Paragraph style (applies to the selected paragraph)").into()),
                 _ => None,
             },
             filter,
@@ -1985,7 +1977,7 @@ impl Writer {
                 }
                 self.on_edited();
                 self.status =
-                    ui::tf!("日付を入れました({}。固定の文字です)", key).into();
+                    ui::tf!("Date inserted ({}; fixed text)", key).into();
             }
             "fontname" => {
                 let sel = self.ed.selection();
@@ -1993,7 +1985,7 @@ impl Writer {
                 self.doc.apply_font(sel, Some(key.to_string()));
                 self.dirty = true;
                 self.relayout_keep();
-                self.status = ui::tf!("書体を「{}」に", key).into();
+                self.status = ui::tf!("Font to \"{}\"", key).into();
             }
             "fontsize" => {
                 let Ok(pt) = key.parse::<f32>() else { return };
@@ -2002,7 +1994,7 @@ impl Writer {
                 self.doc.apply_size(sel, move |_| pt);
                 self.dirty = true;
                 self.relayout_keep();
-                self.status = ui::tf!("大きさを {}pt に", pt).into();
+                self.status = ui::tf!("Size to {}pt", pt).into();
             }
             _ => {
                 if let Ok(n) = key.parse::<u8>() {
@@ -2034,7 +2026,7 @@ impl Writer {
             // 絞り込んで1つも残らなかったとき。**黙って閉じません** —
             // 打った字が悪いのか、そういう書体が無いのかが分かるように
             None => {
-                self.status = ui::t!("その名前の書体はありません").into();
+                self.status = ui::t!("There is no font with that name").into();
             }
         }
         true

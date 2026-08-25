@@ -72,7 +72,8 @@ def main():
     if not keys.exists():
         print("ui/i18n/keys.json がありません(python3 ui/gen_lang.py --todo で作る)")
         return 1
-    ja = {e["ja"] for e in json.load(open(keys, encoding="utf-8"))}
+    # **鍵は英語です**(2026-08-26)。ソースの字と鍵の正本を直に比べます
+    ja = {e["key"] for e in json.load(open(keys, encoding="utf-8"))}
     miss = {}
     for d in DIRS:
         for p in sorted((ROOT / d).glob("*.rs")):
@@ -90,7 +91,8 @@ def main():
         return 0
     print(f"**対訳の表に無い文言が {len(miss)} 句あります。**")
     print("このままだと13言語すべてで日本語のまま出ます。")
-    print("lang/src/i18n_en.rs に足してから ui/gen_lang.py を回してください。\n")
+    print("python3 ui/gen_lang.py --todo で鍵の正本に足し、各言語の訳を"
+          "書いてから生成し直してください。\n")
     for s, files in sorted(miss.items()):
         head = s if len(s) <= 46 else s[:46] + "…"
         print(f"  {head}\n      {' '.join(sorted(files))}")

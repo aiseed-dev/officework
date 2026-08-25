@@ -18,18 +18,20 @@ fn 言語はいつでも変えられる() {
 
     assert!(lang::i18n::set_language("en"), "最初の注入が効かない");
     assert_eq!(lang::i18n::language(), "en", "注いだ言語で答えない");
-    assert_eq!(lang::i18n::tr("開く"), "Open", "訳の表が英語になっていない");
+    // **en は表を持ちません。** 鍵が英語なので、引けなくても鍵がそのまま
+    // 出るのが正しい(2026-08-26)
+    assert_eq!(lang::i18n::tr("Open"), "Open", "en で鍵がそのまま出ない");
 
     // **一度引いた後でも変えられる。** ここが前と違う所
     assert!(lang::i18n::set_language("de"), "あとからの変更が効かない");
     assert_eq!(lang::i18n::language(), "de");
     // **訳の表も一緒に変わる。** 表を1つだけ作って固めていると、
     // 言語だけ変わって文言が英語のまま残る(2026-08-19 に直した所)
-    assert_ne!(lang::i18n::tr("開く"), "Open", "表が英語のまま残っている");
-    assert_ne!(lang::i18n::tr("開く"), "開く", "ドイツ語の表を引けていない");
+    assert_ne!(lang::i18n::tr("Open"), "Open", "表が英語のまま残っている");
+    assert_eq!(lang::i18n::tr("Open"), "Öffnen", "ドイツ語の表を引けていない");
 
     // 日本語へも戻せる
     assert!(lang::i18n::set_language("ja"), "ja へ戻せない");
     assert_eq!(lang::i18n::language(), "ja");
-    assert_eq!(lang::i18n::tr("開く"), "開く", "ja では原文のまま");
+    assert_eq!(lang::i18n::tr("Open"), "開く", "ja の表を引けていない");
 }

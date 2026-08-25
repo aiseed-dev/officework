@@ -302,9 +302,9 @@ pub fn panel(
     }
     let title = format!("{}.py{}", p.name, if p.dirty() { " *" } else { "" });
     let foot = if ask {
-        crate::t!("書きかけがあります — Ctrl+S で保存、もう一度 Esc で捨てて閉じる").to_string()
+        crate::t!("Unsaved changes — Ctrl+S to save, Esc again to discard and close").to_string()
     } else {
-        crate::t!("Ctrl+S 保存(保存するとセルの関数が計算し直ります) / Esc 閉じる / Tab 字下げ")
+        crate::t!("Ctrl+S save (cell functions recalculate on save) / Esc close / Tab indent")
             .to_string()
     };
     div()

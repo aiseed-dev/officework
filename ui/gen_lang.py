@@ -51,21 +51,22 @@ def literal_at(src, i):
     raise ValueError("unterminated literal")
 
 
-def en_pairs():
-    """i18n_en.rs から (鍵のソースリテラル, en のソースリテラル) を順に"""
-    src = open(EN_TABLE, encoding="utf-8").read()
-    out = []
-    i = src.find("pub const")
-    while True:
-        i = src.find('("', i)
-        if i < 0:
-            break
-        j, key = literal_at(src, i + 1)
-        k = src.find('"', j)
-        j2, val = literal_at(src, k)
-        out.append((key, val))
-        i = j2
-    return out
+KEYS_JSON = I18N_DIR / "keys.json"
+
+
+def keys_authority():
+    """鍵の正本 `ui/i18n/keys.json` を読む。
+
+    **鍵は英語です**(2026-08-26 の移行)。前は `lang/src/i18n_en.rs` が
+    「日本語の鍵 → 英語」の表で、鍵の一覧も番号もそこが持っていました。
+    鍵が英語になったので、英語の対訳表という物が要らなくなり、鍵の
+    一覧だけがここに残りました。日本語は `ui/i18n/ja.json` の訳です。
+
+    番号(i)は訳の付け先です。**並びを変えないでください** —
+    変えると 15 言語の訳が1つずつずれた別の文に付きます。鍵を足すときは
+    末尾に足します(`--todo` がそうします)。
+    """
+    return json.loads(KEYS_JSON.read_text(encoding="utf-8"))
 
 
 def unescape(lit):
@@ -96,40 +97,36 @@ def escape(s):
 
 
 def material():
-    """番号つきの材料: 文言(i18n_en の鍵順)+ こちら独自のボタンの語。
+    """番号つきの材料: 鍵(英語)と、そこに付く日本語。
 
-    **同じ日本語は1つの番号にまとめます**(2026-08-22)。材料は2つの
-    出どころ(`lang/src/i18n_en.rs` と `OVERRIDES["en"]`)から来るので、
-    同じ語が両方に載ることがあります。番号を分けると訳も分かれてしまい、
+    **同じ英語は1つの番号にまとめます。** 鍵が英語になった今、これは
+    「同じ鍵は1つ」という当たり前のことです。番号を分けると訳も分かれ、
     利用者から見て同じ機能の名前が場所によって違う、が起きます
     (2026-08-21 に「セルの書式設定」で8言語がそうなっていました)。
 
-    まとめる前は 15 組ありました。`tools/i18n_onaji_go_check.py` が
-    見張って人が揃えていましたが、**揃えるより分かれない方が確実**です。
-
-    英語が食い違うときは**リボンの語**を採ります — 利用者がボタンで読む
-    名前なので、案内の文もその名前で呼ぶのが筋です(検査の決め方の2段目)。
+    日本語(`ja`)は `ui/i18n/ja.json` の訳です。`--todo` が訳す人に
+    見せる原文でもあります — 英語だけだと、こちら独自の機能は何のことか
+    分かりません。
     """
+    ja_訳 = load_json_translations("ja")
     rows = []
-    見た = {}
-    for key, en in en_pairs():
-        ja = unescape(key)
-        r = {"kind": "msg", "key": key, "ja": ja, "en": unescape(en)}
-        if ja in 見た:
-            continue  # i18n_en.rs の中の重なり(あれば1つ目を採る)
-        見た[ja] = r
-        rows.append(r)
-    for ja, en in grl.OVERRIDES["en"].items():
-        if ja in 見た:
-            # 既に文言の側にある語。**番号は増やさず、英語だけリボンの物へ**
-            見た[ja]["en"] = en
-            continue
-        r = {"kind": "ribbon", "key": None, "ja": ja, "en": en}
-        見た[ja] = r
-        rows.append(r)
-    for i, r in enumerate(rows):
-        r["i"] = i
+    for r in keys_authority():
+        rows.append({
+            "i": r["i"],
+            "kind": r["kind"],
+            "key": escape(r["key"]),   # ソースのリテラルの形
+            "en": r["key"],
+            "ja": ja_訳.get(r["i"], ""),
+        })
     return rows
+
+
+def load_json_translations(loc):
+    """`ui/i18n/<loc>.json` を {番号: 訳} で読む。無ければ空。"""
+    p = I18N_DIR / f"{loc}.json"
+    if not p.exists():
+        return {}
+    return {x["i"]: x["t"] for x in json.loads(p.read_text(encoding="utf-8"))}
 
 
 def holes(s):
@@ -161,13 +158,24 @@ def registered():
         if loc not in locales.TAGS:
             sys.exit(f"正本に無いロケールのファイルがあります: {p.name}"
                      f"(ui/locales.py の TAGS に足すか、ファイルを消す)")
-        if (ROOT / f"lang/src/i18n_{m}.rs").exists():
-            langs.append(loc)
+        langs.append(loc)
     return langs
 
 
+def table_langs():
+    """**対訳表を持つ言語**(`lang/src/i18n_<loc>.rs` がある物)。
+
+    リボンの登録簿と分かれています。**en はリボンだけ持ちます** —
+    鍵が英語なので対訳表が要りません(2026-08-26)。1つの一覧で両方を
+    賄っていたときは、en の表を消したとたんリボンの登録からも落ちて、
+    英語のリボンが出なくなりました。
+    """
+    return [l for l in registered()
+            if (ROOT / f"lang/src/i18n_{mod_name(l)}.rs").exists()]
+
+
 def write_registries():
-    langs = registered()
+    langs = table_langs()
     # lang 側
     body = [
         "//! 文言の対訳表の登録簿。**このファイルは ui/gen_lang.py が生成する。**",
@@ -184,7 +192,8 @@ def write_registries():
     body += ["        _ => None,", "    }", "}", ""]
     (ROOT / "lang/src/i18n_tables.rs").write_text("\n".join(body), encoding="utf-8")
 
-    # ui 側
+    # ui 側。**リボンは en も持ちます**(対訳表と一覧が違う)
+    langs = registered()
     body = [
         "//! リボンの表の登録簿。**このファイルは ui/gen_lang.py が生成する。**",
         "//! 手で書かない — 言語を足すときは gen_lang.py を回す。",
@@ -210,18 +219,21 @@ def write_registries():
         open(path, "w", encoding="utf-8").write(src[:begin] + lines + src[end:])
 
     patch(ROOT / "lang/src/lib.rs",
-          "".join(f"pub mod i18n_{mod_name(l)};\n" for l in langs)
+          "".join(f"pub mod i18n_{mod_name(l)};\n" for l in table_langs())
           + "pub mod i18n_tables;\n")
     patch(ROOT / "face/src/lib.rs",
-          "".join(f"pub mod ribbon_{mod_name(l)};\n" for l in langs))
+          "".join(f"pub mod ribbon_{mod_name(l)};\n" for l in registered()))
 
 
 def check_table(loc):
-    """i18n_<loc>.rs が en と同じ鍵集合か・穴埋めが揃っているか"""
+    """i18n_<loc>.rs が鍵の正本と同じ鍵集合か・穴埋めが揃っているか。
+
+    **en は表を持ちません。** 鍵が英語なので、`tr(鍵)` が表に無ければ
+    鍵をそのまま返す作りでそのまま正しく出ます(lang/src/i18n.rs)。
+    """
     m = mod_name(loc)
     if loc == "en":
-        keys = {k for k, _ in en_pairs()}
-        pairs = en_pairs()
+        return len([r for r in keys_authority() if r["kind"] == "msg"])
     else:
         src = open(ROOT / f"lang/src/i18n_{m}.rs", encoding="utf-8").read()
         pairs = []
@@ -235,8 +247,8 @@ def check_table(loc):
             j2, val = literal_at(src, k)
             pairs.append((key, val))
             i = j2
-        keys = {k for k, _ in pairs}
-        want = {k for k, _ in en_pairs()}
+        keys = {unescape(k) for k, _ in pairs}
+        want = {r["key"] for r in keys_authority() if r["kind"] == "msg"}
         if keys != want:
             miss = sorted(want - keys)[:5]
             extra = sorted(keys - want)[:5]
@@ -263,33 +275,42 @@ def load_translations(loc):
     bad = []
     for r in mat:
         t = got[r["i"]]
-        if not t.strip() and r["ja"].strip():
-            bad.append(f"番号 {r['i']}: 空の訳({r['ja'][:30]})")
-        elif holes(r["ja"]) != holes(t):
-            bad.append(f"番号 {r['i']}: 穴埋めが合いません({r['ja'][:40]} → {t[:40]})")
+        if not t.strip() and r["en"].strip():
+            bad.append(f"番号 {r['i']}: 空の訳({r['en'][:30]})")
+        elif holes(r["en"]) != holes(t):
+            # **穴埋めは鍵(英語)と比べます。** 鍵が日本語だった頃は
+            # ja と比べていました
+            bad.append(f"番号 {r['i']}: 穴埋めが合いません({r['en'][:40]} → {t[:40]})")
     if bad:
         sys.exit(f"{loc}: 検査で {len(bad)} 件:\n  " + "\n  ".join(bad[:20]))
     return mat, got
 
 
 def generate(loc):
-    mat, got = load_translations(loc)
+    # **en は訳の材料を持ちません。** 鍵が英語なので訳す物がありません
+    # (2026-08-26)。リボンだけ作ります
+    if loc == "en":
+        mat, got = material(), {}
+    else:
+        mat, got = load_translations(loc)
 
     m = mod_name(loc)
-    # 文言の表
-    body = [
-        f"//! 画面の文言の {loc} の対訳表 — **鍵は日本語の文そのもの**。",
-        "//! このファイルは ui/gen_lang.py が生成する(訳の材料は"
-        f" ui/i18n/{loc}.json)。手で書かない。",
-        "",
-        "pub const TABLE: &[(&str, &str)] = &[",
-    ]
-    for r in mat:
-        if r["kind"] != "msg":
-            continue
-        body.append(f"    ({r['key']}, {escape(got[r['i']])}),")
-    body += ["];", ""]
-    (ROOT / f"lang/src/i18n_{m}.rs").write_text("\n".join(body), encoding="utf-8")
+    # 文言の表。**en は書きません** — 鍵が英語なので、表が無ければ鍵が
+    # そのまま出る作りでちょうど正しくなります
+    if loc != "en":
+        body = [
+            f"//! 画面の文言の {loc} の対訳表 — **鍵は英語の文そのもの**。",
+            "//! このファイルは ui/gen_lang.py が生成する(訳の材料は"
+            f" ui/i18n/{loc}.json)。手で書かない。",
+            "",
+            "pub const TABLE: &[(&str, &str)] = &[",
+        ]
+        for r in mat:
+            if r["kind"] != "msg":
+                continue
+            body.append(f"    ({r['key']}, {escape(got[r['i']])}),")
+        body += ["];", ""]
+        (ROOT / f"lang/src/i18n_{m}.rs").write_text("\n".join(body), encoding="utf-8")
 
     # リボン(標準のボタンは vendor、独自のボタンは材料の訳)。
     #
@@ -322,9 +343,11 @@ def main():
     I18N_DIR.mkdir(exist_ok=True)
     if "--todo" in sys.argv:
         mat = material()
-        out = [{"i": r["i"], "ja": r["ja"], "en": r["en"]} for r in mat]
+        out = [{"i": r["i"], "key": r["en"], "kind": r["kind"]} for r in mat]
         p = I18N_DIR / "keys.json"
-        p.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+        # 終わりに改行を付けます(付けないと、次に手で書いたときに
+        # 差分が「最後の行が変わった」に見えます)
+        p.write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         print(f"{p} に {len(out)} 句(訳は ui/i18n/<locale>.json に"
               ' [{"i": 番号, "t": "訳"}] で)')
         return

@@ -155,7 +155,7 @@ pub const WRITER: &[Tab] = &[
         t("show-right", "Right Panel", "show-right"),
     ]},
     Tab { name: "Macros", cmds: &[
-        c("py-list", "List", "plug-manage"),
+        c("py-list", "Macro list", "plug-manage"),
         c("py-folder", "Open folder", "py-folder"),
         c("ai-macro", "Write macro", "ai-macro"),
     ]},
@@ -189,7 +189,7 @@ pub const CALC: &[Tab] = &[
         c("middle", "Align middle", "middle"),
         c("bottom", "Align bottom", "bottom"),
         c("wrap", "Wrap text", "wrap"),
-        c("text-orient", "Orientation", "text-orient"),
+        c("text-orient", "Text orientation", "text-orient"),
         c("align-left", "Align left", "align-left"),
         c("align-center", "Centre", "align-center"),
         c("align-right", "Align right", "align-right"),
@@ -286,7 +286,7 @@ pub const CALC: &[Tab] = &[
         c("remove-arrows", "Remove arrows", "remove-arrows"),
         c("show-formulas", "Show formulas", "show-formulas"),
         c("watch", "Watch window", "watch-window"),
-        c("calc-mode", "Calculation", "calculate"),
+        c("calc-mode", "Calculation options", "calculate"),
     ]},
     Tab { name: "Data", cmds: &[
         c("data-from-text", "Text to data", "data-from-text"),
@@ -317,7 +317,7 @@ pub const CALC: &[Tab] = &[
     Tab { name: "Macros", cmds: &[
         c("rec-toggle", "Record actions", "py-run"),
         c("py-new", "New .py", "py-new"),
-        c("py-list", "List", "py-list"),
+        c("py-list", "Macro list", "py-list"),
         c("ribbon-list", "Ribbon macros", "py-line"),
         c("py-folder", "Open folder", "py-folder"),
     ]},

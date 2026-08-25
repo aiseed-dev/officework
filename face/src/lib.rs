@@ -66,6 +66,7 @@ pub mod ribbon_es;
 pub mod ribbon_fr;
 pub mod ribbon_id;
 pub mod ribbon_it;
+pub mod ribbon_ja;
 pub mod ribbon_ko;
 pub mod ribbon_pt;
 pub mod ribbon_pt_br;

@@ -137,17 +137,17 @@ impl AiJob {
     /// ステータスに出す名前(見せる字だけ — 照合には使わない)
     fn label(&self) -> &'static str {
         match self {
-            AiJob::Furigana => ui::t!("ふりがな"),
-            AiJob::Ask(_) => ui::t!("頼み"),
-            AiJob::Macro(_) => ui::t!("マクロ台本"),
-            AiJob::Chat(_) => ui::t!("会話"),
+            AiJob::Furigana => ui::t!("Furigana"),
+            AiJob::Ask(_) => ui::t!("Request"),
+            AiJob::Macro(_) => ui::t!("macro script"),
+            AiJob::Chat(_) => ui::t!("Conversation"),
         }
     }
 }
 
 /// 図表番号の頭(「図 」)。**貼る字と探す字を同じ雛形から取る**ための1箇所。
 ///
-/// 番号を付けるときは `ui::tf!("図 {}", n)` で貼り、次の番号を決めるときと
+/// 番号を付けるときは `ui::tf!("Figure {}", n)` で貼り、次の番号を決めるときと
 /// 図表目次を作るときは段落の頭がこれで始まるかを見る。雛形は訳されるので
 /// (独 "Abbildung {}"、韓 "그림 {}")、探す側に生の「図 」を書くと**日本語
 /// 以外では一度も見つからず、図がすべて 1 番になり、図表目次も空になる**。
@@ -156,7 +156,7 @@ impl AiJob {
 /// 穴が頭に来る訳(「{} 図」)が来たら頭は空になる — 空の頭は
 /// `strip_prefix` が必ず通ってしまうので、そのときは日本語の形に戻す
 pub(crate) fn caption_head() -> &'static str {
-    let head = ui::t!("図 {}").split("{}").next().unwrap_or("");
+    let head = ui::t!("Figure {}").split("{}").next().unwrap_or("");
     if head.is_empty() { "図 " } else { head }
 }
 
@@ -691,7 +691,7 @@ impl Writer {
         pyrun::set_work_dir(Some(dir.clone()));
         self.rp_open = true;
         self.rp_tab = 3; // フォルダの中身
-        self.status = ui::tf!("{} を開きました(右の一覧から選んでください)",
+        self.status = ui::tf!("Opened {} (pick a file from the list on the right)",
                               dir.display().to_string())
             .into();
     }
@@ -803,7 +803,7 @@ impl HasEditor for Writer {
     }
     fn on_autocorrect(&mut self, was: &str) {
         self.status =
-            ui::tf!("{} を記号に替えました(Backspace で綴りに戻ります)", was).into();
+            ui::tf!("Turned {} into a symbol (Backspace brings the spelling back)", was).into();
     }
     fn editor_ref(&self) -> &Editor {
         if let Some(f) = self.font_filter.as_ref() {
@@ -871,7 +871,7 @@ impl HasEditor for Writer {
         if self.target == Target::Body && self.raw_para_at_cursor() {
             self.undo_typing();
             self.status = ui::t!(
-                "ここは AsciiDoc の塊です。うちでは編集できません(原文のまま保存します)"
+                "This is an AsciiDoc block we do not handle. It cannot be edited here (it is saved exactly as written)"
             )
             .into();
             return;
@@ -888,7 +888,7 @@ impl HasEditor for Writer {
                 self.undo_typing();
             }
             self.status =
-                ui::t!("読み取り専用で保護されています(保護タブの「保護」で解除できます)").into();
+                ui::t!("Protected read-only (Protection tab > Protect to release)").into();
             return;
         }
         if let Some(footer) = self.hf_edit {

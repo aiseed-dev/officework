@@ -1063,12 +1063,12 @@ def _grouped(col, unit):
     d = pl.col(col).str.strptime(pl.Date, "%Y-%m-%d", strict=False)
     d2 = pl.col(col).str.strptime(pl.Date, "%Y/%m/%d", strict=False)
     d = pl.coalesce(d, d2)
-    if unit == "年":
+    if unit == "Years":
         out = d.dt.strftime("%Y年")
-    elif unit == "四半期":
+    elif unit == "Quarters":
         out = (d.dt.year().cast(pl.String) + "年Q" +
                ((d.dt.month() + 2) // 3).cast(pl.String))
-    else:  # 月
+    else:  # Months
         out = d.dt.strftime("%Y-%m")
     # 日付として読めない値はそのまま残す(黙って落とさない)
     return pl.when(d.is_null()).then(pl.col(col)).otherwise(out)
@@ -1077,15 +1077,24 @@ for _f, _u in spec.get("group", []):
     if _f in df.columns:
         df = df.with_columns(_grouped(_f, _u).alias(_f))
 val, agg = spec["value"], spec["agg"]
-if agg != "個数":
+# **画面に出る札は Rust が訳して渡します**(2026-08-26)。台本は鍵で
+# 処理し、字は訳で書きます — ここから対訳表は引けません
+AGG_LABEL = spec.get("agg_label", agg)
+SUB_LABEL = spec.get("subtotal_label", "{} subtotal")
+GRAND_LABEL = spec.get("grand_label", "Grand totals")
+if agg != "Count":
     # 数にならないものは null(集計から外れる)
     df = df.with_columns(pl.col(val).cast(pl.Float64, strict=False))
 idx, cols = spec["index"], spec["columns"]
-FN = {"合計": "sum", "平均": "mean", "個数": "len", "最大": "max", "最小": "min"}
+# **粒と集計の名前は英語で受けます**(2026-08-26 の移行)。Rust 側が
+# 品書きの鍵をそのまま渡すので、鍵が英語になったらここも英語です
+FN = {"Sum": "sum", "Average": "mean", "Count": "len",
+      "Maximum": "max", "Minimum": "min"}
 
 def agg_expr():
-    return {"合計": pl.sum(val), "平均": pl.mean(val), "個数": pl.len().alias(val),
-            "最大": pl.max(val), "最小": pl.min(val)}[agg]
+    return {"Sum": pl.sum(val), "Average": pl.mean(val),
+            "Count": pl.len().alias(val),
+            "Maximum": pl.max(val), "Minimum": pl.min(val)}[agg]
 
 def table(frame, index):
     if cols:
@@ -1161,7 +1170,7 @@ for g, rs in groups:
         out.append(("d", cells))
         prev = list(r)
     if sub is not None:
-        cells = [f"{g} 小計"] + [""] * (len(idx) - 1) + sub[g]
+        cells = [SUB_LABEL.replace("{}", str(g))] + [""] * (len(idx) - 1) + sub[g]
         if tot_col:
             cells.append(sub_tots.get((g,)))
         out.append(("s", cells))
@@ -1169,7 +1178,7 @@ for g, rs in groups:
         out.append(("b", [""] * (len(main.columns) + (1 if tot_col else 0))))
 
 if spec["totals"] and df.height:
-    cells = list(table(stub(df, "総計", idx), idx).rows()[0])
+    cells = list(table(stub(df, GRAND_LABEL, idx), idx).rows()[0])
     if tot_col:
         cells.append(df.select(agg_expr()).item())
     out.append(("t", cells))
@@ -1241,16 +1250,16 @@ def s(v):
         return "%g" % v
     return str(v)
 
-head = list(main.columns) + (["総計"] if tot_col else [])
+head = list(main.columns) + ([GRAND_LABEL] if tot_col else [])
 lines = []
 if cols:
     # Excel と同じ1行目の札: 「合計 / 金額」と、列に広げた見出し(月)
-    label = [f"{agg} / {val}"] + [""] * (len(idx) - 1) + [" / ".join(cols)]
+    label = [f"{AGG_LABEL} / {val}"] + [""] * (len(idx) - 1) + [" / ".join(cols)]
     label += [""] * (len(head) - len(label))
     lines.append("l\x1f" + "\x1f".join(label))
 else:
     # 列が無いときは値の列の見出しを「合計 / 金額」に(Excel と同じ)
-    head[-2 if tot_col else -1] = f"{agg} / {val}"
+    head[-2 if tot_col else -1] = f"{AGG_LABEL} / {val}"
 lines.append("h\x1f" + "\x1f".join(head))
 for kind, cells in out:
     lines.append(kind + "\x1f" + "\x1f".join(s(v) for v in cells))

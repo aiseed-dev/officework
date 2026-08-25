@@ -478,39 +478,39 @@ impl ProtectAllow {
     /// 画面に出す並び(名前, 読む, 書く)。チェックの一覧と往復で使う
     pub fn items(&self) -> [(&'static str, bool); 14] {
         [
-            ("図形・画像の操作", self.objects),
-            ("ロックされたセルの選択", self.select_locked),
-            ("ロックされていないセルの選択", self.select_unlocked),
-            ("セルの書式設定", self.format_cells),
-            ("列の書式設定", self.format_cols),
-            ("行の書式設定", self.format_rows),
-            ("列の挿入", self.insert_cols),
-            ("行の挿入", self.insert_rows),
-            ("ハイパーリンクの挿入", self.insert_links),
-            ("列の削除", self.delete_cols),
-            ("行の削除", self.delete_rows),
-            ("並べ替え", self.sort),
-            ("オートフィルターの使用", self.autofilter),
-            ("ピボットテーブルの使用", self.pivot),
+            ("Moving shapes and pictures", self.objects),
+            ("Select locked cells", self.select_locked),
+            ("Select unlocked cells", self.select_unlocked),
+            ("Format cells", self.format_cells),
+            ("Format columns", self.format_cols),
+            ("Format rows", self.format_rows),
+            ("Insert columns", self.insert_cols),
+            ("Insert rows", self.insert_rows),
+            ("Insert hyperlinks", self.insert_links),
+            ("Delete columns", self.delete_cols),
+            ("Delete rows", self.delete_rows),
+            ("Sort", self.sort),
+            ("Use AutoFilter", self.autofilter),
+            ("Use PivotTable", self.pivot),
         ]
     }
 
     /// 名前で入切する(一覧を押したときの受け)
     pub fn toggle(&mut self, name: &str) {
         let f = match name {
-            "ロックされたセルの選択" => &mut self.select_locked,
-            "ロックされていないセルの選択" => &mut self.select_unlocked,
-            "セルの書式設定" => &mut self.format_cells,
-            "列の書式設定" => &mut self.format_cols,
-            "行の書式設定" => &mut self.format_rows,
-            "列の挿入" => &mut self.insert_cols,
-            "行の挿入" => &mut self.insert_rows,
-            "ハイパーリンクの挿入" => &mut self.insert_links,
-            "列の削除" => &mut self.delete_cols,
-            "行の削除" => &mut self.delete_rows,
-            "並べ替え" => &mut self.sort,
-            "オートフィルターの使用" => &mut self.autofilter,
-            "ピボットテーブルの使用" => &mut self.pivot,
+            "Select locked cells" => &mut self.select_locked,
+            "Select unlocked cells" => &mut self.select_unlocked,
+            "Format cells" => &mut self.format_cells,
+            "Format columns" => &mut self.format_cols,
+            "Format rows" => &mut self.format_rows,
+            "Insert columns" => &mut self.insert_cols,
+            "Insert rows" => &mut self.insert_rows,
+            "Insert hyperlinks" => &mut self.insert_links,
+            "Delete columns" => &mut self.delete_cols,
+            "Delete rows" => &mut self.delete_rows,
+            "Sort" => &mut self.sort,
+            "Use AutoFilter" => &mut self.autofilter,
+            "Use PivotTable" => &mut self.pivot,
             _ => return,
         };
         *f = !*f;
@@ -1766,9 +1766,9 @@ impl Validation {
     /// 規則の言い直し(エラーの既定の文言に使う)。例: 「1 から 100 の整数」
     pub fn describe(&self) -> String {
         let noun = match self.kind.as_str() {
-            "whole" => "整数",
-            "decimal" => "数",
-            "textLength" => "文字数",
+            "whole" => "Whole number",
+            "decimal" => "Number",
+            "textLength" => "Characters",
             _ => return String::new(),
         };
         let (f1, f2) = (self.formula.trim(), self.formula2.trim());
@@ -2240,7 +2240,7 @@ pub struct PivotDef {
     /// 絞り込み: (見出し, 隠す値の列)。空 = 素通し。
     /// 見出しの ▼ から入切し、更新のたびに polars へ渡す
     pub hide: Vec<(String, Vec<String>)>,
-    /// 見た目の組(""=青(既定) / "緑" / "橙" / "灰")。置くときの帯の色
+    /// 見た目の組(""=青(既定) / "Green" / "Orange" / "Grey")。置くときの帯の色
     pub style: String,
     /// **ピボットに連動する図の置き場**(ピボットグラフ。2026-08-22)。
     /// `None` = 図なし。入っていれば、ピボットを作り直すたびに同じ場所へ
@@ -2253,12 +2253,12 @@ pub struct PivotDef {
     pub vfilter: Option<(String, f64)>,
     /// グループ化: (見出し, 単位)。単位は 月/四半期/年/幅:N
     pub group_by: Vec<(String, String)>,
-    /// 計算の種類(""=そのまま / "比率"=総計に対する % / "累計" / "差"=前の行との差)。
+    /// 計算の種類(""=そのまま / "% of total"=総計に対する % / "Running total" / "Difference"=前の行との差)。
     /// **累計と差は小計・総計を出さない** — 積み上げの途中に総計が挟まると
     /// 読み違えるため(効かせるときに totals/subtotals を落とす)
     pub show_as: String,
-    /// 並べ替え(""=そのまま / "見出しの昇順" / "見出しの降順" /
-    /// "値の大きい順" / "値の小さい順")。**小計・空行を出しているときは
+    /// 並べ替え(""=そのまま / "Labels A to Z" / "Labels Z to A" /
+    /// "Largest value first" / "Smallest value first")。**小計・空行を出しているときは
     /// 掛けない** — 区切りの塊を崩してしまうので(2026-08-13)
     pub sort: String,
 }

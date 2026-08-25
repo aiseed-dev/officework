@@ -61,7 +61,7 @@ impl Calc {
             im.height_px = (im.width_px * ratio).max(16.0);
             let (w, h) = (im.width_px, im.height_px);
             self.dirty = true;
-            self.status = ui::tf!("大きさ: {:.0}×{:.0}px", w, h).into();
+            self.status = ui::tf!("Size: {:.0}×{:.0}px", w, h).into();
         } else {
             // Shift で横か縦に縛る(大きさ変更は元から比を保っている)
             let (mut mx, mut my) = (x - gx, y - gy);
@@ -83,7 +83,7 @@ impl Calc {
                         im.dx_px = dx;
                         im.dy_px = dy;
                         self.dirty = true;
-                        self.status = ui::tf!("画像を {} に留めました", at.a1()).into();
+                        self.status = ui::tf!("Picture anchored to {}", at.a1()).into();
                     }
                 }
             }
@@ -152,7 +152,7 @@ impl Calc {
         self.checkpoint();
         self.sheet_mut().images_new.remove(i);
         self.dirty = true;
-        self.status = ui::t!("画像を削除しました(Ctrl+Z で戻せます)").into();
+        self.status = ui::t!("Image deleted (Ctrl+Z undoes it)").into();
         true
     }
 
@@ -165,18 +165,18 @@ impl Calc {
                 if self.point_edit.is_some() {
                     self.point_edit = None;
                     self.pt_drag = None;
-                    self.status = ui::t!("ポイントの編集をやめました").into();
+                    self.status = ui::t!("Left point editing").into();
                     return;
                 }
                 let Some(i) = self.shape_sel else { return };
                 if self.sheet().shapes_new.get(i).map(|s| s.points.len()).unwrap_or(0) < 2 {
                     self.status =
-                        ui::t!("この図形は頂点を持っていません(線や自由な形で使えます)").into();
+                        ui::t!("This shape has no vertices (use it on lines and free shapes)").into();
                     return;
                 }
                 self.point_edit = Some(i);
                 self.status =
-                    ui::t!("ポイントの編集: 点をドラッグ / Ctrl+クリックで追加・削除 / ダブルクリックで角⇄曲線").into();
+                    ui::t!("Point editing: drag a point / Ctrl+click to add or remove / double-click to switch corner and curve").into();
             }
             "sh-copy" | "sh-cut" => {
                 let Some(i) = self.shape_sel else { return };
@@ -189,14 +189,14 @@ impl Calc {
                     self.point_edit = None;
                     self.shape_multi.clear();
                     self.dirty = true;
-                    self.status = ui::t!("図形を切り取りました(貼り付けで戻せます)").into();
+                    self.status = ui::t!("Cut the shape (paste brings it back)").into();
                 } else {
-                    self.status = ui::t!("図形をコピーしました").into();
+                    self.status = ui::t!("Copied the shape").into();
                 }
             }
             "sh-paste" => {
                 let Some(mut sp) = self.shape_clip.clone() else {
-                    self.status = ui::t!("貼り付ける図形がありません(先に図形をコピー)").into();
+                    self.status = ui::t!("No shape to paste (copy one first)").into();
                     return;
                 };
                 self.checkpoint();
@@ -205,7 +205,7 @@ impl Calc {
                 self.sheet_mut().shapes_new.push(sp);
                 self.shape_sel = Some(self.sheet().shapes_new.len() - 1);
                 self.dirty = true;
-                self.status = ui::tf!("図形を {} に貼り付けました", self.cursor.a1()).into();
+                self.status = ui::tf!("Pasted the shape at {}", self.cursor.a1()).into();
             }
             "sh-del" => {
                 // Ctrl+クリックの束ごと消す(Del キーと同じ振る舞い)
@@ -224,9 +224,9 @@ impl Calc {
                 }
                 self.dirty = true;
                 self.status = if idx.len() == 1 {
-                    ui::t!("図形を削除しました(Ctrl+Z で戻せます)").into()
+                    ui::t!("Shape deleted (Ctrl+Z undoes)").into()
                 } else {
-                    ui::tf!("{} 個の図形を削除しました(Ctrl+Z で戻せます)", idx.len()).into()
+                    ui::tf!("Deleted {} shapes (Ctrl+Z undoes it)", idx.len()).into()
                 };
             }
             // 重なり順 = shapes_new の並び(後に描く方が前)。
@@ -245,7 +245,7 @@ impl Calc {
                     _ => 0,
                 };
                 if i == j {
-                    self.status = ui::t!("もうその位置です(後に描く図形が前に出ます)").into();
+                    self.status = ui::t!("Already there (shapes drawn later sit in front)").into();
                     return;
                 }
                 self.checkpoint();
@@ -254,24 +254,24 @@ impl Calc {
                 self.shape_sel = Some(j);
                 self.dirty = true;
                 self.status = match id {
-                    "sh-front" => ui::t!("最前面へ移動しました").into(),
-                    "sh-forward" => ui::t!("前面へ移動しました").into(),
-                    "sh-backward" => ui::t!("背面へ移動しました").into(),
-                    _ => ui::t!("最背面へ移動しました").into(),
+                    "sh-front" => ui::t!("Moved to the front").into(),
+                    "sh-forward" => ui::t!("Moved forward").into(),
+                    "sh-backward" => ui::t!("Moved backward").into(),
+                    _ => ui::t!("Moved to the back").into(),
                 };
             }
             "sh-rot-r" | "sh-rot-l" => {
                 let d = if id == "sh-rot-r" { 90.0 } else { -90.0 };
                 self.shape_edit(move |sp| sp.rot = (sp.rot + d).rem_euclid(360.0));
-                self.status = ui::t!("90度回しました").into();
+                self.status = ui::t!("Rotated 90°").into();
             }
             "sh-flip-h" => {
                 self.shape_edit(|sp| sp.flip_h = !sp.flip_h);
-                self.status = ui::t!("左右に反転しました").into();
+                self.status = ui::t!("Flipped left to right").into();
             }
             "sh-flip-v" => {
                 self.shape_edit(|sp| sp.flip_v = !sp.flip_v);
-                self.status = ui::t!("上下に反転しました").into();
+                self.status = ui::t!("Flipped top to bottom").into();
             }
             // 画像として保存 = SVG(うちの図形の素の姿。嘘の PNG 変換はしない)
             "sh-save" => {
@@ -295,17 +295,17 @@ impl Calc {
                     .set_file_name("figure.svg")
                     .save_file()
                 else {
-                    self.status = ui::t!("保存をやめました").into();
+                    self.status = ui::t!("Save cancelled").into();
                     return;
                 };
                 self.status = match std::fs::write(&path, svg) {
-                    Ok(_) => ui::tf!("SVG で保存しました: {}", path.display().to_string()).into(),
-                    Err(e) => ui::tf!("保存できません: {}", e.to_string()).into(),
+                    Ok(_) => ui::tf!("Saved as SVG: {}", path.display().to_string()).into(),
+                    Err(e) => ui::tf!("Can't save: {}", e.to_string()).into(),
                 };
             }
             // 詳細設定 = 右の設定パネル(選択中はいつも出ている)
             "sh-settings" => {
-                self.status = ui::t!("設定は右の「図形の設定」のパネルでどうぞ").into();
+                self.status = ui::t!("Settings are in the \"Shape settings\" panel on the right").into();
             }
             _ => {}
         }
@@ -360,7 +360,7 @@ impl Calc {
         let need = if id.starts_with("sh-dist") { 3 } else { 2 };
         if items.len() < need {
             self.status = ui::tf!(
-                "{} 個以上の図形を選んでから(Ctrl+クリックで足せます)",
+                "Select {} or more shapes first (Ctrl+click adds to the selection)",
                 need
             )
             .into();
@@ -418,14 +418,14 @@ impl Calc {
         }
         self.dirty = true;
         self.status = match id {
-            "sh-al-l" => ui::tf!("{} 個を左に揃えました", n).into(),
-            "sh-al-c" => ui::tf!("{} 個を左右の中央に揃えました", n).into(),
-            "sh-al-r" => ui::tf!("{} 個を右に揃えました", n).into(),
-            "sh-al-t" => ui::tf!("{} 個を上に揃えました", n).into(),
-            "sh-al-m" => ui::tf!("{} 個を上下の中央に揃えました", n).into(),
-            "sh-al-b" => ui::tf!("{} 個を下に揃えました", n).into(),
-            "sh-dist-h" => ui::tf!("{} 個を横に等間隔で並べました", n).into(),
-            _ => ui::tf!("{} 個を縦に等間隔で並べました", n).into(),
+            "sh-al-l" => ui::tf!("Aligned {} to the left", n).into(),
+            "sh-al-c" => ui::tf!("Centred {} horizontally", n).into(),
+            "sh-al-r" => ui::tf!("Aligned {} to the right", n).into(),
+            "sh-al-t" => ui::tf!("Aligned {} to the top", n).into(),
+            "sh-al-m" => ui::tf!("Centred {} vertically", n).into(),
+            "sh-al-b" => ui::tf!("Aligned {} to the bottom", n).into(),
+            "sh-dist-h" => ui::tf!("Spread {} evenly across", n).into(),
+            _ => ui::tf!("Spread {} evenly down", n).into(),
         };
     }
 
@@ -460,7 +460,7 @@ impl Calc {
         if (sp.rot - deg).abs() > 0.01 {
             sp.rot = deg;
             self.dirty = true;
-            self.status = ui::tf!("回転: {}度", format!("{deg:.0}")).into();
+            self.status = ui::tf!("Rotation: {}°", format!("{deg:.0}")).into();
         }
     }
 
@@ -485,7 +485,7 @@ impl Calc {
             };
             let (w, h) = (sp.width_px, sp.height_px);
             self.dirty = true;
-            self.status = ui::tf!("大きさ: {:.0}×{:.0}px", w, h).into();
+            self.status = ui::tf!("Size: {:.0}×{:.0}px", w, h).into();
         } else {
             // 移動: 掴んだときのずれを保って、左上の来るセルに留め直す。
             // **留め方は place_shape_px に1本化**(整列・分布・Ctrl+矢印と同じ道)
@@ -510,7 +510,7 @@ impl Calc {
                 {
                     let at = sp.at;
                     self.dirty = true;
-                    self.status = ui::tf!("図形を {} に留めました", at.a1()).into();
+                    self.status = ui::tf!("Shape anchored to {}", at.a1()).into();
                 }
             }
         }
@@ -535,7 +535,7 @@ impl Calc {
             let (nat, ndx, ndy) = (sp.at, sp.dx_px, sp.dy_px);
             if nat != at || (ndx - ox).abs() > 0.01 || (ndy - oy).abs() > 0.01 {
                 self.dirty = true;
-                self.status = ui::tf!("図形を {} に留めました", nat.a1()).into();
+                self.status = ui::tf!("Shape anchored to {}", nat.a1()).into();
             }
         }
         // **1px でも「動かした」と答える。** 左上の端に張り付いて動けなくても、
@@ -574,9 +574,9 @@ impl Calc {
             見る順.iter().map(|i| Self::当たり(&self.book.sheets[*i], term).len()).sum();
         if 総数 == 0 {
             self.status = if ブック全体 {
-                ui::tf!("「{}」はこのファイルにありません", term).into()
+                ui::tf!("\"{}\" is not in this file", term).into()
             } else {
-                ui::tf!("「{}」はこのシートにありません(範囲を「このファイル」にすると他のシートも探します)", term).into()
+                ui::tf!("\"{}\" is not on this sheet (choose \"This file\" to search the other sheets too)", term).into()
             };
             self.find_term = Some(term.to_string());
             return;
@@ -608,11 +608,11 @@ impl Calc {
             self.follow();
             self.sync_input();
             self.status = if ブック全体 {
-                ui::tf!("「{}」: {} の {}(このファイルに {} カ所)",
+                ui::tf!("\"{}\": {} {} ({} in this file)",
                         term, self.book.sheets[i].name.clone(), next.a1(), 総数.to_string())
                     .into()
             } else {
-                ui::tf!("「{}」: {}(このシートに {} カ所)", term, next.a1(), 総数.to_string())
+                ui::tf!("\"{}\": {} ({} on this sheet)", term, next.a1(), 総数.to_string())
                     .into()
             };
             self.find_term = Some(term.to_string());
@@ -789,13 +789,13 @@ impl Calc {
         if let Some((k, PtHandle::Vertex)) = self.point_hit(i, x, y) {
             let n = self.sheet().shapes_new[i].points.len();
             if n <= 2 {
-                self.status = ui::t!("これ以上は減らせません(線には2点が要ります)").into();
+                self.status = ui::t!("No fewer than this (a line needs two points)").into();
                 return true;
             }
             self.checkpoint();
             self.sheet_mut().shapes_new[i].points.remove(k);
             self.dirty = true;
-            self.status = ui::t!("頂点を1つ外しました").into();
+            self.status = ui::t!("Removed one vertex").into();
             return true;
         }
         // 線の上: いちばん近い区間の真ん中へ足す
@@ -832,7 +832,7 @@ impl Calc {
             sheet::model::PathPoint::at((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0),
         );
         self.dirty = true;
-        self.status = ui::t!("頂点を1つ足しました").into();
+        self.status = ui::t!("Added one vertex").into();
         true
     }
 
@@ -853,12 +853,12 @@ impl Calc {
         if pp.c_in.is_some() || pp.c_out.is_some() {
             pp.c_in = None;
             pp.c_out = None;
-            self.status = ui::t!("この点を角にしました").into();
+            self.status = ui::t!("Made this point a corner").into();
         } else {
             let a = cur.at;
             pp.c_in = Some((a.0 + (prev.0 - a.0) / 3.0, a.1 + (prev.1 - a.1) / 3.0));
             pp.c_out = Some((a.0 + (next.0 - a.0) / 3.0, a.1 + (next.1 - a.1) / 3.0));
-            self.status = ui::t!("この点を曲げました").into();
+            self.status = ui::t!("Made this point curve").into();
         }
         self.dirty = true;
     }
@@ -872,7 +872,7 @@ impl Calc {
     pub(crate) fn shapes_boolean(&mut self, op: sheet::model::BoolOp) {
         use sheet::model::{combine, outline, to_points, BoolOp};
         let (Some(a), Some(&b)) = (self.shape_sel, self.shape_multi.first()) else {
-            self.status = ui::t!("2つの図形を選んでください(Ctrl+クリックで足せます)").into();
+            self.status = ui::t!("Select two shapes (Ctrl+click to add one)").into();
             return;
         };
         let (Some(sa), Some(sb)) = (
@@ -887,7 +887,7 @@ impl Calc {
             outline(&sb.kind, &sb.points),
         ) else {
             self.status =
-                ui::t!("この形は足し引きできません(輪郭を点で取れない形です)").into();
+                ui::t!("This shape cannot be combined (its outline cannot be taken as points)").into();
             return;
         };
         // 2つ目を1つ目の枠の目盛りへ 直す(画面の px を経由する)
@@ -914,7 +914,7 @@ impl Calc {
             .collect();
         let res = combine(&oa, &ob, op);
         if res.is_empty() {
-            self.status = ui::t!("重なりが無いので何も残りませんでした").into();
+            self.status = ui::t!("Nothing was left — they do not overlap").into();
             return;
         }
         self.checkpoint();
@@ -936,12 +936,12 @@ impl Calc {
         self.shape_multi.clear();
         self.dirty = true;
         let name = match op {
-            BoolOp::Union => ui::t!("結合"),
-            BoolOp::Intersect => ui::t!("交差"),
-            BoolOp::Subtract => ui::t!("減算"),
+            BoolOp::Union => ui::t!("Union"),
+            BoolOp::Intersect => ui::t!("Intersect"),
+            BoolOp::Subtract => ui::t!("Subtract"),
         };
         self.status = ui::tf!(
-            "{}しました(輪郭に直したので、元の形と回転は戻せません)",
+            "{} done (turned into an outline, so the original shape and rotation cannot be restored)",
             name
         )
         .into();

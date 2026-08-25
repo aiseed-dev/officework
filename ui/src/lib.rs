@@ -22,7 +22,7 @@ pub mod filemenu;
 pub mod filelist;
 pub mod tabrow;
 pub use lang::ai;
-pub use lang::i18n::{language, language_label, languages, tr, trf};
+pub use lang::i18n::{language, language_label, languages, tr, tr_dyn, trf};
 
 /// **言語を、文言とエンジンの両方に効かせる。**
 ///
@@ -372,9 +372,9 @@ pub fn cycle_language() -> String {
     // **その場で効かせます**(2026-08-19 発注者「言語はいつでも変更できる
     // ようにして」)
     if set_language(next) {
-        crate::t!("言語を変えました").to_string()
+        crate::t!("Language changed").to_string()
     } else {
-        crate::t!("言語を控えました(環境変数 OFFICE_LANG があるので、そちらが優先です)").to_string()
+        crate::t!("Language saved (OFFICE_LANG is set, so it wins)").to_string()
     }
 }
 
@@ -393,9 +393,9 @@ pub fn toggle_math_autocorrect(cur: bool, persist: bool) -> (bool, String) {
         settings::set("math_autocorrect", if next { "1" } else { "0" });
     }
     let msg = if next {
-        crate::t!("数学オートコレクト: 入(区切りを打つと替わります。Backspace で綴りに戻ります)")
+        crate::t!("Math autocorrect: on (a symbol appears when you type a separator; Backspace brings the spelling back)")
     } else {
-        crate::t!("数学オートコレクト: 切(打った綴りのまま残ります)")
+        crate::t!("Math autocorrect: off (what you type stays as you typed it)")
     };
     (next, msg.to_string())
 }
@@ -417,7 +417,7 @@ pub fn env_rows(identity: &str) -> Vec<(String, String)> {
         format!(
             "{}({})",
             ep.shown(),
-            if ep.is_local() { crate::t!("この機械の中だけ") } else { crate::t!("外へ出ます") }
+            if ep.is_local() { crate::t!("stays on this machine") } else { crate::t!("leaves this machine") }
         )
     };
     // **使えないなら理由を出す**(押してみるまで分からない、にしない)。
@@ -428,33 +428,33 @@ pub fn env_rows(identity: &str) -> Vec<(String, String)> {
         let b = ai::backend();
         match ai::ready(b) {
             _ if b == ai::Backend::Local => {
-                crate::t!("頼んでみるまで分かりません(下の宛先へ繋ぎます)").to_string()
+                crate::t!("Unknown until you ask (it connects to the destination below)").to_string()
             }
-            Ok(()) => crate::t!("使えます").to_string(),
+            Ok(()) => crate::t!("Usable").to_string(),
             Err(e) => e,
         }
     };
     vec![
-        (crate::t!("いま使えるか").to_string(), 使えるか),
+        (crate::t!("Usable right now").to_string(), 使えるか),
         (
-            crate::t!("AI のモデル(JO_AI_MODEL)").to_string(),
-            std::env::var("JO_AI_MODEL").unwrap_or_else(|_| crate::t!("(宛先の既定)").into()),
+            crate::t!("AI model (JO_AI_MODEL)").to_string(),
+            std::env::var("JO_AI_MODEL").unwrap_or_else(|_| crate::t!("(destination default)").into()),
         ),
         (
-            crate::t!("書体(OFFICE_FONT)").to_string(),
-            std::env::var("OFFICE_FONT").unwrap_or_else(|_| crate::t!("(文書に従う)").into()),
+            crate::t!("Font (OFFICE_FONT)").to_string(),
+            std::env::var("OFFICE_FONT").unwrap_or_else(|_| crate::t!("(follows the document)").into()),
         ),
-        (crate::t!("手元のモデルの宛先").to_string(), 宛先),
+        (crate::t!("Local model destination").to_string(), 宛先),
         (
-            crate::t!("宛先の決め方").to_string(),
-            crate::t!("settings.toml の ai_url / ai_model(環境変数 OFFICE_URL が優先)").to_string(),
+            crate::t!("How to set the destination").to_string(),
+            crate::t!("ai_url / ai_model in settings.toml (the OFFICE_URL environment variable wins)").to_string(),
         ),
         (
-            crate::t!("Python の経路").to_string(),
+            crate::t!("Python path").to_string(),
             std::env::var("JO_PYTHON")
-                .unwrap_or_else(|_| crate::t!("(自動: .venv → python3)").into()),
+                .unwrap_or_else(|_| crate::t!("(auto: .venv → python3)").into()),
         ),
-        (crate::t!("名前(ロック・チャット・署名)").to_string(), identity.to_string()),
+        (crate::t!("Name (lock, chat, signature)").to_string(), identity.to_string()),
     ]
 }
 
@@ -470,9 +470,9 @@ pub fn toggle_dark(cur: bool, persist: bool) -> (bool, String) {
         settings::set("theme", if next { "dark" } else { "light" });
     }
     let msg = if next {
-        crate::t!("画面を暗くしました(紙とセルは白のまま — 画面と紙の一致を守る)")
+        crate::t!("Screen is dark now (paper and cells stay white — so screen and print agree)")
     } else {
-        crate::t!("画面を明るくしました")
+        crate::t!("Screen back to light")
     };
     (next, msg.to_string())
 }
@@ -511,8 +511,8 @@ pub fn toggle_calc_iter(cur: Option<(u32, f64)>, persist: bool) -> (Option<(u32,
         });
     }
     let msg = match next {
-        Some((n, d)) => crate::tf!("反復計算: 入(最大 {} 回 / 変化量 {})", n, d).to_string(),
-        None => crate::t!("反復計算: 切(循環参照は印で言います)").to_string(),
+        Some((n, d)) => crate::tf!("Iterative calculation: on (up to {} passes / change under {})", n, d).to_string(),
+        None => crate::t!("Iterative calculation: off (circular references are flagged)").to_string(),
     };
     (next, msg)
 }
@@ -712,13 +712,13 @@ pub fn bindings_for(app: &str, context: &'static str) -> Vec<KeyBinding> {
         .iter()
         .map(|w| match w {
             KeyWarn::UnknownAction(n) => {
-                crate::tf!("設定の key.{} は知らない操作名です", n).to_string()
+                crate::tf!("key.{} in settings names an unknown action", n).to_string()
             }
             KeyWarn::BadKey(n, k) => {
-                crate::tf!("設定の key.{} の鍵が読めません: {}", n, k).to_string()
+                crate::tf!("The shortcut for key.{} in settings cannot be read: {}", n, k).to_string()
             }
             KeyWarn::Contested(k, a, b) => crate::tf!(
-                "鍵 {} は {} と {} の取り合いです({} が勝ちます)", k, a, b, b
+                "Shortcut {} is claimed by both {} and {} ({} wins)", k, a, b, b
             )
             .to_string(),
         })

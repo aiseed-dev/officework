@@ -136,7 +136,25 @@ def 外を言う():
     for rel, n in sorted(外.items(), key=lambda x: -x[1]):
         print(f"     {n:3}  {rel}")
 
+def 済んでいるか():
+    """鍵がもう英語なら、この道具の出番は終わっています。
+
+    **一度きりの道具**です。済んだ後に回すと、鍵の正本の「種類」の欄を
+    訳と読み違えて、意味の無い文句を並べます。黙って動くより、済んだと
+    言って止まるほうが安全です。
+    """
+    rows = json.loads((ROOT / "ui/i18n/keys.json").read_text(encoding="utf-8"))
+    return rows and "ja" not in str(rows[0].get("key", ""))[:0] and all(
+        not any("\u3040" <= c <= "\u30ff" or "\u4e00" <= c <= "\u9fff"
+                for c in r["key"])
+        for r in rows[:50]
+    )
+
+
 if __name__ == "__main__":
+    if 済んでいるか():
+        sys.exit("鍵はもう英語です。この移行は 2026-08-26 に済みました"
+                 "(docs/sekkei/i18n-flip.ja.adoc)。この道具の出番はありません")
     dry = "--go" not in sys.argv
     m, canon = mapping()
     print(f"対 {len(m)} 句 → en 鍵 {len(set(m.values()))}(統合 {len(m) - len(set(m.values()))})")

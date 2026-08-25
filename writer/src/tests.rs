@@ -327,13 +327,13 @@ mod menu_run_tests {
             // どの図も 1 番のままになる。日本語では気づけない不具合だった)
             this.run_cmd("caption", cx);
             assert!(
-                this.doc.body_text().contains(&ui::tf!("図 {}", 1)),
+                this.doc.body_text().contains(&ui::tf!("Figure {}", 1)),
                 "図表番号が入らない: {}",
                 this.doc.body_text()
             );
             this.run_cmd("caption", cx);
             assert!(
-                this.doc.body_text().contains(&ui::tf!("図 {}", 2)),
+                this.doc.body_text().contains(&ui::tf!("Figure {}", 2)),
                 "2つ目の図表番号が 2 にならない(1つ目を数えそこねている): {}",
                 this.doc.body_text()
             );
@@ -1147,7 +1147,7 @@ mod image_px_tests {
 
 /// 図表番号の頭は、**貼る字と探す字が同じ雛形から出ている**か。
 ///
-/// 番号を付けるのは `ui::tf!("図 {}", n)`、次の番号を決めるのと図表目次を
+/// 番号を付けるのは `ui::tf!("Figure {}", n)`、次の番号を決めるのと図表目次を
 /// 作るのは段落の頭の照合。雛形は訳されるので、探す側に生の「図 」を書くと
 /// 日本語以外では一度も当たらず、図がすべて 1 番になり目次も空になる
 /// (2026-08-10 に見つけた)。二つを [`crate::caption_head`] に寄せたので、
@@ -1158,7 +1158,7 @@ mod caption_head_tests {
     fn 図表番号は貼る字と探す字が同じ雛形から出る() {
         let head = crate::caption_head();
         assert!(!head.is_empty(), "頭が空だと strip_prefix が全段落に当たる");
-        let label = ui::tf!("図 {}", 7);
+        let label = ui::tf!("Figure {}", 7);
         assert!(
             label.starts_with(head),
             "貼る字「{label}」が探す頭「{head}」で始まらない — 番号を数え直せない"

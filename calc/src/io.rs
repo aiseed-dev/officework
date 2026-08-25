@@ -10,7 +10,7 @@ pub(crate) use ops::{lock_identity, lock_path_for};
 
 /// 先客のロックを読む(あれば名乗りを返す)。自分自身のロックは先客と見ない。
 pub(crate) fn foreign_lock(p: &std::path::Path) -> Option<String> {
-    ops::foreign_lock(p, ui::t!("誰か"))
+    ops::foreign_lock(p, ui::t!("someone"))
 }
 
 /// 鍵が用意できなかった理由を、その言語の文で言う(本体は ops)。
@@ -21,9 +21,9 @@ pub(crate) fn foreign_lock(p: &std::path::Path) -> Option<String> {
 /// 見ないからです。
 pub(crate) fn key_err_msg(e: ops::KeyErr) -> String {
     match e {
-        ops::KeyErr::Corrupt => ui::t!("鍵ファイルが壊れています(~/.config/officework/sign.key)").to_string(),
-        ops::KeyErr::NoRandom(e) => ui::tf!("乱数が取れません: {}", e).to_string(),
-        ops::KeyErr::CantStore(e) => ui::tf!("鍵が置けません: {}", e).to_string(),
+        ops::KeyErr::Corrupt => ui::t!("The key file is damaged (~/.config/officework/sign.key)").to_string(),
+        ops::KeyErr::NoRandom(e) => ui::tf!("Can't get random numbers: {}", e).to_string(),
+        ops::KeyErr::CantStore(e) => ui::tf!("Can't store the key: {}", e).to_string(),
     }
 }
 
@@ -68,12 +68,12 @@ impl Calc {
     /// 選んでも開かず、下の「読み込み」で初めて開く
     pub(crate) fn find_in_folder(&mut self) {
         let Some(dir) = self.find_dir() else {
-            self.status = ui::t!("探す場所を選んでください").into();
+            self.status = ui::t!("Choose a folder to search").into();
             return;
         };
         let term = self.fd_term.text().to_string();
         if term.trim().is_empty() {
-            self.status = ui::t!("探す字が空です").into();
+            self.status = ui::t!("The search text is empty").into();
             return;
         }
         self.fd_at = None;
@@ -146,7 +146,7 @@ impl Calc {
             None => format!("{:05} {}", h.line, h.text),
         };
         self.status = ui::tf!(
-            "{} の {} 行目(下の「読み込み」で開きます)",
+            "{}, line {} (Load below opens it)",
             f.path.file_name().unwrap_or_default().to_string_lossy().to_string(),
             h.line.to_string()
         )
@@ -156,7 +156,7 @@ impl Calc {
     /// 下の「読み込み」。選んでいる当たりのブックを開く
     pub(crate) fn find_load(&mut self, cx: &mut Context<Self>) {
         let Some((fi, hi)) = self.fd_at else {
-            self.status = ui::t!("当たりを選んでから読み込んでください").into();
+            self.status = ui::t!("Pick a hit first, then load").into();
             return;
         };
         let Some(f) = self.fd_hits.get(fi).cloned() else { return };
@@ -170,14 +170,14 @@ impl Calc {
             .is_some_and(|e| e.eq_ignore_ascii_case("xlsx") || e.eq_ignore_ascii_case("adoc"));
         if !ok {
             self.status = ui::tf!(
-                "{} は calc では開けません(表ではない — writer で開いてください)",
+                "calc cannot open {} (not a spreadsheet — open it in writer)",
                 f.path.file_name().unwrap_or_default().to_string_lossy().to_string()
             )
             .into();
             return;
         }
         if self.dirty {
-            self.status = ui::t!("いまの文書に未保存の変更があります(保存するか、捨ててから)").into();
+            self.status = ui::t!("The open document has unsaved changes (save or discard first)").into();
             return;
         }
         self.open(f.path.clone());
@@ -214,7 +214,7 @@ impl Calc {
             let r = ask.await;
             let _ = this.update(cx, |this, cx| {
                 if let Some(p) = r {
-                    this.status = ui::tf!("場所: {}", p.display().to_string()).into();
+                    this.status = ui::tf!("Folder: {}", p.display().to_string()).into();
                     ui::settings::set("find_dir", &p.display().to_string());
                     this.fd_dir = Some(p);
                 }
@@ -228,7 +228,7 @@ impl Calc {
         let bytes = match std::fs::read(&p) {
             Ok(b) => b,
             Err(e) => {
-                self.status = ui::tf!("開けません: {}", e).into();
+                self.status = ui::tf!("Can't open: {}", e).into();
                 return;
             }
         };
@@ -243,7 +243,7 @@ impl Calc {
             self.pw_show = false;
             self.prompt = Some(("pw-open", Editor::new("")));
             self.status =
-                ui::t!("このブックは暗号化されています。パスワードを打って Enter").into();
+                ui::t!("This workbook is encrypted. Type the password and press Enter").into();
             return;
         }
         self.open_plain(p, bytes);
@@ -265,7 +265,7 @@ impl Calc {
                     .map(|(n, c)| SharedString::from(format!("{n} × {c}")))
                     .collect();
                 let status = ui::tf!(
-                    "{} シート / {} セル — {}",
+                    "{} sheets / {} cells — {}",
                     rep.sheets,
                     rep.cells,
                     p.file_name().unwrap_or_default().to_string_lossy()
@@ -287,18 +287,18 @@ impl Calc {
         let 控え = ops::history::list(Some(&p));
         let mut items: Vec<(String, String)> = 控え
             .iter()
-            .map(|(name, _)| (name.clone(), ui::tf!("控えから開く: {}", name.clone()).to_string()))
+            .map(|(name, _)| (name.clone(), ui::tf!("Open a kept copy: {}", name.clone()).to_string()))
             .collect();
-        items.extend(crate::util::menu(&[ui::item!("→ 壊れたまま拾って開く(読み取り専用)")]));
+        items.extend(crate::util::menu(&[ui::item!("→ Salvage what can be read and open it (read-only)")]));
         self.repair_pend = Some((p, bytes));
         self.pick_note = Some(if 控え.is_empty() {
-            ui::t!("控えはありません。拾えた部品だけで開きます(上書きはできません)").into()
+            ui::t!("There are no kept copies. It opens with only the parts that could be salvaged (you cannot overwrite)").into()
         } else {
-            ui::t!("控えの方が確実です。拾うのはその後の手段です").into()
+            ui::t!("A kept copy is safer. Salvaging is the fallback").into()
         });
         self.pick_kind = "repair";
         self.pick = Some((items, (60.0, 120.0)));
-        self.status = ui::tf!("このファイルは読めません: {}", why).into();
+        self.status = ui::tf!("This file cannot be read: {}", why).into();
     }
 
     /// **`.adoc` のブックを読み込む**(2026-08-19)。
@@ -310,7 +310,7 @@ impl Calc {
         let src = match String::from_utf8(bytes) {
             Ok(s) => s,
             Err(_) => {
-                self.status = ui::t!("開けません: 文字の並びが UTF-8 ではありません").into();
+                self.status = ui::t!("Cannot open: the text is not UTF-8").into();
                 return;
             }
         };
@@ -336,27 +336,27 @@ impl Calc {
                         Ok(theme) => {
                             sheet::booktmpl::apply(&theme, &mut book);
                             notes.push(SharedString::from(ui::tf!(
-                                "見た目のテンプレートを当てました: {}",
+                                "Applied the layout template: {}",
                                 tp.file_name().unwrap_or_default().to_string_lossy()
                             )));
                         }
                         // **読めなくてもブックは開きます。** 見た目が当たらない
                         // だけで、中身は読めています
                         Err(e) => notes.push(SharedString::from(ui::tf!(
-                            "見た目のテンプレートが読めません({}): {}",
+                            "Cannot read the layout template ({}): {}",
                             tp.file_name().unwrap_or_default().to_string_lossy(),
                             e
                         ))),
                     }
                 }
                 let status = ui::tf!(
-                    "{} シート — {}",
+                    "{} sheets — {}",
                     book.sheets.len(),
                     p.file_name().unwrap_or_default().to_string_lossy()
                 );
                 self.adopt_book(p, book, notes, status);
             }
-            Err(e) => self.status = ui::tf!("開けません: {}", e).into(),
+            Err(e) => self.status = ui::tf!("Can't open: {}", e).into(),
         }
     }
 
@@ -378,7 +378,7 @@ impl Calc {
         if let Some(tp) = sheet::booktmpl::find_for(book) {
             return Some(
                 ui::tf!(
-                    "列の幅と用紙は「{}」の持ち物です(このファイルには書きません)",
+                    "Column widths and page setup belong to \"{}\" (not written to this file)",
                     tp.file_name().unwrap_or_default().to_string_lossy()
                 )
                 .to_string(),
@@ -392,12 +392,12 @@ impl Calc {
         }) {
             Ok(_) => Some(
                 ui::tf!(
-                    "列の幅と用紙を「{}」に書き出しました(次に開くとき当たります)",
+                    "Wrote column widths and page setup to \"{}\" (applied next time you open it)",
                     tp.file_name().unwrap_or_default().to_string_lossy()
                 )
                 .to_string(),
             ),
-            Err(e) => Some(ui::tf!("見た目のテンプレートが書けません: {}", e).to_string()),
+            Err(e) => Some(ui::tf!("Cannot write the layout template: {}", e).to_string()),
         }
     }
 
@@ -436,7 +436,7 @@ impl Calc {
                 // 鍵ではないので、伝わらなければ何もしていないのと同じです
                 if self.final_mark() {
                     self.status = ui::t!(
-                        "このブックは最終版とされています(鍵ではありません — 直せます。ファイルタブの「保護する」で外せます)"
+                        "This workbook is marked as final (this is not a lock — you can still edit it; remove the mark under Protect on the File tab)"
                     )
                     .into();
                 }
@@ -459,7 +459,7 @@ impl Calc {
                 self.acquire_lock(&p);
                 if let Some(who) = self.locked_by.clone() {
                     self.status = ui::tf!(
-                        "{} — **{} が開いています**。上書き保存はできません(名前を付けて保存へ)",
+                        "{} — **{} has it open**. You can't save over it (use Save as)",
                         self.status,
                         who
                     )
@@ -490,7 +490,7 @@ impl Calc {
         let raw = match std::fs::read(q) {
             Ok(b) => b,
             Err(e) => {
-                self.status = ui::tf!("控えが読めません: {}", e).into();
+                self.status = ui::tf!("Can't read the copy: {}", e).into();
                 return;
             }
         };
@@ -499,7 +499,7 @@ impl Calc {
                 Some(Ok(b)) => b,
                 _ => {
                     self.status =
-                        ui::t!("控えは暗号化されています(いまのパスワードでは解けません)").into();
+                        ui::t!("The copy is encrypted (the current password doesn't open it)").into();
                     return;
                 }
             }
@@ -531,9 +531,9 @@ impl Calc {
                 self.set_path(None);
                 self.dirty = true;
                 self.sync_input();
-                self.status = ui::t!("控えを開きました(名無しの複製。保存で名前を聞きます。元へ戻すなら同じ名前で保存)").into();
+                self.status = ui::t!("Opened the copy (untitled; saving asks for a name; to restore, save under the original name)").into();
             }
-            Err(e) => self.status = ui::tf!("控えが読めません: {}", e).into(),
+            Err(e) => self.status = ui::tf!("Can't read the copy: {}", e).into(),
         }
     }
 
@@ -628,7 +628,7 @@ impl Calc {
                 c.recover_at = std::time::Instant::now();
                 if !ok {
                     // **黙って諦めない。** 控えが取れていないことは言う
-                    c.status = ui::t!("自動復旧の控えが書けません(保存先の権限を確かめてください)")
+                    c.status = ui::t!("Can't write the auto-recovery backup (check the permissions on the save location)")
                         .into();
                 }
             });
@@ -662,7 +662,7 @@ impl Calc {
     pub(crate) fn new_book(&mut self) -> bool {
         if self.dirty {
             self.status =
-                ui::t!("未保存の変更があります。先に保存してください(Ctrl+S)").into();
+                ui::t!("There are unsaved changes; save first (Ctrl+S)").into();
             return false;
         }
         self.release_lock();
@@ -688,7 +688,7 @@ impl Calc {
         self.redo_stack.clear();
         self.dirty = false;
         self.sync_input();
-        self.status = ui::t!("新しいブックです").into();
+        self.status = ui::t!("New workbook").into();
         true
     }
 
@@ -727,7 +727,7 @@ impl Calc {
                         // **黙って名前を変えない。** 変えたときは状態行で言う
                         if 直した名 != 打った名 {
                             this.status =
-                                ui::tf!("{} で保存しました(表は二重の拡張子で名前を付けます)", 直した名)
+                                ui::tf!("Saved as {} (spreadsheets are named with a double extension)", 直した名)
                                     .into();
                         }
                     } else {
@@ -770,12 +770,12 @@ impl Calc {
     #[allow(clippy::type_complexity)]
     pub(crate) fn csv_kinds() -> Vec<(&'static str, &'static str, (&'static str, char))> {
         vec![
-            row(ui::item!("UTF-8(BOM付き)・カンマ"), ("utf8bom", ',')),
-            row(ui::item!("Shift_JIS(CP932)・カンマ"), ("sjis", ',')),
-            row(ui::item!("UTF-8(BOMなし)・カンマ"), ("utf8", ',')),
-            row(ui::item!("UTF-8(BOM付き)・タブ"), ("utf8bom", '\t')),
-            row(ui::item!("Shift_JIS(CP932)・タブ"), ("sjis", '\t')),
-            row(ui::item!("UTF-8(BOM付き)・セミコロン"), ("utf8bom", ';')),
+            row(ui::item!("UTF-8 (with BOM), comma"), ("utf8bom", ',')),
+            row(ui::item!("Shift_JIS (CP932), comma"), ("sjis", ',')),
+            row(ui::item!("UTF-8 (no BOM), comma"), ("utf8", ',')),
+            row(ui::item!("UTF-8 (with BOM), tab"), ("utf8bom", '\t')),
+            row(ui::item!("Shift_JIS (CP932), tab"), ("sjis", '\t')),
+            row(ui::item!("UTF-8 (with BOM), semicolon"), ("utf8bom", ';')),
         ]
     }
 
@@ -838,7 +838,7 @@ impl Calc {
             Ok(()) => {
                 // 何が入らないかを黙らない(CSV は値だけの形式)
                 self.status = ui::tf!(
-                    "CSV に書き出しました: {}({} — いまのシートの値だけ。式・書式・他のシートは入りません){}",
+                    "Wrote CSV: {} ({} — values from this sheet only. No formulas, formatting or other sheets){}",
                     p.display(),
                     kind_label,
                     if lost > 0 {
@@ -850,7 +850,7 @@ impl Calc {
                 .into();
             }
             Err(e) => {
-                self.status = ui::tf!("CSV に書き出せませんでした: {}", e).into();
+                self.status = ui::tf!("Could not export to CSV: {}", e).into();
             }
         }
     }
@@ -947,7 +947,7 @@ impl Calc {
             Ok(()) => {
                 // 入らない物を黙らない
                 self.status = ui::tf!(
-                    "Web に書き出しました: {}(いまのシートだけ。式は結果、JavaScript なし){}",
+                    "Exported to Web: {} (this sheet only; formulas as results, no JavaScript){}",
                     p.display(),
                     if 結合 > 0 {
                         format!("。**結合 {結合} 箇所は頁では効きません**")
@@ -958,7 +958,7 @@ impl Calc {
                 .into();
             }
             Err(e) => {
-                self.status = ui::tf!("Web に書き出せませんでした: {}", e).into();
+                self.status = ui::tf!("Could not export to Web: {}", e).into();
             }
         }
     }
@@ -1106,17 +1106,17 @@ impl Calc {
                                 });
                                 this.dirty = true;
                                 this.status = ui::tf!(
-                                    "画像を {} に置きました(保存で xlsx に入ります)",
+                                    "Placed the image at {} (it goes into the xlsx on save)",
                                     at.a1()
                                 )
                                 .into();
                             }
                             None => {
                                 this.status =
-                                    ui::t!("この画像は読めません(PNG か JPEG を選んでください)").into();
+                                    ui::t!("Can't read this image (choose a PNG or JPEG)").into();
                             }
                         },
-                        Err(e) => this.status = ui::tf!("読めません: {}", e).into(),
+                        Err(e) => this.status = ui::tf!("Can't read: {}", e).into(),
                     }
                 }
                 cx.notify();
@@ -1145,7 +1145,7 @@ impl Calc {
         }
         if sh.landscape {
             std::mem::swap(&mut paper.width_mm, &mut paper.height_mm);
-            desc.push(ui::t!("横向き").into());
+            desc.push(ui::t!("landscape").into());
         }
         (paper, desc)
     }
@@ -1198,7 +1198,7 @@ impl Calc {
             ));
         }
         if jobs.is_empty() {
-            return Err(ui::t!("刷るシートがありません(全部隠れています)").to_string());
+            return Err(ui::t!("Nothing to print (every sheet is hidden)").to_string());
         }
         let n_sheets = jobs.len();
         let mut buf = Vec::new();
@@ -1221,14 +1221,14 @@ impl Calc {
         let (fam, exact) = match kumihan::font::for_document(None) {
             Ok(x) => x,
             Err(e) => {
-                self.status = ui::tf!("PDF にできません: {}", e).into();
+                self.status = ui::tf!("Can't write PDF: {}", e).into();
                 return;
             }
         };
         let data = match kumihan::font::load(fam) {
             Ok(d) => d,
             Err(e) => {
-                self.status = ui::tf!("PDF にできません: {}", e).into();
+                self.status = ui::tf!("Can't write PDF: {}", e).into();
                 return;
             }
         };
@@ -1251,7 +1251,7 @@ impl Calc {
         }
         if sh.landscape {
             std::mem::swap(&mut paper.width_mm, &mut paper.height_mm);
-            desc.push(ui::t!("横向き").into());
+            desc.push(ui::t!("landscape").into());
         }
         let areas = sh.print_areas.clone();
         let setup = paper::grid::PrintSetup {
@@ -1315,7 +1315,7 @@ impl Calc {
         // 名前を付けて保存はできます — そちらは別のファイルです
         if self.salvaged {
             self.status = ui::t!(
-                "拾い集めたブックなので上書きしません。名前を付けて保存してください(元のファイルは触りません)"
+                "This workbook was salvaged, so it will not overwrite. Use Save As (the original file is left alone)"
             )
             .into();
             return;
@@ -1323,7 +1323,7 @@ impl Calc {
         if let Some(p) = self.path.clone() {
             if self.locked_by.is_some() {
                 // 先客の作業を後勝ちで潰さない。別の名前でなら保存できる
-                self.status = ui::tf!("{} が開いているため上書きしません。名前を付けて保存してください", self.locked_by.as_deref().unwrap_or("誰か"))
+                self.status = ui::tf!("{} has it open, so no overwrite; use Save As", self.locked_by.as_deref().unwrap_or("誰か"))
                 .into();
             } else {
                 self.save_to(p);
@@ -1350,7 +1350,7 @@ impl Calc {
                             cx.quit();
                         }
                     }
-                    None => this.status = ui::t!("保存をやめました(名前が決まっていません)").into(),
+                    None => this.status = ui::t!("Save cancelled (no name chosen)").into(),
                 }
                 cx.notify();
             });
@@ -1389,7 +1389,7 @@ impl Calc {
                 // なので暗号化して書けない。前はここで平文のまま書いていて、
                 // パスワードで守ったつもりのブックが誰でも読める字になった
                 // (2026-08-19 の見直しで気づいた)
-                Err(ui::t!("AsciiDoc は字のままのファイルなので、暗号化したまま保存できません(暗号化を外すか、xlsx で保存してください)").to_string())
+                Err(ui::t!("AsciiDoc is a plain-text file, so it cannot be saved while encrypted (remove the encryption, or save as xlsx)").to_string())
             } else {
                 // **ブックの正本を `.adoc` で書く**(2026-08-19)。値は書かず、
                 // 式のまま出します。載らない物は下で帳簿に出します
@@ -1439,11 +1439,11 @@ impl Calc {
                 }
                 // 文に差し込む添え書きも画面の文言 — 訳さないと日本語だけ残る
                 let enc_note = if self.encrypt_pw.is_some() {
-                    ui::t!("(暗号化)")
+                    ui::t!("(encrypted)")
                 } else if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("xltx")) {
-                    ui::t!("(型紙 — 開くと新しいブックになります)")
+                    ui::t!("(template — opening it makes a new workbook)")
                 } else if 字で書く {
-                    ui::t!("(式のまま。見た目は載りません)")
+                    ui::t!(" (formulas kept; appearance is not saved)")
                 } else {
                     ""
                 };
@@ -1463,7 +1463,7 @@ impl Calc {
                         self.notes.push(SharedString::from(m));
                     }
                 }
-                self.status = ui::tf!("保存しました — {}{}", p.file_name().unwrap_or_default().to_string_lossy(), enc_note)
+                self.status = ui::tf!("Saved — {}{}", p.file_name().unwrap_or_default().to_string_lossy(), enc_note)
                 .into();
                 self.acquire_lock(&p);
                 Self::note_recent(&p);
@@ -1485,7 +1485,7 @@ impl Calc {
                 self.shape_sel = None;
                 self.point_edit = None;
             }
-            Err(e) => self.status = ui::tf!("保存できません: {}", e).into(),
+            Err(e) => self.status = ui::tf!("Can't save: {}", e).into(),
         }
     }
 }

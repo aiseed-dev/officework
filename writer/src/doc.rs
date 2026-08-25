@@ -368,9 +368,9 @@ impl Writer {
         self.dirty = true;
         self.relayout_keep();
         self.status = if below {
-            ui::t!("下に行を足しました").into()
+            ui::t!("Added a row below").into()
         } else {
-            ui::t!("上に行を足しました").into()
+            ui::t!("Added a row above").into()
         };
     }
 
@@ -395,9 +395,9 @@ impl Writer {
         self.dirty = true;
         self.relayout_keep();
         self.status = if right {
-            ui::t!("右に列を足しました").into()
+            ui::t!("Added a column to the right").into()
         } else {
-            ui::t!("左に列を足しました").into()
+            ui::t!("Added a column to the left").into()
         };
     }
 
@@ -405,7 +405,7 @@ impl Writer {
     pub(crate) fn table_del_row(&mut self) {
         let Some((ti, row, _, rows, _)) = self.cursor_table() else { return };
         if rows <= 1 {
-            self.status = ui::t!("最後の1行は消せません(表ごと消すのは別の操作です)").into();
+            self.status = ui::t!("The last row cannot be deleted (deleting the whole table is a separate action)").into();
             return;
         }
         self.checkpoint(false);
@@ -421,14 +421,14 @@ impl Writer {
         self.retarget_fresh(Target::Cell { table: ti, row: next, col: 0 });
         self.dirty = true;
         self.relayout_keep();
-        self.status = ui::t!("行を消しました(Ctrl+Z で戻せます)").into();
+        self.status = ui::t!("Row deleted (Ctrl+Z undoes it)").into();
     }
 
     /// いまの列を消す。**最後の1列は消さない**
     pub(crate) fn table_del_col(&mut self) {
         let Some((ti, row, col, _, cols)) = self.cursor_table() else { return };
         if cols <= 1 {
-            self.status = ui::t!("最後の1列は消せません(表ごと消すのは別の操作です)").into();
+            self.status = ui::t!("The last column cannot be deleted (deleting the whole table is a separate action)").into();
             return;
         }
         self.checkpoint(false);
@@ -447,7 +447,7 @@ impl Writer {
         self.retarget_fresh(Target::Cell { table: ti, row, col: next });
         self.dirty = true;
         self.relayout_keep();
-        self.status = ui::t!("列を消しました(Ctrl+Z で戻せます)").into();
+        self.status = ui::t!("Column deleted (Ctrl+Z undoes it)").into();
     }
 
     /// いまの段落の画像を拡げる・縮める(縦横の比は保つ)。
@@ -477,15 +477,15 @@ impl Writer {
             }
         }
         if 触った == 0 {
-            self.status = ui::t!("この段落に絵がありません").into();
+            self.status = ui::t!("There is no picture in this paragraph").into();
             return;
         }
         self.dirty = true;
         self.relayout_keep();
         self.status = if k < 1.0 {
-            ui::t!("絵を小さくしました").into()
+            ui::t!("Made the picture smaller").into()
         } else {
-            ui::t!("絵を大きくしました").into()
+            ui::t!("Made the picture bigger").into()
         };
     }
 
@@ -544,9 +544,9 @@ impl Writer {
         };
         self.ed = Editor::new(&text);
         self.status = match next {
-            Target::Body => ui::t!("本文").into(),
+            Target::Body => ui::t!("body").into(),
             Target::Cell { row, col, .. } => {
-                ui::tf!("表のセル({}行 {}列)を編集中", row + 1, col + 1).into()
+                ui::tf!("Editing table cell (row {}, column {})", row + 1, col + 1).into()
             }
         };
     }
@@ -985,16 +985,16 @@ impl Writer {
             return;
         }
         let hf = if footer { &self.doc.footer } else { &self.doc.header };
-        let which = if footer { ui::t!("フッター") } else { ui::t!("ヘッダー") };
+        let which = if footer { ui::t!("footer") } else { ui::t!("header") };
         if hf.paragraphs.is_empty() && hf.part.is_some() {
             // 読めたが持てなかった部品(表入りなど)。嘘の編集をさせない
-            self.status = ui::tf!("この{}には表があり、この版では編集できません(保存では残ります)", which).into();
+            self.status = ui::tf!("This {} contains a table this version can't edit (it survives saving)", which).into();
             return;
         }
         self.find_open = false;
         self.hf_edit = Some(footer);
         self.hf_ed = Editor::new(&kumihan::paras_text(&hf.paragraphs));
-        self.status = ui::tf!("{}を編集中(全ページ共通。Esc で閉じる)", which).into();
+        self.status = ui::tf!("Editing {} (shared by all pages; Esc closes)", which).into();
     }
 
     /// 文書の書体を実体に結ぶ。無ければ系統を保って代替し、**そう言う**。
@@ -1019,10 +1019,10 @@ impl Writer {
                         // ダイアログを出すな。下にパネルに表示でいいのでは」)。
                         // 前は紙の右上に浮く小窓で、閉じる道がありませんでした
                         self.notes.push(
-                            ui::tf!("書体「{}」が無いので「{}」で表示", w, fam.name).into(),
+                            ui::tf!("Font \"{}\" is missing; showing \"{}\"", w, fam.name).into(),
                         );
                         self.status =
-                            ui::tf!("書体「{}」が無いので「{}」で表示します", w, fam.name)
+                            ui::tf!("Font \"{}\" is not installed, so \"{}\" is used instead", w, fam.name)
                                 .into();
                     }
                 }
@@ -1040,7 +1040,7 @@ impl Writer {
                 Ok(b) => b,
                 Err(e) => {
                     self.pw_open = false;
-                    self.status = ui::tf!("開けません: {}", e).into();
+                    self.status = ui::tf!("Can't open: {}", e).into();
                     return;
                 }
             };
@@ -1050,7 +1050,7 @@ impl Writer {
                     self.open_plain(p.clone(), plain);
                     if self.path.as_deref() == Some(p.as_path()) {
                         self.encrypt_pw = Some(pw);
-                        self.status = ui::tf!("{}(保存も同じパスワードで暗号化します)", self.status)
+                        self.status = ui::tf!("{} (saving keeps the same password)", self.status)
                         .into();
                     }
                 }
@@ -1083,7 +1083,7 @@ impl Writer {
     /// 対応の付かない項目と埋まらない升を黙って落とすと、空欄の申請書が
     /// できあがります(2026-08-18)
     pub(crate) fn form_status(&self) -> Option<String> {
-        (!self.form_notes.is_empty()).then(|| self.form_notes.join("・"))
+        (!self.form_notes.is_empty()).then(|| self.form_notes.join("•"))
     }
 
     /// 読み取り専用の保護が掛かっているか(保護タブの「保護」で入切)
@@ -1101,7 +1101,7 @@ impl Writer {
         let user_code = match std::fs::read_to_string(&py_file) {
             Ok(c) => c,
             Err(e) => {
-                self.status = ui::tf!("マクロが読めません: {}", e).into();
+                self.status = ui::tf!("Can't read the macro: {}", e).into();
                 return;
             }
         };
@@ -1117,7 +1117,7 @@ impl Writer {
             .map_err(|e| e.to_string())
             .and_then(|f| ooxml::write_with(&doc_out, original, std::io::BufWriter::new(f)));
         if let Err(e) = w {
-            self.status = ui::tf!("マクロに渡せません: {}", e).into();
+            self.status = ui::tf!("Can't hand it to the macro: {}", e).into();
             return;
         }
         let script = macro_script(&in_d, &out_d, &user_code);
@@ -1125,7 +1125,7 @@ impl Writer {
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
-        self.status = ui::tf!("マクロ {} を実行しています…(サンドボックスの中の Python)", name).into();
+        self.status = ui::tf!("Running macro {}… (Python in the sandbox)", name).into();
         let task = cx.background_executor().spawn(async move {
             let py_path = dir.join("run.py");
             std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
@@ -1141,7 +1141,7 @@ impl Writer {
             let o = cmd
                 .arg(&py_path)
                 .output()
-                .map_err(|e| ui::tf!("Python が起動できません: {}", e))?;
+                .map_err(|e| ui::tf!("Can't start Python: {}", e))?;
             let out = String::from_utf8_lossy(&o.stdout).trim().to_string();
             if !o.status.success() {
                 let err = String::from_utf8_lossy(&o.stderr);
@@ -1149,17 +1149,16 @@ impl Writer {
                     .lines()
                     .rev()
                     .find(|l| !l.trim().is_empty())
-                    .unwrap_or(ui::t!("原因不明"))
+                    .unwrap_or(ui::t!("cause unknown"))
                     .to_string();
                 return Err(if err.contains("No module named 'docx'") {
-                    ui::t!("python-docx がありません(pip install python-docx。\
-                     .venv があればそちらへ)").to_string()
+                    ui::t!("python-docx is missing (pip install python-docx; into .venv if you have one)").to_string()
                 } else {
                     last
                 });
             }
             std::fs::read(&out_d)
-                .map_err(|e| ui::tf!("結果が読めません: {}", e))
+                .map_err(|e| ui::tf!("Can't read the result: {}", e))
                 .map(|b| (b, out))
         });
         cx.spawn(async move |this, cx| {
@@ -1184,17 +1183,17 @@ impl Writer {
                                 this.relayout_keep();
                                 this.dirty = true;
                                 this.status = if out.is_empty() {
-                                    ui::tf!("マクロ {} を実行しました(Ctrl+Z で戻せます)", name)
+                                    ui::tf!("Ran macro {} (Ctrl+Z undoes)", name)
                                         .into()
                                 } else {
-                                    ui::tf!("マクロ {}: {}(Ctrl+Z で戻せます)", name, out.lines().last().unwrap_or_default())
+                                    ui::tf!("Macro {}: {} (Ctrl+Z undoes)", name, out.lines().last().unwrap_or_default())
                                     .into()
                                 };
                             }
-                            Err(e) => this.status = ui::tf!("結果が読めません: {}", e).into(),
+                            Err(e) => this.status = ui::tf!("Can't read the result: {}", e).into(),
                         }
                     }
-                    Err(e) => this.status = ui::tf!("マクロ: {}", e).into(),
+                    Err(e) => this.status = ui::tf!("Macro: {}", e).into(),
                 }
                 cx.notify();
             });
@@ -1217,7 +1216,7 @@ impl Writer {
     pub(crate) fn new_doc(&mut self) -> bool {
         if self.dirty {
             self.status =
-                ui::t!("未保存の変更があります。先に保存してください(Ctrl+S)").into();
+                ui::t!("There are unsaved changes; save first (Ctrl+S)").into();
             return false;
         }
         self.release_lock();
@@ -1229,7 +1228,7 @@ impl Writer {
         self.pg = kumihan::PageSetup::default();
         self.set_doc(Document::plain(""));
         self.dirty = false;
-        self.status = ui::t!("新しい文書です").into();
+        self.status = ui::t!("New document").into();
         true
     }
 
@@ -1240,8 +1239,8 @@ impl Writer {
     /// 別の形に写す操作で、いま書いている文書はそのままです。
     pub(crate) fn export_as(&mut self, cx: &mut Context<Self>, ext: &'static str) {
         let 名 = match ext {
-            "docx" => ui::t!("Word文書"),
-            _ => ui::t!("文字だけのファイル"),
+            "docx" => ui::t!("Word document"),
+            _ => ui::t!("Plain text file"),
         };
         let もと = self.path.clone();
         let ask = cx.background_executor().spawn(async move {
@@ -1279,8 +1278,8 @@ impl Writer {
     pub(crate) fn save_as(&mut self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
-                .add_filter(ui::t!("officework の文書"), &["adoc"])
-                .add_filter(ui::t!("Word文書"), &["docx"])
+                .add_filter(ui::t!("officework document"), &["adoc"])
+                .add_filter(ui::t!("Word document"), &["docx"])
                 .save_file()
         });
         cx.spawn(async move |this, cx| {
@@ -1306,7 +1305,7 @@ impl Writer {
         let Some(i) = self.file_field.take() else { return };
         if self.protected() {
             self.status =
-                ui::t!("読み取り専用で保護されています(保護タブの「保護」で解除できます)").into();
+                ui::t!("Protected read-only (Protection tab > Protect to release)").into();
             return;
         }
         let text = self.prop_ed.text().to_string();
@@ -1319,7 +1318,7 @@ impl Writer {
             _ => pr.description = text,
         }
         self.dirty = true;
-        self.status = ui::t!("文書の情報を控えました(保存で docx に入ります)").into();
+        self.status = ui::t!("Document info recorded (goes into the docx on save)").into();
     }
 
     /// ルビのパネルの Enter。控えた範囲に読みを付ける(空なら外す)
@@ -1336,9 +1335,9 @@ impl Writer {
         self.dirty = true;
         self.relayout_keep();
         self.status = if text.is_empty() {
-            ui::t!("ルビを外しました").into()
+            ui::t!("Ruby removed").into()
         } else {
-            ui::tf!("ルビ「{}」を振りました(保存で docx の w:ruby に)", text).into()
+            ui::tf!("Ruby \"{}\" set (saved as w:ruby in docx)", text).into()
         };
     }
 
@@ -1371,12 +1370,12 @@ impl Writer {
                 self.ed.move_to(cur, false);
                 self.para(|p| p.images_new.push(im.clone()));
                 self.dirty = true;
-                self.status = ui::tf!("数式を置きました({} で組みました)",
+                self.status = ui::tf!("Equation placed (typeset with {})",
                                       crate::py::suushiki_no_kumi_kata()).into();
             }
             // **黙って何も起きない、をしない。** 組めない理由をそのまま見せる
             Err(e) => {
-                self.status = ui::tf!("数式を組めません: {}", e).into();
+                self.status = ui::tf!("Cannot typeset the equation: {}", e).into();
             }
         }
     }
@@ -1399,7 +1398,7 @@ impl Writer {
         let bytes = match std::fs::read(q) {
             Ok(b) => b,
             Err(e) => {
-                self.status = ui::tf!("控えが読めません: {}", e).into();
+                self.status = ui::tf!("Can't read the copy: {}", e).into();
                 return;
             }
         };
@@ -1408,7 +1407,7 @@ impl Writer {
                 Some(Ok(b)) => b,
                 _ => {
                     self.status =
-                        ui::t!("控えは暗号化されています(いまのパスワードでは解けません)").into();
+                        ui::t!("The copy is encrypted (the current password doesn't open it)").into();
                     return;
                 }
             }
@@ -1432,10 +1431,9 @@ impl Writer {
                 self.relayout_keep();
                 self.path = None;
                 self.dirty = true;
-                self.status = ui::t!("控えを開きました(名無しの複製。保存で名前を聞きます。\
-                               元へ戻すなら同じ名前で保存)").into();
+                self.status = ui::t!("Opened the copy (untitled; saving asks for a name; to restore, save under the original name)").into();
             }
-            Err(e) => self.status = ui::tf!("控えが読めません: {}", e).into(),
+            Err(e) => self.status = ui::tf!("Can't read the copy: {}", e).into(),
         }
     }
 
@@ -1466,7 +1464,7 @@ impl Writer {
         }
         let Some(cp) = self.chat_path() else {
             self.status =
-                ui::t!("まだファイルになっていません(保存すると申し送り帳が持てます)").into();
+                ui::t!("Not a file yet (save it to get a chat file)").into();
             return;
         };
         let stamp = ui::now_stamp();
@@ -1481,9 +1479,9 @@ impl Writer {
             Ok(_) => {
                 self.chat_ed = Editor::new("");
                 self.status =
-                    ui::t!("書き残しました(文書の隣の .chat.txt。開いた人が読めます)").into();
+                    ui::t!("Message left (.chat.txt next to the document; whoever opens it can read it)").into();
             }
-            Err(e) => self.status = ui::tf!("チャットに書けません: {}", e).into(),
+            Err(e) => self.status = ui::tf!("Can't write to the chat: {}", e).into(),
         }
     }
 
@@ -1517,7 +1515,7 @@ impl Writer {
         let bytes = match std::fs::read(&p) {
             Ok(b) => b,
             Err(e) => {
-                self.status = ui::tf!("開けません: {}", e).into();
+                self.status = ui::tf!("Can't open: {}", e).into();
                 return;
             }
         };
@@ -1547,7 +1545,7 @@ impl Writer {
             self.pw_open = true;
             self.pw_ed = Editor::new("");
             self.status =
-                ui::t!("この文書は暗号化されています。パスワードを打って Enter").into();
+                ui::t!("This document is encrypted. Type the password and press Enter").into();
             return;
         }
         self.open_plain(p, bytes);
@@ -1564,7 +1562,7 @@ impl Writer {
                 let (t, _, bad) = encoding_rs::SHIFT_JIS.decode(bytes);
                 if bad {
                     self.status =
-                        ui::t!("文字コードが読めません(UTF-8 でも CP932 でもない)").into();
+                        ui::t!("Unreadable encoding (neither UTF-8 nor CP932)").into();
                     return;
                 }
                 t.into_owned()
@@ -1591,7 +1589,7 @@ impl Writer {
         // 保存は docx として名前を聞く(HTML には書き戻さない)
         self.path = None;
         self.dirty = true;
-        self.status = ui::tf!("HTML を読みました — {}(JS は実行しません。保存は docx{})", p.file_name().unwrap_or_default().to_string_lossy(), if self.fm_open { ui::t!("。記入は右上のパネルから") } else { "" })
+        self.status = ui::tf!("HTML loaded — {} (JavaScript is never executed; saving is docx{})", p.file_name().unwrap_or_default().to_string_lossy(), if self.fm_open { ui::t!(". Fill it in from the panel at the top right") } else { "" })
         .into();
     }
 
@@ -1608,13 +1606,13 @@ impl Writer {
             let _ = this.update(cx, |this, cx| {
                 match r {
                     Ok((bytes, final_url)) => this.adopt_fetched(&final_url, &bytes),
-                    Err(e) => this.status = ui::tf!("開けません: {}", e).into(),
+                    Err(e) => this.status = ui::tf!("Can't open: {}", e).into(),
                 }
                 cx.notify();
             });
         })
         .detach();
-        self.status = ui::tf!("取りに行っています… {}", self.url_ed.text()).into();
+        self.status = ui::tf!("Fetching… {}", self.url_ed.text()).into();
     }
 
     /// AI に頼んで、返事を文書に反映する。**別のスレッドで待つ**(画面は止めない)。
@@ -1623,11 +1621,11 @@ impl Writer {
     pub(crate) fn ai_go(&mut self, job: AiJob, cx: &mut Context<Self>) {
         if self.protected() {
             self.status =
-                ui::t!("読み取り専用で保護されています(保護タブの「保護」で解除できます)").into();
+                ui::t!("Protected read-only (Protection tab > Protect to release)").into();
             return;
         }
         if self.ai_busy {
-            self.status = ui::t!("いま考えています(終わるまでお待ちください)").into();
+            self.status = ui::t!("Still thinking (please wait)").into();
             return;
         }
         let back = ui::ai::backend();
@@ -1651,7 +1649,7 @@ impl Writer {
         if body.trim().is_empty()
             && !matches!(job, AiJob::Ask(_) | AiJob::Macro(_) | AiJob::Chat(_))
         {
-            self.status = ui::t!("文章がありません(打つか、選んでから押してください)").into();
+            self.status = ui::t!("No text (type or select something first)").into();
             return;
         }
         let (sys, ask) = job.prompt();
@@ -1675,16 +1673,16 @@ impl Writer {
             AiJob::Macro(q) => {
                 let names = self.sdt_names();
                 if names.is_empty() {
-                    ui::tf!("{}\n\n(この文書に名前つきの記入欄はありません)", q)
+                    ui::tf!("{}\n\n(this document has no named form fields)", q)
                 } else {
-                    ui::tf!("{}\n\n【この文書の記入欄の名前】{}", q, names.join("、"))
+                    ui::tf!("{}\n\n[Form fields in this document] {}", q, names.join("、"))
                 }
             }
             _ => format!("{ask}\n\n---\n{body}"),
         };
         let (sys, job2) = (sys.to_string(), job.clone());
         self.ai_busy = true;
-        self.status = ui::tf!("AI({})に{}を頼んでいます…", back.label(), job.label())
+        self.status = ui::tf!("Asking AI ({}) for {}…", back.label(), job.label())
         .into();
         let task = cx
             .background_executor()
@@ -1746,7 +1744,7 @@ impl Writer {
     ) {
         let out = out.trim().to_string();
         if out.is_empty() {
-            self.status = ui::t!("AI: 答えが空でした(何もしていません)").into();
+            self.status = ui::t!("AI: the answer was empty (nothing was changed)").into();
             return;
         }
         // **会話は文書に入れない。** 左パネルに返し、置き換える文の案は
@@ -1759,7 +1757,7 @@ impl Writer {
                     let 説明 = out.split("```").next().unwrap_or("").trim().to_string();
                     if 説明.is_empty() {
                         let _ = code;
-                        ui::t!("こう直します。").to_string()
+                        ui::t!("Here is the change.").to_string()
                     } else {
                         説明
                     }
@@ -1769,9 +1767,9 @@ impl Writer {
             self.ai_chat_log.push((false, 見せる));
             self.ai_chat_plan = 案;
             self.status = if self.ai_chat_plan.is_some() {
-                ui::t!("直した文ができました(左パネルで読んでから「入れる」)").into()
+                ui::t!("The revised text is ready (read it in the left panel, then press Apply)").into()
             } else {
-                ui::t!("答えました(左パネル)").into()
+                ui::t!("Answered (left panel)").into()
             };
             return;
         }
@@ -1780,26 +1778,25 @@ impl Writer {
         if matches!(job, AiJob::Macro(_)) {
             let code = strip_code_fence(&out);
             if code.trim().is_empty() {
-                self.status = ui::t!("AI: 台本が空でした(何もしていません)").into();
+                self.status = ui::t!("AI: the script was empty (nothing was changed)").into();
                 return;
             }
             let dir = plugins_dir();
             let _ = std::fs::create_dir_all(&dir);
             // 1つ目も訳を通す(ここだけ生の字だと、ja 以外で名前が揃わない)
             let mut i = 1;
-            let mut path = dir.join(ui::tf!("ai台本{}.py", i));
+            let mut path = dir.join(ui::tf!("ai-script{}.py", i));
             while path.exists() {
                 i += 1;
-                path = dir.join(ui::tf!("ai台本{}.py", i));
+                path = dir.join(ui::tf!("ai-script{}.py", i));
             }
             match std::fs::write(&path, &code) {
                 Ok(()) => {
                     self.plug_open = true; // 置いた台本がすぐ見えるように
-                    self.status = ui::tf!("台本を {} に置きました — 読んで確かめてから、\
-                         プラグインの一覧で実行してください(自動では走らせません)", path.display())
+                    self.status = ui::tf!("Script placed at {} — read it first, then run it from the plugin list (it never runs automatically)", path.display())
                     .into();
                 }
-                Err(e) => self.status = ui::tf!("台本を置けません: {}", e).into(),
+                Err(e) => self.status = ui::tf!("Can't place the script: {}", e).into(),
             }
             return;
         }
@@ -1833,7 +1830,7 @@ impl Writer {
                 self.dirty = true;
                 self.relayout_keep();
                 self.status =
-                    ui::tf!("ふりがなを {} 箇所に振りました(Ctrl+Z で1手で戻せます)", n)
+                    ui::tf!("Furigana set in {} places (one Ctrl+Z undoes)", n)
                         .into();
                 return;
             }
@@ -1841,7 +1838,7 @@ impl Writer {
         self.dirty = true;
         self.relayout();
         self.status =
-            ui::tf!("AI の{}を入れました(Ctrl+Z で1手で戻せます)", label).into();
+            ui::tf!("AI {} inserted (one Ctrl+Z undoes)", label).into();
     }
 
     /// **辞書でふりがなを振る**(2026-08-20 発注者「取り敢えずは辞書で」)。
@@ -1867,7 +1864,7 @@ impl Writer {
         };
         let 候補 = ui::dict::ruby_targets(対象);
         if 候補.is_empty() {
-            self.status = ui::t!("ふりがなを振る漢字の語がありません").into();
+            self.status = ui::t!("There are no kanji words to add readings to").into();
             return true;
         }
         let mut n = 0usize;
@@ -1891,13 +1888,13 @@ impl Writer {
         self.relayout_keep();
         self.status = if 割れた > 0 {
             ui::tf!(
-                "ふりがなを {} 箇所に振りました。うち {} 箇所は読みが割れます(確かめてください。Ctrl+Z で1手で戻せます)",
+                "Added readings in {} places; {} of them have more than one possible reading (please check. Ctrl+Z undoes it in one step)",
                 n.to_string(),
                 割れた.to_string()
             )
             .into()
         } else {
-            ui::tf!("ふりがなを {} 箇所に振りました(Ctrl+Z で1手で戻せます)", n.to_string())
+            ui::tf!("Furigana set in {} places (one Ctrl+Z undoes)", n.to_string())
                 .into()
         };
         true
@@ -1907,7 +1904,7 @@ impl Writer {
     pub(crate) fn ai_chat_send(&mut self, cx: &mut Context<Self>) {
         let q = self.ai_chat_in.text().trim().to_string();
         if q.is_empty() {
-            self.status = ui::t!("用件がありません").into();
+            self.status = ui::t!("Nothing to ask").into();
             return;
         }
         self.ai_chat_log.push((true, q.clone()));
@@ -1926,7 +1923,7 @@ impl Writer {
         let Some(plan) = self.ai_chat_plan.clone() else { return };
         if self.protected() {
             self.status =
-                ui::t!("読み取り専用で保護されています(保護タブの「保護」で解除できます)").into();
+                ui::t!("Protected read-only (Protection tab > Protect to release)").into();
             return;
         }
         self.switch_target(Target::Body);
@@ -1947,11 +1944,11 @@ impl Writer {
         self.dirty = true;
         self.relayout();
         self.ai_chat_plan = None;
-        self.ai_chat_log.push((false, ui::t!("入れました。").to_string()));
+        self.ai_chat_log.push((false, ui::t!("Applied.").to_string()));
         self.status = if 置き換えた {
-            ui::t!("選んでいた所を置き換えました(Ctrl+Z で戻せます)").into()
+            ui::t!("Replaced the selection (Ctrl+Z undoes it)").into()
         } else {
-            ui::t!("カーソルの後ろに入れました(Ctrl+Z で戻せます)").into()
+            ui::t!("Inserted after the cursor (Ctrl+Z undoes it)").into()
         };
     }
 
@@ -1966,7 +1963,7 @@ impl Writer {
             let init = match kind {
                 K::Checkbox => "☐".to_string(),
                 K::Dropdown | K::Combo => {
-                    items.first().cloned().unwrap_or_else(|| ui::t!("　　　　").into())
+                    items.first().cloned().unwrap_or_else(|| ui::t!("    ").into())
                 }
                 K::Date => std::process::Command::new("date")
                     .arg("+%Y年%-m月%-d日")
@@ -1974,9 +1971,9 @@ impl Writer {
                     .ok()
                     .filter(|o| o.status.success())
                     .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-                    .unwrap_or_else(|| ui::t!("　　　　").into()),
-                K::Picture => ui::t!("[画像]").to_string(),
-                _ => ui::t!("　　　　").to_string(),
+                    .unwrap_or_else(|| ui::t!("    ").into()),
+                K::Picture => ui::t!("[image]").to_string(),
+                _ => ui::t!("    ").to_string(),
             };
             let at = self.ed.cursor();
             self.ed.insert(&init);
@@ -1999,8 +1996,7 @@ impl Writer {
         self.dirty = true;
         self.relayout_keep();
         self.ed.move_to(range.end, false);
-        self.status = ui::tf!("{}の記入欄を入れました(中は普通に打てます。保存で docx の\
-             コンテンツコントロールに)", kind.label())
+        self.status = ui::tf!("{} field inserted (type inside normally; saved as a docx content control)", kind.label())
         .into();
     }
 
@@ -2030,7 +2026,7 @@ impl Writer {
             .filter(|s| !s.is_empty())
             .collect();
         if items.is_empty() {
-            self.status = ui::t!("選択肢がありません(カンマ区切りで打ってください)").into();
+            self.status = ui::t!("No choices (type them comma-separated)").into();
             return;
         }
         self.insert_sdt(self.sd_kind, items);
@@ -2041,12 +2037,12 @@ impl Writer {
     pub(crate) fn sd_name_commit(&mut self) {
         let name = self.sd_ed.text().trim().to_string();
         if name.is_empty() {
-            self.status = ui::t!("名前がありません(記入欄はそのまま)").into();
+            self.status = ui::t!("No name given (the field is unchanged)").into();
             return;
         }
         let Some(range) = self.doc.sdt_range_at(self.ed.cursor()) else {
             self.status =
-                ui::t!("記入欄が見つかりません(欄の中にカーソルを置いてください)").into();
+                ui::t!("No form field found (put the cursor inside a field)").into();
             return;
         };
         let name2 = name.clone();
@@ -2058,8 +2054,7 @@ impl Writer {
         });
         self.dirty = true;
         self.relayout_keep();
-        self.status = ui::tf!("記入欄に名前「{}」を付けました(docx の w:tag。\
-             マクロは fill(\"{}\", 値) で記入できます)", name, name)
+        self.status = ui::tf!("Field named \"{}\" (docx w:tag; macros can fill it with fill(\"{}\", value))", name, name)
         .into();
     }
 
@@ -2085,7 +2080,7 @@ impl Writer {
         self.ed.move_to(e0, true);
         self.ed.insert(next);
         self.on_edited();
-        self.status = ui::tf!("チェックを {} にしました", next).into();
+        self.status = ui::tf!("Checkbox set to {}", next).into();
         true
     }
 
@@ -2121,7 +2116,7 @@ impl Writer {
             zw.min((self.view_h_px - 28.0) / (self.pg.h_mm * PX_PER_MM))
         };
         self.zoom = z.clamp(0.2, 5.0);
-        self.status = ui::tf!("{}に合わせました(ズーム {}%)", if width { ui::t!("幅") } else { ui::t!("ページ") }, (self.zoom * 100.0).round() as i32)
+        self.status = ui::tf!("Fit to {} (zoom {}%)", if width { ui::t!("width") } else { ui::t!("Page") }, (self.zoom * 100.0).round() as i32)
         .into();
     }
 
@@ -2152,14 +2147,14 @@ impl Writer {
     pub(crate) fn follow_link(&mut self, href: String, cx: &mut Context<Self>) {
         let base = self.html_base.clone().unwrap_or_default();
         let url = resolve_url(&base, &href);
-        self.status = ui::tf!("取りに行っています… {}", url).into();
+        self.status = ui::tf!("Fetching… {}", url).into();
         let task = cx.background_executor().spawn(async move { http_fetch(&url, None) });
         cx.spawn(async move |this, cx| {
             let r = task.await;
             let _ = this.update(cx, |this, cx| {
                 match r {
                     Ok((bytes, final_url)) => this.adopt_fetched(&final_url, &bytes),
-                    Err(e) => this.status = ui::tf!("開けません: {}", e).into(),
+                    Err(e) => this.status = ui::tf!("Can't open: {}", e).into(),
                 }
                 cx.notify();
             });
@@ -2176,7 +2171,7 @@ impl Writer {
                 f.value = text;
             }
         }
-        self.status = ui::t!("記入しました(送信のボタンで送る)").into();
+        self.status = ui::t!("Filled in (press Submit to send)").into();
     }
 
     /// フォームを送る。POST は urlencoded、GET は ?query。
@@ -2185,12 +2180,12 @@ impl Writer {
         let Some(fm) = self.html_forms.first().cloned() else { return };
         let Some(origin) = self.html_origin.clone() else {
             self.status =
-                ui::t!("ローカルの HTML からは送れません(URL で開いてください)").into();
+                ui::t!("Can't submit from local HTML (open it via URL)").into();
             return;
         };
         let url = if fm.action.starts_with("http://") {
             if !fm.action.starts_with(&origin) {
-                self.status = ui::t!("送り先が開いた相手と違います(送りません)").into();
+                self.status = ui::t!("The target differs from the origin (not sending)").into();
                 return;
             }
             fm.action.clone()
@@ -2206,7 +2201,7 @@ impl Writer {
             .collect::<Vec<_>>()
             .join("&");
         let post = fm.method == "post";
-        self.status = ui::t!("送っています…").into();
+        self.status = ui::t!("Sending…").into();
         let task = cx.background_executor().spawn(async move {
             if post {
                 http_fetch(&url, Some(&q))
@@ -2219,7 +2214,7 @@ impl Writer {
             let _ = this.update(cx, |this, cx| {
                 match r {
                     Ok((bytes, final_url)) => this.adopt_fetched(&final_url, &bytes),
-                    Err(e) => this.status = ui::tf!("送れません: {}", e).into(),
+                    Err(e) => this.status = ui::tf!("Can't send: {}", e).into(),
                 }
                 cx.notify();
             });
@@ -2266,7 +2261,7 @@ impl Writer {
         self.dirty = false;
         let 行 = text.lines().count();
         self.status = ui::tf!(
-            "{}({} 行)— 文字だけのファイルとして開きました。保存も文字だけです",
+            "{} ({} lines) — opened as plain text; it will be saved as plain text too",
             p.file_name().unwrap_or_default().to_string_lossy(),
             行
         )
@@ -2283,7 +2278,7 @@ impl Writer {
             Ok(d) => d,
             Err(e) => {
                 // **読めない所は言う。** 黙って本文に化けさせない
-                self.status = ui::tf!("{} が読めません: {}", p.display().to_string(), e).into();
+                self.status = ui::tf!("Cannot read {}: {}", p.display().to_string(), e).into();
                 return;
             }
         };
@@ -2321,27 +2316,27 @@ impl Writer {
         let 組めない = self.render_formulas();
         self.dirty = false;
         self.status = ui::tf!(
-            "{} — 本文は adoc、書式は{}",
+            "{} — the text is adoc; the formatting comes from {}",
             p.file_name().unwrap_or_default().to_string_lossy(),
             言い分
         )
         .into();
         if 枚数 > 1 {
             self.status =
-                ui::tf!("{}(文書 {} 枚)", self.status.clone(), 枚数.to_string()).into();
+                ui::tf!("{} ({} documents)", self.status.clone(), 枚数.to_string()).into();
         }
         if 組めない > 0 {
             self.status =
-                ui::tf!("{}(数式 {} 個が組めませんでした)", self.status.clone(), 組めない).into();
+                ui::tf!("{} ({} equations could not be typeset)", self.status.clone(), 組めない).into();
         }
         if !帳簿.is_empty() {
-            self.status = ui::tf!("{} — うちで扱わない書き方があります: {}",
-                                  self.status.clone(), 帳簿.join("・")).into();
+            self.status = ui::tf!("{} — it uses markup we do not handle: {}",
+                                  self.status.clone(), 帳簿.join("•")).into();
         }
         // **様式の食い違いは開いたときに言います。** 印刷してから気づくのでは
         // 遅いので、升目を組んだその場で出します
         if let Some(言うこと) = self.form_status() {
-            self.status = ui::tf!("{} — 様式: {}", self.status.clone(), 言うこと).into();
+            self.status = ui::tf!("{} — form: {}", self.status.clone(), 言うこと).into();
         }
     }
 
@@ -2392,9 +2387,9 @@ impl Writer {
     fn 標準のテンプレート() -> (kumihan::theme::Theme, String) {
         let at = ui::settings::dir().join(kumihan::theme::user_template_name());
         if at.exists() {
-            (Self::user_theme(), ui::t!("この機械の標準").to_string())
+            (Self::user_theme(), ui::t!("this computer's defaults").to_string())
         } else {
-            (kumihan::theme::default_theme(), ui::t!("同梱の既定").to_string())
+            (kumihan::theme::default_theme(), ui::t!("the built-in default").to_string())
         }
     }
 
@@ -2436,7 +2431,7 @@ impl Writer {
                             (
                                 th,
                                 None,
-                                ui::tf!("{} が読めないので{}({})",
+                                ui::tf!("{} could not be read, so {} is used ({})",
                                         at.display().to_string(), 名, e).to_string(),
                             )
                         }
@@ -2449,7 +2444,7 @@ impl Writer {
                     return (
                         th,
                         None,
-                        ui::tf!("{}(このフォルダの {} を使うなら、名前を {} にするか、本文の頭に :template: を書いてください)",
+                        ui::tf!("{} (to use {} in this folder, rename it to {} or write :template: at the top of the document)",
                                 名, 他, Self::FOLDER_TEMPLATE).to_string(),
                     );
                 }
@@ -2477,7 +2472,7 @@ impl Writer {
                     (
                         th,
                         None,
-                        ui::tf!("{} が読めないので{}({})", c.display().to_string(), 名, e)
+                        ui::tf!("{} could not be read, so {} is used ({})", c.display().to_string(), 名, e)
                             .to_string(),
                     )
                 }
@@ -2487,7 +2482,7 @@ impl Writer {
         (
             th,
             None,
-            ui::tf!("テンプレート「{}」が見つからないので{}", name, 名).to_string(),
+            ui::tf!("Template \"{}\" was not found, so {} is used", name, 名).to_string(),
         )
     }
 
@@ -2542,7 +2537,7 @@ impl Writer {
         if let Err(e) = std::fs::create_dir_all(&置き場)
             .and_then(|_| std::fs::write(&at, 新しい))
         {
-            self.status = ui::tf!("書けません: {}", e).into();
+            self.status = ui::tf!("Can't write: {}", e).into();
             return;
         }
         // **その場で効かせます。** 開き直さないと変わらないのでは、
@@ -2565,7 +2560,7 @@ impl Writer {
         self.adopt_font();
         self.relayout();
         self.status = ui::tf!(
-            "この機械の {} の標準の書体を「{}」にしました({})",
+            "Set the default {} font for this computer to \"{}\" ({})",
             ui::language(),
             書体,
             at.display()
@@ -2613,7 +2608,7 @@ impl Writer {
     ///
     /// 返りは(紙面, 用紙, 使ったファイル)。
     pub(crate) fn print_layout(&self) -> Option<(Page, kumihan::PageSetup, String)> {
-        let (th, 使った) = self.template_for("印刷");
+        let (th, 使った) = self.template_for("Print");
         let 使った = 使った?;
         let m = Metrics::new(&self.font_bytes).ok()?;
         let pg = th.page.unwrap_or(self.pg);
@@ -2653,12 +2648,12 @@ impl Writer {
     /// 下の「読み込み」で初めて開く(見て、これだと分かってから開く)。
     pub(crate) fn find_in_folder(&mut self) {
         let Some(dir) = self.find_dir() else {
-            self.status = ui::t!("探す場所を選んでください").into();
+            self.status = ui::t!("Choose a folder to search").into();
             return;
         };
         let term = self.fd_term.text().to_string();
         if term.trim().is_empty() {
-            self.status = ui::t!("探す字が空です").into();
+            self.status = ui::t!("The search text is empty").into();
             return;
         }
         self.fd_busy = true;
@@ -2712,7 +2707,7 @@ impl Writer {
                 let n = p.file_name().unwrap_or_default().to_string_lossy().to_string();
                 ui::folder::display_name(&n, ui::folder::kind_of(&n))
             }
-            None => ui::t!("(名前なし)").to_string(),
+            None => ui::t!("(unnamed)").to_string(),
         }
     }
 
@@ -2773,7 +2768,7 @@ impl Writer {
         self.adopt_font();
         self.lay();
         self.status = ui::tf!(
-            "{} を開いています",
+            "Now showing {}",
             self.path.as_ref().map(|p| p.file_name().unwrap_or_default().to_string_lossy().to_string())
                 .unwrap_or_default()
         )
@@ -2816,7 +2811,7 @@ impl Writer {
         }
         let 書きかけ = self.file_dirty(i);
         if 書きかけ {
-            self.status = ui::t!("書きかけがあります(先に保存してください)").into();
+            self.status = ui::t!("There are unsaved changes (save it first)").into();
             return false;
         }
         if i == self.file_at {
@@ -2844,7 +2839,7 @@ impl Writer {
             self.docs.get(i).map(|d| d.props.title.clone()).unwrap_or_default()
         };
         if 題.trim().is_empty() {
-            ui::tf!("文書 {}", (i + 1).to_string()).to_string()
+            ui::tf!("Document {}", (i + 1).to_string()).to_string()
         } else {
             題
         }
@@ -2936,7 +2931,7 @@ impl Writer {
             let r = ask.await;
             let _ = this.update(cx, |this, cx| {
                 if let Some(p) = r {
-                    this.status = ui::tf!("場所: {}", p.display().to_string()).into();
+                    this.status = ui::tf!("Folder: {}", p.display().to_string()).into();
                     // 次に開いたときも同じ場所から始められるように控える
                     ui::settings::set("find_dir", &p.display().to_string());
                     this.fd_dir = Some(p);
@@ -2970,7 +2965,7 @@ impl Writer {
             None => format!("{:05} {}", h.line, h.text),
         };
         self.status = ui::tf!(
-            "{} の {} 行目(下の「読み込み」で開きます)",
+            "{}, line {} (Load below opens it)",
             f.path.file_name().unwrap_or_default().to_string_lossy().to_string(),
             h.line.to_string()
         )
@@ -2980,13 +2975,13 @@ impl Writer {
     /// 下の「読み込み」。**選んでいる当たりの文書を開き、その位置へ飛ぶ**
     pub(crate) fn find_load(&mut self) {
         let Some((fi, hi)) = self.fd_at else {
-            self.status = ui::t!("当たりを選んでから読み込んでください").into();
+            self.status = ui::t!("Pick a hit first, then load").into();
             return;
         };
         let Some(f) = self.fd_hits.get(fi).cloned() else { return };
         let at = f.hits.get(hi).map(|h| h.at).unwrap_or(0);
         if self.dirty {
-            self.status = ui::t!("いまの文書に未保存の変更があります(保存するか、捨ててから)").into();
+            self.status = ui::t!("The open document has unsaved changes (save or discard first)").into();
             return;
         }
         self.open(f.path.clone());
@@ -3060,7 +3055,7 @@ impl Writer {
     /// ネイティブになり、保存先は .adoc になる。
     pub(crate) fn distill_now(&mut self) {
         if self.native {
-            self.status = ui::t!("この文書はもう adoc 形式です").into();
+            self.status = ui::t!("This document is already in adoc form").into();
             return;
         }
         self.switch_target(Target::Body);
@@ -3075,7 +3070,7 @@ impl Writer {
             .as_ref()
             .and_then(|p| p.file_stem())
             .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| ui::t!("この文書の型").to_string());
+            .unwrap_or_else(|| ui::t!("This document's template").to_string());
         let mut doc = doc;
         doc.template = Some(name);
         self.pg = self.tmpl.page.unwrap_or_default();
@@ -3085,13 +3080,13 @@ impl Writer {
         // **落ちた物を数えて言う。** 「何も失っていない」と嘘をつかない
         self.status = if rep.dropped == 0 {
             ui::tf!(
-                "adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました",
+                "Converted to adoc — {} formats moved into the template, {} paragraphs into the text",
                 rep.styles.to_string(),
                 rep.paragraphs.to_string()
             )
         } else {
             ui::tf!(
-                "adoc 形式にしました — 書式 {} 個をテンプレートに移し、段落 {} 個を本文にしました。段落ごとの書式に収まらない {} 箇所は落ちました(強調や脚注は残っています)",
+                "Converted to adoc — {} formats moved into the template, {} paragraphs into the text. {} spots that did not fit a per-paragraph format were dropped (emphasis and footnotes stayed)",
                 rep.styles.to_string(),
                 rep.paragraphs.to_string(),
                 rep.dropped.to_string()
@@ -3141,7 +3136,7 @@ impl Writer {
         self.rp_open = true;
         self.rp_tab = 2;
         self.status = ui::t!(
-            "adoc 形式では、書式に名前を付けて使います。右のスタイルから選ぶか、新しく作ってください"
+            "In adoc form a format is given a name and reused. Pick one from Styles on the right, or make a new one"
         )
         .into();
         cx.notify();
@@ -3163,7 +3158,7 @@ impl Writer {
         let Some(_) = self.style_new.take() else { return };
         let name = self.style_ed.text().trim().to_string();
         if name.is_empty() {
-            self.status = ui::t!("名前が空です(やめました)").into();
+            self.status = ui::t!("The name is empty (cancelled)").into();
             return;
         }
         let 定義あり = self.tmpl.style(&name).is_some();
@@ -3182,9 +3177,9 @@ impl Writer {
             self.doc.apply_char_format(sel, |f| f.style_id = Some(n.clone()));
         }
         let 言い分 = if 定義あり {
-            ui::t!("テンプレートにある書式です").to_string()
+            ui::t!("a format that is in the template").to_string()
         } else {
-            ui::tf!("この名前はテンプレートにまだありません。見た目を決めるには {} に書いてください",
+            ui::tf!("This name is not in the template yet. To give it a look, write it in {}",
                     self.tmpl_path.as_ref().map(|p| p.display().to_string())
                         .unwrap_or_else(|| Self::FOLDER_TEMPLATE.to_string()))
                 .to_string()
@@ -3192,9 +3187,9 @@ impl Writer {
         self.dirty = true;
         self.relayout_keep();
         self.status = if 字 {
-            ui::tf!("選んだ字を「{}」にしました({})", name, 言い分)
+            ui::tf!("The selected text now uses \"{}\" ({})", name, 言い分)
         } else {
-            ui::tf!("この段落を「{}」にしました({})", name, 言い分)
+            ui::tf!("This paragraph now uses \"{}\" ({})", name, 言い分)
         }
         .into();
     }
@@ -3218,7 +3213,7 @@ impl Writer {
         }
         self.dirty = true;
         self.relayout_keep();
-        self.status = ui::t!("スタイルを外しました").into();
+        self.status = ui::t!("Style removed").into();
     }
 
     pub(crate) fn wear_style(&mut self, name: &str) {
@@ -3227,13 +3222,13 @@ impl Writer {
         self.flush_target();
         let sel = self.ed.selection();
         let role = match name {
-            "本文" => Some(kumihan::ParaStyle::Body),
-            "表題" => Some(kumihan::ParaStyle::Title),
-            "見出し1" => Some(kumihan::ParaStyle::Heading(1)),
-            "見出し2" => Some(kumihan::ParaStyle::Heading(2)),
-            "見出し3" => Some(kumihan::ParaStyle::Heading(3)),
-            "見出し4" => Some(kumihan::ParaStyle::Heading(4)),
-            "見出し5" => Some(kumihan::ParaStyle::Heading(5)),
+            "body" => Some(kumihan::ParaStyle::Body),
+            "Title style" => Some(kumihan::ParaStyle::Title),
+            "Heading 1" => Some(kumihan::ParaStyle::Heading(1)),
+            "Heading 2" => Some(kumihan::ParaStyle::Heading(2)),
+            "Heading 3" => Some(kumihan::ParaStyle::Heading(3)),
+            "Heading 4" => Some(kumihan::ParaStyle::Heading(4)),
+            "Heading 5" => Some(kumihan::ParaStyle::Heading(5)),
             "引用" => Some(kumihan::ParaStyle::Quote),
             _ => None,
         };
@@ -3248,7 +3243,7 @@ impl Writer {
         });
         self.dirty = true;
         self.relayout_keep();
-        self.status = ui::tf!("「{}」にしました", name.to_string()).into();
+        self.status = ui::tf!("Now using \"{}\"", name.to_string()).into();
     }
 
     /// **いま着ているスタイルの字の大きさを1段動かす**(右パネル)。
@@ -3270,9 +3265,9 @@ impl Writer {
                     .clone()
                     .or_else(|| kumihan::theme::Theme::role_name(p.style).map(|s| s.to_string()))
             })
-            .unwrap_or_else(|| ui::t!("本文").to_string());
+            .unwrap_or_else(|| ui::t!("body").to_string());
         self.status = ui::tf!(
-            "大きさはテンプレートで決めます。「{}」の大きさを変えるには {} を直してください",
+            "Sizes are decided by the template. To change the size of \"{}\", edit {}",
             name,
             self.tmpl_path
                 .as_ref()
@@ -3434,7 +3429,7 @@ impl Writer {
                 if !ok {
                     // **黙って諦めない。** 控えが取れていないことは言う
                     w.status =
-                        ui::t!("自動復旧の控えが書けません(保存先の権限を確かめてください)")
+                        ui::t!("Can't write the auto-recovery backup (check the permissions on the save location)")
                             .into();
                 }
             });
@@ -3478,7 +3473,7 @@ impl Writer {
                     .iter()
                     .map(|(n, c)| SharedString::from(format!("{n} × {c}")))
                     .collect();
-                self.status = ui::tf!("{} 段落 / 表 {} — {}", rep.paragraphs, doc.tables().count(), p.file_name().unwrap_or_default().to_string_lossy())
+                self.status = ui::tf!("{} paragraphs / {} tables — {}", rep.paragraphs, doc.tables().count(), p.file_name().unwrap_or_default().to_string_lossy())
                 .into();
                 self.pg = doc.page.unwrap_or_default();
                 self.set_doc(doc);
@@ -3487,18 +3482,18 @@ impl Writer {
                 // 排他(共有フォルダの「後勝ちで潰す」を防ぐ。calc と同じ)
                 self.acquire_lock(&p);
                 if let Some(who) = self.locked_by.clone() {
-                    self.status = ui::tf!("{} — **{} が開いています**。上書き保存はできません(別の名前で保存へ)", self.status, who)
+                    self.status = ui::tf!("{} — **{} has it open**. Overwrite-save is blocked (use Save As)", self.status, who)
                     .into();
                 }
                 if self.doc.protection.is_some() {
-                    self.status = ui::tf!("{} — 読み取り専用で保護されています(保護タブで解除できます)", self.status)
+                    self.status = ui::tf!("{} — protected read-only (Protection tab to release)", self.status)
                     .into();
                 }
                 Self::note_recent(&p);
                 self.path = Some(p);
                 self.dirty = false;
             }
-            Err(e) => self.status = ui::tf!("開けません: {}", e).into(),
+            Err(e) => self.status = ui::tf!("Can't open: {}", e).into(),
         }
     }
 
@@ -3516,13 +3511,13 @@ impl Writer {
                 return;
             }
             // 先客の作業を後勝ちで潰さない。別の名前でなら保存できる
-            self.status = ui::tf!("{} が開いているため上書きしません。別の名前で保存します", self.locked_by.as_deref().unwrap_or(ui::t!("誰か")))
+            self.status = ui::tf!("{} has it open, so no overwrite; saving under another name", self.locked_by.as_deref().unwrap_or(ui::t!("someone")))
             .into();
         }
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
-                .add_filter(ui::t!("officework の文書"), &["adoc"])
-                .add_filter(ui::t!("Word文書"), &["docx"])
+                .add_filter(ui::t!("officework document"), &["adoc"])
+                .add_filter(ui::t!("Word document"), &["docx"])
                 .save_file()
         });
         cx.spawn(async move |this, cx| {
@@ -3536,7 +3531,7 @@ impl Writer {
                             cx.quit();
                         }
                     }
-                    None => this.status = ui::t!("保存をやめました(名前が決まっていません)").into(),
+                    None => this.status = ui::t!("Save cancelled (no name chosen)").into(),
                 }
                 cx.notify();
             });
@@ -3569,20 +3564,20 @@ impl Writer {
                     // **必ず言います。** 紙の上の位置は残らず、本文の流れの
                     // 中の絵になるので、黙ると「消えた」に見えます
                     self.status = if self.ink_svg_count > 0 {
-                        ui::tf!("{} に保存しました。手描きの線は SVG の絵 {} 枚にして本文に置きました",
+                        ui::tf!("Saved to {}. Your strokes became {} SVG picture(s) placed in the text",
                                 名, self.ink_svg_count).into()
                     } else if let Some(at) = 着替えた {
-                        ui::tf!("{} に保存しました。このフォルダの書式({})を使います", 名, at).into()
+                        ui::tf!("Saved to {}. It uses this folder's format ({})", 名, at).into()
                     } else if 落ちる.is_empty() {
-                        ui::tf!("{} に保存しました(本文だけ — 書式はテンプレートの側)", 名).into()
+                        ui::tf!("Saved to {} (text only — the formatting lives in the template)", 名).into()
                     } else {
                         // **黙って捨てません。** adoc は意味だけを持つので、
                         // ページの飾りと直接書式はここで消えます
-                        ui::tf!("{} に保存しました。この形式で持てないものが消えました: {}",
-                                名, 落ちる.join("・")).into()
+                        ui::tf!("Saved to {}. These cannot be kept in this format and were dropped: {}",
+                                名, 落ちる.join("•")).into()
                     };
                 }
-                Err(e) => self.status = ui::tf!("保存できません: {}", e).into(),
+                Err(e) => self.status = ui::tf!("Can't save: {}", e).into(),
             }
             return;
         }
@@ -3594,12 +3589,12 @@ impl Writer {
                     self.dirty = false;
                     self.drop_recover();
                     self.status = ui::tf!(
-                        "{} に保存しました(文字だけのファイル)",
+                        "Saved to {} (plain text)",
                         p.file_name().unwrap_or_default().to_string_lossy()
                     )
                     .into();
                 }
-                Err(e) => self.status = ui::tf!("保存できません: {}", e).into(),
+                Err(e) => self.status = ui::tf!("Can't save: {}", e).into(),
             }
             return;
         }
@@ -3649,20 +3644,20 @@ impl Writer {
                     ""
                 } else {
                     // 読めなかった要素は本文から消えている。黙って保存しない
-                    ui::t!("(読めなかった要素は本文に戻りません)")
+                    ui::t!("(elements that could not be read are not written back)")
                 };
                 let enc_note =
-                    if self.encrypt_pw.is_some() { ui::t!("(暗号化)") } else { "" };
+                    if self.encrypt_pw.is_some() { ui::t!("(encrypted)") } else { "" };
                 let 名 = p.file_name().unwrap_or_default().to_string_lossy().to_string();
                 // **ネイティブ文書から作った docx は、渡すための形です。**
                 // 見た目はスタイル定義の側に入っているので、この writer で
                 // 開き直しても直接書式は付いていません。そこを黙らない
                 self.status = if docx_tmpl.is_some() {
-                    let 元 = tmpl_at.unwrap_or_else(|| ui::t!("いまの書式").to_string());
-                    ui::tf!("{} に書き出しました({} をスタイル定義にしました)。原稿は adoc の側です",
+                    let 元 = tmpl_at.unwrap_or_else(|| ui::t!("the format in use").to_string());
+                    ui::tf!("Exported to {} (turned {} into style definitions). The source stays in the adoc",
                             名, 元).into()
                 } else {
-                    ui::tf!("保存しました — {}{}{}", 名, enc_note, caveat).into()
+                    ui::tf!("Saved — {}{}{}", 名, enc_note, caveat).into()
                 };
                 // **ネイティブ文書からの docx は「書き出し」です。**
                 // 原稿は adoc の側にあるので、保存先を docx へ移しません —
@@ -3677,7 +3672,7 @@ impl Writer {
                 }
                 Self::note_recent(&p);
             }
-            Err(e) => self.status = ui::tf!("保存できません: {}", e).into(),
+            Err(e) => self.status = ui::tf!("Can't save: {}", e).into(),
         }
     }
 

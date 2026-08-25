@@ -57,7 +57,7 @@ impl EntityInputHandler for Calc {
             {
                 if self.sheet().protected {
                     self.status =
-                        ui::t!("シートが保護されています(保護タブの「シートを保護する」で解除)").into();
+                        ui::t!("The sheet is protected (Protection tab > Protect Sheet to release)").into();
                 } else {
                     self.checkpoint();
                     let p = self.cursor;
@@ -68,7 +68,7 @@ impl EntityInputHandler for Calc {
                     recalc_book(&mut self.book, self.active);
                     self.dirty = true;
                     self.sync_input();
-                    self.status = ui::tf!("{} = {}(空白キーで切替)", p.a1(), if b { "☐" } else { "☑" })
+                    self.status = ui::tf!("{} = {} (space toggles)", p.a1(), if b { "☐" } else { "☑" })
                     .into();
                 }
                 cx.notify();
@@ -346,7 +346,7 @@ impl Render for Calc {
             .path
             .as_ref()
             .and_then(|q| q.file_name().map(|n| n.to_string_lossy().to_string()))
-            .unwrap_or_else(|| ui::t!("無題のブック").into());
+            .unwrap_or_else(|| ui::t!("Untitled workbook").into());
         let winbtn = |id: &'static str, label: &'static str| {
             div().id(id).px_2p5().py_1().rounded_sm()
                 .text_size(px(us * 12.0)).text_color(rgb(0xCFE6D8))
@@ -391,7 +391,7 @@ impl Render for Calc {
                 ))))
             .child(div().flex_1())
             .child(div().pr_2().text_size(px(us * 10.5)).text_color(rgb(0x9CC9AF))
-                .child(SharedString::from(ui::tf!("calc — 実装済み {}/{}", ready, all))))
+                .child(SharedString::from(ui::tf!("calc — implemented {}/{}", ready, all))))
             .child(winbtn("min", "─").on_click(cx.listener(|_, _, window, _| {
                 window.minimize_window();
             })))
@@ -495,18 +495,18 @@ impl Render for Calc {
         // 主要なボタンは名札つきの大ボタン、他は絵だけ(乗ると名前が下のステータス
         // バーへ)。絵の無いボタンは小さな文字のボタン。ホームだけ2段(ボタンが多い)
         const BIG: &[(&str, &str)] = &[
-            ("instable", "表"), ("insimage-c", "画像"), ("insshape", "図形"),
+            ("instable", "Table"), ("insimage-c", "Images"), ("insshape", "図形"),
             ("inschart", "グラフ"), ("inssmartart", "SmartArt"),
-            ("autosum", "オートSUM"), ("recent", "最近使った関数"),
-            ("pagemargins", "余白"), ("pageorient", "向き"), ("pagesize", "サイズ"),
+            ("autosum", "AutoSum"), ("recent", "Recently used"),
+            ("pagemargins", "Margins"), ("pageorient", "Orientation"), ("pagesize", "サイズ"),
             ("printarea", "印刷範囲"),
-            ("data-from-text", "テキストから"), ("custom-sort", "並べ替え"),
+            ("data-from-text", "テキストから"), ("custom-sort", "Sort"),
             ("setfilter", "フィルター"), ("python", "Python"),
-            ("subtotal", "小計"), ("solver", "ソルバー"), ("group", "グループ化"),
+            ("subtotal", "Subtotals"), ("solver", "Solver"), ("group", "グループ化"),
             ("pivot-insert", "ピボットテーブル"),
             ("td-header", "ヘッダー行"), ("td-total", "合計行"),
-            ("coauth-mode", "共同編集モード"), ("co-addcomment", "コメント"),
-            ("co-chat", "チャット"), ("co-history", "バージョン履歴"),
+            ("coauth-mode", "Co-editing mode"), ("co-addcomment", "Comment"),
+            ("co-chat", "Chat"), ("co-history", "Version history"),
             ("prot-encrypt", "暗号化"), ("prot-sign", "署名"), ("prot-doc", "保護"),
             ("freeze", "枠の固定"), ("pen", "ペン"), ("highlighter", "蛍光ペン"),
             ("eraser", "消しゴム"),
@@ -542,27 +542,27 @@ impl Render for Calc {
         // 絵の無いボタンの**短い札**(ja)。長い正式名はツールチップと状態行へ。
         // 場所を食う文字のボタンを細くする(発注者 2026-08-07)
         const SHORT: &[(&str, &str)] = &[
-            ("fillparag", "塗り"), ("text-orient", "向き"),
+            ("fillparag", "Fill color"), ("text-orient", "Orientation"),
             ("clear-filter", "解除"), ("format", "書式"),
             ("digit-dec", "桁−"), ("digit-inc", "桁+"),
-            ("cell-format", "スタイル"), ("table-tpl", "表↧"),
+            ("cell-format", "Style"), ("table-tpl", "表↧"),
             ("inscheckbox", "チェック"), ("insrecommend", "おすすめ"),
             ("inshyperlink", "リンク"), ("rtl-sheet", "右から"),
-            ("print-gridlines", "枠線"), ("print-headings", "見出し"),
-            ("defname", "名前"), ("trace-prec", "参照元"),
+            ("print-gridlines", "枠線"), ("print-headings", "Heading"),
+            ("defname", "Name"), ("trace-prec", "参照元"),
             ("trace-dep", "参照先"), ("remove-arrows", "矢印消"),
-            ("data-from-text", "テキスト"), ("data-external-links", "外部リンク"),
+            ("data-from-text", "Text"), ("data-external-links", "External links"),
             ("ungroup", "解除"), ("show-details", "詳細+"),
             ("hide-details", "詳細−"), ("pivot-fields", "フィールド"),
             ("pivot-refresh-all", "全更新"), ("pivot-select", "選択"),
             ("pivot-layout", "レイアウト"), ("td-band-row", "縞(行)"),
             ("td-first", "先頭列"), ("td-last", "末尾列"),
             ("td-band-col", "縞(列)"), ("td-filter", "▼ボタン"),
-            ("rem-duplicates", "重複"), ("td-torange", "範囲へ"),
+            ("rem-duplicates", "Duplicates"), ("td-torange", "範囲へ"),
             ("td-resize", "サイズ"), ("sheet-view", "表示"),
             ("ui-bigger", "字を大"), ("ui-smaller", "字を小"),
             ("darkmode", "ダークモード"), ("freeze", "固定"),
-            ("show-gridlines", "枠線"), ("show-headings", "見出し"),
+            ("show-gridlines", "枠線"), ("show-headings", "Heading"),
             ("show-zeros", "0表示"),
         ];
         // ボタンの印は3値: ▾=一覧が真下に開く / …=小窓が開く / 無印=すぐ効く。
@@ -863,7 +863,7 @@ impl Render for Calc {
                 .is_some_and(|c| c.fmt.formula_hidden && c.formula.is_some());
         let bar_text = if formula_hidden {
             // **空欄にしない。** 空だと「式が無い」と読めてしまう
-            ui::t!("(式は隠されています)").to_string()
+            ui::t!("(the formula is hidden)").to_string()
         } else {
             let mut t = self.input.text().to_string();
             if in_edit {
@@ -892,8 +892,7 @@ impl Render for Calc {
                     cx.stop_propagation();
                     this.name_edit = Some(Editor::new(""));
                     this.status = ui::t!(
-                        "名前ボックス: 番地(B12)・範囲(A1:C9)・名前で移動。\
-                         知らない名前は選択に付きます")
+                        "Name box: go to a cell (B12), a range (A1:C9) or a name. An unknown name is assigned to the selection")
                     .into();
                     cx.notify();
                 }))
@@ -955,7 +954,7 @@ impl Render for Calc {
                            this.input.move_to(at, false);
                            this.edit_armed = true;
                            this.status =
-                               ui::t!("数式バーで編集: Enter で確定 / Esc で取消").into();
+                               ui::t!("Editing in the formula bar: Enter to confirm / Esc to cancel").into();
                            cx.notify();
                        }))
                    .child(SharedString::from(bar_text)));
@@ -1278,9 +1277,9 @@ impl Render for Calc {
                                     }
                                     this.dirty = true;
                                     this.status = if hidden {
-                                        ui::t!("詳細を表示しました(+/− でいつでも)").into()
+                                        ui::t!("Detail shown (+/− any time)").into()
                                     } else {
-                                        ui::t!("詳細を畳みました(+ で開きます)").into()
+                                        ui::t!("Detail collapsed (+ expands)").into()
                                     };
                                     cx.notify()
                                 })))
@@ -1757,7 +1756,7 @@ impl Render for Calc {
                         .text_size(px(us * 12.0))
                         .child(if search.is_empty() {
                             div().text_color(rgb(0x9AA5AE))
-                                .child(SharedString::from(format!("|{}", ui::t!("(打つと絞り込み)"))))
+                                .child(SharedString::from(format!("|{}", ui::t!("(type to filter)"))))
                         } else {
                             div().child(SharedString::from(format!("{search}|")))
                         }),
@@ -1780,7 +1779,7 @@ impl Render for Calc {
                         .flex().flex_row().items_center().gap_2()
                         .border_b_1().border_color(rgb(0xE1E6EA))
                         .child(checkbox(all_on))
-                        .child(ui::t!("(すべて選択)"))
+                        .child(ui::t!("(Select all)"))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                             move |this, _, _, cx| {
                                 cx.stop_propagation();
@@ -1794,7 +1793,7 @@ impl Render for Calc {
                 let mut list = div().id("flt-list").max_h(px(240.0)).overflow_y_scroll();
                 let mut shown_any = false;
                 for (i, (v, n)) in vals.iter().enumerate() {
-                    let label = if v.is_empty() { ui::t!("(空白)").to_string() } else { v.clone() };
+                    let label = if v.is_empty() { ui::t!("(blank)").to_string() } else { v.clone() };
                     if !search.is_empty() && !label.contains(&search) {
                         continue;
                     }
@@ -1822,13 +1821,13 @@ impl Render for Calc {
                 if !shown_any {
                     list = list.child(div().px_1p5().py_0p5()
                         .text_color(rgb(0x9AA5AE))
-                        .child(ui::t!("(該当なし)")));
+                        .child(ui::t!("(no matches)")));
                 }
                 panel = panel.child(list);
                 if cut {
                     panel = panel.child(div().px_1p5().text_size(px(us * 11.0))
                         .text_color(rgb(0x8A4B00))
-                        .child(ui::t!("値が多いので上位 1,000 種で切っています")));
+                        .child(ui::t!("Too many values — showing the first 1,000")));
                 }
                 // 並べ替えとこの列の解除
                 let footer_btn = |id: &'static str, label: SharedString| {
@@ -1840,14 +1839,14 @@ impl Render for Calc {
                 panel = panel.child(
                     div().flex().flex_row().items_center().gap_1().mt_1()
                         .border_t_1().border_color(rgb(0xE1E6EA)).pt_1()
-                        .child(footer_btn("flt-asc", ui::t!("昇順").into())
+                        .child(footer_btn("flt-asc", ui::t!("Ascending").into())
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                 move |this, _, _, cx| {
                                     cx.stop_propagation();
                                     this.sort_col(col, true);
                                     cx.notify();
                                 })))
-                        .child(footer_btn("flt-desc", ui::t!("降順").into())
+                        .child(footer_btn("flt-desc", ui::t!("Descending").into())
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                 move |this, _, _, cx| {
                                     cx.stop_propagation();
@@ -1855,7 +1854,7 @@ impl Render for Calc {
                                     cx.notify();
                                 })))
                         .child(div().flex_1())
-                        .child(footer_btn("flt-reset", ui::t!("この列を解除").into())
+                        .child(footer_btn("flt-reset", ui::t!("Clear this column").into())
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                 move |this, _, _, cx| {
                                     cx.stop_propagation();
@@ -1865,7 +1864,7 @@ impl Render for Calc {
                 );
                 panel = panel.child(div().px_1p5().pt_0p5().text_size(px(us * 10.5))
                     .text_color(rgb(0x9AA5AE))
-                    .child(ui::t!("クリックで入切 — すぐ効きます。Esc で閉じる")));
+                    .child(ui::t!("Click to toggle — takes effect at once. Esc to close")));
                 grid = grid.child(panel);
             }
         }
@@ -1982,7 +1981,7 @@ impl Render for Calc {
                 .border_t_1().border_color(rgb(0xD5DBE0))
                 .text_size(px(us * 11.0)).text_color(rgb(0x1B1B1B));
             w = w.child(div().font_weight(gpui::FontWeight::BOLD)
-                .text_color(rgb(0x1B6E3C)).child(ui::t!("見張り")));
+                .text_color(rgb(0x1B6E3C)).child(ui::t!("Watch")));
             for (i, (si, p)) in self.watch.iter().take(24).enumerate() {
                 let Some(sh) = self.book.sheets.get(*si) else { continue };
                 let v = sh.get(*p).map(|c| c.value.display()).unwrap_or_default();
@@ -2036,7 +2035,7 @@ impl Render for Calc {
                     .text_color(rgb(0xC7433F))
                     .whitespace_nowrap()
                     .cursor_pointer()
-                    .child(SharedString::from(ui::tf!("● 記録中 {} 行(押すと止める)", n.to_string())))
+                    .child(SharedString::from(ui::tf!("● Recording, {} lines (click to stop)", n.to_string())))
                     .on_click(cx.listener(|this: &mut Calc, _, _, cx| {
                         this.run_cmd("rec-toggle", cx);
                         cx.notify()
@@ -2060,7 +2059,7 @@ impl Render for Calc {
             .children(self.filter_counts().map(|(total, shown)| {
                 div().pr_3().text_size(px(us * 11.0))
                     .text_color(rgb(0x1B6EC2)).whitespace_nowrap()
-                    .child(SharedString::from(ui::tf!("{} 行中 {} 行を表示", total, shown).to_string()))
+                    .child(SharedString::from(ui::tf!("Of {} rows, {} shown", total, shown).to_string()))
             }))
             .children(self.sel_stats().map(|s| {
                 div().pr_2().text_size(px(us * 11.0)).font_weight(gpui::FontWeight::BOLD)
@@ -2089,7 +2088,7 @@ impl Render for Calc {
                     .child(SharedString::from(format!("{}%", (self.zoom * 100.0).round() as i32)))
                     .on_click(cx.listener(|this: &mut Calc, _, _, cx| {
                         this.zoom = 1.0;
-                        this.status = ui::t!("ズームを 100% に戻しました").into();
+                        this.status = ui::t!("Zoom back to 100%").into();
                         cx.notify()
                     })))
                 .child(div()
@@ -2117,13 +2116,13 @@ impl Render for Calc {
                 });
             #[allow(clippy::type_complexity)]
             let shape_entries: Vec<(&'static str, &'static str, &'static str, bool, bool)> = vec![
-                ("sh-cut", "切り取り", "", true, false),
-                ("sh-copy", "コピー", "", true, false),
-                ("sh-paste", "貼り付け", "", self.shape_clip.is_some(), false),
+                ("sh-cut", "Cut", "", true, false),
+                ("sh-copy", "Copy", "", true, false),
+                ("sh-paste", "Paste", "", self.shape_clip.is_some(), false),
                 ("", "", "", false, false),
                 ("sh-order", "配置", "", true, true),
                 ("sh-align", "整列", "", true, true),
-                ("sh-rotate", "回転", "", !sh_poly, true),
+                ("sh-rotate", "Rotation", "", !sh_poly, true),
                 ("sh-group", "グループ化", "", false, false),
                 // 足し引き。**2つ選んでいるときだけ**(1つでは相手がいない)
                 ("sh-bool", "図形を結合", "",
@@ -2145,22 +2144,22 @@ impl Render for Calc {
                 ("sh-settings", "図形の詳細設定", "", true, false),
                 ("sh-link", "リンク", "", false, false),
                 ("", "", "", false, false),
-                ("sh-del", "削除", "Del", true, false),
+                ("sh-del", "Delete", "Del", true, false),
             ];
             // (id, 名前, 付記, 押せるか, 子メニューか)
             #[allow(clippy::type_complexity)]
             let mut entries: Vec<(&'static str, &'static str, &'static str, bool, bool)> = vec![
-                ("cut", "切り取り", "Ctrl+X", true, false),
-                ("copy", "コピー", "Ctrl+C", true, false),
-                ("paste", "貼り付け", "Ctrl+V", true, false),
+                ("cut", "Cut", "Ctrl+X", true, false),
+                ("copy", "Copy", "Ctrl+C", true, false),
+                ("paste", "Paste", "Ctrl+V", true, false),
                 // 本家(Euro-Office)に無いのが残念、との声で追加した唯一の独自項目
                 ("pastesp", "形式を選択して貼り付け", "", true, true),
                 ("", "", "", false, false),
-                ("ins", "挿入", "", true, true),
-                ("del", "削除", "", true, true),
+                ("ins", "Insert", "", true, true),
+                ("del", "Delete", "", true, true),
                 ("clr", "消去", "", true, true),
                 ("", "", "", false, false),
-                ("sort", "並べ替え", "", true, true),
+                ("sort", "Sort", "", true, true),
                 ("subtotal", "合計の集計のしかた", "", {
                     // 合計行の =SUM / =SUBTOTAL の上でだけ生かす(本家のセル右の▼)
                     self.sheet().get(self.cursor).and_then(|c| c.formula.as_deref()).is_some_and(
@@ -2189,7 +2188,7 @@ impl Render for Calc {
                     self.sheet().comments.contains_key(&self.cursor), false),
                 // 一覧はブック全体 — このセルにコメントが無くても押せる
                 ("comment-list",
-                    if self.comment_list.is_some() { "コメントの一覧を閉じる" } else { "コメントの一覧" },
+                    if self.comment_list.is_some() { "Close the comment list" } else { "コメントの一覧" },
                     "",
                     self.book.sheets.iter().any(|s| !s.comments.is_empty()),
                     false),
@@ -2207,11 +2206,11 @@ impl Render for Calc {
                     self.sheet().get(self.cursor).is_some_and(|c| c.formula.is_some()),
                     false),
                 ("numfmt", "数値の書式", "", true, true),
-                ("cond", "条件付き書式", "", true, true),
+                ("cond", "Conditional formatting", "", true, true),
                 ("picklist", "ドロップダウンリストから選択する", "", true, false),
                 ("defname", "名前の定義", "", true, false),
                 ("", "", "", false, false),
-                ("func", "関数を挿入", "", true, true),
+                ("func", "Insert function", "", true, true),
                 ("hyperlink", "ハイパーリンク", "", true, false),
                 ("", "", "", false, false),
                 ("freeze", "枠の固定", "", true, false),
@@ -2224,15 +2223,15 @@ impl Render for Calc {
                 Some(true) => {
                     entries.insert(0, ("colw", "列の幅…", "", true, false));
                     entries.insert(1, ("autofit-col", "幅を中身に合わせる", "", true, false));
-                    entries.insert(2, ("hide-cols", "非表示", "", true, false));
-                    entries.insert(3, ("unhide-cols", "再表示", "", true, false));
+                    entries.insert(2, ("hide-cols", "Hide", "", true, false));
+                    entries.insert(3, ("unhide-cols", "Unhide", "", true, false));
                     entries.insert(4, ("", "", "", false, false));
                 }
                 Some(false) => {
                     entries.insert(0, ("rowh", "行の高さ…", "", true, false));
                     entries.insert(1, ("autofit-row", "高さを中身に合わせる", "", true, false));
-                    entries.insert(2, ("hide-rows", "非表示", "", true, false));
-                    entries.insert(3, ("unhide-rows", "再表示", "", true, false));
+                    entries.insert(2, ("hide-rows", "Hide", "", true, false));
+                    entries.insert(3, ("unhide-rows", "Unhide", "", true, false));
                     entries.insert(4, ("", "", "", false, false));
                 }
                 None => {}
@@ -2563,7 +2562,7 @@ impl Render for Calc {
             if list.is_empty() {
                 lst = lst.child(div().px_2().py_1().text_size(px(us * 12.5))
                     .text_color(rgb(0x66707A))
-                    .child(ui::t!("その条件の関数がありません")));
+                    .child(ui::t!("No function matches")));
             }
             for (i, f) in list.iter().enumerate().skip(start).take(11) {
                 let on = i == sel;
@@ -2606,7 +2605,7 @@ impl Render for Calc {
                     .flex().flex_col().gap_1p5()
                     .child(div().flex().flex_row().items_center()
                         .child(div().text_size(px(us * 13.0)).font_weight(gpui::FontWeight::BOLD)
-                            .text_color(rgb(0x1B6E3C)).child(ui::t!("関数を挿入")))
+                            .text_color(rgb(0x1B6E3C)).child(ui::t!("Insert function")))
                         .child(div().flex_1())
                         .child(div().id("fn-x").px_2().cursor_pointer().text_size(px(us * 13.0))
                             .text_color(rgb(0x66707A)).hover(|s| s.text_color(rgb(0xC0392B)))
@@ -2620,7 +2619,7 @@ impl Render for Calc {
                         .border_1().border_color(rgb(0xC6CDD3)).rounded_sm()
                         .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(if search_t == "|" {
-                            format!("|{}", ui::t!("(打つと絞り込み)"))
+                            format!("|{}", ui::t!("(type to filter)"))
                         } else {
                             search_t
                         })))
@@ -2632,13 +2631,13 @@ impl Render for Calc {
                         .min_h(px(48.0))
                         .child(SharedString::from(desc)))
                     .child(div().flex().flex_row().gap_2().justify_center()
-                        .child(btn("fn-next", ui::t!("次へ").to_string(), true)
+                        .child(btn("fn-next", ui::t!("Next").to_string(), true)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.fn_next();
                                 cx.notify();
                             })))
-                        .child(btn("fn-cancel", ui::t!("キャンセル").to_string(), false)
+                        .child(btn("fn-cancel", ui::t!("Cancel").to_string(), false)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.fn_dlg = None;
@@ -2710,7 +2709,7 @@ impl Render for Calc {
                     .flex().flex_col().gap_1p5()
                     .child(div().flex().flex_row().items_center()
                         .child(div().text_size(px(us * 13.0)).font_weight(gpui::FontWeight::BOLD)
-                            .text_color(rgb(0x1B6E3C)).child(ui::t!("関数の引数")))
+                            .text_color(rgb(0x1B6E3C)).child(ui::t!("Function arguments")))
                         .child(div().flex_1())
                         .child(div().id("fna-x").px_2().cursor_pointer().text_size(px(us * 13.0))
                             .text_color(rgb(0x66707A)).hover(|s| s.text_color(rgb(0xC0392B)))
@@ -2730,11 +2729,11 @@ impl Render for Calc {
                         .bg(rgb(0xEFF2F4)).rounded_sm()
                         .child(SharedString::from(arg_hint)))
                     .child(div().text_size(px(us * 12.0))
-                        .child(SharedString::from(ui::tf!("関数の結果 = {}", a.result))))
+                        .child(SharedString::from(ui::tf!("Function result = {}", a.result))))
                     .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                        .child(ui::t!("セルをクリックすると、いまの欄に参照が入ります")))
+                        .child(ui::t!("Click a cell to insert a reference into the current field")))
                     .child(div().flex().flex_row().gap_2().justify_center()
-                        .child(btn("fna-back", ui::t!("戻る").to_string(), false)
+                        .child(btn("fna-back", ui::t!("Back").to_string(), false)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.fn_args = None;
@@ -2751,7 +2750,7 @@ impl Render for Calc {
                                 this.fn_args_ok();
                                 cx.notify();
                             })))
-                        .child(btn("fna-cancel", ui::t!("キャンセル").to_string(), false)
+                        .child(btn("fna-cancel", ui::t!("Cancel").to_string(), false)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.fn_args = None;
@@ -2777,28 +2776,28 @@ impl Render for Calc {
                     .flex().flex_col().gap_2()
                     .child(div().text_size(px(us * 13.0)).font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x1B6E3C))
-                        .child(ui::t!("保存していない変更があります")))
+                        .child(ui::t!("There are unsaved changes")))
                     .child(div().text_size(px(us * 12.0))
-                        .child(ui::t!("保存して終了しますか?(Enter = 保存して終了 / Esc = やめる)")))
+                        .child(ui::t!("Save and quit? (Enter = save and quit / Esc = cancel)")))
                     .child(div().flex().flex_row().gap_2().justify_center()
-                        .child(btn("q-save", ui::t!("保存して終了").to_string(), true)
+                        .child(btn("q-save", ui::t!("Save and quit").to_string(), true)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.quit_ask = false;
                                 this.save(true, cx);
                                 cx.notify();
                             })))
-                        .child(btn("q-drop", ui::t!("保存せず終了").to_string(), false)
+                        .child(btn("q-drop", ui::t!("Quit without saving").to_string(), false)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.release_lock();
                                 cx.quit();
                             })))
-                        .child(btn("q-cancel", ui::t!("キャンセル").to_string(), false)
+                        .child(btn("q-cancel", ui::t!("Cancel").to_string(), false)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.quit_ask = false;
-                                this.status = ui::t!("終了をやめました").into();
+                                this.status = ui::t!("Quit cancelled").into();
                                 cx.notify();
                             })))))
         });
@@ -3164,7 +3163,7 @@ impl Render for Calc {
             }
         }
         if let Some(u) = self.sheet().links.get(&self.cursor) {
-            tip_lines.push(ui::tf!("リンク: {}(Ctrl+クリックで開く)", u));
+            tip_lines.push(ui::tf!("Link: {} (Ctrl+click opens)", u));
         }
         let tip = if tip_lines.is_empty() {
             None
@@ -3192,65 +3191,65 @@ impl Render for Calc {
                 a.a1()
             };
             let title = match *kind {
-                "name" => ui::tf!("名前の定義 — {} に名前を付ける", range),
-                "comment" => ui::tf!("コメント — {}(空にして Enter で消す)", self.cursor.a1()),
-                "link" => ui::tf!("ハイパーリンク — {}(URL か #シート名!B5。空にして Enter で外す)", self.cursor.a1()),
-                "link-text" => ui::tf!("表示テキスト — {} に見せる文字(空 Enter = そのまま)", self.cursor.a1()),
-                "cond-gt" => ui::tf!("条件付き書式 — {} で、いくつより大きい値を塗る?", range),
-                "cond-lt" => ui::tf!("条件付き書式 — {} で、いくつより小さい値を塗る?", range),
-                "cond-between" => ui::tf!("条件付き書式 — {} で、間なら塗る(8〜15 の形)", range),
-                "cond-text" => ui::tf!("条件付き書式 — {} で、含む文字は?", range),
-                "cond-top" => ui::tf!("条件付き書式 — {} で、上位いくつを塗る?", range),
-                "cond-bottom" => ui::tf!("条件付き書式 — {} で、下位いくつを塗る?", range),
-                "find" => ui::t!("検索と置換 — 探す言葉").to_string(),
-                "split-delim" => ui::tf!("区切り位置 — {} を何で割る?(空 Enter = カンマ)", range),
-                "shape-text" => ui::t!("図形の文字(空にして Enter で消す)").to_string(),
-                "shape-fill-rgb" => ui::t!("図形の塗り — RRGGBB の6桁(例: FFF2CC。空 Enter = 塗りなし)").to_string(),
-                "shape-line-rgb" => ui::t!("図形の線 — RRGGBB の6桁(例: 1B6E3C。空 Enter = 線なし)").to_string(),
-                "shape-rot" => ui::t!("図形の回転 — 度の数(時計回り。例: 45 / -30。空 Enter = 0)").to_string(),
-                "py" => ui::t!("Python — 一行のコード(空 Enter = .py ファイルを選ぶ)").to_string(),
-                "dt-col" => ui::t!("データテーブル 1/2 — 列の入力セル(左の列の値を入れる先。例: B2)").to_string(),
-                "dt-row" => ui::t!("データテーブル 2/2 — 行の入力セル(空 Enter = 1変数)").to_string(),
-                "goal-target" => ui::t!("ゴールシーク — 目標(セル=値。例: D6=800000)").to_string(),
-                "goal-var" => ui::tf!("{} をいくつにするか探します — 変えるセルは?(例: B2)", self.goal.map(|(p, v)| format!("{}={v}", p.a1())).unwrap_or_default()),
-                "replace-with" => ui::tf!("「{}」を何に置き換える?", self.find_term.as_deref().unwrap_or("")),
-                "chat" => ui::t!("チャット — 言伝を書き残す(ブックの隣の .chat.txt)").to_string(),
-                "equation" => ui::t!("方程式 — 式を打つ(TeX の書き方。清書して画像で置く)").to_string(),
-                "table-resize" => ui::t!("テーブルのサイズ変更 — 新しい範囲(A1:C9)").to_string(),
-                "prop-author-add" => ui::t!("著者を追加 — 名前を1人ぶん").to_string(),
-                "prop-add-name" => ui::t!("プロパティを追加 1/3 — 名前").to_string(),
-                "prop-add-type" => ui::t!("プロパティを追加 2/3 — 型(文字 / 数 / 日付 / はい・いいえ。空 Enter = 文字)").to_string(),
-                "prop-add-value" => ui::tf!("プロパティを追加 3/3 — {} の値", self.prop_add.as_ref().map(|(n, k)| format!("{n}({})", k.label())).unwrap_or_default()),
-                "prop-title" => ui::t!("ブックの情報 — タイトル").to_string(),
-                "prop-keywords" => ui::t!("ブックの情報 — タグ").to_string(),
-                "prop-subject" => ui::t!("ブックの情報 — 件名").to_string(),
-                "prop-desc" => ui::t!("ブックの情報 — コメント").to_string(),
-                "textart" => ui::t!("テキストアート — 飾り文字にする文字を打つ").to_string(),
-                "pw-open" => ui::t!("暗号化されたブック — パスワード").to_string(),
-                "pw-set" => ui::t!("暗号化 1/2 — パスワード(空にして Enter で暗号化をやめる)").to_string(),
-                "pw-set2" => ui::t!("暗号化 2/2 — 同じパスワードをもう一度").to_string(),
-                "sheet-rename" => ui::t!("シートの名前の変更").to_string(),
-                "sort-by" => ui::t!("並べ替え — 基準を左から強い順に(例: 金額 降順, 品名)").to_string(),
-                "numfmt-custom" => ui::t!("数値の書式コード(例: #,##0.00 / yyyy/m/d。空 Enter = 一般)").to_string(),
-                "border-color-rgb" => ui::t!("線の色 — RRGGBB の6桁(例: FF0000。空 Enter = 自動)").to_string(),
-                "font-color-rgb" => ui::t!("文字の色 — RRGGBB の6桁(例: FF0000。空 Enter = 自動)").to_string(),
-                "fill-color-rgb" => ui::t!("塗りの色 — RRGGBB の6桁(例: FFF2CC。空 Enter = 塗りなし)").to_string(),
-                "fill-bg-rgb" => ui::t!("柄の地の色 — RRGGBB の6桁(例: FFFFFF。空 Enter = 白)").to_string(),
-                "comment-reply" => ui::t!("返信を追加 — この筋の後ろに足します").to_string(),
-                "user-name" => ui::t!("コメントの名乗り — 書き残す名前(空 Enter = 名乗らない)").to_string(),
-                "text-angle" => ui::t!("文字の角度 — -90〜90 の数(上向きが正。空 Enter = 0)").to_string(),
-                "hf-edit" => ui::t!("ヘッダー/フッター — この区分の文字(&P=頁 &N=総頁。空 Enter = 消す)").to_string(),
-                "name-range" => ui::t!("名前の中身 — 場所(B12 か A1:C9 の形)").to_string(),
-                "csv-delim" => ui::t!("区切りの文字を1つ(例: |)").to_string(),
-                "csv-dest" => ui::t!("置き場所 — 左上のセル(B12 の形)").to_string(),
-                "calc-iter" => ui::t!("反復計算 — 最大回数と変化量(例: 100 0.001。空 Enter = 切)").to_string(),
-                "pivot-label" => ui::t!("ラベルで絞る — 例: 含む 東京 / で始まる 東 / で終わる 区").to_string(),
-                "pivot-vfilter" => ui::t!("値で絞る — 例: > 1000(比較は > >= < <= =。空 Enter = 解除)").to_string(),
-                "pivot-group-width" => ui::t!("数の幅でグループ化 — 幅を数で(例: 100)").to_string(),
-                "col-width" => ui::t!("列の幅 — 0〜255(「0」何個ぶんか。空 Enter = 既定に戻す)").to_string(),
-                "row-height" => ui::t!("行の高さ — 0〜409 pt(空 Enter = 既定に戻す)").to_string(),
-                "subtotal-by" => ui::t!("小計 1/2 — 何の区切りで集めるか(見出しを1つ)").to_string(),
-                "subtotal-vals" => ui::t!("小計 2/2 — 合計する見出し").to_string(),
+                "name" => ui::tf!("Define name — name {}", range),
+                "comment" => ui::tf!("Comment — {} (empty Enter removes)", self.cursor.a1()),
+                "link" => ui::tf!("Hyperlink — {} (URL or #Sheet!B5; empty Enter removes it)", self.cursor.a1()),
+                "link-text" => ui::tf!("Display text — what {} shows (empty Enter = keep as is)", self.cursor.a1()),
+                "cond-gt" => ui::tf!("Conditional formatting — in {}, colour values greater than?", range),
+                "cond-lt" => ui::tf!("Conditional formatting — in {}, colour values less than?", range),
+                "cond-between" => ui::tf!("Conditional format — fill {} when between (form: 8〜15)", range),
+                "cond-text" => ui::tf!("Conditional format — text to look for in {}?", range),
+                "cond-top" => ui::tf!("Conditional format — top how many in {}?", range),
+                "cond-bottom" => ui::tf!("Conditional format — bottom how many in {}?", range),
+                "find" => ui::t!("Find and replace — search term").to_string(),
+                "split-delim" => ui::tf!("Text to columns — split {} on what? (empty Enter = comma)", range),
+                "shape-text" => ui::t!("Shape text (empty Enter removes)").to_string(),
+                "shape-fill-rgb" => ui::t!("Shape fill — six hex digits RRGGBB (FFF2CC, for example. Empty Enter = no fill)").to_string(),
+                "shape-line-rgb" => ui::t!("Shape line — six hex digits RRGGBB (1B6E3C, for example. Empty Enter = no line)").to_string(),
+                "shape-rot" => ui::t!("Shape rotation — an angle in degrees (clockwise; 45 or -30, for example. Empty Enter = 0)").to_string(),
+                "py" => ui::t!("Python — one line of code (empty Enter picks a .py file)").to_string(),
+                "dt-col" => ui::t!("Data table 1/2 — column input cell (where the values in the left column go. B2, for example)").to_string(),
+                "dt-row" => ui::t!("Data table 2/2 — row input cell (empty Enter = one variable)").to_string(),
+                "goal-target" => ui::t!("Goal seek — target (cell=value, e.g. D6=800000)").to_string(),
+                "goal-var" => ui::tf!("Solving for {} — which cell may change? (e.g. B2)", self.goal.map(|(p, v)| format!("{}={v}", p.a1())).unwrap_or_default()),
+                "replace-with" => ui::tf!("Replace \"{}\" with what?", self.find_term.as_deref().unwrap_or("")),
+                "chat" => ui::t!("Chat — leave a message (.chat.txt next to the workbook)").to_string(),
+                "equation" => ui::t!("Equation — type TeX (typeset and placed as an image)").to_string(),
+                "table-resize" => ui::t!("Resize table — new range (A1:C9)").to_string(),
+                "prop-author-add" => ui::t!("Add an author — one name").to_string(),
+                "prop-add-name" => ui::t!("Add a property 1/3 — name").to_string(),
+                "prop-add-type" => ui::t!("Add a property 2/3 — type (text / number / date / yes-no. Empty Enter = text)").to_string(),
+                "prop-add-value" => ui::tf!("Add a property 3/3 — the value of {}", self.prop_add.as_ref().map(|(n, k)| format!("{n}({})", k.label())).unwrap_or_default()),
+                "prop-title" => ui::t!("Workbook info — title").to_string(),
+                "prop-keywords" => ui::t!("Workbook info — tags").to_string(),
+                "prop-subject" => ui::t!("Workbook info — subject").to_string(),
+                "prop-desc" => ui::t!("Workbook info — comments").to_string(),
+                "textart" => ui::t!("Text art — type the text to decorate").to_string(),
+                "pw-open" => ui::t!("Encrypted workbook — password").to_string(),
+                "pw-set" => ui::t!("Encryption 1/2 — password (leave empty and press Enter to remove encryption)").to_string(),
+                "pw-set2" => ui::t!("Encryption 2/2 — the same password again").to_string(),
+                "sheet-rename" => ui::t!("Rename sheet").to_string(),
+                "sort-by" => ui::t!("Sort — criteria, strongest first (e.g. Amount desc, Item)").to_string(),
+                "numfmt-custom" => ui::t!("Number format code (e.g. #,##0.00 / yyyy/m/d; empty Enter = General)").to_string(),
+                "border-color-rgb" => ui::t!("Line colour — 6 hex digits RRGGBB (e.g. FF0000; empty Enter = automatic)").to_string(),
+                "font-color-rgb" => ui::t!("Font colour — 6 hex digits RRGGBB (e.g. FF0000; empty Enter = automatic)").to_string(),
+                "fill-color-rgb" => ui::t!("Fill colour — 6 hex digits RRGGBB (e.g. FFF2CC; empty Enter = no fill)").to_string(),
+                "fill-bg-rgb" => ui::t!("Pattern background colour — six hex digits RRGGBB (e.g. FFFFFF. Empty Enter = white)").to_string(),
+                "comment-reply" => ui::t!("Add a reply — it goes to the end of this thread").to_string(),
+                "user-name" => ui::t!("Comment signature — the name to leave behind (empty Enter = stay anonymous)").to_string(),
+                "text-angle" => ui::t!("Text angle — a number from -90 to 90 (positive is upward; empty Enter = 0)").to_string(),
+                "hf-edit" => ui::t!("Header/footer — text for this section (&P = page, &N = total; empty Enter = remove)").to_string(),
+                "name-range" => ui::t!("Name content — location (B12 or A1:C9)").to_string(),
+                "csv-delim" => ui::t!("One delimiter character (e.g. |)").to_string(),
+                "csv-dest" => ui::t!("Destination — top-left cell (B12 form)").to_string(),
+                "calc-iter" => ui::t!("Iterative calculation — max passes and max change (e.g. 100 0.001; empty Enter turns it off)").to_string(),
+                "pivot-label" => ui::t!("Label filter — e.g. 含む Tokyo / で始まる A / で終わる Z (contains / begins with / ends with)").to_string(),
+                "pivot-vfilter" => ui::t!("Value filter — e.g. > 1000 (operators > >= < <= =; empty Enter removes it)").to_string(),
+                "pivot-group-width" => ui::t!("Group by numeric width — enter the width (e.g. 100)").to_string(),
+                "col-width" => ui::t!("Column width — 0–255 (in zeros of the standard font; empty Enter = default)").to_string(),
+                "row-height" => ui::t!("Row height — 0–409 pt (empty Enter = default)").to_string(),
+                "subtotal-by" => ui::t!("Subtotal 1/2 — group by which heading (one)").to_string(),
+                "subtotal-vals" => ui::t!("Subtotal 2/2 — headings to total").to_string(),
                 _ => String::new(),
             };
             // キャレットは | で見せる(writer の検索欄と同じ割り切り)。
@@ -3296,7 +3295,7 @@ impl Render for Calc {
                             .bg(if on { rgb(0xE4EFE8) } else { rgb(0xFFFFFF) })
                             .text_size(px(us * 11.0))
                             .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x66707A) })
-                            .child(if on { ui::t!("隠す") } else { ui::t!("見せる") })
+                            .child(if on { ui::t!("Hide") } else { ui::t!("Show") })
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                 |this, _, _, cx| {
                                     cx.stop_propagation();
@@ -3321,15 +3320,15 @@ impl Render for Calc {
                     let 全体 = self.find_book;
                     d.child(div().mt_1p5().flex().flex_row().items_center().gap_1()
                         .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
-                            .child(ui::t!("探す範囲")))
-                        .child(釦("sc-sheet", ui::t!("このシート"), !全体)
+                            .child(ui::t!("Search in")))
+                        .child(釦("sc-sheet", ui::t!("This sheet"), !全体)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                 |this, _, _, cx| {
                                     cx.stop_propagation();
                                     this.find_book = false;
                                     cx.notify()
                                 })))
-                        .child(釦("sc-book", ui::t!("このファイル"), 全体)
+                        .child(釦("sc-book", ui::t!("This file"), 全体)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                 |this, _, _, cx| {
                                     cx.stop_propagation();
@@ -3337,7 +3336,7 @@ impl Render for Calc {
                                     cx.notify()
                                 })))
                         .child(div().text_size(px(us * 10.0)).text_color(rgb(0x8A939B))
-                            .child(ui::t!("フォルダ全体はデータタブの「フォルダから探す」"))))
+                            .child(ui::t!("For the whole folder use \"Search folder\" on the Data tab"))))
                 })
                 .child(div().mt_1().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                     .child(match *kind {
@@ -3488,11 +3487,11 @@ impl Render for Calc {
             let kind_label: String = if kindi == 5 {
                 let k = d.keep.as_ref().map(|v| v.kind.clone()).unwrap_or_default();
                 let name = match k.as_str() {
-                    "date" => ui::t!("日付").to_string(),
-                    "time" => ui::t!("時刻").to_string(),
-                    _ => ui::t!("カスタム").to_string(),
+                    "date" => ui::t!("Date").to_string(),
+                    "time" => ui::t!("Time").to_string(),
+                    _ => ui::t!("Custom").to_string(),
                 };
-                ui::tf!("{}(このまま保持)", name).to_string()
+                ui::tf!("{} (kept as is)", name).to_string()
             } else {
                 dv_kinds()[kindi].to_string()
             };
@@ -3503,11 +3502,11 @@ impl Render for Calc {
                 0 => {
                     let mut row = div().flex().flex_row().gap_3()
                         .child(div().flex_1().flex().flex_col().gap_1()
-                            .child(label(ui::t!("許可").to_string()))
+                            .child(label(ui::t!("Allow").to_string()))
                             .child(drop(1, kind_label, cx)));
                     if matches!(kindi, 1 | 2 | 4) {
                         row = row.child(div().flex_1().flex().flex_col().gap_1()
-                            .child(label(ui::t!("データ").to_string()))
+                            .child(label(ui::t!("Data").to_string()))
                             .child(drop(2, dv_ops()[opi].1.to_string(), cx)));
                     }
                     pane = pane.child(row);
@@ -3519,14 +3518,14 @@ impl Render for Calc {
                         pane = pane.child(options(2,
                             dv_ops().iter().map(|(_, n)| n.to_string()).collect(), cx));
                     }
-                    pane = pane.child(check(1, allow_blank, ui::t!("空白を無視").to_string(), cx));
+                    pane = pane.child(check(1, allow_blank, ui::t!("Ignore blank").to_string(), cx));
                     match kindi {
                         3 => {
                             pane = pane
-                                .child(label(ui::t!("元の値").to_string()))
+                                .child(label(ui::t!("Source").to_string()))
                                 .child(field(0, cx))
-                                .child(label(ui::t!("候補の直書き(甲,乙,丙)か、範囲の参照(=D2:D5)").to_string()))
-                                .child(check(3, hide_arrow, ui::t!("セルの ▾ を出さない").to_string(), cx));
+                                .child(label(ui::t!("Type options directly (A,B,C) or reference a range (=D2:D5)").to_string()))
+                                .child(check(3, hide_arrow, ui::t!("Hide the in-cell ▾").to_string(), cx));
                         }
                         1 | 2 | 4 => {
                             // 間・間以外 = 最小と最大。等しい系 = 値。大小 = 片方
@@ -3537,53 +3536,53 @@ impl Render for Calc {
                                 _ => (false, true),
                             };
                             if lo {
-                                let name = if matches!(opi, 2 | 3) { ui::t!("値") } else { ui::t!("最小") };
+                                let name = if matches!(opi, 2 | 3) { ui::t!("Value") } else { ui::t!("Minimum") };
                                 pane = pane.child(label(name.to_string())).child(field(0, cx));
                             }
                             if hi {
-                                pane = pane.child(label(ui::t!("最大").to_string())).child(field(1, cx));
+                                pane = pane.child(label(ui::t!("Maximum").to_string())).child(field(1, cx));
                             }
                             pane = pane.child(label(
-                                ui::t!("半角の数で。数として読めない式は判定できず、堰き止めません").to_string()));
+                                ui::t!("ASCII digits; a formula that isn't a number can't be judged and won't block input").to_string()));
                         }
                         5 => {
                             pane = pane.child(label(
-                                ui::t!("この種類(日付・時刻・カスタム)は判定できません — 規則は壊さず保ち、文言だけ直せます").to_string()));
+                                ui::t!("This type (date/time/custom) can't be judged — the rule is kept intact; only the messages can be edited").to_string()));
                         }
                         _ => {}
                     }
                     pane = pane.child(div().flex_1())
                         .child(check(2, apply_same,
-                            ui::t!("これらの変更を同じ設定の他のすべてのセルに適用する").to_string(), cx));
+                            ui::t!("Apply these changes to all other cells with the same settings").to_string(), cx));
                 }
                 1 => {
                     pane = pane
-                        .child(label(ui::t!("タイトル").to_string()))
+                        .child(label(ui::t!("Title").to_string()))
                         .child(field(2, cx))
-                        .child(label(ui::t!("メッセージ").to_string()))
+                        .child(label(ui::t!("Message").to_string()))
                         .child(field(3, cx))
-                        .child(label(ui::t!("セルを選ぶと、下の状態行にこの説明が出ます").to_string()));
+                        .child(label(ui::t!("Shown in the status line below when the cell is selected").to_string()));
                 }
                 _ => {
                     pane = pane
-                        .child(label(ui::t!("スタイル").to_string()))
+                        .child(label(ui::t!("Style").to_string()))
                         .child(drop(3, dv_styles()[styl].1.to_string(), cx));
                     if menu == 3 {
                         pane = pane.child(options(3,
                             dv_styles().iter().map(|(_, n)| n.to_string()).collect(), cx));
                     }
                     pane = pane
-                        .child(label(ui::t!("タイトル").to_string()))
+                        .child(label(ui::t!("Title").to_string()))
                         .child(field(4, cx))
-                        .child(label(ui::t!("エラーメッセージ").to_string()))
+                        .child(label(ui::t!("Error message").to_string()))
                         .child(field(5, cx))
-                        .child(label(ui::t!("停止は堰き止め、警告・情報は通して言うだけ(Excel と同じ)").to_string()));
+                        .child(label(ui::t!("Stop blocks the input; Warning/Information accept it with a note (same as Excel)").to_string()));
                 }
             }
             // 左のタブ(設定 / メッセージを入力 / エラー警告)
             let mut tabs = div().w(px(us * 150.0)).flex().flex_col().p_1().gap_0p5()
                 .bg(rgb(0xF0F3F5)).rounded_sm();
-            for (i, name) in [ui::t!("設定"), ui::t!("メッセージを入力"), ui::t!("エラー警告")]
+            for (i, name) in [ui::t!("Settings"), ui::t!("Input Message"), ui::t!("Error Alert")]
                 .into_iter().enumerate()
             {
                 let on = tab == i as u8;
@@ -3626,7 +3625,7 @@ impl Render for Calc {
                         .border_b_1().border_color(rgb(0xE1E6EA))
                         .child(div().flex_1().text_size(px(us * 13.0))
                             .font_weight(gpui::FontWeight::BOLD).text_color(rgb(0x1B6E3C))
-                            .child(ui::t!("データの入力規則")))
+                            .child(ui::t!("Data validation")))
                         .child(div().id("dv-x").px_1p5().rounded_sm().cursor_pointer()
                             .text_size(px(us * 13.0)).text_color(rgb(0x66707A))
                             .hover(|s| s.bg(rgb(0xE1E6EA)))
@@ -3634,7 +3633,7 @@ impl Render for Calc {
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.dv_dlg = None;
-                                this.status = ui::t!("入力規則をやめました").into();
+                                this.status = ui::t!("Validation cancelled").into();
                                 cx.notify();
                             }))))
                     // 本体: 左のタブ + 右の中身
@@ -3649,11 +3648,11 @@ impl Render for Calc {
                                 cx.stop_propagation();
                                 this.dv_ok(cx);
                             })))
-                        .child(btn("dv-cancel", ui::t!("キャンセル").to_string(), false)
+                        .child(btn("dv-cancel", ui::t!("Cancel").to_string(), false)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.dv_dlg = None;
-                                this.status = ui::t!("入力規則をやめました").into();
+                                this.status = ui::t!("Validation cancelled").into();
                                 cx.notify();
                             })))))
         });
@@ -3719,7 +3718,7 @@ impl Render for Calc {
             if sv.cons.is_empty() {
                 list = list.child(div().flex_1().flex().items_center().justify_center()
                     .text_size(px(us * 11.5)).text_color(rgb(0xB6BDC4))
-                    .child(ui::t!("まだ制約はありません。左辺・記号・右辺を打って「追加」")));
+                    .child(ui::t!("No constraints yet; fill left side, sign, right side and Add")));
             } else {
                 for (i, (l, op, r)) in sv.cons.iter().enumerate() {
                     let on = sel == Some(i);
@@ -3752,7 +3751,7 @@ impl Render for Calc {
                 .flex().flex_col().gap_1()
                 .child(div().flex().flex_row().items_center()
                     .child(div().text_size(px(us * 13.0)).font_weight(gpui::FontWeight::BOLD)
-                        .text_color(rgb(0x1B6E3C)).child(ui::t!("ソルバーのパラメータ")))
+                        .text_color(rgb(0x1B6E3C)).child(ui::t!("Solver parameters")))
                     .child(div().flex_1())
                     .child(div().id("sv-x").px_2().cursor_pointer().text_size(px(us * 13.0))
                         .text_color(rgb(0x66707A)).hover(|s| s.text_color(rgb(0xC0392B)))
@@ -3766,8 +3765,8 @@ impl Render for Calc {
                 .child(div().flex().flex_row()
                     .child(field("sv-target", 0, show(&sv.target, focus == 0), cx)))
                 .child(div().mt_1().flex().flex_row().items_center().gap_3()
-                    .child(radio("sv-max", 0, "最大", cx))
-                    .child(radio("sv-min", 1, "最小", cx))
+                    .child(radio("sv-max", 0, "Maximum", cx))
+                    .child(radio("sv-min", 1, "Minimum", cx))
                     .child(radio("sv-val", 2, "値:", cx))
                     .child(field("sv-value", 1, show(&sv.value, focus == 1), cx)))
                 .child(label("変数セルを変更して"))
@@ -3793,7 +3792,7 @@ impl Render for Calc {
                         })))
                     .child(field("sv-conr", 4, show(&sv.con_r, focus == 4), cx)))
                 .child(div().mt_1().flex().flex_row().gap_1()
-                    .child(btn("sv-add", "追加", true).child(ui::t!("追加"))
+                    .child(btn("sv-add", "Add", true).child(ui::t!("Add"))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             if let Some(sv) = &mut this.solver {
@@ -3805,9 +3804,9 @@ impl Render for Calc {
                                 let 要る = crate::util::solver_op_needs_rhs(sv.con_op);
                                 if l.is_empty() || (要る && r.is_empty()) {
                                     this.status = if 要る {
-                                        ui::t!("制約の左辺と右辺を先に打ってください").into()
+                                        ui::t!("Fill in both sides of the constraint first").into()
                                     } else {
-                                        ui::t!("制約の左辺を先に打ってください").into()
+                                        ui::t!("Type the left side of the constraint first").into()
                                     };
                                 } else {
                                     sv.cons.push((l, SOLVER_OPS[sv.con_op], r));
@@ -3818,7 +3817,7 @@ impl Render for Calc {
                             }
                             cx.notify();
                         })))
-                    .child(btn("sv-edit", "変更", sel.is_some()).child(ui::t!("変更"))
+                    .child(btn("sv-edit", "Change", sel.is_some()).child(ui::t!("Change"))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             if let Some(sv) = &mut this.solver {
@@ -3838,7 +3837,7 @@ impl Render for Calc {
                             cx.notify();
                         })))
                     .child(div().flex_1())
-                    .child(btn("sv-del", "削除", sel.is_some()).child(ui::t!("削除"))
+                    .child(btn("sv-del", "Delete", sel.is_some()).child(ui::t!("Delete"))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             if let Some(sv) = &mut this.solver {
@@ -3854,7 +3853,7 @@ impl Render for Calc {
                 .child(div().id("sv-nonneg").mt_1().flex().flex_row().items_center().gap_1()
                     .cursor_pointer().text_size(px(us * 12.0))
                     .child(if nonneg { "☑" } else { "☐" })
-                    .child(ui::t!("制約のない変数を非負にする"))
+                    .child(ui::t!("Make unconstrained variables non-negative"))
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                         cx.stop_propagation();
                         if let Some(sv) = &mut this.solver {
@@ -3864,13 +3863,13 @@ impl Render for Calc {
                     })))
                 .child(div().mt_1().flex().flex_row().items_center().gap_2()
                     .child(div().text_size(px(us * 12.0)).font_weight(gpui::FontWeight::BOLD)
-                        .child(ui::t!("解法の方法")))
+                        .child(ui::t!("Solving method")))
                     .child(div().px_2().py_0p5().border_1().border_color(rgb(0xC6CDD3))
-                        .rounded_sm().text_size(px(us * 11.5)).child(ui::t!("単体法 LP"))))
+                        .rounded_sm().text_size(px(us * 11.5)).child(ui::t!("Simplex LP"))))
                 .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("線形の問題を LP シンプレックスで解きます(裏方 scipy)。非線形はまだ解けません — そのときは断ります")))
+                    .child(ui::t!("Solves linear problems with LP simplex (backed by scipy). Nonlinear ones are not solved yet — it says so when refused")))
                 .child(div().mt_1p5().flex().flex_row().gap_1()
-                    .child(btn("sv-reset", "すべてリセット", true).child(ui::t!("すべてリセット"))
+                    .child(btn("sv-reset", "Reset all", true).child(ui::t!("Reset all"))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             let init = this.cursor.a1();
@@ -3882,13 +3881,13 @@ impl Render for Calc {
                         .bg(rgb(0x1B6E3C)).text_color(rgb(0xFFFFFF))
                         .text_size(px(us * 12.0)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0x2E8B57)))
-                        .child(ui::t!("解を求める"))
+                        .child(ui::t!("Solve"))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             this.solve_solver(cx);
                             cx.notify();
                         })))
-                    .child(btn("sv-close", "閉じる", true).child(ui::t!("閉じる"))
+                    .child(btn("sv-close", "Close", true).child(ui::t!("Close"))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             this.solver = None;
@@ -3940,7 +3939,7 @@ impl Render for Calc {
             let n = rows.len();
             let mut head = div().flex().flex_row().items_center().gap_1()
                 .child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
-                    .child(SharedString::from(ui::tf!("コメント {} 件", n))))
+                    .child(SharedString::from(ui::tf!("{} comments", n))))
                 .child(div().flex_1());
             // 並べ替えの鍵。**選んでいる鍵をもう一度押すと逆順**(表の見出しと同じ作法)
             for k in [CommentSort::Place, CommentSort::When, CommentSort::Who, CommentSort::Done] {
@@ -3966,7 +3965,7 @@ impl Render for Calc {
                                 cl.sort = k;
                                 cl.desc = false;
                             }
-                            this.status = ui::tf!("{} の順に並べました", label).into();
+                            this.status = ui::tf!("Sorted by {}", label).into();
                         }
                         cx.notify();
                     })));
@@ -3991,7 +3990,7 @@ impl Render for Calc {
             if rows.is_empty() {
                 p = p.child(div().px_2().py_1().text_size(px(us * 12.0))
                     .text_color(rgb(0x6B7680))
-                    .child(ui::t!("このブックにコメントはありません(右クリックの「コメントを追加」で付きます)")));
+                    .child(ui::t!("This workbook has no comments (add one with “Add comment” on the right-click menu)")));
             }
             for (i, r) in rows.into_iter().enumerate() {
                 let sheet_name = self
@@ -4014,7 +4013,7 @@ impl Render for Calc {
                     sub.push(r.when.split('T').next().unwrap_or(&r.when).to_string());
                 }
                 if r.replies > 0 {
-                    sub.push(ui::tf!("返信 {}", r.replies));
+                    sub.push(ui::tf!("{} replies", r.replies));
                 }
                 p = p.child(div()
                     .id(SharedString::from(format!("cl{i}")))
@@ -4030,7 +4029,7 @@ impl Render for Calc {
                         .child(div().flex_1())
                         .child(div().text_size(px(us * 11.0)).text_color(rgb(0x6B7680))
                             .child(SharedString::from(if r.done {
-                                ui::t!("✓ 解決済み").to_string()
+                                ui::t!("✓ Resolved").to_string()
                             } else {
                                 sub.join(" · ")
                             }))))
@@ -4043,7 +4042,7 @@ impl Render for Calc {
                         this.cursor = at;
                         this.follow();
                         this.sync_input();
-                        this.status = ui::tf!("{} へ跳びました", at.a1()).into();
+                        this.status = ui::tf!("Jumped to {}", at.a1()).into();
                         cx.notify();
                     })));
             }
@@ -4064,7 +4063,7 @@ impl Render for Calc {
                 .get(Pos::new(0, col))
                 .map(|c| c.value.display())
                 .filter(|v| !v.is_empty())
-                .unwrap_or_else(|| ui::tf!("列{}", col_name(col)));
+                .unwrap_or_else(|| ui::tf!("Col {}", col_name(col)));
             let (rows, _) = self.sheet().extent();
             // 各行の値と、**このスライサー以外の絞りで今その行が見えているか**。
             // 自分の選びを混ぜない — 混ぜると選んだ途端に他の値が消えて戻せない。
@@ -4075,7 +4074,7 @@ impl Render for Calc {
                     // **粒(月・四半期・年)を通した呼び名。** 並べる札と
                     // 絞る判定が同じ物を見るように、1本にまとめてあります
                     let v = self.slicer_value(sl, r);
-                    let v = if v == ui::t!("(空白)") { String::new() } else { v };
+                    let v = if v == ui::t!("(blank)") { String::new() } else { v };
                     let others = self
                         .slicers
                         .iter()
@@ -4122,7 +4121,7 @@ impl Render for Calc {
                                 this.slicer_grab(si,
                                     f32::from(e.position.x) - px0,
                                     f32::from(e.position.y) - py0);
-                                this.status = ui::t!("引いて動かします(設定の「位置を自動に戻す」で並びに戻ります)").into();
+                                this.status = ui::t!("Drag it to move it (use “Back to automatic position” in the settings to put it back in the row)").into();
                                 cx.notify();
                             })))
                     .child(div().flex_1())
@@ -4153,9 +4152,9 @@ impl Render for Calc {
                                 sl.desc = !sl.desc;
                                 let desc = sl.desc;
                                 this.status = if desc {
-                                    ui::t!("降順(大きい・後ろの値から)").into()
+                                    ui::t!("Descending (largest, or last, first)").into()
                                 } else {
-                                    ui::t!("昇順(小さい・前の値から)").into()
+                                    ui::t!("Ascending (smallest, or first, first)").into()
                                 };
                             }
                             cx.notify();
@@ -4174,9 +4173,9 @@ impl Render for Calc {
                                 sl.hide_empty = !sl.hide_empty;
                                 let on = sl.hide_empty;
                                 this.status = if on {
-                                    ui::t!("いま一行も無い値は並べません").into()
+                                    ui::t!("Not listing values with no rows left").into()
                                 } else {
-                                    ui::t!("いま一行も無い値も並べます").into()
+                                    ui::t!("Listing values with no rows left too").into()
                                 };
                             }
                             cx.notify();
@@ -4195,9 +4194,9 @@ impl Render for Calc {
                                 sl.multi = !sl.multi;
                                 let on = sl.multi;
                                 this.status = if on {
-                                    ui::t!("複数選択: 押した値を重ねて絞ります").into()
+                                    ui::t!("Multi-select: pressed values stack as filters").into()
                                 } else {
-                                    ui::t!("単数選択: 押した値ひとつで絞ります").into()
+                                    ui::t!("Single-select: filter by one pressed value").into()
                                 };
                             }
                             cx.notify();
@@ -4214,14 +4213,14 @@ impl Render for Calc {
                             if let Some(sl) = this.slicers.get_mut(si) {
                                 sl.sel.clear();
                             }
-                            this.status = ui::t!("スライサーの絞りを解除しました").into();
+                            this.status = ui::t!("Slicer filter cleared").into();
                             cx.notify();
                         }))));
             p = if cur { p.border_2() } else { p.border_1() };
             if items.is_empty() {
                 p = p.child(div().px_2().py_1().text_size(px(us * 12.0))
                     .text_color(rgb(0x6B7680))
-                    .child(ui::t!("いま残っている行がありません(⊘ を戻すと全部出ます)")));
+                    .child(ui::t!("No rows left right now (turn ⊘ off to see them all)")));
             }
             // ボタンは cols 列に並べる(値の多い列を短く収める)。
             // 幅は板の幅から余白と隙間を引いて割る
@@ -4255,9 +4254,9 @@ impl Render for Calc {
                                 sel.insert(v.clone());
                             }
                             this.status = if sel.is_empty() {
-                                ui::t!("絞りなし(全部見えています)").into()
+                                ui::t!("No filter (everything is visible)").into()
                             } else {
-                                ui::tf!("絞り: {}(見え方だけ。中身は変わりません)", sel.iter().cloned().collect::<Vec<_>>().join(" / "))
+                                ui::tf!("Filter: {} (display only; the data is unchanged)", sel.iter().cloned().collect::<Vec<_>>().join(" / "))
                                 .into()
                             };
                         }
@@ -4270,7 +4269,7 @@ impl Render for Calc {
             if cut > 0 {
                 p = p.child(div().px_2().py_1().text_size(px(us * 11.0))
                     .text_color(rgb(0x6B7680))
-                    .child(ui::tf!("ほか {} 件は並べていません(64 件まで)", cut)));
+                    .child(ui::tf!("{} more not listed (64 at a time)", cut)));
             }
             p.into_any_element()
         }).collect();
@@ -4308,7 +4307,7 @@ impl Render for Calc {
                     .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
                     .child(div().flex().flex_row().items_center()
                         .child(div().text_size(px(us * 12.0)).font_weight(gpui::FontWeight::BOLD)
-                            .child(ui::t!("スライサーの設定")))
+                            .child(ui::t!("Slicer settings")))
                         .child(div().flex_1())
                         .child(div().id("sl-cfg-close").px_1p5().rounded_sm().cursor_pointer()
                             .text_size(px(us * 12.5)).hover(|s| s.bg(rgb(0xEAF5EE)))
@@ -4319,10 +4318,10 @@ impl Render for Calc {
                                 cx.notify();
                             }))));
                 // 幅・高さ。**一定の比率**を入れていれば片方でもう片方も動く
-                for (which, cur) in [("幅", w), ("高さ", h)] {
-                    let is_w = which == "幅";
+                for (which, cur) in [("width", w), ("Height", h)] {
+                    let is_w = which == "width";
                     p = p.child(div().flex().flex_row().items_center().gap_1()
-                        .child(lab(if is_w { ui::t!("幅").to_string() } else { ui::t!("高さ").to_string() }))
+                        .child(lab(if is_w { ui::t!("width").to_string() } else { ui::t!("Height").to_string() }))
                         .child(bump(format!("sl-{which}-minus"), "−")
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                                 cx.stop_propagation();
@@ -4339,12 +4338,12 @@ impl Render for Calc {
                             }))));
                 }
                 p = p.child(div().flex().flex_row().items_center().gap_1()
-                    .child(lab(ui::t!("一定の比率").to_string()))
+                    .child(lab(ui::t!("Keep ratio").to_string()))
                     .child(div().id("sl-ratio").px_2().py_0p5().rounded_sm().border_1()
                         .border_color(if ratio { rgb(0x1B6E3C) } else { rgb(0xC6CDD3) })
                         .bg(if ratio { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
                         .cursor_pointer().text_size(px(us * 11.5))
-                        .child(if ratio { ui::t!("入") } else { ui::t!("切") })
+                        .child(if ratio { ui::t!("On (switch)") } else { ui::t!("Off (switch)") })
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             if let Some(sl) = this.slicers.get_mut(si) {
@@ -4354,7 +4353,7 @@ impl Render for Calc {
                         }))));
                 // ボタンの列数(1〜4)
                 let mut colrow = div().flex().flex_row().items_center().gap_1()
-                    .child(lab(ui::t!("ボタンの列").to_string()));
+                    .child(lab(ui::t!("Button columns").to_string()));
                 for n in 1..=4u32 {
                     let on = cols == n;
                     colrow = colrow.child(div().id(SharedString::from(format!("sl-cols{n}")))
@@ -4374,7 +4373,7 @@ impl Render for Calc {
                 p = p.child(colrow);
                 // スタイル(色の組)
                 let mut strow = div().flex().flex_row().flex_wrap().items_center().gap_1()
-                    .child(lab(ui::t!("スタイル").to_string()));
+                    .child(lab(ui::t!("Style").to_string()));
                 for (i, (_, label, _, sbg, edge)) in slicer_styles().into_iter().enumerate() {
                     let on = style == i;
                     strow = strow.child(div().id(SharedString::from(format!("sl-style{i}")))
@@ -4393,10 +4392,10 @@ impl Render for Calc {
                 p = p.child(strow);
                 // 位置。**数を見せる**(引いて動かしたあと、どこに居るか分かる)
                 p = p.child(div().flex().flex_row().items_center().gap_1()
-                    .child(lab(ui::t!("位置").to_string()))
+                    .child(lab(ui::t!("Position").to_string()))
                     .child(div().text_size(px(us * 11.5))
                         .child(SharedString::from(if auto {
-                            ui::t!("自動(右から順)").to_string()
+                            ui::t!("Automatic (right to left)").to_string()
                         } else {
                             format!("{ox:.0}, {oy:.0}")
                         }))));
@@ -4404,13 +4403,13 @@ impl Render for Calc {
                     .px_2().py_0p5().rounded_sm().border_1().border_color(rgb(0xC6CDD3))
                     .bg(rgb(0xFFFFFF)).cursor_pointer().text_size(px(us * 11.5))
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
-                    .child(ui::t!("位置を自動に戻す"))
+                    .child(ui::t!("Back to automatic position"))
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                         cx.stop_propagation();
                         if let Some(sl) = this.slicers.get_mut(si) {
                             sl.at = None;
                         }
-                        this.status = ui::t!("位置を自動(右から順)に戻しました").into();
+                        this.status = ui::t!("Position set back to automatic (right to left)").into();
                         cx.notify();
                     })));
                 // **日付の単位**(タイムライン。2026-08-22 の D群)。
@@ -4418,7 +4417,7 @@ impl Render for Calc {
                 let 粒 = self.slicers.get(si).map(|x| x.grain.clone()).unwrap_or_default();
                 let 粒札 = crate::util::slicer_grain_label(&粒);
                 p = p.child(div().flex().flex_row().items_center().gap_1()
-                    .child(lab(ui::t!("日付の単位").to_string()))
+                    .child(lab(ui::t!("Date unit").to_string()))
                     .child(div().id("sl-grain")
                         .px_2().py_0p5().rounded_sm().border_1().border_color(rgb(0xC6CDD3))
                         .bg(rgb(0xFFFFFF)).cursor_pointer().text_size(px(us * 12.0))
@@ -4435,15 +4434,15 @@ impl Render for Calc {
                 let 繋ぎ数 = self.slicers.get(si).map(|x| x.pivots.len()).unwrap_or(0);
                 p = p.child(div().flex().flex_col().gap_0p5()
                     .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
-                        .child(ui::t!("レポートの接続")))
+                        .child(ui::t!("Report Connections")))
                     .child(div().id("sl-refs")
                         .px_2().py_0p5().rounded_sm().border_1().border_color(rgb(0xC6CDD3))
                         .bg(rgb(0xFFFFFF)).cursor_pointer().text_size(px(us * 12.0))
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
                         .child(SharedString::from(if 繋ぎ数 == 0 {
-                            ui::t!("つないでいません").to_string()
+                            ui::t!("Not connected").to_string()
                         } else {
-                            ui::tf!("{} 枚につないでいます", 繋ぎ数).to_string()
+                            ui::tf!("Connected to {}", 繋ぎ数).to_string()
                         }))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
@@ -4452,7 +4451,7 @@ impl Render for Calc {
                             cx.notify();
                         }))));
                 p = p.child(div().text_size(px(us * 10.5)).text_color(rgb(0x6B7680))
-                    .child(ui::t!("見出しを引くと動きます。大きさも位置も見え方だけで、保存される中身は変わりません")));
+                    .child(ui::t!("Drag the heading to move it. Size and position only change what you see; the saved data does not change")));
                 p
             })
         } else {
@@ -4506,7 +4505,7 @@ impl Render for Calc {
                 .child(div().flex().flex_row().items_center()
                     .child(div().text_size(px(us * 12.0)).font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x1B6E3C))
-                        .child(SharedString::from(ui::t!("図形の設定").to_string())))
+                        .child(SharedString::from(ui::t!("Shape settings").to_string())))
                     .child(div().flex_1())
                     .child(div().id("shp-close").px_1p5().rounded_sm().cursor_pointer()
                         .text_size(px(us * 12.0)).hover(|s| s.bg(rgb(0xEAF5EE)))
@@ -4521,47 +4520,47 @@ impl Render for Calc {
             if !poly {
                 let cf = cur_fill.clone();
                 p = p.child(div().flex().flex_row().items_center().gap_1()
-                    .child(lab(ui::t!("塗り").to_string()))
+                    .child(lab(ui::t!("Fill color").to_string()))
                     .child(swatch("shp-fill-sw".into(),
                         has_fill.then(|| hex(&cur_fill))))
-                    .child(chip("shp-fill-set".into(), ui::t!("色…").to_string(), false)
+                    .child(chip("shp-fill-set".into(), ui::t!("Colour…").to_string(), false)
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             this.prompt = Some(("shape-fill-rgb", Editor::new(&cf)));
                             cx.notify();
                         })))
-                    .child(chip("shp-fill-no".into(), ui::t!("なし").to_string(), !has_fill)
+                    .child(chip("shp-fill-no".into(), ui::t!("None").to_string(), !has_fill)
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             this.shape_edit(|sp| sp.fill = None);
-                            this.status = ui::t!("塗りを消しました").into();
+                            this.status = ui::t!("Fill removed").into();
                             cx.notify();
                         }))));
             }
             {
                 let cl = cur_line.clone();
                 p = p.child(div().flex().flex_row().items_center().gap_1()
-                    .child(lab(ui::t!("線").to_string()))
+                    .child(lab(ui::t!("Line (border)").to_string()))
                     .child(swatch("shp-line-sw".into(),
                         has_line.then(|| hex(&cur_line))))
-                    .child(chip("shp-line-set".into(), ui::t!("色…").to_string(), false)
+                    .child(chip("shp-line-set".into(), ui::t!("Colour…").to_string(), false)
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             this.prompt = Some(("shape-line-rgb", Editor::new(&cl)));
                             cx.notify();
                         })))
-                    .child(chip("shp-line-no".into(), ui::t!("なし").to_string(), !has_line)
+                    .child(chip("shp-line-no".into(), ui::t!("None").to_string(), !has_line)
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             this.shape_edit(|sp| sp.line = None);
-                            this.status = ui::t!("線を消しました").into();
+                            this.status = ui::t!("Removed the line").into();
                             cx.notify();
                         }))));
             }
             // 線の太さ(pt)。押したとき線が無ければ既定の緑で引く
             {
                 let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
-                    .child(lab(ui::t!("太さ").to_string()));
+                    .child(lab(ui::t!("Width").to_string()));
                 for v in [0.5f32, 1.0, 1.5, 2.25, 3.0, 4.5, 6.0] {
                     let on = (cur_w - v).abs() < 0.05;
                     let t = if v.fract() == 0.0 {
@@ -4578,7 +4577,7 @@ impl Render for Calc {
                                     sp.line = Some("1B6E3C".into());
                                 }
                             });
-                            this.status = ui::tf!("線の太さ: {} pt", format!("{v}")).into();
+                            this.status = ui::tf!("Line width: {} pt", format!("{v}")).into();
                             cx.notify();
                         })));
                 }
@@ -4587,7 +4586,7 @@ impl Render for Calc {
             // 不透明度(%)
             {
                 let mut row = div().flex().flex_row().items_center().gap_1()
-                    .child(lab(ui::t!("不透明度").to_string()));
+                    .child(lab(ui::t!("Opacity").to_string()));
                 for v in [100i32, 75, 50, 25] {
                     let a = v as f32 / 100.0;
                     let on = (cur_a - a).abs() < 0.03;
@@ -4595,7 +4594,7 @@ impl Render for Calc {
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             this.shape_edit(move |sp| sp.alpha = a);
-                            this.status = ui::tf!("不透明度: {}%", v).into();
+                            this.status = ui::tf!("Opacity: {}%", v).into();
                             cx.notify();
                         })));
                 }
@@ -4604,33 +4603,33 @@ impl Render for Calc {
             // 回転・反転と影(折れ線ものには効かないので出さない)
             if !poly {
                 let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
-                    .child(lab(ui::t!("回転").to_string()));
+                    .child(lab(ui::t!("Rotation").to_string()));
                 for (id, t, d) in [("shp-rl", "↺90", -90.0f32), ("shp-rr", "↻90", 90.0)] {
                     row = row.child(chip(id.into(), t.into(), false)
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             this.shape_edit(move |sp| sp.rot = (sp.rot + d).rem_euclid(360.0));
-                            this.status = ui::t!("90度回しました").into();
+                            this.status = ui::t!("Rotated 90°").into();
                             cx.notify();
                         })));
                 }
-                row = row.child(chip("shp-fh".into(), ui::t!("左右反転").to_string(), false)
+                row = row.child(chip("shp-fh".into(), ui::t!("Flip horizontally").to_string(), false)
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                         cx.stop_propagation();
                         this.shape_edit(|sp| sp.flip_h = !sp.flip_h);
-                        this.status = ui::t!("左右に反転しました").into();
+                        this.status = ui::t!("Flipped left to right").into();
                         cx.notify();
                     })));
-                row = row.child(chip("shp-fv".into(), ui::t!("上下反転").to_string(), false)
+                row = row.child(chip("shp-fv".into(), ui::t!("Flip vertically").to_string(), false)
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                         cx.stop_propagation();
                         this.shape_edit(|sp| sp.flip_v = !sp.flip_v);
-                        this.status = ui::t!("上下に反転しました").into();
+                        this.status = ui::t!("Flipped top to bottom").into();
                         cx.notify();
                     })));
                 {
                     let cr = format!("{cur_rot:.0}");
-                    row = row.child(chip("shp-deg".into(), ui::tf!("角度…({}°)", cr.clone()), false)
+                    row = row.child(chip("shp-deg".into(), ui::tf!("Angle… ({}°)", cr.clone()), false)
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             this.prompt = Some(("shape-rot",
@@ -4640,18 +4639,18 @@ impl Render for Calc {
                 }
                 p = p.child(row);
                 p = p.child(div().flex().flex_row().items_center().gap_1()
-                    .child(lab(ui::t!("影").to_string()))
+                    .child(lab(ui::t!("Shadow").to_string()))
                     .child(chip("shp-shadow".into(),
-                        if shadow_on { ui::t!("あり").to_string() } else { ui::t!("なし").to_string() },
+                        if shadow_on { ui::t!("On").to_string() } else { ui::t!("None").to_string() },
                         shadow_on)
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                             cx.stop_propagation();
                             let mut now = false;
                             this.shape_edit(|sp| { sp.shadow = !sp.shadow; now = sp.shadow; });
                             this.status = if now {
-                                ui::t!("影を付けました").into()
+                                ui::t!("Added a shadow").into()
                             } else {
-                                ui::t!("影を消しました").into()
+                                ui::t!("Removed the shadow").into()
                             };
                             cx.notify();
                         }))));
@@ -4663,14 +4662,14 @@ impl Render for Calc {
                 let m = sp.spark_marks;
                 p = p.child(div().h(px(2.0)));
                 p = p.child(div().text_size(px(us * 10.5)).text_color(rgb(0x1B6E3C))
-                    .child(SharedString::from(ui::t!("点の印").to_string())));
+                    .child(SharedString::from(ui::t!("Point markers").to_string())));
                 let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
-                    .child(lab(ui::t!("印").to_string()));
+                    .child(lab(ui::t!("Markers").to_string()));
                 for (id, name, on, which) in [
-                    ("spk-hi", ui::t!("高点"), m.high, 0u8),
-                    ("spk-lo", ui::t!("低点"), m.low, 1),
-                    ("spk-fi", ui::t!("最初"), m.first, 2),
-                    ("spk-la", ui::t!("最後"), m.last, 3),
+                    ("spk-hi", ui::t!("High"), m.high, 0u8),
+                    ("spk-lo", ui::t!("Low"), m.low, 1),
+                    ("spk-fi", ui::t!("First"), m.first, 2),
+                    ("spk-la", ui::t!("Last"), m.last, 3),
                 ] {
                     row = row.child(chip(id.into(), name.to_string(), on)
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
@@ -4684,13 +4683,13 @@ impl Render for Calc {
                                     _ => k.last = !k.last,
                                 }
                             });
-                            this.status = ui::t!("点の印を変えました").into();
+                            this.status = ui::t!("Markers changed").into();
                             cx.notify();
                         })));
                 }
                 p = p.child(row);
                 p = p.child(div().text_size(px(us * 9.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("空セルの扱いと縦軸のそろえはありません(この線は挿したときの数を焼き付けています)")));
+                    .child(ui::t!("No empty-cell handling or shared axis (this line has the numbers baked in from when it was inserted)")));
             }
             // ---- 中の文字の組み方(テキストボックス。台帳 第2便の [中]) ----
             // **文字が入っているときだけ出す。** 空の図形に段落の設定を
@@ -4699,49 +4698,49 @@ impl Render for Calc {
                 let tf = sp.text_fmt.clone();
                 p = p.child(div().h(px(2.0)));
                 p = p.child(div().text_size(px(us * 10.5)).text_color(rgb(0x1B6E3C))
-                    .child(SharedString::from(ui::t!("中の文字").to_string())));
+                    .child(SharedString::from(ui::t!("Text inside").to_string())));
                 // 横の揃え
                 let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
-                    .child(lab(ui::t!("揃え").to_string()));
+                    .child(lab(ui::t!("Alignment").to_string()));
                 for (id, name, a) in [
-                    ("shp-al-l", ui::t!("左"), sheet::model::HAlign::General),
-                    ("shp-al-c", ui::t!("中央"), sheet::model::HAlign::Center),
-                    ("shp-al-r", ui::t!("右"), sheet::model::HAlign::Right),
+                    ("shp-al-l", ui::t!("Left"), sheet::model::HAlign::General),
+                    ("shp-al-c", ui::t!("Centre"), sheet::model::HAlign::Center),
+                    ("shp-al-r", ui::t!("Right"), sheet::model::HAlign::Right),
                 ] {
                     let on = tf.align == a;
                     row = row.child(chip(id.into(), name.to_string(), on)
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             this.shape_edit(move |sp| sp.text_fmt.align = a);
-                            this.status = ui::t!("文字の揃えを変えました").into();
+                            this.status = ui::t!("Text alignment changed").into();
                             cx.notify();
                         })));
                 }
                 p = p.child(row);
                 // 縦の揃え
                 let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
-                    .child(lab(ui::t!("縦の位置").to_string()));
+                    .child(lab(ui::t!("Vertical position").to_string()));
                 for (id, name, a) in [
-                    ("shp-an-t", ui::t!("上"), sheet::model::TextAnchor::Top),
-                    ("shp-an-m", ui::t!("中央"), sheet::model::TextAnchor::Middle),
-                    ("shp-an-b", ui::t!("下"), sheet::model::TextAnchor::Bottom),
+                    ("shp-an-t", ui::t!("Top"), sheet::model::TextAnchor::Top),
+                    ("shp-an-m", ui::t!("Centre"), sheet::model::TextAnchor::Middle),
+                    ("shp-an-b", ui::t!("Bottom"), sheet::model::TextAnchor::Bottom),
                 ] {
                     let on = tf.anchor == a;
                     row = row.child(chip(id.into(), name.to_string(), on)
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             this.shape_edit(move |sp| sp.text_fmt.anchor = a);
-                            this.status = ui::t!("文字の縦の位置を変えました").into();
+                            this.status = ui::t!("Vertical text position changed").into();
                             cx.notify();
                         })));
                 }
                 p = p.child(row);
                 // 箇条書き・縦書き
                 let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
-                    .child(lab(ui::t!("箇条書き").to_string()));
+                    .child(lab(ui::t!("Bullets").to_string()));
                 for (id, name, b) in [
-                    ("shp-bu-n", ui::t!("なし"), None),
-                    ("shp-bu-c", ui::t!("・"), Some(false)),
+                    ("shp-bu-n", ui::t!("None"), None),
+                    ("shp-bu-c", ui::t!("•"), Some(false)),
                     ("shp-bu-1", ui::t!("1."), Some(true)),
                 ] {
                     let on = tf.bullet == b;
@@ -4749,47 +4748,47 @@ impl Render for Calc {
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             this.shape_edit(move |sp| sp.text_fmt.bullet = b);
-                            this.status = ui::t!("箇条書きを変えました").into();
+                            this.status = ui::t!("List style changed").into();
                             cx.notify();
                         })));
                 }
                 p = p.child(row);
                 // 文字の効果と縦書き
                 let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
-                    .child(lab(ui::t!("効果").to_string()));
-                row = row.child(chip("shp-tv".into(), ui::t!("縦書き").to_string(), tf.vertical)
+                    .child(lab(ui::t!("Effects").to_string()));
+                row = row.child(chip("shp-tv".into(), ui::t!("Vertical").to_string(), tf.vertical)
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                         cx.stop_propagation();
                         this.shape_edit(|sp| sp.text_fmt.vertical = !sp.text_fmt.vertical);
-                        this.status = ui::t!("縦書きを切り替えました").into();
+                        this.status = ui::t!("Vertical writing toggled").into();
                         cx.notify();
                     })));
-                row = row.child(chip("shp-ts".into(), ui::t!("取り消し線").to_string(), tf.strike)
+                row = row.child(chip("shp-ts".into(), ui::t!("Strikethrough").to_string(), tf.strike)
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                         cx.stop_propagation();
                         this.shape_edit(|sp| sp.text_fmt.strike = !sp.text_fmt.strike);
-                        this.status = ui::t!("取り消し線を切り替えました").into();
+                        this.status = ui::t!("Strikethrough toggled").into();
                         cx.notify();
                     })));
                 // 上付きと下付きは**同時に立たない**(xlsx の baseline は1つ)
-                row = row.child(chip("shp-tsup".into(), ui::t!("上付き").to_string(), tf.sup)
+                row = row.child(chip("shp-tsup".into(), ui::t!("Superscript").to_string(), tf.sup)
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                         cx.stop_propagation();
                         this.shape_edit(|sp| {
                             sp.text_fmt.sup = !sp.text_fmt.sup;
                             if sp.text_fmt.sup { sp.text_fmt.sub = false; }
                         });
-                        this.status = ui::t!("上付きを切り替えました").into();
+                        this.status = ui::t!("Superscript toggled").into();
                         cx.notify();
                     })));
-                row = row.child(chip("shp-tsub".into(), ui::t!("下付き").to_string(), tf.sub)
+                row = row.child(chip("shp-tsub".into(), ui::t!("Subscript").to_string(), tf.sub)
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                         cx.stop_propagation();
                         this.shape_edit(|sp| {
                             sp.text_fmt.sub = !sp.text_fmt.sub;
                             if sp.text_fmt.sub { sp.text_fmt.sup = false; }
                         });
-                        this.status = ui::t!("下付きを切り替えました").into();
+                        this.status = ui::t!("Subscript toggled").into();
                         cx.notify();
                     })));
                 p = p.child(row);
@@ -4844,7 +4843,7 @@ impl Render for Calc {
                 .child(div().flex().flex_row().items_center().justify_between()
                     .child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x1B6E3C))
-                        .child(ui::t!("セルの書式(選んでいる範囲に効く)")))
+                        .child(ui::t!("Cell formatting (applies to the selected range)")))
                     .child(div().id("fmtclose").px_2().rounded_sm().cursor_pointer()
                         .text_size(px(us * 12.0)).text_color(rgb(0x66707A))
                         .hover(|s| s.bg(rgb(0xE1E6EA)))
@@ -4857,10 +4856,10 @@ impl Render for Calc {
                             }))))
                 .child(title("罫線"))
                 .child(row()
-                    .child(btn("b-all", ui::t!("格子")))
-                    .child(btn("b-out", ui::t!("外枠")))
-                    .child(btn("b-none", ui::t!("なし"))))
-                .child(title("塗り"))
+                    .child(btn("b-all", ui::t!("Grid")))
+                    .child(btn("b-out", ui::t!("Outline")))
+                    .child(btn("b-none", ui::t!("None"))))
+                .child(title("Fill color"))
                 .child(row()
                     .child(swatch("fill-none", None))
                     .child(swatch("fill-FFF2CC", Some("FFF2CC")))
@@ -4875,31 +4874,31 @@ impl Render for Calc {
                     .child(swatch("color-1F4E79", Some("1F4E79")))
                     .child(swatch("color-1B6E3C", Some("1B6E3C")))
                     .child(swatch("color-7F7F7F", Some("7F7F7F"))))
-                .child(title("文字"))
+                .child(title("Character"))
                 .child(row()
-                    .child(btn("bold", ui::t!("太字")))
-                    .child(btn("italic", ui::t!("斜体")))
-                    .child(btn("underline", ui::t!("下線")))
-                    .child(btn("strikeout", ui::t!("取り消し")))
-                    .child(btn("incfont", ui::t!("大きく")))
-                    .child(btn("decfont", ui::t!("小さく"))))
-                .child(title("揃え"))
+                    .child(btn("bold", ui::t!("Bold")))
+                    .child(btn("italic", ui::t!("Italic")))
+                    .child(btn("underline", ui::t!("Underline")))
+                    .child(btn("strikeout", ui::t!("Cancel")))
+                    .child(btn("incfont", ui::t!("Bigger")))
+                    .child(btn("decfont", ui::t!("Smaller"))))
+                .child(title("Alignment"))
                 .child(row()
-                    .child(btn("align-left", ui::t!("左")))
-                    .child(btn("align-center", ui::t!("中央")))
-                    .child(btn("align-right", ui::t!("右")))
-                    .child(btn("top", ui::t!("上")))
-                    .child(btn("middle", ui::t!("中")))
-                    .child(btn("bottom", ui::t!("下")))
-                    .child(btn("wrap", ui::t!("折り返し"))))
-                .child(title("表示形式"))
+                    .child(btn("align-left", ui::t!("Left")))
+                    .child(btn("align-center", ui::t!("Centre")))
+                    .child(btn("align-right", ui::t!("Right")))
+                    .child(btn("top", ui::t!("Top")))
+                    .child(btn("middle", ui::t!("Middle")))
+                    .child(btn("bottom", ui::t!("Bottom")))
+                    .child(btn("wrap", ui::t!("Wrap"))))
+                .child(title("Number format"))
                 .child(row()
                     .child(btn("comma", "1,000"))
                     .child(btn("currency", "¥"))
                     .child(btn("percents", "%"))
                     .child(btn("digit-inc", ".0+"))
                     .child(btn("digit-dec", ".0−"))
-                    .child(btn("numfmt-none", ui::t!("なし"))))
+                    .child(btn("numfmt-none", ui::t!("None"))))
         });
 
         // ---- ドロップダウンリスト(同じ列の値の一覧) ----
@@ -4953,24 +4952,24 @@ impl Render for Calc {
                     kids.push(bar(e, 1.0, false, 3.0));
                 }
                 match kind {
-                    "下罫線" => kids.extend(pen_edge(1)),
-                    "上罫線" => kids.extend(pen_edge(0)),
-                    "左罫線" => kids.extend(pen_edge(2)),
-                    "右罫線" => kids.extend(pen_edge(3)),
-                    "外枠" => {
+                    "Bottom border" => kids.extend(pen_edge(1)),
+                    "Top border" => kids.extend(pen_edge(0)),
+                    "Left border" => kids.extend(pen_edge(2)),
+                    "Right border" => kids.extend(pen_edge(3)),
+                    "Outline" => {
                         for e in 0..4u8 {
                             kids.extend(pen_edge(e));
                         }
                     }
-                    "すべての罫線(格子)" => {
+                    "All borders (grid)" => {
                         for e in 0..4u8 {
                             kids.extend(pen_edge(e));
                         }
                         kids.extend(mid_h());
                         kids.extend(mid_v());
                     }
-                    "内側の縦線" => kids.extend(mid_v()),
-                    "内側の横線" => kids.extend(mid_h()),
+                    "Inside vertical border" => kids.extend(mid_v()),
+                    "Inside horizontal border" => kids.extend(mid_h()),
                     _ => {} // 罫線を消す = 薄い枠だけ
                 }
                 base.children(kids).into_any_element()
@@ -4985,10 +4984,10 @@ impl Render for Calc {
                 .iter()
                 .find(|(_, _, b)| *b == self.pen_style)
                 .map(|(_, l, _)| *l)
-                .unwrap_or(ui::t!("細い実線(既定)"));
+                .unwrap_or(ui::t!("Thin solid (default)"));
             let color_name = match self.pen_color {
                 Some(v) => format!("#{v:06X}"),
-                None => ui::t!("自動(黒)").to_string(),
+                None => ui::t!("Automatic (black)").to_string(),
             };
             // 一覧と同じく窓の根に置くので、面の原点を足して窓の座標に直す
             // (2026-08-15。前は面の中で切られ、必ず面の上端に出ていた)
@@ -5009,7 +5008,7 @@ impl Render for Calc {
                     .text_size(px(us * 10.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x1B6E3C))
                     .whitespace_nowrap().overflow_hidden()
-                    .child(SharedString::from(ui::t!("罫線(連続で押せます。Esc で閉じる)").to_string())));
+                    .child(SharedString::from(ui::t!("Borders (keep clicking; Esc closes)").to_string())));
             for row_kinds in kinds.chunks(4) {
                 let mut r = div().flex().flex_row().gap_0p5();
                 for (kind, label) in row_kinds {
@@ -5043,7 +5042,7 @@ impl Render for Calc {
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
                     .text_size(px(us * 11.5)).text_color(rgb(0x1B1B1B))
                     .whitespace_nowrap().overflow_hidden()
-                    .child(SharedString::from(ui::tf!("線のスタイル: {}…", style_name).to_string()))
+                    .child(SharedString::from(ui::tf!("Line style: {}…", style_name).to_string()))
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                         |this, _, _, cx| {
                             cx.stop_propagation();
@@ -5059,7 +5058,7 @@ impl Render for Calc {
                     .text_size(px(us * 11.5)).text_color(rgb(0x1B1B1B))
                     .child(div().w(px(10.0)).h(px(10.0)).rounded_xs().bg(pen)
                         .border_1().border_color(rgb(0xC6CDD3)))
-                    .child(SharedString::from(ui::tf!("線の色: {}…", color_name).to_string()))
+                    .child(SharedString::from(ui::tf!("Line colour: {}…", color_name).to_string()))
                     .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                         |this, _, _, cx| {
                             cx.stop_propagation();
@@ -5170,9 +5169,9 @@ impl Render for Calc {
             // 拾い集めは重さが違います(2026-08-22。台帳「開いて修復」)
             let (bg, edge, fg, 見出し) = if self.salvaged {
                 (0xFDECEA, 0xE9B0A8, 0x8A2A1B,
-                 ui::t!("この帳票は拾い集めたものです(読み取り専用 — 上書きはできません)"))
+                 ui::t!("This workbook was pieced together from a damaged file (read-only — you cannot overwrite)"))
             } else {
-                (0xFFF6E6, 0xE8D5A8, 0x8A4B00, ui::t!("この版で読み飛ばしたもの"))
+                (0xFFF6E6, 0xE8D5A8, 0x8A4B00, ui::t!("Skipped by this version"))
             };
             let mut n = div().px_4().py_2().bg(rgb(bg))
                 .border_t_1().border_color(rgb(edge))
@@ -5568,7 +5567,7 @@ pub(crate) fn md_body(
             }
             Block::Bullet(depth) => {
                 line = line.pl(px(zoom * 8.0 * depth as f32)).child(
-                    div().flex_none().pr_1().child(SharedString::from("・")),
+                    div().flex_none().pr_1().child(SharedString::from("•")),
                 );
             }
             Block::Ordered(n) => {

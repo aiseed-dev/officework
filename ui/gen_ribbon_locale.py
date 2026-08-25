@@ -33,7 +33,9 @@ OVERRIDES = {
         # ページの向きと同じ「印刷の向き」で、押すまで区別できませんでした。
         # 日本語を Excel の「方向」にしたので、訳は本家の
         # SSE.Views.Toolbar.tipTextOrientation から取ります
-        "方向": "Orientation",
+        # text-orient(セルの中の字の向き)。ページの向きの「向き」と
+        # 英語がかぶるので分ける(2026-08-26)
+        "方向": "Text orientation",
         # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
         # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
         # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
@@ -62,7 +64,6 @@ OVERRIDES = {
         "印刷": "Print",
         "印刷レイアウト": "Print layout",
         # AI タブ(こちらの設計。calc-manual.md の英語版と同じ語)
-        "宛先": "Destination",
         "要約": "Summarize",
         "書き直す": "Rewrite",
         "敬語にする": "Politer",
@@ -78,7 +79,6 @@ OVERRIDES = {
         "テキスト方向": "Text direction",
         "均等割付": "Distributed",
         "図表番号の挿入": "Insert caption",
-        "URL を開く": "Open URL",
         "洋子さんの索引": "Index",
         "青空文庫の注記": "Aozora notes",
         "でんでん記法": "Denden markup",
@@ -92,8 +92,9 @@ OVERRIDES = {
         "表記ゆれ": "Inconsistency",
         # calc 独自
         "小計": "Subtotal",
-        "計算方法": "Calculation",
-        "右横書き": "Right-to-left text",
+        # calc-mode。セルのスタイルの「計算」(Calculation)とかぶるので
+        # 分ける。Excel の「計算方法の設定」に当たる
+        "計算方法": "Calculation options",
         "シートの方向": "Sheet direction",
         "Python": "Python",
         "チェックボックス": "Checkbox",
@@ -145,7 +146,9 @@ OVERRIDES = {
         "セルのロック": "Cell lock",
         "データテーブル": "Data table",
         "フラッシュフィル": "Fill by example",
-        "一覧": "List",
+        # py-list(マクロの一覧)。入力規則の「リスト」(List)と
+        # かぶるので分ける
+        "一覧": "Macro list",
         "名前を貼り付け": "Paste name",
         "復旧": "Recover",
         "折り返して全体を表示する": "Wrap text",
@@ -495,15 +498,18 @@ def i18n_の訳(target: str) -> dict[str, str]:
     if not p.exists() or not kp.exists():
         return {}
     keys = json.loads(kp.read_text(encoding="utf-8"))
-    番号 = {k["i"]: k["ja"] for k in keys}
-    要る = set(OVERRIDES["en"])
+    # **鍵は英語になりました**(2026-08-26)。`OVERRIDES["en"]` は
+    # 「リボンの日本語の札 → 英語」なので、裏返して英語から札に戻します。
+    # リボンの札そのものが英語になるのは段2です
+    番号 = {k["i"]: k["key"] for k in keys}
+    英語から札 = {en: ja for ja, en in OVERRIDES["en"].items()}
     out = {}
     for x in json.loads(p.read_text(encoding="utf-8")):
         if not isinstance(x, dict) or not x.get("t"):
             continue
-        ja = 番号.get(x["i"])
-        if ja in 要る:
-            out[ja] = x["t"]
+        札 = 英語から札.get(番号.get(x["i"]))
+        if 札:
+            out[札] = x["t"]
     return out
 
 

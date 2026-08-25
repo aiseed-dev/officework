@@ -601,7 +601,7 @@ impl HasEditor for Calc {
     }
     fn on_autocorrect(&mut self, was: &str) {
         self.status =
-            ui::tf!("{} を記号に替えました(Backspace で綴りに戻ります)", was).into();
+            ui::tf!("Turned {} into a symbol (Backspace brings the spelling back)", was).into();
     }
     fn on_edited(&mut self) {
         // 検索を打ち替えたら一覧の選択は先頭に戻す
@@ -673,10 +673,10 @@ impl PropKind {
     /// 走査できる形しか受けない(鍵=日本語の文そのもの)
     fn label(self) -> &'static str {
         match self {
-            Self::Text => ui::t!("文字"),
-            Self::Number => ui::t!("数"),
-            Self::Date => ui::t!("日付"),
-            Self::Bool => ui::t!("はい・いいえ"),
+            Self::Text => ui::t!("Character"),
+            Self::Number => ui::t!("Number"),
+            Self::Date => ui::t!("Date"),
+            Self::Bool => ui::t!("Yes/No"),
         }
     }
 }
@@ -723,7 +723,7 @@ impl CalcAi {
 
     fn label(&self) -> &'static str {
         match self {
-            CalcAi::Chat(_) => ui::t!("会話"),
+            CalcAi::Chat(_) => ui::t!("Conversation"),
         }
     }
 }
@@ -879,7 +879,7 @@ pub fn run() {
                                 let w = if i % 2 == 0 { 20.0 } else { 5.0 };
                                 c.book.sheets[0].col_width.insert(1, w);
                                 eprintln!("tick {}", i + 1);
-                                c.status = ui::tf!("自己診断 {}/15: B列の幅 {}(勝手に動けば描画は健全)", i + 1, w)
+                                c.status = ui::tf!("Self-test {}/15: column B width {} (if it moves by itself, rendering is healthy)", i + 1, w)
                                 .into();
                                 cx.notify();
                             });

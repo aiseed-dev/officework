@@ -209,7 +209,7 @@ pub(crate) fn run_with_timeout(
     pyrun::run_with_timeout(cmd, secs).map_err(|e| match e {
         pyrun::RunErr::Spawn(e) => format!("Python が起動できません: {e}"),
         pyrun::RunErr::Timeout(s) => {
-            ui::tf!("{}秒たっても終わらないので止めました(無限ループ?)", s).to_string()
+            ui::tf!("Stopped it after {} seconds (an endless loop?)", s).to_string()
         }
         pyrun::RunErr::Wait(e) => e,
     })
@@ -258,7 +258,7 @@ pub(crate) struct ImportPend {
 /// 符号化の名前(UTF-8 など)は**固有名詞なので訳さない** — 鍵と見出しが同じ
 pub(crate) fn import_encs() -> Vec<(&'static str, &'static str, &'static str)> {
     vec![
-        crate::util::row(ui::item!("自動"), "auto"),
+        crate::util::row(ui::item!("Automatic"), "auto"),
         ("UTF-8", "UTF-8", "utf-8-sig"),
         ("Shift_JIS(CP932)", "Shift_JIS(CP932)", "cp932"),
         ("Latin-1", "Latin-1", "latin-1"),
@@ -270,13 +270,13 @@ pub(crate) fn import_encs() -> Vec<(&'static str, &'static str, &'static str)> {
 pub(crate) fn import_delims() -> Vec<(&'static str, &'static str, &'static str)> {
     use crate::util::row;
     vec![
-        row(ui::item!("自動"), "auto"),
-        row(ui::item!("カンマ"), ","),
-        row(ui::item!("タブ"), "\t"),
-        row(ui::item!("セミコロン"), ";"),
-        row(ui::item!("コロン"), ":"),
-        row(ui::item!("スペース"), " "),
-        row(ui::item!("その他…"), "その他"),
+        row(ui::item!("Automatic"), "auto"),
+        row(ui::item!("Comma"), ","),
+        row(ui::item!("Tab"), "\t"),
+        row(ui::item!("Semicolon"), ";"),
+        row(ui::item!("Colon"), ":"),
+        row(ui::item!("Space"), " "),
+        row(ui::item!("Other…"), "その他"),
     ]
 }
 
@@ -408,7 +408,7 @@ impl Calc {
     pub(crate) fn open_py_edit(&mut self, name: &str) {
         let name = name.trim();
         if name.is_empty() {
-            self.status = ui::t!("@edit 名前 の形で(例: @edit 道具)").into();
+            self.status = ui::t!("Write it as @edit name (for example @edit tools)").into();
             return;
         }
         let dir = if plugins_dir().join(format!("{name}.py")).exists()
@@ -435,7 +435,7 @@ impl Calc {
             p.ed.move_to(0, false);
         }
         self.status =
-            ui::tf!("{} を開きました(Ctrl+S で保存・Esc で閉じる)", path.display().to_string())
+            ui::tf!("Opened {} (Ctrl+S saves, Esc closes)", path.display().to_string())
                 .into();
     }
 
@@ -445,7 +445,7 @@ impl Calc {
         // **開いた置き場へ書き戻す**(funcs か plugins か)
         let dir = p.dir.clone();
         if let Err(e) = std::fs::create_dir_all(&dir) {
-            self.status = ui::tf!("置き場が作れません: {}", e.to_string()).into();
+            self.status = ui::tf!("Cannot create the folder: {}", e.to_string()).into();
             return;
         }
         let path = dir.join(format!("{}.py", p.name));
@@ -453,9 +453,9 @@ impl Calc {
             Ok(_) => {
                 p.saved = p.ed.text().to_string();
                 let n = p.name.clone();
-                self.status = ui::tf!("{}.py を保存しました(セルの関数は計算し直ります)", n).into();
+                self.status = ui::tf!("Saved {}.py (cell functions will recalculate)", n).into();
             }
-            Err(e) => self.status = ui::tf!("書けません: {}", e.to_string()).into(),
+            Err(e) => self.status = ui::tf!("Can't write: {}", e.to_string()).into(),
         }
     }
 
@@ -466,12 +466,12 @@ impl Calc {
         if p.dirty() && !self.py_edit_ask {
             self.py_edit_ask = true;
             self.status =
-                ui::t!("書きかけがあります。Ctrl+S で保存、もう一度 Esc で捨てて閉じる").into();
+                ui::t!("There are unsaved edits. Ctrl+S saves; Esc again throws them away and closes").into();
             return;
         }
         self.py_edit = None;
         self.py_edit_ask = false;
-        self.status = ui::t!("閉じました").into();
+        self.status = ui::t!("Closed").into();
     }
 
     /// 選んだ範囲を matplotlib で棒グラフにして、シートに浮かべる。
@@ -523,7 +523,7 @@ impl Calc {
             series.push((name, values));
         }
         if labels.is_empty() || series.is_empty() {
-            self.status = ui::t!("グラフにする範囲を選んでください(1列目が項目名、2列目からが数)").into();
+            self.status = ui::t!("Select the range to chart (first column = labels, numbers from the second)").into();
             return;
         }
         // JSON は手で組む(依存を増やさない。文字列は最小の逃がし)
@@ -565,7 +565,7 @@ impl Calc {
         ));
         // 置き場が指してあればそこへ(ピボットグラフ)。無ければ範囲の右隣
         let at = self.chart_dest.take().unwrap_or_else(|| Pos::new(a.row, b.col + 1));
-        self.status = ui::t!("グラフを描いています…").into();
+        self.status = ui::t!("Drawing the chart…").into();
         let task = cx.background_executor().spawn(async move {
             let json_path = dir.join("chart.json");
             let py_path = dir.join("chart.py");
@@ -605,7 +605,7 @@ impl Calc {
                         });
                         this.dirty = true;
                         this.status = ui::tf!(
-                            "グラフを {} に置きました(保存で xlsx に入ります)",
+                            "Placed the chart at {} (it goes into the xlsx on save)",
                             at.a1()
                         )
                         .into();
@@ -693,9 +693,9 @@ impl Calc {
     ) {
         // 見た目の組(スタイルギャラリー)。(見出しの地, 見出しの字, 小計の地)
         let (head_bg, head_fg, sub_bg) = match style {
-            "緑" => ("548235", "FFFFFF", "E2EFDA"),
-            "橙" => ("C55A11", "FFFFFF", "FBE5D6"),
-            "灰" => ("595959", "FFFFFF", "EDEDED"),
+            "Green" => ("548235", "FFFFFF", "E2EFDA"),
+            "Orange" => ("C55A11", "FFFFFF", "FBE5D6"),
+            "Grey" => ("595959", "FFFFFF", "EDEDED"),
             _ => ("4472C4", "FFFFFF", "D9E1F2"), // 既定 = 青
         };
         paste_values_text(&mut self.book.sheets[si], at, grid);
@@ -746,7 +746,7 @@ impl Calc {
         cx: &mut Context<Self>,
     ) {
         let Some(si) = self.book.sheets.iter().position(|s| s.name == def.sheet) else {
-            self.status = ui::tf!("シート「{}」がありません(ピボットの元の表)", def.sheet).into();
+            self.status = ui::tf!("No sheet \"{}\" (the pivot's source)", def.sheet).into();
             return;
         };
         let (a, b) = def.src;
@@ -766,7 +766,7 @@ impl Calc {
             .collect();
         let json = pivot_spec_json(&headers, &data, &def);
         let dir = 作業場("pivot");
-        self.status = ui::tf!("{} の {} を集めています…", def.value, def.agg).into();
+        self.status = ui::tf!("Aggregating {} by {}…", def.value, def.agg).into();
         let task = cx.background_executor().spawn(async move {
             let _ = std::fs::create_dir_all(&dir);
             let json_path = dir.join("pivot.json");
@@ -826,7 +826,7 @@ impl Calc {
                                 };
                                 if !free {
                                     this.status =
-                                        ui::t!("右に空きが見つかりません(場所を空けてから)").into();
+                                        ui::t!("No free space to the right (clear some first)").into();
                                 } else {
                                     this.checkpoint_book();
                                     def.dest = Pos::new(a.row, dc);
@@ -863,7 +863,7 @@ impl Calc {
                                         .map(|d| d.name.clone())
                                         .unwrap_or_default();
                                     this.status = ui::tf!(
-                                        "{}({} の {})を {} に置きました — その時の値。ピボットテーブルのタブが開いています(更新・総計・小計・レイアウトはここ。Ctrl+Z で戻せます)",
+                                        "Placed {} ({} of {}) at {} — the values as of now. The PivotTable tab is open (refresh, grand totals, subtotals and layout live there; Ctrl+Z undoes it)",
                                         pname,
                                         value,
                                         agg,
@@ -891,7 +891,7 @@ impl Calc {
                                 });
                                 if occupied {
                                     this.status =
-                                        ui::t!("広がった分の場所が塞がっています(右下を空けてから更新)").into();
+                                        ui::t!("The grown area is blocked (clear below-right, then refresh)").into();
                                 } else {
                                     this.checkpoint_book();
                                     for r in 0..old.size.0 {
@@ -917,7 +917,7 @@ impl Calc {
                                     this.pivot_chart_redraw(pi, cx);
                                     this.sync_input();
                                     this.status = ui::tf!(
-                                        "ピボットを更新しました({} — その時の値。Ctrl+Z で戻せます)",
+                                        "Refreshed the pivot ({} — the values as of now; Ctrl+Z undoes it)",
                                         dest.a1()
                                     )
                                     .into();
@@ -974,7 +974,7 @@ impl Calc {
                 sheet::xlsx::write_with(&self.book, original, std::io::BufWriter::new(f))
             });
         if let Err(e) = w {
-            self.status = ui::tf!("Python に渡せません: {}", e).into();
+            self.status = ui::tf!("Can't hand it to Python: {}", e).into();
             return;
         }
         // officework は実行ファイルの隣か、pip で入れた物(HIKITSUGI の配り方)。
@@ -1003,7 +1003,7 @@ impl Calc {
             out_x = out_x.to_string_lossy(),
             code = user_code
         );
-        self.status = ui::t!("Python を実行しています…").into();
+        self.status = ui::t!("Running Python…").into();
         let task = cx.background_executor().spawn(async move {
             let py_path = dir.join("run.py");
             std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
@@ -1020,14 +1020,12 @@ impl Calc {
                 None if sandbox => {
                     return Err(if cfg!(target_os = "linux") {
                         ui::t!(
-                            "サンドボックスが組めません。他所から来たかもしれないコードは\
-サンドボックスの外では実行しません(apt install bubblewrap で入ります)"
+                            "Can't build the sandbox. Code that may have come from elsewhere is not run outside the sandbox (apt install bubblewrap installs it)"
                         )
                         .to_string()
                     } else {
                         ui::t!(
-                            "この OS にはサンドボックスがないため、他所から来たかもしれない\
-コードは実行しません。ご自分で置いたマクロは動きます"
+                            "This OS has no sandbox, so code that may have come from elsewhere is not run. Macros you installed yourself still work"
                         )
                         .to_string()
                     });
@@ -1047,9 +1045,7 @@ impl Calc {
                 return Err(if err.contains("No module named 'officework'")
                     || err.contains("エンジン(_sheet)が読めません")
                 {
-                    ui::t!("officework のエンジンがありません(pip install officework で入ります。\
-手元で組むなら cargo build -p pysheet --release --features extension-module して、\
-lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてください)").to_string()
+                    ui::t!("The officework engine is missing (pip install officework installs it. To build it here, run cargo build -p pysheet --release --features extension-module and put lib_sheet.so next to calc under the name officework/_sheet.so)").to_string()
                 } else {
                     last
                 });
@@ -1081,7 +1077,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                                     .map(|(n, c)| SharedString::from(format!("{n} × {c}")))
                                     .collect();
                                 this.status = if out.is_empty() {
-                                    ui::t!("Python を実行しました(Ctrl+Z で1手で戻せます)").into()
+                                    ui::t!("Python finished (one Ctrl+Z undoes)").into()
                                 } else {
                                     let last =
                                         out.lines().last().unwrap_or_default().to_string();
@@ -1093,7 +1089,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                                 };
                             }
                             Err(e) => {
-                                this.status = ui::tf!("結果が読めません: {}", e).into();
+                                this.status = ui::tf!("Can't read the result: {}", e).into();
                             }
                         }
                     }
@@ -1186,7 +1182,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         }
         if per_sheet.is_empty() {
             if !auto {
-                self.status = ui::t!("plugins の関数を呼んでいるセルがありません").into();
+                self.status = ui::t!("No cell calls a function from plugins").into();
             }
             return;
         }
@@ -1212,7 +1208,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         }
         if !missing.is_empty() {
             // **式から呼ぶ関数の置き場は funcs**(2026-08-16)
-            self.status = ui::tf!("{}({} に .py を置いてください)", missing.join(" / "), pyrun::funcs_dir().display()).into();
+            self.status = ui::tf!("{} (put the .py in {})", missing.join(" / "), pyrun::funcs_dir().display()).into();
             return;
         }
         // 使うモジュールだけ読む(呼ばれていない .py は動かさない)
@@ -1224,7 +1220,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             match std::fs::read_to_string(pyrun::funcs_dir().join(format!("{m}.py"))) {
                 Ok(src) => mods.push((m.clone(), src)),
                 Err(e) => {
-                    self.status = ui::tf!("{}.py が読めません: {}", m, e).into();
+                    self.status = ui::tf!("Can't read {}.py: {}", m, e).into();
                     return;
                 }
             }
@@ -1257,7 +1253,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             ));
         }
         if !auto {
-            self.status = ui::t!("関数を計算しています…").into();
+            self.status = ui::t!("Calculating the function…").into();
         }
         self.udf_busy = true;
         let task = cx.background_executor().spawn(async move {
@@ -1334,7 +1330,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                         this.sync_input();
                         if conflicts > 0 {
                             this.status = ui::tf!(
-                                "関数: {} セルを計算、{} 件は #SPILL!(展開先に他のデータ)",
+                                "Functions: computed {} cells; {} gave #SPILL! (something already sits where the result would spill)",
                                 total,
                                 conflicts
                             )
@@ -1342,7 +1338,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                         } else if !auto {
                             this.dirty = true;
                             this.status =
-                                ui::tf!("関数: {} セルを計算しました(Ctrl+Z で戻せます)", total).into();
+                                ui::tf!("Functions: computed {} cells (Ctrl+Z undoes it)", total).into();
                         }
                     }
                     Err(e) => this.status = e.into(),
@@ -1399,7 +1395,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         };
         self.checkpoint_book();
         self.rpc_batch = true;
-        self.status = ui::tf!("「{}」を実行しています…", name.clone()).into();
+        self.status = ui::tf!("Running \"{}\"…", name.clone()).into();
         let task = cx.background_executor().spawn(async move {
             let py_path = dir.join("plugin.py");
             std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
@@ -1424,7 +1420,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                 this.sync_input();
                 this.status = match r {
                     Ok(out) if out.is_empty() => {
-                        ui::tf!("「{}」を実行しました(Ctrl+Z で1手で戻せます)", name).into()
+                        ui::tf!("Ran \"{}\" (Ctrl+Z undoes it in one step)", name).into()
                     }
                     Ok(out) => format!(
                         "{name}: {}(出力{}行。Ctrl+Z で1手で戻せます)",
@@ -1450,7 +1446,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             .find(|(n, _)| *n == name)
             .map(|(_, c)| c.clone())
         else {
-            self.status = ui::tf!("「{}」はありません(@list で一覧)", name).into();
+            self.status = ui::tf!("\"{}\" does not exist (@list lists)", name).into();
             return;
         };
         let fname = format!("{name}.py");
@@ -1466,11 +1462,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                 if let Some(p) = r {
                     this.status = match std::fs::write(&p, &code) {
                         Ok(_) => ui::tf!(
-                            "取り出しました: {}(中身を確かめて、良ければ plugins へ)",
+                            "Took it out: {} (check the contents; if it looks right, move it to plugins)",
                             p.display().to_string()
                         )
                         .into(),
-                        Err(e) => ui::tf!("書けません: {}", e.to_string()).into(),
+                        Err(e) => ui::tf!("Can't write: {}", e.to_string()).into(),
                     };
                 }
                 cx.notify();
@@ -1534,7 +1530,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             // csv.py という名前は標準ライブラリの csv を隠してしまう(踏んだ)
             let py_path = dir.join("jo_csv.py");
             if std::fs::write(&py_path, CSV_PY).is_err() {
-                return Err(ui::t!("一時ファイルが書けません").to_string());
+                return Err(ui::t!("Can't write a temporary file").to_string());
             }
             let o = std::process::Command::new(find_python())
                 .arg(&py_path)
@@ -1573,7 +1569,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                         this.import_pick();
                     }
                     Err(e) => {
-                        this.status = ui::tf!("読み込めません: {}", e).into();
+                        this.status = ui::tf!("Could not read: {}", e).into();
                         this.import_pick(); // パネルは残す(設定を替えて再挑戦できる)
                     }
                 }
@@ -1613,21 +1609,21 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         };
         let (fc, lo, up) = (数("forecast"), 数("lower"), 数("upper"));
         if fc.is_empty() {
-            self.status = ui::t!("予測の答えが読めません").into();
+            self.status = ui::t!("The forecast result cannot be read").into();
             return;
         }
         let season = 一つ("season") as u32;
         let sigma = 一つ("sigma");
         self.checkpoint();
-        let name = crate::util::unique_sheet_name_for(&self.book, ui::t!("予測"));
+        let name = crate::util::unique_sheet_name_for(&self.book, ui::t!("Forecast"));
         let mut sh = sheet::Sheet::new(&name);
-        let 実 = if 見出し.is_empty() { ui::t!("実績").to_string() } else { 見出し };
+        let 実 = if 見出し.is_empty() { ui::t!("Actual").to_string() } else { 見出し };
         for (c, t) in [
-            (0u32, ui::t!("期").to_string()),
+            (0u32, ui::t!("Period").to_string()),
             (1, 実),
-            (2, ui::t!("予測").to_string()),
-            (3, ui::t!("下限").to_string()),
-            (4, ui::t!("上限").to_string()),
+            (2, ui::t!("Forecast").to_string()),
+            (3, ui::t!("Lower").to_string()),
+            (4, ui::t!("Upper").to_string()),
         ] {
             sh.set(Pos::new(0, c), sheet::Cell::input(&t));
         }
@@ -1640,7 +1636,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         sh.set(Pos::new(n as u32, 2), sheet::Cell::input(&values[n - 1].to_string()));
         for (j, v) in fc.iter().enumerate() {
             let r = (n + j + 1) as u32;
-            sh.set(Pos::new(r, 0), sheet::Cell::input(&ui::tf!("予測{}", j + 1)));
+            sh.set(Pos::new(r, 0), sheet::Cell::input(&ui::tf!("Forecast {}", j + 1)));
             sh.set(Pos::new(r, 2), sheet::Cell::input(&format!("{v:.2}")));
             sh.set(Pos::new(r, 3), sheet::Cell::input(&format!("{:.2}", lo[j])));
             sh.set(Pos::new(r, 4), sheet::Cell::input(&format!("{:.2}", up[j])));
@@ -1648,12 +1644,12 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         // **断りはシートに残します。**状態行はこの後グラフの報せで流れるので、
         // そこだけに書くと、区間の意味が誰にも伝わりません
         let 季 = if season > 1 {
-            ui::tf!("季節 {} 期(自動で選びました)", season).to_string()
+            ui::tf!("Season of {} periods (found automatically)", season).to_string()
         } else {
-            ui::t!("季節は見つかりませんでした").to_string()
+            ui::t!("No season was found").to_string()
         };
         let 断り = ui::tf!(
-            "{} 期先まで予測しました。{}。区間は 95% の見込みで、約束ではありません(誤差の目安 {:.1})",
+            "Forecast {} periods ahead. {}. The interval is a 95% expectation, not a promise (typical error {:.1})",
             fc.len(),
             季.clone(),
             sigma
@@ -1714,7 +1710,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             let (rows, cols) = self.sheet().extent();
             if rows < 5 || cols == 0 {
                 self.status =
-                    ui::t!("予測するには、見出しの下に4行以上の数が要ります").into();
+                    ui::t!("Forecasting needs at least 4 rows of numbers under the heading").into();
                 return;
             }
             (Pos::new(0, 0), Pos::new(rows - 1, cols - 1))
@@ -1728,7 +1724,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                 >= 4
         });
         let Some(vc) = 数の列 else {
-            self.status = ui::t!("数の列が見つかりません(4つ以上の数が要ります)").into();
+            self.status = ui::t!("No column of numbers was found (at least 4 numbers are needed)").into();
             return;
         };
         let lc = (vc > a.col).then(|| vc - 1);
@@ -1746,7 +1742,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             values.push(v);
         }
         if values.len() < 4 {
-            self.status = ui::t!("予測するには4つ以上の数が要ります").into();
+            self.status = ui::t!("Forecasting needs at least 4 numbers").into();
             return;
         }
         let 見出し = sh.get(Pos::new(a.row, vc)).map(|x| x.value.display()).unwrap_or_default();
@@ -1755,7 +1751,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             values.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(","),
             h
         );
-        self.status = ui::t!("予測しています…").into();
+        self.status = ui::t!("Forecasting…").into();
         let task = cx.background_executor().spawn(async move {
             let dir = 作業場("forecast");
             let _ = std::fs::create_dir_all(&dir);
@@ -1767,15 +1763,15 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                 .arg(&pp)
                 .arg(&jp)
                 .output()
-                .map_err(|e| ui::tf!("Python が起動できません: {}", e).to_string())?;
+                .map_err(|e| ui::tf!("Can't start Python: {}", e).to_string())?;
             if !o.status.success() {
                 let err = String::from_utf8_lossy(&o.stderr);
                 let last = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("原因不明");
                 return Err(if err.contains("No module named") {
-                    ui::tf!("予測に要る道具がありません。次で入ります:\n  {}",
+                    ui::tf!("The tools the forecast needs are missing. Install them with:\n  {}",
                             pyrun::pip_hint("numpy scipy")).to_string()
                 } else {
-                    ui::tf!("予測できません: {}", last).to_string()
+                    ui::tf!("Cannot forecast: {}", last).to_string()
                 });
             }
             Ok(String::from_utf8_lossy(&o.stdout).to_string())
@@ -1802,13 +1798,13 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     pub(crate) fn pdf_reparse(&mut self, cx: &mut Context<Self>) {
         let Some(pend) = &self.import_pend else { return };
         let path = pend.path.clone();
-        self.status = ui::t!("PDF から表を探しています…").into();
+        self.status = ui::t!("Looking for tables in the PDF…").into();
         let job = cx.background_executor().spawn(async move {
             let dir = 作業場("pdf");
             let _ = std::fs::create_dir_all(&dir);
             let py_path = dir.join("jo_pdf.py");
             if std::fs::write(&py_path, pyrun::PDF_TABLE_PY).is_err() {
-                return Err(ui::t!("一時ファイルが書けません").to_string());
+                return Err(ui::t!("Can't write a temporary file").to_string());
             }
             let o = std::process::Command::new(find_python())
                 .arg(&py_path)
@@ -1822,15 +1818,15 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                         err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("原因不明");
                     Err(if err.contains("No module named") {
                         ui::tf!(
-                            "PDF を読む道具(pdfplumber)がありません。次で入ります:\n  {}",
+                            "The tool that reads PDFs (pdfplumber) is missing. Install it with:\n  {}",
                             pyrun::pip_hint("pdfplumber")
                         )
                         .to_string()
                     } else {
-                        ui::tf!("PDF が読めません: {}", last).to_string()
+                        ui::tf!("Cannot read the PDF: {}", last).to_string()
                     })
                 }
-                Err(e) => Err(ui::tf!("Python が起動できません: {}", e).to_string()),
+                Err(e) => Err(ui::tf!("Can't start Python: {}", e).to_string()),
             }
         });
         cx.spawn(async move |this, cx| {
@@ -1842,7 +1838,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                         if tables.is_empty() {
                             this.import_pend = None;
                             this.status = ui::t!(
-                                "この PDF に表は見つかりませんでした(絵として貼られた表は読めません)"
+                                "No table was found in this PDF (a table pasted as a picture cannot be read)"
                             )
                             .into();
                         } else if let Some(p) = &mut this.import_pend {
@@ -1874,46 +1870,46 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         };
         // 区切りの名も画面の字 — 訳す。読めない字はそのまま括って見せる
         let delim_name = |d: &str| match d {
-            "," => ui::t!("カンマ").to_string(),
-            "\t" => ui::t!("タブ").to_string(),
-            ";" => ui::t!("セミコロン").to_string(),
-            ":" => ui::t!("コロン").to_string(),
-            " " => ui::t!("スペース").to_string(),
+            "," => ui::t!("Comma").to_string(),
+            "\t" => ui::t!("Tab").to_string(),
+            ";" => ui::t!("Semicolon").to_string(),
+            ":" => ui::t!("Colon").to_string(),
+            " " => ui::t!("Space").to_string(),
             other => format!("「{other}」"),
         };
         let delim_label = if pend.delim == 0 && !pend.used.1.is_empty() {
             format!("{}({})", delims[0].1, delim_name(&pend.used.1))
-        } else if delims[pend.delim].2 == "その他" && !pend.custom.is_empty() {
+        } else if delims[pend.delim].2 == "Other" && !pend.custom.is_empty() {
             format!("{}{}", delims[pend.delim].1, delim_name(&pend.custom))
         } else {
             delims[pend.delim].1.to_string()
         };
         if pend.pdf.is_empty() {
-            items.push(format!("{}: {}", ui::t!("文字コード"), enc_label));
-            items.push(format!("{}: {}", ui::t!("区切り"), delim_label));
+            items.push(format!("{}: {}", ui::t!("Encoding"), enc_label));
+            items.push(format!("{}: {}", ui::t!("Delimiter"), delim_label));
         } else {
             // PDF は文字コードも区切りも関わりません。代わりに
             // **どの表か**と、**どうやって取ったか**を出します
             let (page, how, _) = &pend.pdf[pend.pdf_at.min(pend.pdf.len() - 1)];
             items.push(format!(
                 "{}: {}",
-                ui::t!("表"),
-                ui::tf!("{} / {} 枚目({} ページ)", pend.pdf_at + 1, pend.pdf.len(), page)
+                ui::t!("Table"),
+                ui::tf!("{} of {} (page {})", pend.pdf_at + 1, pend.pdf.len(), page)
             ));
             // **台本は鍵だけを返します。**画面の字はここで訳します —
             // 台本が日本語を返すと、13言語で日本語が出ます
             let how_label = if how == "lines" {
-                ui::t!("罫線から")
+                ui::t!("From the ruling lines")
             } else {
-                ui::t!("文字の位置から(推し量り)")
+                ui::t!("From the text positions (a guess)")
             };
-            items.push(format!("{}: {}", ui::t!("取り方"), how_label));
+            items.push(format!("{}: {}", ui::t!("How it was found"), how_label));
             if how == "text" {
-                items.push(ui::t!("※ 罫線が無いので推し量りました。桁のずれを確かめてください")
+                items.push(ui::t!("Note: there were no ruling lines, so this is a guess. Check that the columns line up")
                     .to_string());
             }
         }
-        items.push(format!("{}: {}", ui::t!("置き場所"), pend.dest.a1()));
+        items.push(format!("{}: {}", ui::t!("Destination"), pend.dest.a1()));
         // プレビュー(先頭3行。長ければ詰める)
         for (i, row) in pend.grid.iter().take(3).enumerate() {
             let mut line = row.join(" | ");
@@ -1924,7 +1920,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         }
         items.push(format!(
             "→ {}",
-            ui::tf!("取り込む({} 行)", pend.grid.len())
+            ui::tf!("Import ({} rows)", pend.grid.len())
         ));
         let at = self.pop_anchor();
         let name = pend
@@ -1933,7 +1929,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
         self.pick_note =
-            Some(ui::tf!("テキストの取り込み — {}(クリックで切替)", name).into());
+            Some(ui::tf!("Text import — {} (click a line to change it)", name).into());
         self.pick_kind = "csv-import-pick";
         // この一覧は**訳した字がそのまま鍵**(受け口も ui::t! で頭を作って
         // 突き合わせる)。だから鍵と見出しは同じでよい
@@ -1965,7 +1961,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             esc(&out.to_string_lossy())
         );
         let at = self.cursor;
-        self.status = ui::t!("清書しています…").into();
+        self.status = ui::t!("Typesetting…").into();
         let task = cx.background_executor().spawn(async move {
             let _ = std::fs::create_dir_all(&dir);
             let json_path = dir.join("eq.json");
@@ -2006,10 +2002,10 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                         });
                         this.dirty = true;
                         this.status = ui::tf!(
-                            "{} を {} に置きました(画像。保存で xlsx に入ります。Ctrl+Z で1手)",
+                            "Placed the {} at {} (as an image; it goes into the xlsx on save; Ctrl+Z undoes it in one step)",
                             // **中の語も訳を通す。** ここだけ素の字だと、
                             // 文は訳されるのに「方程式」が日本語で残ります
-                            if name == "eq" { ui::t!("方程式") } else { ui::t!("テキストアート") },
+                            if name == "eq" { ui::t!("Equation") } else { ui::t!("Text art") },
                             at.a1()
                         )
                         .into();
@@ -2125,13 +2121,13 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                 kind: kind.into(),
                 fill: if filled { g.clone() } else { None },
                 line: l.clone(),
-                text: if texted { Some(ui::t!("テキスト").into()) } else { None },
+                text: if texted { Some(ui::t!("Text").into()) } else { None },
                 ..Default::default()
             });
         }
         self.dirty = true;
         self.status = ui::tf!(
-            "{} を {} に置きました({} 個の図形。図形を選んで Enter で文字、ドラッグで移動。全部まとめて Ctrl+Z で1手)",
+            "Placed {} at {} ({} shapes; select a shape and press Enter to type, drag to move; Ctrl+Z undoes them all in one step)",
             name,
             at.a1(),
             n
@@ -2148,11 +2144,11 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         let Some(sv) = &self.solver else { return };
         // ---- 読み取りと検め ----
         let Some(target) = Pos::parse(&sv.target.text().replace('$', "").to_uppercase()) else {
-            self.status = ui::t!("目的のセルが読めません(例: E6)").into();
+            self.status = ui::t!("Can't parse the target cell (e.g. E6)").into();
             return;
         };
         let Some(vars) = parse_cell_list(sv.vars.text(), 64) else {
-            self.status = ui::t!("変数セルが読めません(例: B2:B4 や B2,C2。最大64個)").into();
+            self.status = ui::t!("Can't parse the variable cells (e.g. B2:B4 or B2,C2; up to 64)").into();
             return;
         };
         let mode = sv.mode;
@@ -2160,7 +2156,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             match sv.value.text().trim().parse::<f64>() {
                 Ok(v) => v,
                 Err(_) => {
-                    self.status = ui::t!("「値」が数として読めません").into();
+                    self.status = ui::t!("The target value is not a number").into();
                     return;
                 }
             }
@@ -2178,7 +2174,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         let mut bin_of: Vec<bool> = vec![false; vars.len()];
         for (l, op, r) in &sv.cons {
             let Some(cells) = parse_cell_list(l, 256) else {
-                self.status = ui::tf!("制約の左辺が読めません: {}", l).into();
+                self.status = ui::tf!("Can't read the left side of the constraint: {}", l).into();
                 return;
             };
             let opi = SOLVER_OPS.iter().position(|o| o == op).unwrap_or(0);
@@ -2188,7 +2184,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                 for p in &cells {
                     let Some(vi) = vars.iter().position(|v| v == p) else {
                         self.status = ui::tf!(
-                            "{} は変数セルではありません(整数・バイナリは変数セルにだけ付けられます)",
+                            "{} is not a variable cell (integer and binary can only be applied to variable cells)",
                             p.a1()
                         )
                         .into();
@@ -2211,7 +2207,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                         .map(|c| c.value.as_number())
                         .unwrap_or(0.0),
                     None => {
-                        self.status = ui::tf!("制約の右辺が読めません: {}", r).into();
+                        self.status = ui::tf!("Can't read the right side of the constraint: {}", r).into();
                         return;
                     }
                 },
@@ -2258,7 +2254,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         }
         if !linear {
             self.status =
-                ui::t!("線形ではありません — 単体法 LP は線形の問題だけを解きます(非線形は未対応。本家と同じ)").into();
+                ui::t!("Not linear — simplex LP solves only linear problems (nonlinear unsupported, as in the original)").into();
             return;
         }
         // ---- LP に組む ----
@@ -2325,9 +2321,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
         let 整数あり = int_of.contains(&1);
         let dir = 作業場("solver");
         self.status = if 整数あり {
-            ui::t!("解を探しています…(整数計画。分枝限定)").into()
+            ui::t!("Looking for a solution… (integer program, branch and bound)").into()
         } else {
-            ui::t!("解を探しています…(単体法 LP)").into()
+            ui::t!("Solving… (simplex LP)").into()
         };
         let task = cx.background_executor().spawn(async move {
             let _ = std::fs::create_dir_all(&dir);
@@ -2362,7 +2358,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                             .filter_map(|v| v.trim().parse().ok())
                             .collect();
                         if xs.len() != vars.len() {
-                            this.status = ui::tf!("答えの形が違います: {}", out).into();
+                            this.status = ui::tf!("The answer has the wrong shape: {}", out).into();
                         } else {
                             this.checkpoint();
                             for (p, x) in vars.iter().zip(&xs) {
@@ -2386,7 +2382,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                                 .map(|c| c.value.display())
                                 .unwrap_or_default();
                             this.status = ui::tf!(
-                                "解を求めました: {} = {}(変数 {} 個を書き換え。Ctrl+Z で1手)",
+                                "Solved: {} = {} ({} variable cells were rewritten; Ctrl+Z undoes it in one step)",
                                 target.a1(),
                                 got,
                                 xs.len()
@@ -2406,7 +2402,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     pub(crate) fn goal_seek(&mut self, target: Pos, goal: f64, var: Pos) {
         let base = self.sheet().clone();
         if base.get(target).and_then(|c| c.formula.as_ref()).is_none() {
-            self.status = ui::tf!("{} は式のセルではありません", target.a1()).into();
+            self.status = ui::tf!("{} is not a formula cell", target.a1()).into();
             return;
         }
         let found = solve_goal(&base, target, goal, var);
@@ -2422,7 +2418,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
                 self.dirty = true;
                 self.sync_input();
                 self.status = ui::tf!(
-                    "{} = {} で {} が {} になります(Ctrl+Z で戻せます)",
+                    "With {} = {}, {} becomes {} (Ctrl+Z undoes it)",
                     var.a1(),
                     x,
                     target.a1(),
@@ -2432,7 +2428,7 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
             }
             None => {
                 self.status = ui::tf!(
-                    "見つかりません({} が {} に効いていないかもしれません)",
+                    "No solution found ({} may not affect {})",
                     var.a1(),
                     target.a1()
                 )
@@ -2455,7 +2451,7 @@ impl Calc {
         let (a, b) = self.sel_rect();
         if a.row >= b.row || a.col >= b.col {
             self.status =
-                ui::t!("入力値と式を含む四角い範囲を選んでください(2行2列より大きく)").into();
+                ui::t!("Select a rectangular range holding the inputs and the formula (bigger than 2 by 2)").into();
             return;
         }
         let si = self.active;
@@ -2467,7 +2463,7 @@ impl Calc {
             // 角(a)が式。左の列 = 列の入力、上の行 = 行の入力
             if self.sheet().get(a).and_then(|c| c.formula.as_ref()).is_none() {
                 self.status =
-                    ui::tf!("2変数では角の {} が式でなければなりません", a.a1()).into();
+                    ui::tf!("With two variables the corner {} has to be a formula", a.a1()).into();
                 return;
             }
             for r in (a.row + 1)..=b.row {
@@ -2482,7 +2478,7 @@ impl Calc {
             }
         } else {
             let Some(ci) = col_in.or(row_in) else {
-                self.status = ui::t!("入力セルを打ってください(例: B2)").into();
+                self.status = ui::t!("Type the input cell (B2, for example)").into();
                 return;
             };
             // 1変数(列): 上の行の式ごとに、左の列の値を差し替える
@@ -2502,7 +2498,7 @@ impl Calc {
         }
         if jobs.is_empty() {
             self.status = ui::t!(
-                "埋める所がありません(上の行に式・左の列に入力値。2変数は角に式)"
+                "Nothing to fill in (the formula goes along the top row and the inputs down the left column; with two variables the formula goes in the corner)"
             )
             .into();
             return;
@@ -2531,9 +2527,9 @@ impl Calc {
         self.dirty = true;
         self.sync_input();
         self.status = ui::tf!(
-            "データテーブル: {} 個の答えを入れました({}。その時の値なので、入力を直したらもう一度)",
+            "Data table: filled in {} answers ({}. These are the values as of now, so run it again if you change an input)",
             out.len(),
-            if two { ui::t!("2変数") } else { ui::t!("1変数") }
+            if two { ui::t!("Two variables") } else { ui::t!("One variable") }
         )
         .into();
     }

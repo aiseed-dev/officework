@@ -11,6 +11,7 @@ pub fn tabs(lang: &str) -> Option<(&'static [Tab], &'static [Tab])> {
         "fr" => Some((crate::ribbon_fr::WRITER, crate::ribbon_fr::CALC)),
         "id" => Some((crate::ribbon_id::WRITER, crate::ribbon_id::CALC)),
         "it" => Some((crate::ribbon_it::WRITER, crate::ribbon_it::CALC)),
+        "ja" => Some((crate::ribbon_ja::WRITER, crate::ribbon_ja::CALC)),
         "ko" => Some((crate::ribbon_ko::WRITER, crate::ribbon_ko::CALC)),
         "pt" => Some((crate::ribbon_pt::WRITER, crate::ribbon_pt::CALC)),
         "pt-br" => Some((crate::ribbon_pt_br::WRITER, crate::ribbon_pt_br::CALC)),
