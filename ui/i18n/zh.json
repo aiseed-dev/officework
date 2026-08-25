@@ -3921,7 +3921,7 @@
  },
  {
   "i": 980,
-  "t": "说明书：docs/calc-manual.ja.adoc（英文的是 calc-manual.adoc）。Python 的在 python-manual.ja.adoc"
+  "t": "说明书：docs/ja/calc-manual.adoc（英文的是 en/calc-manual.adoc）。Python 的在 ja/python-manual.adoc"
  },
  {
   "i": 981,
@@ -4585,7 +4585,7 @@
  },
  {
   "i": 1146,
-  "t": "说明书：docs/writer-manual.ja.adoc（英文的是 writer-manual.adoc）。Python 的在 writer-macro-manual.ja.adoc"
+  "t": "说明书：docs/ja/writer-manual.adoc（英文的是 en/writer-manual.adoc）。Python 的在 ja/writer-macro-manual.adoc"
  },
  {
   "i": 1147,

@@ -3921,7 +3921,7 @@
  },
  {
   "i": 980,
-  "t": "안내서: docs/calc-manual.ja.adoc(영어는 calc-manual.adoc). Python은 python-manual.ja.adoc"
+  "t": "안내서: docs/ja/calc-manual.adoc(영어는 en/calc-manual.adoc). Python은 ja/python-manual.adoc"
  },
  {
   "i": 981,
@@ -4585,7 +4585,7 @@
  },
  {
   "i": 1146,
-  "t": "안내서: docs/writer-manual.ja.adoc(영어는 writer-manual.adoc). Python은 writer-macro-manual.ja.adoc"
+  "t": "안내서: docs/ja/writer-manual.adoc(영어는 en/writer-manual.adoc). Python은 ja/writer-macro-manual.adoc"
  },
  {
   "i": 1147,

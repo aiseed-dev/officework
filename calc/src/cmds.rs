@@ -52,7 +52,7 @@ impl ui::filemenu::FileScreen for Calc {
         self.new_book()
     }
     /// **フォルダを開き直す。** 文章の画面と同じ物
-    /// (手引き `docs/commands/ファイル/フォルダーを開く.adoc`)
+    /// (手引き `docs/ja/commands/ファイル/フォルダーを開く.adoc`)
     fn folder_dialog_now(&mut self, cx: &mut Context<Self>) {
         let start = self
             .path
@@ -4318,7 +4318,7 @@ impl Calc {
             I::new("f-csv", ui::t!("CSV に書き出す")),
             I::new("f-html", ui::t!("Web に書き出す")),
             // **形を選んで書き出す1つの入り口**
-            // (手引き `docs/commands/ファイル/エクスポート.adoc`)
+            // (手引き `docs/ja/commands/ファイル/エクスポート.adoc`)
             I::new("f-export", ui::t!("エクスポート")),
             I::new("f-protect", ui::t!("保護する")).on(self.file_view == 5),
             I::new("f-macro", ui::t!("マクロ")),

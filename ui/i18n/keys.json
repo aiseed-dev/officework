@@ -4901,8 +4901,8 @@
  },
  {
   "i": 980,
-  "ja": "手引き: docs/calc-manual.ja.adoc(英語は calc-manual.adoc)。Python は python-manual.ja.adoc",
-  "en": "Manual: docs/calc-manual.ja.adoc (English is calc-manual.adoc). Python is python-manual.ja.adoc"
+  "ja": "手引き: docs/ja/calc-manual.adoc(英語は en/calc-manual.adoc)。Python は ja/python-manual.adoc",
+  "en": "Manual: docs/ja/calc-manual.adoc (English is en/calc-manual.adoc). Python is ja/python-manual.adoc"
  },
  {
   "i": 981,
@@ -5731,8 +5731,8 @@
  },
  {
   "i": 1146,
-  "ja": "手引き: docs/writer-manual.ja.adoc(英語は writer-manual.adoc)。Python は writer-macro-manual.ja.adoc",
-  "en": "Manual: docs/writer-manual.ja.adoc (English is writer-manual.adoc). Python is writer-macro-manual.ja.adoc"
+  "ja": "手引き: docs/ja/writer-manual.adoc(英語は en/writer-manual.adoc)。Python は ja/writer-macro-manual.adoc",
+  "en": "Manual: docs/ja/writer-manual.adoc (English is en/writer-manual.adoc). Python is ja/writer-macro-manual.adoc"
  },
  {
   "i": 1147,

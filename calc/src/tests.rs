@@ -8015,7 +8015,7 @@ mod file_menu_tests {
 
     #[gpui::test]
     /// **表の画面でもフォルダを開けます**(文章の画面と同じ物)。
-    /// 手引き `docs/commands/ファイル/フォルダーを開く.adoc`
+    /// 手引き `docs/ja/commands/ファイル/フォルダーを開く.adoc`
     fn フォルダを開くと一覧が出る(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {

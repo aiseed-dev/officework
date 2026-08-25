@@ -1711,7 +1711,7 @@ impl Writer {
             .map(|s| (s.to_string(), s.to_string()))
             .collect(),
             // **書き出す形。** 文章の節から出せるのは4つです
-            // (手引き `docs/commands/ファイル/エクスポート.adoc` の表)。
+            // (手引き `docs/ja/commands/ファイル/エクスポート.adoc` の表)。
             // `.adoc` はここに出しません — *保存の側*だからです
             "f-export" => vec![
                 ("docx".into(), ui::t!("Word 文書(.docx)").to_string()),

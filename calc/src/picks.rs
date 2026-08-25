@@ -345,7 +345,7 @@ impl Calc {
                 self.status = ui::tf!("{} を式に入れました", name).into();
             }
             // **書き出す形を選ぶ**(手引き
-            // `docs/commands/ファイル/エクスポート.adoc`)。
+            // `docs/ja/commands/ファイル/エクスポート.adoc`)。
             // 形ごとに、もとからある書き出しの道へ渡します
             "f-export" => match v {
                 "xlsx" => self.run_cmd("f-saveas", cx),

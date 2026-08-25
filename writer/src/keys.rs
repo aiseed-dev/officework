@@ -620,7 +620,7 @@ impl Writer {
     /// 読む物がどこにあるかを一行で言うほうが早い
     pub(crate) fn do_help(&mut self, _: &ui::Help, _: &mut Window, cx: &mut Context<Self>) {
         self.status = ui::t!(
-            "手引き: docs/writer-manual.ja.adoc(英語は writer-manual.adoc)。Python は writer-macro-manual.ja.adoc"
+            "手引き: docs/ja/writer-manual.adoc(英語は en/writer-manual.adoc)。Python は ja/writer-macro-manual.adoc"
         )
         .into();
         cx.notify();

@@ -21,7 +21,7 @@ impl ui::filemenu::FileScreen for Writer {
         self.new_doc()
     }
     /// **フォルダを開き直す。** 綴りはフォルダなので、仕事を替えるとは
-    /// フォルダを替えることです(手引き `docs/commands/ファイル/フォルダーを開く.adoc`)
+    /// フォルダを替えることです(手引き `docs/ja/commands/ファイル/フォルダーを開く.adoc`)
     fn folder_dialog_now(&mut self, cx: &mut Context<Self>) {
         let start = self
             .path
@@ -1342,7 +1342,7 @@ impl Writer {
             I::new("f-saveas", ui::t!("名前を付けて保存")),
             I::new("f-print", ui::t!("印刷")),
             // **形を選んで書き出す1つの入り口**
-            // (手引き `docs/commands/ファイル/エクスポート.adoc`)。
+            // (手引き `docs/ja/commands/ファイル/エクスポート.adoc`)。
             // 前は「印刷」「Web の形で書き出す」に分かれていて、
             // どこから何が出せるのかが探しにくい形でした
             I::new("f-export", ui::t!("エクスポート")),

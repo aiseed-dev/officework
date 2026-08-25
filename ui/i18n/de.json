@@ -3921,7 +3921,7 @@
  },
  {
   "i": 980,
-  "t": "Handbuch: docs/calc-manual.ja.adoc (auf Englisch calc-manual.adoc). Für Python python-manual.ja.adoc"
+  "t": "Handbuch: docs/ja/calc-manual.adoc (auf Englisch en/calc-manual.adoc). Für Python ja/python-manual.adoc"
  },
  {
   "i": 981,
@@ -4585,7 +4585,7 @@
  },
  {
   "i": 1146,
-  "t": "Handbuch: docs/writer-manual.ja.adoc (auf Englisch writer-manual.adoc). Für Python writer-macro-manual.ja.adoc"
+  "t": "Handbuch: docs/ja/writer-manual.adoc (auf Englisch en/writer-manual.adoc). Für Python ja/writer-macro-manual.adoc"
  },
  {
   "i": 1147,
