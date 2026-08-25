@@ -8,7 +8,12 @@
 並びは画面のメニューと同じです。ファイル・ホーム・挿入…の順に並んでいるので、
 画面で押している場所を思い出して探してください。
 
-メニューの後ろに、*クイックアクセス*(窓の上の段)と*左右のパネル*(表示タブで出す)も並べてあります。
+メニューの後ろに、*クイックアクセス*(窓の上の段)・*左右のパネル*(表示タブで出す)・
+*下端*(ステータスバー)も並べてあります。
+
+同じボタンが2か所にあることがあります(「保存」はファイルとクイックアクセスの両方にあります)。
+*両方とも載せて*、後から出るほうに「◯◯と同じ」と書いてあります。
+画面には本当に両方あるので、隠しません。
 
 == 印の読み方
 
@@ -174,7 +179,7 @@ def 大文字にする(段落):
 |image:../face/icons/pageorient.svg[印刷の向き,16,16] 印刷の向き |Section |✅ |d.sections[0] |section.orientation |ws.page_setup.orientation
 |image:../face/icons/pagesize.svg[ページのサイズ,16,16] ページのサイズ |Section |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
 |image:../face/icons/printarea.svg[印刷範囲,16,16] 印刷範囲 |Sheet |✅ |s.print_area |— |ws.print_area
-|image:../face/icons/pagebreak.svg[区切り,16,16] 区切り |Doc |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../face/icons/pagebreak.svg[区切り,16,16] 区切り |Doc |✅ |*挿入と同じ* — d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../face/icons/editheader.svg[ヘッダー/フッター,16,16] ヘッダー/フッター |Doc / Sheet |✅ |d.header / s.oddHeader |section.header |ws.oddHeader
 |image:../face/icons/printtitles.svg[タイトルを印刷する,16,16] タイトルを印刷する |Sheet |✅ |s.print_title_rows |— |ws.print_title_rows
 |image:../face/icons/print-gridlines.svg[枠線も印刷,16,16] 枠線も印刷 |Sheet |✅ |s.print_gridlines |— |ws.print_options.gridLines
@@ -188,8 +193,8 @@ def 大文字にする(段落):
 
 |image:../face/icons/additional-formula.svg[関数の挿入,16,16] 関数の挿入 |Cell |✅ |s['A1'] = '=…' |— |ws['A1'] = '=…'
 |image:../face/icons/py-list.svg[Python の関数,16,16] Python の関数 |Book |✍ |自分の .py を書く(綴りの macros) |— |—
-|image:../face/icons/autosum.svg[オートSUM,16,16] オートSUM |Cell |✅ |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
-|image:../face/icons/named-range-huge.svg[名前の管理,16,16] 名前の管理 |Book |✅ |b.create_named_range(名前, …) |— |wb.defined_names
+|image:../face/icons/autosum.svg[オートSUM,16,16] オートSUM |Cell |✅ |*ホームと同じ* — s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|image:../face/icons/named-range-huge.svg[名前の管理,16,16] 名前の管理 |Book |✅ |*ホームと同じ* — b.create_named_range(名前, …) |— |wb.defined_names
 |image:../face/icons/trace-prec.svg[参照元のトレース,16,16] 参照元のトレース |Cell |✍ |s.formula('A1') で参照を読む |— |—
 |image:../face/icons/show-formulas.svg[数式の表示,16,16] 数式の表示 |Cell |✍ |s.formula(場所) |— |—
 |image:../face/icons/calculate.svg[計算方法,16,16] 計算方法 |Book |✅ |b.recalc() |— |wb.calculation
@@ -202,10 +207,10 @@ def 大文字にする(段落):
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
 |image:../face/icons/data-from-text.svg[テキストからデータ,16,16] テキストからデータ |Sheet |✍ |csv モジュールで読んで s['A1'] へ |— |—
-|image:../face/icons/setfilter.svg[フィルター,16,16] フィルター |Sheet | |— |— |ws.auto_filter.ref
-|image:../face/icons/clear-filter.svg[フィルターを解除,16,16] フィルターを解除 |Sheet | |— |— |ws.auto_filter
-|image:../face/icons/sortdesc.svg[降順並べ替え,16,16] 降順並べ替え |Sheet | |— |— |—
-|image:../face/icons/sortasc.svg[昇順並べ替え,16,16] 昇順並べ替え |Sheet | |— |— |—
+|image:../face/icons/setfilter.svg[フィルター,16,16] フィルター |Sheet | |*ホームと同じ* |— |ws.auto_filter.ref
+|image:../face/icons/clear-filter.svg[フィルターを解除,16,16] フィルターを解除 |Sheet | |*ホームと同じ* |— |ws.auto_filter
+|image:../face/icons/sortdesc.svg[降順並べ替え,16,16] 降順並べ替え |Sheet | |*ホームと同じ* |— |—
+|image:../face/icons/sortasc.svg[昇順並べ替え,16,16] 昇順並べ替え |Sheet | |*ホームと同じ* |— |—
 |image:../face/icons/text-column.svg[区切り位置,16,16] 区切り位置 |Cell |✍ |s['B2'], s['C2'] = s['A2'].split(',') |— |—
 |image:../face/icons/rem-duplicates.svg[重複の削除,16,16] 重複の削除 |Sheet |✍ |— |— |—
 |image:../face/icons/data-validation.svg[データの入力規則,16,16] データの入力規則 |Sheet |✅ |s.add_data_validation(…) |— |ws.add_data_validation(…)
@@ -222,7 +227,7 @@ def 大文字にする(段落):
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|image:../face/icons/pivot-insert.svg[ピボットテーブルを挿入,16,16] ピボットテーブルを挿入 |Sheet |❌ |集計は polars が処理します。画面のボタンから使えます |— |ws.add_pivot(…)
+|image:../face/icons/pivot-insert.svg[ピボットテーブルを挿入,16,16] ピボットテーブルを挿入 |Sheet |❌ |*挿入と同じ* — 集計は polars が処理します。画面のボタンから使えます |— |ws.add_pivot(…)
 |===
 
 == 表のデザイン
@@ -293,8 +298,8 @@ def 大文字にする(段落):
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|保存 |Doc / Book |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
-|印刷 |Doc | |— |— |—
+|保存 |Doc / Book |✅ |*ファイルと同じ* — d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|印刷 |Doc | |*ファイルと同じ* |— |—
 |元に戻す |— |❌ |画面の操作です。プログラムは保存する前の写しを持てます |— |—
 |やり直し |— |❌ |同じく画面の操作です |— |—
 |===
@@ -306,7 +311,7 @@ def 大文字にする(段落):
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
 |見出し |Paragraph |✅ |p.style で拾う |p.style |—
-|コメント |Comment |✅ |d.comments |d.comments |c.comment
+|コメント |Comment |✅ |*挿入と同じ* — d.comments |d.comments |c.comment
 |検索 |Doc |✅ |d.find(字) |— |—
 |AI と相談する |— |❌ |画面の会話です。プログラムからは自分で AI を呼べます |— |—
 |===
@@ -318,6 +323,21 @@ def 大文字にする(段落):
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
 |設定・ページ・スタイル |— |❌ |リボンと同じボタンが並びます。上の行を見てください |— |—
+|===
+
+== 下端
+
+[cols="2,2,^1,3,3,3"]
+|===
+|ボタン |オブジェクト |印 |officework |python-docx |openpyxl
+
+|ページ |Doc |✅ |(紙に組んで数える) |— |—
+|文字数 |Doc |✅ |len(d.text) |len(d.text) |—
+|ファイルの形式 |— |❌ |画面の表示です。径路の拡張子を見れば分かります |— |—
+|状態の文言 |— |❌ |画面の表示です。プログラムは返り値と unsupported を見ます |— |—
+|スペル |— |❌ |画面の表示の切り替えです |— |—
+|ズーム |— |❌ |画面の表示です。文書は変わりません |— |—
+|選んだ範囲の合計・平均・個数 |Sheet |✅ |sum(…) / len(…)(値を読んで数える) |— |—
 |===
 
 // api:taiou:end
