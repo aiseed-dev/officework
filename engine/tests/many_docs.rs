@@ -130,3 +130,27 @@ fn 印が無くても切れる() {
     let docs = adoc::parse_many("= 甲\n\nあ。\n\n= 乙\n\nい。\n").expect("読めない");
     assert_eq!(docs.len(), 2, "印が無いと切れない");
 }
+
+/// **表だけの節と、文章の節が1つのファイルに混ざる**(2026-08-24 発注者
+/// 「シートも一つのセクションとみなせば追加できるでしょう」)。
+///
+/// 綴りはこの形です — 新しい形式を作らず、AsciiDoc の節に乗せます。
+/// 本家(vendor/asciidoctor)にも警告なしで通ることを確かめてあります。
+#[test]
+fn 文章の節と表の節が混ざっても往復する() {
+    let src = ":doctype: book\n\n[discrete]\n= 報告書\n\n本文です。\n\n\
+[discrete]\n= 売上台帳\n\n|===\n|品名 |数\n\n|ボールペン |12\n|===\n";
+    let docs = kumihan::adoc::parse_many(src).expect("読めない");
+    assert_eq!(docs.len(), 2, "節が2つに分かれない");
+    assert_eq!(docs[0].tables().count(), 0, "文章の節に表がある");
+    assert_eq!(docs[1].tables().count(), 1, "表の節に表がない");
+
+    let back = kumihan::adoc::write_many(&docs);
+    assert!(back.contains("ボールペン"), "表が消えた");
+    assert!(back.contains("本文です。"), "本文が消えた");
+    assert_eq!(
+        kumihan::adoc::parse_many(&back).unwrap().len(),
+        2,
+        "往復で節の数が変わった"
+    );
+}
