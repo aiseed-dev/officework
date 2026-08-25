@@ -3039,10 +3039,29 @@ officework.ribbon: 請求書を作る → 会社の様式.帳票:請求書
 *綴りの中に全部あります。* 渡すときはフォルダごと渡せますし、
 配るときは同じ物を `pip install` できます。
 
-=== 決めていただきたい事
+=== 名前は詰めません — 土台は text と Python です
 
-. *`officework.funcs` `officework.ribbon` `officework.plugins` の3つの名前でよいか*
-(entry points の名前です。いまの3つの置き場と同じ分け方にしてあります)
+当方は entry points の名前(`officework.funcs` など)を決めていただこうとしましたが、
+*詰める所ではありません*(2026-08-24 発注者「adoc というテキストになっているので、
+python ですぐになんでも自由にできるので気にしない」)。
+
+そのとおりでした。確かめました — *officework を使わずに、素の Python だけで
+`.adoc` を直せます*。
+
+[source,python]
+----
+s = open("報告書.adoc", encoding="utf-8").read()
+s = s.replace("本文です。", "差し替えました。")
+s += "\n|===\n|品名 |金額\n\n|ボールペン |1,440\n|===\n"
+open("報告書.adoc", "w", encoding="utf-8").write(s)
+----
+
+*マクロの仕掛けは、あれば便利という物です。* 土台ではありません。
+土台は「中身が普通のテキストであること」で、それは既にあります。
+
+だからこの節の仕掛けも、*育てません*。
+名前は `officework.funcs` `officework.ribbon` `officework.plugins` の3つで始め、
+足りないと分かった日に足します。
 
 == Python は同梱しない — 綴りの `.venv` を使う(2026-08-24 発注者)
 
