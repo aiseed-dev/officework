@@ -16,6 +16,6 @@
 
 [source,python]
 ----
-d.fill(名前, 値)
+mcp.doc_fill({名前: 値})
 ----
 

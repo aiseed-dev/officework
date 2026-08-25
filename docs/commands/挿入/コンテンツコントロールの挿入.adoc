@@ -16,6 +16,6 @@
 
 [source,python]
 ----
-d.fields()
+mcp.doc_fields()
 ----
 
