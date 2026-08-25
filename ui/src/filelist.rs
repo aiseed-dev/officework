@@ -158,7 +158,12 @@ pub fn make_button(look: &Look, 印: &'static str, 名: SharedString) -> Statefu
 /// **できないことを、できるように見せない**。
 pub fn row(look: &Look, i: usize, e: &folder::Entry, いま: bool) -> Stateful<Div> {
     let s = look.scale;
-    let 開ける = e.kind.can_open();
+    // **フォルダも押せます**(2026-08-26)。`can_open()` は「この道具で
+    // *中身を開ける*か」なので、フォルダは偽です。フォルダは開くのでは
+    // なく*中へ入る*ので、押せるかどうかは別に見ます。
+    // 足した日は `can_open()` だけを見ていて、中へ入る道を書いたのに
+    // 指の形も乗ったときの色も付かず、押しても反応しませんでした
+    let 開ける = e.kind.can_open() || e.kind == folder::Kind::Folder;
     let hover = look.hover;
     let mut 行 = div()
         .id(SharedString::from(format!("fl-{i}")))
