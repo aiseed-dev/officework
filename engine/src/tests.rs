@@ -2836,4 +2836,39 @@ fn 多段の番号は紙と同じ並びで出る() {
     assert!(h.contains("list-style-type:katakana"), "3段目がカタカナになっていません:\n{h}");
 }
 
+/// **問答形式**(`[qanda]`)。手続きの案内は問いと答えで書きます。
+///
+/// 2026-08-25 まで、指定は読み捨てられて普通の用語の一覧になっていました。
+#[test]
+fn 問答形式は問いと答えで出る() {
+    let d = crate::adoc::parse(
+        "= 題\n\n[qanda]\n申請はいつまでですか:: 3月31日までです。\n\
+         手数料はいくらですか:: 300円です。\n")
+        .expect("読めない");
+    let h = crate::html_write::body(&d);
+    assert!(h.contains("<ol class=\"qanda\">"), "問答の一覧になっていません:\n{h}");
+    assert!(!h.contains("<dl>"), "用語の一覧のまま出ています:\n{h}");
+    assert!(h.contains("申請はいつまでですか"), "問いが消えています:\n{h}");
+    assert!(h.contains("3月31日までです。"), "答えが消えています:\n{h}");
+    // **問いは太く。** CSS を外しても問いと答えが見分けられること
+    assert!(h.contains("font-weight:600"), "問いが太くありません:\n{h}");
+}
+
+/// **空行で切れた2つの一覧が、1つに繋がらないか。**
+///
+/// 印が無かったころは、書き戻しで空行が消えて別々の一覧が呑まれ、
+/// HTML でも1つの `dl` になっていました。
+#[test]
+fn 空行で切れた一覧は別々になる() {
+    let 元 = "= 題\n\n[qanda]\n問い:: 答え\n\n用語:: 普通の説明\n";
+    let d = crate::adoc::parse(元).expect("読めない");
+    // **書き戻しで空行が残ること**(ここが本体)
+    assert_eq!(crate::adoc::write(&d), 元, "書き戻しで空行が消えています");
+    let h = crate::html_write::body(&d);
+    assert!(h.contains("<ol class=\"qanda\">"), "問答が出ていません:\n{h}");
+    assert!(h.contains("<dl>"), "後ろの用語の一覧が出ていません:\n{h}");
+    // 内輪の印が字に漏れていないこと
+    assert!(!h.contains("説明のリストの始め"), "内輪の印がページに出ています:\n{h}");
+}
+
 }

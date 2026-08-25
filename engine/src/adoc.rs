@@ -102,13 +102,15 @@ pub fn write(doc: &Document) -> String {
                 // 同じ種類のリストが続く間は空行を挟まない(1つのリスト)。
                 // ラベル付きリスト(`項目:: 値`)も同じ — 空行を入れると
                 // 1つの一覧が2つに割れます(2026-08-18)
-                let 説明 = p.style_id.as_deref() == Some("説明のリスト");
+                let 説明 = p.style_id.as_deref().is_some_and(説明のリストか);
                 let tight = (p.list != ListKind::None || 説明)
                     && matches!(
                         doc.blocks.get(bi + 1),
                         Some(Block::Para(q))
                             if q.list == p.list
-                                && (q.style_id.as_deref() == Some("説明のリスト")) == 説明
+                                && q.style_id.as_deref().is_some_and(説明のリストか) == 説明
+                                // **次が新しい一覧の始めなら、空行を残します**
+                                && q.style_id.as_deref() != Some(説明のリストの始め)
                     );
                 write_para(&mut out, p, doc, quote_open || tight);
             }
@@ -161,8 +163,10 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
             out.push('\n');
             return;
         }
-        // ラベル付きリストは字に `::` が入っているので、名前は書かない
-        if n == "説明のリスト" {
+        // ラベル付きリストは字に `::` が入っているので、名前は書かない。
+        // 一覧の始めの印も同じ — *印は空行を残すためだけ*の物なので、
+        // 字には出しません
+        if 説明のリストか(n) {
             out.push_str(&runs_text(&p.runs, doc));
             out.push('\n');
             if !in_quote {
@@ -951,8 +955,20 @@ const 註記のスタイル: &[&str] = &["註記", "ヒント", "重要", "警�
 /// **1行で1つと決まっている段落のスタイル名か。**
 /// 註記とラベル付きリストは、続く行を呑むと形が壊れます
 fn 一行で1つ(name: &str) -> bool {
-    name == "説明のリスト" || 註記の印(name).is_some()
+    説明のリストか(name) || 註記の印(name).is_some()
 }
+
+/// **ラベル付きリストの行か**(始めの行も含む)。
+///
+/// 空行で区切られた2つ目の一覧は [`説明のリストの始め`] という名前です。
+/// 印が無いと、書き戻しで空行が消えて*2つの一覧が1つに繋がります*
+/// (2026-08-25。問答形式を見ていて見つけました)
+pub(crate) fn 説明のリストか(name: &str) -> bool {
+    name == "説明のリスト" || name == 説明のリストの始め
+}
+
+/// 空行のあとに始まるラベル付きリストの印
+pub(crate) const 説明のリストの始め: &str = "説明のリストの始め";
 
 /// 箇条書きの行か。返るのは(段, 中身)。段は 0 から。
 /// AsciiDoc は印の数が段です(`*` が1段目、`**` が2段目)
@@ -1221,6 +1237,10 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     let mut fresh_note = 0usize;
     // 直前の行が「継げる本文」だったか(空行と特別な行で倒れる)
     let mut 直前も本文 = false;
+    // **直前の行もラベル付きリストだったか。** 空行で切れた2つ目の一覧に
+    // 印を付けるために要ります(印が無いと書き戻しで空行が消えて、
+    // 別々の一覧が1つに繋がります)
+    let mut 直前が説明のリスト = false;
 
     // 文書の頭: `= 題名` と `:鍵: 値`。**空行までが頭**(本家の作法)
     let mut head_done = false;
@@ -1287,6 +1307,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         let l = line.trim_end();
         if l.is_empty() {
             直前も本文 = false; // 空行が段落の切れ目
+            直前が説明のリスト = false;
             continue;
         }
         if let Some((何, 役割)) = 本家だけの書き方(l) {
@@ -1317,6 +1338,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 raw(l, 空(&mut lines), &mut doc);
                 // 区切りの塊(`----` など)は**閉じるまでまるごと**持ち越す
                 直前も本文 = false; // 原文のままの行に続きを繋がない
+                直前が説明のリスト = false;
                 if 役割 == "塊の区切り" {
                     let 印 = l.trim_end().to_string();
                     while let Some((_, l2)) = lines.next() {
@@ -1520,7 +1542,16 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         } else if ラベル付きか(l) {
             // ラベル付きリスト(`項目:: 値`)。**`::` は字のまま残します** —
             // 画面で項目も値も直せて、書き戻しもそのままです(2026-08-18)
-            p.style_id = Some("説明のリスト".to_string());
+            // **空行で切れた2つ目の一覧には、始めの印を付けます。**
+            // 付けないと、書き戻しで空行が落ちて1つに繋がります
+            let 続き = 直前が説明のリスト
+                || !matches!(doc.blocks.last(), Some(Block::Para(q))
+                             if q.style_id.as_deref().is_some_and(説明のリストか));
+            p.style_id = Some(if 続き {
+                "説明のリスト".to_string()
+            } else {
+                説明のリストの始め.to_string()
+            });
             l
         } else if let Some((段, rest)) = 箇条書きか(l, '*') {
             // **入れ子の箇条書き**(`**` `***`)。AsciiDoc は印の数が段です
@@ -1568,6 +1599,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         // いました)
         直前も本文 =
             p.raw_adoc.is_none() && !p.style_id.as_deref().is_some_and(一行で1つ);
+        直前が説明のリスト = p.style_id.as_deref().is_some_and(説明のリストか);
         if 継ぐ {
             if let Some(Block::Para(前)) = doc.blocks.last_mut() {
                 let 継 = 継ぎ目(

@@ -594,6 +594,11 @@ fn build(doc: &Document) -> (String, Ctx) {
     // いました。事務の様式は「第1 → 1 → (1) → ア」と種類を変えて
     // 段を作るので、ここが効かないと様式が組めません
     let mut 次のリスト: Option<(String, Option<String>)> = None;
+    // **次のラベル付きリストが問答形式か**(`[qanda]`)。
+    // 手続きの案内は「問いと答え」で書くのが読みやすいので、
+    // 用語の一覧とは別の形で出します
+    let mut 次は問答 = false;
+    let mut 問答中 = false;
     // 目次の行が続いている間(nav で包む)
     let mut 目次中 = false;
     let 題名あり = !doc.props.title.is_empty();
@@ -839,6 +844,13 @@ fn build(doc: &Document) -> (String, Ctx) {
                 close(&mut o, &mut list);
                 次のリスト = Some(付け方);
             }
+            if 中.split(',').any(|x| x.trim() == "qanda") {
+                if dl中 {
+                    o.push_str("</dl>\n");
+                    dl中 = false;
+                }
+                次は問答 = true;
+            }
             continue;
         }
         if 名 == Some("塊の区切り") {
@@ -846,11 +858,23 @@ fn build(doc: &Document) -> (String, Ctx) {
         }
         // **ラベル付きリスト**(`項目:: 値`)は `dl` / `dt` / `dd` に。
         // 続いている間は1つの `dl` にまとめます(2026-08-18)
-        if p.style_id.as_deref() == Some("説明のリスト") {
+        // **空行で切れた2つ目の一覧は、別の `dl` にします**(2026-08-25)。
+        // 印が無かったころは、続きの一覧が前の一覧に呑まれていました
+        if p.style_id.as_deref() == Some("説明のリストの始め") && (dl中 || 問答中) {
+            o.push_str(if 問答中 { "</ol>\n" } else { "</dl>\n" });
+            dl中 = false;
+            問答中 = false;
+        }
+        if p.style_id.as_deref().is_some_and(
+            |n| n == "説明のリスト" || n == "説明のリストの始め") {
             let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
             if let Some((項, _)) = 字.split_once(":: ") {
                 close(&mut o, &mut list);
-                if !dl中 {
+                if 次は問答 && !問答中 {
+                    o.push_str("<ol class=\"qanda\">\n");
+                    問答中 = true;
+                    次は問答 = false;
+                } else if !問答中 && !dl中 {
                     o.push_str("<dl>\n");
                     dl中 = true;
                 }
@@ -879,13 +903,28 @@ fn build(doc: &Document) -> (String, Ctx) {
                     first.text = first.text.trim_start().to_string();
                 }
                 let 値 = runs_html(&値の並び, doc, &mut ctx);
-                o.push_str(&format!("  <dt>{}</dt><dd>{}</dd>\n", esc(項.trim()), 値));
+                // **問いは太く、答えはその下に。** 見た目は札が持ちます
+                if 問答中 {
+                    o.push_str(&format!(
+                        "  <li><p style=\"font-weight:600;margin:0 0 .3em\">{}</p>\
+                         <p style=\"margin:0 0 .8em\">{}</p></li>\n",
+                        esc(項.trim()), 値));
+                } else {
+                    o.push_str(&format!(
+                        "  <dt style=\"font-weight:600\">{}</dt>\
+                         <dd style=\"margin:0 0 .6em 1.5em\">{}</dd>\n",
+                        esc(項.trim()), 値));
+                }
                 continue;
             }
         }
         if dl中 {
             o.push_str("</dl>\n");
             dl中 = false;
+        }
+        if 問答中 {
+            o.push_str("</ol>\n");
+            問答中 = false;
         }
         close(&mut o, &mut list);
         let tag = tag_of(p.style, 題名あり);
@@ -926,6 +965,9 @@ fn build(doc: &Document) -> (String, Ctx) {
         o.push_str(&塊の閉じ(塊, 次の塊の印.as_deref()));
     }
     close(&mut o, &mut list);
+    if 問答中 {
+        o.push_str("</ol>\n");
+    }
     if dl中 {
         o.push_str("</dl>\n");
     }
