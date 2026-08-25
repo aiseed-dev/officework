@@ -1,61 +1,35 @@
-= docs の見取り図 — 三帳簿と、マニュアルの管理
+= マニュアルの一覧
 
-2026-08-08 起こし(発注者「マニュアルの管理も考え始めないと」)。
+当面、管理するのは**利用者向けの冊子の日本語と英語の対**だけです
+(発注者 2026-08-26。設計や台帳は作る側の資料で、この管理の外です)。
 
-== 三帳簿 — 混ぜない
+== ユーザーマニュアル
 
-[cols="1,1,1"]
+英語版が正本(primary)、日本語版が副です — 各冊子の頭にそう書いてあります
+(世界に配る前提。日本語は発注者と国内の一次読者のため常に併走)。
+
+[cols="2,2,1"]
 |===
-|帳簿 |問い |場所
+|冊子 |読む人 |英語版
 
-|*設計* |なぜそう作るか(決定と経緯) |link:../SEKKEI.adoc[SEKKEI.adoc](憲法)+ link:sekkei/[sekkei/](7部屋)
-|*在庫* |どこまでできているか |link:guide-tsukiawase-2.ja.adoc[guide-tsukiawase-2.ja.adoc](台帳 — 直したら ✔)
-|*使い方* |どうやるか |このフォルダの \*-manual(下の一覧)
-|===
-
-同じ話を二つの帳簿に書かない。
-使い方に「なぜ」が要るときは一行で言い、続きは設計へのリンクにする。
-
-== マニュアルの一覧
-
-[cols="1,1"]
-|===
-|冊子 |読む人
-
-|link:genkou-manual.ja.adoc[genkou-manual.ja.adoc] |*原稿を書く人*(書いて、adoc・docx・HTML・PDF の4つで出す)
-|link:api-taiou.ja.adoc[api-taiou.ja.adoc] |*引く人*(メニュー・API・python-docx・openpyxl の対応表)
-|link:commands/README.ja.adoc[commands/] |*1つの操作を詳しく知りたい人*(ボタン1つに1枚。ダイアログの選択肢はここ)
-|link:calc-manual.ja.adoc[calc-manual.ja.adoc] / link:calc-manual.adoc[.md] |calc を使う人(ボタンと作法)
-|link:writer-manual.ja.adoc[writer-manual.ja.adoc] / link:writer-manual.adoc[.md] |writer を使う人
-|link:python-manual.ja.adoc[python-manual.ja.adoc] / link:python-manual.adoc[.md] |コードを書く人(範囲⇄配列・AI との共働)
-|link:macro-manual.ja.adoc[macro-manual.ja.adoc] / link:macro-manual.adoc[.md] |マクロ(置き場・選択に効く定型処理・記入欄・雛形・AI に書かせる)
-|link:docx-xlsx-tono-chigai.ja.adoc[docx-xlsx-tono-chigai.ja.adoc] |*Word / Excel から来た人*(画面は同じ・変えたのはファイルの形式。違いを1枚に集めた)
-|link:from-excel.ja.adoc[from-excel.ja.adoc] / link:from-excel.adoc[.md] |*Excel から乗り換える人*(課題→ここでの道)
-|link:../templates/README.adoc[templates/]・link:../sample/README.adoc[sample/] |実例で覚える人
+|link:genkou-manual.ja.adoc[原稿の手引き] |*原稿を書く人*(書いて、adoc・docx・HTML・PDF の4つで出す) |*まだ(次に作る)*
+|link:calc-manual.ja.adoc[calc の手引き] / link:calc-manual.adoc[en] |表計算を使う人(ボタンと作法) |ある
+|link:writer-manual.ja.adoc[writer の手引き] / link:writer-manual.adoc[en] |文書を使う人 |ある
+|link:python-manual.ja.adoc[Python の手引き] / link:python-manual.adoc[en] |コードを書く人(範囲⇄配列・AI との共働) |ある
+|link:macro-manual.ja.adoc[マクロの手引き] / link:macro-manual.adoc[en] |マクロ(置き場・選択に効く定型処理・記入欄・雛形・AI に書かせる) |ある
+|link:commands/README.ja.adoc[コマンドの手引き] |*1つの操作を詳しく知りたい人*(ボタン1つに1枚。ダイアログの選択肢はここ) |まだ(169枚 — 最後に)
+|link:api-taiou.ja.adoc[対応表] |*引く人*(メニュー・API・python-docx・openpyxl の対応表) |まだ
+|link:docx-xlsx-tono-chigai.ja.adoc[Word / Excel との違い] |*Word / Excel から来た人*(画面は同じ・変えたのはファイルの形式) |まだ
+|link:from-excel.ja.adoc[Excel から] / link:from-excel.adoc[en] |*Excel から乗り換える人*(課題→ここでの道) |ある
+|link:../templates/README.adoc[templates/]・link:../sample/README.adoc[sample/] |実例で覚える人 |—
 |===
 
-言語は**英語版が正本(primary)、日本語版が副** — 各冊子の頭にそう書いてある(世界に配る前提。
-日本語は発注者と国内の一次読者のため常に併走)。
-
-== 記事(articles/)— 三帳簿にもマニュアルにも入らない
-
-link:articles/[articles/] は**公開用の書き物**の置き場。
-マニュアルではないので、下の管理の規則は掛からない:
-
-* *その時点の事実と見立てを残すもの。* 挙動が変わっても遡って直さない(直すのはマニュアルの方)。日付が中身の一部
-* 発注者の一人称で書く。「これから作る」にも触れてよい(規則3の外)
-* 各ファイルの頭に、その旨の注記が HTML コメントで入っている
-
-[cols="1,1"]
-|===
-|記事 |中身
-
-|link:articles/excel-python-sonogo-2026.ja.adoc[excel-python-sonogo-2026.ja.adoc] |Qiita「ExcelにPythonが搭載?」の8年後の続編。Python in Excel がクラウド実行で来たこと、コードをファイルの外に置く設計、xlwings との書き味の比較(実測つき)
-|===
+英語版の無い冊子は、この順で揃えます: 原稿の手引き → Word / Excel との違い →
+対応表 → コマンドの手引き。
 
 == 管理の規則
 
-. *嘘は欠落より悪い。* 挙動を変えるコミットは、**同じ回で**マニュアルの該当箇所も直す(2026-08-08 の「手続きはブックから動かない」でcalc/python の手引きと templates/sample の README が一斉に嘘になった —この規則はその反省)
+. *嘘は欠落より悪い。* 挙動を変えるコミットは、**同じ回で**マニュアルの該当箇所も直す
 . **新機能の追記は遅れてよい**が、遅れは下の「追随待ち」に一行で控える。黙って古いままにしない
 . *できることだけ書く*(リボンの灰色と同じ方針)。「〜できます(予定)」は書かない。
 **ただし `commands/` は別**です — こちらは*手引きが先で、実物が後*。
@@ -69,6 +43,18 @@ link:articles/[articles/] は**公開用の書き物**の置き場。
 自分で直ります** — 直った分をコミットに入れる。CI では直さずに落とすので、
 入れ忘れはそこで分かる
 . *蒸留の作法*(2026-08-08 発注者「Excel のマニュアルを蒸留して」):本家(Excel)のヘルプは**課題の並びの教師** — 使う人が知っている仕事の一覧として構成だけ借り、*文章は写さない*(vendor を挙動の教師にした台帳と同じ流儀)。成果物は from-excel(課題→ここでの道/やらない理由)
+
+== 作る側の資料(利用者は読まなくてよい)
+
+設計は link:../SEKKEI.adoc[SEKKEI.adoc] と link:sekkei/[sekkei/]、
+実装の在庫は link:guide-tsukiawase-2.ja.adoc[台帳]にあります。
+このフォルダに残っている corpus・engine・pysheet-gokan・mac-signing の類いも
+作る側の物です。**場所は動かしません** — PyPI の README など公開済みの
+リンクが刺さっているためです。
+
+link:articles/[articles/] は公開用の書き物の置き場で、マニュアルの管理の
+規則は掛かりません(その時点の事実と見立てを残す物。挙動が変わっても
+遡って直さない。発注者の一人称で書く)。
 
 == 追随待ち(直したら消す)
 
