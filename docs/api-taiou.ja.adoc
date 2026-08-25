@@ -2,12 +2,10 @@
 
 引くための1枚です。同じ操作を4つの言い方で探せます。
 
-*4つに分けてあります。*
+*並びは画面のメニューのまま*です。ファイル・ホーム・挿入…の順に、
+押すボタンがそのまま行になります。探すときは、画面で押している場所を思い出してください。
 
-. *共通* — 文書でも表でもできること。*セルは文書の表にもある*ので、ここが厚くなります
-. *文書だけ* — 段落と紙面の話
-. *まだ表だけ* — **共通にできるが、いま表の側にしかない**物。ここが仕事の一覧です
-. *表だけ* — 紙に出す範囲と、画面の見え方。*本当に表の専用はこれだけ*です
+文章と表で同じ段は1つにまとめてあります(揃えた並び — 画面と同じ規則です)。
 
 * `officework` の*呼び方*を引く
 * python-docx / openpyxl の*覚えている書き方*から、こちらの書き方を引く
@@ -20,105 +18,206 @@
 本家の側は実際に呼んで確かめた名前です(python-docx 1.2.0 / openpyxl 3.1.5)。
 
 // api:taiou:start(この間は tools/api\_taiou.py --write が書く)
-1行が1つの操作です。`officework` の呼び方と、本家の呼び方が横に並びます。
-空いている所(—)は、その道が無いという意味です。
+1行が1つのボタンです。*並びは画面のメニューのまま*で、
+`officework` の呼び方と、本家の呼び方が横に並びます。
+
+*列は「うち・本家」の組を2つ*です。
+左の2列が文書、右の2列が表。空いている所(—)は、その道がありません。
 
 この節は `tools/api_taiou.py` が起こします。手で直さないでください。
 
-=== 文書でも表でもできること
-
-*セルは文書の表にもあります*(2026-08-24 発注者)。字・書式・結合・式は、どちらでも同じようにできます。
+=== ファイル
 
 [cols="2,3,3,3,3"]
 |===
-|操作 |officework(文書) |python-docx |officework(表) |openpyxl
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
 
 |開く |doc.Doc.open(径路) |docx.Document(径路) |sheet.Book.open(径路) |load_workbook(径路)
 |保存 |d.save(径路) |d.save(径路) |b.save(径路) |wb.save(径路)
-|字を入れる |p.text = 値 |p.text = 値 |s['A1'] = 値 |ws['A1'] = 値
-|字を消す |r.clear() |r.clear() |s['A1'] = None |ws['A1'] = None
+|印刷 |— |— |— |—
+|===
+
+=== ホーム
+
+[cols="2,3,3,3,3"]
+|===
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
+
+|コピー |p.text = 値 |p.text = 値 |s['A1'] = 値 |ws['A1'] = 値
+|切り取り |p.text = 値 |p.text = 値 |s['A1'] = 値 |ws['A1'] = 値
+|貼り付け |p.text = 値 |p.text = 値 |s['A1'] = 値 |ws['A1'] = 値
+|フォント |r.font |r.font.name |c.font |c.font = Font(name=…)
+|フォントのサイズ |r.size_pt |r.font.size |c.font |c.font = Font(size=…)
+|フォントサイズの拡大 |r.size_pt |r.font.size |c.font |c.font = Font(size=…)
+|フォントサイズの縮小 |r.size_pt |r.font.size |c.font |c.font = Font(size=…)
+|ルビ |— |— |— |—
 |太字 |r.bold |r.bold |c.font |c.font = Font(bold=True)
 |斜体 |r.italic |r.italic |c.font |c.font = Font(italic=True)
 |下線 |r.underline |r.underline |c.font |c.font = Font(underline=…)
-|書体 |r.font |r.font.name |c.font |c.font = Font(name=…)
-|大きさ |r.size_pt |r.font.size |c.font |c.font = Font(size=…)
-|文字の色 |r.color |r.font.color.rgb |c.font |c.font = Font(color=…)
-|揃え |p.align |p.alignment |c.alignment |c.alignment = Alignment(…)
-|セルの結合 |(表の col_span / v_merge) |cell.merge(…) |s.merge_cells('A1:B2') |ws.merge_cells('A1:B2')
-|表を作る |d.add_table(行, 列) |d.add_table(行, 列) |s.add_table(…) |ws.add_table(…)
-|行を足す・抜く |t.add_row() |t.add_row() |s.insert_rows(行) |ws.insert_rows(行)
-|式 |(表のセルに `=…`) |— |s['A1'] = '=SUM(…)' |ws['A1'] = '=SUM(…)'
+|取り消し線 |r.strike |r.font.strike |— |—
+|上付き |— |r.font.superscript |— |—
+|下付き |— |r.font.subscript |— |c.font = Font(vertAlign=…)
+|フォントの色 |r.color |r.font.color.rgb |c.font |c.font = Font(color=…)
+|スタイルのクリア |r.clear() |r.clear() |— |—
+|箇条書き |p.style = '箇条書き' |p.style = 'List Bullet' |— |—
+|ナンバリング |p.style = '番号付き' |p.style = 'List Number' |— |—
+|複数レベルのリスト |— |— |— |—
+|インデントを減らす |p.paragraph_format |p.paragraph_format.left_indent |— |—
+|インデントを増やす |p.paragraph_format |p.paragraph_format.left_indent |— |—
+|段落の行間 |p.paragraph_format.line_spacing |p.paragraph_format.line_spacing |— |—
+|左揃え |p.align = 'left' |p.alignment |c.alignment |c.alignment = Alignment(…)
+|中央揃え |p.align = 'center' |p.alignment |c.alignment |c.alignment = Alignment(…)
+|右揃え |p.align = 'right' |p.alignment |c.alignment |c.alignment = Alignment(…)
+|両端揃え |p.align = 'justify' |p.alignment |— |—
+|均等割付 |p.align = 'distribute' |— |— |—
+|罫線 |— |— |c.border |c.border = Border(…)
+|段落のスタイル |p.style |p.style |— |—
 |置き換え |d.replace(前, 後) |— |— |—
-|コメント |p.add_comment(文) |p.add_comment(文) |c.comment |c.comment = Comment(…)
-|画像を入れる |d.add_picture(径路) |d.add_picture(径路) |— |ws.add_image(…)
-|ヘッダーとフッター |d.header / d.footer |section.header |s.oddHeader |ws.oddHeader
-|用紙・余白・向き |d.sections[0] |section.page_width |— |ws.page_setup
+|塗りつぶしの色 |— |— |c.fill |c.fill = PatternFill(…)
+|折り返して全体を表示する |— |— |c.alignment |c.alignment = Alignment(wrap_text=True)
+|結合して、中央に配置する |(表の col_span / v_merge) |cell.merge(…) |s.merge_cells('A1:B2') |ws.merge_cells('A1:B2')
+|オートSUM |(表のセルに `=…`) |— |s['A1'] = '=SUM(…)' |ws['A1'] = '=SUM(…)'
+|名前の管理 |— |— |b.create_named_range(名前, …) |wb.defined_names
+|消去 |r.clear() |r.clear() |s['A1'] = None |ws['A1'] = None
+|降順並べ替え |— |— |— |—
+|昇順並べ替え |— |— |— |—
+|フィルター |— |— |— |ws.auto_filter.ref
+|フィルターを解除 |— |— |— |ws.auto_filter
+|数値の書式 |— |— |c.number_format |c.number_format
+|通貨スタイル |— |— |c.number_format |c.number_format
+|パーセントのスタイル |— |— |c.number_format |c.number_format
+|カンマスタイル |— |— |c.number_format |c.number_format
+|セルを挿入 |t.add_row() |t.add_row() |s.insert_rows(行) |ws.insert_rows(行)
+|セルを削除 |— |— |s.delete_rows(行) |ws.delete_rows(行)
+|条件付き書式 |— |— |— |ws.conditional_formatting.add(…)
 |===
 
-=== 文書にしかないこと
+=== 挿入
 
-段落と紙面の話です。
-
-[cols="2,3,3"]
+[cols="2,3,3,3,3"]
 |===
-|操作 |officework(文書) |python-docx
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
 
-|段落のスタイル |p.style |p.style
-|箇条書き |p.style = '箇条書き' |p.style = 'List Bullet'
-|行間・字下げ |p.paragraph_format |p.paragraph_format
-|ルビ |— |—
-|上付き・下付き |— |r.font.superscript
-|脚注 |— |—
-|しおり・相互参照 |— |—
-|目次 |— |—
-|記入欄 |d.fields() / d.fill(名前, 値) |—
-|改ページ |d.add_page_break() |d.add_page_break()
-|===
-
-=== 共通にできるが、いま表の側にしかないこと
-
-*どれも AsciiDoc に書けるので、文書の表にも入れられます*(2026-08-24 発注者)。見た目は**名前**で入り、定義はテンプレートが持ちます(SEKKEI「セルのスタイルを名前で持つ」)。集計の道具は属性で持てます。**ここが仕事の一覧です** — 文書の列が埋まった日に、上の「共通」へ移します。
-
-[cols="2,3,3"]
-|===
-|操作 |officework(表) |openpyxl
-
-|表示形式 |c.number_format |c.number_format
-|塗りつぶし |c.fill |c.fill = PatternFill(…)
-|罫線 |c.border |c.border = Border(…)
-|条件付き書式 |— |ws.conditional_formatting.add(…)
-|入力規則 |s.add_data_validation(…) |ws.add_data_validation(…)
-|フィルター |— |ws.auto_filter.ref
-|グループ化 |s.row_groups |ws.column_dimensions[…].outline_level
-|名前の定義 |b.create_named_range(名前, …) |wb.defined_names
-|ピボットテーブル |— |ws.add_pivot(…)
-|グラフ |— |ws.add_chart(…)
+|空白ページの挿入 |d.add_page_break() |d.add_page_break() |— |—
+|区切り |d.add_page_break() |d.add_page_break() |— |ws.row_breaks
+|表の挿入 |d.add_table(行, 列) |d.add_table(行, 列) |s.add_table(…) |ws.add_table(…)
+|画像を挿入 |d.add_picture(径路) |d.add_picture(径路) |— |ws.add_image(…)
+|グラフを挿入 |— |— |— |ws.add_chart(…)
+|ヘッダーの編集 |d.header / d.footer |section.header |s.oddHeader |ws.oddHeader
+|フッターの編集 |d.footer |section.footer |— |—
+|方程式を挿入 |— |— |— |—
+|コンテンツコントロールの挿入 |d.fields() |— |— |—
+|ピボットテーブルを挿入 |— |— |— |ws.add_pivot(…)
+|コメント |p.add_comment(文, author=) |p.add_comment(文) |c.comment |c.comment = Comment(…)
+|ハイパーリンクを追加 |— |— |c.hyperlink |c.hyperlink
 |===
 
-=== 表にしかないこと
+=== レイアウト
 
-*ここが本当に表の専用*です。紙に出す範囲と、画面の見え方だけが残りました。
-
-[cols="2,3,3"]
+[cols="2,3,3,3,3"]
 |===
-|操作 |officework(表) |openpyxl
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
 
-|印刷範囲 |s.print_area |ws.print_area
-|タイトル行の繰り返し |s.print_title_rows |ws.print_title_rows
-|枠線も印刷 |s.print_gridlines |ws.print_options.gridLines
-|ウィンドウ枠の固定 |s.freeze_panes |ws.freeze_panes
-|枠線表示 |s.show_gridlines |ws.sheet_view.showGridLines
-|計算方法 |b.recalc() |wb.calculation
-|保護 |— |ws.protection / wb.security
+|余白 |d.sections[0] |section.left_margin |— |ws.page_margins
+|印刷の向き |d.sections[0] |section.orientation |— |ws.page_setup.orientation
+|ページのサイズ |d.sections[0] |section.page_width |— |ws.page_setup.paperSize
+|印刷範囲 |— |— |s.print_area |ws.print_area
+|区切り |d.add_page_break() |d.add_page_break() |— |ws.row_breaks
+|ヘッダー/フッター |d.header / d.footer |section.header |s.oddHeader |ws.oddHeader
+|タイトルを印刷する |— |— |s.print_title_rows |ws.print_title_rows
+|枠線も印刷 |— |— |s.print_gridlines |ws.print_options.gridLines
+|===
+
+=== 数式
+
+[cols="2,3,3,3,3"]
+|===
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
+
+|関数の挿入 |— |— |s['A1'] = '=…' |ws['A1'] = '=…'
+|オートSUM |(表のセルに `=…`) |— |s['A1'] = '=SUM(…)' |ws['A1'] = '=SUM(…)'
+|名前の管理 |— |— |b.create_named_range(名前, …) |wb.defined_names
+|計算方法 |— |— |b.recalc() |wb.calculation
+|===
+
+=== データ
+
+[cols="2,3,3,3,3"]
+|===
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
+
+|フィルター |— |— |— |ws.auto_filter.ref
+|フィルターを解除 |— |— |— |ws.auto_filter
+|降順並べ替え |— |— |— |—
+|昇順並べ替え |— |— |— |—
+|データの入力規則 |— |— |s.add_data_validation(…) |ws.add_data_validation(…)
+|グループ化 |— |— |s.row_groups |ws.column_dimensions[…].outline_level
+|グループ解除 |— |— |s.row_groups |ws.column_dimensions[…].outline_level
+|===
+
+=== ピボットテーブル
+
+[cols="2,3,3,3,3"]
+|===
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
+
+|ピボットテーブルを挿入 |— |— |— |ws.add_pivot(…)
+|===
+
+=== 参考資料
+
+[cols="2,3,3,3,3"]
+|===
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
+
+|目次 |— |— |— |—
+|ブックマーク |— |— |— |—
+|図表番号 |— |— |— |—
+|相互参照 |— |— |— |—
+|脚注 |— |— |— |—
+|===
+
+=== フォーム
+
+[cols="2,3,3,3,3"]
+|===
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
+
+|テキストフィールド |d.fill(名前, 値) |— |— |—
+|名前 |d.fields() |— |— |—
+|===
+
+=== 共同編集
+
+[cols="2,3,3,3,3"]
+|===
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
+
+|コメントを追加 |p.add_comment(文, author=) |p.add_comment(文) |c.comment |c.comment = Comment(…)
+|コメントの表示 |d.comments |d.comments |c.comment |c.comment
+|===
+
+=== 保護
+
+[cols="2,3,3,3,3"]
+|===
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
+
+|保護 |— |— |— |ws.protection
+|暗号化する |— |— |— |wb.security
+|===
+
+=== 表示
+
+[cols="2,3,3,3,3"]
+|===
+|ボタン |officework(文書) |python-docx |officework(表) |openpyxl
+
+|ウィンドウ枠の固定 |— |— |s.freeze_panes |ws.freeze_panes
+|枠線表示 |— |— |s.show_gridlines |ws.sheet_view.showGridLines
 |===
 
 // api:taiou:end
-
-== この表に出ていないもの
-
-* *画面だけの操作* — 拡大・パネルの開閉・ダークモードなど。文書が変わらないので、プログラムから呼ぶ意味がありません
-* *まだ作っていない操作* — 画面で灰色のボタン
-* *本家にしかない書き方* — 表に無くても動くものがあります。link:pysheet-gokan.ja.adoc[互換の台帳] に全部の判定があります
 
 == 関連する手引き
 
