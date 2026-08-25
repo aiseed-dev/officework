@@ -2205,7 +2205,7 @@ impl Writer {
         self.dirty = false;
         let 行 = text.lines().count();
         self.status = ui::tf!(
-            "{}({} 行)— 素の文字として開きました。保存も素の文字です",
+            "{}({} 行)— 文字だけのファイルとして開きました。保存も文字だけです",
             p.file_name().unwrap_or_default().to_string_lossy(),
             行
         )
@@ -3399,7 +3399,7 @@ impl Writer {
                     self.dirty = false;
                     self.drop_recover();
                     self.status = ui::tf!(
-                        "{} に保存しました(素の文字)",
+                        "{} に保存しました(文字だけのファイル)",
                         p.file_name().unwrap_or_default().to_string_lossy()
                     )
                     .into();

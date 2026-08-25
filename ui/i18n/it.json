@@ -1013,7 +1013,7 @@
  },
  {
   "i": 253,
-  "t": "Digitare un URL e premere Enter (lettura e compilazione senza JS; solo http)"
+  "t": "Digita un URL e premi Invio (legge senza eseguire JS; i moduli si possono compilare)"
  },
  {
   "i": 254,
@@ -5949,2614 +5949,2610 @@
  },
  {
   "i": 1487,
-  "t": "Aperto con {}"
- },
- {
-  "i": 1488,
   "t": "Apertura di {} con l'applicazione scelta dal sistema"
  },
  {
-  "i": 1489,
+  "i": 1488,
   "t": "Appena aperto"
  },
  {
-  "i": 1490,
+  "i": 1489,
   "t": "Nessuna applicazione è associata a questo file: {}"
  },
  {
-  "i": 1491,
+  "i": 1490,
   "t": "Numero"
  },
  {
-  "i": 1492,
+  "i": 1491,
   "t": "Sì"
  },
  {
-  "i": 1493,
+  "i": 1492,
   "t": "No"
  },
  {
-  "i": 1494,
+  "i": 1493,
   "t": "Sì/No"
  },
  {
-  "i": 1495,
+  "i": 1494,
   "t": "Proprietà personalizzate"
  },
  {
-  "i": 1496,
+  "i": 1495,
   "t": "Aggiungi una proprietà"
  },
  {
-  "i": 1497,
+  "i": 1496,
   "t": "+ Aggiungi un autore"
  },
  {
-  "i": 1498,
+  "i": 1497,
   "t": "Aggiungi un autore — un nome"
  },
  {
-  "i": 1499,
+  "i": 1498,
   "t": "Autore aggiunto (entra nell'xlsx al salvataggio)"
  },
  {
-  "i": 1500,
+  "i": 1499,
   "t": "Autore «{}» rimosso"
  },
  {
-  "i": 1501,
+  "i": 1500,
   "t": "«{}» è già uno degli autori"
  },
  {
-  "i": 1502,
+  "i": 1501,
   "t": "Aggiungi una proprietà 1/3 — nome"
  },
  {
-  "i": 1503,
+  "i": 1502,
   "t": "Aggiungi una proprietà 2/3 — tipo (testo / numero / data / sì-no. Invio vuoto = testo)"
  },
  {
-  "i": 1504,
+  "i": 1503,
   "t": "Aggiungi una proprietà 3/3 — valore di {}"
  },
  {
-  "i": 1505,
+  "i": 1504,
   "t": "Il nome è vuoto (non è stato aggiunto nulla)"
  },
  {
-  "i": 1506,
+  "i": 1505,
   "t": "«{}» non si legge come numero (non è stato aggiunto nulla)"
  },
  {
-  "i": 1507,
+  "i": 1506,
   "t": "Proprietà «{}» registrata (entra nell'xlsx al salvataggio)"
  },
  {
-  "i": 1508,
+  "i": 1507,
   "t": "Proprietà «{}» rimossa"
  },
  {
-  "i": 1509,
+  "i": 1508,
   "t": "Cartella di lavoro chiusa (ora è una nuova cartella)"
  },
  {
-  "i": 1510,
+  "i": 1509,
   "t": "Niente da stampare (tutti i fogli sono nascosti)"
  },
  {
-  "i": 1511,
+  "i": 1510,
   "t": "Categoria di forma"
  },
  {
-  "i": 1512,
+  "i": 1511,
   "t": "Forme di base"
  },
  {
-  "i": 1513,
+  "i": 1512,
   "t": "Frecce a blocco"
  },
  {
-  "i": 1514,
+  "i": 1513,
   "t": "Forme di equazione"
  },
  {
-  "i": 1515,
+  "i": 1514,
   "t": "Diagramma di flusso"
  },
  {
-  "i": 1516,
+  "i": 1515,
   "t": "Stelle e nastri"
  },
  {
-  "i": 1517,
+  "i": 1516,
   "t": "Callout"
  },
  {
-  "i": 1518,
+  "i": 1517,
   "t": "Applica un motivo…"
  },
  {
-  "i": 1519,
+  "i": 1518,
   "t": "Sfumatura…"
  },
  {
-  "i": 1520,
+  "i": 1519,
   "t": "Colore di sfondo del motivo…"
  },
  {
-  "i": 1521,
+  "i": 1520,
   "t": "Sfumatura"
  },
  {
-  "i": 1522,
+  "i": 1521,
   "t": "Motivo"
  },
  {
-  "i": 1523,
+  "i": 1522,
   "t": "Questa cella non ha motivo (scegline uno in «Applica un motivo» prima)"
  },
  {
-  "i": 1524,
+  "i": 1523,
   "t": "Motivo impostato su «{}» (il primo piano è il colore di riempimento attuale; cambia lo sfondo in «Colore di sfondo del motivo»)"
  },
  {
-  "i": 1525,
+  "i": 1524,
   "t": "Sfumatura impostata su «{}» (dal colore di riempimento attuale al bianco)"
  },
  {
-  "i": 1526,
+  "i": 1525,
   "t": "Sfondo del motivo di nuovo bianco"
  },
  {
-  "i": 1527,
+  "i": 1526,
   "t": "Sfondo del motivo impostato su {}"
  },
  {
-  "i": 1528,
+  "i": 1527,
   "t": "Triangolo"
  },
  {
-  "i": 1529,
+  "i": 1528,
   "t": "Triangolo rettangolo"
  },
  {
-  "i": 1530,
+  "i": 1529,
   "t": "Parallelogramma"
  },
  {
-  "i": 1531,
+  "i": 1530,
   "t": "Trapezio"
  },
  {
-  "i": 1532,
+  "i": 1531,
   "t": "Pentagono"
  },
  {
-  "i": 1533,
+  "i": 1532,
   "t": "Esagono"
  },
  {
-  "i": 1534,
+  "i": 1533,
   "t": "Ottagono"
  },
  {
-  "i": 1535,
+  "i": 1534,
   "t": "Croce"
  },
  {
-  "i": 1536,
+  "i": 1535,
   "t": "Freccia sinistra"
  },
  {
-  "i": 1537,
+  "i": 1536,
   "t": "Freccia su"
  },
  {
-  "i": 1538,
+  "i": 1537,
   "t": "Freccia giù"
  },
  {
-  "i": 1539,
+  "i": 1538,
   "t": "Freccia sinistra-destra"
  },
  {
-  "i": 1540,
+  "i": 1539,
   "t": "Freccia su-giù"
  },
  {
-  "i": 1541,
+  "i": 1540,
   "t": "Segno più"
  },
  {
-  "i": 1542,
+  "i": 1541,
   "t": "Segno meno"
  },
  {
-  "i": 1543,
+  "i": 1542,
   "t": "Segno per"
  },
  {
-  "i": 1544,
+  "i": 1543,
   "t": "Segno uguale"
  },
  {
-  "i": 1545,
+  "i": 1544,
   "t": "Segno diverso"
  },
  {
-  "i": 1546,
+  "i": 1545,
   "t": "Processo"
  },
  {
-  "i": 1547,
+  "i": 1546,
   "t": "Decisione"
  },
  {
-  "i": 1548,
+  "i": 1547,
   "t": "Terminatore"
  },
  {
-  "i": 1549,
+  "i": 1548,
   "t": "Documento"
  },
  {
-  "i": 1550,
+  "i": 1549,
   "t": "Connettore"
  },
  {
-  "i": 1551,
+  "i": 1550,
   "t": "Stella a 4 punte"
  },
  {
-  "i": 1552,
+  "i": 1551,
   "t": "Stella a 5 punte"
  },
  {
-  "i": 1553,
+  "i": 1552,
   "t": "Stella a 6 punte"
  },
  {
-  "i": 1554,
+  "i": 1553,
   "t": "Stella a 8 punte"
  },
  {
-  "i": 1555,
+  "i": 1554,
   "t": "Callout rettangolare"
  },
  {
-  "i": 1556,
+  "i": 1555,
   "t": "Callout ovale"
  },
  {
-  "i": 1557,
+  "i": 1556,
   "t": "Retino 6,25%"
  },
  {
-  "i": 1558,
+  "i": 1557,
   "t": "Retino 12,5%"
  },
  {
-  "i": 1559,
+  "i": 1558,
   "t": "Retino 25%"
  },
  {
-  "i": 1560,
+  "i": 1559,
   "t": "Retino 50%"
  },
  {
-  "i": 1561,
+  "i": 1560,
   "t": "Righe diagonali"
  },
  {
-  "i": 1562,
+  "i": 1561,
   "t": "Scacchiera"
  },
  {
-  "i": 1563,
+  "i": 1562,
   "t": "Orizzontale (da sinistra a destra)"
  },
  {
-  "i": 1564,
+  "i": 1563,
   "t": "Verticale (dall'alto in basso)"
  },
  {
-  "i": 1565,
+  "i": 1564,
   "t": "Diagonale (da alto sinistra a basso destra)"
  },
  {
-  "i": 1566,
+  "i": 1565,
   "t": "Diagonale (da basso sinistra a alto destra)"
  },
  {
-  "i": 1567,
+  "i": 1566,
   "t": "Colore di sfondo del motivo — sei cifre esadecimali RRGGBB (es. FFFFFF. Invio vuoto = bianco)"
  },
  {
-  "i": 1568,
+  "i": 1567,
   "t": "Testo interno"
  },
  {
-  "i": 1569,
+  "i": 1568,
   "t": "Allineamento"
  },
  {
-  "i": 1570,
+  "i": 1569,
   "t": "Allineamento del testo cambiato"
  },
  {
-  "i": 1571,
+  "i": 1570,
   "t": "Posizione verticale"
  },
  {
-  "i": 1572,
+  "i": 1571,
   "t": "Posizione verticale del testo cambiata"
  },
  {
-  "i": 1573,
+  "i": 1572,
   "t": "•"
  },
  {
-  "i": 1574,
+  "i": 1573,
   "t": "1."
  },
  {
-  "i": 1575,
+  "i": 1574,
   "t": "Elenco cambiato"
  },
  {
-  "i": 1576,
+  "i": 1575,
   "t": "Effetti"
  },
  {
-  "i": 1577,
+  "i": 1576,
   "t": "Scrittura verticale commutata"
  },
  {
-  "i": 1578,
+  "i": 1577,
   "t": "Barrato"
  },
  {
-  "i": 1579,
+  "i": 1578,
   "t": "Barrato commutato"
  },
  {
-  "i": 1580,
+  "i": 1579,
   "t": "Apice"
  },
  {
-  "i": 1581,
+  "i": 1580,
   "t": "Apice commutato"
  },
  {
-  "i": 1582,
+  "i": 1581,
   "t": "Pedice"
  },
  {
-  "i": 1583,
+  "i": 1582,
   "t": "Questa cella non ha commenti"
  },
  {
-  "i": 1584,
+  "i": 1583,
   "t": "Segnato come risolto"
  },
  {
-  "i": 1585,
+  "i": 1584,
   "t": "Segno di risolto rimosso"
  },
  {
-  "i": 1586,
+  "i": 1585,
   "t": "La risposta è vuota (non è stato aggiunto nulla)"
  },
  {
-  "i": 1587,
+  "i": 1586,
   "t": "Risposto al commento in {} (resta al salvataggio)"
  },
  {
-  "i": 1588,
+  "i": 1587,
   "t": "Aggiungi una risposta — va in fondo a questa discussione"
  },
  {
-  "i": 1589,
+  "i": 1588,
   "t": "Indicatori dei punti"
  },
  {
-  "i": 1590,
+  "i": 1589,
   "t": "Indicatori"
  },
  {
-  "i": 1591,
+  "i": 1590,
   "t": "Alto"
  },
  {
-  "i": 1592,
+  "i": 1591,
   "t": "Basso"
  },
  {
-  "i": 1593,
+  "i": 1592,
   "t": "Primo"
  },
  {
-  "i": 1594,
+  "i": 1593,
   "t": "Ultimo"
  },
  {
-  "i": 1595,
+  "i": 1594,
   "t": "Indicatori cambiati"
  },
  {
-  "i": 1596,
+  "i": 1595,
   "t": "Nessuna gestione delle celle vuote né asse comune (questa linea ha i numeri fissati al momento dell'inserimento)"
  },
  {
-  "i": 1597,
+  "i": 1596,
   "t": "Formula nascosta (non appare nella barra della formula; il valore resta visibile)"
  },
  {
-  "i": 1598,
+  "i": 1597,
   "t": "Contrassegnata per nascondere la formula (ha effetto una volta protetto il foglio)"
  },
  {
-  "i": 1599,
+  "i": 1598,
   "t": "La formula non è più nascosta"
  },
  {
-  "i": 1600,
+  "i": 1599,
   "t": "(la formula è nascosta)"
  },
  {
-  "i": 1601,
+  "i": 1600,
   "t": "Uscito dalla modifica dei punti"
  },
  {
-  "i": 1602,
+  "i": 1601,
   "t": "Questa forma non ha vertici (si usa su linee e forme libere)"
  },
  {
-  "i": 1603,
+  "i": 1602,
   "t": "Modifica dei punti: trascina un punto / Ctrl+clic per aggiungere o togliere / doppio clic alterna spigolo e curva"
  },
  {
-  "i": 1604,
+  "i": 1603,
   "t": "Non si può ridurre oltre (una linea richiede due punti)"
  },
  {
-  "i": 1605,
+  "i": 1604,
   "t": "Rimosso un vertice"
  },
  {
-  "i": 1606,
+  "i": 1605,
   "t": "Aggiunto un vertice"
  },
  {
-  "i": 1607,
+  "i": 1606,
   "t": "Questo punto ora è uno spigolo"
  },
  {
-  "i": 1608,
+  "i": 1607,
   "t": "Questo punto ora è curvo"
  },
  {
-  "i": 1609,
+  "i": 1608,
   "t": "Punto afferrato (Ctrl+clic per aggiungere o togliere)"
  },
  {
-  "i": 1610,
+  "i": 1609,
   "t": "Forma libera (fatta di punti)"
  },
  {
-  "i": 1611,
+  "i": 1610,
   "t": "Seleziona due forme (Ctrl+clic per aggiungerne una)"
  },
  {
-  "i": 1612,
+  "i": 1611,
   "t": "Questa forma non si può combinare (il suo contorno non si può prendere per punti)"
  },
  {
-  "i": 1613,
+  "i": 1612,
   "t": "Non è rimasto nulla: non si sovrappongono"
  },
  {
-  "i": 1614,
+  "i": 1613,
   "t": "Unione"
  },
  {
-  "i": 1615,
+  "i": 1614,
   "t": "Intersezione"
  },
  {
-  "i": 1616,
+  "i": 1615,
   "t": "Sottrazione"
  },
  {
-  "i": 1617,
+  "i": 1616,
   "t": "{} eseguito (convertito in contorno, quindi forma originale e rotazione non si recuperano)"
  },
  {
-  "i": 1618,
+  "i": 1617,
   "t": "Nome «{}» = {} (utilizzabile solo in questo foglio)"
  },
  {
-  "i": 1619,
+  "i": 1618,
   "t": "Nome «{}» = {} (utilizzabile da qualsiasi foglio)"
  },
  {
-  "i": 1620,
+  "i": 1619,
   "t": "Ambito del nome «{}» = {}"
  },
  {
-  "i": 1621,
+  "i": 1620,
   "t": "Intera cartella di lavoro (da qualsiasi foglio)"
  },
  {
-  "i": 1622,
+  "i": 1621,
   "t": "Solo questo foglio"
  },
  {
-  "i": 1623,
+  "i": 1622,
   "t": "Mostra l'elenco dei commenti"
  },
  {
-  "i": 1624,
+  "i": 1623,
   "t": "Chiudi l'elenco dei commenti"
  },
  {
-  "i": 1625,
+  "i": 1624,
   "t": "Mostra le note sulle celle"
  },
  {
-  "i": 1626,
+  "i": 1625,
   "t": "Nascondi le note sulle celle"
  },
  {
-  "i": 1627,
+  "i": 1626,
   "t": "Il commento su questa cella ({})"
  },
  {
-  "i": 1628,
+  "i": 1627,
   "t": "I miei commenti"
  },
  {
-  "i": 1629,
+  "i": 1628,
   "t": "Tutti i commenti ({} nell'intera cartella di lavoro)"
  },
  {
-  "i": 1630,
+  "i": 1629,
   "t": "Scegli fin dove eliminare (Ctrl+Z annulla in ogni caso)"
  },
  {
-  "i": 1631,
+  "i": 1630,
   "t": "Elenco dei commenti aperto (intera cartella di lavoro; tocca una riga per saltare a quel punto)"
  },
  {
-  "i": 1632,
+  "i": 1631,
   "t": "Elenco dei commenti chiuso"
  },
  {
-  "i": 1633,
+  "i": 1632,
   "t": "Resti anonimo (nessun nome verrà inserito nei commenti che scriverai d'ora in poi)"
  },
  {
-  "i": 1634,
+  "i": 1633,
   "t": "I commenti che scriverai d'ora in poi saranno firmati «{}» (quelli già scritti non cambiano)"
  },
  {
-  "i": 1635,
+  "i": 1634,
   "t": "Commento su {} rimosso (Ctrl+Z lo ripristina)"
  },
  {
-  "i": 1636,
+  "i": 1635,
   "t": "Nessun nome impostato (compila «Firma dei commenti» nelle impostazioni avanzate per eliminare solo i tuoi commenti)"
  },
  {
-  "i": 1637,
+  "i": 1636,
   "t": "Non ci sono commenti di {}"
  },
  {
-  "i": 1638,
+  "i": 1637,
   "t": "Eliminati {} tuoi interventi (di cui {} thread per intero). Le risposte delle altre persone sono state conservate. Ctrl+Z le ripristina"
  },
  {
-  "i": 1639,
+  "i": 1638,
   "t": "Questa cartella di lavoro non ha commenti"
  },
  {
-  "i": 1640,
+  "i": 1639,
   "t": "Eliminati tutti i {} commenti della cartella di lavoro (Ctrl+Z li ripristina)"
  },
  {
-  "i": 1641,
+  "i": 1640,
   "t": "Posizione"
  },
  {
-  "i": 1642,
+  "i": 1641,
   "t": "Autore"
  },
  {
-  "i": 1643,
+  "i": 1642,
   "t": "Stato"
  },
  {
-  "i": 1644,
+  "i": 1643,
   "t": "Firma dei commenti"
  },
  {
-  "i": 1645,
+  "i": 1644,
   "t": "Firma dei commenti — il nome da lasciare (Invio a vuoto = anonimo)"
  },
  {
-  "i": 1646,
+  "i": 1645,
   "t": "I commenti non verranno firmati"
  },
  {
-  "i": 1647,
+  "i": 1646,
   "t": "D'ora in poi i commenti saranno firmati «{}»"
  },
  {
-  "i": 1648,
+  "i": 1647,
   "t": "Digita un nome e premi Invio (lascia vuoto per non firmare)"
  },
  {
-  "i": 1649,
+  "i": 1648,
   "t": "Modello di layout applicato: {}"
  },
  {
-  "i": 1650,
+  "i": 1649,
   "t": "Impossibile leggere il modello di layout ({}): {}"
  },
  {
-  "i": 1651,
+  "i": 1650,
   "t": "La larghezza delle colonne e l'impostazione pagina appartengono a «{}» (non scritte in questo file)"
  },
  {
-  "i": 1652,
+  "i": 1651,
   "t": "Larghezza delle colonne e impostazione pagina scritte in «{}» (attive alla prossima apertura)"
  },
  {
-  "i": 1653,
+  "i": 1652,
   "t": "Impossibile scrivere il modello di layout: {}"
  },
  {
-  "i": 1654,
+  "i": 1653,
   "t": "Non esiste un carattere con quel nome"
  },
  {
-  "i": 1655,
+  "i": 1654,
   "t": "Non ci sono parole in kanji a cui aggiungere la lettura"
  },
  {
-  "i": 1656,
+  "i": 1655,
   "t": "Letture aggiunte in {} punti; {} hanno più di una lettura possibile (da verificare. Ctrl+Z annulla in un passo)"
  },
  {
-  "i": 1657,
+  "i": 1656,
   "t": "(anonimo)"
  },
  {
-  "i": 1658,
+  "i": 1657,
   "t": "{} commenti"
  },
  {
-  "i": 1659,
+  "i": 1658,
   "t": "Ordinato per {}"
  },
  {
-  "i": 1660,
+  "i": 1659,
   "t": "Questa cartella di lavoro non ha commenti (aggiungine uno con «Aggiungi commento» nel menu contestuale)"
  },
  {
-  "i": 1661,
+  "i": 1660,
   "t": "{} risposte"
  },
  {
-  "i": 1662,
+  "i": 1661,
   "t": "✓ Risolto"
  },
  {
-  "i": 1663,
+  "i": 1662,
   "t": "Scegliere le colonne per i filtri dati (quanti se ne vuole; toccare un ☑ per chiuderlo; solo visualizzazione, i dati non cambiano)"
  },
  {
-  "i": 1664,
+  "i": 1663,
   "t": "Filtro dati della colonna {} chiuso"
  },
  {
-  "i": 1665,
+  "i": 1664,
   "t": "Impostazioni filtro dati"
  },
  {
-  "i": 1666,
+  "i": 1665,
   "t": "Altezza"
  },
  {
-  "i": 1667,
+  "i": 1666,
   "t": "Mantieni proporzioni"
  },
  {
-  "i": 1668,
+  "i": 1667,
   "t": "Attivo"
  },
  {
-  "i": 1669,
+  "i": 1668,
   "t": "Colonne pulsanti"
  },
  {
-  "i": 1670,
+  "i": 1669,
   "t": "Posizione"
  },
  {
-  "i": 1671,
+  "i": 1670,
   "t": "Automatica (da destra)"
  },
  {
-  "i": 1672,
+  "i": 1671,
   "t": "Torna alla posizione automatica"
  },
  {
-  "i": 1673,
+  "i": 1672,
   "t": "Posizione riportata su automatica (da destra)"
  },
  {
-  "i": 1674,
+  "i": 1673,
   "t": "Dimensioni: {}×{}px"
  },
  {
-  "i": 1675,
+  "i": 1674,
   "t": "Trascinalo per spostarlo (usa «Torna alla posizione automatica» nelle impostazioni per rimetterlo in fila)"
  },
  {
-  "i": 1676,
+  "i": 1675,
   "t": "Trascina l’intestazione per spostarlo. Dimensioni e posizione cambiano solo la visualizzazione; i dati salvati non cambiano"
  },
  {
-  "i": 1677,
+  "i": 1676,
   "t": "Autocorrezione matematica"
  },
  {
-  "i": 1678,
+  "i": 1677,
   "t": "Attiva (digita \\alpha e diventa α)"
  },
  {
-  "i": 1679,
+  "i": 1678,
   "t": "Autocorrezione matematica: attiva (il simbolo compare quando digiti un separatore; Backspace ripristina la grafia)"
  },
  {
-  "i": 1680,
+  "i": 1679,
   "t": "Autocorrezione matematica: disattivata (ciò che digiti resta com’è)"
  },
  {
-  "i": 1681,
+  "i": 1680,
   "t": "{} sostituito con un simbolo (Backspace ripristina la grafia)"
  },
  {
-  "i": 1682,
+  "i": 1681,
   "t": "Suggerimenti tasti: una lettera sceglie una scheda, la successiva preme un pulsante (Esc per uscire)"
  },
  {
-  "i": 1683,
+  "i": 1682,
   "t": "Suggerimenti tasti chiusi"
  },
  {
-  "i": 1684,
+  "i": 1683,
   "t": "Scheda {} (una lettera preme un pulsante; Esc per uscire)"
  },
  {
-  "i": 1685,
+  "i": 1684,
   "t": "Questa lettera non esiste («{}»)"
  },
  {
-  "i": 1686,
+  "i": 1685,
   "t": "Colonna selezionata (Shift+Spazio per la riga)"
  },
  {
-  "i": 1687,
+  "i": 1686,
   "t": "Riga selezionata (Ctrl+Spazio per la colonna)"
  },
  {
-  "i": 1688,
+  "i": 1687,
   "t": "key.{} nelle impostazioni indica un'azione sconosciuta"
  },
  {
-  "i": 1689,
+  "i": 1688,
   "t": "La scorciatoia di key.{} nelle impostazioni non è leggibile: {}"
  },
  {
-  "i": 1690,
+  "i": 1689,
   "t": "La scorciatoia {} è contesa tra {} e {} (vince {})"
  },
  {
-  "i": 1691,
+  "i": 1690,
   "t": "Modifiche non salvate — Ctrl+S per salvare, ancora Esc per scartare e chiudere"
  },
  {
-  "i": 1692,
+  "i": 1691,
   "t": "Ctrl+S salva (al salvataggio le funzioni di cella vengono ricalcolate) / Esc chiudi / Tab rientro"
  },
  {
-  "i": 1693,
+  "i": 1692,
   "t": "Digita per filtrare"
  },
  {
-  "i": 1694,
+  "i": 1693,
   "t": "Non è nell'elenco (premi Invio per usarlo così)"
  },
  {
-  "i": 1695,
+  "i": 1694,
   "t": "Prima riga (nessuna riga sopra da copiare)"
  },
  {
-  "i": 1696,
+  "i": 1695,
   "t": "Colonna A (nessuna colonna a sinistra da copiare)"
  },
  {
-  "i": 1697,
+  "i": 1696,
   "t": "Trascina in basso o a destra per copiare (doppio clic: fino alla lunghezza della colonna vicina)"
  },
  {
-  "i": 1698,
+  "i": 1697,
   "t": "Nessuna colonna vicina da cui prendere la lunghezza (vuote su entrambi i lati)"
  },
  {
-  "i": 1699,
+  "i": 1698,
   "t": "{} copiato in {}"
  },
  {
-  "i": 1700,
+  "i": 1699,
   "t": "{} celle incollate (anche la formattazione)"
  },
  {
-  "i": 1701,
+  "i": 1700,
   "t": "{} celle incollate (testo da un'altra app: la formattazione resta)"
  },
  {
-  "i": 1702,
+  "i": 1701,
   "t": "Intero foglio selezionato"
  },
  {
-  "i": 1703,
+  "i": 1702,
   "t": "Colonna {} selezionata (intera colonna)"
  },
  {
-  "i": 1704,
+  "i": 1703,
   "t": "Colonne {}–{} selezionate (intere colonne)"
  },
  {
-  "i": 1705,
+  "i": 1704,
   "t": "Riga {} selezionata (intera riga)"
  },
  {
-  "i": 1706,
+  "i": 1705,
   "t": "Righe {}–{} selezionate (intere righe)"
  },
  {
-  "i": 1707,
+  "i": 1706,
   "t": "Salvato in {} (testo semplice)"
  },
  {
-  "i": 1708,
-  "t": "{} ({} righe) — aperto come testo semplice; sarà salvato allo stesso modo"
+  "i": 1707,
+  "t": "{} ({} righe) — aperto come testo semplice; verrà salvato come testo semplice"
  },
  {
-  "i": 1709,
+  "i": 1708,
   "t": "Macro e testo semplice"
  },
  {
-  "i": 1710,
+  "i": 1709,
   "t": "Impossibile creare: {}"
  },
  {
-  "i": 1711,
+  "i": 1710,
   "t": "{} creato e aperto in {} (salvalo e potrai richiamarlo da una cella)"
  },
  {
-  "i": 1712,
+  "i": 1711,
   "t": "{} creato ma non si apre: {}"
  },
  {
-  "i": 1713,
+  "i": 1712,
   "t": "{} aperto in {}"
  },
  {
-  "i": 1714,
+  "i": 1713,
   "t": "Registrazione avviata. Ciò che fai diventa Python (premi di nuovo per fermare)"
  },
  {
-  "i": 1715,
+  "i": 1714,
   "t": "Registrazione scritta in {} ({} righe) — si apre in {}"
  },
  {
-  "i": 1716,
+  "i": 1715,
   "t": "Registrazione scritta in {} ({} righe)"
  },
  {
-  "i": 1717,
+  "i": 1716,
   "t": "Impossibile scrivere la registrazione: {}"
  },
  {
-  "i": 1718,
+  "i": 1717,
   "t": "Destinazione IA"
  },
  {
-  "i": 1719,
+  "i": 1718,
   "t": "Utilizzabile ora"
  },
  {
-  "i": 1720,
+  "i": 1719,
   "t": "Modello IA (JO_AI_MODEL)"
  },
  {
-  "i": 1721,
+  "i": 1720,
   "t": "(predefinito della destinazione)"
  },
  {
-  "i": 1722,
+  "i": 1721,
   "t": "Utilizzabile"
  },
  {
-  "i": 1723,
+  "i": 1722,
   "t": "Non si sa finché non si chiede (si collega alla destinazione qui sotto)"
  },
  {
-  "i": 1724,
+  "i": 1723,
   "t": "Pannello sinistro (Chiedi all'IA) aperto"
  },
  {
-  "i": 1725,
+  "i": 1724,
   "t": "Pannello sinistro chiuso"
  },
  {
-  "i": 1726,
+  "i": 1725,
   "t": "Pannello destro (Impostazioni cella) aperto"
  },
  {
-  "i": 1727,
+  "i": 1726,
   "t": "Pannello destro chiuso"
  },
  {
-  "i": 1728,
+  "i": 1727,
   "t": "Conversazione"
  },
  {
-  "i": 1729,
+  "i": 1728,
   "t": "Impostazioni cella"
  },
  {
-  "i": 1730,
+  "i": 1729,
   "t": "Testo a capo"
  },
  {
-  "i": 1731,
+  "i": 1730,
   "t": "Formato numero"
  },
  {
-  "i": 1732,
+  "i": 1731,
   "t": "Separatore delle migliaia"
  },
  {
-  "i": 1733,
+  "i": 1732,
   "t": "Codice articolo (0000)"
  },
  {
-  "i": 1734,
+  "i": 1733,
   "t": "Penna bordi"
  },
  {
-  "i": 1735,
+  "i": 1734,
   "t": "Sottile"
  },
  {
-  "i": 1736,
+  "i": 1735,
   "t": "Spesso"
  },
  {
-  "i": 1737,
+  "i": 1736,
   "t": "Doppio"
  },
  {
-  "i": 1738,
+  "i": 1737,
   "t": "Dove tracciare (si può premere più volte)"
  },
  {
-  "i": 1739,
+  "i": 1738,
   "t": "Cancella"
  },
  {
-  "i": 1740,
+  "i": 1739,
   "t": "Chiedi all'IA"
  },
  {
-  "i": 1741,
+  "i": 1740,
   "t": "Applica"
  },
  {
-  "i": 1742,
+  "i": 1741,
   "t": "Proposta scartata (nulla è cambiato)"
  },
  {
-  "i": 1743,
+  "i": 1742,
   "t": "Premi qui per scrivere; Invio manda"
  },
  {
-  "i": 1744,
+  "i": 1743,
   "t": "Invia"
  },
  {
-  "i": 1745,
+  "i": 1744,
   "t": "Sto pensando…"
  },
  {
-  "i": 1746,
+  "i": 1745,
   "t": "Ora: {}"
  },
  {
-  "i": 1747,
+  "i": 1746,
   "t": "Torno al foglio (il pannello della conversazione resta aperto)"
  },
  {
-  "i": 1748,
+  "i": 1747,
   "t": "Ecco la modifica."
  },
  {
-  "i": 1749,
+  "i": 1748,
   "t": "È pronta una proposta (leggila nel pannello sinistro, poi Applica)"
  },
  {
-  "i": 1750,
+  "i": 1749,
   "t": "Risposto (pannello sinistro)"
  },
  {
-  "i": 1751,
+  "i": 1750,
   "t": "Formato numero riportato a Generale"
  },
  {
-  "i": 1752,
+  "i": 1751,
   "t": "Nessuna richiesta"
  },
  {
-  "i": 1753,
+  "i": 1752,
   "t": "Uno script è in esecuzione (attendi che finisca)"
  },
  {
-  "i": 1754,
+  "i": 1753,
   "t": "Eseguo la proposta…"
  },
  {
-  "i": 1755,
+  "i": 1754,
   "t": "Applicato."
  },
  {
-  "i": 1756,
+  "i": 1755,
   "t": "Proposta applicata (Ctrl+Z annulla)"
  },
  {
-  "i": 1757,
+  "i": 1756,
   "t": "Formato numero impostato su {}"
  },
  {
-  "i": 1758,
+  "i": 1757,
   "t": "Proposta applicata: {} (Ctrl+Z annulla)"
  },
  {
-  "i": 1759,
+  "i": 1758,
   "t": "Lo script è fallito: {}"
  },
  {
-  "i": 1760,
+  "i": 1759,
   "t": "Lo script non è stato eseguito: {}"
  },
  {
-  "i": 1761,
+  "i": 1760,
   "t": "Il testo rivisto è pronto (leggilo nel pannello sinistro, poi Applica)"
  },
  {
-  "i": 1762,
+  "i": 1761,
   "t": "Selezione sostituita (Ctrl+Z annulla)"
  },
  {
-  "i": 1763,
+  "i": 1762,
   "t": "Inserito dopo il cursore (Ctrl+Z annulla)"
  },
  {
-  "i": 1764,
+  "i": 1763,
   "t": "Torno al testo (il pannello della conversazione resta aperto)"
  },
  {
-  "i": 1765,
+  "i": 1764,
   "t": "Testo da inserire (non entra finché non premi)"
  },
  {
-  "i": 1766,
+  "i": 1765,
   "t": "Testo scartato (nulla è cambiato)"
  },
  {
-  "i": 1767,
+  "i": 1766,
   "t": "AI"
  },
  {
-  "i": 1768,
+  "i": 1767,
   "t": "Rientro"
  },
  {
-  "i": 1769,
+  "i": 1768,
   "t": "Rientro impostato su {}"
  },
  {
-  "i": 1770,
+  "i": 1769,
   "t": "Il rientro non può ridursi oltre"
  },
  {
-  "i": 1771,
+  "i": 1770,
   "t": "Il rientro non può ampliarsi oltre"
  },
  {
-  "i": 1772,
+  "i": 1771,
   "t": "Orientamento del testo"
  },
  {
-  "i": 1773,
+  "i": 1772,
   "t": "Orientamento del testo impostato su {}"
  },
  {
-  "i": 1774,
+  "i": 1773,
   "t": "Formattazione condizionale"
  },
  {
-  "i": 1775,
+  "i": 1774,
   "t": "Negativi in rosso"
  },
  {
-  "i": 1776,
+  "i": 1775,
   "t": "Duplicati"
  },
  {
-  "i": 1777,
+  "i": 1776,
   "t": "Univoci"
  },
  {
-  "i": 1778,
+  "i": 1777,
   "t": "Scala di colori"
  },
  {
-  "i": 1779,
+  "i": 1778,
   "t": "Icone"
  },
  {
-  "i": 1780,
+  "i": 1779,
   "t": "Tabella"
  },
  {
-  "i": 1781,
+  "i": 1780,
   "t": "{} righe × {} colonne — ora riga {}, colonna {}"
  },
  {
-  "i": 1782,
+  "i": 1781,
   "t": "Riga sopra"
  },
  {
-  "i": 1783,
+  "i": 1782,
   "t": "Riga sotto"
  },
  {
-  "i": 1784,
+  "i": 1783,
   "t": "Elimina riga"
  },
  {
-  "i": 1785,
+  "i": 1784,
   "t": "Colonna a sinistra"
  },
  {
-  "i": 1786,
+  "i": 1785,
   "t": "Colonna a destra"
  },
  {
-  "i": 1787,
+  "i": 1786,
   "t": "Elimina colonna"
  },
  {
-  "i": 1788,
+  "i": 1787,
   "t": "Riga aggiunta sopra"
  },
  {
-  "i": 1789,
+  "i": 1788,
   "t": "Riga aggiunta sotto"
  },
  {
-  "i": 1790,
+  "i": 1789,
   "t": "Colonna aggiunta a sinistra"
  },
  {
-  "i": 1791,
+  "i": 1790,
   "t": "Colonna aggiunta a destra"
  },
  {
-  "i": 1792,
+  "i": 1791,
   "t": "Riga eliminata (Ctrl+Z annulla)"
  },
  {
-  "i": 1793,
+  "i": 1792,
   "t": "Colonna eliminata (Ctrl+Z annulla)"
  },
  {
-  "i": 1794,
+  "i": 1793,
   "t": "L'ultima riga non può essere eliminata (eliminare l'intera tabella è un'altra azione)"
  },
  {
-  "i": 1795,
+  "i": 1794,
   "t": "L'ultima colonna non può essere eliminata (eliminare l'intera tabella è un'altra azione)"
  },
  {
-  "i": 1796,
+  "i": 1795,
   "t": "Formula"
  },
  {
-  "i": 1797,
+  "i": 1796,
   "t": "Modifica la formula"
  },
  {
-  "i": 1798,
+  "i": 1797,
   "t": "Modifica della formula (Invio ricompone, Esc annulla)"
  },
  {
-  "i": 1799,
+  "i": 1798,
   "t": "In questo paragrafo non c'è alcuna immagine"
  },
  {
-  "i": 1800,
+  "i": 1799,
   "t": "Immagine rimpicciolita"
  },
  {
-  "i": 1801,
+  "i": 1800,
   "t": "Immagine ingrandita"
  },
  {
-  "i": 1802,
+  "i": 1801,
   "t": "{:.0}×{:.0}mm"
  },
  {
-  "i": 1803,
+  "i": 1802,
   "t": "Ordine"
  },
  {
-  "i": 1804,
+  "i": 1803,
   "t": "Porta in primo piano"
  },
  {
-  "i": 1805,
+  "i": 1804,
   "t": "Porta avanti"
  },
  {
-  "i": 1806,
+  "i": 1805,
   "t": "Porta indietro"
  },
  {
-  "i": 1807,
+  "i": 1806,
   "t": "Porta in secondo piano"
  },
  {
-  "i": 1808,
+  "i": 1807,
   "t": "Ruota a sinistra"
  },
  {
-  "i": 1809,
+  "i": 1808,
   "t": "Ruota a destra"
  },
  {
-  "i": 1810,
+  "i": 1809,
   "t": "Capovolgi orizzontalmente"
  },
  {
-  "i": 1811,
+  "i": 1810,
   "t": "Capovolgi verticalmente"
  },
  {
-  "i": 1812,
+  "i": 1811,
   "t": "Altro"
  },
  {
-  "i": 1813,
+  "i": 1812,
   "t": "È selezionata una forma"
  },
  {
-  "i": 1814,
+  "i": 1813,
   "t": "È selezionata un'immagine"
  },
  {
-  "i": 1815,
+  "i": 1814,
   "t": "Nessuna forma o immagine selezionata (fai clic su una nel foglio)"
  },
  {
-  "i": 1816,
+  "i": 1815,
   "t": "Pagina — impostazioni dell'intero documento"
  },
  {
-  "i": 1817,
+  "i": 1816,
   "t": "Intestazione e piè di pagina"
  },
  {
-  "i": 1818,
+  "i": 1817,
   "t": "Modifica"
  },
  {
-  "i": 1819,
+  "i": 1818,
   "t": "Filigrana"
  },
  {
-  "i": 1820,
+  "i": 1819,
   "t": "Colore pagina"
  },
  {
-  "i": 1821,
+  "i": 1820,
   "t": "Puoi fare domande sull'intervallo selezionato. Se qualcosa cambierebbe il foglio, prima vedi che cosa farà: finché non premi, non cambia nulla."
  },
  {
-  "i": 1822,
+  "i": 1821,
   "t": "es. ordina per vendite decrescenti / colora i primi 5 / aggiungi una riga totale"
  },
  {
-  "i": 1823,
+  "i": 1822,
   "t": "Modifica proposta (finché non premi, non succede nulla)"
  },
  {
-  "i": 1824,
+  "i": 1823,
   "t": "Puoi fare domande sulla selezione. Se il testo verrebbe riscritto, prima vedi il testo nuovo: finché non premi, non entra nulla."
  },
  {
-  "i": 1825,
+  "i": 1824,
   "t": "es. rendi questo paragrafo più cortese / lungo la metà / dimmi se suona rigido"
  },
  {
-  "i": 1826,
+  "i": 1825,
   "t": "Mostro i commenti (come fumetti sulle celle)"
  },
  {
-  "i": 1827,
+  "i": 1826,
   "t": "Destinazione del modello locale"
  },
  {
-  "i": 1828,
+  "i": 1827,
   "t": "resta su questa macchina"
  },
  {
-  "i": 1829,
+  "i": 1828,
   "t": "esce da questa macchina"
  },
  {
-  "i": 1830,
+  "i": 1829,
   "t": "Come impostare la destinazione"
  },
  {
-  "i": 1831,
+  "i": 1830,
   "t": "ai_url / ai_model in settings.toml (vince la variabile d'ambiente OFFICE_URL)"
  },
  {
-  "i": 1832,
+  "i": 1831,
   "t": "Nuova conversazione"
  },
  {
-  "i": 1833,
+  "i": 1832,
   "t": "Nuova conversazione avviata (il foglio non è stato toccato)"
  },
  {
-  "i": 1834,
+  "i": 1833,
   "t": "Chiedi di correggere"
  },
  {
-  "i": 1835,
+  "i": 1834,
   "t": "Lascia così"
  },
  {
-  "i": 1836,
+  "i": 1835,
   "t": "Fallito. {}"
  },
  {
-  "i": 1837,
+  "i": 1836,
   "t": "Applicato. {}"
  },
  {
-  "i": 1838,
+  "i": 1837,
   "t": "Destinazione: {} (premi per cambiare)"
  },
  {
-  "i": 1839,
+  "i": 1838,
   "t": "Lo script precedente è fallito. Leggi l'errore e dammi uno script corretto.\n\n[Errore]\n{}\n\n[Script fallito]\n{}"
  },
  {
-  "i": 1840,
+  "i": 1839,
   "t": "Puoi scrivere =nome(...) in una cella. Sceglierne una la apre in un editor"
  },
  {
-  "i": 1841,
+  "i": 1840,
   "t": "Non ci sono ancora funzioni richiamabili dalle formule (metti un .py in {})"
  },
  {
-  "i": 1842,
+  "i": 1841,
   "t": "Sposta in {} le funzioni che richiami dalle formule (plugins è ora la cartella delle macro che avvii a mano)"
  },
  {
-  "i": 1843,
+  "i": 1842,
   "t": "Impossibile creare la cartella: {}"
  },
  {
-  "i": 1844,
+  "i": 1843,
   "t": "Impossibile aprire: il testo non è UTF-8"
  },
  {
-  "i": 1845,
+  "i": 1844,
   "t": " (formule mantenute; l'aspetto non viene salvato)"
  },
  {
-  "i": 1846,
+  "i": 1845,
   "t": "File — contenuto della cartella"
  },
  {
-  "i": 1847,
+  "i": 1846,
   "t": "Nessuna cartella aperta (File > Apri)"
  },
  {
-  "i": 1848,
+  "i": 1847,
   "t": "(la cartella è vuota)"
  },
  {
-  "i": 1849,
+  "i": 1848,
   "t": "Documento {}"
  },
  {
-  "i": 1850,
+  "i": 1849,
   "t": "{} ({} documenti)"
  },
  {
-  "i": 1851,
+  "i": 1850,
   "t": "(senza nome)"
  },
  {
-  "i": 1852,
+  "i": 1851,
   "t": "Visualizzazione di {}"
  },
  {
-  "i": 1853,
+  "i": 1852,
   "t": "Ci sono modifiche non salvate (salvale prima)"
  },
  {
-  "i": 1854,
+  "i": 1853,
   "t": "Salvato come {} (i fogli di calcolo usano una doppia estensione)"
  },
  {
-  "i": 1855,
+  "i": 1854,
   "t": "Cartella"
  },
  {
-  "i": 1856,
+  "i": 1855,
   "t": "Documento"
  },
  {
-  "i": 1857,
+  "i": 1856,
   "t": "Aspetto"
  },
  {
-  "i": 1858,
+  "i": 1857,
   "t": "Modulo"
  },
  {
-  "i": 1859,
+  "i": 1858,
   "t": "officework — scegli una cartella da aprire"
  },
  {
-  "i": 1860,
+  "i": 1859,
   "t": "{} aperto (scegli un file dall'elenco a destra)"
  },
  {
-  "i": 1861,
+  "i": 1860,
   "t": "AsciiDoc è un file di testo semplice, quindi non può essere salvato cifrato (togli la cifratura o salva come xlsx)"
  },
  {
-  "i": 1862,
+  "i": 1861,
   "t": "{}:{} trasformato in tabella (colore della riga di intestazione e righe alternate; puoi riconvertirlo in intervallo o ridimensionarlo — Ctrl+Z annulla)"
  },
  {
-  "i": 1863,
+  "i": 1862,
   "t": "La tabella «{}» è di nuovo un intervallo normale (colore dell'intestazione, righe alternate, formattazione e formule restano)"
  },
  {
-  "i": 1864,
+  "i": 1863,
   "t": "Riga di intestazione"
  },
  {
-  "i": 1865,
+  "i": 1864,
   "t": "Sfondo #{}"
  },
  {
-  "i": 1866,
+  "i": 1865,
   "t": "Ci sono modifiche non salvate (salvale prima): {}"
  },
  {
-  "i": 1867,
+  "i": 1866,
   "t": "L'ultimo resta aperto"
  },
  {
-  "i": 1868,
+  "i": 1867,
   "t": "{} ha modifiche non salvate (salvale prima)"
  },
  {
-  "i": 1869,
+  "i": 1868,
   "t": "File apribili"
  },
  {
-  "i": 1870,
+  "i": 1869,
   "t": "Documenti e fogli officework"
  },
  {
-  "i": 1871,
+  "i": 1870,
   "t": "{} file precedentemente aperti non sono stati trovati"
  },
  {
-  "i": 1872,
+  "i": 1871,
   "t": "«{}» non è in questo file"
  },
  {
-  "i": 1873,
+  "i": 1872,
   "t": "«{}» non è in questo foglio (scegli «Questo file» per cercare anche negli altri fogli)"
  },
  {
-  "i": 1874,
+  "i": 1873,
   "t": "«{}»: {} {} ({} in questo file)"
  },
  {
-  "i": 1875,
+  "i": 1874,
   "t": "«{}»: {} ({} in questo foglio)"
  },
  {
-  "i": 1876,
+  "i": 1875,
   "t": "Cerca in"
  },
  {
-  "i": 1877,
+  "i": 1876,
   "t": "Questo foglio"
  },
  {
-  "i": 1878,
+  "i": 1877,
   "t": "Questo file"
  },
  {
-  "i": 1879,
+  "i": 1878,
   "t": "Per l'intera cartella usa «Cerca nella cartella» nella scheda Dati"
  },
  {
-  "i": 1880,
+  "i": 1879,
   "t": "«{}»: documento {}"
  },
  {
-  "i": 1881,
+  "i": 1880,
   "t": "«{}» non è in questo documento (scegli «Questo file» per cercare anche negli altri documenti)"
  },
  {
-  "i": 1882,
+  "i": 1881,
   "t": "Questo documento"
  },
  {
-  "i": 1883,
+  "i": 1882,
   "t": "Lo schermo ora è scuro (carta e celle restano bianche, così schermo e stampa coincidono)"
  },
  {
-  "i": 1884,
+  "i": 1883,
   "t": "Calcolo iterativo: attivo (fino a {} passaggi / variazione sotto {})"
  },
  {
-  "i": 1885,
+  "i": 1884,
   "t": "Calcolo iterativo: spento (i riferimenti circolari vengono segnalati)"
  },
  {
-  "i": 1886,
+  "i": 1885,
   "t": "Attivo (fino a {} passaggi)"
  },
  {
-  "i": 1887,
+  "i": 1886,
   "t": "{}: evidenziate {} celle precedenti (cancellale con Rimuovi frecce)"
  },
  {
-  "i": 1888,
+  "i": 1887,
   "t": "{}: evidenziate {} celle dipendenti (cancellale con Rimuovi frecce)"
  },
  {
-  "i": 1889,
+  "i": 1888,
   "t": "Protezione del foglio \"{}\" rimossa (ora puoi modificarlo; al salvataggio la modifica resta nel file xlsx)"
  },
  {
-  "i": 1890,
+  "i": 1889,
   "t": "Foglio \"{}\" protetto (si possono modificare solo le celle sbloccate; allenta la protezione da Azioni consentite; lo stesso pulsante la rimuove. Non viene impostata alcuna password — e non fingiamo di impostarla)"
  },
  {
-  "i": 1891,
+  "i": 1890,
   "t": "Il blocco di scrittura è tuo ({}). Chi apre per primo la cartella di lavoro può scrivere; gli altri possono solo leggere (il blocco è un file .~lock)"
  },
  {
-  "i": 1892,
+  "i": 1891,
   "t": "Inserite {} caselle di controllo (si commutano con la barra spaziatrice; Excel le mostra come VERO/FALSO{})"
  },
  {
-  "i": 1893,
+  "i": 1892,
   "t": "Foglio \"{}\" nascosto (lo stesso pulsante lo riporta; al salvataggio la modifica resta nel file xlsx)"
  },
  {
-  "i": 1894,
+  "i": 1893,
   "t": "{} celle sotto controllo (i valori compaiono nella barra di stato; premi di nuovo per svuotare l'elenco)"
  },
  {
-  "i": 1895,
+  "i": 1894,
   "t": "In base a quale colonna raggruppare? Scegli un'intestazione: {}"
  },
  {
-  "i": 1896,
+  "i": 1895,
   "t": "Importati {} fogli come valori (non vengono mantenuti collegamenti)"
  },
  {
-  "i": 1897,
+  "i": 1896,
   "t": "Aggiunto {}:{} all'area di stampa ({} aree in tutto; ogni area viene stampata su un foglio a sé)"
  },
  {
-  "i": 1898,
+  "i": 1897,
   "t": "Le righe {}–{} si ripetono in cima a ogni pagina (premi senza selezione per annullare)"
  },
  {
-  "i": 1899,
+  "i": 1898,
   "t": "{} fogli / {} celle — {}"
  },
  {
-  "i": 1900,
+  "i": 1899,
   "t": "{} fogli — {}"
  },
  {
-  "i": 1901,
+  "i": 1900,
   "t": "{} — **{} lo ha aperto**. Non si può sovrascrivere (usa Salva con nome)"
  },
  {
-  "i": 1902,
+  "i": 1901,
   "t": "Immagine inserita in {} (al salvataggio entra nel file xlsx)"
  },
  {
-  "i": 1903,
+  "i": 1902,
   "t": "Collegamento aggiunto in {} (Ctrl+clic per aprirlo)"
  },
  {
-  "i": 1904,
+  "i": 1903,
   "t": "Grafico inserito in {} (al salvataggio entra nel file xlsx)"
  },
  {
-  "i": 1905,
+  "i": 1904,
   "t": "Inserito {} ({} di {}) in {} — i valori di adesso. La scheda Tabella pivot è aperta (aggiornamento, totali complessivi, subtotali e layout sono lì; Ctrl+Z annulla)"
  },
  {
-  "i": 1906,
+  "i": 1905,
   "t": "Tabella pivot aggiornata ({} — i valori di adesso; Ctrl+Z annulla)"
  },
  {
-  "i": 1907,
+  "i": 1906,
   "t": "Funzioni: calcolate {} celle; {} hanno dato #SPILL! (dove andrebbe il risultato ci sono già dati)"
  },
  {
-  "i": 1908,
+  "i": 1907,
   "t": "Funzioni: calcolate {} celle (Ctrl+Z annulla)"
  },
  {
-  "i": 1909,
+  "i": 1908,
   "t": "{} inserito in {} (come immagine; al salvataggio entra nel file xlsx; Ctrl+Z annulla in un colpo solo)"
  },
  {
-  "i": 1910,
+  "i": 1909,
   "t": "Equazione"
  },
  {
-  "i": 1911,
+  "i": 1910,
   "t": "Arte testo"
  },
  {
-  "i": 1912,
+  "i": 1911,
   "t": "{} inserito in {} ({} forme; seleziona una forma e premi Invio per scrivere, trascina per spostare; Ctrl+Z le annulla tutte in un colpo solo)"
  },
  {
-  "i": 1913,
+  "i": 1912,
   "t": "Risolto: {} = {} (riscritte {} celle variabili; Ctrl+Z annulla in un colpo solo)"
  },
  {
-  "i": 1914,
+  "i": 1913,
   "t": "Con {} = {}, {} diventa {} (Ctrl+Z annulla)"
  },
  {
-  "i": 1915,
+  "i": 1914,
   "t": "Ci sono {} copie di ripristino da una sessione terminata senza salvare (aprile da Ripristina nella scheda File)"
  },
  {
-  "i": 1916,
+  "i": 1915,
   "t": "Ripristino"
  },
  {
-  "i": 1917,
+  "i": 1916,
   "t": "Non è applicato alcun filtro"
  },
  {
-  "i": 1918,
+  "i": 1917,
   "t": "Non sono visualizzate frecce di traccia"
  },
  {
-  "i": 1919,
+  "i": 1918,
   "t": "Binario"
  },
  {
-  "i": 1920,
+  "i": 1919,
   "t": "Il grafico pivot è stato tolto"
  },
  {
-  "i": 1921,
+  "i": 1920,
   "t": "Grafico pivot messo in {} (aggiornando la tabella pivot viene ridisegnato; lo stesso pulsante lo toglie)"
  },
  {
-  "i": 1922,
+  "i": 1921,
   "t": "Quanti periodi in avanti? (digita un numero e premi Invio; vuoto = 6)"
  },
  {
-  "i": 1923,
+  "i": 1922,
   "t": "Il risultato della previsione non si riesce a leggere"
  },
  {
-  "i": 1924,
+  "i": 1923,
   "t": "Previsione"
  },
  {
-  "i": 1925,
+  "i": 1924,
   "t": "Effettivo"
  },
  {
-  "i": 1926,
+  "i": 1925,
   "t": "Periodo"
  },
  {
-  "i": 1927,
+  "i": 1926,
   "t": "Limite inferiore"
  },
  {
-  "i": 1928,
+  "i": 1927,
   "t": "Limite superiore"
  },
  {
-  "i": 1929,
+  "i": 1928,
   "t": "Previsione {}"
  },
  {
-  "i": 1930,
+  "i": 1929,
   "t": "Stagione di {} periodi (trovata da sola)"
  },
  {
-  "i": 1931,
+  "i": 1930,
   "t": "Non è stata trovata nessuna stagione"
  },
  {
-  "i": 1932,
+  "i": 1931,
   "t": "Previsione su {} periodi. {}. L'intervallo è un'attesa al 95%, non una promessa (errore tipico {:.1})"
  },
  {
-  "i": 1933,
+  "i": 1932,
   "t": "Per la previsione servono almeno 4 righe di numeri sotto l'intestazione"
  },
  {
-  "i": 1934,
+  "i": 1933,
   "t": "Nessuna colonna di numeri trovata (ne servono almeno 4)"
  },
  {
-  "i": 1935,
+  "i": 1934,
   "t": "Per la previsione servono almeno 4 numeri"
  },
  {
-  "i": 1936,
+  "i": 1935,
   "t": "Sto prevedendo…"
  },
  {
-  "i": 1937,
+  "i": 1936,
   "t": "Mancano gli strumenti che servono alla previsione. Installali con:\n  {}"
  },
  {
-  "i": 1938,
+  "i": 1937,
   "t": "Non riesco a prevedere: {}"
  },
  {
-  "i": 1939,
+  "i": 1938,
   "t": "Finale"
  },
  {
-  "i": 1940,
+  "i": 1939,
   "t": "Contrassegnato come finale (non è un blocco)"
  },
  {
-  "i": 1941,
+  "i": 1940,
   "t": "Non contrassegnato"
  },
  {
-  "i": 1942,
+  "i": 1941,
   "t": "Togli il contrassegno"
  },
  {
-  "i": 1943,
+  "i": 1942,
   "t": "Contrassegna come finale"
  },
  {
-  "i": 1944,
+  "i": 1943,
   "t": "Questa cartella di lavoro è contrassegnata come finale (non è un blocco: puoi ancora modificarla; togli il contrassegno da «Proteggi» nella scheda File)"
  },
  {
-  "i": 1945,
+  "i": 1944,
   "t": "Il contrassegno «finale» è stato tolto"
  },
  {
-  "i": 1946,
+  "i": 1945,
   "t": "Contrassegnato come finale (non è un blocco: puoi ancora modificarla; salvando resta nell'xlsx)"
  },
  {
-  "i": 1947,
+  "i": 1946,
   "t": "Apri una copia conservata: {}"
  },
  {
-  "i": 1948,
+  "i": 1947,
   "t": "→ Recupera ciò che si riesce a leggere e aprilo (sola lettura)"
  },
  {
-  "i": 1949,
+  "i": 1948,
   "t": "Non ci sono copie conservate. Si apre solo con le parti recuperate (non puoi sovrascrivere)"
  },
  {
-  "i": 1950,
+  "i": 1949,
   "t": "Una copia conservata è più sicura. Il recupero è il ripiego"
  },
  {
-  "i": 1951,
+  "i": 1950,
   "t": "Questo file non si riesce a leggere: {}"
  },
  {
-  "i": 1952,
+  "i": 1951,
   "t": "Questa cartella di lavoro è stata recuperata, quindi non sovrascrive. Usa Salva con nome (il file originale non viene toccato)"
  },
  {
-  "i": 1953,
+  "i": 1952,
   "t": "Non si è potuto recuperare nulla (nessuna parte si legge come zip)"
  },
  {
-  "i": 1954,
+  "i": 1953,
   "t": "Non si è riusciti a leggere {} ({})"
  },
  {
-  "i": 1955,
+  "i": 1954,
   "t": "Tutte le parti sono state recuperate (era danneggiato solo l'indice dello zip)"
  },
  {
-  "i": 1956,
+  "i": 1955,
   "t": "Aperto con {} parti recuperate ({} non recuperabili). Non puoi sovrascrivere"
  },
  {
-  "i": 1957,
+  "i": 1956,
   "t": "Non si apre nemmeno con le parti recuperate: {}"
  },
  {
-  "i": 1958,
+  "i": 1957,
   "t": "Questa cartella di lavoro è stata messa insieme da un file danneggiato (sola lettura — non puoi sovrascrivere)"
  },
  {
-  "i": 1959,
+  "i": 1958,
   "t": "Elenco i valori stessi (il filtro è stato tolto)"
  },
  {
-  "i": 1960,
+  "i": 1959,
   "t": "Raggruppo le date per {} (il filtro è stato tolto)"
  },
  {
-  "i": 1961,
+  "i": 1960,
   "t": "Non è una data"
  },
  {
-  "i": 1962,
+  "i": 1961,
   "t": "I valori stessi"
  },
  {
-  "i": 1963,
+  "i": 1962,
   "t": "Unità di data"
  },
  {
-  "i": 1964,
+  "i": 1963,
   "t": "Cerco tabelle nel PDF…"
  },
  {
-  "i": 1965,
+  "i": 1964,
   "t": "Manca lo strumento che legge i PDF (pdfplumber). Installalo con:\n  {}"
  },
  {
-  "i": 1966,
+  "i": 1965,
   "t": "Non riesco a leggere il PDF: {}"
  },
  {
-  "i": 1967,
+  "i": 1966,
   "t": "In questo PDF non è stata trovata nessuna tabella (una tabella incollata come immagine non si può leggere)"
  },
  {
-  "i": 1968,
+  "i": 1967,
   "t": "{} di {} (pagina {})"
  },
  {
-  "i": 1969,
+  "i": 1968,
   "t": "Dalle linee"
  },
  {
-  "i": 1970,
+  "i": 1969,
   "t": "Dalla posizione del testo (una stima)"
  },
  {
-  "i": 1971,
+  "i": 1970,
   "t": "Come è stata trovata"
  },
  {
-  "i": 1972,
+  "i": 1971,
   "t": "Nota: non c'erano linee, quindi è una stima. Controlla che le colonne siano allineate"
  },
  {
-  "i": 1973,
+  "i": 1972,
   "t": "{} ({} celle)"
  },
  {
-  "i": 1974,
+  "i": 1973,
   "t": "→ Nuovo scenario (i valori attuali delle celle selezionate)…"
  },
  {
-  "i": 1975,
+  "i": 1974,
   "t": "→ Elimina uno scenario…"
  },
  {
-  "i": 1976,
+  "i": 1975,
   "t": "Non ce n'è ancora nessuno. Seleziona le celle da far variare, poi creane uno"
  },
  {
-  "i": 1977,
+  "i": 1976,
   "t": "Premendone uno, i suoi valori vengono riscritti nelle celle (Ctrl+Z annulla)"
  },
  {
-  "i": 1978,
+  "i": 1977,
   "t": "Troppe celle selezionate (al massimo 64; seleziona solo quelle da far variare)"
  },
  {
-  "i": 1979,
+  "i": 1978,
   "t": "Digita un nome per lo scenario e premi Invio (vengono conservati i valori delle {} celle selezionate)"
  },
  {
-  "i": 1980,
+  "i": 1979,
   "t": "Scegli lo scenario da eliminare"
  },
  {
-  "i": 1981,
+  "i": 1980,
   "t": "Scenario «{}» applicato ({} celle; Ctrl+Z annulla)"
  },
  {
-  "i": 1982,
+  "i": 1981,
   "t": "Scenario «{}» eliminato"
  },
  {
-  "i": 1983,
+  "i": 1982,
   "t": "Il nome è vuoto (non è stato creato nulla)"
  },
  {
-  "i": 1984,
+  "i": 1983,
   "t": "Nella selezione non ci sono valori da conservare (le celle con formula restano fuori: applicandolo la formula sparirebbe)"
  },
  {
-  "i": 1985,
+  "i": 1984,
   "t": "Scenario «{}» conservato di nuovo ({} celle)"
  },
  {
-  "i": 1986,
+  "i": 1985,
   "t": "Scenario «{}» conservato ({} celle; salvando resta anche nell'xlsx)"
  },
  {
-  "i": 1987,
+  "i": 1986,
   "t": "{} tabelle pivot collegate sono state filtrate allo stesso modo"
  },
  {
-  "i": 1988,
+  "i": 1987,
   "t": "Seleziona prima un filtro dati"
  },
  {
-  "i": 1989,
+  "i": 1988,
   "t": "Questa cartella di lavoro non ha tabelle pivot (creane una prima)"
  },
  {
-  "i": 1990,
+  "i": 1989,
   "t": "Filtrando con questo filtro dati, anche le tabelle pivot collegate vengono filtrate allo stesso modo"
  },
  {
-  "i": 1991,
+  "i": 1990,
   "t": "Connessioni report"
  },
  {
-  "i": 1992,
+  "i": 1991,
   "t": "Non collegato"
  },
  {
-  "i": 1993,
+  "i": 1992,
   "t": "Collegato a {}"
  },
  {
-  "i": 1994,
+  "i": 1993,
   "t": "Scegli una disposizione consigliata (puoi anche scegliere i campi da solo)"
  },
  {
-  "i": 1995,
+  "i": 1994,
   "t": "Scelgo io i campi (prima le righe, poi le colonne, poi i valori)"
  },
  {
-  "i": 1996,
+  "i": 1995,
   "t": "Disposizioni che la tua tabella consente. Non viene creato nulla finché non ne premi una"
  },
  {
-  "i": 1997,
+  "i": 1996,
   "t": "Righe: {} / Colonne: {} / {} di {}"
  },
  {
-  "i": 1998,
+  "i": 1997,
   "t": "Righe: {} / {} di {}"
  },
  {
-  "i": 1999,
+  "i": 1998,
   "t": "Proteggi cartella di lavoro"
  },
  {
-  "i": 2000,
+  "i": 1999,
   "t": "Questo è ciò che è in vigore. Premendo si torna al foglio e viene chiesto il resto"
  },
  {
-  "i": 2001,
+  "i": 2000,
   "t": "Cifra con password"
  },
  {
-  "i": 2002,
+  "i": 2001,
   "t": "Attivo (dal prossimo salvataggio)"
  },
  {
-  "i": 2003,
+  "i": 2002,
   "t": "Non impostato"
  },
  {
-  "i": 2004,
+  "i": 2003,
   "t": "Cambia o togli"
  },
  {
-  "i": 2005,
+  "i": 2004,
   "t": "Imposta una password"
  },
  {
-  "i": 2006,
+  "i": 2005,
   "t": "Proteggi foglio"
  },
  {
-  "i": 2007,
+  "i": 2006,
   "t": "«{}» è protetto"
  },
  {
-  "i": 2008,
+  "i": 2007,
   "t": "«{}» non è protetto"
  },
  {
-  "i": 2009,
+  "i": 2008,
   "t": "Togli la protezione"
  },
  {
-  "i": 2010,
+  "i": 2009,
   "t": "Proteggi questo foglio"
  },
  {
-  "i": 2011,
+  "i": 2010,
   "t": "Consentito durante la protezione"
  },
  {
-  "i": 2012,
+  "i": 2011,
   "t": "Scegli"
  },
  {
-  "i": 2013,
+  "i": 2012,
   "t": "Consiglia sola lettura"
  },
  {
-  "i": 2014,
+  "i": 2013,
   "t": "Consigliato (non è un blocco)"
  },
  {
-  "i": 2015,
+  "i": 2014,
   "t": "Non consigliato"
  },
  {
-  "i": 2016,
+  "i": 2015,
   "t": "Consiglia"
  },
  {
-  "i": 2017,
+  "i": 2016,
   "t": "Firma digitale"
  },
  {
-  "i": 2018,
+  "i": 2017,
   "t": "Accanto c'è un file di firma"
  },
  {
-  "i": 2019,
+  "i": 2018,
   "t": "Non firmato"
  },
  {
-  "i": 2020,
+  "i": 2019,
   "t": "Firma o verifica"
  },
  {
-  "i": 2021,
+  "i": 2020,
   "t": "La protezione del foglio e il consiglio di sola lettura non sono blocchi. Chi vuole può toglierli. Non facciamo finta del contrario"
  },
  {
-  "i": 2022,
+  "i": 2021,
   "t": "Controlliamo. Digita di nuovo la stessa password e premi Invio"
  },
  {
-  "i": 2023,
+  "i": 2022,
   "t": "Le due password sono diverse (la cifratura non è cambiata; riprova)"
  },
  {
-  "i": 2024,
+  "i": 2023,
   "t": "Non è consentito nulla"
  },
  {
-  "i": 2025,
+  "i": 2024,
   "t": "{} su {} consentite"
  },
  {
-  "i": 2026,
+  "i": 2025,
   "t": "Cifratura 1/2 — password (lasciala vuota e premi Invio per togliere la cifratura)"
  },
  {
-  "i": 2027,
+  "i": 2026,
   "t": "Cifratura 2/2 — la stessa password"
  },
  {
-  "i": 2028,
+  "i": 2027,
   "t": "Divisione rimossa"
  },
  {
-  "i": 2029,
+  "i": 2028,
   "t": "Posiziona il cursore dove vuoi dividere (la divisione avviene sopra e a sinistra del cursore)"
  },
  {
-  "i": 2030,
+  "i": 2029,
   "t": "Diviso (la rotellina scorre la parte su cui si trova il puntatore)"
  },
  {
-  "i": 2031,
+  "i": 2030,
   "t": "Contrassegnate {} celle (premi di nuovo per togliere)"
  },
  {
-  "i": 2032,
+  "i": 2031,
   "t": "Questo foglio non ha regole di convalida (aggiungile con Convalida dati nella scheda Dati)"
  },
  {
-  "i": 2033,
+  "i": 2032,
   "t": "Nessun valore viola le regole di convalida"
  },
  {
-  "i": 2034,
+  "i": 2033,
   "t": "Contrassegni tolti"
  },
  {
-  "i": 2035,
+  "i": 2034,
   "t": "Digita l'intervallo di origine e premi Invio (es. Sheet1!A1:C20; includi la riga di intestazione)"
  },
  {
-  "i": 2036,
+  "i": 2035,
   "t": "Posiziona il cursore nella tabella pivot da riorientare"
  },
  {
-  "i": 2037,
+  "i": 2036,
   "t": "Scrivi l'intervallo nella forma A1:C20"
  },
  {
-  "i": 2038,
+  "i": 2037,
   "t": "Non riesco a leggere l'intervallo: {}"
  },
  {
-  "i": 2039,
+  "i": 2038,
   "t": "Il foglio “{}” non esiste"
  },
  {
-  "i": 2040,
+  "i": 2039,
   "t": "Il nuovo intervallo non ha queste intestazioni: {} (la tabella pivot le usa)"
  },
  {
-  "i": 2041,
+  "i": 2040,
   "t": "Tabella di origine spostata su {}!{}:{} (ricostruzione in corso)"
  },
  {
-  "i": 2042,
+  "i": 2041,
   "t": "Digita prima il membro sinistro del vincolo"
  },
  {
-  "i": 2043,
+  "i": 2042,
   "t": "Ricerca di una soluzione… (programma intero, branch and bound)"
  },
  {
-  "i": 2044,
+  "i": 2043,
   "t": "{} non è una cella variabile (intero e binario valgono solo per le celle variabili)"
  },
  {
-  "i": 2045,
+  "i": 2044,
   "t": "Nessuna soluzione trovata ({} potrebbe non influire su {})"
  },
  {
-  "i": 2046,
+  "i": 2045,
   "t": "Orientamento"
  },
  {
-  "i": 2047,
+  "i": 2046,
   "t": "Allinea in mezzo"
  },
  {
-  "i": 2048,
+  "i": 2047,
   "t": "Funzioni Python"
  },
  {
-  "i": 2049,
+  "i": 2048,
   "t": "Macro della barra"
  },
  {
-  "i": 2050,
+  "i": 2049,
   "t": "Copia formato"
  },
  {
-  "i": 2051,
+  "i": 2050,
   "t": "Elenco campi"
  },
  {
-  "i": 2052,
+  "i": 2051,
   "t": "Ingrandisci testo dello schermo"
  },
  {
-  "i": 2053,
+  "i": 2052,
   "t": "Riduci testo dello schermo"
  },
  {
-  "i": 2054,
+  "i": 2053,
   "t": "Cerchia dati non validi"
  },
  {
-  "i": 2055,
+  "i": 2054,
   "t": "Dividi finestra"
  },
  {
-  "i": 2056,
+  "i": 2055,
   "t": "Scenario"
  },
  {
-  "i": 2057,
+  "i": 2056,
   "t": "Foglio di previsione"
  },
  {
-  "i": 2058,
+  "i": 2057,
   "t": "Grafico pivot"
  },
  {
-  "i": 2059,
+  "i": 2058,
   "t": "Layout di stampa"
  },
  {
-  "i": 2060,
+  "i": 2059,
   "t": "Destinazione"
  },
  {
-  "i": 2061,
+  "i": 2060,
   "t": "Riassunto"
  },
  {
-  "i": 2062,
+  "i": 2061,
   "t": "Riscrivi"
  },
  {
-  "i": 2063,
+  "i": 2062,
   "t": "Più formale"
  },
  {
-  "i": 2064,
+  "i": 2063,
   "t": "Più semplice"
  },
  {
-  "i": 2065,
+  "i": 2064,
   "t": "Traduzione"
  },
  {
-  "i": 2066,
+  "i": 2065,
   "t": "Continua"
  },
  {
-  "i": 2067,
+  "i": 2066,
   "t": "In tabella"
  },
  {
-  "i": 2068,
+  "i": 2067,
   "t": "Chiedi"
  },
  {
-  "i": 2069,
+  "i": 2068,
   "t": "Ruby"
  },
  {
-  "i": 2070,
+  "i": 2069,
   "t": "Direzione del testo"
  },
  {
-  "i": 2071,
+  "i": 2070,
   "t": "Distribuito"
  },
  {
-  "i": 2072,
+  "i": 2071,
   "t": "Inserisci didascalia"
  },
  {
-  "i": 2073,
+  "i": 2072,
   "t": "Apri URL"
  },
  {
-  "i": 2074,
+  "i": 2073,
   "t": "Indice"
  },
  {
-  "i": 2075,
+  "i": 2074,
   "t": "Note Aozora"
  },
  {
-  "i": 2076,
+  "i": 2075,
   "t": "Notazione Denden"
  },
  {
-  "i": 2077,
+  "i": 2076,
   "t": "Revisioni"
  },
  {
-  "i": 2078,
+  "i": 2077,
   "t": "Mostra revisioni"
  },
  {
-  "i": 2079,
+  "i": 2078,
   "t": "Correzione"
  },
  {
-  "i": 2080,
+  "i": 2079,
   "t": "Controllo ortografia"
  },
  {
-  "i": 2081,
+  "i": 2080,
   "t": "Thesaurus"
  },
  {
-  "i": 2082,
+  "i": 2081,
   "t": "Errori di conversione"
  },
  {
-  "i": 2083,
+  "i": 2082,
   "t": "Incoerenze di grafia"
  },
  {
-  "i": 2084,
+  "i": 2083,
   "t": "Calcolo"
  },
  {
-  "i": 2085,
+  "i": 2084,
   "t": "Testo da destra a sinistra"
  },
  {
-  "i": 2086,
+  "i": 2085,
   "t": "Direzione del foglio"
  },
  {
-  "i": 2087,
+  "i": 2086,
   "t": "Python"
  },
  {
-  "i": 2088,
+  "i": 2087,
   "t": "Casella di controllo"
  },
  {
-  "i": 2089,
+  "i": 2088,
   "t": "Collegamenti esterni"
  },
  {
-  "i": 2090,
+  "i": 2089,
   "t": "Grafico consigliato"
  },
  {
-  "i": 2091,
+  "i": 2090,
   "t": "Modalità collaborativa"
  },
  {
-  "i": 2092,
+  "i": 2091,
   "t": "Cronologia versioni"
  },
  {
-  "i": 2093,
+  "i": 2092,
   "t": "Chat"
  },
  {
-  "i": 2094,
+  "i": 2093,
   "t": "Crittografa"
  },
  {
-  "i": 2095,
+  "i": 2094,
   "t": "Aggiungi firma digitale"
  },
  {
-  "i": 2096,
+  "i": 2095,
   "t": "Gestione plugin"
  },
  {
-  "i": 2097,
+  "i": 2096,
   "t": "Mostra zeri"
  },
  {
-  "i": 2098,
+  "i": 2097,
   "t": "Zoom al 100%"
  },
  {
-  "i": 2099,
+  "i": 2098,
   "t": "Tema dell'interfaccia"
  },
  {
-  "i": 2100,
+  "i": 2099,
   "t": "Finestra controllo celle"
  },
  {
-  "i": 2101,
+  "i": 2100,
   "t": "Somma automatica"
  },
  {
-  "i": 2102,
+  "i": 2101,
   "t": "Registra azioni"
  },
  {
-  "i": 2103,
+  "i": 2102,
   "t": "Elimina commento"
  },
  {
-  "i": 2104,
+  "i": 2103,
   "t": "Risolutore"
  },
  {
-  "i": 2105,
+  "i": 2104,
   "t": "Da testo a dati"
  },
  {
-  "i": 2106,
+  "i": 2105,
   "t": "Rimuovi frecce"
  },
  {
-  "i": 2107,
+  "i": 2106,
   "t": "Riempimento"
  },
  {
-  "i": 2108,
+  "i": 2107,
   "t": "Cancella filtro"
  },
  {
-  "i": 2109,
+  "i": 2108,
   "t": "Scrivi macro"
  },
  {
-  "i": 2110,
+  "i": 2109,
   "t": "Testo in colonne"
  },
  {
-  "i": 2111,
+  "i": 2110,
   "t": "Didascalia"
  },
  {
-  "i": 2112,
+  "i": 2111,
   "t": "Indice delle figure"
  },
  {
-  "i": 2113,
+  "i": 2112,
   "t": "Aggiorna indice delle figure"
  },
  {
-  "i": 2114,
+  "i": 2113,
   "t": "Collegamenti esterni (importa come valori)"
  },
  {
-  "i": 2115,
+  "i": 2114,
   "t": "Mostra formule"
  },
  {
-  "i": 2116,
+  "i": 2115,
   "t": "Orientamento del testo (da destra a sinistra)"
  },
  {
-  "i": 2117,
+  "i": 2116,
   "t": "Usate di recente"
  },
  {
-  "i": 2118,
+  "i": 2117,
   "t": "Stampa griglia"
  },
  {
-  "i": 2119,
+  "i": 2118,
   "t": "Aggiorna sommario"
  },
  {
-  "i": 2120,
+  "i": 2119,
   "t": "Colonne alternate"
  },
  {
-  "i": 2121,
+  "i": 2120,
   "t": "Stampa intestazioni"
  },
  {
-  "i": 2122,
+  "i": 2121,
   "t": "Nascondi dettaglio"
  },
  {
-  "i": 2123,
+  "i": 2122,
   "t": "Rimuovi duplicati"
  },
  {
-  "i": 2124,
+  "i": 2123,
   "t": "Inserisci funzione"
  },
  {
-  "i": 2125,
+  "i": 2124,
   "t": "Formato CSV"
  },
  {
-  "i": 2126,
+  "i": 2125,
   "t": "Blocca cella"
  },
  {
-  "i": 2127,
+  "i": 2126,
   "t": "Tabella dati"
  },
  {
-  "i": 2128,
+  "i": 2127,
   "t": "Riempimento rapido"
  },
  {
-  "i": 2129,
+  "i": 2128,
   "t": "Elenco"
  },
  {
-  "i": 2130,
+  "i": 2129,
   "t": "Incolla nome"
  },
  {
-  "i": 2131,
+  "i": 2130,
   "t": "Testo a capo"
  },
  {
-  "i": 2132,
+  "i": 2131,
   "t": "Intervallo copie"
  },
  {
-  "i": 2133,
+  "i": 2132,
   "t": "Nuovo .py"
  },
  {
-  "i": 2134,
+  "i": 2133,
   "t": "Aggiungi intervallo"
  },
  {
-  "i": 2135,
+  "i": 2134,
   "t": "Adatta alla pagina"
  },
  {
-  "i": 2136,
+  "i": 2135,
   "t": "Fine pagina"
  },
  {
-  "i": 2137,
+  "i": 2136,
   "t": "Apri cartella"
  },
  {
-  "i": 2138,
+  "i": 2137,
   "t": "Tipo di calcolo"
  },
  {
-  "i": 2139,
+  "i": 2138,
   "t": "Operazioni consentite"
  }
 ]

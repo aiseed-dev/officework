@@ -1300,7 +1300,7 @@ impl Writer {
                 self.url_open = true;
                 self.url_ed = Editor::new("http://127.0.0.1:8765/");
                 self.status =
-                    ui::t!("URL を打って Enter(JS なしの閲覧と記入。http のみ)").into();
+                    ui::t!("URL を打って Enter(JS を動かさずに読んで、記入欄に書き込めます)").into();
             }
             "f-print" => self.save_pdf(cx),
             "f-merge" => self.merge_csv(cx),

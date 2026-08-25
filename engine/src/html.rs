@@ -94,7 +94,7 @@ struct Builder {
     style: ParaStyle,
     list: ListKind,
     depth: u8,
-    // 表。入れ子は初版では畳む(帳簿に言う)
+    // 表。入れ子は初版ではまとめる(読んだ結果に言う)
     table: Option<Vec<Vec<Cellbox>>>,
     row: Vec<Cellbox>,
     cell: Option<Vec<Run>>,
@@ -293,8 +293,8 @@ impl Builder {
             "table" => {
                 self.flush_para();
                 if self.table.is_some() {
-                    // 入れ子の表は初版では畳む(外の表のセルの字になる)
-                    self.note("入れ子の表(外の表に畳んだ)");
+                    // 入れ子の表は初版ではまとめる(外の表のセルの字になる)
+                    self.note("入れ子の表(外の表のセルの字にまとめた)");
                 } else {
                     self.table = Some(Vec::new());
                 }
@@ -542,7 +542,7 @@ impl Builder {
             self.doc.props.title.push_str(decoded.trim());
             return;
         }
-        // 空白は畳む(HTML の流儀)。段落の頭では入れない
+        // 続いた空白は1つにする(HTML の流儀)。段落の頭では入れない
         for ch in decoded.chars() {
             if ch.is_whitespace() && ch != '\n' || ch == '\n' {
                 let target_empty = self.cur.is_empty()

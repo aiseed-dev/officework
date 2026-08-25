@@ -269,7 +269,7 @@ pub const TABLE: &[(&str, &str)] = &[
 ("{}/{} ページ", "Page {}/{}"),
 ("文字数 {}", "{} characters"),
 ("ズーム{}%", "Zoom {}%"),
-("URL を打って Enter(JS なしの閲覧と記入。http のみ)", "Type a URL and press Enter (JS-free reading and filling; http only)"),
+("URL を打って Enter(JS を動かさずに読んで、記入欄に書き込めます)", "Type a URL and press Enter (reads without running JS; forms can be filled)"),
 ("まだファイルになっていません", "Not a file yet"),
 ("{}の編集 — 全ページ共通", "Editing {} — shared by all pages"),
 ("しおり「{}」へ移りました", "Jumped to bookmark \"{}\""),
@@ -1741,9 +1741,9 @@ lib_sheet.so を officework/_sheet.so の名で calc の隣に置いてくださ
     ("{}行を選択しました(行ぜんぶ)", "Selected row {} (the whole row)"),
     ("{}〜{}行を選択しました(行ぜんぶ)", "Selected rows {}–{} (whole rows)"),
     // 素の文字(.py など)を writer で開く・保存する(2026-08-14)
-    ("{} に保存しました(素の文字)", "Saved to {} (plain text)"),
-    ("{}({} 行)— 素の文字として開きました。保存も素の文字です", "{} ({} lines) — opened as plain text; it will be saved as plain text too"),
-    ("マクロ・素の文字", "Macros and plain text"),
+    ("{} に保存しました(文字だけのファイル)", "Saved to {} (plain text)"),
+    ("{}({} 行)— 文字だけのファイルとして開きました。保存も文字だけです", "{} ({} lines) — opened as plain text; it will be saved as plain text too"),
+    ("マクロ・文字だけのファイル", "Macros and plain text"),
     // Python タブは編集の口だけに(2026-08-15)
     ("作れません: {}", "Cannot create it: {}"),
     ("{} を作って {} で開きました(保存したらセルから呼べます)", "Created {} and opened it in {} (save it and you can call it from a cell)"),

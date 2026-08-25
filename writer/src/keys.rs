@@ -393,7 +393,7 @@ impl Writer {
                 .add_filter(ui::t!("officework の文書"), &["adoc", "asciidoc"])
                 .add_filter(ui::t!("Word文書とHTML"), &["docx", "html", "htm"])
                 // マクロの .py もここから開く(素の文字のまま往復する)
-                .add_filter(ui::t!("マクロ・素の文字"), &["py", "txt", "md", "toml", "json", "csv"])
+                .add_filter(ui::t!("マクロ・文字だけのファイル"), &["py", "txt", "md", "toml", "json", "csv"])
                 .pick_file()
         });
         cx.spawn(async move |this, cx| {

@@ -1899,7 +1899,7 @@ mod marker_tests {
             this.open(f.clone());
             // 字下げが保たれていること(Python は字下げが構文)
             assert!(this.doc.body_text().contains("    return"), "字下げが消えた");
-            assert!(this.status.contains("素の文字"), "{}", this.status);
+            assert!(this.status.contains("文字だけ"), "{}", this.status);
             // そのまま保存 → 中身が変わらない
             this.save_to(f.clone());
             let back = std::fs::read_to_string(&f).unwrap();
