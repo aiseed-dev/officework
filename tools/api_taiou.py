@@ -31,103 +31,96 @@ import ribbon_parse  # noqa: E402
 #
 # *セルは文書の表にもあります*(2026-08-24 発注者)ので、
 # 字・書式・結合・式はどちらの列も埋まります。
+# ボタンの id → (オブジェクト, officework, python-docx, openpyxl)。
+# **officework は `.adoc` を触る1つの模型なので、文書と表で列を割りません**
+# (2026-08-24 発注者)。どのオブジェクトの物かを示します。
+# `A / B` は、いま2つの呼び方がある物です(寄せる仕事が残っています)。
 MICHI = {
-    # ファイル
-    "open": ("doc.Doc.open(径路)", "docx.Document(径路)", "sheet.Book.open(径路)", "load_workbook(径路)"),
-    "save": ("d.save(径路)", "d.save(径路)", "b.save(径路)", "wb.save(径路)"),
+    "open": ("Doc / Book", "Doc.open(径路) / Book.open(径路)", "docx.Document(径路)", "load_workbook(径路)"),
+    "save": ("Doc / Book", "d.save(径路) / b.save(径路)", "d.save(径路)", "wb.save(径路)"),
     "pdf": ("", "", "", ""),
-    # ホーム — 字と書式
-    "copy": ("p.text = 値", "p.text = 値", "s['A1'] = 値", "ws['A1'] = 値"),
-    "cut": ("p.text = 値", "p.text = 値", "s['A1'] = 値", "ws['A1'] = 値"),
-    "paste": ("p.text = 値", "p.text = 値", "s['A1'] = 値", "ws['A1'] = 値"),
-    "clear": ("r.clear()", "r.clear()", "s['A1'] = None", "ws['A1'] = None"),
-    "bold": ("r.bold", "r.bold", "c.font", "c.font = Font(bold=True)"),
-    "italic": ("r.italic", "r.italic", "c.font", "c.font = Font(italic=True)"),
-    "underline": ("r.underline", "r.underline", "c.font", "c.font = Font(underline=…)"),
-    "strikeout": ("r.strike", "r.font.strike", "", ""),
-    "fontname": ("r.font", "r.font.name", "c.font", "c.font = Font(name=…)"),
-    "fontsize": ("r.size_pt", "r.font.size", "c.font", "c.font = Font(size=…)"),
-    "incfont": ("r.size_pt", "r.font.size", "c.font", "c.font = Font(size=…)"),
-    "decfont": ("r.size_pt", "r.font.size", "c.font", "c.font = Font(size=…)"),
-    "fontcolor": ("r.color", "r.font.color.rgb", "c.font", "c.font = Font(color=…)"),
-    "superscript": ("", "r.font.superscript", "", ""),
-    "subscript": ("", "r.font.subscript", "", "c.font = Font(vertAlign=…)"),
-    "clearstyle": ("r.clear()", "r.clear()", "", ""),
-    "ruby": ("", "", "", ""),
-    "fillparag": ("", "", "c.fill", "c.fill = PatternFill(…)"),
-    "borders": ("", "", "c.border", "c.border = Border(…)"),
-    "align-left": ("p.align = 'left'", "p.alignment", "c.alignment", "c.alignment = Alignment(…)"),
-    "align-center": ("p.align = 'center'", "p.alignment", "c.alignment", "c.alignment = Alignment(…)"),
-    "align-right": ("p.align = 'right'", "p.alignment", "c.alignment", "c.alignment = Alignment(…)"),
-    "align-just": ("p.align = 'justify'", "p.alignment", "", ""),
-    "align-dist": ("p.align = 'distribute'", "", "", ""),
-    "wrap": ("", "", "c.alignment", "c.alignment = Alignment(wrap_text=True)"),
-    "merge": ("(表の col_span / v_merge)", "cell.merge(…)", "s.merge_cells('A1:B2')", "ws.merge_cells('A1:B2')"),
-    "parastyle": ("p.style", "p.style", "", ""),
-    "markers": ("p.style = '箇条書き'", "p.style = 'List Bullet'", "", ""),
-    "numbering": ("p.style = '番号付き'", "p.style = 'List Number'", "", ""),
-    "multilevels": ("", "", "", ""),
-    "decoffset": ("p.paragraph_format", "p.paragraph_format.left_indent", "", ""),
-    "incoffset": ("p.paragraph_format", "p.paragraph_format.left_indent", "", ""),
-    "linespace": ("p.paragraph_format.line_spacing", "p.paragraph_format.line_spacing", "", ""),
-    "replace": ("d.replace(前, 後)", "", "", ""),
-    "format": ("", "", "c.number_format", "c.number_format"),
-    "currency": ("", "", "c.number_format", "c.number_format"),
-    "percents": ("", "", "c.number_format", "c.number_format"),
-    "comma": ("", "", "c.number_format", "c.number_format"),
-    "cell-ins": ("t.add_row()", "t.add_row()", "s.insert_rows(行)", "ws.insert_rows(行)"),
-    "cell-del": ("", "", "s.delete_rows(行)", "ws.delete_rows(行)"),
-    "condformat": ("", "", "", "ws.conditional_formatting.add(…)"),
-    "sum": ("(表のセルに `=…`)", "", "s['A1'] = '=SUM(…)'", "ws['A1'] = '=SUM(…)'"),
-    "defname": ("", "", "b.create_named_range(名前, …)", "wb.defined_names"),
-    "sort-asc": ("", "", "", ""),
-    "sort-desc": ("", "", "", ""),
-    "setfilter": ("", "", "", "ws.auto_filter.ref"),
-    "clear-filter": ("", "", "", "ws.auto_filter"),
-    # 挿入
-    "instable": ("d.add_table(行, 列)", "d.add_table(行, 列)", "s.add_table(…)", "ws.add_table(…)"),
-    "insimage": ("d.add_picture(径路)", "d.add_picture(径路)", "", "ws.add_image(…)"),
-    "inschart": ("", "", "", "ws.add_chart(…)"),
-    "blankpage": ("d.add_page_break()", "d.add_page_break()", "", ""),
-    "pagebreak": ("d.add_page_break()", "d.add_page_break()", "", "ws.row_breaks"),
-    "edit-header": ("d.header / d.footer", "section.header", "s.oddHeader", "ws.oddHeader"),
-    "edit-footer": ("d.footer", "section.footer", "", ""),
-    "controls": ("d.fields()", "", "", ""),
-    "insequation": ("", "", "", ""),
-    "inshyperlink": ("", "", "c.hyperlink", "c.hyperlink"),
-    "pivot-insert": ("", "", "", "ws.add_pivot(…)"),
-    # レイアウト
-    "pagemargins": ("d.sections[0]", "section.left_margin", "", "ws.page_margins"),
-    "pageorient": ("d.sections[0]", "section.orientation", "", "ws.page_setup.orientation"),
-    "pagesize": ("d.sections[0]", "section.page_width", "", "ws.page_setup.paperSize"),
-    "printarea": ("", "", "s.print_area", "ws.print_area"),
-    "printtitles": ("", "", "s.print_title_rows", "ws.print_title_rows"),
-    "print-gridlines": ("", "", "s.print_gridlines", "ws.print_options.gridLines"),
-    # 数式
-    "insert-function": ("", "", "s['A1'] = '=…'", "ws['A1'] = '=…'"),
-    "calc-mode": ("", "", "b.recalc()", "wb.calculation"),
-    # データ
-    "data-validation": ("", "", "s.add_data_validation(…)", "ws.add_data_validation(…)"),
-    "group": ("", "", "s.row_groups", "ws.column_dimensions[…].outline_level"),
-    "ungroup": ("", "", "s.row_groups", "ws.column_dimensions[…].outline_level"),
-    # 参考資料
-    "toc": ("", "", "", ""),
-    "bookmarks": ("", "", "", ""),
-    "crossref": ("", "", "", ""),
-    "footnote": ("", "", "", ""),
-    "caption": ("", "", "", ""),
-    # フォーム
-    "form-text": ("d.fill(名前, 値)", "", "", ""),
-    "form-name": ("d.fields()", "", "", ""),
-    # 共同編集
-    "co-addcomment": ("p.add_comment(文, author=)", "p.add_comment(文)", "c.comment", "c.comment = Comment(…)"),
-    "co-showcomment": ("d.comments", "d.comments", "c.comment", "c.comment"),
-    # 保護
-    "prot-doc": ("", "", "", "ws.protection"),
-    "prot-encrypt": ("", "", "", "wb.security"),
-    # 表示
-    "freeze": ("", "", "s.freeze_panes", "ws.freeze_panes"),
-    "show-gridlines": ("", "", "s.show_gridlines", "ws.sheet_view.showGridLines"),
+    "copy": ("Paragraph / Cell", "p.text = 値 / s['A1'] = 値", "p.text = 値", "ws['A1'] = 値"),
+    "cut": ("Paragraph / Cell", "p.text = 値 / s['A1'] = 値", "p.text = 値", "ws['A1'] = 値"),
+    "paste": ("Paragraph / Cell", "p.text = 値 / s['A1'] = 値", "p.text = 値", "ws['A1'] = 値"),
+    "clear": ("Run / Cell", "r.clear() / s['A1'] = None", "r.clear()", "ws['A1'] = None"),
+    "bold": ("Run / Cell", "r.bold / c.font", "r.bold", "c.font = Font(bold=True)"),
+    "italic": ("Run / Cell", "r.italic / c.font", "r.italic", "c.font = Font(italic=True)"),
+    "underline": ("Run / Cell", "r.underline / c.font", "r.underline", "c.font = Font(underline=…)"),
+    "strikeout": ("Run", "r.strike", "r.font.strike", ""),
+    "fontname": ("Run / Cell", "r.font / c.font", "r.font.name", "c.font = Font(name=…)"),
+    "fontsize": ("Run / Cell", "r.size_pt / c.font", "r.font.size", "c.font = Font(size=…)"),
+    "incfont": ("Run / Cell", "r.size_pt / c.font", "r.font.size", "c.font = Font(size=…)"),
+    "decfont": ("Run / Cell", "r.size_pt / c.font", "r.font.size", "c.font = Font(size=…)"),
+    "fontcolor": ("Run / Cell", "r.color / c.font", "r.font.color.rgb", "c.font = Font(color=…)"),
+    "superscript": ("Run", "", "r.font.superscript", ""),
+    "subscript": ("Run", "", "r.font.subscript", "c.font = Font(vertAlign=…)"),
+    "clearstyle": ("Run", "r.clear()", "r.clear()", ""),
+    "ruby": ("Run", "", "", ""),
+    "fillparag": ("Cell", "c.fill", "", "c.fill = PatternFill(…)"),
+    "borders": ("Cell", "c.border", "", "c.border = Border(…)"),
+    "align-left": ("Paragraph / Cell", "p.align / c.alignment", "p.alignment", "c.alignment = Alignment(…)"),
+    "align-center": ("Paragraph / Cell", "p.align / c.alignment", "p.alignment", "c.alignment = Alignment(…)"),
+    "align-right": ("Paragraph / Cell", "p.align / c.alignment", "p.alignment", "c.alignment = Alignment(…)"),
+    "align-just": ("Paragraph", "p.align = 'justify'", "p.alignment", ""),
+    "align-dist": ("Paragraph", "p.align = 'distribute'", "", ""),
+    "wrap": ("Cell", "c.alignment", "", "c.alignment = Alignment(wrap_text=True)"),
+    "merge": ("Cell", "(col_span / v_merge) / s.merge_cells(…)", "cell.merge(…)", "ws.merge_cells('A1:B2')"),
+    "parastyle": ("Paragraph", "p.style", "p.style", ""),
+    "markers": ("Paragraph", "p.style = '箇条書き'", "p.style = 'List Bullet'", ""),
+    "numbering": ("Paragraph", "p.style = '番号付き'", "p.style = 'List Number'", ""),
+    "multilevels": ("Paragraph", "", "", ""),
+    "decoffset": ("Paragraph", "p.paragraph_format", "p.paragraph_format.left_indent", ""),
+    "incoffset": ("Paragraph", "p.paragraph_format", "p.paragraph_format.left_indent", ""),
+    "linespace": ("Paragraph", "p.paragraph_format.line_spacing", "p.paragraph_format.line_spacing", ""),
+    "replace": ("Doc", "d.replace(前, 後)", "", ""),
+    "format": ("Cell", "c.number_format", "", "c.number_format"),
+    "currency": ("Cell", "c.number_format", "", "c.number_format"),
+    "percents": ("Cell", "c.number_format", "", "c.number_format"),
+    "comma": ("Cell", "c.number_format", "", "c.number_format"),
+    "cell-ins": ("Table / Sheet", "t.add_row() / s.insert_rows(行)", "t.add_row()", "ws.insert_rows(行)"),
+    "cell-del": ("Sheet", "s.delete_rows(行)", "", "ws.delete_rows(行)"),
+    "condformat": ("Cell", "", "", "ws.conditional_formatting.add(…)"),
+    "sum": ("Cell", "s['A1'] = '=SUM(…)'", "", "ws['A1'] = '=SUM(…)'"),
+    "defname": ("Book", "b.create_named_range(名前, …)", "", "wb.defined_names"),
+    "sort-asc": ("Sheet", "", "", ""),
+    "sort-desc": ("Sheet", "", "", ""),
+    "setfilter": ("Sheet", "", "", "ws.auto_filter.ref"),
+    "clear-filter": ("Sheet", "", "", "ws.auto_filter"),
+    "instable": ("Doc / Sheet", "d.add_table(行, 列) / s.add_table(…)", "d.add_table(行, 列)", "ws.add_table(…)"),
+    "insimage": ("Doc", "d.add_picture(径路)", "d.add_picture(径路)", "ws.add_image(…)"),
+    "inschart": ("Sheet", "", "", "ws.add_chart(…)"),
+    "blankpage": ("Doc", "d.add_page_break()", "d.add_page_break()", ""),
+    "pagebreak": ("Doc", "d.add_page_break()", "d.add_page_break()", "ws.row_breaks"),
+    "edit-header": ("Doc / Sheet", "d.header / s.oddHeader", "section.header", "ws.oddHeader"),
+    "edit-footer": ("Doc", "d.footer", "section.footer", ""),
+    "controls": ("Doc(記入欄)", "d.fields()", "", ""),
+    "insequation": ("Doc", "", "", ""),
+    "inshyperlink": ("Cell", "c.hyperlink", "", "c.hyperlink"),
+    "pivot-insert": ("Sheet", "", "", "ws.add_pivot(…)"),
+    "pagemargins": ("Section", "d.sections[0]", "section.left_margin", "ws.page_margins"),
+    "pageorient": ("Section", "d.sections[0]", "section.orientation", "ws.page_setup.orientation"),
+    "pagesize": ("Section", "d.sections[0]", "section.page_width", "ws.page_setup.paperSize"),
+    "printarea": ("Sheet", "s.print_area", "", "ws.print_area"),
+    "printtitles": ("Sheet", "s.print_title_rows", "", "ws.print_title_rows"),
+    "print-gridlines": ("Sheet", "s.print_gridlines", "", "ws.print_options.gridLines"),
+    "insert-function": ("Cell", "s['A1'] = '=…'", "", "ws['A1'] = '=…'"),
+    "calc-mode": ("Book", "b.recalc()", "", "wb.calculation"),
+    "data-validation": ("Sheet", "s.add_data_validation(…)", "", "ws.add_data_validation(…)"),
+    "group": ("Sheet", "s.row_groups", "", "ws.column_dimensions[…].outline_level"),
+    "ungroup": ("Sheet", "s.row_groups", "", "ws.column_dimensions[…].outline_level"),
+    "toc": ("Doc", "", "", ""),
+    "bookmarks": ("Paragraph", "", "", ""),
+    "crossref": ("Paragraph", "", "", ""),
+    "footnote": ("Paragraph", "", "", ""),
+    "caption": ("Paragraph", "", "", ""),
+    "form-text": ("Doc(記入欄)", "d.fill(名前, 値)", "", ""),
+    "form-name": ("Doc(記入欄)", "d.fields()", "", ""),
+    "co-addcomment": ("Comment", "p.add_comment(文) / c.comment", "p.add_comment(文)", "c.comment = Comment(…)"),
+    "co-showcomment": ("Comment", "d.comments / c.comment", "d.comments", "c.comment"),
+    "prot-doc": ("Sheet", "", "", "ws.protection"),
+    "prot-encrypt": ("Book", "", "", "wb.security"),
+    "freeze": ("Sheet", "s.freeze_panes", "", "ws.freeze_panes"),
+    "show-gridlines": ("Sheet", "s.show_gridlines", "", "ws.sheet_view.showGridLines"),
 }
 
 MARK_S = "// api:taiou:start"
@@ -150,7 +143,8 @@ def 段の並び(tabs):
 
 
 def rows():
-    """(段, ボタン, 文書, python-docx, 表, openpyxl)。**メニューの並びのまま**"""
+    """(段, ボタン, オブジェクト, officework, python-docx, openpyxl)。
+    **並びはメニューのまま**、*分類はオブジェクト*です(2026-08-24 発注者)。"""
     tabs = ribbon_parse.tables_or_die()
     並び = 段の並び(tabs)
     w = {t.name: t for t in tabs["WRITER"]}
@@ -165,32 +159,33 @@ def rows():
                 if not cmd.id or cmd.id in 見た or cmd.id not in MICHI:
                     continue
                 見た.add(cmd.id)
-                文, pd, 表c, op = MICHI[cmd.id]
-                out.append((段, cmd.label, 文, pd, 表c, op))
+                obj, ow, pd, op = MICHI[cmd.id]
+                out.append((段, cmd.label, obj, ow, pd, op))
     return out
 
 
 def 表() -> str:
     r = rows()
     o = []
-    o.append("1行が1つのボタンです。*並びは画面のメニューのまま*で、")
-    o.append("`officework` の呼び方と、本家の呼び方が横に並びます。\n")
-    o.append("*列は「うち・本家」の組を2つ*です。")
-    o.append("左の2列が文書、右の2列が表。空いている所(—)は、その道がありません。\n")
+    o.append("1行が1つのボタンです。*並びは画面のメニューのまま*です。\n")
+    o.append("*`officework` は `.adoc` を触る1つの模型*なので、文書と表で分けません。")
+    o.append("代わりに**どのオブジェクトの物か**を出します。")
+    o.append("`A / B` と2つ書いてある所は、*いま呼び方が2つある*という意味です。\n")
+    o.append("空いている所(—)は、その道がありません。\n")
     o.append("この節は `tools/api_taiou.py` が起こします。手で直さないでください。\n")
     いま = None
-    for 段, ラベル, 文, pd, 表c, op in r:
+    for 段, ラベル, obj, ow, pd, op in r:
         if 段 != いま:
             if いま is not None:
                 o.append("|===\n")
             o.append(f"=== {段}")
             o.append("")
-            o.append('[cols="2,3,3,3,3"]')
+            o.append('[cols="2,2,3,3,3"]')
             o.append("|===")
-            o.append("|ボタン |officework(文書) |python-docx |officework(表) |openpyxl\n")
+            o.append("|ボタン |オブジェクト |officework |python-docx |openpyxl\n")
             いま = 段
         f = lambda x: x if x else "—"
-        o.append(f"|{ラベル} |{f(文)} |{f(pd)} |{f(表c)} |{f(op)}")
+        o.append(f"|{ラベル} |{f(obj)} |{f(ow)} |{f(pd)} |{f(op)}")
     if いま is not None:
         o.append("|===\n")
     return "\n".join(o)
