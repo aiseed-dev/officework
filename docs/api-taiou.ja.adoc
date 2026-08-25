@@ -9,9 +9,13 @@
 . *まだ表だけ* — **共通にできるが、いま表の側にしかない**物。ここが仕事の一覧です
 . *表だけ* — 紙に出す範囲と、画面の見え方。*本当に表の専用はこれだけ*です
 
-* 画面で使っている*ボタンの名前*から、プログラムの書き方を引く
-* `officework` の*呼び方*から、画面のどのボタンかを引く
+* `officework` の*呼び方*を引く
 * python-docx / openpyxl の*覚えている書き方*から、こちらの書き方を引く
+* 同じ操作を、*本家の2つがどう呼んでいるか*を見比べる
+
+*列は「うち・本家」の組を2つ並べてあります。*
+左の2列が文書(`officework` と python-docx)、右の2列が表(`officework` と openpyxl)です。
+隣どうしを見れば移し替えが分かり、左右を見比べれば文書と表の違いが分かります。
 
 本家の側は実際に呼んで確かめた名前です(python-docx 1.2.0 / openpyxl 3.1.5)。
 
@@ -27,85 +31,85 @@
 
 [cols="2,3,3,3,3"]
 |===
-|操作 |officework(文書) |officework(表) |python-docx |openpyxl
+|操作 |officework(文書) |python-docx |officework(表) |openpyxl
 
-|開く |doc.Doc.open(径路) |sheet.Book.open(径路) |docx.Document(径路) |load_workbook(径路)
-|保存 |d.save(径路) |b.save(径路) |d.save(径路) |wb.save(径路)
-|字を入れる |p.text = 値 |s['A1'] = 値 |p.text = 値 |ws['A1'] = 値
-|字を消す |r.clear() |s['A1'] = None |r.clear() |ws['A1'] = None
-|太字 |r.bold |c.font |r.bold |c.font = Font(bold=True)
-|斜体 |r.italic |c.font |r.italic |c.font = Font(italic=True)
-|下線 |r.underline |c.font |r.underline |c.font = Font(underline=…)
-|書体 |r.font |c.font |r.font.name |c.font = Font(name=…)
-|大きさ |r.size_pt |c.font |r.font.size |c.font = Font(size=…)
-|文字の色 |r.color |c.font |r.font.color.rgb |c.font = Font(color=…)
-|揃え |p.align |c.alignment |p.alignment |c.alignment = Alignment(…)
-|セルの結合 |(表の col_span / v_merge) |s.merge_cells('A1:B2') |cell.merge(…) |ws.merge_cells('A1:B2')
-|表を作る |d.add_table(行, 列) |s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
-|行を足す・抜く |t.add_row() |s.insert_rows(行) |t.add_row() |ws.insert_rows(行)
-|式 |(表のセルに `=…`) |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|開く |doc.Doc.open(径路) |docx.Document(径路) |sheet.Book.open(径路) |load_workbook(径路)
+|保存 |d.save(径路) |d.save(径路) |b.save(径路) |wb.save(径路)
+|字を入れる |p.text = 値 |p.text = 値 |s['A1'] = 値 |ws['A1'] = 値
+|字を消す |r.clear() |r.clear() |s['A1'] = None |ws['A1'] = None
+|太字 |r.bold |r.bold |c.font |c.font = Font(bold=True)
+|斜体 |r.italic |r.italic |c.font |c.font = Font(italic=True)
+|下線 |r.underline |r.underline |c.font |c.font = Font(underline=…)
+|書体 |r.font |r.font.name |c.font |c.font = Font(name=…)
+|大きさ |r.size_pt |r.font.size |c.font |c.font = Font(size=…)
+|文字の色 |r.color |r.font.color.rgb |c.font |c.font = Font(color=…)
+|揃え |p.align |p.alignment |c.alignment |c.alignment = Alignment(…)
+|セルの結合 |(表の col_span / v_merge) |cell.merge(…) |s.merge_cells('A1:B2') |ws.merge_cells('A1:B2')
+|表を作る |d.add_table(行, 列) |d.add_table(行, 列) |s.add_table(…) |ws.add_table(…)
+|行を足す・抜く |t.add_row() |t.add_row() |s.insert_rows(行) |ws.insert_rows(行)
+|式 |(表のセルに `=…`) |— |s['A1'] = '=SUM(…)' |ws['A1'] = '=SUM(…)'
 |置き換え |d.replace(前, 後) |— |— |—
-|コメント |p.add_comment(文) |c.comment |p.add_comment(文) |c.comment = Comment(…)
-|画像を入れる |d.add_picture(径路) |— |d.add_picture(径路) |ws.add_image(…)
-|ヘッダーとフッター |d.header / d.footer |s.oddHeader |section.header |ws.oddHeader
-|用紙・余白・向き |d.sections[0] |— |section.page_width |ws.page_setup
+|コメント |p.add_comment(文) |p.add_comment(文) |c.comment |c.comment = Comment(…)
+|画像を入れる |d.add_picture(径路) |d.add_picture(径路) |— |ws.add_image(…)
+|ヘッダーとフッター |d.header / d.footer |section.header |s.oddHeader |ws.oddHeader
+|用紙・余白・向き |d.sections[0] |section.page_width |— |ws.page_setup
 |===
 
 === 文書にしかないこと
 
 段落と紙面の話です。
 
-[cols="2,3,3,3,3"]
+[cols="2,3,3"]
 |===
-|操作 |officework(文書) |officework(表) |python-docx |openpyxl
+|操作 |officework(文書) |python-docx
 
-|段落のスタイル |p.style |— |p.style |—
-|箇条書き |p.style = '箇条書き' |— |p.style = 'List Bullet' |—
-|行間・字下げ |p.paragraph_format |— |p.paragraph_format |—
-|ルビ |— |— |— |—
-|上付き・下付き |— |— |r.font.superscript |—
-|脚注 |— |— |— |—
-|しおり・相互参照 |— |— |— |—
-|目次 |— |— |— |—
-|記入欄 |d.fields() / d.fill(名前, 値) |— |— |—
-|改ページ |d.add_page_break() |— |d.add_page_break() |—
+|段落のスタイル |p.style |p.style
+|箇条書き |p.style = '箇条書き' |p.style = 'List Bullet'
+|行間・字下げ |p.paragraph_format |p.paragraph_format
+|ルビ |— |—
+|上付き・下付き |— |r.font.superscript
+|脚注 |— |—
+|しおり・相互参照 |— |—
+|目次 |— |—
+|記入欄 |d.fields() / d.fill(名前, 値) |—
+|改ページ |d.add_page_break() |d.add_page_break()
 |===
 
 === 共通にできるが、いま表の側にしかないこと
 
 *どれも AsciiDoc に書けるので、文書の表にも入れられます*(2026-08-24 発注者)。見た目は**名前**で入り、定義はテンプレートが持ちます(SEKKEI「セルのスタイルを名前で持つ」)。集計の道具は属性で持てます。**ここが仕事の一覧です** — 文書の列が埋まった日に、上の「共通」へ移します。
 
-[cols="2,3,3,3,3"]
+[cols="2,3,3"]
 |===
-|操作 |officework(文書) |officework(表) |python-docx |openpyxl
+|操作 |officework(表) |openpyxl
 
-|表示形式 |— |c.number_format |— |c.number_format
-|塗りつぶし |— |c.fill |— |c.fill = PatternFill(…)
-|罫線 |— |c.border |— |c.border = Border(…)
-|条件付き書式 |— |— |— |ws.conditional_formatting.add(…)
-|入力規則 |— |s.add_data_validation(…) |— |ws.add_data_validation(…)
-|フィルター |— |— |— |ws.auto_filter.ref
-|グループ化 |— |s.row_groups |— |ws.column_dimensions[…].outline_level
-|名前の定義 |— |b.create_named_range(名前, …) |— |wb.defined_names
-|ピボットテーブル |— |— |— |ws.add_pivot(…)
-|グラフ |— |— |— |ws.add_chart(…)
+|表示形式 |c.number_format |c.number_format
+|塗りつぶし |c.fill |c.fill = PatternFill(…)
+|罫線 |c.border |c.border = Border(…)
+|条件付き書式 |— |ws.conditional_formatting.add(…)
+|入力規則 |s.add_data_validation(…) |ws.add_data_validation(…)
+|フィルター |— |ws.auto_filter.ref
+|グループ化 |s.row_groups |ws.column_dimensions[…].outline_level
+|名前の定義 |b.create_named_range(名前, …) |wb.defined_names
+|ピボットテーブル |— |ws.add_pivot(…)
+|グラフ |— |ws.add_chart(…)
 |===
 
 === 表にしかないこと
 
 *ここが本当に表の専用*です。紙に出す範囲と、画面の見え方だけが残りました。
 
-[cols="2,3,3,3,3"]
+[cols="2,3,3"]
 |===
-|操作 |officework(文書) |officework(表) |python-docx |openpyxl
+|操作 |officework(表) |openpyxl
 
-|印刷範囲 |— |s.print_area |— |ws.print_area
-|タイトル行の繰り返し |— |s.print_title_rows |— |ws.print_title_rows
-|枠線も印刷 |— |s.print_gridlines |— |ws.print_options.gridLines
-|ウィンドウ枠の固定 |— |s.freeze_panes |— |ws.freeze_panes
-|枠線表示 |— |s.show_gridlines |— |ws.sheet_view.showGridLines
-|計算方法 |— |b.recalc() |— |wb.calculation
-|保護 |— |— |— |ws.protection / wb.security
+|印刷範囲 |s.print_area |ws.print_area
+|タイトル行の繰り返し |s.print_title_rows |ws.print_title_rows
+|枠線も印刷 |s.print_gridlines |ws.print_options.gridLines
+|ウィンドウ枠の固定 |s.freeze_panes |ws.freeze_panes
+|枠線表示 |s.show_gridlines |ws.sheet_view.showGridLines
+|計算方法 |b.recalc() |wb.calculation
+|保護 |— |ws.protection / wb.security
 |===
 
 // api:taiou:end

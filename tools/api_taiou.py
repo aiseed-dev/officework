@@ -103,7 +103,7 @@ def rows():
     """(群, 操作, 文書, 表, python-docx, openpyxl)"""
     out = [("共通", 操作, 文, 表, pd, op) for 操作, 文, 表, pd, op in KYOUTSUU]
     out += [("文書だけ", 操作, 文, "—", pd, "—") for 操作, 文, pd in BUNSHO]
-    out += [("まだ表だけ", 操作, "", 表, "—", op) for 操作, 表, op in MADA]
+    out += [("まだ表だけ", 操作, "—", 表, "—", op) for 操作, 表, op in MADA]
     out += [("表だけ", 操作, "—", 表, "—", op) for 操作, 表, op in HYOU]
     return out
 
@@ -132,14 +132,36 @@ def 表() -> str:
         o.append("")
         o.append(説明)
         o.append("")
-        o.append('[cols="2,3,3,3,3"]')
-        o.append("|===")
-        o.append("|操作 |officework(文書) |officework(表) |python-docx |openpyxl\n")
-        for g, 操作, 文, 表c, pd, op in r:
-            if g != 名:
-                continue
-            f = lambda x: x if x else "—"
-            o.append(f"|{操作} |{f(文)} |{f(表c)} |{f(pd)} |{f(op)}")
+        # **本家の2つを横に並べます**(2026-08-24 発注者)。
+        # 文書と表で officework の呼び方が違うので、その2つを先に置き、
+        # python-docx と openpyxl を隣り合わせにします — *同じ操作を
+        # 本家がどう呼ぶか*を、左右で見比べられる形です
+        # **その群に無い側の列は出しません。** 「表だけ」の群で文書の2列を
+        # 出すと、全部が「—」で埋まります。読む人には邪魔なだけです
+        文書側 = any(g == 名 and (文 != "—" or pd != "—") for g, _, 文, _, pd, _ in r)
+        表側 = any(g == 名 and (表c != "—" or op != "—") for g, _, _, 表c, _, op in r)
+        f = lambda x: x if x else "—"
+        if 文書側 and not 表側:
+            o.append('[cols="2,3,3"]')
+            o.append("|===")
+            o.append("|操作 |officework(文書) |python-docx\n")
+            for g, 操作, 文, 表c, pd, op in r:
+                if g == 名:
+                    o.append(f"|{操作} |{f(文)} |{f(pd)}")
+        elif 文書側:
+            o.append('[cols="2,3,3,3,3"]')
+            o.append("|===")
+            o.append("|操作 |officework(文書) |python-docx |officework(表) |openpyxl\n")
+            for g, 操作, 文, 表c, pd, op in r:
+                if g == 名:
+                    o.append(f"|{操作} |{f(文)} |{f(pd)} |{f(表c)} |{f(op)}")
+        else:
+            o.append('[cols="2,3,3"]')
+            o.append("|===")
+            o.append("|操作 |officework(表) |openpyxl\n")
+            for g, 操作, 文, 表c, pd, op in r:
+                if g == 名:
+                    o.append(f"|{操作} |{f(表c)} |{f(op)}")
         o.append("|===\n")
     return "\n".join(o)
 
