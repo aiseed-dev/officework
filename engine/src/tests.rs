@@ -2700,7 +2700,7 @@ fn 塊は種類ごとの要素で出る() {
          ****\n傍注。\n****\n\n{線}\n");
     let d = crate::adoc::parse(&見本).expect("読めない");
     let h = crate::html_write::body(&d);
-    // **開きの札そのもので見ます。** `class="example"` だけ見ると、
+    // **開きのタグそのもので見ます。** `class="example"` だけ見ると、
     // `<pre><code class="example">` でも通ってしまいます
     for (何, 印) in [
         ("註記", "<aside class=\"admonition note\""),
@@ -2898,7 +2898,7 @@ fn 紙でも塊と註記が分かる() {
     assert!(!全部.contains("----"), "塊の印が印刷されています:\n{全部}");
     assert!(!全部.contains("[source"), "塊の指定が印刷されています:\n{全部}");
     // **註記は種類が分かること**
-    assert!(全部.contains("メモ"), "註記の札がありません:\n{全部}");
+    assert!(全部.contains("メモ"), "註記の見出しがありません:\n{全部}");
     // **等幅の書体が入っているのに探していない、を捕まえます。**
     // 「機械に無いから」で素通りすると、探す所を壊しても気づけません
     let 入っている = ["Noto Sans Mono CJK JP", "Noto Sans Mono", "DejaVu Sans Mono",

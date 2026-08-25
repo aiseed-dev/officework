@@ -512,7 +512,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         // **註記は印を紙にも出します。** 読むときに
                         // `NOTE: ` を字から外しているので、ここで戻さないと
                         // 紙の上では普通の段落と見分けが付きません
-                        註記の札(para.style_id.as_deref()).map(str::to_string)
+                        註記の見出し(para.style_id.as_deref()).map(str::to_string)
                     }
                     _ => {
                         let l = para.indent as usize;
@@ -1349,12 +1349,12 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     table_bottom + lh
 }
 
-/// 註記のスタイル名 → 紙に出す札。
+/// 註記のスタイル名 → 紙に出す見出し。
 ///
 /// 読み手は `NOTE: ` を字から外して、どれなのかをスタイルの名前に移します。
-/// **紙の上では字しか見えない**ので、組むときに札を戻します。
+/// **紙の上では字しか見えない**ので、組むときに見出しを戻します。
 /// 戻さないと、註記が普通の段落に化けます(2026-08-25)。
-pub(super) fn 註記の札(name: Option<&str>) -> Option<&'static str> {
+pub(super) fn 註記の見出し(name: Option<&str>) -> Option<&'static str> {
     Some(match name? {
         "註記" => "メモ ",
         "ヒント" => "こつ ",

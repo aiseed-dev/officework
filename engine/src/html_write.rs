@@ -128,7 +128,7 @@ fn run_html(r: &Run, doc: &Document, ctx: &mut Ctx) -> String {
     }
     let mut s = esc(&r.text);
     if let Some(name) = &r.fmt.style_id {
-        // 等幅は `code`。Web で意味のある札があるものは、その札で出します
+        // 等幅は `code`。Web で意味のあるタグがあるものは、そのタグで出します
         s = if name == crate::adoc::MONO {
             format!("<code>{s}</code>")
         } else {
@@ -462,9 +462,9 @@ const CODE_STYLE: &str = " style=\"font-family:ui-monospace,SFMono-Regular,\
     Consolas,'Noto Sans Mono',monospace;background:#f6f8fa;padding:.8em 1em;\
     border-radius:4px;overflow-x:auto\"";
 
-/// 塊の開きの札。`[NOTE]` が前に付いていれば註記にします。
+/// 塊の開きのタグ。`[NOTE]` が前に付いていれば註記にします。
 ///
-/// **見た目は札に書き込みます。** 中身だけを他所へ貼っても崩れません。
+/// **見た目は要素そのものに書き込みます。** 中身だけを他所へ貼っても崩れません。
 fn 塊の開き(塊: Option<&str>, 印: Option<&str>) -> String {
     if let Some(種) = 印.and_then(註記の種) {
         return format!(
@@ -483,7 +483,7 @@ fn 塊の開き(塊: Option<&str>, 印: Option<&str>) -> String {
     }
 }
 
-/// 塊の閉じの札。開きと必ず対にします。
+/// 塊の閉じのタグ。開きと必ず対にします。
 fn 塊の閉じ(塊: Option<&str>, 印: Option<&str>) -> String {
     if 印.and_then(註記の種).is_some() {
         return "</p></aside>\n".into();
@@ -521,11 +521,11 @@ fn 番号の付け方(指定: &str) -> Option<(String, Option<String>)> {
     Some((種.unwrap_or_else(|| "arabic".to_string()), 始め))
 }
 
-/// 番号の付け方を `ol` の札にする。
+/// 番号の付け方を `ol` の属性にする。
 ///
 /// **HTML の `type` で出します。** CSS を外しても番号の種類が残るように
 /// するためです(発注者「CSS がなくても全部指定するように」)。
-fn 番号の札(付け方: Option<(String, Option<String>)>) -> String {
+fn 番号の属性(付け方: Option<(String, Option<String>)>) -> String {
     let Some((種, 始め)) = 付け方 else { return String::new() };
     let t = match 種.as_str() {
         "loweralpha" => "a",
@@ -544,7 +544,7 @@ fn 番号の札(付け方: Option<(String, Option<String>)>) -> String {
 ///
 /// 事務の様式は「1 →(1)→ ア →(ア)」です。紙の側は
 /// [`Paragraph::marker`] が同じ順で出しています。
-/// **CSS を外しても効くように、札に書き込みます。**
+/// **CSS を外しても効くように、属性に書き込みます。**
 /// 括弧は CSS の既定の種類では出せないので、`(1)` の段は括弧なしの
 /// 数のままです(そこだけ紙と違います)。
 fn 様式の段(深さ: usize) -> String {
@@ -674,8 +674,8 @@ fn build(doc: &Document) -> (String, Ctx) {
                             .collect::<Vec<_>>()
                             .join("<br>");
                         // 見出しの行のセルは `th`(読み上げも検索も見出しとして扱う)
-                        let 札 = if t.header_row && ri == 0 { "th" } else { "td" };
-                        o.push_str(&format!("<{札}{at}>{inner}</{札}>"));
+                        let タグ = if t.header_row && ri == 0 { "th" } else { "td" };
+                        o.push_str(&format!("<{タグ}{at}>{inner}</{タグ}>"));
                     }
                     o.push_str("</tr>\n");
                     if t.header_row && ri == 0 {
@@ -700,7 +700,7 @@ fn build(doc: &Document) -> (String, Ctx) {
             } else {
                 (false, 残り.trim_start_matches("[ ] "))
             };
-            // **見た目は札が持ちます。** 印だけ消して素の箇条書きにすると、
+            // **見た目は要素そのものが持ちます。** 印だけ消して素の箇条書きにすると、
             // 済んだかどうかが読めなくなります
             let 箱 = if 済 {
                 "<input type=\"checkbox\" checked disabled \
@@ -727,7 +727,7 @@ fn build(doc: &Document) -> (String, Ctx) {
                     o.push_str(if 古 == ListKind::Bullet { "</ul>\n" } else { "</ol>\n" });
                 }
             }
-            // **作業のリストは印を消します。** `list-style:none` を札に
+            // **作業のリストは印を消します。** `list-style:none` を属性に
             // 書き込むので、CSS が無くても点は出ません
             let 飾り = if 作業 { " style=\"list-style:none;padding-left:0\"" } else { "" };
             while list.len() < n + 1 {
@@ -736,13 +736,13 @@ fn build(doc: &Document) -> (String, Ctx) {
                 } else {
                     // 指定は*いちばん外の段だけ*に効かせます。
                     // 指定が無いときは、事務の様式の並び(1 →(1)→ ア)にします
-                    let 札 = if list.is_empty() {
-                        let x = 番号の札(次のリスト.take());
+                    let 属性 = if list.is_empty() {
+                        let x = 番号の属性(次のリスト.take());
                         if x.is_empty() { 様式の段(0) } else { x }
                     } else {
                         様式の段(list.len())
                     };
-                    format!("<ol{札}>\n")
+                    format!("<ol{属性}>\n")
                 };
                 o.push_str(&開き);
                 list.push(種);
@@ -903,7 +903,7 @@ fn build(doc: &Document) -> (String, Ctx) {
                     first.text = first.text.trim_start().to_string();
                 }
                 let 値 = runs_html(&値の並び, doc, &mut ctx);
-                // **問いは太く、答えはその下に。** 見た目は札が持ちます
+                // **問いは太く、答えはその下に。** 見た目は要素そのものが持ちます
                 if 問答中 {
                     o.push_str(&format!(
                         "  <li><p style=\"font-weight:600;margin:0 0 .3em\">{}</p>\
