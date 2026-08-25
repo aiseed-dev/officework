@@ -1,0 +1,103 @@
+= 開発者マニュアル
+
+この木を直す人(AI を含む)のための冊子です。**いまの真実だけ**を書きます。
+経緯と検討は link:../../SEKKEI.adoc[SEKKEI.adoc] に、書き方の決まりは
+`.claude/skills/manual/SKILL.md` と link:../sekkei/manual-kakikata.ja.adoc[書き方の手引き]にあります。
+
+開発の流れは1本です:
+**決める → 利用者マニュアルの頁に書く(未実装の印)→ 実装 →
+検査が頁と実物を突き合わせる → 印を実装済みへ。**
+仕様はマニュアルが正本で、この冊子は「どこに何があるか」を持ちます。
+
+== 全体の地図 — 14 の crate
+
+ファイルの世界(エンジン)と画面の世界を分けてあります。
+エンジンは gpui を知らず、単体で組めます。
+
+[cols="1,1,3"]
+|===
+|crate |行数の目安 |受け持ち
+
+|`engine`(kumihan) |1.4万 |adoc の読み書き・文書の模型・組版(禁則・ルビ・字幅)・HTML の読み書き
+|`sheet` |2.5万 |xlsx の読み書き・式と再計算・表計算の模型。UI 非依存
+|`ooxml` |0.7万 |docx ⇄ kumihan の変換。**原本を持ち越して、変えた所だけ書き戻す**
+|`lang` |3.5万 |言語1つぶんの差し込み(14言語の表・ふりがな・校正)。gpui を知らない
+|`ops` |0.3万 |ブックの操作の言葉。**誰が呼んでも同じ意味**(画面も Python も同じ口)
+|`paper` |0.2万 |紙面を紙へ — 印刷と PDF
+|`pyrun` |0.2万 |Python 実行の機構(calc と writer が共に使う)。サンドボックスもここ
+|`face` |1.2万 |**持ち運べる層** — リボンの定義・アイコン・コンボの計算。絵を描かない
+|`ui` |0.3万 |kumihan の編集モデルと GPUI の入力系の結線。一覧(picklist)もここ
+|`writer` |1.7万 |文書の画面(gpui)
+|`calc` |3.7万 |表計算の画面(gpui)
+|`officework` |0.1万 |calc と writer を**1つの窓のタブ**に束ねるアプリ。起動はここ
+|`pysheet` |0.4万 |Python 束縛(PyO3・abi3)。pip の officework の中身
+|`sidecar` |0.2万 |genoffice と同じ言葉を喋る橋(突き合わせの検査に使う)
+|===
+
+依存の向きは一方通行です: 画面(calc / writer / officework)→
+face / ui / ops → エンジン(engine / sheet / ooxml / lang)。
+エンジンから画面へ向かう依存はありません。
+
+== 決めの型(コードを書くときに従う物)
+
+利用者マニュアルに出る仕様のほかに、内部には型があります。
+それぞれの正本はコードの註で、ここは场所の案内です。
+
+* **開く = 実行しない。** ファイルからコードを実行する道を作らない
+  (受け口に任意コード実行の動詞を置かない)
+* **原本の持ち越し。** docx / xlsx は読めなかった部品を捨てずに持ち越し、
+  `unsupported` で自己申告する(ooxml / sheet)
+* **計算の道は1本。** 再計算は sheet の1本道を通る(自前の収束を作らない)
+* **罫線は場所×ペンの直交。** 型スタンプを作らない(sheet の fmt)
+* **4つの面の対応。** 意味の単位1つに AsciiDoc・リボン・HTML/CSS・Flet が
+  対応する(見張りは engine の試験)
+* **生成物に手で書かない。** face/src/ribbon*.rs は gen_ribbon.py が起こす。
+  lang/src/i18n_*.rs は ui/gen_lang.py と tools/i18n_*.py が世話をする
+
+== 検査 — 何を回すか
+
+[cols="1,2"]
+|===
+|回す物 |何を見るか
+
+|`cargo test --workspace` |単体と結合の全部(エンジンの共有の型を触ったら `cargo check --workspace --all-targets` も)
+|`python3 tools/kotoba_check.py` |言葉づかい
+|`python3 tools/manual_uchiwa_check.py` |利用者文書に内輪の注記が無いか
+|`python3 tools/command_docs.py` |コマンドの手引きの枚数と状態の印
+|`python3 tools/api_taiou.py` |対応表と実物のずれ
+|`python3 tools/pyoffice_diff.py` / `pydoc_diff.py` |実物のファイルを genoffice と突き合わせ
+|`python3 tools/ribbon_sweep.py` / `writer_sweep.py` |実機で全ボタンを押す(下の隔離を守る)
+|===
+
+**実機の検査は DISPLAY=:0(発注者の生きている画面)で回さないこと。**
+Xephyr で隔離します:
+
+----
+Xephyr :7 -screen 1400x1000 -nolisten tcp &
+DISPLAY=:7 VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.json \
+  python3 tools/writer_sweep.py
+----
+
+== 作業の作法
+
+* push は発注者がします。コミットまで
+* git の index は他のセッションと共有 — **add と commit は1回で、自分が
+  触ったファイルだけ名指し**
+* 分業は 設計=Fable・実装=Opus が基本で、並行は避ける(直列)
+* 画面を直したら実機で見てから報告する(テストが通っただけで報告しない)
+* 秘密の値は画面に出さない
+
+== 置き場
+
+[cols="1,2"]
+|===
+|場所 |何があるか
+
+|`docs/ja/` `docs/en/` |利用者マニュアル(仕様の正本)
+|`docs/sekkei/` |検討と経緯(dialog-parameters の台帳・ayumi など)
+|`tools/` |検査と生成の道具(それぞれの頭に使い方)
+|`packaging/` |配布(deb / dmg / setup.exe / Flatpak / アイコン)
+|`templates/` `sample/` |同梱のテンプレートと実例
+|`vendor/` |突き合わせの教師(手を入れない)
+|`.claude/skills/` |書き方と管理の決まり(セッションが自動で読む)
+|===

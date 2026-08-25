@@ -4,5 +4,8 @@
 * English manuals: link:en/[en/] (each Japanese book links to its English
   original; an English index will come with the remaining translations)
 
+* link:dev/README.ja.adoc[Developer manual (Japanese)] — the map of the
+  crates, the rules of the road, and the checks
+
 Everything else in this folder is working material for building the
 product, not user documentation.
