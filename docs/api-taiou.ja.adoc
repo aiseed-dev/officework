@@ -2,9 +2,12 @@
 
 引くための1枚です。同じ操作を4つの言い方で探せます。
 
-*3つに分けてあります。* いちばん上が**共通**(文書でも表でもできること)で、
-ここがいちばん厚くなります — *セルは文書の表にもある*ためです。
-下の2つが、それぞれにしかできないことです。
+*4つに分けてあります。*
+
+. *共通* — 文書でも表でもできること。*セルは文書の表にもある*ので、ここが厚くなります
+. *文書だけ* — 段落と紙面の話
+. *まだ表だけ* — **共通にできるが、いま表の側にしかない**物。ここが仕事の一覧です
+. *表だけ* — 紙に出す範囲と、画面の見え方。*本当に表の専用はこれだけ*です
 
 * 画面で使っている*ボタンの名前*から、プログラムの書き方を引く
 * `officework` の*呼び方*から、画面のどのボタンかを引く
@@ -68,9 +71,29 @@
 |改ページ |d.add_page_break() |— |d.add_page_break() |—
 |===
 
+=== 共通にできるが、いま表の側にしかないこと
+
+*どれも AsciiDoc に書けるので、文書の表にも入れられます*(2026-08-24 発注者)。見た目は**名前**で入り、定義はテンプレートが持ちます(SEKKEI「セルのスタイルを名前で持つ」)。集計の道具は属性で持てます。**ここが仕事の一覧です** — 文書の列が埋まった日に、上の「共通」へ移します。
+
+[cols="2,3,3,3,3"]
+|===
+|操作 |officework(文書) |officework(表) |python-docx |openpyxl
+
+|表示形式 |— |c.number_format |— |c.number_format
+|塗りつぶし |— |c.fill |— |c.fill = PatternFill(…)
+|罫線 |— |c.border |— |c.border = Border(…)
+|条件付き書式 |— |— |— |ws.conditional_formatting.add(…)
+|入力規則 |— |s.add_data_validation(…) |— |ws.add_data_validation(…)
+|フィルター |— |— |— |ws.auto_filter.ref
+|グループ化 |— |s.row_groups |— |ws.column_dimensions[…].outline_level
+|名前の定義 |— |b.create_named_range(名前, …) |— |wb.defined_names
+|ピボットテーブル |— |— |— |ws.add_pivot(…)
+|グラフ |— |— |— |ws.add_chart(…)
+|===
+
 === 表にしかないこと
 
-*ここが本当に表の専用*です。印刷の範囲・画面の見え方・セルの見た目・集計の道具に分かれます。
+*ここが本当に表の専用*です。紙に出す範囲と、画面の見え方だけが残りました。
 
 [cols="2,3,3,3,3"]
 |===
@@ -81,17 +104,7 @@
 |枠線も印刷 |— |s.print_gridlines |— |ws.print_options.gridLines
 |ウィンドウ枠の固定 |— |s.freeze_panes |— |ws.freeze_panes
 |枠線表示 |— |s.show_gridlines |— |ws.sheet_view.showGridLines
-|表示形式 |— |c.number_format |— |c.number_format
-|塗りつぶし |— |c.fill |— |c.fill = PatternFill(…)
-|罫線 |— |c.border |— |c.border = Border(…)
-|条件付き書式 |— |— |— |ws.conditional_formatting.add(…)
-|入力規則 |— |s.add_data_validation(…) |— |ws.add_data_validation(…)
-|フィルター |— |— |— |ws.auto_filter.ref
-|グループ化 |— |s.row_groups |— |ws.column_dimensions[…].outline_level
-|名前の定義 |— |b.create_named_range(名前, …) |— |wb.defined_names
 |計算方法 |— |b.recalc() |— |wb.calculation
-|ピボットテーブル |— |— |— |ws.add_pivot(…)
-|グラフ |— |— |— |ws.add_chart(…)
 |保護 |— |— |— |ws.protection / wb.security
 |===
 

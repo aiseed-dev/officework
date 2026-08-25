@@ -65,13 +65,12 @@ BUNSHO = [
     ("改ページ", "d.add_page_break()", "d.add_page_break()"),
 ]
 
-# 表だけの操作(文書には無い)。**ここが本当に calc 専用**
-HYOU = [
-    ("印刷範囲", "s.print_area", "ws.print_area"),
-    ("タイトル行の繰り返し", "s.print_title_rows", "ws.print_title_rows"),
-    ("枠線も印刷", "s.print_gridlines", "ws.print_options.gridLines"),
-    ("ウィンドウ枠の固定", "s.freeze_panes", "ws.freeze_panes"),
-    ("枠線表示", "s.show_gridlines", "ws.sheet_view.showGridLines"),
+# **共通にできるが、いまは表の側にしかない**(2026-08-24 発注者
+# 「adoc に入れられるので、文書にもいれられます」)。
+# 表の見た目は*名前*で adoc に入り、定義はテンプレートが持ちます
+# (SEKKEI「セルのスタイルを名前で持つ」)。集計の道具は adoc の属性で持てます。
+# *ここが仕事の一覧*です — 文書の側の列が埋まった日に、上の共通へ移します
+MADA = [
     ("表示形式", "c.number_format", "c.number_format"),
     ("塗りつぶし", "c.fill", "c.fill = PatternFill(…)"),
     ("罫線", "c.border", "c.border = Border(…)"),
@@ -80,9 +79,18 @@ HYOU = [
     ("フィルター", "", "ws.auto_filter.ref"),
     ("グループ化", "s.row_groups", "ws.column_dimensions[…].outline_level"),
     ("名前の定義", "b.create_named_range(名前, …)", "wb.defined_names"),
-    ("計算方法", "b.recalc()", "wb.calculation"),
     ("ピボットテーブル", "", "ws.add_pivot(…)"),
     ("グラフ", "", "ws.add_chart(…)"),
+]
+
+# 表だけの操作。**ここが本当に表の専用** — 紙に出す範囲と、画面の見え方
+HYOU = [
+    ("印刷範囲", "s.print_area", "ws.print_area"),
+    ("タイトル行の繰り返し", "s.print_title_rows", "ws.print_title_rows"),
+    ("枠線も印刷", "s.print_gridlines", "ws.print_options.gridLines"),
+    ("ウィンドウ枠の固定", "s.freeze_panes", "ws.freeze_panes"),
+    ("枠線表示", "s.show_gridlines", "ws.sheet_view.showGridLines"),
+    ("計算方法", "b.recalc()", "wb.calculation"),
     ("保護", "", "ws.protection / wb.security"),
 ]
 
@@ -95,6 +103,7 @@ def rows():
     """(群, 操作, 文書, 表, python-docx, openpyxl)"""
     out = [("共通", 操作, 文, 表, pd, op) for 操作, 文, 表, pd, op in KYOUTSUU]
     out += [("文書だけ", 操作, 文, "—", pd, "—") for 操作, 文, pd in BUNSHO]
+    out += [("まだ表だけ", 操作, "", 表, "—", op) for 操作, 表, op in MADA]
     out += [("表だけ", 操作, "—", 表, "—", op) for 操作, 表, op in HYOU]
     return out
 
@@ -109,8 +118,13 @@ def 表() -> str:
          "*セルは文書の表にもあります*(2026-08-24 発注者)。"
          "字・書式・結合・式は、どちらでも同じようにできます。"),
         ("文書だけ", "文書にしかないこと", "段落と紙面の話です。"),
+        ("まだ表だけ", "共通にできるが、いま表の側にしかないこと",
+         "*どれも AsciiDoc に書けるので、文書の表にも入れられます*"
+         "(2026-08-24 発注者)。見た目は**名前**で入り、定義はテンプレートが持ちます"
+         "(SEKKEI「セルのスタイルを名前で持つ」)。集計の道具は属性で持てます。"
+         "**ここが仕事の一覧です** — 文書の列が埋まった日に、上の「共通」へ移します。"),
         ("表だけ", "表にしかないこと",
-         "*ここが本当に表の専用*です。印刷の範囲・画面の見え方・セルの見た目・集計の道具に分かれます。"),
+         "*ここが本当に表の専用*です。紙に出す範囲と、画面の見え方だけが残りました。"),
     ]
     r = rows()
     for 名, 見出し, 説明 in 群:
