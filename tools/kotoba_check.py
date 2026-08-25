@@ -27,6 +27,9 @@ TARGETS = [
     "docs/*manual*.adoc", "docs/from-excel*.adoc", "docs/engine*.adoc",
     "docs/mac-signing.ja.adoc", "packaging/README.ja.md", "pysheet/README.md",
     "sample/README.md",
+    # 引く1枚と、コマンドごとの手引き(2026-08-24 に足した)
+    "docs/api-taiou.ja.adoc", "docs/genkou-manual.ja.adoc",
+    "docs/commands/*.adoc", "docs/commands/*/*.adoc",
 ]
 
 # 見ないもの(経緯を残す場所)

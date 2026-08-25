@@ -1,12 +1,12 @@
-= データの入力規則
+= 枠線表示
 
-データにあります。
+表示にあります。
 
 *状態: 実装済み* — いま使えます
 
 == 何をするか
 
-セルに入れてよい値を決めます。外れた値は止めます。
+セルの区切りの線を画面に出すかどうかを決めます。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-s.add_data_validation(…)
+s.show_gridlines
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,6 +25,6 @@ s.add_data_validation(…)
 |===
 |道具 |書き方
 
-|openpyxl |`ws.add_data_validation(…)`
+|openpyxl |`ws.sheet_view.showGridLines`
 |===
 

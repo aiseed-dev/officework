@@ -1,4 +1,4 @@
-= データの入力規則
+= グループ化
 
 データにあります。
 
@@ -6,7 +6,7 @@
 
 == 何をするか
 
-セルに入れてよい値を決めます。外れた値は止めます。
+行や列をまとめて、畳めるようにします。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-s.add_data_validation(…)
+s.row_groups
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,6 +25,6 @@ s.add_data_validation(…)
 |===
 |道具 |書き方
 
-|openpyxl |`ws.add_data_validation(…)`
+|openpyxl |`ws.column_dimensions[…].outline_level`
 |===
 

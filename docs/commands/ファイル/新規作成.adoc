@@ -1,12 +1,12 @@
-= データの入力規則
+= 新規作成
 
-データにあります。
+ファイルにあります。
 
 *状態: 実装済み* — いま使えます
 
 == 何をするか
 
-セルに入れてよい値を決めます。外れた値は止めます。
+空の文書または表を作ります。新しいタブとして開きます。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-s.add_data_validation(…)
+Doc() / Book()
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,6 +25,7 @@ s.add_data_validation(…)
 |===
 |道具 |書き方
 
-|openpyxl |`ws.add_data_validation(…)`
+|python-docx |`docx.Document()`
+|openpyxl |`Workbook()`
 |===
 

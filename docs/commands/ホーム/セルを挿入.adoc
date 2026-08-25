@@ -1,12 +1,12 @@
-= データの入力規則
+= セルを挿入
 
-データにあります。
+ホームにあります。
 
 *状態: 実装済み* — いま使えます
 
 == 何をするか
 
-セルに入れてよい値を決めます。外れた値は止めます。
+選んだ場所に空のセル(行・列)を差し込みます。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-s.add_data_validation(…)
+t.add_row() / s.insert_rows(行)
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,6 +25,7 @@ s.add_data_validation(…)
 |===
 |道具 |書き方
 
-|openpyxl |`ws.add_data_validation(…)`
+|python-docx |`t.add_row()`
+|openpyxl |`ws.insert_rows(行)`
 |===
 

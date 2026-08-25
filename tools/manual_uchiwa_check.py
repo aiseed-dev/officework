@@ -31,6 +31,11 @@ MIRU = [
     "docs/writer-macro-manual.ja.adoc",
     "docs/engine.ja.adoc",
 ]
+# コマンドごとの手引きも全部見ます(段のフォルダの下)
+MIRU += sorted(
+    str(p.relative_to(ROOT))
+    for p in (ROOT / "docs/commands").rglob("*.adoc")
+) if (ROOT / "docs/commands").exists() else []
 
 # 内輪の印。**書き方ではなく中身**で見る
 NG = [

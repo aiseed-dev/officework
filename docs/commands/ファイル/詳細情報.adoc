@@ -1,12 +1,12 @@
-= データの入力規則
+= 詳細情報
 
-データにあります。
+ファイルにあります。
 
 *状態: 実装済み* — いま使えます
 
 == 何をするか
 
-セルに入れてよい値を決めます。外れた値は止めます。
+作成者・題名・キーワードなどを見て、直せます。保存すると Word や Excel でも見えます。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-s.add_data_validation(…)
+d.core_properties
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,6 +25,7 @@ s.add_data_validation(…)
 |===
 |道具 |書き方
 
-|openpyxl |`ws.add_data_validation(…)`
+|python-docx |`d.core_properties`
+|openpyxl |`wb.properties`
 |===
 

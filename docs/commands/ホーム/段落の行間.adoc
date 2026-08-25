@@ -1,12 +1,12 @@
-= データの入力規則
+= 段落の行間
 
-データにあります。
+ホームにあります。
 
 *状態: 実装済み* — いま使えます
 
 == 何をするか
 
-セルに入れてよい値を決めます。外れた値は止めます。
+行と行の間を広げます。押すたびに 1.0 → 1.5 → 2.0 と回ります。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-s.add_data_validation(…)
+p.paragraph_format.line_spacing
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,6 +25,6 @@ s.add_data_validation(…)
 |===
 |道具 |書き方
 
-|openpyxl |`ws.add_data_validation(…)`
+|python-docx |`p.paragraph_format.line_spacing`
 |===
 

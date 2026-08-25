@@ -1,12 +1,12 @@
-= データの入力規則
+= 名前の管理
 
-データにあります。
+数式にあります。
 
 *状態: 実装済み* — いま使えます
 
 == 何をするか
 
-セルに入れてよい値を決めます。外れた値は止めます。
+範囲に名前を付けます。式の中で番地の代わりに使えます。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-s.add_data_validation(…)
+b.create_named_range(名前, …)
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,6 +25,6 @@ s.add_data_validation(…)
 |===
 |道具 |書き方
 
-|openpyxl |`ws.add_data_validation(…)`
+|openpyxl |`wb.defined_names`
 |===
 

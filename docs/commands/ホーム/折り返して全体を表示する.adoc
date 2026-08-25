@@ -1,12 +1,12 @@
-= データの入力規則
+= 折り返して全体を表示する
 
-データにあります。
+ホームにあります。
 
 *状態: 実装済み* — いま使えます
 
 == 何をするか
 
-セルに入れてよい値を決めます。外れた値は止めます。
+セルの幅で字を折り返し、はみ出さないようにします。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-s.add_data_validation(…)
+c.alignment
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,6 +25,6 @@ s.add_data_validation(…)
 |===
 |道具 |書き方
 
-|openpyxl |`ws.add_data_validation(…)`
+|openpyxl |`c.alignment = Alignment(wrap_text=True)`
 |===
 

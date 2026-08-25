@@ -1,12 +1,12 @@
-= データの入力規則
+= 画像を挿入
 
-データにあります。
+挿入にあります。
 
 *状態: 実装済み* — いま使えます
 
 == 何をするか
 
-セルに入れてよい値を決めます。外れた値は止めます。
+画像のファイルを選んで、本文に置きます。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-s.add_data_validation(…)
+d.add_picture(径路)
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,6 +25,7 @@ s.add_data_validation(…)
 |===
 |道具 |書き方
 
-|openpyxl |`ws.add_data_validation(…)`
+|python-docx |`d.add_picture(径路)`
+|openpyxl |`ws.add_image(…)`
 |===
 
