@@ -44,19 +44,82 @@ fn from_file(key: &str) -> Option<String> {
 static LANG: std::sync::RwLock<Option<&'static str>> = std::sync::RwLock::new(None);
 
 /// 画面の言語。**文言が揃った言語だけ**を受ける(登録簿 i18n_tables が正)。
-/// 優先順: [`set_language`] の注入 > 環境変数 OFFICE_LANG > settings.toml > 既定 ja
+///
+/// 優先順: [`set_language`] の注入 > 環境変数 OFFICE_LANG > settings.toml >
+/// **OS の言語設定** > 既定 ja
+///
+/// OS の言語設定を見るようになったのは 2026-08-26 です。それまでは
+/// 「何も書いていなければ日本語」でした。鍵を英語に裏返すと「何も
+/// 書いていなければ英語」になってしまい、設定を書いていない人の画面が
+/// ある日いきなり英語になります。**設定を書いていない人には、その人の
+/// 機械の言語で出す**のが正しい既定です。
 pub fn language() -> &'static str {
     if let Some(l) = *LANG.read().expect("言語の錠") {
         return l;
     }
-    let raw = std::env::var("OFFICE_LANG")
+    let l = std::env::var("OFFICE_LANG")
         .ok()
         .filter(|s| !s.is_empty())
         .or_else(|| from_file("language"))
-        .unwrap_or_default();
-    let l = 静かな札(&raw).unwrap_or("ja");
+        .and_then(|raw| 静かな札(&raw))
+        .or_else(os_language)
+        .unwrap_or("ja");
     *LANG.write().expect("言語の錠") = Some(l);
     l
+}
+
+/// OS の言語設定。無い・読めない・表に無いなら `None`。
+///
+/// 見る順は `LC_ALL` → `LC_MESSAGES` → `LANG`。POSIX の決まりの順です。
+/// 値は `ja_JP.UTF-8` や `pt_BR.UTF-8` のような形なので、[`札に直す`] で
+/// うちの札に直します。
+///
+/// Windows と Mac もこの3つを見ます。どちらも本来は OS の API で聞く物
+/// ですが、**うちの3つのアプリはどれも `main` で言語を注げる**ので、
+/// そちらの殻から [`set_language`] で渡してください。ここはその注ぎが
+/// 無かったときの下敷きです。
+fn os_language() -> Option<&'static str> {
+    for k in ["LC_ALL", "LC_MESSAGES", "LANG"] {
+        let Ok(v) = std::env::var(k) else { continue };
+        if v.is_empty() || v == "C" || v == "POSIX" {
+            continue;
+        }
+        if let Some(l) = 札に直す(&v) {
+            return Some(l);
+        }
+    }
+    None
+}
+
+/// POSIX のロケールの字を、うちの札に直す。
+///
+/// `ja_JP.UTF-8` → `ja`、`pt_BR.UTF-8` → `pt-br`、`zh_TW` → `zh-tw`。
+/// **国まで見るのは、うちが国で分けている札だけ**です(`pt`/`pt-br` と
+/// `zh`/`zh-tw`)。それ以外は言語だけで引きます。
+///
+/// 中国語は `zh_CN` が簡体、`zh_TW` と `zh_HK` が繁体です。国を落として
+/// `zh` にしてしまうと、台湾の人に簡体字が出ます。
+fn 札に直す(ロケール: &str) -> Option<&'static str> {
+    // `.UTF-8` や `@euro` のような飾りを落とす
+    let 芯 = ロケール
+        .split(['.', '@'])
+        .next()
+        .unwrap_or(ロケール)
+        .replace('_', "-");
+    if 芯.is_empty() {
+        return None;
+    }
+    // 国まで込みで引く(pt-br / zh-tw)
+    let 小文字 = 芯.to_ascii_lowercase();
+    if let Some(l) = 静かな札(&小文字) {
+        return Some(l);
+    }
+    let 言語 = 小文字.split('-').next().unwrap_or(&小文字);
+    // zh_HK は繁体。表に zh-hk は無いので zh-tw へ寄せる
+    if 言語 == "zh" && 小文字 == "zh-hk" {
+        return 静かな札("zh-tw");
+    }
+    静かな札(言語)
 }
 
 /// 札を、表に載っている `&'static str` に直す。無ければ `None`。
@@ -236,15 +299,40 @@ mod 言語の決め方 {
         錠.lock().unwrap_or_else(|e| e.into_inner())
     }
 
+    /// OS の言語設定を見る環境変数。試験では**全部押さえます** —
+    /// 1つでも残っていると、回す機械の言語で答えが変わります
+    const ロケールの環境変数: [&str; 3] = ["LC_ALL", "LC_MESSAGES", "LANG"];
+
     /// 控えを空にしてから、環境変数を立てて引き直す。
     /// **必ず元に戻します**(呼ぶ側が錠を持っている前提)
+    ///
+    /// OS のロケールは `"C"` に伏せます。伏せないと、`OFFICE_LANG` も
+    /// 設定も無いときの答えが**回す機械の言語で変わり**、CI と手元で
+    /// 違う結果になります(2026-08-26 に OS のロケールを見るようにした)。
     fn 引き直す(raw: Option<&str>) -> &'static str {
+        引き直す_ロケール(raw, Some("C"))
+    }
+
+    /// `引き直す` の、OS のロケールも決められる版。
+    fn 引き直す_ロケール(raw: Option<&str>, ロケール: Option<&str>) -> &'static str {
         let 元env = std::env::var_os("OFFICE_LANG");
+        let 元ロケール: Vec<_> = ロケールの環境変数
+            .iter()
+            .map(|k| (*k, std::env::var_os(k)))
+            .collect();
         let 元lang = *LANG.read().expect("言語の錠");
         unsafe {
             match raw {
                 Some(v) => std::env::set_var("OFFICE_LANG", v),
                 None => std::env::remove_var("OFFICE_LANG"),
+            }
+            for k in ロケールの環境変数 {
+                std::env::remove_var(k);
+            }
+            // 立てるのは LANG だけ。LC_ALL / LC_MESSAGES を消してあるので、
+            // 見る順(LC_ALL → LC_MESSAGES → LANG)の一番下に届きます
+            if let Some(v) = ロケール {
+                std::env::set_var("LANG", v);
             }
         }
         *LANG.write().expect("言語の錠") = None;
@@ -254,6 +342,12 @@ mod 言語の決め方 {
             match 元env {
                 Some(v) => std::env::set_var("OFFICE_LANG", v),
                 None => std::env::remove_var("OFFICE_LANG"),
+            }
+            for (k, v) in 元ロケール {
+                match v {
+                    Some(v) => std::env::set_var(k, v),
+                    None => std::env::remove_var(k),
+                }
             }
         }
         got
@@ -288,6 +382,55 @@ mod 言語の決め方 {
         for l in crate::i18n_tables::LANGS {
             assert_eq!(引き直す(Some(l)), *l, "{l} が受けられない");
         }
+    }
+
+    /// **OS の言語設定に従う**(2026-08-26)。
+    ///
+    /// 鍵を英語に裏返すと「何も書いていなければ英語」になります。設定を
+    /// 書いていない人の画面がある日いきなり英語にならないよう、その人の
+    /// 機械の言語で出します。
+    #[test]
+    fn 設定が無ければosの言語で出る() {
+        let _錠 = 順番に();
+        assert_eq!(引き直す_ロケール(None, Some("ja_JP.UTF-8")), "ja");
+        assert_eq!(引き直す_ロケール(None, Some("en_US.UTF-8")), "en");
+        assert_eq!(引き直す_ロケール(None, Some("de_DE.UTF-8")), "de");
+        // 飾りが無い形も読む
+        assert_eq!(引き直す_ロケール(None, Some("fr_FR")), "fr");
+        assert_eq!(引き直す_ロケール(None, Some("ko")), "ko");
+    }
+
+    /// **国で分けている札は、国まで見る**(pt-br と zh-tw)。
+    ///
+    /// 国を落とすと、台湾の人に簡体字が、ブラジルの人に欧州の
+    /// ポルトガル語が出ます。
+    #[test]
+    fn 国で分けている札は国まで見る() {
+        let _錠 = 順番に();
+        assert_eq!(引き直す_ロケール(None, Some("pt_BR.UTF-8")), "pt-br");
+        assert_eq!(引き直す_ロケール(None, Some("pt_PT.UTF-8")), "pt");
+        assert_eq!(引き直す_ロケール(None, Some("zh_TW.UTF-8")), "zh-tw");
+        assert_eq!(引き直す_ロケール(None, Some("zh_CN.UTF-8")), "zh");
+        // 香港は繁体。表に zh-hk が無いので zh-tw へ寄せる
+        assert_eq!(引き直す_ロケール(None, Some("zh_HK.UTF-8")), "zh-tw");
+    }
+
+    /// **書いてある設定が OS より強い。** 機械が英語でも、選んだ言語で出ます
+    #[test]
+    fn 書いた設定がosより強い() {
+        let _錠 = 順番に();
+        assert_eq!(引き直す_ロケール(Some("ja"), Some("en_US.UTF-8")), "ja");
+        assert_eq!(引き直す_ロケール(Some("de"), Some("ja_JP.UTF-8")), "de");
+    }
+
+    /// OS の言語も読めなければ ja(いままでどおり)
+    #[test]
+    fn osの言語も読めなければja() {
+        let _錠 = 順番に();
+        for l in ["C", "POSIX", "", "xx_YY.UTF-8"] {
+            assert_eq!(引き直す_ロケール(None, Some(l)), "ja", "{l:?} で ja に落ちない");
+        }
+        assert_eq!(引き直す_ロケール(None, None), "ja", "環境変数が無いとき");
     }
 
     /// [`set_language`] はいつ呼んでも効く(2026-08-19 の決め)
