@@ -2745,4 +2745,49 @@ fn そのまま通す塊は逃がさない() {
     assert!(h.contains("<details>"), "生の HTML が逃がされています:\n{h}");
 }
 
+/// **多段のリストが、入れ子で出るか。**
+///
+/// 2026-08-25 まで、`**` で深くした段が Web では平らに並んでいました。
+/// 模型は `indent` で段を持っているのに、書き出しが捨てていました。
+#[test]
+fn 多段のリストは入れ子で出る() {
+    let d = crate::adoc::parse("= 題\n\n* 1段目\n** 2段目\n*** 3段目\n* また1段目\n")
+        .expect("読めない");
+    let h = crate::html_write::body(&d);
+    assert_eq!(h.matches("<ul").count(), 3, "段の数だけ ul が要ります:\n{h}");
+    assert_eq!(h.matches("</ul>").count(), 3, "開いた分だけ閉じていません:\n{h}");
+    // **深い段は親の項目の中**。`</li>` の前に `<ul` が来ます
+    let i = h.find("1段目").expect("1段目が無い");
+    let 後ろ = &h[i..];
+    let j = 後ろ.find("<ul").expect("入れ子の ul が無い");
+    let k = 後ろ.find("</li>").expect("項目の閉じが無い");
+    assert!(j < k, "深い段が親の項目の外に出ています:\n{h}");
+}
+
+/// 番号付きも同じように入れ子になるか。
+#[test]
+fn 多段の番号付きも入れ子で出る() {
+    let d = crate::adoc::parse("= 題\n\n. 番号1\n.. 番号2\n").expect("読めない");
+    let h = crate::html_write::body(&d);
+    assert_eq!(h.matches("<ol").count(), 2, "段の数だけ ol が要ります:\n{h}");
+    assert_eq!(h.matches("</ol>").count(), 2, "開いた分だけ閉じていません:\n{h}");
+}
+
+/// **作業のリスト**(`* [ ]` / `* [x]`)がチェックボックスで出るか。
+///
+/// 前は本文の段落になり、印の `* [ ]` がそのままページに出ていました。
+#[test]
+fn 作業のリストはチェックボックスで出る() {
+    let d = crate::adoc::parse("= 題\n\n* [ ] まだの作業\n* [x] 済んだ作業\n")
+        .expect("読めない");
+    let h = crate::html_write::body(&d);
+    assert!(h.contains("<input type=\"checkbox\" disabled"), "空の箱がありません:\n{h}");
+    assert!(h.contains("<input type=\"checkbox\" checked disabled"), "済みの箱がありません:\n{h}");
+    assert!(h.contains("まだの作業"), "本文が消えています:\n{h}");
+    assert!(!h.contains("[ ]"), "印の字がページに出ています:\n{h}");
+    assert!(!h.contains("[x]"), "印の字がページに出ています:\n{h}");
+    // **点は出しません。** 箱と点が二重になります
+    assert!(h.contains("list-style:none"), "点を消していません:\n{h}");
+}
+
 }

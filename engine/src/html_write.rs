@@ -518,7 +518,7 @@ fn build(doc: &Document) -> (String, Ctx) {
     let mut o = String::new();
     let mut ctx = Ctx::default();
     // 箇条書きは連続する段落をまとめます(HTML の ul / ol は入れ物なので)
-    let mut list: Option<ListKind> = None;
+    let mut list: Vec<ListKind> = Vec::new();
     // ラベル付きリスト(`dl`)の途中か
     let mut dl中 = false;
     // コードの塊(`pre`)の途中か
@@ -533,12 +533,18 @@ fn build(doc: &Document) -> (String, Ctx) {
     // 目次の行が続いている間(nav で包む)
     let mut 目次中 = false;
     let 題名あり = !doc.props.title.is_empty();
-    let close = |o: &mut String, list: &mut Option<ListKind>| {
-        match list.take() {
-            Some(ListKind::Bullet) => o.push_str("</ul>\n"),
-            Some(ListKind::Number) => o.push_str("</ol>\n"),
-            _ => {}
-        };
+    // **開いている段を積んで持ちます。**(2026-08-25)
+    // 前は「いま開いているリストは1つ」としか持っていなかったので、
+    // `**` や `..` で深くした段が Web では平らになっていました。
+    // 模型は `indent` で段を持っているのに、書き出しで捨てていたことになります。
+    //
+    // 深い段は*親の項目の中*に入れます。これが入れ子のリストの正しい形で、
+    // 読み上げも折りたたみもここを見ます。
+    let close = |o: &mut String, 段: &mut Vec<ListKind>| {
+        while let Some(k) = 段.pop() {
+            o.push_str("</li>\n");
+            o.push_str(if k == ListKind::Bullet { "</ul>\n" } else { "</ol>\n" });
+        }
     };
 
     // 表題の段落(ParaStyle::Title)があればそれが出ます。段落が無く文書の
@@ -612,13 +618,59 @@ fn build(doc: &Document) -> (String, Ctx) {
             continue;
         };
         let inner = format!("{}{}", imgs_html(p, &mut ctx), runs_html(&p.runs, doc, &mut ctx));
-        if p.list != ListKind::None {
-            if list != Some(p.list) {
-                close(&mut o, &mut list);
-                o.push_str(if p.list == ListKind::Bullet { "<ul>\n" } else { "<ol>\n" });
-                list = Some(p.list);
+        // **作業のリスト**(`* [ ] やること` / `* [x] 済んだこと`)。
+        // 読み手は種類を見分けているのに、書き出しが本文の字として
+        // 出していました(印の `* [ ]` がそのままページに出ていた)
+        let 作業 = p.style_id.as_deref() == Some("チェック");
+        let (種, 段数, inner) = if 作業 {
+            let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            let 星 = 字.chars().take_while(|c| *c == '*').count().max(1);
+            let 残り = 字.trim_start_matches('*').trim_start();
+            let (済, 本文) = if let Some(r) = 残り.strip_prefix("[x] ").or_else(|| 残り.strip_prefix("[X] ")) {
+                (true, r)
+            } else {
+                (false, 残り.trim_start_matches("[ ] "))
+            };
+            // **見た目は札が持ちます。** 印だけ消して素の箇条書きにすると、
+            // 済んだかどうかが読めなくなります
+            let 箱 = if 済 {
+                "<input type=\"checkbox\" checked disabled \
+                 style=\"margin-right:.5em\">"
+            } else {
+                "<input type=\"checkbox\" disabled style=\"margin-right:.5em\">"
+            };
+            (ListKind::Bullet, 星 - 1, format!("{箱}{}", esc(本文)))
+        } else {
+            (p.list, p.indent as usize, inner)
+        };
+        if 種 != ListKind::None {
+            let n = 段数;
+            // 深すぎる段を閉じる(親の項目も一緒に閉じます)
+            while list.len() > n + 1 {
+                let k = list.pop().expect("段があるはず");
+                o.push_str("</li>\n");
+                o.push_str(if k == ListKind::Bullet { "</ul>\n" } else { "</ol>\n" });
             }
-            o.push_str(&format!("  <li>{inner}</li>\n"));
+            if list.len() == n + 1 {
+                o.push_str("</li>\n");          // 同じ段の前の項目を閉じる
+                if list[n] != 種 {
+                    let 古 = list.pop().expect("段があるはず");
+                    o.push_str(if 古 == ListKind::Bullet { "</ul>\n" } else { "</ol>\n" });
+                }
+            }
+            // **作業のリストは印を消します。** `list-style:none` を札に
+            // 書き込むので、CSS が無くても点は出ません
+            let 飾り = if 作業 { " style=\"list-style:none;padding-left:0\"" } else { "" };
+            while list.len() < n + 1 {
+                let 開き = if 種 == ListKind::Bullet {
+                    format!("<ul{飾り}>\n")
+                } else {
+                    "<ol>\n".to_string()
+                };
+                o.push_str(&開き);
+                list.push(種);
+            }
+            o.push_str(&format!("  <li>{inner}"));   // 閉じは次の項目か、段を閉じるとき
             continue;
         }
         // **目次は nav にまとめます**(2026-08-18)。前は普通の段落として
@@ -795,6 +847,7 @@ fn build(doc: &Document) -> (String, Ctx) {
     if pre中 {
         o.push_str(&塊の閉じ(塊, 次の塊の印.as_deref()));
     }
+    close(&mut o, &mut list);
     if dl中 {
         o.push_str("</dl>\n");
     }
