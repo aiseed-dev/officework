@@ -1,0 +1,61 @@
+# ja	en(鍵)	正の日本語(統合の組だけ。同じ en の行は同じ値)
+# --- 統合(同じ意味) ---
+ズーム {}%	Zoom {}%	ズーム {}%
+ズーム{}%	Zoom {}%	ズーム {}%
+このセルにコメントはありません	This cell has no comment	このセルにコメントがありません
+このセルにコメントがありません	This cell has no comment	このセルにコメントがありません
+隠す	Hide	非表示
+非表示	Hide	非表示
+削除	Delete	削除
+削除する	Delete	削除
+中央	Centre	中央揃え
+中央揃え	Centre	中央揃え
+折り返し	Wrap	折り返して全体を表示
+折り返す	Wrap	折り返して全体を表示
+数値の書式を「一般」に戻しました	Number format reset to General	表示形式を標準に戻しました
+表示形式を標準に戻しました	Number format reset to General	表示形式を標準に戻しました
+カラースケール	Colour scale	カラースケール
+色の濃淡	Colour scale	カラースケール
+左右反転	Flip horizontally	左右反転
+左右を返す	Flip horizontally	左右反転
+上下反転	Flip vertically	上下反転
+上下を返す	Flip vertically	上下反転
+AI に頼む	Ask the AI	AI と相談する
+AI と相談する	Ask the AI	AI と相談する
+作成者	Author	作成者
+著者	Author	作成者
+両端	Justify	両端揃え
+両端揃え	Justify	両端揃え
+キャンセル	Cancel	キャンセル
+取消	Cancel	キャンセル
+取り消し	Cancel	キャンセル
+# --- 分ける(別の意味) ---
+切り取りました	Cut the selection	
+切り取り	Cut	
+テキスト	Text	
+文字列操作	Text functions	
+文字	Character	
+列{}	Col {}	
+{} 列	Column {}	
+名前	Name	
+名前の変更	Rename	
+取り消し線	Strikethrough	
+やめる	Cancel	キャンセル
+タイトル	Title	
+表題	Title style	
+切	Off (switch)	
+取らない	Off	
+線	Line (border)	
+折れ線	Line	
+あり	On	
+入	On (switch)	
+しない	Do not	
+いいえ	No	
+プロセス	Process	
+処理	Process step	
+二重線	Double line	
+二重	Double	
+書類	Document (shape)	
+文書	Document	
+数式	Formula	
+方程式	Equation	
