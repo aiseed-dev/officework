@@ -181,6 +181,22 @@ type ボタンの箱 =
 /// 一覧の当たりの控え(段, 項目, x, y, 幅, 高さ)。
 type 一覧の箱 = std::rc::Rc<std::cell::RefCell<Vec<(usize, usize, f32, f32, f32, f32)>>>;
 
+/// 一覧でしている仕事(2026-08-26)。
+///
+/// **プロジェクトのパネルは、ファイル管理の道具と同じことができないと
+/// いけません**(発注者)。作る・名前を変える・消すの3つです。
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum FlJob {
+    /// 新しいフォルダ(打つのは名前)
+    NewFolder,
+    /// 新しい文書(打つのは名前)
+    NewDoc,
+    /// 名前を変える(打つのは新しい名前)
+    Rename(std::path::PathBuf),
+    /// 消す(打つ物はなく、Enter で消します)
+    Delete(std::path::PathBuf),
+}
+
 pub struct Writer {
     focus: FocusHandle,
     doc: Document,
@@ -463,8 +479,16 @@ pub struct Writer {
     rb_ed: Editor,
     /// 表の大きさを打つ欄(2026-08-25 発注者「行×列を選ぶ画面は、数値入力に
     /// しないと選択ではだめでしょう」)。一覧から選ばせる形をやめました
+    /// **人が選んだフォルダ。** ファイルの置き場より強く見ます —
+    /// 開いたまま別の綴りへ移れないと、綴りを開く意味がありません
+    /// (2026-08-26)
+    chosen_folder: Option<std::path::PathBuf>,
     tbl_open: bool,
     tbl_ed: Editor,
+    /// 一覧でしている仕事。`None` なら何もしていません
+    fl_job: Option<FlJob>,
+    /// 名前を打つ欄
+    fl_ed: Editor,
     rb_range: std::ops::Range<usize>,
     /// 数式のパネル(LaTeX を打つ)。**組むのは Python** — 自前で組版は
     /// 書かない(calc がグラフを matplotlib に任せるのと同じ分業)。
@@ -657,6 +681,9 @@ impl Writer {
     /// 何を開くかは使う人が選びます — *フォルダを開くとは、そういうこと*です
     /// (エディタと同じ形。SEKKEI「アプリはフォルダを開く形にする」)。
     pub fn show_folder(&mut self, dir: std::path::PathBuf) {
+        // **選んだことを覚えます。** 覚えないと `folder()` が開いている
+        // ファイルの親を返し、一覧が切り替わりません(2026-08-26)
+        self.chosen_folder = Some(dir.clone());
         ui::settings::set("folder", &dir.display().to_string());
         // **綴りの .venv を Python の第一候補にします**(2026-08-24)。
         // エディタと同じ作法で、同じフォルダを見ている3つの道具が
@@ -730,6 +757,8 @@ impl HasEditor for Writer {
             &mut self.url_ed
         } else if self.fm_field.is_some() {
             &mut self.fm_ed
+        } else if self.fl_job.is_some() {
+            &mut self.fl_ed
         } else if self.tbl_open {
             &mut self.tbl_ed
         } else if self.rb_open {
@@ -803,6 +832,8 @@ impl HasEditor for Writer {
             &self.url_ed
         } else if self.fm_field.is_some() {
             &self.fm_ed
+        } else if self.fl_job.is_some() {
+            &self.fl_ed
         } else if self.tbl_open {
             &self.tbl_ed
         } else if self.rb_open {
@@ -826,7 +857,8 @@ impl HasEditor for Writer {
             // パスワード・検索欄への打鍵は文書を変えない
             return;
         }
-        if self.chat_open || self.file_field.is_some() || self.tbl_open || self.rb_open || self.eq_open
+        if self.chat_open || self.file_field.is_some() || self.fl_job.is_some()
+            || self.tbl_open || self.rb_open || self.eq_open
             || self.url_open || self.fm_field.is_some() || self.sd_open
             || self.ai_open {
             // チャット・文書の情報・ルビの入力欄。打鍵は(確定まで)文書を変えない
@@ -985,6 +1017,7 @@ impl Writer {
             || self.url_open
             || self.fm_field.is_some()
             || self.tbl_open
+            || self.fl_job.is_some()
             || self.rb_open
             || self.eq_open
             || self.sd_open

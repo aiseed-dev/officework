@@ -1450,7 +1450,7 @@ impl Render for Writer {
             chat_panel, pw_panel, url_panel, fm_panel, nav_panel, rp_panel,
             lk_panel, ai_panel, sd_panel, rb_panel, eq_panel, plug_panel, xr_panel,
             font_panel, size_panel, style_panel, symbol_panel, proof_panel,
-            tbl_panel, date_panel, export_panel,
+            tbl_panel, date_panel, export_panel, fl_panel,
         } = self.panels(dk, th_btn, th_btn_hover, th_cmd_border, th_status, th_top_fg, cx);
 
         // ---- 右クリックのメニュー ----
@@ -1704,6 +1704,7 @@ impl Render for Writer {
             .children(style_panel)
             .children(symbol_panel)
             .children(tbl_panel)
+            .children(fl_panel)
             .children(date_panel)
             .children(export_panel)
             .children(ui::resize_edges(window))

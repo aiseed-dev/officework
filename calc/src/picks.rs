@@ -4387,6 +4387,11 @@ impl Calc {
                     }
                 }
             }
+            // **一覧の仕事**(作る・名前を変える・消す。2026-08-26)
+            "fl-name" => {
+                self.fl_commit(text);
+                recalc_book(&mut self.book, self.active);
+            }
             "split-delim" => {
                 let delim = if text.is_empty() { ",".to_string() } else { text };
                 let (a, b) = self.sel_rect();

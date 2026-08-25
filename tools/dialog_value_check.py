@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CMDS = ROOT / "docs" / "commands"
+CMDS = ROOT / "docs/ja/commands"
 除く = ("target", "vendor", ".flatpak-builder")
 
 # 選べる値ではないもの。

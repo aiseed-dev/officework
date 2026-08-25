@@ -136,6 +136,93 @@ impl Writer {
         self.run_cmd(id, cx);
     }
 
+    /// **一覧の仕事を始める。** 名前を打つ欄を出します(2026-08-26)。
+    pub(crate) fn fl_start(&mut self, job: crate::FlJob) {
+        use crate::FlJob as J;
+        let (前置き, 案内) = match &job {
+            J::NewFolder => (String::new(), ui::t!("新しいフォルダの名前を打って Enter").to_string()),
+            J::NewDoc => (String::new(), ui::t!("新しい文書の名前を打って Enter(.adoc を付けます)").to_string()),
+            J::Rename(p) => (
+                p.file_name().unwrap_or_default().to_string_lossy().to_string(),
+                ui::t!("新しい名前を打って Enter").to_string(),
+            ),
+            J::Delete(p) => (
+                String::new(),
+                ui::tf!("「{}」を消します。Enter で消す、Esc でやめる",
+                        p.file_name().unwrap_or_default().to_string_lossy().to_string())
+                    .to_string(),
+            ),
+        };
+        self.fl_ed = Editor::new(&前置き);
+        self.fl_job = Some(job);
+        self.status = 案内.into();
+    }
+
+    /// **一覧の仕事を実行する。** 断られたら欄を開いたままにします。
+    ///
+    /// *ごみ箱には入りません。* 消す前に一度確かめる形にしてあります
+    /// (`Delete` は Enter が確かめの返事です)。
+    pub(crate) fn fl_commit(&mut self, cx: &mut Context<Self>) {
+        use crate::FlJob as J;
+        let Some(job) = self.fl_job.clone() else { return };
+        let 名 = self.fl_ed.text().to_string();
+        let 今 = self.folder();
+        let 結果: Result<String, String> = match &job {
+            J::NewFolder => match 今 {
+                Some(d) => ui::folder::フォルダを作る(&d, &名)
+                    .map(|p| ui::tf!("{} を作りました",
+                        p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()),
+                None => Err(ui::t!("フォルダを開いていません").to_string()),
+            },
+            J::NewDoc => match 今 {
+                Some(d) => {
+                    // **拡張子は付けます。** 付け忘れた物が「文字だけの
+                    // ファイル」になって開けないのを防ぎます
+                    let n = if 名.trim().ends_with(".adoc") {
+                        名.trim().to_string()
+                    } else {
+                        format!("{}.adoc", 名.trim())
+                    };
+                    let 題 = 名.trim().trim_end_matches(".adoc");
+                    ui::folder::ファイルを作る(&d, &n, &format!("= {題}
+"))
+                        .map(|p| ui::tf!("{} を作りました",
+                            p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string())
+                }
+                None => Err(ui::t!("フォルダを開いていません").to_string()),
+            },
+            J::Rename(元) => ui::folder::名前を変える(元, &名).map(|先| {
+                // **いま開いている物なら、道も付け替えます**
+                if self.path.as_deref() == Some(元.as_path()) {
+                    self.path = Some(先.clone());
+                }
+                ui::tf!("{} にしました",
+                    先.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
+            }),
+            J::Delete(道) => {
+                // **開いたままの物は消しません。** 消してから保存すると
+                // 元に戻るので、消えたのか残ったのか分からなくなります
+                if self.path.as_deref() == Some(道.as_path()) {
+                    Err(ui::t!("いま開いている物は消せません(先に別の物を開いてください)").to_string())
+                } else {
+                    ui::folder::消す(道).map(|_| {
+                        ui::tf!("{} を消しました",
+                            道.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
+                    })
+                }
+            }
+        };
+        match 結果 {
+            Ok(言う) => {
+                self.fl_job = None;
+                self.status = 言う.into();
+            }
+            // **断られたら開いたまま。** 打ち直せるようにします
+            Err(e) => self.status = e.into(),
+        }
+        cx.notify();
+    }
+
     /// **打った数で表を挿す。**(2026-08-25)
     ///
     /// 受けるのは `行数,列数` です。`3x4` や `3 4` も同じに読みます —

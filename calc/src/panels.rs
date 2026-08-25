@@ -113,7 +113,34 @@ impl Calc {
                 let dir = self.folder();
                 d = d.child(ui::filelist::header(&look, dir.as_deref()));
                 if let Some(dir) = dir.as_deref() {
-                    let 一覧 = ui::filelist::entries(dir);
+                    // **上のフォルダへ戻れます**(2026-08-26)。
+                    // 中へ入れても戻れないと、一方通行です
+                    if let Some(上) = ui::filelist::up_row(&look, dir) {
+                        let 親 = dir.parent().map(|p| p.to_path_buf());
+                        d = d.child(上.on_click(cx.listener(move |this, _, _, cx| {
+                            if let Some(親) = 親.clone() {
+                                this.show_folder(親);
+                            }
+                            cx.notify()
+                        })));
+                    }
+                    // **作る道**(2026-08-26 発注者)
+                    d = d.child(
+                        div().flex().flex_row().gap_1().pb_1()
+                            .child(ui::filelist::make_button(&look, "folder",
+                                ui::t!("+ フォルダ").into())
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.fl_start(crate::FlJob::NewFolder);
+                                    cx.notify()
+                                })))
+                            .child(ui::filelist::make_button(&look, "sheet",
+                                ui::t!("+ 表").into())
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.fl_start(crate::FlJob::NewSheet);
+                                    cx.notify()
+                                }))),
+                    );
+                    let (一覧, 残り) = ui::filelist::entries_with_rest(dir);
                     if 一覧.is_empty() {
                         d = d.child(ui::filelist::empty(&look));
                     }
@@ -121,6 +148,16 @@ impl Calc {
                         let 開ける = e.kind.can_open();
                         let 文書だ = e.kind.is_doc();
                         let 道 = e.path.clone();
+                        // **フォルダは中へ入ります**(2026-08-26 発注者)
+                        if e.kind == ui::folder::Kind::Folder {
+                            let 行 = ui::filelist::row(&look, i, &e, false)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.show_folder(道.clone());
+                                    cx.notify()
+                                }));
+                            d = d.child(行);
+                            continue;
+                        }
                         let いま = self.path.as_deref() == Some(e.path.as_path());
                         let mut 行 = ui::filelist::row(&look, i, &e, いま);
                         行 = 行.on_click(cx.listener(move |this, _, _, cx| {
@@ -152,7 +189,28 @@ impl Calc {
                             }
                             cx.notify()
                         }));
-                        d = d.child(行);
+                        let 道2 = e.path.clone();
+                        let 道3 = e.path.clone();
+                        d = d.child(
+                            div().flex().flex_row().items_center().gap_1()
+                                .child(div().flex_1().min_w(px(0.0)).child(行))
+                                .child(ui::filelist::row_button(&look, i, "ren",
+                                    ui::t!("名前").into())
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.fl_start(crate::FlJob::Rename(道2.clone()));
+                                        cx.notify()
+                                    })))
+                                .child(ui::filelist::row_button(&look, i, "del",
+                                    ui::t!("消す").into())
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.fl_start(crate::FlJob::Delete(道3.clone()));
+                                        cx.notify()
+                                    }))),
+                        );
+                    }
+                    // **切った分は言います**(2026-08-26)
+                    if let Some(断り) = ui::filelist::rest_note(&look, 残り) {
+                        d = d.child(断り);
                     }
                 }
             } else if 面 == 1 {

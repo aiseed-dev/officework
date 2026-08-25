@@ -119,6 +119,86 @@ impl Calc {
 
     /// **いま開いているフォルダ。** 右パネルのファイル一覧が並べる場所です。
     /// 開いているブックの親を使い、無ければ前に使ったフォルダです。
+    /// **一覧の仕事を始める。** 名前を打つ欄を出します(2026-08-26)。
+    pub(crate) fn fl_start(&mut self, job: crate::FlJob) {
+        use crate::FlJob as J;
+        let (前置き, 案内) = match &job {
+            J::NewFolder => (String::new(), ui::t!("新しいフォルダの名前を打って Enter").to_string()),
+            J::NewSheet => (String::new(), ui::t!("新しい表の名前を打って Enter(.sheet.adoc を付けます)").to_string()),
+            J::Rename(p) => (
+                p.file_name().unwrap_or_default().to_string_lossy().to_string(),
+                ui::t!("新しい名前を打って Enter").to_string(),
+            ),
+            J::Delete(p) => (
+                String::new(),
+                ui::tf!("「{}」を消します。Enter で消す、Esc でやめる",
+                        p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string(),
+            ),
+        };
+        // **calc の「打って Enter」の口に乗せます**(`finish_prompt`)。
+        // 自前の欄を足すと、Esc と打鍵の行き先を2重に持つことになります
+        self.fl_job = Some(job);
+        self.prompt = Some(("fl-name", Editor::new(&前置き)));
+        self.status = 案内.into();
+    }
+
+    /// **一覧の仕事を実行する。** 断られたら欄を開いたままにします。
+    pub(crate) fn fl_commit(&mut self, 名: String) {
+        use crate::FlJob as J;
+        let Some(job) = self.fl_job.clone() else { return };
+        let 今 = self.folder();
+        let 結果: Result<String, String> = match &job {
+            J::NewFolder => match 今 {
+                Some(d) => ui::folder::フォルダを作る(&d, &名).map(|p| {
+                    ui::tf!("{} を作りました",
+                        p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
+                }),
+                None => Err(ui::t!("フォルダを開いていません").to_string()),
+            },
+            J::NewSheet => match 今 {
+                Some(d) => {
+                    // **拡張子は付けます。** `.sheet.adoc` でないと表として開きません
+                    let t = 名.trim();
+                    let n = if t.ends_with(".sheet.adoc") {
+                        t.to_string()
+                    } else {
+                        format!("{}.sheet.adoc", t.trim_end_matches(".adoc"))
+                    };
+                    let 題 = t.trim_end_matches(".sheet.adoc").trim_end_matches(".adoc");
+                    ui::folder::ファイルを作る(&d, &n, &format!("= {題}\n"))
+                        .map(|p| ui::tf!("{} を作りました",
+                            p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string())
+                }
+                None => Err(ui::t!("フォルダを開いていません").to_string()),
+            },
+            J::Rename(元) => ui::folder::名前を変える(元, &名).map(|先| {
+                if self.path.as_deref() == Some(元.as_path()) {
+                    self.path = Some(先.clone());
+                }
+                ui::tf!("{} にしました",
+                    先.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
+            }),
+            J::Delete(道) => {
+                // **開いたままの物は消しません**(文章の画面と同じ)
+                if self.path.as_deref() == Some(道.as_path()) {
+                    Err(ui::t!("いま開いている物は消せません(先に別の物を開いてください)").to_string())
+                } else {
+                    ui::folder::消す(道).map(|_| {
+                        ui::tf!("{} を消しました",
+                            道.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
+                    })
+                }
+            }
+        };
+        match 結果 {
+            Ok(言う) => {
+                self.fl_job = None;
+                self.status = 言う.into();
+            }
+            Err(e) => self.status = e.into(),
+        }
+    }
+
     /// **フォルダを開く。** 文章の画面の `Writer::show_folder` と同じ物
     /// (手引き `docs/ja/commands/ファイル/フォルダーを開く.adoc`)。
     ///
@@ -126,6 +206,8 @@ impl Calc {
     /// 綴りの `.venv` を Python の第一候補にするのも同じで、
     /// 同じフォルダを見ている道具が同じ Python を使うようにするためです。
     pub(crate) fn show_folder(&mut self, dir: PathBuf) {
+        // **選んだことを覚えます**(2026-08-26)
+        self.chosen_folder = Some(dir.clone());
         ui::settings::set("folder", &dir.display().to_string());
         pyrun::set_work_dir(Some(dir.clone()));
         self.right_open = true;
@@ -135,7 +217,11 @@ impl Calc {
                 .into();
     }
 
+    /// 一覧に出すフォルダ。**人が選んだ物がいちばん強い**(2026-08-26)
     pub(crate) fn folder(&self) -> Option<PathBuf> {
+        if let Some(d) = self.chosen_folder.as_ref().filter(|d| d.is_dir()) {
+            return Some(d.clone());
+        }
         if let Some(p) = self.path.as_ref().and_then(|p| p.parent()) {
             return Some(p.to_path_buf());
         }
@@ -326,6 +412,8 @@ impl Calc {
             chat_busy: false,
             chat_err: None,
             left_face: 0,
+            chosen_folder: None,
+            fl_job: None,
             right_face: 0,
             open_request: None,
             open_dialog_request: false,

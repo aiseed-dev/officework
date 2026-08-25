@@ -315,3 +315,84 @@ mod tests {
         assert!(list(Path::new("/そんなフォルダは無い")).is_empty());
     }
 }
+
+// ---- フォルダの操作 -----------------------------------------------------
+//
+// **プロジェクトのパネルは、ファイル管理の道具と同じことができないと
+// いけません**(2026-08-26 発注者)。作る・名前を変える・消すの3つを
+// ここに置きます。画面は writer と calc の2つありますが、*ファイルを
+// 触るのはこの1本*です。片方だけ直すと食い違うためです。
+
+/// 名前として使えるか見る。だめなら理由を返します。
+///
+/// 断るのは3つ — 空、区切りの字(`/` `\`)、`.` で始まる物です。
+/// `.` で始まる物は一覧に出ないので、作っても見えません。
+pub fn 名前を見る(名: &str) -> Result<(), String> {
+    let t = 名.trim();
+    if t.is_empty() {
+        return Err("名前が空です".to_string());
+    }
+    if t.contains('/') || t.contains('\\') {
+        return Err("名前に / や \\ は使えません".to_string());
+    }
+    if t.starts_with('.') {
+        return Err(". で始まる名前は一覧に出ません".to_string());
+    }
+    Ok(())
+}
+
+/// 新しいフォルダを作る。**同じ名前があれば断ります**(上書きしません)。
+pub fn フォルダを作る(親: &Path, 名: &str) -> Result<PathBuf, String> {
+    名前を見る(名)?;
+    let p = 親.join(名.trim());
+    if p.exists() {
+        return Err(format!("「{}」は既にあります", 名.trim()));
+    }
+    std::fs::create_dir(&p).map_err(|e| format!("作れません: {e}"))?;
+    Ok(p)
+}
+
+/// 空のファイルを作る。**同じ名前があれば断ります**。
+///
+/// 中身は呼ぶ側が決めます(`.adoc` なら題の1行など)。
+pub fn ファイルを作る(親: &Path, 名: &str, 中身: &str) -> Result<PathBuf, String> {
+    名前を見る(名)?;
+    let p = 親.join(名.trim());
+    if p.exists() {
+        return Err(format!("「{}」は既にあります", 名.trim()));
+    }
+    std::fs::write(&p, 中身).map_err(|e| format!("作れません: {e}"))?;
+    Ok(p)
+}
+
+/// 名前を変える。**同じ名前があれば断ります**(上書きしません)。
+pub fn 名前を変える(元: &Path, 新しい名: &str) -> Result<PathBuf, String> {
+    名前を見る(新しい名)?;
+    let 親 = 元.parent().ok_or_else(|| "置き場が分かりません".to_string())?;
+    let 先 = 親.join(新しい名.trim());
+    if 先 == 元 {
+        return Ok(先);
+    }
+    if 先.exists() {
+        return Err(format!("「{}」は既にあります", 新しい名.trim()));
+    }
+    std::fs::rename(元, &先).map_err(|e| format!("名前を変えられません: {e}"))?;
+    Ok(先)
+}
+
+/// 消す。**ごみ箱には入りません** — 呼ぶ側が先に確かめてください。
+///
+/// フォルダは*空のときだけ*消します。中身ごと消す道は置きません
+/// (押し間違いで綴りが消えるのは取り返しが付きません)。
+pub fn 消す(p: &Path) -> Result<(), String> {
+    if p.is_dir() {
+        return std::fs::remove_dir(p).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::DirectoryNotEmpty {
+                "フォルダの中に物があります(先に中を空にしてください)".to_string()
+            } else {
+                format!("消せません: {e}")
+            }
+        });
+    }
+    std::fs::remove_file(p).map_err(|e| format!("消せません: {e}"))
+}

@@ -50,6 +50,35 @@ pub fn header(look: &Look, dir: Option<&std::path::Path>) -> Div {
     }
 }
 
+/// **上のフォルダへ戻る行。** いちばん上のときは出しません。
+///
+/// 押す結び付けは呼ぶ側が足します(`row` と同じ作法)。
+pub fn up_row(look: &Look, dir: &std::path::Path) -> Option<Stateful<Div>> {
+    let 親 = dir.parent()?.to_path_buf();
+    let s = look.scale;
+    Some(
+        div()
+            .id("fl-up")
+            .flex()
+            .items_center()
+            .gap_2()
+            .px_2()
+            .py_1()
+            .rounded_sm()
+            .cursor_pointer()
+            .hover(move |st| st.bg(look.hover))
+            .text_size(px(s * 11.5))
+            .text_color(look.fg)
+            .child(SharedString::from("‹"))
+            .child(SharedString::from(crate::tf!(
+                "上へ({})",
+                親.file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| 親.display().to_string())
+            ))),
+    )
+}
+
 /// 「空のフォルダです」。
 pub fn empty(look: &Look) -> Div {
     div()
@@ -59,8 +88,67 @@ pub fn empty(look: &Look) -> Div {
 }
 
 /// 並べる中身。**200 件で切ります** — 切ったことは呼ぶ側が言うこと。
+/// 上限。これより多いフォルダでは、切ったことを画面に出します
+pub const 一覧の上限: usize = 200;
+
+/// 並べる物と、切って落とした数。
+///
+/// **黙って切りません**(2026-08-26)。前は 200 件で切っていて、
+/// それ以上のファイルは*あるのに出ない*状態でした。
+pub fn entries_with_rest(dir: &std::path::Path) -> (Vec<folder::Entry>, usize) {
+    let 全部 = folder::list(dir);
+    let 残り = 全部.len().saturating_sub(一覧の上限);
+    (全部.into_iter().take(一覧の上限).collect(), 残り)
+}
+
 pub fn entries(dir: &std::path::Path) -> Vec<folder::Entry> {
-    folder::list(dir).into_iter().take(200).collect()
+    entries_with_rest(dir).0
+}
+
+/// 切って落とした分の断り。0 件なら出しません。
+pub fn rest_note(look: &Look, 残り: usize) -> Option<Div> {
+    (残り > 0).then(|| {
+        div()
+            .text_size(px(look.scale * 10.5))
+            .text_color(look.dim)
+            .child(crate::tf!("ほかに {} 件あります(多いので出していません)", 残り))
+    })
+}
+
+/// 行の右に置く小さなボタン(名前を変える・消す)。
+///
+/// **押す結び付けは呼ぶ側が足します。** 何が起きるかはアプリの物です
+/// (文書を開いたまま消す、などの断りが要る)。
+pub fn row_button(look: &Look, i: usize, 印: &'static str, 名: SharedString) -> Stateful<Div> {
+    let s = look.scale;
+    let hover = look.hover;
+    div()
+        .id(SharedString::from(format!("fl-{印}-{i}")))
+        .flex_none()
+        .px_1()
+        .rounded_sm()
+        .cursor_pointer()
+        .text_size(px(s * 11.0))
+        .text_color(look.dim)
+        .hover(move |st| st.bg(hover))
+        .child(名)
+}
+
+/// 一覧の頭に置く「新しく作る」のボタン。
+pub fn make_button(look: &Look, 印: &'static str, 名: SharedString) -> Stateful<Div> {
+    let s = look.scale;
+    let hover = look.hover;
+    div()
+        .id(SharedString::from(format!("fl-new-{印}")))
+        .flex_none()
+        .px_2()
+        .py_0p5()
+        .rounded_sm()
+        .cursor_pointer()
+        .text_size(px(s * 10.5))
+        .text_color(look.fg)
+        .hover(move |st| st.bg(hover))
+        .child(名)
 }
 
 /// 行1つ。**押す結び付けは付いていません** — 呼ぶ側が

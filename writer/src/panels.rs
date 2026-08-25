@@ -40,6 +40,8 @@ pub(crate) struct Panels {
     pub symbol_panel: Option<gpui::Stateful<gpui::Div>>,
     /// 表の大きさを打つ欄(2026-08-25)
     pub tbl_panel: Option<gpui::Div>,
+    /// 一覧の仕事の欄(2026-08-26)
+    pub fl_panel: Option<gpui::Div>,
     /// 日付の形の一覧(2026-08-25)
     pub date_panel: Option<gpui::Stateful<gpui::Div>>,
     /// 書き出す形の一覧(2026-08-25)
@@ -1129,7 +1131,35 @@ impl Writer {
                 let dir = self.folder();
                 d = d.child(ui::filelist::header(&look, dir.as_deref()));
                 if let Some(dir) = dir.as_deref() {
-                    let 一覧 = ui::filelist::entries(dir);
+                    // **上のフォルダへ戻れます**(2026-08-26)。
+                    // 中へ入れても戻れないと、一方通行です
+                    if let Some(上) = ui::filelist::up_row(&look, dir) {
+                        let 親 = dir.parent().map(|p| p.to_path_buf());
+                        d = d.child(上.on_click(cx.listener(move |t, _, _, cx| {
+                            if let Some(親) = 親.clone() {
+                                t.show_folder(親);
+                            }
+                            cx.notify()
+                        })));
+                    }
+                    // **作る道**(2026-08-26 発注者「ファイルマネージャと
+                    // 同じ機能をもっていないといけない」)
+                    d = d.child(
+                        div().flex().flex_row().gap_1().pb_1()
+                            .child(ui::filelist::make_button(&look, "folder",
+                                ui::t!("+ フォルダ").into())
+                                .on_click(cx.listener(|t, _, _, cx| {
+                                    t.fl_start(crate::FlJob::NewFolder);
+                                    cx.notify()
+                                })))
+                            .child(ui::filelist::make_button(&look, "doc",
+                                ui::t!("+ 文書").into())
+                                .on_click(cx.listener(|t, _, _, cx| {
+                                    t.fl_start(crate::FlJob::NewDoc);
+                                    cx.notify()
+                                }))),
+                    );
+                    let (一覧, 残り) = ui::filelist::entries_with_rest(dir);
                     if 一覧.is_empty() {
                         d = d.child(ui::filelist::empty(&look));
                     }
@@ -1137,6 +1167,17 @@ impl Writer {
                         let 開ける = e.kind.can_open();
                         let 表だ = e.kind.is_sheet();
                         let 道 = e.path.clone();
+                        // **フォルダは中へ入ります**(2026-08-26 発注者)。
+                        // 前は一覧に出るのに押しても何も起きませんでした
+                        if e.kind == ui::folder::Kind::Folder {
+                            let 行 = ui::filelist::row(&look, i, &e, false)
+                                .on_click(cx.listener(move |t, _, _, cx| {
+                                    t.show_folder(道.clone());
+                                    cx.notify()
+                                }));
+                            d = d.child(行);
+                            continue;
+                        }
                         let いま = self.path.as_deref() == Some(e.path.as_path());
                         let mut 行 = ui::filelist::row(&look, i, &e, いま);
                         行 = 行.on_click(cx.listener(move |t, _, _, cx| {
@@ -1169,7 +1210,29 @@ impl Writer {
                             }
                             cx.notify()
                         }));
-                        d = d.child(行);
+                        let 道2 = e.path.clone();
+                        let 道3 = e.path.clone();
+                        d = d.child(
+                            div().flex().flex_row().items_center().gap_1()
+                                .child(div().flex_1().min_w(px(0.0)).child(行))
+                                .child(ui::filelist::row_button(&look, i, "ren",
+                                    ui::t!("名前").into())
+                                    .on_click(cx.listener(move |t, _, _, cx| {
+                                        t.fl_start(crate::FlJob::Rename(道2.clone()));
+                                        cx.notify()
+                                    })))
+                                .child(ui::filelist::row_button(&look, i, "del",
+                                    ui::t!("消す").into())
+                                    .on_click(cx.listener(move |t, _, _, cx| {
+                                        t.fl_start(crate::FlJob::Delete(道3.clone()));
+                                        cx.notify()
+                                    }))),
+                        );
+                    }
+                    // **切った分は言います**(2026-08-26)。黙って落とすと、
+                    // あるはずのファイルが無いように見えます
+                    if let Some(断り) = ui::filelist::rest_note(&look, 残り) {
+                        d = d.child(断り);
                     }
                 }
                 let 柱d = 柱()
@@ -1633,6 +1696,43 @@ impl Writer {
         // **足したら、ここにも足す。** 開くだけ足して描く側を忘れると、
         // 一覧は開いているのに画面に何も出ません(2026-08-25 に実機で
         // 見つけました — 押してもマス目が出ませんでした)
+        // 一覧の仕事(作る・名前を変える・消す)の欄(2026-08-26)
+        let fl_panel = match &self.fl_job {
+            None => None,
+            Some(job) => {
+                use crate::FlJob as J;
+                let 消す時 = matches!(job, J::Delete(_));
+                let 見出し = match job {
+                    J::NewFolder => ui::t!("新しいフォルダの名前 — 打って Enter(Esc でやめる)").to_string(),
+                    J::NewDoc => ui::t!("新しい文書の名前 — 打って Enter(.adoc を付けます)").to_string(),
+                    J::Rename(_) => ui::t!("新しい名前 — 打って Enter(Esc でやめる)").to_string(),
+                    J::Delete(p) => ui::tf!("「{}」を消しますか — Enter で消す、Esc でやめる",
+                        p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string(),
+                };
+                let mut d = div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 400.0))
+                    .p_3().rounded_md().bg(rgb(0xF7F9FA))
+                    .border_1().border_color(rgb(0xC6CDD3))
+                    .flex().flex_col().gap_2()
+                    .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
+                        .text_color(rgb(0x165E83))
+                        .child(SharedString::from(見出し)));
+                if !消す時 {
+                    let mut t = self.fl_ed.text().to_string();
+                    let cur = self.fl_ed.cursor().min(t.len());
+                    t.insert(cur, '|');
+                    d = d.child(div().px_2().py_1().rounded_sm()
+                        .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
+                        .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
+                        .child(SharedString::from(t)));
+                } else {
+                    // **ごみ箱には入りません。** そう書いておきます
+                    d = d.child(div().text_size(px(us * 10.5)).text_color(rgb(0xB00020))
+                        .child(ui::t!("ごみ箱には入りません。元に戻せません")));
+                }
+                Some(d)
+            }
+        };
+
         // 表の大きさ。**選ぶのではなく打ちます**(2026-08-25 発注者)
         let tbl_panel = if !self.tbl_open {
             None
@@ -1692,7 +1792,7 @@ impl Writer {
             chat_panel, pw_panel, url_panel, fm_panel, nav_panel, rp_panel,
             lk_panel, ai_panel, sd_panel, rb_panel, eq_panel, plug_panel, xr_panel,
             font_panel, size_panel, style_panel, symbol_panel, proof_panel,
-            tbl_panel, date_panel, export_panel,
+            tbl_panel, date_panel, export_panel, fl_panel,
         }
     }
 

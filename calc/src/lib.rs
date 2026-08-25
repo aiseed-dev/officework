@@ -71,6 +71,16 @@ type 掴んだ場所と角 = (usize, (f32, f32), (f32, f32), bool);
 /// 開いている一覧((鍵, 見出し) の並び, 出す場所)。
 type 開いている一覧 = (Vec<(String, String)>, (f32, f32));
 
+/// 一覧でしている仕事(2026-08-26)。**文章の画面と同じ**です。
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum FlJob {
+    NewFolder,
+    /// 新しい表(`.sheet.adoc`)
+    NewSheet,
+    Rename(PathBuf),
+    Delete(PathBuf),
+}
+
 pub struct Calc {
     focus: FocusHandle,
     book: Book,
@@ -465,6 +475,10 @@ pub struct Calc {
     /// 左パネルのいまの面(0=会話 1=コメント)。柱のアイコンで切り替える
     pub(crate) left_face: u8,
     /// 右パネルのいまの面(0=セルの設定 1=図形と画像)
+    /// **人が選んだフォルダ。** ファイルの置き場より強く見ます(2026-08-26)
+    pub(crate) chosen_folder: Option<PathBuf>,
+    /// 一覧でしている仕事(2026-08-26)。文章の画面と同じ4つ
+    pub(crate) fl_job: Option<FlJob>,
     pub(crate) right_face: u8,
     /// **このファイルを開いてほしい**(2026-08-19。統合の段1)。
     ///

@@ -153,6 +153,9 @@ impl Writer {
             hf_ed: Editor::new(""),
             pick_sel: 0,
             table_size: (3, 3),
+            chosen_folder: None,
+            fl_job: None,
+            fl_ed: Editor::new(""),
             tbl_open: false,
             tbl_ed: Editor::new(""),
             font_filter: None,
@@ -2739,7 +2742,15 @@ impl Writer {
     ///
     /// 開いているファイルの親を使います。まだ何も開いていなければ、
     /// 前に使ったフォルダ(`settings.toml` の `folder`)です。
+    /// 一覧に出すフォルダ。
+    ///
+    /// **人が選んだ物がいちばん強い**(2026-08-26)。前は開いている
+    /// ファイルの親を先に返していたので、ファイルを開いたまま
+    /// 「フォルダーを開く」で別の綴りを選んでも一覧が変わりませんでした。
     pub(crate) fn folder(&self) -> Option<PathBuf> {
+        if let Some(d) = self.chosen_folder.as_ref().filter(|d| d.is_dir()) {
+            return Some(d.clone());
+        }
         if let Some(p) = self.path.as_ref().and_then(|p| p.parent()) {
             return Some(p.to_path_buf());
         }
