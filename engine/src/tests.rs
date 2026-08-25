@@ -2917,4 +2917,61 @@ fn 紙でも塊と註記が分かる() {
     }
 }
 
+/// **作業のリストが紙でもチェックボックスで出るか**(2026-08-25)。
+///
+/// HTML だけ直して紙を見ていなかったので、`* [ ]` の印がそのまま
+/// 印刷されていました。記入欄と同じ ☐ / ☑ で出します。
+#[test]
+fn 作業のリストは紙でも箱で出る() {
+    let d = crate::adoc::parse("= 題\n\n* [ ] やること\n* [x] 済んだこと\n")
+        .expect("読めない");
+    let (fam, _) = crate::font::for_document(None).expect("フォントが無い");
+    let data = crate::font::load(fam).expect("読めない");
+    let m = crate::Metrics::new(&data).expect("読めない");
+    let sheet = crate::layout(
+        &d, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0 });
+    let 全部: String = sheet.lines.iter()
+        .map(|l| l.cells.iter().map(|c| c.ch).collect::<String>())
+        .collect::<Vec<_>>().join("\n");
+    assert!(全部.contains("☐ やること"), "空の箱が出ていません:\n{全部}");
+    assert!(全部.contains("☑ 済んだこと"), "済みの箱が出ていません:\n{全部}");
+    assert!(!全部.contains("[ ]"), "印の字が印刷されています:\n{全部}");
+    assert!(!全部.contains("[x]"), "印の字が印刷されています:\n{全部}");
+    // **書き戻しは元のまま。** 紙の見た目のために字を変えていないこと
+    assert_eq!(crate::adoc::write(&d), "= 題\n\n* [ ] やること\n* [x] 済んだこと\n");
+
+    // **段も効くこと。** `**` なら1段下がって組まれます
+    let d2 = crate::adoc::parse("= 題\n\n* [ ] 親\n** [ ] 子\n").expect("読めない");
+    let s2 = crate::layout(
+        &d2, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0 });
+    let 探す = |字: &str| -> f32 {
+        s2.lines.iter()
+            .find(|l| l.cells.iter().map(|c| c.ch).collect::<String>().contains(字))
+            .map(|l| l.cells[0].x_mm)
+            .unwrap_or_else(|| panic!("{字} の行がありません"))
+    };
+    assert!(探す("子") > 探す("親"), "2段目が下がっていません");
+
+    // **`-` の書き方**(Markdown)も作業のリストです
+    let d3 = crate::adoc::parse("= 題\n\n- [ ] 別の書き方\n").expect("読めない");
+    let h = crate::html_write::body(&d3);
+    assert!(h.contains("type=\"checkbox\""), "- の書き方が箱になっていません:\n{h}");
+    assert!(!h.contains("- [ ]"), "印の字が残っています:\n{h}");
+}
+
+/// **多段の作業のリスト**(2026-08-25)。
+///
+/// 読み手が1段目しか拾っておらず、`** [ ]` は普通の箇条書きになって
+/// `[ ]` が字として残っていました。
+#[test]
+fn 多段の作業のリストも箱になる() {
+    let 元 = "= 題\n\n* [ ] 親\n** [x] 子\n";
+    let d = crate::adoc::parse(元).expect("読めない");
+    assert_eq!(crate::adoc::write(&d), 元, "書き戻しで字が変わっています");
+    let h = crate::html_write::body(&d);
+    assert_eq!(h.matches("type=\"checkbox\"").count(), 2, "箱が2つ要ります:\n{h}");
+    assert_eq!(h.matches("<ul").count(), 2, "入れ子になっていません:\n{h}");
+    assert!(!h.contains("[ ]") && !h.contains("[x]"), "印の字が残っています:\n{h}");
+}
+
 }

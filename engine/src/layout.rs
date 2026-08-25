@@ -475,6 +475,31 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     y += space_before_mm(para, base);
                 }
                 // インデント1段 = 全角2文字ぶん(日本の書類の慣習)
+                // **作業のリスト**(`* [ ] やること`)。
+                // 印をそのまま組むと `* [ ]` が紙に出ます。この版は
+                // 記入欄と同じ ☐ / ☑ で出します(画面の作法を揃える)
+                let 作業 = 作業のリスト(para);
+                let para_eff_check;
+                let para = if let Some((印, 本文, 段)) = 作業 {
+                    let mut q = para.clone();
+                    q.indent = 段;
+                    let mut 残り = 本文.as_str();
+                    for r in &mut q.runs {
+                        let n = r.text.len().min(残り.len());
+                        r.text = 残り[..n].to_string();
+                        残り = &残り[n..];
+                    }
+                    if let Some(r) = q.runs.first_mut() {
+                        r.text = format!("{印}{}", r.text);
+                    }
+                    para_eff_check = q;
+                    &para_eff_check
+                } else {
+                    para
+                };
+                // **コードの塊は等幅で組みます**(2026-08-25)。
+                // 本文と同じ字だと、コードなのか文章なのか分かりません。
+                // 等幅の書体がこの機械に無ければ、そのまま組みます
                 let em = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base) * 25.4 / 72.0;
                 let indent_mm = para.indent as f32 * em * 2.0;
                 let measure = (block_measure - indent_mm).max(em);
@@ -485,9 +510,6 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     para_byte0 += para.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
                     continue;
                 }
-                // **コードの塊は等幅で組みます**(2026-08-25)。
-                // 本文と同じ字だと、コードなのか文章なのか分かりません。
-                // 等幅の書体がこの機械に無ければ、そのまま組みます
                 let 等幅 = (para.style_id.as_deref() == Some("塊の中"))
                     .then(crate::font::monospace)
                     .flatten()
@@ -1363,4 +1385,31 @@ pub(super) fn 註記の見出し(name: Option<&str>) -> Option<&'static str> {
         "注意" => "注意 ",
         _ => return None,
     })
+}
+
+/// 作業のリストの行を、印・本文・段に割る。
+///
+/// `* [ ] やること` は `(☐ , "やること", 0)`、`** [x] 済み` は
+/// `(☑ , "済み", 1)` です。作業のリストでなければ `None`。
+///
+/// **紙では ☐ / ☑ で出します。** 記入欄のチェックボックスと同じ字なので、
+/// 画面の中で見た目が揃います(2026-08-25。前は `* [ ]` がそのまま
+/// 印刷されていました)。
+fn 作業のリスト(p: &Paragraph) -> Option<(&'static str, String, u8)> {
+    if p.style_id.as_deref() != Some("チェック") {
+        return None;
+    }
+    let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+    // 印は `*` でも `-`(Markdown の書き方)でもよい
+    let 頭 = 字.chars().next().unwrap_or('*');
+    let 星 = 字.chars().take_while(|c| *c == 頭).count();
+    let 残り = 字.trim_start_matches(頭).trim_start();
+    let (印, 本文) = if let Some(r) = 残り.strip_prefix("[x] ").or_else(|| 残り.strip_prefix("[X] ")) {
+        ("☑ ", r)
+    } else if let Some(r) = 残り.strip_prefix("[ ] ") {
+        ("☐ ", r)
+    } else {
+        return None;
+    };
+    Some((印, 本文.to_string(), 星.saturating_sub(1) as u8))
 }

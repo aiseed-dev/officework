@@ -693,8 +693,11 @@ fn build(doc: &Document) -> (String, Ctx) {
         let 作業 = p.style_id.as_deref() == Some("チェック");
         let (種, 段数, inner) = if 作業 {
             let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
-            let 星 = 字.chars().take_while(|c| *c == '*').count().max(1);
-            let 残り = 字.trim_start_matches('*').trim_start();
+            // 印は `*` でも `-`(Markdown の書き方)でもよい
+            let 印 = 字.chars().next().unwrap_or('*');
+            let 星 = 字.chars().take_while(|c| *c == 印).count().max(1);
+            let 残り 
+                = 字.trim_start_matches(印).trim_start();
             let (済, 本文) = if let Some(r) = 残り.strip_prefix("[x] ").or_else(|| 残り.strip_prefix("[X] ")) {
                 (true, r)
             } else {

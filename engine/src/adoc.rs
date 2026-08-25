@@ -902,7 +902,11 @@ fn 本家だけの書き方(l: &str) -> Option<(&'static str, &'static str)> {
     if ts.starts_with("include::") {
         return Some(("取り込み(include::)", "取り込み"));
     }
-    if ts.starts_with("* [x]") || ts.starts_with("* [ ]") || ts.starts_with("- [x]") {
+    // **作業のリスト**(`* [ ] やること`)。**段も見ます** —
+    // 2026-08-25 まで1段目しか拾わず、`** [ ]` は普通の箇条書きになって
+    // `[ ]` が字として残っていました。`- [ ]`(Markdown の書き方)も
+    // `[x]` だけ拾って `[ ]` を落としていました
+    if 作業のリストか(ts) {
         return Some(("チェックの箇条書き", "チェック"));
     }
     if ts.starts_with("//") {
@@ -2521,4 +2525,19 @@ mod tests {
         assert_eq!(d.attrs.len(), 3, "属性を落とした: {:?}", d.attrs);
         assert_eq!(write(&d), src, "往復していない");
     }
+}
+
+/// **作業のリストの行か。**
+///
+/// `*` か `-` を段の数だけ並べ、`[ ]` か `[x]` が続く形です。
+/// `* [ ]` `** [x]` `- [ ]` のどれも作業のリストです。
+pub(crate) fn 作業のリストか(t: &str) -> bool {
+    let 印 = t.chars().next().filter(|c| *c == '*' || *c == '-');
+    let Some(印) = 印 else { return false };
+    let 残り = t.trim_start_matches(印);
+    if 残り.len() == t.len() {
+        return false;
+    }
+    let 残り = 残り.strip_prefix(' ').unwrap_or(残り);
+    残り.starts_with("[ ]") || 残り.starts_with("[x]") || 残り.starts_with("[X]")
 }
