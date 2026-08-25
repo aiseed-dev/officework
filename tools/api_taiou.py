@@ -224,6 +224,25 @@ def 表() -> str:
     return "\n".join(o)
 
 
+def 覆い():
+    """**この表がどれだけ覆っているか**(2026-08-24)。
+
+    「Python ですべて操作できる」と言うには、*表が全部のボタンを載せている*
+    必要があります。載っていないボタンは、状態すら分かりません。
+    """
+    tabs = ribbon_parse.tables_or_die()
+    全 = {}
+    for app in ("WRITER", "CALC"):
+        for tab in tabs[app]:
+            for c in tab.cmds:
+                if c.id:
+                    全.setdefault(c.id, (tab.name, c.label))
+    のせた = [k for k in 全 if k in MICHI]
+    return len(のせた), len(全), sorted(
+        (v[0], v[1], k) for k, v in 全.items() if k not in MICHI
+    )
+
+
 def main() -> int:
     src = SAKI.read_text(encoding="utf-8")
     m = re.search(rf"({re.escape(MARK_S)}[^\n]*\n)(.*?)(\n?{re.escape(MARK_E)})", src, re.S)
@@ -251,7 +270,15 @@ def main() -> int:
         print(f"{SAKI.name} がずれていたので直しました({len(rows())} 行)。"
               "コミットに入れてください")
         return 0
-    print(f"対応表は実物と揃っています({len(rows())} 行)")
+    のせた, 全, 抜け = 覆い()
+    if "--todo" in sys.argv:
+        print(f"対応表に載っていないボタン {len(抜け)} 種:")
+        for 段, l, i in 抜け:
+            print(f"  {段:<12} {l:<24} {i}")
+        return 0
+    print(f"対応表は実物と揃っています({len(rows())} 行)。"
+          f"押せるボタン {全} 種のうち {のせた} 種を載せています"
+          f"(--todo で残りが出ます)")
     return 0
 
 
