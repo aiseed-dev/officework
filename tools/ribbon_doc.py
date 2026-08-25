@@ -14,6 +14,7 @@
 手引きの本文にあった「リボンは 117」という数も古くなっていました。
 数を手で書くと必ずずれるので、この節では**道具が数えます**。
 """
+import os
 import re
 import sys
 from pathlib import Path
@@ -81,10 +82,18 @@ def main() -> int:
         if write:
             p.write_text(src[: m.start(2)] + beki + src[m.end(2):], encoding="utf-8")
             print(f"{rel} を書き直しました")
-        else:
+        elif os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
+            # CI では直せません(直しても誰もコミットしない)ので、落として言います
             print(f"::error::{rel} の操作の一覧が実物とずれています"
-                  f"(python3 tools/ribbon_doc.py --write で直します)", file=sys.stderr)
+                  f"(python3 tools/ribbon_doc.py --write で直してコミットしてください)",
+                  file=sys.stderr)
             bad = 1
+        else:
+            # **手元では直します**(2026-08-24 発注者「このような修正で検査が
+            # 落ちないようにしろ」)。道具を直して --write を忘れただけなので、
+            # 機械が直せます
+            p.write_text(src[: m.start(2)] + beki + src[m.end(2):], encoding="utf-8")
+            print(f"{rel} がずれていたので直しました。コミットに入れてください")
     if not bad and not write:
         print("操作の一覧は実物と揃っています")
     return bad

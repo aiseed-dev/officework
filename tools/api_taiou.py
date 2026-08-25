@@ -17,6 +17,7 @@
 対応は下の表が持ちます。**本家の側は実際に呼んで確かめた名前**です
 (python-docx 1.2.0 / openpyxl 3.1.5)。無い所は空です。
 """
+import os
 import re
 import sys
 from pathlib import Path
@@ -178,9 +179,21 @@ def main() -> int:
         print(f"{SAKI.name} を書き直しました({len(rows())} 行)")
         return 0
     if m.group(2).strip() != beki.strip():
-        print(f"::error::{SAKI.name} の対応表が実物とずれています"
-              "(python3 tools/api_taiou.py --write で直します)", file=sys.stderr)
-        return 1
+        # **手元では直します。落とすのは CI だけ**(2026-08-24 発注者
+        # 「このような修正で検査が落ちないようにしろ」)。
+        #
+        # 生成物と道具がずれるのは、道具を直して `--write` を忘れたときです。
+        # *それは機械が直せる*ので、手元では直して先へ進みます。
+        # CI では直せません(直しても誰もコミットしない)ので、落として言います
+        if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
+            print(f"::error::{SAKI.name} の対応表が実物とずれています"
+                  "(python3 tools/api_taiou.py --write で直してコミットしてください)",
+                  file=sys.stderr)
+            return 1
+        SAKI.write_text(src[: m.start(2)] + beki + src[m.end(2):], encoding="utf-8")
+        print(f"{SAKI.name} がずれていたので直しました({len(rows())} 行)。"
+              "コミットに入れてください")
+        return 0
     print(f"対応表は実物と揃っています({len(rows())} 行)")
     return 0
 
