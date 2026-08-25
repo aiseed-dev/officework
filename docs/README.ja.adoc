@@ -24,6 +24,7 @@
 
 |link:genkou-manual.ja.adoc[genkou-manual.ja.adoc] |*原稿を書く人*(書いて、adoc・docx・HTML・PDF の4つで出す)
 |link:api-taiou.ja.adoc[api-taiou.ja.adoc] |*引く人*(メニュー・API・python-docx・openpyxl の対応表)
+|link:commands/README.ja.adoc[commands/] |*1つの操作を詳しく知りたい人*(ボタン1つに1枚。ダイアログの選択肢はここ)
 |link:calc-manual.ja.adoc[calc-manual.ja.adoc] / link:calc-manual.adoc[.md] |calc を使う人(ボタンと作法)
 |link:writer-manual.ja.adoc[writer-manual.ja.adoc] / link:writer-manual.adoc[.md] |writer を使う人
 |link:python-manual.ja.adoc[python-manual.ja.adoc] / link:python-manual.adoc[.md] |コードを書く人(範囲⇄配列・AI との共働)
