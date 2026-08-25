@@ -498,6 +498,64 @@ fn 塊の閉じ(塊: Option<&str>, 印: Option<&str>) -> String {
     }
 }
 
+/// 塊の指定(`[loweralpha]` `[start=5]` など)から、番号の付け方を読む。
+///
+/// **AsciiDoc が決めている名前だけ**を見ます(`arabic` `loweralpha`
+/// `upperalpha` `lowerroman` `upperroman`)。返すのは (種類, 始めの数)。
+/// 番号の指定でなければ `None` です。
+fn 番号の付け方(指定: &str) -> Option<(String, Option<String>)> {
+    let mut 種 = None;
+    let mut 始め = None;
+    for 部 in 指定.split(',') {
+        let 部 = 部.trim();
+        if let Some(n) = 部.strip_prefix("start=") {
+            始め = Some(n.trim().to_string());
+        } else if matches!(部, "arabic" | "decimal" | "loweralpha" | "upperalpha"
+                                | "lowerroman" | "upperroman") {
+            種 = Some(部.to_string());
+        }
+    }
+    if 種.is_none() && 始め.is_none() {
+        return None;
+    }
+    Some((種.unwrap_or_else(|| "arabic".to_string()), 始め))
+}
+
+/// 番号の付け方を `ol` の札にする。
+///
+/// **HTML の `type` で出します。** CSS を外しても番号の種類が残るように
+/// するためです(発注者「CSS がなくても全部指定するように」)。
+fn 番号の札(付け方: Option<(String, Option<String>)>) -> String {
+    let Some((種, 始め)) = 付け方 else { return String::new() };
+    let t = match 種.as_str() {
+        "loweralpha" => "a",
+        "upperalpha" => "A",
+        "lowerroman" => "i",
+        "upperroman" => "I",
+        _ => "1",
+    };
+    match 始め {
+        Some(n) => format!(" type=\"{t}\" start=\"{n}\""),
+        None => format!(" type=\"{t}\""),
+    }
+}
+
+/// 段ごとの番号の見た目。**紙と同じ並び**にします。
+///
+/// 事務の様式は「1 →(1)→ ア →(ア)」です。紙の側は
+/// [`Paragraph::marker`] が同じ順で出しています。
+/// **CSS を外しても効くように、札に書き込みます。**
+/// 括弧は CSS の既定の種類では出せないので、`(1)` の段は括弧なしの
+/// 数のままです(そこだけ紙と違います)。
+fn 様式の段(深さ: usize) -> String {
+    match 深さ {
+        0 => String::new(),                                     // 1. 2. 3.
+        1 => " style=\"list-style-type:decimal\"".into(),       // (1) の段
+        2 | 3 => " style=\"list-style-type:katakana\"".into(),  // ア イ ウ
+        _ => String::new(),
+    }
+}
+
 pub fn body(doc: &Document) -> String {
     build(doc).0
 }
@@ -530,6 +588,12 @@ fn build(doc: &Document) -> (String, Ctx) {
     let mut 塊: Option<&'static str> = None;
     // `[NOTE]` のように、塊の直前の指定の行が言う種類
     let mut 次の塊の印: Option<String> = None;
+    // **次のリストの番号の付け方**(`[loweralpha]` `[start=5]` など)。
+    // 2026-08-25 まで、この指定は読み捨てられていました。番号の種類が
+    // 効かないだけでなく、*指定の行でリストが切れず3つが1つに繋がって*
+    // いました。事務の様式は「第1 → 1 → (1) → ア」と種類を変えて
+    // 段を作るので、ここが効かないと様式が組めません
+    let mut 次のリスト: Option<(String, Option<String>)> = None;
     // 目次の行が続いている間(nav で包む)
     let mut 目次中 = false;
     let 題名あり = !doc.props.title.is_empty();
@@ -665,7 +729,15 @@ fn build(doc: &Document) -> (String, Ctx) {
                 let 開き = if 種 == ListKind::Bullet {
                     format!("<ul{飾り}>\n")
                 } else {
-                    "<ol>\n".to_string()
+                    // 指定は*いちばん外の段だけ*に効かせます。
+                    // 指定が無いときは、事務の様式の並び(1 →(1)→ ア)にします
+                    let 札 = if list.is_empty() {
+                        let x = 番号の札(次のリスト.take());
+                        if x.is_empty() { 様式の段(0) } else { x }
+                    } else {
+                        様式の段(list.len())
+                    };
+                    format!("<ol{札}>\n")
                 };
                 o.push_str(&開き);
                 list.push(種);
@@ -760,6 +832,12 @@ fn build(doc: &Document) -> (String, Ctx) {
             let 中 = 字.trim().trim_start_matches('[').trim_end_matches(']');
             if 註記の種(中).is_some() {
                 次の塊の印 = Some(中.to_string());
+            }
+            // **番号の付け方の指定。** ここでリストを切ります —
+            // 切らないと、指定の違う3つのリストが1つに繋がります
+            if let Some(付け方) = 番号の付け方(中) {
+                close(&mut o, &mut list);
+                次のリスト = Some(付け方);
             }
             continue;
         }

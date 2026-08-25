@@ -2790,4 +2790,50 @@ fn 作業のリストはチェックボックスで出る() {
     assert!(h.contains("list-style:none"), "点を消していません:\n{h}");
 }
 
+/// **事務の様式の番号**(1 →(1)→ ア →(ア))。
+///
+/// 役所の文書はこの順です。Word の日本語の既定も同じで、
+/// 2026-08-25 まで3段目が `1)` でした。
+#[test]
+fn 番号は様式の順で出る() {
+    let mut p = crate::Paragraph { list: crate::ListKind::Number, ..Default::default() };
+    p.indent = 0;
+    assert_eq!(p.marker(0).as_deref(), Some("1. "));
+    p.indent = 1;
+    assert_eq!(p.marker(0).as_deref(), Some("(1) "));
+    p.indent = 2;
+    assert_eq!(p.marker(0).as_deref(), Some("ア "), "3段目はカタカナ");
+    assert_eq!(p.marker(2).as_deref(), Some("ウ "));
+    p.indent = 3;
+    assert_eq!(p.marker(0).as_deref(), Some("(ア) "), "4段目は括弧つきのカタカナ");
+    // 五十音を使い切っても番号が消えないこと
+    p.indent = 2;
+    assert_eq!(p.marker(45).as_deref(), Some("ア1 "), "45 を超えたら数を足す");
+}
+
+/// **番号の付け方の指定**(`[loweralpha]` `[start=5]`)。
+///
+/// 前は読み捨てられ、しかも*指定の行でリストが切れず*、
+/// 指定の違うリストが1つに繋がっていました。
+#[test]
+fn 番号の付け方の指定が効く() {
+    let d = crate::adoc::parse(
+        "= 題\n\n[loweralpha]\n. あ\n. い\n\n[upperroman]\n. 一\n\n[start=5]\n. 五\n")
+        .expect("読めない");
+    let h = crate::html_write::body(&d);
+    assert!(h.contains("<ol type=\"a\">"), "小文字の英字になっていません:\n{h}");
+    assert!(h.contains("<ol type=\"I\">"), "大文字のローマ数字になっていません:\n{h}");
+    assert!(h.contains("start=\"5\""), "始めの数が効いていません:\n{h}");
+    // **指定ごとに別のリスト**。3つに切れているはず
+    assert_eq!(h.matches("<ol").count(), 3, "指定の行でリストが切れていません:\n{h}");
+}
+
+/// HTML の番号も、紙と同じ段の並びにするか。
+#[test]
+fn 多段の番号は紙と同じ並びで出る() {
+    let d = crate::adoc::parse("= 題\n\n. 1段\n.. 2段\n... 3段\n").expect("読めない");
+    let h = crate::html_write::body(&d);
+    assert!(h.contains("list-style-type:katakana"), "3段目がカタカナになっていません:\n{h}");
+}
+
 }
