@@ -765,6 +765,22 @@ impl Writer {
                 self.open_list = (self.open_list != Some("datetime")).then_some("datetime");
                 self.pick_sel = 0;
             }
+            // **読み飛ばした物をまた出す**(2026-08-26)。断りは閉じられる
+            // ようにしたので、見直す道が要ります
+            "show-notes" => {
+                // **下の帯に並べます。** 浮く小窓は出しません
+                self.status = if self.notes.is_empty() {
+                    ui::t!("読み飛ばした物はありません").into()
+                } else {
+                    let 中 = self
+                        .notes
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join(" / ");
+                    ui::tf!("読み飛ばしたもの: {}", 中).into()
+                };
+            }
             "ruler" => self.ruler = !self.ruler,
             // ダークモード。**紙は白いまま**(画面と紙の一致)。周りだけ暗くする
             // ダークモード。**紙は白いまま**(画面と紙の一致)。周りだけ暗くする。

@@ -1008,9 +1008,15 @@ impl Writer {
                 }
                 if !exact {
                     if let Some(w) = &wanted {
+                        // **下の帯に出します**(2026-08-26 発注者「メッセージで
+                        // ダイアログを出すな。下にパネルに表示でいいのでは」)。
+                        // 前は紙の右上に浮く小窓で、閉じる道がありませんでした
                         self.notes.push(
                             ui::tf!("書体「{}」が無いので「{}」で表示", w, fam.name).into(),
                         );
+                        self.status =
+                            ui::tf!("書体「{}」が無いので「{}」で表示します", w, fam.name)
+                                .into();
                     }
                 }
             }

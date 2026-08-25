@@ -1481,6 +1481,9 @@ impl Render for Writer {
                 ("replace", ui::t!("検索と置換"), "Ctrl+F", true),
                 ("comment", ui::t!("コメント"), "", true),
                 ("wordcount", ui::t!("文字数を数える"), "", true),
+                // **読み飛ばした物を見直す口**(2026-08-26)。断りを閉じても
+                // ここから見られます。読めなかった物があるときだけ出します
+                ("show-notes", ui::t!("この版で読み飛ばしたもの"), "", !self.notes.is_empty()),
             ];
             let h_est = entries.len() as f32 * 25.0 + 10.0;
             let win_w = f32::from(window.viewport_size().width);
@@ -1518,19 +1521,6 @@ impl Render for Writer {
             }
             m
         });
-
-        let notes = if self.notes.is_empty() { None } else {
-            let mut n = div().absolute().right(px(us * 16.0)).top(px(us * 14.0)).w(px(us * 270.0))
-                .p_3().rounded_md().bg(rgb(0xFFF6E6))
-                .border_1().border_color(rgb(0xE8D5A8))
-                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
-                       .text_color(rgb(0x8A4B00)).child(ui::t!("この版で読み飛ばしたもの")));
-            for x in &self.notes {
-                n = n.child(div().text_size(px(us * 11.0)).text_color(rgb(0x8A4B00))
-                            .child(x.clone()));
-            }
-            Some(n)
-        };
 
         div().size_full().flex().flex_col().bg(th_desk)
             // **一覧は窓の根に置きます**(2026-08-20。手順2)。編集の面の
@@ -1616,7 +1606,6 @@ impl Render for Writer {
                         cx.notify();
                     }))
                     .child(paper)
-                    .children(notes)
                     .children(find_panel)
                     .children(hf_panel)
                     .children(cmt_panel)
