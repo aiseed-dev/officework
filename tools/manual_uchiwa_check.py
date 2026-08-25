@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MIRU = [
     "docs/genkou-manual.ja.adoc",
     "docs/api-taiou.ja.adoc",
+    "docs/docx-xlsx-tono-chigai.ja.adoc",
     "docs/writer-manual.ja.adoc",
     "docs/calc-manual.ja.adoc",
     "docs/python-manual.ja.adoc",

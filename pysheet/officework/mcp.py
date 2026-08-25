@@ -46,16 +46,28 @@ from __future__ import annotations
 
 import os
 
+# **mcp は 2.0 で置き場と名前が変わりました。** `FastMCP` は
+# `mcp.server.mcpserver.MCPServer` になっています。道具の付け方
+# (`@…tool()`)も走らせ方(`.run()`)も同じなので、両方から探します。
+# 見つからないときは、*入っていないのか古い/新しいのか*を分けて言います
 try:
-    from mcp.server.fastmcp import FastMCP
-except ModuleNotFoundError as e:  # pragma: no cover - 入れていない人向け
-    raise SystemExit(
-        "MCP の口には mcp が要ります: pip install \"officework[mcp]\""
-    ) from e
+    from mcp.server.mcpserver import MCPServer as _Server      # mcp 2.x
+except ModuleNotFoundError:
+    try:
+        from mcp.server.fastmcp import FastMCP as _Server      # mcp 1.x
+    except ModuleNotFoundError as e:  # pragma: no cover - 入れていない人向け
+        if e.name == "mcp":
+            raise SystemExit(
+                "MCP の口には mcp が要ります: pip install \"officework[mcp]\""
+            ) from e
+        raise SystemExit(
+            "入っている mcp が合いません。1.x か 2.x を入れてください: "
+            "pip install -U \"officework[mcp]\""
+        ) from e
 
 from . import calc as xw
 
-mcp = FastMCP("officework")
+mcp = _Server("officework")
 
 
 def _book():

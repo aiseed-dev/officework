@@ -29,6 +29,7 @@
 |link:writer-manual.ja.adoc[writer-manual.ja.adoc] / link:writer-manual.adoc[.md] |writer を使う人
 |link:python-manual.ja.adoc[python-manual.ja.adoc] / link:python-manual.adoc[.md] |コードを書く人(範囲⇄配列・AI との共働)
 |link:macro-manual.ja.adoc[macro-manual.ja.adoc] / link:macro-manual.adoc[.md] |マクロ(置き場・選択に効く定型処理・記入欄・雛形・AI に書かせる)
+|link:docx-xlsx-tono-chigai.ja.adoc[docx-xlsx-tono-chigai.ja.adoc] |*Word / Excel から来た人*(画面は同じ・変えたのはファイルの形式。違いを1枚に集めた)
 |link:from-excel.ja.adoc[from-excel.ja.adoc] / link:from-excel.adoc[.md] |*Excel から乗り換える人*(課題→ここでの道)
 |link:../templates/README.adoc[templates/]・link:../sample/README.adoc[sample/] |実例で覚える人
 |===

@@ -276,9 +276,10 @@ jobs:
         # 「合っています」と出るためです(入れた日にそれで 88 行を素通り
         # させていました)。本家2つと mcp をここで入れる
         run: |
-          # mcp は 2.0 で `mcp.server.fastmcp` を無くしました。
-          # pysheet/officework/mcp.py はそこから読むので 1 系に留めます
-          pip install --quiet openpyxl python-docx "mcp<2"
+          # mcp は 1.x と 2.x で置き場が違いますが、officework/mcp.py は
+          # 両方から探します。上限を付けずに入れて、新しい版で壊れたら
+          # ここで分かるようにします
+          pip install --quiet openpyxl python-docx mcp
           python3 tools/api_param_check.py
       - name: face に gpui が混ざっていないか(孫まで)
         # **持ち運べる層の値打ちは「gpui を持たないこと」そのもの**

@@ -29,6 +29,7 @@ TARGETS = [
     "sample/README.md",
     # 引く1枚と、コマンドごとの手引き(2026-08-24 に足した)
     "docs/api-taiou.ja.adoc", "docs/genkou-manual.ja.adoc",
+    "docs/docx-xlsx-tono-chigai.ja.adoc",
     "docs/commands/*.adoc", "docs/commands/*/*.adoc",
 ]
 
