@@ -26,34 +26,29 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
 import ribbon_parse  # noqa: E402
 
-# ボタンの id → (officework 文書, python-docx, officework 表, openpyxl)。
-# **空文字はその道が無い。** id が両方の画面にあるときは1行にまとまります。
-#
-# *セルは文書の表にもあります*(2026-08-24 発注者)ので、
-# 字・書式・結合・式はどちらの列も埋まります。
 # ボタンの id → (オブジェクト, officework, python-docx, openpyxl)。
 # **officework は `.adoc` を触る1つの模型なので、文書と表で列を割りません**
 # (2026-08-24 発注者)。どのオブジェクトの物かを示します。
 # `A / B` は、いま2つの呼び方がある物です(寄せる仕事が残っています)。
 MICHI = {
-    "changecase": ("", "", "", ""),
-    "inssymbol": ("", "", "", ""),
-    "datetime": ("", "", "", ""),
-    "selectall": ("", "", "", ""),
-    "text-from-file": ("", "", "", ""),
-    "rem-duplicates": ("", "", "", ""),
-    "flash-fill": ("", "", "", ""),
-    "text-column": ("", "", "", ""),
-    "subtotal": ("", "", "", ""),
-    "trace-prec": ("", "", "", ""),
-    "show-formulas": ("", "", "", ""),
-    "fill-num": ("", "", "", ""),
-    "numpages": ("", "", "", ""),
-    "pagenum": ("", "", "", ""),
-    "insrecommend": ("", "", "", ""),
-    "func-list": ("", "", "", ""),
-    "csv-kind": ("", "", "", ""),
-    "data-from-text": ("", "", "", ""),
+    "changecase": ("Run", "", "", ""),
+    "inssymbol": ("Run", "", "", ""),
+    "datetime": ("Paragraph", "", "", ""),
+    "selectall": ("Doc", "", "", ""),
+    "text-from-file": ("Doc", "", "", ""),
+    "rem-duplicates": ("Sheet", "", "", ""),
+    "flash-fill": ("Cell", "", "", ""),
+    "text-column": ("Cell", "", "", ""),
+    "subtotal": ("Cell", "", "", ""),
+    "trace-prec": ("Cell", "", "", ""),
+    "show-formulas": ("Cell", "", "", ""),
+    "fill-num": ("Cell", "", "", ""),
+    "numpages": ("Doc", "", "", ""),
+    "pagenum": ("Doc", "", "", ""),
+    "insrecommend": ("Sheet", "", "", ""),
+    "func-list": ("Book", "", "", ""),
+    "csv-kind": ("Sheet", "", "", ""),
+    "data-from-text": ("Sheet", "", "", ""),
     "open": ("Doc / Book", "Doc.open(径路) / Book.open(径路)", "docx.Document(径路)", "load_workbook(径路)"),
     "save": ("Doc / Book", "d.save(径路) / b.save(径路)", "d.save(径路)", "wb.save(径路)"),
     "pdf": ("", "", "", ""),
@@ -145,6 +140,15 @@ MICHI = {
 # *ここに載せるのは、決めが記録されている物だけ*です。
 # 決めていない空欄は「未実装」— 作らないと決めたのではなく、まだ作っていません。
 TSUKURANAI = {
+    # ファイルのページの、画面だけの物。**文書は変わりません**
+    "f-back": "画面の行き来です。文書は変わりません",
+    "f-recent": "画面が覚えている物です。プログラムは径路を直に書きます",
+    "f-find": "画面の検索です。プログラムは自分でフォルダを歩けます",
+    "f-place": "画面の操作です。プログラムは os が持っています",
+    "f-quit": "画面の操作です",
+    "f-opts": "アプリの設定です。文書は変わりません",
+    "f-help": "画面の操作です",
+    "f-req": "画面の操作です",
     "inschart": "図は matplotlib が描いて貼ります。見本で足ります(SEKKEI「見本を作って止める」)",
     "pivot-insert": "集計は polars が処理します。画面のボタンから使えます",
 }
@@ -239,6 +243,46 @@ def 段の並び(tabs):
     return out
 
 
+FILE_SRC = ROOT / "writer/src/cmds.rs"
+
+# ファイルのページの項目 → (オブジェクト, officework, python-docx, openpyxl)。
+# **リボンのファイルタブは3つしかありません**(開く・保存・印刷)。
+# 実体は全面のページで、`writer/src/cmds.rs` の `file_menu()` にあります。
+# リボンだけを読むと、*ファイルの仕事がほとんど表に出ません*
+# (2026-08-24 発注者「どうして対応表を変更しないのだ」)
+FILE_MICHI = {
+    "f-new": ("Doc / Book", "Doc() / Book()", "docx.Document()", "Workbook()"),
+    "f-tpl": ("Template", "", "docx.Document(雛形)", "load_workbook(雛形)"),
+    "f-open": ("Doc / Book", "Doc.open(径路) / Book.open(径路)", "docx.Document(径路)", "load_workbook(径路)"),
+    "f-url": ("Doc", "", "", ""),
+    "f-recent": ("", "", "", ""),
+    "f-find": ("", "", "", ""),
+    "f-recover": ("", "", "", ""),
+    "f-save": ("Doc / Book", "d.save(径路) / b.save(径路)", "d.save(径路)", "wb.save(径路)"),
+    "f-saveas": ("Doc / Book", "d.save(別の径路)", "d.save(別の径路)", "wb.save(別の径路)"),
+    "f-print": ("Doc", "", "", ""),
+    "f-merge": ("Doc", "d.render(値, rows=行)", "", ""),
+    "f-html": ("Doc", "", "", ""),
+    "f-protect": ("Doc / Book", "", "", "wb.security"),
+    "f-distill": ("Doc", "", "", ""),
+    "f-info": ("Doc / Book", "d.core_properties", "d.core_properties", "wb.properties"),
+    "f-place": ("", "", "", ""),
+    "f-quit": ("", "", "", ""),
+    "f-opts": ("", "", "", ""),
+    "f-help": ("", "", "", ""),
+    "f-req": ("", "", "", ""),
+    "f-back": ("", "", "", ""),
+}
+
+
+def file_menu():
+    """ファイルのページの項目を `writer/src/cmds.rs` から読みます。手で写しません。"""
+    src = FILE_SRC.read_text(encoding="utf-8")
+    body = src[src.index("fn file_menu"):]
+    body = body[: body.index("\n    }")]
+    return re.findall(r'I::new\("(f-[a-z]+)",\s*ui::t!\("([^"]+)"\)\)', body)
+
+
 def rows():
     """(段, ボタン, 絵, オブジェクト, 印, officework, python-docx, openpyxl)。
     **並びはメニューのまま**、*分類はオブジェクト*です(2026-08-24 発注者)。"""
@@ -248,6 +292,15 @@ def rows():
     c = {t.name: t for t in tabs["CALC"]}
     out = []
     for 段 in 並び:
+        if 段 == "ファイル":
+            # **リボンの3つではなく、全面のページの一覧を出します**
+            for i, ラベル in file_menu():
+                if i not in FILE_MICHI:
+                    continue
+                obj, ow, pd, op = FILE_MICHI[i]
+                _ラベルの逆引き[i] = ラベル
+                out.append((段, ラベル, "", obj, 状態(i, ow), ow, pd, op))
+            continue
         見た = set()
         for t in (w.get(段), c.get(段)):
             if t is None:
@@ -328,9 +381,13 @@ def 覆い():
             for c in tab.cmds:
                 if c.id:
                     全.setdefault(c.id, (tab.name, c.label))
-    のせた = [k for k in 全 if k in MICHI]
+    # **ファイルのページも数えます**(リボンのファイルタブは3つだけで、
+    # 実際の仕事は全面のページにあります)
+    for i, ラベル in file_menu():
+        全.setdefault(i, ("ファイル", ラベル))
+    のせた = [k for k in 全 if k in MICHI or k in FILE_MICHI]
     return len(のせた), len(全), sorted(
-        (v[0], v[1], k) for k, v in 全.items() if k not in MICHI
+        (v[0], v[1], k) for k, v in 全.items() if k not in MICHI and k not in FILE_MICHI
     )
 
 
