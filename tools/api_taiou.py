@@ -54,6 +54,19 @@ MICHI = {
     "td-torange": ("Table", "", "", "del ws.tables[…]"),
     "td-resize": ("Table", "", "", "ws.tables[…].ref"),
 
+    # **ダイアログのパラメータの台帳にあるのに、表に載っていなかった物**
+    # (2026-08-25。docs/sekkei/dialog-parameters.ja.adoc から)。
+    # 手引きにパラメータを書くには、まず表に行が要ります
+    "table-tpl": ("Sheet", "", "", "ws.add_table(…)"),
+    "fit-pages": ("Sheet", "", "", "ws.page_setup.fitToWidth"),
+    "prot-allow": ("Sheet", "", "", "ws.protection"),
+    "scenario": ("Sheet", "", "", ""),
+    "solver": ("Sheet", "", "", ""),
+    "inssparkline": ("Sheet", "", "", ""),
+    "insslicer": ("Sheet", "", "", ""),
+    "paste-name": ("Book", "", "", "wb.defined_names"),
+    "watermark": ("Doc", "", "", ""),
+    "co-history": ("Doc", "", "", ""),
     "changecase": ("Run", "", "", ""),
     "inssymbol": ("Run", "", "", ""),
     "datetime": ("Paragraph", "", "", ""),

@@ -148,6 +148,7 @@ def 大文字にする(段落):
 |image:../face/icons/cell-ins.svg[セルを挿入,16,16] link:commands/ホーム/セルを挿入.adoc[セルを挿入] |Table / Sheet |✅ |t.add_row() / s.insert_rows(行) |t.add_row() |ws.insert_rows(行)
 |image:../face/icons/cell-del.svg[セルを削除,16,16] link:commands/ホーム/セルを削除.adoc[セルを削除] |Sheet |✅ |s.delete_rows(行) |— |ws.delete_rows(行)
 |image:../face/icons/condformat.svg[条件付き書式,16,16] link:commands/ホーム/条件付き書式.adoc[条件付き書式] |Cell | |— |— |ws.conditional_formatting.add(…)
+|image:../face/icons/table-tpl.svg[表として書式設定,16,16] link:commands/ホーム/表として書式設定.adoc[表として書式設定] |Sheet | |— |— |ws.add_table(…)
 |===
 
 == 挿入
@@ -172,8 +173,10 @@ def 大文字にする(段落):
 |image:../face/icons/controls.svg[コンテンツコントロールの挿入,16,16] link:commands/挿入/コンテンツコントロールの挿入.adoc[コンテンツコントロールの挿入] |Doc(記入欄) |✅ |mcp.doc_fields() |— |—
 |image:../face/icons/add-pivot.svg[ピボットテーブルを挿入,16,16] link:commands/挿入/ピボットテーブルを挿入.adoc[ピボットテーブルを挿入] |Sheet | |— |— |ws.add_pivot(…)
 |image:../face/icons/insrecommend.svg[推奨チャートを挿入,16,16] link:commands/挿入/推奨チャートを挿入.adoc[推奨チャートを挿入] |Sheet |✍ |s.values() を polars に渡して選ぶ |— |—
+|image:../face/icons/inssparkline.svg[スパークラインを挿入する,16,16] link:commands/挿入/スパークラインを挿入する.adoc[スパークラインを挿入する] |Sheet | |— |— |—
 |image:../face/icons/ins-comment.svg[コメント,16,16] link:commands/挿入/コメント.adoc[コメント] |Comment |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
 |image:../face/icons/inshyperlink.svg[ハイパーリンクを追加,16,16] link:commands/挿入/ハイパーリンクを追加.adoc[ハイパーリンクを追加] |Cell |✅ |c.hyperlink |— |c.hyperlink
+|image:../face/icons/insslicer.svg[スライサーを挿入,16,16] link:commands/挿入/スライサーを挿入.adoc[スライサーを挿入] |Sheet | |— |— |—
 |===
 
 == 描画
@@ -197,9 +200,11 @@ def 大文字にする(段落):
 |image:../face/icons/pagemargins.svg[余白,16,16] link:commands/レイアウト/余白.adoc[余白] |Section |✅ |d.sections[0] |section.left_margin |ws.page_margins
 |image:../face/icons/pageorient.svg[印刷の向き,16,16] link:commands/レイアウト/印刷の向き.adoc[印刷の向き] |Section |✅ |d.sections[0] |section.orientation |ws.page_setup.orientation
 |image:../face/icons/pagesize.svg[ページのサイズ,16,16] link:commands/レイアウト/ページのサイズ.adoc[ページのサイズ] |Section |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
+|image:../face/icons/watermark.svg[透かしを編集する,16,16] link:commands/レイアウト/透かしを編集する.adoc[透かしを編集する] |Doc | |— |— |—
 |image:../face/icons/printarea.svg[印刷範囲,16,16] link:commands/レイアウト/印刷範囲.adoc[印刷範囲] |Sheet |✅ |s.print_area |— |ws.print_area
 |image:../face/icons/pagebreak.svg[区切り,16,16] link:commands/挿入/区切り.adoc[区切り] |Doc |✅ |*挿入と同じ* — d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../face/icons/editheader.svg[ヘッダー/フッター,16,16] link:commands/レイアウト/ヘッダー_フッター.adoc[ヘッダー/フッター] |Doc / Sheet |✅ |d.header / s.oddHeader |section.header |ws.oddHeader
+|image:../face/icons/fit-pages.svg[紙に収める,16,16] link:commands/レイアウト/紙に収める.adoc[紙に収める] |Sheet | |— |— |ws.page_setup.fitToWidth
 |image:../face/icons/printtitles.svg[タイトルを印刷する,16,16] link:commands/レイアウト/タイトルを印刷する.adoc[タイトルを印刷する] |Sheet |✅ |s.print_title_rows |— |ws.print_title_rows
 |image:../face/icons/print-gridlines.svg[枠線も印刷,16,16] link:commands/レイアウト/枠線も印刷.adoc[枠線も印刷] |Sheet |✅ |s.print_gridlines |— |ws.print_options.gridLines
 |===
@@ -214,6 +219,7 @@ def 大文字にする(段落):
 |image:../face/icons/py-list.svg[Python の関数,16,16] link:commands/数式/Python の関数.adoc[Python の関数] |Book |✍ |自分の .py を書く(綴りの macros) |— |—
 |image:../face/icons/autosum.svg[オートSUM,16,16] link:commands/ホーム/オートSUM.adoc[オートSUM] |Cell |✅ |*ホームと同じ* — s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
 |image:../face/icons/named-range-huge.svg[名前の管理,16,16] link:commands/ホーム/名前の管理.adoc[名前の管理] |Book |✅ |*ホームと同じ* — b.create_named_range(名前, …) |— |wb.defined_names
+|image:../face/icons/paste-name.svg[名前を貼り付け,16,16] link:commands/数式/名前を貼り付け.adoc[名前を貼り付け] |Book | |— |— |wb.defined_names
 |image:../face/icons/trace-prec.svg[参照元のトレース,16,16] link:commands/数式/参照元のトレース.adoc[参照元のトレース] |Cell |✍ |s.formula('A1') で参照を読む |— |—
 |image:../face/icons/show-formulas.svg[数式の表示,16,16] link:commands/数式/数式の表示.adoc[数式の表示] |Cell |✍ |s.formula(場所) |— |—
 |image:../face/icons/calculate.svg[計算方法,16,16] link:commands/数式/計算方法.adoc[計算方法] |Book |✅ |b.recalc() |— |wb.calculation
@@ -233,6 +239,8 @@ def 大文字にする(段落):
 |image:../face/icons/text-column.svg[区切り位置,16,16] link:commands/データ/区切り位置.adoc[区切り位置] |Cell |✍ |s['B2'], s['C2'] = s['A2'].split(',') |— |—
 |image:../face/icons/rem-duplicates.svg[重複の削除,16,16] link:commands/データ/重複の削除.adoc[重複の削除] |Sheet |✍ |— |— |—
 |image:../face/icons/data-validation.svg[データの入力規則,16,16] link:commands/データ/データの入力規則.adoc[データの入力規則] |Sheet |✅ |s.add_data_validation(…) |— |ws.add_data_validation(…)
+|image:../face/icons/scenario.svg[シナリオ,16,16] link:commands/データ/シナリオ.adoc[シナリオ] |Sheet | |— |— |—
+|image:../face/icons/solver.svg[ソルバー,16,16] link:commands/データ/ソルバー.adoc[ソルバー] |Sheet | |— |— |—
 |image:../face/icons/group.svg[グループ化,16,16] link:commands/データ/グループ化.adoc[グループ化] |Sheet |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
 |image:../face/icons/ungroup.svg[グループ解除,16,16] link:commands/データ/グループ解除.adoc[グループ解除] |Sheet |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
 |image:../face/icons/subtotal.svg[小計,16,16] link:commands/データ/小計.adoc[小計] |Cell |✍ |s['A9'] = '=SUBTOTAL(9,A2:A8)' |— |—
@@ -307,6 +315,7 @@ def 大文字にする(段落):
 
 |image:../face/icons/co-addcomment.svg[コメントを追加,16,16] link:commands/共同編集/コメントを追加.adoc[コメントを追加] |Comment |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
 |image:../face/icons/co-showcomment.svg[コメントの表示,16,16] link:commands/共同編集/コメントの表示.adoc[コメントの表示] |Comment |✅ |d.comments / c.comment |d.comments |c.comment
+|image:../face/icons/co-history.svg[バージョン履歴,16,16] link:commands/共同編集/バージョン履歴.adoc[バージョン履歴] |Doc | |— |— |—
 |===
 
 == 保護
@@ -317,6 +326,7 @@ def 大文字にする(段落):
 
 |image:../face/icons/prot-doc.svg[保護,16,16] link:commands/保護/保護.adoc[保護] |Sheet | |— |— |ws.protection
 |image:../face/icons/prot-encrypt.svg[暗号化する,16,16] link:commands/保護/暗号化する.adoc[暗号化する] |Book | |— |— |wb.security
+|image:../face/icons/prot-allow.svg[許可する操作,16,16] link:commands/保護/許可する操作.adoc[許可する操作] |Sheet | |— |— |ws.protection
 |===
 
 == 表示
