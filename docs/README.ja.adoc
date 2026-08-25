@@ -1,61 +1,41 @@
 = マニュアルの一覧
 
-当面、管理するのは**利用者向けの冊子の日本語と英語の対**だけです
-(発注者 2026-08-26。設計や台帳は作る側の資料で、この管理の外です)。
+読みたいことから冊子を選んでください。
 
-== ユーザーマニュアル
-
-英語版が正本(primary)、日本語版が副です — 各冊子の頭にそう書いてあります
-(世界に配る前提。日本語は発注者と国内の一次読者のため常に併走)。
-
-[cols="2,2,1"]
+[cols="2,3"]
 |===
-|冊子 |読む人 |英語版
+|冊子 |こんなとき
 
-|link:genkou-manual.ja.adoc[原稿の手引き] / link:genkou-manual.adoc[en] |*原稿を書く人*(書いて、adoc・docx・HTML・PDF の4つで出す) |ある
-|link:calc-manual.ja.adoc[calc の手引き] / link:calc-manual.adoc[en] |表計算を使う人(ボタンと作法) |ある
-|link:writer-manual.ja.adoc[writer の手引き] / link:writer-manual.adoc[en] |文書を使う人 |ある
-|link:python-manual.ja.adoc[Python の手引き] / link:python-manual.adoc[en] |コードを書く人(範囲⇄配列・AI との共働) |ある
-|link:macro-manual.ja.adoc[マクロの手引き] / link:macro-manual.adoc[en] |マクロ(置き場・選択に効く定型処理・記入欄・雛形・AI に書かせる) |ある
-|link:commands/README.ja.adoc[コマンドの手引き] |*1つの操作を詳しく知りたい人*(ボタン1つに1枚。ダイアログの選択肢はここ) |まだ(169枚 — 最後に)
-|link:api-taiou.ja.adoc[対応表] |*引く人*(メニュー・API・python-docx・openpyxl の対応表) |まだ
-|link:docx-xlsx-tono-chigai.ja.adoc[Word / Excel との違い] |*Word / Excel から来た人*(画面は同じ・変えたのはファイルの形式) |まだ
-|link:from-excel.ja.adoc[Excel から] / link:from-excel.adoc[en] |*Excel から乗り換える人*(課題→ここでの道) |ある
-|link:../templates/README.adoc[templates/]・link:../sample/README.adoc[sample/] |実例で覚える人 |—
+|link:genkou-manual.ja.adoc[原稿の手引き](link:genkou-manual.adoc[English])
+|原稿を書いて、AsciiDoc・Word 文書・Web ページ・PDF の4つの形で出す
+
+|link:calc-manual.ja.adoc[calc の手引き](link:calc-manual.adoc[English])
+|表計算の画面の使い方ぜんぶ
+
+|link:writer-manual.ja.adoc[writer の手引き](link:writer-manual.adoc[English])
+|文書の画面の使い方ぜんぶ
+
+|link:commands/README.ja.adoc[コマンドの手引き]
+|ボタン1つを詳しく知りたい。ダイアログで何を選べるかもここ
+
+|link:python-manual.ja.adoc[Python の手引き](link:python-manual.adoc[English])
+|プログラムから読み書きする
+
+|link:macro-manual.ja.adoc[マクロの手引き](link:macro-manual.adoc[English])
+|自分のボタンや処理を足す。AI に書かせる方法もここ
+
+|link:from-excel.ja.adoc[Excel から](link:from-excel.adoc[English])
+|Excel でやっていたことを、ここでどうやるか
+
+|link:docx-xlsx-tono-chigai.ja.adoc[Word / Excel との違い]
+|Word / Excel と何が同じで何が違うか、1枚で
+
+|link:api-taiou.ja.adoc[対応表]
+|メニューのボタンと、openpyxl・python-docx の書き方の対応を引く
+
+|link:../templates/README.adoc[テンプレート集]・link:../sample/README.adoc[実例集]
+|実物を開いて覚える
 |===
 
-英語版の無い冊子は、この順で揃えます: Word / Excel との違い → 対応表 → コマンドの手引き。
-
-== 管理の規則
-
-. *嘘は欠落より悪い。* 挙動を変えるコミットは、**同じ回で**マニュアルの該当箇所も直す
-. **新機能の追記は遅れてよい**が、遅れは下の「追随待ち」に一行で控える。黙って古いままにしない
-. *できることだけ書く*(リボンの灰色と同じ方針)。「〜できます(予定)」は書かない。
-**ただし `commands/` は別**です — こちらは*手引きが先で、実物が後*。
-画面の灰色のボタンと同じ考え方で、*あることは見せて、状態で言います*。
-書く状態は3つ: *実装済み*(いま使えます)・*未実装*(まだ使えません)・
-*廃止予定*(なくす予定です。行き先を書く)
-. 両言語とも直すのが原則。急ぐときは正本(英語)を先に直し、日本語は追随待ちに載せる — どちらか一方だけが直っている状態を規則の外に置かない
-. 実測で書く(python-manual の流儀 — 「全部この機械で実測してある」を守る)
-. *生成した節は、手で直さない。* 手引きの中には道具が起こす節がある
-(キーの一覧・すべての操作・対応表)。**手元で検査を回せば、ずれていても
-自分で直ります** — 直った分をコミットに入れる。CI では直さずに落とすので、
-入れ忘れはそこで分かる
-. *蒸留の作法*(2026-08-08 発注者「Excel のマニュアルを蒸留して」):本家(Excel)のヘルプは**課題の並びの教師** — 使う人が知っている仕事の一覧として構成だけ借り、*文章は写さない*(vendor を挙動の教師にした台帳と同じ流儀)。成果物は from-excel(課題→ここでの道/やらない理由)
-
-== 作る側の資料(利用者は読まなくてよい)
-
-設計は link:../SEKKEI.adoc[SEKKEI.adoc] と link:sekkei/[sekkei/]、
-実装の在庫は link:guide-tsukiawase-2.ja.adoc[台帳]にあります。
-このフォルダに残っている corpus・engine・pysheet-gokan・mac-signing の類いも
-作る側の物です。**場所は動かしません** — PyPI の README など公開済みの
-リンクが刺さっているためです。
-
-link:articles/[articles/] は公開用の書き物の置き場で、マニュアルの管理の
-規則は掛かりません(その時点の事実と見立てを残す物。挙動が変わっても
-遡って直さない。発注者の一人称で書く)。
-
-== 追随待ち(直したら消す)
-
-* calc-manual(ja/en): 2026-08-07〜08 の突き合わせ分の総ざらい —条件付き書式の第2版(バー・スケール・アイコン)、ピボットの絞り込みとグループ化、スパークライン3種、テキスト取り込みウィザード、R1C1、反復計算などが「挿入」「データ」節にまだ薄い(図形と @コマンドは2026-08-08 に追随済み)
-* from-excel: 第3稿+英語版(2026-08-08 — 本家ヘルプの領域を一巡。課題は計 471 件)。残りは本文の「在庫候補」印を台帳へ移す整理だけ
+英語版のある冊子は、英語版が原文です。English の付いていない冊子は
+日本語だけです(順に英語版を作っています)。

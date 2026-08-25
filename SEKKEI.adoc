@@ -408,7 +408,7 @@ MPL-2.0 / Apache-2.0 / MIT / LGPL からは片道で取り込める。
 . 節の頭に**日付と誰の決定か**(発注者確定 / 発注者報告 / 当方の見立て)
 . 決定を覆すときは古い節を消さず「↑を狭めた/改めた(日付)」で上書きの節を足す — 経緯ごと残す(Python の節がその型)
 . 探すときは `grep -rn "語" SEKKEI.adoc docs/sekkei/` — 正本はここと部屋で全部(枚数は書かない — 部屋は増える。実際 7枚と書いた2日後に pyoffice とbuilder が増えた)
-. 実装の在庫(何ができていないか)は台帳link:docs/guide-tsukiawase-2.ja.adoc[docs/guide-tsukiawase-2.ja.adoc]、使い方は**マニュアル**(docs/\*-manual.ja.md — 管理の規則はlink:docs/README.ja.adoc[docs/README.ja.adoc])。設計(なぜ)・在庫(どこまで)・使い方(どうやる)の三帳簿を混ぜない
+. 実装の在庫(何ができていないか)は台帳link:docs/guide-tsukiawase-2.ja.adoc[docs/guide-tsukiawase-2.ja.adoc]、使い方は**マニュアル**(docs/\*-manual.ja.md — 管理の規則はlink:docs/sekkei/manual-kanri.ja.adoc[docs/sekkei/manual-kanri.ja.adoc])。設計(なぜ)・在庫(どこまで)・使い方(どうやる)の三帳簿を混ぜない
 . **方針を廃止する回で、`tools/sunset_check.py` の表にも語を足す。**使い方の帳簿(README・マニュアル)は「できることだけ書く」ので、廃止語が現在形で残っていたら CI が落ちる。設計の部屋は対象外(経緯を残す場所)。この検査は表に載せた語しか見ない — 載せ忘れた廃止は永久に緑で通るから、この規則で塞ぐ(README の「ブックに載せられます」が9日間残った 2026-08-12 の反省)
 
 == エンジンの統一 — 表を1つにする(2026-08-18 発注者)

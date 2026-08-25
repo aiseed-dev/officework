@@ -22,6 +22,10 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # 見る文書(利用者が読む物)
 MIRU = [
+    # 一覧そのものも利用者が読む(2026-08-26 に「(発注者 …)」の注記を
+    # 頭に書いてしまい、ここに入っていなかったので素通りした)
+    "docs/README.ja.adoc",
+    "docs/from-excel.ja.adoc",
     "docs/genkou-manual.ja.adoc",
     "docs/api-taiou.ja.adoc",
     "docs/docx-xlsx-tono-chigai.ja.adoc",
