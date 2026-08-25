@@ -273,8 +273,7 @@ pub struct Writer {
     open_list: Option<&'static str>,
     /// **一覧の中で選んでいる位置**(↑↓ の相手)。表の画面と同じ持ち方です
     pick_sel: usize,
-    /// 挿す表の大きさ(行, 列)。升の上を動かすと変わります。
-    /// **既定は 3×3** — 前はここが固定でした
+    /// 挿す表の大きさ(行, 列)。打った数がここに入ります
     table_size: (usize, usize),
     /// **書体の一覧の絞り込み。** 打つほど減ります。表の画面に前からある形で、
     /// これが無いと 24 件で切るしかありませんでした(25件目から選べない)
@@ -462,6 +461,10 @@ pub struct Writer {
     /// ルビのパネル(選んだ字に読みを振る)
     rb_open: bool,
     rb_ed: Editor,
+    /// 表の大きさを打つ欄(2026-08-25 発注者「行×列を選ぶ画面は、数値入力に
+    /// しないと選択ではだめでしょう」)。一覧から選ばせる形をやめました
+    tbl_open: bool,
+    tbl_ed: Editor,
     rb_range: std::ops::Range<usize>,
     /// 数式のパネル(LaTeX を打つ)。**組むのは Python** — 自前で組版は
     /// 書かない(calc がグラフを matplotlib に任せるのと同じ分業)。
@@ -727,6 +730,8 @@ impl HasEditor for Writer {
             &mut self.url_ed
         } else if self.fm_field.is_some() {
             &mut self.fm_ed
+        } else if self.tbl_open {
+            &mut self.tbl_ed
         } else if self.rb_open {
             &mut self.rb_ed
         } else if self.eq_open {
@@ -798,6 +803,8 @@ impl HasEditor for Writer {
             &self.url_ed
         } else if self.fm_field.is_some() {
             &self.fm_ed
+        } else if self.tbl_open {
+            &self.tbl_ed
         } else if self.rb_open {
             &self.rb_ed
         } else if self.eq_open {
@@ -819,7 +826,7 @@ impl HasEditor for Writer {
             // パスワード・検索欄への打鍵は文書を変えない
             return;
         }
-        if self.chat_open || self.file_field.is_some() || self.rb_open || self.eq_open
+        if self.chat_open || self.file_field.is_some() || self.tbl_open || self.rb_open || self.eq_open
             || self.url_open || self.fm_field.is_some() || self.sd_open
             || self.ai_open {
             // チャット・文書の情報・ルビの入力欄。打鍵は(確定まで)文書を変えない
@@ -977,6 +984,7 @@ impl Writer {
             || self.bm_open
             || self.url_open
             || self.fm_field.is_some()
+            || self.tbl_open
             || self.rb_open
             || self.eq_open
             || self.sd_open

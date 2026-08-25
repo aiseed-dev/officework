@@ -136,6 +136,37 @@ impl Writer {
         self.run_cmd(id, cx);
     }
 
+    /// **打った数で表を挿す。**(2026-08-25)
+    ///
+    /// 受けるのは `行数,列数` です。`3x4` や `3 4` も同じに読みます —
+    /// 打ち方で断らないためです。数が読めなければ、そう言って開いたままに
+    /// します(黙って 3×3 を入れると、打ち間違いに気づけません)。
+    pub(crate) fn tbl_commit(&mut self, cx: &mut Context<Self>) {
+        let 字 = self.tbl_ed.text().to_string();
+        let 数: Vec<usize> = 字
+            .split(|c: char| !c.is_ascii_digit())
+            .filter(|x| !x.is_empty())
+            .filter_map(|x| x.parse().ok())
+            .collect();
+        let (行, 列) = match 数.as_slice() {
+            [r, c] if *r >= 1 && *c >= 1 => (*r, *c),
+            _ => {
+                self.status =
+                    ui::t!("行数と列数を打ってください(例: 3,4)").into();
+                return;
+            }
+        };
+        // **上限を置きます。** 打ち間違いで 999,999 と入れると、
+        // 組むのに何分も掛かって固まったように見えます
+        if 行 > 200 || 列 > 50 {
+            self.status = ui::t!("大きすぎます(行は 200 まで、列は 50 まで)").into();
+            return;
+        }
+        self.tbl_open = false;
+        self.table_size = (行, 列);
+        self.run_cmd("instable-go", cx);
+    }
+
     pub(crate) fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
         // 一覧(▾)は**他を押したら閉じ、押した操作はそのまま効く**
         // (発注者 2026-08-14)。自分のボタンだけは畳まない — トグル
@@ -144,6 +175,13 @@ impl Writer {
         // 動きを壊さないため。**旗が1つなので、この判断も1行です**
         if self.open_list != Some(id) {
             self.open_list = None;
+        }
+        // **打つ欄も、他のボタンを押したら閉じます**(2026-08-25)。
+        // 開いたままだと `editor()` が本文でなく欄を返すので、次に押した
+        // ボタンが*欄の字*を編集します(試験で「blankpage が戻らない」と
+        // して出ました。画面でも同じことが起きます)
+        if self.tbl_open && id != "instable-go" {
+            self.tbl_open = false;
         }
         // **ネイティブ文書では見た目を直に変えさせない**(2026-08-16)。
         // 名前を付けてスタイルにする道へ寄せる — Word の失敗
@@ -459,12 +497,20 @@ impl Writer {
             }
             // 表の挿入。3×3 を末尾に(大きさを選ぶ小窓はまだ無い)。
             // セル編集が入っているので、挿した表はそのまま書ける
-            // **表は行×列を選んでから挿します**(2026-08-25 発注者
-            // 「様式の世界は表が本体なので選べるように」)。前は 3×3 固定でした。
-            // 升の並びは記号の一覧と同じ仕組み(`Place::grid`)
+            // **表は行数と列数を打ってから挿します**(2026-08-25 発注者
+            // 「行×列を選ぶ画面は、数値入力にしないと選択ではだめでしょう」)。
+            //
+            // 前は 64 個の組を一覧に並べていました。1つずつ選ぶ形なので、
+            // 4×6 を出すのに 64 個から目で探すことになり、使えません。
+            // **打った数がそのまま大きさ**になる形にします。
+            // 表の横幅は文章が書ける幅で、それを列数で割ります
+            // (`col_mm` を空で作り、組む側が行長を割ります)
             "instable" => {
-                self.open_list = (self.open_list != Some("instable")).then_some("instable");
-                self.pick_sel = 0;
+                self.tab = self.prev_tab;
+                let (r, c) = self.table_size;
+                self.tbl_ed = Editor::new(&format!("{r},{c}"));
+                self.tbl_open = true;
+                self.status = ui::t!("表の大きさ — 行数,列数 を打って Enter(例: 3,4)").into();
             }
             "instable-go" => {
                 self.checkpoint(false); // 表

@@ -33,11 +33,17 @@ pub(crate) struct Panels {
     pub plug_panel: Option<gpui::Div>,
     pub xr_panel: Option<gpui::Div>,
     /// 一覧は4つとも `ui::picklist` が描きます(窓の根へ置きます。
-    /// 記号は升の並び)
+    /// 記号はマス目の並び)
     pub font_panel: Option<gpui::Stateful<gpui::Div>>,
     pub size_panel: Option<gpui::Stateful<gpui::Div>>,
     pub style_panel: Option<gpui::Stateful<gpui::Div>>,
     pub symbol_panel: Option<gpui::Stateful<gpui::Div>>,
+    /// 表の大きさを打つ欄(2026-08-25)
+    pub tbl_panel: Option<gpui::Div>,
+    /// 日付の形の一覧(2026-08-25)
+    pub date_panel: Option<gpui::Stateful<gpui::Div>>,
+    /// 書き出す形の一覧(2026-08-25)
+    pub export_panel: Option<gpui::Stateful<gpui::Div>>,
     pub proof_panel: Option<gpui::Div>,
 }
 
@@ -1620,10 +1626,38 @@ impl Writer {
         let style_panel = (self.open_list == Some("parastyle"))
             .then(|| self.一覧を描く("parastyle", cx));
 
-        // 記号の一覧。**3つの一覧と同じ仕組み**(ui::picklist)で、升の並びで
+        // 記号の一覧。**3つの一覧と同じ仕組み**(ui::picklist)で、マス目の並びで
         // 出します(2026-08-21。前は右上に固定の自前の格子でした)
         let symbol_panel = (self.open_list == Some("inssymbol"))
             .then(|| self.一覧を描く("inssymbol", cx));
+        // **足したら、ここにも足す。** 開くだけ足して描く側を忘れると、
+        // 一覧は開いているのに画面に何も出ません(2026-08-25 に実機で
+        // 見つけました — 押してもマス目が出ませんでした)
+        // 表の大きさ。**選ぶのではなく打ちます**(2026-08-25 発注者)
+        let tbl_panel = if !self.tbl_open {
+            None
+        } else {
+            let mut t = self.tbl_ed.text().to_string();
+            let cur = self.tbl_ed.cursor().min(t.len());
+            t.insert(cur, '|');
+            Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 360.0))
+                .p_3().rounded_md().bg(rgb(0xF7F9FA))
+                .border_1().border_color(rgb(0xC6CDD3))
+                .flex().flex_col().gap_2()
+                .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
+                    .text_color(rgb(0x165E83))
+                    .child(ui::t!("表の大きさ — 行数,列数 を打って Enter(例: 3,4。Esc で取りやめ)")))
+                .child(div().px_2().py_1().rounded_sm()
+                    .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
+                    .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
+                    .child(SharedString::from(t)))
+                .child(div().text_size(px(us * 10.5)).text_color(rgb(0x5A6672))
+                    .child(ui::t!("表の横幅は、文章が書ける幅になります(列数で等分)"))))
+        };
+        let date_panel = (self.open_list == Some("datetime"))
+            .then(|| self.一覧を描く("datetime", cx));
+        let export_panel = (self.open_list == Some("f-export"))
+            .then(|| self.一覧を描く("f-export", cx));
 
         // 校正の指摘
         let proof_panel = if self.proof.is_empty() && self.proof_msg.is_empty() {
@@ -1658,6 +1692,7 @@ impl Writer {
             chat_panel, pw_panel, url_panel, fm_panel, nav_panel, rp_panel,
             lk_panel, ai_panel, sd_panel, rb_panel, eq_panel, plug_panel, xr_panel,
             font_panel, size_panel, style_panel, symbol_panel, proof_panel,
+            tbl_panel, date_panel, export_panel,
         }
     }
 
@@ -1675,14 +1710,6 @@ impl Writer {
             .iter()
             .map(|s| (s.to_string(), s.to_string()))
             .collect(),
-            // 表の大きさの升。**Word と同じで、升の上を動かして選びます**。
-            // 鍵は `行x列`(訳す物ではありません)。8×8 まで — 様式の表は
-            // これで足り、足りなければ挿してから行を足せます
-            "instable" => (1..=8)
-                .flat_map(|r| (1..=8).map(move |c| {
-                    (format!("{r}x{c}"), format!("{r}×{c}"))
-                }))
-                .collect(),
             // **書き出す形。** 文章の節から出せるのは4つです
             // (手引き `docs/commands/ファイル/エクスポート.adoc` の表)。
             // `.adoc` はここに出しません — *保存の側*だからです
@@ -1744,15 +1771,14 @@ impl Writer {
         // ボタンの箱は窓の座標で控えてあります(`btn_box`)。まだ描いて
         // いなければ左上へ逃がします — 黙って消えるよりは出すほうがよい
         let (bx, by, bw, bh) = self.btn_box.borrow().get(kind).copied().unwrap_or((16.0, 8.0, 0.0, 0.0));
-        // 記号は升の並び(1行10升)なので、高さは行の数で見積もります
+        // 記号はマス目の並び(1行10個)なので、高さは行の数で見積もります
         let want_h = if kind == "inssymbol" {
             (items.len() as f32 / 10.0).ceil() * 32.0 + 16.0
         } else {
             items.len() as f32 * 26.0 + if kind == "fontname" { 40.0 } else { 0.0 } + 12.0
         };
-        // 10升 × 28 + 升の間(9×4)+ 内側の余白ぶん
+        // 10個 × 28 + マス目の間(9×4)+ 内側の余白ぶん
         const SYM_W: f32 = 334.0;
-        const TBL_W: f32 = 232.0;   // 8 升ぶん
         let (up, at, max_h) = ui::combo::pop_place(by, by + bh, want_h, self.view_h_px);
         // 記号は幅が分かっているので、右端で切れないよう幅ごと寄せます
         let x = if kind == "inssymbol" {
@@ -1764,7 +1790,6 @@ impl Writer {
             "fontname" => ui::picklist::Width::Range(200.0, ui::combo::POP_W),
             "fontsize" => ui::picklist::Width::Range(bw.max(96.0), 140.0),
             "inssymbol" => ui::picklist::Width::Fixed(SYM_W),
-            "instable" => ui::picklist::Width::Fixed(TBL_W),
             _ => ui::picklist::Width::Range(bw.max(160.0), 240.0),
         };
         let filter = self.font_filter.as_ref().map(|ed| {
@@ -1793,10 +1818,9 @@ impl Writer {
                 up,
                 max_h,
                 width: 幅,
-                // 升で並べる物。記号は 28px、表の大きさは 26px の角
+                // マス目で並べる物。記号は 28px、表の大きさは 26px の角
                 grid: match kind {
                     "inssymbol" => Some(28.0),
-                    "instable" => Some(26.0),
                     _ => None,
                 },
             }),
@@ -1849,13 +1873,6 @@ impl Writer {
                 self.on_edited();
                 self.status =
                     ui::tf!("日付を入れました({}。固定の文字です)", key).into();
-            }
-            "instable" => {
-                let mut 数 = key.split('x').filter_map(|x| x.parse::<usize>().ok());
-                if let (Some(r), Some(c)) = (数.next(), 数.next()) {
-                    self.table_size = (r.max(1), c.max(1));
-                    self.run_cmd("instable-go", cx);
-                }
             }
             "fontname" => {
                 let sel = self.ed.selection();

@@ -1538,7 +1538,7 @@ mod undo_coverage_tests {
         // **数えておく。** 形が壊れて「どれも文書を変えない」になったら、
         // 中身が空でも緑になってしまう。
         // **39 になったのは 2026-08-25** — 表の挿入と日付の挿入が、
-        // 押すと升や一覧が開くだけの形になり、その場では文書を変えなく
+        // 押すとマス目や一覧が開くだけの形になり、その場では文書を変えなく
         // なったためです(挿すのは `instable-go` と一覧から選んだとき)
         assert!(見た >= 39, "文書を変える命令が {見た} 件しか無い — 試験の形が壊れている");
     }
@@ -3317,25 +3317,50 @@ mod docx_formula_tests {
         });
     }
     #[gpui::test]
-    /// **表は行×列を選んでから挿します**(2026-08-25 発注者
-    /// 「様式の世界は表が本体なので選べるように」)。前は 3×3 固定でした。
-    fn 表の大きさを升から選べる(cx: &mut gpui::TestAppContext) {
+    /// **表は行数と列数を打ってから挿します**(2026-08-25 発注者
+    /// 「行×列を選ぶ画面は、数値入力にしないと選択ではだめでしょう」)。
+    ///
+    /// 前は 64 個の組を一覧に並べていました。4×6 を出すのに 64 個から
+    /// 目で探すことになり、使えませんでした。
+    fn 表は行数と列数を打って挿す(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
-            // 押すと升が開くだけ。**まだ表は入りません**
+            // 押すと欄が出るだけ。**まだ表は入りません**
             this.run_cmd("instable", cx);
-            assert_eq!(this.open_list, Some("instable"), "升が開いていません");
+            assert!(this.tbl_open, "打つ欄が出ていません");
             assert!(!this.doc.blocks.iter().any(|b| matches!(b, kumihan::Block::Table(_))),
                     "押しただけで表が入っています");
-            // 升から 2×5 を選ぶ
-            this.一覧を選ぶ("instable", "2x5", cx);
+            // 2行5列と打つ
+            this.tbl_ed = Editor::new("2,5");
+            this.tbl_commit(cx);
             let t = this.doc.blocks.iter().find_map(|b| match b {
                 kumihan::Block::Table(t) => Some(t),
                 _ => None,
             }).expect("表が入っていません");
-            assert_eq!(t.rows.len(), 2, "行の数が選んだとおりではありません");
-            assert_eq!(t.rows[0].len(), 5, "列の数が選んだとおりではありません");
-            assert_eq!(this.open_list, None, "選んだ後も升が開いたままです");
+            assert_eq!(t.rows.len(), 2, "行の数が打ったとおりではありません");
+            assert_eq!(t.rows[0].len(), 5, "列の数が打ったとおりではありません");
+            assert!(!this.tbl_open, "挿した後も欄が開いたままです");
+            // **横幅は文章の幅。** 列の指定を持たないので、組む側が行長を割ります
+            assert!(t.col_mm.is_empty(), "列の幅を勝手に決めています");
+
+            // `3x4` や `3 4` も同じに読みます — 打ち方で断らないため
+            for 打つ in ["3x4", "3 4", "3、4"] {
+                this.tbl_ed = Editor::new(打つ);
+                this.tbl_open = true;
+                this.tbl_commit(cx);
+                assert!(!this.tbl_open, "「{打つ}」が読めていません");
+            }
+            // **数が読めなければ断ります。** 黙って 3×3 を入れません
+            let 前 = this.doc.blocks.len();
+            this.tbl_ed = Editor::new("あ");
+            this.tbl_open = true;
+            this.tbl_commit(cx);
+            assert!(this.tbl_open, "読めない字を受け付けています");
+            assert_eq!(this.doc.blocks.len(), 前, "読めないのに表が入りました");
+            // **大きすぎるものも断ります**(打ち間違いで固まらないように)
+            this.tbl_ed = Editor::new("999,999");
+            this.tbl_commit(cx);
+            assert!(this.tbl_open, "大きすぎる数を受け付けています");
         });
     }
 

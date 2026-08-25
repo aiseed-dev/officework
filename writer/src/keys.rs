@@ -565,7 +565,8 @@ impl Writer {
             cx.notify();
             return;
         }
-        if self.rb_open || self.eq_open || self.sd_open || self.ai_open {
+        if self.tbl_open || self.rb_open || self.eq_open || self.sd_open || self.ai_open {
+            self.tbl_open = false;
             self.rb_open = false;
             self.eq_open = false;
             self.sd_open = false;
@@ -817,6 +818,8 @@ impl Writer {
             self.url_commit(cx);
         } else if self.fm_field.is_some() {
             self.fm_commit();
+        } else if self.tbl_open {
+            self.tbl_commit(cx);
         } else if self.rb_open {
             self.rb_commit();
         } else if self.eq_open {
