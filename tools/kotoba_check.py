@@ -28,9 +28,9 @@ TARGETS = [
     "docs/mac-signing.ja.adoc", "packaging/README.ja.md", "pysheet/README.md",
     "sample/README.md",
     # 引く1枚と、コマンドごとの手引き(2026-08-24 に足した)
-    "docs/api-taiou.ja.adoc", "docs/genkou-manual.ja.adoc",
-    "docs/docx-xlsx-tono-chigai.ja.adoc",
-    "docs/commands/*.adoc", "docs/commands/*/*.adoc",
+    "docs/ja/api-taiou.adoc", "docs/ja/genkou-manual.adoc",
+    "docs/ja/docx-xlsx-tono-chigai.adoc",
+    "docs/ja/commands/*.adoc", "docs/ja/commands/*/*.adoc",
 ]
 
 # 見ないもの(経緯を残す場所)

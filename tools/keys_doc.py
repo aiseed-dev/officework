@@ -179,10 +179,10 @@ MARK_S = "// keys:gen:start"
 MARK_E = "// keys:gen:end"
 
 TARGETS = [
-    ("docs/calc-manual.ja.adoc", "calc", "ja"),
-    ("docs/calc-manual.adoc", "calc", "en"),
-    ("docs/writer-manual.ja.adoc", "writer", "ja"),
-    ("docs/writer-manual.adoc", "writer", "en"),
+    ("docs/ja/calc-manual.adoc", "calc", "ja"),
+    ("docs/en/calc-manual.adoc", "calc", "en"),
+    ("docs/ja/writer-manual.adoc", "writer", "ja"),
+    ("docs/en/writer-manual.adoc", "writer", "en"),
 ]
 
 

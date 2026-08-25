@@ -23,8 +23,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-JA = ROOT / "docs/writer-manual.ja.adoc"
-EN = ROOT / "docs/writer-manual.adoc"
+JA = ROOT / "docs/ja/writer-manual.adoc"
+EN = ROOT / "docs/en/writer-manual.adoc"
 RIBBON = ROOT / "face/src/ribbon.rs"
 ADOC = ROOT / "engine/src/adoc.rs"
 

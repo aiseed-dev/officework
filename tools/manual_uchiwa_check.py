@@ -24,23 +24,23 @@ ROOT = Path(__file__).resolve().parent.parent
 MIRU = [
     # 一覧そのものも利用者が読む(2026-08-26 に「(発注者 …)」の注記を
     # 頭に書いてしまい、ここに入っていなかったので素通りした)
-    "docs/README.ja.adoc",
-    "docs/from-excel.ja.adoc",
-    "docs/genkou-manual.ja.adoc",
-    "docs/api-taiou.ja.adoc",
-    "docs/docx-xlsx-tono-chigai.ja.adoc",
-    "docs/writer-manual.ja.adoc",
-    "docs/calc-manual.ja.adoc",
-    "docs/python-manual.ja.adoc",
-    "docs/macro-manual.ja.adoc",
-    "docs/writer-macro-manual.ja.adoc",
+    "docs/ja/README.adoc",
+    "docs/ja/from-excel.adoc",
+    "docs/ja/genkou-manual.adoc",
+    "docs/ja/api-taiou.adoc",
+    "docs/ja/docx-xlsx-tono-chigai.adoc",
+    "docs/ja/writer-manual.adoc",
+    "docs/ja/calc-manual.adoc",
+    "docs/ja/python-manual.adoc",
+    "docs/ja/macro-manual.adoc",
+    "docs/ja/writer-macro-manual.adoc",
     "docs/engine.ja.adoc",
 ]
 # コマンドごとの手引きも全部見ます(段のフォルダの下)
 MIRU += sorted(
     str(p.relative_to(ROOT))
-    for p in (ROOT / "docs/commands").rglob("*.adoc")
-) if (ROOT / "docs/commands").exists() else []
+    for p in (ROOT / "docs/ja/commands").rglob("*.adoc")
+) if (ROOT / "docs/ja/commands").exists() else []
 
 # 内輪の印。**書き方ではなく中身**で見る
 NG = [

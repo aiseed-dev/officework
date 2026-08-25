@@ -8,8 +8,8 @@
 *置き場は段ごとのフォルダ*です。
 
 ....
-docs/commands/
-├── README.ja.adoc      目次(この道具が起こす)
+docs/ja/commands/
+├── README.adoc      目次(この道具が起こす)
 ├── ファイル/
 │   ├── 開く.adoc
 │   └── 保存.adoc
@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
 import api_taiou  # noqa: E402
 
-SAKI = ROOT / "docs/commands"
+SAKI = ROOT / "docs/ja/commands"
 
 # ファイル名に使えない字を置き換える
 NG = re.compile(r'[/\\:*?"<>|]')
@@ -255,7 +255,7 @@ def main() -> int:
                     o.append(f"* {ラベル}(まだ)")
             o.append("")
         SAKI.mkdir(parents=True, exist_ok=True)
-        (SAKI / "README.ja.adoc").write_text("\n".join(o) + "\n", encoding="utf-8")
+        (SAKI / "README.adoc").write_text("\n".join(o) + "\n", encoding="utf-8")
         print(f"目次を書きました({len(r)} 項目)")
         return 0
 
@@ -263,7 +263,7 @@ def main() -> int:
     # 「未実装」の枚数がこれから作る物の一覧になります
     数, ずれ = {}, []
     for q in sorted(SAKI.rglob("*.adoc")):
-        if q.name == "README.ja.adoc":
+        if q.name == "README.adoc":
             continue
         s = q.read_text(encoding="utf-8")
         m = re.search(r"\*状態: (実装済み|未実装|廃止予定)\*", s)
@@ -287,7 +287,7 @@ def main() -> int:
     # 表から消えたのに残っている枚。まとめ直した後の後片づけに要ります
     要る = {x[4].resolve() for x in r}
     余り = [q for q in sorted(SAKI.rglob("*.adoc"))
-            if q.name != "README.ja.adoc" and q.resolve() not in 要る]
+            if q.name != "README.adoc" and q.resolve() not in 要る]
     if 余り:
         print(f"\n表に無い手引きが {len(余り)} 枚あります(消してください):")
         for q in 余り:

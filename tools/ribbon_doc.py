@@ -25,10 +25,10 @@ import ribbon_parse  # noqa: E402
 
 # どの手引きの、どのアプリを載せるか
 SAKI = {
-    "docs/writer-manual.ja.adoc": ("WRITER", "ja"),
-    "docs/writer-manual.adoc": ("WRITER", "en"),
-    "docs/calc-manual.ja.adoc": ("CALC", "ja"),
-    "docs/calc-manual.adoc": ("CALC", "en"),
+    "docs/ja/writer-manual.adoc": ("WRITER", "ja"),
+    "docs/en/writer-manual.adoc": ("WRITER", "en"),
+    "docs/ja/calc-manual.adoc": ("CALC", "ja"),
+    "docs/en/calc-manual.adoc": ("CALC", "en"),
 }
 
 MIDASHI = {

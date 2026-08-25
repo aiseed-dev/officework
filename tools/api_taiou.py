@@ -260,7 +260,7 @@ def 手引き(ラベル: str) -> str:
     global _手引きの表
     if _手引きの表 is None:
         _手引きの表 = {}
-        さき = ROOT / "docs/commands"
+        さき = ROOT / "docs/ja/commands"
         for q in さき.rglob("*.adoc"):
             if q.name != "README.ja.adoc":
                 _手引きの表[q.stem] = q.relative_to(ROOT / "docs").as_posix()
@@ -323,7 +323,7 @@ ICON_FILE = _icon_file()
 
 MARK_S = "// api:taiou:start"
 MARK_E = "// api:taiou:end"
-SAKI = ROOT / "docs/api-taiou.ja.adoc"
+SAKI = ROOT / "docs/ja/api-taiou.adoc"
 
 
 def 段の並び(tabs):
