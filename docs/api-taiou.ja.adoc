@@ -19,13 +19,16 @@
 |===
 |状態 |数 |意味
 
-|*実装* |70 |いま呼べます
+|*実装* |70 |専用の呼び方があります
+|*書けば済む* |19 |*専用の口は作りません。* 書き方をその行に出してあります
 |*未実装* |22 |*まだ作っていません。* 作らないと決めたのではありません
 |*実装しない* |3 |*決めた物だけ*です。理由をその行に書いてあります
 |===
 
-**「未実装」と「実装しない」を分けてあります。** 空欄1つでは、
-まだなのか、やらないのかが分かりません。
+**4つに分けてあります。** 空欄1つでは、できるのか・まだなのか・やらないのかが分かりません。
+
+*「書けば済む」がいちばん大事な列*です。専用の呼び方が無くても、
+いまある口を組み合わせれば書けます。*操作できるかどうかと、専用の口があるかどうかは別*です。
 
 * `officework` の*呼び方*を引く
 * python-docx / openpyxl の*覚えている書き方*から、こちらの書き方を引く
@@ -72,6 +75,7 @@
 |フォントのサイズ |Run / Cell |実装 |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
 |フォントサイズの拡大 |Run / Cell |実装 |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
 |フォントサイズの縮小 |Run / Cell |実装 |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
+|大文字小文字を変更 |— |書けば済む |r.text = r.text.upper() |— |—
 |ルビ |Run |未実装 |— |— |—
 |太字 |Run / Cell |実装 |r.bold / c.font |r.bold |c.font = Font(bold=True)
 |斜体 |Run / Cell |実装 |r.italic / c.font |r.italic |c.font = Font(italic=True)
@@ -95,10 +99,12 @@
 |罫線 |Cell |実装 |c.border |— |c.border = Border(…)
 |段落のスタイル |Paragraph |実装 |p.style |p.style |—
 |置き換え |Doc |実装 |d.replace(前, 後) |— |—
+|すべて選択 |— |書けば済む |d.paragraphs(全部を順に回る) |— |—
 |塗りつぶしの色 |Cell |実装 |c.fill |— |c.fill = PatternFill(…)
 |折り返して全体を表示する |Cell |実装 |c.alignment |— |c.alignment = Alignment(wrap_text=True)
 |結合して、中央に配置する |Cell |実装 |(col_span / v_merge) / s.merge_cells(…) |cell.merge(…) |ws.merge_cells('A1:B2')
 |オートSUM |Cell |実装 |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|フィル |— |書けば済む |for i in range(10): s[f'A{i+2}'] = i + 1 |— |—
 |名前の管理 |Book |実装 |b.create_named_range(名前, …) |— |wb.defined_names
 |消去 |Run / Cell |実装 |r.clear() / s['A1'] = None |r.clear() |ws['A1'] = None
 |降順並べ替え |Sheet |未実装 |— |— |—
@@ -125,11 +131,17 @@
 |表の挿入 |Doc / Sheet |実装 |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
 |画像を挿入 |Doc |実装 |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
 |グラフを挿入 |Sheet |実装しない |図は Python(matplotlib)が描いて貼ります。見本で足ります(SEKKEI「見本を作って止める」) |— |ws.add_chart(…)
+|ファイルからのテキスト |— |書けば済む |d.add_paragraph(open('メモ.txt').read()) |— |—
 |ヘッダーの編集 |Doc / Sheet |実装 |d.header / s.oddHeader |section.header |ws.oddHeader
 |フッターの編集 |Doc |実装 |d.footer |section.footer |—
+|ページ番号 |— |書けば済む |(ヘッダーの `#`) |— |—
+|日付/時刻 |— |書けば済む |p.text = date.today().strftime('%Y年%m月%d日') |— |—
+|ページ数 |— |書けば済む |(ヘッダーの `##`) |— |—
 |方程式を挿入 |Doc |未実装 |— |— |—
+|記号を挿入 |— |書けば済む |r.text += '※'(字をそのまま打つ) |— |—
 |コンテンツコントロールの挿入 |Doc(記入欄) |実装 |d.fields() |— |—
 |ピボットテーブルを挿入 |Sheet |実装しない |集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます |— |ws.add_pivot(…)
+|推奨チャートを挿入 |— |書けば済む |s.values() を polars に渡して選ぶ |— |—
 |コメント |Comment |実装 |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
 |ハイパーリンクを追加 |Cell |実装 |c.hyperlink |— |c.hyperlink
 |===
@@ -157,8 +169,11 @@
 |ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
 |関数の挿入 |Cell |実装 |s['A1'] = '=…' |— |ws['A1'] = '=…'
+|Python の関数 |— |書けば済む |自分の .py を書く(綴りの macros) |— |—
 |オートSUM |Cell |実装 |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
 |名前の管理 |Book |実装 |b.create_named_range(名前, …) |— |wb.defined_names
+|参照元のトレース |— |書けば済む |s.formula('A1') で参照を読む |— |—
+|数式の表示 |— |書けば済む |s.formula(場所) |— |—
 |計算方法 |Book |実装 |b.recalc() |— |wb.calculation
 |===
 
@@ -168,13 +183,19 @@
 |===
 |ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
+|テキストからデータ |— |書けば済む |csv モジュールで読んで s['A1'] へ |— |—
 |フィルター |Sheet |未実装 |— |— |ws.auto_filter.ref
 |フィルターを解除 |Sheet |未実装 |— |— |ws.auto_filter
 |降順並べ替え |Sheet |未実装 |— |— |—
 |昇順並べ替え |Sheet |未実装 |— |— |—
+|区切り位置 |— |書けば済む |s['B2'], s['C2'] = s['A2'].split(',') |— |—
+|重複の削除 |— |書けば済む |— |— |—
 |データの入力規則 |Sheet |実装 |s.add_data_validation(…) |— |ws.add_data_validation(…)
 |グループ化 |Sheet |実装 |s.row_groups |— |ws.column_dimensions[…].outline_level
 |グループ解除 |Sheet |実装 |s.row_groups |— |ws.column_dimensions[…].outline_level
+|小計 |— |書けば済む |s['A9'] = '=SUBTOTAL(9,A2:A8)' |— |—
+|CSV の形 |— |書けば済む |csv モジュールで読む |— |—
+|フラッシュフィル |— |書けば済む |s['B2'] = s['A2'].split()[0](規則を書く) |— |—
 |===
 
 === ピボットテーブル
@@ -184,6 +205,15 @@
 |ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
 
 |ピボットテーブルを挿入 |Sheet |実装しない |集計は Python(polars)の持ち場です。画面のボタンが裏で呼びます |— |ws.add_pivot(…)
+|===
+
+=== 表のデザイン
+
+[cols="2,2,1,3,3,3"]
+|===
+|ボタン |オブジェクト |状態 |officework |python-docx |openpyxl
+
+|重複データを削除 |— |書けば済む |見た = set() で行を選り分ける |— |—
 |===
 
 === 参考資料

@@ -36,6 +36,24 @@ import ribbon_parse  # noqa: E402
 # (2026-08-24 発注者)。どのオブジェクトの物かを示します。
 # `A / B` は、いま2つの呼び方がある物です(寄せる仕事が残っています)。
 MICHI = {
+    "changecase": ("", "", "", ""),
+    "inssymbol": ("", "", "", ""),
+    "datetime": ("", "", "", ""),
+    "selectall": ("", "", "", ""),
+    "text-from-file": ("", "", "", ""),
+    "rem-duplicates": ("", "", "", ""),
+    "flash-fill": ("", "", "", ""),
+    "text-column": ("", "", "", ""),
+    "subtotal": ("", "", "", ""),
+    "trace-prec": ("", "", "", ""),
+    "show-formulas": ("", "", "", ""),
+    "fill-num": ("", "", "", ""),
+    "numpages": ("", "", "", ""),
+    "pagenum": ("", "", "", ""),
+    "insrecommend": ("", "", "", ""),
+    "func-list": ("", "", "", ""),
+    "csv-kind": ("", "", "", ""),
+    "data-from-text": ("", "", "", ""),
     "open": ("Doc / Book", "Doc.open(径路) / Book.open(径路)", "docx.Document(径路)", "load_workbook(径路)"),
     "save": ("Doc / Book", "d.save(径路) / b.save(径路)", "d.save(径路)", "wb.save(径路)"),
     "pdf": ("", "", "", ""),
@@ -132,12 +150,45 @@ TSUKURANAI = {
 }
 
 
+# **書けば済む物**(id → 書き方)。専用の口は作りません。
+#
+# 発注者 2026-08-24「別にマクロ等で書けたらいいので、すべて操作できるように
+# するのは難しくない」。*そのとおりで、いまある口を組み合わせれば書ける物が
+# たくさんあります*。専用の口を足すより、書き方を1行見せるほうが早いのです。
+KAKEBA = {
+    "changecase": "r.text = r.text.upper()",
+    "inssymbol": "r.text += '※'(字をそのまま打つ)",
+    "datetime": "p.text = date.today().strftime('%Y年%m月%d日')",
+    "selectall": "d.paragraphs(全部を順に回る)",
+    "text-from-file": "d.add_paragraph(open('メモ.txt').read())",
+    "rem-duplicates": "見た = set() で行を選り分ける",
+    "flash-fill": "s['B2'] = s['A2'].split()[0](規則を書く)",
+    "text-column": "s['B2'], s['C2'] = s['A2'].split(',')",
+    "subtotal": "s['A9'] = '=SUBTOTAL(9,A2:A8)'",
+    "trace-prec": "s.formula('A1') で参照を読む",
+    "show-formulas": "s.formula(場所)",
+    "fill-num": "for i in range(10): s[f'A{i+2}'] = i + 1",
+    "numpages": "(ヘッダーの `##`)",
+    "pagenum": "(ヘッダーの `#`)",
+    "insrecommend": "s.values() を polars に渡して選ぶ",
+    "func-list": "自分の .py を書く(綴りの macros)",
+    "csv-kind": "csv モジュールで読む",
+    "data-from-text": "csv モジュールで読んで s['A1'] へ",
+}
+
+
 def 状態(id_: str, ow: str) -> str:
-    """実装 / 未実装 / 実装しない。**空欄の意味を分けます**(2026-08-24 発注者)"""
+    """実装 / 書けば済む / 未実装 / 実装しない。
+
+    **空欄の意味を4つに分けます**(2026-08-24 発注者)。
+    「書けば済む」は*専用の口を作らないと決めた物*で、書き方をその行に出します。
+    """
     if ow:
         return "実装"
     if id_ in TSUKURANAI:
         return "実装しない"
+    if id_ in KAKEBA:
+        return "書けば済む"
     return "未実装"
 
 
@@ -188,11 +239,12 @@ _ラベルの逆引き: dict = {}
 
 def 理由(ラベル: str, st: str):
     """「実装しない」の理由。表の中で読めるようにします"""
-    if st != "実装しない":
+    if st not in ("実装しない", "書けば済む"):
         return None
-    for k, v in TSUKURANAI.items():
-        if k in _ラベルの逆引き and _ラベルの逆引き[k] == ラベル:
-            return v
+    for 表 in (TSUKURANAI, KAKEBA):
+        for k, v in 表.items():
+            if _ラベルの逆引き.get(k) == ラベル:
+                return v
     return None
 
 
