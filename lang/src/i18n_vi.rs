@@ -181,7 +181,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("検索語を打って Enter で次へ", "Gõ từ khóa; Enter để tìm tiếp"),
     ("{}を入れました(docx ではフィールドになります)", "Đã chèn {} (trong docx sẽ thành trường)"),
     ("日付を入れました({}。固定の文字です)", "Đã chèn ngày ({}; văn bản cố định)"),
-    ("日付が取れません(date コマンド)", "Không lấy được ngày tháng (lệnh date)"),
     ("変更履歴を記録します(保存で Word の変更履歴になります)", "Bắt đầu ghi lại thay đổi (khi lưu sẽ thành theo dõi thay đổi của Word)"),
     ("変更履歴の記録をやめました(記録していた差分は捨てました)", "Đã dừng ghi thay đổi (các thay đổi đã ghi bị bỏ)"),
     ("ペン: 紙の上をドラッグで描く(もう一度押すか Esc で戻る)", "Bút: kéo trên trang để vẽ (nhấn lần nữa hoặc Esc để cất)"),

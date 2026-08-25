@@ -181,7 +181,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("検索語を打って Enter で次へ", "Ketik kata pencarian; Enter mencari yang berikutnya"),
     ("{}を入れました(docx ではフィールドになります)", "{} dimasukkan (menjadi bidang di docx)"),
     ("日付を入れました({}。固定の文字です)", "Tanggal disisipkan ({}; teks tetap)"),
-    ("日付が取れません(date コマンド)", "Tidak bisa mendapatkan tanggal"),
     ("変更履歴を記録します(保存で Word の変更履歴になります)", "Merekam perubahan (menjadi lacak perubahan Word saat disimpan)"),
     ("変更履歴の記録をやめました(記録していた差分は捨てました)", "Perekaman perubahan dihentikan (selisih yang terekam dibuang)"),
     ("ペン: 紙の上をドラッグで描く(もう一度押すか Esc で戻る)", "Pena: seret di atas halaman untuk menggambar (tekan lagi atau Esc untuk kembali)"),

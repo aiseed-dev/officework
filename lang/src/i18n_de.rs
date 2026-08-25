@@ -181,7 +181,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("検索語を打って Enter で次へ", "Suchbegriff eingeben; Enter findet den nächsten Treffer"),
     ("{}を入れました(docx ではフィールドになります)", "{} eingefügt (wird in der docx ein Feld)"),
     ("日付を入れました({}。固定の文字です)", "Datum eingefügt ({}; fester Text)"),
-    ("日付が取れません(date コマンド)", "Datum nicht ermittelbar (date-Befehl)"),
     ("変更履歴を記録します(保存で Word の変更履歴になります)", "Änderungen werden aufgezeichnet (beim Speichern werden sie zur Word-Änderungsnachverfolgung)"),
     ("変更履歴の記録をやめました(記録していた差分は捨てました)", "Aufzeichnung der Änderungen beendet (die aufgezeichneten Unterschiede wurden verworfen)"),
     ("ペン: 紙の上をドラッグで描く(もう一度押すか Esc で戻る)", "Stift: auf dem Blatt ziehen zum Zeichnen (nochmal drücken oder Esc zum Beenden)"),
