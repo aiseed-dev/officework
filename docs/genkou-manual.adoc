@@ -1,0 +1,179 @@
+= Manuscript guide — write once, publish in four shapes
+
+_日本語版(secondary): link:genkou-manual.ja.adoc[genkou-manual.ja.adoc]_
+
+This guide covers writing a manuscript in officework and publishing it in
+four shapes: AsciiDoc, a Word document (docx), a web page (HTML), and PDF.
+
+You write one thing and publish four. All four come from the same
+manuscript, so there is nothing to rebuild per recipient.
+
+[cols="1,2"]
+|===
+|Shape |Main use
+
+|AsciiDoc (`.adoc`) |The manuscript itself. Plain text, so diff and search work
+|Word document (`.docx`) |Handing it to someone
+|Web page (HTML) |Putting it on an internal page
+|PDF |Printing, or handing it over with the layout fixed
+|===
+
+== A manuscript is two files
+
+[cols="1,2"]
+|===
+|File |What it holds
+
+|`report.adoc` |*The content* — headings, body, tables, lists
+|`default.tmpl.adoc` |*The look* — typeface, font size, paper, margins, styles
+|===
+
+Keeping content and look apart means *changing the look never touches the
+body text*. The same manuscript can go out in the office layout and in the
+submission layout.
+
+The look file lives in the folder. If a folder has exactly one
+`.tmpl.adoc`, it applies to every manuscript in that folder. To vary by
+output, name them — `web.tmpl.adoc`, `print.tmpl.adoc`.
+
+== Writing
+
+Open an `.adoc` file in officework and the editing screen appears.
+Headings and bold are on the ribbon. See the
+link:writer-manual.adoc[writer manual] for the full set.
+
+A manuscript is ordinary text, so a text editor opens it too.
+
+....
+= FY2026 Q2 Report
+
+== Summary
+
+This report covers progress in the second quarter.
+
+|===
+|Item |Qty |Amount
+
+|Ballpoint pens |12 |1,440
+|Copy paper |5 |2,450
+|===
+....
+
+== Keeping the source of a number in the manuscript
+
+Sooner or later someone asks where a number in a report came from.
+*The manuscript itself can carry how it was fetched.*
+
+....
+[source,python]
+----
+# Sales table taken from the accounting ledger (2026-08-24)
+import polars as pl
+sales = pl.read_excel("accounting/sales.xlsx", sheet_name="2026")
+----
+....
+
+This is *a record and nothing more*. Opening the manuscript executes
+nothing. What is written there travels with the manuscript to whoever
+receives it.
+
+[NOTE]
+====
+On the editing screen this part is *visible but not editable*.
+To change it, open the file in a text editor.
+====
+
+== Tables
+
+Tables are written directly in the manuscript.
+
+....
+|===
+|Month |Sales
+
+|April |1,200,000
+|May |1,450,000
+|===
+....
+
+On the editing screen, use Insert > Insert Table. Inside a cell, `Tab`
+moves right and `Enter` moves down.
+
+For large tables, or tables that calculate, another way is to build them
+on the spreadsheet screen (calc), save as `.sheet.adoc`, and manage them
+there.
+
+== Publishing in four shapes
+
+Everything goes out from the File tab.
+
+[cols="1,2,2"]
+|===
+|Shape |From where |What comes out
+
+|AsciiDoc |Save / Save As |one `.adoc` file
+|Word document |Save As (choose `.docx`) |one docx file
+|Web page |Export as Web (HTML) |one HTML file (styles embedded)
+|PDF |Print |one PDF file
+|===
+
+In every shape, the look comes from the folder's template.
+
+=== Turning a received Word document into a manuscript
+
+A document received as docx opens and reads as is. To make it an AsciiDoc
+manuscript, press "Convert to adoc (split content from formatting)" on the
+File tab.
+
+The body becomes `.adoc`; typefaces and margins become `.tmpl.adoc`.
+*This operation cannot be undone.* Nothing happens until you press it, so
+take a copy first and try on that.
+
+== Building manuscripts from Python
+
+For fixed-form documents produced in volume, call from Python.
+
+[source,python]
+----
+from officework import doc
+
+d = doc.Doc.open("report-template.docx")
+d.fill("addressee", "Nihon Funen Co., Ltd.")
+d.fill("amount", "1,440,000")
+d.save("report_nihon-funen.docx")
+----
+
+Placeholders like `{name}` in a template can be replaced in one call.
+
+[source,python]
+----
+d.render({"addressee": "Nihon Funen Co., Ltd.", "total": "1,440,000"},
+         rows={"detail": [{"item": "Ballpoint pens", "qty": "12"},
+                          {"item": "Copy paper", "qty": "5"}]})
+----
+
+A table row containing `{detail.item}` repeats once per row of data.
+
+See the link:python-manual.adoc[Python manual] for the rest.
+
+== When something goes wrong
+
+[cols="1,2"]
+|===
+|Symptom |What to do
+
+|The typeface changed on save |The folder's template is in effect. Fix the template
+|Formatting vanished when saved as `.adoc` |Per-character formatting cannot live in `.adoc`. Use styles instead
+|The layout differs in Word |That machine may lack the typeface. Name one in the template
+|Table column widths do not survive |Column widths are looks, so they belong to the template
+|===
+
+If anything is dropped on save, the bottom of the screen says what was
+dropped. Nothing is dropped in silence.
+
+== Related guides
+
+* link:writer-manual.adoc[writer manual] — every operation on the editing screen
+* link:calc-manual.adoc[calc manual] — the spreadsheet screen
+* link:python-manual.adoc[Python manual] — reading and writing from code
+* link:macro-manual.adoc[macro manual] — adding processing of your own

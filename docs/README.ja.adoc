@@ -12,7 +12,7 @@
 |===
 |冊子 |読む人 |英語版
 
-|link:genkou-manual.ja.adoc[原稿の手引き] |*原稿を書く人*(書いて、adoc・docx・HTML・PDF の4つで出す) |*まだ(次に作る)*
+|link:genkou-manual.ja.adoc[原稿の手引き] / link:genkou-manual.adoc[en] |*原稿を書く人*(書いて、adoc・docx・HTML・PDF の4つで出す) |ある
 |link:calc-manual.ja.adoc[calc の手引き] / link:calc-manual.adoc[en] |表計算を使う人(ボタンと作法) |ある
 |link:writer-manual.ja.adoc[writer の手引き] / link:writer-manual.adoc[en] |文書を使う人 |ある
 |link:python-manual.ja.adoc[Python の手引き] / link:python-manual.adoc[en] |コードを書く人(範囲⇄配列・AI との共働) |ある
@@ -24,8 +24,7 @@
 |link:../templates/README.adoc[templates/]・link:../sample/README.adoc[sample/] |実例で覚える人 |—
 |===
 
-英語版の無い冊子は、この順で揃えます: 原稿の手引き → Word / Excel との違い →
-対応表 → コマンドの手引き。
+英語版の無い冊子は、この順で揃えます: Word / Excel との違い → 対応表 → コマンドの手引き。
 
 == 管理の規則
 
