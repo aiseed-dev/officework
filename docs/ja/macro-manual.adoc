@@ -1,6 +1,6 @@
 = officework マクロの手引き(Python)
 
-_元は英語版(link:macro-manual.adoc[macro-manual.adoc])です。こちらは日本語訳です。_
+_元は英語版(link:../en/macro-manual.adoc[macro-manual.adoc])です。こちらは日本語訳です。_
 
 officework のマクロは、置き場に置いた Python のスクリプトです。
 方針は3つだけです。
@@ -74,7 +74,7 @@ r.offset(0, 1).value = [[x * 1.1 for x in row] for row in r.value]
 * **大きい範囲は `r.value` でまとめて読み書きします。** 1セルずつの往復は行の数だけ橋を渡るので、数千行では待たされます(読み → 作り直し → 書き、の3手が速い形です)
 * **できない・危うい頼みは `raise SystemExit("理由")` で断ります。** 理由は画面に出ます。黙って空振りしません
 
-橋の口の全部(`Range` の書式・シート・保存など)は link:python-manual.ja.adoc[Python の手引き]にあります。
+橋の口の全部(`Range` の書式・シート・保存など)は link:python-manual.adoc[Python の手引き]にあります。
 
 == 文書のマクロ — 記入欄と雛形
 

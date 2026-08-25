@@ -1,8 +1,8 @@
 = Python の手引き — 配列と API
 
-_元は英語版(link:python-manual.adoc[python-manual.adoc])です。こちらは日本語訳です。_
+_元は英語版(link:../en/python-manual.adoc[python-manual.adoc])です。こちらは日本語訳です。_
 
-ボタンの使い方は link:calc-manual.ja.adoc[calc] / link:writer-manual.ja.adoc[writer] の手引きに。
+ボタンの使い方は link:calc-manual.adoc[calc] / link:writer-manual.adoc[writer] の手引きに。
 ここは**コードを書く人のための説明** — とくに「範囲⇄配列」のやり取りは画面からは見えないので、詳しいことはここに書きます。
 書いてあることは全部、この機械で実際に動かして確かめています。
 
@@ -286,12 +286,12 @@ unsupported は「読めなかった」の帳簿であって「捨てた」の�
 == 対応表(別の1枚)
 
 画面のボタン・`officework`・python-docx / openpyxl を1行に並べた一覧は、
-link:api-taiou.ja.adoc[対応表] にあります。引くための表なので分けてあります。
+link:api-taiou.adoc[対応表] にあります。引くための表なので分けてあります。
 
 == 他のライブラリの書き方でも動く — openpyxl・xlwings・python-docx
 
 いま持っているコードも、覚えている書き方も、そのまま使えます。
-**API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.adoc)で、在庫は台帳 link:pysheet-gokan.ja.adoc[docs/pysheet-gokan.ja.adoc] — 3ライブラリの中核 324 メンバーを1件ずつ判定してある(できる物・作る物・作らない物とその理由)。
+**API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.adoc)で、在庫は台帳 link:../pysheet-gokan.ja.adoc[docs/pysheet-gokan.ja.adoc] — 3ライブラリの中核 324 メンバーを1件ずつ判定してある(できる物・作る物・作らない物とその理由)。
 ここに書くのは**いま動くものだけ**で、全部この機械で動かして確かめています。
 
 書式をそのまま保つことと、式を計算し直すことは、どの書き方をしても効きます。
@@ -335,7 +335,7 @@ wb.add_named_style(...)                       # セルのスタイル(名前付�
 ----
 
 データの入力規則・名前付き範囲・グループ化・画像(`add_image`)・ヘッダー/フッター(奇数・偶数・先頭ページの別まで)・1904 日付システム・`move_range`(数式の参照が付いて動く)も同じ流儀で。
-*何がどこまであるかは対応表を見てください*(link:pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] — 324 件に判定と理由)。
+*何がどこまであるかは対応表を見てください*(link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] — 324 件に判定と理由)。
 
 === xlwings の書き方(officework.calc — 動いている calc を操る)
 
@@ -414,7 +414,7 @@ p.runs[0].font.name                  # .name でも引ける(書体が run に�
 
 書く方も一通りそろっています — `d.add_heading(字, level)`(1〜3。
 0=Title は持たないので正直に断る)、`d.add_paragraph(字, style=)`、`d.add_picture`、`d.add_section()`、`d.add_table(rows, cols)`、`d.styles.add_style`、`p.add_comment(字)`(段落単位)、`d.core_properties`。
-在庫の全量と判定の理由は台帳(link:pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc])に。
+在庫の全量と判定の理由は台帳(link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc])に。
 
 == 選んだ範囲に同じ処理をする(Excel の Selection)
 
@@ -655,7 +655,7 @@ AI はマクロ(`ribbon/` か `plugins/`)から呼び、結果を普通の値と
 
 == writer のマクロ(d = python-docx)
 
-*専用の手引き: link:macro-manual.ja.adoc[macro-manual.ja.adoc]* —名前つき記入欄(`fill` / `extract` / `fields`)、雛形(`render` / `tpl_fields`、docxtpl)、表の選択に効くマクロ、サンドボックスの中身、AI に書かせる話まで。
+*専用の手引き: link:macro-manual.adoc[macro-manual.ja.adoc]* —名前つき記入欄(`fill` / `extract` / `fields`)、雛形(`render` / `tpl_fields`、docxtpl)、表の選択に効くマクロ、サンドボックスの中身、AI に書かせる話まで。
 
 [source,python]
 ----
@@ -773,15 +773,15 @@ AI が書く → 検分(J 列は空きか・net 不要)→ 実行 → 結果を�
 **エンジンだけ(pip install officework — アプリ不要)。
 **6本とも実際に動かしてから置いてあります(結果の数字は sample/README.adoc に):
 
-* link:../sample/差し込み.py[sample/差し込み.py] — 見積書に宛名と数量を差し込む。書式据え置き・式は合計まで追従
-* link:../sample/量産.py[sample/量産.py] — 1つの型紙から宛先3件の見積書
-* link:../sample/集計.py[sample/集計.py] — `values()` で36行を一気読み → 区分別集計
-* link:../sample/差し替え.py[sample/差し替え.py] — docx の `replace()`(書式を保つ置換)
-* link:../sample/表の吸い上げ.py[sample/表の吸い上げ.py] — 文書の表 → CSV
-* link:../sample/点検.py[sample/点検.py] — フォルダ一括で `unsupported` を数える検品
+* link:../../sample/差し込み.py[sample/差し込み.py] — 見積書に宛名と数量を差し込む。書式据え置き・式は合計まで追従
+* link:../../sample/量産.py[sample/量産.py] — 1つの型紙から宛先3件の見積書
+* link:../../sample/集計.py[sample/集計.py] — `values()` で36行を一気読み → 区分別集計
+* link:../../sample/差し替え.py[sample/差し替え.py] — docx の `replace()`(書式を保つ置換)
+* link:../../sample/表の吸い上げ.py[sample/表の吸い上げ.py] — 文書の表 → CSV
+* link:../../sample/点検.py[sample/点検.py] — フォルダ一括で `unsupported` を数える検品
 
 *アプリと組む(plugins の手続き)。*
 
-* link:../templates/README.adoc[templates/] — 問い合わせ台帳(`@取り込み` のCSV 取り込み・=PY の状態集計)ほか
-* link:../sample/README.adoc[sample/注文書.xlsx] — マスタの入れ替え(`@更新`)とJSON の送信(`@送信`)
-* link:../sample/README.adoc[sample/受注台帳.xlsx] — 取り込みの控え(K2)で重複を防ぐ増分の取り込み
+* link:../../templates/README.md[templates/] — 問い合わせ台帳(`@取り込み` のCSV 取り込み・=PY の状態集計)ほか
+* link:../../sample/README.md[sample/注文書.xlsx] — マスタの入れ替え(`@更新`)とJSON の送信(`@送信`)
+* link:../../sample/README.md[sample/受注台帳.xlsx] — 取り込みの控え(K2)で重複を防ぐ増分の取り込み

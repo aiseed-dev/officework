@@ -26,7 +26,7 @@ That is the point of the split, not a side-effect.
 $ pip install officework
 ----
 
-See the link:python-manual.adoc[Python manual].
+See the link:en/python-manual.adoc[Python manual].
 Nothing on this page is needed for that; the sections below are about embedding the engine in another application.
 
 == Running the engine inside genoffice

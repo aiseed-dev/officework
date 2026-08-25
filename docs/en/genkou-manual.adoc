@@ -1,6 +1,6 @@
 = Manuscript guide — write once, publish in four shapes
 
-_日本語版(secondary): link:genkou-manual.ja.adoc[genkou-manual.ja.adoc]_
+_日本語版(secondary): link:../ja/genkou-manual.adoc[genkou-manual.ja.adoc]_
 
 This guide covers writing a manuscript in officework and publishing it in
 four shapes: AsciiDoc, a Word document (docx), a web page (HTML), and PDF.

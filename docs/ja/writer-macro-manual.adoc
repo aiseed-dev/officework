@@ -1,4 +1,4 @@
 = writer マクロの手引き(Python)
 
-**この手引きは link:macro-manual.ja.adoc[officework マクロの手引き]に統合しました。**
+**この手引きは link:macro-manual.adoc[officework マクロの手引き]に統合しました。**
 文書のマクロ(記入欄・雛形・python-docx の作法)も、表のマクロ(選択に効く定型処理)も、そちらに全部あります。

@@ -339,5 +339,5 @@ App クラスは作らない(下記)。
 |`add_column(width)` |断る |等分の表に1列だけ幅を持たせると形が決まらない。幅なしで足す道を案内する
 |===
 
-採取の道具: link:../tools/gokan\_inventory.py[tools/gokan\_inventory.py]。
+採取の道具: link:../tools/gokan_inventory.py[tools/gokan\_inventory.py]。
 再採取は `.venv/bin/python tools/gokan_inventory.py inventory.json `(3つが .venv に入っている前提)。

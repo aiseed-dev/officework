@@ -1,6 +1,6 @@
 = officework macro manual (Python)
 
-_日本語版(secondary): link:macro-manual.ja.adoc[macro-manual.ja.adoc]_
+_日本語版(secondary): link:../ja/macro-manual.adoc[macro-manual.ja.adoc]_
 
 An officework macro is a Python script placed in a folder. Three rules cover everything:
 

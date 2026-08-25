@@ -1,6 +1,6 @@
 = writer manual
 
-_日本語版(secondary): link:writer-manual.ja.adoc[writer-manual.ja.adoc]_
+_日本語版(secondary): link:../ja/writer-manual.adoc[writer-manual.ja.adoc]_
 
 *This manual describes writer 0.2.0-alpha.* Anything not yet in the released 0.1.0-alpha is marked *(coming in 0.2.0-alpha)*.
 Those parts describe what we are building, not what ships today.
@@ -41,7 +41,7 @@ Three promises:
 * *Every operation is one undo away.* Keystrokes, IME commits, pastes, a single ink stroke, a color-scheme change — all come back with one Ctrl+Z
 * *Nothing is dropped silently.* Anything we can't read, or that would be lost on save, is listed in the report and mentioned in the status bar
 
-Try the samples in link:../sample/README.md[sample/] — especially `sample/writer/01〜05` (Japanese typesetting, vertical writing, an application form, a monthly report, a feature tour) and `06_書き方の見本.adoc`, which puts every marking from the table below on one page.
+Try the samples in link:../../sample/README.md[sample/] — especially `sample/writer/01〜05` (Japanese typesetting, vertical writing, an application form, a monthly report, a feature tour) and `06_書き方の見本.adoc`, which puts every marking from the table below on one page.
 
 == Starting
 

@@ -1,6 +1,6 @@
 = calc の手引き
 
-_元は英語版(link:calc-manual.adoc[calc-manual.adoc])です。こちらは日本語訳です。_
+_元は英語版(link:../en/calc-manual.adoc[calc-manual.adoc])です。こちらは日本語訳です。_
 
 officework の表の編集画面の手引き。
 ブック(.sheet.adoc)も xlsx も開いて、直して、保存する。
@@ -428,7 +428,7 @@ https://…[こちら] を見て              → 青い下線のリンクにな
 
 == Python — マクロの代わりに
 
-コードの書き方(*範囲⇄配列*・API・=PY の引数と返り値)の説明はlink:python-manual.ja.adoc[Python の手引き]。
+コードの書き方(*範囲⇄配列*・API・=PY の引数と返り値)の説明はlink:python-manual.adoc[Python の手引き]。
 この章は操作の側から。
 
 *VBA 型のマクロはない。* データとプログラムを1つのファイルに入れる仕組みを**持たない**。

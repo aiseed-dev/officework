@@ -59,7 +59,7 @@ def 大文字にする(段落):
 ----
 
 よく使うものはパッケージにして、職場で配れます
-(link:python-manual.ja.adoc[Python の手引き]の「パッケージを足す」)。
+(link:python-manual.adoc[Python の手引き]の「パッケージを足す」)。
 
 // api:taiou:start
 
@@ -438,7 +438,7 @@ def 大文字にする(段落):
 
 == 関連する手引き
 
-* link:python-manual.ja.adoc[Python の手引き] — 書き方の説明と見本
-* link:writer-manual.ja.adoc[writer の手引き] — 文書の画面。巻末に「すべての操作」
-* link:calc-manual.ja.adoc[calc の手引き] — 表の画面。巻末に「すべての操作」
-* link:pysheet-gokan.ja.adoc[互換の台帳] — 本家の全メンバーの判定
+* link:python-manual.adoc[Python の手引き] — 書き方の説明と見本
+* link:writer-manual.adoc[writer の手引き] — 文書の画面。巻末に「すべての操作」
+* link:calc-manual.adoc[calc の手引き] — 表の画面。巻末に「すべての操作」
+* link:../pysheet-gokan.ja.adoc[互換の台帳] — 本家の全メンバーの判定

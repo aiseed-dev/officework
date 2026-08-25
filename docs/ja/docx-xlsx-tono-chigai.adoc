@@ -63,7 +63,7 @@ docx は、このアプリでしか作れません。中身は圧縮された XM
 **覚えなくても困りません。** リボンのボタンで作っても、
 保存すれば同じ形になります。書きやすいほうを選んでください。
 
-書き方の一覧は link:genkou-manual.ja.adoc[原稿の手引き]にあります。
+書き方の一覧は link:genkou-manual.adoc[原稿の手引き]にあります。
 
 === HTML も、そのまま開けます
 
@@ -302,8 +302,8 @@ link:commands/右クリック/この版で読み飛ばしたもの.adoc[この�
 |===
 |知りたいこと |読む場所
 
-|Excel でやっていた仕事の、ここでのやり方 |link:from-excel.ja.adoc[Excel から来た方へ]
-|原稿を書いて4つの形で出す手順 |link:genkou-manual.ja.adoc[原稿の手引き]
-|ボタン1つの詳しい説明 |link:commands/README.ja.adoc[コマンドの手引き]
-|プログラムからの書き方 |link:api-taiou.ja.adoc[対応表]
+|Excel でやっていた仕事の、ここでのやり方 |link:from-excel.adoc[Excel から来た方へ]
+|原稿を書いて4つの形で出す手順 |link:genkou-manual.adoc[原稿の手引き]
+|ボタン1つの詳しい説明 |link:commands/README.adoc[コマンドの手引き]
+|プログラムからの書き方 |link:api-taiou.adoc[対応表]
 |===

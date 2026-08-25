@@ -1,6 +1,6 @@
 = writer の手引き
 
-_元は英語版(link:writer-manual.adoc[writer-manual.adoc])です。こちらは日本語訳です。_
+_元は英語版(link:../en/writer-manual.adoc[writer-manual.adoc])です。こちらは日本語訳です。_
 
 *この手引きは writer 0.2.0-alpha について書いています。* いま配っている0.1.0-alpha にまだ入っていない所には**(0.2.0-alpha で入ります)**と印を付けています。
 印の付いた説明は、これからそう作る、という意味です。
@@ -43,7 +43,7 @@ Python から使うときは今までどおり docx を直して返せます(`fr
 * *どの操作も1手で戻せる。* 打鍵も IME の確定も貼り付けもペンの1本も配色の変更も、Ctrl+Z 一回で戻る
 * *黙って落とさない。* 読めないもの・保存で失われるものはレポートとステータスバーで言う
 
-試せる見本が link:../sample/README.md[sample/] にある — 特に``sample/writer/01〜05``(日本語の組版・縦書き・申込書・月次報告・道具くらべ)と``06_書き方の見本.adoc``(下の「書き方の一覧」を1枚にしたもの)。
+試せる見本が link:../../sample/README.md[sample/] にある — 特に``sample/writer/01〜05``(日本語の組版・縦書き・申込書・月次報告・道具くらべ)と``06_書き方の見本.adoc``(下の「書き方の一覧」を1枚にしたもの)。
 
 == 起動
 
@@ -329,7 +329,7 @@ docx には sectPr の``textDirection tbRl`` で入り、LibreOffice で開け�
 **置き場の外の .py を選ぶ口は閉じました。
 外から受け取った物は、置き場に置いてから一覧で選びます —**置く手が1つ挟まる**のが門です。
 
-* *マクロの書き方* — 名前つき記入欄(`fill`/`extract`)・雛形(`render`)・速さの作法・AI に書かせる話はlink:macro-manual.ja.adoc[マクロの手引き]に
+* *マクロの書き方* — 名前つき記入欄(`fill`/`extract`)・雛形(`render`)・速さの作法・AI に書かせる話はlink:macro-manual.adoc[マクロの手引き]に
 
 == 文書は2種 — adoc 形式と、受け取った docx
 

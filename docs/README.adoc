@@ -1,0 +1,8 @@
+= Manuals / マニュアル
+
+* link:ja/README.adoc[日本語のマニュアル]
+* English manuals: link:en/[en/] (each Japanese book links to its English
+  original; an English index will come with the remaining translations)
+
+Everything else in this folder is working material for building the
+product, not user documentation.

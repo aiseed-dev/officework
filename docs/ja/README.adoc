@@ -6,34 +6,34 @@
 |===
 |冊子 |こんなとき
 
-|link:genkou-manual.ja.adoc[原稿の手引き](link:genkou-manual.adoc[English])
+|link:genkou-manual.adoc[原稿の手引き](link:../en/genkou-manual.adoc[English])
 |原稿を書いて、AsciiDoc・Word 文書・Web ページ・PDF の4つの形で出す
 
-|link:calc-manual.ja.adoc[calc の手引き](link:calc-manual.adoc[English])
+|link:calc-manual.adoc[calc の手引き](link:../en/calc-manual.adoc[English])
 |表計算の画面の使い方ぜんぶ
 
-|link:writer-manual.ja.adoc[writer の手引き](link:writer-manual.adoc[English])
+|link:writer-manual.adoc[writer の手引き](link:../en/writer-manual.adoc[English])
 |文書の画面の使い方ぜんぶ
 
-|link:commands/README.ja.adoc[コマンドの手引き]
+|link:commands/README.adoc[コマンドの手引き]
 |ボタン1つを詳しく知りたい。ダイアログで何を選べるかもここ
 
-|link:python-manual.ja.adoc[Python の手引き](link:python-manual.adoc[English])
+|link:python-manual.adoc[Python の手引き](link:../en/python-manual.adoc[English])
 |プログラムから読み書きする
 
-|link:macro-manual.ja.adoc[マクロの手引き](link:macro-manual.adoc[English])
+|link:macro-manual.adoc[マクロの手引き](link:../en/macro-manual.adoc[English])
 |自分のボタンや処理を足す。AI に書かせる方法もここ
 
-|link:from-excel.ja.adoc[Excel から](link:from-excel.adoc[English])
+|link:from-excel.adoc[Excel から](link:../en/from-excel.adoc[English])
 |Excel でやっていたことを、ここでどうやるか
 
-|link:docx-xlsx-tono-chigai.ja.adoc[Word / Excel との違い]
+|link:docx-xlsx-tono-chigai.adoc[Word / Excel との違い]
 |Word / Excel と何が同じで何が違うか、1枚で
 
-|link:api-taiou.ja.adoc[対応表]
+|link:api-taiou.adoc[対応表]
 |メニューのボタンと、openpyxl・python-docx の書き方の対応を引く
 
-|link:../templates/README.adoc[テンプレート集]・link:../sample/README.adoc[実例集]
+|link:../../templates/README.md[テンプレート集]・link:../../sample/README.md[実例集]
 |実物を開いて覚える
 |===
 

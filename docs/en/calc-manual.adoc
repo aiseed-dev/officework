@@ -1,6 +1,6 @@
 = calc manual
 
-_日本語版(secondary): link:calc-manual.ja.adoc[calc-manual.ja.adoc]_
+_日本語版(secondary): link:../ja/calc-manual.adoc[calc-manual.ja.adoc]_
 
 The manual for officework's spreadsheet editor.
 It opens, edits, and saves workbooks (.sheet.adoc) and xlsx — and calculates formulas.

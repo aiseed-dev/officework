@@ -1,6 +1,6 @@
 = 原稿の手引き — 書いて、4つの形で出す
 
-_元は英語版(link:genkou-manual.adoc[genkou-manual.adoc])です。こちらは日本語訳です。_
+_元は英語版(link:../en/genkou-manual.adoc[genkou-manual.adoc])です。こちらは日本語訳です。_
 
 officework で原稿を書き、AsciiDoc・Word 文書(docx)・Web ページ(HTML)・PDF の
 4つの形で出すまでの手引きです。
@@ -38,7 +38,7 @@ officework で原稿を書き、AsciiDoc・Word 文書(docx)・Web ページ(HTM
 == 書く
 
 officework で `.adoc` のファイルを開くと、編集画面が出ます。
-見出しや太字はリボンのボタンで付けられます。詳しくは link:writer-manual.ja.adoc[writer の手引き] を見てください。
+見出しや太字はリボンのボタンで付けられます。詳しくは link:writer-manual.adoc[writer の手引き] を見てください。
 
 原稿は普通のテキストなので、テキストエディタで開くこともできます。
 
@@ -150,7 +150,7 @@ d.render({"宛名": "日本フネン株式会社", "合計": "1,440,000"},
 
 `{明細.品名}` を含む表の行は、データの数だけ増えます。
 
-詳しくは link:python-manual.ja.adoc[Python の手引き] を見てください。
+詳しくは link:python-manual.adoc[Python の手引き] を見てください。
 
 == 困ったとき
 
@@ -169,7 +169,7 @@ d.render({"宛名": "日本フネン株式会社", "合計": "1,440,000"},
 
 == 関連する手引き
 
-* link:writer-manual.ja.adoc[writer の手引き] — 編集画面の操作すべて
-* link:calc-manual.ja.adoc[calc の手引き] — 表計算の画面
-* link:python-manual.ja.adoc[Python の手引き] — プログラムから読み書きする
-* link:macro-manual.ja.adoc[マクロの手引き] — 自分の処理を足す
+* link:writer-manual.adoc[writer の手引き] — 編集画面の操作すべて
+* link:calc-manual.adoc[calc の手引き] — 表計算の画面
+* link:python-manual.adoc[Python の手引き] — プログラムから読み書きする
+* link:macro-manual.adoc[マクロの手引き] — 自分の処理を足す
