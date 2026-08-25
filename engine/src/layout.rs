@@ -478,11 +478,41 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let em = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base) * 25.4 / 72.0;
                 let indent_mm = para.indent as f32 * em * 2.0;
                 let measure = (block_measure - indent_mm).max(em);
+                // **塊の印の行は、紙に出しません**(2026-08-25)。
+                // `[source,python]` と `----` がそのまま印刷されていました。
+                // 印はここからここまでが塊だという合図で、文章ではありません
+                if matches!(para.style_id.as_deref(), Some("塊の区切り") | Some("指定の行")) {
+                    para_byte0 += para.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
+                    continue;
+                }
+                // **コードの塊は等幅で組みます**(2026-08-25)。
+                // 本文と同じ字だと、コードなのか文章なのか分かりません。
+                // 等幅の書体がこの機械に無ければ、そのまま組みます
+                let 等幅 = (para.style_id.as_deref() == Some("塊の中"))
+                    .then(crate::font::monospace)
+                    .flatten()
+                    .map(|f| f.name.clone());
+                let para_eff_mono;
+                let para = if let Some(名) = 等幅 {
+                    let mut q = para.clone();
+                    for r in &mut q.runs {
+                        if r.font.is_none() {
+                            r.font = Some(名.clone());
+                        }
+                    }
+                    para_eff_mono = q;
+                    &para_eff_mono
+                } else {
+                    para
+                };
                 let marker = match para.list {
                     ListKind::None => {
                         counters.clear();
                         kinds.clear();
-                        None
+                        // **註記は印を紙にも出します。** 読むときに
+                        // `NOTE: ` を字から外しているので、ここで戻さないと
+                        // 紙の上では普通の段落と見分けが付きません
+                        註記の札(para.style_id.as_deref()).map(str::to_string)
                     }
                     _ => {
                         let l = para.indent as usize;
@@ -1317,4 +1347,20 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     }
     // 次のベースライン
     table_bottom + lh
+}
+
+/// 註記のスタイル名 → 紙に出す札。
+///
+/// 読み手は `NOTE: ` を字から外して、どれなのかをスタイルの名前に移します。
+/// **紙の上では字しか見えない**ので、組むときに札を戻します。
+/// 戻さないと、註記が普通の段落に化けます(2026-08-25)。
+pub(super) fn 註記の札(name: Option<&str>) -> Option<&'static str> {
+    Some(match name? {
+        "註記" => "メモ ",
+        "ヒント" => "こつ ",
+        "重要" => "大事 ",
+        "警告" => "警告 ",
+        "注意" => "注意 ",
+        _ => return None,
+    })
 }

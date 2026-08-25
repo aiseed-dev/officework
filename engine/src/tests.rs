@@ -2871,4 +2871,50 @@ fn 空行で切れた一覧は別々になる() {
     assert!(!h.contains("説明のリストの始め"), "内輪の印がページに出ています:\n{h}");
 }
 
+/// **紙の上の塊と註記**(2026-08-25)。
+///
+/// 手引きは「コードの塊は等幅」「註記は種類が分かる」と書いてあるのに、
+/// 紙の側は 3つとも外れていました。
+///
+/// * `[source,python]` と `----` が本文としてそのまま印刷される
+/// * `NOTE: ` の印が読むときに外れるので、紙では普通の段落に見える
+/// * コードが本文と同じ書体で組まれる
+#[test]
+fn 紙でも塊と註記が分かる() {
+    let d = crate::adoc::parse(
+        "= 題\n\nNOTE: 気をつけて。\n\n[source,python]\n----\nprint(1)\n----\n\n普通の段落。\n")
+        .expect("読めない");
+    let (fam, _) = crate::font::for_document(None).expect("フォントが無い");
+    let data = crate::font::load(fam).expect("読めない");
+    let m = crate::Metrics::new(&data).expect("読めない");
+    let sheet = crate::layout(
+        &d, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0 });
+    let 行: Vec<String> = sheet.lines.iter()
+        .map(|l| l.cells.iter().map(|c| c.ch).collect::<String>())
+        .filter(|t| !t.trim().is_empty())
+        .collect();
+    let 全部 = 行.join("\n");
+    // **印の行は紙に出しません**
+    assert!(!全部.contains("----"), "塊の印が印刷されています:\n{全部}");
+    assert!(!全部.contains("[source"), "塊の指定が印刷されています:\n{全部}");
+    // **註記は種類が分かること**
+    assert!(全部.contains("メモ"), "註記の札がありません:\n{全部}");
+    // **等幅の書体が入っているのに探していない、を捕まえます。**
+    // 「機械に無いから」で素通りすると、探す所を壊しても気づけません
+    let 入っている = ["Noto Sans Mono CJK JP", "Noto Sans Mono", "DejaVu Sans Mono",
+                      "Liberation Mono", "IPAGothic", "MS Gothic", "BIZ UDGothic",
+                      "Osaka-Mono", "Courier New"]
+        .iter()
+        .any(|n| crate::font::for_document(Some(n)).is_ok_and(|(_, 本物)| 本物));
+    assert_eq!(入っている, crate::font::monospace().is_some(),
+               "等幅の書体が入っているのに monospace() が見つけていません");
+    // **コードは等幅**(この機械に等幅の書体があるときだけ見ます)
+    if crate::font::monospace().is_some() {
+        let コードの行 = sheet.lines.iter()
+            .find(|l| l.cells.iter().map(|c| c.ch).collect::<String>().contains("print"))
+            .expect("コードの行がありません");
+        assert!(コードの行.cells[0].font.is_some(), "コードが本文と同じ書体です");
+    }
+}
+
 }

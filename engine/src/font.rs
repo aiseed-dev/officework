@@ -332,3 +332,23 @@ mod tests {
         assert!(w > 3.0 && w < 4.5, "全角の幅がおかしい: {w}mm ({})", f.name);
     }
 }
+
+/// **コードの塊に使う等幅の書体**を、この機械から探す。
+///
+/// 日本語の入るコードもあるので、和文を持つ物から順に見ます。
+/// どれも入っていなければ `None` — *代わりの書体で等幅のふりはしません*。
+/// 等幅でない字で組むと桁が揃わず、かえって読みにくくなります。
+pub fn monospace() -> Option<&'static Family> {
+    const 候補: &[&str] = &[
+        "Noto Sans Mono CJK JP",   // Linux の既定の組み合わせ
+        "BIZ UDGothic",            // Windows(等幅の和文)
+        "MS Gothic",
+        "Osaka-Mono",              // Mac
+        "IPAGothic",
+        "Noto Sans Mono",          // 和文が無い物は最後
+        "DejaVu Sans Mono",
+        "Liberation Mono",
+        "Courier New",
+    ];
+    候補.iter().find_map(|n| resolve(n))
+}
