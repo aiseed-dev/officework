@@ -531,54 +531,19 @@ pub fn run_with_timeout(
     }
 }
 
-/// **venv の素にする Python。** 同梱があればそれ、無ければ機械の物。
+/// **venv の素にする Python。** 機械に入っている物を使います。
 ///
 /// `find_python` と違って**利用者の venv は見ない** — 自分自身を素にして
-/// 作り直すと、入れ子になって元の Python が分からなくなる
+/// 作り直すと、入れ子になって元の Python が分からなくなる。
+///
+/// *同梱の Python は見ません*(2026-08-24 に同梱をやめました)。
 fn base_python() -> PathBuf {
     if let Some(p) = std::env::var_os("JO_PYTHON") {
         return p.into();
     }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            if let Some(p) = bundled_python(dir) {
-                return p;
-            }
-        }
-    }
     "python3".into()
 }
 
-/// 同梱の Python(配る形に入れる時の置き場)。実行ファイルの隣の
-/// `python/` を見る — Windows は `python/python.exe`、他は `python/bin/python3`。
-///
-/// **配るときは Python を同梱する**(発注者 2026-08-14。Windows は
-/// Python が入っていない機械が普通で、同梱しないと「動かない」から
-/// 始まる。Flet も同じ形)。中身は python-build-standalone
-/// (astral-sh。PSF ライセンスで再配布できる)の **3.14 系** — 手元の
-/// miniforge3 と揃える。3.12 ではスマホの的に届かない(発注者)。
-/// pip も入っているので、matplotlib や polars は同梱の python に
-/// 後から入れられる
-fn bundled_python(exe_dir: &std::path::Path) -> Option<std::path::PathBuf> {
-    // macOS のアプリでは Contents/Resources に置きます。Contents/MacOS の下に
-    // ディレクトリがあると、codesign がそれを入れ子のアプリだと解釈して
-    // 署名できません(2026-08-17)。実行ファイルは Contents/MacOS にあるので、
-    // 1つ上がって Resources を見ます。
-    let cands: &[&str] = if cfg!(windows) {
-        &["python/python.exe", "python.exe"]
-    } else {
-        &[
-            "python/bin/python3",
-            "python/bin/python",
-            "../Resources/python/bin/python3",
-            "../Resources/python/bin/python",
-        ]
-    };
-    cands
-        .iter()
-        .map(|c| exe_dir.join(c))
-        .find(|p| p.exists())
-}
 
 /// 機械の証明書の束を探す(見つからなければ None)。
 ///
@@ -610,12 +575,51 @@ pub fn py_env() -> Vec<(&'static str, String)> {
         .unwrap_or_default()
 }
 
+/// **いま開いている綴り(フォルダ)。** アプリがフォルダを開いたときに置きます。
+///
+/// エディタと同じで、*作業しているフォルダの `.venv` を最優先*にするためです
+/// (2026-08-24 発注者「zed と同じように作業ディレクトリー内の仮想環境を
+/// 優先でいいでしょう」)。ここが空なら、今までどおりの順で探します。
+static 綴り: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+
+/// いま開いている綴りを教える。アプリがフォルダを開いた回に呼びます。
+pub fn set_work_dir(dir: Option<PathBuf>) {
+    if let Ok(mut g) = 綴り.lock() {
+        *g = dir;
+    }
+}
+
+/// いま開いている綴り(試験と、案内の文言のため)。
+pub fn work_dir() -> Option<PathBuf> {
+    綴り.lock().ok().and_then(|g| g.clone())
+}
+
 /// 裏方の Python を探す。
-/// **JO_PYTHON → 開発機の .venv → 利用者の venv → 同梱 → python3**。
+/// **JO_PYTHON → 綴りの .venv → 開発機の .venv → 利用者の venv → python3**。
 /// matplotlib が居るかは実行して分かる(居なければ status で言う)。
+///
+/// # 同梱の Python は見ません(2026-08-24 発注者)
+///
+/// 前は最後から2番目に「配る形に同梱した Python」を見ていました。
+/// *同梱をやめたので、この段も外しました。* 同梱の Python は読むだけの物で、
+/// matplotlib も polars も入っていません — 結局その2つは利用者が
+/// `.venv` に入れる必要があり、*同梱があってもなくても手順は同じ*でした。
 pub fn find_python() -> std::path::PathBuf {
     if let Some(p) = std::env::var_os("JO_PYTHON") {
         return p.into();
+    }
+    // **開いている綴りの `.venv` がいちばん強い。** エディタと同じ作法です。
+    // 同じフォルダを JupyterLab とエディタと officework が見ているとき、
+    // *3つとも同じ Python を使う*のが期待される動きです
+    if let Some(d) = work_dir() {
+        let p = d.join(".venv/bin/python");
+        if p.exists() {
+            return p;
+        }
+        let w = d.join(".venv/Scripts/python.exe"); // Windows の venv
+        if w.exists() {
+            return w;
+        }
     }
     // **開発機を先に見る。** 実行ファイルを遡って `.venv` が見つかるのは
     // 「リポジトリの中から走らせている」印で、そのときは repo の `.venv`
@@ -648,14 +652,6 @@ pub fn find_python() -> std::path::PathBuf {
     if let Some(p) = venv_python() {
         if !venv_broken() {
             return p;
-        }
-    }
-    // 配る形に同梱した Python(実行ファイルの隣)
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            if let Some(p) = bundled_python(dir) {
-                return p;
-            }
         }
     }
     "python3".into()
@@ -1453,16 +1449,27 @@ mod cage_tests {
     }
 
     #[test]
-    fn 同梱の_python_を実行ファイルの隣から見つける() {
-        // 配る形は python/ を実行ファイルの隣に置く(2026-08-14)。
-        // Windows は python/python.exe、他は python/bin/python3
-        let d = std::env::temp_dir().join(format!("owtest-bundled-{}", std::process::id()));
-        let sub = if cfg!(windows) { d.join("python") } else { d.join("python/bin") };
-        std::fs::create_dir_all(&sub).unwrap();
-        assert!(super::bundled_python(&d).is_none(), "無い時に見つけてはいけない");
-        let exe = if cfg!(windows) { sub.join("python.exe") } else { sub.join("python3") };
-        std::fs::write(&exe, b"").unwrap();
-        assert_eq!(super::bundled_python(&d), Some(exe), "隣の python を見つけていない");
+    fn 綴りの_venv_がいちばん強い() {
+        // **開いているフォルダの .venv を最優先**(2026-08-24 発注者
+        // 「zed と同じように作業ディレクトリー内の仮想環境を優先で」)。
+        // 同じフォルダを JupyterLab とエディタと officework が見ているとき、
+        // 3つとも同じ Python を使うのが期待される動きです
+        let d = std::env::temp_dir().join(format!("owtest-workdir-{}", std::process::id()));
+        let bin = if cfg!(windows) { d.join(".venv/Scripts") } else { d.join(".venv/bin") };
+        std::fs::create_dir_all(&bin).unwrap();
+        let py = if cfg!(windows) { bin.join("python.exe") } else { bin.join("python") };
+        std::fs::write(&py, b"").unwrap();
+
+        // 綴りを教える前は、ここには当たりません
+        super::set_work_dir(None);
+        assert_ne!(super::find_python(), py, "教えていないのに綴りを見た");
+
+        // 教えたら、いちばん強い
+        super::set_work_dir(Some(d.clone()));
+        assert_eq!(super::find_python(), py, "綴りの .venv を見ていない");
+
+        // **JO_PYTHON はさらに強い**(現場で差し替えられる、の決め)
+        super::set_work_dir(None);
         let _ = std::fs::remove_dir_all(&d);
     }
 

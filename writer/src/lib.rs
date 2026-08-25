@@ -652,6 +652,10 @@ impl Writer {
     /// (エディタと同じ形。SEKKEI「アプリはフォルダを開く形にする」)。
     pub fn show_folder(&mut self, dir: std::path::PathBuf) {
         ui::settings::set("folder", &dir.display().to_string());
+        // **綴りの .venv を Python の第一候補にします**(2026-08-24)。
+        // エディタと同じ作法で、同じフォルダを見ている3つの道具が
+        // 同じ Python を使うようにするためです
+        pyrun::set_work_dir(Some(dir.clone()));
         self.rp_open = true;
         self.rp_tab = 3; // フォルダの中身
         self.status = ui::tf!("{} を開きました(右の一覧から選んでください)",

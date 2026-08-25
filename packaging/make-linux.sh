@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# officework を Linux 向けに包む。**Python を同梱する**(発注者 2026-08-14)。
+# officework を Linux 向けに包む。**Python は同梱しません**(発注者 2026-08-24
+# 「Python を同梱する必要もなくて、zed と同じように作業ディレクトリー内の
+# 仮想環境を優先でいいでしょう」)。
 #
 #   packaging/make-linux.sh            tar.gz と .deb を作る
-#   packaging/make-linux.sh --no-py    Python を同梱しない(小さい・機械の python3 を使う)
+#   packaging/make-linux.sh --with-py  Python を同梱する(前の形。ふつうは要りません)
 #
 # 出来上がりは packaging/out/ に置く。
 #
-# 同梱する Python は python-build-standalone(astral-sh。PSF ライセンスで
-# 再配布できる)の **3.14 系** — 手元の miniforge3 と揃える(3.12 では
-# スマホの的に届かない)。pip も入っているので、matplotlib や polars は
-# 利用者が後から入れられる。
+# **なぜやめたか。** 同梱した Python は読むだけの物で、matplotlib も polars も
+# 入っていませんでした。その2つは結局あとから `.venv` に入れる必要があり、
+# *同梱があってもなくても利用者の手順は同じ*でした。荷物だけが大きくなります。
 #
-# 探し方の順は JO_PYTHON → **同梱** → .venv → python3(pyrun/src/lib.rs)。
-# 同梱を .venv より先に見るので、配った物が開発機の環境に引っ張られない。
+# 探し方の順は JO_PYTHON → **開いている綴りの .venv** → 開発機の .venv →
+# 利用者の venv → python3(pyrun/src/lib.rs)。
+# エディタや JupyterLab と同じフォルダを見ているとき、3つとも同じ Python を使います。
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -22,8 +24,8 @@ PY_TAG="20260610"
 ARCH="x86_64"
 OUT="packaging/out"
 NAME="officework-${VER}-linux-${ARCH}"
-WITH_PY=1
-[ "${1:-}" = "--no-py" ] && WITH_PY=0
+WITH_PY=0
+[ "${1:-}" = "--with-py" ] && WITH_PY=1
 
 echo "== officework ${VER} を包みます(Python 同梱: $([ $WITH_PY = 1 ] && echo あり || echo なし))"
 

@@ -136,6 +136,8 @@ impl Calc {
         }
         if let Some(d) = self.folder() {
             ui::settings::set("folder", &d.display().to_string());
+            // **綴りの .venv を Python の第一候補に**(writer と同じ)
+            pyrun::set_work_dir(Some(d.clone()));
         }
     }
 

@@ -43,18 +43,17 @@ matplotlib がありません(No module named 'matplotlib')。次で入ります
 この `.venv` は、そのメッセージが出るときに無ければ自動で作られます。
 Python を使わない人のパソコンには作りません。
 
-=== アプリに入っている Python に入れてはいけないのか
+=== Python はアプリに入っていません
 
-入れないでください。
-アプリの中の Python は**読み取り専用のつもり**で置いてあります。
-そこに後からパッケージを足すと、こうなります。
+officework は Python を持っていません。
+*お使いのパソコンの Python を使います。*
 
-* *macOS*: アプリの中身が変わったことになり、*署名が壊れて起動しなくなる*
-* *Linux(.deb)*: `/opt/officework` は管理者のものなので `sudo` が必要
-* *Windows*: 入りますが、*アプリを更新・削除すると一緒に消えます*
+入っていなければ、Python を入れてください
+(Windows なら link:https://www.python.org/[python.org] か Microsoft Store から)。
+Python を使わない機能 — 文書と表の編集、docx と xlsx の読み書き、印刷 — は
+Python が無くても全部動きます。
 
-`.venv` は `--system-site-packages` という設定で作ってあるので、アプリの中の標準ライブラリと `officework` はそのまま見えます。
-**あなたが足したものだけ**が``.venv`` に入ります。
+Python が要るのは、グラフ・数式・ピボットテーブル・マクロです。
 
 === エディタで書くとき
 
@@ -69,10 +68,21 @@ Python を使わない人のパソコンには作りません。
 探す順番はこうです。
 
 . `JO_PYTHON`(指定があれば)
+. *いま開いているフォルダの `.venv`*
 . リポジトリの `.venv`(ソースから動かしているとき)
 . `~/.config/officework/.venv`(あなたが足したパッケージ)
-. アプリに入っている Python
 . パソコンの `python3`
+
+*2番目が要点です。* エディタや JupyterLab と同じで、
+**開いているフォルダに `.venv` があれば、それを使います**。
+同じフォルダを3つの道具で開いていても、みな同じ Python を使うことになります。
+
+....
+仕事のフォルダ/
+├── .venv/          ← officework も JupyterLab もエディタもこれを使う
+├── 報告書.adoc
+└── 集計.ipynb
+....
 
 == Python が動く場所と、使える変数
 
