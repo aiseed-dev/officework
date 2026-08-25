@@ -152,8 +152,21 @@ MICHI = {
     "crossref": ("Paragraph", "", "", ""),
     "footnote": ("Paragraph", "", "", ""),
     "caption": ("Paragraph", "", "", ""),
+    # 記入欄。**事務の様式の中心**なので、11 個のボタンを全部載せます
+    # (2026-08-25 まで、テキストフィールドと名前の2つしか載っていませんでした)。
+    # 種類は docx の w:sdt に往復します。値の出し入れは名前で引くので、
+    # どの種類でも呼び方は同じです
     "form-text": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
     "form-name": ("Doc(記入欄)", "mcp.doc_fields()", "", ""),
+    "form-combo": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
+    "form-dropdown": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
+    "form-checkbox": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
+    "form-radio": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
+    "form-image": ("Doc(記入欄)", "", "", ""),
+    "form-email": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
+    "form-phone": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
+    "form-complex": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
+    "form-signature": ("Doc(記入欄)", "", "", ""),
     "co-addcomment": ("Comment", "p.add_comment(文) / c.comment", "p.add_comment(文)", "c.comment = Comment(…)"),
     "co-showcomment": ("Comment", "d.comments / c.comment", "d.comments", "c.comment"),
     "prot-doc": ("Sheet", "", "", "ws.protection"),
@@ -363,6 +376,25 @@ HOKA = [
 ]
 
 # 上の物のうち、専用の口を作らないと決めた物(理由つき)
+# **リボンに無いボタンで、いま動くもの。**
+# リボンのボタンは `face/src/ribbon.rs` の `ready` が状態を持ちますが、
+# ファイルのページ・右クリック・シート見出しのボタンはそこに載りません。
+# ここは*1つずつ実物を読んで確かめた*控えです(2026-08-25)。
+# 手引きの状態(実装済み / 未実装)がこれで決まります。
+HOKA_UGOKU = {
+    # ファイルのページ — ui/src/filemenu.rs と writer/src/cmds.rs の分岐
+    "‹ 戻る", "最近開いた", "フォルダから探す", "ファイルの場所を開く", "終了",
+    "詳細設定", "ヘルプ", "機能のリクエスト", "テンプレートから作成",
+    "Web の形で書き出す(HTML)", "adoc 形式にする(本文と書式を分ける)", "保護する",
+    # 右クリックとシート見出し
+    "返信を追加",                       # calc/src/view.rs の comment-reply
+    "画像として保存(SVG)",              # calc/src/view.rs の sh-save
+    "非表示・再表示",                    # calc/src/picks.rs
+    "タブの色",
+}
+# **マクロの割り当ては、まだ入っていません。** 図形やボタンにマクロを
+# 結び付ける仕組みそのものがこれからです
+
 HOKA_TSUKURANAI = {
     "語を選択": "画面の選択です。プログラムは字を直に切り出せます",
     "行を選択": "同じく画面の選択です",

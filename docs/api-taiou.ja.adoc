@@ -287,6 +287,15 @@ def 大文字にする(段落):
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
 |image:../face/icons/form-text.svg[テキストフィールド,16,16] link:commands/フォーム/テキストフィールド.adoc[テキストフィールド] |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
+|image:../face/icons/form-combo.svg[コンボボックス,16,16] link:commands/フォーム/コンボボックス.adoc[コンボボックス] |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
+|image:../face/icons/form-dropdown.svg[ドロップダウン,16,16] link:commands/フォーム/ドロップダウン.adoc[ドロップダウン] |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
+|image:../face/icons/form-checkbox.svg[チェックボックス,16,16] link:commands/フォーム/チェックボックス.adoc[チェックボックス] |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
+|image:../face/icons/form-radio.svg[ラジオボタン,16,16] link:commands/フォーム/ラジオボタン.adoc[ラジオボタン] |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
+|image:../face/icons/form-image.svg[画像,16,16] link:commands/フォーム/画像.adoc[画像] |Doc(記入欄) | |— |— |—
+|image:../face/icons/form-email.svg[メールアドレス,16,16] link:commands/フォーム/メールアドレス.adoc[メールアドレス] |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
+|image:../face/icons/form-phone.svg[電話番号,16,16] link:commands/フォーム/電話番号.adoc[電話番号] |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
+|image:../face/icons/form-complex.svg[複合フィールド,16,16] link:commands/フォーム/複合フィールド.adoc[複合フィールド] |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
+|image:../face/icons/form-signature.svg[署名,16,16] link:commands/フォーム/署名.adoc[署名] |Doc(記入欄) | |— |— |—
 |image:../face/icons/form-name.svg[名前,16,16] link:commands/フォーム/名前.adoc[名前] |Doc(記入欄) |✅ |mcp.doc_fields() |— |—
 |===
 
