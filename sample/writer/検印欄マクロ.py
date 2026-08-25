@@ -4,7 +4,7 @@
 # 台本には d(python-docx の Document)が束縛されていて、d への変更が
 # 1手として文書に入る(Ctrl+Z で戻る)。保存はしない — writer 側の仕事。
 # 実行はサンドボックス(bubblewrap)の中。コードは文書には載らない(docx に実行
-# コードを入れない — 詳しくは docs/python-manual.adoc)。
+# コードを入れない — 詳しくは docs/en/python-manual.adoc)。
 #
 # 単体でも試せる: .venv/bin/python sample/writer/検印欄マクロ.py 文書.docx
 

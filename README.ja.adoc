@@ -21,8 +21,8 @@ officework はそれをほどいて、**データ・テンプレート・Python�
 中の編集画面は2つで、名前があります: 文書編集が *writer*、表計算が *calc* です。
 どちらで開くかは、ファイルの名前で決まります。
 
-* *writer*(文書 — `名前.adoc`)— AsciiDoc の視覚エディタ。原稿を見たまま直し、画面・PDF・HTML・docx に出す。docx は受け渡しの形式で、開いて見る・adoc にすることはできる(link:docs/writer-manual.ja.adoc[writer の手引き])
-* *calc*(表 — `名前.sheet.adoc`)— 式も計算する表計算。xlsx も開いて、直して、保存できる(link:docs/calc-manual.ja.adoc[calc の手引き])
+* *writer*(文書 — `名前.adoc`)— AsciiDoc の視覚エディタ。原稿を見たまま直し、画面・PDF・HTML・docx に出す。docx は受け渡しの形式で、開いて見る・adoc にすることはできる(link:docs/ja/writer-manual.adoc[writer の手引き])
+* *calc*(表 — `名前.sheet.adoc`)— 式も計算する表計算。xlsx も開いて、直して、保存できる(link:docs/ja/calc-manual.adoc[calc の手引き])
 
 閉じて開き直すと、前回開いていたフォルダとファイルとタブが戻ります。
 
@@ -90,7 +90,7 @@ git を入れない人にも損はありません — 字のままのファイ�
 == いま出来ること
 
 要点だけを書きます。
-全部の一覧はlink:docs/writer-manual.ja.adoc[writer の手引き]とlink:docs/calc-manual.ja.adoc[calc の手引き]にあります — 手引きには、いま動くことだけを書いています。
+全部の一覧はlink:docs/ja/writer-manual.adoc[writer の手引き]とlink:docs/ja/calc-manual.adoc[calc の手引き]にあります — 手引きには、いま動くことだけを書いています。
 
 * *writer(文書)* — 縦書き・ルビ・均等割付までの日本語組版。記入欄(申込書を作って、保護して、配れる)・目次・変更履歴・コメント・描画・途中で紙が変わる印刷・PDF。docx は開いて保存しても壊れません
 * *calc(表)* — 約185の関数(動的配列も)と再計算・循環参照の検出。複数シート・ピボットテーブル・条件付き書式・入力規則・グラフ(matplotlib で描く)・ソルバー・保護と暗号化・PDF。xlsx も同じく壊れません
@@ -104,7 +104,7 @@ git を入れない人にも損はありません — 字のままのファイ�
 自作のコードは``~/.config/officework/plugins/`` に .py で置きます。
 手続きなら `@名前` で実行、関数なら `=倍(A1)` のような普通の式でセルから呼べます(関数名は日本語でもかまいません)。
 受け取ったブックにコードは入っていないので、**「開いた瞬間に他人のコードが走る」という事故が、仕組みの上で起きません。
-**詳しくは link:docs/calc-manual.ja.adoc[calc の手引き]。
+**詳しくは link:docs/ja/calc-manual.adoc[calc の手引き]。
 
 == 手に入れる
 
@@ -306,7 +306,7 @@ $ echo '{"cmd":"ping"}' | nc -q 1 -U $XDG_RUNTIME_DIR/officework/officework.sock
 {"ok":true,"app":"officework","showing":"doc","version":"0.1.0-alpha"}
 ----
 
-コードを書く人向けの説明は link:docs/python-manual.ja.adoc[Python の手引き] にあります —*範囲⇄配列のやり取り*(values() と1セルずつの書き込み)、=PY の2次元リストとスピル、writer マクロの `d`、サンドボックスの中の約束、まで、実際に動かして確かめた内容つきです。
+コードを書く人向けの説明は link:docs/ja/python-manual.adoc[Python の手引き] にあります —*範囲⇄配列のやり取り*(values() と1セルずつの書き込み)、=PY の2次元リストとスピル、writer マクロの `d`、サンドボックスの中の約束、まで、実際に動かして確かめた内容つきです。
 
 == 構成
 

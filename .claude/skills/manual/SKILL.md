@@ -1,12 +1,12 @@
 ---
 name: manual
-description: マニュアル(docs/ の手引き・docs/commands/ のコマンドの手引き)を書く・直すときの決まりと検査。手引きに触れるとき、挙動を変えるコミットをするとき、英語版と日本語版を揃えるときに使う。
+description: マニュアル(docs/ の手引き・docs/ja/commands/ のコマンドの手引き)を書く・直すときの決まりと検査。手引きに触れるとき、挙動を変えるコミットをするとき、英語版と日本語版を揃えるときに使う。
 ---
 
 # マニュアルの決まり
 
 管理するのは**利用者向けの冊子の日本語と英語の対**だけ
-(docs/*-manual と docs/commands/)。英語版が正本、日本語版が副。
+(docs/*-manual と docs/ja/commands/)。英語版が正本、日本語版が副。
 
 ## 真実 — 嘘は欠落より悪い
 
@@ -36,7 +36,7 @@ description: マニュアル(docs/ の手引き・docs/commands/ のコマンド
 
 ## 書き方 — 利用者の目で
 
-- **一覧(docs/README.ja.adoc)も利用者の物。** 管理の話・決めた人・日付の
+- **一覧(docs/ja/README.adoc)も利用者の物。** 管理の話・決めた人・日付の
   注記を書かない。経緯は docs/sekkei/ へ
 - Excel / Word の公式用語で書く(式→数式、様式→スタイル)。訳が無ければ
   LibreOffice の公式訳
@@ -65,14 +65,14 @@ python3 tools/sunset_check.py          # 廃止語
 ruby -I vendor/asciidoctor/lib vendor/asciidoctor/bin/asciidoctor -o /dev/null <触った.adoc>
 ```
 
-新しい冊子を足したら、docs/README.ja.adoc の一覧と manual_uchiwa_check の
+新しい冊子を足したら、docs/ja/README.adoc の一覧と manual_uchiwa_check の
 見る対象の両方に足す。
 
 ## 置き場の地図
 
 - 設計(なぜ)は SEKKEI.adoc と docs/sekkei/。実装の在庫は
   docs/guide-tsukiawase-2.ja.adoc。どちらも作る側の資料で、利用者向けの
-  一覧(docs/README.ja.adoc)には載せない
+  一覧(docs/ja/README.adoc)には載せない
 - docs/ に残っている corpus・engine・pysheet-gokan・mac-signing も作る側の物。
   **ファイルの場所は動かさない** — PyPI の README など公開済みのリンクが
   刺さっている

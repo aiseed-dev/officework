@@ -20,8 +20,8 @@ You open a folder and edit documents and spreadsheets in tabs of the same window
 The two editors inside have names: *writer* for documents, *calc* for spreadsheets.
 Which one opens a file is decided by its name:
 
-* *writer* (documents — `name.adoc`) — a visual editor for AsciiDoc: edit your source as it looks, and put it out as screen, PDF, HTML or docx. docx is the delivery format — you can open one and turn it into adoc (link:docs/writer-manual.adoc[writer manual])
-* *calc* (spreadsheets — `name.sheet.adoc`) — a spreadsheet that calculates formulas. It opens, edits and saves xlsx too (link:docs/calc-manual.adoc[calc manual])
+* *writer* (documents — `name.adoc`) — a visual editor for AsciiDoc: edit your source as it looks, and put it out as screen, PDF, HTML or docx. docx is the delivery format — you can open one and turn it into adoc (link:docs/en/writer-manual.adoc[writer manual])
+* *calc* (spreadsheets — `name.sheet.adoc`) — a spreadsheet that calculates formulas. It opens, edits and saves xlsx too (link:docs/en/calc-manual.adoc[calc manual])
 
 Close and reopen, and the folder, files and tabs from last time come back.
 
@@ -86,7 +86,7 @@ And if you never install git, you lose nothing — plain-text files can join a h
 
 == What works today
 
-The highlights only — the full list lives in the link:docs/writer-manual.adoc[writer manual] and the link:docs/calc-manual.adoc[calc manual], which describe only what works today.
+The highlights only — the full list lives in the link:docs/en/writer-manual.adoc[writer manual] and the link:docs/en/calc-manual.adoc[calc manual], which describe only what works today.
 
 * *writer (documents)* — Japanese typesetting up to vertical writing, ruby (furigana) and distributed justification. Form fields (build a form, protect it, hand it out), TOC, track changes, comments, drawing, printing where the paper changes partway, PDF. A docx survives open-and-save
 * *calc (spreadsheets)* — about 185 functions (incl. dynamic arrays), recalculation with circular-reference detection, multiple sheets, pivot tables, conditional formatting, data validation, charts (backed by matplotlib), a solver, protection and encryption, PDF. An xlsx survives too
@@ -96,7 +96,7 @@ The ribbon layout follows Euro-Office, so people who switch don't have to relear
 *There are no VBA-style macros, and workbooks never carry code.* Workbooks (.sheet.adoc / .xlsx) hold data only, code lives in .py — separate files.
 Procedures and user functions go in `~/.config/officework/plugins/`; run a procedure with `@name`, and call a function from a cell like any other (`=double(A1)`), or write one inline with `=PY(…)`.
 A workbook you receive contains no code, so the "open = execute" attack path does not exist here.
-See the link:docs/calc-manual.adoc[calc manual].
+See the link:docs/en/calc-manual.adoc[calc manual].
 
 == Getting it
 
@@ -284,7 +284,7 @@ $ echo '{"cmd":"ping"}' | nc -q 1 -U $XDG_RUNTIME_DIR/officework/officework.sock
 {"ok":true,"app":"officework","showing":"doc","version":"0.1.0-alpha"}
 ----
 
-The reference for programmers is the link:docs/python-manual.adoc[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` variable in writer macros, and what the sandbox allows.
+The reference for programmers is the link:docs/en/python-manual.adoc[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` variable in writer macros, and what the sandbox allows.
 All verified on a real machine.
 
 == Layout

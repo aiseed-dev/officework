@@ -7,7 +7,7 @@ your own machine and without Excel.
 Written in Rust (15,000+ lines, 240+ tests), exposed to Python through PyO3.
 
 日本語の説明は GitHub にあります (Japanese documentation on GitHub):
-[Python の手引き](https://github.com/aiseed-dev/officework/blob/main/docs/python-manual.ja.md)
+[Python の手引き](https://github.com/aiseed-dev/officework/blob/main/docs/ja/python-manual.adoc)
 
 ## Install
 
@@ -111,10 +111,10 @@ d[3].runs[0].font.name                  #   runs, clear …
 
 The inventory — all 324 core members of the three libraries, judged one
 by one — is in the repo:
-[docs/pysheet-gokan.ja.md](https://github.com/aiseed-dev/officework/blob/main/docs/pysheet-gokan.ja.md).
+[docs/pysheet-gokan.ja.adoc](https://github.com/aiseed-dev/officework/blob/main/docs/pysheet-gokan.ja.adoc).
 Interop is proven with the originals' own eyes: openpyxl reads what this
 engine writes, **including the computed values** it cannot produce itself.
-See the [Python manual](https://github.com/aiseed-dev/officework/blob/main/docs/python-manual.md)
+See the [Python manual](https://github.com/aiseed-dev/officework/blob/main/docs/en/python-manual.adoc)
 for the details and the deliberate differences.
 
 Since 0.3.0 the wheel also typesets **equations**: `officework.tex` takes
