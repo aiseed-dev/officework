@@ -177,6 +177,21 @@ impl PyBook {
     fn save(&self, path: &str) -> PyResult<()> {
         let mut g = lock(&self.inner)?;
         recalc_all(&mut g.book);
+        // **`.pdf` なら紙にします**(2026-08-27)。頁番号はブック通しで、
+        // 隠したシートは刷りません — 画面と同じです。
+        // openpyxl には無い所です(本家は組版を持たないので作れません)
+        if std::path::Path::new(path)
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
+        {
+            let cut = ops::pdf::book(&g.book, std::path::Path::new(path))
+                .map_err(|e| PyIOError::new_err(format!("{path}: PDF にできない: {e}")))?;
+            if cut > 0 {
+                // **黙って切らない。** 紙からはみ出した列があれば言います
+                eprintln!("{path}: 紙に入らず切れた列が {cut} 桁あります");
+            }
+            return Ok(());
+        }
         let mut buf = std::io::Cursor::new(Vec::new());
         let r = match &g.original {
             Some(bytes) => xlsx::write_with(&g.book, Some(std::io::Cursor::new(bytes)), &mut buf),

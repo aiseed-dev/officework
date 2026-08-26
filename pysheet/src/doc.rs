@@ -379,6 +379,20 @@ impl PyDoc {
     /// 読めなかった部品)。openpyxl / python-docx との違いはここ。
     fn save(&self, path: &str) -> PyResult<()> {
         let g = lock(&self.inner)?;
+        // **`.pdf` なら紙にします**(2026-08-27 発注者「エンジンで pdf を
+        // つくるところまで」)。新しい口は作りません — 拡張子で行き先が
+        // 決まるのは、この階が前からやっていることです。
+        //
+        // openpyxl にも python-docx にも無い所です。本家は組版を持たないので
+        // PDF を作れず、有料の別実装を買うか LibreOffice を裏で起こすしか
+        // ありません
+        if std::path::Path::new(path)
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
+        {
+            return ops::pdf::doc(&g.doc, None, std::path::Path::new(path))
+                .map_err(|e| PyIOError::new_err(format!("{path}: PDF にできない: {e}")));
+        }
         let mut buf = std::io::Cursor::new(Vec::new());
         let r = match &g.original {
             Some(bytes) => {
