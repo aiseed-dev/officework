@@ -142,6 +142,13 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
     out
 }
 
+/// **1行の高さ(mm)。** 本文 10.5pt に対する行送りです。
+///
+/// 画面も紙も PDF も**この1つを見ます**。アプリの側に置いていたので、
+/// エンジンから PDF を作る道を足したとき 6.30mm と 6.40mm の2つになり、
+/// 同じ文書が別の頁数に折れる形になっていました(2026-08-27)。
+pub const LINE_MM: f32 = 6.4;
+
 pub struct Frame {
     pub measure_mm: f32,   // 行長
     pub line_height_mm: f32,

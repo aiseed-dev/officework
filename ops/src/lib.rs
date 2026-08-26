@@ -30,6 +30,9 @@ pub mod table;
 /// wheel がここで組めなくなって気づいた(2026-08-12 — publish の門は効き、
 /// PyPI には何も出ていない)
 #[cfg(unix)]
+/// PDF を作る(アプリが動いていなくても)
+pub mod pdf;
+
 pub fn sock_path(app: &str) -> PathBuf {
     if let Some(base) = std::env::var_os("XDG_RUNTIME_DIR") {
         let p = PathBuf::from(&base).join("officework").join(format!("{app}.sock"));

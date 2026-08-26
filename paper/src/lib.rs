@@ -1064,3 +1064,98 @@ mod footnote_area_tests {
     }
 }
 
+
+/// **文書から PDF を1手で作る**(2026-08-27 発注者「エンジンで pdf を
+/// つくるところまで」)。
+///
+/// これまで PDF を作れたのは画面(writer)だけでした。組む所と紙にする所は
+/// エンジンに在ったのに、**その2つを繋ぐ入り口が無かった**ので、Python から
+/// PDF を作るには動いているアプリを呼ぶしかありませんでした。
+///
+/// テンプレートを渡すと、見た目を合成してから組みます(渡さなければ同梱の
+/// 既定)。**画面と同じ字幅で組みます** — 書体の実体を読んで渡すので、
+/// 画面と紙がずれません。
+///
+/// # 例
+///
+/// ```no_run
+/// let doc = kumihan::adoc::parse("= 題\n\n本文です。\n").unwrap();
+/// let f = std::fs::File::create("out.pdf").unwrap();
+/// paper::doc_to_pdf(&doc, None, f).unwrap();
+/// ```
+pub fn doc_to_pdf<W: Write>(
+    doc: &kumihan::Document,
+    theme: Option<&kumihan::theme::Theme>,
+    out: W,
+) -> Result<(), String> {
+    let (sheet, page, bytes) = doc_to_sheet(doc, theme)?;
+    to_pdf(
+        &sheet,
+        &bytes,
+        Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm },
+        out,
+    )
+}
+
+/// 文書を紙面に組む。**PDF と画面が同じ道を通る**ための1本です。
+///
+/// 返りは(組んだ紙面, 紙の設定, 書体の実体)。
+pub fn doc_to_sheet(
+    doc: &kumihan::Document,
+    theme: Option<&kumihan::theme::Theme>,
+) -> Result<(kumihan::Sheet, kumihan::PageSetup, Vec<u8>), String> {
+    // **見た目はテンプレートが決めます。** 渡されなければ同梱の既定です
+    let fallback;
+    let t = match theme {
+        Some(t) => t,
+        None => {
+            fallback = kumihan::theme::default_theme();
+            &fallback
+        }
+    };
+    let mut d = doc.clone();
+    kumihan::theme::compose_page(&mut d, t);
+
+    // 書体は**文書が名乗った物**が先。無ければいまの言語の既定
+    let want = d.font.clone().or_else(|| t.font.clone());
+    let (family, _) = kumihan::font::for_document(want.as_deref())?;
+    let bytes = kumihan::font::load(family)?;
+    let m = kumihan::Metrics::new(&bytes)?;
+
+    let page = d.page.unwrap_or_default();
+    // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)。
+    // ここで計算し直すと、同じ文書が別の頁数に折れます
+    let line_mm = kumihan::LINE_MM;
+    // 段組みも紙の設定から。writer の画面と同じ関数を通します
+    let measure = page.column_measure_mm();
+    let y0 = page.top_mm + 4.0;
+    let sheet = kumihan::layout(
+        &d,
+        &m,
+        &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0 },
+    );
+    Ok((sheet, page, bytes))
+}
+
+#[cfg(test)]
+mod doc_pdf_tests {
+    /// **文書から PDF が1手で出る。**
+    #[test]
+    fn a_document_becomes_a_pdf_in_one_step() {
+        let doc = kumihan::adoc::parse("= 四月の売上\n\n本文です。\n\n== まとめ\n\n終わり。\n")
+            .expect("読めない");
+        let mut buf = Vec::new();
+        super::doc_to_pdf(&doc, None, std::io::Cursor::new(&mut buf)).expect("PDF が出ない");
+        assert!(buf.starts_with(b"%PDF"), "PDF になっていない");
+        assert!(buf.len() > 1000, "中身が薄すぎる: {} バイト", buf.len());
+    }
+
+    /// 空の文書でも落ちない(紙が1枚出る)
+    #[test]
+    fn an_empty_document_still_makes_a_page() {
+        let doc = kumihan::Document::default();
+        let mut buf = Vec::new();
+        super::doc_to_pdf(&doc, None, std::io::Cursor::new(&mut buf)).expect("PDF が出ない");
+        assert!(buf.starts_with(b"%PDF"));
+    }
+}

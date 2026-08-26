@@ -166,7 +166,8 @@ pub(crate) fn caption_head() -> &'static str {
 /// グリフの実位置に合わせる — 合わせないと下線が文字を横切る
 const HALF_LEADING: f32 = 0.309; // (1.618 - 1) / 2
 const SIZE_PT: f32 = 10.5;
-const LINE_MM: f32 = 6.4;
+/// **行の高さはエンジンが決めます**(画面と紙と PDF で1つ)
+use kumihan::LINE_MM;
 
 /// いま編集しているもの。本文か、表のセルか。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
