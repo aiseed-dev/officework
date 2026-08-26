@@ -29,6 +29,16 @@ pub(super) const W_NS: &str = "http://schemas.openxmlformats.org/wordprocessingm
 pub(super) const STYLES_MIN: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:sz w:val="40"/><w:szCs w:val="40"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:rPr><w:i/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/><w:szCs w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:style></w:styles>"#;
 
+/// **新規の文書の用紙。** A4(11906×16838 twip)と余白 20mm(1134 twip)。
+///
+/// 教師(Word の空)は余白 1440 twip(25.4mm)ですが、**余白だけは
+/// 決め済みの 20mm** にします(writer の既定と1本の道)。
+pub(super) const DEFAULT_SECT: &str = concat!(
+    r#"<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>"#,
+    r#"<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" "#,
+    r#"w:header="851" w:footer="992" w:gutter="0"/></w:sectPr>"#
+);
+
 pub(super) const RNS_DOC: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 /// テンプレートのスタイル名を、docx の styleId にする。
@@ -64,6 +74,34 @@ fn style_name_of(name: &str, id: &str) -> String {
     }
 }
 
+/// **新規の文書に入れる既定の書体。**
+///
+/// テンプレートは書体を名指ししません(機械にある物から選ぶため)。
+/// けれども docx は**名前を書かないと相手の機械任せ**になるので、
+/// 保存のときに解いて入れます。
+///
+/// 日本語は BIZ UD 系です(2026-08-26 発注者)。他の言語は
+/// `kumihan::font::default_family` の既定に従います —
+/// 「標準フォントは OS と言語で変える」と1本の道です。
+fn default_doc_font() -> Option<String> {
+    let lang = kumihan::font::default_language();
+    if kumihan::font::script_of(&lang) == kumihan::font::Script::Japanese {
+        return Some("BIZ UDPゴシック".into());
+    }
+    kumihan::font::default_family(&lang).map(|f| f.name.clone())
+}
+
+/// 画面の言語の札を docx の `w:lang` の形に(`ja` → `ja-JP`)
+fn doc_lang_tag(lang: &str) -> String {
+    match lang {
+        "ja" => "ja-JP".into(),
+        "ko" => "ko-KR".into(),
+        "zh" => "zh-CN".into(),
+        "zh-tw" => "zh-TW".into(),
+        other => other.to_string(),
+    }
+}
+
 /// テンプレート(`Theme`)から docx の `styles.xml` を作る。
 ///
 /// **これが「テンプレートを docx に通す」の本体です**(2026-08-18)。
@@ -74,9 +112,15 @@ fn styles_from_theme(theme: &kumihan::theme::Theme) -> String {
     let mut s = format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:styles xmlns:w=\"{W_NS}\">"
     );
-    // 文書の既定(書体と大きさ)。テンプレートの `[文書]` の分
+    // 文書の既定(書体と大きさ)。テンプレートの `[文書]` の分。
+    //
+    // **書体は必ず書きます。** テンプレートが名指ししていなければ、いまの
+    // 言語の既定の書体を解いて入れます。空にすると Word が機械ごとに
+    // 別の書体を当てるので、同じファイルが機械によって違って見えます
+    // (2026-08-26 発注者「初期設定ができていないのでは」)
     let mut dd = String::new();
-    if let Some(f) = &theme.font {
+    let font = theme.font.clone().or_else(default_doc_font);
+    if let Some(f) = &font {
         let f = esc(f);
         dd.push_str(&format!(
             r#"<w:rFonts w:ascii="{f}" w:hAnsi="{f}" w:eastAsia="{f}" w:cs="{f}"/>"#
@@ -86,6 +130,13 @@ fn styles_from_theme(theme: &kumihan::theme::Theme) -> String {
         let half = (pt * 2.0).round() as i64;
         dd.push_str(&format!(r#"<w:sz w:val="{half}"/><w:szCs w:val="{half}"/>"#));
     }
+    // カーニングと言語。**教師(Word の空)が持っている物**で、無いと
+    // 日本語の組みが本家と揃いません
+    let lang = kumihan::font::default_language();
+    dd.push_str(&format!(
+        r#"<w:kern w:val="2"/><w:lang w:val="en-US" w:eastAsia="{}" w:bidi="ar-SA"/>"#,
+        esc(&doc_lang_tag(&lang))
+    ));
     if !dd.is_empty() {
         s.push_str(&format!(
             "<w:docDefaults><w:rPrDefault><w:rPr>{dd}</w:rPr></w:rPrDefault></w:docDefaults>"
@@ -1015,9 +1066,12 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
             }
         }
     }
-    if let Some(sect) = &sect {
-        let _ = w.get_mut().write_all(sect.as_bytes());
-    }
+    // **用紙は必ず書きます**(2026-08-26 発注者「初期設定ができていないのでは」)。
+    // 前は指定が無ければ `sectPr` ごと書かず、読む機械の既定に落ちていました
+    // — 英語圏の Word なら Letter になります。同じファイルが国によって
+    // 違う紙に組まれるので、A4 と余白を名指しします
+    let sect = sect.unwrap_or_else(|| DEFAULT_SECT.to_string());
+    let _ = w.get_mut().write_all(sect.as_bytes());
     w.write_event(Event::End(BytesEnd::new("w:body"))).unwrap();
     w.write_event(Event::End(BytesEnd::new("w:document"))).unwrap();
     let body = String::from_utf8(w.into_inner().into_inner()).unwrap();
@@ -1341,10 +1395,19 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
     // 入れる(STYLES_MIN の注のとおり)。
     // このアプリで足したスタイルはその後ろに追記する
     if !orig_has_styles {
-        let mut s = match theme {
-            Some(t) => styles_from_theme(t),
-            None => STYLES_MIN.to_string(),
+        // **新規の文書は同梱の既定のひな型を持ちます**(2026-08-26 発注者
+        // 「初期設定ができていないのでは」)。前は最小の6スタイルだけで、
+        // 既定の書体も大きさも styles.xml に入っていませんでした。それでは
+        // 開く機械ごとに見た目が変わります
+        let fallback;
+        let t = match theme {
+            Some(t) => t,
+            None => {
+                fallback = kumihan::theme::default_theme();
+                &fallback
+            }
         };
+        let mut s = styles_from_theme(t);
         let add = styles_new_xml(doc, &s);
         if let Some(pnt) = s.rfind("</w:styles>") {
             s.insert_str(pnt, &add);

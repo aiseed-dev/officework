@@ -2540,10 +2540,43 @@ mod through_template {
     }
 
     #[test]
-    fn passing_nothing_changes_nothing() {
+    /// **テンプレートを渡さなくても、同梱の既定が入ります**(2026-08-26
+    /// 発注者「初期設定ができていないのでは」)。前は最小の6スタイルだけで、
+    /// 既定の書体も大きさも入っていませんでした。それでは開く機械ごとに
+    /// 見た目が変わります。
+    fn the_bundled_default_is_used_when_no_template_is_given() {
         let s = parts(&write_out(None), "word/styles.xml").unwrap();
-        assert!(s.contains(r#"w:styleId="Heading1""#));
-        assert!(!s.contains("註記"), "テンプレート抜きなのに入った: {s}");
+        assert!(s.contains(r#"w:styleId="Heading1""#), "見出しが無い: {s}");
+        assert!(s.contains("註記"), "同梱の既定のスタイルが入らない: {s}");
+        // **書体と大きさが styles.xml に入っていること** — ここが穴でした
+        assert!(s.contains("<w:docDefaults>"), "文書の既定が無い: {s}");
+        assert!(s.contains(r#"<w:sz w:val="21"/>"#), "10.5pt が入らない: {s}");
+        assert!(s.contains("w:ascii=\"BIZ UD"), "日本語の既定の書体が入らない: {s}");
+        assert!(s.contains(r#"w:eastAsia="ja-JP""#), "言語が入らない: {s}");
+    }
+
+    /// **用紙は必ず入ります。**
+    ///
+    /// 前は指定が無ければ `sectPr` ごと書かず、読む機械の既定に落ちて
+    /// いました — 英語圏の Word なら Letter です。同じファイルが国に
+    /// よって違う紙に組まれます。
+    #[test]
+    fn a_new_document_always_names_its_paper() {
+        let d = parts(&write_out(None), "word/document.xml").unwrap();
+        assert!(d.contains(r#"<w:pgSz w:w="11906" w:h="16838"/>"#), "A4 が入らない: {d}");
+        // 余白 20mm = 1134 twip。教師(Word の空)の 25.4mm ではなく、
+        // writer の決め済みの既定に揃えます
+        assert!(d.contains(r#"w:left="1134""#), "余白 20mm が入らない: {d}");
+    }
+
+    /// 渡したテンプレートは、同梱の既定より強い
+    #[test]
+    fn a_given_template_wins_over_the_bundled_one() {
+        let mut th = kumihan::theme::default_theme();
+        th.font = Some("ＭＳ 明朝".into());
+        let s = parts(&write_out(Some(&th)), "word/styles.xml").unwrap();
+        assert!(s.contains("ＭＳ 明朝"), "渡した書体が入らない: {s}");
+        assert!(!s.contains("BIZ UD"), "既定の書体で上書きされた: {s}");
     }
 }
 
