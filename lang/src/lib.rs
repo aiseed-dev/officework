@@ -117,14 +117,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 言語が揃っている() {
+    fn languages_are_complete() {
         let tags: Vec<&str> = all().iter().map(|l| l.tag()).collect();
         assert!(tags.contains(&"ja"), "{tags:?}");
         assert!(tags.contains(&"en"), "{tags:?}");
     }
 
     #[test]
-    fn 辞書で足りるかが言語ごとに違う() {
+    fn dict_sufficiency_varies_by_language() {
         // これがこのソフトの存在理由そのもの
         assert!(
             !by_tag("ja").unwrap().dictionary_suffices(),
@@ -134,25 +134,25 @@ mod tests {
     }
 
     #[test]
-    fn 本文から言語を選べる() {
+    fn picks_language_from_text() {
         assert_eq!(detect("これは日本語です").unwrap().tag(), "ja");
         assert_eq!(detect("This is English.").unwrap().tag(), "en");
     }
 
     #[test]
-    fn 混在文は重い方へ倒す() {
+    fn mixed_text_falls_to_dominant() {
         // 見落とすより、余分に見る方がまし
         assert_eq!(detect("Radeon で動く").unwrap().tag(), "ja");
     }
 
     #[test]
-    fn 読みの注記は言語による() {
+    fn reading_notes_depend_on_language() {
         assert!(by_tag("ja").unwrap().reading_prompt().is_some(), "日本語にふりがなが無い");
         assert!(by_tag("en").unwrap().reading_prompt().is_none(), "英語に読みの注記は要らない");
     }
 
     #[test]
-    fn 知らないタグは無い() {
+    fn no_unknown_tags() {
         assert!(by_tag("xx").is_none());
     }
 }

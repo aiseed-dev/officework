@@ -11,7 +11,7 @@
 use std::path::{Path, PathBuf};
 
 /// 覚えておく数。
-const cap: usize = 12;
+const CAP: usize = 12;
 
 /// 置き場。
 pub fn path() -> PathBuf {
@@ -39,7 +39,7 @@ pub fn note_at(dir: &Path, p: &Path) {
     let me = p.to_string_lossy().to_string();
     list.retain(|x| *x != me);
     list.insert(0, me);
-    list.truncate(cap);
+    list.truncate(CAP);
     let _ = std::fs::write(&rf, list.join("\n"));
 }
 
@@ -86,7 +86,7 @@ fn inherit(dir: &Path) {
     if mixed.is_empty() {
         return;
     }
-    mixed.truncate(cap);
+    mixed.truncate(CAP);
     if let Some(dir) = rf.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
@@ -155,12 +155,12 @@ mod tests {
     #[test]
     fn cuts_at_the_cap() {
         let d = test_dir("上限");
-        for i in 0..(cap + 3) {
+        for i in 0..(CAP + 3) {
             let f = d.join(format!("{i}.adoc"));
             std::fs::write(&f, "x").unwrap();
             note_at(&d, &f);
         }
-        assert_eq!(list_at(&d).len(), cap);
+        assert_eq!(list_at(&d).len(), CAP);
         let _ = std::fs::remove_dir_all(&d);
     }
 }

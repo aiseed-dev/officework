@@ -15,7 +15,7 @@ pub(crate) const LAST_COL: u32 = 255;
 /// 下地に選択の緑を混ぜる。**塗りを置き換えない** — 選択中も帳票本来の色が
 /// 透けて見える(選択を解かないと色が確かめられない、を避ける)。
 /// セルのスタイル1つ(鍵, 見出し, 掛ける手)。
-type cell_style = (&'static str, &'static str, fn(&mut CellFormat));
+type CellStyle = (&'static str, &'static str, fn(&mut CellFormat));
 
 pub(crate) fn tint(base: gpui::Rgba, k: f32) -> gpui::Rgba {
     let accent = (0x1B as f32 / 255.0, 0x6E as f32 / 255.0, 0x3C as f32 / 255.0);
@@ -1533,8 +1533,8 @@ impl TableStyle {
     }
 }
 
-pub(crate) fn cell_styles() -> Vec<cell_style> {
-    let f: Vec<cell_style> = vec![
+pub(crate) fn cell_styles() -> Vec<CellStyle> {
+    let f: Vec<CellStyle> = vec![
     row(ui::item!("normal"), |f| *f = CellFormat::default()),
     // **見出しは4段**(2026-08-20 発注者「Excel が 見出し1〜4 を持つので
     // あれば、そうしていいのでは」)。前は1段だけで、章と節を書き分け

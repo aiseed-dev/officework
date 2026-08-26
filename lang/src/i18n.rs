@@ -197,15 +197,15 @@ pub fn language_label(tag: &str) -> &str {
 /// 言語は 14 個で頭打ちなので、作った表はそのまま置いておきます
 /// (`Box::leak`)。
 fn lang_map() -> Option<&'static HashMap<&'static str, &'static str>> {
-    type table = HashMap<&'static str, &'static str>;
-    static made: OnceLock<std::sync::Mutex<HashMap<&'static str, Option<&'static table>>>> =
+    type Table = HashMap<&'static str, &'static str>;
+    static MADE: OnceLock<std::sync::Mutex<HashMap<&'static str, Option<&'static Table>>>> =
         OnceLock::new();
-    let box_of = made.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
+    let box_of = MADE.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
     let l = language();
     let mut box_of = box_of.lock().expect("対訳表の錠");
     *box_of.entry(l).or_insert_with(|| {
         crate::i18n_tables::table(l)
-            .map(|t| &*Box::leak(Box::new(t.iter().copied().collect::<table>())))
+            .map(|t| &*Box::leak(Box::new(t.iter().copied().collect::<Table>())))
     })
 }
 
@@ -229,8 +229,8 @@ pub fn tr(key: &'static str) -> &'static str {
 
 /// 英語の表。**最後の砦**なので、言語に関わらずこれだけは持っておきます。
 fn english_table() -> &'static HashMap<&'static str, &'static str> {
-    static made: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
-    made.get_or_init(|| {
+    static MADE: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+    MADE.get_or_init(|| {
         crate::i18n_tables::table("en")
             .map(|t| t.iter().copied().collect())
             .unwrap_or_default()
@@ -334,15 +334,15 @@ mod how_language_is_chosen {
     ///
     /// 毒された錠は中身を取り出して使います — 1本落ちたせいで
     /// 残りが「錠が毒された」で落ちると、本当の原因が見えなくなります。
-    static lock_of: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    static LOCK_OF: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     fn serially() -> std::sync::MutexGuard<'static, ()> {
-        lock_of.lock().unwrap_or_else(|e| e.into_inner())
+        LOCK_OF.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     /// OS の言語設定を見る環境変数。試験では**全部押さえます** —
     /// 1つでも残っていると、回す機械の言語で答えが変わります
-    const locale_env_vars: [&str; 3] = ["LC_ALL", "LC_MESSAGES", "LANG"];
+    const LOCALE_ENV_VARS: [&str; 3] = ["LC_ALL", "LC_MESSAGES", "LANG"];
 
     /// 控えを空にしてから、環境変数を立てて引き直す。
     /// **必ず元に戻します**(呼ぶ側が錠を持っている前提)
@@ -357,7 +357,7 @@ mod how_language_is_chosen {
     /// `引き直す` の、OS のロケールも決められる版。
     fn resolve_with_locale(raw: Option<&str>, locale: Option<&str>) -> &'static str {
         let old_env = std::env::var_os("OFFICE_LANG");
-        let old_locale: Vec<_> = locale_env_vars
+        let old_locale: Vec<_> = LOCALE_ENV_VARS
             .iter()
             .map(|k| (*k, std::env::var_os(k)))
             .collect();
@@ -367,7 +367,7 @@ mod how_language_is_chosen {
                 Some(v) => std::env::set_var("OFFICE_LANG", v),
                 None => std::env::remove_var("OFFICE_LANG"),
             }
-            for k in locale_env_vars {
+            for k in LOCALE_ENV_VARS {
                 std::env::remove_var(k);
             }
             // 立てるのは LANG だけ。LC_ALL / LC_MESSAGES を消してあるので、

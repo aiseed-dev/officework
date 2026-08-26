@@ -3,7 +3,7 @@
 use crate::*;
 
 /// 折れ線の束(1本 = 点の並び)。図形の当たり判定に使います。
-type polylines = Vec<Vec<(f32, f32)>>;
+type Polylines = Vec<Vec<(f32, f32)>>;
 
 impl Calc {
 
@@ -882,7 +882,7 @@ impl Calc {
             return;
         };
         // **輪郭を出せない形は断る。** 黙って四角で計算しない
-        let (Some(oa), Some(ob)): (Option<polylines>, Option<polylines>) = (
+        let (Some(oa), Some(ob)): (Option<Polylines>, Option<Polylines>) = (
             outline(&sa.kind, &sa.points),
             outline(&sb.kind, &sb.points),
         ) else {

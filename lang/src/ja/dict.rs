@@ -286,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    fn カタカナをひらがなにする() {
+    fn katakana_to_hiragana() {
         assert_eq!(kata_to_hira("ソノゴ"), "そのご");
         assert_eq!(kata_to_hira("ヒトケ"), "ひとけ");
         // ひらがなと記号はそのまま
@@ -296,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn 辞書が無ければ空を返す() {
+    fn missing_dict_returns_empty() {
         // 語を指していなければ、辞書の有無によらず空
         assert!(candidates("本文です", &[]).is_empty());
         assert!(candidates("", &[Target { base: "本".into(), at: 0 }]).is_empty());
@@ -305,7 +305,7 @@ mod tests {
     /// **割れる語で候補が2つ以上出る。** ここが分担の前提です —
     /// 辞書が両方持っていなければ、モデルが並べ替えても届きません
     #[test]
-    fn 割れる語は候補が複数出る() {
+    fn ambiguous_word_has_several_candidates() {
         if !has_dict() {
             return;
         }
@@ -323,7 +323,7 @@ mod tests {
 
     /// 割れない語は候補が1つ。**この語はモデルに訊かなくてよい**という印です
     #[test]
-    fn 割れない語は候補が1つ() {
+    fn unambiguous_word_has_one_candidate() {
         if !has_dict() {
             return;
         }
@@ -332,7 +332,7 @@ mod tests {
     }
 
     #[test]
-    fn 漢字を含むかを見分ける() {
+    fn detects_kanji() {
         assert!(has_kanji("報告書"));
         assert!(has_kanji("行った"));
         assert!(has_kanji("人々"));
@@ -344,7 +344,7 @@ mod tests {
 
     /// **振る相手を拾う。** 漢字を含む語だけが出て、割れる語は候補が複数
     #[test]
-    fn 振る相手を拾う() {
+    fn picks_ruby_targets() {
         if !has_dict() {
             return;
         }
@@ -366,7 +366,7 @@ mod tests {
     /// 見出しと本文の2行の文書では**見出しにだけ**ふりがなが付き、
     /// 位置も行ごとに0へ戻っていました。
     #[test]
-    fn 改行をまたいでも位置が合う() {
+    fn position_matches_across_newlines() {
         if !has_dict() {
             return;
         }
@@ -391,7 +391,7 @@ mod tests {
 
     /// 位置で指すので、同じ語が二度出ても別々に答えられます
     #[test]
-    fn 同じ語が二度出ても位置で分かれる() {
+    fn same_word_twice_split_by_position() {
         if !has_dict() {
             return;
         }

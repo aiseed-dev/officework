@@ -214,27 +214,27 @@ mod tests {
     }
 
     #[test]
-    fn 同じ字を二度言っているのを見つける() {
+    fn finds_the_same_word_said_twice() {
         assert_eq!(found("頭痛が痛いので休みます。"), ["頭痛が痛い"]);
         assert_eq!(found("大きな被害を被った。"), ["被害を被っ"]);
         assert_eq!(found("違和感を感じた。"), ["違和感を感じ"]);
     }
 
     #[test]
-    fn 離れていても続けて出れば拾う() {
+    fn catches_repeats_at_a_distance() {
         assert_eq!(found("まず最初にご説明します。"), ["まず最初"]);
         assert_eq!(found("まず、最初にご説明します。"), ["まず、最初"]);
     }
 
     #[test]
-    fn 文の切れ目は跨がない() {
+    fn does_not_cross_a_sentence_boundary() {
         // 別の話をしている。重言ではない
         assert!(found("まずご説明します。最初の点は…").is_empty());
         assert!(found("約100人が来ました。程度の差はあります。").is_empty());
     }
 
     #[test]
-    fn 事務の文書で出る形() {
+    fn forms_seen_in_office_documents() {
         assert_eq!(found("関係者各位様"), ["各位様"]);
         assert_eq!(found("約100名程度が参加します。"), ["約100名程度"]);
         assert_eq!(found("今現在の状況です。"), ["今現在"]);
@@ -243,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn 熟語の一部を拾わない() {
+    fn does_not_match_inside_a_compound() {
         // 契**約**・要**約**・規**約** の 約 は「およそ」ではない
         assert!(found("契約書の程度を確認する。").is_empty());
         assert!(found("要約すると程度の問題だ。").is_empty());
@@ -257,7 +257,7 @@ mod tests {
     }
 
     #[test]
-    fn 誤りとは言わない() {
+    fn not_reported_as_an_error() {
         // 「まず最初に」は重言だが日常的に使われている。
         // 画面に出る言葉は「言い回し」で、直す先ではなく**案**を出すだけ
         let f = findings("まず最初にご説明します。");
@@ -267,13 +267,13 @@ mod tests {
     }
 
     #[test]
-    fn 指摘は辞書の側から出る() {
+    fn hits_come_from_the_dict() {
         // モデルが居なくても出る = GPU 無しで再現できる
         assert!(findings("頭痛が痛い").iter().all(|f| f.source == Source::Dictionary));
     }
 
     #[test]
-    fn 指摘の文字列は本文にそのまま在る() {
+    fn hit_text_appears_verbatim() {
         let text = "まず最初に、関係者各位様へ約100名程度と伝えた。";
         for f in findings(text) {
             assert!(text.contains(&f.found), "本文に無い: {}", f.found);
@@ -281,7 +281,7 @@ mod tests {
     }
 
     #[test]
-    fn 似た形の別語を拾わない() {
+    fn similar_but_different_word_not_matched() {
         // どれも青空文庫711作品で実際に出た誤検出
         assert!(found("頭痛でも腹痛でもない。").is_empty(), "腹痛の痛を拾った");
         assert!(found("頭痛、歯痛、腰痛。").is_empty());
@@ -294,7 +294,7 @@ mod tests {
     }
 
     #[test]
-    fn 普通の文には何も出ない() {
+    fn nothing_reported_on_ordinary_text() {
         assert!(found("関係者各位").is_empty());
         assert!(found("最初にご説明します。").is_empty());
         assert!(found("約100名が参加します。").is_empty());
@@ -303,7 +303,7 @@ mod tests {
     }
 
     #[test]
-    fn 指摘は本文の順に並ぶ() {
+    fn hits_in_text_order() {
         let f = findings("まず最初に。次に頭痛が痛い。");
         let ats: Vec<usize> = f.iter().filter_map(|x| x.at).collect();
         assert!(ats.windows(2).all(|w| w[0] <= w[1]), "{ats:?}");

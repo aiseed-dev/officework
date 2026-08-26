@@ -343,7 +343,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 紛らわしい語のある文だけ残す() {
+    fn keeps_sentences_with_confusable_words() {
         let f = filter("今日は晴れです。それは以外な結果でした。犬が走る。");
         assert_eq!(f.total, 3);
         assert_eq!(f.dropped, 2);
@@ -352,7 +352,7 @@ mod tests {
     }
 
     #[test]
-    fn 和語は送り仮名が続くときだけ語と見る() {
+    fn native_word_needs_okurigana() {
         // 「図る」は紛らわしい(計る/測る/量る)
         assert_eq!(marked("改善を図る。").as_deref(), Some("図る"));
         // 「図」だけなら熟語(地図・図面)。語ではないので印を付けない
@@ -361,35 +361,35 @@ mod tests {
     }
 
     #[test]
-    fn 漢語は熟語のまま拾う() {
+    fn kango_taken_as_a_compound() {
         assert_eq!(marked("保証書を付ける。").as_deref(), Some("保証"));
         assert_eq!(marked("それは意外だ。").as_deref(), Some("意外"));
         assert!(marked("普通の文章です。").is_none());
     }
 
     #[test]
-    fn 何も落とさないこともある() {
+    fn may_drop_nothing() {
         let f = filter("以外な結果。意外な結果。");
         assert!(f.is_whole(), "{f:?}");
         assert_eq!(f.dropped, 0);
     }
 
     #[test]
-    fn 全部落ちることもある() {
+    fn may_drop_everything() {
         let f = filter("犬が走る。猫が寝る。");
         assert_eq!(f.dropped, 2);
         assert!(f.send.is_empty());
     }
 
     #[test]
-    fn 切れ目の字は前の文に付く() {
+    fn delimiter_belongs_to_previous_sentence() {
         // 落とした文の位置がずれないように
         let s = sentences("あ。い！う");
         assert_eq!(s, vec!["あ。", "い！", "う"]);
     }
 
     #[test]
-    fn 空白だけの塊は文として数えない() {
+    fn whitespace_only_is_not_a_sentence() {
         // 数えると markdown の空行で分母が膨らみ、効きが実際より良く見える
         let f = filter("以外な結果。\n\n\n犬が走る。");
         assert_eq!(f.total, 2, "空行を文に数えた: {f:?}");
@@ -404,7 +404,7 @@ mod tests {
     }
 
     #[test]
-    fn 表に重なりがない() {
+    fn table_has_no_overlap() {
         // 同じ語を2つの組に書くと、どちらの組か分からなくなる
         let mut seen = std::collections::BTreeSet::new();
         for g in KANGO {

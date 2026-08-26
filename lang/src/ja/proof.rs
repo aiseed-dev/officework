@@ -60,7 +60,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 指摘を読める() {
+    fn parses_hits() {
         let text = "それ以外な結果でした。問合せは問い合わせ窓口へ。";
         let content = r#"[
           {"found":"以外","suggest":"意外","why":"誤変換"},
@@ -73,38 +73,38 @@ mod tests {
     }
 
     #[test]
-    fn 本文に無い指摘は捨てる() {
+    fn hit_not_in_text_dropped() {
         let content = r#"[{"found":"存在しない語","suggest":"直し","why":"誤変換"}]"#;
         assert!(parse_notes(content, "実際の本文です。").is_empty(), "本文に無い指摘を通した");
     }
 
     #[test]
-    fn 直しが同じものは指摘にしない() {
+    fn fix_same_as_source_is_not_a_hit() {
         let content = r#"[{"found":"日本","suggest":"日本","why":"誤変換"}]"#;
         assert!(parse_notes(content, "日本フネン").is_empty());
     }
 
     #[test]
-    fn 指摘なしは空で返る() {
+    fn no_hits_returns_empty() {
         assert!(parse_notes("[]", "正しい文章です。").is_empty());
     }
 
     #[test]
-    fn 壊れた応答でも落ちない() {
+    fn broken_response_does_not_panic() {
         for c in ["", "{", "[{\"found\":", "ぐちゃぐちゃ", "null"] {
             let _ = parse_notes(c, "本文");
         }
     }
 
     #[test]
-    fn 空の本文は問い合わせない() {
+    fn empty_text_is_not_queried() {
         // モデルが無くてもエラーにならない(そもそも聞きに行かない)
         let ep = Endpoint { port: 1, ..Default::default() };
         assert_eq!(proofread(&ep, "   ").unwrap().len(), 0);
     }
 
     #[test]
-    fn 繋がらなければ理由を返す() {
+    fn connection_failure_returns_reason() {
         // 使えないときは「指摘なし」ではなく、使えないと言う
         let ep = Endpoint { port: 1, ..Default::default() };
         let r = proofread(&ep, "それ以外な結果でした。");

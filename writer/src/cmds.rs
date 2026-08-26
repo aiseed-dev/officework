@@ -1536,12 +1536,12 @@ pub(crate) fn date_shape() -> Vec<(String, String)> {
 /// 西暦から元号と年を出す。(元号, 略号, 年)。範囲の外なら None
 pub(crate) fn wareki(y: i32, m: i32, d: i32) -> Option<(&'static str, &'static str, i32)> {
     // (始まりの年, 月, 日, 元号, 略号)
-    const generation: &[(i32, i32, i32, &str, &str)] = &[
+    const GENERATION: &[(i32, i32, i32, &str, &str)] = &[
         (2019, 5, 1, "令和", "R"),
         (1989, 1, 8, "平成", "H"),
         (1926, 12, 25, "昭和", "S"),
     ];
-    for (yy, mm, dd, era, abbrev) in generation {
+    for (yy, mm, dd, era, abbrev) in GENERATION {
         if (y, m, d) >= (*yy, *mm, *dd) {
             let n = y - yy + 1;
             // 元年は「1年」ではなく「元年」と書きますが、様式では

@@ -563,11 +563,11 @@ pub fn body(doc: &Document) -> String {
 /// 本文 → HTML と、一緒に書き出す画像。
 ///
 /// 書き出した本文と、一緒に置く部品(名前と中身)。
-pub type body_and_parts = (String, Vec<(String, Arc<Vec<u8>>)>);
+pub type BodyAndParts = (String, Vec<(String, Arc<Vec<u8>>)>);
 
 /// 画像を持つ文書を書き出すときはこちらを使います。[`body`] は HTML だけを
 /// 返す入り口で、中身は同じです。
-pub fn body_with_assets(doc: &Document) -> body_and_parts {
+pub fn body_with_assets(doc: &Document) -> BodyAndParts {
     let (html, ctx) = build(doc);
     (html, ctx.assets)
 }

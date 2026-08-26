@@ -47,13 +47,13 @@ struct Look {
 
 /// 数えるときの鍵。(大きさ, 書体, 太字, 斜体, 下線, スタイル)
 /// — 段落の中でいちばん多い見た目を選ぶのに使います
-type look_key = (Option<u32>, Option<String>, bool, bool, bool, Option<String>);
+type LookKey = (Option<u32>, Option<String>, bool, bool, bool, Option<String>);
 
 impl Look {
     /// 段落の見た目を読む。run は**いちばん多く使われている姿**を採る
     /// (先頭の run だと、頭に1字だけ違う書式があるときに引きずられる)
     fn of(p: &Paragraph) -> Look {
-        let mut tally: HashMap<look_key, usize> = HashMap::new();
+        let mut tally: HashMap<LookKey, usize> = HashMap::new();
         for r in &p.runs {
             if r.text.is_empty() {
                 continue; // 印だけの run(脚注)は見た目を持たない

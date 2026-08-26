@@ -71,7 +71,7 @@ pub struct Line {
 /// AsciiDoc として読む。**書式が1つも無ければ None**(そのときは
 /// 今までどおり平文を1つ描くだけで済む — 普通のセルに費用を掛けない)。
 /// 印の1つ。字と、その字が囲んだ所に付ける印。
-type put_marks = fn(&mut Span);
+type PutMarks = fn(&mut Span);
 
 pub fn parse(text: &str) -> Option<Vec<Line>> {
     // 印が1つも無ければ、読むまでもない(普通のセルに費用を掛けない)
@@ -261,7 +261,7 @@ fn block_of(raw: &str) -> (Block, &str) {
 }
 
 /// 取り消し線の書き方(本家には専用の印が無く、役割で書きます)。
-const strike: &str = "[.line-through]#";
+const STRIKE: &str = "[.line-through]#";
 
 /// 行の中の印を読んで、続きの文字に割る。
 fn inline(s: &str) -> Vec<Span> {
@@ -272,8 +272,8 @@ fn inline(s: &str) -> Vec<Span> {
     while i < b.len() {
         // 取り消し線 `[.line-through]##字##`(二重 — 日本語の文中で効く形)と
         // `[.line-through]#字#`(一重 — 語の外だけ。英語向け)
-        if b[i] == '[' && b[i..].starts_with(&strike.chars().collect::<Vec<_>>()[..]) {
-            let mut from = i + strike.chars().count();
+        if b[i] == '[' && b[i..].starts_with(&STRIKE.chars().collect::<Vec<_>>()[..]) {
+            let mut from = i + STRIKE.chars().count();
             let double = b.get(from) == Some(&'#');
             if double {
                 from += 1;
@@ -297,7 +297,7 @@ fn inline(s: &str) -> Vec<Span> {
         // 本家では一重は「語の外」だけで効き、日本語には語の間の空白が
         // 無いので、**文中では二重が要ります**(2026-08-19 発注者の指摘で
         // 本家に通して確かめた — 一重は字のまま、二重だけ効いた)
-        let double_mark: [(char, put_marks); 3] = [
+        let double_mark: [(char, PutMarks); 3] = [
             ('*', (|s: &mut Span| s.bold = true) as fn(&mut Span)),
             ('_', |s: &mut Span| s.italic = true),
             ('`', |s: &mut Span| s.mono = true),
@@ -337,7 +337,7 @@ fn inline(s: &str) -> Vec<Span> {
             continue;
         }
         // *太字* / _斜体_ / `等幅`
-        let marks: [(char, put_marks); 3] = [
+        let marks: [(char, PutMarks); 3] = [
             ('*', (|s: &mut Span| s.bold = true) as fn(&mut Span)),
             ('_', |s: &mut Span| s.italic = true),
             ('`', |s: &mut Span| s.mono = true),

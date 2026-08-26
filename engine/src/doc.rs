@@ -1754,15 +1754,15 @@ pub struct CellBox {
 /// 五十音の 45 字を順に使い、それより多いときは「ア1」のように数を足します
 /// (使い切って番号が消えるより、重ならないほうがましです)。
 fn katakana(nth: usize) -> String {
-    const kana_a: [&str; 45] = [
+    const KANA_A: [&str; 45] = [
         "ア", "イ", "ウ", "エ", "オ", "カ", "キ", "ク", "ケ", "コ",
         "サ", "シ", "ス", "セ", "ソ", "タ", "チ", "ツ", "テ", "ト",
         "ナ", "ニ", "ヌ", "ネ", "ノ", "ハ", "ヒ", "フ", "ヘ", "ホ",
         "マ", "ミ", "ム", "メ", "モ", "ヤ", "ユ", "ヨ",
         "ラ", "リ", "ル", "レ", "ロ", "ワ", "ヲ",
     ];
-    match nth / kana_a.len() {
-        0 => kana_a[nth].to_string(),
-        round_of => format!("{}{}", kana_a[nth % kana_a.len()], round_of),
+    match nth / KANA_A.len() {
+        0 => KANA_A[nth].to_string(),
+        round_of => format!("{}{}", KANA_A[nth % KANA_A.len()], round_of),
     }
 }

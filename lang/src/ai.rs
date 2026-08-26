@@ -374,12 +374,12 @@ mod tests {
     /// claude コマンドに相乗りする道)をやめた。古い ai.txt を読んだときに
     /// 黙って別の外の宛先へ繋ぎ替えない — いちばん安全な手元へ倒す
     #[test]
-    fn 廃した宛先は手元へ落ちる() {
+    fn retired_target_falls_back_to_local() {
         assert_eq!(Backend::from_str("claude-cli"), Backend::Local);
     }
 
     #[test]
-    fn 宛先は覚えた形で戻る() {
+    fn target_returns_as_remembered() {
         for b in [Backend::Local, Backend::ClaudeAgent, Backend::OpenAiCodex, Backend::ClaudeApi] {
             assert_eq!(Backend::from_str(b.as_str()), b);
         }
@@ -388,7 +388,7 @@ mod tests {
     }
 
     #[test]
-    fn 宛先は順に回る() {
+    fn targets_cycle_in_order() {
         let mut b = Backend::Local;
         for _ in 0..4 {
             b = b.next();
@@ -397,7 +397,7 @@ mod tests {
     }
 
     #[test]
-    fn 使えない宛先は理由を言う() {
+    fn unusable_target_gives_reason() {
         // 鍵が無い環境では API は理由つきで断る(黙って空にしない)
         if std::env::var("ANTHROPIC_API_KEY").is_err() {
             let e = ready(Backend::ClaudeApi).unwrap_err();

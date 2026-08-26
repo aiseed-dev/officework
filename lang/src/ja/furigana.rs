@@ -228,7 +228,7 @@ mod tests {
     }
 
     #[test]
-    fn 候補を順序どおりに読める() {
+    fn reads_candidates_in_order() {
         let ts = [t("後", 3)];
         let c = r#"[{"base":"後","readings":["のち","あと","うし","ご"]}]"#;
         let s = parse_suggestions(c, &ts);
@@ -238,7 +238,7 @@ mod tests {
     }
 
     #[test]
-    fn 訊いていない語は捨てる() {
+    fn drops_words_not_asked_about() {
         // モデルが勝手に語を増やしても通さない
         let c = r#"[{"base":"猫","readings":["ねこ"]},{"base":"犬","readings":["いぬ"]}]"#;
         let s = parse_suggestions(c, &[t("猫", 0)]);
@@ -246,20 +246,20 @@ mod tests {
     }
 
     #[test]
-    fn ひらがな以外の読みは捨てる() {
+    fn drops_non_hiragana_readings() {
         let c = r#"[{"base":"後","readings":["ノチ","のち","after","ご!"]}]"#;
         let s = parse_suggestions(c, &[t("後", 0)]);
         assert_eq!(s[0].readings, vec!["のち"], "仮名でない読みを通した: {:?}", s[0].readings);
     }
 
     #[test]
-    fn 読みが空なら候補にしない() {
+    fn empty_reading_is_not_a_candidate() {
         let c = r#"[{"base":"後","readings":["ノチ","XYZ"]}]"#;
         assert!(parse_suggestions(c, &[t("後", 0)]).is_empty());
     }
 
     #[test]
-    fn 同じ語が二箇所あれば別々attaches_at() {
+    fn same_word_in_two_places_is_separate々attaches_at() {
         let ts = [t("後", 5), t("後", 40)];
         let c = r#"[{"base":"後","readings":["のち"]},{"base":"後","readings":["あと"]}]"#;
         let s = parse_suggestions(c, &ts);
@@ -269,7 +269,7 @@ mod tests {
     }
 
     #[test]
-    fn 番号で出現を取り違えない() {
+    fn index_picks_the_right_occurrence() {
         // 「今日」は場所によって きょう / こんにち。番号が無いと入れ替わる
         let ts = [t("今日", 0), t("今日", 6)];
         let c = r#"[{"n":2,"base":"今日","readings":["こんにち"]},
@@ -283,7 +283,7 @@ mod tests {
     }
 
     #[test]
-    fn 番号が無くても壊れない() {
+    fn works_without_index() {
         // 古い形・番号を落としたモデルでも、語で照合して動く
         let ts = [t("後", 5)];
         let c = r#"[{"base":"後","readings":["のち"]}]"#;
@@ -291,7 +291,7 @@ mod tests {
     }
 
     #[test]
-    fn 番号が範囲外なら語で照合する() {
+    fn out_of_range_index_matches_by_word() {
         let ts = [t("後", 5)];
         let c = r#"[{"n":99,"base":"後","readings":["のち"]}]"#;
         let s = parse_suggestions(c, &ts);
@@ -300,21 +300,21 @@ mod tests {
     }
 
     #[test]
-    fn 重複した読みはまとめる() {
+    fn duplicate_readings_merged() {
         let c = r#"[{"base":"家","readings":["うち","うち","いえ"]}]"#;
         let s = parse_suggestions(c, &[t("家", 0)]);
         assert_eq!(s[0].readings, vec!["うち", "いえ"]);
     }
 
     #[test]
-    fn 壊れた応答でも落ちない() {
+    fn broken_response_does_not_panic() {
         for c in ["", "{", "[{\"base\":", "ぐちゃぐちゃ", "null", "[]"] {
             let _ = parse_suggestions(c, &[t("後", 0)]);
         }
     }
 
     #[test]
-    fn 正解が第何候補かを出せる() {
+    fn reports_rank_of_correct_answer() {
         let s = Suggestion {
             base: "後".into(),
             at: 0,
@@ -334,14 +334,14 @@ mod tests {
     }
 
     #[test]
-    fn washiの記法にできる() {
+    fn renders_washi_notation() {
         let t = "吾輩は猫である";
         let s = [sug("吾輩", 0, &["わがはい"]), sug("猫", 3, &["ねこ"])];
         assert_eq!(to_washi(t, &s), "{吾輩|わがはい}は{猫|ねこ}である");
     }
 
     #[test]
-    fn 同じ語に違う読みを振れる() {
+    fn same_word_can_take_different_readings() {
         // washi 側で別々の <ruby> になることは確認済み
         let t = "今日ではなく今日と読む";
         let s = [sug("今日", 0, &["きょう"]), sug("今日", 6, &["こんにち"])];
@@ -349,7 +349,7 @@ mod tests {
     }
 
     #[test]
-    fn 位置が合わない指摘は使わない() {
+    fn hit_with_wrong_position_ignored() {
         // モデルがずれた位置を返しても本文を壊さない
         let t = "吾輩は猫である";
         let s = [sug("犬", 3, &["いぬ"])];
@@ -357,7 +357,7 @@ mod tests {
     }
 
     #[test]
-    fn 重なった指摘は片方だけ振る() {
+    fn overlapping_hits_get_ruby_once() {
         let t = "日本語";
         let s = [sug("日本", 0, &["にほん"]), sug("本語", 1, &["ほんご"])];
         let got = to_washi(t, &s);
@@ -365,26 +365,26 @@ mod tests {
     }
 
     #[test]
-    fn 記法を壊す語には振らない() {
+    fn no_ruby_on_notation_breaking_words() {
         let t = "a{b}c";
         let s = [sug("{b}", 1, &["び"])];
         assert_eq!(to_washi(t, &s), t);
     }
 
     #[test]
-    fn 範囲外は無視する() {
+    fn out_of_range_ignored() {
         let s = [sug("吾輩", 100, &["わがはい"])];
         assert_eq!(to_washi("短い", &s), "短い");
     }
 
     #[test]
-    fn 候補が空なら振らない() {
+    fn no_ruby_when_candidates_empty() {
         let s = [sug("後", 0, &[])];
         assert_eq!(to_washi("後で", &s), "後で");
     }
 
     #[test]
-    fn 覚えた読みが第1候補に繰り上がる() {
+    fn learned_reading_moves_to_first() {
         let mut m = Memory::default();
         m.remember("家", "いえ");
         let mut s = Suggestion {
@@ -399,7 +399,7 @@ mod tests {
     }
 
     #[test]
-    fn 覚えた読みが候補に無くても先頭に入る() {
+    fn learned_reading_added_at_front() {
         let mut m = Memory::default();
         m.remember("後", "のち");
         let mut s = Suggestion { base: "後".into(), at: 0, readings: vec!["あと".into()] };
@@ -408,7 +408,7 @@ mod tests {
     }
 
     #[test]
-    fn top_n命中率を数えられる() {
+    fn counts_top_n_hit_rate() {
         let mut h = Hits::default();
         h.add(Some(1)); // 第1候補で当たり
         h.add(Some(3)); // 第3候補で当たり
@@ -422,12 +422,12 @@ mod tests {
     }
 
     #[test]
-    fn 訊いていなければ0で割らない() {
+    fn no_division_by_zero_when_nothing_asked() {
         assert_eq!(Hits::default().top(1), 0.0);
     }
 
     #[test]
-    fn 仮名の判定() {
+    fn kana_detection() {
         assert!(is_kana("わがはい"));
         assert!(is_kana("こーひー"));
         assert!(!is_kana("ワガハイ"), "カタカナを通した");

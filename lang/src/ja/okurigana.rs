@@ -165,7 +165,7 @@ mod tests {
     }
 
     #[test]
-    fn 本則にも許容にも無い形は直す先を言う() {
+    fn unknown_form_gets_a_suggestion() {
         let f = findings("少い人数で行います。");
         assert_eq!(f.len(), 1, "{f:?}");
         assert_eq!(f[0].found, "少い");
@@ -176,7 +176,7 @@ mod tests {
     }
 
     #[test]
-    fn 許容を誤りにしない() {
+    fn allowed_form_not_an_error() {
         // **決めごと4。** 行なう は通則1の許容で、誤りではない
         assert!(found("会議を行なう。").is_empty(), "許容を誤りにした");
         assert!(found("会議を行う。").is_empty());
@@ -191,14 +191,14 @@ mod tests {
     }
 
     #[test]
-    fn 熟語といたしますを拾わない() {
+    fn compound_and_itashimasu_not_matched() {
         // ご説**明い**たします を「明い」と読まない
         assert!(found("ご説明いたします。証明いたしました。").is_empty());
         assert!(found("減少いたしました。").is_empty());
     }
 
     #[test]
-    fn 本則と許容が混ざっていたら言う() {
+    fn mixed_standard_and_allowed_reported() {
         // **どちらが正しいとは言わない。** 混ざっていることだけ
         let f = findings("会議を行う。作業は行なう。");
         assert_eq!(f.len(), 2, "{f:?}");
@@ -209,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn 片方だけなら言わない() {
+    fn single_form_not_reported() {
         // 揃っていれば、どちらに揃っていても正しい
         assert!(found("表す。表す。").is_empty());
         assert!(found("表わす。表わす。").is_empty());
@@ -217,7 +217,7 @@ mod tests {
     }
 
     #[test]
-    fn 熟語の一部を拾わない() {
+    fn does_not_match_inside_a_compound() {
         // 銀**行う**んぬん / 代**表す**る を語として読まない
         assert!(found("銀行うんぬんの話。").is_empty());
         assert!(found("代表する立場。").is_empty());
@@ -225,7 +225,7 @@ mod tests {
     }
 
     #[test]
-    fn 表記ゆれと二重に出さない() {
+    fn not_duplicated_with_variants() {
         // 1(表記ゆれ)は骨格が漢字2字以上、こちらは語幹が漢字1字。境目が分けてある
         let text = "問合せと問い合わせ。会議を行う。作業は行なう。";
         let n = crate::ja::notation::findings(text);
@@ -239,12 +239,12 @@ mod tests {
     }
 
     #[test]
-    fn 指摘は辞書の側から出る() {
+    fn hits_come_from_the_dict() {
         assert!(findings("少い").iter().all(|f| f.source == Source::Dictionary));
     }
 
     #[test]
-    fn 指摘の文字列は本文にそのまま在る() {
+    fn hit_text_appears_verbatim() {
         let text = "少い人数。会議を行う。作業は行なう。";
         for f in findings(text) {
             assert!(text.contains(&f.found), "本文に無い: {}", f.found);
@@ -252,14 +252,14 @@ mod tests {
     }
 
     #[test]
-    fn 普通の文には何も出ない() {
+    fn nothing_reported_on_ordinary_text() {
         assert!(found("会議を行います。少ない人数で短い期間でした。").is_empty());
         assert!(found("").is_empty());
         assert!(found("English only.").is_empty());
     }
 
     #[test]
-    fn 指摘は本文の順に並ぶ() {
+    fn hits_in_text_order() {
         let f = findings("少い。表す。また表わす。珍らしい。");
         let ats: Vec<usize> = f.iter().filter_map(|x| x.at).collect();
         assert!(ats.windows(2).all(|w| w[0] <= w[1]), "{ats:?}");

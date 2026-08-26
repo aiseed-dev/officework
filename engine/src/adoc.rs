@@ -110,7 +110,7 @@ pub fn write(doc: &Document) -> String {
                             if q.list == p.list
                                 && q.style_id.as_deref().is_some_and(is_desc_list) == desc
                                 // **次が新しい一覧の始めなら、空行を残します**
-                                && q.style_id.as_deref() != Some(desc_list_start)
+                                && q.style_id.as_deref() != Some(DESC_LIST_START)
                     );
                 write_para(&mut out, p, doc, quote_open || tight);
             }
@@ -240,11 +240,11 @@ fn after_abbrev(before: &[char]) -> bool {
     if word.len() == 1 {
         return true; // 頭文字
     }
-    const abbrevs: &[&str] = &[
+    const ABBREVS: &[&str] = &[
         "Dr", "Mr", "Mrs", "Ms", "Prof", "Sr", "Jr", "St", "vs", "etc", "Fig", "No", "Vol",
         "Inc", "Ltd", "Co", "Corp", "Ave", "Rd", "approx", "cf", "al",
     ];
-    abbrevs.iter().any(|x| x.eq_ignore_ascii_case(&word))
+    ABBREVS.iter().any(|x| x.eq_ignore_ascii_case(&word))
 }
 
 /// **1つの段落を、文ごとの行に切ります。**
@@ -533,11 +533,11 @@ fn field_src(s: &crate::doc::Sdt) -> String {
 
 /// 表の中の空行の印。`a|`(AsciiDoc として組むセル)の中では**段落の
 /// 切れ目**になります。本文に出ない字なので、中身と紛れません。
-const table_blank_row: &str = "\u{0}";
+const TABLE_BLANK_ROW: &str = "\u{0}";
 
 /// 空の段落の書き方(本家の作法)。空行を並べても1つの切れ目にまとまるので、
 /// **何行あったか**を残すにはこれを置きます。
-const empty_para: &str = "{empty}";
+const EMPTY_PARA: &str = "{empty}";
 
 /// **このセルの字は式か。**
 ///
@@ -672,7 +672,7 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
                 if many_paras {
                     for p in paras.iter_mut() {
                         if p.trim().is_empty() {
-                            *p = empty_para.to_string();
+                            *p = EMPTY_PARA.to_string();
                         }
                     }
                 }
@@ -954,7 +954,7 @@ const ADMONITION: &[&str] = &["NOTE:", "TIP:", "IMPORTANT:", "WARNING:", "CAUTIO
 /// スタイルにするので、テンプレートで色を分けられます)。2026-08-18。
 ///
 /// どれなのかを字に残さないので、本文を直しても印は壊れません
-const admon_style: &[&str] = &["註記", "ヒント", "重要", "警告", "注意"];
+const ADMON_STYLE: &[&str] = &["註記", "ヒント", "重要", "警告", "注意"];
 
 /// **1行で1つと決まっている段落のスタイル名か。**
 /// 註記とラベル付きリストは、続く行を呑むと形が壊れます
@@ -968,11 +968,11 @@ fn one_per_line(name: &str) -> bool {
 /// 印が無いと、書き戻しで空行が消えて*2つの一覧が1つに繋がります*
 /// (2026-08-25。問答形式を見ていて見つけました)
 pub(crate) fn is_desc_list(name: &str) -> bool {
-    name == "説明のリスト" || name == desc_list_start
+    name == "説明のリスト" || name == DESC_LIST_START
 }
 
 /// 空行のあとに始まるラベル付きリストの印
-pub(crate) const desc_list_start: &str = "説明のリストの始め";
+pub(crate) const DESC_LIST_START: &str = "説明のリストの始め";
 
 /// 箇条書きの行か。返るのは(段, 中身)。段は 0 から。
 /// AsciiDoc は印の数が段です(`*` が1段目、`**` が2段目)
@@ -1001,7 +1001,7 @@ fn is_admon(l: &str) -> Option<(&'static str, &str)> {
     for (i, mark) in ADMONITION.iter().enumerate() {
         if let Some(rest) = ts.strip_prefix(mark) {
             if let Some(body) = rest.strip_prefix(' ') {
-                return Some((admon_style[i], body));
+                return Some((ADMON_STYLE[i], body));
             }
         }
     }
@@ -1010,7 +1010,7 @@ fn is_admon(l: &str) -> Option<(&'static str, &str)> {
 
 /// スタイル名から註記の印を引く(書くとき)
 fn admon_mark(name: &str) -> Option<&'static str> {
-    admon_style.iter().position(|n| *n == name).map(|i| ADMONITION[i])
+    ADMON_STYLE.iter().position(|n| *n == name).map(|i| ADMONITION[i])
 }
 
 /// 塊の区切り(asciidoctor の `DELIMITED_BLOCKS`)。**うちが意味を知っている
@@ -1101,7 +1101,7 @@ pub fn write_many(docs: &[Document]) -> String {
         }
         // **`[discrete]` を付けます。** これが無いと本家が「部には節が要る」と
         // 警告します(2026-08-19 発注者「警告が出ないように考えろ」)
-        out.push_str(doc_sep_mark);
+        out.push_str(DOC_SEP_MARK);
         out.push('\n');
         out.push_str(s.trim_end());
         out.push_str("\n\n");
@@ -1110,7 +1110,7 @@ pub fn write_many(docs: &[Document]) -> String {
 }
 
 /// 文書の切れ目に付ける印。本家の「節ではない見出し」の書き方です。
-const doc_sep_mark: &str = "[discrete]";
+const DOC_SEP_MARK: &str = "[discrete]";
 
 fn has_heading(d: &Document) -> bool {
     matches!(d.blocks.first(), Some(Block::Para(p)) if p.style == ParaStyle::Title)
@@ -1151,7 +1151,7 @@ fn split_docs(src: &str) -> Vec<String> {
                     opened = Some(content.to_string());
                 } else if let Some((mark, _)) = DELIMITED.iter().find(|(d, _)| is_delim(content, d)) {
                     opened = Some((*mark).to_string());
-                } else if content == doc_sep_mark && next_is_title(&lines, i) {
+                } else if content == DOC_SEP_MARK && next_is_title(&lines, i) {
                     // **切れ目の印。** 印そのものは持ち越しません。
                     //
                     // **前置きだけの塊は文書にしません**(2026-08-24)。
@@ -1234,7 +1234,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     let mut doc = Document::default();
     let mut lines = src.lines().enumerate().peekable();
     let mut pending_bookmarks: Vec<String> = Vec::new();
-    let mut cont_emph = emph_state::default();
+    let mut cont_emph = EmphState::default();
     let mut pending_break = false;
     let mut pending_style: Option<String> = None;
     let mut in_quote = false;
@@ -1437,7 +1437,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                     // それ以外の空行は `a|` のセルの中の段落の切れ目かも
                     // しれないので、印として残して後で見分けます
                     if real_line > 0 {
-                        rows.push(table_blank_row);
+                        rows.push(TABLE_BLANK_ROW);
                     }
                     continue;
                 }
@@ -1554,7 +1554,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             p.style_id = Some(if cont {
                 "説明のリスト".to_string()
             } else {
-                desc_list_start.to_string()
+                DESC_LIST_START.to_string()
             });
             l
         } else if let Some((tab, rest)) = is_bullet(l, '*') {
@@ -1581,7 +1581,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             && p.style_id.is_none()
             && !p.page_break_before;
         if !continued {
-            cont_emph = emph_state::default();
+            cont_emph = EmphState::default();
         }
         // 継ぐ行の頭の空白は落とします(続きの印であって、字ではありません)
         let body = if continued { body.trim_start() } else { body };
@@ -1699,7 +1699,7 @@ fn split_macro_target(s: &str) -> Option<(&str, &str)> {
 /// `太字**` で閉じる書き方が通ります。行ごとに読み直すと、片方だけの印に
 /// なって字が壊れます(2026-08-18 に README を通して見つけました)。
 #[derive(Debug, Clone, Copy, Default)]
-pub struct emph_state {
+pub struct EmphState {
     bold: bool,
     italic: bool,
     mono: bool,
@@ -1710,7 +1710,7 @@ fn parse_inline(
     doc: &mut Document,
     fresh_note: &mut usize,
 ) -> Result<Vec<Run>, String> {
-    let mut state = emph_state::default();
+    let mut state = EmphState::default();
     parse_inline_cont(text, doc, fresh_note, &mut state)
 }
 
@@ -1718,7 +1718,7 @@ fn parse_inline_cont(
     text: &str,
     doc: &mut Document,
     fresh_note: &mut usize,
-     state: &mut emph_state,
+     state: &mut EmphState,
 ) -> Result<Vec<Run>, String> {
     let mut runs: Vec<Run> = Vec::new();
     let mut cur = String::new();
@@ -1969,7 +1969,7 @@ fn parse_inline_cont(
         i += c.len_utf8();
     }
     flush(&mut runs, &mut cur, bold, italic, mono);
-    *state = emph_state { bold, italic, mono };
+    *state = EmphState { bold, italic, mono };
     Ok(runs)
 }
 
@@ -1988,7 +1988,7 @@ fn parse_table_lines(
     for l in rows_src {
         // **空行は `a|` のセルの中だけ段落の切れ目にします。**
         // ほかの空行は今までどおり捨てます(表の見た目のための空行なので)
-        if *l == table_blank_row {
+        if *l == TABLE_BLANK_ROW {
             if let Some(before) = joined.last_mut() {
                 if last_cell_is_adoc(before) && !before.ends_with("\n\n") {
                     before.push_str("\n\n");
@@ -2064,7 +2064,7 @@ fn parse_table_lines(
             for p in para_text {
                 paras.push(Paragraph {
                     // `{empty}` は**空の段落**(書いた側と同じ決め)
-                    runs: if p == empty_para {
+                    runs: if p == EMPTY_PARA {
                         Vec::new()
                     } else if is_formula_cell(p) {
                         // **式は字のまま取ります**(太字の印として読まない)。

@@ -216,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn ルビを剥がして正解が取れる() {
+    fn strips_ruby_to_get_the_answer() {
         let w = work("吾輩《わがはい》は猫である");
         assert!(w.text.ends_with("吾輩は猫である"), "本文: {:?}", w.text);
         let r = w.ruby.last().unwrap();
@@ -225,7 +225,7 @@ mod tests {
     }
 
     #[test]
-    fn 親文字列は同じ種別だけ遡る() {
+    fn base_text_walks_back_within_one_kind() {
         // 「一番」の手前の「は」は平仮名なので親に入らない
         let w = work("それは獰悪《どうあく》な");
         let r = w.ruby.last().unwrap();
@@ -233,14 +233,14 @@ mod tests {
     }
 
     #[test]
-    fn 縦棒があれば種別をまたいで親になる() {
+    fn vertical_bar_spans_char_kinds() {
         let w = work("一番｜獰悪な奴《やつ》だ");
         let r = w.ruby.last().unwrap();
         assert_eq!(r.base, "獰悪な奴", "｜の指定を無視している: {:?}", r.base);
     }
 
     #[test]
-    fn 位置が剥がしたあとの本文と合う() {
+    fn position_matches_stripped_text() {
         let w = work("あの吾輩《わがはい》が");
         let r = w.ruby.last().unwrap();
         let ch: Vec<char> = w.text.chars().collect();
@@ -249,21 +249,21 @@ mod tests {
     }
 
     #[test]
-    fn 入力者注は本文から消える() {
+    fn typist_notes_removed() {
         let w = work("あばた［＃「あばた」に傍点］の顔");
         assert!(!w.text.contains('＃'), "注記が残っている: {:?}", w.text);
         assert!(w.text.contains("あばたの顔"), "{:?}", w.text);
     }
 
     #[test]
-    fn 外字はゲタになって場所が残る() {
+    fn gaiji_becomes_placeholder_keeping_position() {
         let w = work("※［＃「言＋墟のつくり」、第4水準2-88-74］と言った");
         assert!(!w.text.contains('※'), "外字の※が残っている: {:?}", w.text);
         assert!(w.text.contains(GETA), "外字の場所が消えた: {:?}", w.text);
     }
 
     #[test]
-    fn 外字に付いたルビが手前を巻き込まない() {
+    fn gaiji_ruby_does_not_swallow_prefix() {
         // 実例(こころ): ※［＃「目＋爭」…］《みは》 が直前の「を」を親にしていた
         let w = work("目を※［＃「目＋爭」、第3水準1-88-85］《みは》った");
         let r = w.ruby.last().unwrap();
@@ -272,7 +272,7 @@ mod tests {
     }
 
     #[test]
-    fn 前付けと後付けが落ちる() {
+    fn front_and_back_matter_dropped() {
         let w = work("本文だよ");
         assert!(!w.text.contains("《》：ルビ"), "凡例が残っている: {:?}", w.text);
         assert!(!w.text.contains("底本"), "後付けが残っている: {:?}", w.text);
@@ -281,7 +281,7 @@ mod tests {
     }
 
     #[test]
-    fn 読みが割れる語を数えられる() {
+    fn counts_words_with_split_readings() {
         let w = work("後《のち》に。後《あと》で。後《うし》ろ。前《まえ》に。");
         let a = w.ambiguous();
         assert_eq!(a.len(), 1, "{a:?}");
@@ -290,7 +290,7 @@ mod tests {
     }
 
     #[test]
-    fn 文脈を切り出せる() {
+    fn extracts_context() {
         let w = work("その後《のち》のこと");
         let r = w.ruby.last().unwrap();
         let c = w.context(r.at, r.base.chars().count(), 3);

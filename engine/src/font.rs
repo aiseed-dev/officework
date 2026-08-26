@@ -236,7 +236,7 @@ fn norm(s: &str) -> String {
 
 /// 書体の系統。**明朝の書類を黙ってゴシックにしない**ための区別です。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum script {
+pub enum Generic {
     /// 明朝・セリフ(縦横に太さの差があり、端に飾りがある)
     Serif,
     /// ゴシック・サンセリフ(太さが一定で、飾りが無い)
@@ -244,13 +244,13 @@ pub enum script {
 }
 
 /// 書体の名前から系統を読む。どちらとも読めなければ `None`。
-pub fn read_script(name: &str) -> Option<script> {
+pub fn read_generic(name: &str) -> Option<Generic> {
     let lower = name.to_lowercase();
     // 名前に系統が書いてある物(明朝/ゴシック/serif/sans)を先に見ます
     if name.contains("明朝") || lower.contains("mincho") || lower.contains("serif") {
         // "sans serif" は "serif" を含むので、先にサンセリフを外します
         if !lower.contains("sans") {
-            return Some(script::Serif);
+            return Some(Generic::Serif);
         }
     }
     if name.contains("ゴシック")
@@ -262,24 +262,24 @@ pub fn read_script(name: &str) -> Option<script> {
         || name.contains("黒")
         || name.contains("고딕")
     {
-        return Some(script::SansSerif);
+        return Some(Generic::SansSerif);
     }
     // 名前に書いていない物は、よく使われる書体を名指しで覚えます。
     // Windows の docx が名乗るのはたいていこの辺りです
-    const serif_names: &[&str] = &[
+    const SERIF_NAMES: &[&str] = &[
         "times new roman", "times", "georgia", "garamond", "book antiqua",
         "palatino", "cambria", "constantia", "songti", "宋体", "新細明體",
         "batang", "바탕",
     ];
-    const sans_names: &[&str] = &[
+    const SANS_NAMES: &[&str] = &[
         "arial", "helvetica", "calibri", "aptos", "segoe ui", "verdana",
         "tahoma", "candara", "corbel", "roboto", "gulim", "굴림",
     ];
-    if serif_names.iter().any(|n| lower.contains(n)) {
-        return Some(script::Serif);
+    if SERIF_NAMES.iter().any(|n| lower.contains(n)) {
+        return Some(Generic::Serif);
     }
-    if sans_names.iter().any(|n| lower.contains(n)) {
-        return Some(script::SansSerif);
+    if SANS_NAMES.iter().any(|n| lower.contains(n)) {
+        return Some(Generic::SansSerif);
     }
     None
 }
@@ -293,7 +293,7 @@ pub fn read_script(name: &str) -> Option<script> {
 /// 一覧しか持っていなかったので、ドイツ語の画面で Times New Roman の
 /// 文書を開くと日本語の明朝になっていました。
 pub fn substitute(name: &str) -> Option<&'static Family> {
-    let k = read_script(name)?;
+    let k = read_generic(name)?;
     // 並びは「入れた書体(IPA/Noto)→ OS の持ち物」。後半は実機の書体 —
     // Mac は Hiragino、Windows は游/メイリオ/ＭＳ が標準で、ここに無いと
     // Noto も IPA も入れていない実機で明朝がゴシックの fallback に落ちる
@@ -301,42 +301,42 @@ pub fn substitute(name: &str) -> Option<&'static Family> {
     // 書体は日本語名と英語名の両方で名乗ることがあるので、両方書く
     // (resolve は空白・大小文字の揺れは吸うが、言語までは翻訳しない)
     let candidates: &[&str] = match (script_of(&default_language()), k) {
-        (Script::Japanese, script::Serif) => &[
+        (Script::Japanese, Generic::Serif) => &[
             "IPAex明朝", "Noto Serif CJK JP", "BIZ UDP明朝", "BIZ UD明朝", "IPA P明朝", "IPA明朝",
             "ヒラギノ明朝 ProN", "Hiragino Mincho ProN",
             "游明朝", "游明朝体", "Yu Mincho", "ＭＳ 明朝", "MS Mincho",
         ],
-        (Script::Japanese, script::SansSerif) => &[
+        (Script::Japanese, Generic::SansSerif) => &[
             "IPAexゴシック", "Noto Sans CJK JP", "BIZ UDPゴシック", "IPA Pゴシック",
             "ヒラギノ角ゴシック", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
             "游ゴシック", "Yu Gothic", "メイリオ", "Meiryo", "ＭＳ ゴシック", "MS Gothic",
         ],
-        (Script::Korean, script::Serif) => {
+        (Script::Korean, Generic::Serif) => {
             &["Noto Serif CJK KR", "NanumMyeongjo", "나눔명조", "바탕", "Batang"]
         }
-        (Script::Korean, script::SansSerif) => &[
+        (Script::Korean, Generic::SansSerif) => &[
             "Noto Sans CJK KR", "NanumGothic", "나눔고딕",
             "Apple SD Gothic Neo", "맑은 고딕", "Malgun Gothic",
         ],
-        (Script::SimplifiedChinese, script::Serif) => {
+        (Script::SimplifiedChinese, Generic::Serif) => {
             &["Noto Serif CJK SC", "Source Han Serif SC", "宋体", "SimSun", "STSong"]
         }
-        (Script::SimplifiedChinese, script::SansSerif) => &[
+        (Script::SimplifiedChinese, Generic::SansSerif) => &[
             "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei",
             "PingFang SC", "微软雅黑", "Microsoft YaHei",
         ],
-        (Script::TraditionalChinese, script::Serif) => {
+        (Script::TraditionalChinese, Generic::Serif) => {
             &["Noto Serif CJK TC", "Source Han Serif TC", "新細明體", "PMingLiU"]
         }
-        (Script::TraditionalChinese, script::SansSerif) => &[
+        (Script::TraditionalChinese, Generic::SansSerif) => &[
             "Noto Sans CJK TC", "Source Han Sans TC",
             "PingFang TC", "微軟正黑體", "Microsoft JhengHei",
         ],
-        (_, script::Serif) => &[
+        (_, Generic::Serif) => &[
             "Liberation Serif", "DejaVu Serif", "Noto Serif", "Nimbus Roman",
             "Times New Roman", "Georgia", "Cambria",
         ],
-        (_, script::SansSerif) => &[
+        (_, Generic::SansSerif) => &[
             "Liberation Sans", "DejaVu Sans", "Noto Sans", "Nimbus Sans",
             "Helvetica Neue", "Helvetica", "Arial", "Calibri", "Segoe UI",
         ],
@@ -586,7 +586,7 @@ mod tests {
 /// どれも入っていなければ `None` — *代わりの書体で等幅のふりはしません*。
 /// 等幅でない字で組むと桁が揃わず、かえって読みにくくなります。
 pub fn monospace() -> Option<&'static Family> {
-    const cands: &[&str] = &[
+    const CANDS: &[&str] = &[
         "Noto Sans Mono CJK JP",   // Linux の既定の組み合わせ
         "BIZ UDGothic",            // Windows(等幅の和文)
         "MS Gothic",
@@ -597,5 +597,5 @@ pub fn monospace() -> Option<&'static Family> {
         "Liberation Mono",
         "Courier New",
     ];
-    cands.iter().find_map(|n| resolve(n))
+    CANDS.iter().find_map(|n| resolve(n))
 }

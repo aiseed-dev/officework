@@ -24,7 +24,7 @@ I18N = ROOT / "ui/i18n"
 
 def _table():
     """記号の鍵 → 日本語。**一度読んで取っておきます。**"""
-    if not hasattr(_table, "値"):
+    if not hasattr(_table, "value"):
         _table.value = json.loads((I18N / "ja.json").read_text(encoding="utf-8"))
     return _table.value
 

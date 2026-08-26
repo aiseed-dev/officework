@@ -89,7 +89,7 @@ pub fn empty(look: &Look) -> Div {
 
 /// 並べる中身。**200 件で切ります** — 切ったことは呼ぶ側が言うこと。
 /// 上限。これより多いフォルダでは、切ったことを画面に出します
-pub const list_cap: usize = 200;
+pub const LIST_CAP: usize = 200;
 
 /// 並べる物と、切って落とした数。
 ///
@@ -97,8 +97,8 @@ pub const list_cap: usize = 200;
 /// それ以上のファイルは*あるのに出ない*状態でした。
 pub fn entries_with_rest(dir: &std::path::Path) -> (Vec<folder::Entry>, usize) {
     let all = folder::list(dir);
-    let rest = all.len().saturating_sub(list_cap);
-    (all.into_iter().take(list_cap).collect(), rest)
+    let rest = all.len().saturating_sub(LIST_CAP);
+    (all.into_iter().take(LIST_CAP).collect(), rest)
 }
 
 pub fn entries(dir: &std::path::Path) -> Vec<folder::Entry> {

@@ -383,7 +383,7 @@ mod tests {
     }
 
     #[test]
-    fn 辞書は絞り込みまでやる() {
+    fn dict_narrows_candidates() {
         // 辞書に無い語を見つけるところまでは、モデル無しで動く
         let c = checker_with_dict();
         let r = c.check("the documnt is here");
@@ -393,7 +393,7 @@ mod tests {
     }
 
     #[test]
-    fn 判定できなければ綴り誤りと断定しない() {
+    fn no_spelling_verdict_when_undecidable() {
         // 辞書に無い語が誤りとは限らない(Bennet・Radeon は正しい)。
         // モデルが居ないなら「未知語」までしか言わない
         let c = checker_with_dict();
@@ -407,7 +407,7 @@ mod tests {
     }
 
     #[test]
-    fn 固有名詞と判定されたら指摘しない() {
+    fn proper_noun_not_flagged() {
         let c = checker_with_dict();
         c.seen.borrow_mut().insert("Bennet".into(), Verdict::Name);
         c.seen.borrow_mut().insert("documnt".into(), Verdict::Typo);
@@ -421,7 +421,7 @@ mod tests {
     }
 
     #[test]
-    fn 覚えた語は二度訊かない() {
+    fn learned_words_not_asked_twice() {
         // 判定はモデルを動かす。同じ語で何度も動かさない
         let c = checker_with_dict();
         c.seen.borrow_mut().insert("Bennet".into(), Verdict::Name);
@@ -435,7 +435,7 @@ mod tests {
     }
 
     #[test]
-    fn 日本語はモデルが要る() {
+    fn japanese_needs_model() {
         let c = checker_with_dict();
         let r = c.check("それは以外な結果でした。");
         // 繋がらないので検査できない。**黙って「指摘なし」にしない**
@@ -445,7 +445,7 @@ mod tests {
     }
 
     #[test]
-    fn 表記ゆれはモデルが無くても出る() {
+    fn variants_found_without_model() {
         // **これが辞書側を作った理由。** GPU の無い機械でも日本語の指摘が出る
         let c = checker_with_dict();
         let r = c.check("お問合せは下記まで。問い合わせを受け付けます。");
@@ -458,7 +458,7 @@ mod tests {
     }
 
     #[test]
-    fn 表記ゆれが出ても検査できなかったことは消えない() {
+    fn variants_do_not_clear_unchecked() {
         // 終了コード3(検査できなかった部分がある)は辞書が通っただけでは消えない。
         // **黙って「指摘なし」にしない**の裏返し — 黙って「全部見た」にもしない
         let c = checker_with_dict();
@@ -474,7 +474,7 @@ mod tests {
     }
 
     #[test]
-    fn 表記が揃った日本語は指摘なしと言えない() {
+    fn consistent_japanese_cannot_claim_none() {
         // 表記ゆれが無くても、誤変換はモデルにしか見えない。
         // 辞書が通ったからといって「綺麗です」と言ってはいけない
         let c = checker_with_dict();
@@ -484,7 +484,7 @@ mod tests {
     }
 
     #[test]
-    fn 辞書が言った指摘をモデルに二度言わせない() {
+    fn model_does_not_repeat_dict() {
         // 1〜3 で辞書とモデルの守備範囲が重なった。**同じ語を2回出さない**
         let dict = vec![Finding {
             kind: Kind::Notation,
@@ -516,7 +516,7 @@ mod tests {
     }
 
     #[test]
-    fn 濾過は既定では効かない() {
+    fn filtering_off_by_default() {
         // 落とせるのは「大丈夫と証明できた文」ではなく「表に載っていない文」。
         // **既定にはしない**
         let c = checker_with_dict();
@@ -530,7 +530,7 @@ mod tests {
     }
 
     #[test]
-    fn 濾過したら落とした文を黙らない() {
+    fn filtering_reports_dropped() {
         // **黙って「指摘なし」にしない**の裏返し。見ていない範囲は必ず言う
         let mut c = checker_with_dict();
         c.filter_homophones = true;
@@ -541,7 +541,7 @@ mod tests {
     }
 
     #[test]
-    fn 混在文は両方を掛ける() {
+    fn mixed_text_runs_both() {
         let c = checker_with_dict();
         let r = c.check("Radeon の documnt を確認する");
         // 英語側は辞書で出る
@@ -551,7 +551,7 @@ mod tests {
     }
 
     #[test]
-    fn 綺麗な英語なら指摘なしと言ってよい() {
+    fn clean_english_may_report_none() {
         let c = checker_with_dict();
         let r = c.check("the document is here");
         assert!(r.may_say_clean());
@@ -559,7 +559,7 @@ mod tests {
     }
 
     #[test]
-    fn 辞書が無ければ黙らない() {
+    fn missing_dict_is_reported() {
         let c = Checker {
             dict: None,
             dict_problem: Some("辞書が見つかりません".into()),
@@ -573,14 +573,14 @@ mod tests {
     }
 
     #[test]
-    fn 空の本文は何も起こさない() {
+    fn empty_text_does_nothing() {
         let c = checker_with_dict();
         let r = c.check("   \n  ");
         assert!(r.may_say_clean());
     }
 
     #[test]
-    fn 指摘は本文の順に並ぶ() {
+    fn hits_in_text_order() {
         let c = checker_with_dict();
         let r = c.check("documnt and anothr");
         let ats: Vec<usize> = r.findings.iter().filter_map(|f| f.at).collect();
@@ -588,7 +588,7 @@ mod tests {
     }
 
     #[test]
-    fn 種類の振り分け() {
+    fn kind_dispatch() {
         assert_eq!(Kind::from_why("誤変換"), Kind::Conversion);
         assert_eq!(Kind::from_why("表記ゆれ"), Kind::Notation);
         assert_eq!(Kind::from_why("送り仮名"), Kind::Okurigana);
@@ -597,7 +597,7 @@ mod tests {
     }
 
     #[test]
-    fn 文字位置は文字で数える() {
+    fn char_position_counted_in_chars() {
         // バイトで数えると日本語で位置がずれる
         assert_eq!(char_index_of("あいう以外です", "以外"), Some(3));
         assert_eq!(char_index_of("本文", "無い語"), None);

@@ -91,7 +91,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 仮名か漢字があれば日本語() {
+    fn kana_or_kanji_means_japanese() {
         assert!(Japanese.detect("これは"));
         assert!(Japanese.detect("漢字"));
         assert!(Japanese.detect("Radeon で動く"));
@@ -99,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn 漢字の連なりを拾える() {
+    fn picks_kanji_runs() {
         let t = Japanese.reading_targets("その後、日本語を読む");
         let bases: Vec<&str> = t.iter().map(|x| x.base.as_str()).collect();
         assert_eq!(bases, vec!["後", "日本語", "読"], "{bases:?}");
@@ -107,7 +107,7 @@ mod tests {
     }
 
     #[test]
-    fn 漢字が無ければ対象も無い() {
+    fn no_kanji_no_targets() {
         assert!(Japanese.reading_targets("ひらがなだけ").is_empty());
     }
 }

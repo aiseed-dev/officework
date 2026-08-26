@@ -2116,11 +2116,11 @@ pub fn listen(app: &'static str, queue: Queue) -> bool {
 /// 取り出して使います — 1本落ちたせいで残りが「錠が毒された」で落ちると、
 /// 本当の原因が見えなくなります。
 #[cfg(test)]
-static home_lock: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static HOME_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[cfg(test)]
 fn own_home() -> std::sync::MutexGuard<'static, ()> {
-    home_lock.lock().unwrap_or_else(|e| e.into_inner())
+    HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 #[cfg(test)]

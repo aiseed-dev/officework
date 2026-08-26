@@ -347,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    fn 送り仮名の揺れを束ねる() {
+    fn groups_okurigana_variants() {
         // SEKKEI が名指しした3つ
         assert_eq!(mixed("お問合せは下記。問い合わせを受け付ける。"), ["問合せ/問い合わせ"]);
         assert_eq!(mixed("引渡しの日。引き渡しを行う。"), ["引渡し/引き渡し"]);
@@ -355,7 +355,7 @@ mod tests {
     }
 
     #[test]
-    fn 三通り以上でも一つの束になる() {
+    fn three_or_more_forms_make_one_group() {
         let m = mixtures("問合せと問い合わせと問合わせ。");
         assert_eq!(m.len(), 1, "{m:?}");
         assert_eq!(m[0].skeleton, "問合");
@@ -363,14 +363,14 @@ mod tests {
     }
 
     #[test]
-    fn 揃っていれば何も言わない() {
+    fn nothing_reported_when_consistent() {
         assert!(mixed("問い合わせは下記へ。問い合わせを受け付ける。").is_empty());
         assert!(mixed("これはただの文章です。").is_empty());
         assert!(mixed("").is_empty());
     }
 
     #[test]
-    fn 事務の文書でよく揺れる語() {
+    fn words_that_vary_in_office_documents() {
         assert_eq!(mixed("受取りと受け取り。"), ["受取り/受け取り"]);
         assert_eq!(mixed("見積りと見積もり。"), ["見積り/見積もり"]);
         assert_eq!(mixed("打合せの後、打ち合わせを続ける。"), ["打合せ/打ち合わせ"]);
@@ -380,7 +380,7 @@ mod tests {
     }
 
     #[test]
-    fn 活用形は表記ゆれではない() {
+    fn inflected_forms_are_not_variants() {
         // 送り仮名は前から落ちる。「し」は「した」の後ろ側ではない
         assert!(!drops_from_front("し", "した"));
         assert!(drops_from_front("せ", "わせ"));
@@ -390,7 +390,7 @@ mod tests {
     }
 
     #[test]
-    fn 活用の途中で切らない() {
+    fn does_not_cut_mid_inflection() {
         // 「取り込む」を「取り込」として拾うと「取り込み」と混ざって見える
         assert!(mixed("取り込みを行う。データを取り込む。").is_empty());
         assert!(mixed("書き出しの処理。ファイルを書き出す。").is_empty());
@@ -399,14 +399,14 @@ mod tests {
     }
 
     #[test]
-    fn サ変名詞の活用を拾わない() {
+    fn suru_verb_inflection_not_matched() {
         // 「発売」と「発売し」は表記ゆれではない
         assert!(mixed("新製品発売のお知らせ。新製品を発売しても構わない。").is_empty());
         assert!(mixed("確認書類。内容を確認しても良い。").is_empty());
     }
 
     #[test]
-    fn 形容詞と名詞の句を複合語と見誤らない() {
+    fn adjective_noun_phrase_is_not_a_compound() {
         // 骨格キーだけだと 若者 と 若い者 が束なる(青空文庫で実際に出た)
         assert!(mixed("若者が集う。若い者が集う。").is_empty());
         assert!(mixed("青空の下。青き空の下。").is_empty());
@@ -417,21 +417,21 @@ mod tests {
     }
 
     #[test]
-    fn 助詞で語を繋げない() {
+    fn words_not_joined_across_particles() {
         // 「新製品を発売」を1語にすると「新製品発売」と混ざる
         assert!(mixed("新製品発売のお知らせ。新製品を発売。").is_empty());
         assert!(mixed("折れ線の図。折れ線も出せる。").is_empty());
     }
 
     #[test]
-    fn 漢字一字は扱わない() {
+    fn single_kanji_not_handled() {
         // 「上げる/上る」のような別語を束ねてしまう。送り仮名の検査(内閣告示)の担当
         assert!(mixed("売上が上がる。山に上る。").is_empty());
         assert!(mixed("行う。行なう。").is_empty());
     }
 
     #[test]
-    fn 読みの違う漢語と和語を束ねない() {
+    fn different_readings_not_grouped() {
         // 置換(ちかん)と 置き換え(おきかえ)は別の語。骨格が同じなだけ
         assert!(mixed("文字列の置換。値を置き換える処理。").is_empty());
         assert!(mixed("独身の男。独り身の暮らし。").is_empty());
@@ -439,7 +439,7 @@ mod tests {
     }
 
     #[test]
-    fn 和語の熟語は漢語の一覧に載せない() {
+    fn native_compound_not_in_kango_list() {
         // 構造は 置換/置き換え と同じだが、こちらは**本物の表記ゆれ**。
         // 一覧に紛れ込ませると出なくなる
         assert_eq!(mixed("切替の手順。切り替えを行う。"), ["切替/切り替え"]);
@@ -454,7 +454,7 @@ mod tests {
     }
 
     #[test]
-    fn 位置は文字で数える() {
+    fn position_counted_in_chars() {
         // バイトで数えると日本語でずれる
         let m = mixtures("あ、問合せ。問い合わせ。");
         assert_eq!(m[0].forms[0], ("問合せ".to_string(), 2));
@@ -462,7 +462,7 @@ mod tests {
     }
 
     #[test]
-    fn 指摘は書き方の数だけ出て互いを指す() {
+    fn one_hit_per_form_pointing_at_each_other() {
         // **どちらが正しいとは言わない。** 対称に並べる(決めごと6)
         let f = findings("問合せの窓口。問い合わせを受ける。");
         assert_eq!(f.len(), 2, "{f:?}");
@@ -473,7 +473,7 @@ mod tests {
     }
 
     #[test]
-    fn 指摘は辞書の側から出る() {
+    fn hits_come_from_the_dict() {
         // 辞書と規則だけで出た = GPU 無しで再現できる
         let f = findings("問合せと問い合わせ。");
         assert!(f.iter().all(|x| x.source == Source::Dictionary), "{f:?}");
@@ -481,7 +481,7 @@ mod tests {
     }
 
     #[test]
-    fn 指摘の文字列は本文にそのまま在る() {
+    fn hit_text_appears_verbatim() {
         // モデルの作り話を捨てるのと同じ掟。辞書側も守る
         let text = "引渡しの期日と、引き渡しの場所。";
         for f in findings(text) {

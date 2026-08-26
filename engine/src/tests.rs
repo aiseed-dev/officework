@@ -1851,7 +1851,7 @@ mod fill_tests {
         items.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
     }
 
-    const tmpl_of: &str = "= 請求書\n\n\
+    const TMPL_OF: &str = "= 請求書\n\n\
         {{宛名}} 御中\n\n\
         |===\n\
         | 品名 | 数量\n\
@@ -1870,7 +1870,7 @@ mod fill_tests {
     /// 元の文書が変わらないことも合わせて見ます。
     #[test]
     fn 空のデータで通すと穴の名前が全部出る() {
-        let d = adoc::parse(tmpl_of).expect("雛形が読めない");
+        let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         let from = d.paragraphs().count();
         let (_, rep) = fill::fill(&d, &fill::Data::new());
         // **表の群は、列ごとではなく群の名前で出ます**(「明細.品名」では
@@ -1897,7 +1897,7 @@ mod fill_tests {
     /// **明細の行がデータの数だけ増える。** ここが帳票の芯です。
     #[test]
     fn 明細の行が増える() {
-        let d = adoc::parse(tmpl_of).expect("雛形が読めない");
+        let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "みほん商事").set("合計", "3,000");
         data.push_row("明細", line(&[("品名", "鉛筆"), ("数量", "10")]));
@@ -1928,7 +1928,7 @@ mod fill_tests {
     /// 請求書」が黙って出来上がります。
     #[test]
     fn 分からない名前は残して報告する() {
-        let d = adoc::parse(tmpl_of).expect("雛形が読めない");
+        let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "みほん商事"); // 合計を入れ忘れた
         data.push_row("明細", line(&[("品名", "鉛筆"), ("数量", "10")]));
@@ -1944,7 +1944,7 @@ mod fill_tests {
     /// データが1行も無いときは、明細の行が消えます(見出しは残る)。
     #[test]
     fn 明細が空なら行は出ない() {
-        let d = adoc::parse(tmpl_of).expect("雛形が読めない");
+        let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "-").set("合計", "0");
         data.rows.insert("明細".into(), vec![]);
@@ -1975,7 +1975,7 @@ mod fill_tests {
     /// 差し込む所を見つけられること(画面から使うときの判断に要ります)。
     #[test]
     fn 差し込む所を数える() {
-        let d = adoc::parse(tmpl_of).expect("雛形が読めない");
+        let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         assert_eq!(fill::groups(&d), vec!["明細".to_string()]);
         let plain = adoc::parse("= 題\n\nただの本文。\n").unwrap();
         assert!(fill::groups(&plain).is_empty(), "無い所を有ると言った");
@@ -1984,7 +1984,7 @@ mod fill_tests {
     /// **雛形は何度でも使える**(原本を書き換えない)。
     #[test]
     fn 雛形は書き換えられない() {
-        let d = adoc::parse(tmpl_of).expect("雛形が読めない");
+        let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "一回目").set("合計", "1");
         data.push_row("明細", line(&[("品名", "あ"), ("数量", "1")]));

@@ -621,7 +621,7 @@ mod tests {
     /// **実体の無いアイコン**の一覧。ここに載っている id は無地のボタンで出る。
     /// 2026-08-13 に 77 個ぜんぶ描いたので空。**増えても減っても試験が落ちる**
     /// (下の2つの assert が両方向で見ている)。
-    const iconless_buttons: &[&str] = &[];
+    const ICONLESS_BUTTONS: &[&str] = &[];
 
     #[test]
     fn no_icon_without_a_file_is_added() {
@@ -639,11 +639,11 @@ mod tests {
             }
         }
         let fresh: Vec<&&str> =
-            missing.iter().filter(|m| !iconless_buttons.contains(m)).collect();
+            missing.iter().filter(|m| !ICONLESS_BUTTONS.contains(m)).collect();
         assert!(fresh.is_empty(),
             "実体の無いアイコンが増えた: {fresh:?}(絵を描いて icons.rs に足す)");
         let was_fixed: Vec<&&str> =
-            iconless_buttons.iter().filter(|a| !missing.contains(a)).collect();
+            ICONLESS_BUTTONS.iter().filter(|a| !missing.contains(a)).collect();
         assert!(was_fixed.is_empty(),
             "アイコンができているのに一覧に残っている: {was_fixed:?}(一覧から外す)");
     }

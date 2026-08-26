@@ -1226,7 +1226,7 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
     // 表の桁は1組しか持てないので、100 の格子を敷いて、各セルが占める桁数で
     // 幅を表します。100 は百分率と同じなので、`幅 = [30, 70]` がそのまま
     // 30 桁と 70 桁になります
-    const grid: u16 = 100;
+    const GRID: u16 = 100;
     let mut rows: Vec<Vec<crate::doc::Cellbox>> = Vec::new();
     for r in &form.rows {
         let mut content: Vec<(String, String)> = Vec::new();
@@ -1241,7 +1241,7 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
         }
         // この行のセルの数(名前と値で2つずつ)
         let n = content.len() * 2;
-        let widths = split_cols(&r.widths, n, grid);
+        let widths = split_cols(&r.widths, n, GRID);
         let mut row = Vec::new();
         for (i, (name, value)) in content.iter().enumerate() {
             row.push(cell_width(name, widths[i * 2]));

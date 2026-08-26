@@ -2068,14 +2068,14 @@ mod シート以外の表でも計算する {
 
     /// 九九の表。**升目の値を式で答える**だけの、いちばん小さい表。
     /// 中身を持たなくても計算に載ることを示す
-    struct times_table {
+    struct TimesTable {
         defs: Vec<TableDef>,
     }
 
-    impl times_table {
-        fn new() -> times_table {
+    impl TimesTable {
+        fn new() -> TimesTable {
             // 1行目を見出しにして、構造化参照も通ることを見る
-            times_table {
+            TimesTable {
                 defs: vec![TableDef {
                     name: "九九".into(),
                     a: Pos::new(0, 0),
@@ -2087,7 +2087,7 @@ mod シート以外の表でも計算する {
         }
     }
 
-    impl Grid for times_table {
+    impl Grid for TimesTable {
         fn name(&self) -> &str {
             "九九"
         }
@@ -2106,7 +2106,7 @@ mod シート以外の表でも計算する {
     /// 番地の参照と範囲。B2 は 2×2 = 4
     #[test]
     fn 番地で引ける() {
-        let g = times_table::new();
+        let g = TimesTable::new();
         assert_eq!(eval_in(&g, Pos::new(0, 0), "=B2"), Value::Number(4.0));
         // B2:B4 = 4, 6, 8
         assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(B2:B4)"), Value::Number(18.0));
@@ -2115,7 +2115,7 @@ mod シート以外の表でも計算する {
     /// **構造化参照。** 表の名前と見出しの字で列を引く
     #[test]
     fn 表の名前と見出しで引ける() {
-        let g = times_table::new();
+        let g = TimesTable::new();
         // 「3の段」= C 列の本体(2行目〜10行目)= 6,9,12,…,30
         assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(九九[3の段])"), Value::Number(162.0));
         assert_eq!(eval_in(&g, Pos::new(0, 0), "=MAX(九九[3の段])"), Value::Number(30.0));
@@ -2124,7 +2124,7 @@ mod シート以外の表でも計算する {
     /// 既定のまま置いた物は既定どおり — ふりがなも隠した行も無い
     #[test]
     fn 持たない物は既定のまま() {
-        let g = times_table::new();
+        let g = TimesTable::new();
         assert!(!g.any_row_hidden());
         assert!(!g.row_hidden(3));
         assert_eq!(g.phonetic(Pos::new(1, 1)), None);

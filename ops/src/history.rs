@@ -22,7 +22,7 @@
 use std::path::{Path, PathBuf};
 
 /// 残す世代の数。
-const gen: usize = 9;
+const GEN: usize = 9;
 
 /// 地方時のずれ(秒)。**1つのプロセスで1回だけ**調べます。
 ///
@@ -91,7 +91,7 @@ pub fn keep(p: &Path) {
     if let Ok(rd) = std::fs::read_dir(&dir) {
         let mut old: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
         old.sort();
-        while old.len() > gen {
+        while old.len() > GEN {
             let _ = std::fs::remove_file(old.remove(0));
         }
     }
@@ -186,7 +186,7 @@ mod tests {
         std::fs::write(&f, "x").unwrap();
         keep(&f);
         let n = std::fs::read_dir(&hist).unwrap().count();
-        assert!(n <= gen, "{n} 件残っている");
+        assert!(n <= GEN, "{n} 件残っている");
         let _ = std::fs::remove_dir_all(&d);
     }
 }

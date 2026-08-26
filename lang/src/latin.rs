@@ -55,19 +55,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn ラテン文字があれば該当() {
+    fn latin_letters_match() {
         assert!(Latin.detect("This is English."));
         assert!(!Latin.detect("これは日本語"));
         assert!(!Latin.detect("123 456"));
     }
 
     #[test]
-    fn 校正にモデルを使わない() {
+    fn proofing_without_model() {
         assert!(Latin.proof_prompt().is_none(), "英語にモデルを要求している");
     }
 
     #[test]
-    fn 読みの注記は無い() {
+    fn no_reading_notes() {
         assert!(Latin.reading_targets("anything").is_empty());
     }
 }

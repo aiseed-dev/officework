@@ -504,13 +504,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 応答からcontentを取り出せる() {
+    fn extracts_content_from_response() {
         let raw = r#"{"id":"x","choices":[{"message":{"role":"assistant","content":"[{\"found\":\"以外\"}]"}}]}"#;
         assert_eq!(extract_content(raw).unwrap(), r#"[{"found":"以外"}]"#);
     }
 
     #[test]
-    fn usageを拾える() {
+    fn picks_up_usage() {
         let raw = r#"{"usage":{"prompt_tokens":1234,"completion_tokens": 56}}"#;
         assert_eq!(usage(raw, "prompt_tokens"), 1234);
         assert_eq!(usage(raw, "completion_tokens"), 56);
@@ -518,7 +518,7 @@ mod tests {
     }
 
     #[test]
-    fn 速度は時間0でも落ちない() {
+    fn speed_survives_zero_elapsed() {
         let r = Reply { completion_tokens: 100, elapsed_ms: 0, ..Default::default() };
         assert_eq!(r.tokens_per_sec(), 0.0);
         let r = Reply { completion_tokens: 100, elapsed_ms: 1000, ..Default::default() };
@@ -526,7 +526,7 @@ mod tests {
     }
 
     #[test]
-    fn 文字列の中の括弧に騙されない() {
+    fn not_fooled_by_braces_in_strings() {
         // 本文に { } が入っていても塊の切り出しが壊れない
         let c = r#"[{"base":"式","readings":["しき"],"note":"{ } を含む"}]"#;
         let o = objects(c);
@@ -535,13 +535,13 @@ mod tests {
     }
 
     #[test]
-    fn 候補の配列は順序を保つ() {
+    fn candidate_array_keeps_order() {
         let v = string_array(r#"["のち","あと","うし","ご"]"#);
         assert_eq!(v, vec!["のち", "あと", "うし", "ご"], "候補は順序が意味を持つ");
     }
 
     #[test]
-    fn 繋がらなければエラーを返す() {
+    fn connection_failure_returns_error() {
         // 使えないときに「指摘なし」を返さない
         let ep = Endpoint { port: 1, ..Default::default() };
         let e = chat(&ep, "s", "u", 0.0).unwrap_err();

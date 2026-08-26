@@ -4,13 +4,13 @@ use crate::*;
 
 /// PY の引数を Python の書き方(リテラル)にする。
 /// 自前の関数の表(モジュール名 → (関数名, 説明) の並び)。
-type own_func_table = HashMap<String, Vec<(String, String)>>;
+type OwnFuncTable = HashMap<String, Vec<(String, String)>>;
 /// シートごとの呼び出し(シート番号, (置き場, 関数名, 引数) の並び)。
-type calls_per_sheet = (usize, Vec<(String, String, Vec<sheet::calc::PyArg>)>);
+type CallsPerSheet = (usize, Vec<(String, String, Vec<sheet::calc::PyArg>)>);
 /// シートごとの式の呼び出し(シート番号, (置き場, 式, 関数名, 引数) の並び)。
-type formula_calls_per_sheet = (usize, Vec<(String, String, String, Vec<sheet::calc::PyArg>)>);
+type FormulaCallsPerSheet = (usize, Vec<(String, String, String, Vec<sheet::calc::PyArg>)>);
 /// 差し込みの1仕事(置き場, (場所, 中身) の並び, 右下)。
-type merge_job = (Pos, Vec<(Pos, String)>, Pos);
+type MergeJob = (Pos, Vec<(Pos, String)>, Pos);
 
 pub(crate) fn py_literal(v: &sheet::Value) -> String {
     match v {
@@ -227,8 +227,8 @@ pub(crate) fn run_with_timeout(
 /// 同じ物が出る方が、後から追いかけやすいためです。
 pub(crate) fn workdir(name: &str) -> std::path::PathBuf {
     use std::sync::atomic::{AtomicU64, Ordering};
-    static index_of: AtomicU64 = AtomicU64::new(0);
-    let n = index_of.fetch_add(1, Ordering::Relaxed);
+    static INDEX_OF: AtomicU64 = AtomicU64::new(0);
+    let n = INDEX_OF.fetch_add(1, Ordering::Relaxed);
     std::env::temp_dir().join(format!("jo-{name}-{}-{n}", std::process::id()))
 }
 
@@ -290,7 +290,7 @@ pub(crate) use pyrun::{def_names, plugin_outline};
 
 /// UDF の登録簿。**大文字にした関数名** → その名前を持つ (モジュール, 実際の名前)。
 /// 字句解析が ASCII を大文字にするので、こちらも大文字で引く(日本語はそのまま)。
-static UDF_MAP: std::sync::RwLock<Option<own_func_table>> =
+static UDF_MAP: std::sync::RwLock<Option<OwnFuncTable>> =
     std::sync::RwLock::new(None);
 
 /// plugins を読み直して UDF の登録簿を作り、sheet に名前を渡す。
@@ -1142,7 +1142,7 @@ impl Calc {
     /// **サンドボックスは着せない**: 回すのは自分で plugins に置いたコードだけで、
     /// ブックから旅して来たコードではない(2026-08-09 発注者確定)。
     fn run_udfs(&mut self, auto: bool, cx: &mut Context<Self>) {
-        let mut per_sheet: Vec<calls_per_sheet> =
+        let mut per_sheet: Vec<CallsPerSheet> =
             Vec::new();
         // 投げたセルの控え(答えが返った時、この分だけ指紋を控える)
         let mut sent: Vec<(usize, Vec<Pos>)> = Vec::new();
@@ -1226,7 +1226,7 @@ impl Calc {
             }
         }
         // (セル, モジュール, 関数, 引数)へ組み替える
-        let per_sheet: Vec<formula_calls_per_sheet> =
+        let per_sheet: Vec<FormulaCallsPerSheet> =
             per_sheet
                 .into_iter()
                 .map(|(i, calls)| {
@@ -2457,7 +2457,7 @@ impl Calc {
         let si = self.active;
         let two = row_in.is_some() && col_in.is_some();
         // 埋める先と、そのとき差し替える入力の組
-        let mut jobs: Vec<merge_job> = Vec::new();
+        let mut jobs: Vec<MergeJob> = Vec::new();
         if two {
             let (ci, ri) = (col_in.unwrap(), row_in.unwrap());
             // 角(a)が式。左の列 = 列の入力、上の行 = 行の入力

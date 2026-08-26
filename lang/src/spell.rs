@@ -252,12 +252,12 @@ mod tests {
     }
 
     #[test]
-    fn 辞書にある語は指摘しない() {
+    fn word_in_dict_not_flagged() {
         assert!(dict().check("the quick brown fox").is_empty());
     }
 
     #[test]
-    fn 綴り誤りを見つけて候補を出す() {
+    fn finds_misspelling_with_candidates() {
         let m = dict().check("I recieve the documnt");
         let w: Vec<&str> = m.iter().map(|x| x.word.as_str()).collect();
         assert!(w.contains(&"recieve"), "誤りを見逃した: {w:?}");
@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn 候補は順に並ぶ() {
+    fn candidates_are_ordered() {
         // ふりがなと同じ形 — 断定ではなく候補
         let s = dict().suggest("seperate");
         assert!(s.contains(&"separate".to_string()), "{s:?}");
@@ -274,20 +274,20 @@ mod tests {
     }
 
     #[test]
-    fn 大文字始まりは候補も大文字始まり() {
+    fn capitalized_word_capitalized_candidates() {
         let d = Dictionary::from_list("john\noffice\n");
         let s = d.suggest("Jonh");
         assert_eq!(s, vec!["John"], "{s:?}");
     }
 
     #[test]
-    fn 所有格は本体で見る() {
+    fn possessive_checked_by_stem() {
         let d = Dictionary::from_list("john\n");
         assert!(d.contains("John's"), "所有格を誤りにしてしまう");
     }
 
     #[test]
-    fn 位置が本文と合う() {
+    fn position_matches_text() {
         let d = dict();
         let text = "the documnt here";
         let m = d.check(text);
@@ -298,14 +298,14 @@ mod tests {
     }
 
     #[test]
-    fn 日本語は辞書で触らない() {
+    fn dict_leaves_japanese_alone() {
         // 「以外」は辞書に無いが、これは綴り誤りではない
         let m = dict().check("それは以外な結果でした");
         assert!(m.is_empty(), "日本語を綴り誤りにした: {m:?}");
     }
 
     #[test]
-    fn 言語の振り分け() {
+    fn language_dispatch() {
         assert_eq!(lang_of("これは日本語です"), Lang::Japanese);
         assert_eq!(lang_of("This is English."), Lang::Latin);
         assert_eq!(lang_of("Radeon で動く"), Lang::Japanese, "混在は日本語側へ");
@@ -314,7 +314,7 @@ mod tests {
     }
 
     #[test]
-    fn 固有名詞を誤りにしない() {
+    fn proper_noun_not_an_error() {
         // AMD への提出物で Radeon を「Radon の誤り」と直すわけにいかない。
         // この試験だけ OS の辞書を読む — 辞書の無い機械(Windows の CI)では
         // **飛ばす、と言って飛ばす**(黙って緑にしない。製品も同じ扱いで、
@@ -332,7 +332,7 @@ mod tests {
     }
 
     #[test]
-    fn 利用者が語を足せる() {
+    fn user_can_add_words() {
         let mut d = Dictionary::from_list("the\n");
         assert!(!d.contains("Funen"));
         d.accept("Funen");
@@ -340,20 +340,20 @@ mod tests {
     }
 
     #[test]
-    fn 一文字の語は指摘しない() {
+    fn single_letter_word_not_flagged() {
         // I, a などの取りこぼしを誤りにしない
         assert!(dict().check("I a x").is_empty());
     }
 
     #[test]
-    fn 辞書が無ければエラーにする() {
+    fn missing_dict_is_error() {
         // 「誤りなし」と黙って返さない
         let d = Dictionary::from_list("");
         assert!(d.is_empty());
     }
 
     #[test]
-    fn 日本語の誤変換は辞書では捕まらない() {
+    fn japanese_misconversion_not_caught_by_dict() {
         // この製品の主張そのもの。英語と日本語で手が違う理由
         let d = Dictionary::from_list("以外\n意外\n");
         assert!(d.contains("以外"), "「以外」は正しい語なので辞書にある");
