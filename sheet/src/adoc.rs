@@ -308,7 +308,7 @@ mod tests {
 
     /// **書いた字が本家の形になっている。** 題・見出しの空行・式がそのまま
     #[test]
-    fn 書いた字の形() {
+    fn the_written_text_shape() {
         let src = write(&book_of());
         assert!(src.contains(".売上台帳"), "表の題が無い:\n{src}");
         assert!(src.contains("|月 |品名 |数量 |金額"), "見出しの行が無い:\n{src}");
@@ -319,7 +319,7 @@ mod tests {
 
     /// **往復してブックが戻る。** 値・式・シート名・見出し
     #[test]
-    fn 往復で戻る() {
+    fn round_trips() {
         let from = book_of();
         let (back, report) = parse(&write(&from)).expect("読めない");
         assert_eq!(back.sheets.len(), 1);
@@ -338,7 +338,7 @@ mod tests {
     /// 合計は**別の列**に置く — adoc では表がそのまま格子なので、
     /// 金額の列の下に置くと自分の列を合計する循環参照になる
     #[test]
-    fn 構造化参照が往復する() {
+    fn structured_references_round_trip() {
         let mut b = Book::new();
         b.sheets.clear();
         let mut s = Sheet::new("売上台帳");
@@ -371,7 +371,7 @@ mod tests {
     /// `=A2*B2*C2` の `*B2*` を太字と読むと、印が消えて `A2B2C2` という
     /// 別の式になり、黙って `#NAME?` に化けていた
     #[test]
-    fn 手で書いた式が太字に食われない() {
+    fn a_hand_written_formula_is_not_eaten_by_bold() {
         let (b, _) = parse(".表\n|===\n|A |B |C |D\n\n|2 |3 |4 |=A2*B2*C2\n|===\n").expect("読めない");
         assert_eq!(
             b.sheets[0].get(Pos::parse("D2").unwrap()).unwrap().formula.as_deref(),
@@ -384,7 +384,7 @@ mod tests {
     /// **式でない字を式にしない。** `=` の後ろに空白があれば式ではない
     /// (セルの中の見出しの書き方)。字のまま入り、往復しても字のまま
     #[test]
-    fn 空白のある等号は式ではない() {
+    fn an_equals_with_a_space_is_not_a_formula() {
         let (b, _) = parse(".表\n|===\n|= 見出し |ふつう\n|===\n").expect("読めない");
         assert_eq!(b.sheets[0].get(Pos::parse("A1").unwrap()).unwrap().formula, None, "式にしてしまった");
         assert_eq!(value(&b, 0, "A1"), "= 見出し");
@@ -395,7 +395,7 @@ mod tests {
 
     /// 複数のシートは複数の表になる
     #[test]
-    fn 複数のシートが往復する() {
+    fn several_sheets_round_trip() {
         let mut b = book_of();
         let mut s2 = Sheet::new("控え");
         s2.set(Pos::parse("A1").unwrap(), Cell::input("あ"));
@@ -408,7 +408,7 @@ mod tests {
 
     /// **横の結合が往復する**
     #[test]
-    fn 横の結合が往復する() {
+    fn horizontal_merges_round_trip() {
         let mut b = Book::new();
         b.sheets.clear();
         let mut s = Sheet::new("様式");
@@ -426,7 +426,7 @@ mod tests {
 
     /// 表の外の段落は落とし、**落としたことを言う**
     #[test]
-    fn 表の外の段落は数えて返す() {
+    fn paragraphs_outside_tables_are_counted() {
         let (b, report) = parse("= 見出し\n\nこれは本文です。\n\n.表\n|===\n|あ |い\n|===\n").expect("読めない");
         assert_eq!(b.sheets.len(), 1);
         assert_eq!(b.sheets[0].name, "表");
@@ -435,14 +435,14 @@ mod tests {
 
     /// 表が1つも無くても、ブックは1枚から始まる
     #[test]
-    fn 表が無ければ1枚のブック() {
+    fn no_table_means_a_one_sheet_book() {
         let (b, _) = parse("= ただの文書\n\n本文。\n").expect("読めない");
         assert_eq!(b.sheets.len(), 1);
     }
 
     /// **落とす物を数えて返す。** 書式や図形は adoc の表に載らない
     #[test]
-    fn 落とす物を数える() {
+    fn counts_what_is_dropped() {
         let mut b = book_of();
         b.sheets[0].col_width.insert(0, 20.0);
         let r = write_report(&b);
@@ -451,7 +451,7 @@ mod tests {
     /// **頭に 0 の付いた番号が数に化けない**(実物 16 冊のうち 5 冊が
     /// これに当たった。2026-08-19 に測って見つけた)
     #[test]
-    fn 頭が0の番号は字のまま() {
+    fn a_leading_zero_number_stays_text() {
         let (b, _) = parse(".台帳\n|===\n|番号 |数\n\n|001 |12\n|0007 |0.5\n|===\n").expect("読めない");
         assert_eq!(value(&b, 0, "A2"), "001", "伝票番号が数に化けた");
         assert_eq!(value(&b, 0, "A3"), "0007");
@@ -463,7 +463,7 @@ mod tests {
     /// **折返しのセルが往復する**(2026-08-19)。中に改行のあるセルは
     /// `a|` で書かれ、段落の切れ目が残る
     #[test]
-    fn 折返しのセルが往復する() {
+    fn wrapped_cells_round_trip() {
         let mut b = Book::new();
         b.sheets.clear();
         let mut s = Sheet::new("覚え");
@@ -486,7 +486,7 @@ mod tests {
     /// 読む側は前から `\|` を飛ばしていたので、足りなかったのは
     /// 書く側だけでした。**保存で中身が壊れる**種類の欠陥です。
     #[test]
-    fn 升の中の縦棒で行が割れない() {
+    fn a_bar_inside_a_cell_does_not_split_the_row() {
         for content in ["A|B", "|見出し\n|中身", "|===\nおしまい", "|"] {
             let mut b = Book::new();
             b.sheets.clear();
@@ -504,7 +504,7 @@ mod tests {
     /// **式の中の縦棒も往復する。** 式は字のまま書く決めですが、`|` だけは
     /// 逃がします(升の切れ目なので)。読む側で戻さないと、逆斜線が式に残ります
     #[test]
-    fn 式の中の縦棒も往復する() {
+    fn a_bar_inside_a_formula_round_trips() {
         let mut b = Book::new();
         b.sheets.clear();
         let mut s = Sheet::new("覚え");

@@ -14,7 +14,7 @@ fn body(d: &kumihan::Document) -> String {
 }
 
 #[test]
-fn 請求書を3枚まとめて読める() {
+fn reads_three_invoices_at_once() {
     let src = "= 請求書 山田商店\n\n金額 12,000 円\n\n\
               = 請求書 鈴木工業\n\n金額 8,400 円\n\n\
               = 請求書 佐藤商会\n\n金額 3,300 円\n";
@@ -27,7 +27,7 @@ fn 請求書を3枚まとめて読める() {
 }
 
 #[test]
-fn 一枚だけならいままでどおり() {
+fn a_single_document_is_unchanged() {
     let docs = adoc::parse_many("= 報告書\n\n本文です。\n").expect("読めない");
     assert_eq!(docs.len(), 1);
     assert_eq!(title(&docs[0]), "報告書");
@@ -38,7 +38,7 @@ fn 一枚だけならいままでどおり() {
 
 /// **塊の中の `= ` では切らない。** ここを間違えると文書が壊れる
 #[test]
-fn 塊の中の等号では切らない() {
+fn does_not_split_on_an_equals_inside_a_block() {
     let src = "= 手引き\n\n\
               書き方の例です。\n\n\
               ....\n= これは中身\n本文\n....\n\n\
@@ -51,7 +51,7 @@ fn 塊の中の等号では切らない() {
 
 /// 表の中の `= ` でも切らない(式のセルは `=` で始まる)
 #[test]
-fn 表の中の等号では切らない() {
+fn does_not_split_on_an_equals_inside_a_table() {
     let src = "= 明細\n\n\
               |===\n|品名 |金額\n\n|机 |=B2*2\n|===\n\n\
               = 次\n\n二枚目。\n";
@@ -60,7 +60,7 @@ fn 表の中の等号では切らない() {
 }
 
 #[test]
-fn 書いて読むと戻る() {
+fn write_then_read_returns_the_same() {
     let src = "= 甲\n\nあ。\n\n= 乙\n\nい。\n";
     let docs = adoc::parse_many(src).expect("読めない");
     let out = adoc::write_many(&docs);
@@ -74,7 +74,7 @@ fn 書いて読むと戻る() {
 
 /// 1枚のときは `:doctype: book` を付けない(いままでの字と同じ)
 #[test]
-fn 一枚のときは印を付けない() {
+fn no_separator_mark_for_a_single_document() {
     let docs = adoc::parse_many("= 報告書\n\n本文です。\n").expect("読めない");
     let out = adoc::write_many(&docs);
     assert!(!out.contains(":doctype: book"), "1枚なのに印が付いた:\n{out}");
@@ -83,7 +83,7 @@ fn 一枚のときは印を付けない() {
 
 /// 名前の無い文書には番号で名前を付ける(タブに出すため)
 #[test]
-fn 名前が無ければ番号を付ける() {
+fn unnamed_documents_get_numbers() {
     let docs = adoc::parse_many("= 甲\n\nあ。\n").expect("読めない");
     let mut two = docs.clone();
     two.push(adoc::parse("名前のない本文。\n").expect("読めない"));
@@ -97,7 +97,7 @@ fn 名前が無ければ番号を付ける() {
 /// 考えろ」)。`= 題` を並べると「部には節が要る」と言われるので、
 /// 節ではない見出し(`[discrete]`)にする
 #[test]
-fn 書く字に切れ目の印が付く() {
+fn the_written_text_carries_the_separator_mark() {
     let docs = adoc::parse_many("= 甲\n\nあ。\n\n= 乙\n\nい。\n").expect("読めない");
     assert_eq!(docs.len(), 2);
     let out = adoc::write_many(&docs);
@@ -114,7 +114,7 @@ fn 書く字に切れ目の印が付く() {
 
 /// 印は本文に漏れない
 #[test]
-fn 切れ目の印は本文に残らない() {
+fn the_separator_mark_does_not_stay_in_the_text() {
     let src = "[discrete]\n= 甲\n\nあ。\n\n[discrete]\n= 乙\n\nい。\n";
     let docs = adoc::parse_many(src).expect("読めない");
     assert_eq!(docs.len(), 2);
@@ -126,7 +126,7 @@ fn 切れ目の印は本文に残らない() {
 
 /// 印の無い `= 題` でも切れる(手で書いたファイル)
 #[test]
-fn 印が無くても切れる() {
+fn splits_even_without_a_mark() {
     let docs = adoc::parse_many("= 甲\n\nあ。\n\n= 乙\n\nい。\n").expect("読めない");
     assert_eq!(docs.len(), 2, "印が無いと切れない");
 }
@@ -137,7 +137,7 @@ fn 印が無くても切れる() {
 /// 綴りはこの形です — 新しい形式を作らず、AsciiDoc の節に乗せます。
 /// 本家(vendor/asciidoctor)にも警告なしで通ることを確かめてあります。
 #[test]
-fn 文章の節と表の節が混ざっても往復する() {
+fn mixed_prose_and_table_sections_round_trip() {
     let src = ":doctype: book\n\n[discrete]\n= 報告書\n\n本文です。\n\n\
 [discrete]\n= 売上台帳\n\n|===\n|品名 |数\n\n|ボールペン |12\n|===\n";
     let docs = kumihan::adoc::parse_many(src).expect("読めない");

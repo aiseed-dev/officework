@@ -11,7 +11,7 @@ fn round(book: &Book) -> Book {
 }
 
 #[test]
-fn 打った値と式が保存され再計算される() {
+fn typed_values_and_formulas_are_saved_and_recalculated() {
     let mut book = Book::new();
     let s = &mut book.sheets[0];
     s.set(Pos::parse("A1").unwrap(), Cell::input("ザボガードF F-02"));
@@ -34,7 +34,7 @@ fn 打った値と式が保存され再計算される() {
 }
 
 #[test]
-fn 実物を開いて直して保存できる() {
+fn opens_edits_and_saves_a_real_file() {
     let src = "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式7_提案見積書.xlsx";
     let Ok(bytes) = std::fs::read(src) else { return };
     let (mut book, _) = xlsx::read(std::io::Cursor::new(bytes)).expect("読めない");
@@ -56,7 +56,7 @@ fn 実物を開いて直して保存できる() {
 }
 
 #[test]
-fn 空にするとセルが消える() {
+fn clearing_removes_the_cell() {
     let mut book = Book::new();
     let s = &mut book.sheets[0];
     s.set(Pos::parse("A1").unwrap(), Cell::input("消す"));

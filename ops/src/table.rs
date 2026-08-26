@@ -156,7 +156,7 @@ mod tests {
     /// 側**なので効きませんでした。表計算では設定できるのに文書の表ではできない、
     /// という食い違いでした。
     #[test]
-    fn 反復計算は設定したときだけ効く() {
+    fn iteration_only_when_enabled() {
         // A1 = B1 + 1、B1 = A1 — そのままでは循環参照
         let t = table("", false, &[&["=B1+1", "=A1"]]);
         // 設定なし: 循環参照の印が出る(いままでどおり)
@@ -174,7 +174,7 @@ mod tests {
     /// 保存する docx はこちらの道を通るので、**画面では落ち着いた値なのに
     /// 配ったファイルは循環参照の印**という食い違いが出ていました
     #[test]
-    fn 写しに入れる道でも反復が効く() {
+    fn iteration_works_on_the_copy_path() {
         let mut d = kumihan::Document::default();
         d.blocks.push(kumihan::Block::Table(table("", false, &[&["=B1+1", "=A1"]])));
         let mut repeat = d.clone();
@@ -192,7 +192,7 @@ mod tests {
     /// **設定を渡さない道は今までどおり。** 既定で反復しないのは
     /// Excel と同じで、循環参照は黙って値にせず印で言う
     #[test]
-    fn 既定は反復しない() {
+    fn iteration_is_off_by_default() {
         let t = table("", false, &[&["=B1+1", "=A1"]]);
         assert_eq!(display(&t), display_with(&t, None), "既定が変わった");
     }
@@ -219,7 +219,7 @@ mod tests {
 
     /// 番地の参照。見出しが1行目なので金額は B2:B3
     #[test]
-    fn 番地の参照が文書の表で動く() {
+    fn address_reference_works_in_document_tables() {
         let t = table("表", true, &[&["品名", "金額"], &["机", "1200"], &["椅子", "800"], &["計", "=SUM(B2:B3)"]]);
         assert_eq!(display(&t)[3][1], "2000");
     }
@@ -228,7 +228,7 @@ mod tests {
     /// ここでは合計を表の外(別の列)に置く — Excel と同じで、
     /// 列の中で自分の列を合計すると循環参照になる
     #[test]
-    fn 構造化参照が文書の表で動く() {
+    fn structured_reference_works_in_document_tables() {
         let t = table(
             "売上台帳",
             true,
@@ -239,7 +239,7 @@ mod tests {
 
     /// **この行だけを指す構造化参照**(`[@列]`)。単価×数量の型
     #[test]
-    fn この行の構造化参照が動く() {
+    fn this_row_structured_reference_works() {
         let t = table(
             "明細",
             true,
@@ -250,7 +250,7 @@ mod tests {
 
     /// **式が式を指す。** 順番によらず解ける(依存の解決はエンジン任せ)
     #[test]
-    fn 式が式を指しても解ける() {
+    fn formula_pointing_at_a_formula_resolves() {
         let t = table("表", false, &[&["1"], &["=A3*2"], &["=A1+9"]]);
         let d = display(&t);
         assert_eq!(d[2][0], "10"); // A3 = A1+9
@@ -259,7 +259,7 @@ mod tests {
 
     /// 輪になっていたら **#CIRC!**。黙って 0 を返さない
     #[test]
-    fn 循環参照は印になる() {
+    fn circular_reference_becomes_a_mark() {
         let t = table("表", false, &[&["=A2"], &["=A1"]]);
         let d = display(&t);
         assert_eq!(d[0][0], "#CIRC!");
@@ -268,7 +268,7 @@ mod tests {
 
     /// 式の無い表は、字がそのまま出る
     #[test]
-    fn 式が無ければ字のまま() {
+    fn no_formula_means_plain_text() {
         let t = table("", false, &[&["あ", "1200"], &["い", "1,200"]]);
         let d = display(&t);
         assert_eq!(d[0], vec!["あ", "1200"]);
@@ -278,7 +278,7 @@ mod tests {
 
     /// **結合したセルで列がずれない。** 左上に字を置き、残りは空
     #[test]
-    fn 結合しても列がずれない() {
+    fn merging_keeps_columns_aligned() {
         let mut t = table("表", false, &[&["見出し", ""], &["10", "20"], &["", "=SUM(A2:B2)"]]);
         t.rows[0][0].col_span = 2;
         t.rows[0].remove(1); // 結合したので格子の欄は1つ
@@ -314,14 +314,14 @@ mod answer_into_copy {
     }
 
     #[test]
-    fn 式のある表を見つける() {
+    fn finds_tables_with_formulas() {
         assert!(has_formula(&doc()));
         assert!(!has_formula(&Document::plain("式の無い文書")));
     }
 
     /// **式の升だけ答えの字になる。** ほかの升は触らない
     #[test]
-    fn 式の升だけ差し替わる() {
+    fn only_formula_cells_are_replaced() {
         let mut d = doc();
         assert_eq!(fill(&mut d), 1, "直した升の数が合わない");
         let t = d.blocks.iter().find_map(|b| if let Block::Table(t) = b { Some(t) } else { None }).unwrap();
@@ -333,7 +333,7 @@ mod answer_into_copy {
 
     /// **元の文書は式のまま。** 差し替えるのは写しだけ
     #[test]
-    fn 元は式のまま() {
+    fn source_stays_a_formula() {
         let from = doc();
         let mut copy = from.clone();
         fill(&mut copy);

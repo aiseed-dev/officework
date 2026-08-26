@@ -1952,13 +1952,13 @@ mod tests {
     }
 
     #[test]
-    fn 段落の字は_run_をつないだもの() {
+    fn paragraph_text_is_the_runs_joined() {
         let p = Paragraph { runs: vec![run("請求先: ", false), run("株式会社甲", true)], ..Default::default() };
         assert_eq!(para_text(&p), "請求先: 株式会社甲");
     }
 
     #[test]
-    fn text_の代入は先頭_run_の書式を継ぐ() {
+    fn assigning_text_inherits_the_first_runs_format() {
         let mut p = Paragraph {
             runs: vec![run("見出し", true), run("つづき", false)],
             align: kumihan::Align::Center,
@@ -1972,7 +1972,7 @@ mod tests {
     }
 
     #[test]
-    fn 空の段落へ代入しても大きさは無指定のまま() {
+    fn assigning_to_an_empty_paragraph_leaves_the_size_unset() {
         // 以前はここで 10.5 が入っていた — それが往復の焼き付きの入り口。
         // 無指定(None)は文書の既定に従う、が正しい形
         let mut p = Paragraph::default();
@@ -1981,7 +1981,7 @@ mod tests {
     }
 
     #[test]
-    fn replace_は_run_の切れ目を残す() {
+    fn replace_keeps_run_boundaries() {
         let mut runs = vec![run("請求先: ", false), run("旧社名", true), run(" 御中", false)];
         assert_eq!(replace_in_runs(&mut runs, "旧社名", "新社名"), 1);
         assert_eq!(runs.len(), 3, "run の数は変わらない");
@@ -1991,7 +1991,7 @@ mod tests {
     }
 
     #[test]
-    fn replace_は_run_を跨いだ字も拾う() {
+    fn replace_matches_across_runs() {
         // 「旧社名」が 旧/社名 に割れている(Word が普通に作る形)
         let mut runs = vec![run("あ旧", false), run("社名い", true)];
         assert_eq!(replace_in_runs(&mut runs, "旧社名", "新社名"), 1);
@@ -2000,14 +2000,14 @@ mod tests {
     }
 
     #[test]
-    fn replace_は_同じ字が何度出ても数える() {
+    fn replace_counts_every_occurrence() {
         let mut runs = vec![run("甲と甲と甲", false)];
         assert_eq!(replace_in_runs(&mut runs, "甲", "乙"), 3);
         assert_eq!(runs[0].text, "乙と乙と乙");
     }
 
     #[test]
-    fn replace_は_見つからなければ何もしない() {
+    fn replace_does_nothing_when_not_found() {
         let mut runs = vec![run("あいう", false)];
         assert_eq!(replace_in_runs(&mut runs, "えお", "x"), 0);
         assert_eq!(runs[0].text, "あいう");
@@ -2016,14 +2016,14 @@ mod tests {
     }
 
     #[test]
-    fn replace_は_空の_run_があっても崩れない() {
+    fn replace_survives_empty_runs() {
         let mut runs = vec![run("", false), run("旧社名", false), run("", false)];
         assert_eq!(replace_in_runs(&mut runs, "旧社名", "新"), 1);
         assert_eq!(runs.iter().map(|r| r.text.as_str()).collect::<String>(), "新");
     }
 
     #[test]
-    fn ページ番号の印は読める字になる() {
+    fn the_page_number_field_reads_as_text() {
         // 私用領域の字をそのまま Python へ出さない
         let s = format!("- {} / {} -", kumihan::PAGE_MARK, kumihan::PAGES_MARK);
         assert_eq!(marks_to_text(&s), "- # / ## -");
@@ -2031,7 +2031,7 @@ mod tests {
     }
 
     #[test]
-    fn 添字は負も引ける() {
+    fn negative_indexes_work() {
         assert_eq!(resolve(-1, 3, "行は").unwrap(), 2);
         assert_eq!(resolve(0, 3, "行は").unwrap(), 0);
         assert!(resolve(3, 3, "行は").is_err());
@@ -2039,7 +2039,7 @@ mod tests {
     }
 
     #[test]
-    fn 記入欄のまとまりを名前で拾う() {
+    fn form_fields_are_found_by_name() {
         let sdt = |tag: &str| {
             Some(Box::new(kumihan::Sdt { tag: tag.into(), ..Default::default() }))
         };

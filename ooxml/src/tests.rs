@@ -237,7 +237,7 @@ mod font_tests {
     use kumihan::{Block, Document, Paragraph, Run};
 
     #[test]
-    fn 書体名が往復する() {
+    fn font_name_round_trips() {
         // **フォントは文書の設定。** 読んで捨てると、開き直したとき別の字になる
         let doc = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,

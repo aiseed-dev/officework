@@ -54,7 +54,7 @@ fn book_with_rules() -> Book {
 }
 
 #[test]
-fn 四種の規則が往復して同じ見えになる() {
+fn four_rule_kinds_round_trip_to_the_same_look() {
     for (name, book) in [("元", book_with_rules()), ("往復後", round(&book_with_rules()))] {
         let s = &book.sheets[0];
         let prep: Vec<_> = s.cond.iter().map(|r| (r.clone(), r.aux(s))).collect();
@@ -83,7 +83,7 @@ fn 四種の規則が往復して同じ見えになる() {
 }
 
 #[test]
-fn 規則の掛かっていない列は素のまま() {
+fn columns_without_rules_stay_plain() {
     let book = book_with_rules();
     let s = &book.sheets[0];
     let prep: Vec<_> = s.cond.iter().map(|r| (r.clone(), r.aux(s))).collect();

@@ -29,7 +29,7 @@ fn save(d: &Doc) -> Vec<u8> {
 }
 
 #[test]
-fn 日本語を打って保存し読み直せる() {
+fn types_japanese_saves_and_reads_back() {
     let mut d = Doc { doc: Document::default(), ed: Editor::new("") };
     // IME で「ぼうか」→「防火」を確定
     handler::replace_and_mark(&mut d, None, "ぼうか", None);
@@ -44,7 +44,7 @@ fn 日本語を打って保存し読み直せる() {
 }
 
 #[test]
-fn 実物の様式を開いて追記し保存できる() {
+fn opens_a_real_template_appends_and_saves() {
     let src = "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式1_参加表明.docx";
     let Ok(bytes) = std::fs::read(src) else { return };
     let mut d = open(bytes);
@@ -61,7 +61,7 @@ fn 実物の様式を開いて追記し保存できる() {
 }
 
 #[test]
-fn 編集しても表は失われない() {
+fn editing_does_not_lose_the_table() {
     let src = "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式3_会社概要.docx";
     let Ok(bytes) = std::fs::read(src) else { return };
     let mut d = open(bytes);
@@ -76,7 +76,7 @@ fn 編集しても表は失われない() {
 }
 
 #[test]
-fn undoで打つ前に戻る() {
+fn undo_returns_to_before_typing() {
     let mut d = Doc { doc: Document::default(), ed: Editor::new("元の文") };
     let n = d.ed.text().len();
     d.ed.move_to(n, false);

@@ -520,7 +520,7 @@ mod tests {
     /// paper が節ごとの紙で折る — その2つが噛み合っているかを端から端まで見る。
     /// (紙の大きさが違えば1ページに入る行数も違うので、折り目もずれる)
     #[test]
-    fn 節ごとに紙の大きさが変わる() {
+    fn paper_size_changes_per_section() {
         use kumihan::{Block, PageSetup, Paragraph, Run};
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
@@ -564,7 +564,7 @@ mod tests {
     }
 
     #[test]
-    fn 節が一つなら折り方は今までどおり() {
+    fn single_section_keeps_the_old_layout() {
         let (s, _) = sheet("いろはにほへと。".repeat(200).as_str(), Align::Left);
         assert!(s.sect_pages.is_empty(), "節が1つなのに節ごとの紙を持った");
         let (pages, offsets) = paginate(&s, Paper::default());
@@ -580,7 +580,7 @@ mod tests {
     /// 裏返すと、向きの違うページで字が紙からはみ出す(縦297と横210で87mmずれる)。
     /// ページの大きさだけを見る試験では通ってしまうので、**中身の座標**を見る
     #[test]
-    fn 節が変わっても字が紙の中に収まる() {
+    fn text_stays_inside_paper_across_sections() {
         use kumihan::{Block, PageSetup, Paragraph, Run};
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
@@ -629,7 +629,7 @@ mod tests {
     /// 置くと、その手前を引いたときに節が無いと読めて、1ページ目が
     /// 最後の節の紙で刷られる。実物の2節 docx を PDF まで通して見つけた
     #[test]
-    fn 一ページ目は最初の節の紙になる() {
+    fn first_page_uses_the_first_sections_paper() {
         use kumihan::{Block, PageSetup, Paragraph, Run};
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
@@ -672,7 +672,7 @@ mod tests {
     /// 「PDF が出来た」だけを見る試験はこのずれを通してしまう
     /// (SEKKEI.md「緑は『正しい』ではなく『この物差しでは差が出ない』」)
     #[test]
-    fn 画像と罫線の頁割りが本文と一致する() {
+    fn image_and_border_pagination_matches_the_text() {
         let (s, _) = sheet(&"いろはにほへとちりぬるを。".repeat(400), Align::Left);
         let pg = paginate_full(&s, Paper::default());
         assert!(pg.offsets.len() >= 3, "頁が足りず試験にならない: {}", pg.offsets.len());
@@ -686,7 +686,7 @@ mod tests {
     /// 節で紙が変わる文書でも同じ。**紙の高さが頁ごとに違う**ので、
     /// 「どの頁も同じ高さ」の近似はここで必ず外れる
     #[test]
-    fn 節が変わっても画像と罫線の頁割りが本文と一致する() {
+    fn image_and_border_pagination_matches_the_text_across_sections() {
         use kumihan::{Block, PageSetup, Paragraph, Run};
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
@@ -722,14 +722,14 @@ mod tests {
     }
 
     #[test]
-    fn pdfになる() {
+    fn becomes_pdf() {
         let b = pdf_of("日本語の書類を紙にする。", Align::Left);
         assert_eq!(&b[..5], b"%PDF-", "PDF になっていない");
         assert!(b.len() > 1000, "中身が薄すぎる: {} バイト", b.len());
     }
 
     #[test]
-    fn 画面と同じ紙面から作る() {
+    fn built_from_the_same_layout_as_the_screen() {
         // 組み直さないので、行数は紙面のまま
         let (s, data) = sheet("一行目\n二行目\n三行目", Align::Left);
         assert_eq!(s.lines.len(), 3);
@@ -739,7 +739,7 @@ mod tests {
     }
 
     #[test]
-    fn 中央揃えが紙にも効く() {
+    fn centering_reaches_paper() {
         // 揃えは紙面の x に入っているので、PDF 側で作り直さない
         let (left, _) = sheet("表題", Align::Left);
         let (center, _) = sheet("表題", Align::Center);
@@ -750,7 +750,7 @@ mod tests {
     }
 
     #[test]
-    fn 空の紙面でも落ちない() {
+    fn empty_layout_does_not_panic() {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let mut buf = Vec::new();
@@ -782,7 +782,7 @@ mod page_tests {
     }
 
     #[test]
-    fn 長い文書は複数ページになる() {
+    fn long_document_spans_pages() {
         // A4 で本文が入るのは 40行くらい。100行が1ページに収まっていたら
         // それは「下へ黙ってはみ出している」ということ
         assert_eq!(pages(10), 1, "10行で複数ページになった");
@@ -791,7 +791,7 @@ mod page_tests {
     }
 
     #[test]
-    fn ページ数が行数に見合う() {
+    fn page_count_matches_line_count() {
         // A4(y0=24, 下余白20)に入るのは約40行。100行なら3ページ
         let n = pages(100);
         assert!((3..=4).contains(&n), "100行が {n} ページ(40行/頁の見当と合わない)");
@@ -807,7 +807,7 @@ mod hf_tests {
     use super::*;
 
     #[test]
-    fn ページ番号が各ページに載りページ数は変わらない() {
+    fn page_numbers_on_every_page_without_changing_the_count() {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
@@ -840,7 +840,7 @@ mod break_tests {
     use super::*;
 
     #[test]
-    fn 改ページで頁が割れる() {
+    fn page_break_splits_pages() {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
@@ -860,7 +860,7 @@ mod break_tests {
     }
 
     #[test]
-    fn 先頭の改ページは頁を増やさない() {
+    fn leading_page_break_adds_no_page() {
         // 1段落目に改ページが付いていても、空の1頁目を作らない
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
@@ -891,7 +891,7 @@ mod image_tests {
     }
 
     #[test]
-    fn 画像が紙に埋まる() {
+    fn image_is_embedded_in_paper() {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
@@ -915,7 +915,7 @@ mod image_tests {
     }
 
     #[test]
-    fn 壊れた画像は飛ばして紙は出来る() {
+    fn broken_image_skipped_and_paper_still_made() {
         // 1枚のために紙全体を失敗させない
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
@@ -971,7 +971,7 @@ mod footnote_area_tests {
     /// **脚注は本文に使える高さを削る。** 削っていないと、脚注の上に
     /// 本文が重なって刷られる
     #[test]
-    fn 脚注のある頁では本文の底が上がる() {
+    fn footnotes_raise_the_text_bottom() {
         let long_text = "いろはにほへとちりぬるを。".repeat(200);
         let none_of = Document {
             blocks: vec![tab(vec![text(&long_text)])],
@@ -995,7 +995,7 @@ mod footnote_area_tests {
     /// **字が紙の中に収まる。** 「脚注が出た」だけを見る試験は、
     /// 紙の外へ出ていても緑になる(SEKKEI.md の教訓)
     #[test]
-    fn 脚注の字が紙の中に収まる() {
+    fn footnote_text_stays_inside_paper() {
         let long_text = "いろはにほへとちりぬるを。".repeat(200);
         let d = Document {
             blocks: vec![tab(vec![mark("9"), text(&long_text)])],
@@ -1029,7 +1029,7 @@ mod footnote_area_tests {
 
     /// 脚注は**印のある頁**に出る。印が2頁目なら脚注も2頁目
     #[test]
-    fn 脚注は印のある頁に出る() {
+    fn footnote_appears_on_the_page_with_its_mark() {
         let long_text = "いろはにほへとちりぬるを。".repeat(200);
         let d = Document {
             blocks: vec![
@@ -1054,7 +1054,7 @@ mod footnote_area_tests {
 
     /// 脚注が無ければ今までどおり(頁割りは1ミリも変わらない)
     #[test]
-    fn 脚注が無ければ頁割りは変わらない() {
+    fn no_footnotes_no_pagination_change() {
         let long_text = "いろはにほへとちりぬるを。".repeat(200);
         let d = Document { blocks: vec![tab(vec![text(&long_text)])], ..Default::default() };
         let s = build(&d);

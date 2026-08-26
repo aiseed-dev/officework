@@ -27,7 +27,7 @@ fn value_table(b: &sheet::Book) -> Vec<(String, Vec<(u32, u32, String)>)> {
 }
 
 #[test]
-fn 実物のブックがadocを往復する() {
+fn a_real_book_round_trips_through_adoc() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("sample");
     let mut seen = 0;
     let mut matched = 0;
@@ -80,7 +80,7 @@ fn 実物のブックがadocを往復する() {
 /// **画像は黙って落とさない。** 3 MB のブックが 1 KB の adoc になるので、
 /// 言わないと消えたことに気づけない(2026-08-19 に実物で見つけた)
 #[test]
-fn 画像は数えて返す() {
+fn images_are_counted() {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("sample").join("写真の台帳.xlsx");
     let Ok(f) = std::fs::File::open(&p) else { return };
     let (b, _) = sheet::xlsx::read(std::io::BufReader::new(f)).expect("読めない");

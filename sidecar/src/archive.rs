@@ -222,7 +222,7 @@ mod tests {
     /// 保存が「部品が変わった」と止められる。`raw_copy_file` を
     /// `std::io::copy` に替えたらこの試験が落ちる。
     #[test]
-    fn 触っていない部品は圧縮後の大きさまで変わらない() {
+    fn untouched_parts_keep_even_their_compressed_size() {
         let dir = std::env::temp_dir().join("ow-plumb-1");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -262,7 +262,7 @@ mod tests {
     /// 削除と追加。**追加は原本に無い名前だけ** — 同じ名前を二重に書くと
     /// ZIP の中に同名の部品が2つ並び、読み手によって答えが変わる
     #[test]
-    fn 削除と追加が効き同じ名前を二重に書かない() {
+    fn delete_and_add_work_without_duplicate_names() {
         let dir = std::env::temp_dir().join("ow-plumb-2");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -295,7 +295,7 @@ mod tests {
     /// `read_entries` は**平らな名前で置く**。`..` を含む名前を渡されても
     /// 出力先の外へ書かない(zip slip)
     #[test]
-    fn 取り出しは出力先の外へ書かない() {
+    fn extraction_stays_inside_the_output_dir() {
         let dir = std::env::temp_dir().join("ow-plumb-3");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -314,7 +314,7 @@ mod tests {
     }
 
     #[test]
-    fn 探しものは中身を見る() {
+    fn search_looks_inside_the_contents() {
         let dir = std::env::temp_dir().join("ow-plumb-4");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();

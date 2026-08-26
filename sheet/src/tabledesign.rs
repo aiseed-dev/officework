@@ -183,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    fn 見出しの帯は1行目だけに掛かる() {
+    fn the_header_band_covers_only_the_first_row() {
         let mut s = one_table();
         let n = deco(&mut s, Pos::new(0, 0), Pos::new(2, 1), Deco::Header, true);
         assert_eq!(n, 2, "1行目の2欄だけ");
@@ -192,7 +192,7 @@ mod tests {
     }
 
     #[test]
-    fn 外すときは塗りを剥がさない() {
+    fn removing_the_design_keeps_the_fill() {
         // 掛ける前の姿を覚えていないので、剥がすと元の色まで消える。
         // 外すのは表の旗だけ、が約束(できないことをできるように見せない)
         let mut s = one_table();
@@ -203,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn 合計行は数の列にだけ_sum_を入れる() {
+    fn the_total_row_puts_sum_only_in_numeric_columns() {
         let mut s = one_table();
         add_total_row(&mut s, Pos::new(0, 0), Pos::new(2, 1));
         assert_eq!(s.get(Pos::new(3, 0)).unwrap().value.display(), "合計");
@@ -211,7 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn 名前と綴りが往復する() {
+    fn name_and_spelling_round_trip() {
         for d in [Deco::Header, Deco::BandRow, Deco::BandCol, Deco::FirstCol, Deco::LastCol] {
             assert_eq!(Deco::from_name(d.name()), Some(d));
         }

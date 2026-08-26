@@ -24,7 +24,7 @@ fn core(s: &str) -> String {
 }
 
 #[test]
-fn 実物の表のセルがadocを往復する() {
+fn real_table_cells_round_trip_through_adoc() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let dirs = [
         root.join("sample"),

@@ -631,7 +631,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 暗号化して戻ると同じで合言葉が違うと開かない() {
+    fn encrypt_decrypt_matches_and_wrong_password_fails() {
         let plain = b"PK\x03\x04 zip owo pretend bytes 123456789".to_vec();
         let enc = encrypt(&plain, "秘密の合言葉").expect("包めない");
         assert!(is_cfb(&enc), "CFB になっていない");
@@ -644,7 +644,7 @@ mod tests {
     }
 
     #[test]
-    fn agileで包んで解ける() {
+    fn agile_wrap_and_unwrap() {
         // 4096 の区分をまたぐ大きさで(区分ごとの IV の検査になる)
         let mut plain = b"PK\x03\x04 agile ".to_vec();
         while plain.len() < 10_000 {
@@ -679,7 +679,7 @@ mod tests {
     }
 
     #[test]
-    fn base64が往復する() {
+    fn base64_round_trips() {
         for n in 0..40usize {
             let data: Vec<u8> = (0..n as u8).map(|i| i.wrapping_mul(37)).collect();
             let s = b64_encode(&data);
@@ -688,7 +688,7 @@ mod tests {
     }
 
     #[test]
-    fn 文書ごと往復する() {
+    fn whole_document_round_trips() {
         let d = kumihan::Document::plain("暗号化の検査");
         let mut plain = Vec::new();
         crate::write(&d, std::io::Cursor::new(&mut plain)).unwrap();

@@ -931,7 +931,7 @@ mod tests {
     }
 
     #[test]
-    fn 帳票がpdfになる() {
+    fn form_becomes_pdf() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut buf = Vec::new();
@@ -941,7 +941,7 @@ mod tests {
     }
 
     #[test]
-    fn 多い行は複数ページになる() {
+    fn many_rows_span_pages() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = Grid { name: "長い".into(), ..Default::default() };
@@ -959,7 +959,7 @@ mod tests {
     }
 
     #[test]
-    fn 塗りと文字色が紙に出る() {
+    fn fill_and_font_color_reach_paper() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = grid();
@@ -984,7 +984,7 @@ mod tests {
     }
 
     #[test]
-    fn 条件付き書式も紙に効く() {
+    fn conditional_format_reaches_paper() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = grid(); // B2 = 1200(塗りの指定なし)
@@ -1005,7 +1005,7 @@ mod tests {
     }
 
     #[test]
-    fn 幅の広い表は横へページを送る() {
+    fn wide_table_pages_sideways() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = Grid { name: "広い".into(), ..Default::default() };
@@ -1028,7 +1028,7 @@ mod tests {
     }
 
     #[test]
-    fn 画面の切れ目と紙の枚数が合う() {
+    fn screen_breaks_match_sheet_count() {
         // **画面の破線と紙の割りつけを別々に書かない**ための縛り。
         // 切れ目の数から出した枚数が、実際に刷った枚数と一致すること
         let (fam, _) = kumihan::font::for_document(None).unwrap();
@@ -1058,7 +1058,7 @@ mod tests {
     }
 
     #[test]
-    fn 印刷範囲が複数ならそれぞれ別の紙に刷る() {
+    fn each_print_area_on_its_own_paper() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = Grid { name: "2域".into(), ..Default::default() };
@@ -1093,7 +1093,7 @@ mod tests {
     }
 
     #[test]
-    fn 紙に収める指定は切れる列をゼロにする() {
+    fn fit_to_paper_leaves_no_cut_columns() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = Grid { name: "広い".into(), ..Default::default() };
@@ -1116,7 +1116,7 @@ mod tests {
     }
 
     #[test]
-    fn 紙に収める指定は縮めるだけで拡大しない() {
+    fn fit_to_paper_shrinks_only() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mk = |fit: bool| {
@@ -1136,7 +1136,7 @@ mod tests {
     }
 
     #[test]
-    fn 縦の改ページで束が割れる() {
+    fn vertical_page_break_splits_the_band() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = Grid { name: "区切り".into(), ..Default::default() };
@@ -1161,7 +1161,7 @@ mod tests {
     }
 
     #[test]
-    fn 一列が紙より広ければ切れたと言う() {
+    fn column_wider_than_paper_is_reported_cut() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = Grid { name: "極太".into(), ..Default::default() };
@@ -1211,7 +1211,7 @@ mod print_setup_tests {
     }
 
     #[test]
-    fn 印刷範囲だけが紙に出る() {
+    fn only_the_print_area_is_printed() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let s = long_sheet();
@@ -1230,7 +1230,7 @@ mod print_setup_tests {
     }
 
     #[test]
-    fn 余白が広いほど紙が増える() {
+    fn wider_margins_need_more_paper() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let s = long_sheet();
@@ -1269,7 +1269,7 @@ mod print_extras_tests {
     }
 
     #[test]
-    fn 改ページで紙が割れる() {
+    fn page_break_splits_paper() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = long_sheet(); // 30行 = 既定では1ページに収まる
@@ -1283,7 +1283,7 @@ mod print_extras_tests {
     }
 
     #[test]
-    fn 拡大縮小で入る行数が変わる() {
+    fn scaling_changes_rows_per_page() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = Grid { name: "s".into(), ..Default::default() };
@@ -1300,7 +1300,7 @@ mod print_extras_tests {
     }
 
     #[test]
-    fn タイトル行は2ページ目にも出る() {
+    fn title_rows_appear_on_page_two() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = long_sheet();
@@ -1318,7 +1318,7 @@ mod print_extras_tests {
     /// タイトル列を差し込む規則そのもの。**同じ列を1枚に二度出さない**のが肝で、
     /// PDF の字は埋め込み書体の符号なので外から読めない — 規則はここで縛る
     #[test]
-    fn タイトル列は束より左のぶんだけ繰り返す() {
+    fn title_columns_repeat_for_each_band() {
         // A 列がタイトル。A を含む束(先頭)では繰り返さない = 二度出ない
         assert_eq!(band_cols(&[0], 0, 3), vec![0, 1, 2]);
         // 右の束では左端に A を差し込む
@@ -1337,7 +1337,7 @@ mod print_extras_tests {
     /// 繰り返す列は**幅の割り付けにも効く** — その分だけ本体が狭くなり、
     /// 同じ表でも紙が増える。差し込みが描画だけの飾りになっていないこと
     #[test]
-    fn タイトル列のぶん本体は狭くなる() {
+    fn title_columns_narrow_the_body() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = Grid { name: "広い".into(), ..Default::default() };
@@ -1362,7 +1362,7 @@ mod print_extras_tests {
     /// PDF の字は埋め込み書体の符号なので外から読めない — **規則は
     /// ここで縛る**(2026-08-13、Book.to_pdf の数え方)
     #[test]
-    fn 頁番号はブック通しで入る() {
+    fn page_number_text_is_book_wide() {
         // 1冊 5 頁のうち、2枚目のシートの最初の頁が 3 頁目のとき
         assert_eq!(hf_subst("&C&P / &N", 3, 5), "3 / 5");
         // 1枚だけの PDF は今までどおり(offset 0・総頁はそのシートの頁数)
@@ -1374,7 +1374,7 @@ mod print_extras_tests {
 
     /// **ブックを1つの PDF に。** 頁はブック通しで数える(2026-08-13)
     #[test]
-    fn ブックの_pdf_は全シートの頁を1つに束ねる() {
+    fn book_pdf_bundles_every_sheet() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let a = long_sheet();
@@ -1403,7 +1403,7 @@ mod print_extras_tests {
     }
 
     #[test]
-    fn ブックの頁番号は通しで振る() {
+    fn book_page_numbers_are_continuous() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         // 2枚目のフッターに「&P / &N」— ブック通しなら 2枚目は 1 ではない

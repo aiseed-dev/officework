@@ -133,7 +133,7 @@ mod tests {
 
     /// **外部の `date` を呼ばずに日時が出る。** ここが移植性の要
     #[test]
-    fn 秒から名前を作る() {
+    fn name_built_from_seconds() {
         // TZ のずれを 0 に固定して比べる(地方時は機械ごとに違う)
         unsafe { std::env::set_var("TZ_OFFSET_SECS", "0") };
         // 2026-08-04 18:30:12 UTC
@@ -144,21 +144,21 @@ mod tests {
     }
 
     #[test]
-    fn 名前を読みやすく直す() {
+    fn name_made_readable() {
         assert_eq!(display_name("20260804-183012"), "2026-08-04 18:30");
     }
 
     /// **読めない名前はそのまま。** 古い控え(`0` になっていた物)や、
     /// 人が置いた物を勝手に作り変えない
     #[test]
-    fn 読めない名前はそのまま() {
+    fn unreadable_name_left_as_is() {
         assert_eq!(display_name("0"), "0");
         assert_eq!(display_name("控え"), "控え");
         assert_eq!(display_name("2026080418301"), "2026080418301", "区切りが無い");
     }
 
     #[test]
-    fn 控えて一覧に出る() {
+    fn backup_appears_in_the_listing() {
         let d = std::env::temp_dir().join("ops-history-試験");
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
@@ -174,7 +174,7 @@ mod tests {
 
     /// 9世代を超えたら古い方から落ちる
     #[test]
-    fn 九世代で打ち止め() {
+    fn stops_at_nine_generations() {
         let d = std::env::temp_dir().join("ops-history-試験2");
         let _ = std::fs::remove_dir_all(&d);
         let hist = d.join(".jo-history").join("a.txt");

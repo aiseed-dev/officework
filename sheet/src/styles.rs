@@ -517,7 +517,7 @@ mod tests {
     </styleSheet>"##;
 
     #[test]
-    fn 組み込みの書式idは本家の表どおり引ける() {
+    fn builtin_format_ids_match_the_vendor_table() {
         // 本家 sdkjs の aStandartNumFormats と同じ範囲。ここに穴があると
         // 実物 xlsx の書式が「一般」に落ち、保存し直しで消える(点検 2026-08-07)
         assert_eq!(builtin(49).as_deref(), Some("@"), "文字列(49)が引けない");
@@ -532,7 +532,7 @@ mod tests {
     }
 
     #[test]
-    fn 既定の書体も書式として持つ() {
+    fn default_font_is_kept_as_a_style() {
         // 書体名を font に入れるようにしたので、標本の0番は「素」ではなくなった。
         // 名前が付いているなら、それは書式の一部
         let x = parse(SAMPLE, &[]);
@@ -541,7 +541,7 @@ mod tests {
     }
 
     #[test]
-    fn 罫線を読める() {
+    fn reads_borders() {
         // 日本の帳票の本体。落とすと書類として通らない
         let x = parse(SAMPLE, &[]);
         assert_eq!(x[1].borders, Borders::ALL, "四方の罫線が読めない: {:?}", x[1].borders);
@@ -549,33 +549,33 @@ mod tests {
     }
 
     #[test]
-    fn 太字と文字色を読める() {
+    fn reads_bold_and_font_color() {
         let x = parse(SAMPLE, &[]);
         assert!(x[1].bold);
         assert_eq!(x[1].color.as_deref(), Some("FF0000"), "先頭の不透明度を落とせていない");
     }
 
     #[test]
-    fn 塗りつぶしを読める() {
+    fn reads_fill() {
         let x = parse(SAMPLE, &[]);
         assert_eq!(x[2].fill.as_deref(), Some("FFFF00"));
         assert_eq!(x[0].fill, None, "patternType=none を色にした");
     }
 
     #[test]
-    fn 表示形式を読める() {
+    fn reads_number_format() {
         let x = parse(SAMPLE, &[]);
         assert_eq!(x[2].number_format.as_deref(), Some("#,##0\"円\""));
     }
 
     #[test]
-    fn 既定の表示形式は番号から引く() {
+    fn default_number_format_looked_up_by_id() {
         let x = parse(r##"<styleSheet><cellXfs><xf numFmtId="3"/></cellXfs></styleSheet>"##, &[]);
         assert_eq!(x[0].number_format.as_deref(), Some("#,##0"));
     }
 
     #[test]
-    fn 揃えを読める() {
+    fn reads_alignment() {
         let x = parse(SAMPLE, &[]);
         assert_eq!(x[3].align, HAlign::Center);
     }
@@ -1081,7 +1081,7 @@ mod append_tests {
     use super::*;
 
     #[test]
-    fn 型紙の名前付きスタイルを読む() {
+    fn reads_named_styles_from_the_template() {
         // マークダウンの見出しの大きさはここから引く(2026-08-09)。
         // 書式の実体は cellStyleXfs の方にあり、cellStyles が名前で指す
         let xml = r##"<styleSheet>
@@ -1123,7 +1123,7 @@ mod append_tests {
     const ORIG: &str = r#"<?xml version="1.0"?><styleSheet xmlns="x"><fonts count="1"><font><sz val="11"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf></cellXfs></styleSheet>"#;
 
     #[test]
-    fn 原本の書式表に追記できる() {
+    fn can_append_to_the_original_style_table() {
         let f = CellFormat {
             bold: true,
             number_format: Some("0.00".into()),
@@ -1144,7 +1144,7 @@ mod append_tests {
     }
 
     #[test]
-    fn 追記なしなら原本のまま() {
+    fn no_append_leaves_the_original() {
         let (s, map) = append_to(ORIG, &[], &[]).unwrap();
         assert_eq!(s, ORIG, "何も足していないのに変わった");
         assert!(map.is_empty());
@@ -1160,13 +1160,13 @@ mod build_tests {
     }
 
     #[test]
-    fn 素の書式は0番() {
+    fn the_plain_style_is_number_zero() {
         let (_, map) = build(&[ruled()], &[]);
         assert_eq!(map[&CellFormat::default()], 0, "素の書式が0番でない");
     }
 
     #[test]
-    fn 書いたものを読み戻せる() {
+    fn what_was_written_reads_back() {
         // 罫線を落とすと帳票として通らない。往復で守る
         let f = ruled();
         let (xml, map) = build(std::slice::from_ref(&f), &[]);
@@ -1177,7 +1177,7 @@ mod build_tests {
     }
 
     #[test]
-    fn 塗りと色と表示形式が往復する() {
+    fn fill_color_and_number_format_round_trip() {
         let f = CellFormat {
             fill: Some("FFFF00".into()),
             color: Some("FF0000".into()),
@@ -1194,14 +1194,14 @@ mod build_tests {
     }
 
     #[test]
-    fn 同じ書式は1つにまとまる() {
+    fn identical_styles_are_merged() {
         let f = ruled();
         let (_, map) = build(&[f.clone(), f.clone(), f.clone()], &[]);
         assert_eq!(map.len(), 2, "素の書式 + 1 のはず: {map:?}");
     }
 
     #[test]
-    fn 一部だけの罫線も往復する() {
+    fn partial_borders_round_trip() {
         // 表の下線だけ、という帳票は多い
         let f = CellFormat {
             borders: Borders { bottom: Edge::THIN, ..Borders::NONE },
@@ -1219,7 +1219,7 @@ mod font_name_tests {
     use super::*;
 
     #[test]
-    fn 書体名が往復する() {
+    fn font_name_round_trips() {
         // ＭＳ 明朝の帳票を保存して書体が消えると、開き直したとき別の字になる
         let f = CellFormat { font: Some("ＭＳ 明朝".into()), bold: true, ..Default::default() };
         let (xml, map) = build(std::slice::from_ref(&f), &[]);
@@ -1234,7 +1234,7 @@ mod more_fmt_tests {
     use super::*;
 
     #[test]
-    fn 大きさと取り消し線と縦揃えと折り返しが往復する() {
+    fn size_strikethrough_vertical_align_and_wrap_round_trip() {
         let f = CellFormat {
             size_c: Some(1400), // 14pt
             strike: true,
@@ -1251,7 +1251,7 @@ mod more_fmt_tests {
     }
 
     #[test]
-    fn 既定の縦揃えは書かない() {
+    fn default_vertical_align_is_not_written() {
         // xlsx の既定は下揃え。書かないことが既定を表す
         let f = CellFormat { bold: true, ..Default::default() };
         let (xml, _) = build(&[f], &[]);
@@ -1260,7 +1260,7 @@ mod more_fmt_tests {
 
 
     #[test]
-    fn 式を隠す印が往復する() {
+    fn hidden_formula_flag_round_trips() {
         // ロックとは別の印。**組み合わせも往復する**
         for (lock, hide) in [(false, true), (true, true), (true, false), (false, false)] {
             let f = CellFormat { unlocked: lock, formula_hidden: hide, ..Default::default() };
@@ -1272,7 +1272,7 @@ mod more_fmt_tests {
     }
 
     #[test]
-    fn 隠さないときは属性を書かない() {
+    fn no_attribute_written_when_not_hidden() {
         // **書かないことが既定を表す。** hidden="0" を書くと、Excel では
         // 「わざわざ隠さないことにした」になる
         let f = CellFormat { bold: true, ..Default::default() };
@@ -1283,7 +1283,7 @@ mod more_fmt_tests {
 
 
     #[test]
-    fn 保護の印はセルごとに畳まれる() {
+    fn protection_flags_fold_per_cell() {
         // 前のセルの「ロックを外した」「式を隠す」が次へ漏れないこと。
         //
         // **この試験は畳みの片方しか証明しない。** 畳みは xf の始まりと
@@ -1300,7 +1300,7 @@ mod more_fmt_tests {
     }
 
     #[test]
-    fn 塗りの柄と地の色が往復する() {
+    fn fill_pattern_and_background_round_trip() {
         let f = CellFormat {
             fill: Some("FF0000".into()),       // 前景
             fill_pattern: Some("lightGrid".into()),
@@ -1316,7 +1316,7 @@ mod more_fmt_tests {
     }
 
     #[test]
-    fn グラデーションが往復する() {
+    fn gradient_round_trips() {
         let f = CellFormat {
             fill_grad: Some(crate::model::Gradient {
                 degree_c: 4500, // 45度
@@ -1332,7 +1332,7 @@ mod more_fmt_tests {
     }
 
     #[test]
-    fn べた塗りと塗り無しは今までどおり() {
+    fn solid_and_no_fill_unchanged() {
         // 柄の欄を足しても、いちばん多い2つの姿を変えない
         let solid = CellFormat { fill: Some("FFF2CC".into()), ..Default::default() };
         let (xml, map) = build(std::slice::from_ref(&solid), &[]);
@@ -1349,7 +1349,7 @@ mod more_fmt_tests {
     }
 
     #[test]
-    fn 柄のセルの書式を触っても柄はべた塗りに化けない() {
+    fn editing_a_patterned_cell_keeps_the_pattern() {
         // **これが直したかった穴。** 前は柄が色1つに潰れていたので、
         // 太字にしただけで網目がべた塗りの前景色になっていた
         // (開いて保存するだけなら styles.xml の据え置きで無事だったので、
@@ -1369,7 +1369,7 @@ mod more_fmt_tests {
     }
 
     #[test]
-    fn 知らない放射の型も落とさない() {
+    fn unknown_gradient_type_is_kept() {
         // path 型は線形と別物。落として線形に均すと円形が横縞になる
         let f = CellFormat {
             fill_grad: Some(crate::model::Gradient {
@@ -1399,7 +1399,7 @@ mod xml_wellformed_tests {
     /// `xfId="0"applyNumberFormat="1"` と属性が繋がっていた。
     /// Excel も quick-xml も通すので、**開いて確かめるだけでは出ない**。
     #[test]
-    fn 属性の間に空白がある() {
+    fn attributes_are_space_separated() {
         let mut f = CellFormat::default();
         f.bold = true;
         f.fill = Some("FFF2CC".into());

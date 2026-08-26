@@ -2130,7 +2130,7 @@ mod sign_tests {
     /// 署名して、もう一度押したら検められること。**中身を書き替えたら
     /// 検めが落ちる**ことも見る(落ちなければ署名の意味がありません)
     #[test]
-    fn 署名してから検める() {
+    fn sign_then_verify() {
         let _home = own_home();
         // 鍵の置き場は HOME の下。試験どうしがぶつからないよう別の家にする
         let home = std::env::temp_dir().join(format!("ops-sign-{}", std::process::id()));
@@ -2186,7 +2186,7 @@ mod recover_tests {
     /// 種類は拡張子で見分けます — 同じ置き場に表と文章の控えが並ぶので、
     /// 混ざると表の画面に文書の控えが出て、開けません。
     #[test]
-    fn 控えの道と一覧() {
+    fn backup_path_and_listing() {
         let _home = own_home();
         let home = std::env::temp_dir().join(format!("ops-rec-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&home);

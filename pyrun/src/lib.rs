@@ -1287,7 +1287,7 @@ mod venv_tests {
     /// 置き場は**マクロと同じフォルダの中**。エディタで開いたときに
     /// 隣に居ることがこの決めの理由(発注者 2026-08-17)
     #[test]
-    fn venvはマクロと同じ置き場に居る() {
+    fn venv_sits_with_the_macros() {
         assert_eq!(venv_dir().parent(), Some(config_dir().as_path()));
         assert_eq!(venv_dir().file_name().unwrap(), ".venv");
         // funcs と兄弟であること(エディタが1つのフォルダで両方見る)
@@ -1298,7 +1298,7 @@ mod venv_tests {
     /// venv は作った時の径路を pyvenv.cfg に持つので、アプリを入れ直して
     /// 径路が変わると動かない(2026-08-14 に一度踏んだ)
     #[test]
-    fn 素のpythonが消えたvenvは壊れていると分かる() {
+    fn venv_without_python_is_detected_as_broken() {
         let dir = std::env::temp_dir().join(format!("ow-venv-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -1324,7 +1324,7 @@ mod venv_tests {
 
     /// pip の径路は**在らなくても綴りを返す**(案内に出すため)
     #[test]
-    fn pipの径路は案内のために常に綴れる() {
+    fn pip_path_is_always_printable_for_guidance() {
         let p = venv_pip();
         assert!(p.starts_with(venv_dir()));
         let name = p.file_name().unwrap().to_string_lossy().to_string();
@@ -1343,7 +1343,7 @@ mod cage_tests {
     }
 
     #[test]
-    fn bwrapのサンドボックスは網を既定で切る() {
+    fn bwrap_sandbox_blocks_network_by_default() {
         let d = PathBuf::from("/tmp/jo-py-1");
         let py = std::path::Path::new("python3");
         let c = caged_python_with(Cage::Bwrap, py, &d, &[], false).unwrap();
@@ -1357,7 +1357,7 @@ mod cage_tests {
     }
 
     #[test]
-    fn flatpakのサンドボックスは公式の入れ子口を使う() {
+    fn flatpak_sandbox_uses_the_official_nested_api() {
         // Flatpak の中では bwrap の入れ子が動かない — flatpak-spawn --sandbox
         let d = PathBuf::from("/x/sandbox/jo-udf-9");
         let py = std::path::Path::new("python3");
@@ -1377,13 +1377,13 @@ mod cage_tests {
     }
 
     #[test]
-    fn defの名前は先頭の桁だけ数える() {
+    fn def_name_counted_only_at_column_zero() {
         let src = "def 集計(r):\n    def _中(x):\n        pass\ndef _隠し(x):\n    pass\ndef 倍(x): ...\n";
         assert_eq!(def_names(src), vec!["集計", "倍"]);
     }
 
     #[test]
-    fn リボンの名乗りを走らせずに読む() {
+    fn ribbon_declaration_read_without_running() {
         let src = "リボン = {\"札\": \"月次の締め\", \"絵\": \"py-list\"}\n\nprint(1)\n";
         let kv = decl_dict(src).unwrap();
         assert_eq!(kv, vec![("札".into(), "月次の締め".into()), ("絵".into(), "py-list".into())]);
@@ -1401,7 +1401,7 @@ mod cage_tests {
     }
 
     #[test]
-    fn リボンの名乗りは既定で埋まる() {
+    fn ribbon_declaration_gets_defaults() {
         let d = std::env::temp_dir().join(format!("owtest-ribbon-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
@@ -1417,7 +1417,7 @@ mod cage_tests {
     }
 
     #[test]
-    fn リボンの宣言は普通の言葉のキーでも古いキーでも読める() {
+    fn ribbon_declaration_reads_both_new_and_old_keys() {
         // 「札・絵・段」は普通の言葉ではないので「ラベル・アイコン・タブ」に
         // 言い換えました(2026-08-21)。**既に書いた .py が動かなくなると
         // 困る**ので、古いキーも読み続けます
@@ -1458,7 +1458,7 @@ mod cage_tests {
     }
 
     #[test]
-    fn 綴りの_venv_がいちばん強い() {
+    fn the_folder_venv_wins() {
         // **開いているフォルダの .venv を最優先**(2026-08-24 発注者
         // 「zed と同じように作業ディレクトリー内の仮想環境を優先で」)。
         // 同じフォルダを JupyterLab とエディタと officework が見ているとき、
@@ -1483,7 +1483,7 @@ mod cage_tests {
     }
 
     #[test]
-    fn 証明書の束を機械から探す() {
+    fn finds_the_cert_bundle_on_the_machine() {
         let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // 配る Python は自分の径路を焼き付けているので、走らせる側が
         // 機械の束を教える(2026-08-14 に見本の天気予報で踏んだ)
@@ -1504,7 +1504,7 @@ mod cage_tests {
     static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     #[test]
-    fn 証明書の道が子のプロセスに渡る() {
+    fn cert_path_passes_to_child_processes() {
         let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // **実際に子を起こして確かめる。** py_env を書いただけでは、
         // run_with_timeout が渡し忘れていても気づけない(2026-08-14 に

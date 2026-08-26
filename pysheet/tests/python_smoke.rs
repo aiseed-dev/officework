@@ -27,7 +27,7 @@
 use std::process::Command;
 
 #[test]
-fn python側から帳票を差し込める() {
+fn a_form_can_be_inserted_from_python() {
     // **Python の名前は OS で違う。** Windows は `python`(と `py`)で、
     // `python3` は無いことがあります。無い名前で呼ぶと「回せない」で
     // 落ちるので、在る物を探します

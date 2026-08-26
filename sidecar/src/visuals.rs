@@ -402,7 +402,7 @@ mod tests {
     /// `../drawings/drawing1.xml` は `xl/drawings/drawing1.xml`。ここを
     /// 間違えると絵が1枚も出ない — しかも**黙って**出ない
     #[test]
-    fn 部品の径路を畳める() {
+    fn part_paths_can_be_resolved() {
         assert_eq!(
             resolve_part("xl/worksheets/sheet1.xml", "../drawings/drawing1.xml"),
             "xl/drawings/drawing1.xml"
@@ -422,7 +422,7 @@ mod tests {
     /// `^image/` で検査される。`.emf` を `image/emf` と偽れば通ってしまうが、
     /// 描けない物を描けると言ったことになる
     #[test]
-    fn 知らない絵の種類は名乗らない() {
+    fn unknown_image_kind_is_not_declared() {
         assert_eq!(media_type("xl/media/image1.PNG"), Some("image/png"));
         assert_eq!(media_type("xl/media/image2.jpeg"), Some("image/jpeg"));
         assert_eq!(media_type("xl/media/image3.emf"), None, "**知らない物を名乗った**");
@@ -432,7 +432,7 @@ mod tests {
     /// base64。**詰め物の `=` まで**確かめる — 長さが3の倍数でないときだけ
     /// 出るので、そこを外すと「たいてい合っている」絵が届く
     #[test]
-    fn base64が正しい() {
+    fn base64_is_correct() {
         assert_eq!(base64(b""), "");
         assert_eq!(base64(b"a"), "YQ==");
         assert_eq!(base64(b"ab"), "YWI=");

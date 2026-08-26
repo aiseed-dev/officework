@@ -12,7 +12,7 @@ use sheet::datetime_names::{names, TABLE};
 /// 何も出ない日付ができる** — 生成のときも見ているが、手で触られたら
 /// ここで落とす
 #[test]
-fn どの言語も欠けなく揃っている() {
+fn every_language_is_complete() {
     // **数は書かない。** 言語が増えるたびに試験の名前と数を追いかけることに
     // なり、追いかけ損ねた瞬間に名前のほうが嘘になる(2026-08-11、pt-PT を
     // 足して気づいた)。ここで要るのは「欠けが無いこと」
@@ -34,7 +34,7 @@ fn どの言語も欠けなく揃っている() {
 /// **書式コードにバックスラッシュを残さない。** こちらの字句走査は
 /// `\` を逃げとして扱わないので、残っていると画面に `\` が出る
 #[test]
-fn 既定の書式に逃げが残っていない() {
+fn no_fallback_left_in_the_default_format() {
     for n in TABLE {
         assert!(
             !n.long_date.contains('\\'),
@@ -48,7 +48,7 @@ fn 既定の書式に逃げが残っていない() {
 /// 引けること。**知らない言語は日本語**(素の言語だから) —
 /// 黙って英語にすると、日本語で使っている人に英語が出る
 #[test]
-fn 言語を引ける() {
+fn can_look_up_a_language() {
     assert_eq!(names("de").months[7], "August");
     assert_eq!(names("ja").months[7], "8月");
     assert_eq!(names("ja").days[1], "月曜日");
@@ -63,7 +63,7 @@ fn 言語を引ける() {
 /// 属格を持つ言語は持ち、持たない言語は None。**露語で確かめる** —
 /// 「8月」と「8月の」で形が違うので、混ぜると日付が不自然になる
 #[test]
-fn 属格を落としていない() {
+fn genitive_forms_are_kept() {
     let ru = names("ru");
     let g = ru.months_genitive.expect("露語は属格を持つ");
     assert_eq!(ru.months[7], "Август", "主格");
@@ -75,7 +75,7 @@ fn 属格を落としていない() {
 /// 素直に引くと通貨も月名も香港のものになる(通貨はここに載せていないが、
 /// 引き当ての癖は同じ)
 #[test]
-fn 台湾と香港を取り違えない() {
+fn taiwan_and_hong_kong_are_not_mixed_up() {
     // zh-TW の曜日。香港と同じ字だが、材料は zh-TW から取っている
     assert_eq!(names("zh-tw").days[1], "星期一");
     assert_eq!(names("zh-tw").long_date, "yyyy\"年\"m\"月\"d\"日\"");

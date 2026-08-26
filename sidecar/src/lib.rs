@@ -671,7 +671,7 @@ mod ffi_tests {
     }
 
     #[test]
-    fn 関数の橋でも同じ言葉を喋る() {
+    fn function_bridge_speaks_the_same_protocol() {
         let b = officework_bridge_new();
         let v = ask(b, r#"{"version":1,"requestId":"r1","command":"cancel"}"#);
         assert_eq!(v["ok"], serde_json::json!(true));
@@ -689,7 +689,7 @@ mod ffi_tests {
     }
 
     #[test]
-    fn 壊れた呼び方にも_json_の断りで答える() {
+    fn bad_call_answers_with_a_json_error() {
         let b = officework_bridge_new();
         let v = ask(b, "これは JSON ではない");
         assert_eq!(v["ok"], serde_json::json!(false));

@@ -405,7 +405,7 @@ mod tests {
     }
 
     #[test]
-    fn 書いた字が表になっている() {
+    fn the_written_text_is_a_table() {
         let src = write(&from_book(&ledger()));
         assert!(src.contains(".用紙"), "用紙の表が無い:\n{src}");
         assert!(src.contains(".列幅"), "列幅の表が無い:\n{src}");
@@ -414,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn 往復で見た目が戻る() {
+    fn the_look_survives_a_round_trip() {
         let from = from_book(&ledger());
         let back = parse(&write(&from)).expect("読めない");
         assert_eq!(back, from, "往復で見た目が変わった");
@@ -422,7 +422,7 @@ mod tests {
 
     /// **当てるとブックに戻る。** 意味だけの `.adoc` と組み合わせる形
     #[test]
-    fn ブックに当てられる() {
+    fn applies_to_a_book() {
         let t = from_book(&ledger());
         let mut b = Book::new();
         b.sheets[0].name = "売上台帳".into();
@@ -437,7 +437,7 @@ mod tests {
 
     /// 名前の合わないシートは**黙って飛ばす**(テンプレートは使い回せる)
     #[test]
-    fn 知らないシートは飛ばす() {
+    fn unknown_sheets_are_skipped() {
         let t = from_book(&ledger());
         let mut b = Book::new();
         b.sheets[0].name = "別の名前".into();
@@ -447,14 +447,14 @@ mod tests {
 
     /// 知らない表は飛ばす(writer 向けの節が混じっていても落ちない)
     #[test]
-    fn 知らない表は飛ばす() {
+    fn unknown_tables_are_skipped() {
         let t = parse(".スタイル\n|===\n|名前 |大きさ\n\n|見出し1 |16\n|===\n").expect("読めない");
         assert!(t.is_empty());
     }
 
     /// 余白は1つだけ書けば四方とも同じ
     #[test]
-    fn 余白は1つでもよい() {
+    fn one_margin_value_is_enough() {
         let t = parse(".用紙\n|===\n|シート |大きさ |向き |余白\n\n|表 |A4 |縦 |20\n|===\n").expect("読めない");
         assert_eq!(t.sheets[0].margins_mm, Some((20.0, 20.0, 20.0, 20.0)));
         assert_eq!(t.sheets[0].paper_size, Some(9));
@@ -463,7 +463,7 @@ mod tests {
 
     /// 知らない用紙の番号は**番号のまま**(黙って A4 にしない)
     #[test]
-    fn 知らない用紙は番号のまま() {
+    fn unknown_paper_keeps_its_number() {
         assert_eq!(paper_name(99), "99");
         assert_eq!(paper_no("99"), Some(99));
     }
