@@ -50,3 +50,6 @@ sample/site/
 
 # 手元で組んだ wheel(配るのは CI が組んだ物)
 pysheet/dist/
+
+# 受け入れ試験の出来上がり(test/README.ja.adoc — 道具があれば作り直せる)
+test/out/

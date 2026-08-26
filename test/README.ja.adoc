@@ -1,0 +1,43 @@
+= 受け入れ試験 — 実物の文書で目で確かめる
+
+ここは cargo test(プログラムの試験)とは別の、**本当のテスト**の置き場です。
+実在しそうな1ページの文書を、参照のライブラリ(openpyxl・python-docx)と
+officework エンジンの両方で作り、**開いて目で見比べます**。
+実行と突き合わせは発注者がやります。
+
+== 回し方
+
+[source,console]
+----
+$ .venv/bin/python test/write_xlsx_openpyxl.py      # 参照(openpyxl)→ test/out/
+$ .venv/bin/python test/write_docx_pydocx.py        # 参照(python-docx)→ test/out/
+$ .venv/bin/python test/write_xlsx_officework.py    # うち → test/out/officework/
+$ .venv/bin/python test/write_docx_officework.py    # うち → test/out/officework/
+----
+
+== 作られる文書(全部で10枚)
+
+[cols="1,2"]
+|===
+|xlsx 5枚 |見積書・月次売上報告・出勤簿・棚卸表・申込書
+|docx 5枚 |開催通知・議事録・操作手順書・送付状・回覧
+|===
+
+それぞれの頭の説明に、どの機能をどこに詰めたかが書いてあります。
+参照の側は書く機能を一通り使い切る形で組んであります。
+
+== 見方
+
+. `test/out/` と `test/out/officework/` の同じ名前を並べて開く
+  (Excel / Word・Euro-Office・aiseed office のどれでも)
+. **うちの側の実行の終わりに「できなかった事」の一覧が出ます** — エンジンに
+  口が無い機能は黙って欠けず、ここに数えられます。一覧が空なら口は全部通り、
+  あとは見た目の違いだけです
+. 食い違いを見つけたら、それが台帳です(機能の名前と文書の名前を控える)
+
+== 決まり
+
+* 出来上がり(test/out/)はコミットしません(.gitignore 済み)。
+  この道具があれば作り直せます
+* 参照の側のコードは、ライブラリの公開の口だけを使います(oxml の
+  直接操作はしない — 「公開の口でできること」を測るため)
