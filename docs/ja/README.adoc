@@ -27,6 +27,9 @@
 |link:from-excel.adoc[Excel から](link:../en/from-excel.adoc[English])
 |Excel でやっていたことを、ここでどうやるか
 
+|link:tutorial-word.adoc[実例で覚える(Word 文書)]
+|コードを打ちながら覚える。頁のコードはそのまま動く
+
 |link:docx-xlsx-tono-chigai.adoc[Word / Excel との違い]
 |Word / Excel と何が同じで何が違うか、1枚で
 

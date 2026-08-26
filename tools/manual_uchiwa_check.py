@@ -26,6 +26,7 @@ MIRU = [
     # 頭に書いてしまい、ここに入っていなかったので素通りした)
     "docs/ja/README.adoc",
     "docs/ja/from-excel.adoc",
+    "docs/ja/tutorial-word.adoc",
     "docs/ja/genkou-manual.adoc",
     "docs/ja/api-taiou.adoc",
     "docs/ja/docx-xlsx-tono-chigai.adoc",

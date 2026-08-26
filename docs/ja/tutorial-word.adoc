@@ -1,0 +1,84 @@
+= 実例で覚える — Python で Word 文書を作る
+
+コードを打てば、そのまま動きます。この頁のコードは test/ の受け入れ試験と
+同じ物なので、**動かなくなったら検査が先に気づきます**。
+
+officework の書き味は python-docx と同じです。違いは import の1行だけ:
+
+[source,python]
+----
+import docx                      # python-docx なら
+d = docx.Document()
+
+from officework import doc       # officework なら
+d = doc.Doc()
+----
+
+以下のコードはどちらでも同じに動きます(このことも test/same_code_docx.py が
+毎回確かめています)。
+
+== 第1回: 通知文を1枚作る
+
+事務の文書のいちばん基本の形 — 日付・宛名・題・本文・記書き・以上、です。
+
+[source,python]
+----
+from officework import doc
+
+d = doc.Doc()
+
+p = d.add_paragraph("2026年8月26日")
+p.alignment = "right"                     # 右揃え
+d.add_paragraph("会員各位")
+
+h = d.add_heading("定例会 開催のお知らせ", level=1)
+h.alignment = "center"
+
+p = d.add_paragraph("下記のとおり定例会を開きます。")
+r = p.add_run("出欠のご返事は 9月5日(金)までにお願いします。")
+r.bold = True                             # 太字
+r.underline = True                        # 下線
+
+p = d.add_paragraph("記")
+p.alignment = "center"
+
+t = d.add_table(rows=3, cols=2)
+rows = [("日時", "9月12日(土) 14:00〜16:00"),
+        ("場所", "工業技術センター 2階 会議室"),
+        ("議題", "新しい道具の紹介と実演")]
+for i, (k, v) in enumerate(rows):
+    t.cell(i, 0).text = k
+    t.cell(i, 1).text = v
+
+p = d.add_paragraph("以上")
+p.alignment = "right"
+
+d.save("開催通知.docx")
+----
+
+できた 開催通知.docx は Word でも Euro-Office でも aiseed office でも
+開けます。
+
+=== 覚えること3つ
+
+. **段落を足して、揃えを言う** — `add_paragraph(字)` と
+  `alignment = "right" / "center"`。python-docx の定数
+  (`WD_ALIGN_PARAGRAPH.CENTER`)もそのまま通ります
+. **字の飾りは run に** — 段落の中の一部だけ太字にするときは
+  `add_run(字)` してから `bold = True`
+. **表は行×列で作って、升に字を入れる** — `add_table(rows, cols)` と
+  `cell(行, 列).text`
+
+=== よくあるつまずき
+
+* 段落ぜんぶを太字にしたいとき — `d.add_paragraph()` で空の段落を作り、
+  `add_run(字)` に飾りを付けます(`add_paragraph(字)` で入れた字は
+  最初の run になっているので、`p.runs[0].bold = True` でも同じ)
+* 保存した文書が開けないとき — 保存先のフォルダが有るか確かめて
+  ください。無いフォルダには保存できません
+
+== 続きの回(これから)
+
+. 第2回: 記入欄のある様式 — 名前を付けて、マクロで差し込む
+. 第3回: スタイルで整える — 書体と大きさを1か所で決める
+. 第4回: 差し込みの雛形 — 1つの雛形から量産する
