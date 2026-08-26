@@ -26,8 +26,8 @@
 //! ピボットは adoc の表に居場所が無いので、[`parse`] と [`write_report`] が
 //! 何を落としたかを日本語で返します。見た目はテンプレートの持ち場です。
 
-use crate::calc::recalc_all;
-use crate::model::{Book, Cell, Pos, Sheet, TableDef, Value};
+use kumihan::calc::recalc_all;
+use kumihan::book::{Book, Cell, Pos, Sheet, TableDef, Value};
 use kumihan::{Block, Cellbox, Document, Table, VMerge};
 
 /// ブックを adoc の字にする。
@@ -298,7 +298,7 @@ mod tests {
             ..Default::default()
         });
         b.sheets.push(s);
-        crate::calc::recalc_all(&mut b);
+        kumihan::calc::recalc_all(&mut b);
         b
     }
 
@@ -357,7 +357,7 @@ mod tests {
             ..Default::default()
         });
         b.sheets.push(s);
-        crate::calc::recalc_all(&mut b);
+        kumihan::calc::recalc_all(&mut b);
         assert_eq!(value(&b, 0, "C2"), "1800");
         assert_eq!(value(&b, 0, "D2"), "2200");
 

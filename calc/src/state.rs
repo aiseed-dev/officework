@@ -279,7 +279,7 @@ impl Calc {
             font_name: kumihan::font::for_document(None)
                 .map(|(fam, _)| gpui::SharedString::from(fam.name.clone()))
                 .unwrap_or_else(|_| "Noto Sans JP".into()),
-            pen_style: sheet::model::BStyle::default(),
+            pen_style: kumihan::book::BStyle::default(),
             pen_color: None,
             hf_pend: None,
             name_pend: None,
@@ -467,10 +467,10 @@ impl Calc {
         c
     }
 
-    pub(crate) fn sheet(&self) -> &sheet::Sheet {
+    pub(crate) fn sheet(&self) -> &kumihan::book::Sheet {
         &self.book.sheets[self.active]
     }
-    pub(crate) fn sheet_mut(&mut self) -> &mut sheet::Sheet {
+    pub(crate) fn sheet_mut(&mut self) -> &mut kumihan::book::Sheet {
         let a = self.active;
         &mut self.book.sheets[a]
     }
@@ -478,7 +478,7 @@ impl Calc {
     /// 参照の見せ方(R1C1 のときはカーソル基準の R[..]C[..] に)
     pub(crate) fn ref_disp(&self, p: Pos) -> String {
         if self.book.r1c1 {
-            sheet::model::formula_to_r1c1(&p.a1(), self.cursor)
+            kumihan::book::formula_to_r1c1(&p.a1(), self.cursor)
         } else {
             p.a1()
         }
@@ -580,7 +580,7 @@ impl Calc {
         // R1C1: 見せるときだけ変換(中身は A1 のまま)
         if self.book.r1c1 {
             if let Some(body) = s.strip_prefix('=') {
-                s = format!("={}", sheet::model::formula_to_r1c1(body, self.cursor));
+                s = format!("={}", kumihan::book::formula_to_r1c1(body, self.cursor));
             }
         }
         // **昔ながらの配列数式は { } で囲んで見せる。** 普通の式と
@@ -750,7 +750,7 @@ impl Calc {
         for (i, sh) in self.book.sheets.iter_mut().enumerate() {
             sh.freeze = self.sheet_ui.get(i).and_then(|u| u.2).and_then(|p| {
                 // (0, 0) は「固定していない」— 空の固定枠を書かない
-                (p.row > 0 || p.col > 0).then_some(sheet::model::FreezePane {
+                (p.row > 0 || p.col > 0).then_some(kumihan::book::FreezePane {
                     frozen_rows: p.row,
                     frozen_columns: p.col,
                 })
@@ -906,7 +906,7 @@ impl Calc {
         }
         if !sl.grain.is_empty() {
             let serial = cell.and_then(|c| match &c.value {
-                sheet::Value::Number(n) => Some(*n),
+                kumihan::book::Value::Number(n) => Some(*n),
                 _ => None,
             });
             if let Some(b) =
@@ -1156,7 +1156,7 @@ impl Calc {
     /// お願いです。掛けた振りはしません。
     pub(crate) fn final_mark(&self) -> bool {
         self.book.props.custom.iter().any(|p| {
-            p.name == "_MarkAsFinal" && matches!(p.value, sheet::model::CustomVal::Bool(true))
+            p.name == "_MarkAsFinal" && matches!(p.value, kumihan::book::CustomVal::Bool(true))
         })
     }
 
@@ -1165,9 +1165,9 @@ impl Calc {
         let before = self.final_mark();
         self.book.props.custom.retain(|p| p.name != "_MarkAsFinal");
         if !before {
-            self.book.props.custom.push(sheet::model::CustomProp {
+            self.book.props.custom.push(kumihan::book::CustomProp {
                 name: "_MarkAsFinal".into(),
-                value: sheet::model::CustomVal::Bool(true),
+                value: kumihan::book::CustomVal::Bool(true),
                 link: None,
             });
         }
@@ -2359,7 +2359,7 @@ impl Calc {
         let (ox, oy) = self.cell_origin_px(at).unwrap_or((self.head_w(), self.head_h()));
         let marker = self.tool == Some(1);
         self.checkpoint();
-        self.sheet_mut().shapes_new.push(sheet::model::SheetShape {
+        self.sheet_mut().shapes_new.push(kumihan::book::SheetShape {
             at,
             dx_px: x0 - ox,
             dy_px: y0 - oy,
@@ -2370,7 +2370,7 @@ impl Calc {
             line: Some(if marker { "FFD54A".into() } else { "1B1B1B".into() }),
             points: pts
                 .iter()
-                .map(|(x, y)| sheet::model::PathPoint::at((x - x0) / w, (y - y0) / h))
+                .map(|(x, y)| kumihan::book::PathPoint::at((x - x0) / w, (y - y0) / h))
                 .collect(),
             ..Default::default()
         });
@@ -2534,7 +2534,7 @@ impl Calc {
         // R1C1 で打った式は A1 に戻して仕舞う(中身はいつも A1)
         if self.book.r1c1 {
             if let Some(body) = text.strip_prefix('=') {
-                text = format!("={}", sheet::model::formula_from_r1c1(body, cur));
+                text = format!("={}", kumihan::book::formula_from_r1c1(body, cur));
             }
         }
         // { } は見せるための飾り(配列数式の印)。中身は = から始まる式
@@ -2651,7 +2651,7 @@ impl Calc {
             .sheet()
             .get(at)
             .and_then(|c| match &c.value {
-                sheet::Value::Text(t) => Some(t.clone()),
+                kumihan::book::Value::Text(t) => Some(t.clone()),
                 _ => None,
             })
         else {

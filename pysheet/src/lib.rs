@@ -24,15 +24,17 @@ use pyo3::exceptions::{PyIOError, PyIndexError, PyKeyError, PyTypeError, PyValue
 use pyo3::prelude::*;
 use pyo3::types::{PyDate, PyDateTime, PyDict, PyTime};
 
-use sheet::calc::{date_serial_at, excel_epoch};
-use sheet::model::{
+use kumihan::calc::{date_serial_at, excel_epoch};
+use kumihan::book::{
     format_value, rename_sheet_refs, BStyle, Edge, FreezePane, HAlign, SheetImage, VAlign,
 };
-use sheet::{recalc_all, recalc_book, xlsx, Cell, Pos, Value};
+use kumihan::book::{Cell, Pos, Value};
+use kumihan::calc::{recalc_all, recalc_book};
+use sheet::xlsx;
 
 /// ブックの中身。Book と Sheet が同じものを見るために1枚挟む。
 struct Inner {
-    book: sheet::Book,
+    book: kumihan::book::Book,
     /// 開いた元のファイル。保存時に、こちらが作り直さない部品
     /// (図形・テーマ・印刷設定)を持ち越すために取っておく
     original: Option<Vec<u8>>,
@@ -67,7 +69,7 @@ fn parse_range(s: &str) -> PyResult<(Pos, Pos)> {
 
 /// xlsx のシート名の決まり(アプリの改名と同じ検査):
 /// 空は不可・31字まで・`: \ / ? * [ ]` は不可・同じ名前は不可。
-fn check_sheet_name(book: &sheet::Book, name: &str) -> PyResult<()> {
+fn check_sheet_name(book: &kumihan::book::Book, name: &str) -> PyResult<()> {
     if name.is_empty() {
         return Err(PyValueError::new_err("シート名が空です"));
     }
@@ -146,7 +148,7 @@ impl PyBook {
     fn new() -> PyBook {
         PyBook {
             inner: Arc::new(Mutex::new(Inner {
-                book: sheet::Book::new(),
+                book: kumihan::book::Book::new(),
                 original: None,
                 unsupported: Vec::new(),
             })),
@@ -228,7 +230,7 @@ impl PyBook {
     fn add_sheet(&self, name: &str) -> PyResult<PySheet> {
         let mut g = lock(&self.inner)?;
         check_sheet_name(&g.book, name)?;
-        g.book.sheets.push(sheet::Sheet::new(name));
+        g.book.sheets.push(kumihan::book::Sheet::new(name));
         let idx = g.book.sheets.len() - 1;
         Ok(PySheet { inner: Arc::clone(&self.inner), idx })
     }
@@ -323,7 +325,7 @@ impl PyBook {
         {
             return Err(PyValueError::new_err(format!("様式「{name}」は既にあります")));
         }
-        let mut f = sheet::model::CellFormat::default();
+        let mut f = kumihan::book::CellFormat::default();
         if let Some(kw) = kw {
             apply_fmt(&mut f, kw)?;
         }
@@ -384,7 +386,7 @@ struct PySheet {
 }
 
 impl PySheet {
-    fn with<T>(&self, f: impl FnOnce(&mut sheet::Sheet) -> PyResult<T>) -> PyResult<T> {
+    fn with<T>(&self, f: impl FnOnce(&mut kumihan::book::Sheet) -> PyResult<T>) -> PyResult<T> {
         let mut g = lock(&self.inner)?;
         let s = g
             .idx_sheet(self.idx)
@@ -394,7 +396,7 @@ impl PySheet {
 
     /// 書き換えてから、**ブック全体の文脈で**このシートを再計算する
     /// (INDIRECT("別の表!A1") も解ける)
-    fn with_calc<T>(&self, f: impl FnOnce(&mut sheet::Sheet) -> PyResult<T>) -> PyResult<T> {
+    fn with_calc<T>(&self, f: impl FnOnce(&mut kumihan::book::Sheet) -> PyResult<T>) -> PyResult<T> {
         let mut g = lock(&self.inner)?;
         let s = g
             .idx_sheet(self.idx)
@@ -406,7 +408,7 @@ impl PySheet {
 }
 
 impl Inner {
-    fn idx_sheet(&mut self, idx: usize) -> Option<&mut sheet::Sheet> {
+    fn idx_sheet(&mut self, idx: usize) -> Option<&mut kumihan::book::Sheet> {
         self.book.sheets.get_mut(idx)
     }
 }
@@ -419,7 +421,7 @@ impl PySheet {
     }
 
     /// 改名。**式の参照(`古い名前!A1`)と名前の定義も追随する** — アプリの
-    /// 改名と同じ作法(sheet::model::rename_sheet_refs)。文字列の中
+    /// 改名と同じ作法(kumihan::book::rename_sheet_refs)。文字列の中
     /// (INDIRECT("古!A1") 等)は書き換えない — あれは data であって参照ではない。
     #[setter]
     fn set_name(&self, value: &str) -> PyResult<()> {
@@ -503,7 +505,7 @@ impl PySheet {
                         (
                             Cell {
                                 formula: None,
-                                value: sheet::Value::Text(t),
+                                value: kumihan::book::Value::Text(t),
                                 fmt: Default::default(),
                             },
                             None,
@@ -577,7 +579,7 @@ impl PySheet {
     }
 
     /// セルを結合する("A1:B2")。アプリの「結合だけ」と同じ家の作法
-    /// (sheet::model::ops の Sheet::merge): 重なる結合は先に外れ、左上が
+    /// (kumihan::book::ops の Sheet::merge): 重なる結合は先に外れ、左上が
     /// 空なら読み順で最初の中身が**書式ごと**左上へ移り、左上以外の中身は
     /// 消える(書式は残る)— 残すと見えない値が SUM に効いて帳票が嘘をつく。
     /// 揃えは触らない。
@@ -1002,7 +1004,7 @@ impl PySheet {
             if s.tables.iter().any(|t| t.name == name) {
                 return Err(PyValueError::new_err(format!("表「{name}」は既にあります")));
             }
-            s.tables.push(sheet::model::TableDef {
+            s.tables.push(kumihan::book::TableDef {
                 name: name.to_string(),
                 style,
                 a,
@@ -1255,7 +1257,7 @@ impl PySheet {
     ) -> PyResult<()> {
         let (a, b) = parse_range(range)?;
         self.with(|s| {
-            s.validations.push(sheet::model::Validation {
+            s.validations.push(kumihan::book::Validation {
                 range: (a, b),
                 formula: formula1.to_string(),
                 kind: kind.to_string(),
@@ -1305,7 +1307,7 @@ impl PySheet {
         parse_range(reference)?; // 形の検査だけ(向きの正規化はしない — 原文を保つ)
         self.with_calc(|s| {
             s.names.retain(|d| d.name != name);
-            s.names.push(sheet::model::DefinedName {
+            s.names.push(kumihan::book::DefinedName {
                 name: name.to_string(),
                 range: reference.to_string(),
                 scoped,
@@ -1409,7 +1411,7 @@ impl PySheet {
 /// **一本道** — 別々に書くと鍵が食い違う)。持っている項目だけを入れる。
 fn fmt_dict<'py>(
     py: Python<'py>,
-    f: &sheet::model::CellFormat,
+    f: &kumihan::book::CellFormat,
 ) -> PyResult<Bound<'py, PyDict>> {
     {
         {
@@ -1475,7 +1477,7 @@ fn fmt_dict<'py>(
 
 /// dict の鍵を CellFormat に写す(Sheet.set_fmt と Book.add_named_style の
 /// **一本道** — 別々に書くと受ける鍵がずれる)。渡した項目だけ変える。
-fn apply_fmt(f: &mut sheet::model::CellFormat, kw: &Bound<'_, PyDict>) -> PyResult<()> {
+fn apply_fmt(f: &mut kumihan::book::CellFormat, kw: &Bound<'_, PyDict>) -> PyResult<()> {
         for (k, v) in kw.iter() {
             let k: String = k.extract()?;
             match k.as_str() {

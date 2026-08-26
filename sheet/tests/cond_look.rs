@@ -10,8 +10,9 @@
 //! 単体試験(規則の重ね方)と合わせて、読み→当てはめの一本道を縛る。
 
 use sheet::look::resolve_cond;
-use sheet::model::{CondKind, CondLook, CondOp, CondRule};
-use sheet::{xlsx, Book, Cell, Pos, Value};
+use kumihan::book::{CondKind, CondLook, CondOp, CondRule};
+use kumihan::book::{Book, Cell, Pos, Value};
+use sheet::xlsx;
 
 fn round(book: &Book) -> Book {
     let mut buf = std::io::Cursor::new(Vec::new());

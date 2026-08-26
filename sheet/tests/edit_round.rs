@@ -1,5 +1,7 @@
 //! calc の編集がxlsxを往復することの検査(UI抜き。GPUIから呼ばれるのと同じ道)。
-use sheet::{recalc, xlsx, Book, Cell, Pos};
+use kumihan::book::{Book, Cell, Pos};
+use kumihan::calc::recalc;
+use sheet::xlsx;
 
 fn round(book: &Book) -> Book {
     let mut buf = std::io::Cursor::new(Vec::new());

@@ -4,10 +4,10 @@
 //! **値がそのまま戻るか**を1枚ずつ見ます。往復が緑でも「見える物が合って
 //! いる」とは言えないので、セルの値を1つずつ突き合わせます。
 
-use sheet::model::Pos;
+use kumihan::book::Pos;
 
 /// 値の並びを取り出す(比べるため)
-fn value_table(b: &sheet::Book) -> Vec<(String, Vec<(u32, u32, String)>)> {
+fn value_table(b: &kumihan::book::Book) -> Vec<(String, Vec<(u32, u32, String)>)> {
     b.sheets
         .iter()
         .map(|s| {

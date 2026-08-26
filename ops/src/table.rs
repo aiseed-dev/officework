@@ -1,7 +1,7 @@
 //! **文書の中の表で、セル関数を使う**(SEKKEI「エンジンの統一」3段目)。
 //!
 //! writer の表のセルに `=SUM(B2:B4)` と書くと、その答えが出ます。
-//! 計算するのは calc と同じエンジン(`sheet::calc`)です。**式の言葉は
+//! 計算するのは calc と同じエンジン(`kumihan::calc`)です。**式の言葉は
 //! 表計算と文章で同じ**で、覚え直す物はありません。
 //!
 //! *式は消しません。* セルに残るのはあくまで `=SUM(…)` の字で、答えは
@@ -9,7 +9,7 @@
 //! 開き直せばまた計算されます。**元の字が正本**です。
 //!
 //! *計算は calc と同じ道を通します。* 文書の表をいったんシートに写して
-//! `sheet::recalc` に渡し、答えを読み戻します。**式の順番の解決も、
+//! `kumihan::calc::recalc` に渡し、答えを読み戻します。**式の順番の解決も、
 //! 循環参照の検出も、書き直しません** — 別に書けば、同じ式が calc と
 //! writer で違う答えを出す形になります。
 //!
@@ -17,8 +17,9 @@
 //! いるのが `ops` だけだからです。2つのクレートは互いを知りません。
 
 use kumihan::Table;
-use sheet::model::TableDef;
-use sheet::{recalc_book, Book, Cell, Pos, Sheet, Value};
+use kumihan::book::TableDef;
+use kumihan::book::{Book, Cell, Pos, Sheet, Value};
+use kumihan::calc::recalc_book;
 
 /// 表の中の式を計算して、**値の並び**を返す(行優先)。
 ///

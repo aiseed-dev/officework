@@ -20,7 +20,7 @@ fn main() {
         let f = std::fs::File::create(&dst).unwrap();
         sheet::xlsx::write_with(&book, Some(std::io::Cursor::new(&bytes)), std::io::BufWriter::new(f)).unwrap();
         let (back, _) = sheet::xlsx::read(std::io::Cursor::new(std::fs::read(&dst).unwrap())).unwrap();
-        let n = |b: &sheet::Book| -> (usize, usize, usize) {
+        let n = |b: &kumihan::book::Book| -> (usize, usize, usize) {
             (b.sheets.iter().map(|s| s.cells.len()).sum(),
              b.sheets.iter().map(|s| s.merges.len()).sum(),
              b.sheets.iter().map(|s| s.col_width.len()).sum())

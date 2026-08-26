@@ -261,10 +261,10 @@ pub(crate) fn copy_sheet_name(book: &Book, base: &str) -> String {
 }
 
 // 改名の参照書き換え(rename_refs_in / rename_sheet_refs)は 2026-08-12 に
-// sheet::model::refs へ**純移動**した — Python(pysheet)の改名でも式が
+// kumihan::book::refs へ**純移動**した — Python(pysheet)の改名でも式が
 // 追随するように。呼び側(picks.rs・tests.rs)の名前が変わらないよう再輸出する
 #[allow(unused_imports)] // rename_refs_in は tests.rs だけが使う
-pub(crate) use sheet::model::{rename_refs_in, rename_sheet_refs};
+pub(crate) use kumihan::book::{rename_refs_in, rename_sheet_refs};
 
 /// 式の**文字列の中**に古いシート名の参照が残っている数を数える。
 /// 改名では文字列の中は書き換えない(INDIRECT は「動かない参照」を作る
@@ -306,7 +306,7 @@ pub(crate) fn stale_in_strings(book: &Book, old: &str) -> usize {
 
 /// 選んだ範囲を TSV(タブ区切り・行は改行)にする。
 /// 式は `=` のまま持つ — 表計算どうしの受け渡しの通り相場。
-pub(crate) fn range_tsv(s: &sheet::Sheet, a: Pos, b: Pos) -> String {
+pub(crate) fn range_tsv(s: &kumihan::book::Sheet, a: Pos, b: Pos) -> String {
     (a.row..=b.row)
         .map(|r| {
             (a.col..=b.col)
@@ -346,7 +346,7 @@ pub(crate) fn transpose<T: Clone + Default>(g: &[Vec<T>]) -> Vec<Vec<T>> {
 
 /// 控えたセルの**値だけ**を流し込む(式は計算結果の値になる)。書式は据え置き。
 /// 控えの空セルは中身を消す(書式は残す)— 空も「値」のうち。
-pub(crate) fn paste_values_cells(s: &mut sheet::Sheet, at: Pos, cells: &[Vec<Option<Cell>>]) -> usize {
+pub(crate) fn paste_values_cells(s: &mut kumihan::book::Sheet, at: Pos, cells: &[Vec<Option<Cell>>]) -> usize {
     let mut n = 0usize;
     for (dr, row) in cells.iter().enumerate() {
         for (dc, src) in row.iter().enumerate() {
@@ -362,7 +362,7 @@ pub(crate) fn paste_values_cells(s: &mut sheet::Sheet, at: Pos, cells: &[Vec<Opt
 
 /// 外から来た TSV の**値だけ**を流し込む。`=` で始まる欄は式にせず文字として置く
 /// (外の式は計算できない — 黙って別の意味にしない)。
-pub(crate) fn paste_values_text(s: &mut sheet::Sheet, at: Pos, grid: &[Vec<String>]) -> usize {
+pub(crate) fn paste_values_text(s: &mut kumihan::book::Sheet, at: Pos, grid: &[Vec<String>]) -> usize {
     let mut n = 0usize;
     for (dr, row) in grid.iter().enumerate() {
         for (dc, text) in row.iter().enumerate() {
@@ -590,9 +590,9 @@ pub(crate) struct DvDlg {
     /// 開いているドロップダウン: 0 なし / 1 許可 / 2 データ / 3 スタイル
     pub(crate) menu: u8,
     /// 種類が読めない既存の規則(日付・時刻・カスタム)。OK でもそのまま保つ
-    pub(crate) keep: Option<sheet::model::Validation>,
+    pub(crate) keep: Option<kumihan::book::Validation>,
     /// 開いたときの既存の規則(「同じ設定の他のセル」の比較の相手)
-    pub(crate) was: Option<sheet::model::Validation>,
+    pub(crate) was: Option<kumihan::book::Validation>,
 }
 
 impl DvDlg {
@@ -761,8 +761,8 @@ pub(crate) fn date_bucket(
     let (y, m, _d) = match serial {
         // 通し番号。1 未満は時刻だけの値なので日付として扱わない
         Some(n) if n >= 1.0 => {
-            let ep = sheet::calc::excel_epoch(date1904);
-            let (y, m, d) = sheet::calc::civil_from_days(n.floor() as i64 - ep);
+            let ep = kumihan::calc::excel_epoch(date1904);
+            let (y, m, d) = kumihan::calc::civil_from_days(n.floor() as i64 - ep);
             (y, m, d)
         }
         _ => {
@@ -942,7 +942,7 @@ pub(crate) fn pivot_suggest_label(s: &PivotSuggest) -> String {
 }
 
 /// ピボットの指図を JSON にする(手で組む — グラフと同じ割り切り)。
-pub(crate) fn pivot_spec_json(headers: &[String], rows: &[Vec<String>], d: &sheet::model::PivotDef) -> String {
+pub(crate) fn pivot_spec_json(headers: &[String], rows: &[Vec<String>], d: &kumihan::book::PivotDef) -> String {
     let esc = |t: &str| t.replace('\\', "\\\\").replace('"', "\\\"");
     let strs = |xs: &[String]| {
         xs.iter().map(|x| format!("\"{}\"", esc(x))).collect::<Vec<_>>().join(",")
@@ -981,8 +981,8 @@ pub(crate) fn pivot_spec_json(headers: &[String], rows: &[Vec<String>], d: &shee
         // 台本は鍵で処理し、字は渡された訳で書きます — Python から
         // 対訳表は引けませんし、引けるようにすると表が2つになります
         agg_label = esc(&ui::tr_dyn(&d.agg)),
-        sub_label = esc(&ui::t!("subtotal")),
-        grand_label = esc(&ui::t!("grand_totals")),
+        sub_label = esc(ui::t!("subtotal")),
+        grand_label = esc(ui::t!("grand_totals")),
     )
 }
 
@@ -1005,7 +1005,7 @@ pub(crate) fn parse_pivot_grid(raw: &str) -> (Vec<Vec<String>>, Vec<char>) {
 /// 総計の行を足す。**小計・総計の行はグループ化しない** — 詳細を畳んでも
 /// 合計は見えたまま残る(発注者指摘 2026-08-04)。挿した式は最終の座標で
 /// 書き、既存の式は insert_row が直す。返り値は区切りの数。
-pub(crate) fn apply_subtotals(s: &mut sheet::Sheet, a: Pos, b: Pos, by: u32, vals: &[u32]) -> usize {
+pub(crate) fn apply_subtotals(s: &mut kumihan::book::Sheet, a: Pos, b: Pos, by: u32, vals: &[u32]) -> usize {
     // 区切り = 基準の列で連続する同じ値の並び(Excel と同じく、並べ替えは
     // 済んでいる前提。飛び飛びなら区切りもその数だけできる)
     let mut runs: Vec<(u32, u32, String)> = Vec::new();
@@ -1026,12 +1026,12 @@ pub(crate) fn apply_subtotals(s: &mut sheet::Sheet, a: Pos, b: Pos, by: u32, val
     }
     // 中身は最終の座標で書く: k 番目の区切りの小計行 = end+1+k、
     // その明細は k 行ぶん下がっている。総計 = b.row+1+区切りの数
-    let style = |s: &mut sheet::Sheet, p: Pos, text: &str| {
+    let style = |s: &mut kumihan::book::Sheet, p: Pos, text: &str| {
         let fmt0 = s.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
         let mut cell = Cell::input(text);
         cell.fmt = fmt0;
         cell.fmt.bold = true;
-        cell.fmt.borders.top = sheet::model::Edge::THIN;
+        cell.fmt.borders.top = kumihan::book::Edge::THIN;
         s.set(p, cell);
     };
     let mut sub_rows = Vec::new();
@@ -1063,7 +1063,7 @@ pub(crate) fn apply_subtotals(s: &mut sheet::Sheet, a: Pos, b: Pos, by: u32, val
 }
 
 /// 控えたセルの**書式だけ**を写す(中身は残す)。帳票の枠の使い回し。
-pub(crate) fn paste_formats(s: &mut sheet::Sheet, at: Pos, cells: &[Vec<Option<Cell>>]) -> usize {
+pub(crate) fn paste_formats(s: &mut kumihan::book::Sheet, at: Pos, cells: &[Vec<Option<Cell>>]) -> usize {
     let mut n = 0usize;
     for (dr, row) in cells.iter().enumerate() {
         for (dc, src) in row.iter().enumerate() {
@@ -1084,7 +1084,7 @@ pub(crate) fn paste_formats(s: &mut sheet::Sheet, at: Pos, cells: &[Vec<Option<C
 /// 本家の普通の貼り付けは書式も運ぶ(発注者 2026-08-14)。値だけ・書式だけ・
 /// 式だけは「形式を選択して貼り付け」の側にある — 分かれ道はそちら
 pub(crate) fn paste_all_cells(
-    s: &mut sheet::Sheet,
+    s: &mut kumihan::book::Sheet,
     at: Pos,
     cells: &[Vec<Option<Cell>>],
     shift: Option<(i64, i64)>,
@@ -1097,7 +1097,7 @@ pub(crate) fn paste_all_cells(
                 Some(src) => {
                     let mut cell = src.clone();
                     if let (Some((r, c)), Some(f)) = (shift, src.formula.as_deref()) {
-                        cell.formula = Some(sheet::model::offset_refs(f, r, c));
+                        cell.formula = Some(kumihan::book::offset_refs(f, r, c));
                     }
                     s.set(p, cell);
                 }
@@ -1105,7 +1105,7 @@ pub(crate) fn paste_all_cells(
                 // (書式は元のまま。中身だけ消す — 帳票の枠を壊さない)
                 None => {
                     let fmt = s.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
-                    s.set(p, Cell { formula: None, value: sheet::Value::Empty, fmt });
+                    s.set(p, Cell { formula: None, value: kumihan::book::Value::Empty, fmt });
                 }
             }
             n += 1;
@@ -1120,7 +1120,7 @@ pub(crate) fn paste_all_cells(
 /// `shift` があれば式の相対参照をずらす(このアプリの中でのコピー。
 /// 外から来た TSV はずらさない — どこから切り取られたか知りようがない)。
 pub(crate) fn paste_grid(
-    s: &mut sheet::Sheet,
+    s: &mut kumihan::book::Sheet,
     at: Pos,
     grid: &[Vec<String>],
     shift: Option<(i64, i64)>,
@@ -1131,7 +1131,7 @@ pub(crate) fn paste_grid(
             let p = Pos::new(at.row + dr as u32, at.col + dc as u32);
             let fmt = s.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
             let text = match (shift, text.starts_with('=')) {
-                (Some((r, c)), true) => sheet::model::offset_refs(text, r, c),
+                (Some((r, c)), true) => kumihan::book::offset_refs(text, r, c),
                 _ => text.clone(),
             };
             let mut cell = Cell::input(&text);
@@ -1145,7 +1145,7 @@ pub(crate) fn paste_grid(
 
 /// ゴールシークの解探索(割線法)。表の複製の上で var を動かし、
 /// target が goal になる値を探す。見つからなければ None。
-pub(crate) fn solve_goal(base: &sheet::Sheet, target: Pos, goal: f64, var: Pos) -> Option<f64> {
+pub(crate) fn solve_goal(base: &kumihan::book::Sheet, target: Pos, goal: f64, var: Pos) -> Option<f64> {
     let probe = |x: f64| -> f64 {
         let mut s = base.clone();
         let fmt = s.get(var).map(|c| c.fmt.clone()).unwrap_or_default();
@@ -1237,11 +1237,11 @@ pub(crate) fn currency_code(symbol: &str, decimals: usize, pattern: u8) -> Strin
 /// 環境しだいで別の月名が出る — その帳票が何語で書かれたかを持たせる
 /// (docs/sekkei/calc.ja.md「月名・曜日名は書式コードの地域から引く」)。
 pub(crate) fn date_formats() -> Vec<(&'static str, String, String)> {
-    let n = sheet::datetime_names::names(ui::language());
+    let n = kumihan::datetime_names::names(ui::language());
     let tag = format!("[$-{:x}]", n.lcid);
     // 見本は 2026-08-06(木)。通し番号 46240
     let show = |code: &str| {
-        sheet::model::format_value(&sheet::Value::Number(46240.0), Some(code), false)
+        kumihan::book::format_value(&kumihan::book::Value::Number(46240.0), Some(code), false)
     };
     let rows: Vec<(&'static str, String)> = vec![
         (ui::item!("short_date").0, format!("{tag}{}", n.short_date)),
@@ -1357,8 +1357,8 @@ pub(crate) fn change_case(t: &str, mode: &str) -> String {
 #[allow(clippy::type_complexity)]
 /// フォントの色のパレット(本家の標準の色に寄せる。「自動」= 色なし)
 /// 罫線の線種の一覧(本家のドロップダウンの12種)。名前 → BStyle
-pub(crate) fn border_styles() -> Vec<(&'static str, &'static str, sheet::model::BStyle)> {
-    use sheet::model::BStyle;
+pub(crate) fn border_styles() -> Vec<(&'static str, &'static str, kumihan::book::BStyle)> {
+    use kumihan::book::BStyle;
     vec![
         row(ui::item!("thin_solid_default"), BStyle::Thin),
         row(ui::item!("hairline"), BStyle::Hair),
@@ -1403,7 +1403,7 @@ pub(crate) fn border_kind_label(key: &str) -> String {
 }
 
 /// 保護中に許す操作の見出し。**中身は sheet 側**
-/// ([`sheet::model::ProtectAllow::items`])— sheet は zip と quick-xml しか
+/// ([`kumihan::book::ProtectAllow::items`])— sheet は zip と quick-xml しか
 /// 要らない器なので、訳は**出す側のここ**で当てる。日本語の名前がそのまま鍵
 /// (入切の照合は sheet に渡る)。並びが食い違わないことは tests.rs が見張る
 pub(crate) fn protect_allows() -> Vec<(&'static str, &'static str)> {
@@ -1436,7 +1436,7 @@ pub(crate) fn protect_allow_label(key: &str) -> String {
 
 /// 許す操作の要約 — 「14 のうち 3 つを許しています」。
 /// ファイルのページの保護の面に出します。全部の名前を並べると1行に入りません
-pub(crate) fn protect_allow_summary(a: &sheet::model::ProtectAllow) -> String {
+pub(crate) fn protect_allow_summary(a: &kumihan::book::ProtectAllow) -> String {
     let items = a.items();
     let on = items.iter().filter(|(_, v)| *v).count();
     if on == 0 {
@@ -1548,19 +1548,19 @@ pub(crate) fn cell_styles() -> Vec<CellStyle> {
         f.size_c = Some(1400);
         f.color = Some("1B6E3C".into());
         f.fill = Some("D5E8DC".into());
-        f.borders.bottom = sheet::model::Edge::line(sheet::model::BStyle::Medium, None);
+        f.borders.bottom = kumihan::book::Edge::line(kumihan::book::BStyle::Medium, None);
     }),
     row(ui::item!("heading_2"), |f| {
         f.bold = true;
         f.size_c = Some(1200);
         f.color = Some("1B6E3C".into());
         f.fill = Some("D5E8DC".into());
-        f.borders.bottom = sheet::model::Edge::THIN;
+        f.borders.bottom = kumihan::book::Edge::THIN;
     }),
     row(ui::item!("heading_3"), |f| {
         f.bold = true;
         f.color = Some("1B6E3C".into());
-        f.borders.bottom = sheet::model::Edge::THIN;
+        f.borders.bottom = kumihan::book::Edge::THIN;
     }),
     row(ui::item!("heading_4"), |f| {
         f.bold = true;
@@ -1616,8 +1616,8 @@ pub(crate) fn paper_mm(code: u32) -> Option<(f32, f32, &'static str)> {
 }
 
 /// 条件付き書式の種類の、人に見せる名前(ルールの管理の一覧)。
-pub(crate) fn cond_kind_name(k: &sheet::model::CondKind) -> String {
-    use sheet::model::CondKind;
+pub(crate) fn cond_kind_name(k: &kumihan::book::CondKind) -> String {
+    use kumihan::book::CondKind;
     match k {
         CondKind::Cmp(op, v) => format!("{} {}", ui::t!("compare_value"), format_args!("{op:?} {v}")),
         CondKind::Between(lo, hi, false) => ui::tf!("between", lo, hi).to_string(),
@@ -2048,7 +2048,7 @@ pub(crate) fn slicer_items(
 
 /// 図形ギャラリー(台帳 第2便の [中]、2026-08-13)。
 ///
-/// **分類は本家の並び。** 載せるのは `sheet::model::can_draw` が
+/// **分類は本家の並び。** 載せるのは `kumihan::book::can_draw` が
 /// 「その形として描ける」と答えるものだけ — できないものを、
 /// できるように見せない(`cube` や `heart` を並べれば、四角が置かれる)。
 /// 組は (鍵=日本語, 見出し)。**引き当ては鍵**で、見出しだけが画面の言語になる。
@@ -2229,7 +2229,7 @@ pub(crate) fn grad_dir_of(v: &str) -> Option<(i32, bool)> {
 /// 横線・縦線のような方向のある柄は一覧に並べていないが、Excel の帳票には
 /// 入ってくるので、ここへ来たら濃さで見せる(色は正しく、粗さだけが違う)。
 pub(crate) fn cell_background(
-    f: &sheet::model::CellFormat,
+    f: &kumihan::book::CellFormat,
     base: gpui::Rgba,
 ) -> (gpui::Background, Option<gpui::Background>) {
     use gpui::{checkerboard, linear_gradient, pattern_slash};

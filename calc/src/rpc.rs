@@ -57,10 +57,10 @@ impl Host for Calc {
     fn app(&self) -> &'static str {
         "calc"
     }
-    fn book(&self) -> &sheet::Book {
+    fn book(&self) -> &kumihan::book::Book {
         &self.book
     }
-    fn book_mut(&mut self) -> &mut sheet::Book {
+    fn book_mut(&mut self) -> &mut kumihan::book::Book {
         &mut self.book
     }
     fn active(&self) -> usize {

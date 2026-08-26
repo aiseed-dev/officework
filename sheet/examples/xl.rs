@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let (r, c) = s.extent();
         let nf = s.cells.values().filter(|c| c.formula.is_some()).count();
         println!("  [{}] {}行×{}列 / 値{} / 式{}", s.name, r, c, s.cells.len(), nf);
-        sheet::recalc(s);
+        kumihan::calc::recalc(s);
         for (p, cell) in s.cells.iter().take(4) {
             println!("      {} = {}{}", p.a1(), cell.value.display(),
                 cell.formula.as_ref().map(|f| format!("  (={f})")).unwrap_or_default());

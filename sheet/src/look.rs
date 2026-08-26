@@ -12,8 +12,8 @@
 //! ここは**何を描くかを決めるだけ**で、描きはしない。GPUI の div も
 //! printpdf の Rect もここには出てこない — だから画面と紙の両方から呼べる。
 
-use crate::model::{CondAux, CondKind, CondRule, Value};
-use crate::Pos;
+use kumihan::book::{CondAux, CondKind, CondRule, Value};
+use kumihan::book::Pos;
 
 /// 条件付き書式が、あるセル1つについて決めたこと。
 ///
@@ -105,7 +105,7 @@ pub fn resolve_cond(prep: &[(CondRule, CondAux)], p: Pos, v: &Value) -> CondReso
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{Cell, CondLook, CondOp, Sheet};
+    use kumihan::book::{Cell, CondLook, CondOp, Sheet};
 
     fn sheet_with(vals: &[(u32, f64)]) -> Sheet {
         let mut s = Sheet::default();

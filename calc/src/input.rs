@@ -289,7 +289,7 @@ impl Calc {
                             let p = Pos::new(r, c);
                             if let Some(cell) = self.sheet_mut().cells.get_mut(&p) {
                                 cell.formula = None;
-                                cell.value = sheet::Value::Empty;
+                                cell.value = kumihan::book::Value::Empty;
                             }
                         }
                     }
@@ -1242,7 +1242,7 @@ impl Calc {
     /// 結合の実体(確認の後もここに来る)。kind: 中央/横方向/結合だけ
     ///
     /// 呑まれるセルの中身の扱い(消す・空の左上へ移す)は家の作法として
-    /// `Sheet::merge`(sheet::model::ops)にある — Python(pysheet)から
+    /// `Sheet::merge`(kumihan::book::ops)にある — Python(pysheet)から
     /// 結合しても同じ結果になるように、2026-08-12 に共有クレートへ移した。
     /// 消すのは Ctrl+Z(この checkpoint)で戻せる — だから確認も出さない。
     /// 横方向は行ごとが1つの結合なので、行ごとに同じ扱い
@@ -1277,8 +1277,8 @@ impl Calc {
             _ => {
                 // 名のとおり中央揃えも掛ける(解くときは揃えを触らない)
                 let mut anchor = sh.get(a).cloned().unwrap_or_default();
-                anchor.fmt.align = sheet::model::HAlign::Center;
-                anchor.fmt.valign = sheet::model::VAlign::Middle;
+                anchor.fmt.align = kumihan::book::HAlign::Center;
+                anchor.fmt.valign = kumihan::book::VAlign::Middle;
                 sh.set(a, anchor);
                 self.status =
                     ui::tf!("merged_centred", a.a1(), b.a1()).into();
@@ -1292,7 +1292,7 @@ impl Calc {
     }
 
     /// 行・列を出し入れする。
-    pub(crate) fn rowcol(&mut self, f: impl Fn(&mut sheet::Sheet, Pos)) {
+    pub(crate) fn rowcol(&mut self, f: impl Fn(&mut kumihan::book::Sheet, Pos)) {
         self.commit();
         self.checkpoint();
         let p = self.cursor;

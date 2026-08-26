@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 
-use crate::model::{BStyle, Borders, CellFormat, Edge, HAlign, VAlign};
+use kumihan::book::{BStyle, Borders, CellFormat, Edge, HAlign, VAlign};
 
 /// styles.xml の <font> 1つぶん。
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -94,7 +94,7 @@ pub(crate) struct FillDef {
     pub pattern: Option<String>,
     /// 柄の地の色(bgColor)
     pub bg: Option<String>,
-    pub grad: Option<crate::model::Gradient>,
+    pub grad: Option<kumihan::book::Gradient>,
 }
 
 impl FillDef {
@@ -279,7 +279,7 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
                     .and_then(|v| v.parse::<f64>().ok())
                     .map(|d| (d * 100.0).round() as i32)
                     .unwrap_or(0);
-                fill.grad = Some(crate::model::Gradient {
+                fill.grad = Some(kumihan::book::Gradient {
                     degree_c: deg,
                     stops: Vec::new(),
                     // 線形(既定)以外は型名ごと抱える
@@ -1318,7 +1318,7 @@ mod more_fmt_tests {
     #[test]
     fn gradient_round_trips() {
         let f = CellFormat {
-            fill_grad: Some(crate::model::Gradient {
+            fill_grad: Some(kumihan::book::Gradient {
                 degree_c: 4500, // 45度
                 stops: vec![(0, "FF0000".into()), (1000, "0000FF".into())],
                 path: None,
@@ -1372,7 +1372,7 @@ mod more_fmt_tests {
     fn unknown_gradient_type_is_kept() {
         // path 型は線形と別物。落として線形に均すと円形が横縞になる
         let f = CellFormat {
-            fill_grad: Some(crate::model::Gradient {
+            fill_grad: Some(kumihan::book::Gradient {
                 degree_c: 0,
                 stops: vec![(0, "FFFFFF".into()), (1000, "000000".into())],
                 path: Some("path".into()),
@@ -1390,7 +1390,7 @@ mod more_fmt_tests {
 #[cfg(test)]
 mod xml_wellformed_tests {
     use super::*;
-    use crate::model::CellFormat;
+    use kumihan::book::CellFormat;
 
     /// 書いた styles.xml が**厳しい parser でも読めるか**。
     ///

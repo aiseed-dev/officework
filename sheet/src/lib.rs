@@ -18,12 +18,7 @@ pub mod tabledesign;
 pub mod theme;
 pub mod xlsx;
 
-// **升目の模型と式の計算は kumihan にあります**(2026-08-26)。ここに
-// 置いているのは今までの呼び方を残すための再輸出で、呼ぶ側を
-// `kumihan::book` / `kumihan::calc` に向け替えたら消します。
-pub use kumihan::book as model;
-pub use kumihan::{calc, datetime_names, grid};
-
-pub use kumihan::book::{Book, Cell, Pos, Sheet, Value};
-pub use kumihan::calc::funcs::civil_from_days;
-pub use kumihan::calc::{recalc, recalc_all, recalc_book};
+// **升目の模型と式の計算は kumihan にあります**(2026-08-26。SEKKEI
+// 「エンジンは3つに分ける」)。ここでは再輸出しません — この crate から
+// 引けると、xlsx のエンジンが模型を持っているように見えるためです。
+// 呼ぶ側は `kumihan::book` と `kumihan::calc` を直に使ってください。

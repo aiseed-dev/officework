@@ -30,7 +30,7 @@
 //! だから**配られたテンプレートは書き替えません** — 呼ぶ側は、既にある
 //! ファイルを上書きしないでください。
 
-use crate::model::{Book, Pos, Sheet};
+use kumihan::book::{Book, Pos, Sheet};
 use kumihan::{Block, Cellbox, Document, Table};
 
 /// 1枚ぶんの見た目。
@@ -389,7 +389,7 @@ pub fn strip(s: &mut Sheet) {
 #[allow(non_snake_case)]
 mod tests {
     use super::*;
-    use crate::Cell;
+    use kumihan::book::Cell;
 
     fn ledger() -> Book {
         let mut b = Book::new();

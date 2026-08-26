@@ -18,6 +18,7 @@ path = "src/main.rs"
 
 [dependencies]
 sheet = { path = "../sheet" }
+kumihan = { path = "../engine" }
 # **JSON だけは自分で書かない。** 通信の言葉は向こうが決めた物で、
 # こちらに直す権利がない。手書きの parser は静かに間違える場所そのもの。
 # 核(sheet)には入れない — ここは末端の実行ファイルだけの依存

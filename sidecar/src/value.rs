@@ -9,8 +9,8 @@
 use std::collections::BTreeMap;
 
 use serde_json::{Map, Value, json};
-use sheet::model::{CondKind, CondOp, Pos};
-use sheet::{Book, Sheet};
+use kumihan::book::{CondKind, CondOp, Pos};
+use kumihan::book::{Book, Sheet};
 
 
 pub(crate) fn a1_col(mut c: u32) -> String {
@@ -186,12 +186,12 @@ pub(crate) fn open_result(
 
 pub(crate) fn cell_value(sh: &Sheet, p: Pos) -> Value {
     match sh.value(p) {
-        sheet::Value::Empty => Value::Null,
-        sheet::Value::Number(n) => json!(n),
-        sheet::Value::Text(s) => json!(s),
-        sheet::Value::Bool(b) => json!(b),
+        kumihan::book::Value::Empty => Value::Null,
+        kumihan::book::Value::Number(n) => json!(n),
+        kumihan::book::Value::Text(s) => json!(s),
+        kumihan::book::Value::Bool(b) => json!(b),
         // **誤りは文字として返す。** 向こうの CellValue に誤りの型が無い
-        sheet::Value::Error(e) => json!(e),
+        kumihan::book::Value::Error(e) => json!(e),
     }
 }
 
@@ -430,7 +430,7 @@ pub(crate) fn style_table(book: &Book) -> Vec<Value> {
     }
 }
 
-pub(crate) fn edge_value(e: &sheet::model::Edge) -> Option<Value> {
+pub(crate) fn edge_value(e: &kumihan::book::Edge) -> Option<Value> {
     if !e.on {
         return None;
     }
@@ -443,7 +443,7 @@ pub(crate) fn edge_value(e: &sheet::model::Edge) -> Option<Value> {
 }
 
 /// `CellFormat` を向こうの `CellStyle` の形へ。**既定のままなら `None`。**
-pub(crate) fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
+pub(crate) fn style_value(f: &kumihan::book::CellFormat) -> Option<Value> {
     let mut o = Map::new();
     if let Some(n) = &f.font {
         o.insert("fontFamily".into(), json!(n));
@@ -513,7 +513,7 @@ pub(crate) fn style_value(f: &sheet::model::CellFormat) -> Option<Value> {
 /// 番号を付けないため)が、`styles[]` の**隙間を埋めるには実体が要る** —
 /// 向こうの schema は表の中の書式にも `bold: z.boolean()` を求めている。
 pub(crate) fn plain_style() -> Value {
-    let mut f = sheet::model::CellFormat::default();
+    let mut f = kumihan::book::CellFormat::default();
     // 素だと `None` が返るので、いったん崩して作らせ、その印を消す
     f.bold = true;
     let mut v = style_value(&f).expect("素でない書式が None になった");
@@ -591,7 +591,7 @@ pub(crate) fn absolute(r: &str) -> String {
 /// (2026-08-10。前は**いつも false** で、Excel で赤字・太字にした規則が
 /// 太字と文字色を落として届いていた)。
 /// `wrapText`・`diagonalUp/Down` はこちらが dxf から読んでいないので false
-pub(crate) fn dxf_value(c: &sheet::model::CondRule) -> Value {
+pub(crate) fn dxf_value(c: &kumihan::book::CondRule) -> Value {
     let mut o = Map::new();
     let lk = &c.look;
     for (k, v) in [

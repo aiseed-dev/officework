@@ -402,7 +402,7 @@ impl Calc {
                     .font_weight(gpui::FontWeight::BOLD)
                     .child(ui::t!("custom_properties")));
             for (i, p) in self.book.props.custom.iter().enumerate() {
-                use sheet::model::CustomVal;
+                use kumihan::book::CustomVal;
                 let (kind, val) = match &p.value {
                     CustomVal::Text(t) => (ui::t!("character").to_string(), t.clone()),
                     CustomVal::Number(n) => (ui::t!("number").to_string(), format!("{n}")),

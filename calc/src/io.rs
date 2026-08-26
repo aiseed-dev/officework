@@ -94,7 +94,7 @@ impl Calc {
                     let mut line = String::new();
                     for c in 0..cols {
                         let v = sh
-                            .get(sheet::Pos::new(r, c))
+                            .get(kumihan::book::Pos::new(r, c))
                             .map(|x| x.value.display())
                             .unwrap_or_default();
                         if !line.is_empty() {
@@ -258,7 +258,7 @@ impl Calc {
         let bytes2 = bytes.clone();
         match sheet::xlsx::read(std::io::Cursor::new(bytes)) {
             Ok((mut book, rep)) => {
-                sheet::recalc_all(&mut book);
+                kumihan::calc::recalc_all(&mut book);
                 let notes = rep
                     .unsupported
                     .iter()
@@ -411,7 +411,7 @@ impl Calc {
     pub(crate) fn adopt_salvaged(
         &mut self,
         p: PathBuf,
-        book: sheet::Book,
+        book: kumihan::book::Book,
         notes: Vec<SharedString>,
         status: String,
     ) {
@@ -422,7 +422,7 @@ impl Calc {
         self.release_lock();
     }
 
-    fn adopt_book(&mut self, p: PathBuf, book: sheet::Book, notes: Vec<SharedString>, status: String) {
+    fn adopt_book(&mut self, p: PathBuf, book: kumihan::book::Book, notes: Vec<SharedString>, status: String) {
         {
             {
                 // **旗はここで下ろします。** 別のブックを開いたら、拾い集めた
@@ -508,7 +508,7 @@ impl Calc {
         };
         match sheet::xlsx::read(std::io::Cursor::new(raw)) {
             Ok((mut book, _rep)) => {
-                sheet::recalc_all(&mut book);
+                kumihan::calc::recalc_all(&mut book);
                 self.release_lock();
                 self.locked_by = None;
                 self.book = book;
@@ -805,7 +805,7 @@ impl Calc {
             let mut line: Vec<String> = Vec::new();
             for c in 0..cols.max(1) {
                 let v = s
-                    .get(sheet::Pos::new(r, c))
+                    .get(kumihan::book::Pos::new(r, c))
                     .map(|x| x.value.display())
                     .unwrap_or_default();
                 if v.contains(delim) || v.contains('"') || v.contains('\n') || v.contains('\r') {
@@ -904,11 +904,11 @@ impl Calc {
         for r in 0..rows {
             out.push_str("<tr>");
             for c in 0..cols {
-                let pos = sheet::Pos::new(r, c);
+                let pos = kumihan::book::Pos::new(r, c);
                 let cell = s.get(pos);
                 let text = cell
                     .map(|x| {
-                        sheet::model::format_value(
+                        kumihan::book::format_value(
                             &x.value,
                             x.fmt.number_format.as_deref(),
                             d1904,
@@ -921,8 +921,8 @@ impl Calc {
                         mark.push('b');
                     }
                     match x.fmt.align {
-                        sheet::model::HAlign::Right => mark.push('r'),
-                        sheet::model::HAlign::Center => mark.push('c'),
+                        kumihan::book::HAlign::Right => mark.push('r'),
+                        kumihan::book::HAlign::Center => mark.push('c'),
                         _ => {}
                     }
                 }
@@ -1096,7 +1096,7 @@ impl Calc {
                             Some((w, h)) => {
                                 this.checkpoint();
                                 let at = this.cursor;
-                                this.sheet_mut().images_new.push(sheet::model::SheetImage {
+                                this.sheet_mut().images_new.push(kumihan::book::SheetImage {
                                     at,
             dx_px: 0.0,
             dy_px: 0.0,
@@ -1174,7 +1174,7 @@ impl Calc {
         let (fam, exact) = kumihan::font::for_document(None).map_err(|e| e.to_string())?;
         let data = kumihan::font::load(fam).map_err(|e| e.to_string())?;
         let prev = self.active;
-        let mut jobs: Vec<(&sheet::Sheet, paper::Paper, paper::grid::PrintSetup)> = Vec::new();
+        let mut jobs: Vec<(&kumihan::book::Sheet, paper::Paper, paper::grid::PrintSetup)> = Vec::new();
         // 紙と余白は**シートごと**に効く(1冊に縦と横が混ざってよい)。
         // paper_of_sheet はいま出ているシートを見るので、順に差し替えて集める
         let mut papers: Vec<paper::Paper> = Vec::new();

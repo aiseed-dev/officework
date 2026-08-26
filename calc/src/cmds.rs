@@ -9,24 +9,24 @@ fn py_bool(b: bool) -> &'static str {
 
 /// セル1つを Python の値として書く(記録の `value = [[…]]` の材料)。
 /// **式は "=…" の字で書く** — 値を焼き付けず、入れ直せば式のまま入る
-fn py_cell(c: Option<&sheet::Cell>) -> String {
+fn py_cell(c: Option<&kumihan::book::Cell>) -> String {
     let Some(c) = c else { return "none".into() };
     if let Some(f) = &c.formula {
         return format!("{:?}", format!("={f}"));
     }
     match &c.value {
-        sheet::Value::Empty => "none".into(),
-        sheet::Value::Number(n) => {
+        kumihan::book::Value::Empty => "none".into(),
+        kumihan::book::Value::Number(n) => {
             if (n - n.round()).abs() < f64::EPSILON && n.abs() < 1e15 {
                 format!("{}", *n as i64)
             } else {
                 format!("{n}")
             }
         }
-        sheet::Value::Bool(b) => py_bool(*b).into(),
+        kumihan::book::Value::Bool(b) => py_bool(*b).into(),
         // 誤りの値は**字として**入れる(=DIV/0! を書き戻すと式になってしまう)
-        sheet::Value::Error(e) => format!("{e:?}"),
-        sheet::Value::Text(s) => format!("{s:?}"),
+        kumihan::book::Value::Error(e) => format!("{e:?}"),
+        kumihan::book::Value::Text(s) => format!("{s:?}"),
     }
 }
 
@@ -186,7 +186,7 @@ impl Calc {
         // **連続データ(オートフィル)**: 元が全部数で2つ以上あり、間隔が
         // 一定なら、写すのではなく**続きを作る**(1,2 → 3,4,5…。本家と同じ)。
         // 1つだけ・式・文字は写す(本家の既定と同じ)
-        let series_of = |vals: &[Option<sheet::Cell>]| -> Option<(f64, f64)> {
+        let series_of = |vals: &[Option<kumihan::book::Cell>]| -> Option<(f64, f64)> {
             let nums: Vec<f64> = vals
                 .iter()
                 .map(|c| match c {
@@ -212,7 +212,7 @@ impl Calc {
         if to.row > b.row {
             let h = b.row - a.row + 1;
             for c in a.col..=b.col {
-                let srcs: Vec<Option<sheet::Cell>> =
+                let srcs: Vec<Option<kumihan::book::Cell>> =
                     (a.row..=b.row).map(|r| sh.get(Pos::new(r, c)).cloned()).collect();
                 let series = series_of(&srcs);
                 for r in b.row + 1..=to.row {
@@ -231,7 +231,7 @@ impl Calc {
                         cell.formula = None;
                     } else if let Some(f) = src.as_ref().and_then(|s| s.formula.as_ref()) {
                         cell.formula =
-                            Some(sheet::model::offset_refs(f, (r - src_r) as i64, 0));
+                            Some(kumihan::book::offset_refs(f, (r - src_r) as i64, 0));
                     }
                     sh.set(p, cell);
                     n += 1;
@@ -240,7 +240,7 @@ impl Calc {
         } else if to.col > b.col {
             let w = b.col - a.col + 1;
             for r in a.row..=b.row {
-                let srcs: Vec<Option<sheet::Cell>> =
+                let srcs: Vec<Option<kumihan::book::Cell>> =
                     (a.col..=b.col).map(|c| sh.get(Pos::new(r, c)).cloned()).collect();
                 let series = series_of(&srcs);
                 for c in b.col + 1..=to.col {
@@ -259,7 +259,7 @@ impl Calc {
                         cell.formula = None;
                     } else if let Some(f) = src.as_ref().and_then(|s| s.formula.as_ref()) {
                         cell.formula =
-                            Some(sheet::model::offset_refs(f, 0, (c - src_c) as i64));
+                            Some(kumihan::book::offset_refs(f, 0, (c - src_c) as i64));
                     }
                     sh.set(p, cell);
                     n += 1;
@@ -407,24 +407,24 @@ impl Calc {
                 if r == a.row {
                     cell.fmt.bold = true;
                     cell.fmt.fill = style.header.map(|h| h.into());
-                    cell.fmt.borders.top = sheet::model::Edge::THIN;
+                    cell.fmt.borders.top = kumihan::book::Edge::THIN;
                 } else if (r - a.row) % 2 == 0 {
                     cell.fmt.fill = style.band.map(|h| h.into());
                 }
                 if r == b.row {
-                    cell.fmt.borders.bottom = sheet::model::Edge::THIN;
+                    cell.fmt.borders.bottom = kumihan::book::Edge::THIN;
                 }
                 if c == a.col {
-                    cell.fmt.borders.left = sheet::model::Edge::THIN;
+                    cell.fmt.borders.left = kumihan::book::Edge::THIN;
                 }
                 if c == b.col {
-                    cell.fmt.borders.right = sheet::model::Edge::THIN;
+                    cell.fmt.borders.right = kumihan::book::Edge::THIN;
                 }
                 self.book.sheets[self.active].set(p, cell);
             }
         }
         let n = self.book.sheets.iter().map(|s| s.tables.len()).sum::<usize>() + 1;
-        self.book.sheets[self.active].tables.push(sheet::model::TableDef {
+        self.book.sheets[self.active].tables.push(kumihan::book::TableDef {
             name: format!("テーブル{n}"),
             a,
             b,
@@ -522,7 +522,7 @@ impl Calc {
     /// **半分書けたものを「書けた」と数えない**(黙って半分だけ走るマクロは、
     /// 走らないマクロより悪い)。判定は field を数えず、**表せた分を写した
     /// 姿と本物を突き合わせる** — 項目が増えても勝手に追いつく
-    pub(crate) fn rec_fmt_diff(&self, before: &sheet::model::CellFormat) -> (Vec<String>, bool) {
+    pub(crate) fn rec_fmt_diff(&self, before: &kumihan::book::CellFormat) -> (Vec<String>, bool) {
         let after = self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
         if after == *before {
             return (Vec::new(), true);
@@ -653,7 +653,7 @@ impl Calc {
     ///
     /// 広がりすぎたら諦めて `None` を返す(註が残る)。1つの操作が
     /// 数千の欄を書き替えたなら、それは記録ではなくブックの複製になる。
-    pub(crate) fn rec_value_diff(&self, before: &sheet::Sheet) -> Option<String> {
+    pub(crate) fn rec_value_diff(&self, before: &kumihan::book::Sheet) -> Option<String> {
         let after = self.sheet();
         let mut lo: Option<(u32, u32, u32, u32)> = None;
         let keys: std::collections::BTreeSet<Pos> =
@@ -702,7 +702,7 @@ impl Calc {
     /// 数えていた** — 下揃えのセルにもう一度下揃えを掛ける、空の切り取り板を
     /// 貼る、1セルだけ選んで並べ替える。穴の数え上げで 8 件中 5 件がこれだった
     /// (2026-08-16)。**嘘の宿題は、宿題の一覧を読む気を失わせる。**
-    pub(crate) fn sheet_changed(&self, before: &sheet::Sheet) -> bool {
+    pub(crate) fn sheet_changed(&self, before: &kumihan::book::Sheet) -> bool {
         let a = self.sheet();
         if a.cells.len() != before.cells.len() {
             return true;
@@ -721,7 +721,7 @@ impl Calc {
             return true;
         }
         for (t, u) in a.tables.iter().zip(&before.tables) {
-            let key = |x: &sheet::model::TableDef| {
+            let key = |x: &kumihan::book::TableDef| {
                 (
                     x.name.clone(),
                     x.a,
@@ -778,7 +778,7 @@ impl Calc {
     /// **印刷の設定の差分から記録の行を起こす。** 余白・向き・紙・倍率・
     /// 枠線と見出しの印刷 — レイアウトタブのボタンは巡回するので、
     /// 「押した回数」ではなく**行き着いた姿**を書く
-    pub(crate) fn rec_page_diff(&self, before: &sheet::Sheet) -> Option<String> {
+    pub(crate) fn rec_page_diff(&self, before: &kumihan::book::Sheet) -> Option<String> {
         let a = self.sheet();
         let mut kw: Vec<String> = Vec::new();
         if before.paper_size != a.paper_size {
@@ -1045,9 +1045,9 @@ impl Calc {
                 }
             }
             // 縦の揃えと折り返し
-            "top" => self.fmt(|f| f.valign = sheet::model::VAlign::Top),
-            "middle" => self.fmt(|f| f.valign = sheet::model::VAlign::Middle),
-            "bottom" => self.fmt(|f| f.valign = sheet::model::VAlign::Bottom),
+            "top" => self.fmt(|f| f.valign = kumihan::book::VAlign::Top),
+            "middle" => self.fmt(|f| f.valign = kumihan::book::VAlign::Middle),
+            "bottom" => self.fmt(|f| f.valign = kumihan::book::VAlign::Bottom),
             "wrap" => self.fmt(|f| f.wrap = !f.wrap),
             // 文字の大きさの +/−。**一覧の17個を1段ずつ辿る**(±1pt ではない —
             // 本家もそう動く)。半端な値は動く向きの隣の一覧値へ寄り、端では止まる
@@ -1100,7 +1100,7 @@ impl Calc {
                             };
                             let mut cell = src.clone();
                             if let Some(f) = &src.formula {
-                                cell.formula = Some(sheet::model::offset_refs(f, 1, 0));
+                                cell.formula = Some(kumihan::book::offset_refs(f, 1, 0));
                             }
                             sh.set(Pos::new(a.row, c), cell);
                             n += 1;
@@ -1140,7 +1140,7 @@ impl Calc {
                             };
                             if let Some(f) = src.as_ref().and_then(|s| s.formula.as_ref()) {
                                 cell.formula =
-                                    Some(sheet::model::offset_refs(f, (r - a.row) as i64, 0));
+                                    Some(kumihan::book::offset_refs(f, (r - a.row) as i64, 0));
                             }
                             sh.set(p, cell);
                             n += 1;
@@ -1182,7 +1182,7 @@ impl Calc {
                             };
                             let mut cell = src.clone();
                             if let Some(f) = &src.formula {
-                                cell.formula = Some(sheet::model::offset_refs(f, 0, 1));
+                                cell.formula = Some(kumihan::book::offset_refs(f, 0, 1));
                             }
                             sh.set(Pos::new(r, a.col), cell);
                             n += 1;
@@ -1221,7 +1221,7 @@ impl Calc {
                             };
                             if let Some(f) = src.as_ref().and_then(|s| s.formula.as_ref()) {
                                 cell.formula =
-                                    Some(sheet::model::offset_refs(f, 0, (c - a.col) as i64));
+                                    Some(kumihan::book::offset_refs(f, 0, (c - a.col) as i64));
                             }
                             sh.set(p, cell);
                             n += 1;
@@ -1463,7 +1463,7 @@ impl Calc {
                     }
                 }
                 // **画面の言語の字が組める書体だけ**(2026-08-26)
-                let script = kumihan::font::script_of(&ui::language());
+                let script = kumihan::font::script_of(ui::language());
                 for f in all.iter().filter(|f| f.covers(script)) {
                     vals.push((f.name.clone(), f.ascii.clone()));
                 }
@@ -1502,7 +1502,7 @@ impl Calc {
                     .sheet()
                     .get(self.cursor)
                     .and_then(|c| c.formula.as_ref())
-                    .map(|f| sheet::calc::deps(f))
+                    .map(|f| kumihan::calc::deps(f))
                     .unwrap_or_default();
                 if deps.is_empty() {
                     self.status = ui::t!("cells_formula_references_no").into();
@@ -1526,7 +1526,7 @@ impl Calc {
                     .filter(|(_, c)| {
                         c.formula
                             .as_ref()
-                            .is_some_and(|f| sheet::calc::deps(f).contains(&me))
+                            .is_some_and(|f| kumihan::calc::deps(f).contains(&me))
                     })
                     .map(|(p, _)| *p)
                     .collect();
@@ -2201,10 +2201,10 @@ impl Calc {
             // 両端揃え(セルの横揃え。折り返した行を左右に伸ばす)
             "align-just" => {
                 self.fmt(|f| {
-                    f.align = if f.align == sheet::model::HAlign::Justify {
-                        sheet::model::HAlign::General
+                    f.align = if f.align == kumihan::book::HAlign::Justify {
+                        kumihan::book::HAlign::General
                     } else {
-                        sheet::model::HAlign::Justify
+                        kumihan::book::HAlign::Justify
                     };
                     f.wrap = true; // 揃えるには折り返しが要る
                 });
@@ -2833,9 +2833,9 @@ impl Calc {
                 self.commit();
                 let at = self.pop_anchor();
                 let (hl, hc, hr) =
-                    sheet::model::hf_split(self.sheet().header.as_deref().unwrap_or(""));
+                    kumihan::book::hf_split(self.sheet().header.as_deref().unwrap_or(""));
                 let (fl, fc, fr) =
-                    sheet::model::hf_split(self.sheet().footer.as_deref().unwrap_or(""));
+                    kumihan::book::hf_split(self.sheet().footer.as_deref().unwrap_or(""));
                 // 鍵は欄の名前だけ(picks.rs は ':' の前で切って引き当てる)。
                 // 中身は**その人が打った字**なので、見出しの側にだけ添える
                 let show = |(k, l): (&'static str, &'static str), v: &str| {
@@ -3083,7 +3083,7 @@ impl Calc {
                             None => {}
                             Some(Ok((p, mut other))) => {
                                 this.checkpoint();
-                                sheet::recalc_all(&mut other);
+                                kumihan::calc::recalc_all(&mut other);
                                 let mut n = 0usize;
                                 for mut sh in other.sheets.drain(..) {
                                     // 式は計算結果の値に(他所の参照を持ち込まない)
@@ -3291,7 +3291,7 @@ impl Calc {
                         continue;
                     }
                     let Some(v) = flash_apply(&recipe, &src) else { continue };
-                    self.book.sheets[self.active].set(p, sheet::Cell::input(&v));
+                    self.book.sheets[self.active].set(p, kumihan::book::Cell::input(&v));
                     n += 1;
                 }
                 if n == 0 {
@@ -3557,7 +3557,7 @@ impl Calc {
                 // テキストボックス = 枠の図形 + 文字。すぐ文字のパネルを開く
                 self.checkpoint();
                 let at = self.cursor;
-                self.sheet_mut().shapes_new.push(sheet::model::SheetShape {
+                self.sheet_mut().shapes_new.push(kumihan::book::SheetShape {
                     at,
                     width_px: 200.0,
                     height_px: 80.0,
@@ -3902,7 +3902,7 @@ impl Calc {
                 for col in 0..cols.max(1) {
                     let head = self
                         .sheet()
-                        .get(sheet::Pos::new(0, col))
+                        .get(kumihan::book::Pos::new(0, col))
                         .map(|x| x.value.display())
                         .unwrap_or_default();
                     let name = if head.is_empty() {
@@ -4117,7 +4117,7 @@ impl Calc {
             }
             Some(snap) => {
                 let (who, when) = (crate::io::lock_identity(), crate::util::now_stamp());
-                let mut add: Vec<sheet::model::ChangeRec> = Vec::new();
+                let mut add: Vec<kumihan::book::ChangeRec> = Vec::new();
                 for s in &self.book.sheets {
                     let before: &std::collections::BTreeMap<Pos, String> = snap
                         .iter()
@@ -4129,7 +4129,7 @@ impl Calc {
                         let now = c.editable().to_string();
                         let was = before.get(p).cloned().unwrap_or_default();
                         if was != now {
-                            add.push(sheet::model::ChangeRec {
+                            add.push(kumihan::book::ChangeRec {
                                 who: who.clone(),
                                 when: when.clone(),
                                 sheet: s.name.clone(),
@@ -4142,7 +4142,7 @@ impl Calc {
                     // 消えたセル
                     for (p, was) in before {
                         if !s.cells.contains_key(p) && !was.is_empty() {
-                            add.push(sheet::model::ChangeRec {
+                            add.push(kumihan::book::ChangeRec {
                                 who: who.clone(),
                                 when: when.clone(),
                                 sheet: s.name.clone(),

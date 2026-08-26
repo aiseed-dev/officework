@@ -135,7 +135,7 @@ impl Calc {
                 let scoped = v == "sheet_only";
                 let s = &mut self.book.sheets[self.active];
                 s.names.retain(|d| d.name != name);
-                s.names.push(sheet::model::DefinedName {
+                s.names.push(kumihan::book::DefinedName {
                     name: name.clone(),
                     range: range.clone(),
                     scoped,
@@ -172,16 +172,16 @@ impl Calc {
                 // 三角に置いて、そこからポイント編集で好きな形にする
                 let pts = if kind == "path" {
                     vec![
-                        sheet::model::PathPoint::at(0.05, 0.9),
-                        sheet::model::PathPoint::at(0.5, 0.1),
-                        sheet::model::PathPoint::at(0.95, 0.9),
+                        kumihan::book::PathPoint::at(0.05, 0.9),
+                        kumihan::book::PathPoint::at(0.5, 0.1),
+                        kumihan::book::PathPoint::at(0.95, 0.9),
                     ]
                 } else {
                     Vec::new()
                 };
                 self.checkpoint();
                 let at = self.cursor;
-                self.sheet_mut().shapes_new.push(sheet::model::SheetShape {
+                self.sheet_mut().shapes_new.push(kumihan::book::SheetShape {
                     at,
                     width_px: 160.0,
                     height_px: 100.0,
@@ -761,7 +761,7 @@ impl Calc {
                     } else {
                         self.sheet().header.clone()
                     };
-                    let (l, c, r) = sheet::model::hf_split(raw.as_deref().unwrap_or(""));
+                    let (l, c, r) = kumihan::book::hf_split(raw.as_deref().unwrap_or(""));
                     let cur = match slot { 0 => l, 1 => c, _ => r };
                     self.hf_pend = Some((footer, slot));
                     self.prompt = Some(("hf-edit", Editor::new(&cur)));
@@ -1188,7 +1188,7 @@ impl Calc {
                 }
                 match sheet::xlsx::read(std::io::Cursor::new(s.bytes)) {
                     Ok((mut book, _rep)) => {
-                        sheet::recalc_all(&mut book);
+                        kumihan::calc::recalc_all(&mut book);
                         // **読めなかった部品を一件ずつ並べます。**
                         // 「修復しました」だけでは、どこに穴が空いたか分かりません
                         let mut notes: Vec<gpui::SharedString> = s
@@ -1259,7 +1259,7 @@ impl Calc {
                 };
                 self.checkpoint();
                 for (p, val) in &sc.cells {
-                    self.sheet_mut().set(*p, sheet::Cell::input(val));
+                    self.sheet_mut().set(*p, kumihan::book::Cell::input(val));
                 }
                 crate::recalc_book(&mut self.book, self.active);
                 self.dirty = true;
@@ -1410,7 +1410,7 @@ impl Calc {
                 else {
                     return;
                 };
-                let pattern = sheet::datetime_names::names(ui::language()).currency_pattern;
+                let pattern = kumihan::datetime_names::names(ui::language()).currency_pattern;
                 let code = currency_code(sym, dec, pattern);
                 let c = code.clone();
                 self.fmt(move |f| f.number_format = Some(c.clone()));
@@ -1472,11 +1472,11 @@ impl Calc {
                         if cell.formula.is_some() {
                             continue; // 式の結果は触らない(次の計算で戻ってしまう)
                         }
-                        let sheet::Value::Text(t) = &cell.value else { continue };
+                        let kumihan::book::Value::Text(t) = &cell.value else { continue };
                         let new_t = change_case(t, v);
                         if new_t != *t {
                             let mut cell = cell;
-                            cell.value = sheet::Value::Text(new_t);
+                            cell.value = kumihan::book::Value::Text(new_t);
                             self.sheet_mut().set(p, cell);
                             n += 1;
                         }
@@ -1616,7 +1616,7 @@ impl Calc {
                 // いまの塗りの色から白へ。色が無ければ薄い青から白へ
                 let from = now.fill.clone().unwrap_or_else(|| "DEEAF6".into());
                 self.fmt(move |f| {
-                    f.fill_grad = Some(sheet::model::Gradient {
+                    f.fill_grad = Some(kumihan::book::Gradient {
                         degree_c: deg,
                         stops: vec![(0, from.clone()), (1000, "FFFFFF".into())],
                         path: path.then(|| "path".to_string()),
@@ -1683,9 +1683,9 @@ impl Calc {
             | "sh-flip-v" | "sh-save" | "sh-settings" | "sh-points" => {
                 self.shape_menu_action(id)
             }
-            "sh-b-union" => self.shapes_boolean(sheet::model::BoolOp::Union),
-            "sh-b-inter" => self.shapes_boolean(sheet::model::BoolOp::Intersect),
-            "sh-b-sub" => self.shapes_boolean(sheet::model::BoolOp::Subtract),
+            "sh-b-union" => self.shapes_boolean(kumihan::book::BoolOp::Union),
+            "sh-b-inter" => self.shapes_boolean(kumihan::book::BoolOp::Intersect),
+            "sh-b-sub" => self.shapes_boolean(kumihan::book::BoolOp::Subtract),
             "sh-al-l" | "sh-al-c" | "sh-al-r" | "sh-al-t" | "sh-al-m" | "sh-al-b"
             | "sh-dist-h" | "sh-dist-v" => self.shape_align(id),
             "ps-values" => self.paste_special("values", cx),
@@ -1833,10 +1833,10 @@ impl Calc {
                 self.commit();
                 self.checkpoint();
                 let range = self.sel_rect();
-                self.book.sheets[self.active].cond.push(sheet::model::CondRule {
+                self.book.sheets[self.active].cond.push(kumihan::book::CondRule {
                     range,
-                    kind: sheet::model::CondKind::Cmp(sheet::model::CondOp::Lt, 0.0),
-                    look: sheet::model::CondLook {
+                    kind: kumihan::book::CondKind::Cmp(kumihan::book::CondOp::Lt, 0.0),
+                    look: kumihan::book::CondLook {
                         color: Some("C00000".into()),
                         ..Default::default()
                     },
@@ -1897,7 +1897,7 @@ impl Calc {
                 self.commit();
                 self.checkpoint();
                 let range = self.sel_rect();
-                use sheet::model::{CondKind, CondLook, CondRule};
+                use kumihan::book::{CondKind, CondLook, CondRule};
                 let (kind, color, fill, said) = match id {
                     "cond-dup" => (
                         CondKind::Dup(false),
@@ -2049,7 +2049,7 @@ impl Calc {
         self.commit();
         self.checkpoint();
         let range = self.sel_rect();
-        use sheet::model::{CondKind, CondLook, CondRule};
+        use kumihan::book::{CondKind, CondLook, CondRule};
         let (kind, said) = match id {
             "cond-bar" => (
                 CondKind::Bar("638EC6".into()),
@@ -2263,7 +2263,7 @@ impl Calc {
             self.cursor.a1()
         };
         self.checkpoint();
-        self.sheet_mut().names.push(sheet::model::DefinedName::new(t.clone(), range.clone()));
+        self.sheet_mut().names.push(kumihan::book::DefinedName::new(t.clone(), range.clone()));
         self.dirty = true;
         self.status = ui::tf!("assigned_name_recall_name", t, range).into();
     }
@@ -2543,11 +2543,11 @@ impl Calc {
         let mut cell = self.sheet().get(p).cloned().unwrap_or_default();
         if kind == "none" {
             cell.formula = None;
-            cell.value = sheet::Value::Empty;
+            cell.value = kumihan::book::Value::Empty;
             self.book.sheets[self.active].set(p, cell);
             self.status = ui::t!("removed_total_formula_format").into();
         } else {
-            let v = sheet::Cell::input(&format!("=SUBTOTAL({kind},{range})"));
+            let v = kumihan::book::Cell::input(&format!("=SUBTOTAL({kind},{range})"));
             cell.formula = v.formula;
             cell.value = v.value;
             self.book.sheets[self.active].set(p, cell);
@@ -2576,7 +2576,7 @@ impl Calc {
         for r in a.row..=b.row {
             for c in a.col..=b.col {
                 if let Some(cell) = self.sheet().get(Pos::new(r, c)) {
-                    if let sheet::Value::Number(n) = cell.value {
+                    if let kumihan::book::Value::Number(n) = cell.value {
                         vals.push(n);
                     }
                 }
@@ -2648,7 +2648,7 @@ impl Calc {
         };
         self.checkpoint();
         let (w, h) = (self.col_px(at.col) - 2.0, self.row_px(at.row) - 2.0);
-        self.sheet_mut().shapes_new.push(sheet::model::SheetShape {
+        self.sheet_mut().shapes_new.push(kumihan::book::SheetShape {
             at,
             width_px: w,
             height_px: h,
@@ -2659,7 +2659,7 @@ impl Calc {
             // **包むのは一番外で1回** — 分岐ごとに包むと読みにくい
             points: points
                 .into_iter()
-                .map(|(x, y)| sheet::model::PathPoint::at(x, y))
+                .map(|(x, y)| kumihan::book::PathPoint::at(x, y))
                 .collect(),
             base,
             ..Default::default()
@@ -2961,7 +2961,7 @@ impl Calc {
 
     pub(crate) fn apply_borders(&mut self, which: &str) {
         let (a, b) = self.sel_rect();
-        let e = sheet::model::Edge::line(self.pen_style, self.pen_color);
+        let e = kumihan::book::Edge::line(self.pen_style, self.pen_color);
         self.checkpoint();
         let sh = &mut self.book.sheets[self.active];
         for r in a.row..=b.row {
@@ -2989,7 +2989,7 @@ impl Calc {
                         if c == b.col { bd.right = e }
                     }
                     "all_borders_grid" => {
-                        *bd = sheet::model::Borders {
+                        *bd = kumihan::book::Borders {
                             top: e, bottom: e, left: e, right: e,
                         };
                     }
@@ -3002,7 +3002,7 @@ impl Calc {
                         if r > a.row { bd.top = e }
                         if r < b.row { bd.bottom = e }
                     }
-                    _ => *bd = sheet::model::Borders::NONE, // 罫線を消す
+                    _ => *bd = kumihan::book::Borders::NONE, // 罫線を消す
                 }
                 sh.set(p, cell);
             }
@@ -3127,7 +3127,7 @@ impl Calc {
             (!t.is_empty() || !m.is_empty())
                 .then_some((dv_styles()[d.err_style].0.to_string(), t, m))
         };
-        let new_v: Option<sheet::model::Validation> = match d.kind {
+        let new_v: Option<kumihan::book::Validation> = match d.kind {
             // 読めない種類(日付など)はそのまま保つ — 文言と空白の扱いだけ更新
             5 => d.keep.take().map(|mut v| {
                 v.range = (a, b);
@@ -3138,7 +3138,7 @@ impl Calc {
             }),
             // すべての値: 条件なし。文言も何も無ければ「規則なし」= 外す
             0 => (input_msg.is_some() || error_msg.is_some() || !d.allow_blank).then(|| {
-                let mut v = sheet::model::Validation::list((a, b), String::new());
+                let mut v = kumihan::book::Validation::list((a, b), String::new());
                 v.kind = String::new();
                 v.input_msg = input_msg.clone();
                 v.error_msg = error_msg.clone();
@@ -3159,7 +3159,7 @@ impl Calc {
                     Some(r) => r.trim().to_string(),
                     None => format!("\"{}\"", text.replace('"', "")),
                 };
-                let mut v = sheet::model::Validation::list((a, b), formula);
+                let mut v = kumihan::book::Validation::list((a, b), formula);
                 if v.options(self.sheet()).is_empty() {
                     // 読めない規則を作らない(できないものを、できるように見せない)
                     self.status =
@@ -3199,7 +3199,7 @@ impl Calc {
                     cx.notify();
                     return;
                 }
-                Some(sheet::model::Validation {
+                Some(kumihan::book::Validation {
                     range: (a, b),
                     formula: f1,
                     kind: DV_KIND_XLSX[k].into(),
@@ -3231,7 +3231,7 @@ impl Calc {
             }
         }
         // 選択に重なる規則は入れ替える(重ね掛けは分かりにくい)
-        let overlap = |x: &sheet::model::Validation| {
+        let overlap = |x: &kumihan::book::Validation| {
             let (ra, rb) = x.range;
             ra.row <= b.row && rb.row >= a.row && ra.col <= b.col && rb.col >= a.col
         };
@@ -3664,9 +3664,9 @@ impl Calc {
                     self.sheet().header.clone()
                 };
                 let (mut l, mut c, mut r) =
-                    sheet::model::hf_split(raw.as_deref().unwrap_or(""));
+                    kumihan::book::hf_split(raw.as_deref().unwrap_or(""));
                 match slot { 0 => l = text.clone(), 1 => c = text.clone(), _ => r = text.clone() }
-                let joined = sheet::model::hf_join(&l, &c, &r);
+                let joined = kumihan::book::hf_join(&l, &c, &r);
                 let val = if joined.is_empty() { None } else { Some(joined) };
                 if footer {
                     self.sheet_mut().footer = val;
@@ -3753,7 +3753,7 @@ impl Calc {
                 // 名乗りは共同編集の名前を使う。無ければ空のまま —
                 // **「不明」のような名前を作らない**
                 let who = ui::comment_author();
-                th.entries.push(sheet::model::CommentEntry { who, when: String::new(), text: t });
+                th.entries.push(kumihan::book::CommentEntry { who, when: String::new(), text: t });
                 self.dirty = true;
                 self.status =
                     ui::tf!("replied_comment_kept_save", p.a1()).into();
@@ -4101,13 +4101,13 @@ impl Calc {
                 self.checkpoint();
                 let range = self.sel_rect();
                 let gt = kind == "cond-gt";
-                self.book.sheets[self.active].cond.push(sheet::model::CondRule {
+                self.book.sheets[self.active].cond.push(kumihan::book::CondRule {
                     range,
-                    kind: sheet::model::CondKind::Cmp(
-                        if gt { sheet::model::CondOp::Gt } else { sheet::model::CondOp::Lt },
+                    kind: kumihan::book::CondKind::Cmp(
+                        if gt { kumihan::book::CondOp::Gt } else { kumihan::book::CondOp::Lt },
                         value,
                     ),
-                    look: sheet::model::CondLook {
+                    look: kumihan::book::CondLook {
                         fill: Some(if gt { "E2EFDA".into() } else { "FCE4D6".into() }),
                         ..Default::default()
                     },
@@ -4139,10 +4139,10 @@ impl Calc {
                 };
                 self.checkpoint();
                 let range = self.sel_rect();
-                self.book.sheets[self.active].cond.push(sheet::model::CondRule {
+                self.book.sheets[self.active].cond.push(kumihan::book::CondRule {
                     range,
-                    kind: sheet::model::CondKind::Between(lo.min(hi), lo.max(hi), false),
-                    look: sheet::model::CondLook {
+                    kind: kumihan::book::CondKind::Between(lo.min(hi), lo.max(hi), false),
+                    look: kumihan::book::CondLook {
                         fill: Some("FFF2CC".into()),
                         ..Default::default()
                     },
@@ -4157,10 +4157,10 @@ impl Calc {
                 }
                 self.checkpoint();
                 let range = self.sel_rect();
-                self.book.sheets[self.active].cond.push(sheet::model::CondRule {
+                self.book.sheets[self.active].cond.push(kumihan::book::CondRule {
                     range,
-                    kind: sheet::model::CondKind::Text(text.clone()),
-                    look: sheet::model::CondLook {
+                    kind: kumihan::book::CondKind::Text(text.clone()),
+                    look: kumihan::book::CondLook {
                         fill: Some("FFF2CC".into()),
                         ..Default::default()
                     },
@@ -4177,10 +4177,10 @@ impl Calc {
                 let bottom = kind == "cond-bottom";
                 self.checkpoint();
                 let range = self.sel_rect();
-                self.book.sheets[self.active].cond.push(sheet::model::CondRule {
+                self.book.sheets[self.active].cond.push(kumihan::book::CondRule {
                     range,
-                    kind: sheet::model::CondKind::Top(n.max(1), bottom),
-                    look: sheet::model::CondLook {
+                    kind: kumihan::book::CondKind::Top(n.max(1), bottom),
+                    look: kumihan::book::CondLook {
                         fill: Some(if bottom { "FCE4D6".into() } else { "D9E1F2".into() }),
                         ..Default::default()
                     },
@@ -4405,7 +4405,7 @@ impl Calc {
                     .filter_map(|r| {
                         let p = Pos::new(r, col);
                         match self.sheet().get(p).map(|c| &c.value) {
-                            Some(sheet::Value::Text(t)) if t.contains(&delim) => {
+                            Some(kumihan::book::Value::Text(t)) if t.contains(&delim) => {
                                 Some((p, t.clone()))
                             }
                             _ => None,
@@ -4430,7 +4430,7 @@ impl Calc {
                         // 選ばせるのではなく、規則1つで塞ぎます
                         let mut cell = Cell {
                             formula: None,
-                            value: sheet::Value::Text(part.to_string()),
+                            value: kumihan::book::Value::Text(part.to_string()),
                             fmt: Default::default(),
                         };
                         cell.fmt = fmt;
@@ -4593,7 +4593,7 @@ impl Calc {
                 let before = self.sheet().scenarios.len();
                 self.sheet_mut().scenarios.retain(|s| s.name != name);
                 let overwrite = self.sheet().scenarios.len() < before;
-                self.sheet_mut().scenarios.push(sheet::model::Scenario {
+                self.sheet_mut().scenarios.push(kumihan::book::Scenario {
                     name: name.clone(),
                     cells,
                     comment: String::new(),
@@ -4654,7 +4654,7 @@ impl Calc {
             // カスタムプロパティ 3/3 — 値。**ここで初めて足す**
             "prop-add-value" => {
                 let Some((name, kind)) = self.prop_add.take() else { return };
-                use sheet::model::{CustomProp, CustomVal};
+                use kumihan::book::{CustomProp, CustomVal};
                 let value = match kind {
                     PropKind::Text => CustomVal::Text(text),
                     PropKind::Number => match text.trim().parse::<f64>() {
@@ -4894,7 +4894,7 @@ impl Calc {
                     if text != cur {
                         self.checkpoint();
                         let mut cell = self.sheet().get(p).cloned().unwrap_or_default();
-                        let v = sheet::Cell::input(&text);
+                        let v = kumihan::book::Cell::input(&text);
                         cell.formula = v.formula;
                         cell.value = v.value;
                         self.book.sheets[self.active].set(p, cell);
@@ -4917,10 +4917,10 @@ impl Calc {
             for c in a.col..=b.col {
                 let p = Pos::new(r, c);
                 let mut cell = self.sheet().get(p).cloned().unwrap_or_default();
-                if r == a.row { cell.fmt.borders.top = sheet::model::Edge::THIN }
-                if r == b.row { cell.fmt.borders.bottom = sheet::model::Edge::THIN }
-                if c == a.col { cell.fmt.borders.left = sheet::model::Edge::THIN }
-                if c == b.col { cell.fmt.borders.right = sheet::model::Edge::THIN }
+                if r == a.row { cell.fmt.borders.top = kumihan::book::Edge::THIN }
+                if r == b.row { cell.fmt.borders.bottom = kumihan::book::Edge::THIN }
+                if c == a.col { cell.fmt.borders.left = kumihan::book::Edge::THIN }
+                if c == b.col { cell.fmt.borders.right = kumihan::book::Edge::THIN }
                 self.book.sheets[self.active].set(p, cell);
             }
         }
@@ -5028,7 +5028,7 @@ impl Calc {
     /// シートを1枚足して、そこへ移る。
     pub(crate) fn add_sheet(&mut self) {
         let name = unique_sheet_name(&self.book);
-        self.book.sheets.push(sheet::Sheet::new(&name));
+        self.book.sheets.push(kumihan::book::Sheet::new(&name));
         self.dirty = true;
         self.switch_sheet(self.book.sheets.len() - 1);
     }
@@ -5205,7 +5205,7 @@ impl Calc {
         match v {
             "insert" => {
                 let name = unique_sheet_name(&self.book);
-                self.book.sheets.insert(t + 1, sheet::Sheet::new(&name));
+                self.book.sheets.insert(t + 1, kumihan::book::Sheet::new(&name));
                 self.sheet_ui.insert(t + 1, (Pos::new(0, 0), Pos::new(0, 0), None));
                 for w in self.watch.iter_mut() {
                     if w.0 > t {

@@ -17,14 +17,14 @@
 //! - [`funcs`] 関数の library。`SUM` から動的配列まで
 //! - [`run`] 再計算の駆動。依存・順序・スピル・循環の検出・UDF
 //!
-//! 外から見える名前はここに集めてある。呼ぶ側は `sheet::calc::…` のまま。
+//! 外から見える名前はここに集めてある。呼ぶ側は `kumihan::calc::…` のまま。
 
 pub mod funcs;
 mod parse;
 mod run;
 
 // **外から呼ばれる名前はここに集める。** どのモジュールに置いたかを
-// 呼ぶ側に知らせない — 置き場を変えても `sheet::calc::…` は変わらない
+// 呼ぶ側に知らせない — 置き場を変えても `kumihan::calc::…` は変わらない
 pub use funcs::date_serial;
 pub use funcs::{date_serial_at, excel_epoch};
 // 日付の粒でまとめる(タイムライン)に要る。通し番号 → 年月日

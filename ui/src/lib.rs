@@ -36,7 +36,7 @@ pub use lang::i18n::{language, language_label, languages, tr, tr_dyn, trf};
 /// 変わって、書体と大きさは前の言語のままになります。
 pub fn set_language(tag: &str) -> bool {
     let ok = lang::i18n::set_language(tag);
-    kumihan::font::set_default_language(&language());
+    kumihan::font::set_default_language(language());
     ok
 }
 
@@ -45,7 +45,7 @@ pub fn set_language(tag: &str) -> bool {
 /// [`set_language`] を通らずに言語が決まる道(環境変数 OFFICE_LANG と
 /// settings.toml)があるので、選び直さなくても効くようにします。
 pub fn init_language() {
-    kumihan::font::set_default_language(&language());
+    kumihan::font::set_default_language(language());
 }
 
 /// 画面の文言(そのままの文)。ja の文が鍵 — ja では何も変わらない
