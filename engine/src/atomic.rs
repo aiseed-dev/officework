@@ -70,7 +70,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 失敗しても元の中身は無事() {
+    fn the_original_content_survives_a_failure() {
         let dir = std::env::temp_dir().join(format!("office-atomic-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("大事な書類.docx");

@@ -82,7 +82,7 @@ mod tests {
 
     /// 段の数。文章 11 + 表 13 のうち共通が 9 で、合わせて 15
     #[test]
-    fn 十五段になる() {
+    fn the_result_has_fifteen_tabs() {
         let m = merged();
         assert_eq!(m.len(), 15, "段の数が合わない: {:?}", m.iter().map(|s| s.name).collect::<Vec<_>>());
         assert_eq!(m.iter().filter(|s| s.doc.is_some()).count(), 11);
@@ -97,7 +97,7 @@ mod tests {
     /// 代わりに**両方の表の同じ場所を突き合わせます** — どの言語でも
     /// 成り立つ言い方です。
     #[test]
-    fn 共通の段は名前が一致する() {
+    fn shared_tabs_have_matching_names() {
         let m = merged();
         let common: Vec<&Slot> =
             m.iter().filter(|s| s.doc.is_some() && s.sheet.is_some()).collect();
@@ -112,7 +112,7 @@ mod tests {
 
     /// **元の段が1つ残らず出る。** 抜けると押せない段ができる
     #[test]
-    fn 元の段が全部出る() {
+    fn every_original_tab_appears() {
         let m = merged();
         let mut d: Vec<usize> = m.iter().filter_map(|s| s.doc).collect();
         let mut s: Vec<usize> = m.iter().filter_map(|x| x.sheet).collect();
@@ -124,7 +124,7 @@ mod tests {
 
     /// 文章の並びは動かない(使う人が覚えた場所を変えない)
     #[test]
-    fn 文章の並びは動かない() {
+    fn the_writer_order_does_not_move() {
         let m = merged();
         for (i, _) in ribbon::writer_tabs().iter().enumerate().take(5) {
             assert_eq!(m[i].doc, Some(i), "{i} 番目がずれた");

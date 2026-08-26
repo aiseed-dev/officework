@@ -235,7 +235,7 @@ mod key_tests {
     }
 
     #[test]
-    fn 上書きは既定の鍵を置き換え_他の操作は無傷() {
+    fn an_override_replaces_one_key_and_leaves_the_rest() {
         let defaults = [("ctrl-b", "Bold"), ("ctrl-f", "Find"), ("ctrl-h", "Find")];
         let (rows, warns) = compose_keys(&defaults, &over(&[("bold", "alt-b")]), &known, &readable);
         assert!(rows.contains(&("alt-b".into(), "bold".into())), "{rows:?}");
@@ -245,7 +245,7 @@ mod key_tests {
     }
 
     #[test]
-    fn 知らない操作名は言い分になり_既定は動かない() {
+    fn an_unknown_action_is_reported_and_defaults_stay() {
         let defaults = [("ctrl-b", "Bold")];
         let (rows, warns) = compose_keys(&defaults, &over(&[("nosuch", "ctrl-x")]), &known, &readable);
         assert_eq!(warns, vec![super::KeyWarn::UnknownAction("nosuch".into())]);
@@ -253,7 +253,7 @@ mod key_tests {
     }
 
     #[test]
-    fn 読めない鍵だけの上書きは既定を残して言う() {
+    fn an_unreadable_override_keeps_defaults_and_says_so() {
         let defaults = [("ctrl-b", "Bold")];
         let (rows, warns) =
             compose_keys(&defaults, &over(&[("bold", "nosuchmod-b")]), &known, &readable);
@@ -266,7 +266,7 @@ mod key_tests {
     }
 
     #[test]
-    fn 空文字の上書きは鍵を外す() {
+    fn an_empty_override_removes_the_key() {
         let defaults = [("ctrl-b", "Bold"), ("ctrl-i", "Italic")];
         let (rows, warns) = compose_keys(&defaults, &over(&[("bold", "")]), &known, &readable);
         assert!(warns.is_empty(), "{warns:?}");
@@ -275,7 +275,7 @@ mod key_tests {
     }
 
     #[test]
-    fn 同じ鍵の取り合いは言い分になり_後の者が勝つ側に居る() {
+    fn a_contested_key_is_reported_and_the_later_one_wins() {
         let defaults = [("ctrl-b", "Bold"), ("ctrl-i", "Italic")];
         let (rows, warns) = compose_keys(&defaults, &over(&[("find", "ctrl-b")]), &known, &readable);
         assert_eq!(
@@ -289,7 +289,7 @@ mod key_tests {
     }
 
     #[test]
-    fn 複数の鍵はコンマで並べられる() {
+    fn several_keys_can_be_listed_with_commas() {
         let defaults = [("ctrl-b", "Bold")];
         let (rows, warns) = compose_keys(&defaults, &over(&[("bold", "alt-b, ctrl-shift-b")]), &known, &readable);
         assert!(warns.is_empty(), "{warns:?}");

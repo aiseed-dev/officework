@@ -306,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn 下の階層まで探し_隠しフォルダは辿らない() {
+    fn searches_subfolders_but_skips_hidden_ones() {
         let d = sample_dir("walk");
         let (v, t) = walk(&d, &Query::plain("unstructured"));
         let names: Vec<String> =
@@ -319,7 +319,7 @@ mod tests {
     }
 
     #[test]
-    fn 大文字と小文字を区別できる() {
+    fn can_match_case_sensitively() {
         let d = sample_dir("case");
         let mut q = Query::plain("Unstructured");
         q.case = true;
@@ -330,7 +330,7 @@ mod tests {
     }
 
     #[test]
-    fn 名前で絞れる() {
+    fn can_filter_by_name() {
         let d = sample_dir("glob");
         let mut q = Query::plain("unstructured");
         q.glob = "*.md".into();
@@ -341,7 +341,7 @@ mod tests {
     }
 
     #[test]
-    fn 行と位置は開いて飛べる値になる() {
+    fn line_and_offset_are_values_you_can_jump_to() {
         let hits = find_in("あ\nunstructured covariance\nい\n", "covariance", false, 9);
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].line, 2);
@@ -351,7 +351,7 @@ mod tests {
     }
 
     #[test]
-    fn 打ち切ったらそう言う() {
+    fn says_so_when_the_search_is_cut_short() {
         let d = sample_dir("cut");
         let mut q = Query::plain("unstructured");
         q.max_files = 1;
@@ -361,7 +361,7 @@ mod tests {
     }
 
     #[test]
-    fn 知らない形式は呼ぶ側が中身を渡せる() {
+    fn the_caller_can_hand_in_text_for_unknown_formats() {
         let d = sample_dir("ext");
         std::fs::write(d.join("五.docx"), [0u8; 8]).unwrap();
         let f = |p: &Path| -> Option<String> {
@@ -386,14 +386,14 @@ mod tests {
     }
 
     #[test]
-    fn 大きさの言い方() {
+    fn how_sizes_are_worded() {
         assert_eq!(human_size(512), "512B");
         assert_eq!(human_size(988_988), "965.81KB");
         assert_eq!(human_size(3 * 1024 * 1024), "3.00MB");
     }
 
     #[test]
-    fn 絞りの形() {
+    fn the_shape_of_a_filter() {
         assert!(matches_glob("a.TXT", "*.txt"));
         assert!(matches_glob("a.md", "*.txt;*.md"));
         assert!(!matches_glob("a.png", "*.txt;*.md"));

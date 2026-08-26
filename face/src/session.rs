@@ -141,12 +141,12 @@ mod tests {
     }
 
     #[test]
-    fn 綴って読むと同じ姿になる() {
+    fn writing_then_reading_gives_the_same_state() {
         assert_eq!(from_text(&to_text(&snapshot())), snapshot());
     }
 
     #[test]
-    fn 見ていたタブに印が付く() {
+    fn the_tab_in_view_gets_a_mark() {
         let t = to_text(&snapshot());
         assert!(t.contains("* /tmp/帳簿/売上台帳.sheet.adoc"), "{t}");
         assert!(t.contains("- /tmp/帳簿/報告書.adoc"), "{t}");
@@ -154,7 +154,7 @@ mod tests {
 
     /// **道に空白があっても切れない。** 印を先に置いているのがその理由
     #[test]
-    fn 空白のある道も読める() {
+    fn paths_with_spaces_still_read() {
         let s = from_text("folder /tmp/私 の 帳簿\n* /tmp/私 の 帳簿/売上 4月.sheet.adoc\n");
         assert_eq!(s.folder, Some(PathBuf::from("/tmp/私 の 帳簿")));
         assert_eq!(s.files, vec![PathBuf::from("/tmp/私 の 帳簿/売上 4月.sheet.adoc")]);
@@ -162,18 +162,18 @@ mod tests {
 
     /// 知らない行で起動が止まらない
     #[test]
-    fn 知らない行は飛ばす() {
+    fn unknown_lines_are_skipped() {
         let s = from_text("# 覚え\nzoom 120\n- /tmp/a.adoc\n");
         assert_eq!(s.files, vec![PathBuf::from("/tmp/a.adoc")]);
     }
 
     #[test]
-    fn 空でも読める() {
+    fn an_empty_file_still_reads() {
         assert_eq!(from_text(""), Session::default());
     }
 
     #[test]
-    fn 無くなったファイルは落として数える() {
+    fn missing_files_are_dropped_and_counted() {
         let d = std::env::temp_dir().join("ow-session-試験");
         std::fs::create_dir_all(&d).unwrap();
         let exists = d.join("在る.adoc");
@@ -191,7 +191,7 @@ mod tests {
 
     /// 見ていたタブが残っていれば、**そこへ戻る**(番号ではなく道で引く)
     #[test]
-    fn 見ていたタブは道で引き直す() {
+    fn the_tab_in_view_is_looked_up_by_path() {
         let d = std::env::temp_dir().join("ow-session-試験2");
         std::fs::create_dir_all(&d).unwrap();
         let a = d.join("a.adoc");

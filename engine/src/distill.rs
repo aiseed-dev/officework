@@ -296,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn いちばん多い見た目が本文になる() {
+    fn the_most_common_look_becomes_the_body_style() {
         let d = Document { blocks: vec![
             para("題", Some(16.0), true, ParaStyle::Heading(1)),
             para("ふつうの段落。", Some(10.5), false, ParaStyle::Body),
@@ -319,7 +319,7 @@ mod tests {
     }
 
     #[test]
-    fn 役割の無い見た目には名前を作る() {
+    fn a_look_without_a_role_gets_a_made_up_name() {
         let d = Document { blocks: vec![
             para("ふつう。", Some(10.5), false, ParaStyle::Body),
             para("ふつう2。", Some(10.5), false, ParaStyle::Body),
@@ -334,7 +334,7 @@ mod tests {
     }
 
     #[test]
-    fn 強調は意味なので残る() {
+    fn emphasis_is_meaning_so_it_stays() {
         let mut d = Document::default();
         let plain = CharFormat::default();
         let strong = CharFormat { bold: true, ..Default::default() };
@@ -354,7 +354,7 @@ mod tests {
     }
 
     #[test]
-    fn 落ちた物を数える() {
+    fn what_was_dropped_is_counted() {
         // 段落の見た目は 10.5pt。1つの run だけ 20pt = 段落の鍵に収まらない
         let mut d = Document::default();
         let p = Paragraph {
@@ -370,7 +370,7 @@ mod tests {
     }
 
     #[test]
-    fn 蒸留した物は合成で元の見た目に戻る() {
+    fn distilled_output_composes_back_to_the_original_look() {
         // **蒸留 → 合成が恒等に近いこと**(門番)。見出しの 16pt 太字が、
         // テンプレート経由で戻る
         let d = Document { blocks: vec![

@@ -457,7 +457,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 日本語を入れて消せる() {
+    fn japanese_can_be_typed_and_deleted() {
         let mut e = Editor::new("");
         e.insert("日本フネン");
         assert_eq!(e.text(), "日本フネン");
@@ -467,7 +467,7 @@ mod tests {
     }
 
     #[test]
-    fn カーソルは文字境界で動く() {
+    fn the_cursor_moves_on_character_boundaries() {
         let mut e = Editor::new("あa亜");
         e.move_to(0, false);
         e.move_char(true, false);
@@ -479,7 +479,7 @@ mod tests {
     }
 
     #[test]
-    fn 選択して置き換えられる() {
+    fn a_selection_can_be_replaced() {
         let mut e = Editor::new("防火ドア");
         e.move_to(0, false);
         e.move_char(true, true);
@@ -492,7 +492,7 @@ mod tests {
     // ---- IME: K2 の難所 ----
 
     #[test]
-    fn ime_変換中は未確定として本文に見えるが確定で一手になる() {
+    fn ime_preedit_shows_in_the_body_and_commits_as_one_step() {
         let mut e = Editor::new("特定");
         // 「ぼうか」と打つ(未確定)
         e.set_marked("ぼうか", None);
@@ -511,7 +511,7 @@ mod tests {
     }
 
     #[test]
-    fn ime_変換をやめると未確定は丸ごと消える() {
+    fn ime_cancelling_removes_the_whole_preedit() {
         let mut e = Editor::new("設備");
         e.set_marked("りよう", None);
         assert_eq!(e.text(), "設備りよう");
@@ -521,7 +521,7 @@ mod tests {
     }
 
     #[test]
-    fn ime_変換中のundoは変換の取り消しになる() {
+    fn ime_undo_during_preedit_cancels_the_conversion() {
         let mut e = Editor::new("申込");
         e.set_marked("よう", None);
         assert!(e.undo(), "未確定があるときの undo は変換の取り消し");
@@ -530,7 +530,7 @@ mod tests {
     }
 
     #[test]
-    fn ime_文節の選択が未確定の中で表される() {
+    fn ime_clause_selection_shows_inside_the_preedit() {
         let mut e = Editor::new("");
         // 「にほんふねん」→ 変換候補「日本フネン」、うち「日本」が変換対象
         e.set_marked("日本フネン", Some(0.."日本".len()));
@@ -539,7 +539,7 @@ mod tests {
     }
 
     #[test]
-    fn ime_選択を置き換える形で変換が始まる() {
+    fn ime_conversion_starts_by_replacing_the_selection() {
         let mut e = Editor::new("旧製品");
         e.select_all();
         e.set_marked("しんせいひん", None);
@@ -551,7 +551,7 @@ mod tests {
     }
 
     #[test]
-    fn undoとredoが往復する() {
+    fn undo_and_redo_round_trip() {
         let mut e = Editor::new("");
         e.insert("一");
         e.insert("二");
@@ -568,7 +568,7 @@ mod tests {
     }
 
     #[test]
-    fn utf16との往復が保たれる() {
+    fn utf16_offsets_round_trip() {
         let e = Editor::new("あa𩸽い"); // 𩸽 は UTF-16 で2単位・UTF-8 で4バイト
         assert_eq!(e.utf16_len(), 1 + 1 + 2 + 1);
         for (b, _) in e.text().char_indices().chain([(e.text().len(), ' ')]) {
@@ -578,7 +578,7 @@ mod tests {
     }
 
     #[test]
-    fn 空でも壊れない() {
+    fn an_empty_buffer_does_not_break() {
         let mut e = Editor::new("");
         e.backspace();
         e.delete();
@@ -593,7 +593,7 @@ mod tests {
     /// **区切りを打った時に替わる。** 綴りの途中では替わらない
     /// (`\alph` は表に無いので何も起きない)
     #[test]
-    fn 綴りは区切りを打った時に記号になる() {
+    fn a_spelling_becomes_a_symbol_when_a_delimiter_is_typed() {
         let mut e = Editor::new("");
         e.insert("\\alph"); // まだ綴りの途中
         assert!(!e.autocorrect_math(" "));
@@ -606,7 +606,7 @@ mod tests {
 
     /// **ふつうの言葉を勝手に置き換えない。** `\` が無ければ相手ではない
     #[test]
-    fn 円記号の無い綴りは触らない() {
+    fn spellings_without_a_yen_sign_are_left_alone() {
         let mut e = Editor::new("");
         e.insert("pi");
         assert!(!e.autocorrect_math(" "), "pi が π になった");
@@ -617,7 +617,7 @@ mod tests {
 
     /// 知らない綴りは残す(黙って消さない)
     #[test]
-    fn 表に無い綴りは残る() {
+    fn a_spelling_not_in_the_table_stays() {
         let mut e = Editor::new("");
         e.insert("\\nosuch");
         assert!(!e.autocorrect_math(" "));
@@ -627,7 +627,7 @@ mod tests {
     /// **元に戻せることが要件**(台帳の札)。直後の Backspace で綴りに戻り、
     /// 自分で打った区切りは残る
     #[test]
-    fn 直後のバックスペースで綴りに戻る() {
+    fn backspace_right_after_returns_to_the_spelling() {
         let mut e = Editor::new("");
         e.insert("x=\\ne");
         assert!(e.autocorrect_math("y"));
@@ -643,7 +643,7 @@ mod tests {
 
     /// Ctrl+Z(Editor の undo)でも1手で戻る — 記号と区切りで1手
     #[test]
-    fn 取り消しも一手() {
+    fn cancelling_is_also_one_step() {
         let mut e = Editor::new("");
         e.insert("\\times");
         assert!(e.autocorrect_math(" "));
@@ -654,7 +654,7 @@ mod tests {
 
     /// 別の打鍵をしたら控えは捨てる — 位置がたまたま戻っても吐き出さない
     #[test]
-    fn 打ち足したあとのバックスペースはふつうに消す() {
+    fn backspace_after_typing_deletes_normally() {
         let mut e = Editor::new("");
         e.insert("\\pi");
         assert!(e.autocorrect_math(" "));
@@ -665,7 +665,7 @@ mod tests {
     }
 
     #[test]
-    fn 表は綴りぴったりで引く() {
+    fn the_table_matches_the_spelling_exactly() {
         assert_eq!(math_symbol("\\alpha"), Some("α"));
         assert_eq!(math_symbol("\\alphabet"), None);
         assert_eq!(math_symbol("alpha"), None);

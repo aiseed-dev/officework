@@ -465,7 +465,7 @@ mod tests {
     }
 
     #[test]
-    fn 普通の文字は素通しする() {
+    fn ordinary_text_passes_through() {
         // 書式が1つも無ければ None — 普通のセルに費用を掛けない
         assert!(parse("日本フネン株式会社").is_none());
         assert!(parse("").is_none());
@@ -478,7 +478,7 @@ mod tests {
 
     /// **囲みの印は語の外だけ**(本家の決まり)。名前や式が化けない
     #[test]
-    fn 語の中の印は書式にしない() {
+    fn a_mark_inside_a_word_is_not_formatting() {
         assert!(parse("A_1_B").is_none(), "下線つきの名前が斜体に化けた");
         assert!(parse("=2*3*4 の答え").is_none(), "掛け算が太字に化けた");
         assert!(parse("ABC_001_X").is_none(), "英数字の名前が斜体に化けた");
@@ -492,7 +492,7 @@ mod tests {
     /// **日本語の文中は二重の印**(2026-08-19 発注者の指摘)。
     /// 一重は本家で字のまま出るので、確実なのは二重
     #[test]
-    fn 二重の印は文中で効く() {
+    fn a_doubled_mark_works_mid_sentence() {
         let s = one("これは**太字**です");
         assert_eq!(s.len(), 3);
         assert_eq!(s[1].text, "太字");
@@ -506,13 +506,13 @@ mod tests {
 
     /// 二重でも、中身が数字だけなら書式にしない(`2**3**4` は冪の字)
     #[test]
-    fn 数字だけの二重は書式にしない() {
+    fn digits_alone_between_marks_are_not_formatting() {
         assert!(parse("2**3**4").is_none(), "冪の字が太字に化けた");
         assert!(parse("x = 2**10").is_none(), "閉じの無い二重が化けた");
     }
 
     #[test]
-    fn 行の中の印を読む() {
+    fn reads_marks_within_a_line() {
         let s = one("これは*太字*です");
         assert_eq!(s.len(), 3);
         assert_eq!(s[0].text, "これは");
@@ -528,7 +528,7 @@ mod tests {
 
     /// 本家の書き方は `URL[字]`
     #[test]
-    fn リンクを読む() {
+    fn reads_a_link() {
         let s = one("詳しくは https://example.com/a[こちら] を見て");
         assert_eq!(s[1].text, "こちら");
         assert_eq!(s[1].link.as_deref(), Some("https://example.com/a"));
@@ -541,7 +541,7 @@ mod tests {
     }
 
     #[test]
-    fn 見出しと箇条書き() {
+    fn headings_and_bullets() {
         let l = parse("= 見出し").unwrap();
         assert_eq!(l[0].block, Block::Heading(1));
         assert_eq!(l[0].spans[0].text, "見出し");
@@ -567,7 +567,7 @@ mod tests {
     }
 
     #[test]
-    fn 混ぜても読める() {
+    fn mixed_marks_still_read() {
         let l = parse("== 在庫\n* *甲*は 12 個\n* 乙は https://x[表] へ").unwrap();
         assert_eq!(l[0].block, Block::Heading(2));
         assert_eq!(l[1].block, Block::Bullet(0));
@@ -577,7 +577,7 @@ mod tests {
 
     /// **選んで押すと印が入り、もう一度で外れる**(リボンのボタンの中身)
     #[test]
-    fn 選んだ字を囲んで外せる() {
+    fn the_selection_can_be_wrapped_and_unwrapped() {
         let t = "これは太字です";
         let sel = 9..15; // 「太字」
         let (r, rep, s2) = toggle_wrap(t, sel, "**", "**");
@@ -596,7 +596,7 @@ mod tests {
 
     /// 取り消し線のように開きと閉じが違う印でも往復できる
     #[test]
-    fn 開きと閉じが違う印も往復する() {
+    fn marks_with_different_open_and_close_round_trip() {
         let t = "予定は中止です";
         let (r, rep, s2) = toggle_wrap(t, 9..15, "[.line-through]##", "##");
         let t2 = format!("{}{}{}", &t[..r.start], rep, &t[r.end..]);
@@ -608,7 +608,7 @@ mod tests {
 
     /// 印を外した見た目の字(幅の見積りに使う)
     #[test]
-    fn 印を外した字が出る() {
+    fn the_text_without_marks_comes_out() {
         let l = parse("* 甲\n. 乙").unwrap();
         assert_eq!(plain(&l), "・甲 1. 乙");
     }

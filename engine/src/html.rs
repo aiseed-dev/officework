@@ -663,7 +663,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn フォームの欄が集まる() {
+    fn form_fields_are_gathered() {
         let (_, _, forms, _) = parse_full(
             "<form action=\"/order\" method=\"post\">             <input type=\"text\" name=\"品名\" value=\"鉛筆\">             <select name=\"数\"><option>1</option><option>2</option></select>             <textarea name=\"備考\">急ぎ</textarea>             <input type=\"submit\" value=\"送る\"></form>",
         );
@@ -677,7 +677,7 @@ mod tests {
     }
 
     #[test]
-    fn htmlのルビがうちのルビへ写る() {
+    fn html_ruby_maps_to_our_ruby() {
         let (d, _) = parse("<p><ruby>組版<rt>くみはん</rt></ruby>の話</p>");
         let p = d.paragraphs().next().unwrap();
         let r = p.runs.iter().find(|r| r.text == "組版").expect("基底が無い");
@@ -686,7 +686,7 @@ mod tests {
     }
 
     #[test]
-    fn 見出しと段落と書式が写る() {
+    fn headings_paragraphs_and_formats_carry_over() {
         let (d, _) = parse(
             "<html><head><title>題</title></head><body>\
              <h1>見出し</h1><p>本文の<b>太字&amp;</b>続き</p></body></html>",
@@ -702,7 +702,7 @@ mod tests {
     }
 
     #[test]
-    fn 閉じ忘れの表が癒えて同じ形になる() {
+    fn an_unclosed_table_heals_into_the_same_shape() {
         let good = "<table><tr><th>a</th><th>b</th></tr>\
                     <tr><td>1</td><td>2</td></tr></table>";
         let lazy = "<table><tr><th>a<th>b<tr><td>1<td>2</table>";
@@ -716,7 +716,7 @@ mod tests {
     }
 
     #[test]
-    fn scriptは実行も表示もしないで帳簿に残らず消える() {
+    fn script_is_neither_run_nor_shown_and_leaves_no_record() {
         let (d, _) = parse(
             "<p>前</p><script>alert('x')</script><p>後</p>",
         );
@@ -724,7 +724,7 @@ mod tests {
     }
 
     #[test]
-    fn 箇条書きと帳簿() {
+    fn bullets_and_the_record() {
         let (d, notes) = parse(
             "<ul><li>一</li><li>二</li></ul><blink>謎</blink>",
         );
@@ -737,7 +737,7 @@ mod tests {
     /// **札が行をまたいでも読める。** Word は 80 字で折るので、値の後ろに
     /// 改行が来る(2026-08-18、これで画像の高さが 0 になっていた)。
     #[test]
-    fn 札が行をまたいでも読める() {
+    fn a_label_spanning_lines_still_reads() {
         let (d, _) = parse("<p><img width=294 height=108\n   id=\"i1\" src=logo.gif></p>");
         let im = d.paragraphs().next().unwrap().images_new.first().expect("画像が無い");
         assert_eq!(im.src.as_deref(), Some("logo.gif"));
@@ -748,7 +748,7 @@ mod tests {
     /// ページを読むと看板の絵が消えていた。中身は読まない(engine はファイルを
     /// 触らない)ので、bytes は空で src だけが入る
     #[test]
-    fn 画像は径路で残る() {
+    fn images_are_kept_by_path() {
         let (d, _) = parse(
             "<p><img src=\"logo.gif\" width=294 height=108></p>\
              <table><tr><td><img src=\"seed.png\"></td></tr></table>",

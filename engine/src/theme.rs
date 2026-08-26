@@ -1446,7 +1446,7 @@ mod tests {
 
     /// **様式(升目)**(2026-08-18)。中身は本文が持ち、枠だけをここに置く
     #[test]
-    fn 様式が読めて往復する() {
+    fn a_form_reads_and_round_trips() {
         let src = "[様式.申請書]\n行 = [\n  { 升 = [\"申請日\"], 幅 = [30, 70] },\n  { 升 = [\"部署\", \"氏名\"] },\n]\n";
         let th = parse(src).expect("読めない");
         assert_eq!(th.forms.len(), 1);
@@ -1461,7 +1461,7 @@ mod tests {
     /// 値の文法はライブラリが読む。**日本語のキーは囲んでから渡す** —
     /// TOML の決まりでは、囲まないキーは英数字だけだから
     #[test]
-    fn 日本語のキーの値が読める() {
+    fn values_under_japanese_keys_read() {
         let th = parse("[様式.甲]\n行 = [{ 升 = [\"あ\"] }]\n").expect("読めない");
         assert_eq!(th.forms[0].rows[0].cells, vec!["あ"]);
         // 囲みの中の `升 =` は字なので触らない
@@ -1481,7 +1481,7 @@ mod tests {
     }
 
     #[test]
-    fn 様式は本文と名前で結ぶ() {
+    fn a_form_binds_to_the_body_by_name() {
         let (mut doc, th) = form_doc();
         let says = apply_forms(&mut doc, &th);
         assert!(says.is_empty(), "何か言われた: {says:?}");
@@ -1505,7 +1505,7 @@ mod tests {
     }
 
     #[test]
-    fn 対応の付かない項目と埋まらない升は言う() {
+    fn unmatched_items_and_unfilled_cells_are_reported() {
         let (_, th) = form_doc();
         let (mut doc, _) = crate::adoc::parse_full(
             "= 題\n:様式: 申請書\n\n申請日:: 8月18日\n電話:: 03-0000-0000\n",
@@ -1517,7 +1517,7 @@ mod tests {
     }
 
     #[test]
-    fn 様式の名前が無ければ何もしない() {
+    fn with_no_form_name_nothing_happens() {
         let (_, th) = form_doc();
         let (mut doc, _) = crate::adoc::parse_full("= 題\n\n項目:: 値\n").unwrap();
         assert!(apply_forms(&mut doc, &th).is_empty());
@@ -1525,7 +1525,7 @@ mod tests {
     }
 
     #[test]
-    fn 様式の間違いは日本語で言う() {
+    fn form_errors_are_reported_in_japanese() {
         let e = parse("[様式.甲]\n行 = 1\n").unwrap_err();
         assert!(e.contains("配列で書いてください"), "{e}");
         let e = parse("[様式.甲]\n").unwrap_err();
@@ -1535,7 +1535,7 @@ mod tests {
     }
 
     #[test]
-    fn 既定テーマは直接書式の時代と同じ見た目を作る() {
+    fn the_default_theme_reproduces_the_old_direct_formatting() {
         // **段階Aの門番。** writer の set_para_style が焼き付けていた
         // 16/13/11.5pt 太字と同じ値が、合成から出ること
         let d = compose(&meaning_only_doc(), &default_theme());
@@ -1547,7 +1547,7 @@ mod tests {
     }
 
     #[test]
-    fn 合成は元の文書を触らない() {
+    fn composing_leaves_the_source_document_alone() {
         let d = meaning_only_doc();
         let _ = compose(&d, &default_theme());
         let ps: Vec<&Paragraph> = d.paragraphs().collect();
@@ -1555,7 +1555,7 @@ mod tests {
     }
 
     #[test]
-    fn 直接書式は潰さない() {
+    fn direct_formatting_is_not_crushed() {
         // 互換の文書に掛けても、本文が指定した見た目が勝つ
         let mut d = meaning_only_doc();
         if let crate::doc::Block::Para(p) = &mut d.blocks[0] {
@@ -1567,7 +1567,7 @@ mod tests {
     }
 
     #[test]
-    fn 名指しのスタイルが役割より勝つ() {
+    fn a_named_style_beats_the_role() {
         let mut th = default_theme();
         th.styles.push(StyleDef {
             name: "注意書き".into(),
@@ -1584,7 +1584,7 @@ mod tests {
     }
 
     #[test]
-    fn 文字のスタイルは段落のより内側で勝つ() {
+    fn a_character_style_wins_inside_a_paragraph_style() {
         let mut th = default_theme();
         // **既定のテンプレートに無い名前を使います。** 「注意」は
         // 2026-08-18 に註記の仲間として既定に入ったので、同じ名前だと
@@ -1608,21 +1608,21 @@ mod tests {
     }
 
     #[test]
-    fn 知らないキーは黙らない() {
+    fn an_unknown_key_is_not_swallowed() {
         assert!(parse("[スタイル.x]\n大きき = 16\n").is_err(), "綴りの間違いに黙ると「効かない」だけが残る");
         assert!(parse("[謎の節]\n").is_err());
         assert!(parse("大きさ = 16\n").is_err(), "節の外のキー");
     }
 
     #[test]
-    fn 日本語と英語のキーを同じに読む() {
+    fn japanese_and_english_keys_read_the_same() {
         let ja = parse("[スタイル.見出し1]\n大きさ = 16\n太字 = true\n").unwrap();
         let en = parse("[style.見出し1]\nsize = 16\nbold = true\n").unwrap();
         assert_eq!(ja, en);
     }
 
     #[test]
-    fn テンプレートが往復する() {
+    fn a_template_round_trips() {
         // **門番**: 書いて読むと同じ物になる(AI が書いた物も、画面が
         // 足したスタイルも、同じ表を通る)
         let src = "[文書]\n大きさ = 11\n\n[ページ]\n用紙 = \"B5\"\n余白 = 15\n\n\
@@ -1633,7 +1633,7 @@ mod tests {
     }
 
     #[test]
-    fn 組み方の値が往復する() {
+    fn layout_values_round_trip() {
         let th = parse("[組み方]\n横幅 = \"可変\"\n区切り = \"なし\"\n").unwrap();
         assert!(th.setting.fluid && th.setting.endless());
         // 発表の組み方(1節=1枚・跨がない)
@@ -1647,7 +1647,7 @@ mod tests {
     }
 
     #[test]
-    fn 言語ごとの文書の節が読めて往復する() {
+    fn per_language_document_sections_read_and_round_trip() {
         let th = parse(
             "[文書]\n書体 = \"IPA明朝\"\n大きさ = 10.5\n\
              [文書.en]\n書体 = \"Liberation Serif\"\n大きさ = 11\n\
@@ -1674,7 +1674,7 @@ mod tests {
     }
 
     #[test]
-    fn 重ねるときは言語の分も札で重なる() {
+    fn merging_stacks_the_per_language_parts_by_tag() {
         let top = parse("[文書.en]\n書体 = \"Georgia\"\n").unwrap();
         let below = parse("[文書.en]\n書体 = \"Arial\"\n大きさ = 11\n[文書.ko]\n大きさ = 10\n").unwrap();
         let m = merge(top, below);
@@ -1685,7 +1685,7 @@ mod tests {
     }
 
     #[test]
-    fn 書き入れても手で書いた行が残る() {
+    fn writing_a_key_keeps_the_hand_written_lines() {
         let from = "# 自分で書いた注釈\n[文書]\n大きさ = 12\n\n[ページ]\n余白 = 20\n";
         // 節はあってキーが無い — 節の終わりに足す
         let a = put(from, "文書", "書体", "\"IPA明朝\"");
@@ -1710,7 +1710,7 @@ mod tests {
     }
 
     #[test]
-    fn ページの節が読める() {
+    fn the_page_section_reads() {
         let th = parse("[ページ]\n用紙 = \"B5\"\n余白 = 15\n").unwrap();
         let p = th.page.unwrap();
         assert_eq!((p.w_mm, p.h_mm), (182.0, 257.0));

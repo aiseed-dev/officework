@@ -300,14 +300,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 穴埋めが順に入る() {
+    fn placeholders_fill_in_order() {
         assert_eq!(fill("{} 列で {} 件", &[&"B", &3]), "B 列で 3 件");
         assert_eq!(fill("縮尺 {:.0}%", &[&99.6]), "縮尺 100%");
         assert_eq!(fill("{{リテラル}} と {}", &[&"値"]), "{リテラル} と 値");
     }
 
     #[test]
-    fn 表に無い文はそのまま() {
+    fn untranslated_key_shows_english() {
         // ja では常に鍵のまま。en で表に無くても鍵のまま(黙って英語を作らない)
         assert_eq!(tr("この文は表に無い(試験用)"), "この文は表に無い(試験用)");
     }
@@ -396,7 +396,7 @@ mod how_language_is_chosen {
 
     /// 環境変数で選べる
     #[test]
-    fn 環境変数で選べる() {
+    fn environment_variable_selects_language() {
         let _lock = serially();
         assert_eq!(resolve_again(Some("en")), "en");
         assert_eq!(resolve_again(Some("fr")), "fr", "fr は文言が揃っています");
@@ -409,7 +409,7 @@ mod how_language_is_chosen {
     /// 通していませんでした。おまけに「fr は文言が無い」と書いてあり、
     /// *主張そのものが古く*なっていました(いまは揃っています)。
     #[test]
-    fn 知らない札はjaに落ちる() {
+    fn unknown_tag_falls_back_to_ja() {
         let _lock = serially();
         assert_eq!(resolve_again(Some("xx")), "ja");
         assert_eq!(resolve_again(Some("")), "ja");
@@ -418,7 +418,7 @@ mod how_language_is_chosen {
 
     /// 揃っている言語は全部受ける(表と食い違わない)
     #[test]
-    fn 揃っている言語は全部受ける() {
+    fn accepts_every_complete_language() {
         let _lock = serially();
         for l in crate::i18n_tables::LANGS {
             assert_eq!(resolve_again(Some(l)), *l, "{l} が受けられない");
@@ -431,7 +431,7 @@ mod how_language_is_chosen {
     /// 書いていない人の画面がある日いきなり英語にならないよう、その人の
     /// 機械の言語で出します。
     #[test]
-    fn 設定が無ければosの言語で出る() {
+    fn with_no_setting_uses_os_language() {
         let _lock = serially();
         assert_eq!(resolve_with_locale(None, Some("ja_JP.UTF-8")), "ja");
         assert_eq!(resolve_with_locale(None, Some("en_US.UTF-8")), "en");
@@ -446,7 +446,7 @@ mod how_language_is_chosen {
     /// 国を落とすと、台湾の人に簡体字が、ブラジルの人に欧州の
     /// ポルトガル語が出ます。
     #[test]
-    fn 国で分けている札は国まで見る() {
+    fn region_tags_match_on_region_too() {
         let _lock = serially();
         assert_eq!(resolve_with_locale(None, Some("pt_BR.UTF-8")), "pt-br");
         assert_eq!(resolve_with_locale(None, Some("pt_PT.UTF-8")), "pt");
@@ -458,7 +458,7 @@ mod how_language_is_chosen {
 
     /// **書いてある設定が OS より強い。** 機械が英語でも、選んだ言語で出ます
     #[test]
-    fn 書いた設定がosより強い() {
+    fn written_setting_beats_os_locale() {
         let _lock = serially();
         assert_eq!(resolve_with_locale(Some("ja"), Some("en_US.UTF-8")), "ja");
         assert_eq!(resolve_with_locale(Some("de"), Some("ja_JP.UTF-8")), "de");
@@ -466,7 +466,7 @@ mod how_language_is_chosen {
 
     /// OS の言語も読めなければ ja(いままでどおり)
     #[test]
-    fn osの言語も読めなければja() {
+    fn falls_back_to_ja_when_os_locale_unreadable() {
         let _lock = serially();
         for l in ["C", "POSIX", "", "xx_YY.UTF-8"] {
             assert_eq!(resolve_with_locale(None, Some(l)), "ja", "{l:?} で ja に落ちない");
@@ -476,7 +476,7 @@ mod how_language_is_chosen {
 
     /// [`set_language`] はいつ呼んでも効く(2026-08-19 の決め)
     #[test]
-    fn 注いだ言語はいつでも効く() {
+    fn injected_language_takes_effect_any_time() {
         let _lock = serially();
         let from = *LANG.read().expect("言語の錠");
         assert!(set_language("de"));

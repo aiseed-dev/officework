@@ -98,7 +98,7 @@ mod kabe {
     /// (GPL の3クレート ztracing / zlog / ztracing_macro も gpui 経由で
     /// しか来ないので、gpui を止めれば一緒に止まる)。
     #[test]
-    fn face_に描画のクレートを入れない() {
+    fn face_pulls_in_no_drawing_crate() {
         let toml = include_str!("../Cargo.toml");
         // 註や説明の行は見ない — 依存として書かれた行だけを見る
         for line in toml.lines() {

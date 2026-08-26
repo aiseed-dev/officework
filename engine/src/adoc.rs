@@ -2303,7 +2303,7 @@ mod tests {
     /// **編集できるようにした書き方**(2026-08-18)。原文のまま持ち越すのを
     /// やめ、意味として読んで書き戻す形にしたので、往復で崩れないことを見る
     #[test]
-    fn 見出し4と5が往復する() {
+    fn heading_4_and_5_round_trip() {
         round_trip("= 題\n\n===== 四段目\n\n====== 五段目\n");
         let doc = parse("===== 四段目\n").unwrap();
         let p = doc.paragraphs().next().unwrap();
@@ -2312,7 +2312,7 @@ mod tests {
     }
 
     #[test]
-    fn 等幅が往復する() {
+    fn monospace_round_trips() {
         // 後ろが字なので二重の印(本家は `\`字\`と` を等幅として読まない)
         round_trip("``等幅の字``と普通の字。\n");
         round_trip("等幅は `これ` です。\n");
@@ -2327,7 +2327,7 @@ mod tests {
     }
 
     #[test]
-    fn 註記が往復する() {
+    fn admonitions_round_trip() {
         round_trip("NOTE: 気をつけて。\n\nWARNING: 危ない。\n\nTIP: こつです。\n");
         let doc = parse("WARNING: 危ない。\n").unwrap();
         let p = doc.paragraphs().next().unwrap();
@@ -2336,7 +2336,7 @@ mod tests {
     }
 
     #[test]
-    fn ラベル付きリストが往復する() {
+    fn a_labelled_list_round_trips() {
         // 続いている間は空行で割らない(1つの一覧)
         round_trip("項目:: その説明\n別の項目:: 別の説明\n");
         let doc = parse("項目:: その説明\n").unwrap();
@@ -2345,7 +2345,7 @@ mod tests {
     }
 
     #[test]
-    fn 表の桁の指定が往復する() {
+    fn table_column_specs_round_trip() {
         round_trip("[cols=\"1,3\"]\n|===\n|狭い |広い\n|あ |い\n|===\n");
         let doc = parse("[cols=\"1,3\"]\n|===\n|あ|い\n|===\n").unwrap();
         let t = doc.tables().next().unwrap();
@@ -2355,14 +2355,14 @@ mod tests {
     }
 
     #[test]
-    fn 塊の指定の行は次の塊から離れない() {
+    fn a_block_attribute_line_stays_with_its_block() {
         // 前は空行が入り、指定が塊に掛からなくなっていた
         round_trip("[source,python]\n----\nprint(1)\n----\n");
     }
 
     /// **一文一行**(2026-08-18)。git の差分が文ごとになる
     #[test]
-    fn 本文は一文一行で書く() {
+    fn the_body_is_written_one_sentence_per_line() {
         let doc = parse("一つ目です。二つ目です。\n").unwrap();
         assert_eq!(write(&doc), "一つ目です。\n二つ目です。\n");
         // 読むと1つの段落に戻る(和字の継ぎ目に空白は入れない)
@@ -2370,7 +2370,7 @@ mod tests {
     }
 
     #[test]
-    fn 欧文は空白と大文字のときだけ切る() {
+    fn latin_text_breaks_only_at_spaces_and_capitals() {
         // 略語と頭文字では切らない
         round_trip("Dr. Smith went home.\nThe next one starts here.\n");
         let doc = parse("See example.com/a.b for more.\n").unwrap();
@@ -2378,20 +2378,20 @@ mod tests {
     }
 
     #[test]
-    fn 囲みの中では切らない() {
+    fn no_line_break_inside_a_box() {
         // 脚注の中の `。` と、等幅の中の `。`
         round_trip("脚注つきです。\nfootnote:[注の中の文。切りません]続きです。\n");
         round_trip("`コードの中。切りません` と 普通の文。\n");
     }
 
     #[test]
-    fn 見出しと箇条書きは切らない() {
+    fn headings_and_bullets_are_not_broken() {
         // 切ると、続く行が別の段落になってしまう
         round_trip("== 見出し。二文目。\n\n* 一つ。二つ。\n");
     }
 
     #[test]
-    fn 利用者の名前を付けた段落は何行でも書ける() {
+    fn a_user_named_paragraph_can_span_any_number_of_lines() {
         // 註記とラベル付きリストだけが1行で1つ。名前つきの段落は普通の段落
         round_trip("[.強調の囲み]\n一つ目です。\n二つ目です。\n");
     }
@@ -2399,7 +2399,7 @@ mod tests {
     /// **表の題は表の物**(2026-08-18)。calc のシート名になり、式の中では
     /// 表の名前になる(`=SUM(売上台帳[金額])`)
     #[test]
-    fn 表の題が表に入って往復する() {
+    fn a_table_title_goes_into_the_table_and_round_trips() {
         round_trip(".売上台帳\n|===\n|品名 |金額\n\n|ペン |100\n|===\n");
         let (doc, ledger) = parse_full(".売上台帳\n|===\n|品名 |金額\n\n|ペン |100\n|===\n")
             .expect("読めない");
@@ -2414,7 +2414,7 @@ mod tests {
     }
 
     #[test]
-    fn 入れ子の箇条書きが往復する() {
+    fn nested_bullets_round_trip() {
         round_trip("* 一段目\n** 二段目\n*** 三段目\n* また一段目\n");
         round_trip(". 一つ目\n.. 中の一つ目\n");
         let doc = parse("** 二段目\n").unwrap();
@@ -2425,7 +2425,7 @@ mod tests {
     }
 
     #[test]
-    fn コードの塊の中身が直せる() {
+    fn the_body_of_a_code_block_can_be_edited() {
         // 塊の中の `*` は太字の印ではない。空行も残る
         round_trip("[source,python]\n----\nprint(\"*ほし*\")\n\nprint(1)\n----\n");
         let doc = parse("----\nprint(1)\n----\n").unwrap();
@@ -2439,34 +2439,34 @@ mod tests {
     }
 
     #[test]
-    fn 見出しと本文とリストが往復する() {
+    fn headings_body_and_lists_round_trip() {
         round_trip("= 月次報告\n:template: 社内標準\n\n== まとめ\n\n売上は前月比で伸びた。\n\n* 東京\n* 大阪\n\n. 一番\n. 二番\n");
     }
 
     #[test]
-    fn 強調と引用が往復する() {
+    fn emphasis_and_quotes_round_trip() {
         // **囲みの外が字なので二重の印。** 本家は `*要点*だけ` を強調として
         // 読まない(2026-08-18 に本家で確かめた)
         round_trip("**要点**だけ__斜めに__言う。\n\n____\n引用の文。\n____\n");
     }
 
     #[test]
-    fn 脚注とルビと参照としおりが往復する() {
+    fn footnotes_ruby_refs_and_bookmarks_round_trip() {
         round_trip("[[序]]\n本文footnote:[注の中身]の続きruby:漢字[かんじ]まで。\n\n<<序>>を見よ。\n");
     }
 
     #[test]
-    fn リンクと数式と画像と改ページが往復する() {
+    fn links_formulas_images_and_page_breaks_round_trip() {
         round_trip("https://example.jp[例のサイト]を見る。\n\nstem:[x^2 + y^2 = 1]\n\nimage::images/図1.png[]\n\n<<<\n\n次の頁の文。\n");
     }
 
     #[test]
-    fn 表が結合ごと往復する() {
+    fn a_table_round_trips_with_its_merges() {
         round_trip("|===\n|品 |数\n2+|合計だけの行\n|===\n");
     }
 
     #[test]
-    fn 読みは意味だけを入れる() {
+    fn the_reading_carries_meaning_only() {
         let d = parse("== 見出し\n\n*太い*字。\n").unwrap();
         let ps: Vec<&Paragraph> = d.paragraphs().collect();
         assert_eq!(ps[0].style, ParaStyle::Heading(1));
@@ -2482,7 +2482,7 @@ mod tests {
     }
 
     #[test]
-    fn 逃がした印は字として残る() {
+    fn an_escaped_mark_stays_as_text() {
         let d = parse("星は \\* と書く。\n").unwrap();
         let p: Vec<&Paragraph> = d.paragraphs().collect();
         let text: String = p[0].runs.iter().map(|r| r.text.as_str()).collect();
@@ -2493,12 +2493,12 @@ mod tests {
     }
 
     #[test]
-    fn 上付きと下付きが往復する() {
+    fn superscript_and_subscript_round_trip() {
         round_trip("水は H^2^O ではなく H~2~O。\n");
     }
 
     #[test]
-    fn 文字単位のスタイルが往復する() {
+    fn character_level_styles_round_trip() {
         round_trip("ここは[.注意]#気をつける#ところ。\n");
         // **普通の文の `[.` は逃がしません**(2026-08-18)。逃がすのは
         // `[.名前]#` の形だけです。本家には `[.path]_径路_` のような役割の
@@ -2508,7 +2508,7 @@ mod tests {
     }
 
     #[test]
-    fn 段落のスタイル名が往復する() {
+    fn paragraph_style_names_round_trip() {
         round_trip("[.注意書き]\nここは気をつける。\n\nふつうの段落。\n");
     }
 
@@ -2518,7 +2518,7 @@ mod tests {
     /// 知らない名前も**持ち越して往復します** — 開いて保存しただけで
     /// 書いた人の字が消えないためです。
     #[test]
-    fn 知らない属性も持ち越して往復する() {
+    fn unknown_attributes_are_carried_and_round_trip() {
         let src = "= 月次報告\n:author: 山田太郎\n:revdate: 2026-08-18\n:template: 社内標準\n\n                   == まとめ\n\n本文です。\n";
         let d = parse(src).expect("普通の AsciiDoc が読めない");
         assert_eq!(d.template.as_deref(), Some("社内標準"));

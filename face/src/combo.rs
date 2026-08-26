@@ -249,7 +249,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 絞り込みは打った字を含む物だけ残す() {
+    fn filtering_keeps_only_what_contains_the_typed_text() {
         let items = [("游ゴシック", "Yu Gothic"), ("メイリオ", "Meiryo"), ("MS 明朝", "MS Mincho")];
         // 日本語名で引く
         assert_eq!(filter(&items, "ゴシック"), vec![0]);
@@ -264,14 +264,14 @@ mod tests {
     }
 
     #[test]
-    fn 絞り込みは元の並びを崩さない() {
+    fn filtering_keeps_the_original_order() {
         let items = [("あ", "a"), ("あい", "ai"), ("あいう", "aiu")];
         assert_eq!(filter(&items, "あ"), vec![0, 1, 2]);
         assert_eq!(filter(&items, "あい"), vec![1, 2]);
     }
 
     #[test]
-    fn 大きさは四から四百九の半刻みに丸める() {
+    fn sizes_round_to_half_steps_from_4_to_409() {
         assert_eq!(round_size(11.0), 11.0);
         assert_eq!(round_size(11.2), 11.0);
         assert_eq!(round_size(11.3), 11.5);
@@ -287,7 +287,7 @@ mod tests {
     }
 
     #[test]
-    fn プラスマイナスは一覧を一段ずつ辿る() {
+    fn plus_minus_walks_the_list_one_step() {
         // 一覧値からは隣の一覧値へ
         assert_eq!(step_size(11.0, true), 12.0);
         assert_eq!(step_size(12.0, false), 11.0);
@@ -296,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn 半端な値は動く向きの隣の一覧値へ寄る() {
+    fn an_odd_value_snaps_to_the_neighbour_in_that_direction() {
         // 13pt は一覧に無い(12 と 14 の間)。大きくすると 14、小さくすると 12
         assert_eq!(step_size(13.0, true), 14.0);
         assert_eq!(step_size(13.0, false), 12.0);
@@ -306,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn 端では止まる() {
+    fn stops_at_either_end() {
         // 最大で大きくしても最大のまま
         assert_eq!(step_size(72.0, true), 72.0);
         // 最大より大きい半端でも止まる
@@ -320,7 +320,7 @@ mod tests {
     }
 
     #[test]
-    fn 文書の標準を一覧に差し込む() {
+    fn inserts_the_document_default_into_the_list() {
         // 既定テンプレート(10.5)の文書では 10.5 が並びに入る。場所は 10 と 11 の間
         let v = sizes_with(Some(10.5));
         let i = v.iter().position(|&x| x == 10.5).expect("10.5 が入る");
@@ -334,7 +334,7 @@ mod tests {
     }
 
     #[test]
-    fn 差し込んだ標準にもプラスマイナスが止まる() {
+    fn plus_minus_stops_on_the_inserted_default() {
         let v = sizes_with(Some(10.5));
         assert_eq!(step_size_in(&v, 10.0, true), 10.5);
         assert_eq!(step_size_in(&v, 10.5, true), 11.0);
@@ -344,7 +344,7 @@ mod tests {
     }
 
     #[test]
-    fn 今の値の位置を出す() {
+    fn reports_where_the_current_value_sits() {
         let items = [("11", "11"), ("12", "12"), ("14", "14")];
         assert_eq!(current_index(&items, "12"), 1);
         // 合致が無ければ先頭
@@ -352,7 +352,7 @@ mod tests {
     }
 
     #[test]
-    fn 大きさの見せ字は整数なら小数点を出さない() {
+    fn whole_sizes_show_without_a_decimal_point() {
         assert_eq!(size_label(11.0), "11");
         assert_eq!(size_label(11.5), "11.5");
         assert_eq!(size_label(10.5), "10.5");

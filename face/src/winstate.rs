@@ -61,7 +61,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 書いた姿がそのまま読める() {
+    fn the_state_written_reads_back_the_same() {
         let st = WinState { x: 120.0, y: 80.0, w: 900.0, h: 1000.0, maximized: false };
         let s = format!("{:.0} {:.0} {:.0} {:.0}\n", st.x, st.y, st.w, st.h);
         assert_eq!(parse(&s), Some(st));
@@ -70,7 +70,7 @@ mod tests {
     }
 
     #[test]
-    fn 壊れた控えは黙って捨てる() {
+    fn a_broken_record_is_quietly_dropped() {
         assert_eq!(parse(""), None, "空");
         assert_eq!(parse("a b c d"), None, "数でない");
         assert_eq!(parse("0 0 10 10"), None, "豆粒の窓を信用しない");

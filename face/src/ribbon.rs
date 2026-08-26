@@ -624,7 +624,7 @@ mod tests {
     const iconless_buttons: &[&str] = &[];
 
     #[test]
-    fn 実体の無いアイコンを増やさない() {
+    fn no_icon_without_a_file_is_added() {
         let mut missing: Vec<&str> = Vec::new();
         for tabs in [WRITER, CALC] {
             for t in tabs {
@@ -649,7 +649,7 @@ mod tests {
     }
 
     #[test]
-    fn 各言語の表は語だけが違う() {
+    fn language_tables_differ_only_in_wording() {
         // id・並び・ready・icon が ja と一致しない表は配線が壊れる —
         // ここで固定する(語は違ってよい。空の語は出さない)
         let mut pairs: Vec<(&[Tab], &[Tab])> = Vec::new();
@@ -678,7 +678,7 @@ mod tests {
     }
 
     #[test]
-    fn 段の中でボタンの鍵が重ならない() {
+    fn button_ids_do_not_repeat_within_a_tab() {
         // 画面はボタン1つ1つに gpui の鍵を与える。**段の中で鍵が重なると、
         // 後のボタンの押下が拾われない** — ボタンは出るのに押しても何も
         // 起きない、という形で出る(2026-08-16 実機で踏んだ。鍵が絵の名前
@@ -697,7 +697,7 @@ mod tests {
     }
 
     #[test]
-    fn 利用者のボタンは静的な表に混ざらない() {
+    fn user_buttons_do_not_mix_into_the_static_table() {
         // 14言語を突き合わせる門番は静的な表を数える。利用者の札は
         // 利用者自身の言葉で、訳もしない — 表に混ぜたら数が合わなくなる
         for tabs in [WRITER, CALC] {
@@ -714,7 +714,7 @@ mod tests {
     }
 
     #[test]
-    fn 本家のタブが全部ある() {
+    fn every_vendor_tab_is_present() {
         // 発注者確定(2026-08-04): メニューは制限しない。実装しないものも
         // 場所は本家どおり(灰色)。タブごと消すことはしない
         for tabs in [WRITER, CALC] {
@@ -735,7 +735,7 @@ mod tests {
     }
 
     #[test]
-    fn 実装済みと未実装が区別されている() {
+    fn ready_and_not_ready_are_distinguished() {
         // 「押せるのに何も起きない」を作らないための検査
         for tabs in [WRITER, CALC] {
             for t in tabs {
@@ -748,7 +748,7 @@ mod tests {
     }
 
     #[test]
-    fn euro_officeのタブが揃っている() {
+    fn the_euro_office_tabs_are_all_present() {
         let names: Vec<&str> = WRITER.iter().map(|t| t.name).collect();
         for want in ["File", "Home", "Insert", "Layout", "References"] {
             assert!(names.contains(&want), "文書に「{want}」タブが無い: {names:?}");
@@ -760,14 +760,14 @@ mod tests {
     }
 
     #[test]
-    fn どの言語でも並びの数は同じ() {
+    fn every_language_has_the_same_number_of_items() {
         // 言葉が変わるだけで、リボンの構造は Euro-Office と同じ形
         assert!(WRITER.len() >= 5, "タブが少なすぎる: {}", WRITER.len());
         assert!(CALC.len() >= 6, "タブが少なすぎる: {}", CALC.len());
     }
 
     #[test]
-    fn 名前が空でない() {
+    fn no_name_is_empty() {
         for tabs in [WRITER, CALC] {
             for t in tabs {
                 assert!(!t.name.is_empty());

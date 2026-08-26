@@ -109,7 +109,7 @@ mod tests {
     }
 
     #[test]
-    fn 新しい順に並び二重に入らない() {
+    fn newest_first_and_no_duplicates() {
         let d = test_dir("順");
         let a = d.join("a.adoc");
         let b = d.join("b.sheet.adoc");
@@ -124,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn 無くなったファイルは出さない() {
+    fn missing_files_are_not_listed() {
         let d = test_dir("消えた");
         let a = d.join("a.adoc");
         std::fs::write(&a, "= a\n").unwrap();
@@ -136,7 +136,7 @@ mod tests {
 
     /// **前の版の2つの控えを1回だけ拾う**(使っていた履歴を捨てない)
     #[test]
-    fn 古い控えを引き継ぐ() {
+    fn inherits_the_older_record() {
         let d = test_dir("引き継ぎ");
         let w = d.join("文書.adoc");
         let c = d.join("表.sheet.adoc");
@@ -153,7 +153,7 @@ mod tests {
     }
 
     #[test]
-    fn 上限で切る() {
+    fn cuts_at_the_cap() {
         let d = test_dir("上限");
         for i in 0..(cap + 3) {
             let f = d.join(format!("{i}.adoc"));

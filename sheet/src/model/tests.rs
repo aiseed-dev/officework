@@ -11,7 +11,7 @@ mod r1c1_tests {
     use super::*;
 
     #[test]
-    fn a1とr1c1を行き来できる() {
+    fn a1_and_r1c1_convert_both_ways() {
         let at = Pos::parse("E5").unwrap();
         // 相対・絶対・混在・範囲
         let f = "A1+$B$2*SUM(C3:D4)-E5";
@@ -47,7 +47,7 @@ mod merge_tests {
     }
 
     #[test]
-    fn 結合は左上以外の中身を消す_書式は残す() {
+    fn merging_clears_all_but_the_top_left_and_keeps_formats() {
         let mut s = s_with(&[("A1", "題"), ("B1", "消える"), ("B2", "123")]);
         let mut c = s.get(p("B1")).cloned().unwrap();
         c.fmt.number_format = Some("@".into());
@@ -66,7 +66,7 @@ mod merge_tests {
     }
 
     #[test]
-    fn 空の左上へは最初の中身が書式ごと移る() {
+    fn the_first_content_moves_to_an_empty_top_left_with_its_format() {
         let mut s = s_with(&[("B1", "題")]);
         let mut c = s.get(p("B1")).cloned().unwrap();
         c.fmt.number_format = Some("@".into());
@@ -83,7 +83,7 @@ mod merge_tests {
     }
 
     #[test]
-    fn 重なる結合は先に外れ_解除は数を返す() {
+    fn overlapping_merges_are_released_first_and_the_count_returned() {
         let mut s = s_with(&[]);
         s.merge(p("A1"), p("B2"));
         s.merge(p("B2"), p("C3")); // 重なる → 前のが外れる(入れ子は帳票を壊す)
@@ -103,7 +103,7 @@ mod cell_basics {
     use super::*;
 
     #[test]
-    fn a1形式を読み書きできる() {
+    fn a1_style_reads_and_writes() {
         for (s, r, c) in [("A1", 0, 0), ("B3", 2, 1), ("Z1", 0, 25),
                           ("AA1", 0, 26), ("AB10", 9, 27), ("$C$5", 4, 2)] {
             let p = Pos::parse(s).unwrap_or_else(|| panic!("{s} を読めない"));
@@ -117,7 +117,7 @@ mod cell_basics {
     }
 
     #[test]
-    fn 入力が式と値に分かれる() {
+    fn input_splits_into_formula_and_value() {
         assert_eq!(Cell::input("123").value, Value::Number(123.0));
         assert_eq!(Cell::input("1.5").value, Value::Number(1.5));
         assert_eq!(Cell::input("日本フネン").value, Value::Text("日本フネン".into()));
@@ -127,7 +127,7 @@ mod cell_basics {
     }
 
     #[test]
-    fn 編集欄には式が戻る() {
+    fn the_edit_box_shows_the_formula_again() {
         let mut c = Cell::input("=A1+1");
         c.value = Value::Number(42.0);
         assert_eq!(c.editable(), "=A1+1", "計算後も編集欄には式を出す");
@@ -135,7 +135,7 @@ mod cell_basics {
     }
 
     #[test]
-    fn 数値の表示が事務向けになる() {
+    fn number_display_suits_office_work() {
         assert_eq!(Value::Number(1000.0).display(), "1000", "整数に .0 を付けない");
         assert_eq!(Value::Number(1.5).display(), "1.5");
         assert_eq!(Value::Empty.display(), "");
@@ -147,7 +147,7 @@ mod cell_basics {
     /// Excel と違う所を1行ずつ書いてあります。文書だけに書いてあると、
     /// 実装が動いたときに黙ってずれます。ここで留めます。
     #[test]
-    fn 数の見え方は手引きのとおり() {
+    fn numbers_display_as_the_manual_says() {
         let d = |n: f64| Value::Number(n).display();
 
         // 「16桁の 4111111111111111 はそのまま出る」
@@ -188,7 +188,7 @@ mod rowcol_tests {
     }
 
     #[test]
-    fn 行を挿すと下がる() {
+    fn inserting_a_row_pushes_down() {
         let mut s = sheet();
         s.insert_row(1);
         assert_eq!(at(&s, 0), Some(0.0));
@@ -198,7 +198,7 @@ mod rowcol_tests {
     }
 
     #[test]
-    fn 行を抜くと詰まる() {
+    fn deleting_a_row_closes_the_gap() {
         let mut s = sheet();
         s.remove_row(1);
         assert_eq!(at(&s, 0), Some(0.0));
@@ -207,7 +207,7 @@ mod rowcol_tests {
     }
 
     #[test]
-    fn 列も同じように動く() {
+    fn columns_move_the_same_way() {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos { row: 0, col: 0 }, Cell {
             formula: None, value: Value::Text("左".into()), fmt: Default::default() });
@@ -223,7 +223,7 @@ mod rowcol_tests {
     }
 
     #[test]
-    fn 罫線も一緒に動く() {
+    fn borders_move_along() {
         // 帳票の枠が置き去りになると書類が壊れる
         let mut s = Sheet { name: "枠".into(), ..Default::default() };
         s.set(Pos { row: 1, col: 0 }, Cell {
@@ -235,7 +235,7 @@ mod rowcol_tests {
     }
 
     #[test]
-    fn 空の表でも落ちない() {
+    fn an_empty_sheet_does_not_panic() {
         let mut s = Sheet { name: "空".into(), ..Default::default() };
         s.insert_row(0);
         s.remove_row(0);
@@ -254,7 +254,7 @@ mod format_tests {
     }
 
     #[test]
-    fn 頭に0を詰める書式() {
+    fn leading_zero_format() {
         // **品番・会員番号・郵便番号の定番。** 2026-08-15 に種苗の会の
         // 注文書の見本を実機で見て、番号の欄が 0001 でなく 1 で並んで
         // いるので気づいた(#,##0.00 や ¥#,##0 は効いていたので
@@ -273,7 +273,7 @@ mod format_tests {
     }
 
     #[test]
-    fn 指数とテキスト形式() {
+    fn exponent_and_text_formats() {
         assert_eq!(f(12345.0, "0.00E+00"), "1.23E+04");
         assert_eq!(f(0.00123, "0.00E+00"), "1.23E-03");
         assert_eq!(f(-4500.0, "0.00E+00"), "-4.50E+03");
@@ -282,14 +282,14 @@ mod format_tests {
     }
 
     #[test]
-    fn 桁区切り() {
+    fn thousands_separator() {
         assert_eq!(f(1234567.0, "#,##0"), "1,234,567");
         assert_eq!(f(0.0, "#,##0"), "0");
         assert_eq!(f(999.0, "#,##0"), "999");
     }
 
     #[test]
-    fn 小数() {
+    fn decimal_format() {
         // 見たいのは「桁を落として丸める」ことだけ。**3.14159 と書かない** —
         // clippy が π の近似と見て撥ねる(approx_constant)。数に意味は無いので
         // 別の数にする。3桁目で切り下がる同じ場合を見ている
@@ -299,29 +299,29 @@ mod format_tests {
     }
 
     #[test]
-    fn パーセント() {
+    fn percent_format() {
         assert_eq!(f(0.25, "0%"), "25%");
         assert_eq!(f(0.1234, "0.00%"), "12.34%");
     }
 
     #[test]
-    fn 通貨() {
+    fn currency_format() {
         assert_eq!(f(1200.0, "¥#,##0"), "¥1,200");
     }
 
     #[test]
-    fn 負の数() {
+    fn negative_numbers() {
         assert_eq!(f(-1234.0, "#,##0"), "-1,234");
         assert_eq!(f(-0.5, "0%"), "-50%");
     }
 
     #[test]
-    fn 書式が無ければそのまま() {
+    fn with_no_format_the_value_shows_as_is() {
         assert_eq!(format_value(&Value::Number(1234.0), None, false), "1234");
     }
 
     #[test]
-    fn 数でなければ触らない() {
+    fn non_numbers_are_left_alone() {
         assert_eq!(format_value(&Value::Text("品名".into()), Some("#,##0"), false), "品名");
         assert_eq!(format_value(&Value::Error("#DIV/0!".into()), Some("0%"), false), "#DIV/0!");
     }
@@ -332,52 +332,52 @@ mod ref_tests {
     use super::*;
 
     #[test]
-    fn 挿した行より下の参照が下がる() {
+    fn refs_below_an_inserted_row_move_down() {
         assert_eq!(shift_refs("=A5+B6", 2, 1, true), "=A6+B7");
     }
 
     #[test]
-    fn 挿した行より上は動かない() {
+    fn rows_above_an_inserted_row_stay() {
         assert_eq!(shift_refs("=A1+A2", 5, 1, true), "=A1+A2");
     }
 
     #[test]
-    fn 抜いた行より下が詰まる() {
+    fn rows_below_a_deleted_row_move_up() {
         assert_eq!(shift_refs("=A5", 2, -1, true), "=A4");
     }
 
     #[test]
-    fn 抜いた行を指していたら_ref_になる() {
+    fn a_ref_to_a_deleted_row_becomes_a_ref_error() {
         // 黙って隣のセルを指すより、壊れたと言う方がよい
         assert_eq!(shift_refs("=A3+B1", 2, -1, true), "=#REF!+B1");
     }
 
     #[test]
-    fn 絶対参照の形が残る() {
+    fn absolute_refs_keep_their_shape() {
         // 利用者が書いた $ を勝手に消さない
         assert_eq!(shift_refs("=$A$5", 2, 1, true), "=$A$6");
         assert_eq!(shift_refs("=$A5", 2, 1, true), "=$A6");
     }
 
     #[test]
-    fn 列の出し入れも効く() {
+    fn column_insert_and_delete_work_too() {
         assert_eq!(shift_refs("=C1+A1", 1, 1, false), "=D1+A1");
         assert_eq!(shift_refs("=C1", 1, -1, false), "=B1");
     }
 
     #[test]
-    fn 関数名を参照と間違えない() {
+    fn a_function_name_is_not_mistaken_for_a_ref() {
         assert_eq!(shift_refs("=SUM(A5:A9)", 2, 1, true), "=SUM(A6:A10)");
         assert_eq!(shift_refs("=IF(A5>0,1,0)", 2, 1, true), "=IF(A6>0,1,0)");
     }
 
     #[test]
-    fn 文字列の中は触らない() {
+    fn inside_a_string_is_left_alone() {
         assert_eq!(shift_refs(r#"="A5は合計"&A5"#, 2, 1, true), r#"="A5は合計"&A6"#);
     }
 
     #[test]
-    fn 数だけの式は変わらない() {
+    fn a_formula_of_numbers_only_does_not_change() {
         assert_eq!(shift_refs("=1+2*3", 0, 1, true), "=1+2*3");
     }
 }
@@ -403,7 +403,7 @@ mod rowcol_formula_tests {
     }
 
     #[test]
-    fn 行を挿すと式の参照も伸びる() {
+    fn inserting_a_row_stretches_formula_refs() {
         // これを直さないと、行を挿した瞬間に合計が合わなくなる
         let mut s = sheet();
         s.insert_row(1);
@@ -411,14 +411,14 @@ mod rowcol_formula_tests {
     }
 
     #[test]
-    fn 行を抜くと式の参照も縮む() {
+    fn deleting_a_row_shrinks_formula_refs() {
         let mut s = sheet();
         s.remove_row(1);
         assert_eq!(f(&s, 2).as_deref(), Some("=SUM(A1:A2)"), "参照が縮んでいない");
     }
 
     #[test]
-    fn 参照先を抜いたら_ref_が出る() {
+    fn deleting_the_target_yields_a_ref_error() {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos { row: 0, col: 0 }, Cell {
             formula: Some("=A3".into()), value: Value::Empty, fmt: Default::default() });
@@ -432,7 +432,7 @@ mod col_formula_tests {
     use super::*;
 
     #[test]
-    fn 列の出し入れでも式が直る() {
+    fn inserting_or_deleting_columns_fixes_formulas() {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos { row: 0, col: 3 }, Cell {
             formula: Some("=B1+C1".into()), value: Value::Empty, fmt: Default::default() });
@@ -474,7 +474,7 @@ mod sort_tests {
     }
 
     #[test]
-    fn 数で並べ替えられる() {
+    fn can_sort_numerically() {
         let mut s = table(&[("丙", 300.0), ("甲", 100.0), ("乙", 200.0)], false);
         s.sort_by_column(1, true, false);
         assert_eq!(col0(&s, 0), "甲");
@@ -482,7 +482,7 @@ mod sort_tests {
     }
 
     #[test]
-    fn 見出しは動かない() {
+    fn the_header_row_stays() {
         // 帳票の並べ替えで見出しが混ざるのは事故
         let mut s = table(&[("丙", 300.0), ("甲", 100.0)], true);
         s.sort_by_column(1, true, true);
@@ -491,7 +491,7 @@ mod sort_tests {
     }
 
     #[test]
-    fn 行はまるごと動く() {
+    fn a_whole_row_moves() {
         // 選んだ列だけ動かすと、隣の列との対応が壊れて静かに嘘の表になる
         let mut s = table(&[("丙", 300.0), ("甲", 100.0)], false);
         s.sort_by_column(1, true, false);
@@ -501,14 +501,14 @@ mod sort_tests {
     }
 
     #[test]
-    fn 降順にもできる() {
+    fn can_sort_descending_too() {
         let mut s = table(&[("甲", 100.0), ("丙", 300.0)], false);
         s.sort_by_column(1, false, false);
         assert_eq!(col0(&s, 0), "丙");
     }
 
     #[test]
-    fn 空は最後に来る() {
+    fn blanks_sort_last() {
         let mut s = table(&[("甲", 100.0)], false);
         s.set(Pos { row: 1, col: 0 }, Cell {
             formula: None, value: Value::Text("空欄".into()), fmt: Default::default() });
@@ -517,7 +517,7 @@ mod sort_tests {
     }
 
     #[test]
-    fn バーとスケールの物差しが効く() {
+    fn data_bar_and_colour_scale_use_their_scale() {
         use crate::model::{CondKind, CondRule};
         let mut s = Sheet::new("試");
         for (i, v) in ["10", "20", "30"].iter().enumerate() {
@@ -547,7 +547,7 @@ mod sort_tests {
     }
 
     #[test]
-    fn 色の付いた行を上に集められる() {
+    fn coloured_rows_can_be_gathered_on_top() {
         let mut s = table(&[("甲", 100.0), ("乙", 200.0), ("丙", 300.0)], true);
         // 「丙」の行(row 3)のキー列に塗り
         let p = Pos { row: 3, col: 0 };
@@ -562,7 +562,7 @@ mod sort_tests {
     }
 
     #[test]
-    fn 重複した行を落とせる() {
+    fn duplicate_rows_can_be_dropped() {
         let mut s = table(&[("甲", 100.0), ("甲", 100.0), ("乙", 200.0)], false);
         let n = s.remove_duplicate_rows(false);
         assert_eq!(n, 1, "落とした件数が違う");
@@ -572,14 +572,14 @@ mod sort_tests {
     }
 
     #[test]
-    fn 見出しは重複と見なさない() {
+    fn the_header_row_is_not_counted_as_duplicate() {
         let mut s = table(&[("品名", 0.0)], true);
         assert_eq!(s.remove_duplicate_rows(true), 0);
         assert_eq!(col0(&s, 0), "品名");
     }
 
     #[test]
-    fn 空の表でも落ちない() {
+    fn an_empty_sheet_does_not_panic() {
         let mut s = Sheet { name: "空".into(), ..Default::default() };
         s.sort_by_column(0, true, true);
         assert_eq!(s.remove_duplicate_rows(true), 0);
@@ -599,7 +599,7 @@ mod cellshift_tests {
     }
 
     #[test]
-    fn 下へシフトすると参照も付いて動く() {
+    fn shifting_down_moves_refs_along() {
         let mut s = s3();
         // A1 の場所に1セル挿入(A列だけ下へ)
         s.insert_cells(Pos::parse("A1").unwrap(), Pos::parse("A1").unwrap(), false).unwrap();
@@ -615,7 +615,7 @@ mod cellshift_tests {
     }
 
     #[test]
-    fn 右へシフトは行の帯だけ動く() {
+    fn shifting_right_moves_only_that_row() {
         let mut s = s3();
         s.insert_cells(Pos::parse("A1").unwrap(), Pos::parse("A1").unwrap(), true).unwrap();
         assert_eq!(s.value(Pos::parse("B1").unwrap()), Value::Number(1.0), "右へ動いていない");
@@ -629,7 +629,7 @@ mod cellshift_tests {
     }
 
     #[test]
-    fn 上へ詰めると消えた参照はrefになる() {
+    fn shifting_up_turns_lost_refs_into_ref_error() {
         let mut s = s3();
         // A1 を削除して上へ詰める → A2(=1)ではなく元A1が消え、A2の中身が A1 へ
         s.delete_cells(Pos::parse("A1").unwrap(), Pos::parse("A1").unwrap(), false).unwrap();
@@ -650,7 +650,7 @@ mod cellshift_tests {
     }
 
     #[test]
-    fn 結合が帯をまたぐと断る() {
+    fn a_merge_across_the_band_is_refused() {
         let mut s = s3();
         s.merges.push((Pos::parse("A1").unwrap(), Pos::parse("B1").unwrap()));
         let r = s.insert_cells(Pos::parse("A1").unwrap(), Pos::parse("A1").unwrap(), false);
@@ -663,25 +663,25 @@ mod offset_tests {
     use super::*;
 
     #[test]
-    fn 相対参照は全部ずれる() {
+    fn relative_refs_all_shift() {
         assert_eq!(offset_refs("=A1+B2", 1, 0), "=A2+B3");
         assert_eq!(offset_refs("=SUM(A1:A3)", 2, 0), "=SUM(A3:A5)");
     }
 
     #[test]
-    fn 固定した側は止まる() {
+    fn the_locked_side_stays_put() {
         assert_eq!(offset_refs("=$A$1+A1", 1, 1), "=$A$1+B2");
         assert_eq!(offset_refs("=A$1", 3, 0), "=A$1", "行を固定したのに動いた");
         assert_eq!(offset_refs("=$A1", 0, 3), "=$A1", "列を固定したのに動いた");
     }
 
     #[test]
-    fn 紙の外はrefになる() {
+    fn off_the_sheet_becomes_a_ref_error() {
         assert_eq!(offset_refs("=A1", -1, 0), "=#REF!");
     }
 
     #[test]
-    fn 文字列と関数名は触らない() {
+    fn strings_and_function_names_are_left_alone() {
         assert_eq!(offset_refs(r#"="A1"&A1"#, 1, 0), r#"="A1"&A2"#);
         assert_eq!(offset_refs("=SUM(A1)", 1, 0), "=SUM(A2)");
     }
@@ -692,7 +692,7 @@ mod validation_tests {
     use super::*;
 
     #[test]
-    fn 直書きの候補が割れる() {
+    fn a_literal_option_list_splits() {
         let v = Validation::list(
             (Pos::new(1, 1), Pos::new(9, 1)),
             r#""甲, 乙,丙""#.into(),
@@ -704,7 +704,7 @@ mod validation_tests {
     }
 
     #[test]
-    fn 範囲参照の候補はシートの値から集まる() {
+    fn range_options_come_from_the_sheet_values() {
         let mut s = Sheet::default();
         for (r, t) in [(1, "東京"), (2, "大阪"), (3, "東京"), (4, "")] {
             s.set(Pos::new(r, 3), Cell::input(t));
@@ -723,7 +723,7 @@ mod validation_tests {
     }
 
     #[test]
-    fn ヘッダーの区分の割りと組み() {
+    fn header_group_splits_and_joins() {
         let (l, c, r) = hf_split("&L左&C中&R右");
         assert_eq!((l.as_str(), c.as_str(), r.as_str()), ("左", "中", "右"));
         // 印なしは中(xlsx の慣わし)
@@ -733,7 +733,7 @@ mod validation_tests {
     }
 
     #[test]
-    fn 位置に効く規則が引ける() {
+    fn position_based_rules_can_be_looked_up() {
         let mut s = Sheet::default();
         s.validations.push(Validation::list(
             (Pos::new(1, 1), Pos::new(3, 1)),
@@ -744,7 +744,7 @@ mod validation_tests {
     }
 
     #[test]
-    fn 読めない数値規則は文字も堰き止めない() {
+    fn an_unreadable_number_rule_blocks_nothing() {
         // 式がセル参照の整数規則 — 判定できないので、文字を打っても止めない
         // (読めない規則で入力を止めない方針。実物の xlsx にはよくある形)
         let s = Sheet::default();
@@ -767,7 +767,7 @@ mod shape_tests {
     use super::*;
 
     #[test]
-    fn 図形のsvgに大きさと色が入る() {
+    fn shape_svg_carries_size_and_colour() {
         let sh = SheetShape {
             at: Pos::new(0, 0),
             width_px: 200.0,
@@ -795,7 +795,7 @@ mod valign_tests {
     use super::*;
 
     #[test]
-    fn 縦の均等割付を畳まず往復する() {
+    fn vertical_distributed_align_round_trips() {
         // **`_ => Bottom` に落ちていた。** 日銀の統計表が使っており、
         // 畳むと保存で消える(2026-08-10)
         assert_eq!(VAlign::from_xlsx("distributed"), VAlign::Distribute);
@@ -806,7 +806,7 @@ mod valign_tests {
     }
 
     #[test]
-    fn 知らない縦位置は下に落とす() {
+    fn an_unknown_vertical_align_falls_to_bottom() {
         // `justify` は実物 31 枚に出ないので変種を作っていない。
         // **出てから足す** — その判断ごと押さえておく
         assert_eq!(VAlign::from_xlsx("justify"), VAlign::Bottom);
@@ -819,7 +819,7 @@ mod input_fmt_tests {
     use super::*;
 
     #[test]
-    fn 日付を返す式には日付の形式を薦める() {
+    fn formulas_returning_dates_suggest_a_date_format() {
         // **値は合っていても、形式が無いと画面に通し番号が出る。**
         // =DATE(2026,8,10) は 46244(2026-08-10 に ironcalc と突き合わせて判明)
         for f in ["=DATE(2026,8,10)", "=TODAY()", "=EOMONTH(A1,0)", "=today()"] {
@@ -830,7 +830,7 @@ mod input_fmt_tests {
     }
 
     #[test]
-    fn 数を返す関数に日付の形式を付けない() {
+    fn no_date_format_for_functions_returning_numbers() {
         // **年 2026 に日付の形式を付けると 1905年7月18日 になる。**
         // 日付の関数だからと一括りにしない
         for f in ["=YEAR(TODAY())", "=MONTH(A1)", "=DAY(A1)", "=WEEKDAY(A1)", "=DATEDIF(A1,A2,\"D\")"] {
@@ -855,7 +855,7 @@ mod bracket_tests {
     /// `[Red]46,240` や `[$-446240` がそのまま出ていた
     /// (2026-08-10。実物26枚のうち4枚がこの形の書式を持っていた)
     #[test]
-    fn 角かっこが画面に出ない() {
+    fn square_brackets_do_not_show() {
         for (n, code) in [
             (1234.0, "[Red]#,##0"),
             (1234.0, "[赤]#,##0"),
@@ -871,7 +871,7 @@ mod bracket_tests {
     /// **Excel は通貨記号を引用符で書く。** `"¥"#,##0` の `"` で切っていて、
     /// 円記号を丸ごと落としていた — 実物の会計書式がこの形
     #[test]
-    fn 引用符の通貨記号を落とさない() {
+    fn quoted_currency_signs_are_kept() {
         assert_eq!(f(1234.0, r##""¥"#,##0"##), "¥1,234");
         // 角かっこの中に記号を書く形(こちらも Excel の綴り)
         assert_eq!(f(1234.0, "[$¥-411]#,##0"), "¥1,234");
@@ -882,14 +882,14 @@ mod bracket_tests {
 
     /// 日付の書式は**最初の節だけ**。`;@` が画面に出ていた
     #[test]
-    fn 文字用の節を画面に出さない() {
+    fn the_text_section_is_not_shown() {
         assert_eq!(f(46240.0, "yyyy/m/d;@"), "2026/8/6");
         assert!(!f(46240.0, "[$-409]mmmm\\ yyyy;@").contains(';'));
     }
 
     /// `\` は次の1字を字として出す逃げ。読まないと `\` が画面に出る
     #[test]
-    fn 逃げの記号を画面に出さない() {
+    fn escape_characters_do_not_show() {
         assert_eq!(f(46240.0, "yyyy\\年m\\月"), "2026年8月");
         assert!(!f(46240.0, "[$-409]mmmm\\ yyyy").contains('\\'));
     }
@@ -897,7 +897,7 @@ mod bracket_tests {
     /// **経過時間は 24 時で巻き戻さない。** 勤怠表の合計がこの書式で、
     /// 前は `[h]:mm` が `[0]:00` になっていた
     #[test]
-    fn 経過時間は巻き戻さない() {
+    fn elapsed_time_does_not_wrap() {
         // 1.0625 日 = 25 時間 30 分
         assert_eq!(f(1.0625, "[h]:mm"), "25:30");
         assert_eq!(f(1.0625, "[mm]"), "1530");
@@ -908,7 +908,7 @@ mod bracket_tests {
 
     /// 直したことで**普通の書式が壊れていない**こと
     #[test]
-    fn 素の書式は変わらない() {
+    fn a_plain_format_does_not_change() {
         assert_eq!(f(46240.0, "yyyy/m/d"), "2026/8/6");
         assert_eq!(f(1234.5, "#,##0.0"), "1,234.5");
         assert_eq!(f(1234.0, "¥#,##0"), "¥1,234");
@@ -920,7 +920,7 @@ mod bracket_tests {
     /// **範囲の移動**(2026-08-13)。切り貼りの作法 —
     /// 外から指す式は付いて動き、中の式はそのまま(translate で動く)
     #[test]
-    fn 移動で外から指す式が付いて動く() {
+    fn moving_carries_formulas_that_point_in() {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::new(0, 0), Cell::input("10"));            // A1 = 10
         s.set(Pos::new(0, 1), Cell::input("=A1*2"));         // B1 = A1*2
@@ -944,7 +944,7 @@ mod bracket_tests {
     }
 
     #[test]
-    fn 移動の_translate_は中の相対参照をずらす() {
+    fn translate_shifts_relative_refs_inside() {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::new(0, 0), Cell::input("10"));
         s.set(Pos::new(0, 1), Cell::input("=A1*2"));
@@ -957,7 +957,7 @@ mod bracket_tests {
     }
 
     #[test]
-    fn 移動は移った先を上書きし_紙の外へは動かさない() {
+    fn a_move_overwrites_the_target_and_stays_on_the_sheet() {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::new(0, 0), Cell::input("元"));
         s.set(Pos::new(2, 0), Cell::input("先"));
@@ -984,7 +984,7 @@ mod month_name_tests {
     /// `[$-407]` の入ったセルは日本語で開いても独語で出る
     /// (「その帳票が独語で作られた」が残るだけ)
     #[test]
-    fn 地域指定から月名と曜日名を引く() {
+    fn locale_gives_month_and_weekday_names() {
         assert_eq!(f("[$-409]mmmm d, yyyy"), "August 6, 2026");
         assert_eq!(f("[$-407]dddd, d. mmmm yyyy"), "Donnerstag, 6. August 2026");
         assert_eq!(f("[$-40c]dddd d mmmm yyyy"), "jeudi 6 août 2026");
@@ -994,7 +994,7 @@ mod month_name_tests {
     /// **属格を落とさない。** 露語は「8月」と「8月の」で形が違い、
     /// 日と並ぶときは属格。Август ではなく августа
     #[test]
-    fn 露語は属格になる() {
+    fn russian_uses_the_genitive() {
         assert_eq!(f("[$-419]d mmmm yyyy \"г.\""), "6 августа 2026 г.");
         // 日が無ければ主格
         assert_eq!(f("[$-419]mmmm"), "Август");
@@ -1002,7 +1002,7 @@ mod month_name_tests {
 
     /// 短縮と頭文字。mmm=短縮 / mmmm=完全 / mmmmm=頭文字1つ
     #[test]
-    fn 月名の長さを使い分ける() {
+    fn long_and_short_month_names_are_used_apart() {
         assert_eq!(f("[$-409]mmm d"), "Aug 6");
         assert_eq!(f("[$-409]mmmmm"), "A");
         // **2つまでは数**(名前ではない)。`mm` 単独は月とも分とも取れる
@@ -1014,7 +1014,7 @@ mod month_name_tests {
     /// 指定を持っていた(26枚で2件、いずれも指定つき)ので、
     /// 指定なしは実質こちらで作った書式。素の言語でよい
     #[test]
-    fn 地域指定が無ければ日本語() {
+    fn with_no_locale_it_is_japanese() {
         assert_eq!(f("aaaa"), "木曜日");
         assert_eq!(f("aaa"), "木");
         assert_eq!(f("mmmm"), "8月");
@@ -1023,13 +1023,13 @@ mod month_name_tests {
 
     /// 知らない地域は日本語に落ちる。**近い言語へ勝手に寄せない**
     #[test]
-    fn 知らない地域は寄せない() {
+    fn an_unknown_locale_is_not_forced() {
         assert_eq!(f("[$-4ff]mmmm"), "8月");
     }
 
     /// 月名を入れたことで**数と時刻が壊れていない**こと
     #[test]
-    fn 数と時刻は変わらない() {
+    fn numbers_and_times_do_not_change() {
         assert_eq!(f("yyyy/m/d"), "2026/8/6");
         assert_eq!(f("ggge\"年\"m\"月\"d\"日\""), "令和8年8月6日");
         assert_eq!(format_value(&Value::Number(0.5), Some("h:mm"), false), "12:00");
@@ -1069,7 +1069,7 @@ mod preset_shape_tests {
     }
 
     #[test]
-    fn 足した形はどれも四角に落ちない() {
+    fn no_added_shape_falls_back_to_a_rectangle() {
         for k in KINDS {
             assert!(can_draw(k), "{k} が描けない形のまま");
             assert!(preset_svg(k, 0.0, 0.0, 100.0, 60.0, "").is_some(), "{k} の作図が無い");
@@ -1077,7 +1077,7 @@ mod preset_shape_tests {
     }
 
     #[test]
-    fn 元からある形も描ける形に数える() {
+    fn existing_shapes_count_as_drawable() {
         // **判断は can_draw 1箇所**(描く側と数える側で表が割れない)
         for k in ["rect", "roundRect", "ellipse", "rightArrow", "diamond", "line",
                   "spark", "spark-col", "spark-wl", "ink", "marker"] {
@@ -1086,7 +1086,7 @@ mod preset_shape_tests {
     }
 
     #[test]
-    fn 知らない形は描けないと答える() {
+    fn an_unknown_shape_answers_not_drawable() {
         // 数えられて Report に載る側。**黙って四角にしない**ための入り口
         for k in ["cube", "can", "heart", "ribbon", "actionButtonHome", ""] {
             assert!(!can_draw(k), "{k} を描けることにしている");
@@ -1094,7 +1094,7 @@ mod preset_shape_tests {
     }
 
     #[test]
-    fn どの形も正しいsvgになる() {
+    fn every_shape_becomes_valid_svg() {
         // 座標の式を間違えると NaN が出て `points="NaN,NaN"` になり、
         // 画面から figure が消える(絵は「出ない」としか言わない)
         for k in KINDS {
@@ -1115,7 +1115,7 @@ mod preset_shape_tests {
     }
 
     #[test]
-    fn 潰れた大きさでも落ちない() {
+    fn a_collapsed_size_does_not_panic() {
         // 幅も高さも 0 の図形(ドラッグの途中で来る)
         for k in KINDS {
             let mut sp = shape(k);
@@ -1134,18 +1134,18 @@ mod preset_shape_tests {
 /// `.adoc` の読み書きで**同じ字が同じ意味**になる
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod 式と字の見分け {
+mod telling_formulas_from_text {
     use crate::model::{Cell, Value};
 
     #[test]
-    fn 空白の無い等号は式() {
+    fn an_equals_without_a_space_is_a_formula() {
         assert_eq!(Cell::input("=SUM(A1:A3)").formula.as_deref(), Some("SUM(A1:A3)"));
         assert_eq!(Cell::input("=A1*B1").formula.as_deref(), Some("A1*B1"));
         assert_eq!(Cell::input("=-1").formula.as_deref(), Some("-1"));
     }
 
     #[test]
-    fn 空白のある等号は字() {
+    fn an_equals_with_a_space_is_text() {
         let c = Cell::input("= 大");
         assert_eq!(c.formula, None, "見出しを式にした");
         assert_eq!(c.value, Value::Text("= 大".into()));
@@ -1158,7 +1158,7 @@ mod 式と字の見分け {
 
     /// `=` 1文字だけは式ではない(ただの字)
     #[test]
-    fn 等号だけは字() {
+    fn a_lone_equals_is_text() {
         let c = Cell::input("=");
         assert_eq!(c.formula, None);
         assert_eq!(c.value, Value::Text("=".into()));

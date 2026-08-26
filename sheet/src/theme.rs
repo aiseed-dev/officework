@@ -209,7 +209,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn テーマの部品から色を読む() {
+    fn colours_are_read_from_the_theme_part() {
         let xml = r#"<a:theme><a:themeElements><a:clrScheme name="x">
             <a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1>
             <a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>
@@ -225,7 +225,7 @@ mod tests {
     }
 
     #[test]
-    fn 明るさの加減が効く() {
+    fn the_brightness_tweak_applies() {
         let c: Vec<String> = OFFICE.iter().map(|s| s.to_string()).collect();
         assert_eq!(resolve(&c, 4, 0.0), "4472C4", "加減なしは素の色");
         let light = resolve(&c, 4, 0.6);
@@ -242,14 +242,14 @@ mod tests {
     }
 
     #[test]
-    fn 部品が無ければ既定の組() {
+    fn with_no_part_the_default_set_is_used() {
         let c = parse("<a:theme/>");
         assert_eq!(c.len(), 12);
         assert_eq!(c[4], OFFICE[4]);
     }
 
     #[test]
-    fn 書いて読み直すと同じ組になる() {
+    fn writing_then_reading_gives_the_same_set() {
         let mut c: Vec<String> = OFFICE.iter().map(|s| s.to_string()).collect();
         c[4] = "C0504D".into();
         let back = parse(&to_xml(&c));

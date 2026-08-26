@@ -1178,7 +1178,7 @@ mod tests {
     }
 
     #[test]
-    fn 空の表でも落ちない() {
+    fn an_empty_sheet_does_not_panic() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut buf = Vec::new();

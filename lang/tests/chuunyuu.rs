@@ -12,7 +12,7 @@
 /// この試験も「あとから変えられない」を縛っていたので、決めが変わった
 /// ここで書き替えた。
 #[test]
-fn 言語はいつでも変えられる() {
+fn language_can_be_changed_at_any_time() {
     // 知らない札は断る(黙って ja に落とさない)
     assert!(!lang::i18n::set_language("xx"), "知らない札を受けた");
 

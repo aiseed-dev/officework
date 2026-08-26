@@ -146,7 +146,7 @@ mod tests {
     /// **必ず ja に戻します。** 戻さないと、後から走る試験が別の言語で
     /// 表を引いて落ちます。
     #[test]
-    fn 言語を替えるとリボンの語も替わる() {
+    fn changing_the_language_changes_the_ribbon_words() {
         assert!(lang::i18n::set_language("en"));
         assert_eq!(super::language(), "en");
         assert_eq!(crate::ribbon::writer_tabs()[1].name, "Home");

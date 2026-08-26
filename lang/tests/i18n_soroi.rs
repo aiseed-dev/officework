@@ -248,7 +248,7 @@ fn table_pairs(lang: &str) -> std::collections::BTreeMap<String, String> {
 
 /// **ソースの鍵が、鍵の一覧に全部載っている。**
 #[test]
-fn 鍵の一覧に載っていない鍵が無い() {
+fn no_key_is_missing_from_the_key_list() {
     let app = app_keys();
     let en = key_list();
     let missing: Vec<&String> = app.difference(&en).collect();
@@ -261,7 +261,7 @@ fn 鍵の一覧に載っていない鍵が無い() {
 }
 
 #[test]
-fn 使われていない訳が残っていない() {
+fn no_unused_translations_remain() {
     let app = app_keys();
     let en = key_list();
     let dead: Vec<&String> = en.difference(&app).collect();
@@ -276,7 +276,7 @@ fn 使われていない訳が残っていない() {
 /// **揃っていない言語を名乗らない。** 1つでも欠けた言語があるなら、
 /// その言語は「対応しています」と言ってよい状態ではない
 #[test]
-fn どの言語の表も同じ鍵を持つ() {
+fn every_language_table_has_the_same_keys() {
     let en = key_list();
     for lang in lang::i18n_tables::LANGS {
         let t = table_keys(lang);
@@ -294,7 +294,7 @@ fn どの言語の表も同じ鍵を持つ() {
 /// 穴埋めの数が言語で食い違うと、**実行時に穴が埋まらないか panic する**。
 /// 表を作るときにも見ているが、手で直せてしまうのでここでも見る
 #[test]
-fn 穴埋めの数が言語をまたいで揃う() {
+fn placeholder_count_matches_across_languages() {
     let holes = |s: &str| s.match_indices("{}").count();
     // **穴の数は英語の訳と比べます。** 鍵は記号なので穴がありません
     let en = english_of();
@@ -322,7 +322,7 @@ fn 穴埋めの数が言語をまたいで揃う() {
 /// 比べる検査はすり抜ける。この試験は 2026-08-11 に足した — それまで
 /// 13 の表すべてに3件ずつ、静かに死んだ訳があった
 #[test]
-fn 同じ鍵が二度出てこない() {
+fn no_key_appears_twice() {
     let mut bad = Vec::new();
     for lang in lang::i18n_tables::LANGS {
         let t = lang::i18n_tables::table(lang).expect("登録済み");
@@ -352,7 +352,7 @@ fn 同じ鍵が二度出てこない() {
 /// ここで気づけるように、名前が無ければ落とす(2026-08-11、ポルトガル語を
 /// 2つに分けたときに要ることが分かった)。
 #[test]
-fn 選べる言語すべてに名前がある() {
+fn every_selectable_language_has_a_name() {
     let nameless: Vec<&str> = lang::i18n::languages()
         .into_iter()
         .filter(|t| lang::i18n::language_label(t) == *t)
@@ -369,7 +369,7 @@ fn 選べる言語すべてに名前がある() {
 /// ポルトガル語を分けたとき、どちらも "Português" にすれば
 /// 見た目は綺麗でも、選ぶ人には区別がつかない
 #[test]
-fn 言語の名前が重ならない() {
+fn language_names_do_not_collide() {
     let mut seen: std::collections::HashMap<&str, &str> = Default::default();
     for tag in lang::i18n::languages() {
         let name = lang::i18n::language_label(tag);
@@ -389,7 +389,7 @@ fn 言語の名前が重ならない() {
 /// 落とすと正しい綴りを誤りだと言うことになる。争いの無い語だけ。
 /// `dialog` も見ない — 英国でも UI の用語はこれで、`dialogue` は会話の意。
 #[test]
-fn 英語の表が英国綴りで揃っている() {
+fn english_uses_british_spelling() {
     const AMERICAN: &[(&str, &str)] = &[
         ("color", "colour"),
         ("colors", "colours"),
@@ -432,7 +432,7 @@ fn 英語の表が英国綴りで揃っている() {
 /// `ui/gen_i18n.py` では先に直していたのに、こちらを直し忘れていた。**
 /// 二つの走査は食い違いうるので、こちら側にも証拠を置く。
 #[test]
-fn 試験の印の下にある本文を見落とさない() {
+fn code_below_a_test_attribute_is_not_missed() {
     // 関数に付いた印。**その関数だけ**が消え、下の句は残る
     let src = r#"
 fn a() { let _ = ui::t!("上の句"); }

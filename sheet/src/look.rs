@@ -124,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn 塗りと文字色が当たる() {
+    fn fill_and_font_colour_apply() {
         let s = sheet_with(&[(0, 5.0), (1, 50.0)]);
         let p = prep(&s, vec![rule(
             CondKind::Cmp(CondOp::Gt, 10.0),
@@ -137,7 +137,7 @@ mod tests {
     }
 
     #[test]
-    fn 触らない飾りは元のまま() {
+    fn untouched_decoration_stays_as_it_was() {
         // look が bold を持たない規則に当たっても、bold は None のまま。
         // ここが Some(false) になると、元から太字のセルが細くなる
         let s = sheet_with(&[(0, 50.0)]);
@@ -149,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn 後の規則が勝つ() {
+    fn a_later_rule_wins() {
         let s = sheet_with(&[(0, 50.0)]);
         let p = prep(&s, vec![
             rule(CondKind::Cmp(CondOp::Gt, 10.0), CondLook { fill: Some("FF0000".into()), ..Default::default() }),
@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn 当たらない規則は前の答えを消さない() {
+    fn a_rule_that_misses_does_not_clear_the_earlier_answer() {
         let s = sheet_with(&[(0, 15.0)]);
         let p = prep(&s, vec![
             rule(CondKind::Cmp(CondOp::Gt, 10.0), CondLook { fill: Some("FF0000".into()), ..Default::default() }),
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn データバーは範囲の中の位置() {
+    fn a_data_bar_is_the_position_within_the_range() {
         let s = sheet_with(&[(0, 0.0), (1, 5.0), (2, 10.0)]);
         let p = prep(&s, vec![rule(CondKind::Bar("638EC6".into()), CondLook::default())]);
         let (t, c) = resolve_cond(&p, Pos::new(1, 0), &Value::Number(5.0)).bar.expect("棒が出ない");
@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn カラースケールは塗りとして返る() {
+    fn a_colour_scale_comes_back_as_a_fill() {
         // 描く側から見れば「このセルの塗り」— バーと違って別の欄にしない
         let s = sheet_with(&[(0, 0.0), (1, 10.0)]);
         let p = prep(&s, vec![rule(
@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[test]
-    fn アイコンは3段() {
+    fn icon_sets_have_three_levels() {
         let s = sheet_with(&[(0, 0.0), (1, 5.0), (2, 10.0)]);
         let p = prep(&s, vec![rule(CondKind::Icons("3Arrows".into()), CondLook::default())]);
         assert_eq!(resolve_cond(&p, Pos::new(0, 0), &Value::Number(0.0)).icon.unwrap().0, "↓");
@@ -206,7 +206,7 @@ mod tests {
     }
 
     #[test]
-    fn 範囲の外は何も返さない() {
+    fn outside_the_range_returns_nothing() {
         let s = sheet_with(&[(0, 50.0)]);
         let p = prep(&s, vec![rule(
             CondKind::Cmp(CondOp::Gt, 10.0),

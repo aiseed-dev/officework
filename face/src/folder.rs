@@ -196,7 +196,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 二重の拡張子で種類が決まる() {
+    fn double_extension_decides_the_kind() {
         assert_eq!(kind_of("報告書.adoc"), Kind::Doc);
         assert_eq!(kind_of("売上台帳.sheet.adoc"), Kind::Sheet);
         assert_eq!(kind_of("既定.tmpl.adoc"), Kind::Tmpl);
@@ -211,13 +211,13 @@ mod tests {
 
     /// **大文字でも同じ**(Windows から来たファイル)
     #[test]
-    fn 大文字小文字を見ない() {
+    fn ignores_letter_case() {
         assert_eq!(kind_of("台帳.SHEET.ADOC"), Kind::Sheet);
         assert_eq!(kind_of("表.XLSX"), Kind::SheetX);
     }
 
     #[test]
-    fn 名前から二重の拡張子を落とす() {
+    fn strips_the_double_extension_from_a_name() {
         assert_eq!(display_name("売上台帳.sheet.adoc", Kind::Sheet), "売上台帳");
         assert_eq!(display_name("報告書.adoc", Kind::Doc), "報告書");
         assert_eq!(display_name("既定.tmpl.adoc", Kind::Tmpl), "既定");
@@ -227,7 +227,7 @@ mod tests {
 
     /// 保存の名前は `kind_of` が表と読める形になる。**この2つは対**
     #[test]
-    fn 保存の名前は表の形になる() {
+    fn save_name_takes_the_sheet_form() {
         let n = |s: &str| {
             as_sheet_adoc(Path::new(s)).file_name().unwrap().to_str().unwrap().to_string()
         };
@@ -251,7 +251,7 @@ mod tests {
 
     /// **付けた名前を `kind_of` が表と読む。** ここが対でないと化ける
     #[test]
-    fn 保存の名前と種類の判定が対になっている() {
+    fn save_name_and_kind_check_agree() {
         for s in ["売上台帳", "売上台帳.adoc", "売上台帳.sheet.adoc", "2026.08 売上"] {
             let made = as_sheet_adoc(Path::new(s));
             let name = made.file_name().unwrap().to_str().unwrap();
@@ -263,7 +263,7 @@ mod tests {
 
     /// **`.sheet.adoc` を文書と間違えない。** どちらも `.adoc` で終わる
     #[test]
-    fn 表を文書と間違えない() {
+    fn a_sheet_is_not_mistaken_for_a_document() {
         assert!(kind_of("売上台帳.sheet.adoc").is_sheet());
         assert!(!kind_of("売上台帳.sheet.adoc").is_doc());
         assert!(kind_of("報告書.adoc").is_doc());
@@ -272,20 +272,20 @@ mod tests {
 
     /// 見た目の元と様式は**文書の画面**で開く
     #[test]
-    fn 見た目と様式は文書() {
+    fn template_and_form_count_as_documents() {
         assert!(kind_of("既定.tmpl.adoc").is_doc());
         assert!(kind_of("申込書.form.adoc").is_doc());
     }
 
     #[test]
-    fn 開けない種類が分かる() {
+    fn tells_which_kinds_cannot_be_opened() {
         assert!(!kind_of("売上.parquet").can_open());
         assert!(!kind_of("写真.png").can_open());
         assert!(kind_of("報告書.adoc").can_open());
     }
 
     #[test]
-    fn フォルダを並べる() {
+    fn lists_a_folder() {
         let dir = std::env::temp_dir().join(format!("jo-folder-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("images")).unwrap();
@@ -311,7 +311,7 @@ mod tests {
 
     /// 読めないフォルダでも落ちない
     #[test]
-    fn 無いフォルダでも落ちない() {
+    fn a_missing_folder_does_not_panic() {
         assert!(list(Path::new("/そんなフォルダは無い")).is_empty());
     }
 }

@@ -484,14 +484,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn この機械のフォントを数えられる() {
+    fn can_count_the_fonts_on_this_machine() {
         let all = list();
         assert!(!all.is_empty(), "1つも見つからない");
         assert!(all.iter().any(|f| f.japanese), "日本語が組めるものが無い");
     }
 
     #[test]
-    fn 名前はファイル名ではなく書体名() {
+    fn the_name_is_the_typeface_not_the_file() {
         // 「ipaexg」ではなく「IPAexゴシック」、「NotoSansCJK-Regular」ではなく
         // 「Noto Sans CJK JP」と名乗らせる。
         //
@@ -515,7 +515,7 @@ mod tests {
     }
 
     #[test]
-    fn 同名なら素の字面を採る() {
+    fn for_the_same_name_the_regular_face_wins() {
         // 「BIZ UDPゴシック」を頼んで Bold が返ってはいけない
         for name in ["BIZ UDPゴシック", "IPAexゴシック", "Noto Sans CJK JP"] {
             if let Some(f) = resolve(name) {
@@ -525,35 +525,35 @@ mod tests {
     }
 
     #[test]
-    fn 名前から実体を引ける() {
+    fn a_name_resolves_to_a_real_font() {
         let first = list().iter().find(|f| f.japanese).unwrap();
         let got = resolve(&first.name).expect("引けない");
         assert_eq!(got.path, first.path);
     }
 
     #[test]
-    fn 表記の揺れを吸う() {
+    fn absorbs_spelling_variation() {
         let first = list().iter().find(|f| f.japanese).unwrap();
         let messy = first.name.to_uppercase().replace(' ', "");
         assert!(resolve(&messy).is_some(), "「{}」を引けない", messy);
     }
 
     #[test]
-    fn 無い書体は代用するが黙らない() {
+    fn a_missing_font_is_substituted_but_reported() {
         let (f, exact) = for_document(Some("存在しない書体XYZ")).unwrap();
         assert!(!exact, "指定と違う書体なのに、合っていることにした");
         assert!(f.japanese, "英字フォントに落ちている(豆腐になる)");
     }
 
     #[test]
-    fn 指定が無ければ日本語が組めるものを選ぶ() {
+    fn with_no_request_it_picks_a_font_that_can_set_japanese() {
         let (f, exact) = for_document(None).unwrap();
         assert!(exact);
         assert!(f.japanese);
     }
 
     #[test]
-    fn 明朝の書類はゴシックに化けない() {
+    fn a_serif_document_does_not_turn_sans() {
         // ＭＳ 明朝は Linux に無い。でも代替は明朝系であるべき
         let (f, exact) = for_document(Some("ＭＳ 明朝")).unwrap();
         assert!(!exact);
@@ -571,7 +571,7 @@ mod tests {
     }
 
     #[test]
-    fn 引いた実体で組版できる() {
+    fn the_resolved_font_can_typeset() {
         let (f, _) = for_document(None).unwrap();
         let data = load(f).unwrap();
         let m = crate::Metrics::new(&data).expect("解釈できない");

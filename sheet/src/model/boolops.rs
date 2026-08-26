@@ -372,13 +372,13 @@ mod tests {
     }
 
     #[test]
-    fn 重ならない二つの結合は二つの輪になる() {
+    fn two_separate_unions_make_two_rings() {
         let r = combine(&rect(0.0, 0.0, 0.2, 0.2), &rect(0.6, 0.6, 0.8, 0.8), BoolOp::Union);
         assert_eq!(r.len(), 2, "離れた形が1つに繋がった: {r:?}");
     }
 
     #[test]
-    fn 重なった二つの結合は面積が足し算から重なりを引いた分() {
+    fn two_overlapping_unions_have_area_minus_the_overlap() {
         let a = rect(0.0, 0.0, 0.4, 0.4);
         let b = rect(0.2, 0.2, 0.6, 0.6);
         let r = combine(&a, &b, BoolOp::Union);
@@ -389,7 +389,7 @@ mod tests {
     }
 
     #[test]
-    fn 交差は重なりの分だけ残る() {
+    fn intersection_keeps_only_the_overlap() {
         let r = combine(
             &rect(0.0, 0.0, 0.4, 0.4),
             &rect(0.2, 0.2, 0.6, 0.6),
@@ -400,7 +400,7 @@ mod tests {
     }
 
     #[test]
-    fn 中を抜くと穴のあいた形になる() {
+    fn cutting_the_inside_leaves_a_hole() {
         // **これが輪郭を2本持てないと表せない形**
         let r = combine(
             &rect(0.0, 0.0, 0.8, 0.8),
@@ -414,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn 曲線は折れ線に割ってから計算する() {
+    fn curves_are_flattened_before_computing() {
         use super::super::types::PathPoint as P;
         let pts = vec![
             P::at(0.0, 0.5),
@@ -427,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    fn 切れ目で輪郭が分かれる() {
+    fn a_gap_splits_the_outline() {
         use super::super::types::PathPoint as P;
         let pts = vec![
             P::at(0.0, 0.0),
