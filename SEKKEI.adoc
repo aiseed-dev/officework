@@ -4594,3 +4594,9 @@ test/ の実地試験(実在しそうな文書10枚を openpyxl / python-docx �
 意味の単位ぶんだけ(Normal・Title・見出し1〜5・箇条書き・番号・引用・
 表の格子)。本家の 164 は真似ない(増やさない決め)。
 構造化計画のオブジェクトの一覧と同じ並びになる。
+
+実物の教師(発注者の Word が作った空の Document 2.docx)を測った:
+スタイル 33 個・docDefaults 10.5pt・書体はテーマ参照(游)・A4・余白 25.4mm。
+**List Number は Word の空にも無い**(python-docx のひな型 164 個が余分な
+だけ — 先の台帳の1件は穴ではなかった)。大きさの比較(発注者の実測):
+officework 2.7KB(骨だけ)/ Word 12.5KB(目標)/ python-docx 37.2KB(肥満)。
