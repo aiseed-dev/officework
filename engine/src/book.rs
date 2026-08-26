@@ -19,6 +19,8 @@
 pub mod adoc;
 /// テーマ色の組と、番号+明るさの加減から色を解く
 pub mod theme;
+/// `.sheet.adoc` の往復で落ちる持ち物を数える
+pub mod holes;
 
 mod fmt;
 mod ops;
