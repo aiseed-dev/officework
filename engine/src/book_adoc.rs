@@ -37,39 +37,21 @@ pub fn write(book: &Book) -> String {
 
 /// 書くときに**落ちる物**を数える。日本語で1件1行。
 ///
-/// 値が消えるわけではありません — 見た目と規則が adoc の表に載らない、
-/// という意味です。載せ先はテンプレートで、そちらはまだこれからです。
+/// **2026-08-26 にほとんど無くなりました。** 見た目はテンプレート
+/// (`.tmpl.adoc`)、格子に載らない意味は役割の印を付けた表が持ちます。
+/// 何が往復するかは [`crate::holes`] が機械で数えています。
 pub fn write_report(book: &Book) -> Vec<String> {
     let mut out = Vec::new();
-    let n = |x: usize| x;
-    let mut fmt = 0;
-    let mut figure = 0;
-    let mut image = 0;
+    // **画像の実体は adoc に入りません**(binary です)。隣のファイルに
+    // 出すので、保存する側が [`crate::book_meta::image_files`] を書くこと。
+    // 書き忘れると絵だけ消えるので、数えて言います
+    let images: usize = book.sheets.iter().map(|s| s.images.len() + s.images_new.len()).sum();
+    if images > 0 {
+        out.push(format!("画像 {images} 件(実体は隣のファイルに出します)"));
+    }
     let pivot = book.pivots.len();
-    let mut widths = 0;
-    for s in &book.sheets {
-        fmt += s.cells.values().filter(|c| !c.fmt.is_plain()).count();
-        figure += s.shapes.len();
-        image += s.images.len() + s.images_new.len();
-        widths += s.col_width.len() + s.row_height.len();
-    }
-    if fmt > 0 {
-        out.push(format!("セルの書式 {} 件(見た目はテンプレートの持ち場です)", n(fmt)));
-    }
-    if widths > 0 {
-        out.push(format!("列の幅・行の高さ {} 件(見た目はテンプレートの持ち場です)", n(widths)));
-    }
-    if figure > 0 {
-        out.push(format!("図形 {} 件(adoc の表には置けません)", n(figure)));
-    }
-    // **画像はいちばん重い落とし物。** 3 MB のブックが 1 KB の adoc になる
-    // ことがあるので、黙って落とすと消えたことに気づけません。外のファイルに
-    // 出す道(writer の `image::`)はこれからです
-    if image > 0 {
-        out.push(format!("画像 {} 件(まだ外のファイルに出せません)", n(image)));
-    }
     if pivot > 0 {
-        out.push(format!("ピボットテーブル {} 件(adoc の表には置けません)", n(pivot)));
+        out.push(format!("ピボットテーブル {pivot} 件(まだ adoc に置けません)"));
     }
     out
 }
@@ -530,10 +512,20 @@ mod tests {
     /// **落とす物を数えて返す。** 書式や図形は adoc の表に載らない
     #[test]
     fn counts_what_is_dropped() {
+        // **列の幅はもう落ちません**(2026-08-26)。テンプレートが持ちます。
+        // 落ちるのは、実体が binary で adoc に入らない画像だけです
         let mut b = book_of();
         b.sheets[0].col_width.insert(0, 20.0);
+        assert!(write_report(&b).is_empty(), "落ちない物を落ちると言っている");
+
+        b.sheets[0].images.push(book::SheetImage {
+            at: Pos::parse("D5").expect("番地"),
+            dx_px: 0.0, dy_px: 0.0, width_px: 96.0, height_px: 96.0,
+            data: vec![0x89, b'P', b'N', b'G'],
+        });
         let r = write_report(&b);
-        assert!(r.iter().any(|x| x.contains("列の幅")), "落とし物を言っていない: {r:?}");
+        assert!(r.iter().any(|x| x.contains("画像")), "画像を言っていない: {r:?}");
+        assert_eq!(crate::book_meta::image_files(&b).len(), 1, "実体が出ない");
     }
     /// **頭に 0 の付いた番号が数に化けない**(実物 16 冊のうち 5 冊が
     /// これに当たった。2026-08-19 に測って見つけた)

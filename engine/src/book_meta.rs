@@ -22,6 +22,9 @@
 //!
 //! 題は**シートの名前**です。どのシートの物かを言うために使います。
 
+/// 図形を (名前, 項目, 値) の表で持つ
+pub mod shape;
+
 use crate::{Block, Cellbox, Document, Table};
 use book::{
     CondKind, CondLook, CondOp, CondRule, DefinedName, Pos, Scenario, Sheet, TableDef, Validation,
@@ -31,7 +34,7 @@ use book::{
 /// 読み手と揃っているか確かめます。
 pub const ROLES: &[&str] = &[
     "hidden", "tables", "names", "links", "conditional-format", "validations",
-    "scenarios", "print-areas", "phonetics",
+    "scenarios", "print-areas", "phonetics", "shapes", "images",
 ];
 
 /// シート1枚ぶんの、格子に載らない意味を表にする。
@@ -91,6 +94,72 @@ pub fn tables_of(s: &Sheet) -> Vec<Table> {
     push(&mut out, "phonetics", &["at", "reading"],
         s.phonetics.iter().map(|(p, r)| vec![p.a1(), r.clone()]).collect());
 
+    // **図形は縦長の (名前, 項目, 値)。** 持ち物が 19 あるので横には並べません。
+    // 名前は場所(`D5`)です — 図形そのものに名前が無いので、置き場で呼びます
+    let mut shapes: Vec<Vec<String>> = Vec::new();
+    for sp in &s.shapes {
+        let at = sp.at.a1();
+        for (item, v) in shape::to_rows(sp) {
+            shapes.push(vec![at.clone(), item.to_string(), v]);
+        }
+    }
+    push(&mut out, "shapes", &["shape", "item", "value"], shapes);
+
+    // **画像は実体を隣のファイルに出します。** binary は adoc に入りません。
+    // 名前はシート名と番号から決まるので、模型に径路の欄を足さずに済みます
+    push(&mut out, "images", &["file", "at", "dx", "dy", "width", "height"],
+        s.images.iter().enumerate().map(|(i, im)| vec![
+            image_file(&s.name, i, &im.data), im.at.a1(),
+            n2(im.dx_px), n2(im.dy_px), n2(im.width_px), n2(im.height_px),
+        ]).collect());
+
+    out
+}
+
+/// **画像の置き場。** `images/<シート名>-<番号>.<形式>`。
+///
+/// 名前が中身から決まるので、同じブックを2度書き出しても同じ名前です。
+pub fn image_file(sheet: &str, nth: usize, data: &[u8]) -> String {
+    format!("images/{}-{}.{}", safe_name(sheet), nth + 1, image_ext(data))
+}
+
+/// ファイル名に使えない字を `_` にする(どの OS でも通る形)
+fn safe_name(s: &str) -> String {
+    s.chars().map(|c| if "\\/:*?\"<>|".contains(c) { '_' } else { c }).collect()
+}
+
+/// 中身の頭から形式を見る。分からなければ `png`
+fn image_ext(data: &[u8]) -> &'static str {
+    match data {
+        [0x89, b'P', b'N', b'G', ..] => "png",
+        [0xFF, 0xD8, ..] => "jpg",
+        [b'G', b'I', b'F', ..] => "gif",
+        [b'<', ..] => "svg",
+        _ => "png",
+    }
+}
+
+fn n2(v: f32) -> String {
+    if (v - v.round()).abs() < 0.0005 {
+        format!("{}", v.round() as i64)
+    } else {
+        format!("{v}")
+    }
+}
+
+/// **書き出す画像の実体。**(径路, 中身)を返します。
+///
+/// `.sheet.adoc` を保存する側が、隣にこのファイルを置きます
+/// (writer の [`crate::adoc::assign_image_paths`] と同じ作法)。
+pub fn image_files(book: &book::Book) -> Vec<(String, Vec<u8>)> {
+    let mut out = Vec::new();
+    for s in &book.sheets {
+        for (i, im) in s.images.iter().enumerate() {
+            if !im.data.is_empty() {
+                out.push((image_file(&s.name, i, &im.data), im.data.clone()));
+            }
+        }
+    }
     out
 }
 
@@ -199,6 +268,39 @@ pub fn take(role: &str, sheet_name: &str, rows: &[Vec<String>], s: &mut Sheet) {
                 if let Some(p) = Pos::parse(g(r, 0)) {
                     s.phonetics.insert(p, g(r, 1).to_string());
                 }
+            }
+        }
+        "shapes" => {
+            // 同じ名前の行をまとめてから1つの図形にします
+            let mut by_name: Vec<(String, Vec<(String, String)>)> = Vec::new();
+            for r in rows {
+                let name = g(r, 0).to_string();
+                if name.is_empty() {
+                    continue;
+                }
+                let item = (g(r, 1).to_string(), g(r, 2).to_string());
+                match by_name.iter_mut().find(|(n, _)| *n == name) {
+                    Some((_, v)) => v.push(item),
+                    None => by_name.push((name, vec![item])),
+                }
+            }
+            for (_, items) in by_name {
+                s.shapes.push(shape::from_rows(&items));
+            }
+        }
+        "images" => {
+            // **中身は隣のファイルにあります。** ここで持つのは置き場と
+            // 大きさだけで、実体は開く側が径路から読みます
+            for r in rows {
+                let Some(at) = Pos::parse(g(r, 1)) else { continue };
+                s.images.push(book::SheetImage {
+                    at,
+                    dx_px: g(r, 2).parse().unwrap_or(0.0),
+                    dy_px: g(r, 3).parse().unwrap_or(0.0),
+                    width_px: g(r, 4).parse().unwrap_or(0.0),
+                    height_px: g(r, 5).parse().unwrap_or(0.0),
+                    data: Vec::new(),
+                });
             }
         }
         _ => {}

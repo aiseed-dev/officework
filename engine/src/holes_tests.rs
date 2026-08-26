@@ -61,18 +61,11 @@ mod holes_watch {
 mod holes_count {
     use crate::holes::round_trip_holes;
 
-    /// **いま埋まっていない穴。** 埋めたらここから外します。
+    /// **いま埋まっていない穴。** 空です — 2026-08-26 に全部埋まりました。
     ///
-    /// 減らす作業の物差しです。増えたら試験が落ちます。
-    const KNOWN: &[&str] = &[
-        // ブックの側
-       
-       
-        // 1枚の側
-       
-       
-        "shapes", "images",
-    ];
+    /// 増えたら試験が落ちます。持ち物を足して往復させ忘れると、ここで
+    /// 止まります。
+    const KNOWN: &[&str] = &[];
 
     #[test]
     fn the_round_trip_holes_are_the_known_ones() {
