@@ -853,7 +853,7 @@ mod tests {
     /// 探す」になり、まだ無いので断られます — 名前を付けて保存が道具から
     /// 使えなくなります。
     #[test]
-    fn 保存先の道を宛先と読まない() {
+    fn the_save_path_is_not_read_as_a_target() {
         for cmd in ["open", "save", "to_pdf"] {
             let line = format!("{{\"cmd\":\"{cmd}\",\"path\":\"/tmp/新しい名前.docx\"}}");
             assert_eq!(dest(&line), None, "{cmd} の path を宛先と読んでいる");
@@ -862,7 +862,7 @@ mod tests {
 
     /// 操作の命令に付いた `path` は、いままでどおり宛先です(段10)。
     #[test]
-    fn 操作の命令の道は宛先() {
+    fn an_operation_commands_path_is_its_target() {
         let line = "{\"cmd\":\"get\",\"path\":\"/tmp/台帳.sheet.adoc\",\"a1\":\"A1\"}";
         assert_eq!(dest(line), Some("/tmp/台帳.sheet.adoc".to_string()));
         // 付いていなければ、いま見ているタブが相手
@@ -874,7 +874,7 @@ mod tests {
     /// 前は何を渡してもファイル扱いで、フォルダを渡すと読めずに白紙が
     /// 出ていました。綴りはフォルダなので、ここが入口です
     #[test]
-    fn 引数がフォルダならフォルダとして開く() {
+    fn a_folder_argument_opens_as_a_folder() {
         let d = std::env::temp_dir().join(format!("jo-start-{}", std::process::id()));
         std::fs::create_dir_all(&d).unwrap();
         let f = d.join("報告書.adoc");
@@ -887,7 +887,7 @@ mod tests {
     }
 
     #[test]
-    fn 開く命令の道は開く相手() {
+    fn an_open_commands_path_is_what_to_open() {
         let line = "{\"cmd\":\"open\",\"path\":\"/tmp/台帳.sheet.adoc\"}";
         assert_eq!(file_to_open(line).as_deref(), Some("/tmp/台帳.sheet.adoc"));
         assert_eq!(file_to_open("{\"cmd\":\"get\",\"a1\":\"A1\"}"), None);
@@ -895,7 +895,7 @@ mod tests {
 
     /// **名前で行き先の画面が決まる**(中身は見ません)。
     #[test]
-    fn 名前で表か文章かを決める() {
+    fn the_name_decides_sheet_or_document() {
         assert!(is_table(std::path::Path::new("/tmp/台帳.sheet.adoc")));
         assert!(is_table(std::path::Path::new("/tmp/台帳.xlsx")));
         assert!(!is_table(std::path::Path::new("/tmp/報告書.adoc")));

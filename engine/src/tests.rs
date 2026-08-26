@@ -24,7 +24,7 @@ mod kihon {
     const SAMPLE: &str = "日本の事務の実態は、文書ではなく様式です。その様式の定義をテキストにして、記入用の帳票・検証・データベースを全部そこから派生させます。「原本はテキスト。」と、私たちは Rust で書きます。";
 
     #[test]
-    fn 記入欄の広がりを引ける() {
+    fn the_extent_of_a_form_field_can_be_read() {
         // 「氏名: 」(8バイト)+ 欄「山田　太郎」(15バイト)= 8..23
         let mut d = Document::plain("氏名: 山田　太郎\n次の行");
         d.apply_char_format(8..23, |f| {
@@ -39,7 +39,7 @@ mod kihon {
     }
 
     #[test]
-    fn 行頭に句読点や閉じ括弧が来ない() {
+    fn no_punctuation_or_closing_bracket_starts_a_line() {
         for measure in [30.0, 40.0, 55.0, 70.0, 90.0] {
             let s = sheet_of(SAMPLE, measure);
             for l in &s.lines {
@@ -51,7 +51,7 @@ mod kihon {
     }
 
     #[test]
-    fn 行末に開き括弧が残らない() {
+    fn no_opening_bracket_is_left_at_the_line_end() {
         for measure in [30.0, 40.0, 55.0, 70.0, 90.0] {
             let s = sheet_of(SAMPLE, measure);
             for l in &s.lines {
@@ -63,7 +63,7 @@ mod kihon {
     }
 
     #[test]
-    fn 欧文の語は行の中で割れない() {
+    fn latin_words_do_not_break_mid_line() {
         for measure in [30.0, 40.0, 55.0, 70.0] {
             let s = sheet_of(SAMPLE, measure);
             let joined: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
@@ -74,7 +74,7 @@ mod kihon {
     }
 
     #[test]
-    fn 行長を大きく超えない() {
+    fn does_not_overshoot_the_line_length() {
         // 追い出しで短くなるのは良い。超えるのは駄目(はみ出し)
         for measure in [40.0, 55.0, 70.0] {
             let s = sheet_of(SAMPLE, measure);
@@ -86,7 +86,7 @@ mod kihon {
     }
 
     #[test]
-    fn 文字は一つも失われない() {
+    fn not_a_single_character_is_lost() {
         let want: String = SAMPLE.chars().filter(|c| *c != ' ').collect();
         let s = sheet_of(SAMPLE, 55.0);
         let got: String = s.lines.iter().flat_map(|l| l.cells.iter())
@@ -95,7 +95,7 @@ mod kihon {
     }
 
     #[test]
-    fn 実フォントの字幅で組んでいる() {
+    fn layout_uses_the_real_font_widths() {
         let data = font();
         let m = Metrics::new(&data).unwrap();
         let zen = m.advance_mm('あ', 10.5);
@@ -114,7 +114,7 @@ mod format_tests {
     }
 
     #[test]
-    fn 打鍵しても書式が消えない() {
+    fn typing_does_not_clear_the_format() {
         // 以前は set_body_text が段落を作り直していたので、打つたびに太字が消えた
         let mut d = doc("表題\n本文");
         d.apply_char_format(0..2, |f| f.bold = true);
@@ -127,7 +127,7 @@ mod format_tests {
     }
 
     #[test]
-    fn 段落が増えても前の書式は残る() {
+    fn adding_paragraphs_keeps_the_earlier_format() {
         let mut d = doc("表題");
         d.apply_char_format(0..2, |f| f.bold = true);
         d.set_body_text("表題\n新しい段落");
@@ -137,7 +137,7 @@ mod format_tests {
     }
 
     #[test]
-    fn 選択した段落だけに掛かる() {
+    fn applies_only_to_the_selected_paragraphs() {
         let mut d = doc("一行目\n二行目\n三行目");
         // 「二行目」は 4..7(一行目=9バイト+改行)
         let start = "一行目\n".len();
@@ -149,7 +149,7 @@ mod format_tests {
     }
 
     #[test]
-    fn 複数の段落にまたがる選択() {
+    fn a_selection_spanning_several_paragraphs() {
         let mut d = doc("一行目\n二行目\n三行目");
         let end = "一行目\n二行目".len();
         d.apply_align(0..end, Align::Center);
@@ -160,7 +160,7 @@ mod format_tests {
     }
 
     #[test]
-    fn 今の書式を読める() {
+    fn reads_the_current_format() {
         // ボタンを押した状態に見せるために要る
         let mut d = doc("表題\n本文");
         d.apply_char_format(0..2, |f| f.bold = true);
@@ -172,7 +172,7 @@ mod format_tests {
     }
 
     #[test]
-    fn 表は消えない() {
+    fn the_table_is_not_lost() {
         let mut d = doc("本文");
         d.blocks.push(Block::Table(Table { col_mm: vec![], rows: vec![vec![Cellbox::default()]],
         ..Default::default()
@@ -195,7 +195,7 @@ mod align_tests {
     }
 
     #[test]
-    fn 中央揃えは左右の余りが等しい() {
+    fn centering_leaves_equal_space_on_both_sides() {
         let s = sheet("表題", Align::Center);
         let line = &s.lines[0];
         let left = line.cells[0].x_mm;
@@ -205,19 +205,19 @@ mod align_tests {
     }
 
     #[test]
-    fn 右揃えは行末が行長に届く() {
+    fn right_alignment_reaches_the_line_end() {
         let s = sheet("表題", Align::Right);
         let last = s.lines[0].cells.last().unwrap();
         assert!((last.x_mm + last.w_mm - 100.0).abs() < 0.01, "右端に着いていない");
     }
 
     #[test]
-    fn 左揃えは0から始まる() {
+    fn left_alignment_starts_at_zero() {
         assert_eq!(sheet("表題", Align::Left).lines[0].cells[0].x_mm, 0.0);
     }
 
     #[test]
-    fn 書式が字まで届く() {
+    fn the_format_reaches_the_characters() {
         // 画面と紙が同じものを見るので、片方だけ太字になることが起きない
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
@@ -233,7 +233,7 @@ mod size_tests {
     use super::*;
 
     #[test]
-    fn 打鍵しても大きさが戻らない() {
+    fn typing_does_not_reset_the_size() {
         let mut d = Document::plain("表題\n本文");
         d.apply_size(0..2, |s| s + 6.0);
         d.set_body_text("表題あ\n本文");
@@ -243,7 +243,7 @@ mod size_tests {
     }
 
     #[test]
-    fn 際限なく大きくならない() {
+    fn does_not_grow_without_bound() {
         // 0pt にすると本文が消えて、原因が分からなくなる
         let mut d = Document::plain("本文");
         for _ in 0..100 { d.apply_size(0..2, |s| s - 10.0) }
@@ -253,7 +253,7 @@ mod size_tests {
     }
 
     #[test]
-    fn 書体を段落に掛けられる() {
+    fn a_font_can_be_applied_to_a_paragraph() {
         let mut d = Document::plain("表題\n本文");
         d.apply_font(0..2, Some("BIZ UDPゴシック".into()));
         assert_eq!(d.paragraphs().next().unwrap().runs[0].font.as_deref(), Some("BIZ UDPゴシック"));
@@ -278,7 +278,7 @@ mod list_tests {
     }
 
     #[test]
-    fn 箇条書きの印が本文の前に出る() {
+    fn the_bullet_mark_renders_before_the_text() {
         let s = sheet(|d| {
             for b in &mut d.blocks {
                 if let Block::Para(p) = b { p.list = ListKind::Bullet }
@@ -288,7 +288,7 @@ mod list_tests {
     }
 
     #[test]
-    fn 段落番号は連番になる() {
+    fn paragraph_numbers_run_in_sequence() {
         let s = sheet(|d| {
             for b in &mut d.blocks {
                 if let Block::Para(p) = b { p.list = ListKind::Number }
@@ -300,7 +300,7 @@ mod list_tests {
     }
 
     #[test]
-    fn レベルで印と番号の形が変わる() {
+    fn marker_and_number_shape_change_with_the_level() {
         let mut p = Paragraph { list: ListKind::Bullet, ..Default::default() };
         assert_eq!(p.marker(0).as_deref(), Some("・"));
         p.indent = 1;
@@ -312,7 +312,7 @@ mod list_tests {
     /// **箇条書きの後の番号付きは1から。** 別のリストなので続けて数えない
     /// (2026-08-18、見本を実機で開いて「3.」から始まっているのを見つけた)。
     #[test]
-    fn 種類が変われば番号は振り出しに戻る() {
+    fn a_change_of_kind_restarts_the_numbering() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("あ\nい\n一つ目\n二つ目");
@@ -333,7 +333,7 @@ mod list_tests {
     }
 
     #[test]
-    fn 深い番号は浅い番号が進むと振り出しに戻る() {
+    fn deep_numbering_restarts_when_a_shallow_level_advances() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("一\n一の一\n一の二\n二\n二の一");
@@ -352,7 +352,7 @@ mod list_tests {
     }
 
     #[test]
-    fn 印は本文を書き換えない() {
+    fn the_mark_does_not_rewrite_the_text() {
         // 編集中の文字位置とずれると、カーソルが合わなくなる
         let mut d = Document::plain("一つ目");
         if let Block::Para(p) = &mut d.blocks[0] { p.list = ListKind::Bullet }
@@ -360,7 +360,7 @@ mod list_tests {
     }
 
     #[test]
-    fn インデントで右へ寄る() {
+    fn indenting_moves_text_right() {
         let plain = sheet(|_| {});
         let ind = sheet(|d| {
             for b in &mut d.blocks {
@@ -372,7 +372,7 @@ mod list_tests {
     }
 
     #[test]
-    fn 行間で行が離れる() {
+    fn line_spacing_separates_the_lines() {
         let plain = sheet(|_| {});
         let wide = sheet(|d| {
             for b in &mut d.blocks {
@@ -385,7 +385,7 @@ mod list_tests {
     }
 
     #[test]
-    fn インデントすると行長が縮む() {
+    fn indenting_shortens_the_line_length() {
         // 右端がはみ出さないこと
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
@@ -405,7 +405,7 @@ mod vertical_tests {
     use super::*;
 
     #[test]
-    fn 縦書きは右の列から左へ進み字は上から下へ() {
+    fn vertical_writing_runs_right_to_left_and_top_to_bottom() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let d = Document::plain("一行目の文。\n二行目。");
@@ -435,7 +435,7 @@ mod ruby_tests {
     use super::*;
 
     #[test]
-    fn ルビの行が基底の上に半分の大きさで出る() {
+    fn the_ruby_line_sits_above_the_base_at_half_size() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("組版の話");
@@ -465,7 +465,7 @@ mod distribute_tests {
     use super::*;
 
     #[test]
-    fn 均等割付は最後の行も行長いっぱいに広がる() {
+    fn distributed_alignment_stretches_the_last_line_too() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("氏名");
@@ -518,7 +518,7 @@ mod table_layout_tests {
     }
 
     #[test]
-    fn 表の中身が紙面に出る() {
+    fn table_contents_reach_the_page() {
         let s = sheet();
         let all: String = s.lines.iter().map(|l| l.text()).collect();
         assert!(all.contains("品名"), "表のセルが描かれていない");
@@ -526,7 +526,7 @@ mod table_layout_tests {
     }
 
     #[test]
-    fn 表の行は本文由来ではない() {
+    fn table_rows_do_not_come_from_the_body_text() {
         // カーソルの位置合わせを壊さないための区別
         let s = sheet();
         let body: Vec<&Line> = s.lines.iter().filter(|l| l.from_body).collect();
@@ -536,7 +536,7 @@ mod table_layout_tests {
     }
 
     #[test]
-    fn 罫線が引かれる() {
+    fn borders_are_drawn() {
         let s = sheet();
         // 2行の表: 横線3本 + 縦線(3本×2行) = 9本
         assert_eq!(s.rules.len(), 9, "罫線の数が違う: {}", s.rules.len());
@@ -547,7 +547,7 @@ mod table_layout_tests {
     }
 
     #[test]
-    fn セルの中で折り返す() {
+    fn wraps_inside_a_cell() {
         let cell = |s: &str| Cellbox {
             paragraphs: vec![Paragraph {
                 runs: vec![Run {
@@ -606,7 +606,7 @@ mod merge_layout_tests {
     }
 
     #[test]
-    fn 横の結合は列をまたぐ() {
+    fn a_horizontal_merge_spans_columns() {
         // 1行目: 見出しが2列ぶん。2行目: 普通の2列
         let mut head = cell("見出し");
         head.col_span = 2;
@@ -628,7 +628,7 @@ mod merge_layout_tests {
     }
 
     #[test]
-    fn 縦の結合は行をまたぐ() {
+    fn a_vertical_merge_spans_rows() {
         let mut start = cell("項目");
         start.v_merge = VMerge::Start;
         let mut cont = cell("");
@@ -687,7 +687,7 @@ mod gridcol_tests {
     }
 
     #[test]
-    fn 列幅の指定が効く() {
+    fn column_width_specs_take_effect() {
         // 30mm + 70mm の2列。縦線が 0, 30, 100 に立つ
         let rules = rules_of(vec![30.0, 70.0]);
         let mut vx: Vec<f32> = rules.iter().filter(|r| r[0] == r[2]).map(|r| r[0]).collect();
@@ -698,7 +698,7 @@ mod gridcol_tests {
     }
 
     #[test]
-    fn 行長を超える指定は比例で縮む() {
+    fn specs_over_the_line_length_shrink_proportionally() {
         // 120+80=200mm を 100mm に。比率 3:2 のまま 60/40 になる
         let rules = rules_of(vec![120.0, 80.0]);
         let mut vx: Vec<f32> = rules.iter().filter(|r| r[0] == r[2]).map(|r| r[0]).collect();
@@ -714,7 +714,7 @@ mod empty_line_tests {
     use super::*;
 
     #[test]
-    fn 空の段落も行として持つ() {
+    fn an_empty_paragraph_still_holds_a_line() {
         // 持たないと、後ろの行のバイト勘定がずれてカーソルが合わなくなる
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
@@ -741,7 +741,7 @@ mod byte0_tests {
     }
 
     #[test]
-    fn 折り返しても行のバイト位置が本文と合う() {
+    fn wrapping_keeps_line_byte_positions_matching_the_text() {
         // 「行の文字数 + 1」で数えると、折り返した行の数だけずれていた
         let text = "あ".repeat(40); // 100mm に入らないので折り返す
         let ls = lines(&text, 100.0);
@@ -757,7 +757,7 @@ mod byte0_tests {
     }
 
     #[test]
-    fn 空白が落ちてもずれない() {
+    fn dropped_whitespace_does_not_shift_positions() {
         // 行末で捨てた空白のぶん、次の行の byte0 が進んでいること
         let text = format!("{} {}", "a".repeat(40), "b".repeat(40));
         let ls = lines(&text, 60.0);
@@ -768,7 +768,7 @@ mod byte0_tests {
     }
 
     #[test]
-    fn 段落をまたいでも合う() {
+    fn still_matches_across_paragraphs() {
         let text = "一つ目\n二つ目の段落\n三";
         let ls = lines(text, 100.0);
         for l in &ls {
@@ -779,7 +779,7 @@ mod byte0_tests {
     }
 
     #[test]
-    fn 箇条書きの印はバイト位置に入らない() {
+    fn the_bullet_mark_is_not_counted_in_byte_positions() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("項目");
@@ -804,7 +804,7 @@ mod run_edit_tests {
     }
 
     #[test]
-    fn 段落の途中だけ太字にできる() {
+    fn bold_can_cover_only_part_of_a_paragraph() {
         let mut d = Document::plain("防火戸の仕様を確認");
         let s = "防火戸の".len();
         let e = "防火戸の仕様".len();
@@ -821,7 +821,7 @@ mod run_edit_tests {
     }
 
     #[test]
-    fn 部分書式が打鍵で流されない() {
+    fn partial_formatting_survives_typing() {
         let mut d = Document::plain("防火戸の仕様を確認");
         let s = "防火戸の".len();
         let e = "防火戸の仕様".len();
@@ -843,7 +843,7 @@ mod run_edit_tests {
     }
 
     #[test]
-    fn 選択の中だけ消しても境が残る() {
+    fn clearing_inside_the_selection_keeps_the_boundaries() {
         let mut d = Document::plain("あいうえお");
         d.apply_char_format(3..12, |f| f.bold = true); // いうえ
         d.set_body_text("あいえお"); // 「う」を消した
@@ -855,7 +855,7 @@ mod run_edit_tests {
     }
 
     #[test]
-    fn 途中の段落でenterしても下の性質がずれない() {
+    fn pressing_enter_mid_document_does_not_shift_later_properties() {
         // 旧方式(段落番号で写す)の持病: 段落の増減で下の段落の性質がずれた
         let mut d = Document::plain("一\n二\n三");
         let start = "一\n二".len();
@@ -878,7 +878,7 @@ mod run_edit_tests {
     }
 
     #[test]
-    fn 編集しても表の位置が動かない() {
+    fn editing_does_not_move_the_table() {
         // 旧方式は打鍵のたびに表が末尾へ動いていた
         let mut d = Document::plain("前\n後");
         d.blocks.insert(1, Block::Table(Table {
@@ -895,7 +895,7 @@ mod run_edit_tests {
     }
 
     #[test]
-    fn 段落の合流で頭の性質が残る() {
+    fn merging_paragraphs_keeps_the_first_ones_properties() {
         let mut d = Document::plain("一\n二");
         d.apply_align(0..0, Align::Center);
         // 「一」と「二」の間の改行を消した
@@ -907,7 +907,7 @@ mod run_edit_tests {
     }
 
     #[test]
-    fn 大きさと書体も選択の字にだけ掛かる() {
+    fn size_and_font_apply_only_to_the_selection() {
         let mut d = Document::plain("見出しと本文");
         d.apply_size(0.."見出し".len(), |_| 16.0);
         d.apply_font(0.."見出し".len(), Some("ゴシック".into()));
@@ -920,7 +920,7 @@ mod run_edit_tests {
     }
 
     #[test]
-    fn カーソル位置の書式が読める() {
+    fn reads_the_format_at_the_caret() {
         let mut d = Document::plain("あ太字い");
         d.apply_char_format(3..9, |f| f.bold = true);
         assert!(!d.char_format_at(0..0).bold, "頭で太字と言った");
@@ -942,7 +942,7 @@ mod ref_field_tests {
     }
 
     #[test]
-    fn 参照は編集で流されず前後の打鍵で消えない() {
+    fn a_reference_survives_editing_and_typing_around_it() {
         let mut d = field_doc();
         // 参照の前に打つ
         d.set_body_text("この仕様は3ページを見る");
@@ -964,7 +964,7 @@ mod ref_field_tests {
     }
 
     #[test]
-    fn 参照の中を触ると普通の字に降りる() {
+    fn editing_inside_a_reference_turns_it_into_plain_text() {
         let mut d = field_doc();
         // 「3ページ」の中の「ペ」を消した
         d.set_body_text("仕様は3ージを見る");
@@ -975,7 +975,7 @@ mod ref_field_tests {
     }
 
     #[test]
-    fn 参照の値を計算し直せる() {
+    fn a_references_value_can_be_recalculated() {
         let mut d = field_doc();
         let n = d.refresh_fields(|name, page| {
             assert_eq!(name, "様式");
@@ -989,7 +989,7 @@ mod ref_field_tests {
     }
 
     #[test]
-    fn 参照ごと太字にしても参照は残る() {
+    fn bolding_over_a_reference_keeps_the_reference() {
         let mut d = field_doc();
         d.apply_char_format(0..d.body_text().len(), |f| f.bold = true);
         let r: Vec<_> = d.paragraphs().flat_map(|p| p.runs.iter())
@@ -1004,7 +1004,7 @@ mod hyphen_tests {
     use super::*;
 
     #[test]
-    fn 英語の語が音節で折れてハイフンが付く() {
+    fn english_words_break_at_syllables_with_a_hyphen() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let text = "The quick information hyphenation representation communication demonstration";
@@ -1025,7 +1025,7 @@ mod hyphen_tests {
     }
 
     #[test]
-    fn 切らなければ何も変わらない() {
+    fn no_split_means_no_change() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let d = Document::plain("The quick information hyphenation");
@@ -1040,7 +1040,7 @@ mod dropcap_tests {
     use super::*;
 
     #[test]
-    fn 頭の1字が大きく残りは狭く組まれる() {
+    fn the_first_character_is_large_and_the_rest_is_set_narrow() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain(&format!("春{}", "はあけぼの。".repeat(8)));
@@ -1081,7 +1081,7 @@ mod column_tests {
     }
 
     #[test]
-    fn 二段に折ると右の段へ続く() {
+    fn two_column_layout_continues_into_the_right_column() {
         // A4 の1段は約40行。60行なら 1ページ目の左40行 + 右20行
         let s = folded(60, 2);
         let pg = PageSetup { columns: 2, ..Default::default() };
@@ -1099,7 +1099,7 @@ mod column_tests {
     }
 
     #[test]
-    fn 二段でも溢れれば次のページへ() {
+    fn two_columns_overflow_to_the_next_page() {
         let s = folded(100, 2);
         assert!(!s.breaks.is_empty(), "2段×1ページを超えたのに頁が割れない");
         let pg = PageSetup::default();
@@ -1113,7 +1113,7 @@ mod column_tests {
     }
 
     #[test]
-    fn 一段なら何も変わらない() {
+    fn a_single_column_changes_nothing() {
         let a = folded(30, 1);
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
@@ -1147,7 +1147,7 @@ mod hf_layout_tests {
     }
 
     #[test]
-    fn ページ番号の印が番号の字になる() {
+    fn the_page_number_field_becomes_the_number() {
         let data = metrics();
         let m = Metrics::new(&data).unwrap();
         let pg = PageSetup::default();
@@ -1157,7 +1157,7 @@ mod hf_layout_tests {
     }
 
     #[test]
-    fn ヘッダーは上余白フッターは下余白に入る() {
+    fn header_goes_in_the_top_margin_footer_in_the_bottom() {
         let data = metrics();
         let m = Metrics::new(&data).unwrap();
         let pg = PageSetup::default();
@@ -1171,7 +1171,7 @@ mod hf_layout_tests {
     }
 
     #[test]
-    fn フッターの中央揃えが効く() {
+    fn footer_centering_works() {
         let data = metrics();
         let m = Metrics::new(&data).unwrap();
         let pg = PageSetup::default();
@@ -1183,7 +1183,7 @@ mod hf_layout_tests {
     }
 
     #[test]
-    fn ページ数の印が総頁の字になる() {
+    fn the_page_count_field_becomes_the_total() {
         let data = metrics();
         let m = Metrics::new(&data).unwrap();
         let pg = PageSetup::default();
@@ -1192,7 +1192,7 @@ mod hf_layout_tests {
     }
 
     #[test]
-    fn 無ければ何も出ない() {
+    fn nothing_renders_when_there_is_nothing() {
         let data = metrics();
         let m = Metrics::new(&data).unwrap();
         assert!(layout_hf(&HeadFoot::default(), &m, &PageSetup::default(), 6.4, 1, 1, false,
@@ -1201,7 +1201,7 @@ mod hf_layout_tests {
     }
 
     #[test]
-    fn 平文との相互変換で書式が残る() {
+    fn converting_to_plain_text_and_back_keeps_the_format() {
         // パネルでの編集は paras_text / set_paras_text を通る
         let mut ps: Vec<Paragraph> =
             Document::plain("社外秘").paragraphs().cloned().collect();
@@ -1219,7 +1219,7 @@ mod shade_carry_tests {
     use super::*;
 
     #[test]
-    fn 編集しても段落の帯と枠が残る() {
+    fn editing_keeps_the_paragraph_band_and_border() {
         // set_body_text は段落をまるごと写すので、新しい性質も自動で残る
         let mut d = Document::plain("見出し\n本文");
         if let Block::Para(p) = &mut d.blocks[0] {
@@ -1279,7 +1279,7 @@ mod section_layout_tests {
     }
 
     #[test]
-    fn 節末の段落は自分の節に属する() {
+    fn the_last_paragraph_belongs_to_its_own_section() {
         let geo = section_geometry(&three_sections());
         let w: Vec<f32> = geo.iter().map(|g| g.w_mm).collect();
         // **1つずれていないか。** 節末の段落(添字1・3)は自分の節の紙で組む
@@ -1288,7 +1288,7 @@ mod section_layout_tests {
     }
 
     #[test]
-    fn 節が変われば行長も変わる() {
+    fn a_new_section_changes_the_line_length() {
         let d = three_sections();
         let geo = section_geometry(&d);
         // 横の節は紙が広いぶん行長も広い(折り返しがやり直しになる所)
@@ -1299,7 +1299,7 @@ mod section_layout_tests {
 
 
     #[test]
-    fn continuous_の節では頁を割らない() {
+    fn continuous_sections_do_not_split_pages() {
         // 段組みを変えるためだけの節が実物には多い。そこで改ページすると
         // **見た目が大きく変わる**(2026-08-10、pyoffice の指摘)
         let vertical = paper(210.0, 297.0);
@@ -1318,7 +1318,7 @@ mod section_layout_tests {
     }
 
     #[test]
-    fn continuous_でも紙の大きさが違えば割る() {
+    fn continuous_still_splits_when_the_paper_size_differs() {
         // 1枚の紙は1つの大きさしか取れない。continuous でも従えない所
         let d = Document {
             page: Some(paper(297.0, 210.0)),                 // 横
@@ -1334,7 +1334,7 @@ mod section_layout_tests {
     }
 
     #[test]
-    fn nextpage_の節は今までどおり割る() {
+    fn nextpage_sections_still_split() {
         let vertical = paper(210.0, 297.0);
         let d = Document {
             page: Some(vertical),
@@ -1353,7 +1353,7 @@ mod section_layout_tests {
     }
 
     #[test]
-    fn 節が一つなら今までどおり何も持たない() {
+    fn a_single_section_still_carries_nothing() {
         let d = Document {
             page: Some(paper(210.0, 297.0)),
             blocks: vec![tab("本文", None)],
@@ -1371,7 +1371,7 @@ mod footnote_mark_tests {
     /// 守っていないと「読めているのに、編集や組版を一度通っただけで消える」
     /// という形になる(2026-08-10)
     #[test]
-    fn 均しても脚注の印は残る() {
+    fn justifying_keeps_the_footnote_mark() {
         let mark = |id: &str| Run {
             text: String::new(), size_pt: Some(10.5), font: None,
             fmt: CharFormat {
@@ -1395,7 +1395,7 @@ mod footnote_mark_tests {
 
     /// 印の付いていない空の run は今までどおり落とす(増やさない)
     #[test]
-    fn 印の無い空のrunは今までどおり落ちる() {
+    fn an_empty_run_with_no_mark_is_still_dropped() {
         let mut runs = vec![
             Run { text: "あ".into(), size_pt: Some(10.5), font: None, fmt: CharFormat::default() },
             Run { text: String::new(), size_pt: Some(10.5), font: None, fmt: CharFormat::default() },
@@ -1444,7 +1444,7 @@ mod footnote_layout_tests {
     /// `endnotes.xml` を別々に番号付けするので、どちらも 1・2・3… から始まる。
     /// id だけで引くと、印に別の注の文章が付く(2026-08-10 に踏んだ)
     #[test]
-    fn 脚注と文末脚注のidが衝突しても取り違えない() {
+    fn colliding_footnote_and_endnote_ids_are_not_confused() {
         let d = Document {
             blocks: vec![tab(vec![text("あ"), mark("2"), text("い"), tail_mark("2")])],
             footnotes: vec![
@@ -1472,7 +1472,7 @@ mod footnote_layout_tests {
     /// (LibreOffice は 2・3・4、pandoc は 20・21・22)なので、
     /// id をそのまま出すと 2 から始まる脚注になってしまう
     #[test]
-    fn 脚注の番号は出てくる順に振る() {
+    fn footnote_numbers_follow_the_order_of_appearance() {
         let d = Document {
             blocks: vec![
                 tab(vec![text("あ"), mark("20"), text("い"), mark("21")]),
@@ -1492,7 +1492,7 @@ mod footnote_layout_tests {
     /// 印は**本文の字ではない**。カーソルが本文とずれないよう、
     /// 番号を出しても後ろの字のバイト位置は動かない
     #[test]
-    fn 番号を出しても本文のバイト位置は動かない() {
+    fn showing_numbers_does_not_move_text_byte_positions() {
         let d = Document {
             blocks: vec![tab(vec![text("あい"), mark("2"), text("うえ")])],
             ..Default::default()
@@ -1509,7 +1509,7 @@ mod footnote_layout_tests {
 
     /// 番号は上付きで、本文より小さい
     #[test]
-    fn 番号は上付きで小さい() {
+    fn the_number_is_superscript_and_small() {
         let d = Document {
             blocks: vec![tab(vec![text("あ"), mark("2")])],
             ..Default::default()
@@ -1523,7 +1523,7 @@ mod footnote_layout_tests {
 
     /// 表のセルの中の印も同じ流れで数える(番号が飛ばない)
     #[test]
-    fn 表の中の印も通しで数える() {
+    fn marks_inside_a_table_are_counted_in_the_same_run() {
         let cell = |runs: Vec<Run>| Cellbox {
             paragraphs: vec![Paragraph { runs, line_spacing: 1.0, ..Default::default() }],
             ..Default::default()
@@ -1594,7 +1594,7 @@ mod endnote_tests {
     }
 
     #[test]
-    fn 同じidでも脚注と文末脚注を取り違えない() {
+    fn the_same_id_does_not_confuse_footnote_and_endnote() {
         let s = build(&mixed_kinds());
         let below: Vec<String> = s.notes.iter()
             .map(|n| n.lines.iter().flat_map(|l| l.cells.iter()).map(|c| c.ch).collect())
@@ -1609,7 +1609,7 @@ mod endnote_tests {
     /// **番号は別々に数える。** 1本の連番にすると
     /// 脚注が「1・3」文末脚注が「2・4」と飛んで見える
     #[test]
-    fn 脚注と文末脚注は別々counts_as() {
+    fn footnotes_and_endnotes_are_separate々counts_as() {
         let d = Document {
             blocks: vec![tab(vec![
                 text("あ"), mark("2", false), mark("2", true),
@@ -1631,7 +1631,7 @@ mod endnote_tests {
 
     /// 文末脚注は**紙の下ではなく文書の末尾**。置き場が違う
     #[test]
-    fn 文末脚注は本文の後ろへ流れる() {
+    fn endnotes_flow_after_the_body() {
         let s = build(&mixed_kinds());
         assert!(s.notes.iter().all(|n| !n.lines.is_empty()), "紙の下が空");
         // 本文の最後の行より下に、文末脚注の行が来る
@@ -1646,7 +1646,7 @@ mod endnote_tests {
     }
 
     #[test]
-    fn 番号の書式を字にする() {
+    fn renders_the_number_format_as_text() {
         assert_eq!(NoteNumFmt::Decimal.label(4), "4");
         assert_eq!(NoteNumFmt::LowerRoman.label(4), "iv");
         assert_eq!(NoteNumFmt::UpperRoman.label(9), "IX");
@@ -1672,7 +1672,7 @@ mod make_footnote_tests {
     }
 
     #[test]
-    fn 選んだ字が注へ移り跡に印が残る() {
+    fn the_selected_text_moves_into_the_note_leaving_a_mark() {
         let mut d = doc("あいうえお");
         // 「いう」を脚注にする(あ=0..3、いう=3..9)
         let fr = d.make_footnote(3..9, false).expect("脚注にできなかった");
@@ -1690,7 +1690,7 @@ mod make_footnote_tests {
     }
 
     #[test]
-    fn 印は選んだ場所に残る() {
+    fn the_mark_stays_where_it_was_placed() {
         let mut d = doc("あいうえお");
         d.make_footnote(3..9, false).unwrap();
         let p = d.paragraphs().next().unwrap();
@@ -1709,7 +1709,7 @@ mod make_footnote_tests {
     /// **段落をまたぐ範囲は受けない。** どう畳むかに正解が無いので、
     /// 決められないことを黙って決めない
     #[test]
-    fn 段落をまたぐ範囲は断る() {
+    fn a_range_spanning_paragraphs_is_refused() {
         let mut d = doc("あい\nうえ");
         let before = d.body_text();
         assert!(d.make_footnote(3..12, false).is_none(), "またぐ範囲を受けてしまった");
@@ -1718,7 +1718,7 @@ mod make_footnote_tests {
     }
 
     #[test]
-    fn 空の範囲は断る() {
+    fn an_empty_range_is_refused() {
         let mut d = doc("あいう");
         assert!(d.make_footnote(3..3, false).is_none(), "空の範囲を受けてしまった");
         assert!(d.footnotes.is_empty());
@@ -1726,7 +1726,7 @@ mod make_footnote_tests {
 
     /// 二つ作っても id がぶつからない
     #[test]
-    fn 二つ作ってもidがぶつからない() {
+    fn two_instances_do_not_collide_on_ids() {
         let mut d = doc("あいうえおかきくけこ");
         let a = d.make_footnote(0..3, false).unwrap();
         let b = d.make_footnote(6..9, false).unwrap();
@@ -1736,7 +1736,7 @@ mod make_footnote_tests {
 
     /// 組むと、注が紙の下に出て番号が振られる
     #[test]
-    fn 作った注が紙の下に出る() {
+    fn the_created_note_appears_at_the_bottom_of_the_page() {
         let mut d = doc("あいうえお");
         d.make_footnote(3..9, false).unwrap();
         let (fam, _) = font::for_document(None).unwrap();
@@ -1772,7 +1772,7 @@ mod fold_print_tests {
     }
 
     #[test]
-    fn 頁ごとに紙の高さで積む() {
+    fn stacks_by_paper_height_per_page() {
         let mut s = Sheet { lines: vec![line(20.0), line(270.0), line(530.0)], ..Default::default() };
         // 巻物では 260mm 間隔でも、折れば紙の高さ(+隙間)で積まれる
         let tops = fold_print(&mut s, &[paper(210.0, 297.0); 3], &[0.0, 260.0, 522.0],
@@ -1785,7 +1785,7 @@ mod fold_print_tests {
 
     /// **頁ごとに紙が違ってよい。** 節で縦から横に変わる文書がこれ
     #[test]
-    fn 紙の高さが頁ごとに違ってもよい() {
+    fn paper_height_may_differ_per_page() {
         let mut s = Sheet { lines: vec![line(20.0), line(270.0)], ..Default::default() };
         let tops = fold_print(&mut s, &[paper(210.0, 297.0), paper(297.0, 210.0)],
                               &[0.0, 260.0], &[f32::NEG_INFINITY, 270.0], 8.0);
@@ -1795,7 +1795,7 @@ mod fold_print_tests {
 
     /// 1頁だけの文書は中身を動かさない(折る必要が無い)
     #[test]
-    fn 一頁なら動かさない() {
+    fn a_single_page_is_left_alone() {
         let mut s = Sheet { lines: vec![line(20.0), line(100.0)], ..Default::default() };
         let tops = fold_print(&mut s, &[paper(210.0, 297.0)], &[0.0], &[f32::NEG_INFINITY], 8.0);
         assert_eq!(tops, vec![0.0]);
@@ -1806,7 +1806,7 @@ mod fold_print_tests {
     /// 脚注の**印のある行**も一緒に折る。折らないと、紙の下に出す位置が
     /// 巻物のままになって別の頁に出る
     #[test]
-    fn 脚注の目印も一緒に折る() {
+    fn the_footnote_mark_is_laid_out_with_the_text() {
         let mut s = Sheet {
             lines: vec![line(20.0), line(270.0)],
             notes: vec![NoteBlock { no: 1, at_y: 270.0, lines: vec![], h_mm: 5.0 }],
@@ -1822,7 +1822,7 @@ mod fold_print_tests {
     /// 巻物は空きを詰めて流れるので、上端は前の頁の終わりより手前に来る
     /// (2026-08-17、発表の組み方で踏んだ)
     #[test]
-    fn 紙の上端ではなく最初の行で頁を分ける() {
+    fn pages_split_at_the_first_line_not_the_paper_top() {
         // 1頁目は 20 と 270、2頁目は 280 から。2頁目の紙の上端は 260 で、
         // 270 の行より**上**にある
         let mut s = Sheet { lines: vec![line(20.0), line(270.0), line(280.0)], ..Default::default() };
@@ -1834,7 +1834,7 @@ mod fold_print_tests {
 
     /// 折ったら**頁の切れ目**もその位置に置き直す(紙に写す側が見る)
     #[test]
-    fn 切れ目を置き直す() {
+    fn moves_the_break() {
         let mut s = Sheet { lines: vec![line(20.0), line(270.0)], ..Default::default() };
         fold_print(&mut s, &[paper(210.0, 297.0); 2], &[0.0, 260.0],
                    &[f32::NEG_INFINITY, 270.0], 8.0);
@@ -1869,7 +1869,7 @@ mod fill_tests {
     /// 表の群の行はデータが無いと消えるので、**返り値は使いません**が、
     /// 元の文書が変わらないことも合わせて見ます。
     #[test]
-    fn 空のデータで通すと穴の名前が全部出る() {
+    fn empty_data_reveals_every_field_name() {
         let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         let from = d.paragraphs().count();
         let (_, rep) = fill::fill(&d, &fill::Data::new());
@@ -1896,7 +1896,7 @@ mod fill_tests {
 
     /// **明細の行がデータの数だけ増える。** ここが帳票の芯です。
     #[test]
-    fn 明細の行が増える() {
+    fn detail_rows_grow() {
         let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "みほん商事").set("合計", "3,000");
@@ -1927,7 +1927,7 @@ mod fill_tests {
     /// **分からない名前を黙って空にしない。** 空にすると「金額が空欄の
     /// 請求書」が黙って出来上がります。
     #[test]
-    fn 分からない名前は残して報告する() {
+    fn unknown_names_are_kept_and_reported() {
         let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "みほん商事"); // 合計を入れ忘れた
@@ -1943,7 +1943,7 @@ mod fill_tests {
 
     /// データが1行も無いときは、明細の行が消えます(見出しは残る)。
     #[test]
-    fn 明細が空なら行は出ない() {
+    fn an_empty_detail_list_produces_no_rows() {
         let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "-").set("合計", "0");
@@ -1955,7 +1955,7 @@ mod fill_tests {
 
     /// CSV 1枚で、1つだけの値と明細の両方をまかないます。
     #[test]
-    fn csvから読める() {
+    fn reads_from_csv() {
         let src = "宛名,品名,数量\nみほん商事,鉛筆,10\nみほん商事,消しゴム,5\n";
         let d = fill::from_csv(src, "明細");
         assert_eq!(d.values.get("宛名"), Some(&"みほん商事".to_string()));
@@ -1965,7 +1965,7 @@ mod fill_tests {
 
     /// 囲みの中の改行とカンマを読み違えないこと。
     #[test]
-    fn csvの囲みを読む() {
+    fn reads_csv_quoting() {
         let src = "品名,備考\n\"鉛筆, HB\",\"1行目\n2行目\"\n";
         let d = fill::from_csv(src, "明細");
         assert_eq!(d.rows["明細"][0]["品名"], "鉛筆, HB");
@@ -1974,7 +1974,7 @@ mod fill_tests {
 
     /// 差し込む所を見つけられること(画面から使うときの判断に要ります)。
     #[test]
-    fn 差し込む所を数える() {
+    fn counts_the_merge_fields() {
         let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         assert_eq!(fill::groups(&d), vec!["明細".to_string()]);
         let plain = adoc::parse("= 題\n\nただの本文。\n").unwrap();
@@ -1983,7 +1983,7 @@ mod fill_tests {
 
     /// **雛形は何度でも使える**(原本を書き換えない)。
     #[test]
-    fn 雛形は書き換えられない() {
+    fn the_template_is_not_modified() {
         let d = adoc::parse(TMPL_OF).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "一回目").set("合計", "1");
@@ -2009,7 +2009,7 @@ mod indent_tests {
     /// テンプレートに `字下げ = 1` と書くと、その段落の1行目だけが下がります
     /// (2026-08-18。それまで模型は値を持つだけで、紙面では使っていませんでした)。
     #[test]
-    fn 一行目だけ字下げする() {
+    fn indents_only_the_first_line() {
         let data = font::load(font::for_document(None).unwrap().0).unwrap();
         let m = Metrics::new(&data).unwrap();
         let doc = crate::adoc::parse(
@@ -2035,7 +2035,7 @@ mod indent_tests {
     /// **行の後ろの覚え書きを落とす。** TOML の普通の書き方で、これが読めないと
     /// 手引きに載せた見本がそのまま落ちます(2026-08-18 に踏みました)。
     #[test]
-    fn 行の後ろの覚え書きを落とす() {
+    fn drops_the_trailing_note_on_a_line() {
         let th = theme::parse(
             "[組み方]\n横幅 = \"可変\"     # 窓の幅で組む\n\n\
              [スタイル.本文]\n字下げ = 1   # 1字下げ\n色 = \"C0392B\"\n",
@@ -2052,7 +2052,7 @@ mod indent_tests {
     /// いないと「効かない」だけが残ります(2026-08-18、条件を当てて見つけた —
     /// 字下げは紙には出るのに CSS に出ていませんでした)。
     #[test]
-    fn 字下げはcssにも出る() {
+    fn the_indent_reaches_the_css() {
         let th = theme::parse("[スタイル.本文]\n字下げ = 1\n").unwrap();
         let css = crate::html_write::css(&th, false);
         assert!(css.contains("text-indent:1em"), "CSS に字下げが出ていない:\n{css}");
@@ -2060,7 +2060,7 @@ mod indent_tests {
 
     /// 書いた物を読み直すと同じになる(テンプレートの往復)。
     #[test]
-    fn 字下げは往復する() {
+    fn the_indent_round_trips() {
         let th = theme::parse("[スタイル.本文]\n字下げ = 1\n").unwrap();
         let back = theme::parse(&theme::write(&th)).unwrap();
         assert_eq!(back.style("本文").unwrap().first_line_chars, Some(1.0));
@@ -2074,7 +2074,7 @@ mod title_tests {
     /// **表題が紙面に出る。** 2026-08-18 まで文書の情報にしか入らず、
     /// 開くと題名が消えて見えていました。
     #[test]
-    fn 表題は本文の段落になる() {
+    fn the_title_becomes_a_body_paragraph() {
         let src = "= 月次報告\n:template: 型\n\n== まとめ\n\n本文です。\n";
         let d = adoc::parse(src).expect("読めない");
         assert_eq!(adoc::write(&d), src, "往復していない");
@@ -2098,7 +2098,7 @@ mod title_tests {
     /// docx から来た文書(表題の段落が無く、文書の情報にだけ題名がある)でも
     /// HTML には題名が出る。
     #[test]
-    fn 情報にだけある題名も出る() {
+    fn a_title_that_only_exists_in_the_metadata_still_shows() {
         let mut d = crate::doc::Document::plain("本文だけ。");
         d.props.title = "受け取った文書".into();
         let h = html_write::body(&d);
@@ -2114,7 +2114,7 @@ mod fill_honke_tests {
     /// AsciiDoc は属性の参照を `{member}` と書くので、そちらに寄せました。
     /// 前からの `{{member}}` も受け続けます(手引きと見本がその形で出ています)。
     #[test]
-    fn 差し込みは本家の書き方でも書ける() {
+    fn mail_merge_accepts_the_vendor_notation() {
         for src in ["請求先: {宛名} 様\n", "請求先: {{宛名}} 様\n"] {
             let d = adoc::parse(src).expect("読めない");
             let mut data = fill::Data::new();
@@ -2133,7 +2133,7 @@ mod fill_honke_tests {
     /// **普通の文の中括弧は差し込みの穴にしません。** 名前に空白が入る物は
     /// 穴ではない、と見ます(`{ x + y }` のような字を巻き込まないため)。
     #[test]
-    fn 空白の入った中括弧は穴にしない() {
+    fn braces_containing_a_space_are_not_fields() {
         let d = adoc::parse("式は { x + y } です。\n").expect("読めない");
         let (out, rep) = fill::fill(&d, &fill::Data::new());
         let text: String = out
@@ -2153,7 +2153,7 @@ mod adoc_honke_tests {
     /// **表のセルは次の行に続く**(本家の作法)。2026-08-18 まで断っていたので、
     /// 本家の手引き 176 枚のうち 11 枚が開けませんでした。
     #[test]
-    fn 表のセルが次の行に続く() {
+    fn a_table_cell_continues_on_the_next_line() {
         // 1行目のセルの数が桁の数(ここでは2桁)。以降は流れで切られる
         let src = "|===\n|あ |い\n|一つ目のセル\nその続きの行\n|二つ目\n|===\n";
         let d = adoc::parse(src).expect("読めない");
@@ -2170,7 +2170,7 @@ mod adoc_honke_tests {
     /// **セルの指定を読み飛ばす**(`h|` 見出し・`^|` 中央・`a|` など)。
     /// 効かせるのは結合だけで、残りは指定として捨てます。
     #[test]
-    fn セルの指定を読み飛ばす() {
+    fn skips_cell_specs() {
         let d = adoc::parse("|===\nh|見出し ^|中央 a|中身\n|===\n").expect("読めない");
         let t = d.tables().next().expect("表が無い");
         assert_eq!(t.rows[0].len(), 3, "セルが3つに割れていない");
@@ -2182,7 +2182,7 @@ mod adoc_honke_tests {
     /// **文書の頭は空行までが頭。** 著者の行で打ち切ると、その後ろの属性が
     /// 本文に落ちて、書き戻しで消えます(2026-08-18 に本家の README で発覚)。
     #[test]
-    fn 頭は空行まで続く() {
+    fn the_head_runs_to_the_blank_line() {
         let src = "= 題\n著者 <mail>\n// 覚え書き\n:idprefix:\n:idseparator: -\n\n本文。\n";
         let d = adoc::parse(src).expect("読めない");
         assert_eq!(adoc::write(&d), src, "頭が往復していない");
@@ -2191,7 +2191,7 @@ mod adoc_honke_tests {
 
     /// **行を継ぐときの空白。** 日本語は入れず、英語は入れます。
     #[test]
-    fn 継ぎ目の空白は和字のときだけ省く() {
+    fn the_joint_space_is_dropped_only_for_japanese() {
         let d = adoc::parse("plain CSS.\nThe build minifies it.\n").expect("読めない");
         let text: String = d.paragraphs().flat_map(|p| p.runs.iter())
             .map(|r| r.text.as_str()).collect();
@@ -2213,7 +2213,7 @@ mod adoc_notes_tests {
     /// なります。表の題(`.題`)と同じ作法です。実機で calc に `.adoc` を
     /// 開かせたとき、下の帳簿に「塊の指定」が出ていて気づきました。
     #[test]
-    fn 表に取り込んだ桁の指定は帳簿に出ない() {
+    fn column_specs_absorbed_into_the_table_are_not_logged() {
         let (d, ledger) = adoc::parse_full(
             ".売上\n[cols=\"1,1\"]\n|===\n|月 |額\n\n|4月 |100\n|===\n",
         )
@@ -2233,7 +2233,7 @@ mod adoc_notes_tests {
     /// 8つとも黙って本文に化けていました(手引きには「読めないと言う」と
     /// 書いてあったので、文書のほうが嘘でした)。
     #[test]
-    fn 扱わない書き方を帳簿に出す() {
+    fn unsupported_notation_is_logged() {
         for (what, src) in [
             ("コードの塊", "----\nlet x = 1;\n----\n"),
             ("塊の題", ".表の題\n\nふつうの段落。\n"),
@@ -2252,7 +2252,7 @@ mod adoc_notes_tests {
     /// **うちの書き方では帳簿に何も出ない。** 毎回出ると、本当に落ちたときに
     /// 気づけなくなります。
     #[test]
-    fn うちの書き方では帳簿が空() {
+    fn our_own_notation_leaves_the_log_empty() {
         let src = "= 題\n:template: 型\n\n== 見出し\n\n本文と*強調*。\
                    ruby:漢字[かんじ]。footnote:[注]\n\n* あ\n* い\n\n\
                    . 一\n. 二\n\n____\n引用。\n____\n\n<<<\n\n\
@@ -2274,7 +2274,7 @@ mod adoc_dropped_tests {
     /// 消すこと自体は決めたとおりですが、黙って消すと、人は開き直したときに
     /// 初めて気づきます(2026-08-17)。
     #[test]
-    fn 消える物を数えて言う() {
+    fn counts_and_reports_what_is_lost() {
         let mut d = Document::default();
         let mut p = Paragraph::default();
         p.runs.push(Run {
@@ -2303,7 +2303,7 @@ mod adoc_dropped_tests {
     /// 意味だけの文書では**何も消えません。** ここが空でないと、毎回
     /// 「消えました」と出て、本当に消える時に気づけなくなります。
     #[test]
-    fn 意味だけの文書では何も消えない() {
+    fn a_semantics_only_document_loses_nothing() {
         let src = "= 題\n\n== 章\n\n本文と*強調*。\n\n* あ\n* い\n";
         let d = adoc::parse(src).expect("読めない");
         assert!(adoc::dropped(&d).is_empty(), "何も無いのに挙がった: {:?}", adoc::dropped(&d));
@@ -2320,7 +2320,7 @@ mod html_write_tests {
 
     /// **本文は意味だけ。** 見た目は CSS の側に出て、HTML には入りません。
     #[test]
-    fn 見た目はcssへ本文はhtmlへ() {
+    fn the_look_goes_to_css_the_text_to_html() {
         let d = doc("= 題\n\n== 章の名前\n\n本文です。*ここ*が大事。\n");
         let th = theme::parse("[スタイル.見出し1]\n大きさ = 20\n太字 = true\n").unwrap();
         let p = html_write::page(&d, &th);
@@ -2339,7 +2339,7 @@ mod html_write_tests {
     /// **テンプレートを替えると CSS だけが変わる。** これが「同じ本文で
     /// Web にも帳票にもなる」の根拠です。
     #[test]
-    fn テンプレートを替えても本文は変わらない() {
+    fn changing_the_template_leaves_the_text() {
         let d = doc("= 題\n\n本文です。\n");
         let web = theme::parse("[組み方]\n横幅 = \"可変\"\n区切り = \"なし\"\n").unwrap();
         let paper = theme::parse("[スタイル.本文]\n大きさ = 10.5\n").unwrap();
@@ -2352,7 +2352,7 @@ mod html_write_tests {
 
     /// 箇条書きは `ul` / `ol` にまとめます(HTML の入れ物の作法)。
     #[test]
-    fn 箇条書きはまとめて包む() {
+    fn bullets_are_wrapped_together() {
         let d = doc("= 題\n\n* あ\n* い\n* う\n");
         let h = html_write::body(&d);
         assert_eq!(h.matches("<ul>").count(), 1, "ul が1つでない:\n{h}");
@@ -2361,7 +2361,7 @@ mod html_write_tests {
 
     /// 出来た HTML が**形として正しい**か(閉じ忘れ・入れ子の乱れが無いか)。
     #[test]
-    fn 出来たhtmlの形が崩れていない() {
+    fn the_produced_html_is_well_formed() {
         let d = doc("= 題\n\n== 章\n\n本文。*強調*と_斜体_。\n\n* あ\n* い\n\n____\n引用です。\n____\n");
         let th = theme::parse("[スタイル.見出し1]\n大きさ = 18\n").unwrap();
         let p = html_write::page(&d, &th);
@@ -2377,7 +2377,7 @@ mod html_write_tests {
     /// **記入欄が adoc で往復する。** 意味だけの本文に書けなければ、
     /// アプリの形にできません(2026-08-17)。
     #[test]
-    fn 記入欄がadocで往復する() {
+    fn form_fields_round_trip_through_adoc() {
         use crate::{adoc, doc::SdtKind as K};
         let src = "= 申し込み\n\n\
                    field:name[お名前]\n\n\
@@ -2407,7 +2407,7 @@ mod html_write_tests {
     /// 申込用紙は「氏名:: field:氏名[お名前]」の形で書くので、ここが
     /// 落ちると用紙が空になる
     #[test]
-    fn ラベル付きリストの値の記入欄が残る() {
+    fn form_fields_in_labeled_list_values_survive() {
         let (doc, _) = crate::adoc::parse_full(
             "= 申込\n\n氏名:: field:氏名[お名前]\n人数:: field:人数[人数]\n",
         )
@@ -2421,7 +2421,7 @@ mod html_write_tests {
 
     /// **記入欄は form になる**(アプリビルダーの土台)。
     #[test]
-    fn 記入欄がformになる() {
+    fn form_fields_become_a_form() {
         use crate::doc::{CharFormat, Document, Paragraph, Run, Sdt, SdtKind};
         let mut d = Document::default();
         let mut p = Paragraph::default();
@@ -2476,7 +2476,7 @@ mod html_write_tests {
     ///
     /// 意味の単位を1つ足したら、この表にも1行足してください。
     #[test]
-    fn adocに書けるものはhtmlにも出る() {
+    fn what_adoc_can_write_also_reaches_html() {
         let src = "= 題\n\n\
                    [[しるし]]\n== 章\n\n\
                    本文と<<しるし>>への参照。\nfootnote:[注の文章]\n\n\
@@ -2518,7 +2518,7 @@ mod html_write_tests {
 
     /// 画像の中身は**HTML に埋め込まず、別のファイルとして返します。**
     #[test]
-    fn 画像は別のファイルとして返る() {
+    fn images_come_back_as_separate_files() {
         use crate::doc::{Document, InlineImage, Paragraph};
         let mut d = Document::default();
         let mut p = Paragraph::default();
@@ -2540,7 +2540,7 @@ mod html_write_tests {
     /// **目次は nav にまとめます**(2026-08-18)。前は普通の段落として並び、
     /// Web では本文と見分けが付きませんでした。
     #[test]
-    fn 目次はnavにまとまる() {
+    fn the_table_of_contents_is_wrapped_in_nav() {
         use crate::doc::{Document, Paragraph, ParaStyle, Run};
         let mut d = Document::default();
         let mut line = |style: ParaStyle, text: &str| {
@@ -2567,7 +2567,7 @@ mod html_write_tests {
 
     /// 逃がし忘れると、本文の `<` でページが壊れます。
     #[test]
-    fn 記号を逃がす() {
+    fn escapes_special_characters() {
         let d = doc("= 題\n\n1 < 2 & 3 > 0\n");
         let h = html_write::body(&d);
         assert!(h.contains("1 &lt; 2 &amp; 3 &gt; 0"), "逃がせていない:\n{h}");
@@ -2597,7 +2597,7 @@ mod char_format_tests {
     /// 選んで太字のボタンを押しても外れなかった(2026-08-17 発注者
     /// 「書式設定が戻せない」)。
     #[test]
-    fn 選んでいるときは選んだ字の書式を見る() {
+    fn with_a_selection_the_selected_texts_format_is_used() {
         // 「ここは」は普通、「大事」は太字(どちらも 9 バイトと 6 バイト)
         let d = paras(&[("ここは", false), ("大事", true), ("なところ。", false)]);
         assert!(d.char_format_at(9..15).bold, "選んだ字が太字なのに拾えていない");
@@ -2607,7 +2607,7 @@ mod char_format_tests {
     /// カーソルが1点のときは今までどおり**直前の字**を見る
     /// (打つとその書式が続く、という慣習)。
     #[test]
-    fn カーソル1点のときは直前の字を見る() {
+    fn a_caret_with_no_selection_looks_at_the_char_before() {
         let d = paras(&[("ここは", false), ("大事", true), ("なところ。", false)]);
         assert!(!d.char_format_at(9..9).bold, "境目の手前は普通の字のはず");
         assert!(d.char_format_at(15..15).bold, "太字の直後は太字を継ぐはず");
@@ -2629,7 +2629,7 @@ mod midashi_tests {
     /// 本文と同じ大きさ・太さで組まれていた(実機で報告書.docx を開いて
     /// 気づいた)。読み書きは前から正しかったので、直したのは見えだけ。
     #[test]
-    fn 見出しは本文より大きく太く組まれる() {
+    fn headings_are_laid_out_larger_and_bolder_than_the_body() {
         let data = font();
         let m = Metrics::new(&data).unwrap();
         let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0 };
@@ -2659,7 +2659,7 @@ mod midashi_tests {
     /// 04_月次報告.docx は見出しの run に `w:sz` を持っており、Word でも
     /// その大きさで出る
     #[test]
-    fn runの大きさは見出しより強い() {
+    fn a_runs_size_beats_the_heading() {
         let data = font();
         let m = Metrics::new(&data).unwrap();
         let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0 };
@@ -2678,7 +2678,7 @@ mod midashi_tests {
 
     /// 行の高さも見出しに追従する。**しないと次の行と重なる**
     #[test]
-    fn 見出しの行は高さも追従する() {
+    fn a_heading_line_follows_in_height_too() {
         let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0 };
         let p = |style: ParaStyle| Paragraph { style, ..Default::default() };
         assert!(lh_of(&p(ParaStyle::Heading(1)), &frame) > lh_of(&p(ParaStyle::Body), &frame),
@@ -2691,7 +2691,7 @@ mod midashi_tests {
 /// 例も傍注も註記も、Web ではコードに見えていたということです。
 /// 横の区切り線は印の字がそのまま出ていました。
 #[test]
-fn 塊は種類ごとの要素で出る() {
+fn blocks_render_as_one_element_per_kind() {
     let stroke = "\u{27}\u{27}\u{27}";      // 横の区切り線の印
     let sample = format!(
         "= 題\n\nNOTE: 註記。\n\nWARNING: 警告。\n\n\
@@ -2726,7 +2726,7 @@ fn 塊は種類ごとの要素で出る() {
 ///
 /// 本文だけを他所へ貼っても、註記が註記に見える必要があります。
 #[test]
-fn 塊は見た目を自分で持つ() {
+fn blocks_carry_their_own_look() {
     let d = crate::adoc::parse("= 題\n\nWARNING: 危ない。\n\n----\nprint(1)\n----\n")
         .expect("読めない");
     let h = crate::html_write::body(&d);
@@ -2737,7 +2737,7 @@ fn 塊は見た目を自分で持つ() {
 /// **そのまま通す塊は逃がさない。** 生の HTML を書くための塊なので、
 /// 逃がすと `<details>` のような Web の仕掛けが使えません。
 #[test]
-fn そのまま通す塊は逃がさない() {
+fn passthrough_blocks_are_not_escaped() {
     let d = crate::adoc::parse(
         "= 題\n\n++++\n<details><summary>開く</summary>中身</details>\n++++\n")
         .expect("読めない");
@@ -2750,7 +2750,7 @@ fn そのまま通す塊は逃がさない() {
 /// 2026-08-25 まで、`**` で深くした段が Web では平らに並んでいました。
 /// 模型は `indent` で段を持っているのに、書き出しが捨てていました。
 #[test]
-fn 多段のリストは入れ子で出る() {
+fn nested_lists_render_nested() {
     let d = crate::adoc::parse("= 題\n\n* 1段目\n** 2段目\n*** 3段目\n* また1段目\n")
         .expect("読めない");
     let h = crate::html_write::body(&d);
@@ -2766,7 +2766,7 @@ fn 多段のリストは入れ子で出る() {
 
 /// 番号付きも同じように入れ子になるか。
 #[test]
-fn 多段の番号付きも入れ子で出る() {
+fn nested_ordered_lists_render_nested() {
     let d = crate::adoc::parse("= 題\n\n. 番号1\n.. 番号2\n").expect("読めない");
     let h = crate::html_write::body(&d);
     assert_eq!(h.matches("<ol").count(), 2, "段の数だけ ol が要ります:\n{h}");
@@ -2777,7 +2777,7 @@ fn 多段の番号付きも入れ子で出る() {
 ///
 /// 前は本文の段落になり、印の `* [ ]` がそのままページに出ていました。
 #[test]
-fn 作業のリストはチェックボックスで出る() {
+fn task_lists_render_as_checkboxes() {
     let d = crate::adoc::parse("= 題\n\n* [ ] まだの作業\n* [x] 済んだ作業\n")
         .expect("読めない");
     let h = crate::html_write::body(&d);
@@ -2795,7 +2795,7 @@ fn 作業のリストはチェックボックスで出る() {
 /// 役所の文書はこの順です。Word の日本語の既定も同じで、
 /// 2026-08-25 まで3段目が `1)` でした。
 #[test]
-fn 番号は様式の順で出る() {
+fn numbers_follow_the_template_order() {
     let mut p = crate::Paragraph { list: crate::ListKind::Number, ..Default::default() };
     p.indent = 0;
     assert_eq!(p.marker(0).as_deref(), Some("1. "));
@@ -2816,7 +2816,7 @@ fn 番号は様式の順で出る() {
 /// 前は読み捨てられ、しかも*指定の行でリストが切れず*、
 /// 指定の違うリストが1つに繋がっていました。
 #[test]
-fn 番号の付け方の指定が効く() {
+fn the_numbering_style_spec_takes_effect() {
     let d = crate::adoc::parse(
         "= 題\n\n[loweralpha]\n. あ\n. い\n\n[upperroman]\n. 一\n\n[start=5]\n. 五\n")
         .expect("読めない");
@@ -2830,7 +2830,7 @@ fn 番号の付け方の指定が効く() {
 
 /// HTML の番号も、紙と同じ段の並びにするか。
 #[test]
-fn 多段の番号は紙と同じ並びで出る() {
+fn nested_numbering_renders_in_the_same_order_as_paper() {
     let d = crate::adoc::parse("= 題\n\n. 1段\n.. 2段\n... 3段\n").expect("読めない");
     let h = crate::html_write::body(&d);
     assert!(h.contains("list-style-type:katakana"), "3段目がカタカナになっていません:\n{h}");
@@ -2840,7 +2840,7 @@ fn 多段の番号は紙と同じ並びで出る() {
 ///
 /// 2026-08-25 まで、指定は読み捨てられて普通の用語の一覧になっていました。
 #[test]
-fn 問答形式は問いと答えで出る() {
+fn qanda_renders_as_question_and_answer() {
     let d = crate::adoc::parse(
         "= 題\n\n[qanda]\n申請はいつまでですか:: 3月31日までです。\n\
          手数料はいくらですか:: 300円です。\n")
@@ -2859,7 +2859,7 @@ fn 問答形式は問いと答えで出る() {
 /// 印が無かったころは、書き戻しで空行が消えて別々の一覧が呑まれ、
 /// HTML でも1つの `dl` になっていました。
 #[test]
-fn 空行で切れた一覧は別々becomes() {
+fn lists_separated_by_a_blank_line_are_distinct々becomes() {
     let from = "= 題\n\n[qanda]\n問い:: 答え\n\n用語:: 普通の説明\n";
     let d = crate::adoc::parse(from).expect("読めない");
     // **書き戻しで空行が残ること**(ここが本体)
@@ -2880,7 +2880,7 @@ fn 空行で切れた一覧は別々becomes() {
 /// * `NOTE: ` の印が読むときに外れるので、紙では普通の段落に見える
 /// * コードが本文と同じ書体で組まれる
 #[test]
-fn 紙でも塊と註記が分かる() {
+fn blocks_and_admonitions_are_distinguishable_on_paper_too() {
     let d = crate::adoc::parse(
         "= 題\n\nNOTE: 気をつけて。\n\n[source,python]\n----\nprint(1)\n----\n\n普通の段落。\n")
         .expect("読めない");
@@ -2922,7 +2922,7 @@ fn 紙でも塊と註記が分かる() {
 /// HTML だけ直して紙を見ていなかったので、`* [ ]` の印がそのまま
 /// 印刷されていました。記入欄と同じ ☐ / ☑ で出します。
 #[test]
-fn 作業のリストは紙でも箱で出る() {
+fn task_lists_render_as_boxes_on_paper_too() {
     let d = crate::adoc::parse("= 題\n\n* [ ] やること\n* [x] 済んだこと\n")
         .expect("読めない");
     let (fam, _) = crate::font::for_document(None).expect("フォントが無い");
@@ -2964,7 +2964,7 @@ fn 作業のリストは紙でも箱で出る() {
 /// 読み手が1段目しか拾っておらず、`** [ ]` は普通の箇条書きになって
 /// `[ ]` が字として残っていました。
 #[test]
-fn 多段の作業のリストも箱になる() {
+fn nested_task_lists_also_render_as_boxes() {
     let from = "= 題\n\n* [ ] 親\n** [x] 子\n";
     let d = crate::adoc::parse(from).expect("読めない");
     assert_eq!(crate::adoc::write(&d), from, "書き戻しで字が変わっています");

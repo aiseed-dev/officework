@@ -154,7 +154,7 @@ mod tests {
     }
 
     #[test]
-    fn 拡大は2倍で止まる() {
+    fn zoom_in_stops_at_two_hundred_percent() {
         let mut f = Fake { zoom: 1.9, ..Default::default() };
         assert!(run(&mut f, "zoom-in"));
         assert!(run(&mut f, "zoom-in"));
@@ -163,7 +163,7 @@ mod tests {
     }
 
     #[test]
-    fn 縮小は半分で止まる() {
+    fn zoom_out_stops_at_fifty_percent() {
         let mut f = Fake { zoom: 0.6, ..Default::default() };
         assert!(run(&mut f, "zoom-out"));
         assert!(run(&mut f, "zoom-out"));
@@ -173,7 +173,7 @@ mod tests {
     /// 画面の明暗は押すたびに入れ替わります。**2つのアプリで同じ腕**なので、
     /// ここが1本で正しければ両方が正しくなります(2026-08-21 の B-2)
     #[test]
-    fn 画面の明暗は押すたびに入れ替わる() {
+    fn light_and_dark_toggle_on_each_press() {
         let mut f = Fake::default();
         assert!(run(&mut f, "darkmode"));
         assert!(f.dark, "1回目で暗くなる");
@@ -185,7 +185,7 @@ mod tests {
     /// 表が使っていた古い id も受けます。rpc・MCP・Python から
     /// `theme` を送る人がいるので、黙って壊しません
     #[test]
-    fn 表の古い_id_も受ける() {
+    fn old_table_ids_are_still_accepted() {
         let mut f = Fake::default();
         assert!(run(&mut f, "theme"));
         assert!(f.dark);
@@ -194,7 +194,7 @@ mod tests {
     /// 100% に戻すのは、拡大・縮小と対の命令です。**文章にしかありません
     /// でした**(2026-08-21 の B-3)。ここへ移して表にもボタンを足しました
     #[test]
-    fn 百パーセントに戻す() {
+    fn resets_to_one_hundred_percent() {
         let mut f = Fake { zoom: 1.7, ..Default::default() };
         assert!(run(&mut f, "zoom100"));
         assert!((f.zoom - 1.0).abs() < 1e-6, "1.0 にならない: {}", f.zoom);
@@ -203,7 +203,7 @@ mod tests {
 
     /// 知らない id は触らない(アプリの番)
     #[test]
-    fn 知らない命令は断る() {
+    fn an_unknown_command_is_refused() {
         let mut f = Fake { zoom: 1.0, ..Default::default() };
         assert!(!run(&mut f, "bold"));
         assert!((f.zoom - 1.0).abs() < 1e-6);

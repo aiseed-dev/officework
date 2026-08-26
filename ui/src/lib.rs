@@ -864,7 +864,7 @@ pub mod handler {
 #[cfg(test)]
 mod svg_tests {
     #[test]
-    fn svgを高精細のpngに直せる() {
+    fn svg_converts_to_a_high_dpi_png() {
         let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="#165E83"/></svg>"##;
         let (png, w, h) = super::svg_to_png(svg, 3.0).expect("直せない");
         assert_eq!((w, h), (40, 20), "論理の寸法が違う");
@@ -875,7 +875,7 @@ mod svg_tests {
     }
 
     #[test]
-    fn 壊れたsvgは断る() {
+    fn a_broken_svg_is_refused() {
         assert!(super::svg_to_png(b"not svg", 3.0).is_err());
     }
 }
@@ -888,7 +888,7 @@ mod tests {
     /// 「当然、すべての OS でやる」)。前は xdg-open の決め打ちで、
     /// mac と Windows では何も起きませんでした。
     #[test]
-    fn 関連付けの道具は_osごとに決まる() {
+    fn the_file_association_tool_depends_on_the_os() {
         let name = opener_name();
         if cfg!(target_os = "macos") {
             assert_eq!(name, "open");
@@ -905,7 +905,7 @@ mod tests {
 
     /// この機械にその道具が在ること(無ければ実機で開けない)。
     #[test]
-    fn 関連付けの道具が機械に在る() {
+    fn the_file_association_tool_exists_on_the_machine() {
         let name = opener_name();
         let exists = std::process::Command::new(name)
             .arg("--version")
@@ -929,7 +929,7 @@ mod tests {
     }
 
     #[test]
-    fn 同じ相手への連打は1回にまとまる() {
+    fn repeated_hits_on_the_same_target_collapse_into_one() {
         use std::time::{Duration, Instant};
         let within = Duration::from_secs(5);
         let t0 = Instant::now();
@@ -945,7 +945,7 @@ mod tests {
     }
 
     #[test]
-    fn 通常の入力が本文に入る() {
+    fn ordinary_typing_reaches_the_text() {
         let mut a = app("");
         handler::replace(&mut a, None, "日本フネン");
         assert_eq!(a.ed.text(), "日本フネン");
@@ -953,7 +953,7 @@ mod tests {
     }
 
     #[test]
-    fn ime_の一巡が通る() {
+    fn ime_full_cycle_works() {
         let mut a = app("特定");
         // 「ぼうか」を打つ(未確定)
         handler::replace_and_mark(&mut a, None, "ぼうか", None);
@@ -972,7 +972,7 @@ mod tests {
     }
 
     #[test]
-    fn utf16の範囲指定で置き換わる() {
+    fn replacement_by_utf16_range_works() {
         let mut a = app("あいうえお");
         // UTF-16 で 1..3 =「いう」
         handler::replace(&mut a, Some(1..3), "XY");
@@ -980,7 +980,7 @@ mod tests {
     }
 
     #[test]
-    fn 選択範囲がutf16で返る() {
+    fn the_selection_is_returned_in_utf16() {
         let mut a = app("あa亜");
         a.ed.select_all();
         // あ=1, a=1, 亜=1 → 3単位
@@ -989,7 +989,7 @@ mod tests {
     }
 
     #[test]
-    fn 変換の取り消しで跡が残らない() {
+    fn cancelling_conversion_leaves_nothing_behind() {
         let mut a = app("設備");
         handler::replace_and_mark(&mut a, None, "りよう", None);
         handler::unmark(&mut a);
@@ -997,7 +997,7 @@ mod tests {
     }
 
     #[test]
-    fn 文節の選択がバイト位置に直る() {
+    fn clause_selection_converts_to_byte_positions() {
         let mut a = app("");
         // 「日本フネン」のうち UTF-16 で 0..2 =「日本」が変換対象
         handler::replace_and_mark(&mut a, None, "日本フネン", Some(0..2));

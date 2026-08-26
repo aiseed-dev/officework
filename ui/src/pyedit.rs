@@ -373,7 +373,7 @@ mod tests {
     }
 
     #[test]
-    fn 行と桁を数える() {
+    fn counts_lines_and_columns() {
         let mut e = p("abc\ndef\n");
         e.ed.move_to(5, false); // 2行目の 1 桁目
         assert_eq!(e.caret(), (1, 1));
@@ -382,7 +382,7 @@ mod tests {
     }
 
     #[test]
-    fn 上下の行で桁を保つ() {
+    fn moving_up_and_down_keeps_the_column() {
         let mut e = p("abcdef\nxy\nghijkl");
         e.ed.move_to(5, false); // 1行目の 5 桁目
         e.move_line(true, false);
@@ -396,7 +396,7 @@ mod tests {
     }
 
     #[test]
-    fn 日本語の行でも桁が壊れない() {
+    fn columns_survive_japanese_lines() {
         // バイトで持っているので、文字の途中に落ちると即座に化ける
         let mut e = p("あいうえお\nか");
         e.end(false);
@@ -407,7 +407,7 @@ mod tests {
     }
 
     #[test]
-    fn 改行で字下げを引き継ぐ() {
+    fn newline_carries_the_indent() {
         let mut e = p("def f(x):");
         e.end(false);
         e.newline();
@@ -418,7 +418,7 @@ mod tests {
     }
 
     #[test]
-    fn homeは字の始まりと行頭を行き来する() {
+    fn home_toggles_between_first_text_and_line_start() {
         let mut e = p("    return x");
         e.end(false);
         e.home(false);
@@ -428,7 +428,7 @@ mod tests {
     }
 
     #[test]
-    fn 色分け() {
+    fn syntax_coloring() {
         let v = colorize("def 倍(x):  # 二倍");
         assert_eq!(v[0], ("def".into(), Tok::Keyword));
         assert_eq!(v[1].1, Tok::Plain); // 空白
@@ -440,7 +440,7 @@ mod tests {
     }
 
     #[test]
-    fn 書きかけが分かる() {
+    fn an_unfinished_line_is_detected() {
         let mut e = p("a");
         assert!(!e.dirty());
         e.ed.insert("b");

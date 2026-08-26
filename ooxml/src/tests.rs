@@ -30,7 +30,7 @@ mod round {
     }
 
     #[test]
-    fn 日本語の段落が往復する() {
+    fn a_japanese_paragraph_round_trips() {
         let d = doc(&[
             "日本フネン株式会社 設備利用申込",
             "事業者名: 〇〇工務店",
@@ -46,7 +46,7 @@ mod round {
     }
 
     #[test]
-    fn 文字サイズが保たれる() {
+    fn font_size_is_preserved() {
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
@@ -61,25 +61,25 @@ mod round {
     }
 
     #[test]
-    fn 空段落は空段落のまま残る() {
+    fn an_empty_paragraph_stays_empty() {
         let (back, _) = round_trip(&doc(&["一", "", "三"]));
         assert_eq!(texts(&back), vec!["一", "", "三"]);
     }
 
     #[test]
-    fn 前後の空白が消えない() {
+    fn leading_and_trailing_spaces_survive() {
         let (back, _) = round_trip(&doc(&["氏名　　:  山田 太郎 "]));
         assert_eq!(texts(&back)[0], "氏名　　:  山田 太郎 ");
     }
 
     #[test]
-    fn xmlの特殊文字が壊れない() {
+    fn xml_special_characters_survive() {
         let (back, _) = round_trip(&doc(&["A&B <タグ> \"引用\" 'アポ'"]));
         assert_eq!(texts(&back)[0], "A&B <タグ> \"引用\" 'アポ'");
     }
 
     #[test]
-    fn 段落内の改行が保たれる() {
+    fn line_breaks_inside_a_paragraph_are_preserved() {
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
@@ -95,7 +95,7 @@ mod round {
     }
 
     #[test]
-    fn 表が往復する() {
+    fn tables_round_trip() {
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
             Block::Para(para("(様式3) 会社概要")),
             Block::Table(Table { col_mm: vec![], rows: vec![
@@ -120,7 +120,7 @@ mod round {
     }
 
     #[test]
-    fn 表と本文の順序が保たれる() {
+    fn the_order_of_tables_and_body_text_is_preserved() {
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
             Block::Para(para("前")),
             Block::Table(Table { col_mm: vec![], rows: vec![vec![cell("表1")]],
@@ -139,7 +139,7 @@ mod round {
     }
 
     #[test]
-    fn 空セルも列として残る() {
+    fn an_empty_cell_still_holds_its_column() {
         // 事務様式は「記入欄が空の表」が本体。空セルが消えると様式が壊れる
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Table(Table { col_mm: vec![], rows: vec![
             vec![cell("氏名"), Cellbox::default()],
@@ -155,7 +155,7 @@ mod round {
     }
 
     #[test]
-    fn 読めない要素は黙って落とさず報告する() {
+    fn unreadable_elements_are_reported_not_silently_dropped() {
         let xml = r#"<?xml version="1.0"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><w:body>
 <w:p><w:r><w:t>前</w:t></w:r></w:p>
@@ -175,7 +175,7 @@ mod round {
     }
 
     #[test]
-    fn セル結合が往復する() {
+    fn cell_merges_round_trip() {
         // 様式の見出しは結合で出来ている。往復で消えると枠がずれる
         let mut head = cell("会社概要");
         head.col_span = 2;
@@ -205,7 +205,7 @@ mod round {
     }
 
     #[test]
-    fn 実物の結合入りの様式が欠落なく読める() {
+    fn a_real_template_with_merges_reads_without_loss() {
         // 様式3(会社概要)は gridSpan 15 + vMerge 3 の結合入り
         let src = "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式3_会社概要.docx";
         let Ok(bytes) = std::fs::read(src) else { return };
@@ -268,7 +268,7 @@ mod font_tests {
     }
 
     #[test]
-    fn 日本語の書体は_eastasia_から読む() {
+    fn the_japanese_font_is_read_from_eastasia() {
         // ascii しか見ないと、日本語の明朝指定を落とす
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p><w:r><w:rPr>
             <w:rFonts w:ascii="Century" w:eastAsia="ＭＳ 明朝"/></w:rPr>
@@ -294,7 +294,7 @@ mod fmt_tests {
     }
 
     #[test]
-    fn 太字と斜体と下線が往復する() {
+    fn bold_italic_and_underline_round_trip() {
         let f = CharFormat { bold: true, italic: true, underline: true, ..Default::default() };
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,
@@ -309,7 +309,7 @@ mod fmt_tests {
     }
 
     #[test]
-    fn 取り消し線と文字色が往復する() {
+    fn strikethrough_and_font_color_round_trip() {
         let f = CharFormat { strike: true, color: Some("FF0000".into()), ..Default::default() };
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,
@@ -323,7 +323,7 @@ mod fmt_tests {
     }
 
     #[test]
-    fn 中央揃えが往復する() {
+    fn centering_round_trips() {
         for a in [Align::Center, Align::Right, Align::Justify, Align::Left] {
             let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
                 font: None,
@@ -346,7 +346,7 @@ mod fmt_tests {
     }
 
     #[test]
-    fn 解除された太字を太字にしない() {
+    fn an_explicitly_cleared_bold_stays_off() {
         // <w:b w:val="0"/> は「太字ではない」。有無だけで見ると間違える
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p><w:r><w:rPr>
             <w:b w:val="0"/><w:i/></w:rPr><w:t>本文</w:t></w:r></w:p></w:body></w:document>"#;
@@ -357,7 +357,7 @@ mod fmt_tests {
     }
 
     #[test]
-    fn 段落ごとに書式が混ざらない() {
+    fn formats_do_not_mix_between_paragraphs() {
         // 前の段落の太字が次に漏れないこと
         let xml = r#"<w:document xmlns:w="x"><w:body>
             <w:p><w:pPr><w:jc w:val="center"/></w:pPr>
@@ -407,7 +407,7 @@ mod para_tests {
     /// 開いて保存すると `w:before` / `w:after` が黙って消えていた。
     /// 帳票の余白は書いた人が決めた物なので、勝手に詰めてはいけない。
     #[test]
-    fn 段落の前後の空きが往復する() {
+    fn paragraph_spacing_round_trips() {
         let mut p = Paragraph { style_id: None, raw_adoc: None, space_before_pt: 12.0, space_after_pt: 6.0,
             align: Default::default(), style: Default::default(), comments: Vec::new(),
             bookmarks: Vec::new(), anchors: Vec::new(), sect: None, images: Vec::new(),
@@ -424,7 +424,7 @@ mod para_tests {
 
     /// 空きが無い段落には `w:spacing` を書かない(要らない印を増やさない)
     #[test]
-    fn 空きの無い段落は素のまま() {
+    fn a_paragraph_without_spacing_stays_plain() {
         let p = Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,
             align: Default::default(), style: Default::default(), comments: Vec::new(),
             bookmarks: Vec::new(), anchors: Vec::new(), sect: None, images: Vec::new(),
@@ -439,14 +439,14 @@ mod para_tests {
     }
 
     #[test]
-    fn 箇条書きが往復する() {
+    fn bullet_lists_round_trip() {
         assert_eq!(roundtrip(para(ListKind::Bullet, 0, 1.0)).list, ListKind::Bullet);
         assert_eq!(roundtrip(para(ListKind::Number, 0, 1.0)).list, ListKind::Number);
         assert_eq!(roundtrip(para(ListKind::None, 0, 1.0)).list, ListKind::None);
     }
 
     #[test]
-    fn 一行目の字下げが往復する() {
+    fn the_first_line_indent_round_trips() {
         // 2026-08-13 に実測で踏んだ穴: 段落を触ると w:ind の firstLine が
         // 黙って落ちていた(左と寄せは残るのに)。twip の生値で往復すること
         for fl in [420i32, 210, -300] {
@@ -462,14 +462,14 @@ mod para_tests {
     }
 
     #[test]
-    fn インデントが往復する() {
+    fn indent_round_trips() {
         for n in [1u8, 3, 8] {
             assert_eq!(roundtrip(para(ListKind::None, n, 1.0)).indent, n, "{n}段が消えた");
         }
     }
 
     #[test]
-    fn 行間が往復する() {
+    fn line_spacing_round_trips() {
         for s in [1.5f32, 2.0] {
             let got = roundtrip(para(ListKind::None, 0, s)).spacing();
             assert!((got - s).abs() < 0.01, "{s} 倍が {got} になった");
@@ -477,7 +477,7 @@ mod para_tests {
     }
 
     #[test]
-    fn 既定の段落には余計な指定を書かない() {
+    fn a_default_paragraph_gets_no_extra_spec() {
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(para(ListKind::None, 0, 1.0))] };
         let mut buf = Vec::new();
         crate::write(&d, std::io::Cursor::new(&mut buf)).unwrap();
@@ -489,7 +489,7 @@ mod para_tests {
     }
 
     #[test]
-    fn 行間が0でも壊れない() {
+    fn zero_line_spacing_does_not_break() {
         // 0 や負が入っても本文が消えない
         let p = para(ListKind::None, 0, 0.0);
         assert_eq!(p.spacing(), 1.0);
@@ -498,7 +498,7 @@ mod para_tests {
     }
 
     #[test]
-    fn 箇条書きの印が出る() {
+    fn the_bullet_mark_is_rendered() {
         assert_eq!(para(ListKind::Bullet, 0, 1.0).marker(0).as_deref(), Some("・"));
         assert_eq!(para(ListKind::Number, 0, 1.0).marker(0).as_deref(), Some("1. "));
         assert_eq!(para(ListKind::Number, 0, 1.0).marker(4).as_deref(), Some("5. "));
@@ -511,7 +511,7 @@ mod break_round {
     use kumihan::{Block, Document, Paragraph, Run};
 
     #[test]
-    fn 改ページ指定が往復する() {
+    fn the_page_break_spec_round_trips() {
         let mut para = Paragraph::default();
         para.page_break_before = true;
         para.runs.push(Run {
@@ -530,7 +530,7 @@ mod size_round {
     // 2026-08-13 まで、開いて保存するだけで w:sz val="21"(10.5pt)が
     // 書き込まれていた — 原本に無かった指定が増える穴
     #[test]
-    fn 無指定の大きさは無指定のまま往復する() {
+    fn an_unset_size_round_trips_unset() {
         let xml = r#"<w:document xmlns:w="x"><w:body>
             <w:p><w:r><w:t>大きさを指定していない字</w:t></w:r></w:p>
         </w:body></w:document>"#;
@@ -543,7 +543,7 @@ mod size_round {
     }
 
     #[test]
-    fn 前の_run_の指定が次の無指定の_run_に染みない() {
+    fn a_previous_runs_spec_does_not_bleed_into_the_next() {
         // 指定は run ごと。前の run の 14pt を引きずると、無指定の run が
         // 「14pt 指定」に化けて保存される(焼き付きと同じ形の穴)
         let xml = r#"<w:document xmlns:w="x"><w:body>
@@ -559,7 +559,7 @@ mod size_round {
 #[cfg(test)]
 mod gridcol_round {
     #[test]
-    fn 列幅が往復する() {
+    fn column_widths_round_trip() {
         // 読んだ幅を捨てると、保存で表の形が変わる
         let xml = r#"<w:document xmlns:w="x"><w:body><w:tbl>
             <w:tblGrid><w:gridCol w:w="2268"/><w:gridCol w:w="4536"/></w:tblGrid>
@@ -604,7 +604,7 @@ mod preserve_tests {
     }
 
     #[test]
-    fn 開いて保存しても部品が残る() {
+    fn open_and_save_keeps_the_parts() {
         // 「保存したらロゴが消えた」を防ぐ
         let src = docx_with_parts();
         let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
@@ -625,7 +625,7 @@ mod preserve_tests {
     }
 
     #[test]
-    fn 本文は二重に入らない() {
+    fn the_body_is_not_written_twice() {
         let src = docx_with_parts();
         let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
         let mut out = Vec::new();
@@ -641,7 +641,7 @@ mod preserve_tests {
     }
 
     #[test]
-    fn 元が無ければ最小の形で書ける() {
+    fn with_no_original_a_minimal_form_is_written() {
         let doc = Document::plain("新規");
         let mut out = Vec::new();
         crate::write_with(&doc, None::<Cursor<Vec<u8>>>, Cursor::new(&mut out)).unwrap();
@@ -652,7 +652,7 @@ mod preserve_tests {
 #[cfg(test)]
 mod anchor_tests {
     #[test]
-    fn 画像の原文が保存で返る() {
+    fn the_images_source_comes_back_on_save() {
         // 理解はしないが、捨てない
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p>
             <w:r><w:t>図は</w:t></w:r>
@@ -671,7 +671,7 @@ mod anchor_tests {
     }
 
     #[test]
-    fn 図形の中の文字が本文に漏れない() {
+    fn text_inside_a_shape_does_not_leak_into_the_body() {
         // a:t の「飾り文字」が本文へ混ざっていた(t を接頭辞に関係なく拾っていた)
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p>
             <w:r><w:t>本文</w:t></w:r>
@@ -685,7 +685,7 @@ mod anchor_tests {
     // 確かめると、読めていない所は行きも帰りも同じように読めないので差が出ない。
     // 下の形はどちらも実物(pandoc / LibreOffice Writer)から写した
     #[test]
-    fn 数式が原文のまま保存で返る() {
+    fn equations_come_back_verbatim_on_save() {
         // pandoc の形: xmlns:m は root にあり、m:oMath は裸で来る
         let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p>
             <w:r><w:t>式は</w:t></w:r>
@@ -714,7 +714,7 @@ mod anchor_tests {
     }
 
     #[test]
-    fn 自前で名前空間を宣言する数式を二重に宣言しない() {
+    fn an_equation_declaring_its_own_namespace_is_not_declared_twice() {
         // LibreOffice Writer の形: root に xmlns:m は**無く**、m:oMath が
         // 自分で宣言している。ここへ重ねて足すと属性が二重になり、
         // Word が開けない XML になる
@@ -732,7 +732,7 @@ mod anchor_tests {
     }
 
     #[test]
-    fn xml_space_のある数式を落とさない() {
+    fn an_equation_with_xml_space_is_kept() {
         // **実物で踏んだ穴。** `xml:` は XML の定めで最初から結びついていて、
         // どこにも宣言が無いのが正しい。それを「解決できない接頭辞」と数えて
         // いたので、LibreOffice Writer の数式(`<m:t xml:space="preserve">`)が
@@ -750,7 +750,7 @@ mod anchor_tests {
     }
 
     #[test]
-    fn 表のセルの中の数式も持ち越す() {
+    fn equations_inside_table_cells_are_carried_over() {
         // 段落は本文にも**表のセルの中にも**ある。控えの受け渡しが本文の
         // 段落でしか働かないと、表の中の数式だけ静かに落ちる
         // (向こう(genoffice)の試験を読んでいて気付いた筋。2026-08-10)
@@ -771,7 +771,7 @@ mod anchor_tests {
     }
 
     #[test]
-    fn 一つの段落に数式が二つあっても両方残る() {
+    fn two_equations_in_one_paragraph_both_survive() {
         // 向こうの試験にこの形がある(multiple oMath fragments in one paragraph)
         let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p>
             <m:oMath><m:r><m:t>甲</m:t></m:r></m:oMath>
@@ -787,7 +787,7 @@ mod anchor_tests {
     }
 
     #[test]
-    fn ヘッダーの中の数式も持ち越す() {
+    fn equations_inside_a_header_are_carried_over() {
         // ヘッダー・フッターは同じ読み手を別の root で通す。
         // 控えの受け渡しがそこでも働くか
         let xml = r#"<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:p>
@@ -799,7 +799,7 @@ mod anchor_tests {
     }
 
     #[test]
-    fn 独立した数式は二重に控えない() {
+    fn a_standalone_equation_is_not_stored_twice() {
         // m:oMathPara(独立した数式)の中には m:oMath が入っている。
         // 外側を丸ごと控えるので、中の oMath を別に控えてはいけない
         let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p>
@@ -817,7 +817,7 @@ mod anchor_tests {
     }
 
     #[test]
-    fn 出どころの分からない接頭辞の数式は落として報告する() {
+    fn an_equation_with_an_unknown_prefix_is_dropped_and_reported() {
         // 壊れた XML を書くより、落として帳簿に出す方がまし(画像と同じ作法)
         let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p>
             <m:oMath><zz:mystery zz:val="1"/></m:oMath>
@@ -829,7 +829,7 @@ mod anchor_tests {
     }
 
     #[test]
-    fn 一文字打っても画像は消えない() {
+    fn typing_one_character_does_not_lose_the_image() {
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p>
             <w:r><w:t>図</w:t></w:r>
             <w:r><w:drawing><a:blip r:embed="rId7"/></w:drawing></w:r>
@@ -841,7 +841,7 @@ mod anchor_tests {
     }
 
     #[test]
-    fn 一文字打っても数式は消えない() {
+    fn typing_one_character_does_not_lose_the_equation() {
         // 画像と同じ約束を数式にも。`officework.doc` から本文を書き換える
         // 人が居るので、**編集は控えを巻き添えにしない**
         let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p>
@@ -879,7 +879,7 @@ mod vertalign_tests {
     }
 
     #[test]
-    fn 上付きと蛍光ペンが往復する() {
+    fn superscript_and_highlight_round_trip() {
         let f = CharFormat {
             superscript: true,
             highlight: Some("yellow".into()),
@@ -894,7 +894,7 @@ mod vertalign_tests {
     }
 
     #[test]
-    fn 下付きも往復する() {
+    fn subscript_round_trips_too() {
         let f = CharFormat { subscript: true, ..Default::default() };
         let mut buf = Vec::new();
         crate::write(&doc_with(f.clone()), std::io::Cursor::new(&mut buf)).unwrap();
@@ -919,7 +919,7 @@ mod sect_tests {
     }
 
     #[test]
-    fn 途中の節の区切りが保存で残る() {
+    fn a_mid_document_section_break_survives_saving() {
         // **前はここで消えていた。** 2つ目の sectPr が1つ目を上書きし、
         // 模型が節を1つしか持てなかったので、保存で区切りごと失われた
         let (doc, rep) = parse_document_xml(&two_sections());
@@ -938,7 +938,7 @@ mod sect_tests {
     }
 
     #[test]
-    fn 区切りだけの空段落でも消えない() {
+    fn an_empty_paragraph_holding_only_a_break_survives() {
         // 区切り用の段落は中身が空なことがある。書き手は「既定のものは
         // 書かない」ので、**pPr を書く条件に節を入れ忘れると黙って消える**
         let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
@@ -953,7 +953,7 @@ mod sect_tests {
     }
 
     #[test]
-    fn 節は二度往復しても増えない() {
+    fn sections_do_not_multiply_over_two_round_trips() {
         let (doc, _) = parse_document_xml(&two_sections());
         let once = write_document_xml(&doc);
         let (doc2, _) = parse_document_xml(&once);
@@ -965,7 +965,7 @@ mod sect_tests {
 
 
     #[test]
-    fn 節の種類を読む() {
+    fn reads_the_section_kind() {
         // `w:type` が無ければ docx の既定は nextPage(改ページする)
         let xml = |ty: &str| format!(r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
 <w:p><w:pPr><w:sectPr>{ty}<w:pgSz w:w="11906" w:h="16838"/></w:sectPr></w:pPr><w:r><w:t>前</w:t></w:r></w:p>
@@ -988,7 +988,7 @@ mod sect_tests {
     }
 
     #[test]
-    fn 節が一つだけの文書は今までどおり() {
+    fn a_single_section_document_is_unchanged() {
         let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
 <w:p><w:r><w:t>本文</w:t></w:r></w:p>
 <w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>
@@ -1000,7 +1000,7 @@ mod sect_tests {
         assert_eq!(write_document_xml(&doc).matches("<w:sectPr").count(), 1);
     }
     #[test]
-    fn 用紙と余白を読み保存で返す() {
+    fn paper_and_margins_read_and_come_back_on_save() {
         // sectPr を捨てると、保存で用紙設定とヘッダーの参照が消える
         let xml = r#"<w:document xmlns:w="x"><w:body>
             <w:p><w:r><w:t>本文</w:t></w:r></w:p>
@@ -1022,7 +1022,7 @@ mod sect_tests {
     }
 
     #[test]
-    fn 段組みが読める() {
+    fn columns_are_read() {
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p/>
             <w:sectPr><w:pgSz w:w="11906" w:h="16838"/>
               <w:cols w:num="2" w:space="425"/>
@@ -1032,7 +1032,7 @@ mod sect_tests {
     }
 
     #[test]
-    fn 用紙の無い文書は既定のまま() {
+    fn a_document_without_paper_keeps_the_defaults() {
         let (doc, _) = crate::parse_document_xml(
             r#"<w:document xmlns:w="x"><w:body><w:p/></w:body></w:document>"#);
         assert!(doc.page.is_none());
@@ -1046,7 +1046,7 @@ mod shade_tests {
     use kumihan::{Block, Document, Paragraph, Run};
 
     #[test]
-    fn 段落の背景色と囲み枠が往復する() {
+    fn paragraph_shading_and_border_round_trip() {
         let mut p = Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
             line_spacing: 1.0,
             runs: vec![Run { text: "注意".into(), size_pt: Some(10.5), font: None,
@@ -1074,7 +1074,7 @@ mod bookmark_model_tests {
     use kumihan::{Block, Document};
 
     #[test]
-    fn しおりの名前が往復する() {
+    fn bookmark_names_round_trip() {
         let mut d = Document::plain("表紙\n会社の説明\n終わり");
         if let Block::Para(p) = &mut d.blocks[1] {
             p.bookmarks.push("会社名".into());
@@ -1096,7 +1096,7 @@ mod ref_field_round_tests {
     use kumihan::{Document, RefField};
 
     #[test]
-    fn 相互参照が往復する() {
+    fn cross_references_round_trip() {
         let mut d = Document::plain("仕様は3ページを見る");
         let s0 = "仕様は".len();
         let e0 = "仕様は3ページ".len();
@@ -1119,7 +1119,7 @@ mod ref_field_round_tests {
     }
 
     #[test]
-    fn wordが書く複雑な形の参照も読める() {
+    fn reads_the_complex_field_form_word_writes() {
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p>
             <w:r><w:t>結果は</w:t></w:r>
             <w:r><w:fldChar w:fldCharType="begin"/></w:r>
@@ -1145,7 +1145,7 @@ mod partial_fmt_tests {
     use kumihan::Document;
 
     #[test]
-    fn 部分書式が往復する() {
+    fn partial_formatting_round_trips() {
         // 編集モデルが run 粒度になったので、段落の途中だけの太字が
         // docx に3つの run として入り、開き直しても残る
         let mut d = Document::plain("防火戸の仕様を確認");
@@ -1177,7 +1177,7 @@ mod vertical_round_tests {
     use kumihan::Document;
 
     #[test]
-    fn 縦書きの旗が往復し戻すと消える() {
+    fn the_vertical_writing_flag_round_trips_and_clears() {
         let mut d = Document::plain("縦の検査");
         d.vertical = true;
         let mut buf = Vec::new();
@@ -1198,7 +1198,7 @@ mod sdt_round_tests {
     use kumihan::{Document, Sdt, SdtKind};
 
     #[test]
-    fn 記入欄が往復する() {
+    fn form_fields_round_trip() {
         let mut d = Document::plain("氏名: 山田 太郎");
         d.apply_char_format(8..21, |f| {
             f.sdt = Some(Box::new(Sdt {
@@ -1220,7 +1220,7 @@ mod sdt_round_tests {
     }
 
     #[test]
-    fn 独自の種類は名前を付けても種類ごと往復する() {
+    fn a_custom_kind_round_trips_with_its_kind_even_when_named() {
         // うちだけの種類(jo:email)+「名前」ボタンの名は、
         // w:tag「jo:email:連絡先」に合成して両立させる
         let mut d = Document::plain("宛先: 未記入");
@@ -1255,7 +1255,7 @@ mod sdt_round_tests {
     }
 
     #[test]
-    fn 選ぶ欄は選択肢ごと往復する() {
+    fn a_dropdown_field_round_trips_with_its_choices() {
         let mut d = Document::plain("色: 赤");
         d.apply_char_format(5..8, |f| {
             f.sdt = Some(Box::new(Sdt {
@@ -1275,7 +1275,7 @@ mod sdt_round_tests {
     }
 
     #[test]
-    fn うちだけの種類は印で往復する() {
+    fn our_own_kinds_round_trip_via_a_mark() {
         let mut d = Document::plain("mail@example.jp");
         d.apply_char_format(0..15, |f| {
             f.sdt = Some(Box::new(Sdt { kind: SdtKind::Email, ..Default::default() }))
@@ -1295,7 +1295,7 @@ mod ruby_round_tests {
     use kumihan::Document;
 
     #[test]
-    fn ルビが往復する() {
+    fn ruby_round_trips() {
         let mut d = Document::plain("組版の話");
         d.apply_char_format(0..6, |f| f.ruby = Some("くみはん".into()));
         let mut buf = Vec::new();
@@ -1327,7 +1327,7 @@ mod props_round_tests {
     use kumihan::Document;
 
     #[test]
-    fn 文書の情報が往復し空にすると消える() {
+    fn document_properties_round_trip_and_clear_when_emptied() {
         let mut d = Document::plain("本文");
         d.props.creator = "山田 <太郎>".into();
         d.props.title = "検査の書".into();
@@ -1353,7 +1353,7 @@ mod protection_round_tests {
     use kumihan::Document;
 
     #[test]
-    fn 文書の保護が往復し解除で消える() {
+    fn document_protection_round_trips_and_clears_when_removed() {
         let mut d = Document::plain("大事な様式");
         d.protection = Some("readOnly".into());
         let mut first = Vec::new();
@@ -1374,7 +1374,7 @@ mod hyphenate_round_tests {
     use kumihan::Document;
 
     #[test]
-    fn ハイフネーションの旗が往復する() {
+    fn the_hyphenation_flag_round_trips() {
         let mut d = Document::plain("hyphenation flag");
         d.hyphenate = true;
         let mut buf = Cursor::new(Vec::new());
@@ -1398,7 +1398,7 @@ mod dropcap_round_tests {
     use kumihan::{Block, Document};
 
     #[test]
-    fn ドロップキャップが往復する() {
+    fn drop_caps_round_trip() {
         let mut d = Document::plain("春はあけぼの。やうやう白くなりゆく山際。\n次の段落");
         if let Block::Para(p) = &mut d.blocks[0] {
             p.dropcap = true;
@@ -1430,7 +1430,7 @@ mod track_write_tests {
     use kumihan::{Document, TRK_DEL_E, TRK_DEL_S, TRK_INS_E, TRK_INS_S};
 
     #[test]
-    fn 変更履歴の印がinsとdelになる() {
+    fn tracked_changes_become_ins_and_del() {
         let mut d = Document::plain(
             &format!("防火{TRK_DEL_S}戸{TRK_DEL_E}{TRK_INS_S}ドア{TRK_INS_E}の仕様"),
         );
@@ -1453,7 +1453,7 @@ mod ink_tests {
     use kumihan::{Block, Document, Stroke};
 
     #[test]
-    fn ペンの筆が往復する() {
+    fn pen_strokes_round_trip() {
         let mut d = Document::plain("本文");
         let st = Stroke {
             page: 2,
@@ -1495,7 +1495,7 @@ mod watermark_tests {
     use kumihan::Document;
 
     #[test]
-    fn 透かしが往復し二重にならない() {
+    fn the_watermark_round_trips_without_duplicating() {
         let mut d = Document::plain("本文");
         d.watermark = Some("社外秘".into());
         let mut first = Vec::new();
@@ -1516,7 +1516,7 @@ mod watermark_tests {
     }
 
     #[test]
-    fn 透かしを消すと図形も消える() {
+    fn removing_the_watermark_removes_the_shape() {
         let mut d = Document::plain("本文");
         d.watermark = Some("下書き".into());
         let mut first = Vec::new();
@@ -1536,7 +1536,7 @@ mod comment_tests {
     use kumihan::{Block, Comment, Document};
 
     #[test]
-    fn 段落のコメントが往復する() {
+    fn paragraph_comments_round_trip() {
         let mut d = Document::plain("一\n二\n三");
         if let Block::Para(p) = &mut d.blocks[1] {
             p.comments.push(Comment {
@@ -1557,7 +1557,7 @@ mod comment_tests {
     }
 
     #[test]
-    fn 二度保存してもコメントは増えない() {
+    fn saving_twice_does_not_duplicate_comments() {
         let mut d = Document::plain("本文");
         if let Block::Para(p) = &mut d.blocks[0] {
             p.comments.push(Comment { author: "私".into(), text: "注記".into() });
@@ -1583,7 +1583,7 @@ mod page_color_tests {
     use kumihan::Document;
 
     #[test]
-    fn ページの色が往復し設定も付く() {
+    fn page_color_round_trips_with_its_setting() {
         let mut d = Document::plain("本文");
         d.page_color = Some("E8F1F8".into());
         let mut buf = Cursor::new(Vec::new());
@@ -1604,7 +1604,7 @@ mod page_color_tests {
     }
 
     #[test]
-    fn 原本の設定は他の項目ごと生きる() {
+    fn the_originals_settings_survive_with_their_other_entries() {
         // settings を丸ごと作り直すと、原本の設定(既定のタブ幅など)が消える
         let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
         let o: zip::write::FileOptions<'_, ()> = Default::default();
@@ -1635,7 +1635,7 @@ mod bookmark_tests {
     use super::*;
 
     #[test]
-    fn しおりとコメントの印は保存で残る() {
+    fn bookmark_and_comment_marks_survive_saving() {
         // 実物の様式はしおりで記入欄を指すものがある。黙って捨てると
         // 相互参照・コメントのアンカーが壊れる
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p>
@@ -1665,7 +1665,7 @@ mod list_level_tests {
     use kumihan::{Block, Document, ListKind};
 
     #[test]
-    fn リストの深さが往復する() {
+    fn list_depth_round_trips() {
         let mut d = Document::plain("親\n子");
         for (i, ind) in [(0usize, 0u8), (1, 2)] {
             if let Block::Para(p) = &mut d.blocks[i] {
@@ -1682,7 +1682,7 @@ mod list_level_tests {
     }
 
     #[test]
-    fn indの無いリストはilvlが深さになる() {
+    fn a_list_without_ind_uses_ilvl_as_depth() {
         // Word のリストは w:ind を numbering.xml に置くので、段落側は ilvl だけのことが多い
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p><w:pPr>
             <w:numPr><w:ilvl w:val="1"/><w:numId w:val="1"/></w:numPr>
@@ -1694,7 +1694,7 @@ mod list_level_tests {
     }
 
     #[test]
-    fn タブが往復する() {
+    fn tabs_round_trip() {
         // w:t の中に生のタブを書くと Word が潰す。要素(w:tab)で書く
         let d = Document::plain("項目\t値");
         let mut buf = Cursor::new(Vec::new());
@@ -1720,7 +1720,7 @@ mod style_tests {
     use kumihan::{Block, Document, ParaStyle};
 
     #[test]
-    fn 見出しと目次の行が往復する() {
+    fn headings_and_toc_lines_round_trip() {
         let mut d = Document::plain("表題\n本文\n目次の行");
         if let Block::Para(p) = &mut d.blocks[0] { p.style = ParaStyle::Heading(1); }
         if let Block::Para(p) = &mut d.blocks[2] { p.style = ParaStyle::Toc(2); }
@@ -1735,7 +1735,7 @@ mod style_tests {
     }
 
     #[test]
-    fn 日本語版wordの見出しも読める() {
+    fn headings_from_japanese_word_also_read() {
         // 日本語版 Word の見出し1は style id が「1」。outlineLvl だけでも見出し
         let xml = r#"<w:document xmlns:w="x"><w:body>
             <w:p><w:pPr><w:pStyle w:val="1"/></w:pPr><w:r><w:t>甲</w:t></w:r></w:p>
@@ -1763,7 +1763,7 @@ mod hf_tests {
     }
 
     #[test]
-    fn ヘッダーとフッターが往復する() {
+    fn headers_and_footers_round_trip() {
         let mut d = Document::plain("本文");
         d.header.paragraphs = vec![para("社外秘")];
         let mut f = para(&format!("- {PAGE_MARK} -"));
@@ -1791,7 +1791,7 @@ mod hf_tests {
     }
 
     #[test]
-    fn 複雑なフィールドのページ番号も読める() {
+    fn a_page_number_in_a_complex_field_reads() {
         // Word は PAGE を fldChar(begin/instrText/separate/計算済み/end)で書く
         let xml = r#"<w:hdr xmlns:w="x"><w:p>
             <w:r><w:fldChar w:fldCharType="begin"/></w:r>
@@ -1807,7 +1807,7 @@ mod hf_tests {
     }
 
     #[test]
-    fn 持てないフィールドは報告して落とす() {
+    fn unsupported_fields_are_reported_and_dropped() {
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p>
             <w:fldSimple w:instr=" DATE "><w:r><w:t>2026/08/03</w:t></w:r></w:fldSimple>
         </w:p></w:body></w:document>"#;
@@ -1818,7 +1818,7 @@ mod hf_tests {
     }
 
     #[test]
-    fn ページ数の印が往復する() {
+    fn the_page_count_field_round_trips() {
         use kumihan::PAGES_MARK;
         let mut d = Document::plain("本文");
         d.footer.paragraphs = vec![para(&format!("{PAGE_MARK} / {PAGES_MARK}"))];
@@ -1849,7 +1849,7 @@ mod hf_tests {
     }
 
     #[test]
-    fn 原本のヘッダー部品へ書き戻す() {
+    fn writes_back_into_the_original_header_part() {
         let src = docx_with_header(
             r#"<w:hdr xmlns:w="x"><w:p><w:r><w:t>旧いヘッダー</w:t></w:r></w:p></w:hdr>"#.as_bytes());
         let (mut doc, _) = crate::read(Cursor::new(&src)).unwrap();
@@ -1879,7 +1879,7 @@ mod hf_tests {
     }
 
     #[test]
-    fn 表のあるヘッダーは触らず持ち越す() {
+    fn a_header_with_a_table_is_carried_over_untouched() {
         // まだ持てないもの(表)が入った部品は編集の対象にせず、原文のまま生かす
         let orig = r#"<w:hdr xmlns:w="x"><w:tbl><w:tr><w:tc><w:p><w:r><w:t>枠</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:hdr>"#.as_bytes();
         let src = docx_with_header(orig);
@@ -1896,7 +1896,7 @@ mod hf_tests {
     }
 
     #[test]
-    fn 二度保存しても参照と部品が二重にならない() {
+    fn saving_twice_does_not_duplicate_relations_or_parts() {
         let mut d = Document::plain("本文");
         d.footer.paragraphs = vec![para(&PAGE_MARK.to_string())];
         let mut first = Vec::new();
@@ -1926,7 +1926,7 @@ mod image_insert_tests {
     }
 
     #[test]
-    fn 挿した画像が部品ごと保存され読み直せる() {
+    fn an_inserted_image_is_saved_as_a_part_and_reads_back() {
         let mut p = Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
             line_spacing: 1.0,
             runs: vec![Run { text: "ロゴの下".into(), size_pt: Some(10.5), font: None,
@@ -1967,7 +1967,7 @@ mod image_insert_tests {
     /// docx の画像の代替テキスト(wp:docPr descr)に積んで運ぶ —
     /// 渡した先の Word では絵として見え、こちらでは式として直せる
     #[test]
-    fn 数式は原文ごと往復する() {
+    fn equations_round_trip_with_their_source() {
         let shiki = r"\frac{a+b}{2} < \sqrt{x^2} & \alpha";  // < と & も逃がせるか
         let mut p = Paragraph { line_spacing: 1.0, ..Default::default() };
         p.images_new.push(InlineImage {
@@ -1998,7 +1998,7 @@ mod image_insert_tests {
     /// **普通の画像を数式と読み違えない。** 人が書いた説明文が代替テキストに
     /// 入っていても、印が無ければ原文として拾わない
     #[test]
-    fn 説明文つきの画像は数式にならない() {
+    fn an_image_with_a_caption_does_not_become_an_equation() {
         let mut media = std::collections::BTreeMap::new();
         media.insert("rId9".to_string(), std::sync::Arc::new(png_bytes()));
         let raw = |descr: &str| format!(
@@ -2036,7 +2036,7 @@ mod footnote_report_tests {
     /// `w:type="separator"` と `continuationSeparator` が必ず入っていて、
     /// これを数に入れると番号が2つずれる(実物2枚とも入っていた)
     #[test]
-    fn 仕切り線は脚注に数えない() {
+    fn the_separator_line_is_not_counted_as_a_footnote() {
         let xml = concat!(
             r#"<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
             r#"<w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:t>―</w:t></w:r></w:p></w:footnote>"#,
@@ -2059,7 +2059,7 @@ mod footnote_report_tests {
     }
 
     #[test]
-    fn 脚注の印は帳簿に出る() {
+    fn footnote_marks_are_logged() {
         let xml = body(
             r#"<w:p><w:r><w:t>本文</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r></w:p>"#,
         );
@@ -2092,7 +2092,7 @@ mod footnote_report_tests {
     /// 脚注は「どの語に付いた注か」が意味そのものなので、
     /// 数式で使った控え(anchors)の作法はここでは使えない
     #[test]
-    fn 脚注の印は元の位置に戻る() {
+    fn footnote_marks_return_to_their_original_place() {
         let (doc, _) = parse_document_xml(&two_marks());
         let out = write_document_xml(&doc);
         let positions = |s: &str| out.find(s).unwrap_or_else(|| panic!("{s} が無い: {out}"));
@@ -2105,7 +2105,7 @@ mod footnote_report_tests {
     /// (pandoc は 20 番台、LibreOffice は 2 番台)、
     /// footnotes.xml 側と番号で繋がっているので、振り直すと切れる
     #[test]
-    fn 脚注のidは原文のまま返る() {
+    fn footnote_ids_come_back_verbatim() {
         let (doc, _) = parse_document_xml(&two_marks());
         let out = write_document_xml(&doc);
         assert!(out.contains(r#"w:id="20""#) && out.contains(r#"w:id="21""#),
@@ -2115,7 +2115,7 @@ mod footnote_report_tests {
 
     /// 印の run は**字を持たない**。本文の字としては数えない
     #[test]
-    fn 印は本文の字にならない() {
+    fn a_mark_does_not_become_body_text() {
         let (doc, _) = parse_document_xml(&two_marks());
         assert_eq!(doc.body_text(), "本文の一つ目です。同じ段落にもう一つ。",
             "印が本文の字に混ざった: {:?}", doc.body_text());
@@ -2126,7 +2126,7 @@ mod footnote_report_tests {
 
     /// 文末脚注は脚注と別の札で返る(混ぜると別物になる)
     #[test]
-    fn 文末脚注は文末脚注のまま返る() {
+    fn endnotes_come_back_as_endnotes() {
         let xml = body(r#"<w:p><w:r><w:t>本文</w:t></w:r><w:r><w:endnoteReference w:id="7"/></w:r></w:p>"#);
         let (doc, _) = parse_document_xml(&xml);
         let p = doc.paragraphs().next().unwrap();
@@ -2139,7 +2139,7 @@ mod footnote_report_tests {
 
     /// 二度往復しても増えも減りもしない
     #[test]
-    fn 脚注の印は二度往復しても変わらない() {
+    fn footnote_marks_are_stable_over_two_round_trips() {
         let (doc, _) = parse_document_xml(&two_marks());
         let once = write_document_xml(&doc);
         let (doc2, _) = parse_document_xml(&once);
@@ -2151,7 +2151,7 @@ mod footnote_report_tests {
 
     /// id の無い印は指す先が引けない。**作り話をせず落として報告する**
     #[test]
-    fn idの無い印は落として報告する() {
+    fn a_mark_without_an_id_is_dropped_and_reported() {
         let xml = body(r#"<w:p><w:r><w:t>本文</w:t></w:r><w:r><w:footnoteReference/></w:r></w:p>"#);
         let (doc, rep) = parse_document_xml(&xml);
         assert!(doc.paragraphs().next().unwrap().runs.iter()
@@ -2161,7 +2161,7 @@ mod footnote_report_tests {
     }
 
     #[test]
-    fn 文末脚注の印も帳簿に出る() {
+    fn endnote_marks_are_logged_too() {
         let xml = body(r#"<w:p><w:r><w:endnoteReference w:id="2"/></w:r></w:p>"#);
         let (_, rep) = parse_document_xml(&xml);
         assert!(
@@ -2174,7 +2174,7 @@ mod footnote_report_tests {
     /// 節が2つある文書。模型は1つしか持てないので、保存で片方が消える。
     /// **消えること自体は直せていない** — 黙って消さないことだけを守る。
     #[test]
-    fn 二つ目の節の区切りは帳簿に出る() {
+    fn the_second_section_break_is_logged() {
         let sect = r#"<w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>"#;
         let xml = body(&format!(
             r#"<w:p><w:pPr>{sect}</w:pPr></w:p><w:p><w:r><w:t>次の節</w:t></w:r></w:p>{sect}"#
@@ -2191,7 +2191,7 @@ mod footnote_report_tests {
     /// 帳簿には出し続ける(読めてはいないので)が、
     /// **もう起きない損(平文になる)を書いてはいけない。**
     #[test]
-    fn 数式は帳簿に出る() {
+    fn equations_are_logged() {
         let xml = body(
             r#"<w:p><m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>E=mc</m:t></m:r></m:oMath></w:p>"#,
         );
@@ -2216,7 +2216,7 @@ mod footnote_report_tests {
     /// Start の枝にしか目が無いと丸ごと落ちる — xlsx の sheetView と同じ形の穴。
     /// 2026-08-10、他人の docx(ONLYOFFICE の試験文書)で 76 段落中 28 個がこれだった。
     #[test]
-    fn 空の段落は自己完結の形でも読める() {
+    fn an_empty_paragraph_reads_in_self_closing_form_too() {
         let xml = body(
             r#"<w:p><w:r><w:t>上</w:t></w:r></w:p><w:p/><w:p><w:r><w:t>下</w:t></w:r></w:p>"#,
         );
@@ -2226,7 +2226,7 @@ mod footnote_report_tests {
     }
 
     #[test]
-    fn 属性つきの空の段落も読める() {
+    fn an_empty_paragraph_with_attributes_still_reads() {
         // Word は改訂の印を属性で付けたまま自己完結の形にする
         let xml = body(r#"<w:p w:rsidR="00A1"/><w:p><w:r><w:t>本文</w:t></w:r></w:p>"#);
         let (doc, _) = parse_document_xml(&xml);
@@ -2234,7 +2234,7 @@ mod footnote_report_tests {
     }
 
     #[test]
-    fn 表のセルの中の空の段落も読める() {
+    fn an_empty_paragraph_inside_a_table_cell_reads() {
         let xml = body(
             r#"<w:tbl><w:tr><w:tc><w:p/><w:p><w:r><w:t>中</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#,
         );
@@ -2245,7 +2245,7 @@ mod footnote_report_tests {
 
     /// 空の段落は**保存でも残る**(往復して数が変わらない)。
     #[test]
-    fn 空の段落は往復しても消えない() {
+    fn an_empty_paragraph_survives_a_round_trip() {
         let xml = body(r#"<w:p><w:r><w:t>上</w:t></w:r></w:p><w:p/><w:p/><w:p><w:r><w:t>下</w:t></w:r></w:p>"#);
         let (doc, _) = parse_document_xml(&xml);
         let mut buf = Vec::new();
@@ -2256,7 +2256,7 @@ mod footnote_report_tests {
     }
 
     #[test]
-    fn 脚注が無ければ帳簿は空のまま() {
+    fn no_footnotes_leaves_the_log_empty() {
         let xml = body(
             r#"<w:p><w:r><w:t>ただの本文</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>"#,
         );
@@ -2294,7 +2294,7 @@ mod note_fmt_tests {
     /// **docx の既定を知っているのは読み手。** settings が黙っていれば
     /// 脚注は算用数字、**文末脚注はローマ数字の小文字**(Word も LibreOffice もそう)
     #[test]
-    fn 設定が黙っていれば文末脚注はローマ数字() {
+    fn silent_settings_make_endnotes_roman() {
         let (f, e) = fmt("");
         assert_eq!(f, kumihan::NoteNumFmt::Decimal);
         assert_eq!(e, kumihan::NoteNumFmt::LowerRoman, "文末脚注の既定が算用数字になっている");
@@ -2302,7 +2302,7 @@ mod note_fmt_tests {
 
     /// 実物(both-notes.docx)がこの形で書いていた
     #[test]
-    fn 設定から番号の書式を読む() {
+    fn reads_the_number_format_from_settings() {
         let (f, e) = fmt(concat!(
             r#"<w:footnotePr><w:numFmt w:val="decimal"/></w:footnotePr>"#,
             r#"<w:endnotePr><w:numFmt w:val="lowerRoman"/></w:endnotePr>"#,
@@ -2314,7 +2314,7 @@ mod note_fmt_tests {
     /// **札の中の numFmt だけを見る。** 文書には他にも numFmt があるので、
     /// 範囲を切らずに探すと隣の設定を拾う
     #[test]
-    fn 隣の設定を拾わない() {
+    fn does_not_pick_up_the_neighbouring_setting() {
         let (f, e) = fmt(concat!(
             r#"<w:footnotePr><w:numFmt w:val="upperLetter"/></w:footnotePr>"#,
             r#"<w:endnotePr><w:numFmt w:val="decimal"/></w:endnotePr>"#,
@@ -2363,7 +2363,7 @@ mod add_note_tests {
 
     /// 脚注を足して保存する。**3つ揃って初めて Word が出す**
     #[test]
-    fn 注の無い文書に脚注を足すと部品が揃う() {
+    fn adding_a_footnote_to_a_document_without_notes_creates_the_parts() {
         let src = plain_docx();
         let (mut doc, _) = crate::read(Cursor::new(&src)).unwrap();
         let body = kumihan::Paragraph {
@@ -2410,7 +2410,7 @@ mod add_note_tests {
     /// **既にある注を壊さない。** 原本の部品には仕切り線や、こちらが
     /// 模型に持っていない書式が入っている。丸ごと作り直すと失う
     #[test]
-    fn 既にある脚注に足しても元の注が残る() {
+    fn adding_to_existing_footnotes_keeps_the_originals() {
         // 注を1つ持つ docx を組む
         let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
         let o: zip::write::FileOptions<'_, ()> = Default::default();
@@ -2458,7 +2458,7 @@ mod add_note_tests {
 
     /// 注を足していない文書は**部品を1バイトも触らない**(今までどおり)
     #[test]
-    fn 足さなければ部品はそのまま() {
+    fn adding_nothing_leaves_the_parts_alone() {
         let src = plain_docx();
         let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
         let mut out = Vec::new();
@@ -2510,7 +2510,7 @@ mod through_template {
     }
 
     #[test]
-    fn 見出しの見た目がスタイル定義に入る() {
+    fn the_heading_look_goes_into_the_style_definition() {
         let th = kumihan::theme::default_theme();
         let s = parts(&write_out(Some(&th)), "word/styles.xml").unwrap();
         // 既定のテンプレートの「見出し1」は 16pt の太字
@@ -2522,7 +2522,7 @@ mod through_template {
     }
 
     #[test]
-    fn 利用者の名前はそのままスタイルの名前になる() {
+    fn the_user_name_becomes_the_style_name() {
         let th = kumihan::theme::default_theme();
         let s = parts(&write_out(Some(&th)), "word/styles.xml").unwrap();
         // 「註記」は本家 AsciiDoc の書き方。役割の固定名ではないので日本語のまま
@@ -2531,7 +2531,7 @@ mod through_template {
     }
 
     #[test]
-    fn 本文には見た目を焼き付けない() {
+    fn the_look_is_not_baked_into_the_body() {
         let th = kumihan::theme::default_theme();
         let d = parts(&write_out(Some(&th)), "word/document.xml").unwrap();
         // 見出しは pStyle で名乗るだけ。大きさも太字も本文の側には出さない
@@ -2540,7 +2540,7 @@ mod through_template {
     }
 
     #[test]
-    fn 渡さなければ今までどおり() {
+    fn passing_nothing_changes_nothing() {
         let s = parts(&write_out(None), "word/styles.xml").unwrap();
         assert!(s.contains(r#"w:styleId="Heading1""#));
         assert!(!s.contains("註記"), "テンプレート抜きなのに入った: {s}");
@@ -2576,7 +2576,7 @@ mod default_font_tests {
         </w:rPr></w:rPrDefault></w:docDefaults></w:styles>"#;
 
     #[test]
-    fn 言語のen_usを書体と読み違えない() {
+    fn the_en_us_language_is_not_mistaken_for_a_font() {
         // w:lang の w:eastAsia="en-US" を書体として拾っていた。
         // theme1.xml が無ければ書体は「指定なし」— en-US ではない
         let src = docx(PYDOCX_STYLES, None);
@@ -2585,7 +2585,7 @@ mod default_font_tests {
     }
 
     #[test]
-    fn テーマ名の書体はtheme1から名前に引く() {
+    fn theme_font_names_resolve_through_theme1() {
         let theme = r#"<a:theme xmlns:a="x"><a:fontScheme name="Office">
             <a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface=""/></a:majorFont>
             <a:minorFont><a:latin typeface="Calibri"/><a:ea typeface="游明朝"/></a:minorFont>
@@ -2596,7 +2596,7 @@ mod default_font_tests {
     }
 
     #[test]
-    fn 日本語の書体はscriptの表からも引く() {
+    fn the_japanese_font_also_resolves_via_the_script_table() {
         // Office の既定のテーマは <a:ea typeface=""/> が空で、
         // 日本語は script="Jpan" の表で持つ(python-docx の既定がこの形)
         let theme = r#"<a:theme xmlns:a="x"><a:fontScheme name="Office">
@@ -2609,7 +2609,7 @@ mod default_font_tests {
     }
 
     #[test]
-    fn テーマの日本語書体が空なら欧文に落ちる() {
+    fn an_empty_theme_japanese_font_falls_back_to_latin() {
         let theme = r#"<a:theme xmlns:a="x"><a:fontScheme name="Office">
             <a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/></a:minorFont>
             </a:fontScheme></a:theme>"#;
@@ -2619,7 +2619,7 @@ mod default_font_tests {
     }
 
     #[test]
-    fn 直に書いた書体は今までどおり読む() {
+    fn a_directly_written_font_still_reads() {
         let styles = r#"<w:styles xmlns:w="x"><w:docDefaults><w:rPrDefault><w:rPr>
             <w:rFonts w:ascii="Century" w:eastAsia="ＭＳ 明朝"/>
             <w:lang w:val="en-US" w:eastAsia="en-US"/>

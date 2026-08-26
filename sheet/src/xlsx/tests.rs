@@ -101,7 +101,7 @@ mod merge_round {
     }
 
     #[test]
-    fn セル結合が往復する() {
+    fn cell_merges_round_trip() {
         // 開いて保存しただけで帳票の枠組みが壊れてはいけない
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
         s.set(Pos::parse("A1").unwrap(), Cell {
@@ -150,7 +150,7 @@ mod colwidth_round {
     use crate::{Book, Sheet};
 
     #[test]
-    fn 列幅が往復する() {
+    fn column_widths_round_trip() {
         // 読み飛ばして保存すると帳票の形が変わる
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
         s.set(Pos::parse("A1").unwrap(), Cell {
@@ -256,7 +256,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 開いて保存しても部品が残る() {
+    fn open_and_save_keeps_the_parts() {
         let src = xlsx_with_parts();
         let (book, _) = crate::xlsx::read(Cursor::new(&src)).unwrap();
         let mut out = Vec::new();
@@ -1523,7 +1523,7 @@ mod validation_roundtrip_tests {
     }
 
     #[test]
-    fn ヘッダーとフッターが往復する() {
+    fn headers_and_footers_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].header = Some("&C月次売上&R&P / &N".into());

@@ -392,13 +392,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 組み立ての既定は押せる普通の項目() {
+    fn the_default_built_item_is_an_ordinary_clickable_one() {
         let i = Item::new("f-new", "新規作成");
         assert!(i.ready && !i.gap && !i.on && !i.tail);
     }
 
     #[test]
-    fn 灰色と空きと下寄せを重ねられる() {
+    fn greyed_spacer_and_bottom_can_be_combined() {
         let i = Item::new("f-help", "ヘルプ").grey().gap().tail();
         assert!(!i.ready && i.gap && i.tail);
     }
