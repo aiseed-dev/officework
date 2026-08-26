@@ -101,6 +101,7 @@ ruby -I vendor/asciidoctor/lib vendor/asciidoctor/bin/asciidoctor -o /dev/null <
 ## 追随待ち(直したら消す)
 
 - 英語版がまだ無い冊子と作る順: docx-xlsx-tono-chigai → api-taiou →
+  実例で覚える2冊(tutorial-word / tutorial-calc。連載が落ち着いてから)→
   commands/(169枚。ダイアログの節の流し込みが済んでから)
 - calc-manual(ja/en): 2026-08-07〜08 の突き合わせ分の総ざらい —
   条件付き書式の第2版(バー・スケール・アイコン)、ピボットの絞り込みと
