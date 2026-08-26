@@ -7,6 +7,10 @@ officework エンジンの両方で作り、**開いて目で見比べます**�
 
 == 回し方
 
+エンジンを直した後は、先に `.venv` を木に合わせます:
+`cd pysheet && ../.venv/bin/maturin develop --release`
+
+
 [source,console]
 ----
 $ .venv/bin/python test/write_xlsx_openpyxl.py      # 参照(openpyxl)→ test/out/

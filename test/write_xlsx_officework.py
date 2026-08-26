@@ -9,6 +9,7 @@
 import sys
 import datetime as dt
 from pathlib import Path
+from types import SimpleNamespace
 
 from officework import sheet
 from officework.sheet import (Font, PatternFill, Border, Side, Alignment,
@@ -67,14 +68,15 @@ def quote():
     c.font = Font(color="0563C1", underline="single")
     ws.cell(6, 5).value = "担当: 営業部"
 
-    wb.add_named_style("表の見出し",
-                       font=Font(bold=True, color="FFFFFF"),
-                       fill=PatternFill("solid", fgColor="1B6E3C"),
-                       alignment=Alignment(horizontal="center"))
+    wb.add_named_style(SimpleNamespace(
+        name="表の見出し",
+        font=Font(bold=True, color="FFFFFF"),
+        fill=PatternFill("solid", fgColor="1B6E3C"),
+        alignment=Alignment(horizontal="center")))
     c = ws.cell(8, 6)
     c.value = 0.1
     c.number_format = "0%"
-    wb.create_named_range("税率", "見積書!$F$8")
+    wb.create_named_range("税率", value="見積書!$F$8")
     ws.cell(8, 5).value = "消費税率"
 
     for j, label in enumerate(["No.", "品名", "数量", "単位", "単価", "金額"], start=1):
@@ -217,12 +219,12 @@ def attendance():
     kinds.prompt = "一覧から選びます"
     kinds.errorTitle = "区分が違います"
     kinds.error = "出勤・休暇・半休・出張のどれかにしてください"
-    ws.add_data_validation(kinds)
     kinds.add("B4:B10")
+    ws.add_data_validation(kinds)
     hours = DataValidation(type="time", operator="between",
                            formula1="TIME(6,0,0)", formula2="TIME(23,0,0)")
-    ws.add_data_validation(hours)
     hours.add("C4:D10")
+    ws.add_data_validation(hours)
 
     base = dt.date(2026, 8, 24)
     for i in range(7):

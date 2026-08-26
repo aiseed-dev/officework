@@ -10,7 +10,8 @@ import sys
 from pathlib import Path
 
 from officework import doc
-from officework.doc import Doc, Mm
+
+Doc, Mm = doc.Doc, doc.Mm
 
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent / "out" / "officework"
 OUT.mkdir(parents=True, exist_ok=True)
