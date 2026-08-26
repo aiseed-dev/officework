@@ -18,11 +18,11 @@
 |===
 |crate |行数の目安 |受け持ち
 
-|`engine`(kumihan) |1.4万 |adoc の読み書き・文書の模型・組版(禁則・ルビ・字幅)・HTML の読み書き
-|`sheet` |2.5万 |xlsx の読み書き・式と再計算・表計算の模型。UI 非依存
-|`ooxml` |0.7万 |docx ⇄ kumihan の変換。**原本を持ち越して、変えた所だけ書き戻す**
+|`engine`(kumihan) |2.9万 |**adoc のエンジン**。文書と升目の模型・式の計算・組版(禁則・ルビ・字幅)・adoc と HTML の読み書き
+|`sheet` |1.0万 |**xlsx の交換だけ**(`styles.xml` と `theme1.xml` も中)。UI 非依存
+|`ooxml` |0.7万 |**docx の交換だけ**。**原本を持ち越して、変えた所だけ書き戻す**
 |`lang` |3.5万 |言語1つぶんの差し込み(14言語の表・ふりがな・校正)。gpui を知らない
-|`ops` |0.3万 |ブックの操作の言葉。**誰が呼んでも同じ意味**(画面も Python も同じ口)
+|`ops` |0.3万 |ブックの操作の言葉。**誰が呼んでも同じ意味**(画面も Python も同じ API)
 |`paper` |0.2万 |紙面を紙へ — 印刷と PDF
 |`pyrun` |0.2万 |Python 実行の機構(calc と writer が共に使う)。サンドボックスもここ
 |`face` |1.2万 |**持ち運べる層** — リボンの定義・アイコン・コンボの計算。絵を描かない
@@ -37,6 +37,11 @@
 依存の向きは一方通行です: 画面(calc / writer / officework)→
 face / ui / ops → エンジン(engine / sheet / ooxml / lang)。
 エンジンから画面へ向かう依存はありません。
+
+**エンジンは3つです**(2026-08-26。SEKKEI「エンジンは3つに分ける」)。
+`kumihan` が adoc、`sheet` が xlsx、`ooxml` が docx を受け持ちます。
+模型と計算は `kumihan` にあり、`sheet` と `ooxml` は**開く・保存の境で
+だけ**交換します。`sheet` を呼ぶ所は全部 `sheet::xlsx` です。
 
 == 決めの型(コードを書くときに従う物)
 
@@ -53,8 +58,9 @@ face / ui / ops → エンジン(engine / sheet / ooxml / lang)。
   (受け口に任意コード実行の動詞を置かない)
 * **原本の持ち越し。** docx / xlsx は読めなかった部品を捨てずに持ち越し、
   `unsupported` で自己申告する(ooxml / sheet)
-* **計算の道は1本。** 再計算は sheet の1本道を通る(自前の収束を作らない)
-* **罫線は場所×ペンの直交。** 型スタンプを作らない(sheet の fmt)
+* **計算の道は1本。** 再計算は `kumihan::calc` の1本道を通る
+  (自前の収束を作らない)
+* **罫線は場所×ペンの直交。** 型スタンプを作らない(`kumihan::book::fmt`)
 * **4つの面の対応。** 意味の単位1つに AsciiDoc・リボン・HTML/CSS・Flet が
   対応する(見張りは engine の試験)
 * **生成物に手で書かない。** face/src/ribbon*.rs は gen_ribbon.py が起こす。
