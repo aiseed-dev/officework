@@ -102,6 +102,7 @@ pub fn parse(src: &str) -> Result<(Book, Vec<String>), String> {
     if book.sheets.is_empty() {
         book.sheets.push(Sheet::new("Sheet1"));
     }
+    take_book_settings(&doc, &mut book);
     // **値は持たないので、読んだ所で計算する。** 式が正本
     recalc_all(&mut book);
     Ok((book, report))
@@ -111,10 +112,80 @@ pub fn parse(src: &str) -> Result<(Book, Vec<String>), String> {
 
 fn to_doc(book: &Book) -> Document {
     let mut d = Document::default();
+    put_book_settings(&mut d, book);
     for s in &book.sheets {
         d.blocks.push(Block::Table(to_table(s)));
     }
     d
+}
+
+/// **ブックの設定を文書の属性に置く。**
+///
+/// AsciiDoc の文書属性(`:calc-manual: true`)です。表に入らない、
+/// ブック1つに1つしかない設定はここが居場所になります。
+///
+/// 名前を英語にしてあるのは、**属性の名前は書式の一部**だからです
+/// (表の題や列の見出しと違って、画面に出る字ではありません)。
+fn put_book_settings(d: &mut Document, book: &Book) {
+    d.props.title = book.props.title.clone();
+
+    let mut put = |k: &str, v: String| {
+        if !v.is_empty() {
+            d.attrs.push((k.to_string(), v));
+        }
+    };
+    // **AsciiDoc の決まった名前に寄せます**(`:author:` `:keywords:`)。
+    // 普通の AsciiDoc の道具で読める形にするためです。作成者が複数の
+    // ときは AsciiDoc の作法どおり `;` で区切ります
+    put("author", book.props.creators.join("; "));
+    put("subject", book.props.subject.clone());
+    put("keywords", book.props.keywords.clone());
+    put("description", book.props.description.clone());
+    if book.calc_manual {
+        put("calc-manual", "true".into());
+    }
+    if let Some((n, eps)) = book.calc_iter {
+        put("calc-iterate", format!("{n},{eps}"));
+    }
+    if book.read_only_rec {
+        put("read-only-recommended", "true".into());
+    }
+    if book.date1904 {
+        put("date-1904", "true".into());
+    }
+}
+
+/// 文書の属性からブックの設定を読む。**知らない属性は触りません**
+/// (利用者が自分の覚え書きを書くことがあります)。
+fn take_book_settings(d: &Document, book: &mut Book) {
+    book.props.title = d.props.title.clone();
+
+    for (k, v) in &d.attrs {
+        let yes = v.eq_ignore_ascii_case("true");
+        match k.as_str() {
+            "author" => {
+                book.props.creators = v
+                    .split(';')
+                    .map(|x| x.trim().to_string())
+                    .filter(|x| !x.is_empty())
+                    .collect()
+            }
+            "subject" => book.props.subject = v.clone(),
+            "keywords" => book.props.keywords = v.clone(),
+            "description" => book.props.description = v.clone(),
+            "calc-manual" => book.calc_manual = yes,
+            "read-only-recommended" => book.read_only_rec = yes,
+            "date-1904" => book.date1904 = yes,
+            "calc-iterate" => {
+                if let Some((n, eps)) = v.split_once(',') {
+                    if let (Ok(n), Ok(eps)) = (n.trim().parse(), eps.trim().parse()) {
+                        book.calc_iter = Some((n, eps));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// シートを文書の表にする。

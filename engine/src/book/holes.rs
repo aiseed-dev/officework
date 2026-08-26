@@ -135,10 +135,10 @@ pub const WATCHED_BOOK: &[(&str, Watch)] = &[
     ("sheets", Watch::Body),
     ("props", Watch::Body),
     ("theme", Watch::Look),
-    ("names_raw", Watch::Body),
+    ("names_raw", Watch::Skip("読めなかった definedName の xlsx の原文。\n    // 理解しないまま持ち越す控えで、adoc に居場所は無い")),
     ("named_styles", Watch::Look),
     ("named_styles_new", Watch::Look),
-    ("scripts", Watch::Body),
+    ("scripts", Watch::Skip("古いブックに載っていた Python。**保存では書き戻さない**\n    // 決め(2026-08-09 発注者)なので、往復しないのが正しい")),
     ("pivots", Watch::Body),
     ("calc_manual", Watch::Body),
     ("calc_iter", Watch::Body),
@@ -348,7 +348,6 @@ fn same_book_field(name: &str, a: &Book, b: &Book) -> bool {
         // BookProps は PartialEq を持たないので、画面に出る欄だけ比べます
         "props" => a.props.title == b.props.title && a.props.creators == b.props.creators,
         "theme" => a.theme == b.theme,
-        "names_raw" => a.names_raw == b.names_raw,
         // **2つは xlsx の索引を持つかどうかで分かれているだけ**なので、
         // 名前と書式の組として合わせて比べます
         "named_styles" | "named_styles_new" => {
@@ -364,7 +363,6 @@ fn same_book_field(name: &str, a: &Book, b: &Book) -> bool {
             };
             set(a) == set(b)
         }
-        "scripts" => a.scripts == b.scripts,
         "pivots" => a.pivots.len() == b.pivots.len(),
         "calc_manual" => a.calc_manual == b.calc_manual,
         "calc_iter" => a.calc_iter == b.calc_iter,

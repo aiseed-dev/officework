@@ -1231,8 +1231,8 @@ mod holes_count {
     /// 減らす作業の物差しです。増えたら試験が落ちます。
     const KNOWN: &[&str] = &[
         // ブックの側
-        "props", "names_raw", "scripts",
-        "calc_manual", "calc_iter", "read_only_rec", "date1904",
+       
+       
         // 1枚の側
         "merges", "row_hidden", "col_hidden",
         "tables", "names", "links", "cond",
