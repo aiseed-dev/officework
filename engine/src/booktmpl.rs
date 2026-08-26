@@ -30,7 +30,10 @@
 //! だから**配られたテンプレートは書き替えません** — 呼ぶ側は、既にある
 //! ファイルを上書きしないでください。
 
-use crate::book::{Book, FreezePane, Pos, ProtectAllow, Sheet};
+/// セルの書式を (名前, 項目, 値) の表で持つ
+pub mod style;
+
+use crate::book::{Book, CellFormat, FreezePane, Pos, ProtectAllow, Sheet};
 use crate::{Block, Cellbox, Document, Table};
 
 /// 1枚ぶんの見た目。
@@ -102,12 +105,24 @@ pub struct SheetLook {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct BookTheme {
     pub sheets: Vec<SheetLook>,
+    /// **名前つきの書式の定義。** 同じ書式は1つにまとめて名前を付けます
+    pub styles: Vec<(String, CellFormat)>,
+    /// **どの範囲にどの書式を当てるか。**(シート, 左上, 右下, 書式の名前)
+    pub style_at: Vec<(String, Pos, Pos, String)>,
+    /// テーマ色の組(12色)
+    pub theme: Vec<String>,
+    /// 式を R1C1 で見せるか
+    pub r1c1: Option<bool>,
 }
 
 impl BookTheme {
     /// 持っている物が何も無いか(何も無ければテンプレートを書く意味がない)
     pub fn is_empty(&self) -> bool {
-        self.sheets.iter().all(|s| {
+        self.styles.is_empty()
+            && self.style_at.is_empty()
+            && self.theme.is_empty()
+            && self.r1c1.is_none()
+            && self.sheets.iter().all(|s| {
             s.col_width.is_empty()
                 && s.row_height.is_empty()
                 && s.paper_size.is_none()
@@ -143,7 +158,7 @@ impl BookTheme {
                 && s.col_outline.is_empty()
                 && s.default_col_width.is_none()
                 && s.default_row_height.is_none()
-        })
+            })
     }
 
     fn sheet(&mut self, name: &str) -> &mut SheetLook {
@@ -201,7 +216,89 @@ pub fn from_book(b: &Book) -> BookTheme {
         };
         t.sheets.push(look);
     }
+    collect_styles(b, &mut t);
+    t.theme = b.theme.clone();
+    t.r1c1 = b.r1c1.then_some(true);
     t
+}
+
+/// **書式を集めて名前を付ける。**
+///
+/// セル1つに1行を書くと、実物のブックで数千行になります。同じ書式は
+/// 1つにまとめ(**型スタンプを作らない** — SEKKEI「書式は数でなく条件で
+/// 止める」)、続いている升目は範囲でまとめます。
+///
+/// 名前は、ブックが名前つきスタイルを持っていればその名前、無ければ
+/// `書式1` `書式2` と番号を振ります。**番号は書式の中身から決まる**ので、
+/// 同じブックを2度書き出しても同じ名前になります。
+fn collect_styles(b: &Book, t: &mut BookTheme) {
+    let mut named: Vec<(String, CellFormat)> = Vec::new();
+    for (n, _, f) in &b.named_styles {
+        named.push((n.clone(), f.clone()));
+    }
+    for (n, f) in &b.named_styles_new {
+        if !named.iter().any(|(m, _)| m == n) {
+            named.push((n.clone(), f.clone()));
+        }
+    }
+
+    // 直に当てた書式を拾い、同じ物は1つにまとめる
+    let mut auto: Vec<CellFormat> = Vec::new();
+    let name_of = |f: &CellFormat, named: &[(String, CellFormat)], auto: &mut Vec<CellFormat>| {
+        if let Some((n, _)) = named.iter().find(|(_, g)| g == f) {
+            return n.clone();
+        }
+        if let Some(i) = auto.iter().position(|g| g == f) {
+            return format!("書式{}", i + 1);
+        }
+        auto.push(f.clone());
+        format!("書式{}", auto.len())
+    };
+
+    for sh in &b.sheets {
+        // **横に続く同じ書式は1つの範囲にまとめます。** 縦のまとめは
+        // やっていません — 表の1行が同じ書式という形が事務では多いためです
+        let mut run: Option<(Pos, Pos, String)> = None;
+        for (p, c) in &sh.cells {
+            if c.fmt.is_plain() {
+                continue;
+            }
+            let n = name_of(&c.fmt, &named, &mut auto);
+            match &mut run {
+                Some((a, z, name))
+                    if *name == n && z.row == p.row && z.col + 1 == p.col =>
+                {
+                    let _ = a;
+                    *z = *p;
+                }
+                _ => {
+                    if let Some((a, z, name)) = run.take() {
+                        t.style_at.push((sh.name.clone(), a, z, name));
+                    }
+                    run = Some((*p, *p, n));
+                }
+            }
+        }
+        if let Some((a, z, name)) = run.take() {
+            t.style_at.push((sh.name.clone(), a, z, name));
+        }
+        // **`style_of` は読みません。** あれは xlsx の `<c s="…">` の控えで、
+        // 原本の styles.xml を据え置くためだけに持っています。画面の書式は
+        // `Cell::fmt` が決めており、calc は `style_of` を1度も見ていません。
+        // ここで読むと、原本の索引が指す書式がセルに焼き付いてしまいます
+    }
+
+    t.styles = named;
+    for (i, f) in auto.into_iter().enumerate() {
+        t.styles.push((format!("書式{}", i + 1), f));
+    }
+    // **名前つきスタイルは、どのセルにも当たっていなくても残します。**
+    // 利用者が書式の一覧に作った物なので、使っていないという理由で消すと
+    // 次に開いたとき無くなっています。落とすのは、この場で番号を振った
+    // `書式N` のうち誰にも当たらなかった物だけです
+    t.styles.retain(|(n, _)| {
+        !n.starts_with("書式") || t.style_at.iter().any(|(_, _, _, m)| m == n)
+    });
 }
 
 /// 見た目をブックに当てる。**そのシートが無ければ黙って飛ばします**
@@ -321,6 +418,51 @@ pub fn apply(t: &BookTheme, b: &mut Book) {
             s.default_row_height = Some(v);
         }
     }
+    apply_styles(t, b);
+    if !t.theme.is_empty() {
+        b.theme = t.theme.clone();
+    }
+    if let Some(v) = t.r1c1 {
+        b.r1c1 = v;
+    }
+}
+
+/// **書式をセルへ当てる。**
+///
+/// 当てる先が空のセルなら作ります — 罫線だけ引いた升目は、中身が無くても
+/// 見た目を持つからです。
+fn apply_styles(t: &BookTheme, b: &mut Book) {
+    if t.style_at.is_empty() {
+        return;
+    }
+    // 定義は名前つきスタイルとしても持ち越します(画面の一覧に出るため)
+    for (n, f) in &t.styles {
+        if n.starts_with("書式") {
+            continue;
+        }
+        if !b.named_styles.iter().any(|(m, _, _)| m == n)
+            && !b.named_styles_new.iter().any(|(m, _)| m == n)
+        {
+            b.named_styles_new.push((n.clone(), f.clone()));
+        }
+    }
+    for (sheet, a, z, name) in &t.style_at {
+        let Some(f) = t.styles.iter().find(|(n, _)| n == name).map(|(_, f)| f.clone()) else {
+            continue;
+        };
+        let Some(s) = b.sheets.iter_mut().find(|s| s.name == *sheet) else { continue };
+        for row in a.row..=z.row {
+            for col in a.col..=z.col {
+                let p = Pos::new(row, col);
+                match s.cells.get_mut(&p) {
+                    Some(c) => c.fmt = f.clone(),
+                    None => {
+                        s.set(p, crate::book::Cell { fmt: f.clone(), ..Default::default() });
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ---------- 書く ----------
@@ -355,6 +497,15 @@ pub fn write(t: &BookTheme) -> String {
     if let Some(tb) = protect_table(t) {
         d.blocks.push(Block::Table(tb));
     }
+    if let Some(tb) = style_table(t) {
+        d.blocks.push(Block::Table(tb));
+    }
+    if let Some(tb) = style_at_table(t) {
+        d.blocks.push(Block::Table(tb));
+    }
+    if let Some(tb) = book_table(t) {
+        d.blocks.push(Block::Table(tb));
+    }
     crate::adoc::write(&d)
 }
 
@@ -379,6 +530,100 @@ fn table(title: &str, heading: &[&str], rows: Vec<Vec<String>>) -> Option<Table>
 }
 
 
+
+
+/// 書式の定義。**(名前, 項目, 値)の縦長**です — 欄が 25 あるので横には並べません。
+fn style_table(t: &BookTheme) -> Option<Table> {
+    let mut rows: Vec<Vec<String>> = Vec::new();
+    for (name, f) in &t.styles {
+        for (item, v) in style::to_rows(f) {
+            rows.push(vec![name.clone(), item.to_string(), v]);
+        }
+    }
+    table("書式", &["名前", "項目", "値"], rows)
+}
+
+fn read_style(t: &mut BookTheme, rows: &[Vec<String>]) {
+    let mut by_name: Vec<(String, Vec<(String, String)>)> = Vec::new();
+    for row in rows {
+        let name = pick(row, 0);
+        if name.is_empty() {
+            continue;
+        }
+        let item = (pick(row, 1).to_string(), pick(row, 2).to_string());
+        match by_name.iter_mut().find(|(n, _)| n == name) {
+            Some((_, v)) => v.push(item),
+            None => by_name.push((name.to_string(), vec![item])),
+        }
+    }
+    for (name, items) in by_name {
+        let f = style::from_rows(&items);
+        match t.styles.iter_mut().find(|(n, _)| *n == name) {
+            Some((_, g)) => *g = f,
+            None => t.styles.push((name, f)),
+        }
+    }
+}
+
+/// どの範囲にどの書式を当てるか。
+fn style_at_table(t: &BookTheme) -> Option<Table> {
+    let rows: Vec<Vec<String>> = t
+        .style_at
+        .iter()
+        .map(|(sheet, a, z, name)| {
+            let range =
+                if a == z { a.a1() } else { format!("{}:{}", a.a1(), z.a1()) };
+            vec![sheet.clone(), range, name.clone()]
+        })
+        .collect();
+    table("書式の当て", &["シート", "範囲", "書式"], rows)
+}
+
+fn read_style_at(t: &mut BookTheme, rows: &[Vec<String>]) {
+    for row in rows {
+        let sheet = pick(row, 0);
+        let range = pick(row, 1);
+        let name = pick(row, 2);
+        if sheet.is_empty() || range.is_empty() || name.is_empty() {
+            continue;
+        }
+        let (a, z) = match range.split_once(':') {
+            Some((a, z)) => (Pos::parse(a.trim()), Pos::parse(z.trim())),
+            None => (Pos::parse(range), Pos::parse(range)),
+        };
+        if let (Some(a), Some(z)) = (a, z) {
+            t.style_at.push((sheet.to_string(), a, z, name.to_string()));
+        }
+    }
+}
+
+/// ブック全体の見た目。**シートに紐づかない物**だけ置きます。
+fn book_table(t: &BookTheme) -> Option<Table> {
+    let mut rows: Vec<Vec<String>> = Vec::new();
+    if !t.theme.is_empty() {
+        rows.push(vec!["テーマ色".into(), t.theme.join(",")]);
+    }
+    if let Some(v) = t.r1c1 {
+        rows.push(vec!["R1C1 で見せる".into(), v.to_string()]);
+    }
+    table("ブック", &["項目", "値"], rows)
+}
+
+fn read_book(t: &mut BookTheme, rows: &[Vec<String>]) {
+    for row in rows {
+        match pick(row, 0) {
+            "テーマ色" => {
+                let c: Vec<String> =
+                    pick(row, 1).split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect();
+                if !c.is_empty() {
+                    t.theme = c;
+                }
+            }
+            "R1C1 で見せる" => t.r1c1 = read_yes_no(pick(row, 1)),
+            _ => {}
+        }
+    }
+}
 
 /// **保護中も許す操作の名前。** 表と `ProtectAllow` の欄を1対1で結びます。
 ///
@@ -912,6 +1157,9 @@ pub fn parse(src: &str) -> Result<BookTheme, String> {
             "画面" => read_view(&mut t, body),
             "グループ化" => read_outline(&mut t, body),
             "保護" => read_protect(&mut t, body),
+            "書式" => read_style(&mut t, body),
+            "書式の当て" => read_style_at(&mut t, body),
+            "ブック" => read_book(&mut t, body),
             _ => {}
         }
     }

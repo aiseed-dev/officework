@@ -1231,11 +1231,11 @@ mod holes_count {
     /// 減らす作業の物差しです。増えたら試験が落ちます。
     const KNOWN: &[&str] = &[
         // ブックの側
-        "props", "theme", "names_raw", "named_styles", "named_styles_new", "scripts",
-        "calc_manual", "calc_iter", "r1c1", "read_only_rec", "date1904",
+        "props", "names_raw", "scripts",
+        "calc_manual", "calc_iter", "read_only_rec", "date1904",
         // 1枚の側
-        "cells", "merges", "row_hidden", "col_hidden",
-        "tables", "style_of", "names", "links", "cond",
+        "merges", "row_hidden", "col_hidden",
+        "tables", "names", "links", "cond",
         "validations", "scenarios", "print_areas", "shapes", "images", "phonetics",
     ];
 

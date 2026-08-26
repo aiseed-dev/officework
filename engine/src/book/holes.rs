@@ -45,7 +45,7 @@ pub const WATCHED: &[(&str, Watch)] = &[
     ("row_hidden", Watch::Body),
     ("col_hidden", Watch::Body),
     ("tables", Watch::Body),
-    ("style_of", Watch::Look),
+    ("style_of", Watch::Skip("xlsx の <c s=\"…\"> の控え。原本の据え置きに使う物で、\n    // adoc は書式を名前で持つ")),
     ("rtl", Watch::Look),
     ("freeze", Watch::Look),
     ("show_gridlines", Watch::Look),
@@ -349,8 +349,21 @@ fn same_book_field(name: &str, a: &Book, b: &Book) -> bool {
         "props" => a.props.title == b.props.title && a.props.creators == b.props.creators,
         "theme" => a.theme == b.theme,
         "names_raw" => a.names_raw == b.names_raw,
-        "named_styles" => a.named_styles == b.named_styles,
-        "named_styles_new" => a.named_styles_new == b.named_styles_new,
+        // **2つは xlsx の索引を持つかどうかで分かれているだけ**なので、
+        // 名前と書式の組として合わせて比べます
+        "named_styles" | "named_styles_new" => {
+            let set = |b: &Book| {
+                let mut v: Vec<(String, CellFormat)> = b
+                    .named_styles
+                    .iter()
+                    .map(|(n, _, f)| (n.clone(), f.clone()))
+                    .chain(b.named_styles_new.iter().cloned())
+                    .collect();
+                v.sort_by(|x, y| x.0.cmp(&y.0));
+                v
+            };
+            set(a) == set(b)
+        }
         "scripts" => a.scripts == b.scripts,
         "pivots" => a.pivots.len() == b.pivots.len(),
         "calc_manual" => a.calc_manual == b.calc_manual,
@@ -385,7 +398,6 @@ fn same_sheet_field(name: &str, a: &Sheet, b: &Sheet) -> bool {
         "row_hidden" => a.row_hidden == b.row_hidden,
         "col_hidden" => a.col_hidden == b.col_hidden,
         "tables" => a.tables == b.tables,
-        "style_of" => a.style_of == b.style_of,
         "rtl" => a.rtl == b.rtl,
         "freeze" => a.freeze == b.freeze,
         "show_gridlines" => a.show_gridlines == b.show_gridlines,
