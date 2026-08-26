@@ -906,6 +906,25 @@ fn mm_twips(mm: f32) -> i64 {
 
 /// sectPr の原文の属性を差し替える(要素・属性が無ければ足す)。
 /// **原文を正として、変えた属性だけ触る** — 理解しない属性はそのまま残る
+/// **字の属性**を差し替える(`w:orient="landscape"` など)。
+/// 数の版と分けてあるのは、数に直せない値があるためです。
+fn patch_sect_text(raw: &str, tag: &str, attr: &str, val: &str) -> String {
+    let open = format!("<{tag}");
+    let Some(i) = raw.find(&open) else { return raw.into() };
+    let Some(end) = raw[i..].find("/>").map(|g| i + g) else { return raw.into() };
+    let pat = format!("{attr}=\"");
+    let mut out = raw.to_string();
+    match raw[i..end].find(&pat) {
+        Some(k) => {
+            let a = i + k + pat.len();
+            let Some(b) = raw[a..end].find('"').map(|g| a + g) else { return raw.into() };
+            out.replace_range(a..b, val);
+        }
+        None => out.insert_str(end, &format!(" {attr}=\"{val}\"")),
+    }
+    out
+}
+
 fn patch_sect(raw: &str, tag: &str, attr: &str, val: i64) -> String {
     let open = format!("<{tag}");
     if let Some(i) = raw.find(&open) {
@@ -1031,6 +1050,44 @@ impl PySection {
         self.mutate(|p, raw| {
             p.h_mm = v;
             *raw = patch_sect(raw, "w:pgSz", "w:h", mm_twips(v));
+        })
+    }
+
+    /// **紙の向きを変える**(2026-08-27。台帳の追補)。
+    /// `"portrait"` / `"landscape"`。
+    ///
+    /// 読むのは動いていましたが、**変える口がありません**でした。
+    /// 幅と高さを1つずつ入れ替えると、途中で正方形になって
+    /// 「どちらの向きか」が決まらない瞬間ができます。1手で入れ替えます。
+    #[setter]
+    fn set_orientation(&self, value: &str) -> PyResult<()> {
+        let want_landscape = match value {
+            "landscape" | "横" => true,
+            "portrait" | "縦" => false,
+            other => {
+                return Err(PyValueError::new_err(format!(
+                    "向きは portrait / landscape: {other:?}"
+                )))
+            }
+        };
+        let p0 = self.page()?;
+        if (p0.w_mm > p0.h_mm) == want_landscape {
+            return Ok(());
+        }
+        let (w, h) = (p0.h_mm, p0.w_mm);
+        self.mutate(|p, raw| {
+            p.w_mm = w;
+            p.h_mm = h;
+            *raw = patch_sect(raw, "w:pgSz", "w:w", mm_twips(w));
+            *raw = patch_sect(raw, "w:pgSz", "w:h", mm_twips(h));
+            // **本家は向きの札も持ちます。** 大きさだけ入れ替えて札を
+            // 置いたままにすると、Word の「ページ設定」が食い違います
+            *raw = patch_sect_text(
+                raw,
+                "w:pgSz",
+                "w:orient",
+                if want_landscape { "landscape" } else { "portrait" },
+            );
         })
     }
 
@@ -1441,6 +1498,36 @@ impl PyParagraph {
         self.with_mut(|p| p.line_spacing = value)
     }
 
+    /// **段落の前の空き(pt)**(台帳 #5。2026-08-27)。
+    ///
+    /// 開催通知のような1枚物で、見出しと本文の間を空けるのに要ります。
+    #[getter]
+    fn space_before(&self) -> PyResult<f32> {
+        self.with(|p| p.space_before_pt)
+    }
+
+    #[setter]
+    fn set_space_before(&self, value: f32) -> PyResult<()> {
+        if !(0.0..=200.0).contains(&value) {
+            return Err(PyValueError::new_err(format!("段落の前の空きは 0〜200pt: {value}")));
+        }
+        self.with_mut(|p| p.space_before_pt = value)
+    }
+
+    /// **段落の後ろの空き(pt)**(台帳 #5)。
+    #[getter]
+    fn space_after(&self) -> PyResult<f32> {
+        self.with(|p| p.space_after_pt)
+    }
+
+    #[setter]
+    fn set_space_after(&self, value: f32) -> PyResult<()> {
+        if !(0.0..=200.0).contains(&value) {
+            return Err(PyValueError::new_err(format!("段落の後ろの空きは 0〜200pt: {value}")));
+        }
+        self.with_mut(|p| p.space_after_pt = value)
+    }
+
     /// この段落の前で改ページする(docx の w:pageBreakBefore)。
     #[getter]
     fn page_break_before(&self) -> PyResult<bool> {
@@ -1594,6 +1681,20 @@ impl PyRun {
     #[setter]
     fn set_italic(&self, value: bool) -> PyResult<()> {
         self.with_mut(|r| r.fmt.italic = value)
+    }
+
+    /// **蛍光ペン**(台帳 #9)。色の名前(`yellow` `green` …)か、無ければ `None`。
+    ///
+    /// docx の `w:highlight` は**決まった色の名前**しか受けません。
+    /// 好きな色を塗りたいときは背景の塗り(`fill`)を使います。
+    #[getter]
+    fn highlight(&self) -> PyResult<Option<String>> {
+        self.with(|r| r.fmt.highlight.clone())
+    }
+
+    #[setter]
+    fn set_highlight(&self, value: Option<String>) -> PyResult<()> {
+        self.with_mut(|r| r.fmt.highlight = value)
     }
 
     #[getter]
@@ -1841,6 +1942,35 @@ impl PyTable {
                 .collect(),
             None => Vec::new(),
         })
+    }
+
+    /// **列の幅(mm)。**(2026-08-27。台帳の追補)
+    ///
+    /// 空なら等分です。列の数より短ければ、足りない分は等分になります。
+    ///
+    ///     t.col_widths_mm = [30, 60, 20]
+    #[getter]
+    fn col_widths_mm(&self) -> PyResult<Vec<f32>> {
+        let g = lock(&self.inner)?;
+        Ok(g.table(self.block).map(|t| t.col_mm.clone()).unwrap_or_default())
+    }
+
+    #[setter]
+    fn set_col_widths_mm(&self, value: Vec<f32>) -> PyResult<()> {
+        if value.iter().any(|v| *v <= 0.0) {
+            return Err(PyValueError::new_err("列の幅は 0 より大きい数です"));
+        }
+        let mut g = lock(&self.inner)?;
+        match g.doc.blocks.get_mut(self.block) {
+            Some(Block::Table(t)) => {
+                t.col_mm = value;
+                // **mm を入れたら比は捨てます。** 両方あると、どちらが正か
+                // 分からなくなります(adoc は比、docx は mm で持ちます)
+                t.col_ratio.clear();
+                Ok(())
+            }
+            _ => Err(PyIndexError::new_err("この表はもう文書に無い")),
+        }
     }
 
     /// 表のスタイルの**名前だけ**(docx の w:tblStyle の styleId)。

@@ -51,6 +51,19 @@ class _Font(str):
         self._run.font = v
 
     @property
+    def highlight_color(self):
+        """**蛍光ペン**(台帳 #9)。色の名前(`"yellow"` …)か `None`。
+
+        docx の `w:highlight` は決まった色の名前しか受けません。好きな色を
+        塗りたいときは背景の塗りを使います。
+        """
+        return self._run.highlight
+
+    @highlight_color.setter
+    def highlight_color(self, v):
+        self._run.highlight = None if v is None else str(v)
+
+    @property
     def size(self):
         return self._run.size_pt
 
@@ -270,6 +283,34 @@ class Length(int):
     def pt(self):
         return self / 12700
 
+    @classmethod
+    def from_pt(cls, v):
+        """pt → Length。`None` はそのまま `None`(指定なし)。"""
+        return None if v is None else cls(round(float(v) * 12700))
+
+    @classmethod
+    def from_mm(cls, v):
+        return None if v is None else cls(round(float(v) * 36000))
+
+
+def _to_pt(v):
+    """`Length` でも生の数でも pt にする。**本家は Length、うちは pt** —
+    どちらで渡されても通します(`Pt(12)` も `12` も同じ意味)。"""
+    if v is None:
+        return 0.0
+    return float(v.pt) if isinstance(v, Length) else float(v)
+
+
+def _to_mm(v):
+    if v is None:
+        return 0.0
+    return float(v.mm) if isinstance(v, Length) else float(v)
+
+
+def Pt(v):
+    """pt → Length。本家の docx.shared.Pt と同じ。"""
+    return Length(round(v * 12700))
+
 
 def Mm(v):
     """mm → Length。本家の docx.shared.Mm と同じ。"""
@@ -336,20 +377,117 @@ class Section:
     def orientation(self):
         return self._s.orientation
 
+    @orientation.setter
+    def orientation(self, v):
+        """`"portrait"` / `"landscape"`。**幅と高さを1手で入れ替えます** —
+        1つずつ動かすと、途中で正方形になって向きが決まらない瞬間ができます。"""
+        self._s.orientation = str(v)
+
     def __repr__(self):
         return repr(self._s)
 
 
+class _StyleFont:
+    """`Style.font` の役。**自作スタイルだけ**書けます(2026-08-27)。
+
+    原本から読んだスタイルの定義は据え置きで持ち越すので、触ると原本の
+    様式が崩れます。書こうとすると断って理由を言います。
+    """
+
+    __slots__ = ("_d", "_name")
+
+    def __init__(self, raw_doc, name):
+        self._d = raw_doc
+        self._name = name
+
+    def _look(self):
+        return self._d.style_look(self._name) or {}
+
+    def _set(self, **kw):
+        self._d.set_style_look(self._name, **kw)
+
+    @property
+    def bold(self):
+        return self._look().get("bold")
+
+    @bold.setter
+    def bold(self, v):
+        self._set(bold=None if v is None else bool(v))
+
+    @property
+    def italic(self):
+        return self._look().get("italic")
+
+    @italic.setter
+    def italic(self, v):
+        self._set(italic=None if v is None else bool(v))
+
+    @property
+    def underline(self):
+        return self._look().get("underline")
+
+    @underline.setter
+    def underline(self, v):
+        self._set(underline=None if v is None else bool(v))
+
+    @property
+    def strike(self):
+        return self._look().get("strike")
+
+    @strike.setter
+    def strike(self, v):
+        self._set(strike=None if v is None else bool(v))
+
+    @property
+    def size(self):
+        """字の大きさ。**Length で返します**(`.pt` で pt になります)。"""
+        return Length.from_pt(self._look().get("size"))
+
+    @size.setter
+    def size(self, v):
+        self._set(size=None if v is None else _to_pt(v))
+
+    @property
+    def color(self):
+        return self._look().get("color")
+
+    @color.setter
+    def color(self, v):
+        self._set(color=None if v is None else str(v))
+
+    @property
+    def name(self):
+        """書体の名前(スタイルの名前ではありません — 本家と同じ)。"""
+        return self._look().get("font")
+
+    @name.setter
+    def name(self, v):
+        self._set(font=None if v is None else str(v))
+
+    def __repr__(self):
+        return "<officework.doc StyleFont {!r}>".format(self._look())
+
+
 class Style:
-    """スタイルの名乗り(本家の style の役 — .name / .style_id / .type)。
-    定義の本体は styles.xml が持ち、保存で原本のまま持ち越される。"""
+    """スタイルの名乗り(本家の style の役 — .name / .style_id / .type)と、
+    自作スタイルの見た目(`.font`)。
 
-    __slots__ = ("style_id", "name", "type")
+    原本から読んだスタイルの定義は styles.xml が持ち、保存で原本のまま
+    持ち越されます。**自作した物だけ** `.font` で書けます(2026-08-27)。"""
 
-    def __init__(self, style_id, name, kind):
+    __slots__ = ("style_id", "name", "type", "_d")
+
+    def __init__(self, style_id, name, kind, raw_doc=None):
         self.style_id = style_id
         self.name = name
         self.type = kind
+        self._d = raw_doc
+
+    @property
+    def font(self):
+        if self._d is None:
+            raise NotImplementedError("このスタイルは文書に繋がっていません")
+        return _StyleFont(self._d, self.name)
 
     def __repr__(self):
         return "<officework.doc Style {!r} ({})>".format(self.name, self.type)
@@ -374,7 +512,7 @@ class _Styles:
         self._d = raw_doc
 
     def _all(self):
-        return [Style(i, n, k) for i, n, k in self._d.styles]
+        return [Style(i, n, k, self._d) for i, n, k in self._d.styles]
 
     def __iter__(self):
         return iter(self._all())
@@ -434,9 +572,10 @@ def _align_word(v):
 
 class ParagraphFormat:
     """python-docx の paragraph_format の役。模型が持つ物だけ —
-    alignment・line_spacing・page_break_before。余白(space_before /
-    space_after)と字下げ(left_indent)は模型に無いので、読みは None・
-    書きは正直に断る(黙って捨てない)。"""
+    alignment・line_spacing・page_break_before・space_before・space_after。
+    字下げ(left_indent)は模型では段数(1段=全角2字)で、python-docx の
+    Length との対応をまだ決めていないので、読みは None・書きは正直に断る
+    (黙って捨てない)。"""
 
     __slots__ = ("_p",)
 
@@ -469,19 +608,20 @@ class ParagraphFormat:
 
     @property
     def space_before(self):
-        return None
+        """段落の前の空き。**pt で返します**(python-docx は Length)。"""
+        return Length.from_pt(self._p.space_before)
 
     @space_before.setter
     def space_before(self, v):
-        raise NotImplementedError("段落の前後の余白はまだ模型に無い(台帳)")
+        self._p.space_before = _to_pt(v)
 
     @property
     def space_after(self):
-        return None
+        return Length.from_pt(self._p.space_after)
 
     @space_after.setter
     def space_after(self, v):
-        raise NotImplementedError("段落の前後の余白はまだ模型に無い(台帳)")
+        self._p.space_after = _to_pt(v)
 
     @property
     def left_indent(self):
@@ -663,6 +803,29 @@ class _Column:
     @property
     def cells(self):
         return self._t.column_cells(self._col)
+
+    @property
+    def _raw(self):
+        return self._t._t
+
+    @property
+    def width(self):
+        """列の幅。**Length で返します**(`.mm` で mm になります)。
+        指定していなければ `None`(等分)。"""
+        w = self._raw.col_widths_mm
+        return Length.from_mm(w[self._col]) if self._col < len(w) else None
+
+    @width.setter
+    def width(self, v):
+        w = list(self._raw.col_widths_mm)
+        # **足りない分は等分のまま**にはできません(mm の並びで持つので)。
+        # 幅の分かっていない列は、A4 の本文の幅を等分した値で埋めます
+        _, n = self._t.shape
+        if len(w) < n:
+            share = (210.0 - 40.0) / max(n, 1)
+            w += [share] * (n - len(w))
+        w[self._col] = _to_mm(v)
+        self._raw.col_widths_mm = w
 
     def __repr__(self):
         return "<officework.doc 列 {}>".format(self._col)

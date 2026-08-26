@@ -161,12 +161,17 @@ check(t.autofit is False, "autofit を False にできない")
 rm = d.add_paragraph("字").add_run("あ")
 raises(NotImplementedError, lambda: rm.mark_comment_range(rm, 1),
        "範囲コメントを黙って受けている")
-# txt-parfmt-props: 段落の前後の余白は模型に無い
+# txt-parfmt-props: 段落の前後の余白は 2026-08-27 に模型へ入りました
+# (台帳 #5)。断るのをやめて、往復するかを見ます
 pf = d.add_paragraph("字").paragraph_format
-raises(NotImplementedError, lambda: setattr(pf, "space_before", 100),
-       "段落前の余白を黙って受けている")
-raises(NotImplementedError, lambda: setattr(pf, "space_after", 100),
-       "段落後の余白を黙って受けている")
+pf.space_before = od.Pt(12)
+pf.space_after = 6          # 生の数(pt)でも受ける
+check(pf.space_before.pt == 12.0, f"段落前の余白が入らない: {pf.space_before}")
+check(pf.space_after.pt == 6.0, f"段落後の余白が入らない: {pf.space_after}")
+# 字下げは模型では段数(1段=全角2字)で、Length との対応をまだ決めて
+# いないので、ここは断ったままです
+raises(NotImplementedError, lambda: setattr(pf, "left_indent", 100),
+       "字下げを黙って受けている")
 
 # ── 無指定は無指定のまま往復する(2026-08-13 に塞いだ穴)──────
 # 指定の無い文字の大きさが往復で 10.5pt に焼き付いていた(w:sz を必ず

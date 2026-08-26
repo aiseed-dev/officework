@@ -988,7 +988,48 @@ pub(super) fn extract_ink(doc: &mut Document) {
 /// styles.xml から スタイルの名乗り(id・名前・種類)を写す。
 /// 浅い読み(core.xml と同じ流儀)— 定義の本体は理解せず、原本が持ち越す。
 pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
-    fn attr_of(hay: &str, key: &str) -> String {
+    /// スタイルの `w:rPr` と `w:pPr` から見た目を読む。**読むだけ**です。
+fn style_look(body: &str) -> kumihan::StyleLook {
+    let mut l = kumihan::StyleLook::default();
+    // 三択を守ります。`<w:b/>` は入、`<w:b w:val="0"/>` は切、無ければ言わない
+    let flag = |tag: &str| -> Option<bool> {
+        let open = format!("<w:{tag}");
+        let i = body.find(&open)?;
+        let seg = &body[i..body[i..].find('>').map(|e| i + e + 1)?];
+        // `<w:bCs` のような別の札を拾わないよう、次の字で確かめます
+        let after = seg.as_bytes().get(open.len())?;
+        if !matches!(after, b'/' | b'>' | b' ') {
+            return None;
+        }
+        Some(!matches!(attr_of(seg, "w:val").as_str(), "0" | "false" | "none"))
+    };
+    l.bold = flag("b");
+    l.italic = flag("i");
+    l.strike = flag("strike");
+    l.underline = flag("u");
+    let val_of = |tag: &str| -> Option<String> {
+        let open = format!("<w:{tag} ");
+        let i = body.find(&open)?;
+        let seg = &body[i..body[i..].find('>').map(|e| i + e + 1)?];
+        let v = attr_of(seg, "w:val");
+        (!v.is_empty()).then_some(v)
+    };
+    l.color = val_of("color").filter(|c| c != "auto");
+    l.fill = body
+        .find("<w:shd ")
+        .and_then(|i| body[i..].find('>').map(|e| &body[i..i + e + 1]))
+        .map(|seg| attr_of(seg, "w:fill"))
+        .filter(|c| !c.is_empty() && c != "auto");
+    l.size_pt = val_of("sz").and_then(|v| v.parse::<f32>().ok()).map(|h| h / 2.0);
+    l.font = body
+        .find("<w:rFonts ")
+        .and_then(|i| body[i..].find('>').map(|e| &body[i..i + e + 1]))
+        .map(|seg| attr_of(seg, "w:ascii"))
+        .filter(|f| !f.is_empty());
+    l
+}
+
+fn attr_of(hay: &str, key: &str) -> String {
         let pat = format!("{key}=\"");
         hay.find(&pat)
             .and_then(|s| {
@@ -1022,9 +1063,11 @@ pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
             })
             .unwrap_or_default();
         if !id.is_empty() {
-            // 原本のスタイルは名乗りだけ読みます。定義は据え置きで持ち越すので、
-            // こちらで見た目を持つ必要がありません(触ると原本が崩れます)
-            out.push(kumihan::StyleInfo { id, name, kind, look: Default::default() });
+            // **見た目は読むだけ**です(2026-08-27)。保存では原本の
+            // styles.xml を据え置くので、ここで読んだ物は書き戻しません。
+            // 読むのは「設定したのに開き直すと None」を無くすためです —
+            // ファイルには残っているのに見えないと、失われたように見えます
+            out.push(kumihan::StyleInfo { id, name, kind, look: style_look(body) });
         }
         from = end.max(i + 1);
     }
