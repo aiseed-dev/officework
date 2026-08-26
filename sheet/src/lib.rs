@@ -9,20 +9,21 @@
 pub mod adoc;
 /// ブックの見た目(テンプレート)
 pub mod booktmpl;
-pub mod calc;
-pub mod datetime_names;
-/// 値を引ける表 — 式の計算が表に求める面はこれだけ
-pub mod grid;
 /// 表のセルの**見え**を決める(画面と紙が同じ答えを得るための1本)
 pub mod look;
 /// セルの中の書き方(AsciiDoc)
 pub mod cellmark;
-pub mod model;
 pub mod styles;
 pub mod tabledesign;
 pub mod theme;
 pub mod xlsx;
 
-pub use calc::funcs::civil_from_days;
-pub use calc::{recalc, recalc_all, recalc_book};
-pub use model::{Book, Cell, Pos, Sheet, Value};
+// **升目の模型と式の計算は kumihan にあります**(2026-08-26)。ここに
+// 置いているのは今までの呼び方を残すための再輸出で、呼ぶ側を
+// `kumihan::book` / `kumihan::calc` に向け替えたら消します。
+pub use kumihan::book as model;
+pub use kumihan::{calc, datetime_names, grid};
+
+pub use kumihan::book::{Book, Cell, Pos, Sheet, Value};
+pub use kumihan::calc::funcs::civil_from_days;
+pub use kumihan::calc::{recalc, recalc_all, recalc_book};

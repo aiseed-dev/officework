@@ -3277,3 +3277,60 @@ mod sheet_rid {
         }
     }
 }
+
+/// 計算の結果が xlsx を往復するか。**式そのものの試験は kumihan の側**に
+/// あります(2026-08-26、エンジンを3つに分けたとき)。ここに置くのは
+/// 「計算で出来た物が保存で残るか」だけです。
+#[cfg(test)]
+mod calc_round {
+    use kumihan::book::{Book, Cell, Pos, Value};
+    use kumihan::calc::recalc;
+
+    fn book_with(cells: &[(&str, &str)]) -> Book {
+        let mut b = Book::new();
+        b.sheets[0].name = "Sheet1".into();
+        for (at, text) in cells {
+            let p = Pos::parse(at).unwrap();
+            let c = if let Some(f) = text.strip_prefix('=') {
+                Cell { formula: Some(f.to_string()), ..Default::default() }
+            } else {
+                Cell { value: Value::Text((*text).into()), ..Default::default() }
+            };
+            b.sheets[0].set(p, c);
+        }
+        b
+    }
+
+    fn roundtrip(b: &Book) -> Book {
+        let mut buf = std::io::Cursor::new(Vec::new());
+        crate::xlsx::write(b, &mut buf).unwrap();
+        crate::xlsx::read(std::io::Cursor::new(buf.into_inner())).unwrap().0
+    }
+
+    #[test]
+    fn the_spill_record_round_trips_through_xlsx() {
+        let mut book = book_with(&[("A1", "=SEQUENCE(3,1)"), ("C1", "=SUM(A1:A3)")]);
+        recalc(&mut book.sheets[0]);
+        let mut back = roundtrip(&book);
+        assert_eq!(back.sheets[0].spills.get(&Pos::parse("A1").unwrap()), Some(&(3, 1)),
+            "スピルの記録が往復しない");
+        // 開き直して再計算しても、自分の跡を先客と間違えない
+        recalc(&mut back.sheets[0]);
+        assert_eq!(back.sheets[0].value(Pos::parse("A1").unwrap()), Value::Number(1.0),
+            "開き直しで偽の #SPILL! になった");
+        assert_eq!(back.sheets[0].value(Pos::parse("A3").unwrap()), Value::Number(3.0));
+    }
+
+    #[test]
+    fn furigana_round_trips_through_xlsx() {
+        // rPh — 欧米の実装が落とす宝
+        let mut book = book_with(&[("A1", "日本")]);
+        book.sheets[0].phonetics.insert(Pos::parse("A1").unwrap(), "ニホン".into());
+        let back = roundtrip(&book);
+        assert_eq!(
+            back.sheets[0].phonetics.get(&Pos::parse("A1").unwrap()),
+            Some(&"ニホン".to_string()),
+            "ふりがなが保存で落ちた"
+        );
+    }
+}

@@ -5,7 +5,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::grid::Grid;
-use crate::model::{Cell, Pos, Sheet, Value};
+use crate::book::{Cell, Pos, Sheet, Value};
 
 use super::funcs::*;
 use super::parse::*;
@@ -103,11 +103,11 @@ pub fn deps(formula: &str) -> Vec<Pos> {
 /// 式の中の「名前」を参照に置き換える(=単価*2 → =A1*2)。
 /// 文字列の中は触らない。名前の前後が識別子の続きなら置き換えない。
 /// 長い名前から先に試す(「単価」と「単価計」を取り違えない)。
-pub(super) fn expand_names(f: &str, names: &[crate::model::DefinedName]) -> String {
+pub(super) fn expand_names(f: &str, names: &[crate::book::DefinedName]) -> String {
     if names.is_empty() {
         return f.to_string();
     }
-    let mut sorted: Vec<&crate::model::DefinedName> = names.iter().collect();
+    let mut sorted: Vec<&crate::book::DefinedName> = names.iter().collect();
     sorted.sort_by_key(|d| std::cmp::Reverse(d.name.chars().count()));
     let ch: Vec<char> = f.chars().collect();
     let ident = |c: char| c.is_alphanumeric() || c == '_';
@@ -248,7 +248,7 @@ pub fn recalc(sheet: &mut Sheet) {
 
 /// ブックの1枚を、**他のシートを見ながら**再計算する
 /// (INDIRECT("別の表!A1") はこの道でだけ解ける)。
-pub fn recalc_book(book: &mut crate::Book, target: usize) {
+pub fn recalc_book(book: &mut crate::book::Book, target: usize) {
     if target >= book.sheets.len() {
         return;
     }
@@ -278,7 +278,7 @@ pub fn recalc_book(book: &mut crate::Book, target: usize) {
 
 /// 全シートの再計算。別のシートへの間接参照があるときは、
 /// 参照の先が新しくなるようもう1周する
-pub fn recalc_all(book: &mut crate::Book) {
+pub fn recalc_all(book: &mut crate::book::Book) {
     // 直書きの `Sheet2!A1` も INDIRECT と同じく別シートを見るので、
     // `!` を含む式があれば2周する(参照の先が新しくなってから写すため)
     let cross = book.sheets.iter().any(|s| {

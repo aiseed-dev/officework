@@ -12,3 +12,4 @@ ttf-parser = "0.20"
 
 [dev-dependencies]
 printpdf = "0.7"    # 検証用のPDF印字(examples)。エンジン本体は依存しない
+quick-xml = "0.36"  # 図形の SVG が本当に読める形かを試験で確かめる

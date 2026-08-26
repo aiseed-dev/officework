@@ -1,7 +1,7 @@
 //! 式と再計算の試験。
 
 
-use crate::model::{Pos, Sheet, Value};
+use crate::book::{Pos, Sheet, Value};
 
 use super::parse::*;
 use super::run::*;
@@ -12,7 +12,7 @@ use super::run::*;
 #[allow(non_snake_case)]
 mod basic {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn s(pairs: &[(&str, &str)]) -> Sheet {
         let mut sh = Sheet::new("Sheet1");
@@ -150,7 +150,7 @@ mod basic {
     #[test]
     fn iterative_calculation_converges_a_cycle() {
         // A1 = A1/2 + 1 の不動点は 2。反復なしなら #CIRC!
-        let mut b = crate::Book::new();
+        let mut b = crate::book::Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("=A1/2+1"));
         recalc_book(&mut b, 0);
         assert_eq!(
@@ -196,7 +196,7 @@ mod basic {
 
 #[cfg(test)]
 mod more_fn_tests {
-    use crate::model::{Cell, Pos, Sheet, Value};
+    use crate::book::{Cell, Pos, Sheet, Value};
 
     fn eval(formula: &str, data: &[(&str, f64)]) -> Value {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -207,7 +207,7 @@ mod more_fn_tests {
         let out = Pos::parse("Z1").unwrap();
         // 式は = を外して持つ約束(Cell::input と同じ形にする)
         s.set(out, Cell::input(formula));
-        crate::recalc(&mut s);
+        crate::calc::recalc(&mut s);
         s.get(out).unwrap().value.clone()
     }
 
@@ -297,14 +297,14 @@ mod more_fn_tests {
 #[cfg(test)]
 mod name_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     #[test]
     fn a_name_can_be_used_in_a_formula() {
         let mut s = Sheet::new("表");
         s.set(Pos::parse("A1").unwrap(), Cell::input("100"));
         s.set(Pos::parse("B1").unwrap(), Cell::input("=単価*2"));
-        s.names.push(crate::model::DefinedName::new("単価", "A1"));
+        s.names.push(crate::book::DefinedName::new("単価", "A1"));
         recalc(&mut s);
         assert_eq!(s.value(Pos::parse("B1").unwrap()), Value::Number(200.0),
             "名前が参照に展開されない");
@@ -317,28 +317,28 @@ mod name_tests {
             s.set(Pos::new(r, 0), Cell::input(v));
         }
         s.set(Pos::new(3, 0), Cell::input("=SUM(明細)"));
-        s.names.push(crate::model::DefinedName::new("明細", "A1:A3"));
+        s.names.push(crate::book::DefinedName::new("明細", "A1:A3"));
         recalc(&mut s);
         assert_eq!(s.value(Pos::new(3, 0)), Value::Number(60.0));
     }
 
     #[test]
     fn a_partial_name_match_does_not_substitute() {
-        assert_eq!(expand_names("単価計*2", &[crate::model::DefinedName::new("単価", "A1")]),
+        assert_eq!(expand_names("単価計*2", &[crate::book::DefinedName::new("単価", "A1")]),
             "単価計*2", "「単価計」の頭だけ置き換えた");
-        assert_eq!(expand_names("\"単価\"&A1", &[crate::model::DefinedName::new("単価", "B9")]),
+        assert_eq!(expand_names("\"単価\"&A1", &[crate::book::DefinedName::new("単価", "B9")]),
             "\"単価\"&A1", "文字列の中を置き換えた");
         // 長い名前が勝つ
         assert_eq!(expand_names("単価計", &[
-            crate::model::DefinedName::new("単価", "A1"),
-            crate::model::DefinedName::new("単価計", "B1")]), "B1");
+            crate::book::DefinedName::new("単価", "A1"),
+            crate::book::DefinedName::new("単価計", "B1")]), "B1");
     }
 }
 
 #[cfg(test)]
 mod fn_ext_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn sheet_with(cells: &[(&str, &str)]) -> Sheet {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -426,7 +426,7 @@ mod fn_ext_tests {
 #[cfg(test)]
 mod dan1_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn sheet_with(cells: &[(&str, &str)]) -> Sheet {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -680,7 +680,7 @@ mod dan1_tests {
 #[cfg(test)]
 mod dan2_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn sheet_with(cells: &[(&str, &str)]) -> Sheet {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -832,7 +832,7 @@ mod dan2_tests {
 #[cfg(test)]
 mod dan3_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn sheet_with(cells: &[(&str, &str)]) -> Sheet {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -962,23 +962,13 @@ mod dan3_tests {
     }
 
     #[test]
-    fn the_spill_record_round_trips_through_xlsx() {
-        let mut book = crate::Book::new();
-        book.sheets[0] = sheet_with(&[("A1", "=SEQUENCE(3,1)"), ("C1", "=SUM(A1:A3)")]);
-        book.sheets[0].name = "Sheet1".into();
-        recalc(&mut book.sheets[0]);
-        assert_eq!(v(&book.sheets[0], "C1"), Value::Number(6.0),
-            "スピルの結果を普通の式が拾えない");
-        let mut buf = std::io::Cursor::new(Vec::new());
-        crate::xlsx::write(&book, &mut buf).unwrap();
-        let (mut back, _) = crate::xlsx::read(std::io::Cursor::new(buf.into_inner())).unwrap();
-        assert_eq!(back.sheets[0].spills.get(&Pos::parse("A1").unwrap()), Some(&(3, 1)),
-            "スピルの記録が往復しない");
-        // 開き直して再計算しても、自分の跡を先客と間違えない
-        recalc(&mut back.sheets[0]);
-        assert_eq!(v(&back.sheets[0], "A1"), Value::Number(1.0),
-            "開き直しで偽の #SPILL! になった");
-        assert_eq!(v(&back.sheets[0], "A3"), Value::Number(3.0));
+    fn a_spill_leaves_its_record() {
+        // xlsx を往復する分は sheet の側(交換の受け持ち)に置いてあります
+        let mut s = sheet_with(&[("A1", "=SEQUENCE(3,1)"), ("C1", "=SUM(A1:A3)")]);
+        recalc(&mut s);
+        assert_eq!(v(&s, "C1"), Value::Number(6.0), "スピルの結果を普通の式が拾えない");
+        assert_eq!(s.spills.get(&Pos::parse("A1").unwrap()), Some(&(3, 1)),
+            "スピルの記録が残らない");
     }
 
     #[test]
@@ -996,7 +986,7 @@ mod dan3_tests {
 #[cfg(test)]
 mod dan4_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn sheet_with(cells: &[(&str, &str)]) -> Sheet {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -1182,7 +1172,7 @@ mod dan4_tests {
 #[cfg(test)]
 mod dan5_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn sheet_with(cells: &[(&str, &str)]) -> Sheet {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -1231,29 +1221,18 @@ mod dan5_tests {
     }
 
     #[test]
-    fn furigana_reads_and_round_trips() {
-        let mut book = crate::Book::new();
-        book.sheets[0] = sheet_with(&[("A1", "日本"), ("A2", "ふりがな無し")]);
-        book.sheets[0].name = "Sheet1".into();
-        book.sheets[0].phonetics.insert(Pos::parse("A1").unwrap(), "ニホン".into());
+    fn phonetic_reads_the_reading() {
+        // 保存で読みが残るかは sheet の側(交換の受け持ち)で確かめます
+        let mut s = sheet_with(&[("A1", "日本"), ("A2", "ふりがな無し")]);
+        s.phonetics.insert(Pos::parse("A1").unwrap(), "ニホン".into());
         // PHONETIC 関数: 読みがあれば読み、無ければ字そのもの
-        let s = &mut book.sheets[0];
-        assert_eq!(value_of(s, "=PHONETIC(A1)"), Value::Text("ニホン".into()));
-        assert_eq!(value_of(s, "=PHONETIC(A2)"), Value::Text("ふりがな無し".into()));
-        // xlsx を往復しても読みが残る(rPh — 欧米の実装が落とす宝)
-        let mut buf = std::io::Cursor::new(Vec::new());
-        crate::xlsx::write(&book, &mut buf).unwrap();
-        let (back, _) = crate::xlsx::read(std::io::Cursor::new(buf.into_inner())).unwrap();
-        assert_eq!(
-            back.sheets[0].phonetics.get(&Pos::parse("A1").unwrap()),
-            Some(&"ニホン".to_string()),
-            "ふりがなが保存で落ちた"
-        );
+        assert_eq!(value_of(&mut s, "=PHONETIC(A1)"), Value::Text("ニホン".into()));
+        assert_eq!(value_of(&mut s, "=PHONETIC(A2)"), Value::Text("ふりがな無し".into()));
     }
 
     #[test]
     fn an_indirect_reference_to_another_sheet() {
-        let mut book = crate::Book::new();
+        let mut book = crate::book::Book::new();
         book.sheets[0] = sheet_with(&[("A1", "=INDIRECT(\"台帳!B2\")"),
             ("A2", "=SUM(INDIRECT(\"台帳!B1:B3\"))"),
             ("A3", "=INDIRECT(\"'台帳'!B2\")")]);
@@ -1275,7 +1254,7 @@ mod dan5_tests {
     #[test]
     fn three_argument_sumif_indirecting_to_another_sheet() {
         // 実物の xlsx で出た形。条件範囲と合計範囲が別々に INDIRECT で来る
-        let mut book = crate::Book::new();
+        let mut book = crate::book::Book::new();
         book.sheets[0] =
             sheet_with(&[("A1", "=SUMIF(INDIRECT(\"4月!A1:A3\"),\"りんご\",INDIRECT(\"4月!B1:B3\"))")]);
         book.sheets[0].name = "表紙".into();
@@ -1299,7 +1278,7 @@ mod dan5_tests {
 #[cfg(test)]
 mod dan6_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn sheet_with(cells: &[(&str, &str)]) -> Sheet {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -1430,7 +1409,7 @@ mod dan6_tests {
 #[cfg(test)]
 mod py_cell_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     #[test]
     fn a_py_cell_keeps_its_value_and_is_not_rerun() {
@@ -1487,7 +1466,7 @@ mod py_cell_tests {
 #[cfg(test)]
 mod cross_sheet_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn sheet_named(name: &str, cells: &[(&str, &str)]) -> Sheet {
         let mut s = Sheet { name: name.into(), ..Default::default() };
@@ -1499,7 +1478,7 @@ mod cross_sheet_tests {
 
     /// 表紙 + 4月 + '5月 実績' の3枚。表紙の式を引数で差し替えて値を見る
     fn ans(formula: &str) -> Value {
-        let mut book = crate::Book::new();
+        let mut book = crate::book::Book::new();
         book.sheets[0] = sheet_named("表紙", &[("A1", formula)]);
         book.sheets.push(sheet_named("4月", &[("B1", "100"), ("B2", "200"), ("B3", "文")]));
         book.sheets.push(sheet_named("5月 実績", &[("B2", "50")]));
@@ -1519,7 +1498,7 @@ mod cross_sheet_tests {
         // 引用符つき(空白を含む名前)
         assert_eq!(ans("='5月 実績'!B2"), Value::Number(50.0));
         // 自分のシート名は普通の参照として働く
-        let mut book = crate::Book::new();
+        let mut book = crate::book::Book::new();
         book.sheets[0] = sheet_named("表紙", &[("A1", "=表紙!C3"), ("C3", "7")]);
         recalc_all(&mut book);
         assert_eq!(book.sheets[0].value(Pos::parse("A1").unwrap()), Value::Number(7.0));
@@ -1554,7 +1533,7 @@ mod cross_sheet_tests {
     #[test]
     fn chained_formulas_across_sheets_resolve() {
         // 4月!B1 → 集計!A1 → 表紙!A1 の2段(再計算の周回が足りるか)
-        let mut book = crate::Book::new();
+        let mut book = crate::book::Book::new();
         book.sheets[0] = sheet_named("表紙", &[("A1", "=集計!A1+1")]);
         book.sheets.push(sheet_named("集計", &[("A1", "=4月!B1*2")]));
         book.sheets.push(sheet_named("4月", &[("B1", "100")]));
@@ -1568,7 +1547,7 @@ mod cross_sheet_tests {
 #[cfg(test)]
 mod subtotal_hidden_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn sheet4() -> Sheet {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -1620,7 +1599,7 @@ mod subtotal_hidden_tests {
 #[cfg(test)]
 mod table_ref_tests {
     use super::*;
-    use crate::model::{Cell, TableDef};
+    use crate::book::{Cell, TableDef};
 
     /// A1:C4 の表(見出し + 3行)。名前は「売上表」
     fn with_table(totals: bool) -> Sheet {
@@ -1706,7 +1685,7 @@ mod table_ref_tests {
 #[cfg(test)]
 mod let_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn v(f: &str) -> Value {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -1758,7 +1737,7 @@ mod let_tests {
 #[cfg(test)]
 mod text_split_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     fn v(f: &str) -> Value {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
@@ -1820,11 +1799,11 @@ mod text_split_tests {
 #[cfg(test)]
 mod sheet3_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     /// 表紙 / 4月 / 5月 / 6月 / 別 の5枚(この並び)
-    fn book5(formula: &str) -> crate::Book {
-        let mut b = crate::Book::new();
+    fn book5(formula: &str) -> crate::book::Book {
+        let mut b = crate::book::Book::new();
         let mut cover = Sheet { name: "表紙".into(), ..Default::default() };
         cover.set(Pos::parse("A1").unwrap(), Cell::input(formula));
         b.sheets[0] = cover;
@@ -1884,7 +1863,7 @@ mod sheet3_tests {
 #[cfg(test)]
 mod new_fn_tests {
     use super::*;
-    use crate::model::Cell;
+    use crate::book::Cell;
 
     /// A1 に式を入れて計算し、表示を返す。表は B 列から置く
     fn ev(formula: &str, table: &[(&str, &str)]) -> String {
@@ -1979,7 +1958,7 @@ mod new_fn_tests {
 #[cfg(test)]
 mod cell_filename_tests {
     use super::*;
-    use crate::Book;
+    use crate::book::Book;
 
     /// Excel の `CELL("filename")` は **`径路[ファイル名]シート名`**。
     /// 実物はここから `]` の後ろを取ってシート名にする
@@ -2009,10 +1988,10 @@ mod cell_filename_tests {
         b.path = format!("{s}home{s}dev{s}売上.xlsx", s = std::path::MAIN_SEPARATOR);
         b.sheets[0].name = "四月".into();
         let s = &mut b.sheets[0];
-        s.set(Pos::parse("A1").unwrap(), crate::Cell::input("=CELL(\"filename\",A1)"));
+        s.set(Pos::parse("A1").unwrap(), crate::book::Cell::input("=CELL(\"filename\",A1)"));
         s.set(
             Pos::parse("A2").unwrap(),
-            crate::Cell::input(
+            crate::book::Cell::input(
                 "=MID(CELL(\"filename\",A1), FIND(\"]\",CELL(\"filename\",A1))+1, 31)",
             ),
         );
@@ -2030,7 +2009,7 @@ mod cell_filename_tests {
     fn nothing_but_the_file_name_answers_yet() {
         let mut b = Book::new();
         b.path = "/tmp/x.xlsx".into();
-        b.sheets[0].set(Pos::parse("A1").unwrap(), crate::Cell::input("=CELL(\"address\",A1)"));
+        b.sheets[0].set(Pos::parse("A1").unwrap(), crate::book::Cell::input("=CELL(\"address\",A1)"));
         recalc_book(&mut b, 0);
         assert_eq!(
             b.sheets[0].get(Pos::parse("A1").unwrap()).map(|c| c.value.display()).unwrap_or_default(),
@@ -2042,7 +2021,7 @@ mod cell_filename_tests {
     #[test]
     fn recalculation_without_a_workbook_yields_an_empty_string() {
         let mut s = Sheet::new("Sheet1");
-        s.set(Pos::parse("A1").unwrap(), crate::Cell::input("=CELL(\"filename\")"));
+        s.set(Pos::parse("A1").unwrap(), crate::book::Cell::input("=CELL(\"filename\")"));
         recalc(&mut s);
         assert_eq!(
             s.get(Pos::parse("A1").unwrap()).map(|c| c.value.display()).unwrap_or_default(),
@@ -2064,7 +2043,7 @@ mod cell_filename_tests {
 mod calculation_works_on_tables_outside_a_sheet {
     use crate::calc::eval_in;
     use crate::grid::Grid;
-    use crate::model::{Pos, TableDef, Value};
+    use crate::book::{Pos, TableDef, Value};
 
     /// 九九の表。**升目の値を式で答える**だけの、いちばん小さい表。
     /// 中身を持たなくても計算に載ることを示す

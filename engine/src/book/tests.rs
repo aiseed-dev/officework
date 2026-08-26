@@ -518,7 +518,7 @@ mod sort_tests {
 
     #[test]
     fn data_bar_and_colour_scale_use_their_scale() {
-        use crate::model::{CondKind, CondRule};
+        use crate::book::{CondKind, CondRule};
         let mut s = Sheet::new("試");
         for (i, v) in ["10", "20", "30"].iter().enumerate() {
             s.set(Pos::new(i as u32, 0), Cell::input(v));
@@ -1041,8 +1041,8 @@ mod month_name_tests {
 /// 図形ギャラリー(台帳 第2便の [中])。**形が形に見えるか**を縛る。
 #[cfg(test)]
 mod preset_shape_tests {
-    use crate::model::{can_draw, preset_svg, SheetShape};
-    use crate::Pos;
+    use crate::book::{can_draw, preset_svg, SheetShape};
+    use crate::book::Pos;
 
     /// 本家の分類に並ぶ、いま描ける形の全部
     const KINDS: &[&str] = &[
@@ -1135,7 +1135,7 @@ mod preset_shape_tests {
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod telling_formulas_from_text {
-    use crate::model::{Cell, Value};
+    use crate::book::{Cell, Value};
 
     #[test]
     fn an_equals_without_a_space_is_a_formula() {

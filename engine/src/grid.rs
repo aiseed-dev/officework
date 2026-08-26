@@ -15,7 +15,7 @@
 //!
 //! 設計は SEKKEI.adoc「エンジンの統一 — 表を1つにする」の 2 段目です。
 
-use crate::model::{Pos, Sheet, TableDef, Value};
+use crate::book::{Pos, Sheet, TableDef, Value};
 
 /// 値を引ける表。
 ///
