@@ -30,7 +30,7 @@ mod fmt_round {
     }
 
     #[test]
-    fn 罫線が往復する() {
+    fn borders_round_trip() {
         // 日本の帳票の本体。落とすと書類として通らない
         let f = CellFormat { borders: Borders::ALL, ..Default::default() };
         let back = roundtrip(&book(f.clone()));
@@ -39,7 +39,7 @@ mod fmt_round {
     }
 
     #[test]
-    fn 太字と塗りと揃えが往復する() {
+    fn bold_fill_and_alignment_round_trip() {
         let f = CellFormat {
             bold: true,
             fill: Some("FFFF00".into()),
@@ -53,7 +53,7 @@ mod fmt_round {
     }
 
     #[test]
-    fn 表示形式が往復する() {
+    fn number_formats_round_trip() {
         let f = CellFormat { number_format: Some("#,##0".into()), ..Default::default() };
         let back = roundtrip(&book(f.clone()));
         let c = back.sheets[0].get(Pos { row: 0, col: 1 }).unwrap();
@@ -62,7 +62,7 @@ mod fmt_round {
     }
 
     #[test]
-    fn 素の書式なら索引を付けない() {
+    fn a_plain_style_gets_no_index() {
         // 余計な索引を書かない(他の道具が読むときの雑音になる)
         let mut buf = Vec::new();
         crate::xlsx::write(&book(CellFormat::default()), std::io::Cursor::new(&mut buf)).unwrap();
@@ -74,7 +74,7 @@ mod fmt_round {
     }
 
     #[test]
-    fn 罫線だけのセルも残る() {
+    fn a_cell_with_only_borders_survives() {
         // 値が無くても、罫線が引いてあれば帳票では意味を持つ
         let mut sh = Sheet { name: "枠".into(), ..Default::default() };
         sh.set(Pos { row: 2, col: 2 }, Cell {
@@ -115,7 +115,7 @@ mod merge_round {
     }
 
     #[test]
-    fn 行の出し入れで結合も動く() {
+    fn inserting_and_deleting_rows_moves_the_merges() {
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
         s.merges.push((Pos::parse("A3").unwrap(), Pos::parse("C3").unwrap()));
         s.insert_row(1);
@@ -126,7 +126,7 @@ mod merge_round {
     }
 
     #[test]
-    fn 潰れた結合は消える() {
+    fn a_collapsed_merge_disappears() {
         // A1:A2 の縦結合で2行目を抜くと、1セルになる。1セルの結合は結合ではない
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
         s.merges.push((Pos::parse("A1").unwrap(), Pos::parse("A2").unwrap()));
@@ -135,7 +135,7 @@ mod merge_round {
     }
 
     #[test]
-    fn 呑まれた位置が分かる() {
+    fn a_swallowed_position_can_be_found() {
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
         s.merges.push((Pos::parse("A1").unwrap(), Pos::parse("B2").unwrap()));
         assert!(!s.covered_by_merge(Pos::parse("A1").unwrap()), "左上まで呑んだ");
@@ -167,7 +167,7 @@ mod colwidth_round {
     }
 
     #[test]
-    fn 列の出し入れで幅も動く() {
+    fn inserting_and_deleting_columns_moves_the_widths() {
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
         s.col_width.insert(1, 20.0);
         s.insert_col(0);
@@ -177,7 +177,7 @@ mod colwidth_round {
     }
 
     #[test]
-    fn 実物の様式の列幅を読める() {
+    fn the_column_widths_of_a_real_template_read() {
         let p = "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式7_提案見積書.xlsx";
         let Ok(f) = std::fs::File::open(p) else { return }; // 無い機械では飛ばす
         let (book, _) = crate::xlsx::read(f).unwrap();
@@ -192,7 +192,7 @@ mod rowheight_round {
     use crate::{Book, Sheet};
 
     #[test]
-    fn 行の高さが往復する() {
+    fn row_heights_round_trip() {
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
         s.set(Pos::parse("A3").unwrap(), Cell {
             formula: None, value: Value::Text("高い行".into()), fmt: Default::default() });
@@ -204,7 +204,7 @@ mod rowheight_round {
     }
 
     #[test]
-    fn 行の出し入れで高さも動く() {
+    fn inserting_and_deleting_rows_moves_the_heights() {
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
         s.row_height.insert(3, 30.0);
         s.insert_row(0);
@@ -328,7 +328,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 原本のカスタムプロパティは開いて保存で残る() {
+    fn the_originals_custom_properties_survive_open_and_save() {
         let src = xlsx_with_custom(
             r#"<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="発注番号"><vt:lpwstr>A-1234</vt:lpwstr></property>"#,
         );
@@ -343,7 +343,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn カスタムプロパティの4つの型が往復する() {
+    fn the_four_custom_property_types_round_trip() {
         use crate::model::{CustomProp, CustomVal};
         let mut b = Book::new();
         let mk = |n: &str, v: CustomVal| CustomProp { name: n.into(), value: v, link: None };
@@ -363,7 +363,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 知らない型と内容へのリンクは落とさない() {
+    fn links_to_unknown_types_and_targets_are_kept() {
         // vt:i4 はこちらが型として持たない。linkTarget も繋ぎ直さない。
         // **どちらも保存で同じ姿に戻す**のが約束(黙って落とさない)
         let src = xlsx_with_custom(
@@ -385,7 +385,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn カスタムプロパティを全部消すと宣言と関係も畳む() {
+    fn clearing_every_custom_property_removes_the_part_and_relation() {
         // 部品だけ消して宣言や関係を残すと、包みが「無い先」を指す —
         // Excel はそれを「修復しました」と言って開く
         let src = xlsx_with_custom(
@@ -402,7 +402,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 複数の著者が区切りで往復する() {
+    fn several_authors_round_trip_through_the_separator() {
         let mut b = Book::new();
         b.props.creators = vec!["山田 太郎".into(), "鈴木 花子".into()];
         let mut buf = Vec::new();
@@ -416,7 +416,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 著者の空白と余分な区切りは数に入れない() {
+    fn blank_authors_and_extra_separators_are_not_counted() {
         // 「山田;」は1人。名無しの2人目はいない
         assert_eq!(crate::xlsx::read::split_creators("山田; ; 鈴木 ;"), ["山田", "鈴木"]);
         assert_eq!(crate::xlsx::read::split_creators("").len(), 0);
@@ -427,7 +427,7 @@ mod carry_tests {
 
 
     #[test]
-    fn 足した形の名前が往復する() {
+    fn the_name_of_an_added_shape_round_trips() {
         // prstGeom の名前をそのまま種類にしているので、Excel で作った形も
         // ここを通る。**名前を知らない形に丸めない**
         let mut b = Book::new();
@@ -453,7 +453,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 描けない形は黙って四角にせず報告する() {
+    fn an_undrawable_shape_is_reported_not_silently_squared() {
         // 保存では元の prstGeom の名前を返すのでファイルは壊れない。
         // だが画面では四角に見える — **見える物が違うなら言う**
         let mut b = Book::new();
@@ -478,7 +478,7 @@ mod carry_tests {
 
 
     #[test]
-    fn テキストボックスの組み方が往復する() {
+    fn text_box_layout_round_trips() {
         use crate::model::{HAlign, TextAnchor, TextFmt};
         let mut b = Book::new();
         b.sheets[0].shapes_new.push(crate::model::SheetShape {
@@ -507,7 +507,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 組み方の既定は属性を書かない() {
+    fn the_default_layout_writes_no_attribute() {
         // **書かないことが既定を表す**(xlsx の作法)。既定で属性を書くと、
         // Excel で開いたとき「わざわざ左寄せにした」ことになる
         let mut b = Book::new();
@@ -534,7 +534,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 上付きと下付きは両方立たない() {
+    fn superscript_and_subscript_are_never_both_on() {
         // baseline は1つの属性。両方立てても書けるのは片方だけ
         use crate::model::TextFmt;
         let mut b = Book::new();
@@ -556,7 +556,7 @@ mod carry_tests {
 
 
     #[test]
-    fn 組み方は図形ごとに畳まれる() {
+    fn layout_is_folded_per_shape() {
         // **1つだけの往復では出ない穴。** 読みの途中の控えを図形ごとに
         // 畳んでいないと、前の箱の揃えや箇条書きが次へ漏れる
         // (2026-08-13、6つ並べた実物の見本で見つけた)
@@ -592,7 +592,7 @@ mod carry_tests {
 
 
     #[test]
-    fn コメントの筋と著者と解決が往復する() {
+    fn comment_threads_authors_and_resolution_round_trip() {
         use crate::model::{CommentEntry, CommentThread};
         let mut b = Book::new();
         let p = Pos::parse("A1").unwrap();
@@ -617,7 +617,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 直したコメントは古い写しとも食い違わない() {
+    fn an_edited_comment_stays_consistent_with_the_legacy_copy() {
         // **これが直したかった穴。** 近代の Excel はスレッド側を見るので、
         // 古い写しだけ書き換えると、直した文が Excel に映らない
         // (2026-08-13 に実測してから直した)
@@ -643,7 +643,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 古いブックのコメントも著者が読める() {
+    fn comment_authors_read_from_older_workbooks_too() {
         // 前は <authors> と authorId を捨てていたので、誰が書いたか
         // 分からなくなっていた
         let mut b = Book::new();
@@ -662,7 +662,7 @@ mod carry_tests {
 
 
     #[test]
-    fn スパークラインの点の印が往復する() {
+    fn sparkline_point_markers_round_trip() {
         use crate::model::SparkMarks;
         let mut b = Book::new();
         for (kind, base) in [("spark", 0.0f32), ("spark-col", 1.0), ("spark-wl", 0.5)] {
@@ -692,7 +692,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 印の欄が無い古い札も読める() {
+    fn an_old_entry_without_the_flag_column_still_reads() {
         // 札は `jo:種類:底` だった。**印は後から足した欄**なので、
         // 古いブックの札を壊さずに読めなければならない
         use crate::model::SparkMarks;
@@ -720,7 +720,7 @@ mod carry_tests {
 
 
     #[test]
-    fn 曲線の制御点が往復する() {
+    fn curve_control_points_round_trip() {
         use crate::model::PathPoint;
         let mut b = Book::new();
         b.sheets[0].shapes_new.push(crate::model::SheetShape {
@@ -768,7 +768,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 制御点の無い折れ線は直線のまま書く() {
+    fn a_polyline_without_control_points_stays_straight() {
         // **スパークラインやペンの線を曲線にしない。** 制御点が無いなら
         // lnTo のまま — 曲線で書くと Excel 側の見た目がわずかに変わる
         use crate::model::PathPoint;
@@ -797,7 +797,7 @@ mod carry_tests {
 
 
     #[test]
-    fn 名前の適用範囲が往復する() {
+    fn the_scope_of_a_name_round_trips() {
         // **重なっていなくてもシート限定にできる。** 前は「同じ名前が
         // 2枚にあるか」から当てていたので、これが作れなかった
         use crate::model::DefinedName;
@@ -814,7 +814,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 重なったブック全体の名前は書き出しで限定に落とす() {
+    fn an_overlapping_workbook_wide_name_is_narrowed_on_export() {
         // ブック全体の名前が2つあると Excel は開けない。**印が無くても防ぐ**
         use crate::model::DefinedName;
         let mut b = Book::new();
@@ -830,7 +830,7 @@ mod carry_tests {
     }
 
     #[test]
-    fn 古い計算順は持ち越さない() {
+    fn the_old_calculation_chain_is_not_carried_over() {
         // calcChain が古いままだと Excel が誤った順で開くことがある
         let src = xlsx_with_parts();
         let mut with_chain = Vec::new();
@@ -866,7 +866,7 @@ mod name_roundtrip_tests {
     use crate::recalc;
 
     #[test]
-    fn 名前の定義が往復して式で効く() {
+    fn defined_names_round_trip_and_work_in_formulas() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("100"));
         b.sheets[0].set(Pos::parse("B1").unwrap(), Cell::input("=単価*2"));
@@ -882,7 +882,7 @@ mod name_roundtrip_tests {
     }
 
     #[test]
-    fn 実物のprint_areaを壊さない() {
+    fn a_real_files_print_area_is_not_broken() {
         let src = "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式7_提案見積書.xlsx";
         let Ok(bytes) = std::fs::read(src) else { return };
         let (book, _) = read(Cursor::new(&bytes)).expect("読めない");
@@ -912,7 +912,7 @@ mod link_comment_tests {
     }
 
     #[test]
-    fn ハイパーリンクが往復する() {
+    fn hyperlinks_round_trip() {
         let mut b = Book::new();
         let p = Pos::parse("B2").unwrap();
         b.sheets[0].set(p, Cell::input("会社サイト"));
@@ -923,7 +923,7 @@ mod link_comment_tests {
     }
 
     #[test]
-    fn 帳面の中へのリンクがlocationで往復する() {
+    fn an_internal_link_round_trips_through_location() {
         let mut b = Book::new();
         b.sheets.push(crate::model::Sheet::new("集計"));
         let p = Pos::parse("B2").unwrap();
@@ -935,7 +935,7 @@ mod link_comment_tests {
     }
 
     #[test]
-    fn バーとスケールとアイコンの条件付き書式が往復する() {
+    fn data_bars_color_scales_and_icon_sets_round_trip() {
         use crate::model::{CondKind, CondRule};
         let mut b = Book::new();
         for (i, v) in ["10", "20", "30"].iter().enumerate() {
@@ -963,7 +963,7 @@ mod link_comment_tests {
     }
 
     #[test]
-    fn 縦棒のスパークラインが棒のまま往復する() {
+    fn a_column_sparkline_round_trips_as_a_column() {
         let mut b = Book::new();
         b.sheets[0].shapes_new.push(crate::model::SheetShape {
             at: Pos::parse("C2").unwrap(),
@@ -988,7 +988,7 @@ mod link_comment_tests {
     }
 
     #[test]
-    fn コメントが往復する() {
+    fn comments_round_trip() {
         let mut b = Book::new();
         let p = Pos::parse("C3").unwrap();
         b.sheets[0].set(p, Cell::input("単価"));
@@ -999,7 +999,7 @@ mod link_comment_tests {
     }
 
     #[test]
-    fn 実物にコメントを足しても部品が揃う() {
+    fn adding_a_comment_to_a_real_file_creates_the_parts() {
         let src = "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式7_提案見積書.xlsx";
         let Ok(bytes) = std::fs::read(src) else { return };
         let (mut book, _) = read(Cursor::new(&bytes)).expect("読めない");
@@ -1034,7 +1034,7 @@ mod cond_tests {
     /// **規則は残ったまま太字と文字色だけ落ちて**開いていた
     /// (2026-08-10 pyoffice セッションの報告)
     #[test]
-    fn 飾りを読む() {
+    fn reads_decorations() {
         let look = |body: &str| {
             super::parse_dxfs(&format!(
                 r#"<styleSheet><dxfs count="1"><dxf>{body}</dxf></dxfs></styleSheet>"#
@@ -1069,7 +1069,7 @@ mod cond_tests {
     /// 飾りが保存で消えないこと。**読めたのに書かないと、開いて保存した
     /// だけで帳票が痩せる**
     #[test]
-    fn 飾りが往復する() {
+    fn decorations_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("-5"));
         b.sheets[0].cond.push(CondRule {
@@ -1098,7 +1098,7 @@ mod cond_tests {
     }
 
     #[test]
-    fn 塗りはfgcolorでもbgcolorでも読める() {
+    fn fill_reads_from_either_fg_color_or_bg_color() {
         // 書き手ごとに置き場所が違う。片方しか見ないと、条件付き書式の
         // 色が**黙って消える**(規則は残るので気付きにくい)
         let dxf = |body: &str| {
@@ -1136,7 +1136,7 @@ mod cond_tests {
     }
 
     #[test]
-    fn 条件付き書式が往復する() {
+    fn conditional_formatting_round_trips() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("-5"));
         b.sheets[0].cond.push(CondRule {
@@ -1166,7 +1166,7 @@ mod cond_tests {
     }
 
     #[test]
-    fn 数式で指定した縞模様が往復して効く() {
+    fn a_banding_rule_given_by_formula_round_trips_and_works() {
         // 実物の帳票でいちばん多い条件付き書式。読めないでは済まない
         let mut b = Book::new();
         for i in 0..10u32 {
@@ -1211,7 +1211,7 @@ mod cond_tests {
     }
 
     #[test]
-    fn 数式で指定は左上を錨に相対参照をずらす() {
+    fn a_formula_rule_shifts_relative_references_from_the_top_left() {
         // **ここが静かに狂う所。** 式は範囲の左上のことを書いたものとして
         // 貯まっているので、他のセルではずらして解かないと1行ずれる
         let mut b = Book::new();
@@ -1266,7 +1266,7 @@ mod cond_tests {
     }
 
     #[test]
-    fn 数式で指定は解けなくても原文を落とさない() {
+    fn an_unresolvable_formula_rule_keeps_its_source() {
         // 評価に失敗しても**ファイルは減らない** — 保存はいつも原文を返す
         let mut b = Book::new();
         let f = "COUNTIF(知らない表!A:A,A1)>0";
@@ -1292,7 +1292,7 @@ mod cond_tests {
     }
 
     #[test]
-    fn 新しい規則の種類も往復して効く() {
+    fn new_rule_kinds_round_trip_and_work() {
         let mut b = Book::new();
         let s = &mut b.sheets[0];
         for (i, v) in ["10", "20", "20", "5"].iter().enumerate() {
@@ -1344,7 +1344,7 @@ mod validation_roundtrip_tests {
     /// 中央目録が読めなくても、局所ヘッダから部品を拾えることを見ます。
     /// 拾えなかった部品は**黙って落とさず名前を並べる**ことも見ます。
     #[test]
-    fn 中央目録が壊れていても拾える() {
+    fn a_broken_central_directory_can_still_be_read() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("品名"));
         b.sheets[0].set(Pos::parse("A2").unwrap(), Cell::input("鉛筆"));
@@ -1374,7 +1374,7 @@ mod validation_roundtrip_tests {
 
     /// 部品の中身が化けていたら、**その部品だけを捨てて名前を控える**。
     #[test]
-    fn 化けた部品は捨てて名前を控える() {
+    fn a_corrupt_part_is_dropped_and_its_name_recorded() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("あ"));
         let mut buf = Cursor::new(Vec::new());
@@ -1400,14 +1400,14 @@ mod validation_roundtrip_tests {
 
     /// 何も拾えない物を渡しても、**慌てず「拾えません」と言う**。
     #[test]
-    fn zipでない物からは何も拾わない() {
+    fn a_non_zip_file_yields_nothing() {
         let s = crate::xlsx::salvage(b"this is not a zip at all");
         assert!(!s.any(), "拾えないはずの物から拾った");
         assert!(s.kept.is_empty());
     }
 
     #[test]
-    fn シナリオが往復する() {
+    fn scenarios_round_trip() {
         let mut b = Book::new();
         b.sheets[0].scenarios.push(crate::model::Scenario {
             name: "強気".into(),
@@ -1437,7 +1437,7 @@ mod validation_roundtrip_tests {
     }
 
     #[test]
-    fn 入力規則が往復する() {
+    fn data_validation_round_trips() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("D2").unwrap(), Cell::input("東京"));
         b.sheets[0].set(Pos::parse("D3").unwrap(), Cell::input("大阪"));
@@ -1465,7 +1465,7 @@ mod validation_roundtrip_tests {
     }
 
     #[test]
-    fn list以外の規則も持ち越す() {
+    fn validation_rules_other_than_list_are_carried_over() {
         // 手書きの最小 xlsx を作るのは大掛かりなので、書いた xlsx の
         // dataValidation の type を書き換えて読み直す
         let mut b = Book::new();
@@ -1500,7 +1500,7 @@ mod validation_roundtrip_tests {
     }
 
     #[test]
-    fn 画像のずらしが往復する() {
+    fn image_offsets_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].images_new.push(crate::model::SheetImage {
@@ -1537,7 +1537,7 @@ mod validation_roundtrip_tests {
     }
 
     #[test]
-    fn 罫線の線種と色が往復する() {
+    fn border_style_and_color_round_trip() {
         use crate::model::{BStyle, Edge};
         let mut b = Book::new();
         let mut cell = Cell::input("x");
@@ -1557,7 +1557,7 @@ mod validation_roundtrip_tests {
     }
 
     #[test]
-    fn ピボットの絞り込みが往復する() {
+    fn pivot_filters_round_trip() {
         let mut b = Book::new();
         b.pivots.push(crate::model::PivotDef {
             sheet: "Sheet1".into(),
@@ -1608,7 +1608,7 @@ mod validation_roundtrip_tests {
     }
 
     #[test]
-    fn 手動計算が往復する() {
+    fn manual_calculation_round_trips() {
         // 手動(calcPr calcMode="manual")を落とすと、開き直しで勝手に自動へ戻る
         let mut b = Book::new();
         b.calc_manual = true;
@@ -1638,7 +1638,7 @@ mod validation_roundtrip_tests {
     #[test]
     // **日本語の試験名は家の作法。** ラテン大文字が混じると non_snake_case が鳴る
     #[allow(non_snake_case)]
-    fn 原本のcalcPrはcalcModeだけ差し替える() {
+    fn only_calc_mode_is_replaced_in_the_original_calc_pr() {
         // calcId 等の他の属性は据え置き
         let src = r#"<workbook><sheets/><calcPr calcId="191029"/></workbook>"#;
         let out = patch_calc_pr(src, true);
@@ -1654,7 +1654,7 @@ mod validation_roundtrip_tests {
     }
 
     #[test]
-    fn 整数の規則と文言が往復する() {
+    fn the_whole_number_rule_and_its_messages_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         let mut v = Validation::list(
@@ -1701,7 +1701,7 @@ mod page_setup_tests {
     use super::*;
 
     #[test]
-    fn 印刷の設定が読める() {
+    fn print_settings_are_read() {
         // 最小の xlsx を書き、sheet1.xml に pageSetup / pageMargins を差して読み直す
         let b = Book::new();
         let mut buf = Cursor::new(Vec::new());
@@ -1740,7 +1740,7 @@ mod print_setup_roundtrip_tests {
     use super::*;
 
     #[test]
-    fn 印刷設定と印刷範囲がモデル経由で往復する() {
+    fn print_settings_and_print_area_round_trip_through_the_model() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].landscape = true;
@@ -1767,7 +1767,7 @@ mod print_setup_roundtrip_tests {
     }
 
     #[test]
-    fn 原文の知らない属性を消さずに向きだけ変わる() {
+    fn unknown_source_attributes_survive_while_only_the_direction_changes() {
         // 拡大縮小(scale)付きの原本を読み、向きだけ変えて保存する
         let b0 = Book::new();
         let mut buf = Cursor::new(Vec::new());
@@ -1818,7 +1818,7 @@ mod image_roundtrip_tests {
     }
 
     #[test]
-    fn 挿した画像が往復する() {
+    fn an_inserted_image_round_trips() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].images_new.push(SheetImage {
@@ -1842,7 +1842,7 @@ mod image_roundtrip_tests {
     }
 
     #[test]
-    fn 画像入りの原本に足しても両方残る() {
+    fn adding_to_a_file_that_has_images_keeps_both() {
         // 1枚入りを作る → それを原本にもう1枚足して保存 → 2枚とも読める
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
@@ -1885,7 +1885,7 @@ mod print_extras_roundtrip_tests {
     use super::*;
 
     #[test]
-    fn 拡大縮小と改ページとタイトル行が往復する() {
+    fn scaling_page_breaks_and_title_rows_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].print_scale = Some(80);
@@ -1905,7 +1905,7 @@ mod print_extras_roundtrip_tests {
     }
 
     #[test]
-    fn 昔ながらの配列数式が往復して正しく計算される() {
+    fn a_legacy_array_formula_round_trips_and_computes() {
         // **これが読めないと古い帳票が静かに違う値になる。**
         // =SUM(A1:A3*B1:B3) は普通に計算すると配列にならない
         let mut b = Book::new();
@@ -1945,7 +1945,7 @@ mod print_extras_roundtrip_tests {
     #[test]
     // **日本語の試験名は家の作法。** ラテン大文字が混じると non_snake_case が鳴る
     #[allow(non_snake_case)]
-    fn 配列数式は決められた範囲に収まり足りない席はNAになる() {
+    fn an_array_formula_fits_its_declared_range_and_pads_with_na() {
         let mut b = Book::new();
         for i in 0..3u32 {
             b.sheets[0].set(Pos::new(i, 0), Cell::input(&((i + 1) * 2).to_string()));
@@ -1965,7 +1965,7 @@ mod print_extras_roundtrip_tests {
     }
 
     #[test]
-    fn 読み取り専用の勧めが往復する() {
+    fn the_read_only_recommendation_round_trips() {
         // **鍵ではなくお願い。** password は書かない(掛けた振りをしない)
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
@@ -1995,7 +1995,7 @@ mod print_extras_roundtrip_tests {
     }
 
     #[test]
-    fn 同じ名前が二枚にあるときだけシート限定で書く() {
+    fn a_name_is_scoped_to_a_sheet_only_when_it_exists_on_two() {
         // **付けないと「ブック全体の名前が2つ」になって開けないファイルに
         // なる。全部に付けるとブック全体の名前がシート限定に落ちる**
         let mut b = Book::new();
@@ -2033,7 +2033,7 @@ mod print_extras_roundtrip_tests {
     }
 
     #[test]
-    fn 型紙は宣言だけが違い中身は読める() {
+    fn a_template_differs_only_in_its_declaration_and_still_reads() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("見積書"));
         let mut buf = Cursor::new(Vec::new());
@@ -2059,7 +2059,7 @@ mod print_extras_roundtrip_tests {
     }
 
     #[test]
-    fn 紙に収める指定と縦の改ページが往復する() {
+    fn fit_to_paper_and_vertical_page_breaks_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].fit_to_w = Some(1);
@@ -2097,7 +2097,7 @@ mod shape_roundtrip_tests {
     /// 同じ区別をしたのと同じ形。保存では原本の drawing がそのまま
     /// 持ち越されるので、**壊れはしない。**
     #[test]
-    fn グラフは読まないが帳簿には載せる() {
+    fn charts_are_not_read_but_are_logged() {
         let b = Book::new();
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -2161,7 +2161,7 @@ mod shape_roundtrip_tests {
     }
 
     #[test]
-    fn 挿した図形が往復する() {
+    fn an_inserted_shape_round_trips() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].shapes_new.push(SheetShape {
@@ -2188,7 +2188,7 @@ mod shape_roundtrip_tests {
     }
 
     #[test]
-    fn 回転と反転と線幅と不透明度と影が往復する() {
+    fn rotation_flip_line_width_opacity_and_shadow_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].shapes_new.push(SheetShape {
@@ -2246,7 +2246,7 @@ mod textbox_spark_roundtrip_tests {
     use crate::model::SheetShape;
 
     #[test]
-    fn 文字入りの図形と折れ線が往復する() {
+    fn shapes_with_text_and_polylines_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].shapes_new.push(SheetShape {
@@ -2317,7 +2317,7 @@ mod style_keep_tests {
     /// (勝手な書式設定をするな — 発注者 2026-08-06)。
     /// 様式が無い環境では黙って飛ばす
     #[test]
-    fn 実物の様式は保存で書式表が変わらない() {
+    fn saving_a_real_template_leaves_the_style_table_alone() {
         let src = std::path::Path::new(
             "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式7_提案見積書.xlsx",
         );
@@ -2341,7 +2341,7 @@ mod style_keep_tests {
 
     /// 書式を1つ触ったら、原本の表はそのままで**末尾に追記**される
     #[test]
-    fn 触った書式は追記で受ける() {
+    fn a_touched_style_is_taken_as_an_append() {
         let src = std::path::Path::new(
             "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式7_提案見積書.xlsx",
         );
@@ -2385,7 +2385,7 @@ mod script_roundtrip_tests {
     use super::*;
 
     #[test]
-    fn ブックには関数も手続きも書かない() {
+    fn the_workbook_holds_no_functions_or_procedures() {
         // 発注者確定 2026-08-09: データとプログラムを1つのファイルにしない。
         // 関数(UDF)も手続きも plugins の .py にある — ブックは何も運ばない
         let mut b = Book::new();
@@ -2403,7 +2403,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 古いブックのコードは読めて報告が出て保存で消える() {
+    fn macro_code_in_an_old_workbook_reads_is_reported_and_is_dropped_on_save() {
         // 黙って落とさない: 開くときに報告し、@export で取り出せる状態にはする
         let mut old = Book::new();
         old.scripts.push(("関数集計".into(), "def 集計(x):\n    return 1 < 2 and x".into()));
@@ -2461,7 +2461,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn ブックの情報が往復する() {
+    fn workbook_properties_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.props.creators = vec!["日本フネン".into()];
@@ -2476,7 +2476,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 図形のずらしが往復する() {
+    fn shape_offsets_round_trip() {
         let mut b = Book::new();
         b.sheets[0].shapes_new.push(crate::model::SheetShape {
             at: Pos::parse("B2").unwrap(),
@@ -2499,7 +2499,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn テーマ色が往復し配色を変えると追従する() {
+    fn theme_colors_round_trip_and_follow_a_palette_change() {
         let mut b = Book::new();
         b.theme = crate::theme::OFFICE.iter().map(|s| s.to_string()).collect();
         let p = Pos::parse("A1").unwrap();
@@ -2526,7 +2526,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 表オブジェクトと右横書きが往復する() {
+    fn table_objects_and_right_to_left_round_trip() {
         let mut b = Book::new();
         for (r, row) in [["部署", "金額"], ["営業", "100"]].iter().enumerate() {
             for (c, v) in row.iter().enumerate() {
@@ -2566,7 +2566,7 @@ mod script_roundtrip_tests {
     /// 表そのものの名前(`Table1`)と様式の名前(`TableStyleLight9`)は
     /// 別物で、同じ `name` という綴りなのが罠(2026-08-10)。
     #[test]
-    fn 表の様式の名前が往復する() {
+    fn the_table_style_name_round_trips() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::new(0, 0), Cell::input("部署"));
         b.sheets[0].set(Pos::new(1, 0), Cell::input("営業"));
@@ -2606,7 +2606,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 固定枠と画面の見え方が往復する() {
+    fn freeze_panes_and_view_settings_round_trip() {
         use crate::model::FreezePane;
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("見出し"));
@@ -2634,7 +2634,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 中身の無い行の高さを読める() {
+    fn the_height_of_an_empty_row_can_be_read() {
         // **`<row r="71" ht="23.1" customHeight="1"/>`** — 高さだけ決めた空行。
         // 帳票では行間の調整に使う。Start の枝にしか置いていなかったので
         // 高さが落ちていた(日銀の資金循環で 115 箇所。2026-08-10)。
@@ -2679,7 +2679,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 見出し行を固定した実物の形を読める() {
+    fn a_real_file_with_a_frozen_header_row_reads() {
         // **Excel が書く sheetView は `<selection>` や `<pane>` を抱えるので
         // Start で来る。** Empty でしか見ていなかったので、固定枠だけでなく
         // rtl も実物では読めていなかった — その形を型紙にして押さえる
@@ -2730,7 +2730,7 @@ mod script_roundtrip_tests {
     /// 落とすと、呼ぶ側が正しく要求した範囲を「シートの外」と断ってしまう
     /// (2026-08-10、genoffice の試験が教えてくれた)。
     #[test]
-    fn 空でも要素のあるセルまでを大きさに数える() {
+    fn the_size_counts_up_to_the_last_present_cell_even_if_empty() {
         let b = Book::new();
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -2777,7 +2777,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 掴んで動かす分割は固定枠にしない() {
+    fn a_dragged_split_does_not_become_a_freeze() {
         // state="split" の pane は仕切りであって固定ではない。しかも xSplit は
         // 列数ではなく 1/20 ポイントの座標なので、固定として読むと
         // 途方もない列数になる — 撥ねていることを押さえる
@@ -2808,7 +2808,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn しまい込んだ表示設定の固定枠は拾わない() {
+    fn a_stored_view_setting_freeze_pane_is_ignored() {
         // customSheetView は「誰かが昔しまい込んだ表示設定」で、そこにも pane が
         // ぶら下がる。いまの画面の固定枠として読むと、開いた人が設定した覚えの
         // ない場所で表が止まる
@@ -2839,7 +2839,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 表を外すと部品も宣言も消える() {
+    fn removing_a_table_removes_its_part_and_declaration() {
         // 表つきで書いたものを読み、表を外して書き直す(範囲に変換の道)
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
@@ -2875,7 +2875,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 隠しシートと下付きと回転が往復する() {
+    fn hidden_sheets_subscript_and_rotation_round_trip() {
         let mut b = Book::new();
         b.sheets.push(crate::Sheet::new("裏"));
         b.sheets[1].hidden = true;
@@ -2902,7 +2902,7 @@ mod script_roundtrip_tests {
     /// `justify` に寄せていたので、開くだけで見た目が変わっていた
     /// (日銀の統計表の題を genoffice の読み手と突き合わせて発覚)
     #[test]
-    fn 横の揃えは6通りとも往復する() {
+    fn all_six_horizontal_alignments_round_trip() {
         use crate::model::HAlign;
         let all = [
             ("A1", HAlign::Left),
@@ -2949,7 +2949,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn シートの保護が往復する() {
+    fn sheet_protection_round_trips() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].protected = true;
@@ -2961,7 +2961,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn シート見出しの色が往復する() {
+    fn sheet_tab_color_round_trips() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[0].tab_color = Some("FFC00000".into());
@@ -2977,7 +2977,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn グループ化と畳みが往復する() {
+    fn grouping_and_collapsing_round_trip() {
         let mut b = Book::new();
         let s = &mut b.sheets[0];
         s.set(Pos::parse("A1").unwrap(), Cell::input("見出し"));
@@ -3005,7 +3005,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn ピボットの指図が往復する() {
+    fn pivot_definitions_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.pivots.push(crate::model::PivotDef {
@@ -3079,7 +3079,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 既定値つきの名前が式から引ける() {
+    fn a_name_with_a_default_resolves_from_a_formula() {
         // LibreOffice は名前の定義すべてに真偽の属性を**既定値でも**書く。
         // 属性の数で「単純か」を決めていたので、中身は Excel と同じなのに
         // 全部「理解できない名前」へ落ち、式から引くと #NAME? だった
@@ -3094,7 +3094,7 @@ mod script_roundtrip_tests {
     }
 
     #[test]
-    fn 隠し名前は原文のまま持ち越す() {
+    fn hidden_names_are_carried_over_verbatim() {
         // hidden="1" は**立っている**ので単純ではない。式からは引かせず、
         // 捨てもせず原文で持ち越す(今までどおり)
         let back = reread_with_attrs(r#"hidden="1""#);
@@ -3177,7 +3177,7 @@ mod sheet_rid {
     }
 
     #[test]
-    fn r_idで解いた部品を読む() {
+    fn reads_the_part_resolved_by_r_id() {
         let (book, _) = crate::xlsx::read(std::io::Cursor::new(pattern())).unwrap();
         assert_eq!(book.sheets.len(), 12, "シートの枚数");
         for (i, sh) in book.sheets.iter().enumerate() {
@@ -3189,7 +3189,7 @@ mod sheet_rid {
     }
 
     #[test]
-    fn 文字列の並べ替えに戻っていない() {
+    fn the_string_sort_has_not_come_back() {
         // 文字列で並べると sheet10 が sheet2 より前に来る。
         // その狂い方(表2 に 部品10 系の中身)を名指しで撥ねる
         let (book, _) = crate::xlsx::read(std::io::Cursor::new(pattern())).unwrap();
@@ -3197,7 +3197,7 @@ mod sheet_rid {
     }
 
     #[test]
-    fn 往復してもシートの中身が動かない() {
+    fn a_round_trip_does_not_move_the_sheet_contents() {
         // 書き出しは部品を並び順に振り直すので、**ブックの rels の的も
         // 向け直さないと**、開き直したときに別のシートを指す
         let original = pattern();
@@ -3214,7 +3214,7 @@ mod sheet_rid {
     }
 
     #[test]
-    fn 往復した帳面の部品と宣言が食い違わない() {
+    fn parts_and_declarations_stay_consistent_after_a_round_trip() {
         // 的の向け直しで、宣言(Content_Types)と rels と部品の三つが揃うこと。
         // ずれていると Excel が「修復」に入る
         let original = pattern();
@@ -3245,7 +3245,7 @@ mod sheet_rid {
     }
 
     #[test]
-    fn r_idが無ければ数として並べ替える() {
+    fn without_an_r_id_sheets_sort_numerically() {
         // 控えの道。**文字列**で並べると sheet10 が sheet2 より前に来る
         let mut buf = Vec::new();
         {

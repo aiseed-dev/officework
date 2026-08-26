@@ -25,7 +25,7 @@ mod cell_edit_tests {
     }
 
     #[test]
-    fn セルの文章を読み書きできる() {
+    fn cell_text_can_be_read_and_written() {
         let d = doc_with_table();
         let t = d.tables().next().unwrap();
         assert_eq!(cell_text(&t.rows[0][0]), "品名");
@@ -36,7 +36,7 @@ mod cell_edit_tests {
     }
 
     #[test]
-    fn セルの書式は書き戻しで残る() {
+    fn cell_formatting_survives_the_write_back() {
         let d = doc_with_table();
         let mut c = d.tables().next().unwrap().rows[0][0].clone();
         c.paragraphs[0].align = kumihan::Align::Center;
@@ -62,7 +62,7 @@ mod find_tests {
     }
 
     #[test]
-    fn カーソルの後ろから探す() {
+    fn search_starts_after_the_caret() {
         let t = "誤りを直す。誤りは残さない。";
         let first = next_hit(t, "誤り", 0).unwrap();
         let second = next_hit(t, "誤り", first + "誤り".len()).unwrap();
@@ -70,7 +70,7 @@ mod find_tests {
     }
 
     #[test]
-    fn 末尾まで無ければ頭から一周() {
+    fn search_wraps_to_the_top_when_it_reaches_the_end() {
         let t = "誤りを直す。";
         // 「直」の後ろ(文字境界)から探す。実物の from はカーソル位置なので常に境界
         let from = "誤りを直".len();
@@ -79,7 +79,7 @@ mod find_tests {
     }
 
     #[test]
-    fn 無ければ無いと言える() {
+    fn says_so_when_there_is_nothing() {
         assert_eq!(next_hit("本文", "存在しない", 0), None);
         let _ = w("x");
     }
@@ -111,7 +111,7 @@ mod menu_run_tests {
     /// 前は bool が4つあり、開くたびに残り3つを倒す行が要りました。
     /// 1つにしたので「倒し忘れ」が書けません。それを見ます。
     #[gpui::test]
-    fn 一覧は多くて1つしか開かない(cx: &mut gpui::TestAppContext) {
+    fn at_most_one_list_is_open(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             // **意味だけの文書では書体と大きさは押せません**(look_guard。
@@ -136,7 +136,7 @@ mod menu_run_tests {
     }
 
     #[gpui::test]
-    fn 全部のボタンが落ちずに通る(cx: &mut gpui::TestAppContext) {
+    fn every_button_runs_without_panicking(cx: &mut gpui::TestAppContext) {
         let _ai = AI_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // AI の宛先は覚える設定なので、試験で変えたら戻す
         let keep_ai = ui::ai::backend();
@@ -168,7 +168,7 @@ mod menu_run_tests {
 
     /// 押すと入切するボタンは、2回押すと元に戻る(1手で戻せる方針)
     #[gpui::test]
-    fn 入切のボタンは二度おすと戻る(cx: &mut gpui::TestAppContext) {
+    fn a_toggle_button_returns_on_the_second_press(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         for id in [
             "ruler", "darkmode", "hidenchars", "line-numbers", "nav",
@@ -190,7 +190,7 @@ mod menu_run_tests {
     /// 空の文書と違い、表・見出し・記入欄・縦書きが入っているので、
     /// 「前提があるときの道」も通る(sample/writer が検査の材料)
     #[gpui::test]
-    fn 見本を開いても全部のボタンが通る(cx: &mut gpui::TestAppContext) {
+    fn every_button_runs_on_the_sample_files_too(cx: &mut gpui::TestAppContext) {
         let dir = std::path::Path::new("../sample/writer");
         let dir = if dir.exists() {
             dir.to_path_buf()
@@ -236,7 +236,7 @@ mod menu_run_tests {
     /// **押した結果が本当に文書に出るか。** status だけ見ても
     /// 「押せるのに何も起きない」は捕まらないので、モデルを見る
     #[gpui::test]
-    fn 主なボタンは文書を実際に変える(cx: &mut gpui::TestAppContext) {
+    fn the_main_buttons_really_change_the_document(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         let fresh = |this: &mut Writer| {
             // **docx を開いた状態で見ます。** adoc 形式では見た目のボタンが
@@ -370,7 +370,7 @@ mod menu_run_tests {
     /// したので、宛先が無くてもふりがなは通ります。残っている AI の仕事は
     /// マクロを書く分だけなので、そちらで見ます
     #[gpui::test]
-    fn aiは宛先が無ければ理由を言う(cx: &mut gpui::TestAppContext) {
+    fn ai_gives_a_reason_when_there_is_no_target(cx: &mut gpui::TestAppContext) {
         let _ai = AI_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let keep = ui::ai::backend();
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
@@ -391,7 +391,7 @@ mod menu_run_tests {
     /// 宛先が無くても通り、外にも出ません。
     /// 辞書の無い機械では、いままでどおりモデルに回ります(その場合は飛ばす)
     #[gpui::test]
-    fn ふりがなは宛先が無くても辞書で振れる(cx: &mut gpui::TestAppContext) {
+    fn furigana_works_from_the_dictionary_without_a_target(cx: &mut gpui::TestAppContext) {
         if !ui::dict::available() {
             return;
         }
@@ -412,7 +412,7 @@ mod menu_run_tests {
 
     /// 記入欄(フォーム)は押した種類の欄が本当に入る
     #[gpui::test]
-    fn フォームのボタンが記入欄を入れる(cx: &mut gpui::TestAppContext) {
+    fn the_form_button_inserts_a_field(cx: &mut gpui::TestAppContext) {
         use kumihan::SdtKind as K;
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         for (id, want) in [
@@ -442,7 +442,7 @@ mod menu_run_tests {
     /// サンドボックスの外で同じ台本を回す(bwrap の無い試験環境でも通る)。
     /// python-docx が無い環境では黙って飛ばす
     #[test]
-    fn マクロのfillが名前の記入欄に書く() {
+    fn the_macro_fill_writes_into_the_named_field() {
         let py = if std::path::Path::new("../.venv/bin/python").exists() {
             std::path::PathBuf::from("../.venv/bin/python")
         } else {
@@ -543,7 +543,7 @@ mod menu_run_tests {
     /// writer の読み書き(heal_runs)を通してから差し込む。
     /// docxtpl が無い環境では黙って飛ばす
     #[test]
-    fn 雛形のrenderが差し込む() {
+    fn the_templates_render_fills_it_in() {
         let py = if std::path::Path::new("../.venv/bin/python").exists() {
             std::path::PathBuf::from("../.venv/bin/python")
         } else {
@@ -634,7 +634,7 @@ render({"顧客名": "青森県庁", "担当者": "山田",
     /// python-docx と docxtpl がそのまま読めることを見る。
     /// 様式や道具が無い環境では黙って飛ばす(失敗にはしない)
     #[test]
-    fn 実物様式が読み書きと雛形の道具に通る() {
+    fn a_real_template_works_with_the_read_write_and_template_tools() {
         let src = std::path::Path::new(
             "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki",
         );
@@ -696,7 +696,7 @@ render({"顧客名": "青森県庁", "担当者": "山田",
 
     /// モデルが書きがちなコードフェンスは受け側で剥がす
     #[test]
-    fn コードフェンスを剥がす() {
+    fn strips_the_code_fence() {
         assert_eq!(strip_code_fence("print(1)"), "print(1)");
         assert_eq!(strip_code_fence("```python\nprint(1)\n```"), "print(1)");
         assert_eq!(strip_code_fence("```\nprint(1)\n```\n"), "print(1)");
@@ -709,7 +709,7 @@ render({"顧客名": "青森県庁", "担当者": "山田",
     /// 「マクロを書く」はパネルを開き、宛先が無ければ正直に断る。
     /// 台本が文書に入ることは決してない(置き場に置くだけ)
     #[gpui::test]
-    fn マクロを書くはパネルを開き宛先が無ければ断る(cx: &mut gpui::TestAppContext) {
+    fn write_macro_opens_the_panel_and_refuses_without_a_target(cx: &mut gpui::TestAppContext) {
         let _ai = AI_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let keep = ui::ai::backend();
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
@@ -738,7 +738,7 @@ render({"顧客名": "青森県庁", "担当者": "山田",
     /// 3組ある)に名前つき記入欄を付け、fill で記入 → extract で吸い上げる。
     /// 様式や道具が無い環境では黙って飛ばす
     #[test]
-    fn 実物様式1で名前付けから吸い上げまで通る() {
+    fn real_template_one_works_from_naming_to_extraction() {
         let src = std::path::Path::new(
             "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式1_参加表明.docx",
         );
@@ -870,7 +870,7 @@ print(len(fields()))
 
     /// 「名前」ボタンで記入欄に名前が付く(docx の w:tag。マクロの fill の鍵)
     #[gpui::test]
-    fn 記入欄に名前を付けられる(cx: &mut gpui::TestAppContext) {
+    fn a_form_field_can_be_named(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.set_doc(Document::plain(""));
@@ -900,7 +900,7 @@ mod ruby_mark_tests {
     use crate::strip_ruby_marks;
 
     #[test]
-    fn ルビ記法をほどいて位置と読みが出る() {
+    fn unwrapping_ruby_yields_positions_and_readings() {
         let (plain, rubies) = strip_ruby_marks("今日は|組版《くみはん》の話。", 0);
         assert_eq!(plain, "今日は組版の話。");
         assert_eq!(rubies.len(), 1);
@@ -910,20 +910,20 @@ mod ruby_mark_tests {
     }
 
     #[test]
-    fn 全角の縦棒も受ける() {
+    fn a_full_width_vertical_bar_is_accepted() {
         let (plain, rubies) = strip_ruby_marks("｜漢字《かんじ》です", 0);
         assert_eq!(plain, "漢字です");
         assert_eq!(rubies[0].1, "かんじ");
     }
 
     #[test]
-    fn 差し込む先の頭からの位置になる() {
+    fn the_position_is_measured_from_the_start_of_the_target() {
         let (_, rubies) = strip_ruby_marks("|漢字《かんじ》", 100);
         assert_eq!(rubies[0].0.start, 100, "base が効いていない");
     }
 
     #[test]
-    fn 記法が壊れていても本文を落とさない() {
+    fn broken_notation_does_not_lose_the_text() {
         for src in ["|語《よみ", "ただの|棒", "《よみ》だけ", "|"] {
             let (plain, _) = strip_ruby_marks(src, 0);
             for c in src.chars().filter(|c| !"|｜".contains(*c)) {
@@ -938,7 +938,7 @@ mod url_tests {
     use crate::resolve_url;
 
     #[test]
-    fn 相対urlが今の場所から解ける() {
+    fn a_relative_url_resolves_from_the_current_place() {
         let b = "http://ex.jp/a/b.html";
         assert_eq!(resolve_url(b, "c.html"), "http://ex.jp/a/c.html");
         assert_eq!(resolve_url(b, "/x/y"), "http://ex.jp/x/y");
@@ -951,7 +951,7 @@ mod url_tests {
 #[cfg(test)]
 mod wiring_tests {
     #[test]
-    fn リボンのreadyは全部配線されている() {
+    fn every_ready_ribbon_button_is_wired_up() {
         // 「押せるのに何も起きない」を仕組みで止める
         for tab in ui::ribbon::WRITER {
             for cmd in tab.cmds {
@@ -972,7 +972,7 @@ mod page_setup_tests {
     use crate::*;
 
     #[test]
-    fn 用紙の変更が保存で残る() {
+    fn a_paper_change_survives_saving() {
         // 画面で変えただけで docx に書かれないなら、それは飾り
         let mut d = Document::plain("本文");
         let mut pg = kumihan::PageSetup::default();
@@ -990,7 +990,7 @@ mod page_setup_tests {
     }
 
     #[test]
-    fn ヘッダーの参照は用紙を変えても残る() {
+    fn header_fields_survive_a_paper_change() {
         // set_page は pgSz/pgMar だけ作り替え、他は原文から引き継ぐ
         let raw = r#"<w:sectPr><w:headerReference r:id="rId8"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr>"#;
         // set_page 内の引き継ぎと同じ処理を直接なぞる
@@ -1020,7 +1020,7 @@ mod lock_tests {
     use crate::*;
 
     #[test]
-    fn ロックの置き場所と先客の判定() {
+    fn lock_location_and_prior_holder_detection() {
         let dir = std::env::temp_dir().join(format!("jolock-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let doc = dir.join("文書.docx");
@@ -1047,7 +1047,7 @@ mod track_tests {
     }
 
     #[test]
-    fn 変わった段落と増えた段落が分かる() {
+    fn changed_and_added_paragraphs_are_detected() {
         let base = v(&["一", "二", "三"]);
         let cur = v(&["一", "二を直した", "追加", "三"]);
         let (marks, deleted) = track_diff(&base, &cur);
@@ -1059,7 +1059,7 @@ mod track_tests {
     }
 
     #[test]
-    fn 消えた段落は次の段落の前に付く() {
+    fn a_deleted_paragraph_attaches_before_the_next_one() {
         let base = v(&["一", "二", "三"]);
         let cur = v(&["一", "三"]);
         let (marks, deleted) = track_diff(&base, &cur);
@@ -1068,7 +1068,7 @@ mod track_tests {
     }
 
     #[test]
-    fn 文字の差分は頭と尻尾を残す() {
+    fn the_character_diff_keeps_the_common_head_and_tail() {
         let (pre, del, ins, suf) = split_diff("防火戸の仕様", "防火ドアの仕様");
         assert_eq!((pre.as_str(), del.as_str(), ins.as_str(), suf.as_str()),
             ("防火", "戸", "ドア", "の仕様"));
@@ -1083,7 +1083,7 @@ mod word_tests {
     use crate::*;
 
     #[test]
-    fn 英語は空白と語の境で止まる() {
+    fn english_stops_at_spaces_and_word_boundaries() {
         let t = "hello world  foo";
         assert_eq!(word_boundary(t, 0, true), 6, "次の語の頭に行かない");
         assert_eq!(word_boundary(t, 6, true), 13);
@@ -1093,7 +1093,7 @@ mod word_tests {
     }
 
     #[test]
-    fn 日本語は文字種の変わり目で止まる() {
+    fn japanese_stops_at_a_change_of_character_kind() {
         // 漢字の連なり→ひらがな→カタカナ→英数、の境で切れる
         let t = "防火戸のカタログをPDFで";
         let b = |s: &str| t.find(s).unwrap();
@@ -1105,7 +1105,7 @@ mod word_tests {
     }
 
     #[test]
-    fn 端で壊れない() {
+    fn does_not_break_at_the_edges() {
         assert_eq!(word_boundary("", 0, true), 0);
         assert_eq!(word_boundary("", 0, false), 0);
         assert_eq!(word_boundary("あ", 0, false), 0);
@@ -1117,7 +1117,7 @@ mod image_px_tests {
     use crate::*;
 
     #[test]
-    fn pngの画素数が読める() {
+    fn reads_png_pixel_dimensions() {
         // 署名 + IHDR(幅640, 高さ480)
         let mut b = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
         b.extend_from_slice(&[0, 0, 0, 13]);
@@ -1128,7 +1128,7 @@ mod image_px_tests {
     }
 
     #[test]
-    fn jpegの画素数が読める() {
+    fn reads_jpeg_pixel_dimensions() {
         // SOI + APP0(空) + SOF0(高さ300, 幅200)
         let mut b = vec![0xFF, 0xD8];
         b.extend_from_slice(&[0xFF, 0xE0, 0x00, 0x02]); // APP0 長さ2(中身なし)
@@ -1140,7 +1140,7 @@ mod image_px_tests {
     }
 
     #[test]
-    fn 画像でないものは断る() {
+    fn a_non_image_is_refused() {
         assert_eq!(image_px(b"not an image"), None);
     }
 }
@@ -1155,7 +1155,7 @@ mod image_px_tests {
 #[cfg(test)]
 mod caption_head_tests {
     #[test]
-    fn 図表番号は貼る字と探す字が同じ雛形から出る() {
+    fn caption_insert_and_search_text_come_from_the_same_template() {
         let head = crate::caption_head();
         assert!(!head.is_empty(), "頭が空だと strip_prefix が全段落に当たる");
         let label = ui::tf!("figure", 7);
@@ -1173,7 +1173,7 @@ mod caption_head_tests {
     /// ja では**1バイトも変わらない**(いままでの文書が読めなくならないこと)。
     /// ja かどうかは tr が鍵をそのまま返すかで見る(表に無い言語も同じ扱い)
     #[test]
-    fn 日本語のときの頭はこれまでと同じ() {
+    fn the_japanese_prefix_is_unchanged() {
         if ui::tr("図 {}") == "図 {}" {
             assert_eq!(crate::caption_head(), "図 ");
         }
@@ -1218,7 +1218,7 @@ mod screen_note_tests {
     }
 
     #[gpui::test]
-    fn 画面と紙で脚注の出る頁が同じ(cx: &mut gpui::TestAppContext) {
+    fn footnotes_land_on_the_same_page_on_screen_and_on_paper(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
             this.doc = doc_with_footnote();
@@ -1242,7 +1242,7 @@ mod screen_note_tests {
 
     /// 脚注が無ければ今までどおり(画面の割り当ても空)
     #[gpui::test]
-    fn 脚注が無ければ画面も空のまま(cx: &mut gpui::TestAppContext) {
+    fn no_footnotes_leaves_the_screen_empty_too(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
             this.doc = Document::plain("本文だけ");
@@ -1269,7 +1269,7 @@ mod footnote_undo_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 脚注は一手で戻る(cx: &mut gpui::TestAppContext) {
+    fn a_footnote_undoes_in_one_step(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.doc = Document::plain("あいうえお");
@@ -1300,7 +1300,7 @@ mod footnote_undo_tests {
 
     /// 選択が無ければ何も起きない(履歴も消さない)
     #[gpui::test]
-    fn 選択が無ければ履歴を壊さない(cx: &mut gpui::TestAppContext) {
+    fn no_selection_leaves_the_history_intact(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.doc = Document::plain("あいうえお");
@@ -1336,7 +1336,7 @@ mod doc_undo_tests {
     }
 
     #[gpui::test]
-    fn 太字が取り消せる(cx: &mut gpui::TestAppContext) {
+    fn bold_can_be_undone(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, cx| {
             this.doc = Document::plain("あいうえお");
@@ -1359,7 +1359,7 @@ mod doc_undo_tests {
     /// 二本立てのままだと「打ってから太字」の後の Ctrl+Z が
     /// 打鍵のほうを戻してしまい、使い手に順が読めない
     #[gpui::test]
-    fn 打鍵と書式が同じ順で戻る(cx: &mut gpui::TestAppContext) {
+    fn typing_and_formatting_undo_in_the_same_order(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, cx| {
             this.doc = Document::plain("あいうえお");
@@ -1398,7 +1398,7 @@ mod doc_undo_tests {
 
     /// 続けて打った分は**1手にまとめる**(1字ごとに戻らない)
     #[gpui::test]
-    fn 続けた打鍵は一手にまとまる(cx: &mut gpui::TestAppContext) {
+    fn consecutive_typing_collapses_into_one_step(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, _cx| {
             this.doc = Document::plain("");
@@ -1417,7 +1417,7 @@ mod doc_undo_tests {
 
     /// 戻したあとに打つと、やり直しの先は捨てる(枝分かれしない)
     #[gpui::test]
-    fn 戻したあとに打つとやり直しは消える(cx: &mut gpui::TestAppContext) {
+    fn typing_after_an_undo_clears_the_redo(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, cx| {
             this.doc = Document::plain("あ");
@@ -1518,7 +1518,7 @@ mod undo_coverage_tests {
     }
 
     #[gpui::test]
-    fn 文書を変える命令は一手で戻せる(cx: &mut gpui::TestAppContext) {
+    fn commands_that_change_the_document_undo_in_one_step(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         let mut seen = 0usize;
         for id in Writer::HANDLED.iter().filter(|i| !do_not_press(i)) {
@@ -1545,7 +1545,7 @@ mod undo_coverage_tests {
 
     /// やり直しも効く(戻すだけで進めないと片道になる)
     #[gpui::test]
-    fn 戻した一手はやり直せる(cx: &mut gpui::TestAppContext) {
+    fn an_undone_step_can_be_redone(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         for id in Writer::HANDLED.iter().filter(|i| !do_not_press(i)) {
             w.update(cx, |this, cx| {
@@ -1581,7 +1581,7 @@ mod paged_view_tests {
     }
 
     #[gpui::test]
-    fn 節ごとに紙が変わる(cx: &mut gpui::TestAppContext) {
+    fn the_paper_changes_per_section(cx: &mut gpui::TestAppContext) {
         let f = std::path::PathBuf::from("/home/dev/docx-corpus/all3.docx");
         if !f.exists() {
             return;
@@ -1602,7 +1602,7 @@ mod paged_view_tests {
     }
 
     #[gpui::test]
-    fn 画面と紙で頁ごとの紙が同じ(cx: &mut gpui::TestAppContext) {
+    fn the_paper_per_page_matches_on_screen_and_on_paper(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, _| {
             this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
@@ -1619,7 +1619,7 @@ mod paged_view_tests {
     }
 
     #[gpui::test]
-    fn 字がその頁の紙の中に収まる(cx: &mut gpui::TestAppContext) {
+    fn text_stays_inside_that_pages_paper(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, _| {
             this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
@@ -1644,7 +1644,7 @@ mod paged_view_tests {
     /// 両方へ入れると画面と紙で二重になる — 2026-08-13 に数式で踏み、
     /// 画像の挿入にも同じ形があった(7feb1e6)。両方の道をここで縛る
     #[gpui::test]
-    fn 挿した絵は一度だけ描かれる(cx: &mut gpui::TestAppContext) {
+    fn an_inserted_picture_is_drawn_once(cx: &mut gpui::TestAppContext) {
         // 1x1 の PNG(この試験のためだけ。読めればよい)
         const PNG: &[u8] = &[
             0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
@@ -1682,7 +1682,7 @@ mod paged_view_tests {
     /// 押す口が実際に効くこと。**機能があってもボタンが繋がっていなければ
     /// 誰にも届かない** — ここが無いと配線の切れに気づけない
     #[gpui::test]
-    fn 印刷レイアウトの釦で切り替わる(cx: &mut gpui::TestAppContext) {
+    fn the_print_layout_button_toggles_it(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, cx| {
             assert!(!this.paged, "既定が印刷レイアウトになっている");
@@ -1695,7 +1695,7 @@ mod paged_view_tests {
 
     /// 画面だけの折り方どうし、両立させない(どちらを押しても他方が下りる)
     #[gpui::test]
-    fn 印刷レイアウトと見開きは排他(cx: &mut gpui::TestAppContext) {
+    fn print_layout_and_two_page_spread_are_exclusive(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, cx| {
             this.run_cmd("multipage", cx);
@@ -1709,7 +1709,7 @@ mod paged_view_tests {
 
     /// 縦書きは初版の約束で断る。**黙って何もしないのではなく、言って断る**
     #[gpui::test]
-    fn 縦書きでは印刷レイアウトにしない(cx: &mut gpui::TestAppContext) {
+    fn vertical_writing_does_not_use_print_layout(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, cx| {
             this.doc.vertical = true;
@@ -1722,7 +1722,7 @@ mod paged_view_tests {
     /// 数式の口。**組むのは Python** なので、ここで見るのは配線と断り方だけ —
     /// 組んだ絵の良し悪しは実機と officework.tex の検査(test_tex.py)の持ち場
     #[gpui::test]
-    fn 数式の釦でパネルが開く(cx: &mut gpui::TestAppContext) {
+    fn the_equation_button_opens_the_panel(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, cx| {
             assert!(!this.eq_open, "はじめから開いている");
@@ -1738,7 +1738,7 @@ mod paged_view_tests {
 
     /// 空で Enter は**何も起きない**(空の絵を置かない)
     #[gpui::test]
-    fn 空の数式は置かない(cx: &mut gpui::TestAppContext) {
+    fn an_empty_equation_is_not_inserted(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, _| {
             this.set_doc(Document::plain("本文"));
@@ -1753,7 +1753,7 @@ mod paged_view_tests {
 
     /// 組めない式は**黙って何も起きない、をしない**。理由を状態行に出す
     #[gpui::test]
-    fn 組めない数式は理由を言う(cx: &mut gpui::TestAppContext) {
+    fn an_unlayoutable_equation_gives_a_reason(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, _| {
             this.set_doc(Document::plain("本文"));
@@ -1767,7 +1767,7 @@ mod paged_view_tests {
     }
 
     #[gpui::test]
-    fn 編集モードは折らない(cx: &mut gpui::TestAppContext) {
+    fn edit_mode_does_not_wrap(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, _| {
             this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
@@ -1788,7 +1788,7 @@ mod marker_tests {
     use crate::*;
 
     #[test]
-    fn 印の一覧は互いに素でリボンに実在する() {
+    fn the_marked_lists_are_disjoint_and_exist_in_the_ribbon() {
         // ▾(一覧)と …(小窓)の両方に居る id は印が決められない。
         // リボンの表に無い id は印の付けようが無い
         let ribbon_ids: std::collections::HashSet<&str> = ui::ribbon::WRITER
@@ -1808,7 +1808,7 @@ mod marker_tests {
     }
 
     #[gpui::test]
-    fn 小窓の印のボタンは小窓の旗を立てる(cx: &mut gpui::TestAppContext) {
+    fn the_dialog_marked_button_raises_the_dialog_flag(cx: &mut gpui::TestAppContext) {
         // DIALOG_IDS(…)を1つずつ叩き、dialog_open() が真になる物の数の
         // 下限を見る。**1件ずつの強制はしない** — 前提の要る id
         // (form-name は記入欄の中でしか開かない)があるため。
@@ -1848,7 +1848,7 @@ mod marker_tests {
     }
 
     #[gpui::test]
-    fn 一覧は他のボタンを押すと閉じて操作は効く(cx: &mut gpui::TestAppContext) {
+    fn the_list_closes_on_another_button_and_the_action_still_runs(cx: &mut gpui::TestAppContext) {
         // 一覧(▾)の閉じ方の約束: 他のボタンを押すと畳まれ、押した操作は
         // そのまま効く
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
@@ -1869,7 +1869,7 @@ mod marker_tests {
     }
 
     #[gpui::test]
-    fn 小窓中はリボンが効かない(cx: &mut gpui::TestAppContext) {
+    fn the_ribbon_is_inert_while_a_dialog_is_open(cx: &mut gpui::TestAppContext) {
         // 小窓(…)が開いている間はリボン全体が無効。閉じる道(Esc・
         // 小窓の中のボタン)は run_cmd 直呼びなので今のまま
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
@@ -1888,7 +1888,7 @@ mod marker_tests {
     }
 
     #[gpui::test]
-    fn pyを開いて保存しても素の文字のまま(cx: &mut gpui::TestAppContext) {
+    fn opening_and_saving_py_keeps_plain_text(cx: &mut gpui::TestAppContext) {
         // 発注者 2026-08-14「pyedit は使うな、writer を使え」。
         // **docx に化けさせない** — 化けたら plugins から読めなくなる
         let dir = std::env::temp_dir().join(format!("ow-py-{}", std::process::id()));
@@ -1914,7 +1914,7 @@ mod marker_tests {
     }
 
     #[test]
-    fn 素の文字の拡張子を見分ける() {
+    fn recognises_plain_text_extensions() {
         use crate::doc::is_plain_ext;
         for e in ["py", "PY", "txt", "md", "toml", "json", "csv"] {
             assert!(is_plain_ext(e), "{e} は素の文字のはず");
@@ -1930,7 +1930,7 @@ mod marker_tests {
     /// **行の足し方が無かった** — 帳票は必ず行が増えるので、右パネルに
     /// 出すと同時にここで見張る
     #[gpui::test]
-    fn 表の行と列を足して消せる(cx: &mut gpui::TestAppContext) {
+    fn table_rows_and_columns_can_be_added_and_removed(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.run_cmd("instable-go", cx);
@@ -1965,7 +1965,7 @@ mod marker_tests {
 
     /// **最後の1行・1列は消せない**(消せると表が消えたように見える)
     #[gpui::test]
-    fn 表の最後の行と列は残る(cx: &mut gpui::TestAppContext) {
+    fn the_last_row_and_column_of_a_table_are_kept(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.run_cmd("instable-go", cx);
@@ -1985,7 +1985,7 @@ mod marker_tests {
     /// **ネイティブ文書は意味だけを往復する**(2026-08-16。段階C の門番)。
     /// 開く → 打つ → 保存 → 開き直す、で意味が同じこと
     #[gpui::test]
-    fn adoc_を開いて保存すると意味が往復する(cx: &mut gpui::TestAppContext) {
+    fn opening_and_saving_adoc_round_trips_the_semantics(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-adoc-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
@@ -2015,7 +2015,7 @@ mod marker_tests {
     /// **手描きの線は adoc の保存で SVG の絵になる**(2026-08-18)。
     /// 前は黙って消えていた。独自の書き方を足さず `image::` で置く
     #[gpui::test]
-    fn 筆はadocの保存でsvgになる(cx: &mut gpui::TestAppContext) {
+    fn pen_strokes_become_svg_when_saved_as_adoc(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-ink-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("筆の見本.adoc");
@@ -2052,7 +2052,7 @@ mod marker_tests {
     /// **見出し4・5 をボタンから掛けられる**(2026-08-18)。
     /// 掛けた段落は adoc で `=====` `======` になる
     #[gpui::test]
-    fn 見出し4と5を掛けて保存できる(cx: &mut gpui::TestAppContext) {
+    fn headings_four_and_five_apply_and_save(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-h45-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
@@ -2075,7 +2075,7 @@ mod marker_tests {
 
     /// 筆を絵にしても、**本文の字は1文字も変わらない**
     #[gpui::test]
-    fn 筆を絵にしても本文は変わらない(cx: &mut gpui::TestAppContext) {
+    fn turning_strokes_into_a_picture_leaves_the_text(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-ink2-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
@@ -2107,7 +2107,7 @@ mod marker_tests {
     /// 書き出しなので、原稿の保存先は adoc のままにする —
     /// docx に移ると、次の Ctrl+S が原稿ではなく docx を上書きする
     #[gpui::test]
-    fn docxの書き出しはテンプレートを通す(cx: &mut gpui::TestAppContext) {
+    fn docx_export_goes_through_the_template(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-dtmpl-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let adoc = dir.join("見本.adoc");
@@ -2147,7 +2147,7 @@ mod marker_tests {
     /// 開いた直後に「変更あり」の印が付かない(付くと、触っていないのに
     /// 保存を促されて、上書きの事故に繋がる)
     #[gpui::test]
-    fn 開いた直後は変更ありにならない(cx: &mut gpui::TestAppContext) {
+    fn a_freshly_opened_file_is_not_marked_changed(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-adoc3-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本3.adoc");
@@ -2165,7 +2165,7 @@ mod marker_tests {
     /// **ネイティブでは見た目を直に変えさせない**(2026-08-16。C-2 の門番)。
     /// 押すと名前を付ける道に入り、決めるとテンプレートへ入る
     #[gpui::test]
-    fn ネイティブでは見た目がスタイルの新設になる(cx: &mut gpui::TestAppContext) {
+    fn in_the_native_app_a_look_becomes_a_new_style(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-c2-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
@@ -2215,7 +2215,7 @@ mod marker_tests {
     /// **押したときだけ変わる**(2026-08-16。段階D の門番)。押すまで docx は
     /// docx のまま。押すとネイティブになり、見た目はテンプレートへ移る
     #[gpui::test]
-    fn adoc形式にすると本文と書式に分かれる(cx: &mut gpui::TestAppContext) {
+    fn adoc_format_separates_text_from_formatting(cx: &mut gpui::TestAppContext) {
         // **直接書式を持つ見本を選ぶ。** よく出来た docx はスタイル任せで
         // 直接書式を持たない(報告書.docx がそうだった)— この操作の効き目を
         // 見るには、泥のある物で測る
@@ -2265,7 +2265,7 @@ mod marker_tests {
     /// 「テンプレートの編集はできないと割り切ったほうがいいのでは」)。
     /// 押しても黙って何も起きない、にはしません — どのファイルを直せばよいかを言います。
     #[gpui::test]
-    fn 大きさはテンプレートで決めると言う(cx: &mut gpui::TestAppContext) {
+    fn says_the_size_comes_from_the_template(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-c3-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("テンプレート.toml"), "[スタイル.見出し1]\n大きさ = 16\n").unwrap();
@@ -2292,7 +2292,7 @@ mod marker_tests {
 
     /// 着替えは役割と名前を使い分ける — 役割で出る名前は二重に名乗らない
     #[gpui::test]
-    fn スタイルの着替えは役割と名前を使い分ける(cx: &mut gpui::TestAppContext) {
+    fn restyling_tells_role_and_name_apart(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-c3b-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
@@ -2320,7 +2320,7 @@ mod marker_tests {
     /// 前は押すたびに「名前を付けてください」と聞いていたので、同じ見た目を
     /// 使い回せず、外す方法もありませんでした。
     #[gpui::test]
-    fn ネイティブでは見た目のボタンがスタイルの一覧を開く(cx: &mut gpui::TestAppContext) {
+    fn in_the_native_app_the_look_button_opens_the_style_list(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-toggle-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
@@ -2361,7 +2361,7 @@ mod marker_tests {
     }
 
     #[gpui::test]
-    fn 選んだ字だけにスタイルが付く(cx: &mut gpui::TestAppContext) {
+    fn the_style_applies_only_to_the_selection(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-char-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
@@ -2403,7 +2403,7 @@ mod marker_tests {
     /// **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
     /// 素の字も docx も串刺しで、選んでも開かず、「読み込み」で初めて開く
     #[gpui::test]
-    fn フォルダから探して読み込む(cx: &mut gpui::TestAppContext) {
+    fn finds_and_loads_from_a_folder(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-find-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("下")).unwrap();
@@ -2443,7 +2443,7 @@ mod marker_tests {
     /// **場所は開いている文書の隣が既定**(2026-08-17)。毎回「場所を選ぶ」を
     /// 押させない
     #[gpui::test]
-    fn 探す場所は文書の隣が既定(cx: &mut gpui::TestAppContext) {
+    fn the_default_search_place_is_next_to_the_document(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-finddir-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -2462,7 +2462,7 @@ mod marker_tests {
 
     /// **docx の中身も探せる**(写真の道具は一度 txt に落としていた)
     #[gpui::test]
-    fn docx_の中身も串刺しで探せる(cx: &mut gpui::TestAppContext) {
+    fn search_reaches_inside_docx_files(cx: &mut gpui::TestAppContext) {
         let src = std::path::Path::new("../sample/カタログ.docx");
         if !src.exists() {
             eprintln!("見本の docx が無いので飛ばす");
@@ -2485,7 +2485,7 @@ mod marker_tests {
     /// **組み方の2値**(2026-08-17)。Web のテンプレート(横幅可変・区切り
     /// なし)を着せると、紙の幅で折らず1本の流れになる
     #[gpui::test]
-    fn 組み方でwebの流し組みになる(cx: &mut gpui::TestAppContext) {
+    fn the_layout_mode_switches_to_web_reflow(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-flow-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -2518,7 +2518,7 @@ mod marker_tests {
 
     /// **発表の組み方**(2026-08-17)。1節=1枚で、段落が枚を跨がない
     #[gpui::test]
-    fn 発表の組み方は節ごとに1枚になる(cx: &mut gpui::TestAppContext) {
+    fn presentation_layout_gives_one_slide_per_section(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-slide-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -2571,7 +2571,7 @@ mod marker_tests {
     /// はじめましょう」)。docx は本文と書式が混ざるので、後から機械で構造を
     /// 拾い直すことになります。
     #[gpui::test]
-    fn 新しい文書はadoc形式(cx: &mut gpui::TestAppContext) {
+    fn a_new_document_is_in_adoc_format(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             assert!(this.native, "新規が docx になっている");
@@ -2590,7 +2590,7 @@ mod marker_tests {
 
     /// 互換(docx)では今までどおり直に掛かる — 封じるのはネイティブだけ
     #[gpui::test]
-    fn 互換の文書では直接書式が今までどおり効く(cx: &mut gpui::TestAppContext) {
+    fn direct_formatting_still_works_in_a_compatibility_document(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             // 新規は adoc 形式なので、docx を開いた状態を作る
@@ -2606,7 +2606,7 @@ mod marker_tests {
     /// 発注者 2026-08-18「原則は、ディレクトリーの書式用のファイルをひとつ
     /// おく。それがテンプレート」。本文に `:template:` と書かなくても効きます。
     #[gpui::test]
-    fn フォルダの書式のファイルを使う(cx: &mut gpui::TestAppContext) {
+    fn uses_the_folders_template_file(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-folder-tmpl-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(
@@ -2631,7 +2631,7 @@ mod marker_tests {
 
     /// **名指しがあれば、そちらが勝つ。** 書いてあることが決まりより強い。
     #[gpui::test]
-    fn 名指しはフォルダの書式より強い(cx: &mut gpui::TestAppContext) {
+    fn an_explicit_name_beats_the_folder_template(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-tmpl-win-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("テンプレート.toml"), "[スタイル.見出し1]\n大きさ = 30\n").unwrap();
@@ -2652,7 +2652,7 @@ mod marker_tests {
     /// 合成は**写しの上**で行う — 紙面には見出しの大きさが乗るが、
     /// 保存される意味の側は無指定のまま
     #[gpui::test]
-    fn 合成は紙面にだけ効いて本文を汚さない(cx: &mut gpui::TestAppContext) {
+    fn composition_touches_only_the_page_not_the_text(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-adoc2-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本2.adoc");
@@ -2676,7 +2676,7 @@ mod marker_tests {
     /// テンプレートを書き替えません(2026-08-18)。押したときは、直すべき
     /// ファイルの場所を言います。
     #[gpui::test]
-    fn 配られたテンプレートは書き替えない(cx: &mut gpui::TestAppContext) {
+    fn a_distributed_template_is_never_rewritten(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-tmpl-{}", std::process::id()));
         let distributor = dir.join("配り元");
         let _ = std::fs::create_dir_all(&distributor);
@@ -2705,7 +2705,7 @@ mod marker_tests {
     /// adoc は画像を径路で指すので、径路を与えないと保存で絵が消えます
     /// (画面から挿した画像は径路を持っていません)。
     #[gpui::test]
-    fn adocで保存すると画像も隣に並ぶ(cx: &mut gpui::TestAppContext) {
+    fn saving_as_adoc_puts_the_images_alongside(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-adocimg-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
@@ -2733,7 +2733,7 @@ mod marker_tests {
     /// **目次のページ番号は紙で数える。** 画面と紙が違ってもよい形にしたので
     /// (2026-08-18)、数える所だけは紙に合わせないと嘘の目次になります。
     #[gpui::test]
-    fn 目次のページ番号は紙で数える(cx: &mut gpui::TestAppContext) {
+    fn toc_page_numbers_are_counted_on_paper(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-toc-print-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         // 画面は A4、紙は小さい(B5 の半分ほど)ので、紙のほうが枚数が増える
@@ -2771,7 +2771,7 @@ mod marker_tests {
     /// **ページの飾りはテンプレートが持てる**(2026-08-18)。
     /// ヘッダー・フッター・透かし・ページの色・縦書きを adoc の文書に付けられます。
     #[gpui::test]
-    fn テンプレートのページの飾りが効く(cx: &mut gpui::TestAppContext) {
+    fn the_templates_page_decoration_takes_effect(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-kazari-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(
@@ -2803,7 +2803,7 @@ mod marker_tests {
     /// 1枚のまま(発注者 2026-08-18「表示用、印刷用、Web用、アプリ用と複数の
     /// テンプレートを持つのも悪くないのでは」)。
     #[gpui::test]
-    fn 書き出し先ごとの書式を使う(cx: &mut gpui::TestAppContext) {
+    fn each_export_target_uses_its_own_template(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-web-tmpl-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         // 画面は紙の幅、Web は横幅可変
@@ -2837,7 +2837,7 @@ mod marker_tests {
     /// HTML は画像を相対の径路で参照するので、HTML だけ書いても絵が出ません
     /// (2026-08-17、4つの面を揃えるときに足しました)。
     #[gpui::test]
-    fn htmlに書き出すと画像も隣に並ぶ(cx: &mut gpui::TestAppContext) {
+    fn html_export_puts_the_images_alongside(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-html-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
@@ -2893,7 +2893,7 @@ mod table_formula {
 
     /// 組んだ紙面に**答えの字**が出ていること(式の字ではなく)
     #[gpui::test]
-    fn 画面に答えが出る(cx: &mut gpui::TestAppContext) {
+    fn the_answer_reaches_the_screen(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
             this.doc = doc_with_ledger();
@@ -2907,7 +2907,7 @@ mod table_formula {
 
     /// **正本は式のまま。** 画面に答えを出しても、保存される意味は変わらない
     #[gpui::test]
-    fn 正本は式のまま(cx: &mut gpui::TestAppContext) {
+    fn the_source_stays_a_formula(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
             this.doc = doc_with_ledger();
@@ -2930,7 +2930,7 @@ mod table_formula {
 /// 請求書の原稿をまとめて保存する場合につかいます」)。
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod 請求書をまとめる {
+mod bundles_the_invoices {
     use crate::*;
 
     fn three_sheets() -> String {
@@ -2940,7 +2940,7 @@ mod 請求書をまとめる {
     }
 
     #[gpui::test]
-    fn 三枚を開いて行き来できる(cx: &mut gpui::TestAppContext) {
+    fn opens_three_files_and_switches_between_them(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("jo-many-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("請求書.adoc");
@@ -2968,7 +2968,7 @@ mod 請求書をまとめる {
 
     /// **保存すると3枚とも残る。** 見ていない文書を落とさない
     #[gpui::test]
-    fn 保存で三枚とも残る(cx: &mut gpui::TestAppContext) {
+    fn saving_keeps_all_three_files(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("jo-many2-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("請求書.adoc");
@@ -2991,7 +2991,7 @@ mod 請求書をまとめる {
 
     /// 1枚だけのファイルはタブを出さない(何も選べないタブは邪魔)
     #[gpui::test]
-    fn 一枚ならタブは出ない(cx: &mut gpui::TestAppContext) {
+    fn a_single_file_shows_no_tabs(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("jo-many3-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("報告.adoc");
@@ -3010,7 +3010,7 @@ mod 請求書をまとめる {
 /// ファイルを開くことができるようにして」)。
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod ファイルを何枚も開く {
+mod opens_several_files {
     use crate::*;
 
     /// 試験ごとに**別のフォルダ**を作ります。同じ名前にすると、片方の
@@ -3026,7 +3026,7 @@ mod ファイルを何枚も開く {
     }
 
     #[gpui::test]
-    fn 二枚開いて行き来できる(cx: &mut gpui::TestAppContext) {
+    fn opens_two_files_and_switches_between_them(cx: &mut gpui::TestAppContext) {
         let dir = place("go");
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
@@ -3050,7 +3050,7 @@ mod ファイルを何枚も開く {
 
     /// **同じファイルを二重に開かない。** どちらを保存したのか分からなくなる
     #[gpui::test]
-    fn 同じファイルは二重に開かない(cx: &mut gpui::TestAppContext) {
+    fn the_same_file_is_not_opened_twice(cx: &mut gpui::TestAppContext) {
         let dir = place("nijuu");
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
@@ -3065,7 +3065,7 @@ mod ファイルを何枚も開く {
 
     /// **書きかけのタブは閉じない。** 黙って捨てない
     #[gpui::test]
-    fn 書きかけのタブは閉じない(cx: &mut gpui::TestAppContext) {
+    fn a_tab_with_unsaved_work_does_not_close(cx: &mut gpui::TestAppContext) {
         let dir = place("kakikake");
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
@@ -3085,7 +3085,7 @@ mod ファイルを何枚も開く {
 
     /// タブごとに**別の書きかけの印**を持つ
     #[gpui::test]
-    fn 書きかけの印はタブごと(cx: &mut gpui::TestAppContext) {
+    fn the_unsaved_mark_is_per_tab(cx: &mut gpui::TestAppContext) {
         let dir = place("shirushi");
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
@@ -3106,7 +3106,7 @@ mod file_menu_tests {
 
     /// **いま押せるかが、状況で変わる**(2026-08-21 の B-5)。表の同じ試験と対。
     #[gpui::test]
-    fn 押せるかは状況で変わる(cx: &mut gpui::TestAppContext) {
+    fn the_enabled_state_depends_on_the_situation(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             // 目次を入れていなければ「目次の更新」は押せない
@@ -3122,7 +3122,7 @@ mod file_menu_tests {
 
     /// **並びと押せるかを縛る**(統合の段8 の1)。calc の同じ試験と対。
     #[gpui::test]
-    fn ファイルの項目の並びと押せるかが変わらない(cx: &mut gpui::TestAppContext) {
+    fn the_file_menu_order_and_enabled_state_are_unchanged(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             let items = this.file_menu();
@@ -3153,7 +3153,7 @@ mod file_menu_tests {
     /// **17 個は表の画面と同じ id。** ここがずれると officework が
     /// 1枚のページを描けない(段8 の2)
     #[gpui::test]
-    fn 共通の項目は表と同じ番号(cx: &mut gpui::TestAppContext) {
+    fn shared_items_use_the_same_ids_as_the_sheet_app(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             let prose: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();
@@ -3166,7 +3166,7 @@ mod file_menu_tests {
     }
 
     #[gpui::test]
-    fn 出している面の項目に印が付く(cx: &mut gpui::TestAppContext) {
+    fn the_item_for_the_visible_pane_is_marked(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.file_menu_click("f-recent", cx);
@@ -3185,7 +3185,7 @@ mod autocorrect_tests {
     /// ようにしたいです」)。仕掛けは前から `ui::handler` の共通の物で、
     /// 表だけが名乗り出ていた
     #[gpui::test]
-    fn 本文で綴りが記号に替わる(cx: &mut gpui::TestAppContext) {
+    fn spelling_is_replaced_by_the_symbol_in_the_body(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             assert!(this.autocorrect, "既定で入になっていない");
@@ -3196,7 +3196,7 @@ mod autocorrect_tests {
     /// **掛けない所**。検索の欄で替わると探せなくなり、数式の小窓で替わると
     /// TeX の綴りが壊れる
     #[gpui::test]
-    fn 探す欄と数式の小窓では掛からない(cx: &mut gpui::TestAppContext) {
+    fn shortcuts_do_not_fire_in_the_search_box_or_equation_dialog(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             this.find_open = true;
@@ -3217,7 +3217,7 @@ mod autocorrect_tests {
     /// 決まるので、`ui` の中で見ても**アプリの試験中は偽**になり、
     /// 本物の `settings.toml` を書き換えてしまう(2026-08-20 に実際にやった)
     #[gpui::test]
-    fn 明暗は表と同じ器を見る(cx: &mut gpui::TestAppContext) {
+    fn light_and_dark_read_the_same_container_as_the_sheet_app(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             assert_eq!(this.dark, ui::dark_at_start(), "起動のときに器を見ていない");
@@ -3235,7 +3235,7 @@ mod autocorrect_tests {
     /// 書き換えます**(2026-08-20 に実際にやった)。ここでは
     /// 「読む側が表と同じ綴りを見ている」ことだけを確かめます
     #[gpui::test]
-    fn 器は表と同じ綴り(cx: &mut gpui::TestAppContext) {
+    fn the_container_uses_the_same_layout_as_the_sheet_app(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             // 設定が無いときの既定は「入」(表と同じ)
@@ -3259,7 +3259,7 @@ mod docx_formula_tests {
     /// 確かめ方はメモのとおり2つ — docx 側が値であること、`.adoc` の正本は
     /// 式のままであること。
     #[gpui::test]
-    fn 式は値で出て正本は式のまま(cx: &mut gpui::TestAppContext) {
+    fn a_formula_shows_its_value_while_the_source_stays_a_formula(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             // 2 と 3 の表に =SUM(A1:B1)
@@ -3302,7 +3302,7 @@ mod docx_formula_tests {
 
     /// 式が無ければ写しも作らない(倹約)。触っていないことを字で見る
     #[gpui::test]
-    fn 式が無ければ表を触らない(cx: &mut gpui::TestAppContext) {
+    fn no_formula_means_the_table_is_left_alone(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             let cell = |x: &str| kumihan::Cellbox {
@@ -3325,7 +3325,7 @@ mod docx_formula_tests {
     ///
     /// 前は 64 個の組を一覧に並べていました。4×6 を出すのに 64 個から
     /// 目で探すことになり、使えませんでした。
-    fn 表は行数と列数を打って挿す(cx: &mut gpui::TestAppContext) {
+    fn a_table_is_inserted_by_typing_rows_and_columns(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             // 押すと欄が出るだけ。**まだ表は入りません**
@@ -3373,7 +3373,7 @@ mod docx_formula_tests {
     /// 前は西暦の1つだけを固定で挿していました。事務の様式は和暦で書く
     /// ものが多く、毎回打ち直すことになっていました。
     /// **自動更新は作りません** — 入るのは固定の字です。
-    fn 日付は形式を選んで入る(cx: &mut gpui::TestAppContext) {
+    fn a_date_is_inserted_in_the_chosen_format(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.run_cmd("datetime", cx);
@@ -3395,7 +3395,7 @@ mod docx_formula_tests {
 
     /// 和暦の境目。**改元の日から新しい元号**になります
     #[test]
-    fn 和暦は改元の日で変わる() {
+    fn the_japanese_era_changes_on_the_era_start_date() {
         use crate::cmds::wareki;
         assert_eq!(wareki(2026, 8, 25), Some(("令和", "R", 8)));
         assert_eq!(wareki(2019, 5, 1), Some(("令和", "R", 1)), "改元の当日は令和");

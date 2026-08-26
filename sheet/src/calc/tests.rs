@@ -27,7 +27,7 @@ mod basic {
     }
 
     #[test]
-    fn 四則と括弧() {
+    fn arithmetic_and_parentheses() {
         let sh = s(&[("A1", "=1+2*3"), ("A2", "=(1+2)*3"), ("A3", "=10/4"),
                      ("A4", "=2^10"), ("A5", "=-3+1")]);
         assert_eq!(v(&sh, "A1"), "7");
@@ -38,7 +38,7 @@ mod basic {
     }
 
     #[test]
-    fn セル参照と連鎖が解ける() {
+    fn cell_references_and_chains_resolve() {
         // 定義の順序が逆でも解ける(依存を先に解く)
         let sh = s(&[("C1", "=B1*2"), ("B1", "=A1+10"), ("A1", "5")]);
         assert_eq!(v(&sh, "B1"), "15");
@@ -46,7 +46,7 @@ mod basic {
     }
 
     #[test]
-    fn 範囲と関数() {
+    fn ranges_and_functions() {
         let sh = s(&[("A1", "10"), ("A2", "20"), ("A3", "30"), ("A4", "文字"),
                      ("B1", "=SUM(A1:A3)"), ("B2", "=AVERAGE(A1:A3)"),
                      ("B3", "=COUNT(A1:A4)"), ("B4", "=COUNTA(A1:A4)"),
@@ -60,7 +60,7 @@ mod basic {
     }
 
     #[test]
-    fn 外した検索をiferrorで受けられる() {
+    fn a_missed_lookup_can_be_caught_by_iferror() {
         // 実測で出た形: 見つからない VLOOKUP を IFERROR・IF で受ける
         let sh = s(&[
             ("A2", "りんご"), ("B2", "100"),
@@ -75,7 +75,7 @@ mod basic {
     }
 
     #[test]
-    fn 見積書の計算ができる() {
+    fn a_quotation_calculates() {
         // 事務で実際に使う形: 単価×数量、小計、消費税、合計
         let sh = s(&[
             ("A1", "ザボガードF F-02"), ("B1", "4"), ("C1", "125000"), ("D1", "=B1*C1"),
@@ -92,7 +92,7 @@ mod basic {
     }
 
     #[test]
-    fn 条件と文字列() {
+    fn conditions_and_strings() {
         let sh = s(&[("A1", "12"), ("B1", "=IF(A1>10,\"超過\",\"適正\")"),
                      ("B2", "=IF(A1>100,\"超過\",\"適正\")"),
                      ("B3", "=\"H\"&A1&\"まで\""),
@@ -106,13 +106,13 @@ mod basic {
     }
 
     #[test]
-    fn ゼロ除算はエラーになる() {
+    fn division_by_zero_is_an_error() {
         let sh = s(&[("A1", "0"), ("B1", "=10/A1")]);
         assert_eq!(v(&sh, "B1"), "#DIV/0!", "黙って0を返さない");
     }
 
     #[test]
-    fn 文字が計算に混じったらVALUEを返す() {
+    fn text_mixed_into_arithmetic_gives_a_value_error() {
         // **0 として続けない。** 文字の混じった列の合計が「それらしい数」に
         // なるのが一番困る(2026-08-10 に ironcalc と突き合わせて判明 —
         // ="あ"+1 が 1 になっていた)
@@ -123,7 +123,7 @@ mod basic {
     }
 
     #[test]
-    fn 型の誤りは零除算より先に立つ() {
+    fn a_type_error_beats_a_division_by_zero() {
         // Excel も ="あ"/0 は #VALUE!。#DIV/0! ではない
         let sh = s(&[("A1", "=\"あ\"/0"), ("A2", "=5/0")]);
         assert_eq!(v(&sh, "A1"), "#VALUE!");
@@ -131,7 +131,7 @@ mod basic {
     }
 
     #[test]
-    fn 数字だけの文字と真偽は数として読む() {
+    fn numeric_text_and_booleans_read_as_numbers() {
         // ="5"+1 は 6(Excel も同じ)。真偽は 1/0。& は連結なので数にしない
         let sh = s(&[("A1", "=\"5\"+1"), ("A2", "=TRUE+1"), ("A3", "=\"あ\"&1")]);
         assert_eq!(v(&sh, "A1"), "6");
@@ -140,7 +140,7 @@ mod basic {
     }
 
     #[test]
-    fn 集計は文字を飛ばす_四則と取り方が違う() {
+    fn aggregation_skips_text_unlike_plain_arithmetic() {
         // **混ぜてはいけない2つの数の取り方。** SUM は飛ばし、四則は断る
         let sh = s(&[("A1", "=SUM(1,\"あ\",2)")]);
         assert_eq!(v(&sh, "A1"), "3");
@@ -148,7 +148,7 @@ mod basic {
 
 
     #[test]
-    fn 反復計算は循環を収束させる() {
+    fn iterative_calculation_converges_a_cycle() {
         // A1 = A1/2 + 1 の不動点は 2。反復なしなら #CIRC!
         let mut b = crate::Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("=A1/2+1"));
@@ -171,21 +171,21 @@ mod basic {
     }
 
     #[test]
-    fn 循環参照は検出される() {
+    fn circular_references_are_detected() {
         let sh = s(&[("A1", "=B1+1"), ("B1", "=A1+1")]);
         assert!(v(&sh, "A1").contains("CIRC") || v(&sh, "B1").contains("CIRC"),
             "循環を検出していない: A1={} B1={}", v(&sh, "A1"), v(&sh, "B1"));
     }
 
     #[test]
-    fn 知らない関数は名前エラー() {
+    fn an_unknown_function_is_a_name_error() {
         // XLOOKUP も実装済みになった(2026-08-05)ので、本当に無い名前で確かめる
         let sh = s(&[("A1", "=NAINAMAE(1,B1:C9,2)")]);
         assert_eq!(v(&sh, "A1"), "#NAME?", "できないものはできないと言う");
     }
 
     #[test]
-    fn 壊れた式でも落ちない() {
+    fn a_broken_formula_does_not_panic() {
         for f in ["=1+", "=(1+2", "=SUM(", "=@#$", "=A1+"] {
             let sh = s(&[("A1", "1"), ("Z9", f)]);
             let got = v(&sh, "Z9");
@@ -219,7 +219,7 @@ mod more_fn_tests {
     }
 
     #[test]
-    fn 切り捨てと切り上げ() {
+    fn rounding_down_and_up() {
         assert!((n("=ROUNDDOWN(3.567,2)") - 3.56).abs() < 1e-9);
         assert!((n("=ROUNDUP(3.501,1)") - 3.6).abs() < 1e-9);
         // 負の数で符号が入れ替わらない
@@ -228,20 +228,20 @@ mod more_fn_tests {
     }
 
     #[test]
-    fn 剰余は0で割れない() {
+    fn the_modulus_cannot_divide_by_zero() {
         // 黙って0を返すと、集計が静かに狂う
         assert_eq!(eval("=MOD(10,0)", &[]), Value::Error("#DIV/0!".into()));
         assert!((n("=MOD(10,3)") - 1.0).abs() < 1e-9);
     }
 
     #[test]
-    fn 負の数の平方根はエラー() {
+    fn the_square_root_of_a_negative_is_an_error() {
         assert_eq!(eval("=SQRT(-1)", &[]), Value::Error("#NUM!".into()));
         assert!((n("=SQRT(9)") - 3.0).abs() < 1e-9);
     }
 
     #[test]
-    fn 条件つきの合計() {
+    fn conditional_sums() {
         let d = [("A1", 100.0), ("A2", 200.0), ("A3", 50.0)];
         assert!((match eval("=SUMIF(A1:A3,\">80\")", &d) {
             Value::Number(x) => x, v => panic!("{v:?}") } - 300.0).abs() < 1e-9);
@@ -250,7 +250,7 @@ mod more_fn_tests {
     }
 
     #[test]
-    fn 文字を切り出せる() {
+    fn text_can_be_sliced() {
         // 日本語は文字数で数える(バイトではない)
         assert_eq!(eval("=LEFT(\"日本フネン\",2)", &[]), Value::Text("日本".into()));
         assert_eq!(eval("=RIGHT(\"日本フネン\",3)", &[]), Value::Text("フネン".into()));
@@ -259,13 +259,13 @@ mod more_fn_tests {
     }
 
     #[test]
-    fn 空とエラーを見分けられる() {
+    fn blanks_and_errors_can_be_told_apart() {
         assert_eq!(eval("=ISBLANK(A9)", &[]), Value::Bool(true));
         assert_eq!(eval("=ISBLANK(A1)", &[("A1", 5.0)]), Value::Bool(false));
     }
 
     #[test]
-    fn エラーを受けて働く関数() {
+    fn functions_that_take_an_error() {
         // IFERROR は第1引数のエラーを捕まえて第2引数に落ちる
         // (以前は引数の先行エラー弾きで #N/A が素通りしていた)
         assert_eq!(eval("=IFERROR(MOD(1,0),\"×\")", &[]), Value::Text("×".into()));
@@ -282,13 +282,13 @@ mod more_fn_tests {
     }
 
     #[test]
-    fn 積と累乗() {
+    fn products_and_powers() {
         assert!((n("=PRODUCT(2,3,4)") - 24.0).abs() < 1e-9);
         assert!((n("=POWER(2,10)") - 1024.0).abs() < 1e-9);
     }
 
     #[test]
-    fn 文字の整形() {
+    fn text_formatting() {
         assert_eq!(eval("=TRIM(\"  余白  \")", &[]), Value::Text("余白".into()));
         assert_eq!(eval("=UPPER(\"abc\")", &[]), Value::Text("ABC".into()));
     }
@@ -300,7 +300,7 @@ mod name_tests {
     use crate::model::Cell;
 
     #[test]
-    fn 名前が式で使える() {
+    fn a_name_can_be_used_in_a_formula() {
         let mut s = Sheet::new("表");
         s.set(Pos::parse("A1").unwrap(), Cell::input("100"));
         s.set(Pos::parse("B1").unwrap(), Cell::input("=単価*2"));
@@ -311,7 +311,7 @@ mod name_tests {
     }
 
     #[test]
-    fn 範囲の名前がsumで使える() {
+    fn a_range_name_works_in_sum() {
         let mut s = Sheet::new("表");
         for (r, v) in [(0, "10"), (1, "20"), (2, "30")] {
             s.set(Pos::new(r, 0), Cell::input(v));
@@ -323,7 +323,7 @@ mod name_tests {
     }
 
     #[test]
-    fn 名前の途中一致では置き換えない() {
+    fn a_partial_name_match_does_not_substitute() {
         assert_eq!(expand_names("単価計*2", &[crate::model::DefinedName::new("単価", "A1")]),
             "単価計*2", "「単価計」の頭だけ置き換えた");
         assert_eq!(expand_names("\"単価\"&A1", &[crate::model::DefinedName::new("単価", "B9")]),
@@ -355,7 +355,7 @@ mod fn_ext_tests {
     }
 
     #[test]
-    fn vlookupで表が引ける() {
+    fn vlookup_looks_up_a_table() {
         let mut s = sheet_with(&[
             ("A1", "甲"), ("B1", "100"),
             ("A2", "乙"), ("B2", "200"),
@@ -370,7 +370,7 @@ mod fn_ext_tests {
     }
 
     #[test]
-    fn indexとmatchが組で使える() {
+    fn index_and_match_work_as_a_pair() {
         let mut s = sheet_with(&[
             ("A1", "品"), ("B1", "数"),
             ("A2", "筆"), ("B2", "12"),
@@ -386,7 +386,7 @@ mod fn_ext_tests {
     }
 
     #[test]
-    fn 日付の通し番号が暦と往復する() {
+    fn the_date_serial_round_trips_with_the_calendar() {
         let mut s = sheet_with(&[]);
         // 2026-08-04 の通し番号(1899-12-30 起点)
         let serial = match value_of(&mut s, "=DATE(2026,8,4)") {
@@ -403,7 +403,7 @@ mod fn_ext_tests {
     }
 
     #[test]
-    fn 財務の式が教科書の値になる() {
+    fn financial_formulas_match_the_textbook_values() {
         let mut s = sheet_with(&[]);
         // 年利12%を月利1%、60回、100万円借入 → 月々の返済(教科書値 -22244.45…)
         let pmt = match value_of(&mut s, "=PMT(0.01,60,1000000)") {
@@ -457,7 +457,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn 条件が複数の集計() {
+    fn aggregation_with_several_conditions() {
         // 台帳: 品名・区分・金額
         let mut s = sheet_with(&[
             ("A1", "筆"), ("B1", "文具"), ("C1", "100"),
@@ -480,7 +480,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn 三つ引数のsumifは足す範囲を分けられる() {
+    fn three_argument_sumif_can_use_a_separate_sum_range() {
         // =SUMIF(条件範囲, 条件, 合計範囲) — Excel で最も多い書き方。
         // 条件は B 列で見て、足すのは C 列
         let mut s = sheet_with(&[
@@ -502,7 +502,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn sumproductで掛けて足す() {
+    fn sumproduct_multiplies_and_adds() {
         let mut s = sheet_with(&[
             ("A1", "4"), ("B1", "100"),
             ("A2", "2"), ("B2", "250"),
@@ -516,7 +516,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn ifsとswitchとchoose() {
+    fn ifs_switch_and_choose() {
         let mut s = sheet_with(&[("A1", "85")]);
         assert_eq!(
             t(&mut s, "=IFS(A1>=90,\"秀\",A1>=80,\"優\",TRUE,\"可\")"),
@@ -539,7 +539,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn xlookupは完全一致で引く() {
+    fn xlookup_looks_up_by_exact_match() {
         let mut s = sheet_with(&[
             ("A1", "F-01"), ("B1", "防火戸"),
             ("A2", "F-02"), ("B2", "防火ダンパー"),
@@ -553,7 +553,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn 日付の計算が暦どおり() {
+    fn date_arithmetic_follows_the_calendar() {
         let mut s = sheet_with(&[]);
         // 2026-08-05 から: 月末・翌月・月をまたぐ日の丸め
         assert_eq!(
@@ -593,7 +593,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn 営業日の計算() {
+    fn working_day_arithmetic() {
         let mut s = sheet_with(&[]);
         // 2026-08-05 は水曜。3営業日後は月曜(8/10)
         assert_eq!(
@@ -613,7 +613,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn 文字列の道具() {
+    fn string_tools() {
         let mut s = sheet_with(&[]);
         assert_eq!(t(&mut s, "=SUBSTITUTE(\"防火戸の戸\",\"戸\",\"扉\")"), "防火扉の扉");
         assert_eq!(t(&mut s, "=SUBSTITUTE(\"防火戸の戸\",\"戸\",\"扉\",2)"), "防火戸の扉");
@@ -634,7 +634,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn textが表示形式で描く() {
+    fn text_renders_through_a_number_format() {
         let mut s = sheet_with(&[]);
         assert_eq!(t(&mut s, "=TEXT(DATE(2026,8,5),\"yyyy/m/d\")"), "2026/8/5");
         assert_eq!(t(&mut s, "=TEXT(DATE(2026,8,5),\"yyyy年m月d日\")"), "2026年8月5日");
@@ -647,7 +647,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn 位置を答える関数() {
+    fn functions_that_answer_a_position() {
         let mut s = sheet_with(&[("B2", "9")]);
         // Z99 で計算しているので、引数なしは自分の位置
         assert_eq!(n(&mut s, "=ROW()"), 99.0);
@@ -659,7 +659,7 @@ mod dan1_tests {
     }
 
     #[test]
-    fn 順位と大きい順() {
+    fn rank_and_largest_first() {
         let mut s = sheet_with(&[
             ("A1", "70"), ("A2", "90"), ("A3", "80"), ("A4", "90"),
         ]);
@@ -704,7 +704,7 @@ mod dan2_tests {
     }
 
     #[test]
-    fn 成績処理の統計() {
+    fn statistics_for_grading() {
         let mut s = sheet_with(&[
             ("A1", "70"), ("A2", "80"), ("A3", "80"), ("A4", "90"), ("A5", "100"),
         ]);
@@ -734,7 +734,7 @@ mod dan2_tests {
     }
 
     #[test]
-    fn 相関と回帰() {
+    fn correlation_and_regression() {
         // y = 2x + 1 きっかり(相関1・傾き2・切片1)
         let mut s = sheet_with(&[
             ("A1", "1"), ("B1", "3"),
@@ -753,7 +753,7 @@ mod dan2_tests {
     }
 
     #[test]
-    fn 組合せと整数論() {
+    fn combinatorics_and_number_theory() {
         let mut s = sheet_with(&[]);
         assert_eq!(n(&mut s, "=FACT(5)"), 120.0);
         assert_eq!(n(&mut s, "=COMBIN(10,3)"), 120.0);
@@ -764,7 +764,7 @@ mod dan2_tests {
     }
 
     #[test]
-    fn 三角と対数() {
+    fn trigonometry_and_logarithms() {
         let mut s = sheet_with(&[]);
         assert!((n(&mut s, "=SIN(PI()/2)") - 1.0).abs() < 1e-12);
         assert!((n(&mut s, "=COS(0)") - 1.0).abs() < 1e-12);
@@ -784,7 +784,7 @@ mod dan2_tests {
     }
 
     #[test]
-    fn 丸めの一族() {
+    fn the_rounding_family() {
         let mut s = sheet_with(&[]);
         assert_eq!(n(&mut s, "=CEILING(6.1,2)"), 8.0);
         assert_eq!(n(&mut s, "=FLOOR(6.9,2)"), 6.0);
@@ -804,7 +804,7 @@ mod dan2_tests {
     }
 
     #[test]
-    fn 乱数は範囲に収まる() {
+    fn random_numbers_stay_in_range() {
         let mut s = sheet_with(&[]);
         for _ in 0..20 {
             let r = n(&mut s, "=RAND()");
@@ -816,7 +816,7 @@ mod dan2_tests {
     }
 
     #[test]
-    fn 情報関数() {
+    fn information_functions() {
         let mut s = sheet_with(&[("A1", "9"), ("A2", "文字")]);
         assert_eq!(value_of(&mut s, "=ISNUMBER(A1)"), Value::Bool(true));
         assert_eq!(value_of(&mut s, "=ISNUMBER(A2)"), Value::Bool(false));
@@ -847,7 +847,7 @@ mod dan3_tests {
     }
 
     #[test]
-    fn offsetは参照をずらす() {
+    fn offset_shifts_a_reference() {
         let mut s = sheet_with(&[
             ("A1", "10"), ("B1", "20"),
             ("A2", "30"), ("B2", "40"),
@@ -866,7 +866,7 @@ mod dan3_tests {
     }
 
     #[test]
-    fn indirectは文字列の参照を解く() {
+    fn indirect_resolves_a_reference_from_text() {
         let mut s = sheet_with(&[
             ("B2", "99"),
             ("C1", "2"),
@@ -886,7 +886,7 @@ mod dan3_tests {
     }
 
     #[test]
-    fn 間接参照の先が式でも追いつく() {
+    fn indirection_keeps_up_when_the_target_is_a_formula() {
         // A1 は B1 を間接参照、B1 は C1 の式 — 依存が読めないので複数周で収束
         let mut s = sheet_with(&[
             ("A1", "=INDIRECT(\"B1\")"),
@@ -898,7 +898,7 @@ mod dan3_tests {
     }
 
     #[test]
-    fn sequenceがあふれて広がる() {
+    fn sequence_spills() {
         let mut s = sheet_with(&[("A1", "=SEQUENCE(3,2)")]);
         recalc(&mut s);
         for (a1, n) in [("A1", 1.0), ("B1", 2.0), ("A2", 3.0), ("B2", 4.0),
@@ -916,7 +916,7 @@ mod dan3_tests {
     }
 
     #[test]
-    fn 先客がいればあふれない() {
+    fn an_occupied_cell_blocks_the_spill() {
         let mut s = sheet_with(&[
             ("A1", "=SEQUENCE(3,1)"),
             ("A3", "既にある"),
@@ -934,7 +934,7 @@ mod dan3_tests {
     }
 
     #[test]
-    fn filterとsortとunique() {
+    fn filter_sort_and_unique() {
         let mut s = sheet_with(&[
             ("A1", "筆"), ("B1", "100"), ("C1", "1"),
             ("A2", "紙"), ("B2", "300"), ("C2", "0"),
@@ -962,7 +962,7 @@ mod dan3_tests {
     }
 
     #[test]
-    fn spillの記録がxlsxを往復する() {
+    fn the_spill_record_round_trips_through_xlsx() {
         let mut book = crate::Book::new();
         book.sheets[0] = sheet_with(&[("A1", "=SEQUENCE(3,1)"), ("C1", "=SUM(A1:A3)")]);
         book.sheets[0].name = "Sheet1".into();
@@ -982,7 +982,7 @@ mod dan3_tests {
     }
 
     #[test]
-    fn 演算子と組み合わせた配列数式もあふれる() {
+    fn an_array_formula_combined_with_operators_spills_too() {
         // 2026-08-05 まで #配列単独 と断っていた形。要素ごとに計算して広がる
         let mut s = sheet_with(&[("A1", "=SEQUENCE(3,1)+1")]);
         recalc(&mut s);
@@ -1027,7 +1027,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn subtotalはフィルターの定番() {
+    fn subtotal_is_the_filter_staple() {
         let mut s = sheet_with(&[
             ("A1", "10"), ("A2", "20"), ("A3", "30"), ("A4", "文字"),
         ]);
@@ -1041,7 +1041,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn 新名と選択の関数() {
+    fn renamed_and_selection_functions() {
         let mut s = sheet_with(&[("A1", "70"), ("A2", "90"), ("A3", "90")]);
         assert_eq!(t(&mut s, "=CONCAT(\"防火\",\"戸\")"), "防火戸");
         assert_eq!(t(&mut s, "=IFNA(NA(),\"無し\")"), "無し");
@@ -1055,7 +1055,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn 新しい丸めと商() {
+    fn the_new_rounding_and_quotient() {
         let mut s = sheet_with(&[]);
         assert_eq!(n(&mut s, "=CEILING.MATH(6.1)"), 7.0, "基準の既定は1");
         assert_eq!(n(&mut s, "=CEILING.MATH(-6.1,2)"), -6.0, "負は0へ寄るのが既定");
@@ -1066,7 +1066,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn 古典のlookupとtranspose() {
+    fn the_classic_lookup_and_transpose() {
         let mut s = sheet_with(&[
             ("A1", "10"), ("B1", "甲"),
             ("A2", "20"), ("B2", "乙"),
@@ -1085,7 +1085,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn 日付の週と日数() {
+    fn date_weeks_and_day_counts() {
         let mut s = sheet_with(&[]);
         assert_eq!(n(&mut s, "=DAYS(DATE(2026,8,5),DATE(2026,8,1))"), 4.0);
         assert_eq!(n(&mut s, "=DAYS360(DATE(2026,1,31),DATE(2026,3,1))"), 31.0,
@@ -1100,7 +1100,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn 財務の反復解() {
+    fn the_iterative_financial_solution() {
         let mut s = sheet_with(&[
             ("A1", "-1000"), ("A2", "500"), ("A3", "500"), ("A4", "500"),
         ]);
@@ -1115,7 +1115,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn 文字の道具の残り() {
+    fn the_rest_of_the_text_tools() {
         let mut s = sheet_with(&[]);
         assert_eq!(t(&mut s, "=PROPER(\"hello world\")"), "Hello World");
         assert_eq!(value_of(&mut s, "=EXACT(\"Abc\",\"abc\")"), Value::Bool(false));
@@ -1135,7 +1135,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn バイト数の一族は全角を2と数える() {
+    fn the_byte_length_family_counts_full_width_as_two() {
         let mut s = sheet_with(&[]);
         assert_eq!(n(&mut s, "=LENB(\"防火戸\")"), 6.0);
         assert_eq!(n(&mut s, "=LENB(\"abc\")"), 3.0);
@@ -1147,7 +1147,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn 全角半角の変換() {
+    fn full_width_and_half_width_conversion() {
         let mut s = sheet_with(&[]);
         assert_eq!(t(&mut s, "=ASC(\"ＡＢＣ１２３\")"), "ABC123");
         assert_eq!(t(&mut s, "=ASC(\"カタカナ\")"), "ｶﾀｶﾅ");
@@ -1159,7 +1159,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn 和暦の文字() {
+    fn japanese_era_text() {
         let mut s = sheet_with(&[]);
         assert_eq!(t(&mut s, "=DATESTRING(DATE(2026,8,5))"), "令和08年08月05日");
         assert_eq!(t(&mut s, "=DATESTRING(DATE(1989,1,7))"), "昭和64年01月07日",
@@ -1169,7 +1169,7 @@ mod dan4_tests {
     }
 
     #[test]
-    fn aつきの統計は文字を0と数える() {
+    fn the_a_suffixed_stats_count_text_as_zero() {
         let mut s = sheet_with(&[("A1", "10"), ("A2", "文字"), ("A3", "20")]);
         assert_eq!(n(&mut s, "=AVERAGEA(A1:A3)"), 10.0, "(10+0+20)/3");
         assert_eq!(n(&mut s, "=MAXA(A1:A3)"), 20.0);
@@ -1206,7 +1206,7 @@ mod dan5_tests {
     }
 
     #[test]
-    fn 和暦の表示形式() {
+    fn the_japanese_era_number_format() {
         let mut s = sheet_with(&[]);
         assert_eq!(t(&mut s, "=TEXT(DATE(2026,8,5),\"ggge年m月d日\")"), "令和8年8月5日");
         assert_eq!(t(&mut s, "=TEXT(DATE(2026,8,5),\"gge\")"), "令8");
@@ -1216,7 +1216,7 @@ mod dan5_tests {
     }
 
     #[test]
-    fn 配列を式の中に混ぜられる() {
+    fn arrays_can_be_mixed_into_a_formula() {
         let mut s = sheet_with(&[
             ("A1", "10"), ("B1", "1"),
             ("A2", "20"), ("B2", "0"),
@@ -1231,7 +1231,7 @@ mod dan5_tests {
     }
 
     #[test]
-    fn ふりがなが読めて往復する() {
+    fn furigana_reads_and_round_trips() {
         let mut book = crate::Book::new();
         book.sheets[0] = sheet_with(&[("A1", "日本"), ("A2", "ふりがな無し")]);
         book.sheets[0].name = "Sheet1".into();
@@ -1252,7 +1252,7 @@ mod dan5_tests {
     }
 
     #[test]
-    fn 別のシートへの間接参照() {
+    fn an_indirect_reference_to_another_sheet() {
         let mut book = crate::Book::new();
         book.sheets[0] = sheet_with(&[("A1", "=INDIRECT(\"台帳!B2\")"),
             ("A2", "=SUM(INDIRECT(\"台帳!B1:B3\"))"),
@@ -1273,7 +1273,7 @@ mod dan5_tests {
     }
 
     #[test]
-    fn 別のシートを間接参照する三つ引数のsumif() {
+    fn three_argument_sumif_indirecting_to_another_sheet() {
         // 実物の xlsx で出た形。条件範囲と合計範囲が別々に INDIRECT で来る
         let mut book = crate::Book::new();
         book.sheets[0] =
@@ -1314,7 +1314,7 @@ mod dan6_tests {
     }
 
     #[test]
-    fn 要素ごとの四則と文字連結() {
+    fn element_wise_arithmetic_and_concatenation() {
         let mut s = sheet_with(&[
             ("A1", "10"), ("A2", "20"), ("A3", "30"),
             ("C1", "=SEQUENCE(3,1)*10+A1:A3"),
@@ -1334,7 +1334,7 @@ mod dan6_tests {
     /// そのため `=0.1+0.2=0.3` も `=(0.1+0.2)>0.3` も真という、同時には
     /// 成り立たないはずの答えが出ていました。
     #[test]
-    fn 等しいなら大きくも小さくもない() {
+    fn equal_means_neither_greater_nor_less() {
         let mut s = sheet_with(&[
             ("A1", "=0.1+0.2=0.3"),
             ("A2", "=(0.1+0.2)>0.3"),
@@ -1355,7 +1355,7 @@ mod dan6_tests {
     /// **甘さは相対**(2026-08-22)。前は差に `f64::EPSILON` を
     /// そのまま当てていたので、小さい数では甘すぎました。
     #[test]
-    fn 小さい数でも大きい数でも同じだけ甘い() {
+    fn the_tolerance_is_the_same_for_small_and_large_numbers() {
         let mut s = sheet_with(&[
             // 9倍違う。**前はこれが真でした**
             ("A1", "=0.000000000000000001=0.000000000000000009"),
@@ -1380,7 +1380,7 @@ mod dan6_tests {
     }
 
     #[test]
-    fn 比較と括弧() {
+    fn comparison_and_parentheses() {
         let mut s = sheet_with(&[
             ("A1", "=SEQUENCE(3,1)>=2"),
             ("C1", "=(SEQUENCE(2,1)+1)*2"),
@@ -1394,7 +1394,7 @@ mod dan6_tests {
     }
 
     #[test]
-    fn 形が合わない要素はエラーになる() {
+    fn mismatched_shapes_give_an_error() {
         // {1;2;3} + {1;2} → 3行目は #N/A(Excel の配列数式と同じ)
         let mut s = sheet_with(&[("A1", "=SEQUENCE(3,1)+SEQUENCE(2,1)")]);
         recalc(&mut s);
@@ -1404,7 +1404,7 @@ mod dan6_tests {
     }
 
     #[test]
-    fn 引数の中でも要素ごとに計算できる() {
+    fn element_wise_calculation_works_inside_arguments() {
         let mut s = sheet_with(&[
             ("A1", "1"), ("A2", "2"), ("A3", "3"),
             ("C1", "=SUM(SEQUENCE(3,1)*2)"),
@@ -1418,7 +1418,7 @@ mod dan6_tests {
     }
 
     #[test]
-    fn 集計に落ちれば1つの値のまま() {
+    fn falling_back_to_an_aggregate_keeps_a_single_value() {
         let mut s = sheet_with(&[("A1", "=SUM(SEQUENCE(3,1))+1"), ("B1", "9")]);
         recalc(&mut s);
         assert_eq!(v(&s, "A1"), Value::Number(7.0));
@@ -1433,7 +1433,7 @@ mod py_cell_tests {
     use crate::model::Cell;
 
     #[test]
-    fn pyセルは再計算で実行されず値を保つ() {
+    fn a_py_cell_keeps_its_value_and_is_not_rerun() {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::parse("A1").unwrap(), Cell::input("10"));
         let mut py = Cell::input("=PY(\"倍\",A1)");
@@ -1454,7 +1454,7 @@ mod py_cell_tests {
     }
 
     #[test]
-    fn pyの呼び出しが材料に解ける() {
+    fn a_py_call_resolves_to_its_arguments() {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::parse("A1").unwrap(), Cell::input("1"));
         s.set(Pos::parse("A2").unwrap(), Cell::input("2"));
@@ -1508,7 +1508,7 @@ mod cross_sheet_tests {
     }
 
     #[test]
-    fn 直書きの別シート参照が解ける() {
+    fn a_literal_cross_sheet_reference_resolves() {
         // 1セル・和文のシート名(Excel が普通に書く形)
         assert_eq!(ans("=4月!B1"), Value::Number(100.0));
         // 範囲は関数の中で並びとして渡る
@@ -1526,7 +1526,7 @@ mod cross_sheet_tests {
     }
 
     #[test]
-    fn 知らないシートと1枚だけの計算は参照エラー() {
+    fn an_unknown_sheet_or_a_single_sheet_calculation_is_a_ref_error() {
         // 黙って自分のシートと読まない
         assert_eq!(ans("=無い月!B1"), Value::Error("#REF!".into()));
         // 1枚だけの再計算(others が空)でも #REF! — 嘘の値を出さない
@@ -1536,7 +1536,7 @@ mod cross_sheet_tests {
     }
 
     #[test]
-    fn 既存の書き方を壊していない() {
+    fn the_existing_notation_is_not_broken() {
         // INDIRECT の道は今までどおり
         assert_eq!(ans("=INDIRECT(\"4月!B1\")"), Value::Number(100.0));
         assert_eq!(ans("=SUM(INDIRECT(\"4月!B1:B2\"))"), Value::Number(300.0));
@@ -1552,7 +1552,7 @@ mod cross_sheet_tests {
     }
 
     #[test]
-    fn 別シートを見る式どうしが連鎖しても解ける() {
+    fn chained_formulas_across_sheets_resolve() {
         // 4月!B1 → 集計!A1 → 表紙!A1 の2段(再計算の周回が足りるか)
         let mut book = crate::Book::new();
         book.sheets[0] = sheet_named("表紙", &[("A1", "=集計!A1+1")]);
@@ -1585,7 +1585,7 @@ mod subtotal_hidden_tests {
     }
 
     #[test]
-    fn 隠した行は百番台だけが飛ばす() {
+    fn only_the_one_hundred_series_skips_hidden_rows() {
         let mut s = sheet4();
         // 2行目(A2=20)を畳む
         s.row_hidden.insert(1);
@@ -1603,7 +1603,7 @@ mod subtotal_hidden_tests {
     }
 
     #[test]
-    fn 隠した行が無ければ今までどおり() {
+    fn without_hidden_rows_nothing_changes() {
         let mut s = sheet4();
         assert_eq!(val(&mut s, "=SUBTOTAL(9,A1:A4)"), Value::Number(100.0));
         assert_eq!(val(&mut s, "=SUBTOTAL(109,A1:A4)"), Value::Number(100.0));
@@ -1656,7 +1656,7 @@ mod table_ref_tests {
     }
 
     #[test]
-    fn 表の列を見出しの字で引ける() {
+    fn a_table_column_can_be_looked_up_by_its_header_text() {
         let mut s = with_table(false);
         assert_eq!(at(&mut s, "E1", "=SUM(売上表[金額])"), Value::Number(1200.0));
         assert_eq!(at(&mut s, "E2", "=AVERAGE(売上表[数量])"), Value::Number(2.0));
@@ -1669,14 +1669,14 @@ mod table_ref_tests {
     }
 
     #[test]
-    fn 合計行はデータ本体から外れる() {
+    fn the_total_row_sits_outside_the_data_body() {
         let mut s = with_table(true);
         // C5 の 1200 は合計行なので二重に数えない
         assert_eq!(at(&mut s, "E1", "=SUM(売上表[金額])"), Value::Number(1200.0));
     }
 
     #[test]
-    fn この行の参照は同じ行の列を指す() {
+    fn a_this_row_reference_points_at_the_same_rows_column() {
         let mut s = with_table(false);
         // 表を D 列(税)まで広げて、その中で [@金額] を使う。
         // **名前を省いた形は表の中でだけ効く**(Excel と同じ)
@@ -1692,7 +1692,7 @@ mod table_ref_tests {
     }
 
     #[test]
-    fn 表が無ければ今までどおりの読み方() {
+    fn without_a_table_the_old_reading_applies() {
         // 表オブジェクトが無いシートで [ が出たら式のエラー(黙って0にしない)
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::parse("A1").unwrap(), Cell::input("=SUM(無い表[金額])"));
@@ -1719,7 +1719,7 @@ mod let_tests {
     }
 
     #[test]
-    fn 名前を束ねて式に使える() {
+    fn names_can_be_bundled_into_a_formula() {
         assert_eq!(v("=LET(x,5,x*2)"), Value::Number(10.0));
         // 複数の束縛。後の束縛から前の名前が見える
         assert_eq!(v("=LET(x,5,y,x+1,x*y)"), Value::Number(30.0));
@@ -1734,13 +1734,13 @@ mod let_tests {
     }
 
     #[test]
-    fn 文字と論理値も束ねられる() {
+    fn text_and_booleans_can_be_bundled_too() {
         assert_eq!(v("=LET(t,\"あ\",t&\"い\")"), Value::Text("あい".into()));
         assert_eq!(v("=LET(b,A1>5,IF(b,\"大\",\"小\"))"), Value::Text("大".into()));
     }
 
     #[test]
-    fn 形が違えば正直に断る() {
+    fn a_different_shape_is_refused_honestly() {
         // 名前と値だけで本体が無い
         assert_eq!(v("=LET(x,5)"), Value::Error("#VALUE!".into()));
         // LET の外へ名前は漏れない
@@ -1768,7 +1768,7 @@ mod text_split_tests {
     }
 
     #[test]
-    fn 区切りの前と後ろを取れる() {
+    fn takes_the_parts_before_and_after_a_separator() {
         assert_eq!(v("=TEXTBEFORE(\"甲-乙-丙\",\"-\")"), Value::Text("甲".into()));
         assert_eq!(v("=TEXTAFTER(\"甲-乙-丙\",\"-\")"), Value::Text("乙-丙".into()));
         // 何番目か(2つ目の区切り)
@@ -1786,7 +1786,7 @@ mod text_split_tests {
     }
 
     #[test]
-    fn textsplitは横へ広がる() {
+    fn textsplit_spills_sideways() {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::parse("A1").unwrap(), Cell::input("=TEXTSPLIT(\"甲,乙,丙\",\",\")"));
         recalc(&mut s);
@@ -1796,7 +1796,7 @@ mod text_split_tests {
     }
 
     #[test]
-    fn 行の区切りで縦にも割れる() {
+    fn a_row_separator_splits_vertically_too() {
         let mut s = Sheet { name: "表".into(), ..Default::default() };
         s.set(
             Pos::parse("A1").unwrap(),
@@ -1843,7 +1843,7 @@ mod sheet3_tests {
     }
 
     #[test]
-    fn 並び順で二枚の間を集める() {
+    fn aggregates_across_two_sheets_by_order() {
         // 4月〜6月 = 10+20+30(「別」の 999 は入らない)
         assert_eq!(ans("=SUM(4月:6月!B2)"), Value::Number(60.0));
         assert_eq!(ans("=SUM(4月:5月!B2)"), Value::Number(30.0));
@@ -1857,7 +1857,7 @@ mod sheet3_tests {
     }
 
     #[test]
-    fn 自分のシートを跨いでも並び順が崩れない() {
+    fn the_order_holds_even_across_its_own_sheet() {
         // 表紙(1枚目)を含む範囲。自分の A1 は式なので B2 を見る
         let mut b = book5("=SUM(表紙:5月!B2)");
         b.sheets[0].set(Pos::parse("B2").unwrap(), Cell::input("5"));
@@ -1867,7 +1867,7 @@ mod sheet3_tests {
     }
 
     #[test]
-    fn 知らない名前と範囲の形() {
+    fn unknown_names_and_range_shapes() {
         assert_eq!(ans("=SUM(4月:無い月!B2)"), Value::Error("#REF!".into()));
         // 範囲を跨ぐ形(B2:B3)も集められる
         let mut b = book5("=SUM(4月:6月!B2:B3)");
@@ -1900,7 +1900,7 @@ mod new_fn_tests {
     #[test]
     // **日本語の試験名は家の作法。** ラテン大文字が混じると non_snake_case が鳴る
     #[allow(non_snake_case)]
-    fn REPLACEは文字で数える() {
+    fn replace_counts_in_characters() {
         // **バイトで数えると日本語で崩れる**
         assert_eq!(ev("=REPLACE(\"あいうえお\",2,2,\"XY\")", &[]), "あXYえお");
         assert_eq!(ev("=REPLACE(\"abcdef\",1,3,\"Z\")", &[]), "Zdef");
@@ -1911,7 +1911,7 @@ mod new_fn_tests {
     #[test]
     // **日本語の試験名は家の作法。** ラテン大文字が混じると non_snake_case が鳴る
     #[allow(non_snake_case)]
-    fn XMATCHは後ろからも探せて近似は断る() {
+    fn xmatch_searches_backwards_and_refuses_approximate() {
         let t = [("B1", "い"), ("B2", "ろ"), ("B3", "い")];
         assert_eq!(ev("=XMATCH(\"い\",B1:B3)", &t), "1");
         assert_eq!(ev("=XMATCH(\"い\",B1:B3,0,-1)", &t), "3", "後ろから探せていない");
@@ -1921,7 +1921,7 @@ mod new_fn_tests {
     }
 
     #[test]
-    fn データベース関数は条件表で絞る() {
+    fn database_functions_filter_by_a_criteria_table() {
         // 表: B1:C4(見出し + 3行)、条件表: E1:E2
         let t = [
             ("B1", "品"), ("C1", "額"),
@@ -1941,7 +1941,7 @@ mod new_fn_tests {
     }
 
     #[test]
-    fn 拡張スピルが並びを返す() {
+    fn the_extended_spill_returns_a_sequence() {
         let mut s = Sheet::default();
         for (a1, v) in [("B1", "3"), ("B2", "1"), ("B3", "2"),
                         ("C1", "さ"), ("C2", "あ"), ("C3", "い")] {
@@ -1984,7 +1984,7 @@ mod cell_filename_tests {
     /// Excel の `CELL("filename")` は **`径路[ファイル名]シート名`**。
     /// 実物はここから `]` の後ろを取ってシート名にする
     #[test]
-    fn 径路とファイル名とシート名を並べる() {
+    fn lays_out_the_path_file_name_and_sheet_name() {
         let sep = std::path::MAIN_SEPARATOR;
         assert_eq!(
             cell_filename(&format!("{sep}帳票{sep}売上.xlsx"), "4月"),
@@ -1997,14 +1997,14 @@ mod cell_filename_tests {
     /// **保存していないブックは空文字**(Excel と同じ)。
     /// `#NAME?` にはしない — 実装できる物を誤りにして回避させない
     #[test]
-    fn 保存前は空文字() {
+    fn before_saving_it_is_an_empty_string() {
         assert_eq!(cell_filename("", "Sheet1"), "");
     }
 
     /// 常套句がそのまま通ること。`=MID(CELL("filename",A1),
     /// FIND("]",CELL("filename",A1))+1, 31)` でシート名が取れる
     #[test]
-    fn シート名を取り出す常套句が通る() {
+    fn the_idiom_for_extracting_a_sheet_name_works() {
         let mut b = Book::new();
         b.path = format!("{s}home{s}dev{s}売上.xlsx", s = std::path::MAIN_SEPARATOR);
         b.sheets[0].name = "四月".into();
@@ -2027,7 +2027,7 @@ mod cell_filename_tests {
     /// 種別が違えば今までどおり `#NAME?`。**できない物をできる顔で
     /// 答えない** — "address" に 0 を返すほうが黙って壊れる
     #[test]
-    fn ファイル名以外はまだ答えない() {
+    fn nothing_but_the_file_name_answers_yet() {
         let mut b = Book::new();
         b.path = "/tmp/x.xlsx".into();
         b.sheets[0].set(Pos::parse("A1").unwrap(), crate::Cell::input("=CELL(\"address\",A1)"));
@@ -2040,7 +2040,7 @@ mod cell_filename_tests {
 
     /// 1枚だけの再計算(ブックが無い)では径路を知らない = 空文字
     #[test]
-    fn ブックの無い再計算では空文字() {
+    fn recalculation_without_a_workbook_yields_an_empty_string() {
         let mut s = Sheet::new("Sheet1");
         s.set(Pos::parse("A1").unwrap(), crate::Cell::input("=CELL(\"filename\")"));
         recalc(&mut s);
@@ -2061,7 +2061,7 @@ mod cell_filename_tests {
 /// 文書の表の計算は `ops::table` がシートに写して行う(道を1本にするため)
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod シート以外の表でも計算する {
+mod calculation_works_on_tables_outside_a_sheet {
     use crate::calc::eval_in;
     use crate::grid::Grid;
     use crate::model::{Pos, TableDef, Value};
@@ -2105,7 +2105,7 @@ mod シート以外の表でも計算する {
 
     /// 番地の参照と範囲。B2 は 2×2 = 4
     #[test]
-    fn 番地で引ける() {
+    fn lookup_by_address() {
         let g = TimesTable::new();
         assert_eq!(eval_in(&g, Pos::new(0, 0), "=B2"), Value::Number(4.0));
         // B2:B4 = 4, 6, 8
@@ -2114,7 +2114,7 @@ mod シート以外の表でも計算する {
 
     /// **構造化参照。** 表の名前と見出しの字で列を引く
     #[test]
-    fn 表の名前と見出しで引ける() {
+    fn lookup_by_table_name_and_header() {
         let g = TimesTable::new();
         // 「3の段」= C 列の本体(2行目〜10行目)= 6,9,12,…,30
         assert_eq!(eval_in(&g, Pos::new(0, 0), "=SUM(九九[3の段])"), Value::Number(162.0));
@@ -2123,7 +2123,7 @@ mod シート以外の表でも計算する {
 
     /// 既定のまま置いた物は既定どおり — ふりがなも隠した行も無い
     #[test]
-    fn 持たない物は既定のまま() {
+    fn what_is_not_held_keeps_its_default() {
         let g = TimesTable::new();
         assert!(!g.any_row_hidden());
         assert!(!g.row_hidden(3));

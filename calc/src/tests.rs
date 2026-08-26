@@ -5,7 +5,7 @@ mod freeze_tests {
     use crate::*;
 
     #[test]
-    fn 固定した行は窓が動いても頭に残る() {
+    fn a_frozen_row_stays_at_the_top_as_the_view_scrolls() {
         // 見出し行(0)を固定して、窓が10行目に居ても 0 行目が出る
         let rows = grid_rows(Some((1, 0)), Pos::new(10, 5), 5);
         assert_eq!(rows[0], 0, "固定した見出しが消えた: {rows:?}");
@@ -15,12 +15,12 @@ mod freeze_tests {
     }
 
     #[test]
-    fn 固定なしなら窓のまま() {
+    fn without_a_freeze_the_view_is_unchanged() {
         assert_eq!(grid_rows(None, Pos::new(3, 0), 4), vec![3, 4, 5, 6]);
     }
 
     #[test]
-    fn 窓が固定の中に居ても重複しない() {
+    fn a_view_inside_the_frozen_area_does_not_duplicate() {
         // 窓が先頭にあるとき、固定行と窓の行が二重に出ない
         let rows = grid_rows(Some((2, 0)), Pos::new(0, 0), 5);
         let mut sorted = rows.clone();
@@ -29,7 +29,7 @@ mod freeze_tests {
     }
 
     #[test]
-    fn 分割の帯は動かせて重なってもよい() {
+    fn the_split_bars_can_move_and_may_overlap() {
         // 帯は 5 行目から 2 行(5, 6)。下は 20 行目から
         let rows = grid_rows(Some((2, 5)), Pos::new(20, 0), 5);
         assert_eq!(rows, vec![5, 6, 20, 21, 22], "{rows:?}");
@@ -39,7 +39,7 @@ mod freeze_tests {
     }
 
     #[gpui::test]
-    fn ファイルの固定枠が画面へ出て保存でモデルへ戻る(cx: &mut gpui::TestAppContext) {
+    fn the_files_freeze_pane_reaches_the_screen_and_returns_to_the_model_on_save(cx: &mut gpui::TestAppContext) {
         // **画面とファイルが別のことを言わない**ための往復。固定枠は画面の状態
         // (`frozen`)で持つので、開くときに model から移し、保存の前に model へ
         // 戻す。どちらかが欠けると「固定が見えない」か「固定してもファイルに
@@ -72,7 +72,7 @@ mod size_grip_tests {
     use crate::*;
 
     #[test]
-    fn 境界の近くだけ掴める() {
+    fn only_near_the_boundary_can_it_be_grabbed() {
         // 2列(48px, 108px)が HEAD_W から並ぶ
         let cols = [(0u32, 48.0f32), (1, 108.0)];
         let e1 = HEAD_W + 48.0; // 1本目の境界
@@ -86,7 +86,7 @@ mod size_grip_tests {
     }
 
     #[test]
-    fn 一覧は押したボタンの真下に出る() {
+    fn the_list_appears_directly_below_the_button() {
         // 窓: リボン(高さ96)+ 数式バー(24)の下、y=120 から格子の面。幅1200
         let pane = (0.0, 120.0, 1200.0, 700.0);
         // 「ホーム」の書体の欄: 左端 x=300、下辺 y=70(リボンの中)
@@ -112,7 +112,7 @@ mod size_grip_tests {
     }
 
     #[test]
-    fn 右端では真下をあきらめる前に痩せさせる() {
+    fn at_the_right_edge_the_list_narrows_before_giving_up_on_below() {
         // 右端から 172px の所のボタン。一覧は POP_W(240)より狭くなるが、
         // **POP_MIN_W(160)は割らない**ので真下のまま出す。
         // 前は上限 240 で一律に寄せていて、実物が 121px しかない
@@ -127,7 +127,7 @@ mod size_grip_tests {
     }
 
     #[test]
-    fn 実機で測った書体の欄から一覧が真下に出る() {
+    fn the_list_drops_directly_below_the_font_box_measured_on_a_real_machine() {
         // **2026-08-15 に動いている calc から RPC で読んだ実数**を焼き付ける
         // (窓 1060x820 論理、格子の面は y=169 から、書体の欄は y=69 h=20)。
         // このとき一覧は y=2 に出ていた — 数式バーを挟んで 80px 下で、
@@ -150,7 +150,7 @@ mod size_grip_tests {
     }
 
     #[test]
-    fn 一覧は入らなければ上に開く() {
+    fn the_list_opens_upwards_when_it_does_not_fit() {
         let win_h = 800.0;
         // (1) 下に入る → 下。位置は窓の上端からの距離
         let (up, at, max_h) = pop_place(48.0, 70.0, 200.0, win_h);
@@ -176,7 +176,7 @@ mod size_grip_tests {
     }
 
     #[test]
-    fn 幅の換算が往復する() {
+    fn the_width_conversion_round_trips() {
         // 画面px → xlsxの字数 → 画面px が(丸め2桁でも)崩れない
         let px0 = 108.0f32;
         let w = ((px0 / PX_PER_CHW) * 100.0).round() / 100.0;
@@ -194,7 +194,7 @@ mod validation_tests {
     use crate::*;
 
     #[gpui::test]
-    fn パネルから整数の規則を掛けて堰き止める(cx: &mut gpui::TestAppContext) {
+    fn the_panel_applies_a_whole_number_rule_and_blocks_bad_input(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // B2:B4 に 1〜100 の整数(本家の形のパネル: 設定タブで組む)
@@ -255,7 +255,7 @@ mod validation_tests {
     }
 
     #[gpui::test]
-    fn 空白を無視を外すと空も堰き止める(cx: &mut gpui::TestAppContext) {
+    fn clearing_ignore_blanks_blocks_empty_input_too(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let b2 = Pos::parse("B2").unwrap();
@@ -283,7 +283,7 @@ mod validation_tests {
     }
 
     #[gpui::test]
-    fn 読めない種類の規則はパネルで壊れない(cx: &mut gpui::TestAppContext) {
+    fn an_unreadable_rule_kind_does_not_break_the_panel(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 日付の規則(判定できない種類)が既にある
@@ -315,7 +315,7 @@ mod numfmt_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 数値の書式は一覧とコード直打ちで掛かる(cx: &mut gpui::TestAppContext) {
+    fn number_formats_apply_from_the_list_and_from_a_typed_code(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let a1 = Pos::parse("A1").unwrap();
@@ -372,7 +372,7 @@ mod sort_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 選択の横にデータが続くときは拡張するか聞く(cx: &mut gpui::TestAppContext) {
+    fn when_data_continues_beside_the_selection_it_asks_to_extend(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // A=名前, B=数(隣り合った2列の表)
@@ -431,7 +431,7 @@ mod sort_tests {
     }
 
     #[gpui::test]
-    fn 複数の基準で並べ替える(cx: &mut gpui::TestAppContext) {
+    fn sorts_by_several_keys(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (a1, v) in [
@@ -497,7 +497,7 @@ mod filter_tests {
     }
 
     #[gpui::test]
-    fn 値の入切で行が隠れて数も件数も追随する(cx: &mut gpui::TestAppContext) {
+    fn toggling_a_value_hides_rows_and_the_counts_follow(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             seed(this);
@@ -539,7 +539,7 @@ mod filter_tests {
     }
 
     #[gpui::test]
-    fn 絞り込みは生きた値にも効く(cx: &mut gpui::TestAppContext) {
+    fn filtering_works_on_live_values_too(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             seed(this);
@@ -561,7 +561,7 @@ mod sheet_name_tests {
     use crate::*;
 
     #[test]
-    fn 足すシートの名前がぶつからない() {
+    fn an_added_sheets_name_does_not_collide() {
         let mut b = Book::new(); // Sheet1
         assert_eq!(unique_sheet_name(&b), "Sheet2");
         b.sheets.push(sheet::Sheet::new("Sheet2"));
@@ -588,21 +588,21 @@ mod clipboard_tests {
     }
 
     #[test]
-    fn コピーはtsvで式が残る() {
+    fn copying_as_tsv_keeps_the_formulas() {
         let s = table();
         let tsv = range_tsv(&s, Pos::new(0, 0), Pos::new(1, 1));
         assert_eq!(tsv, "品名\t金額\n甲\t=A2&\"円\"", "TSV の形が違う: {tsv:?}");
     }
 
     #[test]
-    fn 空セルは空欄として出る() {
+    fn an_empty_cell_exports_as_a_blank() {
         let s = table();
         let tsv = range_tsv(&s, Pos::new(0, 0), Pos::new(2, 1));
         assert!(tsv.ends_with("\n\t"), "空行の形が違う: {tsv:?}");
     }
 
     #[test]
-    fn アプリ内の貼り付けは式がずれる() {
+    fn an_in_app_paste_shifts_the_formulas() {
         let mut s = table();
         // B2 の式(=A2&"円")を B4 へ: 2行下 → =A4&"円"
         let grid = vec![vec!["=A2&\"円\"".to_string()]];
@@ -615,7 +615,7 @@ mod clipboard_tests {
     }
 
     #[test]
-    fn 外から来たtsvは式をずらさない() {
+    fn a_tsv_from_outside_does_not_shift_the_formulas() {
         let mut s = sheet::Sheet { name: "表".into(), ..Default::default() };
         let grid = tsv_grid("甲\t100\r\n乙\t=A1*2\n");
         let n = paste_grid(&mut s, Pos::new(0, 0), &grid, None);
@@ -629,7 +629,7 @@ mod clipboard_tests {
     }
 
     #[test]
-    fn 貼り付けても書式は据え置き() {
+    fn pasting_leaves_the_formatting_as_it_was() {
         // 帳票の枠(罫線)の上に値を貼っても枠が残る
         let mut s = sheet::Sheet { name: "枠".into(), ..Default::default() };
         s.set(Pos::new(0, 0), Cell {
@@ -644,7 +644,7 @@ mod clipboard_tests {
     }
 
     #[test]
-    fn 値だけの貼り付けで式が値になる() {
+    fn pasting_values_only_turns_formulas_into_values() {
         let mut s = table();
         recalc(&mut s);
         // B2(=A2&"円")を控えて、値だけを B4 へ
@@ -656,7 +656,7 @@ mod clipboard_tests {
     }
 
     #[test]
-    fn 外来の式もどきは文字として貼る() {
+    fn a_foreign_formula_look_alike_pastes_as_text() {
         let mut s = sheet::Sheet { name: "表".into(), ..Default::default() };
         paste_values_text(&mut s, Pos::new(0, 0), &[vec!["=A1*2".to_string()]]);
         let c = s.get(Pos::new(0, 0)).unwrap();
@@ -665,7 +665,7 @@ mod clipboard_tests {
     }
 
     #[test]
-    fn 書式だけの貼り付けで中身は残る() {
+    fn pasting_formats_only_keeps_the_contents() {
         let mut s = sheet::Sheet { name: "枠".into(), ..Default::default() };
         s.set(Pos::new(0, 0), Cell::input("100"));
         let src = Some(Cell {
@@ -680,7 +680,7 @@ mod clipboard_tests {
     }
 
     #[test]
-    fn 転置で行と列が入れ替わる() {
+    fn transposing_swaps_rows_and_columns() {
         let g = vec![
             vec!["a".to_string(), "b".into(), "c".into()],
             vec!["1".to_string(), "2".into()],
@@ -692,7 +692,7 @@ mod clipboard_tests {
     }
 
     #[test]
-    fn 改行コードと末尾改行を受け流す() {
+    fn line_endings_and_a_trailing_newline_pass_through() {
         assert_eq!(tsv_grid("a\tb\r\nc\td\r\n"),
                    vec![vec!["a".to_string(), "b".into()], vec!["c".into(), "d".into()]]);
         assert_eq!(tsv_grid("1"), vec![vec!["1".to_string()]]);
@@ -704,7 +704,7 @@ mod table_design_tests {
     use crate::*;
 
     #[test]
-    fn 合計行は見出しを外して数の列だけ足す() {
+    fn the_total_row_skips_the_header_and_sums_only_numeric_columns() {
         let mut s = sheet::Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::new(0, 0), Cell::input("品名"));
         s.set(Pos::new(0, 1), Cell::input("金額"));
@@ -728,7 +728,7 @@ mod table_design_tests {
     }
 
     #[test]
-    fn 見出しの無い表は全行を合計する() {
+    fn a_table_without_headers_sums_every_row() {
         let mut s = sheet::Sheet { name: "表".into(), ..Default::default() };
         for (r, v) in [(0, "10"), (1, "20")] {
             s.set(Pos::new(r, 0), Cell::input(v));
@@ -746,7 +746,7 @@ mod subtotal_tests {
     use crate::*;
 
     #[test]
-    fn 小計と総計が入り明細だけ畳まれる() {
+    fn subtotals_and_a_grand_total_are_inserted_and_only_the_details_collapse() {
         let mut s = sheet::Sheet { name: "表".into(), ..Default::default() };
         for (r, row) in [
             ["部署", "月", "金額"],
@@ -788,7 +788,7 @@ mod subtotal_tests {
     }
 
     #[test]
-    fn 行の挿抜でグループ化が付いてくる() {
+    fn inserting_and_deleting_rows_carries_the_grouping() {
         let mut s = sheet::Sheet { name: "表".into(), ..Default::default() };
         s.row_outline.insert(5, 1);
         s.row_hidden.insert(5);
@@ -806,7 +806,7 @@ mod solver_tests {
     use crate::*;
 
     #[test]
-    fn セルと範囲の列挙が読める() {
+    fn cell_and_range_enumeration_reads() {
         let v = parse_cell_list("B2:B4", 64).unwrap();
         assert_eq!(v.len(), 3);
         assert_eq!(v[0], Pos::new(1, 1));
@@ -818,7 +818,7 @@ mod solver_tests {
     }
 
     #[test]
-    fn 台本が実際にscipyで回る() {
+    fn the_script_really_runs_on_scipy() {
         // .venv が無い機械では黙って飛ぶ(HIKITSUGI の作法)
         let py = ["../.venv/bin/python", ".venv/bin/python"]
             .iter()
@@ -852,7 +852,7 @@ mod solver_tests {
     /// 同じ問題を3通りで解いて、答えが変わることを見ます。
     /// *連続なら端数が出る* — そこが整数で丸まるかどうかが要点です。
     #[test]
-    fn 整数とバイナリの制約が効く() {
+    fn integer_and_binary_constraints_work() {
         let py = ["../.venv/bin/python", ".venv/bin/python"]
             .iter()
             .map(std::path::PathBuf::from)
@@ -896,7 +896,7 @@ mod equation_tests {
     use crate::*;
 
     #[test]
-    fn 台本が実際にmathtextで清書する() {
+    fn the_script_really_typesets_with_mathtext() {
         // .venv が無い機械では黙って飛ぶ(HIKITSUGI の作法)
         let py = ["../.venv/bin/python", ".venv/bin/python"]
             .iter()
@@ -960,14 +960,14 @@ mod pivot_tests {
     use crate::*;
 
     #[test]
-    fn 見出しの列挙はカンマでも読点でも空白でも() {
+    fn headers_can_be_listed_with_commas_ideographic_commas_or_spaces() {
         assert_eq!(split_fields("部署, 月"), vec!["部署", "月"]);
         assert_eq!(split_fields("部署、月 区分"), vec!["部署", "月", "区分"]);
         assert!(split_fields("  ").is_empty());
     }
 
     #[gpui::test]
-    fn ピボットの行列値は一覧のクリックで選ぶ(cx: &mut gpui::TestAppContext) {
+    fn pivot_rows_columns_and_values_are_chosen_by_clicking_the_list(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (a1, v) in [
@@ -1051,7 +1051,7 @@ mod pivot_tests {
     }
 
     #[test]
-    fn 指図のjsonは逃がしが効く() {
+    fn the_settings_json_escapes_correctly() {
         let json = pivot_spec_json(
             &["部\"署".to_string()],
             &[vec!["営\\業".to_string()]],
@@ -1087,7 +1087,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 罫線のパネルは連打でき表の形が1押しで掛かる(cx: &mut gpui::TestAppContext) {
+    fn the_border_panel_takes_repeated_clicks_and_applies_a_table_shape_in_one(cx: &mut gpui::TestAppContext) {
         use sheet::model::BStyle;
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
@@ -1125,7 +1125,7 @@ mod pivot_tests {
     /// Windows で組めない(2026-08-17、Windows を CI の的に足して分かった)
     #[cfg(unix)]
     #[gpui::test]
-    fn jocalcの口は読み書きと展開ができる(cx: &mut gpui::TestAppContext) {
+    fn the_jocalc_api_can_read_write_and_expand(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 書く: 数・文字・式(= から始まる)
@@ -1165,7 +1165,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 左上が空の結合は最初の値を左上へ移す(cx: &mut gpui::TestAppContext) {
+    fn a_merge_with_an_empty_top_left_moves_the_first_value_there(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // A1 空、B1 に題 — A1:C1 を結合すると題が左上へ移る
@@ -1211,7 +1211,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 結合は1つのセルとして歩ける(cx: &mut gpui::TestAppContext) {
+    fn a_merge_is_walked_as_one_cell(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // B1:C2 を結合
@@ -1242,7 +1242,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 一覧が開くボタンは押した所に一覧を出す(cx: &mut gpui::TestAppContext) {
+    fn a_list_button_opens_its_list_where_it_was_pressed(cx: &mut gpui::TestAppContext) {
         // **位置の直書きの見張り。** 一覧を出す命令が pop_anchor を通さず
         // 座標を直に書いていると、どのボタンから開いても画面の左端に出る。
         // 実機の一巡点検(tools/ribbon_sweep.py)がこれを6箇所見つけたので、
@@ -1275,7 +1275,7 @@ mod pivot_tests {
     }
 
     #[test]
-    fn 印の一覧は互いに素でリボンに実在する() {
+    fn the_marked_lists_are_disjoint_and_exist_in_the_ribbon() {
         // ▾(一覧)と …(小窓)の両方に居る id は印が決められない。
         // リボンの表に無い id は印の付けようが無い(右クリック専用の
         // numfmt・datefmt をうっかり入れると、ここで捕まる)
@@ -1296,7 +1296,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 小窓の印のボタンは小窓の旗を立てる(cx: &mut gpui::TestAppContext) {
+    fn the_dialog_marked_button_raises_the_dialog_flag(cx: &mut gpui::TestAppContext) {
         // DIALOG_IDS(…)を1つずつ叩き、dialog_open() が見ている旗
         // (prompt / fn_dlg / fmt_panel / dv_dlg / solver)のどれかが
         // 立つ物の数の下限を見る。**1件ずつの強制はしない** — 前提の要る
@@ -1343,7 +1343,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 一覧は他のボタンを押すと閉じて操作は効く(cx: &mut gpui::TestAppContext) {
+    fn the_list_closes_on_another_button_and_the_action_still_runs(cx: &mut gpui::TestAppContext) {
         // 一覧(▾)の閉じ方の約束: 他のボタンを押すと畳まれ、押した操作は
         // そのまま効く。前は bold を押すと一覧が開いたまま太字が掛かった(穴)
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
@@ -1361,7 +1361,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 小窓中はリボンが効かない(cx: &mut gpui::TestAppContext) {
+    fn the_ribbon_is_inert_while_a_dialog_is_open(cx: &mut gpui::TestAppContext) {
         // 小窓(…)が開いている間はリボン全体が無効 — 他の操作が走って
         // 状態が二重になるのを防ぐ。閉じる道(Esc)は今のまま
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
@@ -1378,7 +1378,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn ホームの全ボタンを一巡り点検(cx: &mut gpui::TestAppContext) {
+    fn a_sweep_over_every_home_tab_button(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             use sheet::model::{HAlign, VAlign};
@@ -1552,7 +1552,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn ホームの文字飾り4種が掛かる(cx: &mut gpui::TestAppContext) {
+    fn the_four_home_tab_character_decorations_apply(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("字"));
@@ -1570,7 +1570,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn テキスト取り込みのパネルは置き場所と取り込みが効く(cx: &mut gpui::TestAppContext) {
+    fn the_text_import_panel_honours_the_destination_and_the_import(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.import_pend = Some(crate::py::ImportPend {
@@ -1604,7 +1604,7 @@ mod pivot_tests {
     }
 
     #[test]
-    fn csvの台本は文字コードと区切りの指定が効く() {
+    fn the_csv_script_honours_the_encoding_and_separator() {
         // .venv が無い機械では黙って飛ぶ(HIKITSUGI の作法)
         let Some(py) = ["../.venv/bin/python", ".venv/bin/python"]
             .iter()
@@ -1646,7 +1646,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn スパークラインは3種を選んで置ける(cx: &mut gpui::TestAppContext) {
+    fn sparklines_can_be_placed_in_three_kinds(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for (i, v) in ["3", "-1", "2"].iter().enumerate() {
@@ -1672,7 +1672,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 図形の設定パネルの経路で性質が変わる(cx: &mut gpui::TestAppContext) {
+    fn the_shape_settings_panel_path_changes_the_properties(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.book.sheets[0].shapes_new.push(sheet::model::SheetShape {
@@ -1727,7 +1727,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 図形メニューで重なり順と切り貼りができる(cx: &mut gpui::TestAppContext) {
+    fn the_shape_menu_can_reorder_and_cut_and_paste(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for k in ["rect", "ellipse", "diamond"] {
@@ -1782,7 +1782,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 回転ハンドルはポインタの向きへ回りshiftで15度刻み(cx: &mut gpui::TestAppContext) {
+    fn the_rotate_handle_follows_the_pointer_and_snaps_with_shift(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.book.sheets[0].shapes_new.push(sheet::model::SheetShape {
@@ -1830,7 +1830,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn 図形の整列と分布は束の外接の箱が基準(cx: &mut gpui::TestAppContext) {
+    fn shape_align_and_distribute_use_the_groups_bounding_box(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // 3つを別々の場所に(全部画面の中)
@@ -1887,7 +1887,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn ブックに載っているコードは実行しない(cx: &mut gpui::TestAppContext) {
+    fn code_carried_in_a_workbook_is_not_run(cx: &mut gpui::TestAppContext) {
         // 発注者確定 2026-08-09: データとプログラムを1つのファイルにしない。
         // 関数(UDF)も手続きも plugins の .py だけ — ブックからは何も実行しない
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
@@ -1928,7 +1928,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn r1c1では見せ方が変わり中身はa1のまま(cx: &mut gpui::TestAppContext) {
+    fn r1c1_changes_the_display_while_the_content_stays_a1(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("10"));
@@ -1958,7 +1958,7 @@ mod pivot_tests {
     }
 
     #[gpui::test]
-    fn ラベルと値とグループの指図がパネルから入る(cx: &mut gpui::TestAppContext) {
+    fn label_value_and_group_settings_come_from_the_panel(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 元の表
@@ -1998,7 +1998,7 @@ mod pivot_tests {
     }
 
     #[test]
-    fn グループ化と値のフィルターがpolarsで回る() {
+    fn grouping_and_value_filters_run_on_polars() {
         let headers: Vec<String> =
             ["日付", "区分", "金額"].iter().map(|s| s.to_string()).collect();
         let rows: Vec<Vec<String>> = [
@@ -2056,7 +2056,7 @@ mod pivot_tests {
     /// **並べ替えが実際に効くこと**(2026-08-13、台帳「ピボットの並べ替え」)。
     /// 台本を通して回すので、書いたつもりで効いていない、が起きない
     #[test]
-    fn ピボットの並べ替えが効く() {
+    fn pivot_sorting_works() {
         let headers: Vec<String> =
             ["区分", "金額"].iter().map(|s| s.to_string()).collect();
         let rows: Vec<Vec<String>> = [
@@ -2095,7 +2095,7 @@ mod pivot_tests {
     }
 
     #[test]
-    fn 台本が実際にpolarsで回る() {
+    fn the_script_really_runs_on_polars() {
         let headers: Vec<String> =
             ["部署", "月", "金額"].iter().map(|s| s.to_string()).collect();
         let rows: Vec<Vec<String>> = [
@@ -2127,7 +2127,7 @@ mod pivot_tests {
     }
 
     #[test]
-    fn 総計と小計と空行が付く() {
+    fn a_grand_total_subtotals_and_a_blank_row_are_added() {
         let headers: Vec<String> =
             ["部署", "係", "月", "金額"].iter().map(|s| s.to_string()).collect();
         let rows: Vec<Vec<String>> = [
@@ -2178,7 +2178,7 @@ mod recalc_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 手動計算は確定で計算せずf9相当で計算する(cx: &mut gpui::TestAppContext) {
+    fn manual_calculation_waits_for_the_f9_equivalent(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // A1=5 → B1==A1*2。自動のうちは確定で計算される
@@ -2218,7 +2218,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 固定はプリセットの一覧から選ぶ(cx: &mut gpui::TestAppContext) {
+    fn freezing_is_chosen_from_a_preset_list(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.cursor = Pos::parse("B2").unwrap();
@@ -2246,7 +2246,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 画像は選んで動かして大きさを変えて消せる(cx: &mut gpui::TestAppContext) {
+    fn an_image_can_be_selected_moved_resized_and_deleted(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // 1x1 の PNG を B2 に置く(挿した画像の体)
@@ -2287,7 +2287,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 条件付き書式のパネルの規則が掛かる(cx: &mut gpui::TestAppContext) {
+    fn the_conditional_formatting_panels_rule_applies(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (a1, v) in [("A1", "10"), ("A2", "20"), ("A3", "20"), ("A4", "5")] {
@@ -2324,7 +2324,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn グループ化は7段で頭打ち_基底と合わせて8レベル(cx: &mut gpui::TestAppContext) {
+    fn grouping_caps_at_seven_levels_eight_with_the_base(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for r in 0..4 {
@@ -2346,7 +2346,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 値だけをcsvに書き出せる(cx: &mut gpui::TestAppContext) {
+    fn values_only_can_be_exported_to_csv(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("品名"));
@@ -2367,7 +2367,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn ルールの管理で規則を選んで消せる(cx: &mut gpui::TestAppContext) {
+    fn the_rule_manager_can_select_and_delete_a_rule(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (i, v) in ["10", "20"].iter().enumerate() {
@@ -2393,7 +2393,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn データバーとスケールとアイコンをメニューから掛けられる(cx: &mut gpui::TestAppContext) {
+    fn data_bars_scales_and_icons_can_be_applied_from_the_menu(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for (i, v) in ["10", "20", "30"].iter().enumerate() {
@@ -2415,7 +2415,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 合計行の集計のしかたを替えられる(cx: &mut gpui::TestAppContext) {
+    fn the_total_rows_aggregation_can_be_changed(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("10"));
@@ -2439,7 +2439,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 重複の削除は列と見出しの有無を選べる(cx: &mut gpui::TestAppContext) {
+    fn remove_duplicates_lets_you_pick_columns_and_the_header_flag(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 品名は同じでも金額が違う2行 — 品名の列だけで比べれば重複
@@ -2469,7 +2469,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn リンクの後に表示テキストを聞かれてセルに入る(cx: &mut gpui::TestAppContext) {
+    fn after_a_link_the_display_text_is_asked_and_lands_in_the_cell(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.cursor = Pos::new(1, 1);
@@ -2494,7 +2494,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 列の幅と行の高さを数で指定して既定にも戻せる(cx: &mut gpui::TestAppContext) {
+    fn column_width_and_row_height_can_be_typed_and_reset_to_default(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // B〜C 列に 12.5
@@ -2528,7 +2528,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 名前マネージャーで移動と打ち直しと削除(cx: &mut gpui::TestAppContext) {
+    fn the_name_manager_can_move_retype_and_delete(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 名前を1つ付ける(B2:C3 = 単価表)
@@ -2577,7 +2577,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn ヘッダーとフッターをパネルから入れて消す(cx: &mut gpui::TestAppContext) {
+    fn headers_and_footers_can_be_set_and_cleared_from_the_panel(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.run_cmd("edit-header", cx);
@@ -2609,7 +2609,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 色のその他と文字の角度の直指定(cx: &mut gpui::TestAppContext) {
+    fn more_colors_and_a_typed_text_angle(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let a1 = Pos::parse("A1").unwrap();
@@ -2660,7 +2660,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 罫線はペンの線種と色で掛かる(cx: &mut gpui::TestAppContext) {
+    fn borders_apply_with_the_pens_style_and_color(cx: &mut gpui::TestAppContext) {
         use sheet::model::BStyle;
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
@@ -2707,7 +2707,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn セルの上のbackspaceとdeleteは中身を消す(cx: &mut gpui::TestAppContext) {
+    fn backspace_and_delete_on_a_cell_clear_its_contents(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             let a1 = Pos::parse("A1").unwrap();
@@ -2733,7 +2733,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 結合は聞かずに掛かり左上以外の値は消える(cx: &mut gpui::TestAppContext) {
+    fn merging_applies_without_asking_and_drops_all_but_the_top_left(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (p, v) in [("A1", "甲"), ("B2", "乙")] {
@@ -2803,7 +2803,7 @@ mod recalc_tests {
     /// 図はピボットの写しです。**ピボットを作り直すたびに描き直す**ことを
     /// 見ます。遅れると、同じ画面に食い違う2つの数字が並びます。
     #[gpui::test]
-    async fn ピボットグラフはピボットに連れて描き直る(cx: &mut gpui::TestAppContext) {
+    async fn a_pivot_chart_redraws_with_its_pivot(cx: &mut gpui::TestAppContext) {
         if !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../.venv/bin/python")
             .exists()
@@ -2878,7 +2878,7 @@ mod recalc_tests {
     /// 中身は Python(指数平滑)なので、ここは**配線**を見ます。
     /// 統計の当たり具合は台本の側で見ています。
     #[gpui::test]
-    async fn 予測シートは新しいシートに実績と予測を並べる(cx: &mut gpui::TestAppContext) {
+    async fn the_forecast_sheet_lays_actuals_and_forecast_on_a_new_sheet(cx: &mut gpui::TestAppContext) {
         if !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../.venv/bin/python")
             .exists()
@@ -2958,7 +2958,7 @@ mod recalc_tests {
     /// その後カスタムプロパティが往復するようになったので、理由が消えました。
     /// ここではその**往復すること**を見ます。
     #[gpui::test]
-    fn 最終版の札はxlsxに残る(cx: &mut gpui::TestAppContext) {
+    fn the_final_flag_survives_in_xlsx(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             assert!(!this.final_mark(), "はじめから付いている");
@@ -2993,7 +2993,7 @@ mod recalc_tests {
     /// 読めた部品だけで開く・読めなかった部品を一件ずつ並べる・
     /// 上書きを断る・画面に出し続ける。
     #[gpui::test]
-    fn 壊れたブックは拾って開くが上書きを断る(cx: &mut gpui::TestAppContext) {
+    fn a_damaged_workbook_opens_but_refuses_to_be_overwritten(cx: &mut gpui::TestAppContext) {
         // 中身のあるブックを書いて、末尾(中央目録)を落とす
         let mut b = sheet::Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("品名"));
@@ -3058,7 +3058,7 @@ mod recalc_tests {
     /// 札はピボットの日付のグループ化と同じ形にします。揃っていないと、
     /// 同じ月を指しているのに別の字になります。
     #[test]
-    fn 日付の束はピボットと同じ札になる() {
+    fn date_groups_use_the_same_labels_as_the_pivot() {
         use crate::util::date_bucket;
         // 通し番号(1899-12-30 起点)。2026-08-22 は 46256
         let n = Some(46256.0);
@@ -3079,7 +3079,7 @@ mod recalc_tests {
 
     /// **タイムライン**(2026-08-22 の D群)。日付の列を束で絞る。
     #[gpui::test]
-    fn 日付の粒で絞ると束ごと消える(cx: &mut gpui::TestAppContext) {
+    fn filtering_by_a_date_grain_removes_the_whole_group(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (a1, v) in [
@@ -3123,7 +3123,7 @@ mod recalc_tests {
     ///
     /// 推し量って取った表を、正確に取れた表と同じ顔で出さないことを見ます。
     #[gpui::test]
-    fn pdfの取り込みは取り方を画面に出す(cx: &mut gpui::TestAppContext) {
+    fn pdf_import_shows_its_method_on_screen(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             let table = |how: &str| {
@@ -3180,7 +3180,7 @@ mod recalc_tests {
     /// 半端に読めた表を出すと、そこから数字が黙ってずれます。読めない物が
     /// 来たら空を返すことを見ます。
     #[test]
-    fn pdfの表は読めた分だけを返す() {
+    fn a_pdf_table_returns_only_what_could_be_read() {
         use crate::py::parse_pdf_tables;
         // 2枚。1枚目は罫線、2枚目は文字の位置から
         let raw = concat!(
@@ -3209,7 +3209,7 @@ mod recalc_tests {
     /// 式のセルを控えないことを見ます。式を字で書き戻すと、当てた瞬間に
     /// 比べる先の式が消えます。
     #[gpui::test]
-    fn シナリオは値だけを控えて書き戻す(cx: &mut gpui::TestAppContext) {
+    fn a_scenario_stores_only_values_and_writes_them_back(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (a1, v) in [("A1", "100"), ("A2", "0.08"), ("A3", "=A1*A2")] {
@@ -3282,7 +3282,7 @@ mod recalc_tests {
     /// スライサーは「選んだ値」、ピボットは「隠す値」で絞ります。向きが逆なので、
     /// 引き算を間違えると**選んだ値だけが消える**という真逆の絵になります。
     #[gpui::test]
-    async fn スライサーの絞りが繋いだピボットへ届く(cx: &mut gpui::TestAppContext) {
+    async fn a_slicer_filter_reaches_the_connected_pivot(cx: &mut gpui::TestAppContext) {
         if !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../.venv/bin/python")
             .exists()
@@ -3350,7 +3350,7 @@ mod recalc_tests {
     /// 決め方は純関数なので、ここで直に確かめます。同じ表からは毎回同じ
     /// 候補が出ます — 乱数も学習も使っていません。
     #[test]
-    fn おすすめのピボットは種類の少ない列を行にする() {
+    fn the_recommended_pivot_puts_low_cardinality_columns_in_rows() {
         let headers = vec![
             "伝票番号".to_string(),
             "店".to_string(),
@@ -3394,7 +3394,7 @@ mod recalc_tests {
 
     /// 数の列が無くても、件数なら数えられます。
     #[test]
-    fn 数の列が無ければ件数だけを勧める() {
+    fn without_numeric_columns_only_a_count_is_recommended() {
         let headers = vec!["店".to_string(), "区分".to_string()];
         let cols = vec![
             ["東", "西", "東", "西"].iter().map(|s| s.to_string()).collect::<Vec<_>>(),
@@ -3407,7 +3407,7 @@ mod recalc_tests {
 
     /// 見出しだけで中身が無ければ、勧めるものはありません。
     #[test]
-    fn 中身が無ければ勧めない() {
+    fn no_content_means_no_recommendation() {
         let headers = vec!["店".to_string()];
         assert!(crate::util::pivot_suggestions(&headers, &[vec![]]).is_empty());
         assert!(crate::util::pivot_suggestions(&headers, &[]).is_empty());
@@ -3418,7 +3418,7 @@ mod recalc_tests {
     /// 打ち間違えたパスワードで包むと、そのファイルは誰にも開けません。
     /// 元に戻す手がないので、ここだけは確かめます。
     #[gpui::test]
-    fn 暗号化のパスワードは二度打って合わないと掛からない(cx: &mut gpui::TestAppContext) {
+    fn the_encryption_password_must_be_typed_twice_and_match(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.run_cmd("prot-encrypt", cx);
@@ -3458,7 +3458,7 @@ mod recalc_tests {
     /// **ファイルのページの保護の面**(2026-08-21 の D群)。
     /// 左の列の「保護する」は、前はリボンの保護タブへ飛ぶだけでした。
     #[gpui::test]
-    fn ファイルのページに保護の面が出る(cx: &mut gpui::TestAppContext) {
+    fn the_file_page_shows_a_protection_pane(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.tab = 0;
@@ -3474,7 +3474,7 @@ mod recalc_tests {
     /// 固定と同時には立ちません。帯が二重になって、どちらの線か分からなく
     /// なるためです。
     #[gpui::test]
-    fn 分割は固定と入れ替わる(cx: &mut gpui::TestAppContext) {
+    fn splitting_and_freezing_replace_each_other(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 画面の左上そのものでは分けようがない
@@ -3520,7 +3520,7 @@ mod recalc_tests {
     /// 規則は*これから打つ字*を堰き止めますが、**先に入っていた値**は
     /// 素通りします。そこを見つけるのがこのボタンです。
     #[gpui::test]
-    fn 入力規則に合わない値へ印が付く(cx: &mut gpui::TestAppContext) {
+    fn a_value_breaking_the_rule_gets_a_mark(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 規則が無ければ、そう言う(黙って何も起きないのをやめる)
@@ -3566,7 +3566,7 @@ mod recalc_tests {
     /// 式の値も変わるので、そのたびに止めると表が作れません。外れている
     /// ことは「無効データに印」で見えます — 式の結果にも印が付きます。
     #[gpui::test]
-    fn 再計算で範囲を外れた式は止めないが印は付く(cx: &mut gpui::TestAppContext) {
+    fn a_recalculation_out_of_range_is_not_blocked_but_is_marked(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // A1 に元の数、A2 は A1 の 10 倍の式。規則は 1〜100 の整数
@@ -3621,7 +3621,7 @@ mod recalc_tests {
     /// 新しい範囲に無い**とき。最後のは黙って空のピボットになるのが一番悪い
     /// ので、先に言って止めます。
     #[gpui::test]
-    fn ピボットの元の表を差し替える(cx: &mut gpui::TestAppContext) {
+    fn the_pivots_source_table_can_be_replaced(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let name = this.sheet().name.clone();
@@ -3693,7 +3693,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn ピボットの上では表を壊す操作を締める(cx: &mut gpui::TestAppContext) {
+    fn operations_that_break_the_table_are_disabled_over_a_pivot(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let name = this.sheet().name.clone();
@@ -3744,7 +3744,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 画面の文字の大きさは段階で動き両端で止まる(cx: &mut gpui::TestAppContext) {
+    fn the_ui_font_size_steps_and_stops_at_both_ends(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 実利用者の settings.toml の値に左右されない(試験は素の 100% から)
@@ -3764,7 +3764,7 @@ mod recalc_tests {
     }
 
     #[test]
-    fn 大文字小文字の5つの変え方() {
+    fn the_five_ways_to_change_case() {
         let t = "hello WORLD こんにちは 3rd";
         assert_eq!(change_case(t, "uppercase"), "HELLO WORLD こんにちは 3RD");
         assert_eq!(change_case(t, "lowercase"), "hello world こんにちは 3rd");
@@ -3777,7 +3777,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn 結合すると中央に揃う(cx: &mut gpui::TestAppContext) {
+    fn merging_centers_the_content(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.cursor = Pos::parse("A1").unwrap();
@@ -3795,7 +3795,7 @@ mod recalc_tests {
     }
 
     #[gpui::test]
-    fn セル内改行の確定で折り返しが立つ(cx: &mut gpui::TestAppContext) {
+    fn committing_an_in_cell_newline_turns_on_wrapping(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.cursor = Pos::parse("A1").unwrap();
@@ -3850,7 +3850,7 @@ mod menu_run_tests {
     }
 
     #[gpui::test]
-    fn 全部のボタンが落ちずに通る(cx: &mut gpui::TestAppContext) {
+    fn every_button_runs_without_panicking(cx: &mut gpui::TestAppContext) {
         // AI の宛先は覚える設定なので、試験で変えたら戻す
         let keep_ai = ui::ai::backend();
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
@@ -3877,7 +3877,7 @@ mod menu_run_tests {
     /// リボンの「すべて選択」は**セル**に効く(バーの文字選択に化けない —
     /// Ctrl+A と同じ実体を通ることの検査。2026-08-05 に別実装のサボりを直した)
     #[gpui::test]
-    fn 全選択はセルに効く(cx: &mut gpui::TestAppContext) {
+    fn select_all_applies_to_the_cells(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             seed(this);
@@ -3896,7 +3896,7 @@ mod menu_run_tests {
 
     /// 押すと入切するボタンは、2回押すと元に戻る(1手で戻せる方針)
     #[gpui::test]
-    fn 入切のボタンは二度おすと戻る(cx: &mut gpui::TestAppContext) {
+    fn a_toggle_button_returns_on_the_second_press(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         let state = |this: &Calc, id: &str| -> bool {
             match id {
@@ -3932,7 +3932,7 @@ mod menu_run_tests {
     /// 「コメントの表示」は2択の小窓(一覧の板 / セルの付記)。
     /// **押した瞬間には何も変わらない** — どちらを切り替えるか選んでから
     #[gpui::test]
-    fn コメントの表示は2択の小窓(cx: &mut gpui::TestAppContext) {
+    fn comment_display_is_a_two_choice_dialog(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let tips = this.show_comments;
@@ -3961,7 +3961,7 @@ mod menu_run_tests {
     /// コメントの削除は3つの範囲。**「自分の」は筋ごと消さない** —
     /// 他の人の返信は残す
     #[gpui::test]
-    fn コメントの削除は現在と自分とすべて(cx: &mut gpui::TestAppContext) {
+    fn comment_deletion_offers_current_mine_and_all(cx: &mut gpui::TestAppContext) {
         use sheet::model::{CommentEntry, CommentThread};
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         let entry = |who: &str, text: &str| CommentEntry {
@@ -4023,7 +4023,7 @@ mod menu_run_tests {
     /// 見本は写しを開く — 署名やチャットが隣にファイルを添えるため、
     /// 追跡している見本の隣を汚さない
     #[gpui::test]
-    fn 見本を開いても全部のボタンが通る(cx: &mut gpui::TestAppContext) {
+    fn every_button_runs_on_the_sample_files_too(cx: &mut gpui::TestAppContext) {
         let dir = std::path::Path::new("../sample");
         let dir = if dir.exists() {
             dir.to_path_buf()
@@ -4075,7 +4075,7 @@ mod menu_run_tests {
 #[cfg(test)]
 mod wiring_tests {
     #[test]
-    fn リボンのreadyは全部配線されている() {
+    fn every_ready_ribbon_button_is_wired_up() {
         for tab in ui::ribbon::CALC {
             for cmd in tab.cmds {
                 if cmd.ready {
@@ -4095,7 +4095,7 @@ mod paper_tests {
     use crate::*;
 
     #[test]
-    fn 用紙コードはjisのbで引く() {
+    fn paper_codes_resolve_through_jis_b() {
         assert_eq!(paper_mm(9), Some((210.0, 297.0, "A4")));
         assert_eq!(paper_mm(12), Some((257.0, 364.0, "B4")), "B4 は JIS の紙");
         assert_eq!(paper_mm(99), None, "知らないコードを黙って A4 にしない");
@@ -4107,7 +4107,7 @@ mod index_at_tests {
     use crate::*;
 
     #[test]
-    fn 位置から列が引ける() {
+    fn a_column_can_be_found_from_a_position() {
         let cols = [(0u32, 108.0f32), (1, 54.0), (2, 108.0)];
         assert_eq!(index_at(&cols, HEAD_W, HEAD_W + 1.0), Some(0));
         assert_eq!(index_at(&cols, HEAD_W, HEAD_W + 107.9), Some(0));
@@ -4123,7 +4123,7 @@ mod goal_seek_tests {
     use crate::*;
 
     #[test]
-    fn 合計を目標に数量が逆算できる() {
+    fn goal_seek_solves_the_quantity_from_a_target_total() {
         // 見本の表: D2=B2*C2, D4=SUM, D6=D4+D5(消費税は固定にして単純化)
         let mut s = sheet::Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::parse("B2").unwrap(), Cell::input("4"));
@@ -4148,7 +4148,7 @@ mod lock_tests {
     use crate::*;
 
     #[test]
-    fn 先客のロックが見え_自分のは先客に数えない() {
+    fn another_holders_lock_is_visible_and_ours_is_not_counted() {
         let dir = std::env::temp_dir().join(format!("jo-lock-test-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let book = dir.join("台帳.xlsx");
@@ -4172,7 +4172,7 @@ mod udf_tests {
     use crate::*;
 
     #[test]
-    fn 台本の出力が解けてスピルが効く() {
+    fn the_scripts_output_resolves_and_spills() {
         // 出力形式: セル \x1e 行 \x1e 行 … / 行の中は \x1f
         let raw = "B2\u{1e}10\u{1f}20\u{1e}30\u{1f}40\u{1c}D1\u{1e}こんにちは";
         let results = parse_udf_output(raw);
@@ -4194,7 +4194,7 @@ mod udf_tests {
     }
 
     #[test]
-    fn スピル先に他人のデータがあれば止まる() {
+    fn a_spill_stops_when_another_cell_is_in_the_way() {
         let mut sh = sheet::Sheet { name: "表".into(), ..Default::default() };
         sh.set(Pos::parse("B2").unwrap(), Cell::input("=PY(\"f\")"));
         sh.set(Pos::parse("C3").unwrap(), Cell::input("大事なメモ"));
@@ -4215,7 +4215,7 @@ mod udf_tests {
     }
 
     #[test]
-    fn 縮んだスピルの残骸は消える() {
+    fn the_leftovers_of_a_shrunken_spill_are_cleared() {
         let mut sh = sheet::Sheet { name: "表".into(), ..Default::default() };
         sh.set(Pos::parse("A1").unwrap(), Cell::input("=PY(\"f\")"));
         // 前回 1x3 で展開していた
@@ -4232,7 +4232,7 @@ mod udf_tests {
     }
 
     #[test]
-    fn 台本が実際にpythonで回る() {
+    fn the_script_really_runs_on_python() {
         // .venv が無い機械では黙って飛ぶ(HIKITSUGI の作法)。
         // cargo test の cwd は calc/ なので、リポジトリ直下の .venv も見る
         let py = ["../.venv/bin/python", ".venv/bin/python"]
@@ -4284,7 +4284,7 @@ mod udf_tests {
     }
 
     #[gpui::test]
-    fn 見出しを打つと行が広がる(cx: &mut gpui::TestAppContext) {
+    fn typing_a_header_grows_the_row(cx: &mut gpui::TestAppContext) {
         // 2026-08-09 発注者:「## 等 h1, h2, h3 の指定をした場合は、セルの高さも
         // 変更して。あらかじめ書式を決めておくといいですね」
         // 大きさの表は sheet::cellmark::HEADINGS が正(画面の文字と同じ所を見る)
@@ -4345,7 +4345,7 @@ mod udf_tests {
     }
 
     #[gpui::test]
-    fn 日本語の名前でも編集面が開く(cx: &mut gpui::TestAppContext) {
+    fn the_editor_opens_for_a_japanese_name_too(cx: &mut gpui::TestAppContext) {
         // 発注者報告 2026-08-09:「道具.py は、編集できません」
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
@@ -4372,7 +4372,7 @@ mod udf_tests {
     }
 
     #[test]
-    fn pluginsの関数は裸の名前で式に書ける() {
+    fn plugin_functions_can_be_written_bare_in_a_formula() {
         // 2026-08-09 発注者確定: 交換されるファイルはデータだけ。関数は各自の
         // plugins にあり、式には `=倍(A1)` と普通に書く(=PY("倍", A1) も残す)
         sheet::calc::set_udf_names(["倍".to_string(), "XWSPLIT".to_string()]);
@@ -4413,7 +4413,7 @@ mod udf_tests {
     }
 
     #[test]
-    fn シート名の変更が式の参照に追随する() {
+    fn renaming_a_sheet_updates_the_formula_references() {
         // 素の参照と '…' 付きの両方を書き換える
         assert_eq!(
             rename_refs_in("Sheet2!A1+SUM('Sheet2'!B1:B9)", "Sheet2", "集計").as_deref(),
@@ -4443,7 +4443,7 @@ mod udf_tests {
     }
 
     #[test]
-    fn 複製の名前はexcelの流儀() {
+    fn duplicate_names_follow_the_excel_convention() {
         let mut b = Book::new();
         let base = b.sheets[0].name.clone();
         assert_eq!(copy_sheet_name(&b, &base), format!("{base} (2)"));
@@ -4461,7 +4461,7 @@ mod pivot_e2e_tests {
     /// **おすすめを押すだけでピボットが建つ**(2026-08-21 の D群)。
     /// 候補の決め方は純関数の試験で見ています。ここは配線を見ます。
     #[gpui::test]
-    async fn おすすめを選ぶとその形でピボットが建つ(cx: &mut gpui::TestAppContext) {
+    async fn choosing_a_recommendation_builds_that_pivot(cx: &mut gpui::TestAppContext) {
         if !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../.venv/bin/python")
             .exists()
@@ -4505,7 +4505,7 @@ mod pivot_e2e_tests {
     }
 
     #[gpui::test]
-    async fn ピボットは挿入から締めまで通しで効く(cx: &mut gpui::TestAppContext) {
+    async fn the_pivot_works_end_to_end_from_insert_to_close(cx: &mut gpui::TestAppContext) {
         if !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../.venv/bin/python")
             .exists()
@@ -4663,7 +4663,7 @@ mod hide_lines_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 行と列を隠して戻せる(cx: &mut gpui::TestAppContext) {
+    fn rows_and_columns_can_be_hidden_and_shown(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for r in 0..5u32 {
@@ -4691,7 +4691,7 @@ mod hide_lines_tests {
     }
 
     #[gpui::test]
-    fn 使っている行を全部は隠せない(cx: &mut gpui::TestAppContext) {
+    fn not_every_used_row_can_be_hidden(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for r in 0..3u32 {
@@ -4721,7 +4721,7 @@ mod data_edge_tests {
     }
 
     #[gpui::test]
-    fn 塊の終わりと次の塊へ飛ぶ(cx: &mut gpui::TestAppContext) {
+    fn jumps_to_the_end_of_a_block_and_to_the_next(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             setup(this);
@@ -4745,7 +4745,7 @@ mod data_edge_tests {
     }
 
     #[gpui::test]
-    fn 端まで選択は起点を保つ(cx: &mut gpui::TestAppContext) {
+    fn selecting_to_the_edge_keeps_the_anchor(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             setup(this);
@@ -4781,7 +4781,7 @@ mod data_table_tests {
     }
 
     #[gpui::test]
-    fn 一変数の感度表が埋まる(cx: &mut gpui::TestAppContext) {
+    fn a_one_variable_data_table_fills_in(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             setup(this);
@@ -4807,7 +4807,7 @@ mod data_table_tests {
     }
 
     #[gpui::test]
-    fn 二変数は角の式を使う(cx: &mut gpui::TestAppContext) {
+    fn a_two_variable_table_uses_the_corner_formula(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             setup(this);
@@ -4834,7 +4834,7 @@ mod data_table_tests {
     }
 
     #[gpui::test]
-    fn 形が合わなければ正直に断る(cx: &mut gpui::TestAppContext) {
+    fn a_mismatched_shape_is_refused_honestly(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             setup(this);
@@ -4860,7 +4860,7 @@ mod track_changes_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 記録の入切で差分が刻まれる(cx: &mut gpui::TestAppContext) {
+    fn toggling_recording_writes_the_diffs(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             let s = &mut this.book.sheets[0];
@@ -4893,7 +4893,7 @@ mod track_changes_tests {
     }
 
     #[gpui::test]
-    fn 変わっていなければ何も刻まない(cx: &mut gpui::TestAppContext) {
+    fn nothing_is_recorded_when_nothing_changed(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.book.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("10"));
@@ -4905,7 +4905,7 @@ mod track_changes_tests {
     }
 
     #[test]
-    fn 変更履歴がxlsxを往復する() {
+    fn tracked_changes_round_trip_through_xlsx() {
         let mut b = sheet::Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("x"));
         b.changes.push(sheet::model::ChangeRec {
@@ -4933,7 +4933,7 @@ mod tab_zoom_tests {
     use crate::*;
 
     #[gpui::test]
-    fn タブの品書きは保護の今の状態で言い分を変える(cx: &mut gpui::TestAppContext) {
+    fn the_tab_menu_wording_follows_the_current_protection_state(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 掛かっていなければ「シートを保護」
@@ -4957,7 +4957,7 @@ mod tab_zoom_tests {
     }
 
     #[gpui::test]
-    fn ズームは上下の端で止まり百に戻せる(cx: &mut gpui::TestAppContext) {
+    fn zoom_stops_at_both_ends_and_resets_to_one_hundred(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for _ in 0..30 {
@@ -4980,7 +4980,7 @@ mod flash_fill_tests {
     use crate::*;
 
     #[test]
-    fn 見本から作り方を読み取る() {
+    fn reads_the_recipe_from_the_sample() {
         // 姓 + 空白 + 名
         let ex = vec![(vec!["山田".into(), "太郎".into()], "山田 太郎".into())];
         let r = flash_recipe(&ex).expect("読み取れない");
@@ -4995,7 +4995,7 @@ mod flash_fill_tests {
     }
 
     #[test]
-    fn 見本を作り直せない作り方は採らない() {
+    fn a_recipe_that_cannot_rebuild_the_sample_is_rejected() {
         // 2つの見本が食い違う(1つ目は姓+名、2つ目は名だけ)→ 諦める
         let ex = vec![
             (vec!["山田".into(), "太郎".into()], "山田 太郎".into()),
@@ -5005,7 +5005,7 @@ mod flash_fill_tests {
     }
 
     #[gpui::test]
-    fn 見本の下だけを埋めて既にある所は触らない(cx: &mut gpui::TestAppContext) {
+    fn fills_only_below_the_sample_and_leaves_existing_cells_alone(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (i, (a, b)) in [("山田", "太郎"), ("鈴木", "花子"), ("佐藤", "一郎")]
@@ -5035,7 +5035,7 @@ mod flash_fill_tests {
     }
 
     #[gpui::test]
-    fn 読み取れなければ黙って埋めない(cx: &mut gpui::TestAppContext) {
+    fn nothing_is_filled_silently_when_it_cannot_be_read(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("あ"));
@@ -5061,7 +5061,7 @@ mod symbol_watch_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 記号は組で選んでから字を選び最近使った分が先に出る(cx: &mut gpui::TestAppContext) {
+    fn symbols_are_chosen_by_set_then_character_with_recents_first(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.run_cmd("inssymbol", cx);
@@ -5091,7 +5091,7 @@ mod symbol_watch_tests {
     // 鳴る — **その場で許す**(まとめて消すと製品の命名まで見なくなる)
     #[allow(non_snake_case)]
     #[gpui::test]
-    fn Unicodeの16進で記号を入れられて読めなければ断る(cx: &mut gpui::TestAppContext) {
+    fn a_unicode_hex_code_inserts_a_symbol_and_bad_input_is_refused(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.prompt = Some(("symbol-hex", Editor::new("3012")));
@@ -5106,7 +5106,7 @@ mod symbol_watch_tests {
     }
 
     #[gpui::test]
-    fn 見張りは一つずつ外せて押せば飛ぶ(cx: &mut gpui::TestAppContext) {
+    fn watches_can_be_removed_one_by_one_and_clicking_jumps_there(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             let (a, b) = (Pos::parse("A1").unwrap(), Pos::parse("D9").unwrap());
@@ -5134,7 +5134,7 @@ mod names_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 名前を式の打っている所へ差し込む(cx: &mut gpui::TestAppContext) {
+    fn a_name_is_inserted_where_the_formula_is_being_typed(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.book.sheets[0].names.push(sheet::model::DefinedName::new("売上", "B2:B10"));
@@ -5161,7 +5161,7 @@ mod autofit_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 幅を中身に合わせるとはみ出さなくなる(cx: &mut gpui::TestAppContext) {
+    fn autofitting_the_width_stops_the_overflow(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let p = Pos::parse("A1").unwrap();
@@ -5180,7 +5180,7 @@ mod autofit_tests {
     }
 
     #[gpui::test]
-    fn 折り返すセルは高さが行数ぶんになる(cx: &mut gpui::TestAppContext) {
+    fn a_wrapped_cells_height_grows_with_its_line_count(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let p = Pos::parse("A1").unwrap();
@@ -5198,7 +5198,7 @@ mod autofit_tests {
     }
 
     #[gpui::test]
-    fn 中身が無ければ何もしないと言う(cx: &mut gpui::TestAppContext) {
+    fn says_it_does_nothing_when_there_is_no_content(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.cursor = Pos::parse("A1").unwrap();
@@ -5218,7 +5218,7 @@ mod color_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 色は16進で直に指定できて読めない字は断る(cx: &mut gpui::TestAppContext) {
+    fn a_color_can_be_typed_as_hex_and_bad_input_is_refused(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let p = Pos::parse("A1").unwrap();
@@ -5254,7 +5254,7 @@ mod cse_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 範囲を選んで配列数式を入れると範囲いっぱいに答えが入る(cx: &mut gpui::TestAppContext) {
+    fn an_array_formula_over_a_range_fills_the_whole_range(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for i in 0..3u32 {
@@ -5284,7 +5284,7 @@ mod cse_tests {
     }
 
     #[gpui::test]
-    fn 配列数式の一部は書き換えられない(cx: &mut gpui::TestAppContext) {
+    fn part_of_an_array_formula_cannot_be_rewritten(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for i in 0..3u32 {
@@ -5321,7 +5321,7 @@ mod csv_out_tests {
     // 鳴る — **その場で許す**(まとめて消すと製品の命名まで見なくなる)
     #[allow(non_snake_case)]
     #[gpui::test]
-    fn CSVはShift_JISでも書けて落ちた字を数える(cx: &mut gpui::TestAppContext) {
+    fn csv_writes_in_shift_jis_and_counts_the_lost_characters(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         let dir = std::env::temp_dir().join(format!("jo-csv-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -5364,7 +5364,7 @@ mod recover_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 自動復旧の控えは原本を上書きしない(cx: &mut gpui::TestAppContext) {
+    fn the_autorecover_copy_does_not_overwrite_the_original(cx: &mut gpui::TestAppContext) {
         // **これがこの機能の肝。** 控えを取るたびに原本を書き換えていたら、
         // 「保存していないつもりの変更」が原本に入り Ctrl+Z でも戻せない
         let dir = std::env::temp_dir().join(format!("jo-recover-{}", std::process::id()));
@@ -5410,7 +5410,7 @@ mod recover_tests {
     }
 
     #[gpui::test]
-    fn 控えから開いても原本の道は持たない(cx: &mut gpui::TestAppContext) {
+    fn opening_from_a_backup_does_not_carry_the_originals_path(cx: &mut gpui::TestAppContext) {
         // 控えを開いて Ctrl+S を押したら原本が上書きされる、では意味がない
         let dir = std::env::temp_dir().join(format!("jo-recover2-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -5443,7 +5443,7 @@ mod protect_tests {
     use crate::*;
 
     #[test]
-    fn セルのロックと許可する操作がxlsxを往復する() {
+    fn cell_locking_and_allowed_actions_round_trip_through_xlsx() {
         let mut b = sheet::Book::new();
         // A1 はロックのまま、B2 はロックを外す(帳票の記入欄)
         b.sheets[0].set(Pos::parse("A1").unwrap(), sheet::Cell::input("見出し"));
@@ -5479,7 +5479,7 @@ mod protect_tests {
     }
 
     #[gpui::test]
-    fn 保護中もロックを外したセルには書ける(cx: &mut gpui::TestAppContext) {
+    fn unlocked_cells_stay_writable_while_protected(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let head = Pos::parse("A1").unwrap();
@@ -5506,7 +5506,7 @@ mod protect_tests {
     }
 
     #[gpui::test]
-    fn 許した操作だけが保護中に通る(cx: &mut gpui::TestAppContext) {
+    fn only_allowed_actions_pass_while_protected(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let p = Pos::parse("A1").unwrap();
@@ -5531,7 +5531,7 @@ mod stale_string_tests {
     use crate::*;
 
     #[test]
-    fn 文字列の中の古いシート名を数える() {
+    fn counts_old_sheet_names_inside_strings() {
         let mut b = sheet::Book::new();
         b.sheets[0].name = "表紙".into();
         let s = &mut b.sheets[0];
@@ -5562,7 +5562,7 @@ mod cycle_ref_tests {
     /// F4 = 参照の $ を回す。**一巡して元に戻る**ことまで見る —
     /// 途中で止まると「戻せない」になり、押すのが怖い鍵になる
     #[test]
-    fn 参照のドルを一巡させる() {
+    fn cycles_the_dollars_in_a_reference() {
         let c = |t: &str| cycle_ref_at(t, t.len());
         assert_eq!(c("=A1"), Some(("=$A$1".into(), 5)));
         assert_eq!(c("=$A$1"), Some(("=A$1".into(), 4)));
@@ -5580,7 +5580,7 @@ mod cycle_ref_tests {
     }
 
     #[test]
-    fn 参照でないものには効かない() {
+    fn it_does_nothing_to_a_non_reference() {
         // 関数名(直後が丸かっこ)
         assert_eq!(cycle_ref_at("=LOG10(", 6), None);
         // 数だけ・文字だけ
@@ -5591,7 +5591,7 @@ mod cycle_ref_tests {
     }
 
     #[test]
-    fn シート名つきの参照はセルの側だけ回す() {
+    fn a_qualified_reference_shifts_only_its_cell_part() {
         let c = |t: &str| cycle_ref_at(t, t.len());
         assert_eq!(c("=4月!B2"), Some(("=4月!$B$2".into(), "=4月!$B$2".len())));
         assert_eq!(c("='売上 表'!B2"), Some(("='売上 表'!$B$2".into(), "='売上 表'!$B$2".len())));
@@ -5600,7 +5600,7 @@ mod cycle_ref_tests {
     /// カーソルが参照の**途中**にいても、その参照を回す
     /// (打っている最中に押すのが普通)
     #[test]
-    fn 参照の途中で押しても効く() {
+    fn it_works_when_pressed_mid_reference() {
         // "=A12" の A と 1 の間
         assert_eq!(cycle_ref_at("=A12", 2), Some(("=$A$12".into(), 6)));
     }
@@ -5615,7 +5615,7 @@ mod key_hint_tests {
     /// 札は打ち分けられる。**36 を超えたら全部2文字** —
     /// 1文字と2文字を混ぜると、`A` を打った時に決まりか途中か分からない
     #[test]
-    fn 札は重ならず長さも揃う() {
+    fn the_labels_do_not_overlap_and_share_a_length() {
         for n in [0, 1, 5, 36, 37, 100] {
             let h = ui::key_hints(n);
             assert_eq!(h.len(), n);
@@ -5628,7 +5628,7 @@ mod key_hint_tests {
 
     /// Alt で出て、段の札 → ボタンの札、の2段で辿る
     #[gpui::test]
-    fn 段の札からボタンの札へ辿る(cx: &mut gpui::TestAppContext) {
+    fn walks_from_the_group_label_to_the_button_label(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             assert!(this.hint_targets().is_empty(), "出す前から札がある");
@@ -5678,7 +5678,7 @@ mod key_hint_tests {
     /// **無い札を打ったら畳む。** 居座ると、次の字が格子へ行くのか札へ行くのか
     /// 分からなくなる
     #[gpui::test]
-    fn 無い札を打つと畳む(cx: &mut gpui::TestAppContext) {
+    fn typing_a_label_that_does_not_exist_closes_the_list(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.toggle_key_hints();
@@ -5706,7 +5706,7 @@ mod autocorrect_tests {
     }
 
     #[gpui::test]
-    fn セルに打つと記号になり式には掛からない(cx: &mut gpui::TestAppContext) {
+    fn typing_in_a_cell_inserts_the_symbol_but_not_in_a_formula(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.autocorrect = true;
@@ -5732,7 +5732,7 @@ mod autocorrect_tests {
     /// **仕舞うときにも掛かる。** Enter は区切りの打鍵ではないので、
     /// ここが無いと「`\alpha` と打って Enter」だけ替わらない
     #[gpui::test]
-    fn enterで仕舞っても記号になる(cx: &mut gpui::TestAppContext) {
+    fn closing_with_enter_still_inserts_the_symbol(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.autocorrect = true;
@@ -5759,7 +5759,7 @@ mod autocorrect_tests {
     /// **`.py` の編集面では掛けない** — `\alpha` は Python では別の意味を
     /// 持つ綴りで、置き換えたら台本が黙って壊れる
     #[gpui::test]
-    fn pythonの編集面では掛からない(cx: &mut gpui::TestAppContext) {
+    fn shortcuts_do_not_fire_in_the_python_editor(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.autocorrect = true;
@@ -5799,7 +5799,7 @@ mod comment_list_tests {
     }
 
     #[test]
-    fn 場所はシート順そのあとセル順() {
+    fn places_are_ordered_by_sheet_then_by_cell() {
         let mut r = vec![
             row(1, "A1", "", "", false),
             row(0, "B2", "", "", false),
@@ -5815,7 +5815,7 @@ mod comment_list_tests {
     /// **空の欄はいつも最後。** 降順にしても先頭へ来ない —
     /// 名乗りの無い筋が頭に並ぶと、一覧が読めなくなる
     #[test]
-    fn 名乗りの無い筋は昇順でも降順でも最後() {
+    fn an_unnamed_thread_sorts_last_both_ways() {
         let mut r = vec![
             row(0, "A1", "", "", false),
             row(0, "A2", "佐藤", "", false),
@@ -5828,7 +5828,7 @@ mod comment_list_tests {
     }
 
     #[test]
-    fn 日付は綴りの順で空は最後() {
+    fn dates_sort_chronologically_with_blanks_last() {
         let mut r = vec![
             row(0, "A1", "", "2026-08-12T09:00:00Z", false),
             row(0, "A2", "", "", false),
@@ -5840,7 +5840,7 @@ mod comment_list_tests {
 
     /// 未解決が先(片づける相手が上に来る)
     #[test]
-    fn 状態は未解決が先で同じなら場所の順() {
+    fn unresolved_comes_first_then_by_place() {
         let mut r = vec![
             row(0, "A1", "", "", true),
             row(0, "A2", "", "", false),
@@ -5864,7 +5864,7 @@ mod slicer_tests {
     /// **数だけの値は数として並べる。** 文字として並べると 10 が 2 より前に
     /// 来て、伝票番号の列が読めなくなる
     #[test]
-    fn 数の列は数の順に並ぶ() {
+    fn numeric_columns_sort_numerically() {
         let r = rows(&[("10", true), ("2", true), ("100", true), ("9", true)]);
         let (up, _) = slicer_items(&r, false, false);
         assert_eq!(up, vec!["2", "9", "10", "100"]);
@@ -5873,7 +5873,7 @@ mod slicer_tests {
     }
 
     #[test]
-    fn 文字は符号位置の順に並ぶ() {
+    fn text_sorts_by_code_point() {
         let r = rows(&[("う", true), ("あ", true), ("い", true)]);
         assert_eq!(slicer_items(&r, false, false).0, vec!["あ", "い", "う"]);
         assert_eq!(slicer_items(&r, true, false).0, vec!["う", "い", "あ"]);
@@ -5884,7 +5884,7 @@ mod slicer_tests {
     /// 空欄は値ではないので**並べ替えの外・いちばん最後**。
     /// 降順にしても最後のまま(先頭に来ると値の一つに見える)
     #[test]
-    fn 空白はいつも最後() {
+    fn blanks_always_sort_last() {
         let r = rows(&[("い", true), ("", true), ("あ", true)]);
         assert_eq!(slicer_items(&r, false, false).0, vec!["あ", "い", "(空白)"]);
         assert_eq!(slicer_items(&r, true, false).0, vec!["い", "あ", "(空白)"]);
@@ -5893,7 +5893,7 @@ mod slicer_tests {
     /// ⊘ = 他の絞りで一行も残っていない値を並べない。
     /// **同じ値の行が一つでも生きていれば残す**
     #[test]
-    fn 行の無い値を外せる() {
+    fn a_value_with_no_rows_can_be_removed() {
         let r = rows(&[("あ", false), ("い", true), ("あ", true), ("う", false)]);
         assert_eq!(slicer_items(&r, false, false).0, vec!["あ", "い", "う"]);
         assert_eq!(slicer_items(&r, false, true).0, vec!["あ", "い"], "生きた行がある値まで消えた");
@@ -5905,7 +5905,7 @@ mod slicer_tests {
 
     /// 64 を超えたら切るが、**何件切ったかを返す**(黙って切らない)
     #[test]
-    fn 多すぎる値は数を添えて切る() {
+    fn too_many_values_are_truncated_with_a_count() {
         let v: Vec<(String, bool)> = (0..70).map(|i| (format!("{i:03}"), true)).collect();
         let (items, cut) = slicer_items(&v, false, false);
         assert_eq!(items.len(), 64);
@@ -5926,7 +5926,7 @@ mod sheet_name_table_tests {
     use crate::util::{color_schemes, protect_allows};
 
     #[test]
-    fn 保護中に許す操作の名前は両方の表に揃っている() {
+    fn the_allowed_action_names_match_in_both_tables() {
         let a = sheet::model::ProtectAllow::default();
         let mine = protect_allows();
         for (n, _) in a.items() {
@@ -5948,7 +5948,7 @@ mod sheet_name_table_tests {
     }
 
     #[test]
-    fn 配色の名前は両方の表に揃っている() {
+    fn the_palette_names_match_in_both_tables() {
         let mine = color_schemes();
         for (n, _) in sheet::theme::SCHEMES {
             assert!(
@@ -5975,7 +5975,7 @@ mod currency_tests {
     /// **記号は帳票のお金、並びは読む人の言語。** 独語(pattern 3)は
     /// 記号が後ろ、日本語(pattern 0)は前
     #[test]
-    fn 記号は選び並びは言語で決まる() {
+    fn the_symbol_order_follows_the_language() {
         assert_eq!(currency_code("¥", 0, 0), "\"¥\"#,##0", "日本語の並び");
         assert_eq!(currency_code("€", 2, 3), "#,##0.00 \"€\"", "独語の並び");
         assert_eq!(currency_code("$", 2, 0), "\"$\"#,##0.00");
@@ -5985,7 +5985,7 @@ mod currency_tests {
 
     /// **円に小数は付けない。** 「¥1,234.00」は日本の帳票では見ない
     #[test]
-    fn 小数の桁は通貨で決まる() {
+    fn the_decimal_places_follow_the_currency() {
         let by = |k: &str| {
             currencies().iter().find(|(key, _, _, _)| *key == k).map(|(_, _, s, d)| (*s, *d)).unwrap()
         };
@@ -5997,7 +5997,7 @@ mod currency_tests {
 
     /// 記号なしはただの桁区切り
     #[test]
-    fn 記号なしを選べる() {
+    fn no_symbol_can_be_chosen() {
         assert_eq!(currency_code("", 0, 0), "#,##0");
         assert_eq!(currency_code("", 2, 3), "#,##0.00");
     }
@@ -6005,7 +6005,7 @@ mod currency_tests {
     /// **組んだコードを描き手が読めること。** 引用符つきの記号は
     /// 2026-08-10 まで落ちていたので、往復で確かめる
     #[test]
-    fn 組んだコードが描ける() {
+    fn the_composed_code_renders() {
         let f = |code: &str| {
             // 起点は 1900(この試験は日付ではなく通貨の書式を見ている)
             sheet::model::format_value(&sheet::Value::Number(1234.0), Some(code), false)
@@ -6024,7 +6024,7 @@ mod datefmt_tests {
     /// 「長い日付 (2026年8月6日)」のように例を焼き付けると、独語の人に
     /// 日本語の日付を約束することになる — 描いた物を出せば嘘のつきようがない
     #[test]
-    fn 見出しが描いた結果と一致する() {
+    fn the_headers_match_what_was_drawn() {
         for (_, label, code) in date_formats() {
             let drawn = sheet::model::format_value(
                 &sheet::Value::Number(46240.0),
@@ -6041,7 +6041,7 @@ mod datefmt_tests {
     /// **日付の書式には地域を書き込む。** 残さないと、開いた人の環境しだいで
     /// 別の月名が出る。時刻だけは言語に関わらないので付けない
     #[test]
-    fn 日付には地域が入り時刻には入らない() {
+    fn dates_carry_a_locale_and_times_do_not() {
         let f = date_formats();
         let by = |k: &str| f.iter().find(|(key, _, _)| *key == k).unwrap().2.clone();
         for k in ["short_date", "long_date", "month_year", "weekday_only"] {
@@ -6052,7 +6052,7 @@ mod datefmt_tests {
 
     /// 日本語で動かしているので、既定は日本語の並びで出る
     #[test]
-    fn 日本語では日本語の日付が出る() {
+    fn japanese_shows_japanese_dates() {
         let f = date_formats();
         let label = |k: &str| f.iter().find(|(key, _, _)| *key == k).unwrap().1.clone();
         assert!(label("long_date").ends_with("2026年8月6日"), "{}", label("long_date"));
@@ -6074,7 +6074,7 @@ mod fnhelp_tests {
     /// 2026-08-11 に「日付」を「日付・時刻」へ広げたとき、この形で
     /// `picks.rs` だけが取り残されていた。
     #[test]
-    fn 関数の分類の綴りが揃っている() {
+    fn the_function_category_spellings_match() {
         use std::collections::BTreeSet;
         let tab_of: BTreeSet<&str> = FN_GROUPS.iter().skip(1).copied().collect();
         let table: BTreeSet<&str> = crate::funcs::FUNCS.iter().map(|f| f.group).collect();
@@ -6098,7 +6098,7 @@ mod fnhelp_tests {
     /// **どの言語でも、分類のタブが9つとも別の語になること。**
     /// 同じ語が2つ並ぶと、押す人には区別がつかない
     #[test]
-    fn 分類のタブが重ならない() {
+    fn the_category_tabs_do_not_overlap() {
         let mut seen = std::collections::HashMap::new();
         for g in FN_GROUPS {
             let label = util::fn_group_label(g);
@@ -6114,7 +6114,7 @@ mod fnhelp_tests {
     /// 別の関数の説明が出る**(落ちない・警告も出ない)。数と並びの
     /// 両方をここで見る。
     #[test]
-    fn 関数の言葉がどの言語も揃っている() {
+    fn the_function_wording_is_complete_in_every_language() {
         let plain: Vec<&str> = crate::funcs::FUNCS.iter().map(|f| f.name).collect();
         assert!(plain.windows(2).all(|w| w[0] < w[1]), "素の表が名前順に並んでいません");
         let mut seen = 0;
@@ -6139,7 +6139,7 @@ mod fnhelp_tests {
     /// 「英語で開いたのに1行だけ日本語」になる。仮名が混じっていたら落とす
     /// (中国語・韓国語は漢字を使うので、仮名だけを見る)
     #[test]
-    fn 関数の説明に日本語が残っていない() {
+    fn no_japanese_is_left_in_the_function_descriptions() {
         let kana = |s: &str| s.chars().any(|c| ('\u{3040}'..='\u{30ff}').contains(&c));
         for lang in ui::languages() {
             if lang == "ja" {
@@ -6164,7 +6164,7 @@ mod svg_save_tests {
     /// なので、1つだけ書き出すと図の一部しか保存できない(2026-08-13、
     /// 台帳「SmartArt 右クリック『画像として保存』」)
     #[gpui::test]
-    fn 束ねた図形が1枚のsvgにまとまる(cx: &mut gpui::TestAppContext) {
+    fn grouped_shapes_become_a_single_svg(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             for (r, col) in [(1u32, 1u32), (3, 4)] {
@@ -6208,7 +6208,7 @@ mod slicer_col_tests {
     /// 押した人は自分がどの列をスライサーにしたのか分からなかった
     /// (2026-08-13、台帳「スライサー挿入時の列チェック」)
     #[gpui::test]
-    fn スライサーは列を選んでから出る(cx: &mut gpui::TestAppContext) {
+    fn a_slicer_appears_after_a_column_is_chosen(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (p, v) in [((0, 0), "区分"), ((0, 1), "金額"), ((1, 0), "A"), ((1, 1), "10")] {
@@ -6233,7 +6233,7 @@ mod slicer_col_tests {
     /// **板は何枚でも開く。** 絞りは全部の板を通った行だけ残る(かつ)。
     /// 同じ列をもう一度選ぶとその板が閉じる(一覧の ☑ を外す)
     #[gpui::test]
-    fn スライサーは何枚でも開いてかつで絞る(cx: &mut gpui::TestAppContext) {
+    fn any_number_of_slicers_combine_with_and(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 見出し + 4行(品目 × 店)
@@ -6285,7 +6285,7 @@ mod slicer_col_tests {
     /// 設定(大きさ・一定の比率・位置)。**「一定の比率」は片方を動かすと
     /// もう片方も同じ率で動く**
     #[gpui::test]
-    fn スライサーの大きさと位置(cx: &mut gpui::TestAppContext) {
+    fn slicer_size_and_position(cx: &mut gpui::TestAppContext) {
         use crate::util::Slicer;
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
@@ -6333,7 +6333,7 @@ mod prompt_tests {
     /// 1文字打っただけで calc が落ちていた(2026-08-12)— 3の倍数のときだけ
     /// 偶然通るので、試しに何文字か打った人だけが踏む。
     #[test]
-    fn 伏せ字にキャレットを差し込んでも落ちない() {
+    fn placing_the_caret_inside_masked_text_does_not_panic() {
         // view.rs のパスワード欄と同じ式。**文字数で置く**
         let caret = |raw: &str, cursor: usize, mask: bool| -> String {
             let before = raw[..cursor.min(raw.len())].chars().count();
@@ -6372,7 +6372,7 @@ mod shape_nudge_tests {
 
     /// **Shift を押すと縦横の比を保つ。** 押していなければ自由
     #[gpui::test]
-    fn shift_を押した大きさ変更は比を保つ(cx: &mut gpui::TestAppContext) {
+    fn resizing_with_shift_keeps_the_ratio(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             let (ox, oy) = put_one_shape(this);
@@ -6392,7 +6392,7 @@ mod shape_nudge_tests {
 
     /// **Shift を押した移動は横か縦だけ。** 動かした量の大きいほうへ
     #[gpui::test]
-    fn shift_を押した移動は縦横のどちらかに縛られる(cx: &mut gpui::TestAppContext) {
+    fn moving_with_shift_locks_to_one_axis(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             let (ox, oy) = put_one_shape(this);
@@ -6412,7 +6412,7 @@ mod shape_nudge_tests {
     /// **図形を選んでいる間だけ Ctrl+矢印を奪う**(2026-08-13 発注者)。
     /// 選んでいなければ従来どおり「データの端へ」でカーソルが動く
     #[gpui::test]
-    fn ctrl矢印は図形を選んでいる間だけ図形を動かす(cx: &mut gpui::TestAppContext) {
+    fn ctrl_arrow_moves_a_shape_only_while_one_is_selected(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             let (ox, oy) = put_one_shape(this);
@@ -6447,7 +6447,7 @@ mod shape_gallery_tests {
     ];
 
     #[test]
-    fn 一覧に並ぶ形はすべて本当に描ける() {
+    fn every_shape_in_the_list_really_draws() {
         // **できないものを、できるように見せない。** 描けない名前を
         // 並べると、押した人の前に四角が置かれる
         let mut n = 0;
@@ -6467,7 +6467,7 @@ mod shape_gallery_tests {
     }
 
     #[test]
-    fn 鍵はどの分類でも重ならない() {
+    fn the_keys_do_not_collide_across_categories() {
         // 分類をまたいで同じ鍵があると、2段目の引き当てが取り違える
         // (フローチャートの「処理」と基本図形の「四角形」は別物)
         let mut seen = std::collections::BTreeSet::new();
@@ -6479,7 +6479,7 @@ mod shape_gallery_tests {
     }
 
     #[test]
-    fn 一覧の鍵はすべて種類に引き当たる() {
+    fn every_list_key_resolves_to_a_kind() {
         // 引き当てから漏れた鍵は黙って四角になる。**漏れを試験で捕まえる**
         for c in CATS {
             for (k, _) in shape_gallery(c) {
@@ -6493,7 +6493,7 @@ mod shape_gallery_tests {
     }
 
     #[test]
-    fn 分類の見出しがすべてある() {
+    fn every_category_heading_is_present() {
         for c in CATS {
             assert!(!shape_cat_label(c).is_empty(), "{c} の見出しが空");
         }
@@ -6511,7 +6511,7 @@ mod hide_formula_tests {
     }
 
     #[test]
-    fn 保護して初めて隠れる() {
+    fn hiding_only_takes_effect_once_protected() {
         // **印を付けただけでは効かない。** そこを取り違えると
         // 「押したのに効かない」と読まれるので、画面の側でもそう言う
         assert!(!hidden(false, true, true), "保護していないのに隠れている");
@@ -6521,7 +6521,7 @@ mod hide_formula_tests {
     }
 
     #[test]
-    fn 式のあるセルでしか押せない() {
+    fn it_is_clickable_only_on_a_cell_with_a_formula() {
         // 右クリックの項が灰色になる条件と同じ
         let mut b = sheet::Book::new();
         let p = Pos::parse("A1").unwrap();
@@ -6555,7 +6555,7 @@ mod point_edit_tests {
     }
 
     #[gpui::test]
-    fn 取っ手は頂点と持っている制御点の分だけ出る(cx: &mut gpui::TestAppContext) {
+    fn handles_appear_for_the_vertices_and_the_control_points_held(cx: &mut gpui::TestAppContext) {
         // **描く側と押す側は同じ表**(point_handles)。数がここで決まる
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
@@ -6572,7 +6572,7 @@ mod point_edit_tests {
     }
 
     #[gpui::test]
-    fn 頂点は2つより減らせない(cx: &mut gpui::TestAppContext) {
+    fn the_vertex_count_cannot_drop_below_two(cx: &mut gpui::TestAppContext) {
         // 線でなくなるので断る。**押して黙って壊れない**
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
@@ -6584,7 +6584,7 @@ mod point_edit_tests {
     }
 
     #[gpui::test]
-    fn 線の上を押すと頂点が増える(cx: &mut gpui::TestAppContext) {
+    fn clicking_on_a_line_adds_a_vertex(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             let (ox, oy) = setup(this, vec![P::at(0.0, 0.0), P::at(1.0, 0.0)]);
@@ -6595,7 +6595,7 @@ mod point_edit_tests {
     }
 
     #[gpui::test]
-    fn 曲がりの入切で制御点が出入りする(cx: &mut gpui::TestAppContext) {
+    fn toggling_the_curve_adds_and_removes_control_points(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             setup(this, vec![P::at(0.0, 1.0), P::at(0.5, 0.0), P::at(1.0, 1.0)]);
@@ -6609,7 +6609,7 @@ mod point_edit_tests {
     }
 
     #[gpui::test]
-    fn 頂点を動かすと制御点も一緒に動く(cx: &mut gpui::TestAppContext) {
+    fn moving_a_vertex_moves_its_control_points_too(cx: &mut gpui::TestAppContext) {
         // 曲がり方を保ったまま形だけ動かせる
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
@@ -6655,7 +6655,7 @@ mod boolean_tests {
     }
 
     #[gpui::test]
-    fn 結合すると1つの図形になる(cx: &mut gpui::TestAppContext) {
+    fn merging_makes_a_single_shape(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             two_rects(this);
@@ -6668,7 +6668,7 @@ mod boolean_tests {
     }
 
     #[gpui::test]
-    fn 中を抜くと輪郭が2本になる(cx: &mut gpui::TestAppContext) {
+    fn punching_a_hole_leaves_two_outlines(cx: &mut gpui::TestAppContext) {
         // **穴のあく形。** 輪郭の切れ目(start)で表す
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
@@ -6687,7 +6687,7 @@ mod boolean_tests {
     }
 
     #[gpui::test]
-    fn ひとつしか選んでいなければ断る(cx: &mut gpui::TestAppContext) {
+    fn a_single_selection_is_refused(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             two_rects(this);
@@ -6699,7 +6699,7 @@ mod boolean_tests {
     }
 
     #[gpui::test]
-    fn 輪郭を出せない形は断る(cx: &mut gpui::TestAppContext) {
+    fn a_shape_with_no_outline_is_refused(cx: &mut gpui::TestAppContext) {
         // **黙って四角で計算しない**
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
@@ -6712,7 +6712,7 @@ mod boolean_tests {
     }
 
     #[gpui::test]
-    fn 右へコピーで値も式もずれて写る(cx: &mut gpui::TestAppContext) {
+    fn filling_right_shifts_both_values_and_formulas(cx: &mut gpui::TestAppContext) {
         // Ctrl+R(fill-right)。fill-num(下へ)の姉妹 — 先頭列を右へ、
         // 式は相対参照が列方向にずれる
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
@@ -6739,7 +6739,7 @@ mod boolean_tests {
     }
 
     #[gpui::test]
-    fn 列と行の丸ごと選択(cx: &mut gpui::TestAppContext) {
+    fn selecting_whole_columns_and_rows(cx: &mut gpui::TestAppContext) {
         // Ctrl+Space / Shift+Space の実体。使われている大きさまで選ぶ
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
@@ -6764,7 +6764,7 @@ mod combo_tests {
     use crate::*;
 
     #[gpui::test]
-    fn 書体を選ぶと最近使った書体に積まれる(cx: &mut gpui::TestAppContext) {
+    fn choosing_a_font_pushes_it_onto_the_recent_list(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.cursor = Pos::new(0, 0);
@@ -6784,7 +6784,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 大きさの自由入力は画面の入り口で丸める(cx: &mut gpui::TestAppContext) {
+    fn a_typed_size_is_rounded_at_the_screen_entry(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.cursor = Pos::new(0, 0);
@@ -6802,7 +6802,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 大きさの丸めは模型の値には掛からない(cx: &mut gpui::TestAppContext) {
+    fn size_rounding_does_not_touch_the_model_value(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // よそで作った 2pt を模型に直に置く(画面を通さない道)
@@ -6816,7 +6816,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 絞り込みつきの一覧は打つほど減る(cx: &mut gpui::TestAppContext) {
+    fn a_filtered_list_shrinks_as_you_type(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.cursor = Pos::new(0, 0);
@@ -6838,7 +6838,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 一覧に無い値はそのまま確定できる(cx: &mut gpui::TestAppContext) {
+    fn a_value_not_in_the_list_can_still_be_committed(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.cursor = Pos::new(0, 0);
@@ -6858,7 +6858,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 選択を確定するとその項が掛かる(cx: &mut gpui::TestAppContext) {
+    fn committing_the_selection_applies_that_entry(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.cursor = Pos::new(0, 0);
@@ -6874,7 +6874,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 下へコピーは選択の最後の行まで入る(cx: &mut gpui::TestAppContext) {
+    fn filling_down_reaches_the_last_row_of_the_selection(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 中身のある列(1 の下に 2 が4つ)を、1行目から5行目まで選んで下へ
@@ -6893,7 +6893,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 下へコピーは1セルなら上の行を写す(cx: &mut gpui::TestAppContext) {
+    fn filling_down_a_single_cell_copies_the_row_above(cx: &mut gpui::TestAppContext) {
         // 本家の Ctrl+D。空の最終セルに立って一手で埋める道
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
@@ -6917,7 +6917,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 範囲を選んで打った字は起点に入り下へコピーで全部になる(cx: &mut gpui::TestAppContext) {
+    fn text_typed_over_a_range_lands_on_the_anchor_and_fills_down(cx: &mut gpui::TestAppContext) {
         // 発注者が貼った本家の仕様: 「1を入力して Ctrl+D を押すと、すべて
         // 1 になります」。打った字の入り先が選択の下端になっていて、
         // 下向きコピーに上書きされて消えていた(2026-08-14 の正体)
@@ -6948,7 +6948,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 埋めた後カーソルのセルが空に見えない(cx: &mut gpui::TestAppContext) {
+    fn after_filling_the_cell_under_the_caret_does_not_look_empty(cx: &mut gpui::TestAppContext) {
         // 発注者 2026-08-14: A1=1、A1:A5 を選んで Ctrl+D — 「A1 を A2:A5 に
         // 写しました」と出るのに A5 が空に見える。モデルには書けていた。
         // カーソル(選択の下端 A5)のセルは打ちかけの欄を映すので、
@@ -6978,7 +6978,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 上が空の下へコピーは中身を消して書式は残す(cx: &mut gpui::TestAppContext) {
+    fn filling_down_from_an_empty_cell_clears_contents_and_keeps_the_format(cx: &mut gpui::TestAppContext) {
         // 黙って飛ばさない — 空も配る(本家と同じ)。書式は帳票の枠なので残す
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
@@ -6999,7 +6999,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn フィルハンドルのダブルクリックは隣の列の長さまで埋める(cx: &mut gpui::TestAppContext) {
+    fn double_clicking_the_fill_handle_fills_to_the_neighbouring_columns_length(cx: &mut gpui::TestAppContext) {
         // 発注者の場面そのもの: B に数が4行、D4 に式 — D4 の右下を
         // ダブルクリックすると、B の長さ(行7)まで式が下りる
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
@@ -7028,7 +7028,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn フィルハンドルは隣が空なら断って理由を言う(cx: &mut gpui::TestAppContext) {
+    fn the_fill_handle_refuses_with_a_reason_when_the_neighbour_is_empty(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.book.sheets[0].set(Pos::new(0, 3), sheet::Cell::input("5"));
@@ -7040,7 +7040,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn フィルハンドルのドラッグは数の並びの続きを作る(cx: &mut gpui::TestAppContext) {
+    fn dragging_the_fill_handle_continues_a_numeric_series(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // 本家のオートフィル: 10,20 を引くと 30,40,50,60(等差の続き)
@@ -7095,7 +7095,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 右へコピーは1セルなら左の列を写す(cx: &mut gpui::TestAppContext) {
+    fn filling_right_a_single_cell_copies_the_column_to_its_left(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("9"));
@@ -7112,7 +7112,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 結合して中央は書式が入り_ハンドルは外周の角に付く(cx: &mut gpui::TestAppContext) {
+    fn merge_and_center_applies_the_format_and_puts_handles_on_the_outer_corners(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.book.sheets[0].set(Pos::new(1, 1), sheet::Cell::input("あいうえお"));
@@ -7133,7 +7133,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 普通の貼り付けは書式も運ぶ(cx: &mut gpui::TestAppContext) {
+    fn an_ordinary_paste_carries_the_formatting_too(cx: &mut gpui::TestAppContext) {
         // 発注者 2026-08-14「普通にコピーしたら、書式もコピーしないといけない」。
         // 本家の Ctrl+V は中身と書式の両方。値だけ・書式だけは
         // 「形式を選択して貼り付け」の側
@@ -7162,7 +7162,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 貼り付けで式の参照はずれ書式は付いてくる(cx: &mut gpui::TestAppContext) {
+    fn pasting_shifts_formula_references_and_brings_the_formatting(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("10"));
@@ -7186,7 +7186,7 @@ mod combo_tests {
     }
 
     #[test]
-    fn 画面のdpiは96に固定されている() {
+    fn the_screen_dpi_is_fixed_at_ninety_six() {
         // 発注者確定 2026-08-14。実 dpi を読むと機械ごとに紙面が変わり、
         // 印刷と合わせられない。calc(pt→px)と writer(mm→px)が同じ
         // 96 を見ていることを、数で見張る
@@ -7201,7 +7201,7 @@ mod combo_tests {
     }
 
     #[test]
-    fn 字の大きさは96dpiの換算() {
+    fn font_size_converts_at_ninety_six_dpi() {
         use crate::util::cell_font_px;
         // 画面の標準どおり 1pt = 96/72 px。前は 1.28 倍で 4% 小さく、
         // 書式の無いセルは 12.5px の直書き(11pt を 1.136 倍)だった
@@ -7215,7 +7215,7 @@ mod combo_tests {
     }
 
     #[test]
-    fn 中央のはみ出しはセルの中心が軸() {
+    fn centered_overflow_pivots_on_the_cell_centre() {
         use crate::view::spill_band;
         // セル幅 100(x0=200)、文字は 220 要る。左右に 100 ずつ伸ばせる
         // → 中心 250 を軸に、帯は 140〜360
@@ -7239,7 +7239,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 中央揃えの長い文字は左右の空きへはみ出す(cx: &mut gpui::TestAppContext) {
+    fn long_centered_text_overflows_into_both_neighbours(cx: &mut gpui::TestAppContext) {
         // 発注者 2026-08-14「中央揃えも隣が空白セルだとセルの範囲を超えて表示」。
         // 描画そのものは画面でしか見えないので、はみ出しの判定に使う
         // 「空いているか」の条件をここで固定する(隣が塞がれば流さない)
@@ -7262,7 +7262,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 列と行の選択は表の端まで届き重くない(cx: &mut gpui::TestAppContext) {
+    fn column_and_row_selection_reaches_the_edge_without_being_slow(cx: &mut gpui::TestAppContext) {
         // 発注者 2026-08-14「行選択や列選択も途中で止めずに同じく全範囲」。
         // 全範囲になると、範囲を舐める操作(書式・消去)が 256 万セルを
         // 歩きうる — 遅くないことも一緒に見る
@@ -7292,7 +7292,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 見出しの左上の角で全部のセルを選ぶ(cx: &mut gpui::TestAppContext) {
+    fn the_top_left_header_corner_selects_every_cell(cx: &mut gpui::TestAppContext) {
         // 発注者 2026-08-14「セルの左上を選択した時は、全部のセルを対象に」。
         // 本家と同じ。中身は Ctrl+A と同じ道(使われている範囲)を通す
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
@@ -7317,7 +7317,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn udfは引数の変わったセルだけ投げ_全部のセルが計算される(cx: &mut gpui::TestAppContext) {
+    fn a_udf_sends_only_changed_arguments_yet_every_cell_computes(cx: &mut gpui::TestAppContext) {
         // 一周の実演で踏んだ2つ(2026-08-14):
         // (1) 表の3行目が #PY? のまま永久に残った — 指紋がシート全体で1つ
         //     だったので、走っている間に増えたセルまで「計算済み」になった
@@ -7341,7 +7341,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 操作の記録は記録だけを書く(cx: &mut gpui::TestAppContext) {
+    fn the_action_recorder_writes_only_the_recording(cx: &mut gpui::TestAppContext) {
         // 発注者 2026-08-15「Calc 側に操作を記録できるようにだけする」。
         // 主従が逆転した今、これが「何を書けばいいか」を教える唯一の道具 —
         // **記録した物がそのまま走る**のが要件
@@ -7384,7 +7384,7 @@ mod combo_tests {
     }
 
     #[gpui::test]
-    fn 記録していなければ何も溜まらない(cx: &mut gpui::TestAppContext) {
+    fn nothing_accumulates_while_not_recording(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.input = Editor::new("x");
@@ -7414,7 +7414,7 @@ mod rec_gap_tests {
     /// 常に回る見張りは下の[`記録は書けなかった操作を黙って落とさない`]。
     #[ignore = "重い(16分)。穴の一覧が要るときだけ手で回す"]
     #[gpui::test]
-    fn 記録の穴を数える(cx: &mut gpui::TestAppContext) {
+    fn counts_the_gaps_in_the_recording(cx: &mut gpui::TestAppContext) {
         let ids: Vec<&'static str> = ui::ribbon::calc_tabs()
             .iter()
             .flat_map(|t| t.cmds.iter())
@@ -7471,7 +7471,7 @@ mod rec_honest_tests {
     /// **書けなかった操作を黙って落とさない**(速い見張り。上の数え直しの
     /// 道具は重くて既定では回らないので、仕組みが生きていることはここで見る)
     #[gpui::test]
-    fn 中身を変えたのに書けない操作は註が残る(cx: &mut gpui::TestAppContext) {
+    fn an_edit_that_cannot_be_written_leaves_a_note(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             {
@@ -7560,7 +7560,7 @@ mod web_export_tests {
     /// 楽になるでしょう」)。肝は**表示形式を通すこと** — 画面と同じ字が
     /// 頁に出ないと、台帳を正本にする意味が半分になる。
     #[gpui::test]
-    fn 書き出した頁は画面と同じ字を出す(cx: &mut gpui::TestAppContext) {
+    fn the_exported_page_shows_the_same_text_as_the_screen(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         let dir = std::env::temp_dir().join("officework-web-test");
         let _ = std::fs::create_dir_all(&dir);
@@ -7615,7 +7615,7 @@ mod web_export_tests {
     /// 実機では「掛けました」と状態行が言うのに画面の印が変わらず、
     /// どちらが嘘か分からなかった(2026-08-15)。模型を直に見て決める。
     #[gpui::test]
-    fn 右パネルの塗りと字下げと向きが効く(cx: &mut gpui::TestAppContext) {
+    fn the_side_panels_fill_indent_and_orientation_work(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             this.set_fill(Some("FFC000"), "黄");
@@ -7641,7 +7641,7 @@ mod web_export_tests {
     /// **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
     /// xlsx の中身も串刺しで探せ、選んでも開かない
     #[gpui::test]
-    fn フォルダから探して読み込む(cx: &mut gpui::TestAppContext) {
+    fn finds_and_loads_from_a_folder(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("calc-find-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -7680,11 +7680,11 @@ mod web_export_tests {
 /// ここは「窓から呼ばれる所」を通して往復させます
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod adoc_の開く保存 {
+mod adoc_open_and_save {
     use crate::*;
 
     #[gpui::test]
-    fn 保存して開き直すと式と値が戻る(cx: &mut gpui::TestAppContext) {
+    fn save_and_reopen_restores_formulas_and_values(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("jo-adoc-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("売上台帳.adoc");
@@ -7742,7 +7742,7 @@ mod adoc_の開く保存 {
 
     /// 載らない物は**黙って落とさず**、帳簿に出す
     #[gpui::test]
-    fn 載らない物を帳簿に出す(cx: &mut gpui::TestAppContext) {
+    fn what_does_not_fit_is_logged(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("jo-adoc2-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("様式.adoc");
@@ -7765,11 +7765,11 @@ mod adoc_の開く保存 {
 /// 「セルの中の一部を選択してリボンのボタンをつかえばいいのでは」)。
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod 選んで押すと印が入る {
+mod selecting_and_pressing_puts_the_mark_in {
     use crate::*;
 
     #[gpui::test]
-    fn 太字の印が入り_もう一度で外れる(cx: &mut gpui::TestAppContext) {
+    fn the_bold_mark_goes_on_and_comes_off_again(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.input = Editor::new("これは太字です");
@@ -7787,7 +7787,7 @@ mod 選んで押すと印が入る {
 
     /// 選んでいなければ今までどおりセル全体の書式
     #[gpui::test]
-    fn 選んでいなければセル全体(cx: &mut gpui::TestAppContext) {
+    fn with_no_selection_the_whole_cell_is_used(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.run_cmd("bold", cx);
@@ -7797,7 +7797,7 @@ mod 選んで押すと印が入る {
 
     /// **式の中では印を入れない。** `*` を足すと式そのものが変わる
     #[gpui::test]
-    fn 式の中では入れない(cx: &mut gpui::TestAppContext) {
+    fn it_cannot_be_inserted_inside_a_formula(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.input = Editor::new("=SUM(A1:A3)");
@@ -7810,7 +7810,7 @@ mod 選んで押すと印が入る {
 
     /// 取り消し線も同じ(開きと閉じが違う印)
     #[gpui::test]
-    fn 取り消し線も入る(cx: &mut gpui::TestAppContext) {
+    fn strikethrough_applies_too(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.input = Editor::new("予定は中止です");
@@ -7828,11 +7828,11 @@ mod 選んで押すと印が入る {
 /// まま書いていた — 守ったつもりのブックが誰でも読める字になる。断る。
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod 暗号化と字の保存 {
+mod encryption_and_saving_as_text {
     use crate::*;
 
     #[gpui::test]
-    fn 暗号化したまま字では保存できない(cx: &mut gpui::TestAppContext) {
+    fn an_encrypted_file_cannot_be_saved_as_text(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("jo-enc-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -7867,7 +7867,7 @@ mod find_scope_tests {
     /// 見ていなかった**。使う人からは「有るはずの物が見つからない」という
     /// 一番たちの悪い外れ方になる
     #[gpui::test]
-    fn ファイル全体なら他のシートも探して連れて行く(cx: &mut gpui::TestAppContext) {
+    fn a_whole_file_search_visits_the_other_sheets_too(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.book.sheets.push(sheet::Sheet::new("Sheet2"));
@@ -7892,7 +7892,7 @@ mod find_scope_tests {
 
     /// 同じシートの中では今までどおり(次の当たりへ回る)
     #[gpui::test]
-    fn このシートだけなら中で回る(cx: &mut gpui::TestAppContext) {
+    fn a_sheet_only_search_stays_inside(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.sheet_mut().set(Pos::new(1, 0), Cell::input("りんご"));
@@ -7920,7 +7920,7 @@ mod file_menu_tests {
     /// *「解除」は張ってあれば押せます* — 行が隠れているかではありません
     /// (`filter_active()` を流用して間違え、上の一巡りの試験に捕まりました)。
     #[gpui::test]
-    fn 押せるかは状況で変わる(cx: &mut gpui::TestAppContext) {
+    fn the_enabled_state_depends_on_the_situation(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 何も張っていなければ「フィルターを解除」は押せない
@@ -7952,7 +7952,7 @@ mod file_menu_tests {
     /// 写真より試験のほうが確実に押さえられる — 並び・id・灰色が
     /// 変わっていないことがそのまま条件だから
     #[gpui::test]
-    fn ファイルの項目の並びと押せるかが変わらない(cx: &mut gpui::TestAppContext) {
+    fn the_file_menu_order_and_enabled_state_are_unchanged(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             let items = this.file_menu();
@@ -7979,7 +7979,7 @@ mod file_menu_tests {
 
     /// **選んでいる面の項目が塗られる**(右に何を出しているかが分かる)
     #[gpui::test]
-    fn 出している面の項目に印が付く(cx: &mut gpui::TestAppContext) {
+    fn the_item_for_the_visible_pane_is_marked(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.file_menu_click("f-recent", cx);
@@ -7999,7 +7999,7 @@ mod file_menu_tests {
     /// `ui::filemenu` へ寄せた。寄せたあとも同じことが起きるかを縛る —
     /// 写しを消すときに一番危ないのは「消しただけで繋ぎ忘れる」こと
     #[gpui::test]
-    fn 共通へ移した腕が効く(cx: &mut gpui::TestAppContext) {
+    fn the_handler_moved_to_the_shared_layer_works(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // ‹ 戻る は来る前の段へ
@@ -8023,7 +8023,7 @@ mod file_menu_tests {
 
     /// **まだ名前が無いときは、そう言う**(黙って何も起きないのが一番分からない)
     #[gpui::test]
-    fn 置き場を開くは名前が無ければ断る(cx: &mut gpui::TestAppContext) {
+    fn open_location_refuses_without_a_name(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.file_menu_click("f-place", cx);
@@ -8033,7 +8033,7 @@ mod file_menu_tests {
 
     /// **知らない id で落ちない。** 灰色の項目を押しても何も起きない
     #[gpui::test]
-    fn 知らない項目は何もしない(cx: &mut gpui::TestAppContext) {
+    fn an_unknown_item_does_nothing(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let before = this.file_view;
@@ -8050,7 +8050,7 @@ mod file_menu_tests {
     /// 事務の様式は電話番号と郵便番号を字で持つので、これは台帳を壊します。
     ///
     /// 直しは列の型の指定ではなく規則1つ — *割る前が字なら、割った後も字*。
-    fn 区切り位置は頭の0を落とさない(cx: &mut gpui::TestAppContext) {
+    fn text_to_columns_keeps_a_leading_zero(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.sheet_mut().set(Pos::new(0, 0), sheet::Cell::input("090-1234-5678"));
