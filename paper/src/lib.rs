@@ -658,8 +658,8 @@ mod tests {
         assert_eq!(s.setup_at(0.0).map(|g| (g.w_mm, g.h_mm)), Some((210.0, 297.0)),
             "巻物の頭で最初の節が引けない: {:?}", s.sect_pages);
 
-        let 紙面 = Paper { width_mm: 297.0, height_mm: 210.0, margin_mm: 20.0 };
-        let papers = paginate_full(&s, 紙面).papers;
+        let page_of = Paper { width_mm: 297.0, height_mm: 210.0, margin_mm: 20.0 };
+        let papers = paginate_full(&s, page_of).papers;
         assert_eq!((papers[0].width_mm, papers[0].height_mm), (210.0, 297.0),
             "1ページ目が最後の節の紙で刷られた");
     }
@@ -973,23 +973,23 @@ mod footnote_area_tests {
     #[test]
     fn 脚注のある頁では本文の底が上がる() {
         let long_text = "いろはにほへとちりぬるを。".repeat(200);
-        let なし = Document {
+        let none_of = Document {
             blocks: vec![tab(vec![text(&long_text)])],
             ..Default::default()
         };
-        let あり = Document {
+        let some_of = Document {
             blocks: vec![tab(vec![mark("9"), text(&long_text)])],
             footnotes: vec![note("9", &"脚注の文章。".repeat(20))],
             ..Default::default()
         };
-        let (s1, s2) = (build(&なし), build(&あり));
+        let (s1, s2) = (build(&none_of), build(&some_of));
         let p1 = paginate_full(&s1, Paper::default());
         let p2 = paginate_full(&s2, Paper::default());
         assert!(!s2.notes.is_empty(), "脚注が組まれていない");
-        let 一頁目 = |p: &Pagination| p.pages.iter().filter(|k| **k == 1).count();
-        assert!(一頁目(&p2) < 一頁目(&p1),
+        let first_page = |p: &Pagination| p.pages.iter().filter(|k| **k == 1).count();
+        assert!(first_page(&p2) < first_page(&p1),
             "脚注があるのに1頁目の本文の行数が減っていない: {} / {}",
-            一頁目(&p2), 一頁目(&p1));
+            first_page(&p2), first_page(&p1));
     }
 
     /// **字が紙の中に収まる。** 「脚注が出た」だけを見る試験は、
@@ -1042,14 +1042,14 @@ mod footnote_area_tests {
         let s = build(&d);
         let pg = paginate_full(&s, Paper::default());
         assert!(pg.offsets.len() >= 2, "頁が足りず試験にならない");
-        let 載った: Vec<usize> = pg.notes.iter().enumerate()
+        let placed: Vec<usize> = pg.notes.iter().enumerate()
             .filter(|(_, v)| !v.is_empty()).map(|(k, _)| k).collect();
-        assert_eq!(載った.len(), 1, "脚注が複数の頁に出た: {載った:?}");
+        assert_eq!(placed.len(), 1, "脚注が複数の頁に出た: {placed:?}");
         // 印のある行の頁と一致するか
         let at_y = s.notes[0].at_y;
-        let 印の頁 = pg.page_at(at_y);
-        assert_eq!(載った[0], 印の頁, "脚注が印と違う頁に出た");
-        assert!(印の頁 > 0, "この試験は2頁目に印が来る形を見ている");
+        let mark_page = pg.page_at(at_y);
+        assert_eq!(placed[0], mark_page, "脚注が印と違う頁に出た");
+        assert!(mark_page > 0, "この試験は2頁目に印が来る形を見ている");
     }
 
     /// 脚注が無ければ今までどおり(頁割りは1ミリも変わらない)

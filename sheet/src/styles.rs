@@ -581,7 +581,7 @@ mod tests {
     }
 
     #[test]
-    fn 壊れた入力でも落ちない() {
+    fn broken_input_does_not_panic() {
         for s in ["", "<styleSheet/>", "<x", "ぐちゃぐちゃ"] {
             let _ = parse(s, &[]);
         }

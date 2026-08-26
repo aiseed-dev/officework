@@ -35,24 +35,24 @@ import i18n_ja  # noqa: E402  英語の鍵 → 日本語の札
 
 ROOT = Path(__file__).resolve().parent.parent
 CMDS = ROOT / "docs/ja/commands"
-除く = ("target", "vendor", ".flatpak-builder")
+exclude = ("target", "vendor", ".flatpak-builder")
 
 # 選べる値ではないもの。
 # * 句点で終わる、記号で始まる → 説明の文
 # * `欄の名前 — 説明` の形 → 欄の一覧であって、選べる値ではありません
-_説明 = re.compile(r"[。、]$|^[|=*`]|—")
+_desc = re.compile(r"[。、]$|^[|=*`]|—")
 
 
-def 画面の文言() -> set:
+def screen_words() -> set:
     """**日本語のマニュアルと比べるので、日本語の側を集めます。**
 
     鍵が英語になったので(2026-08-26)、ソースの字をそのまま拾っても
     日本語の頁とは比べられません。`tools/i18n_ja.py` が一段引きます。
     """
-    return i18n_ja.画面の日本語()
+    return i18n_ja.screen_japanese()
 
 
-def 頁の値():
+def page_value():
     """(頁, 値) を返す。ダイアログの節の箇条書きだけ見ます"""
     for p in sorted(CMDS.rglob("*.adoc")):
         if p.name == "README.ja.adoc":
@@ -63,15 +63,15 @@ def 頁の値():
         for line in re.findall(r"^\* (.+)$", m.group(1), re.M):
             # 強調と註記を外す(`* 折れ線(*既定*)` → `折れ線`)
             v = re.sub(r"\(\*[^)]*\*\)|\*", "", line).strip()
-            if len(v) < 3 or _説明.search(v) or len(v) > 30:
+            if len(v) < 3 or _desc.search(v) or len(v) > 30:
                 continue
             yield str(p.relative_to(CMDS))[:-5], v
 
 
 def main() -> int:
-    文言 = 画面の文言()
-    bad = [(f, v) for f, v in 頁の値() if v not in 文言]
-    seen = sum(1 for _ in 頁の値())
+    words = screen_words()
+    bad = [(f, v) for f, v in page_value() if v not in words]
+    seen = sum(1 for _ in page_value())
     if not bad:
         print(f"手引きに書いた選べる値 {seen} 件、画面の文言と揃っています")
         return 0

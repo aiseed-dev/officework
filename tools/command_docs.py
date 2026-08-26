@@ -45,7 +45,7 @@ def name(label: str) -> str:
 
 
 # コマンド名() と KAZARI は api_taiou にあります(定義は1か所)
-コマンド名 = api_taiou.コマンド名
+command_name = api_taiou.command_name
 
 
 def list():
@@ -60,20 +60,20 @@ def list():
     対応表のほうは *両方の行を残します* — あちらは画面を写した物なので、
     2か所にあるボタンは2行あるのが正しい形です。
     """
-    まとめ = {}
-    for tab, label, _絵, _obj, mark, ow, pd, op in api_taiou.rows():
+    summary = {}
+    for tab, label, _icon, _obj, mark, ow, pd, op in api_taiou.rows():
         # ❌(呼ぶ相手が無い物)にも画面のボタンはありますが、
         # する事が画面の見え方だけなので手引きは要りません
         if mark == "❌":
             continue
-        member = コマンド名(label)
-        if member in まとめ:
-            if tab not in まとめ[member][1]:
-                まとめ[member][1].append(tab)
+        member = command_name(label)
+        if member in summary:
+            if tab not in summary[member][1]:
+                summary[member][1].append(tab)
             continue
         p = SAKI / name(tab) / f"{name(member)}.adoc"
-        まとめ[member] = [member, [tab], mark, ow, p, pd, op, label]
-    return [tuple(v) for v in まとめ.values()]
+        summary[member] = [member, [tab], mark, ow, p, pd, op, label]
+    return [tuple(v) for v in summary.values()]
 
 
 # 状態。**手引きは実物より先に書きます**(2026-08-24 発注者)。
@@ -85,7 +85,7 @@ JOTAI = {
 }
 
 # ボタンの名前 → キー(`face/src/keys.rs` と `keys_doc.py` の説明から結ぶ)
-def _キーの表():
+def _key_table():
     import keys_doc
     import face_dummy  # noqa: F401  (使いません)
     return {}
@@ -110,7 +110,7 @@ KUBUN = [
 ]
 
 
-def 一言(label: str) -> str:
+def one_word(label: str) -> str:
     for member, sentence in KUBUN:
         if label in member:
             return sentence
@@ -125,7 +125,7 @@ JOTAI = {
     "廃止予定": "*なくす予定です。* 行き先を下に書いてあります",
 }
 
-def 状態の名(label: str, mark: str) -> str:
+def state_name(label: str, mark: str) -> str:
     """ボタンが使えるかどうか。**印(API の有無)では決めません**
 
     2026-08-25 発注者「フォルダから探すを ❌ にしたらダメでしょう。api が
@@ -137,56 +137,56 @@ def 状態の名(label: str, mark: str) -> str:
     (`ready` が false)が 14 個あり、そこが本当の未実装です。
     リボンに無いボタン(パネルや右クリックだけの物)は、印で決めます。
     """
-    if label in _使える():
+    if label in _ready():
         return "実装済み"
-    if label in _灰色():
+    if label in _grey():
         return "未実装"
     # リボンに無いボタン(ファイルのページ・右クリック・シート見出し)は、
     # 実物を読んで確かめた控えで決めます
-    if label in api_taiou.HOKA_UGOKU or コマンド名(label) in {
-            api_taiou.コマンド名(x) for x in api_taiou.HOKA_UGOKU}:
+    if label in api_taiou.HOKA_UGOKU or command_name(label) in {
+            api_taiou.command_name(x) for x in api_taiou.HOKA_UGOKU}:
         return "実装済み"
     return {"✅": "実装済み", "✍": "実装済み"}.get(mark, "未実装")
 
 
-def _リボン():
+def _ribbon():
     import ribbon_parse
     t = ribbon_parse.tables_or_die()
     return [x for table in ("WRITER", "CALC") for tab in t[table] for x in tab.cmds]
 
 
-_使えるの控え = None
-_灰色の控え = None
+_ready_cache = None
+_grey_cache = None
 
 
-def _使える():
-    global _使えるの控え
-    if _使えるの控え is None:
-        _使えるの控え = {x.label for x in _リボン() if x.ready}
-    return _使えるの控え
+def _ready():
+    global _ready_cache
+    if _ready_cache is None:
+        _ready_cache = {x.label for x in _ribbon() if x.ready}
+    return _ready_cache
 
 
-def _灰色():
-    global _灰色の控え
-    if _灰色の控え is None:
-        使える = _使える()
-        _灰色の控え = {x.label for x in _リボン() if not x.ready} - 使える
-    return _灰色の控え
+def _grey():
+    global _grey_cache
+    if _grey_cache is None:
+        usable = _ready()
+        _grey_cache = {x.label for x in _ribbon() if not x.ready} - usable
+    return _grey_cache
 
 
-下書き = """= {label}
+draft_of = """= {label}
 
-{tab}にあります。{同じ}
+{tab}にあります。{same}
 
-*状態: {state}* — {状態の説明}
+*状態: {state}* — {state_desc}
 
 == 何をするか
 
-{一言}
+{one_word}
 
 == ダイアログ
 
-{ダイアログ}
+{dialog}
 
 == プログラムから
 
@@ -200,12 +200,12 @@ def main() -> int:
     missing = [x for x in r if not x[4].exists()]
 
     if "--make" in sys.argv:
-        for label, 段ら, mark, ow, p, pd, op, 画面 in missing:
+        for label, tabs_of, mark, ow, p, pd, op, screen in missing:
             p.parent.mkdir(parents=True, exist_ok=True)
             if mark == "✍":
-                書き = ow or api_taiou.理由(label, "✍") or ""
+                writing = ow or api_taiou.reason(label, "✍") or ""
                 py = ("専用の呼び方はありません。こう書けば同じことができます。\n\n"
-                      f"[source,python]\n----\n{書き}\n----")
+                      f"[source,python]\n----\n{writing}\n----")
             elif ow:
                 py = f"[source,python]\n----\n{ow}\n----"
             else:
@@ -215,18 +215,18 @@ def main() -> int:
                     if x[0] and x[0] != "—"]
             if src_of:
                 vendor = "\n他のライブラリでは、こう書きます。\n\n[cols=\"1,2\"]\n|===\n|道具 |書き方\n\n"
-                vendor += "\n".join(f"|{name} |`{書}`" for 書, name in src_of) + "\n|===\n"
-            st = 状態の名(label, mark)
-            同じ = ("" if len(段ら) == 1 else
-                    "\n" + "と".join(段ら[1:]) + "にも同じボタンがあります。する事は同じです。")
+                vendor += "\n".join(f"|{name} |`{writ}`" for writ, name in src_of) + "\n|===\n"
+            st = state_name(label, mark)
+            same = ("" if len(tabs_of) == 1 else
+                    "\n" + "と".join(tabs_of[1:]) + "にも同じボタンがあります。する事は同じです。")
             # 画面のラベルに飾りが付いているときは、そう見えることを断ります
-            if 画面 != label:
-                同じ += f"\n画面のボタンは「{画面}」と出ています。"
-            p.write_text(下書き.format(label=label, tab=段ら[0], 同じ=同じ,
+            if screen != label:
+                same += f"\n画面のボタンは「{screen}」と出ています。"
+            p.write_text(draft_of.format(label=label, tab=tabs_of[0], same=same,
                                        python=py, vendor=vendor,
-                                       state=st, 状態の説明=JOTAI[st],
-                                       一言=一言(label),
-                                       ダイアログ="(ダイアログは出ません)" if mark == "✅"
+                                       state=st, state_desc=JOTAI[st],
+                                       one_word=one_word(label),
+                                       dialog="(ダイアログは出ません)" if mark == "✅"
                                        else "(ダイアログが出るときは、選ぶものをここに書きます)"),
                         encoding="utf-8")
         print(f"{len(missing)} 枚の下書きを作りました")
@@ -238,14 +238,14 @@ def main() -> int:
              "同じ名前のボタンが2か所にあるときは、手引きは1枚です。"
              "どちらの段からも同じ1枚に飛びます。", ""]
         # 段の順は対応表と同じ。1枚が2つの段に出ることがあります
-        段の順, content = [], {}
-        for label, 段ら, mark, ow, p, *_ in r:
-            for tab in 段ら:
+        tab_order, content = [], {}
+        for label, tabs_of, mark, ow, p, *_ in r:
+            for tab in tabs_of:
                 if tab not in content:
-                    段の順.append(tab)
+                    tab_order.append(tab)
                     content[tab] = []
                 content[tab].append((label, p))
-        for tab in 段の順:
+        for tab in tab_order:
             o += [f"== {tab}", ""]
             for label, p in content[tab]:
                 if p.exists():
@@ -261,7 +261,7 @@ def main() -> int:
 
     # **状態ごとに数えます。** 手引きは実物より先に書くので、
     # 「未実装」の枚数がこれから作る物の一覧になります
-    numbers, ずれ = {}, []
+    numbers, drift = {}, []
     for q in sorted(SAKI.rglob("*.adoc")):
         if q.name == "README.adoc":
             continue
@@ -271,14 +271,14 @@ def main() -> int:
         numbers[current] = numbers.get(current, 0) + 1
         # **書いた状態が実物と合っているか。** ファイル名でなく見出しで引きます
         # (`ヘッダー_フッター.adoc` の名前は `ヘッダー/フッター` です)
-        見 = re.match(r"= (.+)", s)
-        if m and 見 and current != "廃止予定":
-            member = 見.group(1).strip()
+        look = re.match(r"= (.+)", s)
+        if m and look and current != "廃止予定":
+            member = look.group(1).strip()
             mark = next((x[4] for x in api_taiou.rows()
-                       if コマンド名(x[1]) == member), "")
-            べき = 状態の名(member, mark)
-            if べき != current:
-                ずれ.append((q.relative_to(ROOT).as_posix(), current, べき))
+                       if command_name(x[1]) == member), "")
+            should_be = state_name(member, mark)
+            if should_be != current:
+                drift.append((q.relative_to(ROOT).as_posix(), current, should_be))
     print(f"手引きが要るボタン {len(r)} 枚のうち、書けているのは {len(r) - len(missing)} 枚です")
     print("書いた手引きの状態:")
     for k in ("実装済み", "未実装", "廃止予定", "印が無い"):
@@ -286,28 +286,28 @@ def main() -> int:
             print(f"  {k:<8} {numbers[k]} 枚")
     # 表から消えたのに残っている枚。まとめ直した後の後片づけに要ります
     needed = {x[4].resolve() for x in r}
-    余り = [q for q in sorted(SAKI.rglob("*.adoc"))
+    remainder = [q for q in sorted(SAKI.rglob("*.adoc"))
             if q.name != "README.adoc" and q.resolve() not in needed]
-    if 余り:
-        print(f"\n表に無い手引きが {len(余り)} 枚あります(消してください):")
-        for q in 余り:
+    if remainder:
+        print(f"\n表に無い手引きが {len(remainder)} 枚あります(消してください):")
+        for q in remainder:
             print(f"  {q.relative_to(ROOT)}")
 
-    if ずれ:
-        print(f"\n**状態が実物と違う手引きが {len(ずれ)} 枚あります。**", file=sys.stderr)
+    if drift:
+        print(f"\n**状態が実物と違う手引きが {len(drift)} 枚あります。**", file=sys.stderr)
         print("ボタンが動くかは face/src/ribbon.rs の ready と、"
               "api_taiou.HOKA_UGOKU が持っています。\n", file=sys.stderr)
-        for f, a, b in ずれ:
+        for f, a, b in drift:
             print(f"  {f}: 「{a}」と書いてありますが「{b}」です", file=sys.stderr)
         return 1
 
     if missing:
         print("\nまだ無いもの(段ごとの数):")
-        から = {}
-        for _ラベル, 段ら, *_ in missing:
-            tab = 段ら[0]
-            から[tab] = から.get(tab, 0) + 1
-        for tab, n in から.items():
+        from_of = {}
+        for _label, tabs_of, *_ in missing:
+            tab = tabs_of[0]
+            from_of[tab] = from_of.get(tab, 0) + 1
+        for tab, n in from_of.items():
             print(f"  {tab:<24} {n}")
     return 0
 

@@ -621,7 +621,7 @@ mod tests {
     /// **実体の無いアイコン**の一覧。ここに載っている id は無地のボタンで出る。
     /// 2026-08-13 に 77 個ぜんぶ描いたので空。**増えても減っても試験が落ちる**
     /// (下の2つの assert が両方向で見ている)。
-    const アイコンの無いボタン: &[&str] = &[];
+    const iconless_buttons: &[&str] = &[];
 
     #[test]
     fn 実体の無いアイコンを増やさない() {
@@ -638,14 +638,14 @@ mod tests {
                 }
             }
         }
-        let 新しい: Vec<&&str> =
-            missing.iter().filter(|m| !アイコンの無いボタン.contains(m)).collect();
-        assert!(新しい.is_empty(),
-            "実体の無いアイコンが増えた: {新しい:?}(絵を描いて icons.rs に足す)");
-        let 直った: Vec<&&str> =
-            アイコンの無いボタン.iter().filter(|a| !missing.contains(a)).collect();
-        assert!(直った.is_empty(),
-            "アイコンができているのに一覧に残っている: {直った:?}(一覧から外す)");
+        let fresh: Vec<&&str> =
+            missing.iter().filter(|m| !iconless_buttons.contains(m)).collect();
+        assert!(fresh.is_empty(),
+            "実体の無いアイコンが増えた: {fresh:?}(絵を描いて icons.rs に足す)");
+        let was_fixed: Vec<&&str> =
+            iconless_buttons.iter().filter(|a| !missing.contains(a)).collect();
+        assert!(was_fixed.is_empty(),
+            "アイコンができているのに一覧に残っている: {was_fixed:?}(一覧から外す)");
     }
 
     #[test]

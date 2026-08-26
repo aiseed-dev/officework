@@ -38,7 +38,7 @@ impl Writer {
         if self.file_view == 3 {
             // **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
             // 上に欄、真ん中に当たりの一覧、下に見せる窓と「読み込み」
-            let 欄 = |this: &Writer, i: usize, ed: &Editor, w: f32, ph: &'static str| {
+            let field = |this: &Writer, i: usize, ed: &Editor, w: f32, ph: &'static str| {
                 let mut s = ed.text().to_string();
                 if this.fd_field == i && this.file_view == 3 {
                     let c = ed.cursor().min(s.len());
@@ -64,8 +64,8 @@ impl Writer {
                 .child(div().text_size(px(us * 16.0)).font_weight(gpui::FontWeight::BOLD)
                     .child(ui::t!("search_folder")))
                 .child(div().flex().flex_row().items_center().gap_2()
-                    .child(欄(self, 0, &self.fd_term, 280.0, "探す字"))
-                    .child(欄(self, 1, &self.fd_glob, 120.0, "*.txt"))
+                    .child(field(self, 0, &self.fd_term, 280.0, "探す字"))
+                    .child(field(self, 1, &self.fd_glob, 120.0, "*.txt"))
                     .child(push_btn("fd-dir", ui::t!("choose_folder").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.find_dir_dialog(cx); cx.notify() })))
                     .child(push_btn("fd-go", ui::t!("search_enter").into()).on_click(
@@ -305,14 +305,14 @@ impl Writer {
             // **重ねる前の姿を読みます。** 重ねた後を見せると、下の段の
             // 言い分が上の段の言い分に見えて、どこを直せばよいのかが
             // かえって分からなくなります(この画面で一度そうなりました)。
-            let 利用者の場所 =
+            let user_place =
                 ui::settings::dir().join(kumihan::theme::user_template_name());
-            let 利用者 = kumihan::theme::read_theme(&利用者の場所);
-            let 綴りの場所 = self
+            let user = kumihan::theme::read_theme(&user_place);
+            let folder_place = self
                 .tmpl_path
                 .clone()
                 .or_else(|| self.folder().map(|d| d.join(Self::FOLDER_TEMPLATE)));
-            let 綴り = 綴りの場所.as_deref().and_then(kumihan::theme::read_theme);
+            let folder = folder_place.as_deref().and_then(kumihan::theme::read_theme);
             // **書体と大きさは言語で変わります**(2026-08-26 発注者)。
             // その段が `[文書.en]` のような言語ごとの分を持っているときは、
             // いまの言語の分を出します — 出さないと、画面の数字と
@@ -327,7 +327,7 @@ impl Writer {
                     (None, None) => None,
                 }
             };
-            let tab = |name: &str, value: Option<String>, 場所: Option<String>| {
+            let tab = |name: &str, value: Option<String>, place: Option<String>| {
                 let value = value.unwrap_or_else(|| ui::t!("not_specified").to_string());
                 div().flex().flex_col().gap_1().pb_2()
                     .child(div().flex().flex_row().items_center().gap_2()
@@ -337,7 +337,7 @@ impl Writer {
                     .child(div().pl(px(us * 120.0)).text_size(px(us * 10.0))
                         .text_color(th_status)
                         .child(SharedString::from(
-                            場所.unwrap_or_else(|| ui::t!("not_created_yet").to_string()))))
+                            place.unwrap_or_else(|| ui::t!("not_created_yet").to_string()))))
             };
             pane = pane
                 .child(div().text_size(px(us * 16.0))
@@ -353,12 +353,12 @@ impl Writer {
                           Some(ui::t!("font_stored_document_open").to_string())))
                 // 2段目 — 綴り
                 .child(tab(&ui::t!("folder_4"),
-                          notes(綴り.as_ref()),
-                          綴りの場所.map(|p| p.display().to_string())))
+                          notes(folder.as_ref()),
+                          folder_place.map(|p| p.display().to_string())))
                 // 3段目 — 利用者
                 .child(tab(&ui::t!("account_computer"),
-                          notes(利用者.as_ref()),
-                          Some(利用者の場所.display().to_string())))
+                          notes(user.as_ref()),
+                          Some(user_place.display().to_string())))
                 .child(div().h(px(us * 8.0)))
                 // **いま実際に使っている書体と大きさ**。3段を重ねた結果です
                 .child(div().flex().flex_row().items_center().gap_2()
@@ -397,7 +397,7 @@ impl Writer {
                 pane = pane.child(ui::filemenu::recent_empty(&look));
             }
             for (i, (name, path)) in list.into_iter().enumerate() {
-                let 名2 = name.clone();
+                let name2 = name.clone();
                 pane = pane.child(
                     ui::filemenu::recent_row(&look, i, std::path::Path::new(&name))
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -408,7 +408,7 @@ impl Writer {
                             this.dirty = true;
                             this.status = ui::tf!(
                                 "opened_backup_original_check",
-                                名2.clone()
+                                name2.clone()
                             )
                             .into();
                             cx.notify()

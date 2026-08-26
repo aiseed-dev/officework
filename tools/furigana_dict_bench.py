@@ -132,7 +132,7 @@ def main() -> int:
         per.append((w.title, w.author, wh, wm))
 
     print()
-    print(f"{"作品":22} {"ルビ":>5} {"当たり":>7} {"率":>7}")
+    print(f"{"work_of":22} {"ruby":>5} {"hit":>7} {"rate":>7}")
     print("-" * 46)
     for t, a, wh, wm in sorted(per, key=lambda x: -(x[2] + x[3])):
         tt = wh + wm

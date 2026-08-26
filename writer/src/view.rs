@@ -393,7 +393,7 @@ impl Render for Writer {
                     let label = cmd.label;
                     // **入切のボタンは、入っている間ずっと押された形**
                     // (2026-08-21 発注者)。押してみないと分からない、をやめる
-                    let 入 = cmd.kind == ribbon::Kind::Toggle && self.入っているか(cmd.id);
+                    let on_of = cmd.kind == ribbon::Kind::Toggle && self.is_on(cmd.id);
                     // 名札の短い形は ja 向け — 他の言語では表の語を使う
                     let big = if ui::settings::language() == "ja" {
                         big
@@ -447,7 +447,7 @@ impl Render for Writer {
                         let mut b = div()
                             .id(SharedString::from(format!("h-{icon}")))
                             .px_2().h(px(us * 48.0)).rounded_sm()
-                            .when(入, |d| d.bg(th_btn_hover))
+                            .when(on_of, |d| d.bg(th_btn_hover))
                             .flex().flex_col().items_center().justify_center()
                             .gap_1()
                             .on_hover(hoverable)
@@ -490,7 +490,7 @@ impl Render for Writer {
                     let mut b = div()
                         .id(SharedString::from(format!("h-{icon}")))
                         .h(px(us * 26.0)).rounded_sm()
-                        .when(入, |d| d.bg(th_btn_hover))
+                        .when(on_of, |d| d.bg(th_btn_hover))
                         .flex().items_center().justify_center()
                         .on_hover(hoverable)
                         .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
@@ -556,10 +556,10 @@ impl Render for Writer {
             //
             // **組み込みの後ろ**に置きます — 並びが日によって変わらないよう、
             // 置き場の物は必ず後ろです
-            let 利用者 = ribbon::user_cmds_for(ribbon::WRITER[self.tab].name);
-            if !利用者.is_empty() {
+            let user = ribbon::user_cmds_for(ribbon::WRITER[self.tab].name);
+            if !user.is_empty() {
                 let mut row = div().flex().flex_row().flex_wrap().gap_1().items_center().py_1();
-                for cmd in 利用者 {
+                for cmd in user {
                     let id = cmd.id;
                     row = row.child(
                         div()
@@ -647,9 +647,9 @@ impl Render for Writer {
                 .border_b_1().border_color(th_cmd_border);
             for i in 0..self.file_count() {
                 let on = i == self.file_at;
-                let 書きかけ = self.file_dirty(i);
+                let draft = self.file_dirty(i);
                 let mut label_text = self.file_name(i);
-                if 書きかけ {
+                if draft {
                     // **書きかけの印。** 閉じる前に気づけるように
                     label_text.push('*');
                 }

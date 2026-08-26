@@ -1845,7 +1845,7 @@ pub fn recover_dir() -> PathBuf {
 ///
 /// `ext` は控えの拡張子です(表は `xlsx`、文章は `adoc`)。同じ場所に
 /// 両方が並ぶので、種類は拡張子で見分けます。
-pub fn recover_path_for(orig: Option<&std::path::Path>, ext: &str, 無題: &str) -> PathBuf {
+pub fn recover_path_for(orig: Option<&std::path::Path>, ext: &str, untitled: &str) -> PathBuf {
     let key = match orig {
         Some(p) => {
             // 道をそのまま名前にはできないので、道の hash と見える名前
@@ -1860,15 +1860,15 @@ pub fn recover_path_for(orig: Option<&std::path::Path>, ext: &str, 無題: &str)
                 .unwrap_or_else(|| "doc".into());
             format!("{stem}-{h:016x}")
         }
-        None => 無題.to_string(),
+        None => untitled.to_string(),
     };
     recover_dir().join(format!("{key}.{ext}"))
 }
 
 /// 無事に保存できたら控えは要りません(消し忘れると次の起動で
 /// 「落ちた後です」と嘘を言います)
-pub fn drop_recover(orig: Option<&std::path::Path>, ext: &str, 無題: &str) {
-    let p = recover_path_for(orig, ext, 無題);
+pub fn drop_recover(orig: Option<&std::path::Path>, ext: &str, untitled: &str) {
+    let p = recover_path_for(orig, ext, untitled);
     let _ = std::fs::remove_file(&p);
     let _ = std::fs::remove_file(p.with_extension("path"));
 }
@@ -2030,19 +2030,19 @@ pub type Queue = std::sync::Arc<std::sync::Mutex<Vec<Req>>>;
 pub fn ask(app: &str, line: &str) -> Option<String> {
     use std::io::{BufRead as _, Write as _};
     let mut c = std::os::unix::net::UnixStream::connect(sock_path(app)).ok()?;
-    let 待つ = Some(std::time::Duration::from_millis(500));
-    let _ = c.set_read_timeout(待つ);
-    let _ = c.set_write_timeout(待つ);
+    let wait_for = Some(std::time::Duration::from_millis(500));
+    let _ = c.set_read_timeout(wait_for);
+    let _ = c.set_write_timeout(wait_for);
     c.write_all(line.as_bytes()).ok()?;
     c.write_all(b"\n").ok()?;
     c.flush().ok()?;
-    let mut 返事 = String::new();
-    std::io::BufReader::new(c).read_line(&mut 返事).ok()?;
-    let 返事 = 返事.trim().to_string();
-    if 返事.is_empty() {
+    let mut reply = String::new();
+    std::io::BufReader::new(c).read_line(&mut reply).ok()?;
+    let reply = reply.trim().to_string();
+    if reply.is_empty() {
         return None;
     }
-    Some(返事)
+    Some(reply)
 }
 
 /// **受け口を開く。** 開けたら真。
@@ -2116,11 +2116,11 @@ pub fn listen(app: &'static str, queue: Queue) -> bool {
 /// 取り出して使います — 1本落ちたせいで残りが「錠が毒された」で落ちると、
 /// 本当の原因が見えなくなります。
 #[cfg(test)]
-static 家の錠: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static home_lock: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[cfg(test)]
-fn 家を独り占め() -> std::sync::MutexGuard<'static, ()> {
-    家の錠.lock().unwrap_or_else(|e| e.into_inner())
+fn own_home() -> std::sync::MutexGuard<'static, ()> {
+    home_lock.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 #[cfg(test)]
@@ -2131,7 +2131,7 @@ mod sign_tests {
     /// 検めが落ちる**ことも見る(落ちなければ署名の意味がありません)
     #[test]
     fn 署名してから検める() {
-        let _家 = 家を独り占め();
+        let _home = own_home();
         // 鍵の置き場は HOME の下。試験どうしがぶつからないよう別の家にする
         let home = std::env::temp_dir().join(format!("ops-sign-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&home);
@@ -2145,27 +2145,27 @@ mod sign_tests {
         // 1回目 — 署名を添える
         match sign_or_verify(&f) {
             Ok(Signed::Wrote(name)) => assert!(name.ends_with(".sig"), "添え書きの名前: {name}"),
-            他 => panic!("1回目は署名するはず: {他:?}"),
+            other_of => panic!("1回目は署名するはず: {other_of:?}"),
         }
         assert!(sig_path_for(&f).exists(), "隣に .sig が置かれる");
 
         // 2回目 — 中身が同じなら検められる
         match sign_or_verify(&f) {
             Ok(Signed::Verified(who)) => assert_eq!(who, lock_identity()),
-            他 => panic!("2回目は検めるはず: {他:?}"),
+            other_of => panic!("2回目は検めるはず: {other_of:?}"),
         }
 
         // 中身を書き替えたら検めが落ち、署名し直す
         std::fs::write(&f, "= 報告書\n\n書き替えました。\n").unwrap();
         match sign_or_verify(&f) {
             Ok(Signed::Wrote(_)) => {}
-            他 => panic!("中身が変わったら署名し直すはず: {他:?}"),
+            other_of => panic!("中身が変わったら署名し直すはず: {other_of:?}"),
         }
 
         // 無いファイルは読めないと言う(黙って成功にしない)
         match sign_or_verify(&home.join("ありません.adoc")) {
             Err(SignErr::Read(_)) => {}
-            他 => panic!("読めないと言うはず: {他:?}"),
+            other_of => panic!("読めないと言うはず: {other_of:?}"),
         }
 
         match from {
@@ -2187,7 +2187,7 @@ mod recover_tests {
     /// 混ざると表の画面に文書の控えが出て、開けません。
     #[test]
     fn 控えの道と一覧() {
-        let _家 = 家を独り占め();
+        let _home = own_home();
         let home = std::env::temp_dir().join(format!("ops-rec-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&home);
         std::fs::create_dir_all(&home).unwrap();
@@ -2212,9 +2212,9 @@ mod recover_tests {
         std::fs::write(&table, b"PK").unwrap();
 
         // **拡張子で分かれる**(表の画面に文書の控えを出さない)
-        let 文一覧 = stale_recovers("adoc");
-        assert_eq!(文一覧.len(), 1, "{文一覧:?}");
-        assert_eq!(文一覧[0].0, a.to_string_lossy(), "元の道を添えて見せる");
+        let sentences = stale_recovers("adoc");
+        assert_eq!(sentences.len(), 1, "{sentences:?}");
+        assert_eq!(sentences[0].0, a.to_string_lossy(), "元の道を添えて見せる");
         assert_eq!(stale_recovers("xlsx").len(), 1);
 
         // 保存できたら消す。**添え書きも消える**(消し忘れると次の起動で

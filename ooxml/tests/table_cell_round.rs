@@ -9,7 +9,7 @@
 //! (空白だけの段落が空の段落になる等)は許します。
 
 /// セルの字を並べる(表の中だけ)
-fn 升の字(d: &kumihan::Document) -> Vec<String> {
+fn cell_text(d: &kumihan::Document) -> Vec<String> {
     d.blocks
         .iter()
         .filter_map(|b| if let kumihan::Block::Table(t) = b { Some(t) } else { None })
@@ -19,7 +19,7 @@ fn 升の字(d: &kumihan::Document) -> Vec<String> {
 }
 
 /// 空の段落を落とした「字の芯」。段落の数の違いを無視して中身だけ比べる
-fn 芯(s: &str) -> String {
+fn core(s: &str) -> String {
     s.split('\n').filter(|x| !x.trim().is_empty()).collect::<Vec<_>>().join("\n")
 }
 
@@ -32,8 +32,8 @@ fn 実物の表のセルがadocを往復する() {
         // 実物の様式(手元にある機械だけ。無ければ飛ばす)
         std::path::PathBuf::from("/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki"),
     ];
-    let (mut 冊, mut 升, mut そのまま, mut 空だけ) = (0, 0, 0, 0);
-    let mut 中身が違う = Vec::new();
+    let (mut volume, mut grid_cell, mut as_is, mut blank_only) = (0, 0, 0, 0);
+    let mut content_differs = Vec::new();
 
     for d in dirs {
         let Ok(rd) = std::fs::read_dir(&d) else { continue };
@@ -47,27 +47,27 @@ fn 実物の表のセルがadocを往復する() {
             let Ok((doc, _)) = ooxml::read(std::io::Cursor::new(bytes)) else { continue };
             let src = kumihan::adoc::write(&doc);
             let back = kumihan::adoc::parse(&src).expect("書いた adoc が読めない");
-            冊 += 1;
+            volume += 1;
             let name = p.file_name().unwrap().to_string_lossy().to_string();
-            for (a, b) in 升の字(&doc).iter().zip(升の字(&back).iter()) {
+            for (a, b) in cell_text(&doc).iter().zip(cell_text(&back).iter()) {
                 // 段落が2つ以上の升だけを見る(1段落の升は前から通っている)
                 if !a.contains('\n') {
                     continue;
                 }
-                升 += 1;
+                grid_cell += 1;
                 if a == b {
-                    そのまま += 1;
-                } else if 芯(a) == 芯(b) {
-                    空だけ += 1;
+                    as_is += 1;
+                } else if core(a) == core(b) {
+                    blank_only += 1;
                 } else {
-                    中身が違う.push(format!("{name}: {a:?} → {b:?}"));
+                    content_differs.push(format!("{name}: {a:?} → {b:?}"));
                 }
             }
         }
     }
 
-    println!("docx {冊} 冊 / 段落が複数の升 {升}: そのまま {そのまま} / 空の段落だけ違う {空だけ}");
-    assert!(冊 > 0, "docx を1冊も読めていない");
+    println!("docx {volume} 冊 / 段落が複数の升 {grid_cell}: そのまま {as_is} / 空の段落だけ違う {blank_only}");
+    assert!(volume > 0, "docx を1冊も読めていない");
     // **字が消えたら落とす。** 段落の数の細かな違いは許す
-    assert!(中身が違う.is_empty(), "セルの字が往復で変わった:\n  {}", 中身が違う.join("\n  "));
+    assert!(content_differs.is_empty(), "セルの字が往復で変わった:\n  {}", content_differs.join("\n  "));
 }

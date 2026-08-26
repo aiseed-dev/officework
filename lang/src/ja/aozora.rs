@@ -299,7 +299,7 @@ mod tests {
     }
 
     #[test]
-    fn 壊れた入力でも落ちない() {
+    fn broken_input_does_not_panic() {
         for s in ["", "《", "｜《》", "［＃", "表題のみ", "《読み》だけ"] {
             let _ = parse(s);
         }

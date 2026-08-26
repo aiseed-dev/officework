@@ -1354,10 +1354,10 @@ mod validation_roundtrip_tests {
         let from = buf.into_inner();
 
         // 普通の読み手はこれを開けない状態にする — 末尾(中央目録)を落とす
-        let 壊れ = &from[..from.len() - 40];
-        assert!(read(Cursor::new(壊れ.to_vec())).is_err(), "壊れていない");
+        let broken = &from[..from.len() - 40];
+        assert!(read(Cursor::new(broken.to_vec())).is_err(), "壊れていない");
 
-        let s = crate::xlsx::salvage(壊れ);
+        let s = crate::xlsx::salvage(broken);
         assert!(s.any(), "1つも拾えない: {:?}", s.lost);
         assert!(
             s.kept.iter().any(|n| n.contains("sheet1.xml")),
@@ -2411,7 +2411,7 @@ mod script_roundtrip_tests {
         let mut buf = Cursor::new(Vec::new());
         write(&old, &mut buf).expect("書けない");
         buf.set_position(0);
-        let with_py = 古い形にjoPythonを足す(buf.into_inner(), &old.scripts);
+        let with_py = add_jopython_to_old(buf.into_inner(), &old.scripts);
 
         let (back, rep) = read(Cursor::new(with_py.clone())).expect("読めない");
         assert_eq!(back.scripts.len(), 1, "古いブックのコードが読めない(@export できない)");
@@ -2431,7 +2431,7 @@ mod script_roundtrip_tests {
 
     /// 試験のための小道具 — zip に xl/joPython.xml を足した「古い形」を作る
     #[allow(non_snake_case)]
-    fn 古い形にjoPythonを足す(bytes: Vec<u8>, scripts: &[(String, String)]) -> Vec<u8> {
+    fn add_jopython_to_old(bytes: Vec<u8>, scripts: &[(String, String)]) -> Vec<u8> {
         let mut zin = zip::ZipArchive::new(Cursor::new(bytes)).expect("zip が読めない");
         let mut out = Cursor::new(Vec::new());
         {
@@ -3046,7 +3046,7 @@ mod script_roundtrip_tests {
     }
     /// 名前の定義に属性を差し込んだ xlsx を作って読み直す。
     /// 既定値まで書く書き手(LibreOffice)を真似るための道具
-    fn 名前に属性をつけて読み直す(extra: &str) -> Book {
+    fn reread_with_attrs(extra: &str) -> Book {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("1"));
         b.sheets[0].names.push(crate::model::DefinedName::new("名前つき", "A1:A5"));
@@ -3083,7 +3083,7 @@ mod script_roundtrip_tests {
         // LibreOffice は名前の定義すべてに真偽の属性を**既定値でも**書く。
         // 属性の数で「単純か」を決めていたので、中身は Excel と同じなのに
         // 全部「理解できない名前」へ落ち、式から引くと #NAME? だった
-        let back = 名前に属性をつけて読み直す(r#"function="false" hidden="false" vbProcedure="false""#);
+        let back = reread_with_attrs(r#"function="false" hidden="false" vbProcedure="false""#);
         assert_eq!(
             back.sheets[0].names,
             vec![crate::model::DefinedName::new("名前つき", "A1:A5")],
@@ -3097,7 +3097,7 @@ mod script_roundtrip_tests {
     fn 隠し名前は原文のまま持ち越す() {
         // hidden="1" は**立っている**ので単純ではない。式からは引かせず、
         // 捨てもせず原文で持ち越す(今までどおり)
-        let back = 名前に属性をつけて読み直す(r#"hidden="1""#);
+        let back = reread_with_attrs(r#"hidden="1""#);
         assert!(back.sheets[0].names.is_empty(), "隠し名前が式から引けてしまう");
         assert_eq!(back.names_raw.len(), 1, "隠し名前を落とした: {:?}", back.names_raw);
         assert!(
@@ -3127,7 +3127,7 @@ mod sheet_rid {
     /// rels では `rId{i}` → `sheet{13-i}.xml`(逆順)へ向ける。
     /// 各部品の A1 には**自分の部品番号**を書いてあるので、
     /// 取り違えれば値で分かる
-    fn 型紙() -> Vec<u8> {
+    fn pattern() -> Vec<u8> {
         const N: usize = 12;
         let mut buf = Vec::new();
         {
@@ -3178,7 +3178,7 @@ mod sheet_rid {
 
     #[test]
     fn r_idで解いた部品を読む() {
-        let (book, _) = crate::xlsx::read(std::io::Cursor::new(型紙())).unwrap();
+        let (book, _) = crate::xlsx::read(std::io::Cursor::new(pattern())).unwrap();
         assert_eq!(book.sheets.len(), 12, "シートの枚数");
         for (i, sh) in book.sheets.iter().enumerate() {
             // 並びは `<sheet>` の順のまま
@@ -3192,7 +3192,7 @@ mod sheet_rid {
     fn 文字列の並べ替えに戻っていない() {
         // 文字列で並べると sheet10 が sheet2 より前に来る。
         // その狂い方(表2 に 部品10 系の中身)を名指しで撥ねる
-        let (book, _) = crate::xlsx::read(std::io::Cursor::new(型紙())).unwrap();
+        let (book, _) = crate::xlsx::read(std::io::Cursor::new(pattern())).unwrap();
         assert_eq!(a1(&book.sheets[1]), "部品11", "表2 が文字列の並べ替えの中身を掴んでいる");
     }
 
@@ -3200,10 +3200,10 @@ mod sheet_rid {
     fn 往復してもシートの中身が動かない() {
         // 書き出しは部品を並び順に振り直すので、**ブックの rels の的も
         // 向け直さないと**、開き直したときに別のシートを指す
-        let 原本 = 型紙();
-        let (book, _) = crate::xlsx::read(std::io::Cursor::new(原本.clone())).unwrap();
+        let original = pattern();
+        let (book, _) = crate::xlsx::read(std::io::Cursor::new(original.clone())).unwrap();
         let mut out = Vec::new();
-        crate::xlsx::write_with(&book, Some(std::io::Cursor::new(&原本)), std::io::Cursor::new(&mut out))
+        crate::xlsx::write_with(&book, Some(std::io::Cursor::new(&original)), std::io::Cursor::new(&mut out))
             .unwrap();
         let (back, _) = crate::xlsx::read(std::io::Cursor::new(&out)).unwrap();
         assert_eq!(back.sheets.len(), book.sheets.len(), "枚数が変わった");
@@ -3217,10 +3217,10 @@ mod sheet_rid {
     fn 往復した帳面の部品と宣言が食い違わない() {
         // 的の向け直しで、宣言(Content_Types)と rels と部品の三つが揃うこと。
         // ずれていると Excel が「修復」に入る
-        let 原本 = 型紙();
-        let (book, _) = crate::xlsx::read(std::io::Cursor::new(原本.clone())).unwrap();
+        let original = pattern();
+        let (book, _) = crate::xlsx::read(std::io::Cursor::new(original.clone())).unwrap();
         let mut out = Vec::new();
-        crate::xlsx::write_with(&book, Some(std::io::Cursor::new(&原本)), std::io::Cursor::new(&mut out))
+        crate::xlsx::write_with(&book, Some(std::io::Cursor::new(&original)), std::io::Cursor::new(&mut out))
             .unwrap();
         let mut z = zip::ZipArchive::new(std::io::Cursor::new(&out)).unwrap();
         let mut ct = String::new();

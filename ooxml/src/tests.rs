@@ -909,7 +909,7 @@ mod sect_tests {
     use crate::{parse_document_xml, write_document_xml};
 
     /// 途中で用紙の向きが変わる文書。**実物(LibreOffice Writer)の形**から写した
-    fn 二節() -> String {
+    fn two_sections() -> String {
         r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
 <w:p><w:r><w:t>縦の節の一つ目</w:t></w:r></w:p>
 <w:p><w:pPr><w:sectPr><w:type w:val="nextPage"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:left="1134" w:right="1134" w:top="1134" w:bottom="1134"/></w:sectPr></w:pPr><w:r><w:t>縦の節の終わり</w:t></w:r></w:p>
@@ -922,7 +922,7 @@ mod sect_tests {
     fn 途中の節の区切りが保存で残る() {
         // **前はここで消えていた。** 2つ目の sectPr が1つ目を上書きし、
         // 模型が節を1つしか持てなかったので、保存で区切りごと失われた
-        let (doc, rep) = parse_document_xml(&二節());
+        let (doc, rep) = parse_document_xml(&two_sections());
         let ps: Vec<_> = doc.paragraphs().collect();
         assert!(ps[1].sect.is_some(), "途中の節を段落が持っていない");
         assert!(ps[0].sect.is_none() && ps[2].sect.is_none(),
@@ -954,7 +954,7 @@ mod sect_tests {
 
     #[test]
     fn 節は二度往復しても増えない() {
-        let (doc, _) = parse_document_xml(&二節());
+        let (doc, _) = parse_document_xml(&two_sections());
         let once = write_document_xml(&doc);
         let (doc2, _) = parse_document_xml(&once);
         let twice = write_document_xml(&doc2);
@@ -2078,7 +2078,7 @@ mod footnote_report_tests {
     /// **実物(pandoc / LibreOffice Writer)から写した形。** どちらも
     /// `<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr>
     ///  <w:footnoteReference w:id="N"/></w:r>` で一致していた
-    fn 二つの印() -> String {
+    fn two_marks() -> String {
         body(concat!(
             r#"<w:p><w:r><w:t>本文の一つ目です</w:t></w:r>"#,
             r#"<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteReference w:id="20"/></w:r>"#,
@@ -2093,7 +2093,7 @@ mod footnote_report_tests {
     /// 数式で使った控え(anchors)の作法はここでは使えない
     #[test]
     fn 脚注の印は元の位置に戻る() {
-        let (doc, _) = parse_document_xml(&二つの印());
+        let (doc, _) = parse_document_xml(&two_marks());
         let out = write_document_xml(&doc);
         let positions = |s: &str| out.find(s).unwrap_or_else(|| panic!("{s} が無い: {out}"));
         assert!(positions("本文の一つ目です") < positions(r#"w:id="20""#), "一つ目の印が前へ出た");
@@ -2106,7 +2106,7 @@ mod footnote_report_tests {
     /// footnotes.xml 側と番号で繋がっているので、振り直すと切れる
     #[test]
     fn 脚注のidは原文のまま返る() {
-        let (doc, _) = parse_document_xml(&二つの印());
+        let (doc, _) = parse_document_xml(&two_marks());
         let out = write_document_xml(&doc);
         assert!(out.contains(r#"w:id="20""#) && out.contains(r#"w:id="21""#),
             "id が変わった: {out}");
@@ -2116,7 +2116,7 @@ mod footnote_report_tests {
     /// 印の run は**字を持たない**。本文の字としては数えない
     #[test]
     fn 印は本文の字にならない() {
-        let (doc, _) = parse_document_xml(&二つの印());
+        let (doc, _) = parse_document_xml(&two_marks());
         assert_eq!(doc.body_text(), "本文の一つ目です。同じ段落にもう一つ。",
             "印が本文の字に混ざった: {:?}", doc.body_text());
         let p = doc.paragraphs().next().unwrap();
@@ -2140,7 +2140,7 @@ mod footnote_report_tests {
     /// 二度往復しても増えも減りもしない
     #[test]
     fn 脚注の印は二度往復しても変わらない() {
-        let (doc, _) = parse_document_xml(&二つの印());
+        let (doc, _) = parse_document_xml(&two_marks());
         let once = write_document_xml(&doc);
         let (doc2, _) = parse_document_xml(&once);
         let twice = write_document_xml(&doc2);
@@ -2272,7 +2272,7 @@ mod footnote_report_tests {
 #[cfg(test)]
 mod note_fmt_tests {
 
-    fn 書式(settings: &str) -> (kumihan::NoteNumFmt, kumihan::NoteNumFmt) {
+    fn fmt(settings: &str) -> (kumihan::NoteNumFmt, kumihan::NoteNumFmt) {
         use std::io::{Cursor, Write};
         let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
         let o: zip::write::FileOptions<'_, ()> = Default::default();
@@ -2295,7 +2295,7 @@ mod note_fmt_tests {
     /// 脚注は算用数字、**文末脚注はローマ数字の小文字**(Word も LibreOffice もそう)
     #[test]
     fn 設定が黙っていれば文末脚注はローマ数字() {
-        let (f, e) = 書式("");
+        let (f, e) = fmt("");
         assert_eq!(f, kumihan::NoteNumFmt::Decimal);
         assert_eq!(e, kumihan::NoteNumFmt::LowerRoman, "文末脚注の既定が算用数字になっている");
     }
@@ -2303,7 +2303,7 @@ mod note_fmt_tests {
     /// 実物(both-notes.docx)がこの形で書いていた
     #[test]
     fn 設定から番号の書式を読む() {
-        let (f, e) = 書式(concat!(
+        let (f, e) = fmt(concat!(
             r#"<w:footnotePr><w:numFmt w:val="decimal"/></w:footnotePr>"#,
             r#"<w:endnotePr><w:numFmt w:val="lowerRoman"/></w:endnotePr>"#,
         ));
@@ -2315,7 +2315,7 @@ mod note_fmt_tests {
     /// 範囲を切らずに探すと隣の設定を拾う
     #[test]
     fn 隣の設定を拾わない() {
-        let (f, e) = 書式(concat!(
+        let (f, e) = fmt(concat!(
             r#"<w:footnotePr><w:numFmt w:val="upperLetter"/></w:footnotePr>"#,
             r#"<w:endnotePr><w:numFmt w:val="decimal"/></w:endnotePr>"#,
         ));
@@ -2336,7 +2336,7 @@ mod add_note_tests {
     use std::io::{Cursor, Read, Write};
 
     /// 注を1つも持たない素の docx(手で組む。現物には依らせない)
-    fn 素のdocx() -> Vec<u8> {
+    fn plain_docx() -> Vec<u8> {
         let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
         let o: zip::write::FileOptions<'_, ()> = Default::default();
         let mut put = |n: &str, d: &[u8]| {
@@ -2364,7 +2364,7 @@ mod add_note_tests {
     /// 脚注を足して保存する。**3つ揃って初めて Word が出す**
     #[test]
     fn 注の無い文書に脚注を足すと部品が揃う() {
-        let src = 素のdocx();
+        let src = plain_docx();
         let (mut doc, _) = crate::read(Cursor::new(&src)).unwrap();
         let body = kumihan::Paragraph {
             runs: vec![kumihan::Run { text: "足した脚注の文章。".into(), size_pt: Some(9.0),
@@ -2459,7 +2459,7 @@ mod add_note_tests {
     /// 注を足していない文書は**部品を1バイトも触らない**(今までどおり)
     #[test]
     fn 足さなければ部品はそのまま() {
-        let src = 素のdocx();
+        let src = plain_docx();
         let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
         let mut out = Vec::new();
         crate::write_with(&doc, Some(Cursor::new(&src)), Cursor::new(&mut out)).unwrap();
@@ -2473,11 +2473,11 @@ mod add_note_tests {
 /// **テンプレートを docx に通す**(2026-08-18)。本文には見た目を焼き付けず、
 /// `styles.xml` の側にスタイル定義として入れる。
 #[cfg(test)]
-mod テンプレートを通す {
+mod through_template {
     use super::*;
     use kumihan::{Block, Document, Paragraph, ParaStyle, Run};
 
-    fn 見出しの文書() -> Document {
+    fn heading_doc() -> Document {
         let mut d = Document::plain("本文です");
         d.blocks.push(Block::Para(Paragraph {
             style: ParaStyle::Heading(1),
@@ -2494,9 +2494,9 @@ mod テンプレートを通す {
         d
     }
 
-    fn 書き出す(th: Option<&kumihan::theme::Theme>) -> Vec<u8> {
+    fn write_out(th: Option<&kumihan::theme::Theme>) -> Vec<u8> {
         let mut out = Vec::new();
-        crate::write_with_theme(&見出しの文書(), None::<Cursor<Vec<u8>>>, th,
+        crate::write_with_theme(&heading_doc(), None::<Cursor<Vec<u8>>>, th,
                                 Cursor::new(&mut out)).unwrap();
         out
     }
@@ -2512,7 +2512,7 @@ mod テンプレートを通す {
     #[test]
     fn 見出しの見た目がスタイル定義に入る() {
         let th = kumihan::theme::default_theme();
-        let s = parts(&書き出す(Some(&th)), "word/styles.xml").unwrap();
+        let s = parts(&write_out(Some(&th)), "word/styles.xml").unwrap();
         // 既定のテンプレートの「見出し1」は 16pt の太字
         assert!(s.contains(r#"w:styleId="Heading1""#), "見出し1 が Heading1 にならない: {s}");
         assert!(s.contains(r#"<w:sz w:val="32"/>"#), "16pt が入らない: {s}");
@@ -2524,7 +2524,7 @@ mod テンプレートを通す {
     #[test]
     fn 利用者の名前はそのままスタイルの名前になる() {
         let th = kumihan::theme::default_theme();
-        let s = parts(&書き出す(Some(&th)), "word/styles.xml").unwrap();
+        let s = parts(&write_out(Some(&th)), "word/styles.xml").unwrap();
         // 「註記」は本家 AsciiDoc の書き方。役割の固定名ではないので日本語のまま
         assert!(s.contains(r#"w:styleId="註記""#), "註記 が styleId にならない: {s}");
         assert!(s.contains(r#"w:fill="FFF6E0""#), "註記の背景色が入らない: {s}");
@@ -2533,7 +2533,7 @@ mod テンプレートを通す {
     #[test]
     fn 本文には見た目を焼き付けない() {
         let th = kumihan::theme::default_theme();
-        let d = parts(&書き出す(Some(&th)), "word/document.xml").unwrap();
+        let d = parts(&write_out(Some(&th)), "word/document.xml").unwrap();
         // 見出しは pStyle で名乗るだけ。大きさも太字も本文の側には出さない
         assert!(d.contains(r#"w:val="Heading1""#), "pStyle が無い: {d}");
         assert!(!d.contains(r#"<w:sz w:val="32"/>"#), "本文に大きさが焼き付いた: {d}");
@@ -2541,7 +2541,7 @@ mod テンプレートを通す {
 
     #[test]
     fn 渡さなければ今までどおり() {
-        let s = parts(&書き出す(None), "word/styles.xml").unwrap();
+        let s = parts(&write_out(None), "word/styles.xml").unwrap();
         assert!(s.contains(r#"w:styleId="Heading1""#));
         assert!(!s.contains("註記"), "テンプレート抜きなのに入った: {s}");
     }

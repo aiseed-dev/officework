@@ -232,7 +232,7 @@ KAKEBA = {
 KAZARI = re.compile(r"^[‹›<>]\s*|\s*[((][^))]*[))]\s*$")
 
 
-def コマンド名(label: str) -> str:
+def command_name(label: str) -> str:
     """画面のラベルから、コマンドの名前を取り出す。
 
     ファイル名も見出しも*これ*にします(2026-08-25 発注者「ファイル名や
@@ -248,10 +248,10 @@ def コマンド名(label: str) -> str:
 
 # ファイル名に使えない字。`/` は制約で置き換えるだけで、名前の一部です
 FNAME_NG = re.compile(r'[/\\:*?"<>|]')
-_手引きの表 = None
+_manual_table = None
 
 
-def 手引き(label: str) -> str:
+def manual_link(label: str) -> str:
     """ボタンの名前を、手引きへのリンクにして返す。
 
     **一覧から手引きへ飛べるようにします**(2026-08-25 発注者「一覧からの
@@ -260,15 +260,15 @@ def 手引き(label: str) -> str:
 
     手引きがまだ無いボタンは、名前をそのまま返します(リンクにしません)。
     """
-    global _手引きの表
-    if _手引きの表 is None:
-        _手引きの表 = {}
-        さき = ROOT / "docs/ja/commands"
-        for q in さき.rglob("*.adoc"):
+    global _manual_table
+    if _manual_table is None:
+        _manual_table = {}
+        ahead = ROOT / "docs/ja/commands"
+        for q in ahead.rglob("*.adoc"):
             if q.name != "README.ja.adoc":
-                _手引きの表[q.stem] = q.relative_to(ROOT / "docs").as_posix()
-    name = FNAME_NG.sub("_", コマンド名(label)).strip()
-    to = _手引きの表.get(name)
+                _manual_table[q.stem] = q.relative_to(ROOT / "docs").as_posix()
+    name = FNAME_NG.sub("_", command_name(label)).strip()
+    to = _manual_table.get(name)
     return f"link:{to}[{label}]" if to else label
 
 
@@ -329,7 +329,7 @@ MARK_E = "// api:taiou:end"
 SAKI = ROOT / "docs/ja/api-taiou.adoc"
 
 
-def 段の並び(tabs):
+def tab_layout(tabs):
     """**揃えた並び**(`face::tabs::merged` と同じ規則)。
     文章を軸にして、表だけの段をレイアウトの後ろへ入れます。"""
     w = [t.name for t in tabs["WRITER"]]
@@ -485,14 +485,14 @@ def file_menu():
     body = src[src.index("fn file_menu"):]
     body = body[: body.index("\n    }")]
     out = re.findall(r'I::new\("(f-[a-z]+)",\s*ui::t!\("([^"]+)"\)\)', body)
-    return [(i, i18n_ja.日本語(keys)) for i, keys in out]
+    return [(i, i18n_ja.japanese(keys)) for i, keys in out]
 
 
 def rows():
     """(段, ボタン, 絵, オブジェクト, 印, officework, python-docx, openpyxl)。
     **並びはメニューのまま**、*分類はオブジェクト*です(2026-08-24 発注者)。"""
     tabs = ribbon_parse.tables_or_die()
-    order = 段の並び(tabs)
+    order = tab_layout(tabs)
     w = {t.name: t for t in tabs["WRITER"]}
     c = {t.name: t for t in tabs["CALC"]}
     out = []
@@ -503,7 +503,7 @@ def rows():
                 if i not in FILE_MICHI:
                     continue
                 obj, ow, pd, op = FILE_MICHI[i]
-                _ラベルの逆引き[i] = label
+                _label_lookup[i] = label
                 out.append((tab, label, "", obj, state(i, ow), ow, pd, op))
             continue
         seen = set()
@@ -515,49 +515,49 @@ def rows():
                     continue
                 seen.add(cmd.id)
                 obj, ow, pd, op = MICHI[cmd.id]
-                _ラベルの逆引き[cmd.id] = cmd.label
+                _label_lookup[cmd.id] = cmd.label
                 out.append((tab, cmd.label, cmd.icon, obj, state(cmd.id, ow), ow, pd, op))
     for tab, label, obj, ow, pd, op in HOKA:
         mark = "✅" if ow else ("❌" if label in HOKA_TSUKURANAI else "")
-        _ラベルの逆引き[label] = label
+        _label_lookup[label] = label
         out.append((tab, label, "", obj, mark, ow, pd, op))
     return out
 
 
-_ラベルの逆引き: dict = {}
+_label_lookup: dict = {}
 
 
-def 理由(label: str, st: str):
+def reason(label: str, st: str):
     """「実装しない」の理由。表の中で読めるようにします"""
     if st not in ("❌", "✍"):
         return None
     for table in (TSUKURANAI, KAKEBA, HOKA_TSUKURANAI):
         for k, v in table.items():
-            if _ラベルの逆引き.get(k) == label:
+            if _label_lookup.get(k) == label:
                 return v
     return None
 
 
-def 重なり(r):
+def overlap(r):
     """**同じ操作が2か所以上に出ている物**を見つけます。
 
     発注者 2026-08-24「全部出したうえで、重複するものはそう書いておく」。
     *隠さずに出して、同じ物だと言う* — 画面には本当に両方あるからです。
     返りは (段, ボタン) → 最初に出た段。
     """
-    初出, 出た = {}, {}
+    first_seen, came_out = {}, {}
     for tab, label, *_ in r:
         keys = label
-        if keys in 初出:
-            出た[(tab, label)] = 初出[keys]
+        if keys in first_seen:
+            came_out[(tab, label)] = first_seen[keys]
         else:
-            初出[keys] = tab
-    return 出た
+            first_seen[keys] = tab
+    return came_out
 
 
 def table() -> str:
     r = rows()
-    かさ = 重なり(r)
+    dup_of = overlap(r)
     o = []
     # **この節に説明を書きません。** 読み方はこの文書の頭にあります。
     # 利用者が読む物なので、作る側の話(生成の仕組み・作業の残り)は入れません
@@ -576,9 +576,9 @@ def table() -> str:
             o.append("|ボタン |オブジェクト |印 |officework |python-docx |openpyxl\n")
             current = tab
         f = lambda x: x if x else "—"
-        inner = ow if ow else (理由(label, st) or "—")
-        if (tab, label) in かさ:
-            inner = f"*{かさ[(tab, label)]}と同じ*" + (f" — {inner}" if inner != "—" else "")
+        inner = ow if ow else (reason(label, st) or "—")
+        if (tab, label) in dup_of:
+            inner = f"*{dup_of[(tab, label)]}と同じ*" + (f" — {inner}" if inner != "—" else "")
         # **絵を名前の前に出します**(2026-08-24 発注者)。画面で見ている物と
         # 同じ絵なので、名前より先に目に入ります。径路は `face/icons` から
         # この文書の場所への相対です
@@ -587,40 +587,40 @@ def table() -> str:
         # の実体は `insimage.svg`)。画面はそちらを通るので出ますが、
         # 文書から直に指すと届きません。ここで解いてから書きます
         name = ICON_FILE.get(icon, icon)
-        絵札 = f"image:{ICON_DIR}/{name}.svg[{label},16,16] " if name else ""
+        icon_tag = f"image:{ICON_DIR}/{name}.svg[{label},16,16] " if name else ""
         # **ボタンの名前から手引きへ飛ばします**(2026-08-25 発注者
         # 「一覧からのリンクをつける」)。この表は引くための1枚なので、
         # 引き当てた行からそのまま詳しい説明へ行けないと途中で止まります
-        o.append(f"|{絵札}{手引き(label)} |{f(obj)} |{st} |{inner} |{f(pd)} |{f(op)}")
+        o.append(f"|{icon_tag}{manual_link(label)} |{f(obj)} |{st} |{inner} |{f(pd)} |{f(op)}")
     if current is not None:
         o.append("|===\n")
     return "\n".join(o)
 
 
-def 覆い():
+def cover():
     """**この表がどれだけ覆っているか**(2026-08-24)。
 
     「Python ですべて操作できる」と言うには、*表が全部のボタンを載せている*
     必要があります。載っていないボタンは、状態すら分かりません。
     """
     tabs = ribbon_parse.tables_or_die()
-    全 = {}
+    whole = {}
     for app in ("WRITER", "CALC"):
         for tab in tabs[app]:
             for c in tab.cmds:
                 if c.id:
-                    全.setdefault(c.id, (tab.name, c.label))
+                    whole.setdefault(c.id, (tab.name, c.label))
     # **ファイルのページも数えます**(リボンのファイルタブは3つだけで、
     # 実際の仕事は全面のページにあります)
     for i, label in file_menu():
-        全.setdefault(i, ("ファイル", label))
+        whole.setdefault(i, ("ファイル", label))
     # クイックアクセスと左右のパネル(リボンにもページにも無い物)
     for tab, label, *_ in HOKA:
-        全.setdefault(label, (tab, label))
-    のせた = [k for k in 全 if k in MICHI or k in FILE_MICHI
+        whole.setdefault(label, (tab, label))
+    listed = [k for k in whole if k in MICHI or k in FILE_MICHI
                 or any(x[1] == k for x in HOKA)]
-    return len(のせた), len(全), sorted(
-        (v[0], v[1], k) for k, v in 全.items()
+    return len(listed), len(whole), sorted(
+        (v[0], v[1], k) for k, v in whole.items()
         if k not in MICHI and k not in FILE_MICHI and not any(x[1] == k for x in HOKA)
     )
 
@@ -652,14 +652,14 @@ def main() -> int:
         print(f"{SAKI.name} がずれていたので直しました({len(rows())} 行)。"
               "コミットに入れてください")
         return 0
-    のせた, 全, 抜け = 覆い()
+    listed, whole, gaps = cover()
     if "--todo" in sys.argv:
-        print(f"対応表に載っていないボタン {len(抜け)} 種:")
-        for tab, l, i in 抜け:
+        print(f"対応表に載っていないボタン {len(gaps)} 種:")
+        for tab, l, i in gaps:
             print(f"  {tab:<12} {l:<24} {i}")
         return 0
     print(f"対応表は実物と揃っています({len(rows())} 行)。"
-          f"押せるボタン {全} 種のうち {のせた} 種を載せています"
+          f"押せるボタン {whole} 種のうち {listed} 種を載せています"
           f"(--todo で残りが出ます)")
     return 0
 

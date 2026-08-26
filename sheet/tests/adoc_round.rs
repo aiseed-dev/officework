@@ -7,7 +7,7 @@
 use sheet::model::Pos;
 
 /// 値の並びを取り出す(比べるため)
-fn 値の表(b: &sheet::Book) -> Vec<(String, Vec<(u32, u32, String)>)> {
+fn value_table(b: &sheet::Book) -> Vec<(String, Vec<(u32, u32, String)>)> {
     b.sheets
         .iter()
         .map(|s| {
@@ -30,8 +30,8 @@ fn 値の表(b: &sheet::Book) -> Vec<(String, Vec<(u32, u32, String)>)> {
 fn 実物のブックがadocを往復する() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("sample");
     let mut seen = 0;
-    let mut 合った = 0;
-    let mut 報告 = Vec::new();
+    let mut matched = 0;
+    let mut report = Vec::new();
 
     let Ok(entries) = std::fs::read_dir(&dir) else {
         eprintln!("sample が無いので飛ばす: {}", dir.display());
@@ -52,29 +52,29 @@ fn 実物のブックがadocを往復する() {
         let src = sheet::adoc::write(&from);
         let (back, _) = sheet::adoc::parse(&src).expect("adoc が読めない");
 
-        let a = 値の表(&from);
-        let b = 値の表(&back);
+        let a = value_table(&from);
+        let b = value_table(&back);
         if a == b {
-            合った += 1;
+            matched += 1;
         } else {
             let sheet = a.len().min(b.len());
-            let mut 差 = Vec::new();
+            let mut delta = Vec::new();
             for i in 0..sheet {
                 if a[i] != b[i] {
-                    let ちがい = a[i].1.iter().zip(b[i].1.iter()).filter(|(x, y)| x != y).take(2).collect::<Vec<_>>();
-                    差.push(format!("{} 元{}件→戻{}件 例{:?}", a[i].0, a[i].1.len(), b[i].1.len(), ちがい));
+                    let difference = a[i].1.iter().zip(b[i].1.iter()).filter(|(x, y)| x != y).take(2).collect::<Vec<_>>();
+                    delta.push(format!("{} 元{}件→戻{}件 例{:?}", a[i].0, a[i].1.len(), b[i].1.len(), difference));
                 }
             }
-            報告.push(format!("{name}: シート {}→{} / {}", a.len(), b.len(), 差.join(" | ")));
+            report.push(format!("{name}: シート {}→{} / {}", a.len(), b.len(), delta.join(" | ")));
         }
     }
 
-    println!("実物 {seen} 冊のうち {合った} 冊が値まで往復した");
-    for r in &報告 {
+    println!("実物 {seen} 冊のうち {matched} 冊が値まで往復した");
+    for r in &report {
         println!("  ちがい: {r}");
     }
     assert!(seen > 0, "実物を1冊も読めていない");
-    assert_eq!(合った, seen, "値が往復しないブックがある:\n  {}", 報告.join("\n  "));
+    assert_eq!(matched, seen, "値が往復しないブックがある:\n  {}", report.join("\n  "));
 }
 
 /// **画像は黙って落とさない。** 3 MB のブックが 1 KB の adoc になるので、

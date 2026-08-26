@@ -478,9 +478,9 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // **作業のリスト**(`* [ ] やること`)。
                 // 印をそのまま組むと `* [ ]` が紙に出ます。この版は
                 // 記入欄と同じ ☐ / ☑ で出します(画面の作法を揃える)
-                let 作業 = 作業のリスト(para);
+                let job = task_list(para);
                 let para_eff_check;
-                let para = if let Some((mark, body, tab)) = 作業 {
+                let para = if let Some((mark, body, tab)) = job {
                     let mut q = para.clone();
                     q.indent = tab;
                     let mut rest = body.as_str();
@@ -534,7 +534,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         // **註記は印を紙にも出します。** 読むときに
                         // `NOTE: ` を字から外しているので、ここで戻さないと
                         // 紙の上では普通の段落と見分けが付きません
-                        註記の見出し(para.style_id.as_deref()).map(str::to_string)
+                        admon_heading(para.style_id.as_deref()).map(str::to_string)
                     }
                     _ => {
                         let l = para.indent as usize;
@@ -595,7 +595,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 for (line_no, mut cells) in break_para(para_eff, m, measure, marker.as_deref(),
                                             doc.hyphenate, &mut note_no, base).into_iter().enumerate() {
                     // 1行目だけ字下げのぶん右へ(行長は組み手が縮めている)
-                    let 字下げ = if line_no == 0 { first_mm } else { 0.0 };
+                    let indent_of = if line_no == 0 { first_mm } else { 0.0 };
                     // 頭の1字を除いたぶん、バイト位置を戻す
                     if cap_len > 0 {
                         for c in &mut cells {
@@ -613,8 +613,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     }
                     // 揃え。**行の幅と行長の差を、どこに置くか**の話でしかない
                     let w: f32 = cells.iter().map(|c| c.w_mm).sum();
-                    let slack = (measure - 字下げ - w).max(0.0);
-                    let mut x = indent_mm + cap_shift + 字下げ + match para.align {
+                    let slack = (measure - indent_of - w).max(0.0);
+                    let mut x = indent_mm + cap_shift + indent_of + match para.align {
                         Align::Left | Align::Justify | Align::Distribute => 0.0,
                         Align::Center => slack / 2.0,
                         Align::Right => slack,
@@ -1376,7 +1376,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
 /// 読み手は `NOTE: ` を字から外して、どれなのかをスタイルの名前に移します。
 /// **紙の上では字しか見えない**ので、組むときに見出しを戻します。
 /// 戻さないと、註記が普通の段落に化けます(2026-08-25)。
-pub(super) fn 註記の見出し(name: Option<&str>) -> Option<&'static str> {
+pub(super) fn admon_heading(name: Option<&str>) -> Option<&'static str> {
     Some(match name? {
         "註記" => "メモ ",
         "ヒント" => "こつ ",
@@ -1395,7 +1395,7 @@ pub(super) fn 註記の見出し(name: Option<&str>) -> Option<&'static str> {
 /// **紙では ☐ / ☑ で出します。** 記入欄のチェックボックスと同じ字なので、
 /// 画面の中で見た目が揃います(2026-08-25。前は `* [ ]` がそのまま
 /// 印刷されていました)。
-fn 作業のリスト(p: &Paragraph) -> Option<(&'static str, String, u8)> {
+fn task_list(p: &Paragraph) -> Option<(&'static str, String, u8)> {
     if p.style_id.as_deref() != Some("チェック") {
         return None;
     }

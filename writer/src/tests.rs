@@ -1191,7 +1191,7 @@ mod caption_head_tests {
 mod screen_note_tests {
     use crate::*;
 
-    fn 脚注のある文書() -> Document {
+    fn doc_with_footnote() -> Document {
         let text = |t: &str| kumihan::Run {
             text: t.into(), size_pt: None, font: None, fmt: Default::default() };
         let mark = kumihan::Run {
@@ -1221,7 +1221,7 @@ mod screen_note_tests {
     fn 画面と紙で脚注の出る頁が同じ(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
-            this.doc = 脚注のある文書();
+            this.doc = doc_with_footnote();
             this.relayout();
 
             assert!(!this.page.notes.is_empty(), "脚注が組まれていない");
@@ -1484,7 +1484,7 @@ mod undo_coverage_tests {
     /// 試験の形を整える。**前の命令が開いた欄は閉じる** — 欄が開いていると
     /// 控えを取らない約束なので、閉じ忘れると「戻せない」が全部に伝染する
     /// (最初これで 33 件が偽の赤になった)
-    fn 仕切り直す(this: &mut Writer) {
+    fn restart(this: &mut Writer) {
         // **docx を開いた状態で見ます。** adoc 形式では見た目のボタンが
         // スタイルの面へ案内するだけで文書を変えないので、戻せるかを見るのは
         // こちら(2026-08-17、新規を adoc にしたときに合わせた)
@@ -1508,7 +1508,7 @@ mod undo_coverage_tests {
 
     /// 押さない命令と、その理由。**一覧を手で持たない**ので、
     /// ここに無い命令は全部試される — 命令を足したら自動で見張りに入る
-    fn 押さない(id: &str) -> bool {
+    fn do_not_press(id: &str) -> bool {
         // 窓を開ける物(試験では返ってこない)。理由は menu_run_tests と同じ
         super::menu_run_tests::DIALOG.contains(&id)
             // 外の世界に出る物
@@ -1521,9 +1521,9 @@ mod undo_coverage_tests {
     fn 文書を変える命令は一手で戻せる(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         let mut seen = 0usize;
-        for id in Writer::HANDLED.iter().filter(|i| !押さない(i)) {
+        for id in Writer::HANDLED.iter().filter(|i| !do_not_press(i)) {
             w.update(cx, |this, cx| {
-                仕切り直す(this);
+                restart(this);
                 let before = sig(this);
                 this.run_cmd(id, cx);
                 if sig(this) == before {
@@ -1547,9 +1547,9 @@ mod undo_coverage_tests {
     #[gpui::test]
     fn 戻した一手はやり直せる(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
-        for id in Writer::HANDLED.iter().filter(|i| !押さない(i)) {
+        for id in Writer::HANDLED.iter().filter(|i| !do_not_press(i)) {
             w.update(cx, |this, cx| {
-                仕切り直す(this);
+                restart(this);
                 let before = sig(this);
                 this.run_cmd(id, cx);
                 let after = sig(this);
@@ -2092,12 +2092,12 @@ mod marker_tests {
             this.save_to(path.clone());
             let back = std::fs::read_to_string(&path).unwrap();
             let text = |s: &str| s.replace("\n", "").replace(" ", "");
-            let 絵ぬき: String = back
+            let no_icon: String = back
                 .lines()
                 .filter(|l| !l.starts_with("image::"))
                 .collect::<Vec<_>>()
                 .join("\n");
-            assert_eq!(text(&絵ぬき), text(src), "本文が変わった:\n{back}");
+            assert_eq!(text(&no_icon), text(src), "本文が変わった:\n{back}");
         });
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -2345,17 +2345,17 @@ mod marker_tests {
             this.ed.move_to(9, false);
             this.ed.move_to(15, true);
             this.wear_style("注意");
-            let 付いた = |this: &Writer| {
+            let attached = |this: &Writer| {
                 this.doc.paragraphs().next().unwrap().runs.iter()
                     .filter(|r| r.fmt.style_id.as_deref() == Some("注意")).count()
             };
-            assert!(付いた(this) > 0 || this.doc.paragraphs().next().unwrap().style_id.is_some(),
+            assert!(attached(this) > 0 || this.doc.paragraphs().next().unwrap().style_id.is_some(),
                     "着られていない");
 
             this.ed.move_to(9, false);
             this.ed.move_to(15, true);
             this.strip_style();
-            assert_eq!(付いた(this), 0, "外れていない: {}", this.status);
+            assert_eq!(attached(this), 0, "外れていない: {}", this.status);
         });
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -2384,13 +2384,13 @@ mod marker_tests {
 
             let p = this.doc.paragraphs().next().unwrap();
             assert_eq!(p.style_id, None, "段落に名前が付いた(選んだのは字だけ)");
-            let 付いた: Vec<&str> = p
+            let attached: Vec<&str> = p
                 .runs
                 .iter()
                 .filter(|r| r.fmt.style_id.as_deref() == Some("注意"))
                 .map(|r| r.text.as_str())
                 .collect();
-            assert_eq!(付いた, vec!["大事"], "選んだ字だけに付いていない");
+            assert_eq!(attached, vec!["大事"], "選んだ字だけに付いていない");
 
             // 保存すると [.注意]#大事# で残る
             this.save_to(path.clone());
@@ -2559,8 +2559,8 @@ mod marker_tests {
                 sheet[p].extend(line.cells.iter().map(|c| c.ch));
             }
             assert!(sheet[0].contains("題"), "1枚目が表題でない: {sheet:?}");
-            for (i, 節) in ["ひとつめ", "ふたつめ", "みっつめ"].iter().enumerate() {
-                assert!(sheet[i + 1].contains(節), "{}枚目に見出し「{節}」が無い: {sheet:?}", i + 2);
+            for (i, section) in ["ひとつめ", "ふたつめ", "みっつめ"].iter().enumerate() {
+                assert!(sheet[i + 1].contains(section), "{}枚目に見出し「{section}」が無い: {sheet:?}", i + 2);
                 assert!(sheet[i + 1].contains("短い本文。"), "{}枚目に本文が無い: {sheet:?}", i + 2);
             }
         });
@@ -2678,23 +2678,23 @@ mod marker_tests {
     #[gpui::test]
     fn 配られたテンプレートは書き替えない(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-tmpl-{}", std::process::id()));
-        let 配り元 = dir.join("配り元");
-        let _ = std::fs::create_dir_all(&配り元);
-        std::fs::write(配り元.join("社内標準.toml"), "[スタイル.本文]\n大きさ = 11\n").unwrap();
+        let distributor = dir.join("配り元");
+        let _ = std::fs::create_dir_all(&distributor);
+        std::fs::write(distributor.join("社内標準.toml"), "[スタイル.本文]\n大きさ = 11\n").unwrap();
         let doc = dir.join("報告.adoc");
         std::fs::write(&doc, "= 報告\n:template: 社内標準\n\n本文です。\n").unwrap();
 
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             this.open(doc.clone());
-            this.tmpl_path = Some(配り元.join("社内標準.toml"));
+            this.tmpl_path = Some(distributor.join("社内標準.toml"));
             this.ed.move_to(0, false);
             this.tweak_style(1);
             let s = this.status.to_string();
             assert!(s.contains("配り元"), "直す場所を言っていない: {s}");
         });
         // 配り元も、文書の隣も、何も書かれていない
-        assert_eq!(std::fs::read_to_string(配り元.join("社内標準.toml")).unwrap(),
+        assert_eq!(std::fs::read_to_string(distributor.join("社内標準.toml")).unwrap(),
                    "[スタイル.本文]\n大きさ = 11\n", "配られた側が書き替わった");
         assert!(!dir.join("社内標準.toml").exists(), "隣に写しを作った");
         let _ = std::fs::remove_dir_all(&dir);
@@ -2754,15 +2754,15 @@ mod marker_tests {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             this.open(doc.clone());
-            let 画面 = this.total_pages();
+            let screen = this.total_pages();
             let paper = this.print_layout().expect("印刷用が読めない");
             let (pages, _) = paper::paginate(&paper.0, paper::Paper {
                 width_mm: paper.1.w_mm, height_mm: paper.1.h_mm, margin_mm: paper.1.left_mm });
-            let 紙の枚数 = pages.iter().copied().max().unwrap_or(1);
-            assert!(紙の枚数 > 画面, "紙のほうが枚数が多い形になっていない({紙の枚数} と {画面})");
+            let paper_pages = pages.iter().copied().max().unwrap_or(1);
+            assert!(paper_pages > screen, "紙のほうが枚数が多い形になっていない({paper_pages} と {screen})");
             // 最後の見出しのページ番号は**紙の**枚数(画面の枚数ではない)
-            let 末尾 = this.doc.body_text().len();
-            assert_eq!(this.page_of_byte()(末尾), 紙の枚数,
+            let tail_of = this.doc.body_text().len();
+            assert_eq!(this.page_of_byte()(tail_of), paper_pages,
                        "目次が画面の枚数で数えている");
         });
         let _ = std::fs::remove_dir_all(&dir);
@@ -2869,10 +2869,10 @@ mod marker_tests {
 /// 保存されるのは意味だけ、という決めをここで縛る
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod 表の式 {
+mod table_formula {
     use crate::*;
 
-    fn 台帳のある文書() -> Document {
+    fn doc_with_ledger() -> Document {
         let cell = |s: &str| kumihan::Cellbox {
             paragraphs: Document::plain(s).paragraphs().cloned().collect(),
             ..Default::default()
@@ -2896,7 +2896,7 @@ mod 表の式 {
     fn 画面に答えが出る(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
-            this.doc = 台帳のある文書();
+            this.doc = doc_with_ledger();
             this.relayout();
 
             let text: String = this.page.lines.iter().flat_map(|l| l.cells.iter().map(|c| c.ch)).collect();
@@ -2910,7 +2910,7 @@ mod 表の式 {
     fn 正本は式のまま(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
-            this.doc = 台帳のある文書();
+            this.doc = doc_with_ledger();
             this.relayout();
 
             let t = this.doc.tables().next().expect("表が消えた");
@@ -2933,7 +2933,7 @@ mod 表の式 {
 mod 請求書をまとめる {
     use crate::*;
 
-    fn 三枚() -> String {
+    fn three_sheets() -> String {
         "[discrete]\n= 請求書 山田商店\n\n金額 12,000 円\n\n\
          [discrete]\n= 請求書 鈴木工業\n\n金額 8,400 円\n\n\
          [discrete]\n= 請求書 佐藤商会\n\n金額 3,300 円\n".into()
@@ -2944,7 +2944,7 @@ mod 請求書をまとめる {
         let dir = std::env::temp_dir().join(format!("jo-many-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("請求書.adoc");
-        std::fs::write(&p, 三枚()).unwrap();
+        std::fs::write(&p, three_sheets()).unwrap();
 
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
@@ -2972,7 +2972,7 @@ mod 請求書をまとめる {
         let dir = std::env::temp_dir().join(format!("jo-many2-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("請求書.adoc");
-        std::fs::write(&p, 三枚()).unwrap();
+        std::fs::write(&p, three_sheets()).unwrap();
 
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
@@ -3015,7 +3015,7 @@ mod ファイルを何枚も開く {
 
     /// 試験ごとに**別のフォルダ**を作ります。同じ名前にすると、片方の
     /// 後片づけがもう片方の足元を消します(2026-08-19 に踏みました)
-    fn 場所(name: &str) -> std::path::PathBuf {
+    fn place(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("jo-tabs-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -3027,7 +3027,7 @@ mod ファイルを何枚も開く {
 
     #[gpui::test]
     fn 二枚開いて行き来できる(cx: &mut gpui::TestAppContext) {
-        let dir = 場所("go");
+        let dir = place("go");
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
             this.open(dir.join("甲.adoc"));
@@ -3051,7 +3051,7 @@ mod ファイルを何枚も開く {
     /// **同じファイルを二重に開かない。** どちらを保存したのか分からなくなる
     #[gpui::test]
     fn 同じファイルは二重に開かない(cx: &mut gpui::TestAppContext) {
-        let dir = 場所("nijuu");
+        let dir = place("nijuu");
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
             this.open(dir.join("甲.adoc"));
@@ -3066,7 +3066,7 @@ mod ファイルを何枚も開く {
     /// **書きかけのタブは閉じない。** 黙って捨てない
     #[gpui::test]
     fn 書きかけのタブは閉じない(cx: &mut gpui::TestAppContext) {
-        let dir = 場所("kakikake");
+        let dir = place("kakikake");
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
             this.open(dir.join("甲.adoc"));
@@ -3086,7 +3086,7 @@ mod ファイルを何枚も開く {
     /// タブごとに**別の書きかけの印**を持つ
     #[gpui::test]
     fn 書きかけの印はタブごと(cx: &mut gpui::TestAppContext) {
-        let dir = 場所("shirushi");
+        let dir = place("shirushi");
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _| {
             this.open(dir.join("甲.adoc"));
@@ -3156,11 +3156,11 @@ mod file_menu_tests {
     fn 共通の項目は表と同じ番号(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
-            let 文章: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();
+            let prose: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();
             for id in ["f-back", "f-new", "f-tpl", "f-open", "f-recent", "f-find",
                        "f-save", "f-saveas", "f-print", "f-html", "f-protect",
                        "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req"] {
-                assert!(文章.contains(&id), "共通のはずの {id} が無い");
+                assert!(prose.contains(&id), "共通のはずの {id} が無い");
             }
         });
     }
@@ -3239,9 +3239,9 @@ mod autocorrect_tests {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             // 設定が無いときの既定は「入」(表と同じ)
-            let 器 = ui::settings::get("math_autocorrect");
-            let 期待 = 器.map(|v| v != "0").unwrap_or(true);
-            assert_eq!(this.autocorrect, 期待, "表と違う既定になっている");
+            let holder = ui::settings::get("math_autocorrect");
+            let want = holder.map(|v| v != "0").unwrap_or(true);
+            assert_eq!(this.autocorrect, want, "表と違う既定になっている");
         });
     }
 }
@@ -3315,8 +3315,8 @@ mod docx_formula_tests {
             }));
             assert!(!ops::table::has_formula(&this.doc), "式が無いのに有ると言う");
             let out = this.doc_for_save(None);
-            let ある = out.blocks.iter().any(|b| matches!(b, kumihan::Block::Table(_)));
-            assert!(ある, "表が消えた");
+            let present = out.blocks.iter().any(|b| matches!(b, kumihan::Block::Table(_)));
+            assert!(present, "表が消えた");
         });
     }
     #[gpui::test]
@@ -3347,11 +3347,11 @@ mod docx_formula_tests {
             assert!(t.col_mm.is_empty(), "列の幅を勝手に決めています");
 
             // `3x4` や `3 4` も同じに読みます — 打ち方で断らないため
-            for 打つ in ["3x4", "3 4", "3、4"] {
-                this.tbl_ed = Editor::new(打つ);
+            for type_in in ["3x4", "3 4", "3、4"] {
+                this.tbl_ed = Editor::new(type_in);
                 this.tbl_open = true;
                 this.tbl_commit(cx);
-                assert!(!this.tbl_open, "「{打つ}」が読めていません");
+                assert!(!this.tbl_open, "「{type_in}」が読めていません");
             }
             // **数が読めなければ断ります。** 黙って 3×3 を入れません
             let before = this.doc.blocks.len();
@@ -3378,7 +3378,7 @@ mod docx_formula_tests {
         w.update(cx, |this, cx| {
             this.run_cmd("datetime", cx);
             assert_eq!(this.open_list, Some("datetime"), "一覧が開いていません");
-            let shape = this.一覧の中身("datetime");
+            let shape = this.list_items("datetime");
             assert!(shape.len() >= 5, "形が {} 個しかありません", shape.len());
             // 西暦と和暦が両方あること
             assert!(shape.iter().any(|(k, _)| k.contains("年") && k.contains("月")),
@@ -3386,9 +3386,9 @@ mod docx_formula_tests {
             assert!(shape.iter().any(|(k, _)| k.starts_with("令和") || k.starts_with("平成")),
                     "和暦の形がありません: {shape:?}");
             // 選ぶと本文に固定の字で入る
-            let 選ぶ = shape[0].0.clone();
-            this.一覧を選ぶ("datetime", &選ぶ, cx);
-            assert!(this.ed.text().contains(&選ぶ), "選んだ形が入っていません");
+            let choose = shape[0].0.clone();
+            this.choose_list("datetime", &choose, cx);
+            assert!(this.ed.text().contains(&choose), "選んだ形が入っていません");
             assert_eq!(this.open_list, None, "選んだ後も一覧が開いたままです");
         });
     }
@@ -3411,7 +3411,7 @@ mod docx_formula_tests {
     ///
     /// 2026-08-25 発注者「どうしてフォルダーを開くがないのだ」。
     /// 前は起動のときにしか選べず、動かしている間は替えられませんでした。
-    fn フォルダを開くと一覧が出る(cx: &mut gpui::TestAppContext) {
+    fn open_folder_shows_list(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             // ファイルのページに口があること
@@ -3432,7 +3432,7 @@ mod docx_formula_tests {
     ///
     /// 前は「印刷」と「Web の形で書き出す」に分かれていて、
     /// どこから何が出せるのかが探しにくい形でした。
-    fn エクスポートは形を選ぶ(cx: &mut gpui::TestAppContext) {
+    fn export_picks_shape(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             let ids: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();
@@ -3441,7 +3441,7 @@ mod docx_formula_tests {
             this.file_menu_click("f-export", cx);
             assert_eq!(this.open_list, Some("f-export"), "形の一覧が開いていません");
             let shape: Vec<String> =
-                this.一覧の中身("f-export").into_iter().map(|(k, _)| k).collect();
+                this.list_items("f-export").into_iter().map(|(k, _)| k).collect();
             // **文章の節から出せるのは4つ**(手引きの表)
             assert_eq!(shape, vec!["docx", "html", "pdf", "text"], "出せる形が表と違います");
             // **`.adoc` は出しません** — 保存の側だからです

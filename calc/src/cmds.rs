@@ -637,8 +637,8 @@ impl Calc {
         // 色の由来は set_fmt が色そのものに落とすので、比べる前に揃える
         wrote.color_theme = after.color_theme;
         wrote.fill_theme = after.fill_theme;
-        let 全部言えた = wrote == after;
-        (out, 全部言えた)
+        let said_all = wrote == after;
+        (out, said_all)
     }
 
     /// **値の差分から記録の行を起こす。** 掛ける前のセルと後のセルを比べ、
@@ -883,16 +883,16 @@ impl Calc {
         // **意図が書けるならそちらが勝つ。** 書けたら差分は取らない —
         // `table_style(…)` の下に `.font.bold = True` が並ぶと、読む人は
         // どちらが本体か分からなくなるし、掛け直しにもなる
-        let mut 意図あり = false;
+        let mut has_intent = false;
         if self.rec.is_some() {
             if let Some(line) = self.rec_cmd(id) {
                 self.rec_line(line);
-                意図あり = true;
+                has_intent = true;
             }
         }
         // 掛ける前の姿を控える(**掛けた後との差分**が記録の行になる)。
         // 記録していない間は控えない — シートの複製は安くない
-        let before = (self.rec.is_some() && !意図あり).then(|| {
+        let before = (self.rec.is_some() && !has_intent).then(|| {
             (
                 self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default(),
                 self.sheet().clone(),
@@ -905,14 +905,14 @@ impl Calc {
         // セルにもう一度下揃えを掛ける、空の切り取り板を貼る、1セルだけ
         // 選んで並べ替える。穴の数え上げで 8 件中 5 件がこれだった
         // (2026-08-16。残る本物は図形だけ)
-        let 姿0 = self.rec.is_some().then(|| self.sheet().clone());
+        let snapshot0 = self.rec.is_some().then(|| self.sheet().clone());
         self.run_cmd_inner(id, cx);
-        let 変わった = match &姿0 {
+        let changed = match &snapshot0 {
             Some(s) => self.sheet_changed(s),
             None => self.edits > edits_before,
         };
         if let Some((f0, s0)) = before {
-            let (lines, 全部言えた) = self.rec_fmt_diff(&f0);
+            let (lines, said_all) = self.rec_fmt_diff(&f0);
             for line in lines {
                 self.rec_line(line);
             }
@@ -926,13 +926,13 @@ impl Calc {
                 self.rec_line(line);
             }
             // 書式に言い表せない動きがあれば、下の穴の註へ落とす
-            self.rec_fmt_partial = !全部言えた;
+            self.rec_fmt_partial = !said_all;
         }
         if let Some(n) = rec_len {
-            let 書けた 
+            let written 
                 = self.rec.as_ref().is_some_and(|v| v.len() > n) && !self.rec_fmt_partial;
             self.rec_fmt_partial = false;
-            if 変わった && !書けた {
+            if changed && !written {
                 // **穴の印。** この行がそのまま Python の口の宿題になる
                 let line = format!(
                     "# この操作はまだ Python で書けません: {}({id})",
@@ -3642,7 +3642,7 @@ impl Calc {
                     cx.notify();
                     return;
                 }
-                let mut 見つけた: Vec<(usize, Pos)> = Vec::new();
+                let mut found: Vec<(usize, Pos)> = Vec::new();
                 for v in &sh.validations {
                     let (a, b) = v.range;
                     for r in a.row..=b.row {
@@ -3657,18 +3657,18 @@ impl Calc {
                             // 空欄は規則の `allow_blank` に従う(打つときと同じ)
                             if text.is_empty() {
                                 if !v.allow_blank {
-                                    見つけた.push((si, p));
+                                    found.push((si, p));
                                 }
                                 continue;
                             }
                             if !v.passes(sh, &text) {
-                                見つけた.push((si, p));
+                                found.push((si, p));
                             }
                         }
                     }
                 }
-                let n = 見つけた.len();
-                self.dv_marks = 見つけた;
+                let n = found.len();
+                self.dv_marks = found;
                 self.status = if n == 0 {
                     ui::t!("no_values_break_validation").into()
                 } else {

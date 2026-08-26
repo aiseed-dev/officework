@@ -482,8 +482,8 @@ impl Paragraph {
             ListKind::Number => Some(match self.indent {
                 0 => format!("{}. ", nth + 1),
                 1 => format!("({}) ", nth + 1),
-                2 => format!("{} ", カタカナ(nth)),
-                3 => format!("({}) ", カタカナ(nth)),
+                2 => format!("{} ", katakana(nth)),
+                3 => format!("({}) ", katakana(nth)),
                 _ => format!("{}) ", nth + 1),
             }),
         }
@@ -799,8 +799,8 @@ pub fn strokes_to_svg(strokes: &[&Stroke]) -> Option<(String, f32, f32)> {
     let mut bb: Option<(f32, f32, f32, f32)> = None;
     for st in strokes {
         let Some((ax, ay, bx, by)) = st.bbox() else { continue };
-        let 半 = if st.highlighter { 1.5 } else { 0.25 };
-        let (ax, ay, bx, by) = (ax - 半, ay - 半, bx + 半, by + 半);
+        let half = if st.highlighter { 1.5 } else { 0.25 };
+        let (ax, ay, bx, by) = (ax - half, ay - half, bx + half, by + half);
         bb = Some(match bb {
             None => (ax, ay, bx, by),
             Some((x0, y0, x1, y1)) => (x0.min(ax), y0.min(ay), x1.max(bx), y1.max(by)),
@@ -821,14 +821,14 @@ viewBox=\"0 0 {w:.2} {h:.2}\">"
             let mark = if i == 0 { 'M' } else { 'L' };
             d.push_str(&format!("{mark}{:.2} {:.2} ", x - x0, y - y0));
         }
-        let (色, 太さ, 透け) = if st.highlighter {
+        let (colour, weight, alpha) = if st.highlighter {
             ("#FFE65A", 3.0, 0.35)
         } else {
             ("#1C3B52", 0.45, 1.0)
         };
         s.push_str(&format!(
-            "<path d=\"{}\" fill=\"none\" stroke=\"{色}\" stroke-width=\"{太さ}\" \
-stroke-opacity=\"{透け}\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
+            "<path d=\"{}\" fill=\"none\" stroke=\"{colour}\" stroke-width=\"{weight}\" \
+stroke-opacity=\"{alpha}\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
             d.trim_end()
         ));
     }
@@ -1753,16 +1753,16 @@ pub struct CellBox {
 ///
 /// 五十音の 45 字を順に使い、それより多いときは「ア1」のように数を足します
 /// (使い切って番号が消えるより、重ならないほうがましです)。
-fn カタカナ(nth: usize) -> String {
-    const ア: [&str; 45] = [
+fn katakana(nth: usize) -> String {
+    const kana_a: [&str; 45] = [
         "ア", "イ", "ウ", "エ", "オ", "カ", "キ", "ク", "ケ", "コ",
         "サ", "シ", "ス", "セ", "ソ", "タ", "チ", "ツ", "テ", "ト",
         "ナ", "ニ", "ヌ", "ネ", "ノ", "ハ", "ヒ", "フ", "ヘ", "ホ",
         "マ", "ミ", "ム", "メ", "モ", "ヤ", "ユ", "ヨ",
         "ラ", "リ", "ル", "レ", "ロ", "ワ", "ヲ",
     ];
-    match nth / ア.len() {
-        0 => ア[nth].to_string(),
-        周 => format!("{}{}", ア[nth % ア.len()], 周),
+    match nth / kana_a.len() {
+        0 => kana_a[nth].to_string(),
+        round_of => format!("{}{}", kana_a[nth % kana_a.len()], round_of),
     }
 }

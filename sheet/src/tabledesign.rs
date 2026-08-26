@@ -172,7 +172,7 @@ pub fn to_range(s: &mut Sheet, at: Pos) -> Option<String> {
 mod tests {
     use super::*;
 
-    fn 表を1つ() -> Sheet {
+    fn one_table() -> Sheet {
         let mut s = Sheet::default();
         for (r, row) in [["品", "数"], ["鉛筆", "3"], ["消しゴム", "5"]].iter().enumerate() {
             for (c, v) in row.iter().enumerate() {
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn 見出しの帯は1行目だけに掛かる() {
-        let mut s = 表を1つ();
+        let mut s = one_table();
         let n = deco(&mut s, Pos::new(0, 0), Pos::new(2, 1), Deco::Header, true);
         assert_eq!(n, 2, "1行目の2欄だけ");
         assert!(s.get(Pos::new(0, 0)).unwrap().fmt.bold);
@@ -195,7 +195,7 @@ mod tests {
     fn 外すときは塗りを剥がさない() {
         // 掛ける前の姿を覚えていないので、剥がすと元の色まで消える。
         // 外すのは表の旗だけ、が約束(できないことをできるように見せない)
-        let mut s = 表を1つ();
+        let mut s = one_table();
         deco(&mut s, Pos::new(0, 0), Pos::new(2, 1), Deco::Header, true);
         let n = deco(&mut s, Pos::new(0, 0), Pos::new(2, 1), Deco::Header, false);
         assert_eq!(n, 0);
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn 合計行は数の列にだけ_sum_を入れる() {
-        let mut s = 表を1つ();
+        let mut s = one_table();
         add_total_row(&mut s, Pos::new(0, 0), Pos::new(2, 1));
         assert_eq!(s.get(Pos::new(3, 0)).unwrap().value.display(), "合計");
         assert_eq!(s.get(Pos::new(3, 1)).unwrap().formula.as_deref(), Some("SUM(B2:B3)"));

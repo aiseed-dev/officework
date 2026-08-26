@@ -428,35 +428,35 @@ pub fn read_theme(at: &std::path::Path) -> Option<Theme> {
 pub fn put(src: &str, section: &str, key: &str, value: &str) -> String {
     let line = format!("{key} = {value}");
     let mut out: Vec<String> = Vec::new();
-    let mut 節の中 = false;
-    let mut 済んだ = false;
-    let mut 節を見た = false;
+    let mut in_section = false;
+    let mut done = false;
+    let mut saw_section = false;
     for l in src.lines() {
         let t = l.trim();
         if let Some(name) = t.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
             // 目当ての節から出るところ。まだ書けていなければここで足す
-            if 節の中 && !済んだ {
+            if in_section && !done {
                 out.push(line.clone());
-                済んだ = true;
+                done = true;
             }
-            節の中 = name.trim() == section;
-            節を見た |= 節の中;
+            in_section = name.trim() == section;
+            saw_section |= in_section;
             out.push(l.to_string());
             continue;
         }
-        if 節の中 && !済んだ {
+        if in_section && !done {
             if let Some((k, _)) = t.split_once('=') {
                 if k.trim() == key {
                     out.push(line.clone());
-                    済んだ = true;
+                    done = true;
                     continue;
                 }
             }
         }
         out.push(l.to_string());
     }
-    if !済んだ {
-        if !節を見た {
+    if !done {
+        if !saw_section {
             if !out.is_empty() {
                 out.push(String::new());
             }
@@ -476,10 +476,10 @@ pub fn put(src: &str, section: &str, key: &str, value: &str) -> String {
 pub fn user_theme(config_dir: &std::path::Path) -> Theme {
     // **段ごとに畳んでから重ねます。** 自分のテンプレートが `[文書.en]`
     // でしか大きさを言っていなくても、英語の画面ならそれが効きます
-    let 既定 = default_theme().for_current_language();
+    let default_of = default_theme().for_current_language();
     match read_theme(&config_dir.join(user_template_name())) {
-        Some(th) => merge(th.for_current_language(), 既定),
-        None => 既定,
+        Some(th) => merge(th.for_current_language(), default_of),
+        None => default_of,
     }
 }
 
@@ -548,7 +548,7 @@ fn strip_note(line: &str) -> &str {
 /// 覚え書き(`#` から行末)を落とし、空行を捨てます。値が `[` や `{` で
 /// 開いたまま行が終わったら、閉じるまで次の行を繋ぎます — 様式の升目は
 /// 配列で書くので、1つの値が何行にもまたがります(2026-08-18)。
-fn 論理行(src: &str) -> Vec<(usize, String)> {
+fn logical_lines(src: &str) -> Vec<(usize, String)> {
     let mut out: Vec<(usize, String)> = Vec::new();
     let mut cont: Option<(usize, String)> = None;
     for (ln, raw) in src.lines().enumerate() {
@@ -563,9 +563,9 @@ fn 論理行(src: &str) -> Vec<(usize, String)> {
             }
             None => cont = Some((ln, line.to_string())),
         }
-        let (開始, s) = cont.as_ref().expect("いま入れた");
-        if 釣り合う(s) {
-            out.push((*開始, s.clone()));
+        let (begin_at, s) = cont.as_ref().expect("いま入れた");
+        if balances(s) {
+            out.push((*begin_at, s.clone()));
             cont = None;
         }
     }
@@ -576,7 +576,7 @@ fn 論理行(src: &str) -> Vec<(usize, String)> {
 }
 
 /// `[` `{` と `]` `}` の数が釣り合っているか(囲みの中の字は数えません)
-fn 釣り合う(s: &str) -> bool {
+fn balances(s: &str) -> bool {
     let mut depth = 0i32;
     let mut boxed = false;
     for c in s.chars() {
@@ -599,7 +599,7 @@ fn 釣り合う(s: &str) -> bool {
 ///
 /// 直すのは `{ 升 = […] }` のような値の中のキーだけです。囲みの中
 /// (`"…"`)は字なので触りません。
-fn キーを囲む(v: &str) -> String {
+fn quote_key(v: &str) -> String {
     let b: Vec<char> = v.chars().collect();
     let mut out = String::new();
     let mut i = 0usize;
@@ -641,7 +641,7 @@ fn キーを囲む(v: &str) -> String {
 
 /// ライブラリの指摘は何行にもなるので、1行にまとめます。
 /// 出すのは最初の1文だけで、場所はこちらの「N 行目」で言います
-fn 一行に(s: &str) -> String {
+fn to_one_line(s: &str) -> String {
     s.lines().next().unwrap_or("").trim().to_string()
 }
 
@@ -658,7 +658,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
         Form(usize),
     }
     let mut cur: Option<Sec> = None;
-    for (ln, line) in 論理行(src) {
+    for (ln, line) in logical_lines(src) {
         let line = line.as_str();
         if let Some(name) = line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
             let name = name.trim();
@@ -712,9 +712,9 @@ pub fn parse(src: &str) -> Result<Theme, String> {
         // 多くなります。節とキーの読みはこちらに残します — TOML の素の
         // キーは英数字だけと決まっていて、日本語のキーが通らないためです
         let value = |v: &str| -> Result<toml_edit::Value, String> {
-            キーを囲む(v)
+            quote_key(v)
                 .parse::<toml_edit::Value>()
-                .map_err(|e| format!("{} 行目: 値が読めません: {}", ln + 1, 一行に(&e.to_string())))
+                .map_err(|e| format!("{} 行目: 値が読めません: {}", ln + 1, to_one_line(&e.to_string())))
         };
         let s = |v: &str| -> Result<String, String> {
             value(v)?
@@ -858,7 +858,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
             Some(Sec::Form(i)) => {
                 let name = th.forms[*i].name.clone();
                 match k {
-                    "行" | "rows" => th.forms[*i].rows = 升目を読む(&value(v)?, &name, ln)?,
+                    "行" | "rows" => th.forms[*i].rows = read_grid(&value(v)?, &name, ln)?,
                     _ => return Err(format!("{} 行目: [様式.{name}] の知らないキー: {k}", ln + 1)),
                 }
             }
@@ -873,13 +873,13 @@ pub fn parse(src: &str) -> Result<Theme, String> {
 }
 
 /// 様式の `行 = [ { 升 = […], 幅 = […] }, … ]` を読む。
-fn 升目を読む(v: &toml_edit::Value, name: &str, ln: usize) -> Result<Vec<FormRow>, String> {
+fn read_grid(v: &toml_edit::Value, name: &str, ln: usize) -> Result<Vec<FormRow>, String> {
     let line_no = |i: usize| format!("{} 行目: [様式.{name}] の {} 行目", ln + 1, i + 1);
-    let Some(配列) = v.as_array() else {
+    let Some(array_of) = v.as_array() else {
         return Err(format!("{} 行目: [様式.{name}] の 行 は配列で書いてください", ln + 1));
     };
     let mut out = Vec::new();
-    for (i, line) in 配列.iter().enumerate() {
+    for (i, line) in array_of.iter().enumerate() {
         let Some(tbl) = line.as_inline_table() else {
             return Err(format!(
                 "{}は {{ 升 = [\"項目の名前\"] }} の形で書いてください",
@@ -972,15 +972,15 @@ pub fn write(th: &Theme) -> String {
         s.push('\n');
     }
     // **ページの飾りだけのテンプレートもある**ので、用紙が無くても節を出す
-    let 飾りあり = th.header.is_some()
+    let has_deco = th.header.is_some()
         || th.footer.is_some()
         || th.watermark.is_some()
         || th.page_color.is_some()
         || th.vertical;
-    if th.page.is_some() || 飾りあり {
+    if th.page.is_some() || has_deco {
         s.push_str("[ページ]\n");
-        let 既定 = crate::doc::PageSetup::default();
-        let p = th.page.as_ref().unwrap_or(&既定);
+        let default_of = crate::doc::PageSetup::default();
+        let p = th.page.as_ref().unwrap_or(&default_of);
         let paper = if th.page.is_none() { None } else { match (p.w_mm, p.h_mm) {
             (297.0, 210.0) => Some("A4横"),
             (297.0, 420.0) => Some("A3"),
@@ -1023,8 +1023,8 @@ pub fn write(th: &Theme) -> String {
     for f in &th.forms {
         s.push_str(&format!("[様式.{}]\n行 = [\n", f.name));
         for r in &f.rows {
-            let 升: Vec<String> = r.cells.iter().map(|c| format!("\"{c}\"")).collect();
-            s.push_str(&format!("  {{ 升 = [{}]", 升.join(", ")));
+            let grid_cell: Vec<String> = r.cells.iter().map(|c| format!("\"{c}\"")).collect();
+            s.push_str(&format!("  {{ 升 = [{}]", grid_cell.join(", ")));
             if !r.widths.is_empty() {
                 let widths: Vec<String> = r.widths.iter().map(|w| num(*w)).collect();
                 s.push_str(&format!(", 幅 = [{}]", widths.join(", ")));
@@ -1108,7 +1108,7 @@ fn num(v: f32) -> String {
 ///
 /// `{ページ}` と `{ページ数}` は、その頁の数字になる印に変えます
 /// (docx の PAGE / NUMPAGES と同じ物)。
-fn 飾りの段落(s: &str) -> crate::doc::Paragraph {
+fn deco_para(s: &str) -> crate::doc::Paragraph {
     let text = s
         .replace("{ページ数}", &crate::doc::PAGES_MARK.to_string())
         .replace("{ページ}", &crate::doc::PAGE_MARK.to_string());
@@ -1143,12 +1143,12 @@ pub fn compose_page(out: &mut Document, theme: &Theme) {
     // 黙って別の見た目にしないためです
     if out.header.paragraphs.is_empty() {
         if let Some(h) = &theme.header {
-            out.header.paragraphs = vec![飾りの段落(h)];
+            out.header.paragraphs = vec![deco_para(h)];
         }
     }
     if out.footer.paragraphs.is_empty() {
         if let Some(f) = &theme.footer {
-            out.footer.paragraphs = vec![飾りの段落(f)];
+            out.footer.paragraphs = vec![deco_para(f)];
         }
     }
     if out.watermark.is_none() {
@@ -1163,7 +1163,7 @@ pub fn compose_page(out: &mut Document, theme: &Theme) {
     // **桁の割合を mm に直します**(2026-08-18)。adoc は幅を比で言うので、
     // 紙の幅が決まるここで初めて mm になります。docx から読んだ表は
     // すでに mm を持っているので、割合は空で素通りします
-    let 行長 = out.page.map(|p| p.measure_mm()).unwrap_or(170.0);
+    let line_len = out.page.map(|p| p.measure_mm()).unwrap_or(170.0);
     for b in &mut out.blocks {
         let Block::Table(t) = b else { continue };
         if t.col_ratio.is_empty() {
@@ -1173,7 +1173,7 @@ pub fn compose_page(out: &mut Document, theme: &Theme) {
         if sum <= 0.0 {
             continue;
         }
-        t.col_mm = t.col_ratio.iter().map(|v| v / sum * 行長).collect();
+        t.col_mm = t.col_ratio.iter().map(|v| v / sum * line_len).collect();
     }
 }
 
@@ -1200,8 +1200,8 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
     };
 
     // 本文のラベル付きリストを集める(名前 → 値)。並びは書いた順
-    let mut 項目: Vec<(String, String)> = Vec::new();
-    let mut 元の場所: Vec<usize> = Vec::new();
+    let mut entries: Vec<(String, String)> = Vec::new();
+    let mut src_place: Vec<usize> = Vec::new();
     for (i, b) in out.blocks.iter().enumerate() {
         let Block::Para(p) = b else { continue };
         if p.style_id.as_deref() != Some("説明のリスト") {
@@ -1209,11 +1209,11 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
         }
         let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
         if let Some((name, value)) = text.split_once(":: ") {
-            項目.push((name.trim().to_string(), value.trim().to_string()));
-            元の場所.push(i);
+            entries.push((name.trim().to_string(), value.trim().to_string()));
+            src_place.push(i);
         }
     }
-    if 元の場所.is_empty() {
+    if src_place.is_empty() {
         return vec![format!("様式「{name}」を使う本文がありません(`項目:: 値` で書きます)")];
     }
 
@@ -1226,12 +1226,12 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
     // 表の桁は1組しか持てないので、100 の格子を敷いて、各セルが占める桁数で
     // 幅を表します。100 は百分率と同じなので、`幅 = [30, 70]` がそのまま
     // 30 桁と 70 桁になります
-    const 格子: u16 = 100;
+    const grid: u16 = 100;
     let mut rows: Vec<Vec<crate::doc::Cellbox>> = Vec::new();
     for r in &form.rows {
         let mut content: Vec<(String, String)> = Vec::new();
         for c in &r.cells {
-            let value = 項目.iter().find(|(n, _)| n == c).map(|(_, v)| v.clone());
+            let value = entries.iter().find(|(n, _)| n == c).map(|(_, v)| v.clone());
             if value.is_none() {
                 says.push(format!("升「{c}」に入れる項目が本文にありません"));
             } else {
@@ -1241,29 +1241,29 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
         }
         // この行のセルの数(名前と値で2つずつ)
         let n = content.len() * 2;
-        let widths = 桁を割る(&r.widths, n, 格子);
+        let widths = split_cols(&r.widths, n, grid);
         let mut row = Vec::new();
         for (i, (name, value)) in content.iter().enumerate() {
-            row.push(升幅(name, widths[i * 2]));
-            row.push(升幅(value, widths[i * 2 + 1]));
+            row.push(cell_width(name, widths[i * 2]));
+            row.push(cell_width(value, widths[i * 2 + 1]));
         }
         rows.push(row);
     }
     // 格子はぜんぶ同じ幅(1%)。幅はセルの占める桁数で表しています
-    let 比: Vec<f32> = Vec::new();
-    for (n, _) in &項目 {
+    let ratio: Vec<f32> = Vec::new();
+    for (n, _) in &entries {
         if !used.contains(n) {
             says.push(format!("項目「{n}」に対応する升が様式にありません"));
         }
     }
 
     // 表に置き換える。**ラベル付きリストは消します**(二重に出さないため)
-    let 差し込む先 = 元の場所[0];
-    let t = crate::doc::Table { rows, col_ratio: 比, ..Default::default() };
-    for i in 元の場所.iter().rev() {
+    let insert_at = src_place[0];
+    let t = crate::doc::Table { rows, col_ratio: ratio, ..Default::default() };
+    for i in src_place.iter().rev() {
         out.blocks.remove(*i);
     }
-    out.blocks.insert(差し込む先, Block::Table(t));
+    out.blocks.insert(insert_at, Block::Table(t));
     says
 }
 
@@ -1271,7 +1271,7 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
 ///
 /// `幅` が無ければ等分します。数が足りない・多いときは、書いた分だけ使って
 /// 残りを等分します。合計は必ず格子の数にします(端数は最後の升に寄せます)
-fn 桁を割る(widths: &[f32], n: usize, 格子: u16) -> Vec<u8> {
+fn split_cols(widths: &[f32], n: usize, grid: u16) -> Vec<u8> {
     if n == 0 {
         return Vec::new();
     }
@@ -1279,36 +1279,36 @@ fn 桁を割る(widths: &[f32], n: usize, 格子: u16) -> Vec<u8> {
         .map(|i| widths.get(i).copied().filter(|x| *x > 0.0).unwrap_or(0.0))
         .collect();
     // 書いていない分は、残りを等分する
-    let 書いた: f32 = w.iter().sum();
-    let 空き = w.iter().filter(|x| **x <= 0.0).count();
-    if 空き > 0 {
-        let rest = (格子 as f32 - 書いた).max(空き as f32);
+    let wrote: f32 = w.iter().sum();
+    let gap = w.iter().filter(|x| **x <= 0.0).count();
+    if gap > 0 {
+        let rest = (grid as f32 - wrote).max(gap as f32);
         for x in w.iter_mut().filter(|x| **x <= 0.0) {
-            *x = rest / 空き as f32;
+            *x = rest / gap as f32;
         }
     }
     let sum: f32 = w.iter().sum();
     let mut out: Vec<u8> = w
         .iter()
-        .map(|x| ((x / sum * 格子 as f32).round() as i64).clamp(1, 255) as u8)
+        .map(|x| ((x / sum * grid as f32).round() as i64).clamp(1, 255) as u8)
         .collect();
     // 端数で合計がずれるので、最後の升で帳尻を合わせます
-    let 差 = 格子 as i64 - out.iter().map(|x| *x as i64).sum::<i64>();
+    let delta = grid as i64 - out.iter().map(|x| *x as i64).sum::<i64>();
     if let Some(last) = out.last_mut() {
-        *last = (*last as i64 + 差).clamp(1, 255) as u8;
+        *last = (*last as i64 + delta).clamp(1, 255) as u8;
     }
     out
 }
 
 /// 升1つ(字と、占める桁数)
-fn 升幅(text: &str, cols: u8) -> crate::doc::Cellbox {
-    let mut c = 升(text);
+fn cell_width(text: &str, cols: u8) -> crate::doc::Cellbox {
+    let mut c = grid_cell(text);
     c.col_span = cols;
     c
 }
 
 /// 升1つ(字を1つ入れたセル)
-fn 升(text: &str) -> crate::doc::Cellbox {
+fn grid_cell(text: &str) -> crate::doc::Cellbox {
     crate::doc::Cellbox {
         paragraphs: vec![crate::doc::Paragraph {
             line_spacing: 1.0,
@@ -1423,7 +1423,7 @@ mod tests {
     use super::*;
     use crate::doc::{Paragraph, Run};
 
-    fn 意味だけの文書() -> Document {
+    fn meaning_only_doc() -> Document {
         let h = Paragraph {
             style: ParaStyle::Heading(1),
             runs: vec![Run { text: "題".into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -1465,10 +1465,10 @@ mod tests {
         let th = parse("[様式.甲]\n行 = [{ 升 = [\"あ\"] }]\n").expect("読めない");
         assert_eq!(th.forms[0].rows[0].cells, vec!["あ"]);
         // 囲みの中の `升 =` は字なので触らない
-        assert_eq!(キーを囲む("\"升 = 1\""), "\"升 = 1\"");
+        assert_eq!(quote_key("\"升 = 1\""), "\"升 = 1\"");
     }
 
-    fn 申請書() -> (Document, Theme) {
+    fn form_doc() -> (Document, Theme) {
         let (doc, _) = crate::adoc::parse_full(
             "= 休暇申請書\n:様式: 申請書\n\n申請日:: 8月18日\n部署:: 総務課\n氏名:: 山田太郎\n",
         )
@@ -1482,7 +1482,7 @@ mod tests {
 
     #[test]
     fn 様式は本文と名前で結ぶ() {
-        let (mut doc, th) = 申請書();
+        let (mut doc, th) = form_doc();
         let says = apply_forms(&mut doc, &th);
         assert!(says.is_empty(), "何か言われた: {says:?}");
         let t = doc.tables().next().expect("升目にならない");
@@ -1506,7 +1506,7 @@ mod tests {
 
     #[test]
     fn 対応の付かない項目と埋まらない升は言う() {
-        let (_, th) = 申請書();
+        let (_, th) = form_doc();
         let (mut doc, _) = crate::adoc::parse_full(
             "= 題\n:様式: 申請書\n\n申請日:: 8月18日\n電話:: 03-0000-0000\n",
         )
@@ -1518,7 +1518,7 @@ mod tests {
 
     #[test]
     fn 様式の名前が無ければ何もしない() {
-        let (_, th) = 申請書();
+        let (_, th) = form_doc();
         let (mut doc, _) = crate::adoc::parse_full("= 題\n\n項目:: 値\n").unwrap();
         assert!(apply_forms(&mut doc, &th).is_empty());
         assert!(doc.tables().next().is_none(), "様式と言っていないのに升目にした");
@@ -1538,7 +1538,7 @@ mod tests {
     fn 既定テーマは直接書式の時代と同じ見た目を作る() {
         // **段階Aの門番。** writer の set_para_style が焼き付けていた
         // 16/13/11.5pt 太字と同じ値が、合成から出ること
-        let d = compose(&意味だけの文書(), &default_theme());
+        let d = compose(&meaning_only_doc(), &default_theme());
         let ps: Vec<&Paragraph> = d.paragraphs().collect();
         assert_eq!(ps[0].runs[0].size_pt, Some(16.0), "見出し1は16pt");
         assert!(ps[0].runs[0].fmt.bold, "見出し1は太字");
@@ -1548,7 +1548,7 @@ mod tests {
 
     #[test]
     fn 合成は元の文書を触らない() {
-        let d = 意味だけの文書();
+        let d = meaning_only_doc();
         let _ = compose(&d, &default_theme());
         let ps: Vec<&Paragraph> = d.paragraphs().collect();
         assert_eq!(ps[0].runs[0].size_pt, None, "意味の側は意味のまま");
@@ -1557,7 +1557,7 @@ mod tests {
     #[test]
     fn 直接書式は潰さない() {
         // 互換の文書に掛けても、本文が指定した見た目が勝つ
-        let mut d = 意味だけの文書();
+        let mut d = meaning_only_doc();
         if let crate::doc::Block::Para(p) = &mut d.blocks[0] {
             p.runs[0].size_pt = Some(22.0);
         }
@@ -1574,7 +1574,7 @@ mod tests {
             color: Some("C7433F".into()),
             ..Default::default()
         });
-        let mut d = 意味だけの文書();
+        let mut d = meaning_only_doc();
         if let crate::doc::Block::Para(p) = &mut d.blocks[1] {
             p.style_id = Some("注意書き".into());
         }
@@ -1595,7 +1595,7 @@ mod tests {
             size_pt: Some(14.0),
             ..Default::default()
         });
-        let mut d = 意味だけの文書();
+        let mut d = meaning_only_doc();
         if let crate::doc::Block::Para(p) = &mut d.blocks[0] {
             // 見出し1(16pt)の中の1語だけ「強め」
             p.runs[0].fmt.style_id = Some("強め".into());

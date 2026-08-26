@@ -4,13 +4,13 @@ use crate::*;
 
 /// PY の引数を Python の書き方(リテラル)にする。
 /// 自前の関数の表(モジュール名 → (関数名, 説明) の並び)。
-type 自前の関数の表 = HashMap<String, Vec<(String, String)>>;
+type own_func_table = HashMap<String, Vec<(String, String)>>;
 /// シートごとの呼び出し(シート番号, (置き場, 関数名, 引数) の並び)。
-type シートごとの呼び出し = (usize, Vec<(String, String, Vec<sheet::calc::PyArg>)>);
+type calls_per_sheet = (usize, Vec<(String, String, Vec<sheet::calc::PyArg>)>);
 /// シートごとの式の呼び出し(シート番号, (置き場, 式, 関数名, 引数) の並び)。
-type シートごとの式の呼び出し = (usize, Vec<(String, String, String, Vec<sheet::calc::PyArg>)>);
+type formula_calls_per_sheet = (usize, Vec<(String, String, String, Vec<sheet::calc::PyArg>)>);
 /// 差し込みの1仕事(置き場, (場所, 中身) の並び, 右下)。
-type 差し込みの仕事 = (Pos, Vec<(Pos, String)>, Pos);
+type merge_job = (Pos, Vec<(Pos, String)>, Pos);
 
 pub(crate) fn py_literal(v: &sheet::Value) -> String {
     match v {
@@ -225,10 +225,10 @@ pub(crate) fn run_with_timeout(
 ///
 /// 番号は増えるだけの数え札です。時刻や乱数は使いません — 同じ入力から
 /// 同じ物が出る方が、後から追いかけやすいためです。
-pub(crate) fn 作業場(name: &str) -> std::path::PathBuf {
+pub(crate) fn workdir(name: &str) -> std::path::PathBuf {
     use std::sync::atomic::{AtomicU64, Ordering};
-    static 番: AtomicU64 = AtomicU64::new(0);
-    let n = 番.fetch_add(1, Ordering::Relaxed);
+    static index_of: AtomicU64 = AtomicU64::new(0);
+    let n = index_of.fetch_add(1, Ordering::Relaxed);
     std::env::temp_dir().join(format!("jo-{name}-{}-{n}", std::process::id()))
 }
 
@@ -290,7 +290,7 @@ pub(crate) use pyrun::{def_names, plugin_outline};
 
 /// UDF の登録簿。**大文字にした関数名** → その名前を持つ (モジュール, 実際の名前)。
 /// 字句解析が ASCII を大文字にするので、こちらも大文字で引く(日本語はそのまま)。
-static UDF_MAP: std::sync::RwLock<Option<自前の関数の表>> =
+static UDF_MAP: std::sync::RwLock<Option<own_func_table>> =
     std::sync::RwLock::new(None);
 
 /// plugins を読み直して UDF の登録簿を作り、sheet に名前を渡す。
@@ -528,7 +528,7 @@ impl Calc {
         }
         // JSON は手で組む(依存を増やさない。文字列は最小の逃がし)
         let esc = |t: &str| t.replace('\\', "\\\\").replace('"', "\\\"");
-        let dir = 作業場("chart");
+        let dir = workdir("chart");
         let _ = std::fs::create_dir_all(&dir);
         let out = dir.join("chart.png");
         let font = kumihan::font::for_document(None)
@@ -765,7 +765,7 @@ impl Calc {
             })
             .collect();
         let json = pivot_spec_json(&headers, &data, &def);
-        let dir = 作業場("pivot");
+        let dir = workdir("pivot");
         self.status = ui::tf!("aggregating", def.value, def.agg).into();
         let task = cx.background_executor().spawn(async move {
             let _ = std::fs::create_dir_all(&dir);
@@ -1142,7 +1142,7 @@ impl Calc {
     /// **サンドボックスは着せない**: 回すのは自分で plugins に置いたコードだけで、
     /// ブックから旅して来たコードではない(2026-08-09 発注者確定)。
     fn run_udfs(&mut self, auto: bool, cx: &mut Context<Self>) {
-        let mut per_sheet: Vec<シートごとの呼び出し> =
+        let mut per_sheet: Vec<calls_per_sheet> =
             Vec::new();
         // 投げたセルの控え(答えが返った時、この分だけ指紋を控える)
         let mut sent: Vec<(usize, Vec<Pos>)> = Vec::new();
@@ -1157,9 +1157,9 @@ impl Calc {
                 // **変わっていないセルは投げない**(発注者 2026-08-14
                 // 「UDF の呼び出しは重い」)。100 行あるとき、1つ直すたびに
                 // 100 回ぶんを投げ直していた。手回し(@計算)のときは全部
-                let 変わった = sheet::calc::py_cell_stamp(sh, *p)
+                let changed = sheet::calc::py_cell_stamp(sh, *p)
                     != self.udf_stamp.get(&(i, *p)).copied();
-                if !auto || 変わった {
+                if !auto || changed {
                     if let Some((name, args)) = sheet::calc::eval_py_call(sh, f) {
                         calls.push((p.a1(), name, args));
                         cells.push(*p);
@@ -1226,7 +1226,7 @@ impl Calc {
             }
         }
         // (セル, モジュール, 関数, 引数)へ組み替える
-        let per_sheet: Vec<シートごとの式の呼び出し> =
+        let per_sheet: Vec<formula_calls_per_sheet> =
             per_sheet
                 .into_iter()
                 .map(|(i, calls)| {
@@ -1525,7 +1525,7 @@ impl Calc {
             },
         );
         let job = cx.background_executor().spawn(async move {
-            let dir = 作業場("csv");
+            let dir = workdir("csv");
             let _ = std::fs::create_dir_all(&dir);
             // csv.py という名前は標準ライブラリの csv を隠してしまう(踏んだ)
             let py_path = dir.join("jo_csv.py");
@@ -1598,7 +1598,7 @@ impl Calc {
                 .map(|(body, _)| body.split(',').filter_map(|x| x.trim().parse().ok()).collect())
                 .unwrap_or_default()
         };
-        let 一つ = |k: &str| -> f64 {
+        let one_of = |k: &str| -> f64 {
             raw.split_once(&format!("\"{k}\":"))
                 .and_then(|(_, r)| {
                     let t: String =
@@ -1612,15 +1612,15 @@ impl Calc {
             self.status = ui::t!("forecast_result_cannot_read").into();
             return;
         }
-        let season = 一つ("season") as u32;
-        let sigma = 一つ("sigma");
+        let season = one_of("season") as u32;
+        let sigma = one_of("sigma");
         self.checkpoint();
         let name = crate::util::unique_sheet_name_for(&self.book, ui::t!("forecast"));
         let mut sh = sheet::Sheet::new(&name);
-        let 実 = if heading.is_empty() { ui::t!("actual").to_string() } else { heading };
+        let actual = if heading.is_empty() { ui::t!("actual").to_string() } else { heading };
         for (c, t) in [
             (0u32, ui::t!("period").to_string()),
-            (1, 実),
+            (1, actual),
             (2, ui::t!("forecast").to_string()),
             (3, ui::t!("lower").to_string()),
             (4, ui::t!("upper").to_string()),
@@ -1643,7 +1643,7 @@ impl Calc {
         }
         // **断りはシートに残します。**状態行はこの後グラフの報せで流れるので、
         // そこだけに書くと、区間の意味が誰にも伝わりません
-        let 季 = if season > 1 {
+        let season = if season > 1 {
             ui::tf!("season_periods_found_automatically", season).to_string()
         } else {
             ui::t!("no_season_found").to_string()
@@ -1651,7 +1651,7 @@ impl Calc {
         let note_div = ui::tf!(
             "forecast_periods_ahead_interval",
             fc.len(),
-            季.clone(),
+            season.clone(),
             sigma
         )
         .to_string();
@@ -1683,10 +1683,10 @@ impl Calc {
         self.book.sheets[si].images_new.retain(|im| im.at != at);
         // **総計は図に入れません。**入れると、総計の棒だけが飛び抜けて、
         // 他の棒が潰れて読めなくなります(実機で見た)
-        let 総計行 = u32::from(d.totals);
-        let 総計列 = u32::from(d.totals && !d.cols_sel.is_empty());
-        let line = d.size.0.saturating_sub(総計行);
-        let row_box = d.size.1.saturating_sub(総計列);
+        let grand_row = u32::from(d.totals);
+        let grand_col = u32::from(d.totals && !d.cols_sel.is_empty());
+        let line = d.size.0.saturating_sub(grand_row);
+        let row_box = d.size.1.saturating_sub(grand_col);
         if line < 2 || row_box < 2 {
             return;
         }
@@ -1717,13 +1717,13 @@ impl Calc {
         };
         // 数の列を右から探す。ラベルはその左の列(無ければ番号)
         let sh = self.sheet();
-        let 数の列 = (a.col..=b.col).rev().find(|&c| {
+        let num_cols = (a.col..=b.col).rev().find(|&c| {
             (a.row + 1..=b.row)
                 .filter(|&r| matches!(sh.get(Pos::new(r, c)).map(|x| &x.value), Some(sheet::Value::Number(_))))
                 .count()
                 >= 4
         });
-        let Some(vc) = 数の列 else {
+        let Some(vc) = num_cols else {
             self.status = ui::t!("no_column_numbers_found").into();
             return;
         };
@@ -1753,7 +1753,7 @@ impl Calc {
         );
         self.status = ui::t!("forecasting").into();
         let task = cx.background_executor().spawn(async move {
-            let dir = 作業場("forecast");
+            let dir = workdir("forecast");
             let _ = std::fs::create_dir_all(&dir);
             let jp = dir.join("spec.json");
             let pp = dir.join("jo_forecast.py");
@@ -1800,7 +1800,7 @@ impl Calc {
         let path = pend.path.clone();
         self.status = ui::t!("looking_tables_pdf").into();
         let job = cx.background_executor().spawn(async move {
-            let dir = 作業場("pdf");
+            let dir = workdir("pdf");
             let _ = std::fs::create_dir_all(&dir);
             let py_path = dir.join("jo_pdf.py");
             if std::fs::write(&py_path, pyrun::PDF_TABLE_PY).is_err() {
@@ -1948,7 +1948,7 @@ impl Calc {
     ) {
         let esc = |t: &str| t.replace('\\', "\\\\").replace('"', "\\\"");
         let dir =
-            作業場(name);
+            workdir(name);
         let out = dir.join("eq.png");
         let font = kumihan::font::for_document(None)
             .ok()
@@ -2318,9 +2318,9 @@ impl Calc {
             ints,
             bounds
         );
-        let 整数あり = int_of.contains(&1);
-        let dir = 作業場("solver");
-        self.status = if 整数あり {
+        let has_integer = int_of.contains(&1);
+        let dir = workdir("solver");
+        self.status = if has_integer {
             ui::t!("looking_solution_integer_program").into()
         } else {
             ui::t!("solving_simplex_lp").into()
@@ -2457,7 +2457,7 @@ impl Calc {
         let si = self.active;
         let two = row_in.is_some() && col_in.is_some();
         // 埋める先と、そのとき差し替える入力の組
-        let mut jobs: Vec<差し込みの仕事> = Vec::new();
+        let mut jobs: Vec<merge_job> = Vec::new();
         if two {
             let (ci, ri) = (col_in.unwrap(), row_in.unwrap());
             // 角(a)が式。左の列 = 列の入力、上の行 = 行の入力

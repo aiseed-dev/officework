@@ -132,13 +132,13 @@ pub fn apply(t: &BookTheme, b: &mut Book) {
 /// テンプレートの字にする。
 pub fn write(t: &BookTheme) -> String {
     let mut d = Document::default();
-    if let Some(tb) = 用紙の表(t) {
+    if let Some(tb) = paper_table(t) {
         d.blocks.push(Block::Table(tb));
     }
-    if let Some(tb) = 幅の表(t) {
+    if let Some(tb) = width_table(t) {
         d.blocks.push(Block::Table(tb));
     }
-    if let Some(tb) = 高さの表(t) {
+    if let Some(tb) = height_table(t) {
         d.blocks.push(Block::Table(tb));
     }
     kumihan::adoc::write(&d)
@@ -173,7 +173,7 @@ fn numbers(v: f32) -> String {
     }
 }
 
-fn 用紙の表(t: &BookTheme) -> Option<Table> {
+fn paper_table(t: &BookTheme) -> Option<Table> {
     let rows: Vec<Vec<String>> = t
         .sheets
         .iter()
@@ -187,7 +187,7 @@ fn 用紙の表(t: &BookTheme) -> Option<Table> {
         .map(|s| {
             vec![
                 s.name.clone(),
-                s.paper_size.map(用紙の名).unwrap_or_default(),
+                s.paper_size.map(paper_name).unwrap_or_default(),
                 match s.landscape {
                     Some(true) => "横".into(),
                     Some(false) => "縦".into(),
@@ -206,17 +206,17 @@ fn 用紙の表(t: &BookTheme) -> Option<Table> {
     table("用紙", &["シート", "大きさ", "向き", "余白", "目盛線", "拡大"], rows)
 }
 
-fn 幅の表(t: &BookTheme) -> Option<Table> {
+fn width_table(t: &BookTheme) -> Option<Table> {
     let mut rows = Vec::new();
     for s in &t.sheets {
         for (c, w) in &s.col_width {
-            rows.push(vec![s.name.clone(), 列の名(*c), numbers(*w)]);
+            rows.push(vec![s.name.clone(), col_name(*c), numbers(*w)]);
         }
     }
     table("列幅", &["シート", "列", "幅"], rows)
 }
 
-fn 高さの表(t: &BookTheme) -> Option<Table> {
+fn height_table(t: &BookTheme) -> Option<Table> {
     let mut rows = Vec::new();
     for s in &t.sheets {
         for (r, h) in &s.row_height {
@@ -227,13 +227,13 @@ fn 高さの表(t: &BookTheme) -> Option<Table> {
 }
 
 /// 列の番号を A1 の綴りの列の名にする(0 → A)
-fn 列の名(c: u32) -> String {
+fn col_name(c: u32) -> String {
     let a1 = Pos::new(0, c).a1();
     a1.trim_end_matches(|ch: char| ch.is_ascii_digit()).to_string()
 }
 
 /// 用紙の番号を名前に(xlsx の番号は Excel の決め)
-fn 用紙の名(n: u32) -> String {
+fn paper_name(n: u32) -> String {
     match n {
         8 => "A3".into(),
         9 => "A4".into(),
@@ -247,7 +247,7 @@ fn 用紙の名(n: u32) -> String {
     }
 }
 
-fn 用紙の番号(s: &str) -> Option<u32> {
+fn paper_no(s: &str) -> Option<u32> {
     match s.trim().to_ascii_uppercase().as_str() {
         "A3" => Some(8),
         "A4" => Some(9),
@@ -274,9 +274,9 @@ pub fn parse(src: &str) -> Result<BookTheme, String> {
         // 1行目は見出し
         let body = if tb.header_row && !rows.is_empty() { &rows[1..] } else { &rows[..] };
         match title {
-            "用紙" => 用紙を読む(&mut t, body),
-            "列幅" => 幅を読む(&mut t, body),
-            "行の高さ" => 高さを読む(&mut t, body),
+            "用紙" => read_paper(&mut t, body),
+            "列幅" => read_width(&mut t, body),
+            "行の高さ" => read_height(&mut t, body),
             _ => {}
         }
     }
@@ -287,7 +287,7 @@ fn pick(row: &[String], i: usize) -> &str {
     row.get(i).map(|s| s.trim()).unwrap_or("")
 }
 
-fn 用紙を読む(t: &mut BookTheme, rows: &[Vec<String>]) {
+fn read_paper(t: &mut BookTheme, rows: &[Vec<String>]) {
     for row in rows {
         let name = pick(row, 0);
         if name.is_empty() {
@@ -296,7 +296,7 @@ fn 用紙を読む(t: &mut BookTheme, rows: &[Vec<String>]) {
         let s = t.sheet(name);
         let size = pick(row, 1);
         if !size.is_empty() {
-            s.paper_size = 用紙の番号(size);
+            s.paper_size = paper_no(size);
         }
         match pick(row, 2) {
             "横" => s.landscape = Some(true),
@@ -321,10 +321,10 @@ fn 用紙を読む(t: &mut BookTheme, rows: &[Vec<String>]) {
     }
 }
 
-fn 幅を読む(t: &mut BookTheme, rows: &[Vec<String>]) {
+fn read_width(t: &mut BookTheme, rows: &[Vec<String>]) {
     for row in rows {
         let name = pick(row, 0);
-        let Some(c) = 列の番号(pick(row, 1)) else { continue };
+        let Some(c) = col_index(pick(row, 1)) else { continue };
         let Ok(w) = pick(row, 2).parse::<f32>() else { continue };
         if !name.is_empty() {
             t.sheet(name).col_width.push((c, w));
@@ -332,7 +332,7 @@ fn 幅を読む(t: &mut BookTheme, rows: &[Vec<String>]) {
     }
 }
 
-fn 高さを読む(t: &mut BookTheme, rows: &[Vec<String>]) {
+fn read_height(t: &mut BookTheme, rows: &[Vec<String>]) {
     for row in rows {
         let name = pick(row, 0);
         let Ok(r) = pick(row, 1).parse::<u32>() else { continue };
@@ -344,7 +344,7 @@ fn 高さを読む(t: &mut BookTheme, rows: &[Vec<String>]) {
 }
 
 /// 列の名(`A`)を番号に。`Pos::parse` に1行目を足して解かせます
-fn 列の番号(s: &str) -> Option<u32> {
+fn col_index(s: &str) -> Option<u32> {
     let s = s.trim();
     if s.is_empty() || !s.chars().all(|c| c.is_ascii_alphabetic()) {
         return None;
@@ -464,7 +464,7 @@ mod tests {
     /// 知らない用紙の番号は**番号のまま**(黙って A4 にしない)
     #[test]
     fn 知らない用紙は番号のまま() {
-        assert_eq!(用紙の名(99), "99");
-        assert_eq!(用紙の番号("99"), Some(99));
+        assert_eq!(paper_name(99), "99");
+        assert_eq!(paper_no("99"), Some(99));
     }
 }

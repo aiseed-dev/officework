@@ -89,7 +89,7 @@ pub fn empty(look: &Look) -> Div {
 
 /// 並べる中身。**200 件で切ります** — 切ったことは呼ぶ側が言うこと。
 /// 上限。これより多いフォルダでは、切ったことを画面に出します
-pub const 一覧の上限: usize = 200;
+pub const list_cap: usize = 200;
 
 /// 並べる物と、切って落とした数。
 ///
@@ -97,8 +97,8 @@ pub const 一覧の上限: usize = 200;
 /// それ以上のファイルは*あるのに出ない*状態でした。
 pub fn entries_with_rest(dir: &std::path::Path) -> (Vec<folder::Entry>, usize) {
     let all = folder::list(dir);
-    let rest = all.len().saturating_sub(一覧の上限);
-    (all.into_iter().take(一覧の上限).collect(), rest)
+    let rest = all.len().saturating_sub(list_cap);
+    (all.into_iter().take(list_cap).collect(), rest)
 }
 
 pub fn entries(dir: &std::path::Path) -> Vec<folder::Entry> {
@@ -120,7 +120,7 @@ pub fn rest_note(look: &Look, rest: usize) -> Option<Div> {
 /// **乗せたときだけ濃くなります。** いつも黒い字で「名前」「消す」が
 /// 並んでいると、一覧そのものが読めません(2026-08-26 発注者
 /// 「filemanager と同じユーザーインタフェースにしろ」)。
-pub fn row_button(look: &Look, i: usize, mark: &'static str, _名: SharedString) -> Stateful<Div> {
+pub fn row_button(look: &Look, i: usize, mark: &'static str, _name: SharedString) -> Stateful<Div> {
     let s = look.scale;
     let hover = look.hover;
     let icon = match mark {
@@ -144,7 +144,7 @@ pub fn row_button(look: &Look, i: usize, mark: &'static str, _名: SharedString)
 }
 
 /// 一覧の頭に置く「新しく作る」の絵。
-pub fn make_button(look: &Look, mark: &'static str, _名: SharedString) -> Stateful<Div> {
+pub fn make_button(look: &Look, mark: &'static str, _name: SharedString) -> Stateful<Div> {
     let s = look.scale;
     let hover = look.hover;
     let icon = match mark {
@@ -177,7 +177,7 @@ pub fn row(look: &Look, i: usize, e: &folder::Entry, current: bool) -> Stateful<
     // **フォルダも押せます**(2026-08-26)。`can_open()` は「この道具で
     // *中身を開ける*か」なので、フォルダは偽です。フォルダは開くのでは
     // なく*中へ入る*ので、押せるかどうかは別に見ます
-    let 押せる = e.kind.can_open() || e.kind == folder::Kind::Folder;
+    let pressable = e.kind.can_open() || e.kind == folder::Kind::Folder;
     let hover = look.hover;
     let mut line = div()
         .id(SharedString::from(format!("fl-{i}")))
@@ -196,17 +196,17 @@ pub fn row(look: &Look, i: usize, e: &folder::Entry, current: bool) -> Stateful<
                 .path(SharedString::from(icon_of(e.kind)))
                 .size(px(s * 14.0))
                 .flex_none()
-                .text_color(if 押せる { look.fg } else { look.dim }),
+                .text_color(if pressable { look.fg } else { look.dim }),
         )
         .child(
             div()
                 .flex_1()
                 .min_w(px(0.0))
                 .text_size(px(s * 11.5))
-                .text_color(if 押せる { look.fg } else { look.dim })
+                .text_color(if pressable { look.fg } else { look.dim })
                 .child(SharedString::from(e.name.clone())),
         );
-    if 押せる {
+    if pressable {
         line = line.cursor_pointer().hover(move |st| st.bg(hover));
     }
     line

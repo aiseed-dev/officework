@@ -19,7 +19,7 @@ pub(crate) fn foreign_lock(p: &std::path::Path) -> Option<String> {
 /// 消します。置き場と道の作り方は `ops` の1本で、表と共通です。
 ///
 /// 中身は adoc です — 文章の原本と同じ形なので、復旧はただ開くだけです。
-pub(crate) fn 控えの道(orig: Option<&std::path::Path>) -> std::path::PathBuf {
+pub(crate) fn backup_path(orig: Option<&std::path::Path>) -> std::path::PathBuf {
     ops::recover_path_for(orig, "adoc", "未保存の文書")
 }
 

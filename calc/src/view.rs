@@ -672,7 +672,7 @@ impl Render for Calc {
             // **入切のボタンは、入っている間ずっと押された形。**
             // 記録中のボタンだけ前から赤くしていましたが、同じ考えを
             // 入切の全部に広げます(2026-08-21 発注者)
-            let 入 = cmd.kind == ribbon::Kind::Toggle && self.入っているか(cmd.id);
+            let on_of = cmd.kind == ribbon::Kind::Toggle && self.is_on(cmd.id);
             let fg = if recording {
                 rgb(0xC7433F)
             } else if cmd.ready && !locked && !dlg_open {
@@ -687,7 +687,7 @@ impl Render for Calc {
                 let mut b = div().id(key.clone())
                     .px_2().h(px(us * 46.0)).rounded_sm()
                     // 入っている入切のボタンは地を敷いて、押された形に見せる
-                    .when(入, |d| d.bg(th_btn_hover))
+                    .when(on_of, |d| d.bg(th_btn_hover))
                     .flex().flex_col().items_center().justify_center().gap_1()
                     .on_hover(hoverable)
                     .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
@@ -717,7 +717,7 @@ impl Render for Calc {
             }
             let mut b = div().id(key.clone())
                 .h(px(us * 26.0)).rounded_sm()
-                .when(入, |d| d.bg(th_btn_hover))
+                .when(on_of, |d| d.bg(th_btn_hover))
                 .flex().items_center().justify_center()
                 .on_hover(hoverable)
                 .tooltip(move |_, cx| cx.new(|_| Tip(label.into(), us)).into())
@@ -2810,15 +2810,15 @@ impl Render for Calc {
             // 分割の仕切り。固定の線より太い灰色の帯にして、**動かせる境目**と
             // 留まっている境目を見分けられるようにする
             {
-                let (top, left, _) = self.分割の境目();
-                let 仕切り = rgb(0x9AA5AE);
+                let (top, left, _) = self.split_edge();
+                let divider = rgb(0x9AA5AE);
                 if let Some(y) = top {
                     bands.push(div().absolute().left(px(0.0)).top(px(y - 2.0))
-                        .w_full().h(px(4.0)).bg(仕切り).into_any_element());
+                        .w_full().h(px(4.0)).bg(divider).into_any_element());
                 }
                 if let Some(x) = left {
                     bands.push(div().absolute().left(px(x - 2.0)).top(px(0.0))
-                        .w(px(4.0)).h_full().bg(仕切り).into_any_element());
+                        .w(px(4.0)).h_full().bg(divider).into_any_element());
                 }
             }
             if let Some(f) = self.frozen {
@@ -3317,18 +3317,18 @@ impl Render for Calc {
                             .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x66707A) })
                             .child(SharedString::from(label_text.to_string()))
                     };
-                    let 全体 = self.find_book;
+                    let overall = self.find_book;
                     d.child(div().mt_1p5().flex().flex_row().items_center().gap_1()
                         .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                             .child(ui::t!("search")))
-                        .child(button("sc-sheet", ui::t!("sheet_4"), !全体)
+                        .child(button("sc-sheet", ui::t!("sheet_4"), !overall)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                 |this, _, _, cx| {
                                     cx.stop_propagation();
                                     this.find_book = false;
                                     cx.notify()
                                 })))
-                        .child(button("sc-book", ui::t!("file_2"), 全体)
+                        .child(button("sc-book", ui::t!("file_2"), overall)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                 |this, _, _, cx| {
                                     cx.stop_propagation();
@@ -4414,15 +4414,15 @@ impl Render for Calc {
                     })));
                 // **日付の単位**(タイムライン。2026-08-22 の D群)。
                 // 日付の列を月・四半期・年の束にまとめて並べます
-                let 粒 = self.slicers.get(si).map(|x| x.grain.clone()).unwrap_or_default();
-                let 粒札 = crate::util::slicer_grain_label(&粒);
+                let grain = self.slicers.get(si).map(|x| x.grain.clone()).unwrap_or_default();
+                let grain_label = crate::util::slicer_grain_label(&grain);
                 p = p.child(div().flex().flex_row().items_center().gap_1()
                     .child(lab(ui::t!("date_unit").to_string()))
                     .child(div().id("sl-grain")
                         .px_2().py_0p5().rounded_sm().border_1().border_color(rgb(0xC6CDD3))
                         .bg(rgb(0xFFFFFF)).cursor_pointer().text_size(px(us * 12.0))
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
-                        .child(SharedString::from(粒札))
+                        .child(SharedString::from(grain_label))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             this.slicer_sel = si;
@@ -4431,7 +4431,7 @@ impl Render for Calc {
                         }))));
                 // **レポートの接続**(2026-08-21 の D群)。つないだピボットは
                 // このスライサーを押すたびに同じ絞りで作り直します
-                let 繋ぎ数 = self.slicers.get(si).map(|x| x.pivots.len()).unwrap_or(0);
+                let n_joins = self.slicers.get(si).map(|x| x.pivots.len()).unwrap_or(0);
                 p = p.child(div().flex().flex_col().gap_0p5()
                     .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                         .child(ui::t!("report_connections")))
@@ -4439,10 +4439,10 @@ impl Render for Calc {
                         .px_2().py_0p5().rounded_sm().border_1().border_color(rgb(0xC6CDD3))
                         .bg(rgb(0xFFFFFF)).cursor_pointer().text_size(px(us * 12.0))
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
-                        .child(SharedString::from(if 繋ぎ数 == 0 {
+                        .child(SharedString::from(if n_joins == 0 {
                             ui::t!("not_connected").to_string()
                         } else {
-                            ui::tf!("connected", 繋ぎ数).to_string()
+                            ui::tf!("connected", n_joins).to_string()
                         }))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
@@ -5322,14 +5322,14 @@ impl Render for Calc {
                        if dr != 0 || dc != 0 {
                            // 分割しているときは、**指している側**を動かす。
                            // 上の帯の上でホイールを回せば上の帯が動く(Excel と同じ)
-                           let (top, left, 右寄せ) = this.分割の境目();
+                           let (top, left, right_align) = this.split_edge();
                            let (mx, my) = {
                                let (bx, by, _, _) = this.pane_box.get();
                                (f32::from(e.position.x) - bx, f32::from(e.position.y) - by)
                            };
-                           let 帯の上 = top.is_some_and(|y| my < y)
-                               || left.is_some_and(|x| if 右寄せ { mx > x } else { mx < x });
-                           let to = if 帯の上 {
+                           let band_top = top.is_some_and(|y| my < y)
+                               || left.is_some_and(|x| if right_align { mx > x } else { mx < x });
+                           let to = if band_top {
                                &mut this.split_view
                            } else {
                                &mut this.view

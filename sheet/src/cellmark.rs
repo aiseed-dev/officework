@@ -71,7 +71,7 @@ pub struct Line {
 /// AsciiDoc として読む。**書式が1つも無ければ None**(そのときは
 /// 今までどおり平文を1つ描くだけで済む — 普通のセルに費用を掛けない)。
 /// 印の1つ。字と、その字が囲んだ所に付ける印。
-type 印を付ける = fn(&mut Span);
+type put_marks = fn(&mut Span);
 
 pub fn parse(text: &str) -> Option<Vec<Line>> {
     // 印が1つも無ければ、読むまでもない(普通のセルに費用を掛けない)
@@ -82,14 +82,14 @@ pub fn parse(text: &str) -> Option<Vec<Line>> {
     let mut any = false;
     // 番号つきの続きぐあい。**AsciiDoc は番号を書かない**ので、
     // 続いている間だけ 1 から数えます(間に別の行が入れば振り出し)
-    let mut 番号 = 0u32;
+    let mut number = 0u32;
     for raw in text.split('\n') {
         let (mut block, rest) = block_of(raw);
         if let Block::Ordered(_) = block {
-            番号 += 1;
-            block = Block::Ordered(番号);
+            number += 1;
+            block = Block::Ordered(number);
         } else {
-            番号 = 0;
+            number = 0;
         }
         if block != Block::Para {
             any = true;
@@ -232,10 +232,10 @@ fn block_of(raw: &str) -> (Block, &str) {
 
     // 見出し: `=` の数(1〜3)。**後ろの空白が要る** — `=SUM(A1)` は式で、
     // 見出しではありません(`kumihan::adoc::is_formula_cell` と同じ決め)
-    let 等号 = t.chars().take_while(|c| *c == '=').count();
-    if (1..=3).contains(&等号) {
-        if let Some(r) = t[等号..].strip_prefix(' ') {
-            return (Block::Heading(等号 as u8), r);
+    let equals = t.chars().take_while(|c| *c == '=').count();
+    if (1..=3).contains(&equals) {
+        if let Some(r) = t[equals..].strip_prefix(' ') {
+            return (Block::Heading(equals as u8), r);
         }
     }
 
@@ -250,9 +250,9 @@ fn block_of(raw: &str) -> (Block, &str) {
     }
 
     // 番号つき `. `。深さは `.` の数。番号は parse が振ります
-    let 点 = t.chars().take_while(|c| *c == '.').count();
-    if (1..=5).contains(&点) {
-        if let Some(r) = t[点..].strip_prefix(' ') {
+    let dot = t.chars().take_while(|c| *c == '.').count();
+    if (1..=5).contains(&dot) {
+        if let Some(r) = t[dot..].strip_prefix(' ') {
             return (Block::Ordered(0), r);
         }
     }
@@ -261,7 +261,7 @@ fn block_of(raw: &str) -> (Block, &str) {
 }
 
 /// 取り消し線の書き方(本家には専用の印が無く、役割で書きます)。
-const 取り消し線: &str = "[.line-through]#";
+const strike: &str = "[.line-through]#";
 
 /// 行の中の印を読んで、続きの文字に割る。
 fn inline(s: &str) -> Vec<Span> {
@@ -272,8 +272,8 @@ fn inline(s: &str) -> Vec<Span> {
     while i < b.len() {
         // 取り消し線 `[.line-through]##字##`(二重 — 日本語の文中で効く形)と
         // `[.line-through]#字#`(一重 — 語の外だけ。英語向け)
-        if b[i] == '[' && b[i..].starts_with(&取り消し線.chars().collect::<Vec<_>>()[..]) {
-            let mut from = i + 取り消し線.chars().count();
+        if b[i] == '[' && b[i..].starts_with(&strike.chars().collect::<Vec<_>>()[..]) {
+            let mut from = i + strike.chars().count();
             let double = b.get(from) == Some(&'#');
             if double {
                 from += 1;
@@ -297,13 +297,13 @@ fn inline(s: &str) -> Vec<Span> {
         // 本家では一重は「語の外」だけで効き、日本語には語の間の空白が
         // 無いので、**文中では二重が要ります**(2026-08-19 発注者の指摘で
         // 本家に通して確かめた — 一重は字のまま、二重だけ効いた)
-        let 二重印: [(char, 印を付ける); 3] = [
+        let double_mark: [(char, put_marks); 3] = [
             ('*', (|s: &mut Span| s.bold = true) as fn(&mut Span)),
             ('_', |s: &mut Span| s.italic = true),
             ('`', |s: &mut Span| s.mono = true),
         ];
         let mut hit2 = false;
-        for (m, set) in 二重印 {
+        for (m, set) in double_mark {
             if !(b[i] == m && b.get(i + 1) == Some(&m)) {
                 continue;
             }
@@ -337,7 +337,7 @@ fn inline(s: &str) -> Vec<Span> {
             continue;
         }
         // *太字* / _斜体_ / `等幅`
-        let marks: [(char, 印を付ける); 3] = [
+        let marks: [(char, put_marks); 3] = [
             ('*', (|s: &mut Span| s.bold = true) as fn(&mut Span)),
             ('_', |s: &mut Span| s.italic = true),
             ('`', |s: &mut Span| s.mono = true),
@@ -347,7 +347,7 @@ fn inline(s: &str) -> Vec<Span> {
             if b[i] != mark {
                 continue;
             }
-            let Some((inner, next)) = 囲みを読む(&b, i, mark) else { continue };
+            let Some((inner, next)) = read_box(&b, i, mark) else { continue };
             push(&mut out, &mut plain);
             let mut sp = Span { text: inner, ..Default::default() };
             set(&mut sp);
@@ -385,7 +385,7 @@ fn push(out: &mut Vec<Span>, plain: &mut String) {
 ///
 /// *残る穴。* `売上_合計_表` のように**日本語の間に `_` を挟んだ名前**は
 /// 斜体になります。英数字の名前(`ABC_001`)は安全です。
-fn 区切り(c: Option<&char>) -> bool {
+fn delim(c: Option<&char>) -> bool {
     match c {
         None => true,
         Some(c) => !c.is_ascii_alphanumeric() && *c != '_',
@@ -397,9 +397,9 @@ fn 区切り(c: Option<&char>) -> bool {
 /// **本家と同じ「語の外だけ」の決まり**(constrained formatting)で読みます。
 /// 印の前が語の中(字か数字)なら書式にしません。これで
 /// `A_1_B`(名前)や `2*3*4`(掛け算)が斜体や太字に化けません。
-fn 囲みを読む(b: &[char], at: usize, mark: char) -> Option<(String, usize)> {
+fn read_box(b: &[char], at: usize, mark: char) -> Option<(String, usize)> {
     // 開きの印: 前が語の外で、後ろが空白でない
-    if !区切り(at.checked_sub(1).map(|k| &b[k])) {
+    if !delim(at.checked_sub(1).map(|k| &b[k])) {
         return None;
     }
     let from = at + 1;
@@ -410,7 +410,7 @@ fn 囲みを読む(b: &[char], at: usize, mark: char) -> Option<(String, usize)>
     while j < b.len() {
         if b[j] == mark {
             // 閉じの印: 前が空白でなく、後ろが語の外
-            if j > from && !b[j - 1].is_whitespace() && 区切り(b.get(j + 1)) {
+            if j > from && !b[j - 1].is_whitespace() && delim(b.get(j + 1)) {
                 let inner: String = b[from..j].iter().collect();
                 // **数字だけなら書式にしない**(表を壊さない線引き)。
                 // `2**3**4` の開きの2つ目の `*` が、一重として `*3*` を
@@ -431,7 +431,7 @@ fn 囲みを読む(b: &[char], at: usize, mark: char) -> Option<(String, usize)>
 /// URL の頭は行頭か空白の後ろだけを見ます。`https://` `http://` `mailto:` の
 /// 3つに絞るのは、`[` の前の字を何でも URL と読むと普通の字が化けるためです。
 fn link_at(b: &[char], at: usize) -> Option<(String, String, usize)> {
-    if !区切り(at.checked_sub(1).map(|k| &b[k])) {
+    if !delim(at.checked_sub(1).map(|k| &b[k])) {
         return None;
     }
     let head: [&str; 3] = ["https://", "http://", "mailto:"];

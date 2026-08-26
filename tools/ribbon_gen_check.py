@@ -70,29 +70,29 @@ def main() -> int:
         tmp.unlink(missing_ok=True)
     real = R.tables_or_die(ROOT / "face" / "src" / "ribbon.rs")
 
-    違い = []
+    diff = []
     for table in ("WRITER", "CALC"):
         g, c = gen[table], real[table]
         gn = [t.name for t in g]
         cn = [t.name for t in c]
         if gn != cn:
-            違い.append(f"{table}: タブの並びが違います\n  生成 {gn}\n  実物 {cn}")
+            diff.append(f"{table}: タブの並びが違います\n  生成 {gn}\n  実物 {cn}")
             continue
         for t1, t2 in zip(g, c):
             a = [(x.kind, x.id, x.label, x.icon) for x in t1.cmds]
             b = [(x.kind, x.id, x.label, x.icon) for x in t2.cmds]
             if a == b:
                 continue
-            違い.append(f"{table} / {t1.name}: 生成 {len(a)} 個 / 実物 {len(b)} 個")
+            diff.append(f"{table} / {t1.name}: 生成 {len(a)} 個 / 実物 {len(b)} 個")
             for k in range(max(len(a), len(b))):
                 x = a[k] if k < len(a) else None
                 y = b[k] if k < len(b) else None
                 if x != y:
-                    違い.append(f"    {k} 番目: 生成 {x} / 実物 {y}")
+                    diff.append(f"    {k} 番目: 生成 {x} / 実物 {y}")
 
-    if 違い:
+    if diff:
         print("::error::生成スクリプトの出力が実物と違います")
-        for d in 違い[:40]:
+        for d in diff[:40]:
             print(d)
         print()
         print("どちらが正しいかを決めてから直してください:")

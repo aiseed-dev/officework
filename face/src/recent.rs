@@ -11,21 +11,21 @@
 use std::path::{Path, PathBuf};
 
 /// 覚えておく数。
-const 上限: usize = 12;
+const cap: usize = 12;
 
 /// 置き場。
 pub fn path() -> PathBuf {
-    設定の場().join("recent.txt")
+    config_dir_of().join("recent.txt")
 }
 
 /// 設定の置き場。**試験は `at` 付きの関数を直に呼ぶ**ので、ここは本番だけ。
-fn 設定の場() -> PathBuf {
+fn config_dir_of() -> PathBuf {
     lang::config_dir()
 }
 
 /// 使ったと控える。**同じ物は上に上げ直します**(二重に並べない)。
 pub fn note(p: &Path) {
-    note_at(&設定の場(), p)
+    note_at(&config_dir_of(), p)
 }
 
 /// 置き場を指して控える。**試験はこちらを呼びます** — `$HOME` を書き換える
@@ -39,19 +39,19 @@ pub fn note_at(dir: &Path, p: &Path) {
     let me = p.to_string_lossy().to_string();
     list.retain(|x| *x != me);
     list.insert(0, me);
-    list.truncate(上限);
+    list.truncate(cap);
     let _ = std::fs::write(&rf, list.join("\n"));
 }
 
 /// 一覧(新しい順)。**いま在る物だけ**を返します — 消えたファイルを
 /// 押させても開けません。
 pub fn list() -> Vec<PathBuf> {
-    list_at(&設定の場())
+    list_at(&config_dir_of())
 }
 
 /// 置き場を指して読む(試験はこちら)。
 pub fn list_at(dir: &Path) -> Vec<PathBuf> {
-    引き継ぐ(dir);
+    inherit(dir);
     read_list(&dir.join("recent.txt")).into_iter().map(PathBuf::from).filter(|p| p.exists()).collect()
 }
 
@@ -70,27 +70,27 @@ fn read_list(p: &Path) -> Vec<String> {
 /// 混ぜる順は**writer が先、calc が後**の交互ではなく、そのまま繋いで
 /// 重複だけ落とします。どちらが新しいかを比べる材料が無いので、
 /// **順を作り話しない** — 使えば自然に上へ上がります。
-fn 引き継ぐ(dir: &Path) {
+fn inherit(dir: &Path) {
     let rf = dir.join("recent.txt");
     if rf.exists() {
         return;
     }
-    let mut 混ぜ: Vec<String> = Vec::new();
-    for 古 in ["recent-writer.txt", "recent-calc.txt"] {
-        for l in read_list(&dir.join(古)) {
-            if !混ぜ.contains(&l) {
-                混ぜ.push(l);
+    let mut mixed: Vec<String> = Vec::new();
+    for old_of in ["recent-writer.txt", "recent-calc.txt"] {
+        for l in read_list(&dir.join(old_of)) {
+            if !mixed.contains(&l) {
+                mixed.push(l);
             }
         }
     }
-    if 混ぜ.is_empty() {
+    if mixed.is_empty() {
         return;
     }
-    混ぜ.truncate(上限);
+    mixed.truncate(cap);
     if let Some(dir) = rf.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    let _ = std::fs::write(&rf, 混ぜ.join("\n"));
+    let _ = std::fs::write(&rf, mixed.join("\n"));
 }
 
 #[cfg(test)]
@@ -101,7 +101,7 @@ mod tests {
     /// **`$HOME` を書き換えない。** 書き換える試験は、並べて走らせると
     /// 他の試験を壊します(2026-08-20 に実際に壊した)。置き場を引数で渡す
     /// `note_at` / `list_at` を呼びます
-    fn 試験の場(name: &str) -> PathBuf {
+    fn test_dir(name: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("face-recent-{name}"));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     fn 新しい順に並び二重に入らない() {
-        let d = 試験の場("順");
+        let d = test_dir("順");
         let a = d.join("a.adoc");
         let b = d.join("b.sheet.adoc");
         std::fs::write(&a, "= a\n").unwrap();
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn 無くなったファイルは出さない() {
-        let d = 試験の場("消えた");
+        let d = test_dir("消えた");
         let a = d.join("a.adoc");
         std::fs::write(&a, "= a\n").unwrap();
         note_at(&d, &a);
@@ -137,7 +137,7 @@ mod tests {
     /// **前の版の2つの控えを1回だけ拾う**(使っていた履歴を捨てない)
     #[test]
     fn 古い控えを引き継ぐ() {
-        let d = 試験の場("引き継ぎ");
+        let d = test_dir("引き継ぎ");
         let w = d.join("文書.adoc");
         let c = d.join("表.sheet.adoc");
         std::fs::write(&w, "= w\n").unwrap();
@@ -154,13 +154,13 @@ mod tests {
 
     #[test]
     fn 上限で切る() {
-        let d = 試験の場("上限");
-        for i in 0..(上限 + 3) {
+        let d = test_dir("上限");
+        for i in 0..(cap + 3) {
             let f = d.join(format!("{i}.adoc"));
             std::fs::write(&f, "x").unwrap();
             note_at(&d, &f);
         }
-        assert_eq!(list_at(&d).len(), 上限);
+        assert_eq!(list_at(&d).len(), cap);
         let _ = std::fs::remove_dir_all(&d);
     }
 }

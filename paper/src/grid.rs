@@ -22,7 +22,7 @@ const MM_PER_CHW: f32 = 2.0;
 
 /// `RRGGBB` を 0..1 の RGB にする。読めなければ None(黙って黒にしない)。
 /// 紙の1枚の置き場(頁と層)。printpdf の組で持ち回ります。
-type 紙の場所 = (PdfPageIndex, PdfLayerIndex);
+type paper_place = (PdfPageIndex, PdfLayerIndex);
 /// 余白(左・右・上・下。mm)。
 type margins = (f32, f32, f32, f32);
 
@@ -315,7 +315,7 @@ pub fn book_to_pdf<W: Write>(
         .map_err(|e| e.to_string())?;
     let mut clipped = 0u32;
     // 版組を先に全部済ませる — **総頁が決まってからでないと &N が書けない**
-    let mut laid: Vec<(usize, Vec<紙の場所>, margins)> = Vec::new();
+    let mut laid: Vec<(usize, Vec<paper_place>, margins)> = Vec::new();
     let mut carry = Some((page, layer));
     for (i, (grid, paper, setup)) in sheets.iter().enumerate() {
         let (pages, cl, margins) = draw_sheet(&doc, &font, grid, *paper, setup, carry.take());
@@ -352,7 +352,7 @@ fn draw_sheet(
     paper: Paper,
     setup: &PrintSetup,
     first: Option<(PdfPageIndex, PdfLayerIndex)>,
-) -> (Vec<紙の場所>, u32, margins) {
+) -> (Vec<paper_place>, u32, margins) {
     let (ext_rows, ext_cols) = grid.extent();
     // 印刷範囲があればそこだけ(行も列も)。**複数あれば域ごとに刷る**
     let areas: Vec<(u32, u32, u32, u32)> = if setup.areas.is_empty() {

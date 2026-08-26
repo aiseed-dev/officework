@@ -710,7 +710,7 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn up(&mut self, _: &ui::Up, _: &mut Window, cx: &mut Context<Self>) {
-        if self.一覧を送る(false) {
+        if self.send_list(false) {
             cx.notify();
             return;
         }
@@ -718,7 +718,7 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn down(&mut self, _: &ui::Down, _: &mut Window, cx: &mut Context<Self>) {
-        if self.一覧を送る(true) {
+        if self.send_list(true) {
             cx.notify();
             return;
         }
@@ -729,18 +729,18 @@ impl Writer {
     /// **一覧が開いていれば ↑↓ は選択を送る**(手順2)。送ったら真。
     /// 表の画面と同じ作法で、端では止まります(巡回しません — どちらが
     /// 端かが分からなくなるため)。
-    pub(crate) fn 一覧を送る(&mut self, 下へ: bool) -> bool {
+    pub(crate) fn send_list(&mut self, downward: bool) -> bool {
         // **記号の一覧は ↑↓ で送りません**(升の並びなので、行の中を
         // 動くのと段を動くのが別物になります。前からの形を保ちます)
         let kind = match self.open_list {
             Some(k) if k != "inssymbol" => k,
             _ => return false,
         };
-        let n = self.一覧の数(kind);
+        let n = self.n_items(kind);
         if n == 0 {
             return true;
         }
-        self.pick_sel = if 下へ {
+        self.pick_sel = if downward {
             (self.pick_sel + 1).min(n - 1)
         } else {
             self.pick_sel.saturating_sub(1)
@@ -772,7 +772,7 @@ impl Writer {
             return;
         }
         // **一覧が開いていれば Enter は選択に決める**(手順2)
-        if self.一覧を決める(cx) {
+        if self.decide_list(cx) {
             cx.notify();
             return;
         }

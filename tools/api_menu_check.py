@@ -144,7 +144,7 @@ def file_menu() -> list[tuple[str, str]]:
     return items
 
 
-def 届く(v: str) -> bool:
+def reachable(v: str) -> bool:
     """道がある物だけ数える。× は作らないと決めた物、空は未実装"""
     return bool(v) and not v.startswith("×")
 
@@ -153,35 +153,35 @@ def main() -> int:
     adoc = "--adoc" in sys.argv
     tabs = ribbon_parse.tables_or_die()["WRITER"]
 
-    ファイル = file_menu()
+    file = file_menu()
 
     missing_ids = [c.id for t in tabs for c in t.cmds if c.id and c.id not in MAP]
-    missing_ids += [i for i, _ in ファイル if i not in FILE_MAP]
+    missing_ids += [i for i, _ in file if i not in FILE_MAP]
     if missing_ids:
         print("この表に無い項目があります(MAP に足してください):", file=sys.stderr)
         for i in missing_ids:
             print(f"  {i}", file=sys.stderr)
         return 1
     if "--check" in sys.argv:
-        n = sum(len(t.cmds) for t in tabs) + len(ファイル)
-        print(f"writer の {n} 項目(リボン + ファイルのページ {len(ファイル)})は全部この表にあります")
+        n = sum(len(t.cmds) for t in tabs) + len(file)
+        print(f"writer の {n} 項目(リボン + ファイルのページ {len(file)})は全部この表にあります")
         return 0
 
     # **ファイルのページを先に出す。** リボンのファイルタブは3つしか
     # ありませんが、実体はこちらの一覧です(2026-08-24 発注者の指摘)
-    a = sum(1 for i, _ in ファイル if 届く(FILE_MAP[i]))
-    総数 = len(ファイル)
-    済 = a
+    a = sum(1 for i, _ in file if reachable(FILE_MAP[i]))
+    total = len(file)
+    done_of = a
     if adoc:
-        print(f"==== ファイル(ページ。{len(ファイル)} 個中 {a} 個が Python から届く)\n")
+        print(f"==== ファイル(ページ。{len(file)} 個中 {a} 個が Python から届く)\n")
         print("リボンのファイルタブは3つですが、*実体はこの全面のページ*です。")
         print("元は `writer/src/cmds.rs` の `file_menu()` で、この道具が読んでいます。\n")
         print('[cols="1,1,1"]')
         print("|===")
         print("|項目 |id |Python\n")
     else:
-        print(f"■ ファイル(ページ)  {a}/{len(ファイル)}")
-    for i, label in ファイル:
+        print(f"■ ファイル(ページ)  {a}/{len(file)}")
+    for i, label in file:
         v = FILE_MAP[i] or "*無い*"
         if adoc:
             print(f"|{label} |`{i}` |{v}")
@@ -191,18 +191,18 @@ def main() -> int:
         print("|===\n")
 
     for tab in tabs:
-        押せる = [c for c in tab.cmds if c.id]
-        a = sum(1 for c in 押せる if 届く(MAP[c.id]))
-        総数 += len(押せる)
-        済 += a
+        pressable = [c for c in tab.cmds if c.id]
+        a = sum(1 for c in pressable if reachable(MAP[c.id]))
+        total += len(pressable)
+        done_of += a
         if adoc:
             name = "ファイル(リボンの行)" if tab.name == "ファイル" else tab.name
-            print(f"==== {name}({len(押せる)} 個中 {a} 個が Python から届く)\n")
+            print(f"==== {name}({len(pressable)} 個中 {a} 個が Python から届く)\n")
             print('[cols="1,1,1"]')
             print("|===")
             print("|ボタン |id |Python\n")
         else:
-            print(f"■ {tab.name}  {a}/{len(押せる)}")
+            print(f"■ {tab.name}  {a}/{len(pressable)}")
         for c in tab.cmds:
             if not c.id:
                 print("|" + c.label + " |(灰色) |—" if adoc else f"    {c.label}(灰色)")
@@ -214,7 +214,7 @@ def main() -> int:
                 print(f"    {c.label:<16} {c.id:<16} {v}")
         if adoc:
             print("|===\n")
-    print(f"\n押せる {総数} 個のうち、Python から届くのは {済} 個です。")
+    print(f"\n押せる {total} 個のうち、Python から届くのは {done_of} 個です。")
     return 0
 
 

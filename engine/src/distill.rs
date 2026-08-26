@@ -47,13 +47,13 @@ struct Look {
 
 /// 数えるときの鍵。(大きさ, 書体, 太字, 斜体, 下線, スタイル)
 /// — 段落の中でいちばん多い見た目を選ぶのに使います
-type 見た目の鍵 = (Option<u32>, Option<String>, bool, bool, bool, Option<String>);
+type look_key = (Option<u32>, Option<String>, bool, bool, bool, Option<String>);
 
 impl Look {
     /// 段落の見た目を読む。run は**いちばん多く使われている姿**を採る
     /// (先頭の run だと、頭に1字だけ違う書式があるときに引きずられる)
     fn of(p: &Paragraph) -> Look {
-        let mut tally: HashMap<見た目の鍵, usize> = HashMap::new();
+        let mut tally: HashMap<look_key, usize> = HashMap::new();
         for r in &p.runs {
             if r.text.is_empty() {
                 continue; // 印だけの run(脚注)は見た目を持たない
@@ -115,7 +115,7 @@ impl Look {
 
 /// ヘッダー・フッターの段落の並び → 1行の字(テンプレートに書く形)。
 /// ページ番号の印は `{ページ}` `{ページ数}` に書き換える
-fn 一行(hf: &crate::doc::HeadFoot) -> Option<String> {
+fn single_line(hf: &crate::doc::HeadFoot) -> Option<String> {
     let s: String = hf
         .paragraphs
         .iter()
@@ -205,8 +205,8 @@ pub fn distill(doc: &Document) -> (Document, Theme, Report) {
         // **ページの飾りもテンプレートへ移す**(2026-08-18)。docx を分けた
         // ときに、透かしやページの色が消えないようにする。ヘッダーと
         // フッターは段落の並びなので、字だけを取って1行にする
-        header: 一行(&doc.header),
-        footer: 一行(&doc.footer),
+        header: single_line(&doc.header),
+        footer: single_line(&doc.footer),
         watermark: doc.watermark.clone(),
         page_color: doc.page_color.clone(),
         vertical: doc.vertical,
@@ -250,11 +250,11 @@ pub fn distill(doc: &Document) -> (Document, Theme, Report) {
             if r.text.is_empty() {
                 continue;
             }
-            let 個性 = r.size_pt.map(|s| (s * 100.0).round() as u32) != look.size_c
+            let traits = r.size_pt.map(|s| (s * 100.0).round() as u32) != look.size_c
                 || r.font != look.font
                 || r.fmt.color != look.color
                 || r.fmt.highlight.is_some();
-            if 個性 {
+            if traits {
                 rep.dropped += 1;
             }
             r.size_pt = None;

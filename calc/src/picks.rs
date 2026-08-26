@@ -1279,8 +1279,8 @@ impl Calc {
             // レポートの接続。押すたびに入切して、一覧は開いたまま
             "slicer-refs" => {
                 let name = v.to_string();
-                let あった = self.book.pivots.iter().any(|d| d.name == name);
-                if あった {
+                let existed = self.book.pivots.iter().any(|d| d.name == name);
+                if existed {
                     if let Some(sl) = self.slicers.get_mut(self.slicer_sel) {
                         if let Some(i) = sl.pivots.iter().position(|x| *x == name) {
                             sl.pivots.remove(i);
@@ -2729,15 +2729,15 @@ impl Calc {
         if heading.is_empty() {
             return;
         }
-        let mut 押した = 0usize;
+        let mut pressed = 0usize;
         for name in names {
             let Some(pi) = self.book.pivots.iter().position(|d| d.name == name) else { continue };
             // その見出しをピボットが使っていなければ触らない
-            let 使っている = {
+            let in_use = {
                 let d = &self.book.pivots[pi];
                 d.rows_sel.contains(&heading) || d.cols_sel.contains(&heading)
             };
-            if !使っている {
+            if !in_use {
                 continue;
             }
             // **値はピボットの元の表から集めます。** シート全体から集めると、
@@ -2756,21 +2756,21 @@ impl Calc {
             };
             // ピボットの絞りは**生の値**で持ちます。粒(月・四半期・年)で
             // まとめているときは、選んだ束に入らない生の値を全部隠します
-            let mut すべて: Vec<String> = (a.row + 1..=b.row)
+            let mut every: Vec<String> = (a.row + 1..=b.row)
                 .map(|r| match sh.get(Pos::new(r, c2)).map(|x| x.value.display()) {
                     Some(v) if !v.is_empty() => v,
                     _ => ui::t!("blank").to_string(),
                 })
                 .collect();
-            すべて.sort();
-            すべて.dedup();
-            let 隠す: Vec<String> = if sel.is_empty() {
+            every.sort();
+            every.dedup();
+            let hide: Vec<String> = if sel.is_empty() {
                 Vec::new()
             } else if grain.is_empty() {
-                すべて.into_iter().filter(|v| !sel.contains(v)).collect()
+                every.into_iter().filter(|v| !sel.contains(v)).collect()
             } else {
                 let d1904 = self.book.date1904;
-                すべて
+                every
                     .into_iter()
                     .filter(|v| {
                         let n = v.parse::<f64>().ok();
@@ -2783,15 +2783,15 @@ impl Calc {
             };
             let d = &mut self.book.pivots[pi];
             d.hide.retain(|(f, _)| *f != heading);
-            if !隠す.is_empty() {
-                d.hide.push((heading.clone(), 隠す));
+            if !hide.is_empty() {
+                d.hide.push((heading.clone(), hide));
             }
             let nd = d.clone();
             self.spawn_pivot(nd, Some(pi), cx);
-            押した += 1;
+            pressed += 1;
         }
-        if 押した > 0 {
-            self.status = ui::tf!("connected_pivottables_filtered_same", 押した).into();
+        if pressed > 0 {
+            self.status = ui::tf!("connected_pivottables_filtered_same", pressed).into();
         }
     }
 
@@ -2803,19 +2803,19 @@ impl Calc {
         // 順繰り: 値そのもの → 月 → 四半期 → 年 → 値そのもの
         let grains = crate::util::slicer_grains();
         let Some(sl) = self.slicers.get_mut(self.slicer_sel) else { return };
-        let 次 = match grains.iter().position(|(k, _)| *k == sl.grain) {
+        let next_of = match grains.iter().position(|(k, _)| *k == sl.grain) {
             Some(i) if i + 1 < grains.len() => grains[i + 1].0,
             Some(_) => "",
             None => grains[0].0,
         };
-        let k = 次;
+        let k = next_of;
         sl.grain = k.to_string();
         sl.sel.clear();
-        let 粒 = crate::util::slicer_grain_label(k);
+        let grain = crate::util::slicer_grain_label(k);
         self.status = if k.is_empty() {
             ui::t!("listing_values_themselves_filter").into()
         } else {
-            ui::tf!("grouping_dates_filter_cleared", 粒).into()
+            ui::tf!("grouping_dates_filter_cleared", grain).into()
         };
         self.slicer_push_to_pivots(self.slicer_sel, cx);
     }
@@ -2831,7 +2831,7 @@ impl Calc {
                 ui::t!("workbook_no_pivottable_make").into();
             return;
         }
-        let 繋ぎ = sl.pivots.clone();
+        let joint = sl.pivots.clone();
         let at = self.pop_anchor();
         // 鍵はピボットの名前。印は見出しにだけ付ける(照合は鍵で)
         let items: Vec<(String, String)> = self
@@ -2839,7 +2839,7 @@ impl Calc {
             .pivots
             .iter()
             .map(|d| {
-                let on = 繋ぎ.contains(&d.name);
+                let on = joint.contains(&d.name);
                 (d.name.clone(), format!("{} {}", if on { "☑" } else { "☐" }, d.name))
             })
             .collect();
@@ -3080,7 +3080,7 @@ impl Calc {
     /// Esc で完結するので、小窓だけ取り残されていました。
     ///
     /// 開いているドロップダウンの選択を1つ送ります。動かしたら真。
-    pub(crate) fn dv_menu_move(&mut self, 下へ: bool) -> bool {
+    pub(crate) fn dv_menu_move(&mut self, downward: bool) -> bool {
         let Some(d) = &mut self.dv_dlg else { return false };
         let n = match d.menu {
             1 => crate::util::dv_kinds().len(),
@@ -3094,7 +3094,7 @@ impl Calc {
             _ => &mut d.err_style,
         };
         // 端では止めます(巡回しません — どちらが端か分からなくなるため)
-        *now = if 下へ { (*now + 1).min(n - 1) } else { now.saturating_sub(1) };
+        *now = if downward { (*now + 1).min(n - 1) } else { now.saturating_sub(1) };
         true
     }
 
@@ -4008,11 +4008,11 @@ impl Calc {
                     return;
                 };
                 // `Sheet1!A1:C20` か `A1:C20`(いまのシート)
-                let (name, 範囲) = match text.rsplit_once('!') {
+                let (name, range_of) = match text.rsplit_once('!') {
                     Some((s0, r)) => (s0.trim().to_string(), r.trim().to_string()),
                     None => (self.sheet().name.clone(), text.trim().to_string()),
                 };
-                let Some((a0, b0)) = 範囲.split_once(':') else {
+                let Some((a0, b0)) = range_of.split_once(':') else {
                     self.status = ui::t!("write_range_like_a1_c20").into();
                     return;
                 };
@@ -4020,7 +4020,7 @@ impl Calc {
                     Pos::parse(&a0.replace('$', "").to_uppercase()),
                     Pos::parse(&b0.replace('$', "").to_uppercase()),
                 ) else {
-                    self.status = ui::tf!("cant_read_range", 範囲).into();
+                    self.status = ui::tf!("cant_read_range", range_of).into();
                     return;
                 };
                 let Some(si) = self.book.sheets.iter().position(|s| s.name == name) else {
@@ -4541,9 +4541,9 @@ impl Calc {
                 }
             }
             "pw-set2" => {
-                let 初回 = self.pw_first.take();
-                if 初回.as_deref() == Some(text.as_str()) {
-                    self.encrypt_pw = 初回;
+                let first_time = self.pw_first.take();
+                if first_time.as_deref() == Some(text.as_str()) {
+                    self.encrypt_pw = first_time;
                     self.dirty = true;
                     self.status =
                         ui::t!("next_save_encrypted_password").into();
@@ -4589,20 +4589,20 @@ impl Calc {
                     .into();
                     return;
                 }
-                let 何セル = cells.len();
+                let n_cells = cells.len();
                 let before = self.sheet().scenarios.len();
                 self.sheet_mut().scenarios.retain(|s| s.name != name);
-                let 上書き = self.sheet().scenarios.len() < before;
+                let overwrite = self.sheet().scenarios.len() < before;
                 self.sheet_mut().scenarios.push(sheet::model::Scenario {
                     name: name.clone(),
                     cells,
                     comment: String::new(),
                 });
                 self.dirty = true;
-                self.status = if 上書き {
-                    ui::tf!("scenario_kept_again_cells", name, 何セル).into()
+                self.status = if overwrite {
+                    ui::tf!("scenario_kept_again_cells", name, n_cells).into()
                 } else {
-                    ui::tf!("scenario_kept_cells_saving", name, 何セル)
+                    ui::tf!("scenario_kept_cells_saving", name, n_cells)
                         .into()
                 };
             }

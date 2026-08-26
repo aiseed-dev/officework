@@ -22,25 +22,25 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 I18N = ROOT / "ui/i18n"
 
 
-def _表():
+def _table():
     """記号の鍵 → 日本語。**一度読んで取っておきます。**"""
-    if not hasattr(_表, "値"):
-        _表.value = json.loads((I18N / "ja.json").read_text(encoding="utf-8"))
-    return _表.value
+    if not hasattr(_table, "値"):
+        _table.value = json.loads((I18N / "ja.json").read_text(encoding="utf-8"))
+    return _table.value
 
 
-def 日本語(keys: str) -> str:
+def japanese(keys: str) -> str:
     """記号の鍵を日本語に。表に無ければ鍵をそのまま返します。"""
-    return _表().get(keys, keys)
+    return _table().get(keys, keys)
 
 
-def 画面の日本語() -> set:
+def screen_japanese() -> set:
     """画面に出る日本語の字を全部。
 
     ja.json の訳(文言もリボンの語も入っています)に、リボンの札を足します。
     リボンの札は段2までコードの中に日本語で書いてあるので、そのまま拾えます。
     """
-    out = set(_表().values())
+    out = set(_table().values())
     # **リボンの札は ribbon_ja.rs から。** 土台の ribbon.rs は英語です
     # (2026-08-26 の段2)
     ja = ROOT / "face/src/ribbon_ja.rs"

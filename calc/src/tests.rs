@@ -863,7 +863,7 @@ mod solver_tests {
         let py_path = dir.join("solver.py");
         std::fs::write(&py_path, SOLVER_PY).unwrap();
         // max x+y  s.t. 2x+y<=10.5, x+3y<=12.5, x,y>=0
-        let 解く = |ints: &str, bounds: &str| -> Vec<f64> {
+        let resolve_it = |ints: &str, bounds: &str| -> Vec<f64> {
             let spec = format!(
                 "{{\"c\":[-1,-1],\"aub\":[[2,1],[1,3]],\"bub\":[10.5,12.5],\
                  \"aeq\":[],\"beq\":[],\"nonneg\":true,\
@@ -879,15 +879,15 @@ mod solver_tests {
                 .collect()
         };
         // 連続だと端数が出る
-        let 連続 = 解く("0,0", "[0,null],[0,null]");
-        assert!(連続.iter().any(|v| (v - v.round()).abs() > 1e-6), "端数が出ない: {連続:?}");
+        let run_of = resolve_it("0,0", "[0,null],[0,null]");
+        assert!(run_of.iter().any(|v| (v - v.round()).abs() > 1e-6), "端数が出ない: {run_of:?}");
         // 整数にすると丸まる(**丸めて返すので、そのままセルに置ける**)
-        let 整数 = 解く("1,1", "[0,null],[0,null]");
-        assert!(整数.iter().all(|v| (v - v.round()).abs() < 1e-9), "整数でない: {整数:?}");
-        assert!(整数.iter().any(|v| *v > 1.5), "枠が無いのに小さすぎる: {整数:?}");
+        let integer = resolve_it("1,1", "[0,null],[0,null]");
+        assert!(integer.iter().all(|v| (v - v.round()).abs() < 1e-9), "整数でない: {integer:?}");
+        assert!(integer.iter().any(|v| *v > 1.5), "枠が無いのに小さすぎる: {integer:?}");
         // バイナリは 0 か 1 だけ
-        let 二値 = 解く("1,1", "[0,1],[0,1]");
-        assert!(二値.iter().all(|v| *v == 0.0 || *v == 1.0), "0/1 でない: {二値:?}");
+        let two_values = resolve_it("1,1", "[0,1],[0,1]");
+        assert!(two_values.iter().all(|v| *v == 0.0 || *v == 1.0), "0/1 でない: {two_values:?}");
     }
 }
 
@@ -2841,7 +2841,7 @@ mod recalc_tests {
         });
         cx.executor().advance_clock(std::time::Duration::from_secs(60));
         cx.run_until_parked();
-        let 一枚目 = c.update(cx, |this, _cx| {
+        let first_sheet = c.update(cx, |this, _cx| {
             let at = this.book.pivots[0].chart_at.unwrap();
             let im = this.sheet().images_new.iter().find(|im| im.at == at);
             assert!(im.is_some(), "図が置かれない: {}", this.status);
@@ -2869,7 +2869,7 @@ mod recalc_tests {
                 1,
                 "図が重なった"
             );
-            assert_ne!(im.unwrap().data.len(), 一枚目, "図が古いまま(描き直っていない)");
+            assert_ne!(im.unwrap().data.len(), first_sheet, "図が古いまま(描き直っていない)");
         });
     }
 
@@ -2931,14 +2931,14 @@ mod recalc_tests {
                 );
             }
             // 実績 24 行 + 予測 6 行
-            let 予測1 = sh.get(Pos::new(25, 2)).map(|x| x.value.as_number()).unwrap_or(0.0);
-            assert!(予測1 > 0.0, "予測が入らない");
+            let guess1 = sh.get(Pos::new(25, 2)).map(|x| x.value.as_number()).unwrap_or(0.0);
+            assert!(guess1 > 0.0, "予測が入らない");
             // 上り坂+季節なので、24期目の次は 100+3*24=172 のあたり
-            assert!((150.0..200.0).contains(&予測1), "予測が外れすぎ: {予測1}");
+            assert!((150.0..200.0).contains(&guess1), "予測が外れすぎ: {guess1}");
             // 下限 < 予測 < 上限
             let lo = sh.get(Pos::new(25, 3)).map(|x| x.value.as_number()).unwrap_or(0.0);
             let up = sh.get(Pos::new(25, 4)).map(|x| x.value.as_number()).unwrap_or(0.0);
-            assert!(lo <= 予測1 && 予測1 <= up, "区間が予測を挟んでいない: {lo} {予測1} {up}");
+            assert!(lo <= guess1 && guess1 <= up, "区間が予測を挟んでいない: {lo} {guess1} {up}");
             // **約束ではないと、シートに書いてある。**状態行はこの後グラフの
             // 報せで流れるので、そこだけでは伝わらない
             let note_div = sh
@@ -3000,14 +3000,14 @@ mod recalc_tests {
         b.sheets[0].set(Pos::parse("A2").unwrap(), sheet::Cell::input("鉛筆"));
         let mut buf = std::io::Cursor::new(Vec::new());
         sheet::xlsx::write(&b, &mut buf).expect("書けない");
-        let 壊れ = {
+        let broken = {
             let v = buf.into_inner();
             v[..v.len() - 40].to_vec()
         };
         let dir = std::env::temp_dir().join(format!("jo-repair-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("壊れた.xlsx");
-        std::fs::write(&path, &壊れ).expect("置けない");
+        std::fs::write(&path, &broken).expect("置けない");
 
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
@@ -3045,9 +3045,9 @@ mod recalc_tests {
             }
 
             // 名前を付けて保存できれば旗は下りる
-            let 別 = dir.join("拾った.xlsx");
-            this.save_to(別.clone());
-            assert!(別.exists(), "保存できない: {}", this.status);
+            let another = dir.join("拾った.xlsx");
+            this.save_to(another.clone());
+            assert!(another.exists(), "保存できない: {}", this.status);
             assert!(!this.salvaged, "保存しても旗が下りない");
         });
         let _ = std::fs::remove_dir_all(&dir);
@@ -3328,10 +3328,10 @@ mod recalc_tests {
             let h = &this.book.pivots[0].hide;
             assert_eq!(h.len(), 1, "隠す値が入らない: {h:?}");
             assert_eq!(h[0].0, "区分");
-            let mut 隠し = h[0].1.clone();
-            隠し.sort();
+            let mut hidden_of = h[0].1.clone();
+            hidden_of.sort();
             // **選んだ「筆記具」は隠さない。**残りを隠す
-            assert_eq!(隠し, vec!["文具".to_string(), "紙製品".to_string()], "向きが逆");
+            assert_eq!(hidden_of, vec!["文具".to_string(), "紙製品".to_string()], "向きが逆");
 
             // 絞りを解くと、隠す値も空に戻る
             this.slicers[0].sel.clear();
@@ -3377,12 +3377,12 @@ mod recalc_tests {
             out.iter().all(|s| s.value != "店" || s.agg == "count"),
             "数でない列を合計しようとした: {out:?}"
         );
-        let 先頭 = &out[0];
-        assert_eq!(先頭.value, "金額", "数の列を値にしていない");
-        assert_eq!(先頭.agg, "sum");
+        let first = &out[0];
+        assert_eq!(first.value, "金額", "数の列を値にしていない");
+        assert_eq!(first.agg, "sum");
         assert!(
-            先頭.rows_sel == vec!["店".to_string()] || 先頭.rows_sel == vec!["区分".to_string()],
-            "{先頭:?}"
+            first.rows_sel == vec!["店".to_string()] || first.rows_sel == vec!["区分".to_string()],
+            "{first:?}"
         );
         // 縦横に広げる形が1つは出る
         assert!(out.iter().any(|s| !s.cols_sel.is_empty()), "列に広げる形が出ない: {out:?}");
@@ -3492,7 +3492,7 @@ mod recalc_tests {
             assert!(this.frozen.is_none(), "固定が残っている");
             assert_eq!(this.split_view, Pos::new(0, 0), "帯の先頭が違う");
             assert_eq!(this.view, Pos::new(6, 1), "下の窓がカーソルから始まっていない");
-            assert!(this.入っているか("split"), "押された形にならない");
+            assert!(this.is_on("split"), "押された形にならない");
             // 帯は上の帯を返す(固定ではなく分割)
             assert_eq!(this.top_band(), Some((6, 0)));
             assert_eq!(this.left_band(), Some((1, 0)));
@@ -3543,7 +3543,7 @@ mod recalc_tests {
             assert!(positions.contains(&Pos::new(1, 0)), "丙 に印が無い: {positions:?}");
             assert!(positions.contains(&Pos::new(3, 0)), "丁 に印が無い: {positions:?}");
             assert!(this.can_press("dv-mark"), "印が付いている");
-            assert!(this.入っているか("dv-mark"), "押された形にならない");
+            assert!(this.is_on("dv-mark"), "押された形にならない");
 
             // もう一度押すと消える
             this.run_cmd("dv-mark", cx);
@@ -3596,9 +3596,9 @@ mod recalc_tests {
             this.cursor = Pos::new(9, 3);
             this.sync_input();
             this.run_cmd("dv-mark", cx);
-            let 場所: Vec<Pos> = this.dv_marks.iter().map(|(_, p)| *p).collect();
-            assert!(場所.contains(&Pos::new(1, 0)), "式の値に印が無い: {場所:?}");
-            assert!(場所.contains(&Pos::new(2, 0)), "打った値に印が無い: {場所:?}");
+            let place: Vec<Pos> = this.dv_marks.iter().map(|(_, p)| *p).collect();
+            assert!(place.contains(&Pos::new(1, 0)), "式の値に印が無い: {place:?}");
+            assert!(place.contains(&Pos::new(2, 0)), "打った値に印が無い: {place:?}");
 
             // **打つときは止めます**(既定は Excel と同じ「停止」)。
             // 止まるのは打ったときだけで、上の式は素通りしています
@@ -4487,9 +4487,9 @@ mod pivot_e2e_tests {
             this.sync_input();
             this.run_cmd("pivot-insert", cx);
             assert_eq!(this.pick_kind, "pivot-suggest");
-            let 先頭 = this.pivot_suggests[0].clone();
-            assert_eq!(先頭.rows_sel, vec!["区分".to_string()]);
-            assert_eq!(先頭.value, "金額");
+            let first = this.pivot_suggests[0].clone();
+            assert_eq!(first.rows_sel, vec!["区分".to_string()]);
+            assert_eq!(first.value, "金額");
             this.apply_pick("#0", cx);
         });
         cx.executor().advance_clock(std::time::Duration::from_secs(30));
@@ -6076,15 +6076,15 @@ mod fnhelp_tests {
     #[test]
     fn 関数の分類の綴りが揃っている() {
         use std::collections::BTreeSet;
-        let タブ: BTreeSet<&str> = FN_GROUPS.iter().skip(1).copied().collect();
+        let tab_of: BTreeSet<&str> = FN_GROUPS.iter().skip(1).copied().collect();
         let table: BTreeSet<&str> = crate::funcs::FUNCS.iter().map(|f| f.group).collect();
-        assert_eq!(タブ, table, "タブの並びと funcs.rs の分類が食い違っています");
+        assert_eq!(tab_of, table, "タブの並びと funcs.rs の分類が食い違っています");
 
         // 族の一覧を開くコマンド。**既定に落ちてよいのはこの2つだけ**
-        let 既定でよい = ["lookup_reference", "information"];
-        for g in &タブ {
+        let default_ok = ["lookup_reference", "information"];
+        for g in &tab_of {
             let id = util::fn_group_cmd(g);
-            if 既定でよい.contains(g) {
+            if default_ok.contains(g) {
                 assert_eq!(id, "fn-lookup", "{g}");
             } else {
                 assert_ne!(
@@ -6140,7 +6140,7 @@ mod fnhelp_tests {
     /// (中国語・韓国語は漢字を使うので、仮名だけを見る)
     #[test]
     fn 関数の説明に日本語が残っていない() {
-        let かな = |s: &str| s.chars().any(|c| ('\u{3040}'..='\u{30ff}').contains(&c));
+        let kana = |s: &str| s.chars().any(|c| ('\u{3040}'..='\u{30ff}').contains(&c));
         for lang in ui::languages() {
             if lang == "ja" {
                 continue;
@@ -6148,7 +6148,7 @@ mod fnhelp_tests {
             let Some(t) = crate::funcs_tables::text(lang) else { continue };
             let rest: Vec<&str> = t
                 .iter()
-                .filter(|r| かな(r.desc) || かな(r.args))
+                .filter(|r| kana(r.desc) || kana(r.args))
                 .map(|r| r.name)
                 .collect();
             assert!(rest.is_empty(), "{lang}: 日本語のまま残っている関数 {rest:?}");
@@ -6358,7 +6358,7 @@ mod prompt_tests {
 mod shape_nudge_tests {
     use crate::*;
 
-    fn 図形を1つ置く(this: &mut Calc) -> (f32, f32) {
+    fn put_one_shape(this: &mut Calc) -> (f32, f32) {
         this.sheet_mut().shapes_new.push(sheet::model::SheetShape {
             at: Pos::new(5, 3),
             width_px: 80.0,
@@ -6375,7 +6375,7 @@ mod shape_nudge_tests {
     fn shift_を押した大きさ変更は比を保つ(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
-            let (ox, oy) = 図形を1つ置く(this);
+            let (ox, oy) = put_one_shape(this);
             // 右下の掴み。比は 40/80 = 0.5
             this.shape_drag = Some((0, (ox + 80.0, oy + 40.0), (ox, oy), true));
             this.shape_drag_at(ox + 200.0, oy + 41.0, true);
@@ -6395,7 +6395,7 @@ mod shape_nudge_tests {
     fn shift_を押した移動は縦横のどちらかに縛られる(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
-            let (ox, oy) = 図形を1つ置く(this);
+            let (ox, oy) = put_one_shape(this);
             let positions = |this: &Calc| {
                 let sp = &this.sheet().shapes_new[0];
                 let (x, y) = this.cell_origin_px(sp.at).unwrap();
@@ -6415,7 +6415,7 @@ mod shape_nudge_tests {
     fn ctrl矢印は図形を選んでいる間だけ図形を動かす(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
-            let (ox, oy) = 図形を1つ置く(this);
+            let (ox, oy) = put_one_shape(this);
             let positions = |this: &Calc| {
                 let sp = &this.sheet().shapes_new[0];
                 let (x, y) = this.cell_origin_px(sp.at).unwrap();
@@ -7421,8 +7421,8 @@ mod rec_gap_tests {
             .filter(|c| c.ready && !c.id.is_empty())
             .map(|c| c.id)
             .collect();
-        let mut 書けた: Vec<&str> = Vec::new();
-        let mut 穴: Vec<&str> = Vec::new();
+        let mut written: Vec<&str> = Vec::new();
+        let mut hole: Vec<&str> = Vec::new();
         for id in &ids {
             let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
             c.update(cx, |this, cx| {
@@ -7445,22 +7445,22 @@ mod rec_gap_tests {
                     // 変えたなら**必ず**何か残っていること(本物の行か、穴の註)
                     assert!(!lines.is_empty(), "{id}: 中身を変えたのに記録が空");
                     if lines.iter().any(|l| l.starts_with("# この操作はまだ")) {
-                        穴.push(id);
+                        hole.push(id);
                     } else {
-                        書けた.push(id);
+                        written.push(id);
                     }
                 }
             });
         }
         eprintln!(
             "記録: 書けた {} 件 / 穴 {} 件(叩いた {} 件)",
-            書けた.len(), 穴.len(), ids.len()
+            written.len(), hole.len(), ids.len()
         );
-        eprintln!("穴({} 件):", 穴.len());
-        for id in &穴 { eprintln!("    {id}  {}", Calc::cmd_label(id)); }
+        eprintln!("穴({} 件):", hole.len());
+        for id in &hole { eprintln!("    {id}  {}", Calc::cmd_label(id)); }
         // **穴があること自体は落とさない**(いまは埋まっていないのが本当)。
         // 落とすのは「変えたのに何も残らない」= 嘘の記録のときだけ(上の assert)
-        assert!(!書けた.is_empty(), "1件も書けないのはおかしい");
+        assert!(!written.is_empty(), "1件も書けないのはおかしい");
     }
 }
 
@@ -7969,8 +7969,8 @@ mod file_menu_tests {
                 "f-macro", "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req",
             ]);
             // 押せないのは3つ(まだ無い物)
-            let 灰: Vec<&str> = items.iter().filter(|i| !i.ready).map(|i| i.id).collect();
-            assert_eq!(灰, vec!["f-tpl", "f-help", "f-req"]);
+            let grey: Vec<&str> = items.iter().filter(|i| !i.ready).map(|i| i.id).collect();
+            assert_eq!(grey, vec!["f-tpl", "f-help", "f-req"]);
             // 下へ寄せるのは3つ
             let below: Vec<&str> = items.iter().filter(|i| i.tail).map(|i| i.id).collect();
             assert_eq!(below, vec!["f-opts", "f-help", "f-req"]);
@@ -8014,10 +8014,10 @@ mod file_menu_tests {
             }
             // 保護する は**ファイルのページの保護の面**へ(2026-08-21)。
             // 前はリボンの保護タブへ飛んでいた。文章の側はいまも飛びます
-            let 前の段 = this.tab;
+            let prev_tab = this.tab;
             this.file_menu_click("f-protect", cx);
             assert_eq!(this.file_view, 5, "保護の面へ行かない");
-            assert_eq!(this.tab, 前の段, "リボンのタブへ飛んでしまった");
+            assert_eq!(this.tab, prev_tab, "リボンのタブへ飛んでしまった");
         });
     }
 
@@ -8059,21 +8059,21 @@ mod file_menu_tests {
             this.anchor = Some(Pos::new(1, 0));
             this.prompt = Some(("split-delim", Editor::new("-")));
             this.finish_prompt(cx);
-            let 出す = |this: &Calc, r: u32, c: u32| {
+            let emit = |this: &Calc, r: u32, c: u32| {
                 this.sheet().get(Pos::new(r, c)).map(|x| x.value.display()).unwrap_or_default()
             };
-            assert_eq!(出す(this, 0, 0), "090", "頭の 0 が落ちています");
-            assert_eq!(出す(this, 0, 1), "1234");
-            assert_eq!(出す(this, 0, 2), "5678");
-            assert_eq!(出す(this, 1, 0), "012", "郵便番号の頭の 0 が落ちています");
-            assert_eq!(出す(this, 1, 1), "0034", "郵便番号の後ろの 0 が落ちています");
+            assert_eq!(emit(this, 0, 0), "090", "頭の 0 が落ちています");
+            assert_eq!(emit(this, 0, 1), "1234");
+            assert_eq!(emit(this, 0, 2), "5678");
+            assert_eq!(emit(this, 1, 0), "012", "郵便番号の頭の 0 が落ちています");
+            assert_eq!(emit(this, 1, 1), "0034", "郵便番号の後ろの 0 が落ちています");
         });
     }
 
     #[gpui::test]
     /// **表の画面でもフォルダを開けます**(文章の画面と同じ物)。
     /// 手引き `docs/ja/commands/ファイル/フォルダーを開く.adoc`
-    fn フォルダを開くと一覧が出る(cx: &mut gpui::TestAppContext) {
+    fn open_folder_shows_list(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             let ids: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();
@@ -8088,7 +8088,7 @@ mod file_menu_tests {
 
     #[gpui::test]
     /// **表の画面のエクスポート**(手引きの表では xlsx・csv・html・pdf の4つ)
-    fn エクスポートは形を選ぶ(cx: &mut gpui::TestAppContext) {
+    fn export_picks_shape(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let ids: Vec<&str> = this.file_menu().iter().map(|i| i.id).collect();

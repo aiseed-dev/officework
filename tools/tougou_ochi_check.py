@@ -38,7 +38,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # **単体にしか要らない物**。鍵は呼び出しの名前、値は理由。
-単体だけ = {
+unit_only = {
     "new": "画面を作る所。officework は 作る表() / 作る文書() で作る",
     "font_data": "書体の登録。officework は自分で登録している",
     "start": "受け口(rpc::start)。officework は自分の名前で1つ開く",
@@ -55,10 +55,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
     "is_some": "小道具", "name": "小道具", "var": "小道具", "var_os": "小道具", "Python": "文言の中の字",
 }
 
-無視 = {"if", "match", "for", "while", "px", "size", "format", "Some", "None", "vec"}
+ignored = {"if", "match", "for", "while", "px", "size", "format", "Some", "None", "vec"}
 
 
-def 本体(path: pathlib.Path, fn: str) -> str:
+def main_of(path: pathlib.Path, fn: str) -> str:
     s = path.read_text(encoding="utf-8")
     m = re.search(rf"^pub fn {fn}\(\) \{{\n", s, re.M)
     if not m:
@@ -73,7 +73,7 @@ def 本体(path: pathlib.Path, fn: str) -> str:
     return s[m.end() : i]
 
 
-def 呼び(s: str) -> set[str]:
+def call_re(s: str) -> set[str]:
     """呼び出しの名前。**`::` の最後の部分で比べます。**
 
     同じ物を `crate::py::start_udf_watch` と `calc::start_udf_watch` の
@@ -87,13 +87,13 @@ def 呼び(s: str) -> set[str]:
 
 
 def out_filter(xs: set[str]) -> set[str]:
-    return {x for x in xs if x not in 無視}
+    return {x for x in xs if x not in ignored}
 
 
 def main() -> int:
-    calc = 呼び(本体(ROOT / "calc/src/lib.rs", "run"))
-    writer = 呼び(本体(ROOT / "writer/src/lib.rs", "run"))
-    office = 呼び((ROOT / "officework/src/main.rs").read_text(encoding="utf-8"))
+    calc = call_re(main_of(ROOT / "calc/src/lib.rs", "run"))
+    writer = call_re(main_of(ROOT / "writer/src/lib.rs", "run"))
+    office = call_re((ROOT / "officework/src/main.rs").read_text(encoding="utf-8"))
 
     # **読めなくなったら落ちる。** 静かに緑になるのが一番悪い
     if len(calc) < 20 or len(writer) < 20 or len(office) < 50:
@@ -103,28 +103,28 @@ def main() -> int:
         )
         return 1
 
-    rest = sorted((calc | writer) - office - set(単体だけ))
+    rest = sorted((calc | writer) - office - set(unit_only))
     for x in rest:
-        どこ = "/".join(n for n, s in (("表", calc), ("文章", writer)) if x in s)
+        where_at = "/".join(n for n, s in (("表", calc), ("文章", writer)) if x in s)
         print(
-            f"::error::{x} は {どこ} の run() にありますが、officework にはありません。"
+            f"::error::{x} は {where_at} の run() にありますが、officework にはありません。"
             "配る形で動かない仕掛けかもしれません — officework から呼ぶか、"
             "tools/tougou_ochi_check.py の 単体だけ に理由を書いてください"
         )
     if rest:
         return 1
 
-    余り = sorted(set(単体だけ) - (calc | writer))
-    if 余り:
+    remainder = sorted(set(unit_only) - (calc | writer))
+    if remainder:
         print(
             f"::error::単体だけ に書いてあるのに、もう run() に無い物があります: "
-            f"{余り}。表から消してください"
+            f"{remainder}。表から消してください"
         )
         return 1
 
     print(
         f"単体の run() の仕掛けは、全部 officework にもあります"
-        f"(表 {len(calc)} / 文章 {len(writer)} を見て、単体だけと書いた物が {len(単体だけ)})"
+        f"(表 {len(calc)} / 文章 {len(writer)} を見て、単体だけと書いた物が {len(unit_only)})"
     )
     return 0
 

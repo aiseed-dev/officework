@@ -144,7 +144,7 @@ def duplicate_labels(locales: list[str]) -> int:
                         print(
                             f"::error::{loc} {table}/{tab.name}: "
                             f"{label!r} というラベルのボタンが {len(who)} 個あります "
-                            f"({' と '.join(who)})。"
+                            f"({' and_of '.join(who)})。"
                             "押すまでどちらか分かりません"
                         )
                         bad = 1
@@ -162,7 +162,7 @@ def duplicate_labels(locales: list[str]) -> int:
 # いました)。
 #
 # **鍵は英語です**(2026-08-26 の段2でリボンの札が英語になりました)。
-別の働き = {
+different_job = {
     "Checkbox": (
         {"form-checkbox"}, {"inscheckbox"},
         "文章は文書の入力欄(記入欄の仲間)、表は選んだセルに TRUE/FALSE を書く",
@@ -197,7 +197,7 @@ def cross_app_ids() -> int:
     for label in sorted(set(w) & set(c)):
         if w[label] == c[label]:
             continue
-        exc = 別の働き.get(label)
+        exc = different_job.get(label)
         if exc and exc[0] == w[label] and exc[1] == c[label]:
             seen.add(label)
             continue
@@ -208,11 +208,11 @@ def cross_app_ids() -> int:
             "tools/ribbon_locale_check.py の 別の働き に理由を書いてください"
         )
         bad = 1
-    余り = set(別の働き) - seen
-    if 余り:
+    remainder = set(different_job) - seen
+    if remainder:
         print(
             f"::error::別の働き に書いてあるのに、いま食い違っていない組があります: "
-            f"{sorted(余り)}。直したのなら表からも消してください"
+            f"{sorted(remainder)}。直したのなら表からも消してください"
         )
         bad = 1
     return bad
@@ -270,7 +270,7 @@ def main() -> int:
     if not cross:
         print(
             "アプリをまたぐ id: 同じラベルのボタンは同じ id です"
-            f"(別の働きだと書いてある物が {len(別の働き)} 組)"
+            f"(別の働きだと書いてある物が {len(different_job)} 組)"
         )
     if not bad:
         print(f"語の重なり: {len(locales)} 言語とも別の語で出来ています")

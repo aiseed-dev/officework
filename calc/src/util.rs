@@ -15,7 +15,7 @@ pub(crate) const LAST_COL: u32 = 255;
 /// 下地に選択の緑を混ぜる。**塗りを置き換えない** — 選択中も帳票本来の色が
 /// 透けて見える(選択を解かないと色が確かめられない、を避ける)。
 /// セルのスタイル1つ(鍵, 見出し, 掛ける手)。
-type セルのスタイル = (&'static str, &'static str, fn(&mut CellFormat));
+type cell_style = (&'static str, &'static str, fn(&mut CellFormat));
 
 pub(crate) fn tint(base: gpui::Rgba, k: f32) -> gpui::Rgba {
     let accent = (0x1B as f32 / 255.0, 0x6E as f32 / 255.0, 0x3C as f32 / 255.0);
@@ -818,7 +818,7 @@ pub(crate) struct PivotSuggest {
 
 /// 列の中身が数として読めるか。**6割を超えたら数の列**とみなします。
 /// 全部でなくてよいのは、実物の表には「-」や「未定」が混ざるためです
-fn 数の列(vals: &[String]) -> bool {
+fn num_cols(vals: &[String]) -> bool {
     let content: Vec<&String> = vals.iter().filter(|v| !v.trim().is_empty()).collect();
     if content.is_empty() {
         return false;
@@ -831,7 +831,7 @@ fn 数の列(vals: &[String]) -> bool {
 }
 
 /// 空でない値の種類の数。
-fn 種類の数(vals: &[String]) -> usize {
+fn n_kinds(vals: &[String]) -> usize {
     let mut v: Vec<&str> = vals.iter().map(|x| x.trim()).filter(|x| !x.is_empty()).collect();
     v.sort_unstable();
     v.dedup();
@@ -855,31 +855,31 @@ pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec
     if n == 0 || headers.len() != cols.len() {
         return Vec::new();
     }
-    let 上限 = (n / 2).max(12);
-    let mut 行候補: Vec<(usize, usize)> = Vec::new(); // (種類, 列)
-    let mut 値候補: Vec<usize> = Vec::new();
+    let cap = (n / 2).max(12);
+    let mut line_cands: Vec<(usize, usize)> = Vec::new(); // (種類, 列)
+    let mut value_cands: Vec<usize> = Vec::new();
     for (i, c) in cols.iter().enumerate() {
         if headers[i].trim().is_empty() {
             continue;
         }
-        if 数の列(c) {
-            値候補.push(i);
+        if num_cols(c) {
+            value_cands.push(i);
         } else {
-            let k = 種類の数(c);
-            if (2..=上限).contains(&k) {
-                行候補.push((k, i));
+            let k = n_kinds(c);
+            if (2..=cap).contains(&k) {
+                line_cands.push((k, i));
             }
         }
     }
-    行候補.sort_unstable();
+    line_cands.sort_unstable();
     let mut out: Vec<PivotSuggest> = Vec::new();
     let push = |s: PivotSuggest, out: &mut Vec<PivotSuggest>| {
         if !out.contains(&s) && out.len() < 6 {
             out.push(s);
         }
     };
-    for &(_, r) in 行候補.iter().take(2) {
-        for &v in 値候補.iter().take(2) {
+    for &(_, r) in line_cands.iter().take(2) {
+        for &v in value_cands.iter().take(2) {
             push(
                 PivotSuggest {
                     rows_sel: vec![headers[r].clone()],
@@ -892,8 +892,8 @@ pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec
         }
     }
     // 2つの見出しで縦横に広げる形。列は種類の少ないものだけ
-    if let (Some(&(_, r)), Some(&v)) = (行候補.first(), 値候補.first()) {
-        if let Some(&(_, c)) = 行候補.iter().find(|&&(k, i)| i != r && k <= 8) {
+    if let (Some(&(_, r)), Some(&v)) = (line_cands.first(), value_cands.first()) {
+        if let Some(&(_, c)) = line_cands.iter().find(|&&(k, i)| i != r && k <= 8) {
             push(
                 PivotSuggest {
                     rows_sel: vec![headers[r].clone()],
@@ -906,7 +906,7 @@ pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec
         }
     }
     // 数の列が1つも無くても、件数なら数えられます
-    if let Some(&(_, r)) = 行候補.first() {
+    if let Some(&(_, r)) = line_cands.first() {
         push(
             PivotSuggest {
                 rows_sel: vec![headers[r].clone()],
@@ -1533,8 +1533,8 @@ impl TableStyle {
     }
 }
 
-pub(crate) fn cell_styles() -> Vec<セルのスタイル> {
-    let f: Vec<セルのスタイル> = vec![
+pub(crate) fn cell_styles() -> Vec<cell_style> {
+    let f: Vec<cell_style> = vec![
     row(ui::item!("normal"), |f| *f = CellFormat::default()),
     // **見出しは4段**(2026-08-20 発注者「Excel が 見出し1〜4 を持つので
     // あれば、そうしていいのでは」)。前は1段だけで、章と節を書き分け

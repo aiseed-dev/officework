@@ -72,28 +72,28 @@ CHOKU = {
 }
 
 # 値の見本。字の意味は問わないので、数と名前だけ見ます
-_値 = re.compile(r"^[^=]+$")
+_value = re.compile(r"^[^=]+$")
 
 
 # 引けなかった受け取り手。**黙って飛ばすと「全部合っています」と出ます**
 # (2026-08-25 — officework が引けていないのに 88 行合格と出しました)
-未確認 = set()
+unchecked = set()
 
 
-def 引く(name: str):
+def look_up(name: str):
     """`officework.doc.Doc` のような名前を引く。無ければ None"""
     src_of = CHOKU.get(name)
     if src_of is None:
         return None
-    return _実物(src_of)
+    return _actual(src_of)
 
 
-def 受け手(text: str):
+def receiver(text: str):
     """その字が指す物を全部返す。どれか1つにあれば合っています"""
-    return [x for x in (_実物(y) for y in UKETE.get(text, [])) if x is not None]
+    return [x for x in (_actual(y) for y in UKETE.get(text, [])) if x is not None]
 
 
-def _引き当てる(name: str):
+def _resolve(name: str):
     """`officework.doc.Doc` を引く。
 
     **`officework.doc` は import できません。** 包みの中の属性であって、
@@ -101,38 +101,38 @@ def _引き当てる(name: str):
     残りは属性で辿ります(2026-08-25 — ここを間違えて officework の
     88 行を1つも見ないまま「全部合っています」と出していました)。
     """
-    節 = name.split(".")
+    section = name.split(".")
     item, i = None, 0
-    for i in range(len(節), 0, -1):
+    for i in range(len(section), 0, -1):
         try:
-            item = importlib.import_module(".".join(節[:i]))
+            item = importlib.import_module(".".join(section[:i]))
             break
         except ImportError:
             continue
         except SystemExit as e:
             # 足りない物を告げて止まる包みがあります(officework.mcp は
             # `mcp` が無いと SystemExit します)。飲み込まずに控えます
-            未確認.add(f"{name} — {e}")
+            unchecked.add(f"{name} — {e}")
             return None
     if item is None:
         return None
-    for member in 節[i:]:
+    for member in section[i:]:
         item = getattr(item, member, None)
         if item is None:
             return None
     return item
 
 
-def _実物(src_of):
+def _actual(src_of):
     mod, attr = src_of
-    C = _引き当てる(f"{mod}.{attr}")
+    C = _resolve(f"{mod}.{attr}")
     if C is None:
         return None
-    作る = MIHON.get(src_of)
-    if 作る is None:
+    make = MIHON.get(src_of)
+    if make is None:
         return C
     try:
-        return 作る(C)
+        return make(C)
     except Exception:
         return C        # 作れなければクラスのまま見ます
 
@@ -141,7 +141,7 @@ def _実物(src_of):
 YOBI = re.compile(r"^([A-Za-z_][\w.]*)\.(\w+)(\((.*)\))?$")
 
 
-def 割る(form: str):
+def split_at_py(form: str):
     """`A / B` で並べてあるものを1つずつに割る。
 
     `(col_span / v_merge) / s.merge_cells(…)` のように括弧の中に
@@ -162,7 +162,7 @@ def 割る(form: str):
     return [x.strip() for x in out if x.strip()]
 
 
-def _代入の左(form: str) -> str:
+def _assign_lhs(form: str) -> str:
     """括弧の外に `=` があれば、その左を返す。無ければそのまま"""
     depth = 0
     for i, ch in enumerate(form):
@@ -177,7 +177,7 @@ def _代入の左(form: str) -> str:
     return form.strip()
 
 
-def 数える(args: str):
+def count_up(args: str):
     """`前, 後` から (位置の数, キーワードの名前) を出す。
 
     `…` は「ここに何か入る」の印なので、数えません。
@@ -197,74 +197,74 @@ def 数える(args: str):
     return positions, keys
 
 
-def check(form: str, どこ: str, bad: list):
-    for 一つ in 割る(form):
+def check(form: str, where_at: str, bad: list):
+    for one_of in split_at_py(form):
         # 代入の左だけ見ます(`p.style = '箇条書き'` は p.style を見る)。
         # **括弧の外の `=` だけ**です。`d.render(値, rows=行)` の `=` は
         # キーワード引数なので、ここで切ると呼び方が壊れて素通りします
-        left = _代入の左(一つ)
+        left = _assign_lhs(one_of)
         if left.startswith("(") or left in ("—", ""):
             continue
         m = YOBI.match(left)
         if not m:
             continue
-        受, member, _かっこ, args = m.groups()
-        cands = [x for x in [引く(受)] if x is not None] or 受け手(受)
+        recv, member, _paren, args = m.groups()
+        cands = [x for x in [look_up(recv)] if x is not None] or receiver(recv)
         if not cands:
             # **知らない字は控えます。** 飛ばした物を黙っていると、
             # 何も見ないまま「合っています」と出ます
-            if 受 in UKETE or 受 in CHOKU:
-                未確認.add(f"{受}({どこ})")
+            if recv in UKETE or recv in CHOKU:
+                unchecked.add(f"{recv}({where_at})")
             continue
-        あった = [x for x in cands if hasattr(x, member)]
-        if not あった:
-            name = "・".join(sorted({_名(x) for x in cands}))
-            bad.append((どこ, left, f"{受}({name})に {member} がありません"))
+        existed = [x for x in cands if hasattr(x, member)]
+        if not existed:
+            name = "・".join(sorted({_name(x) for x in cands}))
+            bad.append((where_at, left, f"{recv}({name})に {member} がありません"))
             continue
         if args is None:
             continue        # 属性を読むだけ。数える物がありません
         # **どれか1つで通ればよい**ので、全部の言い分を集めてから決めます
-        notes = [_数の検査(x, member, args, 受) for x in あった]
+        notes = [_arity_check(x, member, args, recv) for x in existed]
         if any(v is None for v in notes):
             continue
-        bad.append((どこ, left, notes[0]))
+        bad.append((where_at, left, notes[0]))
 
 
-def _名(item) -> str:
+def _name(item) -> str:
     return item.__name__ if isinstance(item, type) else type(item).__name__
 
 
-def _数の検査(item, member: str, args: str, 受: str):
+def _arity_check(item, member: str, args: str, recv: str):
     """合っていれば None、ずれていれば理由の字を返す"""
     content = getattr(item, member)
     if not callable(content):
         return f"{member} は呼べません(属性です)"
     try:
-        署名 = inspect.signature(content)
+        signature = inspect.signature(content)
     except (TypeError, ValueError):
         return None         # C で書いた物は署名が取れません
-    positions, keys = 数える(args)
-    受ける, 何でも, 鍵の名, 必須 = 0, False, set(), 0
-    for prm in 署名.parameters.values():
+    positions, keys = count_up(args)
+    accept, anything, key_name, required = 0, False, set(), 0
+    for prm in signature.parameters.values():
         if prm.name == "self":
             continue
         if prm.kind in (prm.VAR_POSITIONAL, prm.VAR_KEYWORD):
-            何でも = True
+            anything = True
         elif prm.kind is prm.KEYWORD_ONLY:
-            鍵の名.add(prm.name)
+            key_name.add(prm.name)
         else:
-            受ける += 1
-            鍵の名.add(prm.name)
+            accept += 1
+            key_name.add(prm.name)
             if prm.default is prm.empty:
-                必須 += 1
-    if 何でも:
+                required += 1
+    if anything:
         return None
-    if positions > 受ける:
-        return f"{positions} 個渡していますが、{member} が受けるのは {受ける} 個です"
-    if "…" not in args and positions + len(keys) < 必須:
-        return f"{positions + len(keys)} 個渡していますが、{member} は {必須} 個要ります"
+    if positions > accept:
+        return f"{positions} 個渡していますが、{member} が受けるのは {accept} 個です"
+    if "…" not in args and positions + len(keys) < required:
+        return f"{positions + len(keys)} 個渡していますが、{member} は {required} 個要ります"
     for k in keys:
-        if k not in 鍵の名:
+        if k not in key_name:
             return f"{member} に {k}= という引数はありません"
     return None
 
@@ -272,7 +272,7 @@ def _数の検査(item, member: str, args: str, 受: str):
 def main() -> int:
     bad = []
     seen = 0
-    for tab, label, _絵, _obj, mark, ow, pd, op in api_taiou.rows():
+    for tab, label, _icon, _obj, mark, ow, pd, op in api_taiou.rows():
         if mark != "✅" or not ow:
             continue
         seen += 1
@@ -280,11 +280,11 @@ def main() -> int:
         for x in (pd, op):
             if x and x != "—":
                 check(x, f"{tab}/{label}", bad)
-    if 未確認:
-        print(f"**{len(未確認)} 件の受け取り手が引けませんでした。**", file=sys.stderr)
+    if unchecked:
+        print(f"**{len(unchecked)} 件の受け取り手が引けませんでした。**", file=sys.stderr)
         print("引けないまま通すと、何も見ないで「合っています」と出ます。"
               "足りない包みを入れてください。\n", file=sys.stderr)
-        for x in sorted(未確認):
+        for x in sorted(unchecked):
             print(f"  {x}", file=sys.stderr)
         return 1
     if not bad:
@@ -293,9 +293,9 @@ def main() -> int:
     print(f"**呼び方が {len(bad)} 箇所ずれています。**", file=sys.stderr)
     print("表を直すか、実物を作ってください"
           "(まだ無い物は ✅ ではなく空にします)。\n", file=sys.stderr)
-    for どこ, 書き, なぜ in bad:
-        print(f"  {どこ}", file=sys.stderr)
-        print(f"      {書き} — {なぜ}", file=sys.stderr)
+    for where_at, writing, why in bad:
+        print(f"  {where_at}", file=sys.stderr)
+        print(f"      {writing} — {why}", file=sys.stderr)
     return 1
 
 

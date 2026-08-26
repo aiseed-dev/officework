@@ -87,7 +87,7 @@ def main():
     bad = []
 
     for cells in ja:
-        したいこと, form, ボタン, _html = cells[0], cells[1], cells[2], cells[3]
+        goal, form, btn, _html = cells[0], cells[1], cells[2], cells[3]
 
         # ---- リボンの列 ----
         # 括弧で始まる注記(「(まだありません)」など)はボタンではない。
@@ -95,24 +95,24 @@ def main():
         # (face/src/ribbon.rs)ではなく writer の画面の側(view.rs / panels.rs)に
         # 札があり、機械で突き合わせる相手がまだありません
         check = (
-            ">" in ボタン
-            and not ボタン.startswith("(")
-            and not ボタン.startswith("ファイル")
-            and not ボタン.startswith("右パネル")
+            ">" in btn
+            and not btn.startswith("(")
+            and not btn.startswith("ファイル")
+            and not btn.startswith("右パネル")
         )
         if check:
-            tab, *あと = [x.strip() for x in ボタン.split(">")]
+            tab, *later = [x.strip() for x in btn.split(">")]
             if tab not in tabs:
-                bad.append(f"{したいこと}: 「{tab}」という段がありません")
-            elif あと and あと[0] not in tabs[tab]:
+                bad.append(f"{goal}: 「{tab}」という段がありません")
+            elif later and later[0] not in tabs[tab]:
                 # 「段 > ボタン > 一覧の項目」の形なら、見るのは真ん中まで
-                bad.append(f"{したいこと}: 「{tab}」に「{あと[0]}」のボタンがありません")
+                bad.append(f"{goal}: 「{tab}」に「{later[0]}」のボタンがありません")
 
         # ---- 本文の書き方の列 ----
         # 印を1つ取って、読み手がその印を知っているか見る
         for mark in ("footnote:", "ruby:", "field:", "stem:", "image::", "<<<"):
             if mark in form and mark not in adoc_src:
-                bad.append(f"{したいこと}: 手引きの「{mark}」を adoc の読み手が知りません")
+                bad.append(f"{goal}: 手引きの「{mark}」を adoc の読み手が知りません")
 
     if bad:
         print("手引きの「書き方の一覧」が実物と揃っていません:")

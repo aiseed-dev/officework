@@ -3,7 +3,7 @@
 use crate::*;
 
 /// 折れ線の束(1本 = 点の並び)。図形の当たり判定に使います。
-type 折れ線の束 = Vec<Vec<(f32, f32)>>;
+type polylines = Vec<Vec<(f32, f32)>>;
 
 impl Calc {
 
@@ -545,7 +545,7 @@ impl Calc {
 
     /// あるシートの中の当たり(行→列の順)。式の中の文字も探す
     /// (`editable` = 打った通りの姿)。
-    fn 当たり(sh: &sheet::Sheet, term: &str) -> Vec<Pos> {
+    fn hit(sh: &sheet::Sheet, term: &str) -> Vec<Pos> {
         sh.cells
             .iter()
             .filter(|(_, c)| c.editable().contains(term) || c.value.display().contains(term))
@@ -562,18 +562,18 @@ impl Calc {
     /// **見つかったシートへ切り替えてから**カーソルを合わせます —
     /// 「3件見つかりました」と言って動かないのは、見つけていないのと同じです。
     pub(crate) fn find_next(&mut self, term: &str) {
-        let ブック全体 = self.find_book;
+        let whole_book = self.find_book;
         let n_sheets = self.book.sheets.len();
         // いまのシートから始めて、ファイル全体なら後ろのシートへ回る
-        let 見る順: Vec<usize> = if ブック全体 {
+        let look_order: Vec<usize> = if whole_book {
             (0..n_sheets).map(|k| (self.active + k) % n_sheets).collect()
         } else {
             vec![self.active]
         };
-        let 総数: usize =
-            見る順.iter().map(|i| Self::当たり(&self.book.sheets[*i], term).len()).sum();
-        if 総数 == 0 {
-            self.status = if ブック全体 {
+        let total: usize =
+            look_order.iter().map(|i| Self::hit(&self.book.sheets[*i], term).len()).sum();
+        if total == 0 {
+            self.status = if whole_book {
                 ui::tf!("not_file", term).into()
             } else {
                 ui::tf!("not_sheet_choose_file", term).into()
@@ -581,8 +581,8 @@ impl Calc {
             self.find_term = Some(term.to_string());
             return;
         }
-        for (k, &i) in 見る順.iter().enumerate() {
-            let hits = Self::当たり(&self.book.sheets[i], term);
+        for (k, &i) in look_order.iter().enumerate() {
+            let hits = Self::hit(&self.book.sheets[i], term);
             if hits.is_empty() {
                 continue;
             }
@@ -592,7 +592,7 @@ impl Calc {
                 match hits.iter().find(|p| **p > cur).copied() {
                     Some(p) => Some(p),
                     // このシートは見終えた。ファイル全体なら次のシートへ
-                    None if ブック全体 && 見る順.len() > 1 => None,
+                    None if whole_book && look_order.len() > 1 => None,
                     None => Some(hits[0]),
                 }
             } else {
@@ -607,20 +607,20 @@ impl Calc {
             self.cursor = next;
             self.follow();
             self.sync_input();
-            self.status = if ブック全体 {
+            self.status = if whole_book {
                 ui::tf!("file",
-                        term, self.book.sheets[i].name.clone(), next.a1(), 総数.to_string())
+                        term, self.book.sheets[i].name.clone(), next.a1(), total.to_string())
                     .into()
             } else {
-                ui::tf!("sheet_3", term, next.a1(), 総数.to_string())
+                ui::tf!("sheet_3", term, next.a1(), total.to_string())
                     .into()
             };
             self.find_term = Some(term.to_string());
             return;
         }
         // 全部見終えて戻ってきた = 先頭の当たりへ
-        let i = 見る順[0];
-        let hits = Self::当たり(&self.book.sheets[i], term);
+        let i = look_order[0];
+        let hits = Self::hit(&self.book.sheets[i], term);
         if let Some(&first) = hits.first() {
             self.active = i;
             self.cursor = first;
@@ -882,7 +882,7 @@ impl Calc {
             return;
         };
         // **輪郭を出せない形は断る。** 黙って四角で計算しない
-        let (Some(oa), Some(ob)): (Option<折れ線の束>, Option<折れ線の束>) = (
+        let (Some(oa), Some(ob)): (Option<polylines>, Option<polylines>) = (
             outline(&sa.kind, &sa.points),
             outline(&sb.kind, &sb.points),
         ) else {

@@ -87,7 +87,7 @@ pub fn load() -> Session {
 /// 自分の記憶違いだと思ってしまいます。
 pub fn prune(s: &Session) -> (Session, usize) {
     let mut out = Session { folder: s.folder.clone().filter(|d| d.is_dir()), ..Default::default() };
-    let 見ていた = s.files.get(s.at).cloned();
+    let was_watching = s.files.get(s.at).cloned();
     let mut dropped = 0usize;
     for f in &s.files {
         if f.is_file() {
@@ -97,7 +97,7 @@ pub fn prune(s: &Session) -> (Session, usize) {
         }
     }
     // 見ていたタブが残っていればそこへ、消えていれば先頭へ
-    out.at = 見ていた
+    out.at = was_watching
         .and_then(|w| out.files.iter().position(|f| *f == w))
         .unwrap_or(0);
     (out, dropped)
@@ -109,12 +109,12 @@ pub fn prune(s: &Session) -> (Session, usize) {
 /// `session.txt` がまだ無いときだけ、そこから拾います —
 /// **前の版で使っていた場所を無かったことにしない**ためです。
 /// 2回目からは `session.txt` が在るので、ここは通りません。
-pub fn 引き継ぐ(古いフォルダ: Option<String>) -> Session {
+pub fn inherit(old_folder: Option<String>) -> Session {
     if path().exists() {
         return load();
     }
     Session {
-        folder: 古いフォルダ.map(PathBuf::from).filter(|d| d.is_dir()),
+        folder: old_folder.map(PathBuf::from).filter(|d| d.is_dir()),
         ..Default::default()
     }
 }
@@ -176,14 +176,14 @@ mod tests {
     fn 無くなったファイルは落として数える() {
         let d = std::env::temp_dir().join("ow-session-試験");
         std::fs::create_dir_all(&d).unwrap();
-        let 在る = d.join("在る.adoc");
-        std::fs::write(&在る, "= 在る\n").unwrap();
+        let exists = d.join("在る.adoc");
+        std::fs::write(&exists, "= 在る\n").unwrap();
         let missing = d.join("無い.adoc");
         let _ = std::fs::remove_file(&missing);
-        let s = Session { folder: Some(d.clone()), files: vec![missing.clone(), 在る.clone()], at: 0 };
+        let s = Session { folder: Some(d.clone()), files: vec![missing.clone(), exists.clone()], at: 0 };
         let (out, dropped) = prune(&s);
         assert_eq!(dropped, 1);
-        assert_eq!(out.files, vec![在る.clone()]);
+        assert_eq!(out.files, vec![exists.clone()]);
         // 見ていたのは消えた側だったので、先頭へ寄せる
         assert_eq!(out.at, 0);
         let _ = std::fs::remove_dir_all(&d);

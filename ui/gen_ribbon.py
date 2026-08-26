@@ -306,7 +306,7 @@ LABEL = {
 # `FALLBACK` は「本家に札が無いとき」に使う表で、こちらは「札はあるが
 # 言い換える」表です。分けているのは、*本家に無いのか、あえて変えたのか*を
 # 後から読めるようにするためです。
-言い換え = {
+rename_map = {
     # 両方で同じ言い方をする物
     "*": {
         "img-align": "Alignment",                # 本家「整列」— 表の側に合わせる
@@ -375,7 +375,7 @@ LABEL = {
 
 # **アプリごとに違う絵**(2026-08-21)。同じ欄でも、表と文章で描いてある
 # 物が違うので、絵の名前を差し替えます
-絵の差し替え = {
+icon_swap = {
     "spreadsheeteditor": {
         "insimage": "insimage-c",     # 表の画像の絵(文章のとは別に描いてある)
         "prot-doc": "protect-sheet",  # シートを守る絵
@@ -430,7 +430,7 @@ def tab_names(app, prefix):
     return out
 
 
-def 英国綴り(s: str) -> str:
+def british_spelling(s: str) -> str:
     """米国綴りを英国綴りへ。**ribbon_en.rs と同じ道を通します**
     (2026-08-26 の段2)。土台の札が英語になったので、綴りも揃えます。"""
     import sys as _s
@@ -440,13 +440,13 @@ def 英国綴り(s: str) -> str:
 
 
 def label_of(app_loc, prefix, slot):
-    return 英国綴り(_label_of(app_loc, prefix, slot))
+    return british_spelling(_label_of(app_loc, prefix, slot))
 
 
 def _label_of(app_loc, prefix, slot):
     # 言い換えが先。**本家に札があっても、こちらを使う**
     app = "documenteditor" if prefix == "DE" else "spreadsheeteditor"
-    for table in (言い換え[app], 言い換え["*"]):
+    for table in (rename_map[app], rename_map["*"]):
         if slot in table:
             return table[slot]
     key = LABEL.get(slot)
@@ -579,11 +579,11 @@ TAB_NAME_KEYS = {"draw": "Draw", "headerfooter": "HeaderFooter",
 # **絵の実体がまだ無いボタン。** 本家には在りますが、うちに絵が無いので
 # 出しません(出すと face の試験が止まります — 実体の無い絵は増やさない)。
 # 絵を描いて icons.rs に足したら、ここから外せば出ます
-絵が無い = {"img-wrapping"}
+no_icon_for = {"img-wrapping"}
 
 # **入切のボタン**(本家の欄にも在る物)。押すと入/切が変わります。
 # うちが足した分は EXTRA_CMDS の書き方の欄で指します
-入切 = {"formula-bar", "show-headings", "show-zeros",
+toggles = {"formula-bar", "show-headings", "show-zeros",
         # 画面の明暗。**入っている間は押された形**にします。
         # 表の側は EXTRA_CMDS で足しているので、そちらの書き方の欄が効きます
         "darkmode"}
@@ -713,7 +713,7 @@ def tabs_of(app, prefix):
     else:
         out.append(entry)
     # 絵の実体が無い物は落とす(理由は上の表)
-    out = [(n, [i for i in ids if i not in 絵が無い]) for (n, ids) in out]
+    out = [(n, [i for i in ids if i not in no_icon_for]) for (n, ids) in out]
     return out, loc
 
 
@@ -861,7 +861,7 @@ EXTRA_CMDS = {
 # 形は (アプリ, タブ, 動かす id, どの後ろへ)。後ろが None なら先頭。
 # **理由を1つずつ書きます** — 本家の並びを崩すのは例外なので、
 # 「なんとなく」で増やさないためです。
-並べ替え = [
+reorder = [
     # 暗い明るいは目盛りより先。表示の切り替えの仲間として並べる
     ("documenteditor", "View", "darkmode", "multipage"),
     # 並べ替えの3つを続ける(昇順・降順・ユーザー設定)。本家は
@@ -885,7 +885,7 @@ EXTRA_CMDS = {
 
 # **本家に在るが、うちでは別のタブに置いた物。**
 # 二重に出さないよう、元のタブからは外します
-外す = [
+drop_from = [
     # 関数の挿入は数式タブが持ち場。ホームにも欄があるが出さない
     ("spreadsheeteditor", "Home", "insert-function"),
     # **同じ札のボタンが2つ並んでいました**(2026-08-21)。どちらも
@@ -912,14 +912,14 @@ def emit():
                 lab = label_of(loc, prefix, s).replace('"', "'")
                 # 絵は本家の名前がそのまま鍵。本家に無いボタンだけ別に決める。
                 # アプリで絵が違う物は差し替える
-                icon = 絵の差し替え.get(app, {}).get(s) or DYN_ICONS.get(s, s)
+                icon = icon_swap.get(app, {}).get(s) or DYN_ICONS.get(s, s)
                 cid = ready.get(s)
                 # **同じ命令を1つのタブに二度出さない。** 本家の欄が2つ
                 # (`smartpicker` と `insrecommend`)同じ命令に結ばれていて、
                 # 挿入タブに同じボタンが2回出ていました(2026-08-21)
                 if cid is not None and any(r[0] == cid for r in rows):
                     continue
-                rows.append((cid, lab, icon, "t" if cid in 入切 else "c"))
+                rows.append((cid, lab, icon, "t" if cid in toggles else "c"))
             # **置き場所つきで差し込む。** どのボタンの後ろに置くかを
             # 指しておかないと、足した分が全部タブの末尾へ寄ります
             # (コピーがホームの一番後ろへ行く)
@@ -935,11 +935,11 @@ def emit():
                               if r[0] == after or r[2] == after), len(rows))
                     rows.insert(k, item)
             # 別のタブに置いた物を外す
-            for (ap, tb, gid) in 外す:
+            for (ap, tb, gid) in drop_from:
                 if ap == app and tb == name:
                     rows = [r for r in rows if r[0] != gid]
             # 場所を変えた物を動かす
-            for (ap, tb, mid, after) in 並べ替え:
+            for (ap, tb, mid, after) in reorder:
                 if ap != app or tb != name:
                     continue
                 hit = next((r for r in rows if r[0] == mid or r[2] == mid), None)
@@ -1189,11 +1189,11 @@ mod tests {
         let 新しい: Vec<&&str> =
             missing.iter().filter(|m| !アイコンの無いボタン.contains(m)).collect();
         assert!(新しい.is_empty(),
-            "実体の無いアイコンが増えた: {新しい:?}(絵を描いて icons.rs に足す)");
+            "実体の無いアイコンが増えた: {fresh:?}(絵を描いて icons.rs に足す)");
         let 直った: Vec<&&str> =
             アイコンの無いボタン.iter().filter(|a| !missing.contains(a)).collect();
         assert!(直った.is_empty(),
-            "アイコンができているのに一覧に残っている: {直った:?}(一覧から外す)");
+            "アイコンができているのに一覧に残っている: {was_fixed:?}(一覧から外す)");
     }
 
     #[test]

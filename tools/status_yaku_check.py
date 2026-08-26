@@ -38,7 +38,7 @@ check = ("calc/src", "writer/src", "ui/src", "officework/src")
 
 # `self.status = format!(` / `this.status =\n format!(` の両方を拾う
 shape = re.compile(r'status\s*=\s*\n?\s*format!\(\s*\n?\s*(".*?")', re.S)
-日本語 = re.compile(r'[ぁ-んァ-ヶ一-龠]')
+japanese = re.compile(r'[ぁ-んァ-ヶ一-龠]')
 
 
 def main() -> int:
@@ -49,7 +49,7 @@ def main() -> int:
             for m in shape.finditer(s):
                 seen += 1
                 sentence = m.group(1)[:160]
-                if 日本語.search(sentence):
+                if japanese.search(sentence):
                     line = s[: m.start()].count("\n") + 1
                     bad.append((p.relative_to(ROOT), line, sentence[:70]))
     # **読めなくなったら落ちる。** 静かに緑になるのが一番悪い。

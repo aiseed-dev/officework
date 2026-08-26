@@ -25,7 +25,7 @@ SRC_DIRS = ["calc/src", "writer/src", "face/src", "ui/src", "ops/src",
 
 # 呼び出しの書き方は3通りある。**書き替えるときは元の書き方を残します** —
 # `crate::t!` を `ui::t!` にすると ui クレートの中で通らなくなります
-呼び出し = re.compile(
+call_sites = re.compile(
     r'((?:ui|crate)::(?:t|tf|item)!\(\s*|lang::i18n::trf?\(\s*)"'
 )
 
@@ -81,7 +81,7 @@ def rewrite_code(m, dry):
             t = p.read_text(encoding="utf-8")
             out, last = [], 0
             changed = False
-            for mo in 呼び出し.finditer(t):
+            for mo in call_sites.finditer(t):
                 start = mo.end() - 1  # `"` の位置
                 try:
                     end, lit = gen_i18n.literal_at(t, start)
@@ -103,11 +103,11 @@ def rewrite_code(m, dry):
     print(f"code: 書き替え {n_hit} / 表に無い鍵 {n_miss}")
     for ja, w in list(misses.items())[:15]:
         print(f"   表に無い: {ja[:60]!r} … {w}")
-    外を言う()
+    report_outside()
     return n_miss
 
 
-def 外を言う():
+def report_outside():
     """**SRC_DIRS の外にある呼び出しを数えて言う。**
 
     黙って外すと「全部やった」に見えます。`lang/tests/` には呼び出しが
@@ -118,7 +118,7 @@ def 外を言う():
     `packaging/` の下は組み立てのときの写しなので、数えません。
     """
     check = {d.split("/")[0] for d in SRC_DIRS}
-    外 = {}
+    outside = {}
     for p in ROOT.rglob("*.rs"):
         rel = str(p.relative_to(ROOT))
         if rel.startswith("packaging/") or "/target/" in rel:
@@ -127,16 +127,16 @@ def 外を言う():
             continue
         if rel.split("/")[0] not in check:
             continue
-        n = len(呼び出し.findall(p.read_text(encoding="utf-8", errors="ignore")))
+        n = len(call_sites.findall(p.read_text(encoding="utf-8", errors="ignore")))
         if n:
-            外[rel] = n
-    if not 外:
+            outside[rel] = n
+    if not outside:
         return
-    print(f"!! SRC_DIRS の外に呼び出しが {sum(外.values())} か所あります(手で始末)")
-    for rel, n in sorted(外.items(), key=lambda x: -x[1]):
+    print(f"!! SRC_DIRS の外に呼び出しが {sum(outside.values())} か所あります(手で始末)")
+    for rel, n in sorted(outside.items(), key=lambda x: -x[1]):
         print(f"     {n:3}  {rel}")
 
-def 済んでいるか():
+def already_done():
     """鍵がもう英語なら、この道具の出番は終わっています。
 
     **一度きりの道具**です。済んだ後に回すと、鍵の正本の「種類」の欄を
@@ -152,7 +152,7 @@ def 済んでいるか():
 
 
 if __name__ == "__main__":
-    if 済んでいるか():
+    if already_done():
         sys.exit("鍵はもう英語です。この移行は 2026-08-26 に済みました"
                  "(docs/sekkei/i18n-flip.ja.adoc)。この道具の出番はありません")
     dry = "--go" not in sys.argv

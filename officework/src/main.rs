@@ -17,7 +17,7 @@ use gpui_platform::application;
 
 /// `{"cmd":"open","path":"…"}` の道を取り出す(浅い読み)。
 #[cfg(unix)]
-fn 開くファイル(line: &str) -> Option<String> {
+fn file_to_open(line: &str) -> Option<String> {
     let o = ops::Jobj::parse(line)?;
     (o.str("cmd")? == "open").then(|| o.str("path"))?
 }
@@ -36,7 +36,7 @@ fn 開くファイル(line: &str) -> Option<String> {
 /// 「そのファイルは見つかりません」で断られていました。
 /// **名前を付けて保存が道具から使えない**状態です。
 #[cfg(unix)]
-fn 宛先(line: &str) -> Option<String> {
+fn dest(line: &str) -> Option<String> {
     let o = ops::Jobj::parse(line)?;
     match o.str("cmd")?.as_str() {
         "open" | "save" | "to_pdf" => None,
@@ -70,7 +70,7 @@ enum Start {
 /// きません。窓を作る前にこれを呼ぶと、答えが返らないときに*窓が1つも
 /// 無いまま固まります* — 使う人からはアプリが起動しないのと同じです
 /// (2026-08-19 に実際にそうなりました)。窓を出してから別の糸で聞きます。
-fn 起動の形(arg: Option<std::path::PathBuf>) -> Start {
+fn launch_shape(arg: Option<std::path::PathBuf>) -> Start {
     if let Some(p) = arg {
         // **フォルダを渡されたら、フォルダとして開きます**(2026-08-24)。
         // 前はファイルとして開こうとして、読めずに白紙が出ていました。
@@ -79,7 +79,7 @@ fn 起動の形(arg: Option<std::path::PathBuf>) -> Start {
         return if p.is_dir() { Start::Folder(p) } else { Start::File(p) };
     }
     // **前の版から上げた人の「前回のフォルダ」も拾います**(1回だけ)
-    let before = face::session::引き継ぐ(ui::settings::get("folder"));
+    let before = face::session::inherit(ui::settings::get("folder"));
     let (before, dropped) = face::session::prune(&before);
     if !before.files.is_empty() {
         return Start::Before(before, dropped);
@@ -92,7 +92,7 @@ fn 起動の形(arg: Option<std::path::PathBuf>) -> Start {
 
 /// **その名前は表か。** 中身は見ません(SEKKEI「画面を1つにする」)。
 /// 起動・受け口・一覧のクリックの**3つとも同じ判定を通す**ための1箇所です。
-fn 表か(p: &std::path::Path) -> bool {
+fn is_table(p: &std::path::Path) -> bool {
     p.file_name()
         .map(|n| ui::folder::kind_of(&n.to_string_lossy()))
         .is_some_and(|k| k.is_sheet())
@@ -117,7 +117,7 @@ impl Pane {
     }
 
     /// 書きかけがあるか。
-    fn 書きかけ(&self, cx: &App) -> bool {
+    fn draft(&self, cx: &App) -> bool {
         match self {
             Pane::Doc(v) => v.read(cx).has_unsaved(),
             Pane::Sheet(v) => v.read(cx).has_unsaved(),
@@ -125,7 +125,7 @@ impl Pane {
     }
 
     /// 画面が暗い側か(タブの行の色を下の編集画面に合わせる)。
-    fn 暗いか(&self, cx: &App) -> bool {
+    fn is_dark(&self, cx: &App) -> bool {
         match self {
             Pane::Doc(v) => v.read(cx).is_dark(),
             Pane::Sheet(v) => v.read(cx).is_dark(),
@@ -146,7 +146,7 @@ impl Pane {
     /// いま選んでいるリボンの段が、**揃えた並びで何番目か**。
     /// 番号は画面ごとに違う(文章に無い段があるため)ので、
     /// 持ち越すときは**揃えた並びの位置**に直してから渡します。
-    fn 段の位置(&self, cx: &App) -> Option<usize> {
+    fn tab_pos(&self, cx: &App) -> Option<usize> {
         let order = ui::tabs::merged();
         match self {
             Pane::Doc(v) => {
@@ -162,7 +162,7 @@ impl Pane {
 
     /// 揃えた並びの位置で段を選ぶ。**この画面に無い段なら動かしません** —
     /// 無理に近くの段へ寄せると、押していないのに別の段が開いて見えます。
-    fn 段を合わせる(&self, positions: usize, cx: &mut App) {
+    fn align_tabs(&self, positions: usize, cx: &mut App) {
         let order = ui::tabs::merged();
         let Some(slot) = order.get(positions) else { return };
         match self {
@@ -206,10 +206,10 @@ impl Office {
         if let Start::Before(before, dropped) = &start {
             let mut tabs: Vec<Pane> = Vec::new();
             for f in &before.files {
-                tabs.push(if 表か(f) {
-                    Pane::Sheet(作る表(Some(f.clone()), cx))
+                tabs.push(if is_table(f) {
+                    Pane::Sheet(table_to_make(Some(f.clone()), cx))
                 } else {
-                    Pane::Doc(作る文書(Some(f.clone()), cx))
+                    Pane::Doc(doc_to_make(Some(f.clone()), cx))
                 });
             }
             let at = before.at.min(tabs.len().saturating_sub(1));
@@ -219,7 +219,7 @@ impl Office {
                 o.told(&ui::tf!("file_s_open_not", dropped.to_string()), cx);
                 // **控えも今の姿に直します。** 直さないと、消えたファイルが
                 // 記録に残り続け、開くたびに同じ数を報せることになります
-                o.姿を控える(cx);
+                o.save_snapshot(cx);
             }
             return o;
         }
@@ -227,10 +227,10 @@ impl Office {
             Start::File(p) => Some(p.clone()),
             Start::Folder(_) | Start::AskFolder | Start::Before(..) => None,
         };
-        let pane = if path.as_deref().is_some_and(表か) {
-            Pane::Sheet(作る表(path, cx))
+        let pane = if path.as_deref().is_some_and(is_table) {
+            Pane::Sheet(table_to_make(path, cx))
         } else {
-            let w = 作る文書(path, cx);
+            let w = doc_to_make(path, cx);
             // フォルダで始めるときは、一覧を開いた姿にします
             if let Start::Folder(d) = start {
                 w.update(cx, |w, _| w.show_folder(d));
@@ -243,7 +243,7 @@ impl Office {
 
 /// 表の編集画面を作る。**埋め込みの印は必ず立てる** —
 /// 立て忘れると、その画面だけ一覧のクリックを自分で握ります
-fn 作る表(path: Option<std::path::PathBuf>, cx: &mut Context<Office>) -> Entity<calc::Calc> {
+fn table_to_make(path: Option<std::path::PathBuf>, cx: &mut Context<Office>) -> Entity<calc::Calc> {
     // **`funcs/*.py` を先に読み直す。** ブックを開く前に揃っていないと、
     // `=集計(A1)` が UDF だと分からず `#NAME?` になります
     // (2026-08-21。前は統合アプリで UDF が1つも効きませんでした)
@@ -256,7 +256,7 @@ fn 作る表(path: Option<std::path::PathBuf>, cx: &mut Context<Office>) -> Enti
 }
 
 /// 文章の編集画面を作る(同上)。
-fn 作る文書(path: Option<std::path::PathBuf>, cx: &mut Context<Office>) -> Entity<writer::Writer> {
+fn doc_to_make(path: Option<std::path::PathBuf>, cx: &mut Context<Office>) -> Entity<writer::Writer> {
     let w = cx.new(|cx| writer::Writer::new(path, cx));
     w.update(cx, |w, _| w.set_embedded());
     w
@@ -271,21 +271,21 @@ impl Office {
     /// **もう画面を作り直しません**(段2)。すでに開いているファイルなら
     /// そのタブへ行き、無ければ新しいタブを足すだけです。書きかけは
     /// タブの中に生きたまま残るので、**持ち替えの断りは要らなくなりました**。
-    fn 開く頼み(&mut self, cx: &mut Context<Self>) {
+    fn open_request(&mut self, cx: &mut Context<Self>) {
         // 「開く」の窓を出してほしい(Ctrl+O。統合の段3)
-        let 窓を出す = match self.showing() {
+        let show_window = match self.showing() {
             Pane::Doc(v) => v.update(cx, |w, _| std::mem::take(&mut w.open_dialog_request)),
             Pane::Sheet(v) => v.update(cx, |c, _| std::mem::take(&mut c.open_dialog_request)),
         };
-        if 窓を出す {
-            self.開く窓(cx);
+        if show_window {
+            self.window_to_open(cx);
         }
-        let 頼み = match self.showing() {
+        let request = match self.showing() {
             Pane::Doc(v) => v.update(cx, |w, _| w.open_request.take()),
             Pane::Sheet(v) => v.update(cx, |c, _| c.open_request.take()),
         };
-        let Some(p) = 頼み else { return };
-        self.タブで開く(p, cx);
+        let Some(p) = request else { return };
+        self.open_in_tab(p, cx);
     }
 
     /// **開くファイルを選ぶ窓**(統合の段3)。
@@ -295,7 +295,7 @@ impl Office {
     /// 文章の画面からは表が選べませんでした。
     ///
     /// `rfd` は同期なので**別の糸**で開きます(主の糸で呼ぶと画面が止まります)。
-    fn 開く窓(&self, cx: &mut Context<Self>) {
+    fn window_to_open(&self, cx: &mut Context<Self>) {
         // 開き始める場所は**いま見ているタブの隣**(無ければ前回の姿のフォルダ)
         let dir = self
             .showing()
@@ -317,7 +317,7 @@ impl Office {
             let r = ask.await;
             let _ = this.update(cx, |this, cx| {
                 if let Some(p) = r {
-                    this.タブで開く(p, cx);
+                    this.open_in_tab(p, cx);
                 }
                 cx.notify();
             });
@@ -332,7 +332,7 @@ impl Office {
     ///
     /// 間隔は各タブが持ちます(`控えの間隔` のボタン)。見に行く間隔は
     /// いちばん短いタブに合わせます — 短く設定したタブを待たせないためです。
-    fn 控えの見張り(view: gpui::Entity<Office>, cx: &mut App) {
+    fn backup_watch(view: gpui::Entity<Office>, cx: &mut App) {
         // **前に落ちた跡があれば、開いたときに言います。**
         //
         // 控えは普通のファイル(.adoc)なので「開く」でそのまま開けます。
@@ -402,7 +402,7 @@ impl Office {
 
     /// **いまの姿を控える。** タブを開く・閉じる・切り替えるたびに呼びます —
     /// 終了のときだけ書くと、落ちたときに前回の姿が残りません。
-    fn 姿を控える(&self, cx: &App) {
+    fn save_snapshot(&self, cx: &App) {
         let files: Vec<std::path::PathBuf> =
             self.tabs.iter().filter_map(|t| t.path(cx)).collect();
         // フォルダは、いま見ているファイルの親(無ければ最初のタブの親)
@@ -423,26 +423,26 @@ impl Office {
     /// 同じファイルを二重に開くと、どちらを保存したのか分からなくなります。
     /// **焦点は描くときに移します。** ここは受け口からも呼ばれ、そちらには
     /// `Window` がありません。窓を持っている `render` に1回だけ任せます
-    fn タブで開く(&mut self, p: std::path::PathBuf, cx: &mut Context<Self>) {
+    fn open_in_tab(&mut self, p: std::path::PathBuf, cx: &mut Context<Self>) {
         // **いま見ている段を控えてから移ります**(段6)。移った先で同じ段を
         // 開き直すので、ホームを見たまま文書と表を行き来できます
-        let tab = self.showing().段の位置(cx);
+        let tab = self.showing().tab_pos(cx);
         if let Some(i) = self.tabs.iter().position(|t| t.path(cx).as_deref() == Some(p.as_path())) {
             self.at = i;
         } else {
-            let pane = if 表か(&p) {
-                Pane::Sheet(作る表(Some(p), cx))
+            let pane = if is_table(&p) {
+                Pane::Sheet(table_to_make(Some(p), cx))
             } else {
-                Pane::Doc(作る文書(Some(p), cx))
+                Pane::Doc(doc_to_make(Some(p), cx))
             };
             self.tabs.push(pane);
             self.at = self.tabs.len() - 1;
         }
         if let Some(positions) = tab {
-            self.showing().段を合わせる(positions, cx);
+            self.showing().align_tabs(positions, cx);
         }
         self.move_focus = true;
-        self.姿を控える(cx);
+        self.save_snapshot(cx);
         cx.notify();
     }
 }
@@ -456,7 +456,7 @@ impl Office {
     ///
     /// **Windows では作りません**(2026-08-20 発注者。ops::listen の注記)。
     #[cfg(unix)]
-    fn 受け口(view: gpui::Entity<Office>, cx: &mut App) {
+    fn inlet(view: gpui::Entity<Office>, cx: &mut App) {
         let queue: ops::Queue = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         if !ops::listen("officework", queue.clone()) {
             return;
@@ -473,7 +473,7 @@ impl Office {
                 }
                 view.update(cx, |this, cx| {
                     for req in reqs {
-                        let resp = this.捌く(&req.line, cx);
+                        let resp = this.handle_it(&req.line, cx);
                         let _ = req.reply.send(resp);
                     }
                     cx.notify();
@@ -485,7 +485,7 @@ impl Office {
 
     /// 1要求を、いま見せている画面へ渡す。
     #[cfg(unix)]
-    fn 捌く(&mut self, line: &str, cx: &mut Context<Self>) -> String {
+    fn handle_it(&mut self, line: &str, cx: &mut Context<Self>) -> String {
         // `ping` だけはここで答える(どちらを見ているかを言うため)
         if line.contains("\"ping\"") {
             let showing = match self.showing() {
@@ -500,14 +500,14 @@ impl Office {
         // **`open` はタブとして開きます**(段2)。名前で行き先の画面が
         // 決まり、すでに開いていればそのタブへ移ります。**断りません** —
         // 画面を作り直さないので、書きかけは消えません
-        if let Some(p) = 開くファイル(line) {
-            self.タブで開く(std::path::PathBuf::from(&p), cx);
+        if let Some(p) = file_to_open(line) {
+            self.open_in_tab(std::path::PathBuf::from(&p), cx);
             return "{\"ok\":true}".into();
         }
         // **宛先の指定があれば、そのタブへ渡します**(段10)。
         // *見ているタブは動かしません* — 道具が裏で触っただけなのに画面が
         // 飛ぶと、人の作業を邪魔します。開いていなければ**開いてから**渡します
-        let 相手 = match 宛先(line) {
+        let peer = match dest(line) {
             None => self.at,
             Some(p) => {
                 let p = std::path::PathBuf::from(&p);
@@ -518,7 +518,7 @@ impl Office {
                             return ops::err("そのファイルは見つかりません");
                         }
                         let from = self.at;
-                        self.タブで開く(p, cx);
+                        self.open_in_tab(p, cx);
                         let i = self.at;
                         // 開くだけ。**見ているタブは戻します**
                         self.at = from;
@@ -528,7 +528,7 @@ impl Office {
                 }
             }
         };
-        match &self.tabs[相手] {
+        match &self.tabs[peer] {
             Pane::Doc(v) => v.update(cx, |w, _| writer::rpc::handle(w, line)),
             Pane::Sheet(v) => v.update(cx, |c, _| ops::handle(c, line)),
         }
@@ -536,18 +536,18 @@ impl Office {
 
     /// **書きかけのあるタブの名前。** 閉じるときに、どれが残っているかを言います。
     /// 数だけ言われても、どれを保存すればよいのか分かりません。
-    fn 書きかけの名前(&self, cx: &App) -> Vec<String> {
-        self.tabs.iter().filter(|t| t.書きかけ(cx)).map(|t| t.name(cx)).collect()
+    fn draft_name(&self, cx: &App) -> Vec<String> {
+        self.tabs.iter().filter(|t| t.draft(cx)).map(|t| t.name(cx)).collect()
     }
 
     /// **タブを閉じる。** 書きかけがあるときは閉じません(黙って捨てない)。
     /// 最後の1枚は閉じません — 何も出ていない窓は、使う人には壊れて見えます。
-    fn タブを閉じる(&mut self, i: usize, cx: &mut Context<Self>) {
+    fn close_tab(&mut self, i: usize, cx: &mut Context<Self>) {
         if self.tabs.len() <= 1 || i >= self.tabs.len() {
             self.told(ui::t!("last_one_stays_open"), cx);
             return;
         }
-        if self.tabs[i].書きかけ(cx) {
+        if self.tabs[i].draft(cx) {
             let name = self.tabs[i].name(cx);
             self.told(&ui::tf!("unsaved_changes_save_first", name), cx);
             return;
@@ -559,7 +559,7 @@ impl Office {
             self.at -= 1;
         }
         self.move_focus = true;
-        self.姿を控える(cx);
+        self.save_snapshot(cx);
         cx.notify();
     }
 
@@ -568,7 +568,7 @@ impl Office {
     /// 窓が出てから別の糸で聞きます。`rfd` は同期なので主の糸では呼べません
     /// (呼ぶと、答えが返るまで画面が描かれません)。やめたときは何もしません —
     /// *空の文書のまま*で、ファイルの「開く」からいつでも始められます。
-    fn フォルダを聞く(&self, cx: &mut Context<Self>) {
+    fn ask_folder(&self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
                 .set_title(ui::t!("officework_choose_folder_open"))
@@ -601,7 +601,7 @@ impl Render for Office {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // **開く頼みは描く前に見ます。** 見落とすと、押しても何も
         // 起きないように見えます
-        self.開く頼み(cx);
+        self.open_request(cx);
         // タブを替えた回だけ焦点を移します(受け口から替わった分もここで拾う)
         if self.move_focus {
             self.move_focus = false;
@@ -615,12 +615,12 @@ impl Render for Office {
         //
         // 1枚しか開いていないときは出しません — 何も選べない行は邪魔です
         // (writer が前からそうしている作法に揃えます)。
-        let dk = self.showing().暗いか(cx);
-        let 地 = if dk { gpui::rgb(0x1B1E21) } else { gpui::rgb(0xF1F3F5) };
-        let 線 = if dk { gpui::rgb(0x33383D) } else { gpui::rgb(0xE1E6EA) };
+        let dk = self.showing().is_dark(cx);
+        let ground = if dk { gpui::rgb(0x1B1E21) } else { gpui::rgb(0xF1F3F5) };
+        let stroke = if dk { gpui::rgb(0x33383D) } else { gpui::rgb(0xE1E6EA) };
         let text = if dk { gpui::rgb(0xCFD6DC) } else { gpui::rgb(0x444B52) };
-        let 薄字 = if dk { gpui::rgb(0x9AA5AE) } else { gpui::rgb(0x66707A) };
-        let 選 = if dk { gpui::rgb(0x22262A) } else { gpui::rgb(0xFFFFFF) };
+        let dim_text = if dk { gpui::rgb(0x9AA5AE) } else { gpui::rgb(0x66707A) };
+        let sel = if dk { gpui::rgb(0x22262A) } else { gpui::rgb(0xFFFFFF) };
         let tabs = (self.tabs.len() > 1).then(|| {
             let mut row = div()
                 .flex()
@@ -629,17 +629,17 @@ impl Render for Office {
                 .gap_1()
                 .px_2()
                 .py_0p5()
-                .bg(地)
+                .bg(ground)
                 .border_b_1()
-                .border_color(線);
+                .border_color(stroke);
             // **文字の大きさの設定を、ここでも読む**(2026-08-20 発注者)。
             // 表の画面だけ大きくなって、その上のタブの行が元のままだと
             // 揃いません
-            let 倍 = ui::ui_scale();
+            let times = ui::ui_scale();
             for i in 0..self.tabs.len() {
                 let on = i == self.at;
                 let mut label_text = self.tabs[i].name(cx);
-                if self.tabs[i].書きかけ(cx) {
+                if self.tabs[i].draft(cx) {
                     // **書きかけの印。** 閉じる前に気づけるように
                     label_text.push('*');
                 }
@@ -650,20 +650,20 @@ impl Render for Office {
                         .py_0p5()
                         .rounded_sm()
                         .cursor_pointer()
-                        .bg(if on { 選 } else { gpui::transparent_black().into() })
+                        .bg(if on { sel } else { gpui::transparent_black().into() })
                         .border_1()
-                        .border_color(if on { 線 } else { gpui::transparent_black().into() })
-                        .text_size(px(倍 * 11.5))
-                        .text_color(if on { text } else { 薄字 })
+                        .border_color(if on { stroke } else { gpui::transparent_black().into() })
+                        .text_size(px(times * 11.5))
+                        .text_color(if on { text } else { dim_text })
                         .child(gpui::SharedString::from(label_text))
                         .on_click(cx.listener(move |this, _, _, cx| {
-                            let tab = this.showing().段の位置(cx);
+                            let tab = this.showing().tab_pos(cx);
                             this.at = i;
                             if let Some(positions) = tab {
-                                this.showing().段を合わせる(positions, cx);
+                                this.showing().align_tabs(positions, cx);
                             }
                             this.move_focus = true;
-                            this.姿を控える(cx);
+                            this.save_snapshot(cx);
                             cx.notify()
                         })),
                 );
@@ -673,11 +673,11 @@ impl Render for Office {
                         .px_1()
                         .rounded_sm()
                         .cursor_pointer()
-                        .text_size(px(倍 * 11.0))
-                        .text_color(薄字)
+                        .text_size(px(times * 11.0))
+                        .text_color(dim_text)
                         .child("×")
                         .on_click(cx.listener(move |this, _, _, cx| {
-                            this.タブを閉じる(i, cx);
+                            this.close_tab(i, cx);
                             cx.notify()
                         })),
                 );
@@ -708,28 +708,28 @@ impl Render for Office {
 /// **Windows では受け口を作らない決め**なので、ここも通りません。
 /// その OS では今までどおり窓が増えます。
 #[cfg(unix)]
-fn 動いている本体に渡す(arg: Option<&std::path::Path>) -> bool {
+fn hand_to_running(arg: Option<&std::path::Path>) -> bool {
     let Some(p) = arg else { return false };
     let Ok(p) = p.canonicalize() else { return false };
-    let 頼み =
+    let request =
         format!("{{\"cmd\":\"open\",\"path\":\"{}\"}}", ops::jesc(&p.to_string_lossy()));
-    ops::ask("officework", &頼み).is_some_and(|返事| 返事.contains("\"ok\":true"))
+    ops::ask("officework", &request).is_some_and(|reply| reply.contains("\"ok\":true"))
 }
 
 #[cfg(not(unix))]
-fn 動いている本体に渡す(_arg: Option<&std::path::Path>) -> bool {
+fn hand_to_running(_arg: Option<&std::path::Path>) -> bool {
     false
 }
 
 fn main() {
     let arg = std::env::args().nth(1).map(std::path::PathBuf::from);
     // **2つ目は窓を増やさず、動いている方のタブにします**(段11)
-    if 動いている本体に渡す(arg.as_deref()) {
+    if hand_to_running(arg.as_deref()) {
         return;
     }
     // **窓を開ける前に決めます。** 「フォルダを選ぶ画面」は同期で開くので、
     // GPUI が動き出す前に済ませます(主の糸を塞ぐ相手がまだいません)
-    let start = 起動の形(arg);
+    let start = launch_shape(arg);
     application().with_assets(ui::Icons).run(move |cx: &mut App| {
         cx.text_system()
             .add_fonts(vec![std::borrow::Cow::Borrowed(ops::font_data())])
@@ -774,7 +774,7 @@ fn main() {
                 // Windows ではソケットを作らない(決め — SEKKEI「受け口は
                 // writer にも」の節)
                 #[cfg(unix)]
-                Office::受け口(view.clone(), cx);
+                Office::inlet(view.clone(), cx);
                 // **自動復旧の控えを取る見張り**(2026-08-21)。
                 //
                 // *この仕組みは配っているアプリで死んでいました。* 見張りは
@@ -784,7 +784,7 @@ fn main() {
                 // 表も文章も控えが1つも取れていませんでした。
                 //
                 // **全部のタブを見ます。** 裏のタブの書きかけも守ります。
-                Office::控えの見張り(view.clone(), cx);
+                Office::backup_watch(view.clone(), cx);
                 // **閉じるときは全部のタブに聞きます。**
                 //
                 // ここは今まで**誰も見ていませんでした** — 終了確認は writer と
@@ -797,7 +797,7 @@ fn main() {
                 let v = view.clone();
                 window.on_window_should_close(cx, move |_, cx| {
                     v.update(cx, |this, cx| {
-                        let rest: Vec<String> = this.書きかけの名前(cx);
+                        let rest: Vec<String> = this.draft_name(cx);
                         if rest.is_empty() {
                             return true;
                         }
@@ -812,7 +812,7 @@ fn main() {
                 });
                 // 覚えているフォルダが無ければ、**窓が出てから**選んでもらう
                 if matches!(start2, Start::AskFolder) {
-                    view.update(cx, |this, cx| this.フォルダを聞く(cx));
+                    view.update(cx, |this, cx| this.ask_folder(cx));
                 }
                 view.update(cx, |_, cx| {
                     cx.observe_window_bounds(window, |_, window, _| {
@@ -856,7 +856,7 @@ mod tests {
     fn 保存先の道を宛先と読まない() {
         for cmd in ["open", "save", "to_pdf"] {
             let line = format!("{{\"cmd\":\"{cmd}\",\"path\":\"/tmp/新しい名前.docx\"}}");
-            assert_eq!(宛先(&line), None, "{cmd} の path を宛先と読んでいる");
+            assert_eq!(dest(&line), None, "{cmd} の path を宛先と読んでいる");
         }
     }
 
@@ -864,9 +864,9 @@ mod tests {
     #[test]
     fn 操作の命令の道は宛先() {
         let line = "{\"cmd\":\"get\",\"path\":\"/tmp/台帳.sheet.adoc\",\"a1\":\"A1\"}";
-        assert_eq!(宛先(line), Some("/tmp/台帳.sheet.adoc".to_string()));
+        assert_eq!(dest(line), Some("/tmp/台帳.sheet.adoc".to_string()));
         // 付いていなければ、いま見ているタブが相手
-        assert_eq!(宛先("{\"cmd\":\"get\",\"a1\":\"A1\"}"), None);
+        assert_eq!(dest("{\"cmd\":\"get\",\"a1\":\"A1\"}"), None);
     }
 
     /// `open` の道は「開く相手」として別の口が拾います。
@@ -880,8 +880,8 @@ mod tests {
         let f = d.join("報告書.adoc");
         std::fs::write(&f, "= 題\n").unwrap();
 
-        assert!(matches!(起動の形(Some(d.clone())), Start::Folder(_)), "フォルダをファイル扱いした");
-        assert!(matches!(起動の形(Some(f)), Start::File(_)), "ファイルをフォルダ扱いした");
+        assert!(matches!(launch_shape(Some(d.clone())), Start::Folder(_)), "フォルダをファイル扱いした");
+        assert!(matches!(launch_shape(Some(f)), Start::File(_)), "ファイルをフォルダ扱いした");
 
         let _ = std::fs::remove_dir_all(&d);
     }
@@ -889,16 +889,16 @@ mod tests {
     #[test]
     fn 開く命令の道は開く相手() {
         let line = "{\"cmd\":\"open\",\"path\":\"/tmp/台帳.sheet.adoc\"}";
-        assert_eq!(開くファイル(line).as_deref(), Some("/tmp/台帳.sheet.adoc"));
-        assert_eq!(開くファイル("{\"cmd\":\"get\",\"a1\":\"A1\"}"), None);
+        assert_eq!(file_to_open(line).as_deref(), Some("/tmp/台帳.sheet.adoc"));
+        assert_eq!(file_to_open("{\"cmd\":\"get\",\"a1\":\"A1\"}"), None);
     }
 
     /// **名前で行き先の画面が決まる**(中身は見ません)。
     #[test]
     fn 名前で表か文章かを決める() {
-        assert!(表か(std::path::Path::new("/tmp/台帳.sheet.adoc")));
-        assert!(表か(std::path::Path::new("/tmp/台帳.xlsx")));
-        assert!(!表か(std::path::Path::new("/tmp/報告書.adoc")));
-        assert!(!表か(std::path::Path::new("/tmp/報告書.docx")));
+        assert!(is_table(std::path::Path::new("/tmp/台帳.sheet.adoc")));
+        assert!(is_table(std::path::Path::new("/tmp/台帳.xlsx")));
+        assert!(!is_table(std::path::Path::new("/tmp/報告書.adoc")));
+        assert!(!is_table(std::path::Path::new("/tmp/報告書.docx")));
     }
 }

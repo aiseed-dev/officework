@@ -370,7 +370,7 @@ impl Calc {
     ///
     /// *見た目が何も無いときも作りません。* 空のテンプレートを置いても
     /// フォルダが散らかるだけです。
-    fn 見た目をテンプレートへ(&self, book: &std::path::Path) -> Option<String> {
+    fn look_into_template(&self, book: &std::path::Path) -> Option<String> {
         let theme = sheet::booktmpl::from_book(&self.book);
         if theme.is_empty() {
             return None;
@@ -709,25 +709,25 @@ impl Calc {
             let r = ask.await;
             let _ = this.update(cx, |this, cx| {
                 if let Some(p) = r {
-                    let 打った名 = p.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
+                    let typed_name = p.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
                     // **拡張子を打たなかったら正本(`.sheet.adoc`)。**
                     // 前は `.xlsx` に落ちていて、名前の決め(2026-08-18)と
                     // 食い違っていた
-                    let 字で書く = p.extension().is_none()
+                    let as_text = p.extension().is_none()
                         || p.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc"));
                     if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("csv")) {
                         this.write_csv(&p);
-                    } else if 字で書く {
+                    } else if as_text {
                         // **表の名前に揃える。** `売上台帳` や `売上台帳.adoc` の
                         // まま書くと、一覧が「文書」と読んでしまう
                         let p = face::folder::as_sheet_adoc(&p);
-                        let 直した名 =
+                        let fixed_name =
                             p.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
                         this.save_to(p);
                         // **黙って名前を変えない。** 変えたときは状態行で言う
-                        if 直した名 != 打った名 {
+                        if fixed_name != typed_name {
                             this.status =
-                                ui::tf!("saved_spreadsheets_named_double", 直した名)
+                                ui::tf!("saved_spreadsheets_named_double", fixed_name)
                                     .into();
                         }
                     } else {
@@ -900,7 +900,7 @@ impl Calc {
             esc(&title),
             esc(&title)
         );
-        let mut 結合 = 0usize;
+        let mut merge_of = 0usize;
         for r in 0..rows {
             out.push_str("<tr>");
             for c in 0..cols {
@@ -937,7 +937,7 @@ impl Calc {
             }
             out.push_str("</tr>\n");
         }
-        結合 += s.merges.len();
+        merge_of += s.merges.len();
         out.push_str(concat!(
             "</table>\n<p style=\"color:#666;font-size:.9em\">",
             "この頁は表計算の台帳から作っています。</p>\n</body></html>\n"
@@ -949,8 +949,8 @@ impl Calc {
                 self.status = ui::tf!(
                     "exported_web_sheet_only",
                     p.display(),
-                    if 結合 > 0 {
-                        format!("。**結合 {結合} 箇所は頁では効きません**")
+                    if merge_of > 0 {
+                        format!("。**結合 {merge_of} 箇所は頁では効きません**")
                     } else {
                         String::new()
                     }
@@ -1367,23 +1367,23 @@ impl Calc {
         // 暗号化されていた原本は解いた平文を渡す
         // **`.adoc` を開いていたら原本は渡さない** — 字のファイルは xlsx の
         // 部品を持っていないので、zip として読ませると保存が落ちます
-        let 元は字 = self
+        let was_text = self
             .path
             .as_ref()
             .is_some_and(|q| q.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc")));
         // **拾い集めたブックでは原本を渡しません。** 原本は壊れた zip なので、
         // そこから部品を持ち越そうとすると保存ごと落ちます(2026-08-22)
-        let original: Option<std::io::Cursor<Vec<u8>>> = if 元は字 || self.salvaged {
+        let original: Option<std::io::Cursor<Vec<u8>>> = if was_text || self.salvaged {
             None
         } else {
             self.original_plain().map(std::io::Cursor::new)
         };
-        let 字で書く = p.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc"));
+        let as_text = p.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc"));
         // 上書きの前に、直前の中身をバージョン履歴に控える
         if p.exists() {
             self.keep_version(&p);
         }
-        let saved = if 字で書く {
+        let saved = if as_text {
             if self.encrypt_pw.is_some() {
                 // **暗号を黙って外さない。** AsciiDoc は字のままのファイル
                 // なので暗号化して書けない。前はここで平文のまま書いていて、
@@ -1442,13 +1442,13 @@ impl Calc {
                     ui::t!("encrypted")
                 } else if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("xltx")) {
                     ui::t!("template_opening_makes_new")
-                } else if 字で書く {
+                } else if as_text {
                     ui::t!("formulas_kept_appearance_not")
                 } else {
                     ""
                 };
                 // **載らなかった物を黙って落とさない。** 帳簿に出します
-                if 字で書く {
+                if as_text {
                     self.notes =
                         sheet::adoc::write_report(&self.book).into_iter().map(SharedString::from).collect();
                     // **見た目の行き先を作ります**(E群)。`.adoc` のブックは
@@ -1459,7 +1459,7 @@ impl Calc {
                     // **すでにある物は書き替えません**(2026-08-18 発注者
                     // 「テンプレートの持ち主は指示する人」)。1枚あるなら、
                     // 見た目はそちらの持ち物です
-                    if let Some(m) = self.見た目をテンプレートへ(&p) {
+                    if let Some(m) = self.look_into_template(&p) {
                         self.notes.push(SharedString::from(m));
                     }
                 }

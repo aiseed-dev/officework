@@ -51,9 +51,9 @@ def main() -> int:
     group: dict[str, list[int]] = {}
     for i, k in enumerate(keys):
         group.setdefault(k["key"], []).append(i)
-    重 = {w: v for w, v in group.items() if len(v) > 1}
-    if 重:
-        for w, idx in sorted(重.items()):
+    dup_map = {w: v for w, v in group.items() if len(v) > 1}
+    if dup_map:
+        for w, idx in sorted(dup_map.items()):
             print(
                 f"::error::{w!r} が {len(idx)} つの番号を持っています(番号 {idx})。"
                 "ui/gen_lang.py の material() が同じ日本語を1つにまとめるはずです"
@@ -66,10 +66,10 @@ def main() -> int:
     missing_ids: list[str] = []
     for loc in locs:
         p = ROOT / "ui/i18n" / f"{loc}.json"
-        訳 = {k for k, v in json.loads(p.read_text(encoding="utf-8")).items() if v}
-        欠け = len(keys) - len(訳 & {k["key"] for k in keys})
-        if 欠け:
-            missing_ids.append(f"{loc}: {欠け} 句")
+        translation = {k for k, v in json.loads(p.read_text(encoding="utf-8")).items() if v}
+        lacking = len(keys) - len(translation & {k["key"] for k in keys})
+        if lacking:
+            missing_ids.append(f"{loc}: {lacking} 句")
     if missing_ids:
         print("::error::訳の空きがあります: " + " / ".join(missing_ids))
         print("  ui/gen_lang.py --todo で鍵を出し、ui/i18n/<言語>.json に書いてください")

@@ -22,15 +22,15 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-写し = ROOT / "docs/sekkei/asciidoctor-syntax.json"
+copy = ROOT / "docs/sekkei/asciidoctor-syntax.json"
 vendor = ROOT / "vendor/asciidoctor/lib/asciidoctor.rb"
 ADOC_RS = ROOT / "engine/src/adoc.rs"
 
 # うちが**意味を知っていて編集もできる**区切り。表に無くてよい
-編集できる = {"____", "|==="}
+editable = {"____", "|==="}
 
 
-def 本家から読む():
+def read_from_vendor():
     src = vendor.read_text(encoding="utf-8")
     m = re.search(r"DELIMITED_BLOCKS = \{(.*?)\n  \}", src, re.S)
     blocks = dict(re.findall(r"'([^']+)' => \[:(\w+)", m.group(1)))
@@ -67,40 +67,40 @@ def engine_no_hyou():
     a = re.search(r"const ADMONITION: &\[&str\] = &\[(.*?)\];", src, re.S)
     if not a:
         sys.exit("engine/src/adoc.rs の ADMONITION が読めません")
-    註記 = {x.rstrip(":") for x in re.findall(r'"([^"]+)"', a.group(1))}
-    return mark, 註記
+    admon = {x.rstrip(":") for x in re.findall(r'"([^"]+)"', a.group(1))}
+    return mark, admon
 
 
 def main():
     if "--update" in sys.argv:
         if not vendor.is_file():
             sys.exit(f"{vendor} がありません。README の手順で vendor/asciidoctor を置いてください")
-        古い = json.loads(写し.read_text(encoding="utf-8")) if 写し.is_file() else {}
-        新しい = {k: v for k, v in 古い.items() if k.startswith("_")}
-        新しい.update(本家から読む())
-        写し.write_text(
-            json.dumps(新しい, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
+        older = json.loads(copy.read_text(encoding="utf-8")) if copy.is_file() else {}
+        fresh = {k: v for k, v in older.items() if k.startswith("_")}
+        fresh.update(read_from_vendor())
+        copy.write_text(
+            json.dumps(fresh, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
         )
-        print(f"{写し} を取り直しました")
+        print(f"{copy} を取り直しました")
         return
 
-    if not 写し.is_file():
-        sys.exit(f"{写し} がありません(--update で作ります)")
-    table = json.loads(写し.read_text(encoding="utf-8"))
+    if not copy.is_file():
+        sys.exit(f"{copy} がありません(--update で作ります)")
+    table = json.loads(copy.read_text(encoding="utf-8"))
 
     # 本家が手元にあるなら、写しが古くないかも見る(`_` で始まる鍵は覚え書き)
     content = {k: v for k, v in table.items() if not k.startswith("_")}
-    if vendor.is_file() and 本家から読む() != content:
-        sys.exit(f"{写し} が本家より古いです(--update で取り直してください)")
+    if vendor.is_file() and read_from_vendor() != content:
+        sys.exit(f"{copy} が本家より古いです(--update で取り直してください)")
     table = content
 
-    mark, 註記 = engine_no_hyou()
+    mark, admon = engine_no_hyou()
     bad = []
     for k in table["delimited_blocks"]:
-        if k not in 編集できる and k not in mark:
+        if k not in editable and k not in mark:
             bad.append(f"塊の区切り「{k}」({table['delimited_blocks'][k]})を engine が知りません")
     for a in table["admonitions"]:
-        if a not in 註記:
+        if a not in admon:
             bad.append(f"註記「{a}」を engine が知りません")
     if bad:
         print("本家の AsciiDoc にあって、engine が知らない書き方があります:")

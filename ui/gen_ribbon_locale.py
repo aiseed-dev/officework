@@ -807,7 +807,7 @@ def respell(target, label):
     return _BRITISH_RE.sub(one, label)
 
 
-def i18n_の訳(target: str) -> dict[str, str]:
+def i18n_text(target: str) -> dict[str, str]:
     """**`ui/i18n/<言語>.json` に入っているリボンの語**(2026-08-21)。
 
     訳の置き場が2つあると必ずずれます。実際、2026-08-21 に2回踏みました
@@ -827,20 +827,20 @@ def i18n_の訳(target: str) -> dict[str, str]:
     if target == "en":
         return {}
     # **`ROOT` は vendor を指している。** ここは自分の隣の i18n を見る
-    ここ = Path(__file__).resolve().parent
-    p = ここ / "i18n" / f"{target}.json"
-    if not p.exists() or not (ここ / "i18n" / "en.json").exists():
+    here = Path(__file__).resolve().parent
+    p = here / "i18n" / f"{target}.json"
+    if not p.exists() or not (here / "i18n" / "en.json").exists():
         return {}
     # **鍵は記号です**(2026-08-26)。`ui/i18n/en.json` が「記号 → 英語」
     # なので、そこから「英語の札 → その言語の訳」を作ります。
     # `OVERRIDES["en"]` の鍵はリボンの英語の札です
-    訳 = json.loads(p.read_text(encoding="utf-8"))
-    英 = json.loads((ここ / "i18n" / "en.json").read_text(encoding="utf-8"))
+    translation = json.loads(p.read_text(encoding="utf-8"))
+    english = json.loads((here / "i18n" / "en.json").read_text(encoding="utf-8"))
     needed = set(OVERRIDES["en"])
     out = {}
-    for 記号, 英語 in 英.items():
-        if 英語 in needed and 訳.get(記号):
-            out[英語] = 訳[記号]
+    for symbol, english_word in english.items():
+        if english_word in needed and translation.get(symbol):
+            out[english_word] = translation[symbol]
     return out
 
 
@@ -850,7 +850,7 @@ def main():
     target = sys.argv[1]
     # **その言語だけの穴埋め**を土台に、`ui/i18n` の訳を重ねます。
     # 重ねる順は gen_lang.py と同じ — 2つの道が同じ物を出すためです
-    over = {**OVERRIDES.get(target, {}), **i18n_の訳(target)}
+    over = {**OVERRIDES.get(target, {}), **i18n_text(target)}
     doc_map = build_map(["documenteditor", "spreadsheeteditor"], target)
     cell_map = build_map(["spreadsheeteditor", "documenteditor"], target)
     tabs_of = tables_or_die(RIBBON)
@@ -887,7 +887,7 @@ def main():
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{{{{取り込み}}}};
+use super::ribbon::{{{{import_of}}}};
 """)
     def q(s):
         """Rust のリテラルに戻す。解析器は逃げを解いた素の字を渡してくる"""
@@ -931,7 +931,7 @@ use super::ribbon::{{{{取り込み}}}};
     body = "\n".join(out)
     used = [k for k in ("c", "t", "x", "xt", "xm")
               if re.search(rf"^\s*{k}\(", body, re.M)]
-    print(body.replace("{取り込み}", ", ".join(used + ["Tab"])))
+    print(body.replace("{import_of}", ", ".join(used + ["Tab"])))
 
 
 if __name__ == "__main__":

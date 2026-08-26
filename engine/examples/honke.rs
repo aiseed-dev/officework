@@ -15,7 +15,7 @@ fn main() {
     }
     collect_into(root, &mut files);
     files.sort();
-    let (mut note_div, mut 同じ, mut 変わった) = (0, 0, 0);
+    let (mut note_div, mut same, mut changed) = (0, 0, 0);
     let mut ledger: std::collections::BTreeMap<String, usize> = Default::default();
     for f in &files {
         let Ok(src) = std::fs::read_to_string(f) else { continue };
@@ -26,11 +26,11 @@ fn main() {
                     let name = n.split(" ×").next().unwrap_or(&n).to_string();
                     *ledger.entry(name).or_default() += 1;
                 }
-                if kumihan::adoc::write(&doc) == src { 同じ += 1 } else { 変わった += 1 }
+                if kumihan::adoc::write(&doc) == src { same += 1 } else { changed += 1 }
             }
         }
     }
-    println!("{} 枚: 断り {note_div} / 1バイトも変わらない {同じ} / 変わった {変わった}", files.len());
+    println!("{} 枚: 断り {note_div} / 1バイトも変わらない {same} / 変わった {changed}", files.len());
     let mut v: Vec<_> = ledger.into_iter().collect();
     v.sort_by_key(|(_, n)| std::cmp::Reverse(*n));
     for (k, n) in v.iter().take(12) {

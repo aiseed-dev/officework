@@ -124,10 +124,10 @@ def rows():
 
 def main() -> int:
     r = rows()
-    未 = [x for x in r if x[3] == "*未分類*"]
-    if 未:
+    not_yet = [x for x in r if x[3] == "*未分類*"]
+    if not_yet:
         print("仕分けていないボタンがあります:", file=sys.stderr)
-        for t, lb, i, _, _ in 未:
+        for t, lb, i, _, _ in not_yet:
             print(f"  {t} {lb} ({i})", file=sys.stderr)
         return 1
     nokosu = [x for x in r if x[3] == "残す"]

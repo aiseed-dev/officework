@@ -139,7 +139,7 @@ impl Writer {
     /// **一覧の仕事を始める。** 名前を打つ欄を出します(2026-08-26)。
     pub(crate) fn fl_start(&mut self, job: crate::FlJob) {
         use crate::FlJob as J;
-        let (前置き, 案内) = match &job {
+        let (preamble, guide) = match &job {
             J::NewFolder => (String::new(), ui::t!("type_name_new_folder").to_string()),
             J::NewDoc => (String::new(), ui::t!("type_name_new_document").to_string()),
             J::Rename(p) => (
@@ -153,9 +153,9 @@ impl Writer {
                     .to_string(),
             ),
         };
-        self.fl_ed = Editor::new(&前置き);
+        self.fl_ed = Editor::new(&preamble);
         self.fl_job = Some(job);
-        self.status = 案内.into();
+        self.status = guide.into();
     }
 
     /// **一覧の仕事を実行する。** 断られたら欄を開いたままにします。
@@ -167,9 +167,9 @@ impl Writer {
         let Some(job) = self.fl_job.clone() else { return };
         let name = self.fl_ed.text().to_string();
         let now = self.folder();
-        let 結果: Result<String, String> = match &job {
+        let result: Result<String, String> = match &job {
             J::NewFolder => match now {
-                Some(d) => ui::folder::フォルダを作る(&d, &name)
+                Some(d) => ui::folder::make_folder(&d, &name)
                     .map(|p| ui::tf!("created",
                         p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()),
                 None => Err(ui::t!("no_folder_open").to_string()),
@@ -184,14 +184,14 @@ impl Writer {
                         format!("{}.adoc", name.trim())
                     };
                     let title = name.trim().trim_end_matches(".adoc");
-                    ui::folder::ファイルを作る(&d, &n, &format!("= {title}
+                    ui::folder::make_file(&d, &n, &format!("= {title}
 "))
                         .map(|p| ui::tf!("created",
                             p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string())
                 }
                 None => Err(ui::t!("no_folder_open").to_string()),
             },
-            J::Rename(from) => ui::folder::名前を変える(from, &name).map(|to| {
+            J::Rename(from) => ui::folder::rename_to(from, &name).map(|to| {
                 // **いま開いている物なら、道も付け替えます**
                 if self.path.as_deref() == Some(from.as_path()) {
                     self.path = Some(to.clone());
@@ -205,14 +205,14 @@ impl Writer {
                 if self.path.as_deref() == Some(path.as_path()) {
                     Err(ui::t!("cant_delete_file_open").to_string())
                 } else {
-                    ui::folder::消す(path).map(|_| {
+                    ui::folder::remove_at(path).map(|_| {
                         ui::tf!("deleted",
                             path.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
                     })
                 }
             }
         };
-        match 結果 {
+        match result {
             Ok(told) => {
                 self.fl_job = None;
                 self.status = told.into();
@@ -435,12 +435,12 @@ impl Writer {
             // 止まる)。並びには文書の標準(テンプレートの大きさ。既定 10.5)を
             // 差し込む — 一覧で選べる値には +/− も止まる
             "incfont" => {
-                let 標準 = self.base_pt();
-                self.size(move |s| ui::combo::step_size_with(Some(標準), s, true))
+                let std = self.base_pt();
+                self.size(move |s| ui::combo::step_size_with(Some(std), s, true))
             }
             "decfont" => {
-                let 標準 = self.base_pt();
-                self.size(move |s| ui::combo::step_size_with(Some(標準), s, false))
+                let std = self.base_pt();
+                self.size(move |s| ui::combo::step_size_with(Some(std), s, false))
             }
             // 印刷・PDF。**組み直さない** — 画面と同じ紙面をそのまま写す
             "pdf" => self.save_pdf(cx),
@@ -687,7 +687,7 @@ impl Writer {
                 // 一覧の頭に飛ぶと、今どれなのかが分からなくなります
                 self.pick_sel = if opens {
                     let now = self.font_name.to_string();
-                    self.一覧の中身("fontname").iter().position(|(k, _)| *k == now).unwrap_or(0)
+                    self.list_items("fontname").iter().position(|(k, _)| *k == now).unwrap_or(0)
                 } else {
                     0
                 };
@@ -1509,7 +1509,7 @@ impl Writer {
 ///
 /// 元号は令和・平成・昭和まで。それより前は西暦のまま出します
 /// (様式で使う範囲を超えるので、無理に足しません)。
-pub(crate) fn 日付の形() -> Vec<(String, String)> {
+pub(crate) fn date_shape() -> Vec<(String, String)> {
     let out = std::process::Command::new("date").arg("+%Y %m %d").output();
     let Ok(o) = out else { return Vec::new() };
     if !o.status.success() {
@@ -1526,9 +1526,9 @@ pub(crate) fn 日付の形() -> Vec<(String, String)> {
         format!("{y}/{m:02}/{d:02}"),
         format!("{y}-{m:02}-{d:02}"),
     ];
-    if let Some((元号, 略, 年)) = sum {
-        v.push(format!("{元号}{年}年{m}月{d}日"));
-        v.push(format!("{略}{年}.{m}.{d}"));
+    if let Some((era, abbrev, year_of)) = sum {
+        v.push(format!("{era}{year_of}年{m}月{d}日"));
+        v.push(format!("{abbrev}{year_of}.{m}.{d}"));
     }
     v.into_iter().map(|x| (x.clone(), x)).collect()
 }
@@ -1536,17 +1536,17 @@ pub(crate) fn 日付の形() -> Vec<(String, String)> {
 /// 西暦から元号と年を出す。(元号, 略号, 年)。範囲の外なら None
 pub(crate) fn wareki(y: i32, m: i32, d: i32) -> Option<(&'static str, &'static str, i32)> {
     // (始まりの年, 月, 日, 元号, 略号)
-    const 代: &[(i32, i32, i32, &str, &str)] = &[
+    const generation: &[(i32, i32, i32, &str, &str)] = &[
         (2019, 5, 1, "令和", "R"),
         (1989, 1, 8, "平成", "H"),
         (1926, 12, 25, "昭和", "S"),
     ];
-    for (yy, mm, dd, 元号, 略) in 代 {
+    for (yy, mm, dd, era, abbrev) in generation {
         if (y, m, d) >= (*yy, *mm, *dd) {
             let n = y - yy + 1;
             // 元年は「1年」ではなく「元年」と書きますが、様式では
             // 数で書くものも多いので数のまま出します
-            return Some((元号, 略, n));
+            return Some((era, abbrev, n));
         }
     }
     None

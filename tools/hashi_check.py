@@ -261,7 +261,7 @@ sh["C2"].value = 125000   # 上の clear_contents で消えているので置き
 wb.names.add("単価", "=%s!$C$2" % sh.name)
 check("単価" in wb.names and len(wb.names) == 1, f"names.add: {wb.names}")
 check(wb.names["単価"].refers_to == "=%s!$C$2" % sh.name,
-      f"refers_to: {wb.names['単価'].refers_to}")
+      f"refers_to: {wb.names['unit_price'].refers_to}")
 sh["E2"].value = "=単価*2"
 check(sh["E2"].value == 250000, f"名前が実機の式で効かない: {sh['E2'].value}")
 check(sh["C2"].name.name == "単価", "Range.name が引けない")

@@ -238,19 +238,19 @@ fn norm(s: &str) -> String {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum script {
     /// 明朝・セリフ(縦横に太さの差があり、端に飾りがある)
-    明朝,
+    Serif,
     /// ゴシック・サンセリフ(太さが一定で、飾りが無い)
-    ゴシック,
+    SansSerif,
 }
 
 /// 書体の名前から系統を読む。どちらとも読めなければ `None`。
-pub fn 系統を読む(name: &str) -> Option<script> {
+pub fn read_script(name: &str) -> Option<script> {
     let lower = name.to_lowercase();
     // 名前に系統が書いてある物(明朝/ゴシック/serif/sans)を先に見ます
     if name.contains("明朝") || lower.contains("mincho") || lower.contains("serif") {
         // "sans serif" は "serif" を含むので、先にサンセリフを外します
         if !lower.contains("sans") {
-            return Some(script::明朝);
+            return Some(script::Serif);
         }
     }
     if name.contains("ゴシック")
@@ -262,24 +262,24 @@ pub fn 系統を読む(name: &str) -> Option<script> {
         || name.contains("黒")
         || name.contains("고딕")
     {
-        return Some(script::ゴシック);
+        return Some(script::SansSerif);
     }
     // 名前に書いていない物は、よく使われる書体を名指しで覚えます。
     // Windows の docx が名乗るのはたいていこの辺りです
-    const 明朝の名: &[&str] = &[
+    const serif_names: &[&str] = &[
         "times new roman", "times", "georgia", "garamond", "book antiqua",
         "palatino", "cambria", "constantia", "songti", "宋体", "新細明體",
         "batang", "바탕",
     ];
-    const ゴシックの名: &[&str] = &[
+    const sans_names: &[&str] = &[
         "arial", "helvetica", "calibri", "aptos", "segoe ui", "verdana",
         "tahoma", "candara", "corbel", "roboto", "gulim", "굴림",
     ];
-    if 明朝の名.iter().any(|n| lower.contains(n)) {
-        return Some(script::明朝);
+    if serif_names.iter().any(|n| lower.contains(n)) {
+        return Some(script::Serif);
     }
-    if ゴシックの名.iter().any(|n| lower.contains(n)) {
-        return Some(script::ゴシック);
+    if sans_names.iter().any(|n| lower.contains(n)) {
+        return Some(script::SansSerif);
     }
     None
 }
@@ -293,7 +293,7 @@ pub fn 系統を読む(name: &str) -> Option<script> {
 /// 一覧しか持っていなかったので、ドイツ語の画面で Times New Roman の
 /// 文書を開くと日本語の明朝になっていました。
 pub fn substitute(name: &str) -> Option<&'static Family> {
-    let k = 系統を読む(name)?;
+    let k = read_script(name)?;
     // 並びは「入れた書体(IPA/Noto)→ OS の持ち物」。後半は実機の書体 —
     // Mac は Hiragino、Windows は游/メイリオ/ＭＳ が標準で、ここに無いと
     // Noto も IPA も入れていない実機で明朝がゴシックの fallback に落ちる
@@ -301,42 +301,42 @@ pub fn substitute(name: &str) -> Option<&'static Family> {
     // 書体は日本語名と英語名の両方で名乗ることがあるので、両方書く
     // (resolve は空白・大小文字の揺れは吸うが、言語までは翻訳しない)
     let candidates: &[&str] = match (script_of(&default_language()), k) {
-        (Script::Japanese, script::明朝) => &[
+        (Script::Japanese, script::Serif) => &[
             "IPAex明朝", "Noto Serif CJK JP", "BIZ UDP明朝", "BIZ UD明朝", "IPA P明朝", "IPA明朝",
             "ヒラギノ明朝 ProN", "Hiragino Mincho ProN",
             "游明朝", "游明朝体", "Yu Mincho", "ＭＳ 明朝", "MS Mincho",
         ],
-        (Script::Japanese, script::ゴシック) => &[
+        (Script::Japanese, script::SansSerif) => &[
             "IPAexゴシック", "Noto Sans CJK JP", "BIZ UDPゴシック", "IPA Pゴシック",
             "ヒラギノ角ゴシック", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
             "游ゴシック", "Yu Gothic", "メイリオ", "Meiryo", "ＭＳ ゴシック", "MS Gothic",
         ],
-        (Script::Korean, script::明朝) => {
+        (Script::Korean, script::Serif) => {
             &["Noto Serif CJK KR", "NanumMyeongjo", "나눔명조", "바탕", "Batang"]
         }
-        (Script::Korean, script::ゴシック) => &[
+        (Script::Korean, script::SansSerif) => &[
             "Noto Sans CJK KR", "NanumGothic", "나눔고딕",
             "Apple SD Gothic Neo", "맑은 고딕", "Malgun Gothic",
         ],
-        (Script::SimplifiedChinese, script::明朝) => {
+        (Script::SimplifiedChinese, script::Serif) => {
             &["Noto Serif CJK SC", "Source Han Serif SC", "宋体", "SimSun", "STSong"]
         }
-        (Script::SimplifiedChinese, script::ゴシック) => &[
+        (Script::SimplifiedChinese, script::SansSerif) => &[
             "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei",
             "PingFang SC", "微软雅黑", "Microsoft YaHei",
         ],
-        (Script::TraditionalChinese, script::明朝) => {
+        (Script::TraditionalChinese, script::Serif) => {
             &["Noto Serif CJK TC", "Source Han Serif TC", "新細明體", "PMingLiU"]
         }
-        (Script::TraditionalChinese, script::ゴシック) => &[
+        (Script::TraditionalChinese, script::SansSerif) => &[
             "Noto Sans CJK TC", "Source Han Sans TC",
             "PingFang TC", "微軟正黑體", "Microsoft JhengHei",
         ],
-        (_, script::明朝) => &[
+        (_, script::Serif) => &[
             "Liberation Serif", "DejaVu Serif", "Noto Serif", "Nimbus Roman",
             "Times New Roman", "Georgia", "Cambria",
         ],
-        (_, script::ゴシック) => &[
+        (_, script::SansSerif) => &[
             "Liberation Sans", "DejaVu Sans", "Noto Sans", "Nimbus Sans",
             "Helvetica Neue", "Helvetica", "Arial", "Calibri", "Segoe UI",
         ],
@@ -352,7 +352,7 @@ pub fn substitute(name: &str) -> Option<&'static Family> {
 /// 名前を日本語と英語の両方で書いてあるのは、書体が OS の言語によって
 /// 違う名前を名乗るからです([`resolve`] は空白や大小文字の揺れは吸い
 /// ますが、名前の翻訳まではしません)。
-fn 標準の候補(s: Script) -> &'static [&'static str] {
+fn default_cands(s: Script) -> &'static [&'static str] {
     #[cfg(target_os = "windows")]
     match s {
         Script::Japanese => &["游ゴシック", "Yu Gothic", "メイリオ", "Meiryo", "ＭＳ Ｐゴシック", "MS PGothic"],
@@ -395,7 +395,7 @@ fn 標準の候補(s: Script) -> &'static [&'static str] {
 /// なります。
 pub fn default_family(lang: &str) -> Option<&'static Family> {
     let s = script_of(lang);
-    for c in 標準の候補(s) {
+    for c in default_cands(s) {
         if let Some(f) = resolve(c) {
             return Some(f);
         }
@@ -457,7 +457,7 @@ pub fn for_document(wanted: Option<&str>) -> Result<(&'static Family, bool), Str
 fn missing(wanted: Option<&str>) -> String {
     // **入れてもらう物の名前は言語で変わります。** 韓国語の人に
     // 「fonts-ipaexfont を入れてください」と言っても直りません
-    let 入れる物 = match script_of(&default_language()) {
+    let to_insert = match script_of(&default_language()) {
         Script::Japanese => "fonts-noto-cjk か fonts-ipaexfont",
         Script::Korean => "fonts-noto-cjk か fonts-nanum",
         Script::SimplifiedChinese | Script::TraditionalChinese => "fonts-noto-cjk",
@@ -468,9 +468,9 @@ fn missing(wanted: Option<&str>) -> String {
     match wanted {
         Some(w) => format!(
             "書体「{w}」がこの機械にありません。代わりに使える書体も見つかりません\
-             ({入れる物} を入れてください)"
+             ({to_insert} を入れてください)"
         ),
-        None => format!("使える書体が見つかりません({入れる物} を入れてください)"),
+        None => format!("使える書体が見つかりません({to_insert} を入れてください)"),
     }
 }
 
@@ -501,10 +501,10 @@ mod tests {
         // ので、**入っている書体のどれかで**同じ性質を見る形に改めた(2026-08-10)。
         // 隣の 同名なら素の字面を採る が最初からこの作法だった
         let all = list();
-        let 証人 = all
+        let witness = all
             .iter()
             .find(|f| f.japanese && f.path.file_stem().is_some_and(|s| s.to_string_lossy() != f.name));
-        let f = 証人.expect(
+        let f = witness.expect(
             "日本語の書体が1つも無いか、どれもファイル名をそのまま書体名にしている\
              (fonts-noto-cjk か fonts-ipaexfont を入れてください)",
         );

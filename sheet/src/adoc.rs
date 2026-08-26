@@ -42,34 +42,34 @@ pub fn write(book: &Book) -> String {
 pub fn write_report(book: &Book) -> Vec<String> {
     let mut out = Vec::new();
     let n = |x: usize| x;
-    let mut 書式 = 0;
-    let mut 図形 = 0;
-    let mut 画像 = 0;
-    let ピボット = book.pivots.len();
+    let mut fmt = 0;
+    let mut figure = 0;
+    let mut image = 0;
+    let pivot = book.pivots.len();
     let mut widths = 0;
     for s in &book.sheets {
-        書式 += s.cells.values().filter(|c| !c.fmt.is_plain()).count();
-        図形 += s.shapes.len();
-        画像 += s.images.len() + s.images_new.len();
+        fmt += s.cells.values().filter(|c| !c.fmt.is_plain()).count();
+        figure += s.shapes.len();
+        image += s.images.len() + s.images_new.len();
         widths += s.col_width.len() + s.row_height.len();
     }
-    if 書式 > 0 {
-        out.push(format!("セルの書式 {} 件(見た目はテンプレートの持ち場です)", n(書式)));
+    if fmt > 0 {
+        out.push(format!("セルの書式 {} 件(見た目はテンプレートの持ち場です)", n(fmt)));
     }
     if widths > 0 {
         out.push(format!("列の幅・行の高さ {} 件(見た目はテンプレートの持ち場です)", n(widths)));
     }
-    if 図形 > 0 {
-        out.push(format!("図形 {} 件(adoc の表には置けません)", n(図形)));
+    if figure > 0 {
+        out.push(format!("図形 {} 件(adoc の表には置けません)", n(figure)));
     }
     // **画像はいちばん重い落とし物。** 3 MB のブックが 1 KB の adoc になる
     // ことがあるので、黙って落とすと消えたことに気づけません。外のファイルに
     // 出す道(writer の `image::`)はこれからです
-    if 画像 > 0 {
-        out.push(format!("画像 {} 件(まだ外のファイルに出せません)", n(画像)));
+    if image > 0 {
+        out.push(format!("画像 {} 件(まだ外のファイルに出せません)", n(image)));
     }
-    if ピボット > 0 {
-        out.push(format!("ピボットテーブル {} 件(adoc の表には置けません)", n(ピボット)));
+    if pivot > 0 {
+        out.push(format!("ピボットテーブル {} 件(adoc の表には置けません)", n(pivot)));
     }
     out
 }
@@ -209,7 +209,7 @@ fn to_sheet(t: &Table, nth: usize) -> Sheet {
             }
             // `=` で始まるだけの字(`= 見出し`)は `Cell::input` が字として
             // 受けます(2026-08-19 から決めが1つになりました)
-            let v = if 字のままにする(cell) {
+            let v = if keep_as_text(cell) {
                 Cell { formula: None, value: Value::Text(cell.trim().to_string()), fmt: Default::default() }
             } else {
                 Cell::input(cell)
@@ -241,7 +241,7 @@ fn to_sheet(t: &Table, nth: usize) -> Sheet {
 /// 実物 16 冊で測ったところ、5 冊がこれに当たりました(2026-08-19)。
 ///
 /// 見分け方は「0 の次が数字なら番号」です。`0.5` や `0` は数のままにします。
-fn 字のままにする(s: &str) -> bool {
+fn keep_as_text(s: &str) -> bool {
     let t = s.trim();
     // 頭が 0 で、次も数字 → 番号(0001・007)
     t.len() > 1 && t.starts_with('0') && t.as_bytes().get(1).is_some_and(|c| c.is_ascii_digit())
@@ -279,7 +279,7 @@ fn merges_of(t: &Table) -> Vec<(Pos, Pos)> {
 mod tests {
     use super::*;
 
-    fn 台帳() -> Book {
+    fn book_of() -> Book {
         let mut b = Book::new();
         b.sheets.clear();
         let mut s = Sheet::new("売上台帳");
@@ -309,7 +309,7 @@ mod tests {
     /// **書いた字が本家の形になっている。** 題・見出しの空行・式がそのまま
     #[test]
     fn 書いた字の形() {
-        let src = write(&台帳());
+        let src = write(&book_of());
         assert!(src.contains(".売上台帳"), "表の題が無い:\n{src}");
         assert!(src.contains("|月 |品名 |数量 |金額"), "見出しの行が無い:\n{src}");
         // 式は値ではなく式のまま
@@ -320,7 +320,7 @@ mod tests {
     /// **往復してブックが戻る。** 値・式・シート名・見出し
     #[test]
     fn 往復で戻る() {
-        let from = 台帳();
+        let from = book_of();
         let (back, report) = parse(&write(&from)).expect("読めない");
         assert_eq!(back.sheets.len(), 1);
         assert_eq!(back.sheets[0].name, "売上台帳");
@@ -396,7 +396,7 @@ mod tests {
     /// 複数のシートは複数の表になる
     #[test]
     fn 複数のシートが往復する() {
-        let mut b = 台帳();
+        let mut b = book_of();
         let mut s2 = Sheet::new("控え");
         s2.set(Pos::parse("A1").unwrap(), Cell::input("あ"));
         b.sheets.push(s2);
@@ -443,7 +443,7 @@ mod tests {
     /// **落とす物を数えて返す。** 書式や図形は adoc の表に載らない
     #[test]
     fn 落とす物を数える() {
-        let mut b = 台帳();
+        let mut b = book_of();
         b.sheets[0].col_width.insert(0, 20.0);
         let r = write_report(&b);
         assert!(r.iter().any(|x| x.contains("列の幅")), "落とし物を言っていない: {r:?}");

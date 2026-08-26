@@ -208,13 +208,13 @@ fn app_keys() -> BTreeSet<String> {
 ///
 /// 鍵は記号です(2026-08-26)。どの言語の表も同じ鍵を持つので、
 /// どれから取っても同じです。英語も訳の1つなので en から取ります。
-fn 鍵の一覧() -> BTreeSet<String> {
+fn key_list() -> BTreeSet<String> {
     table_keys("en")
 }
 
 /// 英語の訳。**穴埋めの数と綴りは、鍵ではなくこちらを見ます。**
 /// 鍵は記号なので、穴も英単語もありません。
-fn 英語の訳() -> std::collections::BTreeMap<String, String> {
+fn english_of() -> std::collections::BTreeMap<String, String> {
     table_pairs("en")
 }
 
@@ -250,7 +250,7 @@ fn table_pairs(lang: &str) -> std::collections::BTreeMap<String, String> {
 #[test]
 fn 鍵の一覧に載っていない鍵が無い() {
     let app = app_keys();
-    let en = 鍵の一覧();
+    let en = key_list();
     let missing: Vec<&String> = app.difference(&en).collect();
     assert!(
         missing.is_empty(),
@@ -263,7 +263,7 @@ fn 鍵の一覧に載っていない鍵が無い() {
 #[test]
 fn 使われていない訳が残っていない() {
     let app = app_keys();
-    let en = 鍵の一覧();
+    let en = key_list();
     let dead: Vec<&String> = en.difference(&app).collect();
     assert!(
         dead.is_empty(),
@@ -277,7 +277,7 @@ fn 使われていない訳が残っていない() {
 /// その言語は「対応しています」と言ってよい状態ではない
 #[test]
 fn どの言語の表も同じ鍵を持つ() {
-    let en = 鍵の一覧();
+    let en = key_list();
     for lang in lang::i18n_tables::LANGS {
         let t = table_keys(lang);
         let missing = en.difference(&t).count();
@@ -297,7 +297,7 @@ fn どの言語の表も同じ鍵を持つ() {
 fn 穴埋めの数が言語をまたいで揃う() {
     let holes = |s: &str| s.match_indices("{}").count();
     // **穴の数は英語の訳と比べます。** 鍵は記号なので穴がありません
-    let en = 英語の訳();
+    let en = english_of();
     for lang in lang::i18n_tables::LANGS {
         let t = lang::i18n_tables::table(lang).expect("登録済み");
         for (k, v) in t {
@@ -408,7 +408,7 @@ fn 英語の表が英国綴りで揃っている() {
     // **英語の訳の側を見ます**(2026-08-26)。鍵は記号なので綴りが
     // ありません
     let mut bad = Vec::new();
-    for en in 英語の訳().into_values() {
+    for en in english_of().into_values() {
         for w in en.split(|c: char| !c.is_ascii_alphabetic()) {
             let lower = w.to_ascii_lowercase();
             if let Some((_, brit)) = AMERICAN.iter().find(|(a, _)| *a == lower) {

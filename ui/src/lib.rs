@@ -412,7 +412,7 @@ pub fn toggle_math_autocorrect(cur: bool, persist: bool) -> (bool, String) {
 /// `identity` は名乗り(ロック・チャット・署名)。`ops` の物なので**呼ぶ側が
 /// 渡します** — `ui` は `ops` に依存しません(層の向きを崩さない)。
 pub fn env_rows(identity: &str) -> Vec<(String, String)> {
-    let 宛先 = {
+    let dest = {
         let ep = Endpoint::default();
         format!(
             "{}({})",
@@ -424,7 +424,7 @@ pub fn env_rows(identity: &str) -> Vec<(String, String)> {
     // 鍵そのものは出しません — 有る無しだけ。
     // **手元のモデルだけは「使えます」と言わない** — 繋がるか確かめずに
     // 言えば嘘になります
-    let 使えるか = {
+    let is_usable = {
         let b = ai::backend();
         match ai::ready(b) {
             _ if b == ai::Backend::Local => {
@@ -435,7 +435,7 @@ pub fn env_rows(identity: &str) -> Vec<(String, String)> {
         }
     };
     vec![
-        (crate::t!("usable_right_now").to_string(), 使えるか),
+        (crate::t!("usable_right_now").to_string(), is_usable),
         (
             crate::t!("ai_model_jo_ai").to_string(),
             std::env::var("JO_AI_MODEL").unwrap_or_else(|_| crate::t!("destination_default").into()),
@@ -444,7 +444,7 @@ pub fn env_rows(identity: &str) -> Vec<(String, String)> {
             crate::t!("font_office_font").to_string(),
             std::env::var("OFFICE_FONT").unwrap_or_else(|_| crate::t!("follows_document").into()),
         ),
-        (crate::t!("local_model_destination").to_string(), 宛先),
+        (crate::t!("local_model_destination").to_string(), dest),
         (
             crate::t!("how_set_destination").to_string(),
             crate::t!("ai_url_ai_model").to_string(),
@@ -907,11 +907,11 @@ mod tests {
     #[test]
     fn 関連付けの道具が機械に在る() {
         let name = opener_name();
-        let 在る = std::process::Command::new(name)
+        let exists = std::process::Command::new(name)
             .arg("--version")
             .output()
             .is_ok();
-        assert!(在る, "{name} がこの機械にありません");
+        assert!(exists, "{name} がこの機械にありません");
     }
 
     struct App {

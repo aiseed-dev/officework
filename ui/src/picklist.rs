@@ -17,7 +17,7 @@ use gpui::{div, prelude::*, px, Div, Rgba, SharedString, Stateful};
 
 /// `RRGGBB` を色に。**ここだけで使います** — `ui` は `ops` に依らない決めなので、
 /// `ops::hex` は借りずに自分で読みます
-fn 色(s: &str) -> Rgba {
+fn colour(s: &str) -> Rgba {
     let b = s.as_bytes();
     let n = |i: usize| -> f32 {
         if b.len() < i * 2 + 2 {
@@ -232,7 +232,7 @@ pub fn panel<V: gpui::Render>(
         }
         let d = deco(key);
         // 「→ 」は次の段へ進むボタン — 並びの項目と見分けます
-        let 進む = key.starts_with("→ ");
+        let advance = key.starts_with("→ ");
         let (hover, border) = (look.hover, look.border);
         let mut row = div()
             .id(SharedString::from(format!("pk{i}")))
@@ -248,8 +248,8 @@ pub fn panel<V: gpui::Render>(
             .text_size(px(s * 12.5))
             // 選んでいる項は下地の色で示します(↑↓・Enter の相手が目で分かる)
             .when(on, |st| st.bg(look.hover))
-            .text_color(if 進む { look.accent } else { look.fg })
-            .when(進む, |st| {
+            .text_color(if advance { look.accent } else { look.fg })
+            .when(advance, |st| {
                 st.font_weight(gpui::FontWeight::BOLD).border_t_1().border_color(border).mt_0p5()
             })
             .whitespace_nowrap()
@@ -257,7 +257,7 @@ pub fn panel<V: gpui::Render>(
             .children(d.swatch.map(|hx| {
                 let q = div().w(px(14.0)).h(px(14.0)).rounded_sm().border_1().border_color(border);
                 match hx {
-                    Some(h) => q.bg(色(&h)),
+                    Some(h) => q.bg(colour(&h)),
                     None => q.bg(gpui::white()),
                 }
             }));

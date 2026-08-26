@@ -97,7 +97,7 @@ impl Writer {
                     .child(SharedString::from(label.to_string()))
             };
             // 範囲の選び。**選んでいる物は塗る**(押せる物と見分けが付くように)
-            let 範囲釦 = |id: &'static str, label: &str, on: bool| {
+            let range_button = |id: &'static str, label: &str, on: bool| {
                 div().id(id)
                     .px_2p5().py_0p5().rounded_sm()
                     .border_1()
@@ -124,11 +124,11 @@ impl Writer {
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
                         .child(ui::t!("search")))
-                    .child(範囲釦("sc-doc", ui::t!("document_5"), !self.find_file)
+                    .child(range_button("sc-doc", ui::t!("document_5"), !self.find_file)
                         .on_click(cx.listener(|t, _, _, cx| { t.find_file = false; cx.notify() })))
-                    .child(範囲釦("sc-file", ui::t!("file_2"), self.find_file)
+                    .child(range_button("sc-file", ui::t!("file_2"), self.find_file)
                         .on_click(cx.listener(|t, _, _, cx| { t.find_file = true; cx.notify() })))
-                    .child(範囲釦("sc-dir", ui::t!("folder_3"), false)
+                    .child(range_button("sc-dir", ui::t!("folder_3"), false)
                         .on_click(cx.listener(|t, _, _, cx| {
                             // フォルダ全体はファイルのページの「フォルダから探す」
                             t.tab = 0;
@@ -797,13 +797,13 @@ impl Writer {
                 // calc のような Python の橋が無いので、入るのは**文そのもの**
                 _ => {
                     let accent = rgb(0x165E83);
-                    let button = move |id: &'static str, label: String, 効き: bool| {
+                    let button = move |id: &'static str, label: String, enabled: bool| {
                         div().id(SharedString::from(id))
                             .px_2().py_0p5().rounded_sm().cursor_pointer()
                             .text_size(px(us * 11.5))
-                            .text_color(if 効き { th_top_fg } else { th_status })
+                            .text_color(if enabled { th_top_fg } else { th_status })
                             .border_1()
-                            .border_color(if 効き { accent } else { th_cmd_border })
+                            .border_color(if enabled { accent } else { th_cmd_border })
                             .hover(move |st| st.bg(th_btn_hover))
                             .child(SharedString::from(label))
                     };
@@ -815,10 +815,10 @@ impl Writer {
                         chat = chat.child(div().text_size(px(us * 11.0)).text_color(th_status)
                             .child(ui::t!("e_g_make_paragraph").to_string()));
                     }
-                    for (自分, text) in &self.ai_chat_log {
+                    for (self_of, text) in &self.ai_chat_log {
                         chat = chat.child(div().text_size(px(us * 11.5))
-                            .text_color(if *自分 { accent } else { th_top_fg })
-                            .child(format!("{} {}", if *自分 { "▸" } else { "◂" }, text)));
+                            .text_color(if *self_of { accent } else { th_top_fg })
+                            .child(format!("{} {}", if *self_of { "▸" } else { "◂" }, text)));
                     }
                     d = d.child(chat);
                     if let Some(plan) = self.ai_chat_plan.clone() {
@@ -1002,7 +1002,7 @@ impl Writer {
             // いまの段落が着ているスタイルと、テンプレートの一覧を出す。
             // 押すと着替え、直すとテンプレートが変わって**同じスタイルの所が
             // 一度に変わる** — ライブ合成の効き目がここに出る
-                let 着ている = para
+                let wearing = para
                     .as_ref()
                     .and_then(|p| {
                         p.style_id.clone().or_else(|| {
@@ -1011,7 +1011,7 @@ impl Writer {
                     })
                     .unwrap_or_else(|| ui::t!("body").to_string());
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status).child(
-                    SharedString::from(ui::tf!("paragraph", 着ている.clone())),
+                    SharedString::from(ui::tf!("paragraph", wearing.clone())),
                 ));
                 // 役割のスタイル(段落そのものの意味)は先に、名前つきは後に
                 let mut names: Vec<String> =
@@ -1043,7 +1043,7 @@ impl Writer {
                         })),
                 );
                 for name in names {
-                    let on = name == 着ている;
+                    let on = name == wearing;
                     let n2 = name.clone();
                     r = r.child(
                         div()
@@ -1064,7 +1064,7 @@ impl Writer {
                 }
                 d = d.child(r);
                 // いま着ているスタイルの中身(テンプレートが持っている値)
-                if let Some(def) = self.tmpl.style(&着ている) {
+                if let Some(def) = self.tmpl.style(&wearing) {
                     let mut w: Vec<String> = Vec::new();
                     if let Some(s) = def.size_pt {
                         w.push(ui::tf!("size_pt_2", s.to_string()).to_string());
@@ -1164,8 +1164,8 @@ impl Writer {
                         d = d.child(ui::filelist::empty(&look));
                     }
                     for (i, e) in list.into_iter().enumerate() {
-                        let 開ける = e.kind.can_open();
-                        let 表だ = e.kind.is_sheet();
+                        let can_open = e.kind.can_open();
+                        let is_a_table = e.kind.is_sheet();
                         let path = e.path.clone();
                         // **フォルダは中へ入ります**(2026-08-26 発注者)。
                         // 前は一覧に出るのに押しても何も起きませんでした
@@ -1182,7 +1182,7 @@ impl Writer {
                         let mut line = ui::filelist::row(&look, i, &e, current);
                         line = line.on_click(cx.listener(move |t, _, _, cx| {
                             t.remember_folder();
-                            if !開ける {
+                            if !can_open {
                                 // **こちらで開けない種類は、機械の関連付けに渡します**
                                 // (2026-08-24 発注者「何のツールでも使えるようにする」)。
                                 // .ipynb なら JupyterLab、.py なら決めた道具が起きます。
@@ -1203,15 +1203,15 @@ impl Writer {
                                 return;
                             }
                             // **埋め込みなら種類を問わず officework に頼む**(段1)
-                            if t.embedded || 表だ {
+                            if t.embedded || is_a_table {
                                 t.open_request = Some(path.clone());
                             } else {
                                 t.open_in_tab(path.clone());
                             }
                             cx.notify()
                         }));
-                        let 道2 = e.path.clone();
-                        let 道3 = e.path.clone();
+                        let path2 = e.path.clone();
+                        let path3 = e.path.clone();
                         d = d.child(
                             div().flex().flex_row().items_center().gap_1()
                                 .child(div().flex_1().min_w(px(0.0)).child(line))
@@ -1220,13 +1220,13 @@ impl Writer {
                                     // (defname)とは別の意味です
                                     ui::t!("rename").into())
                                     .on_click(cx.listener(move |t, _, _, cx| {
-                                        t.fl_start(crate::FlJob::Rename(道2.clone()));
+                                        t.fl_start(crate::FlJob::Rename(path2.clone()));
                                         cx.notify()
                                     })))
                                 .child(ui::filelist::row_button(&look, i, "del",
                                     ui::t!("erase").into())
                                     .on_click(cx.listener(move |t, _, _, cx| {
-                                        t.fl_start(crate::FlJob::Delete(道3.clone()));
+                                        t.fl_start(crate::FlJob::Delete(path3.clone()));
                                         cx.notify()
                                     }))),
                         );
@@ -1258,11 +1258,11 @@ impl Writer {
             // あればその面を、文字・段落・ページの前に出す
             // (発注者 2026-08-14「選んでいる物の設定に切り替わるように」)。
             // 出すだけで下の面も残す — 表の中でも字は太字にしたい
-            if let Some((_, line, row_box, 行数, 列数)) = self.cursor_table() {
+            if let Some((_, line, row_box, n_rows, n_cols)) = self.cursor_table() {
                 d = d.child(head(ui::t!("table_2")));
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                     .child(SharedString::from(ui::tf!(
-                        "rows_columns_now_row", 行数, 列数, line + 1, row_box + 1))));
+                        "rows_columns_now_row", n_rows, n_cols, line + 1, row_box + 1))));
                 d = d.child(row()
                     .child(btn(self, "tb-row-up", ui::t!("row_above").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_add_row(false); cx.notify() })))
@@ -1283,9 +1283,9 @@ impl Writer {
             if let Some(p0) = &para {
                 let icon: Vec<&kumihan::InlineImage> =
                     p0.images.iter().chain(p0.images_new.iter()).collect();
-                let 式: Vec<&&kumihan::InlineImage> =
+                let formula_of: Vec<&&kumihan::InlineImage> =
                     icon.iter().filter(|im| im.tex.is_some()).collect();
-                if let Some(im) = 式.first() {
+                if let Some(im) = formula_of.first() {
                     let tex = im.tex.clone().unwrap_or_default();
                     d = d.child(head(ui::t!("formula_2")));
                     d = d.child(div().text_size(px(us * 10.5)).text_color(th_status)
@@ -1681,16 +1681,16 @@ impl Writer {
         // (`btn_box`。窓の座標)をそのまま使えるようにします
         // **開いているのは多くて1つ。**鍵をそのまま渡します(2026-08-22)
         let font_panel = (self.open_list == Some("fontname"))
-            .then(|| self.一覧を描く("fontname", cx));
+            .then(|| self.draw_list("fontname", cx));
         let size_panel = (self.open_list == Some("fontsize"))
-            .then(|| self.一覧を描く("fontsize", cx));
+            .then(|| self.draw_list("fontsize", cx));
         let style_panel = (self.open_list == Some("parastyle"))
-            .then(|| self.一覧を描く("parastyle", cx));
+            .then(|| self.draw_list("parastyle", cx));
 
         // 記号の一覧。**3つの一覧と同じ仕組み**(ui::picklist)で、マス目の並びで
         // 出します(2026-08-21。前は右上に固定の自前の格子でした)
         let symbol_panel = (self.open_list == Some("inssymbol"))
-            .then(|| self.一覧を描く("inssymbol", cx));
+            .then(|| self.draw_list("inssymbol", cx));
         // **足したら、ここにも足す。** 開くだけ足して描く側を忘れると、
         // 一覧は開いているのに画面に何も出ません(2026-08-25 に実機で
         // 見つけました — 押してもマス目が出ませんでした)
@@ -1699,7 +1699,7 @@ impl Writer {
             None => None,
             Some(job) => {
                 use crate::FlJob as J;
-                let 消す時 = matches!(job, J::Delete(_));
+                let erase_at = matches!(job, J::Delete(_));
                 let heading = match job {
                     J::NewFolder => ui::t!("name_new_folder_type").to_string(),
                     J::NewDoc => ui::t!("name_new_document_type").to_string(),
@@ -1714,7 +1714,7 @@ impl Writer {
                     .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x165E83))
                         .child(SharedString::from(heading)));
-                if !消す時 {
+                if !erase_at {
                     let mut t = self.fl_ed.text().to_string();
                     let cur = self.fl_ed.cursor().min(t.len());
                     t.insert(cur, '|');
@@ -1753,11 +1753,11 @@ impl Writer {
                     .child(ui::t!("table_spans_text_width"))))
         };
         let date_panel = (self.open_list == Some("datetime"))
-            .then(|| self.一覧を描く("datetime", cx));
+            .then(|| self.draw_list("datetime", cx));
         let export_panel = (self.open_list == Some("f-export"))
-            .then(|| self.一覧を描く("f-export", cx));
+            .then(|| self.draw_list("f-export", cx));
         let user_font_panel = (self.open_list == Some("user-font"))
-            .then(|| self.一覧を描く("user-font", cx));
+            .then(|| self.draw_list("user-font", cx));
 
         // 校正の指摘
         let proof_panel = if self.proof.is_empty() && self.proof_msg.is_empty() {
@@ -1797,7 +1797,7 @@ impl Writer {
     }
 
     /// **一覧の中身**(鍵, 見出し)。鍵で引き当て、見出しを画面に出します。
-    pub(crate) fn 一覧の中身(&self, kind: &str) -> Vec<(String, String)> {
+    pub(crate) fn list_items(&self, kind: &str) -> Vec<(String, String)> {
         match kind {
             // 記号。事務の書類で使うものだけ(飾りの絵文字は入れない)。
             // 鍵=字そのもの — 訳す物ではありません
@@ -1820,9 +1820,9 @@ impl Writer {
                 ("text".into(), ui::t!("plain_text_txt").to_string()),
             ],
             // 日付の形。**西暦と和暦**(鍵=出す字そのもの — 訳しません)
-            "datetime" => crate::cmds::日付の形(),
+            "datetime" => crate::cmds::date_shape(),
             // **この機械の標準の書体**(2026-08-26)。中身は書体の一覧と同じ
-            "user-font" => self.一覧の中身("fontname"),
+            "user-font" => self.list_items("fontname"),
             "fontname" => {
                 // **数で切りません**(2026-08-20)。前は先頭 24 件で切っていて、
                 // 25 件目からは選べませんでした。代わりに絞り込みを付けます
@@ -1843,8 +1843,8 @@ impl Writer {
                 // 並びは共通の表+この文書の標準(テンプレートの大きさ。既定 10.5)。
                 // 前は writer 独自の12個で、+/−(共通の表を辿る)と食い違って
                 // いました — 一覧で 10.5 を選べるのに + を押すと 11 に飛びました
-                let 標準 = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
-                ui::combo::sizes_with(Some(標準))
+                let std = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+                ui::combo::sizes_with(Some(std))
                     .into_iter()
                     .map(|pt| (pt.to_string(), ui::combo::size_label(pt)))
                     .collect()
@@ -1867,13 +1867,13 @@ impl Writer {
     }
 
     /// **一覧を描く**(手順2)。位置は押したボタンの真下です。
-    fn 一覧を描く(
+    fn draw_list(
         &self,
         kind: &'static str,
         cx: &mut gpui::Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
         let us = self.ui_scale;
-        let items = self.一覧の中身(kind);
+        let items = self.list_items(kind);
         // ボタンの箱は窓の座標で控えてあります(`btn_box`)。まだ描いて
         // いなければ左上へ逃がします — 黙って消えるよりは出すほうがよい
         let (bx, by, bw, bh) = self.btn_box.borrow().get(kind).copied().unwrap_or((16.0, 8.0, 0.0, 0.0));
@@ -1904,7 +1904,7 @@ impl Writer {
             t.insert(cur, '|');
             (t, ed.text().is_empty())
         });
-        let 書体で描く = kind == "fontname";
+        let draw_with_font = kind == "fontname";
         ui::picklist::panel(
             &ui::picklist::Look {
                 bg: gpui::rgb(0xFFFFFF),
@@ -1943,15 +1943,15 @@ impl Writer {
             self.pick_sel,
             move |key: &str| ui::picklist::Deco {
                 swatch: None,
-                font: 書体で描く.then(|| key.to_string()),
+                font: draw_with_font.then(|| key.to_string()),
             },
             cx,
-            move |this: &mut Writer, key, cx| this.一覧を選ぶ(kind, key, cx),
+            move |this: &mut Writer, key, cx| this.choose_list(kind, key, cx),
         )
     }
 
     /// 一覧の項を選んだ。**閉じるのもここ**です。
-    pub(crate) fn 一覧を選ぶ(&mut self, kind: &str, key: &str, cx: &mut gpui::Context<Self>) {
+    pub(crate) fn choose_list(&mut self, kind: &str, key: &str, cx: &mut gpui::Context<Self>) {
         // 記号は**閉じません** — 続けて何個も入れる使い方(前からの形)を
         // 保ちます。閉じるのは Esc か、他のボタンを押したとき(close_menus)
         if kind == "inssymbol" {
@@ -2010,22 +2010,22 @@ impl Writer {
     }
 
     /// 一覧の件数(↑↓ の端を決めるのに使います)。
-    pub(crate) fn 一覧の数(&self, kind: &str) -> usize {
-        self.一覧の中身(kind).len()
+    pub(crate) fn n_items(&self, kind: &str) -> usize {
+        self.list_items(kind).len()
     }
 
     /// **Enter で今選んでいる項に決める**(手順2)。決めたら真。
-    pub(crate) fn 一覧を決める(&mut self, cx: &mut gpui::Context<Self>) -> bool {
+    pub(crate) fn decide_list(&mut self, cx: &mut gpui::Context<Self>) -> bool {
         // **記号は Enter で決めません**(続けて何個も入れる形なので)
         let kind = match self.open_list {
             Some(k) if k != "inssymbol" => k,
             _ => return false,
         };
-        let items = self.一覧の中身(kind);
+        let items = self.list_items(kind);
         match items.get(self.pick_sel) {
             Some((key, _)) => {
                 let key = key.clone();
-                self.一覧を選ぶ(kind, &key, cx);
+                self.choose_list(kind, &key, cx);
             }
             // 絞り込んで1つも残らなかったとき。**黙って閉じません** —
             // 打った字が悪いのか、そういう書体が無いのかが分かるように

@@ -273,8 +273,8 @@ pub(super) fn cmp_num(a: f64, b: f64) -> std::cmp::Ordering {
     if a.is_nan() || b.is_nan() {
         return Ordering::Equal; // 比べようがない。呼ぶ側が先に弾く
     }
-    let 許し = f64::EPSILON * a.abs().max(b.abs());
-    if (a - b).abs() <= 許し {
+    let allowance = f64::EPSILON * a.abs().max(b.abs());
+    if (a - b).abs() <= allowance {
         return Ordering::Equal;
     }
     if a < b { Ordering::Less } else { Ordering::Greater }

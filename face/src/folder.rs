@@ -179,8 +179,8 @@ pub fn list(dir: &Path) -> Vec<Entry> {
         out.push(Entry { name: display_name(&file_name, kind), file_name, path, kind });
     }
     out.sort_by(|a, b| {
-        let 順 = |k: Kind| if k == Kind::Folder { 0 } else { 1 };
-        順(a.kind).cmp(&順(b.kind)).then_with(|| a.name.cmp(&b.name))
+        let order_of = |k: Kind| if k == Kind::Folder { 0 } else { 1 };
+        order_of(a.kind).cmp(&order_of(b.kind)).then_with(|| a.name.cmp(&b.name))
     });
     out
 }
@@ -327,7 +327,7 @@ mod tests {
 ///
 /// 断るのは3つ — 空、区切りの字(`/` `\`)、`.` で始まる物です。
 /// `.` で始まる物は一覧に出ないので、作っても見えません。
-pub fn 名前を見る(name: &str) -> Result<(), String> {
+pub fn check_name(name: &str) -> Result<(), String> {
     let t = name.trim();
     if t.is_empty() {
         return Err(lang::i18n::tr("name_empty").to_string());
@@ -342,8 +342,8 @@ pub fn 名前を見る(name: &str) -> Result<(), String> {
 }
 
 /// 新しいフォルダを作る。**同じ名前があれば断ります**(上書きしません)。
-pub fn フォルダを作る(parent: &Path, name: &str) -> Result<PathBuf, String> {
-    名前を見る(name)?;
+pub fn make_folder(parent: &Path, name: &str) -> Result<PathBuf, String> {
+    check_name(name)?;
     let p = parent.join(name.trim());
     if p.exists() {
         return Err(format!("「{}」は既にあります", name.trim()));
@@ -355,8 +355,8 @@ pub fn フォルダを作る(parent: &Path, name: &str) -> Result<PathBuf, Strin
 /// 空のファイルを作る。**同じ名前があれば断ります**。
 ///
 /// 中身は呼ぶ側が決めます(`.adoc` なら題の1行など)。
-pub fn ファイルを作る(parent: &Path, name: &str, content: &str) -> Result<PathBuf, String> {
-    名前を見る(name)?;
+pub fn make_file(parent: &Path, name: &str, content: &str) -> Result<PathBuf, String> {
+    check_name(name)?;
     let p = parent.join(name.trim());
     if p.exists() {
         return Err(format!("「{}」は既にあります", name.trim()));
@@ -366,15 +366,15 @@ pub fn ファイルを作る(parent: &Path, name: &str, content: &str) -> Result
 }
 
 /// 名前を変える。**同じ名前があれば断ります**(上書きしません)。
-pub fn 名前を変える(from: &Path, 新しい名: &str) -> Result<PathBuf, String> {
-    名前を見る(新しい名)?;
+pub fn rename_to(from: &Path, new_name: &str) -> Result<PathBuf, String> {
+    check_name(new_name)?;
     let parent = from.parent().ok_or_else(|| lang::i18n::tr("location_unknown").to_string())?;
-    let to = parent.join(新しい名.trim());
+    let to = parent.join(new_name.trim());
     if to == from {
         return Ok(to);
     }
     if to.exists() {
-        return Err(format!("「{}」は既にあります", 新しい名.trim()));
+        return Err(format!("「{}」は既にあります", new_name.trim()));
     }
     std::fs::rename(from, &to).map_err(|e| lang::i18n::trf("cannot_rename", &[&e]).to_string())?;
     Ok(to)
@@ -384,7 +384,7 @@ pub fn 名前を変える(from: &Path, 新しい名: &str) -> Result<PathBuf, St
 ///
 /// フォルダは*空のときだけ*消します。中身ごと消す道は置きません
 /// (押し間違いで綴りが消えるのは取り返しが付きません)。
-pub fn 消す(p: &Path) -> Result<(), String> {
+pub fn remove_at(p: &Path) -> Result<(), String> {
     if p.is_dir() {
         return std::fs::remove_dir(p).map_err(|e| {
             if e.kind() == std::io::ErrorKind::DirectoryNotEmpty {

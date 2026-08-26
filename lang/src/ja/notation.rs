@@ -490,7 +490,7 @@ mod tests {
     }
 
     #[test]
-    fn 壊れた入力でも落ちない() {
+    fn broken_input_does_not_panic() {
         for s in ["", "、", "問", "問い", "い問", "々", "漢字漢字", "\u{3005}\u{3005}"] {
             let _ = findings(s);
         }

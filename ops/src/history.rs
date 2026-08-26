@@ -22,7 +22,7 @@
 use std::path::{Path, PathBuf};
 
 /// 残す世代の数。
-const 世代: usize = 9;
+const gen: usize = 9;
 
 /// 地方時のずれ(秒)。**1つのプロセスで1回だけ**調べます。
 ///
@@ -30,7 +30,7 @@ const 世代: usize = 9;
 /// `TZ_OFFSET_SECS` があればそれを、無ければ `date +%z` を1回だけ聞き、
 /// それも駄目なら UTC のまま出します(`ui::now_stamp` と同じ決め)。
 /// **1回だけ**なので、保存のたびにプロセスを起こすことにはなりません。
-fn 地方時のずれ() -> i64 {
+fn local_time_offset() -> i64 {
     static ZURE: std::sync::OnceLock<i64> = std::sync::OnceLock::new();
     *ZURE.get_or_init(|| {
         if let Some(v) = std::env::var("TZ_OFFSET_SECS").ok().and_then(|v| v.parse::<i64>().ok()) {
@@ -57,14 +57,14 @@ fn 地方時のずれ() -> i64 {
 /// 暦の算法は `sheet::civil_from_days` の1本を使います —
 /// **暦を2箇所に持たない**。
 pub fn stamp(epoch_secs: i64) -> String {
-    let secs = epoch_secs + 地方時のずれ();
+    let secs = epoch_secs + local_time_offset();
     let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
     let (y, m, d) = sheet::civil_from_days(days);
     format!("{y:04}{m:02}{d:02}-{:02}{:02}{:02}", rem / 3600, (rem % 3600) / 60, rem % 60)
 }
 
 /// 控えの置き場(`.jo-history/<ファイル名>/`)。
-fn 置き場(p: &Path) -> Option<PathBuf> {
+fn store_dir(p: &Path) -> Option<PathBuf> {
     let name = p.file_name()?.to_string_lossy().to_string();
     Some(p.parent().unwrap_or(Path::new(".")).join(".jo-history").join(name))
 }
@@ -74,7 +74,7 @@ fn 置き場(p: &Path) -> Option<PathBuf> {
 /// 控えられなくても**保存は止めません** — 控えは保険であって、
 /// 保険が掛けられないことを理由に本体の保存を諦めさせるのは逆です。
 pub fn keep(p: &Path) {
-    let Some(dir) = 置き場(p) else { return };
+    let Some(dir) = store_dir(p) else { return };
     if std::fs::create_dir_all(&dir).is_err() {
         return;
     }
@@ -91,7 +91,7 @@ pub fn keep(p: &Path) {
     if let Ok(rd) = std::fs::read_dir(&dir) {
         let mut old: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
         old.sort();
-        while old.len() > 世代 {
+        while old.len() > gen {
             let _ = std::fs::remove_file(old.remove(0));
         }
     }
@@ -99,7 +99,7 @@ pub fn keep(p: &Path) {
 
 /// 控えの一覧(新しい順)。`(画面に出す名前, 道)`。
 pub fn list(p: Option<&Path>) -> Vec<(String, PathBuf)> {
-    let Some(dir) = p.and_then(置き場) else { return Vec::new() };
+    let Some(dir) = p.and_then(store_dir) else { return Vec::new() };
     let Ok(rd) = std::fs::read_dir(&dir) else { return Vec::new() };
     let mut v: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
     v.sort();
@@ -108,14 +108,14 @@ pub fn list(p: Option<&Path>) -> Vec<(String, PathBuf)> {
         .map(|q| {
             let stem = q.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
             let kb = std::fs::metadata(&q).map(|m| m.len() / 1024).unwrap_or(0);
-            (format!("{}({kb} KB)", 見せる名(&stem)), q)
+            (format!("{}({kb} KB)", display_name(&stem)), q)
         })
         .collect()
 }
 
 /// `20260804-183012` → `2026-08-04 18:30`。読めない名前はそのまま出します
 /// (**黙って作り変えない** — 古い控えや人が置いた物かもしれません)。
-fn 見せる名(stem: &str) -> String {
+fn display_name(stem: &str) -> String {
     if stem.len() >= 13 && stem.is_ascii() && stem.as_bytes()[8] == b'-' {
         format!(
             "{}-{}-{} {}:{}",
@@ -145,16 +145,16 @@ mod tests {
 
     #[test]
     fn 名前を読みやすく直す() {
-        assert_eq!(見せる名("20260804-183012"), "2026-08-04 18:30");
+        assert_eq!(display_name("20260804-183012"), "2026-08-04 18:30");
     }
 
     /// **読めない名前はそのまま。** 古い控え(`0` になっていた物)や、
     /// 人が置いた物を勝手に作り変えない
     #[test]
     fn 読めない名前はそのまま() {
-        assert_eq!(見せる名("0"), "0");
-        assert_eq!(見せる名("控え"), "控え");
-        assert_eq!(見せる名("2026080418301"), "2026080418301", "区切りが無い");
+        assert_eq!(display_name("0"), "0");
+        assert_eq!(display_name("控え"), "控え");
+        assert_eq!(display_name("2026080418301"), "2026080418301", "区切りが無い");
     }
 
     #[test]
@@ -186,7 +186,7 @@ mod tests {
         std::fs::write(&f, "x").unwrap();
         keep(&f);
         let n = std::fs::read_dir(&hist).unwrap().count();
-        assert!(n <= 世代, "{n} 件残っている");
+        assert!(n <= gen, "{n} 件残っている");
         let _ = std::fs::remove_dir_all(&d);
     }
 }

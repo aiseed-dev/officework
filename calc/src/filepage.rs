@@ -179,7 +179,7 @@ impl Calc {
         } else if self.file_view == 3 {
             // **フォルダから探す**(2026-08-17 発注者。SFIND の写真)。
             // writer と同じ形 — 上に欄、真ん中に当たり、下に窓と「読み込み」
-            let 欄 = |this: &Calc, i: usize, ed: &Editor, w: f32, ph: &'static str| {
+            let field = |this: &Calc, i: usize, ed: &Editor, w: f32, ph: &'static str| {
                 let mut s = ed.text().to_string();
                 if this.fd_field == i {
                     let c = ed.cursor().min(s.len());
@@ -208,8 +208,8 @@ impl Calc {
                 .child(div().text_size(px(us * 16.0)).font_weight(gpui::FontWeight::BOLD)
                     .child(ui::t!("search_folder")))
                 .child(div().flex().flex_row().items_center().gap_2()
-                    .child(欄(self, 0, &self.fd_term, 280.0, "探す字"))
-                    .child(欄(self, 1, &self.fd_glob, 120.0, "*.xlsx"))
+                    .child(field(self, 0, &self.fd_term, 280.0, "探す字"))
+                    .child(field(self, 1, &self.fd_glob, 120.0, "*.xlsx"))
                     .child(push_btn("fd-dir", ui::t!("choose_folder").into()).on_click(
                         cx.listener(|t: &mut Calc, _, _, cx| { t.find_dir_dialog(cx); cx.notify() })))
                     .child(push_btn("fd-go", ui::t!("search_enter").into()).on_click(
@@ -493,9 +493,9 @@ impl Calc {
                         })))
             };
             let sh = self.sheet().name.clone();
-            let 保護中 = self.sheet().protected;
-            let 暗号 = self.encrypt_pw.is_some();
-            let 勧め = self.book.read_only_rec;
+            let protected = self.sheet().protected;
+            let crypt = self.encrypt_pw.is_some();
+            let suggest = self.book.read_only_rec;
             pane = pane
                 .child(div().text_size(px(us * 16.0))
                     .font_weight(gpui::FontWeight::BOLD)
@@ -504,22 +504,22 @@ impl Calc {
                     .child(ui::t!("what_force_now_pressing")))
                 .child(div().h(px(6.0)))
                 .child(line(ui::t!("encrypt_password").into(),
-                    if 暗号 {
+                    if crypt {
                         ui::t!("next_save").into()
                     } else {
                         ui::t!("not_set").into()
                     },
-                    暗号,
-                    if 暗号 { ui::t!("change_remove") } else { ui::t!("set_password") }.into(),
+                    crypt,
+                    if crypt { ui::t!("change_remove") } else { ui::t!("set_password") }.into(),
                     "f-prot-encrypt", "prot-encrypt", cx))
                 .child(line(ui::t!("protect_sheet_2").into(),
-                    if 保護中 {
+                    if protected {
                         ui::tf!("protected", sh).into()
                     } else {
                         ui::tf!("not_protected", sh).into()
                     },
-                    保護中,
-                    if 保護中 { ui::t!("unprotect") } else { ui::t!("protect_sheet_3") }.into(),
+                    protected,
+                    if protected { ui::t!("unprotect") } else { ui::t!("protect_sheet_3") }.into(),
                     "f-prot-doc", "prot-doc", cx))
                 .child(line(ui::t!("allowed_while_protected").into(),
                     SharedString::from(crate::util::protect_allow_summary(
@@ -527,13 +527,13 @@ impl Calc {
                     false,
                     ui::t!("choose").into(), "f-prot-allow", "prot-allow", cx))
                 .child(line(ui::t!("suggest_read_only").into(),
-                    if 勧め {
+                    if suggest {
                         ui::t!("recommended_not_lock").into()
                     } else {
                         ui::t!("not_recommended").into()
                     },
-                    勧め,
-                    if 勧め { ui::t!("cancel") } else { ui::t!("recommend") }.into(),
+                    suggest,
+                    if suggest { ui::t!("cancel") } else { ui::t!("recommend") }.into(),
                     "f-prot-ro", "read-only-rec", cx))
                 .child(line(ui::t!("final").into(),
                     if self.final_mark() {

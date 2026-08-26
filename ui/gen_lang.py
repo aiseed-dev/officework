@@ -109,8 +109,8 @@ def material():
     両方見せるのは、英語だけだと、こちら独自の機能は何のことか分からない
     からです。
     """
-    ja_訳 = load_json_translations("ja")
-    en_訳 = load_json_translations("en")
+    ja_text = load_json_translations("ja")
+    en_text = load_json_translations("en")
     rows = []
     for r in keys_authority():
         keys = r["key"]
@@ -118,8 +118,8 @@ def material():
             "kind": r["kind"],
             "key": escape(keys),        # ソースのリテラルの形
             "sym": keys,
-            "en": en_訳.get(keys, keys),
-            "ja": ja_訳.get(keys, ""),
+            "en": en_text.get(keys, keys),
+            "ja": ja_text.get(keys, ""),
         })
     return rows
 
@@ -253,14 +253,14 @@ def check_table(loc):
                      f"余分 {len(keys-want)} 例 {extra})")
     # **穴埋めは英語の訳と比べます。** 鍵は記号なので穴がありません
     # (2026-08-26)。前は鍵が文そのものだったので鍵と比べていました
-    英 = load_json_translations("en")
+    english = load_json_translations("en")
     for k, v in pairs:
-        keys, 訳 = unescape(k), unescape(v)
-        if not 訳.strip() and 英.get(keys, "").strip():
+        keys, translation = unescape(k), unescape(v)
+        if not translation.strip() and english.get(keys, "").strip():
             sys.exit(f"{loc}: 空の訳があります: {keys}")
-        if holes(英.get(keys, "")) != holes(訳):
+        if holes(english.get(keys, "")) != holes(translation):
             sys.exit(f"{loc}: 穴埋めが合いません: {keys}"
-                     f"({英.get(keys, '')[:34]} → {訳[:34]})")
+                     f"({english.get(keys, '')[:34]} → {translation[:34]})")
     return len(pairs)
 
 

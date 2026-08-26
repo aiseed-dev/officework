@@ -580,18 +580,18 @@ pub fn py_env() -> Vec<(&'static str, String)> {
 /// エディタと同じで、*作業しているフォルダの `.venv` を最優先*にするためです
 /// (2026-08-24 発注者「zed と同じように作業ディレクトリー内の仮想環境を
 /// 優先でいいでしょう」)。ここが空なら、今までどおりの順で探します。
-static 綴り: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+static folder: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
 
 /// いま開いている綴りを教える。アプリがフォルダを開いた回に呼びます。
 pub fn set_work_dir(dir: Option<PathBuf>) {
-    if let Ok(mut g) = 綴り.lock() {
+    if let Ok(mut g) = folder.lock() {
         *g = dir;
     }
 }
 
 /// いま開いている綴り(試験と、案内の文言のため)。
 pub fn work_dir() -> Option<PathBuf> {
-    綴り.lock().ok().and_then(|g| g.clone())
+    folder.lock().ok().and_then(|g| g.clone())
 }
 
 /// 裏方の Python を探す。

@@ -382,7 +382,7 @@ impl Writer {
         // **画像は隣に置きます**(HTML に埋め込みません)。HTML から見た相対の
         // 径路で参照しているので、同じ場所に同じ形で並べる必要があります
         let dir = path.parent().unwrap_or(std::path::Path::new("."));
-        let mut 書けない = 0usize;
+        let mut cannot_write = 0usize;
         for (rel, bytes) in &page.assets {
             let to = dir.join(rel);
             let ok = to
@@ -391,12 +391,12 @@ impl Writer {
                 .unwrap_or(Ok(()))
                 .and_then(|()| std::fs::write(&to, bytes.as_slice()));
             if ok.is_err() {
-                書けない += 1;
+                cannot_write += 1;
             }
         }
-        self.status = if 書けない > 0 {
+        self.status = if cannot_write > 0 {
             ui::tf!("exported_image_files_not",
-                    path.display(), 書けない).into()
+                    path.display(), cannot_write).into()
         } else if let Some(t) = used {
             // どのテンプレートで出したかは必ず言う(黙って別の見た目にしない)
             ui::tf!("exported_using_web_format",
@@ -440,14 +440,14 @@ impl Writer {
         let m = Metrics::new(&self.font_bytes).expect("フォント");
         // **印刷用のテンプレートがあれば、それで組み直してから紙にします**
         // (テンプレート-印刷.toml)。無ければ画面の紙面がそのまま紙になります
-        let 印刷用 = self.print_layout();
-        let 印刷で = 印刷用.as_ref().map(|(_, _, t)| t.clone());
+        let for_print = self.print_layout();
+        let on_print = for_print.as_ref().map(|(_, _, t)| t.clone());
         // 飾りは合成の写しから(テンプレートの分も入っている)
         let (hdr, ftr) = self.dress_hf.clone();
-        let pg = 印刷用.as_ref().map(|(_, pg, _)| *pg).unwrap_or(self.pg);
-        let sheet = 印刷用.as_ref().map(|(s, _, _)| s).unwrap_or(&self.page);
+        let pg = for_print.as_ref().map(|(_, pg, _)| *pg).unwrap_or(self.pg);
+        let sheet = for_print.as_ref().map(|(s, _, _)| s).unwrap_or(&self.page);
         // **ヘッダーのページ数も紙で数えます**(画面の枚数ではありません)
-        let total = 印刷用
+        let total = for_print
             .as_ref()
             .map(|(s, pg, _)| {
                 paper::paginate(s, paper::Paper {
@@ -486,7 +486,7 @@ impl Writer {
                 std::io::BufWriter::new(f),
             )
         });
-        self.status = match (r, 印刷で) {
+        self.status = match (r, on_print) {
             (Ok(_), Some(t)) => ui::tf!("made_pdf_using_print",
                                         p.file_name().unwrap_or_default().to_string_lossy(), t).into(),
             (Ok(_), None) => ui::tf!("pdf_written",
@@ -694,7 +694,7 @@ impl Writer {
     /// テンプレートを持たないためです
     pub(crate) fn set_para_style(&mut self, n: u8) {
         self.checkpoint(false); // 段落の様式
-        let 焼く = !self.native;
+        let bake = !self.native;
         let (pt, bold) = match n {
             1..=5 => {
                 let th = kumihan::theme::default_theme();
@@ -712,7 +712,7 @@ impl Writer {
                 kumihan::ParaStyle::Heading(n)
             };
         });
-        if 焼く {
+        if bake {
             self.size_set(pt);
             self.toggle(move |f| f.bold = bold);
         }

@@ -176,10 +176,10 @@ enum Target {
 }
 
 /// ボタンの箱の控え(id → x, y, 幅, 高さ)。点検の道具が読みます。
-type ボタンの箱 =
+type button_box =
     std::rc::Rc<std::cell::RefCell<std::collections::HashMap<&'static str, (f32, f32, f32, f32)>>>;
 /// 一覧の当たりの控え(段, 項目, x, y, 幅, 高さ)。
-type 一覧の箱 = std::rc::Rc<std::cell::RefCell<Vec<(usize, usize, f32, f32, f32, f32)>>>;
+type list_box = std::rc::Rc<std::cell::RefCell<Vec<(usize, usize, f32, f32, f32, f32)>>>;
 
 /// 一覧でしている仕事(2026-08-26)。
 ///
@@ -319,7 +319,7 @@ pub struct Writer {
     /// 当てて何度も外した(2026-08-16。3回外し、外した拍子に発注者の打鍵まで
     /// 拾った)。**網は開けない** — 環境変数 `OFFICEWORK_UI_DUMP` が指す
     /// ファイルへ書き出すだけで、既定では何も起きない
-    btn_box: ボタンの箱,
+    btn_box: button_box,
     /// 前に書き出した中身(同じなら書かない — 毎フレーム書くのは無駄)
     ui_dump_last: std::cell::RefCell<String>,
     /// **右パネルが実際に描いた面**(点検用。状態と食い違ったら分かる)
@@ -343,7 +343,7 @@ pub struct Writer {
     fd_busy: bool,
     /// **一覧の当たりの場所**(点検用。id は "fd-h-<ファイル>-<当たり>")。
     /// 箱の鍵は `&'static str` なので、控える数を上から数本に絞る
-    fd_box: 一覧の箱,
+    fd_box: list_box,
     /// **ネイティブ文書(.adoc)を開いている**(2026-08-16)。
     /// 中身は意味だけで、見た目は [`Self::theme`] が持つ。false は互換
     /// (docx)— 直接書式が本文に入っている、今までの文書
@@ -634,7 +634,7 @@ impl Writer {
     /// **いま選んでいるリボンの段**(`officework` が画面をまたいで持ち越す)。
     /// **入切のボタンが、いま入っているか**(2026-08-21 発注者
     /// 「押せるボタンだけでなくトグルボタンを作って」)。表の画面と同じ形です。
-    pub(crate) fn 入っているか(&self, id: &str) -> bool {
+    pub(crate) fn is_on(&self, id: &str) -> bool {
         match id {
             "show-toolbar" => self.show_toolbar,
             "show-statusbar" => self.show_statusbar,

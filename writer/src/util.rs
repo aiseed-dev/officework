@@ -193,7 +193,7 @@ pub(crate) fn strip_code_fence(s: &str) -> String {
 /// [`strip_code_fence`] は「返事まるごとが囲み」を剥がす道具で、こちらは
 /// **説明の中に埋まった囲み**を拾う(左パネルの会話。説明は会話に出し、
 /// 囲みの中身は「入れる」を押したときだけ文書へ入る)。
-pub(crate) fn 取り出す囲み(out: &str) -> Option<String> {
+pub(crate) fn extract_box(out: &str) -> Option<String> {
     let mut it = out.split("```");
     it.next()?; // 囲みの前(説明)
     let inner = it.next()?;

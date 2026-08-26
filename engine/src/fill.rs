@@ -284,12 +284,12 @@ fn fill_table(t: &Table, d: &Data, rep: &mut Report) -> Table {
             );
             continue;
         };
-        let データ = d.rows.get(&g).cloned().unwrap_or_default();
-        if データ.is_empty() && !d.rows.contains_key(&g) && !rep.unknown.contains(&g) {
+        let data = d.rows.get(&g).cloned().unwrap_or_default();
+        if data.is_empty() && !d.rows.contains_key(&g) && !rep.unknown.contains(&g) {
             rep.unknown.push(g.clone());
         }
-        rep.expanded.insert(g.clone(), データ.len());
-        for one in &データ {
+        rep.expanded.insert(g.clone(), data.len());
+        for one in &data {
             let look = |n: &str| match n.split_once('.') {
                 Some((gg, item)) if gg == g => one.get(item).cloned(),
                 _ => d.values.get(n).cloned(),

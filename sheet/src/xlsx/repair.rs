@@ -132,7 +132,7 @@ pub fn salvage(raw: &[u8]) -> Salvage {
         }
         let plain = match method {
             0 => Ok(body.to_vec()),
-            8 => 解く(body),
+            8 => resolve_it(body),
             m => Err(format!("知らない圧縮の方式です({m})")),
         };
         match plain {
@@ -158,7 +158,7 @@ pub fn salvage(raw: &[u8]) -> Salvage {
 }
 
 /// deflate を解く。**途中で切れていても、解けた分までを返します。**
-fn 解く(body: &[u8]) -> Result<Vec<u8>, String> {
+fn resolve_it(body: &[u8]) -> Result<Vec<u8>, String> {
     use std::io::Read;
     let mut d = flate2::read::DeflateDecoder::new(body);
     let mut out = Vec::new();

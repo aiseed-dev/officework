@@ -275,9 +275,9 @@ pub fn sidebar<V: gpui::Render>(
         .flex()
         .flex_col()
         .py_2();
-    let 下寄せの頭 = items.iter().position(|x| x.tail);
+    let bottom_head = items.iter().position(|x| x.tail);
     for (k, it) in items.iter().enumerate() {
-        if Some(k) == 下寄せの頭 {
+        if Some(k) == bottom_head {
             sb = sb.child(div().flex_1());
         } else if it.gap {
             sb = sb.child(div().h(px(10.0)));

@@ -397,7 +397,7 @@ mod tests {
     }
 
     #[test]
-    fn 壊れた入力でも落ちない() {
+    fn broken_input_does_not_panic() {
         for s in ["", "。", "\n\n", "以外", "図"] {
             let _ = filter(s);
         }

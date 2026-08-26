@@ -78,8 +78,8 @@ pub fn candidates(context: &str, targets: &[Target]) -> Vec<Suggestion> {
     if targets.is_empty() || context.is_empty() || !available() {
         return Vec::new();
     }
-    let 行ごと = analyze_all(context);
-    if 行ごと.is_empty() {
+    let per_line = analyze_all(context);
+    if per_line.is_empty() {
         return Vec::new();
     }
     targets
@@ -87,7 +87,7 @@ pub fn candidates(context: &str, targets: &[Target]) -> Vec<Suggestion> {
         .map(|t| {
             let mut readings: Vec<String> = Vec::new();
             // その語が居る行の解析だけを見ます
-            let parses: &[Parse] = 行ごと
+            let parses: &[Parse] = per_line
                 .iter()
                 .find(|ps| ps.first().is_some_and(|p| p.iter().any(|(a, _, _)| *a == t.at)))
                 .map(|v| v.as_slice())
@@ -114,18 +114,18 @@ pub fn candidates(context: &str, targets: &[Target]) -> Vec<Suggestion> {
 /// 返すのは「解析の並び」の並び — 行ごとに N 本ぶんです。
 fn analyze_all(context: &str) -> Vec<Vec<Parse>> {
     let mut out = Vec::new();
-    let mut 行頭 = 0usize;
+    let mut line_head = 0usize;
     for line in context.split('\n') {
         if !line.trim().is_empty() {
             let mut ps = analyze_line(line);
             for p in ps.iter_mut() {
                 for t in p.iter_mut() {
-                    t.0 += 行頭;
+                    t.0 += line_head;
                 }
             }
             out.push(ps);
         }
-        行頭 += line.len() + 1; // 改行のぶん
+        line_head += line.len() + 1; // 改行のぶん
     }
     out
 }
@@ -227,7 +227,7 @@ fn analyze_line(context: &str) -> Vec<Parse> {
 ///
 /// `分かれた熟語も` が偽なら、語がまるごと1つで取れたときだけ返します。
 /// 下位の解析から拾うと、別の分かれ方の読みが候補に混ざります。
-fn reading_at(p: &Parse, at: usize, base: &str, 分かれた熟語も: bool) -> Option<String> {
+fn reading_at(p: &Parse, at: usize, base: &str, split_compounds_too: bool) -> Option<String> {
     let i = p.iter().position(|(a, _, _)| *a == at)?;
     let (_, surf, yomi) = &p[i];
     if surf == base {
@@ -240,7 +240,7 @@ fn reading_at(p: &Parse, at: usize, base: &str, 分かれた熟語も: bool) -> 
         return Some(yomi.clone());
     }
     // 親字が複数の語にまたがる(熟語が分かれた場合)
-    if !分かれた熟語も {
+    if !split_compounds_too {
         return None;
     }
     let mut s = String::new();
@@ -277,7 +277,7 @@ mod tests {
 
     /// 辞書が無い機械では飛ばします。**CI を落とさない** — `mecab` は
     /// 組む時ではなく使う時の道具なので、無いことは欠陥ではありません
-    fn 辞書があるか() -> bool {
+    fn has_dict() -> bool {
         if available() {
             return true;
         }
@@ -306,7 +306,7 @@ mod tests {
     /// 辞書が両方持っていなければ、モデルが並べ替えても届きません
     #[test]
     fn 割れる語は候補が複数出る() {
-        if !辞書があるか() {
+        if !has_dict() {
             return;
         }
         let body = "人気のない路地を歩く";
@@ -324,7 +324,7 @@ mod tests {
     /// 割れない語は候補が1つ。**この語はモデルに訊かなくてよい**という印です
     #[test]
     fn 割れない語は候補が1つ() {
-        if !辞書があるか() {
+        if !has_dict() {
             return;
         }
         let s = candidates("路地を歩く", &[Target { base: "路地".into(), at: 0 }]);
@@ -345,7 +345,7 @@ mod tests {
     /// **振る相手を拾う。** 漢字を含む語だけが出て、割れる語は候補が複数
     #[test]
     fn 振る相手を拾う() {
-        if !辞書があるか() {
+        if !has_dict() {
             return;
         }
         let v = ruby_targets("人気のない路地を歩く");
@@ -354,10 +354,10 @@ mod tests {
         assert!(word.contains(&"路地"), "{word:?}");
         // ひらがなだけの語(の・ない・を)は入らない
         assert!(!word.contains(&"の"), "{word:?}");
-        let 人気 = v.iter().find(|s| s.base == "人気").expect("人気 が無い");
-        assert!(人気.readings.len() >= 2, "割れているのに候補が1つ: {:?}", 人気.readings);
-        let 路地 = v.iter().find(|s| s.base == "路地").expect("路地 が無い");
-        assert_eq!(路地.readings, vec!["ろじ".to_string()]);
+        let popularity = v.iter().find(|s| s.base == "人気").expect("人気 が無い");
+        assert!(popularity.readings.len() >= 2, "割れているのに候補が1つ: {:?}", popularity.readings);
+        let alley = v.iter().find(|s| s.base == "路地").expect("路地 が無い");
+        assert_eq!(alley.readings, vec!["ろじ".to_string()]);
     }
 
     /// **改行をまたいでも位置がずれない**(2026-08-20 に実機で踏んだ)。
@@ -367,7 +367,7 @@ mod tests {
     /// 位置も行ごとに0へ戻っていました。
     #[test]
     fn 改行をまたいでも位置が合う() {
-        if !辞書があるか() {
+        if !has_dict() {
             return;
         }
         let body = "報告書\n人気のない路地を歩く";
@@ -392,7 +392,7 @@ mod tests {
     /// 位置で指すので、同じ語が二度出ても別々に答えられます
     #[test]
     fn 同じ語が二度出ても位置で分かれる() {
-        if !辞書があるか() {
+        if !has_dict() {
             return;
         }
         let body = "山と山";

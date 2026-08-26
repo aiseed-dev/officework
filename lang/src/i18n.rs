@@ -61,7 +61,7 @@ pub fn language() -> &'static str {
         .ok()
         .filter(|s| !s.is_empty())
         .or_else(|| from_file("language"))
-        .and_then(|raw| 静かな札(&raw))
+        .and_then(|raw| quiet_tag(&raw))
         .or_else(os_language)
         .unwrap_or("ja");
     *LANG.write().expect("言語の錠") = Some(l);
@@ -84,7 +84,7 @@ fn os_language() -> Option<&'static str> {
         if v.is_empty() || v == "C" || v == "POSIX" {
             continue;
         }
-        if let Some(l) = 札に直す(&v) {
+        if let Some(l) = to_tag(&v) {
             return Some(l);
         }
     }
@@ -99,34 +99,34 @@ fn os_language() -> Option<&'static str> {
 ///
 /// 中国語は `zh_CN` が簡体、`zh_TW` と `zh_HK` が繁体です。国を落として
 /// `zh` にしてしまうと、台湾の人に簡体字が出ます。
-fn 札に直す(ロケール: &str) -> Option<&'static str> {
+fn to_tag(locale: &str) -> Option<&'static str> {
     // `.UTF-8` や `@euro` のような飾りを落とす
-    let 芯 = ロケール
+    let core = locale
         .split(['.', '@'])
         .next()
-        .unwrap_or(ロケール)
+        .unwrap_or(locale)
         .replace('_', "-");
-    if 芯.is_empty() {
+    if core.is_empty() {
         return None;
     }
     // 国まで込みで引く(pt-br / zh-tw)
-    let lower = 芯.to_ascii_lowercase();
-    if let Some(l) = 静かな札(&lower) {
+    let lower = core.to_ascii_lowercase();
+    if let Some(l) = quiet_tag(&lower) {
         return Some(l);
     }
     let lang = lower.split('-').next().unwrap_or(&lower);
     // zh_HK は繁体。表に zh-hk は無いので zh-tw へ寄せる
     if lang == "zh" && lower == "zh-hk" {
-        return 静かな札("zh-tw");
+        return quiet_tag("zh-tw");
     }
-    静かな札(lang)
+    quiet_tag(lang)
 }
 
 /// 札を、表に載っている `&'static str` に直す。無ければ `None`。
 ///
 /// **en を名指しで受けます。** 鍵が英語なので en は対訳表を持ちません
 /// (2026-08-26)。表の登録簿だけを見ると en が落ちてしまいます。
-fn 静かな札(tag: &str) -> Option<&'static str> {
+fn quiet_tag(tag: &str) -> Option<&'static str> {
     if tag == "en" {
         return Some("en");
     }
@@ -141,7 +141,7 @@ fn 静かな札(tag: &str) -> Option<&'static str> {
 /// 通します。知らない札は false — 黙って ja に落としません。
 /// 呼ばなければ今までどおり(環境変数 → settings.toml → ja)です。
 pub fn set_language(tag: &str) -> bool {
-    let Some(l) = 静かな札(tag) else { return false };
+    let Some(l) = quiet_tag(tag) else { return false };
     *LANG.write().expect("言語の錠") = Some(l);
     true
 }
@@ -198,12 +198,12 @@ pub fn language_label(tag: &str) -> &str {
 /// (`Box::leak`)。
 fn lang_map() -> Option<&'static HashMap<&'static str, &'static str>> {
     type table = HashMap<&'static str, &'static str>;
-    static 作った: OnceLock<std::sync::Mutex<HashMap<&'static str, Option<&'static table>>>> =
+    static made: OnceLock<std::sync::Mutex<HashMap<&'static str, Option<&'static table>>>> =
         OnceLock::new();
-    let 箱 = 作った.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
+    let box_of = made.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
     let l = language();
-    let mut 箱 = 箱.lock().expect("対訳表の錠");
-    *箱.entry(l).or_insert_with(|| {
+    let mut box_of = box_of.lock().expect("対訳表の錠");
+    *box_of.entry(l).or_insert_with(|| {
         crate::i18n_tables::table(l)
             .map(|t| &*Box::leak(Box::new(t.iter().copied().collect::<table>())))
     })
@@ -224,13 +224,13 @@ pub fn tr(key: &'static str) -> &'static str {
             return v;
         }
     }
-    英語の表().get(key).copied().unwrap_or(key)
+    english_table().get(key).copied().unwrap_or(key)
 }
 
 /// 英語の表。**最後の砦**なので、言語に関わらずこれだけは持っておきます。
-fn 英語の表() -> &'static HashMap<&'static str, &'static str> {
-    static 作った: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
-    作った.get_or_init(|| {
+fn english_table() -> &'static HashMap<&'static str, &'static str> {
+    static made: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+    made.get_or_init(|| {
         crate::i18n_tables::table("en")
             .map(|t| t.iter().copied().collect())
             .unwrap_or_default()
@@ -324,7 +324,7 @@ mod tests {
 ///
 /// 控えを直に触れるここへ移したので、順番の縛りが要らなくなりました。
 #[cfg(test)]
-mod 言語の決め方 {
+mod how_language_is_chosen {
     use super::*;
 
     /// **この節の試験は直列に回します。** 言語の控えも `OFFICE_LANG` も
@@ -334,15 +334,15 @@ mod 言語の決め方 {
     ///
     /// 毒された錠は中身を取り出して使います — 1本落ちたせいで
     /// 残りが「錠が毒された」で落ちると、本当の原因が見えなくなります。
-    static 錠: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    static lock_of: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     fn serially() -> std::sync::MutexGuard<'static, ()> {
-        錠.lock().unwrap_or_else(|e| e.into_inner())
+        lock_of.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     /// OS の言語設定を見る環境変数。試験では**全部押さえます** —
     /// 1つでも残っていると、回す機械の言語で答えが変わります
-    const ロケールの環境変数: [&str; 3] = ["LC_ALL", "LC_MESSAGES", "LANG"];
+    const locale_env_vars: [&str; 3] = ["LC_ALL", "LC_MESSAGES", "LANG"];
 
     /// 控えを空にしてから、環境変数を立てて引き直す。
     /// **必ず元に戻します**(呼ぶ側が錠を持っている前提)
@@ -350,41 +350,41 @@ mod 言語の決め方 {
     /// OS のロケールは `"C"` に伏せます。伏せないと、`OFFICE_LANG` も
     /// 設定も無いときの答えが**回す機械の言語で変わり**、CI と手元で
     /// 違う結果になります(2026-08-26 に OS のロケールを見るようにした)。
-    fn 引き直す(raw: Option<&str>) -> &'static str {
-        引き直す_ロケール(raw, Some("C"))
+    fn resolve_again(raw: Option<&str>) -> &'static str {
+        resolve_with_locale(raw, Some("C"))
     }
 
     /// `引き直す` の、OS のロケールも決められる版。
-    fn 引き直す_ロケール(raw: Option<&str>, ロケール: Option<&str>) -> &'static str {
-        let 元env = std::env::var_os("OFFICE_LANG");
-        let 元ロケール: Vec<_> = ロケールの環境変数
+    fn resolve_with_locale(raw: Option<&str>, locale: Option<&str>) -> &'static str {
+        let old_env = std::env::var_os("OFFICE_LANG");
+        let old_locale: Vec<_> = locale_env_vars
             .iter()
             .map(|k| (*k, std::env::var_os(k)))
             .collect();
-        let 元lang = *LANG.read().expect("言語の錠");
+        let old_lang = *LANG.read().expect("言語の錠");
         unsafe {
             match raw {
                 Some(v) => std::env::set_var("OFFICE_LANG", v),
                 None => std::env::remove_var("OFFICE_LANG"),
             }
-            for k in ロケールの環境変数 {
+            for k in locale_env_vars {
                 std::env::remove_var(k);
             }
             // 立てるのは LANG だけ。LC_ALL / LC_MESSAGES を消してあるので、
             // 見る順(LC_ALL → LC_MESSAGES → LANG)の一番下に届きます
-            if let Some(v) = ロケール {
+            if let Some(v) = locale {
                 std::env::set_var("LANG", v);
             }
         }
         *LANG.write().expect("言語の錠") = None;
         let got = language();
-        *LANG.write().expect("言語の錠") = 元lang;
+        *LANG.write().expect("言語の錠") = old_lang;
         unsafe {
-            match 元env {
+            match old_env {
                 Some(v) => std::env::set_var("OFFICE_LANG", v),
                 None => std::env::remove_var("OFFICE_LANG"),
             }
-            for (k, v) in 元ロケール {
+            for (k, v) in old_locale {
                 match v {
                     Some(v) => std::env::set_var(k, v),
                     None => std::env::remove_var(k),
@@ -397,10 +397,10 @@ mod 言語の決め方 {
     /// 環境変数で選べる
     #[test]
     fn 環境変数で選べる() {
-        let _錠 = serially();
-        assert_eq!(引き直す(Some("en")), "en");
-        assert_eq!(引き直す(Some("fr")), "fr", "fr は文言が揃っています");
-        assert_eq!(引き直す(Some("ja")), "ja");
+        let _lock = serially();
+        assert_eq!(resolve_again(Some("en")), "en");
+        assert_eq!(resolve_again(Some("fr")), "fr", "fr は文言が揃っています");
+        assert_eq!(resolve_again(Some("ja")), "ja");
     }
 
     /// **知らない札は ja に落ちる。** 文言の無い言語を名乗りません。
@@ -410,18 +410,18 @@ mod 言語の決め方 {
     /// *主張そのものが古く*なっていました(いまは揃っています)。
     #[test]
     fn 知らない札はjaに落ちる() {
-        let _錠 = serially();
-        assert_eq!(引き直す(Some("xx")), "ja");
-        assert_eq!(引き直す(Some("")), "ja");
-        assert_eq!(引き直す(None), "ja", "何も無ければ既定は ja");
+        let _lock = serially();
+        assert_eq!(resolve_again(Some("xx")), "ja");
+        assert_eq!(resolve_again(Some("")), "ja");
+        assert_eq!(resolve_again(None), "ja", "何も無ければ既定は ja");
     }
 
     /// 揃っている言語は全部受ける(表と食い違わない)
     #[test]
     fn 揃っている言語は全部受ける() {
-        let _錠 = serially();
+        let _lock = serially();
         for l in crate::i18n_tables::LANGS {
-            assert_eq!(引き直す(Some(l)), *l, "{l} が受けられない");
+            assert_eq!(resolve_again(Some(l)), *l, "{l} が受けられない");
         }
     }
 
@@ -432,13 +432,13 @@ mod 言語の決め方 {
     /// 機械の言語で出します。
     #[test]
     fn 設定が無ければosの言語で出る() {
-        let _錠 = serially();
-        assert_eq!(引き直す_ロケール(None, Some("ja_JP.UTF-8")), "ja");
-        assert_eq!(引き直す_ロケール(None, Some("en_US.UTF-8")), "en");
-        assert_eq!(引き直す_ロケール(None, Some("de_DE.UTF-8")), "de");
+        let _lock = serially();
+        assert_eq!(resolve_with_locale(None, Some("ja_JP.UTF-8")), "ja");
+        assert_eq!(resolve_with_locale(None, Some("en_US.UTF-8")), "en");
+        assert_eq!(resolve_with_locale(None, Some("de_DE.UTF-8")), "de");
         // 飾りが無い形も読む
-        assert_eq!(引き直す_ロケール(None, Some("fr_FR")), "fr");
-        assert_eq!(引き直す_ロケール(None, Some("ko")), "ko");
+        assert_eq!(resolve_with_locale(None, Some("fr_FR")), "fr");
+        assert_eq!(resolve_with_locale(None, Some("ko")), "ko");
     }
 
     /// **国で分けている札は、国まで見る**(pt-br と zh-tw)。
@@ -447,37 +447,37 @@ mod 言語の決め方 {
     /// ポルトガル語が出ます。
     #[test]
     fn 国で分けている札は国まで見る() {
-        let _錠 = serially();
-        assert_eq!(引き直す_ロケール(None, Some("pt_BR.UTF-8")), "pt-br");
-        assert_eq!(引き直す_ロケール(None, Some("pt_PT.UTF-8")), "pt");
-        assert_eq!(引き直す_ロケール(None, Some("zh_TW.UTF-8")), "zh-tw");
-        assert_eq!(引き直す_ロケール(None, Some("zh_CN.UTF-8")), "zh");
+        let _lock = serially();
+        assert_eq!(resolve_with_locale(None, Some("pt_BR.UTF-8")), "pt-br");
+        assert_eq!(resolve_with_locale(None, Some("pt_PT.UTF-8")), "pt");
+        assert_eq!(resolve_with_locale(None, Some("zh_TW.UTF-8")), "zh-tw");
+        assert_eq!(resolve_with_locale(None, Some("zh_CN.UTF-8")), "zh");
         // 香港は繁体。表に zh-hk が無いので zh-tw へ寄せる
-        assert_eq!(引き直す_ロケール(None, Some("zh_HK.UTF-8")), "zh-tw");
+        assert_eq!(resolve_with_locale(None, Some("zh_HK.UTF-8")), "zh-tw");
     }
 
     /// **書いてある設定が OS より強い。** 機械が英語でも、選んだ言語で出ます
     #[test]
     fn 書いた設定がosより強い() {
-        let _錠 = serially();
-        assert_eq!(引き直す_ロケール(Some("ja"), Some("en_US.UTF-8")), "ja");
-        assert_eq!(引き直す_ロケール(Some("de"), Some("ja_JP.UTF-8")), "de");
+        let _lock = serially();
+        assert_eq!(resolve_with_locale(Some("ja"), Some("en_US.UTF-8")), "ja");
+        assert_eq!(resolve_with_locale(Some("de"), Some("ja_JP.UTF-8")), "de");
     }
 
     /// OS の言語も読めなければ ja(いままでどおり)
     #[test]
     fn osの言語も読めなければja() {
-        let _錠 = serially();
+        let _lock = serially();
         for l in ["C", "POSIX", "", "xx_YY.UTF-8"] {
-            assert_eq!(引き直す_ロケール(None, Some(l)), "ja", "{l:?} で ja に落ちない");
+            assert_eq!(resolve_with_locale(None, Some(l)), "ja", "{l:?} で ja に落ちない");
         }
-        assert_eq!(引き直す_ロケール(None, None), "ja", "環境変数が無いとき");
+        assert_eq!(resolve_with_locale(None, None), "ja", "環境変数が無いとき");
     }
 
     /// [`set_language`] はいつ呼んでも効く(2026-08-19 の決め)
     #[test]
     fn 注いだ言語はいつでも効く() {
-        let _錠 = serially();
+        let _lock = serially();
         let from = *LANG.read().expect("言語の錠");
         assert!(set_language("de"));
         assert_eq!(language(), "de");

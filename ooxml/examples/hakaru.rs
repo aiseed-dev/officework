@@ -35,30 +35,30 @@ fn main() {
         let name = f.name().to_string();
         // XML の要素の数(`<` の数から宣言と閉じを引く近似ではなく、開き札を数える)
         let text = String::from_utf8_lossy(&s);
-        let 要素 = text.matches('<').count().saturating_sub(text.matches("</").count());
-        parts.push((name, s.len(), 要素));
+        let elem = text.matches('<').count().saturating_sub(text.matches("</").count());
+        parts.push((name, s.len(), elem));
     }
-    let 全要素: usize = parts.iter().map(|p| p.2).sum();
+    let all_elems: usize = parts.iter().map(|p| p.2).sum();
 
     // ---- 分けた側 ----
     let (doc, _rep) = ooxml::read(std::io::Cursor::new(bytes)).expect("docx が読めません");
-    let (body, 型, r) = kumihan::distill::distill(&doc);
+    let (body, kind_of, r) = kumihan::distill::distill(&doc);
     let adoc = kumihan::adoc::write(&body);
-    let toml = kumihan::theme::write(&型);
+    let toml = kumihan::theme::write(&kind_of);
 
     println!("== {path}");
     println!("docx: {} 個の部品、{} 個の XML の要素、{} バイト",
-             parts.len(), 全要素, std::fs::metadata(&path).unwrap().len());
-    let mut 大きい: Vec<_> = parts.iter().filter(|p| p.2 > 0).collect();
-    大きい.sort_by_key(|p| std::cmp::Reverse(p.2));
-    for (name, _b, 要素) in 大きい.iter().take(5) {
-        println!("      {要素:>6} 要素  {name}");
+             parts.len(), all_elems, std::fs::metadata(&path).unwrap().len());
+    let mut larger: Vec<_> = parts.iter().filter(|p| p.2 > 0).collect();
+    larger.sort_by_key(|p| std::cmp::Reverse(p.2));
+    for (name, _b, elem) in larger.iter().take(5) {
+        println!("      {elem:>6} 要素  {name}");
     }
     println!("分けた後:");
     println!("      本文(.adoc)     {:>5} 字 / {:>3} 行",
              adoc.chars().count(), adoc.lines().count());
     println!("      書式(.toml)     {:>5} 字 / {:>3} 行 / スタイル {} 個",
-             toml.chars().count(), toml.lines().count(), 型.styles.len());
+             toml.chars().count(), toml.lines().count(), kind_of.styles.len());
     println!("      落ちた所: {}", r.dropped);
 }
 
@@ -75,38 +75,38 @@ fn hakaru_html(path: &str, bytes: &[u8]) {
              src.matches("<span").count(),
              src.matches("<o:p>").count());
 
-    let (doc, 読めなかった) = kumihan::html::parse(&src);
+    let (doc, unreadable) = kumihan::html::parse(&src);
     let paras = doc.paragraphs().count();
     let table = doc.tables().count();
     let text: usize = doc.body_text().chars().count();
     println!("読んだ結果: 段落 {paras} 個 / 表 {table} 個 / 本文 {text} 字");
-    if !読めなかった.is_empty() {
-        println!("      読めなかったもの: {}", 読めなかった.join("・"));
+    if !unreadable.is_empty() {
+        println!("      読めなかったもの: {}", unreadable.join("・"));
     }
 
-    let (body, 型, r) = kumihan::distill::distill(&doc);
+    let (body, kind_of, r) = kumihan::distill::distill(&doc);
     let adoc = kumihan::adoc::write(&body);
-    let toml = kumihan::theme::write(&型);
+    let toml = kumihan::theme::write(&kind_of);
     println!("分けた後: 本文 {} 行 / {} 字、書式 {} 行(スタイル {} 個)、落ちた所 {}",
              adoc.lines().count(), adoc.chars().count(),
-             toml.lines().count(), 型.styles.len(), r.dropped);
+             toml.lines().count(), kind_of.styles.len(), r.dropped);
 
-    let page = kumihan::html_write::page(&body, &型);
+    let page = kumihan::html_write::page(&body, &kind_of);
     println!("書き直した HTML: {} 行 / {} 字(元の {:.0}%)",
              page.html.lines().count(), page.html.chars().count(),
              page.html.chars().count() as f32 / src.chars().count() as f32 * 100.0);
 
     // **中身が残ったか。** 減らしただけで字が消えていたら意味がない
-    let 元の字: String = strip(&src);
-    let 後の字: String = strip(&page.html);
-    let 残った = 元の字.chars().filter(|c| !c.is_whitespace()).count();
-    let after = 後の字.chars().filter(|c| !c.is_whitespace()).count();
-    println!("本文の字: 元 {残った} → 後 {after}");
+    let src_text: String = strip(&src);
+    let next_text: String = strip(&page.html);
+    let left_over = src_text.chars().filter(|c| !c.is_whitespace()).count();
+    let after = next_text.chars().filter(|c| !c.is_whitespace()).count();
+    println!("本文の字: 元 {left_over} → 後 {after}");
     if let Some(dir) = std::env::args().skip(1).find(|a| a.starts_with("--out=")) {
         write_out(&dir["--out=".len()..], &adoc, &toml, &page.html);
     }
-    for line in 元の字.lines().map(str::trim).filter(|l| l.len() > 6) {
-        if !後の字.contains(line) {
+    for line in src_text.lines().map(str::trim).filter(|l| l.len() > 6) {
+        if !next_text.contains(line) {
             println!("      消えた行: {line}");
         }
     }

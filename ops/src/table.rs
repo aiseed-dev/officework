@@ -85,7 +85,7 @@ pub fn fill(doc: &mut kumihan::Document) -> usize {
 
 /// 写しに答えを入れる(反復計算の設定つき)。
 pub fn fill_with(doc: &mut kumihan::Document, iter: Option<(u32, f64)>) -> usize {
-    let mut 直した = 0;
+    let mut fixed = 0;
     for b in doc.blocks.iter_mut() {
         let kumihan::Block::Table(t) = b else { continue };
         let value = values_with(t, iter);
@@ -97,14 +97,14 @@ pub fn fill_with(doc: &mut kumihan::Document, iter: Option<(u32, f64)>) -> usize
                 if kumihan::adoc::is_formula_cell(&kumihan::paras_text(&cell.paragraphs)) {
                     if let Some(v) = value.get(r).and_then(|x| x.get(c)) {
                         kumihan::set_paras_text(&mut cell.paragraphs, &v.display());
-                        直した += 1;
+                        fixed += 1;
                     }
                 }
                 c += widths;
             }
         }
     }
-    直した
+    fixed
 }
 
 /// 文書の表を、計算のためのシートに写す。
@@ -163,8 +163,8 @@ mod tests {
         let plain = display(&t);
         assert!(plain[0][0].contains('#'), "循環参照の印が出ていない: {plain:?}");
         // 反復あり: 落ち着いた値になる
-        let 反復 = display_with(&t, Some((100, 1e-9)));
-        assert!(!反復[0][0].contains('#'), "反復しても印のまま: {反復:?}");
+        let repeat = display_with(&t, Some((100, 1e-9)));
+        assert!(!repeat[0][0].contains('#'), "反復しても印のまま: {repeat:?}");
     }
 
     /// **写しに答えを入れる道でも反復が効く。**
@@ -177,9 +177,9 @@ mod tests {
     fn 写しに入れる道でも反復が効く() {
         let mut d = kumihan::Document::default();
         d.blocks.push(kumihan::Block::Table(table("", false, &[&["=B1+1", "=A1"]])));
-        let mut 反復 = d.clone();
-        fill_with(&mut 反復, Some((100, 1e-9)));
-        let kumihan::Block::Table(t) = &反復.blocks[0] else { panic!() };
+        let mut repeat = d.clone();
+        fill_with(&mut repeat, Some((100, 1e-9)));
+        let kumihan::Block::Table(t) = &repeat.blocks[0] else { panic!() };
         let out = kumihan::paras_text(&t.rows[0][0].paragraphs);
         assert!(!out.contains('#'), "写しの道に反復が効いていない: {out:?}");
         // 設定なしはいままでどおり印
@@ -290,7 +290,7 @@ mod tests {
 
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod 写しに答えを入れる {
+mod answer_into_copy {
     use super::*;
     use kumihan::{Block, Cellbox, Document, Table};
 
@@ -335,8 +335,8 @@ mod 写しに答えを入れる {
     #[test]
     fn 元は式のまま() {
         let from = doc();
-        let mut 写し = from.clone();
-        fill(&mut 写し);
+        let mut copy = from.clone();
+        fill(&mut copy);
         let t = from.blocks.iter().find_map(|b| if let Block::Table(t) = b { Some(t) } else { None }).unwrap();
         assert_eq!(kumihan::paras_text(&t.rows[3][1].paragraphs), "=SUM(B2:B3)", "元まで書き替えた");
     }

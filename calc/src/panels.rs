@@ -44,14 +44,14 @@ impl Calc {
             div().text_size(px(us * 10.5)).text_color(faint).mt_2().mb_0p5().child(t)
         };
         // 押せる小さなボタン
-        let button = move |id: &'static str, t: String, 効き: bool| {
+        let button = move |id: &'static str, t: String, enabled: bool| {
             div()
                 .id(SharedString::from(id))
                 .px_2().py_0p5().rounded_sm().cursor_pointer()
                 .text_size(px(us * 11.5))
-                .text_color(if 効き { fg } else { faint })
+                .text_color(if enabled { fg } else { faint })
                 .border_1()
-                .border_color(if 効き { accent } else { line })
+                .border_color(if enabled { accent } else { line })
                 .hover(move |s| s.bg(if dk { rgb(0x2C333A) } else { rgb(0xEAF5EE) }))
                 .child(t)
         };
@@ -84,7 +84,7 @@ impl Calc {
         };
 
         // ── 右: セルの設定 ─────────────────────────────────────────
-        let 右 = if !self.right_open {
+        let right_of = if !self.right_open {
             None
         } else {
             let f = self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
@@ -145,8 +145,8 @@ impl Calc {
                         d = d.child(ui::filelist::empty(&look));
                     }
                     for (i, e) in list.into_iter().enumerate() {
-                        let 開ける = e.kind.can_open();
-                        let 文書だ = e.kind.is_doc();
+                        let can_open = e.kind.can_open();
+                        let is_a_doc = e.kind.is_doc();
                         let path = e.path.clone();
                         // **フォルダは中へ入ります**(2026-08-26 発注者)
                         if e.kind == ui::folder::Kind::Folder {
@@ -162,7 +162,7 @@ impl Calc {
                         let mut line = ui::filelist::row(&look, i, &e, current);
                         line = line.on_click(cx.listener(move |this, _, _, cx| {
                             this.remember_folder();
-                            if !開ける {
+                            if !can_open {
                                 // **こちらで開けない種類は、機械の関連付けに渡します**
                                 // (2026-08-24 発注者「何のツールでも使えるようにする」)。
                                 // writer の一覧と同じ扱いです
@@ -182,28 +182,28 @@ impl Calc {
                                 return;
                             }
                             // **埋め込みなら種類を問わず officework に頼む**(段1)
-                            if this.embedded || 文書だ {
+                            if this.embedded || is_a_doc {
                                 this.open_request = Some(path.clone());
                             } else {
                                 this.open(path.clone());
                             }
                             cx.notify()
                         }));
-                        let 道2 = e.path.clone();
-                        let 道3 = e.path.clone();
+                        let path2 = e.path.clone();
+                        let path3 = e.path.clone();
                         d = d.child(
                             div().flex().flex_row().items_center().gap_1()
                                 .child(div().flex_1().min_w(px(0.0)).child(line))
                                 .child(ui::filelist::row_button(&look, i, "ren",
                                     ui::t!("name").into())
                                     .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.fl_start(crate::FlJob::Rename(道2.clone()));
+                                        this.fl_start(crate::FlJob::Rename(path2.clone()));
                                         cx.notify()
                                     })))
                                 .child(ui::filelist::row_button(&look, i, "del",
                                     ui::t!("erase").into())
                                     .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.fl_start(crate::FlJob::Delete(道3.clone()));
+                                        this.fl_start(crate::FlJob::Delete(path3.clone()));
                                         cx.notify()
                                     }))),
                         );
@@ -217,9 +217,9 @@ impl Calc {
                 // ── 図形と画像 ───────────────────────────────────
                 d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(fg).child(ui::t!("shapes_images").to_string()));
-                let 図 = self.shape_sel;
+                let shape_of = self.shape_sel;
                 let icon = self.img_sel;
-                if 図.is_none() && icon.is_none() {
+                if shape_of.is_none() && icon.is_none() {
                     // **選んでいないと言う。** 押せない釦を並べて黙るより、
                     // 何をすれば効くかを書く
                     d = d.child(div().text_size(px(us * 11.0)).text_color(faint).child(
@@ -227,7 +227,7 @@ impl Calc {
                             .to_string()));
                 } else {
                     d = d.child(div().text_size(px(us * 10.5)).text_color(faint)
-                        .child(if 図.is_some() {
+                        .child(if shape_of.is_some() {
                             ui::t!("shape_selected").to_string()
                         } else {
                             ui::t!("picture_selected").to_string()
@@ -329,7 +329,7 @@ impl Calc {
 
             // 罫線 — **場所 × ペン**(うちの直交モデル。MS の型スタンプは持たない)
             d = d.child(heading(ui::t!("border_pen").to_string()));
-            let 今線 = self.pen_style;
+            let cur_stroke = self.pen_style;
             let mut r = row_box();
             for (id, label_text, st) in [
                 ("pen-thin", ui::t!("thin"), sheet::model::BStyle::Thin),
@@ -338,7 +338,7 @@ impl Calc {
                 ("pen-dashed", ui::t!("dashed"), sheet::model::BStyle::Dashed),
                 ("pen-double", ui::t!("double"), sheet::model::BStyle::Double),
             ] {
-                r = r.child(button(id, label_text.to_string(), 今線 == st).on_click(
+                r = r.child(button(id, label_text.to_string(), cur_stroke == st).on_click(
                     cx.listener(move |this, _, _, cx| { this.pen_style = st; cx.notify() })));
             }
             d = d.child(r);
@@ -361,20 +361,20 @@ impl Calc {
             // 塗り — **色見本を直に並べる。** 開きっぱなしのパネルなので
             // 「一覧を開いて選んで閉じる」の3手が1手になる
             d = d.child(heading(ui::t!("fill_color").to_string()));
-            let 今塗 = f.fill.clone();
+            let cur_fill = f.fill.clone();
             let mut r = row_box();
             for (i, (_, label_text, hex)) in crate::util::fill_colors().into_iter().enumerate() {
-                let on = 今塗.as_deref() == hex;
+                let on = cur_fill.as_deref() == hex;
                 let h = hex.map(|s| s.to_string());
                 let l = label_text.to_string();
-                let 見本 = match hex {
+                let sample = match hex {
                     Some(x) => u32::from_str_radix(x, 16).unwrap_or(0xFFFFFF),
                     None => 0xFFFFFF,
                 };
                 r = r.child(div()
                     .id(SharedString::from(format!("fillsw{i}")))
                     .w(px(us * 20.0)).h(px(us * 20.0)).rounded_sm().cursor_pointer()
-                    .bg(rgb(見本))
+                    .bg(rgb(sample))
                     // 色なしは斜めの線でなく「/」の字で示す(絵を増やさない)
                     .border_1().border_color(if on { accent } else { line })
                     .when(on, |s| s.border_2())
@@ -402,7 +402,7 @@ impl Calc {
 
             // 文字の向き — 一覧と同じ6つ(鍵も同じ。xlsx の数え方で上向きが正)
             d = d.child(heading(ui::t!("text_orientation").to_string()));
-            let 今角 = f.rotation.unwrap_or(0);
+            let cur_angle = f.rotation.unwrap_or(0);
             let mut r = row_box();
             for (id, label_text, deg) in [
                 ("rot-0", ui::t!("no_rotation"), 0),
@@ -413,7 +413,7 @@ impl Calc {
                 ("rot-255", ui::t!("vertical_stack_one_character"), 255),
             ] {
                 let l = label_text.to_string();
-                r = r.child(button(id, label_text.to_string(), 今角 == deg).on_click(
+                r = r.child(button(id, label_text.to_string(), cur_angle == deg).on_click(
                     cx.listener(move |this, _, _, cx| {
                         this.set_rotation(deg, &l);
                         cx.notify()
@@ -500,11 +500,11 @@ impl Calc {
                 chat = chat.child(div().text_size(px(us * 11.0)).text_color(faint).child(
                     ui::t!("e_g_sort_sales").to_string()));
             }
-            for (自分, text) in &self.chat_log {
+            for (self_of, text) in &self.chat_log {
                 chat = chat.child(
                     div().text_size(px(us * 11.5))
-                        .text_color(if *自分 { accent } else { fg })
-                        .child(format!("{} {}", if *自分 { "▸" } else { "◂" }, text)));
+                        .text_color(if *self_of { accent } else { fg })
+                        .child(format!("{} {}", if *self_of { "▸" } else { "◂" }, text)));
             }
             d = d.child(chat);
 
@@ -576,13 +576,13 @@ impl Calc {
             d = d.child(r);
             // **宛先はここで替える**(Agent Panel はモデルを下に出す)。
             // 詳細設定まで行かずに、話しながら切り替えられる
-            let 宛 = ui::ai::backend();
+            let addressee = ui::ai::backend();
             d = d.child(div()
                 .id("chat-where")
                 .mt_1().px_1().py_0p5().rounded_sm().cursor_pointer()
                 .text_size(px(us * 10.5)).text_color(faint)
                 .hover(move |s| s.bg(if dk { rgb(0x2C333A) } else { rgb(0xEAF5EE) }))
-                .child(ui::tf!("destination_press_change", 宛.label()).to_string())
+                .child(ui::tf!("destination_press_change", addressee.label()).to_string())
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.run_cmd("ai-where", cx);
                     cx.notify()
@@ -601,7 +601,7 @@ impl Calc {
                         this.status = ui::t!("showing_comments_cell_balloons").into();
                         cx.notify()
                     })));
-            let mut 包み = div()
+            let mut wrapper = div()
                 .flex_none()
                 .w(px((if face == 0 { W + RAIL } else { RAIL }) * us))
                 .h_full()
@@ -610,12 +610,12 @@ impl Calc {
                 .flex().flex_row()
                 .child(rail_div);
             if face == 0 {
-                包み = 包み
+                wrapper = wrapper
                     .child(div().flex_none().w(px(1.0)).h_full().bg(line))
                     .child(d);
             }
-            Some(包み.into_any_element())
+            Some(wrapper.into_any_element())
         };
-        (left, 右)
+        (left, right_of)
     }
 }

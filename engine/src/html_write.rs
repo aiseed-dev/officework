@@ -273,8 +273,8 @@ pub fn fields(doc: &Document) -> Vec<Sdt> {
 /// **題名があるときは見出しを1つ下げます。** AsciiDoc の `= 題` は文書の
 /// 題名、`== 章` は最初の節です。どちらも `h1` にすると、1ページに `h1` が
 /// 2つ並んで意味が壊れます(読み上げも検索も見出しの階層を見ます)。
-fn tag_of(style: ParaStyle, 題名あり: bool) -> &'static str {
-    let d = usize::from(題名あり);
+fn tag_of(style: ParaStyle, has_title: bool) -> &'static str {
+    let d = usize::from(has_title);
     match style {
         ParaStyle::Heading(n) => match (n as usize + d).min(6) {
             1 => "h1",
@@ -349,7 +349,7 @@ fn css_rule(sel: &str, d: &StyleDef) -> String {
 /// 役割の名前(本文・見出し1〜3・引用)はタグに、それ以外の名前は class に
 /// 割り当てます。**組み方の3値もここで効きます** — 横幅が可変なら紙の幅を
 /// 使わず、区切りが無ければページの区切りも入れません。
-pub fn css(th: &Theme, 題名あり: bool) -> String {
+pub fn css(th: &Theme, has_title: bool) -> String {
     let mut o = String::new();
     o.push_str("/* officework が書き出した見た目。本文(HTML)は触らずに、ここだけ直せます */\n");
 
@@ -394,7 +394,7 @@ pub fn css(th: &Theme, 題名あり: bool) -> String {
             "本文" => "p".to_string(),
             "見出し1" | "見出し2" | "見出し3" => {
                 let n: usize = d.name.chars().last().and_then(|c| c.to_digit(10)).unwrap_or(1) as usize;
-                format!("h{}", (n + usize::from(題名あり)).min(6))
+                format!("h{}", (n + usize::from(has_title)).min(6))
             }
             "引用" => "blockquote".to_string(),
             other => format!(".{}", class_of(other)),
@@ -413,7 +413,7 @@ pub fn css(th: &Theme, 題名あり: bool) -> String {
 /// **AsciiDoc の註記は5つ**です(`NOTE:` `TIP:` `IMPORTANT:` `WARNING:`
 /// `CAUTION:`)。docx には同じ物が無いので段落のスタイルとして往復し、
 /// Web ではまとめて `aside` に出します。
-fn 註記の種(name: &str) -> Option<&'static str> {
+fn admon_kind(name: &str) -> Option<&'static str> {
     Some(match name {
         "註記" | "NOTE" => "note",
         "こつ" | "TIP" => "tip",
@@ -428,7 +428,7 @@ fn 註記の種(name: &str) -> Option<&'static str> {
 ///
 /// コードと字のままの塊は改行がそのまま意味を持つので `pre` に入れます。
 /// 例・傍注・入れ物は文章なので、段落に割ります。
-fn 中が段落(block: Option<&str>) -> bool {
+fn inner_is_para(block: Option<&str>) -> bool {
     matches!(block, Some("example") | Some("sidebar") | Some("open"))
 }
 
@@ -438,7 +438,7 @@ fn 中が段落(block: Option<&str>) -> bool {
 /// 註記が註記に見えるようにするためです(Flet や Flutter と同じ考え方で、
 /// 上から降ってくる規則に頼りません)。`class` も付けるので、
 /// 揃えたい人はスタイルシートで上書きできます。
-fn 註記の色(kind: &str) -> (&'static str, &'static str) {
+fn admon_colour(kind: &str) -> (&'static str, &'static str) {
     match kind {
         "tip" => ("#2e7d32", "#f1f8e9"),
         "important" => ("#6a1b9a", "#f3e5f5"),
@@ -449,10 +449,10 @@ fn 註記の色(kind: &str) -> (&'static str, &'static str) {
 }
 
 /// 註記の入れ物の見た目。左に色の線を引いて、下地を薄く敷きます。
-fn 註記の飾り(kind: &str) -> String {
-    let (線, 下地) = 註記の色(kind);
+fn admon_deco(kind: &str) -> String {
+    let (stroke, backdrop) = admon_colour(kind);
     format!(
-        " style=\"border-left:4px solid {線};background:{下地};\
+        " style=\"border-left:4px solid {stroke};background:{backdrop};\
          padding:.6em 1em;margin:1em 0\""
     )
 }
@@ -465,11 +465,11 @@ const CODE_STYLE: &str = " style=\"font-family:ui-monospace,SFMono-Regular,\
 /// 塊の開きのタグ。`[NOTE]` が前に付いていれば註記にします。
 ///
 /// **見た目は要素そのものに書き込みます。** 中身だけを他所へ貼っても崩れません。
-fn 塊の開き(block: Option<&str>, mark: Option<&str>) -> String {
-    if let Some(kind) = mark.and_then(註記の種) {
+fn block_open(block: Option<&str>, mark: Option<&str>) -> String {
+    if let Some(kind) = mark.and_then(admon_kind) {
         return format!(
             "<aside class=\"admonition {kind}\" role=\"note\"{}><p style=\"margin:0\">",
-            註記の飾り(kind));
+            admon_deco(kind));
     }
     match block {
         Some("literal") => format!("<pre{CODE_STYLE}>"),
@@ -484,8 +484,8 @@ fn 塊の開き(block: Option<&str>, mark: Option<&str>) -> String {
 }
 
 /// 塊の閉じのタグ。開きと必ず対にします。
-fn 塊の閉じ(block: Option<&str>, mark: Option<&str>) -> String {
-    if mark.and_then(註記の種).is_some() {
+fn block_close(block: Option<&str>, mark: Option<&str>) -> String {
+    if mark.and_then(admon_kind).is_some() {
         return "</p></aside>\n".into();
     }
     match block {
@@ -503,16 +503,16 @@ fn 塊の閉じ(block: Option<&str>, mark: Option<&str>) -> String {
 /// **AsciiDoc が決めている名前だけ**を見ます(`arabic` `loweralpha`
 /// `upperalpha` `lowerroman` `upperroman`)。返すのは (種類, 始めの数)。
 /// 番号の指定でなければ `None` です。
-fn 番号の付け方(指定: &str) -> Option<(String, Option<String>)> {
+fn number_style(attrs: &str) -> Option<(String, Option<String>)> {
     let mut kind = None;
     let mut start = None;
-    for 部 in 指定.split(',') {
-        let 部 = 部.trim();
-        if let Some(n) = 部.strip_prefix("start=") {
+    for part in attrs.split(',') {
+        let part = part.trim();
+        if let Some(n) = part.strip_prefix("start=") {
             start = Some(n.trim().to_string());
-        } else if matches!(部, "arabic" | "decimal" | "loweralpha" | "upperalpha"
+        } else if matches!(part, "arabic" | "decimal" | "loweralpha" | "upperalpha"
                                 | "lowerroman" | "upperroman") {
-            kind = Some(部.to_string());
+            kind = Some(part.to_string());
         }
     }
     if kind.is_none() && start.is_none() {
@@ -525,8 +525,8 @@ fn 番号の付け方(指定: &str) -> Option<(String, Option<String>)> {
 ///
 /// **HTML の `type` で出します。** CSS を外しても番号の種類が残るように
 /// するためです(発注者「CSS がなくても全部指定するように」)。
-fn 番号の属性(付け方: Option<(String, Option<String>)>) -> String {
-    let Some((kind, start)) = 付け方 else { return String::new() };
+fn number_attr(how_apply: Option<(String, Option<String>)>) -> String {
+    let Some((kind, start)) = how_apply else { return String::new() };
     let t = match kind.as_str() {
         "loweralpha" => "a",
         "upperalpha" => "A",
@@ -547,7 +547,7 @@ fn 番号の属性(付け方: Option<(String, Option<String>)>) -> String {
 /// **CSS を外しても効くように、属性に書き込みます。**
 /// 括弧は CSS の既定の種類では出せないので、`(1)` の段は括弧なしの
 /// 数のままです(そこだけ紙と違います)。
-fn 様式の段(depth: usize) -> String {
+fn form_level(depth: usize) -> String {
     match depth {
         0 => String::new(),                                     // 1. 2. 3.
         1 => " style=\"list-style-type:decimal\"".into(),       // (1) の段
@@ -563,11 +563,11 @@ pub fn body(doc: &Document) -> String {
 /// 本文 → HTML と、一緒に書き出す画像。
 ///
 /// 書き出した本文と、一緒に置く部品(名前と中身)。
-pub type 本文と部品 = (String, Vec<(String, Arc<Vec<u8>>)>);
+pub type body_and_parts = (String, Vec<(String, Arc<Vec<u8>>)>);
 
 /// 画像を持つ文書を書き出すときはこちらを使います。[`body`] は HTML だけを
 /// 返す入り口で、中身は同じです。
-pub fn body_with_assets(doc: &Document) -> 本文と部品 {
+pub fn body_with_assets(doc: &Document) -> body_and_parts {
     let (html, ctx) = build(doc);
     (html, ctx.assets)
 }
@@ -580,28 +580,28 @@ fn build(doc: &Document) -> (String, Ctx) {
     // ラベル付きリスト(`dl`)の途中か
     let mut in_dl = false;
     // コードの塊(`pre`)の途中か
-    let mut pre中 = false;
+    let mut in_pre = false;
     // **いま開いている塊の種類。** `----` はコード、`....` は字のまま、
     // `====` は例、`****` は傍注、`--` は入れ物です。
     // 前は全部 `<pre><code>` に落としていたので、例も傍注も註記も
     // コードに見えていました(2026-08-25 に実物を流して見つけました)
     let mut block: Option<&'static str> = None;
     // `[NOTE]` のように、塊の直前の指定の行が言う種類
-    let mut 次の塊の印: Option<String> = None;
+    let mut next_block_mark: Option<String> = None;
     // **次のリストの番号の付け方**(`[loweralpha]` `[start=5]` など)。
     // 2026-08-25 まで、この指定は読み捨てられていました。番号の種類が
     // 効かないだけでなく、*指定の行でリストが切れず3つが1つに繋がって*
     // いました。事務の様式は「第1 → 1 → (1) → ア」と種類を変えて
     // 段を作るので、ここが効かないと様式が組めません
-    let mut 次のリスト: Option<(String, Option<String>)> = None;
+    let mut next_list: Option<(String, Option<String>)> = None;
     // **次のラベル付きリストが問答形式か**(`[qanda]`)。
     // 手続きの案内は「問いと答え」で書くのが読みやすいので、
     // 用語の一覧とは別の形で出します
-    let mut 次は問答 = false;
+    let mut next_is_qanda = false;
     let mut in_qanda = false;
     // 目次の行が続いている間(nav で包む)
-    let mut 目次中 = false;
-    let 題名あり = !doc.props.title.is_empty();
+    let mut in_toc = false;
+    let has_title = !doc.props.title.is_empty();
     // **開いている段を積んで持ちます。**(2026-08-25)
     // 前は「いま開いているリストは1つ」としか持っていなかったので、
     // `**` や `..` で深くした段が Web では平らになっていました。
@@ -618,11 +618,11 @@ fn build(doc: &Document) -> (String, Ctx) {
 
     // 表題の段落(ParaStyle::Title)があればそれが出ます。段落が無く文書の
     // 情報にだけ題名があるとき(docx から来た文書など)はここで出します
-    let 題の段落 = doc
+    let title_para = doc
         .blocks
         .iter()
         .any(|b| matches!(b, Block::Para(p) if p.style == ParaStyle::Title));
-    if 題名あり && !題の段落 {
+    if has_title && !title_para {
         o.push_str(&format!("<h1 class=\"title\">{}</h1>\n", esc(&doc.props.title)));
     }
     for b in &doc.blocks {
@@ -674,8 +674,8 @@ fn build(doc: &Document) -> (String, Ctx) {
                             .collect::<Vec<_>>()
                             .join("<br>");
                         // 見出しの行のセルは `th`(読み上げも検索も見出しとして扱う)
-                        let タグ = if t.header_row && ri == 0 { "th" } else { "td" };
-                        o.push_str(&format!("<{タグ}{at}>{inner}</{タグ}>"));
+                        let tag_of = if t.header_row && ri == 0 { "th" } else { "td" };
+                        o.push_str(&format!("<{tag_of}{at}>{inner}</{tag_of}>"));
                     }
                     o.push_str("</tr>\n");
                     if t.header_row && ri == 0 {
@@ -690,33 +690,33 @@ fn build(doc: &Document) -> (String, Ctx) {
         // **作業のリスト**(`* [ ] やること` / `* [x] 済んだこと`)。
         // 読み手は種類を見分けているのに、書き出しが本文の字として
         // 出していました(印の `* [ ]` がそのままページに出ていた)
-        let 作業 = p.style_id.as_deref() == Some("チェック");
-        let (kind, 段数, inner) = if 作業 {
+        let job = p.style_id.as_deref() == Some("チェック");
+        let (kind, n_tabs, inner) = if job {
             let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
             // 印は `*` でも `-`(Markdown の書き方)でもよい
             let mark = text.chars().next().unwrap_or('*');
             let stars = text.chars().take_while(|c| *c == mark).count().max(1);
             let rest 
                 = text.trim_start_matches(mark).trim_start();
-            let (済, body) = if let Some(r) = rest.strip_prefix("[x] ").or_else(|| rest.strip_prefix("[X] ")) {
+            let (done_of, body) = if let Some(r) = rest.strip_prefix("[x] ").or_else(|| rest.strip_prefix("[X] ")) {
                 (true, r)
             } else {
                 (false, rest.trim_start_matches("[ ] "))
             };
             // **見た目は要素そのものが持ちます。** 印だけ消して素の箇条書きにすると、
             // 済んだかどうかが読めなくなります
-            let 箱 = if 済 {
+            let box_of = if done_of {
                 "<input type=\"checkbox\" checked disabled \
                  style=\"margin-right:.5em\">"
             } else {
                 "<input type=\"checkbox\" disabled style=\"margin-right:.5em\">"
             };
-            (ListKind::Bullet, stars - 1, format!("{箱}{}", esc(body)))
+            (ListKind::Bullet, stars - 1, format!("{box_of}{}", esc(body)))
         } else {
             (p.list, p.indent as usize, inner)
         };
         if kind != ListKind::None {
-            let n = 段数;
+            let n = n_tabs;
             // 深すぎる段を閉じる(親の項目も一緒に閉じます)
             while list.len() > n + 1 {
                 let k = list.pop().expect("段があるはず");
@@ -726,28 +726,28 @@ fn build(doc: &Document) -> (String, Ctx) {
             if list.len() == n + 1 {
                 o.push_str("</li>\n");          // 同じ段の前の項目を閉じる
                 if list[n] != kind {
-                    let 古 = list.pop().expect("段があるはず");
-                    o.push_str(if 古 == ListKind::Bullet { "</ul>\n" } else { "</ol>\n" });
+                    let old_of = list.pop().expect("段があるはず");
+                    o.push_str(if old_of == ListKind::Bullet { "</ul>\n" } else { "</ol>\n" });
                 }
             }
             // **作業のリストは印を消します。** `list-style:none` を属性に
             // 書き込むので、CSS が無くても点は出ません
-            let 飾り = if 作業 { " style=\"list-style:none;padding-left:0\"" } else { "" };
+            let deco = if job { " style=\"list-style:none;padding-left:0\"" } else { "" };
             while list.len() < n + 1 {
-                let 開き = if kind == ListKind::Bullet {
-                    format!("<ul{飾り}>\n")
+                let opening = if kind == ListKind::Bullet {
+                    format!("<ul{deco}>\n")
                 } else {
                     // 指定は*いちばん外の段だけ*に効かせます。
                     // 指定が無いときは、事務の様式の並び(1 →(1)→ ア)にします
-                    let 属性 = if list.is_empty() {
-                        let x = 番号の属性(次のリスト.take());
-                        if x.is_empty() { 様式の段(0) } else { x }
+                    let attr_of = if list.is_empty() {
+                        let x = number_attr(next_list.take());
+                        if x.is_empty() { form_level(0) } else { x }
                     } else {
-                        様式の段(list.len())
+                        form_level(list.len())
                     };
-                    format!("<ol{属性}>\n")
+                    format!("<ol{attr_of}>\n")
                 };
-                o.push_str(&開き);
+                o.push_str(&opening);
                 list.push(kind);
             }
             o.push_str(&format!("  <li>{inner}"));   // 閉じは次の項目か、段を閉じるとき
@@ -756,10 +756,10 @@ fn build(doc: &Document) -> (String, Ctx) {
         // **目次は nav にまとめます**(2026-08-18)。前は普通の段落として
         // 並んでいたので、Web では本文と見分けが付きませんでした。
         // 中身は作り直した静的な字です(ページ番号は紙のもの)
-        let 目次の行 = matches!(p.style, ParaStyle::Toc(_) | ParaStyle::Tof);
-        if 目次の行 != 目次中 {
-            o.push_str(if 目次の行 { "<nav class=\"toc\">\n" } else { "</nav>\n" });
-            目次中 = 目次の行;
+        let toc_line = matches!(p.style, ParaStyle::Toc(_) | ParaStyle::Tof);
+        if toc_line != in_toc {
+            o.push_str(if toc_line { "<nav class=\"toc\">\n" } else { "</nav>\n" });
+            in_toc = toc_line;
         }
         // **コードの塊は `pre` にします**(2026-08-18)。
         // `----` と `[source,python]` の行は、ここからここまでがコードだと
@@ -787,14 +787,14 @@ fn build(doc: &Document) -> (String, Ctx) {
             let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
             // **文章の塊では、空の行は段落の切れ目です。**
             // そのまま段落にすると `<p></p>` が出ます
-            if 中が段落(block) && text.trim().is_empty() {
+            if inner_is_para(block) && text.trim().is_empty() {
                 continue;
             }
-            if !pre中 {
-                o.push_str(&塊の開き(block, 次の塊の印.as_deref()));
-                pre中 = true;
+            if !in_pre {
+                o.push_str(&block_open(block, next_block_mark.as_deref()));
+                in_pre = true;
             } else {
-                o.push_str(if 中が段落(block) { "</p>\n<p>" } else { "\n" });
+                o.push_str(if inner_is_para(block) { "</p>\n<p>" } else { "\n" });
             }
             // **そのまま通す塊だけは逃がしません。** 生の HTML を書く
             // ための塊なので、逃がすと役に立ちません
@@ -805,11 +805,11 @@ fn build(doc: &Document) -> (String, Ctx) {
             }
             continue;
         }
-        if pre中 {
-            o.push_str(&塊の閉じ(block, 次の塊の印.as_deref()));
-            pre中 = false;
+        if in_pre {
+            o.push_str(&block_close(block, next_block_mark.as_deref()));
+            in_pre = false;
             block = None;
-            次の塊の印 = None;
+            next_block_mark = None;
         }
         // **横の区切り線は hr です。** 前は印の字がそのまま出ていました
         if name == Some("横の区切り線") {
@@ -823,7 +823,7 @@ fn build(doc: &Document) -> (String, Ctx) {
         }
         // **註記は aside に役割を付けます。** 前はただの段落だったので、
         // Web では本文と見分けが付きませんでした
-        if let Some(kind) = name.and_then(註記の種) {
+        if let Some(kind) = name.and_then(admon_kind) {
             close(&mut o, &mut list);
             if in_dl {
                 o.push_str("</dl>\n");
@@ -831,28 +831,28 @@ fn build(doc: &Document) -> (String, Ctx) {
             }
             o.push_str(&format!(
                 "<aside class=\"admonition {kind}\" role=\"note\"{}>{inner}</aside>\n",
-                註記の飾り(kind)));
+                admon_deco(kind)));
             continue;
         }
         if name == Some("指定の行") {
             // `[NOTE]` のような指定は、次の塊の種類になります
             let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
             let inner = text.trim().trim_start_matches('[').trim_end_matches(']');
-            if 註記の種(inner).is_some() {
-                次の塊の印 = Some(inner.to_string());
+            if admon_kind(inner).is_some() {
+                next_block_mark = Some(inner.to_string());
             }
             // **番号の付け方の指定。** ここでリストを切ります —
             // 切らないと、指定の違う3つのリストが1つに繋がります
-            if let Some(付け方) = 番号の付け方(inner) {
+            if let Some(how_apply) = number_style(inner) {
                 close(&mut o, &mut list);
-                次のリスト = Some(付け方);
+                next_list = Some(how_apply);
             }
             if inner.split(',').any(|x| x.trim() == "qanda") {
                 if in_dl {
                     o.push_str("</dl>\n");
                     in_dl = false;
                 }
-                次は問答 = true;
+                next_is_qanda = true;
             }
             continue;
         }
@@ -871,12 +871,12 @@ fn build(doc: &Document) -> (String, Ctx) {
         if p.style_id.as_deref().is_some_and(
             |n| n == "説明のリスト" || n == "説明のリストの始め") {
             let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
-            if let Some((項, _)) = text.split_once(":: ") {
+            if let Some((entry, _)) = text.split_once(":: ") {
                 close(&mut o, &mut list);
-                if 次は問答 && !in_qanda {
+                if next_is_qanda && !in_qanda {
                     o.push_str("<ol class=\"qanda\">\n");
                     in_qanda = true;
-                    次は問答 = false;
+                    next_is_qanda = false;
                 } else if !in_qanda && !in_dl {
                     o.push_str("<dl>\n");
                     in_dl = true;
@@ -884,39 +884,39 @@ fn build(doc: &Document) -> (String, Ctx) {
                 // **値の側は run のまま出します**(2026-08-18)。字だけを
                 // 取ると、記入欄・リンク・ルビが消えます(申込用紙を
                 // 通して見つけました)
-                let 切れ目 = 項.len() + ":: ".len();
-                let mut 値の並び: Vec<Run> = Vec::new();
+                let split_at = entry.len() + ":: ".len();
+                let mut value_runs: Vec<Run> = Vec::new();
                 let mut at = 0usize;
                 for r in &p.runs {
-                    let 終 = at + r.text.len();
+                    let end_of = at + r.text.len();
                     // **字を持たない run(記入欄・脚注)を落とさない。**
                     // 長さで切ると、切れ目にぴったり座っている物が消えます
-                    if 終 <= 切れ目 && at < 切れ目 {
-                        at = 終;
+                    if end_of <= split_at && at < split_at {
+                        at = end_of;
                         continue;
                     }
                     let mut r2 = r.clone();
-                    if at < 切れ目 {
-                        r2.text = r.text[切れ目 - at..].to_string();
+                    if at < split_at {
+                        r2.text = r.text[split_at - at..].to_string();
                     }
-                    値の並び.push(r2);
-                    at = 終;
+                    value_runs.push(r2);
+                    at = end_of;
                 }
-                if let Some(first) = 値の並び.first_mut() {
+                if let Some(first) = value_runs.first_mut() {
                     first.text = first.text.trim_start().to_string();
                 }
-                let value = runs_html(&値の並び, doc, &mut ctx);
+                let value = runs_html(&value_runs, doc, &mut ctx);
                 // **問いは太く、答えはその下に。** 見た目は要素そのものが持ちます
                 if in_qanda {
                     o.push_str(&format!(
                         "  <li><p style=\"font-weight:600;margin:0 0 .3em\">{}</p>\
                          <p style=\"margin:0 0 .8em\">{}</p></li>\n",
-                        esc(項.trim()), value));
+                        esc(entry.trim()), value));
                 } else {
                     o.push_str(&format!(
                         "  <dt style=\"font-weight:600\">{}</dt>\
                          <dd style=\"margin:0 0 .6em 1.5em\">{}</dd>\n",
-                        esc(項.trim()), value));
+                        esc(entry.trim()), value));
                 }
                 continue;
             }
@@ -930,7 +930,7 @@ fn build(doc: &Document) -> (String, Ctx) {
             in_qanda = false;
         }
         close(&mut o, &mut list);
-        let tag = tag_of(p.style, 題名あり);
+        let tag = tag_of(p.style, has_title);
         // class は**スタイルの名前と改ページ**の2つが入ります
         let mut cls: Vec<String> = Vec::new();
         if p.style == ParaStyle::Title {
@@ -956,16 +956,16 @@ fn build(doc: &Document) -> (String, Ctx) {
             Some(b) => format!(" id=\"{}\"", esc(b)),
             None => String::new(),
         };
-        let 余り: String = p
+        let remainder: String = p
             .bookmarks
             .iter()
             .skip(1)
             .map(|b| format!("<span id=\"{}\"></span>", esc(b)))
             .collect();
-        o.push_str(&format!("<{tag}{id}{cls}>{余り}{inner}</{tag}>\n"));
+        o.push_str(&format!("<{tag}{id}{cls}>{remainder}{inner}</{tag}>\n"));
     }
-    if pre中 {
-        o.push_str(&塊の閉じ(block, 次の塊の印.as_deref()));
+    if in_pre {
+        o.push_str(&block_close(block, next_block_mark.as_deref()));
     }
     close(&mut o, &mut list);
     if in_qanda {
@@ -975,7 +975,7 @@ fn build(doc: &Document) -> (String, Ctx) {
         o.push_str("</dl>\n");
     }
     close(&mut o, &mut list);
-    if 目次中 {
+    if in_toc {
         o.push_str("</nav>\n");
     }
     // 脚注は最後に並べます。番号から本文へ戻れるようにします

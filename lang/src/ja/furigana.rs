@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn 同じ語が二箇所あれば別々の位置に付く() {
+    fn 同じ語が二箇所あれば別々attaches_at() {
         let ts = [t("後", 5), t("後", 40)];
         let c = r#"[{"base":"後","readings":["のち"]},{"base":"後","readings":["あと"]}]"#;
         let s = parse_suggestions(c, &ts);

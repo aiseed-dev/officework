@@ -173,14 +173,14 @@ def build(out: pathlib.Path) -> None:
         f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         f'<xdr:wsDr xmlns:xdr="{NS_XDR}" xmlns:a="{NS_A}">'
         # 0番目: 会社のロゴ。表と一緒に伸び縮みする置き方
-        f'{anchor_from_to(0, 0, 2, 3)}{pic(2, "ロゴ", "rId1")}</xdr:twoCellAnchor>'
+        f'{anchor_from_to(0, 0, 2, 3)}{pic(2, "logo", "rId1")}</xdr:twoCellAnchor>'
         # 1番目: 検印。大きさ固定
-        f'{anchor_one(3, 4, 64, 64)}{pic(3, "検印", "rId2")}</xdr:oneCellAnchor>'
+        f'{anchor_one(3, 4, 64, 64)}{pic(3, "stamp", "rId2")}</xdr:oneCellAnchor>'
         # 2番目: 絵ではない図形
-        f'{anchor_from_to(0, 8, 2, 10)}{shape(4, "注意書き", "社外秘", "FFF2CC")}'
+        f'{anchor_from_to(0, 8, 2, 10)}{shape(4, "caution", "confidential", "FFF2CC")}'
         f"</xdr:twoCellAnchor>"
         # 3番目: グラフ。**中身は持たないが、在ったことは言う**の道を試す
-        f'{anchor_from_to(4, 0, 8, 8)}{chart_frame(5, "四半期の売上", "rId3")}'
+        f'{anchor_from_to(4, 0, 8, 8)}{chart_frame(5, "quarterly_sales", "rId3")}'
         f"</xdr:twoCellAnchor></xdr:wsDr>"
     )
 

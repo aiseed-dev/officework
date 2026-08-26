@@ -74,7 +74,7 @@ impl Calc {
     ///
     /// 入っている物は押された形で描きます。*見れば分かる*ようにするためで、
     /// 押してみないと分からない、をやめます。
-    pub(crate) fn 入っているか(&self, id: &str) -> bool {
+    pub(crate) fn is_on(&self, id: &str) -> bool {
         match id {
             "formula-bar" => self.show_formula_bar,
             "show-zeros" => self.show_zeros,
@@ -122,7 +122,7 @@ impl Calc {
     /// **一覧の仕事を始める。** 名前を打つ欄を出します(2026-08-26)。
     pub(crate) fn fl_start(&mut self, job: crate::FlJob) {
         use crate::FlJob as J;
-        let (前置き, 案内) = match &job {
+        let (preamble, guide) = match &job {
             J::NewFolder => (String::new(), ui::t!("type_name_new_folder").to_string()),
             J::NewSheet => (String::new(), ui::t!("type_name_new_sheet").to_string()),
             J::Rename(p) => (
@@ -138,8 +138,8 @@ impl Calc {
         // **calc の「打って Enter」の口に乗せます**(`finish_prompt`)。
         // 自前の欄を足すと、Esc と打鍵の行き先を2重に持つことになります
         self.fl_job = Some(job);
-        self.prompt = Some(("fl-name", Editor::new(&前置き)));
-        self.status = 案内.into();
+        self.prompt = Some(("fl-name", Editor::new(&preamble)));
+        self.status = guide.into();
     }
 
     /// **一覧の仕事を実行する。** 断られたら欄を開いたままにします。
@@ -147,9 +147,9 @@ impl Calc {
         use crate::FlJob as J;
         let Some(job) = self.fl_job.clone() else { return };
         let now = self.folder();
-        let 結果: Result<String, String> = match &job {
+        let result: Result<String, String> = match &job {
             J::NewFolder => match now {
-                Some(d) => ui::folder::フォルダを作る(&d, &name).map(|p| {
+                Some(d) => ui::folder::make_folder(&d, &name).map(|p| {
                     ui::tf!("created",
                         p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
                 }),
@@ -165,13 +165,13 @@ impl Calc {
                         format!("{}.sheet.adoc", t.trim_end_matches(".adoc"))
                     };
                     let title = t.trim_end_matches(".sheet.adoc").trim_end_matches(".adoc");
-                    ui::folder::ファイルを作る(&d, &n, &format!("= {title}\n"))
+                    ui::folder::make_file(&d, &n, &format!("= {title}\n"))
                         .map(|p| ui::tf!("created",
                             p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string())
                 }
                 None => Err(ui::t!("no_folder_open").to_string()),
             },
-            J::Rename(from) => ui::folder::名前を変える(from, &name).map(|to| {
+            J::Rename(from) => ui::folder::rename_to(from, &name).map(|to| {
                 if self.path.as_deref() == Some(from.as_path()) {
                     self.path = Some(to.clone());
                 }
@@ -183,14 +183,14 @@ impl Calc {
                 if self.path.as_deref() == Some(path.as_path()) {
                     Err(ui::t!("cant_delete_file_open").to_string())
                 } else {
-                    ui::folder::消す(path).map(|_| {
+                    ui::folder::remove_at(path).map(|_| {
                         ui::tf!("deleted",
                             path.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
                     })
                 }
             }
         };
-        match 結果 {
+        match result {
             Ok(told) => {
                 self.fl_job = None;
                 self.status = told.into();
@@ -1979,7 +1979,7 @@ impl Calc {
     /// ここは並びの何番目かで数えます。
     ///
     /// 右から左のシートは列の並びが逆になるので、帯は右側に来ます。
-    pub(crate) fn 分割の境目(&self) -> (Option<f32>, Option<f32>, bool) {
+    pub(crate) fn split_edge(&self) -> (Option<f32>, Option<f32>, bool) {
         let Some(sp) = self.split else { return (None, None, false) };
         let rtl = self.sheet().rtl;
         let y = (sp.row > 0).then(|| {
@@ -1988,8 +1988,8 @@ impl Calc {
         });
         let x = (sp.col > 0).then(|| {
             let cols = self.visible_cols();
-            let 手前 = if rtl { cols.len().saturating_sub(sp.col as usize) } else { 0 };
-            let n = if rtl { 手前 } else { sp.col as usize };
+            let just_before = if rtl { cols.len().saturating_sub(sp.col as usize) } else { 0 };
+            let n = if rtl { just_before } else { sp.col as usize };
             HEAD_W + cols.iter().take(n).map(|&c| self.col_px(c)).sum::<f32>()
         });
         (y, x, rtl)
@@ -2493,18 +2493,18 @@ impl Calc {
             // **会話は書類に入れない。** 左パネルに返し、変更案(Python)は
             // 人が「入れる」を押すまで走らせない — **押したのは人**が残る形
             CalcAi::Chat(_) => {
-                let 案 = 取り出す囲み(&out);
-                let 見せる = if let Some(code) = &案 {
+                let plan = extract_box(&out);
+                let show = if let Some(code) = &plan {
                     // 囲みの外の説明だけを会話に出す(台本は下の欄に置く)
-                    let 説明 = out.replace(&format!("```python\n{code}\n```"), "")
+                    let desc = out.replace(&format!("```python\n{code}\n```"), "")
                         .replace(&format!("```\n{code}\n```"), "");
-                    let t = 説明.trim().to_string();
+                    let t = desc.trim().to_string();
                     if t.is_empty() { ui::t!("here_change").to_string() } else { t }
                 } else {
                     out.clone()
                 };
-                self.chat_log.push((false, 見せる));
-                self.chat_plan = 案;
+                self.chat_log.push((false, show));
+                self.chat_plan = plan;
                 self.status = if self.chat_plan.is_some() {
                     ui::t!("proposed_change_ready_read").into()
                 } else {
@@ -2704,7 +2704,7 @@ pub(crate) fn sheet_var(name: &str) -> String {
 
 /// AI の答えから ```python …``` の囲みを取り出す。**囲みが無ければ None**
 /// (表を直さない答え)。囲みの言語札は省かれることもあるので両方見る
-pub(crate) fn 取り出す囲み(out: &str) -> Option<String> {
+pub(crate) fn extract_box(out: &str) -> Option<String> {
     let mut it = out.split("```");
     it.next()?; // 囲みの前
     let inner = it.next()?;
@@ -2802,22 +2802,22 @@ impl Calc {
     /// 前は毎回1往復で切れていて、「さっきの表を今度は昇順に」が通らなかった。
     /// 一問一答の口(`ask`)しか無いので、**書き起こしを頼みの頭に畳んで**
     /// 渡す。直近だけにするのは、長い会話でセルの中身ごと膨らませないため
-    pub(crate) fn chat_ask(&mut self, 用件: String, cx: &mut Context<Self>) {
-        self.chat_log.push((true, 用件.clone()));
+    pub(crate) fn chat_ask(&mut self, purpose: String, cx: &mut Context<Self>) {
+        self.chat_log.push((true, purpose.clone()));
         self.chat_plan = None;
         // 直近の6つ(3往復)まで。**いま足した自分の発言は除く**
         let n = self.chat_log.len().saturating_sub(1);
         let before = &self.chat_log[n.saturating_sub(6)..n];
         let q = if before.is_empty() {
-            用件
+            purpose
         } else {
             let mut s = String::from("これまでのやりとり:\n");
-            for (自分, text) in before {
-                s.push_str(if *自分 { "私: " } else { "あなた: " });
+            for (self_of, text) in before {
+                s.push_str(if *self_of { "私: " } else { "あなた: " });
                 s.push_str(text);
                 s.push('\n');
             }
-            format!("{s}\n続けて、次の頼みに答えてください。\n{用件}")
+            format!("{s}\n続けて、次の頼みに答えてください。\n{purpose}")
         };
         self.ai_go(CalcAi::Chat(q), cx);
     }
@@ -2835,12 +2835,12 @@ impl Calc {
     /// Agent Panel の「走らせて、落ちたら直す」の芯はここ(2026-08-16)
     pub(crate) fn chat_fix(&mut self, cx: &mut Context<Self>) {
         let Some(err) = self.chat_err.take() else { return };
-        let 案 = self.chat_plan.clone().unwrap_or_default();
+        let plan = self.chat_plan.clone().unwrap_or_default();
         self.chat_ask(
             ui::tf!(
                 "previous_script_failed_read",
                 err,
-                案
+                plan
             ),
             cx,
         );

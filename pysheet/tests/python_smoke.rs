@@ -69,14 +69,14 @@ fn python側から帳票を差し込める() {
     //   Linux   lib_sheet.so
     //   mac     lib_sheet.dylib
     //   Windows _sheet.dll(頭に lib が付かない)
-    let 組んだ名 = if cfg!(target_os = "windows") {
+    let built_name = if cfg!(target_os = "windows") {
         "_sheet.dll"
     } else if cfg!(target_os = "macos") {
         "lib_sheet.dylib"
     } else {
         "lib_sheet.so"
     };
-    let so = debug.join(組んだ名);
+    let so = debug.join(built_name);
     assert!(so.exists(), "{} が無い", so.display());
 
     // 写しの作業場所。前の回の残りが混ざらないよう、毎回作り直す
@@ -98,8 +98,8 @@ fn python側から帳票を差し込める() {
     }
     // **Python が探す名前も OS で違う。** Windows は `.pyd`、
     // mac は `.dylib` ではなく `.so`(CPython の作法)
-    let 置く名 = if cfg!(target_os = "windows") { "_sheet.pyd" } else { "_sheet.so" };
-    std::fs::copy(&so, pkg_dst.join(置く名)).expect("置けない");
+    let put_name = if cfg!(target_os = "windows") { "_sheet.pyd" } else { "_sheet.so" };
+    std::fs::copy(&so, pkg_dst.join(put_name)).expect("置けない");
 
     // **先に名乗らせる。** どの Python で、どの _sheet を読んだか。
     // status() は子の出力を素通しにするので、CI で落ちたときも
@@ -107,7 +107,7 @@ fn python側から帳票を差し込める() {
     // -u はバッファを切る(ネイティブに落ちると print がバッファごと消え、
     // 何も出ないまま死ぬ — mac の赤がその形だった)。-X faulthandler は
     // ネイティブに落ちたときに、どこで落ちたかを stderr に書き出す
-    let 名乗り = Command::new(py)
+    let declares = Command::new(py)
         .args([
             "-u",
             "-X",
@@ -121,7 +121,7 @@ fn python側から帳票を差し込める() {
         .current_dir(&stage)
         .status()
         .unwrap_or_else(|e| panic!("{py} を回せない: {e}"));
-    assert!(名乗り.success(), "officework を import できない(理由は直前の出力)");
+    assert!(declares.success(), "officework を import できない(理由は直前の出力)");
 
     // xlsx(sheet)と docx(doc)。**同じ .so で両方**が動くことまで見る —
     // 1つの wheel に同居させているので、片方だけ通っても足りない。

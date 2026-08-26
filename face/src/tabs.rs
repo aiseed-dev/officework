@@ -33,12 +33,12 @@ pub struct Slot {
 pub fn merged() -> Vec<Slot> {
     let w = ribbon::writer_tabs();
     let c = ribbon::calc_tabs();
-    let 表の番号 = |name: &str| c.iter().position(|t| t.name == name);
+    let table_index = |name: &str| c.iter().position(|t| t.name == name);
 
     let mut out: Vec<Slot> = w
         .iter()
         .enumerate()
-        .map(|(i, t)| Slot { name: t.name, doc: Some(i), sheet: 表の番号(t.name) })
+        .map(|(i, t)| Slot { name: t.name, doc: Some(i), sheet: table_index(t.name) })
         .collect();
 
     // 表だけの段を、レイアウトの後ろへ順に差し込みます。文章の並びは
@@ -48,8 +48,8 @@ pub fn merged() -> Vec<Slot> {
         // **ファイルの段は名前で書きません**(2026-08-26)。表はその言語の
         // 物なので、"ファイル" と書くと英語の画面では当たりません。
         // ファイルは先頭と決まっているので、同じ表の先頭と比べます
-        .position(|t| 表の番号(t.name).is_some() && Some(t.name) != w.first().map(|x| x.name))
-        .map(|_| レイアウトの次(&out))
+        .position(|t| table_index(t.name).is_some() && Some(t.name) != w.first().map(|x| x.name))
+        .map(|_| after_layout(&out))
         .unwrap_or(out.len());
     for (i, t) in c.iter().enumerate() {
         if w.iter().any(|x| x.name == t.name) {
@@ -65,7 +65,7 @@ pub fn merged() -> Vec<Slot> {
 ///
 /// 名前で探すのは翻訳に弱いので、**5番目**(ファイル・ホーム・挿入・描画・
 /// レイアウト)を既定にし、段がそれより少なければ末尾にします。
-fn レイアウトの次(out: &[Slot]) -> usize {
+fn after_layout(out: &[Slot]) -> usize {
     5.min(out.len())
 }
 
@@ -99,10 +99,10 @@ mod tests {
     #[test]
     fn 共通の段は名前が一致する() {
         let m = merged();
-        let 共通: Vec<&Slot> =
+        let common: Vec<&Slot> =
             m.iter().filter(|s| s.doc.is_some() && s.sheet.is_some()).collect();
-        assert_eq!(共通.len(), 9, "{:?}", 共通.iter().map(|s| s.name).collect::<Vec<_>>());
-        for s in 共通 {
+        assert_eq!(common.len(), 9, "{:?}", common.iter().map(|s| s.name).collect::<Vec<_>>());
+        for s in common {
             let d = ribbon::writer_tabs()[s.doc.expect("文章の段")].name;
             let c = ribbon::calc_tabs()[s.sheet.expect("表の段")].name;
             assert_eq!(d, c, "共通の段なのに名前が違う");

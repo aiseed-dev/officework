@@ -147,10 +147,10 @@ def rows():
 
 def main() -> int:
     r = rows()
-    未 = [x for x in r if x[3] == "*未分類*"]
-    if 未:
+    not_yet = [x for x in r if x[3] == "*未分類*"]
+    if not_yet:
         print("仕分けていないボタン:", file=sys.stderr)
-        for t, lb, i, _, _ in 未:
+        for t, lb, i, _, _ in not_yet:
             print(f"  {t} {lb} ({i})", file=sys.stderr)
         return 1
     ids = {x[2] for x in r if x[2] != "(灰色)"}
@@ -163,11 +163,11 @@ def main() -> int:
         print('[cols="1,1,3"]')
         print("|===")
         print("|落とす理由 |数 |中身\n")
-        理由 = {}
+        reason = {}
         for t, lb, i, dou, w in r:
             if dou == "無い":
-                理由.setdefault(w, set()).add(lb)
-        for w, s in sorted(理由.items(), key=lambda kv: -len(kv[1])):
+                reason.setdefault(w, set()).add(lb)
+        for w, s in sorted(reason.items(), key=lambda kv: -len(kv[1])):
             inner = "・".join(sorted(s)[:8]) + ("ほか" if len(s) > 8 else "")
             print(f"|{w} |{len(s)} |{inner}")
         print("|===")

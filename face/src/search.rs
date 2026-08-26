@@ -292,7 +292,7 @@ mod tests {
 
     /// 見本の場所。**試験ごとに別の名前**にする — 同じ名前だと、並んで走る
     /// 試験どうしが片づけ合って「無い」と言い出す(2026-08-17 に踏んだ)
-    fn 見本の場所(name: &str) -> PathBuf {
+    fn sample_dir(name: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("owsearch-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(d.join("下")).unwrap();
@@ -307,7 +307,7 @@ mod tests {
 
     #[test]
     fn 下の階層まで探し_隠しフォルダは辿らない() {
-        let d = 見本の場所("walk");
+        let d = sample_dir("walk");
         let (v, t) = walk(&d, &Query::plain("unstructured"));
         let names: Vec<String> =
             v.iter().map(|f| f.path.file_name().unwrap().to_string_lossy().to_string()).collect();
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn 大文字と小文字を区別できる() {
-        let d = 見本の場所("case");
+        let d = sample_dir("case");
         let mut q = Query::plain("Unstructured");
         q.case = true;
         let (v, _) = walk(&d, &q);
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn 名前で絞れる() {
-        let d = 見本の場所("glob");
+        let d = sample_dir("glob");
         let mut q = Query::plain("unstructured");
         q.glob = "*.md".into();
         let (v, _) = walk(&d, &q);
@@ -352,7 +352,7 @@ mod tests {
 
     #[test]
     fn 打ち切ったらそう言う() {
-        let d = 見本の場所("cut");
+        let d = sample_dir("cut");
         let mut q = Query::plain("unstructured");
         q.max_files = 1;
         let (_, t) = walk(&d, &q);
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn 知らない形式は呼ぶ側が中身を渡せる() {
-        let d = 見本の場所("ext");
+        let d = sample_dir("ext");
         std::fs::write(d.join("五.docx"), [0u8; 8]).unwrap();
         let f = |p: &Path| -> Option<String> {
             p.extension()

@@ -370,10 +370,10 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             // 行間と**段落の前後の空き**。前は w:line だけ書いていたので、
             // Word の文書を開いて保存すると before / after が黙って消えていた
             // (2026-08-15)。twips = pt × 20
-            let 行間あり = (p.spacing() - 1.0).abs() > 0.001;
+            let has_line_spacing = (p.spacing() - 1.0).abs() > 0.001;
             let before = (p.space_before_pt * 20.0).round() as u32;
             let after = (p.space_after_pt * 20.0).round() as u32;
-            if 行間あり || before > 0 || after > 0 {
+            if has_line_spacing || before > 0 || after > 0 {
                 let mut sp = BS::new("w:spacing");
                 if before > 0 {
                     sp.push_attribute(("w:before", before.to_string().as_str()));
@@ -381,7 +381,7 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 if after > 0 {
                     sp.push_attribute(("w:after", after.to_string().as_str()));
                 }
-                if 行間あり {
+                if has_line_spacing {
                     sp.push_attribute(("w:line", ((p.spacing() * 240.0).round() as u32).to_string().as_str()));
                     sp.push_attribute(("w:lineRule", "auto"));
                 }

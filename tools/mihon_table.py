@@ -109,7 +109,7 @@ def main() -> int:
         print("|アプリ |タブ |ボタン |id |いまの状態 |どうする |見本の中身\n")
         for a, t, lb, i, ima, dou, naka in r:
             app = "writer" if a == "WRITER" else "calc"
-            print(f"|{app} |{t} |{lb} |{'—' if i == '(灰色)' else '`' + i + '`'} "
+            print(f"|{app} |{t} |{lb} |{'—' if i == '(grey_of)' else '`' + i + '`'} "
                   f"|{ima} |{dou} |{naka}")
         print("|===")
     else:
