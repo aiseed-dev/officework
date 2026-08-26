@@ -31,6 +31,10 @@ TARGETS = [
     "docs/ja/api-taiou.adoc", "docs/ja/genkou-manual.adoc",
     "docs/ja/docx-xlsx-tono-chigai.adoc",
     "docs/ja/commands/*.adoc", "docs/ja/commands/*/*.adoc",
+    # **画面の文言**(2026-08-26 の段4)。利用者がいちばん読む字なのに、
+    # ここが見張りの外にありました。鍵が記号になって日本語が1枚の
+    # ファイルに集まったので、そのまま見られます
+    "ui/i18n/ja.json",
 ]
 
 # 見ないもの(経緯を残す場所)
@@ -124,6 +128,8 @@ def files():
 def main():
     hits = []
     for rel, p in files():
+        # `ui/i18n/ja.json` は1行に「"鍵": "訳"」が並びます。行ごとに見れば
+        # 訳の中の言葉が拾えます(鍵は記号なので当たりません)
         for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
             for pat, better in WORDS:
                 m = re.search(pat, line)

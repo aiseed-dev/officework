@@ -2964,7 +2964,7 @@ mod recalc_tests {
             assert!(!this.final_mark(), "はじめから付いている");
             this.run_cmd("final-mark", cx);
             assert!(this.final_mark(), "付かない");
-            assert!(this.status.contains("鍵ではありません"), "{}", this.status);
+            assert!(this.status.contains("読み取り専用ではありません"), "{}", this.status);
 
             // xlsx へ書いて読み戻す
             let mut buf = std::io::Cursor::new(Vec::new());
