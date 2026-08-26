@@ -31,7 +31,7 @@
 //! ように**、`every_format_field_is_carried` が `types.rs` と突き合わせます。
 
 use super::words;
-use crate::book::{BStyle, Borders, CellFormat, Edge, HAlign, VAlign};
+use book::{BStyle, Borders, CellFormat, Edge, HAlign, VAlign};
 
 /// 罫線を引く場所の記号
 pub const EDGES: &[&str] = &["edge_top", "edge_bottom", "edge_left", "edge_right"];
@@ -310,7 +310,7 @@ fn read_theme_color(s: &str) -> Option<(u8, i32)> {
 }
 
 /// グラデーションは `[道] 角度 位置:色 位置:色 …`
-fn read_grad(s: &str) -> Option<crate::book::Gradient> {
+fn read_grad(s: &str) -> Option<book::Gradient> {
     let mut it = s.split_whitespace().peekable();
     let mut path = None;
     if it.peek().is_some_and(|x| x.parse::<f32>().is_err()) {
@@ -324,7 +324,7 @@ fn read_grad(s: &str) -> Option<crate::book::Gradient> {
             Some(((at * 1000.0).round() as u32, c.to_string()))
         })
         .collect();
-    Some(crate::book::Gradient {
+    Some(book::Gradient {
         degree_c: (degree * 60000.0).round() as i32,
         stops,
         path,
@@ -348,7 +348,7 @@ mod tests {
     /// 欄を足して [`FIELDS`] に足し忘れると、その書式は往復しません。
     #[test]
     fn every_format_field_is_carried() {
-        let src = include_str!("../book/types.rs");
+        let src = include_str!("../../../book/src/types.rs");
         let head = "pub struct CellFormat {";
         let from = src.find(head).expect("CellFormat が無い");
         let body = &src[from + head.len()..];

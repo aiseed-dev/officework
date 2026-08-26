@@ -1,0 +1,11 @@
+[package]
+name = "book"    # ブックの模型と式の計算。**どのエンジンの持ち物でもない**
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+description = "表計算のブックの模型(ブック・シート・セル・値)と式の計算。交換の形式には縛られない"
+
+[dependencies]
+
+[dev-dependencies]
+quick-xml = "0.36"  # 図形の SVG が本当に読める形かを試験で確かめる

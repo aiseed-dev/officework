@@ -9,7 +9,7 @@
 //! 0=背景1 1=文字1 2=背景2 3=文字2 4〜9=アクセント1〜6 10=リンク 11=既読リンク。
 //! (theme1.xml の中の並びは dk1,lt1,dk2,lt2,… なので読むときに入れ替える)
 
-use kumihan::book::theme::OFFICE;
+use book::theme::OFFICE;
 
 /// `theme1.xml` から色の組を読む。読めない部分は Office の色で埋める。
 pub fn parse(xml: &str) -> Vec<String> {

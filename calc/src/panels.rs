@@ -298,9 +298,9 @@ impl Calc {
             d = d.child(heading(ui::t!("alignment").to_string()));
             let mut r = row_box();
             for (id, label_text, cmd, on) in [
-                ("rp-al", ui::t!("left"), "align-left", f.align == kumihan::book::HAlign::Left),
-                ("rp-ac", ui::t!("centre"), "align-center", f.align == kumihan::book::HAlign::Center),
-                ("rp-ar", ui::t!("right"), "align-right", f.align == kumihan::book::HAlign::Right),
+                ("rp-al", ui::t!("left"), "align-left", f.align == book::HAlign::Left),
+                ("rp-ac", ui::t!("centre"), "align-center", f.align == book::HAlign::Center),
+                ("rp-ar", ui::t!("right"), "align-right", f.align == book::HAlign::Right),
                 ("rp-wrap", ui::t!("wrap"), "wrap", f.wrap),
             ] {
                 r = r.child(button(id, label_text.to_string(), on).on_click(
@@ -332,11 +332,11 @@ impl Calc {
             let cur_stroke = self.pen_style;
             let mut r = row_box();
             for (id, label_text, st) in [
-                ("pen-thin", ui::t!("thin"), kumihan::book::BStyle::Thin),
-                ("pen-medium", ui::t!("middle"), kumihan::book::BStyle::Medium),
-                ("pen-thick", ui::t!("thick"), kumihan::book::BStyle::Thick),
-                ("pen-dashed", ui::t!("dashed"), kumihan::book::BStyle::Dashed),
-                ("pen-double", ui::t!("double"), kumihan::book::BStyle::Double),
+                ("pen-thin", ui::t!("thin"), book::BStyle::Thin),
+                ("pen-medium", ui::t!("middle"), book::BStyle::Medium),
+                ("pen-thick", ui::t!("thick"), book::BStyle::Thick),
+                ("pen-dashed", ui::t!("dashed"), book::BStyle::Dashed),
+                ("pen-double", ui::t!("double"), book::BStyle::Double),
             ] {
                 r = r.child(button(id, label_text.to_string(), cur_stroke == st).on_click(
                     cx.listener(move |this, _, _, cx| { this.pen_style = st; cx.notify() })));

@@ -6,9 +6,9 @@
 //! 「開いて・直して・刷る」を試すための普通の帳票。中身はすべて架空。
 //! サンプルは生成物 — 直すのはこのファイル。
 
-use kumihan::book::{Borders, CondKind, CondLook, CondOp, CondRule, HAlign, VAlign, Validation};
-use kumihan::book::{Book, Cell, Pos};
-use kumihan::calc::recalc;
+use book::{Borders, CondKind, CondLook, CondOp, CondRule, HAlign, VAlign, Validation};
+use book::{Book, Cell, Pos};
+use book::calc::recalc;
 
 /// 品番マスタ(品番・品名・単価)。カタログ(gen_catalog.py の同梱データ)と
 /// 同じ架空の36品目。サーバー(catalog_server.py)が正本で、
@@ -34,7 +34,7 @@ const MASTER: &[(&str, &str, u32)] = &[
     ("E-503", "緩衝材", 640), ("E-504", "宅配袋(大)", 520),
 ];
 
-fn head(s: &mut kumihan::book::Sheet, cols: &[(&str, f32)]) {
+fn head(s: &mut book::Sheet, cols: &[(&str, f32)]) {
     for (i, (name, w)) in cols.iter().enumerate() {
         let mut c = Cell::input(name);
         c.fmt.bold = true;

@@ -17,6 +17,7 @@ name = "xlsx-sidecar"   # **向こうと同じ名前。** XLSX_SIDECAR_PATH で�
 path = "src/main.rs"
 
 [dependencies]
+book = { path = "../book" }
 sheet = { path = "../sheet" }
 kumihan = { path = "../engine" }
 # **JSON だけは自分で書かない。** 通信の言葉は向こうが決めた物で、

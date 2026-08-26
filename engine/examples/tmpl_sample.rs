@@ -4,7 +4,7 @@
 fn main() {
     let lang = std::env::args().nth(1).unwrap_or_else(|| "ja".into());
     kumihan::font::set_default_language(&lang);
-    let b = kumihan::book::holes::filled_book();
+    let b = kumihan::holes::filled_book();
     let t = kumihan::booktmpl::from_book(&b);
     print!("{}", kumihan::booktmpl::write(&t));
 }

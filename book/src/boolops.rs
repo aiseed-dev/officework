@@ -415,7 +415,7 @@ mod tests {
 
     #[test]
     fn curves_are_flattened_before_computing() {
-        use super::super::types::PathPoint as P;
+        use crate::types::PathPoint as P;
         let pts = vec![
             P::at(0.0, 0.5),
             P { at: (0.5, 0.5), start: false, c_in: Some((0.1, 0.0)), c_out: Some((0.9, 0.0)) },
@@ -428,7 +428,7 @@ mod tests {
 
     #[test]
     fn a_gap_splits_the_outline() {
-        use super::super::types::PathPoint as P;
+        use crate::types::PathPoint as P;
         let pts = vec![
             P::at(0.0, 0.0),
             P::at(1.0, 0.0),

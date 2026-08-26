@@ -7,11 +7,11 @@
 //! 起点にしない)— 隣の .py として吐き、plugins への据え付けは README が案内。
 //! テンプレートは生成物 — 直すのはこのファイル。
 
-use kumihan::book::{Borders, Validation};
-use kumihan::book::{Book, Cell, Pos};
-use kumihan::calc::recalc;
+use book::{Borders, Validation};
+use book::{Book, Cell, Pos};
+use book::calc::recalc;
 
-fn header(s: &mut kumihan::book::Sheet, cols: &[(&str, f32)]) {
+fn header(s: &mut book::Sheet, cols: &[(&str, f32)]) {
     for (i, (name, w)) in cols.iter().enumerate() {
         let mut c = Cell::input(name);
         c.fmt.bold = true;

@@ -8,7 +8,7 @@ use std::io::{Cursor, Read, Seek, Write};
 use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::{Reader, Writer};
 
-use kumihan::book::{Book, Cell, Pos, Sheet, Value};
+use book::{Book, Cell, Pos, Sheet, Value};
 
 use super::read::{attr, local, parse_rels, resolve_book_target, resolve_target, sheet_part_no, sheet_parts};
 
@@ -658,8 +658,8 @@ pub(super) fn join_creators(v: &[String]) -> String {
 ///
 /// `fmtid` はこの部品に規格が定めた1つの値。`pid` は **2から連番** —
 /// 0と1は予約で、飛ばすと読み手が拒む。`linkTarget` は原本のまま返す。
-pub(super) fn custom_props_xml(props: &[kumihan::book::CustomProp]) -> String {
-    use kumihan::book::CustomVal;
+pub(super) fn custom_props_xml(props: &[book::CustomProp]) -> String {
+    use book::CustomVal;
     let esc = |t: &str| {
         t.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
     };
@@ -690,7 +690,7 @@ pub(super) fn custom_props_xml(props: &[kumihan::book::CustomProp]) -> String {
 }
 
 /// docProps/core.xml をブックの情報で差し替える。
-pub(super) fn patch_core_props(orig: &str, p: &kumihan::book::BookProps) -> String {
+pub(super) fn patch_core_props(orig: &str, p: &book::BookProps) -> String {
     let creator = join_creators(&p.creators);
     let mut s = orig.to_string();
     for (tag, v) in [
@@ -970,17 +970,17 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     // 原本の書式表を読み戻す(据え置き合成の照合用)。
     // 読みと同じ関数で解くので、読みで拾えない書式も**同じように**落ち、
     // 「触っていないセル」は必ず一致して原本の索引のまま書き戻る
-    let orig_fmts: Option<Vec<kumihan::book::CellFormat>> =
+    let orig_fmts: Option<Vec<book::CellFormat>> =
         orig_styles.as_ref().map(|xml| crate::xlsx::styles::parse(xml, &book.theme));
     // このセルは原本の書式のままか(なら索引ごと据え置く)
-    let kept_style = |sh: &Sheet, p: &Pos, fmt: &kumihan::book::CellFormat| -> Option<u32> {
+    let kept_style = |sh: &Sheet, p: &Pos, fmt: &book::CellFormat| -> Option<u32> {
         let fmts = orig_fmts.as_ref()?;
         let i = *sh.style_of.get(p)?;
         (fmts.get(i as usize)? == fmt).then_some(i)
     };
     // 使われている書式を集めて表にする(据え置きのセルは除く)。
     // 索引を <c s="…"> に配る
-    let used: Vec<kumihan::book::CellFormat> = {
+    let used: Vec<book::CellFormat> = {
         let mut v = Vec::new();
         for sh in &book.sheets {
             for (p, c) in &sh.cells {
@@ -1003,8 +1003,8 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         None => crate::xlsx::styles::build(&used, &book.named_styles_new),
     };
     // 条件付き書式の見た目(dxfs)。全シートの規則から集めて番号を振る
-    let dxf_list: Vec<kumihan::book::CondLook> = {
-        let mut v: Vec<kumihan::book::CondLook> = Vec::new();
+    let dxf_list: Vec<book::CondLook> = {
+        let mut v: Vec<book::CondLook> = Vec::new();
         for sh in &book.sheets {
             for r in &sh.cond {
                 if !v.contains(&r.look) {
@@ -1833,7 +1833,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 } else {
                     format!("{}:{}", a.a1(), b.a1())
                 };
-                use kumihan::book::CondKind;
+                use book::CondKind;
                 let inner = match &r.kind {
                     CondKind::Cmp(op, v) => format!(
                         r#"<cfRule type="cellIs" dxfId="{dxf}" priority="{}" operator="{}"><formula>{v}</formula></cfRule>"#,
@@ -2247,7 +2247,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
 }
 
 /// 挿した図形1枚のアンカー(oneCellAnchor の xdr:sp)。Excel でも図形として開ける。
-pub(super) fn shape_anchor_xml(sp: &kumihan::book::SheetShape, id: u32) -> String {
+pub(super) fn shape_anchor_xml(sp: &book::SheetShape, id: u32) -> String {
     let (cx, cy) = ((sp.width_px * 9525.0) as i64, (sp.height_px * 9525.0) as i64);
     // 不透明度は srgbClr の子 a:alpha(10万分率)。1.0 なら書かない
     let alpha = if sp.alpha < 0.999 {
@@ -2380,16 +2380,16 @@ pub(super) fn shape_anchor_xml(sp: &kumihan::book::SheetShape, id: u32) -> Strin
         Some(t) => {
             let tf = &sp.text_fmt;
             let anchor = match tf.anchor {
-                kumihan::book::TextAnchor::Top => "",
-                kumihan::book::TextAnchor::Middle => r#" anchor="ctr""#,
-                kumihan::book::TextAnchor::Bottom => r#" anchor="b""#,
+                book::TextAnchor::Top => "",
+                book::TextAnchor::Middle => r#" anchor="ctr""#,
+                book::TextAnchor::Bottom => r#" anchor="b""#,
             };
             // 縦書きは日本語の縦組み(eaVert = 東アジアの縦。字は回さない)
             let vert = if tf.vertical { r#" vert="eaVert""# } else { "" };
             let algn = match tf.align {
-                kumihan::book::HAlign::Center => r#" algn="ctr""#,
-                kumihan::book::HAlign::Right => r#" algn="r""#,
-                kumihan::book::HAlign::Justify => r#" algn="just""#,
+                book::HAlign::Center => r#" algn="ctr""#,
+                book::HAlign::Right => r#" algn="r""#,
+                book::HAlign::Justify => r#" algn="just""#,
                 _ => "",
             };
             // 箇条書き。中黒は buChar、番号は buAutoNum(算用数字+ピリオド)
@@ -2452,7 +2452,7 @@ pub(super) fn shape_anchor_xml(sp: &kumihan::book::SheetShape, id: u32) -> Strin
         // **印は3つ目の欄**(無ければ空。古い札とも読み合える)
         name = if matches!(sp.kind.as_str(), "spark-col" | "spark-wl") {
             format!("jo:{}:{:.4}:{}", sp.kind, sp.base, sp.spark_marks.tag())
-        } else if sp.kind == "spark" && sp.spark_marks != kumihan::book::SparkMarks::default() {
+        } else if sp.kind == "spark" && sp.spark_marks != book::SparkMarks::default() {
             format!("jo:spark:0:{}", sp.spark_marks.tag())
         } else {
             format!("図形 {id}")
@@ -2467,7 +2467,7 @@ pub(super) fn shape_anchor_xml(sp: &kumihan::book::SheetShape, id: u32) -> Strin
 }
 
 /// 挿した画像1枚のアンカー(oneCellAnchor)。大きさは px → EMU(9525 EMU = 1px)。
-pub(super) fn image_anchor_xml(im: &kumihan::book::SheetImage, rid: &str, id: u32) -> String {
+pub(super) fn image_anchor_xml(im: &book::SheetImage, rid: &str, id: u32) -> String {
     let (cx, cy) = ((im.width_px * 9525.0) as i64, (im.height_px * 9525.0) as i64);
     format!(
         concat!(

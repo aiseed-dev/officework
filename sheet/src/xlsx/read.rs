@@ -7,7 +7,7 @@ use std::io::{Read, Seek};
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 
-use kumihan::book::{Book, Cell, Pos, Sheet, Value};
+use book::{Book, Cell, Pos, Sheet, Value};
 
 use super::write::{esc, split_defined, SID_ATTR};
 
@@ -143,7 +143,7 @@ pub(super) fn pane(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
     let (frozen_columns, frozen_rows) = (n("xSplit"), n("ySplit"));
     // 両方 0 の pane は「固定していない」— 空の固定枠を持ち越さない
     if frozen_rows > 0 || frozen_columns > 0 {
-        sh.freeze = Some(kumihan::book::FreezePane { frozen_rows, frozen_columns });
+        sh.freeze = Some(book::FreezePane { frozen_rows, frozen_columns });
     }
 }
 
@@ -236,8 +236,8 @@ pub(super) fn col_width(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
 ///
 /// 下線 `<u/>` は `val="none"` のときだけ「外す」— `single`・`double` は
 /// どれも「引く」に畳む(こちらは太さの別を持たない)
-pub(super) fn parse_dxfs(xml: &str) -> Vec<kumihan::book::CondLook> {
-    use kumihan::book::CondLook;
+pub(super) fn parse_dxfs(xml: &str) -> Vec<book::CondLook> {
+    use book::CondLook;
     let mut r = Reader::from_str(xml);
     let mut out: Vec<CondLook> = Vec::new();
     let mut buf = Vec::new();
@@ -341,7 +341,7 @@ pub(super) enum DrawKind {
     Image(String),
     /// 図形。中身(種類・色・文字・回転・線幅…)は詰めてあり、
     /// 置き場所と大きさ(at / width / height / dx / dy)は受け手が埋める
-    Shape(Box<kumihan::book::SheetShape>),
+    Shape(Box<book::SheetShape>),
     /// **グラフ。中身は持たない。**
     ///
     /// officework はグラフの模型を持たない — 描くのは matplotlib で、
@@ -357,7 +357,7 @@ pub(super) enum DrawKind {
 /// drawing(xl/drawings/drawingN.xml)から、画像と図形のアンカーを拾う。
 /// 返すのは (置き場所のセル, 幅EMU, 高さEMU, 中身)。
 /// `xl/tables/tableN.xml` を読む。範囲が読めなければ None(黙って作らない)。
-pub(super) fn parse_table(xml: &str) -> Option<kumihan::book::TableDef> {
+pub(super) fn parse_table(xml: &str) -> Option<book::TableDef> {
     let attr_of = |elem: &str, key: &str| -> Option<String> {
         let i = xml.find(&format!("<{elem}"))?;
         let rest = &xml[i..];
@@ -382,7 +382,7 @@ pub(super) fn parse_table(xml: &str) -> Option<kumihan::book::TableDef> {
     let on = |k: &str| -> bool {
         matches!(attr_of("tableStyleInfo", k).as_deref(), Some("1") | Some("true"))
     };
-    Some(kumihan::book::TableDef {
+    Some(book::TableDef {
         name: attr_of("table", "displayName")
             .or_else(|| attr_of("table", "name"))
             .unwrap_or_else(|| "テーブル".into()),
@@ -403,13 +403,13 @@ pub(super) fn parse_table(xml: &str) -> Option<kumihan::book::TableDef> {
 
 /// テキストボックスの組み方を1つの要素から拾う(`bodyPr` / `pPr` / `rPr` /
 /// 箇条書きの印)。**Start と Empty の両方から呼ぶ**ので1箇所にまとめた。
-pub(super) fn text_fmt_attr(e: &BytesStart, tf: &mut kumihan::book::TextFmt) {
+pub(super) fn text_fmt_attr(e: &BytesStart, tf: &mut book::TextFmt) {
     match local(e.name().as_ref()) {
         b"bodyPr" => {
             tf.anchor = match attr(e, "anchor").as_deref() {
-                Some("ctr") => kumihan::book::TextAnchor::Middle,
-                Some("b") => kumihan::book::TextAnchor::Bottom,
-                _ => kumihan::book::TextAnchor::Top,
+                Some("ctr") => book::TextAnchor::Middle,
+                Some("b") => book::TextAnchor::Bottom,
+                _ => book::TextAnchor::Top,
             };
             // 縦組みは vert が横以外のとき。**種類は問わない** —
             // eaVert も vert270 もこちらは1つの縦組みで見せる
@@ -417,10 +417,10 @@ pub(super) fn text_fmt_attr(e: &BytesStart, tf: &mut kumihan::book::TextFmt) {
         }
         b"pPr" => {
             tf.align = match attr(e, "algn").as_deref() {
-                Some("ctr") => kumihan::book::HAlign::Center,
-                Some("r") => kumihan::book::HAlign::Right,
-                Some("just") => kumihan::book::HAlign::Justify,
-                _ => kumihan::book::HAlign::General,
+                Some("ctr") => book::HAlign::Center,
+                Some("r") => book::HAlign::Right,
+                Some("just") => book::HAlign::Justify,
+                _ => book::HAlign::General,
             };
         }
         b"buChar" => tf.bullet = Some(false),
@@ -452,8 +452,8 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     let mut text = String::new();
     let mut in_t = false;
     // テキストボックスの組み方(bodyPr / pPr / rPr から拾う)
-    let mut tfmt = kumihan::book::TextFmt::default();
-    let mut pts: Vec<kumihan::book::PathPoint> = Vec::new();
+    let mut tfmt = book::TextFmt::default();
+    let mut pts: Vec<book::PathPoint> = Vec::new();
     // 曲線の3つ組を貯める場所(cubicBezTo の中だけ)
     let mut in_bez = false;
     let mut bez: Vec<(f32, f32)> = Vec::new();
@@ -487,7 +487,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     // **組み方も1つずつ畳む。** 畳まないと、前の図形の
                     // 揃えや箇条書きが次の箱に漏れる — 1つだけの試験では
                     // 出ず、6つ並べた実物の見本で初めて出た(2026-08-13)
-                    tfmt = kumihan::book::TextFmt::default();
+                    tfmt = book::TextFmt::default();
                     pts.clear();
                     sp_name = None;
                     has_custom = false;
@@ -607,7 +607,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                             if let Some(prev) = pts.last_mut() {
                                 prev.c_out = Some(bez[0]);
                             }
-                            pts.push(kumihan::book::PathPoint {
+                            pts.push(book::PathPoint {
                                 at: bez[2],
                                 start: false,
                                 c_in: Some(bez[1]),
@@ -616,9 +616,9 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                             bez.clear();
                         }
                     } else if std::mem::take(&mut next_starts) && !pts.is_empty() {
-                        pts.push(kumihan::book::PathPoint::start_at(at.0, at.1));
+                        pts.push(book::PathPoint::start_at(at.0, at.1));
                     } else {
-                        pts.push(kumihan::book::PathPoint::at(at.0, at.1));
+                        pts.push(book::PathPoint::at(at.0, at.1));
                     }
                 }
                 b"srgbClr" if in_sp && !in_effect => {
@@ -685,7 +685,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                 b"t" => in_t = false,
                 b"oneCellAnchor" | b"twoCellAnchor" | b"absoluteAnchor" => {
                     // 図形の雛形(場所と大きさは受け手が埋める)
-                    let tpl = kumihan::book::SheetShape {
+                    let tpl = book::SheetShape {
                         fill: fill.take(),
                         line: line.take(),
                         text: (!text.is_empty()).then(|| text.clone()),
@@ -701,7 +701,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     let kind = match (embed.take(), prst.take(), has_custom) {
                         (Some(em), _, _) => Some(DrawKind::Image(em)),
                         (None, Some(pr), _) => Some(DrawKind::Shape(Box::new(
-                            kumihan::book::SheetShape { kind: pr, ..tpl },
+                            book::SheetShape { kind: pr, ..tpl },
                         ))),
                         (None, None, true) if !pts.is_empty() => {
                             // 自作の札(jo:spark-col:底)があれば棒に組み直す。
@@ -719,25 +719,25 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                                 .as_deref()
                                 .and_then(|n| n.strip_prefix("jo:"))
                                 .and_then(|n| n.splitn(3, ':').nth(2))
-                                .map(kumihan::book::SparkMarks::parse)
+                                .map(book::SparkMarks::parse)
                                 .unwrap_or_default();
                             match marker {
                                 Some((k, b)) if pts.len() >= 4 => {
                                     // 底は2欄目まで(3欄目の印を巻き込まない)
                                     let base: f32 =
                                         b.split(':').next().unwrap_or(b).parse().unwrap_or(1.0);
-                                    let tops: Vec<kumihan::book::PathPoint> = pts
+                                    let tops: Vec<book::PathPoint> = pts
                                         .chunks(4)
                                         .filter(|c| c.len() == 4)
                                         .map(|c| {
-                                            kumihan::book::PathPoint::at(
+                                            book::PathPoint::at(
                                                 (c[0].at.0 + c[1].at.0) / 2.0,
                                                 c[0].at.1,
                                             )
                                         })
                                         .collect();
                                     Some(DrawKind::Shape(Box::new(
-                                        kumihan::book::SheetShape {
+                                        book::SheetShape {
                                             kind: k.into(),
                                             points: tops,
                                             base,
@@ -747,7 +747,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                                     )))
                                 }
                                 _ => Some(DrawKind::Shape(Box::new(
-                                    kumihan::book::SheetShape {
+                                    book::SheetShape {
                                         kind: "spark".into(),
                                         points: std::mem::take(&mut pts),
                                         spark_marks: marks,
@@ -810,8 +810,8 @@ pub(super) fn parse_print_titles(
         } else if !a.is_empty() && a.chars().all(|c| c.is_ascii_alphabetic()) {
             // 列は字("A":"B")。行を足して Pos に解かせる
             if let (Some(x), Some(y)) = (
-                kumihan::book::Pos::parse(&format!("{a}1")),
-                kumihan::book::Pos::parse(&format!("{b}1")),
+                book::Pos::parse(&format!("{a}1")),
+                book::Pos::parse(&format!("{b}1")),
             ) {
                 cols = Some((x.col.min(y.col), x.col.max(y.col)));
             }
@@ -937,8 +937,8 @@ pub(super) fn defined_name_plain(e: &BytesStart) -> bool {
 ///
 /// **著者も拾う。** 前は `<authors>` と `authorId` を捨てていたので、
 /// 誰が書いたコメントか分からなくなっていた。
-pub(super) fn parse_comments(xml: &str) -> Vec<(Pos, kumihan::book::CommentThread)> {
-    use kumihan::book::{CommentEntry, CommentThread};
+pub(super) fn parse_comments(xml: &str) -> Vec<(Pos, book::CommentThread)> {
+    use book::{CommentEntry, CommentThread};
     let mut r = Reader::from_str(xml);
     r.config_mut().trim_text(false);
     let mut out: Vec<(Pos, CommentThread)> = Vec::new();
@@ -1012,8 +1012,8 @@ pub(super) fn parse_comments(xml: &str) -> Vec<(Pos, kumihan::book::CommentThrea
 pub(super) fn parse_threaded_comments(
     xml: &str,
     persons: &std::collections::BTreeMap<String, String>,
-) -> Vec<(Pos, kumihan::book::CommentThread)> {
-    use kumihan::book::{CommentEntry, CommentThread};
+) -> Vec<(Pos, book::CommentThread)> {
+    use book::{CommentEntry, CommentThread};
     let mut r = Reader::from_str(xml);
     r.config_mut().trim_text(false);
     // (場所, 自分のid, 親のid, 解決済み, 発言)
@@ -1085,7 +1085,7 @@ pub(super) fn parse_threaded_comments(
 }
 
 pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
-               styles: &[kumihan::book::CellFormat], name: &str, rep: &mut Report) -> Sheet {
+               styles: &[book::CellFormat], name: &str, rep: &mut Report) -> Sheet {
     let mut r = Reader::from_str(xml);
     r.config_mut().trim_text(false);
     let mut sh = Sheet::new(name);
@@ -1403,8 +1403,8 @@ pub(super) fn split_creators(raw: &str) -> Vec<String> {
 /// 定めていて(D5CDD505-…)、`pid` は2からの連番。書くときに振り直すので
 /// 原文の番号を持ち歩いても使い道がない。ただし `linkTarget` は意味を持つ
 /// ので抱える。知らない型も捨てずに `Other` で抱える。
-pub(super) fn parse_custom_props(xml: &str) -> Vec<kumihan::book::CustomProp> {
-    use kumihan::book::{CustomProp, CustomVal};
+pub(super) fn parse_custom_props(xml: &str) -> Vec<book::CustomProp> {
+    use book::{CustomProp, CustomVal};
     let unesc = |t: &str| {
         t.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"")
             .replace("&apos;", "'").replace("&amp;", "&")
@@ -1474,8 +1474,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut rep = Report::default();
 
     // 書式表を先に読む。セルの s= はこの索引
-    let mut styles: Vec<kumihan::book::CellFormat> = Vec::new();
-    let mut dxfs: Vec<kumihan::book::CondLook> = Vec::new();
+    let mut styles: Vec<book::CellFormat> = Vec::new();
+    let mut dxfs: Vec<book::CondLook> = Vec::new();
     // テーマの色(styles より先に読む — 色を解くのに要る)
     let theme_colors: Vec<String> = {
         let mut tx = String::new();
@@ -1484,7 +1484,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         }
         super::theme::parse(&tx)
     };
-    let mut named_styles: Vec<(String, Option<u32>, kumihan::book::CellFormat)> = Vec::new();
+    let mut named_styles: Vec<(String, Option<u32>, book::CellFormat)> = Vec::new();
     if let Ok(mut f) = zip.by_name("xl/styles.xml") {
         let mut s = String::new();
         let _ = f.read_to_string(&mut s);
@@ -1680,7 +1680,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 })
                 .unwrap_or_default()
         };
-        book.props = kumihan::book::BookProps {
+        book.props = book::BookProps {
             // **`;` 区切りで複数の著者**(Excel の慣習)。区切りが無ければ1人。
             // 空欄は0人 — 「空の名前が1人いる」ことにしない
             creators: split_creators(&grab("dc:creator")),
@@ -1803,14 +1803,14 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 sqref: Option<(Pos, Pos)>,
                 taken: Option<(String, Option<usize>)>,
                 formula: &str,
-                dxfs: &[kumihan::book::CondLook],
+                dxfs: &[book::CondLook],
                 cf_colors: &[String],
                 icon_name: Option<&str>,
                 rep: &mut Report,
             ) {
 
                 if let (Some(range), Some((tag, dxf))) = (sqref, taken) {
-                    use kumihan::book::CondKind;
+                    use book::CondKind;
                     // formula は 1〜2 本(between は改行区切りで貯まる)
                     let nums: Vec<f64> = formula
                         .split('\u{1f}')
@@ -1859,7 +1859,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                             }
                         }
                     } else {
-                        match (kumihan::book::CondOp::from_xlsx(&tag), nums.as_slice()) {
+                        match (book::CondOp::from_xlsx(&tag), nums.as_slice()) {
                             (Some(op), [v, ..]) => Some(CondKind::Cmp(op, *v)),
                             (None, [lo, hi]) if tag == "between" => {
                                 Some(CondKind::Between(*lo, *hi, false))
@@ -1875,7 +1875,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                             let look = dxf
                                 .and_then(|i| dxfs.get(i).cloned())
                                 .unwrap_or_default();
-                            sh.cond.push(kumihan::book::CondRule { range, kind, look });
+                            sh.cond.push(book::CondRule { range, kind, look });
                         }
                         None => rep.note(
                             "条件付き書式(読めない条件。保存で失われる)",
@@ -1970,10 +1970,10 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
             let mut buf = Vec::new();
             // (sqref の原文, list か)。formula1 は子要素なので End まで貯める
             // 種類・比較・第2式・文言まで全部持ち越す(知らない種類も落とさない)
-            let mut dv: Option<kumihan::book::Validation> = None;
+            let mut dv: Option<book::Validation> = None;
             let mut dv_sq = String::new();
             let mut in_f: u8 = 0; // 1=formula1 2=formula2
-            let read_attrs = |e: &quick_xml::events::BytesStart| -> (kumihan::book::Validation, String) {
+            let read_attrs = |e: &quick_xml::events::BytesStart| -> (book::Validation, String) {
                 let a = |k: &str| attr(e, k).unwrap_or_default();
                 let input = {
                     let (t, b) = (a("promptTitle"), a("prompt"));
@@ -1985,7 +1985,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     (!t.is_empty() || !b.is_empty()).then_some((style, t, b))
                 };
                 (
-                    kumihan::book::Validation {
+                    book::Validation {
                         range: (Pos::new(0, 0), Pos::new(0, 0)),
                         formula: String::new(),
                         kind: a("type"),
@@ -1999,7 +1999,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     a("sqref"),
                 )
             };
-            let push = |sh: &mut kumihan::book::Sheet, v: kumihan::book::Validation, sq: &str| {
+            let push = |sh: &mut book::Sheet, v: book::Validation, sq: &str| {
                 // sqref は空白区切りで複数の範囲を持てる
                 for part in sq.split_whitespace() {
                     let range = match part.split_once(':') {
@@ -2059,12 +2059,12 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         {
             let mut r = Reader::from_str(&s);
             let mut buf = Vec::new();
-            let mut cur: Option<kumihan::book::Scenario> = None;
+            let mut cur: Option<book::Scenario> = None;
             loop {
                 match r.read_event_into(&mut buf) {
                     Ok(Event::Eof) | Err(_) => break,
                     Ok(Event::Start(e)) if local(e.name().as_ref()) == b"scenario" => {
-                        cur = Some(kumihan::book::Scenario {
+                        cur = Some(book::Scenario {
                             name: attr(&e, "name").unwrap_or_default(),
                             cells: Vec::new(),
                             comment: attr(&e, "comment").unwrap_or_default(),
@@ -2204,7 +2204,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                             rep.note("画像(実体が見つからない)");
                             continue;
                         }
-                        sh.images.push(kumihan::book::SheetImage {
+                        sh.images.push(book::SheetImage {
                             at,
                             dx_px: 0.0,
                             dy_px: 0.0,
@@ -2217,7 +2217,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                         // **描けない形を黙って四角にしない。** 保存では
                         // prstGeom の名前をそのまま返すので原本は壊れないが、
                         // 画面では四角に見える — 見える物が違うなら言う
-                        if !kumihan::book::can_draw(&sp.kind) {
+                        if !book::can_draw(&sp.kind) {
                             rep.note("図形(描けない形。四角で見せます。保存では元の形のまま)");
                         }
                         sp.at = at;
@@ -2255,7 +2255,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 match idx.map(|i| &mut book.sheets[i]) {
                     // **localSheetId が付いていれば「このシートだけ」。**
                     // 前は付いていることを重なりから当てていた(推測)
-                    Some(sh) => sh.names.push(kumihan::book::DefinedName {
+                    Some(sh) => sh.names.push(book::DefinedName {
                         name: nm,
                         range: r,
                         scoped: sid.is_some(),
@@ -2335,7 +2335,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     {
                         let at = attr_un(&e, "at").and_then(|v| Pos::parse(&v));
                         if let Some(at) = at {
-                            book.changes.push(kumihan::book::ChangeRec {
+                            book.changes.push(book::ChangeRec {
                                 who: attr_un(&e, "who").unwrap_or_default(),
                                 when: attr_un(&e, "when").unwrap_or_default(),
                                 sheet: attr_un(&e, "sheet").unwrap_or_default(),
@@ -2360,7 +2360,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         if !sx.is_empty() {
             let mut r = Reader::from_str(&sx);
             let mut buf = Vec::new();
-            let mut cur: Option<kumihan::book::PivotDef> = None;
+            let mut cur: Option<book::PivotDef> = None;
             let mut field = 0u8; // 1 = <r> 行の見出し / 2 = <c> 列の見出し
             loop {
                 match r.read_event_into(&mut buf) {
@@ -2372,7 +2372,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                         let b = it.next().and_then(Pos::parse);
                         let dest = attr(&e, "dest").and_then(|d| Pos::parse(&d));
                         if let (Some(a), Some(b), Some(dest)) = (a, b, dest) {
-                            cur = Some(kumihan::book::PivotDef {
+                            cur = Some(book::PivotDef {
                                 sheet: attr_un(&e, "sheet").unwrap_or_default(),
                                 src: (a, b),
                                 rows_sel: Vec::new(),

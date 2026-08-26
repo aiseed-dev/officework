@@ -4,7 +4,7 @@
 //! あり、作り直せば消える(2026-08-10、一度そこに書いて気づいた)。
 //! 生成物と、それを見る目は別のファイルに置く。
 
-use kumihan::datetime_names::{names, TABLE};
+use book::datetime_names::{names, TABLE};
 
 
 

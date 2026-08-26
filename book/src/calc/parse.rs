@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use crate::grid::Grid;
-use crate::book::{Pos, Value};
+use crate::{Pos, Value};
 
 use super::funcs::*;
 
@@ -563,7 +563,7 @@ impl<'a> P<'a> {
     /// 構造化参照を範囲に直す。表の名前(省いたらいまのセルが入っている表)と
     /// **見出しの字**で列を引く。見出し行の無い表からは引けない(None)
     pub(super) fn table_range(&self, tbl: Option<&str>, col: &str, this_row: bool) -> Option<(Pos, Pos)> {
-        let inside = |t: &crate::book::TableDef, p: Pos| {
+        let inside = |t: &crate::TableDef, p: Pos| {
             p.row >= t.a.row && p.row <= t.b.row && p.col >= t.a.col && p.col <= t.b.col
         };
         let t = match tbl {

@@ -6,6 +6,7 @@ license.workspace = true
 description = "SpreadsheetML(xlsx)の読み書きと式の再計算。マクロは実装しない(設計判断)"
 
 [dependencies]
+book = { path = "../book" }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 # 壊れた zip から拾うときに、部品を自分で解くのに使います。
 # zip の deflate が既に持ち込んでいるので、増える荷物はありません

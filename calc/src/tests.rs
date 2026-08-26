@@ -44,7 +44,7 @@ mod freeze_tests {
         // (`frozen`)で持つので、開くときに model から移し、保存の前に model へ
         // 戻す。どちらかが欠けると「固定が見えない」か「固定してもファイルに
         // 載らない」かのどちらかになる
-        use kumihan::book::FreezePane;
+        use book::FreezePane;
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // ファイルが「見出しの1行を固定」と言っている状態
@@ -288,7 +288,7 @@ mod validation_tests {
         c.update(cx, |this, cx| {
             // 日付の規則(判定できない種類)が既にある
             let b2 = Pos::parse("B2").unwrap();
-            let mut v = kumihan::book::Validation::list((b2, b2), "40000".into());
+            let mut v = book::Validation::list((b2, b2), "40000".into());
             v.kind = "date".into();
             v.op = "greaterThan".into();
             this.book.sheets[this.active].validations.push(v);
@@ -458,7 +458,7 @@ mod sort_tests {
             assert_eq!(col_a(this), ["甲", "甲", "乙", "丙"], "1つ目の基準が効かない");
             assert_eq!(
                 this.sheet().value(Pos::parse("B2").unwrap()),
-                kumihan::book::Value::Number(3.0),
+                book::Value::Number(3.0),
                 "2つ目の基準(数 降順)が効かない"
             );
             // 列の字でも指せる(B 昇順)
@@ -564,8 +564,8 @@ mod sheet_name_tests {
     fn an_added_sheets_name_does_not_collide() {
         let mut b = Book::new(); // Sheet1
         assert_eq!(unique_sheet_name(&b), "Sheet2");
-        b.sheets.push(kumihan::book::Sheet::new("Sheet2"));
-        b.sheets.push(kumihan::book::Sheet::new("Sheet3"));
+        b.sheets.push(book::Sheet::new("Sheet2"));
+        b.sheets.push(book::Sheet::new("Sheet3"));
         assert_eq!(unique_sheet_name(&b), "Sheet4");
         // 歯抜け(途中の名前が消えた等)でも重複しない
         b.sheets.remove(1);
@@ -578,8 +578,8 @@ mod sheet_name_tests {
 mod clipboard_tests {
     use crate::*;
 
-    fn table() -> kumihan::book::Sheet {
-        let mut s = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+    fn table() -> book::Sheet {
+        let mut s = book::Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::new(0, 0), Cell::input("品名"));
         s.set(Pos::new(0, 1), Cell::input("金額"));
         s.set(Pos::new(1, 0), Cell::input("甲"));
@@ -616,7 +616,7 @@ mod clipboard_tests {
 
     #[test]
     fn a_tsv_from_outside_does_not_shift_the_formulas() {
-        let mut s = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+        let mut s = book::Sheet { name: "表".into(), ..Default::default() };
         let grid = tsv_grid("甲\t100\r\n乙\t=A1*2\n");
         let n = paste_grid(&mut s, Pos::new(0, 0), &grid, None);
         assert_eq!(n, 4);
@@ -631,7 +631,7 @@ mod clipboard_tests {
     #[test]
     fn pasting_leaves_the_formatting_as_it_was() {
         // 帳票の枠(罫線)の上に値を貼っても枠が残る
-        let mut s = kumihan::book::Sheet { name: "枠".into(), ..Default::default() };
+        let mut s = book::Sheet { name: "枠".into(), ..Default::default() };
         s.set(Pos::new(0, 0), Cell {
             formula: None,
             value: Value::Empty,
@@ -657,7 +657,7 @@ mod clipboard_tests {
 
     #[test]
     fn a_foreign_formula_look_alike_pastes_as_text() {
-        let mut s = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+        let mut s = book::Sheet { name: "表".into(), ..Default::default() };
         paste_values_text(&mut s, Pos::new(0, 0), &[vec!["=A1*2".to_string()]]);
         let c = s.get(Pos::new(0, 0)).unwrap();
         assert!(c.formula.is_none(), "外の式を黙って式にした");
@@ -666,7 +666,7 @@ mod clipboard_tests {
 
     #[test]
     fn pasting_formats_only_keeps_the_contents() {
-        let mut s = kumihan::book::Sheet { name: "枠".into(), ..Default::default() };
+        let mut s = book::Sheet { name: "枠".into(), ..Default::default() };
         s.set(Pos::new(0, 0), Cell::input("100"));
         let src = Some(Cell {
             formula: None,
@@ -705,7 +705,7 @@ mod table_design_tests {
 
     #[test]
     fn the_total_row_skips_the_header_and_sums_only_numeric_columns() {
-        let mut s = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+        let mut s = book::Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::new(0, 0), Cell::input("品名"));
         s.set(Pos::new(0, 1), Cell::input("金額"));
         s.set(Pos::new(1, 0), Cell::input("甲"));
@@ -729,7 +729,7 @@ mod table_design_tests {
 
     #[test]
     fn a_table_without_headers_sums_every_row() {
-        let mut s = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+        let mut s = book::Sheet { name: "表".into(), ..Default::default() };
         for (r, v) in [(0, "10"), (1, "20")] {
             s.set(Pos::new(r, 0), Cell::input(v));
         }
@@ -747,7 +747,7 @@ mod subtotal_tests {
 
     #[test]
     fn subtotals_and_a_grand_total_are_inserted_and_only_the_details_collapse() {
-        let mut s = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+        let mut s = book::Sheet { name: "表".into(), ..Default::default() };
         for (r, row) in [
             ["部署", "月", "金額"],
             ["営業", "1月", "100"],
@@ -789,7 +789,7 @@ mod subtotal_tests {
 
     #[test]
     fn inserting_and_deleting_rows_carries_the_grouping() {
-        let mut s = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+        let mut s = book::Sheet { name: "表".into(), ..Default::default() };
         s.row_outline.insert(5, 1);
         s.row_hidden.insert(5);
         s.insert_row(2);
@@ -1025,8 +1025,8 @@ mod pivot_tests {
         });
     }
 
-    fn def(rows: &[&str], cols: &[&str], value: &str, agg: &str) -> kumihan::book::PivotDef {
-        kumihan::book::PivotDef {
+    fn def(rows: &[&str], cols: &[&str], value: &str, agg: &str) -> book::PivotDef {
+        book::PivotDef {
             sheet: "S".into(),
             src: (Pos::new(0, 0), Pos::new(1, 1)),
             rows_sel: rows.iter().map(|s| s.to_string()).collect(),
@@ -1088,7 +1088,7 @@ mod pivot_tests {
 
     #[gpui::test]
     fn the_border_panel_takes_repeated_clicks_and_applies_a_table_shape_in_one(cx: &mut gpui::TestAppContext) {
-        use kumihan::book::BStyle;
+        use book::BStyle;
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.anchor = Some(Pos::new(0, 0));
@@ -1096,7 +1096,7 @@ mod pivot_tests {
             this.sync_input();
             this.run_cmd("borders", cx);
             assert!(this.border_pal.is_some(), "パレットが開かない");
-            fn bd(this: &Calc, r: u32, c2: u32) -> kumihan::book::Borders {
+            fn bd(this: &Calc, r: u32, c2: u32) -> book::Borders {
                 this.book.sheets[0].get(Pos::new(r, c2)).unwrap().fmt.borders
             }
             // 場所×ペンの直交モデル(Microsoft の型スタンプは持たない —
@@ -1169,7 +1169,7 @@ mod pivot_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // A1 空、B1 に題 — A1:C1 を結合すると題が左上へ移る
-            this.book.sheets[0].set(Pos::new(0, 1), kumihan::book::Cell::input("題"));
+            this.book.sheets[0].set(Pos::new(0, 1), book::Cell::input("題"));
             this.merge_do(Pos::new(0, 0), Pos::new(0, 2), "中央");
             assert_eq!(
                 this.book.sheets[0].get(Pos::new(0, 0)).unwrap().value.display(),
@@ -1183,25 +1183,25 @@ mod pivot_tests {
             );
             assert!(this.status.contains("移しました"), "移したことを言わない: {}", this.status);
             // 「セルの結合」: 書式は値があった場所の書式ごと移り、中央揃えにはしない
-            let mut src = kumihan::book::Cell::input("題2");
+            let mut src = book::Cell::input("題2");
             src.fmt.bold = true;
-            src.fmt.align = kumihan::book::HAlign::Right;
+            src.fmt.align = book::HAlign::Right;
             this.book.sheets[0].set(Pos::new(5, 1), src);
             this.merge_do(Pos::new(5, 0), Pos::new(5, 2), "結合だけ");
             let got = this.book.sheets[0].get(Pos::new(5, 0)).unwrap().clone();
             assert_eq!(got.value.display(), "題2");
             assert!(got.fmt.bold, "書式(太字)が移らない");
-            assert_eq!(got.fmt.align, kumihan::book::HAlign::Right, "揃えまで変えられた");
+            assert_eq!(got.fmt.align, book::HAlign::Right, "揃えまで変えられた");
             // 「結合して中央に配置」だけが中央を掛ける
-            let mut src = kumihan::book::Cell::input("題3");
+            let mut src = book::Cell::input("題3");
             src.fmt.bold = true;
             this.book.sheets[0].set(Pos::new(7, 1), src);
             this.merge_do(Pos::new(7, 0), Pos::new(7, 2), "中央");
             let got = this.book.sheets[0].get(Pos::new(7, 0)).unwrap().clone();
             assert!(got.fmt.bold, "中央配置で書式が落ちた");
-            assert_eq!(got.fmt.align, kumihan::book::HAlign::Center, "中央配置が中央でない");
+            assert_eq!(got.fmt.align, book::HAlign::Center, "中央配置が中央でない");
             // 横方向: 行ごとに同じ扱い(2行目は C2 の値が左端へ)
-            this.book.sheets[0].set(Pos::new(2, 2), kumihan::book::Cell::input("乙"));
+            this.book.sheets[0].set(Pos::new(2, 2), book::Cell::input("乙"));
             this.merge_do(Pos::new(2, 0), Pos::new(2, 2), "横方向");
             assert_eq!(
                 this.book.sheets[0].get(Pos::new(2, 0)).unwrap().value.display(),
@@ -1249,8 +1249,8 @@ mod pivot_tests {
         // 画面なしでも捕まえられるようここに固定する
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("1"));
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("2"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("1"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("2"));
             let mark = (777.0, 55.0);
             let mut seen = 0;
             for id in Calc::MENU_IDS {
@@ -1305,8 +1305,8 @@ mod pivot_tests {
         // 印と無効化がずれると印が嘘になる
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("1"));
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("2"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("1"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("2"));
             let mut seen = 0;
             for id in Calc::DIALOG_IDS {
                 this.cursor = Pos::new(0, 0);
@@ -1348,7 +1348,7 @@ mod pivot_tests {
         // そのまま効く。前は bold を押すと一覧が開いたまま太字が掛かった(穴)
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("abc"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("abc"));
             this.cursor = Pos::new(0, 0);
             // fontsize は機械の書体に依らず必ず一覧を開く(固定の17個)
             this.run_cmd("fontsize", cx);
@@ -1366,7 +1366,7 @@ mod pivot_tests {
         // 状態が二重になるのを防ぐ。閉じる道(Esc)は今のまま
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("abc"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("abc"));
             this.cursor = Pos::new(0, 0);
             this.run_cmd("insert-function", cx);
             assert!(this.dialog_open(), "関数の挿入で小窓が開いていない(前提が崩れた)");
@@ -1381,8 +1381,8 @@ mod pivot_tests {
     fn a_sweep_over_every_home_tab_button(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            use kumihan::book::{HAlign, VAlign};
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("abc"));
+            use book::{HAlign, VAlign};
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("abc"));
             this.cursor = Pos::new(0, 0);
             this.sync_input();
             let f = |this: &Calc| this.book.sheets[0].get(Pos::new(0, 0)).unwrap().fmt.clone();
@@ -1499,7 +1499,7 @@ mod pivot_tests {
             assert!(this.anchor.is_some(), "すべて選択が効かない");
             this.anchor = None;
             // フィル(先頭行を下へ)
-            this.book.sheets[0].set(Pos::new(9, 0), kumihan::book::Cell::input("7"));
+            this.book.sheets[0].set(Pos::new(9, 0), book::Cell::input("7"));
             this.anchor = Some(Pos::new(9, 0));
             this.cursor = Pos::new(11, 0);
             this.sync_input();
@@ -1510,8 +1510,8 @@ mod pivot_tests {
             );
             this.anchor = None;
             // 絞り込みの張り外し
-            this.book.sheets[0].set(Pos::new(20, 0), kumihan::book::Cell::input("見出し"));
-            this.book.sheets[0].set(Pos::new(21, 0), kumihan::book::Cell::input("1"));
+            this.book.sheets[0].set(Pos::new(20, 0), book::Cell::input("見出し"));
+            this.book.sheets[0].set(Pos::new(21, 0), book::Cell::input("1"));
             this.run_cmd("setfilter", cx);
             assert!(this.auto_filter.is_some(), "絞り込みが張れない");
             this.run_cmd("clear-filter", cx);
@@ -1555,7 +1555,7 @@ mod pivot_tests {
     fn the_four_home_tab_character_decorations_apply(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("字"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("字"));
             this.cursor = Pos::new(0, 0);
             this.sync_input();
             for id in ["bold", "italic", "underline", "strikeout"] {
@@ -1650,7 +1650,7 @@ mod pivot_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for (i, v) in ["3", "-1", "2"].iter().enumerate() {
-                this.book.sheets[0].set(Pos::new(0, i as u32), kumihan::book::Cell::input(v));
+                this.book.sheets[0].set(Pos::new(0, i as u32), book::Cell::input(v));
             }
             this.anchor = Some(Pos::new(0, 0));
             this.cursor = Pos::new(0, 2);
@@ -1675,7 +1675,7 @@ mod pivot_tests {
     fn the_shape_settings_panel_path_changes_the_properties(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+            this.book.sheets[0].shapes_new.push(book::SheetShape {
                 at: Pos::new(0, 0),
                 width_px: 100.0,
                 height_px: 60.0,
@@ -1731,7 +1731,7 @@ mod pivot_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for k in ["rect", "ellipse", "diamond"] {
-                this.book.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+                this.book.sheets[0].shapes_new.push(book::SheetShape {
                     at: Pos::new(0, 0),
                     width_px: 50.0,
                     height_px: 50.0,
@@ -1785,7 +1785,7 @@ mod pivot_tests {
     fn the_rotate_handle_follows_the_pointer_and_snaps_with_shift(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+            this.book.sheets[0].shapes_new.push(book::SheetShape {
                 at: Pos::new(2, 2),
                 width_px: 100.0,
                 height_px: 60.0,
@@ -1815,13 +1815,13 @@ mod pivot_tests {
             let r = this.book.sheets[0].shapes_new[0].rot;
             assert!((r - 105.0).abs() < 0.5, "15度刻みに丸まらない: {r}");
             // 取っ手は折れ線もの(スパークライン)には無い
-            this.book.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+            this.book.sheets[0].shapes_new.push(book::SheetShape {
                 at: Pos::new(0, 0),
                 width_px: 80.0,
                 height_px: 20.0,
                 kind: "spark".into(),
                 line: Some("1B6E3C".into()),
-                points: vec![kumihan::book::PathPoint::at(0.0, 0.5), kumihan::book::PathPoint::at(1.0, 0.5)],
+                points: vec![book::PathPoint::at(0.0, 0.5), book::PathPoint::at(1.0, 0.5)],
                 ..Default::default()
             });
             assert!(this.shape_rot_handle(1).is_none(), "折れ線に回転の取っ手が出た");
@@ -1835,7 +1835,7 @@ mod pivot_tests {
         c.update(cx, |this, _cx| {
             // 3つを別々の場所に(全部画面の中)
             for (r, cc, w, h) in [(1u32, 1u32, 40.0f32, 20.0f32), (3, 3, 60.0, 30.0), (5, 5, 20.0, 40.0)] {
-                this.book.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+                this.book.sheets[0].shapes_new.push(book::SheetShape {
                     at: Pos::new(r, cc),
                     width_px: w,
                     height_px: h,
@@ -1931,8 +1931,8 @@ mod pivot_tests {
     fn r1c1_changes_the_display_while_the_content_stays_a1(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("10"));
-            this.book.sheets[0].set(Pos::new(4, 4), kumihan::book::Cell::input("=A1*2"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("10"));
+            this.book.sheets[0].set(Pos::new(4, 4), book::Cell::input("=A1*2"));
             recalc_book(&mut this.book, 0);
             this.run_cmd("ref-style", cx);
             assert!(this.book.r1c1);
@@ -1967,7 +1967,7 @@ mod pivot_tests {
                 .enumerate()
             {
                 for (cc, v) in row.iter().enumerate() {
-                    this.book.sheets[0].set(Pos::new(r as u32, cc as u32), kumihan::book::Cell::input(v));
+                    this.book.sheets[0].set(Pos::new(r as u32, cc as u32), book::Cell::input(v));
                 }
             }
             let mut d = def(&["区分"], &[], "金額", "sum");
@@ -2192,7 +2192,7 @@ mod recalc_tests {
             assert!(this.commit());
             assert_eq!(
                 this.sheet().value(Pos::parse("B1").unwrap()),
-                kumihan::book::Value::Number(10.0),
+                book::Value::Number(10.0),
                 "自動のうちは確定で計算されるはず"
             );
             // 手動にして A1 を書き換えると、B1 は古いまま
@@ -2204,14 +2204,14 @@ mod recalc_tests {
             assert!(this.commit());
             assert_eq!(
                 this.sheet().value(Pos::parse("B1").unwrap()),
-                kumihan::book::Value::Number(10.0),
+                book::Value::Number(10.0),
                 "手動なのに確定で計算された(手動が効いていない)"
             );
             // F9 の実体(recalc_book)で計算される
             recalc_book(&mut this.book, this.active);
             assert_eq!(
                 this.sheet().value(Pos::parse("B1").unwrap()),
-                kumihan::book::Value::Number(14.0),
+                book::Value::Number(14.0),
                 "F9 相当の再計算が効かない"
             );
         });
@@ -2251,7 +2251,7 @@ mod recalc_tests {
         c.update(cx, |this, _cx| {
             // 1x1 の PNG を B2 に置く(挿した画像の体)
             let png: Vec<u8> = vec![0x89, 0x50, 0x4E, 0x47];
-            this.sheet_mut().images_new.push(kumihan::book::SheetImage {
+            this.sheet_mut().images_new.push(book::SheetImage {
                 at: Pos::parse("B2").unwrap(),
                 dx_px: 0.0,
                 dy_px: 0.0,
@@ -2309,13 +2309,13 @@ mod recalc_tests {
             assert_eq!(rules.len(), 2, "{}", this.status);
             assert_eq!(
                 rules[0].kind,
-                kumihan::book::CondKind::Between(8.0, 15.0, false)
+                book::CondKind::Between(8.0, 15.0, false)
             );
-            assert_eq!(rules[1].kind, kumihan::book::CondKind::Top(2, false));
+            assert_eq!(rules[1].kind, book::CondKind::Top(2, false));
             // 効き方(下ごしらえ込み)
             let aux = rules[1].aux(this.sheet());
-            assert!(rules[1].hits(Pos::parse("A2").unwrap(), &kumihan::book::Value::Number(20.0), &aux));
-            assert!(!rules[1].hits(Pos::parse("A4").unwrap(), &kumihan::book::Value::Number(5.0), &aux));
+            assert!(rules[1].hits(Pos::parse("A2").unwrap(), &book::Value::Number(20.0), &aux));
+            assert!(!rules[1].hits(Pos::parse("A4").unwrap(), &book::Value::Number(5.0), &aux));
             // 読めない入力は言い返す
             this.prompt = Some(("cond-between", Editor::new("abc")));
             this.finish_prompt(cx);
@@ -2328,7 +2328,7 @@ mod recalc_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for r in 0..4 {
-                this.book.sheets[0].set(Pos::new(r, 0), kumihan::book::Cell::input("x"));
+                this.book.sheets[0].set(Pos::new(r, 0), book::Cell::input("x"));
             }
             // 同じ2〜3行目を9回まとめる → outlineLevel は 7 で止まる
             // (ECMA-376 の上限。本家の「最大8レベル」= 基底+7段と同じ意味)
@@ -2349,10 +2349,10 @@ mod recalc_tests {
     fn values_only_can_be_exported_to_csv(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("品名"));
-            this.book.sheets[0].set(Pos::new(0, 1), kumihan::book::Cell::input("値,段"));
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("鉛筆"));
-            this.book.sheets[0].set(Pos::new(1, 1), kumihan::book::Cell::input("=1+2"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("品名"));
+            this.book.sheets[0].set(Pos::new(0, 1), book::Cell::input("値,段"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("鉛筆"));
+            this.book.sheets[0].set(Pos::new(1, 1), book::Cell::input("=1+2"));
             recalc_book(&mut this.book, 0);
             let dir = std::env::temp_dir().join("calc-csv-test");
             std::fs::create_dir_all(&dir).unwrap();
@@ -2371,7 +2371,7 @@ mod recalc_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (i, v) in ["10", "20"].iter().enumerate() {
-                this.book.sheets[0].set(Pos::new(i as u32, 0), kumihan::book::Cell::input(v));
+                this.book.sheets[0].set(Pos::new(i as u32, 0), book::Cell::input(v));
             }
             this.anchor = Some(Pos::new(0, 0));
             this.cursor = Pos::new(1, 0);
@@ -2387,7 +2387,7 @@ mod recalc_tests {
             assert_eq!(this.book.sheets[0].cond.len(), 1, "消えていない");
             assert!(matches!(
                 this.book.sheets[0].cond[0].kind,
-                kumihan::book::CondKind::Scale(..)
+                book::CondKind::Scale(..)
             ), "残る方が違う");
         });
     }
@@ -2397,7 +2397,7 @@ mod recalc_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for (i, v) in ["10", "20", "30"].iter().enumerate() {
-                this.book.sheets[0].set(Pos::new(i as u32, 0), kumihan::book::Cell::input(v));
+                this.book.sheets[0].set(Pos::new(i as u32, 0), book::Cell::input(v));
             }
             this.anchor = Some(Pos::new(0, 0));
             this.cursor = Pos::new(2, 0);
@@ -2407,7 +2407,7 @@ mod recalc_tests {
             this.cond_visual("cond-icons");
             let cond = &this.book.sheets[0].cond;
             assert_eq!(cond.len(), 3, "3本入らない: {cond:?}");
-            use kumihan::book::CondKind;
+            use book::CondKind;
             assert!(matches!(cond[0].kind, CondKind::Bar(_)));
             assert!(matches!(cond[1].kind, CondKind::Scale(..)));
             assert!(matches!(cond[2].kind, CondKind::Icons(_)));
@@ -2418,9 +2418,9 @@ mod recalc_tests {
     fn the_total_rows_aggregation_can_be_changed(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("10"));
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("30"));
-            this.book.sheets[0].set(Pos::new(2, 0), kumihan::book::Cell::input("=SUM(A1:A2)"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("10"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("30"));
+            this.book.sheets[0].set(Pos::new(2, 0), book::Cell::input("=SUM(A1:A2)"));
             recalc_book(&mut this.book, 0);
             this.cursor = Pos::new(2, 0);
             this.sync_input();
@@ -2448,8 +2448,8 @@ mod recalc_tests {
                     .iter()
                     .enumerate()
             {
-                this.book.sheets[0].set(Pos::new(r as u32, 0), kumihan::book::Cell::input(name));
-                this.book.sheets[0].set(Pos::new(r as u32, 1), kumihan::book::Cell::input(amt));
+                this.book.sheets[0].set(Pos::new(r as u32, 0), book::Cell::input(name));
+                this.book.sheets[0].set(Pos::new(r as u32, 1), book::Cell::input(amt));
             }
             this.run_cmd("rem-duplicates", cx);
             assert_eq!(this.pick_kind, "dedup-pick", "選ぶパネルが開かない");
@@ -2540,7 +2540,7 @@ mod recalc_tests {
             // **名前が入るのは適用範囲を選んだ後**(2026-08-13 に段が1つ増えた)
             assert!(this.sheet().names.is_empty(), "範囲を選ぶ前に入っている");
             this.apply_pick("whole_workbook_use_any", cx);
-            assert_eq!(this.sheet().names, vec![kumihan::book::DefinedName::new("単価表", "B2:C3")]);
+            assert_eq!(this.sheet().names, vec![book::DefinedName::new("単価表", "B2:C3")]);
             // 一覧に出る
             this.anchor = None;
             this.cursor = Pos::parse("A1").unwrap();
@@ -2661,7 +2661,7 @@ mod recalc_tests {
 
     #[gpui::test]
     fn borders_apply_with_the_pens_style_and_color(cx: &mut gpui::TestAppContext) {
-        use kumihan::book::BStyle;
+        use book::BStyle;
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 一覧が開き、ペンを 中太の実線・赤 にする
@@ -2995,9 +2995,9 @@ mod recalc_tests {
     #[gpui::test]
     fn a_damaged_workbook_opens_but_refuses_to_be_overwritten(cx: &mut gpui::TestAppContext) {
         // 中身のあるブックを書いて、末尾(中央目録)を落とす
-        let mut b = kumihan::book::Book::new();
-        b.sheets[0].set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("品名"));
-        b.sheets[0].set(Pos::parse("A2").unwrap(), kumihan::book::Cell::input("鉛筆"));
+        let mut b = book::Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("品名"));
+        b.sheets[0].set(Pos::parse("A2").unwrap(), book::Cell::input("鉛筆"));
         let mut buf = std::io::Cursor::new(Vec::new());
         sheet::xlsx::write(&b, &mut buf).expect("書けない");
         let broken = {
@@ -3530,9 +3530,9 @@ mod recalc_tests {
 
             // A1:A4 に「甲/乙」だけを許す規則。丙と丁は合わない
             for (i, v) in ["甲", "丙", "乙", "丁"].iter().enumerate() {
-                this.book.sheets[0].set(Pos::new(i as u32, 0), kumihan::book::Cell::input(v));
+                this.book.sheets[0].set(Pos::new(i as u32, 0), book::Cell::input(v));
             }
-            this.book.sheets[0].validations.push(kumihan::book::Validation::list(
+            this.book.sheets[0].validations.push(book::Validation::list(
                 (Pos::new(0, 0), Pos::new(3, 0)),
                 "\"甲,乙\"".into(),
             ));
@@ -3551,8 +3551,8 @@ mod recalc_tests {
             assert!(this.status.contains("消しました"), "{}", this.status);
 
             // 全部合っていれば「ありません」と言う
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("甲"));
-            this.book.sheets[0].set(Pos::new(3, 0), kumihan::book::Cell::input("乙"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("甲"));
+            this.book.sheets[0].set(Pos::new(3, 0), book::Cell::input("乙"));
             this.run_cmd("dv-mark", cx);
             assert!(this.dv_marks.is_empty());
             assert!(this.status.contains("合わない値はありません"), "{}", this.status);
@@ -3570,10 +3570,10 @@ mod recalc_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // A1 に元の数、A2 は A1 の 10 倍の式。規則は 1〜100 の整数
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("5"));
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("=A1*10"));
-            this.book.sheets[0].set(Pos::new(2, 0), kumihan::book::Cell::input("500"));
-            let mut v = kumihan::book::Validation::list(
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("5"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("=A1*10"));
+            this.book.sheets[0].set(Pos::new(2, 0), book::Cell::input("500"));
+            let mut v = book::Validation::list(
                 (Pos::new(0, 0), Pos::new(2, 0)),
                 "1".into(),
             );
@@ -3589,7 +3589,7 @@ mod recalc_tests {
             );
 
             // A1 を 50 にすると A2 は 500 で範囲の外。だが式なので印は付かない
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("50"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("50"));
             this.recalc_if_auto();
             // **印を押す前に、規則の範囲の外へ出ます。** `dv-mark` は頭で
             // `commit()` を呼ぶので、打ちかけの空の欄がそのまま入ります
@@ -3633,9 +3633,9 @@ mod recalc_tests {
                 ("A7", "西"), ("B7", "200"),
             ] {
                 let p = Pos::parse(a1).unwrap();
-                this.book.sheets[0].set(p, kumihan::book::Cell::input(v));
+                this.book.sheets[0].set(p, book::Cell::input(v));
             }
-            this.book.pivots.push(kumihan::book::PivotDef {
+            this.book.pivots.push(book::PivotDef {
                 sheet: name.clone(),
                 src: (Pos::parse("A1").unwrap(), Pos::parse("B3").unwrap()),
                 rows_sel: vec!["店".into()],
@@ -3697,7 +3697,7 @@ mod recalc_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let name = this.sheet().name.clone();
-            this.book.pivots.push(kumihan::book::PivotDef {
+            this.book.pivots.push(book::PivotDef {
                 sheet: name,
                 src: (Pos::parse("A1").unwrap(), Pos::parse("B4").unwrap()),
                 rows_sel: vec!["品名".into()],
@@ -3788,8 +3788,8 @@ mod recalc_tests {
             this.cursor = Pos::parse("C1").unwrap();
             this.merge_selection("中央");
             let f = &this.sheet().get(Pos::parse("A1").unwrap()).unwrap().fmt;
-            assert_eq!(f.align, kumihan::book::HAlign::Center, "横が中央にならない");
-            assert_eq!(f.valign, kumihan::book::VAlign::Middle, "縦が中央にならない");
+            assert_eq!(f.align, book::HAlign::Center, "横が中央にならない");
+            assert_eq!(f.valign, book::VAlign::Middle, "縦が中央にならない");
             assert_eq!(this.sheet().merges.len(), 1, "結合が積まれていない");
         });
     }
@@ -3806,7 +3806,7 @@ mod recalc_tests {
             assert!(cell.fmt.wrap, "改行入りの確定で折り返しが立たない");
             assert_eq!(
                 cell.value,
-                kumihan::book::Value::Text("上の行\n下の行".into()),
+                book::Value::Text("上の行\n下の行".into()),
                 "改行が中身に残らない"
             );
         });
@@ -3962,7 +3962,7 @@ mod menu_run_tests {
     /// 他の人の返信は残す
     #[gpui::test]
     fn comment_deletion_offers_current_mine_and_all(cx: &mut gpui::TestAppContext) {
-        use kumihan::book::{CommentEntry, CommentThread};
+        use book::{CommentEntry, CommentThread};
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         let entry = |who: &str, text: &str| CommentEntry {
             who: who.into(),
@@ -4125,7 +4125,7 @@ mod goal_seek_tests {
     #[test]
     fn goal_seek_solves_the_quantity_from_a_target_total() {
         // 見本の表: D2=B2*C2, D4=SUM, D6=D4+D5(消費税は固定にして単純化)
-        let mut s = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+        let mut s = book::Sheet { name: "表".into(), ..Default::default() };
         s.set(Pos::parse("B2").unwrap(), Cell::input("4"));
         s.set(Pos::parse("C2").unwrap(), Cell::input("125000"));
         s.set(Pos::parse("D2").unwrap(), Cell::input("=B2*C2"));
@@ -4177,25 +4177,25 @@ mod udf_tests {
         let raw = "B2\u{1e}10\u{1f}20\u{1e}30\u{1f}40\u{1c}D1\u{1e}こんにちは";
         let results = parse_udf_output(raw);
         assert_eq!(results.len(), 2);
-        let mut sh = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+        let mut sh = book::Sheet { name: "表".into(), ..Default::default() };
         let mut py = Cell::input("=PY(\"f\",A1)");
-        py.value = kumihan::book::Value::Error("#PY?".into());
+        py.value = book::Value::Error("#PY?".into());
         sh.set(Pos::parse("B2").unwrap(), py);
         let (spills, n, c) = apply_py_results(&mut sh, &results, &Default::default());
         assert_eq!((n, c), (2, 0));
         // アンカーは式を保ったまま値が入る
         let b2 = sh.get(Pos::parse("B2").unwrap()).unwrap();
         assert!(b2.formula.is_some(), "式が消えた");
-        assert_eq!(b2.value, kumihan::book::Value::Number(10.0));
+        assert_eq!(b2.value, book::Value::Number(10.0));
         // スピル面
-        assert_eq!(sh.value(Pos::parse("C3").unwrap()), kumihan::book::Value::Number(40.0));
+        assert_eq!(sh.value(Pos::parse("C3").unwrap()), book::Value::Number(40.0));
         assert_eq!(spills.get(&Pos::parse("B2").unwrap()), Some(&(2, 2)));
-        assert_eq!(sh.value(Pos::parse("D1").unwrap()), kumihan::book::Value::Text("こんにちは".into()));
+        assert_eq!(sh.value(Pos::parse("D1").unwrap()), book::Value::Text("こんにちは".into()));
     }
 
     #[test]
     fn a_spill_stops_when_another_cell_is_in_the_way() {
-        let mut sh = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+        let mut sh = book::Sheet { name: "表".into(), ..Default::default() };
         sh.set(Pos::parse("B2").unwrap(), Cell::input("=PY(\"f\")"));
         sh.set(Pos::parse("C3").unwrap(), Cell::input("大事なメモ"));
         let raw = "B2\u{1e}1\u{1f}2\u{1e}3\u{1f}4";
@@ -4204,11 +4204,11 @@ mod udf_tests {
         assert_eq!((n, c), (0, 1));
         assert_eq!(
             sh.value(Pos::parse("B2").unwrap()),
-            kumihan::book::Value::Error("#SPILL!".into())
+            book::Value::Error("#SPILL!".into())
         );
         assert_eq!(
             sh.value(Pos::parse("C3").unwrap()),
-            kumihan::book::Value::Text("大事なメモ".into()),
+            book::Value::Text("大事なメモ".into()),
             "他人のデータを潰した"
         );
         assert!(spills.is_empty());
@@ -4216,7 +4216,7 @@ mod udf_tests {
 
     #[test]
     fn the_leftovers_of_a_shrunken_spill_are_cleared() {
-        let mut sh = kumihan::book::Sheet { name: "表".into(), ..Default::default() };
+        let mut sh = book::Sheet { name: "表".into(), ..Default::default() };
         sh.set(Pos::parse("A1").unwrap(), Cell::input("=PY(\"f\")"));
         // 前回 1x3 で展開していた
         sh.set(Pos::parse("B1").unwrap(), Cell::input("古い"));
@@ -4227,7 +4227,7 @@ mod udf_tests {
         let raw = "A1\u{1e}9";
         let (_, n, c) = apply_py_results(&mut sh, &parse_udf_output(raw), &prev);
         assert_eq!((n, c), (1, 0));
-        assert_eq!(sh.value(Pos::parse("A1").unwrap()), kumihan::book::Value::Number(9.0));
+        assert_eq!(sh.value(Pos::parse("A1").unwrap()), book::Value::Number(9.0));
         assert!(sh.value(Pos::parse("C1").unwrap()).is_empty(), "残骸が残った");
     }
 
@@ -4253,19 +4253,19 @@ mod udf_tests {
                 "B1".to_string(),
                 "道具".to_string(),
                 "倍".to_string(),
-                vec![kumihan::calc::PyArg::One(kumihan::book::Value::Number(21.0))],
+                vec![book::calc::PyArg::One(book::Value::Number(21.0))],
             ),
             (
                 "D1".to_string(),
                 "道具".to_string(),
                 "表".to_string(),
-                vec![kumihan::calc::PyArg::Rect(
+                vec![book::calc::PyArg::Rect(
                     2,
                     vec![
-                        kumihan::book::Value::Number(1.0),
-                        kumihan::book::Value::Number(2.0),
-                        kumihan::book::Value::Number(3.0),
-                        kumihan::book::Value::Number(4.0),
+                        book::Value::Number(1.0),
+                        book::Value::Number(2.0),
+                        book::Value::Number(3.0),
+                        book::Value::Number(4.0),
                     ],
                 )],
             ),
@@ -4320,7 +4320,7 @@ mod udf_tests {
 
             // **型紙が正**: ブックに名前付きスタイル「見出し 1」があれば
             // そちらが勝つ(2026-08-09 発注者「テンプレートに設定できませんか?」)
-            let big = kumihan::book::CellFormat {
+            let big = book::CellFormat {
                 size_c: Some(2200), // 22pt = 普通の 11pt の2倍
                 bold: true,
                 ..Default::default()
@@ -4375,41 +4375,41 @@ mod udf_tests {
     fn plugin_functions_can_be_written_bare_in_a_formula() {
         // 2026-08-09 発注者確定: 交換されるファイルはデータだけ。関数は各自の
         // plugins にあり、式には `=倍(A1)` と普通に書く(=PY("倍", A1) も残す)
-        kumihan::calc::set_udf_names(["倍".to_string(), "XWSPLIT".to_string()]);
-        let mut s = kumihan::book::Sheet::default();
-        s.set(Pos::new(0, 0), kumihan::book::Cell::input("21"));
-        assert!(kumihan::calc::is_py_formula("倍(A1)"), "裸の名前が UDF と見なされない");
+        book::calc::set_udf_names(["倍".to_string(), "XWSPLIT".to_string()]);
+        let mut s = book::Sheet::default();
+        s.set(Pos::new(0, 0), book::Cell::input("21"));
+        assert!(book::calc::is_py_formula("倍(A1)"), "裸の名前が UDF と見なされない");
         // 字句解析は ASCII を大文字にする — 小文字で書いても結ばれる
-        assert!(kumihan::calc::is_py_formula("xwsplit(A1)"), "小文字の名前が結ばれない");
-        assert!(kumihan::calc::is_py_formula("PY(\"倍\", A1)"), "古い書き方が壊れた");
+        assert!(book::calc::is_py_formula("xwsplit(A1)"), "小文字の名前が結ばれない");
+        assert!(book::calc::is_py_formula("PY(\"倍\", A1)"), "古い書き方が壊れた");
         // 登録簿に無い名前はただの関数(#NAME? になる) — 勝手に UDF にしない
-        assert!(!kumihan::calc::is_py_formula("知らない関数(A1)"));
+        assert!(!book::calc::is_py_formula("知らない関数(A1)"));
         // 複合式は UDF のセルではない(値だけを置く場所なので)
-        assert!(!kumihan::calc::is_py_formula("倍(A1)+1"));
+        assert!(!book::calc::is_py_formula("倍(A1)+1"));
         // 引数は普通の式として評価されて渡る
-        let (name, args) = kumihan::calc::eval_py_call(&s, "倍(A1)").expect("解けない");
+        let (name, args) = book::calc::eval_py_call(&s, "倍(A1)").expect("解けない");
         assert_eq!(name, "倍");
-        assert!(matches!(&args[0], kumihan::calc::PyArg::One(kumihan::book::Value::Number(n)) if *n == 21.0));
+        assert!(matches!(&args[0], book::calc::PyArg::One(book::Value::Number(n)) if *n == 21.0));
 
         // --- 指紋(py_stamp)が動いたときだけ裏で計算し直す ---
         // (登録簿は機械にひとつなので、名前を使う試験はここに集めてある)
-        let mut s = kumihan::book::Sheet::default();
-        s.set(Pos::new(0, 0), kumihan::book::Cell::input("21"));
-        s.set(Pos::new(0, 1), kumihan::book::Cell::input("=倍(A1)"));
-        kumihan::calc::recalc(&mut s);
+        let mut s = book::Sheet::default();
+        s.set(Pos::new(0, 0), book::Cell::input("21"));
+        s.set(Pos::new(0, 1), book::Cell::input("=倍(A1)"));
+        book::calc::recalc(&mut s);
         let a = s.py_stamp;
         assert_ne!(a, 0, "UDF のセルがあるのに指紋が立たない");
-        kumihan::calc::recalc(&mut s);
+        book::calc::recalc(&mut s);
         assert_eq!(a, s.py_stamp, "同じ中身で指紋が動いた(計算し直しが止まらない)");
-        s.set(Pos::new(0, 0), kumihan::book::Cell::input("22"));
-        kumihan::calc::recalc(&mut s);
+        s.set(Pos::new(0, 0), book::Cell::input("22"));
+        book::calc::recalc(&mut s);
         assert_ne!(a, s.py_stamp, "引数が変わったのに指紋が動かない");
         // UDF のセルが無いブックでは 0(見張りは何もしない)
-        let mut t = kumihan::book::Sheet::default();
-        t.set(Pos::new(0, 0), kumihan::book::Cell::input("=1+1"));
-        kumihan::calc::recalc(&mut t);
+        let mut t = book::Sheet::default();
+        t.set(Pos::new(0, 0), book::Cell::input("=1+1"));
+        book::calc::recalc(&mut t);
         assert_eq!(t.py_stamp, 0);
-        kumihan::calc::set_udf_names(Vec::new());
+        book::calc::set_udf_names(Vec::new());
     }
 
     #[test]
@@ -4430,9 +4430,9 @@ mod udf_tests {
         );
         // ブック全体: 式の数を数え、名前の定義も追随する
         let mut b = Book::new();
-        b.sheets.push(kumihan::book::Sheet::new("Sheet2"));
+        b.sheets.push(book::Sheet::new("Sheet2"));
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("=Sheet2!B1*2"));
-        b.sheets[0].names.push(kumihan::book::DefinedName::new("単価", "Sheet2!B2"));
+        b.sheets[0].names.push(book::DefinedName::new("単価", "Sheet2!B2"));
         let n = rename_sheet_refs(&mut b, "Sheet2", "集計");
         assert_eq!(n, 1);
         assert_eq!(
@@ -4447,7 +4447,7 @@ mod udf_tests {
         let mut b = Book::new();
         let base = b.sheets[0].name.clone();
         assert_eq!(copy_sheet_name(&b, &base), format!("{base} (2)"));
-        b.sheets.push(kumihan::book::Sheet::new(&format!("{base} (2)")));
+        b.sheets.push(book::Sheet::new(&format!("{base} (2)")));
         assert_eq!(copy_sheet_name(&b, &base), format!("{base} (3)"));
     }
 }
@@ -4668,7 +4668,7 @@ mod hide_lines_tests {
         c.update(cx, |this, _cx| {
             for r in 0..5u32 {
                 for col in 0..3u32 {
-                    this.book.sheets[0].set(Pos::new(r, col), kumihan::book::Cell::input("x"));
+                    this.book.sheets[0].set(Pos::new(r, col), book::Cell::input("x"));
                 }
             }
             // 2〜3行目(索引 1〜2)を選んで隠す
@@ -4695,7 +4695,7 @@ mod hide_lines_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for r in 0..3u32 {
-                this.book.sheets[0].set(Pos::new(r, 0), kumihan::book::Cell::input("x"));
+                this.book.sheets[0].set(Pos::new(r, 0), book::Cell::input("x"));
             }
             this.select_rows(0, 2);
             this.hide_lines("hide-rows");
@@ -4716,7 +4716,7 @@ mod data_edge_tests {
     /// A1:A3 に中身、A4〜A6 は空、A7 に中身(飛び石の縦一列)
     fn setup(this: &mut Calc) {
         for a1 in ["A1", "A2", "A3", "A7"] {
-            this.book.sheets[0].set(Pos::parse(a1).unwrap(), kumihan::book::Cell::input("x"));
+            this.book.sheets[0].set(Pos::parse(a1).unwrap(), book::Cell::input("x"));
         }
     }
 
@@ -4770,14 +4770,14 @@ mod data_table_tests {
     /// B1=単価 B2=数量 / B4 = B1*B2 の式。A5:A7 に数量の候補
     fn setup(this: &mut Calc) {
         let s = &mut this.book.sheets[0];
-        s.set(Pos::parse("B1").unwrap(), kumihan::book::Cell::input("100"));
-        s.set(Pos::parse("B2").unwrap(), kumihan::book::Cell::input("1"));
-        s.set(Pos::parse("B4").unwrap(), kumihan::book::Cell::input("=B1*B2"));
+        s.set(Pos::parse("B1").unwrap(), book::Cell::input("100"));
+        s.set(Pos::parse("B2").unwrap(), book::Cell::input("1"));
+        s.set(Pos::parse("B4").unwrap(), book::Cell::input("=B1*B2"));
         // 1変数の表: A4 が角(空)・B4 が式・A5:A7 が入力値
         for (a1, v) in [("A5", "2"), ("A6", "3"), ("A7", "10")] {
-            s.set(Pos::parse(a1).unwrap(), kumihan::book::Cell::input(v));
+            s.set(Pos::parse(a1).unwrap(), book::Cell::input(v));
         }
-        kumihan::calc::recalc_all(&mut this.book);
+        book::calc::recalc_all(&mut this.book);
     }
 
     #[gpui::test]
@@ -4813,12 +4813,12 @@ mod data_table_tests {
             setup(this);
             let s = &mut this.book.sheets[0];
             // D4 が角の式、D5:D6 が列の入力(数量)、E4:F4 が行の入力(単価)
-            s.set(Pos::parse("D4").unwrap(), kumihan::book::Cell::input("=B1*B2"));
-            s.set(Pos::parse("D5").unwrap(), kumihan::book::Cell::input("2"));
-            s.set(Pos::parse("D6").unwrap(), kumihan::book::Cell::input("5"));
-            s.set(Pos::parse("E4").unwrap(), kumihan::book::Cell::input("10"));
-            s.set(Pos::parse("F4").unwrap(), kumihan::book::Cell::input("20"));
-            kumihan::calc::recalc_all(&mut this.book);
+            s.set(Pos::parse("D4").unwrap(), book::Cell::input("=B1*B2"));
+            s.set(Pos::parse("D5").unwrap(), book::Cell::input("2"));
+            s.set(Pos::parse("D6").unwrap(), book::Cell::input("5"));
+            s.set(Pos::parse("E4").unwrap(), book::Cell::input("10"));
+            s.set(Pos::parse("F4").unwrap(), book::Cell::input("20"));
+            book::calc::recalc_all(&mut this.book);
             this.anchor = Some(Pos::parse("D4").unwrap());
             this.cursor = Pos::parse("F6").unwrap();
             this.data_table(
@@ -4864,15 +4864,15 @@ mod track_changes_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             let s = &mut this.book.sheets[0];
-            s.set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("10"));
-            s.set(Pos::parse("A2").unwrap(), kumihan::book::Cell::input("消える"));
+            s.set(Pos::parse("A1").unwrap(), book::Cell::input("10"));
+            s.set(Pos::parse("A2").unwrap(), book::Cell::input("消える"));
             // 記録を始める
             this.track_changes();
             assert!(this.track_from.is_some(), "記録が始まっていない");
             // 直す・足す・消す
             let s = &mut this.book.sheets[0];
-            s.set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("20"));
-            s.set(Pos::parse("B1").unwrap(), kumihan::book::Cell::input("=A1*2"));
+            s.set(Pos::parse("A1").unwrap(), book::Cell::input("20"));
+            s.set(Pos::parse("B1").unwrap(), book::Cell::input("=A1*2"));
             s.cells.remove(&Pos::parse("A2").unwrap());
             // 止めると差分が刻まれる
             this.track_changes();
@@ -4896,7 +4896,7 @@ mod track_changes_tests {
     fn nothing_is_recorded_when_nothing_changed(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets[0].set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("10"));
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("10"));
             this.track_changes();
             this.track_changes();
             assert!(this.book.changes.is_empty(), "変えていないのに刻まれた");
@@ -4906,9 +4906,9 @@ mod track_changes_tests {
 
     #[test]
     fn tracked_changes_round_trip_through_xlsx() {
-        let mut b = kumihan::book::Book::new();
-        b.sheets[0].set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("x"));
-        b.changes.push(kumihan::book::ChangeRec {
+        let mut b = book::Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("x"));
+        b.changes.push(book::ChangeRec {
             who: "dev@機械".into(),
             when: "2026-08-08 15:30".into(),
             sheet: "Sheet1".into(),
@@ -5012,12 +5012,12 @@ mod flash_fill_tests {
                 .iter()
                 .enumerate()
             {
-                this.book.sheets[0].set(Pos::new(i as u32, 0), kumihan::book::Cell::input(a));
-                this.book.sheets[0].set(Pos::new(i as u32, 1), kumihan::book::Cell::input(b));
+                this.book.sheets[0].set(Pos::new(i as u32, 0), book::Cell::input(a));
+                this.book.sheets[0].set(Pos::new(i as u32, 1), book::Cell::input(b));
             }
             // C1 に見本、C3 は先に埋まっている
-            this.book.sheets[0].set(Pos::parse("C1").unwrap(), kumihan::book::Cell::input("山田 太郎"));
-            this.book.sheets[0].set(Pos::parse("C3").unwrap(), kumihan::book::Cell::input("触るな"));
+            this.book.sheets[0].set(Pos::parse("C1").unwrap(), book::Cell::input("山田 太郎"));
+            this.book.sheets[0].set(Pos::parse("C3").unwrap(), book::Cell::input("触るな"));
             this.cursor = Pos::parse("C1").unwrap();
             this.anchor = None;
             this.sync_input();
@@ -5038,11 +5038,11 @@ mod flash_fill_tests {
     fn nothing_is_filled_silently_when_it_cannot_be_read(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("あ"));
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("い"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("あ"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("い"));
             // 元と何の関係も無い見本
-            this.book.sheets[0].set(Pos::parse("B1").unwrap(), kumihan::book::Cell::input("XYZ"));
-            this.book.sheets[0].set(Pos::parse("B2").unwrap(), kumihan::book::Cell::input("123"));
+            this.book.sheets[0].set(Pos::parse("B1").unwrap(), book::Cell::input("XYZ"));
+            this.book.sheets[0].set(Pos::parse("B2").unwrap(), book::Cell::input("123"));
             this.cursor = Pos::parse("B1").unwrap();
             this.anchor = None;
             this.sync_input();
@@ -5137,7 +5137,7 @@ mod names_tests {
     fn a_name_is_inserted_where_the_formula_is_being_typed(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].names.push(kumihan::book::DefinedName::new("売上", "B2:B10"));
+            this.book.sheets[0].names.push(book::DefinedName::new("売上", "B2:B10"));
             this.cursor = Pos::parse("D1").unwrap();
             this.sync_input();
 
@@ -5165,7 +5165,7 @@ mod autofit_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let p = Pos::parse("A1").unwrap();
-            this.book.sheets[0].set(p, kumihan::book::Cell::input("とても長い見出しの文字列です"));
+            this.book.sheets[0].set(p, book::Cell::input("とても長い見出しの文字列です"));
             this.cursor = p;
             this.anchor = None;
             this.sync_input(); // 直に置いた中身を編集欄へ(commit が空で潰さないよう)
@@ -5184,7 +5184,7 @@ mod autofit_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let p = Pos::parse("A1").unwrap();
-            let mut cell = kumihan::book::Cell::input("あいうえおかきくけこさしすせそたちつてと");
+            let mut cell = book::Cell::input("あいうえおかきくけこさしすせそたちつてと");
             cell.fmt.wrap = true;
             this.book.sheets[0].set(p, cell);
             this.book.sheets[0].col_width.insert(0, 6.0); // わざと狭く
@@ -5222,7 +5222,7 @@ mod color_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let p = Pos::parse("A1").unwrap();
-            this.book.sheets[0].set(p, kumihan::book::Cell::input("色"));
+            this.book.sheets[0].set(p, book::Cell::input("色"));
             this.cursor = p;
 
             // 「その他」を選ぶと打ち込みのパネルが開く
@@ -5259,7 +5259,7 @@ mod cse_tests {
         c.update(cx, |this, cx| {
             for i in 0..3u32 {
                 this.book.sheets[0]
-                    .set(Pos::new(i, 0), kumihan::book::Cell::input(&((i + 1) * 2).to_string()));
+                    .set(Pos::new(i, 0), book::Cell::input(&((i + 1) * 2).to_string()));
             }
             // C1:C3 を選んで =A1:A3*10 を配列で入れる
             this.cursor = Pos::parse("C1").unwrap();
@@ -5288,7 +5288,7 @@ mod cse_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for i in 0..3u32 {
-                this.book.sheets[0].set(Pos::new(i, 0), kumihan::book::Cell::input("2"));
+                this.book.sheets[0].set(Pos::new(i, 0), book::Cell::input("2"));
             }
             this.cursor = Pos::parse("C1").unwrap();
             this.anchor = Some(Pos::parse("C3").unwrap());
@@ -5326,8 +5326,8 @@ mod csv_out_tests {
         let dir = std::env::temp_dir().join(format!("jo-csv-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         c.update(cx, |this, _| {
-            this.book.sheets[0].set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("売上"));
-            this.book.sheets[0].set(Pos::parse("B1").unwrap(), kumihan::book::Cell::input("𠮟る"));
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("売上"));
+            this.book.sheets[0].set(Pos::parse("B1").unwrap(), book::Cell::input("𠮟る"));
 
             // 既定は UTF-8 BOM 付き・カンマ
             let p = dir.join("u8.csv");
@@ -5371,8 +5371,8 @@ mod recover_tests {
         std::fs::create_dir_all(&dir).unwrap();
         let orig = dir.join("原本.xlsx");
         {
-            let mut b = kumihan::book::Book::new();
-            b.sheets[0].set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("保存した値"));
+            let mut b = book::Book::new();
+            b.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("保存した値"));
             let mut f = std::fs::File::create(&orig).unwrap();
             sheet::xlsx::write(&b, &mut f).unwrap();
         }
@@ -5380,7 +5380,7 @@ mod recover_tests {
 
         let c = cx.update(|cx| cx.new(|cx| Calc::new(Some(orig.clone()), cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("打ちかけ"));
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("打ちかけ"));
             this.dirty = true;
             this.write_recover(cx);
         });
@@ -5416,8 +5416,8 @@ mod recover_tests {
         std::fs::create_dir_all(&dir).unwrap();
         let stale = dir.join("控え.xlsx");
         {
-            let mut b = kumihan::book::Book::new();
-            b.sheets[0].set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("控えの値"));
+            let mut b = book::Book::new();
+            b.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("控えの値"));
             let mut f = std::fs::File::create(&stale).unwrap();
             sheet::xlsx::write(&b, &mut f).unwrap();
         }
@@ -5444,10 +5444,10 @@ mod protect_tests {
 
     #[test]
     fn cell_locking_and_allowed_actions_round_trip_through_xlsx() {
-        let mut b = kumihan::book::Book::new();
+        let mut b = book::Book::new();
         // A1 はロックのまま、B2 はロックを外す(帳票の記入欄)
-        b.sheets[0].set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("見出し"));
-        let mut c = kumihan::book::Cell::input("");
+        b.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("見出し"));
+        let mut c = book::Cell::input("");
         c.fmt.unlocked = true;
         b.sheets[0].set(Pos::parse("B2").unwrap(), c);
         b.sheets[0].protected = true;
@@ -5484,7 +5484,7 @@ mod protect_tests {
         c.update(cx, |this, cx| {
             let head = Pos::parse("A1").unwrap();
             let entry = Pos::parse("B2").unwrap();
-            this.book.sheets[0].set(head, kumihan::book::Cell::input("見出し"));
+            this.book.sheets[0].set(head, book::Cell::input("見出し"));
             // B2 のロックを外す(選んでから「セルのロック」)
             this.cursor = entry;
             this.anchor = None;
@@ -5510,7 +5510,7 @@ mod protect_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             let p = Pos::parse("A1").unwrap();
-            this.book.sheets[0].set(p, kumihan::book::Cell::input("あ"));
+            this.book.sheets[0].set(p, book::Cell::input("あ"));
             this.cursor = p;
             this.book.sheets[0].protected = true;
 
@@ -5532,18 +5532,18 @@ mod stale_string_tests {
 
     #[test]
     fn counts_old_sheet_names_inside_strings() {
-        let mut b = kumihan::book::Book::new();
+        let mut b = book::Book::new();
         b.sheets[0].name = "表紙".into();
         let s = &mut b.sheets[0];
         // 追随する(文字列の外)
-        s.set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("=4月!B2"));
+        s.set(Pos::parse("A1").unwrap(), book::Cell::input("=4月!B2"));
         // 追随しない(文字列の中)— これを数える
-        s.set(Pos::parse("A2").unwrap(), kumihan::book::Cell::input("=INDIRECT(\"4月!B2\")"));
-        s.set(Pos::parse("A3").unwrap(), kumihan::book::Cell::input("=SUM(INDIRECT(\"4月!B1:B9\"))"));
+        s.set(Pos::parse("A2").unwrap(), book::Cell::input("=INDIRECT(\"4月!B2\")"));
+        s.set(Pos::parse("A3").unwrap(), book::Cell::input("=SUM(INDIRECT(\"4月!B1:B9\"))"));
         // ただの文字(参照の形でない)は数えない
-        s.set(Pos::parse("A4").unwrap(), kumihan::book::Cell::input("=\"4月の売上\""));
+        s.set(Pos::parse("A4").unwrap(), book::Cell::input("=\"4月の売上\""));
         // 別の語の続きは別物(「決算4月!」の中の「4月!」)
-        s.set(Pos::parse("A5").unwrap(), kumihan::book::Cell::input("=INDIRECT(\"決算4月!B2\")"));
+        s.set(Pos::parse("A5").unwrap(), book::Cell::input("=INDIRECT(\"決算4月!B2\")"));
         assert_eq!(stale_in_strings(&b, "4月"), 2, "数え方が違う");
         // 改名しても文字列の中は変わらない(Excel と同じ)
         rename_sheet_refs(&mut b, "4月", "April");
@@ -5780,7 +5780,7 @@ mod autocorrect_tests {
 #[cfg(test)]
 mod comment_list_tests {
     use crate::util::{sort_comments, CommentRow, CommentSort};
-    use kumihan::book::Pos;
+    use book::Pos;
 
     fn row(sheet: usize, a1: &str, who: &str, when: &str, done: bool) -> CommentRow {
         CommentRow {
@@ -5927,7 +5927,7 @@ mod sheet_name_table_tests {
 
     #[test]
     fn the_allowed_action_names_match_in_both_tables() {
-        let a = kumihan::book::ProtectAllow::default();
+        let a = book::ProtectAllow::default();
         let mine = protect_allows();
         for (n, _) in a.items() {
             assert!(
@@ -5950,7 +5950,7 @@ mod sheet_name_table_tests {
     #[test]
     fn the_palette_names_match_in_both_tables() {
         let mine = color_schemes();
-        for (n, _) in kumihan::book::theme::SCHEMES {
+        for (n, _) in book::theme::SCHEMES {
             assert!(
                 mine.iter().any(|(k, _)| k == n),
                 "sheet の theme::SCHEMES にあって calc の color_schemes に無い: 「{n}」\
@@ -5959,12 +5959,12 @@ mod sheet_name_table_tests {
         }
         for (k, _) in &mine {
             assert!(
-                kumihan::book::theme::SCHEMES.iter().any(|(n, _)| n == k),
+                book::theme::SCHEMES.iter().any(|(n, _)| n == k),
                 "calc の color_schemes にあって sheet の theme::SCHEMES に無い: 「{k}」\
                  (訳が宙に浮いている — 消すか、sheet 側に足す)"
             );
         }
-        assert_eq!(mine.len(), kumihan::book::theme::SCHEMES.len(), "並びの数が食い違う");
+        assert_eq!(mine.len(), book::theme::SCHEMES.len(), "並びの数が食い違う");
     }
 }
 
@@ -6008,7 +6008,7 @@ mod currency_tests {
     fn the_composed_code_renders() {
         let f = |code: &str| {
             // 起点は 1900(この試験は日付ではなく通貨の書式を見ている)
-            kumihan::book::format_value(&kumihan::book::Value::Number(1234.0), Some(code), false)
+            book::format_value(&book::Value::Number(1234.0), Some(code), false)
         };
         assert_eq!(f(&currency_code("¥", 0, 0)), "¥1,234");
         assert_eq!(f(&currency_code("€", 2, 3)), "1,234.00 €");
@@ -6026,8 +6026,8 @@ mod datefmt_tests {
     #[test]
     fn the_headers_match_what_was_drawn() {
         for (_, label, code) in date_formats() {
-            let drawn = kumihan::book::format_value(
-                &kumihan::book::Value::Number(46240.0),
+            let drawn = book::format_value(
+                &book::Value::Number(46240.0),
                 Some(&code),
                 false,
             );
@@ -6168,7 +6168,7 @@ mod svg_save_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             for (r, col) in [(1u32, 1u32), (3, 4)] {
-                this.sheet_mut().shapes_new.push(kumihan::book::SheetShape {
+                this.sheet_mut().shapes_new.push(book::SheetShape {
                     at: Pos::new(r, col),
                     width_px: 60.0,
                     height_px: 30.0,
@@ -6212,7 +6212,7 @@ mod slicer_col_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (p, v) in [((0, 0), "区分"), ((0, 1), "金額"), ((1, 0), "A"), ((1, 1), "10")] {
-                this.book.sheets[0].set(Pos::new(p.0, p.1), kumihan::book::Cell::input(v));
+                this.book.sheets[0].set(Pos::new(p.0, p.1), book::Cell::input(v));
             }
             this.cursor = Pos::new(0, 0);
             this.sync_input();
@@ -6245,8 +6245,8 @@ mod slicer_col_tests {
                 ("みかん", "南"),
             ];
             for (r, (a, b)) in rows.iter().enumerate() {
-                this.book.sheets[0].set(Pos::new(r as u32, 0), kumihan::book::Cell::input(a));
-                this.book.sheets[0].set(Pos::new(r as u32, 1), kumihan::book::Cell::input(b));
+                this.book.sheets[0].set(Pos::new(r as u32, 0), book::Cell::input(a));
+                this.book.sheets[0].set(Pos::new(r as u32, 1), book::Cell::input(b));
             }
             let keeps = |this: &Calc| -> Vec<u32> {
                 (1..5).filter(|r| this.slicer_keeps(*r)).collect()
@@ -6359,7 +6359,7 @@ mod shape_nudge_tests {
     use crate::*;
 
     fn put_one_shape(this: &mut Calc) -> (f32, f32) {
-        this.sheet_mut().shapes_new.push(kumihan::book::SheetShape {
+        this.sheet_mut().shapes_new.push(book::SheetShape {
             at: Pos::new(5, 3),
             width_px: 80.0,
             height_px: 40.0,
@@ -6457,7 +6457,7 @@ mod shape_gallery_tests {
             for (k, _) in items {
                 let (kind, _) = shape_kind(k);
                 assert!(
-                    kumihan::book::can_draw(kind),
+                    book::can_draw(kind),
                     "{c} の「{k}」= {kind} は描けない形",
                 );
                 n += 1;
@@ -6523,9 +6523,9 @@ mod hide_formula_tests {
     #[test]
     fn it_is_clickable_only_on_a_cell_with_a_formula() {
         // 右クリックの項が灰色になる条件と同じ
-        let mut b = kumihan::book::Book::new();
+        let mut b = book::Book::new();
         let p = Pos::parse("A1").unwrap();
-        b.sheets[0].set(p, kumihan::book::Cell::input("ただの文字"));
+        b.sheets[0].set(p, book::Cell::input("ただの文字"));
         assert!(
             !b.sheets[0].get(p).is_some_and(|c| c.formula.is_some()),
             "式の無いセルを式ありと見ている"
@@ -6537,10 +6537,10 @@ mod hide_formula_tests {
 #[cfg(test)]
 mod point_edit_tests {
     use crate::*;
-    use kumihan::book::PathPoint as P;
+    use book::PathPoint as P;
 
     fn setup(this: &mut Calc, pts: Vec<P>) -> (f32, f32) {
-        this.sheet_mut().shapes_new.push(kumihan::book::SheetShape {
+        this.sheet_mut().shapes_new.push(book::SheetShape {
             at: Pos::new(0, 0),
             width_px: 100.0,
             height_px: 100.0,
@@ -6634,11 +6634,11 @@ mod point_edit_tests {
 #[cfg(test)]
 mod boolean_tests {
     use crate::*;
-    use kumihan::book::BoolOp;
+    use book::BoolOp;
 
     fn two_rects(this: &mut Calc) {
         for (r, c) in [(0u32, 0u32), (0, 0)] {
-            this.sheet_mut().shapes_new.push(kumihan::book::SheetShape {
+            this.sheet_mut().shapes_new.push(book::SheetShape {
                 at: Pos::new(r, c),
                 width_px: 100.0,
                 height_px: 100.0,
@@ -6718,9 +6718,9 @@ mod boolean_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for (col, v) in ["7", "8", "9"].iter().enumerate() {
-                this.book.sheets[0].set(Pos::new(0, col as u32), kumihan::book::Cell::input(v));
+                this.book.sheets[0].set(Pos::new(0, col as u32), book::Cell::input(v));
             }
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("=A1*2"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("=A1*2"));
             recalc_book(&mut this.book, 0);
             // A2:C2 を選んで右へ → B2=B1*2=16, C2=C1*2=18
             this.anchor = Some(Pos::new(1, 0));
@@ -6728,7 +6728,7 @@ mod boolean_tests {
             this.run_cmd("fill-right", cx);
             for (col, want) in [(1u32, 16.0), (2, 18.0)] {
                 let v = this.book.sheets[0].value(Pos::new(1, col));
-                assert_eq!(v, kumihan::book::Value::Number(want), "列{col}");
+                assert_eq!(v, book::Value::Number(want), "列{col}");
             }
             // 幅1の選択は左を写す(A列だけは写す物が無いので断る)
             this.anchor = None;
@@ -6743,8 +6743,8 @@ mod boolean_tests {
         // Ctrl+Space / Shift+Space の実体。使われている大きさまで選ぶ
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets[0].set(Pos::new(0, 1), kumihan::book::Cell::input("x"));
-            this.book.sheets[0].set(Pos::new(4, 2), kumihan::book::Cell::input("y"));
+            this.book.sheets[0].set(Pos::new(0, 1), book::Cell::input("x"));
+            this.book.sheets[0].set(Pos::new(4, 2), book::Cell::input("y"));
             this.cursor = Pos::new(2, 1);
             this.anchor = None;
             this.select_col_now();
@@ -6806,7 +6806,7 @@ mod combo_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // よそで作った 2pt を模型に直に置く(画面を通さない道)
-            let mut cell = kumihan::book::Cell::input("x");
+            let mut cell = book::Cell::input("x");
             cell.fmt.size_c = Some(200); // 2.00pt
             this.book.sheets[0].set(Pos::new(0, 0), cell);
             // 模型の値はそのまま — 丸めは apply_pick(=画面の入り口)にしかない
@@ -6878,16 +6878,16 @@ mod combo_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 中身のある列(1 の下に 2 が4つ)を、1行目から5行目まで選んで下へ
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("1"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("1"));
             for r in 1..=4 {
-                this.book.sheets[0].set(Pos::new(r, 0), kumihan::book::Cell::input("2"));
+                this.book.sheets[0].set(Pos::new(r, 0), book::Cell::input("2"));
             }
             this.anchor = Some(Pos::new(0, 0));
             this.cursor = Pos::new(4, 0);
             this.run_cmd("fill-num", cx);
             for r in 1..=4u32 {
                 let v = this.book.sheets[0].value(Pos::new(r, 0));
-                assert_eq!(v, kumihan::book::Value::Number(1.0), "行{}", r + 1);
+                assert_eq!(v, book::Value::Number(1.0), "行{}", r + 1);
             }
         });
     }
@@ -6897,18 +6897,18 @@ mod combo_tests {
         // 本家の Ctrl+D。空の最終セルに立って一手で埋める道
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 1), kumihan::book::Cell::input("7"));
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("=B1*2"));
+            this.book.sheets[0].set(Pos::new(0, 1), book::Cell::input("7"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("=B1*2"));
             recalc_book(&mut this.book, 0);
             // B2(空)に立って下へコピー → B1 の 7 が写る
             this.anchor = None;
             this.cursor = Pos::new(1, 1);
             this.run_cmd("fill-num", cx);
-            assert_eq!(this.book.sheets[0].value(Pos::new(1, 1)), kumihan::book::Value::Number(7.0));
+            assert_eq!(this.book.sheets[0].value(Pos::new(1, 1)), book::Value::Number(7.0));
             // 式も1行ずれて写る: A2 の =B1*2 を A3 に立って写す → =B2*2 = 14
             this.cursor = Pos::new(2, 0);
             this.run_cmd("fill-num", cx);
-            assert_eq!(this.book.sheets[0].value(Pos::new(2, 0)), kumihan::book::Value::Number(14.0));
+            assert_eq!(this.book.sheets[0].value(Pos::new(2, 0)), book::Value::Number(14.0));
             // 1行目では断って理由を言う
             this.cursor = Pos::new(0, 3);
             this.run_cmd("fill-num", cx);
@@ -6924,7 +6924,7 @@ mod combo_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             for r in 0..5 {
-                this.book.sheets[0].set(Pos::new(r, 0), kumihan::book::Cell::input("2"));
+                this.book.sheets[0].set(Pos::new(r, 0), book::Cell::input("2"));
             }
             // A1 から下へ選ぶ(cursor は下端 A5 に居る — extend と同じ形)
             this.anchor = Some(Pos::new(0, 0));
@@ -6940,7 +6940,7 @@ mod combo_tests {
             for r in 0..5u32 {
                 assert_eq!(
                     this.book.sheets[0].value(Pos::new(r, 0)),
-                    kumihan::book::Value::Number(1.0),
+                    book::Value::Number(1.0),
                     "行{}", r + 1
                 );
             }
@@ -6955,7 +6955,7 @@ mod combo_tests {
         // 埋めた後に欄を同期しないと空のままに見える
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("1"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("1"));
             this.anchor = Some(Pos::new(0, 0));
             this.cursor = Pos::new(4, 0); // A5(選択の下端 = 空)
             this.sync_input();
@@ -6963,7 +6963,7 @@ mod combo_tests {
             this.run_cmd("fill-num", cx);
             // モデルにも欄にも 1 が居る — 画面は欄を映すので、ここがずれると
             // 「書けたのに空に見える」
-            assert_eq!(this.book.sheets[0].value(Pos::new(4, 0)), kumihan::book::Value::Number(1.0));
+            assert_eq!(this.book.sheets[0].value(Pos::new(4, 0)), book::Value::Number(1.0));
             assert_eq!(this.input.text(), "1", "欄が同期されていない — 空に見える");
             // **もっと悪い方**(発注者が捕まえた実害): 同期していないと、
             // セルを移った瞬間の commit が「空の打ちかけ」を A5 への編集と
@@ -6971,7 +6971,7 @@ mod combo_tests {
             this.move_cursor(1, 0);
             assert_eq!(
                 this.book.sheets[0].value(Pos::new(4, 0)),
-                kumihan::book::Value::Number(1.0),
+                book::Value::Number(1.0),
                 "セルを移ると消える"
             );
         });
@@ -6982,19 +6982,19 @@ mod combo_tests {
         // 黙って飛ばさない — 空も配る(本家と同じ)。書式は帳票の枠なので残す
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            let mut cell = kumihan::book::Cell::input("9");
+            let mut cell = book::Cell::input("9");
             cell.fmt.bold = true;
             this.book.sheets[0].set(Pos::new(1, 0), cell);
-            this.book.sheets[0].set(Pos::new(2, 0), kumihan::book::Cell::input("8"));
+            this.book.sheets[0].set(Pos::new(2, 0), book::Cell::input("8"));
             this.anchor = Some(Pos::new(0, 0)); // A1 は空
             this.cursor = Pos::new(2, 0);
             this.sync_input();
             this.run_cmd("fill-num", cx);
             let c2 = this.book.sheets[0].get(Pos::new(1, 0)).unwrap();
-            assert_eq!(c2.value, kumihan::book::Value::Empty, "中身は消える");
+            assert_eq!(c2.value, book::Value::Empty, "中身は消える");
             assert!(c2.fmt.bold, "書式は残る");
             // 書式も持たないセルは器ごと消える(それが空の正しい姿)
-            assert_eq!(this.book.sheets[0].value(Pos::new(2, 0)), kumihan::book::Value::Empty);
+            assert_eq!(this.book.sheets[0].value(Pos::new(2, 0)), book::Value::Empty);
         });
     }
 
@@ -7005,9 +7005,9 @@ mod combo_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for (i, v) in ["1", "2", "3", "4"].iter().enumerate() {
-                this.book.sheets[0].set(Pos::new(3 + i as u32, 2), kumihan::book::Cell::input(v));
+                this.book.sheets[0].set(Pos::new(3 + i as u32, 2), book::Cell::input(v));
             }
-            this.book.sheets[0].set(Pos::new(3, 3), kumihan::book::Cell::input("=C4*2"));
+            this.book.sheets[0].set(Pos::new(3, 3), book::Cell::input("=C4*2"));
             recalc_book(&mut this.book, 0);
             this.anchor = None;
             this.cursor = Pos::new(3, 3);
@@ -7016,7 +7016,7 @@ mod combo_tests {
             for (r, want) in [(4u32, 4.0), (5, 6.0), (6, 8.0)] {
                 assert_eq!(
                     this.book.sheets[0].value(Pos::new(r, 3)),
-                    kumihan::book::Value::Number(want),
+                    book::Value::Number(want),
                     "行{}", r + 1
                 );
             }
@@ -7031,7 +7031,7 @@ mod combo_tests {
     fn the_fill_handle_refuses_with_a_reason_when_the_neighbour_is_empty(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets[0].set(Pos::new(0, 3), kumihan::book::Cell::input("5"));
+            this.book.sheets[0].set(Pos::new(0, 3), book::Cell::input("5"));
             this.anchor = None;
             this.cursor = Pos::new(0, 3);
             this.fill_handle_auto();
@@ -7044,52 +7044,52 @@ mod combo_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             // 本家のオートフィル: 10,20 を引くと 30,40,50,60(等差の続き)
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("10"));
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("20"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("10"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("20"));
             this.sync_input();
             this.fill_handle_apply(Pos::new(0, 0), Pos::new(1, 0), Pos::new(5, 0), false);
             for (r, want) in [(2u32, 30.0), (3, 40.0), (4, 50.0), (5, 60.0)] {
                 assert_eq!(
                     this.book.sheets[0].value(Pos::new(r, 0)),
-                    kumihan::book::Value::Number(want),
+                    book::Value::Number(want),
                     "行{}", r + 1
                 );
             }
             // 1つの数でも連続データが既定(7 → 8, 9)
-            this.book.sheets[0].set(Pos::new(6, 2), kumihan::book::Cell::input("7"));
+            this.book.sheets[0].set(Pos::new(6, 2), book::Cell::input("7"));
             this.cursor = Pos::new(6, 2);
             this.sync_input();
             this.fill_handle_apply(Pos::new(6, 2), Pos::new(6, 2), Pos::new(8, 2), false);
             for (r, want) in [(7u32, 8.0), (8, 9.0)] {
                 assert_eq!(
                     this.book.sheets[0].value(Pos::new(r, 2)),
-                    kumihan::book::Value::Number(want),
+                    book::Value::Number(want),
                     "行{}", r + 1
                 );
             }
             // Ctrl の裏返し: 写し(5 を引いて 5,5 — 帳票の定数の列)
-            this.book.sheets[0].set(Pos::new(10, 0), kumihan::book::Cell::input("5"));
+            this.book.sheets[0].set(Pos::new(10, 0), book::Cell::input("5"));
             this.cursor = Pos::new(10, 0);
             this.sync_input();
             this.fill_handle_apply(Pos::new(10, 0), Pos::new(10, 0), Pos::new(12, 0), true);
             for r in 11..=12u32 {
                 assert_eq!(
                     this.book.sheets[0].value(Pos::new(r, 0)),
-                    kumihan::book::Value::Number(5.0),
+                    book::Value::Number(5.0),
                     "行{}", r + 1
                 );
             }
             // 右方向: 式の列参照がずれる
-            this.book.sheets[0].set(Pos::new(7, 0), kumihan::book::Cell::input("3"));
-            this.book.sheets[0].set(Pos::new(7, 1), kumihan::book::Cell::input("4"));
-            this.book.sheets[0].set(Pos::new(8, 0), kumihan::book::Cell::input("=A8*10"));
+            this.book.sheets[0].set(Pos::new(7, 0), book::Cell::input("3"));
+            this.book.sheets[0].set(Pos::new(7, 1), book::Cell::input("4"));
+            this.book.sheets[0].set(Pos::new(8, 0), book::Cell::input("=A8*10"));
             recalc_book(&mut this.book, 0);
             this.cursor = Pos::new(8, 0);
             this.sync_input();
             this.fill_handle_apply(Pos::new(8, 0), Pos::new(8, 0), Pos::new(8, 1), false);
             assert_eq!(
                 this.book.sheets[0].value(Pos::new(8, 1)),
-                kumihan::book::Value::Number(40.0)
+                book::Value::Number(40.0)
             );
         });
     }
@@ -7098,12 +7098,12 @@ mod combo_tests {
     fn filling_right_a_single_cell_copies_the_column_to_its_left(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("9"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("9"));
             recalc_book(&mut this.book, 0);
             this.anchor = None;
             this.cursor = Pos::new(0, 1); // B1(空)に立って右へコピー
             this.run_cmd("fill-right", cx);
-            assert_eq!(this.book.sheets[0].value(Pos::new(0, 1)), kumihan::book::Value::Number(9.0));
+            assert_eq!(this.book.sheets[0].value(Pos::new(0, 1)), book::Value::Number(9.0));
             // A列では断って理由を言う
             this.cursor = Pos::new(3, 0);
             this.run_cmd("fill-right", cx);
@@ -7115,14 +7115,14 @@ mod combo_tests {
     fn merge_and_center_applies_the_format_and_puts_handles_on_the_outer_corners(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets[0].set(Pos::new(1, 1), kumihan::book::Cell::input("あいうえお"));
+            this.book.sheets[0].set(Pos::new(1, 1), book::Cell::input("あいうえお"));
             this.anchor = Some(Pos::new(1, 1));
             this.cursor = Pos::new(2, 3);
             this.sync_input();
             this.merge_selection("中央");
             let cell = this.book.sheets[0].get(Pos::new(1, 1)).cloned().unwrap();
-            assert_eq!(cell.fmt.align, kumihan::book::HAlign::Center);
-            assert_eq!(cell.fmt.valign, kumihan::book::VAlign::Middle);
+            assert_eq!(cell.fmt.align, book::HAlign::Center);
+            assert_eq!(cell.fmt.valign, book::VAlign::Middle);
             // 結合の上にカーソルを1つ置いたとき、フィルハンドルの角は
             // 親セル(B2)ではなく**結合の外周の角(D3)**
             this.anchor = None;
@@ -7139,10 +7139,10 @@ mod combo_tests {
         // 「形式を選択して貼り付け」の側
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            let mut src = kumihan::book::Cell::input("42");
+            let mut src = book::Cell::input("42");
             src.fmt.bold = true;
             src.fmt.fill = Some("FFF2CC".into());
-            src.fmt.align = kumihan::book::HAlign::Center;
+            src.fmt.align = book::HAlign::Center;
             this.book.sheets[0].set(Pos::new(0, 0), src);
             // A1 をコピーして C3 へ貼る
             this.cursor = Pos::new(0, 0);
@@ -7153,10 +7153,10 @@ mod combo_tests {
             this.sync_input();
             this.paste_now(cx);
             let got = this.book.sheets[0].get(Pos::new(2, 2)).cloned().unwrap();
-            assert_eq!(got.value, kumihan::book::Value::Number(42.0), "中身");
+            assert_eq!(got.value, book::Value::Number(42.0), "中身");
             assert!(got.fmt.bold, "太字が運ばれていない");
             assert_eq!(got.fmt.fill.as_deref(), Some("FFF2CC"), "塗りが運ばれていない");
-            assert_eq!(got.fmt.align, kumihan::book::HAlign::Center, "揃えが運ばれていない");
+            assert_eq!(got.fmt.align, book::HAlign::Center, "揃えが運ばれていない");
             assert!(this.status.contains("書式も"), "{}", this.status);
         });
     }
@@ -7165,9 +7165,9 @@ mod combo_tests {
     fn pasting_shifts_formula_references_and_brings_the_formatting(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("10"));
-            this.book.sheets[0].set(Pos::new(0, 1), kumihan::book::Cell::input("20"));
-            let mut f = kumihan::book::Cell::input("=A1*2");
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("10"));
+            this.book.sheets[0].set(Pos::new(0, 1), book::Cell::input("20"));
+            let mut f = book::Cell::input("=A1*2");
             f.fmt.italic = true;
             this.book.sheets[0].set(Pos::new(1, 0), f);
             recalc_book(&mut this.book, 0);
@@ -7180,7 +7180,7 @@ mod combo_tests {
             this.paste_now(cx);
             let got = this.book.sheets[0].get(Pos::new(1, 1)).cloned().unwrap();
             assert_eq!(got.formula.as_deref(), Some("B1*2"), "参照がずれていない");
-            assert_eq!(this.book.sheets[0].value(Pos::new(1, 1)), kumihan::book::Value::Number(40.0));
+            assert_eq!(this.book.sheets[0].value(Pos::new(1, 1)), book::Value::Number(40.0));
             assert!(got.fmt.italic, "書式が運ばれていない");
         });
     }
@@ -7245,15 +7245,15 @@ mod combo_tests {
         // 「空いているか」の条件をここで固定する(隣が塞がれば流さない)
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            let mut cell = kumihan::book::Cell::input("中央揃えの長い文字列です");
-            cell.fmt.align = kumihan::book::HAlign::Center;
+            let mut cell = book::Cell::input("中央揃えの長い文字列です");
+            cell.fmt.align = book::HAlign::Center;
             this.book.sheets[0].set(Pos::new(1, 2), cell);
             // 左右が空: どちらも「空いている」= 両側へ伸ばせる
             for p in [Pos::new(1, 1), Pos::new(1, 3)] {
                 assert!(this.sheet().get(p).is_none(), "{} は空のはず", p.a1());
             }
             // 右隣を塞ぐと、そちらへは伸ばせない(はみ出しの判定の材料)
-            this.book.sheets[0].set(Pos::new(1, 3), kumihan::book::Cell::input("x"));
+            this.book.sheets[0].set(Pos::new(1, 3), book::Cell::input("x"));
             assert!(
                 this.sheet().get(Pos::new(1, 3)).is_some_and(|q| !q.value.is_empty()),
                 "塞がっていない"
@@ -7268,7 +7268,7 @@ mod combo_tests {
         // 歩きうる — 遅くないことも一緒に見る
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("a"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("a"));
             this.select_cols(1, 1);
             let (a, b) = this.sel_rect();
             assert_eq!((a.row, b.row), (0, crate::util::LAST_ROW), "列が端まで届いていない");
@@ -7297,8 +7297,8 @@ mod combo_tests {
         // 本家と同じ。中身は Ctrl+A と同じ道(使われている範囲)を通す
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("a"));
-            this.book.sheets[0].set(Pos::new(4, 2), kumihan::book::Cell::input("b"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("a"));
+            this.book.sheets[0].set(Pos::new(4, 2), book::Cell::input("b"));
             this.cursor = Pos::new(2, 1);
             this.anchor = None;
             this.sync_input();
@@ -7325,17 +7325,17 @@ mod combo_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             for r in 0..3u32 {
-                this.book.sheets[0].set(Pos::new(r, 0), kumihan::book::Cell::input(&format!("{}", r + 1)));
+                this.book.sheets[0].set(Pos::new(r, 0), book::Cell::input(&format!("{}", r + 1)));
             }
             recalc_book(&mut this.book, 0);
             let sh = &this.book.sheets[0];
             // セルごとの指紋が取れること(式でないセルは None)
-            assert!(kumihan::calc::py_cell_stamp(sh, Pos::new(0, 0)).is_none(), "式でないのに指紋が出た");
+            assert!(book::calc::py_cell_stamp(sh, Pos::new(0, 0)).is_none(), "式でないのに指紋が出た");
             // 指紋の控えが空なら「計算し直す物がある」= 全部が対象
             this.udf_stamp.clear();
             // 引数が同じなら指紋も同じ(投げ直さない土台)
-            let a = kumihan::calc::py_cell_stamp(sh, Pos::new(0, 0));
-            let b = kumihan::calc::py_cell_stamp(sh, Pos::new(0, 0));
+            let a = book::calc::py_cell_stamp(sh, Pos::new(0, 0));
+            let b = book::calc::py_cell_stamp(sh, Pos::new(0, 0));
             assert_eq!(a, b, "同じセルで指紋が揺れる");
         });
     }
@@ -7581,7 +7581,7 @@ mod web_export_tests {
                 sh.set(Pos::new(1, 0), a);
                 let mut b = Cell::input("360");
                 b.fmt.number_format = Some("¥#,##0".into());
-                b.fmt.align = kumihan::book::HAlign::Right;
+                b.fmt.align = book::HAlign::Right;
                 sh.set(Pos::new(1, 1), b);
                 // 逃げる字
                 sh.set(Pos::new(2, 0), Cell::input("<b>&"));
@@ -7698,20 +7698,20 @@ mod adoc_open_and_save {
                 ("A3", "椅子"), ("B3", "800"),
                 ("A4", "sum"), ("B4", "=SUM(B2:B3)"),
             ] {
-                this.book.sheets[0].set(Pos::parse(a1).unwrap(), kumihan::book::Cell::input(v));
+                this.book.sheets[0].set(Pos::parse(a1).unwrap(), book::Cell::input(v));
             }
             // **字として入っている伝票番号**(xlsx から読むとこの形)。
             // 打ち込みの `001` は Excel と同じく数の 1 になるので、
             // ここは字のセルを直に置いて往復を見る
             this.book.sheets[0].set(
                 Pos::parse("C2").unwrap(),
-                kumihan::book::Cell {
+                book::Cell {
                     formula: None,
-                    value: kumihan::book::Value::Text("001".into()),
+                    value: book::Value::Text("001".into()),
                     fmt: Default::default(),
                 },
             );
-            kumihan::calc::recalc_all(&mut this.book);
+            book::calc::recalc_all(&mut this.book);
             this.save_to(p.clone());
         });
 
@@ -7748,7 +7748,7 @@ mod adoc_open_and_save {
         let p = dir.join("様式.adoc");
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets[0].set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("あ"));
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("あ"));
             this.book.sheets[0].col_width.insert(0, 30.0);
             this.save_to(p.clone());
             assert!(
@@ -7840,7 +7840,7 @@ mod encryption_and_saving_as_text {
 
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets[0].set(Pos::parse("A1").unwrap(), kumihan::book::Cell::input("秘密"));
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("秘密"));
             this.encrypt_pw = Some("aikotoba".into());
             this.save_to(p.clone());
             assert!(!p.exists(), "断らずに書いた(暗号が外れて平文で出た)");
@@ -7870,7 +7870,7 @@ mod find_scope_tests {
     fn a_whole_file_search_visits_the_other_sheets_too(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            this.book.sheets.push(kumihan::book::Sheet::new("Sheet2"));
+            this.book.sheets.push(book::Sheet::new("Sheet2"));
             // 探す言葉は **2枚目にだけ** 置く
             this.book.sheets[1].set(Pos::new(3, 1), Cell::input("みかん"));
             this.active = 0;
@@ -7932,8 +7932,8 @@ mod file_menu_tests {
                 this.status
             );
             // 張れば押せる(**行が隠れていなくても**)
-            this.book.sheets[0].set(Pos::new(0, 0), kumihan::book::Cell::input("見出し"));
-            this.book.sheets[0].set(Pos::new(1, 0), kumihan::book::Cell::input("1"));
+            this.book.sheets[0].set(Pos::new(0, 0), book::Cell::input("見出し"));
+            this.book.sheets[0].set(Pos::new(1, 0), book::Cell::input("1"));
             this.run_cmd("setfilter", cx);
             assert!(this.can_press("clear-filter"), "張ったのに押せない");
 
@@ -8053,8 +8053,8 @@ mod file_menu_tests {
     fn text_to_columns_keeps_a_leading_zero(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            this.sheet_mut().set(Pos::new(0, 0), kumihan::book::Cell::input("090-1234-5678"));
-            this.sheet_mut().set(Pos::new(1, 0), kumihan::book::Cell::input("012-0034"));
+            this.sheet_mut().set(Pos::new(0, 0), book::Cell::input("090-1234-5678"));
+            this.sheet_mut().set(Pos::new(1, 0), book::Cell::input("012-0034"));
             this.cursor = Pos::new(0, 0);
             this.anchor = Some(Pos::new(1, 0));
             this.prompt = Some(("split-delim", Editor::new("-")));

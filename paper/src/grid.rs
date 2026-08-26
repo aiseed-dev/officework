@@ -10,8 +10,8 @@
 use std::io::{BufWriter, Write};
 
 use printpdf::*;
-use kumihan::book::{format_value, HAlign, Value};
-use kumihan::book::Sheet as Grid;
+use book::{format_value, HAlign, Value};
+use book::Sheet as Grid;
 
 use crate::Paper;
 
@@ -41,7 +41,7 @@ fn hex_rgb(s: &str) -> Option<(f32, f32, f32)> {
 pub struct PrintSetup {
     /// 印刷範囲(左上, 右下)。空なら使われている全域。
     /// **複数持てる。各域は新しい紙から刷る**(Excel と同じ)
-    pub areas: Vec<(kumihan::book::Pos, kumihan::book::Pos)>,
+    pub areas: Vec<(book::Pos, book::Pos)>,
     /// 余白 mm(左, 右, 上, 下)。None なら paper.margin_mm を四辺に
     pub margins_mm: Option<(f32, f32, f32, f32)>,
     /// 1904 起点のブックか(日付の描きが起点を替える)
@@ -237,7 +237,7 @@ fn draw_header_footer(
             lyr.set_fill_color(Color::Rgb(Rgb::new(0.25, 0.28, 0.31, None)));
             let subst = |raw: &str| -> String { hf_subst(raw, offset + i + 1, total) };
             let put3 = |raw: &str, y: f32| {
-                let (lf, cn, rt) = kumihan::book::hf_split(raw);
+                let (lf, cn, rt) = book::hf_split(raw);
                 let (lf, cn, rt) = (subst(&lf), subst(&cn), subst(&rt));
                 if !lf.is_empty() {
                     lyr.use_text(lf, 9.0, Mm(ml), Mm(y), font);
@@ -451,7 +451,7 @@ fn draw_sheet(
     let usable = paper.height_mm - mt - mb;
 
     // 条件付き書式の下ごしらえ(重複・上位N・平均は範囲の統計が要る)
-    let cond_prep: Vec<(kumihan::book::CondRule, kumihan::book::CondAux)> =
+    let cond_prep: Vec<(book::CondRule, book::CondAux)> =
         grid.cond.iter().map(|r| (r.clone(), r.aux(grid))).collect();
 
     // 各ページの頭で繰り返すタイトル行(自分のいる範囲の外は繰り返さない)
@@ -477,7 +477,7 @@ fn draw_sheet(
         col_x: &[f32],
         col_mm: &[f32],
         scale: f32,
-        cond_prep: &[(kumihan::book::CondRule, kumihan::book::CondAux)],
+        cond_prep: &[(book::CondRule, book::CondAux)],
         date1904: bool,
     ) {
         let ncols = cols.len();
@@ -515,7 +515,7 @@ fn draw_sheet(
             l.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
         }
         for (i, &c) in cols.iter().enumerate() {
-            let p = kumihan::book::Pos::new(r, c);
+            let p = book::Pos::new(r, c);
             let x = ml + col_x[i];
             let cw = col_mm[i];
             if cw <= 0.0 {
@@ -683,7 +683,7 @@ fn draw_sheet(
         l.set_fill_color(Color::Rgb(Rgb::new(0.4, 0.44, 0.48, None)));
         for (i, &c) in cols.iter().enumerate() {
             let x = ml + cx[i] + cm[i] / 2.0 - 1.0;
-            let name = kumihan::book::Pos::new(0, c).a1();
+            let name = book::Pos::new(0, c).a1();
             let name = name.trim_end_matches('1');
             l.use_text(name, 6.5, Mm(x), Mm(paper.height_mm - mt + 1.5), font);
         }
@@ -750,7 +750,7 @@ fn draw_sheet(
     // printpdf の多角形塗りを持ち込むまで。黙って出したことにしない)
     {
         // セル→1ページ目基準のmm(改ページをまたぐ図形の紙送りはまだ)
-        let cell_mm = |at: kumihan::book::Pos| -> (f32, f32) {
+        let cell_mm = |at: book::Pos| -> (f32, f32) {
             let x: f32 = (c0..at.col.min(c0 + ncols))
                 .map(|c| col_mm[(c - c0) as usize])
                 .sum();
@@ -905,7 +905,7 @@ fn draw_sheet(
 
 #[cfg(test)]
 mod tests {
-    use kumihan::book::{Borders, Cell, CellFormat, Pos, Value};
+    use book::{Borders, Cell, CellFormat, Pos, Value};
 
     use super::*;
 
@@ -988,10 +988,10 @@ mod tests {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
         let data = kumihan::font::load(fam).unwrap();
         let mut s = grid(); // B2 = 1200(塗りの指定なし)
-        s.cond.push(kumihan::book::CondRule {
+        s.cond.push(book::CondRule {
             range: (Pos::parse("B2").unwrap(), Pos::parse("B2").unwrap()),
-            kind: kumihan::book::CondKind::Cmp(kumihan::book::CondOp::Gt, 1000.0),
-            look: kumihan::book::CondLook {
+            kind: book::CondKind::Cmp(book::CondOp::Gt, 1000.0),
+            look: book::CondLook {
                 fill: Some("E2EFDA".into()),
                 ..Default::default()
             },
@@ -1190,7 +1190,7 @@ mod tests {
 
 #[cfg(test)]
 mod print_setup_tests {
-    use kumihan::book::{Cell, Pos, Value};
+    use book::{Cell, Pos, Value};
 
     use super::*;
 
@@ -1248,7 +1248,7 @@ mod print_setup_tests {
 
 #[cfg(test)]
 mod print_extras_tests {
-    use kumihan::book::{Cell, Pos, Value};
+    use book::{Cell, Pos, Value};
 
     use super::*;
 

@@ -729,6 +729,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "book"
+version = "0.0.1"
+dependencies = [
+ "quick-xml 0.36.2",
+]
+
+[[package]]
 name = "borsh"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -812,6 +819,7 @@ dependencies = [
 name = "calc"
 version = "0.1.0-alpha"
 dependencies = [
+ "book",
  "ed25519-dalek",
  "encoding_rs",
  "face",
@@ -3161,9 +3169,9 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 name = "kumihan"
 version = "0.0.1"
 dependencies = [
+ "book",
  "hyphenation",
  "printpdf",
- "quick-xml 0.36.2",
  "toml_edit 0.25.13+spec-1.1.0",
  "ttf-parser 0.20.0",
 ]
@@ -4093,6 +4101,7 @@ name = "ooxml"
 version = "0.0.1"
 dependencies = [
  "aes",
+ "book",
  "cfb",
  "kumihan",
  "printpdf",
@@ -4117,6 +4126,7 @@ dependencies = [
 name = "ops"
 version = "0.0.1"
 dependencies = [
+ "book",
  "ed25519-dalek",
  "getrandom 0.3.4",
  "kumihan",
@@ -4161,6 +4171,7 @@ dependencies = [
 name = "paper"
 version = "0.1.0"
 dependencies = [
+ "book",
  "image 0.24.9",
  "kumihan",
  "ooxml",
@@ -4715,6 +4726,7 @@ version = "0.0.1"
 name = "pysheet"
 version = "0.5.0"
 dependencies = [
+ "book",
  "kumihan",
  "ooxml",
  "ops",
@@ -5568,6 +5580,7 @@ dependencies = [
 name = "sheet"
 version = "0.0.1"
 dependencies = [
+ "book",
  "flate2",
  "kumihan",
  "quick-xml 0.36.2",
@@ -5590,6 +5603,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 name = "sidecar"
 version = "0.0.1"
 dependencies = [
+ "book",
  "kumihan",
  "quick-xml 0.36.2",
  "serde_json",

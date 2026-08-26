@@ -6,6 +6,7 @@ license.workspace = true
 description = "OOXML(docx)の読み書き。全部は実装しない — 読めないものは読めないと言う"
 
 [dependencies]
+book = { path = "../book" }
 kumihan = { path = "../engine" }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 quick-xml = "0.36"

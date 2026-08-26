@@ -4,7 +4,7 @@
 
 use std::collections::HashSet;
 
-use crate::book::{format_value, Pos, Value};
+use crate::{format_value, Pos, Value};
 
 use super::parse::*;
 use super::run::*;

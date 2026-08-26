@@ -20,8 +20,8 @@
 //! `every_sheet_field_is_watched` が `types.rs` を読んで、`pub` の持ち物が
 //! 全部この表に載っていることを確かめます。
 
-use super::adoc;
-use super::{
+use crate::book_adoc as adoc;
+use book::{
     Book, Cell, CellFormat, CondKind, CondLook, CondOp, CondRule, DefinedName, FreezePane, Pos,
     Scenario, Sheet, SheetImage, SheetShape, TableDef, Validation, Value,
 };
@@ -157,7 +157,7 @@ pub fn filled_book() -> Book {
 
     b.props.title = "四月の売上".into();
     b.props.creators = vec!["総務課".into()];
-    b.theme = super::theme::OFFICE.iter().map(|s| s.to_string()).collect();
+    b.theme = book::theme::OFFICE.iter().map(|s| s.to_string()).collect();
     b.names_raw = vec!["<definedName name=\"税率\">0.1</definedName>".into()];
     b.named_styles = vec![("見出し".into(), Some(3), CellFormat { bold: true, ..Default::default() })];
     b.named_styles_new = vec![("合計".into(), CellFormat { bold: true, ..Default::default() })];
@@ -308,13 +308,13 @@ pub fn where_of(name: &str) -> Watch {
 /// 返る並びは `WATCHED` の順です。`Watch::Skip` の物は見ません。
 pub fn round_trip_holes() -> Vec<&'static str> {
     let before = filled_book();
-    let tmpl = super::super::booktmpl::from_book(&before);
+    let tmpl = crate::booktmpl::from_book(&before);
 
     let src = adoc::write(&before);
     let (mut after, _) = adoc::parse(&src).expect("自分で書いた adoc が読めない");
-    let tsrc = super::super::booktmpl::write(&tmpl);
-    let back = super::super::booktmpl::parse(&tsrc).expect("自分で書いたテンプレートが読めない");
-    super::super::booktmpl::apply(&back, &mut after);
+    let tsrc = crate::booktmpl::write(&tmpl);
+    let back = crate::booktmpl::parse(&tsrc).expect("自分で書いたテンプレートが読めない");
+    crate::booktmpl::apply(&back, &mut after);
 
     let mut out = Vec::new();
     for (name, w) in WATCHED_BOOK {

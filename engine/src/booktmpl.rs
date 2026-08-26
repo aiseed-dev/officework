@@ -40,7 +40,7 @@ fn w(sym: &str) -> &'static str {
     words::text(sym)
 }
 
-use crate::book::{Book, CellFormat, FreezePane, Pos, ProtectAllow, Sheet};
+use book::{Book, CellFormat, FreezePane, Pos, ProtectAllow, Sheet};
 use crate::{Block, Cellbox, Document, Table};
 
 /// 1枚ぶんの見た目。
@@ -464,7 +464,7 @@ fn apply_styles(t: &BookTheme, b: &mut Book) {
                 match s.cells.get_mut(&p) {
                     Some(c) => c.fmt = f.clone(),
                     None => {
-                        s.set(p, crate::book::Cell { fmt: f.clone(), ..Default::default() });
+                        s.set(p, book::Cell { fmt: f.clone(), ..Default::default() });
                     }
                 }
             }
@@ -1301,7 +1301,7 @@ pub fn strip(s: &mut Sheet) {
 #[allow(non_snake_case)]
 mod tests {
     use super::*;
-    use crate::book::Cell;
+    use book::Cell;
 
     fn ledger() -> Book {
         let mut b = Book::new();
@@ -1391,7 +1391,7 @@ mod allow_names_watch {
 
     #[test]
     fn every_protect_flag_has_a_name() {
-        let src = include_str!("book/types.rs");
+        let src = include_str!("../../book/src/types.rs");
         let head = "pub struct ProtectAllow {";
         let from = src.find(head).expect("ProtectAllow が無い");
         let body = &src[from + head.len()..];
@@ -1423,7 +1423,7 @@ mod allow_names_watch {
 #[cfg(test)]
 mod language_tests {
     use super::*;
-    use crate::book::holes::filled_book;
+    use crate::holes::filled_book;
 
     fn tmpl_in(lang: &str) -> String {
         crate::font::set_default_language(lang);

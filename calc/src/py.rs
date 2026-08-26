@@ -6,17 +6,17 @@ use crate::*;
 /// 自前の関数の表(モジュール名 → (関数名, 説明) の並び)。
 type OwnFuncTable = HashMap<String, Vec<(String, String)>>;
 /// シートごとの呼び出し(シート番号, (置き場, 関数名, 引数) の並び)。
-type CallsPerSheet = (usize, Vec<(String, String, Vec<kumihan::calc::PyArg>)>);
+type CallsPerSheet = (usize, Vec<(String, String, Vec<book::calc::PyArg>)>);
 /// シートごとの式の呼び出し(シート番号, (置き場, 式, 関数名, 引数) の並び)。
-type FormulaCallsPerSheet = (usize, Vec<(String, String, String, Vec<kumihan::calc::PyArg>)>);
+type FormulaCallsPerSheet = (usize, Vec<(String, String, String, Vec<book::calc::PyArg>)>);
 /// 差し込みの1仕事(置き場, (場所, 中身) の並び, 右下)。
 type MergeJob = (Pos, Vec<(Pos, String)>, Pos);
 
-pub(crate) fn py_literal(v: &kumihan::book::Value) -> String {
+pub(crate) fn py_literal(v: &book::Value) -> String {
     match v {
-        kumihan::book::Value::Number(n) => format!("{n}"),
-        kumihan::book::Value::Bool(b) => (if *b { "True" } else { "False" }).into(),
-        kumihan::book::Value::Empty => "none".into(),
+        book::Value::Number(n) => format!("{n}"),
+        book::Value::Bool(b) => (if *b { "True" } else { "False" }).into(),
+        book::Value::Empty => "none".into(),
         v => format!("{:?}", v.display()), // Rust の {:?} は Python でも読める逃がし
     }
 }
@@ -26,7 +26,7 @@ pub(crate) fn py_literal(v: &kumihan::book::Value) -> String {
 /// mods は (モジュール名, .py の中身)、calls は (セルA1, モジュール名, 関数名, 引数)。
 pub(crate) fn build_udf_script(
     mods: &[(String, String)],
-    calls: &[(String, String, String, Vec<kumihan::calc::PyArg>)],
+    calls: &[(String, String, String, Vec<book::calc::PyArg>)],
     out_path: &std::path::Path,
 ) -> String {
     let mut defs = String::new();
@@ -39,8 +39,8 @@ pub(crate) fn build_udf_script(
         let mut lit_args = Vec::new();
         for a in args {
             match a {
-                kumihan::calc::PyArg::One(v) => lit_args.push(py_literal(v)),
-                kumihan::calc::PyArg::Rect(cols, vs) => {
+                book::calc::PyArg::One(v) => lit_args.push(py_literal(v)),
+                book::calc::PyArg::Rect(cols, vs) => {
                     let cols = (*cols as usize).max(1);
                     let rows: Vec<String> = vs
                         .chunks(cols)
@@ -115,7 +115,7 @@ pub(crate) fn parse_udf_output(raw: &str) -> Vec<(Pos, Vec<Vec<String>>)> {
 /// 2次元はスピル(右下へ展開)。他人のデータを潰しそうなら #SPILL! で止まる。
 /// 返すのは (新しいスピルの台帳, 適用した数, 衝突した数)。
 pub(crate) fn apply_py_results(
-    sh: &mut kumihan::book::Sheet,
+    sh: &mut book::Sheet,
     results: &[(Pos, Vec<Vec<String>>)],
     prev: &std::collections::HashMap<Pos, (u32, u32)>,
 ) -> (std::collections::HashMap<Pos, (u32, u32)>, usize, usize) {
@@ -129,7 +129,7 @@ pub(crate) fn apply_py_results(
                 let p = Pos::new(anchor.row + dr, anchor.col + dc);
                 if let Some(c) = sh.cells.get_mut(&p) {
                     if c.formula.is_none() {
-                        c.value = kumihan::book::Value::Empty;
+                        c.value = book::Value::Empty;
                     }
                 }
             }
@@ -157,26 +157,26 @@ pub(crate) fn apply_py_results(
                 }
             }
         }
-        let put = |sh: &mut kumihan::book::Sheet, p: Pos, text: &str| {
+        let put = |sh: &mut book::Sheet, p: Pos, text: &str| {
             let fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
             let formula = sh.get(p).and_then(|c| c.formula.clone());
             let value = if text.is_empty() {
-                kumihan::book::Value::Empty
+                book::Value::Empty
             } else if let Ok(n) = text.parse::<f64>() {
-                kumihan::book::Value::Number(n)
+                book::Value::Number(n)
             } else {
-                kumihan::book::Value::Text(text.to_string())
+                book::Value::Text(text.to_string())
             };
-            sh.set(p, kumihan::book::Cell { formula, value, fmt });
+            sh.set(p, book::Cell { formula, value, fmt });
         };
         if blocked {
             let fmt = sh.get(*anchor).map(|c| c.fmt.clone()).unwrap_or_default();
             let formula = sh.get(*anchor).and_then(|c| c.formula.clone());
             sh.set(
                 *anchor,
-                kumihan::book::Cell {
+                book::Cell {
                     formula,
-                    value: kumihan::book::Value::Error("#SPILL!".into()),
+                    value: book::Value::Error("#SPILL!".into()),
                     fmt,
                 },
             );
@@ -315,7 +315,7 @@ pub(crate) fn refresh_udfs() -> Vec<String> {
             map.entry(up).or_default().push((m.clone(), f));
         }
     }
-    kumihan::calc::set_udf_names(map.keys().cloned());
+    book::calc::set_udf_names(map.keys().cloned());
     if let Ok(mut g) = UDF_MAP.write() {
         *g = Some(map);
     }
@@ -354,7 +354,7 @@ pub(crate) fn start_udf_watch(view: gpui::Entity<Calc>, cx: &mut gpui::App) {
                 // 中身も変わる。**指紋を捨てて計算し直させる** — 引数が同じ
                 // ままでも、関数の中身が変わっていれば答えは変わるため
                 if refresh_udfs_if_changed() {
-                    kumihan::calc::recalc_all(&mut calc.book);
+                    book::calc::recalc_all(&mut calc.book);
                     calc.udf_stamp.clear();
                     cx.notify();
                 }
@@ -494,7 +494,7 @@ impl Calc {
         let header = (a.col + 1..=b.col).any(|c| {
             matches!(
                 sh.get(Pos::new(a.row, c)).map(|x| &x.value),
-                Some(kumihan::book::Value::Text(_))
+                Some(book::Value::Text(_))
             )
         });
         let r0 = if header { a.row + 1 } else { a.row };
@@ -516,7 +516,7 @@ impl Calc {
                     // **空は空のまま渡す**(折れ線が谷にならないように)。
                     // 棒のときは 0 として描かれます
                     None => None,
-                    Some(x) if matches!(x.value, kumihan::book::Value::Empty) => None,
+                    Some(x) if matches!(x.value, book::Value::Empty) => None,
                     Some(x) => Some(x.value.as_number()),
                 })
                 .collect();
@@ -595,7 +595,7 @@ impl Calc {
                     Ok(data) => {
                         let (w, h) = image_px(&data).unwrap_or((640, 400));
                         this.checkpoint();
-                        this.sheet_mut().images_new.push(kumihan::book::SheetImage {
+                        this.sheet_mut().images_new.push(book::SheetImage {
                             at,
             dx_px: 0.0,
             dy_px: 0.0,
@@ -629,7 +629,7 @@ impl Calc {
     ) {
         // 組み替え(フィールドリスト)なら、総計などの性質と場所は据え置く
         let keep = pend.replace.and_then(|i| self.book.pivots.get(i).cloned());
-        let def = kumihan::book::PivotDef {
+        let def = book::PivotDef {
             sheet: self.book.sheets[self.active].name.clone(),
             src: (pend.a, pend.b),
             rows_sel: pend.rows_sel,
@@ -718,20 +718,20 @@ impl Calc {
                     }
                     't' => {
                         cell.fmt.bold = true;
-                        cell.fmt.borders.top = kumihan::book::Edge::THIN;
+                        cell.fmt.borders.top = book::Edge::THIN;
                     }
                     _ => {}
                 }
                 // 総計の列(右端)も太字+仕切り線
                 if tot_col && c == w - 1 && *k != 'h' {
                     cell.fmt.bold = true;
-                    cell.fmt.borders.left = kumihan::book::Edge::THIN;
+                    cell.fmt.borders.left = book::Edge::THIN;
                 }
                 // 塊の外周に薄い線(印刷でも塊が分かる)
-                if i == 0 { cell.fmt.borders.top = kumihan::book::Edge::THIN; }
-                if i == last { cell.fmt.borders.bottom = kumihan::book::Edge::THIN; }
-                if c == 0 { cell.fmt.borders.left = kumihan::book::Edge::THIN; }
-                if c == w - 1 { cell.fmt.borders.right = kumihan::book::Edge::THIN; }
+                if i == 0 { cell.fmt.borders.top = book::Edge::THIN; }
+                if i == last { cell.fmt.borders.bottom = book::Edge::THIN; }
+                if c == 0 { cell.fmt.borders.left = book::Edge::THIN; }
+                if c == w - 1 { cell.fmt.borders.right = book::Edge::THIN; }
                 self.book.sheets[si].set(p, cell);
             }
         }
@@ -741,7 +741,7 @@ impl Calc {
     /// Some(i) は i 番の指図の更新(同じ場所に置き直す)。
     pub(crate) fn spawn_pivot(
         &mut self,
-        mut def: kumihan::book::PivotDef,
+        mut def: book::PivotDef,
         replace: Option<usize>,
         cx: &mut Context<Self>,
     ) {
@@ -1061,7 +1061,7 @@ impl Calc {
                     Ok((bytes, out)) => {
                         match sheet::xlsx::read(std::io::Cursor::new(bytes)) {
                             Ok((mut book, rep)) => {
-                                kumihan::calc::recalc_all(&mut book);
+                                book::calc::recalc_all(&mut book);
                                 this.checkpoint_book();
                                 this.book = book;
                                 if this.active >= this.book.sheets.len() {
@@ -1121,8 +1121,8 @@ impl Calc {
     pub(crate) fn udf_dirty(&self) -> bool {
         self.book.sheets.iter().enumerate().any(|(i, sh)| {
             sh.cells.iter().any(|(p, c)| {
-                c.formula.as_ref().is_some_and(|f| kumihan::calc::is_py_formula(f))
-                    && kumihan::calc::py_cell_stamp(sh, *p)
+                c.formula.as_ref().is_some_and(|f| book::calc::is_py_formula(f))
+                    && book::calc::py_cell_stamp(sh, *p)
                         != self.udf_stamp.get(&(i, *p)).copied()
             })
         })
@@ -1151,16 +1151,16 @@ impl Calc {
             let mut cells = Vec::new();
             for (p, c) in &sh.cells {
                 let Some(f) = &c.formula else { continue };
-                if !kumihan::calc::is_py_formula(f) {
+                if !book::calc::is_py_formula(f) {
                     continue;
                 }
                 // **変わっていないセルは投げない**(発注者 2026-08-14
                 // 「UDF の呼び出しは重い」)。100 行あるとき、1つ直すたびに
                 // 100 回ぶんを投げ直していた。手回し(@計算)のときは全部
-                let changed = kumihan::calc::py_cell_stamp(sh, *p)
+                let changed = book::calc::py_cell_stamp(sh, *p)
                     != self.udf_stamp.get(&(i, *p)).copied();
                 if !auto || changed {
-                    if let Some((name, args)) = kumihan::calc::eval_py_call(sh, f) {
+                    if let Some((name, args)) = book::calc::eval_py_call(sh, f) {
                         calls.push((p.a1(), name, args));
                         cells.push(*p);
                     }
@@ -1316,7 +1316,7 @@ impl Calc {
                         for (i, cells) in &sent {
                             let sh = &this.book.sheets[*i];
                             for p in cells {
-                                match kumihan::calc::py_cell_stamp(sh, *p) {
+                                match book::calc::py_cell_stamp(sh, *p) {
                                     Some(st) => {
                                         this.udf_stamp.insert((*i, *p), st);
                                     }
@@ -1616,7 +1616,7 @@ impl Calc {
         let sigma = one_of("sigma");
         self.checkpoint();
         let name = crate::util::unique_sheet_name_for(&self.book, ui::t!("forecast"));
-        let mut sh = kumihan::book::Sheet::new(&name);
+        let mut sh = book::Sheet::new(&name);
         let actual = if heading.is_empty() { ui::t!("actual").to_string() } else { heading };
         for (c, t) in [
             (0u32, ui::t!("period").to_string()),
@@ -1625,21 +1625,21 @@ impl Calc {
             (3, ui::t!("lower").to_string()),
             (4, ui::t!("upper").to_string()),
         ] {
-            sh.set(Pos::new(0, c), kumihan::book::Cell::input(&t));
+            sh.set(Pos::new(0, c), book::Cell::input(&t));
         }
         let n = values.len();
         for (i, v) in values.iter().enumerate() {
-            sh.set(Pos::new(i as u32 + 1, 0), kumihan::book::Cell::input(&labels[i]));
-            sh.set(Pos::new(i as u32 + 1, 1), kumihan::book::Cell::input(&v.to_string()));
+            sh.set(Pos::new(i as u32 + 1, 0), book::Cell::input(&labels[i]));
+            sh.set(Pos::new(i as u32 + 1, 1), book::Cell::input(&v.to_string()));
         }
         // 境目。**最後の実績を予測の列にも置く**(線を繋ぐため)
-        sh.set(Pos::new(n as u32, 2), kumihan::book::Cell::input(&values[n - 1].to_string()));
+        sh.set(Pos::new(n as u32, 2), book::Cell::input(&values[n - 1].to_string()));
         for (j, v) in fc.iter().enumerate() {
             let r = (n + j + 1) as u32;
-            sh.set(Pos::new(r, 0), kumihan::book::Cell::input(&ui::tf!("forecast_2", j + 1)));
-            sh.set(Pos::new(r, 2), kumihan::book::Cell::input(&format!("{v:.2}")));
-            sh.set(Pos::new(r, 3), kumihan::book::Cell::input(&format!("{:.2}", lo[j])));
-            sh.set(Pos::new(r, 4), kumihan::book::Cell::input(&format!("{:.2}", up[j])));
+            sh.set(Pos::new(r, 0), book::Cell::input(&ui::tf!("forecast_2", j + 1)));
+            sh.set(Pos::new(r, 2), book::Cell::input(&format!("{v:.2}")));
+            sh.set(Pos::new(r, 3), book::Cell::input(&format!("{:.2}", lo[j])));
+            sh.set(Pos::new(r, 4), book::Cell::input(&format!("{:.2}", up[j])));
         }
         // **断りはシートに残します。**状態行はこの後グラフの報せで流れるので、
         // そこだけに書くと、区間の意味が誰にも伝わりません
@@ -1655,7 +1655,7 @@ impl Calc {
             sigma
         )
         .to_string();
-        sh.set(Pos::new((n + fc.len() + 2) as u32, 0), kumihan::book::Cell::input(&note_div));
+        sh.set(Pos::new((n + fc.len() + 2) as u32, 0), book::Cell::input(&note_div));
         self.book.sheets.push(sh);
         let si = self.book.sheets.len() - 1;
         self.switch_sheet(si);
@@ -1719,7 +1719,7 @@ impl Calc {
         let sh = self.sheet();
         let num_cols = (a.col..=b.col).rev().find(|&c| {
             (a.row + 1..=b.row)
-                .filter(|&r| matches!(sh.get(Pos::new(r, c)).map(|x| &x.value), Some(kumihan::book::Value::Number(_))))
+                .filter(|&r| matches!(sh.get(Pos::new(r, c)).map(|x| &x.value), Some(book::Value::Number(_))))
                 .count()
                 >= 4
         });
@@ -1731,7 +1731,7 @@ impl Calc {
         let mut labels: Vec<String> = Vec::new();
         let mut values: Vec<f64> = Vec::new();
         for r in a.row + 1..=b.row {
-            let Some(kumihan::book::Value::Number(v)) = sh.get(Pos::new(r, vc)).map(|x| x.value.clone())
+            let Some(book::Value::Number(v)) = sh.get(Pos::new(r, vc)).map(|x| x.value.clone())
             else {
                 continue;
             };
@@ -1992,7 +1992,7 @@ impl Calc {
                         let (w, h) = image_px(&data).unwrap_or((200, 60));
                         this.checkpoint();
                         // 200dpi で描いたので画面では半分の大きさに置く
-                        this.sheet_mut().images_new.push(kumihan::book::SheetImage {
+                        this.sheet_mut().images_new.push(book::SheetImage {
                             at,
             dx_px: 0.0,
             dy_px: 0.0,
@@ -2112,7 +2112,7 @@ impl Calc {
         }
         let n = parts.len();
         for (dx, dy, w, h, kind, filled, texted) in parts {
-            self.sheet_mut().shapes_new.push(kumihan::book::SheetShape {
+            self.sheet_mut().shapes_new.push(book::SheetShape {
                 at,
                 dx_px: dx,
                 dy_px: dy,
@@ -2505,11 +2505,11 @@ impl Calc {
         }
         // 複製の上で回す(本物は最後に1手で書き換える)
         let mut work = self.book.clone();
-        let mut out: Vec<(Pos, kumihan::book::Value)> = Vec::new();
+        let mut out: Vec<(Pos, book::Value)> = Vec::new();
         for (dest, inputs, f) in &jobs {
             for (p, v) in inputs {
                 let fmt = work.sheets[si].get(*p).map(|c| c.fmt.clone()).unwrap_or_default();
-                let mut cell = kumihan::book::Cell::input(v);
+                let mut cell = book::Cell::input(v);
                 cell.fmt = fmt;
                 work.sheets[si].set(*p, cell);
             }
@@ -2519,7 +2519,7 @@ impl Calc {
         self.checkpoint();
         for (p, v) in &out {
             let fmt = self.sheet().get(*p).map(|c| c.fmt.clone()).unwrap_or_default();
-            let mut cell = kumihan::book::Cell::input(&v.display());
+            let mut cell = book::Cell::input(&v.display());
             cell.fmt = fmt;
             self.sheet_mut().set(*p, cell);
         }

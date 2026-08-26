@@ -10,8 +10,8 @@
 //! 単体試験(規則の重ね方)と合わせて、読み→当てはめの一本道を縛る。
 
 use kumihan::look::resolve_cond;
-use kumihan::book::{CondKind, CondLook, CondOp, CondRule};
-use kumihan::book::{Book, Cell, Pos, Value};
+use book::{CondKind, CondLook, CondOp, CondRule};
+use book::{Book, Cell, Pos, Value};
 use sheet::xlsx;
 
 fn round(book: &Book) -> Book {

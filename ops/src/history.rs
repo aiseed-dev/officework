@@ -59,7 +59,7 @@ fn local_time_offset() -> i64 {
 pub fn stamp(epoch_secs: i64) -> String {
     let secs = epoch_secs + local_time_offset();
     let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
-    let (y, m, d) = kumihan::calc::civil_from_days(days);
+    let (y, m, d) = book::calc::civil_from_days(days);
     format!("{y:04}{m:02}{d:02}-{:02}{:02}{:02}", rem / 3600, (rem % 3600) / 60, rem % 60)
 }
 

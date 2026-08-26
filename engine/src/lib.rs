@@ -31,19 +31,15 @@
 
 pub mod adoc;
 pub mod atomic;
-/// 升目の模型(ブック・シート・セル・値)。**xlsx の形式には縛られません**
-pub mod book;
+/// ブック ⇄ AsciiDoc(ブックの正本を .sheet.adoc にする)
+pub mod book_adoc;
+/// `.sheet.adoc` の往復で落ちる持ち物を数える
+pub mod holes;
 /// ブックの見た目 — テンプレート(`テンプレート.adoc`)
 pub mod booktmpl;
-/// 式の計算。表に求める面は [`grid::Grid`] の5つだけ
-pub mod calc;
 /// セルの中の書き方(AsciiDoc)
 pub mod cellmark;
-/// 暦の名前(月・曜日)を言語ごとに引く
-pub mod datetime_names;
 pub mod distill;
-/// 値を引ける表 — 式の計算が表に求める面はこれだけ
-pub mod grid;
 /// 表のセルの**見え**を決める(画面と紙が同じ答えを得るための1本)
 pub mod look;
 /// 表のデザイン(見出しの帯・合計行・縞々)
@@ -64,5 +60,7 @@ mod layout;
 pub use doc::*;
 pub use layout::*;
 
+#[cfg(test)]
+mod holes_tests;
 #[cfg(test)]
 mod tests;

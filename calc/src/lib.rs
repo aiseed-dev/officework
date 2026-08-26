@@ -22,9 +22,9 @@ pub(crate) use gpui::{
 pub(crate) use gpui_platform::application;
 pub(crate) use kumihan::Editor;
 
-pub(crate) use kumihan::book::{Borders, CellFormat, HAlign};
-pub(crate) use kumihan::book::{Book, Cell, Pos, Value};
-pub(crate) use kumihan::calc::{recalc, recalc_book};
+pub(crate) use book::{Borders, CellFormat, HAlign};
+pub(crate) use book::{Book, Cell, Pos, Value};
+pub(crate) use book::calc::{recalc, recalc_book};
 pub(crate) use ui::{handler, ribbon, HasEditor};
 
 // **関数の表は face へ移した**(2026-08-15)。名前も分類も説明も
@@ -168,7 +168,7 @@ pub struct Calc {
     /// いけなかったり、上下に出す場合もある」)。pop_anchor が入れる
     pub(crate) pop_top: std::cell::Cell<f32>,
     /// 罫線のペン(線種と色)。罫線の一覧から掛けるときに使う
-    pen_style: kumihan::book::BStyle,
+    pen_style: book::BStyle,
     pen_color: Option<u32>,
     /// ヘッダー/フッターの聞き取り中: (フッターか, 0=左 1=中 2=右)
     hf_pend: Option<(bool, u8)>,
@@ -261,7 +261,7 @@ pub struct Calc {
     /// いま出ているメニューは図形の専用メニューか(右クリックが図形の上)
     menu_shape: bool,
     /// 図形の切り取り/コピーの控え(セルのクリップボードとは別の器)
-    shape_clip: Option<kumihan::book::SheetShape>,
+    shape_clip: Option<book::SheetShape>,
     /// データテーブルのパネルの途中(列の入力セル)。行のパネルの確定まで持つ
     dt_col: Option<Pos>,
     /// 変更履歴の記録中: 開始時点の「打った姿」の写し(シート名 → セル)。
@@ -373,8 +373,8 @@ pub struct Calc {
     /// 複数シートに触るものは全部まとめて1手(どれでも1手で戻せる)。
     /// **どのシートの控えかを一緒に持つ** — シートを切り替えた後の undo が
     /// 別のシートへ他所の中身を書き戻す事故を防ぐ
-    undo_stack: Vec<Vec<(usize, kumihan::book::Sheet)>>,
-    redo_stack: Vec<Vec<(usize, kumihan::book::Sheet)>>,
+    undo_stack: Vec<Vec<(usize, book::Sheet)>>,
+    redo_stack: Vec<Vec<(usize, book::Sheet)>>,
     /// シートごとのカーソル・窓・固定(切り替えても場所を失わない)
     sheet_ui: Vec<(Pos, Pos, Option<Pos>)>,
     /// コピーの控え(起点, そのとき書いた TSV)。貼り付け時に系のクリップボードと

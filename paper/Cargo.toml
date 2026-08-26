@@ -7,6 +7,7 @@ license.workspace = true
 # 組んだ紙面を紙(PDF)へ写すだけ。engine は PDF を知らないままにしておく
 # (engine の設計: 画面も紙も、同じ紙面を別の面に写す)
 [dependencies]
+book = { path = "../book" }
 kumihan = { path = "../engine" }
 printpdf = { version = "0.7", features = ["embedded_images"] }
 # 画像の復号(printpdf の embedded_images が使うのと同じ crate)

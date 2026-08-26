@@ -312,7 +312,7 @@ impl Calc {
     }
 
     /// 選択中の図形に手を入れる(undo 1手ぶんを刻んで)。設定パネルが使う
-    pub(crate) fn shape_edit(&mut self, f: impl FnOnce(&mut kumihan::book::SheetShape)) {
+    pub(crate) fn shape_edit(&mut self, f: impl FnOnce(&mut book::SheetShape)) {
         let Some(i) = self.shape_sel else { return };
         if self.sheet().shapes_new.len() <= i {
             return;
@@ -545,7 +545,7 @@ impl Calc {
 
     /// あるシートの中の当たり(行→列の順)。式の中の文字も探す
     /// (`editable` = 打った通りの姿)。
-    fn hit(sh: &kumihan::book::Sheet, term: &str) -> Vec<Pos> {
+    fn hit(sh: &book::Sheet, term: &str) -> Vec<Pos> {
         sh.cells
             .iter()
             .filter(|(_, c)| c.editable().contains(term) || c.value.display().contains(term))
@@ -829,7 +829,7 @@ impl Calc {
         let b = sp.points[k].at;
         sp.points.insert(
             k,
-            kumihan::book::PathPoint::at((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0),
+            book::PathPoint::at((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0),
         );
         self.dirty = true;
         self.status = ui::t!("added_one_vertex").into();
@@ -869,8 +869,8 @@ impl Calc {
     ///
     /// **2つ選んでいるときだけ。** 主(`shape_sel`)から控え(`shape_multi`)を
     /// 引く、という向きにする — 「どちらから引くか」を選べないと減算が使えない。
-    pub(crate) fn shapes_boolean(&mut self, op: kumihan::book::BoolOp) {
-        use kumihan::book::{combine, outline, to_points, BoolOp};
+    pub(crate) fn shapes_boolean(&mut self, op: book::BoolOp) {
+        use book::{combine, outline, to_points, BoolOp};
         let (Some(a), Some(&b)) = (self.shape_sel, self.shape_multi.first()) else {
             self.status = ui::t!("select_two_shapes_ctrl").into();
             return;

@@ -8,7 +8,7 @@
 //! 「これを全部走るようにしろ」)。画面にしか無い操作は、記録しても走らない。
 //! **画面と Python が同じ実装を呼ぶなら、穴は原理的に開かない。**
 
-use crate::book::{Cell, Edge, Pos, Sheet, Value};
+use book::{Cell, Edge, Pos, Sheet, Value};
 
 /// 表の飾り。`td-*` のボタンと1対1
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

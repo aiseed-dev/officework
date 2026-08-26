@@ -4,15 +4,15 @@
 use std::io::{Cursor, Read, Write};
 
 
-use kumihan::book::{Book, Cell, Pos, Value};
+use book::{Book, Cell, Pos, Value};
 
 use super::read::*;
 use super::write::*;
 
 #[cfg(test)]
 mod fmt_round {
-    use kumihan::book::{Borders, Cell, CellFormat, Edge, HAlign, Pos, Value};
-    use kumihan::book::{Book, Sheet};
+    use book::{Borders, Cell, CellFormat, Edge, HAlign, Pos, Value};
+    use book::{Book, Sheet};
 
     fn book(fmt: CellFormat) -> Book {
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
@@ -91,8 +91,8 @@ mod fmt_round {
 
 #[cfg(test)]
 mod merge_round {
-    use kumihan::book::{Cell, Pos, Value};
-    use kumihan::book::{Book, Sheet};
+    use book::{Cell, Pos, Value};
+    use book::{Book, Sheet};
 
     fn roundtrip(b: &Book) -> Book {
         let mut buf = Vec::new();
@@ -146,8 +146,8 @@ mod merge_round {
 
 #[cfg(test)]
 mod colwidth_round {
-    use kumihan::book::{Cell, Pos, Value};
-    use kumihan::book::{Book, Sheet};
+    use book::{Cell, Pos, Value};
+    use book::{Book, Sheet};
 
     #[test]
     fn column_widths_round_trip() {
@@ -188,8 +188,8 @@ mod colwidth_round {
 
 #[cfg(test)]
 mod rowheight_round {
-    use kumihan::book::{Cell, Pos, Value};
-    use kumihan::book::{Book, Sheet};
+    use book::{Cell, Pos, Value};
+    use book::{Book, Sheet};
 
     #[test]
     fn row_heights_round_trip() {
@@ -216,8 +216,8 @@ mod rowheight_round {
 
 #[cfg(test)]
 mod carry_tests {
-    use kumihan::book::{Cell, Pos};
-    use kumihan::book::{Book, Sheet};
+    use book::{Cell, Pos};
+    use book::{Book, Sheet};
     use std::io::{Cursor, Read, Write};
 
     fn xlsx_with_parts() -> Vec<u8> {
@@ -344,7 +344,7 @@ mod carry_tests {
 
     #[test]
     fn the_four_custom_property_types_round_trip() {
-        use kumihan::book::{CustomProp, CustomVal};
+        use book::{CustomProp, CustomVal};
         let mut b = Book::new();
         let mk = |n: &str, v: CustomVal| CustomProp { name: n.into(), value: v, link: None };
         b.props.custom = vec![
@@ -373,7 +373,7 @@ mod carry_tests {
         assert_eq!(book.props.custom.len(), 2);
         assert_eq!(
             book.props.custom[0].value,
-            kumihan::book::CustomVal::Other("i4".into(), "7".into()),
+            book::CustomVal::Other("i4".into(), "7".into()),
             "知らない型を落とした"
         );
         assert_eq!(book.props.custom[1].link.as_deref(), Some("部署名"));
@@ -435,7 +435,7 @@ mod carry_tests {
             .iter()
             .enumerate()
         {
-            b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+            b.sheets[0].shapes_new.push(book::SheetShape {
                 at: Pos::new(i as u32, 0),
                 width_px: 100.0,
                 height_px: 60.0,
@@ -457,7 +457,7 @@ mod carry_tests {
         // 保存では元の prstGeom の名前を返すのでファイルは壊れない。
         // だが画面では四角に見える — **見える物が違うなら言う**
         let mut b = Book::new();
-        b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+        b.sheets[0].shapes_new.push(book::SheetShape {
             at: Pos::new(0, 0),
             width_px: 80.0,
             height_px: 50.0,
@@ -479,9 +479,9 @@ mod carry_tests {
 
     #[test]
     fn text_box_layout_round_trips() {
-        use kumihan::book::{HAlign, TextAnchor, TextFmt};
+        use book::{HAlign, TextAnchor, TextFmt};
         let mut b = Book::new();
-        b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+        b.sheets[0].shapes_new.push(book::SheetShape {
             at: Pos::new(0, 0),
             width_px: 200.0,
             height_px: 90.0,
@@ -511,7 +511,7 @@ mod carry_tests {
         // **書かないことが既定を表す**(xlsx の作法)。既定で属性を書くと、
         // Excel で開いたとき「わざわざ左寄せにした」ことになる
         let mut b = Book::new();
-        b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+        b.sheets[0].shapes_new.push(book::SheetShape {
             at: Pos::new(0, 0),
             width_px: 100.0,
             height_px: 50.0,
@@ -536,9 +536,9 @@ mod carry_tests {
     #[test]
     fn superscript_and_subscript_are_never_both_on() {
         // baseline は1つの属性。両方立てても書けるのは片方だけ
-        use kumihan::book::TextFmt;
+        use book::TextFmt;
         let mut b = Book::new();
-        b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+        b.sheets[0].shapes_new.push(book::SheetShape {
             at: Pos::new(0, 0),
             width_px: 100.0,
             height_px: 50.0,
@@ -560,9 +560,9 @@ mod carry_tests {
         // **1つだけの往復では出ない穴。** 読みの途中の控えを図形ごとに
         // 畳んでいないと、前の箱の揃えや箇条書きが次へ漏れる
         // (2026-08-13、6つ並べた実物の見本で見つけた)
-        use kumihan::book::{HAlign, TextAnchor, TextFmt};
+        use book::{HAlign, TextAnchor, TextFmt};
         let mut b = Book::new();
-        let mk = |row: u32, t: &str, tf: TextFmt| kumihan::book::SheetShape {
+        let mk = |row: u32, t: &str, tf: TextFmt| book::SheetShape {
             at: Pos::new(row, 0),
             width_px: 100.0,
             height_px: 50.0,
@@ -593,7 +593,7 @@ mod carry_tests {
 
     #[test]
     fn comment_threads_authors_and_resolution_round_trip() {
-        use kumihan::book::{CommentEntry, CommentThread};
+        use book::{CommentEntry, CommentThread};
         let mut b = Book::new();
         let p = Pos::parse("A1").unwrap();
         b.sheets[0].set(p, Cell::input("値"));
@@ -621,7 +621,7 @@ mod carry_tests {
         // **これが直したかった穴。** 近代の Excel はスレッド側を見るので、
         // 古い写しだけ書き換えると、直した文が Excel に映らない
         // (2026-08-13 に実測してから直した)
-        use kumihan::book::CommentThread;
+        use book::CommentThread;
         let mut b = Book::new();
         let p = Pos::parse("A1").unwrap();
         b.sheets[0].comments.insert(p, CommentThread::new("元の文", "山田"));
@@ -648,7 +648,7 @@ mod carry_tests {
         // 分からなくなっていた
         let mut b = Book::new();
         let p = Pos::parse("B2").unwrap();
-        b.sheets[0].comments.insert(p, kumihan::book::CommentThread::new("覚書", "日本フネン"));
+        b.sheets[0].comments.insert(p, book::CommentThread::new("覚書", "日本フネン"));
         let mut buf = Vec::new();
         crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
         let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
@@ -663,16 +663,16 @@ mod carry_tests {
 
     #[test]
     fn sparkline_point_markers_round_trip() {
-        use kumihan::book::SparkMarks;
+        use book::SparkMarks;
         let mut b = Book::new();
         for (kind, base) in [("spark", 0.0f32), ("spark-col", 1.0), ("spark-wl", 0.5)] {
-            b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+            b.sheets[0].shapes_new.push(book::SheetShape {
                 at: Pos::new(0, 0),
                 width_px: 90.0,
                 height_px: 24.0,
                 kind: kind.into(),
                 line: Some("1B6E3C".into()),
-                points: vec![kumihan::book::PathPoint::at(0.0, 0.8), kumihan::book::PathPoint::at(0.33, 0.2), kumihan::book::PathPoint::at(0.66, 0.6), kumihan::book::PathPoint::at(1.0, 0.1)],
+                points: vec![book::PathPoint::at(0.0, 0.8), book::PathPoint::at(0.33, 0.2), book::PathPoint::at(0.66, 0.6), book::PathPoint::at(1.0, 0.1)],
                 base,
                 spark_marks: SparkMarks { high: true, low: true, last: true, ..Default::default() },
                 ..Default::default()
@@ -695,15 +695,15 @@ mod carry_tests {
     fn an_old_entry_without_the_flag_column_still_reads() {
         // 札は `jo:種類:底` だった。**印は後から足した欄**なので、
         // 古いブックの札を壊さずに読めなければならない
-        use kumihan::book::SparkMarks;
+        use book::SparkMarks;
         let mut b = Book::new();
-        b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+        b.sheets[0].shapes_new.push(book::SheetShape {
             at: Pos::new(0, 0),
             width_px: 90.0,
             height_px: 24.0,
             kind: "spark-col".into(),
             line: Some("1B6E3C".into()),
-            points: vec![kumihan::book::PathPoint::at(0.0, 0.8), kumihan::book::PathPoint::at(0.5, 0.2)],
+            points: vec![book::PathPoint::at(0.0, 0.8), book::PathPoint::at(0.5, 0.2)],
             base: 1.0,
             ..Default::default()
         });
@@ -721,9 +721,9 @@ mod carry_tests {
 
     #[test]
     fn curve_control_points_round_trip() {
-        use kumihan::book::PathPoint;
+        use book::PathPoint;
         let mut b = Book::new();
-        b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+        b.sheets[0].shapes_new.push(book::SheetShape {
             at: Pos::new(0, 0),
             width_px: 160.0,
             height_px: 100.0,
@@ -771,9 +771,9 @@ mod carry_tests {
     fn a_polyline_without_control_points_stays_straight() {
         // **スパークラインやペンの線を曲線にしない。** 制御点が無いなら
         // lnTo のまま — 曲線で書くと Excel 側の見た目がわずかに変わる
-        use kumihan::book::PathPoint;
+        use book::PathPoint;
         let mut b = Book::new();
-        b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+        b.sheets[0].shapes_new.push(book::SheetShape {
             at: Pos::new(0, 0),
             width_px: 90.0,
             height_px: 24.0,
@@ -800,9 +800,9 @@ mod carry_tests {
     fn the_scope_of_a_name_round_trips() {
         // **重なっていなくてもシート限定にできる。** 前は「同じ名前が
         // 2枚にあるか」から当てていたので、これが作れなかった
-        use kumihan::book::DefinedName;
+        use book::DefinedName;
         let mut b = Book::new();
-        b.sheets.push(kumihan::book::Sheet::new("2枚目"));
+        b.sheets.push(book::Sheet::new("2枚目"));
         b.sheets[0].names.push(DefinedName { name: "限定".into(), range: "A1".into(), scoped: true });
         b.sheets[0].names.push(DefinedName { name: "全体".into(), range: "B2".into(), scoped: false });
         let mut buf = Vec::new();
@@ -816,9 +816,9 @@ mod carry_tests {
     #[test]
     fn an_overlapping_workbook_wide_name_is_narrowed_on_export() {
         // ブック全体の名前が2つあると Excel は開けない。**印が無くても防ぐ**
-        use kumihan::book::DefinedName;
+        use book::DefinedName;
         let mut b = Book::new();
-        b.sheets.push(kumihan::book::Sheet::new("2枚目"));
+        b.sheets.push(book::Sheet::new("2枚目"));
         b.sheets[0].names.push(DefinedName::new("売上", "A1"));
         b.sheets[1].names.push(DefinedName::new("売上", "B2"));
         let mut buf = Vec::new();
@@ -862,20 +862,20 @@ mod carry_tests {
 #[cfg(test)]
 mod name_roundtrip_tests {
     use super::*;
-    use kumihan::book::Cell;
-    use kumihan::calc::recalc;
+    use book::Cell;
+    use book::calc::recalc;
 
     #[test]
     fn defined_names_round_trip_and_work_in_formulas() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("100"));
         b.sheets[0].set(Pos::parse("B1").unwrap(), Cell::input("=単価*2"));
-        b.sheets[0].names.push(kumihan::book::DefinedName::new("単価", "A1"));
+        b.sheets[0].names.push(book::DefinedName::new("単価", "A1"));
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
         buf.set_position(0);
         let (mut back, _) = read(buf).expect("読めない");
-        assert_eq!(back.sheets[0].names, vec![kumihan::book::DefinedName::new("単価", "A1")],
+        assert_eq!(back.sheets[0].names, vec![book::DefinedName::new("単価", "A1")],
             "名前が往復しない");
         recalc(&mut back.sheets[0]);
         assert_eq!(back.sheets[0].value(Pos::parse("B1").unwrap()), Value::Number(200.0));
@@ -902,7 +902,7 @@ mod name_roundtrip_tests {
 #[cfg(test)]
 mod link_comment_tests {
     use super::*;
-    use kumihan::book::Cell;
+    use book::Cell;
 
     fn roundtrip(b: &Book) -> Book {
         let mut buf = Cursor::new(Vec::new());
@@ -925,7 +925,7 @@ mod link_comment_tests {
     #[test]
     fn an_internal_link_round_trips_through_location() {
         let mut b = Book::new();
-        b.sheets.push(kumihan::book::Sheet::new("集計"));
+        b.sheets.push(book::Sheet::new("集計"));
         let p = Pos::parse("B2").unwrap();
         b.sheets[0].set(p, Cell::input("集計へ"));
         b.sheets[0].links.insert(p, "#集計!B5".into());
@@ -936,7 +936,7 @@ mod link_comment_tests {
 
     #[test]
     fn data_bars_color_scales_and_icon_sets_round_trip() {
-        use kumihan::book::{CondKind, CondRule};
+        use book::{CondKind, CondRule};
         let mut b = Book::new();
         for (i, v) in ["10", "20", "30"].iter().enumerate() {
             b.sheets[0].set(Pos::new(i as u32, 0), Cell::input(v));
@@ -965,13 +965,13 @@ mod link_comment_tests {
     #[test]
     fn a_column_sparkline_round_trips_as_a_column() {
         let mut b = Book::new();
-        b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+        b.sheets[0].shapes_new.push(book::SheetShape {
             at: Pos::parse("C2").unwrap(),
             width_px: 90.0,
             height_px: 22.0,
             kind: "spark-col".into(),
             line: Some("1B6E3C".into()),
-            points: vec![kumihan::book::PathPoint::at(0.17, 0.0), kumihan::book::PathPoint::at(0.5, 0.9), kumihan::book::PathPoint::at(0.83, 0.25)],
+            points: vec![book::PathPoint::at(0.17, 0.0), book::PathPoint::at(0.5, 0.9), book::PathPoint::at(0.83, 0.25)],
             base: 0.75,
             ..Default::default()
         });
@@ -1027,7 +1027,7 @@ mod link_comment_tests {
 #[cfg(test)]
 mod cond_tests {
     use super::*;
-    use kumihan::book::{Cell, CondAux, CondKind, CondLook, CondOp, CondRule};
+    use book::{Cell, CondAux, CondKind, CondLook, CondOp, CondRule};
 
     /// **dxf は色と塗りだけではない。** 太字・斜体・下線・取り消し線も
     /// 持てる。前は読んでおらず、Excel で「赤字・太字」にした規則が
@@ -1337,7 +1337,7 @@ mod cond_tests {
 #[cfg(test)]
 mod validation_roundtrip_tests {
     use super::*;
-    use kumihan::book::{Cell, Validation};
+    use book::{Cell, Validation};
 
     /// **壊れた xlsx から拾う**(2026-08-22。台帳「開いて修復」)。
     ///
@@ -1409,7 +1409,7 @@ mod validation_roundtrip_tests {
     #[test]
     fn scenarios_round_trip() {
         let mut b = Book::new();
-        b.sheets[0].scenarios.push(kumihan::book::Scenario {
+        b.sheets[0].scenarios.push(book::Scenario {
             name: "強気".into(),
             cells: vec![
                 (Pos::parse("B2").unwrap(), "120".into()),
@@ -1417,7 +1417,7 @@ mod validation_roundtrip_tests {
             ],
             comment: "単価を上げた場合".into(),
         });
-        b.sheets[0].scenarios.push(kumihan::book::Scenario {
+        b.sheets[0].scenarios.push(book::Scenario {
             name: "弱気".into(),
             cells: vec![(Pos::parse("B2").unwrap(), "90".into())],
             comment: String::new(),
@@ -1503,7 +1503,7 @@ mod validation_roundtrip_tests {
     fn image_offsets_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
-        b.sheets[0].images_new.push(kumihan::book::SheetImage {
+        b.sheets[0].images_new.push(book::SheetImage {
             at: Pos::parse("B2").unwrap(),
             dx_px: 30.0,
             dy_px: 12.0,
@@ -1538,7 +1538,7 @@ mod validation_roundtrip_tests {
 
     #[test]
     fn border_style_and_color_round_trip() {
-        use kumihan::book::{BStyle, Edge};
+        use book::{BStyle, Edge};
         let mut b = Book::new();
         let mut cell = Cell::input("x");
         cell.fmt.borders.bottom = Edge::line(BStyle::MediumDashed, Some(0x00B050));
@@ -1559,7 +1559,7 @@ mod validation_roundtrip_tests {
     #[test]
     fn pivot_filters_round_trip() {
         let mut b = Book::new();
-        b.pivots.push(kumihan::book::PivotDef {
+        b.pivots.push(book::PivotDef {
             sheet: "Sheet1".into(),
             src: (Pos::parse("A1").unwrap(), Pos::parse("C4").unwrap()),
             rows_sel: vec!["区分".into()],
@@ -1808,7 +1808,7 @@ mod print_setup_roundtrip_tests {
 #[cfg(test)]
 mod image_roundtrip_tests {
     use super::*;
-    use kumihan::book::SheetImage;
+    use book::SheetImage;
 
     fn png() -> Vec<u8> {
         // 実体は問わない(読みは復号しない)。PNG の魔法数だけ本物
@@ -1916,7 +1916,7 @@ mod print_extras_roundtrip_tests {
         let at = Pos::parse("D1").unwrap();
         b.sheets[0].set(at, Cell::input("=SUM(A1:A3*B1:B3)"));
         b.sheets[0].cse.insert(at, (1, 1));
-        kumihan::calc::recalc(&mut b.sheets[0]);
+        book::calc::recalc(&mut b.sheets[0]);
         // 1*10 + 2*20 + 3*30 = 140
         assert_eq!(b.sheets[0].get(at).unwrap().value.display(), "140",
                    "配列として計算されていない");
@@ -1937,7 +1937,7 @@ mod print_extras_roundtrip_tests {
         let (back, _) = read(Cursor::new(bytes)).expect("読めない");
         assert_eq!(back.sheets[0].cse.get(&at), Some(&(1, 1)), "配列数式の印が往復しない");
         let mut b2 = back;
-        kumihan::calc::recalc(&mut b2.sheets[0]);
+        book::calc::recalc(&mut b2.sheets[0]);
         assert_eq!(b2.sheets[0].get(at).unwrap().value.display(), "140",
                    "往復したら値が変わった");
     }
@@ -1954,7 +1954,7 @@ mod print_extras_roundtrip_tests {
         let at = Pos::parse("C1").unwrap();
         b.sheets[0].set(at, Cell::input("=A1:A3*10"));
         b.sheets[0].cse.insert(at, (5, 1));
-        kumihan::calc::recalc(&mut b.sheets[0]);
+        book::calc::recalc(&mut b.sheets[0]);
         assert_eq!(b.sheets[0].get(at).unwrap().value.display(), "20");
         assert_eq!(b.sheets[0].get(Pos::parse("C3").unwrap()).unwrap().value.display(), "60");
         assert_eq!(
@@ -1999,12 +1999,12 @@ mod print_extras_roundtrip_tests {
         // **付けないと「ブック全体の名前が2つ」になって開けないファイルに
         // なる。全部に付けるとブック全体の名前がシート限定に落ちる**
         let mut b = Book::new();
-        b.sheets.push(kumihan::book::Sheet::new("Sheet2"));
+        b.sheets.push(book::Sheet::new("Sheet2"));
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
         b.sheets[1].set(Pos::parse("A1").unwrap(), Cell::input("y"));
-        b.sheets[0].names.push(kumihan::book::DefinedName::new("売上", "A1:A3"));
-        b.sheets[1].names.push(kumihan::book::DefinedName::new("売上", "A1:A5")); // 同じ名前
-        b.sheets[0].names.push(kumihan::book::DefinedName::new("税率", "B1")); // こちらは1枚だけ
+        b.sheets[0].names.push(book::DefinedName::new("売上", "A1:A3"));
+        b.sheets[1].names.push(book::DefinedName::new("売上", "A1:A5")); // 同じ名前
+        b.sheets[0].names.push(book::DefinedName::new("税率", "B1")); // こちらは1枚だけ
 
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -2082,7 +2082,7 @@ mod print_extras_roundtrip_tests {
 #[cfg(test)]
 mod shape_roundtrip_tests {
     use super::*;
-    use kumihan::book::SheetShape;
+    use book::SheetShape;
 
     /// **グラフは持たないが、黙って捨てない。**
     ///
@@ -2243,7 +2243,7 @@ mod shape_roundtrip_tests {
 #[cfg(test)]
 mod textbox_spark_roundtrip_tests {
     use super::*;
-    use kumihan::book::SheetShape;
+    use book::SheetShape;
 
     #[test]
     fn shapes_with_text_and_polylines_round_trip() {
@@ -2264,7 +2264,7 @@ mod textbox_spark_roundtrip_tests {
             height_px: 24.0,
             kind: "spark".into(),
             line: Some("1B6E3C".into()),
-            points: vec![kumihan::book::PathPoint::at(0.0, 1.0), kumihan::book::PathPoint::at(0.5, 0.0), kumihan::book::PathPoint::at(1.0, 0.6)],
+            points: vec![book::PathPoint::at(0.0, 1.0), book::PathPoint::at(0.5, 0.0), book::PathPoint::at(1.0, 0.6)],
             ..Default::default()
         });
         let mut buf = Cursor::new(Vec::new());
@@ -2478,7 +2478,7 @@ mod script_roundtrip_tests {
     #[test]
     fn shape_offsets_round_trip() {
         let mut b = Book::new();
-        b.sheets[0].shapes_new.push(kumihan::book::SheetShape {
+        b.sheets[0].shapes_new.push(book::SheetShape {
             at: Pos::parse("B2").unwrap(),
             width_px: 100.0,
             height_px: 50.0,
@@ -2501,12 +2501,12 @@ mod script_roundtrip_tests {
     #[test]
     fn theme_colors_round_trip_and_follow_a_palette_change() {
         let mut b = Book::new();
-        b.theme = kumihan::book::theme::OFFICE.iter().map(|s| s.to_string()).collect();
+        b.theme = book::theme::OFFICE.iter().map(|s| s.to_string()).collect();
         let p = Pos::parse("A1").unwrap();
         let mut c = Cell::input("色");
         // アクセント1(4番)を明るくした色を、由来つきで持つ
         c.fmt.color_theme = Some((4, 400));
-        c.fmt.color = Some(kumihan::book::theme::resolve(&b.theme, 4, 0.4));
+        c.fmt.color = Some(book::theme::resolve(&b.theme, 4, 0.4));
         b.sheets[0].set(p, c);
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -2514,10 +2514,10 @@ mod script_roundtrip_tests {
         let (back, _) = read(buf).expect("読めない");
         let f = &back.sheets[0].get(p).unwrap().fmt;
         assert_eq!(f.color_theme, Some((4, 400)), "テーマ由来が往復しない");
-        assert_eq!(f.color.as_deref(), Some(kumihan::book::theme::resolve(&back.theme, 4, 0.4).as_str()), "色が解けない");
+        assert_eq!(f.color.as_deref(), Some(book::theme::resolve(&back.theme, 4, 0.4).as_str()), "色が解けない");
         // 配色を変えると、同じ由来から別の色が出る(追従の土台)
-        let warm = kumihan::book::theme::SCHEMES[1].1;
-        let after = kumihan::book::theme::resolve(
+        let warm = book::theme::SCHEMES[1].1;
+        let after = book::theme::resolve(
             &warm.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
             4,
             0.4,
@@ -2533,7 +2533,7 @@ mod script_roundtrip_tests {
                 b.sheets[0].set(Pos::new(r as u32, c as u32), Cell::input(v));
             }
         }
-        b.sheets[0].tables.push(kumihan::book::TableDef {
+        b.sheets[0].tables.push(book::TableDef {
             name: "売上表".into(),
             a: Pos::new(0, 0),
             b: Pos::new(1, 1),
@@ -2570,7 +2570,7 @@ mod script_roundtrip_tests {
         let mut b = Book::new();
         b.sheets[0].set(Pos::new(0, 0), Cell::input("部署"));
         b.sheets[0].set(Pos::new(1, 0), Cell::input("営業"));
-        b.sheets[0].tables.push(kumihan::book::TableDef {
+        b.sheets[0].tables.push(book::TableDef {
             name: "売上表".into(),
             style: Some("TableStyleLight9".into()),
             a: Pos::new(0, 0),
@@ -2589,7 +2589,7 @@ mod script_roundtrip_tests {
         // 付けるもの)。**None のまま書いて属性を欠かすと Excel が開けない**
         let mut b2 = Book::new();
         b2.sheets[0].set(Pos::new(0, 0), Cell::input("あ"));
-        b2.sheets[0].tables.push(kumihan::book::TableDef {
+        b2.sheets[0].tables.push(book::TableDef {
             a: Pos::new(0, 0),
             b: Pos::new(0, 0),
             ..Default::default()
@@ -2607,7 +2607,7 @@ mod script_roundtrip_tests {
 
     #[test]
     fn freeze_panes_and_view_settings_round_trip() {
-        use kumihan::book::FreezePane;
+        use book::FreezePane;
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("見出し"));
         // 見出しの1行と左の1列を止める。右から左と重ねて、同じ sheetView に
@@ -2712,7 +2712,7 @@ mod script_roundtrip_tests {
         let sh = &back.sheets[0];
         assert_eq!(
             sh.freeze,
-            Some(kumihan::book::FreezePane { frozen_rows: 1, frozen_columns: 0 }),
+            Some(book::FreezePane { frozen_rows: 1, frozen_columns: 0 }),
             "見出し行の固定が読めない"
         );
         assert!(sh.rtl, "子を持つ sheetView の rtl が読めない");
@@ -2843,7 +2843,7 @@ mod script_roundtrip_tests {
         // 表つきで書いたものを読み、表を外して書き直す(範囲に変換の道)
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
-        b.sheets[0].tables.push(kumihan::book::TableDef {
+        b.sheets[0].tables.push(book::TableDef {
             a: Pos::new(0, 0),
             b: Pos::new(1, 1),
             ..Default::default()
@@ -2877,13 +2877,13 @@ mod script_roundtrip_tests {
     #[test]
     fn hidden_sheets_subscript_and_rotation_round_trip() {
         let mut b = Book::new();
-        b.sheets.push(kumihan::book::Sheet::new("裏"));
+        b.sheets.push(book::Sheet::new("裏"));
         b.sheets[1].hidden = true;
         let p = Pos::parse("A1").unwrap();
         let mut c = Cell::input("x");
         c.fmt.subscript = true;
         c.fmt.rotation = Some(255);
-        c.fmt.align = kumihan::book::HAlign::Justify;
+        c.fmt.align = book::HAlign::Justify;
         b.sheets[0].set(p, c);
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -2893,7 +2893,7 @@ mod script_roundtrip_tests {
         let f = &back.sheets[0].get(p).unwrap().fmt;
         assert!(f.subscript, "下付きが往復しない");
         assert_eq!(f.rotation, Some(255), "回転が往復しない");
-        assert_eq!(f.align, kumihan::book::HAlign::Justify, "両端揃えが往復しない");
+        assert_eq!(f.align, book::HAlign::Justify, "両端揃えが往復しない");
     }
 
     /// 横の揃えは6通りとも、開いて保存して開き直しても元のまま。
@@ -2903,7 +2903,7 @@ mod script_roundtrip_tests {
     /// (日銀の統計表の題を genoffice の読み手と突き合わせて発覚)
     #[test]
     fn all_six_horizontal_alignments_round_trip() {
-        use kumihan::book::HAlign;
+        use book::HAlign;
         let all = [
             ("A1", HAlign::Left),
             ("A2", HAlign::Center),
@@ -3008,7 +3008,7 @@ mod script_roundtrip_tests {
     fn pivot_definitions_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
-        b.pivots.push(kumihan::book::PivotDef {
+        b.pivots.push(book::PivotDef {
             sheet: "Sheet1".into(),
             src: (Pos::parse("A1").unwrap(), Pos::parse("C5").unwrap()),
             rows_sel: vec!["部署".into(), "係".into()],
@@ -3049,7 +3049,7 @@ mod script_roundtrip_tests {
     fn reread_with_attrs(extra: &str) -> Book {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("1"));
-        b.sheets[0].names.push(kumihan::book::DefinedName::new("名前つき", "A1:A5"));
+        b.sheets[0].names.push(book::DefinedName::new("名前つき", "A1:A5"));
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
         // zip の中の workbook.xml の definedName に属性を差し込む
@@ -3086,7 +3086,7 @@ mod script_roundtrip_tests {
         let back = reread_with_attrs(r#"function="false" hidden="false" vbProcedure="false""#);
         assert_eq!(
             back.sheets[0].names,
-            vec![kumihan::book::DefinedName::new("名前つき", "A1:A5")],
+            vec![book::DefinedName::new("名前つき", "A1:A5")],
             "偽の属性で名前が使えなくなった(names_raw: {:?})",
             back.names_raw
         );
@@ -3118,7 +3118,7 @@ mod script_roundtrip_tests {
 /// **こちらの答案では永久に出ない** — 型紙を手で組む
 #[cfg(test)]
 mod sheet_rid {
-    use kumihan::book::{Pos, Value};
+    use book::{Pos, Value};
     use std::io::Write;
 
     /// 12 枚。`<sheet>` の並びと部品の番号を**わざと食い違わせる**。
@@ -3169,7 +3169,7 @@ mod sheet_rid {
         buf
     }
 
-    fn a1(sh: &kumihan::book::Sheet) -> String {
+    fn a1(sh: &book::Sheet) -> String {
         match sh.get(Pos { row: 0, col: 0 }).map(|c| c.value.clone()) {
             Some(Value::Text(t)) => t,
             v => panic!("A1 が文字列でない: {v:?}"),
@@ -3283,8 +3283,8 @@ mod sheet_rid {
 /// 「計算で出来た物が保存で残るか」だけです。
 #[cfg(test)]
 mod calc_round {
-    use kumihan::book::{Book, Cell, Pos, Value};
-    use kumihan::calc::recalc;
+    use book::{Book, Cell, Pos, Value};
+    use book::calc::recalc;
 
     fn book_with(cells: &[(&str, &str)]) -> Book {
         let mut b = Book::new();

@@ -17,9 +17,9 @@
 //! いるのが `ops` だけだからです。2つのクレートは互いを知りません。
 
 use kumihan::Table;
-use kumihan::book::TableDef;
-use kumihan::book::{Book, Cell, Pos, Sheet, Value};
-use kumihan::calc::recalc_book;
+use book::TableDef;
+use book::{Book, Cell, Pos, Sheet, Value};
+use book::calc::recalc_book;
 
 /// 表の中の式を計算して、**値の並び**を返す(行優先)。
 ///

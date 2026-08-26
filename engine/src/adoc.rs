@@ -550,10 +550,7 @@ const EMPTY_PARA: &str = "{empty}";
 /// 式は `=` の後ろに空白を置きません。
 ///
 /// 読みと書きの両方がこの1つの決めを見ます — 2箇所に書くと必ずずれます。
-pub fn is_formula_cell(s: &str) -> bool {
-    let t = s.trim_start();
-    t.len() > 1 && t.starts_with('=') && !t.trim_start_matches('=').starts_with(' ')
-}
+pub use book::is_formula_cell;
 
 /// そのセルの格子の列(左のセルの span の和)
 pub(crate) fn grid_col(row: &[Cellbox], k: usize) -> usize {

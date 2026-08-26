@@ -18,6 +18,7 @@ name = "calc"
 path = "src/main.rs"
 
 [dependencies]
+book = { path = "../book" }
 sheet = { path = "../sheet" }
 pyrun = { path = "../pyrun" }
 ops = { path = "../ops" }

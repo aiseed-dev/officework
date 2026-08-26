@@ -292,8 +292,8 @@ pub fn err(msg: &str) -> String {
 pub trait Host {
     /// ping の名乗り("calc" 等)
     fn app(&self) -> &'static str;
-    fn book(&self) -> &kumihan::book::Book;
-    fn book_mut(&mut self) -> &mut kumihan::book::Book;
+    fn book(&self) -> &book::Book;
+    fn book_mut(&mut self) -> &mut book::Book;
     /// いま出ているシートの添字(ファイルの口なら 0 でよい)
     fn active(&self) -> usize;
     fn path(&self) -> Option<&std::path::Path>;
@@ -309,7 +309,7 @@ pub trait Host {
     /// undo の節目を(要るなら)置く。手続きの最中は置かない、はアプリの判断
     fn mark_once(&mut self) {}
     /// 書き込みの後片づけ(行の高さ合わせ等)。written はセルの並び
-    fn after_write(&mut self, _si: usize, _written: &[kumihan::book::Pos]) {}
+    fn after_write(&mut self, _si: usize, _written: &[book::Pos]) {}
     /// 書き込みの報告(状態行に「{n} セル」等)。ファイルの口では黙ってよい
     fn wrote(&mut self, _n: usize) {}
 
@@ -333,11 +333,11 @@ pub trait Host {
         ""
     }
     /// いま選んでいる範囲(シート, 左上, 右下)。画面のあるアプリだけが持つ
-    fn selection(&self) -> Option<(usize, kumihan::book::Pos, kumihan::book::Pos)> {
+    fn selection(&self) -> Option<(usize, book::Pos, book::Pos)> {
         None
     }
     /// 選択を動かして見せる。画面のあるアプリだけ
-    fn select(&mut self, _si: usize, _a: kumihan::book::Pos, _b: kumihan::book::Pos) -> Result<(), String> {
+    fn select(&mut self, _si: usize, _a: book::Pos, _b: book::Pos) -> Result<(), String> {
         Err("この口では select はできません".into())
     }
     /// 画面のシートを切り替える。画面のあるアプリだけ
@@ -381,8 +381,8 @@ pub trait Host {
     fn autofit(
         &mut self,
         _si: usize,
-        _a: kumihan::book::Pos,
-        _b: kumihan::book::Pos,
+        _a: book::Pos,
+        _b: book::Pos,
         _col: bool,
     ) -> Result<usize, String> {
         Err("この口では autofit はできません(文字の測りが要ります)".into())
@@ -469,10 +469,10 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             for r in a.row..=b.row {
                 let mut cols: Vec<J> = Vec::new();
                 for c in a.col..=b.col {
-                    cols.push(match sh.value(kumihan::book::Pos::new(r, c)) {
-                        kumihan::book::Value::Number(n) => J::N(n),
-                        kumihan::book::Value::Bool(x) => J::B(x),
-                        kumihan::book::Value::Empty => J::Null,
+                    cols.push(match sh.value(book::Pos::new(r, c)) {
+                        book::Value::Number(n) => J::N(n),
+                        book::Value::Bool(x) => J::B(x),
+                        book::Value::Empty => J::Null,
                         v => J::S(v.display()),
                     });
                 }
@@ -492,7 +492,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 let mut cols: Vec<J> = Vec::new();
                 for c in a.col..=b.col {
                     cols.push(
-                        match sh.get(kumihan::book::Pos::new(r, c)).and_then(|x| x.formula.clone()) {
+                        match sh.get(book::Pos::new(r, c)).and_then(|x| x.formula.clone()) {
                             Some(f) => J::S(format!("={f}")),
                             None => J::Null,
                         },
@@ -506,7 +506,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
         // 文字列は Cell::input と同じ扱い(=から始まれば式)。1回=1手(Ctrl+Z)
         "set" => {
             let Some(a1) = o.str("a1") else { return err("a1 がありません") };
-            let Some(origin) = kumihan::book::Pos::parse(a1.split(':').next().unwrap_or(&a1)) else {
+            let Some(origin) = book::Pos::parse(a1.split(':').next().unwrap_or(&a1)) else {
                 return err("a1 が読めません");
             };
             let si = match sheet_index(h, &o) {
@@ -520,17 +520,17 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             h.settle();
             h.mark_once();
             let mut n = 0usize;
-            let mut written: Vec<kumihan::book::Pos> = Vec::new();
+            let mut written: Vec<book::Pos> = Vec::new();
             for (dr, row) in grid.iter().enumerate() {
                 for (dc, v) in row.iter().enumerate() {
-                    let p = kumihan::book::Pos::new(origin.row + dr as u32, origin.col + dc as u32);
+                    let p = book::Pos::new(origin.row + dr as u32, origin.col + dc as u32);
                     let sh = &mut h.book_mut().sheets[si];
                     let fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
                     let mut cell = match v {
-                        J::Null => kumihan::book::Cell::input(""),
-                        J::N(x) => kumihan::book::Cell::input(&J::N(*x).to_json()),
-                        J::B(x) => kumihan::book::Cell::input(if *x { "TRUE" } else { "FALSE" }),
-                        J::S(s) => kumihan::book::Cell::input(s),
+                        J::Null => book::Cell::input(""),
+                        J::N(x) => book::Cell::input(&J::N(*x).to_json()),
+                        J::B(x) => book::Cell::input(if *x { "TRUE" } else { "FALSE" }),
+                        J::S(s) => book::Cell::input(s),
                         J::A(_) => return err("values の入れ子が深すぎます"),
                     };
                     cell.fmt = fmt; // 書式は据え置く(打ち直しと同じ作法)
@@ -542,7 +542,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             // 見出しを書いたら行を広げる(手で打ったときと同じ扱い)は
             // アプリの後片づけ — いま出ているシートのときだけ、等の判断ごと
             h.after_write(si, &written);
-            kumihan::calc::recalc_book(h.book_mut(), si);
+            book::calc::recalc_book(h.book_mut(), si);
             h.mark_dirty();
             h.wrote(n);
             format!("{{\"ok\":true,\"cells\":{n}}}")
@@ -550,13 +550,13 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
         // 左上から地続きの表の大きさ(xlwings の expand='table')
         "expand" => {
             let Some(a1) = o.str("a1") else { return err("a1 がありません") };
-            let Some(p) = kumihan::book::Pos::parse(&a1) else { return err("a1 が読めません") };
+            let Some(p) = book::Pos::parse(&a1) else { return err("a1 が読めません") };
             let si = match sheet_index(h, &o) {
                 Ok(i) => i,
                 Err(e) => return e,
             };
             let sh = &h.book().sheets[si];
-            let filled = |r: u32, c: u32| !sh.value(kumihan::book::Pos::new(r, c)).is_empty();
+            let filled = |r: u32, c: u32| !sh.value(book::Pos::new(r, c)).is_empty();
             let mut hh = 0u32;
             while filled(p.row + hh, p.col) {
                 hh += 1;
@@ -571,7 +571,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
         "calculate" => {
             h.settle();
             let si = h.active();
-            kumihan::calc::recalc_book(h.book_mut(), si);
+            book::calc::recalc_book(h.book_mut(), si);
             "{\"ok\":true}".into()
         }
         // いま選んでいる範囲(「選んで、Jupyter で加工」の入り方)
@@ -815,7 +815,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             );
             // タイトル列は列の名前で返す(openpyxl と同じ "A:B" の形)
             let letter = |c: u32| {
-                let a1 = kumihan::book::Pos::new(0, c).a1();
+                let a1 = book::Pos::new(0, c).a1();
                 a1.trim_end_matches(|ch: char| ch.is_ascii_digit()).to_string()
             };
             format!(
@@ -1055,7 +1055,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             h.settle();
             h.mark_once();
             let n = h.book_mut().sheets[si].move_range(a, b, dr, dc, translate);
-            kumihan::calc::recalc_book(h.book_mut(), si);
+            book::calc::recalc_book(h.book_mut(), si);
             h.mark_dirty();
             format!("{{\"ok\":true,\"cells\":{n}}}")
         }
@@ -1094,15 +1094,15 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             let idx = if rows {
                 match at.trim().parse::<u32>() {
                     Ok(n) if n >= 1 => n - 1,
-                    _ => match kumihan::book::Pos::parse(&at) {
+                    _ => match book::Pos::parse(&at) {
                         Some(p) => p.row,
                         None => return err(&format!("行の指し方が読めません: {at:?}")),
                     },
                 }
             } else {
-                match kumihan::book::Pos::parse(&format!("{}1", at.trim())) {
+                match book::Pos::parse(&format!("{}1", at.trim())) {
                     Some(p) => p.col,
-                    None => match kumihan::book::Pos::parse(&at) {
+                    None => match book::Pos::parse(&at) {
                         Some(p) => p.col,
                         None => return err(&format!("列の指し方が読めません: {at:?}")),
                     },
@@ -1120,7 +1120,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                     _ => sh.remove_col(idx),
                 }
             }
-            kumihan::calc::recalc_book(h.book_mut(), si);
+            book::calc::recalc_book(h.book_mut(), si);
             h.mark_dirty();
             format!("{{\"ok\":true,\"count\":{count}}}")
         }
@@ -1174,7 +1174,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             };
             h.settle();
             h.mark_once();
-            h.book_mut().sheets[si].images_new.push(kumihan::book::SheetImage {
+            h.book_mut().sheets[si].images_new.push(book::SheetImage {
                 at: a,
                 dx_px: 0.0,
                 dy_px: 0.0,
@@ -1217,8 +1217,8 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             for s in h.book_mut().sheets.iter_mut() {
                 s.names.retain(|d| d.name != name);
             }
-            h.book_mut().sheets[si].names.push(kumihan::book::DefinedName::new(name, reference));
-            kumihan::calc::recalc_book(h.book_mut(), si);
+            h.book_mut().sheets[si].names.push(book::DefinedName::new(name, reference));
+            book::calc::recalc_book(h.book_mut(), si);
             h.mark_dirty();
             "{\"ok\":true}".into()
         }
@@ -1235,7 +1235,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             }
             if removed {
                 let si = h.active();
-                kumihan::calc::recalc_book(h.book_mut(), si);
+                book::calc::recalc_book(h.book_mut(), si);
                 h.mark_dirty();
             }
             format!("{{\"ok\":true,\"removed\":{removed}}}")
@@ -1267,7 +1267,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             h.settle();
             h.mark_once();
             let promoted = h.book_mut().sheets[si].merge(a, b);
-            kumihan::calc::recalc_book(h.book_mut(), si);
+            book::calc::recalc_book(h.book_mut(), si);
             h.mark_dirty();
             format!("{{\"ok\":true,\"promoted\":{promoted}}}")
         }
@@ -1317,12 +1317,12 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             let span = match o.str("a1") {
                 Some(a1) => {
                     let mut it = a1.split(':');
-                    let a = match it.next().and_then(kumihan::book::Pos::parse) {
+                    let a = match it.next().and_then(book::Pos::parse) {
                         Some(p) => p,
                         None => return err("a1 が読めません"),
                     };
                     let b = match it.next() {
-                        Some(t) => match kumihan::book::Pos::parse(t) {
+                        Some(t) => match book::Pos::parse(t) {
                             Some(p) => p,
                             None => return err("a1 が読めません"),
                         },
@@ -1336,7 +1336,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             h.mark_once();
             let everything = cmd == "clear";
             let sh = &mut h.book_mut().sheets[si];
-            let keys: Vec<kumihan::book::Pos> = sh
+            let keys: Vec<book::Pos> = sh
                 .cells
                 .keys()
                 .filter(|p| match span {
@@ -1354,12 +1354,12 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 } else {
                     // 書式は据え置きで、値と式だけ消す(set の Null と同じ)
                     let fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
-                    let mut cell = kumihan::book::Cell::input("");
+                    let mut cell = book::Cell::input("");
                     cell.fmt = fmt;
                     sh.set(p, cell);
                 }
             }
-            kumihan::calc::recalc_book(h.book_mut(), si);
+            book::calc::recalc_book(h.book_mut(), si);
             h.mark_dirty();
             h.wrote(n);
             format!("{{\"ok\":true,\"cells\":{n}}}")
@@ -1437,8 +1437,8 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             let sh = &mut h.book_mut().sheets[si];
             for r in a.row..=b.row {
                 for c in a.col..=b.col {
-                    let p = kumihan::book::Pos::new(r, c);
-                    let mut cell = sh.get(p).cloned().unwrap_or_else(|| kumihan::book::Cell::input(""));
+                    let p = book::Pos::new(r, c);
+                    let mut cell = sh.get(p).cloned().unwrap_or_else(|| book::Cell::input(""));
                     let f = &mut cell.fmt;
                     if o.has("bold") {
                         f.bold = o.bool("bold").unwrap_or(false);
@@ -1478,13 +1478,13 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                     if o.has("horizontal") {
                         f.align = o
                             .str("horizontal")
-                            .map(|x| kumihan::book::HAlign::from_xlsx(&x))
+                            .map(|x| book::HAlign::from_xlsx(&x))
                             .unwrap_or_default();
                     }
                     if o.has("vertical") {
                         f.valign = o
                             .str("vertical")
-                            .map(|x| kumihan::book::VAlign::from_xlsx(&x))
+                            .map(|x| book::VAlign::from_xlsx(&x))
                             .unwrap_or_default();
                     }
                     // **記録した操作が走るために足した**(2026-08-16)。
@@ -1527,10 +1527,10 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             let sh = &mut h.book_mut().sheets[si];
             let span = o.str("a1").and_then(|a1| {
                 let mut it = a1.split(':');
-                let a = it.next().and_then(kumihan::book::Pos::parse)?;
-                Some((a, it.next().and_then(kumihan::book::Pos::parse).unwrap_or(a)))
+                let a = it.next().and_then(book::Pos::parse)?;
+                Some((a, it.next().and_then(book::Pos::parse).unwrap_or(a)))
             });
-            let keys: Vec<kumihan::book::Pos> = sh
+            let keys: Vec<book::Pos> = sh
                 .cells
                 .keys()
                 .filter(|p| match span {
@@ -1614,7 +1614,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             let (lim_r, lim_c) = (rows.max(1) as i64 - 1, cols.max(1) as i64 - 1);
             let inside = |r: i64, c: i64| r >= 0 && c >= 0 && r <= lim_r && c <= lim_c;
             let filled = |r: i64, c: i64| {
-                inside(r, c) && !sh.value(kumihan::book::Pos::new(r as u32, c as u32)).is_empty()
+                inside(r, c) && !sh.value(book::Pos::new(r as u32, c as u32)).is_empty()
             };
             let (mut r, mut c) = (a.row as i64, a.col as i64);
             if filled(r, c) && filled(r + dr, c + dc) {
@@ -1636,7 +1636,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                     }
                 }
             }
-            let p = kumihan::book::Pos::new(r.max(0) as u32, c.max(0) as u32);
+            let p = book::Pos::new(r.max(0) as u32, c.max(0) as u32);
             format!("{{\"ok\":true,\"a1\":{}}}", J::S(p.a1()).to_json())
         }
         other => match h.extra(other, &o) {
@@ -1986,13 +1986,13 @@ fn sheet_index(h: &impl Host, o: &Jobj) -> Result<usize, String> {
 }
 
 /// 要求の範囲(a1 は "B2" か "B2:D4")を (シート, 左上, 右下) に。
-fn target(h: &impl Host, o: &Jobj) -> Result<(usize, kumihan::book::Pos, kumihan::book::Pos), String> {
+fn target(h: &impl Host, o: &Jobj) -> Result<(usize, book::Pos, book::Pos), String> {
     let si = sheet_index(h, o)?;
     let a1 = o.str("a1").ok_or_else(|| err("a1 がありません"))?;
     let mut it = a1.split(':');
-    let a = it.next().and_then(kumihan::book::Pos::parse).ok_or_else(|| err("a1 が読めません"))?;
+    let a = it.next().and_then(book::Pos::parse).ok_or_else(|| err("a1 が読めません"))?;
     let b = match it.next() {
-        Some(t) => kumihan::book::Pos::parse(t).ok_or_else(|| err("a1 が読めません"))?,
+        Some(t) => book::Pos::parse(t).ok_or_else(|| err("a1 が読めません"))?,
         None => a,
     };
     Ok((si, a, b))

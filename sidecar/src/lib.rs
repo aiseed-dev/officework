@@ -30,8 +30,8 @@ use std::collections::BTreeMap;
 use std::io::{BufRead, Write};
 
 use serde_json::{Map, Value, json};
-use kumihan::book::Pos;
-use kumihan::book::Book;
+use book::Pos;
+use book::Book;
 
 mod archive;
 mod value;
@@ -409,7 +409,7 @@ fn open_book(path: &str) -> Result<(Book, Vec<String>, usize), String> {
     book.path = std::fs::canonicalize(path)
         .map(|p| p.display().to_string())
         .unwrap_or_else(|_| path.to_string());
-    kumihan::calc::recalc_all(&mut book);
+    book::calc::recalc_all(&mut book);
     // **読めなかった物は名前で言う。** 黙って落とすのが一番悪い
     Ok((
         book,
@@ -505,14 +505,14 @@ fn recalc(
         // **表示形式は据え置く。** 打ち直しで書式を落とすのは calc の掟に反する
         let mut fmt = sh.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
         let mut cell = if input.is_empty() {
-            kumihan::book::Cell::default()
+            book::Cell::default()
         } else {
-            kumihan::book::Cell::input(input)
+            book::Cell::input(input)
         };
         // **日付を返す式には日付の形式を薦める** — 無いと画面に通し番号
         // (46244)が出る。**元の形式があるときは触らない**(Excel と同じ)
         if fmt.number_format.is_none() {
-            if let Some(f) = cell.formula.as_deref().and_then(kumihan::book::Cell::date_format_of) {
+            if let Some(f) = cell.formula.as_deref().and_then(book::Cell::date_format_of) {
                 fmt.number_format = Some(f.into());
             }
         }
@@ -520,7 +520,7 @@ fn recalc(
         sh.set(p, cell);
     }
     if !fresh.is_empty() {
-        kumihan::calc::recalc_all(&mut r.book);
+        book::calc::recalc_all(&mut r.book);
     }
 
     let mut cells = Vec::new();
@@ -541,7 +541,7 @@ fn recalc(
                 o.insert("column".into(), json!(col));
                 o.insert(
                     "formatted".into(),
-                    json!(kumihan::book::format_value(
+                    json!(book::format_value(
                         &v,
                         c.fmt.number_format.as_deref(),
                         r.book.date1904
@@ -549,7 +549,7 @@ fn recalc(
                 );
                 // **数でなければ `number` を省く。** `null` を入れると
                 // `z.number()` に撥ねられる(向こうは `skip_serializing_if`)
-                if let kumihan::book::Value::Number(n) = v {
+                if let book::Value::Number(n) = v {
                     o.insert("number".into(), json!(n));
                 }
                 o.insert("isFormula".into(), json!(c.formula.is_some()));

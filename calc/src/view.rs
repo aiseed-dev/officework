@@ -966,7 +966,7 @@ impl Render for Calc {
         let vis_cols: Vec<u32> = self.visible_cols();
         // 条件付き書式の下ごしらえ(重複・上位N・平均は範囲の統計が要る —
         // セルごとに範囲を歩かない)
-        let cond_prep: Vec<(kumihan::book::CondRule, kumihan::book::CondAux)> = self
+        let cond_prep: Vec<(book::CondRule, book::CondAux)> = self
             .sheet()
             .cond
             .iter()
@@ -1116,12 +1116,12 @@ impl Render for Calc {
                         .font_family(self.font_name.clone())
                         .whitespace_nowrap().overflow_hidden();
                     match f.valign {
-                        kumihan::book::VAlign::Top => d = d.items_start(),
-                        kumihan::book::VAlign::Middle => d = d.items_center(),
-                        kumihan::book::VAlign::Bottom => d = d.items_end(),
+                        book::VAlign::Top => d = d.items_start(),
+                        book::VAlign::Middle => d = d.items_center(),
+                        book::VAlign::Bottom => d = d.items_end(),
                         // 縦の均等割付は**今のところ上揃えで描く**(sheet 側の
                         // 覚え書きの通り)。持つ値は distributed のまま
-                        kumihan::book::VAlign::Distribute => d = d.items_start(),
+                        book::VAlign::Distribute => d = d.items_start(),
                     }
                     d = if both {
                         d.justify_center()
@@ -1296,15 +1296,15 @@ impl Render for Calc {
                     // 数式の表示。式が無いセルは値のまま
                     cell.and_then(|x| x.formula.clone())
                         .map(|f| if self.book.r1c1 {
-                            format!("={}", kumihan::book::formula_to_r1c1(&f, p))
+                            format!("={}", book::formula_to_r1c1(&f, p))
                         } else {
                             format!("={f}")
                         })
-                        .unwrap_or_else(|| kumihan::book::format_value(&v,
+                        .unwrap_or_else(|| book::format_value(&v,
                             cell.and_then(|x| x.fmt.number_format.as_deref()),
                             self.book.date1904))
                 } else {
-                    kumihan::book::format_value(&v, cell.and_then(|x| x.fmt.number_format.as_deref()), self.book.date1904)
+                    book::format_value(&v, cell.and_then(|x| x.fmt.number_format.as_deref()), self.book.date1904)
                 };
                 // Bool のセルはチェックボックスとして見せる(☑/☐。
                 // 空白キーで切替。Excel では TRUE/FALSE の値で見える)
@@ -1450,7 +1450,7 @@ impl Render for Calc {
                     d = d.relative();
                     // 1辺を線種どおりに描く。破線系は gpui の破線、
                     // 二重線は1px2本(間1px)。太さは線種から(hair=細実線)
-                    let edge_bars = |e: kumihan::book::Edge, horiz: bool, start: bool|
+                    let edge_bars = |e: book::Edge, horiz: bool, start: bool|
                         -> Vec<gpui::AnyElement> {
                         if !e.on {
                             return Vec::new();
@@ -1471,7 +1471,7 @@ impl Render for Calc {
                             if horiz { b.h(px(t)) } else { b.w(px(t)) }
                                 .bg(col).into_any_element()
                         };
-                        if e.style == kumihan::book::BStyle::Double {
+                        if e.style == book::BStyle::Double {
                             return vec![solid(0.0, 1.0), solid(2.0, 1.0)];
                         }
                         if e.style.dashed() {
@@ -1535,10 +1535,10 @@ impl Render for Calc {
                 }
                 // 縦の揃え(既定は下 = xlsx の既定)
                 match f.valign {
-                    kumihan::book::VAlign::Top => d = d.items_start(),
-                    kumihan::book::VAlign::Middle => d = d.items_center(),
-                    kumihan::book::VAlign::Bottom => d = d.items_end(),
-                    kumihan::book::VAlign::Distribute => d = d.items_start(),
+                    book::VAlign::Top => d = d.items_start(),
+                    book::VAlign::Middle => d = d.items_center(),
+                    book::VAlign::Bottom => d = d.items_end(),
+                    book::VAlign::Distribute => d = d.items_start(),
                 }
                 if f.wrap {
                     d = d.whitespace_normal().overflow_hidden();
@@ -2905,7 +2905,7 @@ impl Render for Calc {
                 let cell = self.sheet().get(a);
                 let f = cell.map(|x| x.fmt.clone()).unwrap_or_default();
                 let v = cell.map(|x| x.value.clone()).unwrap_or(Value::Empty);
-                let mut shown = kumihan::book::format_value(&v, f.number_format.as_deref(), self.book.date1904);
+                let mut shown = book::format_value(&v, f.number_format.as_deref(), self.book.date1904);
                 // 結合の上で編集中は、打ちかけを結合の枠の中に見せる(セルと同じ)
                 if self.cursor == a {
                     shown = self.input.text().to_string();
@@ -2929,10 +2929,10 @@ impl Render for Calc {
                     .font_family(self.font_name.clone())
                     .text_size(px(cell_font_px(f.size_c, self.zoom)));
                 match f.valign {
-                    kumihan::book::VAlign::Top => d = d.items_start(),
-                    kumihan::book::VAlign::Middle => d = d.items_center(),
-                    kumihan::book::VAlign::Bottom => d = d.items_end(),
-                    kumihan::book::VAlign::Distribute => d = d.items_start(),
+                    book::VAlign::Top => d = d.items_start(),
+                    book::VAlign::Middle => d = d.items_center(),
+                    book::VAlign::Bottom => d = d.items_end(),
+                    book::VAlign::Distribute => d = d.items_start(),
                 }
                 let is_num = matches!(v, Value::Number(_));
                 d = match f.align {
@@ -2969,7 +2969,7 @@ impl Render for Calc {
                     // カーソルが乗っている時だけ if 枝を通って正しく見えていた)。
                     // absolute の親でも、中の absolute はそのまま効く
                     let bs = &f.borders;
-                    let bar = |horiz: bool, start: bool, e: kumihan::book::Edge| {
+                    let bar = |horiz: bool, start: bool, e: book::Edge| {
                         let col = e.color.map(rgb).unwrap_or(rgb(0x1B1B1B));
                         let t = e.style.px().max(1.0);
                         let b = div().absolute();
@@ -4703,9 +4703,9 @@ impl Render for Calc {
                 let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
                     .child(lab(ui::t!("alignment").to_string()));
                 for (id, name, a) in [
-                    ("shp-al-l", ui::t!("left"), kumihan::book::HAlign::General),
-                    ("shp-al-c", ui::t!("centre"), kumihan::book::HAlign::Center),
-                    ("shp-al-r", ui::t!("right"), kumihan::book::HAlign::Right),
+                    ("shp-al-l", ui::t!("left"), book::HAlign::General),
+                    ("shp-al-c", ui::t!("centre"), book::HAlign::Center),
+                    ("shp-al-r", ui::t!("right"), book::HAlign::Right),
                 ] {
                     let on = tf.align == a;
                     row = row.child(chip(id.into(), name.to_string(), on)
@@ -4721,9 +4721,9 @@ impl Render for Calc {
                 let mut row = div().flex().flex_row().items_center().gap_1().flex_wrap()
                     .child(lab(ui::t!("vertical_position").to_string()));
                 for (id, name, a) in [
-                    ("shp-an-t", ui::t!("top"), kumihan::book::TextAnchor::Top),
-                    ("shp-an-m", ui::t!("centre"), kumihan::book::TextAnchor::Middle),
-                    ("shp-an-b", ui::t!("bottom"), kumihan::book::TextAnchor::Bottom),
+                    ("shp-an-t", ui::t!("top"), book::TextAnchor::Top),
+                    ("shp-an-m", ui::t!("centre"), book::TextAnchor::Middle),
+                    ("shp-an-b", ui::t!("bottom"), book::TextAnchor::Bottom),
                 ] {
                     let on = tf.anchor == a;
                     row = row.child(chip(id.into(), name.to_string(), on)
@@ -4911,7 +4911,7 @@ impl Render for Calc {
             // ペンの見た目をそのまま絵に映す(太さと二重線。破線の刻みまでは
             // 描かない — 絵は場所の案内、線種の正確な見本はスタイルの一覧)
             let pw = self.pen_style.px().clamp(1.0, 4.0);
-            let double = self.pen_style == kumihan::book::BStyle::Double;
+            let double = self.pen_style == book::BStyle::Double;
             // 1コマのアイコン(24×24)。濃い線 = ペン、薄い線 = セルの気配
             let icon = move |kind: &'static str| -> gpui::AnyElement {
                 let base = div().relative().w(px(us * 24.0)).h(px(us * 24.0));
@@ -5441,13 +5441,13 @@ impl Render for Calc {
                                    .flex()
                                    .flex_col();
                                td = match tf.anchor {
-                                   kumihan::book::TextAnchor::Top => td.justify_start(),
-                                   kumihan::book::TextAnchor::Middle => td.justify_center(),
-                                   kumihan::book::TextAnchor::Bottom => td.justify_end(),
+                                   book::TextAnchor::Top => td.justify_start(),
+                                   book::TextAnchor::Middle => td.justify_center(),
+                                   book::TextAnchor::Bottom => td.justify_end(),
                                };
                                td = match tf.align {
-                                   kumihan::book::HAlign::Center => td.text_center(),
-                                   kumihan::book::HAlign::Right => td.text_right(),
+                                   book::HAlign::Center => td.text_center(),
+                                   book::HAlign::Right => td.text_right(),
                                    _ => td,
                                };
                                if tf.strike {
@@ -5545,7 +5545,7 @@ pub(crate) fn md_body(
     lines: &[kumihan::cellmark::Line],
     zoom: f32,
     wrap: bool,
-    named: &[(String, Option<u32>, kumihan::book::CellFormat)],
+    named: &[(String, Option<u32>, book::CellFormat)],
 ) -> gpui::AnyElement {
     use gpui::prelude::*;
     use kumihan::cellmark::Block;
