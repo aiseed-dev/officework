@@ -204,26 +204,35 @@ fn app_keys() -> BTreeSet<String> {
     out
 }
 
-/// **鍵の一覧**(英語)。
+/// **鍵の一覧**(記号)。
 ///
-/// 鍵が英語になったので(2026-08-26)、`en` は対訳表を持ちません。
-/// 鍵の一覧は、どの言語の表の**鍵の側**からでも取れます。日本語の表を
-/// 使うのは、それが `ui/i18n/keys.json` からそのまま生成された物で、
-/// 常に全部の鍵を持つからです。
+/// 鍵は記号です(2026-08-26)。どの言語の表も同じ鍵を持つので、
+/// どれから取っても同じです。英語も訳の1つなので en から取ります。
 fn 鍵の一覧() -> BTreeSet<String> {
-    table_keys("ja")
+    table_keys("en")
+}
+
+/// 英語の訳。**穴埋めの数と綴りは、鍵ではなくこちらを見ます。**
+/// 鍵は記号なので、穴も英単語もありません。
+fn 英語の訳() -> std::collections::BTreeMap<String, String> {
+    table_pairs("en")
 }
 
 /// 表の鍵。**Rust の文字列としての中身**ではなく、ソースに書かれた
 /// エスケープ済みの姿で比べる — アプリ側も同じ姿で取っているので揃う
 fn table_keys(lang: &str) -> BTreeSet<String> {
+    table_pairs(lang).into_keys().collect()
+}
+
+/// 表を(鍵, 訳)で読む。
+fn table_pairs(lang: &str) -> std::collections::BTreeMap<String, String> {
     let p = root().join(format!("lang/src/i18n_{}.rs", lang.replace('-', "_")));
     let src = std::fs::read_to_string(&p)
         .unwrap_or_else(|e| panic!("{}: {e}", p.display()))
         .replace("\r\n", "\n"); // 上と同じ理由(Windows の CRLF)
     let b = src.as_bytes();
     let start = src.find("= &[").expect("表の始まり") + 4;
-    let mut out = BTreeSet::new();
+    let mut out = std::collections::BTreeMap::new();
     let mut i = start;
     while let Some(rel) = src[i..].find("(\"") {
         let at = i + rel;
@@ -231,7 +240,7 @@ fn table_keys(lang: &str) -> BTreeSet<String> {
         // 鍵の次は訳のリテラル。読み飛ばして次の項目へ
         let Some(vq) = src[k_end..].find('"').map(|r| k_end + r) else { break };
         let Some((v_end, _)) = literal_at(b, vq) else { break };
-        out.insert(unescape(&key));
+        out.insert(unescape(&key), unescape(&src[vq..v_end]));
         i = v_end;
     }
     out
@@ -287,17 +296,16 @@ fn どの言語の表も同じ鍵を持つ() {
 #[test]
 fn 穴埋めの数が言語をまたいで揃う() {
     let holes = |s: &str| s.match_indices("{}").count();
-    let en = 鍵の一覧();
+    // **穴の数は英語の訳と比べます。** 鍵は記号なので穴がありません
+    let en = 英語の訳();
     for lang in lang::i18n_tables::LANGS {
         let t = lang::i18n_tables::table(lang).expect("登録済み");
         for (k, v) in t {
-            if !en.contains(*k) {
-                continue;
-            }
+            let Some(e) = en.get(*k) else { continue };
             assert_eq!(
-                holes(k),
+                holes(e),
                 holes(v),
-                "{lang}: 穴の数が違います\n  鍵 {k}\n  訳 {v}"
+                "{lang}: 穴の数が違います\n  鍵 {k}\n  英 {e}\n  訳 {v}"
             );
         }
     }
@@ -397,10 +405,10 @@ fn 英語の表が英国綴りで揃っている() {
         ("modeling", "modelling"),
         ("defense", "defence"),
     ];
-    // **鍵の側が英語です**(2026-08-26)。前は en の対訳表の訳の側を
-    // 見ていましたが、その表は無くなりました
+    // **英語の訳の側を見ます**(2026-08-26)。鍵は記号なので綴りが
+    // ありません
     let mut bad = Vec::new();
-    for en in 鍵の一覧() {
+    for en in 英語の訳().into_values() {
         for w in en.split(|c: char| !c.is_ascii_alphabetic()) {
             let lower = w.to_ascii_lowercase();
             if let Some((_, brit)) = AMERICAN.iter().find(|(a, _)| *a == lower) {

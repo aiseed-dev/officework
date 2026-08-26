@@ -1063,12 +1063,12 @@ def _grouped(col, unit):
     d = pl.col(col).str.strptime(pl.Date, "%Y-%m-%d", strict=False)
     d2 = pl.col(col).str.strptime(pl.Date, "%Y/%m/%d", strict=False)
     d = pl.coalesce(d, d2)
-    if unit == "Years":
+    if unit == "years":
         out = d.dt.strftime("%Y年")
-    elif unit == "Quarters":
+    elif unit == "quarters":
         out = (d.dt.year().cast(pl.String) + "年Q" +
                ((d.dt.month() + 2) // 3).cast(pl.String))
-    else:  # Months
+    else:  # months
         out = d.dt.strftime("%Y-%m")
     # 日付として読めない値はそのまま残す(黙って落とさない)
     return pl.when(d.is_null()).then(pl.col(col)).otherwise(out)
@@ -1082,19 +1082,19 @@ val, agg = spec["value"], spec["agg"]
 AGG_LABEL = spec.get("agg_label", agg)
 SUB_LABEL = spec.get("subtotal_label", "{} subtotal")
 GRAND_LABEL = spec.get("grand_label", "Grand totals")
-if agg != "Count":
+if agg != "count":
     # 数にならないものは null(集計から外れる)
     df = df.with_columns(pl.col(val).cast(pl.Float64, strict=False))
 idx, cols = spec["index"], spec["columns"]
 # **粒と集計の名前は英語で受けます**(2026-08-26 の移行)。Rust 側が
 # 品書きの鍵をそのまま渡すので、鍵が英語になったらここも英語です
-FN = {"Sum": "sum", "Average": "mean", "Count": "len",
-      "Maximum": "max", "Minimum": "min"}
+FN = {"sum": "sum", "average": "mean", "count": "len",
+      "maximum": "max", "minimum": "min"}
 
 def agg_expr():
-    return {"Sum": pl.sum(val), "Average": pl.mean(val),
-            "Count": pl.len().alias(val),
-            "Maximum": pl.max(val), "Minimum": pl.min(val)}[agg]
+    return {"sum": pl.sum(val), "average": pl.mean(val),
+            "count": pl.len().alias(val),
+            "maximum": pl.max(val), "minimum": pl.min(val)}[agg]
 
 def table(frame, index):
     if cols:

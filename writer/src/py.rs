@@ -231,10 +231,10 @@ pub(crate) fn kumu_suushiki(tex: &str, size_pt: f32) -> Result<(Vec<u8>, f32, f3
         return Err(e);
     }
     let o = ops::Jobj::parse(&last)
-        .ok_or_else(|| ui::tf!("Cannot read Python's reply: {}", last).to_string())?;
+        .ok_or_else(|| ui::tf!("cannot_read_pythons_reply", last).to_string())?;
     let (w, h) = (o.num("w").unwrap_or(0.0) as f32, o.num("h").unwrap_or(0.0) as f32);
     if w <= 0.0 || h <= 0.0 {
-        return Err(ui::t!("No size came back").to_string());
+        return Err(ui::t!("no_size_came_back").to_string());
     }
     let bytes = std::fs::read(&png).map_err(|e| e.to_string())?;
     Ok((bytes, w, h))

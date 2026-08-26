@@ -27,6 +27,7 @@ pub mod check;
 pub mod i18n;
 // gen_lang:begin(この間は ui/gen_lang.py が生成する — 手で書かない)
 pub mod i18n_de;
+pub mod i18n_en;
 pub mod i18n_es;
 pub mod i18n_fr;
 pub mod i18n_id;

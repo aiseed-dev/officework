@@ -67,7 +67,7 @@ impl Render for Writer {
             .path
             .as_ref()
             .and_then(|q| q.file_name().map(|n| n.to_string_lossy().to_string()))
-            .unwrap_or_else(|| ui::t!("Untitled document").into());
+            .unwrap_or_else(|| ui::t!("untitled_document").into());
         let winbtn = |id: &'static str, label: &'static str| {
             div().id(id).px_2p5().py_1().rounded_sm()
                 .text_size(px(us * 12.0)).text_color(th_top_fg)
@@ -113,7 +113,7 @@ impl Render for Writer {
             .child(div().flex_1())
             .child(div().pr_2().text_size(px(us * 10.5))
                 .text_color(if dk { rgb(0x6E7982) } else { rgb(0x8A949D) })
-                .child(SharedString::from(ui::tf!("writer — implemented {}/{}", ready, all))))
+                .child(SharedString::from(ui::tf!("writer_implemented", ready, all))))
             .child(winbtn("min", "─").on_click(cx.listener(|_, _, window, _| {
                 window.minimize_window();
             })))
@@ -218,9 +218,9 @@ impl Render for Writer {
         ];
         // 挿入は一段(発注者の画像 2026-08-04)。主要なボタンは名札つきの大ボタン
         const INS_ROWS: &[&[LItem]] = &[&[
-            ("blankpage", Some("空白ページ")), ("pagebreak", Some("Delimiter")),
-            ("‖", None), ("instable", Some("Table")), ("‖", None),
-            ("insimage", Some("Images")), ("insshape", Some("図形")),
+            ("blankpage", Some("空白ページ")), ("pagebreak", Some("delimiter")),
+            ("‖", None), ("instable", Some("table_2")), ("‖", None),
+            ("insimage", Some("images")), ("insshape", Some("図形")),
             ("inssmartart", None), ("inschart", None),
             ("‖", None), ("instext", None), ("instextart", None),
             ("dropcap", None), ("text-from-file", None), ("‖", None),
@@ -235,8 +235,8 @@ impl Render for Writer {
             ("eraser", Some("消しゴム")),
         ]];
         const LAYOUT_ROWS: &[&[LItem]] = &[&[
-            ("pagemargins", Some("Margins")), ("pageorient", Some("Orientation")),
-            ("pagesize", Some("サイズ")), ("columns", Some("Columns")),
+            ("pagemargins", Some("margins")), ("pageorient", Some("orientation")),
+            ("pagesize", Some("サイズ")), ("columns", Some("columns")),
             ("‖", None), ("line-numbers", None), ("hyphenation", None),
             // 図形まわりの5つ。**まだ押せません**(図形そのものが入っていない)。
             // 表の側と同じ扱いで、場所だけ取ります(2026-08-21 発注者
@@ -256,14 +256,14 @@ impl Render for Writer {
             ("form-text", None), ("form-combo", None), ("form-dropdown", None),
             ("form-checkbox", None), ("form-radio", None), ("form-image", None),
             ("form-email", None), ("form-phone", None), ("form-complex", None),
-            ("form-signature", None), ("‖", None), ("form-name", Some("Name")),
+            ("form-signature", None), ("‖", None), ("form-name", Some("name")),
         ]];
         const COLLAB_ROWS: &[&[LItem]] = &[&[
-            ("coauth-mode", Some("Co-editing mode")), ("‖", None),
-            ("co-addcomment", Some("Comment")), ("co-delcomment", None),
-            ("co-showcomment", None), ("‖", None), ("co-chat", Some("Chat")),
+            ("coauth-mode", Some("co_editing_mode")), ("‖", None),
+            ("co-addcomment", Some("comment")), ("co-delcomment", None),
+            ("co-showcomment", None), ("‖", None), ("co-chat", Some("chat")),
             ("‖", None), ("track-changes", Some("変更履歴")), ("‖", None),
-            ("co-history", Some("Version history")),
+            ("co-history", Some("version_history")),
         ]];
         // **暗号化を掛けるボタンは置きません**(2026-08-18 発注者「暗号化は、
         // 開くだけ残す」)。writer が保存するのは adoc で、zip ではないので
@@ -276,7 +276,7 @@ impl Render for Writer {
             &[
                 ("nav", Some("ナビゲーション")), ("‖", None),
                 ("fit-page", Some("ページに合わせる")),
-                ("zoom100", Some("Zoom to 100%")), ("zoom-in", None),
+                ("zoom100", Some("zoom_100")), ("zoom-in", None),
                 ("‖", None), ("darkmode", None),
                 // **表にしかありませんでした**(2026-08-21 発注者)
                 ("ui-bigger", None), ("ui-smaller", None),
@@ -297,13 +297,13 @@ impl Render for Writer {
         // **マクロを書く**(AI)もここ — 置き場に .py を置く仕事で、
         // 会話では代われない(2026-08-15、AI タブの廃止で移した)
         const PLUG_ROWS: &[&[LItem]] = &[&[
-            ("py-list", Some("Macro list")),
-            ("py-folder", Some("Open folder")),
-            ("ai-macro", Some("Write macro")),
+            ("py-list", Some("macro_list")),
+            ("py-folder", Some("open_folder_2")),
+            ("ai-macro", Some("write_macro")),
         ]];
         let rows: Option<&[&[LItem]]> = match ribbon::WRITER[self.tab].name {
             "Home" => Some(HOME_ROWS),
-            "Insert" => Some(INS_ROWS),
+            "insert" => Some(INS_ROWS),
             "Draw" => Some(DRAW_ROWS),
             "Layout" => Some(LAYOUT_ROWS),
             "References" => Some(REF_ROWS),
@@ -311,7 +311,7 @@ impl Render for Writer {
             "Collaboration" => Some(COLLAB_ROWS),
             "Protection" => Some(PROT_ROWS),
             "View" => Some(VIEW_ROWS),
-            "Macros" => Some(PLUG_ROWS),
+            "macros" => Some(PLUG_ROWS),
             _ => None,
         };
         if let Some(rows) = rows {
@@ -722,8 +722,8 @@ impl Render for Writer {
             .px_3().py_0p5().bg(th_top_bg)
             .border_t_1().border_color(th_cmd_border)
             .text_size(px(us * 11.0)).text_color(th_status)
-            .child(SharedString::from(ui::tf!("Page {}/{}", cur_page, total_pages)))
-            .child(SharedString::from(ui::tf!("{} characters", nchars)))
+            .child(SharedString::from(ui::tf!("page", cur_page, total_pages)))
+            .child(SharedString::from(ui::tf!("characters", nchars)))
             // **いまどちらの形式か。** 形式によって出来ることが違います
             // (ネイティブでは直接書式を封じてスタイルへ誘導します)。
             // それが画面のどこにも出ていませんでした(2026-08-17 発注者
@@ -746,7 +746,7 @@ impl Render for Writer {
                         self.status
                     ),
                 })))
-            .child(sb_btn("sb-spell", ui::t!("Spell")).on_click(cx.listener(|this, _, _, cx| {
+            .child(sb_btn("sb-spell", ui::t!("spell")).on_click(cx.listener(|this, _, _, cx| {
                 this.run_cmd("spell", cx);
                 cx.notify()
             })))
@@ -757,12 +757,12 @@ impl Render for Writer {
             .child(div().id("sb-zoom").px_1().rounded_sm().cursor_pointer()
                 .text_size(px(us * 11.5)).text_color(th_top_fg)
                 .hover(move |s| s.bg(th_qa_hover))
-                .child(SharedString::from(ui::tf!("Zoom {}%", (self.zoom * 100.0).round() as i32)))
+                .child(SharedString::from(ui::tf!("zoom", (self.zoom * 100.0).round() as i32)))
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.zoom = 1.0;
                     cx.notify()
                 })))
-            .child(sb_btn("sb-zoom-in", ui::t!("+")).on_click(cx.listener(|this, _, _, cx| {
+            .child(sb_btn("sb-zoom-in", ui::t!("plus_char")).on_click(cx.listener(|this, _, _, cx| {
                 this.run_cmd("zoom-in", cx);
                 cx.notify()
             })));
@@ -1461,29 +1461,29 @@ impl Render for Writer {
             // (id, 名前, 付記, 押せるか)。"" は仕切り。
             // 照合は id — 名前は見せる字だけなので訳してよい
             let entries: Vec<(&'static str, &'static str, &'static str, bool)> = vec![
-                ("cut", ui::t!("Cut"), "Ctrl+X", has_sel),
-                ("copy", ui::t!("Copy"), "Ctrl+C", has_sel),
-                ("paste", ui::t!("Paste"), "Ctrl+V", true),
+                ("cut", ui::t!("cut"), "Ctrl+X", has_sel),
+                ("copy", ui::t!("copy"), "Ctrl+C", has_sel),
+                ("paste", ui::t!("paste"), "Ctrl+V", true),
                 ("", "", "", false),
-                ("selword", ui::t!("Select word"), "", true),
-                ("selline", ui::t!("Select line"), "", true),
-                ("selall", ui::t!("Select all"), "Ctrl+A", true),
+                ("selword", ui::t!("select_word"), "", true),
+                ("selline", ui::t!("select_line"), "", true),
+                ("selall", ui::t!("select_all_2"), "Ctrl+A", true),
                 ("", "", "", false),
-                ("bold", ui::t!("Bold"), "", true),
-                ("italic", ui::t!("Italic"), "", true),
-                ("underline", ui::t!("Underline"), "", true),
+                ("bold", ui::t!("bold"), "", true),
+                ("italic", ui::t!("italic"), "", true),
+                ("underline", ui::t!("underline"), "", true),
                 ("", "", "", false),
-                ("align-left", ui::t!("Align left"), "", true),
-                ("align-center", ui::t!("Centre"), "", true),
-                ("align-right", ui::t!("Align right"), "", true),
-                ("align-just", ui::t!("Justify"), "", true),
+                ("align-left", ui::t!("align_left"), "", true),
+                ("align-center", ui::t!("centre"), "", true),
+                ("align-right", ui::t!("align_right"), "", true),
+                ("align-just", ui::t!("justify"), "", true),
                 ("", "", "", false),
-                ("replace", ui::t!("Find and replace"), "Ctrl+F", true),
-                ("comment", ui::t!("Comment"), "", true),
-                ("wordcount", ui::t!("Word count"), "", true),
+                ("replace", ui::t!("find_replace"), "Ctrl+F", true),
+                ("comment", ui::t!("comment"), "", true),
+                ("wordcount", ui::t!("word_count"), "", true),
                 // **読み飛ばした物を見直す口**(2026-08-26)。断りを閉じても
                 // ここから見られます。読めなかった物があるときだけ出します
-                ("show-notes", ui::t!("Skipped by this version"), "", !self.notes.is_empty()),
+                ("show-notes", ui::t!("skipped_version"), "", !self.notes.is_empty()),
             ];
             let h_est = entries.len() as f32 * 25.0 + 10.0;
             let win_w = f32::from(window.viewport_size().width);
@@ -1646,12 +1646,12 @@ impl Render for Writer {
                                 .child(div().text_size(px(us * 13.0))
                                     .font_weight(gpui::FontWeight::BOLD)
                                     .text_color(rgb(0x165E83))
-                                    .child(ui::t!("There are unsaved changes")))
+                                    .child(ui::t!("there_unsaved_changes")))
                                 .child(div().text_size(px(us * 12.0))
                                     .child(ui::t!(
-                                        "Save and quit? (Enter = save and quit / Esc = cancel)")))
+                                        "save_quit_enter_save")))
                                 .child(div().flex().flex_row().gap_2().justify_center()
-                                    .child(btn("q-save", ui::t!("Save and quit").to_string(), true)
+                                    .child(btn("q-save", ui::t!("save_quit").to_string(), true)
                                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                             |this, _, _, cx| {
                                                 cx.stop_propagation();
@@ -1659,19 +1659,19 @@ impl Render for Writer {
                                                 this.save(true, cx);
                                                 cx.notify();
                                             })))
-                                    .child(btn("q-drop", ui::t!("Quit without saving").to_string(), false)
+                                    .child(btn("q-drop", ui::t!("quit_without_saving").to_string(), false)
                                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                             |this, _, _, cx| {
                                                 cx.stop_propagation();
                                                 this.release_lock();
                                                 cx.quit();
                                             })))
-                                    .child(btn("q-cancel", ui::t!("Cancel").to_string(), false)
+                                    .child(btn("q-cancel", ui::t!("cancel").to_string(), false)
                                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                             |this, _, _, cx| {
                                                 cx.stop_propagation();
                                                 this.quit_ask = false;
-                                                this.status = ui::t!("Quit cancelled").into();
+                                                this.status = ui::t!("quit_cancelled").into();
                                                 cx.notify();
                                             })))))
                     }))

@@ -39,7 +39,7 @@ pub fn header(look: &Look, dir: Option<&std::path::Path>) -> Div {
         None => div()
             .text_size(px(s * 11.0))
             .text_color(look.dim)
-            .child(crate::t!("No folder is open (File > Open)")),
+            .child(crate::t!("no_folder_open_file")),
         Some(d) => {
             let 名 = d
                 .file_name()
@@ -71,7 +71,7 @@ pub fn up_row(look: &Look, dir: &std::path::Path) -> Option<Stateful<Div>> {
             .text_color(look.fg)
             .child(SharedString::from("‹"))
             .child(SharedString::from(crate::tf!(
-                "Up ({})",
+                "up",
                 親.file_name()
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_else(|| 親.display().to_string())
@@ -84,7 +84,7 @@ pub fn empty(look: &Look) -> Div {
     div()
         .text_size(px(look.scale * 11.0))
         .text_color(look.dim)
-        .child(crate::t!("(the folder is empty)"))
+        .child(crate::t!("folder_empty"))
 }
 
 /// 並べる中身。**200 件で切ります** — 切ったことは呼ぶ側が言うこと。
@@ -111,7 +111,7 @@ pub fn rest_note(look: &Look, 残り: usize) -> Option<Div> {
         div()
             .text_size(px(look.scale * 10.5))
             .text_color(look.dim)
-            .child(crate::tf!("{} more (not shown)", 残り))
+            .child(crate::tf!("more_not_shown_2", 残り))
     })
 }
 

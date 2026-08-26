@@ -372,9 +372,9 @@ pub fn cycle_language() -> String {
     // **その場で効かせます**(2026-08-19 発注者「言語はいつでも変更できる
     // ようにして」)
     if set_language(next) {
-        crate::t!("Language changed").to_string()
+        crate::t!("language_changed").to_string()
     } else {
-        crate::t!("Language saved (OFFICE_LANG is set, so it wins)").to_string()
+        crate::t!("language_saved_office_lang").to_string()
     }
 }
 
@@ -393,9 +393,9 @@ pub fn toggle_math_autocorrect(cur: bool, persist: bool) -> (bool, String) {
         settings::set("math_autocorrect", if next { "1" } else { "0" });
     }
     let msg = if next {
-        crate::t!("Math autocorrect: on (a symbol appears when you type a separator; Backspace brings the spelling back)")
+        crate::t!("math_autocorrect_symbol_appears")
     } else {
-        crate::t!("Math autocorrect: off (what you type stays as you typed it)")
+        crate::t!("math_autocorrect_off_what")
     };
     (next, msg.to_string())
 }
@@ -417,7 +417,7 @@ pub fn env_rows(identity: &str) -> Vec<(String, String)> {
         format!(
             "{}({})",
             ep.shown(),
-            if ep.is_local() { crate::t!("stays on this machine") } else { crate::t!("leaves this machine") }
+            if ep.is_local() { crate::t!("stays_machine") } else { crate::t!("leaves_machine") }
         )
     };
     // **使えないなら理由を出す**(押してみるまで分からない、にしない)。
@@ -428,33 +428,33 @@ pub fn env_rows(identity: &str) -> Vec<(String, String)> {
         let b = ai::backend();
         match ai::ready(b) {
             _ if b == ai::Backend::Local => {
-                crate::t!("Unknown until you ask (it connects to the destination below)").to_string()
+                crate::t!("unknown_until_ask_connects").to_string()
             }
-            Ok(()) => crate::t!("Usable").to_string(),
+            Ok(()) => crate::t!("usable").to_string(),
             Err(e) => e,
         }
     };
     vec![
-        (crate::t!("Usable right now").to_string(), 使えるか),
+        (crate::t!("usable_right_now").to_string(), 使えるか),
         (
-            crate::t!("AI model (JO_AI_MODEL)").to_string(),
-            std::env::var("JO_AI_MODEL").unwrap_or_else(|_| crate::t!("(destination default)").into()),
+            crate::t!("ai_model_jo_ai").to_string(),
+            std::env::var("JO_AI_MODEL").unwrap_or_else(|_| crate::t!("destination_default").into()),
         ),
         (
-            crate::t!("Font (OFFICE_FONT)").to_string(),
-            std::env::var("OFFICE_FONT").unwrap_or_else(|_| crate::t!("(follows the document)").into()),
+            crate::t!("font_office_font").to_string(),
+            std::env::var("OFFICE_FONT").unwrap_or_else(|_| crate::t!("follows_document").into()),
         ),
-        (crate::t!("Local model destination").to_string(), 宛先),
+        (crate::t!("local_model_destination").to_string(), 宛先),
         (
-            crate::t!("How to set the destination").to_string(),
-            crate::t!("ai_url / ai_model in settings.toml (the OFFICE_URL environment variable wins)").to_string(),
+            crate::t!("how_set_destination").to_string(),
+            crate::t!("ai_url_ai_model").to_string(),
         ),
         (
-            crate::t!("Python path").to_string(),
+            crate::t!("python_path").to_string(),
             std::env::var("JO_PYTHON")
-                .unwrap_or_else(|_| crate::t!("(auto: .venv → python3)").into()),
+                .unwrap_or_else(|_| crate::t!("auto_venv_python3").into()),
         ),
-        (crate::t!("Name (lock, chat, signature)").to_string(), identity.to_string()),
+        (crate::t!("name_lock_chat_signature").to_string(), identity.to_string()),
     ]
 }
 
@@ -470,9 +470,9 @@ pub fn toggle_dark(cur: bool, persist: bool) -> (bool, String) {
         settings::set("theme", if next { "dark" } else { "light" });
     }
     let msg = if next {
-        crate::t!("Screen is dark now (paper and cells stay white — so screen and print agree)")
+        crate::t!("screen_dark_now_paper")
     } else {
-        crate::t!("Screen back to light")
+        crate::t!("screen_back_light")
     };
     (next, msg.to_string())
 }
@@ -511,8 +511,8 @@ pub fn toggle_calc_iter(cur: Option<(u32, f64)>, persist: bool) -> (Option<(u32,
         });
     }
     let msg = match next {
-        Some((n, d)) => crate::tf!("Iterative calculation: on (up to {} passes / change under {})", n, d).to_string(),
-        None => crate::t!("Iterative calculation: off (circular references are flagged)").to_string(),
+        Some((n, d)) => crate::tf!("iterative_calculation_up_passes", n, d).to_string(),
+        None => crate::t!("iterative_calculation_off_circular_references").to_string(),
     };
     (next, msg)
 }
@@ -712,13 +712,13 @@ pub fn bindings_for(app: &str, context: &'static str) -> Vec<KeyBinding> {
         .iter()
         .map(|w| match w {
             KeyWarn::UnknownAction(n) => {
-                crate::tf!("key.{} in settings names an unknown action", n).to_string()
+                crate::tf!("key_settings_names_unknown", n).to_string()
             }
             KeyWarn::BadKey(n, k) => {
-                crate::tf!("The shortcut for key.{} in settings cannot be read: {}", n, k).to_string()
+                crate::tf!("shortcut_key_settings_cannot", n, k).to_string()
             }
             KeyWarn::Contested(k, a, b) => crate::tf!(
-                "Shortcut {} is claimed by both {} and {} ({} wins)", k, a, b, b
+                "shortcut_claimed_both_wins", k, a, b, b
             )
             .to_string(),
         })

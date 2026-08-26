@@ -112,10 +112,10 @@ impl Writer {
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_2()
-                .child(field(ui::t!("Find"), &self.find_ed, self.find_field == 0)
+                .child(field(ui::t!("find"), &self.find_ed, self.find_field == 0)
                     .id("find-f").cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| { this.find_field = 0; cx.notify() })))
-                .child(field(ui::t!("Replace with"), &self.repl_ed, self.find_field == 1)
+                .child(field(ui::t!("replace_2"), &self.repl_ed, self.find_field == 1)
                     .id("find-r").cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| { this.find_field = 1; cx.notify() })))
                 // **探す範囲**(2026-08-20 発注者「検索には3種類必要です」)。
@@ -123,12 +123,12 @@ impl Writer {
                 // 文章の画面の言葉は「文書」です
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                        .child(ui::t!("Search in")))
-                    .child(範囲釦("sc-doc", ui::t!("This document"), !self.find_file)
+                        .child(ui::t!("search")))
+                    .child(範囲釦("sc-doc", ui::t!("document_5"), !self.find_file)
                         .on_click(cx.listener(|t, _, _, cx| { t.find_file = false; cx.notify() })))
-                    .child(範囲釦("sc-file", ui::t!("This file"), self.find_file)
+                    .child(範囲釦("sc-file", ui::t!("file_2"), self.find_file)
                         .on_click(cx.listener(|t, _, _, cx| { t.find_file = true; cx.notify() })))
-                    .child(範囲釦("sc-dir", ui::t!("Folder"), false)
+                    .child(範囲釦("sc-dir", ui::t!("folder_3"), false)
                         .on_click(cx.listener(|t, _, _, cx| {
                             // フォルダ全体はファイルのページの「フォルダから探す」
                             t.tab = 0;
@@ -136,14 +136,14 @@ impl Writer {
                             cx.notify()
                         }))))
                 .child(div().flex().flex_row().gap_2()
-                    .child(btn("f-next", ui::t!("Next (Enter)"))
+                    .child(btn("f-next", ui::t!("next_enter"))
                         .on_click(cx.listener(|this, _, _, cx| { this.find_next(); cx.notify() })))
-                    .child(btn("f-one", ui::t!("Replace"))
+                    .child(btn("f-one", ui::t!("replace"))
                         .on_click(cx.listener(|this, _, _, cx| { this.replace_current(); cx.notify() })))
-                    .child(btn("f-all", ui::t!("Replace all"))
+                    .child(btn("f-all", ui::t!("replace_all"))
                         .on_click(cx.listener(|this, _, _, cx| { this.replace_all(); cx.notify() })))
                     .child(div().flex_1())
-                    .child(btn("f-close", ui::t!("Close"))
+                    .child(btn("f-close", ui::t!("close"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.find_open = false; cx.notify()
                         })))))
@@ -181,16 +181,16 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(SharedString::from(ui::tf!("Editing {} — shared by all pages", title))))
+                    .child(SharedString::from(ui::tf!("editing_shared_all_pages_2", title))))
                 .child(field)
                 .child(div().flex().flex_row().gap_2()
-                    .child(btn("hf-num", ui::t!("Insert page number"))
+                    .child(btn("hf-num", ui::t!("insert_page_number"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.run_cmd("pagenum", cx);
                             cx.notify()
                         })))
                     .child(div().flex_1())
-                    .child(btn("hf-close", ui::t!("Close (Esc)"))
+                    .child(btn("hf-close", ui::t!("close_esc"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.hf_edit = None;
                             this.status = "".into();
@@ -222,7 +222,7 @@ impl Writer {
                     .border_1().border_color(rgb(0xE8D5A8))
                     .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x8A4B00))
-                        .child(ui::t!("Comments on this paragraph (edit via Review > Comment)")));
+                        .child(ui::t!("comments_paragraph_edit_via")));
                 for (author, text) in cs {
                     d = d.child(div().mt_1p5().text_size(px(us * 11.5)).text_color(rgb(0x5A4A28))
                         .child(SharedString::from(format!("{author}: {text}"))));
@@ -247,7 +247,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x8A4B00))
-                    .child(ui::t!("Comment — close empty to remove")))
+                    .child(ui::t!("comment_close_empty_remove")))
                 .child(field)
                 .child(div().flex().flex_row()
                     .child(div().flex_1())
@@ -255,7 +255,7 @@ impl Writer {
                         .border_1().border_color(rgb(0x8A4B00)).text_color(rgb(0x8A4B00))
                         .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xF7ECD8)))
-                        .child(ui::t!("Close (Esc)"))
+                        .child(ui::t!("close_esc"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.cmt_edit = false;
                             this.status = "".into();
@@ -276,7 +276,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("Watermark — close empty to remove")))
+                    .child(ui::t!("watermark_close_empty_remove")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x165E83)).bg(gpui::white())
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
@@ -287,7 +287,7 @@ impl Writer {
                         .border_1().border_color(rgb(0x165E83)).text_color(rgb(0x165E83))
                         .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF2F7)))
-                        .child(ui::t!("Close (Esc)"))
+                        .child(ui::t!("close_esc"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.wm_edit = false;
                             this.status = "".into();
@@ -306,25 +306,25 @@ impl Writer {
             // 何を掛けるのかを人の言葉で1行に
             let mut what: Vec<String> = Vec::new();
             if let Some(s) = d.size_pt {
-                what.push(ui::tf!("size {}pt", s.to_string()).to_string());
+                what.push(ui::tf!("size_pt_2", s.to_string()).to_string());
             }
             if let Some(f) = &d.font {
-                what.push(ui::tf!("typeface {}", f.clone()).to_string());
+                what.push(ui::tf!("typeface", f.clone()).to_string());
             }
             if d.bold {
-                what.push(ui::t!("Bold").to_string());
+                what.push(ui::t!("bold").to_string());
             }
             if d.italic {
-                what.push(ui::t!("Italic").to_string());
+                what.push(ui::t!("italic").to_string());
             }
             if d.underline {
-                what.push(ui::t!("Underline").to_string());
+                what.push(ui::t!("underline").to_string());
             }
             if let Some(c) = &d.color {
-                what.push(ui::tf!("colour #{}", c.clone()).to_string());
+                what.push(ui::tf!("colour", c.clone()).to_string());
             }
             if let Some(c) = &d.shade {
-                what.push(ui::tf!("shading #{}", c.clone()).to_string());
+                what.push(ui::tf!("shading_2", c.clone()).to_string());
             }
             div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 400.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
@@ -332,9 +332,9 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("New style — give this look a name")))
+                    .child(ui::t!("new_style_give_look")))
                 .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                    .child(SharedString::from(ui::tf!("What it applies: {}", what.join("•")))))
+                    .child(SharedString::from(ui::tf!("what_applies", what.join("・")))))
                 .child(div().flex().flex_row().gap_2().items_center()
                     .child(div().flex_1().px_2().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
@@ -344,13 +344,13 @@ impl Writer {
                         .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                         .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
-                        .child(ui::t!("Confirm (Enter)"))
+                        .child(ui::t!("confirm_enter"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.style_commit();
                             cx.notify()
                         }))))
                 .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                    .child(ui::t!("An existing name is replaced. It goes into the template, so every place with that style changes at once")))
+                    .child(ui::t!("existing_name_replaced_goes")))
         });
 
         let bm_panel = if !self.bm_open {
@@ -375,7 +375,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("Bookmarks — type a name and Add; click one to jump")))
+                    .child(ui::t!("bookmarks_type_name_add_click")))
                 .child(div().flex().flex_row().gap_2().items_center()
                     .child(div().flex_1().px_2().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
@@ -385,14 +385,14 @@ impl Writer {
                         .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                         .text_size(px(us * 11.5)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
-                        .child(ui::t!("Add (Enter)"))
+                        .child(ui::t!("add_enter"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.bm_add();
                             cx.notify()
                         }))));
             if items.is_empty() {
                 d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("(no bookmarks yet)")));
+                    .child(ui::t!("no_bookmarks_yet")));
             }
             for (i, (name, b0)) in items.into_iter().enumerate() {
                 let name2 = name.clone();
@@ -407,7 +407,7 @@ impl Writer {
                             this.switch_target(Target::Body);
                             this.ed.move_to(b0, false);
                             this.follow_caret();
-                            this.status = ui::tf!("Jumped to bookmark \"{}\"", name).into();
+                            this.status = ui::tf!("jumped_bookmark", name).into();
                             cx.notify()
                         })))
                     .child(div()
@@ -423,7 +423,7 @@ impl Writer {
                                 }
                             }
                             this.dirty = true;
-                            this.status = ui::t!("Bookmark removed").into();
+                            this.status = ui::t!("bookmark_removed").into();
                             cx.notify()
                         }))));
             }
@@ -441,10 +441,10 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("Version history — a copy per overwrite-save (up to 9)")));
+                    .child(ui::t!("version_history_copy_per")));
             if items.is_empty() {
                 d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("(no copies yet; overwrite-saves add them)")));
+                    .child(ui::t!("no_copies_yet_overwrite")));
             }
             for (i, (disp, q)) in items.into_iter().enumerate() {
                 d = d.child(div()
@@ -475,10 +475,10 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("Chat — the message file next to the document (.chat.txt)")));
+                    .child(ui::t!("chat_message_file_next")));
             if lines.is_empty() {
                 d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("(no messages yet)")));
+                    .child(ui::t!("no_messages_yet")));
             }
             for l in lines {
                 d = d.child(div().text_size(px(us * 12.0))
@@ -494,7 +494,7 @@ impl Writer {
                     .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                     .text_size(px(us * 11.5)).cursor_pointer()
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
-                    .child(ui::t!("Send (Enter)"))
+                    .child(ui::t!("send_enter"))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.chat_send();
                         cx.notify()
@@ -515,7 +515,7 @@ impl Writer {
                 "●".repeat(before),
                 "●".repeat(total - before)
             );
-            let title = ui::t!("Password — this document is encrypted");
+            let title = ui::t!("password_document_encrypted");
             Some(div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 380.0))
                 .p_3().rounded_md().bg(rgb(0xF7F9FA))
                 .border_1().border_color(rgb(0xC6CDD3))
@@ -528,7 +528,7 @@ impl Writer {
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(masked)))
                 .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("The scheme is ECMA-376 Agile (AES-256). Opens in Word and LibreOffice. If you forget the password, nobody can open it"))))
+                    .child(ui::t!("scheme_ecma_376_agile"))))
         };
 
         // URL のパネル(JS なしの閲覧の入口)
@@ -544,7 +544,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("Open URL — Enter fetches (JavaScript is never executed)")))
+                    .child(ui::t!("open_url_enter_fetches")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
@@ -562,7 +562,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("Fill in — click a field, type, Enter records, Submit sends")));
+                    .child(ui::t!("fill_click_field_type")));
             for (i, f) in fm.fields.iter().enumerate() {
                 if f.hidden {
                     continue;
@@ -607,7 +607,7 @@ impl Writer {
                     .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                     .text_size(px(us * 12.0)).cursor_pointer()
                     .hover(|st| st.bg(rgb(0xEAF5EE)))
-                    .child(ui::tf!("Submit ({} {})", fm.method.to_uppercase(), fm.action))
+                    .child(ui::tf!("submit", fm.method.to_uppercase(), fm.action))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.fm_submit(cx);
                         cx.notify()
@@ -684,7 +684,7 @@ impl Writer {
                     let heads = self.headings();
                     if heads.is_empty() {
                         d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                            .child(ui::t!("(no headings; set them via Home > paragraph styles)")));
+                            .child(ui::t!("no_headings_set_them")));
                     }
                     for (i, (lv, text, byte)) in heads.into_iter().take(40).enumerate() {
                         let b = byte;
@@ -719,7 +719,7 @@ impl Writer {
                     }
                     if items.is_empty() {
                         d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                            .child(ui::t!("(no comments)")));
+                            .child(ui::t!("no_comments")));
                     }
                     for (i, (_, who, text, byte)) in items.into_iter().take(30).enumerate() {
                         let b = byte;
@@ -753,7 +753,7 @@ impl Writer {
                         .text_size(px(us * 12.0)).text_color(th_top_fg)
                         .whitespace_nowrap().overflow_hidden()
                         .child(SharedString::from(if term.is_empty() {
-                            ui::t!("(type a term in the search dialog — results appear here)").to_string()
+                            ui::t!("type_term_search_dialog").to_string()
                         } else {
                             term.clone()
                         }))
@@ -787,7 +787,7 @@ impl Writer {
                         }
                         if hits == 0 {
                             d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                                .child(ui::t!("(not found)")));
+                                .child(ui::t!("not_found_2")));
                         }
                     }
                 }
@@ -808,12 +808,12 @@ impl Writer {
                             .child(SharedString::from(label))
                     };
                     d = d.child(div().text_size(px(us * 10.5)).text_color(th_status).child(
-                        ui::t!("You can ask about the selection. When text would be rewritten, you see the new text first — nothing goes in until you press.").to_string()));
+                        ui::t!("can_ask_about_selection").to_string()));
                     let mut 会話 = div().id("ai-chat-log").flex().flex_col().gap_1().mt_1()
                         .flex_1().min_h(px(us * 0.0)).overflow_y_scroll();
                     if self.ai_chat_log.is_empty() {
                         会話 = 会話.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                            .child(ui::t!("e.g. make this paragraph polite / half as long / tell me if it sounds stiff").to_string()));
+                            .child(ui::t!("e_g_make_paragraph").to_string()));
                     }
                     for (自分, 字) in &self.ai_chat_log {
                         会話 = 会話.child(div().text_size(px(us * 11.5))
@@ -823,7 +823,7 @@ impl Writer {
                     d = d.child(会話);
                     if let Some(plan) = self.ai_chat_plan.clone() {
                         d = d.child(div().text_size(px(us * 10.5)).text_color(th_status).mt_1()
-                            .child(ui::t!("Text to insert (nothing goes in until you press)").to_string()));
+                            .child(ui::t!("text_insert_nothing_goes").to_string()));
                         d = d.child(div().id("ai-chat-plan")
                             .max_h(px(us * 160.0)).overflow_y_scroll()
                             .p_1().rounded_sm()
@@ -832,16 +832,16 @@ impl Writer {
                             .text_size(px(us * 11.0)).text_color(th_top_fg)
                             .children(plan.lines().map(|l| div().child(l.to_string()))));
                         d = d.child(div().flex().flex_row().gap_1().mt_1()
-                            .child(釦("ai-chat-run", ui::t!("Apply").to_string(), true)
+                            .child(釦("ai-chat-run", ui::t!("apply").to_string(), true)
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.ai_chat_insert();
                                     cx.notify()
                                 })))
-                            .child(釦("ai-chat-drop", ui::t!("Cancel").to_string(), false)
+                            .child(釦("ai-chat-drop", ui::t!("cancel").to_string(), false)
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.ai_chat_plan = None;
                                     this.status =
-                                        ui::t!("Discarded the text (nothing was changed)").into();
+                                        ui::t!("discarded_text_nothing_changed").into();
                                     cx.notify()
                                 }))));
                     }
@@ -860,7 +860,7 @@ impl Writer {
                             if self.ai_chat_focus {
                                 "|".to_string()
                             } else {
-                                ui::t!("Click here to type; Enter sends").to_string()
+                                ui::t!("click_here_type_enter").to_string()
                             }
                         } else if self.ai_chat_focus {
                             let mut s = self.ai_chat_in.text().to_string();
@@ -871,26 +871,26 @@ impl Writer {
                             self.ai_chat_in.text().to_string()
                         }));
                     let mut r = div().flex().flex_row().gap_1().mt_1();
-                    r = r.child(釦("ai-chat-send", ui::t!("Send").to_string(), !self.ai_busy)
+                    r = r.child(釦("ai-chat-send", ui::t!("send").to_string(), !self.ai_busy)
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.ai_chat_send(cx);
                             cx.notify()
                         })));
                     if self.ai_busy {
                         r = r.child(div().text_size(px(us * 10.5)).text_color(th_status)
-                            .child(ui::t!("Thinking…").to_string()));
+                            .child(ui::t!("thinking").to_string()));
                     }
                     d = d.child(r);
                 }
             }
             let 柱d = 柱()
-                .child(柱釦("nf-head".into(), "contents", ui::t!("Heading").to_string(), self.nav_tab == 0).on_click(
+                .child(柱釦("nf-head".into(), "contents", ui::t!("heading").to_string(), self.nav_tab == 0).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 0; cx.notify() })))
-                .child(柱釦("nf-cmt".into(), "co-showcomment", ui::t!("Comment").to_string(), self.nav_tab == 1).on_click(
+                .child(柱釦("nf-cmt".into(), "co-showcomment", ui::t!("comment").to_string(), self.nav_tab == 1).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 1; cx.notify() })))
-                .child(柱釦("nf-find".into(), "replace", ui::t!("Find").to_string(), self.nav_tab == 2).on_click(
+                .child(柱釦("nf-find".into(), "replace", ui::t!("find").to_string(), self.nav_tab == 2).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 2; cx.notify() })))
-                .child(柱釦("nf-ai".into(), "ai-ask", ui::t!("AI").to_string(), self.nav_tab == 3).on_click(
+                .child(柱釦("nf-ai".into(), "ai-ask", ui::t!("ai").to_string(), self.nav_tab == 3).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 3; cx.notify() })));
             Some(div()
                 .flex_none().w(px(250.0 + RAIL)).h_full()
@@ -946,10 +946,10 @@ impl Writer {
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(match 面 {
-                        1 => ui::t!("Page — settings for the whole document"),
-                        2 => ui::t!("Styles — edit the template"),
-                        3 => ui::t!("Files — what is in the folder"),
-                        _ => ui::t!("Settings — adjust where the cursor is"),
+                        1 => ui::t!("page_settings_whole_document"),
+                        2 => ui::t!("styles_edit_template"),
+                        3 => ui::t!("files_what_folder"),
+                        _ => ui::t!("settings_adjust_where_cursor"),
                     }));
             // **ページは「いる場所」ではない。** 文書ぜんぶに掛かる決めなので、
             // 柱で別の面に分けた(発注者 2026-08-15「外側にアイコンをおいて
@@ -957,36 +957,36 @@ impl Writer {
             if 面 == 1 {
                 self.rp_drawn.set(1);
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                    .child(SharedString::from(ui::tf!("{:.0}×{:.0}mm / margins {:.0}mm / {} columns{}", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!(" / vertical") } else { "" }))));
+                    .child(SharedString::from(ui::tf!("mm_margins_mm_columns", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!("vertical") } else { "" }))));
                 d = d.child(row()
-                    .child(btn(self, "pageorient", ui::t!("Orientation").into()).on_click(cx.listener(
+                    .child(btn(self, "pageorient", ui::t!("orientation").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pageorient", cx); cx.notify() })))
-                    .child(btn(self, "pagesize", ui::t!("Paper").into()).on_click(cx.listener(
+                    .child(btn(self, "pagesize", ui::t!("paper").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagesize", cx); cx.notify() })))
-                    .child(btn(self, "pagemargins", ui::t!("Margins").into()).on_click(cx.listener(
+                    .child(btn(self, "pagemargins", ui::t!("margins").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagemargins", cx); cx.notify() })))
-                    .child(btn(self, "columns", ui::t!("Columns").into()).on_click(cx.listener(
+                    .child(btn(self, "columns", ui::t!("columns").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("columns", cx); cx.notify() })))
-                    .child(btn(self, "direction", ui::t!("Vertical").into()).on_click(cx.listener(
+                    .child(btn(self, "direction", ui::t!("vertical_2").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("direction", cx); cx.notify() }))));
-                d = d.child(head(ui::t!("Header and footer")));
+                d = d.child(head(ui::t!("header_footer")));
                 d = d.child(row()
-                    .child(btn(self, "edit-header", ui::t!("Edit").into()).on_click(cx.listener(
+                    .child(btn(self, "edit-header", ui::t!("edit").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("edit-header", cx); cx.notify() })))
-                    .child(btn(self, "pagenum", ui::t!("page number").into()).on_click(cx.listener(
+                    .child(btn(self, "pagenum", ui::t!("page_number").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagenum", cx); cx.notify() })))
-                    .child(btn(self, "watermark", ui::t!("Watermark").into()).on_click(cx.listener(
+                    .child(btn(self, "watermark", ui::t!("watermark").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("watermark", cx); cx.notify() })))
-                    .child(btn(self, "pagecolor", ui::t!("Page colour").into()).on_click(cx.listener(
+                    .child(btn(self, "pagecolor", ui::t!("page_colour_2").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagecolor", cx); cx.notify() }))));
                 let 柱d = 柱()
-                    .child(柱釦("rf-here".into(), "format", ui::t!("Settings — adjust where the cursor is").to_string(), false).on_click(
+                    .child(柱釦("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("Page — settings for the whole document").to_string(), true).on_click(
+                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
                     // **フォルダのファイル一覧**(2026-08-19 発注者
                     // 「フォルダー内のファイル一覧を右パネルに表示」)
-                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("Files — what is in the folder").to_string(), false).on_click(
+                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1011,11 +1011,11 @@ impl Writer {
                     })
                     .unwrap_or_else(|| ui::t!("body").to_string());
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status).child(
-                    SharedString::from(ui::tf!("This paragraph: {}", 着ている.clone())),
+                    SharedString::from(ui::tf!("paragraph", 着ている.clone())),
                 ));
                 // 役割のスタイル(段落そのものの意味)は先に、名前つきは後に
                 let mut names: Vec<String> =
-                    ["body", "Title style", "Heading 1", "Heading 2", "Heading 3", "Heading 4", "Heading 5", "引用"]
+                    ["body", "title_style", "heading_1", "heading_2", "heading_3", "heading_4", "heading_5", "引用"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect();
@@ -1034,7 +1034,7 @@ impl Writer {
                         .border_1().border_color(th_cmd_border)
                         .text_size(px(us * 11.5)).text_color(th_status)
                         .hover(move |st| st.bg(th_btn_hover))
-                        .child(SharedString::from(ui::t!("None").to_string()))
+                        .child(SharedString::from(ui::t!("none").to_string()))
                         .on_click(cx.listener(|t, _, _, cx| {
                             t.strip_style();
                             cx.notify()
@@ -1065,49 +1065,49 @@ impl Writer {
                 if let Some(def) = self.tmpl.style(&着ている) {
                     let mut w: Vec<String> = Vec::new();
                     if let Some(s) = def.size_pt {
-                        w.push(ui::tf!("size {}pt", s.to_string()).to_string());
+                        w.push(ui::tf!("size_pt_2", s.to_string()).to_string());
                     }
                     if let Some(f) = &def.font {
-                        w.push(ui::tf!("typeface {}", f.clone()).to_string());
+                        w.push(ui::tf!("typeface", f.clone()).to_string());
                     }
                     if def.bold {
-                        w.push(ui::t!("Bold").to_string());
+                        w.push(ui::t!("bold").to_string());
                     }
                     if def.italic {
-                        w.push(ui::t!("Italic").to_string());
+                        w.push(ui::t!("italic").to_string());
                     }
                     if def.underline {
-                        w.push(ui::t!("Underline").to_string());
+                        w.push(ui::t!("underline").to_string());
                     }
                     if let Some(c) = &def.color {
-                        w.push(ui::tf!("colour #{}", c.clone()).to_string());
+                        w.push(ui::tf!("colour", c.clone()).to_string());
                     }
-                    d = d.child(head(ui::t!("What this style holds")));
+                    d = d.child(head(ui::t!("what_style_holds")));
                     d = d.child(div().text_size(px(us * 11.0)).text_color(th_status).child(
                         SharedString::from(if w.is_empty() {
-                            ui::t!("(the document default)").to_string()
+                            ui::t!("document_default").to_string()
                         } else {
-                            w.join("•")
+                            w.join("・")
                         }),
                     ));
                     d = d.child(row()
-                        .child(btn(self, "st-bigger", ui::t!("Larger text").into()).on_click(
+                        .child(btn(self, "st-bigger", ui::t!("larger_text").into()).on_click(
                             cx.listener(|t, _, _, cx| { t.tweak_style(1); cx.notify() })))
-                        .child(btn(self, "st-smaller", ui::t!("Smaller text").into()).on_click(
+                        .child(btn(self, "st-smaller", ui::t!("smaller_text").into()).on_click(
                             cx.listener(|t, _, _, cx| { t.tweak_style(-1); cx.notify() }))));
                 }
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                    .child(ui::t!("Editing changes the template, so every place with that style changes at once")));
+                    .child(ui::t!("editing_changes_template_every")));
                 let 柱d = 柱()
-                    .child(柱釦("rf-here".into(), "format", ui::t!("Settings — adjust where the cursor is").to_string(), false).on_click(
+                    .child(柱釦("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("Page — settings for the whole document").to_string(), false).on_click(
+                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
-                    .child(柱釦("rf-style".into(), "styles", ui::t!("Styles — edit the template").to_string(), true).on_click(
+                    .child(柱釦("rf-style".into(), "styles", ui::t!("styles_edit_template").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() })))
                     // **フォルダのファイル一覧**(2026-08-19 発注者
                     // 「フォルダー内のファイル一覧を右パネルに表示」)
-                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("Files — what is in the folder").to_string(), false).on_click(
+                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1145,13 +1145,13 @@ impl Writer {
                     d = d.child(
                         div().flex().flex_row().gap_1().pb_1()
                             .child(ui::filelist::make_button(&look, "folder",
-                                ui::t!("+ Folder").into())
+                                ui::t!("folder").into())
                                 .on_click(cx.listener(|t, _, _, cx| {
                                     t.fl_start(crate::FlJob::NewFolder);
                                     cx.notify()
                                 })))
                             .child(ui::filelist::make_button(&look, "doc",
-                                ui::t!("+ Document").into())
+                                ui::t!("document").into())
                                 .on_click(cx.listener(|t, _, _, cx| {
                                     t.fl_start(crate::FlJob::NewDoc);
                                     cx.notify()
@@ -1191,10 +1191,10 @@ impl Writer {
                                 // writer で開きました(2026-08-24)。JupyterLab で
                                 // 開くべき物なので、機械の決めをそのまま使います
                                 t.status = match ui::open_outside(&道.display().to_string()) {
-                                    ui::Opened::Yes => ui::tf!("Opening {} with the application your system chose",
+                                    ui::Opened::Yes => ui::tf!("opening_application_system_chose",
                                         道.file_name().unwrap_or_default().to_string_lossy().to_string()).into(),
-                                    ui::Opened::JustNow => ui::t!("Just opened it").into(),
-                                    ui::Opened::Failed => ui::tf!("No application is associated with this file: {}",
+                                    ui::Opened::JustNow => ui::t!("just_opened").into(),
+                                    ui::Opened::Failed => ui::tf!("no_application_associated_file",
                                         道.display().to_string()).into(),
                                 };
                                 cx.notify();
@@ -1216,13 +1216,13 @@ impl Writer {
                                 .child(ui::filelist::row_button(&look, i, "ren",
                                     // **名前を変える釦**。リボンの「名前」
                                     // (defname)とは別の意味です
-                                    ui::t!("Rename").into())
+                                    ui::t!("rename").into())
                                     .on_click(cx.listener(move |t, _, _, cx| {
                                         t.fl_start(crate::FlJob::Rename(道2.clone()));
                                         cx.notify()
                                     })))
                                 .child(ui::filelist::row_button(&look, i, "del",
-                                    ui::t!("Erase").into())
+                                    ui::t!("erase").into())
                                     .on_click(cx.listener(move |t, _, _, cx| {
                                         t.fl_start(crate::FlJob::Delete(道3.clone()));
                                         cx.notify()
@@ -1236,11 +1236,11 @@ impl Writer {
                     }
                 }
                 let 柱d = 柱()
-                    .child(柱釦("rf-here".into(), "format", ui::t!("Settings — adjust where the cursor is").to_string(), false).on_click(
+                    .child(柱釦("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("Page — settings for the whole document").to_string(), false).on_click(
+                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
-                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("Files — what is in the folder").to_string(), true).on_click(
+                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1257,23 +1257,23 @@ impl Writer {
             // (発注者 2026-08-14「選んでいる物の設定に切り替わるように」)。
             // 出すだけで下の面も残す — 表の中でも字は太字にしたい
             if let Some((_, 行, 列, 行数, 列数)) = self.cursor_table() {
-                d = d.child(head(ui::t!("Table")));
+                d = d.child(head(ui::t!("table_2")));
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                     .child(SharedString::from(ui::tf!(
-                        "{} rows × {} columns — now at row {}, column {}", 行数, 列数, 行 + 1, 列 + 1))));
+                        "rows_columns_now_row", 行数, 列数, 行 + 1, 列 + 1))));
                 d = d.child(row()
-                    .child(btn(self, "tb-row-up", ui::t!("Row above").into()).on_click(
+                    .child(btn(self, "tb-row-up", ui::t!("row_above").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_add_row(false); cx.notify() })))
-                    .child(btn(self, "tb-row-dn", ui::t!("Row below").into()).on_click(
+                    .child(btn(self, "tb-row-dn", ui::t!("row_below").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_add_row(true); cx.notify() })))
-                    .child(btn(self, "tb-row-del", ui::t!("Delete row").into()).on_click(
+                    .child(btn(self, "tb-row-del", ui::t!("delete_row").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_del_row(); cx.notify() }))));
                 d = d.child(row()
-                    .child(btn(self, "tb-col-l", ui::t!("Column left").into()).on_click(
+                    .child(btn(self, "tb-col-l", ui::t!("column_left").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_add_col(false); cx.notify() })))
-                    .child(btn(self, "tb-col-r", ui::t!("Column right").into()).on_click(
+                    .child(btn(self, "tb-col-r", ui::t!("column_right").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_add_col(true); cx.notify() })))
-                    .child(btn(self, "tb-col-del", ui::t!("Delete column").into()).on_click(
+                    .child(btn(self, "tb-col-del", ui::t!("delete_column").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_del_col(); cx.notify() }))));
             }
             // 数式と画像は**段落が持つ**(writer に図形の選択という状態は無い)。
@@ -1285,65 +1285,65 @@ impl Writer {
                     絵.iter().filter(|im| im.tex.is_some()).collect();
                 if let Some(im) = 式.first() {
                     let tex = im.tex.clone().unwrap_or_default();
-                    d = d.child(head(ui::t!("Formula")));
+                    d = d.child(head(ui::t!("formula_2")));
                     d = d.child(div().text_size(px(us * 10.5)).text_color(th_status)
                         .child(SharedString::from(tex.clone())));
                     d = d.child(row().child(
-                        btn(self, "eq-edit", ui::t!("Edit the equation").into()).on_click(
+                        btn(self, "eq-edit", ui::t!("edit_equation").into()).on_click(
                             cx.listener(move |t, _, _, cx| {
                                 // 原文を欄に載せて開く。**打ち直しにしない**
                                 t.eq_ed = Editor::new(&tex);
                                 t.eq_open = true;
-                                t.status = ui::t!("Editing the equation (Enter re-renders, Esc cancels)").into();
+                                t.status = ui::t!("editing_equation_enter_re").into();
                                 cx.notify()
                             }))));
                 } else if let Some(im) = 絵.first() {
-                    d = d.child(head(ui::t!("Images")));
+                    d = d.child(head(ui::t!("images")));
                     d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                         .child(SharedString::from(
-                            ui::tf!("{:.0}×{:.0}mm", im.w_mm, im.h_mm))));
+                            ui::tf!("mm", im.w_mm, im.h_mm))));
                     d = d.child(row()
-                        .child(btn(self, "img-small", ui::t!("Smaller").into()).on_click(
+                        .child(btn(self, "img-small", ui::t!("smaller").into()).on_click(
                             cx.listener(|t, _, _, cx| { t.image_scale(0.9); cx.notify() })))
-                        .child(btn(self, "img-big", ui::t!("Bigger").into()).on_click(
+                        .child(btn(self, "img-big", ui::t!("bigger").into()).on_click(
                             cx.listener(|t, _, _, cx| { t.image_scale(1.1); cx.notify() }))));
                 }
             }
 
             // 文字
-            d = d.child(head(ui::t!("Character")))
+            d = d.child(head(ui::t!("character")))
                 .child(row()
-                    .child(btn(self, "bold", ui::t!("Bold").into()).on_click(cx.listener(
+                    .child(btn(self, "bold", ui::t!("bold").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("bold", cx); cx.notify() })))
-                    .child(btn(self, "italic", ui::t!("Italic").into()).on_click(cx.listener(
+                    .child(btn(self, "italic", ui::t!("italic").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("italic", cx); cx.notify() })))
-                    .child(btn(self, "underline", ui::t!("Underline").into()).on_click(cx.listener(
+                    .child(btn(self, "underline", ui::t!("underline").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("underline", cx); cx.notify() })))
-                    .child(btn(self, "strikeout", ui::t!("Strikethrough").into()).on_click(cx.listener(
+                    .child(btn(self, "strikeout", ui::t!("strikethrough").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("strikeout", cx); cx.notify() }))))
                 .child(row()
                     .child(div().text_size(px(us * 11.0)).text_color(th_status)
-                        .child(SharedString::from(ui::tf!("Size {} pt / font {}", if size_now.fract() == 0.0 {
+                        .child(SharedString::from(ui::tf!("size_pt_font", if size_now.fract() == 0.0 {
                                 format!("{}", size_now as i32)
                             } else {
                                 format!("{size_now}")
                             }, self.font_name)))))
                 .child(row()
-                    .child(btn(self, "decfont", ui::t!("Smaller").into()).on_click(cx.listener(
+                    .child(btn(self, "decfont", ui::t!("smaller").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("decfont", cx); cx.notify() })))
-                    .child(btn(self, "incfont", ui::t!("Bigger").into()).on_click(cx.listener(
+                    .child(btn(self, "incfont", ui::t!("bigger").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("incfont", cx); cx.notify() })))
-                    .child(btn(self, "fontcolor", ui::t!("Colour").into()).on_click(cx.listener(
+                    .child(btn(self, "fontcolor", ui::t!("colour_3").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("fontcolor", cx); cx.notify() })))
-                    .child(btn(self, "clearstyle", ui::t!("Clear formatting").into()).on_click(cx.listener(
+                    .child(btn(self, "clearstyle", ui::t!("clear_formatting").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("clearstyle", cx); cx.notify() }))));
             if f.field.is_some() {
                 d = d.child(div().text_size(px(us * 10.5)).text_color(th_status)
-                    .child(ui::t!("(this is a cross-reference; update via References > Cross-reference)")));
+                    .child(ui::t!("cross_reference_update_via")));
             }
             if let Some(rt) = &f.ruby {
                 d = d.child(div().text_size(px(us * 10.5)).text_color(th_status)
-                    .child(SharedString::from(ui::tf!("Ruby \"{}\"", rt))));
+                    .child(SharedString::from(ui::tf!("ruby", rt))));
             }
 
             // 段落
@@ -1351,14 +1351,14 @@ impl Writer {
                 Some(p) => (p.align, p.spacing(), p.indent, p.list),
                 None => (Align::Left, 1.0, 0, ListKind::None),
             };
-            d = d.child(head(ui::t!("Paragraphs")))
+            d = d.child(head(ui::t!("paragraphs")))
                 .child(row()
                     .children([
-                        ("align-left", ui::t!("Left"), Align::Left),
-                        ("align-center", ui::t!("Centre"), Align::Center),
-                        ("align-right", ui::t!("Right"), Align::Right),
-                        ("align-just", ui::t!("Justify"), Align::Justify),
-                        ("align-dist", ui::t!("Distribute"), Align::Distribute),
+                        ("align-left", ui::t!("left"), Align::Left),
+                        ("align-center", ui::t!("centre"), Align::Center),
+                        ("align-right", ui::t!("right"), Align::Right),
+                        ("align-just", ui::t!("justify"), Align::Justify),
+                        ("align-dist", ui::t!("distribute"), Align::Distribute),
                     ].map(|(id, label, a)| {
                         let on = al == a;
                         div().id(SharedString::from(format!("rp-{id}")))
@@ -1377,46 +1377,46 @@ impl Writer {
                     })))
                 .child(row()
                     .child(div().text_size(px(us * 11.0)).text_color(th_status)
-                        .child(SharedString::from(ui::tf!("Line spacing {:.2} / indent {}", ls, ind)))))
+                        .child(SharedString::from(ui::tf!("line_spacing_indent", ls, ind)))))
                 .child(row()
-                    .child(btn(self, "linespace", ui::t!("Line spacing").into()).on_click(cx.listener(
+                    .child(btn(self, "linespace", ui::t!("line_spacing").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("linespace", cx); cx.notify() })))
-                    .child(btn(self, "decoffset", ui::t!("◂ Indent").into()).on_click(cx.listener(
+                    .child(btn(self, "decoffset", ui::t!("indent").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("decoffset", cx); cx.notify() })))
-                    .child(btn(self, "incoffset", ui::t!("Indent ▸").into()).on_click(cx.listener(
+                    .child(btn(self, "incoffset", ui::t!("indent_2").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("incoffset", cx); cx.notify() }))))
                 .child(row()
                     // **✓ は見出しだけ** — 鍵は素のまま(calc の freeze と同じ作法)
                     .child(btn(self, "markers", {
-                        let l = ui::t!("Bullets");
+                        let l = ui::t!("bullets");
                         if lst == ListKind::Bullet { format!("{l} ✓").into() } else { l.into() }
                     }).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("markers", cx); cx.notify() })))
                     .child(btn(self, "numbering", {
-                        let l = ui::t!("Numbering");
+                        let l = ui::t!("numbering");
                         if lst == ListKind::Number { format!("{l} ✓").into() } else { l.into() }
                     }).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("numbering", cx); cx.notify() })))
-                    .child(btn(self, "paracolor", ui::t!("Shading").into()).on_click(cx.listener(
+                    .child(btn(self, "paracolor", ui::t!("shading").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("paracolor", cx); cx.notify() })))
-                    .child(btn(self, "borders", ui::t!("Borders").into()).on_click(cx.listener(
+                    .child(btn(self, "borders", ui::t!("borders").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("borders", cx); cx.notify() }))));
 
             // ページ
             let 柱d = 柱()
-                .child(柱釦("rf-here".into(), "format", ui::t!("Settings — adjust where the cursor is").to_string(), 面 == 0).on_click(
+                .child(柱釦("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), 面 == 0).on_click(
                     cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                .child(柱釦("rf-page".into(), "pagesize", ui::t!("Page — settings for the whole document").to_string(), 面 == 1).on_click(
+                .child(柱釦("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), 面 == 1).on_click(
                     cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
                 // **スタイルの面はネイティブ文書だけ**(2026-08-16)。互換の
                 // 文書にはテンプレートが無く、押しても見せる物が無い —
                 // できないことを、できるように見せない
                 .children(self.native.then(|| {
-                    柱釦("rf-style".into(), "styles", ui::t!("Styles — edit the template").to_string(), 面 == 2)
+                    柱釦("rf-style".into(), "styles", ui::t!("styles_edit_template").to_string(), 面 == 2)
                         .on_click(cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() }))
                 }))
                 // **フォルダのファイル一覧**(2026-08-19)
-                .child(柱釦("rf-files".into(), "py-folder", ui::t!("Files — what is in the folder").to_string(), false).on_click(
+                .child(柱釦("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), false).on_click(
                     cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
             return_rp = Some(div()
                 .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1441,7 +1441,7 @@ impl Writer {
                 .flex().flex_col().gap_1()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(SharedString::from(ui::tf!("Links ({}; click to follow, Esc closes)", self.html_links.len()))));
+                    .child(SharedString::from(ui::tf!("links_click_follow_esc", self.html_links.len()))));
             for (i, (href, text)) in self.html_links.iter().take(16).enumerate() {
                 let href2 = href.clone();
                 d = d.child(div()
@@ -1458,7 +1458,7 @@ impl Writer {
             }
             if self.html_links.len() > 16 {
                 d = d.child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
-                    .child(SharedString::from(ui::tf!("({} more not shown)", self.html_links.len() - 16))));
+                    .child(SharedString::from(ui::tf!("more_not_shown", self.html_links.len() - 16))));
             }
             Some(d)
         };
@@ -1476,16 +1476,16 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(SharedString::from(ui::tf!("{} — destination {} (Esc cancels)", if self.ai_macro { ui::t!("Ask the AI for a macro script") } else { ui::t!("Ask the AI") }, ui::ai::backend().label()))))
+                    .child(SharedString::from(ui::tf!("destination_esc_cancels", if self.ai_macro { ui::t!("ask_ai_macro_script_2") } else { ui::t!("ask_ai") }, ui::ai::backend().label()))))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(rgb(0xFFFFFF))
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
                 .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                     .child(if self.ai_macro {
-                        ui::t!("Scripts are only placed in the plug-in folder. Read them and check them yourself, then run them from the list (they never run on their own)")
+                        ui::t!("scripts_only_placed_plug")
                     } else {
-                        ui::t!("The answer goes in at the cursor. Ctrl+Z takes it back in one step")
+                        ui::t!("answer_goes_cursor_ctrl")
                     })))
         };
 
@@ -1503,9 +1503,9 @@ impl Writer {
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
                     .child(SharedString::from(if self.sd_naming {
-                        ui::t!("Field name — type and press Enter (e.g. name; the key macros use with fill(name, value))").to_string()
+                        ui::t!("field_name_type_press").to_string()
                     } else {
-                        ui::tf!("Choices for {} — comma-separated, then Enter (e.g. red,blue,yellow)", self.sd_kind.label())
+                        ui::tf!("choices_comma_separated_enter", self.sd_kind.label())
                     })))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(rgb(0xFFFFFF))
@@ -1526,7 +1526,7 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("Ruby — type the reading and press Enter (empty removes; Esc cancels)")))
+                    .child(ui::t!("ruby_type_reading_press_enter")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
@@ -1547,13 +1547,13 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("Equation — type LaTeX and press Enter (Esc to cancel)")))
+                    .child(ui::t!("equation_type_latex_press")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
                 .child(div().text_size(px(us * 10.5)).text_color(rgb(0x60707C))
-                    .child(ui::t!("e.g. \\frac{a+b}{2} / \\sqrt{x^2+y^2}"))))
+                    .child(ui::t!("e_g_frac_sqrt"))))
         };
 
         // プラグインのパネル(置き場の .py 一覧。押すとサンドボックスの中で実行)
@@ -1577,12 +1577,12 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("Plugins — click to run in the sandbox (bubblewrap)")))
+                    .child(ui::t!("plugins_click_run_sandbox")))
                 .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                    .child(SharedString::from(ui::tf!("Location: {}", dir.display()))));
+                    .child(SharedString::from(ui::tf!("location", dir.display()))));
             if items.is_empty() {
                 d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("(none yet; put .py files in the folder. The script gets d = the python-docx Document; fill(name, value), extract(name), and fields() handle form fields)")));
+                    .child(ui::t!("none_yet_put_py")));
             }
             for (i, q) in items.into_iter().enumerate() {
                 let name = q
@@ -1621,19 +1621,19 @@ impl Writer {
                     .child(div().flex_1().text_size(px(us * 11.5))
                         .font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x165E83))
-                        .child(ui::t!("Cross-reference — insert a bookmark's text or page number")))
+                        .child(ui::t!("cross_reference_insert_bookmarks")))
                     .child(div().id("xr-refresh").px_2().py_0p5().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                         .text_size(px(us * 11.0)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF5EE)))
-                        .child(ui::t!("Update references"))
+                        .child(ui::t!("update_references"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.refresh_refs();
                             cx.notify()
                         }))));
             if names.is_empty() {
                 d = d.child(div().text_size(px(us * 11.5)).text_color(rgb(0x66707A))
-                    .child(ui::t!("(no bookmarks; add them via References > Bookmark)")));
+                    .child(ui::t!("no_bookmarks_add_them")));
             }
             for (i, name) in names.into_iter().enumerate() {
                 let n1 = name.clone();
@@ -1647,7 +1647,7 @@ impl Writer {
                         .border_1().border_color(rgb(0x165E83)).text_color(rgb(0x165E83))
                         .text_size(px(us * 11.0)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF2F7)))
-                        .child(ui::t!("Character"))
+                        .child(ui::t!("character"))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.insert_ref(&n1, false);
                             cx.notify()
@@ -1657,7 +1657,7 @@ impl Writer {
                         .border_1().border_color(rgb(0x165E83)).text_color(rgb(0x165E83))
                         .text_size(px(us * 11.0)).cursor_pointer()
                         .hover(|s| s.bg(rgb(0xEAF2F7)))
-                        .child(ui::t!("Page"))
+                        .child(ui::t!("page_2"))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.insert_ref(&n2, true);
                             cx.notify()
@@ -1699,10 +1699,10 @@ impl Writer {
                 use crate::FlJob as J;
                 let 消す時 = matches!(job, J::Delete(_));
                 let 見出し = match job {
-                    J::NewFolder => ui::t!("Name for the new folder — type it and press Enter (Esc to cancel)").to_string(),
-                    J::NewDoc => ui::t!("Name for the new document — type it and press Enter (.adoc is added)").to_string(),
-                    J::Rename(_) => ui::t!("New name — type it and press Enter (Esc to cancel)").to_string(),
-                    J::Delete(p) => ui::tf!("Delete \"{}\"? — Enter to delete, Esc to cancel",
+                    J::NewFolder => ui::t!("name_new_folder_type").to_string(),
+                    J::NewDoc => ui::t!("name_new_document_type").to_string(),
+                    J::Rename(_) => ui::t!("new_name_type_press").to_string(),
+                    J::Delete(p) => ui::tf!("delete_enter_delete_esc_cancel",
                         p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string(),
                 };
                 let mut d = div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 400.0))
@@ -1723,7 +1723,7 @@ impl Writer {
                 } else {
                     // **ごみ箱には入りません。** そう書いておきます
                     d = d.child(div().text_size(px(us * 10.5)).text_color(rgb(0xB00020))
-                        .child(ui::t!("It does not go to the trash. This cannot be undone")));
+                        .child(ui::t!("not_go_trash_cannot")));
                 }
                 Some(d)
             }
@@ -1742,13 +1742,13 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("Table size — type rows,columns and press Enter (e.g. 3,4; Esc to cancel)")))
+                    .child(ui::t!("table_size_type_rows_columns")))
                 .child(div().px_2().py_1().rounded_sm()
                     .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
                     .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
                     .child(SharedString::from(t)))
                 .child(div().text_size(px(us * 10.5)).text_color(rgb(0x5A6672))
-                    .child(ui::t!("The table spans the text width, divided equally by the number of columns"))))
+                    .child(ui::t!("table_spans_text_width"))))
         };
         let date_panel = (self.open_list == Some("datetime"))
             .then(|| self.一覧を描く("datetime", cx));
@@ -1766,7 +1766,7 @@ impl Writer {
                 .border_1().border_color(rgb(0xC6CDD3))
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                        .text_color(rgb(0x165E83))
-                       .child(SharedString::from(ui::tf!("Proofread — {}", self.proof_msg))));
+                       .child(SharedString::from(ui::tf!("proofread", self.proof_msg))));
             for n in &self.proof {
                 // どちらの道具が出したかを隠さない。辞書の指摘は GPU 無しで再現できる
                 let tool = match n.source {
@@ -1774,13 +1774,13 @@ impl Writer {
                     ui::check::Source::Model => ui::t!("model"),
                 };
                 let cand = if n.candidates.is_empty() {
-                    ui::t!("No suggestions").to_string()
+                    ui::t!("no_suggestions").to_string()
                 } else {
                     n.candidates.join(" / ")
                 };
                 d = d.child(div().mt_1p5().text_size(px(us * 11.5))
                     .child(SharedString::from(
-                        ui::tf!("{} → {}  ({}, {})", n.found, cand, n.kind.label(), tool))));
+                        ui::tf!("from_to_pair", n.found, cand, n.kind.label(), tool))));
             }
             Some(d)
         };
@@ -1802,7 +1802,7 @@ impl Writer {
             "inssymbol" => [
                 "〒", "※", "→", "←", "↑", "↓", "℃", "±", "×", "÷",
                 "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩",
-                "㈱", "㈲", "№", "〆", "〜", "…", "•", "「", "」", "『",
+                "㈱", "㈲", "№", "〆", "〜", "…", "・", "「", "」", "『",
                 "』", "【", "】", "○", "●", "◎", "△", "▲", "□", "■",
             ]
             .iter()
@@ -1812,10 +1812,10 @@ impl Writer {
             // (手引き `docs/ja/commands/ファイル/エクスポート.adoc` の表)。
             // `.adoc` はここに出しません — *保存の側*だからです
             "f-export" => vec![
-                ("docx".into(), ui::t!("Word document (.docx)").to_string()),
-                ("html".into(), ui::t!("Web page (.html)").to_string()),
-                ("pdf".into(), ui::t!("PDF (.pdf)").to_string()),
-                ("text".into(), ui::t!("Plain text (.txt)").to_string()),
+                ("docx".into(), ui::t!("word_document_docx").to_string()),
+                ("html".into(), ui::t!("web_page_html").to_string()),
+                ("pdf".into(), ui::t!("pdf_pdf").to_string()),
+                ("text".into(), ui::t!("plain_text_txt").to_string()),
             ],
             // 日付の形。**西暦と和暦**(鍵=出す字そのもの — 訳しません)
             "datetime" => crate::cmds::日付の形(),
@@ -1851,12 +1851,12 @@ impl Writer {
             _ => (0u8..=5)
                 .map(|n| {
                     let label = match n {
-                        0 => ui::t!("Normal"),
-                        1 => ui::t!("Heading 1"),
-                        2 => ui::t!("Heading 2"),
-                        3 => ui::t!("Heading 3"),
-                        4 => ui::t!("Heading 4"),
-                        _ => ui::t!("Heading 5"),
+                        0 => ui::t!("normal"),
+                        1 => ui::t!("heading_1"),
+                        2 => ui::t!("heading_2"),
+                        3 => ui::t!("heading_3"),
+                        4 => ui::t!("heading_4"),
+                        _ => ui::t!("heading_5"),
                     };
                     (n.to_string(), label.to_string())
                 })
@@ -1932,8 +1932,8 @@ impl Writer {
             // 「選んだ所だけ」なのか「段落ぜんぶ」なのかは、押す前に
             // 分かっていないと困ります
             match kind {
-                "fontname" => Some(ui::t!("Font (applies to the selected paragraph)").into()),
-                "parastyle" => Some(ui::t!("Paragraph style (applies to the selected paragraph)").into()),
+                "fontname" => Some(ui::t!("font_applies_selected_paragraph").into()),
+                "parastyle" => Some(ui::t!("paragraph_style_applies_selected").into()),
                 _ => None,
             },
             filter,
@@ -1979,7 +1979,7 @@ impl Writer {
                 }
                 self.on_edited();
                 self.status =
-                    ui::tf!("Date inserted ({}; fixed text)", key).into();
+                    ui::tf!("date_inserted_fixed_text", key).into();
             }
             "fontname" => {
                 let sel = self.ed.selection();
@@ -1987,7 +1987,7 @@ impl Writer {
                 self.doc.apply_font(sel, Some(key.to_string()));
                 self.dirty = true;
                 self.relayout_keep();
-                self.status = ui::tf!("Font to \"{}\"", key).into();
+                self.status = ui::tf!("font", key).into();
             }
             "fontsize" => {
                 let Ok(pt) = key.parse::<f32>() else { return };
@@ -1996,7 +1996,7 @@ impl Writer {
                 self.doc.apply_size(sel, move |_| pt);
                 self.dirty = true;
                 self.relayout_keep();
-                self.status = ui::tf!("Size to {}pt", pt).into();
+                self.status = ui::tf!("size_pt", pt).into();
             }
             _ => {
                 if let Ok(n) = key.parse::<u8>() {
@@ -2028,7 +2028,7 @@ impl Writer {
             // 絞り込んで1つも残らなかったとき。**黙って閉じません** —
             // 打った字が悪いのか、そういう書体が無いのかが分かるように
             None => {
-                self.status = ui::t!("There is no font with that name").into();
+                self.status = ui::t!("there_no_font_name").into();
             }
         }
         true

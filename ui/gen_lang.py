@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """言語を1コマンドで増やす生成プログラム。
 
-材料(訳)は `ui/i18n/<locale>.json` — 番号つきの訳の一覧:
+材料(訳)は `ui/i18n/<locale>.json` — **記号の鍵 → その言語の訳**:
 
-    [{"i": 0, "t": "訳…"}, …]
+    {"save": "保存", …}
 
-番号は `--todo` が出す材料ファイル(ja と en の対訳つき)の番号。
+**鍵は記号です**(2026-08-26 発注者「キーは英語の省略形で適当に決めれば
+いい。そうすれば、英語の表現が少々変更されても変更する必要がない」)。
+英語も訳の1つで、`ui/i18n/en.json` にあります。番号で指していた頃は、
+鍵の並びが1つ動くと 13 言語の訳が全部ずれ、しかも数は合ったままなので
+見張りが緑でした。
 訳を書くのは人か AI(claude の定額 = Claude Code / サブエージェント)の仕事。
 
     python3 ui/gen_lang.py --todo             # 材料 ui/i18n/keys.json を出す
@@ -19,7 +23,7 @@
 - lang/src/i18n_tables.rs / face/src/ribbon_tables.rs — 登録簿
 - lang/src/lib.rs / ui/src/lib.rs の gen_lang:begin〜end 区間
 
-検査(止まる条件): 訳の欠け・番号のずれ・穴埋め {} の数の不一致・
+検査(止まる条件): 訳の欠け・穴埋め {} の数の不一致・
 vendor に無い標準ボタンの語。**表の揃わない言語は登録しない**(方針)。
 """
 import json
@@ -58,13 +62,14 @@ def keys_authority():
     """鍵の正本 `ui/i18n/keys.json` を読む。
 
     **鍵は英語です**(2026-08-26 の移行)。前は `lang/src/i18n_en.rs` が
-    「日本語の鍵 → 英語」の表で、鍵の一覧も番号もそこが持っていました。
-    鍵が英語になったので、英語の対訳表という物が要らなくなり、鍵の
-    一覧だけがここに残りました。日本語は `ui/i18n/ja.json` の訳です。
+    「日本語の鍵 → 英語」の表で、鍵の一覧もそこが持っていました。鍵が
+    英語になったので、英語の対訳表という物が要らなくなり、鍵の一覧だけが
+    ここに残りました。日本語は `ui/i18n/ja.json` の訳です。
 
-    番号(i)は訳の付け先です。**並びを変えないでください** —
-    変えると 15 言語の訳が1つずつずれた別の文に付きます。鍵を足すときは
-    末尾に足します(`--todo` がそうします)。
+    **番号はやめました**(2026-08-26 発注者「どうして番号で管理して
+    いるのだ」)。訳は鍵で引きます。番号で指していたときは、鍵の並びが
+    1つ動くと 13 言語の訳が全部ずれ、しかも数は合ったままなので見張りが
+    緑でした。実際に一度ずらしました。
     """
     return json.loads(KEYS_JSON.read_text(encoding="utf-8"))
 
@@ -97,36 +102,34 @@ def escape(s):
 
 
 def material():
-    """番号つきの材料: 鍵(英語)と、そこに付く日本語。
+    """材料: 記号の鍵と、そこに付く英語・日本語。
 
-    **同じ英語は1つの番号にまとめます。** 鍵が英語になった今、これは
-    「同じ鍵は1つ」という当たり前のことです。番号を分けると訳も分かれ、
-    利用者から見て同じ機能の名前が場所によって違う、が起きます
-    (2026-08-21 に「セルの書式設定」で8言語がそうなっていました)。
-
-    日本語(`ja`)は `ui/i18n/ja.json` の訳です。`--todo` が訳す人に
-    見せる原文でもあります — 英語だけだと、こちら独自の機能は何のことか
-    分かりません。
+    **鍵は記号です**(2026-08-26)。英語も日本語も訳の1つで、
+    `ui/i18n/en.json` と `ui/i18n/ja.json` にあります。`--todo` が訳す人に
+    両方見せるのは、英語だけだと、こちら独自の機能は何のことか分からない
+    からです。
     """
     ja_訳 = load_json_translations("ja")
+    en_訳 = load_json_translations("en")
     rows = []
     for r in keys_authority():
+        鍵 = r["key"]
         rows.append({
-            "i": r["i"],
             "kind": r["kind"],
-            "key": escape(r["key"]),   # ソースのリテラルの形
-            "en": r["key"],
-            "ja": ja_訳.get(r["i"], ""),
+            "key": escape(鍵),        # ソースのリテラルの形
+            "sym": 鍵,
+            "en": en_訳.get(鍵, 鍵),
+            "ja": ja_訳.get(鍵, ""),
         })
     return rows
 
 
 def load_json_translations(loc):
-    """`ui/i18n/<loc>.json` を {番号: 訳} で読む。無ければ空。"""
+    """`ui/i18n/<loc>.json` を {鍵: 訳} で読む。無ければ空。"""
     p = I18N_DIR / f"{loc}.json"
     if not p.exists():
         return {}
-    return {x["i"]: x["t"] for x in json.loads(p.read_text(encoding="utf-8"))}
+    return json.loads(p.read_text(encoding="utf-8"))
 
 
 def holes(s):
@@ -226,15 +229,9 @@ def write_registries():
 
 
 def check_table(loc):
-    """i18n_<loc>.rs が鍵の正本と同じ鍵集合か・穴埋めが揃っているか。
-
-    **en は表を持ちません。** 鍵が英語なので、`tr(鍵)` が表に無ければ
-    鍵をそのまま返す作りでそのまま正しく出ます(lang/src/i18n.rs)。
-    """
+    """i18n_<loc>.rs が鍵の正本と同じ鍵集合か・穴埋めが揃っているか。"""
     m = mod_name(loc)
-    if loc == "en":
-        return len([r for r in keys_authority() if r["kind"] == "msg"])
-    else:
+    if True:
         src = open(ROOT / f"lang/src/i18n_{m}.rs", encoding="utf-8").read()
         pairs = []
         i = src.find("pub const TABLE")
@@ -254,11 +251,16 @@ def check_table(loc):
             extra = sorted(keys - want)[:5]
             sys.exit(f"{loc}: 鍵がずれています(欠け {len(want-keys)} 例 {miss} / "
                      f"余分 {len(keys-want)} 例 {extra})")
+    # **穴埋めは英語の訳と比べます。** 鍵は記号なので穴がありません
+    # (2026-08-26)。前は鍵が文そのものだったので鍵と比べていました
+    英 = load_json_translations("en")
     for k, v in pairs:
-        if not unescape(v).strip() and unescape(k).strip():
-            sys.exit(f"{loc}: 空の訳があります: {k[:40]}")
-        if holes(unescape(k)) != holes(unescape(v)):
-            sys.exit(f"{loc}: 穴埋めが合いません: {k[:60]}")
+        鍵, 訳 = unescape(k), unescape(v)
+        if not 訳.strip() and 英.get(鍵, "").strip():
+            sys.exit(f"{loc}: 空の訳があります: {鍵}")
+        if holes(英.get(鍵, "")) != holes(訳):
+            sys.exit(f"{loc}: 穴埋めが合いません: {鍵}"
+                     f"({英.get(鍵, '')[:34]} → {訳[:34]})")
     return len(pairs)
 
 
@@ -268,36 +270,32 @@ def load_translations(loc):
     tr_path = I18N_DIR / f"{loc}.json"
     if not tr_path.exists():
         sys.exit(f"訳の材料がありません: {tr_path}(--todo で鍵を出し、訳を書く)")
-    got = {r["i"]: r["t"] for r in json.load(open(tr_path, encoding="utf-8"))}
-    missing = [r["i"] for r in mat if r["i"] not in got]
+    got = json.load(open(tr_path, encoding="utf-8"))
+    missing = [r["sym"] for r in mat if r["sym"] not in got]
     if missing:
-        sys.exit(f"{loc}: 訳の欠けが {len(missing)} 個(番号 {missing[:10]} …)")
+        sys.exit(f"{loc}: 訳の欠けが {len(missing)} 個({missing[:5]} …)")
     bad = []
     for r in mat:
-        t = got[r["i"]]
+        t = got[r["sym"]]
+        # **穴埋めは英語の訳と比べます。** 鍵は記号なので穴がありません
+        # **空白だけの訳もあります**(字下げの「    」など)。英語も
+        # 空白だけなら、それは正しい訳です
         if not t.strip() and r["en"].strip():
-            bad.append(f"番号 {r['i']}: 空の訳({r['en'][:30]})")
+            bad.append(f"空の訳: {r['sym']}")
         elif holes(r["en"]) != holes(t):
-            # **穴埋めは鍵(英語)と比べます。** 鍵が日本語だった頃は
-            # ja と比べていました
-            bad.append(f"番号 {r['i']}: 穴埋めが合いません({r['en'][:40]} → {t[:40]})")
+            bad.append(f"穴埋めが合いません: {r['sym']}({r['en'][:34]} → {t[:34]})")
     if bad:
         sys.exit(f"{loc}: 検査で {len(bad)} 件:\n  " + "\n  ".join(bad[:20]))
     return mat, got
 
 
 def generate(loc):
-    # **en は訳の材料を持ちません。** 鍵が英語なので訳す物がありません
-    # (2026-08-26)。リボンだけ作ります
-    if loc == "en":
-        mat, got = material(), {}
-    else:
-        mat, got = load_translations(loc)
+    mat, got = load_translations(loc)
 
     m = mod_name(loc)
-    # 文言の表。**en は書きません** — 鍵が英語なので、表が無ければ鍵が
-    # そのまま出る作りでちょうど正しくなります
-    if loc != "en":
+    # 文言の表。**en も書きます**(2026-08-26 に鍵を記号にしたので、
+    # 英語も訳の1つに戻りました)
+    if True:
         body = [
             f"//! 画面の文言の {loc} の対訳表 — **鍵は英語の文そのもの**。",
             "//! このファイルは ui/gen_lang.py が生成する(訳の材料は"
@@ -308,7 +306,7 @@ def generate(loc):
         for r in mat:
             if r["kind"] != "msg":
                 continue
-            body.append(f"    ({r['key']}, {escape(got[r['i']])}),")
+            body.append(f"    ({r['key']}, {escape(got[r['sym']])}),")
         body += ["];", ""]
         (ROOT / f"lang/src/i18n_{m}.rs").write_text("\n".join(body), encoding="utf-8")
 
@@ -343,7 +341,7 @@ def main():
     I18N_DIR.mkdir(exist_ok=True)
     if "--todo" in sys.argv:
         mat = material()
-        out = [{"i": r["i"], "key": r["en"], "kind": r["kind"]} for r in mat]
+        out = [{"key": r["sym"], "kind": r["kind"]} for r in mat]
         p = I18N_DIR / "keys.json"
         # 終わりに改行を付けます(付けないと、次に手で書いたときに
         # 差分が「最後の行が変わった」に見えます)

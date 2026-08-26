@@ -153,17 +153,17 @@ pub fn run(s: &mut impl FileScreen, id: &str) -> bool {
                 Some(dir) => {
                     let d = dir.display().to_string();
                     match crate::open_outside(&d) {
-                        crate::Opened::Yes => crate::tf!("Opening: {}", d).to_string(),
+                        crate::Opened::Yes => crate::tf!("opening", d).to_string(),
                         crate::Opened::JustNow => {
-                            crate::t!("Just opened it (give the window a moment to appear)")
+                            crate::t!("just_opened_give_window")
                                 .to_string()
                         }
                         crate::Opened::Failed => {
-                            crate::tf!("No application is associated with this file: {}", d).to_string()
+                            crate::tf!("no_application_associated_file", d).to_string()
                         }
                     }
                 }
-                None => crate::t!("Not a file yet").to_string(),
+                None => crate::t!("not_file_yet").to_string(),
             };
             s.say(msg);
             true
@@ -348,7 +348,7 @@ pub fn recent_empty(look: &PaneLook) -> gpui::Div {
     use gpui::prelude::*;
     gpui::div()
         .text_color(look.dim)
-        .child(crate::t!("(none yet; opening and saving adds entries)"))
+        .child(crate::t!("none_yet_opening_saving"))
 }
 
 /// 「最近開いた」の1行(名前と、その置き場)。

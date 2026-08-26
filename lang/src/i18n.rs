@@ -209,12 +209,32 @@ fn lang_map() -> Option<&'static HashMap<&'static str, &'static str>> {
     })
 }
 
-/// 文をいまの言語で。表に無い文は ja のまま(嘘の翻訳を作らない)
-pub fn tr(ja: &'static str) -> &'static str {
-    match lang_map() {
-        Some(m) => m.get(ja).copied().unwrap_or(ja),
-        None => ja,
+/// 鍵をいまの言語の文に。
+///
+/// **鍵は記号です**(2026-08-26 発注者「キーは英語の省略形で適当に
+/// 決めればいい」)。`save` のような字で、画面には出ません。
+///
+/// その言語に訳が無ければ**英語**に落ちます。記号をそのまま画面に出すと
+/// 「save」と表示されてしまうので、英語を最後の砦にします。英語にも無い
+/// (= 鍵の書き間違い)ときだけ、鍵がそのまま出ます — そこは見張りが
+/// 止めるところです。
+pub fn tr(key: &'static str) -> &'static str {
+    if let Some(m) = lang_map() {
+        if let Some(v) = m.get(key) {
+            return v;
+        }
     }
+    英語の表().get(key).copied().unwrap_or(key)
+}
+
+/// 英語の表。**最後の砦**なので、言語に関わらずこれだけは持っておきます。
+fn 英語の表() -> &'static HashMap<&'static str, &'static str> {
+    static 作った: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+    作った.get_or_init(|| {
+        crate::i18n_tables::table("en")
+            .map(|t| t.iter().copied().collect())
+            .unwrap_or_default()
+    })
 }
 
 /// **実行時に決まる鍵**を引く。表に無ければ鍵をそのまま返す。
@@ -230,8 +250,8 @@ pub fn tr_dyn(key: &str) -> String {
 }
 
 /// 穴埋めつきの文。雛形を tr で引いてから、実行時に埋める
-pub fn trf(ja: &'static str, args: &[&dyn Display]) -> String {
-    fill(tr(ja), args)
+pub fn trf(key: &'static str, args: &[&dyn Display]) -> String {
+    fill(tr(key), args)
 }
 
 /// 簡易整形: `{}`・`{:.0}`・`{:?}` を左から順に埋める。

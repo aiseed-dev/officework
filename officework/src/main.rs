@@ -139,7 +139,7 @@ impl Pane {
                 let n = p.file_name().unwrap_or_default().to_string_lossy().to_string();
                 ui::folder::display_name(&n, ui::folder::kind_of(&n))
             }
-            None => ui::t!("(unnamed)").to_string(),
+            None => ui::t!("unnamed").to_string(),
         }
     }
 
@@ -216,7 +216,7 @@ impl Office {
             let o = Office { tabs, at, 焦点を移す: true };
             // **黙って減らさない。** 開けなかった数は状態行で言います
             if *落ちた > 0 {
-                o.言う(&ui::tf!("{} file(s) you had open could not be found", 落ちた.to_string()), cx);
+                o.言う(&ui::tf!("file_s_open_not", 落ちた.to_string()), cx);
                 // **控えも今の姿に直します。** 直さないと、消えたファイルが
                 // 記録に残り続け、開くたびに同じ数を報せることになります
                 o.姿を控える(cx);
@@ -304,8 +304,8 @@ impl Office {
             .or_else(|| face::session::load().folder);
         let ask = cx.background_executor().spawn(async move {
             let mut d = rfd::FileDialog::new()
-                .add_filter(ui::t!("Files you can open"), &["adoc", "docx", "xlsx", "xltx"])
-                .add_filter(ui::t!("officework documents and spreadsheets"), &["adoc"])
+                .add_filter(ui::t!("files_can_open"), &["adoc", "docx", "xlsx", "xltx"])
+                .add_filter(ui::t!("officework_documents_spreadsheets"), &["adoc"])
                 .add_filter("Word (.docx)", &["docx"])
                 .add_filter("Excel (.xlsx)", &["xlsx"]);
             if let Some(d0) = dir.filter(|p| p.is_dir()) {
@@ -345,7 +345,7 @@ impl Office {
         if 残り > 0 {
             view.update(cx, |o: &mut Office, cx| {
                 let 文 = ui::tf!(
-                    "There are {} auto-recovery copies from a session that ended without saving (open them from Recover on the File tab)",
+                    "there_auto_recovery_copies",
                     残り
                 )
                 .to_string();
@@ -544,12 +544,12 @@ impl Office {
     /// 最後の1枚は閉じません — 何も出ていない窓は、使う人には壊れて見えます。
     fn タブを閉じる(&mut self, i: usize, cx: &mut Context<Self>) {
         if self.tabs.len() <= 1 || i >= self.tabs.len() {
-            self.言う(ui::t!("The last one stays open"), cx);
+            self.言う(ui::t!("last_one_stays_open"), cx);
             return;
         }
         if self.tabs[i].書きかけ(cx) {
             let 名 = self.tabs[i].名(cx);
-            self.言う(&ui::tf!("{} has unsaved changes (save it first)", 名), cx);
+            self.言う(&ui::tf!("unsaved_changes_save_first", 名), cx);
             return;
         }
         self.tabs.remove(i);
@@ -571,7 +571,7 @@ impl Office {
     fn フォルダを聞く(&self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
-                .set_title(ui::t!("officework — choose a folder to open"))
+                .set_title(ui::t!("officework_choose_folder_open"))
                 .pick_folder()
         });
         cx.spawn(async move |this, cx| {
@@ -802,7 +802,7 @@ fn main() {
                             return true;
                         }
                         this.言う(
-                            &ui::tf!("There are unsaved changes (save them first): {}",
+                            &ui::tf!("there_unsaved_changes_save_them",
                                      残り.join(" / ")),
                             cx,
                         );

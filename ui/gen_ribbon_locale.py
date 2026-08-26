@@ -829,20 +829,18 @@ def i18n_の訳(target: str) -> dict[str, str]:
     # **`ROOT` は vendor を指している。** ここは自分の隣の i18n を見る
     ここ = Path(__file__).resolve().parent
     p = ここ / "i18n" / f"{target}.json"
-    kp = ここ / "i18n" / "keys.json"
-    if not p.exists() or not kp.exists():
+    if not p.exists() or not (ここ / "i18n" / "en.json").exists():
         return {}
-    keys = json.loads(kp.read_text(encoding="utf-8"))
-    # **鍵も土台の札も英語です**(段1と段2)。番号 → 英語の鍵で引けます
-    番号 = {k["i"]: k["key"] for k in keys}
+    # **鍵は記号です**(2026-08-26)。`ui/i18n/en.json` が「記号 → 英語」
+    # なので、そこから「英語の札 → その言語の訳」を作ります。
+    # `OVERRIDES["en"]` の鍵はリボンの英語の札です
+    訳 = json.loads(p.read_text(encoding="utf-8"))
+    英 = json.loads((ここ / "i18n" / "en.json").read_text(encoding="utf-8"))
     要る = set(OVERRIDES["en"])
     out = {}
-    for x in json.loads(p.read_text(encoding="utf-8")):
-        if not isinstance(x, dict) or not x.get("t"):
-            continue
-        鍵 = 番号.get(x["i"])
-        if 鍵 in 要る:
-            out[鍵] = x["t"]
+    for 記号, 英語 in 英.items():
+        if 英語 in 要る and 訳.get(記号):
+            out[英語] = 訳[記号]
     return out
 
 

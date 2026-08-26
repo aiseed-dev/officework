@@ -37,13 +37,13 @@ impl Calc {
             pane = pane
                 .child(div().text_size(px(us * 16.0))
                     .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Advanced settings")))
+                    .child(ui::t!("advanced_settings")))
                 .child(div().text_color(dim).child(SharedString::from(
-                    ui::tf!("Location: {}", ui::settings::path().display()))))
+                    ui::tf!("location", ui::settings::path().display()))))
                 .child(div().h(px(6.0)))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(dim)
-                        .child(ui::t!("Language (ribbon and messages)")))
+                        .child(ui::t!("language_ribbon_messages")))
                     .child(div().id("set-lang")
                         .px_3().py_1().rounded_sm().cursor_pointer()
                         .bg(item_bg)
@@ -58,18 +58,18 @@ impl Calc {
                         }))))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(dim)
-                        .child(ui::t!("Interface theme (light/dark)")))
+                        .child(ui::t!("interface_theme_light_dark")))
                     .child(div().id("set-theme")
                         .px_3().py_1().rounded_sm().cursor_pointer()
                         .bg(item_bg)
-                        .child(if self.dark { ui::t!("Dark") } else { ui::t!("Light") })
+                        .child(if self.dark { ui::t!("dark") } else { ui::t!("light") })
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.run_cmd("darkmode", cx);
                             cx.notify()
                         }))))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(dim)
-                        .child(ui::t!("UI text size")))
+                        .child(ui::t!("ui_text_size")))
                     .child(div().id("set-ui-minus")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .child("−")
@@ -88,12 +88,12 @@ impl Calc {
                         }))))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(dim)
-                        .child(ui::t!("Iterative calculation (circular references)")))
+                        .child(ui::t!("iterative_calculation_circular_references")))
                     .child(div().id("set-iter")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .child(match self.book.calc_iter {
-                            Some((n, d)) => ui::tf!("On (max {} passes, change ≤ {})", n, d),
-                            None => ui::t!("Off (switch)").into(),
+                            Some((n, d)) => ui::tf!("max_passes_change", n, d),
+                            None => ui::t!("off_switch").into(),
                         })
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.run_cmd("calc-iter", cx);
@@ -101,7 +101,7 @@ impl Calc {
                         }))))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(dim)
-                        .child(ui::t!("Reference style")))
+                        .child(ui::t!("reference_style")))
                     .child(div().id("set-refstyle")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .child(if self.book.r1c1 { "R1C1" } else { "A1" })
@@ -116,13 +116,13 @@ impl Calc {
                 // Python に組ませる車線 — 一列の文字では出せない)
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(dim)
-                        .child(ui::t!("Math autocorrect")))
+                        .child(ui::t!("math_autocorrect")))
                     .child(div().id("set-autocorrect")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .child(if self.autocorrect {
-                            ui::t!("On (type \\alpha and get α)")
+                            ui::t!("type_alpha_get")
                         } else {
-                            ui::t!("Off (switch)")
+                            ui::t!("off_switch")
                         })
                         // 判断は ui::toggle_math_autocorrect の1本(文章と共通)
                         .on_click(cx.listener(|this, _, _, cx| {
@@ -139,7 +139,7 @@ impl Calc {
                 .child(div().h(px(10.0)))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(dim)
-                        .child(ui::t!("AI destination")))
+                        .child(ui::t!("ai_destination")))
                     .child(div().id("set-ai")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .child(SharedString::from(ui::ai::backend().label().to_string()))
@@ -164,13 +164,13 @@ impl Calc {
                 // (「不明」のような名前を作らない)
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(dim)
-                        .child(ui::t!("Comment signature")))
+                        .child(ui::t!("comment_signature")))
                     .child(div().id("set-username")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .child(SharedString::from(
                             ui::settings::get("user_name")
                                 .filter(|s| !s.trim().is_empty())
-                                .unwrap_or_else(|| ui::t!("(anonymous)").into())))
+                                .unwrap_or_else(|| ui::t!("anonymous").into())))
                         .on_click(cx.listener(|this, _, _, cx| {
                             let cur = ui::settings::get("user_name").unwrap_or_default();
                             this.prompt = Some(("user-name", Editor::new(&cur)));
@@ -206,18 +206,18 @@ impl Calc {
             };
             pane = pane
                 .child(div().text_size(px(us * 16.0)).font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Search a folder")))
+                    .child(ui::t!("search_folder")))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(欄(self, 0, &self.fd_term, 280.0, "探す字"))
                     .child(欄(self, 1, &self.fd_glob, 120.0, "*.xlsx"))
-                    .child(押し("fd-dir", ui::t!("Choose a folder").into()).on_click(
+                    .child(押し("fd-dir", ui::t!("choose_folder").into()).on_click(
                         cx.listener(|t: &mut Calc, _, _, cx| { t.find_dir_dialog(cx); cx.notify() })))
-                    .child(押し("fd-go", ui::t!("Search (Enter)").into()).on_click(
+                    .child(押し("fd-go", ui::t!("search_enter").into()).on_click(
                         cx.listener(|t: &mut Calc, _, _, cx| { t.find_in_folder(); cx.notify() }))))
                 .child(div().text_size(px(us * 11.5)).text_color(dim)
                     .child(SharedString::from(match self.find_dir() {
-                        Some(d) => ui::tf!("Folder: {}", d.display()).to_string(),
-                        None => ui::t!("No folder chosen yet (use Choose a folder)").to_string(),
+                        Some(d) => ui::tf!("folder_2", d.display()).to_string(),
+                        None => ui::t!("no_folder_chosen_yet").to_string(),
                     })));
             let mut 一覧 = div().id("fd-list")
                 .flex_none().h(px(us * 300.0)).overflow_y_scroll()
@@ -225,7 +225,7 @@ impl Calc {
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_0p5().text_size(px(us * 12.0));
             if self.fd_hits.is_empty() {
-                一覧 = 一覧.child(div().text_color(dim).child(ui::t!("(nothing searched yet)")));
+                一覧 = 一覧.child(div().text_color(dim).child(ui::t!("nothing_searched_yet")));
             }
             for (fi, f) in self.fd_hits.iter().enumerate() {
                 一覧 = 一覧.child(div().mt_1().text_color(rgb(0x1B6E3C))
@@ -253,17 +253,17 @@ impl Calc {
             }
             pane = pane.child(一覧);
             pane = pane.child(div().flex().flex_row().items_center().gap_2()
-                .child(押し("fd-load", ui::t!("Load").into()).on_click(
+                .child(押し("fd-load", ui::t!("load").into()).on_click(
                     cx.listener(|t: &mut Calc, _, _, cx| { t.find_load(cx); cx.notify() })))
                 .child(div().text_size(px(us * 11.5)).text_color(dim)
-                    .child(ui::t!("Opens the document of the chosen hit and goes there"))));
+                    .child(ui::t!("opens_document_chosen_hit"))));
             pane = pane.child(div().id("fd-peek")
                 .flex_1().min_h(px(us * 100.0)).overflow_y_scroll()
                 .p_2().rounded_sm().bg(gpui::white())
                 .border_1().border_color(rgb(0xC6CDD3))
                 .text_size(px(us * 12.0))
                 .child(SharedString::from(if self.fd_peek.is_empty() {
-                    ui::t!("(pick a hit and its surroundings appear here)").to_string()
+                    ui::t!("pick_hit_surroundings_appear").to_string()
                 } else {
                     self.fd_peek.clone()
                 })));
@@ -273,7 +273,7 @@ impl Calc {
             let look = ui::filemenu::PaneLook {
                 fg, dim, hover: item_bg, scale: us,
             };
-            pane = pane.child(ui::filemenu::pane_title(&look, ui::t!("Recent")));
+            pane = pane.child(ui::filemenu::pane_title(&look, ui::t!("recent")));
             let list = Self::recent_list();
             if list.is_empty() {
                 pane = pane.child(ui::filemenu::recent_empty(&look));
@@ -307,20 +307,20 @@ impl Calc {
                 .sum();
             pane = pane.child(div().text_size(px(us * 16.0))
                 .font_weight(gpui::FontWeight::BOLD)
-                .child(ui::t!("Workbook info")))
+                .child(ui::t!("workbook_info")))
                 .child(div().text_size(px(us * 13.5))
                     .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Statistics")));
+                    .child(ui::t!("statistics")));
             // **印を付ける。** 見出し(「統計」)は t! に包んであるのに
             // 行の名前は裸だったので、ポルトガル語で開くと見出しだけが
             // 訳されて中身が日本語のまま並んでいた(2026-08-11、実機で
             // 見つけた)。文言の門番は**印の付いた文しか見られない**ので、
             // 包み忘れは検査を通り抜ける
             for (k, v) in [
-                (ui::t!("Sheets"), sheets_n),
-                (ui::t!("Cells in use"), cells_n),
-                (ui::t!("Formula cells"), formulas_n),
-                (ui::t!("Shapes and images"), shapes_n),
+                (ui::t!("sheets"), sheets_n),
+                (ui::t!("cells_use"), cells_n),
+                (ui::t!("formula_cells"), formulas_n),
+                (ui::t!("shapes_images"), shapes_n),
             ] {
                 pane = pane.child(div().flex().flex_row()
                     .child(div().w(px(220.0)).text_color(dim).child(k))
@@ -329,7 +329,7 @@ impl Calc {
             pane = pane.child(div().h(px(6.0)))
                 .child(div().text_size(px(us * 13.5))
                     .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Properties")));
+                    .child(ui::t!("properties")));
             // 著者は**何人でも**(dc:creator は `;` 区切り)。
             // 一人ずつ札にして、× で外し、「＋」で足す
             let mut authors = div().flex().flex_row().flex_wrap().gap_1();
@@ -348,7 +348,7 @@ impl Calc {
                             if i < this.book.props.creators.len() {
                                 let who = this.book.props.creators.remove(i);
                                 this.dirty = true;
-                                this.status = ui::tf!("Removed the author \"{}\"", who).into();
+                                this.status = ui::tf!("removed_author", who).into();
                             }
                             cx.notify()
                         }))));
@@ -358,20 +358,20 @@ impl Calc {
                 .px_2().py_0p5().rounded_sm().cursor_pointer()
                 .border_1().border_color(rgb(0xE1E6EA)).text_color(gray)
                 .hover(move |s| s.bg(item_bg))
-                .child(ui::t!("+ Add an author"))
+                .child(ui::t!("add_author_2"))
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.prompt = Some(("prop-author-add", Editor::new("")));
                     cx.notify()
                 })));
             pane = pane.child(div().flex().flex_row().items_center()
-                .child(div().w(px(220.0)).text_color(dim).child(ui::t!("Author")))
+                .child(div().w(px(220.0)).text_color(dim).child(ui::t!("author")))
                 .child(authors));
             let pr = &self.book.props;
             for (k, v, kind) in [
-                (ui::t!("Title"), pr.title.clone(), "prop-title"),
-                (ui::t!("Tags"), pr.keywords.clone(), "prop-keywords"),
-                (ui::t!("Subject"), pr.subject.clone(), "prop-subject"),
-                (ui::t!("Comment"), pr.description.clone(), "prop-desc"),
+                (ui::t!("title"), pr.title.clone(), "prop-title"),
+                (ui::t!("tags"), pr.keywords.clone(), "prop-keywords"),
+                (ui::t!("subject"), pr.subject.clone(), "prop-subject"),
+                (ui::t!("comment"), pr.description.clone(), "prop-desc"),
             ] {
                 let empty = v.is_empty();
                 let init = v.clone();
@@ -386,7 +386,7 @@ impl Calc {
                         .whitespace_nowrap().overflow_hidden()
                         .text_color(if empty { gray } else { fg })
                         .child(SharedString::from(if empty {
-                            ui::t!("Add text").to_string()
+                            ui::t!("add_text").to_string()
                         } else {
                             v
                         }))
@@ -400,15 +400,15 @@ impl Calc {
             pane = pane.child(div().h(px(6.0)))
                 .child(div().text_size(px(us * 13.5))
                     .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Custom properties")));
+                    .child(ui::t!("custom_properties")));
             for (i, p) in self.book.props.custom.iter().enumerate() {
                 use sheet::model::CustomVal;
                 let (kind, val) = match &p.value {
-                    CustomVal::Text(t) => (ui::t!("Character").to_string(), t.clone()),
-                    CustomVal::Number(n) => (ui::t!("Number").to_string(), format!("{n}")),
-                    CustomVal::Date(d) => (ui::t!("Date").to_string(), d.clone()),
-                    CustomVal::Bool(b) => (ui::t!("Yes/No").to_string(),
-                        if *b { ui::t!("Yes") } else { ui::t!("No") }.to_string()),
+                    CustomVal::Text(t) => (ui::t!("character").to_string(), t.clone()),
+                    CustomVal::Number(n) => (ui::t!("number").to_string(), format!("{n}")),
+                    CustomVal::Date(d) => (ui::t!("date").to_string(), d.clone()),
+                    CustomVal::Bool(b) => (ui::t!("yes_no").to_string(),
+                        if *b { ui::t!("yes") } else { ui::t!("no") }.to_string()),
                     // 型を知らない値。**見せるが打ち直させない**
                     CustomVal::Other(t, v) => (t.clone(), v.clone()),
                 };
@@ -436,7 +436,7 @@ impl Calc {
                                 let p = this.book.props.custom.remove(i);
                                 this.dirty = true;
                                 this.status =
-                                    ui::tf!("Removed the property \"{}\"", p.name).into();
+                                    ui::tf!("removed_property", p.name).into();
                             }
                             cx.notify()
                         }))));
@@ -446,14 +446,14 @@ impl Calc {
                 .w(px(220.0)).px_2().py_1().rounded_sm().cursor_pointer()
                 .border_1().border_color(rgb(0xE1E6EA)).text_color(gray)
                 .hover(move |s| s.bg(item_bg))
-                .child(ui::t!("Add a property"))
+                .child(ui::t!("add_property"))
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.prop_add = None;
                     this.prompt = Some(("prop-add-name", Editor::new("")));
                     cx.notify()
                 })));
             pane = pane.child(div().text_size(px(us * 11.5)).text_color(dim)
-                .child(ui::t!("Click a field, type, Enter records (goes into the xlsx properties on save)")));
+                .child(ui::t!("click_field_type_enter_records")));
         }
         if self.file_view == 5 {
             // **保護の一覧**(2026-08-21 の D群)。前は左の列の「保護する」を
@@ -499,63 +499,63 @@ impl Calc {
             pane = pane
                 .child(div().text_size(px(us * 16.0))
                     .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Protect Workbook")))
+                    .child(ui::t!("protect_workbook")))
                 .child(div().text_color(dim)
-                    .child(ui::t!("What is in force now. Pressing a button returns to the sheet and asks for the rest")))
+                    .child(ui::t!("what_force_now_pressing")))
                 .child(div().h(px(6.0)))
-                .child(行(ui::t!("Encrypt with password").into(),
+                .child(行(ui::t!("encrypt_password").into(),
                     if 暗号 {
-                        ui::t!("On (from the next save)").into()
+                        ui::t!("next_save").into()
                     } else {
-                        ui::t!("Not set").into()
+                        ui::t!("not_set").into()
                     },
                     暗号,
-                    if 暗号 { ui::t!("Change or remove") } else { ui::t!("Set a password") }.into(),
+                    if 暗号 { ui::t!("change_remove") } else { ui::t!("set_password") }.into(),
                     "f-prot-encrypt", "prot-encrypt", cx))
-                .child(行(ui::t!("Protect sheet").into(),
+                .child(行(ui::t!("protect_sheet_2").into(),
                     if 保護中 {
-                        ui::tf!("“{}” is protected", sh).into()
+                        ui::tf!("protected", sh).into()
                     } else {
-                        ui::tf!("“{}” is not protected", sh).into()
+                        ui::tf!("not_protected", sh).into()
                     },
                     保護中,
-                    if 保護中 { ui::t!("Unprotect") } else { ui::t!("Protect this sheet") }.into(),
+                    if 保護中 { ui::t!("unprotect") } else { ui::t!("protect_sheet_3") }.into(),
                     "f-prot-doc", "prot-doc", cx))
-                .child(行(ui::t!("Allowed while protected").into(),
+                .child(行(ui::t!("allowed_while_protected").into(),
                     SharedString::from(crate::util::protect_allow_summary(
                         &self.sheet().protect_allow)),
                     false,
-                    ui::t!("Choose").into(), "f-prot-allow", "prot-allow", cx))
-                .child(行(ui::t!("Suggest read-only").into(),
+                    ui::t!("choose").into(), "f-prot-allow", "prot-allow", cx))
+                .child(行(ui::t!("suggest_read_only").into(),
                     if 勧め {
-                        ui::t!("Recommended (this is not a lock)").into()
+                        ui::t!("recommended_not_lock").into()
                     } else {
-                        ui::t!("Not recommended").into()
+                        ui::t!("not_recommended").into()
                     },
                     勧め,
-                    if 勧め { ui::t!("Cancel") } else { ui::t!("Recommend") }.into(),
+                    if 勧め { ui::t!("cancel") } else { ui::t!("recommend") }.into(),
                     "f-prot-ro", "read-only-rec", cx))
-                .child(行(ui::t!("Final").into(),
+                .child(行(ui::t!("final").into(),
                     if self.final_mark() {
-                        ui::t!("Marked as final (this is not a lock)").into()
+                        ui::t!("marked_final_not_lock").into()
                     } else {
-                        ui::t!("Not marked").into()
+                        ui::t!("not_marked").into()
                     },
                     self.final_mark(),
-                    if self.final_mark() { ui::t!("Remove the mark") } else { ui::t!("Mark as Final") }.into(),
+                    if self.final_mark() { ui::t!("remove_mark") } else { ui::t!("mark_final") }.into(),
                     "f-prot-final", "final-mark", cx))
-                .child(行(ui::t!("Digital signature").into(),
+                .child(行(ui::t!("digital_signature").into(),
                     match self.path.as_deref() {
                         Some(p) if ops::sig_path_for(p).exists() =>
-                            ui::t!("There is a signature file next to it").into(),
-                        Some(_) => ui::t!("Not signed").into(),
-                        None => ui::t!("Not a file yet").into(),
+                            ui::t!("there_signature_file_next").into(),
+                        Some(_) => ui::t!("not_signed").into(),
+                        None => ui::t!("not_file_yet").into(),
                     },
                     self.path.as_deref().is_some_and(|p| ops::sig_path_for(p).exists()),
-                    ui::t!("Sign or verify").into(), "f-prot-sign", "prot-sign", cx))
+                    ui::t!("sign_verify").into(), "f-prot-sign", "prot-sign", cx))
                 .child(div().h(px(6.0)))
                 .child(div().text_size(px(us * 11.5)).text_color(dim)
-                    .child(ui::t!("Sheet protection and the read-only recommendation are not locks. Anyone who wants to can remove them. We do not pretend otherwise")));
+                    .child(ui::t!("sheet_protection_read_only")));
         }
         pane
     }

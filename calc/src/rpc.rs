@@ -97,7 +97,7 @@ impl Host for Calc {
     }
     fn wrote(&mut self, n: usize) {
         self.sync_input();
-        self.status = ui::tf!("Python wrote {} cells", n).into();
+        self.status = ui::tf!("python_wrote_cells", n).into();
     }
 
     fn version(&self) -> &'static str {
@@ -171,14 +171,14 @@ impl Host for Calc {
 
     fn copy_sheet(&mut self, si: usize, name: Option<&str>) -> Result<String, String> {
         let n = self.copy_sheet_at(si, name)?;
-        self.status = ui::tf!("Created \"{}\"", n).into();
+        self.status = ui::tf!("created_2", n).into();
         Ok(n)
     }
 
     fn delete_sheet(&mut self, si: usize) -> Result<String, String> {
         let n = self.delete_sheet_at(si)?;
         self.status =
-            ui::tf!("Deleted sheet \"{}\" (this can't be undone)", n).into();
+            ui::tf!("deleted_sheet_cant_undone", n).into();
         Ok(n)
     }
 
@@ -224,9 +224,9 @@ impl Host for Calc {
         let n = self.autofit_at(a, b, col);
         self.active = prev;
         self.status = if col {
-            ui::tf!("Fitted {} columns to their contents (Ctrl+Z undoes it)", n).into()
+            ui::tf!("fitted_columns_contents_ctrl", n).into()
         } else {
-            ui::tf!("Fitted {} rows to their contents (Ctrl+Z undoes it)", n).into()
+            ui::tf!("fitted_rows_contents_ctrl", n).into()
         };
         Ok(n)
     }
@@ -241,7 +241,7 @@ impl Host for Calc {
     fn open(&mut self, p: &std::path::Path) -> Result<(), String> {
         Calc::open(self, p.to_path_buf());
         if self.path.as_deref() != Some(p) {
-            return Err(ui::tf!("Can't open: {}", self.status));
+            return Err(ui::tf!("cant_open", self.status));
         }
         Ok(())
     }
@@ -251,7 +251,7 @@ impl Host for Calc {
         // 起きます。別の名前でなら書けます
         if self.salvaged && self.path.as_deref() == Some(p.as_path()) {
             return Err(ui::t!(
-                "This workbook was salvaged, so it will not overwrite. Use Save As (the original file is left alone)"
+                "workbook_salvaged_not_overwrite"
             )
             .to_string());
         }
@@ -263,7 +263,7 @@ impl Host for Calc {
         // アプリは常にブックを1つ持つ造りなので、「閉じる」は**新しい空の
         // ブックに戻る**こと(窓は閉じない — 起動も終了も人の物)
         if Calc::new_book(self) {
-            self.status = ui::t!("Workbook closed (this is now a new workbook)").into();
+            self.status = ui::t!("workbook_closed_now_new").into();
             Ok(())
         } else {
             Err(format!("{}", self.status))

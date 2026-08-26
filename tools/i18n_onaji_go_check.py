@@ -49,8 +49,8 @@ def main() -> int:
     # **鍵は英語です**(2026-08-26 の移行)。前は日本語で重なりを見て
     # いました。同じ鍵が2つの番号を持てば、訳も2つに分かれます
     組: dict[str, list[int]] = {}
-    for k in keys:
-        組.setdefault(k["key"], []).append(k["i"])
+    for i, k in enumerate(keys):
+        組.setdefault(k["key"], []).append(i)
     重 = {w: v for w, v in 組.items() if len(v) > 1}
     if 重:
         for w, idx in sorted(重.items()):
@@ -66,12 +66,8 @@ def main() -> int:
     足りない: list[str] = []
     for loc in locs:
         p = ROOT / "ui/i18n" / f"{loc}.json"
-        訳 = {
-            x["i"]
-            for x in json.loads(p.read_text(encoding="utf-8"))
-            if isinstance(x, dict) and x.get("t")
-        }
-        欠け = len(keys) - len(訳 & {k["i"] for k in keys})
+        訳 = {k for k, v in json.loads(p.read_text(encoding="utf-8")).items() if v}
+        欠け = len(keys) - len(訳 & {k["key"] for k in keys})
         if 欠け:
             足りない.append(f"{loc}: {欠け} 句")
     if 足りない:

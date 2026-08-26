@@ -478,39 +478,39 @@ impl ProtectAllow {
     /// 画面に出す並び(名前, 読む, 書く)。チェックの一覧と往復で使う
     pub fn items(&self) -> [(&'static str, bool); 14] {
         [
-            ("Moving shapes and pictures", self.objects),
-            ("Select locked cells", self.select_locked),
-            ("Select unlocked cells", self.select_unlocked),
-            ("Format cells", self.format_cells),
-            ("Format columns", self.format_cols),
-            ("Format rows", self.format_rows),
-            ("Insert columns", self.insert_cols),
-            ("Insert rows", self.insert_rows),
-            ("Insert hyperlinks", self.insert_links),
-            ("Delete columns", self.delete_cols),
-            ("Delete rows", self.delete_rows),
-            ("Sort", self.sort),
-            ("Use AutoFilter", self.autofilter),
-            ("Use PivotTable", self.pivot),
+            ("moving_shapes_pictures", self.objects),
+            ("select_locked_cells", self.select_locked),
+            ("select_unlocked_cells", self.select_unlocked),
+            ("format_cells", self.format_cells),
+            ("format_columns", self.format_cols),
+            ("format_rows", self.format_rows),
+            ("insert_columns", self.insert_cols),
+            ("insert_rows", self.insert_rows),
+            ("insert_hyperlinks", self.insert_links),
+            ("delete_columns", self.delete_cols),
+            ("delete_rows", self.delete_rows),
+            ("sort_2", self.sort),
+            ("use_autofilter", self.autofilter),
+            ("use_pivottable", self.pivot),
         ]
     }
 
     /// 名前で入切する(一覧を押したときの受け)
     pub fn toggle(&mut self, name: &str) {
         let f = match name {
-            "Select locked cells" => &mut self.select_locked,
-            "Select unlocked cells" => &mut self.select_unlocked,
-            "Format cells" => &mut self.format_cells,
-            "Format columns" => &mut self.format_cols,
-            "Format rows" => &mut self.format_rows,
-            "Insert columns" => &mut self.insert_cols,
-            "Insert rows" => &mut self.insert_rows,
-            "Insert hyperlinks" => &mut self.insert_links,
-            "Delete columns" => &mut self.delete_cols,
-            "Delete rows" => &mut self.delete_rows,
-            "Sort" => &mut self.sort,
-            "Use AutoFilter" => &mut self.autofilter,
-            "Use PivotTable" => &mut self.pivot,
+            "select_locked_cells" => &mut self.select_locked,
+            "select_unlocked_cells" => &mut self.select_unlocked,
+            "format_cells" => &mut self.format_cells,
+            "format_columns" => &mut self.format_cols,
+            "format_rows" => &mut self.format_rows,
+            "insert_columns" => &mut self.insert_cols,
+            "insert_rows" => &mut self.insert_rows,
+            "insert_hyperlinks" => &mut self.insert_links,
+            "delete_columns" => &mut self.delete_cols,
+            "delete_rows" => &mut self.delete_rows,
+            "sort_2" => &mut self.sort,
+            "use_autofilter" => &mut self.autofilter,
+            "use_pivottable" => &mut self.pivot,
             _ => return,
         };
         *f = !*f;
@@ -1732,7 +1732,7 @@ impl Validation {
     fn judgeable(&self) -> bool {
         let f1 = self.formula.trim().parse::<f64>().is_ok();
         match self.op.as_str() {
-            "between" | "" | "notBetween" => {
+            "between_2" | "" | "notBetween" => {
                 f1 && self.formula2.trim().parse::<f64>().is_ok()
             }
             "equal" | "notEqual" | "greaterThan" | "lessThan"
@@ -1745,7 +1745,7 @@ impl Validation {
     fn op_passes(&self, x: f64) -> Option<bool> {
         let f1: f64 = self.formula.trim().parse().ok()?;
         Some(match self.op.as_str() {
-            "between" | "" => {
+            "between_2" | "" => {
                 let f2: f64 = self.formula2.trim().parse().ok()?;
                 (f1..=f2).contains(&x)
             }
@@ -1766,14 +1766,14 @@ impl Validation {
     /// 規則の言い直し(エラーの既定の文言に使う)。例: 「1 から 100 の整数」
     pub fn describe(&self) -> String {
         let noun = match self.kind.as_str() {
-            "whole" => "Whole number",
-            "decimal" => "Number",
-            "textLength" => "Characters",
+            "whole" => "whole_number",
+            "decimal" => "number",
+            "textLength" => "characters_2",
             _ => return String::new(),
         };
         let (f1, f2) = (self.formula.trim(), self.formula2.trim());
         match self.op.as_str() {
-            "between" | "" => format!("{f1} から {f2} の{noun}"),
+            "between_2" | "" => format!("{f1} から {f2} の{noun}"),
             "notBetween" => format!("{f1} から {f2} の外の{noun}"),
             "equal" => format!("{f1} に等しい{noun}"),
             "notEqual" => format!("{f1} 以外の{noun}"),
@@ -2240,7 +2240,7 @@ pub struct PivotDef {
     /// 絞り込み: (見出し, 隠す値の列)。空 = 素通し。
     /// 見出しの ▼ から入切し、更新のたびに polars へ渡す
     pub hide: Vec<(String, Vec<String>)>,
-    /// 見た目の組(""=青(既定) / "Green" / "Orange" / "Grey")。置くときの帯の色
+    /// 見た目の組(""=青(既定) / "green" / "orange" / "grey")。置くときの帯の色
     pub style: String,
     /// **ピボットに連動する図の置き場**(ピボットグラフ。2026-08-22)。
     /// `None` = 図なし。入っていれば、ピボットを作り直すたびに同じ場所へ
@@ -2253,12 +2253,12 @@ pub struct PivotDef {
     pub vfilter: Option<(String, f64)>,
     /// グループ化: (見出し, 単位)。単位は 月/四半期/年/幅:N
     pub group_by: Vec<(String, String)>,
-    /// 計算の種類(""=そのまま / "% of total"=総計に対する % / "Running total" / "Difference"=前の行との差)。
+    /// 計算の種類(""=そのまま / "total"=総計に対する % / "running_total" / "difference"=前の行との差)。
     /// **累計と差は小計・総計を出さない** — 積み上げの途中に総計が挟まると
     /// 読み違えるため(効かせるときに totals/subtotals を落とす)
     pub show_as: String,
-    /// 並べ替え(""=そのまま / "Labels A to Z" / "Labels Z to A" /
-    /// "Largest value first" / "Smallest value first")。**小計・空行を出しているときは
+    /// 並べ替え(""=そのまま / "labels_z" / "labels_z_2" /
+    /// "largest_value_first" / "smallest_value_first")。**小計・空行を出しているときは
     /// 掛けない** — 区切りの塊を崩してしまうので(2026-08-13)
     pub sort: String,
 }

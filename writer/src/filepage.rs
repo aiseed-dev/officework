@@ -62,18 +62,18 @@ impl Writer {
             };
             pane = pane
                 .child(div().text_size(px(us * 16.0)).font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Search a folder")))
+                    .child(ui::t!("search_folder")))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(欄(self, 0, &self.fd_term, 280.0, "探す字"))
                     .child(欄(self, 1, &self.fd_glob, 120.0, "*.txt"))
-                    .child(押し("fd-dir", ui::t!("Choose a folder").into()).on_click(
+                    .child(押し("fd-dir", ui::t!("choose_folder").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.find_dir_dialog(cx); cx.notify() })))
-                    .child(押し("fd-go", ui::t!("Search (Enter)").into()).on_click(
+                    .child(押し("fd-go", ui::t!("search_enter").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.find_in_folder(); cx.notify() }))))
                 .child(div().text_size(px(us * 11.5)).text_color(th_status)
                     .child(SharedString::from(match self.find_dir() {
-                        Some(d) => ui::tf!("Folder: {}", d.display()).to_string(),
-                        None => ui::t!("No folder chosen yet (use Choose a folder)").to_string(),
+                        Some(d) => ui::tf!("folder_2", d.display()).to_string(),
+                        None => ui::t!("no_folder_chosen_yet").to_string(),
                     })));
             // 当たりの一覧(ファイルごとに見出し + 行番号つきの行)
             let mut 一覧 = div().id("fd-list")
@@ -83,7 +83,7 @@ impl Writer {
                 .flex().flex_col().gap_0p5().text_size(px(us * 12.0));
             if self.fd_hits.is_empty() {
                 一覧 = 一覧.child(div().text_color(th_status)
-                    .child(ui::t!("(nothing searched yet)")));
+                    .child(ui::t!("nothing_searched_yet")));
             }
             self.fd_box.borrow_mut().clear();
             for (fi, f) in self.fd_hits.iter().enumerate() {
@@ -131,17 +131,17 @@ impl Writer {
             // 「下に読み込みボタンを置くのはどうか」)。見て、これだと
             // 分かってから開く — 押し間違いで文書が入れ替わらない
             pane = pane.child(div().flex().flex_row().items_center().gap_2()
-                .child(押し("fd-load", ui::t!("Load").into()).on_click(
+                .child(押し("fd-load", ui::t!("load").into()).on_click(
                     cx.listener(|t, _, _, cx| { t.find_load(); cx.notify() })))
                 .child(div().text_size(px(us * 11.5)).text_color(th_status)
-                    .child(ui::t!("Opens the document of the chosen hit and goes there"))));
+                    .child(ui::t!("opens_document_chosen_hit"))));
             pane = pane.child(div().id("fd-peek")
                 .flex_1().min_h(px(us * 120.0)).overflow_y_scroll()
                 .p_2().rounded_sm().bg(gpui::white())
                 .border_1().border_color(th_cmd_border)
                 .text_size(px(us * 12.0)).font_family(crate::doc::MONO)
                 .child(SharedString::from(if self.fd_peek.is_empty() {
-                    ui::t!("(pick a hit and its surroundings appear here)").to_string()
+                    ui::t!("pick_hit_surroundings_appear").to_string()
                 } else {
                     self.fd_peek.clone()
                 })));
@@ -159,13 +159,13 @@ impl Writer {
             pane = pane
                 .child(div().text_size(px(us * 16.0))
                     .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Advanced settings")))
+                    .child(ui::t!("advanced_settings")))
                 .child(div().text_color(th_status).child(SharedString::from(
-                    ui::tf!("Location: {}", ui::settings::path().display()))))
+                    ui::tf!("location", ui::settings::path().display()))))
                 .child(div().h(px(us * 6.0)))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("Language (ribbon and messages)")))
+                        .child(ui::t!("language_ribbon_messages")))
                     .child(div().id("set-lang")
                         .px_3().py_1().rounded_sm().cursor_pointer()
                         .bg(item_bg)
@@ -182,10 +182,10 @@ impl Writer {
                 // したいです」)。**紙は白いまま** — 暗くするのは周りだけ
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("Interface theme (light/dark)")))
+                        .child(ui::t!("interface_theme_light_dark")))
                     .child(div().id("set-theme")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
-                        .child(if self.dark { ui::t!("Dark") } else { ui::t!("Light") })
+                        .child(if self.dark { ui::t!("dark") } else { ui::t!("light") })
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.run_cmd("darkmode", cx);
                             cx.notify()
@@ -195,18 +195,18 @@ impl Writer {
                 // **未設定なら名乗りません** — 機械のユーザー名は使わない
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("Comment signature")))
+                        .child(ui::t!("comment_signature")))
                     .child(div().id("set-username")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .child(SharedString::from({
                             let a = ui::comment_author();
-                            if a.is_empty() { ui::t!("(anonymous)").to_string() } else { a }
+                            if a.is_empty() { ui::t!("anonymous").to_string() } else { a }
                         }))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.cmt_name_edit = true;
                             this.cmt_name_ed = Editor::new(&ui::comment_author());
                             this.status =
-                                ui::t!("Type a name and press Enter (leave empty to not sign)").into();
+                                ui::t!("type_name_press_enter").into();
                             cx.notify()
                         }))))
                 // **反復計算**(2026-08-20 発注者「双方でできるように
@@ -215,12 +215,12 @@ impl Writer {
                 // `.adoc` の文書には xlsx の `calcPr` に当たる置き場が無い
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("Iterative calculation (circular references)")))
+                        .child(ui::t!("iterative_calculation_circular_references")))
                     .child(div().id("set-iter")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .child(match ui::calc_iter_setting() {
-                            Some((n, _)) => ui::tf!("On (up to {} passes)", n),
-                            None => ui::t!("Off (switch)").to_string(),
+                            Some((n, _)) => ui::tf!("up_passes", n),
+                            None => ui::t!("off_switch").to_string(),
                         })
                         .on_click(cx.listener(|this, _, _, cx| {
                             let (_, msg) =
@@ -234,13 +234,13 @@ impl Writer {
                 // 名乗り出ていた。器も表と同じ1つの綴りを見る
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("Math autocorrect")))
+                        .child(ui::t!("math_autocorrect")))
                     .child(div().id("set-autocorrect")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .child(if self.autocorrect {
-                            ui::t!("On (type \\alpha and get α)")
+                            ui::t!("type_alpha_get")
                         } else {
-                            ui::t!("Off (switch)")
+                            ui::t!("off_switch")
                         })
                         .on_click(cx.listener(|this, _, _, cx| {
                             let (on, msg) = ui::toggle_math_autocorrect(this.autocorrect, !cfg!(test));
@@ -254,7 +254,7 @@ impl Writer {
                 .child(div().h(px(us * 10.0)))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("AI destination")))
+                        .child(ui::t!("ai_destination")))
                     .child(div().id("set-ai")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .child(SharedString::from(ui::ai::backend().label().to_string()))
@@ -278,7 +278,7 @@ impl Writer {
             let look = ui::filemenu::PaneLook {
                 fg: th_top_fg, dim: th_status, hover: item_bg, scale: us,
             };
-            pane = pane.child(ui::filemenu::pane_title(&look, ui::t!("Recent")));
+            pane = pane.child(ui::filemenu::pane_title(&look, ui::t!("recent")));
             let list = Self::recent_list();
             if list.is_empty() {
                 pane = pane.child(ui::filemenu::recent_empty(&look));
@@ -328,7 +328,7 @@ impl Writer {
                 }
             };
             let 段 = |名: &str, 値: Option<String>, 場所: Option<String>| {
-                let 値 = 値.unwrap_or_else(|| ui::t!("(not specified)").to_string());
+                let 値 = 値.unwrap_or_else(|| ui::t!("not_specified").to_string());
                 div().flex().flex_col().gap_1().pb_2()
                     .child(div().flex().flex_row().items_center().gap_2()
                         .child(div().w(px(us * 120.0)).text_color(th_status)
@@ -337,33 +337,33 @@ impl Writer {
                     .child(div().pl(px(us * 120.0)).text_size(px(us * 10.0))
                         .text_color(th_status)
                         .child(SharedString::from(
-                            場所.unwrap_or_else(|| ui::t!("(not created yet)").to_string()))))
+                            場所.unwrap_or_else(|| ui::t!("not_created_yet").to_string()))))
             };
             pane = pane
                 .child(div().text_size(px(us * 16.0))
                     .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Formatting defaults")))
+                    .child(ui::t!("formatting_defaults")))
                 .child(div().text_color(th_status)
-                    .child(ui::t!("Each level fills in what the level above leaves unspecified")))
+                    .child(ui::t!("each_level_fills_what")))
                 .child(div().text_color(th_status).text_size(px(us * 11.0))
-                    .child(ui::tf!("The current language is \"{}\". Font and size can be set for each language", 言語)))
+                    .child(ui::tf!("current_language_font_size", 言語)))
                 .child(div().h(px(us * 8.0)))
                 // 1段目 — この文書
-                .child(段(&ui::t!("This document"), self.doc.font.clone(),
-                          Some(ui::t!("The font stored in the document you have open").to_string())))
+                .child(段(&ui::t!("document_5"), self.doc.font.clone(),
+                          Some(ui::t!("font_stored_document_open").to_string())))
                 // 2段目 — 綴り
-                .child(段(&ui::t!("This folder"),
+                .child(段(&ui::t!("folder_4"),
                           言い分(綴り.as_ref()),
                           綴りの場所.map(|p| p.display().to_string())))
                 // 3段目 — 利用者
-                .child(段(&ui::t!("Your account on this computer"),
+                .child(段(&ui::t!("account_computer"),
                           言い分(利用者.as_ref()),
                           Some(利用者の場所.display().to_string())))
                 .child(div().h(px(us * 8.0)))
                 // **いま実際に使っている書体と大きさ**。3段を重ねた結果です
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 120.0)).text_color(th_status)
-                        .child(ui::t!("In use now")))
+                        .child(ui::t!("use_now")))
                     .child(div().font_weight(gpui::FontWeight::BOLD)
                         .child(SharedString::from(format!(
                             "{} {}pt",
@@ -372,10 +372,10 @@ impl Writer {
                         )))))
                 .child(div().h(px(us * 10.0)))
                 .child(div().text_color(th_status).child(
-                    ui::t!("Choosing a font makes it your default on this computer (it applies to other folders too)")))
+                    ui::t!("choosing_font_makes_default")))
                 .child(div().id("style-user-font")
                     .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
-                    .child(ui::t!("Choose the default font for this computer"))
+                    .child(ui::t!("choose_default_font_computer"))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.tab = this.prev_tab;
                         this.open_list = Some("user-font");
@@ -391,7 +391,7 @@ impl Writer {
             let look = ui::filemenu::PaneLook {
                 fg: th_top_fg, dim: th_status, hover: item_bg, scale: us,
             };
-            pane = pane.child(ui::filemenu::pane_title(&look, ui::t!("Recover")));
+            pane = pane.child(ui::filemenu::pane_title(&look, ui::t!("recover")));
             let list = ops::stale_recovers("adoc");
             if list.is_empty() {
                 pane = pane.child(ui::filemenu::recent_empty(&look));
@@ -407,7 +407,7 @@ impl Writer {
                             this.path = None;
                             this.dirty = true;
                             this.status = ui::tf!(
-                                "Opened the backup (the original is {}). Check the contents and use \"Save As\" — this will not overwrite it",
+                                "opened_backup_original_check",
                                 名2.clone()
                             )
                             .into();
@@ -422,16 +422,16 @@ impl Writer {
             let paras = self.doc.paragraphs().count();
             pane = pane.child(div().text_size(px(us * 16.0))
                 .font_weight(gpui::FontWeight::BOLD)
-                .child(ui::t!("Document info")))
+                .child(ui::t!("document_info")))
                 .child(div().text_size(px(us * 13.5))
                     .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Statistics")));
+                    .child(ui::t!("statistics")));
             for (k, v) in [
-                (ui::t!("Page"), total_pages),
-                (ui::t!("Paragraphs"), paras),
-                (ui::t!("Words"), words),
-                (ui::t!("Characters"), nchars),
-                (ui::t!("Characters (with spaces)"), chars_all),
+                (ui::t!("page_2"), total_pages),
+                (ui::t!("paragraphs"), paras),
+                (ui::t!("words"), words),
+                (ui::t!("characters_2"), nchars),
+                (ui::t!("characters_spaces"), chars_all),
             ] {
                 pane = pane.child(div().flex().flex_row()
                     .child(div().w(px(us * 220.0)).text_color(th_status).child(k))
@@ -440,14 +440,14 @@ impl Writer {
             pane = pane.child(div().h(px(us * 6.0)))
                 .child(div().text_size(px(us * 13.5))
                     .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("Properties")));
+                    .child(ui::t!("properties")));
             let pr = self.doc.props.clone();
             let vals: [(&'static str, String, &'static str); 5] = [
-                (ui::t!("Author"), pr.creator, ui::t!("Add an author")),
-                (ui::t!("Title"), pr.title, ui::t!("Add text")),
-                (ui::t!("Tags"), pr.keywords, ui::t!("Add text")),
-                (ui::t!("Subject"), pr.subject, ui::t!("Add text")),
-                (ui::t!("Comment"), pr.description, ui::t!("Add text")),
+                (ui::t!("author"), pr.creator, ui::t!("add_author")),
+                (ui::t!("title"), pr.title, ui::t!("add_text")),
+                (ui::t!("tags"), pr.keywords, ui::t!("add_text")),
+                (ui::t!("subject"), pr.subject, ui::t!("add_text")),
+                (ui::t!("comment"), pr.description, ui::t!("add_text")),
             ];
             for (i, (k, v, ph)) in vals.into_iter().enumerate() {
                 let editing = self.file_field == Some(i as u8);
@@ -493,7 +493,7 @@ impl Writer {
                         }))));
             }
             pane = pane.child(div().text_size(px(us * 11.5)).text_color(th_status)
-                .child(ui::t!("Click a field, type, Enter records (goes into the docx properties on save)")));
+                .child(ui::t!("click_field_type_enter")));
         }
         pane
     }

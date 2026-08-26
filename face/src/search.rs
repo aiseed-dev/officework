@@ -157,14 +157,14 @@ fn skip_dir(name: &str) -> bool {
 /// 前は両方のアプリに同じ 15 行が写してありました(2026-08-20 に1本に)。
 pub fn tally_message(t: &Tally) -> String {
     let mut s = lang::i18n::trf(
-        "{} files, {} hits (looked at {} files / {})",
+        "files_hits_looked_files",
         &[&t.matched, &t.hits, &t.looked, &human_size(t.bytes)],
     );
     if t.unread > 0 {
-        s.push_str(&lang::i18n::trf(" — {} could not be read", &[&t.unread]));
+        s.push_str(&lang::i18n::trf("not_read_2", &[&t.unread]));
     }
     if t.cut {
-        s.push_str(lang::i18n::tr(" — stopped early, too many"));
+        s.push_str(lang::i18n::tr("stopped_early_too_many"));
     }
     s
 }

@@ -19,21 +19,21 @@ pub const OFFICE: [&str; 12] = [
 pub const SCHEMES: &[(&str, [&str; 12])] = &[
     ("Office", OFFICE),
     (
-        "Warm",
+        "warm",
         [
             "FFFFFF", "000000", "F5EDE6", "6B4A2F", "C0504D", "E36C0A", "D99694", "F0A22E",
             "E8B04B", "9C6644", "9E3A26", "7F3F2E",
         ],
     ),
     (
-        "Cool",
+        "cool",
         [
             "FFFFFF", "000000", "E8EEF4", "1F3864", "2E75B6", "41A5B5", "8FAADC", "70AD47",
             "4472C4", "255E91", "1F4E79", "3B5F8A",
         ],
     ),
     (
-        "Ink",
+        "ink",
         [
             "FFFFFF", "000000", "EDEDED", "3B3B3B", "595959", "808080", "A6A6A6", "BFBFBF",
             "404040", "737373", "1B6E3C", "5A5A5A",

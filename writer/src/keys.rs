@@ -139,7 +139,7 @@ impl Writer {
     pub(crate) fn find_next(&mut self) {
         let term = self.find_ed.text().to_string();
         if term.is_empty() {
-            self.status = ui::t!("The search term is empty").into();
+            self.status = ui::t!("search_term_empty").into();
             return;
         }
         let text = self.ed.text().to_string();
@@ -160,7 +160,7 @@ impl Writer {
                     self.ed.move_to(at, false);
                     self.ed.move_to(at + term.len(), true);
                     self.status =
-                        ui::tf!("\"{}\": document {}", term, (i + 1).to_string()).into();
+                        ui::tf!("document_4", term, (i + 1).to_string()).into();
                     return;
                 }
             }
@@ -173,9 +173,9 @@ impl Writer {
                 self.status = "".into();
             }
             None if self.find_file => {
-                self.status = ui::tf!("\"{}\" is not in this file", term).into()
+                self.status = ui::tf!("not_file", term).into()
             }
-            None => self.status = ui::tf!("\"{}\" is not in this document (choose \"This file\" to search the other documents too)", term).into(),
+            None => self.status = ui::tf!("not_document_choose_file", term).into(),
         }
     }
 
@@ -183,7 +183,7 @@ impl Writer {
     pub(crate) fn replace_current(&mut self) {
         if self.protected() {
             self.status =
-                ui::t!("Protected read-only (Protection tab > Protect to release)").into();
+                ui::t!("protected_read_only_protection").into();
             return;
         }
         let term = self.find_ed.text().to_string();
@@ -205,7 +205,7 @@ impl Writer {
     pub(crate) fn replace_all(&mut self) {
         if self.protected() {
             self.status =
-                ui::t!("Protected read-only (Protection tab > Protect to release)").into();
+                ui::t!("protected_read_only_protection").into();
             return;
         }
         let term = self.find_ed.text().to_string();
@@ -233,7 +233,7 @@ impl Writer {
             self.dirty = true;
             self.relayout();
         }
-        self.status = ui::tf!("{} replacements made", n).into();
+        self.status = ui::tf!("replacements_made", n).into();
     }
 
     /// run_cmd が処理できる id。**リボンの ready はこの表の中に限る**
@@ -297,7 +297,7 @@ impl Writer {
                     }
                 } else {
                     let Some((pw, ph)) = image_px(&bytes) else {
-                        self.status = ui::t!("Only PNG, JPEG, and SVG can be inserted").into();
+                        self.status = ui::t!("only_png_jpeg_svg").into();
                         return;
                     };
                     (bytes, pw, ph)
@@ -329,12 +329,12 @@ impl Writer {
                     p.images_new.push(im.clone());
                 });
                 self.status = if is_svg {
-                    ui::t!("SVG inserted as a high-resolution image (goes into the docx on save)").into()
+                    ui::t!("svg_inserted_high_resolution").into()
                 } else {
-                    ui::t!("Image inserted (attached below the paragraph; goes into the docx on save)").into()
+                    ui::t!("image_inserted_attached_below").into()
                 };
             }
-            Err(e) => self.status = ui::tf!("Can't read: {}", e).into(),
+            Err(e) => self.status = ui::tf!("cant_read", e).into(),
         }
     }
 
@@ -355,7 +355,7 @@ impl Writer {
                     d.body_text()
                 }
                 Err(e) => {
-                    self.status = ui::tf!("Can't read: {}", e).into();
+                    self.status = ui::tf!("cant_read", e).into();
                     return;
                 }
             }
@@ -365,23 +365,23 @@ impl Writer {
                     Ok(t) => t,
                     Err(_) => {
                         // 文字コードの推測はしない(化けた本文を黙って挿すより断る)
-                        self.status = ui::t!("Only UTF-8 text can be read").into();
+                        self.status = ui::t!("only_utf_8_text").into();
                         return;
                     }
                 },
                 Err(e) => {
-                    self.status = ui::tf!("Can't read: {}", e).into();
+                    self.status = ui::tf!("cant_read", e).into();
                     return;
                 }
             }
         };
         if text.is_empty() {
-            self.status = ui::t!("The file is empty").into();
+            self.status = ui::t!("file_empty").into();
             return;
         }
         self.switch_target(Target::Body);
         handler::replace(self, None, &text);
-        self.status = ui::tf!("{} inserted ({} characters)", path.file_name().unwrap_or_default().to_string_lossy(), text.chars().count())
+        self.status = ui::tf!("inserted_characters", path.file_name().unwrap_or_default().to_string_lossy(), text.chars().count())
         .into();
     }
 
@@ -390,10 +390,10 @@ impl Writer {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
                 // ネイティブ(.adoc)を先頭に — 既定で見えるのがこちら
-                .add_filter(ui::t!("officework document"), &["adoc", "asciidoc"])
-                .add_filter(ui::t!("Word documents and HTML"), &["docx", "html", "htm"])
+                .add_filter(ui::t!("officework_document"), &["adoc", "asciidoc"])
+                .add_filter(ui::t!("word_documents_html"), &["docx", "html", "htm"])
                 // マクロの .py もここから開く(素の文字のまま往復する)
-                .add_filter(ui::t!("Macros and plain text"), &["py", "txt", "md", "toml", "json", "csv"])
+                .add_filter(ui::t!("macros_plain_text"), &["py", "txt", "md", "toml", "json", "csv"])
                 .pick_file()
         });
         cx.spawn(async move |this, cx| {
@@ -471,14 +471,14 @@ impl Writer {
         // 会話の欄は Esc で焦点を返す(パネルは開いたまま — 本文へ戻るだけ)
         if self.ai_chat_focus {
             self.ai_chat_focus = false;
-            self.status = ui::t!("Back to the document (the conversation panel stays open)").into();
+            self.status = ui::t!("back_document_conversation_panel").into();
             cx.notify();
             return;
         }
         // 道具 → メニュー → 検索のパネル → ヘッダーのパネル → 一覧のパネル、の順で戻す
         if self.tool.take().is_some() {
             self.ink_cur = None;
-            self.status = ui::t!("Back to text editing").into();
+            self.status = ui::t!("back_text_editing").into();
             cx.notify();
             return;
         }
@@ -533,7 +533,7 @@ impl Writer {
         }
         if self.style_new.is_some() {
             self.style_new = None;
-            self.status = ui::t!("Cancelled the new style").into();
+            self.status = ui::t!("cancelled_new_style").into();
             cx.notify();
             return;
         }
@@ -561,7 +561,7 @@ impl Writer {
         }
         if self.quit_ask {
             self.quit_ask = false;
-            self.status = ui::t!("Quit cancelled").into();
+            self.status = ui::t!("quit_cancelled").into();
             cx.notify();
             return;
         }
@@ -616,14 +616,14 @@ impl Writer {
     /// Ctrl+0 = 表示の倍率を等倍に戻す。**calc と両方に置く**
     pub(crate) fn do_zoom_reset(&mut self, _: &ui::ZoomReset, _: &mut Window, cx: &mut Context<Self>) {
         self.zoom = 1.0;
-        self.status = ui::t!("Zoom back to 100%").into();
+        self.status = ui::t!("zoom_back_100").into();
         cx.notify();
     }
     /// F1 = 手引きの在り処。**窓を開かない** — 別の窓を出すより、
     /// 読む物がどこにあるかを一行で言うほうが早い
     pub(crate) fn do_help(&mut self, _: &ui::Help, _: &mut Window, cx: &mut Context<Self>) {
         self.status = ui::t!(
-            "Manual: docs/ja/writer-manual.adoc (English is en/writer-manual.adoc). Python is ja/writer-macro-manual.adoc"
+            "manual_docs_ja_writer"
         )
         .into();
         cx.notify();
@@ -640,14 +640,14 @@ impl Writer {
         let stamp = ui::now_stamp();
         let Some((date, clock)) = stamp.split_once(' ') else {
             // 黙って空を入れない
-            self.status = ui::t!("Couldn't get the current time").into();
+            self.status = ui::t!("couldnt_get_current_time").into();
             cx.notify();
             return;
         };
         let now = if time { clock } else { date };
         self.editor().insert(now);
         self.on_edited();
-        self.status = ui::tf!("Put in {} (it's a value, so it won't change later)", now).into();
+        self.status = ui::tf!("put_value_wont_change", now).into();
         cx.notify();
     }
 
@@ -787,9 +787,9 @@ impl Writer {
             ui::settings::set("user_name", &名);
             self.cmt_name_edit = false;
             self.status = if 名.is_empty() {
-                ui::t!("Comments will not be signed").into()
+                ui::t!("comments_not_signed").into()
             } else {
-                ui::tf!("Comments will be signed \"{}\"", 名).into()
+                ui::tf!("comments_signed", 名).into()
             };
             cx.notify();
             return;
@@ -852,23 +852,23 @@ impl Writer {
         let e = self.editor_ref();
         let sel = e.selection();
         if sel.is_empty() {
-            self.status = ui::t!("Nothing selected to copy").into();
+            self.status = ui::t!("nothing_selected_copy").into();
         } else if let Some(s) = e.text().get(sel) {
             cx.write_to_clipboard(gpui::ClipboardItem::new_string(s.to_string()));
-            self.status = ui::t!("Copied").into();
+            self.status = ui::t!("copied_2").into();
         }
         cx.notify();
     }
     pub(crate) fn cut(&mut self, _: &ui::Cut, _: &mut Window, cx: &mut Context<Self>) {
         let sel = self.editor_ref().selection();
         if sel.is_empty() {
-            self.status = ui::t!("Nothing selected to cut").into();
+            self.status = ui::t!("nothing_selected_cut").into();
         } else if let Some(s) = self.editor_ref().text().get(sel).map(str::to_string) {
             cx.write_to_clipboard(gpui::ClipboardItem::new_string(s));
             // 選択を空文字で置き換える = undo の1手で戻る
             self.editor().insert("");
             self.on_edited();
-            self.status = ui::t!("Cut the selection").into();
+            self.status = ui::t!("cut_selection").into();
         }
         cx.notify();
     }
@@ -878,7 +878,7 @@ impl Writer {
                 // 通常の入力と同じ道(IME の未確定があれば確定してから)
                 handler::replace(self, None, &text);
             }
-            _ => self.status = ui::t!("Nothing to paste").into(),
+            _ => self.status = ui::t!("nothing_paste").into(),
         }
         cx.notify();
     }
@@ -918,7 +918,7 @@ impl Writer {
                 let now = self.restore(prev);
                 self.redo_stack.push(now);
             }
-            None => self.status = ui::t!("Nothing left to undo").into(),
+            None => self.status = ui::t!("nothing_left_undo").into(),
         }
     }
     /// 一手やり直す

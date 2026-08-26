@@ -105,7 +105,7 @@ impl Calc {
                 self.recent_fonts.retain(|x| x != v);
                 self.recent_fonts.insert(0, v.to_string());
                 self.recent_fonts.truncate(12);
-                self.status = ui::tf!("Font set to \"{}\"", v).into();
+                self.status = ui::tf!("font_set", v).into();
             }
             "size" => {
                 if let Ok(pt) = v.parse::<f32>() {
@@ -115,7 +115,7 @@ impl Calc {
                     let pt = ui::combo::round_size(pt);
                     self.fmt(move |f| f.size_c = Some((pt * 100.0) as u32));
                     self.status =
-                        ui::tf!("Font size set to {}pt", ui::combo::size_label(pt)).into();
+                        ui::tf!("font_size_set_pt", ui::combo::size_label(pt)).into();
                 }
             }
             "symbol" => {
@@ -126,13 +126,13 @@ impl Calc {
                 self.recent_symbols.retain(|x| x != v);
                 self.recent_symbols.insert(0, v.to_string());
                 self.recent_symbols.truncate(12);
-                self.status = ui::tf!("\"{}\" inserted (Enter commits)", v).into();
+                self.status = ui::tf!("inserted_enter_commits", v).into();
             }
             // 名前の適用範囲(2段目)。**ここで初めて名前を入れる** —
             // 途中でやめたら何も残らない
             "name-scope" => {
                 let Some((name, range)) = self.name_new.take() else { return };
-                let scoped = v == "This sheet only";
+                let scoped = v == "sheet_only";
                 let s = &mut self.book.sheets[self.active];
                 s.names.retain(|d| d.name != name);
                 s.names.push(sheet::model::DefinedName {
@@ -143,9 +143,9 @@ impl Calc {
                 recalc_book(&mut self.book, self.active);
                 self.dirty = true;
                 self.status = if scoped {
-                    ui::tf!("Name “{}” = {} (usable on this sheet only)", name, range).into()
+                    ui::tf!("name_usable_sheet_only", name, range).into()
                 } else {
-                    ui::tf!("Name “{}” = {} (usable from any sheet)", name, range).into()
+                    ui::tf!("name_usable_any_sheet", name, range).into()
                 };
             }
             // 分類を選んだ段。**2段目は1段目と同じ場所に重ねる**(目が飛ばない)
@@ -193,7 +193,7 @@ impl Calc {
                 });
                 self.shape_sel = Some(self.sheet().shapes_new.len() - 1);
                 self.dirty = true;
-                self.status = ui::tf!("{} placed at {} (drag to move / bottom-right to resize / Del deletes)", name, at.a1())
+                self.status = ui::tf!("placed_drag_move_bottom", name, at.a1())
                 .into();
             }
             "sa-cat" => {
@@ -208,7 +208,7 @@ impl Calc {
                     self.pick_kind = "sa-item";
                     self.pick = Some((names, at));
                     // 鍵ではなく見出しを見せる(訳した文に日本語を混ぜない)
-                    self.status = ui::tf!("SmartArt > {}: pick a layout and it is inserted as a group of shapes", cats[ci].1)
+                    self.status = ui::tf!("smartart_pick_layout_inserted", cats[ci].1)
                     .into();
                     return; // pick_kind を "value" に戻さない(2段目へ)
                 }
@@ -246,7 +246,7 @@ impl Calc {
                     }
                     self.dirty = true;
                     let label = crate::util::color_scheme_label(v);
-                    self.status = ui::tf!("Colour scheme \"{}\" applied ({} colours followed; cells not using theme colours are unchanged)", label, n)
+                    self.status = ui::tf!("colour_scheme_applied_colours", label, n)
                     .into();
                 }
             }
@@ -295,8 +295,8 @@ impl Calc {
                 let on = a.items().iter().find(|(n, _)| *n == name).map(|(_, o)| *o);
                 let label = crate::util::protect_allow_label(&name);
                 self.status = match on {
-                    Some(true) => ui::tf!("Allowed \"{}\"", label).into(),
-                    _ => ui::tf!("Forbade \"{}\"", label).into(),
+                    Some(true) => ui::tf!("allowed", label).into(),
+                    _ => ui::tf!("forbade", label).into(),
                 };
                 return; // pick_kind を "value" に戻さない(続けて入切する)
             }
@@ -304,7 +304,7 @@ impl Calc {
             // まだ式を始めていなければ「=」から始めてあげる
             // 記号: 組を選ぶ → その組の字を一字ずつ並べ直す
             "symbol-group" => {
-                if v.starts_with("Type Unicode") {
+                if v.starts_with("type_unicode") {
                     self.prompt = Some(("symbol-hex", Editor::new("")));
                     return;
                 }
@@ -321,7 +321,7 @@ impl Calc {
                 };
                 let at = self.pick.as_ref().map(|(_, a)| *a).unwrap_or_else(|| self.pop_anchor());
                 self.pick_kind = "symbol";
-                self.pick_note = Some(ui::t!("Pick a character to put it in the formula").into());
+                self.pick_note = Some(ui::t!("pick_character_put_formula").into());
                 self.pick = Some((
                     // 字そのものの一覧 — 訳す物ではない
                     plain(chars.split_whitespace().collect::<String>().chars()
@@ -342,7 +342,7 @@ impl Calc {
                 }
                 self.input.insert(&name);
                 self.edit_armed = true;
-                self.status = ui::tf!("Put {} in the formula", name).into();
+                self.status = ui::tf!("put_formula", name).into();
             }
             // **書き出す形を選ぶ**(手引き
             // `docs/ja/commands/ファイル/エクスポート.adoc`)。
@@ -358,7 +358,7 @@ impl Calc {
                 if let Some((k, l, _)) = Calc::csv_kinds().iter().find(|(k, _, _)| *k == v) {
                     self.csv_kind = k;
                     self.status =
-                        ui::tf!("CSV will be written as \"{}\" from now on", l).into();
+                        ui::tf!("csv_written_now", l).into();
                 }
             }
             // 自動復旧: 控えを開く。**原本ではなく控えを開く** — 中身を見て、
@@ -373,7 +373,7 @@ impl Calc {
                 self.set_path(None);
                 self.dirty = true;
                 self.status = ui::tf!(
-                    "Opened the backup (the original is {}). Check the contents and use \"Save As\" — this will not overwrite it",
+                    "opened_backup_original_check",
                     name
                 )
                 .into();
@@ -382,16 +382,16 @@ impl Calc {
                 // **鍵をそのまま文に差し込まない。** v は日本語の鍵なので、
                 // 訳した文の中に日本語が残ってしまう(zh-tw の訳者が見つけた)
                 let (secs, every) = match v {
-                    "Every minute" => (60, ui::t!("Every minute")),
-                    "Every 5 minutes" => (300, ui::t!("Every 5 minutes")),
-                    "Every 10 minutes" => (600, ui::t!("Every 10 minutes")),
+                    "every_minute" => (60, ui::t!("every_minute")),
+                    "every_5_minutes" => (300, ui::t!("every_5_minutes")),
+                    "every_10_minutes" => (600, ui::t!("every_10_minutes")),
                     _ => (0, ""),
                 };
                 self.recover_secs = secs;
                 self.status = if self.recover_secs == 0 {
-                    ui::t!("Not keeping auto-recovery backups (a crash loses what you typed)").into()
+                    ui::t!("not_keeping_auto_recovery").into()
                 } else {
-                    ui::tf!("Backing up every {} (the original is never overwritten)", every).into()
+                    ui::tf!("backing_up_every_original", every).into()
                 };
             }
             // 改ページの3択(横 / 縦 / すべて外す)
@@ -405,29 +405,29 @@ impl Calc {
                     let n = sh.row_breaks.len() + sh.col_breaks.len();
                     sh.row_breaks.clear();
                     sh.col_breaks.clear();
-                    self.status = ui::tf!("Removed all {} page breaks", n).into();
+                    self.status = ui::tf!("removed_all_page_breaks", n).into();
                 } else if v == "pagebreak:col" {
                     if let Some(i) = sh.col_breaks.iter().position(|b| *b == c) {
                         sh.col_breaks.remove(i);
-                        self.status = ui::tf!("Removed the page break at column {}", cn).into();
+                        self.status = ui::tf!("removed_page_break_column", cn).into();
                     } else if c == 0 {
                         self.undo_stack.pop();
-                        self.status = ui::t!("Nothing to break before column A").into();
+                        self.status = ui::t!("nothing_break_before_column").into();
                         return;
                     } else {
                         sh.col_breaks.push(c);
-                        self.status = ui::tf!("New sheet of paper from column {}", cn).into();
+                        self.status = ui::tf!("new_sheet_paper_column", cn).into();
                     }
                 } else if let Some(i) = sh.row_breaks.iter().position(|b| *b == r) {
                     sh.row_breaks.remove(i);
-                    self.status = ui::tf!("Removed the page break at row {}", r + 1).into();
+                    self.status = ui::tf!("removed_page_break_row", r + 1).into();
                 } else if r == 0 {
                     self.undo_stack.pop();
-                    self.status = ui::t!("No page break before row 1").into();
+                    self.status = ui::t!("no_page_break_before").into();
                     return;
                 } else {
                     sh.row_breaks.push(r);
-                    self.status = ui::tf!("New sheet of paper from row {}", r + 1).into();
+                    self.status = ui::tf!("new_sheet_paper_row", r + 1).into();
                 }
                 self.dirty = true;
             }
@@ -438,15 +438,15 @@ impl Calc {
                 let sh = self.sheet_mut();
                 // **鍵をそのまま文に差し込まない。** 見出しを一緒に持って回る
                 let (w, h, label) = match v {
-                    "Fit all columns on one page" => {
-                        (Some(1), None, ui::t!("Fit all columns on one page"))
+                    "fit_all_columns_one" => {
+                        (Some(1), None, ui::t!("fit_all_columns_one"))
                     }
-                    "Fit all rows on one page" => {
-                        (None, Some(1), ui::t!("Fit all rows on one page"))
+                    "fit_all_rows_one" => {
+                        (None, Some(1), ui::t!("fit_all_rows_one"))
                     }
-                    "Fit the sheet on one page" => (Some(1), Some(1), ui::t!("Fit the sheet on one page")),
-                    "2 pages wide × 1 page tall" => {
-                        (Some(2), Some(1), ui::t!("2 pages wide × 1 page tall"))
+                    "fit_sheet_one_page" => (Some(1), Some(1), ui::t!("fit_sheet_one_page")),
+                    "2_pages_wide_1" => {
+                        (Some(2), Some(1), ui::t!("2_pages_wide_1"))
                     }
                     _ => (None, None, ""),
                 };
@@ -454,9 +454,9 @@ impl Calc {
                 sh.fit_to_h = h;
                 self.dirty = true;
                 self.status = if w.is_none() && h.is_none() {
-                    ui::t!("No longer fitting to paper (back to the scaling %)").into()
+                    ui::t!("no_longer_fitting_paper").into()
                 } else {
-                    ui::tf!("Set to {} (applies to PDF and to saving)", label).into()
+                    ui::tf!("set_applies_pdf_saving", label).into()
                 };
             }
             // コメントの見せ方を選んだ(2026-08-13)。一覧の板と、セルに出る
@@ -468,17 +468,17 @@ impl Calc {
                         None => Some(CommentList::default()),
                     };
                     self.status = if self.comment_list.is_some() {
-                        ui::t!("Comment list opened (the whole workbook; tap a row to jump there)").into()
+                        ui::t!("comment_list_opened_whole").into()
                     } else {
-                        ui::t!("Comment list closed").into()
+                        ui::t!("comment_list_closed").into()
                     };
                 }
                 _ => {
                     self.show_comments = !self.show_comments;
                     self.status = if self.show_comments {
-                        ui::t!("Comments shown").into()
+                        ui::t!("comments_shown").into()
                     } else {
-                        ui::t!("Comments hidden (they are still there)").into()
+                        ui::t!("comments_hidden_still_there").into()
                     };
                 }
             },
@@ -493,13 +493,13 @@ impl Calc {
                     self.slicers.remove(i);
                     self.slicer_sel = self.slicer_sel.min(self.slicers.len().saturating_sub(1));
                     self.slicer_cfg &= !self.slicers.is_empty();
-                    self.status = ui::tf!("Closed the slicer on column {}", crate::col_name(col)).into();
+                    self.status = ui::tf!("closed_slicer_column", crate::col_name(col)).into();
                     return;
                 }
                 self.slicers.push(Slicer { col, ..Default::default() });
                 self.slicer_sel = self.slicers.len() - 1;
                 self.status = ui::tf!(
-                    "Slicer: tap a value in column {} to filter (≡ = pick several / ✕ = clear; this only changes what you see, not the data)",
+                    "slicer_tap_value_column",
                     crate::col_name(col)
                 )
                 .into();
@@ -517,7 +517,7 @@ impl Calc {
                     let (f, label) = (*f, *label);
                     self.fmt(f);
                     // 鍵ではなく見出し(訳した文に日本語を混ぜない)
-                    self.status = ui::tf!("Cell style \"{}\" applied", label).into();
+                    self.status = ui::tf!("cell_style_applied", label).into();
                 }
             }
             // **マクロの一覧から選んだ .py は走る。** 打たずに選べる道 —
@@ -552,12 +552,12 @@ impl Calc {
                         .and_then(|_| ui::open_for_edit(&out.display().to_string()))
                     {
                         Ok(tool) => ui::tf!(
-                            "Opened a copy of {} in {} (read only — edits have no effect)",
+                            "opened_copy_read_only",
                             n,
                             tool
                         )
                         .into(),
-                        Err(e) => ui::tf!("Can't open: {}", e).into(),
+                        Err(e) => ui::tf!("cant_open", e).into(),
                     };
                 } else if v == "\u{1}見本" {
                     // 見本は**そのまま動く物**を書く。動かない見本は、動かない
@@ -580,16 +580,16 @@ impl Calc {
                         .and_then(|_| ui::open_for_edit(&path.display().to_string()))
                     {
                         Ok(tool) => {
-                            ui::tf!("Created {} and opened it in {}", path.display().to_string(), tool)
+                            ui::tf!("created_opened", path.display().to_string(), tool)
                                 .into()
                         }
-                        Err(e) => ui::tf!("Can't open: {}", e).into(),
+                        Err(e) => ui::tf!("cant_open", e).into(),
                     };
                 } else if let Some((_, path)) = self.pick_paths.iter().find(|(n, _)| n == v).cloned()
                 {
                     self.status = match ui::open_for_edit(&path.display().to_string()) {
-                        Ok(tool) => ui::tf!("Opened {} in {}", v, tool).into(),
-                        Err(e) => ui::tf!("Can't open: {}", e).into(),
+                        Ok(tool) => ui::tf!("opened", v, tool).into(),
+                        Err(e) => ui::tf!("cant_open", e).into(),
                     };
                 }
                 self.pick_paths.clear();
@@ -597,8 +597,8 @@ impl Calc {
             "py-edit" => {
                 if let Some((_, path)) = self.pick_paths.iter().find(|(n, _)| n == v).cloned() {
                     self.status = match ui::open_for_edit(&path.display().to_string()) {
-                        Ok(tool) => ui::tf!("Opened {} in {}", v, tool).into(),
-                        Err(e) => ui::tf!("Can't open: {}", e).into(),
+                        Ok(tool) => ui::tf!("opened", v, tool).into(),
+                        Err(e) => ui::tf!("cant_open", e).into(),
                     };
                 }
                 self.pick_paths.clear();
@@ -611,7 +611,7 @@ impl Calc {
                             self.book.sheets[i].hidden = false;
                             self.switch_sheet(i);
                             self.dirty = true;
-                            self.status = ui::tf!("Sheet \"{}\" unhidden", v).into();
+                            self.status = ui::tf!("sheet_unhidden", v).into();
                         }
                     }
                 }
@@ -619,37 +619,37 @@ impl Calc {
             }
             "freeze" => {
                 match v {
-                    "Unfreeze" => {
+                    "unfreeze" => {
                         self.frozen = None;
-                        self.status = ui::t!("Panes unfrozen").into();
+                        self.status = ui::t!("panes_unfrozen").into();
                     }
-                    "Freeze the top row" => {
+                    "freeze_top_row" => {
                         self.split = None;
                         self.frozen = Some(Pos::new(1, 0));
-                        self.status = ui::t!("Top row frozen").into();
+                        self.status = ui::t!("top_row_frozen").into();
                     }
-                    "Freeze the first column" => {
+                    "freeze_first_column" => {
                         self.split = None;
                         self.frozen = Some(Pos::new(0, 1));
-                        self.status = ui::t!("First column frozen").into();
+                        self.status = ui::t!("first_column_frozen").into();
                     }
-                    "Shadow the frozen edge" => {
+                    "shadow_frozen_edge" => {
                         self.freeze_shadow = !self.freeze_shadow;
                         self.status = if self.freeze_shadow {
-                            ui::t!("Frozen panes get a shadow (visible while frozen)").into()
+                            ui::t!("frozen_panes_get_shadow").into()
                         } else {
-                            ui::t!("Frozen-pane shadow removed").into()
+                            ui::t!("frozen_pane_shadow_removed").into()
                         };
                     }
                     _ => {
                         // いまの位置で固定(その上と左が留まる)
                         if self.cursor.row == 0 && self.cursor.col == 0 {
-                            self.status = ui::t!("Put the cursor where panes should freeze (rows above and columns left stay)").into();
+                            self.status = ui::t!("put_cursor_where_panes").into();
                         } else {
                             // 固定と分割は同時に立てません(帯が二重になります)
                             self.split = None;
                             self.frozen = Some(self.cursor);
-                            self.status = ui::tf!("Frozen at row {}, column {}", self.cursor.row, self.cursor.col).into();
+                            self.status = ui::tf!("frozen_row_column", self.cursor.row, self.cursor.col).into();
                         }
                     }
                 }
@@ -659,7 +659,7 @@ impl Calc {
             // 罫線: 辺の選択(ペンの線種・色で掛ける)
             // 名前マネージャー: 名前を選ぶ → 移動/打ち直し/削除
             "names-pick" => {
-                if v.starts_with("→ New name (for the current selection)…") {
+                if v.starts_with("new_name_current_selection") {
                     self.prompt = Some(("name", Editor::new("")));
                     return; // パネルの確定まで
                 }
@@ -676,7 +676,7 @@ impl Calc {
                         self.anchor = Some(a);
                         self.cursor = b;
                         self.sync_input();
-                        self.status = ui::t!("Moved to the table (rename/delete it from Table Design)").into();
+                        self.status = ui::t!("moved_table_rename_delete").into();
                     }
                     return;
                 }
@@ -684,13 +684,13 @@ impl Calc {
                 if self.sheet().names.iter().any(|d| d.name == name) {
                     let at = self.pop_anchor();
                     self.name_pend = Some(name.clone());
-                    self.pick_note = Some(ui::tf!("What to do with «{}»?", name).into());
+                    self.pick_note = Some(ui::tf!("what", name).into());
                     self.pick_kind = "name-act-pick";
                     self.pick = Some((
                         menu(&[
-                            ui::item!("Go there"),
-                            ui::item!("Retype the contents…"),
-                            ui::item!("Delete the name"),
+                            ui::item!("go_there"),
+                            ui::item!("retype_contents"),
+                            ui::item!("delete_name"),
                         ]),
                         at,
                     ));
@@ -707,7 +707,7 @@ impl Calc {
                     .map(|d| d.range.clone())
                     .unwrap_or_default();
                 match v {
-                    "Go there" => {
+                    "go_there" => {
                         let mut it = range.split(':');
                         let a = it.next().and_then(Pos::parse);
                         let b = it.next().and_then(Pos::parse);
@@ -718,12 +718,12 @@ impl Calc {
                                 self.anchor = Some(a);
                             }
                             self.sync_input();
-                            self.status = ui::tf!("Moved to «{}» ({})", name, range).into();
+                            self.status = ui::tf!("moved_2", name, range).into();
                         } else {
-                            self.status = ui::tf!("The content of «{}» ({}) is not a readable location", name, range).into();
+                            self.status = ui::tf!("content_not_readable_location", name, range).into();
                         }
                     }
-                    "Retype the contents…" => {
+                    "retype_contents" => {
                         self.name_pend = Some(name);
                         self.prompt = Some(("name-range", Editor::new(&range)));
                         return; // パネルの確定まで
@@ -734,26 +734,26 @@ impl Calc {
                         self.book.sheets[self.active].names.retain(|d| d.name != name);
                         recalc_book(&mut self.book, self.active);
                         self.dirty = true;
-                        self.status = ui::tf!("Name «{}» deleted ({} in formulas becomes #NAME?)", name, name).into();
+                        self.status = ui::tf!("name_deleted_formulas_becomes", name, name).into();
                     }
                 }
             }
             // ヘッダー/フッター: 6つの区分から選んでパネルで打つ
             "hf-pick" => {
-                if v == "Clear all" {
+                if v == "clear_all" {
                     self.checkpoint();
                     self.sheet_mut().header = None;
                     self.sheet_mut().footer = None;
                     self.dirty = true;
-                    self.status = ui::t!("Header/footer removed").into();
+                    self.status = ui::t!("header_footer_removed").into();
                 } else {
                     let name = v.split(':').next().unwrap_or(v).trim();
                     let (footer, slot) = match name {
-                        "Header left" => (false, 0u8),
-                        "Header centre" => (false, 1),
-                        "Header right" => (false, 2),
-                        "Footer left" => (true, 0),
-                        "Footer centre" => (true, 1),
+                        "header_left" => (false, 0u8),
+                        "header_centre" => (false, 1),
+                        "header_right" => (false, 2),
+                        "footer_left" => (true, 0),
+                        "footer_centre" => (true, 1),
                         _ => (true, 2),
                     };
                     let raw = if footer {
@@ -784,7 +784,7 @@ impl Calc {
                                 (k.to_string(), label)
                             })
                             .collect();
-                        self.pick_note = Some(ui::t!("Line style (goes into the pen; takes effect from the next borders)").into());
+                        self.pick_note = Some(ui::t!("line_style_goes_into").into());
                         self.pick_kind = "border-style-pick";
                         self.pick = Some((items, at));
                         return;
@@ -795,8 +795,8 @@ impl Calc {
                             .iter()
                             .map(|(k, l, _)| (k.to_string(), l.to_string()))
                             .collect();
-                        items.extend(menu(&[ui::item!("Other (type RRGGBB)…")]));
-                        self.pick_note = Some(ui::t!("Line colour (goes into the pen)").into());
+                        items.extend(menu(&[ui::item!("other_type_rrggbb")]));
+                        self.pick_note = Some(ui::t!("line_colour_goes_into").into());
                         self.pick_kind = "border-color-pick";
                         self.pick = Some((items, at));
                         return;
@@ -815,11 +815,11 @@ impl Calc {
                     self.pen_style = *b;
                     // 鍵ではなく見出し(訳した文に日本語を混ぜない)
                     self.status =
-                        ui::tf!("Line style: {} (applies when you draw borders from the list)", label).into();
+                        ui::tf!("line_style_applies_when", label).into();
                 }
             }
             "border-color-pick" => {
-                if v.starts_with("Other") {
+                if v.starts_with("other") {
                     self.prompt = Some(("border-color-rgb", Editor::new("")));
                     return; // パネルの確定まで pick_kind を戻さない
                 }
@@ -828,7 +828,7 @@ impl Calc {
                         hx.and_then(|h| u32::from_str_radix(h, 16).ok());
                     // 鍵ではなく見出し(訳した文に日本語を混ぜない)
                     self.status =
-                        ui::tf!("Line colour: {} (applies when you draw borders from the list)", label).into();
+                        ui::tf!("line_colour_applies_when", label).into();
                 }
             }
             // 変更履歴の一覧。選んだらその場所へ跳ぶ(戻す機能ではない)
@@ -844,7 +844,7 @@ impl Calc {
                             self.cursor = p;
                             self.follow();
                             self.sync_input();
-                            self.status = ui::tf!("Jumped to {}", tok).into();
+                            self.status = ui::tf!("jumped_2", tok).into();
                         }
                     }
                 }
@@ -852,7 +852,7 @@ impl Calc {
             "pivot-sort-pick" => {
                 if let Some(i) = self.pivot_at(self.cursor).or_else(|| self.pivot_flt.as_ref().map(|(p, _, _)| *p)) {
                     let so = match v {
-                        "Labels A to Z" | "Labels Z to A" | "Largest value first" | "Smallest value first" => {
+                        "labels_z" | "labels_z_2" | "largest_value_first" | "smallest_value_first" => {
                             v.to_string()
                         }
                         _ => String::new(), // そのまま
@@ -867,14 +867,14 @@ impl Calc {
             "pivot-showas-pick" => {
                 if let Some(i) = self.pivot_at(self.cursor) {
                     let sa = match v {
-                        "% of total" | "Running total" | "Difference" => v.to_string(),
+                        "total" | "running_total" | "difference" => v.to_string(),
                         _ => String::new(), // そのまま
                     };
                     if let Some(d) = self.book.pivots.get_mut(i) {
                         d.show_as = sa.clone();
                         // 累計と差は積み上げなので、小計・総計を落とす
                         // (途中に総計が挟まると読み違えるため)
-                        if sa == "Running total" || sa == "Difference" {
+                        if sa == "running_total" || sa == "difference" {
                             d.totals = false;
                             d.subtotals = false;
                         }
@@ -886,7 +886,7 @@ impl Calc {
             "pivot-style-pick" => {
                 if let Some(i) = self.pivot_at(self.cursor) {
                     let style = match v {
-                        "Green" | "Orange" | "Grey" => v.to_string(),
+                        "green" | "orange" | "grey" => v.to_string(),
                         _ => String::new(), // 青(既定)
                     };
                     if let Some(d) = self.book.pivots.get_mut(i) {
@@ -897,7 +897,7 @@ impl Calc {
                 }
             }
             "pivot-filter-pick" => {
-                if v == "→ Show everything again" {
+                if v == "show_everything_again" {
                     if let Some((pi, field, _)) = self.pivot_flt.take() {
                         if let Some(d) = self.book.pivots.get_mut(pi) {
                             d.hide.retain(|(f, _)| *f != field);
@@ -907,12 +907,12 @@ impl Calc {
                     }
                     return;
                 }
-                if v == "→ Filter by label…" {
+                if v == "filter_label" {
                     // 含む/で始まる/で終わる 語 — 合う値以外を hide に落とす
                     self.prompt = Some(("pivot-label", Editor::new("")));
                     return; // pivot_flt はパネルの確定まで持つ
                 }
-                if v == "→ Filter by value…" {
+                if v == "filter_value" {
                     let cur = self
                         .pivot_flt
                         .as_ref()
@@ -923,7 +923,7 @@ impl Calc {
                     self.prompt = Some(("pivot-vfilter", Editor::new(&cur)));
                     return;
                 }
-                if v == "→ Sort…" {
+                if v == "sort" {
                     let at = self.pop_anchor();
                     let Some(pi) = self.pivot_flt.as_ref().map(|(p, _, _)| *p) else { return };
                     // **小計・空行を出している間は掛けない。** 区切りの塊の
@@ -931,7 +931,7 @@ impl Calc {
                     // 黙って崩さずに、できない理由を言う(2026-08-13)
                     if self.book.pivots.get(pi).is_some_and(|d| d.subtotals || d.blank_rows) {
                         self.status = ui::t!(
-                            "Cannot sort while subtotals or blank rows are shown (turn subtotals off first)"
+                            "cannot_sort_while_subtotals"
                         )
                         .into();
                         return;
@@ -942,42 +942,42 @@ impl Calc {
                         // 選択肢で、全言語で「計算しない」と訳されている —
                         // 並べ替えの一覧に置くと意味が変わる(2026-08-13、
                         // 訳す人が気づいた)
-                        ui::item!("Do not sort"),
-                        ui::item!("Labels A to Z"),
-                        ui::item!("Labels Z to A"),
-                        ui::item!("Largest value first"),
-                        ui::item!("Smallest value first"),
+                        ui::item!("not_sort"),
+                        ui::item!("labels_z"),
+                        ui::item!("labels_z_2"),
+                        ui::item!("largest_value_first"),
+                        ui::item!("smallest_value_first"),
                     ]
                     .iter()
                     .map(|(k, l)| {
-                        let key = if *k == "Do not sort" { "" } else { *k };
+                        let key = if *k == "not_sort" { "" } else { *k };
                         (k.to_string(), if key == cur { format!("✓ {l}") } else { l.to_string() })
                     })
                     .collect();
-                    self.pick_note = Some(ui::t!("Sort — by value means the leftmost value column").into());
+                    self.pick_note = Some(ui::t!("sort_value_means_leftmost").into());
                     self.pick_kind = "pivot-sort-pick";
                     self.pick = Some((items, at));
                     return;
                 }
-                if v == "→ Group…" {
+                if v == "group" {
                     let at = self.pop_anchor();
                     let field = self.pivot_flt.as_ref().map(|(_, f, _)| f.clone()).unwrap_or_default();
                     self.pick_note =
-                        Some(ui::tf!("Group \"{}\" — pick a unit", field).into());
+                        Some(ui::tf!("group_pick_unit", field).into());
                     self.pick_kind = "pivot-group-pick";
                     self.pick = Some((
                         menu(&[
-                            ui::item!("Months"),
-                            ui::item!("Quarters"),
-                            ui::item!("Years"),
-                            ui::item!("By number range…"),
-                            ui::item!("Ungroup"),
+                            ui::item!("months"),
+                            ui::item!("quarters"),
+                            ui::item!("years"),
+                            ui::item!("number_range"),
+                            ui::item!("ungroup"),
                         ]),
                         at,
                     ));
                     return;
                 }
-                if v == "→ Apply (filter)" {
+                if v == "apply_filter" {
                     let Some((pi, field, hidden)) = self.pivot_flt.take() else { return };
                     if let Some(d) = self.book.pivots.get_mut(pi) {
                         d.hide.retain(|(f, _)| *f != field);
@@ -1005,10 +1005,10 @@ impl Calc {
                 if i >= self.book.sheets[self.active].cond.len() { return }
                 self.cond_pend = Some(i);
                 let at = self.pop_anchor();
-                self.pick_note = Some(ui::tf!("What to do with rule {}?", i + 1).into());
+                self.pick_note = Some(ui::tf!("what_rule", i + 1).into());
                 self.pick_kind = "cond-act-pick";
                 self.pick = Some((
-                    menu(&[ui::item!("Go there"), ui::item!("Delete this rule")]),
+                    menu(&[ui::item!("go_there"), ui::item!("delete_rule")]),
                     at,
                 ));
                 return;
@@ -1018,18 +1018,18 @@ impl Calc {
                 let Some(rule) = self.book.sheets[self.active].cond.get(i).cloned() else {
                     return;
                 };
-                if v == "Go there" {
+                if v == "go_there" {
                     let (a, b) = rule.range;
                     self.anchor = Some(a);
                     self.cursor = b;
                     self.sync_input();
-                    self.status = ui::tf!("Jumped to {}:{}", a.a1(), b.a1()).into();
+                    self.status = ui::tf!("jumped", a.a1(), b.a1()).into();
                 } else {
                     self.checkpoint();
                     self.book.sheets[self.active].cond.remove(i);
                     self.dirty = true;
                     self.status = ui::tf!(
-                        "Removed the rule on {}:{} ({})",
+                        "removed_rule",
                         rule.range.0.a1(), rule.range.1.a1(), cond_kind_name(&rule.kind)
                     )
                     .into();
@@ -1040,7 +1040,7 @@ impl Calc {
                     // 取り込む(下ごしらえ済みの grid を流し込む)
                     let Some(pend) = self.import_pend.take() else { return };
                     if pend.grid.is_empty() {
-                        self.status = ui::t!("No rows could be read (check the settings)").into();
+                        self.status = ui::t!("no_rows_read_check").into();
                         self.import_pend = Some(pend);
                         self.import_pick();
                         return;
@@ -1056,14 +1056,14 @@ impl Calc {
                     self.dirty = true;
                     self.sync_input();
                     self.status = ui::tf!(
-                        "Imported {} rows × {} fields at {} (as values)",
+                        "imported_rows_fields_values",
                         n_rows, n, pend.dest.a1()
                     )
                     .into();
                     return;
                 }
                 // PDF: 表を次のものへ回す
-                let table_head = format!("{}: ", ui::t!("Table"));
+                let table_head = format!("{}: ", ui::t!("table_2"));
                 if v.starts_with(&table_head) {
                     if let Some(p) = &mut self.import_pend {
                         if !p.pdf.is_empty() {
@@ -1074,9 +1074,9 @@ impl Calc {
                     self.import_pick();
                     return;
                 }
-                let enc_head = format!("{}: ", ui::t!("Encoding"));
-                let delim_head = format!("{}: ", ui::t!("Delimiter"));
-                let dest_head = format!("{}: ", ui::t!("Destination"));
+                let enc_head = format!("{}: ", ui::t!("encoding"));
+                let delim_head = format!("{}: ", ui::t!("delimiter"));
+                let dest_head = format!("{}: ", ui::t!("destination"));
                 if v.starts_with(&enc_head) {
                     if let Some(pend) = &mut self.import_pend {
                         pend.enc = (pend.enc + 1) % crate::py::import_encs().len();
@@ -1090,7 +1090,7 @@ impl Calc {
                         pend.delim = (pend.delim + 1) % crate::py::import_delims().len();
                         // 実体は3つ目へ移った(1つ目=鍵, 2つ目=見出し)
                         ask_custom =
-                            crate::py::import_delims()[pend.delim].2 == "Other";
+                            crate::py::import_delims()[pend.delim].2 == "other_2";
                     }
                     if ask_custom {
                         self.prompt = Some(("csv-delim", Editor::new("")));
@@ -1114,20 +1114,20 @@ impl Calc {
             }
             "spark-kind-pick" => {
                 let kind = match v {
-                    "Column" => "spark-col",
-                    "Win/loss" => "spark-wl",
+                    "column_2" => "spark-col",
+                    "win_loss" => "spark-wl",
                     _ => "spark",
                 };
                 self.insert_sparkline(kind);
             }
             "dedup-pick" => {
-                let header_label = ui::t!("First row is a header (keep it)").to_string();
-                if v == format!("→ {}", ui::t!("Delete")) {
+                let header_label = ui::t!("first_row_header_keep").to_string();
+                if v == format!("→ {}", ui::t!("delete")) {
                     let Some((list, header)) = self.dedup_pend.take() else { return };
                     let cols: Vec<u32> =
                         list.iter().filter(|(_, _, on)| *on).map(|(c, _, _)| *c).collect();
                     if cols.is_empty() {
-                        self.status = ui::t!("Pick at least one column to compare").into();
+                        self.status = ui::t!("pick_least_one_column").into();
                         self.dedup_pend = Some((list, header));
                         self.dedup_pick();
                         return;
@@ -1140,7 +1140,7 @@ impl Calc {
                     recalc_book(&mut self.book, self.active);
                     self.sync_input();
                     // 何件消したかを黙らない
-                    self.status = ui::tf!("{} duplicate rows removed", n).into();
+                    self.status = ui::tf!("duplicate_rows_removed", n).into();
                 } else if let Some((list, header)) = &mut self.dedup_pend {
                     if v == header_label {
                         *header = !*header;
@@ -1153,13 +1153,13 @@ impl Calc {
             }
             "pivot-group-pick" => {
                 let Some((pi, field, _)) = self.pivot_flt.clone() else { return };
-                if v == "By number range…" {
+                if v == "number_range" {
                     self.prompt = Some(("pivot-group-width", Editor::new("")));
                     return;
                 }
                 let Some(d) = self.book.pivots.get_mut(pi) else { return };
                 d.group_by.retain(|(f, _)| *f != field);
-                if v != "Ungroup" {
+                if v != "ungroup" {
                     d.group_by.push((field, v.to_string()));
                 }
                 let nd = d.clone();
@@ -1169,7 +1169,10 @@ impl Calc {
             // **壊れたブックの逃げ道**(開いて修復。2026-08-22)
             "repair" => {
                 let Some((path, bytes)) = self.repair_pend.take() else { return };
-                if !v.starts_with("→ ") {
+                // **矢印では分けられません**(2026-08-26)。鍵が記号に
+                // なったので、拾う操作の鍵と名指しで比べます。控えの名前は
+                // ファイル名なので、この鍵と重なりません
+                if v != "salvage_what_can_read" {
                     // 控えから開く。**元のファイルは触りません**
                     let 控え = ops::history::list(Some(&path));
                     if let Some((_, q)) = 控え.into_iter().find(|(n, _)| *n == v) {
@@ -1180,7 +1183,7 @@ impl Calc {
                 let s = sheet::xlsx::salvage(&bytes);
                 if !s.any() {
                     self.status =
-                        ui::t!("Nothing could be salvaged (no part of it reads as a zip)").into();
+                        ui::t!("nothing_salvaged_no_part").into();
                     return;
                 }
                 match sheet::xlsx::read(std::io::Cursor::new(s.bytes)) {
@@ -1193,19 +1196,19 @@ impl Calc {
                             .iter()
                             .map(|(n, why)| {
                                 gpui::SharedString::from(
-                                    ui::tf!("{} could not be read ({})", n.clone(), why.clone())
+                                    ui::tf!("not_read_3", n.clone(), why.clone())
                                         .to_string(),
                                 )
                             })
                             .collect();
                         if notes.is_empty() {
                             notes.push(gpui::SharedString::from(
-                                ui::t!("Every part was salvaged (only the zip directory was broken)")
+                                ui::t!("every_part_salvaged_only")
                                     .to_string(),
                             ));
                         }
                         let status = ui::tf!(
-                            "Opened with {} salvaged parts ({} could not be salvaged). You cannot overwrite",
+                            "opened_salvaged_parts_not",
                             s.kept.len(),
                             s.lost.len()
                         )
@@ -1214,29 +1217,29 @@ impl Calc {
                     }
                     Err(e) => {
                         self.status =
-                            ui::tf!("It will not open even with the salvaged parts: {}", e).into()
+                            ui::tf!("not_open_even_salvaged", e).into()
                     }
                 }
             }
             // シナリオ。名前を押すとその値を書き戻す
             "scenario" => {
-                if v.starts_with("→ New scenario (the current values of the selected cells)…") {
+                if v.starts_with("new_scenario_current_values") {
                     let (a, b) = self.sel_rect();
                     let n = (b.row - a.row + 1) as usize * (b.col - a.col + 1) as usize;
                     if n > 64 {
                         self.status = ui::t!(
-                            "Too many cells selected (64 at most; select only the cells you want to vary)"
+                            "too_many_cells_selected"
                         )
                         .into();
                         return;
                     }
                     self.prompt = Some(("scenario-name", Editor::new("")));
                     self.status =
-                        ui::tf!("Type a name for the scenario and press Enter (the values of the {} selected cells are kept)", n)
+                        ui::tf!("type_name_scenario_press", n)
                             .into();
                     return;
                 }
-                if v.starts_with("→ Delete a scenario…") {
+                if v.starts_with("delete_scenario") {
                     let at = self.pop_anchor();
                     let items: Vec<(String, String)> = self
                         .sheet()
@@ -1244,7 +1247,7 @@ impl Calc {
                         .iter()
                         .map(|s| (s.name.clone(), s.name.clone()))
                         .collect();
-                    self.pick_note = Some(ui::t!("Choose the scenario to delete").into());
+                    self.pick_note = Some(ui::t!("choose_scenario_delete").into());
                     self.pick_kind = "scenario-del";
                     self.pick = Some((items, at));
                     return;
@@ -1261,7 +1264,7 @@ impl Calc {
                 crate::recalc_book(&mut self.book, self.active);
                 self.dirty = true;
                 self.status =
-                    ui::tf!("Applied the scenario “{}” ({} cells; Ctrl+Z undoes it)", name, sc.cells.len())
+                    ui::tf!("applied_scenario_cells_ctrl", name, sc.cells.len())
                         .into();
             }
             "scenario-del" => {
@@ -1270,7 +1273,7 @@ impl Calc {
                 self.sheet_mut().scenarios.retain(|s| s.name != name);
                 if self.sheet().scenarios.len() < 前 {
                     self.dirty = true;
-                    self.status = ui::tf!("Deleted the scenario “{}”", name).into();
+                    self.status = ui::tf!("deleted_scenario", name).into();
                 }
             }
             // レポートの接続。押すたびに入切して、一覧は開いたまま
@@ -1293,9 +1296,9 @@ impl Calc {
             }
             // おすすめを1つ選んだ。**ここで初めて作ります**
             "pivot-suggest" => {
-                if v.starts_with("Choose the fields myself (rows, then columns, then values)") {
+                if v.starts_with("choose_fields_myself_rows") {
                     self.status =
-                        ui::t!("Click the headers to lay out as rows (multiple OK), then「決定」(Done)").into();
+                        ui::t!("click_headers_lay_out").into();
                     self.pivot_pick("pivot-rows-pick");
                     return;
                 }
@@ -1310,7 +1313,7 @@ impl Calc {
                 self.insert_pivot(pend, value, sg.agg, cx);
             }
             "pivot-rows-pick" => {
-                if v == "→ Next (choose the columns)" {
+                if v == "next_choose_columns" {
                     let ok = self
                         .pivot_pend
                         .as_ref()
@@ -1318,9 +1321,9 @@ impl Calc {
                         .unwrap_or(false);
                     if !ok {
                         self.status =
-                            ui::t!("Pick at least one header for the rows").into();
+                            ui::t!("pick_least_one_header").into();
                     } else {
-                        self.status = ui::t!("Headers to spread as columns (optional), then「決定」(Done)").into();
+                        self.status = ui::t!("headers_spread_columns_optional").into();
                         self.pivot_pick("pivot-cols-pick");
                         return;
                     }
@@ -1336,8 +1339,8 @@ impl Calc {
                 return;
             }
             "pivot-cols-pick" => {
-                if v == "→ Done (columns are optional)" {
-                    self.status = ui::t!("Click the header to use as values (aggregation comes next)").into();
+                if v == "done_columns_optional" {
+                    self.status = ui::t!("click_header_use_values").into();
                     self.pivot_pick("pivot-val-pick");
                     return;
                 }
@@ -1362,7 +1365,7 @@ impl Calc {
                     if let Some(p) = &mut self.pivot_pend {
                         p.val_sel = v.to_string();
                     }
-                    self.status = ui::tf!("How should \"{}\" be aggregated?", v).into();
+                    self.status = ui::tf!("how_should_aggregated", v).into();
                     self.pivot_pick("pivot-agg-pick");
                     return;
                 }
@@ -1370,30 +1373,30 @@ impl Calc {
             "pivot-agg-pick" => {
                 let Some(pend) = self.pivot_pend.take() else { return };
                 let agg =
-                    pivot_aggs().iter().find(|(k, _)| *k == v).map(|(k, _)| *k).unwrap_or("Sum");
+                    pivot_aggs().iter().find(|(k, _)| *k == v).map(|(k, _)| *k).unwrap_or("sum");
                 let value = pend.val_sel.clone();
                 self.insert_pivot(pend, value, agg, cx);
             }
             // 並べ替えの「拡張しますか」(選択の横にデータが続いているとき)
             "sort-expand" => {
                 let asc = self.sort_pend.take().unwrap_or(true);
-                if v.starts_with("Expand the selection (the neighbouring columns move too)") {
+                if v.starts_with("expand_selection_neighbouring_columns") {
                     // 表全体をカーソル列で(見出しは据え置き — 従来の道)
                     self.sort_col(self.cursor.col, asc);
-                } else if v.starts_with("Sort the selection only (it will fall out of step with the neighbouring columns)") {
+                } else if v.starts_with("sort_selection_only_fall") {
                     let (a, b) = self.sel_rect();
                     self.sort_range_now(a, b, asc);
                 } else {
-                    self.status = ui::t!("Sort cancelled").into();
+                    self.status = ui::t!("sort_cancelled").into();
                 }
             }
             // 結合の4択(本家のドロップダウン)
             "merge-pick" => {
                 let kind = match v {
-                    "Merge across (row by row)" => "横方向",
-                    "Merge cells (leave alignment alone)" => "結合だけ",
-                    "Unmerge" => "解除",
-                    _ => "Centre",
+                    "merge_across_row_row" => "横方向",
+                    "merge_cells_leave_alignment" => "結合だけ",
+                    "unmerge" => "解除",
+                    _ => "centre",
                 };
                 self.merge_selection(kind);
                 if self.pick.is_some() {
@@ -1412,7 +1415,7 @@ impl Calc {
                 let c = code.clone();
                 self.fmt(move |f| f.number_format = Some(c.clone()));
                 self.status =
-                    ui::tf!("Currency set to \"{}\" (code: {})", label, code).into();
+                    ui::tf!("currency_set_code", label, code).into();
             }
             // 日付の形を選んだ
             "datefmt" => {
@@ -1423,20 +1426,20 @@ impl Calc {
                 };
                 let c = code.clone();
                 self.fmt(move |f| f.number_format = Some(c.clone()));
-                self.status = ui::tf!("Date style set to \"{}\" (code: {})", label, code).into();
+                self.status = ui::tf!("date_style_set_code", label, code).into();
             }
             "numfmt-pick" => {
                 // 「日付…」も例を約束しない — 日付の形を選ぶ一覧へ渡す
-                if v == "Date…" {
+                if v == "date_2" {
                     self.run_cmd("datefmt", cx);
                     return;
                 }
                 // 「通貨…」は記号を約束しない — 通貨を選ぶ一覧へ渡す
-                if v == "Currency…" {
+                if v == "currency_2" {
                     self.run_cmd("currency", cx);
                     return;
                 }
-                if v.starts_with("Other") {
+                if v.starts_with("other") {
                     // 書式コードの直打ち(カスタム書式)。今のコードを下敷きに
                     let cur = self
                         .sheet()
@@ -1452,9 +1455,9 @@ impl Calc {
                     // 鍵ではなく見出し(コードの方は書式コードそのもの — 訳さない)
                     self.status = match code {
                         Some(c) => {
-                            ui::tf!("Number format set to \"{}\" (code: {})", label, c).into()
+                            ui::tf!("number_format_set_code", label, c).into()
                         }
-                        None => ui::t!("Number format reset to General").into(),
+                        None => ui::t!("number_format_reset_general").into(),
                     };
                 }
             }
@@ -1481,35 +1484,35 @@ impl Calc {
                 }
                 if n == 0 {
                     self.undo_stack.pop();
-                    self.status = ui::t!("Nothing in the selection changes case").into();
+                    self.status = ui::t!("nothing_selection_changes_case").into();
                 } else {
                     self.dirty = true;
                     self.sync_input();
-                    self.status = ui::tf!("Changed case in {} cells", n).into();
+                    self.status = ui::tf!("changed_case_cells", n).into();
                 }
             }
             "orient-pick" => {
                 // **鍵をそのまま文に差し込まない。** 見出しを一緒に持って回る
                 let (deg, label): (Option<i32>, &'static str) = match v {
-                    "No rotation" => (Some(0), ui::t!("No rotation")),
-                    "Rotate up 45°" => (Some(45), ui::t!("Rotate up 45°")),
-                    "Rotate down 45°" => (Some(135), ui::t!("Rotate down 45°")),
-                    "Rotate up 90°" => (Some(90), ui::t!("Rotate up 90°")),
-                    "Rotate down 90°" => (Some(180), ui::t!("Rotate down 90°")),
-                    "Vertical (stack one character at a time)" => (Some(255), ui::t!("Vertical (stack one character at a time)")),
+                    "no_rotation" => (Some(0), ui::t!("no_rotation")),
+                    "rotate_up_45" => (Some(45), ui::t!("rotate_up_45")),
+                    "rotate_down_45" => (Some(135), ui::t!("rotate_down_45")),
+                    "rotate_up_90" => (Some(90), ui::t!("rotate_up_90")),
+                    "rotate_down_90" => (Some(180), ui::t!("rotate_down_90")),
+                    "vertical_stack_one_character" => (Some(255), ui::t!("vertical_stack_one_character")),
                     _ => (None, ""),
                 };
                 match deg {
                     Some(0) => {
                         self.fmt(|f| f.rotation = None);
-                        self.status = ui::t!("Text orientation reset").into();
+                        self.status = ui::t!("text_orientation_reset").into();
                     }
                     Some(d) => {
                         self.fmt(move |f| f.rotation = Some(d));
                         self.status = if d == 255 {
-                            ui::t!("Text stacked vertically").into()
+                            ui::t!("text_stacked_vertically").into()
                         } else {
-                            ui::tf!("Text set to {}", label).into()
+                            ui::tf!("text_set", label).into()
                         };
                     }
                     None => {
@@ -1520,7 +1523,7 @@ impl Calc {
                 }
             }
             "font-color" => {
-                if v.starts_with("Other") {
+                if v.starts_with("other") {
                     self.prompt = Some(("font-color-rgb", Editor::new("")));
                     return; // パネルの確定まで
                 }
@@ -1529,33 +1532,33 @@ impl Calc {
                     self.fmt(move |f| f.color = c.clone());
                     // 鍵ではなく見出し(訳した文に日本語を混ぜない)
                     self.status = if hx.is_some() {
-                        ui::tf!("Font colour set to {}", label).into()
+                        ui::tf!("font_colour_set", label).into()
                     } else {
-                        ui::t!("Font colour reset to automatic").into()
+                        ui::t!("font_colour_reset_automatic").into()
                     };
                 }
             }
             "fill-color" => {
-                if v.starts_with("Other") {
+                if v.starts_with("other") {
                     self.prompt = Some(("fill-color-rgb", Editor::new("")));
                     return; // パネルの確定まで
                 }
                 // 2段目へ(柄・グラデーション)。1段目と同じ場所に重ねる
-                if v == "Apply a pattern…" || v == "Gradient…" {
+                if v == "apply_pattern" || v == "gradient" {
                     let at = self
                         .pick
                         .as_ref()
                         .map(|(_, at)| *at)
                         .unwrap_or_else(|| self.pop_anchor());
-                    let grad = v.starts_with("Gradient");
+                    let grad = v.starts_with("gradient_2");
                     self.pick_kind = if grad { "fill-grad" } else { "fill-pattern" };
                     self.pick_note = Some(
-                        if grad { ui::t!("Gradient") } else { ui::t!("Pattern") }.into(),
+                        if grad { ui::t!("gradient_2") } else { ui::t!("pattern") }.into(),
                     );
                     self.pick = Some((menu(&if grad { grad_dirs() } else { fill_patterns() }), at));
                     return;
                 }
-                if v == "Pattern background colour…" {
+                if v == "pattern_background_colour" {
                     // **柄が無いときは効かない。そう言う** — 押して何も
                     // 起きないと、鍵が効かないのか柄が無いのか分からない
                     let has = self
@@ -1565,7 +1568,7 @@ impl Calc {
                         .unwrap_or(false);
                     if !has {
                         self.status =
-                            ui::t!("This cell has no pattern (pick one under “Apply a pattern” first)").into();
+                            ui::t!("cell_no_pattern_pick").into();
                         return;
                     }
                     self.prompt = Some(("fill-bg-rgb", Editor::new("")));
@@ -1583,9 +1586,9 @@ impl Calc {
                     });
                     // 鍵ではなく見出し(訳した文に日本語を混ぜない)
                     self.status = if hx.is_some() {
-                        ui::tf!("Fill set to {}", label).into()
+                        ui::tf!("fill_set", label).into()
                     } else {
-                        ui::t!("Fill removed").into()
+                        ui::t!("fill_removed").into()
                     };
                 }
             }
@@ -1605,7 +1608,7 @@ impl Calc {
                 });
                 let label = fill_patterns().iter().find(|(k, _)| *k == v).map(|(_, l)| *l).unwrap_or("");
                 self.status =
-                    ui::tf!("Pattern set to “{}” (the foreground is the current fill colour; change the background under “Pattern background colour”)", label).into();
+                    ui::tf!("pattern_set_foreground_current", label).into();
             }
             "fill-grad" => {
                 let Some((deg, path)) = grad_dir_of(v) else { return };
@@ -1623,7 +1626,7 @@ impl Calc {
                 });
                 let label = grad_dirs().iter().find(|(k, _)| *k == v).map(|(_, l)| *l).unwrap_or("");
                 self.status =
-                    ui::tf!("Gradient set to “{}” (from the current fill colour to white)", label).into();
+                    ui::tf!("gradient_set_current_fill", label).into();
             }
             "sheet-menu" => {
                 self.sheet_menu_action(v);
@@ -1639,7 +1642,7 @@ impl Calc {
                     if plugin {
                         match std::fs::read_to_string(&path) {
                             Ok(code) => self.run_python(code, cx),
-                            Err(e) => self.status = ui::tf!("Can't read: {}", e).into(),
+                            Err(e) => self.status = ui::tf!("cant_read", e).into(),
                         }
                     } else {
                         self.open_version(&path);
@@ -1664,7 +1667,7 @@ impl Calc {
         recalc_book(&mut self.book, self.active);
         self.dirty = true;
         self.sync_input();
-        self.status = ui::tf!("Entered into {}", p.a1()).into();
+        self.status = ui::tf!("entered_into", p.a1()).into();
     }
 
     pub(crate) fn menu_action(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
@@ -1706,12 +1709,12 @@ impl Calc {
                 recalc_book(&mut self.book, self.active);
                 self.dirty = true;
                 self.sync_input();
-                self.status = ui::tf!("{} cells cleared (contents and formatting)", n).into();
+                self.status = ui::tf!("cells_cleared_contents_formatting", n).into();
             }
             "clear-text" => {
                 self.checkpoint();
                 let n = self.clear_range();
-                self.status = ui::tf!("Contents of {} cells cleared (formatting kept)", n).into();
+                self.status = ui::tf!("contents_cells_cleared_formatting", n).into();
             }
             "clear-fmt" => self.run_cmd("clear", cx),
             // コメントとハイパーリンクだけを消す(本家の消去は5択)
@@ -1726,10 +1729,10 @@ impl Calc {
                 let n = before - sh.comments.len();
                 if n == 0 {
                     self.undo_stack.pop();
-                    self.status = ui::t!("No comments in that range").into();
+                    self.status = ui::t!("no_comments_range").into();
                 } else {
                     self.dirty = true;
-                    self.status = ui::tf!("Removed {} comments", n).into();
+                    self.status = ui::tf!("removed_comments", n).into();
                 }
             }
             "clear-link" => {
@@ -1743,27 +1746,27 @@ impl Calc {
                 let n = before - sh.links.len();
                 if n == 0 {
                     self.undo_stack.pop();
-                    self.status = ui::t!("No hyperlinks in that range").into();
+                    self.status = ui::t!("no_hyperlinks_range").into();
                 } else {
                     self.dirty = true;
-                    self.status = ui::tf!("Removed {} hyperlinks", n).into();
+                    self.status = ui::tf!("removed_hyperlinks", n).into();
                 }
             }
             "insrow" => {
                 self.rowcol(|s, p| s.insert_row(p.row));
-                self.status = ui::t!("Row inserted (formula references below were adjusted)").into();
+                self.status = ui::t!("row_inserted_formula_references").into();
             }
             "delrow" => {
                 self.rowcol(|s, p| s.remove_row(p.row));
-                self.status = ui::t!("Row deleted").into();
+                self.status = ui::t!("row_deleted").into();
             }
             "inscol" => {
                 self.rowcol(|s, p| s.insert_col(p.col));
-                self.status = ui::t!("Column inserted").into();
+                self.status = ui::t!("column_inserted").into();
             }
             "delcol" => {
                 self.rowcol(|s, p| s.remove_col(p.col));
-                self.status = ui::t!("Column deleted").into();
+                self.status = ui::t!("column_deleted").into();
             }
             "sort-asc" | "sort-desc" => self.sort_active(id == "sort-asc"),
             "sort-fill-top" | "sort-font-top" => self.sort_color_top(id == "sort-fill-top"),
@@ -1788,15 +1791,15 @@ impl Calc {
                 } else {
                     f.hide.insert(p.col, hide);
                 }
-                let label = if v.is_empty() { ui::t!("(blank)").to_string() } else { v };
-                self.status = ui::tf!("Showing only \"{}\" (change it from the header ▼)", label).into();
+                let label = if v.is_empty() { ui::t!("blank").to_string() } else { v };
+                self.status = ui::tf!("showing_only_change_header", label).into();
             }
             "filter-clear" => self.run_cmd("clear-filter", cx),
             "numfmt-more" => self.run_cmd("format", cx),
             "reapply" => {
                 // 値は動的に見ているので掛け直しは常に済んでいる — 数を言い直す
                 if let Some((total, shown)) = self.filter_counts() {
-                    self.status = ui::tf!("Filter reapplied — of {} rows, {} shown", total, shown).into();
+                    self.status = ui::tf!("filter_reapplied_rows_shown", total, shown).into();
                 }
             }
             // セル単位のシフト(挿入・削除)。結合をまたぐときは断られる
@@ -1816,7 +1819,7 @@ impl Calc {
                         self.dirty = true;
                         self.anchor = None;
                         self.sync_input();
-                        self.status = ui::tf!("{} cells shifted (references to the moved cells were adjusted)", n)
+                        self.status = ui::tf!("cells_shifted_references_moved", n)
                         .into();
                     }
                     Err(e) => {
@@ -1839,7 +1842,7 @@ impl Calc {
                     },
                 });
                 self.dirty = true;
-                self.status = ui::tf!("{}:{} — values below 0 shown in red", range.0.a1(), range.1.a1()).into();
+                self.status = ui::tf!("values_below_0_shown", range.0.a1(), range.1.a1()).into();
             }
             "cond-gt" => {
                 self.commit();
@@ -1872,7 +1875,7 @@ impl Calc {
                 self.commit();
                 let rules = &self.book.sheets[self.active].cond;
                 if rules.is_empty() {
-                    self.status = ui::t!("This sheet has no conditional formatting").into();
+                    self.status = ui::t!("sheet_no_conditional_formatting").into();
                 } else {
                     let at = self.pop_anchor();
                     // 番号・番地・規則の中身 — 帳票の側の値なので訳さない
@@ -1885,7 +1888,7 @@ impl Calc {
                             cond_kind_name(&r.kind)
                         )
                     }));
-                    self.pick_note = Some(ui::t!("Manage rules — click a rule to select it").into());
+                    self.pick_note = Some(ui::t!("manage_rules_click_rule").into());
                     self.pick_kind = "cond-manage-pick";
                     self.pick = Some((items, at));
                 }
@@ -1900,25 +1903,25 @@ impl Calc {
                         CondKind::Dup(false),
                         Some("9C0006".to_string()),
                         Some("FFC7CE".to_string()),
-                        ui::t!("Duplicate values shown in red").to_string(),
+                        ui::t!("duplicate_values_shown_red").to_string(),
                     ),
                     "cond-uniq" => (
                         CondKind::Dup(true),
                         None,
                         Some("E2EFDA".to_string()),
-                        ui::t!("Unique values filled").to_string(),
+                        ui::t!("unique_values_filled").to_string(),
                     ),
                     "cond-avg-above" => (
                         CondKind::Avg(false),
                         None,
                         Some("E2EFDA".to_string()),
-                        ui::t!("Above-average values filled").to_string(),
+                        ui::t!("above_average_values_filled").to_string(),
                     ),
                     _ => (
                         CondKind::Avg(true),
                         None,
                         Some("FCE4D6".to_string()),
-                        ui::t!("Below-average values filled").to_string(),
+                        ui::t!("below_average_values_filled").to_string(),
                     ),
                 };
                 self.book.sheets[self.active]
@@ -1944,7 +1947,7 @@ impl Calc {
                 });
                 let n = before - self.book.sheets[self.active].cond.len();
                 self.dirty = true;
-                self.status = ui::tf!("{} rules removed", n).into();
+                self.status = ui::tf!("rules_removed", n).into();
             }
             // 見出しの右クリック: 行・列の非表示と再表示
             "hide-rows" | "hide-cols" | "unhide-rows" | "unhide-cols" => self.hide_lines(id),
@@ -1979,16 +1982,16 @@ impl Calc {
                     None => Some(CommentList::default()),
                 };
                 self.status = if self.comment_list.is_some() {
-                    ui::t!("Comment list opened (the whole workbook; tap a row to jump there)").into()
+                    ui::t!("comment_list_opened_whole").into()
                 } else {
-                    ui::t!("Comment list closed").into()
+                    ui::t!("comment_list_closed").into()
                 };
             }
             // コメントの筋に返信を足す(本家の「返信を追加」)
             "comment-reply" => {
                 self.commit();
                 if !self.sheet().comments.contains_key(&self.cursor) {
-                    self.status = ui::t!("This cell has no comment").into();
+                    self.status = ui::t!("cell_no_comment").into();
                     return;
                 }
                 self.prompt = Some(("comment-reply", Editor::new("")));
@@ -1998,7 +2001,7 @@ impl Calc {
                 self.commit();
                 let p = self.cursor;
                 if !self.sheet().comments.contains_key(&p) {
-                    self.status = ui::t!("This cell has no comment").into();
+                    self.status = ui::t!("cell_no_comment").into();
                     return;
                 }
                 self.checkpoint();
@@ -2007,9 +2010,9 @@ impl Calc {
                 let now = th.done;
                 self.dirty = true;
                 self.status = if now {
-                    ui::t!("Marked as resolved").into()
+                    ui::t!("marked_resolved").into()
                 } else {
-                    ui::t!("Resolved mark removed").into()
+                    ui::t!("resolved_mark_removed").into()
                 };
             }
             "co-addcomment" => {
@@ -2050,15 +2053,15 @@ impl Calc {
         let (kind, said) = match id {
             "cond-bar" => (
                 CondKind::Bar("638EC6".into()),
-                ui::t!("Data bars added (bar length runs from min to max)").to_string(),
+                ui::t!("data_bars_added_bar").to_string(),
             ),
             "cond-scale" => (
                 CondKind::Scale("F8696B".into(), Some("FFEB84".into()), "63BE7B".into()),
-                ui::t!("Colour scale applied (low = red, high = green)").to_string(),
+                ui::t!("colour_scale_applied_low").to_string(),
             ),
             _ => (
                 CondKind::Icons("3Arrows".into()),
-                ui::t!("Three arrows added (low / middle / high)").to_string(),
+                ui::t!("three_arrows_added_low").to_string(),
             ),
         };
         self.book.sheets[self.active]
@@ -2099,18 +2102,18 @@ impl Calc {
             ],
             // 整列は2個から、分布は3個から(Ctrl+クリックで束ねる)
             "sh-bool" => vec![
-                ("sh-b-union", "Union", true),
-                ("sh-b-inter", "Intersect", true),
+                ("sh-b-union", "union", true),
+                ("sh-b-inter", "intersect", true),
                 ("sh-b-sub", "減算(主から控えを引く)", true),
             ],
             "sh-align" => {
                 let n = self.shape_sel.is_some() as usize + self.shape_multi.len();
                 vec![
-                    ("sh-al-l", "Align left", n >= 2),
+                    ("sh-al-l", "align_left", n >= 2),
                     ("sh-al-c", "左右中央揃え", n >= 2),
-                    ("sh-al-r", "Align right", n >= 2),
+                    ("sh-al-r", "align_right", n >= 2),
                     ("sh-al-t", "上揃え", n >= 2),
-                    ("sh-al-m", "Align middle", n >= 2),
+                    ("sh-al-m", "align_middle", n >= 2),
                     ("sh-al-b", "下揃え", n >= 2),
                     ("sh-dist-h", "横に分布", n >= 3),
                     ("sh-dist-v", "縦に分布", n >= 3),
@@ -2118,28 +2121,28 @@ impl Calc {
             }
             "clr" => vec![
                 // 本家の消去は5択(すべて/テキスト/書式/コメント/ハイパーリンク)
-                ("clear-all", "All", true),
+                ("clear-all", "all", true),
                 ("clear-text", "テキスト(書式は残す)", true),
                 ("clear-fmt", "書式(中身は残す)", true),
-                ("clear-comment", "Comment", !self.sheet().comments.is_empty()),
+                ("clear-comment", "comment", !self.sheet().comments.is_empty()),
                 ("clear-link", "ハイパーリンク", !self.sheet().links.is_empty()),
             ],
             // 本家の合計行のセル右の▼と同じ8択(SUBTOTAL の集計番号)
             "subtotal" => vec![
-                ("subt-9", "Sum", true),
-                ("subt-1", "Average", true),
-                ("subt-3", "Count", true),
-                ("subt-4", "Maximum", true),
-                ("subt-5", "Minimum", true),
-                ("subt-7", "StdDev", true),
-                ("subt-10", "Variance", true),
+                ("subt-9", "sum", true),
+                ("subt-1", "average", true),
+                ("subt-3", "count", true),
+                ("subt-4", "maximum", true),
+                ("subt-5", "minimum", true),
+                ("subt-7", "stddev", true),
+                ("subt-10", "variance", true),
                 ("subt-none", "なし(式を消す)", true),
             ],
             "sort" => {
                 let f = self.sheet().get(self.cursor).map(|c| c.fmt.clone()).unwrap_or_default();
                 vec![
-                    ("sort-asc", "Ascending", true),
-                    ("sort-desc", "Descending", true),
+                    ("sort-asc", "ascending", true),
+                    ("sort-desc", "descending", true),
                     ("sort-fill-top", "選択したセルの色を上に", f.fill.is_some()),
                     ("sort-font-top", "選択したフォントの色を上に", f.color.is_some()),
                 ]
@@ -2221,13 +2224,13 @@ impl Calc {
         if let Some((a, b)) = up.split_once(':') {
             if let (Some(pa), Some(pb)) = (Pos::parse(a), Pos::parse(b)) {
                 jump(self, pa, Some(pb));
-                self.status = ui::tf!("Selected {}", up).into();
+                self.status = ui::tf!("selected_2", up).into();
                 return;
             }
         }
         if let Some(p) = Pos::parse(&up) {
             jump(self, p, None);
-            self.status = ui::tf!("Moved to {}", p.a1()).into();
+            self.status = ui::tf!("moved", p.a1()).into();
             return;
         }
         // 定義済みの名前ならそこへ
@@ -2242,13 +2245,13 @@ impl Calc {
             if let Some((a, b)) = up.split_once(':') {
                 if let (Some(pa), Some(pb)) = (Pos::parse(a), Pos::parse(b)) {
                     jump(self, pa, Some(pb));
-                    self.status = ui::tf!("Selected name \"{}\" ({})", t, up).into();
+                    self.status = ui::tf!("selected_name", t, up).into();
                     return;
                 }
             }
             if let Some(p) = Pos::parse(&up) {
                 jump(self, p, None);
-                self.status = ui::tf!("Moved to name \"{}\" ({})", t, up).into();
+                self.status = ui::tf!("moved_name", t, up).into();
                 return;
             }
         }
@@ -2262,7 +2265,7 @@ impl Calc {
         self.checkpoint();
         self.sheet_mut().names.push(sheet::model::DefinedName::new(t.clone(), range.clone()));
         self.dirty = true;
-        self.status = ui::tf!("Assigned the name \"{}\" to {} (recall it from the name box)", t, range).into();
+        self.status = ui::tf!("assigned_name_recall_name", t, range).into();
     }
 
     /// 式の直入力の支援。=を打っている間だけ:
@@ -2361,7 +2364,7 @@ impl Calc {
         let Some(d) = self.fn_dlg.take() else { return };
         let list = fn_filtered(d.search.text(), d.group);
         let Some(f) = list.get(d.sel.min(list.len().saturating_sub(1))).copied() else {
-            self.status = ui::t!("No function matches").into();
+            self.status = ui::t!("no_function_matches").into();
             return;
         };
         let names = parse_fn_args(f.args());
@@ -2376,7 +2379,7 @@ impl Calc {
         });
         self.fn_args_recalc();
         self.status = ui::t!(
-            "Function arguments: Tab for the next field. Click a cell to insert a reference. Enter to build the formula")
+            "function_arguments_tab_next")
         .into();
     }
 
@@ -2423,7 +2426,7 @@ impl Calc {
             self.input.move_to(end, false);
         }
         self.edit_armed = true;
-        self.status = ui::t!("Formula inserted (Enter to confirm / Esc to cancel)").into();
+        self.status = ui::t!("formula_inserted_enter_confirm").into();
     }
 
     /// F2 = このセルを編集(次の打鍵が**追記**になる。Excel と同じ)
@@ -2433,7 +2436,7 @@ impl Calc {
         }
         self.edit_armed = true;
         self.input.move_to(self.input.text().len(), false);
-        self.status = ui::t!("Editing: typing appends to the cell (Esc to cancel)").into();
+        self.status = ui::t!("editing_typing_appends_cell").into();
         cx.notify();
     }
 
@@ -2503,17 +2506,17 @@ impl Calc {
             })
             .collect();
         items.extend(menu(&[
-            ui::item!("→ Apply (filter)"),
-            ui::item!("→ Show everything again"),
-            ui::item!("→ Filter by label…"),
-            ui::item!("→ Filter by value…"),
-            ui::item!("→ Group…"),
-            ui::item!("→ Sort…"),
+            ui::item!("apply_filter"),
+            ui::item!("show_everything_again"),
+            ui::item!("filter_label"),
+            ui::item!("filter_value"),
+            ui::item!("group"),
+            ui::item!("sort"),
         ]));
         let at = self.pop_anchor();
         let pname = self.book.pivots.get(pi).map(|d| d.name.clone()).unwrap_or_default();
         self.pick_note = Some(
-            ui::tf!("Filter of {} — «{}» (☑ shown / ☐ hidden)", pname, field).into(),
+            ui::tf!("filter_shown_hidden", pname, field).into(),
         );
         self.pick_kind = "pivot-filter-pick";
         self.pick = Some((items, at));
@@ -2532,7 +2535,7 @@ impl Calc {
             .unwrap_or("");
         let range = inner.split_once(',').map(|(_, r)| r).unwrap_or(inner).trim().to_string();
         if range.is_empty() {
-            self.status = ui::t!("Could not read a range from the formula").into();
+            self.status = ui::t!("not_read_range_formula").into();
             return;
         }
         self.commit();
@@ -2542,23 +2545,23 @@ impl Calc {
             cell.formula = None;
             cell.value = sheet::Value::Empty;
             self.book.sheets[self.active].set(p, cell);
-            self.status = ui::t!("Removed the total formula (format kept)").into();
+            self.status = ui::t!("removed_total_formula_format").into();
         } else {
             let v = sheet::Cell::input(&format!("=SUBTOTAL({kind},{range})"));
             cell.formula = v.formula;
             cell.value = v.value;
             self.book.sheets[self.active].set(p, cell);
             let name = match kind {
-                "1" => ui::t!("Average"),
-                "3" => ui::t!("Count"),
-                "4" => ui::t!("Maximum"),
-                "5" => ui::t!("Minimum"),
-                "7" => ui::t!("StdDev"),
-                "10" => ui::t!("Variance"),
-                _ => ui::t!("Sum"),
+                "1" => ui::t!("average"),
+                "3" => ui::t!("count"),
+                "4" => ui::t!("maximum"),
+                "5" => ui::t!("minimum"),
+                "7" => ui::t!("stddev"),
+                "10" => ui::t!("variance"),
+                _ => ui::t!("sum"),
             };
             self.status =
-                ui::tf!("Changed {} over {} to: {} (filtered-out rows are skipped)", p.a1(), range, name).into();
+                ui::tf!("changed_over_filtered_out", p.a1(), range, name).into();
         }
         recalc_book(&mut self.book, self.active);
         self.dirty = true;
@@ -2580,7 +2583,7 @@ impl Calc {
             }
         }
         if vals.len() < 2 {
-            self.status = ui::t!("At least two numbers are needed").into();
+            self.status = ui::t!("least_two_numbers_needed").into();
             return;
         }
         let (lo, hi) = vals
@@ -2663,12 +2666,12 @@ impl Calc {
         });
         self.dirty = true;
         let said = match kind {
-            "spark-col" => ui::t!("Column sparkline"),
-            "spark-wl" => ui::t!("Win/loss sparkline"),
-            _ => ui::t!("Line sparkline"),
+            "spark-col" => ui::t!("column_sparkline"),
+            "spark-wl" => ui::t!("win_loss_sparkline"),
+            _ => ui::t!("line_sparkline"),
         };
         self.status = ui::tf!(
-            "Placed a {} at {} (a fixed picture of the current values; recreate it after the data changes)",
+            "placed_fixed_picture_current",
             said, at.a1()
         )
         .into();
@@ -2688,14 +2691,14 @@ impl Calc {
         }
         // 下の2つは受け側(apply_pick)も同じ ui::t! で組み直して照合する —
         // 鍵と見出しを分けず、両端で同じ字にしておく
-        let header_label = ui::t!("First row is a header (keep it)").to_string();
+        let header_label = ui::t!("first_row_header_keep").to_string();
         items.push((
             header_label.clone(),
             format!("{} {}", if *header { "☑" } else { "☐" }, header_label),
         ));
-        let del = format!("→ {}", ui::t!("Delete"));
+        let del = format!("→ {}", ui::t!("delete"));
         items.push((del.clone(), del));
-        self.pick_note = Some(ui::t!("Remove duplicates — columns to compare (click to toggle)").into());
+        self.pick_note = Some(ui::t!("remove_duplicates_columns_compare").into());
         self.pick_kind = "dedup-pick";
         self.pick = Some((items, at));
     }
@@ -2756,7 +2759,7 @@ impl Calc {
             let mut すべて: Vec<String> = (a.row + 1..=b.row)
                 .map(|r| match sh.get(Pos::new(r, c2)).map(|x| x.value.display()) {
                     Some(v) if !v.is_empty() => v,
-                    _ => ui::t!("(blank)").to_string(),
+                    _ => ui::t!("blank").to_string(),
                 })
                 .collect();
             すべて.sort();
@@ -2788,7 +2791,7 @@ impl Calc {
             押した += 1;
         }
         if 押した > 0 {
-            self.status = ui::tf!("{} connected PivotTables were filtered the same way", 押した).into();
+            self.status = ui::tf!("connected_pivottables_filtered_same", 押した).into();
         }
     }
 
@@ -2810,9 +2813,9 @@ impl Calc {
         sl.sel.clear();
         let 粒 = crate::util::slicer_grain_label(k);
         self.status = if k.is_empty() {
-            ui::t!("Listing the values themselves (the filter was cleared)").into()
+            ui::t!("listing_values_themselves_filter").into()
         } else {
-            ui::tf!("Grouping the dates by {} (the filter was cleared)", 粒).into()
+            ui::tf!("grouping_dates_filter_cleared", 粒).into()
         };
         self.slicer_push_to_pivots(self.slicer_sel, cx);
     }
@@ -2820,12 +2823,12 @@ impl Calc {
     /// **レポートの接続** — このスライサーをどのピボットにつなぐかを選ぶ一覧。
     pub(crate) fn slicer_refs_pick(&mut self) {
         let Some(sl) = self.slicers.get(self.slicer_sel) else {
-            self.status = ui::t!("Select a slicer first").into();
+            self.status = ui::t!("select_slicer_first").into();
             return;
         };
         if self.book.pivots.is_empty() {
             self.status =
-                ui::t!("This workbook has no PivotTable (make one first)").into();
+                ui::t!("workbook_no_pivottable_make").into();
             return;
         }
         let 繋ぎ = sl.pivots.clone();
@@ -2841,7 +2844,7 @@ impl Calc {
             })
             .collect();
         self.pick_note =
-            Some(ui::t!("Filtering with this slicer filters the connected PivotTables the same way").into());
+            Some(ui::t!("filtering_slicer_filters_connected").into());
         self.pick_kind = "slicer-refs";
         self.pick = Some((items, at));
     }
@@ -2875,10 +2878,10 @@ impl Calc {
             .enumerate()
             .map(|(i, s)| (format!("#{i}"), crate::util::pivot_suggest_label(s)))
             .collect();
-        items.extend(menu(&[ui::item!("Choose the fields myself (rows, then columns, then values)")]));
+        items.extend(menu(&[ui::item!("choose_fields_myself_rows")]));
         self.pivot_suggests = 候補;
         self.pick_note =
-            Some(ui::t!("Layouts your table can make. Nothing is built until you press one").into());
+            Some(ui::t!("layouts_table_can_make").into());
         self.pick_kind = "pivot-suggest";
         self.pick = Some((items, at));
         true
@@ -2898,8 +2901,8 @@ impl Calc {
                         format!("{} {}", if on { "☑" } else { "☐" }, h),
                     ));
                 }
-                items.extend(menu(&[ui::item!("→ Next (choose the columns)")]));
-                ui::t!("Pivot 1/4 — headers for the rows (click to toggle, multiple OK)").into()
+                items.extend(menu(&[ui::item!("next_choose_columns")]));
+                ui::t!("pivot_1_4_headers").into()
             }
             "pivot-cols-pick" => {
                 for h in pend.headers.iter().filter(|h| !pend.rows_sel.contains(h)) {
@@ -2909,17 +2912,17 @@ impl Calc {
                         format!("{} {}", if on { "☑" } else { "☐" }, h),
                     ));
                 }
-                items.extend(menu(&[ui::item!("→ Done (columns are optional)")]));
-                ui::t!("Pivot 2/4 — headers for the columns (click to toggle, optional)").into()
+                items.extend(menu(&[ui::item!("done_columns_optional")]));
+                ui::t!("pivot_2_4_headers").into()
             }
             "pivot-val-pick" => {
                 items.extend(plain(pend.headers.clone()));
-                ui::t!("Pivot 3/4 — one header for the values").into()
+                ui::t!("pivot_3_4_one").into()
             }
             _ => {
                 // 集計の名はピボットの定義に書き込む字 — 鍵は訳さず、画面は見出し
                 items.extend(menu(&pivot_aggs()));
-                ui::tf!("Pivot 4/4 — how to aggregate \"{}\"", pend.val_sel).into()
+                ui::tf!("pivot_4_4_how", pend.val_sel).into()
             }
         };
         self.pick_note = Some(note);
@@ -2940,7 +2943,7 @@ impl Calc {
                 (k.to_string(), label)
             })
             .collect();
-        self.pick_note = Some(ui::t!("Line style (goes into the pen; takes effect from the next borders)").into());
+        self.pick_note = Some(ui::t!("line_style_goes_into").into());
         self.pick_kind = "border-style-pick";
         self.pick = Some((items, at));
     }
@@ -2950,8 +2953,8 @@ impl Calc {
         let at = self.pop_anchor();
         let mut items: Vec<(String, String)> =
             font_colors().iter().map(|(k, l, _)| (k.to_string(), l.to_string())).collect();
-        items.extend(menu(&[ui::item!("Other (type RRGGBB)…")]));
-        self.pick_note = Some(ui::t!("Line colour (goes into the pen)").into());
+        items.extend(menu(&[ui::item!("other_type_rrggbb")]));
+        self.pick_note = Some(ui::t!("line_colour_goes_into").into());
         self.pick_kind = "border-color-pick";
         self.pick = Some((items, at));
     }
@@ -2967,35 +2970,35 @@ impl Calc {
                 let mut cell = sh.get(p).cloned().unwrap_or_default();
                 let bd = &mut cell.fmt.borders;
                 match which {
-                    "Bottom border" => {
+                    "bottom_border" => {
                         if r == b.row { bd.bottom = e }
                     }
-                    "Top border" => {
+                    "top_border" => {
                         if r == a.row { bd.top = e }
                     }
-                    "Left border" => {
+                    "left_border" => {
                         if c == a.col { bd.left = e }
                     }
-                    "Right border" => {
+                    "right_border" => {
                         if c == b.col { bd.right = e }
                     }
-                    "Outline" => {
+                    "outline" => {
                         if r == a.row { bd.top = e }
                         if r == b.row { bd.bottom = e }
                         if c == a.col { bd.left = e }
                         if c == b.col { bd.right = e }
                     }
-                    "All borders (grid)" => {
+                    "all_borders_grid" => {
                         *bd = sheet::model::Borders {
                             top: e, bottom: e, left: e, right: e,
                         };
                     }
                     // 内側だけ(外周には引かない)— 帳票の中身の区切り
-                    "Inside vertical border" => {
+                    "inside_vertical_border" => {
                         if c > a.col { bd.left = e }
                         if c < b.col { bd.right = e }
                     }
-                    "Inside horizontal border" => {
+                    "inside_horizontal_border" => {
                         if r > a.row { bd.top = e }
                         if r < b.row { bd.bottom = e }
                     }
@@ -3007,7 +3010,7 @@ impl Calc {
         self.dirty = true;
         // 引き当ては鍵で済んだ。報せるのは**見出し**(訳された名前)
         let label = crate::util::border_kind_label(which);
-        self.status = ui::tf!("Borders: {} applied to {}:{} (Ctrl+Z undoes it)", label, a.a1(), b.a1()).into();
+        self.status = ui::tf!("borders_applied_ctrl_z", label, a.a1(), b.a1()).into();
     }
 
     /// 「データの入力規則」のパネルを開く(いまの規則を下敷きに)
@@ -3147,7 +3150,7 @@ impl Calc {
                 let text = f(0);
                 if text.is_empty() {
                     self.status =
-                        ui::t!("Write the source values (e.g. A,B,C or =D2:D5)").into();
+                        ui::t!("write_source_values_e").into();
                     self.dv_dlg = Some(d);
                     cx.notify();
                     return;
@@ -3160,7 +3163,7 @@ impl Calc {
                 if v.options(self.sheet()).is_empty() {
                     // 読めない規則を作らない(できないものを、できるように見せない)
                     self.status =
-                        ui::t!("Can't read the choices (e.g. 甲,乙,丙 or =D2:D5)").into();
+                        ui::t!("cant_read_choices_e").into();
                     self.dv_dlg = Some(d);
                     cx.notify();
                     return;
@@ -3175,7 +3178,7 @@ impl Calc {
             k => {
                 let ops = dv_ops();
                 let (opk, _) = ops[d.op.min(ops.len() - 1)];
-                let need2 = matches!(opk, "between" | "notBetween");
+                let need2 = matches!(opk, "between_2" | "notBetween");
                 // IME の全角の数・記号は半角にならす(打ち直させない)
                 let norm = |t: String| -> String {
                     t.chars()
@@ -3191,7 +3194,7 @@ impl Calc {
                 };
                 let (f1, f2) = (norm(f(0)), norm(f(1)));
                 if f1.is_empty() || (need2 && f2.is_empty()) {
-                    self.status = ui::t!("Write the condition value (ASCII digits)").into();
+                    self.status = ui::t!("write_condition_value_ascii").into();
                     self.dv_dlg = Some(d);
                     cx.notify();
                     return;
@@ -3237,25 +3240,25 @@ impl Calc {
         match new_v {
             Some(v) => {
                 let said = if v.kind == "list" {
-                    ui::tf!("Options: {}", v.options(self.sheet()).join(" / ")).to_string()
+                    ui::tf!("options", v.options(self.sheet()).join(" / ")).to_string()
                 } else if v.kind.is_empty() {
-                    ui::t!("Message only (values not restricted)").to_string()
+                    ui::t!("message_only_values_not").to_string()
                 } else {
                     v.describe()
                 };
                 self.book.sheets[self.active].validations.push(v);
                 self.status = ui::tf!(
-                    "Validation applied to {}:{} ({}; kept in the xlsx on save)",
+                    "validation_applied_kept_xlsx",
                     a.a1(), b.a1(), said
                 )
                 .into();
             }
             None if had => {
-                self.status = ui::t!("Validation removed from this range").into();
+                self.status = ui::t!("validation_removed_range").into();
             }
             None => {
                 self.undo_stack.pop();
-                self.status = ui::t!("No validation rule (nothing changed)").into();
+                self.status = ui::t!("no_validation_rule_nothing").into();
             }
         }
         self.dirty = true;
@@ -3304,9 +3307,9 @@ impl Calc {
     fn filter_note(&mut self) {
         self.status = match self.filter_counts() {
             Some((total, shown)) => {
-                ui::tf!("Filtering — of {} rows, {} shown (display only; not saved)", total, shown).into()
+                ui::tf!("filtering_rows_shown_display", total, shown).into()
             }
-            None => ui::t!("No filter (everything visible)").into(),
+            None => ui::t!("no_filter_everything_visible_2").into(),
         };
     }
 
@@ -3325,7 +3328,7 @@ impl Calc {
         }
         if self.quit_ask {
             self.quit_ask = false;
-            self.status = ui::t!("Quit cancelled").into();
+            self.status = ui::t!("quit_cancelled").into();
             cx.notify();
             return;
         }
@@ -3340,13 +3343,13 @@ impl Calc {
         // 会話の欄は Esc で焦点を返す(パネルは開いたまま — 表へ戻るだけ)
         if self.chat_focus {
             self.chat_focus = false;
-            self.status = ui::t!("Back to the sheet (the conversation panel stays open)").into();
+            self.status = ui::t!("back_sheet_conversation_panel").into();
             cx.notify();
             return;
         }
         // キーヒントはいちばん先に畳む(重なっている物の最前)
         if self.key_hint.take().is_some() {
-            self.status = ui::t!("Key hints closed").into();
+            self.status = ui::t!("key_hints_closed").into();
             cx.notify();
             return;
         }
@@ -3366,7 +3369,7 @@ impl Calc {
         self.hf_pend = None; // ヘッダー/フッターの聞き取りも
         self.name_pend = None; // 名前マネージャーの選択も
         if self.brush.take().is_some() {
-            self.status = ui::t!("Format painting cancelled").into();
+            self.status = ui::t!("format_painting_cancelled").into();
         }
         self.menu_head = None; // 見出しメニューの印も畳む
         // 親を通らずに開いた子の品書きは、子と親をまとめて閉じる。
@@ -3390,14 +3393,14 @@ impl Calc {
                 d.menu = 0;
             } else {
                 self.dv_dlg = None;
-                self.status = ui::t!("Validation cancelled").into();
+                self.status = ui::t!("validation_cancelled").into();
             }
             cx.notify();
             return;
         }
         if self.tool.take().is_some() {
             self.ink_cur = None;
-            self.status = ui::t!("Back to cell operations").into();
+            self.status = ui::t!("back_cell_operations").into();
         }
         self.shape_multi.clear();
         if self.filter_panel.take().is_some()
@@ -3424,7 +3427,7 @@ impl Calc {
             // 打ちかけを捨てて、セルの保存内容に戻す
             // (入力規則で堰き止められたときの逃げ道でもある)
             self.sync_input();
-            self.status = ui::t!("Input cancelled").into();
+            self.status = ui::t!("input_cancelled").into();
             cx.notify();
         } else if self.edit_armed {
             // F2 だけ押して何も打っていない — 編集をやめる
@@ -3442,7 +3445,7 @@ impl Calc {
             "csv-delim" => {
                 let t = text.trim();
                 let Some(c0) = t.chars().next() else {
-                    self.status = ui::t!("Type one delimiter character (e.g. |)").into();
+                    self.status = ui::t!("type_one_delimiter_character").into();
                     self.prompt = Some((kind, Editor::new("")));
                     return;
                 };
@@ -3454,7 +3457,7 @@ impl Calc {
             // テキスト取り込み: 置き場所(A1 の形)
             "csv-dest" => {
                 let Some(p2) = Pos::parse(text.trim()) else {
-                    self.status = ui::t!("Not a valid cell (use the B12 form)").into();
+                    self.status = ui::t!("not_valid_cell_use").into();
                     self.prompt = Some((kind, Editor::new(text.trim())));
                     return;
                 };
@@ -3469,7 +3472,7 @@ impl Calc {
                 if t.is_empty() {
                     self.book.calc_iter = None;
                     self.dirty = true;
-                    self.status = ui::t!("Iterative calculation off (circular references show #CIRC! again)").into();
+                    self.status = ui::t!("iterative_calculation_off_circular").into();
                     return;
                 }
                 let mut it = t.split_whitespace();
@@ -3485,13 +3488,13 @@ impl Calc {
                         recalc_book(&mut self.book, self.active);
                         self.sync_input();
                         self.status = ui::tf!(
-                            "Iterative calculation on (max {} passes, until change ≤ {}) — circular references are solved by iteration",
+                            "iterative_calculation_max_passes",
                             n, d
                         )
                         .into();
                     }
                     _ => {
-                        self.status = ui::t!("Use the form \"100 0.001\" (count must be ≥ 1)").into();
+                        self.status = ui::t!("use_form_100_0").into();
                         self.prompt = Some((kind, Editor::new(t)));
                     }
                 }
@@ -3502,7 +3505,7 @@ impl Calc {
                 let Some((pi, field, _)) = self.pivot_flt.take() else { return };
                 let t = text.trim();
                 if t.is_empty() {
-                    self.status = ui::t!("The condition is empty (e.g. contains Tokyo)").into();
+                    self.status = ui::t!("condition_empty_e_g").into();
                     return;
                 }
                 let (op, word) = match t.split_once(char::is_whitespace) {
@@ -3541,14 +3544,14 @@ impl Calc {
                         }
                         _ => {
                             self.status =
-                                ui::t!("Use the form \"> 1000\" (operators: > >= < <= =)").into();
+                                ui::t!("use_form_1000_operators").into();
                             self.prompt = Some((kind, Editor::new(t)));
                             self.pivot_flt = Some((pi, String::new(), Default::default()));
                             return;
                         }
                     };
                     let Ok(th) = num.parse::<f64>() else {
-                        self.status = ui::t!("The threshold is not a number").into();
+                        self.status = ui::t!("threshold_not_number").into();
                         self.prompt = Some((kind, Editor::new(t)));
                         self.pivot_flt = Some((pi, String::new(), Default::default()));
                         return;
@@ -3562,13 +3565,13 @@ impl Calc {
             "pivot-group-width" => {
                 let Some((pi, field, _)) = self.pivot_flt.take() else { return };
                 let Ok(w) = text.trim().parse::<f64>() else {
-                    self.status = ui::t!("The width is not a number (e.g. 100)").into();
+                    self.status = ui::t!("width_not_number_e").into();
                     self.prompt = Some((kind, Editor::new(text.trim())));
                     self.pivot_flt = Some((pi, field, Default::default()));
                     return;
                 };
                 if w <= 0.0 {
-                    self.status = ui::t!("The width must be greater than 0").into();
+                    self.status = ui::t!("width_must_greater_than").into();
                     self.prompt = Some((kind, Editor::new(text.trim())));
                     self.pivot_flt = Some((pi, field, Default::default()));
                     return;
@@ -3596,20 +3599,20 @@ impl Calc {
                         }
                     }
                     self.dirty = true;
-                    self.status = ui::t!("Reset to the default size").into();
+                    self.status = ui::t!("reset_default_size").into();
                     return;
                 }
                 let Ok(v) = t.parse::<f32>() else {
-                    self.status = ui::t!("Use ASCII digits (e.g. 12.5)").into();
+                    self.status = ui::t!("use_ascii_digits_e").into();
                     self.prompt = Some((kind, Editor::new(t)));
                     return;
                 };
                 let ok = if is_col { (0.0..=255.0).contains(&v) } else { (0.0..=409.0).contains(&v) };
                 if !ok {
                     self.status = if is_col {
-                        ui::t!("Column width must be 0–255").into()
+                        ui::t!("column_width_must_0").into()
                     } else {
-                        ui::t!("Row height must be 0–409").into()
+                        ui::t!("row_height_must_0").into()
                     };
                     self.prompt = Some((kind, Editor::new(t)));
                     return;
@@ -3619,12 +3622,12 @@ impl Calc {
                     for c in a.col..=b.col {
                         self.sheet_mut().col_width.insert(c, v);
                     }
-                    self.status = ui::tf!("Column width set to {} ({} columns)", v, b.col - a.col + 1).into();
+                    self.status = ui::tf!("column_width_set_columns", v, b.col - a.col + 1).into();
                 } else {
                     for r in a.row..=b.row {
                         self.sheet_mut().row_height.insert(r, v);
                     }
-                    self.status = ui::tf!("Row height set to {} pt ({} rows)", v, b.row - a.row + 1).into();
+                    self.status = ui::tf!("row_height_set_pt", v, b.row - a.row + 1).into();
                 }
                 self.dirty = true;
             }
@@ -3637,7 +3640,7 @@ impl Calc {
                     None => Pos::parse(&t).is_some(),
                 };
                 if !ok {
-                    self.status = ui::t!("Can't read the location (B12 or A1:C9)").into();
+                    self.status = ui::t!("cant_read_location_b12").into();
                     self.name_pend = Some(name);
                     self.prompt = Some(("name-range", Editor::new(&t)));
                     return;
@@ -3649,7 +3652,7 @@ impl Calc {
                 }
                 recalc_book(&mut self.book, self.active);
                 self.dirty = true;
-                self.status = ui::tf!("Name «{}» set to {}", name, t).into();
+                self.status = ui::tf!("name_set", name, t).into();
             }
             // ヘッダー/フッターの1区分(空 Enter = その区分を消す)
             "hf-edit" => {
@@ -3672,9 +3675,9 @@ impl Calc {
                 }
                 self.dirty = true;
                 self.status = if text.is_empty() {
-                    ui::t!("That section removed").into()
+                    ui::t!("section_removed").into()
                 } else {
-                    ui::t!("Added to the header/footer (visible in print and PDF; &P = page, &N = total)").into()
+                    ui::t!("added_header_footer_visible").into()
                 };
             }
             // 文字の色・塗りの直指定(RRGGBB)。空 Enter = 自動/塗りなし
@@ -3690,12 +3693,12 @@ impl Calc {
                         self.recent_symbols.insert(0, s.clone());
                         self.recent_symbols.truncate(12);
                         self.status =
-                            ui::tf!("Inserted \"{}\" (U+{})", s, t.to_uppercase()).into();
+                            ui::tf!("inserted_u", s, t.to_uppercase()).into();
                     }
                     None => {
                         // **黙って何も入れない、をしない**
                         self.status =
-                            ui::t!("Can't read that Unicode (hexadecimal — 3012 is 〒, for example)").into();
+                            ui::t!("cant_read_unicode_hexadecimal").into();
                         self.prompt = Some(("symbol-hex", Editor::new(t)));
                     }
                 }
@@ -3706,22 +3709,22 @@ impl Calc {
                 if t.is_empty() {
                     if is_font {
                         self.fmt(|f| f.color = None);
-                        self.status = ui::t!("Font colour reset to automatic").into();
+                        self.status = ui::t!("font_colour_reset_automatic").into();
                     } else {
                         self.fmt(|f| f.fill = None);
-                        self.status = ui::t!("Fill removed").into();
+                        self.status = ui::t!("fill_removed").into();
                     }
                 } else if t.len() == 6 && u32::from_str_radix(&t, 16).is_ok() {
                     let c = Some(t.clone());
                     if is_font {
                         self.fmt(move |f| f.color = c.clone());
-                        self.status = ui::tf!("Font colour set to {}", format!("#{t}")).into();
+                        self.status = ui::tf!("font_colour_set", format!("#{t}")).into();
                     } else {
                         self.fmt(move |f| f.fill = c.clone());
-                        self.status = ui::tf!("Fill set to {}", format!("#{t}")).into();
+                        self.status = ui::tf!("fill_set", format!("#{t}")).into();
                     }
                 } else {
-                    self.status = ui::t!("Can't read the colour (6 hex digits RRGGBB, e.g. FF0000)").into();
+                    self.status = ui::t!("cant_read_colour_6").into();
                     self.prompt = Some((kind, Editor::new(&t)));
                 }
             }
@@ -3730,21 +3733,21 @@ impl Calc {
                 let t = text.trim();
                 ui::settings::set("user_name", t);
                 self.status = if t.is_empty() {
-                    ui::t!("You stay anonymous (no name goes into the comments you write from now on)").into()
+                    ui::t!("stay_anonymous_no_name").into()
                 } else {
-                    ui::tf!("Comments you write from now on will be signed “{}” (already written ones do not change)", t).into()
+                    ui::tf!("comments_write_now_signed", t).into()
                 };
             }
             // コメントへの返信。**筋の後ろに足す**(頭の文は書き換えない)
             "comment-reply" => {
                 let t = text.trim().to_string();
                 if t.is_empty() {
-                    self.status = ui::t!("The reply is empty (nothing was added)").into();
+                    self.status = ui::t!("reply_empty_nothing_added").into();
                     return;
                 }
                 let p = self.cursor;
                 let Some(th) = self.book.sheets[self.active].comments.get_mut(&p) else {
-                    self.status = ui::t!("This cell has no comment").into();
+                    self.status = ui::t!("cell_no_comment").into();
                     return;
                 };
                 // 名乗りは共同編集の名前を使う。無ければ空のまま —
@@ -3753,20 +3756,20 @@ impl Calc {
                 th.entries.push(sheet::model::CommentEntry { who, when: String::new(), text: t });
                 self.dirty = true;
                 self.status =
-                    ui::tf!("Replied to the comment on {} (kept on save)", p.a1()).into();
+                    ui::tf!("replied_comment_kept_save", p.a1()).into();
             }
             // 柄の地の色(patternFill の bgColor)。柄が掛かっているときだけ意味を持つ
             "fill-bg-rgb" => {
                 let t = text.trim().trim_start_matches('#').to_uppercase();
                 if t.is_empty() {
                     self.fmt(|f| f.fill_bg = Some("FFFFFF".into()));
-                    self.status = ui::t!("Pattern background back to white").into();
+                    self.status = ui::t!("pattern_background_back_white").into();
                 } else if t.len() == 6 && u32::from_str_radix(&t, 16).is_ok() {
                     let c = Some(t.clone());
                     self.fmt(move |f| f.fill_bg = c.clone());
-                    self.status = ui::tf!("Pattern background set to {}", format!("#{t}")).into();
+                    self.status = ui::tf!("pattern_background_set", format!("#{t}")).into();
                 } else {
-                    self.status = ui::t!("Can't read the colour (6 hex digits RRGGBB, e.g. FF0000)").into();
+                    self.status = ui::t!("cant_read_colour_6").into();
                     self.prompt = Some((kind, Editor::new(&t)));
                 }
             }
@@ -3784,14 +3787,14 @@ impl Calc {
                         };
                         self.fmt(move |f| f.rotation = enc);
                         self.status = if d == 0 {
-                            ui::t!("Text orientation reset").into()
+                            ui::t!("text_orientation_reset").into()
                         } else {
-                            ui::tf!("Text rotated {} degrees (positive is upward)", d).into()
+                            ui::tf!("text_rotated_degrees_positive", d).into()
                         };
                     }
                     _ => {
                         self.status =
-                            ui::t!("Can't read the angle (a number from -90 to 90; vertical is in the list)").into();
+                            ui::t!("cant_read_angle_number").into();
                         self.prompt = Some(("text-angle", Editor::new(&t)));
                     }
                 }
@@ -3801,17 +3804,17 @@ impl Calc {
                 let t = text.trim().trim_start_matches('#').to_string();
                 if t.is_empty() {
                     self.pen_color = None;
-                    self.status = ui::t!("Line colour: automatic (black)").into();
+                    self.status = ui::t!("line_colour_automatic_black").into();
                 } else if t.len() == 6 {
                     if let Ok(v) = u32::from_str_radix(&t, 16) {
                         self.pen_color = Some(v);
-                        self.status = ui::tf!("Line colour: #{} (applies when you draw borders from the list)", t.to_uppercase()).into();
+                        self.status = ui::tf!("line_colour_applies_when_draw", t.to_uppercase()).into();
                     } else {
-                        self.status = ui::t!("Can't read the colour (6 hex digits RRGGBB, e.g. FF0000)").into();
+                        self.status = ui::t!("cant_read_colour_6").into();
                         self.prompt = Some(("border-color-rgb", Editor::new(&t)));
                     }
                 } else {
-                    self.status = ui::t!("Can't read the colour (6 hex digits RRGGBB, e.g. FF0000)").into();
+                    self.status = ui::t!("cant_read_colour_6").into();
                     self.prompt = Some(("border-color-rgb", Editor::new(&t)));
                 }
             }
@@ -3819,12 +3822,12 @@ impl Calc {
             "numfmt-custom" => {
                 if text.is_empty() {
                     self.fmt(|f| f.number_format = None);
-                    self.status = ui::t!("Number format reset to General").into();
+                    self.status = ui::t!("number_format_reset_general").into();
                 } else {
                     let code = text.clone();
                     self.fmt(move |f| f.number_format = Some(code.clone()));
                     self.status = ui::tf!(
-                        "Number format code set to \"{}\" (unrenderable codes fall back to the plain number; kept in the xlsx on save)",
+                        "number_format_code_set",
                         text
                     )
                     .into();
@@ -3834,7 +3837,7 @@ impl Calc {
             // カンマ区切りで。向きを省けば昇順
             "sort-by" => {
                 if text.is_empty() {
-                    self.status = ui::t!("Sort cancelled").into();
+                    self.status = ui::t!("sort_cancelled").into();
                     return;
                 }
                 let (_, cols) = self.sheet().extent();
@@ -3856,9 +3859,9 @@ impl Calc {
                     let low = t.to_lowercase();
                     // **打つのは利用者なので、鍵ではなく訳と比べます**
                     // (2026-08-26)。日本語の画面では「区分 降順」と打ちます
-                    let (name, asc) = if let Some(n) = t.strip_suffix(ui::t!("Descending")) {
+                    let (name, asc) = if let Some(n) = t.strip_suffix(ui::t!("descending")) {
                         (n.trim(), false)
-                    } else if let Some(n) = t.strip_suffix(ui::t!("Ascending")) {
+                    } else if let Some(n) = t.strip_suffix(ui::t!("ascending")) {
                         (n.trim(), true)
                     } else if low.ends_with("desc") {
                         (t[..t.len() - 4].trim_end(), false)
@@ -3885,7 +3888,7 @@ impl Calc {
                         // 打ち直せるようにパネルを開いたまま返す
                         self.prompt = Some(("sort-by", ed));
                         self.status = ui::tf!(
-                            "No header named \"{}\". Available headers: {}",
+                            "no_header_named_available",
                             name,
                             heads.iter().filter(|h| !h.is_empty()).cloned()
                                 .collect::<Vec<_>>().join(" / ")
@@ -3901,11 +3904,11 @@ impl Calc {
                         } else {
                             Pos::new(0, col).a1().trim_end_matches('1').to_string()
                         },
-                        if asc { ui::t!("Ascending") } else { ui::t!("Descending") }
+                        if asc { ui::t!("ascending") } else { ui::t!("descending") }
                     ));
                 }
                 if keys.is_empty() {
-                    self.status = ui::t!("Sort cancelled").into();
+                    self.status = ui::t!("sort_cancelled").into();
                     return;
                 }
                 self.checkpoint();
@@ -3914,7 +3917,7 @@ impl Calc {
                 self.dirty = true;
                 self.sync_input();
                 self.status = ui::tf!(
-                    "Sorted by {} (header row kept in place; Ctrl+Z undoes it)",
+                    "sorted_header_row_kept",
                     names.join(" → ")
                 )
                 .into();
@@ -3926,19 +3929,19 @@ impl Calc {
                 }
                 let old = self.book.sheets[t].name.clone();
                 if text.is_empty() || text == old {
-                    self.status = ui::t!("Name unchanged").into();
+                    self.status = ui::t!("name_unchanged").into();
                     return;
                 }
                 // xlsx のシート名の決まり: 31字まで・: \\ / ? * [ ] は使えない
                 if text.chars().count() > 31
                     || text.contains([':', '\\', '/', '?', '*', '[', ']'])
                 {
-                    self.status = ui::tf!("\"{}\" cannot be a sheet name (up to 31 chars; : \\ / ? * [ ] not allowed)", text)
+                    self.status = ui::tf!("cannot_sheet_name_up", text)
                     .into();
                     return;
                 }
                 if self.book.sheets.iter().enumerate().any(|(i, s)| i != t && s.name == text) {
-                    self.status = ui::tf!("\"{}\" already exists", text).into();
+                    self.status = ui::tf!("already_exists", text).into();
                     return;
                 }
                 self.checkpoint_book(); // 名前と式の書き換えを1手で戻せる
@@ -3951,14 +3954,14 @@ impl Calc {
                 recalc_book(&mut self.book, t);
                 self.dirty = true;
                 let head = if n > 0 {
-                    ui::tf!("Renamed \"{}\" to \"{}\" ({} formula references updated)", old, text, n)
+                    ui::tf!("renamed_formula_references_updated", old, text, n)
                         .to_string()
                 } else {
-                    ui::tf!("Renamed \"{}\" to \"{}\"", old, text).to_string()
+                    ui::tf!("renamed_2", old, text).to_string()
                 };
                 self.status = if stale > 0 {
                     ui::tf!(
-                        "{} — but \"{}!\" inside strings, in INDIRECT and the like, does not follow: {} of them (fix those by hand)",
+                        "but_inside_strings_indirect",
                         head, old, stale
                     )
                     .into()
@@ -3968,14 +3971,14 @@ impl Calc {
             }
             "name" => {
                 if text.is_empty() {
-                    self.status = ui::t!("No name given").into();
+                    self.status = ui::t!("no_name_given").into();
                     return;
                 }
                 let ok = text.chars().all(|c| c.is_alphanumeric() || c == '_')
                     && !text.chars().next().unwrap().is_ascii_digit()
                     && Pos::parse(&text).is_none();
                 if !ok {
-                    self.status = ui::tf!("\"{}\" can't be a name (letters, digits, and _; not a cell reference)", text)
+                    self.status = ui::tf!("cant_name_letters_digits", text)
                     .into();
                     return;
                 }
@@ -3988,12 +3991,12 @@ impl Calc {
                 // 適用範囲を訊く2段目へ(本家の「新しい名前」も範囲を選ばせる)
                 self.name_new = Some((text.clone(), range.clone()));
                 self.pick_kind = "name-scope";
-                self.pick_note = Some(ui::tf!("Scope of the name “{}” = {}", text, range).into());
+                self.pick_note = Some(ui::tf!("scope_name", text, range).into());
                 let at = self.pop_anchor();
                 self.pick = Some((
                     menu(&[
-                        ui::item!("Whole workbook (use it from any sheet)"),
-                        ui::item!("This sheet only"),
+                        ui::item!("whole_workbook_use_any"),
+                        ui::item!("sheet_only"),
                     ]),
                     at,
                 ));
@@ -4001,7 +4004,7 @@ impl Calc {
             // **ピボットの元の表の差し替え**(2026-08-21 の D群)
             "pivot-src" => {
                 let Some(i) = self.pivot_at(self.cursor) else {
-                    self.status = ui::t!("Put the cursor on a pivot").into();
+                    self.status = ui::t!("put_cursor_pivot").into();
                     return;
                 };
                 // `Sheet1!A1:C20` か `A1:C20`(いまのシート)
@@ -4010,22 +4013,22 @@ impl Calc {
                     None => (self.sheet().name.clone(), text.trim().to_string()),
                 };
                 let Some((a0, b0)) = 範囲.split_once(':') else {
-                    self.status = ui::t!("Write the range like A1:C20").into();
+                    self.status = ui::t!("write_range_like_a1_c20").into();
                     return;
                 };
                 let (Some(a0), Some(b0)) = (
                     Pos::parse(&a0.replace('$', "").to_uppercase()),
                     Pos::parse(&b0.replace('$', "").to_uppercase()),
                 ) else {
-                    self.status = ui::tf!("Can't read the range: {}", 範囲).into();
+                    self.status = ui::tf!("cant_read_range", 範囲).into();
                     return;
                 };
                 let Some(si) = self.book.sheets.iter().position(|s| s.name == 名) else {
-                    self.status = ui::tf!("There is no sheet \"{}\"", 名).into();
+                    self.status = ui::tf!("there_no_sheet", 名).into();
                     return;
                 };
                 if b0.row <= a0.row {
-                    self.status = ui::t!("Data rows are needed below the headings").into();
+                    self.status = ui::t!("data_rows_needed_below").into();
                     return;
                 }
                 // **いま使っている見出しが新しい範囲にあるか。** 無ければ
@@ -4050,8 +4053,8 @@ impl Calc {
                     要る.iter().filter(|h| !見出し.contains(h)).map(|h| h.to_string()).collect();
                 if !無い.is_empty() {
                     self.status = ui::tf!(
-                        "The new range has no such headings: {} (the pivot is using them)",
-                        無い.join("•")
+                        "new_range_no_such",
+                        無い.join("・")
                     )
                     .into();
                     return;
@@ -4062,7 +4065,7 @@ impl Calc {
                 let d = self.book.pivots[i].clone();
                 self.dirty = true;
                 self.status = ui::tf!(
-                    "Source table repointed to {}!{}:{} (rebuilding)",
+                    "source_table_repointed_rebuilding",
                     名,
                     a0.a1(),
                     b0.a1()
@@ -4075,7 +4078,7 @@ impl Calc {
                 if text.is_empty() {
                     if self.book.sheets[self.active].comments.remove(&p).is_some() {
                         self.dirty = true;
-                        self.status = ui::tf!("Comment removed from {}", p.a1()).into();
+                        self.status = ui::tf!("comment_removed", p.a1()).into();
                     }
                 } else {
                     // 頭の文だけ差し替える(返信と解決の印は残す)
@@ -4087,12 +4090,12 @@ impl Calc {
                         }
                     }
                     self.dirty = true;
-                    self.status = ui::tf!("Comment added to {} (kept on save)", p.a1()).into();
+                    self.status = ui::tf!("comment_added_kept_save", p.a1()).into();
                 }
             }
             "cond-gt" | "cond-lt" => {
                 let Ok(value) = text.parse::<f64>() else {
-                    self.status = ui::tf!("\"{}\" is not a number", text).into();
+                    self.status = ui::tf!("not_number", text).into();
                     return;
                 };
                 self.checkpoint();
@@ -4114,23 +4117,23 @@ impl Calc {
                 // 左から順に埋まるだけなので、「100 より大きい値」を数と語に
                 // 割ると語順を変えられない言語(独・西・伊・葡・尼)が壊れる
                 let what = if gt {
-                    ui::tf!("values greater than {}", value)
+                    ui::tf!("values_greater_than", value)
                 } else {
-                    ui::tf!("values less than {}", value)
+                    ui::tf!("values_less_than", value)
                 };
-                self.status = ui::tf!("{}:{} — coloring {}", range.0.a1(), range.1.a1(), what).into();
+                self.status = ui::tf!("coloring", range.0.a1(), range.1.a1(), what).into();
             }
             // 条件付き書式のパネル(間・文字・上位/下位N)
             "cond-between" => {
                 let t = text.replace('~', "〜");
                 let Some((a1, b1)) = t.split_once('〜') else {
-                    self.status = ui::t!("Use the form 8〜15 (ASCII digits)").into();
+                    self.status = ui::t!("use_form_8_15").into();
                     self.prompt = Some(("cond-between", Editor::new(&text)));
                     return;
                 };
                 let (Ok(lo), Ok(hi)) = (a1.trim().parse::<f64>(), b1.trim().parse::<f64>())
                 else {
-                    self.status = ui::t!("Use the form 8〜15 (ASCII digits)").into();
+                    self.status = ui::t!("use_form_8_15").into();
                     self.prompt = Some(("cond-between", Editor::new(&text)));
                     return;
                 };
@@ -4145,11 +4148,11 @@ impl Calc {
                     },
                 });
                 self.dirty = true;
-                self.status = ui::tf!("{}:{} — filling values between {} and {}", range.0.a1(), range.1.a1(), lo.min(hi), lo.max(hi)).into();
+                self.status = ui::tf!("filling_values_between", range.0.a1(), range.1.a1(), lo.min(hi), lo.max(hi)).into();
             }
             "cond-text" => {
                 if text.is_empty() {
-                    self.status = ui::t!("Enter the text to look for").into();
+                    self.status = ui::t!("enter_text_look").into();
                     return;
                 }
                 self.checkpoint();
@@ -4163,11 +4166,11 @@ impl Calc {
                     },
                 });
                 self.dirty = true;
-                self.status = ui::tf!("{}:{} — filling cells containing «{}»", range.0.a1(), range.1.a1(), text).into();
+                self.status = ui::tf!("filling_cells_containing", range.0.a1(), range.1.a1(), text).into();
             }
             "cond-top" | "cond-bottom" => {
                 let Ok(n) = text.trim().parse::<u32>() else {
-                    self.status = ui::t!("Enter a count in ASCII digits (e.g. 10)").into();
+                    self.status = ui::t!("enter_count_ascii_digits").into();
                     self.prompt = Some((kind, Editor::new(&text)));
                     return;
                 };
@@ -4186,11 +4189,11 @@ impl Calc {
                 // ここも句ごと1つの引数にする。区切りは**日本語の型の中**に
                 // 入れた(「上位 10 件」)— 訳の末尾に空白を仕込ませない
                 let what = if bottom {
-                    ui::tf!("the bottom {}", n.max(1))
+                    ui::tf!("bottom_3", n.max(1))
                 } else {
-                    ui::tf!("the top {}", n.max(1))
+                    ui::tf!("top_3", n.max(1))
                 };
-                self.status = ui::tf!("{}:{} — coloring {}", range.0.a1(), range.1.a1(), what).into();
+                self.status = ui::tf!("coloring", range.0.a1(), range.1.a1(), what).into();
             }
             "py" => {
                 let t = text.trim().to_string();
@@ -4219,26 +4222,26 @@ impl Calc {
                     let plugs = line(plugin_outline());
                     let mut msg = if funcs.is_empty() && plugs.is_empty() {
                         ui::tf!(
-                            "No .py files yet (@edit name creates one. Functions called from formulas go in {})",
+                            "no_py_files_yet",
                             pyrun::funcs_dir().display().to_string()
                         )
                         .to_string()
                     } else {
                         let mut s = String::new();
                         if !funcs.is_empty() {
-                            s.push_str(&ui::tf!("Functions (funcs) {}", funcs));
+                            s.push_str(&ui::tf!("functions_funcs", funcs));
                         }
                         if !plugs.is_empty() {
                             if !s.is_empty() {
                                 s.push_str("  ");
                             }
-                            s.push_str(&ui::tf!("Macros (plugins) {}", plugs));
+                            s.push_str(&ui::tf!("macros_plugins", plugs));
                         }
                         s
                     };
                     if !old.is_empty() {
                         msg.push_str(&ui::tf!(
-                            " * The old code carried in this book ({}) is not run — take it out with @export name; saving drops it",
+                            "old_code_carried_book",
                             old.join(" ")
                         ));
                     }
@@ -4247,7 +4250,7 @@ impl Calc {
                     // 2026-08-09 発注者確定: データとプログラムを1つのファイルに
                     // しない。関数(UDF)もブックには載せない — 置き場は plugins だけ
                     self.status = ui::tf!(
-                        "Books do not carry code here (data and programs are separate files). Put your functions and procedures in {} as .py",
+                        "books_not_carry_code",
                         plugins_dir().display().to_string()
                     )
                     .into();
@@ -4258,9 +4261,9 @@ impl Calc {
                     self.book.scripts.retain(|(n, _)| n != name);
                     if self.book.scripts.len() < before {
                         self.dirty = true;
-                        self.status = ui::tf!("\"{}\" removed from the workbook", name).into();
+                        self.status = ui::tf!("removed_workbook", name).into();
                     } else {
-                        self.status = ui::tf!("\"{}\" does not exist", name).into();
+                        self.status = ui::tf!("not_exist", name).into();
                     }
                 } else if let Some(name) = t.strip_prefix("@edit") {
                     // plugins の .py を calc の中で開く(zed 側の半分)
@@ -4279,7 +4282,7 @@ impl Calc {
                     // 黙って受けると「網ありで動いた」と誤解されるので、断って言う
                     if let Some(n) = rest.trim().strip_suffix(" net") {
                         self.status = ui::tf!(
-                            "\"net\" is no longer needed (plugins is code you installed yourself, so it can reach the network as it is). Type @{}",
+                            "net_no_longer_needed",
                             n.trim()
                         )
                         .into();
@@ -4298,7 +4301,7 @@ impl Calc {
                     } else if self.book.scripts.iter().any(|(n, _)| n == name) {
                         // 古いブックに載っているコードは、関数も手続きも実行しない
                         self.status = ui::tf!(
-                            "\"{}\" is code carried in the book — it is not run (@export {} takes it out; check it, then put it in {})",
+                            "code_carried_book_not",
                             name,
                             name,
                             plugins_dir().display().to_string()
@@ -4306,7 +4309,7 @@ impl Calc {
                         .into();
                     } else {
                         self.status = ui::tf!(
-                            "There is no \"{}\" (.py files in {} run as @name. @list shows them)",
+                            "there_no_py_files",
                             name,
                             plugins_dir().display().to_string()
                         )
@@ -4326,9 +4329,9 @@ impl Calc {
                     (!text.is_empty()).then(|| text.clone());
                 self.dirty = true;
                 self.status = if text.is_empty() {
-                    ui::t!("Text removed").into()
+                    ui::t!("text_removed").into()
                 } else {
-                    ui::t!("Text set on the shape (goes into the xlsx on save)").into()
+                    ui::t!("text_set_shape_goes").into()
                 };
             }
             // 図形の塗り・線の色の直指定(RRGGBB)。空 Enter = なし
@@ -4344,9 +4347,9 @@ impl Calc {
                         }
                     });
                     self.status = if is_fill {
-                        ui::t!("Fill removed").into()
+                        ui::t!("fill_removed").into()
                     } else {
-                        ui::t!("Removed the line").into()
+                        ui::t!("removed_line").into()
                     };
                 } else if t.len() == 6 && u32::from_str_radix(&t, 16).is_ok() {
                     let c = t.clone();
@@ -4358,12 +4361,12 @@ impl Calc {
                         }
                     });
                     self.status = if is_fill {
-                        ui::tf!("Fill set to {}", format!("#{t}")).into()
+                        ui::tf!("fill_set", format!("#{t}")).into()
                     } else {
-                        ui::tf!("Made the line {}", format!("#{t}")).into()
+                        ui::tf!("made_line", format!("#{t}")).into()
                     };
                 } else {
-                    self.status = ui::t!("Can't read the colour (6 hex digits RRGGBB, e.g. FF0000)").into();
+                    self.status = ui::t!("cant_read_colour_6").into();
                     self.prompt = Some((kind, Editor::new(&t)));
                 }
             }
@@ -4372,18 +4375,18 @@ impl Calc {
                 let t = text.trim().replace('°', "");
                 if t.is_empty() {
                     self.shape_edit(|sp| sp.rot = 0.0);
-                    self.status = ui::t!("Rotation reset").into();
+                    self.status = ui::t!("rotation_reset").into();
                 } else {
                     match t.parse::<f32>() {
                         Ok(d) if d.is_finite() => {
                             let d = d.rem_euclid(360.0);
                             self.shape_edit(move |sp| sp.rot = d);
                             self.status =
-                                ui::tf!("Rotated {}° (clockwise)", format!("{d:.0}")).into();
+                                ui::tf!("rotated_clockwise", format!("{d:.0}")).into();
                         }
                         _ => {
                             self.status =
-                                ui::t!("Can't read that angle (one number — 45 or -30, for example)").into();
+                                ui::t!("cant_read_angle_one").into();
                             self.prompt = Some(("shape-rot", Editor::new(&t)));
                         }
                     }
@@ -4410,7 +4413,7 @@ impl Calc {
                     })
                     .collect();
                 if targets.is_empty() {
-                    self.status = ui::tf!("No cell in the selection splits on \"{}\"", delim).into();
+                    self.status = ui::tf!("no_cell_selection_splits", delim).into();
                     return;
                 }
                 self.checkpoint();
@@ -4439,16 +4442,16 @@ impl Calc {
                 self.dirty = true;
                 self.sync_input();
                 self.status =
-                    ui::tf!("Split into {} columns (cells to the right overwritten; Ctrl+Z undoes)", n).into();
+                    ui::tf!("split_into_columns_cells", n).into();
             }
             "goal-target" => {
                 // 「D6=765600」の形
                 let Some((cell_s, val_s)) = text.split_once('=') else {
-                    self.status = ui::t!("Use the form cell=target (e.g. D6=800000)").into();
+                    self.status = ui::t!("use_form_cell_target").into();
                     return;
                 };
                 let (Some(p), Ok(v)) = (Pos::parse(cell_s), val_s.trim().parse::<f64>()) else {
-                    self.status = ui::t!("Can't parse (e.g. D6=800000)").into();
+                    self.status = ui::t!("cant_parse_e_g").into();
                     return;
                 };
                 self.goal = Some((p, v));
@@ -4458,11 +4461,11 @@ impl Calc {
             "dt-col" => {
                 let t = text.trim().to_string();
                 if t.is_empty() {
-                    self.status = ui::t!("Data table cancelled").into();
+                    self.status = ui::t!("data_table_cancelled").into();
                     return;
                 }
                 let Some(p) = Pos::parse(&t) else {
-                    self.status = ui::t!("Can't read that input cell (B2, for example)").into();
+                    self.status = ui::t!("cant_read_input_cell").into();
                     self.prompt = Some(("dt-col", Editor::new(&t)));
                     return;
                 };
@@ -4480,7 +4483,7 @@ impl Calc {
                 match Pos::parse(&t) {
                     Some(ri) => self.data_table(Some(ci), Some(ri)),
                     None => {
-                        self.status = ui::t!("Can't read the row input cell (B3, for example. Empty Enter = one variable)").into();
+                        self.status = ui::t!("cant_read_row_input").into();
                         self.dt_col = Some(ci);
                         self.prompt = Some(("dt-row", Editor::new(&t)));
                     }
@@ -4489,7 +4492,7 @@ impl Calc {
             "goal-var" => {
                 let Some((target, goal)) = self.goal.take() else { return };
                 let Some(var) = Pos::parse(&text) else {
-                    self.status = ui::t!("Can't parse the variable cell (e.g. B2)").into();
+                    self.status = ui::t!("cant_parse_variable_cell").into();
                     return;
                 };
                 self.goal_seek(target, goal, var);
@@ -4501,7 +4504,7 @@ impl Calc {
                 let bytes = match std::fs::read(&p) {
                     Ok(b) => b,
                     Err(e) => {
-                        self.status = ui::tf!("Can't open: {}", e).into();
+                        self.status = ui::tf!("cant_open", e).into();
                         return;
                     }
                 };
@@ -4510,7 +4513,7 @@ impl Calc {
                         self.open_plain(p.clone(), plain);
                         if self.path.as_deref() == Some(p.as_path()) {
                             self.encrypt_pw = Some(text);
-                            self.status = ui::tf!("{} (saving keeps the same password)", self.status)
+                            self.status = ui::tf!("saving_keeps_same_password", self.status)
                             .into();
                         }
                     }
@@ -4529,12 +4532,12 @@ impl Calc {
                 if text.is_empty() {
                     self.pw_first = None;
                     self.encrypt_pw = None;
-                    self.status = ui::t!("Encryption off (next save is a plain xlsx)").into();
+                    self.status = ui::t!("encryption_off_next_save").into();
                 } else {
                     self.pw_first = Some(text);
                     self.pw_show = false;
                     self.prompt = Some(("pw-set2", Editor::new("")));
-                    self.status = ui::t!("Let's check. Type the same password again and press Enter").into();
+                    self.status = ui::t!("lets_check_type_same").into();
                 }
             }
             "pw-set2" => {
@@ -4543,11 +4546,11 @@ impl Calc {
                     self.encrypt_pw = 初回;
                     self.dirty = true;
                     self.status =
-                        ui::t!("The next save is encrypted with this password (AES-128; opens in Excel and LibreOffice)").into();
+                        ui::t!("next_save_encrypted_password").into();
                 } else {
                     // **前の設定は触りません。** 半端に掛かった状態を作らない
                     self.status =
-                        ui::t!("The two passwords differ (encryption is unchanged; please try again)").into();
+                        ui::t!("two_passwords_differ_encryption").into();
                 }
             }
             // 予測シート — 何期先まで
@@ -4559,7 +4562,7 @@ impl Calc {
             "scenario-name" => {
                 let name = text.trim().to_string();
                 if name.is_empty() {
-                    self.status = ui::t!("The name is empty (nothing was made)").into();
+                    self.status = ui::t!("name_empty_nothing_made").into();
                     return;
                 }
                 let (a, b) = self.sel_rect();
@@ -4581,7 +4584,7 @@ impl Calc {
                 }
                 if cells.is_empty() {
                     self.status = ui::t!(
-                        "There are no values to keep in the selection (formula cells are left out — applying would erase the formula)"
+                        "there_no_values_keep"
                     )
                     .into();
                     return;
@@ -4597,22 +4600,22 @@ impl Calc {
                 });
                 self.dirty = true;
                 self.status = if 上書き {
-                    ui::tf!("Scenario “{}” was kept again ({} cells)", name, 何セル).into()
+                    ui::tf!("scenario_kept_again_cells", name, 何セル).into()
                 } else {
-                    ui::tf!("Scenario “{}” was kept ({} cells; saving keeps it in the xlsx too)", name, 何セル)
+                    ui::tf!("scenario_kept_cells_saving", name, 何セル)
                         .into()
                 };
             }
             "equation" => {
                 if text.is_empty() {
-                    self.status = ui::t!("The formula is empty (nothing was placed)").into();
+                    self.status = ui::t!("formula_empty_nothing_placed").into();
                 } else {
                     self.insert_py_image(EQ_PY, "eq", text, cx);
                 }
             }
             "textart" => {
                 if text.is_empty() {
-                    self.status = ui::t!("The text is empty (nothing was placed)").into();
+                    self.status = ui::t!("text_empty_nothing_placed").into();
                 } else {
                     self.insert_py_image(TEXTART_PY, "textart", text, cx);
                 }
@@ -4624,19 +4627,19 @@ impl Calc {
                     return;
                 }
                 if self.book.props.creators.contains(&name) {
-                    self.status = ui::tf!("\"{}\" is already one of the authors", name).into();
+                    self.status = ui::tf!("already_one_authors", name).into();
                     return;
                 }
                 self.book.props.creators.push(name);
                 self.dirty = true;
                 self.status =
-                    ui::t!("Author added (goes into the xlsx on save)").into();
+                    ui::t!("author_added_goes_into").into();
             }
             // カスタムプロパティ 1/3 — 名前。2段目(型)へ送る
             "prop-add-name" => {
                 let name = text.trim().to_string();
                 if name.is_empty() {
-                    self.status = ui::t!("The name is empty (nothing was added)").into();
+                    self.status = ui::t!("name_empty_nothing_added").into();
                     return;
                 }
                 self.prop_add = Some((name, PropKind::Text));
@@ -4658,7 +4661,7 @@ impl Calc {
                         Ok(n) => CustomVal::Number(n),
                         Err(_) => {
                             self.status =
-                                ui::tf!("\"{}\" does not read as a number (nothing was added)", text)
+                                ui::tf!("not_read_number_nothing", text)
                                     .into();
                             return;
                         }
@@ -4666,7 +4669,7 @@ impl Calc {
                     PropKind::Date => CustomVal::Date(text.trim().to_string()),
                     PropKind::Bool => CustomVal::Bool(matches!(
                         text.trim(),
-                        "Yes" | "true" | "TRUE" | "1" | "○"
+                        "yes" | "true" | "TRUE" | "1" | "○"
                     )),
                 };
                 // 名前はブックの中で一意。同じ名前があれば差し替える
@@ -4677,7 +4680,7 @@ impl Calc {
                 }
                 self.dirty = true;
                 self.status =
-                    ui::tf!("Property \"{}\" recorded (goes into the xlsx on save)", name).into();
+                    ui::tf!("property_recorded_goes_into", name).into();
             }
             // ブックの情報(保存で docProps/core.xml へ)
             "prop-title" | "prop-keywords" | "prop-subject" | "prop-desc" => {
@@ -4690,7 +4693,7 @@ impl Calc {
                 *f = text;
                 self.dirty = true;
                 self.status =
-                    ui::t!("Workbook info recorded (goes into the xlsx on save)").into();
+                    ui::t!("workbook_info_recorded_goes").into();
             }
             "table-resize" => {
                 let p = self.cursor;
@@ -4703,11 +4706,11 @@ impl Calc {
                 };
                 match parse(&text) {
                     None => {
-                        self.status = ui::t!("Write the range like A1:C9").into();
+                        self.status = ui::t!("write_range_like_a1").into();
                         self.prompt = Some(("table-resize", Editor::new(&text)));
                     }
                     Some((a, b)) if b.row < a.row || b.col < a.col => {
-                        self.status = ui::t!("Top-left and bottom-right are swapped (order like A1:C9)").into();
+                        self.status = ui::t!("top_left_bottom_right").into();
                         self.prompt = Some(("table-resize", Editor::new(&text)));
                     }
                     Some((a, b)) => {
@@ -4718,14 +4721,14 @@ impl Calc {
                             t.b = b;
                         }
                         self.dirty = true;
-                        self.status = ui::tf!("Table resized to {}:{} (formatting is not reapplied — use the Table Design buttons)", a.a1(), b.a1())
+                        self.status = ui::tf!("table_resized_formatting_not", a.a1(), b.a1())
                         .into();
                     }
                 }
             }
             "chat" => {
                 if text.is_empty() {
-                    self.status = ui::t!("No message left").into();
+                    self.status = ui::t!("no_message_left").into();
                 } else if let Some(cp) = self.chat_path() {
                     let stamp = ui::now_stamp();
                     let line = format!("[{stamp}] {}: {text}\n", lock_identity());
@@ -4736,9 +4739,9 @@ impl Calc {
                         .open(&cp)
                         .and_then(|mut f| f.write_all(line.as_bytes()));
                     self.status = match r {
-                        Ok(_) => ui::tf!("Message left ({})", cp.file_name().unwrap_or_default().to_string_lossy())
+                        Ok(_) => ui::tf!("message_left", cp.file_name().unwrap_or_default().to_string_lossy())
                         .into(),
-                        Err(e) => ui::tf!("Can't write: {}", e).into(),
+                        Err(e) => ui::tf!("cant_write", e).into(),
                     };
                 }
             }
@@ -4748,7 +4751,7 @@ impl Calc {
                 let t = text.trim().to_string();
                 if !pend.headers.contains(&t) {
                     self.status =
-                        ui::tf!("\"{}\" is not among the headings: {}", t, pend.headers.join(" / "))
+                        ui::tf!("not_among_headings_2", t, pend.headers.join(" / "))
                             .into();
                     self.sub_pend = Some(pend);
                     self.prompt = Some(("subtotal-by", Editor::new(&text)));
@@ -4756,7 +4759,7 @@ impl Calc {
                 }
                 pend.rows_sel = vec![t];
                 self.status =
-                    ui::t!("Columns to total (comma-separated; empty Enter = every numeric column)").into();
+                    ui::t!("columns_total_comma_separated").into();
                 self.sub_pend = Some(pend);
                 self.prompt = Some(("subtotal-vals", Editor::new("")));
             }
@@ -4787,7 +4790,7 @@ impl Calc {
                     }
                     if vals.is_empty() {
                         self.status =
-                            ui::t!("No numeric column found (name the columns to total)").into();
+                            ui::t!("no_numeric_column_found").into();
                         self.sub_pend = Some(pend);
                         self.prompt = Some(("subtotal-vals", Editor::new("")));
                         return;
@@ -4798,7 +4801,7 @@ impl Calc {
                             Some(i) => vals.push(pend.a.col + i as u32),
                             None => {
                                 self.status =
-                                    ui::tf!("\"{}\" is not among the headings", name).into();
+                                    ui::tf!("not_among_headings", name).into();
                                 self.sub_pend = Some(pend);
                                 self.prompt = Some(("subtotal-vals", Editor::new(&text)));
                                 return;
@@ -4817,12 +4820,12 @@ impl Calc {
                 recalc_book(&mut self.book, self.active);
                 self.dirty = true;
                 self.sync_input();
-                self.status = ui::tf!("Subtotals and a grand total added for {} groups; detail rows grouped — Hide Detail leaves just the totals (one Ctrl+Z)", n)
+                self.status = ui::tf!("subtotals_grand_total_added", n)
                 .into();
             }
             "find" => {
                 if text.is_empty() {
-                    self.status = ui::t!("Type a search term").into();
+                    self.status = ui::t!("type_search_term").into();
                     return;
                 }
                 self.find_term = Some(text);
@@ -4844,7 +4847,7 @@ impl Calc {
                     .map(|(p, c)| (*p, c.editable()))
                     .collect();
                 if targets.is_empty() {
-                    self.status = ui::tf!("\"{}\" not found", find).into();
+                    self.status = ui::tf!("not_found", find).into();
                     self.find_term = Some(find);
                     return;
                 }
@@ -4863,7 +4866,7 @@ impl Calc {
                 self.sync_input();
                 self.find_term = Some(find.clone());
                 self.status =
-                    ui::tf!("\"{}\" → \"{}\": {} replacements (Ctrl+Z undoes)", find, text, n)
+                    ui::tf!("replacements_ctrl_z_undoes", find, text, n)
                         .into();
             }
             "link" => {
@@ -4871,13 +4874,13 @@ impl Calc {
                 if text.is_empty() {
                     if self.book.sheets[self.active].links.remove(&p).is_some() {
                         self.dirty = true;
-                        self.status = ui::tf!("Unlinked {}", p.a1()).into();
+                        self.status = ui::tf!("unlinked", p.a1()).into();
                     }
                 } else {
                     self.book.sheets[self.active].links.insert(p, text);
                     self.dirty = true;
                     self.status =
-                        ui::tf!("Added a link at {} (Ctrl+click to open)", p.a1()).into();
+                        ui::tf!("added_link_ctrl_click", p.a1()).into();
                     // 続けて表示テキスト(セルに見せる文字)。本家のリンク設定の欄と同じ
                     let cur = self.sheet().get(p).map(|c| c.value.display()).unwrap_or_default();
                     self.prompt = Some(("link-text", Editor::new(&cur)));
@@ -4922,7 +4925,7 @@ impl Calc {
             }
         }
         self.dirty = true;
-        self.status = ui::t!("Outer border drawn").into();
+        self.status = ui::t!("outer_border_drawn").into();
     }
 
     /// 書式の小窓のボタン。
@@ -4931,16 +4934,16 @@ impl Calc {
             "close" => self.fmt_panel = None,
             "b-all" => {
                 self.fmt(|f| f.borders = Borders::ALL);
-                self.status = ui::t!("Grid borders drawn").into();
+                self.status = ui::t!("grid_borders_drawn").into();
             }
             "b-out" => self.border_outline(),
             "b-none" => {
                 self.fmt(|f| f.borders = Borders::NONE);
-                self.status = ui::t!("Borders removed").into();
+                self.status = ui::t!("borders_removed").into();
             }
             "numfmt-none" => {
                 self.fmt(|f| f.number_format = None);
-                self.status = ui::t!("Number format cleared").into();
+                self.status = ui::t!("number_format_cleared").into();
             }
             id if id.starts_with("fill-") => {
                 let v = id.trim_start_matches("fill-").to_string();
@@ -4990,7 +4993,7 @@ impl Calc {
                 }
             }
             if vals.is_empty() {
-                self.status = ui::t!("This column has no values yet").into();
+                self.status = ui::t!("column_no_values_yet").into();
                 return;
             }
             vals.sort();
@@ -5019,7 +5022,7 @@ impl Calc {
         self.auto_filter = None;
         self.filter_panel = None;
         self.sync_input();
-        self.status = ui::tf!("Sheet \"{}\"", self.sheet().name).into();
+        self.status = ui::tf!("sheet", self.sheet().name).into();
     }
 
     /// シートを1枚足して、そこへ移る。
@@ -5042,20 +5045,20 @@ impl Calc {
                 // 「保護する/解除する」が分かれていないと、押すまで
                 // どちらになるか分からない
                 let prot = if self.book.sheets.get(i).map(|s| s.protected).unwrap_or(false) {
-                    ui::item!("Unprotect the sheet")
+                    ui::item!("unprotect_sheet")
                 } else {
-                    ui::item!("Protect the sheet")
+                    ui::item!("protect_sheet")
                 };
                 menu(&[
-                    ui::item!("Insert"),
-                    ui::item!("Delete"),
-                    ui::item!("Rename"),
-                    ui::item!("Duplicate"),
-                    ui::item!("Move left"),
-                    ui::item!("Move right"),
-                    ui::item!("Hide"),
-                    ui::item!("Unhide"),
-                    ui::item!("Tab colour"),
+                    ui::item!("insert"),
+                    ui::item!("delete"),
+                    ui::item!("rename"),
+                    ui::item!("duplicate"),
+                    ui::item!("move_left"),
+                    ui::item!("move_right"),
+                    ui::item!("hide"),
+                    ui::item!("unhide"),
+                    ui::item!("tab_colour"),
                     prot,
                 ])
             },
@@ -5077,21 +5080,21 @@ impl Calc {
     /// 返りは消したシートの名前。undo は消える(sheets_restructured)。
     pub(crate) fn delete_sheet_at(&mut self, t: usize) -> Result<String, String> {
         if t >= self.book.sheets.len() {
-            return Err(ui::t!("There is no such sheet").to_string());
+            return Err(ui::t!("there_no_such_sheet").to_string());
         }
         if self.book.sheets.len() <= 1 {
-            return Err(ui::t!("Can't delete the last sheet").to_string());
+            return Err(ui::t!("cant_delete_last_sheet").to_string());
         }
         if self.book.sheets.iter().enumerate().filter(|(i, s)| *i != t && !s.hidden).count()
             == 0
         {
             return Err(ui::t!(
-                "Can't delete — no visible sheet would remain (unhide another sheet first)"
+                "cant_delete_no_visible"
             )
             .to_string());
         }
         if !self.commit() {
-            return Err(ui::t!("What you were typing was rejected by the validation rule").to_string());
+            return Err(ui::t!("what_typing_rejected_validation").to_string());
         }
         self.remember_ui();
         let name = self.book.sheets[t].name.clone();
@@ -5123,7 +5126,7 @@ impl Calc {
     /// 決まり(31字・: \\ / ? * [ ] 不可・重複不可)で検査。返りは写しの名前。
     pub(crate) fn copy_sheet_at(&mut self, t: usize, name: Option<&str>) -> Result<String, String> {
         if t >= self.book.sheets.len() {
-            return Err(ui::t!("There is no such sheet").to_string());
+            return Err(ui::t!("there_no_such_sheet").to_string());
         }
         let new_name = match name {
             None => copy_sheet_name(&self.book, &self.book.sheets[t].name),
@@ -5133,19 +5136,19 @@ impl Calc {
                     || n.contains([':', '\\', '/', '?', '*', '[', ']'])
                 {
                     return Err(ui::tf!(
-                        "\"{}\" cannot be a sheet name (up to 31 chars; : \\ / ? * [ ] not allowed)",
+                        "cannot_sheet_name_up",
                         n
                     )
                     .to_string());
                 }
                 if self.book.sheets.iter().any(|s| s.name == n) {
-                    return Err(ui::tf!("\"{}\" already exists", n).to_string());
+                    return Err(ui::tf!("already_exists", n).to_string());
                 }
                 n.to_string()
             }
         };
         if !self.commit() {
-            return Err(ui::t!("What you were typing was rejected by the validation rule").to_string());
+            return Err(ui::t!("what_typing_rejected_validation").to_string());
         }
         self.remember_ui();
         let mut copy = self.book.sheets[t].clone();
@@ -5170,13 +5173,13 @@ impl Calc {
     /// 最後の見えている1枚は隠せない。隠したのがいまのシートなら見える所へ移る。
     pub(crate) fn set_sheet_hidden(&mut self, t: usize, hidden: bool) -> Result<(), String> {
         if t >= self.book.sheets.len() {
-            return Err(ui::t!("There is no such sheet").to_string());
+            return Err(ui::t!("there_no_such_sheet").to_string());
         }
         if hidden
             && self.book.sheets.iter().enumerate().filter(|(i, s)| *i != t && !s.hidden).count()
                 == 0
         {
-            return Err(ui::t!("The last sheet can't be hidden").to_string());
+            return Err(ui::t!("last_sheet_cant_hidden").to_string());
         }
         self.remember_ui();
         self.book.sheets[t].hidden = hidden;
@@ -5200,7 +5203,7 @@ impl Calc {
         }
         self.remember_ui(); // sheet_ui をシート数まで育てておく(挿し外しの前提)
         match v {
-            "Insert" => {
+            "insert" => {
                 let name = unique_sheet_name(&self.book);
                 self.book.sheets.insert(t + 1, sheet::Sheet::new(&name));
                 self.sheet_ui.insert(t + 1, (Pos::new(0, 0), Pos::new(0, 0), None));
@@ -5213,36 +5216,36 @@ impl Calc {
                 self.active = t + 1;
                 self.restore_ui();
                 self.sync_input();
-                self.status = ui::tf!("Inserted sheet \"{}\"", name).into();
+                self.status = ui::tf!("inserted_sheet", name).into();
             }
-            "Delete" => {
+            "delete" => {
                 self.status = match self.delete_sheet_at(t) {
                     Ok(name) => {
-                        ui::tf!("Deleted sheet \"{}\" (this can't be undone)", name)
+                        ui::tf!("deleted_sheet_cant_undone", name)
                             .into()
                     }
                     Err(e) => e.into(),
                 };
             }
-            "Rename" => {
+            "rename" => {
                 let cur = self.book.sheets[t].name.clone();
                 self.prompt = Some(("sheet-rename", Editor::new(&cur)));
                 return; // sheet_menu_at はパネルの確定まで持ち越す
             }
-            "Duplicate" => {
+            "duplicate" => {
                 self.status = match self.copy_sheet_at(t, None) {
-                    Ok(name) => ui::tf!("Created \"{}\"", name).into(),
+                    Ok(name) => ui::tf!("created_2", name).into(),
                     Err(e) => e.into(),
                 };
             }
-            "Move left" | "Move right" => {
-                let to = if v == "Move left" {
+            "move_left" | "move_right" => {
+                let to = if v == "move_left" {
                     t.checked_sub(1)
                 } else {
                     (t + 1 < self.book.sheets.len()).then_some(t + 1)
                 };
                 let Some(to) = to else {
-                    self.status = ui::t!("Can't move that way (already at the end)").into();
+                    self.status = ui::t!("cant_move_way_already").into();
                     self.sheet_menu_at = None;
                     return;
                 };
@@ -5257,21 +5260,21 @@ impl Calc {
                     self.active = t;
                 }
                 self.sheets_restructured();
-                self.status = ui::tf!("Moved sheet \"{}\"", self.book.sheets[to].name)
+                self.status = ui::tf!("moved_sheet", self.book.sheets[to].name)
                     .into();
             }
-            "Hide" => {
+            "hide" => {
                 let name = self.book.sheets[t].name.clone();
                 self.status = match self.set_sheet_hidden(t, true) {
                     Ok(()) => ui::tf!(
-                        "Hid sheet \"{}\" (Unhide brings it back; kept in the xlsx on save)",
+                        "hid_sheet_unhide_brings",
                         name
                     )
                     .into(),
                     Err(e) => e.into(),
                 };
             }
-            "Unhide" => {
+            "unhide" => {
                 let hidden: Vec<(usize, String)> = self
                     .book
                     .sheets
@@ -5281,7 +5284,7 @@ impl Calc {
                     .map(|(i, s)| (i, s.name.clone()))
                     .collect();
                 if hidden.is_empty() {
-                    self.status = ui::t!("No hidden sheets").into();
+                    self.status = ui::t!("no_hidden_sheets").into();
                 } else {
                     self.pick_kind = "unhide";
                     self.pick_paths = hidden
@@ -5294,14 +5297,14 @@ impl Calc {
                         plain(hidden.into_iter().map(|(_, n)| n)),
                         (HEAD_W + 24.0, y),
                     ));
-                    self.status = ui::t!("Hidden sheets: pick one to unhide").into();
+                    self.status = ui::t!("hidden_sheets_pick_one").into();
                     self.sheet_menu_at = None;
                     return; // 2段目の一覧へ(pick_kind を戻さない)
                 }
             }
             // シートのタブから保護を掛け外し。**そのシートを開いてから**掛ける —
             // いま見ているのと違うシートに黙って掛けない
-            "Protect the sheet" | "Unprotect the sheet" => {
+            "protect_sheet" | "unprotect_sheet" => {
                 if t < self.book.sheets.len() {
                     self.commit();
                     self.checkpoint();
@@ -5311,28 +5314,28 @@ impl Calc {
                     self.dirty = true;
                     self.status = if on {
                         ui::tf!(
-                            "Protected sheet \"{}\" (only unlocked cells stay writable)",
+                            "protected_sheet_only_unlocked",
                             name
                         )
                         .into()
                     } else {
-                        ui::tf!("Released the protection on sheet \"{}\"", name).into()
+                        ui::tf!("released_protection_sheet", name).into()
                     };
                 }
             }
-            "Tab colour" => {
+            "tab_colour" => {
                 self.pick_kind = "tab-color";
                 let y = (self.view_h_px - 420.0).max(ROW_H + 16.0);
                 self.pick = Some((
                     menu(&[
-                        ui::item!("No colour"),
-                        ui::item!("Red"),
-                        ui::item!("Orange"),
-                        ui::item!("Yellow"),
-                        ui::item!("Green"),
-                        ui::item!("Blue"),
-                        ui::item!("Purple"),
-                        ui::item!("Grey"),
+                        ui::item!("no_colour"),
+                        ui::item!("red"),
+                        ui::item!("orange"),
+                        ui::item!("yellow"),
+                        ui::item!("green"),
+                        ui::item!("blue"),
+                        ui::item!("purple"),
+                        ui::item!("grey"),
                     ]),
                     (HEAD_W + 24.0, y),
                 ));
@@ -5351,13 +5354,13 @@ impl Calc {
         }
         // **鍵をそのまま文に差し込まない。** 見出しを一緒に持って回る
         let (hex, label) = match v {
-            "Red" => (Some("FFC00000"), ui::t!("Red")),
-            "Orange" => (Some("FFED7D31"), ui::t!("Orange")),
-            "Yellow" => (Some("FFFFC000"), ui::t!("Yellow")),
-            "Green" => (Some("FF70AD47"), ui::t!("Green")),
-            "Blue" => (Some("FF4472C4"), ui::t!("Blue")),
-            "Purple" => (Some("FF7030A0"), ui::t!("Purple")),
-            "Grey" => (Some("FF7F7F7F"), ui::t!("Grey")),
+            "red" => (Some("FFC00000"), ui::t!("red")),
+            "orange" => (Some("FFED7D31"), ui::t!("orange")),
+            "yellow" => (Some("FFFFC000"), ui::t!("yellow")),
+            "green" => (Some("FF70AD47"), ui::t!("green")),
+            "blue" => (Some("FF4472C4"), ui::t!("blue")),
+            "purple" => (Some("FF7030A0"), ui::t!("purple")),
+            "grey" => (Some("FF7F7F7F"), ui::t!("grey")),
             _ => (None, ""),
         };
         // 1手で戻せる(シート見出しの色もシートの中身 — checkpoint と同じ作法で番号つき)
@@ -5366,9 +5369,9 @@ impl Calc {
         self.book.sheets[t].tab_color = hex.map(|h| h.to_string());
         self.dirty = true;
         self.status = if hex.is_some() {
-            ui::tf!("Tab colour set to {} (kept in the xlsx on save)", label).into()
+            ui::tf!("tab_colour_set_kept", label).into()
         } else {
-            ui::t!("Tab colour removed").into()
+            ui::t!("tab_colour_removed").into()
         };
     }
 }

@@ -122,14 +122,14 @@ pub(crate) fn text_px(text: &str, size_px: f32) -> f32 {
 /// 帳票を書く人の探し方ではない(通貨より先に 〒 や ㈱ が要る)
 pub(crate) fn symbol_groups() -> Vec<(&'static str, &'static str, &'static str)> {
     vec![
-        row(ui::item!("Common in business forms"), "〒℡№㈱㈲〆※‰°′″"),
-        row(ui::item!("Marks"), "○●◎△▲▽▼□■◇◆☆★×✓☑☐"),
-        row(ui::item!("Arrows"), "→←↑↓⇒⇐⇔↔↗↘↙↖"),
-        row(ui::item!("Circled numbers"), "①②③④⑤⑥⑦⑧⑨⑩⑪⑫"),
-        row(ui::item!("Currency"), "¥＄€£¢₩₹"),
-        row(ui::item!("Maths"), "±×÷≠≒≦≧∞√∑∫"),
-        row(ui::item!("Brackets and separators"), "「」『』【】〔〕・…‥※〜"),
-        row(ui::item!("Greek"), "αβγδεζηθλμπστφω"),
+        row(ui::item!("common_business_forms"), "〒℡№㈱㈲〆※‰°′″"),
+        row(ui::item!("marks"), "○●◎△▲▽▼□■◇◆☆★×✓☑☐"),
+        row(ui::item!("arrows"), "→←↑↓⇒⇐⇔↔↗↘↙↖"),
+        row(ui::item!("circled_numbers"), "①②③④⑤⑥⑦⑧⑨⑩⑪⑫"),
+        row(ui::item!("currency"), "¥＄€£¢₩₹"),
+        row(ui::item!("maths"), "±×÷≠≒≦≧∞√∑∫"),
+        row(ui::item!("brackets_separators"), "「」『』【】〔〕・…‥※〜"),
+        row(ui::item!("greek"), "αβγδεζηθλμπστφω"),
     ]
 }
 
@@ -394,7 +394,7 @@ pub(crate) struct FnDlg {
 
 /// 分類のタブ。「すべて」+ funcs.rs の分類。**日本語のまま持つ** —
 /// これは絞り込みの照合に使う鍵で、画面に出すときだけ訳す
-pub(crate) const FN_GROUPS: &[&str] = &["All", "Math & Trig", "Statistics", "Text functions", "Logical", "Date & Time", "Lookup & Reference", "Financial", "Information"];
+pub(crate) const FN_GROUPS: &[&str] = &["all", "math_trig", "statistics", "text_functions", "logical", "date_time", "lookup_reference", "financial", "information"];
 
 /// 分類のタブに出す語。**変数を `ui::tr` に渡さず、1つずつ literal で書く。**
 ///
@@ -404,21 +404,21 @@ pub(crate) const FN_GROUPS: &[&str] = &["All", "Math & Trig", "Statistics", "Tex
 /// 画面に出ていた(2026-08-11、関数の説明を各言語に繋いだときに見つけた)。
 pub(crate) fn fn_group_label(key: &'static str) -> &'static str {
     match key {
-        "All" => ui::t!("All"),
+        "all" => ui::t!("all"),
         // **名前はリボンの族のボタンに揃える。** 同じ関数の集まりなのに
         // タブが「数学」でボタンが「数学/三角」では、同じ製品の中で
         // 2つの名前を持つことになる。はじめ短い名前を別に作ってしまい、
         // 訳も別に頼んでいた(2026-08-11、下請けの指摘で気づいた)。
         // 一語の鍵は他の意味と衝突もする — 「日付」は数値の書式の
-        // 見出し、「検索」は検索コマンド(英語は "Find")
-        "Math & Trig" => ui::t!("Math & Trig"),
-        "Statistics" => ui::t!("Statistics"),
-        "Text functions" => ui::t!("Text functions"),
-        "Logical" => ui::t!("Logical"),
-        "Date & Time" => ui::t!("Date & Time"),
-        "Lookup & Reference" => ui::t!("Lookup & Reference"),
-        "Financial" => ui::t!("Financial"),
-        "Information" => ui::t!("Information"),
+        // 見出し、「検索」は検索コマンド(英語は "find")
+        "math_trig" => ui::t!("math_trig"),
+        "statistics" => ui::t!("statistics"),
+        "text_functions" => ui::t!("text_functions"),
+        "logical" => ui::t!("logical"),
+        "date_time" => ui::t!("date_time"),
+        "lookup_reference" => ui::t!("lookup_reference"),
+        "financial" => ui::t!("financial"),
+        "information" => ui::t!("information"),
         other => other,
     }
 }
@@ -431,11 +431,11 @@ pub(crate) fn fn_group_label(key: &'static str) -> &'static str {
 /// 1箇所に集めて、試験が `FN_GROUPS` と突き合わせられるようにした。
 pub(crate) fn fn_group_cmd(group: &str) -> &'static str {
     match group {
-        "Statistics" | "Math & Trig" => "fn-math",
-        "Financial" => "fn-financial",
-        "Date & Time" => "fn-datetime",
-        "Text functions" => "fn-text",
-        "Logical" => "fn-logical",
+        "statistics" | "math_trig" => "fn-math",
+        "financial" => "fn-financial",
+        "date_time" => "fn-datetime",
+        "text_functions" => "fn-text",
+        "logical" => "fn-logical",
         // 検索/行列 と 情報 はここ。**既定に落ちるのが正しい2つ**
         _ => "fn-lookup",
     }
@@ -553,8 +553,8 @@ pub(crate) const SOLVER_OPS: [&str; 5] = ["<=", "=", ">=", "int", "bin"];
 /// 記号を画面に出すときの語(`int` と `bin` だけ言葉にする)
 pub(crate) fn solver_op_label(i: usize) -> String {
     match i {
-        3 => ui::t!("Whole number").to_string(),
-        4 => ui::t!("Binary").to_string(),
+        3 => ui::t!("whole_number").to_string(),
+        4 => ui::t!("binary").to_string(),
         _ => SOLVER_OPS[i.min(2)].to_string(),
     }
 }
@@ -609,11 +609,11 @@ impl DvDlg {
 /// 並びを変えるときは必ず両方いっしょに
 pub(crate) fn dv_kinds() -> [&'static str; 5] {
     [
-        ui::t!("Any value"),
-        ui::t!("Whole number"),
-        ui::t!("Decimal"),
-        ui::t!("List"),
-        ui::t!("Text length"),
+        ui::t!("any_value"),
+        ui::t!("whole_number"),
+        ui::t!("decimal"),
+        ui::t!("list"),
+        ui::t!("text_length"),
     ]
 }
 /// kind の添字 → xlsx の type
@@ -622,22 +622,22 @@ pub(crate) const DV_KIND_XLSX: [&str; 5] = ["", "whole", "decimal", "list", "tex
 /// **引き当ては operator**(訳さない字)、画面は見出し
 pub(crate) fn dv_ops() -> [(&'static str, &'static str); 8] {
     [
-        ("between", ui::t!("between")),
-        ("notBetween", ui::t!("not between")),
-        ("equal", ui::t!("equal to")),
-        ("notEqual", ui::t!("not equal to")),
-        ("greaterThan", ui::t!("greater than")),
-        ("lessThan", ui::t!("less than")),
-        ("greaterThanOrEqual", ui::t!("greater than or equal to")),
-        ("lessThanOrEqual", ui::t!("less than or equal to")),
+        ("between_2", ui::t!("between_2")),
+        ("notBetween", ui::t!("not_between")),
+        ("equal", ui::t!("equal")),
+        ("notEqual", ui::t!("not_equal")),
+        ("greaterThan", ui::t!("greater_than")),
+        ("lessThan", ui::t!("less_than")),
+        ("greaterThanOrEqual", ui::t!("greater_than_equal")),
+        ("lessThanOrEqual", ui::t!("less_than_equal")),
     ]
 }
 /// エラー警告のスタイル `(xlsx の errorStyle, 見出し)`。引き当ては errorStyle
 pub(crate) fn dv_styles() -> [(&'static str, &'static str); 3] {
     [
-        ("stop", ui::t!("Stop")),
-        ("warning", ui::t!("Warning")),
-        ("information", ui::t!("Information")),
+        ("stop", ui::t!("stop")),
+        ("warning", ui::t!("warning")),
+        ("information", ui::t!("information")),
     ]
 }
 
@@ -651,27 +651,27 @@ pub(crate) fn dv_styles() -> [(&'static str, &'static str); 3] {
 pub(crate) fn smartart(
 ) -> Vec<(&'static str, &'static str, Vec<(&'static str, &'static str, &'static str)>)> {
     vec![
-        row(ui::item!("List"), vec![
-            row(ui::item!("Card list"), "block-list"),
-            row(ui::item!("Vertical list"), "vbox-list"),
-            row(ui::item!("Pyramid list"), "pyramid-list"),
+        row(ui::item!("list"), vec![
+            row(ui::item!("card_list"), "block-list"),
+            row(ui::item!("vertical_list"), "vbox-list"),
+            row(ui::item!("pyramid_list"), "pyramid-list"),
         ]),
-        row(ui::item!("Process"), vec![
-            row(ui::item!("Basic steps"), "basic-process"),
-            row(ui::item!("Process"), "chevron-process"),
-            row(ui::item!("Timeline"), "timeline"),
+        row(ui::item!("process"), vec![
+            row(ui::item!("basic_steps"), "basic-process"),
+            row(ui::item!("process"), "chevron-process"),
+            row(ui::item!("timeline"), "timeline"),
         ]),
-        row(ui::item!("Cycle"), vec![
-            row(ui::item!("Basic cycle"), "basic-cycle"),
-            row(ui::item!("Block cycle"), "block-cycle"),
+        row(ui::item!("cycle"), vec![
+            row(ui::item!("basic_cycle"), "basic-cycle"),
+            row(ui::item!("block_cycle"), "block-cycle"),
         ]),
-        row(ui::item!("Hierarchy"), vec![
-            row(ui::item!("Organisation chart"), "org-chart"),
-            row(ui::item!("Hierarchy"), "hierarchy"),
+        row(ui::item!("hierarchy"), vec![
+            row(ui::item!("organisation_chart"), "org-chart"),
+            row(ui::item!("hierarchy"), "hierarchy"),
         ]),
-        row(ui::item!("Relationship"), vec![row(ui::item!("Basic Venn"), "venn")]),
-        row(ui::item!("Matrix"), vec![row(ui::item!("Basic matrix"), "matrix")]),
-        row(ui::item!("Pyramid"), vec![row(ui::item!("Basic pyramid"), "pyramid")]),
+        row(ui::item!("relationship"), vec![row(ui::item!("basic_venn"), "venn")]),
+        row(ui::item!("matrix"), vec![row(ui::item!("basic_matrix"), "matrix")]),
+        row(ui::item!("pyramid"), vec![row(ui::item!("basic_pyramid"), "pyramid")]),
     ]
 }
 
@@ -731,11 +731,11 @@ pub(crate) fn split_fields(text: &str) -> Vec<String> {
 /// 訳した字を書き込むと別物を指すので、鍵は日本語のまま。画面は見出しだけ
 pub(crate) fn pivot_aggs() -> Vec<(&'static str, &'static str)> {
     vec![
-        ui::item!("Sum"),
-        ui::item!("Average"),
-        ui::item!("Count"),
-        ui::item!("Maximum"),
-        ui::item!("Minimum"),
+        ui::item!("sum"),
+        ui::item!("average"),
+        ui::item!("count"),
+        ui::item!("maximum"),
+        ui::item!("minimum"),
     ]
 }
 
@@ -778,8 +778,8 @@ pub(crate) fn date_bucket(
         }
     };
     Some(match grain {
-        "Years" => format!("{y}年"),
-        "Quarters" => format!("{}年Q{}", y, (m + 2) / 3),
+        "years" => format!("{y}年"),
+        "quarters" => format!("{}年Q{}", y, (m + 2) / 3),
         // 月は `2026-08`。ピボットの %Y-%m と同じ
         _ => format!("{y}-{m:02}"),
     })
@@ -788,13 +788,13 @@ pub(crate) fn date_bucket(
 /// 日付の粒の選択肢。**空(値そのもの)はここに入れません** —
 /// 鍵と見出しが違う組は `ui::item!` に載らないので、呼ぶ側で別に書きます
 pub(crate) fn slicer_grains() -> Vec<(&'static str, &'static str)> {
-    vec![ui::item!("Months"), ui::item!("Quarters"), ui::item!("Years")]
+    vec![ui::item!("months"), ui::item!("quarters"), ui::item!("years")]
 }
 
 /// 粒の見出し。空なら「値そのもの」
 pub(crate) fn slicer_grain_label(grain: &str) -> String {
     if grain.is_empty() {
-        return ui::t!("The values themselves").to_string();
+        return ui::t!("values_themselves").to_string();
     }
     slicer_grains()
         .iter()
@@ -884,7 +884,7 @@ pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec
                     rows_sel: vec![headers[r].clone()],
                     cols_sel: Vec::new(),
                     value: headers[v].clone(),
-                    agg: "Sum",
+                    agg: "sum",
                 },
                 &mut out,
             );
@@ -898,7 +898,7 @@ pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec
                     rows_sel: vec![headers[r].clone()],
                     cols_sel: vec![headers[c].clone()],
                     value: headers[v].clone(),
-                    agg: "Sum",
+                    agg: "sum",
                 },
                 &mut out,
             );
@@ -911,7 +911,7 @@ pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec
                 rows_sel: vec![headers[r].clone()],
                 cols_sel: Vec::new(),
                 value: headers[r].clone(),
-                agg: "Count",
+                agg: "count",
             },
             &mut out,
         );
@@ -928,14 +928,14 @@ pub(crate) fn pivot_suggest_label(s: &PivotSuggest) -> String {
         .unwrap_or_else(|| s.agg.to_string());
     match s.cols_sel.first() {
         Some(c) => ui::tf!(
-            "Rows: {} / Columns: {} / {} of {}",
-            s.rows_sel.join("•"),
+            "rows_columns",
+            s.rows_sel.join("・"),
             c.clone(),
             s.value.clone(),
             agg
         )
         .to_string(),
-        None => ui::tf!("Rows: {} / {} of {}", s.rows_sel.join("•"), s.value.clone(), agg)
+        None => ui::tf!("rows", s.rows_sel.join("・"), s.value.clone(), agg)
             .to_string(),
     }
 }
@@ -980,8 +980,8 @@ pub(crate) fn pivot_spec_json(headers: &[String], rows: &[Vec<String>], d: &shee
         // 台本は鍵で処理し、字は渡された訳で書きます — Python から
         // 対訳表は引けませんし、引けるようにすると表が2つになります
         agg_label = esc(&ui::tr_dyn(&d.agg)),
-        sub_label = esc(&ui::t!("{} subtotal")),
-        grand_label = esc(&ui::t!("Grand totals")),
+        sub_label = esc(&ui::t!("subtotal")),
+        grand_label = esc(&ui::t!("grand_totals")),
     )
 }
 
@@ -1038,7 +1038,7 @@ pub(crate) fn apply_subtotals(s: &mut sheet::Sheet, a: Pos, b: Pos, by: u32, val
         let k = k as u32;
         let (det0, det1, srow) = (start + k, end + k, end + 1 + k);
         sub_rows.push(srow);
-        style(s, Pos::new(srow, by), &ui::tf!("{} subtotal", label));
+        style(s, Pos::new(srow, by), &ui::tf!("subtotal", label));
         for c in vals {
             style(
                 s,
@@ -1053,7 +1053,7 @@ pub(crate) fn apply_subtotals(s: &mut sheet::Sheet, a: Pos, b: Pos, by: u32, val
     let trow = b.row + 1 + runs.len() as u32;
     // **文書に書き込む字は訳を通します。** 鍵をそのまま書くと、
     // 日本語の人の表に英語の見出しが入ります(2026-08-26)
-    style(s, Pos::new(trow, by), ui::t!("Grand totals"));
+    style(s, Pos::new(trow, by), ui::t!("grand_totals"));
     for c in vals {
         let refs: Vec<String> = sub_rows.iter().map(|r| Pos::new(*r, *c).a1()).collect();
         style(s, Pos::new(trow, *c), &format!("={}", refs.join("+")));
@@ -1189,13 +1189,13 @@ pub(crate) fn solve_goal(base: &sheet::Sheet, target: Pos, goal: f64, var: Pos) 
 /// **小数の桁も通貨で決まる** — 「¥1,234.00」は日本の帳票では見ない
 pub(crate) fn currencies() -> Vec<(&'static str, &'static str, &'static str, usize)> {
     vec![
-        (ui::item!("Yen (¥)").0, ui::item!("Yen (¥)").1, "¥", 0),
-        (ui::item!("Dollar ($)").0, ui::item!("Dollar ($)").1, "$", 2),
-        (ui::item!("Euro (€)").0, ui::item!("Euro (€)").1, "€", 2),
-        (ui::item!("Pound (£)").0, ui::item!("Pound (£)").1, "£", 2),
-        (ui::item!("Won (₩)").0, ui::item!("Won (₩)").1, "₩", 0),
-        (ui::item!("Yuan (¥)").0, ui::item!("Yuan (¥)").1, "¥", 2),
-        (ui::item!("No symbol").0, ui::item!("No symbol").1, "", 0),
+        (ui::item!("yen").0, ui::item!("yen").1, "¥", 0),
+        (ui::item!("dollar").0, ui::item!("dollar").1, "$", 2),
+        (ui::item!("euro").0, ui::item!("euro").1, "€", 2),
+        (ui::item!("pound").0, ui::item!("pound").1, "£", 2),
+        (ui::item!("won").0, ui::item!("won").1, "₩", 0),
+        (ui::item!("yuan").0, ui::item!("yuan").1, "¥", 2),
+        (ui::item!("no_symbol").0, ui::item!("no_symbol").1, "", 0),
     ]
 }
 
@@ -1243,11 +1243,11 @@ pub(crate) fn date_formats() -> Vec<(&'static str, String, String)> {
         sheet::model::format_value(&sheet::Value::Number(46240.0), Some(code), false)
     };
     let rows: Vec<(&'static str, String)> = vec![
-        (ui::item!("Short date").0, format!("{tag}{}", n.short_date)),
-        (ui::item!("Long date").0, format!("{tag}{}", n.long_date)),
-        (ui::item!("Month and year").0, format!("{tag}mmmm yyyy")),
-        (ui::item!("Weekday only").0, format!("{tag}dddd")),
-        (ui::item!("Time").0, "h:mm:ss".to_string()),
+        (ui::item!("short_date").0, format!("{tag}{}", n.short_date)),
+        (ui::item!("long_date").0, format!("{tag}{}", n.long_date)),
+        (ui::item!("month_year").0, format!("{tag}mmmm yyyy")),
+        (ui::item!("weekday_only").0, format!("{tag}dddd")),
+        (ui::item!("time").0, "h:mm:ss".to_string()),
     ];
     rows.into_iter()
         .map(|(k, code)| {
@@ -1259,16 +1259,16 @@ pub(crate) fn date_formats() -> Vec<(&'static str, String, String)> {
 
 pub(crate) fn numfmts() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
     vec![
-        row(ui::item!("General"), None),
-        row(ui::item!("Number (1234.56)"), Some("0.00")),
-        row(ui::item!("Thousands separator (1,234)"), Some("#,##0")),
+        row(ui::item!("general"), None),
+        row(ui::item!("number_1234_56"), Some("0.00")),
+        row(ui::item!("thousands_separator_1_234"), Some("#,##0")),
         // **記号を見出しに書かない。** 「通貨 (¥1,234)」と出すと、
         // 独語の人に ¥ を約束することになる。押すと通貨を選ぶ一覧が開く
-        row(ui::item!("Currency…"), None),
-        row(ui::item!("Percentage (12.34%)"), Some("0.00%")),
-        row(ui::item!("Scientific (1.23E+04)"), Some("0.00E+00")),
-        row(ui::item!("Date…"), None),
-                row(ui::item!("Text (@)"), Some("@")),
+        row(ui::item!("currency_2"), None),
+        row(ui::item!("percentage_12_34"), Some("0.00%")),
+        row(ui::item!("scientific_1_23e_04"), Some("0.00E+00")),
+        row(ui::item!("date_2"), None),
+                row(ui::item!("text_2"), Some("@")),
     ]
 }
 
@@ -1286,11 +1286,11 @@ pub(crate) struct AutoFilter {
 /// [`change_case`] の照合はこの鍵で行う(見出しだけが訳される)
 pub(crate) fn case_modes() -> Vec<(&'static str, &'static str)> {
     vec![
-        ui::item!("Sentence case"),
+        ui::item!("sentence_case"),
         ui::item!("lowercase"),
-        ui::item!("UPPERCASE"),
-        ui::item!("Capitalise Each Word"),
-        ui::item!("tOGGLE cASE"),
+        ui::item!("uppercase"),
+        ui::item!("capitalise_each_word"),
+        ui::item!("toggle_case"),
     ]
 }
 
@@ -1298,8 +1298,8 @@ pub(crate) fn case_modes() -> Vec<(&'static str, &'static str)> {
 pub(crate) fn change_case(t: &str, mode: &str) -> String {
     match mode {
         "lowercase" => t.to_lowercase(),
-        "UPPERCASE" => t.to_uppercase(),
-        "Sentence case" => {
+        "uppercase" => t.to_uppercase(),
+        "sentence_case" => {
             let mut out = String::with_capacity(t.len());
             let mut done = false;
             for ch in t.to_lowercase().chars() {
@@ -1312,7 +1312,7 @@ pub(crate) fn change_case(t: &str, mode: &str) -> String {
             }
             out
         }
-        "Capitalise Each Word" => {
+        "capitalise_each_word" => {
             let mut out = String::with_capacity(t.len());
             let mut head = true;
             for ch in t.chars() {
@@ -1334,7 +1334,7 @@ pub(crate) fn change_case(t: &str, mode: &str) -> String {
             }
             out
         }
-        "tOGGLE cASE" => t
+        "toggle_case" => t
             .chars()
             .flat_map(|ch| {
                 if ch.is_uppercase() {
@@ -1359,18 +1359,18 @@ pub(crate) fn change_case(t: &str, mode: &str) -> String {
 pub(crate) fn border_styles() -> Vec<(&'static str, &'static str, sheet::model::BStyle)> {
     use sheet::model::BStyle;
     vec![
-        row(ui::item!("Thin solid (default)"), BStyle::Thin),
-        row(ui::item!("Hairline"), BStyle::Hair),
-        row(ui::item!("Dotted"), BStyle::Dotted),
-        row(ui::item!("Dashed"), BStyle::Dashed),
-        row(ui::item!("Dash-dot"), BStyle::DashDot),
-        row(ui::item!("Dash-dot-dot"), BStyle::DashDotDot),
-        row(ui::item!("Medium solid"), BStyle::Medium),
-        row(ui::item!("Medium dashed"), BStyle::MediumDashed),
-        row(ui::item!("Medium dash-dot"), BStyle::MediumDashDot),
-        row(ui::item!("Medium dash-dot-dot"), BStyle::MediumDashDotDot),
-        row(ui::item!("Thick solid"), BStyle::Thick),
-        row(ui::item!("Double line"), BStyle::Double),
+        row(ui::item!("thin_solid_default"), BStyle::Thin),
+        row(ui::item!("hairline"), BStyle::Hair),
+        row(ui::item!("dotted"), BStyle::Dotted),
+        row(ui::item!("dashed"), BStyle::Dashed),
+        row(ui::item!("dash_dot"), BStyle::DashDot),
+        row(ui::item!("dash_dot_dot"), BStyle::DashDotDot),
+        row(ui::item!("medium_solid"), BStyle::Medium),
+        row(ui::item!("medium_dashed"), BStyle::MediumDashed),
+        row(ui::item!("medium_dash_dot"), BStyle::MediumDashDot),
+        row(ui::item!("medium_dash_dot_dot"), BStyle::MediumDashDotDot),
+        row(ui::item!("thick_solid"), BStyle::Thick),
+        row(ui::item!("double_line"), BStyle::Double),
     ]
 }
 
@@ -1380,15 +1380,15 @@ pub(crate) fn border_styles() -> Vec<(&'static str, &'static str, sheet::model::
 /// (見出しだけが訳される)
 pub(crate) fn border_kinds() -> Vec<(&'static str, &'static str)> {
     vec![
-        ui::item!("Bottom border"),
-        ui::item!("Top border"),
-        ui::item!("Left border"),
-        ui::item!("Right border"),
-        ui::item!("Outline"),
-        ui::item!("All borders (grid)"),
-        ui::item!("Inside vertical border"),
-        ui::item!("Inside horizontal border"),
-        ui::item!("No border"),
+        ui::item!("bottom_border"),
+        ui::item!("top_border"),
+        ui::item!("left_border"),
+        ui::item!("right_border"),
+        ui::item!("outline"),
+        ui::item!("all_borders_grid"),
+        ui::item!("inside_vertical_border"),
+        ui::item!("inside_horizontal_border"),
+        ui::item!("no_border"),
     ]
 }
 
@@ -1407,20 +1407,20 @@ pub(crate) fn border_kind_label(key: &str) -> String {
 /// (入切の照合は sheet に渡る)。並びが食い違わないことは tests.rs が見張る
 pub(crate) fn protect_allows() -> Vec<(&'static str, &'static str)> {
     vec![
-        ui::item!("Moving shapes and pictures"),
-        ui::item!("Select locked cells"),
-        ui::item!("Select unlocked cells"),
-        ui::item!("Format cells"),
-        ui::item!("Format columns"),
-        ui::item!("Format rows"),
-        ui::item!("Insert columns"),
-        ui::item!("Insert rows"),
-        ui::item!("Insert hyperlinks"),
-        ui::item!("Delete columns"),
-        ui::item!("Delete rows"),
-        ui::item!("Sort"),
-        ui::item!("Use AutoFilter"),
-        ui::item!("Use PivotTable"),
+        ui::item!("moving_shapes_pictures"),
+        ui::item!("select_locked_cells"),
+        ui::item!("select_unlocked_cells"),
+        ui::item!("format_cells"),
+        ui::item!("format_columns"),
+        ui::item!("format_rows"),
+        ui::item!("insert_columns"),
+        ui::item!("insert_rows"),
+        ui::item!("insert_hyperlinks"),
+        ui::item!("delete_columns"),
+        ui::item!("delete_rows"),
+        ui::item!("sort_2"),
+        ui::item!("use_autofilter"),
+        ui::item!("use_pivottable"),
     ]
 }
 
@@ -1439,9 +1439,9 @@ pub(crate) fn protect_allow_summary(a: &sheet::model::ProtectAllow) -> String {
     let items = a.items();
     let on = items.iter().filter(|(_, v)| *v).count();
     if on == 0 {
-        ui::t!("Nothing is allowed").to_string()
+        ui::t!("nothing_allowed").to_string()
     } else {
-        ui::tf!("{} of {} allowed", items.len(), on).to_string()
+        ui::tf!("allowed_2", items.len(), on).to_string()
     }
 }
 
@@ -1451,9 +1451,9 @@ pub(crate) fn color_schemes() -> Vec<(&'static str, &'static str)> {
     vec![
         // 「Office」は色の組の固有名 — 訳す言葉ではない
         ("Office", "Office"),
-        ui::item!("Warm"),
-        ui::item!("Cool"),
-        ui::item!("Ink"),
+        ui::item!("warm"),
+        ui::item!("cool"),
+        ui::item!("ink"),
     ]
 }
 
@@ -1468,34 +1468,34 @@ pub(crate) fn color_scheme_label(key: &str) -> String {
 
 pub(crate) fn font_colors() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
     vec![
-        row(ui::item!("Automatic"), None),
-        row(ui::item!("Black"), Some("1B1B1B")),
-        row(ui::item!("Red"), Some("C00000")),
-        row(ui::item!("Orange"), Some("ED7D31")),
-        row(ui::item!("Yellow"), Some("FFC000")),
-        row(ui::item!("Green"), Some("70AD47")),
-        row(ui::item!("Blue"), Some("4472C4")),
-        row(ui::item!("Navy"), Some("1F4E79")),
-        row(ui::item!("Purple"), Some("7030A0")),
-        row(ui::item!("Grey"), Some("7F7F7F")),
-        row(ui::item!("White"), Some("FFFFFF")),
+        row(ui::item!("automatic"), None),
+        row(ui::item!("black"), Some("1B1B1B")),
+        row(ui::item!("red"), Some("C00000")),
+        row(ui::item!("orange"), Some("ED7D31")),
+        row(ui::item!("yellow"), Some("FFC000")),
+        row(ui::item!("green"), Some("70AD47")),
+        row(ui::item!("blue"), Some("4472C4")),
+        row(ui::item!("navy"), Some("1F4E79")),
+        row(ui::item!("purple"), Some("7030A0")),
+        row(ui::item!("grey"), Some("7F7F7F")),
+        row(ui::item!("white"), Some("FFFFFF")),
     ]
 }
 
 /// 塗りつぶしのパレット(帳票で使う薄い色を先に)
 pub(crate) fn fill_colors() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
     vec![
-        row(ui::item!("No colour"), None),
-        row(ui::item!("Light yellow"), Some("FFF2CC")),
-        row(ui::item!("Light blue"), Some("DEEAF6")),
-        row(ui::item!("Light green"), Some("E2EFDA")),
-        row(ui::item!("Light orange"), Some("FCE4D6")),
-        row(ui::item!("Light grey"), Some("D9D9D9")),
-        row(ui::item!("Yellow"), Some("FFC000")),
-        row(ui::item!("Orange"), Some("ED7D31")),
-        row(ui::item!("Green"), Some("70AD47")),
-        row(ui::item!("Blue"), Some("4472C4")),
-        row(ui::item!("Grey"), Some("7F7F7F")),
+        row(ui::item!("no_colour"), None),
+        row(ui::item!("light_yellow"), Some("FFF2CC")),
+        row(ui::item!("light_blue"), Some("DEEAF6")),
+        row(ui::item!("light_green"), Some("E2EFDA")),
+        row(ui::item!("light_orange"), Some("FCE4D6")),
+        row(ui::item!("light_grey"), Some("D9D9D9")),
+        row(ui::item!("yellow"), Some("FFC000")),
+        row(ui::item!("orange"), Some("ED7D31")),
+        row(ui::item!("green"), Some("70AD47")),
+        row(ui::item!("blue"), Some("4472C4")),
+        row(ui::item!("grey"), Some("7F7F7F")),
     ]
 }
 
@@ -1508,14 +1508,14 @@ pub(crate) fn fill_colors() -> Vec<(&'static str, &'static str, Option<&'static 
 /// 色名は既に訳のある語をそのまま鍵にしている(新しい文言を増やさない)。
 pub(crate) fn table_styles() -> Vec<(&'static str, &'static str, TableStyle)> {
     vec![
-        row(ui::item!("Green"), TableStyle::new("D5E8DC", "F1F6F3")),
-        row(ui::item!("Blue"), TableStyle::new("D6E4F0", "EEF4FA")),
-        row(ui::item!("Orange"), TableStyle::new("FCE4D6", "FDF2EC")),
-        row(ui::item!("Red"), TableStyle::new("F8D7DA", "FCEEEF")),
-        row(ui::item!("Purple"), TableStyle::new("E4DCEF", "F3F0F8")),
-        row(ui::item!("Grey"), TableStyle::new("E7E9EB", "F4F5F6")),
+        row(ui::item!("green"), TableStyle::new("D5E8DC", "F1F6F3")),
+        row(ui::item!("blue"), TableStyle::new("D6E4F0", "EEF4FA")),
+        row(ui::item!("orange"), TableStyle::new("FCE4D6", "FDF2EC")),
+        row(ui::item!("red"), TableStyle::new("F8D7DA", "FCEEEF")),
+        row(ui::item!("purple"), TableStyle::new("E4DCEF", "F3F0F8")),
+        row(ui::item!("grey"), TableStyle::new("E7E9EB", "F4F5F6")),
         // 色を敷かない。**罫線と太字だけ**で組む帳票のため
-        row(ui::item!("Borders only"), TableStyle { header: None, band: None }),
+        row(ui::item!("borders_only"), TableStyle { header: None, band: None }),
     ]
 }
 
@@ -1534,7 +1534,7 @@ impl TableStyle {
 
 pub(crate) fn cell_styles() -> Vec<セルのスタイル> {
     let f: Vec<セルのスタイル> = vec![
-    row(ui::item!("Normal"), |f| *f = CellFormat::default()),
+    row(ui::item!("normal"), |f| *f = CellFormat::default()),
     // **見出しは4段**(2026-08-20 発注者「Excel が 見出し1〜4 を持つので
     // あれば、そうしていいのでは」)。前は1段だけで、章と節を書き分け
     // られませんでした。
@@ -1542,57 +1542,57 @@ pub(crate) fn cell_styles() -> Vec<セルのスタイル> {
     // *色は Excel の写しではありません。* いまの見出しが使っていた緑
     // (画面の帯の色)のまま、段が下がるほど字を小さく、線を細くします。
     // 「MS がそうだから」は理由にしない決めです
-    row(ui::item!("Heading 1"), |f| {
+    row(ui::item!("heading_1"), |f| {
         f.bold = true;
         f.size_c = Some(1400);
         f.color = Some("1B6E3C".into());
         f.fill = Some("D5E8DC".into());
         f.borders.bottom = sheet::model::Edge::line(sheet::model::BStyle::Medium, None);
     }),
-    row(ui::item!("Heading 2"), |f| {
+    row(ui::item!("heading_2"), |f| {
         f.bold = true;
         f.size_c = Some(1200);
         f.color = Some("1B6E3C".into());
         f.fill = Some("D5E8DC".into());
         f.borders.bottom = sheet::model::Edge::THIN;
     }),
-    row(ui::item!("Heading 3"), |f| {
+    row(ui::item!("heading_3"), |f| {
         f.bold = true;
         f.color = Some("1B6E3C".into());
         f.borders.bottom = sheet::model::Edge::THIN;
     }),
-    row(ui::item!("Heading 4"), |f| {
+    row(ui::item!("heading_4"), |f| {
         f.bold = true;
         f.color = Some("1B6E3C".into());
     }),
-    row(ui::item!("Title style"), |f| {
+    row(ui::item!("title_style"), |f| {
         f.bold = true;
         f.size_c = Some(1600);
         f.color = Some("1B6E3C".into());
     }),
-    row(ui::item!("Good"), |f| {
+    row(ui::item!("good"), |f| {
         f.fill = Some("C6EFCE".into());
         f.color = Some("006100".into());
     }),
-    row(ui::item!("Bad"), |f| {
+    row(ui::item!("bad"), |f| {
         f.fill = Some("FFC7CE".into());
         f.color = Some("9C0006".into());
     }),
-    row(ui::item!("Neutral"), |f| {
+    row(ui::item!("neutral"), |f| {
         f.fill = Some("FFEB9C".into());
         f.color = Some("9C6500".into());
     }),
-    row(ui::item!("Note"), |f| {
+    row(ui::item!("note"), |f| {
         f.fill = Some("FFFFCC".into());
         f.borders = Borders::ALL;
     }),
-    row(ui::item!("Calculation"), |f| {
+    row(ui::item!("calculation"), |f| {
         f.italic = true;
         f.fill = Some("F2F2F2".into());
         f.color = Some("7F7F7F".into());
     }),
-    row(ui::item!("Currency"), |f| f.number_format = Some("¥#,##0".into())),
-    row(ui::item!("Percent"), |f| f.number_format = Some("0.0%".into())),
+    row(ui::item!("currency"), |f| f.number_format = Some("¥#,##0".into())),
+    row(ui::item!("percent"), |f| f.number_format = Some("0.0%".into())),
     ];
     f
 }
@@ -1618,21 +1618,21 @@ pub(crate) fn paper_mm(code: u32) -> Option<(f32, f32, &'static str)> {
 pub(crate) fn cond_kind_name(k: &sheet::model::CondKind) -> String {
     use sheet::model::CondKind;
     match k {
-        CondKind::Cmp(op, v) => format!("{} {}", ui::t!("Compare value"), format_args!("{op:?} {v}")),
-        CondKind::Between(lo, hi, false) => ui::tf!("Between {} and {}", lo, hi).to_string(),
-        CondKind::Between(lo, hi, true) => ui::tf!("Outside {} and {}", lo, hi).to_string(),
-        CondKind::Text(t) => ui::tf!("Contains \"{}\"", t).to_string(),
-        CondKind::Dup(false) => ui::t!("Duplicate values").to_string(),
-        CondKind::Dup(true) => ui::t!("Unique values").to_string(),
-        CondKind::Top(n, false) => ui::tf!("Top {}", n).to_string(),
-        CondKind::Top(n, true) => ui::tf!("Bottom {}", n).to_string(),
-        CondKind::Avg(false) => ui::t!("Above average").to_string(),
-        CondKind::Avg(true) => ui::t!("Below average").to_string(),
-        CondKind::Bar(_) => ui::t!("Data bar").to_string(),
-        CondKind::Scale(..) => ui::t!("Colour scale").to_string(),
-        CondKind::Icons(_) => ui::t!("Icon set").to_string(),
+        CondKind::Cmp(op, v) => format!("{} {}", ui::t!("compare_value"), format_args!("{op:?} {v}")),
+        CondKind::Between(lo, hi, false) => ui::tf!("between", lo, hi).to_string(),
+        CondKind::Between(lo, hi, true) => ui::tf!("outside", lo, hi).to_string(),
+        CondKind::Text(t) => ui::tf!("contains", t).to_string(),
+        CondKind::Dup(false) => ui::t!("duplicate_values").to_string(),
+        CondKind::Dup(true) => ui::t!("unique_values").to_string(),
+        CondKind::Top(n, false) => ui::tf!("top_2", n).to_string(),
+        CondKind::Top(n, true) => ui::tf!("bottom_2", n).to_string(),
+        CondKind::Avg(false) => ui::t!("above_average").to_string(),
+        CondKind::Avg(true) => ui::t!("below_average").to_string(),
+        CondKind::Bar(_) => ui::t!("data_bar").to_string(),
+        CondKind::Scale(..) => ui::t!("colour_scale").to_string(),
+        CondKind::Icons(_) => ui::t!("icon_set").to_string(),
         // 式は左上を錨にした原文。一覧では `=` を付けて見せる(編集欄と同じ形)
-        CondKind::Formula(f) => ui::tf!("Formula ={}", f).to_string(),
+        CondKind::Formula(f) => ui::tf!("formula", f).to_string(),
     }
 }
 
@@ -1836,10 +1836,10 @@ impl CommentSort {
     /// 見出しだけが画面の言語になる(`ui::item!` の作法)
     pub(crate) fn label(self) -> (&'static str, &'static str) {
         match self {
-            CommentSort::Place => ui::item!("Place"),
-            CommentSort::When => ui::item!("Date"),
-            CommentSort::Who => ui::item!("Author"),
-            CommentSort::Done => ui::item!("Status"),
+            CommentSort::Place => ui::item!("place"),
+            CommentSort::When => ui::item!("date"),
+            CommentSort::Who => ui::item!("author"),
+            CommentSort::Done => ui::item!("status"),
         }
     }
 }
@@ -1980,11 +1980,11 @@ impl Default for Slicer {
 pub(crate) fn slicer_styles() -> Vec<(&'static str, &'static str, u32, u32, u32)> {
     let row = |(k, l): (&'static str, &'static str), a, b, c| (k, l, a, b, c);
     vec![
-        row(ui::item!("Green"), 0xFFFFFF, 0xBBD9EA, 0x1B6E3C),
-        row(ui::item!("Blue"), 0xEEF4FA, 0xBBD9EA, 0x2E6DA4),
-        row(ui::item!("Orange"), 0xFDF2EC, 0xF6C99B, 0xB86A22),
-        row(ui::item!("Purple"), 0xF3F0F8, 0xD3C6EA, 0x6E4FA3),
-        row(ui::item!("Grey"), 0xF4F5F6, 0xD5DADE, 0x6B7680),
+        row(ui::item!("green"), 0xFFFFFF, 0xBBD9EA, 0x1B6E3C),
+        row(ui::item!("blue"), 0xEEF4FA, 0xBBD9EA, 0x2E6DA4),
+        row(ui::item!("orange"), 0xFDF2EC, 0xF6C99B, 0xB86A22),
+        row(ui::item!("purple"), 0xF3F0F8, 0xD3C6EA, 0x6E4FA3),
+        row(ui::item!("grey"), 0xF4F5F6, 0xD5DADE, 0x6B7680),
     ]
 }
 
@@ -2040,7 +2040,7 @@ pub(crate) fn slicer_items(
     let cut = items.len().saturating_sub(64);
     let mut out: Vec<String> = items.into_iter().take(64).map(|s| s.to_string()).collect();
     if has_blank && (!hide_empty || blank_live) {
-        out.push(ui::t!("(blank)").to_string());
+        out.push(ui::t!("blank").to_string());
     }
     (out, cut)
 }
@@ -2053,54 +2053,54 @@ pub(crate) fn slicer_items(
 /// 組は (鍵=日本語, 見出し)。**引き当ては鍵**で、見出しだけが画面の言語になる。
 pub(crate) fn shape_gallery(cat: &str) -> Vec<(&'static str, &'static str)> {
     match cat {
-        "Basic shapes" => vec![
-            ui::item!("Rectangle"),
-            ui::item!("Rounded rectangle"),
-            ui::item!("Ellipse"),
-            ui::item!("Triangle"),
-            ui::item!("Right triangle"),
-            ui::item!("Parallelogram"),
-            ui::item!("Trapezium"),
-            ui::item!("Diamond"),
-            ui::item!("Pentagon"),
-            ui::item!("Hexagon"),
-            ui::item!("Octagon"),
-            ui::item!("Cross"),
+        "basic_shapes" => vec![
+            ui::item!("rectangle"),
+            ui::item!("rounded_rectangle"),
+            ui::item!("ellipse"),
+            ui::item!("triangle"),
+            ui::item!("right_triangle"),
+            ui::item!("parallelogram"),
+            ui::item!("trapezium"),
+            ui::item!("diamond"),
+            ui::item!("pentagon"),
+            ui::item!("hexagon"),
+            ui::item!("octagon"),
+            ui::item!("cross"),
         ],
-        "Block arrows" => vec![
-            ui::item!("Right arrow"),
-            ui::item!("Left arrow"),
-            ui::item!("Up arrow"),
-            ui::item!("Down arrow"),
-            ui::item!("Left-right arrow"),
-            ui::item!("Up-down arrow"),
+        "block_arrows" => vec![
+            ui::item!("right_arrow"),
+            ui::item!("left_arrow"),
+            ui::item!("up_arrow"),
+            ui::item!("down_arrow"),
+            ui::item!("left_right_arrow"),
+            ui::item!("up_down_arrow"),
         ],
-        "Equation shapes" => vec![
-            ui::item!("Plus sign"),
-            ui::item!("Minus sign"),
-            ui::item!("Multiply sign"),
-            ui::item!("Equals sign"),
-            ui::item!("Not-equal sign"),
+        "equation_shapes" => vec![
+            ui::item!("plus_sign"),
+            ui::item!("minus_sign"),
+            ui::item!("multiply_sign"),
+            ui::item!("equals_sign"),
+            ui::item!("not_equal_sign"),
         ],
-        "Flowchart" => vec![
-            ui::item!("Process step"),
-            ui::item!("Decision"),
-            ui::item!("Data"),
-            ui::item!("Terminator"),
-            ui::item!("Document (shape)"),
-            ui::item!("Connector"),
+        "flowchart" => vec![
+            ui::item!("process_step"),
+            ui::item!("decision"),
+            ui::item!("data"),
+            ui::item!("terminator"),
+            ui::item!("document_shape"),
+            ui::item!("connector"),
         ],
-        "Stars and ribbons" => vec![
-            ui::item!("4-point star"),
-            ui::item!("5-point star"),
-            ui::item!("6-point star"),
-            ui::item!("8-point star"),
+        "stars_ribbons" => vec![
+            ui::item!("4_point_star"),
+            ui::item!("5_point_star"),
+            ui::item!("6_point_star"),
+            ui::item!("8_point_star"),
         ],
-        "Callouts" => vec![
-            ui::item!("Rectangular callout"),
-            ui::item!("Oval callout"),
+        "callouts" => vec![
+            ui::item!("rectangular_callout"),
+            ui::item!("oval_callout"),
         ],
-        "Line (border)" => vec![ui::item!("Straight line"), ui::item!("Free shape (made of points)")],
+        "line_border" => vec![ui::item!("straight_line"), ui::item!("free_shape_made_points")],
         _ => Vec::new(),
     }
 }
@@ -2108,13 +2108,13 @@ pub(crate) fn shape_gallery(cat: &str) -> Vec<(&'static str, &'static str)> {
 /// 分類の鍵 → 画面の見出し(2段目の題に出す)
 pub(crate) fn shape_cat_label(cat: &str) -> &'static str {
     match cat {
-        "Block arrows" => ui::t!("Block arrows"),
-        "Equation shapes" => ui::t!("Equation shapes"),
-        "Flowchart" => ui::t!("Flowchart"),
-        "Stars and ribbons" => ui::t!("Stars and ribbons"),
-        "Callouts" => ui::t!("Callouts"),
-        "Line (border)" => ui::t!("Line (border)"),
-        _ => ui::t!("Basic shapes"),
+        "block_arrows" => ui::t!("block_arrows"),
+        "equation_shapes" => ui::t!("equation_shapes"),
+        "flowchart" => ui::t!("flowchart"),
+        "stars_ribbons" => ui::t!("stars_ribbons"),
+        "callouts" => ui::t!("callouts"),
+        "line_border" => ui::t!("line_border"),
+        _ => ui::t!("basic_shapes"),
     }
 }
 
@@ -2122,43 +2122,43 @@ pub(crate) fn shape_cat_label(cat: &str) -> &'static str {
 /// **知らない鍵は四角**(一覧から来る限り起こらないが、黙って落とさない)
 pub(crate) fn shape_kind(v: &str) -> (&'static str, &'static str) {
     match v {
-        "Rounded rectangle" => ("roundRect", ui::t!("Rounded rectangle")),
-        "Ellipse" => ("ellipse", ui::t!("Ellipse")),
-        "Triangle" => ("triangle", ui::t!("Triangle")),
-        "Right triangle" => ("rtTriangle", ui::t!("Right triangle")),
-        "Parallelogram" => ("parallelogram", ui::t!("Parallelogram")),
-        "Trapezium" => ("trapezoid", ui::t!("Trapezium")),
-        "Diamond" => ("diamond", ui::t!("Diamond")),
-        "Pentagon" => ("pentagon", ui::t!("Pentagon")),
-        "Hexagon" => ("hexagon", ui::t!("Hexagon")),
-        "Octagon" => ("octagon", ui::t!("Octagon")),
-        "Cross" => ("plus", ui::t!("Cross")),
-        "Right arrow" => ("rightArrow", ui::t!("Right arrow")),
-        "Left arrow" => ("leftArrow", ui::t!("Left arrow")),
-        "Up arrow" => ("upArrow", ui::t!("Up arrow")),
-        "Down arrow" => ("downArrow", ui::t!("Down arrow")),
-        "Left-right arrow" => ("leftRightArrow", ui::t!("Left-right arrow")),
-        "Up-down arrow" => ("upDownArrow", ui::t!("Up-down arrow")),
-        "Plus sign" => ("mathPlus", ui::t!("Plus sign")),
-        "Minus sign" => ("mathMinus", ui::t!("Minus sign")),
-        "Multiply sign" => ("mathMultiply", ui::t!("Multiply sign")),
-        "Equals sign" => ("mathEqual", ui::t!("Equals sign")),
-        "Not-equal sign" => ("mathNotEqual", ui::t!("Not-equal sign")),
-        "Process step" => ("flowChartProcess", ui::t!("Process step")),
-        "Decision" => ("flowChartDecision", ui::t!("Decision")),
-        "Data" => ("flowChartInputOutput", ui::t!("Data")),
-        "Terminator" => ("flowChartTerminator", ui::t!("Terminator")),
-        "Document (shape)" => ("flowChartDocument", ui::t!("Document (shape)")),
-        "Connector" => ("flowChartConnector", ui::t!("Connector")),
-        "4-point star" => ("star4", ui::t!("4-point star")),
-        "5-point star" => ("star5", ui::t!("5-point star")),
-        "6-point star" => ("star6", ui::t!("6-point star")),
-        "8-point star" => ("star8", ui::t!("8-point star")),
-        "Rectangular callout" => ("wedgeRectCallout", ui::t!("Rectangular callout")),
-        "Oval callout" => ("wedgeEllipseCallout", ui::t!("Oval callout")),
-        "Straight line" => ("line", ui::t!("Straight line")),
-        "Free shape (made of points)" => ("path", ui::t!("Free shape (made of points)")),
-        _ => ("rect", ui::t!("Rectangle")),
+        "rounded_rectangle" => ("roundRect", ui::t!("rounded_rectangle")),
+        "ellipse" => ("ellipse", ui::t!("ellipse")),
+        "triangle" => ("triangle", ui::t!("triangle")),
+        "right_triangle" => ("rtTriangle", ui::t!("right_triangle")),
+        "parallelogram" => ("parallelogram", ui::t!("parallelogram")),
+        "trapezium" => ("trapezoid", ui::t!("trapezium")),
+        "diamond" => ("diamond", ui::t!("diamond")),
+        "pentagon" => ("pentagon", ui::t!("pentagon")),
+        "hexagon" => ("hexagon", ui::t!("hexagon")),
+        "octagon" => ("octagon", ui::t!("octagon")),
+        "cross" => ("plus", ui::t!("cross")),
+        "right_arrow" => ("rightArrow", ui::t!("right_arrow")),
+        "left_arrow" => ("leftArrow", ui::t!("left_arrow")),
+        "up_arrow" => ("upArrow", ui::t!("up_arrow")),
+        "down_arrow" => ("downArrow", ui::t!("down_arrow")),
+        "left_right_arrow" => ("leftRightArrow", ui::t!("left_right_arrow")),
+        "up_down_arrow" => ("upDownArrow", ui::t!("up_down_arrow")),
+        "plus_sign" => ("mathPlus", ui::t!("plus_sign")),
+        "minus_sign" => ("mathMinus", ui::t!("minus_sign")),
+        "multiply_sign" => ("mathMultiply", ui::t!("multiply_sign")),
+        "equals_sign" => ("mathEqual", ui::t!("equals_sign")),
+        "not_equal_sign" => ("mathNotEqual", ui::t!("not_equal_sign")),
+        "process_step" => ("flowChartProcess", ui::t!("process_step")),
+        "decision" => ("flowChartDecision", ui::t!("decision")),
+        "data" => ("flowChartInputOutput", ui::t!("data")),
+        "terminator" => ("flowChartTerminator", ui::t!("terminator")),
+        "document_shape" => ("flowChartDocument", ui::t!("document_shape")),
+        "connector" => ("flowChartConnector", ui::t!("connector")),
+        "4_point_star" => ("star4", ui::t!("4_point_star")),
+        "5_point_star" => ("star5", ui::t!("5_point_star")),
+        "6_point_star" => ("star6", ui::t!("6_point_star")),
+        "8_point_star" => ("star8", ui::t!("8_point_star")),
+        "rectangular_callout" => ("wedgeRectCallout", ui::t!("rectangular_callout")),
+        "oval_callout" => ("wedgeEllipseCallout", ui::t!("oval_callout")),
+        "straight_line" => ("line", ui::t!("straight_line")),
+        "free_shape_made_points" => ("path", ui::t!("free_shape_made_points")),
+        _ => ("rect", ui::t!("rectangle")),
     }
 }
 
@@ -2174,24 +2174,24 @@ pub(crate) fn shape_kind(v: &str) -> (&'static str, &'static str) {
 /// 組は (鍵=日本語, 見出し)。引き当ては `pattern_kind` が持つ
 pub(crate) fn fill_patterns() -> Vec<(&'static str, &'static str)> {
     vec![
-        ui::item!("6.25% shading"),
-        ui::item!("12.5% shading"),
-        ui::item!("25% shading"),
-        ui::item!("50% shading"),
-        ui::item!("Diagonal stripes"),
-        ui::item!("Checkerboard"),
+        ui::item!("6_25_shading"),
+        ui::item!("12_5_shading"),
+        ui::item!("25_shading"),
+        ui::item!("50_shading"),
+        ui::item!("diagonal_stripes"),
+        ui::item!("checkerboard"),
     ]
 }
 
 /// 柄の鍵 → xlsx の patternType
 pub(crate) fn pattern_kind(v: &str) -> Option<&'static str> {
     Some(match v {
-        "6.25% shading" => "gray0625",
-        "12.5% shading" => "gray125",
-        "25% shading" => "lightGray",
-        "50% shading" => "mediumGray",
-        "Diagonal stripes" => "darkUp",
-        "Checkerboard" => "darkGrid",
+        "6_25_shading" => "gray0625",
+        "12_5_shading" => "gray125",
+        "25_shading" => "lightGray",
+        "50_shading" => "mediumGray",
+        "diagonal_stripes" => "darkUp",
+        "checkerboard" => "darkGrid",
         _ => return None,
     })
 }
@@ -2199,10 +2199,10 @@ pub(crate) fn pattern_kind(v: &str) -> Option<&'static str> {
 /// グラデーションの向き。**角度で持つ**(xlsx の degree)
 pub(crate) fn grad_dirs() -> Vec<(&'static str, &'static str)> {
     vec![
-        ui::item!("Horizontal (left to right)"),
-        ui::item!("Vertical (top to bottom)"),
-        ui::item!("Diagonal (top left to bottom right)"),
-        ui::item!("Diagonal (bottom left to top right)"),
+        ui::item!("horizontal_left_right"),
+        ui::item!("vertical_top_bottom"),
+        ui::item!("diagonal_top_left_bottom"),
+        ui::item!("diagonal_bottom_left_top"),
     ]
 }
 
@@ -2211,10 +2211,10 @@ pub(crate) fn grad_dirs() -> Vec<(&'static str, &'static str)> {
 /// 選んだ物と見える物が食い違う。読みは受ける(往復は保つ)
 pub(crate) fn grad_dir_of(v: &str) -> Option<(i32, bool)> {
     Some(match v {
-        "Horizontal (left to right)" => (0, false),
-        "Vertical (top to bottom)" => (9000, false),
-        "Diagonal (top left to bottom right)" => (4500, false),
-        "Diagonal (bottom left to top right)" => (31500, false),
+        "horizontal_left_right" => (0, false),
+        "vertical_top_bottom" => (9000, false),
+        "diagonal_top_left_bottom" => (4500, false),
+        "diagonal_bottom_left_top" => (31500, false),
         _ => return None,
     })
 }

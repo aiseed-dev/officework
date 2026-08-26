@@ -104,7 +104,7 @@ impl Calc {
                 // 文書を押せば officework が受け取って文章の画面にします。
                 // これで表と文章を行き来できます
                 d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
-                    .text_color(fg).child(ui::t!("Files — what is in the folder").to_string()));
+                    .text_color(fg).child(ui::t!("files_what_folder").to_string()));
                 // **一覧は ui::filelist の1本**(統合の段7)。文章の画面と同じ姿。
                 // 押したときの行き先だけがアプリの物
                 let look = ui::filelist::Look {
@@ -128,13 +128,13 @@ impl Calc {
                     d = d.child(
                         div().flex().flex_row().gap_1().pb_1()
                             .child(ui::filelist::make_button(&look, "folder",
-                                ui::t!("+ Folder").into())
+                                ui::t!("folder").into())
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.fl_start(crate::FlJob::NewFolder);
                                     cx.notify()
                                 })))
                             .child(ui::filelist::make_button(&look, "sheet",
-                                ui::t!("+ Sheet").into())
+                                ui::t!("sheet_2").into())
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.fl_start(crate::FlJob::NewSheet);
                                     cx.notify()
@@ -172,10 +172,10 @@ impl Calc {
                                 // writer で開きました(2026-08-24)。JupyterLab で
                                 // 開くべき物なので、機械の決めをそのまま使います
                                 this.status = match ui::open_outside(&道.display().to_string()) {
-                                    ui::Opened::Yes => ui::tf!("Opening {} with the application your system chose",
+                                    ui::Opened::Yes => ui::tf!("opening_application_system_chose",
                                         道.file_name().unwrap_or_default().to_string_lossy().to_string()).into(),
-                                    ui::Opened::JustNow => ui::t!("Just opened it").into(),
-                                    ui::Opened::Failed => ui::tf!("No application is associated with this file: {}",
+                                    ui::Opened::JustNow => ui::t!("just_opened").into(),
+                                    ui::Opened::Failed => ui::tf!("no_application_associated_file",
                                         道.display().to_string()).into(),
                                 };
                                 cx.notify();
@@ -195,13 +195,13 @@ impl Calc {
                             div().flex().flex_row().items_center().gap_1()
                                 .child(div().flex_1().min_w(px(0.0)).child(行))
                                 .child(ui::filelist::row_button(&look, i, "ren",
-                                    ui::t!("Name").into())
+                                    ui::t!("name").into())
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.fl_start(crate::FlJob::Rename(道2.clone()));
                                         cx.notify()
                                     })))
                                 .child(ui::filelist::row_button(&look, i, "del",
-                                    ui::t!("Erase").into())
+                                    ui::t!("erase").into())
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.fl_start(crate::FlJob::Delete(道3.clone()));
                                         cx.notify()
@@ -216,29 +216,29 @@ impl Calc {
             } else if 面 == 1 {
                 // ── 図形と画像 ───────────────────────────────────
                 d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
-                    .text_color(fg).child(ui::t!("Shapes and images").to_string()));
+                    .text_color(fg).child(ui::t!("shapes_images").to_string()));
                 let 図 = self.shape_sel;
                 let 絵 = self.img_sel;
                 if 図.is_none() && 絵.is_none() {
                     // **選んでいないと言う。** 押せない釦を並べて黙るより、
                     // 何をすれば効くかを書く
                     d = d.child(div().text_size(px(us * 11.0)).text_color(薄).child(
-                        ui::t!("No shape or picture is selected (click one on the sheet)")
+                        ui::t!("no_shape_picture_selected")
                             .to_string()));
                 } else {
                     d = d.child(div().text_size(px(us * 10.5)).text_color(薄)
                         .child(if 図.is_some() {
-                            ui::t!("A shape is selected").to_string()
+                            ui::t!("shape_selected").to_string()
                         } else {
-                            ui::t!("A picture is selected").to_string()
+                            ui::t!("picture_selected").to_string()
                         }));
-                    d = d.child(見出し(ui::t!("Stacking").to_string()));
+                    d = d.child(見出し(ui::t!("stacking").to_string()));
                     let mut r = 列();
                     for (id, 札, act) in [
-                        ("sp-front", ui::t!("Bring to front"), "sh-front"),
-                        ("sp-fwd", ui::t!("Bring forward"), "sh-forward"),
-                        ("sp-bwd", ui::t!("Send backward"), "sh-backward"),
-                        ("sp-back", ui::t!("Send to back"), "sh-back"),
+                        ("sp-front", ui::t!("bring_front"), "sh-front"),
+                        ("sp-fwd", ui::t!("bring_forward"), "sh-forward"),
+                        ("sp-bwd", ui::t!("send_backward"), "sh-backward"),
+                        ("sp-back", ui::t!("send_back"), "sh-back"),
                     ] {
                         r = r.child(釦(id, 札.to_string(), false).on_click(
                             cx.listener(move |this, _, _, cx| {
@@ -247,13 +247,13 @@ impl Calc {
                             })));
                     }
                     d = d.child(r);
-                    d = d.child(見出し(ui::t!("Orientation").to_string()));
+                    d = d.child(見出し(ui::t!("orientation").to_string()));
                     let mut r = 列();
                     for (id, 札, act) in [
-                        ("sp-rot-l", ui::t!("Rotate left"), "sh-rot-l"),
-                        ("sp-rot-r", ui::t!("Rotate right"), "sh-rot-r"),
-                        ("sp-flip-h", ui::t!("Flip horizontally"), "sh-flip-h"),
-                        ("sp-flip-v", ui::t!("Flip vertically"), "sh-flip-v"),
+                        ("sp-rot-l", ui::t!("rotate_left"), "sh-rot-l"),
+                        ("sp-rot-r", ui::t!("rotate_right"), "sh-rot-r"),
+                        ("sp-flip-h", ui::t!("flip_horizontally"), "sh-flip-h"),
+                        ("sp-flip-v", ui::t!("flip_vertically"), "sh-flip-v"),
                     ] {
                         r = r.child(釦(id, 札.to_string(), false).on_click(
                             cx.listener(move |this, _, _, cx| {
@@ -262,9 +262,9 @@ impl Calc {
                             })));
                     }
                     d = d.child(r);
-                    d = d.child(見出し(ui::t!("Other").to_string()));
+                    d = d.child(見出し(ui::t!("other_2").to_string()));
                     d = d.child(列()
-                        .child(釦("sp-del", ui::t!("Erase").to_string(), false).on_click(
+                        .child(釦("sp-del", ui::t!("erase").to_string(), false).on_click(
                             cx.listener(|this, _, _, cx| {
                                 this.shape_menu_action("sh-del");
                                 cx.notify()
@@ -272,17 +272,17 @@ impl Calc {
                 }
             } else {
             d = d.child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
-                .text_color(fg).child(ui::t!("Cell settings").to_string()));
+                .text_color(fg).child(ui::t!("cell_settings").to_string()));
             d = d.child(div().text_size(px(us * 10.5)).text_color(薄)
-                .child(ui::tf!("Now: {}", self.sel_label()).to_string()));
+                .child(ui::tf!("now", self.sel_label()).to_string()));
 
             // 文字
-            d = d.child(見出し(ui::t!("Character").to_string()));
+            d = d.child(見出し(ui::t!("character").to_string()));
             let mut r = 列();
             for (id, 札, on) in [
-                ("rp-bold", ui::t!("Bold"), f.bold),
-                ("rp-italic", ui::t!("Italic"), f.italic),
-                ("rp-under", ui::t!("Underline"), f.underline),
+                ("rp-bold", ui::t!("bold"), f.bold),
+                ("rp-italic", ui::t!("italic"), f.italic),
+                ("rp-under", ui::t!("underline"), f.underline),
             ] {
                 let cmd = match id {
                     "rp-bold" => "bold",
@@ -295,13 +295,13 @@ impl Calc {
             d = d.child(r);
 
             // 揃え
-            d = d.child(見出し(ui::t!("Alignment").to_string()));
+            d = d.child(見出し(ui::t!("alignment").to_string()));
             let mut r = 列();
             for (id, 札, cmd, on) in [
-                ("rp-al", ui::t!("Left"), "align-left", f.align == sheet::model::HAlign::Left),
-                ("rp-ac", ui::t!("Centre"), "align-center", f.align == sheet::model::HAlign::Center),
-                ("rp-ar", ui::t!("Right"), "align-right", f.align == sheet::model::HAlign::Right),
-                ("rp-wrap", ui::t!("Wrap"), "wrap", f.wrap),
+                ("rp-al", ui::t!("left"), "align-left", f.align == sheet::model::HAlign::Left),
+                ("rp-ac", ui::t!("centre"), "align-center", f.align == sheet::model::HAlign::Center),
+                ("rp-ar", ui::t!("right"), "align-right", f.align == sheet::model::HAlign::Right),
+                ("rp-wrap", ui::t!("wrap"), "wrap", f.wrap),
             ] {
                 r = r.child(釦(id, 札.to_string(), on).on_click(
                     cx.listener(move |this, _, _, cx| { this.run_cmd(cmd, cx); cx.notify() })));
@@ -309,16 +309,16 @@ impl Calc {
             d = d.child(r);
 
             // 表示形式(よく使う物だけ。全部は小窓に残す)
-            d = d.child(見出し(ui::t!("Number format").to_string()));
+            d = d.child(見出し(ui::t!("number_format").to_string()));
             let 今 = f.number_format.clone().unwrap_or_default();
             let mut r = 列();
             for (id, 札, code) in [
-                ("nf-std", ui::t!("Normal"), ""),
-                ("nf-yen", ui::t!("Currency"), "¥#,##0"),
-                ("nf-comma", ui::t!("Thousands separator"), "#,##0"),
-                ("nf-pct", ui::t!("Percent"), "0.00%"),
-                ("nf-code", ui::t!("Item code (0000)"), "0000"),
-                ("nf-date", ui::t!("Date"), "yyyy/m/d"),
+                ("nf-std", ui::t!("normal"), ""),
+                ("nf-yen", ui::t!("currency"), "¥#,##0"),
+                ("nf-comma", ui::t!("thousands_separator"), "#,##0"),
+                ("nf-pct", ui::t!("percent"), "0.00%"),
+                ("nf-code", ui::t!("item_code_0000"), "0000"),
+                ("nf-date", ui::t!("date"), "yyyy/m/d"),
             ] {
                 let on = 今 == code;
                 let c = code.to_string();
@@ -328,30 +328,30 @@ impl Calc {
             d = d.child(r);
 
             // 罫線 — **場所 × ペン**(うちの直交モデル。MS の型スタンプは持たない)
-            d = d.child(見出し(ui::t!("Border pen").to_string()));
+            d = d.child(見出し(ui::t!("border_pen").to_string()));
             let 今線 = self.pen_style;
             let mut r = 列();
             for (id, 札, st) in [
-                ("pen-thin", ui::t!("Thin"), sheet::model::BStyle::Thin),
-                ("pen-medium", ui::t!("Middle"), sheet::model::BStyle::Medium),
-                ("pen-thick", ui::t!("Thick"), sheet::model::BStyle::Thick),
-                ("pen-dashed", ui::t!("Dashed"), sheet::model::BStyle::Dashed),
-                ("pen-double", ui::t!("Double"), sheet::model::BStyle::Double),
+                ("pen-thin", ui::t!("thin"), sheet::model::BStyle::Thin),
+                ("pen-medium", ui::t!("middle"), sheet::model::BStyle::Medium),
+                ("pen-thick", ui::t!("thick"), sheet::model::BStyle::Thick),
+                ("pen-dashed", ui::t!("dashed"), sheet::model::BStyle::Dashed),
+                ("pen-double", ui::t!("double"), sheet::model::BStyle::Double),
             ] {
                 r = r.child(釦(id, 札.to_string(), 今線 == st).on_click(
                     cx.listener(move |this, _, _, cx| { this.pen_style = st; cx.notify() })));
             }
             d = d.child(r);
-            d = d.child(見出し(ui::t!("Where to draw (press repeatedly)").to_string()));
+            d = d.child(見出し(ui::t!("where_draw_press_repeatedly").to_string()));
             let mut r = 列();
             for (id, 札, cmd) in [
-                ("bd-all", ui::t!("Grid"), "border-all"),
-                ("bd-out", ui::t!("Outline"), "border-outer"),
-                ("bd-top", ui::t!("Top"), "border-top"),
-                ("bd-bottom", ui::t!("Bottom"), "border-bottom"),
-                ("bd-left", ui::t!("Left"), "border-left"),
-                ("bd-right", ui::t!("Right"), "border-right"),
-                ("bd-none", ui::t!("Erase"), "border-none"),
+                ("bd-all", ui::t!("grid"), "border-all"),
+                ("bd-out", ui::t!("outline"), "border-outer"),
+                ("bd-top", ui::t!("top"), "border-top"),
+                ("bd-bottom", ui::t!("bottom"), "border-bottom"),
+                ("bd-left", ui::t!("left"), "border-left"),
+                ("bd-right", ui::t!("right"), "border-right"),
+                ("bd-none", ui::t!("erase"), "border-none"),
             ] {
                 r = r.child(釦(id, 札.to_string(), false).on_click(
                     cx.listener(move |this, _, _, cx| { this.run_cmd(cmd, cx); cx.notify() })));
@@ -360,7 +360,7 @@ impl Calc {
 
             // 塗り — **色見本を直に並べる。** 開きっぱなしのパネルなので
             // 「一覧を開いて選んで閉じる」の3手が1手になる
-            d = d.child(見出し(ui::t!("Fill color").to_string()));
+            d = d.child(見出し(ui::t!("fill_color").to_string()));
             let 今塗 = f.fill.clone();
             let mut r = 列();
             for (i, (_, 札, hex)) in crate::util::fill_colors().into_iter().enumerate() {
@@ -390,7 +390,7 @@ impl Calc {
 
             // 字下げ — **模型は前からあったのに、掛ける道が無かった。**
             // ここで初めて人の手が届く(1段 = 全角約1字)
-            d = d.child(見出し(ui::t!("Indent").to_string()));
+            d = d.child(見出し(ui::t!("indent_3").to_string()));
             let mut r = 列();
             r = r.child(釦("ind-dec", "−".to_string(), f.indent > 0).on_click(
                 cx.listener(|this, _, _, cx| { this.bump_indent(-1); cx.notify() })));
@@ -401,16 +401,16 @@ impl Calc {
             d = d.child(r);
 
             // 文字の向き — 一覧と同じ6つ(鍵も同じ。xlsx の数え方で上向きが正)
-            d = d.child(見出し(ui::t!("Text orientation").to_string()));
+            d = d.child(見出し(ui::t!("text_orientation").to_string()));
             let 今角 = f.rotation.unwrap_or(0);
             let mut r = 列();
             for (id, 札, deg) in [
-                ("rot-0", ui::t!("No rotation"), 0),
-                ("rot-45", ui::t!("Rotate up 45°"), 45),
-                ("rot-135", ui::t!("Rotate down 45°"), 135),
-                ("rot-90", ui::t!("Rotate up 90°"), 90),
-                ("rot-180", ui::t!("Rotate down 90°"), 180),
-                ("rot-255", ui::t!("Vertical (stack one character at a time)"), 255),
+                ("rot-0", ui::t!("no_rotation"), 0),
+                ("rot-45", ui::t!("rotate_up_45"), 45),
+                ("rot-135", ui::t!("rotate_down_45"), 135),
+                ("rot-90", ui::t!("rotate_up_90"), 90),
+                ("rot-180", ui::t!("rotate_down_90"), 180),
+                ("rot-255", ui::t!("vertical_stack_one_character"), 255),
             ] {
                 let l = 札.to_string();
                 r = r.child(釦(id, 札.to_string(), 今角 == deg).on_click(
@@ -424,18 +424,18 @@ impl Calc {
             // 条件付き書式 — **値を訊かないものだけ**をここに置く。
             // 「値より大きいと…」のように打ち込みの要る規則は今までどおり
             // リボンの一覧から(小窓が開くので、パネルの連打には向かない)
-            d = d.child(見出し(ui::t!("Conditional formatting").to_string()));
+            d = d.child(見出し(ui::t!("conditional_formatting").to_string()));
             let mut r = 列();
             for (id, 札, act) in [
-                ("cf-neg", ui::t!("Negative in red"), "cond-neg"),
-                ("cf-dup", ui::t!("Duplicates"), "cond-dup"),
-                ("cf-uniq", ui::t!("Unique"), "cond-uniq"),
-                ("cf-avg-a", ui::t!("Above average"), "cond-avg-above"),
-                ("cf-avg-b", ui::t!("Below average"), "cond-avg-below"),
-                ("cf-bar", ui::t!("Data bar"), "cond-bar"),
-                ("cf-scale", ui::t!("Colour scale"), "cond-scale"),
-                ("cf-icons", ui::t!("Icons"), "cond-icons"),
-                ("cf-clear", ui::t!("Erase"), "cond-clear"),
+                ("cf-neg", ui::t!("negative_red"), "cond-neg"),
+                ("cf-dup", ui::t!("duplicates"), "cond-dup"),
+                ("cf-uniq", ui::t!("unique"), "cond-uniq"),
+                ("cf-avg-a", ui::t!("above_average"), "cond-avg-above"),
+                ("cf-avg-b", ui::t!("below_average"), "cond-avg-below"),
+                ("cf-bar", ui::t!("data_bar"), "cond-bar"),
+                ("cf-scale", ui::t!("colour_scale"), "cond-scale"),
+                ("cf-icons", ui::t!("icons"), "cond-icons"),
+                ("cf-clear", ui::t!("erase"), "cond-clear"),
             ] {
                 r = r.child(釦(id, 札.to_string(), false).on_click(
                     cx.listener(move |this, _, window, cx| {
@@ -448,12 +448,12 @@ impl Calc {
             // **外側の柱**(面を切り替えるアイコン)。パネルの外枠は
             // 柱ごと囲む — 柱もパネルの一部だから
             let 柱d = 柱()
-                .child(柱釦("rf-cell", "cell-format", ui::t!("Cell settings").to_string(), 面 == 0)
+                .child(柱釦("rf-cell", "cell-format", ui::t!("cell_settings").to_string(), 面 == 0)
                     .on_click(cx.listener(|this, _, _, cx| { this.right_face = 0; cx.notify() })))
-                .child(柱釦("rf-shape", "insshape", ui::t!("Shapes and images").to_string(), 面 == 1)
+                .child(柱釦("rf-shape", "insshape", ui::t!("shapes_images").to_string(), 面 == 1)
                     .on_click(cx.listener(|this, _, _, cx| { this.right_face = 1; cx.notify() })))
                 // **フォルダの中身**(2026-08-19)。文章の画面と同じ物
-                .child(柱釦("rf-files", "py-folder", ui::t!("Files — what is in the folder").to_string(), 面 == 2)
+                .child(柱釦("rf-files", "py-folder", ui::t!("files_what_folder").to_string(), 面 == 2)
                     .on_click(cx.listener(|this, _, _, cx| { this.right_face = 2; cx.notify() })));
             Some(div()
                 .flex_none().w(px((W + RAIL) * us)).h_full()
@@ -485,11 +485,11 @@ impl Calc {
             d = d.child(div().flex().flex_row().items_center().gap_2()
                 .child(div().flex_1().text_size(px(us * 12.5))
                     .font_weight(gpui::FontWeight::BOLD)
-                    .text_color(fg).child(ui::t!("Ask the AI").to_string()))
-                .child(釦("chat-new", ui::t!("New conversation").to_string(), false).on_click(
+                    .text_color(fg).child(ui::t!("ask_ai").to_string()))
+                .child(釦("chat-new", ui::t!("new_conversation").to_string(), false).on_click(
                     cx.listener(|this, _, _, cx| { this.chat_reset(); cx.notify() }))));
             d = d.child(div().text_size(px(us * 10.5)).text_color(薄).child(
-                ui::t!("You can ask about the selected range. When something would change the sheet, you see what it will do first — nothing changes until you press.").to_string()));
+                ui::t!("can_ask_about_selected").to_string()));
 
             // やりとり
             // **残りの高さを全部使う**(固定の高さ + 余白の詰め物、だと
@@ -498,7 +498,7 @@ impl Calc {
                 .flex_1().min_h(px(0.0)).overflow_y_scroll();
             if self.chat_log.is_empty() {
                 会話 = 会話.child(div().text_size(px(us * 11.0)).text_color(薄).child(
-                    ui::t!("e.g. sort by sales, highest first / colour the top 5 / add a total row").to_string()));
+                    ui::t!("e_g_sort_sales").to_string()));
             }
             for (自分, 字) in &self.chat_log {
                 会話 = 会話.child(
@@ -512,9 +512,9 @@ impl Calc {
             // 走らせて直す、が Agent Panel の芯(2026-08-16)
             if self.chat_err.is_some() {
                 d = d.child(列().mt_1()
-                    .child(釦("chat-fix", ui::t!("Ask it to fix this").to_string(), true).on_click(
+                    .child(釦("chat-fix", ui::t!("ask_fix").to_string(), true).on_click(
                         cx.listener(|this, _, _, cx| { this.chat_fix(cx); cx.notify() })))
-                    .child(釦("chat-err-drop", ui::t!("Leave it").to_string(), false)
+                    .child(釦("chat-err-drop", ui::t!("leave").to_string(), false)
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.chat_err = None;
                             cx.notify()
@@ -522,7 +522,7 @@ impl Calc {
             }
             // 変更案(Python)。**押すまで走らない**
             if let Some(plan) = self.chat_plan.clone() {
-                d = d.child(見出し(ui::t!("Proposed change (nothing happens until you press)").to_string()));
+                d = d.child(見出し(ui::t!("proposed_change_nothing_happens").to_string()));
                 d = d.child(div().id("chat-plan")
                     .max_h(px(us * 150.0)).overflow_y_scroll()
                     .p_1().rounded_sm()
@@ -531,12 +531,12 @@ impl Calc {
                     .text_size(px(us * 10.5)).text_color(fg)
                     .children(plan.lines().map(|l| div().child(l.to_string()))));
                 let mut r = 列().mt_1();
-                r = r.child(釦("chat-run", ui::t!("Apply").to_string(), true).on_click(
+                r = r.child(釦("chat-run", ui::t!("apply").to_string(), true).on_click(
                     cx.listener(|this, _, _, cx| { this.chat_run(cx); cx.notify() })));
-                r = r.child(釦("chat-drop", ui::t!("Cancel").to_string(), false).on_click(
+                r = r.child(釦("chat-drop", ui::t!("cancel").to_string(), false).on_click(
                     cx.listener(|this, _, _, cx| {
                         this.chat_plan = None;
-                        this.status = ui::t!("Proposed change discarded (nothing was changed)").into();
+                        this.status = ui::t!("proposed_change_discarded_nothing").into();
                         cx.notify()
                     })));
                 d = d.child(r);
@@ -556,7 +556,7 @@ impl Calc {
                     if self.chat_focus {
                         "|".to_string()
                     } else {
-                        ui::t!("Click here to type; Enter sends").to_string()
+                        ui::t!("click_here_type_enter").to_string()
                     }
                 } else if self.chat_focus {
                     let mut t = self.chat_in.text().to_string();
@@ -567,11 +567,11 @@ impl Calc {
                     self.chat_in.text().to_string()
                 }));
             let mut r = 列().mt_1();
-            r = r.child(釦("chat-send", ui::t!("Send").to_string(), !self.ai_busy).on_click(
+            r = r.child(釦("chat-send", ui::t!("send").to_string(), !self.ai_busy).on_click(
                 cx.listener(|this, _, _, cx| { this.chat_send(cx); cx.notify() })));
             if self.ai_busy {
                 r = r.child(div().text_size(px(us * 10.5)).text_color(薄)
-                    .child(ui::t!("Thinking…").to_string()));
+                    .child(ui::t!("thinking").to_string()));
             }
             d = d.child(r);
             // **宛先はここで替える**(Agent Panel はモデルを下に出す)。
@@ -582,7 +582,7 @@ impl Calc {
                 .mt_1().px_1().py_0p5().rounded_sm().cursor_pointer()
                 .text_size(px(us * 10.5)).text_color(薄)
                 .hover(move |s| s.bg(if dk { rgb(0x2C333A) } else { rgb(0xEAF5EE) }))
-                .child(ui::tf!("Destination: {} (press to change)", 宛.label()).to_string())
+                .child(ui::tf!("destination_press_change", 宛.label()).to_string())
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.run_cmd("ai-where", cx);
                     cx.notify()
@@ -590,15 +590,15 @@ impl Calc {
             }
             // **外側の柱**(左パネルは窓の左端の側)。会話とコメントを切り替える
             let 柱d = 柱()
-                .child(柱釦("lf-ai", "ai-ask", ui::t!("Ask the AI").to_string(), 面 == 0)
+                .child(柱釦("lf-ai", "ai-ask", ui::t!("ask_ai").to_string(), 面 == 0)
                     .on_click(cx.listener(|this, _, _, cx| { this.left_face = 0; cx.notify() })))
-                .child(柱釦("lf-cmt", "co-showcomment", ui::t!("Comment").to_string(), 面 == 1)
+                .child(柱釦("lf-cmt", "co-showcomment", ui::t!("comment").to_string(), 面 == 1)
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.left_face = 1;
                         // **コメントを見えるようにする。** 押したのに何も
                         // 起きないと、切り替わったのか分からない
                         this.show_comments = true;
-                        this.status = ui::t!("Showing comments (as cell balloons)").into();
+                        this.status = ui::t!("showing_comments_cell_balloons").into();
                         cx.notify()
                     })));
             let mut 包み = div()

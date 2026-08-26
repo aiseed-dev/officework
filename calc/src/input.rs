@@ -59,9 +59,9 @@ impl Calc {
         let before = self.watch.len();
         self.watch.retain(|(s, q)| !(*s == si && *q == p));
         self.status = if self.watch.len() < before {
-            ui::tf!("Stopped watching {}", p.a1()).into()
+            ui::tf!("stopped_watching", p.a1()).into()
         } else {
-            ui::t!("That watch is already gone").into()
+            ui::t!("watch_already_gone").into()
         };
     }
 
@@ -73,7 +73,7 @@ impl Calc {
         self.anchor = None;
         self.follow();
         self.sync_input();
-        self.status = ui::tf!("Moved to {}", p.a1()).into();
+        self.status = ui::tf!("moved", p.a1()).into();
     }
 
     /// カーソルが見える位置まで窓を動かす。
@@ -191,13 +191,13 @@ impl Calc {
     pub(crate) fn clear_selection_now(&mut self) {
         if self.sheet().protected {
             self.status =
-                ui::t!("The sheet is protected (Protection tab > Protect Sheet to release)").into();
+                ui::t!("sheet_protected_protection_tab").into();
             return;
         }
         self.checkpoint();
         let n = self.clear_range();
         self.sync_input();
-        self.status = ui::tf!("Contents of {} cells cleared (formatting kept)", n).into();
+        self.status = ui::tf!("contents_cells_cleared_formatting", n).into();
     }
     /// 選んだ範囲の中身を消す(**書式は残す** — 帳票の枠を壊さない)。
     /// 控えを取ってから呼ぶこと。返すのは消したセルの数。
@@ -275,7 +275,7 @@ impl Calc {
                 });
                 if !covered {
                     self.status = ui::t!(
-                        "Can't delete part of an array formula (select the whole range, then Delete)"
+                        "cant_delete_part_array"
                     )
                     .into();
                     cx.notify();
@@ -297,7 +297,7 @@ impl Calc {
                 self.dirty = true;
                 recalc_book(&mut self.book, self.active);
                 self.sync_input();
-                self.status = ui::t!("Deleted the array formula (Ctrl+Z undoes it)").into();
+                self.status = ui::t!("deleted_array_formula_ctrl").into();
                 cx.notify();
                 return;
             }
@@ -317,9 +317,9 @@ impl Calc {
                 }
                 self.dirty = true;
                 self.status = if idx.len() == 1 {
-                    ui::t!("Shape deleted (Ctrl+Z undoes)").into()
+                    ui::t!("shape_deleted_ctrl_z").into()
                 } else {
-                    ui::tf!("Deleted {} shapes (Ctrl+Z undoes it)", idx.len()).into()
+                    ui::tf!("deleted_shapes_ctrl_z", idx.len()).into()
                 };
             }
             cx.notify();
@@ -352,7 +352,7 @@ impl Calc {
             if sel.start != sel.end {
                 let t = p.ed.text()[sel].to_string();
                 cx.write_to_clipboard(gpui::ClipboardItem::new_string(t));
-                self.status = ui::t!("Copied the code").into();
+                self.status = ui::t!("copied_code").into();
             }
             cx.notify();
             return;
@@ -362,7 +362,7 @@ impl Calc {
             let sel = self.input.selection();
             if let Some(s) = self.input.text().get(sel) {
                 cx.write_to_clipboard(gpui::ClipboardItem::new_string(s.to_string()));
-                self.status = ui::t!("Copied").into();
+                self.status = ui::t!("copied_2").into();
             }
             cx.notify();
             return;
@@ -382,7 +382,7 @@ impl Calc {
                 .collect(),
         );
         self.clip_range = Some((self.active, a, b));
-        self.status = ui::tf!("Copied {}:{}", a.a1(), b.a1()).into();
+        self.status = ui::tf!("copied", a.a1(), b.a1()).into();
         cx.notify();
     }
 
@@ -408,7 +408,7 @@ impl Calc {
                 cx.write_to_clipboard(gpui::ClipboardItem::new_string(s.to_string()));
                 self.input.insert("");
                 self.dirty = true;
-                self.status = ui::t!("Cut the selection").into();
+                self.status = ui::t!("cut_selection").into();
             }
             cx.notify();
             return;
@@ -423,7 +423,7 @@ impl Calc {
         self.clip_range = None;
         self.checkpoint();
         let n = self.clear_range();
-        self.status = ui::tf!("Cut {} cells", n).into();
+        self.status = ui::tf!("cut_cells", n).into();
         cx.notify();
     }
 
@@ -448,12 +448,12 @@ impl Calc {
         }
         if self.sheet().protected {
             self.status =
-                ui::t!("The sheet is protected (Protection tab > Protect Sheet to release)").into();
+                ui::t!("sheet_protected_protection_tab").into();
             cx.notify();
             return;
         }
         let Some(text) = cx.read_from_clipboard().and_then(|i| i.text()) else {
-            self.status = ui::t!("Nothing to paste").into();
+            self.status = ui::t!("nothing_paste").into();
             cx.notify();
             return;
         };
@@ -495,9 +495,9 @@ impl Calc {
         self.dirty = true;
         self.sync_input();
         self.status = if with_fmt {
-            ui::tf!("Pasted {} cells (formatting too)", n)
+            ui::tf!("pasted_cells_formatting_too", n)
         } else {
-            ui::tf!("Pasted {} cells (text from another app, so formatting is left as it was)", n)
+            ui::tf!("pasted_cells_text_another", n)
         }
         .into();
         cx.notify();
@@ -744,7 +744,7 @@ impl Calc {
         // .py では字下げ(空白4つ)。Python は字下げが構文なので、
         // タブ文字ではなく空白で入れる
         if let Some(p) = &mut self.py_edit {
-            p.ed.insert("    ");
+            p.ed.insert("x");
             p.follow();
             cx.notify();
             return;
@@ -783,7 +783,7 @@ impl Calc {
     /// F11 = 全画面(帳票を広く見る)
     pub(crate) fn a_fullscreen(&mut self, _: &ui::FullScreen, window: &mut Window, cx: &mut Context<Self>) {
         window.toggle_fullscreen();
-        self.status = ui::t!("Toggled full screen (F11 goes back)").into();
+        self.status = ui::t!("toggled_full_screen_f11").into();
         cx.notify();
     }
     /// Ctrl+Shift+S = 名前を付けて保存
@@ -795,14 +795,14 @@ impl Calc {
     /// Ctrl+0 = ズームを 100% に戻す
     pub(crate) fn a_zoom_reset(&mut self, _: &ui::ZoomReset, _: &mut Window, cx: &mut Context<Self>) {
         self.zoom = 1.0;
-        self.status = ui::t!("Zoom back to 100%").into();
+        self.status = ui::t!("zoom_back_100").into();
         cx.notify();
     }
     /// F1 = 手引き。**中に画面を作らない** — 手引きは docs にある文書なので、
     /// その道を状態行で示す(嘘の「ヘルプ画面」を出すより確か)
     pub(crate) fn a_help(&mut self, _: &ui::Help, _: &mut Window, cx: &mut Context<Self>) {
         self.status = ui::t!(
-            "Manual: docs/ja/calc-manual.adoc (English is en/calc-manual.adoc). Python is ja/python-manual.adoc"
+            "manual_docs_ja_calc"
         )
         .into();
         cx.notify();
@@ -825,14 +825,14 @@ impl Calc {
         let stamp = now_stamp();
         let Some((date, clock)) = stamp.split_once(' ') else {
             // 黙って空を入れない
-            self.status = ui::t!("Couldn't get the current time").into();
+            self.status = ui::t!("couldnt_get_current_time").into();
             cx.notify();
             return;
         };
         let now = if time { clock.to_string() } else { date.to_string() };
         self.input.insert(&now);
         self.edit_armed = true;
-        self.status = ui::tf!("Put in {} (Enter commits. It's a value, so it won't change later)", now)
+        self.status = ui::tf!("put_enter_commits_value", now)
             .into();
         cx.notify();
     }
@@ -877,8 +877,8 @@ impl Calc {
             sl.multi
         });
         self.status = match now {
-            Some(true) => ui::t!("Multi-select: pressed values stack as filters").into(),
-            Some(false) => ui::t!("Single-select: filter by one pressed value").into(),
+            Some(true) => ui::t!("multi_select_pressed_values").into(),
+            Some(false) => ui::t!("single_select_filter_one").into(),
             None => Self::no_slicer_msg().into(),
         };
         cx.notify();
@@ -889,20 +889,20 @@ impl Calc {
         self.alt_armed = false;
         let hit = self.slicer_cur().map(|sl| sl.sel.clear()).is_some();
         self.status = if hit {
-            ui::t!("Slicer filter cleared").into()
+            ui::t!("slicer_filter_cleared").into()
         } else {
             Self::no_slicer_msg().into()
         };
         cx.notify();
     }
     pub(crate) fn no_slicer_msg() -> String {
-        ui::t!("No slicer open (open one from \"Slicer\" on the Data tab)")
+        ui::t!("no_slicer_open_open")
             .to_string()
     }
     pub(crate) fn a_cycle_ref(&mut self, _: &ui::CycleRef, _: &mut Window, cx: &mut Context<Self>) {
         let t = self.input.text().to_string();
         if !t.starts_with('=') {
-            self.status = ui::t!("F4 works on a reference inside a formula (start with =)").into();
+            self.status = ui::t!("f4_works_reference_inside").into();
             cx.notify();
             return;
         }
@@ -911,10 +911,10 @@ impl Calc {
                 self.input = Editor::new(&txt);
                 self.input.move_to(cur, false);
                 self.edit_armed = true;
-                self.status = ui::t!("Cycled the $ in the reference (F4 again for the next one)").into();
+                self.status = ui::t!("cycled_reference_f4_again").into();
             }
             None => {
-                self.status = ui::t!("No reference before the cursor").into();
+                self.status = ui::t!("no_reference_before_cursor").into();
             }
         }
         cx.notify();
@@ -937,7 +937,7 @@ impl Calc {
         let text = text.to_string();
         if !text.starts_with('=') {
             self.status =
-                ui::t!("An array formula needs a formula starting with \"=\" (Ctrl+Shift+Enter)").into();
+                ui::t!("array_formula_needs_formula").into();
             cx.notify();
             return;
         }
@@ -960,7 +960,7 @@ impl Calc {
         recalc_book(&mut self.book, self.active);
         self.sync_input();
         self.status = ui::tf!(
-            "Put an array formula in {}:{} (the formula bar shows it wrapped in {{ }})",
+            "put_array_formula_formula",
             a.a1(),
             b.a1()
         )
@@ -1082,12 +1082,12 @@ impl Calc {
             // 使われている範囲の全選択(表計算の Ctrl+A)
             let (rows, cols) = self.sheet().extent();
             if rows == 0 {
-                self.status = ui::t!("The sheet is empty").into();
+                self.status = ui::t!("sheet_empty").into();
             } else {
                 self.commit();
                 self.anchor = Some(Pos::new(0, 0));
                 self.cursor = Pos::new(rows - 1, cols.saturating_sub(1));
-                self.status = ui::tf!("A1:{} selected", self.cursor.a1()).into();
+                self.status = ui::tf!("a1_selected", self.cursor.a1()).into();
                 self.sync_input();
             }
         }
@@ -1143,14 +1143,14 @@ impl Calc {
     pub(crate) fn a_recalc(&mut self, _: &ui::Recalc, _: &mut Window, cx: &mut Context<Self>) {
         self.commit();
         recalc_book(&mut self.book, self.active);
-        self.status = ui::t!("Recalculated (whole workbook)").into();
+        self.status = ui::t!("recalculated_whole_workbook").into();
         cx.notify();
     }
     /// Shift+F9 = いまのシートだけ再計算(大きなブックで待たされない)
     pub(crate) fn a_recalc_sheet(&mut self, _: &ui::RecalcSheet, _: &mut Window, cx: &mut Context<Self>) {
         self.commit();
         recalc(&mut self.book.sheets[self.active]);
-        self.status = ui::t!("Recalculated (this sheet only)").into();
+        self.status = ui::t!("recalculated_sheet_only").into();
         cx.notify();
     }
     /// Ctrl+K = ハイパーリンク(Excel と同じ)
@@ -1209,13 +1209,13 @@ impl Calc {
     pub(crate) fn merge_selection(&mut self, kind: &str) {
         let (a, b) = self.sel_rect();
         if a == b {
-            self.status = ui::t!("Select the range to merge with Shift+arrows").into();
+            self.status = ui::t!("select_range_merge_shift").into();
             return;
         }
         if kind == "解除" {
             self.checkpoint();
             let n = self.book.sheets[self.active].unmerge(a, b);
-            self.status = ui::tf!("{} merges removed", n).into();
+            self.status = ui::tf!("merges_removed", n).into();
             self.dirty = true;
             return;
         }
@@ -1232,7 +1232,7 @@ impl Calc {
         if filled >= 2 {
             // 消したことを言う(黙らない。Ctrl+Z 一発で戻るから止めない)
             self.status = ui::tf!(
-                "{} (values outside the top-left cell were cleared — Ctrl+Z restores them)",
+                "values_outside_top_left",
                 self.status
             )
             .into();
@@ -1265,14 +1265,14 @@ impl Calc {
             // 横方向: 行ごとに1本ずつ(本家の Merge Across)
             "横方向" => {
                 self.status = ui::tf!(
-                    "{}:{} merged across ({} rows)",
+                    "merged_across_rows",
                     a.a1(), b.a1(), b.row - a.row + 1
                 )
                 .into();
             }
             // 結合だけ(揃えは触らない — 本家の Merge Cells)
             "結合だけ" => {
-                self.status = ui::tf!("{}:{} merged (alignment untouched)", a.a1(), b.a1()).into();
+                self.status = ui::tf!("merged_alignment_untouched", a.a1(), b.a1()).into();
             }
             _ => {
                 // 名のとおり中央揃えも掛ける(解くときは揃えを触らない)
@@ -1281,12 +1281,12 @@ impl Calc {
                 anchor.fmt.valign = sheet::model::VAlign::Middle;
                 sh.set(a, anchor);
                 self.status =
-                    ui::tf!("{}:{} merged and centred", a.a1(), b.a1()).into();
+                    ui::tf!("merged_centred", a.a1(), b.a1()).into();
             }
         }
         if promoted {
             // 空だった左上へ最初の値を移したことを言う(黙って動かさない)
-            self.status = ui::tf!("{} (the top-left was empty, so the first value was moved there)", self.status).into();
+            self.status = ui::tf!("top_left_empty_first", self.status).into();
         }
         self.dirty = true;
     }
@@ -1366,7 +1366,7 @@ impl Calc {
         self.commit();
         self.name_edit = Some(Editor::new(""));
         self.status = ui::t!(
-            "Name box: go to a cell (B12), a range (A1:C9) or a name. An unknown name is assigned to the selection")
+            "name_box_go_cell")
         .into();
         cx.notify();
     }
@@ -1385,7 +1385,7 @@ impl Calc {
         let (a, b) = self.sel_rect();
         self.anchor = Some(Pos::new(0, a.col));
         self.cursor = Pos::new(rows.max(1) - 1, b.col);
-        self.status = ui::t!("Column selected (Shift+Space selects the row)").into();
+        self.status = ui::t!("column_selected_shift_space").into();
         self.sync_input();
     }
     /// Shift+Space = 行の選択(いまの選択の行を丸ごと)
@@ -1413,7 +1413,7 @@ impl Calc {
         let (a, b) = self.sel_rect();
         self.anchor = Some(Pos::new(a.row, 0));
         self.cursor = Pos::new(b.row, cols.max(1) - 1);
-        self.status = ui::t!("Row selected (Ctrl+Space selects the column)").into();
+        self.status = ui::t!("row_selected_ctrl_space").into();
         self.sync_input();
     }
 }

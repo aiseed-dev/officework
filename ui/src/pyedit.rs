@@ -302,9 +302,9 @@ pub fn panel(
     }
     let title = format!("{}.py{}", p.name, if p.dirty() { " *" } else { "" });
     let foot = if ask {
-        crate::t!("Unsaved changes — Ctrl+S to save, Esc again to discard and close").to_string()
+        crate::t!("unsaved_changes_ctrl_s").to_string()
     } else {
-        crate::t!("Ctrl+S save (cell functions recalculate on save) / Esc close / Tab indent")
+        crate::t!("ctrl_s_save_cell")
             .to_string()
     };
     div()
