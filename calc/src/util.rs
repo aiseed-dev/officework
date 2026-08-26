@@ -1202,7 +1202,7 @@ pub(crate) fn currencies() -> Vec<(&'static str, &'static str, &'static str, usi
 
 /// 通貨の書式コードを組む。**記号は帳票のお金、並びは読む人の言語。**
 ///
-/// `pattern` は `sheet::datetime_names` の `currency_pattern`
+/// `pattern` は `kumihan::datetime_names` の `currency_pattern`
 /// (0=記号n / 1=n記号 / 2=記号␣n / 3=n␣記号)。独語は 3 なので
 /// `#,##0.00 "€"`、日本語は 0 なので `"¥"#,##0` になる。
 ///
@@ -1446,7 +1446,7 @@ pub(crate) fn protect_allow_summary(a: &kumihan::book::ProtectAllow) -> String {
     }
 }
 
-/// 配色(テーマ色の組)の見出し。**中身は sheet 側**([`sheet::theme::SCHEMES`])。
+/// 配色(テーマ色の組)の見出し。**中身は sheet 側**([`kumihan::book::theme::SCHEMES`])。
 /// 鍵はそちらの名前そのもの。並びが食い違わないことは tests.rs が見張る
 pub(crate) fn color_schemes() -> Vec<(&'static str, &'static str)> {
     vec![

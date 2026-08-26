@@ -8,7 +8,6 @@ license.workspace = true
 # (engine の設計: 画面も紙も、同じ紙面を別の面に写す)
 [dependencies]
 kumihan = { path = "../engine" }
-sheet = { path = "../sheet" }
 printpdf = { version = "0.7", features = ["embedded_images"] }
 # 画像の復号(printpdf の embedded_images が使うのと同じ crate)
 image = "0.24"

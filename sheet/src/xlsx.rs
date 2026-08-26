@@ -6,6 +6,8 @@
 //!
 //! - [`read`] xlsx を読む。原本の形をそのまま模型へ
 //! - [`write`] xlsx を書く。**触っていない部品は原本から持ち越す**
+//! - [`styles`] `styles.xml` の出し入れ
+//! - [`theme`] `theme1.xml` の出し入れ(色の組そのものは模型の側)
 //!
 //! 外から見える名前(`read` `write` `write_with` `to_template` `Report`)は
 //! ここに集めてある。呼ぶ側は `sheet::xlsx::…` のまま変わらない。
@@ -13,6 +15,10 @@
 mod read;
 /// 壊れた zip から拾う(開いて修復)
 mod repair;
+/// `styles.xml` — セルの書式を索引で持つ仕組み
+pub mod styles;
+/// `theme1.xml` の読み書き
+pub mod theme;
 mod write;
 
 pub use read::{read, Report};

@@ -30,8 +30,8 @@
 //! だから**配られたテンプレートは書き替えません** — 呼ぶ側は、既にある
 //! ファイルを上書きしないでください。
 
-use kumihan::book::{Book, Pos, Sheet};
-use kumihan::{Block, Cellbox, Document, Table};
+use crate::book::{Book, Pos, Sheet};
+use crate::{Block, Cellbox, Document, Table};
 
 /// 1枚ぶんの見た目。
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -141,7 +141,7 @@ pub fn write(t: &BookTheme) -> String {
     if let Some(tb) = height_table(t) {
         d.blocks.push(Block::Table(tb));
     }
-    kumihan::adoc::write(&d)
+    crate::adoc::write(&d)
 }
 
 fn cell(s: &str) -> Cellbox {
@@ -265,7 +265,7 @@ fn paper_no(s: &str) -> Option<u32> {
 /// テンプレートの字を読む。知らない表は**黙って飛ばします**
 /// (テンプレートには writer 向けの節も混じるため)。
 pub fn parse(src: &str) -> Result<BookTheme, String> {
-    let doc = kumihan::adoc::parse(src)?;
+    let doc = crate::adoc::parse(src)?;
     let mut t = BookTheme::default();
     for b in &doc.blocks {
         let Block::Table(tb) = b else { continue };
@@ -389,7 +389,7 @@ pub fn strip(s: &mut Sheet) {
 #[allow(non_snake_case)]
 mod tests {
     use super::*;
-    use kumihan::book::Cell;
+    use crate::book::Cell;
 
     fn ledger() -> Book {
         let mut b = Book::new();

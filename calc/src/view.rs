@@ -1018,10 +1018,10 @@ impl Render for Calc {
                     // (`**太字**` の 4 文字ぶん広く見積もらない)。カーソルの
                     // セルは打ち直せるように生の文字のまま
                     let md = (p != self.cursor)
-                        .then(|| sheet::cellmark::parse(&t1))
+                        .then(|| kumihan::cellmark::parse(&t1))
                         .flatten();
                     let measured = match &md {
-                        Some(l) => sheet::cellmark::plain(l),
+                        Some(l) => kumihan::cellmark::plain(l),
                         None => t1.clone(),
                     };
                     let size = cell_font_px(f.size_c, self.zoom);
@@ -1363,9 +1363,9 @@ impl Render for Calc {
                     r: 1.0, g: 1.0, b: 1.0, a: 1.0,
                 });
                 // 条件付き書式。**付けた条件は画面に出す**(出ないなら飾り)
-                // **当てはめは sheet::look の1本**(紙も同じ関数を通る)。
+                // **当てはめは kumihan::look の1本**(紙も同じ関数を通る)。
                 // ここは決まった答えを GPUI の形に写すだけ
-                let ck = sheet::look::resolve_cond(&cond_prep, p, &v);
+                let ck = kumihan::look::resolve_cond(&cond_prep, p, &v);
                 if let Some(f) = &ck.fill {
                     base = hex(f);
                 }
@@ -1674,7 +1674,7 @@ impl Render for Calc {
                         row = row.child(d.justify_center().child(SharedString::from(shown)));
                     }
                 } else if let Some(md) = (!sel && !is_num && !is_err)
-                    .then(|| sheet::cellmark::parse(&shown))
+                    .then(|| kumihan::cellmark::parse(&shown))
                     .flatten()
                 {
                     // 文字列のセルはマークダウンとして描く(セルが持つのは平文の
@@ -5539,16 +5539,16 @@ impl Render for Calc {
 }
 
 /// マークダウンとして読んだセルの中身を描く。
-/// **セルが持つのは平文のまま** — ここは見せ方だけ(sheet::cellmark の口上を参照)。
+/// **セルが持つのは平文のまま** — ここは見せ方だけ(kumihan::cellmark の口上を参照)。
 /// 一行なら横に並べ、複数行(見出し・箇条書き)なら縦に積む。
 pub(crate) fn md_body(
-    lines: &[sheet::cellmark::Line],
+    lines: &[kumihan::cellmark::Line],
     zoom: f32,
     wrap: bool,
     named: &[(String, Option<u32>, kumihan::book::CellFormat)],
 ) -> gpui::AnyElement {
     use gpui::prelude::*;
-    use sheet::cellmark::Block;
+    use kumihan::cellmark::Block;
     let mut col = div().flex().flex_col().items_start();
     for l in lines {
         let mut line = div().flex().flex_row().items_baseline();
@@ -5558,7 +5558,7 @@ pub(crate) fn md_body(
         match l.block {
             // 見出しの大きさは cellmark::HEADINGS が正(行の高さも同じ表を見る)
             Block::Heading(n) => {
-                if let Some(h) = sheet::cellmark::heading_of(named, n) {
+                if let Some(h) = kumihan::cellmark::heading_of(named, n) {
                     line = line.text_size(px(zoom * 12.5 * h.scale));
                     if h.bold {
                         line = line.font_weight(gpui::FontWeight::BOLD);

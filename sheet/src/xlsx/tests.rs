@@ -2501,12 +2501,12 @@ mod script_roundtrip_tests {
     #[test]
     fn theme_colors_round_trip_and_follow_a_palette_change() {
         let mut b = Book::new();
-        b.theme = crate::theme::OFFICE.iter().map(|s| s.to_string()).collect();
+        b.theme = kumihan::book::theme::OFFICE.iter().map(|s| s.to_string()).collect();
         let p = Pos::parse("A1").unwrap();
         let mut c = Cell::input("色");
         // アクセント1(4番)を明るくした色を、由来つきで持つ
         c.fmt.color_theme = Some((4, 400));
-        c.fmt.color = Some(crate::theme::resolve(&b.theme, 4, 0.4));
+        c.fmt.color = Some(kumihan::book::theme::resolve(&b.theme, 4, 0.4));
         b.sheets[0].set(p, c);
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -2514,10 +2514,10 @@ mod script_roundtrip_tests {
         let (back, _) = read(buf).expect("読めない");
         let f = &back.sheets[0].get(p).unwrap().fmt;
         assert_eq!(f.color_theme, Some((4, 400)), "テーマ由来が往復しない");
-        assert_eq!(f.color.as_deref(), Some(crate::theme::resolve(&back.theme, 4, 0.4).as_str()), "色が解けない");
+        assert_eq!(f.color.as_deref(), Some(kumihan::book::theme::resolve(&back.theme, 4, 0.4).as_str()), "色が解けない");
         // 配色を変えると、同じ由来から別の色が出る(追従の土台)
-        let warm = crate::theme::SCHEMES[1].1;
-        let after = crate::theme::resolve(
+        let warm = kumihan::book::theme::SCHEMES[1].1;
+        let after = kumihan::book::theme::resolve(
             &warm.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
             4,
             0.4,

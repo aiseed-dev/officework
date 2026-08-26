@@ -2643,7 +2643,7 @@ impl Calc {
     }
 
     /// 見出し(`# `)を打ったセルの行を、その大きさに合うまで**広げる**。
-    /// 大きさの表は `sheet::cellmark::HEADINGS` が正(画面の文字と同じ所を見る)。
+    /// 大きさの表は `kumihan::cellmark::HEADINGS` が正(画面の文字と同じ所を見る)。
     /// **狭めはしない** — 手で決めた行の高さを打ち直しで壊さないため
     /// (見出しを消したら、行の高さは手で戻す)。
     pub(crate) fn fit_row_to_cellmark(&mut self, at: Pos) {
@@ -2657,8 +2657,8 @@ impl Calc {
         else {
             return;
         };
-        let Some(md) = sheet::cellmark::parse(&text) else { return };
-        if !md.iter().any(|l| matches!(l.block, sheet::cellmark::Block::Heading(_))) {
+        let Some(md) = kumihan::cellmark::parse(&text) else { return };
+        if !md.iter().any(|l| matches!(l.block, kumihan::cellmark::Block::Heading(_))) {
             return; // 見出しが無ければ高さは触らない
         }
         // 折り返しの無いセルは1行に畳んで描くので、要るのは一番高い行のぶんだけ
@@ -2666,10 +2666,10 @@ impl Calc {
         let base = 15.0; // xlsx の既定の行の高さ(pt)
         let named = self.book.named_styles.clone();
         let want = if wrap {
-            sheet::cellmark::wanted_height_pt(&md, base, &named)
+            kumihan::cellmark::wanted_height_pt(&md, base, &named)
         } else {
             md.iter()
-                .map(|l| sheet::cellmark::line_scale(l, &named))
+                .map(|l| kumihan::cellmark::line_scale(l, &named))
                 .fold(1.0, f32::max)
                 * base
         };

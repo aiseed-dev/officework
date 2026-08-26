@@ -12,12 +12,12 @@
 //! ここは**何を描くかを決めるだけ**で、描きはしない。GPUI の div も
 //! printpdf の Rect もここには出てこない — だから画面と紙の両方から呼べる。
 
-use kumihan::book::{CondAux, CondKind, CondRule, Value};
-use kumihan::book::Pos;
+use crate::book::{CondAux, CondKind, CondRule, Value};
+use crate::book::Pos;
 
 /// 条件付き書式が、あるセル1つについて決めたこと。
 ///
-/// 飾りが `Option<bool>` なのは [`crate::model::CondLook`] と同じ三択だから —
+/// 飾りが `Option<bool>` なのは [`kumihan::book::CondLook`] と同じ三択だから —
 /// **`None` は「触らない」**(セル自身の書式のまま)で、`Some(false)` だけが外す。
 /// `bool` に潰すと、元から太字のセルが規則に当たった途端に細くなる。
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -105,7 +105,7 @@ pub fn resolve_cond(prep: &[(CondRule, CondAux)], p: Pos, v: &Value) -> CondReso
 #[cfg(test)]
 mod tests {
     use super::*;
-    use kumihan::book::{Cell, CondLook, CondOp, Sheet};
+    use crate::book::{Cell, CondLook, CondOp, Sheet};
 
     fn sheet_with(vals: &[(u32, f64)]) -> Sheet {
         let mut s = Sheet::default();

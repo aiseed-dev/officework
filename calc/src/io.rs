@@ -314,7 +314,7 @@ impl Calc {
                 return;
             }
         };
-        match sheet::adoc::parse(&src) {
+        match kumihan::book::adoc::parse(&src) {
             Ok((mut book, report)) => {
                 let mut notes: Vec<SharedString> =
                     report.iter().map(|r| SharedString::from(r.clone())).collect();
@@ -328,13 +328,13 @@ impl Calc {
                 //
                 // **当てたことは言います。** 開いただけで列の幅が変わるので、
                 // 黙っていると「なぜこの幅なのか」が分かりません
-                if let Some(tp) = sheet::booktmpl::find_for(&p) {
+                if let Some(tp) = kumihan::booktmpl::find_for(&p) {
                     match std::fs::read_to_string(&tp)
                         .map_err(|e| e.to_string())
-                        .and_then(|t| sheet::booktmpl::parse(&t))
+                        .and_then(|t| kumihan::booktmpl::parse(&t))
                     {
                         Ok(theme) => {
-                            sheet::booktmpl::apply(&theme, &mut book);
+                            kumihan::booktmpl::apply(&theme, &mut book);
                             notes.push(SharedString::from(ui::tf!(
                                 "applied_layout_template",
                                 tp.file_name().unwrap_or_default().to_string_lossy()
@@ -371,11 +371,11 @@ impl Calc {
     /// *見た目が何も無いときも作りません。* 空のテンプレートを置いても
     /// フォルダが散らかるだけです。
     fn look_into_template(&self, book: &std::path::Path) -> Option<String> {
-        let theme = sheet::booktmpl::from_book(&self.book);
+        let theme = kumihan::booktmpl::from_book(&self.book);
         if theme.is_empty() {
             return None;
         }
-        if let Some(tp) = sheet::booktmpl::find_for(book) {
+        if let Some(tp) = kumihan::booktmpl::find_for(book) {
             return Some(
                 ui::tf!(
                     "column_widths_page_setup",
@@ -384,8 +384,8 @@ impl Calc {
                 .to_string(),
             );
         }
-        let tp = sheet::booktmpl::default_path(book);
-        let src = sheet::booktmpl::write(&theme);
+        let tp = kumihan::booktmpl::default_path(book);
+        let src = kumihan::booktmpl::write(&theme);
         match kumihan::atomic::save(&tp, |mut f| {
             use std::io::Write as _;
             f.write_all(src.as_bytes()).map_err(|e| e.to_string())
@@ -1393,7 +1393,7 @@ impl Calc {
             } else {
                 // **ブックの正本を `.adoc` で書く**(2026-08-19)。値は書かず、
                 // 式のまま出します。載らない物は下で帳簿に出します
-                let src = sheet::adoc::write(&self.book);
+                let src = kumihan::book::adoc::write(&self.book);
                 kumihan::atomic::save(&p, |mut f| {
                     use std::io::Write as _;
                     f.write_all(src.as_bytes()).map_err(|e| e.to_string())
@@ -1450,7 +1450,7 @@ impl Calc {
                 // **載らなかった物を黙って落とさない。** 帳簿に出します
                 if as_text {
                     self.notes =
-                        sheet::adoc::write_report(&self.book).into_iter().map(SharedString::from).collect();
+                        kumihan::book::adoc::write_report(&self.book).into_iter().map(SharedString::from).collect();
                     // **見た目の行き先を作ります**(E群)。`.adoc` のブックは
                     // 意味だけを持つので、列の幅・行の高さ・用紙はここで
                     // テンプレートへ出します。出さないと、保存して開き直す

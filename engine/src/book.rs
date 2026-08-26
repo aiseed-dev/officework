@@ -11,8 +11,14 @@
 //! - [`fmt`] 表示形式。`#,##0` や `yyyy年m月d日` を値に当てる
 //! - [`refs`] 式の中の参照を動かす。行の挿入・R1C1・オフセット
 //! - [`ops`] シートの操作。行列の出し入れ・並べ替え
+//! - [`adoc`] ブック ⇄ AsciiDoc。**ブックの正本は `.adoc`**
 //!
 //! 型は全部ここから見える(`use kumihan::book::Cell` は変わらない)。
+
+/// ブック ⇄ AsciiDoc(ブックの正本を .adoc にする)
+pub mod adoc;
+/// テーマ色の組と、番号+明るさの加減から色を解く
+pub mod theme;
 
 mod fmt;
 mod ops;

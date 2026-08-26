@@ -452,8 +452,8 @@ impl Calc {
     /// 意味が無いので、口の無い操作は残さない(下の rec_cmd が None を返す)
     /// 表の飾りの**次の姿**(入っていれば切る)。カーソルの居る表の旗を見る
     /// — 表が無ければ「掛ける」から始める(押して何も起きないより素直)
-    pub(crate) fn td_next(&self, what: sheet::tabledesign::Deco) -> bool {
-        use sheet::tabledesign::Deco;
+    pub(crate) fn td_next(&self, what: kumihan::tabledesign::Deco) -> bool {
+        use kumihan::tabledesign::Deco;
         let p = self.cursor;
         let Some(t) = self.sheet().tables.iter().find(|t| t.contains(p)) else {
             return true;
@@ -479,7 +479,7 @@ impl Calc {
             // **Python に無い口**を書いていた — 記録は残るのに走らなかった
             // 表のデザイン。**掛けた後の姿を書く**(入切なので)
             "td-header" | "td-band-row" | "td-band-col" | "td-first" | "td-last" => {
-                use sheet::tabledesign::Deco;
+                use kumihan::tabledesign::Deco;
                 let what = match id {
                     "td-header" => Deco::Header,
                     "td-band-row" => Deco::BandRow,
@@ -865,7 +865,7 @@ impl Calc {
         if kumihan::adoc::is_formula_cell(&text) {
             return false;
         }
-        let (at, rep, select) = sheet::cellmark::toggle_wrap(&text, sel, open, close);
+        let (at, rep, select) = kumihan::cellmark::toggle_wrap(&text, sel, open, close);
         // 置き換える範囲を選び直してから挿す(Editor の insert は選択を置き換える)
         self.input.move_to(at.start, false);
         self.input.move_to(at.end, true);
@@ -2396,7 +2396,7 @@ impl Calc {
                 let at = self.pop_anchor();
                 self.pick_kind = "scheme";
                 // 名前は sheet の表(theme.rs)が持つ = 鍵。訳は calc の表で当てる
-                let items: Vec<(String, String)> = sheet::theme::SCHEMES
+                let items: Vec<(String, String)> = kumihan::book::theme::SCHEMES
                     .iter()
                     .map(|(n, _)| (n.to_string(), crate::util::color_scheme_label(n)))
                     .collect();
@@ -2409,7 +2409,7 @@ impl Calc {
                 self.commit();
                 let p = self.cursor;
                 self.checkpoint();
-                match sheet::tabledesign::to_range(&mut self.book.sheets[self.active], p) {
+                match kumihan::tabledesign::to_range(&mut self.book.sheets[self.active], p) {
                     None => {
                         self.status =
                             ui::t!("put_cursor_inside_table").into();
@@ -2924,14 +2924,14 @@ impl Calc {
             // (掛けた書式・式が帳面に残るだけ。切り替え式に見せない。
             // まとめて掛けるなら挿入タブの「表の挿入」)
             "td-header" | "td-band-row" | "td-band-col" | "td-first" | "td-last" => {
-                // **実装は sheet::tabledesign**(2026-08-16 に移した)。画面と
+                // **実装は kumihan::tabledesign**(2026-08-16 に移した)。画面と
                 // Python の口が同じ所を呼ぶので、記録した行はそのまま走る
                 let what = match id {
-                    "td-header" => sheet::tabledesign::Deco::Header,
-                    "td-band-row" => sheet::tabledesign::Deco::BandRow,
-                    "td-band-col" => sheet::tabledesign::Deco::BandCol,
-                    "td-first" => sheet::tabledesign::Deco::FirstCol,
-                    _ => sheet::tabledesign::Deco::LastCol,
+                    "td-header" => kumihan::tabledesign::Deco::Header,
+                    "td-band-row" => kumihan::tabledesign::Deco::BandRow,
+                    "td-band-col" => kumihan::tabledesign::Deco::BandCol,
+                    "td-first" => kumihan::tabledesign::Deco::FirstCol,
+                    _ => kumihan::tabledesign::Deco::LastCol,
                 };
                 self.commit();
                 if self.anchor.is_none() {
@@ -2940,7 +2940,7 @@ impl Calc {
                     self.checkpoint();
                     let (a, b) = self.sel_rect();
                     let on = self.td_next(what);
-                    sheet::tabledesign::deco(&mut self.book.sheets[self.active], a, b, what, on);
+                    kumihan::tabledesign::deco(&mut self.book.sheets[self.active], a, b, what, on);
                     self.dirty = true;
                     // 文に差し込む字も画面の文言 — 訳さないと日本語だけ混じる
                     let what_ja = match id {
@@ -2967,12 +2967,12 @@ impl Calc {
                     self.status = ui::t!("select_table_range_total").into();
                 } else {
                     let (a, b) = self.sel_rect();
-                    if sheet::tabledesign::below_used(self.sheet(), a, b) {
+                    if kumihan::tabledesign::below_used(self.sheet(), a, b) {
                         self.status =
                             ui::t!("row_just_below_occupied").into();
                     } else {
                         self.checkpoint();
-                        sheet::tabledesign::add_total_row(&mut self.book.sheets[self.active], a, b);
+                        kumihan::tabledesign::add_total_row(&mut self.book.sheets[self.active], a, b);
                         recalc_book(&mut self.book, self.active);
                         self.dirty = true;
                         self.status = ui::tf!(
@@ -4269,14 +4269,14 @@ impl Calc {
                         if t.is_empty() {
                             continue;
                         }
-                        let md = sheet::cellmark::parse(&t);
+                        let md = kumihan::cellmark::parse(&t);
                         let scale = match &md {
                             Some(l) if cell.fmt.wrap => {
-                                sheet::cellmark::wanted_height_pt(l, 15.0, &named) / 15.0
+                                kumihan::cellmark::wanted_height_pt(l, 15.0, &named) / 15.0
                             }
                             Some(l) => l
                                 .iter()
-                                .map(|x| sheet::cellmark::line_scale(x, &named))
+                                .map(|x| kumihan::cellmark::line_scale(x, &named))
                                 .fold(1.0, f32::max),
                             None => 1.0,
                         };

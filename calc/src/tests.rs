@@ -712,7 +712,7 @@ mod table_design_tests {
         s.set(Pos::new(1, 1), Cell::input("100"));
         s.set(Pos::new(2, 0), Cell::input("乙"));
         s.set(Pos::new(2, 1), Cell::input("50"));
-        sheet::tabledesign::add_total_row(&mut s, Pos::new(0, 0), Pos::new(2, 1));
+        kumihan::tabledesign::add_total_row(&mut s, Pos::new(0, 0), Pos::new(2, 1));
         recalc(&mut s);
         let label = s.get(Pos::new(3, 0)).unwrap();
         assert_eq!(label.value.display(), "合計", "文字の列の先頭は札");
@@ -733,7 +733,7 @@ mod table_design_tests {
         for (r, v) in [(0, "10"), (1, "20")] {
             s.set(Pos::new(r, 0), Cell::input(v));
         }
-        sheet::tabledesign::add_total_row(&mut s, Pos::new(0, 0), Pos::new(1, 0));
+        kumihan::tabledesign::add_total_row(&mut s, Pos::new(0, 0), Pos::new(1, 0));
         recalc(&mut s);
         let sum = s.get(Pos::new(2, 0)).unwrap();
         assert_eq!(sum.formula.as_deref(), Some("SUM(A1:A2)"));
@@ -4287,7 +4287,7 @@ mod udf_tests {
     fn typing_a_header_grows_the_row(cx: &mut gpui::TestAppContext) {
         // 2026-08-09 発注者:「## 等 h1, h2, h3 の指定をした場合は、セルの高さも
         // 変更して。あらかじめ書式を決めておくといいですね」
-        // 大きさの表は sheet::cellmark::HEADINGS が正(画面の文字と同じ所を見る)
+        // 大きさの表は kumihan::cellmark::HEADINGS が正(画面の文字と同じ所を見る)
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             let base = 15.0_f32;
@@ -4316,7 +4316,7 @@ mod udf_tests {
                 "見出しの段で高さが並んでいない: {heights:?}"
             );
             // 既定のとおりか(画面の文字と同じ所を見ていること)
-            assert!((heights[0] - base * sheet::cellmark::DEFAULT_HEADINGS[0].scale).abs() < 0.01);
+            assert!((heights[0] - base * kumihan::cellmark::DEFAULT_HEADINGS[0].scale).abs() < 0.01);
 
             // **型紙が正**: ブックに名前付きスタイル「見出し 1」があれば
             // そちらが勝つ(2026-08-09 発注者「テンプレートに設定できませんか?」)
@@ -5950,7 +5950,7 @@ mod sheet_name_table_tests {
     #[test]
     fn the_palette_names_match_in_both_tables() {
         let mine = color_schemes();
-        for (n, _) in sheet::theme::SCHEMES {
+        for (n, _) in kumihan::book::theme::SCHEMES {
             assert!(
                 mine.iter().any(|(k, _)| k == n),
                 "sheet の theme::SCHEMES にあって calc の color_schemes に無い: 「{n}」\
@@ -5959,12 +5959,12 @@ mod sheet_name_table_tests {
         }
         for (k, _) in &mine {
             assert!(
-                sheet::theme::SCHEMES.iter().any(|(n, _)| n == k),
+                kumihan::book::theme::SCHEMES.iter().any(|(n, _)| n == k),
                 "calc の color_schemes にあって sheet の theme::SCHEMES に無い: 「{k}」\
                  (訳が宙に浮いている — 消すか、sheet 側に足す)"
             );
         }
-        assert_eq!(mine.len(), sheet::theme::SCHEMES.len(), "並びの数が食い違う");
+        assert_eq!(mine.len(), kumihan::book::theme::SCHEMES.len(), "並びの数が食い違う");
     }
 }
 

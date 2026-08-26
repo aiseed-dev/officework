@@ -54,7 +54,7 @@ fn local_time_offset() -> i64 {
 
 /// 1970 からの秒 → `YYYYMMDD-HHMMSS`(控えのファイル名)。
 ///
-/// 暦の算法は `sheet::civil_from_days` の1本を使います —
+/// 暦の算法は `kumihan::calc::civil_from_days` の1本を使います —
 /// **暦を2箇所に持たない**。
 pub fn stamp(epoch_secs: i64) -> String {
     let secs = epoch_secs + local_time_offset();

@@ -523,10 +523,10 @@ fn draw_sheet(
             }
             let Some(cell) = grid.cells.get(&p) else { continue };
 
-            // 塗りと文字色。**条件付き書式の当てはめは sheet::look の1本** —
+            // 塗りと文字色。**条件付き書式の当てはめは kumihan::look の1本** —
             // 画面(calc/src/view.rs)も同じ関数を通るので、答えは必ず揃う。
             // ここは決まった答えを紙の形に写すだけ
-            let ck = sheet::look::resolve_cond(cond_prep, p, &cell.value);
+            let ck = kumihan::look::resolve_cond(cond_prep, p, &cell.value);
             let fill = ck.fill.clone().or_else(|| cell.fmt.fill.clone());
             let ink = ck.color.clone().or_else(|| cell.fmt.color.clone());
             // **None は「触らない」**(セル自身の書式のまま)

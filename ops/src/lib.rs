@@ -729,13 +729,13 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             format!("{{\"ok\":true,\"tables\":{}}}", J::A(items).to_json())
         }
         // 表のデザイン(見出し行の色・縞模様・最初と最後の列)。**画面のボタンと
-        // 同じ実装**(sheet::tabledesign)を呼ぶ — 記録した行がそのまま走る
+        // 同じ実装**(kumihan::tabledesign)を呼ぶ — 記録した行がそのまま走る
         "table_style" => {
             let (si, a, b) = match target(h, &o) {
                 Ok(t) => t,
                 Err(e) => return e,
             };
-            let Some(what) = o.str("what").and_then(|s| sheet::tabledesign::Deco::from_name(&s))
+            let Some(what) = o.str("what").and_then(|s| kumihan::tabledesign::Deco::from_name(&s))
             else {
                 return err("what は header / band_row / band_col / first_col / last_col のどれか");
             };
@@ -745,7 +745,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             let on = o.bool("on").unwrap_or(true);
             h.settle();
             h.mark_once();
-            let n = sheet::tabledesign::deco(&mut h.book_mut().sheets[si], a, b, what, on);
+            let n = kumihan::tabledesign::deco(&mut h.book_mut().sheets[si], a, b, what, on);
             h.mark_dirty();
             h.wrote(n);
             format!("{{\"ok\":true,\"cells\":{n}}}")
@@ -759,12 +759,12 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             if h.book().sheets[si].protected {
                 return err("シートが保護されています");
             }
-            if sheet::tabledesign::below_used(&h.book().sheets[si], a, b) {
+            if kumihan::tabledesign::below_used(&h.book().sheets[si], a, b) {
                 return err("すぐ下の行に中身があります(空けてから — 黙って上書きしません)");
             }
             h.settle();
             h.mark_once();
-            let n = sheet::tabledesign::add_total_row(&mut h.book_mut().sheets[si], a, b);
+            let n = kumihan::tabledesign::add_total_row(&mut h.book_mut().sheets[si], a, b);
             h.mark_dirty();
             h.wrote(n);
             format!("{{\"ok\":true,\"cells\":{n}}}")
@@ -777,7 +777,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             };
             h.settle();
             h.mark_once();
-            match sheet::tabledesign::to_range(&mut h.book_mut().sheets[si], a) {
+            match kumihan::tabledesign::to_range(&mut h.book_mut().sheets[si], a) {
                 None => err("そこに表はありません"),
                 Some(name) => {
                     h.mark_dirty();

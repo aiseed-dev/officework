@@ -26,13 +26,13 @@
 //! ピボットは adoc の表に居場所が無いので、[`parse`] と [`write_report`] が
 //! 何を落としたかを日本語で返します。見た目はテンプレートの持ち場です。
 
-use kumihan::calc::recalc_all;
-use kumihan::book::{Book, Cell, Pos, Sheet, TableDef, Value};
-use kumihan::{Block, Cellbox, Document, Table, VMerge};
+use crate::calc::recalc_all;
+use crate::book::{Book, Cell, Pos, Sheet, TableDef, Value};
+use crate::{Block, Cellbox, Document, Table, VMerge};
 
 /// ブックを adoc の字にする。
 pub fn write(book: &Book) -> String {
-    kumihan::adoc::write(&to_doc(book))
+    crate::adoc::write(&to_doc(book))
 }
 
 /// 書くときに**落ちる物**を数える。日本語で1件1行。
@@ -79,7 +79,7 @@ pub fn write_report(book: &Book) -> Vec<String> {
 /// 表でない段落(見出し・本文)は、ブックに居場所が無いので落とし、
 /// 何を落としたかを2つ目の返り値に入れます。
 pub fn parse(src: &str) -> Result<(Book, Vec<String>), String> {
-    let (doc, mut report) = kumihan::adoc::parse_full(src)?;
+    let (doc, mut report) = crate::adoc::parse_full(src)?;
 
     let mut book = Book::new();
     book.sheets.clear();
@@ -298,7 +298,7 @@ mod tests {
             ..Default::default()
         });
         b.sheets.push(s);
-        kumihan::calc::recalc_all(&mut b);
+        crate::calc::recalc_all(&mut b);
         b
     }
 
@@ -357,7 +357,7 @@ mod tests {
             ..Default::default()
         });
         b.sheets.push(s);
-        kumihan::calc::recalc_all(&mut b);
+        crate::calc::recalc_all(&mut b);
         assert_eq!(value(&b, 0, "C2"), "1800");
         assert_eq!(value(&b, 0, "D2"), "2200");
 

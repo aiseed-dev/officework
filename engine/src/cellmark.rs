@@ -136,7 +136,7 @@ pub fn default_heading(level: u8) -> Option<Heading> {
 /// 見分け方は builtinId(Excel が「見出し 1/2/3」に振る 16/17/18)を第一に、
 /// 無ければ名前の末尾の数字(「見出し 1」「Heading 1」どちらでも)。
 pub fn heading_of(
-    named: &[(String, Option<u32>, kumihan::book::CellFormat)],
+    named: &[(String, Option<u32>, crate::book::CellFormat)],
     level: u8,
 ) -> Option<Heading> {
     let want_builtin = 15 + level as u32; // 見出し1 → 16
@@ -154,7 +154,7 @@ pub fn heading_of(
 }
 
 /// この行の文字の大きさの比(見出しでなければ 1.0)。
-pub fn line_scale(l: &Line, named: &[(String, Option<u32>, kumihan::book::CellFormat)]) -> f32 {
+pub fn line_scale(l: &Line, named: &[(String, Option<u32>, crate::book::CellFormat)]) -> f32 {
     match l.block {
         Block::Heading(n) => heading_of(named, n).map(|h| h.scale).unwrap_or(1.0),
         _ => 1.0,
@@ -167,7 +167,7 @@ pub fn line_scale(l: &Line, named: &[(String, Option<u32>, kumihan::book::CellFo
 pub fn wanted_height_pt(
     lines: &[Line],
     base_pt: f32,
-    named: &[(String, Option<u32>, kumihan::book::CellFormat)],
+    named: &[(String, Option<u32>, crate::book::CellFormat)],
 ) -> f32 {
     lines.iter().map(|l| base_pt * line_scale(l, named)).sum()
 }

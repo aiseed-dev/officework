@@ -971,7 +971,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     // 読みと同じ関数で解くので、読みで拾えない書式も**同じように**落ち、
     // 「触っていないセル」は必ず一致して原本の索引のまま書き戻る
     let orig_fmts: Option<Vec<kumihan::book::CellFormat>> =
-        orig_styles.as_ref().map(|xml| crate::styles::parse(xml, &book.theme));
+        orig_styles.as_ref().map(|xml| crate::xlsx::styles::parse(xml, &book.theme));
     // このセルは原本の書式のままか(なら索引ごと据え置く)
     let kept_style = |sh: &Sheet, p: &Pos, fmt: &kumihan::book::CellFormat| -> Option<u32> {
         let fmts = orig_fmts.as_ref()?;
@@ -996,11 +996,11 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     };
     let (styles_xml, style_idx) = match orig_styles
         .as_ref()
-        .and_then(|xml| crate::styles::append_to(xml, &used, &book.named_styles_new))
+        .and_then(|xml| crate::xlsx::styles::append_to(xml, &used, &book.named_styles_new))
     {
         Some(r) => r,
         // 原本が無い(新規)か、節の見つからない styles.xml なら作り直し
-        None => crate::styles::build(&used, &book.named_styles_new),
+        None => crate::xlsx::styles::build(&used, &book.named_styles_new),
     };
     // 条件付き書式の見た目(dxfs)。全シートの規則から集めて番号を振る
     let dxf_list: Vec<kumihan::book::CondLook> = {
@@ -1477,7 +1477,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
 
     // テーマの色。読んだものをそのまま返し、配色を変えたときは新しい組を書く
     if !book.theme.is_empty() {
-        put("xl/theme/theme1.xml", &crate::theme::to_xml(&book.theme))?;
+        put("xl/theme/theme1.xml", &super::theme::to_xml(&book.theme))?;
     }
     put("xl/styles.xml", &styles_xml)?;
 

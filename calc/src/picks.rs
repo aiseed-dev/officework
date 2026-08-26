@@ -224,7 +224,7 @@ impl Calc {
                 }
             }
             "scheme" => {
-                if let Some((_, cols)) = sheet::theme::SCHEMES.iter().find(|(n, _)| *n == v) {
+                if let Some((_, cols)) = kumihan::book::theme::SCHEMES.iter().find(|(n, _)| *n == v) {
                     self.checkpoint_book();
                     self.book.theme = cols.iter().map(|c| c.to_string()).collect();
                     // テーマ由来の色を持つセルを解き直す(配色に追従させる)
@@ -234,12 +234,12 @@ impl Calc {
                         for cell in sh.cells.values_mut() {
                             if let Some((i, t)) = cell.fmt.color_theme {
                                 cell.fmt.color =
-                                    Some(sheet::theme::resolve(&theme, i, t as f32 / 1000.0));
+                                    Some(kumihan::book::theme::resolve(&theme, i, t as f32 / 1000.0));
                                 n += 1;
                             }
                             if let Some((i, t)) = cell.fmt.fill_theme {
                                 cell.fmt.fill =
-                                    Some(sheet::theme::resolve(&theme, i, t as f32 / 1000.0));
+                                    Some(kumihan::book::theme::resolve(&theme, i, t as f32 / 1000.0));
                                 n += 1;
                             }
                         }

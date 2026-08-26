@@ -4121,7 +4121,6 @@ dependencies = [
  "getrandom 0.3.4",
  "kumihan",
  "pyrun",
- "sheet",
 ]
 
 [[package]]
@@ -4166,7 +4165,6 @@ dependencies = [
  "kumihan",
  "ooxml",
  "printpdf",
- "sheet",
 ]
 
 [[package]]

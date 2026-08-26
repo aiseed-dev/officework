@@ -8,7 +8,6 @@ license.workspace = true
 # (undo の節目・状態行・画面)は Host trait の向こう側 — 実装が calc なら
 # 生きた表、pysheet ならファイル。gpui は絶対に入れない
 [dependencies]
-sheet = { path = "../sheet" }
 # 設定の置き場は pyrun が正本(2026-08-16)。依存ゼロの std だけの機構
 pyrun = { path = "../pyrun" }
 kumihan = { path = "../engine" }

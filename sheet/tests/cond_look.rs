@@ -1,6 +1,6 @@
 //! 条件付き書式が **xlsx を往復しても同じ見えになる**ことの検査。
 //!
-//! [`sheet::look::resolve_cond`] は 2026-08-14 に新設した「表のセルの見えを
+//! [`kumihan::look::resolve_cond`] は 2026-08-14 に新設した「表のセルの見えを
 //! 決める1本」で、画面(calc/src/view.rs)と紙(paper/src/grid.rs)の
 //! **両方がこれを通る**。それまでは当てはめが2箇所に写して書かれていて、
 //! 画面はバーもスケールもアイコンも描くのに紙は塗りと文字色だけ、という
@@ -9,7 +9,7 @@
 //! ここが見るのは「読んだ規則が正しく当てはまるか」— `look.rs` の中の
 //! 単体試験(規則の重ね方)と合わせて、読み→当てはめの一本道を縛る。
 
-use sheet::look::resolve_cond;
+use kumihan::look::resolve_cond;
 use kumihan::book::{CondKind, CondLook, CondOp, CondRule};
 use kumihan::book::{Book, Cell, Pos, Value};
 use sheet::xlsx;
@@ -90,5 +90,5 @@ fn columns_without_rules_stay_plain() {
     let prep: Vec<_> = s.cond.iter().map(|r| (r.clone(), r.aux(s))).collect();
     // E列には規則が無い
     let r = resolve_cond(&prep, Pos::new(0, 4), &Value::Number(90.0));
-    assert_eq!(r, sheet::look::CondResolved::default());
+    assert_eq!(r, kumihan::look::CondResolved::default());
 }

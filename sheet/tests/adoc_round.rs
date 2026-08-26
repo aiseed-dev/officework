@@ -49,8 +49,8 @@ fn a_real_book_round_trips_through_adoc() {
         seen += 1;
         let name = p.file_name().unwrap().to_string_lossy().to_string();
 
-        let src = sheet::adoc::write(&from);
-        let (back, _) = sheet::adoc::parse(&src).expect("adoc が読めない");
+        let src = kumihan::book::adoc::write(&from);
+        let (back, _) = kumihan::book::adoc::parse(&src).expect("adoc が読めない");
 
         let a = value_table(&from);
         let b = value_table(&back);
@@ -84,6 +84,6 @@ fn images_are_counted() {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("sample").join("写真の台帳.xlsx");
     let Ok(f) = std::fs::File::open(&p) else { return };
     let (b, _) = sheet::xlsx::read(std::io::BufReader::new(f)).expect("読めない");
-    let r = sheet::adoc::write_report(&b);
+    let r = kumihan::book::adoc::write_report(&b);
     assert!(r.iter().any(|x| x.contains("画像")), "画像を黙って落とした: {r:?}");
 }
