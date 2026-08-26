@@ -23,6 +23,8 @@
 pub mod crypt;
 
 mod read;
+/// `theme1.xml` — 役ごとの書体(見出しはゴシック、本文は明朝)
+pub mod theme;
 mod write;
 
 pub use read::{ink_anchor_run, ink_anchor_xml, parse_document_with, parse_document_xml, read, Report};

@@ -2551,8 +2551,48 @@ mod through_template {
         // **書体と大きさが styles.xml に入っていること** — ここが穴でした
         assert!(s.contains("<w:docDefaults>"), "文書の既定が無い: {s}");
         assert!(s.contains(r#"<w:sz w:val="21"/>"#), "10.5pt が入らない: {s}");
-        assert!(s.contains("w:ascii=\"BIZ UD"), "日本語の既定の書体が入らない: {s}");
         assert!(s.contains(r#"w:eastAsia="ja-JP""#), "言語が入らない: {s}");
+        // **書体はテーマ参照**(名指しではない)。役ごとに変えるためです
+        assert!(s.contains("minorEastAsia"), "本文がテーマを見ていない: {s}");
+    }
+
+    /// **タイトルはゴシック、本文は明朝、コードは等幅**(2026-08-26 発注者)。
+    ///
+    /// 一度は書体を1つだけ名指ししました。それでは役ごとに変えられません。
+    /// Word も OnlyOffice もテーマ参照で書いていて、そちらが正しい形でした。
+    #[test]
+    fn the_three_roles_have_their_own_fonts() {
+        kumihan::font::set_default_language("ja");
+        let out = write_out(None);
+        let s = parts(&out, "word/styles.xml").unwrap();
+        let t = parts(&out, "word/theme/theme1.xml").expect("テーマの部品が無い");
+
+        // 役の参照
+        assert!(s.contains("minorEastAsia"), "本文が minor を見ていない: {s}");
+        for sid in ["Title", "Heading1"] {
+            let i = s.find(&format!(r#"w:styleId="{sid}""#)).unwrap_or_else(|| panic!("{sid} が無い"));
+            let j = s[i..].find("</w:style>").expect("閉じが無い");
+            assert!(s[i..i + j].contains("majorEastAsia"), "{sid} が major を見ていない");
+        }
+        // テーマの中身 — タイトルはゴシック、本文は明朝
+        let font_of = |role: &str| {
+            let i = t.find(&format!("<a:{role}Font>")).expect("役が無い");
+            let j = t[i..].find(&format!("</a:{role}Font>")).expect("閉じが無い");
+            t[i..i + j].to_string()
+        };
+        assert!(font_of("major").contains("ゴシック"), "タイトルがゴシックでない");
+        assert!(font_of("minor").contains("明朝"), "本文が明朝でない");
+        // コードは等幅。スタイルが名指しします(役ではありません)
+        let i = s.find(r#"w:styleId="等幅""#).expect("等幅が無い");
+        let j = s[i..].find("</w:style>").expect("閉じが無い");
+        assert!(s[i..i + j].contains("Mono"), "コードが等幅でない: {}", &s[i..i + j]);
+
+        // **部品と関係が対で入っていること。** 片方だけだと Word が
+        // テーマを解けず、役の分けが黙って効かなくなります
+        let rels = parts(&out, "word/_rels/document.xml.rels").unwrap();
+        assert!(rels.contains("theme/theme1.xml"), "テーマへの関係が無い: {rels}");
+        let ct = parts(&out, "[Content_Types].xml").unwrap();
+        assert!(ct.contains("/word/theme/theme1.xml"), "テーマが目録に無い: {ct}");
     }
 
     /// **用紙は必ず入ります。**

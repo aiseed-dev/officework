@@ -393,6 +393,29 @@ fn default_cands(s: Script) -> &'static [&'static str] {
 /// (2026-08-26 発注者「標準フォントは、os と言語によって変えないと
 /// いけない」)。韓国語の画面で日本語の書体を出すと、ハングルが豆腐に
 /// なります。
+/// **役ごとの既定の書体**(見出しはゴシック、本文は明朝)。
+///
+/// 文書は役で書体を変えます(2026-08-26 発注者「タイトルはゴシック、
+/// 本文は明朝、コードは等幅」)。[`default_family`] は役を持たない
+/// 「その言語の既定」なので、役が要るときはこちらを使います。
+///
+/// 機械に無ければ `None`。呼ぶ側が名前を決めます。
+pub fn default_generic(lang: &str, g: Generic) -> Option<&'static Family> {
+    let s = script_of(lang);
+    for c in default_cands(s) {
+        if let Some(f) = resolve(c) {
+            if read_generic(&f.name) == Some(g) {
+                return Some(f);
+            }
+        }
+    }
+    // 候補に無ければ、その言語の字が組める物から系統で選びます
+    list()
+        .iter()
+        .find(|f| f.covers(s) && f.regular && read_generic(&f.name) == Some(g))
+        .or_else(|| list().iter().find(|f| f.covers(s) && read_generic(&f.name) == Some(g)))
+}
+
 pub fn default_family(lang: &str) -> Option<&'static Family> {
     let s = script_of(lang);
     for c in default_cands(s) {

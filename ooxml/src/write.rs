@@ -74,23 +74,6 @@ fn style_name_of(name: &str, id: &str) -> String {
     }
 }
 
-/// **新規の文書に入れる既定の書体。**
-///
-/// テンプレートは書体を名指ししません(機械にある物から選ぶため)。
-/// けれども docx は**名前を書かないと相手の機械任せ**になるので、
-/// 保存のときに解いて入れます。
-///
-/// 日本語は BIZ UD 系です(2026-08-26 発注者)。他の言語は
-/// `kumihan::font::default_family` の既定に従います —
-/// 「標準フォントは OS と言語で変える」と1本の道です。
-fn default_doc_font() -> Option<String> {
-    let lang = kumihan::font::default_language();
-    if kumihan::font::script_of(&lang) == kumihan::font::Script::Japanese {
-        return Some("BIZ UDPゴシック".into());
-    }
-    kumihan::font::default_family(&lang).map(|f| f.name.clone())
-}
-
 /// 画面の言語の札を docx の `w:lang` の形に(`ja` → `ja-JP`)
 fn doc_lang_tag(lang: &str) -> String {
     match lang {
@@ -114,17 +97,25 @@ fn styles_from_theme(theme: &kumihan::theme::Theme) -> String {
     );
     // 文書の既定(書体と大きさ)。テンプレートの `[文書]` の分。
     //
-    // **書体は必ず書きます。** テンプレートが名指ししていなければ、いまの
-    // 言語の既定の書体を解いて入れます。空にすると Word が機械ごとに
-    // 別の書体を当てるので、同じファイルが機械によって違って見えます
-    // (2026-08-26 発注者「初期設定ができていないのでは」)
+    // **書体は必ず書きます。** 空にすると Word が機械ごとに別の書体を
+    // 当てるので、同じファイルが機械によって違って見えます
+    // (2026-08-26 発注者「初期設定ができていないのでは」)。
+    //
+    // 名指しではなく**テーマ参照**にします。タイトルはゴシック、本文は
+    // 明朝、という役ごとの分けができるのはテーマだけです
+    // (2026-08-26 発注者「これは、書くべきです」)
     let mut dd = String::new();
-    let font = theme.font.clone().or_else(default_doc_font);
-    if let Some(f) = &font {
-        let f = esc(f);
-        dd.push_str(&format!(
-            r#"<w:rFonts w:ascii="{f}" w:hAnsi="{f}" w:eastAsia="{f}" w:cs="{f}"/>"#
-        ));
+    match &theme.font {
+        // テンプレートが名指ししていれば、その1つを本文に当てます
+        Some(f) => {
+            let f = esc(f);
+            dd.push_str(&format!(
+                r#"<w:rFonts w:ascii="{f}" w:hAnsi="{f}" w:eastAsia="{f}" w:cs="{f}"/>"#
+            ));
+        }
+        // **名指しが無ければテーマを参照します。** 役ごとに書体を変える
+        // ためです — 直に名前を書くと、タイトルも本文も同じになります
+        None => dd.push_str(crate::theme::MINOR_REF),
     }
     if let Some(pt) = theme.size_pt {
         let half = (pt * 2.0).round() as i64;
@@ -168,6 +159,17 @@ fn styles_from_theme(theme: &kumihan::theme::Theme) -> String {
             esc(&name),
         ));
         s.push_str(&style_body_xml(d, lvl));
+        // **タイトルと見出しはゴシック**(テーマの major)。テンプレートが
+        // 書体を名指ししていなければ、役の参照を入れます
+        // (2026-08-26 発注者「タイトルはゴシック、本文は明朝」)
+        if d.font.is_none() && (id == "Title" || id.starts_with("Heading")) {
+            let rpr = crate::theme::MAJOR_REF;
+            match s.rfind("<w:rPr>") {
+                // すでに rPr があれば、その先頭へ(スキーマの並びで rFonts は先)
+                Some(i) if s[i..].contains("</w:rPr>") => s.insert_str(i + 7, rpr),
+                _ => s.push_str(&format!("<w:rPr>{rpr}</w:rPr>")),
+            }
+        }
         s.push_str("</w:style>");
     }
     // **本文が名乗る styleId は、定義が無くても置きます。**
@@ -1316,6 +1318,8 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
              "application/vnd.openxmlformats-package.core-properties+xml"),
             ((!orig_has_styles).then_some("word/styles.xml"),
              "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"),
+            ((!orig_has_styles).then_some("word/theme/theme1.xml"),
+             "application/vnd.openxmlformats-officedocument.theme+xml"),
         ] {
             let Some(name) = name else { continue };
             if !ct.contains(&format!("PartName=\"/{name}\"")) {
@@ -1414,6 +1418,11 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
         }
         zip.start_file("word/styles.xml", opts).map_err(|e| e.to_string())?;
         zip.write_all(s.as_bytes()).map_err(|e| e.to_string())?;
+
+        // **役ごとの書体はテーマが持ちます**(major = ゴシック、
+        // minor = 明朝)。styles.xml が参照するので、対で置きます
+        zip.start_file("word/theme/theme1.xml", opts).map_err(|e| e.to_string())?;
+        zip.write_all(crate::theme::xml().as_bytes()).map_err(|e| e.to_string())?;
     }
 
     // 本文の rels。原本の関係(既存の画像・ヘッダー等)は残し、
@@ -1486,6 +1495,22 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
                 add.push_str(&format!(
                     r#"<Relationship Id="{id}" Type="{RNS_DOC}/{kind}" Target="{target}"/>"#
                 ));
+            }
+        }
+        // **スタイルとテーマへの関係。** こちらが styles.xml を作ったときは
+        // 対で theme1.xml も置くので、両方の関係が要ります。無いと Word が
+        // テーマの書体を解けず、役ごとの分け(見出し=ゴシック/本文=明朝)が
+        // 効きません
+        if !orig_has_styles {
+            for (rid, kind, target) in [
+                ("rIdJOsty", "styles", "styles.xml"),
+                ("rIdJOthm", "theme", "theme/theme1.xml"),
+            ] {
+                if !rels.contains(&format!("Target=\"{target}\"")) {
+                    add.push_str(&format!(
+                        r#"<Relationship Id="{rid}" Type="{RNS_DOC}/{kind}" Target="{target}"/>"#
+                    ));
+                }
             }
         }
         // 設定(settings.xml)への関係。素の文書に設定を足したときだけ要る
