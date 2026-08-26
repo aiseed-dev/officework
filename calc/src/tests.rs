@@ -3559,6 +3559,62 @@ mod recalc_tests {
         });
     }
 
+    /// **入力規則が効くのは打つときだけ**(2026-08-26 発注者「入力規則は
+    /// 入力の時だけ使う」「excel の標準どおりでいい」)。
+    ///
+    /// 再計算で式の値が範囲を外れても、何も起きません。参照先が変われば
+    /// 式の値も変わるので、そのたびに止めると表が作れません。外れている
+    /// ことは「無効データに印」で見えます — 式の結果にも印が付きます。
+    #[gpui::test]
+    fn 再計算で範囲を外れた式は止めないが印は付く(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            // A1 に元の数、A2 は A1 の 10 倍の式。規則は 1〜100 の整数
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("5"));
+            this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("=A1*10"));
+            this.book.sheets[0].set(Pos::new(2, 0), sheet::Cell::input("500"));
+            let mut v = sheet::model::Validation::list(
+                (Pos::new(0, 0), Pos::new(2, 0)),
+                "1".into(),
+            );
+            v.kind = "whole".into();
+            v.op = "between".into();
+            v.formula2 = "100".into();
+            this.book.sheets[0].validations.push(v);
+            this.recalc_if_auto();
+            assert_eq!(
+                this.book.sheets[0].get(Pos::new(1, 0)).unwrap().value.display(),
+                "50",
+                "式が計算されていない"
+            );
+
+            // A1 を 50 にすると A2 は 500 で範囲の外。だが式なので印は付かない
+            this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("50"));
+            this.recalc_if_auto();
+            // **印を押す前に、規則の範囲の外へ出ます。** `dv-mark` は頭で
+            // `commit()` を呼ぶので、打ちかけの空の欄がそのまま入ります
+            this.cursor = Pos::new(9, 3);
+            this.sync_input();
+            this.run_cmd("dv-mark", cx);
+            let 場所: Vec<Pos> = this.dv_marks.iter().map(|(_, p)| *p).collect();
+            assert!(場所.contains(&Pos::new(1, 0)), "式の値に印が無い: {場所:?}");
+            assert!(場所.contains(&Pos::new(2, 0)), "打った値に印が無い: {場所:?}");
+
+            // **打つときは止めます**(既定は Excel と同じ「停止」)。
+            // 止まるのは打ったときだけで、上の式は素通りしています
+            this.cursor = Pos::new(0, 0);
+            this.sync_input();
+            this.input.select_all();
+            this.input.insert("999");
+            assert!(!this.commit(), "範囲の外が打てた");
+            assert_eq!(
+                this.book.sheets[0].get(Pos::new(0, 0)).unwrap().value.display(),
+                "50",
+                "堰き止めたのに値が変わった"
+            );
+        });
+    }
+
     /// **元の表を差し替える**(2026-08-21 の D群)。
     ///
     /// 断る所も見ます — 読めない範囲・無いシート・**いま使っている見出しが

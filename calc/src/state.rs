@@ -2587,6 +2587,13 @@ impl Calc {
                 }
             });
             if let Some((em, fallback)) = verdict {
+                // **既定は「停止」**(2026-08-26 発注者「excel の標準どおりで
+                // いい。嫌だったら使わない」)。ECMA-376 の `errorStyle` も
+                // 既定は stop で、Excel の画面で規則を作ると停止が選ばれます。
+                //
+                // 止まるのは**打ったときだけ**です。再計算で式の値が範囲を
+                // 外れても、何も起きません(打つときに式は通しています)。
+                // 外れている値は「無効データに印」で見つけます
                 let stop = em.as_ref().map(|(s, _, _)| s == "stop").unwrap_or(true);
                 let said = match &em {
                     Some((_, t, m)) if !t.is_empty() || !m.is_empty() => {

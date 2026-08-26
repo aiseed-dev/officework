@@ -3648,6 +3648,11 @@ impl Calc {
                     for r in a.row..=b.row {
                         for c in a.col..=b.col {
                             let p = Pos::new(r, c);
+                            // **式の結果にも印を付けます**(2026-08-26 発注者
+                            // 「印はつけないといけないです。要するに
+                            // ワーニングが基本」)。堰き止めはしませんが、
+                            // 見えるようにはします — 再計算で範囲を外れた
+                            // ことに気づく道がここしかありません
                             let text = sh.get(p).map(|x| x.value.display()).unwrap_or_default();
                             // 空欄は規則の `allow_blank` に従う(打つときと同じ)
                             if text.is_empty() {
