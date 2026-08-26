@@ -2702,3 +2702,69 @@ mod default_font_tests {
         assert_eq!(doc.font.as_deref(), Some("ＭＳ 明朝"), "eastAsia の直書きが読めない");
     }
 }
+
+/// **自作スタイルは見た目を持てる**(2026-08-27。読み物のスタイルの回が
+/// これ待ちでした)。前は名前だけで、字の色も大きさも持たせられません
+/// でした。
+#[cfg(test)]
+mod own_style_look {
+    use std::io::Cursor;
+
+    fn write_out(doc: &kumihan::Document) -> Vec<u8> {
+        let mut buf = Cursor::new(Vec::new());
+        crate::write(doc, &mut buf).expect("書けない");
+        buf.into_inner()
+    }
+
+    fn styles_of(bytes: &[u8]) -> String {
+        let mut z = zip::ZipArchive::new(Cursor::new(bytes.to_vec())).expect("zip でない");
+        let mut f = z.by_name("word/styles.xml").expect("styles.xml が無い");
+        let mut s = String::new();
+        std::io::Read::read_to_string(&mut f, &mut s).expect("読めない");
+        s
+    }
+
+    fn made(look: kumihan::StyleLook) -> String {
+        let mut d = kumihan::Document::default();
+        d.styles_new.push(kumihan::StyleInfo {
+            id: "注記".into(),
+            name: "注記".into(),
+            kind: "paragraph".into(),
+            look,
+        });
+        styles_of(&write_out(&d))
+    }
+
+    fn body_of(s: &str) -> String {
+        let i = s.find(r#"w:styleId="注記""#).expect("自作スタイルが無い");
+        let j = s[i..].find("</w:style>").expect("閉じが無い");
+        s[i..i + j].to_string()
+    }
+
+    #[test]
+    fn a_style_carries_its_look() {
+        let s = made(kumihan::StyleLook {
+            bold: Some(true),
+            color: Some("9C2B2B".into()),
+            size_pt: Some(9.0),
+            fill: Some("FFF0F0".into()),
+            ..Default::default()
+        });
+        let b = body_of(&s);
+        assert!(b.contains("<w:b/>"), "太字が入らない: {b}");
+        assert!(b.contains(r#"<w:color w:val="9C2B2B"/>"#), "色が入らない: {b}");
+        assert!(b.contains(r#"<w:sz w:val="18"/>"#), "9pt が入らない: {b}");
+        assert!(b.contains(r#"w:fill="FFF0F0""#), "塗りが入らない: {b}");
+    }
+
+    /// **三択を守ります。** 言っていない物は書きません — 元になるスタイル
+    /// から受け継ぐという意味です。`false` は「わざわざ切る」で別の意味です。
+    #[test]
+    fn saying_nothing_is_not_the_same_as_saying_off() {
+        let quiet = body_of(&made(kumihan::StyleLook::default()));
+        assert!(!quiet.contains("<w:rPr>"), "何も言っていないのに rPr が出た: {quiet}");
+
+        let off = body_of(&made(kumihan::StyleLook { bold: Some(false), ..Default::default() }));
+        assert!(off.contains(r#"<w:b w:val="0"/>"#), "切ったことが書かれない: {off}");
+    }
+}

@@ -48,6 +48,16 @@ pub(super) const RNS_DOC: &str = "http://schemas.openxmlformats.org/officeDocume
 /// `Heading1` などのときだけ**なので、ここを日本語の名前のままにすると、
 /// 見出しが本文として読まれて目次にも出ない。
 /// 利用者が新しく作った名前は、そのまま styleId にする(日本語でも通る)。
+/// **テンプレートのスタイル名 → docx の (styleId, w:name)。**
+///
+/// 「一覧に出す名前」と「保存で書かれる名前」を1箇所から取るための入り口です。
+/// 2つに分けて書くと食い違います。
+pub fn style_names(name: &str) -> (String, String) {
+    let id = style_id_of(name);
+    let n = style_name_of(name, &id);
+    (id, n)
+}
+
 fn style_id_of(name: &str) -> String {
     match name {
         "本文" => "Normal".into(),
@@ -1106,6 +1116,55 @@ pub(super) fn image_kind(bytes: &[u8]) -> (&'static str, &'static str) {
 /// XML にする。**既に同じ styleId が居れば足さない**(開き直して保存、で
 /// 二重に増えないため)。定義は最小 — 名前の名乗りだけで、見た目は
 /// 直接書式が第一のまま。
+/// 自作スタイルの見た目を `w:pPr` と `w:rPr` にする。
+///
+/// **三択(入・切・言わない)を守ります。** 言っていない物は書きません —
+/// 元になるスタイルから受け継ぐという意味だからです。
+fn style_look_xml(l: &kumihan::StyleLook) -> String {
+    if l.is_empty() {
+        return String::new();
+    }
+    let mut out = String::new();
+    // 塗りは段落の側(w:pPr の shd)
+    if let Some(c) = &l.fill {
+        out.push_str(&format!(
+            r#"<w:pPr><w:shd w:val="clear" w:color="auto" w:fill="{}"/></w:pPr>"#,
+            esc(c)
+        ));
+    }
+    let mut r = String::new();
+    if let Some(f) = &l.font {
+        let f = esc(f);
+        r.push_str(&format!(
+            r#"<w:rFonts w:ascii="{f}" w:hAnsi="{f}" w:eastAsia="{f}" w:cs="{f}"/>"#
+        ));
+    }
+    for (on, tag) in [(l.bold, "b"), (l.italic, "i"), (l.strike, "strike")] {
+        match on {
+            Some(true) => r.push_str(&format!("<w:{tag}/>")),
+            // **わざわざ切る**のと「言わない」は違います
+            Some(false) => r.push_str(&format!(r#"<w:{tag} w:val="0"/>"#)),
+            None => {}
+        }
+    }
+    match l.underline {
+        Some(true) => r.push_str(r#"<w:u w:val="single"/>"#),
+        Some(false) => r.push_str(r#"<w:u w:val="none"/>"#),
+        None => {}
+    }
+    if let Some(c) = &l.color {
+        r.push_str(&format!(r#"<w:color w:val="{}"/>"#, esc(c)));
+    }
+    if let Some(pt) = l.size_pt {
+        let half = (pt * 2.0).round() as i64;
+        r.push_str(&format!(r#"<w:sz w:val="{half}"/><w:szCs w:val="{half}"/>"#));
+    }
+    if !r.is_empty() {
+        out.push_str(&format!("<w:rPr>{r}</w:rPr>"));
+    }
+    out
+}
+
 fn styles_new_xml(doc: &Document, existing: &str) -> String {
     let mut out = String::new();
     for s in &doc.styles_new {
@@ -1113,11 +1172,13 @@ fn styles_new_xml(doc: &Document, existing: &str) -> String {
             continue;
         }
         out.push_str(&format!(
-            r#"<w:style w:type="{}" w:styleId="{}"><w:name w:val="{}"/></w:style>"#,
+            r#"<w:style w:type="{}" w:styleId="{}"><w:name w:val="{}"/>"#,
             esc(&s.kind),
             esc(&s.id),
             esc(&s.name),
         ));
+        out.push_str(&style_look_xml(&s.look));
+        out.push_str("</w:style>");
     }
     out
 }

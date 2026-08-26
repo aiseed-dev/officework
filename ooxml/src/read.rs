@@ -1022,7 +1022,9 @@ pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
             })
             .unwrap_or_default();
         if !id.is_empty() {
-            out.push(kumihan::StyleInfo { id, name, kind });
+            // 原本のスタイルは名乗りだけ読みます。定義は据え置きで持ち越すので、
+            // こちらで見た目を持つ必要がありません(触ると原本が崩れます)
+            out.push(kumihan::StyleInfo { id, name, kind, look: Default::default() });
         }
         from = end.max(i + 1);
     }

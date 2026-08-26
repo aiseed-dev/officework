@@ -735,13 +735,47 @@ pub struct Document {
     pub vertical: bool,
 }
 
-/// スタイルの名乗り(styles.xml の w:style の id・名前・種類)。
+/// スタイルの名乗り(styles.xml の w:style の id・名前・種類)と、その見た目。
 /// kind は docx の type のまま: "paragraph" / "character" / "table" / "numbering"
+///
+/// **見た目を持てるのは「自分で作ったスタイル」だけ**です(2026-08-27)。
+/// 原本から読んだスタイルの定義は持ち越すだけで触りません(据え置きの決め)。
+/// 使う人が `add_style` で作った物に色や大きさを持たせられないと、
+/// 自作のスタイルが名前だけの物になります。
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct StyleInfo {
     pub id: String,
     pub name: String,
     pub kind: String,
+    /// 字の見た目。**設定した物だけ**を持ちます(None は「言わない」)
+    pub look: StyleLook,
+}
+
+/// スタイルが持つ字の見た目。三択(入・切・言わない)です。
+///
+/// 「言わない」は、元になるスタイル(`basedOn`)から受け継ぐという意味です。
+/// `false` を書くと**わざわざ切る**ことになり、意味が違います。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct StyleLook {
+    pub bold: Option<bool>,
+    pub italic: Option<bool>,
+    pub underline: Option<bool>,
+    pub strike: Option<bool>,
+    /// 字の大きさ(pt)
+    pub size_pt: Option<f32>,
+    /// 字の色(RRGGBB)
+    pub color: Option<String>,
+    /// 書体の名前
+    pub font: Option<String>,
+    /// 背景の塗り(RRGGBB)
+    pub fill: Option<String>,
+}
+
+impl StyleLook {
+    /// 何も言っていないか(何も無ければ `w:rPr` を書きません)
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
 }
 
 /// 文書の情報(core properties)。空の欄は書かない

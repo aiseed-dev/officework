@@ -292,18 +292,27 @@ impl PyDoc {
     #[new]
     fn new() -> PyDoc {
         let mut doc = Document::default();
-        // まっさらの文書が保存で持つ最小のスタイル定義(ooxml の STYLES_MIN)と
-        // **一覧を一致させる** — 書かれる物が見えない一覧は嘘になる
-        for (id, name) in [
-            ("Normal", "Normal"),
-            ("Heading1", "heading 1"),
-            ("Heading2", "heading 2"),
-            ("Heading3", "heading 3"),
-        ] {
+        // まっさらの文書が保存で持つスタイル定義と**一覧を一致させる** —
+        // 書かれる物が見えない一覧は嘘になる。
+        //
+        // 出どころは同梱の既定のテンプレートです(2026-08-27)。前は
+        // 4つ決め打ちで、実際に書かれる 23 個と食い違っていました
+        doc.styles.push(kumihan::StyleInfo {
+            id: "Normal".into(),
+            name: "Normal".into(),
+            kind: "paragraph".into(),
+            look: Default::default(),
+        });
+        for d in &kumihan::theme::default_theme().styles {
+            if d.name == "本文" {
+                continue;
+            }
+            let (id, name) = ooxml::style_names(&d.name);
             doc.styles.push(kumihan::StyleInfo {
-                id: id.into(),
-                name: name.into(),
+                id,
+                name,
                 kind: "paragraph".into(),
+                look: Default::default(),
             });
         }
         PyDoc {
@@ -551,10 +560,33 @@ impl PyDoc {
             .collect())
     }
 
-    /// スタイルを足す(名乗りだけの最小定義 — 見た目は直接書式が第一のまま)。
-    /// styleId は名前から空白を抜いた形(Word の流儀)。同じ物が居れば断る。
-    #[pyo3(signature = (name, kind="paragraph"))]
-    fn add_style(&self, name: &str, kind: &str) -> PyResult<()> {
+    /// スタイルを足す。styleId は名前から空白を抜いた形(Word の流儀)。
+    /// 同じ物が居れば断る。
+    ///
+    /// **見た目も一緒に渡せます**(2026-08-27)。渡さなかった物は
+    /// 「言わない」— 元になるスタイルから受け継ぎます。`False` を渡すと
+    /// **わざわざ切る**ことになり、意味が違います。
+    ///
+    ///     d.add_style("注記", bold=True, color="9C2B2B", size=9)
+    ///
+    /// 後から変えるときは [`set_style_look`] を使います。
+    #[pyo3(signature = (name, kind="paragraph", *, bold=None, italic=None,
+                        underline=None, strike=None, size=None, color=None,
+                        font=None, fill=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn add_style(
+        &self,
+        name: &str,
+        kind: &str,
+        bold: Option<bool>,
+        italic: Option<bool>,
+        underline: Option<bool>,
+        strike: Option<bool>,
+        size: Option<f32>,
+        color: Option<String>,
+        font: Option<String>,
+        fill: Option<String>,
+    ) -> PyResult<()> {
         if name.is_empty() {
             return Err(PyValueError::new_err("スタイルの名前が空です"));
         }
@@ -577,8 +609,102 @@ impl PyDoc {
             id,
             name: name.to_string(),
             kind: kind.to_string(),
+            look: kumihan::StyleLook {
+                bold, italic, underline, strike,
+                size_pt: size, color, font, fill,
+            },
         });
         Ok(())
+    }
+
+    /// **自作スタイルの見た目を変える。**
+    ///
+    /// 渡さなかった物はそのまま(消しません)。消したいときは
+    /// `clear=True` を付けて、消したい物だけ渡し直します。
+    ///
+    ///     d.set_style_look("注記", size=10.5)
+    ///
+    /// **原本から読んだスタイルは変えられません。** 定義は据え置きで
+    /// 持ち越す決めなので、触ると原本の様式が崩れます。
+    #[pyo3(signature = (name, *, bold=None, italic=None, underline=None,
+                        strike=None, size=None, color=None, font=None,
+                        fill=None, clear=false))]
+    #[allow(clippy::too_many_arguments)]
+    fn set_style_look(
+        &self,
+        name: &str,
+        bold: Option<bool>,
+        italic: Option<bool>,
+        underline: Option<bool>,
+        strike: Option<bool>,
+        size: Option<f32>,
+        color: Option<String>,
+        font: Option<String>,
+        fill: Option<String>,
+        clear: bool,
+    ) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        if g.doc.styles.iter().any(|s| s.name == name || s.id == name) {
+            return Err(PyValueError::new_err(format!(
+                "「{name}」は原本のスタイルです。定義は原本のまま持ち越すので変えられません"
+            )));
+        }
+        let Some(s) = g.doc.styles_new.iter_mut().find(|s| s.name == name || s.id == name) else {
+            return Err(PyValueError::new_err(format!("スタイル「{name}」がありません")));
+        };
+        if clear {
+            s.look = Default::default();
+        }
+        let l = &mut s.look;
+        for (v, slot) in [
+            (bold, &mut l.bold), (italic, &mut l.italic),
+            (underline, &mut l.underline), (strike, &mut l.strike),
+        ] {
+            if v.is_some() {
+                *slot = v;
+            }
+        }
+        if size.is_some() {
+            l.size_pt = size;
+        }
+        for (v, slot) in [(color, &mut l.color), (font, &mut l.font), (fill, &mut l.fill)] {
+            if v.is_some() {
+                *slot = v;
+            }
+        }
+        Ok(())
+    }
+
+    /// スタイルの見た目を読む。無ければ `None`。
+    /// 返るのは設定した物だけの辞書です。
+    fn style_look(&self, py: Python<'_>, name: &str) -> PyResult<Option<Py<PyAny>>> {
+        let g = lock(&self.inner)?;
+        let Some(s) = g
+            .doc
+            .styles
+            .iter()
+            .chain(g.doc.styles_new.iter())
+            .find(|s| s.name == name || s.id == name)
+        else {
+            return Ok(None);
+        };
+        let d = pyo3::types::PyDict::new(py);
+        let l = &s.look;
+        for (k, v) in [("bold", l.bold), ("italic", l.italic),
+                       ("underline", l.underline), ("strike", l.strike)] {
+            if let Some(x) = v {
+                d.set_item(k, x)?;
+            }
+        }
+        if let Some(x) = l.size_pt {
+            d.set_item("size", x)?;
+        }
+        for (k, v) in [("color", &l.color), ("font", &l.font), ("fill", &l.fill)] {
+            if let Some(x) = v {
+                d.set_item(k, x)?;
+            }
+        }
+        Ok(Some(d.into_any().unbind()))
     }
 
     /// 段落と表を**文書の順で**返す(python-docx の iter_inner_content)。
