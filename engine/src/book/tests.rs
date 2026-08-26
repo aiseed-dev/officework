@@ -1234,7 +1234,7 @@ mod holes_count {
        
        
         // 1枚の側
-        "merges", "row_hidden", "col_hidden",
+        "row_hidden", "col_hidden",
         "tables", "names", "links", "cond",
         "validations", "scenarios", "print_areas", "shapes", "images", "phonetics",
     ];

@@ -190,7 +190,14 @@ fn take_book_settings(d: &Document, book: &mut Book) {
 
 /// シートを文書の表にする。
 fn to_table(s: &Sheet) -> Table {
-    let (rows, cols) = s.extent();
+    // **結合は中身が無くても書きます。** `extent` は「中身のあるセル」の
+    // 範囲なので、空の升目どうしの結合はその外に出ます。書かないと
+    // 開き直したとき結合が消えます(2026-08-26 に測って気づいた)
+    let (mut rows, mut cols) = s.extent();
+    for (a, b) in &s.merges {
+        rows = rows.max(b.row + 1).max(a.row + 1);
+        cols = cols.max(b.col + 1).max(a.col + 1);
+    }
     let mut t = Table {
         title: (!s.name.is_empty()).then(|| s.name.clone()),
         header_row: has_header(s),
