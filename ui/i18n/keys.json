@@ -8706,5 +8706,241 @@
  {
   "key": "allowed_actions",
   "kind": "ribbon"
+ },
+ {
+  "key": "col_width",
+  "kind": "tmpl"
+ },
+ {
+  "key": "row_height",
+  "kind": "tmpl"
+ },
+ {
+  "key": "page_break",
+  "kind": "tmpl"
+ },
+ {
+  "key": "view",
+  "kind": "tmpl"
+ },
+ {
+  "key": "format",
+  "kind": "tmpl"
+ },
+ {
+  "key": "format_applied",
+  "kind": "tmpl"
+ },
+ {
+  "key": "workbook",
+  "kind": "tmpl"
+ },
+ {
+  "key": "row",
+  "kind": "tmpl"
+ },
+ {
+  "key": "size",
+  "kind": "tmpl"
+ },
+ {
+  "key": "gridlines",
+  "kind": "tmpl"
+ },
+ {
+  "key": "scale",
+  "kind": "tmpl"
+ },
+ {
+  "key": "fit_to_width",
+  "kind": "tmpl"
+ },
+ {
+  "key": "fit_to_height",
+  "kind": "tmpl"
+ },
+ {
+  "key": "row_col_headings",
+  "kind": "tmpl"
+ },
+ {
+  "key": "title_rows",
+  "kind": "tmpl"
+ },
+ {
+  "key": "title_cols",
+  "kind": "tmpl"
+ },
+ {
+  "key": "freeze",
+  "kind": "tmpl"
+ },
+ {
+  "key": "rtl",
+  "kind": "tmpl"
+ },
+ {
+  "key": "tab_color",
+  "kind": "tmpl"
+ },
+ {
+  "key": "default_col_width",
+  "kind": "tmpl"
+ },
+ {
+  "key": "default_row_height",
+  "kind": "tmpl"
+ },
+ {
+  "key": "kind",
+  "kind": "tmpl"
+ },
+ {
+  "key": "level",
+  "kind": "tmpl"
+ },
+ {
+  "key": "item",
+  "kind": "tmpl"
+ },
+ {
+  "key": "range",
+  "kind": "tmpl"
+ },
+ {
+  "key": "header_even",
+  "kind": "tmpl"
+ },
+ {
+  "key": "footer_even",
+  "kind": "tmpl"
+ },
+ {
+  "key": "header_first",
+  "kind": "tmpl"
+ },
+ {
+  "key": "footer_first",
+  "kind": "tmpl"
+ },
+ {
+  "key": "theme_colors",
+  "kind": "tmpl"
+ },
+ {
+  "key": "show_r1c1",
+  "kind": "tmpl"
+ },
+ {
+  "key": "edit_objects",
+  "kind": "tmpl"
+ },
+ {
+  "key": "halign",
+  "kind": "tmpl"
+ },
+ {
+  "key": "valign",
+  "kind": "tmpl"
+ },
+ {
+  "key": "fill_bg",
+  "kind": "tmpl"
+ },
+ {
+  "key": "fill_pattern",
+  "kind": "tmpl"
+ },
+ {
+  "key": "fill_theme",
+  "kind": "tmpl"
+ },
+ {
+  "key": "font_color",
+  "kind": "tmpl"
+ },
+ {
+  "key": "color_theme",
+  "kind": "tmpl"
+ },
+ {
+  "key": "shrink",
+  "kind": "tmpl"
+ },
+ {
+  "key": "unlocked",
+  "kind": "tmpl"
+ },
+ {
+  "key": "hide_formula",
+  "kind": "tmpl"
+ },
+ {
+  "key": "medium",
+  "kind": "tmpl"
+ },
+ {
+  "key": "slant_dash_dot",
+  "kind": "tmpl"
+ },
+ {
+  "key": "align_general",
+  "kind": "tmpl"
+ },
+ {
+  "key": "center",
+  "kind": "tmpl"
+ },
+ {
+  "key": "center_across",
+  "kind": "tmpl"
+ },
+ {
+  "key": "edge_top",
+  "kind": "tmpl"
+ },
+ {
+  "key": "edge_bottom",
+  "kind": "tmpl"
+ },
+ {
+  "key": "edge_left",
+  "kind": "tmpl"
+ },
+ {
+  "key": "edge_right",
+  "kind": "tmpl"
+ },
+ {
+  "key": "tmpl_group",
+  "kind": "tmpl"
+ },
+ {
+  "key": "tmpl_protect",
+  "kind": "tmpl"
+ },
+ {
+  "key": "tmpl_column",
+  "kind": "tmpl"
+ },
+ {
+  "key": "tmpl_zoom",
+  "kind": "tmpl"
+ },
+ {
+  "key": "tmpl_text",
+  "kind": "tmpl"
+ },
+ {
+  "key": "tmpl_collapsed",
+  "kind": "tmpl"
+ },
+ {
+  "key": "tmpl_borders",
+  "kind": "tmpl"
+ },
+ {
+  "key": "tmpl_font",
+  "kind": "tmpl"
  }
 ]

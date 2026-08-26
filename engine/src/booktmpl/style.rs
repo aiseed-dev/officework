@@ -30,46 +30,61 @@
 //! [`FIELDS`] に載っていない欄は往復しません。**載せ忘れが黙って落ちない
 //! ように**、`every_format_field_is_carried` が `types.rs` と突き合わせます。
 
+use super::words;
 use crate::book::{BStyle, Borders, CellFormat, Edge, HAlign, VAlign};
+
+/// 罫線を引く場所の記号
+pub const EDGES: &[&str] = &["edge_top", "edge_bottom", "edge_left", "edge_right"];
+
+/// この枚が使う記号を全部並べる(見張りが言葉の表と突き合わせます)
+pub fn symbols() -> Vec<&'static str> {
+    let mut v: Vec<&'static str> = FIELDS.iter().map(|(_, s)| *s).collect();
+    v.extend(EDGES);
+    v.extend(BSTYLES.iter().map(|(_, s)| *s));
+    v.extend(HALIGNS.iter().map(|(_, s)| *s));
+    v.extend(VALIGNS.iter().map(|(_, s)| *s));
+    v
+}
 
 /// **書式の欄と、表に書くときの項目の名前。**
 ///
 /// 名前は Excel の「セルの書式設定」の言い方に寄せてあります。
 pub const FIELDS: &[(&str, &str)] = &[
-    ("bold", "太字"),
-    ("italic", "斜体"),
-    ("underline", "下線"),
-    ("strike", "取り消し線"),
-    ("subscript", "下付き"),
-    ("borders", "罫線"),
-    ("align", "横位置"),
-    ("valign", "縦位置"),
-    ("fill", "塗り"),
-    ("fill_bg", "塗りの地"),
-    ("fill_pattern", "塗りの柄"),
-    ("fill_grad", "グラデーション"),
-    ("fill_theme", "塗りのテーマ色"),
-    ("color", "文字色"),
-    ("color_theme", "文字のテーマ色"),
-    ("font", "書体"),
-    ("size_c", "大きさ"),
-    ("rotation", "回転"),
-    ("rtl_text", "右横書き"),
-    ("wrap", "折り返し"),
-    ("shrink", "縮小"),
-    ("indent", "字下げ"),
-    ("number_format", "表示形式"),
-    ("unlocked", "ロック解除"),
-    ("formula_hidden", "式を隠す"),
+    ("bold", "bold"),
+    ("italic", "italic"),
+    ("underline", "underline"),
+    ("strike", "strikethrough"),
+    ("subscript", "subscript"),
+    ("borders", "tmpl_borders"),
+    ("align", "halign"),
+    ("valign", "valign"),
+    ("fill", "fill_color"),
+    ("fill_bg", "fill_bg"),
+    ("fill_pattern", "fill_pattern"),
+    ("fill_grad", "gradient_2"),
+    ("fill_theme", "fill_theme"),
+    ("color", "font_color"),
+    ("color_theme", "color_theme"),
+    ("font", "tmpl_font"),
+    ("size_c", "size"),
+    ("rotation", "rotation_2"),
+    ("rtl_text", "rtl"),
+    ("wrap", "wrap"),
+    ("shrink", "shrink"),
+    ("indent", "indent_3"),
+    ("number_format", "number_format"),
+    ("unlocked", "unlocked"),
+    ("formula_hidden", "hide_formula"),
 ];
 
 /// 1つの書式を (項目, 値) の並びにする。**既定のままの欄は出しません。**
 pub fn to_rows(f: &CellFormat) -> Vec<(&'static str, String)> {
     let d = CellFormat::default();
     let mut out: Vec<(&'static str, String)> = Vec::new();
+    // 項目の名前は**画面の言語**で書きます。値の中の語(線種・揃え)も同じ
     let mut put = |key: &str, v: String| {
-        if let Some((_, label)) = FIELDS.iter().find(|(k, _)| *k == key) {
-            out.push((label, v));
+        if let Some((_, sym)) = FIELDS.iter().find(|(k, _)| *k == key) {
+            out.push((*sym, v));
         }
     };
     if f.bold != d.bold {
@@ -91,10 +106,10 @@ pub fn to_rows(f: &CellFormat) -> Vec<(&'static str, String)> {
         put("borders", borders_text(&f.borders));
     }
     if f.align != d.align {
-        put("align", halign_text(f.align).into());
+        put("align", words::text(halign_text(f.align)).into());
     }
     if f.valign != d.valign {
-        put("valign", valign_text(f.valign).into());
+        put("valign", words::text(valign_text(f.valign)).into());
     }
     for (key, v) in [
         ("fill", &f.fill),
@@ -153,7 +168,11 @@ pub fn to_rows(f: &CellFormat) -> Vec<(&'static str, String)> {
 pub fn from_rows(rows: &[(String, String)]) -> CellFormat {
     let mut f = CellFormat::default();
     for (label, v) in rows {
-        let Some((key, _)) = FIELDS.iter().find(|(_, l)| l == label) else { continue };
+        let Some((key, _)) =
+            FIELDS.iter().find(|(_, sym)| words::is(sym, label))
+        else {
+            continue;
+        };
         let yes = v.eq_ignore_ascii_case("true");
         match *key {
             "bold" => f.bold = yes,
@@ -195,11 +214,11 @@ pub fn from_rows(rows: &[(String, String)]) -> CellFormat {
 /// 型スタンプ(「格子」「外枠」)は作りません — 場所と線種の直交が家の決めです。
 fn borders_text(b: &Borders) -> String {
     let mut out: Vec<String> = Vec::new();
-    for (label, e) in [("上", &b.top), ("下", &b.bottom), ("左", &b.left), ("右", &b.right)] {
+    for (label, e) in [("edge_top", &b.top), ("edge_bottom", &b.bottom), ("edge_left", &b.left), ("edge_right", &b.right)] {
         if !e.on {
             continue;
         }
-        let mut s = format!("{label}:{}", bstyle_text(e.style));
+        let mut s = format!("{}:{}", words::text(label), bstyle_text(e.style));
         if let Some(c) = e.color {
             s.push_str(&format!(":{c:06X}"));
         }
@@ -216,12 +235,15 @@ fn read_borders(s: &str) -> Borders {
         let style = it.next().map(read_bstyle).unwrap_or(BStyle::Thin);
         let color = it.next().and_then(|c| u32::from_str_radix(c, 16).ok());
         let e = Edge { on: true, style, color };
-        match label {
-            "上" => b.top = e,
-            "下" => b.bottom = e,
-            "左" => b.left = e,
-            "右" => b.right = e,
-            _ => {}
+        #[allow(clippy::match_single_binding)]
+        match () {
+            _ => match words::which(EDGES, label) {
+                Some("edge_top") => b.top = e,
+                Some("edge_bottom") => b.bottom = e,
+                Some("edge_left") => b.left = e,
+                Some("edge_right") => b.right = e,
+                _ => {}
+            },
         }
     }
     b
@@ -229,56 +251,56 @@ fn read_borders(s: &str) -> Borders {
 
 /// 線種の名前。Excel の「線のスタイル」の言い方に寄せる
 const BSTYLES: &[(BStyle, &str)] = &[
-    (BStyle::Hair, "極細"),
-    (BStyle::Dotted, "点線"),
-    (BStyle::DashDotDot, "一点二鎖線"),
-    (BStyle::DashDot, "一点鎖線"),
-    (BStyle::Dashed, "破線"),
-    (BStyle::Thin, "細"),
-    (BStyle::MediumDashDotDot, "中一点二鎖線"),
-    (BStyle::MediumDashDot, "中一点鎖線"),
-    (BStyle::MediumDashed, "中破線"),
-    (BStyle::Medium, "中"),
-    (BStyle::Thick, "太"),
-    (BStyle::Double, "二重"),
-    (BStyle::SlantDashDot, "斜め一点鎖線"),
+    (BStyle::Hair, "hairline"),
+    (BStyle::Dotted, "dotted"),
+    (BStyle::DashDotDot, "dash_dot_dot"),
+    (BStyle::DashDot, "dash_dot"),
+    (BStyle::Dashed, "dashed"),
+    (BStyle::Thin, "thin"),
+    (BStyle::MediumDashDotDot, "medium_dash_dot_dot"),
+    (BStyle::MediumDashDot, "medium_dash_dot"),
+    (BStyle::MediumDashed, "medium_dashed"),
+    (BStyle::Medium, "medium"),
+    (BStyle::Thick, "thick"),
+    (BStyle::Double, "double"),
+    (BStyle::SlantDashDot, "slant_dash_dot"),
 ];
 
 fn bstyle_text(s: BStyle) -> &'static str {
-    BSTYLES.iter().find(|(k, _)| *k == s).map(|(_, v)| *v).unwrap_or("細")
+    words::text(BSTYLES.iter().find(|(k, _)| *k == s).map(|(_, v)| *v).unwrap_or("thin"))
 }
 
 fn read_bstyle(s: &str) -> BStyle {
-    BSTYLES.iter().find(|(_, v)| *v == s).map(|(k, _)| *k).unwrap_or(BStyle::Thin)
+    BSTYLES.iter().find(|(_, sym)| words::is(sym, s)).map(|(k, _)| *k).unwrap_or(BStyle::Thin)
 }
 
 const HALIGNS: &[(HAlign, &str)] = &[
-    (HAlign::General, "標準"),
-    (HAlign::Left, "左"),
-    (HAlign::Center, "中央"),
-    (HAlign::Right, "右"),
-    (HAlign::Justify, "両端"),
-    (HAlign::CenterContinuous, "選択範囲内で中央"),
-    (HAlign::Distribute, "均等割付"),
+    (HAlign::General, "align_general"),
+    (HAlign::Left, "left"),
+    (HAlign::Center, "center"),
+    (HAlign::Right, "right"),
+    (HAlign::Justify, "justify"),
+    (HAlign::CenterContinuous, "center_across"),
+    (HAlign::Distribute, "distributed"),
 ];
 
 fn halign_text(a: HAlign) -> &'static str {
-    HALIGNS.iter().find(|(k, _)| *k == a).map(|(_, v)| *v).unwrap_or("標準")
+    HALIGNS.iter().find(|(k, _)| *k == a).map(|(_, v)| *v).unwrap_or("align_general")
 }
 
 fn read_halign(s: &str) -> HAlign {
-    HALIGNS.iter().find(|(_, v)| *v == s).map(|(k, _)| *k).unwrap_or(HAlign::General)
+    HALIGNS.iter().find(|(_, sym)| words::is(sym, s)).map(|(k, _)| *k).unwrap_or(HAlign::General)
 }
 
 const VALIGNS: &[(VAlign, &str)] =
-    &[(VAlign::Top, "上"), (VAlign::Middle, "中央"), (VAlign::Bottom, "下"), (VAlign::Distribute, "均等割付")];
+    &[(VAlign::Top, "top"), (VAlign::Middle, "center"), (VAlign::Bottom, "bottom"), (VAlign::Distribute, "distributed")];
 
 fn valign_text(a: VAlign) -> &'static str {
-    VALIGNS.iter().find(|(k, _)| *k == a).map(|(_, v)| *v).unwrap_or("下")
+    VALIGNS.iter().find(|(k, _)| *k == a).map(|(_, v)| *v).unwrap_or("bottom")
 }
 
 fn read_valign(s: &str) -> VAlign {
-    VALIGNS.iter().find(|(_, v)| *v == s).map(|(k, _)| *k).unwrap_or(VAlign::Bottom)
+    VALIGNS.iter().find(|(_, sym)| words::is(sym, s)).map(|(k, _)| *k).unwrap_or(VAlign::Bottom)
 }
 
 /// テーマ色は `番号,明るさの加減` で書きます(`4,400` = アクセント1 を +0.4)
