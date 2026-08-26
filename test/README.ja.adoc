@@ -30,10 +30,7 @@ $ .venv/bin/python test/write_docx_officework.py    # うち → test/out/office
 
 . `test/out/` と `test/out/officework/` の同じ名前を並べて開く
   (Excel / Word・Euro-Office・aiseed office のどれでも)
-. **うちの側の実行の終わりに「できなかった事」の一覧が出ます** — エンジンに
-  口が無い機能は黙って欠けず、ここに数えられます。一覧が空なら口は全部通り、
-  あとは見た目の違いだけです
-. 食い違いを見つけたら、それが台帳です(機能の名前と文書の名前を控える)
+. 食い違いを見つけたら、機能の名前と文書の名前を控える
 
 == 決まり
 

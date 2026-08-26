@@ -4,10 +4,9 @@
     .venv/bin/python test/write_docx_officework.py [出力先フォルダ(既定 test/out/officework)]
 
 出来上がりの名前は同じ(開催通知.docx など)。python-docx の側と並べて
-目で見比べます。エンジンに口が無い機能は飛ばして、終わりに一覧で出ます。
+開いて、目で見比べます。
 """
 import sys
-from contextlib import contextmanager
 from pathlib import Path
 
 from officework import doc
@@ -16,27 +15,16 @@ from officework.doc import Doc, Mm
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent / "out" / "officework"
 OUT.mkdir(parents=True, exist_ok=True)
 
-SKIPPED = []
-
-
-@contextmanager
-def attempt(label):
-    try:
-        yield
-    except Exception as e:
-        SKIPPED.append(f"{label}: {type(e).__name__}: {e}")
-
 
 def a4(d, landscape=False):
-    with attempt("用紙 A4・余白 20mm・向き"):
-        s = d.sections[0]
-        if landscape:
-            s.orientation = "landscape"
-            s.page_width, s.page_height = Mm(297), Mm(210)
-        else:
-            s.page_width, s.page_height = Mm(210), Mm(297)
-        s.top_margin = s.bottom_margin = Mm(20)
-        s.left_margin = s.right_margin = Mm(20)
+    s = d.sections[0]
+    if landscape:
+        s.orientation = "landscape"
+        s.page_width, s.page_height = Mm(297), Mm(210)
+    else:
+        s.page_width, s.page_height = Mm(210), Mm(297)
+    s.top_margin = s.bottom_margin = Mm(20)
+    s.left_margin = s.right_margin = Mm(20)
 
 
 # ======================================================================
@@ -48,8 +36,7 @@ def notice():
     p = d.add_paragraph("2026年8月26日")
     p.alignment = "right"
     p = d.add_paragraph("会員各位")
-    with attempt("段落の後の間隔"):
-        p.paragraph_format.space_after = 12
+    p.paragraph_format.space_after = 12
     p = d.add_paragraph("aiseed 事務局")
     p.alignment = "right"
 
@@ -57,10 +44,8 @@ def notice():
     h.alignment = "center"
 
     p = d.add_paragraph()
-    with attempt("1行目の字下げ"):
-        p.paragraph_format.first_line_indent = Mm(10)
-    with attempt("行間 1.5"):
-        p.paragraph_format.line_spacing = 1.5
+    p.paragraph_format.first_line_indent = Mm(10)
+    p.paragraph_format.line_spacing = 1.5
     p.add_run("下記のとおり定例会を開きます。")
     r = p.add_run("出欠のご返事は 9月5日(金)まで")
     r.bold = True
@@ -74,24 +59,20 @@ def notice():
                         ("場所", "工業技術センター 2階 会議室"),
                         ("議題", "新しい道具の紹介と実演")]:
         p = d.add_paragraph()
-        with attempt("左の字下げ"):
-            p.paragraph_format.left_indent = Mm(20)
+        p.paragraph_format.left_indent = Mm(20)
         r = p.add_run(label)
         r.bold = True
-        with attempt("タブ"):
-            p.runs[-1].add_tab()
+        p.runs[-1].add_tab()
         p.add_run(body)
 
     p = d.add_paragraph("以上")
     p.alignment = "right"
     p = d.add_paragraph("問い合わせ: 事務局(内線 123)")
-    with attempt("字の大きさと灰色"):
-        r = p.runs[0]
-        r.size_pt = 9
-        r.color = "808080"
-    with attempt("文書の情報(題と作成者)"):
-        d.core_properties.title = "定例会の開催通知"
-        d.core_properties.author = "write_docx_officework"
+    r = p.runs[0]
+    r.size_pt = 9
+    r.color = "808080"
+    d.core_properties.title = "定例会の開催通知"
+    d.core_properties.author = "write_docx_officework"
     d.save(str(OUT / "開催通知.docx"))
 
 
@@ -105,46 +86,37 @@ def minutes():
     h.alignment = "center"
 
     t = d.add_table(rows=4, cols=4)
-    with attempt("表のスタイル(格子)"):
-        t.style = "Table Grid"
+    t.style = "Table Grid"
     t.cell(0, 0).text = "件名"
-    with attempt("セルの結合(横3つ)"):
-        a = t.cell(0, 1).merge(t.cell(0, 3))
-        a.text = "玄関ドアのカタログ改善"
+    a = t.cell(0, 1).merge(t.cell(0, 3))
+    a.text = "玄関ドアのカタログ改善"
     t.cell(1, 0).text = "日時"
     t.cell(1, 1).text = "2026-08-26 10:00"
     t.cell(1, 2).text = "場所"
     t.cell(1, 3).text = "第2会議室"
     t.cell(2, 0).text = "出席"
-    with attempt("セルの結合(2行目)"):
-        b = t.cell(2, 1).merge(t.cell(2, 3))
-        b.text = "営業部2名・設計1名・事務局1名"
+    b = t.cell(2, 1).merge(t.cell(2, 3))
+    b.text = "営業部2名・設計1名・事務局1名"
     t.cell(3, 0).text = "記録"
     t.cell(3, 1).text = "事務局"
-    with attempt("行の高さと縦の揃え"):
-        for row in t.rows:
-            row.height = Mm(8)
-            for c in row.cells:
-                c.vertical_alignment = "center"
-    with attempt("1列目の幅と太字"):
-        for c in t.columns[0].cells:
-            c.width = Mm(22)
-            for p in c.paragraphs:
-                for r in p.runs:
-                    r.bold = True
+    for row in t.rows:
+        row.height = Mm(8)
+        for c in row.cells:
+            c.vertical_alignment = "center"
+    for c in t.columns[0].cells:
+        c.width = Mm(22)
+        for p in c.paragraphs:
+            for r in p.runs:
+                r.bold = True
 
-    with attempt("見出し2"):
-        d.add_heading("決まったこと", level=2)
+    d.add_heading("決まったこと", level=2)
     for item in ["型と色を選ぶと合成図が出る形にする",
                  "寸法は物件ごとに mm で控える",
                  "次回までに見本の様式を3枚つくる"]:
-        with attempt("箇条書きのスタイル"):
-            d.add_paragraph(item, style="List Bullet")
-    with attempt("見出し2"):
-        d.add_heading("宿題", level=2)
+        d.add_paragraph(item, style="List Bullet")
+    d.add_heading("宿題", level=2)
     for item in ["様式の下書き(営業部)", "防火認定の一覧(設計)", "日程の調整(事務局)"]:
-        with attempt("番号つきのスタイル"):
-            d.add_paragraph(item, style="List Number")
+        d.add_paragraph(item, style="List Number")
     d.save(str(OUT / "議事録.docx"))
 
 
@@ -160,29 +132,24 @@ def manual():
              ("マクロを押す", None),
              ("印刷する", "できた報告を A4 で1枚印刷し、回覧に載せます。")]
     for title, body in steps:
-        with attempt("番号つきのスタイル"):
-            d.add_paragraph(title, style="List Number")
+        d.add_paragraph(title, style="List Number")
         if body:
             p = d.add_paragraph(body)
         else:
             p = d.add_paragraph("マクロの一覧から ")
             r = p.add_run("月次の締め")
-            with attempt("等幅の字(書体を Courier に)"):
-                r.font.name = "Courier New"
+            r.font.name = "Courier New"
             p.add_run(" を選んで押します。")
-        with attempt("左の字下げ"):
-            p.paragraph_format.left_indent = Mm(10)
+        p.paragraph_format.left_indent = Mm(10)
 
     logo = Path(__file__).resolve().parent.parent / "packaging/icons/hicolor/128x128/officework.png"
     if logo.exists():
-        with attempt("画像(幅 20mm)"):
-            p = d.add_paragraph()
-            p.alignment = "center"
-            d.add_picture(str(logo), width=Mm(20))
+        p = d.add_paragraph()
+        p.alignment = "center"
+        d.add_picture(str(logo), width=Mm(20))
 
     d.add_page_break()
-    with attempt("見出し2"):
-        d.add_heading("別紙: 押すボタンの場所", level=2)
+    d.add_heading("別紙: 押すボタンの場所", level=2)
     d.add_paragraph("この行は2ページ目の頭にあります(改ページの確かめ)。")
     d.save(str(OUT / "操作手順書.docx"))
 
@@ -193,21 +160,17 @@ def manual():
 def cover_letter():
     d = Doc()
     a4(d)
-    with attempt("ヘッダー"):
-        d.header.text = "aiseed"
-    with attempt("フッター(中央揃え)"):
-        d.footer.text = "この便りに心当たりが無いときは事務局へ"
+    d.header.text = "aiseed"
+    d.footer.text = "この便りに心当たりが無いときは事務局へ"
 
     p = d.add_paragraph("見積書 送付のご案内")
     p.alignment = "center"
-    with attempt("字の大きさ 16pt と太字"):
-        p.runs[0].size_pt = 16
-        p.runs[0].bold = True
+    p.runs[0].size_pt = 16
+    p.runs[0].bold = True
     p = d.add_paragraph("いつもお世話になっております。次の書類をお送りします。")
 
     for name, n in [("御見積書", 1), ("カタログ(玄関ドア)", 1), ("返信用封筒", 1)]:
-        with attempt("箇条書きのスタイル"):
-            d.add_paragraph(f"{name} … {n} 部", style="List Bullet")
+        d.add_paragraph(f"{name} … {n} 部", style="List Bullet")
 
     p = d.add_paragraph()
     p.add_run("お受け取りの確認欄: ")
@@ -227,8 +190,7 @@ def circular():
 
     p = d.add_paragraph()
     r = p.add_run("空調は 28℃ 設定")
-    with attempt("蛍光ペン(黄)"):
-        r.highlight = "yellow"
+    r.highlight = "yellow"
     p.add_run(" にご協力ください。")
 
     p = d.add_paragraph()
@@ -239,26 +201,21 @@ def circular():
 
     p = d.add_paragraph()
     p.add_run("面積あたりの目安は 15W/m")
-    with attempt("上付き"):
-        r = p.add_run("2")
-        r.superscript = True
+    r = p.add_run("2")
+    r.superscript = True
     p.add_run("、湿度は H")
-    with attempt("下付き"):
-        r = p.add_run("2")
-        r.subscript = True
+    r = p.add_run("2")
+    r.subscript = True
     p.add_run("O の量で変わります。")
 
     p = d.add_paragraph("詳しい資料: ")
-    with attempt("リンクの挿入"):
-        p.add_hyperlink("https://github.com/aiseed-dev/officework", "officework の置き場")
+    p.add_hyperlink("https://github.com/aiseed-dev/officework", "officework の置き場")
 
     p = d.add_paragraph("確認したら名前の右に日付を書いてください。")
-    with attempt("コメント(作成者つき)"):
-        p.add_comment("今週中にお願いします", author="事務局")
+    p.add_comment("今週中にお願いします", author="事務局")
 
     t = d.add_table(rows=2, cols=5)
-    with attempt("表のスタイル(格子)"):
-        t.style = "Table Grid"
+    t.style = "Table Grid"
     for j, name in enumerate(["佐藤", "鈴木", "高橋", "田中", "伊藤"]):
         t.cell(0, j).text = name
     d.save(str(OUT / "回覧.docx"))
@@ -268,9 +225,3 @@ if __name__ == "__main__":
     for build in (notice, minutes, manual, cover_letter, circular):
         build()
     print("5枚書けた →", OUT)
-    if SKIPPED:
-        print(f"\nこの機械ではできなかった事({len(SKIPPED)} 件):")
-        for s in SKIPPED:
-            print("  ×", s)
-    else:
-        print("全部の口が通った")
